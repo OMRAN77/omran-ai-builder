@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://omran-ai-builder.vercel.app/sitemap.xml

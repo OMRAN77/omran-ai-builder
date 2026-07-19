@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مشروع مشترك — Omran AI Builder</title>
+<style>
+  html,body{margin:0; padding:0; height:100%; background:#0f1115; font-family:'Segoe UI',Tahoma,Arial,sans-serif; color:#eee;}
+  #topbar{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 16px; background:#161922; border-bottom:1px solid #262b36; flex-wrap:wrap;}
+  #topbar .info{display:flex; flex-direction:column; gap:2px; min-width:0;}
+  #topbar h1{font-size:15px; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:60vw;}
+  #topbar .sub{font-size:12px; color:#9aa3b2;}
+  #topbar a.brand{color:#60a5fa; text-decoration:none; font-size:12px; font-weight:bold;}
+  #frameWrap{position:absolute; top:56px; left:0; right:0; bottom:0;}
+  iframe{width:100%; height:100%; border:none; background:#fff;}
+  #state{display:flex; align-items:center; justify-content:center; height:70vh; font-size:14px; color:#9aa3b2; text-align:center; padding:0 20px;}
+</style>
+</head>
+<body>
+  <div id="topbar">
+    <div class="info">
+      <h1 id="pTitle">جارِ التحميل...</h1>
+      <span class="sub" id="pMeta"></span>
+    </div>
+    <a class="brand" href="/">⚡ Omran AI Builder</a>
+  </div>
+  <div id="frameWrap">
+    <div id="state">جارِ تحميل المشروع...</div>
+    <iframe id="frame" style="display:none;"></iframe>
+  </div>
+
+<script>
+(function(){
+  const params = new URLSearchParams(location.search);
+  const id = params.get('id');
+  const stateEl = document.getElementById('state');
+  const frame = document.getElementById('frame');
+  const titleEl = document.getElementById('pTitle');
+  const metaEl = document.getElementById('pMeta');
+
+  if(!id){
+    stateEl.textContent = 'لا يوجد معرّف مشروع بالرابط.';
+    return;
+  }
+
+  fetch('/api/share?id=' + encodeURIComponent(id))
+    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(data => {
+      titleEl.textContent = data.title || 'مشروع بدون اسم';
+      const d = new Date(data.createdAt || Date.now());
+      metaEl.textContent = 'بواسطة ' + (data.username || 'زائر') + ' — ' + d.toLocaleDateString('ar-EG');
+      document.title = (data.title || 'مشروع مشترك') + ' — Omran AI Builder';
+      frame.srcdoc = data.code || '';
+      frame.style.display = 'block';
+      stateEl.style.display = 'none';
+    })
+    .catch(() => {
+      stateEl.textContent = 'لم يتم العثور على هذا المشروع، أو تم حذفه.';
+    });
+})();
+</script>
+</body>
+</html>

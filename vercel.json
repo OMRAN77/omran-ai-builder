@@ -1,0 +1,64 @@
+{
+  "regions": ["bom1"],
+  "functions": {
+    "api/*.js": { "regions": ["bom1"], "maxDuration": 60 }
+  },
+  "rewrites": [
+    { "source": "/api/openai", "destination": "/api/ai?action=openai" },
+    { "source": "/api/gemini", "destination": "/api/ai?action=gemini" },
+    { "source": "/api/groq", "destination": "/api/ai?action=groq" },
+    { "source": "/api/claude", "destination": "/api/ai?action=claude" },
+    { "source": "/api/cohere", "destination": "/api/ai?action=cohere" },
+    { "source": "/api/deepseek", "destination": "/api/ai?action=deepseek" },
+    { "source": "/api/mistral", "destination": "/api/ai?action=mistral" },
+    { "source": "/api/openrouter", "destination": "/api/ai?action=openrouter" },
+    { "source": "/api/perplexity", "destination": "/api/ai?action=perplexity" },
+
+    { "source": "/api/car-tools", "destination": "/api/tools?action=car-tools" },
+    { "source": "/api/design-create", "destination": "/api/tools?action=design-create" },
+    { "source": "/api/design-suggest", "destination": "/api/tools?action=design-suggest" },
+    { "source": "/api/fashion-create", "destination": "/api/tools?action=fashion-create" },
+    { "source": "/api/fashion-suggest", "destination": "/api/tools?action=fashion-suggest" },
+    { "source": "/api/studio-create", "destination": "/api/tools?action=studio-create" },
+    { "source": "/api/studio-suggest", "destination": "/api/tools?action=studio-suggest" },
+    { "source": "/api/portrait-style", "destination": "/api/tools?action=portrait-style" },
+    { "source": "/api/analyze-zip", "destination": "/api/tools?action=analyze-zip" },
+
+    { "source": "/api/video-create", "destination": "/api/video?action=video-create" },
+    { "source": "/api/video-script", "destination": "/api/video?action=video-script" },
+    { "source": "/api/video-status", "destination": "/api/video?action=video-status" },
+    { "source": "/api/video-upscale-create", "destination": "/api/video?action=video-upscale-create" },
+
+    { "source": "/api/auth", "destination": "/api/account?action=auth" },
+    { "source": "/api/auth-google-callback", "destination": "/api/account?action=auth-google-callback" },
+    { "source": "/api/admin-actions", "destination": "/api/account?action=admin-actions" },
+    { "source": "/api/admin-stats", "destination": "/api/account?action=admin-stats" },
+    { "source": "/api/usage-status", "destination": "/api/account?action=usage-status" },
+    { "source": "/api/create-checkout-session", "destination": "/api/account?action=create-checkout-session" },
+    { "source": "/api/paypal-client-id", "destination": "/api/account?action=paypal-client-id" },
+    { "source": "/api/paypal-order", "destination": "/api/account?action=paypal-order" },
+    { "source": "/api/share", "destination": "/api/account?action=share" },
+    { "source": "/api/feedback", "destination": "/api/account?action=feedback" },
+
+    { "source": "/api/tts", "destination": "/api/media?action=tts" },
+    { "source": "/api/stt", "destination": "/api/media?action=stt" },
+    { "source": "/api/translate", "destination": "/api/media?action=translate" },
+    { "source": "/api/maha-image", "destination": "/api/media?action=maha-image" },
+    { "source": "/api/blob-client-upload", "destination": "/api/media?action=blob-client-upload" },
+
+    { "source": "/api/check-reminders", "destination": "/api/system?action=check-reminders" },
+    { "source": "/api/push-subscribe", "destination": "/api/system?action=push-subscribe" },
+    { "source": "/api/reminders", "destination": "/api/system?action=reminders" },
+    { "source": "/api/vapid-public-key", "destination": "/api/system?action=vapid-public-key" },
+    { "source": "/api/search", "destination": "/api/system?action=search" },
+    { "source": "/api/realtime-session", "destination": "/api/system?action=realtime-session" },
+
+    { "source": "/ar", "destination": "/index.html" },
+    { "source": "/en", "destination": "/index.html" },
+    { "source": "/fr", "destination": "/index.html" },
+    { "source": "/hi", "destination": "/index.html" },
+    { "source": "/ur", "destination": "/index.html" },
+    { "source": "/bn", "destination": "/index.html" },
+    { "source": "/ne", "destination": "/index.html" }
+  ]
+}

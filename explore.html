@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">🔍 استكشف — Omran AI Builder</title>
+<style>
+  html,body{margin:0; padding:0; background:#0f1115; font-family:'Segoe UI',Tahoma,Arial,sans-serif; color:#eee; min-height:100%;}
+  header{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:16px 20px; border-bottom:1px solid #262b36; flex-wrap:wrap;}
+  header h1{font-size:18px; margin:0;}
+  header a{color:#60a5fa; text-decoration:none; font-size:13px; font-weight:bold;}
+  #grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(220px,1fr)); gap:14px; padding:20px;}
+  .card{position:relative; background:#161922; border:1px solid #262b36; border-radius:12px; overflow:hidden; color:#eee; transition:transform .15s, border-color .15s; display:flex; flex-direction:column;}
+  .card:hover{transform:translateY(-3px); border-color:#3b82f6;}
+  .card a.cardLink{text-decoration:none; color:#eee; display:flex; flex-direction:column; flex:1;}
+  .card .thumb{height:120px; background:linear-gradient(135deg,#1e293b,#0f172a); display:flex; align-items:center; justify-content:center; font-size:34px;}
+  .card .body{padding:10px 12px;}
+  .card .title{font-size:14px; font-weight:bold; margin:0 0 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .card .meta{font-size:11px; color:#9aa3b2;}
+  .card .delBtn{position:absolute; top:6px; left:6px; background:rgba(0,0,0,.55); border:1px solid #ef4444; color:#f87171; border-radius:8px; width:28px; height:28px; font-size:14px; cursor:pointer; z-index:2;}
+  .card .delBtn:hover{background:#ef4444; color:#fff;}
+  #empty{padding:60px 20px; text-align:center; color:#9aa3b2; font-size:14px;}
+</style>
+</head>
+<body>
+  <header>
+    <h1 id="hTitle">🔍 استكشف مشاريع صنعها المستخدمون</h1>
+    <a href="/" id="hBack">⚡ الرجوع إلى Omran AI Builder</a>
+  </header>
+  <div id="grid"></div>
+  <div id="empty" style="display:none;"></div>
+
+<script>
+const EXPLORE_STR = {
+  ar: { pageTitle:'🔍 استكشف — Omran AI Builder', title:'🔍 استكشف مشاريع صنعها المستخدمون', back:'⚡ الرجوع إلى Omran AI Builder', empty:'لا توجد مشاريع عامة بعد. كن أول من يشارك مشروعه! 🚀', loadErr:'تعذّر تحميل المشاريع، حاول لاحقًا.', untitled:'مشروع بدون اسم', by:'بواسطة', guest:'زائر', delTitle:'حذف المشروع', confirmDel:'هل تريد حذف هذا المشروع من الاستكشاف نهائيًا؟', delFail:'تعذّر حذف المشروع: ', unknownErr:'خطأ غير معروف', delFailRetry:'تعذّر حذف المشروع، حاول لاحقًا.', dateLocale:'ar-EG' },
+  en: { pageTitle:'🔍 Explore — Omran AI Builder', title:'🔍 Explore projects made by users', back:'⚡ Back to Omran AI Builder', empty:'No public projects yet. Be the first to share yours! 🚀', loadErr:'Failed to load projects, try again later.', untitled:'Untitled project', by:'By', guest:'Guest', delTitle:'Delete project', confirmDel:'Delete this project from Explore permanently?', delFail:'Failed to delete project: ', unknownErr:'Unknown error', delFailRetry:'Failed to delete project, try again later.', dateLocale:'en-US' },
+  fr: { pageTitle:'🔍 Explorer — Omran AI Builder', title:'🔍 Explorer les projets créés par les utilisateurs', back:'⚡ Retour à Omran AI Builder', empty:'Aucun projet public pour le moment. Soyez le premier à partager le vôtre ! 🚀', loadErr:'Échec du chargement des projets, réessayez plus tard.', untitled:'Projet sans titre', by:'Par', guest:'Invité', delTitle:'Supprimer le projet', confirmDel:'Supprimer définitivement ce projet d\'Explorer ?', delFail:'Échec de la suppression du projet : ', unknownErr:'Erreur inconnue', delFailRetry:'Échec de la suppression du projet, réessayez plus tard.', dateLocale:'fr-FR' },
+  hi: { pageTitle:'🔍 खोजें — Omran AI Builder', title:'🔍 उपयोगकर्ताओं द्वारा बनाई गई परियोजनाएँ खोजें', back:'⚡ Omran AI Builder पर वापस जाएँ', empty:'अभी तक कोई सार्वजनिक परियोजना नहीं है। अपनी साझा करने वाले पहले व्यक्ति बनें! 🚀', loadErr:'परियोजनाएँ लोड करने में विफल, बाद में पुनः प्रयास करें।', untitled:'बिना शीर्षक की परियोजना', by:'द्वारा', guest:'अतिथि', delTitle:'परियोजना हटाएँ', confirmDel:'क्या आप इस परियोजना को एक्सप्लोर से स्थायी रूप से हटाना चाहते हैं?', delFail:'परियोजना हटाने में विफल: ', unknownErr:'अज्ञात त्रुटि', delFailRetry:'परियोजना हटाने में विफल, बाद में पुनः प्रयास करें।', dateLocale:'hi-IN' },
+  ur: { pageTitle:'🔍 دریافت کریں — Omran AI Builder', title:'🔍 صارفین کے بنائے گئے پروجیکٹس دریافت کریں', back:'⚡ Omran AI Builder پر واپس جائیں', empty:'ابھی تک کوئی عوامی پروجیکٹ نہیں ہے۔ اپنا شیئر کرنے والے پہلے شخص بنیں! 🚀', loadErr:'پروجیکٹس لوڈ کرنے میں ناکامی، بعد میں دوبارہ کوشش کریں۔', untitled:'بلا عنوان پروجیکٹ', by:'بذریعہ', guest:'مہمان', delTitle:'پروجیکٹ حذف کریں', confirmDel:'کیا آپ اس پروجیکٹ کو ڈسکور سے مستقل طور پر حذف کرنا چاہتے ہیں؟', delFail:'پروجیکٹ حذف کرنے میں ناکامی: ', unknownErr:'نامعلوم خرابی', delFailRetry:'پروجیکٹ حذف کرنے میں ناکامی، بعد میں دوبارہ کوشش کریں۔', dateLocale:'ur-PK' },
+  bn: { pageTitle:'🔍 অন্বেষণ করুন — Omran AI Builder', title:'🔍 ব্যবহারকারীদের তৈরি প্রকল্পগুলি অন্বেষণ করুন', back:'⚡ Omran AI Builder এ ফিরে যান', empty:'এখনো কোনো পাবলিক প্রকল্প নেই। প্রথম ব্যক্তি হন যিনি নিজেরটি শেয়ার করেন! 🚀', loadErr:'প্রকল্প লোড করতে ব্যর্থ, পরে আবার চেষ্টা করুন।', untitled:'শিরোনামহীন প্রকল্প', by:'দ্বারা', guest:'অতিথি', delTitle:'প্রকল্প মুছুন', confirmDel:'আপনি কি এই প্রকল্পটি এক্সপ্লোর থেকে স্থায়ীভাবে মুছে ফেলতে চান?', delFail:'প্রকল্প মুছতে ব্যর্থ: ', unknownErr:'অজানা ত্রুটি', delFailRetry:'প্রকল্প মুছতে ব্যর্থ, পরে আবার চেষ্টা করুন।', dateLocale:'bn-BD' },
+  ne: { pageTitle:'🔍 अन्वेषण गर्नुहोस् — Omran AI Builder', title:'🔍 प्रयोगकर्ताहरूले बनाएका परियोजनाहरू अन्वेषण गर्नुहोस्', back:'⚡ Omran AI Builder मा फर्कनुहोस्', empty:'अझै सम्म कुनै सार्वजनिक परियोजना छैन। आफ्नो सेयर गर्ने पहिलो व्यक्ति बन्नुहोस्! 🚀', loadErr:'परियोजनाहरू लोड गर्न असफल, पछि फेरि प्रयास गर्नुहोस्।', untitled:'शीर्षक बिनाको परियोजना', by:'द्वारा', guest:'पाहुना', delTitle:'परियोजना मेटाउनुहोस्', confirmDel:'के तपाईं यो परियोजनालाई एक्सप्लोरबाट स्थायी रूपमा मेटाउन चाहनुहुन्छ?', delFail:'परियोजना मेटाउन असफल: ', unknownErr:'अज्ञात त्रुटि', delFailRetry:'परियोजना मेटाउन असफल, पछि फेरि प्रयास गर्नुहोस्।', dateLocale:'ne-NP' },
+};
+const lang = localStorage.getItem('aiapp_lang') || 'ar';
+const S = EXPLORE_STR[lang] || EXPLORE_STR.ar;
+if(lang === 'ar' || lang === 'ur'){ document.documentElement.dir = 'rtl'; document.documentElement.lang = lang; }
+else { document.documentElement.dir = 'ltr'; document.documentElement.lang = lang; }
+document.getElementById('pageTitle').textContent = S.pageTitle;
+document.getElementById('hTitle').textContent = S.title;
+document.getElementById('hBack').textContent = S.back;
+document.getElementById('empty').textContent = S.empty;
+
+function authGetLocal(key){ return sessionStorage.getItem(key) || localStorage.getItem(key); }
+const myUsername = authGetLocal('aiapp_username');
+const myToken = authGetLocal('aiapp_auth_token');
+
+function deleteProject(id, cardEl){
+  if(!confirm(S.confirmDel)) return;
+  fetch('/api/share?id=' + encodeURIComponent(id), {
+    method: 'DELETE',
+    headers: { Authorization: 'Bearer ' + (myToken || '') },
+  })
+    .then(r => r.json())
+    .then(data => {
+      if(data && data.ok){
+        cardEl.remove();
+        const grid = document.getElementById('grid');
+        if(!grid.children.length) document.getElementById('empty').style.display = 'block';
+      } else {
+        alert(S.delFail + (data && data.error ? data.error : S.unknownErr));
+      }
+    })
+    .catch(() => alert(S.delFailRetry));
+}
+
+function getTitleCache(){
+  try { return JSON.parse(localStorage.getItem('explore_title_cache') || '{}'); }
+  catch(e){ return {}; }
+}
+function saveTitleCache(cache){
+  try { localStorage.setItem('explore_title_cache', JSON.stringify(cache)); }
+  catch(e){}
+}
+function translateTitles(items, targetLang){
+  const cache = getTitleCache();
+  const cacheKey = (id) => id + '_' + targetLang;
+  const needIds = items.filter(p => p.title && !cache[cacheKey(p.id)]).map(p => p.id);
+  if(!needIds.length) return Promise.resolve(cache);
+  const needTexts = items.filter(p => needIds.includes(p.id)).map(p => p.title);
+  return fetch('/api/translate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ texts: needTexts, targetLang }),
+  })
+    .then(r => r.json())
+    .then(data => {
+      const translations = (data && data.translations) || [];
+      needIds.forEach((id, i) => {
+        if(translations[i]) cache[cacheKey(id)] = translations[i];
+      });
+      saveTitleCache(cache);
+      return cache;
+    })
+    .catch(() => cache);
+}
+
+fetch('/api/share?explore=1')
+  .then(r => r.json())
+  .then(data => {
+    const items = data.items || [];
+    const grid = document.getElementById('grid');
+    if(!items.length){
+      document.getElementById('empty').style.display = 'block';
+      return;
+    }
+    translateTitles(items, lang).then(cache => {
+      items.forEach(p => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        const d = new Date(p.createdAt || Date.now());
+        const isMine = myUsername && p.username === myUsername;
+        const displayTitle = (p.title && cache[p.id + '_' + lang]) || p.title || S.untitled;
+        card.innerHTML = '<a class="cardLink" href="/p.html?id=' + encodeURIComponent(p.id) + '">'
+          + '<div class="thumb">🧩</div><div class="body">'
+          + '<div class="title">' + displayTitle + '</div>'
+          + '<div class="meta">' + S.by + ' ' + (p.username || S.guest) + ' — ' + d.toLocaleDateString(S.dateLocale) + '</div>'
+          + '</div></a>'
+          + (isMine ? '<button type="button" class="delBtn" title="' + S.delTitle + '">🗑️</button>' : '');
+        if(isMine){
+          card.querySelector('.delBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            deleteProject(p.id, card);
+          });
+        }
+        grid.appendChild(card);
+      });
+    });
+  })
+  .catch(() => {
+    document.getElementById('empty').style.display = 'block';
+    document.getElementById('empty').textContent = S.loadErr;
+  });
+</script>
+</body>
+</html>

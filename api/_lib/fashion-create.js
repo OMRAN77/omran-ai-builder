@@ -1,0 +1,119 @@
+// Vercel Serverless Function: "👗 AI Fashion Design". Two modes:
+//   1) Photo mode: a photo of a woman/model plus a chosen style+occasion is
+//      redressed by Gemini's image-generation model into a new outfit.
+//   2) Text mode: a plain-text description of a desired outfit is used to
+//      generate a brand-new fashion design image from scratch (no photo).
+// Uses the server-side owner API key (GEMINI_API_KEY). Returns a base64
+// PNG/JPEG the client can preview and download.
+const { checkFashionQuota, consumeFashion, FASHION_DAILY_LIMIT } = require('./_fashionUsage');
+
+const STYLE_PROMPTS = {
+  evening: 'an elegant evening gown style, flowing fabric, refined and glamorous',
+  formal: 'a formal professional outfit style, tailored and modern',
+  casual: 'a casual everyday outfit style, comfortable and stylish',
+  abaya: 'a modern elegant abaya style, tasteful embroidery, flowing silhouette',
+  wedding: 'a wedding/bridal dress style, luxurious fabric, intricate detail',
+  traditional: 'a traditional Gulf/Khaleeji women\'s fashion style, elegant and modest',
+};
+
+module.exports = async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).end();
+    return;
+  }
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      res.status(500).json({ error: 'Server is missing GEMINI_API_KEY' });
+      return;
+    }
+
+    let body = req.body;
+    if (!body || typeof body === 'string') {
+      body = JSON.parse(body || '{}');
+    }
+    const { mode, imageBase64, mimeType, style, description, token, multiAngle } = body;
+
+    if (mode === 'image' && !imageBase64) {
+      res.status(400).json({ error: 'Missing imageBase64' });
+      return;
+    }
+    if (mode === 'text' && !description) {
+      res.status(400).json({ error: 'Missing description' });
+      return;
+    }
+
+    const quota = await checkFashionQuota(token);
+    if (!quota.allowed) {
+      if (quota.reason === 'auth') {
+        res.status(401).json({ error: 'auth_required' });
+      } else {
+        res.status(402).json({ error: 'daily_limit_reached' });
+      }
+      return;
+    }
+
+    const styleDesc = STYLE_PROMPTS[style] || STYLE_PROMPTS.evening;
+    const parts = [];
+    const multiAngleClause = multiAngle
+      ? ' Output a single image laid out as a clean 3-panel collage side by side showing the SAME outfit and person from three angles: front view, side view, and back view.'
+      : ' Output a single photorealistic image.';
+
+    if (mode === 'image') {
+      const promptText =
+        'Redress the person in this photo into a new outfit in ' + styleDesc + '. ' +
+        'Keep the same person, pose, face and background, but change only the clothing/outfit to match the requested style.' +
+        multiAngleClause;
+      parts.push({ text: promptText });
+      parts.push({ inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } });
+    } else {
+      const promptText =
+        'Generate a photorealistic fashion design image of a woman wearing ' + styleDesc + '. ' +
+        'Specific description: ' + String(description).slice(0, 500) + '. ' +
+        'Full-body studio fashion photography, elegant pose, clean background.' +
+        multiAngleClause;
+      parts.push({ text: promptText });
+    }
+
+    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=' + apiKey;
+    const reqBody = { contents: [{ parts }] };
+
+    const upstream = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reqBody),
+    });
+
+    const data = await upstream.json();
+    if (!upstream.ok) {
+      res.status(upstream.status).json({ error: (data && data.error && data.error.message) || 'Upstream error' });
+      return;
+    }
+
+    const respParts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
+    const imgPart = respParts.find((p) => p.inlineData && p.inlineData.data);
+    if (!imgPart) {
+      res.status(500).json({ error: 'لم يرجع الموديل صورة. حاول بوصف أو ستايل آخر.' });
+      return;
+    }
+
+    const remaining = await consumeFashion(quota.username);
+    res.status(200).json({
+      imageBase64: imgPart.inlineData.data,
+      mimeType: imgPart.inlineData.mimeType || 'image/png',
+      remaining,
+      dailyLimit: FASHION_DAILY_LIMIT,
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+  }
+};
