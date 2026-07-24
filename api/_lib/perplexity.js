@@ -57,6 +57,7 @@ module.exports = async (req, res) => {
         messages,
         temperature: 0.7,
         stream: wantStream,
+        max_tokens: 8000,
       }),
     });
 

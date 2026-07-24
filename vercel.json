@@ -1,7 +1,7 @@
 {
   "regions": ["bom1"],
   "functions": {
-    "api/*.js": { "regions": ["bom1"], "maxDuration": 60 }
+    "api/*.js": { "regions": ["bom1"], "maxDuration": 300 }
   },
   "rewrites": [
     { "source": "/api/openai", "destination": "/api/ai?action=openai" },
@@ -16,6 +16,9 @@
 
     { "source": "/api/car-tools", "destination": "/api/tools?action=car-tools" },
     { "source": "/api/design-create", "destination": "/api/tools?action=design-create" },
+    { "source": "/api/construction-create", "destination": "/api/tools?action=construction-create" },
+    { "source": "/api/construction-view", "destination": "/api/tools?action=construction-view" },
+    { "source": "/api/construction-library", "destination": "/api/tools?action=construction-library" },
     { "source": "/api/design-suggest", "destination": "/api/tools?action=design-suggest" },
     { "source": "/api/fashion-create", "destination": "/api/tools?action=fashion-create" },
     { "source": "/api/fashion-suggest", "destination": "/api/tools?action=fashion-suggest" },
@@ -52,6 +55,11 @@
     { "source": "/api/vapid-public-key", "destination": "/api/system?action=vapid-public-key" },
     { "source": "/api/search", "destination": "/api/system?action=search" },
     { "source": "/api/realtime-session", "destination": "/api/system?action=realtime-session" },
+    { "source": "/api/email-callback", "destination": "/api/system?action=email-callback" },
+    { "source": "/api/email-list", "destination": "/api/system?action=email-list" },
+    { "source": "/api/email-send", "destination": "/api/system?action=email-send" },
+    { "source": "/api/email-ignore", "destination": "/api/system?action=email-ignore" },
+    { "source": "/api/email-calendar", "destination": "/api/system?action=email-calendar" },
 
     { "source": "/ar", "destination": "/index.html" },
     { "source": "/en", "destination": "/index.html" },

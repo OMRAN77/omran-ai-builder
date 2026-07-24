@@ -50,8 +50,14 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // Cohere is strict about message shape: empty-content messages or odd
+    // role sequences trigger 422 NO_VALID_RESPONSE_GENERATED. Sanitize first.
+    messages = (Array.isArray(messages) ? messages : []).filter(
+      (m) => m && typeof m.content === 'string' && m.content.trim() !== ''
+    );
+
     const wantStream = !!body.stream;
-    const upstream = await fetch('https://api.cohere.com/compatibility/v1/chat/completions', {
+    const doFetch = (msgs) => fetch('https://api.cohere.com/compatibility/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -59,11 +65,19 @@ module.exports = async (req, res) => {
       },
       body: JSON.stringify({
         model: model || 'command-a-03-2025',
-        messages,
+        messages: msgs,
         temperature: 0.7,
         stream: wantStream,
       }),
     });
+    let upstream = await doFetch(messages);
+    // Retry once on 422: keep only system prompts + the last user message.
+    if (upstream.status === 422) {
+      const systems = messages.filter((m) => m.role === 'system');
+      const lastUser = [...messages].reverse().find((m) => m.role === 'user');
+      const minimal = lastUser ? [...systems, lastUser] : messages;
+      upstream = await doFetch(minimal);
+    }
 
     if (wantStream && upstream.ok && upstream.body) {
       res.status(200);

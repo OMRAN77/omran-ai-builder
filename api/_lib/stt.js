@@ -30,7 +30,7 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { audioBase64, mimeType, lang, token, guestId } = body;
+    const { audioBase64, mimeType, lang, langHint, token, guestId } = body;
     if (!audioBase64) {
       res.status(400).json({ error: 'Missing audioBase64' });
       return;
@@ -66,6 +66,11 @@ module.exports = async (req, res) => {
     // whether a transcript is trustworthy enough to act on, or whether to ask the
     // user to repeat themselves instead of guessing.
     form.append('response_format', 'verbose_json');
+    // Optional explicit language hint: sent ONLY by the typed-chat mic buttons
+    // (where the user is almost certainly speaking the UI language). Maha and
+    // the voice tab do NOT send langHint, so they keep full auto-detection.
+    const okHints = ['ar', 'en', 'fr', 'hi', 'ur', 'bn', 'ne'];
+    if (langHint && okHints.indexOf(langHint) !== -1) form.append('language', langHint);
 
     const upstream = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method: 'POST',
@@ -113,7 +118,46 @@ module.exports = async (req, res) => {
     // actually spoke, regardless of the site's current UI language.
     const detectedLanguage = parsed.language || null;
 
-    res.status(200).json({ text: parsed.text || '', lowConfidence, language: detectedLanguage });
+    // ---- Whisper hallucination filter -------------------------------------
+    // On silence/background noise Whisper famously hallucinates YouTube-style
+    // filler phrases (it was trained on captioned videos). Strip any known
+    // hallucination phrase; if nothing real remains, return empty text.
+    let cleanText = (parsed.text || '').trim();
+    const HALLUCINATIONS = [
+      /اشترك[وا]*\s*(في|بي|بال|ب|فى)?\s*(ال)?قنا[ةه]?[^.،!؟]*/g,
+      /(لايك|اعجاب|إعجاب)\s*(و|واشتراك)[^.،!؟]*/g,
+      /لا\s*تنس[وىي]*\s*(الاشتراك|الإشتراك|لايك)[^.،!؟]*/g,
+      /فع?ل[وا]*\s*(زر\s*)?(الجرس|التنبيهات)[^.،!؟]*/g,
+      /ترجمة\s+نانسي\s+قنقر/g,
+      /شكرا?ً?\s*(جزيلاً)?\s*(على|ل)?\s*(المشاهدة|المتابعة)[^.،!؟]*/g,
+      /سبحان(ك)?\s*اللهم?\s*وبحمد[كه][^.،!؟]*/g,
+      /thanks?\s*for\s*watching[^.!?]*/gi,
+      /please\s*(like\s*(and)?\s*)?subscribe[^.!?]*/gi,
+      /don'?t\s*forget\s*to\s*subscribe[^.!?]*/gi,
+      /subscribe\s*to\s*(my|the|our)\s*channel[^.!?]*/gi,
+      /see\s*you\s*in\s*the\s*next\s*video[^.!?]*/gi,
+      /سأراكم\s*في\s*الفيديو\s*القادم[^.،!؟]*/g,
+      /إلى\s*اللقاء\s*في\s*الفيديو\s*القادم[^.،!؟]*/g,
+    ];
+    for (const rx of HALLUCINATIONS) cleanText = cleanText.replace(rx, ' ');
+    // Extra safety net: a short transcript that still mentions subscribing /
+    // the channel / likes in any spelling is pure hallucination — drop it all.
+    const noSpace = cleanText.replace(/[\s\u064B-\u0652]/g, '');
+    if (cleanText.length < 60 && (
+      (noSpace.includes('اشترك') || noSpace.includes('إشترك')) ||
+      (noSpace.includes('قناه') || noSpace.includes('قناة')) && noSpace.includes('لايك')
+    )) {
+      cleanText = '';
+    }
+    cleanText = cleanText.replace(/\s{2,}/g, ' ').trim();
+    // If the filter removed everything (or nearly everything), the audio was
+    // silence/noise — return empty so the UI simply ignores it.
+    if (!cleanText || cleanText.length <= 2) {
+      res.status(200).json({ text: '', lowConfidence: true, language: detectedLanguage });
+      return;
+    }
+
+    res.status(200).json({ text: cleanText, lowConfidence, language: detectedLanguage });
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
   }

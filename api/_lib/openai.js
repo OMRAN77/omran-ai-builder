@@ -52,7 +52,7 @@ module.exports = async (req, res) => {
         'Authorization': 'Bearer ' + apiKey,
       },
       body: JSON.stringify({
-        model: model || 'gpt-4o-mini',
+        model: model || 'gpt-4.1-mini',
         messages,
         temperature: 0.7,
         stream: wantStream,

@@ -178,6 +178,10 @@ module.exports = async (req, res) => {
         email: email ? String(email).trim().toLowerCase() : null,
         avatar: null,
         createdAt: Date.now(),
+        // 🎁 welcome gift: 30 points credited at signup (points system activates
+        // when the pricing/points pages launch — balance is already stored here).
+        points: 30,
+        welcomeGift: true,
       };
       await putUser(key, user);
       res.status(200).json({ ok: true, token: makeToken(key), username: user.username, recoveryCode: recCode, avatar: null });
@@ -454,3 +458,4 @@ module.exports.putUser = putUser;
 module.exports.hashPassword = hashPassword;
 module.exports.genRecoveryCode = genRecoveryCode;
 module.exports.makeToken = makeToken;
+module.exports.verifyToken = verifyToken;

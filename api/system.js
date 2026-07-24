@@ -7,6 +7,14 @@ function load(action) {
     case 'vapid-public-key': return require('./_lib/vapid-public-key.js');
     case 'search': return require('./_lib/search.js');
     case 'realtime-session': return require('./_lib/realtime-session.js');
+    case 'email-callback': return require('./_lib/email-callback.js');
+    case 'email-list': return require('./_lib/email-list.js');
+    case 'email-send': return require('./_lib/email-send.js');
+    case 'email-ignore': return require('./_lib/email-ignore.js');
+    case 'email-calendar': return require('./_lib/email-calendar.js');
+    case 'memory': return require('./_lib/memory.js');
+    case 'client-errors': return require('./_lib/client-errors.js');
+    case 'health': return require('./_lib/health.js');
     default: return null;
   }
 }

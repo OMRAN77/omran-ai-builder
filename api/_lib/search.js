@@ -34,6 +34,9 @@ module.exports = async (req, res) => {
       return;
     }
     const wantImages = !!(body && body.images);
+    const domains = Array.isArray(body && body.domains)
+      ? body.domains.filter(d => typeof d === 'string' && /^[a-z0-9.-]+$/i.test(d)).slice(0, 5)
+      : null;
 
     const lang = (body && body.lang || 'ar').toString().slice(0, 2);
     const gnHl = lang === 'ar' ? 'ar' : 'en-US';
@@ -41,7 +44,13 @@ module.exports = async (req, res) => {
     const gnCeid = lang === 'ar' ? 'AE:ar' : 'US:en';
     const newsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=${gnHl}&gl=${gnGl}&ceid=${gnCeid}`;
 
-    const [tavilyResp, newsResp] = await Promise.all([
+    const gKey = process.env.GOOGLE_SEARCH_API_KEY;
+    const gCx = process.env.GOOGLE_SEARCH_CX;
+    const googleUrl = (gKey && gCx)
+      ? `https://www.googleapis.com/customsearch/v1?key=${gKey}&cx=${gCx}&q=${encodeURIComponent(query)}&num=3`
+      : null;
+
+    const [tavilyResp, newsResp, googleResp] = await Promise.all([
       fetch('https://api.tavily.com/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -51,10 +60,12 @@ module.exports = async (req, res) => {
           search_depth: 'basic',
           include_answer: true,
           include_images: wantImages,
-          max_results: 3,
+          max_results: domains ? 5 : 3,
+          ...(domains ? { include_domains: domains } : {}),
         }),
       }),
       fetch(newsUrl).catch(() => null),
+      googleUrl ? fetch(googleUrl).catch(() => null) : Promise.resolve(null),
     ]);
 
     if (!tavilyResp.ok) {
@@ -91,9 +102,22 @@ module.exports = async (req, res) => {
 
     const images = wantImages && Array.isArray(data.images) ? data.images.slice(0, 4) : [];
 
+    let googleItems = [];
+    try {
+      if (googleResp && googleResp.ok) {
+        const gData = await googleResp.json();
+        googleItems = Array.isArray(gData.items) ? gData.items.slice(0, 3).map(it => ({
+          title: it.title,
+          url: it.link,
+          content: (it.snippet || '').slice(0, 350),
+        })) : [];
+      }
+    } catch (e) { /* ignore Google Search parse errors, non-critical */ }
+
     res.status(200).json({
       answer: data.answer || '',
       results,
+      google: googleItems,
       news: newsItems,
       images,
     });

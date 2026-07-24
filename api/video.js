@@ -5,6 +5,9 @@ function load(action) {
     case 'video-script': return require('./_lib/video-script.js');
     case 'video-status': return require('./_lib/video-status.js');
     case 'video-upscale-create': return require('./_lib/video-upscale-create.js');
+    case 'veo-create': return require('./_lib/veo-create.js');
+    case 'veo-status': return require('./_lib/veo-status.js');
+    case 'veo-download': return require('./_lib/veo-download.js');
     default: return null;
   }
 }
