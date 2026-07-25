@@ -15957,22 +15957,23 @@ function openShareModal(project){
   let ffmpegInstance = null;
   async function getFFmpeg(){
     if (ffmpegInstance) return ffmpegInstance;
-    const { FFmpeg } = await import('https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js');
-    const { toBlobURL } = await import('https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js');
+    const { FFmpeg } = await import('/ffmpeg/lib/index.js');
     const ffmpeg = new FFmpeg();
-    const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
-    await ffmpeg.load({
-      coreURL: await toBlobURL(baseURL + '/ffmpeg-core.js', 'text/javascript'),
-      wasmURL: await toBlobURL(baseURL + '/ffmpeg-core.wasm', 'application/wasm'),
-      classWorkerURL: await toBlobURL('https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/worker.js', 'text/javascript'),
-    });
+    await Promise.race([
+      ffmpeg.load({
+        coreURL: '/ffmpeg/core/ffmpeg-core.js',
+        wasmURL: '/ffmpeg/core/ffmpeg-core.wasm',
+        classWorkerURL: '/ffmpeg/lib/worker.js',
+      }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('ffmpeg load timeout')), 90000)),
+    ]);
     ffmpegInstance = ffmpeg;
     return ffmpeg;
   }
 
   async function concatScenes(urls){
     const ffmpeg = await getFFmpeg();
-    const { fetchFile } = await import('https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js');
+    const { fetchFile } = await import('/ffmpeg/util/index.js');
     let listTxt = '';
     for(let i = 0; i < urls.length; i++){
       const name = 'scene' + i + '.mp4';
@@ -15987,7 +15988,7 @@ function openShareModal(project){
 
   async function muxNarration(videoSrc, audioBlob){
     const ffmpeg = await getFFmpeg();
-    const { fetchFile } = await import('https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js');
+    const { fetchFile } = await import('/ffmpeg/util/index.js');
     ffmpeg.writeFile('v.mp4', await fetchFile(videoSrc));
     ffmpeg.writeFile('a.mp3', await fetchFile(audioBlob));
     await ffmpeg.exec(['-i', 'v.mp4', '-i', 'a.mp3', '-c:v', 'copy', '-map', '0:v:0', '-map', '1:a:0', '-shortest', 'out2.mp4']);
@@ -16002,7 +16003,7 @@ function openShareModal(project){
   // owner-only "long video" (multi-minute) feature.
   async function buildLongVideo(scenes, onProgress){
     const ffmpeg = await getFFmpeg();
-    const { fetchFile } = await import('https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js');
+    const { fetchFile } = await import('/ffmpeg/util/index.js');
     let listTxt = '';
     for(let i = 0; i < scenes.length; i++){
       if(onProgress) onProgress(i, scenes.length);
@@ -16146,7 +16147,7 @@ function openShareModal(project){
 
   async function muxNarrationAny(videoSrc, audioBlob, isWebmSource){
     const ffmpeg = await getFFmpeg();
-    const { fetchFile } = await import('https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js');
+    const { fetchFile } = await import('/ffmpeg/util/index.js');
     const inName = isWebmSource ? 'vin.webm' : 'vin.mp4';
     ffmpeg.writeFile(inName, await fetchFile(videoSrc));
     ffmpeg.writeFile('ain.mp3', await fetchFile(audioBlob));
@@ -16203,7 +16204,7 @@ function openShareModal(project){
     setStatus(isEn() ? '🎬 Finalizing your video...' : '🎬 جاري إنهاء الفيديو...');
 
     const ffmpeg = await getFFmpeg();
-    const { fetchFile } = await import('https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js');
+    const { fetchFile } = await import('/ffmpeg/util/index.js');
 
     ffmpeg.writeFile('intro.webm', await fetchFile(introBlob));
     ffmpeg.writeFile('outro.webm', await fetchFile(outroBlob));
@@ -17142,14 +17143,12 @@ function openShareModal(project){
       }
       if(styleEl.value === 'avatargif' && Array.isArray(data.frames) && data.frames.length){
         setStatus(t('portraitBuildingGif'));
-        const { FFmpeg } = await import('https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js');
-        const { toBlobURL } = await import('https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js');
+        const { FFmpeg } = await import('/ffmpeg/lib/index.js');
         const ffmpeg = new FFmpeg();
-        const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
         await ffmpeg.load({
-          coreURL: await toBlobURL(baseURL + '/ffmpeg-core.js', 'text/javascript'),
-          wasmURL: await toBlobURL(baseURL + '/ffmpeg-core.wasm', 'application/wasm'),
-          classWorkerURL: await toBlobURL('https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/worker.js', 'text/javascript'),
+          coreURL: '/ffmpeg/core/ffmpeg-core.js',
+          wasmURL: '/ffmpeg/core/ffmpeg-core.wasm',
+          classWorkerURL: '/ffmpeg/lib/worker.js',
         });
         for(let i = 0; i < data.frames.length; i++){
           const bin = atob(data.frames[i]);
