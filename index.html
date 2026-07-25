@@ -14100,9 +14100,7 @@ async function sendPrompt(){
   // زر 🧠 الظاهر بجنب الإدخال = نفس مفعول كتابة "اسأل الكل".
   const __askAllBtnOn = !!window.__askAllToggleOn;
   const __askAllExplicit = __askAllWordRe.test(text) || __askAllBtnOn;
-  // زر 🧠 يعمل لمرة واحدة فقط: ينطفي تلقائيًا بعد هذه الرسالة حتى لا يتجاهل
-  // اختيار المستخدم ✅ للمزود في الرسائل التالية.
-  if(__askAllBtnOn && window.__resetAskAllToggle) window.__resetAskAllToggle();
+  // زر 🧠 يظل مفعّلًا حتى يطفيه المستخدم بنفسه (أو يختار ✅ مزودًا واحدًا).
   // إذا كتب المستخدم "اسأل الكل" صراحةً → تجاهل اختيار المزودين الجانبي واستخدم الكل.
   if(__askAllExplicit) customProviders = null;
   const askAll = !!customProviders || __askAllExplicit || (!__gateNoBuild && __routeBuildRe.test(text) && __routeCmdRe.test(text) && !__routeFix);
