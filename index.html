@@ -665,6 +665,17 @@
       <p style="font-size:11.5px; color:var(--muted,#999); margin-top:6px;" data-i18n="videoMakerLongMinutesNote">⚠️ ميزة مخصصة لحساب المالك فقط. كل دقيقة تعني حوالي ٧-٨ مشاهد منفصلة تُولَّد وتُدمج تلقائيًا؛ التكلفة الفعلية تُخصم من رصيد Runway الخاص بك وتزيد بشكل كبير مع طول الفيديو. راح يظهر لك تقدير التكلفة قبل البدء الفعلي.</p>
     </div>
 
+    <div id="videoMakerHeroRow" style="display:none; margin-top:12px;">
+      <label style="font-size:12px; color:var(--muted,#999); display:block; margin-bottom:4px;" data-i18n="videoMakerHeroLabel">📸 صورتك بطل الفيلم (اختياري)</label>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <button type="button" id="videoMakerHeroBtn" style="padding:8px 14px; border-radius:10px; cursor:pointer;" data-i18n="videoMakerHeroBtn">📸 اختر صورة البطل</button>
+        <img id="videoMakerHeroPreview" style="display:none; width:52px; height:52px; object-fit:cover; border-radius:10px;" alt="">
+        <button type="button" id="videoMakerHeroClear" style="display:none; cursor:pointer; background:none; border:none; font-size:16px;">✖</button>
+      </div>
+      <input type="file" id="videoMakerHeroInput" accept="image/*" style="display:none;">
+      <p style="font-size:11.5px; color:var(--muted,#999); margin-top:6px;" data-i18n="videoMakerHeroNote">ارفع صورتك أو صورة أي شخص — راح يكون بطل كل مشاهد الفيلم.</p>
+    </div>
+
     <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size:13px; cursor:pointer;">
       <input type="checkbox" id="videoMakerNarrationToggle">
       <span data-i18n="videoMakerNarrationToggleLabel">🎙️ إضافة تعليق صوتي (صوت مُولّد)</span>
@@ -3948,6 +3959,9 @@ const I18N = {
     videoMakerDownloadBtn: '⬇️ تحميل الفيديو',
     videoMakerDurationLong: '20 (⛓️ مشهدين)',
     videoMakerDurationFilm: '🎬 فيلم متكامل (سيناريو + مشاهد + سرد)',
+    videoMakerHeroLabel: '📸 صورتك بطل الفيلم (اختياري)',
+    videoMakerHeroBtn: '📸 اختر صورة البطل',
+    videoMakerHeroNote: 'ارفع صورتك أو صورة أي شخص — راح يكون بطل كل مشاهد الفيلم.',
     videoMakerDurationLongMinutes: '🎥 طويل (دقائق) - المالك فقط',
     videoMakerLongMinutesLabel: 'مدة الفيديو الكاملة (دقائق، ١-١٠)',
     videoMakerLongMinutesNote: '⚠️ ميزة مخصصة لحساب المالك فقط. كل دقيقة تعني حوالي ٧-٨ مشاهد منفصلة تُولَّد وتُدمج تلقائيًا؛ التكلفة الفعلية تُخصم من رصيد Runway الخاص بك وتزيد بشكل كبير مع طول الفيديو. راح يظهر لك تقدير التكلفة قبل البدء الفعلي.',
@@ -4789,6 +4803,9 @@ const I18N = {
     videoMakerDownloadBtn: '⬇️ Download video',
     videoMakerDurationLong: '20 (⛓️ 2 scenes)',
     videoMakerDurationFilm: '🎬 Full mini-film (script + scenes + narration)',
+    videoMakerHeroLabel: '📸 Your photo as the film hero (optional)',
+    videoMakerHeroBtn: '📸 Pick hero photo',
+    videoMakerHeroNote: 'Upload your photo (or anyone\'s) — they will star in every scene of the film.',
     videoMakerDurationLongMinutes: '🎥 Long (minutes) - owner only',
     videoMakerLongMinutesLabel: 'Full video length (minutes, 1-10)',
     videoMakerLongMinutesNote: "⚠️ Owner account only. Each minute means roughly 7-8 separate scenes generated and stitched together automatically; the real cost is charged to your Runway balance and grows quickly with length. You'll see a cost estimate before it actually starts.",
@@ -5499,6 +5516,9 @@ STRICT MANDATORY RULES when editing existing code (always follow, no exceptions)
     videoMakerDownloadBtn: "⬇️ Télécharger la vidéo",
     videoMakerDurationLong: "20 (⛓️ 2 scènes)",
     videoMakerDurationFilm: "🎬 Mini-film complet (scénario + scènes + narration)",
+    videoMakerHeroLabel: "📸 Votre photo en héros du film (optionnel)",
+    videoMakerHeroBtn: "📸 Choisir la photo du héros",
+    videoMakerHeroNote: "Téléchargez votre photo — elle sera le héros de chaque scène du film.",
     videoMakerDurationLongMinutes: "🎥 Longue (minutes) - propriétaire uniquement",
     videoMakerLongMinutesLabel: "Durée totale de la vidéo (minutes, 1-10)",
     videoMakerLongMinutesNote: "⚠️ Réservé au compte propriétaire. Chaque minute génère environ 7 à 8 scènes distinctes assemblées automatiquement ; le coût réel est facturé sur votre solde Runway et augmente rapidement avec la durée. Une estimation du coût s'affichera avant le début réel.",
@@ -6117,6 +6137,9 @@ STRICT MANDATORY RULES when editing existing code (always follow, no exceptions)
     videoMakerDownloadBtn: "⬇️ वीडियो डाउनलोड करें",
     videoMakerDurationLong: "20 (⛓️ 2 दृश्य)",
     videoMakerDurationFilm: "🎬 पूर्ण मिनी-फ़िल्म (स्क्रिप्ट + दृश्य + वर्णन)",
+    videoMakerHeroLabel: "📸 आपकी फोटो फिल्म का हीरो (वैकल्पिक)",
+    videoMakerHeroBtn: "📸 हीरो फोटो चुनें",
+    videoMakerHeroNote: "अपनी फोटो अपलोड करें — वह फिल्म के हर दृश्य का हीरो होगा।",
     videoMakerDurationLongMinutes: "🎥 लंबा (मिनट) - केवल स्वामी के लिए",
     videoMakerLongMinutesLabel: "पूर्ण वीडियो लंबाई (मिनट, 1-10)",
     videoMakerLongMinutesNote: "⚠️ केवल स्वामी खाते के लिए। हर मिनट का मतलब है लगभग 7-8 अलग दृश्य जो अपने आप जोड़े जाते हैं; असली लागत आपके Runway बैलेंस से ली जाती है और लंबाई के साथ तेज़ी से बढ़ती है। वास्तव में शुरू होने से पहले आपको लागत अनुमान दिखेगा।",
@@ -6731,6 +6754,9 @@ STRICT MANDATORY RULES when editing existing code (always follow, no exceptions)
     videoMakerDownloadBtn: "⬇️ ویڈیو ڈاؤن لوڈ کریں",
     videoMakerDurationLong: "20 (⛓️ 2 مناظر)",
     videoMakerDurationFilm: "🎬 مکمل منی فلم (اسکرپٹ + مناظر + بیانیہ)",
+    videoMakerHeroLabel: "📸 آپ کی تصویر فلم کا ہیرو (اختیاری)",
+    videoMakerHeroBtn: "📸 ہیرو کی تصویر منتخب کریں",
+    videoMakerHeroNote: "اپنی تصویر اپ لوڈ کریں — وہ فلم کے ہر منظر کا ہیرو ہوگا۔",
     videoMakerDurationLongMinutes: "🎥 طویل (منٹ) - صرف مالک کے لیے",
     videoMakerLongMinutesLabel: "مکمل ویڈیو کی لمبائی (منٹ، 1-10)",
     videoMakerLongMinutesNote: "⚠️ صرف مالک اکاؤنٹ کے لیے۔ ہر منٹ کا مطلب ہے تقریباً 7-8 الگ مناظر جو خودکار طور پر جوڑے جاتے ہیں؛ اصل لاگت آپ کے Runway بیلنس سے لی جاتی ہے اور لمبائی کے ساتھ تیزی سے بڑھتی ہے۔ اصل شروعات سے پہلے آپ کو لاگت کا تخمینہ نظر آئے گا۔",
@@ -7362,6 +7388,9 @@ STRICT MANDATORY RULES when editing existing code (always follow, no exceptions)
     videoMakerDownloadBtn: "⬇️ ভিডিও ডাউনলোড করুন",
     videoMakerDurationLong: "20 (⛓️ 2 দৃশ্য)",
     videoMakerDurationFilm: "🎬 সম্পূর্ণ মিনি-ফিল্ম (স্ক্রিপ্ট + দৃশ্য + বর্ণনা)",
+    videoMakerHeroLabel: "📸 আপনার ছবি ফিল্মের নায়ক (ঐচ্ছিক)",
+    videoMakerHeroBtn: "📸 নায়কের ছবি বাছুন",
+    videoMakerHeroNote: "আপনার ছবি আপলোড করুন — সে ফিল্মের প্রতিটি দৃশ্যের নায়ক হবে।",
     videoMakerDurationLongMinutes: "🎥 দীর্ঘ (মিনিট) - শুধুমাত্র মালিক",
     videoMakerLongMinutesLabel: "সম্পূর্ণ ভিডিও দৈর্ঘ্য (মিনিট, 1-10)",
     videoMakerLongMinutesNote: "⚠️ শুধুমাত্র মালিকের অ্যাকাউন্ট। প্রতি মিনিট মানে মোটামুটি 7-8টি পৃথক দৃশ্য তৈরি এবং স্বয়ংক্রিয়ভাবে একসাথে সেলাই করা; আসল খরচ আপনার রানওয়ে ব্যালেন্সে চার্জ করা হয় এবং দৈর্ঘ্যের সাথে দ্রুত বৃদ্ধি পায়। এটি আসলে শুরু হওয়ার আগে আপনি একটি খরচ অনুমান দেখতে পাবেন।",
@@ -7983,6 +8012,9 @@ STRICT MANDATORY RULES when editing existing code (always follow, no exceptions)
     videoMakerDownloadBtn: "⬇️ भिडियो डाउनलोड गर्नुहोस्",
     videoMakerDurationLong: "२० (⛓️ २ दृश्यहरू)",
     videoMakerDurationFilm: "🎬 पूर्ण मिनी-फिल्म (स्क्रिप्ट + दृश्य + वर्णन)",
+    videoMakerHeroLabel: "📸 तपाईंको फोटो फिल्मको नायक (वैकल्पिक)",
+    videoMakerHeroBtn: "📸 नायकको फोटो छान्नुहोस्",
+    videoMakerHeroNote: "आफ्नो फोटो अपलोड गर्नुहोस् — ऊ फिल्मको हरेक दृश्यको नायक हुनेछ।",
     videoMakerDurationLongMinutes: "🎥 लामो (मिनेट) - मालिक मात्र",
     videoMakerLongMinutesLabel: "पूरा भिडियो लम्बाइ (मिनेट, 1-10)",
     videoMakerLongMinutesNote: "⚠️ मालिक खाता मात्र। प्रत्येक मिनेटको मतलब लगभग 7-8 अलग दृश्यहरू उत्पन्न र स्वचालित रूपमा एकसाथ सिलाई; वास्तविक लागत तपाईंको रनवे ब्यालेन्समा लगाइन्छ र लम्बाइसँगै छिटो बढ्छ। तपाईंले यो वास्तवमा सुरु हुनु अघि लागत अनुमान देख्नुहुनेछ।",
@@ -15792,6 +15824,8 @@ function openShareModal(project){
       qualityRow.style.opacity = '1';
     }
     longMinutesRow.style.display = isLongMinutes ? 'block' : 'none';
+    const heroRowEl = document.getElementById('videoMakerHeroRow');
+    if(heroRowEl) heroRowEl.style.display = isFilm ? 'block' : 'none';
     if(isLongMinutes || isFilm){
       narrationToggle.checked = false;
       narrationToggle.disabled = true;
@@ -16106,11 +16140,13 @@ function openShareModal(project){
     downloadEl.style.display = 'block';
   }
 
-  async function createScene(text, style, duration, ratio, token, longMode){
+  async function createScene(text, style, duration, ratio, token, longMode, imageBase64, imageMime){
+    const payload = { promptText: text, style, duration, ratio, token, longMode: !!longMode };
+    if(imageBase64){ payload.imageBase64 = imageBase64; payload.imageMime = imageMime || 'image/jpeg'; }
     const res = await fetch('/api/video-create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ promptText: text, style, duration, ratio, token, longMode: !!longMode }),
+      body: JSON.stringify(payload),
     });
     const data = await res.json();
     if(!res.ok || data.error) throw Object.assign(new Error(data.error || 'unknown'), { code: data.error });
@@ -16124,12 +16160,12 @@ function openShareModal(project){
   // with the video description. To make this invisible to the user, we
   // automatically recreate and retry the task a couple of times (with a
   // short backoff) before giving up and showing a real error.
-  async function createSceneWithRetry(text, style, duration, ratio, token, longMode, onRetryStatus){
+  async function createSceneWithRetry(text, style, duration, ratio, token, longMode, onRetryStatus, imageBase64, imageMime){
     const maxAttempts = 3;
     let lastErr;
     for(let attempt = 1; attempt <= maxAttempts; attempt++){
       try{
-        const id = await createScene(text, style, duration, ratio, token, longMode);
+        const id = await createScene(text, style, duration, ratio, token, longMode, imageBase64, imageMime);
         const url = await pollTaskOnce(id);
         return url;
       } catch(e){
@@ -16145,6 +16181,44 @@ function openShareModal(project){
     }
     throw lastErr;
   }
+
+  /* 📸 صورتك بطل الفيلم — hero photo state */
+  let filmHeroBase64 = null, filmHeroMime = 'image/jpeg';
+  (function(){
+    const btn = document.getElementById('videoMakerHeroBtn');
+    const inp = document.getElementById('videoMakerHeroInput');
+    const prev = document.getElementById('videoMakerHeroPreview');
+    const clr = document.getElementById('videoMakerHeroClear');
+    if(!btn || !inp) return;
+    btn.onclick = () => inp.click();
+    clr.onclick = () => {
+      filmHeroBase64 = null;
+      inp.value = '';
+      prev.style.display = 'none';
+      clr.style.display = 'none';
+    };
+    inp.onchange = () => {
+      const f = inp.files && inp.files[0];
+      if(!f) return;
+      const img = new Image();
+      img.onload = () => {
+        const max = 768;
+        let w = img.width, h = img.height;
+        if(Math.max(w, h) > max){ const k = max / Math.max(w, h); w = Math.round(w * k); h = Math.round(h * k); }
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        const dataUrl = c.toDataURL('image/jpeg', 0.85);
+        filmHeroBase64 = dataUrl.split(',')[1];
+        filmHeroMime = 'image/jpeg';
+        prev.src = dataUrl;
+        prev.style.display = 'inline-block';
+        clr.style.display = 'inline-block';
+        URL.revokeObjectURL(img.src);
+      };
+      img.src = URL.createObjectURL(f);
+    };
+  })();
 
   btnGenerate.onclick = async () => {
     const text = (promptEl.value || '').trim();
@@ -16187,7 +16261,7 @@ function openShareModal(project){
         const scriptRes = await fetch('/api/video-script', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topic: text, mode: 'film', sceneCount: filmScenes, style, lang: (isEn() ? 'en' : 'ar'), token }),
+          body: JSON.stringify({ topic: text, mode: 'film', sceneCount: filmScenes, style, lang: (isEn() ? 'en' : 'ar'), hero: !!filmHeroBase64, token }),
         });
         const scriptData = await scriptRes.json();
         if(scriptRes.status === 401){ const e = new Error('auth'); e.code = 'auth_required'; throw e; }
@@ -16212,7 +16286,7 @@ function openShareModal(project){
             setStatus(isEn()
               ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
               : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
-          });
+          }, filmHeroBase64, filmHeroMime);
           setStatus((isEn() ? '🎙️ Narrating scene ' : '🎙️ جاري تسجيل سرد المشهد ') + (i + 1) + '/' + scenes.length + '...');
           let audioBlob = null;
           try{
