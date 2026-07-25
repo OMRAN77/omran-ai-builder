@@ -1,14 +1,11 @@
 // Vercel Serverless Function: public project sharing + "Explore" feed.
-// Each shared project is stored as its own blob (db/shares/{id}.json). Public
-// shares also get a tiny index blob (db/explore/{createdAt}_{id}.json) so the
-// Explore page can list recent public apps without scanning every share.
+// Each shared project is stored as its own Redis record (db/shares/{id}.json).
+// Public shares also get a tiny index record (db/explore/{createdAt}_{id}.json) so
+// the Explore page can list recent public apps without scanning every share.
 const crypto = require('crypto');
+const { kvPutJSON, kvGetJSON, kvDel, kvList } = require('./kv.js');
 
 const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
-const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
-const BLOB_BASE = 'https://blob.vercel-storage.com';
-const STORE_ID = process.env.BLOB_STORE_ID || '6tfgxvttzyoiavtu';
-const PUBLIC_BASE = 'https://' + STORE_ID + '.public.blob.vercel-storage.com/';
 
 function verifyToken(token) {
   try {
@@ -30,29 +27,12 @@ function sharePath(id) {
 }
 
 async function putBlob(path, obj) {
-  await fetch(BLOB_BASE + '/' + path, {
-    method: 'PUT',
-    headers: {
-      Authorization: 'Bearer ' + BLOB_TOKEN,
-      'x-content-type': 'application/json',
-      'x-add-random-suffix': '0',
-      'x-cache-control-max-age': '0',
-    },
-    body: JSON.stringify(obj),
-  });
+  await kvPutJSON(path, obj);
 }
 
 async function deleteBlobs(paths) {
-  const urls = paths.map((p) => PUBLIC_BASE + p);
   try {
-    await fetch(BLOB_BASE + '/delete', {
-      method: 'POST',
-      headers: {
-        Authorization: 'Bearer ' + BLOB_TOKEN,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ urls }),
-    });
+    await Promise.all(paths.map((p) => kvDel(p)));
   } catch (e) {
     // best-effort; ignore
   }
@@ -60,34 +40,17 @@ async function deleteBlobs(paths) {
 
 async function getBlob(path) {
   try {
-    const r = await fetch(PUBLIC_BASE + path + '?_=' + Date.now(), { cache: 'no-store' });
-    if (!r.ok) return null;
-    return await r.json();
+    return await kvGetJSON(path);
   } catch (e) {
     return null;
   }
 }
 
 async function listExplore(limit) {
-  const url = new URL(BLOB_BASE + '/');
-  url.searchParams.set('prefix', 'db/explore/');
-  url.searchParams.set('limit', '1000');
-  const r = await fetch(url.toString(), { headers: { Authorization: 'Bearer ' + BLOB_TOKEN } });
-  if (!r.ok) return [];
-  const data = await r.json();
-  const blobs = (data.blobs || []).sort((a, b) => (a.pathname < b.pathname ? 1 : -1)); // newest first (timestamp-prefixed names)
-  const top = blobs.slice(0, limit || 60);
-  const items = await Promise.all(
-    top.map(async (b) => {
-      try {
-        const rr = await fetch(b.url, { cache: 'no-store' });
-        if (!rr.ok) return null;
-        return await rr.json();
-      } catch (e) {
-        return null;
-      }
-    })
-  );
+  const keys = await kvList('db/explore/');
+  const sorted = keys.slice().sort((a, b) => (a < b ? 1 : -1)); // newest first (timestamp-prefixed names)
+  const top = sorted.slice(0, limit || 60);
+  const items = await Promise.all(top.map((k) => getBlob(k)));
   return items.filter(Boolean);
 }
 
@@ -101,8 +64,8 @@ module.exports = async (req, res) => {
     return;
   }
 
-  if (!BLOB_TOKEN) {
-    res.status(500).json({ error: 'Server is missing BLOB_READ_WRITE_TOKEN' });
+  if (!process.env.UPSTASH_REDIS_REST_URL) {
+    res.status(500).json({ error: 'Server is missing UPSTASH_REDIS_REST_URL' });
     return;
   }
 

@@ -2,12 +2,9 @@
 // on the site owner's own Gemini API key. Same pattern as _portraitUsage.js
 // but with its own completely separate daily counter (db/car-usage/).
 const crypto = require('crypto');
+const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
 const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
-const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
-const BLOB_BASE = 'https://blob.vercel-storage.com';
-const STORE_ID = process.env.BLOB_STORE_ID || '6tfgxvttzyoiavtu';
-const PUBLIC_BASE = 'https://' + STORE_ID + '.public.blob.vercel-storage.com/';
 
 const CAR_DAILY_LIMIT = 8;
 const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').toLowerCase();
@@ -34,27 +31,12 @@ function todayStr() {
 }
 
 async function getUsage(username) {
-  try {
-    const res = await fetch(PUBLIC_BASE + usagePath(username) + '?_=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (e) {
-    return null;
-  }
+  return kvGetJSON(usagePath(username));
 }
 
 async function putUsage(username, usage) {
   try {
-    await fetch(BLOB_BASE + '/' + usagePath(username), {
-      method: 'PUT',
-      headers: {
-        Authorization: 'Bearer ' + BLOB_TOKEN,
-        'x-content-type': 'application/json',
-        'x-add-random-suffix': '0',
-        'x-cache-control-max-age': '0',
-      },
-      body: JSON.stringify(usage),
-    });
+    await kvPutJSON(usagePath(username), usage);
   } catch (e) {
     // Best-effort bookkeeping; never block on a write failure here.
   }

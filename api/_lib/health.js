@@ -1,30 +1,23 @@
 // 🩺 System health check — owner dashboard endpoint.
 // GET ?key=MONITOR_KEY -> runs server-side checks and returns JSON summary.
-const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
-const BLOB_BASE = 'https://blob.vercel-storage.com';
+const { kvPutJSON, kvGetJSON } = require('./kv.js');
+
 const MONITOR_KEY = process.env.MONITOR_KEY || 'omran-monitor-2026';
 
-async function checkBlob() {
+async function checkRedis() {
   try {
-    const r = await fetch(BLOB_BASE + '?limit=1', {
-      headers: { Authorization: 'Bearer ' + BLOB_TOKEN }
-    });
-    return r.ok;
+    const key = 'db/health/check.json';
+    const marker = { at: Date.now() };
+    await kvPutJSON(key, marker);
+    const readBack = await kvGetJSON(key);
+    return !!readBack && readBack.at === marker.at;
   } catch (e) { return false; }
 }
 
 async function readClientErrors() {
   try {
-    const listRes = await fetch(BLOB_BASE + '?prefix=' + encodeURIComponent('db/client-errors/log.json') + '&limit=1', {
-      headers: { Authorization: 'Bearer ' + BLOB_TOKEN }
-    });
-    const listData = await listRes.json();
-    const blob = (listData.blobs || [])[0];
-    if (!blob) return [];
-    const r = await fetch(blob.url + '?ts=' + Date.now(), { cache: 'no-store' });
-    if (!r.ok) return [];
-    const items = await r.json();
-    return Array.isArray(items) ? items.slice(-10).reverse() : [];
+    const items = await kvGetJSON('db/client-errors/log.json');
+    return Array.isArray(items) ? items.slice(0, 10) : [];
   } catch (e) { return []; }
 }
 
@@ -44,18 +37,18 @@ module.exports = async (req, res) => {
     DeepSeek: !!process.env.DEEPSEEK_API_KEY,
     Cohere: !!process.env.COHERE_API_KEY,
     Perplexity: !!process.env.PERPLEXITY_API_KEY,
-    Blob: !!BLOB_TOKEN,
+    Redis: !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN),
     Runway: !!process.env.RUNWAY_API_KEY,
     Tavily: !!process.env.TAVILY_API_KEY,
     Resend: !!process.env.RESEND_API_KEY
   };
 
-  const [blobOk, clientErrors] = await Promise.all([checkBlob(), readClientErrors()]);
+  const [redisOk, clientErrors] = await Promise.all([checkRedis(), readClientErrors()]);
 
   res.status(200).json({
-    ok: blobOk && Object.values(envKeys).every(Boolean) ? true : false,
+    ok: redisOk && Object.values(envKeys).every(Boolean) ? true : false,
     time: new Date().toISOString(),
-    blobOk,
+    redisOk,
     envKeys,
     clientErrorsCount: clientErrors.length,
     clientErrors

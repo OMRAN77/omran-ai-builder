@@ -1,14 +1,11 @@
 // نظام الذاكرة طويلة المدى: يحفظ ملخصًا صغيرًا عن كل مستخدم مسجّل
-// (اسمه، مشاريعه، تفضيلاته) في Blob تحت db/memory/<username>.json،
+// (اسمه، مشاريعه، تفضيلاته) في Redis تحت db/memory/<username>.json،
 // ويُحقن هذا الملخص في بداية كل محادثة ليتذكر التطبيق المستخدم.
 // التحديث يتم عبر نموذج Groq المجاني (llama-3.3-70b) بدمج آخر تبادل في الملخص.
 const crypto = require('crypto');
+const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
 const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
-const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
-const BLOB_BASE = 'https://blob.vercel-storage.com';
-const STORE_ID = process.env.BLOB_STORE_ID || '6tfgxvttzyoiavtu';
-const PUBLIC_BASE = 'https://' + STORE_ID + '.public.blob.vercel-storage.com/';
 
 const MAX_MEMORY_CHARS = 1200;   // سقف حجم الذاكرة المخزنة
 const MIN_UPDATE_GAP_MS = 45 * 1000; // لا نحدّث أكثر من مرة كل 45 ثانية لكل مستخدم
@@ -32,9 +29,8 @@ function memPath(username) {
 
 async function readMemory(username) {
   try {
-    const res = await fetch(PUBLIC_BASE + memPath(username) + '?t=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) return { memory: '', updatedAt: 0 };
-    const data = await res.json();
+    const data = await kvGetJSON(memPath(username));
+    if (!data) return { memory: '', updatedAt: 0 };
     return { memory: String(data.memory || ''), updatedAt: Number(data.updatedAt || 0) };
   } catch (e) {
     return { memory: '', updatedAt: 0 };
@@ -42,15 +38,7 @@ async function readMemory(username) {
 }
 
 async function writeMemory(username, memory) {
-  await fetch(BLOB_BASE + '/' + memPath(username), {
-    method: 'PUT',
-    headers: {
-      Authorization: 'Bearer ' + BLOB_TOKEN,
-      'x-content-type': 'application/json',
-      'x-add-random-suffix': '0',
-    },
-    body: JSON.stringify({ memory, updatedAt: Date.now() }),
-  });
+  await kvPutJSON(memPath(username), { memory, updatedAt: Date.now() });
 }
 
 async function mergeWithModel(existing, userText, aiText) {

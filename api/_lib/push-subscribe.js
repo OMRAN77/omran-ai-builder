@@ -1,13 +1,10 @@
 // Stores/removes the browser's Web Push subscription for a logged-in user,
 // so /api/check-reminders can wake them up with a real system notification
-// even when the app/tab is closed. One JSON blob per user (db/push-subs/{username}.json).
+// even when the app/tab is closed. One JSON record per user (db/push-subs/{username}.json).
 const crypto = require('crypto');
+const { kvPutJSON } = require('./kv.js');
 
-const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
 const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
-const BLOB_BASE = 'https://blob.vercel-storage.com';
-const STORE_ID = process.env.BLOB_STORE_ID || '6tfgxvttzyoiavtu';
-const PUBLIC_BASE = 'https://' + STORE_ID + '.public.blob.vercel-storage.com/';
 
 function subPath(username) {
   return 'db/push-subs/' + encodeURIComponent(username) + '.json';
@@ -35,29 +32,13 @@ module.exports = async (req, res) => {
   if (req.method === 'POST') {
     const subscription = (req.body && req.body.subscription) || null;
     if (!subscription || !subscription.endpoint) { res.status(400).json({ error: 'missing subscription' }); return; }
-    await fetch(BLOB_BASE + '/' + subPath(username), {
-      method: 'PUT',
-      headers: {
-        Authorization: 'Bearer ' + BLOB_TOKEN,
-        'x-content-type': 'application/json',
-        'x-add-random-suffix': '0',
-      },
-      body: JSON.stringify(subscription),
-    });
+    await kvPutJSON(subPath(username), subscription);
     res.status(200).json({ ok: true });
     return;
   }
 
   if (req.method === 'DELETE') {
-    await fetch(BLOB_BASE + '/' + subPath(username), {
-      method: 'PUT',
-      headers: {
-        Authorization: 'Bearer ' + BLOB_TOKEN,
-        'x-content-type': 'application/json',
-        'x-add-random-suffix': '0',
-      },
-      body: JSON.stringify(null),
-    });
+    await kvPutJSON(subPath(username), null);
     res.status(200).json({ ok: true });
     return;
   }
@@ -66,4 +47,3 @@ module.exports = async (req, res) => {
 };
 
 module.exports.subPath = subPath;
-module.exports.PUBLIC_BASE = PUBLIC_BASE;

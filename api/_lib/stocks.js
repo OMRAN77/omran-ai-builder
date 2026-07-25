@@ -1,15 +1,13 @@
 // Vercel Serverless Function: "📈 سوق الأسهم" (Stock Market).
 // Proxies Twelve Data API with the owner's server-side key.
 // Actions: quote (latest price) | series (time series for chart) | search (symbol lookup)
+const { kvGetJSON, kvPutJSON } = require('./kv.js');
+
 const BASE = 'https://api.twelvedata.com';
 const tickerCache = new Map();
 const learnCache = new Map(); // symbol -> { t, live } (60s cache to respect free-plan credits)
 
 const tdCache = new Map(); // in-memory layer (per instance)
-const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
-const BLOB_STORE = process.env.BLOB_STORE_ID || '';
-const BLOB_PUT = 'https://blob.vercel-storage.com';
-const BLOB_PUB = BLOB_STORE ? 'https://' + BLOB_STORE + '.public.blob.vercel-storage.com/' : '';
 const TD_TTL = 600000; // 10 min shared cache
 
 function cachePath(cKey) {
@@ -19,28 +17,17 @@ function cachePath(cKey) {
 }
 
 async function blobCacheGet(cKey, allowStale) {
-  if (!BLOB_PUB) return null;
   try {
-    const r = await fetch(BLOB_PUB + cachePath(cKey) + '?_=' + Date.now(), { cache: 'no-store' });
-    if (!r.ok) return null;
-    const d = await r.json();
+    const d = await kvGetJSON(cachePath(cKey));
     if (d && d.k === cKey && (allowStale || Date.now() - d.t < TD_TTL)) return d.j;
   } catch (e) {}
   return null;
 }
 
 async function blobCachePut(cKey, j) {
-  if (!BLOB_TOKEN) return;
+  if (!process.env.UPSTASH_REDIS_REST_URL) return;
   try {
-    await fetch(BLOB_PUT + '/' + cachePath(cKey), {
-      method: 'PUT',
-      headers: {
-        Authorization: 'Bearer ' + BLOB_TOKEN,
-        'x-content-type': 'application/json',
-        'x-add-random-suffix': '0',
-      },
-      body: JSON.stringify({ k: cKey, t: Date.now(), j }),
-    });
+    await kvPutJSON(cachePath(cKey), { k: cKey, t: Date.now(), j });
   } catch (e) {}
 }
 

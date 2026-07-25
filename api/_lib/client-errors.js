@@ -1,37 +1,21 @@
 // Client-side error reporting: the app reports its own JS errors here.
-// POST { message, source, line, col, stack, url, ua } -> stored in Blob (deduped, capped)
+// POST { message, source, line, col, stack, url, ua } -> stored in Redis (deduped, capped)
 // GET ?key=OWNER_MONITOR_KEY -> list of recent errors (for health monitor)
-const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
-const BLOB_BASE = 'https://blob.vercel-storage.com';
+const { kvGetJSON, kvPutJSON } = require('./kv.js');
+
 const LOG_PATH = 'db/client-errors/log.json';
 const MAX_ITEMS = 60;
 const MONITOR_KEY = process.env.MONITOR_KEY || 'omran-monitor-2026';
 
 async function readLog() {
   try {
-    const listRes = await fetch(BLOB_BASE + '?prefix=' + encodeURIComponent(LOG_PATH) + '&limit=1', {
-      headers: { Authorization: 'Bearer ' + BLOB_TOKEN }
-    });
-    const listData = await listRes.json();
-    const blob = (listData.blobs || [])[0];
-    if (!blob) return [];
-    const r = await fetch(blob.url + '?ts=' + Date.now(), { cache: 'no-store' });
-    if (!r.ok) return [];
-    return await r.json();
+    const items = await kvGetJSON(LOG_PATH);
+    return Array.isArray(items) ? items : [];
   } catch (e) { return []; }
 }
 
 async function writeLog(items) {
-  await fetch(BLOB_BASE + '/' + LOG_PATH, {
-    method: 'PUT',
-    headers: {
-      Authorization: 'Bearer ' + BLOB_TOKEN,
-      'x-content-type': 'application/json',
-      'x-add-random-suffix': '0',
-      'x-allow-overwrite': '1'
-    },
-    body: JSON.stringify(items)
-  });
+  await kvPutJSON(LOG_PATH, items);
 }
 
 module.exports = async (req, res) => {

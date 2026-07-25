@@ -1,15 +1,12 @@
 // Vercel Serverless Function: reminders set by voice through مها (e.g. "ذكرني
-// قبل صلاة العصر" / "صحّيني الساعة 7 للدوام"). Stored as one small JSON blob
+// قبل صلاة العصر" / "صحّيني الساعة 7 للدوام"). Stored as one small JSON record
 // per user (db/reminders/{username}.json), read/updated by the /api/check-reminders
 // cron job every minute. Prayer-time reminders are resolved once per day via
 // the free Aladhan API using the user's last-known device location.
 const crypto = require('crypto');
+const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
-const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
 const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
-const BLOB_BASE = 'https://blob.vercel-storage.com';
-const STORE_ID = process.env.BLOB_STORE_ID || '6tfgxvttzyoiavtu';
-const PUBLIC_BASE = 'https://' + STORE_ID + '.public.blob.vercel-storage.com/';
 
 function remindersPath(username) {
   return 'db/reminders/' + encodeURIComponent(username) + '.json';
@@ -30,9 +27,7 @@ function verifyToken(token) {
 
 async function getReminders(username) {
   try {
-    const res = await fetch(PUBLIC_BASE + remindersPath(username) + '?_=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) return [];
-    const data = await res.json();
+    const data = await kvGetJSON(remindersPath(username));
     return Array.isArray(data) ? data : [];
   } catch (e) {
     return [];
@@ -40,15 +35,7 @@ async function getReminders(username) {
 }
 
 async function putReminders(username, list) {
-  await fetch(BLOB_BASE + '/' + remindersPath(username), {
-    method: 'PUT',
-    headers: {
-      Authorization: 'Bearer ' + BLOB_TOKEN,
-      'x-content-type': 'application/json',
-      'x-add-random-suffix': '0',
-    },
-    body: JSON.stringify(list),
-  });
+  await kvPutJSON(remindersPath(username), list);
 }
 
 module.exports = async (req, res) => {

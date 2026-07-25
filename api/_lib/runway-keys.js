@@ -49,12 +49,9 @@ function resolveTaskId(id) {
 // never polled it to completion, or a request failed client-side after
 // Runway already accepted it), every new request on that same key gets
 // stuck in THROTTLED forever. We remember the last task id we started per
-// key (in Vercel Blob) and, before starting a new one, check + cancel it
+// key (in Redis) and, before starting a new one, check + cancel it
 // if it is not already finished.
-const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
-const BLOB_BASE = 'https://blob.vercel-storage.com';
-const STORE_ID = process.env.BLOB_STORE_ID || '6tfgxvttzyoiavtu';
-const PUBLIC_BASE = 'https://' + STORE_ID + '.public.blob.vercel-storage.com/';
+const { kvGetJSON, kvPutJSON } = require('./kv.js');
 const RUNWAY_VERSION = '2024-11-06';
 
 function lastTaskPath(index) {
@@ -63,9 +60,7 @@ function lastTaskPath(index) {
 
 async function getLastTask(index) {
   try {
-    const r = await fetch(PUBLIC_BASE + lastTaskPath(index) + '?_=' + Date.now(), { cache: 'no-store' });
-    if (!r.ok) return null;
-    const data = await r.json();
+    const data = await kvGetJSON(lastTaskPath(index));
     return data && data.id ? data.id : null;
   } catch (e) {
     return null;
@@ -73,17 +68,9 @@ async function getLastTask(index) {
 }
 
 async function saveLastTask(index, taskId) {
-  if (!BLOB_TOKEN) return;
+  if (!process.env.UPSTASH_REDIS_REST_URL) return;
   try {
-    await fetch(BLOB_BASE + '/' + lastTaskPath(index), {
-      method: 'PUT',
-      headers: {
-        Authorization: 'Bearer ' + BLOB_TOKEN,
-        'x-content-type': 'application/json',
-        'x-add-random-suffix': '0',
-      },
-      body: JSON.stringify({ id: taskId }),
-    });
+    await kvPutJSON(lastTaskPath(index), { id: taskId });
   } catch (e) {
     // best-effort only
   }

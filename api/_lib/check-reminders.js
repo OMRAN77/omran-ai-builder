@@ -1,5 +1,5 @@
 // Vercel Cron target (runs every minute, see vercel.json "crons"). Scans every
-// user's reminders blob, figures out which ones are due THIS minute, sends a
+// user's reminders record, figures out which ones are due THIS minute, sends a
 // real Web Push notification (wakes the device even if the app is closed),
 // and updates/retires each reminder appropriately:
 //   - "once"  reminders fire exactly once then get removed.
@@ -9,11 +9,7 @@
 //              Aladhan API (cached once per calendar day per reminder) using
 //              the user's last-known device coordinates, offset by N minutes.
 const webpush = require('web-push');
-
-const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
-const BLOB_BASE = 'https://blob.vercel-storage.com';
-const STORE_ID = process.env.BLOB_STORE_ID || '6tfgxvttzyoiavtu';
-const PUBLIC_BASE = 'https://' + STORE_ID + '.public.blob.vercel-storage.com/';
+const { kvList, kvGetJSON, kvPutJSON } = require('./kv.js');
 
 const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY;
@@ -21,43 +17,12 @@ if (VAPID_PUBLIC && VAPID_PRIVATE) {
   webpush.setVapidDetails('mailto:ommntr77@gmail.com', VAPID_PUBLIC, VAPID_PRIVATE);
 }
 
-async function listBlobs(prefix) {
-  const out = [];
-  let cursor;
-  do {
-    const url = new URL(BLOB_BASE + '/');
-    url.searchParams.set('prefix', prefix);
-    url.searchParams.set('limit', '1000');
-    if (cursor) url.searchParams.set('cursor', cursor);
-    const r = await fetch(url.toString(), { headers: { Authorization: 'Bearer ' + BLOB_TOKEN } });
-    if (!r.ok) break;
-    const data = await r.json();
-    out.push(...(data.blobs || []));
-    cursor = data.hasMore ? data.cursor : null;
-  } while (cursor);
-  return out;
+async function getJson(key) {
+  return kvGetJSON(key);
 }
 
-async function getJson(pathname) {
-  try {
-    const res = await fetch(PUBLIC_BASE + pathname + '?_=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (e) {
-    return null;
-  }
-}
-
-async function putJson(pathname, value) {
-  await fetch(BLOB_BASE + '/' + pathname, {
-    method: 'PUT',
-    headers: {
-      Authorization: 'Bearer ' + BLOB_TOKEN,
-      'x-content-type': 'application/json',
-      'x-add-random-suffix': '0',
-    },
-    body: JSON.stringify(value),
-  });
+async function putJson(key, value) {
+  await kvPutJSON(key, value);
 }
 
 function todayStr(d) { return d.toISOString().slice(0, 10); }
@@ -111,16 +76,15 @@ module.exports = async (req, res) => {
   const nowMs = now.getTime();
   const today = todayStr(now);
 
-  const userBlobs = await listBlobs('db/reminders/');
+  const userKeys = await kvList('db/reminders/');
   let sent = 0;
 
-  for (const blob of userBlobs) {
-    const pathname = blob.pathname;
-    const usernameMatch = pathname.match(/^db\/reminders\/(.+)\.json$/);
+  for (const key of userKeys) {
+    const usernameMatch = String(key).match(/^db\/reminders\/(.+)\.json$/);
     if (!usernameMatch) continue;
     const username = decodeURIComponent(usernameMatch[1]);
 
-    const list = await getJson(pathname);
+    const list = await getJson(key);
     if (!Array.isArray(list) || !list.length) continue;
 
     const sub = await getJson('db/push-subs/' + encodeURIComponent(username) + '.json');
@@ -176,7 +140,7 @@ module.exports = async (req, res) => {
       nextList.push(r);
     }
 
-    if (changed) await putJson(pathname, nextList);
+    if (changed) await putJson(key, nextList);
   }
 
   res.status(200).json({ ok: true, sent });

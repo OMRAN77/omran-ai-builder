@@ -1,15 +1,12 @@
 // Vercel Serverless Function: "رأيك يهمنا" — user feedback/ratings/suggestions
 // with an instant AI reply, public upvotable idea board, and an owner-only
-// AI-generated daily summary. Storage follows the same per-item Vercel Blob
-// pattern used across this app (auth.js, admin-stats.js): one JSON file per
-// feedback item, one tiny marker file per vote (dedupe by voter key).
+// AI-generated daily summary. Storage follows the same per-item Redis pattern
+// used across this app (auth.js, admin-stats.js): one JSON record per
+// feedback item, one tiny marker record per vote (dedupe by voter key).
 const crypto = require('crypto');
+const { kvGetJSON, kvPutJSON, kvList } = require('./kv.js');
 
 const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
-const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
-const BLOB_BASE = 'https://blob.vercel-storage.com';
-const STORE_ID = process.env.BLOB_STORE_ID || '6tfgxvttzyoiavtu';
-const PUBLIC_BASE = 'https://' + STORE_ID + '.public.blob.vercel-storage.com/';
 const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').trim().toLowerCase();
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
@@ -30,45 +27,15 @@ function itemPath(id) { return 'db/feedback/items/' + id + '.json'; }
 function votePath(id, voter) { return 'db/feedback/votes/' + id + '/' + encodeURIComponent(voter) + '.json'; }
 
 async function putBlob(path, obj) {
-  await fetch(BLOB_BASE + '/' + path, {
-    method: 'PUT',
-    headers: {
-      Authorization: 'Bearer ' + BLOB_TOKEN,
-      'x-content-type': 'application/json',
-      'x-add-random-suffix': '0',
-      'x-cache-control-max-age': '0',
-    },
-    body: JSON.stringify(obj),
-  });
+  await kvPutJSON(path, obj);
 }
 
 async function getBlob(path) {
-  try {
-    const res = await fetch(PUBLIC_BASE + path + '?_=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (e) {
-    return null;
-  }
+  return kvGetJSON(path);
 }
 
-async function listAll(prefix, maxPages) {
-  const out = [];
-  let cursor;
-  let pages = 0;
-  do {
-    const url = new URL(BLOB_BASE + '/');
-    url.searchParams.set('prefix', prefix);
-    url.searchParams.set('limit', '1000');
-    if (cursor) url.searchParams.set('cursor', cursor);
-    const res = await fetch(url.toString(), { headers: { Authorization: 'Bearer ' + BLOB_TOKEN } });
-    if (!res.ok) break;
-    const data = await res.json();
-    out.push(...(data.blobs || []));
-    cursor = data.hasMore ? data.cursor : null;
-    pages++;
-  } while (cursor && pages < (maxPages || 25));
-  return out;
+async function listAll(prefix) {
+  return kvList(prefix);
 }
 
 async function aiReply(text, rating, tag, lang) {
@@ -135,7 +102,7 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
-  if (!BLOB_TOKEN) { res.status(500).json({ error: 'Server is missing BLOB_READ_WRITE_TOKEN' }); return; }
+  if (!process.env.UPSTASH_REDIS_REST_URL) { res.status(500).json({ error: 'Server is missing UPSTASH_REDIS_REST_URL' }); return; }
 
   try {
     let body = req.body;
@@ -188,14 +155,14 @@ module.exports = async (req, res) => {
 
     // ---- Public idea board (any user) ----
     if (action === 'publicList') {
-      const [items, votes] = await Promise.all([listAll('db/feedback/items/', 10), listAll('db/feedback/votes/', 25)]);
+      const [itemKeys, voteKeys] = await Promise.all([listAll('db/feedback/items/'), listAll('db/feedback/votes/')]);
       const voteCounts = {};
-      votes.forEach((v) => {
-        const rest = String(v.pathname).replace(/^db\/feedback\/votes\//, '');
+      voteKeys.forEach((k) => {
+        const rest = String(k).replace(/^db\/feedback\/votes\//, '');
         const id = rest.split('/')[0];
         voteCounts[id] = (voteCounts[id] || 0) + 1;
       });
-      const full = await Promise.all(items.map((b) => getBlob(String(b.pathname))));
+      const full = await Promise.all(itemKeys.map((k) => getBlob(k)));
       const ideas = full
         .filter((it) => it && it.isPublic && !it.deleted)
         .map((it) => ({
@@ -214,8 +181,8 @@ module.exports = async (req, res) => {
 
     if (action === 'adminList') {
       if (!isOwner) { res.status(403).json({ error: 'forbidden' }); return; }
-      const items = await listAll('db/feedback/items/', 10);
-      const full = await Promise.all(items.map((b) => getBlob(String(b.pathname))));
+      const itemKeys = await listAll('db/feedback/items/');
+      const full = await Promise.all(itemKeys.map((k) => getBlob(k)));
       const clean = full.filter((it) => it && !it.deleted).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       const avgRating = clean.length ? (clean.reduce((s, it) => s + it.rating, 0) / clean.length).toFixed(2) : null;
       res.status(200).json({ ok: true, items: clean.slice(0, 150), avgRating, total: clean.length });
@@ -224,8 +191,8 @@ module.exports = async (req, res) => {
 
     if (action === 'adminSummary') {
       if (!isOwner) { res.status(403).json({ error: 'forbidden' }); return; }
-      const items = await listAll('db/feedback/items/', 10);
-      const full = await Promise.all(items.map((b) => getBlob(String(b.pathname))));
+      const itemKeys = await listAll('db/feedback/items/');
+      const full = await Promise.all(itemKeys.map((k) => getBlob(k)));
       const clean = full.filter((it) => it && !it.deleted).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).reverse();
       if (!clean.length) { res.status(200).json({ ok: true, summary: body.lang === 'ar' ? 'لا توجد آراء بعد.' : 'No feedback yet.' }); return; }
       const summary = await aiSummary(clean, body.lang);
