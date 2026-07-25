@@ -1,6 +1,13 @@
 // Vercel Serverless Function: translates a batch of short texts (project titles)
 // into a target language using the owner's server-side Mistral key. Used by the
 // Explore page so project titles always match the currently selected UI language.
+//
+// Metered (owner's own MISTRAL_API_KEY): logged-in users and guests are
+// capped per day; callers without a token/guestId (today's frontend) are
+// metered by IP instead of blocked, so nothing breaks. Owner account unlimited.
+const { checkAndConsumeCustom, clientIp } = require('./_usage.js');
+const TRANSLATE_DAILY_LIMIT = 100;
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -24,9 +31,19 @@ module.exports = async (req, res) => {
 
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
-    const { texts, targetLang } = body;
+    const { texts, targetLang, token, guestId } = body;
     if (!Array.isArray(texts) || !texts.length) {
       res.status(400).json({ error: 'Missing texts' });
+      return;
+    }
+
+    const usage = await checkAndConsumeCustom(token, guestId, clientIp(req), 'translate', TRANSLATE_DAILY_LIMIT);
+    if (!usage.allowed) {
+      if (usage.reason === 'auth') {
+        res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
+      } else {
+        res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + TRANSLATE_DAILY_LIMIT + ') للترجمة. حاول لاحقًا.' });
+      }
       return;
     }
     const safeTexts = texts.slice(0, 60).map((t) => String(t || '').slice(0, 120));

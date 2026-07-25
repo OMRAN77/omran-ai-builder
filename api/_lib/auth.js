@@ -18,6 +18,37 @@ function userPath(key) {
   return 'db/users/' + encodeURIComponent(key) + '.json';
 }
 
+// ---------------------------------------------------------------------------
+// At-rest encryption for user records.
+// db/users/{username}.json lives on Vercel Blob's PUBLIC read URL (needed so
+// serverless functions can read it without an extra signed-URL round trip),
+// which means anyone who knows/guesses a username can otherwise download the
+// raw JSON directly — including the password hash+salt, the recovery code
+// hash+salt, and the email. To close that hole, every record is encrypted
+// with AES-256-GCM using a key derived from AUTH_SECRET before it's written,
+// and decrypted on read. Legacy plaintext records (written before this
+// change) are still readable for backward compatibility and get
+// transparently re-encrypted the next time putUser() is called on them.
+const ENC_KEY = crypto.createHash('sha256').update(AUTH_SECRET).digest(); // 32 bytes -> aes-256-gcm
+
+function encryptUserBlob(obj) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', ENC_KEY, iv);
+  const data = Buffer.concat([cipher.update(JSON.stringify(obj), 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return JSON.stringify({ enc: 1, iv: iv.toString('base64'), tag: tag.toString('base64'), data: data.toString('base64') });
+}
+
+function decryptUserBlob(encObj) {
+  const iv = Buffer.from(encObj.iv, 'base64');
+  const tag = Buffer.from(encObj.tag, 'base64');
+  const data = Buffer.from(encObj.data, 'base64');
+  const decipher = crypto.createDecipheriv('aes-256-gcm', ENC_KEY, iv);
+  decipher.setAuthTag(tag);
+  const dec = Buffer.concat([decipher.update(data), decipher.final()]);
+  return JSON.parse(dec.toString('utf8'));
+}
+
 function hashPassword(password, salt) {
   salt = salt || crypto.randomBytes(16).toString('hex');
   const hash = crypto.scryptSync(password, salt, 64).toString('hex');
@@ -59,7 +90,18 @@ async function getUserOnce(key) {
   try {
     const res = await fetch(PUBLIC_BASE + userPath(key) + '?_=' + Date.now(), { cache: 'no-store' });
     if (!res.ok) return null;
-    return await res.json();
+    const parsed = await res.json();
+    if (parsed && parsed.enc === 1) {
+      try {
+        return decryptUserBlob(parsed);
+      } catch (e) {
+        return null; // corrupt/undecryptable record - treat as missing
+      }
+    }
+    // Legacy plaintext record (written before at-rest encryption was added).
+    // Still readable for backward compatibility; putUser() below will
+    // transparently re-encrypt it the next time it's saved.
+    return parsed;
   } catch (e) {
     return null;
   }
@@ -87,7 +129,7 @@ async function putUser(key, user) {
       'x-add-random-suffix': '0',
       'x-cache-control-max-age': '0',
     },
-    body: JSON.stringify(user),
+    body: encryptUserBlob(user),
   });
 }
 
@@ -454,8 +496,11 @@ module.exports = async (req, res) => {
 };
 
 module.exports.getUser = getUser;
+module.exports.getUserOnce = getUserOnce;
 module.exports.putUser = putUser;
 module.exports.hashPassword = hashPassword;
 module.exports.genRecoveryCode = genRecoveryCode;
 module.exports.makeToken = makeToken;
 module.exports.verifyToken = verifyToken;
+module.exports.encryptUserBlob = encryptUserBlob;
+module.exports.decryptUserBlob = decryptUserBlob;

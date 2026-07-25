@@ -7,6 +7,7 @@ function load(action) {
     case 'admin-stats': return require('./_lib/admin-stats.js');
     case 'usage-status': return require('./_lib/usage-status.js');
     case 'create-checkout-session': return require('./_lib/create-checkout-session.js');
+    case 'verify-checkout': return require('./_lib/create-checkout-session.js');
     case 'paypal-client-id': return require('./_lib/paypal-client-id.js');
     case 'paypal-order': return require('./_lib/paypal-order.js');
     case 'share': return require('./_lib/share.js');

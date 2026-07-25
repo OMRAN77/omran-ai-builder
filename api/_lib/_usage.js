@@ -4,6 +4,7 @@
 // stored as one small JSON blob per user (db/usage/<username>.json), separate
 // from the account record in db/users/, and resets automatically each day (UTC).
 const crypto = require('crypto');
+const { getUser, putUser } = require('./auth.js');
 
 const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
 const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
@@ -20,7 +21,7 @@ const DAILY_LIMIT = 20;
 // getting silently blocked mid-testing (e.g. inside the مها voice loop) was
 // indistinguishable from a real bug. Case-insensitive match against the
 // account username.
-const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'taryam').trim().toLowerCase();
+const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').trim().toLowerCase();
 function isOwnerUsername(username) {
   return !!username && String(username).trim().toLowerCase() === OWNER_USERNAME;
 }
@@ -191,4 +192,68 @@ async function getAllRemaining(token, guestId) {
   return { authed: true, username: username || null, remaining, limit };
 }
 
-module.exports = { checkAndConsume, DAILY_LIMIT, GUEST_LIMIT, getAllRemaining };
+// Generic metering for endpoints that (a) have their own custom daily cap
+// different from the shared text-provider DAILY_LIMIT/GUEST_LIMIT above, and
+// (b) may currently be called by the frontend WITHOUT a token/guestId at all
+// (e.g. tts.js / translate.js / search.js today). Behaves like
+// checkAndConsume() for logged-in users and guests, but additionally falls
+// back to metering by client IP when neither a token nor a guestId is
+// present, instead of hard-rejecting the request — this keeps today's
+// frontend working unmodified while still capping the owner's per-endpoint
+// API bill. Only returns { allowed:false, reason:'auth' } if the caller has
+// no token, no guestId, AND no discoverable IP (should not normally happen
+// on Vercel).
+async function checkAndConsumeCustom(token, guestId, ip, provider, dailyLimit) {
+  const providerKey = provider ? String(provider).toLowerCase() : 'general';
+
+  const username = verifyToken(token);
+  if (username) {
+    if (isOwnerUsername(username)) {
+      return { allowed: true, username, remaining: Infinity };
+    }
+    const key = username + '_' + todayStr() + '_' + providerKey;
+    const count = await countTally(key);
+    if (count >= dailyLimit) {
+      return { allowed: false, reason: 'limit', username };
+    }
+    await addTally(key);
+    return { allowed: true, username, remaining: dailyLimit - (count + 1) };
+  }
+
+  if (isValidGuestId(guestId)) {
+    const key = 'guest_' + guestId + '_' + providerKey;
+    const count = await countTally(key);
+    if (count >= dailyLimit) {
+      return { allowed: false, reason: 'limit', username: null };
+    }
+    await addTally(key);
+    return { allowed: true, username: null, remaining: dailyLimit - (count + 1) };
+  }
+
+  // No login/guest id sent at all (today's frontend for tts/translate/search)
+  // -> meter by IP instead of blocking outright.
+  const cleanIp = (typeof ip === 'string' && ip.trim()) ? ip.trim().slice(0, 64) : null;
+  if (cleanIp) {
+    const key = 'ip_' + cleanIp + '_' + todayStr() + '_' + providerKey;
+    const count = await countTally(key);
+    if (count >= dailyLimit) {
+      return { allowed: false, reason: 'limit', username: null };
+    }
+    await addTally(key);
+    return { allowed: true, username: null, remaining: dailyLimit - (count + 1) };
+  }
+
+  return { allowed: false, reason: 'auth', username: null };
+}
+
+// Best-effort extraction of the caller's IP from Vercel's forwarded headers.
+function clientIp(req) {
+  try {
+    const fwd = req.headers && (req.headers['x-forwarded-for'] || req.headers['X-Forwarded-For']);
+    if (fwd) return String(fwd).split(',')[0].trim();
+    if (req.socket && req.socket.remoteAddress) return req.socket.remoteAddress;
+  } catch (e) { /* ignore */ }
+  return null;
+}
+
+module.exports = { checkAndConsume, DAILY_LIMIT, GUEST_LIMIT, getAllRemaining, checkAndConsumeCustom, clientIp };

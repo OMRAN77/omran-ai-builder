@@ -2,12 +2,10 @@
 // Requires a valid session token belonging to OWNER_USERNAME. Regular users
 // get 403 no matter what they send. Actions: ban, unban, delete, message.
 const crypto = require('crypto');
+const { getUser, putUser } = require('./auth.js');
 
 const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
 const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
-const BLOB_BASE = 'https://blob.vercel-storage.com';
-const STORE_ID = process.env.BLOB_STORE_ID || '6tfgxvttzyoiavtu';
-const PUBLIC_BASE = 'https://' + STORE_ID + '.public.blob.vercel-storage.com/';
 const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').trim().toLowerCase();
 
 function verifyToken(token) {
@@ -23,32 +21,8 @@ function verifyToken(token) {
   }
 }
 
-function userPath(key) {
-  return 'db/users/' + encodeURIComponent(key) + '.json';
-}
-
-async function getUser(key) {
-  try {
-    const res = await fetch(PUBLIC_BASE + userPath(key) + '?_=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (e) {
-    return null;
-  }
-}
-
-async function putUser(key, user) {
-  await fetch(BLOB_BASE + '/' + userPath(key), {
-    method: 'PUT',
-    headers: {
-      Authorization: 'Bearer ' + BLOB_TOKEN,
-      'x-content-type': 'application/json',
-      'x-add-random-suffix': '0',
-      'x-cache-control-max-age': '0',
-    },
-    body: JSON.stringify(user),
-  });
-}
+// getUser/putUser now come from auth.js, which stores/reads user records
+// encrypted at rest (AES-256-GCM) instead of as raw public-blob JSON.
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');

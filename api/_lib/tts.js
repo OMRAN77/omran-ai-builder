@@ -2,6 +2,14 @@
 // using the site owner's own server-side API key (OPENAI_API_KEY env var), so
 // visitors can use cloud voice without entering their own key. Falls back to
 // a client-supplied apiKey only if one is explicitly sent (legacy support).
+//
+// Metered (Azure Speech / OpenAI TTS both bill the owner's own account): logged
+// -in users and guests are capped per day; anyone without a token/guestId
+// (today's frontend calls) is metered by IP instead of blocked outright, so
+// existing calls keep working. The owner account itself is never limited.
+const { checkAndConsumeCustom, clientIp } = require('./_usage.js');
+const TTS_DAILY_LIMIT = 60;
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -21,10 +29,20 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { text, voice, gender, lang } = body;
+    const { text, voice, gender, lang, token, guestId } = body;
 
     if (!text) {
       res.status(400).json({ error: 'Missing text' });
+      return;
+    }
+
+    const usage = await checkAndConsumeCustom(token, guestId, clientIp(req), 'tts', TTS_DAILY_LIMIT);
+    if (!usage.allowed) {
+      if (usage.reason === 'auth') {
+        res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
+      } else {
+        res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + TTS_DAILY_LIMIT + ') لتحويل النص إلى صوت. حاول لاحقًا.' });
+      }
       return;
     }
 

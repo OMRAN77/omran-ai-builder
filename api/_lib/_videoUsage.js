@@ -109,7 +109,7 @@ async function consumeVideo(username) {
 // number of scenes in a single run. Everyone else still goes through the
 // normal small daily limit above. Set via Vercel env var; falls back to the
 // owner's own username so this works even before the env var is configured.
-const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'taryam77').trim().toLowerCase();
+const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').trim().toLowerCase();
 
 function isOwner(username) {
   return !!username && String(username).trim().toLowerCase() === OWNER_USERNAME;

@@ -3,6 +3,14 @@
 // (mها) to answer questions that need real-time information (weather, news,
 // sports scores, prices, current events, etc.) instead of relying only on the
 // model's static training knowledge.
+//
+// Metered (owner's own TAVILY_API_KEY / Google Search key): logged-in users
+// and guests are capped per day; callers without a token/guestId (today's
+// frontend) are metered by IP instead of blocked, so nothing breaks. Owner
+// account unlimited.
+const { checkAndConsumeCustom, clientIp } = require('./_usage.js');
+const SEARCH_DAILY_LIMIT = 40;
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -31,6 +39,16 @@ module.exports = async (req, res) => {
     const query = (body && body.query || '').toString().trim();
     if (!query) {
       res.status(400).json({ error: 'Missing query' });
+      return;
+    }
+
+    const usage = await checkAndConsumeCustom(body && body.token, body && body.guestId, clientIp(req), 'search', SEARCH_DAILY_LIMIT);
+    if (!usage.allowed) {
+      if (usage.reason === 'auth') {
+        res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
+        return;
+      }
+      res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + SEARCH_DAILY_LIMIT + ') للبحث. حاول لاحقًا.' });
       return;
     }
     const wantImages = !!(body && body.images);

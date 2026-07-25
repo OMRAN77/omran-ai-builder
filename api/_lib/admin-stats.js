@@ -4,22 +4,18 @@
 // verified server-side and must belong to OWNER_USERNAME, independent of
 // whatever the frontend hides/shows.
 const crypto = require('crypto');
+const { getUserOnce } = require('./auth.js');
 
 const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
 const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
 const BLOB_BASE = 'https://blob.vercel-storage.com';
 const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').trim().toLowerCase();
-const STORE_ID = process.env.BLOB_STORE_ID || '6tfgxvttzyoiavtu';
-const PUBLIC_BASE = 'https://' + STORE_ID + '.public.blob.vercel-storage.com/';
 
+// User records are stored encrypted at rest (see auth.js). Always go through
+// auth.js's getUserOnce() (which transparently decrypts) instead of fetching
+// the raw blob directly - reading it here would just return ciphertext.
 async function getUserRecord(key) {
-  try {
-    const res = await fetch(PUBLIC_BASE + 'db/users/' + encodeURIComponent(key) + '.json?_=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (e) {
-    return null;
-  }
+  return getUserOnce(key);
 }
 
 function verifyToken(token) {

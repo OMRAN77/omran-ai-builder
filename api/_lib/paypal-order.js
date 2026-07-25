@@ -2,6 +2,14 @@
 // PayPal REST API directly (no SDK dependency). Uses PAYPAL_CLIENT_ID +
 // PAYPAL_SECRET env vars. Auto-detects sandbox vs live based on key type is
 // not reliable, so we use PAYPAL_MODE env var ('sandbox' default, or 'live').
+//
+// The 'capture' action below also updates the caller's stored `plan`
+// server-side once PayPal itself confirms the capture is COMPLETED, instead
+// of leaving plan upgrades entirely to frontend logic. Requires an optional
+// `token` in the request body (today's frontend doesn't send one yet — see
+// the account-update section below for the backward-compatible behavior
+// when it's missing).
+const { verifyToken, getUser, putUser } = require('./auth.js');
 
 const PLANS = {
   basic: { amount: '5.00', name: 'خطة 5$ - 300 رسالة شهريًا / Basic Plan' },
@@ -74,7 +82,7 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'capture') {
-      const { orderId } = body;
+      const { orderId, token } = body;
       if (!orderId) { res.status(400).json({ error: 'Missing orderId' }); return; }
       const r = await fetch(`${baseUrl()}/v2/checkout/orders/${orderId}/capture`, {
         method: 'POST',
@@ -85,7 +93,41 @@ module.exports = async (req, res) => {
       });
       const data = await r.json();
       if (!r.ok) { res.status(500).json({ error: data.message || 'PayPal capture error' }); return; }
-      res.status(200).json({ status: data.status, id: data.id });
+
+      // Server-side plan grant: only once PayPal itself reports the capture
+      // as COMPLETED (never trust the frontend's own success handling for
+      // this). The plan is derived from the actually-captured amount
+      // (matched against PLANS) rather than trusting a client-supplied plan
+      // name, so a tampered request can't claim a cheaper/free plan.
+      let planGranted = null;
+      if (data.status === 'COMPLETED') {
+        try {
+          const capture = data.purchase_units
+            && data.purchase_units[0]
+            && data.purchase_units[0].payments
+            && data.purchase_units[0].payments.captures
+            && data.purchase_units[0].payments.captures[0];
+          const amountValue = capture && capture.amount && capture.amount.value;
+          const matchedPlan = Object.keys(PLANS).find((p) => PLANS[p].amount === amountValue);
+          const username = verifyToken(token);
+          if (username && matchedPlan) {
+            const user = await getUser(username);
+            if (user && !user.deleted) {
+              user.plan = matchedPlan;
+              user.planUpdatedAt = Date.now();
+              user.lastPaypalOrderId = data.id;
+              await putUser(username, user);
+              planGranted = matchedPlan;
+            }
+          }
+          // If no token was sent (current frontend) or it didn't verify, the
+          // PayPal payment itself still succeeded/was captured — we simply
+          // can't attach it to an account yet. Frontend should start sending
+          // `token` with the capture call so planGranted comes back non-null.
+        } catch (e) { /* best-effort account update; capture itself already succeeded with PayPal */ }
+      }
+
+      res.status(200).json({ status: data.status, id: data.id, planGranted });
       return;
     }
 
