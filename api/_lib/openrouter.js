@@ -55,6 +55,7 @@ module.exports = async (req, res) => {
         model: model || 'openai/gpt-4o-mini',
         messages,
         temperature: 0.7,
+        max_tokens: 30000,
         stream: wantStream,
       }),
     });
