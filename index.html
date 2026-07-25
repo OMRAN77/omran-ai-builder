@@ -15991,7 +15991,7 @@ function openShareModal(project){
     const { fetchFile } = await import('/ffmpeg/util/index.js');
     ffmpeg.writeFile('v.mp4', await fetchFile(videoSrc));
     ffmpeg.writeFile('a.mp3', await fetchFile(audioBlob));
-    await ffmpeg.exec(['-i', 'v.mp4', '-i', 'a.mp3', '-c:v', 'copy', '-map', '0:v:0', '-map', '1:a:0', '-shortest', 'out2.mp4']);
+    await ffmpeg.exec(['-i', 'v.mp4', '-i', 'a.mp3', '-c:v', 'copy', '-map', '0:v:0', '-map', '1:a:0', 'out2.mp4']);
     const data = await ffmpeg.readFile('out2.mp4');
     return new Blob([data.buffer], { type: 'video/mp4' });
   }
@@ -16009,7 +16009,7 @@ function openShareModal(project){
       if(onProgress) onProgress(i, scenes.length);
       ffmpeg.writeFile('v' + i + '.mp4', await fetchFile(scenes[i].videoUrl));
       ffmpeg.writeFile('a' + i + '.mp3', await fetchFile(scenes[i].audioBlob));
-      await ffmpeg.exec(['-i', 'v' + i + '.mp4', '-i', 'a' + i + '.mp3', '-c:v', 'copy', '-map', '0:v:0', '-map', '1:a:0', '-shortest', 'm' + i + '.mp4']);
+      await ffmpeg.exec(['-i', 'v' + i + '.mp4', '-i', 'a' + i + '.mp3', '-c:v', 'copy', '-map', '0:v:0', '-map', '1:a:0', 'm' + i + '.mp4']);
       listTxt += "file 'm" + i + ".mp4'\n";
     }
     ffmpeg.writeFile('list.txt', listTxt);
