@@ -14012,10 +14012,16 @@ async function sendPrompt(){
       try{
         const __gp = getCurrent();
         const __ms = __gp ? __gp.messages : [];
-        const __lastA = [...__ms].reverse().find(m => m.role !== 'user');
-        if(__lastA && /تبيني\s*أبدأ|أبدأ\s*البناء|ابدأ\s*البناء|shall i start|want me to start/i.test(String(__lastA.content || ''))){
-          const __lastU = [...__ms].reverse().find(m => m.role === 'user' && GATE_BUILD_RE.test(String(m.apiText !== undefined ? m.apiText : (m.content || ''))) && GATE_CMD_RE.test(String(m.apiText !== undefined ? m.apiText : (m.content || ''))));
-          if(__lastU) __pend = String(__lastU.apiText !== undefined ? __lastU.apiText : __lastU.content);
+        // آخر طلب بناء كتبه المستخدم في هذا المشروع
+        const __lastU = [...__ms].reverse().find(m => {
+          const __t = String(m.apiText !== undefined ? m.apiText : (m.content || ''));
+          return m.role === 'user' && GATE_BUILD_RE.test(__t) && GATE_CMD_RE.test(__t);
+        });
+        if(__lastU){
+          const __idx = __ms.lastIndexOf(__lastU);
+          // إذا ما انبنى كود فعلي بعد ذلك الطلب → «ابدأ» معناها الموافقة على بنائه
+          const __builtAfter = __ms.slice(__idx + 1).some(m => m.role !== 'user' && m.code);
+          if(!__builtAfter) __pend = String(__lastU.apiText !== undefined ? __lastU.apiText : __lastU.content);
         }
       }catch(e){}
     }
