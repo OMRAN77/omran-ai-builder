@@ -14187,6 +14187,27 @@ async function sendPrompt(){
       try{
         const __vp = { promptText: text.slice(0, 900), duration: 5, ratio: '1280:720', token: authGet('aiapp_auth_token') };
         if(__vidSrc && __vidSrc.b64 && (__srcImg || __animateRe.test(text) || /منها|عليها|الصورة|صورتي|this image|the image|it/i.test(text))){
+          // Runway requires w/h ratio 0.5–2: pad the image if needed
+          try{
+            const __fixed = await new Promise((resolve) => {
+              const __im = new Image();
+              __im.onload = () => {
+                const __r2 = __im.width / __im.height;
+                if(__r2 >= 0.5 && __r2 <= 2) return resolve(null);
+                let __cw = __im.width, __ch = __im.height;
+                if(__r2 < 0.5) __cw = Math.ceil(__im.height * 0.52); else __ch = Math.ceil(__im.width * 0.52);
+                const __c = document.createElement('canvas');
+                __c.width = __cw; __c.height = __ch;
+                const __x = __c.getContext('2d');
+                __x.fillStyle = '#000'; __x.fillRect(0, 0, __cw, __ch);
+                __x.drawImage(__im, Math.round((__cw - __im.width) / 2), Math.round((__ch - __im.height) / 2));
+                resolve(__c.toDataURL('image/jpeg', 0.85).split(',')[1]);
+              };
+              __im.onerror = () => resolve(null);
+              __im.src = 'data:' + (__vidSrc.mime || 'image/png') + ';base64,' + __vidSrc.b64;
+            });
+            if(__fixed){ __vidSrc.b64 = __fixed; __vidSrc.mime = 'image/jpeg'; }
+          }catch(e){}
           __vp.imageBase64 = __vidSrc.b64;
           __vp.imageMime = __vidSrc.mime;
         }
@@ -16300,9 +16321,16 @@ function openShareModal(project){
         const max = 768;
         let w = img.width, h = img.height;
         if(Math.max(w, h) > max){ const k = max / Math.max(w, h); w = Math.round(w * k); h = Math.round(h * k); }
+        // Runway requires width/height ratio between 0.5 and 2 — pad if outside
+        let cw = w, ch = h;
+        if(w / h < 0.5) cw = Math.ceil(h * 0.52);
+        else if(w / h > 2) ch = Math.ceil(w * 0.52);
         const c = document.createElement('canvas');
-        c.width = w; c.height = h;
-        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        c.width = cw; c.height = ch;
+        const cx2 = c.getContext('2d');
+        cx2.fillStyle = '#000';
+        cx2.fillRect(0, 0, cw, ch);
+        cx2.drawImage(img, Math.round((cw - w) / 2), Math.round((ch - h) / 2), w, h);
         const dataUrl = c.toDataURL('image/jpeg', 0.85);
         filmHeroBase64 = dataUrl.split(',')[1];
         filmHeroMime = 'image/jpeg';
