@@ -14606,14 +14606,14 @@ async function sendPrompt(){
               '\n\nأنت المهندس الرئيسي والمدمج الذكي لفريق من نماذج ذكاء اصطناعي متعددة. أمامك مقترحات متعددة لنفس طلب المستخدم. مهمتك: حلّل المقترحات، وخذ أجمل تصميم وأقوى منطق وكل ميزة مفيدة ظهرت في أي مقترح، وتخلّص من الأخطاء والتكرار، ثم اكتب النسخة النهائية الواحدة فائقة الجودة كاملة من أول سطر إلى آخر سطر. يجب أن تكون النتيجة أفضل وأكمل من أي مقترح منفرد. أعد كودًا واحدًا كاملًا قابلًا للتشغيل داخل fence واحد، بدون شرح خارج الصندوق، وبدون اختصار أو وضع تعليقات بدل الكود.';
             const __moaUser = 'طلب المستخدم الأصلي: "' + String(__lastUserMsg).slice(0, 2000) + '"\n\n' + __parts.join('\n\n') + '\n\nاكتب الآن النسخة النهائية الكاملة المتفوقة.';
             const __mergePhaseStart = Date.now();
-            for(const mKey of ['claude', 'gemini', 'openai']){
+            for(const mKey of ['gemini', 'claude', 'openai']){
               if(mergeDone) break;
-              if(Date.now() - __mergePhaseStart > 300000) break;
+              if(Date.now() - __mergePhaseStart > 480000) break;
               try{
                 const __reply = await callWithWatchdog(mKey, [
                   { role: 'system', content: __moaSystem },
                   { role: 'user', content: __moaUser }
-                ], () => {}, 90000, 300000);
+                ], () => {}, 60000, 240000);
                 const { code: __mc, codeType: __mct, explanation: __mex } = extractReply(__reply || '');
                 if(!(__mc && looksCompleteCode(__mc, __mct) && __mc.length >= __base.code.length * 0.75)){
                   console.warn('[MoA] rejected from ' + mKey + ': len=' + (__mc ? __mc.length : 0) + ' base=' + __base.code.length + ' complete=' + (__mc ? looksCompleteCode(__mc, __mct) : false));
