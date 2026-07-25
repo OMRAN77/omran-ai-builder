@@ -31,7 +31,14 @@ module.exports = async (req, res) => {
       const v = samples[0].video || samples[0];
       uri = v.uri || v.videoUri || null;
     }
-    if (!uri) { res.status(200).json({ status: 'FAILED', failure: 'no video in response' }); return; }
+    if (!uri) {
+      let why = 'no video in response';
+      const rai = gvr.raiMediaFilteredReasons || r.raiMediaFilteredReasons;
+      if (rai && rai.length) why = 'filtered: ' + String(rai.join(' | ')).slice(0, 400);
+      else why += ' | raw: ' + JSON.stringify(r).slice(0, 300);
+      res.status(200).json({ status: 'FAILED', failure: why });
+      return;
+    }
     res.status(200).json({
       status: 'SUCCEEDED',
       output: ['/api/video?action=veo-download&uri=' + encodeURIComponent(uri)],

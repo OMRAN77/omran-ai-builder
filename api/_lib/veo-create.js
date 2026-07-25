@@ -36,7 +36,7 @@ module.exports = async (req, res) => {
       headers: { 'x-goog-api-key': apiKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         instances: [{ prompt }],
-        parameters: { aspectRatio },
+        parameters: { aspectRatio, personGeneration: 'allow_adult' },
       }),
     });
     const data = await upstream.json().catch(() => ({}));
