@@ -1,17 +1,14 @@
 // Vercel Serverless Function: full signup/login account system.
-// Each user is stored as its OWN blob file (db/users/{username}.json) in Vercel Blob
-// storage. This avoids any read-modify-write race across concurrent signups/logins
-// that a single shared JSON file would have (lost updates when two requests land
-// close together). Passwords are NEVER stored in plain text — scrypt hash + random
-// salt per user. Sessions are signed tokens (HMAC-SHA256) — no plaintext secrets
-// ever reach the client.
+// Each user is stored as its OWN JSON record (db/users/{username}.json) in
+// Upstash Redis. This avoids any read-modify-write race across concurrent
+// signups/logins that a single shared JSON file would have (lost updates
+// when two requests land close together). Passwords are NEVER stored in
+// plain text — scrypt hash + random salt per user. Sessions are signed
+// tokens (HMAC-SHA256) — no plaintext secrets ever reach the client.
 const crypto = require('crypto');
+const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
-const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
 const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
-const BLOB_BASE = 'https://blob.vercel-storage.com';
-const STORE_ID = process.env.BLOB_STORE_ID || '6tfgxvttzyoiavtu';
-const PUBLIC_BASE = 'https://' + STORE_ID + '.public.blob.vercel-storage.com/';
 
 function userPath(key) {
   // key must already be the normalized (lowercased, trimmed) username.
@@ -20,15 +17,14 @@ function userPath(key) {
 
 // ---------------------------------------------------------------------------
 // At-rest encryption for user records.
-// db/users/{username}.json lives on Vercel Blob's PUBLIC read URL (needed so
-// serverless functions can read it without an extra signed-URL round trip),
-// which means anyone who knows/guesses a username can otherwise download the
-// raw JSON directly — including the password hash+salt, the recovery code
-// hash+salt, and the email. To close that hole, every record is encrypted
-// with AES-256-GCM using a key derived from AUTH_SECRET before it's written,
-// and decrypted on read. Legacy plaintext records (written before this
-// change) are still readable for backward compatibility and get
-// transparently re-encrypted the next time putUser() is called on them.
+// db/users/{username}.json is stored in Redis, reachable by any server
+// function that knows the key derivation — to keep the same defense in
+// depth as before (in case of any future public-read exposure), every
+// record is still encrypted with AES-256-GCM using a key derived from
+// AUTH_SECRET before it's written, and decrypted on read. Legacy plaintext
+// records (written before this change) are still readable for backward
+// compatibility and get transparently re-encrypted the next time
+// putUser() is called on them.
 const ENC_KEY = crypto.createHash('sha256').update(AUTH_SECRET).digest(); // 32 bytes -> aes-256-gcm
 
 function encryptUserBlob(obj) {
@@ -36,7 +32,7 @@ function encryptUserBlob(obj) {
   const cipher = crypto.createCipheriv('aes-256-gcm', ENC_KEY, iv);
   const data = Buffer.concat([cipher.update(JSON.stringify(obj), 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
-  return JSON.stringify({ enc: 1, iv: iv.toString('base64'), tag: tag.toString('base64'), data: data.toString('base64') });
+  return { enc: 1, iv: iv.toString('base64'), tag: tag.toString('base64'), data: data.toString('base64') };
 }
 
 function decryptUserBlob(encObj) {
@@ -88,9 +84,8 @@ function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
 async function getUserOnce(key) {
   try {
-    const res = await fetch(PUBLIC_BASE + userPath(key) + '?_=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) return null;
-    const parsed = await res.json();
+    const parsed = await kvGetJSON(userPath(key));
+    if (!parsed) return null;
     if (parsed && parsed.enc === 1) {
       try {
         return decryptUserBlob(parsed);
@@ -107,9 +102,9 @@ async function getUserOnce(key) {
   }
 }
 
-// Vercel Blob's public read URL is eventually consistent — a blob written a
-// moment ago (e.g. right after signup/reset) can briefly 404 on read. Retry a
-// few times with short backoff to smooth over that window before giving up.
+// Redis reads are strongly consistent, but keep the retry loop (now a no-op
+// in practice) so callers relying on getUser()'s multi-attempt signature
+// keep working unchanged.
 async function getUser(key, attempts) {
   attempts = attempts || 4;
   for (let i = 0; i < attempts; i++) {
@@ -121,16 +116,7 @@ async function getUser(key, attempts) {
 }
 
 async function putUser(key, user) {
-  await fetch(BLOB_BASE + '/' + userPath(key), {
-    method: 'PUT',
-    headers: {
-      Authorization: 'Bearer ' + BLOB_TOKEN,
-      'x-content-type': 'application/json',
-      'x-add-random-suffix': '0',
-      'x-cache-control-max-age': '0',
-    },
-    body: encryptUserBlob(user),
-  });
+  await kvPutJSON(userPath(key), encryptUserBlob(user));
 }
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -182,8 +168,8 @@ module.exports = async (req, res) => {
     res.status(405).json({ error: 'Method not allowed' });
     return;
   }
-  if (!BLOB_TOKEN) {
-    res.status(500).json({ error: 'Server is missing BLOB_READ_WRITE_TOKEN' });
+  if (!process.env.UPSTASH_REDIS_REST_URL) {
+    res.status(500).json({ error: 'Server is missing UPSTASH_REDIS_REST_URL' });
     return;
   }
 

@@ -1,19 +1,18 @@
 // Vercel Serverless Function: OWNER-ONLY dashboard stats.
-// Reads the Blob store's own user/usage index and returns an aggregated
+// Reads the Redis-backed user/usage index and returns an aggregated
 // summary. Never exposed to regular users — the caller's session token is
 // verified server-side and must belong to OWNER_USERNAME, independent of
 // whatever the frontend hides/shows.
 const crypto = require('crypto');
 const { getUserOnce } = require('./auth.js');
+const { kvList, kvGetJSON } = require('./kv.js');
 
 const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
-const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
-const BLOB_BASE = 'https://blob.vercel-storage.com';
 const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').trim().toLowerCase();
 
 // User records are stored encrypted at rest (see auth.js). Always go through
-// auth.js's getUserOnce() (which transparently decrypts) instead of fetching
-// the raw blob directly - reading it here would just return ciphertext.
+// auth.js's getUserOnce() (which transparently decrypts) instead of reading
+// the raw key directly - reading it here would just return ciphertext.
 async function getUserRecord(key) {
   return getUserOnce(key);
 }
@@ -33,25 +32,6 @@ function verifyToken(token) {
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
-}
-
-async function listAll(prefix, maxPages) {
-  const out = [];
-  let cursor;
-  let pages = 0;
-  do {
-    const url = new URL(BLOB_BASE + '/');
-    url.searchParams.set('prefix', prefix);
-    url.searchParams.set('limit', '1000');
-    if (cursor) url.searchParams.set('cursor', cursor);
-    const res = await fetch(url.toString(), { headers: { Authorization: 'Bearer ' + BLOB_TOKEN } });
-    if (!res.ok) break;
-    const data = await res.json();
-    out.push(...(data.blobs || []));
-    cursor = data.hasMore ? data.cursor : null;
-    pages++;
-  } while (cursor && pages < (maxPages || 25));
-  return out;
 }
 
 // Obvious internal/test accounts created while building the app, so the
@@ -75,24 +55,35 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const [userBlobs, tallyBlobs] = await Promise.all([
-      listAll('db/users/', 25),
-      listAll('db/usage/tally/', 25),
+    const [userKeys, tallyKeys] = await Promise.all([
+      kvList('db/users/'),
+      kvList('db/usage/tally/'),
     ]);
 
     const today = todayStr();
-    const users = userBlobs
-      .map((b) => {
-        const raw = decodeURIComponent(String(b.pathname).replace(/^db\/users\//, '').replace(/\.json$/, ''));
-        return { username: raw, lastWrite: b.uploadedAt, size: b.size };
-      })
-      .filter((u) => u.username);
+
+    // Note: Redis has no built-in "last write" metadata like Blob did, so
+    // signup/activity date now comes from each user record's own createdAt
+    // field (recorded at signup) instead of the storage layer's upload
+    // timestamp. This means "lastWrite" below reflects signup time, not the
+    // most recent profile update.
+    const userRecords = await Promise.all(userKeys.map(async (k) => {
+      const raw = decodeURIComponent(String(k).replace(/^db\/users\//, '').replace(/\.json$/, ''));
+      if (!raw) return null;
+      const rec = await getUserRecord(raw).catch(() => null);
+      return {
+        username: raw,
+        lastWrite: rec && rec.createdAt ? new Date(rec.createdAt).toISOString() : null,
+        rec,
+      };
+    }));
+    const users = userRecords.filter(Boolean);
 
     const realUsers = users.filter((u) => !isTestUsername(u.username));
     const testUsers = users.filter((u) => isTestUsername(u.username));
 
-    // Signups/activity bucketed by day (based on blob's last-write date —
-    // this file is (re)written on signup and on profile updates).
+    // Signups/activity bucketed by day (based on the user record's own
+    // createdAt field).
     const byDay = {};
     realUsers.forEach((u) => {
       const day = String(u.lastWrite || '').slice(0, 10);
@@ -100,28 +91,31 @@ module.exports = async (req, res) => {
       byDay[day] = (byDay[day] || 0) + 1;
     });
 
-    // Usage tally: key = username_YYYY-MM-DD_provider (one marker file per
-    // consumed message). Parse from the right so usernames with underscores
-    // still work.
+    // Usage tally keys look like: db/usage/tally/<username_YYYY-MM-DD_provider>/<YYYY-MM-DD>
+    // (one Redis counter per user+day+provider, see _usage.js). Each key's
+    // VALUE is the message count for that day (not one entry per message
+    // anymore), so totals are summed from the counter values.
     let totalMessagesAllTime = 0;
     let messagesToday = 0;
     const perProviderToday = {};
     const perUserToday = {};
-    tallyBlobs.forEach((b) => {
-      const raw = decodeURIComponent(String(b.pathname).replace(/^db\/usage\/tally\//, ''));
-      const key = raw.split('/')[0];
-      const parts = key.split('_');
+    await Promise.all(tallyKeys.map(async (k) => {
+      const raw = decodeURIComponent(String(k).replace(/^db\/usage\/tally\//, ''));
+      const compositeKey = raw.split('/')[0];
+      const parts = compositeKey.split('_');
       if (parts.length < 3) return;
       const provider = parts.pop();
       const date = parts.pop();
       const uname = parts.join('_');
-      totalMessagesAllTime++;
+      const rawVal = await kvGetJSON(k).catch(() => null);
+      const count = typeof rawVal === 'number' ? rawVal : (parseInt(rawVal, 10) || 0);
+      totalMessagesAllTime += count;
       if (date === today) {
-        messagesToday++;
-        perProviderToday[provider] = (perProviderToday[provider] || 0) + 1;
-        perUserToday[uname] = (perUserToday[uname] || 0) + 1;
+        messagesToday += count;
+        perProviderToday[provider] = (perProviderToday[provider] || 0) + count;
+        perUserToday[uname] = (perUserToday[uname] || 0) + count;
       }
-    });
+    }));
 
     const topUsersToday = Object.entries(perUserToday)
       .sort((a, b) => b[1] - a[1])
@@ -129,22 +123,18 @@ module.exports = async (req, res) => {
       .map(([u, c]) => ({ username: u, messages: c }));
 
     // Full manageable-users list (real accounts only, capped) with live
-    // banned/email status fetched from each user's own record — needed to
+    // banned/email status from the already-fetched record — needed to
     // render ban/unban/delete/message controls in the owner's panel.
-    const manageCandidates = realUsers
+    const manageableUsers = realUsers
       .filter((u) => u.username !== OWNER_USERNAME)
-      .sort((a, b) => new Date(b.lastWrite) - new Date(a.lastWrite))
-      .slice(0, 60);
-    const manageableUsers = (await Promise.all(manageCandidates.map(async (u) => {
-      const key = u.username.trim().toLowerCase();
-      const rec = await getUserRecord(key);
-      return {
+      .sort((a, b) => new Date(b.lastWrite || 0) - new Date(a.lastWrite || 0))
+      .slice(0, 60)
+      .map((u) => ({
         username: u.username,
         lastWrite: u.lastWrite,
-        email: rec ? (rec.email || null) : null,
-        banned: !!(rec && rec.banned),
-      };
-    }))).filter(Boolean);
+        email: u.rec ? (u.rec.email || null) : null,
+        banned: !!(u.rec && u.rec.banned),
+      }));
 
     res.statusCode = 200;
     res.setHeader('Content-Type', 'application/json');
@@ -155,7 +145,8 @@ module.exports = async (req, res) => {
       testAccounts: testUsers.length,
       signupsByDay: byDay,
       recentUsers: realUsers
-        .sort((a, b) => new Date(b.lastWrite) - new Date(a.lastWrite))
+        .map((u) => ({ username: u.username, lastWrite: u.lastWrite }))
+        .sort((a, b) => new Date(b.lastWrite || 0) - new Date(a.lastWrite || 0))
         .slice(0, 25),
       messagesToday,
       totalMessagesAllTime,

@@ -5,7 +5,6 @@ const crypto = require('crypto');
 const { getUser, putUser } = require('./auth.js');
 
 const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
-const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
 const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').trim().toLowerCase();
 
 function verifyToken(token) {
@@ -22,7 +21,7 @@ function verifyToken(token) {
 }
 
 // getUser/putUser now come from auth.js, which stores/reads user records
-// encrypted at rest (AES-256-GCM) instead of as raw public-blob JSON.
+// encrypted at rest (AES-256-GCM) instead of as raw JSON.
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -30,7 +29,7 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
-  if (!BLOB_TOKEN) { res.status(500).json({ error: 'Server is missing BLOB_READ_WRITE_TOKEN' }); return; }
+  if (!process.env.UPSTASH_REDIS_REST_URL) { res.status(500).json({ error: 'Server is missing UPSTASH_REDIS_REST_URL' }); return; }
 
   try {
     let body = req.body;

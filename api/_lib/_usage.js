@@ -1,16 +1,14 @@
 // Shared helper for the free server-proxied providers (Groq / OpenAI / Claude),
 // which run on the site owner's own API keys. Enforces a daily message cap per
 // logged-in account so a single account can't run up the owner's bill. Usage is
-// stored as one small JSON blob per user (db/usage/<username>.json), separate
-// from the account record in db/users/, and resets automatically each day (UTC).
+// tracked as one Redis counter per user+day+provider (db/usage/tally/<key>/<date>),
+// separate from the account record in db/users/, and resets automatically each
+// day (UTC) via a 2-day TTL on the counter key.
 const crypto = require('crypto');
 const { getUser, putUser } = require('./auth.js');
+const { kvIncr, kvExpire, kvGetJSON } = require('./kv.js');
 
 const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
-const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
-const BLOB_BASE = 'https://blob.vercel-storage.com';
-const STORE_ID = process.env.BLOB_STORE_ID || '6tfgxvttzyoiavtu';
-const PUBLIC_BASE = 'https://' + STORE_ID + '.public.blob.vercel-storage.com/';
 
 // Combined daily limit shared across all three free server-proxied providers
 // (Groq + OpenAI + Claude), per logged-in account.
@@ -39,58 +37,40 @@ function verifyToken(token) {
   }
 }
 
-function tallyPrefix(key) {
-  return 'db/usage/tally/' + encodeURIComponent(key) + '/';
+function tallyKey(key) {
+  return 'db/usage/tally/' + encodeURIComponent(key) + '/' + todayStr();
 }
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
 }
 
-// Counts how many "tally" marker files exist for this key (one file gets
-// written per consumed message; see addTally below). Uses the blob store's
-// own list API (queried against the store directly) instead of reading a
-// single counter file through the public CDN — reading+overwriting one file
-// was prone to occasionally serving a few-seconds-stale cached count under
-// quick repeated requests, letting more messages through than the limit
-// allows. Listing distinct per-message files sidesteps that entirely: each
-// message is its own new object, so there is nothing to overwrite and
-// nothing stale to read.
+// Reads today's message count for this key via a single Redis counter
+// (INCR-based). GET on the counter key returns its value as a string;
+// missing key -> 0.
 async function countTally(key) {
   try {
-    let count = 0;
-    let cursor;
-    do {
-      const url = new URL(BLOB_BASE + '/');
-      url.searchParams.set('prefix', tallyPrefix(key));
-      url.searchParams.set('limit', '1000');
-      if (cursor) url.searchParams.set('cursor', cursor);
-      const res = await fetch(url.toString(), {
-        headers: { Authorization: 'Bearer ' + BLOB_TOKEN },
-      });
-      if (!res.ok) break;
-      const data = await res.json();
-      count += (data.blobs || []).length;
-      cursor = data.hasMore ? data.cursor : null;
-    } while (cursor);
-    return count;
+    const raw = await kvGetJSON(tallyKey(key));
+    // kvGetJSON attempts JSON.parse; a bare integer string like "3" parses
+    // fine to the number 3. Anything unparsable/missing comes back as null.
+    const n = typeof raw === 'number' ? raw : parseInt(raw, 10);
+    return Number.isFinite(n) ? n : 0;
   } catch (e) {
     return 0;
   }
 }
 
+// Increments today's counter for this key by one message. Sets a 2-day
+// expiry on first increment so stale counters never accumulate forever
+// (the daily limit naturally resets at UTC midnight since the key itself
+// is date-scoped).
 async function addTally(key) {
   try {
-    const marker = tallyPrefix(key) + Date.now() + '-' + crypto.randomBytes(4).toString('hex') + '.json';
-    await fetch(BLOB_BASE + '/' + marker, {
-      method: 'PUT',
-      headers: {
-        Authorization: 'Bearer ' + BLOB_TOKEN,
-        'x-content-type': 'application/json',
-        'x-add-random-suffix': '0',
-      },
-      body: '1',
-    });
+    const k = tallyKey(key);
+    const newVal = await kvIncr(k);
+    if (newVal === 1) {
+      await kvExpire(k, 172800); // 2 days
+    }
   } catch (e) {
     // Best-effort: if this fails, worst case is one extra free message slips
     // through today — never block the actual AI request over a bookkeeping write.

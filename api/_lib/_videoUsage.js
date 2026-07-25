@@ -2,16 +2,13 @@
 // the site owner's own API key and costs real money per second of video
 // generated. Because of that cost, video generation REQUIRES a logged-in
 // account (no guest/anonymous access) and is capped to a small number of
-// videos per day per account. Usage is stored as one small JSON blob per
+// videos per day per account. Usage is stored as one small JSON record per
 // user (db/video-usage/<username>.json), separate from chat usage in
 // db/usage/, and resets automatically each day (UTC).
 const crypto = require('crypto');
+const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
 const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
-const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
-const BLOB_BASE = 'https://blob.vercel-storage.com';
-const STORE_ID = process.env.BLOB_STORE_ID || '6tfgxvttzyoiavtu';
-const PUBLIC_BASE = 'https://' + STORE_ID + '.public.blob.vercel-storage.com/';
 
 // During the free testing phase, keep this small: each generated video
 // (a few seconds at Gen-4/Veo 3 pricing) costs the owner real money.
@@ -39,27 +36,12 @@ function todayStr() {
 }
 
 async function getUsage(username) {
-  try {
-    const res = await fetch(PUBLIC_BASE + usagePath(username) + '?_=' + Date.now(), { cache: 'no-store' });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch (e) {
-    return null;
-  }
+  return kvGetJSON(usagePath(username));
 }
 
 async function putUsage(username, usage) {
   try {
-    await fetch(BLOB_BASE + '/' + usagePath(username), {
-      method: 'PUT',
-      headers: {
-        Authorization: 'Bearer ' + BLOB_TOKEN,
-        'x-content-type': 'application/json',
-        'x-add-random-suffix': '0',
-        'x-cache-control-max-age': '0',
-      },
-      body: JSON.stringify(usage),
-    });
+    await kvPutJSON(usagePath(username), usage);
   } catch (e) {
     // Best-effort bookkeeping; never block on a write failure here.
   }
