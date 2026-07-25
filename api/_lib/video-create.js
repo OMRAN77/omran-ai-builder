@@ -116,7 +116,9 @@ module.exports = async (req, res) => {
 
     const data = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {
-      res.status(upstream.status).json({ error: 'Runway error: ' + (data.error || JSON.stringify(data)).toString().slice(0, 500) });
+      // Always include Runway's FULL response body (it puts the useful
+      // validation details in extra fields, not just in .error).
+      res.status(upstream.status).json({ error: 'Runway error: ' + JSON.stringify(data).slice(0, 700) });
       return;
     }
 

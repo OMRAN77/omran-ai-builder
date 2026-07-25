@@ -3853,6 +3853,32 @@ const messagesEl = $('#messages');
   });
   b.addEventListener('click', () => messagesEl.scrollTo({ top: 0, behavior: 'smooth' }));
 })();
+// 🕰️ ساعة حية تظهر تحت آخر رسالة في المحادثة (تختفي إذا كانت المحادثة فاضية)
+(function(){
+  const clock = document.createElement('div');
+  clock.id = 'chatLiveClock';
+  clock.style.cssText = 'text-align:center; font-size:12px; color:var(--muted,#8a8a9a); padding:6px 0 2px; user-select:none; direction:ltr;';
+  function fmt(){
+    const d = new Date();
+    let h = d.getHours();
+    const m = String(d.getMinutes()).padStart(2, '0');
+    const suffix = h >= 12 ? 'م' : 'ص';
+    h = h % 12 || 12;
+    return '🕰️ ' + h + ':' + m + ' ' + suffix;
+  }
+  function tick(){
+    if(!messagesEl) return;
+    const kids = Array.from(messagesEl.children).filter((el) => el !== clock);
+    if(kids.length === 0){
+      if(clock.parentNode) clock.remove();
+      return;
+    }
+    clock.textContent = fmt();
+    if(messagesEl.lastElementChild !== clock) messagesEl.appendChild(clock);
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
 const codeEl = $('#code');
 const previewFrame = $('#previewFrame');
 const emptyState = $('#emptyState');
