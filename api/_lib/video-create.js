@@ -75,12 +75,11 @@ module.exports = async (req, res) => {
     // Runway only accepts 5 or 10 seconds — snap anything else
     finalDuration = finalDuration <= 7 ? 5 : 10;
 
-    let finalPrompt = String(promptText).trim().slice(0, 950);
-    if (style === 'anime') {
-      finalPrompt += ', anime and cartoon animation style, 2D animated, vibrant colors';
-    } else {
-      finalPrompt += ', cinematic realistic footage, photorealistic, high detail';
-    }
+    const styleSuffix = (style === 'anime')
+      ? ', anime and cartoon animation style, 2D animated, vibrant colors'
+      : ', cinematic realistic footage, photorealistic, high detail';
+    // Runway hard limit: promptText <= 1000 chars TOTAL (base + suffix)
+    let finalPrompt = String(promptText).trim().slice(0, 1000 - styleSuffix.length) + styleSuffix;
 
     // Auto-cancel any previous stuck task on this key so it doesn't hog the
     // account's single concurrency slot forever (see runway-keys.js).
