@@ -10712,6 +10712,18 @@ const CHAT_STYLE_RULE = '\nCHAT STYLE RULE (mandatory): outside the single fence
 + '\nQUESTION RULE (mandatory): if the user asks a question or wants a discussion, ONLY answer it. Do NOT offer to build an app, do NOT produce code, and do NOT list app screens unless the user explicitly commanded you to build something.';
 
 // تنظيف نص المحادثة: يشيل أي كود متبقي (مسيّج أو خام) حتى لا يظهر في الدردشة.
+// 🔒 أثناء البث الحي: أول ما يبدأ المزود يكتب كودًا (سياج ``` أو HTML خام)
+// نقص العرض عند بداية الكود ونظهر مؤشر "يكتب الكود" بدل عرض الكود في المحادثة.
+function liveStripCode(text){
+  if(!text) return '';
+  const i = text.search(/```|<!doctype html|<html[\s>]/i);
+  if(i === -1) return text;
+  const before = text.slice(0, i).trim();
+  const lang = localStorage.getItem('aiapp_lang') || 'ar';
+  const label = (lang === 'ar') ? '⏳ يكتب الكود الآن…' : '⏳ Writing the code…';
+  return (before ? before + '\n\n' : '') + label;
+}
+
 function stripCodeFromChat(text){
   if(!text) return '';
   let out = String(text)
@@ -14482,7 +14494,10 @@ async function sendPrompt(){
       const streamOne = async (p, msg) => {
         const onDelta = (partial) => {
           const st = ensureRevealTimer(msg);
-          st.target = partial;
+          // ✂️ لا يظهر الكود الخام في فقاعة المحادثة أثناء البث أبدًا
+          const stripped = liveStripCode(partial);
+          if(st.target && stripped.length < st.target.length) st.shown = Math.min(st.shown, Math.max(0, stripped.length - 1));
+          st.target = stripped;
         };
         try{
           const reply = await callWithWatchdog(p.key, apiMessages, onDelta, 90000, 330000);
@@ -14854,7 +14869,7 @@ async function sendPrompt(){
       // bubble; once the full reply is done, extractReply() runs on the
       // complete text and renderAll() takes over with proper formatting/code.
       const onDelta = (partial) => {
-        thinkingDiv.textContent = partial;
+        thinkingDiv.textContent = liveStripCode(partial);
         messagesEl.scrollTop = messagesEl.scrollHeight;
       };
       // نقاش → Gemini المجاني (مدرَّب بأسلوب قوي)؛ إصلاح → Claude Sonnet
