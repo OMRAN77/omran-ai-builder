@@ -71,8 +71,9 @@ module.exports = async (req, res) => {
     const allowedRatios = ['1280:720', '720:1280'];
     const finalRatio = allowedRatios.includes(ratio) ? ratio : '1280:720';
     let finalDuration = parseInt(duration, 10);
-    if (!Number.isFinite(finalDuration) || finalDuration < 2) finalDuration = 5;
-    if (finalDuration > 10) finalDuration = 10;
+    if (!Number.isFinite(finalDuration)) finalDuration = 5;
+    // Runway only accepts 5 or 10 seconds — snap anything else
+    finalDuration = finalDuration <= 7 ? 5 : 10;
 
     let finalPrompt = String(promptText).trim().slice(0, 950);
     if (style === 'anime') {
