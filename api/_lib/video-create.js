@@ -27,7 +27,7 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { promptText, ratio, duration, style, token, longMode } = body;
+    const { promptText, ratio, duration, style, token, longMode, imageBase64, imageMime } = body;
 
     if (!promptText || !String(promptText).trim()) {
       res.status(400).json({ error: 'Missing promptText' });
@@ -85,19 +85,33 @@ module.exports = async (req, res) => {
     // account's single concurrency slot forever (see runway-keys.js).
     await clearStuckTask(picked.index, apiKey);
 
-    const upstream = await fetch('https://api.dev.runwayml.com/v1/text_to_video', {
+    // 🎬 صورة مرفقة → image_to_video (تحريك الصورة نفسها)، بدونها → text_to_video
+    const useImage = !!(imageBase64 && String(imageBase64).length > 50);
+    const endpoint = useImage
+      ? 'https://api.dev.runwayml.com/v1/image_to_video'
+      : 'https://api.dev.runwayml.com/v1/text_to_video';
+    const upstreamBody = useImage
+      ? {
+          model: 'gen4_turbo',
+          promptImage: 'data:' + (imageMime || 'image/png') + ';base64,' + imageBase64,
+          promptText: finalPrompt,
+          ratio: finalRatio,
+          duration: finalDuration,
+        }
+      : {
+          model: 'gen4.5',
+          promptText: finalPrompt,
+          ratio: finalRatio,
+          duration: finalDuration,
+        };
+    const upstream = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Authorization': 'Bearer ' + apiKey,
         'Content-Type': 'application/json',
         'X-Runway-Version': RUNWAY_VERSION,
       },
-      body: JSON.stringify({
-        model: 'gen4.5',
-        promptText: finalPrompt,
-        ratio: finalRatio,
-        duration: finalDuration,
-      }),
+      body: JSON.stringify(upstreamBody),
     });
 
     const data = await upstream.json().catch(() => ({}));

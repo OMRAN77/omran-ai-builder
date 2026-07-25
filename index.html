@@ -8869,7 +8869,24 @@ function renderMessages(keepScroll){
       const wrap = document.createElement('div');
       wrap.className = 'msg-attachments';
       m.attachments.forEach(a => {
-        if(a.isImage && a.purged){
+        if(a.isVideo && a.url){
+          const vid = document.createElement('video');
+          vid.src = a.url;
+          vid.controls = true;
+          vid.playsInline = true;
+          vid.style.maxWidth = 'min(320px, 100%)';
+          vid.style.borderRadius = '10px';
+          wrap.appendChild(vid);
+          const dl = document.createElement('a');
+          dl.href = a.url;
+          dl.download = a.name || 'video.mp4';
+          dl.target = '_blank';
+          dl.className = 'file-chip';
+          dl.textContent = '⬇️ ' + (lang === 'ar' ? 'تنزيل الفيديو' : 'Download video');
+          dl.style.textDecoration = 'none';
+          dl.style.alignSelf = 'center';
+          wrap.appendChild(dl);
+        } else if(a.isImage && a.purged){
           const chip = document.createElement('div');
           chip.className = 'file-chip';
           chip.textContent = '🗑️ ' + t('imagePurgedNote');
@@ -14024,6 +14041,67 @@ async function sendPrompt(){
     const __followUp = !__srcImg && cur.lastEditedImage && cur.lastMsgWasImageEdit;
     // 🏠 طلب توليد صورة جديدة انطلاقًا من صورة مرفقة (مثال: مخطط منزل + "عطني تصميم خارجي")
     const __imgGenIntentRe = /(عطني|أعطني|اعطني|هات|ابا|أبا|ابي|أبي|ابغي|أبغي|اريد|أريد|سو|سوي|سوّي|اعمل|أعمل|give me|make me|i want|show me)\s+(?:لي\s+)?.{0,20}?(تصميم|تصور|منظر|واجهة|صورة|رسمة|شكل|design|render|view|image|picture|visual)/i;
+    // 🎬 فيديو من المحادثة مباشرة: صورة + "سوي فيديو/حركها" → Runway image_to_video،
+    // وبدون صورة مع طلب فيديو صريح → text_to_video. (كل الأقسام في مكان واحد)
+    const __videoWordRe = /فيديو|ڤيديو|\bvideo\b/i;
+    const __animateRe = /(حرك|حرّك|animate)/i;
+    const __vidSrc = __srcImg
+      ? { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' }
+      : (cur.lastEditedImage ? { b64: cur.lastEditedImage.b64, mime: cur.lastEditedImage.mime || 'image/png' } : null);
+    const __wantsVideo = !!text && !__codeWordRe.test(text) && (
+      (__videoWordRe.test(text) && __routeCmdRe.test(text)) ||
+      (!!__vidSrc && (__srcImg || cur.lastMsgWasImageEdit) && __animateRe.test(text))
+    );
+    if(__wantsVideo){
+      thinkingDiv.textContent = lang === 'ar' ? '🎬 جاري إنشاء الفيديو… قد يستغرق ١–٣ دقائق' : '🎬 Creating video… this can take 1–3 minutes';
+      try{
+        const __vp = { promptText: text.slice(0, 900), duration: 5, ratio: '1280:720', token: authGet('aiapp_auth_token') };
+        if(__vidSrc && __vidSrc.b64 && (__srcImg || __animateRe.test(text) || /منها|عليها|الصورة|صورتي|this image|the image|it/i.test(text))){
+          __vp.imageBase64 = __vidSrc.b64;
+          __vp.imageMime = __vidSrc.mime;
+        }
+        let __vid = null, __verr = '';
+        for(let __a = 0; __a < 2 && !__vid; __a++){
+          const __r = await fetch('/api/video-create', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            signal: genAbortController.signal,
+            body: JSON.stringify(__vp),
+          });
+          const __d = await __r.json().catch(() => ({}));
+          if(__r.ok && __d.id){ __vid = __d.id; }
+          else {
+            __verr = (__d && __d.error) || ('HTTP ' + __r.status);
+            if(__verr === 'auth_required' || __verr === 'daily_limit_reached') break;
+            if(__a === 0) await new Promise(r => setTimeout(r, 6000));
+          }
+        }
+        if(!__vid){
+          if(__verr === 'auth_required') throw new Error(lang === 'ar' ? 'سجّل الدخول أولًا عشان أسوي لك الفيديو.' : 'Please log in first to create videos.');
+          if(__verr === 'daily_limit_reached') throw new Error(lang === 'ar' ? 'وصلت حد الفيديوهات اليومي، جرّب بكرة.' : 'Daily video limit reached, try again tomorrow.');
+          throw new Error(__verr);
+        }
+        let __vurl = null;
+        const __vt0 = Date.now();
+        while(!__vurl){
+          if(Date.now() - __vt0 > 6 * 60 * 1000) throw new Error(lang === 'ar' ? 'تأخر إنشاء الفيديو، جرّب مرة ثانية.' : 'Video generation timed out, please try again.');
+          await new Promise(r => setTimeout(r, 5000));
+          if(genAbortController.signal.aborted) throw Object.assign(new Error('aborted'), { name: 'AbortError' });
+          const __sr = await fetch('/api/video-status?id=' + encodeURIComponent(__vid), { signal: genAbortController.signal });
+          const __sd = await __sr.json().catch(() => ({}));
+          if(__sd.status === 'SUCCEEDED'){ __vurl = Array.isArray(__sd.output) ? __sd.output[0] : __sd.output; }
+          else if(__sd.status === 'FAILED'){ throw new Error((lang === 'ar' ? 'فشل إنشاء الفيديو' : 'Video generation failed') + (__sd.failure ? (' — ' + __sd.failure) : '')); }
+          else { thinkingDiv.textContent = (lang === 'ar' ? '🎬 جاري إنشاء الفيديو… ' : '🎬 Creating video… ') + (__sd.status || ''); }
+        }
+        cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? '🎬 فيديوك جاهز ✅ (الرابط صالح ٢٤ ساعة — نزّله عشان يظل عندك)' : '🎬 Your video is ready ✅ (link valid 24h — download it to keep it)'), attachments: [{ name: 'video.mp4', isVideo: true, url: __vurl }] });
+      }catch(e){
+        if(!(e && e.name === 'AbortError')){
+          cur.messages.push({ role: 'assistant', content: '⚠️ ' + (e && e.message ? e.message : String(e)) });
+        }
+      }
+      cur.lastMsgWasImageEdit = false;
+      renderAll(); saveState();
+      return;
+    }
     if(text && (__imgEditRe.test(text) || __imgGenIntentRe.test(text)) && !__codeWordRe.test(text) && (__srcImg || __followUp)){
       thinkingDiv.textContent = lang === 'ar' ? '🖼️ جاري تعديل الصورة…' : '🖼️ Editing image…';
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : cur.lastEditedImage.b64;
