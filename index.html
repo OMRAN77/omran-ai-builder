@@ -14708,10 +14708,15 @@ async function sendPrompt(){
         if(mergeMsg.code){
           // 🔁 التصحيح الذاتي: فحص الكود المدموج وإصلاح أخطائه قبل العرض
           try{
-            const healed = await selfHealCode(mergeMsg.code, mergeMsg.codeType, () => {
-              mergeMsg.content = t('selfHealing');
-              renderMessages(true);
-            });
+            // ⏱️ سقف زمني: الإصلاح الذاتي ما يحبس النتيجة النهائية أبدًا —
+            // إذا تجاوز 120 ثانية نعرض الكود كما هو (وهو أصلًا كامل وصالح).
+            const healed = await Promise.race([
+              selfHealCode(mergeMsg.code, mergeMsg.codeType, () => {
+                mergeMsg.content = t('selfHealing');
+                renderMessages(true);
+              }),
+              new Promise(res => setTimeout(() => res(null), 120000))
+            ]);
             if(healed && healed !== mergeMsg.code){
               mergeMsg.code = healed;
               cur.code = healed;
