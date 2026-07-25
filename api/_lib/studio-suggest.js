@@ -89,7 +89,7 @@ module.exports = async (req, res) => {
       { inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } },
     ];
 
-    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey;
+    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey;
     const upstream = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -14540,10 +14540,18 @@ async function sendPrompt(){
     }
     // 🖼️ تعديل الصور بالأوامر النصية: صورة مرفقة + طلب تعديل → Gemini يرجع الصورة معدّلة
     // Follow-up edits on the same image work too ("زين، الحين كبّر الخط").
-    const __imgEditRe = /(عدل|عدّل|غير|غيّر|ضيف|أضف|اضف|حط|امسح|احذف|ازل|أزل|اجعل|خل|لون|لوّن|كبر|كبّر|صغر|صغّر|زخرف|اكتب|ارسم|حسن|حسّن|edit|change|add|put|remove|erase|make|recolor|write|draw|enhance)/i;
+    const __imgEditRe = /(عدل|عدّل|غير|غيّر|ضيف|أضف|اضف|حط|امسح|احذف|ازل|أزل|اجعل|خل|لون|لوّن|كبر|كبّر|صغر|صغّر|زخرف|اكتب|ارسم|حسن|حسّن|حول|حوّل|صمم|صمّم|نسق|نسّق|رتب|رتّب|ديكور|edit|change|add|put|remove|erase|make|recolor|write|draw|enhance|convert|transform|redesign|restyle|decor)/i;
     const __codeWordRe = /(كود|تطبيق|موقع|صفحة|زر\s|لعبة|سكربت|code|app|website|page|button|game|script)/i;
     const __srcImg = imageAttachments.length ? imageAttachments[imageAttachments.length - 1] : null;
     const __followUp = !__srcImg && cur.lastEditedImage && cur.lastMsgWasImageEdit;
+    // 🖼️ صورة مرفقة بدون أي نص → نسأل المستخدم محليًا شو يبي (بدون أي استهلاك API)
+    if(__srcImg && !(text || '').trim()){
+      cur.lastEditedImage = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' };
+      cur.lastMsgWasImageEdit = true;
+      cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'وصلتني الصورة 👍 شو تبي أسوي فيها؟ مثلًا: عدّلها، حوّلها ديكور جديد، اكتب عليها، سوّ منها فيديو، أو اسألني أي سؤال عنها.' : 'Got the image 👍 What would you like me to do with it? For example: edit it, redesign the decor, write on it, turn it into a video, or ask me anything about it.') });
+      renderAll(); saveState();
+      return;
+    }
     // 🏠 طلب توليد صورة جديدة انطلاقًا من صورة مرفقة (مثال: مخطط منزل + "عطني تصميم خارجي")
     const __imgGenIntentRe = /(عطني|أعطني|اعطني|هات|ابا|أبا|ابي|أبي|ابغي|أبغي|اريد|أريد|سو|سوي|سوّي|اعمل|أعمل|give me|make me|i want|show me)\s+(?:لي\s+)?.{0,20}?(تصميم|تصور|منظر|واجهة|صورة|رسمة|شكل|design|render|view|image|picture|visual)/i;
     // 🎬 فيديو من المحادثة مباشرة: صورة + "سوي فيديو/حركها" → Runway image_to_video،

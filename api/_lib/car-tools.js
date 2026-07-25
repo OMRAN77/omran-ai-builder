@@ -124,7 +124,7 @@ module.exports = async (req, res) => {
         res.status(400).json({ error: 'Missing text' });
         return;
       }
-      const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey;
+      const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey;
       const upstream = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -157,7 +157,7 @@ module.exports = async (req, res) => {
           (text ? (' (the user also describes: "' + String(text).slice(0, 300) + '")') : '') + '. ' +
           'Diagnose what problem is visible, the likely cause, severity, and recommended next steps (DIY-safe or needs a professional garage). ' +
           'Respond in ' + target + ', using clear short sections with emojis as section markers.';
-      const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey;
+      const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey;
       const upstream = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

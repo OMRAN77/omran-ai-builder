@@ -57,7 +57,7 @@ module.exports = async (req, res) => {
       'Respond in ' + targetLang + '. ' +
       'Respond ONLY with a valid JSON array of exactly 3 strings, nothing else, no markdown, e.g. ["idea 1", "idea 2", "idea 3"].';
 
-    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey;
+    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey;
     const reqBody = {
       contents: [
         {
