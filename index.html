@@ -14471,195 +14471,83 @@ async function sendPrompt(){
         let mergeDone = false;
         try{
         if(hasAnyCode){
-          // True-merge mode: the AI must study every provider's full version
-          // and actually combine the best structure/design/features/fixes
-          // from all of them into one final, complete working version -
-          // never just silently pick one provider's code as-is and discard
-          // the rest. Cap how much of each candidate's code is shown so a
-          // couple of very large apps can't blow past the model's context
-          // window and sabotage the whole merge - the cap is generous enough
-          // to keep full app logic intact for typical generated apps.
-          // Kept low on purpose: this preview is sent to the AI 6 times in a
-          // row (3 checklist-extraction calls + up to 3 merge calls), once
-          // per usable provider (up to 9). At 60000 chars/provider that
-          // meant a single request could exceed 100k+ words, causing multi-
-          // minute hangs. All 9 providers still contribute - each preview
-          // is just tighter so every call stays fast.
-          const MERGE_PREVIEW_CHARS = 15000;
-          const previewOf = (a) => {
-            if(!a.code) return a.text;
-            const c = a.code;
-            return c.length > MERGE_PREVIEW_CHARS
-              ? (c.slice(0, MERGE_PREVIEW_CHARS) + '\n/* ... truncated, keep merging with the rest of this version\'s known structure ... */')
-              : c;
-          };
-          // Best-candidates-only merge (idea adopted from user's provider files):
-          // rank all code candidates by completeness + size and send only the
-          // top 4 to the merge judge instead of all 9. Cuts merge tokens by
-          // ~60% and removes weak/broken candidates that used to pollute the
-          // merged result. Text-only answers are always kept (they're tiny).
-          const __rankScore = (a) => {
-            if(!a.code) return -1;
-            let s = a.code.length;
-            try{ if(looksCompleteCode(a.code, a.codeType)) s += 1000000; }catch(e){}
-            return s;
-          };
-          const __codeCands = usableAnswers.filter(a => a.code).sort((x, y) => __rankScore(y) - __rankScore(x)).slice(0, 4);
-          const __mergeCands = usableAnswers.filter(a => !a.code || __codeCands.includes(a));
-          const mergePrompt = __mergeCands.map((a, i) => '### ' + (i + 1) + ' (' + a.label + ')\n' + (a.code ? ('```' + (a.codeType || '') + '\n' + previewOf(a) + '\n```') : a.text)).join('\n\n');
-
-          const providerNamesList = usableAnswers.map(a => a.label).join('، ');
-
-          // Step 1: extract a short, concrete checklist of every named
-          // element across all 9 versions (rooms, colors, materials, named
-          // 3D objects, interactive features). This is a short list, not
-          // full code, so it stays fast. It becomes a mandatory checklist
-          // the merge step must literally satisfy, and lets us verify the
-          // final code programmatically instead of trusting the model.
-          let checklistItems = [];
-          try{
-            const extractionMessages = [
-              { role: 'system', content: 'استخرج من النسخ التالية (نفس الطلب من عدة مزودين) قائمة نقطية مختصرة جدًا بكل عنصر ملموس ومسمّى ورد في أي نسخة: كل غرفة باسمها، كل لون، كل مادة سطح، كل أثاث أو جسم ثلاثي الأبعاد مسمّى، كل ميزة تفاعلية بارزة. سطر واحد لكل عنصر يبدأ بـ "- ". بدون أي شرح أو مقدمة أو تكرار، فقط القائمة.' },
-              { role: 'user', content: mergePrompt }
-            ];
-            for(const ep of ['gemini', 'groq', 'claude']){
-              try{
-                const r = await callWithWatchdog(ep, extractionMessages, () => {}, 45000, 90000);
-                if(r && r.trim()){ checklistItems = r.trim().split('\n').map(l => l.replace(/^[-*\d.\s]+/, '').trim()).filter(Boolean); break; }
-              }catch(exErr){ /* try next extractor */ }
-            }
-          }catch(exOuterErr){ /* checklist stays empty - falls back to old behavior */ }
-
-          const checklistBlock = checklistItems.length
-            ? ('\n\nقائمة إلزامية بكل عنصر يجب أن يظهر فعليًا وبالاسم داخل الكود النهائي (يُمنع حذف أي عنصر منها):\n' + checklistItems.map(i => '- ' + i).join('\n'))
-            : '';
-          const mergeSystemContentBase = APP_IDENTITY_NOTE + BUILD_COMPLETENESS_RULE + NO_FAKE_EDIT_RULE + CHAT_STYLE_RULE + '\n' + t('mergedAnswerCodeMergeSystemPrompt') +
-            '\n\nإلزامي وبدون استثناء: المزودون التاليون قدّموا نسخًا فعلية لهذا الطلب: ' + providerNamesList + '. قبل كتابة الكود، حدد داخليًا أبرز فكرة/ميزة/أسلوب بصري مختلف من كل واحد منهم، ثم اكتب الكود النهائي بحيث يظهر أثر واضح من كل واحد منهم فعليًا (لا يجوز أن يكون الناتج نسخة طبق الأصل من نسخة مزوّد واحد فقط).' +
-            checklistBlock;
-          // Guard against a "fake merge": accepting whichever candidate is
-          // essentially just one single provider's version copied as-is, OR
-          // a candidate that ignores the mandatory checklist (masked copy -
-          // renamed variables/wording but same single-provider idea).
-          // Compare each candidate merge to every source version by shared
-          // lines, and separately measure checklist coverage. Always keep
-          // the best-scoring candidate as a guaranteed fallback so the user
-          // never sees a failure.
-          const sourceCodes = usableAnswers.filter(a => a.code).map(a => a.code);
-          const calcSimilarity = (codeA, codeB) => {
-            if(!codeA || !codeB) return 0;
-            const linesA = codeA.split('\n').map(l => l.trim()).filter(Boolean);
-            const linesB = new Set(codeB.split('\n').map(l => l.trim()).filter(Boolean));
-            if(!linesA.length) return 0;
-            let match = 0;
-            linesA.forEach(l => { if(linesB.has(l)) match++; });
-            return match / linesA.length;
-          };
-          const checklistCoverage = (code) => {
-            if(!checklistItems.length || !code) return 1;
-            const codeLower = code.toLowerCase();
-            let found = 0;
-            const missing = [];
-            checklistItems.forEach(item => {
-              const words = item.split(/\s+/).filter(w => w.length > 1).slice(0, 4);
-              const key = words.join(' ').toLowerCase();
-              const hit = (key && codeLower.includes(key)) || words.some(w => w.length > 3 && codeLower.includes(w.toLowerCase()));
-              if(hit) found++; else missing.push(item);
-            });
-            return { ratio: found / checklistItems.length, missing };
-          };
+          // 🧩 نهج جديد (أساس + تعزيز): بدل خلط 4 أكواد كاملة (كان يفشل دائمًا)،
+          // نأخذ أفضل نسخة كاملة كأساس، نستخرج المميزات التي انفردت بها النسخ
+          // الأخرى، ثم نطلب من نموذج قوي إضافتها على الأساس - فتكون النتيجة
+          // فعليًا أقوى من أي مزود منفرد.
           const looksCompleteCode = (code, type) => {
             if(!code) return false;
             const ty = (type || '').toLowerCase();
             if(ty.includes('html') || /<html[\s>]/i.test(code)) return /<\/html>\s*$/i.test(code.trim());
             return true;
           };
-          let bestFallback = null;
-          let missingNote = '';
-          // Single attempt only - trying multiple providers in sequence
-          // (each a full code-generation call over 9 large candidates) was
-          // taking many minutes with no result. One attempt with the
-          // strongest merge model keeps speed reasonable; the checklist +
-          // similarity scoring still guarantees a real, complete result via
-          // bestFallback below even if this one attempt doesn't pass the
-          // strict checklist threshold.
-          // محاولتان: الأولى Claude، وإذا فشلت (تشابه عالٍ مع نسخة مزود واحد
-          // أو تغطية ناقصة) تستلم الثانية OpenAI ومعها ملاحظة العناصر الناقصة.
-          const mergeAttemptOrder = [...new Set(mergeOrder)].slice(0, 2);
-          const __mergePhaseStart = Date.now(); // ⏱️ ميزانية زمنية صارمة لمرحلة الدمج كلها
-          for(const mKey of mergeAttemptOrder){
-            if(mergeDone) break;
-            if(Date.now() - __mergePhaseStart > 300000) break; // ما نبدأ محاولة ثانية بعد 5 دقايق
-            try{
-              // سياق المحادثة: آخر رسائل نصية + كود المشروع الحالي حتى يكمل الدمج على المشروع بدل البدء من الصفر
-              let __mergeCtx = '';
-              try{
-                const __isEditReq = /عدل|عدّل|غير|غيّر|أضف|اضف|زد|حط|صلح|صلّح|احذف|امسح/.test(text || '');
-                const __curP = state.projects.find(p => p.id === state.currentId);
-                if(__curP && __isEditReq){
-                  const __recent = (__curP.messages || []).filter(m => !m.providerLabel && (m.apiText || m.content)).slice(-6, -1)
-                    .map(m => (m.role === 'user' ? 'المستخدم: ' : 'المساعد: ') + String(m.apiText || m.content).slice(0, 400)).join('\n');
-                  if(__recent) __mergeCtx += '\n\n[سياق المحادثة الأخيرة - للخلفية فقط، الطلب الحالي هو المرجع]:\n' + __recent;
-                  const __lastCode = (__curP.messages || []).filter(m => m.role === 'assistant' && m.code).slice(-1)[0];
-                  if(__lastCode && __lastCode.code)
-                    __mergeCtx += '\n\n[كود المشروع الحالي - إذا كان الطلب تعديلًا فابنِ عليه ولا تبدأ من الصفر]:\n```\n' + __lastCode.code.slice(0, 12000) + '\n```';
-                }
-              }catch(e){}
-              const codeMergeMessages = [
-                { role: 'system', content: mergeSystemContentBase + missingNote },
-                { role: 'user', content: mergePrompt + __mergeCtx }
-              ];
-              const mergedCodeReply = await callWithWatchdog(mKey, codeMergeMessages, () => {}, 90000, 300000);
-              const { code: mergedCode, codeType: mergedCodeType, explanation: mergedCodeExplanation } = extractReply(mergedCodeReply || '');
-              if(mergedCode && looksCompleteCode(mergedCode, mergedCodeType)){
-                const maxSim = sourceCodes.length ? Math.max(...sourceCodes.map(sc => calcSimilarity(mergedCode, sc))) : 0;
-                const cov = checklistCoverage(mergedCode);
-                const covRatio = typeof cov === 'number' ? cov : cov.ratio;
-                const score = covRatio - maxSim * 0.3;
-                if(!bestFallback || score > bestFallback.score){
-                  bestFallback = { code: mergedCode, codeType: mergedCodeType, sim: maxSim, cov: covRatio, score };
-                }
-                // 0.6: أي ناتج يتطابق أكثر من 60% مع نسخة مزود واحد = نسخ، يُرفض
-                if(maxSim < 0.6 && covRatio >= 0.6){
-                  mergeMsg.content = stripCodeFromChat(mergedCodeExplanation) || t('buildSuccess');
-                  mergeMsg.code = mergedCode;
-                  mergeMsg.codeType = mergedCodeType || usableAnswers.find(a => a.code)?.codeType;
-                  cur.code = mergedCode;
-                  cur.codeType = mergeMsg.codeType;
-                  mergeDone = true;
-                } else {
-                  missingNote = '';
-                  if(maxSim >= 0.6) missingNote += '\n\nتنبيه: محاولة سابقة رُفضت لأن ناتجها كان نسخة شبه مطابقة لنسخة مزوّد واحد. ممنوع النسخ - ادمج فعليًا أفكار وميزات كل المزودين في كود واحد جديد.';
-                  if(cov.missing && cov.missing.length) missingNote += '\n\nتنبيه: محاولة سابقة فشلت في تضمين هذه العناصر الإلزامية - تأكد إن ناتجك يتضمنها فعليًا بالاسم: ' + cov.missing.slice(0, 15).join('، ');
-                }
-              }
-            }catch(mergeErr){
-              if(mergeErr && mergeErr.name === 'AbortError') break;
-            }
-          }
-          if(!mergeDone && bestFallback && bestFallback.cov >= 0.4){ // ناتج خارج الموضوع (تغطية < 40%) يُرفض نهائيًا
-            // صدق: إذا الناتج شبه مطابق لنسخة مزود واحد لا نسميه "اتحادًا"
-            if(bestFallback.sim >= 0.6) mergeMsg.providerLabel = '🏆 أفضل نتيجة (اتحاد جزئي)';
+          const __rankScore = (a) => {
+            if(!a.code) return -1;
+            let s = a.code.length;
+            try{ if(looksCompleteCode(a.code, a.codeType)) s += 1000000; }catch(e){}
+            return s;
+          };
+          const __cands = usableAnswers.filter(a => a.code).sort((x, y) => __rankScore(y) - __rankScore(x));
+          const __base = __cands[0];
+          const __others = __cands.slice(1, 5);
+          const __useBaseAsIs = () => {
+            mergeMsg.providerLabel = '🏆 أفضل نسخة (' + (__base.label || '') + ')';
             mergeMsg.content = t('buildSuccess');
-            mergeMsg.code = bestFallback.code;
-            mergeMsg.codeType = bestFallback.codeType || usableAnswers.find(a => a.code)?.codeType;
-            cur.code = bestFallback.code;
-            cur.codeType = mergeMsg.codeType;
+            mergeMsg.code = __base.code;
+            mergeMsg.codeType = __base.codeType;
+            cur.code = __base.code;
+            cur.codeType = __base.codeType;
             mergeDone = true;
+          };
+          // خطوة 1: استخراج المميزات الموجودة عند الآخرين وغير الموجودة في الأساس
+          let __feats = [];
+          if(__others.length && __base.code.length <= 45000){
+            try{
+              const __exMessages = [
+                { role: 'system', content: 'أمامك "النسخة الأساس" ثم نسخ بديلة لنفس الطلب من مزودين آخرين. استخرج قائمة نقطية (10 بنود كحد أقصى) بالمميزات أو العناصر أو التحسينات الملموسة الموجودة في النسخ البديلة وغير الموجودة في النسخة الأساس. سطر واحد لكل بند يبدأ بـ "- " مع تسمية العنصر بدقة. بدون أي شرح أو مقدمة.' },
+                { role: 'user', content: '### النسخة الأساس (' + __base.label + ')\n```\n' + __base.code.slice(0, 12000) + '\n```\n\n' + __others.map((a, i) => '### نسخة بديلة ' + (i + 1) + ' (' + a.label + ')\n```\n' + a.code.slice(0, 6000) + '\n```').join('\n\n') }
+              ];
+              for(const ep of ['gemini', 'groq', 'claude']){
+                try{
+                  const r = await callWithWatchdog(ep, __exMessages, () => {}, 45000, 90000);
+                  if(r && r.trim()){ __feats = r.trim().split('\n').map(l => l.replace(/^[-*\d.\s]+/, '').trim()).filter(Boolean).slice(0, 10); break; }
+                }catch(exErr){ /* جرّب المستخرج التالي */ }
+              }
+            }catch(exOuterErr){}
           }
-          if(!mergeDone){
-            // آخر خط دفاع: الدمج طلع ناقصًا/مقصوصًا - استخدم أفضل نسخة فردية كاملة بدل عرض ملف مبتور
-            const completeSources = usableAnswers.filter(a => a.code && looksCompleteCode(a.code, a.codeType));
-            if(completeSources.length){
-              const bestSrc = completeSources.reduce((p, c) => (c.code.length > p.code.length ? c : p));
-              // صدق مع المستخدم: هذه نسخة مزود واحد، ليست دمجًا
-              mergeMsg.providerLabel = '🏆 أفضل نسخة (' + (bestSrc.label || '') + ')';
-              mergeMsg.content = t('buildSuccess');
-              mergeMsg.code = bestSrc.code;
-              mergeMsg.codeType = bestSrc.codeType;
-              cur.code = bestSrc.code;
-              cur.codeType = bestSrc.codeType;
-              mergeDone = true;
+          if(!__feats.length){
+            // ما في مميزات إضافية (أو الأساس ضخم) → الأساس نفسه هو الناتج، بصدق
+            __useBaseAsIs();
+          } else {
+            // خطوة 2: التعزيز - أضف المميزات على الأساس وأعد الكود كاملًا
+            const __enhSystem = APP_IDENTITY_NOTE + BUILD_COMPLETENESS_RULE + NO_FAKE_EDIT_RULE + CHAT_STYLE_RULE +
+              '\n\nمهمتك: خذ الكود الأساس التالي كما هو، وأضف عليه المميزات المذكورة في القائمة، ثم أعد الكود النهائي كاملًا من أول سطر إلى آخر سطر. يُمنع حذف أي ميزة موجودة في الأساس، يُمنع إعادة كتابة التطبيق من الصفر، ويُمنع الاختصار أو وضع تعليقات بدل الكود.';
+            const __enhUser = 'الكود الأساس:\n```' + (__base.codeType || '') + '\n' + __base.code + '\n```\n\nأضف هذه المميزات (مأخوذة من نسخ مزودين آخرين لنفس الطلب):\n' + __feats.map(f => '- ' + f).join('\n') + '\n\nأعد الكود النهائي كاملًا.';
+            const __mergePhaseStart = Date.now();
+            for(const mKey of ['claude', 'openai']){
+              if(mergeDone) break;
+              if(Date.now() - __mergePhaseStart > 300000) break;
+              try{
+                const __reply = await callWithWatchdog(mKey, [
+                  { role: 'system', content: __enhSystem },
+                  { role: 'user', content: __enhUser }
+                ], () => {}, 90000, 300000);
+                const { code: __mc, codeType: __mct, explanation: __mex } = extractReply(__reply || '');
+                if(__mc && looksCompleteCode(__mc, __mct) && __mc.length >= __base.code.length * 0.7){
+                  const __low = __mc.toLowerCase();
+                  const __hit = __feats.filter(f => f.split(/\s+/).filter(w => w.length > 3).some(w => __low.includes(w.toLowerCase()))).length;
+                  if(__hit >= Math.ceil(__feats.length * 0.5)){
+                    mergeMsg.content = stripCodeFromChat(__mex) || t('buildSuccess');
+                    mergeMsg.code = __mc;
+                    mergeMsg.codeType = __mct || __base.codeType;
+                    cur.code = __mc;
+                    cur.codeType = mergeMsg.codeType;
+                    mergeDone = true;
+                  }
+                }
+              }catch(mergeErr){ if(mergeErr && mergeErr.name === 'AbortError') break; }
             }
+            if(!mergeDone) __useBaseAsIs();
           }
         } else {
           const mergePrompt = usableAnswers.map((a, i) => '### ' + t('mergedAnswerSourceLabel') + ' ' + (i + 1) + ' (' + a.label + ')\n' + a.text).join('\n\n');
