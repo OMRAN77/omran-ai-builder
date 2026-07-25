@@ -2,6 +2,7 @@
 function load(action) {
   switch (action) {
     case 'video-create': return require('./_lib/video-create.js');
+    case 'video-balance': return require('./_lib/video-balance.js');
     case 'video-script': return require('./_lib/video-script.js');
     case 'video-status': return require('./_lib/video-status.js');
     case 'video-upscale-create': return require('./_lib/video-upscale-create.js');

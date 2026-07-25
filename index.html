@@ -16377,8 +16377,51 @@ function openShareModal(project){
 
     /* ---- 🎬 Full mini-film: idea -> AI script -> multiple scenes -> narration -> merged film.
        Available to ALL logged-in accounts (small scene count); owner gets more scenes. ---- */
+    /* Helper: check Runway credits BEFORE starting so nothing is charged on doomed runs. */
+    async function ensureRunwayCredits(needed){
+      try{
+        const r = await fetch('/api/video?action=video-balance');
+        const d = await r.json();
+        if(typeof d.credits === 'number' && d.credits >= 0 && d.credits < needed){
+          setStatus(isEn()
+            ? '⛔ Not enough Runway credits (' + d.credits + ' left, ' + needed + ' needed). Nothing was charged. Top up at runwayml.com first.'
+            : '⛔ رصيد Runway غير كافي (المتبقي ' + d.credits + '، المطلوب ' + needed + '). لم يُخصم أي شيء. اشحن الرصيد من runwayml.com أولًا.');
+          return false;
+        }
+      } catch(e){ /* balance check is best-effort; do not block on network errors */ }
+      return true;
+    }
+
+    /* Helper: generate ONE scene via Google Veo 3 (create + poll) and return its video URL. */
+    async function createVeoScene(prompt, sceneRatio, sceneToken, hq){
+      const cr = await fetch('/api/video?action=veo-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ promptText: prompt, ratio: sceneRatio, token: sceneToken, quality: hq ? 'high' : 'fast' }),
+      });
+      const crData = await cr.json();
+      if(!cr.ok || crData.error || !crData.op) throw new Error(crData.error || 'veo create failed');
+      return await new Promise((resolve, reject) => {
+        const iv = setInterval(async () => {
+          try{
+            const st = await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(crData.op));
+            const d = await st.json();
+            if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
+            if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
+            else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((isEn() ? 'Veo failed.' : 'فشل Veo.') + (d.failure ? ' — ' + d.failure : ''))); }
+          } catch(e){ /* keep polling */ }
+        }, 8000);
+      });
+    }
+
     if(durationEl.value === 'film'){
       try{
+        const filmUseVeo = (creationMode === 'veo');
+        if(filmUseVeo && !isOwnerAccount()){
+          setStatus(isEn() ? '🔒 Veo 3 is limited to the owner account for now.' : '🔒 Veo 3 مقتصر على حساب المالك حاليًا.');
+          btnGenerate.disabled = false;
+          return;
+        }
         const filmScenes = isOwnerAccount() ? 5 : 3;
         setStatus(isEn() ? '✍️ Writing the film script scene by scene...' : '✍️ جاري كتابة سيناريو الفيلم مشهد بمشهد...');
         const scriptRes = await fetch('/api/video-script', {
@@ -16393,6 +16436,14 @@ function openShareModal(project){
           throw new Error(scriptData.error || (isEn() ? 'Could not generate the film script.' : 'تعذّر إنشاء سيناريو الفيلم.'));
         }
         const scenes = scriptData.scenes.slice(0, filmScenes);
+        if(!filmUseVeo){
+          setStatus(isEn() ? '💳 Checking video credits...' : '💳 جاري التأكد من رصيد الفيديو...');
+          const ok = await ensureRunwayCredits(scenes.length * 50);
+          if(!ok){ btnGenerate.disabled = false; return; }
+        }
+        if(filmUseVeo && filmHeroBase64){
+          setStatus(isEn() ? 'ℹ️ Hero photo is supported with Runway only; continuing without it...' : 'ℹ️ صورة البطل مدعومة مع Runway فقط؛ سيتم المتابعة بدونها...');
+        }
         const confirmMsg = isEn()
           ? `🎬 "${scriptData.title || text}" — ${scenes.length} scenes (~${scenes.length * SCENE_SECONDS_CONST}s) with narration will be generated and merged. This uses ${scenes.length} of your daily video allowance. Continue?`
           : `🎬 «${scriptData.title || text}» — راح نولّد ${scenes.length} مشاهد (~${scenes.length * SCENE_SECONDS_CONST} ثانية) مع سرد صوتي وندمجها بفيلم واحد. هذا يستهلك ${scenes.length} من حصتك اليومية للفيديو. تكمل؟`;
@@ -16404,12 +16455,14 @@ function openShareModal(project){
         const builtScenes = [];
         for(let i = 0; i < scenes.length; i++){
           const sc = scenes[i];
-          setStatus((isEn() ? '🎥 Generating scene ' : '🎥 جاري توليد المشهد ') + (i + 1) + '/' + scenes.length + '...');
-          const videoUrl = await createSceneWithRetry(sc.visual || text, style, SCENE_SECONDS_CONST, ratio, token, false, (attempt, max) => {
-            setStatus(isEn()
-              ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
-              : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
-          }, filmHeroBase64, filmHeroMime);
+          setStatus((isEn() ? '🎥 Generating scene ' : '🎥 جاري توليد المشهد ') + (i + 1) + '/' + scenes.length + (filmUseVeo ? ' (Veo 3)' : '') + '...');
+          const videoUrl = filmUseVeo
+            ? await createVeoScene(sc.visual || text, ratio, token, wantQuality)
+            : await createSceneWithRetry(sc.visual || text, style, SCENE_SECONDS_CONST, ratio, token, false, (attempt, max) => {
+                setStatus(isEn()
+                  ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
+                  : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
+              }, filmHeroBase64, filmHeroMime);
           setStatus((isEn() ? '🎙️ Narrating scene ' : '🎙️ جاري تسجيل سرد المشهد ') + (i + 1) + '/' + scenes.length + '...');
           let audioBlob = null;
           try{
@@ -16550,6 +16603,9 @@ function openShareModal(project){
           throw new Error(scriptData.error || (isEn() ? 'Could not generate the script.' : 'تعذّر إنشاء السكربت.'));
         }
         const scenes = scriptData.scenes;
+        setStatus(isEn() ? '💳 Checking video credits...' : '💳 جاري التأكد من رصيد الفيديو...');
+        const okBal = await ensureRunwayCredits(scenes.length * 50);
+        if(!okBal){ btnGenerate.disabled = false; return; }
         const estLow = (scenes.length * 2).toFixed(0);
         const estHigh = (scenes.length * 5).toFixed(0);
         const confirmMsg = isEn()
@@ -16600,6 +16656,8 @@ function openShareModal(project){
 
     try{
       let sceneUrls = [];
+      const okBal2 = await ensureRunwayCredits(isLong ? 100 : 50);
+      if(!okBal2){ btnGenerate.disabled = false; return; }
       if(isLong){
         const scenePrompts = [
           text + (isEn() ? ' (opening moment of the scene)' : ' (اللحظة الافتتاحية للمشهد)'),
