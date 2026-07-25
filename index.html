@@ -16466,11 +16466,15 @@ function openShareModal(project){
           setStatus((isEn() ? '🎙️ Narrating scene ' : '🎙️ جاري تسجيل سرد المشهد ') + (i + 1) + '/' + scenes.length + '...');
           let audioBlob = null;
           try{
+            const ttsCtl = new AbortController();
+            const ttsTimer = setTimeout(() => ttsCtl.abort(), 45000);
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ text: sc.narration || text, voice: 'onyx' }),
+              signal: ttsCtl.signal,
             });
+            clearTimeout(ttsTimer);
             if(ttsRes.ok) audioBlob = await ttsRes.blob();
           } catch(e){ /* narration is best-effort per scene */ }
           builtScenes.push({ videoUrl, audioBlob: audioBlob || new Blob() });
@@ -16627,12 +16631,19 @@ function openShareModal(project){
               : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
           });
           setStatus((isEn() ? '🎙️ Narrating scene ' : '🎙️ جاري تسجيل صوت المشهد ') + (i + 1) + '/' + scenes.length + '...');
-          const ttsRes = await fetch('/api/tts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: sc.narration || text, voice: 'onyx' }),
-          });
-          const audioBlob = ttsRes.ok ? await ttsRes.blob() : null;
+          let audioBlob = null;
+          try{
+            const ttsCtl2 = new AbortController();
+            const ttsTimer2 = setTimeout(() => ttsCtl2.abort(), 45000);
+            const ttsRes = await fetch('/api/tts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ text: sc.narration || text, voice: 'onyx' }),
+              signal: ttsCtl2.signal,
+            });
+            clearTimeout(ttsTimer2);
+            if(ttsRes.ok) audioBlob = await ttsRes.blob();
+          } catch(e){ /* narration is best-effort */ }
           builtScenes.push({ videoUrl, audioBlob: audioBlob || new Blob() });
         }
 
