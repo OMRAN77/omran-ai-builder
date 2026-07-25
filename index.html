@@ -13996,20 +13996,40 @@ async function sendPrompt(){
   // بسؤال «تبيني أبدأ البناء؟». البناء الفعلي لا يبدأ إلا بعد موافقة صريحة
   // (نعم/ابدأ/سو...) في الرسالة التالية — بدون أي أزرار أو شرائط.
   let __gateNoBuild = false;
+  let __gateApprovedText = null; // ما كتبه المستخدم فعلًا (نعم/ابدأ) ليُعرض كما هو
   {
     const GATE_BUILD_RE = /بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|العاب|ألعاب|أداة|اداة|نسخة|نسخه|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\btool\b|\bclone\b/i;
     const GATE_CMD_RE = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|ممكن|ابغي|أبغي|ابغى|أبغى|ابي|أبي|بغيت|اريد|أريد|عطني|أعطني|اعطني|هات|سولي|سوّلي|build|create|make|design|develop|\bwant\b|\bgive\b|\bcan you\b)/i;
     const GATE_FIX_RE = /(صلح|أصلح|اصلح|إصلاح|اصلاح|خطأ|خطا|أخطاء|اخطاء|مشكل|عطل|توقف|خرب|ما\s*يشتغل|مو\s*شغال|لا\s*يعمل|\bfix\b|\berror\b|\bbug\b|\bdebug\b|\bbroken\b)/i;
     const GATE_APPROVE_RE = /^\s*(نعم|أجل|اجل|اي(?:ه|وه|وا)?|إيه?|أيوه|ايوه|يلا|يالله|ابدأ|أبدأ|ابدا|ابدي|ابنيه?|ابنيها|سو|سوه|سوها|سويها|سوي|تمام|اوك|أوك|اوكي|اوكيه|موافق|زين|طيب|وافقت|yes|ok|okay|go|start|build)[\sء-ي!.،؟]{0,30}$/i;
-    if(window.__pendingBuildPrompt && text && GATE_APPROVE_RE.test(text)){
-      // موافقة → نفّذ طلب البناء الأصلي كاملًا الآن.
-      text = window.__pendingBuildPrompt;
-      window.__pendingBuildPrompt = null;
+    // الطلب المعلّق يُحفظ في localStorage أيضًا حتى لا يضيع عند تحديث الصفحة
+    // بين سؤال «تبيني أبدأ؟» وموافقة المستخدم.
+    let __pend = window.__pendingBuildPrompt;
+    if(!__pend){ try{ __pend = localStorage.getItem('aiapp_pending_build') || null; }catch(e){} }
+    // شبكة أمان إضافية: لو ضاع الطلب المعلّق نهائيًا، نسترجعه من آخر رسالة
+    // بناء كتبها المستخدم في نفس المشروع.
+    if(!__pend && text && GATE_APPROVE_RE.test(text)){
+      try{
+        const __gp = getCurrent();
+        const __ms = __gp ? __gp.messages : [];
+        const __lastA = [...__ms].reverse().find(m => m.role !== 'user');
+        if(__lastA && /تبيني\s*أبدأ|أبدأ\s*البناء|ابدأ\s*البناء|shall i start|want me to start/i.test(String(__lastA.content || ''))){
+          const __lastU = [...__ms].reverse().find(m => m.role === 'user' && GATE_BUILD_RE.test(String(m.apiText !== undefined ? m.apiText : (m.content || ''))) && GATE_CMD_RE.test(String(m.apiText !== undefined ? m.apiText : (m.content || ''))));
+          if(__lastU) __pend = String(__lastU.apiText !== undefined ? __lastU.apiText : __lastU.content);
+        }
+      }catch(e){}
+    }
+    const __setPend = (v)=>{ window.__pendingBuildPrompt = v; try{ if(v) localStorage.setItem('aiapp_pending_build', v); else localStorage.removeItem('aiapp_pending_build'); }catch(e){} };
+    if(__pend && text && GATE_APPROVE_RE.test(text)){
+      // موافقة → نفّذ طلب البناء الأصلي كاملًا الآن (ويظهر بالمحادثة ما كتبه المستخدم فقط).
+      __gateApprovedText = text;
+      text = __pend;
+      __setPend(null);
     } else if(text && GATE_BUILD_RE.test(text) && GATE_CMD_RE.test(text) && !GATE_FIX_RE.test(text)){
-      window.__pendingBuildPrompt = text;
+      __setPend(text);
       __gateNoBuild = true;
     } else if(text){
-      window.__pendingBuildPrompt = null;
+      __setPend(null);
     }
   }
 
@@ -14058,7 +14078,7 @@ async function sendPrompt(){
     apiText += (apiText ? '\n\n' : '') + '[' + t('imagesAttachedNote') + ': ' + imageAttachments.map(a => a.name).join(', ') + ']';
   }
 
-  cur.messages.push({role: 'user', content: text || (t('imagesAttachedNote')), attachments: attachmentsForMsg.length ? attachmentsForMsg : undefined, apiText, apiImages: imageAttachments.length ? imageAttachments : undefined});
+  cur.messages.push({role: 'user', content: (__gateApprovedText || text) || (t('imagesAttachedNote')), attachments: attachmentsForMsg.length ? attachmentsForMsg : undefined, apiText, apiImages: imageAttachments.length ? imageAttachments : undefined});
   promptEl.value = '';
   try{ $('#btnSend').classList.remove('ready'); }catch(e){}
   pendingAttachments = [];
