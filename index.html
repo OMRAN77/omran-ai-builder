@@ -622,7 +622,14 @@
         <option value="runway" selected data-i18n="videoModeRunwayOnly">🤖 فيديو AI فقط (Runway)</option>
         <option value="hybrid" data-i18n="videoModeHybrid">🔗 دمج الاثنين (الأفضل)</option>
         <option value="veo" data-i18n="videoModeVeo">🚀 Veo 3 — جوجل (أعلى جودة + صوت)</option>
+        <option value="actor" data-i18n="videoModeActor">🗣️ ممثل يتكلم — لهجة إماراتية (Veo 3)</option>
       </select>
+    </div>
+
+    <div class="mini-mic-field-row" id="videoMakerActorRow" style="margin-top:12px; display:none;">
+      <label style="font-size:12px; color:var(--muted,#999); display:block; margin-bottom:4px;" data-i18n="videoActorSpeechLabel">🗣️ شو يقول الممثل؟ (بالحرف)</label>
+      <textarea id="videoMakerActorSpeech" rows="2" style="width:100%;" maxlength="300" data-i18n-placeholder="videoActorSpeechPlaceholder" placeholder="مثال: هلا والله! حياكم في تطبيق عمران AI، أقوى منصة ذكاء اصطناعي"></textarea>
+      <button type="button" class="mini-mic-btn" data-target="videoMakerActorSpeech" title="🎤" data-i18n-title="micTitle">🎤</button>
     </div>
 
     <div class="mini-mic-field-row" id="videoMakerSignatureRow" style="margin-top:12px; display:none;">
@@ -3953,6 +3960,9 @@ const I18N = {
     videoModeRunwayOnly: '🤖 فيديو AI فقط (Runway)',
     videoModeHybrid: '🔗 دمج الاثنين (الأفضل)',
     videoModeVeo: '🚀 Veo 3 — جوجل (أعلى جودة + صوت)',
+    videoModeActor: "🗣️ ممثل يتكلم — لهجة إماراتية (Veo 3)",
+    videoActorSpeechLabel: "🗣️ شو يقول الممثل؟ (بالحرف)",
+    videoActorSpeechPlaceholder: "مثال: هلا والله! حياكم في تطبيق عمران AI",
     videoSignatureLabel: 'التوقيع (اسمك)',
     videoSignaturePlaceholder: 'اكتب اسمك أو أي نص ليظهر كتوقيع ثابت على الفيديو',
     videoMakerGenerateBtn: '✨ إنشاء الفيديو',
@@ -4797,6 +4807,9 @@ const I18N = {
     videoModeRunwayOnly: '🤖 AI video only (Runway)',
     videoModeHybrid: '🔗 Merge both (best)',
     videoModeVeo: '🚀 Veo 3 — Google (top quality + sound)',
+    videoModeActor: "🗣️ Talking actor — Emirati dialect (Veo 3)",
+    videoActorSpeechLabel: "🗣️ What does the actor say? (exactly)",
+    videoActorSpeechPlaceholder: "Example: Welcome to Omran AI, the best AI platform!",
     videoSignatureLabel: 'Signature (your name)',
     videoSignaturePlaceholder: 'Type your name or any text to show as a watermark signature on the video',
     videoMakerGenerateBtn: '✨ Generate video',
@@ -5510,6 +5523,9 @@ STRICT MANDATORY RULES when editing existing code (always follow, no exceptions)
     videoModeRunwayOnly: "🤖 Vidéo IA seule (Runway)",
     videoModeHybrid: "🔗 Fusionner les deux (meilleur)",
     videoModeVeo: "🚀 Veo 3 — Google (meilleure qualité + son)",
+    videoModeActor: "🗣️ Acteur parlant — dialecte émirati (Veo 3)",
+    videoActorSpeechLabel: "🗣️ Que dit l'acteur ? (mot à mot)",
+    videoActorSpeechPlaceholder: "Exemple : Bienvenue sur Omran AI !",
     videoSignatureLabel: "Signature (votre nom)",
     videoSignaturePlaceholder: "Tapez votre nom ou tout texte à afficher comme signature sur la vidéo",
     videoMakerGenerateBtn: "✨ Générer la vidéo",
@@ -6131,6 +6147,9 @@ STRICT MANDATORY RULES when editing existing code (always follow, no exceptions)
     videoModeRunwayOnly: "🤖 केवल AI वीडियो (Runway)",
     videoModeHybrid: "🔗 दोनों मिलाएं (सर्वश्रेष्ठ)",
     videoModeVeo: "🚀 Veo 3 — Google (सर्वोच्च गुणवत्ता + ध्वनि)",
+    videoModeActor: "🗣️ बोलता अभिनेता — अमीराती बोली (Veo 3)",
+    videoActorSpeechLabel: "🗣️ अभिनेता क्या कहता है? (शब्दशः)",
+    videoActorSpeechPlaceholder: "उदाहरण: Omran AI में आपका स्वागत है!",
     videoSignatureLabel: "हस्ताक्षर (आपका नाम)",
     videoSignaturePlaceholder: "वीडियो पर वॉटरमार्क हस्ताक्षर के रूप में दिखाने के लिए अपना नाम या कोई भी टेक्स्ट लिखें",
     videoMakerGenerateBtn: "✨ वीडियो जनरेट करें",
@@ -6748,6 +6767,9 @@ STRICT MANDATORY RULES when editing existing code (always follow, no exceptions)
     videoModeRunwayOnly: "🤖 صرف AI ویڈیو (Runway)",
     videoModeHybrid: "🔗 دونوں کو ملائیں (بہترین)",
     videoModeVeo: "🚀 Veo 3 — گوگل (اعلیٰ معیار + آواز)",
+    videoModeActor: "🗣️ بولنے والا اداکار — اماراتی لہجہ (Veo 3)",
+    videoActorSpeechLabel: "🗣️ اداکار کیا کہتا ہے؟ (لفظ بہ لفظ)",
+    videoActorSpeechPlaceholder: "مثال: Omran AI میں خوش آمدید!",
     videoSignatureLabel: "دستخط (آپ کا نام)",
     videoSignaturePlaceholder: "ویڈیو پر واٹرمارک دستخط کے طور پر دکھانے کے لیے اپنا نام یا کوئی متن لکھیں",
     videoMakerGenerateBtn: "✨ ویڈیو تیار کریں",
@@ -7382,6 +7404,9 @@ STRICT MANDATORY RULES when editing existing code (always follow, no exceptions)
     videoModeRunwayOnly: "🤖 শুধু AI ভিডিও (Runway)",
     videoModeHybrid: "🔗 উভয়ই মিশ্রিত করুন (সেরা)",
     videoModeVeo: "🚀 Veo 3 — Google (সেরা মান + শব্দ)",
+    videoModeActor: "🗣️ কথা বলা অভিনেতা — আমিরাতি উপভাষা (Veo 3)",
+    videoActorSpeechLabel: "🗣️ অভিনেতা কী বলেন? (হুবহু)",
+    videoActorSpeechPlaceholder: "উদাহরণ: Omran AI-তে স্বাগতম!",
     videoSignatureLabel: "স্বাক্ষর (আপনার নাম)",
     videoSignaturePlaceholder: "ভিডিওতে ওয়াটারমার্ক স্বাক্ষর হিসেবে দেখানোর জন্য আপনার নাম বা যেকোনো টেক্সট লিখুন",
     videoMakerGenerateBtn: "✨ ভিডিও তৈরি করুন",
@@ -8006,6 +8031,9 @@ STRICT MANDATORY RULES when editing existing code (always follow, no exceptions)
     videoModeRunwayOnly: "🤖 AI भिडियो मात्र (Runway)",
     videoModeHybrid: "🔗 दुवै मिलाउनुहोस् (उत्तम)",
     videoModeVeo: "🚀 Veo 3 — Google (उत्कृष्ट गुणस्तर + आवाज)",
+    videoModeActor: "🗣️ बोल्ने अभिनेता — इमिराती भाषिका (Veo 3)",
+    videoActorSpeechLabel: "🗣️ अभिनेताले के भन्छ? (हुबहु)",
+    videoActorSpeechPlaceholder: "उदाहरण: Omran AI मा स्वागत छ!",
     videoSignatureLabel: "हस्ताक्षर (तपाईंको नाम)",
     videoSignaturePlaceholder: "भिडियोमा वाटरमार्क हस्ताक्षरको रूपमा देखाउन आफ्नो नाम वा कुनै पनि पाठ लेख्नुहोस्",
     videoMakerGenerateBtn: "✨ भिडियो उत्पन्न गर्नुहोस्",
@@ -15802,6 +15830,8 @@ function openShareModal(project){
   function updateModeUI(){
     const m = modeEl.value;
     signatureRow.style.display = (m === 'canvas' || m === 'hybrid') ? 'flex' : 'none';
+    const actorRowEl = document.getElementById('videoMakerActorRow');
+    if(actorRowEl) actorRowEl.style.display = (m === 'actor') ? 'flex' : 'none';
   }
   modeEl.onchange = updateModeUI;
   updateModeUI();
@@ -16222,7 +16252,7 @@ function openShareModal(project){
 
   btnGenerate.onclick = async () => {
     const text = (promptEl.value || '').trim();
-    if(!text){
+    if(!text && modeEl.value !== 'actor'){
       setStatus(isEn() ? '⚠️ Please describe the video first.' : '⚠️ اكتب وصف الفيديو أولًا.');
       return;
     }
@@ -16329,17 +16359,29 @@ function openShareModal(project){
       return;
     }
 
-    if(creationMode === 'veo'){
+    if(creationMode === 'veo' || creationMode === 'actor'){
       try{
         if(!isOwnerAccount()){
           setStatus(isEn() ? '🔒 Veo 3 is limited to the owner account for now.' : '🔒 Veo 3 مقتصر على حساب المالك حاليًا.');
           return;
         }
+        let veoPrompt = text;
+        if(creationMode === 'actor'){
+          const speechEl = document.getElementById('videoMakerActorSpeech');
+          const speech = speechEl ? speechEl.value.trim() : '';
+          if(!speech){
+            setStatus(isEn() ? '🗣️ Write what the actor should say first.' : '🗣️ اكتب أول شي وش يقول الممثل.');
+            return;
+          }
+          veoPrompt = (text || 'An Emirati man in traditional white kandura and ghutra, warm friendly face')
+            + '. The person looks directly at the camera and speaks in Emirati Gulf Arabic dialect (لهجة إماراتية خليجية), saying exactly these Arabic words: "' + speech + '". '
+            + 'Perfect accurate lip-sync matching the Arabic words, natural authentic Emirati voice and accent, natural hand gestures, cinematic lighting, realistic. No subtitles, no captions, no text on screen.';
+        }
         setStatus(isEn() ? '🚀 Sending to Google Veo 3...' : '🚀 جاري الإرسال إلى Google Veo 3...');
         const cr = await fetch('/api/video?action=veo-create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ promptText: text, ratio, token, quality: wantQuality ? 'high' : 'fast' }),
+          body: JSON.stringify({ promptText: veoPrompt, ratio, token, quality: wantQuality ? 'high' : 'fast' }),
         });
         const crData = await cr.json();
         if(!cr.ok || crData.error || !crData.op) throw new Error(crData.error || 'veo create failed');
