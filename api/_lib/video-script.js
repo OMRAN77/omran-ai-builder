@@ -4,7 +4,7 @@
 // many-scene) feature, which is restricted to the owner's own account
 // (see api/_videoUsage.js -> checkOwnerBypass) because chaining that many
 // AI-generated video scenes costs real money.
-const { checkOwnerBypass } = require('./_videoUsage');
+const { checkOwnerBypass, checkVideoQuota, isOwner } = require('./_videoUsage');
 
 const SCENE_SECONDS = 8; // each Runway scene is generated at this length
 
@@ -27,16 +27,34 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { topic, minutes, style, lang, token } = body;
+    const { topic, minutes, style, lang, token, mode, sceneCount } = body;
 
-    const usageResult = await checkOwnerBypass(token);
-    if (!usageResult.allowed) {
-      if (usageResult.reason === 'auth') {
-        res.status(401).json({ error: 'auth_required' });
-      } else {
-        res.status(403).json({ error: 'owner_only' });
+    const isFilm = mode === 'film';
+    let filmQuota = null;
+    if (isFilm) {
+      // "Full mini-film" mode: available to ANY logged-in account. It only
+      // writes the script here; each scene generation is still charged
+      // against the normal daily video quota by video-create.
+      filmQuota = await checkVideoQuota(token);
+      const quota = filmQuota;
+      if (!quota.allowed) {
+        if (quota.reason === 'auth') {
+          res.status(401).json({ error: 'auth_required' });
+        } else {
+          res.status(403).json({ error: 'daily_limit_reached' });
+        }
+        return;
       }
-      return;
+    } else {
+      const usageResult = await checkOwnerBypass(token);
+      if (!usageResult.allowed) {
+        if (usageResult.reason === 'auth') {
+          res.status(401).json({ error: 'auth_required' });
+        } else {
+          res.status(403).json({ error: 'owner_only' });
+        }
+        return;
+      }
     }
 
     const apiKey = process.env.OPENAI_API_KEY;
@@ -49,8 +67,17 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const mins = Math.max(1, Math.min(10, Number(minutes) || 1));
-    const sceneCount = Math.max(1, Math.round((mins * 60) / SCENE_SECONDS));
+    let scenesWanted;
+    if (isFilm) {
+      // Film mode: small fixed scene count. Regular accounts are capped at 3
+      // scenes (one film = one day's video allowance); the owner may go to 5.
+      const requested = Math.max(2, Math.min(5, Number(sceneCount) || 3));
+      const ownerReq = isOwner(filmQuota && filmQuota.username);
+      scenesWanted = ownerReq ? requested : Math.min(3, requested);
+    } else {
+      const mins = Math.max(1, Math.min(10, Number(minutes) || 1));
+      scenesWanted = Math.max(1, Math.round((mins * 60) / SCENE_SECONDS));
+    }
     const isAr = (lang || 'ar') === 'ar';
     const styleLabel = style === 'anime'
       ? (isAr ? 'أنيمي/رسوم متحركة' : 'anime/cartoon animation')
@@ -61,8 +88,8 @@ module.exports = async (req, res) => {
       : `You are a professional video director. Break a topic down into a sequence of short consecutive video scenes (each only about ${SCENE_SECONDS} seconds) in a ${styleLabel} style, so that all scenes together tell a coherent, flowing story or marketing pitch about the topic. Return ONLY JSON, no text outside it.`;
 
     const userMsg = isAr
-      ? `الموضوع: "${topic}"\n\nأنشئ بالضبط ${sceneCount} مشهدًا متتابعًا. أعد فقط JSON بهذا الشكل بالضبط:\n{\n  "title": "عنوان الفيديو",\n  "scenes": [\n    { "visual": "وصف بصري مختصر ودقيق لما يظهر في هذا المشهد تحديدًا (بالإنجليزية لتوليد أفضل نتيجة من نموذج الفيديو)", "narration": "نص السرد بالعربية الذي سيُقرأ بصوت طبيعي فوق هذا المشهد تحديدًا (جملة أو جملتين قصيرتين تناسب ${SCENE_SECONDS} ثوانٍ)" }\n  ]\n}\nالمشهد الأول يفتتح الفكرة، والمشهد الأخير يختمها بشكل مؤثر.`
-      : `Topic: "${topic}"\n\nGenerate exactly ${sceneCount} consecutive scenes. Return ONLY JSON in exactly this shape:\n{\n  "title": "Video title",\n  "scenes": [\n    { "visual": "Short precise visual description of exactly what appears in this specific scene (for the video generation model)", "narration": "Narration text that will be read aloud over this specific scene (one or two short sentences fitting about ${SCENE_SECONDS} seconds)" }\n  ]\n}\nThe first scene opens the idea, the last scene closes it with impact.`;
+      ? `الموضوع: "${topic}"\n\nأنشئ بالضبط ${scenesWanted} مشهدًا متتابعًا. أعد فقط JSON بهذا الشكل بالضبط:\n{\n  "title": "عنوان الفيديو",\n  "scenes": [\n    { "visual": "وصف بصري مختصر ودقيق لما يظهر في هذا المشهد تحديدًا (بالإنجليزية لتوليد أفضل نتيجة من نموذج الفيديو)", "narration": "نص السرد بالعربية الذي سيُقرأ بصوت طبيعي فوق هذا المشهد تحديدًا (جملة أو جملتين قصيرتين تناسب ${SCENE_SECONDS} ثوانٍ)" }\n  ]\n}\nالمشهد الأول يفتتح الفكرة، والمشهد الأخير يختمها بشكل مؤثر.`
+      : `Topic: "${topic}"\n\nGenerate exactly ${scenesWanted} consecutive scenes. Return ONLY JSON in exactly this shape:\n{\n  "title": "Video title",\n  "scenes": [\n    { "visual": "Short precise visual description of exactly what appears in this specific scene (for the video generation model)", "narration": "Narration text that will be read aloud over this specific scene (one or two short sentences fitting about ${SCENE_SECONDS} seconds)" }\n  ]\n}\nThe first scene opens the idea, the last scene closes it with impact.`;
 
     const upstream = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',

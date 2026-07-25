@@ -15,7 +15,7 @@ const PUBLIC_BASE = 'https://' + STORE_ID + '.public.blob.vercel-storage.com/';
 
 // During the free testing phase, keep this small: each generated video
 // (a few seconds at Gen-4/Veo 3 pricing) costs the owner real money.
-const VIDEO_DAILY_LIMIT = 2;
+const VIDEO_DAILY_LIMIT = 3;
 
 function verifyToken(token) {
   try {
