@@ -52,7 +52,7 @@ module.exports = async (req, res) => {
         'Authorization': 'Bearer ' + apiKey,
       },
       body: JSON.stringify({
-        model: model || 'deepseek-chat',
+        model: 'deepseek-v4-pro',
         messages,
         temperature: 0.7,
         stream: wantStream,
