@@ -14496,7 +14496,19 @@ async function sendPrompt(){
         }
       };
 
-      const settled = await Promise.allSettled(providers.map((p, i) => streamOne(p, placeholders[i])));
+      // 🚦 حد التزاحم: المتصفح يسمح بـ~6 اتصالات متزامنة لنفس النطاق فقط.
+      // إطلاق 9 بثوث دفعة واحدة كان يخنق الزائد عن الحد (يفشل بـ"توقف عن
+      // الرد") ويحشر نداء الدمج النهائي خلفهم. التشغيل بمجموعات من 5 يضمن
+      // اتصالًا حقيقيًا لكل مزود وطريقًا فاضيًا للمهندس الرئيسي بعدهم.
+      let __poolIdx = 0;
+      const __poolWorker = async () => {
+        while(__poolIdx < providers.length){
+          const __i = __poolIdx++;
+          try{ await streamOne(providers[__i], placeholders[__i]); }
+          catch(e){ if(e && e.name === 'AbortError') throw e; }
+        }
+      };
+      const settled = await Promise.allSettled(Array.from({ length: Math.min(5, providers.length) }, () => __poolWorker()));
       if(genAbortController && genAbortController.signal.aborted){
         // User cancelled while "ask all" was mid-flight: skip showing any of
         // these results and let the outer catch restore the message for editing.
