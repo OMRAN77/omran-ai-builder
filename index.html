@@ -14577,51 +14577,52 @@ async function sendPrompt(){
             cur.codeType = __base.codeType;
             mergeDone = true;
           };
-          // خطوة 1: استخراج المميزات الموجودة عند الآخرين وغير الموجودة في الأساس
-          let __feats = [];
-          if(__others.length && __base.code.length <= 45000){
-            try{
-              const __exMessages = [
-                { role: 'system', content: 'أمامك "النسخة الأساس" ثم نسخ بديلة لنفس الطلب من مزودين آخرين. استخرج قائمة نقطية (10 بنود كحد أقصى) بالمميزات أو العناصر أو التحسينات الملموسة الموجودة في النسخ البديلة وغير الموجودة في النسخة الأساس. سطر واحد لكل بند يبدأ بـ "- " مع تسمية العنصر بدقة. بدون أي شرح أو مقدمة.' },
-                { role: 'user', content: '### النسخة الأساس (' + __base.label + ')\n```\n' + __base.code.slice(0, 12000) + '\n```\n\n' + __others.map((a, i) => '### نسخة بديلة ' + (i + 1) + ' (' + a.label + ')\n```\n' + a.code.slice(0, 6000) + '\n```').join('\n\n') }
-              ];
-              for(const ep of ['gemini', 'groq', 'claude']){
-                try{
-                  const r = await callWithWatchdog(ep, __exMessages, () => {}, 45000, 90000);
-                  if(r && r.trim()){ __feats = r.trim().split('\n').map(l => l.replace(/^[-*\d.\s]+/, '').trim()).filter(Boolean).slice(0, 10); break; }
-                }catch(exErr){ /* جرّب المستخرج التالي */ }
-              }
-            }catch(exOuterErr){}
-          }
-          if(!__feats.length){
-            // ما في مميزات إضافية (أو الأساس ضخم) → الأساس نفسه هو الناتج، بصدق
+          // 🧠 نهج Mixture of Agents: "المهندس الرئيسي" يقرأ أفضل المقترحات
+          // كاملة + مقتطفات أفكار من الباقين، ثم يعيد كتابة نسخة نهائية
+          // واحدة متفوقة من الصفر — مو لصق ميزات، إعادة بناء واعية.
+          if(__cands.length < 2){
             __useBaseAsIs();
           } else {
-            // خطوة 2: التعزيز - أضف المميزات على الأساس وأعد الكود كاملًا
-            const __enhSystem = APP_IDENTITY_NOTE + BUILD_COMPLETENESS_RULE + NO_FAKE_EDIT_RULE + CHAT_STYLE_RULE +
-              '\n\nمهمتك: خذ الكود الأساس التالي كما هو، وأضف عليه المميزات المذكورة في القائمة، ثم أعد الكود النهائي كاملًا من أول سطر إلى آخر سطر. يُمنع حذف أي ميزة موجودة في الأساس، يُمنع إعادة كتابة التطبيق من الصفر، ويُمنع الاختصار أو وضع تعليقات بدل الكود.';
-            const __enhUser = 'الكود الأساس:\n```' + (__base.codeType || '') + '\n' + __base.code + '\n```\n\nأضف هذه المميزات (مأخوذة من نسخ مزودين آخرين لنفس الطلب):\n' + __feats.map(f => '- ' + f).join('\n') + '\n\nأعد الكود النهائي كاملًا.';
+            const __top = __cands.slice(0, 3);
+            const __rest = __cands.slice(3, 8);
+            const __budget = 110000;
+            let __used = 0;
+            const __parts = [];
+            for(const a of __top){
+              const __cap = Math.min(a.code.length, 40000, Math.max(0, __budget - __used));
+              if(__cap <= 0) break;
+              const chunk = a.code.slice(0, __cap);
+              __used += chunk.length;
+              __parts.push('### مقترح كامل (' + a.label + ')' + (chunk.length < a.code.length ? ' — (مقتطع)' : '') + '\n```' + (a.codeType || '') + '\n' + chunk + '\n```');
+            }
+            for(const a of __rest){
+              if(__used > __budget) break;
+              const chunk = a.code.slice(0, 3000);
+              __used += chunk.length;
+              __parts.push('### مقتطف أفكار إضافية (' + a.label + ')\n```\n' + chunk + '\n```');
+            }
+            const __lastUserMsg = (apiMessages.filter(m => m.role === 'user').slice(-1)[0] || {}).content || '';
+            const __moaSystem = APP_IDENTITY_NOTE + BUILD_COMPLETENESS_RULE + NO_FAKE_EDIT_RULE + CHAT_STYLE_RULE +
+              '\n\nأنت المهندس الرئيسي والمدمج الذكي لفريق من نماذج ذكاء اصطناعي متعددة. أمامك مقترحات متعددة لنفس طلب المستخدم. مهمتك: حلّل المقترحات، وخذ أجمل تصميم وأقوى منطق وكل ميزة مفيدة ظهرت في أي مقترح، وتخلّص من الأخطاء والتكرار، ثم اكتب النسخة النهائية الواحدة فائقة الجودة كاملة من أول سطر إلى آخر سطر. يجب أن تكون النتيجة أفضل وأكمل من أي مقترح منفرد. أعد كودًا واحدًا كاملًا قابلًا للتشغيل داخل fence واحد، بدون شرح خارج الصندوق، وبدون اختصار أو وضع تعليقات بدل الكود.';
+            const __moaUser = 'طلب المستخدم الأصلي: "' + String(__lastUserMsg).slice(0, 2000) + '"\n\n' + __parts.join('\n\n') + '\n\nاكتب الآن النسخة النهائية الكاملة المتفوقة.';
             const __mergePhaseStart = Date.now();
             for(const mKey of ['claude', 'openai']){
               if(mergeDone) break;
               if(Date.now() - __mergePhaseStart > 300000) break;
               try{
                 const __reply = await callWithWatchdog(mKey, [
-                  { role: 'system', content: __enhSystem },
-                  { role: 'user', content: __enhUser }
+                  { role: 'system', content: __moaSystem },
+                  { role: 'user', content: __moaUser }
                 ], () => {}, 90000, 300000);
                 const { code: __mc, codeType: __mct, explanation: __mex } = extractReply(__reply || '');
-                if(__mc && looksCompleteCode(__mc, __mct) && __mc.length >= __base.code.length * 0.7){
-                  const __low = __mc.toLowerCase();
-                  const __hit = __feats.filter(f => f.split(/\s+/).filter(w => w.length > 3).some(w => __low.includes(w.toLowerCase()))).length;
-                  if(__hit >= Math.ceil(__feats.length * 0.5)){
-                    mergeMsg.content = stripCodeFromChat(__mex) || t('buildSuccess');
-                    mergeMsg.code = __mc;
-                    mergeMsg.codeType = __mct || __base.codeType;
-                    cur.code = __mc;
-                    cur.codeType = mergeMsg.codeType;
-                    mergeDone = true;
-                  }
+                if(__mc && looksCompleteCode(__mc, __mct) && __mc.length >= __base.code.length * 0.75){
+                  mergeMsg.providerLabel = '🧠 نسخة الفريق النهائية';
+                  mergeMsg.content = stripCodeFromChat(__mex) || t('buildSuccess');
+                  mergeMsg.code = __mc;
+                  mergeMsg.codeType = __mct || __base.codeType;
+                  cur.code = __mc;
+                  cur.codeType = mergeMsg.codeType;
+                  mergeDone = true;
                 }
               }catch(mergeErr){ if(mergeErr && mergeErr.name === 'AbortError') break; }
             }
