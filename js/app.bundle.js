@@ -1,0 +1,16849 @@
+// ONE-TIME MIGRATION: earlier versions of this app let visitors paste their own
+// provider API keys/models into localStorage for direct (client-side) calls.
+// Now all 8 providers (except Perplexity) are proxied server-side with the
+// owner's keys, so any leftover key/model from that era causes broken direct
+// calls (e.g. an old deleted model, or a since-revoked personal key) instead
+// of using the working server proxy. Wipe them out once per app version bump.
+(function migrateLegacyProviderStorage(){
+  const MIGRATION_FLAG = 'aiapp_legacy_keys_migrated_v92';
+  try{
+    if(localStorage.getItem(MIGRATION_FLAG)) return;
+    const providers = ['claude','cohere','deepseek','gemini','groq','mistral','openrouter','perplexity'];
+    providers.forEach(p => {
+      if(p === 'perplexity') return; // Perplexity is still user-key only, keep it
+      localStorage.removeItem('aiapp_' + p + '_apikey');
+      localStorage.removeItem('aiapp_' + p + '_model');
+    });
+    localStorage.setItem(MIGRATION_FLAG, '1');
+  }catch(e){}
+})();
+
+// Some mobile browsers (notably Huawei Browser) can misreport a wide CSS viewport,
+// causing the `@media (max-width:860px)` mobile layout to never trigger even on a phone.
+// Detect real touch/mobile devices via user-agent + touch support as a reliable fallback,
+// and force the mobile UI class regardless of the reported viewport width.
+(function applyMobileUiClass(){
+  const ua = navigator.userAgent || '';
+  const isMobileUA = /Android|iPhone|iPad|iPod|Mobile|Huawei|HarmonyOS/i.test(ua);
+  const isTouch = (navigator.maxTouchPoints || 0) > 0;
+  const isNarrow = window.matchMedia('(max-width:860px)').matches;
+  if((isMobileUA && isTouch) || isNarrow){
+    document.documentElement.classList.add('mobile-ui');
+  }
+})();
+
+/* v308: منع السحب الأفقي على مستوى الصفحة (iOS Safari) — الكود/الجداول تنسحب داخل صندوقها فقط */
+(function(){
+  let sx=0, sy=0;
+  document.addEventListener('touchstart', e=>{
+    if(e.touches.length!==1) return;
+    sx=e.touches[0].clientX; sy=e.touches[0].clientY;
+  }, {passive:true});
+  document.addEventListener('touchmove', e=>{
+    if(e.touches.length!==1) return;
+    const dx=Math.abs(e.touches[0].clientX-sx), dy=Math.abs(e.touches[0].clientY-sy);
+    if(dx<=dy) return; // حركة عمودية — طبيعي
+    // اسمح بالسحب الأفقي فقط داخل عناصر قابلة للتمرير الأفقي
+    let el=e.target;
+    while(el && el!==document.body){
+      if(el.scrollWidth>el.clientWidth+2){
+        const ox=getComputedStyle(el).overflowX;
+        if(ox==='auto'||ox==='scroll') return;
+      }
+      el=el.parentElement;
+    }
+    if(e.cancelable) e.preventDefault();
+  }, {passive:false});
+})();
+
+/* v310: منع سفاري iOS من سحب الصفحة كاملة عموديًا (يخفي الهيدر تحت شريط
+   الساعة) — التطبيق مثبت 100dvh والصفحة نفسها ما يفترض تتحرك أبدًا.
+   نرجّع التمرير لصفر إلا أثناء الكتابة (حتى ما نخرب رفع الكيبورد للحقل). */
+(function lockWindowVScroll(){
+  if(!document.documentElement.classList.contains('mobile-ui')) return;
+  const inputFocused = () => {
+    const ae = document.activeElement;
+    return !!(ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT' || ae.isContentEditable));
+  };
+  const reset = () => {
+    if(inputFocused()) return;
+    if(window.scrollY || document.documentElement.scrollTop || document.body.scrollTop){
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+  };
+  window.addEventListener('scroll', reset, {passive:true});
+  if(window.visualViewport) window.visualViewport.addEventListener('resize', () => setTimeout(reset, 60));
+  document.addEventListener('focusout', () => setTimeout(reset, 120));
+})();
+
+const $ = s => document.querySelector(s);
+
+// --- Account system: signup / login / session, backed by api/auth.js ---
+(function authSystem(){
+  const overlay = $('#authOverlay');
+  const tabLogin = $('#authTabLogin');
+  const tabSignup = $('#authTabSignup');
+  const userInput = $('#authUsername');
+  const passInput = $('#authPassword');
+  const errBox = $('#authError');
+  const submitBtn = $('#authSubmitBtn');
+  const authToggleBtn = $('#btnAuthToggle');
+  const userLabel = $('#authUserLabel');
+  const recoveryRow = $('#authRecoveryRow');
+  const recoveryInput = $('#authRecoveryCode');
+  const passLabelText = $('#authPasswordLabelText');
+  const forgotLink = $('#authForgotLink');
+  const backToLoginLink = $('#authBackToLoginLink');
+  const emailRow = $('#authEmailRow');
+  const passwordRow = $('#authPasswordRow');
+  const infoMsg = $('#authInfoMsg');
+  const useCodeLink = $('#authUseCodeLink');
+  const tabsRow = tabLogin.parentElement;
+  const recoveryModal = $('#authRecoveryModal');
+  const recoveryCodeDisplay = $('#authRecoveryCodeDisplay');
+  const copyRecoveryBtn = $('#authCopyRecoveryBtn');
+  const ackRecoveryBtn = $('#authAckRecoveryBtn');
+  let mode = 'login';
+  let pendingAuthed = null; // { username } to apply after recovery modal ack
+
+  function curT(){
+    const lang = localStorage.getItem('aiapp_lang') || 'ar';
+    return I18N[lang] || I18N.ar;
+  }
+
+  function setMode(m){
+    mode = m;
+    errBox.textContent = '';
+    infoMsg.style.display = 'none';
+    infoMsg.textContent = '';
+    const t = curT();
+    tabLogin.classList.toggle('primary', m === 'login');
+    tabSignup.classList.toggle('primary', m === 'signup');
+    const rememberRow = $('#authRememberRow');
+    emailRow.style.display = (m === 'signup') ? 'flex' : 'none';
+    userInput.readOnly = (m === 'resetToken');
+    if(m === 'reset'){
+      tabsRow.style.display = 'none';
+      recoveryRow.style.display = 'flex';
+      passwordRow.style.display = 'flex';
+      passLabelText.textContent = t.authNewPasswordLabel;
+      forgotLink.style.display = 'none';
+      useCodeLink.style.display = 'none';
+      backToLoginLink.style.display = '';
+      submitBtn.textContent = t.authSubmitReset;
+      if(rememberRow) rememberRow.style.display = 'none';
+    } else if(m === 'forgotEmail'){
+      tabsRow.style.display = 'none';
+      recoveryRow.style.display = 'none';
+      passwordRow.style.display = 'none';
+      forgotLink.style.display = 'none';
+      useCodeLink.style.display = '';
+      backToLoginLink.style.display = '';
+      submitBtn.textContent = t.authSubmitForgotEmail;
+      if(rememberRow) rememberRow.style.display = 'none';
+    } else if(m === 'resetToken'){
+      tabsRow.style.display = 'none';
+      recoveryRow.style.display = 'none';
+      passwordRow.style.display = 'flex';
+      passLabelText.textContent = t.authNewPasswordLabel;
+      forgotLink.style.display = 'none';
+      useCodeLink.style.display = 'none';
+      backToLoginLink.style.display = '';
+      submitBtn.textContent = t.authSubmitReset;
+      if(rememberRow) rememberRow.style.display = 'none';
+    } else {
+      tabsRow.style.display = 'flex';
+      recoveryRow.style.display = 'none';
+      passwordRow.style.display = 'flex';
+      passLabelText.textContent = t.authPasswordLabel;
+      forgotLink.style.display = (m === 'login') ? '' : 'none';
+      useCodeLink.style.display = 'none';
+      backToLoginLink.style.display = 'none';
+      submitBtn.textContent = m === 'login' ? t.authSubmitLogin : t.authSubmitSignup;
+      if(rememberRow) rememberRow.style.display = 'flex';
+    }
+  }
+  tabLogin.onclick = () => setMode('login');
+  tabSignup.onclick = () => setMode('signup');
+  forgotLink.onclick = (e) => { e.preventDefault(); setMode('forgotEmail'); };
+  useCodeLink.onclick = (e) => { e.preventDefault(); setMode('reset'); };
+  backToLoginLink.onclick = (e) => { e.preventDefault(); setMode('login'); };
+
+  const togglePassBtn = $('#authTogglePassBtn');
+  if(togglePassBtn){
+    togglePassBtn.onclick = () => {
+      const showing = passInput.type === 'text';
+      passInput.type = showing ? 'password' : 'text';
+      togglePassBtn.textContent = showing ? '🙈' : '👁';
+    };
+  }
+
+  function showOverlay(){ overlay.style.display = 'flex'; }
+  function hideOverlay(){ overlay.style.display = 'none'; }
+
+  // "Remember me": when checked (default), the session survives browser
+  // restarts (localStorage). When unchecked, the session only lasts for the
+  // current tab (sessionStorage) and is gone once the browser is closed.
+  function authRemembered(){
+    const cb = $('#authRememberMe');
+    return !cb || cb.checked;
+  }
+  function authGet(key){ return sessionStorage.getItem(key) || localStorage.getItem(key); }
+  function authSet(key, value){
+    if(authRemembered()){ localStorage.setItem(key, value); sessionStorage.removeItem(key); }
+    else { sessionStorage.setItem(key, value); localStorage.removeItem(key); }
+    // عند تسجيل الدخول: حمّل ذاكرة المستخدم فورًا
+    if(key === 'aiapp_auth_token'){ try{ memoryLoad(); }catch(e){} try{ if(window.refreshPremiumPoints) window.refreshPremiumPoints(); }catch(e){} }
+  }
+
+  // ===== 🧠 ذاكرة المستخدم طويلة المدى =====
+  // ملخص صغير عن المستخدم (اسمه، مشاريعه، تفضيلاته) يُحفظ في الخادم
+  // ويُحقن في بداية كل محادثة ليتذكره التطبيق عبر الجلسات.
+  let userMemory = '';
+  let userTopics = []; // 🗂️ v326: ملخصات آخر 10 محادثات (عبر الأيام والأجهزة)
+  async function memoryLoad(){
+    try{
+      const token = authGet('aiapp_auth_token');
+      if(!token){ userMemory = ''; return; }
+      const r = await fetch('/api/system?action=memory', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ token, op: 'get' })
+      });
+      if(r.ok){ const d = await r.json(); userMemory = d.memory || ''; userTopics = Array.isArray(d.topics) ? d.topics : []; }
+    }catch(e){}
+  }
+  function memoryUpdate(userText, aiText){
+    try{
+      const token = authGet('aiapp_auth_token');
+      if(!token || !userText) return;
+      fetch('/api/system?action=memory', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ token, op: 'update', userText: String(userText).slice(0, 1500), aiText: String(aiText || '').slice(0, 800) })
+      }).then(r => r.ok ? r.json() : null)
+        .then(d => { if(d && typeof d.memory === 'string') userMemory = d.memory; })
+        .catch(() => {});
+    }catch(e){}
+  }
+  // 🗂️ v326: تحديث ملخص موضوع المحادثة الحالية (بدون نموذج — رخيص وسريع).
+  // خانق 60 ثانية لكل محادثة حتى ما نكتب مع كل رسالة.
+  const __topicLastSent = {};
+  function memoryTopicUpdate(chat, userText, aiText){
+    try{
+      const token = authGet('aiapp_auth_token');
+      if(!token || !chat || !chat.id) return;
+      const now = Date.now();
+      if(__topicLastSent[chat.id] && now - __topicLastSent[chat.id] < 60000) return;
+      __topicLastSent[chat.id] = now;
+      const clean = s => String(s || '').replace(/```[\s\S]*?(```|$)/g, ' ').replace(/\s+/g, ' ').trim();
+      const snip = (clean(userText).slice(0, 100) + ' ← ' + clean(aiText).slice(0, 110)).slice(0, 220);
+      fetch('/api/system?action=memory', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, op: 'topic', id: String(chat.id), title: String(chat.title || '').slice(0, 80), snip })
+      }).then(r => r.ok ? r.json() : null)
+        .then(d => { if(d && Array.isArray(d.topics)) userTopics = d.topics; })
+        .catch(() => {});
+    }catch(e){}
+  }
+  function memoryTopicsBlock(){
+    return ''; // 🚫 v368: أوقفنا حقن مواضيع المحادثات السابقة نهائيًا — كانت تسبب تداخل المواضيع. الذاكرة الشخصية (الاسم/التفضيلات) تبقى.
+    if(!userTopics || !userTopics.length) return '';
+    const lines = userTopics.slice(0, 10).map(tp => {
+      let dt = '';
+      try{ dt = new Date(tp.at || 0).toLocaleDateString('ar-AE', { day: 'numeric', month: 'short' }); }catch(e){}
+      return '- [' + dt + '] ' + (tp.title || '') + ': ' + (tp.snip || '');
+    }).join('\n');
+    return '\n\n🗂️ مواضيع محادثات المستخدم السابقة (مرجع فقط): إذا أشار المستخدم بنفسه لعمل سابق (مثل «كمل على اللي سويناه أمس» أو «وين تصميم الدعاية») ولا يوجد في المحادثة الحالية ما يفسره، افهم قصده من هذه القائمة وكمّل عليه بشكل طبيعي. ممنوع منعًا باتًا فتح أو ذكر أي موضوع منها من عندك بدون إشارة صريحة من المستخدم:\n' + lines;
+  }
+  function memorySystemMsg(){
+    if(!userMemory && !(userTopics && userTopics.length)) return null;
+    if(!userMemory) return { role: 'system', content: 'لا توجد معلومات شخصية محفوظة.' + memoryTopicsBlock() };
+    return { role: 'system', content: '🧠 [ذاكرة المستخدم طويلة المدى — أنت تعرف هذا الشخص]: هذه معلومات حقيقية محفوظة عن المستخدم الذي تحدّثه الآن، جمعتها من محادثاتكم السابقة عبر الأيام والأشهر. تعامل معه كصديق قديم تعرفه فعلًا، تمامًا مثل مساعد يتذكر أصحابه:\n' + userMemory + '\n\n📌 كيف تستخدم هذه الذاكرة:\n(1) أنت تعرف هذا الشخص — إذا كان اسمه محفوظًا فوق فخاطبه باسمه بشكل طبيعي ودافئ عند المناسبة، ولا تسأله «من أنت؟» أبدًا.\n(2) الاسترجاع فوري وإلزامي: إذا سألك عن أي شيء ذكره سابقًا («شو قلت لك المرة اللي فاتت»، «تتذكر مشروعي»، «قبل فترة كلمتك عن...») → تذكّره فورًا من المعلومات أعلاه بثقة وبالتفصيل. ممنوع منعًا باتًا أن تقول «لا أتذكر» أو «لا أحتفظ بمحادثات سابقة» — أنت تحتفظ بها وهي أمامك.\n(3) القاعدة الوحيدة للأدب: لا تبدأ أنت من نفسك بفتح أو اقتراح مشاريع/ألعاب/مواضيع قديمة في التحية أو أول رد بدون أن يشير لها المستخدم — دعه يقود. لكن بمجرد ما يسأل أو يشير، استرجع كل شيء فورًا.\n(4) استخدم تفضيلاته المحفوظة (لغته، اهتماماته، أسلوبه) لتخصيص ردودك تلقائيًا.' + memoryTopicsBlock() };
+  }
+  try{ memoryLoad(); }catch(e){}
+  function authRemove(key){ localStorage.removeItem(key); sessionStorage.removeItem(key); }
+  // Expose globally so other parts of the app (outside this auth IIFE) can
+  // read the token/username honoring the "remember me" choice.
+  window.authGet = authGet;
+  window.authSet = authSet;
+  window.authRemove = authRemove;
+  // sendMessage (outside this IIFE) needs the memory helpers too.
+  window.memorySystemMsg = memorySystemMsg;
+  window.memoryUpdate = memoryUpdate;
+  window.memoryTopicUpdate = memoryTopicUpdate;
+
+  function onAuthed(username, avatar){
+    authSet('aiapp_username', username);
+    if(avatar){ localStorage.setItem('aiapp_avatar', avatar); }
+    else if(avatar === null){ localStorage.removeItem('aiapp_avatar'); }
+    // ☁️ v306: استرجاع/دمج المحادثات من السيرفر (عند الإقلاع وعند تسجيل الدخول).
+    try{ if(window.chatsSyncOnAuth) window.chatsSyncOnAuth(); }catch(e){}
+    hideOverlay();
+    setAuthToggleUI(true);
+    if(userLabel) userLabel.textContent = username;
+    // v214: الاسم صار داخل قائمة ⋮ — الشارة العلوية تبقى مخفية
+    updateAvatarUI();
+  }
+
+  // Single header button next to ⚙️ Settings that doubles as the login/logout
+  // entry point: shows "🔑 Login" for guests (opens the auth overlay) and
+  // "🚪 Logout" once signed in (clears the session).
+  function doLogout(){
+    authRemove('aiapp_auth_token');
+    authRemove('aiapp_username');
+    localStorage.removeItem('aiapp_avatar');
+    setAuthToggleUI(false);
+    const badge = $('#authUserBadge');
+    if(badge) badge.style.display = 'none';
+    updateAvatarUI();
+    if(window.refreshProviderQuickBar) window.refreshProviderQuickBar();
+  }
+  window.doLogout = doLogout;
+  window.loadAdminStats = async function loadAdminStats(){
+    const box = document.getElementById('adminStatsBox');
+    if(!box) return;
+    box.textContent = '⏳ جارِ التحميل...';
+    try{
+      const token = authGet('aiapp_auth_token');
+      const res = await fetch('/api/admin-stats?token=' + encodeURIComponent(token || ''));
+      const data = await res.json();
+      if(!res.ok){ box.textContent = '❌ ' + (data.error || 'غير مصرح'); return; }
+      const lines = [];
+      lines.push('👥 إجمالي الحسابات: ' + data.totalAccounts + '  (حقيقية: ' + data.realAccounts + '، اختبار: ' + data.testAccounts + ')');
+      lines.push('');
+      lines.push('💬 رسائل اليوم: ' + data.messagesToday + '   |   إجمالي كل الوقت: ' + data.totalMessagesAllTime);
+      if(data.perProviderToday && Object.keys(data.perProviderToday).length){
+        lines.push('');
+        lines.push('📊 حسب المزوّد اليوم:');
+        Object.entries(data.perProviderToday).sort((a,b)=>b[1]-a[1]).forEach(([p,c])=>lines.push('  • ' + p + ': ' + c));
+      }
+      if(data.topUsersToday && data.topUsersToday.length){
+        lines.push('');
+        lines.push('🏆 الأكثر نشاطًا اليوم:');
+        data.topUsersToday.forEach(u=>lines.push('  • ' + u.username + ': ' + u.messages + ' رسالة'));
+      }
+      if(data.recentUsers && data.recentUsers.length){
+        lines.push('');
+        lines.push('🆕 آخر الحسابات نشاطًا:');
+        data.recentUsers.slice(0,15).forEach(u=>lines.push('  • ' + u.username + '  (' + String(u.lastWrite||'').slice(0,10) + ')'));
+      }
+      lines.push('');
+      lines.push('🕐 آخر تحديث: ' + new Date(data.generatedAt).toLocaleString('en-GB'));
+      box.textContent = lines.join('\n');
+      window.__adminUsersCache = data.manageableUsers || [];
+      renderAdminUserTable();
+    }catch(e){
+      box.textContent = '❌ تعذر التحميل: ' + (e && e.message || e);
+    }
+  };
+  function renderAdminUserTable(){
+    const wrap = document.getElementById('adminUsersTable');
+    if(!wrap) return;
+    const users = window.__adminUsersCache || [];
+    if(!users.length){ wrap.innerHTML = '<div style="opacity:.6;padding:8px">لا يوجد مستخدمون لإدارتهم.</div>'; return; }
+    wrap.innerHTML = users.map(u => {
+      const safeName = String(u.username).replace(/'/g,"\\'");
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333);flex-wrap:wrap">'
+        + '<span style="flex:1;min-width:110px;font-weight:600">' + (u.banned ? '🚫 ' : '') + u.username + '</span>'
+        + '<span style="font-size:11px;opacity:.6">' + (u.email || 'بدون إيميل') + '</span>'
+        + '<button type="button" onclick="adminMessageUser(\'' + safeName + '\')" title="إرسال رسالة" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">📩</button>'
+        + '<button type="button" onclick="adminToggleBan(\'' + safeName + '\', ' + (!u.banned) + ')" title="' + (u.banned ? 'فك الحظر' : 'حظر') + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">' + (u.banned ? '✅' : '🚫') + '</button>'
+        + '<button type="button" onclick="adminDeleteUser(\'' + safeName + '\')" title="حذف نهائي" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
+        + '</div>';
+    }).join('');
+  }
+  window.adminToggleBan = async function(username, ban){
+    if(!confirm((ban ? 'حظر' : 'فك حظر') + ' المستخدم "' + username + '"؟')) return;
+    try{
+      const token = authGet('aiapp_auth_token');
+      const res = await fetch('/api/admin-actions', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ token, action: ban ? 'ban' : 'unban', targetUsername: username }),
+      });
+      const data = await res.json();
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
+      const u = (window.__adminUsersCache||[]).find(x=>x.username===username);
+      if(u) u.banned = ban;
+      renderAdminUserTable();
+    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+  };
+  window.adminDeleteUser = async function(username){
+    if(!confirm('⚠️ حذف نهائي لحساب "' + username + '"؟ لا يمكن التراجع.')) return;
+    try{
+      const token = authGet('aiapp_auth_token');
+      const res = await fetch('/api/admin-actions', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ token, action: 'delete', targetUsername: username }),
+      });
+      const data = await res.json();
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
+      window.__adminUsersCache = (window.__adminUsersCache||[]).filter(x=>x.username!==username);
+      renderAdminUserTable();
+    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+  };
+  window.adminMessageUser = async function(username){
+    const text = prompt('اكتب الرسالة التي ستصل لـ "' + username + '" (تظهر له عند فتح البرنامج):');
+    if(!text || !text.trim()) return;
+    try{
+      const token = authGet('aiapp_auth_token');
+      const res = await fetch('/api/admin-actions', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ token, action: 'message', targetUsername: username, text }),
+      });
+      const data = await res.json();
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
+      alert('✅ تم إرسال الرسالة.');
+    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+  };
+
+  function setAuthToggleUI(loggedIn){
+    const t = curT();
+    // v214: قبل الدخول = زر «دخول» في الهيدر فقط؛ بعد الدخول = الاسم داخل قائمة ⋮ + خروج آخر خانة
+    if(authToggleBtn) authToggleBtn.style.display = 'none';
+    const headerLoginBtn = $('#btnHeaderLogin');
+    if(headerLoginBtn){
+      headerLoginBtn.style.display = loggedIn ? 'none' : 'inline-flex';
+      headerLoginBtn.onclick = () => { setMode('login'); showOverlay(); };
+    }
+    const menuRow = $('#menuUserRow');
+    if(menuRow){
+      menuRow.style.display = loggedIn ? 'flex' : 'none';
+      if(loggedIn){
+        const nameEl = $('#menuUserName');
+        if(nameEl) nameEl.textContent = authGet('aiapp_username') || '';
+        const av = $('#menuUserAvatar');
+        const fb = $('#menuUserAvatarFallback');
+        const avatarUrl = localStorage.getItem('aiapp_avatar') || '';
+        if(av && fb){
+          if(avatarUrl){ av.src = avatarUrl; av.style.display = 'inline-block'; fb.style.display = 'none'; }
+          else { av.style.display = 'none'; fb.style.display = 'inline-flex'; }
+        }
+      }
+    }
+    const menuLogoutBtn = $('#btnMenuLogout');
+    if(menuLogoutBtn){
+      menuLogoutBtn.style.display = loggedIn ? 'inline-flex' : 'none';
+      menuLogoutBtn.onclick = doLogout;
+    }
+    const adminWrap = $('#adminSectionWrap');
+    if(adminWrap){
+      const uname = String(authGet('aiapp_username') || '').trim().toLowerCase();
+      adminWrap.style.display = (loggedIn && uname === 'omran') ? '' : 'none';
+    }
+    const btnMahaOwnerEl = $('#btnMaha');
+    if(btnMahaOwnerEl){ btnMahaOwnerEl.style.display = 'flex'; }
+  }
+  // Deferred (not called synchronously): I18N is declared further down in
+  // this same script (after this IIFE), so calling setAuthToggleUI() here
+  // directly would throw a "Cannot access 'I18N' before initialization"
+  // error and abort the rest of the script entirely (breaking login,
+  // signup, tabs, everything). Deferring via setTimeout(0) lets the rest of
+  // the script finish parsing/executing first.
+  setTimeout(() => setAuthToggleUI(false), 0);
+
+  // If the page was opened from a "reset password" email link
+  // (?resetToken=...&ru=username), jump straight into the reset-with-token
+  // flow so the user just types a new password.
+  (function checkResetTokenUrl(){
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const rt = params.get('resetToken');
+      const ru = params.get('ru');
+      if(rt && ru){
+        window.__pendingResetToken = rt;
+        showOverlay();
+        setMode('resetToken');
+        userInput.value = ru;
+        userInput.readOnly = true;
+        // Clean the URL so the token isn't left in browser history/address bar.
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+    } catch(e){ /* ignore */ }
+  })();
+
+  // If the page was reached via the Google login redirect
+  // (?gtoken=...&guser=...&gavatar=...), finish the login immediately.
+  (function checkGoogleAuthUrl(){
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const gtoken = params.get('gtoken');
+      const guser = params.get('guser');
+      const gavatar = params.get('gavatar');
+      const gerror = params.get('gerror');
+      const cleanUrl = window.location.origin + window.location.pathname;
+      if(gtoken && guser){
+        authSet('aiapp_auth_token', gtoken);
+        authSet('aiapp_username', guser);
+        if(gavatar){ localStorage.setItem('aiapp_avatar', gavatar); }
+        window.history.replaceState({}, document.title, cleanUrl);
+        setTimeout(() => onAuthed(guser, gavatar || null), 0);
+      } else if(gerror){
+        window.history.replaceState({}, document.title, cleanUrl);
+        setTimeout(() => {
+          const isEn = (localStorage.getItem('aiapp_lang') === 'en');
+          const box = $('#authError');
+          if(box) box.textContent = isEn ? 'Google sign-in failed, please try again' : 'تعذر تسجيل الدخول بجوجل، حاول مرة أخرى';
+        }, 0);
+      }
+    } catch(e){ /* ignore */ }
+  })();
+
+  const googleBtnEl = $('#authGoogleBtn');
+  if(googleBtnEl){
+    googleBtnEl.onclick = () => {
+      const clientId = '533765051685-2334rjfvu738sd2i50p7rb8gck1d00i2.apps.googleusercontent.com';
+      const redirectUri = window.location.origin + '/api/auth-google-callback';
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: 'code',
+        scope: 'openid email profile',
+        prompt: 'select_account',
+      });
+      window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+    };
+  }
+
+  function updateAvatarUI(){
+    const avatar = localStorage.getItem('aiapp_avatar') || '';
+    const img = $('#authUserAvatarImg');
+    const emoji = $('#authUserBadgeEmoji');
+    if(img && emoji){
+      if(avatar){ img.src = avatar; img.style.display = 'inline-block'; emoji.style.display = 'none'; }
+      else { img.style.display = 'none'; emoji.style.display = ''; }
+    }
+    const preview = $('#acctAvatarPreview');
+    const placeholder = $('#acctAvatarPlaceholder');
+    if(preview && placeholder){
+      if(avatar){ preview.src = avatar; preview.style.display = 'block'; placeholder.style.display = 'none'; }
+      else { preview.style.display = 'none'; placeholder.style.display = 'flex'; }
+    }
+    // v214: مزامنة صورة القائمة ⋮
+    const mAv = $('#menuUserAvatar');
+    const mFb = $('#menuUserAvatarFallback');
+    if(mAv && mFb){
+      if(avatar){ mAv.src = avatar; mAv.style.display = 'inline-block'; mFb.style.display = 'none'; }
+      else { mAv.style.display = 'none'; mFb.style.display = 'inline-flex'; }
+    }
+  }
+
+  function showRecoveryModal(code, username, avatar){
+    pendingAuthed = { username, avatar };
+    recoveryCodeDisplay.textContent = code;
+    recoveryModal.style.display = 'flex';
+  }
+  copyRecoveryBtn.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(recoveryCodeDisplay.textContent);
+      const t = curT();
+      copyRecoveryBtn.textContent = t.authCopied;
+      setTimeout(() => { copyRecoveryBtn.textContent = t.authCopyBtn; }, 1500);
+    } catch(e){ /* clipboard may be unavailable, user can select text manually */ }
+  };
+  ackRecoveryBtn.onclick = () => {
+    recoveryModal.style.display = 'none';
+    if(pendingAuthed){ onAuthed(pendingAuthed.username, pendingAuthed.avatar); pendingAuthed = null; }
+  };
+
+  const authFormEl = $('#authForm');
+  if(authFormEl){ authFormEl.addEventListener('submit', (e) => { e.preventDefault(); submitBtn.onclick(); }); }
+  submitBtn.onclick = async () => {
+    const username = userInput.value.trim();
+    const password = passInput.value;
+    errBox.textContent = '';
+    const isEn = (localStorage.getItem('aiapp_lang') === 'en');
+
+    if(mode === 'reset'){
+      const code = recoveryInput.value.trim();
+      if(!username || !code || !password){
+        errBox.textContent = isEn ? 'Please fill in all fields' : 'الرجاء تعبئة جميع الحقول';
+        return;
+      }
+      submitBtn.disabled = true;
+      try {
+        const res = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'reset', username, recoveryCode: code, newPassword: password }),
+        });
+        const data = await res.json();
+        if(!res.ok || data.error){
+          errBox.textContent = data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى');
+          return;
+        }
+        authSet('aiapp_auth_token', data.token);
+        setMode('login');
+        userInput.value = '';
+        passInput.value = '';
+        recoveryInput.value = '';
+        showRecoveryModal(data.recoveryCode, data.username);
+      } catch(e){
+        errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
+      } finally {
+        submitBtn.disabled = false;
+      }
+      return;
+    }
+
+    if(mode === 'forgotEmail'){
+      if(!username){
+        errBox.textContent = isEn ? 'Please enter your username' : 'الرجاء إدخال اسم المستخدم';
+        return;
+      }
+      submitBtn.disabled = true;
+      try {
+        const res = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'forgotPassword', username, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
+        });
+        const data = await res.json();
+        if(!res.ok || data.error){
+          errBox.textContent = data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى');
+          return;
+        }
+        infoMsg.textContent = data.message || (isEn ? 'Check your email' : 'تحقق من بريدك');
+        infoMsg.style.display = 'block';
+      } catch(e){
+        errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
+      } finally {
+        submitBtn.disabled = false;
+      }
+      return;
+    }
+
+    if(mode === 'resetToken'){
+      if(!username || !window.__pendingResetToken || !password){
+        errBox.textContent = isEn ? 'Please fill in all fields' : 'الرجاء تعبئة جميع الحقول';
+        return;
+      }
+      submitBtn.disabled = true;
+      try {
+        const res = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'resetWithToken', username, resetToken: window.__pendingResetToken, newPassword: password }),
+        });
+        const data = await res.json();
+        if(!res.ok || data.error){
+          errBox.textContent = data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى');
+          return;
+        }
+        authSet('aiapp_auth_token', data.token);
+        window.__pendingResetToken = null;
+        onAuthed(data.username, data.avatar);
+      } catch(e){
+        errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
+      } finally {
+        submitBtn.disabled = false;
+      }
+      return;
+    }
+
+    if(!username || !password){
+      errBox.textContent = isEn ? 'Please fill in both fields' : 'الرجاء تعبئة الحقلين';
+      return;
+    }
+    submitBtn.disabled = true;
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: mode, username, password, lang: (localStorage.getItem('aiapp_lang') || 'ar'), ref: (mode === 'signup' ? (localStorage.getItem('aiapp_pending_ref') || undefined) : undefined) }),
+      });
+      const data = await res.json();
+      if(!res.ok || data.error){
+        errBox.textContent = data.error || (isEn ? 'Something went wrong, try again' : 'حدث خطأ، حاول مرة أخرى');
+        return;
+      }
+      authSet('aiapp_auth_token', data.token);
+      if(mode === 'signup'){
+        localStorage.removeItem('aiapp_pending_ref');
+      }
+      if(mode === 'signup' && data.recoveryCode){
+        showRecoveryModal(data.recoveryCode, data.username, data.avatar);
+      } else {
+        onAuthed(data.username, data.avatar);
+      }
+    } catch(e){
+      errBox.textContent = isEn ? 'Could not reach the server, check your connection' : 'تعذر الاتصال بالخادم، تحقق من الإنترنت';
+    } finally {
+      submitBtn.disabled = false;
+    }
+  };
+
+  // --- Account management: change username / password / profile picture ---
+  const acctAvatarBtn = $('#acctAvatarBtn');
+  const acctAvatarInput = $('#acctAvatarInput');
+  const acctUsername = $('#acctUsername');
+  const acctUsernameSaveBtn = $('#acctUsernameSaveBtn');
+  const acctUsernameMsg = $('#acctUsernameMsg');
+  const acctCurrentPassword = $('#acctCurrentPassword');
+  const acctNewPassword = $('#acctNewPassword');
+  const acctPasswordSaveBtn = $('#acctPasswordSaveBtn');
+  const acctPasswordMsg = $('#acctPasswordMsg');
+
+  const acctEmail = $('#acctEmail');
+  const acctEmailSaveBtn = $('#acctEmailSaveBtn');
+  const acctEmailMsg = $('#acctEmailMsg');
+
+  function prefillAccountFields(){
+    if(acctUsername) acctUsername.value = authGet('aiapp_username') || '';
+    updateAvatarUI();
+    if(acctEmail){
+      const token = authGet('aiapp_auth_token');
+      if(token){
+        fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'getProfile', token }),
+        }).then(r => r.json()).then(data => {
+          if(data && data.ok) acctEmail.value = data.email || '';
+        }).catch(() => {});
+      }
+    }
+  }
+  if(acctEmailSaveBtn){
+    acctEmailSaveBtn.onclick = async () => {
+      const t2 = curT();
+      const emailVal = acctEmail.value.trim();
+      acctEmailMsg.textContent = '';
+      if(!emailVal || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)){
+        acctEmailMsg.textContent = t2.acctInvalidEmail;
+        acctEmailMsg.style.color = '#ef4444';
+        return;
+      }
+      acctEmailMsg.textContent = t2.acctSaving;
+      acctEmailMsg.style.color = 'var(--muted,#999)';
+      acctEmailSaveBtn.disabled = true;
+      try {
+        const token = authGet('aiapp_auth_token');
+        const res = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'setEmail', token, email: emailVal }),
+        });
+        const data = await res.json();
+        if(!res.ok || data.error){
+          acctEmailMsg.textContent = data.error || t2.acctGenericError;
+          acctEmailMsg.style.color = '#ef4444';
+          return;
+        }
+        acctEmailMsg.textContent = t2.acctSaved;
+        acctEmailMsg.style.color = '#22c55e';
+      } catch(e){
+        acctEmailMsg.textContent = t2.acctNetError;
+        acctEmailMsg.style.color = '#ef4444';
+      } finally {
+        acctEmailSaveBtn.disabled = false;
+      }
+    };
+  }
+  document.addEventListener('DOMContentLoaded', prefillAccountFields);
+  // Also refresh right before the settings dialog opens, in case the user
+  // changed their name/avatar earlier in the same session.
+  const settingsBtnForAcct = document.getElementById('btnSettings');
+  if(settingsBtnForAcct) settingsBtnForAcct.addEventListener('click', prefillAccountFields);
+
+  if(acctAvatarBtn && acctAvatarInput){
+    acctAvatarBtn.onclick = () => acctAvatarInput.click();
+    acctAvatarInput.onchange = () => {
+      const file = acctAvatarInput.files && acctAvatarInput.files[0];
+      if(!file) return;
+      const isEn = (localStorage.getItem('aiapp_lang') === 'en');
+      const t2 = curT();
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = () => {
+        img.onload = async () => {
+          const size = 160;
+          const canvas = document.createElement('canvas');
+          canvas.width = size; canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          const scale = Math.max(size / img.width, size / img.height);
+          const w = img.width * scale, h = img.height * scale;
+          ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+          if(dataUrl.length > 280000){
+            acctUsernameMsg.textContent = t2.acctAvatarTooBig;
+            acctUsernameMsg.style.color = '#ef4444';
+            return;
+          }
+          try {
+            const token = authGet('aiapp_auth_token');
+            const res = await fetch('/api/auth', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'setAvatar', token, avatarDataUrl: dataUrl }),
+            });
+            const data = await res.json();
+            if(!res.ok || data.error){
+              acctUsernameMsg.textContent = data.error || t2.acctGenericError;
+              acctUsernameMsg.style.color = '#ef4444';
+              return;
+            }
+            localStorage.setItem('aiapp_avatar', data.avatar);
+            updateAvatarUI();
+          } catch(e){
+            acctUsernameMsg.textContent = t2.acctNetError;
+            acctUsernameMsg.style.color = '#ef4444';
+          }
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+      acctAvatarInput.value = '';
+    };
+  }
+
+  if(acctUsernameSaveBtn){
+    acctUsernameSaveBtn.onclick = async () => {
+      const t2 = curT();
+      const newUsernameVal = (acctUsername.value || '').trim();
+      acctUsernameMsg.textContent = '';
+      if(!newUsernameVal || newUsernameVal.length < 3){
+        acctUsernameMsg.textContent = t2.acctFillUsername;
+        acctUsernameMsg.style.color = '#ef4444';
+        return;
+      }
+      acctUsernameMsg.textContent = t2.acctSaving;
+      acctUsernameMsg.style.color = 'var(--muted,#999)';
+      acctUsernameSaveBtn.disabled = true;
+      try {
+        const token = authGet('aiapp_auth_token');
+        const res = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'changeUsername', token, newUsername: newUsernameVal, lang: (localStorage.getItem('aiapp_lang') || 'ar') }),
+        });
+        const data = await res.json();
+        if(!res.ok || data.error){
+          acctUsernameMsg.textContent = data.error || t2.acctGenericError;
+          acctUsernameMsg.style.color = '#ef4444';
+          return;
+        }
+        authSet('aiapp_auth_token', data.token);
+        authSet('aiapp_username', data.username);
+        if(userLabel) userLabel.textContent = data.username;
+        acctUsernameMsg.textContent = t2.acctSaved;
+        acctUsernameMsg.style.color = '#22c55e';
+      } catch(e){
+        acctUsernameMsg.textContent = t2.acctNetError;
+        acctUsernameMsg.style.color = '#ef4444';
+      } finally {
+        acctUsernameSaveBtn.disabled = false;
+      }
+    };
+  }
+
+  if(acctPasswordSaveBtn){
+    acctPasswordSaveBtn.onclick = async () => {
+      const t2 = curT();
+      const curPass = acctCurrentPassword.value;
+      const newPass = acctNewPassword.value;
+      acctPasswordMsg.textContent = '';
+      if(!curPass || !newPass || newPass.length < 4){
+        acctPasswordMsg.textContent = t2.acctFillPasswords;
+        acctPasswordMsg.style.color = '#ef4444';
+        return;
+      }
+      acctPasswordMsg.textContent = t2.acctSaving;
+      acctPasswordMsg.style.color = 'var(--muted,#999)';
+      acctPasswordSaveBtn.disabled = true;
+      try {
+        const token = authGet('aiapp_auth_token');
+        const res = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'changePassword', token, currentPassword: curPass, newPassword: newPass }),
+        });
+        const data = await res.json();
+        if(!res.ok || data.error){
+          acctPasswordMsg.textContent = data.error || t2.acctGenericError;
+          acctPasswordMsg.style.color = '#ef4444';
+          return;
+        }
+        acctCurrentPassword.value = '';
+        acctNewPassword.value = '';
+        acctPasswordMsg.textContent = t2.acctSaved;
+        acctPasswordMsg.style.color = '#22c55e';
+      } catch(e){
+        acctPasswordMsg.textContent = t2.acctNetError;
+        acctPasswordMsg.style.color = '#ef4444';
+      } finally {
+        acctPasswordSaveBtn.disabled = false;
+      }
+    };
+  }
+
+  // Guest mode: let the app open immediately without forcing login. Guests get
+  // GUEST_MSG_LIMIT free messages (tracked locally); once used up, sendPrompt()
+  // calls window.requireLogin() to show this same overlay and block further
+  // sends until the user logs into an existing account (or signs up).
+  const GUEST_MSG_LIMIT = 20;
+  window.GUEST_MSG_LIMIT = GUEST_MSG_LIMIT;
+  window.getGuestMsgCount = () => parseInt(localStorage.getItem('aiapp_guest_msg_count') || '0', 10);
+  window.incrementGuestMsgCount = () => localStorage.setItem('aiapp_guest_msg_count', String(window.getGuestMsgCount() + 1));
+  // Anonymous id (not a secret, never used for auth) so the server can also
+  // enforce the guest free-message cap per browser, matching the client-side
+  // localStorage counter above. Without this, server-side chat calls would be
+  // rejected as "session expired" for anyone who isn't logged in.
+  window.getGuestId = () => {
+    let id = localStorage.getItem('aiapp_guest_id');
+    if(!id){
+      id = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12);
+      localStorage.setItem('aiapp_guest_id', id);
+    }
+    return id;
+  };
+  // Referral program: capture ?ref=<inviter-username> from the URL (shared
+  // via the "invite friends" link) and remember it in localStorage until a
+  // signup actually happens, since the visitor may browse a bit before
+  // creating an account. Cleared once consumed by a successful signup.
+  (() => {
+    try {
+      const params = new URLSearchParams(location.search);
+      const ref = params.get('ref');
+      if(ref && /^[a-zA-Z0-9_-]{3,64}$/.test(ref)){
+        localStorage.setItem('aiapp_pending_ref', ref);
+      }
+    } catch(e) { /* ignore */ }
+  })();
+  window.requireLogin = (reason) => {
+    setMode('login');
+    if(reason === 'guestLimit'){ errBox.textContent = curT().guestLimitMsg; }
+    if(reason === 'guestImage'){ setMode('signup'); errBox.textContent = curT().guestImageMsg || curT().guestLimitMsg; }
+    showOverlay();
+  };
+
+  window.addEventListener('DOMContentLoaded', async () => {
+    setMode('login');
+    const token = authGet('aiapp_auth_token');
+    if(!token){ hideOverlay(); return; }
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'verify', token }),
+      });
+      const data = await res.json();
+      if(res.ok && data.ok){
+        onAuthed(data.username, data.avatar);
+        if(data.adminMessage && data.adminMessage.text){
+          setTimeout(() => { alert('📩 رسالة من الإدارة:\n\n' + data.adminMessage.text); }, 600);
+        }
+      } else if(data && data.banned){
+        authRemove('aiapp_auth_token');
+        alert('🚫 ' + (data.error || 'تم إيقاف هذا الحساب من قبل الإدارة'));
+        showOverlay();
+      } else {
+        authRemove('aiapp_auth_token');
+        showOverlay();
+      }
+    } catch(e){
+      // Offline: allow cached session to proceed without blocking, since this is a PWA.
+      const cachedUser = authGet('aiapp_username');
+      if(cachedUser) onAuthed(cachedUser); else showOverlay();
+    }
+  });
+})();
+// 🎁 v343: رسائل ودّية بدل أكواد الأخطاء عند توليد/تعديل الصور — مع فتح
+// نافذة إنشاء حساب تلقائيًا للضيف الذي استهلك صوره المجانية.
+function imgErrFriendly(err, isAr){
+  if(err === 'guest_image_used'){
+    setTimeout(() => { try{ window.requireLogin && window.requireLogin('guestImage'); }catch(e){} }, 1500);
+    return isAr
+      ? '🎁 خلصت صورك المجانية الثلاث كضيف! أنشئ حسابًا مجانيًا خلال ثوانٍ وبتحصل على 70 نقطة هدية تكمل فيها توليد وتعديل الصور بلا توقف.'
+      : '🎁 You have used your 3 free guest images! Create a free account in seconds and get 70 gift points to keep generating and editing images.';
+  }
+  if(err === 'points_insufficient'){
+    return isAr
+      ? '⚡ نقاطك الحالية ما تكفي لهذه الصورة (تحتاج 10 نقاط). افتح الإعدادات ← الباقات لشحن نقاطك وتكمل مباشرة.'
+      : '⚡ Not enough points for this image (needs 10). Open Settings → Plans to top up and continue.';
+  }
+  return null;
+}
+
+// Detects the spoken-language BCP47 prefix from raw text so the speaker can
+// pick a matching device voice / language tag. Order matters: check unique
+// scripts first (Devanagari, Arabic), then fall back to Latin-script
+// heuristics (French vs English) using accented letters + common words.
+function detectSpeechLang(text){
+  const t = String(text || '');
+  if(/[\u0980-\u09FF]/.test(t)) return 'bn'; // Bengali script
+  if(/[\u0900-\u097F]/.test(t)){
+    // Devanagari script is shared by Hindi and Nepali; use common Nepali-only words as a hint.
+    if(/\b(छ|छन्|हो|गर्नुहोस्|तपाईं|म्ल|पर्छ)\b/.test(t)) return 'ne';
+    return 'hi'; // Devanagari default => Hindi
+  }
+  if(/[\u0600-\u06FF]/.test(t)){
+    // Arabic-script text: Urdu uses extra letters not found in standard Arabic.
+    if(/[\u0679\u0688\u0691\u06BA\u06BE\u06C1\u06C2\u06D2]/.test(t)) return 'ur';
+    return 'ar';
+  }
+  const frenchHints = /[àâäæçéèêëîïôœùûüÿ]/i;
+  const frenchWords = /\b(le|la|les|des|une|est|et|vous|nous|bonjour|merci|s'il|être|avec|pour|dans)\b/i;
+  if(frenchHints.test(t) || frenchWords.test(t)) return 'fr';
+  return 'en';
+}
+function pickVoice(langCode){
+  const voices = ('speechSynthesis' in window) ? window.speechSynthesis.getVoices() : [];
+  if(!voices.length) return null;
+  const preferredName = localStorage.getItem('aiapp_voice_name');
+  if(preferredName){
+    const exact = voices.find(v => v.name === preferredName);
+    if(exact) return exact;
+  }
+  const code = (typeof langCode === 'string') ? langCode : (langCode ? 'ar' : 'en');
+  const langVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith(code));
+  const pool = langVoices.length ? langVoices : voices;
+  const genderPref = localStorage.getItem('aiapp_voice_gender');
+  if(genderPref){
+    const femaleHints = /female|woman|zira|susan|fiona|moira|samantha|victoria|karen|tessa|eva|salma|hoda|amira|layla|zeina/i;
+    const maleHints = /male|man|daniel|david|fred|alex|mark|george|thomas|rishi|majed|naayf|hamed/i;
+    const filtered = pool.filter(v => genderPref === 'female' ? femaleHints.test(v.name) : maleHints.test(v.name));
+    if(filtered.length) return filtered[0];
+  }
+  return pool[0] || voices[0];
+}
+let currentCloudAudio = null;
+let currentCloudToken = null;
+let ttsHighlightRaf = null;
+let ttsHighlightWordEls = null;
+function clearWordHighlight(){
+  if(ttsHighlightWordEls){
+    ttsHighlightWordEls.forEach(el => { if(el) el.classList.remove('active'); });
+  }
+}
+function setActiveWord(wordEls, idx){
+  if(!wordEls) return;
+  wordEls.forEach((el, i) => { if(el) el.classList.toggle('active', i === idx); });
+}
+// Splits text into words wrapped in <span class="tts-word"> so we can
+// highlight the word currently being spoken. Whitespace/newlines between
+// words are kept as plain text nodes so visual layout is unchanged.
+// Builds one <span class="tts-word"> per whitespace-separated token (same
+// tokenization as before, so word count/order still matches wordStartOffsets()
+// and TTS karaoke highlighting stays in sync). On top of that, it now gives
+// light visual treatment to simple Markdown the AI providers commonly emit:
+// "## heading" lines get the '#' markers hidden + a heading class, and
+// "**bold**" spans get their asterisks stripped + a bold class. This never
+// changes which token maps to which span, only how that span looks.
+function buildSpokenWordSpans(container, text){
+  container.innerHTML = '';
+  const wordEls = [];
+  const re = /\S+/g;
+  let m, lastIndex = 0;
+  let boldOpen = false;
+  let headerLevel = 0; // >0 while inside a "## ..." heading line
+  let parent = container;    // where tokens/text currently get appended
+  let codePre = null;        // non-null while inside a ``` fenced code block
+  const openCodeBlock = (lang) => {
+    const block = document.createElement('div');
+    block.className = 'chat-codeblock';
+    const head = document.createElement('div');
+    head.className = 'chat-codeblock-head';
+    const lbl = document.createElement('span');
+    lbl.textContent = lang || 'code';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'chat-codeblock-copy';
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+    const pre = document.createElement('pre');
+    btn.onclick = async (e) => {
+      e.stopPropagation();
+      const codeTxt = pre.textContent;
+      try{ await navigator.clipboard.writeText(codeTxt); }
+      catch(err){ const ta = document.createElement('textarea'); ta.value = codeTxt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+      btn.innerHTML = '✅';
+      setTimeout(() => { btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'; }, 1500);
+    };
+    head.appendChild(lbl); head.appendChild(btn);
+    block.appendChild(head); block.appendChild(pre);
+    container.appendChild(block);
+    codePre = pre; parent = pre;
+  };
+  const closeCodeBlock = () => { codePre = null; parent = container; };
+  while((m = re.exec(text))){
+    if(m.index > lastIndex){
+      const between = text.slice(lastIndex, m.index);
+      parent.appendChild(document.createTextNode(between));
+      if(between.indexOf('\n') !== -1) headerLevel = 0;
+    }
+    if(/^```/.test(m[0])){
+      // fence token: hide it, toggle code mode (span kept so TTS word mapping stays aligned)
+      const fSpan = document.createElement('span');
+      fSpan.className = 'tts-word';
+      fSpan.style.display = 'none';
+      container.appendChild(fSpan);
+      wordEls.push(fSpan);
+      if(codePre) closeCodeBlock(); else openCodeBlock(m[0].slice(3));
+      lastIndex = m.index + m[0].length;
+      continue;
+    }
+    if(codePre){
+      const cSpan = document.createElement('span');
+      cSpan.className = 'tts-word';
+      cSpan.textContent = m[0];
+      parent.appendChild(cSpan);
+      wordEls.push(cSpan);
+      lastIndex = m.index + m[0].length;
+      continue;
+    }
+    const token = m[0];
+    const span = document.createElement('span');
+    span.className = 'tts-word';
+    if(headerLevel === 0 && /^#{1,6}$/.test(token)){
+      // Bare "#"/"##"/etc token starting a line: hide it, start heading mode.
+      span.style.display = 'none';
+      headerLevel = token.length;
+    } else {
+      const wasBold = boldOpen;
+      let display = token;
+      const markerCount = (token.match(/\*\*/g) || []).length;
+      if(markerCount){
+        display = token.split('**').join('');
+        if(markerCount % 2 === 1) boldOpen = !boldOpen;
+      }
+      // 🔗 clickable links: markdown [text](url) or plain URLs
+      const linkM = display.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)([.,،؛!؟)]*)$/);
+      const urlM = !linkM && display.match(/^(https?:\/\/[^\s<>"']{4,}|www\.[^\s<>"']{4,})([.,،؛!؟)]*)$/);
+      if(linkM || urlM){
+        const rawUrl = linkM ? linkM[2] : urlM[1];
+        const href = rawUrl.indexOf('www.') === 0 ? 'https://' + rawUrl : rawUrl;
+        const a = document.createElement('a');
+        a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
+        a.textContent = linkM ? linkM[1] : rawUrl;
+        a.style.cssText = 'color:var(--accent2); text-decoration:underline; word-break:break-all;';
+        span.appendChild(a);
+        const trail = linkM ? linkM[3] : urlM[2];
+        if(trail) span.appendChild(document.createTextNode(trail));
+      } else {
+        span.textContent = display;
+      }
+      if(wasBold || markerCount) span.classList.add('md-bold');
+      if(headerLevel) span.classList.add('md-h' + headerLevel);
+    }
+    container.appendChild(span);
+    wordEls.push(span);
+    lastIndex = m.index + m[0].length;
+  }
+  if(lastIndex < text.length) container.appendChild(document.createTextNode(text.slice(lastIndex)));
+  return wordEls;
+}
+function wordStartOffsets(text){
+  const offsets = [];
+  const re = /\S+/g;
+  let m;
+  while((m = re.exec(text))) offsets.push(m.index);
+  return offsets;
+}
+function stopAllSpeaking(){
+  if('speechSynthesis' in window) window.speechSynthesis.cancel();
+  if(currentCloudAudio){ try{ currentCloudAudio.pause(); }catch(e){} currentCloudAudio = null; }
+  if(ttsHighlightRaf){ cancelAnimationFrame(ttsHighlightRaf); ttsHighlightRaf = null; }
+  clearWordHighlight();
+  ttsHighlightWordEls = null;
+}
+async function fetchCloudSpeech(text){
+  // v246: دائمًا صوت Azure Neural عالي الجودة (نفس مسار مها) — الجنس من إعداد
+  // المستخدم واللغة تُكتشف تلقائيًا من النص لدقة نطق أعلى في كل اللغات.
+  const gender = localStorage.getItem('aiapp_voice_gender') || 'female';
+  const detected = detectSpeechLang(String(text));
+  const resp = await fetch('/api/tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ voice: 'maha', gender, lang: detected, text: String(text).slice(0, 4000) })
+  });
+  if(!resp.ok){
+    let msg = 'cloud-tts-failed:' + resp.status;
+    try{ const j = await resp.json(); if(j && j.error) msg = j.error; }catch(e){}
+    throw new Error(msg);
+  }
+  const blob = await resp.blob();
+  return URL.createObjectURL(blob);
+}
+// Splits text into speakable chunks (roughly one sentence each, merged up to
+// ~180 chars) so cloud TTS can start playing the first chunk almost
+// immediately instead of waiting for the entire message to be synthesized.
+// Each chunk also carries wordStart/wordCount so karaoke highlighting can map
+// back to the correct spans in the full wordEls array.
+function splitTextForTTS(text){
+  const wordRe = /\S+/g;
+  const words = [];
+  let m;
+  while((m = wordRe.exec(text))) words.push({ text: m[0], index: m.index });
+  if(!words.length) return [];
+  const chunks = [];
+  let startWord = 0;
+  let buf = '';
+  for(let i = 0; i < words.length; i++){
+    buf += (buf ? ' ' : '') + words[i].text;
+    const endsSentence = /[.!?؟۔]$/.test(words[i].text);
+    const isLast = i === words.length - 1;
+    if(isLast || (endsSentence && buf.length >= 20) || buf.length >= 180){
+      chunks.push({ text: buf, wordStart: startWord, wordCount: i - startWord + 1 });
+      buf = '';
+      startWord = i + 1;
+    }
+  }
+  return chunks;
+}
+// Unified speak function: uses OpenAI cloud voice if enabled+key present, else falls back to device voice.
+// wordEls (optional): array of <span class="tts-word"> elements (in order) matching the words
+// in `text`, built via buildSpokenWordSpans(). If provided, the currently-spoken word is
+// highlighted live as playback progresses (karaoke-style).
+// Prototype: rewrites text into a colloquial Arabic dialect (Gulf/Egyptian)
+// using the site's own AI before it's spoken aloud. Only triggers when the
+// user picked a dialect in Settings and the text looks like Arabic. Falls
+// back silently to the original text if the AI call fails for any reason.
+async function applyDialectForSpeech(text){
+  // v248: ميزة اللهجة التجريبية أُزيلت نهائيًا — النص يُقرأ كما هو مباشرة
+  // (الإعداد القديم المحفوظ في أجهزة المستخدمين كان يعلّق القراءة بطلب AI إضافي).
+  return text;
+  const dialect = localStorage.getItem('aiapp_voice_dialect') || '';
+  if(!dialect) return text;
+  if(!/[\u0600-\u06FF]/.test(text)) return text; // only convert Arabic text
+  try{
+    const dialectName = dialect === 'gulf' ? 'اللهجة الخليجية' : 'اللهجة المصرية';
+    const prompt = `أعد صياغة النص التالي بالكامل باللغة العربية العامية (${dialectName}) بنفس المعنى تمامًا، بدون أي إضافات أو شرح، وأعطني النص المعاد صياغته فقط بدون مقدمات:\n\n${text}`;
+    const reply = await callAI([{ role: 'user', content: prompt }]);
+    const converted = (reply ? String(reply).trim() : '');
+    return converted || text;
+  }catch(e){
+    console.error('dialect conversion failed', e);
+    return text;
+  }
+}
+// v265: عنصر صوت واحد يُفتح (unlock) لحظة ضغطة المستخدم ثم يُعاد استخدامه —
+// آيفون وبعض المتصفحات تمنع تشغيل صوت أُنشئ بعد جلب من الشبكة خارج الضغطة.
+let cloudAudioEl = null;
+function unlockCloudAudio(){
+  try{
+    if(!cloudAudioEl) cloudAudioEl = new Audio();
+    // wav صامت قصير جدًا — تشغيله داخل الضغطة "يفتح" العنصر للتشغيل لاحقًا
+    cloudAudioEl.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+    const p = cloudAudioEl.play();
+    if(p && p.catch) p.catch(()=>{});
+  }catch(e){}
+}
+async function speakSmart(text, onStart, onEnd, verbose, wordEls){
+  if(!text) return;
+  unlockCloudAudio(); // يجب أن يحدث قبل أي await حتى يبقى ضمن ضغطة المستخدم
+  text = await applyDialectForSpeech(text);
+  stopAllSpeaking();
+  ttsHighlightWordEls = wordEls || null;
+  // v248: صوت السحابة (Azure) دائمًا — الخيار القديم المحفوظ 'false' في أجهزة
+  // بعض المستخدمين كان يحوّلهم لصوت الجهاز المعطّل.
+  const cloudEnabled = true;
+  const detectedLangForCloud = detectSpeechLang(text);
+  const noDeviceTTS = !('speechSynthesis' in window);
+  const noMatchingVoice = !noDeviceTTS && !pickVoice(detectedLangForCloud);
+  // Cloud voice (server-side, works on any device/browser) is used when the
+  // user explicitly enabled it, OR automatically as a fallback when the
+  // device has no speech synthesis at all, or no matching voice installed
+  // for the detected language (Arabic/French/Hindi/Urdu/English).
+  const useCloud = cloudEnabled || noDeviceTTS || noMatchingVoice;
+  if(useCloud){
+    try{
+      const chunks = splitTextForTTS(text);
+      if(!chunks.length) throw new Error('empty-text');
+      const token = {}; // unique per-call token; stopAllSpeaking invalidates it
+      currentCloudToken = token;
+      // Prefetch pipeline: kick off the fetch for a chunk as soon as we start
+      // playing the previous one, so network latency for chunk N+1 overlaps
+      // with playback time of chunk N instead of adding up sequentially.
+      const promises = new Array(chunks.length);
+      const ensureFetched = (i) => {
+        if(i < chunks.length && !promises[i]) promises[i] = fetchCloudSpeech(chunks[i].text);
+        return promises[i];
+      };
+      ensureFetched(0);
+      let started = false;
+      const playChunk = async (i) => {
+        if(currentCloudToken !== token) return; // stopped/superseded
+        if(i >= chunks.length){
+          currentCloudAudio = null;
+          if(ttsHighlightRaf){ cancelAnimationFrame(ttsHighlightRaf); ttsHighlightRaf = null; }
+          clearWordHighlight();
+          if(onEnd) onEnd();
+          return;
+        }
+        let url;
+        try{ url = await ensureFetched(i); }
+        catch(e){
+          if(currentCloudToken !== token) return;
+          // Skip the failed chunk rather than aborting the whole reply.
+          playChunk(i + 1);
+          return;
+        }
+        if(currentCloudToken !== token) return;
+        ensureFetched(i + 1); // prefetch next chunk while this one plays
+        // v265: نعيد استخدام العنصر المفتوح بدل إنشاء Audio جديد كل مرة —
+        // العنصر الجديد يُمنع تشغيله على آيفون لأنه خارج ضغطة المستخدم.
+        const audio = cloudAudioEl || new Audio();
+        cloudAudioEl = audio;
+        try{ audio.pause(); }catch(e){}
+        audio.src = url;
+        currentCloudAudio = audio;
+        if(!started){ started = true; if(onStart) onStart(); }
+        audio.onended = () => { if(currentCloudToken === token) playChunk(i + 1); };
+        audio.onerror = () => { if(currentCloudToken === token) playChunk(i + 1); };
+        if(wordEls && wordEls.length){
+          const chunkWordEls = wordEls.slice(chunks[i].wordStart, chunks[i].wordStart + chunks[i].wordCount);
+          audio.addEventListener('loadedmetadata', () => {
+            if(currentCloudToken !== token) return;
+            const duration = audio.duration;
+            if(!isFinite(duration) || duration <= 0) return;
+            const lens = chunkWordEls.map(el => (el.textContent || '').length + 1);
+            const totalChars = lens.reduce((a,b) => a + b, 0) || 1;
+            let acc = 0;
+            const starts = lens.map(len => { const s = (acc / totalChars) * duration; acc += len; return s; });
+            const tick = () => {
+              if(currentCloudToken !== token || !currentCloudAudio || audio.paused || audio.ended) return;
+              const cur = audio.currentTime;
+              let idx = 0;
+              for(let k = 0; k < starts.length; k++){ if(starts[k] <= cur) idx = k; else break; }
+              setActiveWord(wordEls, chunks[i].wordStart + idx);
+              ttsHighlightRaf = requestAnimationFrame(tick);
+            };
+            ttsHighlightRaf = requestAnimationFrame(tick);
+          }, { once: true });
+        }
+        await audio.play();
+      };
+      await playChunk(0);
+      return;
+    }catch(e){
+      console.warn('Cloud voice failed, falling back to device voice:', e);
+      if(verbose){
+        alert((lang === 'ar' ? 'فشل الصوت الاصطناعي: ' : 'AI voice failed: ') + (e && e.message ? e.message : e));
+      }
+    }
+  }
+  if(!('speechSynthesis' in window)){ if(onEnd) onEnd(); return; }
+  const detectedLang = detectSpeechLang(text);
+  const langTags = { ar: 'ar-SA', ur: 'ur-PK', hi: 'hi-IN', fr: 'fr-FR', en: 'en-US' };
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = langTags[detectedLang] || 'en-US';
+  const v = pickVoice(detectedLang);
+  if(v) utter.voice = v;
+  const offsets = wordEls && wordEls.length ? wordStartOffsets(text) : null;
+  if(offsets){
+    utter.onboundary = (e) => {
+      if(e.name && e.name !== 'word') return;
+      let idx = 0;
+      for(let i = 0; i < offsets.length; i++){ if(offsets[i] <= e.charIndex) idx = i; else break; }
+      setActiveWord(wordEls, idx);
+    };
+  }
+  utter.onend = () => { clearWordHighlight(); if(onEnd) onEnd(); };
+  utter.onerror = () => { clearWordHighlight(); if(onEnd) onEnd(); };
+  if(onStart) onStart();
+  window.speechSynthesis.speak(utter);
+}
+function speakText(text){ speakSmart(text); }
+// Known Arabic TTS voice names -> Latin transliteration (accurate, curated)
+const ARABIC_VOICE_NAME_MAP = {
+  'منى':'Mona', 'حمدان':'Hamdan', 'نايف':'Naayf', 'سلمى':'Salma', 'هدى':'Hoda',
+  'أميرة':'Amira', 'اميرة':'Amira', 'ليلى':'Layla', 'زينة':'Zeina', 'ماجد':'Majed',
+  'حامد':'Hamed', 'زارية':'Zariyah', 'رشا':'Rasha', 'مريم':'Mariam', 'سارة':'Sara',
+  'شاكر':'Shakir', 'فاطمة':'Fatima', 'ياسمين':'Yasmin', 'نور':'Noor', 'أحمد':'Ahmad',
+  'احمد':'Ahmad', 'خالد':'Khalid', 'عبدالله':'Abdullah', 'سلطان':'Sultan', 'تيم':'Tim'
+};
+// Generic Arabic-script -> Latin fallback (approximate phonetic transliteration)
+const ARABIC_LATIN_LETTERS = {
+  'ا':'a','أ':'a','إ':'i','آ':'aa','ب':'b','ت':'t','ث':'th','ج':'j','ح':'h','خ':'kh',
+  'د':'d','ذ':'dh','ر':'r','ز':'z','س':'s','ش':'sh','ص':'s','ض':'d','ط':'t','ظ':'z',
+  'ع':'a','غ':'gh','ف':'f','ق':'q','ك':'k','ل':'l','م':'m','ن':'n','ه':'h','و':'w',
+  'ي':'y','ى':'a','ة':'a','ء':'', 'ئ':'e','ؤ':'o',
+  'َ':'','ً':'','ُ':'','ٌ':'','ِ':'','ٍ':'','ّ':'','ْ':''
+};
+function transliterateArabicName(name){
+  if(!/[\u0600-\u06FF]/.test(name)) return name;
+  // Replace whole known words first (longest match), keep surrounding text intact
+  let out = name;
+  Object.keys(ARABIC_VOICE_NAME_MAP).sort((a,b)=>b.length-a.length).forEach(ar => {
+    if(out.includes(ar)) out = out.split(ar).join(ARABIC_VOICE_NAME_MAP[ar]);
+  });
+  if(/[\u0600-\u06FF]/.test(out)){
+    out = out.split('').map(ch => ARABIC_LATIN_LETTERS.hasOwnProperty(ch) ? ARABIC_LATIN_LETTERS[ch] : ch).join('');
+    out = out.replace(/\s+/g,' ').trim();
+    if(out) out = out.charAt(0).toUpperCase() + out.slice(1);
+  }
+  return out;
+}
+function populateVoicePicker(){
+  const sel = $('#voiceNamePick');
+  if(!sel || !('speechSynthesis' in window)) return;
+  const voices = window.speechSynthesis.getVoices();
+  const current = localStorage.getItem('aiapp_voice_name') || '';
+  const uiLang = (typeof lang !== 'undefined' && lang) ? lang : (localStorage.getItem('aiapp_lang') || 'ar');
+  sel.innerHTML = '<option value="">' + t('voiceAutoOption') + '</option>' +
+    voices.map(v => {
+      const label = (uiLang === 'ar') ? v.name : transliterateArabicName(v.name);
+      return `<option value="${v.name.replace(/"/g,'&quot;')}">${label} (${v.lang})</option>`;
+    }).join('');
+  sel.value = voices.some(v => v.name === current) ? current : '';
+}
+if('speechSynthesis' in window){
+  window.speechSynthesis.addEventListener && window.speechSynthesis.addEventListener('voiceschanged', populateVoicePicker);
+}
+const messagesEl = $('#messages');
+
+// v331: تثبيت رسالة المستخدم أعلى الشاشة (نمط ChatGPT) — الرد يُكتب تحتها
+function anchorLastUserMsgTop(spacerEl){
+  try{
+    const rows = messagesEl.querySelectorAll('.msg.user');
+    const uel = rows[rows.length - 1];
+    if(!uel) return;
+    if(spacerEl){
+      const need = messagesEl.clientHeight - uel.offsetHeight - 70;
+      if(need > 0) spacerEl.style.minHeight = need + 'px';
+    }
+    const mRect = messagesEl.getBoundingClientRect();
+    messagesEl.scrollTop += (uel.getBoundingClientRect().top - mRect.top) - 10;
+  }catch(e){}
+}
+// v331: أثناء البث لا نسحب الشاشة لتحت إلا إذا كان المستخدم أصلاً عند الأسفل
+function smartScrollBottom(){
+  try{
+    const gap = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight;
+    if(gap < 140) messagesEl.scrollTop = messagesEl.scrollHeight;
+  }catch(e){}
+}
+
+const codeEl = $('#code');
+const previewFrame = $('#previewFrame');
+const emptyState = $('#emptyState');
+const historyEl = $('#history');
+const I18N = {
+  ar: {
+    pricingPointsTitle: 'باقات النقاط',
+    pricingPointsDesc: 'النقاط عملة موحدة — تُصرف على مها الصوتية والفيديو والصور، بدون اشتراك. مها: 10 نقاط/دقيقة • فيديو: 60 • Veo 3: ‏400 • صورة: 10',
+    pricingWalletLabel: 'رصيدك من النقاط',
+    pricingPointsUnit: 'نقطة',
+    pricingBuyBtn: 'شراء',
+    mahaNoPoints: 'رصيدك من النقاط خلص 💜 اشحن من قسم الباقات وكمّل مع مها',
+    "appColorTitle": "لون التطبيق", "customColorsLabel": "ألوان مخصصة",
+    fbMenuLabel: "رأيك يهمنا", fbTitle: "رأيك يهمنا", fbSubtitle: "ساعدنا نطوّر تجربتك — تقييمك يوصل لنا مباشرة", fbChipEasy: "سهل الاستخدام", fbChipDesign: "التصميم رائع", fbChipAI: "ذكاء ممتاز", fbChipSlow: "بطيء أحيانًا", fbChipBug: "واجهت مشكلة", fbNotePh: "شو تحب نطوّر؟ اكتب ملاحظتك (اختياري)", fbSend: "إرسال التقييم", fbThanks: "شكرًا لك!", fbThanksSub: "رأيك وصل وبيساعدنا نطوّر التطبيق", fbOwnerList: "آراء المستخدمين", fbEmpty: "لا توجد تقييمات بعد",
+    "eaConnectBtn": "🔗 ربط Gmail",
+    "eaVoiceBtn": "🔊 ملخص صوتي",
+    "eaRefreshBtn": "🔄 تحديث",
+    "stocksLearnTitle": "تعلم التداول",
+    "stocksFullTitle": "وضع شاشة البورصة",
+    "scrollTopTitle": "الصعود لأعلى المحادثة",
+    "plusToolsTitle": "أدوات إضافية",
+    "sendTitle": "إرسال",
+    "tabsMenuTitle": "خيارات الملف",
+    "mahaCameraTitle": "الكاميرا — عين مها",
+    "settingsDlgMaxTitle": "دبل كلك للتكبير/التصغير",
+    "agentModeTitle": "وكيل عمران",
+    "authEmailLabel": "📧 الإيميل (اختياري - لاسترجاع الحساب)",
+    "authUseCodeLink": "لدي رمز استرجاع بدلًا من ذلك",
+    "authOrDivider": "أو",
+    "authGoogleBtn": "المتابعة عبر Google",
+    "videoMakerHeroVeoNote": "ℹ️ صورة البطل تعمل مع محرك Runway فقط — Veo 3 لا يقبل صورة في وضع الفيلم.",
+    "runCodeBtn": "تشغيل",
+    "orFreeGroup": "🆓 مجاني",
+    "orPaidGroup": "💰 مدفوع",
+    "orCustomOption": "✏️ مخصص...",
+    "runCodeTitle": "تشغيل الكود في المعاينة",
+    "timeMachineTitle": "آلة الزمن — استرجاع النسخ السابقة",
+    "copyCodeTitle": "نسخ الكود",
+    "freezeBannerMsg": "⚠️ التطبيق يستجيب ببطء… تم حفظ عملك تلقائيًا. إعادة التحميل الآن؟",
+    "freezeReloadBtn": "🔄 إعادة التحميل",
+    "freezeDismissBtn": "إغلاق",
+    'projSearchLabel': 'بحث عن مشروع', 'grpCreate': '🎨 إبداع', 'grpSections': '💼 أقسام', 'grpTools': '🛠️ أدوات',
+    dir: 'rtl',
+    settingsCmdPh: "اكتب ما تريد تغييره… مثال: خط أكبر وخلفية بحرية",
+    settingsCmdSend: "تنفيذ",
+    back: "رجوع",
+    tickerToggleLabel: "شريط الأسهم المتحرك",
+    tickerColorLabel: "لون شريط الأسهم",
+    moreOptionsTitle: "خيارات إضافية",
+    shareMsgTitle: "مشاركة",
+    copiedToast: "تم النسخ",
+    thumbDownTitle: "غير مفيد",
+    thumbUpTitle: "مفيد",
+    reportMsgTitle: "الإبلاغ عن محتوى غير لائق",
+    reportConfirm: "هل تريد الإبلاغ عن هذا الرد كمحتوى غير لائق؟",
+    reportSentToast: "تم استلام البلاغ — شكرًا لك",
+    convertToPdf: "تحويل إلى PDF",
+    convertToWord: "تحويل إلى Word",
+    convertToImage: "تحويل إلى صورة",
+    downloadTxt: "تنزيل نص TXT",
+    settingsCmdNotUnderstood: "ما فهمت الطلب، جرب صياغة ثانية",
+    settingsCmdDoneLang: "تم تغيير اللغة",
+    settingsCmdDoneFont: "تم تغيير حجم الخط",
+    settingsCmdDoneBg: "تم تغيير الخلفية",
+    settingsCmdDoneVoice: "تم تغيير الصوت",
+    settingsCmdDoneTickerOn: "تم تشغيل شريط الأسهم",
+    settingsCmdDoneTickerOff: "تم إيقاف شريط الأسهم",
+
+    fileChooseBtn: '📁 اختيار ملف',
+    fileNoneChosen: 'لم يتم اختيار ملف',
+    pageTitle: 'مُنشئ التطبيقات بالذكاء الاصطناعي',
+    appTitle: 'مُنشئ التطبيقات بالذكاء الاصطناعي',
+    offlineBanner: '⚠️ أنت غير متصل بالإنترنت — تقدر تتصفح المحادثات المحفوظة، لكن الذكاء الاصطناعي يحتاج اتصالًا',
+    backOnlineBanner: '✅ عاد الاتصال بالإنترنت',
+    authTitle: '🔐 مرحبًا بك',
+    authSubtitle: 'سجّل الدخول أو أنشئ حسابًا جديدًا للمتابعة',
+    authTabLogin: 'تسجيل الدخول',
+    authTabSignup: 'حساب جديد',
+    authUsernameLabel: 'اسم المستخدم',
+    authPasswordLabel: 'كلمة المرور',
+    authNewPasswordLabel: 'كلمة مرور جديدة',
+    authRecoveryLabel: 'رمز الاسترجاع',
+    authForgotLink: 'نسيت كلمة المرور؟',
+    authRememberMe: 'تذكرني',
+    langSectionTitle: '🌐 اللغة',
+    apiKeysSectionTitle: '🔑 مفاتيح API لمزوّدي الخدمة',
+    clockBtnTitle: 'التقويم والوقت',
+    clockDialogTitle: '🕌🕐 التقويم والوقت',
+    clockLocalTZ: 'توقيتك المحلي',
+    clockSelectCountry: 'اختر الدولة / المدينة',
+    clockWorldLabel: '🌍 الساعة العالمية',
+    authBackToLogin: 'رجوع لتسجيل الدخول',
+    authSubmitReset: 'إعادة تعيين كلمة المرور',
+    authRecoveryModalTitle: '🔑 احتفظ برمز الاسترجاع هذا',
+    authRecoveryModalDesc: 'هذا هو الرمز الوحيد الذي يمكنك استخدامه لاستعادة حسابك إذا نسيت كلمة المرور. احفظه في مكان آمن — لن يظهر مرة أخرى.',
+    authCopyBtn: '📋 نسخ',
+    authAckBtn: '✅ حفظته، متابعة',
+    authCopied: '✅ تم النسخ',
+    authSubmitLogin: 'دخول',
+    authSubmitSignup: 'إنشاء الحساب',
+    logoutTitle: 'تسجيل الخروج',
+    loginAction: 'دخول',
+    acctSectionTitle: '👤 حسابي',
+    statsSectionTitle: 'إحصائياتي',
+    statsProjectsLabel: 'عدد المشاريع',
+    statsMessagesLabel: 'إجمالي الرسائل المُرسلة',
+    statsFavProviderLabel: 'أكثر مزوّد تستخدمه',
+    statsExportBtn: 'تصدير المشاريع',
+    statsImportBtn: 'استيراد مشاريع',
+    exportProjectsSuccess: '✅ تم تصدير مشاريعك بنجاح',
+    importProjectsConfirm: 'سيتم دمج المشاريع المستوردة مع مشاريعك الحالية. متابعة؟',
+    importProjectsSuccess: '✅ تم استيراد المشاريع بنجاح',
+    importProjectsError: '❌ الملف غير صالح، تأكد أنه ملف تصدير مشاريع سليم',
+    acctAvatarBtn: '📷 تغيير الصورة',
+    acctUsernameLabel: 'اسم المستخدم',
+    acctSaveBtn: 'حفظ',
+    acctEmailLabel: '📧 الإيميل الاحتياطي (لاسترجاع كلمة المرور)',
+    acctInvalidEmail: 'صيغة الإيميل غير صحيحة',
+    acctReferralLabel: '🔗 رابط دعوة أصدقائك',
+    acctCopyBtn: '📋 نسخ',
+    acctReferralHint: 'لكل صديق يسجّل عن طريق رابطك، تحصلان على 10 رسائل إضافية مجانًا لكل واحد منكما 🎁',
+    acctCleanupLabel: 'تنظيف التطبيق',
+    acctCleanupHint: 'يحذف كل المحادثات والمشاريع نهائيًا من هذا الجهاز ومن السحابة. حسابك ولغتك يبقيان.',
+    acctCleanupConfirm: 'سيتم حذف كل المحادثات والمشاريع نهائيًا. هل أنت متأكد؟',
+    acctCleanupBtn: 'حذف الكل الآن',
+    acctReferralCopied: 'تم نسخ الرابط ✅',
+    acctReferralBonusCount: 'رصيدك من الرسائل الإضافية: {n}',
+    acctCurrentPasswordLabel: 'كلمة المرور الحالية',
+    acctNewPasswordLabel2: 'كلمة المرور الجديدة',
+    acctSaved: '✅ تم الحفظ',
+    acctSaving: '...جارٍ الحفظ',
+    acctFillUsername: 'أدخل اسم مستخدم صحيح (3 أحرف على الأقل)',
+    acctFillPasswords: 'أدخل كلمة المرور الحالية وكلمة مرور جديدة (4 أحرف على الأقل)',
+    acctGenericError: 'حدث خطأ، حاول مرة أخرى',
+    acctNetError: 'تعذر الاتصال بالخادم، تحقق من الإنترنت',
+    acctAvatarTooBig: 'الصورة كبيرة جدًا، اختر صورة أصغر',
+    logout: 'خروج',
+    loggedInAs: 'مسجّل الدخول',
+    runPythonBtn: '▶️ تشغيل الكود',
+    pythonError: '⚠️ حدث خطأ أثناء تشغيل الكود',
+    stopTitle: 'إيقاف',
+    openrouterApiKeyLabel: 'مفتاح OpenRouter API',
+    codeTitle: 'الكود',
+    codeHintText: 'اضغط هنا لعرض الكود والمعاينة المباشرة لتطبيقك 👈',
+    pythonDone: '✅ تم',
+    previewTitle: 'المعاينة',
+    emojiTitle: 'إيموجي',
+    pythonLoadingRuntime: '⏳ يتم تحميل بيئة تشغيل بايثون (أول مرة فقط)...',
+    openrouterModelLabel: 'اختر موديل OpenRouter',
+    perplexityModelLabel: 'اسم موديل Perplexity',
+    pythonRunning: '⚙️ جارٍ تشغيل الكود...',
+    perplexityApiKeyLabel: 'مفتاح Perplexity API',
+    projectsListTitle: 'قائمة المشاريع',
+    videoMakerTitle: 'صانع الفيديو',
+    omranEduModalTitle: '🎓 التعليم',
+    omranEduTitle: 'التعليم',
+    expenseTitle: 'محلّل مصاريفي',
+    docsTitle: 'مساعد المستندات',
+    govTitle: 'المعاملات الحكومية',
+    cvTitle: 'مولّد السيرة الذاتية',
+    eduHubTitle: 'دروسي',
+    videoMakerModalTitle: '🎬 صانع الفيديو بالذكاء الاصطناعي',
+    videoMakerDesc: 'اكتب وصف الفيديو الذي تريده، واختر الستايل والمدة. الميزة قيد التجربة وبها حد أقصى قليل من الفيديوهات يوميًا لكل حساب.',
+    videoMakerPromptPlaceholder: 'صف الفيديو الذي تريد إنشاءه... مثال: قطة صغيرة تلعب في حديقة مشمسة',
+    videoMakerStyleLabel: 'الستايل',
+    videoMakerStyleRealistic: '🎥 واقعي',
+    videoMakerStyleAnime: '🎨 أنيمي / كارتون',
+    videoMakerDurationLabel: 'المدة (ثانية)',
+    videoMakerRatioLabel: 'الشكل',
+    videoMakerRatioLandscape: '🖥️ عرضي 16:9',
+    videoMakerRatioPortrait: '📱 طولي 9:16',
+    videoModeLabel: 'وضع الإنشاء',
+    videoModeCanvasOnly: '🎨 كانفا فقط (بدون AI)',
+    videoModeRunwayOnly: '🤖 فيديو AI فقط (Runway)',
+    videoModeHybrid: '🔗 دمج الاثنين (الأفضل)',
+    videoModeVeo: '🚀 Veo 3 — جوجل (أعلى جودة + صوت)',
+    videoModeActor: "🗣️ ممثل يتكلم — لهجة إماراتية (Veo 3)",
+    videoActorSpeechLabel: "🗣️ شو يقول الممثل؟ (بالحرف)",
+    videoActorSpeechPlaceholder: "مثال: هلا والله! حياكم في تطبيق عمران AI",
+    videoSignatureLabel: 'التوقيع (اسمك)',
+    videoSignaturePlaceholder: 'اكتب اسمك أو أي نص ليظهر كتوقيع ثابت على الفيديو',
+    videoMakerGenerateBtn: '✨ إنشاء الفيديو',
+    videoMakerDownloadBtn: '⬇️ تحميل الفيديو',
+    videoMakerDurationLong: '20 (⛓️ مشهدين)',
+    videoMakerDurationFilm: '🎬 فيلم متكامل (سيناريو + مشاهد + سرد)',
+    videoMakerHeroLabel: '📸 صورتك بطل الفيلم (اختياري)',
+    videoMakerHeroBtn: '📸 اختر صورة البطل',
+    videoMakerHeroNote: 'ارفع صورتك أو صورة أي شخص — راح يكون بطل كل مشاهد الفيلم.',
+    videoMakerDurationLongMinutes: '🎥 طويل (دقائق) - المالك فقط',
+    videoMakerLongMinutesLabel: 'مدة الفيديو الكاملة (دقائق، ١-١٠)',
+    videoMakerLongMinutesNote: '⚠️ ميزة مخصصة لحساب المالك فقط. كل دقيقة تعني حوالي ٧-٨ مشاهد منفصلة تُولَّد وتُدمج تلقائيًا؛ التكلفة الفعلية تُخصم من رصيد Runway الخاص بك وتزيد بشكل كبير مع طول الفيديو. راح يظهر لك تقدير التكلفة قبل البدء الفعلي.',
+    videoMakerNarrationToggleLabel: '🎙️ إضافة تعليق صوتي (صوت مُولّد)',
+    videoMakerNarrationPlaceholder: 'اكتب نص التعليق الصوتي الذي سيُقرأ فوق الفيديو (اختياري - إن تُرك فارغًا يُستخدم وصف الفيديو)',
+    videoMakerQualityToggleLabel: '🔎 جودة أعلى (ترقية دقة الفيديو، متاحة فقط للفيديو القصير)',
+    designAiTitle: 'ديكور AI',
+    designAiModalTitle: '🏠 ديكور بالذكاء الاصطناعي',
+    designAiVideoTitle: '🎬 فيديو توضيحي: كيف تستخدم ديكور AI',
+    fashionAiVideoTitle: '🎬 فيديو توضيحي: كيف تستخدم أزياء AI',
+    designAiDesc: 'ارفع صورة لغرفتك واختر نمط الديكور، وسيقوم الذكاء الاصطناعي بإعادة تصميمها. ميزة قيد التجربة بحد أقصى قليل يوميًا لكل حساب.',
+    designAiStyleLabel: 'نمط الديكور',
+    designAiStyleModern: '✨ عصري',
+    designAiStyleSimple: '🤍 بسيط',
+    designAiStyleBohemian: '🌿 بوهيمي',
+    designAiStyleLuxury: '💎 فخم',
+    designAiStyleArabic: '🕌 مجلس عربي',
+    designAiStyleClassic: '🪵 كلاسيكي',
+    designAiOptionalHint: 'الخيارات التالية اختيارية — اختر ما يناسبك فقط',
+    designAiOptionNone: 'بدون تغيير',
+    designAiLightingLabel: '💡 الإضاءة',
+    designAiLightingWarm: 'دافئة',
+    designAiLightingCool: 'باردة',
+    designAiLightingBright: 'ساطعة',
+    designAiLightingDim: 'خافتة/ليلية',
+    designAiFurnitureLabel: '🛋️ نوع الأثاث',
+    designAiFurnitureModern: 'مودرن',
+    designAiFurnitureClassic: 'كلاسيكي',
+    designAiFurnitureSimple: 'بسيط',
+    designAiFurnitureLuxury: 'فاخر',
+    designAiFurnitureBohemian: 'بوهيمي',
+    designAiFlooringLabel: '🧱 الأرضيات',
+    designAiFlooringParquet: 'باركيه',
+    designAiFlooringMarble: 'رخام',
+    designAiFlooringCeramic: 'سيراميك',
+    designAiFlooringCarpet: 'سجاد',
+    designAiRearrangeLabel: '📐 أعد ترتيب قطع الأثاث',
+    designAiFabricLabel: '🎨 ألوان الأقمشة',
+    designAiFabricLight: 'فاتحة',
+    designAiFabricDark: 'داكنة',
+    designAiFabricNeutral: 'محايدة',
+    designAiFabricBold: 'جريئة',
+    designAiWallColorLabel: '🖼️ لون الحوائط',
+    designAiWallColorWhite: 'أبيض',
+    designAiWallColorBeige: 'بيج',
+    designAiWallColorGray: 'رمادي',
+    designAiWallColorBold: 'جريئة',
+    designAiCurtainsLabel: '🪟 الستائر',
+    designAiCurtainsSimple: 'بسيطة',
+    designAiCurtainsLuxury: 'فخمة',
+    designAiCurtainsRemove: 'بدون ستائر',
+    designAiDecorLabel: '🌿 لمسات ديكورية إضافية',
+    designAiDecorPlants: 'نباتات',
+    designAiDecorArt: 'لوحات فنية',
+    designAiDecorAccessories: 'إكسسوارات فخمة',
+    designAiSuggestBtn: '💡 اقترح لي أفكار',
+    designAiSuggesting: '🤔 جاري التفكير بأفكار...',
+    designAiSuggestError: '❌ تعذر توليد أفكار، حاول مرة أخرى.',
+    designAiSuggestTitle: '💡 أفكار مقترحة من الذكاء الاصطناعي',
+    portraitModalTitle: '🎨 أنماط الصور الشخصية',
+    portraitDesc: 'ارفع صورتك الشخصية واختر ستايل رسم، وسيحوّلها الذكاء الاصطناعي لهذا الأسلوب. ميزة قيد التجربة بحد أقصى قليل يوميًا لكل حساب.',
+    portraitStyleLabel: 'ستايل الرسم',
+    portraitGenerateBtn: '✨ حوّلها',
+    portraitDownloadBtn: '⬇️ تحميل الصورة',
+    portraitNeedImage: 'يرجى اختيار صورة أولًا',
+    portraitNeedLogin: 'يرجى تسجيل الدخول لاستخدام هذه الميزة',
+    portraitLimitReached: 'وصلت للحد اليومي المسموح لهذه الميزة، حاول غدًا',
+    portraitGenerating: '⏳ جارٍ التحويل...',
+    carToolsTitle: '🚗 قسم السيارات',
+    stocksTitle: '📈 سوق الأسهم العالمي', stocksDesc: 'أسعار الأسهم العالمية مع رسم بياني مباشر.',
+    stocksSymbolPh: 'مثال: AAPL أو TSLA', stocksLoadBtn: 'عرض',
+    stocksIntDay: 'يومي (3 أشهر)', stocksIntHour: 'كل ساعة', stocksInt15: 'كل 15 دقيقة', stocksIntWeek: 'أسبوعي',
+    stocksDisclaimer: '⚠️ بيانات تقريبية وقد تتأخر — ليست نصيحة استثمارية.', stocksQuestionPh: 'سؤال اختياري: شرايك بالسهم؟', stocksAnalyzeBtn: '🤖 حلل السهم', stocksLearnTitle:'🎓 تعلم التداول — دروس على السوق الحي', stkL1:'ما هو السهم؟', stkL2:'قراءة السعر', stkL3:'الشموع والشارت', stkL4:'الدعم والمقاومة', stkL7:'المتوسطات', stkL8:'إدارة المخاطر', stocksLearnQPh:'أو اكتب سؤالك عن التداول...', stocksLearnAsk:'اشرح لي', globalMktTitle:'🌍 الأسواق العالمية', goldNowTitle:'🥇 الذهب الآن', goldKt:'عيار {k}', goldOunce:'أونصة الذهب', aedUnit:'درهم',
+    constructionTitle: '🏗️ تصاميم المقاولات والبناء',
+    emailAssistTitle: '📧 مساعد البريد الذكي',
+    constructionDesc: 'صف مشروع البناء، وسيولّد الذكاء الاصطناعي تصورًا معماريًا أوليًا + قائمة مواد + تقدير تكلفة تقريبي. تصور أولي فقط، لا يغني عن مهندس مرخّص.',
+    constructionTypeLabel: 'نوع المبنى',
+    constructionTypeVilla: '🏡 فيلا سكنية',
+    constructionTypeApartment: '🏢 عمارة سكنية',
+    constructionTypeOffice: '🏬 مبنى مكاتب',
+    constructionTypeWarehouse: '🏭 مستودع',
+    constructionTypeMosque: '🕌 مسجد',
+    constructionTypeShop: '🏪 محل تجاري',
+    constructionFloors: 'عدد الأدوار',
+    constructionArea: 'المساحة (م²)',
+    constructionStyleLabel: 'الطراز المعماري',
+    constructionStyleModern: '✨ عصري',
+    constructionStyleClassic: '🪵 كلاسيكي',
+    constructionStyleGulf: '🕌 خليجي تراثي',
+    constructionStyleLuxury: '💎 فخم',
+    constructionStyleIndustrial: '🏭 صناعي',
+    constructionNotesLabel: 'ملاحظات إضافية (اختياري)',
+    constructionNotesPh: 'مثال: مسبح، حديقة، واجهة زجاجية',
+    constructionAnnexesLabel: '🏠 الملاحق (اختياري)',
+    constructionAnnexMajlis: 'مجلس رجال منفصل',
+    constructionAnnexServant: 'ملحق خادمة/سائق',
+    constructionAnnexPool: 'مسبح',
+    constructionAnnexCarport: 'مواقف سيارات مغطاة',
+    constructionAnnexGarden: 'حديقة/برجولة',
+    constructionAnnexLaundry: 'غرفة غسيل/تخزين',
+    constructionIncludeInteriorLabel: '🛋️ ولّد أيضًا صورة تصميم داخلي',
+    constructionExteriorLabel: '🖼️ صورة فوتوغرافية للتصميم',
+    constructionPlanImageLabel: '📐 المخطط 2D بالمقاسات',
+    constructionInteriorLabel: '🛋️ التصميم الداخلي',
+    constructionBudgetLabel: '💰 مستوى الميزانية',
+    constructionBudgetB1: '💵 حتى 300 ألف درهم',
+    constructionBudgetB2: '💰 300 - 600 ألف درهم',
+    constructionBudgetB3: '💎 600 ألف - 1 مليون درهم',
+    constructionBudgetB4: '👑 أكثر من 1 مليون درهم',
+    constructionBudgetDisclaimer: '* هذا المبلغ تقريبي فقط ولا يشمل أجرة المقاول.',
+    constructionOutputModeLabel: '📄 نوع النتيجة',
+    constructionModePlanLabel: '📐 مخطط 2D بالمقاسات',
+    constructionModePhotoLabel: '🖼️ صورة فوتوغرافية للتصميم (اختياري بالذكاء الاصطناعي)',
+    constructionLibraryBtn: '📚 تصفح تصاميم مشابهة محفوظة',
+    constructionLibraryEmpty: 'لا توجد تصاميم محفوظة مشابهة بعد — كن أول من يولّد!',
+    constructionAnglesLabel: '📷 شاهد المبنى من زوايا أخرى',
+    constructionAngleFront: '⬅️ أمامي',
+    constructionAngleSide: '↔️ جانبي',
+    constructionAngleBack: '➡️ خلفي',
+    constructionAngleAerial: '🚁 جوي',
+    constructionRoomsLabel: '🛋️ شاهد الغرف من الداخل',
+    constructionRoomLiving: '🛋️ الصالة',
+    constructionRoomMajlis: '🪑 المجلس',
+    constructionRoomBedroom: '🛏️ غرفة النوم',
+    constructionRoomKitchen: '🍽️ المطبخ',
+    constructionRoomBathroom: '🚿 الحمام',
+    constructionRoomDining: '🍽️ غرفة الطعام',
+    constructionRoomColorPh: 'لون الديكور (مثال: بيج وذهبي)',
+    constructionRoomViewBtn: '👁️ شاهد الغرفة',
+    constructionRunBtn: '✨ ولّد التصميم',
+    constructionGenerating: '⏳ جارٍ توليد التصميم...',
+    carToolsDesc: '11 أداة ذكاء اصطناعي لكل ما يخص سيارتك: تشخيص، تعديل صور، مقارنة، فحص، وأكثر.',
+    carTool1: '🔧 تصليح AI', carTool2: '🎨 تعديل صورة السيارة', carTool3: '⚙️ تزويد المحرك',
+    carTool4: '📋 مقارنة سيارات', carTool5: '🔍 فحص قبل شراء', carTool6: '🚨 قاموس أصوات الأعطال',
+    carTool7: '📸 تشخيص من صورة', carTool8: '🏷️ تقدير سعر بيع', carTool9: '🌡️ دليل ضوء لوحة القيادة',
+    carTool10: '🛞 دليل الإطارات', carTool11: '🚗💨 حاسبة تسريع/أداء',
+    carToolTextLabelRepair: 'صف مشكلة السيارة', carToolTextPhRepair: 'مثال: صوت طقطقة عند الدوران يمين',
+    carToolTextLabelEngine: 'سيارتك وهدفك من التزويد', carToolTextPhEngine: 'مثال: كامري 2020 أبي أرفع الأداء بدون التأثير على الضمان',
+    carToolTextLabelCompare: 'اكتب السيارات المراد مقارنتها', carToolTextPhCompare: 'مثال: تويوتا كامري 2024 مقابل هوندا أكورد 2024',
+    carToolTextLabelPreinspect: 'نوع/عمر السيارة المراد فحصها', carToolTextPhPreinspect: 'مثال: نيسان التيما 2018 مستعملة',
+    carToolTextLabelNoise: 'صف الصوت اللي تسمعه', carToolTextPhNoise: 'مثال: صرير عند الفرملة في السرعات المنخفضة',
+    carToolTextLabelResale: 'تفاصيل سيارتك (الموديل، السنة، الممشى، الحالة)', carToolTextPhResale: 'مثال: لكزس ES 350 2019، ممشى 60 ألف كم، حالة ممتازة',
+    carToolTextLabelTires: 'تفاصيل سيارتك واستخدامك', carToolTextPhTires: 'مثال: لاندكروزر 2021 استخدام يومي ورحلات بر',
+    carToolTextLabelPhotoedit: 'صف التعديل المطلوب على الصورة', carToolTextPhPhotoedit: 'مثال: غيّر لون السيارة إلى أحمر لامع',
+    carToolTextLabelPhotodiag: 'وصف إضافي (اختياري)', carToolTextPhPhotodiag: 'مثال: تسريب زيت تحت المحرك',
+    carToolTextLabelDashlight: 'وصف الضوء (اختياري إذا رفعت صورة)', carToolTextPhDashlight: 'مثال: ضوء أصفر على شكل محرك',
+    carToolRunBtn: '✨ نفّذ',
+    carAccelWeight: 'وزن السيارة (كغ)', carAccelHp: 'قوة المحرك (حصان)', carAccelDrive: 'نوع الدفع',
+    carAccelFwd: 'دفع أمامي', carAccelRwd: 'دفع خلفي', carAccelAwd: 'دفع رباعي', carAccelTurbo: 'تيربو؟',
+    no: 'لا', yes: 'نعم',
+    carAccelResult0to100: '🚀 التسارع 0-100 كم/س', carAccelSeconds: 'ثانية',
+    carAccelResultQuarter: '🏁 ربع ميل تقريبي', carAccelResultTop: '💨 السرعة القصوى التقديرية', carAccelKmh: 'كم/س',
+    carAccelResultRatio: '⚖️ نسبة الوزن للقوة', carAccelKgHp: 'كغ/حصان',
+    carAccelDisclaimer: '⚠️ هذه أرقام تقديرية تقريبية بناءً على معادلة مبسطة، ولا تعكس القياس الفعلي على المضمار.',
+    carToolNeedText: 'يرجى كتابة النص المطلوب أولًا', carToolNeedImage: 'يرجى اختيار صورة أولًا',
+    carToolWorking: '⏳ جارٍ التحليل...', carToolDone: '✅ تم',
+    portraitDone: '✅ تم الانتهاء!',
+    portraitBtnTitle: 'أنماط الصور',
+    quickTemplatesTitle: 'اقتراحات',
+    imgToPdfTitle: 'صور → PDF',
+    previewToggleLabel: 'المتصفح',
+    portraitStyleAnime: '🎬 أنيمي ياباني',
+    portraitStyleCartoon: '🖼️ كارتون واقعي',
+    portraitStyleOil: '🎨 لوحة زيتية',
+    portraitStyleSketch: '✏️ رسم بالقلم الرصاص',
+    portraitStylePixel: '🕹️ بيكسل آرت',
+    portraitStyleComic: '🦸 كومكس/مانجا',
+    portraitStylePop: '🌈 بوب آرت',
+    portraitStyleGulf: '🏺 إماراتي/خليجي تراثي',
+    portraitStyleCaricature: '🧑‍🎨 كاريكاتير',
+    portraitStyleCinematic: '🖤 سينمائي دراماتيكي',
+    portraitStyleDisney: '🌸 ديزني/بيكسار 3D',
+    portraitStyleFlat: '🧊 فيكتور مسطح',
+    portraitStyleFantasy: '🧙 فانتازيا ملحمية',
+    portraitStyleWestern: '🤠 وسترن قديم',
+    portraitStyleCyberpunk: '🚀 سايبربانك نيون',
+    portraitStyleAbstract: '🎭 فن تجريدي',
+    portraitStyleWatercolor: '🖌️ ألوان مائية',
+    portraitStyleOttoman: '🗿 منمنمات إسلامية',
+    portraitStyleGamePoster: '🎮 بوستر شخصية لعبة',
+    portraitStyleNewspaper: '📰 كاريكاتير صحفي قديم',
+    portraitStyleHorror: '🧛 رعب/هالوين',
+    portraitStyleShonen: '🐉 أنيمي حركة شونين',
+    portraitStyleRoyal: '👑 لوحة كلاسيكية تاريخية',
+    portraitStyleCalligraphy: '🧵 خط عربي زخرفي',
+    portraitStyleRemoveBg: '🖼️ إزالة الخلفية + خلفية جاهزة',
+    portraitStyleLinkedin: '👔 صورة شخصية احترافية (LinkedIn/CV)',
+    portraitStyleBeautify: '✨ فلاتر تجميل خفيفة',
+    portraitBeautifySkin: '🧴 تنعيم البشرة',
+    portraitBeautifyLight: '💡 تحسين الإضاءة',
+    portraitBeautifyTeeth: '😁 تبييض الأسنان',
+    portraitFavGroupLabel: '⭐ المفضلة',
+    portraitCompareBeforeLabel: 'قبل',
+    portraitCompareAfterLabel: 'بعد',
+    portraitStyleEid: '🌙 إطار عيد',
+    portraitStyleNational: '🇦🇪 إطار وطني',
+    portraitStyleRamadan: '🕌 إطار رمضان',
+    portraitStyleAgeShift: '🕰️ تصغير/تكبير العمر',
+    portraitAgeLabel: 'اختر التغيير',
+    portraitAgeChild: '👶 طفل صغير',
+    portraitAgeTeen: '🧒 مراهق',
+    portraitAgeYoung: '🧑 أصغر بعشرين سنة',
+    portraitAgeMiddle: '🧔 منتصف العمر',
+    portraitAgeSenior: '👴 كبير في السن',
+    portraitShareBtn: '↗️ مشاركة (واتساب/ستوري)',
+    portraitStyleSportsHero: '🏆 رياضي/بطل',
+    portraitStyleHairstyle: '💇 تسريحة/لون شعر جديد',
+    portraitHairLabel: 'اختر التسريحة/اللون',
+    portraitHairShortBlack: '✂️ قصير أسود',
+    portraitHairLongWavy: '🌊 طويل مموّج',
+    portraitHairCurly: '🌀 مجعد كثيف',
+    portraitHairBlonde: '💛 أشقر',
+    portraitHairRed: '❤️ أحمر ناري',
+    portraitHairSilver: '🩶 فضي/رمادي',
+    portraitHairBald: '🧑‍🦲 حليق تمامًا',
+    portraitHairMohawk: '🎸 موهوك',
+    portraitHairBeard: '🧔 لحية كاملة',
+    portraitStyleWedding: '💍 ستايل زفاف',
+    portraitStyleGraduation: '🎓 ستايل تخرج',
+    portraitStyleAdPoster: '📢 بوستر إعلاني شخصي',
+    portraitAdTextLabel: 'نص الإعلان (اختياري)',
+    portraitAdTextPlaceholder: 'مثال: تواصل معي للتصميم',
+    portraitStyleTimeShift: '🕰️ صورة بزمن مختلف',
+    portraitEraLabel: 'اختر الحقبة الزمنية',
+    portraitStyleFamily: '👨‍👩‍👧‍👦 ستايل عائلي موحّد',
+    portraitStyleMerge2: '🧑‍🤝‍🧑 دمج شخصين بصورة واحدة',
+    portraitMultiLabelFamily: 'أضف صور باقي أفراد العائلة (حتى 3 صور إضافية)',
+    portraitMultiLabelMerge: 'أضف صورة الشخص الثاني',
+    portraitMultiChooseBtn: '📁 اختيار الصور الإضافية',
+    portraitStyleAvatarGif: '🎞️ أفاتار متحرك بسيط (GIF)',
+    portraitBuildingGif: '🎞️ جاري إنشاء الأفاتار المتحرك...',
+    portraitStyleCelebToon: '🌟 ستايل شخصية كرتونية مشهورة',
+    portraitCelebLabel: 'اكتب اسم/وصف الشخصية الكرتونية المفضلة لديك',
+    portraitCelebPlaceholder: 'مثال: بطل كرتوني مغامر بملابس ملونة',
+    portraitCelebNote: 'ملاحظة: أنت المسؤول عن اختيار وصف لا يخالف حقوق الملكية الفكرية.',
+    portraitEra1920s: '🎩 عشرينيات القرن الماضي',
+    portraitEra1950s: '📻 خمسينيات القرن الماضي',
+    portraitEra1980s: '📼 ثمانينيات القرن الماضي',
+    portraitEra1990s: '💿 تسعينيات القرن الماضي',
+    portraitEraMedieval: '🏰 العصور الوسطى',
+    portraitEraFuture: '🚀 المستقبل',
+    portraitBackdropLabel: 'اختر الخلفية',
+    portraitBackdropWhite: '⬜ استوديو أبيض',
+    portraitBackdropGray: '🌫️ استوديو رمادي',
+    portraitBackdropBlack: '⬛ استوديو أسود',
+    portraitBackdropBlue: '🔵 تدرج أزرق',
+    portraitBackdropSunset: '🌇 تدرج غروب',
+    portraitBackdropPark: '🌳 حديقة طبيعية',
+    portraitBackdropBeach: '🏖️ شاطئ بحر',
+    portraitBackdropCity: '🌃 مدينة ليلاً',
+    portraitBackdropOffice: '🏢 مكتب عمل',
+    portraitBackdropMarble: '🏛️ رخام فاخر',
+    designAiGenerateBtn: '✨ صمم الغرفة',
+    designAiDownloadBtn: '⬇️ تحميل الصورة',
+    designAiNeedImage: '⚠️ الرجاء رفع صورة الغرفة أولًا.',
+    designAiNeedLogin: '🔑 يجب تسجيل الدخول أولًا لاستخدام ديكور AI.',
+    designAiLimitReached: '⏳ لقد استهلكت حد التصاميم المجانية لليوم. حاول مرة أخرى غدًا.',
+    designAiGenerating: '🎨 جاري تصميم الغرفة...',
+    designAiDone: '✅ تم التصميم!',
+    fashionAiTitle: 'أزياء AI',
+    fashionAiModalTitle: '👗 تصميم أزياء بالذكاء الاصطناعي',
+    fashionAiDesc: 'اختر: ارفع صورة وغيّر الزي، أو اكتب وصف تصميم واتركه يبتكر صورة من الصفر. ميزة قيد التجربة بحد أقصى قليل يوميًا لكل حساب.',
+    fashionAiTabImage: '📷 من صورة',
+    fashionAiTabText: '✍️ من وصف نصي',
+    fashionAiDescLabel: 'وصف التصميم',
+    fashionAiDescPlaceholder: 'مثال: فستان سهرة أزرق طويل بأكمام مطرزة',
+    fashionAiStyleLabel: 'النمط/المناسبة',
+    fashionAiStyleEvening: '✨ سهرة',
+    fashionAiStyleFormal: '👔 رسمي',
+    fashionAiStyleCasual: '👕 كاجوال',
+    fashionAiStyleAbaya: '🖤 عباية',
+    fashionAiStyleWedding: '💍 فستان زفاف',
+    fashionAiStyleTraditional: '🌴 خليجي تقليدي',
+    fashionAiGenerateBtn: '✨ صمم التصميم',
+    fashionAiDownloadBtn: '⬇️ تحميل الصورة',
+    fashionAiNeedImage: '⚠️ الرجاء رفع صورة أولًا.',
+    fashionAiNeedDescription: '⚠️ الرجاء كتابة وصف التصميم أولًا.',
+    fashionAiNeedLogin: '🔑 يجب تسجيل الدخول أولًا لاستخدام أزياء AI.',
+    fashionAiLimitReached: '⏳ لقد استهلكت حد التصاميم المجانية لليوم. حاول مرة أخرى غدًا.',
+    fashionAiGenerating: '🎨 جاري تصميم الزي...',
+    fashionAiDone: '✅ تم التصميم!',
+    fashionProfileTitle: '👤 ملفي (المقاسات)',
+    fashionProfileHeight: 'الطول (سم)',
+    fashionProfileWeight: 'الوزن (كغ)',
+    fashionProfileSkin: 'لون البشرة',
+    fashionProfileHair: 'لون الشعر',
+    fashionProfileSave: '💾 حفظ الملف',
+    fashionProfileSaved: '✅ تم حفظ ملفك',
+    fashionOccasionLabel: '📅 المناسبة',
+    fashionOccasionWedding: '💍 زفاف',
+    fashionOccasionWork: '💼 عمل',
+    fashionOccasionCasual: '👕 كاجوال',
+    fashionOccasionSport: '🏃 رياضة',
+    fashionOccasionTravel: '✈️ سفر',
+    fashionOccasionFormal: '🎩 رسمية',
+    fashionSeasonLabel: '🌦️ الموسم',
+    fashionSeasonSummer: '☀️ صيفي',
+    fashionSeasonWinter: '❄️ شتوي',
+    fashionSuggestBtn: '💡 اقترح لي إطلالة',
+    fashionSuggestGenerating: '🎨 جاري تحليل الصورة واقتراح إطلالات...',
+    fashionSuggestNeedImage: '⚠️ ارفع صورة أو اكتب وصف أولًا للحصول على اقتراحات.',
+    fashionMultiAngleLabel: '🕶️ عرض من زوايا متعددة (أمام / جانب / خلف)',
+    fashionCompareTitle: '📊 قارن بين إطلالات',
+    fashionCompareHint: 'اختر إطلالتين أو ثلاث لمقارنتها جنبًا إلى جنب',
+    fashionCompareBtn: '📊 قارن الإطلالات',
+    fashionCompareGenerating: '🎨 جاري تصميم الإطلالات للمقارنة...',
+    fashionCompareNeedTwo: '⚠️ اختر إطلالتين على الأقل للمقارنة.',
+    fashionFavoritesBtn: '❤️ المفضلة',
+    fashionFavoriteSaveBtn: '🤍 حفظ في المفضلة',
+    fashionFavoriteSaved: '❤️ تم الحفظ في المفضلة',
+    fashionNoFavorites: 'لا توجد إطلالات محفوظة بعد',
+    fashionMatchLabel: 'نسبة التوافق',
+    fashionUseThisLook: '✅ استخدم هذه الإطلالة',
+    religionMenuLabel: 'التفسير الديني',
+    religionModalTitle: '🕌 التفسير الديني',
+    religionDisclaimer: '⚠️ هذا اجتهاد ذكاء اصطناعي وليس فتوى شرعية أو حكمًا قطعيًا، يُرجى الرجوع لأهل العلم والمختصين.',
+    religionTabVerse: '🕌 تفسير آية',
+    religionTabHadith: '📖 بحث حديث',
+    religionTabDream: '🌙 تفسير الأحلام',
+    religionInputLabelVerse: 'اكتب الآية أو رقمها (مثال: البقرة 255)',
+    religionInputLabelHadith: 'اكتب نص الحديث أو موضوعه',
+    religionInputLabelDream: 'اكتب وصف حلمك بالتفصيل',
+    religionInputPlaceholderVerse: 'مثال: سورة البقرة آية 255 (آية الكرسي)',
+    religionInputPlaceholderHadith: 'مثال: حديث الأعمال بالنيات، أو اكتب موضوعًا مثل بر الوالدين',
+    religionInputPlaceholderDream: 'مثال: حلمت أني أطير فوق البحر وأرى قمرًا كبيرًا...',
+    religionGenerateBtn: '✨ فسّر',
+    religionNeedInput: '⚠️ الرجاء كتابة نص أولًا.',
+    religionGenerating: '🕊️ جاري التفسير...',
+    religionDone: '✅ تم التفسير',
+    religionError: '❌ حدث خطأ، حاول مرة أخرى',
+    studioAiTitle: 'ستايل AI',
+    studioAiModalTitle: '💄 ستايل الذكاء الاصطناعي',
+    studioAiVideoTitle: '🎬 فيديو توضيحي: كيف تستخدم ستايل AI',
+    studioAiDesc: 'اختر ميزة، ارفع صورتك (أو صورتين للدمج)، واختر الخيار المناسب. ميزة قيد التجربة بحد أقصى قليل يوميًا لكل حساب.',
+    studioAiTabHair: '💇 الشعر',
+    studioAiTabNails: '💅 الأظافر',
+    studioAiTabMakeup: '💄 مكياج',
+    studioAiTabBeard: '🧔 لحية',
+    studioAiTabSkin: '✨ بشرة',
+    studioAiTabGlasses: '👓 نظارات',
+    studioAiTabTattoo: '🎨 تاتو',
+    studioAiTabAnime: '🎭 أنمي',
+    studioAiTabMerge: '🖼️ دمج صور',
+    studioAiStyleLabel: 'اختر الخيار',
+    studioAiDescLabel: 'وصف إضافي (اختياري)',
+    studioAiDescPlaceholder: 'أضف تفاصيل إضافية إذا أردت...',
+    studioAiImageALabel: 'الصورة الأولى',
+    studioAiImageBLabel: 'الصورة الثانية',
+    studioAiGenerateBtn: '✨ ولّد الصورة',
+    studioAiDownloadBtn: '⬇️ تحميل الصورة',
+    studioAiNeedImage: '⚠️ الرجاء رفع صورة أولًا.',
+    studioAiNeedTwoImages: '⚠️ الرجاء رفع الصورتين للدمج.',
+    studioAiNeedLogin: '🔑 يجب تسجيل الدخول أولًا لاستخدام ستوديو AI.',
+    studioAiLimitReached: '⏳ لقد استهلكت حد ستوديو AI المجاني لليوم. حاول مرة أخرى غدًا.',
+    studioAiGenerating: '🎨 جاري التوليد...',
+    studioAiDone: '✅ تم!',
+    studioAiTabHeritage: '🏛️ تراثي/تقليدي',
+    studioProfileTitle: '👤 بروفايل الوجه (اختياري)',
+    studioProfileFaceShape: 'شكل الوجه',
+    studioProfileSkin: 'لون البشرة',
+    studioProfileHair: 'لون الشعر',
+    studioProfileSave: '💾 حفظ البروفايل',
+    studioProfileSaved: '✅ تم حفظ البروفايل',
+    studioOccasionLabel: '📅 المناسبة (اختياري)',
+    studioOccasionDaily: '☀️ يومي',
+    studioOccasionWork: '💼 عمل',
+    studioOccasionEvening: '✨ سهرة',
+    studioOccasionWedding: '💍 عرس',
+    studioOccasionSport: '🏃 رياضة',
+    studioSuggestBtn: '💡 اقترح لي ستايل',
+    studioSuggestGenerating: '💡 جارٍ التحليل والاقتراح...',
+    studioMultiAngleLabel: '🕶️ عرض من زوايا متعددة (أمام / جانب / خلف)',
+    studioHeritageCompareBtn: '📊 قارن كاجوال ⟷ رسمي',
+    studioHeritageCasualLabel: '👕 كاجوال',
+    studioHeritageFormalLabel: '🎩 رسمي',
+    studioFavoriteSaveBtn: '🤍 حفظ في المفضلة',
+    studioFavoriteSaved: '❤️ تم الحفظ',
+    studioNoFavorites: 'لا توجد عناصر محفوظة بعد.',
+    studioFavoritesBtn: '❤️ المفضلة',
+    studioCompareTitle: '📊 قارن بين ستايلات',
+    studioCompareHint: 'اختر ستايلين أو ثلاثة لمقارنتها جنبًا إلى جنب',
+    studioCompareBtn: '📊 قارن الستايلات',
+    moreMenuTitle: 'المزيد',
+    settings: 'الإعدادات',
+    download: 'تنزيل',
+    exportZip: '📦 ZIP',
+    uploadCode: 'رفع',
+    uploadCodeTitle: 'رفع ملف كود (HTML أو Python)',
+    newProject: '+ مشروع جديد',
+    promptPlaceholder: 'صف التطبيق أو اللعبة أو الموقع الذي تريد بناءه... مثال: لعبة ثعبان بسيطة',
+    send: 'إرسال',
+    preview: 'المعاينة',
+    code: 'الكود',
+    emptyTitle: 'ابدأ ببناء أول تطبيق لك',
+    emptyDesc: 'اكتب وصفًا في المربع على اليسار، مثال:<br>"لعبة كسر الطوب"، "موقع لمطعم بيتزا"، "قائمة مهام يومية"',
+    generatingInProgressTitle: 'جاري إنشاء تطبيقك...',
+    generatingInProgressDesc: 'قد يستغرق هذا حتى دقيقة عند استخدام "اسأل الكل" لأنه يدمج نتائج 9 مزودين. الرجاء الانتظار ⏳',
+    voiceTab: '🎙️ صوت',
+    voiceTabDesc: 'اضغط وابدأ محادثة صوتية حية — تتكلم فقط بدون كتابة، والنتيجة (صورة أو تطبيق) تظهر مباشرة في المعاينة والكود.',
+    voiceImageDone: "تمت الصورة، شوفها بالمعاينة.",
+    voiceImageFailed: "ما قدرت أسوي الصورة، حاول مرة ثانية.",
+    voiceCodeDone: "تم! شوف النتيجة بالمعاينة.",
+    voiceCodeFailed: "ما قدرت أسوي الطلب، حاول مرة ثانية.",
+    voiceVideoStarted: "جاري تجهيز الفيديو.",
+    codePlaceholder: 'سيظهر الكود المولّد هنا...',
+    settingsTitle: 'إعدادات الاتصال بالذكاء الاصطناعي',
+    provider: 'مزوّد الخدمة',
+    apiKeyLabel: 'مفتاح API الخاص بك',
+    modelLabel: 'اسم النموذج',
+    settingsHint: 'يُحفظ مفتاحك محليًا في متصفحك فقط (localStorage) ولا يُرسل إلى أي خادم تابع لنا. كل طلب توليد يُرسَل مباشرة من متصفحك إلى مزوّد الذكاء الاصطناعي الذي اخترته باستخدام مفتاحك الخاص.<br><br>OpenAI: احصل على مفتاح من platform.openai.com/api-keys<br>Gemini: احصل على مفتاح مجاني من aistudio.google.com/app/apikey<br>Groq: احصل على مفتاح مجاني من console.groq.com/keys<br>Claude: احصل على مفتاح من console.anthropic.com/settings/keys<br>OpenRouter: احصل على مفتاح من openrouter.ai/keys (يوفر نماذج مجانية أيضًا)<br>Perplexity: احصل على مفتاح من perplexity.ai/settings/api (مدفوع، ويوفر بحث حي)<br>Mistral AI: احصل على مفتاح مجاني من console.mistral.ai/api-keys<br>DeepSeek: احصل على مفتاح من platform.deepseek.com/api_keys (رخيص جدًا وحصة مجانية)<br>Cohere: احصل على مفتاح مجاني من dashboard.cohere.com/api-keys',
+    cancel: 'إلغاء',
+    save: 'حفظ',
+    defaultProjectTitle: 'مشروع جديد',
+    templatesBtn: '🧩 قوالب جاهزة',
+    templatesModalTitle: '🧩 اختر قالبًا جاهزًا',
+    useThisTemplate: '✅ استخدام هذا القالب',
+    deleteProject: 'حذف المشروع',
+    deleteAllProjects: '🗑️ حذف الكل',
+    confirmDeleteAll: '⚠️ سيتم حذف كل المشاريع والمحادثات والصور نهائيًا. متأكد؟',
+    deleteChatLabel: "حذف المحادثة",
+    premiumToggleLabel: "الوضع الاحترافي",
+    premiumOn: "الوضع الاحترافي مفعّل 👑 — أقوى نموذج بلا قيود أسلوب",
+    premiumNeedLogin: "سجّل الدخول لاستخدام الوضع الاحترافي 👑",
+    premiumNoPoints: "نقاطك خلصت — اشترِ نقاط لمواصلة الوضع الاحترافي",
+    chatToPdfLabel: "تحويل إلى PDF",
+    confirmDeleteChat: "⚠️ سيتم حذف هذه المحادثة نهائيًا. متأكد؟",
+    confirmDeleteProject: 'هل أنت متأكد أنك تريد حذف "{name}"؟ لا يمكن التراجع عن هذا الإجراء.',
+    apiKeyMissing: 'يرجى إدخال مفتاح API أولاً من الإعدادات.',
+    providerError: 'خطأ من مزود الذكاء الاصطناعي: ',
+    quotaError: '⏳ الحصة المجانية لهذا المزوّد انتهت مؤقتًا (429). جرّب بعد دقيقة أو استخدم مزوّدًا آخر.',
+    dailyLimitError: '🚫 وصلت للحد اليومي المجاني لهذا المزوّد (20 رسالة). جرّب مزودًا آخر أو أدخل مفتاح API الخاص بك من ⚙️ الإعدادات، أو انتظر إلى الغد.',
+    authError: '🔑 مفتاح API غير صحيح أو منتهي — تأكد منه في ⚙️ الإعدادات.',
+    storageFullWarning: '⚠️ مساحة التخزين في المتصفح ممتلئة جدًا حتى بعد حذف الصور القديمة تلقائيًا. يُرجى حذف بعض المحادثات القديمة بالكامل من قائمة المشاريع 📂 لتحرير مساحة أكبر.',
+    imagePurgedNote: 'تم حذف الصورة تلقائيًا لتوفير المساحة',
+    attachTitle: 'إرفاق',
+    attachTruncated: 'تم اقتطاع المحتوى لأنه كان طويلًا جدًا',
+    imagesAttachedNote: 'مرفقات',
+    building: 'جارٍ البناء...',
+    buildSuccess: 'تم إنشاء/تحديث التطبيق بنجاح ✅ يمكنك معاينته من تبويب "المعاينة".',
+    selfHealing: '🔧 اكتشفت أخطاء في الكود... جاري الإصلاح الذاتي',
+    noCodeToDownload: 'لا يوجد كود لتنزيله بعد.',
+    geminiApiKeyLabel: 'مفتاح API — Google Gemini',
+    geminiModelLabel: 'اسم نموذج Gemini',
+    groqApiKeyLabel: 'مفتاح API — Groq',
+    groqModelLabel: 'اسم نموذج Groq',
+    claudeApiKeyLabel: 'مفتاح API — Anthropic Claude',
+    claudeModelLabel: 'اسم نموذج Claude',
+    mistralApiKeyLabel: 'مفتاح API — Mistral AI',
+    mistralModelLabel: 'اسم نموذج Mistral',
+    includeMistral: 'Mistral AI',
+    deepseekApiKeyLabel: 'مفتاح API — DeepSeek',
+    deepseekModelLabel: 'اسم نموذج DeepSeek',
+    includeDeepSeek: 'DeepSeek',
+    cohereApiKeyLabel: 'مفتاح API — Cohere',
+    cohereModelLabel: 'اسم نموذج Cohere',
+    includeCohere: 'Cohere',
+    fetchModelsBtn: 'جلب الموديلات المتاحة',
+    fetchModelsFail: 'تعذّر جلب قائمة الموديلات، تأكد من إدخال مفتاح Claude صحيح أولاً.',
+    fetchModelsEmpty: 'لم يتم العثور على أي موديلات متاحة لهذا المفتاح.',
+    askAllLabel: 'اسأل كل المزوّدين معًا (مقارنة)',
+    askAllBtnTitle: 'اسأل الكل — 9 نماذج AI تبني تطبيقك معًا',
+    askAllHintText: "💡 اكتب طلبك عادي — والذكاء الاصطناعي يبني تطبيقك فورًا",
+    mergedAnswerLabel: 'الإجابة الموحّدة',
+    mergedAnswerSourceLabel: 'مصدر',
+    mergedAnswerSystemPrompt: 'لديك عدة إجابات من مزوّدين مختلفين للذكاء الاصطناعي على نفس الطلب. إذا كانت الإجابات تحتوي على كود كامل لتطبيق أو تصميم، اختر أفضل نسخة كود كاملة وعاملة بين النسخ المرفقة (الأكثر اكتمالًا وصحة وجمالًا)، وحسّنها إن أمكن بدمج أفضل مافي النسخ الأخرى، ثم أعد الكود الكامل النهائي كاملًا داخل بلوك كود واحد فقط (لا تكتب كوداً مختصراً أو ناقصاً من عندك من الصفر، استخدم الكود الحقيقي المرفق كأساس). إذا لم تكن الإجابات كوداً فادمجها في إجابة نصية واحدة دقيقة وشاملة، احذف التكرار والتناقض. أجب مباشرة بالنتيجة النهائية فقط بدون ذكر أنك تدمج إجابات.',
+    mergedAnswerPickSystemPrompt: 'لديك عدة نسخ كود كاملة من مزوّدين مختلفين للذكاء الاصطناعي لنفس الطلب، مرقّمة. افحصها جيدًا واختر رقم النسخة الوحيدة الأكثر اكتمالًا وصحة عملًا وجمالًا في التصميم. أجب برقم واحد فقط بدون أي نص أو شرح إضافي.',
+    mergedAnswerCodeMergeSystemPrompt: 'تخيل أن 9 مبرمجين خبراء من أفضل شركات الذكاء الاصطناعي جلسوا معًا في غرفة واحدة، وكل واحد منهم قدّم فكرته ونسخته الكاملة لنفس الطلب. مهمتك الآن ليست أن تختار نسخة واحدة وتتجاهل الباقي، ولا أن تلصق أجزاء متفرقة من كل نسخة بجانب بعضها. مهمتك هي أن تتصرف كأنك "المدير التقني" لهذا الفريق: ادرس كل الأفكار التسع بعناية شديدة (كل هيكلة، كل ميزة، كل حل ذكي لمشكلة)، ثم اتخذ قرارات جماعية موحّدة كأن الفريق كله اتفق منذ البداية على تصميم واحد متكامل، وابنِ التطبيق من الصفر بهذه الرؤية الموحدة — وليس كنسخة ملصّقة من 9 حلول منفصلة. ادمج أقوى بنية بيانات، أذكى منطق برمجي، وأكثر ميزة مفيدة رآها أي عضو في الفريق، واجعلها تعمل معًا بانسجام تام كأنها كُتبت من عقل واحد لا تسعة عقول. مهم جدًا: حتى لو كانت كل النسخ التسعة بتصميم بسيط أو عادي، لا تكتفِ بنسخ أبسط تصميم موجود — ارتقِ بالتصميم فوق مستوى كل النسخ: استخدم خطوط عصرية، تدرّجات ألوان (gradients)، ظلال ناعمة (shadows)، حواف دائرية، مسافات متوازنة، حركات وانتقالات (transitions/animations) عند التفاعل، وتوافق كامل مع الجوال. النتيجة النهائية يجب أن تبدو تصميمًا احترافيًا متطورًا واحدًا متماسكًا، أفضل من كل نسخة على حدة، وليس مجرد تجميع أو نسخة منسوخة. قاعدة إلزامية جدًا: قبل أن تكتب أي سطر، افحص التسع نسخ وحدد أكثرها تعقيدًا وثراءً بصريًا (مثل: رسم تفاعلي بـ Canvas/SVG، مخطط ملون بغرف وأثاث، شبكة (grid) بصرية، عناصر مرسومة بدلًا من نص). إذا كانت أي نسخة من التسع تحتوي عرضًا بصريًا/رسوميًا (وليس مجرد قائمة نصية)، فيُمنع منعًا باتًا أن يكون ناتجك النهائي مجرد نص أو قائمة بسيطة — يجب أن يحافظ ناتجك على نفس مستوى التمثيل البصري أو أفضل منه (رسم فعلي بالألوان والعناصر، وليس وصفًا نصيًا لها). لا يُسمح بتفريغ التصميم من عناصره البصرية أثناء الدمج مهما كان السبب. قاعدة إلزامية إضافية: قبل كتابة أي كود، اذكر لنفسك (داخل تفكيرك فقط، لا تكتبها في الرد) قائمة دقيقة بكل عنصر ملموس ورد في أي نسخة من النسخ التسع (كل غرفة باسمها، كل لون، كل مادة سطح (material)، كل زاوية كاميرا أو تحكم (controls)، كل أثاث أو عنصر ثلاثي الأبعاد مسمّى) — ثم استخدم هذه القائمة حرفيًا أثناء بناء الناتج النهائي. يُمنع منعًا باتًا استبدال مشهد ثلاثي الأبعاد غني بغرف وتفاصيل بمشهد بديل عام أو بسيط (مثل مكعب واحد دوّار أو شكل هندسي فارغ) كحل توفيقي — إن وُجدت غرف/عناصر مسمّاة في أي نسخة، يجب أن تظهر كلها بأسمائها وتفاصيلها في المشهد ثلاثي الأبعاد النهائي فعليًا، لا في نص جانبي فقط. أعد الكود الكامل النهائي فقط داخل بلوك كود واحد، بدون اختصار أو حذف أجزاء، وبدون أي شرح أو ذكر أنك دمجت عدة نسخ.',
+    mergedAnswerFailed: 'تعذّر إنشاء الإجابة الموحّدة، راجع الإجابات الفردية أعلاه.',
+    askAllProvidersLabel: 'المزوّدون المشمولون في "اسأل الكل"',
+    includeOpenAI: 'OpenAI / OpenRouter',
+    includeGemini: 'Google Gemini',
+    includeGroq: 'Groq',
+    includeClaude: 'Anthropic Claude',
+    includeInAskAll: 'ضِمن اسأل الكل',
+    useThisVersion: 'استخدم هذا الإصدار',
+    diffBtn: 'الفروقات',
+    continueWithProvider: 'فتح المشروع بهذا الرد فقط',
+    layoutHorizontal: 'أفقي',
+    viewIndividualReplies: 'عرض الردود الفردية ({n})',
+    preparingBestResult: 'جاري تحضير أفضل نتيجة...',
+    layoutVertical: 'عمودي',
+    toggleAskAllLayout: 'تبديل طريقة عرض ردود اسأل الكل',
+    versionApplied: 'تم تطبيق هذا الإصدار على المعاينة والكود ✅',
+    missingKeysAskAll: 'لتفعيل "اسأل الكل" أدخل مفتاحين على الأقل من: OpenAI/OpenRouter، Gemini، Groq، Claude من الإعدادات.',
+    speakBtn: 'استماع 🔊',
+    stopSpeakBtn: 'إيقاف ⏹️',
+    speakNotSupported: 'المتصفح لا يدعم القراءة الصوتية.',
+    micTitle: 'تحدث بدل الكتابة',
+    voiceChatTitle: 'محادثة صوتية',
+    micNotSupported: 'المتصفح لا يدعم إدخال الصوت. جرّب متصفح Chrome على أندرويد أو الكمبيوتر.',
+    themeSectionLabel: '🎨 تخصيص الألوان والمظهر',
+    bg3dSectionLabel: '🌌 خلفية ثلاثية الأبعاد متحركة',
+    bg3dAutoLabel: '🔀 تبديل تلقائي بين الخلفيات كل دقيقة',
+    themeAccentLabel: 'اللون الأساسي (Accent)',
+    themeTextLabel: 'لون النص',
+    themeBgLabel: 'لون الخلفية',
+    themeUserBubbleLabel: 'لون فقاعة رسالتك',
+    themeAssistantBubbleLabel: 'لون فقاعة الرد',
+    providerColorsLabel: '🤖 لون كل مزوّد ذكاء اصطناعي (يظهر باسمه في المحادثة)',
+    resetColorsBtn: 'إعادة الألوان الافتراضية',
+    downloadSourceBtn: 'تحميل الكود المصدري (ZIP)',
+    voiceSectionLabel: 'الصوت',
+    fontSizeSectionLabel: 'حجم الخط',
+    fontSizeSmall: 'صغير',
+    fontSizeNormal: 'عادي',
+    fontSizeLarge: 'كبير',
+    fontSizeXLarge: 'كبير جدًا',
+    dialectPickLabel: '🗣️ لهجة القراءة الصوتية (نموذج تجريبي)',
+    dialectNone: 'فصحى (بدون لهجة)',
+    dialectGulf: 'خليجي',
+    dialectEgyptian: 'مصري',
+    mahaTitle: "مها - مساعدة صوتية",
+    mahaGreeting: "أنا مها، تكلم معي بأي لغة تحب.",
+    mahaListening: "أستمع...",
+    mahaThinking: "أفكر...",
+    mahaSpeaking: "أتحدث...",
+    mahaTapToTalk: "اضغط لبدء المحادثة",
+    mahaMicDenied: "تعذر الوصول إلى الميكروفون",
+    mahaTryAgain: "حاول مرة ثانية",
+    mahaLowMic: "ما قدرت أسمعك، تأكد من الميكروفون وتكلم بصوت أعلى",
+    mahaSttError: "خطأ في تحويل الصوت، حاول مرة ثانية",
+    mahaNoSpeech: "ما فهمت، حاول مرة ثانية",
+    mahaAskRepeat: "ما فهمتك زين، ممكن تعيد كلامك؟",
+    mahaConnectionError: "تعذر الاتصال، حاول مرة ثانية",
+    mahaImageReadyReply: "تم، سويت لك الصورة وشايفها الحين",
+    mahaImageEditedReply: "تم، عدلت الصورة زي ما طلبت",
+    mahaImageFailedReply: "ما قدرت أسوي الصورة، جرب توصيف ثاني",
+    voiceGenderLabel: 'نوع الصوت المفضل',
+    voiceGenderDefault: 'افتراضي (صوت الجهاز)',
+    voiceGenderMale: 'صوت رجل',
+    voiceGenderFemale: 'صوت امرأة',
+    cloudVoiceLabel: '🌟 استخدام صوت اصطناعي عالي الجودة (OpenAI TTS - يحتاج مفتاح OpenAI أعلاه)',
+    voiceOnyx: '🧔 رجل - Onyx',
+    voiceEcho: '👨 رجل - Echo',
+    voiceNova: '👩 امرأة - Nova',
+    voiceShimmer: '👩 امرأة - Shimmer',
+    voiceFable: '🙂 محايد - Fable',
+    voiceAlloy: '🙂 محايد - Alloy',
+    voicePickLabel: 'اختيار صوت محدد (اختياري)',
+    voiceAutoOption: 'تلقائي',
+    testVoiceBtn: 'تجربة الصوت',
+    voiceTestSample: 'مرحبًا! هذه تجربة للصوت المختار.',
+    install: 'تثبيت التطبيق',
+    shareAppBtn: 'مشاركة التطبيق',
+    refreshBtnTitle: 'تحديث الصفحة',
+    langBtn: 'EN',
+    systemPrompt: `أنت المساعد الذكي داخل تطبيق «Omran AI Builder» من تطوير فريق عمران AI. إذا سُئلت عن اسم هذا التطبيق أو من طوّره، أجب بذلك. أنت مساعد ودود يتكلم عربي، ومتخصص أيضًا في بناء تطبيقات ويب كاملة داخل ملف HTML واحد، وأيضًا كتابة سكربتات بايثون قابلة للتشغيل مباشرة.
+- إذا كانت رسالة المستخدم مجرد سلام أو سؤال عادي أو دردشة (وليست طلب بناء أو تعديل تطبيق)، رُدّ عليه بشكل طبيعي ومحادثي عادي بدون أي كود ولا كتلة كود إطلاقًا.
+- الوضع الافتراضي: إذا طلب المستخدم صراحة إنشاء أو تعديل تطبيق/أداة/لعبة/موقع، ابنِ تطبيقًا كاملاً يعمل مباشرة باستخدام HTML وCSS وJavaScript فقط داخل ملف واحد (بدون طلبات خارجية أو مكتبات تحتاج تثبيت، يمكن استخدام CDN عند الحاجة). في هذه الحالة: اكتب أولاً شرحًا قصيرًا جدًا وودودًا (سطر إلى سطرين فقط، بدون تفاصيل تقنية مطولة) عن اللي بنيته أو عدّلته، ثم أعد الكود الكامل مباشرة داخل كتلة كود واحدة بصيغة \`\`\`html ... \`\`\`. لا تشرح كيف يعمل الكود بالتفصيل في الرد النصي؛ اجعل الشرح التقني (إن وجد) كتعليقات مختصرة داخل الكود نفسه فقط.
+- تطبيقات/ألعاب 3D: يمكنك بناء مشاهد وألعاب ثلاثية الأبعاد فعلية داخل المتصفح باستخدام مكتبة Three.js عبر CDN (مثال: <scr` + `ipt src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></scr` + `ipt>) داخل نفس ملف HTML. وضّح دائمًا للمستخدم أن هذه ألعاب/مشاهد ويب ثلاثية الأبعاد مبسطة، وأنها لا يمكن أن تضاهي واقعية محركات ألعاب احترافية مثل Unity أو Unreal Engine، لكنها تعمل فعليًا وبشكل تفاعلي داخل المتصفح مباشرة.
+- الخوارزميات: أنت متمكّن من كل أنواع الخوارزميات وتستخدمها بذكاء عند بناء أي تطبيق يحتاجها، مثل: خوارزميات الترتيب (Bubble/Quick/Merge/Heap Sort)، البحث (Binary Search، البحث الخطي)، هياكل البيانات (Stack، Queue، Linked List، Tree، Heap، Hash Map/Set، Trie، Graph)، خوارزميات الرسوم البيانية (BFS، DFS، Dijkstra، A* لإيجاد أقصر مسار)، البرمجة الديناميكية (Dynamic Programming) والخوارزميات الجشعة (Greedy) والتراجع (Backtracking) لحل المسائل المعقدة، خوارزميات النصوص (مطابقة الأنماط، Levenshtein Distance)، خوارزميات رياضية (الأعداد الأولية، GCD/LCM، الاحتمالات)، وخوارزميات الذكاء الاصطناعي البسيطة (Minimax مع Alpha-Beta Pruning لألعاب مثل XO والشطرنج، خوارزميات المسارات لألعاب المتاهات وحركة الأعداء). اختر دائمًا الخوارزمية الأنسب والأكفأ من حيث الأداء (تعقيد الوقت والذاكرة) حسب حجم المدخلات المتوقع، واشرح باختصار في ردك أي خوارزمية استخدمتها وسبب اختيارها إذا كانت جوهر الطلب (مثل حل مسألة خوارزمية أو لعبة ذكاء اصطناعي).
+- بايثون: فقط إذا طلب المستخدم صراحة كود بايثون أو سكربت بايثون أو حل بلغة بايثون (وليس تطبيق ويب)، اكتب شرحًا قصيرًا ثم أعد كود بايثون كاملاً داخل كتلة كود بصيغة \`\`\`python ... \`\`\` فقط (بدون مكتبات خارجية تحتاج تثبيت عبر pip؛ فقط مكتبات بايثون القياسية أو numpy/pandas إن وُجدت). هذا الكود سيُشغَّل تلقائيًا داخل المتصفح ويظهر ناتجه (print) للمستخدم مباشرة.
+- إذا كان تعديلاً على تطبيق أو كود سابق، اشرح باختصار وش غيّرت، ثم عدّل الكود الموجود وأعد الملف كاملاً محدّثًا داخل كتلة الكود بنفس اللغة (html أو python) المستخدمة سابقًا.`,
+    guestLimitMsg: '🎉 استخدمت رسائلك المجانية العشرين! سجّل الدخول لحسابك (أو أنشئ حسابًا جديدًا) عشان تكمل الدردشة.',
+    guestImageMsg: '🎁 خلصت صورك المجانية الثلاث كضيف! أنشئ حسابًا مجانيًا خلال ثوانٍ وبتحصل على 70 نقطة هدية تكمل فيها توليد وتعديل الصور.',
+    pricingSectionTitle: 'الباقات والنقاط',
+    pricingFreeTitle: 'مجاني',
+    pricingFreeDesc: '20 رسالة يوميًا + هدية ترحيب 70 نقطة',
+    pricingBasicTitle: 'Plus — ‏10$ شهريًا',
+    pricingBasicDesc: '300 رسالة شهريًا + 60 نقطة هدية كل شهر (فيديو مجاني شهريًا)',
+    pricingProTitle: 'Pro — ‏20$ شهريًا',
+    pricingProDesc: 'رسائل بلا حدود + وكيل عمران + 200 نقطة شهريًا + أولوية سرعة + شارة ذهبية',
+    pricingComingSoon: 'قريبًا 🚀 — الاشتراك غير متاح حاليًا',
+    pricingSubscribeBtn: 'اشترك الآن',
+    checkoutTitle: 'إتمام الاشتراك',
+    checkoutTestBadge: '🧪 وضع تجريبي (Test Mode)',
+    checkoutCardOption: 'فيزا / ماستركارد',
+    checkoutTelecomOption: 'فاتورة الاتصالات (اتصالات/du)',
+    checkoutComingSoon: 'قريبًا',
+    checkoutPlanLabelBasic: 'الخطة الأساسية 5$ شهريًا — 300 رسالة',
+    checkoutPlanLabelPro: 'الخطة الاحترافية 15$ شهريًا — رسائل غير محدودة',
+    checkoutRedirecting: 'جارٍ التحويل إلى صفحة الدفع...',
+    checkoutError: 'حدث خطأ ما، حاول مرة أخرى',
+    checkoutNotConfigured: 'الدفع غير مفعّل من الإدارة بعد',
+    checkoutSuccessMsg: '✅ تم الاشتراك بنجاح (وضع تجريبي)! شكرًا لك 🎉',
+    checkoutCancelMsg: '⚠️ تم إلغاء عملية الدفع',
+    pricingTestNote: '🧪 وضع تجريبي حاليًا — سيتم التفعيل الكامل عند الحصول على الرخصة التجارية',
+    termsLink: '📜 الشروط والأحكام',
+    privacyLink: '🔒 سياسة الخصوصية',
+    aboutSectionTitle: 'ℹ️ عن البرنامج والفيديوهات التعريفية',
+    feedbackSectionTitle: '💬 رأيك يهمنا',
+    fbTagBug: '🐛 مشكلة',
+    fbTagIdea: '💡 اقتراح',
+    fbTagLike: '❤️ إعجاب',
+    feedbackPlaceholder: 'اكتب رأيك أو مقترحك هنا...',
+    feedbackSubmitBtn: '📤 إرسال',
+    feedbackIdeasTitle: '🗳️ أفضل المقترحات (صوّت لصالح ما يعجبك)',
+    aboutText: '<b>Omran AI Builder</b> هو منصة عربية بالكامل لبناء التطبيقات بالذكاء الاصطناعي، من تطوير فريق عمران AI. تحدث مع الذكاء الاصطناعي بالعربية أو الإنجليزية للحصول فورًا على كود تطبيق كامل، مع محرر كود ومعاينة حية جنبًا إلى جنب.<br><br>يدعم البرنامج 9 مزودين مختلفين للذكاء الاصطناعي (OpenAI، Gemini، Groq، Claude، OpenRouter، Perplexity، Mistral، DeepSeek، Cohere)، ويمكنك اختيار أكثر من مزود في نفس الوقت لطرح سؤال واحد ومقارنة إجابات الجميع.<br><br>يعمل كتطبيق PWA قابل للتثبيت على أندرويد وآيفون تمامًا كأي تطبيق أصلي، ويدعم المحادثة الصوتية (تحويل الصوت إلى نص وقراءة الردود بصوت عالٍ)، ويحتوي على نظام حسابات كامل (تسجيل / دخول / استرجاع كلمة المرور)، ووضع ضيف يتيح 20 رسالة مجانية دون الحاجة لتسجيل.<br><br>جميع إعدادات المظهر والألوان قابلة للتخصيص بالكامل، ومفاتيح API الخاصة بك تُحفظ فقط في متصفحك ولا تُرسل أبدًا لأي خادم خارجي — خصوصيتك أولًا.',
+    videoArShortTitle: '🎬 فيديو تعريفي عربي (قصير)',
+    videoArLongTitle: '🎬 فيديو تعريفي عربي (كامل)',
+    videoEnShortTitle: '🎬 فيديو تعريفي إنجليزي (قصير)',
+    videoEnLongTitle: '🎬 فيديو تعريفي إنجليزي (كامل)',
+    socialTitle: '📱 تابعنا على مواقع التواصل الاجتماعي',
+    providerQuickBarTitle: 'اختر مزوّد الذكاء الاصطناعي — النقطة تبيّن رصيدك المتبقي اليوم',
+    providerQuickBarLabel: 'اختر مزوّد الذكاء الاصطناعي 👇 (النقطة = رصيدك اليوم)',
+    providerGridTitle: '٩ عقول ذكية — اختر عقلك',
+    exploreTitle: 'استكشف',
+    shareProjectBtnTitle: 'شارك المشروع برابط عام',
+    shareModalTitle: '🔗 مشاركة المشروع',
+    shareModalDesc: 'أنشئ رابطًا عامًا لمشروعك. يقدر أي شخص فتحه ومعاينته بدون تسجيل دخول.',
+    sharePublicLabel: 'اعرضه أيضًا في صفحة 🔍 استكشف (يشوفه الجميع)',
+    sharePrivateLabel: 'رابط خاص فقط (لمن تشاركه معهم)',
+    shareCreateBtn: 'إنشاء الرابط',
+    shareCopyBtn: 'نسخ الرابط',
+    shareCreating: 'جارٍ الإنشاء...',
+    shareError: 'تعذّر إنشاء الرابط، حاول مرة أخرى.',
+    shareCopied: 'تم نسخ الرابط! ✅',
+  },
+  en: {
+    pricingPointsTitle: 'Points Packs',
+    pricingPointsDesc: 'Points are one universal currency — spend them on Maha voice, videos and images, no subscription needed. Maha: 10 pts/min • Video: 60 • Veo 3: 400 • Image: 10',
+    pricingWalletLabel: 'Your points balance',
+    pricingPointsUnit: 'pts',
+    pricingBuyBtn: 'Buy',
+    mahaNoPoints: 'Your points balance is empty 💜 Top up in the Plans section to continue with Maha',
+    "appColorTitle": "App color", "customColorsLabel": "Custom colors",
+    fbMenuLabel: "We value your feedback", fbTitle: "We value your feedback", fbSubtitle: "Help us improve your experience — your rating reaches us directly", fbChipEasy: "Easy to use", fbChipDesign: "Great design", fbChipAI: "Excellent AI", fbChipSlow: "Sometimes slow", fbChipBug: "Found a problem", fbNotePh: "What should we improve? (optional)", fbSend: "Send feedback", fbThanks: "Thank you!", fbThanksSub: "Your feedback was received and helps us improve", fbOwnerList: "User feedback", fbEmpty: "No feedback yet",
+    "eaConnectBtn": "🔗 Connect Gmail",
+    "eaVoiceBtn": "🔊 Voice summary",
+    "eaRefreshBtn": "🔄 Refresh",
+    "stocksLearnTitle": "Learn trading",
+    "stocksFullTitle": "Exchange screen mode",
+    "scrollTopTitle": "Scroll to top of chat",
+    "plusToolsTitle": "More tools",
+    "sendTitle": "Send",
+    "tabsMenuTitle": "File options",
+    "mahaCameraTitle": "Camera — Maha's eye",
+    "settingsDlgMaxTitle": "Double-click to maximize/restore",
+    "agentModeTitle": "Omran Agent",
+    "authEmailLabel": "📧 Email (optional — for account recovery)",
+    "authUseCodeLink": "I have a recovery code instead",
+    "runCodeBtn": "Run",
+    "orFreeGroup": "🆓 Free",
+    "orPaidGroup": "💰 Paid",
+    "runCodeTitle": "Run the code in preview",
+    "timeMachineTitle": "Time machine — restore previous versions",
+    'projSearchLabel': 'Search projects', 'grpCreate': '🎨 Creativity', 'grpSections': '💼 Sections', 'grpTools': '🛠️ Tools',
+    dir: 'ltr',
+    settingsCmdPh: "Type what you want to change… e.g. bigger font and ocean background",
+    settingsCmdSend: "Run",
+    back: "Back",
+    tickerToggleLabel: "Stock ticker bar",
+    tickerColorLabel: "Ticker color",
+    moreOptionsTitle: "More options",
+    shareMsgTitle: "Share",
+    copiedToast: "Copied",
+    thumbDownTitle: "Not helpful",
+    thumbUpTitle: "Helpful",
+    reportMsgTitle: "Report inappropriate content",
+    reportConfirm: "Do you want to report this reply as inappropriate AI-generated content?",
+    reportSentToast: "Report received — thank you",
+    convertToPdf: "Convert to PDF",
+    convertToWord: "Convert to Word",
+    convertToImage: "Convert to Image",
+    downloadTxt: "Download TXT",
+    settingsCmdNotUnderstood: "Didn't understand, try rephrasing",
+    settingsCmdDoneLang: "Language changed",
+    settingsCmdDoneFont: "Font size changed",
+    settingsCmdDoneBg: "Background changed",
+    settingsCmdDoneVoice: "Voice changed",
+    settingsCmdDoneTickerOn: "Stock ticker turned on",
+    settingsCmdDoneTickerOff: "Stock ticker turned off",
+
+    fileChooseBtn: '📁 Choose file',
+    fileNoneChosen: 'No file chosen',
+    pageTitle: 'AI App Builder',
+    appTitle: 'AI App Builder',
+    offlineBanner: "⚠️ You're offline — you can browse saved chats, but AI replies need an internet connection",
+    freezeBannerMsg: '⚠️ The app is responding slowly… your work was auto-saved. Reload now?',
+    freezeReloadBtn: '🔄 Reload',
+    freezeDismissBtn: 'Dismiss',
+    backOnlineBanner: '✅ Back online',
+    authTitle: '🔐 Welcome',
+    authSubtitle: 'Log in or create a new account to continue',
+    authTabLogin: 'Log In',
+    authTabSignup: 'Sign Up',
+    authUsernameLabel: 'Username',
+    authPasswordLabel: 'Password',
+    authNewPasswordLabel: 'New password',
+    authRecoveryLabel: 'Recovery code',
+    authForgotLink: 'Forgot password?',
+    langSectionTitle: '🌐 Language',
+    apiKeysSectionTitle: '🔑 AI Provider API Keys',
+    providerQuickBarTitle: 'Pick your AI provider — the dot shows today\'s remaining quota',
+    providerQuickBarLabel: 'Choose your AI provider 👇 (dot = today\'s quota)',
+    providerGridTitle: '9 Smart Minds — pick yours',
+    clockBtnTitle: 'Calendar & World Clock',
+    clockDialogTitle: '🕌🕐 Calendar & World Clock',
+    clockLocalTZ: 'Your local time',
+    clockSelectCountry: 'Select country / city',
+    clockWorldLabel: '🌍 World Clock',
+    authBackToLogin: 'Back to login',
+    authSubmitReset: 'Reset password',
+    authRecoveryModalTitle: '🔑 Save this recovery code',
+    authRecoveryModalDesc: 'This is the only code you can use to recover your account if you forget your password. Save it somewhere safe — it will not be shown again.',
+    authCopyBtn: '📋 Copy',
+    authAckBtn: '✅ Saved it, continue',
+    authCopied: '✅ Copied',
+    authSubmitLogin: 'Log In',
+    authOrDivider: 'or',
+    authGoogleBtn: 'Continue with Google',
+    authSubmitSignup: 'Create Account',
+    guestLimitMsg: "🎉 You've used your 20 free messages! Log in to your account (or create one) to keep chatting.",
+    guestImageMsg: '🎁 You have used your 3 free guest images! Create a free account in seconds and get 70 gift points to keep generating and editing images.',
+    pricingSectionTitle: 'Plans & Points',
+    pricingFreeTitle: 'Free',
+    pricingFreeDesc: '20 messages/day + 70-point welcome gift',
+    pricingBasicTitle: 'Plus — $10 / month',
+    pricingBasicDesc: '300 messages/month + 60 gift points monthly (a free video every month)',
+    pricingProTitle: 'Pro — $20 / month',
+    pricingProDesc: 'Unlimited messages + Omran Agent + 200 points/month + priority speed + gold badge',
+    pricingComingSoon: 'Coming soon 🚀 — subscriptions aren\'t available yet',
+    pricingSubscribeBtn: 'Subscribe now',
+    pricingTestNote: '🧪 Test mode for now — full activation once the business license is obtained',
+    termsLink: '📜 Terms & Conditions',
+    privacyLink: '🔒 Privacy Policy',
+    aboutSectionTitle: 'ℹ️ About the App & Intro Videos',
+    feedbackSectionTitle: '💬 Feedback & Suggestions',
+    fbTagBug: '🐛 Bug',
+    fbTagIdea: '💡 Idea',
+    fbTagLike: '❤️ Like it',
+    feedbackPlaceholder: 'Write your feedback or suggestion here...',
+    feedbackSubmitBtn: '📤 Submit',
+    feedbackIdeasTitle: '🗳️ Top suggestions (vote for what you like)',
+    aboutText: '<b>Omran AI Builder</b> is a fully Arabic-first AI app-building platform, developed by the Omran AI Team (فريق عمران AI). Chat with AI in Arabic or English to instantly get a complete app’s code, with a live side-by-side code editor and preview.<br><br>The app brings together 3 powerful AI models in one place: 👑 King for building, editing and diagnosing, ⚡ Fast for instant replies and chat, and 🧠 Deep for analysis, search and documents — plus live search, image generation, a voice assistant and specialized sections.<br><br>It works as an installable PWA on Android and iPhone just like a native app, supports voice chat (speech-to-text and reading replies aloud), has a full account system (sign up / log in / password recovery), and a guest mode offering 20 free messages with no sign-up required.<br><br>All appearance and color settings are fully customizable, and your API keys are stored only in your own browser and never sent to any external server — your privacy comes first.',
+    videoArShortTitle: '🎬 Arabic intro video (short)',
+    videoArLongTitle: '🎬 Arabic intro video (full)',
+    videoEnShortTitle: '🎬 English intro video (short)',
+    videoEnLongTitle: '🎬 English intro video (full)',
+    socialTitle: '📱 Follow us on social media',
+    checkoutTitle: 'Complete Subscription',
+    checkoutTestBadge: '🧪 Test Mode',
+    checkoutCardOption: 'Visa / Mastercard',
+    checkoutTelecomOption: 'Carrier Billing (Etisalat/du)',
+    checkoutComingSoon: 'Coming soon',
+    checkoutPlanLabelBasic: 'Basic Plan $5/mo — 300 messages',
+    checkoutPlanLabelPro: 'Pro Plan $15/mo — Unlimited messages',
+    checkoutRedirecting: 'Redirecting to payment page...',
+    checkoutError: 'Something went wrong, please try again',
+    checkoutNotConfigured: 'Payments not configured by admin yet',
+    checkoutSuccessMsg: '✅ Subscribed successfully (test mode)! Thank you 🎉',
+    checkoutCancelMsg: '⚠️ Payment was cancelled',
+    logoutTitle: 'Log out',
+    loginAction: 'Login',
+    acctSectionTitle: '👤 My account',
+    statsSectionTitle: 'My stats',
+    statsProjectsLabel: 'Projects count',
+    statsMessagesLabel: 'Total messages sent',
+    statsFavProviderLabel: 'Favorite provider',
+    statsExportBtn: 'Export projects',
+    statsImportBtn: 'Import projects',
+    exportProjectsSuccess: '✅ Your projects were exported successfully',
+    importProjectsConfirm: 'Imported projects will be merged with your current projects. Continue?',
+    importProjectsSuccess: '✅ Projects imported successfully',
+    importProjectsError: '❌ Invalid file, make sure it is a valid projects export file',
+    acctAvatarBtn: '📷 Change photo',
+    acctUsernameLabel: 'Username',
+    acctSaveBtn: 'Save',
+    acctEmailLabel: '📧 Backup email (for password recovery)',
+    acctReferralLabel: '🔗 Invite friends link',
+    acctCopyBtn: '📋 Copy',
+    acctReferralHint: 'For every friend who signs up with your link, you both get 10 extra free messages 🎁',
+    acctCleanupLabel: 'Clean up app',
+    acctCleanupHint: 'Permanently deletes all chats and projects from this device and the cloud. Your account and language are kept.',
+    acctCleanupConfirm: 'All chats and projects will be permanently deleted. Are you sure?',
+    acctCleanupBtn: 'Delete everything now',
+    acctReferralCopied: 'Link copied ✅',
+    acctReferralBonusCount: 'Your bonus messages balance: {n}',
+    acctCurrentPasswordLabel: 'Current password',
+    acctNewPasswordLabel2: 'New password',
+    acctSaved: '✅ Saved',
+    acctSaving: 'Saving...',
+    acctFillUsername: 'Enter a valid username (at least 3 characters)',
+    acctFillPasswords: 'Enter your current password and a new password (at least 4 characters)',
+    acctGenericError: 'Something went wrong, try again',
+    acctNetError: 'Could not reach the server, check your connection',
+    acctAvatarTooBig: 'The image is too large, choose a smaller one',
+    providerColorsLabel: '🤖 Each AI provider color (shown next to its name in chat)',
+    themeAssistantBubbleLabel: 'Reply bubble color',
+    authRememberMe: 'Remember me',
+    themeUserBubbleLabel: 'Your message bubble color',
+    themeSectionLabel: '🎨 Customize colors & appearance',
+    bg3dSectionLabel: '🌌 Animated 3D background',
+    bg3dAutoLabel: '🔀 Auto-switch backgrounds every minute',
+    deleteProject: 'Delete project',
+    deleteAllProjects: '🗑️ Delete all',
+    confirmDeleteAll: '⚠️ All projects, chats and images will be permanently deleted. Are you sure?',
+    deleteChatLabel: "Delete chat",
+    premiumToggleLabel: "Professional mode",
+    premiumOn: "Professional mode is ON 👑 — strongest model, no style limits",
+    premiumNeedLogin: "Sign in to use professional mode 👑",
+    premiumNoPoints: "Out of points — buy points to keep using professional mode",
+    chatToPdfLabel: "Convert to PDF",
+    confirmDeleteChat: "⚠️ This chat will be permanently deleted. Are you sure?",
+    themeTextLabel: 'Text color',
+    confirmDeleteProject: 'Are you sure you want to delete "{name}"? This cannot be undone.',
+    themeAccentLabel: 'Accent color',
+    resetColorsBtn: 'Reset to default colors',
+    themeBgLabel: 'Background color',
+    logout: 'Log out',
+    loggedInAs: 'Logged in',
+    settings: 'Settings',
+    download: 'Download',
+    exportZip: '📦 ZIP',
+    uploadCode: 'Upload',
+    copyCode: 'Copy',
+    copyCodeTitle: 'Copy code',
+    copiedMsg: 'Copied ✅',
+    copyMsgTitle: 'Copy reply',
+    uploadCodeTitle: 'Upload a code file (HTML or Python)',
+    newProject: '+ New Project',
+    promptPlaceholder: 'Describe the app, game, or website you want to build... e.g. a simple snake game',
+    send: 'Send',
+    preview: 'Preview',
+    code: 'Code',
+    emptyTitle: 'Start building your first app',
+    emptyDesc: 'Type a description in the box, e.g.:<br>"a brick breaker game", "a pizza restaurant website", "a daily to-do list"',
+    generatingInProgressTitle: 'Building your app...',
+    generatingInProgressDesc: 'This can take up to a minute with "Ask All" since it merges results from 9 providers. Please wait ⏳',
+    voiceTab: '🎙️ Voice',
+    voiceTabDesc: 'Just speak, no typing — we\'ll detect your request automatically (image, video, or app) and send it right away.',
+    voiceImageDone: "Image ready, check the preview.",
+    voiceImageFailed: "Couldn't create the image, please try again.",
+    voiceCodeDone: "Done! Check the preview.",
+    voiceCodeFailed: "Couldn't do that, please try again.",
+    voiceVideoStarted: "Preparing your video.",
+    codePlaceholder: 'Generated code will appear here...',
+    settingsTitle: 'AI Connection Settings',
+    provider: 'Provider',
+    apiKeyLabel: 'Your API Key',
+    modelLabel: 'Model Name',
+    settingsHint: '🔒 Your key is stored locally in your browser only (localStorage) and never sent to any server of ours. Every generation request goes directly from your browser to the AI provider you chose, using your own key.<br><br><b>📝 How to get a key for each provider:</b><br><br>🔹 <b>OpenAI</b>: get a key from platform.openai.com/api-keys<br>🔹 <b>Gemini</b>: get a free key from aistudio.google.com/app/apikey<br>🔹 <b>Groq</b>: get a free key from console.groq.com/keys<br>🔹 <b>Claude</b>: get a key from console.anthropic.com/settings/keys<br>🔹 <b>OpenRouter</b>: get a key from openrouter.ai/keys (also offers free models)<br>🔹 <b>Perplexity</b>: get a key from perplexity.ai/settings/api (paid, offers live search)<br>🔹 <b>Mistral AI</b>: get a free key from console.mistral.ai/api-keys<br>🔹 <b>DeepSeek</b>: get a key from platform.deepseek.com/api_keys (very cheap, free trial credit)<br>🔹 <b>Cohere</b>: get a free key from dashboard.cohere.com/api-keys',
+    mistralApiKeyLabel: 'Mistral AI API Key',
+    mistralModelLabel: 'Mistral Model Name',
+    includeMistral: 'Mistral AI',
+    deepseekApiKeyLabel: 'DeepSeek API Key',
+    deepseekModelLabel: 'DeepSeek Model Name',
+    includeDeepSeek: 'DeepSeek',
+    cohereApiKeyLabel: 'Cohere API Key',
+    cohereModelLabel: 'Cohere Model Name',
+    includeCohere: 'Cohere',
+    cancel: 'Cancel',
+    save: 'Save',
+    defaultProjectTitle: 'New Project',
+    templatesBtn: '🧩 Templates',
+    templatesModalTitle: '🧩 Choose a Template',
+    useThisTemplate: '✅ Use This Template',
+    apiKeyMissing: 'Please enter an API key first in Settings.',
+    providerError: 'Error from AI provider: ',
+    quotaError: '⏳ This provider\'s free quota is temporarily exhausted (429). Try again in a minute or switch to another provider.',
+    dailyLimitError: '🚫 You reached this provider\'s free daily limit (20 messages). Try another provider, enter your own API key in ⚙️ Settings, or wait until tomorrow.',
+    authError: '🔑 Invalid or expired API key — please check it in ⚙️ Settings.',
+    storageFullWarning: '⚠️ Your browser storage is still full even after auto-removing old images. Please delete some old conversations entirely from the projects list 📂 to free up more space.',
+    imagePurgedNote: 'Image auto-removed to save space',
+    building: 'Building...',
+    buildSuccess: 'App created/updated successfully ✅ You can preview it in the "Preview" tab.',
+    selfHealing: '🔧 Errors detected in the code... self-healing in progress',
+    noCodeToDownload: 'No code to download yet.',
+    runPythonBtn: '▶️ Run code',
+    pythonLoadingRuntime: '⏳ Loading the Python runtime (first time only)...',
+    pythonRunning: '⚙️ Running code...',
+    pythonDone: '✅ Done',
+    pythonError: '⚠️ An error occurred while running the code',
+    geminiApiKeyLabel: 'Google Gemini API Key',
+    geminiModelLabel: 'Gemini Model Name',
+    groqApiKeyLabel: 'Groq API Key',
+    groqModelLabel: 'Groq Model Name',
+    claudeApiKeyLabel: 'Anthropic Claude API Key',
+    claudeModelLabel: 'Claude Model Name',
+    fetchModelsBtn: 'Fetch Available Models',
+    fetchModelsFail: 'Could not fetch model list — make sure a valid Claude API key is entered first.',
+    fetchModelsEmpty: 'No available models found for this key.',
+    openrouterApiKeyLabel: 'OpenRouter API Key',
+    openrouterModelLabel: 'Choose OpenRouter Model',
+    orCustomOption: '✏️ Custom...',
+    perplexityApiKeyLabel: 'Perplexity API Key',
+    perplexityModelLabel: 'Perplexity Model Name',
+    askAllLabel: 'Ask all providers together (compare)',
+    askAllBtnTitle: 'Ask All — 9 AI models build your app together',
+    askAllHintText: "💡 Type your request normally — AI will build your app instantly",
+    mergedAnswerLabel: 'Merged Answer',
+    mergedAnswerSourceLabel: 'Source',
+    mergedAnswerSystemPrompt: 'You are given several answers from different AI providers to the same question. Merge them into one final, accurate, comprehensive answer, remove duplication and contradictions, and keep only what is correct and best. Reply directly with only the final answer, without mentioning that you are merging answers.',
+    mergedAnswerPickSystemPrompt: 'You are given several complete, numbered code versions from different AI providers for the same request. Examine them carefully and pick the number of the single most complete, correct, working, and polished version. Reply with only that number, no other text.',
+    mergedAnswerCodeMergeSystemPrompt: 'Imagine 9 expert engineers from the best AI companies sat together in one room, and each presented their own complete idea and version for the same request. Your job now is NOT to pick one version and discard the rest, and NOT to paste fragments from each version side by side. Your job is to act as the "technical lead" of this team: study all 9 ideas very carefully (every structure, every feature, every clever solution), then make unified, collective decisions as if the whole team had agreed from the start on one single integrated design, and build the app from scratch with that unified vision - not as a patchwork of 9 separate solutions. Merge the strongest data structure, the smartest logic, and the most useful feature seen from any team member, and make them work together in perfect harmony as if written by one mind, not nine. Very important: even if all versions have a plain or basic design, do not just copy the simplest existing design - elevate the design beyond every single version: use modern fonts, color gradients, soft shadows, rounded corners, balanced spacing, smooth transitions/animations on interaction, and full mobile responsiveness. The final result must look like one polished, professional, cohesive, upgraded design, better than any individual version, not a patchwork or plain copy. Additional mandatory rule: before writing any code, silently (in your reasoning only, do not print it) list every concrete element mentioned in any of the 9 versions (every named room, every color, every surface material, every camera angle or control scheme, every named furniture/3D object) - then use this list literally while building the final output. It is strictly forbidden to replace a rich, detailed 3D scene (with named rooms/objects) with a generic or simplified placeholder scene (such as a single spinning cube or an empty shape) as a shortcut - if named rooms/objects exist in any version, they must all appear with their names and details in the final 3D scene itself, not just as side text. Return only the final complete code inside a single code block, with no abbreviation or missing parts, and no explanation or mention that you merged versions.',
+    mergedAnswerFailed: 'Could not create the merged answer, see the individual answers above.',
+    attachTitle: 'Attach',
+    emojiTitle: 'Emoji',
+    projectsListTitle: 'Projects list',
+    videoMakerTitle: 'Video Maker',
+    omranEduModalTitle: '🎓 Education',
+    omranEduTitle: 'Education',
+    expenseTitle: 'Expense Analyzer',
+    docsTitle: 'Document Assistant',
+    govTitle: 'Government Services',
+    cvTitle: 'CV Builder',
+    eduHubTitle: 'My Lessons',
+    exploreTitle: 'Explore',
+    shareProjectBtnTitle: 'Share project via public link',
+    shareModalTitle: '🔗 Share Project',
+    shareModalDesc: 'Create a public link to your project. Anyone can open and preview it without logging in.',
+    sharePublicLabel: 'Also list it on the 🔍 Explore page (visible to everyone)',
+    sharePrivateLabel: 'Private link only (share with specific people)',
+    shareCreateBtn: 'Create Link',
+    shareCopyBtn: 'Copy Link',
+    shareCopied: 'Link copied! ✅',
+    shareCreating: 'Creating...',
+    shareError: 'Could not create link, please try again.',
+    videoMakerModalTitle: '🎬 AI Video Maker',
+    videoMakerDesc: 'Describe the video you want, then pick a style and duration. This feature is in testing with a small daily limit per account.',
+    videoMakerPromptPlaceholder: 'Describe the video you want to create... e.g. a small cat playing in a sunny garden',
+    videoMakerStyleLabel: 'Style',
+    videoMakerStyleRealistic: '🎥 Realistic',
+    videoMakerStyleAnime: '🎨 Anime / Cartoon',
+    videoMakerDurationLabel: 'Duration (sec)',
+    videoMakerRatioLabel: 'Aspect ratio',
+    videoMakerRatioLandscape: '🖥️ Landscape 16:9',
+    videoMakerRatioPortrait: '📱 Portrait 9:16',
+    videoModeLabel: 'Creation mode',
+    videoModeCanvasOnly: '🎨 Canvas only (no AI)',
+    videoModeRunwayOnly: '🤖 AI video only (Runway)',
+    videoModeHybrid: '🔗 Merge both (best)',
+    videoModeVeo: '🚀 Veo 3 — Google (top quality + sound)',
+    videoModeActor: "🗣️ Talking actor — Emirati dialect (Veo 3)",
+    videoActorSpeechLabel: "🗣️ What does the actor say? (exactly)",
+    videoActorSpeechPlaceholder: "Example: Welcome to Omran AI, the best AI platform!",
+    videoSignatureLabel: 'Signature (your name)',
+    videoSignaturePlaceholder: 'Type your name or any text to show as a watermark signature on the video',
+    videoMakerGenerateBtn: '✨ Generate video',
+    videoMakerDownloadBtn: '⬇️ Download video',
+    videoMakerDurationLong: '20 (⛓️ 2 scenes)',
+    videoMakerDurationFilm: '🎬 Full mini-film (script + scenes + narration)',
+    videoMakerHeroLabel: '📸 Your photo as the film hero (optional)',
+    videoMakerHeroBtn: '📸 Pick hero photo',
+    videoMakerHeroVeoNote: 'ℹ️ Hero photo works with the Runway engine only — Veo 3 does not accept an image in film mode.',
+    videoMakerHeroNote: 'Upload your photo (or anyone\'s) — they will star in every scene of the film.',
+    videoMakerDurationLongMinutes: '🎥 Long (minutes) - owner only',
+    videoMakerLongMinutesLabel: 'Full video length (minutes, 1-10)',
+    videoMakerLongMinutesNote: "⚠️ Owner account only. Each minute means roughly 7-8 separate scenes generated and stitched together automatically; the real cost is charged to your Runway balance and grows quickly with length. You'll see a cost estimate before it actually starts.",
+    videoMakerNarrationToggleLabel: '🎙️ Add voice narration (AI generated)',
+    videoMakerNarrationPlaceholder: 'Type the narration text to read over the video (optional — the video description is used if left empty)',
+    videoMakerQualityToggleLabel: '🔎 Higher quality (upscale resolution, short videos only)',
+    designAiTitle: 'Design AI',
+    designAiModalTitle: '🏠 AI Interior Design',
+    designAiVideoTitle: '🎬 Tutorial video: How to use Decor AI',
+    fashionAiVideoTitle: '🎬 Tutorial video: How to use Fashion AI',
+    designAiDesc: 'Upload a photo of your room and pick a decor style, and AI will redesign it. This feature is in testing with a small daily limit per account.',
+    designAiStyleLabel: 'Decor style',
+    designAiStyleModern: '✨ Modern',
+    designAiStyleSimple: '🤍 Simple',
+    designAiStyleBohemian: '🌿 Bohemian',
+    designAiStyleLuxury: '💎 Luxury',
+    designAiStyleArabic: '🕌 Arabic Majlis',
+    designAiStyleClassic: '🪵 Classic',
+    designAiOptionalHint: 'The following options are optional — pick only what you want',
+    designAiOptionNone: 'No change',
+    designAiLightingLabel: '💡 Lighting',
+    designAiLightingWarm: 'Warm',
+    designAiLightingCool: 'Cool',
+    designAiLightingBright: 'Bright',
+    designAiLightingDim: 'Dim/Night',
+    designAiFurnitureLabel: '🛋️ Furniture type',
+    designAiFurnitureModern: 'Modern',
+    designAiFurnitureClassic: 'Classic',
+    designAiFurnitureSimple: 'Simple',
+    designAiFurnitureLuxury: 'Luxury',
+    designAiFurnitureBohemian: 'Bohemian',
+    designAiFlooringLabel: '🧱 Flooring',
+    designAiFlooringParquet: 'Parquet',
+    designAiFlooringMarble: 'Marble',
+    designAiFlooringCeramic: 'Ceramic',
+    designAiFlooringCarpet: 'Carpet',
+    designAiRearrangeLabel: '📐 Rearrange the furniture',
+    designAiFabricLabel: '🎨 Fabric colors',
+    designAiFabricLight: 'Light',
+    designAiFabricDark: 'Dark',
+    designAiFabricNeutral: 'Neutral',
+    designAiFabricBold: 'Bold',
+    designAiWallColorLabel: '🖼️ Wall color',
+    designAiWallColorWhite: 'White',
+    designAiWallColorBeige: 'Beige',
+    designAiWallColorGray: 'Gray',
+    designAiWallColorBold: 'Bold',
+    designAiCurtainsLabel: '🪟 Curtains',
+    designAiCurtainsSimple: 'Simple',
+    designAiCurtainsLuxury: 'Luxury',
+    designAiCurtainsRemove: 'No curtains',
+    designAiDecorLabel: '🌿 Extra decorative touches',
+    designAiDecorPlants: 'Plants',
+    designAiDecorArt: 'Wall art',
+    designAiDecorAccessories: 'Luxury accessories',
+    designAiSuggestBtn: '💡 Suggest ideas for me',
+    designAiSuggesting: '🤔 Thinking of ideas...',
+    designAiSuggestError: '❌ Could not generate ideas, try again.',
+    designAiSuggestTitle: '💡 AI-suggested ideas',
+    portraitModalTitle: '🎨 Portrait Styles',
+    portraitDesc: 'Upload your photo and pick an art style, and AI will transform it. Experimental feature with a small daily limit per account.',
+    portraitStyleLabel: 'Art style',
+    portraitGenerateBtn: '✨ Transform',
+    portraitDownloadBtn: '⬇️ Download image',
+    portraitNeedImage: 'Please choose an image first',
+    portraitNeedLogin: 'Please log in to use this feature',
+    portraitLimitReached: 'You reached the daily limit for this feature, try again tomorrow',
+    carToolsTitle: '🚗 Car Tools',
+    stocksTitle: '📈 Global Stock Market', stocksDesc: 'Global stock prices with a live chart.',
+    stocksSymbolPh: 'e.g. AAPL or TSLA', stocksLoadBtn: 'Show',
+    stocksIntDay: 'Daily (3 months)', stocksIntHour: 'Hourly', stocksInt15: 'Every 15 min', stocksIntWeek: 'Weekly',
+    stocksDisclaimer: '⚠️ Approximate, possibly delayed data — not investment advice.', stocksQuestionPh: 'Optional question: what do you think of this stock?', stocksAnalyzeBtn: '🤖 Analyze stock', stocksLearnTitle:'🎓 Learn trading — lessons on the live market', stkL1:'What is a stock?', stkL2:'Reading the price', stkL3:'Candles & charts', stkL4:'Support & resistance', stkL7:'Moving averages', stkL8:'Risk management', stocksLearnQPh:'Or type your trading question...', stocksLearnAsk:'Explain', globalMktTitle:'🌍 Global Markets', goldNowTitle:'🥇 Gold now', goldKt:'Gold {k}K', goldOunce:'Gold Ounce', aedUnit:'AED',
+    constructionTitle: '🏗️ Construction & Contracting Design',
+    constructionDesc: 'Describe a construction project and AI will generate an initial architectural concept + material list + rough cost estimate. Concept only — not a substitute for a licensed engineer.',
+    constructionTypeLabel: 'Building type',
+    constructionTypeVilla: '🏡 Residential villa',
+    constructionTypeApartment: '🏢 Apartment building',
+    constructionTypeOffice: '🏬 Office building',
+    constructionTypeWarehouse: '🏭 Warehouse',
+    constructionTypeMosque: '🕌 Mosque',
+    constructionTypeShop: '🏪 Retail shop',
+    constructionFloors: 'Number of floors',
+    constructionArea: 'Area (m²)',
+    constructionStyleLabel: 'Architectural style',
+    constructionStyleModern: '✨ Modern',
+    constructionStyleClassic: '🪵 Classic',
+    constructionStyleGulf: '🕌 Traditional Gulf',
+    constructionStyleLuxury: '💎 Luxury',
+    constructionStyleIndustrial: '🏭 Industrial',
+    constructionNotesLabel: 'Additional notes (optional)',
+    constructionNotesPh: 'e.g. pool, garden, glass facade',
+    constructionAnnexesLabel: '🏠 Annexes (optional)',
+    constructionAnnexMajlis: 'Separate men\'s majlis',
+    constructionAnnexServant: 'Servant/driver annex',
+    constructionAnnexPool: 'Swimming pool',
+    constructionAnnexCarport: 'Covered car parking',
+    constructionAnnexGarden: 'Garden/pergola',
+    constructionAnnexLaundry: 'Laundry/storage room',
+    constructionIncludeInteriorLabel: '🛋️ Also generate an interior design image',
+    constructionExteriorLabel: '🖼️ Photorealistic design image',
+    constructionPlanImageLabel: '📐 2D floor plan with dimensions',
+    constructionInteriorLabel: '🛋️ Interior design',
+    constructionBudgetLabel: '💰 Budget level',
+    constructionBudgetB1: '💵 Up to 300,000 AED',
+    constructionBudgetB2: '💰 300,000 - 600,000 AED',
+    constructionBudgetB3: '💎 600,000 AED - 1 million AED',
+    constructionBudgetB4: '👑 Over 1 million AED',
+    constructionBudgetDisclaimer: '* This amount is approximate only and does not include contractor fees.',
+    constructionOutputModeLabel: '📄 Output type',
+    constructionModePlanLabel: '📐 2D floor plan with dimensions',
+    constructionModePhotoLabel: '🖼️ Photorealistic design image (optional, AI-generated)',
+    constructionLibraryBtn: '📚 Browse similar saved designs',
+    constructionLibraryEmpty: 'No similar saved designs yet — be the first to generate one!',
+    constructionAnglesLabel: '📷 View the building from other angles',
+    constructionAngleFront: '⬅️ Front',
+    constructionAngleSide: '↔️ Side',
+    constructionAngleBack: '➡️ Back',
+    constructionAngleAerial: '🚁 Aerial',
+    constructionRoomsLabel: '🛋️ View rooms from the inside',
+    constructionRoomLiving: '🛋️ Living room',
+    constructionRoomMajlis: '🪑 Majlis',
+    constructionRoomBedroom: '🛏️ Bedroom',
+    constructionRoomKitchen: '🍽️ Kitchen',
+    constructionRoomBathroom: '🚿 Bathroom',
+    constructionRoomDining: '🍽️ Dining room',
+    constructionRoomColorPh: 'Decor color (e.g. beige and gold)',
+    constructionRoomViewBtn: '👁️ View room',
+    constructionRunBtn: '✨ Generate design',
+    constructionGenerating: '⏳ Generating design...',
+    carToolsDesc: '11 AI tools for everything about your car: diagnostics, photo edits, comparisons, inspections, and more.',
+    carTool1: '🔧 AI Repair', carTool2: '🎨 Edit Car Photo', carTool3: '⚙️ Engine Tuning',
+    carTool4: '📋 Compare Cars', carTool5: '🔍 Pre-purchase Inspection', carTool6: '🚨 Fault Sound Dictionary',
+    carTool7: '📸 Diagnose from Photo', carTool8: '🏷️ Resale Price Estimate', carTool9: '🌡️ Dashboard Light Guide',
+    carTool10: '🛞 Tire Guide', carTool11: '🚗💨 Acceleration/Performance Calculator',
+    carToolTextLabelRepair: 'Describe the car problem', carToolTextPhRepair: 'e.g. clicking sound when turning right',
+    carToolTextLabelEngine: 'Your car and tuning goal', carToolTextPhEngine: 'e.g. 2020 Camry, want more performance without voiding warranty',
+    carToolTextLabelCompare: 'Write the cars to compare', carToolTextPhCompare: 'e.g. Toyota Camry 2024 vs Honda Accord 2024',
+    carToolTextLabelPreinspect: 'Type/age of the car to inspect', carToolTextPhPreinspect: 'e.g. used 2018 Nissan Altima',
+    carToolTextLabelNoise: 'Describe the sound you hear', carToolTextPhNoise: 'e.g. squeaking when braking at low speed',
+    carToolTextLabelResale: 'Your car details (model, year, mileage, condition)', carToolTextPhResale: 'e.g. Lexus ES 350 2019, 60k km, excellent condition',
+    carToolTextLabelTires: 'Your car details and usage', carToolTextPhTires: 'e.g. 2021 Land Cruiser, daily use and off-road trips',
+    carToolTextLabelPhotoedit: 'Describe the edit you want on the photo', carToolTextPhPhotoedit: 'e.g. change the car color to glossy red',
+    carToolTextLabelPhotodiag: 'Additional description (optional)', carToolTextPhPhotodiag: 'e.g. oil leak under the engine',
+    carToolTextLabelDashlight: 'Describe the light (optional if you upload a photo)', carToolTextPhDashlight: 'e.g. yellow engine-shaped light',
+    carToolRunBtn: '✨ Run',
+    carAccelWeight: 'Car weight (kg)', carAccelHp: 'Engine power (hp)', carAccelDrive: 'Drivetrain',
+    carAccelFwd: 'Front-wheel drive', carAccelRwd: 'Rear-wheel drive', carAccelAwd: 'All-wheel drive', carAccelTurbo: 'Turbo?',
+    no: 'No', yes: 'Yes',
+    carAccelResult0to100: '🚀 0-100 km/h acceleration', carAccelSeconds: 'sec',
+    carAccelResultQuarter: '🏁 Estimated quarter mile', carAccelResultTop: '💨 Estimated top speed', carAccelKmh: 'km/h',
+    carAccelResultRatio: '⚖️ Power-to-weight ratio', carAccelKgHp: 'kg/hp',
+    carAccelDisclaimer: '⚠️ These are rough estimates based on a simplified formula, not actual track measurements.',
+    carToolNeedText: 'Please type the required text first', carToolNeedImage: 'Please choose a photo first',
+    carToolWorking: '⏳ Analyzing...', carToolDone: '✅ Done',
+    portraitGenerating: '⏳ Transforming...',
+    portraitDone: '✅ Done!',
+    portraitBtnTitle: 'Portrait styles',
+    quickTemplatesTitle: 'Suggestions',
+    imgToPdfTitle: 'Images → PDF',
+    previewToggleLabel: 'Browser',
+    portraitStyleAnime: '🎬 Japanese Anime',
+    portraitStyleCartoon: '🖼️ Semi-realistic Cartoon',
+    portraitStyleOil: '🎨 Oil Painting',
+    portraitStyleSketch: '✏️ Pencil Sketch',
+    portraitStylePixel: '🕹️ Pixel Art',
+    portraitStyleComic: '🦸 Comic/Manga',
+    portraitStylePop: '🌈 Pop Art',
+    portraitStyleGulf: '🏺 Traditional Gulf/Emirati',
+    portraitStyleCaricature: '🧑‍🎨 Caricature',
+    portraitStyleCinematic: '🖤 Cinematic Dramatic',
+    portraitStyleDisney: '🌸 Disney/Pixar 3D',
+    portraitStyleFlat: '🧊 Flat Vector',
+    portraitStyleFantasy: '🧙 Epic Fantasy',
+    portraitStyleWestern: '🤠 Old Western',
+    portraitStyleCyberpunk: '🚀 Cyberpunk Neon',
+    portraitStyleAbstract: '🎭 Abstract Art',
+    portraitStyleWatercolor: '🖌️ Watercolor',
+    portraitStyleOttoman: '🗿 Islamic Miniature',
+    portraitStyleGamePoster: '🎮 Game Character Poster',
+    portraitStyleNewspaper: '📰 Vintage Newspaper Comic',
+    portraitStyleHorror: '🧛 Horror/Halloween',
+    portraitStyleShonen: '🐉 Shonen Action Anime',
+    portraitStyleRoyal: '👑 Classic Historical Portrait',
+    portraitStyleCalligraphy: '🧵 Arabic Calligraphy Art',
+    portraitStyleRemoveBg: '🖼️ Remove Background + Ready Backdrop',
+    portraitStyleLinkedin: '👔 Professional Headshot (LinkedIn/CV)',
+    portraitStyleBeautify: '✨ Light Beauty Filters',
+    portraitBeautifySkin: '🧴 Smooth Skin',
+    portraitBeautifyLight: '💡 Improve Lighting',
+    portraitBeautifyTeeth: '😁 Whiten Teeth',
+    portraitFavGroupLabel: '⭐ Favorites',
+    portraitCompareBeforeLabel: 'Before',
+    portraitCompareAfterLabel: 'After',
+    portraitStyleEid: '🌙 Eid Frame',
+    portraitStyleNational: '🇦🇪 National Day Frame',
+    portraitStyleRamadan: '🕌 Ramadan Frame',
+    portraitStyleAgeShift: '🕰️ Age Up/Down',
+    portraitAgeLabel: 'Choose Change',
+    portraitAgeChild: '👶 Young Child',
+    portraitAgeTeen: '🧒 Teenager',
+    portraitAgeYoung: '🧑 20 Years Younger',
+    portraitAgeMiddle: '🧔 Middle-Aged',
+    portraitAgeSenior: '👴 Elderly',
+    portraitShareBtn: '↗️ Share (WhatsApp/Story)',
+    portraitStyleSportsHero: '🏆 Sports/Hero',
+    portraitStyleHairstyle: '💇 New Hairstyle/Color',
+    portraitHairLabel: 'Choose Hairstyle/Color',
+    portraitHairShortBlack: '✂️ Short Black',
+    portraitHairLongWavy: '🌊 Long Wavy',
+    portraitHairCurly: '🌀 Thick Curly Afro',
+    portraitHairBlonde: '💛 Blonde',
+    portraitHairRed: '❤️ Fiery Red',
+    portraitHairSilver: '🩶 Silver/Gray',
+    portraitHairBald: '🧑\u200d🦲 Fully Bald',
+    portraitHairMohawk: '🎸 Mohawk',
+    portraitHairBeard: '🧔 Full Beard',
+    portraitStyleWedding: '💍 Wedding Style',
+    portraitStyleGraduation: '🎓 Graduation Style',
+    portraitStyleAdPoster: '📢 Personal Ad Poster',
+    portraitAdTextLabel: 'Ad Text (optional)',
+    portraitAdTextPlaceholder: 'e.g., Contact me for design work',
+    portraitStyleTimeShift: '🕰️ Time-Shifted Photo',
+    portraitEraLabel: 'Choose Era',
+    portraitStyleFamily: '👨‍👩‍👧‍👦 Unified Family Style',
+    portraitStyleMerge2: '🧑‍🤝‍🧑 Merge Two People in One Photo',
+    portraitMultiLabelFamily: 'Add photos of other family members (up to 3 extra photos)',
+    portraitMultiLabelMerge: 'Add the second person\'s photo',
+    portraitMultiChooseBtn: '📁 Choose Extra Photos',
+    portraitStyleAvatarGif: '🎞️ Simple Animated Avatar (GIF)',
+    portraitBuildingGif: '🎞️ Building animated avatar...',
+    portraitStyleCelebToon: '🌟 Famous Cartoon Character Style',
+    portraitCelebLabel: 'Type the name/description of your favorite cartoon character',
+    portraitCelebPlaceholder: 'e.g., an adventurous cartoon hero in colorful clothes',
+    portraitCelebNote: 'Note: you are responsible for choosing a description that does not infringe intellectual property rights.',
+    portraitEra1920s: '🎩 1920s',
+    portraitEra1950s: '📻 1950s',
+    portraitEra1980s: '📼 1980s',
+    portraitEra1990s: '💿 1990s',
+    portraitEraMedieval: '🏰 Medieval',
+    portraitEraFuture: '🚀 Future',
+    portraitBackdropLabel: 'Choose backdrop',
+    portraitBackdropWhite: '⬜ Studio White',
+    portraitBackdropGray: '🌫️ Studio Gray',
+    portraitBackdropBlack: '⬛ Studio Black',
+    portraitBackdropBlue: '🔵 Blue Gradient',
+    portraitBackdropSunset: '🌇 Sunset Gradient',
+    portraitBackdropPark: '🌳 Nature Park',
+    portraitBackdropBeach: '🏖️ Beach',
+    portraitBackdropCity: '🌃 City at Night',
+    portraitBackdropOffice: '🏢 Office',
+    portraitBackdropMarble: '🏛️ Luxury Marble',
+    designAiGenerateBtn: '✨ Design the room',
+    designAiDownloadBtn: '⬇️ Download image',
+    designAiNeedImage: '⚠️ Please upload a room photo first.',
+    designAiNeedLogin: '🔑 Please log in first to use Design AI.',
+    designAiLimitReached: "⏳ You have reached today's free design limit. Try again tomorrow.",
+    designAiGenerating: '🎨 Designing the room...',
+    designAiDone: '✅ Design ready!',
+    fashionAiTitle: 'Fashion AI',
+    fashionAiModalTitle: '👗 AI Fashion Design',
+    fashionAiDesc: 'Choose: upload a photo and change the outfit, or write a design description and let AI create an image from scratch. Trial feature with a small daily limit per account.',
+    fashionAiTabImage: '📷 From photo',
+    fashionAiTabText: '✍️ From description',
+    fashionAiDescLabel: 'Design description',
+    fashionAiDescPlaceholder: 'e.g. A long blue evening dress with embroidered sleeves',
+    fashionAiStyleLabel: 'Style / occasion',
+    fashionAiStyleEvening: '✨ Evening',
+    fashionAiStyleFormal: '👔 Formal',
+    fashionAiStyleCasual: '👕 Casual',
+    fashionAiStyleAbaya: '🖤 Abaya',
+    fashionAiStyleWedding: '💍 Wedding dress',
+    fashionAiStyleTraditional: '🌴 Traditional Gulf',
+    fashionAiGenerateBtn: '✨ Generate design',
+    fashionAiDownloadBtn: '⬇️ Download image',
+    fashionAiNeedImage: '⚠️ Please upload a photo first.',
+    fashionAiNeedDescription: '⚠️ Please write a design description first.',
+    fashionAiNeedLogin: '🔑 Please log in first to use Fashion AI.',
+    fashionAiLimitReached: "⏳ You have reached today's free design limit. Try again tomorrow.",
+    fashionAiGenerating: '🎨 Designing the outfit...',
+    fashionAiDone: '✅ Design ready!',
+    fashionProfileTitle: '👤 My Profile (Measurements)',
+    fashionProfileHeight: 'Height (cm)',
+    fashionProfileWeight: 'Weight (kg)',
+    fashionProfileSkin: 'Skin tone',
+    fashionProfileHair: 'Hair color',
+    fashionProfileSave: '💾 Save profile',
+    fashionProfileSaved: '✅ Profile saved',
+    fashionOccasionLabel: '📅 Occasion',
+    fashionOccasionWedding: '💍 Wedding',
+    fashionOccasionWork: '💼 Work',
+    fashionOccasionCasual: '👕 Casual',
+    fashionOccasionSport: '🏃 Sport',
+    fashionOccasionTravel: '✈️ Travel',
+    fashionOccasionFormal: '🎩 Formal',
+    fashionSeasonLabel: '🌦️ Season',
+    fashionSeasonSummer: '☀️ Summer',
+    fashionSeasonWinter: '❄️ Winter',
+    fashionSuggestBtn: '💡 Suggest a look for me',
+    fashionSuggestGenerating: '🎨 Analyzing photo and suggesting looks...',
+    fashionSuggestNeedImage: '⚠️ Upload a photo or write a description first to get suggestions.',
+    fashionMultiAngleLabel: '🕶️ Multi-angle view (front / side / back)',
+    fashionCompareTitle: '📊 Compare looks',
+    fashionCompareHint: 'Pick 2-3 looks to compare side by side',
+    fashionCompareBtn: '📊 Compare looks',
+    fashionCompareGenerating: '🎨 Designing looks for comparison...',
+    fashionCompareNeedTwo: '⚠️ Select at least two looks to compare.',
+    fashionFavoritesBtn: '❤️ Favorites',
+    fashionFavoriteSaveBtn: '🤍 Save to favorites',
+    fashionFavoriteSaved: '❤️ Saved to favorites',
+    fashionNoFavorites: 'No saved looks yet',
+    fashionMatchLabel: 'Match score',
+    fashionUseThisLook: '✅ Use this look',
+    religionMenuLabel: 'Religious Insights',
+    religionModalTitle: '🕌 Religious Insights',
+    religionDisclaimer: '⚠️ This is an AI interpretation, not an official religious ruling. Please consult qualified scholars/experts.',
+    religionTabVerse: '🕌 Verse Tafsir',
+    religionTabHadith: '📖 Hadith Lookup',
+    religionTabDream: '🌙 Dream Interpretation',
+    religionInputLabelVerse: 'Type the verse or its number (e.g. Al-Baqarah 255)',
+    religionInputLabelHadith: 'Type the hadith text or its topic',
+    religionInputLabelDream: 'Describe your dream in detail',
+    religionInputPlaceholderVerse: 'e.g. Surah Al-Baqarah verse 255 (Ayat al-Kursi)',
+    religionInputPlaceholderHadith: 'e.g. hadith of intentions, or a topic like honoring parents',
+    religionInputPlaceholderDream: 'e.g. I dreamed I was flying over the sea and saw a big moon...',
+    religionGenerateBtn: '✨ Interpret',
+    religionNeedInput: '⚠️ Please write some text first.',
+    religionGenerating: '🕊️ Interpreting...',
+    religionDone: '✅ Interpretation ready',
+    religionError: '❌ Something went wrong, try again',
+    studioAiTitle: 'Style AI',
+    studioAiModalTitle: '💄 AI Style Studio',
+    studioAiVideoTitle: '🎬 Tutorial video: How to use Style AI',
+    studioAiDesc: 'Pick a feature, upload your photo (or two photos to merge), and choose an option. Experimental feature with a small daily limit per account.',
+    studioAiTabHair: '💇 Hair',
+    studioAiTabNails: '💅 Nails',
+    studioAiTabMakeup: '💄 Makeup',
+    studioAiTabBeard: '🧔 Beard',
+    studioAiTabSkin: '✨ Skin',
+    studioAiTabGlasses: '👓 Glasses',
+    studioAiTabTattoo: '🎨 Tattoo',
+    studioAiTabAnime: '🎭 Anime',
+    studioAiTabMerge: '🖼️ Merge Photos',
+    studioAiStyleLabel: 'Choose option',
+    studioAiDescLabel: 'Extra details (optional)',
+    studioAiDescPlaceholder: 'Add extra details if you want...',
+    studioAiImageALabel: 'First photo',
+    studioAiImageBLabel: 'Second photo',
+    studioAiGenerateBtn: '✨ Generate',
+    studioAiDownloadBtn: '⬇️ Download image',
+    studioAiNeedImage: '⚠️ Please upload a photo first.',
+    studioAiNeedTwoImages: '⚠️ Please upload both photos to merge.',
+    studioAiNeedLogin: '🔑 You must log in first to use Studio AI.',
+    studioAiLimitReached: "⏳ You have reached today's free Studio AI limit. Try again tomorrow.",
+    studioAiGenerating: '🎨 Generating...',
+    studioAiDone: '✅ Done!',
+    studioAiTabHeritage: '🏛️ Heritage/Traditional',
+    studioProfileTitle: '👤 Face profile (optional)',
+    studioProfileFaceShape: 'Face shape',
+    studioProfileSkin: 'Skin tone',
+    studioProfileHair: 'Hair color',
+    studioProfileSave: '💾 Save profile',
+    studioProfileSaved: '✅ Profile saved',
+    studioOccasionLabel: '📅 Occasion (optional)',
+    studioOccasionDaily: '☀️ Daily',
+    studioOccasionWork: '💼 Work',
+    studioOccasionEvening: '✨ Evening',
+    studioOccasionWedding: '💍 Wedding',
+    studioOccasionSport: '🏃 Sport',
+    studioSuggestBtn: '💡 Suggest a style',
+    studioSuggestGenerating: '💡 Analyzing and suggesting...',
+    studioMultiAngleLabel: '🕶️ Show from multiple angles (front / side / back)',
+    studioHeritageCompareBtn: '📊 Compare Casual ⟷ Formal',
+    studioHeritageCasualLabel: '👕 Casual',
+    studioHeritageFormalLabel: '🎩 Formal',
+    studioFavoriteSaveBtn: '🤍 Save to favorites',
+    studioFavoriteSaved: '❤️ Saved',
+    studioNoFavorites: 'No saved items yet.',
+    studioFavoritesBtn: '❤️ Favorites',
+    studioCompareTitle: '📊 Compare styles',
+    studioCompareHint: 'Pick two or three styles to compare side by side',
+    studioCompareBtn: '📊 Compare styles',
+    moreMenuTitle: 'More',
+    codeTitle: 'Code',
+    codeHintText: "Tap here to view your app's code & live preview 👈",
+    previewTitle: 'Preview',
+    attachTruncated: 'Content truncated because it was too long',
+    imagesAttachedNote: 'attachments',
+    askAllProvidersLabel: 'Providers included in "Ask All"',
+    includeOpenAI: 'OpenAI / OpenRouter',
+    includeGemini: 'Google Gemini',
+    includeGroq: 'Groq',
+    includeClaude: 'Anthropic Claude',
+    includeInAskAll: 'In Ask All',
+    useThisVersion: 'Use this version',
+    continueWithProvider: 'Open project from this reply only',
+    layoutHorizontal: 'Horizontal',
+    preparingBestResult: 'Preparing the best result...',
+    viewIndividualReplies: 'View individual replies ({n})',
+    layoutVertical: 'Vertical',
+    toggleAskAllLayout: 'Toggle Ask All layout',
+    versionApplied: 'This version has been applied to the preview and code ✅',
+    missingKeysAskAll: 'To use "Ask All", enter at least two keys from: OpenAI/OpenRouter, Gemini, Groq, Claude in Settings.',
+    speakBtn: 'Listen 🔊',
+    stopSpeakBtn: 'Stop ⏹️',
+    speakNotSupported: 'This browser does not support voice reading.',
+    micTitle: 'Speak instead of typing',
+    voiceChatTitle: 'Voice chat',
+    stopTitle: 'Stop',
+    micNotSupported: 'This browser does not support voice input. Try Chrome on Android or desktop.',
+    downloadSourceBtn: 'Download Source Code (ZIP)',
+    voiceSectionLabel: 'Voice',
+    fontSizeSectionLabel: 'Font Size',
+    fontSizeSmall: 'Small',
+    fontSizeNormal: 'Normal',
+    fontSizeLarge: 'Large',
+    fontSizeXLarge: 'Extra Large',
+    dialectPickLabel: '🗣️ Voice reading dialect (prototype)',
+    dialectNone: 'Standard (no dialect)',
+    dialectGulf: 'Gulf',
+    dialectEgyptian: 'Egyptian',
+    mahaTitle: "Maha - Voice Assistant",
+    mahaGreeting: "I'm Maha, talk to me in any language.",
+    mahaListening: "Listening...",
+    mahaThinking: "Thinking...",
+    mahaSpeaking: "Speaking...",
+    mahaTapToTalk: "Tap to start talking",
+    mahaMicDenied: "Couldn't access the microphone",
+    mahaTryAgain: "Try again",
+    mahaLowMic: "I couldn't hear you, check your mic and speak louder",
+    mahaSttError: "Voice conversion error, try again",
+    mahaNoSpeech: "I didn't catch that, try again",
+    mahaAskRepeat: "I didn't quite catch that, could you repeat?",
+    mahaConnectionError: "Connection failed, try again",
+    mahaImageReadyReply: "Done, I made the picture for you, take a look",
+    mahaImageEditedReply: "Done, I edited the picture like you asked",
+    mahaImageFailedReply: "I couldn't make the picture, try describing it differently",
+    voiceGenderLabel: 'Preferred voice type',
+    voiceGenderDefault: 'Default (device voice)',
+    voiceGenderMale: 'Male voice',
+    voiceGenderFemale: 'Female voice',
+    cloudVoiceLabel: '🌟 Use high-quality AI voice (OpenAI TTS - needs OpenAI key above)',
+    voiceOnyx: '🧔 Male - Onyx',
+    voiceEcho: '👨 Male - Echo',
+    voiceNova: '👩 Female - Nova',
+    voiceShimmer: '👩 Female - Shimmer',
+    voiceFable: '🙂 Neutral - Fable',
+    voiceAlloy: '🙂 Neutral - Alloy',
+    voicePickLabel: 'Pick a specific voice (optional)',
+    voiceAutoOption: 'Automatic',
+    testVoiceBtn: 'Test voice',
+    voiceTestSample: 'Hello! This is a test of the selected voice.',
+    install: 'Install App',
+    shareAppBtn: 'Share App',
+    refreshBtnTitle: 'Refresh Page',
+    langBtn: 'ع',
+    systemPrompt: `You are the AI assistant inside the app 'Omran AI Builder', developed by the Omran AI Team (فريق عمران AI). If asked about this app's name or its developer, answer with that. You are a friendly assistant who is also an expert at building complete web apps as a single HTML file, and also at writing standalone Python scripts that can run directly.
+- If the user's message is just a greeting, a general question, or casual chat (not a request to build or modify an app), reply normally in a conversational way with NO code block at all.
+- Default mode: if the user explicitly asks to create or modify an app/tool/game/website, build a fully working app using only HTML, CSS, and JavaScript in one single file (no external requests or libraries requiring installation; CDN links are allowed if needed). In that case: first write a short, friendly explanation (2-4 lines) about what you built or changed and its key features, then return the full code inside a single \`\`\`html ... \`\`\` code block.
+- 3D apps/games: you can build real, interactive 3D scenes and games directly in the browser using the Three.js library via CDN (e.g. <scr` + `ipt src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></scr` + `ipt>) inside the same HTML file. When the project needs real physics (gravity, collisions, objects rolling or falling, joints/constraints), add the Cannon-es library via CDN as an ES module (e.g. <scr` + `ipt type="module">import * as CANNON from "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js";</scr` + `ipt>), pair each Three.js Mesh with a matching Cannon.Body, and sync the Mesh's position/rotation from the physics step (world.step) inside the requestAnimationFrame loop. This gives genuinely realistic physical interaction (bouncing balls, colliding boxes, falling characters) at a very solid level for the web. Always make clear to the user that these are 3D web scenes/games with simplified physics, and cannot match the realism of professional game engines like Unity or Unreal Engine (which are massive installed applications with far more advanced graphics and physics engines), but they do run fully and interactively right in the browser with zero installation.
+- Python: only if the user explicitly asks for Python code, a Python script, or a solution in Python (not a web app), write a short explanation then return the full Python code inside a single \`\`\`python ... \`\`\` code block only (no external packages requiring pip install; standard library or numpy/pandas if available). This code will automatically run in the browser and its output (print) will be shown to the user directly.
+- If it's an edit to a previous app or script, briefly explain what you changed, then modify the existing code and return the complete updated file inside the code block, in the same language (html or python) used previously.
+STRICT MANDATORY RULES when editing existing code (always follow, no exceptions):
+1. Only change the specific part the user asked to change. Do not touch any other line, element, function, or styling unrelated to the request.
+2. Preserve the rest of the code 100% verbatim: same variable names, function names, ids, classes, comments, and formatting — no unrequested rewrites or "improvements".
+3. Never delete any existing feature, button, or piece of code unless the user explicitly asked to remove it.
+4. Never rewrite the app from scratch for a small edit request; keep the current structure and design intact.
+5. Always return the full file (existing code + only the requested change), never a partial snippet.
+6. If unsure about the intent of an edit, choose the most conservative interpretation (minimal change) rather than the most creative one.`,
+    acctInvalidEmail: "Invalid email format",
+    emailAssistTitle: "📧 Smart Email Assistant",
+    diffBtn: "Differences",
+  }
+};window.I18N = I18N;
+const I18N_LAZY = ['fr','hi','ur','bn','ne','id','fil','tr','zh','ru','es','ml'];
+const I18N_LOADING = {};
+function loadLangFile(lg){
+  return new Promise(function(res){
+    if(I18N[lg] || I18N_LAZY.indexOf(lg) < 0) return res();
+    if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
+    I18N_LOADING[lg] = [res];
+    var sc = document.createElement('script');
+    sc.src = 'i18n/' + lg + '.js?v=342';
+    sc.onload = sc.onerror = function(){
+      (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){}});
+      delete I18N_LOADING[lg];
+    };
+    document.head.appendChild(sc);
+  });
+}
+
+let lang = localStorage.getItem('aiapp_lang') || (function(){
+  // 🌍 كشف لغة الهاتف تلقائيًا عند أول زيارة — الاختيار اليدوي المحفوظ له الأولوية دائمًا
+  try {
+    const navs = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'en']).map(x => String(x).toLowerCase());
+    const map = { ar:'ar', en:'en', fr:'fr', hi:'hi', ur:'ur', bn:'bn', ne:'ne', id:'id', 'in':'id', fil:'fil', tl:'fil', tr:'tr', zh:'zh', ru:'ru', es:'es', ml:'ml' };
+    for(const nav of navs){
+      for(const p in map){ if(nav === p || nav.startsWith(p + '-')) return map[p]; }
+    }
+  } catch(e) {}
+  return 'en';
+})();
+// Language-specific shareable links: /ar, /en, /fr, /hi, /ur, /bn, /ne
+// Opening one of these paths forces that language immediately (no need to
+// open settings and switch manually) — meant for sending direct links to
+// people who speak a specific language.
+(function(){
+  try {
+    const urlLangMatch = location.pathname.match(/^\/(ar|en|fr|hi|ur|bn|ne|id|fil|tr|zh|ru|es|ml)\/?$/i);
+    if(urlLangMatch){
+      lang = urlLangMatch[1].toLowerCase();
+      localStorage.setItem('aiapp_lang', lang);
+    }
+  } catch(e) {}
+})();
+
+function t(key){
+  const v = I18N[lang] ? I18N[lang][key] : undefined;
+  if (v !== undefined) return v;
+  const fb = I18N.ar[key];
+  return fb !== undefined ? fb : (I18N.en ? I18N.en[key] : key) ?? key;
+}
+
+function applyLanguage(){
+  if(!I18N[lang] && I18N_LAZY.indexOf(lang) >= 0){
+    loadLangFile(lang).then(function(){ if(I18N[lang]) { applyLanguage(); try{ renderAll(); }catch(_){} } });
+  }
+  const dict = I18N[lang] || I18N.en || I18N.ar;
+  try{ if(window.__syncBrandTitle) window.__syncBrandTitle(); }catch(_){}
+  document.documentElement.lang = lang;
+  document.documentElement.dir = dict.dir;
+  document.title = dict.pageTitle;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const raw = el.getAttribute('data-i18n');
+    const m = raw.match(/^\[(.+)\]([\s\S]+)$/);
+    if(m){
+      const attrName = m[1];
+      const key = m[2];
+      if(dict[key] !== undefined) el.setAttribute(attrName, dict[key]);
+    } else if(dict[raw] !== undefined){
+      el.innerHTML = dict[raw];
+    }
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = dict[el.getAttribute('data-i18n-placeholder')];
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const key = el.getAttribute('data-i18n-title');
+    if(dict[key] !== undefined) el.setAttribute('title', dict[key]);
+  });
+  // v212: refresh settings nav list + open page title on language switch
+  try{
+    if(typeof renderSettingsNavList === 'function') renderSettingsNavList();
+    const act = document.querySelector('.settingsPageSection.settingsPageActive');
+    if(act && typeof stripUiEmoji === 'function'){
+      const h3 = act.querySelector('.settingsSectionHeader h3');
+      const t = document.getElementById('settingsPageTitle');
+      if(h3 && t) t.textContent = stripUiEmoji(h3.textContent);
+    }
+  }catch(_){}
+  document.querySelectorAll('.langFlagBtn').forEach(b => b.classList.remove('active'));
+  const idMap = {
+    ar: ['btnLangAr','btnAuthLangAr'],
+    en: ['btnLangEn','btnAuthLangEn'],
+    fr: ['btnLangFr','btnAuthLangFr'],
+    hi: ['btnLangHi','btnAuthLangHi'],
+    ur: ['btnLangUr','btnAuthLangUr'],
+    bn: ['btnLangBn','btnAuthLangBn'],
+    ne: ['btnLangNe','btnAuthLangNe'],
+    id: ['btnLangId'],
+    fil: ['btnLangFil'],
+    tr: ['btnLangTr'],
+    zh: ['btnLangZh'],
+    ru: ['btnLangRu'],
+    es: ['btnLangEs'],
+    ml: ['btnLangMl'],
+  };
+  const activeIds = idMap[lang] || idMap.ar;
+  activeIds.forEach(id => { const el = $('#'+id); if(el) el.classList.add('active'); });
+  localStorage.setItem('aiapp_lang', lang);
+  renderQuickChips();
+  try{ if(window.__refreshProjMenuLabels) window.__refreshProjMenuLabels(); }catch(_){}
+}
+
+const QUICK_SUGGESTIONS = [
+  {icon:'🎮', ar:'صمم لي لعبة', en:'Design a game', fr:'Créer un jeu', hi:'गेम डिज़ाइन करें', ur:'گیم بنائیں', bn:'গেম ডিজাইন', ne:'गेम डिजाइन', prompt:{ar:'صمم لي لعبة بسيطة وممتعة', en:'Design a simple, fun game', fr:'Crée-moi un jeu simple et amusant', hi:'मेरे लिए एक सरल और मज़ेदार गेम बनाएं', ur:'میرے لیے ایک آسان اور دلچسپ گیم بنائیں', bn:'আমার জন্য একটি সহজ এবং মজার গেম তৈরি করুন', ne:'मेरो लागि एक सरल र रमाइलो गेम बनाउनुहोस्'}},
+  {icon:'🍽️', ar:'موقع مطعم', en:'Restaurant site', fr:'Site de restaurant', hi:'रेस्टोरेंट साइट', ur:'ریسٹورنٹ سائٹ', bn:'রেস্তোরাঁ সাইট', ne:'रेस्टुरेन्ट साइट', prompt:{ar:'أنشئ لي موقع لمطعم يعرض القائمة والحجوزات', en:'Build a restaurant website with a menu and reservations', fr:'Crée-moi un site de restaurant avec menu et réservations', hi:'मेरे लिए मेन्यू और आरक्षण वाली रेस्टोरेंट वेबसाइट बनाएं', ur:'میرے لیے مینو اور ریزرویشن والی ریسٹورنٹ ویب سائٹ بنائیں', bn:'আমার জন্য মেনু এবং রিজার্ভেশন সহ একটি রেস্তোরাঁ ওয়েবসাইট তৈরি করুন', ne:'मेरो लागि मेनु र आरक्षण भएको रेस्टुरेन्ट वेबसाइट बनाउनुहोस्'}},
+  {icon:'💼', ar:'بورتفوليو', en:'Portfolio', fr:'Portfolio', hi:'पोर्टफोलियो', ur:'پورٹ فولیو', bn:'পোর্টফোলিও', ne:'पोर्टफोलियो', prompt:{ar:'أنشئ لي صفحة بورتفوليو شخصي احترافية', en:'Build a professional personal portfolio page', fr:'Crée-moi une page de portfolio personnel professionnel', hi:'मेरे लिए एक पेशेवर पर्सनल पोर्टफोलियो पेज बनाएं', ur:'میرے لیے ایک پیشہ ورانہ ذاتی پورٹ فولیو صفحہ بنائیں', bn:'আমার জন্য একটি পেশাদার ব্যক্তিগত পোর্টফোলিও পেজ তৈরি করুন', ne:'मेरो लागि एक व्यावसायिक व्यक्तिगत पोर्टफोलियो पेज बनाउनुहोस्'}},
+  {icon:'✅', ar:'تطبيق مهام', en:'Task app', fr:'App de tâches', hi:'टास्क ऐप', ur:'ٹاسک ایپ', bn:'টাস্ক অ্যাপ', ne:'टास्क एप', prompt:{ar:'أنشئ لي تطبيق قائمة مهام يومية', en:'Build a daily to-do list app', fr:'Crée-moi une application de liste de tâches quotidiennes', hi:'मेरे लिए एक दैनिक टू-डू लिस्ट ऐप बनाएं', ur:'میرے لیے روزانہ ٹو ڈو لسٹ ایپ بنائیں', bn:'আমার জন্য একটি দৈনিক টু-ডু লিস্ট অ্যাপ তৈরি করুন', ne:'मेरो लागि दैनिक टु-डु लिस्ट एप बनाउनुहोस्'}},
+  {icon:'🧮', ar:'آلة حاسبة', en:'Calculator', fr:'Calculatrice', hi:'कैलकुलेटर', ur:'کیلکولیٹر', bn:'ক্যালকুলেটর', ne:'क्यालकुलेटर', prompt:{ar:'أنشئ لي آلة حاسبة أنيقة', en:'Build a sleek calculator', fr:'Crée-moi une calculatrice élégante', hi:'मेरे लिए एक स्टाइलिश कैलकुलेटर बनाएं', ur:'میرے لیے ایک خوبصورت کیلکولیٹر بنائیں', bn:'আমার জন্য একটি সুন্দর ক্যালকুলেটর তৈরি করুন', ne:'मेरो लागि एक स्टाइलिश क्यालकुलेटर बनाउनुहोस्'}},
+  {icon:'📊', ar:'لوحة تحكم', en:'Dashboard', fr:'Tableau de bord', hi:'डैशबोर्ड', ur:'ڈیش بورڈ', bn:'ড্যাশবোর্ড', ne:'ड्यासबोर्ड', prompt:{ar:'أنشئ لي لوحة تحكم بإحصائيات وهمية', en:'Build a dashboard with mock stats', fr:'Crée-moi un tableau de bord avec des statistiques fictives', hi:'मेरे लिए मॉक आँकड़ों के साथ एक डैशबोर्ड बनाएं', ur:'میرے لیے فرضی اعداد و شمار کے ساتھ ڈیش بورڈ بنائیں', bn:'আমার জন্য নকল পরিসংখ্যান সহ একটি ড্যাশবোর্ড তৈরি করুন', ne:'मेरो लागि नक्कली तथ्याङ्कसहितको ड्यासबोर्ड बनाउनुहोस्'}},
+  {icon:'📝', ar:'مدونة', en:'Blog', fr:'Blog', hi:'ब्लॉग', ur:'بلاگ', bn:'ব্লগ', ne:'ब्लग', prompt:{ar:'أنشئ لي موقع مدونة بسيط بتصميم أنيق', en:'Build a simple, stylish blog website', fr:'Crée-moi un site de blog simple et élégant', hi:'मेरे लिए एक सरल, स्टाइलिश ब्लॉग वेबसाइट बनाएं', ur:'میرے لیے ایک سادہ اور خوبصورت بلاگ ویب سائٹ بنائیں', bn:'আমার জন্য একটি সাধারণ, স্টাইলিশ ব্লগ ওয়েবসাইট তৈরি করুন', ne:'मेरो लागि एक साधारण, स्टाइलिश ब्लग वेबसाइट बनाउनुहोस्'}},
+  {icon:'⏳', ar:'عداد تنازلي', en:'Countdown', fr:'Compte à rebours', hi:'काउंटडाउन', ur:'کاؤنٹ ڈاؤن', bn:'কাউন্টডাউন', ne:'काउन्टडाउन', prompt:{ar:'أنشئ لي عداد تنازلي لمناسبة قادمة', en:'Build a countdown timer for an upcoming event', fr:'Crée-moi un compte à rebours pour un événement à venir', hi:'मेरे लिए आने वाले इवेंट के लिए काउंटडाउन टाइमर बनाएं', ur:'میرے لیے آنے والے ایونٹ کے لیے کاؤنٹ ڈاؤن ٹائمر بنائیں', bn:'আমার জন্য একটি আসন্ন ইভেন্টের জন্য কাউন্টডাউন টাইমার তৈরি করুন', ne:'मेरो लागि आगामी कार्यक्रमको लागि काउन्टडाउन टाइमर बनाउनुहोस्'}},
+  {icon:'📬', ar:'نموذج تواصل', en:'Contact form', fr:'Formulaire de contact', hi:'संपर्क फ़ॉर्म', ur:'رابطہ فارم', bn:'যোগাযোগ ফর্ম', ne:'सम्पर्क फारम', prompt:{ar:'أنشئ لي صفحة تواصل معنا بتصميم جميل', en:'Build a nicely designed contact-us page', fr:'Crée-moi une belle page de contact', hi:'मेरे लिए एक खूबसूरत संपर्क पेज बनाएं', ur:'میرے لیے ایک خوبصورت رابطہ صفحہ بنائیں', bn:'আমার জন্য একটি সুন্দর ডিজাইন করা যোগাযোগ পেজ তৈরি করুন', ne:'मेरो लागि राम्रोसँग डिजाइन गरिएको सम्पर्क पेज बनाउनुहोस्'}},
+  {icon:'🛒', ar:'متجر إلكتروني', en:'Online store', fr:'Boutique en ligne', hi:'ऑनलाइन स्टोर', ur:'آن لائن اسٹور', bn:'অনলাইন স্টোর', ne:'अनलाइन स्टोर', prompt:{ar:'أنشئ لي صفحة متجر إلكتروني بمنتجات وسلة شراء', en:'Build an online store page with products and a shopping cart', fr:'Crée-moi une boutique en ligne avec des produits et un panier', hi:'मेरे लिए उत्पादों और शॉपिंग कार्ट के साथ एक ऑनलाइन स्टोर बनाएं', ur:'میرے لیے مصنوعات اور شاپنگ کارٹ کے ساتھ آن لائن اسٹور بنائیں', bn:'আমার জন্য পণ্য এবং শপিং কার্ট সহ একটি অনলাইন স্টোর পেজ তৈরি করুন', ne:'मेरो लागि उत्पादन र शपिङ कार्ट भएको अनलाइन स्टोर पेज बनाउनुहोस्'}},
+  {icon:'🎯', ar:'لعبة تخمين', en:'Guessing game', fr:'Jeu de devinettes', hi:'अनुमान खेल', ur:'اندازہ گیم', bn:'অনুমান খেলা', ne:'अनुमान खेल', prompt:{ar:'أنشئ لي لعبة تخمين رقم ممتعة', en:'Build a fun number-guessing game', fr:'Crée-moi un jeu amusant de devinette de nombre', hi:'मेरे लिए एक मज़ेदार नंबर-गेसिंग गेम बनाएं', ur:'میرے لیے ایک دلچسپ نمبر گیسنگ گیم بنائیں', bn:'আমার জন্য একটি মজার সংখ্যা অনুমান খেলা তৈরি করুন', ne:'मेरो लागि रमाइलो नम्बर अनुमान खेल बनाउनुहोस्'}},
+  {icon:'🌦️', ar:'تطبيق طقس', en:'Weather app', fr:'App météo', hi:'मौसम ऐप', ur:'موسم ایپ', bn:'আবহাওয়া অ্যাপ', ne:'मौसम एप', prompt:{ar:'أنشئ لي تطبيق طقس بتصميم جميل وبيانات وهمية', en:'Build a nicely designed weather app with mock data', fr:'Crée-moi une application météo bien conçue avec des données fictives', hi:'मेरे लिए मॉक डेटा के साथ एक अच्छी तरह से डिज़ाइन की गई मौसम ऐप बनाएं', ur:'میرے لیے فرضی ڈیٹا کے ساتھ ایک خوبصورت موسم ایپ بنائیں', bn:'আমার জন্য নকল ডেটা সহ একটি সুন্দর ডিজাইন করা আবহাওয়া অ্যাপ তৈরি করুন', ne:'मेरो लागि नक्कली डाटा सहितको राम्रो डिजाइन गरिएको मौसम एप बनाउनुहोस्'}},
+  {icon:'📷', ar:'معرض صور', en:'Photo gallery', fr:'Galerie photo', hi:'फ़ोटो गैलरी', ur:'فوٹو گیلری', bn:'ফটো গ্যালারি', ne:'फोटो ग्यालेरी', prompt:{ar:'أنشئ لي معرض صور تفاعلي بتأثيرات جميلة', en:'Build an interactive photo gallery with nice effects', fr:'Crée-moi une galerie photo interactive avec de beaux effets', hi:'मेरे लिए अच्छे इफेक्ट्स के साथ एक इंटरैक्टिव फ़ोटो गैलरी बनाएं', ur:'میرے لیے اچھے اثرات کے ساتھ ایک انٹرایکٹو فوٹو گیلری بنائیں', bn:'আমার জন্য সুন্দর প্রভাব সহ একটি ইন্টারেক্টিভ ফটো গ্যালারি তৈরি করুন', ne:'मेरो लागि राम्रो प्रभावसहितको इन्टरएक्टिभ फोटो ग्यालेरी बनाउनुहोस्'}},
+  {icon:'🧠', ar:'اختبار ذكاء', en:'Quiz app', fr:'App de quiz', hi:'क्विज़ ऐप', ur:'کوئز ایپ', bn:'কুইজ অ্যাপ', ne:'क्विज एप', prompt:{ar:'أنشئ لي تطبيق اختبار أسئلة وأجوبة تفاعلي', en:'Build an interactive quiz app', fr:'Crée-moi une application de quiz interactive', hi:'मेरे लिए एक इंटरैक्टिव क्विज़ ऐप बनाएं', ur:'میرے لیے ایک انٹرایکٹو کوئز ایپ بنائیں', bn:'আমার জন্য একটি ইন্টারেক্টিভ কুইজ অ্যাপ তৈরি করুন', ne:'मेरो लागि इन्टरएक्टिभ क्विज एप बनाउनुहोस्'}},
+  {icon:'🍳', ar:'كتاب وصفات', en:'Recipe book', fr:'Livre de recettes', hi:'रेसिपी बुक', ur:'ریسپی بک', bn:'রেসিপি বই', ne:'रेसिपी बुक', prompt:{ar:'أنشئ لي موقع كتاب وصفات طبخ', en:'Build a recipe book website', fr:'Crée-moi un site de livre de recettes', hi:'मेरे लिए एक रेसिपी बुक वेबसाइट बनाएं', ur:'میرے لیے ایک ریسپی بک ویب سائٹ بنائیں', bn:'আমার জন্য একটি রেসিপি বই ওয়েবসাইট তৈরি করুন', ne:'मेरो लागि रेसिपी बुक वेबसाइट बनाउनुहोस्'}},
+  {icon:'📄', ar:'سيرة ذاتية', en:'Resume', fr:'CV', hi:'रिज़्यूमे', ur:'ریزیومے', bn:'জীবনবৃত্তান্ত', ne:'बायोडाटा', prompt:{ar:'أنشئ لي صفحة سيرة ذاتية احترافية', en:'Build a professional resume page', fr:'Crée-moi une page de CV professionnelle', hi:'मेरे लिए एक पेशेवर रिज़्यूमे पेज बनाएं', ur:'میرے لیے ایک پیشہ ورانہ ریزیومے صفحہ بنائیں', bn:'আমার জন্য একটি পেশাদার জীবনবৃত্তান্ত পেজ তৈরি করুন', ne:'मेरो लागि व्यावसायिक बायोडाटा पेज बनाउनुहोस्'}},
+  {icon:'🎵', ar:'مشغل موسيقى', en:'Music player', fr:'Lecteur de musique', hi:'म्यूज़िक प्लेयर', ur:'میوزک پلیئر', bn:'মিউজিক প্লেয়ার', ne:'म्युजिक प्लेयर', prompt:{ar:'أنشئ لي واجهة مشغل موسيقى أنيقة', en:'Build a sleek music player UI', fr:'Crée-moi une interface de lecteur de musique élégante', hi:'मेरे लिए एक स्टाइलिश म्यूज़िक प्लेयर UI बनाएं', ur:'میرے لیے ایک خوبصورت میوزک پلیئر UI بنائیں', bn:'আমার জন্য একটি সুন্দর মিউজিক প্লেয়ার ইউআই তৈরি করুন', ne:'मेरो लागि स्टाइलिश म्युजिक प्लेयर UI बनाउनुहोस्'}},
+  {icon:'⚖️', ar:'بوت استشارات قانونية', en:'Legal advice bot', priority:true, prompt:{ar:'أنشئ لي صفحة ويب واحدة (HTML/CSS/JS) اسمها "بوت استشارات قانونية — قوانين دولة الإمارات". لكل سؤال يكتبه المستخدم: أولاً أرسل fetch POST إلى المسار النسبي /api/search بالجسم {query: السؤال + " قانون الإمارات المادة", lang:"ar", domains:["uaelegislation.gov.ae","moj.gov.ae","u.ae","elaws.moj.gov.ae"]} (JSON)، انتظر النتيجة. إذا رجعت نتائج قليلة أو فارغة أعد المحاولة مرة واحدة بدون حقل domains. ثم اعرض الإجابة بهذه الصيغة الإلزامية: 1) 📜 اسم القانون ورقمه وسنته، 2) 🔢 رقم المادة، 3) النص من نتائج البحث الفعلية (title/url/content)، 4) 💡 شرح مبسط بالعربي، 5) 🔗 رابط المصدر الرسمي. لا تختلق نص مواد أو أرقام قوانين من عندك أبدًا؛ إن لم تجد المادة في النتائج قل صراحة "لم أجد نص المادة في المصادر الرسمية" واعرض الروابط. أضف أسفل كل إجابة تنويه: "هذه معلومات إرشادية وليست استشارة قانونية رسمية". إن فشل البحث اعرض "تعذر جلب معلومات دقيقة الآن". صمم الواجهة بسيطة ونظيفة بدون مربعات/حدود، نفس أسلوب التطبيق (خلفية شفافة، نص فقط، أيقونة نسخ SVG تحت كل رد).', en:'Build a single-page web app (HTML/CSS/JS) called "UAE Legal Advice Bot". For every user question: first send a POST fetch to the relative path /api/search with body {query: question + " UAE law article", lang:"en", domains:["uaelegislation.gov.ae","moj.gov.ae","u.ae","elaws.moj.gov.ae"]} (JSON), wait for the result. If results are empty or too few, retry once without the domains field. Then answer in this mandatory format: 1) 📜 law name, number and year, 2) 🔢 article number, 3) the text taken from the actual search results (title/url/content), 4) 💡 simple explanation, 5) 🔗 official source link. Never invent article texts or law numbers; if the article text is not in the results, say clearly "Article text not found in official sources" and show the links. Add under every answer: "This is guidance information, not official legal advice". If the search fails show "Could not fetch accurate information right now". Keep the UI clean, no boxes/borders, matching the app style (transparent background, text only, SVG copy icon under each reply).'}},
+  {icon:'🩺', ar:'بوت استشارات طبية', en:'Medical advice bot', priority:true, prompt:{ar:'أنشئ لي صفحة ويب واحدة (HTML/CSS/JS) اسمها "بوت استشارات طبية أولية". لكل سؤال يكتبه المستخدم عن أعراض أو معلومات صحية: أولاً أرسل fetch POST إلى المسار النسبي /api/search بالجسم {query, lang:"ar"} (JSON)، انتظر النتيجة، ثم اعرض ملخصاً دقيقاً مبنياً فعلياً على نتائج البحث المرجعة (title/url/content) مع ذكر المصادر كروابط. لا تختلق معلومات طبية من عندك؛ إن فشل البحث اعرض رسالة "تعذر جلب معلومات دقيقة الآن". صمم الواجهة بسيطة ونظيفة بدون مربعات/حدود، نفس أسلوب التطبيق (خلفية شفافة، نص فقط، أيقونة نسخ SVG تحت كل رد).', en:'Build a single-page web app (HTML/CSS/JS) called "Preliminary Medical Advice Bot". For every symptom/health question: first send a POST fetch to the relative path /api/search with body {query, lang:"en"} (JSON), wait for the result, then show an accurate summary based on the actual returned search results (title/url/content), citing sources as links. Do not invent medical information; if the search fails show "Could not fetch accurate information right now". Keep the UI clean, no boxes/borders, matching the app style (transparent background, text only, SVG copy icon under each reply).'}},
+  {icon:'🎓', ar:'بوت مساعدة طلابية', en:'Student helper bot', priority:true, prompt:{ar:'أنشئ لي صفحة ويب واحدة (HTML/CSS/JS) اسمها "بوت مساعدة طلابية". لكل سؤال دراسي/منهجي يكتبه الطالب: أولاً أرسل fetch POST إلى المسار النسبي /api/search بالجسم {query, lang:"ar"} (JSON)، انتظر النتيجة، ثم اشرح الإجابة بأسلوب مبسط تعليمي مبني فعلياً على نتائج البحث المرجعة (title/url/content) مع ذكر المصادر كروابط للمزيد من القراءة. لا تختلق معلومات من عندك؛ إن فشل البحث اعرض رسالة "تعذر جلب معلومات دقيقة الآن". صمم الواجهة بسيطة ونظيفة بدون مربعات/حدود، نفس أسلوب التطبيق (خلفية شفافة، نص فقط، أيقونة نسخ SVG تحت كل رد).', en:'Build a single-page web app (HTML/CSS/JS) called "Student Helper Bot". For every curriculum/study question: first send a POST fetch to the relative path /api/search with body {query, lang:"en"} (JSON), wait for the result, then explain the answer in a simple educational style based on the actual returned search results (title/url/content), citing sources as links for further reading. Do not invent information; if the search fails show "Could not fetch accurate information right now". Keep the UI clean, no boxes/borders, matching the app style (transparent background, text only, SVG copy icon under each reply).'}},
+];
+
+function renderQuickChips(){
+  const wrap = $('#quickChips');
+  if(!wrap) return;
+  const order = QUICK_SUGGESTIONS.map((s,i) => i)
+    .sort((a,b) => {
+      const pa = QUICK_SUGGESTIONS[a].priority ? 0 : 1;
+      const pb = QUICK_SUGGESTIONS[b].priority ? 0 : 1;
+      if(pa !== pb) return pa - pb;
+      return (QUICK_SUGGESTIONS[a][lang]||QUICK_SUGGESTIONS[a].en).length - (QUICK_SUGGESTIONS[b][lang]||QUICK_SUGGESTIONS[b].en).length;
+    });
+  wrap.innerHTML = order.map(i => {
+    const s = QUICK_SUGGESTIONS[i];
+    return `<button type="button" class="btn quickChip" data-idx="${i}" style="display:block; width:100%; text-align:right; background:none; border:none; box-shadow:none; font-size:13px; padding:5px 8px; min-height:0; line-height:1.4;">${s[lang] || s.en}</button>`;
+  }).join('');
+  wrap.querySelectorAll('.quickChip').forEach(btn => {
+    btn.onclick = () => {
+      const s = QUICK_SUGGESTIONS[+btn.dataset.idx];
+      $('#prompt').value = s.prompt[lang] || s.prompt.en;
+      closeQuickTemplates();
+      sendPrompt();
+    };
+  });
+}
+
+function closeQuickTemplates(){
+  const wrap = $('#chatQuickChipsWrap');
+  if(wrap) wrap.style.display = 'none';
+  const btn = $('#btnQuickTemplates');
+  if(btn) btn.classList.remove('active');
+  const msgs = $('#messages');
+  if(msgs) msgs.style.visibility = '';
+}
+function toggleQuickTemplates(){
+  const wrap = $('#chatQuickChipsWrap');
+  if(!wrap) return;
+  const willShow = wrap.style.display === 'none' || !wrap.style.display;
+  wrap.style.display = willShow ? 'block' : 'none';
+  const btn = $('#btnQuickTemplates');
+  if(btn) btn.classList.toggle('active', willShow);
+  const msgs = $('#messages');
+  if(msgs) msgs.style.visibility = willShow ? 'hidden' : '';
+}
+if($('#btnQuickTemplates')) $('#btnQuickTemplates').onclick = (e) => { e.stopPropagation(); toggleQuickTemplates(); };
+document.addEventListener('click', (e) => {
+  const wrap = $('#chatQuickChipsWrap');
+  if(!wrap || wrap.style.display === 'none' || !wrap.style.display) return;
+  if(wrap.contains(e.target) || e.target === $('#btnQuickTemplates')) return;
+  closeQuickTemplates();
+});
+
+function toggleLang(){
+  lang = lang === 'ar' ? 'en' : 'ar';
+  applyLanguage();
+  renderAll();
+}
+function setLang(newLang){ try{ setTimeout(()=>{ if(typeof markActiveLang==="function") markActiveLang(); },0); }catch(e){}
+  if(lang === newLang) return;
+  lang = newLang;
+  applyLanguage();
+  renderAll();
+  try { populateVoicePicker(); } catch(e) {}
+}
+$('#btnLangAr').onclick = () => setLang('ar');
+$('#btnLangEn').onclick = () => setLang('en');
+if($('#btnLangFr')) $('#btnLangFr').onclick = () => setLang('fr');
+if($('#btnLangHi')) $('#btnLangHi').onclick = () => setLang('hi');
+if($('#btnLangUr')) $('#btnLangUr').onclick = () => setLang('ur');
+if($('#btnLangBn')) $('#btnLangBn').onclick = () => setLang('bn');
+if($('#btnLangNe')) $('#btnLangNe').onclick = () => setLang('ne');
+if($('#btnLangId')) $('#btnLangId').onclick = () => setLang('id');
+if($('#btnLangFil')) $('#btnLangFil').onclick = () => setLang('fil');
+if($('#btnLangTr')) $('#btnLangTr').onclick = () => setLang('tr');
+if($('#btnLangZh')) $('#btnLangZh').onclick = () => setLang('zh');
+if($('#btnLangRu')) $('#btnLangRu').onclick = () => setLang('ru');
+if($('#btnLangEs')) $('#btnLangEs').onclick = () => setLang('es');
+if($('#btnLangMl')) $('#btnLangMl').onclick = () => setLang('ml');
+function markActiveLang(){
+  const map={ar:'Ar',en:'En',fr:'Fr',hi:'Hi',ur:'Ur',bn:'Bn',ne:'Ne',id:'Id',fil:'Fil',tr:'Tr',zh:'Zh',ru:'Ru',es:'Es',ml:'Ml'};
+  const cur=map[(typeof lang!=='undefined'&&lang)?lang:(localStorage.getItem('aiapp_lang')||'ar')]||'Ar';
+  document.querySelectorAll('#langListWrap .langFlagBtn').forEach(b=>{
+    const on=b.id==='btnLang'+cur;
+    const c=b.querySelector('.langCheck'); if(c) c.style.display=on?'block':'none';
+    b.style.background=on?'rgba(var(--accent-rgb),.12)':'none';
+    b.style.fontWeight=on?'600':'400';
+  });
+}
+markActiveLang();
+
+// The login/signup overlay sits above the header (so it can fully block the
+// app until the user authenticates), which means the header's own language
+// buttons are not reachable while it's open. Mirror the same controls here so
+// users can still switch AR/EN from the login screen itself.
+const authLangArInit = $('#btnAuthLangAr');
+const authLangEnInit = $('#btnAuthLangEn');
+if(authLangArInit) authLangArInit.onclick = () => setLang('ar');
+if(authLangEnInit) authLangEnInit.onclick = () => setLang('en');
+
+let state = {
+  projects: JSON.parse(localStorage.getItem('aiapp_projects') || '[]'),
+  currentId: null,
+};
+
+// 💾 IndexedDB storage — سعة بالجيجات بدل حد 5MB في localStorage.
+// المشاريع/المحادثات/الصور تنحفظ هنا؛ localStorage يبقى للإعدادات الصغيرة فقط.
+const IDB_NAME = 'aiapp_db', IDB_STORE = 'kv';
+function idbOpen(){
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(IDB_NAME, 1);
+    r.onupgradeneeded = () => { r.result.createObjectStore(IDB_STORE); };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+function idbSet(key, val){
+  return idbOpen().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(val, key);
+    tx.oncomplete = () => { db.close(); res(); };
+    tx.onerror = () => { db.close(); rej(tx.error); };
+  }));
+}
+function idbGet(key){
+  return idbOpen().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(IDB_STORE, 'readonly');
+    const rq = tx.objectStore(IDB_STORE).get(key);
+    rq.onsuccess = () => { db.close(); res(rq.result); };
+    rq.onerror = () => { db.close(); rej(rq.error); };
+  }));
+}
+let __idbBroken = false;
+
+// Strips old image data (keeps a small placeholder) to free up localStorage
+// space. Keeps the most recent images in the active project untouched so the
+// current conversation still looks right; purges everything older/elsewhere.
+function purgeOldImages(keepCount){
+  if(keepCount === undefined) keepCount = 4;
+  let purgedAny = false;
+  const currentId = state.currentId;
+  state.projects.forEach(p => {
+    const isCurrent = p.id === currentId;
+    const msgs = p.messages || [];
+    msgs.forEach((m, idx) => {
+      const keepThis = isCurrent && keepCount > 0 && idx >= msgs.length - keepCount;
+      if(keepThis) return;
+      if(m.attachments && m.attachments.length){
+        m.attachments.forEach(a => {
+          if(a.isImage && a.dataUrl){ a.dataUrl = ''; a.purged = true; purgedAny = true; }
+        });
+      }
+      if(m.apiImages && m.apiImages.length){
+        m.apiImages.forEach(a => { if(a.dataUrl){ a.dataUrl = ''; purgedAny = true; } });
+      }
+    });
+  });
+  return purgedAny;
+}
+
+// 🕰️ آلة الزمن — لقطة تلقائية لكل تغيير في كود المشروع
+function pushCodeSnapshot(){
+  try{
+    const cur = getCurrent();
+    if(!cur || !cur.code) return;
+    cur.codeHistory = cur.codeHistory || [];
+    const last = cur.codeHistory[cur.codeHistory.length - 1];
+    if(last && last.code === cur.code) return;
+    // 🧹 v308: اللقطات بدون وسائط مضمنة — نسخة واحدة كاملة تكفي (المشروع نفسه)،
+    // أما 12 لقطة × صور base64 عملاقة = انفجار تخزين iOS واختفاء المحادثات.
+    let snapCode = cur.code;
+    if(snapCode.length > 500000){
+      snapCode = snapCode.replace(/data:(image|audio|video)\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]{200,}/g, 'data:image/png;base64,SNAPSHOT_MEDIA_OMITTED');
+      if(snapCode.length > 500000) snapCode = snapCode.slice(0, 500000);
+    }
+    // v318: الكود المقصوص يولّد لقطة مختلفة عن الأصل كل مرة → انفجار لقطات. قارن اللقطة نفسها.
+    if(last && last.code === snapCode) return;
+    cur.codeHistory.push({ ts: Date.now(), code: snapCode, codeType: cur.codeType || 'html' });
+    if(cur.codeHistory.length > 12) cur.codeHistory.splice(0, cur.codeHistory.length - 12);
+  }catch(e){}
+}
+/* v318: الحفظ المجمّع — بدل نسخ JSON كامل لكل المشاريع عشرات المرات أثناء
+   الرد الواحد (كان يجمّد الخيط الرئيسي ويطلّع «يستجيب ببطء»)، نجمع الطلبات
+   ونكتب مرة كل 1.5 ثانية كحد أقصى، مع حفظة فورية مضمونة عند إخفاء/إغلاق الصفحة. */
+let __saveTimer = null;
+let __saveDirty = false;
+function __saveFlush(){
+  if(!__saveDirty) return;
+  __saveDirty = false;
+  try{ clearTimeout(__saveTimer); }catch(e){}
+  __saveTimer = null;
+  if(!__idbBroken && window.indexedDB){
+    try{
+      idbSet('aiapp_projects', state.projects).catch(err => {
+        console.error('IDB save failed → fallback to localStorage', err);
+        __idbBroken = true;
+        saveStateLocal();
+      });
+      return;
+    }catch(err){
+      // كائن غير قابل للاستنساخ البنيوي → نسخة JSON نظيفة مرة واحدة.
+      try{
+        idbSet('aiapp_projects', JSON.parse(JSON.stringify(state.projects))).catch(() => { __idbBroken = true; saveStateLocal(); });
+        return;
+      }catch(e2){ __idbBroken = true; }
+    }
+  }
+  saveStateLocal();
+}
+window.addEventListener('pagehide', __saveFlush);
+document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') __saveFlush(); });
+function saveState(){
+  pushCodeSnapshot();
+  try{ localStorage.setItem('aiapp_current_id', state.currentId || ''); }catch(e){}
+  // ☁️ v306: مزامنة صامتة مؤجَّلة مع السيرفر للمستخدمين المسجّلين.
+  try{ scheduleChatsServerSync(); }catch(e){}
+  __saveDirty = true;
+  if(__saveTimer) return;
+  __saveTimer = setTimeout(__saveFlush, 1500);
+}
+// ⚡ v320: الحفظ يعالج المشروع المفتوح فقط — الباقي من نسخة نصية جاهزة (كاش).
+let __projJsonCache = new WeakMap();
+function __projectsToJson(){
+  const curId = state.currentId;
+  const parts = state.projects.map(p => {
+    if(p.id !== curId){
+      const c = __projJsonCache.get(p);
+      if(c !== undefined) return c;
+    }
+    const s = JSON.stringify(p);
+    __projJsonCache.set(p, s);
+    return s;
+  });
+  return '[' + parts.join(',') + ']';
+}
+function saveStateLocal(){
+  try{
+    localStorage.setItem('aiapp_projects', __projectsToJson());
+  }catch(err){
+    console.error('saveState failed, attempting auto-cleanup of old images', err);
+    __projJsonCache = new WeakMap(); // الكاش قد يصير قديمًا بعد التنظيف
+    // Progressive cleanup: first try keeping only the last 4 messages' images,
+    // then last 2, then just the very last message (the one currently being
+    // sent to the AI providers) — never 0, so an in-flight send never loses
+    // its own image data out from under it.
+    const steps = [4, 2, 1];
+    for(const keepCount of steps){
+      const purged = purgeOldImages(keepCount);
+      if(!purged) continue;
+      try{
+        localStorage.setItem('aiapp_projects', JSON.stringify(state.projects));
+        renderHistory();
+        return; // recovered silently, no need to alarm the user
+      }catch(err2){
+        console.error('saveState failed again after cleanup (keepCount=' + keepCount + ')', err2);
+      }
+    }
+    // Quota exceeded (usually from many/large image attachments piling up in
+    // history) must never silently break the send flow. Surface it instead.
+    if(!saveState._warned){
+      saveState._warned = true;
+      setTimeout(() => { saveState._warned = false; }, 15000);
+      alert(t('storageFullWarning'));
+    }
+  }
+}
+
+/* ☁️ v306: مزامنة المحادثات مع السيرفر للمستخدمين المسجّلين فقط.
+   iOS Safari يمسح localStorage/IndexedDB أحيانًا → المحادثات تختفي.
+   الحل: نسخة احتياطية في السيرفر (chats:{username}) تُدمج عند فتح التطبيق.
+   الضيوف بدون أي تغيير. أخطاء الشبكة صامتة تمامًا. */
+let __chatsSyncTimer = null;
+let __chatsLoadedFor = null;
+function chatsAuthToken(){
+  try{ return (window.authGet && window.authGet('aiapp_auth_token')) || ''; }catch(e){ return ''; }
+}
+/* v381: تطبيع الرسالة قبل الرفع — الصور الكبيرة تُستبدل بـ serverThumb المضغوط.
+   الصور الصغيرة (< 150KB base64) تبقى كما هي. بدون thumb + كبيرة = [media]. */
+function __msgForServer(m){
+  try{
+    var o = JSON.parse(JSON.stringify(m));
+    // المرفقات: استخدم serverThumb إذا موجود، أو احتفظ بالصغيرة
+    function fixImg(a){
+      if(!a || !a.isImage) return;
+      if(a.serverThumb){
+        a.dataUrl = a.serverThumb;
+        delete a.serverThumb;
+      } else if(a.dataUrl && a.dataUrl.length > 150000){
+        a.dataUrl = '[media]';
+      }
+      // الصغيرة تبقى كما هي
+    }
+    if(o.attachments) o.attachments.forEach(fixImg);
+    if(o.apiImages) o.apiImages.forEach(fixImg);
+    // النص الطويل
+    if(o && typeof o.content === 'string' && o.content.length > 12001){
+      o.content = o.content.slice(0, 12000) + '…';
+    }
+    // الكود المضمن في المحتوى
+    if(o && typeof o.content === 'string'){
+      o.content = o.content.replace(/data:(image|audio|video)\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]{200,}/g, '[media]');
+    }
+    return o || m;
+  }catch(e){ return m; }
+}
+function chatsSlimForServer(){
+  let list = (state.projects || []).map(p => ({
+    id: p.id,
+    title: p.title || '',
+    provider: p.provider || '',
+    messages: Array.isArray(p.messages) ? p.messages.map(__msgForServer) : [],
+    code: (typeof p.code === 'string') ? p.code : '',
+  })).filter(p => p.id);
+  const size = l => { try{ return JSON.stringify(l).length; }catch(e){ return Infinity; } };
+  // v381: رفع الحد لـ 2MB عشان الصور المضغوطة تمر
+  let i = 0;
+  while(size(list) > 2000000 && i < list.length){
+    if(list[i].code) list[i] = Object.assign({}, list[i], { code: '' });
+    i++;
+  }
+  while(size(list) > 2000000 && list.length > 0) list.shift();
+  return list;
+}
+// v311: أي صورة داخل المحادثة يفشل تحميلها (انحذفت من المزامنة) تختفي
+// بهدوء بدل ما يظهر «⚠️ Load failed» ويشوه المحادثة.
+document.addEventListener('error', function(e){
+  try{
+    const t = e.target;
+    if(t && t.tagName === 'IMG' && t.closest && t.closest('.msg')) t.style.display = 'none';
+  }catch(err){}
+}, true);
+/* v375: سجل المحادثات المحذوفة عمدًا — المزامنة ممنوعة ترجّعها أبدًا. */
+function chatsDeletedIds(){
+  try{ const a = JSON.parse(localStorage.getItem('aiapp_deleted_chats') || '[]'); return Array.isArray(a) ? a : []; }catch(e){ return []; }
+}
+window.chatsMarkDeleted = function(id){
+  if(!id) return;
+  try{
+    const ids = chatsDeletedIds();
+    if(ids.indexOf(id) === -1){
+      ids.push(id);
+      while(ids.length > 300) ids.shift();
+      localStorage.setItem('aiapp_deleted_chats', JSON.stringify(ids));
+    }
+  }catch(e){}
+};
+/* v375: رفع فوري للسيرفر (بدون انتظار 4 ثواني) — يُستدعى بعد الحذف مباشرة. */
+window.chatsServerSaveNow = function(){
+  try{ clearTimeout(__chatsSyncTimer); }catch(e){}
+  try{ chatsServerSave(); }catch(e){}
+};
+/* v376: دمج نسخة السيرفر مع المحلي — دالة مشتركة يستخدمها
+   الفتح + المزامنة الدورية + الدمج قبل كل رفع. ترجّع true إذا تغيّر شيء. */
+function __chatsMergeServer(server, deletedIds){
+  var hasServer = Array.isArray(server) && server.length > 0;
+  var hasDeleted = Array.isArray(deletedIds) && deletedIds.length > 0;
+  if(!hasServer && !hasDeleted) return false;
+  // v383: بناء قائمة المحذوفات من السيرفر
+  var delSet = Object.create(null);
+  if(hasDeleted) for(var di=0; di<deletedIds.length; di++) delSet[deletedIds[di]] = 1;
+  // v382: بصمة سريعة قبل الدمج — لو ما تغيّر شي نتجاوز إعادة الرسم
+  var __fingerprint = function(list){
+    var fp = '';
+    for(var i=0; i<list.length; i++){
+      var p = list[i];
+      if(!p || !p.id) continue;
+      var ml = Array.isArray(p.messages) ? p.messages.length : 0;
+      fp += p.id + ':' + ml + ':' + (p.title||'') + ':' + (p.provider||'') + ';';
+    }
+    return fp;
+  };
+  var fpBefore = __fingerprint(state.projects);
+  // v381c: بسّط — السيرفر هو المصدر الوحيد.
+  const localById = Object.create(null);
+  state.projects.forEach(p => { if(p && p.id) localById[p.id] = p; });
+  const result = [];
+  const seen = Object.create(null);
+  server.forEach(sp => {
+    if(!sp || !sp.id) return;
+    seen[sp.id] = 1;
+    const local = localById[sp.id];
+    if(local){
+      const lMsgs = Array.isArray(local.messages) ? local.messages : [];
+      const sMsgs = Array.isArray(sp.messages) ? sp.messages : [];
+      if(sMsgs.length > lMsgs.length){
+        local.messages = sMsgs;
+      }
+      if(sp.title && !local.title) local.title = sp.title;
+      if(sp.code && !local.code) local.code = sp.code;
+      if(sp.provider && !local.provider) local.provider = sp.provider;
+      result.push(local);
+    } else {
+      result.push(sp);
+    }
+  });
+  state.projects.forEach(p => {
+    if(p && p.id && !seen[p.id] && !delSet[p.id]) result.push(p);
+  });
+  state.projects = result;
+  var fpAfter = __fingerprint(result);
+  if(fpAfter === fpBefore){
+    // v382: لا تغيير → لا إعادة رسم = لا وميض
+    return false;
+  }
+  try{ saveState(); }catch(e){}
+  try{ renderHistory(); }catch(e){}
+  try{ if(typeof renderAll === 'function') renderAll(); }catch(e){}
+  try{ if(typeof buildChatList === 'function') buildChatList(); }catch(e){}
+  return true;
+}
+/* v376: تنزيل نسخة السيرفر ودمجها ثم استدعاء cb. */
+function chatsServerPull(cb){
+  const token = chatsAuthToken();
+  if(!token){ if(cb) cb(); return; }
+  fetch('/api/account?action=chats_load', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  }).then(r => {
+    // v378: رد خطأ من السيرفر (500/429...) = فشل، مو قائمة فاضية.
+    if(!r.ok) throw new Error('http ' + r.status);
+    return r.json();
+  }).then(d => {
+    const server = (d && Array.isArray(d.projects)) ? d.projects : [];
+    const __deletedIds = (d && Array.isArray(d.deletedIds)) ? d.deletedIds : [];
+    window.__chatsServerCount = server.length;
+    try{
+      var mergeResult = __chatsMergeServer(server, __deletedIds);
+      window.__chatsMergeResult = mergeResult ? 'changed' : 'no-change';
+      window.__chatsMergeErr = '';
+    }catch(e){
+      window.__chatsMergeErr = String(e && e.message || e).slice(0,60);
+      window.__chatsMergeResult = 'ERROR';
+    }
+    window.__chatsLastPull = Date.now(); window.__chatsLastPullErr = '';
+    if(cb) cb(true);
+  }).catch(err => { window.__chatsLastPullErr = String(err && err.message || err).slice(0,40); if(cb) cb(false); });
+}
+function __chatsPushNow(){
+  const token = chatsAuthToken();
+  if(!token) return;
+  const __slim = chatsSlimForServer();
+  // v311: قائمة بلا أي رسالة = لا ترفع أبدًا (لا تمسح النسخة الاحتياطية).
+  let __total = 0;
+  try{ (__slim || []).forEach(p => { __total += (Array.isArray(p.messages) ? p.messages.length : 0); }); }catch(e){}
+  if(!__total) return;
+  try{
+    fetch('/api/account?action=chats_save', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, projects: __slim }),
+    }).then(r => {
+      if(r && r.ok){ window.__chatsLastPush = Date.now(); window.__chatsLastPushErr = ''; }
+      else { window.__chatsLastPushErr = 'http ' + (r ? r.status : '?'); }
+    }).catch(err => { window.__chatsLastPushErr = String(err && err.message || err).slice(0,40); });
+  }catch(e){}
+}
+function chatsServerSave(){
+  const token = chatsAuthToken();
+  if(!token) return;
+  // v378: البوابة الوحيدة = اكتمال تحميل المحادثات المحلية (IndexedDB) —
+  // لو لسه ما اكتمل نعيد الجدولة بدل ما نمنع الرفع للأبد.
+  if(!window.__localChatsLoaded){ scheduleChatsServerSync(); return; }
+  // v376/v378: دمج قبل كل رفع — والرفع فقط بعد سحب "ناجح" حتى لا نكتب
+  // فوق شغل جهاز آخر عند فشل الشبكة.
+  chatsServerPull(ok => {
+    if(ok === false){ scheduleChatsServerSync(); return; }
+    window.__chatsMergeDone = true;
+    try{ __chatsPushNow(); }catch(e){}
+  });
+}
+window.appFullCleanup = function(){
+  var msg = 'سيتم حذف كل المحادثات والمشاريع نهائيًا. هل أنت متأكد؟';
+  try{ var m = (typeof t === 'function') ? t('acctCleanupConfirm') : ''; if(m && m !== 'acctCleanupConfirm') msg = m; }catch(e){}
+  if(!confirm(msg)) return;
+  try{ clearTimeout(__chatsSyncTimer); }catch(e){}
+  window.__chatsMergeDone = false;
+  var token = '';
+  try{ token = chatsAuthToken(); }catch(e){}
+  var finish = function(){
+    try{ localStorage.removeItem('aiapp_projects'); }catch(e){}
+    try{ localStorage.removeItem('aiapp_current_id'); }catch(e){}
+    try{ localStorage.removeItem('aiapp_provider_projects'); }catch(e){}
+    try{ if(window.indexedDB) indexedDB.deleteDatabase('aiapp_db'); }catch(e){}
+    setTimeout(function(){ location.reload(); }, 400);
+  };
+  if(token){
+    fetch('/api/account?action=chats_wipe', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    }).catch(function(){}).finally(finish);
+  } else { finish(); }
+};
+function scheduleChatsServerSync(){
+  if(!chatsAuthToken()) return;
+  try{ clearTimeout(__chatsSyncTimer); }catch(e){}
+  __chatsSyncTimer = setTimeout(chatsServerSave, 4000);
+}
+window.chatsSyncOnAuth = function(){
+  const token = chatsAuthToken();
+  if(!token || __chatsLoadedFor === token) return;
+  __chatsLoadedFor = token;
+  // v378: ننتظر اكتمال تحميل IndexedDB "فعليًا" (ترتيب حتمي) بدل مهلة عمياء 1500ms.
+  var __waited = 0;
+  var __tick = function(){
+    if(!window.__localChatsLoaded && __waited < 10000){ __waited += 200; setTimeout(__tick, 200); return; }
+    chatsServerPull(ok => {
+      // v378: فشل التنزيل (شبكة/خطأ سيرفر) → إعادة المحاولة تلقائيًا بعد 8 ثواني.
+      if(ok === false){ __chatsLoadedFor = null; setTimeout(function(){ try{ window.chatsSyncOnAuth(); }catch(e){} }, 8000); return; }
+      // بعد أول دمج ناجح: يُسمح بالرفع + رفع نسخة موحّدة.
+      window.__chatsMergeDone = true;
+      scheduleChatsServerSync();
+      // v376: مزامنة مستمرة — نفس الحساب = نفس المحادثات على كل الأجهزة.
+      __chatsStartLiveSync();
+    });
+  };
+  __tick();
+};
+/* v376: مزامنة حيّة — سحب دوري من السيرفر + كل ما يرجع المستخدم للتطبيق. */
+var __chatsLivePollTimer = null;
+var __chatsLastPull = 0;
+function __chatsPullMerge(){
+  if(!chatsAuthToken() || !window.__chatsMergeDone) return;
+  __chatsLastPull = Date.now();
+  try{ chatsServerPull(() => {}); }catch(e){}
+}
+function __chatsStartLiveSync(){
+  if(__chatsLivePollTimer) return;
+  // سحب كل 20 ثانية طول ما التطبيق مفتوح وظاهر.
+  __chatsLivePollTimer = setInterval(() => {
+    if(document.visibilityState === 'visible') __chatsPullMerge();
+  }, 20000);
+  // رجوع للتطبيق (فتح تبويب/عودة من الخلفية) → سحب فوري مع تهدئة 5 ثواني.
+  var onFocus = () => {
+    if(document.visibilityState !== 'visible') return;
+    if(Date.now() - __chatsLastPull < 5000) return;
+    __chatsPullMerge();
+  };
+  try{ document.addEventListener('visibilitychange', onFocus); }catch(e){}
+  try{ window.addEventListener('focus', onFocus); }catch(e){}
+}
+
+function getCurrent(){
+  return state.projects.find(p => p.id === state.currentId);
+}
+
+// 🧹 v307: تنظيف الكود قبل إرساله للمزود — الصور المضمنة base64 (عدة ميغا)
+// تُستبدل بعلامة قصيرة + سقف للحجم، حتى لا يتجاوز الطلب حد التوكنات ويفشل.
+function codeForApi(code){
+  let c = String(code || '');
+  c = c.replace(/data:(image|audio|video)\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]{200,}/g, 'data:image/png;base64,EMBEDDED_MEDIA_OMITTED');
+  if(c.length > 300000) c = c.slice(0, 300000) + '\n<!-- … الكود طويل جدًا: تم اقتطاع الباقي … -->';
+  return c;
+}
+
+function renderHistory(){
+  historyEl.innerHTML = '';
+  // 🆕 (27/7) كل مزود يشوف مشاريعه فقط — أي مشروع بلا وسم ينتمي للمزود الحالي
+  const provKey = localStorage.getItem('aiapp_provider') || 'claude';
+  let provDirty = false;
+  state.projects.forEach(p => { if(!p.provider){ p.provider = provKey; provDirty = true; } });
+  if(provDirty) saveState();
+  // v380: القائمة تعرض كل المحادثات من كل المزودات — حساب واحد، قائمة وحدة.
+  [...state.projects].reverse().forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'hist-item' + (p.id === state.currentId ? ' active' : '');
+
+    const thumb = document.createElement('div');
+    thumb.className = 'hist-thumb';
+    if(p.code && p.codeType !== 'python'){
+      const iframe = document.createElement('iframe');
+      iframe.setAttribute('sandbox', '');
+      iframe.setAttribute('loading', 'lazy');
+      iframe.srcdoc = p.code;
+      thumb.appendChild(iframe);
+    } else {
+      const ph = document.createElement('span');
+      ph.className = 'hist-thumb-emoji';
+      ph.innerHTML = p.codeType === 'python'
+        ? '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>'
+        : '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>';
+      thumb.appendChild(ph);
+    }
+    div.appendChild(thumb);
+
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'hist-title';
+    titleSpan.textContent = p.title;
+    titleSpan.onclick = () => {
+      // v380: الضغط على محادثة من مزود آخر → ينتقل لمزودها تلقائيًا (بدون إنشاء محادثة جديدة)
+      try{
+        const cur = localStorage.getItem('aiapp_provider') || 'claude';
+        if(p.provider && p.provider !== cur){
+          localStorage.setItem('aiapp_provider', p.provider);
+          const sel = document.getElementById('provider');
+          if(sel) sel.value = p.provider;
+          let pm = {};
+          try{ pm = JSON.parse(localStorage.getItem('aiapp_provider_projects') || '{}'); }catch(e){}
+          pm[p.provider] = p.id;
+          localStorage.setItem('aiapp_provider_projects', JSON.stringify(pm));
+          if(typeof updateProviderQuickBarActive === 'function') updateProviderQuickBarActive();
+        }
+      }catch(e){}
+      state.currentId = p.id; mahaClearImageRef(); renderAll();
+    };
+    div.appendChild(titleSpan);
+
+    // v202: بدل أزرار الحذف/المشاركة الظاهرة — زر ⋮ صغير يفتح قائمة (إعادة تسمية / حذف / مشاركة)
+    const menuBtn = document.createElement('button');
+    menuBtn.className = 'hist-menu-btn';
+    menuBtn.type = 'button';
+    menuBtn.title = '';
+    menuBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>';
+    menuBtn.onclick = (e) => {
+      e.stopPropagation();
+      openHistItemMenu(menuBtn, p, provKey);
+    };
+    div.appendChild(menuBtn);
+
+    historyEl.appendChild(div);
+  });
+}
+
+// v202: قائمة ⋮ الصغيرة لكل مشروع — إعادة تسمية / حذف (بتأكيد) / مشاركة
+function ensureHistItemMenu(){
+  let m = document.getElementById('histItemMenu');
+  if(!m){
+    m = document.createElement('div');
+    m.id = 'histItemMenu';
+    document.body.appendChild(m);
+    document.addEventListener('click', (e) => {
+      if(!e.target.closest('#histItemMenu') && !e.target.closest('.hist-menu-btn')) m.classList.remove('show');
+    });
+    window.addEventListener('resize', () => m.classList.remove('show'));
+  }
+  return m;
+}
+function histRenameProject(p){
+  const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
+  const nv = prompt(isAr ? 'الاسم الجديد للمشروع:' : 'New project name:', p.title);
+  if(nv === null) return;
+  const clean = String(nv).trim();
+  if(!clean) return;
+  p.title = clean;
+  saveState();
+  renderAll();
+}
+function histDeleteProject(p, provKey){
+  if(!confirm(t('confirmDeleteProject').replace('{name}', p.title))) return;
+  state.projects = state.projects.filter(x => x.id !== p.id);
+  if(state.currentId === p.id){
+    const sameProv = state.projects.filter(x => (x.provider || provKey) === provKey);
+    state.currentId = sameProv.length ? sameProv[sameProv.length - 1].id : null;
+    mahaClearImageRef();
+  }
+  if(!state.currentId){
+    const id = 'p_' + Date.now();
+    state.projects.push({id, title: t('defaultProjectTitle'), messages: [], code: '', provider: provKey});
+    state.currentId = id;
+    mahaClearImageRef();
+  }
+  saveState();
+  renderAll();
+}
+function openHistItemMenu(anchorBtn, p, provKey){
+  const m = ensureHistItemMenu();
+  const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
+  m.innerHTML = '';
+  const mkBtn = (label, svg, cls, fn) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    if(cls) b.className = cls;
+    b.innerHTML = svg + '<span>' + label + '</span>';
+    b.onclick = (e) => { e.stopPropagation(); m.classList.remove('show'); fn(); };
+    m.appendChild(b);
+  };
+  const svgPre = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+  mkBtn(isAr ? 'إعادة تسمية' : 'Rename',
+    svgPre + '<path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"></path></svg>',
+    '', () => histRenameProject(p));
+  mkBtn(t('shareProjectBtnTitle') || (isAr ? 'مشاركة' : 'Share'),
+    svgPre + '<circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>',
+    '', () => { if(typeof openShareModal === 'function') openShareModal(p); });
+  mkBtn(isAr ? 'حذف' : 'Delete',
+    svgPre + '<polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>',
+    'danger', () => histDeleteProject(p, provKey));
+  // موضع القائمة بجانب زر ⋮ مع البقاء داخل الشاشة
+  m.classList.add('show');
+  const r = anchorBtn.getBoundingClientRect();
+  const mw = m.offsetWidth || 140, mh = m.offsetHeight || 100;
+  let left = document.documentElement.dir === 'rtl' ? r.left - mw + r.width : r.right - mw;
+  left = Math.max(6, Math.min(left, window.innerWidth - mw - 6));
+  let top = r.bottom + 4;
+  if(top + mh > window.innerHeight - 6) top = Math.max(6, r.top - mh - 4);
+  m.style.left = left + 'px';
+  m.style.top = top + 'px';
+}
+
+// 🔀 محرك الفروقات — line diff بين كود المشروع الحالي وإصدار المزود
+function computeLineDiff(oldText, newText){
+  const a = String(oldText || '').split('\n');
+  const b = String(newText || '').split('\n');
+  const MAX = 2500;
+  if(a.length > MAX || b.length > MAX){
+    return null; // too large for in-browser LCS
+  }
+  // trim common prefix/suffix to shrink LCS matrix
+  let start = 0;
+  while(start < a.length && start < b.length && a[start] === b[start]) start++;
+  let endA = a.length, endB = b.length;
+  while(endA > start && endB > start && a[endA - 1] === b[endB - 1]){ endA--; endB--; }
+  const ca = a.slice(start, endA), cb = b.slice(start, endB);
+  const n = ca.length, mm = cb.length;
+  const dp = new Uint16Array((n + 1) * (mm + 1));
+  for(let i = n - 1; i >= 0; i--){
+    for(let j = mm - 1; j >= 0; j--){
+      dp[i * (mm + 1) + j] = ca[i] === cb[j]
+        ? dp[(i + 1) * (mm + 1) + j + 1] + 1
+        : Math.max(dp[(i + 1) * (mm + 1) + j], dp[i * (mm + 1) + j + 1]);
+    }
+  }
+  const ops = [];
+  for(let k = 0; k < start; k++) ops.push({ t: ' ', line: a[k] });
+  let i = 0, j = 0;
+  while(i < n && j < mm){
+    if(ca[i] === cb[j]){ ops.push({ t: ' ', line: ca[i] }); i++; j++; }
+    else if(dp[(i + 1) * (mm + 1) + j] >= dp[i * (mm + 1) + j + 1]){ ops.push({ t: '-', line: ca[i] }); i++; }
+    else { ops.push({ t: '+', line: cb[j] }); j++; }
+  }
+  while(i < n){ ops.push({ t: '-', line: ca[i] }); i++; }
+  while(j < mm){ ops.push({ t: '+', line: cb[j] }); j++; }
+  for(let k = endA; k < a.length; k++) ops.push({ t: ' ', line: a[k] });
+  return ops;
+}
+function showCodeDiff(oldCode, newCode, label){
+  const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
+  const ops = computeLineDiff(oldCode, newCode);
+  let old = document.getElementById('diffOverlay');
+  if(old) old.remove();
+  const ov = document.createElement('div');
+  ov.id = 'diffOverlay';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:900; background:rgba(0,0,0,.75); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; padding:16px;';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#12151d; border-radius:14px; max-width:920px; width:100%; max-height:88vh; display:flex; flex-direction:column; overflow:hidden;';
+  const added = ops ? ops.filter(o => o.t === '+').length : 0;
+  const removed = ops ? ops.filter(o => o.t === '-').length : 0;
+  const head = document.createElement('div');
+  head.style.cssText = 'display:flex; align-items:center; gap:10px; padding:12px 16px; font-size:13px; font-weight:700;';
+  head.innerHTML = '<span>🔀 ' + (isAr ? 'الفروقات' : 'Differences') + (label ? ' — ' + label : '') + '</span>'
+    + '<span style="color:#2ecc71;">+' + added + '</span><span style="color:#ff5f56;">−' + removed + '</span>'
+    + '<span style="flex:1;"></span>';
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '✖';
+  closeBtn.style.cssText = 'background:none; border:none; color:#fff; cursor:pointer; font-size:15px;';
+  closeBtn.onclick = () => ov.remove();
+  head.appendChild(closeBtn);
+  box.appendChild(head);
+  const body = document.createElement('div');
+  body.style.cssText = 'overflow:auto; flex:1; padding:0 8px 12px; direction:ltr; font-family:monospace; font-size:12px; line-height:1.5; white-space:pre;';
+  if(!ops){
+    body.style.cssText += 'direction:rtl; font-family:inherit; padding:16px; white-space:normal;';
+    body.textContent = isAr ? 'الكود كبير جدًا للمقارنة التفصيلية — الفروقات بالحجم: '
+      + (String(newCode||'').length - String(oldCode||'').length) + ' حرف'
+      : 'Code too large for a detailed diff.';
+  } else {
+    let shown = 0;
+    let skipRun = 0;
+    const flushSkip = () => {
+      if(skipRun > 3){
+        const gap = document.createElement('div');
+        gap.style.cssText = 'color:#5a6070; padding:2px 8px;';
+        gap.textContent = '··· ' + (skipRun) + ' ···';
+        body.appendChild(gap);
+      }
+      skipRun = 0;
+    };
+    for(let k = 0; k < ops.length; k++){
+      const o = ops[k];
+      const nearChange = ops.slice(Math.max(0, k - 2), k + 3).some(x => x.t !== ' ');
+      if(o.t === ' ' && !nearChange){ skipRun++; continue; }
+      flushSkip();
+      const row = document.createElement('div');
+      row.textContent = (o.t === ' ' ? '  ' : o.t + ' ') + o.line;
+      row.style.cssText = o.t === '+' ? 'background:rgba(46,204,113,.14); color:#7ee2a8;'
+        : o.t === '-' ? 'background:rgba(255,95,86,.12); color:#ff9d97;' : 'color:#98a0b3;';
+      body.appendChild(row);
+      if(++shown > 1200){ const more = document.createElement('div'); more.textContent = '…'; body.appendChild(more); break; }
+    }
+    flushSkip();
+    if(!added && !removed){
+      body.style.cssText += 'direction:rtl; font-family:inherit; padding:16px; white-space:normal;';
+      body.textContent = isAr ? 'لا توجد فروقات — الكودان متطابقان ✅' : 'No differences — identical ✅';
+    }
+  }
+  box.appendChild(body);
+  ov.appendChild(box);
+  ov.onclick = (e) => { if(e.target === ov) ov.remove(); };
+  document.body.appendChild(ov);
+}
+function renderMessages(keepScroll){
+  const prevScrollTop = keepScroll ? messagesEl.scrollTop : null;
+  messagesEl.innerHTML = '';
+  const cur = getCurrent();
+  const chipsWrap = $('#chatQuickChipsWrap');
+  if(chipsWrap && cur && cur.messages && cur.messages.length) chipsWrap.style.display = 'none';
+  if(!cur) return;
+  let compareGroup = null;
+  cur.expandedAskAllBatches = cur.expandedAskAllBatches || [];
+  // ⚡ v320: نافذة عرض — نرسم آخر 30 رسالة فقط؛ الأقدم تظهر بزر عند الطلب.
+  const __MSGWIN = 30;
+  const __winStart = cur.__showAllMsgs ? 0 : Math.max(0, cur.messages.length - __MSGWIN);
+  if(__winStart > 0){
+    const __OLDT = { ar:'عرض الرسائل الأقدم', en:'Show older messages', fr:'Afficher les messages plus anciens', hi:'पुराने संदेश दिखाएँ', ur:'پرانے پیغامات دکھائیں', bn:'পুরনো বার্তা দেখান', ne:'पुराना सन्देशहरू देखाउनुहोस्', id:'Tampilkan pesan lama', fil:'Ipakita ang mga lumang mensahe', tr:'Eski mesajları göster', zh:'显示较早的消息', ru:'Показать старые сообщения', es:'Mostrar mensajes anteriores', ml:'പഴയ സന്ദേശങ്ങൾ കാണിക്കുക' };
+    const __uiL = localStorage.getItem('aiapp_lang') || 'ar';
+    const olderBtn = document.createElement('button');
+    olderBtn.type = 'button';
+    olderBtn.textContent = '⬆ ' + (__OLDT[__uiL] || __OLDT.en) + ' (' + __winStart + ')';
+    olderBtn.style.cssText = 'display:block; margin:8px auto 14px; padding:7px 16px; border-radius:20px; border:1px solid var(--border,rgba(255,255,255,.15)); background:transparent; color:var(--accent2,#a78bfa); font-size:12.5px; cursor:pointer;';
+    olderBtn.onclick = () => { cur.__showAllMsgs = true; renderMessages(false); };
+    messagesEl.appendChild(olderBtn);
+  }
+  cur.messages.forEach((m, mIdx) => {
+    if(mIdx < __winStart) return;
+    const isAskAllReply = !!(m.providerLabel && (m.askAllReply || Object.values(PROVIDER_KEY_LABELS).includes(m.providerLabel))) && !m.isMergeHeader;
+    if(m.askAllReply && !m.isMergeHeader && m.batchId && !cur.expandedAskAllBatches.includes(m.batchId) && cur.messages.some(x => x !== m && (x.isMergeHeader || x.isAskAllPrep) && x.batchId === m.batchId)){
+      return; // individual per-provider replies stay hidden until the user expands them
+    }
+    let rowWrap = null;
+    if(isAskAllReply){
+      rowWrap = document.createElement('div');
+      rowWrap.style.cssText = 'display:flex; align-items:flex-start; gap:6px; max-width:100%;';
+    }
+    const div = document.createElement('div');
+    div.className = 'msg ' + (m.role === 'user' ? 'user' : 'assistant');
+    if(isAskAllReply) div.style.flex = '1 1 auto';
+    let copyMsgBtn = null;
+    let pColor = null;
+    if(m.providerLabel){
+      const label = document.createElement('div');
+      pColor = getProviderColors()[m.providerLabel] || null;
+      // v311: اسم المزود يظهر كامل داخل الشاشة بدون قص (سفاري الآيفون).
+      label.style.cssText = 'font-size:11px; font-weight:800; color:' + (pColor || 'var(--accent2)') + '; margin-bottom:4px; display:block; unicode-bidi:isolate; max-width:100%; overflow-wrap:anywhere; white-space:normal;';
+      label.textContent = m.providerLabel;
+      div.appendChild(label);
+    }
+    const textDiv = document.createElement('div');
+    textDiv.className = 'msg-text';
+    if(pColor) textDiv.style.setProperty('--msg-accent', pColor);
+    if(m._uid) textDiv.dataset.askuid = m._uid;
+    if(m._loading && !m.content){
+      const dots = document.createElement('span');
+      dots.className = 'ask-all-typing-dots';
+      dots.textContent = '⏳';
+      textDiv.appendChild(dots);
+    }
+    let msgWordEls = null;
+    if(m.role !== 'user' && m.content){
+      msgWordEls = buildSpokenWordSpans(textDiv, m.content);
+    } else {
+      textDiv.textContent = m.content;
+    }
+    // 🖼️ Feature ② — image strip ABOVE the reply text: up to 4 live images
+    // returned by the search backend, ChatGPT-style horizontal scroller.
+    if(m.role !== 'user' && Array.isArray(m.searchImages) && m.searchImages.length){
+      const imgStrip = document.createElement('div');
+      imgStrip.className = 'msgSearchImgStrip';
+      m.searchImages.slice(0, 4).forEach(url => {
+        const img = document.createElement('img');
+        img.src = url;
+        img.loading = 'lazy';
+        img.alt = '';
+        img.onerror = () => { img.remove(); };
+        imgStrip.appendChild(img);
+      });
+      div.appendChild(imgStrip);
+    }
+    div.appendChild(textDiv);
+    // 📚 Feature ② — source badges AFTER the reply text: small pills with a
+    // favicon + domain, opening the real source url in a new tab. Never
+    // invented — only what the search backend actually returned.
+    if(m.role !== 'user' && Array.isArray(m.sources) && m.sources.length){
+      const srcWrap = document.createElement('div');
+      srcWrap.className = 'msgSourceBadges';
+      m.sources.slice(0, 6).forEach(s => {
+        if(!s || !s.url) return;
+        let host = '';
+        try{ host = new URL(s.url).hostname.replace(/^www\./, ''); }catch(e){ return; }
+        const badge = document.createElement('a');
+        badge.className = 'msgSourceBadge';
+        badge.href = s.url;
+        badge.target = '_blank';
+        badge.rel = 'noopener noreferrer';
+        badge.title = s.title || host;
+        const fav = document.createElement('img');
+        fav.src = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(host) + '&sz=32';
+        fav.alt = '';
+        fav.loading = 'lazy';
+        fav.onerror = () => { fav.remove(); };
+        const label = document.createElement('span');
+        label.textContent = host;
+        badge.appendChild(fav);
+        badge.appendChild(label);
+        srcWrap.appendChild(badge);
+      });
+      if(srcWrap.childElementCount) div.appendChild(srcWrap);
+    }
+    if(m.attachments && m.attachments.length){
+      const wrap = document.createElement('div');
+      wrap.className = 'msg-attachments';
+      m.attachments.forEach(a => {
+        if(a.isVideo && a.url){
+          const vid = document.createElement('video');
+          vid.src = a.url;
+          vid.controls = true;
+          vid.playsInline = true;
+          vid.style.maxWidth = 'min(320px, 100%)';
+          vid.style.borderRadius = '10px';
+          wrap.appendChild(vid);
+          const dl = document.createElement('a');
+          dl.href = a.url;
+          dl.download = a.name || 'video.mp4';
+          dl.target = '_blank';
+          dl.className = 'file-chip';
+          dl.textContent = '⬇️ ' + (lang === 'ar' ? 'تنزيل الفيديو' : 'Download video');
+          dl.style.textDecoration = 'none';
+          dl.style.alignSelf = 'center';
+          wrap.appendChild(dl);
+        } else if(a.isImage && a.purged){
+          const chip = document.createElement('div');
+          chip.className = 'file-chip';
+          chip.textContent = '🗑️ ' + t('imagePurgedNote');
+          wrap.appendChild(chip);
+        } else if(a.isImage){
+          const img = document.createElement('img');
+          img.src = a.dataUrl;
+          img.title = a.name;
+          img.style.cursor = 'pointer';
+          img.onclick = () => {
+            previewFrame.style.display = 'block';
+            $('#pyConsole').style.display = 'none';
+            emptyState.style.display = 'none';
+            previewFrame._imageView = true;
+            previewFrame._lastSrc = null;
+            previewFrame.srcdoc = '<html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="' + a.dataUrl + '" style="max-width:100%;max-height:100vh;object-fit:contain;"></body></html>';
+            switchWorkTab('preview');
+            closeDrawers();
+            if(localStorage.getItem('previewEnabled') !== 'off'){
+              workareaEl.classList.add('open');
+              backdropEl.classList.add('show');
+            }
+          };
+          wrap.appendChild(img);
+        } else {
+          const chip = document.createElement('div');
+          chip.className = 'file-chip';
+          chip.textContent = '📄 ' + a.name;
+          if(a.text){
+            chip.style.cursor = 'pointer';
+            chip.title = a.name;
+            chip.onclick = () => {
+              previewFrame.style.display = 'block';
+              $('#pyConsole').style.display = 'none';
+              emptyState.style.display = 'none';
+              const esc = (a.text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+              previewFrame.srcdoc = '<html><body style="margin:0;background:#111;color:#eee;font-family:monospace;white-space:pre-wrap;word-break:break-word;padding:16px;">' + esc + '</body></html>';
+              switchWorkTab('preview');
+              closeDrawers();
+              if(localStorage.getItem('previewEnabled') !== 'off'){
+                workareaEl.classList.add('open');
+                backdropEl.classList.add('show');
+              }
+            };
+          }
+          wrap.appendChild(chip);
+        }
+      });
+      div.appendChild(wrap);
+    }
+    if(m.content && m.content.trim()){
+      const actionBar = document.createElement('div');
+      actionBar.className = 'msgActionBar';
+      const copyIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+      const checkIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      if(m.role !== 'user'){
+        // ⋮ more (convert) menu
+        const moreBtn = document.createElement('button');
+        moreBtn.type = 'button';
+        moreBtn.title = t('moreOptionsTitle') || 'خيارات إضافية';
+        moreBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>';
+        moreBtn.onclick = (e) => { e.stopPropagation(); openMsgMoreMenu(moreBtn, m.content); };
+        actionBar.appendChild(moreBtn);
+
+        // share
+        const shareBtn = document.createElement('button');
+        shareBtn.type = 'button';
+        shareBtn.title = t('shareMsgTitle') || 'مشاركة';
+        shareBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.6" y1="10.5" x2="15.4" y2="6.5"></line><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"></line></svg>';
+        shareBtn.onclick = async () => {
+          try{
+            if(navigator.share){ await navigator.share({ text: m.content }); return; }
+            throw new Error('no-share-api');
+          }catch(e){
+            try{ await navigator.clipboard.writeText(m.content); }catch(e2){ /* ignore */ }
+            if(typeof settingsToast === 'function') settingsToast(t('copiedToast') || 'تم النسخ');
+          }
+        };
+        actionBar.appendChild(shareBtn);
+
+        // 🔊 listen — exact existing speakSmart logic, icon-based
+        const speakIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.5 8.5a5 5 0 0 1 0 7"></path><path d="M18.5 5.5a9 9 0 0 1 0 13"></path></svg>';
+        const stopSpeakIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="1.5"></rect></svg>';
+        const speakBtn = document.createElement('button');
+        speakBtn.type = 'button';
+        speakBtn.title = t('speakBtn') || 'استماع';
+        speakBtn.innerHTML = speakIconSVG;
+        speakBtn.onclick = () => {
+          if(speakBtn._speaking){
+            stopAllSpeaking();
+            speakBtn.innerHTML = speakIconSVG;
+            speakBtn.style.color = '';
+            speakBtn._speaking = false;
+            return;
+          }
+          speakBtn._speaking = true;
+          speakBtn.innerHTML = stopSpeakIconSVG;
+          speakBtn.style.color = 'var(--accent2,#00e0b8)';
+          speakSmart(m.content, null, () => { speakBtn.innerHTML = speakIconSVG; speakBtn.style.color = ''; speakBtn._speaking = false; }, true, msgWordEls);
+        };
+        actionBar.appendChild(speakBtn);
+
+        // 👎 / 👍 feedback (mutually exclusive, in-memory only)
+        const thumbDownIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path></svg>';
+        const thumbUpIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>';
+        const thumbDownBtn = document.createElement('button');
+        thumbDownBtn.type = 'button';
+        thumbDownBtn.title = t('thumbDownTitle') || 'غير مفيد';
+        thumbDownBtn.innerHTML = thumbDownIconSVG;
+        const thumbUpBtn = document.createElement('button');
+        thumbUpBtn.type = 'button';
+        thumbUpBtn.title = t('thumbUpTitle') || 'مفيد';
+        thumbUpBtn.innerHTML = thumbUpIconSVG;
+        thumbDownBtn.onclick = () => {
+          m._feedback = m._feedback === 'down' ? null : 'down';
+          thumbDownBtn.classList.toggle('msgThumbDownActive', m._feedback === 'down');
+          thumbUpBtn.classList.remove('msgThumbActive');
+        };
+        thumbUpBtn.onclick = () => {
+          m._feedback = m._feedback === 'up' ? null : 'up';
+          thumbUpBtn.classList.toggle('msgThumbActive', m._feedback === 'up');
+          thumbDownBtn.classList.remove('msgThumbDownActive');
+        };
+        if(m._feedback === 'down') thumbDownBtn.classList.add('msgThumbDownActive');
+        if(m._feedback === 'up') thumbUpBtn.classList.add('msgThumbActive');
+        actionBar.appendChild(thumbDownBtn);
+        actionBar.appendChild(thumbUpBtn);
+
+        // 🚩 report inappropriate AI content (Store policy 11.16)
+        const flagIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>';
+        const reportBtn = document.createElement('button');
+        reportBtn.type = 'button';
+        reportBtn.title = t('reportMsgTitle') || 'الإبلاغ عن محتوى غير لائق';
+        reportBtn.innerHTML = flagIconSVG;
+        reportBtn.onclick = async () => {
+          if(reportBtn._done) return;
+          if(!confirm(t('reportConfirm') || 'هل تريد الإبلاغ عن هذا الرد كمحتوى غير لائق؟')) return;
+          reportBtn._done = true;
+          reportBtn.style.color = '#ff5c6c';
+          try{
+            let u='guest'; try{ u = (typeof authGet==='function'&&authGet('aiapp_username'))||'guest'; }catch(_){ }
+            fetch('/api/system?action=feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'report',content:String(m.content||'').slice(0,2000),provider:(m.provider||''),user:u,lang:(typeof lang!=='undefined'?lang:'')})});
+          }catch(e){ /* ignore */ }
+          if(typeof settingsToast === 'function') settingsToast(t('reportSentToast') || 'تم استلام البلاغ — شكرًا لك');
+        };
+        actionBar.appendChild(reportBtn);
+
+        // ✨ v363: قدرات التطبيق — أيقونة سريعة توديك لأي ميزة (سيرة/مستندات/معاملات/تفسير/شخصية تتكلم)
+        const capIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.6 4.6L18 9l-4.4 1.4L12 15l-1.6-4.6L6 9l4.4-1.4z"></path><path d="M19 14l.7 2 .3 2 .3-.7L21 16l2-.7L21 15z"></path><path d="M5 15l.6 1.6L7 17l-1.4.4L5 19l-.6-1.6L3 17l1.4-.4z"></path></svg>';
+        const capBtn = document.createElement('button');
+        capBtn.type = 'button';
+        capBtn.title = (typeof lang!=='undefined'&&lang==='en') ? 'What can I do' : 'شنو أقدر أسوي';
+        capBtn.innerHTML = capIconSVG;
+        capBtn.onclick = (e) => { e.stopPropagation(); openCapabilitiesMenu(capBtn); };
+        actionBar.appendChild(capBtn);
+      }
+
+      // v204 fix: this used to be built directly into the `copyMsgBtn`
+      // variable, which was then REASSIGNED a few lines below to the whole
+      // `actionBar` (so it could be appended alongside the message bubble).
+      // Because the onclick/onmouseenter/onmouseleave closures below
+      // captured that same variable by reference (not by value), by the
+      // time the user actually clicked, `copyMsgBtn` inside the closures
+      // pointed at `actionBar`, not the button — so
+      // `copyMsgBtn.innerHTML = checkIconSVG` wiped out the ENTIRE action
+      // bar's HTML (all buttons for that message, i.e. the whole message's
+      // action row) instead of just swapping the copy icon. Using a
+      // dedicated `copyBtnEl` for the button itself (never reassigned)
+      // fixes this: only the copy icon markup ever changes, nothing else
+      // in the DOM is touched.
+      const copyBtnEl = document.createElement('button');
+      copyBtnEl.type = 'button';
+      copyBtnEl.onmouseenter = () => { copyBtnEl.style.color = 'var(--accent2,#00e0b8)'; };
+      copyBtnEl.onmouseleave = () => { copyBtnEl.style.color = 'var(--muted,#98a0b3)'; };
+      copyBtnEl.innerHTML = copyIconSVG;
+      copyBtnEl.title = t('copyMsgTitle') || 'نسخ';
+      copyBtnEl.onclick = async (e) => {
+        e.stopPropagation();
+        try{
+          try{
+            await navigator.clipboard.writeText(m.content);
+          }catch(e1){
+            const ta = document.createElement('textarea');
+            ta.value = m.content;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+          }
+          copyBtnEl.innerHTML = checkIconSVG;
+          setTimeout(() => { copyBtnEl.innerHTML = copyIconSVG; }, 1500);
+        }catch(e2){ /* never let a copy failure affect the rest of the UI */ }
+      };
+      actionBar.appendChild(copyBtnEl);
+      copyMsgBtn = actionBar;
+    }
+    if(m.code && m.providerLabel){
+      const isActive = cur.code === m.code;
+      const btn = document.createElement('button');
+      btn.className = 'btn';
+      btn.style.cssText = 'margin-top:8px; margin-inline-end:8px; font-size:12px; padding:6px 12px;' + (isActive ? ' opacity:.85;' : '');
+      btn.textContent = isActive ? '✅ ' + t('useThisVersion') : t('useThisVersion');
+      btn.onclick = () => {
+        cur.code = m.code;
+        cur.codeType = m.codeType;
+        saveState();
+        renderAll(true);
+        if(window.innerWidth <= 860 && localStorage.getItem('previewEnabled') !== 'off'){
+          switchWorkTab('preview');
+          setTimeout(() => openDrawer($('#workarea')), 200);
+        }
+      };
+      div.appendChild(btn);
+      // 🔀 زر الفروقات — أُزيل بطلب المستخدم
+    }
+    if(m.isMergeHeader && m.batchId && m.batchCount){
+      const expanded = cur.expandedAskAllBatches.includes(m.batchId);
+      const toggleBtn = document.createElement('button');
+      toggleBtn.className = 'btn';
+      toggleBtn.style.cssText = 'margin-top:8px; font-size:12px; padding:6px 12px;';
+      toggleBtn.textContent = '📋 ' + t('viewIndividualReplies').replace('{n}', m.batchCount);
+      toggleBtn.onclick = () => {
+        const pos = cur.expandedAskAllBatches.indexOf(m.batchId);
+        if(pos === -1) cur.expandedAskAllBatches.push(m.batchId);
+        else cur.expandedAskAllBatches.splice(pos, 1);
+        saveState();
+        renderMessages(true);
+      };
+      div.appendChild(toggleBtn);
+      void expanded;
+    }
+    if(isAskAllReply){
+      const providerFailed = !m.code && /^⚠️/.test(m.content || '');
+      // 🔑 المفتاح مخزّن داخل الرسالة نفسها (m.providerKey) — مطابقة الاسم كانت
+      // تفشل بصمت مع فقاعات البديل «🔄 …» فيصير زر ✅ بلا مفعول.
+      const __cleanLbl = String(m.providerLabel || '').replace(/^🔄\s*/, '');
+      const providerKey = m.providerKey || Object.keys(PROVIDER_KEY_LABELS).find(k => PROVIDER_KEY_LABELS[k] === __cleanLbl);
+      if(!cur.continueProviders) cur.continueProviders = [];
+      const isChosen = providerKey && cur.continueProviders.includes(providerKey);
+      const chooseBtn = document.createElement('button');
+      chooseBtn.className = 'btn';
+      chooseBtn.title = t('continueWithProvider');
+      chooseBtn.setAttribute('aria-label', t('continueWithProvider'));
+      chooseBtn.style.cssText = 'flex:0 0 auto; align-self:flex-start; margin-top:4px; width:30px; height:30px; border-radius:50%; padding:0; font-size:15px; line-height:1; display:flex; align-items:center; justify-content:center;' + (isChosen ? ' background:var(--accent2,#2ecc71); color:#fff; border-color:var(--accent2,#2ecc71);' : ' opacity:.55;');
+      chooseBtn.textContent = isChosen ? '✅' : '○';
+      chooseBtn.onclick = () => {
+        if(!cur.continueProviders) cur.continueProviders = [];
+        const pos = providerKey ? cur.continueProviders.indexOf(providerKey) : -1;
+        if(pos === -1){
+          if(providerKey) cur.continueProviders.push(providerKey);
+          if(m.code){ cur.code = m.code; cur.codeType = m.codeType; }
+          // اختيار مزود ✅ = المستخدم يريد الاستمرار معه → أطفئ زر 🧠 «اسأل الكل».
+          if(window.__resetAskAllToggle) window.__resetAskAllToggle();
+        } else {
+          cur.continueProviders.splice(pos, 1);
+        }
+        saveState();
+        renderAll(true);
+        // v204: removed the "✅ أسئلتك القادمة ستذهب إلى: ... فقط" toast
+        // entirely per spec — provider switching itself is unchanged, only
+        // the confirmation popup is gone.
+      };
+      if(copyMsgBtn){
+        const bubbleCol = document.createElement('div');
+        bubbleCol.style.cssText = 'display:flex; flex-direction:column; align-items:' + (m.role === 'user' ? 'flex-end' : 'flex-start') + '; flex:1 1 auto; min-width:0;';
+        bubbleCol.appendChild(div);
+        bubbleCol.appendChild(copyMsgBtn);
+        rowWrap.appendChild(bubbleCol);
+      } else {
+        rowWrap.appendChild(div);
+      }
+      // v208: أيقونة اختيار المزود ○/✅ أُزيلت نهائيًا — شريط المزودات يغني عنها
+      void providerFailed; void chooseBtn;
+      if(!compareGroup){
+        const layout = localStorage.getItem('askAllLayout') || 'horizontal';
+        compareGroup = document.createElement('div');
+        compareGroup.className = 'ask-all-compare-row';
+        if(layout === 'vertical'){
+          compareGroup.style.cssText = 'display:flex; flex-direction:column; gap:10px; max-width:100%; padding-bottom:6px; align-items:stretch;';
+        } else {
+          compareGroup.style.cssText = 'display:flex; gap:10px; overflow-x:auto; max-width:100%; padding-bottom:6px; align-items:flex-start; scroll-snap-type:x proximity;';
+        }
+        messagesEl.appendChild(compareGroup);
+      }
+      const layoutNow = localStorage.getItem('askAllLayout') || 'horizontal';
+      if(layoutNow === 'vertical'){
+        rowWrap.style.cssText += ' width:100%; max-width:100%;';
+      } else {
+        rowWrap.style.cssText += ' min-width:260px; max-width:340px; flex:1 0 260px; scroll-snap-align:start;';
+      }
+      compareGroup.appendChild(rowWrap);
+    } else {
+      compareGroup = null;
+      if(copyMsgBtn){
+        const bubbleCol = document.createElement('div');
+        bubbleCol.style.cssText = 'display:flex; flex-direction:column; align-items:' + (m.role === 'user' ? 'flex-end' : 'flex-start') + '; max-width:100%;';
+        bubbleCol.appendChild(div);
+        bubbleCol.appendChild(copyMsgBtn);
+        // ✨ v363: ملاحظة تلقائية آخر الرد تقترح الميزة المناسبة من رسالة المستخدم السابقة
+        try{
+          if(m.role !== 'user' && m.content && m.content.trim() && !m.code &&
+             !(m.attachments && m.attachments.some(a => a && (a.isImage || a.isVideo)))){
+            let __prevU = '';
+            for(let __j = mIdx - 1; __j >= 0; __j--){
+              if(cur.messages[__j] && cur.messages[__j].role === 'user'){ __prevU = String(cur.messages[__j].content || ''); break; }
+            }
+            const __hint = capabilityHintFor(__prevU);
+            if(__hint){
+              const __isEn = (typeof lang!=='undefined' && lang==='en');
+              const __note = document.createElement('div');
+              __note.style.cssText = 'font-size:12px; color:var(--muted,#98a0b3); margin-top:6px; line-height:1.7; max-width:100%;';
+              const __lbl = __isEn ? __hint.en : __hint.ar;
+              __note.appendChild(document.createTextNode('💡 ' + (__isEn ? 'Note: you can do this with ' : 'ملاحظة: تقدر تسوي هذا عن طريق ')));
+              const __a = document.createElement('a');
+              __a.textContent = __hint.icon + ' ' + __lbl;
+              __a.href = 'javascript:void(0)';
+              __a.style.cssText = 'color:var(--accent2,#a78bfa); text-decoration:none; font-weight:600; cursor:pointer;';
+              __a.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openFeatureById(__hint.id); };
+              __note.appendChild(__a);
+              bubbleCol.appendChild(__note);
+            }
+          }
+        }catch(__e){}
+        messagesEl.appendChild(bubbleCol);
+      } else {
+        messagesEl.appendChild(div);
+      }
+    }
+  });
+  if(keepScroll){
+    messagesEl.scrollTop = prevScrollTop;
+  } else {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+}
+// ===== v199: reply action bar helpers (⋮ convert menu) =====
+function msgDownloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+function msgEscapeHtml(str){
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function exportReplyAsPdf(text){
+  const w = window.open('', '_blank');
+  if(!w) return;
+  const html = '<html><head><meta charset="utf-8"><title>عمران AI</title><style>body{font-family:Tahoma,Arial,sans-serif;direction:rtl;padding:28px;line-height:2;color:#111;white-space:pre-wrap;word-break:break-word;}</style></head><body>' + msgEscapeHtml(text) + '</body></html>';
+  w.document.open(); w.document.write(html); w.document.close();
+  setTimeout(() => { try{ w.focus(); w.print(); }catch(e){} }, 350);
+}
+function exportReplyAsWord(text){
+  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>عمران AI</title></head><body dir="rtl" style="font-family:Tahoma,Arial,sans-serif; line-height:2; white-space:pre-wrap;">' + msgEscapeHtml(text) + '</body></html>';
+  const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+  msgDownloadBlob(blob, 'omran-ai-reply.doc');
+}
+function exportReplyAsImage(text){
+  const width = 900;
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const padding = 40;
+  const fontSize = 22;
+  ctx.font = fontSize + 'px Tahoma, Arial, sans-serif';
+  const maxWidth = width - 2 * padding;
+  const lines = [];
+  String(text || '').split('\n').forEach(paragraph => {
+    const words = paragraph.split(' ');
+    let line = '';
+    words.forEach(word => {
+      const test = line ? line + ' ' + word : word;
+      if(ctx.measureText(test).width > maxWidth && line){ lines.push(line); line = word; }
+      else line = test;
+    });
+    lines.push(line);
+  });
+  const lineHeight = Math.round(fontSize * 1.55);
+  canvas.width = width;
+  canvas.height = padding * 2 + lines.length * lineHeight;
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#111111';
+  ctx.direction = 'rtl';
+  ctx.textAlign = 'right';
+  ctx.font = fontSize + 'px Tahoma, Arial, sans-serif';
+  lines.forEach((line, i) => { ctx.fillText(line, canvas.width - padding, padding + (i + 1) * lineHeight - Math.round(fontSize * 0.4)); });
+  canvas.toBlob(blob => { if(blob) msgDownloadBlob(blob, 'omran-ai-reply.png'); }, 'image/png');
+}
+function exportReplyAsTxt(text){
+  const blob = new Blob([text || ''], { type: 'text/plain;charset=utf-8' });
+  msgDownloadBlob(blob, 'omran-ai-reply.txt');
+}
+let __msgMoreMenuOpen = null;
+function closeMsgMoreMenu(){
+  if(__msgMoreMenuOpen){ __msgMoreMenuOpen.remove(); __msgMoreMenuOpen = null; }
+}
+document.addEventListener('click', closeMsgMoreMenu);
+// ✨ v363: قدرات التطبيق داخل المحادثة نفسها — أيقونة سريعة تحت كل رد
+// + ملاحظة تلقائية تقترح الميزة المناسبة. الأزرار القديمة في ⋮ تبقى كما هي؛
+// هذا باب إضافي (المكانين) عشان المستخدم يختار اللي يريحه.
+var APP_CAPABILITIES = [
+  { id:'btnCV',       icon:'💼', ar:'مولّد السيرة الذاتية', en:'CV Builder',
+    kw:/(سيرة ذاتية|سيره ذاتيه|سي\s?في|resume|\bcv\b|خطاب تقديم|cover letter)/i },
+  { id:'btnDocs',     icon:'📄', ar:'مساعد المستندات', en:'Document Assistant',
+    kw:/(?:حلل|حلّل|اقرأ|افهم|لخص|لخّص|راجع|افحص).{0,18}(?:مستند|عقد|فاتورة|تقرير|ملف|اتفاقية|pdf)|(?:مستند|عقد|فاتورة|اتفاقية|contract|invoice)\b/i },
+  { id:'btnGov',      icon:'🧾', ar:'المعاملات الحكومية', en:'Government Services',
+    kw:/(إقامة|اقامة|رخصة تجارية|رخصه|تجديد.{0,10}(هوية|جواز|رخصة|إقامة)|تأشيرة|تاشيرة|فيزا|بلدية|معاملة حكوم|خدمة حكوم|residence visa|business license|govern)/i },
+  { id:'btnReligion', icon:'☪️', ar:'التفسير الديني', en:'Religious Guidance',
+    kw:/(ما\s?حكم|وش\s?حكم|شو\s?حكم|فتوى|حلال\s?أو?\s?حرام|تفسير\s?(آية|اية|سورة)|معنى\s?الحديث|fatwa|is it halal|is it haram)/i },
+];
+// ميزة الشخصية الكرتونية الناطقة = من الدردشة (صورة + «سوِّ منها شخصية تتكلم»)
+function startTalkingCharFlow(){
+  try{
+    var p = document.getElementById('prompt');
+    if(p){
+      var isEn = (typeof lang!=='undefined' && lang==='en');
+      p.value = isEn ? 'Turn my photo into a talking cartoon character that says: '
+                     : 'حوّل صورتي لشخصية كرتونية تتكلم وتقول: ';
+      p.focus();
+      try{ p.setSelectionRange(p.value.length, p.value.length); }catch(_){}
+    }
+    if(typeof settingsToast==='function') settingsToast((typeof lang!=='undefined'&&lang==='en')?'📎 Attach your photo, then send.':'📎 أرفق صورتك ثم أرسل.');
+  }catch(e){}
+}
+function openFeatureById(id){
+  if(id==='__talk'){ startTalkingCharFlow(); return; }
+  try{ var b=document.getElementById(id); if(b) b.click(); }catch(e){}
+}
+// ملاحظة تلقائية: تفحص رسالة المستخدم السابقة وترجّع الميزة المناسبة (أو null)
+function capabilityHintFor(userText){
+  if(!userText) return null;
+  var s = String(userText);
+  for(var i=0;i<APP_CAPABILITIES.length;i++){
+    if(APP_CAPABILITIES[i].kw.test(s)) return APP_CAPABILITIES[i];
+  }
+  return null;
+}
+// أيقونة القدرات ✨ تحت الرد → قائمة صغيرة بكل الميزات
+function openCapabilitiesMenu(anchorBtn){
+  closeMsgMoreMenu();
+  var isEn = (typeof lang!=='undefined' && lang==='en');
+  var menu = document.createElement('div');
+  menu.className = 'msgMoreMenu';
+  var list = APP_CAPABILITIES.map(function(c){ return { icon:c.icon, label:(isEn?c.en:c.ar), id:c.id }; });
+  list.push({ icon:'🎬', label:(isEn?'Talking character':'شخصية تتكلم'), id:'__talk' });
+  list.forEach(function(it){
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = it.icon + '  ' + it.label;
+    b.onclick = function(e){ e.stopPropagation(); openFeatureById(it.id); closeMsgMoreMenu(); };
+    menu.appendChild(b);
+  });
+  document.body.appendChild(menu);
+  var rect = anchorBtn.getBoundingClientRect();
+  var menuW = menu.offsetWidth || 190;
+  var menuH = menu.offsetHeight || 220;
+  var left = rect.left + window.scrollX;
+  if(left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
+  menu.style.left = Math.max(8, left) + 'px';
+  var top = rect.top + window.scrollY - menuH - 6;
+  if(top < window.scrollY + 8) top = rect.bottom + window.scrollY + 4;
+  menu.style.top = top + 'px';
+  __msgMoreMenuOpen = menu;
+}
+
+function openMsgMoreMenu(anchorBtn, text){
+  closeMsgMoreMenu();
+  const menu = document.createElement('div');
+  menu.className = 'msgMoreMenu';
+  const items = [
+    { label: t('convertToPdf') || 'تحويل إلى PDF', fn: () => exportReplyAsPdf(text) },
+    { label: t('convertToWord') || 'تحويل إلى Word', fn: () => exportReplyAsWord(text) },
+    { label: t('convertToImage') || 'تحويل إلى صورة', fn: () => exportReplyAsImage(text) },
+    { label: t('downloadTxt') || 'تنزيل نص TXT', fn: () => exportReplyAsTxt(text) },
+  ];
+  items.forEach(it => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = it.label;
+    b.onclick = (e) => { e.stopPropagation(); it.fn(); closeMsgMoreMenu(); };
+    menu.appendChild(b);
+  });
+  document.body.appendChild(menu);
+  const rect = anchorBtn.getBoundingClientRect();
+  const menuW = menu.offsetWidth || 170;
+  const menuH = menu.offsetHeight || 180;
+  let left = rect.left + window.scrollX;
+  if(left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
+  menu.style.left = Math.max(8, left) + 'px';
+  let top = rect.top + window.scrollY - menuH - 6;
+  if(top < window.scrollY + 8) top = rect.bottom + window.scrollY + 4;
+  menu.style.top = top + 'px';
+  __msgMoreMenuOpen = menu;
+}
+
+function renderCodeAndPreview(){
+  const cur = getCurrent();
+  const pyConsole = $('#pyConsole');
+  if(!cur || !cur.code){
+    if(previewFrame._imageView){
+      pyConsole.style.display = 'none';
+      previewFrame.style.display = 'block';
+      emptyState.style.display = 'none';
+      codeEl.value = '';
+      return;
+    }
+    codeEl.value = '';
+    previewFrame.style.display = 'none';
+    pyConsole.style.display = 'none';
+    emptyState.style.display = 'flex';
+    const spinnerEl = $('#emptyStateSpinner');
+    const titleEl = $('#emptyTitleEl');
+    const descEl = $('#emptyDescEl');
+    if(typeof genAbortController !== 'undefined' && genAbortController){
+      spinnerEl.style.display = 'block';
+      titleEl.textContent = t('generatingInProgressTitle');
+      descEl.innerHTML = t('generatingInProgressDesc');
+    } else {
+      spinnerEl.style.display = 'none';
+      titleEl.textContent = t('emptyTitle');
+      descEl.innerHTML = t('emptyDesc');
+    }
+    return;
+  }
+  codeEl.value = cur.code;
+  emptyState.style.display = 'none';
+  if(cur.codeType === 'python'){
+    previewFrame.style.display = 'none';
+    pyConsole.style.display = 'flex';
+    if(pyConsole._lastCode !== cur.code){
+      pyConsole._lastCode = cur.code;
+      $('#pyOutput').textContent = '';
+      $('#pyStatus').textContent = '';
+      runPythonCode(cur.code);
+    }
+  } else {
+    pyConsole.style.display = 'none';
+    previewFrame.style.display = 'block';
+    if(previewFrame._lastSrc !== cur.code){
+      previewFrame._lastSrc = cur.code;
+      previewFrame._imageView = false;
+      previewFrame.srcdoc = cur.code;
+    }
+  }
+}
+
+let pyodideInstance = null;
+let pyodideLoadingPromise = null;
+async function getPyodideInstance(){
+  if(pyodideInstance) return pyodideInstance;
+  if(!pyodideLoadingPromise){
+    $('#pyStatus').textContent = t('pythonLoadingRuntime');
+    pyodideLoadingPromise = (async () => {
+      if(!window.loadPyodide){
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js';
+          s.onload = resolve;
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
+      }
+      const inst = await window.loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/' });
+      pyodideInstance = inst;
+      return inst;
+    })();
+  }
+  return pyodideLoadingPromise;
+}
+
+async function runPythonCode(code){
+  const outputEl = $('#pyOutput');
+  const statusEl = $('#pyStatus');
+  const runBtn = $('#btnRunPython');
+  runBtn.disabled = true;
+  outputEl.textContent = '';
+  try{
+    const py = await getPyodideInstance();
+    statusEl.textContent = t('pythonRunning');
+    py.setStdout({ batched: (s) => { outputEl.textContent += s + '\n'; outputEl.scrollTop = outputEl.scrollHeight; } });
+    py.setStderr({ batched: (s) => { outputEl.textContent += s + '\n'; outputEl.scrollTop = outputEl.scrollHeight; } });
+    await py.runPythonAsync(code);
+    statusEl.textContent = t('pythonDone');
+  }catch(err){
+    outputEl.textContent += '\n⚠️ ' + (err.message || err);
+    statusEl.textContent = t('pythonError');
+  }finally{
+    runBtn.disabled = false;
+  }
+}
+
+function renderAll(keepScroll){
+  renderHistory();
+  renderMessages(keepScroll);
+  renderCodeAndPreview();
+}
+
+$('#btnNew').onclick = () => {
+  const id = 'p_' + Date.now();
+  state.projects.push({id, title: t('defaultProjectTitle'), messages: [], code: ''});
+  state.currentId = id;
+  saveState();
+  renderAll();
+  // مشروع جديد فعليًا => امسح مرجع صورة مها الأخيرة
+  if(typeof mahaClearImageRef === 'function') mahaClearImageRef();
+};
+
+$('#btnDeleteAll').onclick = () => {
+  if(!confirm(t('confirmDeleteAll'))) return;
+  // v381: حذف كل المحادثات عبر chats_delete (tombstone) — ما يمسح السيرفر بالكامل.
+  const __allIds = state.projects.map(p => p.id).filter(Boolean);
+  try{ __allIds.forEach(id => { if(window.chatsMarkDeleted) chatsMarkDeleted(id); }); }catch(err){}
+  state.projects = [];
+  const id = 'p_' + Date.now();
+  state.projects.push({id, title: t('defaultProjectTitle'), messages: [], code: ''});
+  state.currentId = id;
+  if(typeof mahaClearImageRef === 'function') mahaClearImageRef();
+  saveState();
+  try{
+    const tok = (typeof chatsAuthToken === 'function') ? chatsAuthToken() : '';
+    if(tok && __allIds.length){
+      fetch('/api/account?action=chats_delete', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: tok, ids: __allIds }),
+      }).catch(() => {});
+    }
+  }catch(err){}
+  renderAll();
+};
+
+/* v243: 💜 رأيك يهمنا — نافذة تقييم فاخرة */
+(function(){
+  const css = document.createElement('style');
+  css.textContent = `
+#fbOverlay{position:fixed;inset:0;z-index:10050;display:none;align-items:center;justify-content:center;background:rgba(8,6,20,.62);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:16px;}
+#fbOverlay.open{display:flex;animation:fbFade .3s ease;}
+@keyframes fbFade{from{opacity:0}to{opacity:1}}
+#fbCard{position:relative;width:100%;max-width:420px;max-height:92vh;overflow-y:auto;border-radius:28px;padding:2px;background:conic-gradient(from var(--fbAng,0deg),var(--accent,#8b5cf6),#06b6d4,#f59e0b,#ec4899,var(--accent,#8b5cf6));animation:fbSpin 5s linear infinite,fbPop .45s cubic-bezier(.2,1.4,.4,1);}
+@property --fbAng{syntax:'<angle>';initial-value:0deg;inherits:false;}
+@keyframes fbSpin{to{--fbAng:360deg}}
+@keyframes fbPop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+#fbInner{border-radius:26px;background:linear-gradient(160deg,rgba(22,18,42,.98),rgba(10,8,24,.98));padding:28px 24px 24px;text-align:center;position:relative;overflow:hidden;}
+#fbInner::before{content:'';position:absolute;top:-70px;right:-70px;width:190px;height:190px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent,#8b5cf6) 32%,transparent),transparent 70%);pointer-events:none;}
+#fbInner::after{content:'';position:absolute;bottom:-80px;left:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(6,182,212,.18),transparent 70%);pointer-events:none;}
+#fbHeart{width:64px;height:64px;margin:0 auto 12px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--accent,#8b5cf6),#ec4899);box-shadow:0 0 32px color-mix(in srgb,var(--accent,#8b5cf6) 55%,transparent);animation:fbBeat 1.6s ease-in-out infinite;}
+@keyframes fbBeat{0%,100%{transform:scale(1)}12%{transform:scale(1.12)}24%{transform:scale(1)}36%{transform:scale(1.08)}48%{transform:scale(1)}}
+#fbTitle{font-size:21px;font-weight:800;background:linear-gradient(90deg,#fff,color-mix(in srgb,var(--accent,#8b5cf6) 60%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:4px;}
+#fbSub{font-size:13px;color:var(--muted,#9aa);margin-bottom:18px;}
+#fbStars{display:flex;justify-content:center;gap:8px;margin-bottom:18px;direction:ltr;}
+.fbStar{width:42px;height:42px;cursor:pointer;transition:transform .18s;fill:none;stroke:#4b476b;stroke-width:1.6;}
+.fbStar:hover{transform:scale(1.22) rotate(-8deg);}
+.fbStar.on{fill:url(#fbGold);stroke:#f5b942;filter:drop-shadow(0 0 8px rgba(245,185,66,.65));animation:fbStarPop .35s cubic-bezier(.2,1.6,.4,1);}
+@keyframes fbStarPop{50%{transform:scale(1.35)}}
+#fbChips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-bottom:16px;}
+.fbChip{padding:7px 14px;border-radius:999px;font-size:12.5px;cursor:pointer;color:#cfcbe8;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);transition:all .2s;user-select:none;}
+.fbChip.on{background:linear-gradient(135deg,var(--accent,#8b5cf6),#ec4899);border-color:transparent;color:#fff;box-shadow:0 4px 14px color-mix(in srgb,var(--accent,#8b5cf6) 45%,transparent);transform:translateY(-1px);}
+#fbNote{width:100%;min-height:72px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#eee;font-size:13.5px;padding:12px;resize:none;outline:none;margin-bottom:16px;font-family:inherit;}
+#fbNote:focus{border-color:var(--accent,#8b5cf6);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent,#8b5cf6) 22%,transparent);}
+#fbSendBtn{width:100%;padding:13px;border:none;border-radius:14px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(135deg,var(--accent,#8b5cf6),#ec4899);position:relative;overflow:hidden;transition:transform .15s,box-shadow .2s;}
+#fbSendBtn:hover{transform:translateY(-2px);box-shadow:0 8px 24px color-mix(in srgb,var(--accent,#8b5cf6) 50%,transparent);}
+#fbSendBtn::after{content:'';position:absolute;top:0;left:-80%;width:50%;height:100%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.35),transparent);animation:fbShine 2.8s ease-in-out infinite;}
+@keyframes fbShine{0%,60%{left:-80%}100%{left:130%}}
+#fbClose{position:absolute;top:14px;inset-inline-end:14px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,.08);color:#bbb;font-size:16px;cursor:pointer;z-index:2;}
+#fbClose:hover{background:rgba(255,255,255,.16);color:#fff;}
+#fbThanksView{display:none;padding:22px 0 10px;}
+#fbCheck{width:84px;height:84px;margin:0 auto 16px;}
+#fbCheck circle{stroke:#22c55e;stroke-width:2.4;fill:none;stroke-dasharray:245;stroke-dashoffset:245;animation:fbDraw .7s ease forwards;}
+#fbCheck path{stroke:#22c55e;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:60;stroke-dashoffset:60;animation:fbDraw .5s .5s ease forwards;}
+@keyframes fbDraw{to{stroke-dashoffset:0}}
+.fbConf{position:absolute;top:38%;left:50%;width:9px;height:9px;border-radius:2px;opacity:0;pointer-events:none;animation:fbConf 1.3s ease-out forwards;}
+@keyframes fbConf{0%{opacity:1;transform:translate(0,0) rotate(0)}100%{opacity:0;transform:translate(var(--cx),var(--cy)) rotate(540deg)}}
+#fbOwnerBtn{margin-top:14px;background:none;border:none;color:var(--muted,#99a);font-size:12px;cursor:pointer;text-decoration:underline;position:relative;z-index:2;}
+#fbList{display:none;text-align:start;max-height:52vh;overflow-y:auto;position:relative;z-index:2;}
+.fbItem{padding:12px 4px;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px;color:#ddd;}
+.fbItem .fbStarsSm{color:#f5b942;font-size:13px;letter-spacing:2px;direction:ltr;display:inline-block;}
+.fbItem .fbMeta{font-size:11px;color:var(--muted,#889);margin-top:3px;}
+@media(max-width:520px){#fbCard{max-width:96vw;}#fbStars .fbStar{width:38px;height:38px;}}
+`;
+  document.head.appendChild(css);
+
+  const wrap = document.createElement('div');
+  wrap.id = 'fbOverlay';
+  wrap.innerHTML = `
+  <div id="fbCard"><div id="fbInner">
+    <button id="fbClose" type="button">✕</button>
+    <svg width="0" height="0" style="position:absolute;"><defs><linearGradient id="fbGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ffe08a"/><stop offset="100%" stop-color="#f5a623"/></linearGradient></defs></svg>
+    <div id="fbFormView">
+      <div id="fbHeart"><svg width="30" height="30" viewBox="0 0 24 24" fill="#fff" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>
+      <div id="fbTitle"></div>
+      <div id="fbSub"></div>
+      <div id="fbStars"></div>
+      <div id="fbChips"></div>
+      <textarea id="fbNote"></textarea>
+      <button id="fbSendBtn" type="button"></button>
+      <button id="fbOwnerBtn" type="button" style="display:none;"></button>
+    </div>
+    <div id="fbThanksView">
+      <svg id="fbCheck" viewBox="0 0 90 90"><circle cx="45" cy="45" r="39"/><path d="M28 46 l12 12 l22 -24"/></svg>
+      <div id="fbThanksT" style="font-size:19px;font-weight:800;color:#fff;margin-bottom:6px;"></div>
+      <div id="fbThanksS" style="font-size:13px;color:var(--muted,#9aa);"></div>
+    </div>
+    <div id="fbList"></div>
+  </div></div>`;
+  document.body.appendChild(wrap);
+
+  let fbRating = 0;
+  const fbChipKeys = ['fbChipEasy','fbChipDesign','fbChipAI','fbChipSlow','fbChipBug'];
+  const starSvg = '<svg class="fbStar" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>';
+
+  function fbIsOwner(){
+    try{ return String((typeof authGet==='function'&&authGet('aiapp_username'))||'').trim().toLowerCase()==='omran'; }catch(_){ return false; }
+  }
+
+  function fbBuild(){
+    document.getElementById('fbTitle').textContent = t('fbTitle');
+    document.getElementById('fbSub').textContent = t('fbSubtitle');
+    document.getElementById('fbNote').placeholder = t('fbNotePh');
+    document.getElementById('fbSendBtn').textContent = t('fbSend');
+    const stars = document.getElementById('fbStars');
+    stars.innerHTML = starSvg.repeat(5);
+    [...stars.children].forEach((s,i)=>{
+      s.onclick = ()=>{ fbRating = i+1; [...stars.children].forEach((x,j)=>x.classList.toggle('on', j<fbRating)); };
+    });
+    const chips = document.getElementById('fbChips');
+    chips.innerHTML = '';
+    fbChipKeys.forEach(k=>{
+      const c = document.createElement('span');
+      c.className = 'fbChip'; c.dataset.k = k; c.textContent = t(k);
+      c.onclick = ()=>c.classList.toggle('on');
+      chips.appendChild(c);
+    });
+    const ob = document.getElementById('fbOwnerBtn');
+    if(fbIsOwner()){ ob.style.display='inline-block'; ob.textContent = t('fbOwnerList'); }
+  }
+
+  window.openFeedback = function(){
+    fbRating = 0;
+    fbBuild();
+    document.getElementById('fbFormView').style.display='block';
+    document.getElementById('fbThanksView').style.display='none';
+    document.getElementById('fbList').style.display='none';
+    document.getElementById('fbNote').value='';
+    wrap.classList.add('open');
+  };
+  document.getElementById('fbClose').onclick = ()=>wrap.classList.remove('open');
+  wrap.onclick = (e)=>{ if(e.target===wrap) wrap.classList.remove('open'); };
+
+  document.getElementById('fbSendBtn').onclick = async ()=>{
+    if(!fbRating){ document.getElementById('fbStars').style.animation='fbStarPop .35s'; setTimeout(()=>document.getElementById('fbStars').style.animation='',400); return; }
+    const chips = [...document.querySelectorAll('#fbChips .fbChip.on')].map(c=>c.dataset.k);
+    const note = document.getElementById('fbNote').value.trim();
+    let user='guest'; try{ user = (typeof authGet==='function'&&authGet('aiapp_username'))||'guest'; }catch(_){ }
+    try{
+      fetch('/api/system?action=feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rating:fbRating,chips,note,user,lang:(typeof lang!=='undefined'?lang:'')})});
+    }catch(_){ }
+    localStorage.setItem('fbDone','1');
+    document.getElementById('fbFormView').style.display='none';
+    const tv = document.getElementById('fbThanksView');
+    tv.style.display='block';
+    document.getElementById('fbThanksT').textContent = t('fbThanks');
+    document.getElementById('fbThanksS').textContent = t('fbThanksSub');
+    const colors=['#8b5cf6','#ec4899','#f5b942','#22c55e','#06b6d4'];
+    for(let i=0;i<26;i++){
+      const p=document.createElement('span'); p.className='fbConf';
+      p.style.background=colors[i%colors.length];
+      p.style.setProperty('--cx',(Math.random()*320-160)+'px');
+      p.style.setProperty('--cy',(Math.random()*300-200)+'px');
+      p.style.animationDelay=(Math.random()*.25)+'s';
+      document.getElementById('fbInner').appendChild(p);
+      setTimeout(()=>p.remove(),1800);
+    }
+    setTimeout(()=>wrap.classList.remove('open'),2600);
+  };
+
+  document.getElementById('fbOwnerBtn').onclick = async ()=>{
+    const list = document.getElementById('fbList');
+    document.getElementById('fbFormView').style.display='none';
+    list.style.display='block';
+    list.innerHTML = '<div style="text-align:center;color:#889;padding:20px;">…</div>';
+    try{
+      const r = await fetch('/api/system?action=feedback&key=omran-monitor-2026',{cache:'no-store'});
+      const d = await r.json();
+      const items = (d&&d.feedback)||[];
+      const reports = (d&&d.reports)||[];
+      if(!items.length && !reports.length){ list.innerHTML = '<div style="text-align:center;color:#889;padding:20px;">'+t('fbEmpty')+'</div>'; return; }
+      let html = items.map(it=>{
+        const stars='★'.repeat(it.rating)+'☆'.repeat(5-it.rating);
+        const chips=(it.chips||[]).map(k=>t(k)).join(' · ');
+        return '<div class="fbItem"><span class="fbStarsSm">'+stars+'</span>'+(chips?' — '+chips:'')+(it.note?'<div style="margin-top:4px;">'+it.note.replace(/</g,'&lt;')+'</div>':'')+'<div class="fbMeta">'+(it.user||'guest')+' · '+String(it.ts||'').slice(0,16).replace('T',' ')+'</div></div>';
+      }).join('');
+      if(reports.length){
+        html += '<div style="margin:14px 0 6px;font-weight:700;color:#ff5c6c;">🚩 بلاغات المحتوى ('+reports.length+')</div>';
+        html += reports.map(rp=>'<div class="fbItem" style="border-color:rgba(255,92,108,.35);"><div style="white-space:pre-wrap;word-break:break-word;">'+String(rp.content||'').slice(0,300).replace(/</g,'&lt;')+'</div><div class="fbMeta">'+(rp.user||'guest')+(rp.provider?' · '+rp.provider:'')+' · '+String(rp.ts||'').slice(0,16).replace('T',' ')+'</div></div>').join('');
+      }
+      list.innerHTML = html;
+    }catch(e){ list.innerHTML = '<div style="text-align:center;color:#e66;padding:20px;">⚠️</div>'; }
+  };
+
+  const fbBtn = document.getElementById('btnFeedback');
+  if(fbBtn) fbBtn.onclick = (e)=>{ e.stopPropagation(); try{document.getElementById('plusToolsPopup').classList.remove('open');}catch(_){ } window.openFeedback(); };
+
+  // عرض ذكي مرة واحدة بعد 10 رسائل ناجحة
+  window.__fbCountMsg = function(){
+    try{
+      if(localStorage.getItem('fbDone') || localStorage.getItem('fbAsked')) return;
+      const n = (parseInt(localStorage.getItem('fbMsgCount')||'0',10)||0)+1;
+      localStorage.setItem('fbMsgCount', String(n));
+      if(n>=10){ localStorage.setItem('fbAsked','1'); setTimeout(()=>window.openFeedback(),1500); }
+    }catch(_){ }
+  };
+})();
+
+/* v315: 📄 تحويل آخر رد إلى PDF — من قائمة ⋮ في مربع الكتابة */
+(function(){
+  const b = document.getElementById('btnChatToPdf');
+  if(!b) return;
+  b.onclick = (e) => {
+    e.stopPropagation();
+    try{ document.getElementById('plusToolsPopup').classList.remove('open'); }catch(_){}
+    const cur = state.projects.find(p => p.id === state.currentId);
+    let src = null;
+    if(cur && cur.messages){
+      for(let i = cur.messages.length - 1; i >= 0; i--){
+        const m = cur.messages[i];
+        if(m.role !== 'user' && m.content && !m._loading && String(m.content).trim().length > 20){ src = String(m.content); break; }
+      }
+    }
+    if(!src){ alert(t('chatToPdfEmpty') || 'لا يوجد رد لتحويله بعد.'); return; }
+    exportTextAsPdf(src);
+  };
+})();
+
+/* v225: 🗑️ حذف المحادثة الحالية فقط — من قائمة ⋮ في مربع الكتابة */
+(function(){
+  const b = document.getElementById('btnDeleteChat');
+  if(!b) return;
+  b.onclick = (e) => {
+    e.stopPropagation();
+    if(!confirm(t('confirmDeleteChat'))) return;
+    const __delId = state.currentId;
+    try{ if(window.chatsMarkDeleted) chatsMarkDeleted(__delId); }catch(err){}
+    state.projects = state.projects.filter(p => p.id !== __delId);
+    if(!state.projects.length){
+      state.projects.push({id: 'p_' + Date.now(), title: t('defaultProjectTitle'), messages: [], code: ''});
+    }
+    state.currentId = state.projects[state.projects.length - 1].id;
+    if(typeof mahaClearImageRef === 'function') mahaClearImageRef();
+    saveState();
+    // v381: حذف من السيرفر بـ tombstone — لا يرجع أبدًا من أي جهاز.
+    try{
+      const tok = (typeof chatsAuthToken === 'function') ? chatsAuthToken() : '';
+      if(tok){
+        fetch('/api/account?action=chats_delete', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: tok, ids: [__delId] }),
+        }).catch(() => {});
+      }
+    }catch(err){}
+    renderAll();
+    setTimeout(() => { const p = document.getElementById('plusToolsPopup'); if(p) p.classList.remove('show'); }, 150);
+  };
+})();
+
+/* ---------- v214: قائمة المشاريع المطوية (مشروع جديد / بحث عن مشروع / حذف الكل) ---------- */
+(function(){
+  const toggle = document.getElementById('btnProjMenuToggle');
+  const panel = document.getElementById('projMenuPanel');
+  const chev = document.getElementById('projMenuChevron');
+  const searchBtn = document.getElementById('btnProjSearch');
+  const searchInput = document.getElementById('projSearchInput');
+  if(!toggle || !panel) return;
+  toggle.onclick = (e) => {
+    e.stopPropagation();
+    const open = panel.style.display !== 'flex';
+    panel.style.display = open ? 'flex' : 'none';
+    if(chev) chev.style.transform = open ? 'rotate(180deg)' : '';
+    if(!open && searchInput){ searchInput.style.display = 'none'; searchInput.value = ''; filterProjects(''); }
+  };
+  function filterProjects(q){
+    const norm = String(q || '').trim().toLowerCase();
+    document.querySelectorAll('#history .hist-item').forEach(item => {
+      const title = (item.querySelector('.hist-title') || {}).textContent || '';
+      item.style.display = (!norm || title.toLowerCase().includes(norm)) ? '' : 'none';
+    });
+  }
+  if(searchBtn && searchInput){
+    searchBtn.onclick = (e) => {
+      e.stopPropagation();
+      const show = searchInput.style.display === 'none' || !searchInput.style.display;
+      searchInput.style.display = show ? 'block' : 'none';
+      if(show){ searchInput.focus(); } else { searchInput.value = ''; filterProjects(''); }
+    };
+    searchInput.addEventListener('input', () => filterProjects(searchInput.value));
+  }
+  // الأسماء تتغير مع اللغة (بدون رموز)
+  window.__refreshProjMenuLabels = function(){
+    try{
+      const clean = s => String(s || '').replace(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/gu, '').replace(/^[+➕🗑️\s]+/u, '').trim();
+      const bNew = document.getElementById('btnNew');
+      const bDel = document.getElementById('btnDeleteAll');
+      if(bNew) bNew.textContent = clean(t('newProject')) || 'مشروع جديد';
+      if(bDel) bDel.textContent = clean(t('deleteAllProjects')) || 'حذف الكل';
+      if(searchBtn) searchBtn.textContent = t('projSearchLabel') || 'بحث عن مشروع';
+      if(searchInput) searchInput.placeholder = t('projSearchLabel') || 'بحث عن مشروع';
+    }catch(_){}
+  };
+  window.__refreshProjMenuLabels();
+})();
+
+/* ---------- 🧩 Templates gallery ---------- */
+(function(){
+  const modal = $('#templatesModal');
+  const grid = $('#templatesGrid');
+  const previewWrap = $('#templatePreviewWrap');
+  const previewFrame = $('#templatePreviewFrame');
+  let pendingTpl = null;
+  function currentLang(){ const L = (typeof lang !== 'undefined') ? lang : 'ar'; return ['ar','en','fr','hi','ur','bn','ne'].includes(L) ? L : 'en'; }
+  function renderTemplates(){
+    if(typeof TEMPLATES === 'undefined') return;
+    const L = currentLang();
+    grid.innerHTML = '';
+    TEMPLATES.forEach(tpl => {
+      const card = document.createElement('div');
+      card.style.cssText = 'background:#161622; border:1px solid #262b36; border-radius:14px; padding:20px; text-align:center; cursor:pointer; transition:.15s;';
+      card.onmouseenter = () => card.style.borderColor = 'var(--accent)';
+      card.onmouseleave = () => card.style.borderColor = '#262b36';
+      card.innerHTML = `
+        <div style="font-size:36px; margin-bottom:10px;">${tpl.icon}</div>
+        <div style="font-weight:700; font-size:15px; margin-bottom:6px;">${tpl.title[L]}</div>
+        <div style="color:#a7adc0; font-size:12.5px; line-height:1.5;">${tpl.desc[L]}</div>
+      `;
+      card.onclick = () => showTemplatePreview(tpl);
+      grid.appendChild(card);
+    });
+  }
+  function showTemplatePreview(tpl){
+    pendingTpl = tpl;
+    previewFrame.srcdoc = tpl.code;
+    grid.style.display = 'none';
+    previewWrap.style.display = 'block';
+  }
+  function closeTemplatePreview(){
+    pendingTpl = null;
+    previewFrame.srcdoc = '';
+    previewWrap.style.display = 'none';
+    grid.style.display = 'grid';
+  }
+  function useTemplate(tpl){
+    const L = currentLang();
+    const id = 'p_' + Date.now();
+    state.projects.push({id, title: tpl.title[L], messages: [], code: tpl.code});
+    state.currentId = id;
+    saveState();
+    renderAll();
+    closeTemplatePreview();
+    modal.close();
+  }
+  $('#btnTemplates').onclick = () => { closeTemplatePreview(); renderTemplates(); modal.showModal(); if(typeof closeHeaderMenu === 'function') closeHeaderMenu(); };
+  $('#btnCloseTemplates').onclick = () => { closeTemplatePreview(); modal.close(); };
+  $('#btnClosePreviewTpl').onclick = () => closeTemplatePreview();
+  $('#btnUseThisTemplate').onclick = () => { if(pendingTpl) useTemplate(pendingTpl); };
+  modal.addEventListener('click', (e) => { if(e.target === modal){ closeTemplatePreview(); modal.close(); } });
+})();
+
+// tabs
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    $('#panel-' + tab.dataset.tab).classList.add('active');
+    if(tab.dataset.tab === 'voice' && typeof mahaStartCall === 'function' && !mahaCallActive){
+      mahaStartCall('builder');
+    }
+  };
+});
+
+/* v338: حجم خط المحادثة */
+(function(){
+  function applyFS(v){
+    document.documentElement.classList.remove('fs-small','fs-large','fs-xlarge');
+    if(v && v !== 'normal') document.documentElement.classList.add('fs-' + v);
+    document.querySelectorAll('.fontSizeBtn').forEach(b => b.classList.toggle('active', b.dataset.fs === v));
+  }
+  let saved = 'normal';
+  try{ saved = localStorage.getItem('chatFontSize') || 'normal'; }catch(e){}
+  applyFS(saved);
+  document.querySelectorAll('.fontSizeBtn').forEach(b => {
+    b.onclick = function(){
+      try{ localStorage.setItem('chatFontSize', b.dataset.fs); }catch(e){}
+      applyFS(b.dataset.fs);
+    };
+  });
+})();
+
+/* v336: طي/فتح لوحة الكود والمعاينة (كمبيوتر فقط) */
+(function(){
+  const wa = document.getElementById('workarea');
+  const rz = document.getElementById('resizer2');
+  const tabs = document.getElementById('tabs');
+  if(!wa || !tabs) return;
+  const btn = document.createElement('button');
+  btn.id = 'waCollapseBtn'; btn.type = 'button'; btn.setAttribute('aria-label','طي اللوحة');
+  btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><line x1="15" y1="4" x2="15" y2="20"></line></svg>';
+  tabs.insertBefore(btn, tabs.firstElementChild);
+  const ro = document.createElement('button');
+  ro.id = 'waReopen'; ro.type = 'button'; ro.setAttribute('aria-label','فتح اللوحة');
+  ro.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>';
+  document.body.appendChild(ro);
+  function setWA(collapsed){
+    wa.classList.toggle('waCollapsed', collapsed);
+    if(rz) rz.classList.toggle('waCollapsed', collapsed);
+    document.body.classList.toggle('waCollapsedMode', collapsed);
+    try{ localStorage.setItem('waCollapsed', collapsed ? '1' : '0'); }catch(e){}
+  }
+  btn.onclick = () => setWA(true);
+  ro.onclick = () => setWA(false);
+  window.waAutoExpand = function(){ if(wa.classList.contains('waCollapsed')) setWA(false); };
+  try{ if(localStorage.getItem('waCollapsed') === '1' && !document.documentElement.classList.contains('mobile-ui')) setWA(true); }catch(e){}
+  // كود جديد يوصل → اللوحة تفتح تلقائيًا
+  try{
+    if(typeof renderCodeAndPreview === 'function'){
+      const _rcp336 = renderCodeAndPreview;
+      let _waLastCode = null;
+      renderCodeAndPreview = function(){
+        const r = _rcp336.apply(this, arguments);
+        try{
+          const cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+          const code = (cur && cur.code) || '';
+          if(_waLastCode !== null && code && code !== _waLastCode && !document.documentElement.classList.contains('mobile-ui')) window.waAutoExpand();
+          _waLastCode = code;
+        }catch(e){}
+        return r;
+      };
+    }
+  }catch(e){}
+})();
+
+// ===== Theme & provider colors =====
+const THEME_DEFAULTS = {
+  accent: '#7c5cff', text: '#eef0f6', bg: '#0a0b10',
+  userBubble: 'var(--accent)', assistantBubble: '#161622'
+};
+const PROVIDER_COLOR_DEFAULTS = {
+  'OpenAI': '#10a37f',
+  'Google Gemini': '#4285f4',
+  'Groq': '#f55036',
+  'Anthropic Claude': '#d97757',
+  'OpenRouter': '#6467f2',
+  'Perplexity': '#20808d',
+  'Mistral AI': '#ff7000',
+  'DeepSeek': '#4d6bfe',
+  'Cohere': '#39594d'
+};
+// Maps the internal provider key (used in localStorage 'aiapp_provider' and
+// callProviderAI) to the display label used as the key in PROVIDER_COLOR_DEFAULTS.
+function providerPickToast(){
+  try{
+    const cur = getCurrent();
+    const names = (cur && cur.continueProviders || []).map(k => PROVIDER_KEY_LABELS[k] || k);
+    const ar = (localStorage.getItem('aiapp_lang') || 'ar') === 'ar';
+    const msg = names.length
+      ? (ar ? '✅ أسئلتك القادمة ستذهب إلى: ' + names.join('، ') + ' فقط' : '✅ Next questions go to: ' + names.join(', ') + ' only')
+      : (ar ? '↩️ رجعنا للوضع الافتراضي' : '↩️ Back to default');
+    let el = document.getElementById('provPickToast');
+    if(!el){
+      el = document.createElement('div');
+      el.id = 'provPickToast';
+      el.style.cssText = 'position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:#1c2230; color:#fff; padding:10px 16px; border-radius:20px; font-size:13px; z-index:9999; box-shadow:0 4px 18px rgba(0,0,0,.4); transition:opacity .3s; max-width:90vw; text-align:center;';
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.style.opacity = '1';
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.style.opacity = '0'; }, 2500);
+  }catch(e){}
+}
+const PROVIDER_KEY_LABELS = {
+  openai: 'OpenAI',
+  gemini: 'Google Gemini',
+  groq: 'Groq',
+  claude: 'Anthropic Claude',
+  openrouter: 'OpenRouter',
+  perplexity: 'Perplexity',
+  mistral: 'Mistral AI',
+  deepseek: 'DeepSeek',
+  cohere: 'Cohere'
+};
+// ===== المزودين التسعة: شبكة الدرج الجانبي + شريط التلفون (شعارات أصلية) =====
+const PROVIDER_LOGOS = {"openai":"<svg fill=\"currentColor\" fill-rule=\"evenodd\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M9.205 8.658v-2.26c0-.19.072-.333.238-.428l4.543-2.616c.619-.357 1.356-.523 2.117-.523 2.854 0 4.662 2.212 4.662 4.566 0 .167 0 .357-.024.547l-4.71-2.759a.797.797 0 00-.856 0l-5.97 3.473zm10.609 8.8V12.06c0-.333-.143-.57-.429-.737l-5.97-3.473 1.95-1.118a.433.433 0 01.476 0l4.543 2.617c1.309.76 2.189 2.378 2.189 3.948 0 1.808-1.07 3.473-2.76 4.163zM7.802 12.703l-1.95-1.142c-.167-.095-.239-.238-.239-.428V5.899c0-2.545 1.95-4.472 4.591-4.472 1 0 1.927.333 2.712.928L8.23 5.067c-.285.166-.428.404-.428.737v6.898zM12 15.128l-2.795-1.57v-3.33L12 8.658l2.795 1.57v3.33L12 15.128zm1.796 7.23c-1 0-1.927-.332-2.712-.927l4.686-2.712c.285-.166.428-.404.428-.737v-6.898l1.974 1.142c.167.095.238.238.238.428v5.233c0 2.545-1.974 4.472-4.614 4.472zm-5.637-5.303l-4.544-2.617c-1.308-.761-2.188-2.378-2.188-3.948A4.482 4.482 0 014.21 6.327v5.423c0 .333.143.571.428.738l5.947 3.449-1.95 1.118a.432.432 0 01-.476 0zm-.262 3.9c-2.688 0-4.662-2.021-4.662-4.519 0-.19.024-.38.047-.57l4.686 2.71c.286.167.571.167.856 0l5.97-3.448v2.26c0 .19-.07.333-.237.428l-4.543 2.616c-.619.357-1.356.523-2.117.523zm5.899 2.83a5.947 5.947 0 005.827-4.756C22.287 18.339 24 15.84 24 13.296c0-1.665-.713-3.282-1.998-4.448.119-.5.19-.999.19-1.498 0-3.401-2.759-5.947-5.946-5.947-.642 0-1.26.095-1.88.31A5.962 5.962 0 0010.205 0a5.947 5.947 0 00-5.827 4.757C1.713 5.447 0 7.945 0 10.49c0 1.666.713 3.283 1.998 4.448-.119.5-.19 1-.19 1.499 0 3.401 2.759 5.946 5.946 5.946.642 0 1.26-.095 1.88-.309a5.96 5.96 0 004.162 1.713z\"></path></svg>","claude":"<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M4.709 15.955l4.72-2.647.08-.23-.08-.128H9.2l-.79-.048-2.698-.073-2.339-.097-2.266-.122-.571-.121L0 11.784l.055-.352.48-.321.686.06 1.52.103 2.278.158 1.652.097 2.449.255h.389l.055-.157-.134-.098-.103-.097-2.358-1.596-2.552-1.688-1.336-.972-.724-.491-.364-.462-.158-1.008.656-.722.881.06.225.061.893.686 1.908 1.476 2.491 1.833.365.304.145-.103.019-.073-.164-.274-1.355-2.446-1.446-2.49-.644-1.032-.17-.619a2.97 2.97 0 01-.104-.729L6.283.134 6.696 0l.996.134.42.364.62 1.414 1.002 2.229 1.555 3.03.456.898.243.832.091.255h.158V9.01l.128-1.706.237-2.095.23-2.695.08-.76.376-.91.747-.492.584.28.48.685-.067.444-.286 1.851-.559 2.903-.364 1.942h.212l.243-.242.985-1.306 1.652-2.064.73-.82.85-.904.547-.431h1.033l.76 1.129-.34 1.166-1.064 1.347-.881 1.142-1.264 1.7-.79 1.36.073.11.188-.02 2.856-.606 1.543-.28 1.841-.315.833.388.091.395-.328.807-1.969.486-2.309.462-3.439.813-.042.03.049.061 1.549.146.662.036h1.622l3.02.225.79.522.474.638-.079.485-1.215.62-1.64-.389-3.829-.91-1.312-.329h-.182v.11l1.093 1.068 2.006 1.81 2.509 2.33.127.578-.322.455-.34-.049-2.205-1.657-.851-.747-1.926-1.62h-.128v.17l.444.649 2.345 3.521.122 1.08-.17.353-.608.213-.668-.122-1.374-1.925-1.415-2.167-1.143-1.943-.14.08-.674 7.254-.316.37-.729.28-.607-.461-.322-.747.322-1.476.389-1.924.315-1.53.286-1.9.17-.632-.012-.042-.14.018-1.434 1.967-2.18 2.945-1.726 1.845-.414.164-.717-.37.067-.662.401-.589 2.388-3.036 1.44-1.882.93-1.086-.006-.158h-.055L4.132 18.56l-1.13.146-.487-.456.061-.746.231-.243 1.908-1.312-.006.006z\" fill=\"#D97757\" fill-rule=\"nonzero\"></path></svg>","gemini":"<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z\" fill=\"#3186FF\"></path><path d=\"M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z\" fill=\"url(#lobe-icons-gemini-0-_R_0_)\"></path><path d=\"M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z\" fill=\"url(#lobe-icons-gemini-1-_R_0_)\"></path><path d=\"M20.616 10.835a14.147 14.147 0 01-4.45-3.001 14.111 14.111 0 01-3.678-6.452.503.503 0 00-.975 0 14.134 14.134 0 01-3.679 6.452 14.155 14.155 0 01-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 000 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 014.45 3.001 14.112 14.112 0 013.679 6.453.502.502 0 00.975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 013.001-4.45 14.113 14.113 0 016.453-3.678.503.503 0 000-.975 13.245 13.245 0 01-2.003-.678z\" fill=\"url(#lobe-icons-gemini-2-_R_0_)\"></path><defs><linearGradient gradientUnits=\"userSpaceOnUse\" id=\"lobe-icons-gemini-0-_R_0_\" x1=\"7\" x2=\"11\" y1=\"15.5\" y2=\"12\"><stop stop-color=\"#08B962\"></stop><stop offset=\"1\" stop-color=\"#08B962\" stop-opacity=\"0\"></stop></linearGradient><linearGradient gradientUnits=\"userSpaceOnUse\" id=\"lobe-icons-gemini-1-_R_0_\" x1=\"8\" x2=\"11.5\" y1=\"5.5\" y2=\"11\"><stop stop-color=\"#F94543\"></stop><stop offset=\"1\" stop-color=\"#F94543\" stop-opacity=\"0\"></stop></linearGradient><linearGradient gradientUnits=\"userSpaceOnUse\" id=\"lobe-icons-gemini-2-_R_0_\" x1=\"3.5\" x2=\"17.5\" y1=\"13.5\" y2=\"12\"><stop stop-color=\"#FABC12\"></stop><stop offset=\".46\" stop-color=\"#FABC12\" stop-opacity=\"0\"></stop></linearGradient></defs></svg>","mistral":"<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M3.428 3.4h3.429v3.428H3.428V3.4zm13.714 0h3.43v3.428h-3.43V3.4z\" fill=\"gold\"></path><path d=\"M3.428 6.828h6.857v3.429H3.429V6.828zm10.286 0h6.857v3.429h-6.857V6.828z\" fill=\"#FFAF00\"></path><path d=\"M3.428 10.258h17.144v3.428H3.428v-3.428z\" fill=\"#FF8205\"></path><path d=\"M3.428 13.686h3.429v3.428H3.428v-3.428zm6.858 0h3.429v3.428h-3.429v-3.428zm6.856 0h3.43v3.428h-3.43v-3.428z\" fill=\"#FA500F\"></path><path d=\"M0 17.114h10.286v3.429H0v-3.429zm13.714 0H24v3.429H13.714v-3.429z\" fill=\"#E10500\"></path></svg>","perplexity":"<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M19.785 0v7.272H22.5V17.62h-2.935V24l-7.037-6.194v6.145h-1.091v-6.152L4.392 24v-6.465H1.5V7.188h2.884V0l7.053 6.494V.19h1.09v6.49L19.786 0zm-7.257 9.044v7.319l5.946 5.234V14.44l-5.946-5.397zm-1.099-.08l-5.946 5.398v7.235l5.946-5.234V8.965zm8.136 7.58h1.844V8.349H13.46l6.105 5.54v2.655zm-8.982-8.28H2.59v8.195h1.8v-2.576l6.192-5.62zM5.475 2.476v4.71h5.115l-5.115-4.71zm13.219 0l-5.115 4.71h5.115v-4.71z\" fill=\"#22B8CD\" fill-rule=\"nonzero\"></path></svg>","deepseek":"<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M23.748 4.482c-.254-.124-.364.113-.512.234-.051.039-.094.09-.137.136-.372.397-.806.657-1.373.626-.829-.046-1.537.214-2.163.848-.133-.782-.575-1.248-1.247-1.548-.352-.156-.708-.311-.955-.65-.172-.241-.219-.51-.305-.774-.055-.16-.11-.323-.293-.35-.2-.031-.278.136-.356.276-.313.572-.434 1.202-.422 1.84.027 1.436.633 2.58 1.838 3.393.137.093.172.187.129.323-.082.28-.18.552-.266.833-.055.179-.137.217-.329.14a5.526 5.526 0 01-1.736-1.18c-.857-.828-1.631-1.742-2.597-2.458a11.365 11.365 0 00-.689-.471c-.985-.957.13-1.743.388-1.836.27-.098.093-.432-.779-.428-.872.004-1.67.295-2.687.684a3.055 3.055 0 01-.465.137 9.597 9.597 0 00-2.883-.102c-1.885.21-3.39 1.102-4.497 2.623C.082 8.606-.231 10.684.152 12.85c.403 2.284 1.569 4.175 3.36 5.653 1.858 1.533 3.997 2.284 6.438 2.14 1.482-.085 3.133-.284 4.994-1.86.47.234.962.327 1.78.397.63.059 1.236-.03 1.705-.128.735-.156.684-.837.419-.961-2.155-1.004-1.682-.595-2.113-.926 1.096-1.296 2.746-2.642 3.392-7.003.05-.347.007-.565 0-.845-.004-.17.035-.237.23-.256a4.173 4.173 0 001.545-.475c1.396-.763 1.96-2.015 2.093-3.517.02-.23-.004-.467-.247-.588zM11.581 18c-2.089-1.642-3.102-2.183-3.52-2.16-.392.024-.321.471-.235.763.09.288.207.486.371.739.114.167.192.416-.113.603-.673.416-1.842-.14-1.897-.167-1.361-.802-2.5-1.86-3.301-3.307-.774-1.393-1.224-2.887-1.298-4.482-.02-.386.093-.522.477-.592a4.696 4.696 0 011.529-.039c2.132.312 3.946 1.265 5.468 2.774.868.86 1.525 1.887 2.202 2.891.72 1.066 1.494 2.082 2.48 2.914.348.292.625.514.891.677-.802.09-2.14.11-3.054-.614zm1-6.44a.306.306 0 01.415-.287.302.302 0 01.2.288.306.306 0 01-.31.307.303.303 0 01-.304-.308zm3.11 1.596c-.2.081-.399.151-.59.16a1.245 1.245 0 01-.798-.254c-.274-.23-.47-.358-.552-.758a1.73 1.73 0 01.016-.588c.07-.327-.008-.537-.239-.727-.187-.156-.426-.199-.688-.199a.559.559 0 01-.254-.078c-.11-.054-.2-.19-.114-.358.028-.054.16-.186.192-.21.356-.202.767-.136 1.146.016.352.144.618.408 1.001.782.391.451.462.576.685.914.176.265.336.537.445.848.067.195-.019.354-.25.452z\" fill=\"#4D6BFE\"></path></svg>","openrouter":"<svg fill=\"currentColor\" fill-rule=\"evenodd\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M18.654 3.87a5.087 5.087 0 110 10.174L23.7 19.09c.64.641.187 1.737-.72 1.737H8.48a8.479 8.479 0 010-16.958h10.175zM8.479 7.26a5.087 5.087 0 100 10.176 5.087 5.087 0 000-10.175z\"></path></svg>","groq":"<svg fill=\"currentColor\" fill-rule=\"evenodd\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M12.036 2c-3.853-.035-7 3-7.036 6.781-.035 3.782 3.055 6.872 6.908 6.907h2.42v-2.566h-2.292c-2.407.028-4.38-1.866-4.408-4.23-.029-2.362 1.901-4.298 4.308-4.326h.1c2.407 0 4.358 1.915 4.365 4.278v6.305c0 2.342-1.944 4.25-4.323 4.279a4.375 4.375 0 01-3.033-1.252l-1.851 1.818A7 7 0 0012.029 22h.092c3.803-.056 6.858-3.083 6.879-6.816v-6.5C18.907 4.963 15.817 2 12.036 2z\"></path></svg>","cohere":"<svg viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path clip-rule=\"evenodd\" d=\"M8.128 14.099c.592 0 1.77-.033 3.398-.703 1.897-.781 5.672-2.2 8.395-3.656 1.905-1.018 2.74-2.366 2.74-4.18A4.56 4.56 0 0018.1 1H7.549A6.55 6.55 0 001 7.55c0 3.617 2.745 6.549 7.128 6.549z\" fill=\"#39594D\" fill-rule=\"evenodd\"></path><path clip-rule=\"evenodd\" d=\"M9.912 18.61a4.387 4.387 0 012.705-4.052l3.323-1.38c3.361-1.394 7.06 1.076 7.06 4.715a5.104 5.104 0 01-5.105 5.104l-3.597-.001a4.386 4.386 0 01-4.386-4.387z\" fill=\"#D18EE2\" fill-rule=\"evenodd\"></path><path d=\"M4.776 14.962A3.775 3.775 0 001 18.738v.489a3.776 3.776 0 007.551 0v-.49a3.775 3.775 0 00-3.775-3.775z\" fill=\"#FF7759\"></path></svg>"};
+// v358 — نظام الـ3 نماذج الوظيفية: 3 ظاهرة (بشعاراتها الحقيقية) + 6 خلف الكواليس.
+// كل مجموعة لها سلسلة احتياط صامتة داخلية — لو تعطّل الأول يغطّيه اللي بعده بنفس الاسم الوظيفي.
+// v359 — 3 مجموعات: الرأس ظاهر بشعاره الحقيقي، وبقية المجموعة احتياط صامت خلفه.
+const FUNCTIONAL_GROUPS = {
+  claude: ['claude'],                                                // 👑 الكينج — بناء/تعديل/تشخيص
+  gemini: ['gemini', 'groq', 'mistral'],                             // ⚡ السريع — ردود فورية/دردشة
+  openai: ['openai', 'deepseek', 'perplexity', 'cohere', 'openrouter'], // 🧠 العميق — تحليل/بحث/مستندات
+};
+function funcPrimaryOf(key){
+  for(const primary in FUNCTIONAL_GROUPS){ if(FUNCTIONAL_GROUPS[primary].indexOf(key) !== -1) return primary; }
+  return 'claude';
+}
+// v359 — الشفافية الكاملة (قرار المستخدم): كل رد يظهر بالاسم الحقيقي الشهير للمزود
+// الذي ردّ فعلًا. لو انشغل الرأس وردّ احتياطي مخفي → يظهر باسمه الحقيقي، لا اسم مموّه.
+const PROVIDER_DISPLAY = {
+  claude: 'Claude', gemini: 'Gemini', openai: 'GPT', groq: 'Groq',
+  mistral: 'Mistral', deepseek: 'DeepSeek', perplexity: 'Perplexity',
+  cohere: 'Cohere', openrouter: 'OpenRouter',
+};
+function functionalLabel(key){
+  // v362 — الستة المخفيون لا يظهر اسمهم أبدًا: أي مزود يرد → يُعرض باسم
+  // رأس مجموعته الظاهر (Groq/Mistral→Gemini، DeepSeek/Perplexity/Cohere/OpenRouter→GPT، Claude→Claude).
+  const primary = funcPrimaryOf(key);
+  return PROVIDER_DISPLAY[primary] || PROVIDER_KEY_LABELS[primary] || primary;
+}
+// v359 — 3 أزرار بأسمائها الحقيقية الشهيرة (الناس تعرفها) + شعاراتها الأصلية.
+const PROVIDER_QUICK_LIST = [
+  { key: 'claude', name: 'Claude', color: '#d97757' },
+  { key: 'gemini', name: 'Gemini', color: '#4285f4' },
+  { key: 'openai', name: 'GPT',    color: '#10a37f' },
+];
+// ترحيل: من اختار «العميق» (deepseek) في v358 يرجع للزر الظاهر الجديد GPT.
+try{ if(localStorage.getItem('aiapp_provider') === 'deepseek') localStorage.setItem('aiapp_provider', 'openai'); }catch(e){}
+let providerQuickBarBuilt = false;
+function selectProviderKey(key){
+  const prev = localStorage.getItem('aiapp_provider') || 'claude';
+  localStorage.setItem('aiapp_provider', key);
+  // v262: المستخدم اختار مزودًا بيده → نحترم اختياره ويتعطل التوجيه بالتخصص
+  localStorage.setItem('aiapp_provider_explicit', '1');
+  const sel = document.getElementById('provider');
+  if(sel) sel.value = key;
+  // 🆕 تغيير المزود = محادثة ومشروع جديد نظيف (قرار 26/7) — بدون خلط مواضيع.
+  // المشروع السابق يظل محفوظًا في قائمة المشاريع.
+  if(key !== prev){
+    // 🆕 (27/7) كل مزود له مشروعه/محادثته الخاصة — لا دمج بين المزودين.
+    // v216: عزل صارم بحقل provider على كل مشروع — يمنع مشاركة نفس المشروع بين مزودين.
+    let provMap = {};
+    try{ provMap = JSON.parse(localStorage.getItem('aiapp_provider_projects') || '{}'); }catch(e){}
+    provMap[prev] = state.currentId; // احفظ محادثة المزود السابق
+    const curProj = state.projects.find(p => p.id === state.currentId);
+    if(curProj && !curProj.provider) curProj.provider = prev; // ثبّت ملكية المشروع الحالي للمزود السابق
+    // ارجع فقط لمشروع يملكه هذا المزود فعليًا (provider === key)
+    const savedId = provMap[key];
+    let saved = savedId ? state.projects.find(p => p.id === savedId && p.provider === key) : null;
+    if(!saved){
+      const owned = state.projects.filter(p => p.provider === key);
+      saved = owned.length ? owned[owned.length - 1] : null;
+    }
+    if(saved){
+      state.currentId = saved.id; // ارجع لمحادثة هذا المزود السابقة
+    } else {
+      const id = 'p_' + Date.now();
+      state.projects.push({id, title: t('defaultProjectTitle'), messages: [], code: '', provider: key});
+      state.currentId = id;
+    }
+    provMap[key] = state.currentId;
+    localStorage.setItem('aiapp_provider_projects', JSON.stringify(provMap));
+    if(typeof mahaClearImageRef === 'function') mahaClearImageRef();
+    saveState();
+    renderAll();
+  }
+  updateProviderQuickBarActive();
+  // 🆕 (26/7) الضغط على أي مزود → يرجع المستخدم للمحادثة مباشرة
+  try{
+    if(typeof closeDrawers === 'function') closeDrawers();
+    const inp = document.getElementById('chatInput') || document.getElementById('userInput') || document.querySelector('#chat textarea, textarea');
+    if(inp && window.matchMedia && !window.matchMedia('(pointer:coarse)').matches) inp.focus();
+    const chatEl = document.getElementById('chat') || document.getElementById('messages');
+    if(chatEl) chatEl.scrollTop = chatEl.scrollHeight;
+  }catch(e){}
+}
+function buildProviderQuickBar(){
+  const grid = document.getElementById('providerGridCells');
+  const strip = document.getElementById('providerStripMobile');
+  if(!grid && !strip) return;
+  if(grid) grid.innerHTML = '';
+  if(strip) strip.innerHTML = '';
+  PROVIDER_QUICK_LIST.forEach(p => {
+    const svg = PROVIDER_LOGOS[p.key] || '';
+    if(grid){
+      const cell = document.createElement('div');
+      cell.className = 'prov-cell';
+      cell.dataset.provider = p.key;
+      cell.style.color = p.color;
+      cell.innerHTML = svg + '<span class="prov-name">' + functionalLabel(p.key) + '</span><span class="prov-dot"></span>';
+      cell.onclick = () => selectProviderKey(p.key);
+      grid.appendChild(cell);
+    }
+    if(strip){
+      const chip = document.createElement('div');
+      chip.className = 'prov-chip-m';
+      chip.dataset.provider = p.key;
+      chip.style.color = p.color;
+      chip.innerHTML = svg + '<span>' + functionalLabel(p.key) + '</span>';
+      chip.onclick = () => selectProviderKey(p.key);
+      strip.appendChild(chip);
+    }
+  });
+  providerQuickBarBuilt = true;
+  if(typeof initProvDropdown === 'function') initProvDropdown();
+}
+/* v336: قائمة المزودين المنسدلة (كمبيوتر فقط) */
+function provDDUpdateButton(){
+  try{
+    const cur = localStorage.getItem('aiapp_provider') || 'claude';
+    const p = PROVIDER_QUICK_LIST.find(x => x.key === cur) || PROVIDER_QUICK_LIST[0];
+    const logo = document.getElementById('provDDLogo');
+    const name = document.getElementById('provDDName');
+    if(logo && p){ logo.innerHTML = PROVIDER_LOGOS[p.key] || ''; logo.style.color = p.color; }
+    if(name && p){ name.textContent = functionalLabel(p.key); }
+  }catch(e){}
+}
+let _provDDInited = false;
+function initProvDropdown(){
+  if(_provDDInited) return;
+  const wrap = document.getElementById('providerGridSidebar');
+  const btn = document.getElementById('provDropdownBtn');
+  const panel = document.getElementById('provDropdownPanel');
+  const search = document.getElementById('provSearchInput');
+  if(!wrap || !btn || !panel) return;
+  _provDDInited = true;
+  function provDDFilter(q){
+    q = (q || '').trim().toLowerCase();
+    document.querySelectorAll('#providerGridCells .prov-cell').forEach(c => {
+      const nm = ((c.querySelector('.prov-name') || {}).textContent || '').toLowerCase();
+      c.style.display = (!q || nm.indexOf(q) !== -1 || (c.dataset.provider || '').indexOf(q) !== -1) ? '' : 'none';
+    });
+  }
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    try{ if(typeof closeHeaderMenu === 'function') closeHeaderMenu(); }catch(_){}
+    wrap.classList.toggle('open');
+    if(wrap.classList.contains('open') && search){ search.value = ''; provDDFilter(''); try{ search.focus(); }catch(_){} }
+  };
+  document.addEventListener('click', (e) => { if(!wrap.contains(e.target)) wrap.classList.remove('open'); });
+  panel.addEventListener('click', (e) => { const cell = e.target.closest('.prov-cell'); if(cell) wrap.classList.remove('open'); });
+  if(search){ search.addEventListener('input', () => provDDFilter(search.value)); search.onclick = (e) => e.stopPropagation(); }
+  provDDUpdateButton();
+}
+function updateProviderQuickBarActive(){
+  const current = localStorage.getItem('aiapp_provider') || 'claude';
+  document.querySelectorAll('.prov-cell, .prov-chip-m').forEach(el => {
+    el.classList.toggle('active', el.dataset.provider === current);
+    el.title = PROVIDER_KEY_LABELS[el.dataset.provider] || el.dataset.provider;
+  });
+  if(typeof provDDUpdateButton === 'function') provDDUpdateButton();
+  if(typeof updatePremiumToggleVisibility === 'function') updatePremiumToggleVisibility();
+  try{
+    const active = document.querySelector('.prov-chip-m.active');
+    if(active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+  }catch(e){}
+}
+async function refreshProviderQuickBar(){
+  if(!providerQuickBarBuilt) buildProviderQuickBar();
+  updateProviderQuickBarActive();
+  try{
+    const res = await fetch('/api/usage-status', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+    });
+    const data = await res.json();
+    const remaining = (data && data.remaining) || {};
+    const limit = data.limit || 20;
+    document.querySelectorAll('.prov-cell').forEach(cell => {
+      const dot = cell.querySelector('.prov-dot');
+      if(!dot) return;
+      const r = remaining[cell.dataset.provider];
+      dot.classList.remove('ok', 'low', 'out');
+      if(r === undefined) return;
+      if(r === null || limit === null){ // owner: unlimited (Infinity serializes to null)
+        dot.classList.add('ok');
+        const lbl = PROVIDER_KEY_LABELS[cell.dataset.provider] || cell.dataset.provider;
+        cell.title = lbl + ' — بلا حدود';
+        return;
+      }
+      if(r <= 0) dot.classList.add('out');
+      else if(r <= Math.max(1, Math.round(limit * 0.25))) dot.classList.add('low');
+      else dot.classList.add('ok');
+      const label = functionalLabel(cell.dataset.provider);
+      cell.title = label + ' — ' + r + '/' + limit;
+    });
+  }catch(e){ /* best-effort only, ignore network errors */ }
+}
+
+function getProviderColors(){
+  try{ return Object.assign({}, PROVIDER_COLOR_DEFAULTS, JSON.parse(localStorage.getItem('aiapp_provider_colors') || '{}')); }
+  catch(e){ return Object.assign({}, PROVIDER_COLOR_DEFAULTS); }
+}
+function getTheme(){
+  try{ return Object.assign({}, THEME_DEFAULTS, JSON.parse(localStorage.getItem('aiapp_theme') || '{}')); }
+  catch(e){ return Object.assign({}, THEME_DEFAULTS); }
+}
+function applyTheme(){
+  const th = getTheme();
+  const root = document.documentElement.style;
+  try{ const cust = JSON.parse(localStorage.getItem('aiapp_theme') || '{}'); if(cust.accent) root.setProperty('--accent', cust.accent); }catch(e){}
+  root.setProperty('--text', th.text);
+  root.setProperty('--bg', th.bg);
+  root.setProperty('--user-bubble', th.userBubble);
+  root.setProperty('--assistant-bubble', th.assistantBubble);
+}
+// Safe hex-color helpers: we intentionally avoid <input type="color"> because its
+// native OS color-picker overlay can freeze the page on some Android browsers
+// (notably older Huawei/EMUI WebViews) when triggered from inside a modal <dialog>.
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+function isValidHex(v){ return typeof v === 'string' && HEX_COLOR_RE.test(v); }
+function updateSwatchFor(input){
+  if(!input) return;
+  const swatch = input.id
+    ? document.querySelector('.color-swatch[data-for="'+input.id+'"]')
+    : (input.previousElementSibling && input.previousElementSibling.classList && input.previousElementSibling.classList.contains('color-swatch') ? input.previousElementSibling : null);
+  if(swatch && isValidHex(input.value)) swatch.style.background = input.value;
+}
+let lastFocusedColorInput = null;
+document.addEventListener('focusin', (e) => {
+  if(e.target && e.target.classList && e.target.classList.contains('hex-color-input')) lastFocusedColorInput = e.target;
+});
+document.addEventListener('input', (e) => {
+  if(e.target && e.target.classList && e.target.classList.contains('hex-color-input')) updateSwatchFor(e.target);
+});
+const COLOR_PRESETS = ['#7c5cff','#10a37f','#4285f4','#ff0000','#d97757','#6467f2','#20808d','#ff7000','#4d6bfe','#39594d','#eef0f6','#0a0b10','#ffffff','#000000','#ff4d6d','#00c2a8'];
+function buildColorPresetsRow(){
+  const row = $('#colorPresetsRow');
+  if(!row || row.children.length) return;
+  COLOR_PRESETS.forEach(hex => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.title = hex;
+    btn.style.cssText = 'width:26px; height:26px; border-radius:50%; border:1px solid rgba(255,255,255,0.25); background:'+hex+'; cursor:pointer; padding:0;';
+    btn.onclick = () => {
+      const target = lastFocusedColorInput || $('#themeAccent');
+      target.value = hex;
+      updateSwatchFor(target);
+    };
+    row.appendChild(btn);
+  });
+}
+function buildProviderColorGrid(){
+  const grid = $('#providerColorGrid');
+  if(!grid) return;
+  const colors = getProviderColors();
+  grid.innerHTML = '';
+  Object.keys(PROVIDER_COLOR_DEFAULTS).forEach(name => {
+    const wrap = document.createElement('label');
+    wrap.style.cssText = 'display:flex; flex-direction:column; gap:4px; font-size:12px;';
+    const span = document.createElement('span');
+    span.textContent = name;
+    const fieldWrap = document.createElement('div');
+    fieldWrap.style.cssText = 'display:flex; gap:6px; align-items:center;';
+    const swatch = document.createElement('span');
+    swatch.className = 'color-swatch';
+    const value = colors[name] || PROVIDER_COLOR_DEFAULTS[name];
+    swatch.style.cssText = 'width:34px; height:34px; border-radius:8px; flex-shrink:0; border:1px solid rgba(255,255,255,0.2); background:'+value+';';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'hex-color-input';
+    input.maxLength = 7;
+    input.dataset.providerName = name;
+    input.value = value;
+    input.style.cssText = 'flex:1; font-family:monospace; height:34px; padding:2px 8px; border-radius:8px;';
+    fieldWrap.appendChild(swatch);
+    fieldWrap.appendChild(input);
+    wrap.appendChild(span);
+    wrap.appendChild(fieldWrap);
+    grid.appendChild(wrap);
+  });
+}
+function loadThemeToForm(){
+  const th = getTheme();
+  $('#themeAccent').value = th.accent;
+  $('#themeText').value = th.text;
+  $('#themeBg').value = th.bg;
+  $('#themeUserBubble').value = th.userBubble;
+  $('#themeAssistantBubble').value = th.assistantBubble;
+  ['themeAccent','themeText','themeBg','themeUserBubble','themeAssistantBubble'].forEach(id => updateSwatchFor($('#'+id)));
+  buildColorPresetsRow();
+  buildProviderColorGrid();
+  try { buildBg3DPicker(); } catch(e) { console.error(e); }
+}
+function saveThemeFromForm(){
+  const th = {
+    accent: isValidHex($('#themeAccent').value) ? $('#themeAccent').value : getTheme().accent,
+    text: isValidHex($('#themeText').value) ? $('#themeText').value : getTheme().text,
+    bg: isValidHex($('#themeBg').value) ? $('#themeBg').value : getTheme().bg,
+    userBubble: isValidHex($('#themeUserBubble').value) ? $('#themeUserBubble').value : getTheme().userBubble,
+    assistantBubble: isValidHex($('#themeAssistantBubble').value) ? $('#themeAssistantBubble').value : getTheme().assistantBubble
+  };
+  localStorage.setItem('aiapp_theme', JSON.stringify(th));
+  const colors = {};
+  const defaults = getProviderColors();
+  document.querySelectorAll('#providerColorGrid input.hex-color-input').forEach(inp => {
+    colors[inp.dataset.providerName] = isValidHex(inp.value) ? inp.value : defaults[inp.dataset.providerName];
+  });
+  localStorage.setItem('aiapp_provider_colors', JSON.stringify(colors));
+  applyTheme();
+  renderMessages();
+}
+applyTheme();
+document.addEventListener('DOMContentLoaded', applyTheme);
+
+// ===== 3D animated background system (Vanta.js) =====
+const BG3D_EFFECTS = [
+  { id: 'none',     emoji: '🚫', ar: 'بدون خلفية',        en: 'No background',   fr: 'Sans arrière-plan',      hi: 'बिना पृष्ठभूमि',        ur: 'بغیر پس منظر',        bn: "কোনো ব্যাকগ্রাউন্ড নেই", ne: "पृष्ठभूमि छैन", lib: null },
+  { id: 'net',      emoji: '🕸️', ar: 'شبكة سلكية',        en: 'Wire Network',    fr: 'Réseau filaire',         hi: 'तार नेटवर्क',          ur: 'تار نیٹ ورک',        bn: "ওয়্যার নেটওয়ার্ক", ne: "तार नेटवर्क", lib: 'three' },
+  { id: 'waves',    emoji: '🌊', ar: 'أمواج سائلة',        en: 'Waves',           fr: 'Vagues',                 hi: 'लहरें',                ur: 'لہریں',              bn: "তরঙ্গ", ne: "लहरहरू", lib: 'three' },
+  { id: 'fog',      emoji: '🌫️', ar: 'ضباب متحرك',        en: 'Fog',             fr: 'Brouillard',             hi: 'कोहरा',                ur: 'دھند',               bn: "কুয়াশা", ne: "कुहिरो", lib: 'three' },
+  { id: 'globe',    emoji: '🌐', ar: 'كرة أرضية',          en: 'Globe',           fr: 'Globe',                  hi: 'ग्लोब',                ur: 'گلوب',               bn: "গ্লোব", ne: "ग्लोब", lib: 'three' },
+  { id: 'rings',    emoji: '💍', ar: 'حلقات دوارة',        en: 'Rings',           fr: 'Anneaux',                hi: 'छल्ले',                ur: 'حلقے',               bn: "রিং", ne: "घण्टी", lib: 'three' },
+  { id: 'halo',     emoji: '✨', ar: 'هالة ضوئية',         en: 'Halo',            fr: 'Halo',                   hi: 'प्रभामंडल',            ur: 'ہالہ',               bn: "হ্যালো", ne: "हेलो", lib: 'three' },
+  { id: 'dots',     emoji: '⚪', ar: 'نقاط نابضة',         en: 'Pulsing Dots',    fr: 'Points pulsants',        hi: 'स्पंदित बिंदु',         ur: 'دھڑکتے نقطے',        bn: "স্পন্দিত বিন্দু", ne: "पल्सिङ डट्स", lib: 'three' },
+  { id: 'birds',    emoji: '🐦', ar: 'جزيئات طائرة',       en: 'Birds',           fr: 'Oiseaux',                hi: 'पक्षी',                ur: 'پرندے',              bn: "পাখি", ne: "चराहरू", lib: 'three' },
+  { id: 'clouds',   emoji: '☁️', ar: 'غيوم',              en: 'Clouds',          fr: 'Nuages',                 hi: 'बादल',                 ur: 'بادل',               bn: "মেঘ", ne: "बादल", lib: 'three' },
+  { id: 'clouds2',  emoji: '🌥️', ar: 'غيوم متقدمة',       en: 'Clouds 2',        fr: 'Nuages 2',               hi: 'बादल 2',               ur: 'بادل 2',             bn: "মেঘ 2", ne: "बादल २", lib: 'three' },
+  { id: 'trunk',    emoji: '🌳', ar: 'أشعة جذعية',         en: 'Trunk',           fr: 'Tronc',                  hi: 'तना',                  ur: 'تنا',                bn: "কাণ্ড", ne: "ट्रंक", lib: 'p5' },
+  { id: 'topology', emoji: '🔺', ar: 'طبوغرافيا نقطية',    en: 'Topology',        fr: 'Topologie',              hi: 'स्थलाकृति',            ur: 'ٹوپولوجی',           bn: "টপোলজি", ne: "टोपोलोजी", lib: 'p5' },
+  { id: 'cells',    emoji: '🦠', ar: 'خلايا عضوية',        en: 'Cells',           fr: 'Cellules',               hi: 'कोशिकाएं',             ur: 'خلیات',              bn: "কোষ", ne: "कक्षहरू", lib: 'p5' },
+  { id: 'ocean',      emoji: '🌊', ar: 'أمواج المحيط',        en: 'Ocean Waves',       fr: 'Vagues océaniques',      hi: 'समुद्री लहरें',         ur: 'سمندری لہریں',       bn: "মহাসাগরের ঢেউ", ne: "महासागर लहरहरू", lib: 'custom' },
+  { id: 'bubbles',    emoji: '🫧', ar: 'فقاعات تحت الماء',     en: 'Underwater Bubbles',fr: 'Bulles sous-marines',    hi: 'पानी के नीचे बुलबुले', ur: 'زیر آب بلبلے',       bn: "পানির নিচের বুদবুদ", ne: "पानीमुनि बुलबुले", lib: 'custom' },
+  { id: 'stars',      emoji: '🌌', ar: 'سماء ليلية نجمية',     en: 'Starry Night',      fr: 'Nuit étoilée',           hi: 'तारों भरी रात',        ur: 'تاروں بھری رات',     bn: "তারার রাত", ne: "तारायुक्त रात", lib: 'custom' },
+  { id: 'snow',       emoji: '❄️', ar: 'تساقط الثلج',         en: 'Snowfall',          fr: 'Chute de neige',         hi: 'बर्फबारी',              ur: 'برف باری',           bn: "তুষারপাত", ne: "हिमपात", lib: 'custom' },
+  { id: 'rain',       emoji: '🌧️', ar: 'أمطار هادئة',         en: 'Gentle Rain',       fr: 'Pluie douce',            hi: 'हल्की बारिश',           ur: 'ہلکی بارش',          bn: "মৃদু বৃষ্টি", ne: "हल्का वर्षा", lib: 'custom' },
+  { id: 'fireflies',  emoji: '🌳', ar: 'يراعات الغابة',        en: 'Forest Fireflies',  fr: 'Lucioles de forêt',      hi: 'जंगल की जुगनू',         ur: 'جنگل کے جگنو',       bn: "বন ফায়ারফ্লাইস", ne: "वन फायरफ्लाइज", lib: 'custom' }
+];
+function bgEffLabel(eff){
+  return eff[lang] || eff.en;
+}
+const loadedScripts = {};
+function loadScriptOnce(url){
+  if(loadedScripts[url]) return loadedScripts[url];
+  loadedScripts[url] = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = url;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('failed to load ' + url));
+    document.head.appendChild(s);
+  });
+  return loadedScripts[url];
+}
+async function ensureBg3DDeps(lib){
+  if(lib === 'three'){
+    await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js');
+  } else if(lib === 'p5'){
+    await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js');
+  }
+}
+async function ensureVantaEffectScript(id){
+  await loadScriptOnce('https://cdn.jsdelivr.net/npm/vanta@0.5.24/dist/vanta.' + id + '.min.js');
+}
+let currentVantaEffect = null;
+let bg3dAutoTimer = null;
+let currentCustomBg = null; // {raf, resizeHandler, canvas}
+function destroyBg3D(){
+  if(currentVantaEffect){
+    try { currentVantaEffect.destroy(); } catch(e){}
+    currentVantaEffect = null;
+  }
+  if(currentCustomBg){
+    try { cancelAnimationFrame(currentCustomBg.raf); } catch(e){}
+    if(currentCustomBg.resizeHandler) window.removeEventListener('resize', currentCustomBg.resizeHandler);
+    currentCustomBg = null;
+  }
+  const el = document.getElementById('vantaBg');
+  if(el) el.innerHTML = '';
+}
+function initCustomBg3D(id){
+  const container = document.getElementById('vantaBg');
+  if(!container) return;
+  const canvas = document.createElement('canvas');
+  container.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  let w, h;
+  function resize(){
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  let particles = [];
+  let t = 0;
+  const rand = (a,b) => a + Math.random()*(b-a);
+
+  function setupParticles(){
+    particles = [];
+    if(id === 'ocean'){
+      // no discrete particles, wave layers computed in draw
+    } else if(id === 'bubbles'){
+      for(let i=0;i<60;i++) particles.push({ x: rand(0,w), y: rand(0,h), r: rand(3,16), s: rand(0.4,1.6), wob: rand(0,Math.PI*2) });
+    } else if(id === 'stars'){
+      for(let i=0;i<160;i++) particles.push({ x: rand(0,w), y: rand(0,h*0.85), r: rand(0.5,1.8), phase: rand(0,Math.PI*2), speed: rand(0.01,0.03) });
+    } else if(id === 'snow'){
+      for(let i=0;i<120;i++) particles.push({ x: rand(0,w), y: rand(0,h), r: rand(1.5,4), s: rand(0.6,2.2), drift: rand(-0.5,0.5), phase: rand(0,Math.PI*2) });
+    } else if(id === 'rain'){
+      for(let i=0;i<150;i++) particles.push({ x: rand(0,w), y: rand(-h,h), len: rand(10,22), s: rand(6,12) });
+    } else if(id === 'fireflies'){
+      for(let i=0;i<45;i++) particles.push({ x: rand(0,w), y: rand(0,h), r: rand(1.5,3), vx: rand(-0.3,0.3), vy: rand(-0.3,0.3), phase: rand(0,Math.PI*2) });
+    }
+  }
+  setupParticles();
+  const oldResize = resize;
+  window.removeEventListener('resize', oldResize);
+  function resizeAndReset(){ resize(); setupParticles(); }
+  window.addEventListener('resize', resizeAndReset);
+
+  function drawOcean(){
+    t += 0.02;
+    const grad = ctx.createLinearGradient(0,0,0,h);
+    grad.addColorStop(0, '#04101f');
+    grad.addColorStop(1, '#062a44');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,w,h);
+    const layers = [
+      { amp: 18, freq: 0.008, speed: 1.0, color: 'rgba(30,140,190,0.55)', base: h*0.62 },
+      { amp: 26, freq: 0.006, speed: 0.6, color: 'rgba(20,100,160,0.55)', base: h*0.72 },
+      { amp: 34, freq: 0.004, speed: 0.35,color: 'rgba(10,60,110,0.6)',  base: h*0.84 }
+    ];
+    layers.forEach(L => {
+      ctx.beginPath();
+      ctx.moveTo(0, h);
+      for(let x=0; x<=w; x+=8){
+        const y = L.base + Math.sin(x*L.freq + t*L.speed) * L.amp;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(w, h);
+      ctx.closePath();
+      ctx.fillStyle = L.color;
+      ctx.fill();
+    });
+  }
+  function drawBubbles(){
+    ctx.fillStyle = '#03101c';
+    ctx.fillRect(0,0,w,h);
+    particles.forEach(p => {
+      p.y -= p.s;
+      p.wob += 0.03;
+      const bx = p.x + Math.sin(p.wob)*8;
+      if(p.y < -20){ p.y = h+20; p.x = rand(0,w); }
+      ctx.beginPath();
+      ctx.arc(bx, p.y, p.r, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(140,220,255,0.55)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(140,220,255,0.12)';
+      ctx.fill();
+    });
+  }
+  function drawStars(){
+    const grad = ctx.createLinearGradient(0,0,0,h);
+    grad.addColorStop(0, '#01030a');
+    grad.addColorStop(1, '#0a1330');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,w,h);
+    particles.forEach(p => {
+      p.phase += p.speed;
+      const alpha = 0.3 + Math.abs(Math.sin(p.phase))*0.7;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,255,255,' + alpha.toFixed(2) + ')';
+      ctx.fill();
+    });
+    if(Math.random() < 0.006){
+      const sx = rand(0,w*0.6), sy = rand(0,h*0.3);
+      ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx+80, sy+40);
+      ctx.stroke();
+    }
+  }
+  function drawSnow(){
+    ctx.fillStyle = '#0b1220';
+    ctx.fillRect(0,0,w,h);
+    particles.forEach(p => {
+      p.y += p.s;
+      p.phase += 0.02;
+      p.x += Math.sin(p.phase)*p.drift;
+      if(p.y > h+10){ p.y = -10; p.x = rand(0,w); }
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.fill();
+    });
+  }
+  function drawRain(){
+    ctx.fillStyle = 'rgba(8,12,20,1)';
+    ctx.fillRect(0,0,w,h);
+    ctx.strokeStyle = 'rgba(160,200,255,0.35)';
+    ctx.lineWidth = 1;
+    particles.forEach(p => {
+      p.y += p.s;
+      if(p.y > h){ p.y = -20; p.x = rand(0,w); }
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x-2, p.y+p.len);
+      ctx.stroke();
+    });
+  }
+  function drawFireflies(){
+    ctx.fillStyle = '#020a05';
+    ctx.fillRect(0,0,w,h);
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      p.phase += 0.05;
+      if(p.x < 0 || p.x > w) p.vx *= -1;
+      if(p.y < 0 || p.y > h) p.vy *= -1;
+      const glow = 0.4 + Math.abs(Math.sin(p.phase))*0.6;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = 'rgba(200,255,120,' + glow + ')';
+      ctx.fillStyle = 'rgba(220,255,150,' + glow + ')';
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+  }
+  const drawers = { ocean: drawOcean, bubbles: drawBubbles, stars: drawStars, snow: drawSnow, rain: drawRain, fireflies: drawFireflies };
+  const draw = drawers[id] || drawOcean;
+  function loop(){
+    draw();
+    currentCustomBg.raf = requestAnimationFrame(loop);
+  }
+  currentCustomBg = { raf: null, resizeHandler: resizeAndReset, canvas };
+  loop();
+}
+function getBg3DAccentColorHex(){
+  try {
+    const accent = getTheme().accent || 'var(--accent)';
+    return parseInt(accent.replace('#',''), 16);
+  } catch(e){ return 0x7c5cff; }
+}
+async function applyBg3D(id, save){
+  if(save !== false) localStorage.setItem('aiapp_bg3d', id);
+  destroyBg3D();
+  document.body.classList.toggle('vantaActive', id !== 'none');
+  if(id === 'none') return;
+  const eff = BG3D_EFFECTS.find(e => e.id === id);
+  if(!eff) return;
+  if(eff.lib === 'custom'){
+    try { initCustomBg3D(id); } catch(e){ console.warn('bg3d custom init failed', e); }
+    return;
+  }
+  try {
+    await ensureBg3DDeps(eff.lib);
+    await ensureVantaEffectScript(id);
+    if(!window.VANTA || !window.VANTA[id.toUpperCase()]) return;
+    const color = getBg3DAccentColorHex();
+    currentVantaEffect = window.VANTA[id.toUpperCase()]({
+      el: '#vantaBg',
+      mouseControls: true,
+      touchControls: true,
+      gyroControls: false,
+      minHeight: 200.00,
+      minWidth: 200.00,
+      scale: 1.00,
+      scaleMobile: 1.00,
+      color: color,
+      backgroundColor: 0x0a0b10
+    });
+  } catch(e){ console.warn('bg3d init failed', e); }
+}
+function buildBg3DPicker(){
+  const grid = $('#bg3dGrid');
+  if(!grid) return;
+  const current = localStorage.getItem('aiapp_bg3d') || 'none';
+  const lang = document.documentElement.getAttribute('lang') === 'en' ? 'en' : 'ar';
+  grid.innerHTML = '';
+  BG3D_EFFECTS.forEach(eff => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'bg3dOption' + (eff.id === current ? ' active' : '');
+    btn.innerHTML = '<span class="bg3dEmoji">' + eff.emoji + '</span><span>' + bgEffLabel(eff) + '</span>';
+    btn.onclick = () => {
+      applyBg3D(eff.id);
+      grid.querySelectorAll('.bg3dOption').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    };
+    grid.appendChild(btn);
+  });
+  const chkAuto = $('#chkBg3dAuto');
+  if(chkAuto){
+    chkAuto.checked = localStorage.getItem('aiapp_bg3d_auto') === 'true';
+    chkAuto.onchange = () => {
+      localStorage.setItem('aiapp_bg3d_auto', chkAuto.checked ? 'true' : 'false');
+      setupBg3DAutoTimer();
+    };
+  }
+}
+function setupBg3DAutoTimer(){
+  if(bg3dAutoTimer){ clearInterval(bg3dAutoTimer); bg3dAutoTimer = null; }
+  if(localStorage.getItem('aiapp_bg3d_auto') === 'true'){
+    bg3dAutoTimer = setInterval(() => {
+      const options = BG3D_EFFECTS.filter(e => e.id !== 'none');
+      const pick = options[Math.floor(Math.random() * options.length)];
+      applyBg3D(pick.id);
+      const grid = $('#bg3dGrid');
+      if(grid){
+        grid.querySelectorAll('.bg3dOption').forEach(b => b.classList.remove('active'));
+        const idx = BG3D_EFFECTS.findIndex(e => e.id === pick.id);
+        if(grid.children[idx]) grid.children[idx].classList.add('active');
+      }
+    }, 60000);
+  }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('aiapp_bg3d') || 'none';
+  applyBg3D(saved, false);
+  setupBg3DAutoTimer();
+});
+
+// settings dialog
+const settingsDialog = $('#settingsDialog');
+// Double-click the settings dialog's title bar to instantly maximize it
+// (like a real desktop window), double-click again to restore the size
+// the user had before (their manual drag-resize is remembered).
+(function(){
+  const titleEl = document.getElementById('settingsDlgTitle');
+  if (!titleEl || !settingsDialog) return;
+  let maximized = false;
+  let prevRect = null; // {width,height} chosen by the user via drag-resize
+  titleEl.addEventListener('dblclick', (e)=>{
+    e.preventDefault();
+    if (!maximized){
+      const r = settingsDialog.getBoundingClientRect();
+      prevRect = { width: r.width + 'px', height: r.height + 'px' };
+      settingsDialog.style.transition = 'width .18s ease, height .18s ease';
+      settingsDialog.style.width = '96vw';
+      settingsDialog.style.height = '92vh';
+      maximized = true;
+    } else {
+      settingsDialog.style.transition = 'width .18s ease, height .18s ease';
+      if (prevRect){
+        settingsDialog.style.width = prevRect.width;
+        settingsDialog.style.height = prevRect.height;
+      } else {
+        settingsDialog.style.width = '';
+        settingsDialog.style.height = '';
+      }
+      maximized = false;
+    }
+  });
+})();
+function openDialogSafe(dlg){
+  if (dlg.hasAttribute('open')) return; // already open, avoid re-throw
+  if (typeof dlg.showModal === 'function') {
+    try { dlg.showModal(); return; } catch(e) { /* fall through to polyfill */ }
+  }
+  dlg.setAttribute('open', '');
+  dlg.style.display = 'block';
+}
+function closeDialogSafe(dlg){
+  if (typeof dlg.close === 'function') {
+    try { dlg.close(); } catch(e) { /* ignore */ }
+  }
+  dlg.removeAttribute('open');
+  dlg.style.display = '';
+}
+const SETTINGS_SECTION_IDS = ['langSection','accountSection','statsSection','apiKeysSection','themeSection','fontSizeSection','voiceSection','pricingSection','aboutSection','adminSection'];
+function renderStats(){
+  const projects = state.projects || [];
+  let messagesCount = 0;
+  const providerCounts = {};
+  projects.forEach(p => {
+    (p.messages || []).forEach(m => {
+      if(m.role === 'user') messagesCount++;
+      if(m.providerLabel){
+        const key = m.providerLabel.replace(/^🔄\s*/, '');
+        providerCounts[key] = (providerCounts[key] || 0) + 1;
+      }
+    });
+  });
+  let favProvider = '—';
+  let favCount = 0;
+  Object.keys(providerCounts).forEach(k => {
+    if(providerCounts[k] > favCount){ favCount = providerCounts[k]; favProvider = k; }
+  });
+  const elP = $('#statProjectsCount'); if(elP) elP.textContent = String(projects.length);
+  const elM = $('#statMessagesCount'); if(elM) elM.textContent = String(messagesCount);
+  const elF = $('#statFavProvider'); if(elF) elF.textContent = favProvider;
+}
+function renderReferral(){
+  const username = authGet('aiapp_username');
+  const linkEl = $('#acctReferralLink');
+  if(linkEl) linkEl.value = username ? (location.origin + '/?ref=' + encodeURIComponent(username)) : '';
+  const bonusEl = $('#acctReferralBonus');
+  if(!bonusEl) return;
+  if(!username){ bonusEl.textContent = ''; return; }
+  fetch('/api/usage-status', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+  }).then(r => r.json()).then(d => {
+    const n = d.bonusMessages || 0;
+    bonusEl.textContent = t('acctReferralBonusCount').replace('{n}', String(n));
+  }).catch(() => { bonusEl.textContent = ''; });
+}
+const acctReferralCopyBtnEl = $('#acctReferralCopyBtn');
+if(acctReferralCopyBtnEl){
+  acctReferralCopyBtnEl.onclick = async () => {
+    const linkEl = $('#acctReferralLink');
+    if(!linkEl || !linkEl.value) return;
+    try {
+      await navigator.clipboard.writeText(linkEl.value);
+      const old = acctReferralCopyBtnEl.textContent;
+      acctReferralCopyBtnEl.textContent = t('acctReferralCopied');
+      setTimeout(() => { acctReferralCopyBtnEl.textContent = old; }, 1500);
+    } catch(e) {
+      linkEl.select();
+      try { document.execCommand('copy'); } catch(e2) { /* ignore */ }
+    }
+  };
+}
+function exportProjects(){
+  try{
+    const payload = {
+      app: 'omran-ai-builder',
+      exportedAt: new Date().toISOString(),
+      projects: state.projects || []
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `omran-ai-builder-projects-${dateStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    alert(t('exportProjectsSuccess'));
+  }catch(err){
+    console.error('exportProjects failed', err);
+  }
+}
+function importProjectsFromFile(file){
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const data = JSON.parse(reader.result);
+      const imported = Array.isArray(data) ? data : data.projects;
+      if(!Array.isArray(imported)) throw new Error('invalid format');
+      const validProjects = imported.filter(p => p && typeof p === 'object' && ('code' in p || 'messages' in p));
+      if(!validProjects.length) throw new Error('no valid projects');
+      if(!confirm(t('importProjectsConfirm'))) return;
+      const existingIds = new Set((state.projects || []).map(p => p.id));
+      validProjects.forEach(p => {
+        if(!p.id || existingIds.has(p.id)) p.id = 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+        existingIds.add(p.id);
+        state.projects.push(p);
+      });
+      saveState();
+      renderHistory();
+      renderStats();
+      alert(t('importProjectsSuccess'));
+    }catch(err){
+      console.error('importProjectsFromFile failed', err);
+      alert(t('importProjectsError'));
+    }
+  };
+  reader.readAsText(file);
+}
+window.toggleSubRow=function(id){var c=document.getElementById(id+'Content');var a=document.getElementById(id+'Arrow');if(!c)return;var open=c.style.display!=='none';c.style.display=open?'none':'block';if(a)a.style.transform=open?'rotate(0deg)':'rotate(90deg)';};
+function toggleSettingsSection(id){
+  const content = document.getElementById(id + 'Content');
+  const arrow = document.getElementById(id + 'Arrow');
+  if (!content) return;
+  const isOpen = content.style.display !== 'none';
+  // close all sections first (accordion behavior: only one open at a time)
+  SETTINGS_SECTION_IDS.forEach(sid => {
+    const c = document.getElementById(sid + 'Content');
+    const a = document.getElementById(sid + 'Arrow');
+    if (c) c.style.display = 'none';
+    if (a) a.style.transform = 'rotate(0deg)';
+  });
+  // re-open the clicked one unless it was already open (toggle off)
+  if (!isOpen) {
+    content.style.display = 'block';
+    if (arrow) arrow.style.transform = 'rotate(90deg)';
+    // 💰 عند فتح قسم الباقات: جلب رصيد النقاط وعرضه
+    if (id === 'pricingSection' && typeof refreshPointsWallet === 'function') refreshPointsWallet();
+  }
+}
+function collapseAllSettingsSections(){
+  SETTINGS_SECTION_IDS.forEach(sid => {
+    const c = document.getElementById(sid + 'Content');
+    const a = document.getElementById(sid + 'Arrow');
+    if (c) c.style.display = 'none';
+    if (a) a.style.transform = 'rotate(0deg)';
+  });
+}
+
+// ===== v199 Settings redesign: two-level nav (ChatGPT style) =====
+const SETTINGS_NAV_IDS = ['langSection','accountSection','statsSection','apiKeysSection','themeSection','fontSizeSection','voiceSection','pricingSection','aboutSection'];
+const SETTINGS_NAV_ICONS = {
+  langSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`,
+  accountSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`,
+  statsSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>`,
+  apiKeysSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"></circle><path d="M21 2l-9.6 9.6"></path><path d="M15.5 7.5l3 3L22 7l-3-3"></path></svg>`,
+  themeSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>`,
+  fontSizeSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 14h-5"></path><path d="M16 16v-3.5a2.5 2.5 0 0 1 5 0V16"></path><path d="M4.5 13h6"></path><path d="m3 16 4.5-9 4.5 9"></path></svg>`,
+  voiceSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.5 8.5a5 5 0 0 1 0 7"></path><path d="M18.5 5.5a9 9 0 0 1 0 13"></path></svg>`,
+  pricingSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>`,
+  aboutSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`,
+  feedbackSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`
+};
+function stripUiEmoji(t){ try{ return (t||'').replace(/[\u{1F000}-\u{1FAFF}\u{2100}-\u{214F}\u{2600}-\u{27BF}\u{FE0F}\u{200D}\u{2B00}-\u{2BFF}\u{1F1E6}-\u{1F1FF}]/gu,'').trim(); }catch(e){ return t; } }
+function renderSettingsNavList(){
+  const listEl = document.getElementById('settingsNavList');
+  if(!listEl) return;
+  listEl.innerHTML = '';
+  SETTINGS_NAV_IDS.forEach(sid => {
+    const headerH3 = document.querySelector('#' + sid + ' .settingsSectionHeader h3');
+    const label = stripUiEmoji(headerH3 ? headerH3.textContent : sid);
+    const row = document.createElement('div');
+    row.className = 'settingsNavRow';
+    row.innerHTML = '<span class="settingsNavIcon">' + (SETTINGS_NAV_ICONS[sid] || '') + '</span>' +
+      '<span class="settingsNavLabel"></span>' + '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="settingsNavChevron"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+    row.querySelector('.settingsNavLabel').textContent = label;
+    row.onclick = () => showSettingsPage(sid);
+    listEl.appendChild(row);
+  });
+}
+function showSettingsHome(){
+  const home = document.getElementById('settingsHomeView');
+  const pageHdr = document.getElementById('settingsPageHeader');
+  const logoutBtn = document.getElementById('settingsLogoutBtn');
+  if(home) home.style.display = '';
+  if(pageHdr) pageHdr.style.display = 'none';
+  if(logoutBtn) logoutBtn.style.display = 'none';
+  document.querySelectorAll('.settingsPageSection').forEach(el => { el.classList.remove('settingsPageActive'); el.style.display = 'none'; });
+  if(settingsDialog) settingsDialog.scrollTop = 0;
+}
+window.showSettingsHome = showSettingsHome;
+function showSettingsPage(sid){
+  const home = document.getElementById('settingsHomeView');
+  const pageHdr = document.getElementById('settingsPageHeader');
+  const pageTitleEl = document.getElementById('settingsPageTitle');
+  const logoutBtn = document.getElementById('settingsLogoutBtn');
+  if(home) home.style.display = 'none';
+  if(logoutBtn) logoutBtn.style.display = 'none';
+  document.querySelectorAll('.settingsPageSection').forEach(el => {
+    if(el.id === sid){ el.style.display = 'block'; el.classList.add('settingsPageActive'); }
+    else { el.classList.remove('settingsPageActive'); el.style.display = 'none'; }
+  });
+  const headerH3 = document.querySelector('#' + sid + ' .settingsSectionHeader h3');
+  if(pageTitleEl) pageTitleEl.textContent = stripUiEmoji(headerH3 ? headerH3.textContent : '');
+  if(pageHdr) pageHdr.style.display = 'flex';
+  // auto-expand the section's own accordion content (kept intact, just forced open)
+  const content = document.getElementById(sid + 'Content');
+  const arrow = document.getElementById(sid + 'Arrow');
+  if(content) content.style.display = 'block';
+  if(arrow) arrow.style.transform = 'rotate(90deg)';
+  if(settingsDialog) settingsDialog.scrollTop = 0;
+}
+window.showSettingsPage = showSettingsPage;
+(function(){
+  const backBtn = document.getElementById('settingsPageBackBtn');
+  if(backBtn) backBtn.onclick = () => showSettingsHome();
+})();
+
+// ---- Smart command box (local parser + AI fallback) ----
+function settingsToast(msg){
+  try{
+    let el = document.getElementById('settingsCmdToast');
+    if(!el){
+      el = document.createElement('div');
+      el.id = 'settingsCmdToast';
+      el.style.cssText = 'position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:#1c2230; color:#fff; padding:10px 16px; border-radius:20px; font-size:13px; z-index:100000; box-shadow:0 4px 18px rgba(0,0,0,.4); transition:opacity .3s; max-width:90vw; text-align:center;';
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.style.opacity = '1';
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.style.opacity = '0'; }, 2200);
+  }catch(e){}
+}
+const SETTINGS_CMD_LANG_MAP = [
+  { code:'ar', words:['عربي','العربية','arabic'] },
+  { code:'en', words:['انجليزي','إنجليزي','الانجليزية','english'] },
+  { code:'fr', words:['فرنسي','الفرنسية','french','français'] },
+  { code:'hi', words:['هندي','الهندية','hindi'] },
+  { code:'ur', words:['اردو','urdu'] },
+  { code:'bn', words:['بنغالي','البنغالية','bengali'] },
+  { code:'ne', words:['نيبالي','النيبالية','nepali'] },
+  { code:'id', words:['اندونيسي','إندونيسي','indonesian'] },
+  { code:'fil', words:['فلبيني','التاغالوغية','filipino','tagalog'] },
+  { code:'tr', words:['تركي','التركية','turkish'] },
+  { code:'zh', words:['صيني','الصينية','chinese'] },
+  { code:'ru', words:['روسي','الروسية','russian'] },
+  { code:'es', words:['اسباني','إسباني','الاسبانية','spanish'] },
+  { code:'ml', words:['مليالم','malayalam'] },
+];
+const SETTINGS_CMD_BG_MAP = [
+  { id:'ocean', words:['بحر','بحري','محيط','امواج البحر'] },
+  { id:'waves', words:['امواج','أمواج'] },
+  { id:'stars', words:['فضاء','نجوم','نجمية','سماء ليلية'] },
+  { id:'rain', words:['مطر','امطار','أمطار'] },
+  { id:'snow', words:['ثلج','ثلوج','تساقط الثلج'] },
+  { id:'clouds', words:['غيوم','سحب'] },
+  { id:'fog', words:['ضباب'] },
+  { id:'bubbles', words:['فقاعات'] },
+  { id:'fireflies', words:['يراعات','الغابة','فراشات مضيئة'] },
+  { id:'globe', words:['كرة ارضية','كرة أرضية','globe'] },
+  { id:'none', words:['بدون خلفية','الغاء الخلفية','إلغاء الخلفية','no background'] },
+];
+// v202: تطبيع عربي لمطابقة أدق — حذف التشكيل والتطويل + توحيد أ/إ/آ→ا و ة→ه و ى→ي
+function settingsCmdNormalize(s){
+  return String(s || '')
+    .toLowerCase()
+    .replace(/[\u064B-\u0652\u0670\u0640]/g, '')
+    .replace(/[\u0623\u0625\u0622\u0671]/g, '\u0627')
+    .replace(/\u0629/g, '\u0647')
+    .replace(/\u0649/g, '\u064A')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function parseSettingsCommand(raw){
+  const text = String(raw || '').trim();
+  const low = settingsCmdNormalize(text);
+  const has = (words) => words.some(w => { const n = settingsCmdNormalize(w); return n && low.includes(n); });
+  const actions = [];
+  // 1) reset
+  if(has(['رجع كل شي','ارجاع كل شي','استعاده الافتراضي','اعاده الضبط','الوضع الافتراضي','reset all','reset everything','restore defaults'])){
+    actions.push({ type:'reset' });
+    return actions;
+  }
+  // 2) language — لغة محددة، وإلا مرادفات (لغة/ترجم/بدل اللغة) → تبديل عربي/إنجليزي
+  let langMatched = false;
+  for(const entry of SETTINGS_CMD_LANG_MAP){
+    if(has(entry.words)){
+      actions.push({ type:'lang', value: entry.code });
+      langMatched = true;
+      break;
+    }
+  }
+  if(!langMatched && has(['بدل اللغة','غير اللغة','تغيير اللغة','ترجم','اللغة','language','translate'])){
+    const cur = (typeof lang !== 'undefined' && lang) ? lang : (localStorage.getItem('aiapp_lang') || 'ar');
+    actions.push({ type:'lang', value: cur === 'ar' ? 'en' : 'ar' });
+  }
+  // 3) font size — مرادفات: خط/كتابة/حجم + كبر/صغر
+  if(has(['كبر الخط','اكبر','كبر','زود الخط','حجم اكبر','كبر الكتابة','zoom in','bigger','increase font','larger text'])){
+    actions.push({ type:'font', value:'bigger' });
+  } else if(has(['صغر الخط','اصغر','صغر','قلل الخط','حجم اصغر','صغر الكتابة','zoom out','smaller','decrease font'])){
+    actions.push({ type:'font', value:'smaller' });
+  }
+  // 4) background — مرادفات عامة (خلفية/ثيم/مظهر) + خلفيات محددة
+  for(const entry of SETTINGS_CMD_BG_MAP){
+    if(has(entry.words)){
+      actions.push({ type:'bg', value: entry.id });
+      break;
+    }
+  }
+  // 5) voice gender — مرادفات: صوت/تحدث/استماع/نطق
+  const voiceCtx = has(['صوت','تحدث','استماع','نطق','قراءة','voice','speech']);
+  if((voiceCtx || true) && has(['صوت رجالي','صوت رجل','صوت ذكوري','رجالي','ذكوري','male voice'])){
+    actions.push({ type:'voice', value:'male' });
+  } else if(has(['صوت نسائي','صوت حريمي','صوت انثوي','نسائي','انثوي','حريمي','female voice'])){
+    actions.push({ type:'voice', value:'female' });
+  }
+  // 6) ticker — مرادفات: اسهم/تيكر/بورصة/شريط + تشغيل/إيقاف
+  const tickerCtx = has(['اسهم','الاسهم','تيكر','بورصة','البورصة','شريط','ticker','stocks']);
+  if(tickerCtx){
+    if(has(['وقف','ايقاف','اخف','اخفاء','اقفل','عطل','stop','disable','hide','off'])){
+      actions.push({ type:'ticker', value:'off' });
+    } else if(has(['شغل','تشغيل','اظهر','اظهار','فعل','ارجع','رجع','start','enable','show','on'])){
+      actions.push({ type:'ticker', value:'on' });
+    }
+  }
+  return actions.length ? actions : null;
+}
+// v202: عند عدم الفهم — نقترح أقرب أمر معروف بدل تجاهل الطلب
+const SETTINGS_CMD_EXAMPLES = ['كبر الخط','صغر الخط','بدل اللغة','غير الخلفية إلى نجوم','خلفية مطر','خلفية بحر','خلفية ثلج','بدون خلفية','شغل شريط الأسهم','وقف شريط الأسهم','صوت رجالي','صوت نسائي','رجع كل شي افتراضي'];
+function settingsCmdClosestSuggestion(text){
+  const low = settingsCmdNormalize(text);
+  if(!low) return null;
+  const toks = low.split(' ').filter(w => w.length >= 2);
+  let best = null, bestScore = 0;
+  for(const ex of SETTINGS_CMD_EXAMPLES){
+    const exN = settingsCmdNormalize(ex);
+    let score = 0;
+    toks.forEach(tk => { if(exN.includes(tk)) score += tk.length; });
+    exN.split(' ').forEach(tk => { if(tk.length >= 2 && low.includes(tk)) score += 1; });
+    if(score > bestScore){ bestScore = score; best = ex; }
+  }
+  return bestScore >= 2 ? best : null;
+}
+function applyUiFontScale(scale){
+  scale = Math.max(0.7, Math.min(1.5, scale));
+  document.documentElement.style.setProperty('--ui-font-scale', String(scale));
+  document.documentElement.style.fontSize = (scale * 100) + '%';
+  localStorage.setItem('uiFontScale', String(scale));
+}
+(function(){
+  const saved = parseFloat(localStorage.getItem('uiFontScale'));
+  if(saved && isFinite(saved) && saved !== 1) applyUiFontScale(saved);
+})();
+function settingsResetAll(){
+  ['uiFontScale','aiapp_bg3d','aiapp_voice_gender','tickerEnabled','aiapp_cloud_voice','aiapp_cloud_voice_name','aiapp_theme','aiapp_provider_colors'].forEach(k => localStorage.removeItem(k));
+  location.reload();
+}
+async function executeSettingsActions(actions){
+  const doneMsgs = [];
+  for(const act of actions){
+    try{
+      if(act.type === 'reset'){ settingsResetAll(); return; }
+      if(act.type === 'lang'){ setLang(act.value); doneMsgs.push(t('settingsCmdDoneLang') || 'تم تغيير اللغة'); }
+      else if(act.type === 'font'){
+        const cur = parseFloat(localStorage.getItem('uiFontScale')) || 1;
+        applyUiFontScale(act.value === 'bigger' ? cur * 1.1 : cur * 0.9);
+        doneMsgs.push(t('settingsCmdDoneFont') || 'تم تغيير حجم الخط');
+      }
+      else if(act.type === 'bg'){ if(typeof applyBg3D === 'function') applyBg3D(act.value, true); doneMsgs.push(t('settingsCmdDoneBg') || 'تم تغيير الخلفية'); }
+      else if(act.type === 'voice'){ localStorage.setItem('aiapp_voice_gender', act.value); try{ setVoiceGenderUI(act.value); }catch(e){} doneMsgs.push(t('settingsCmdDoneVoice') || 'تم تغيير الصوت'); }
+      else if(act.type === 'ticker'){ setTickerEnabled(act.value === 'on'); doneMsgs.push(act.value === 'on' ? (t('settingsCmdDoneTickerOn') || 'تم تشغيل شريط الأسهم') : (t('settingsCmdDoneTickerOff') || 'تم إيقاف شريط الأسهم')); }
+    }catch(e){ console.error('settings command action failed', act, e); }
+  }
+  if(doneMsgs.length) settingsToast('✓ ' + doneMsgs.join(' • '));
+}
+async function settingsCmdAiFallback(text){
+  try{
+    const sysNote = 'أعد فقط JSON بالشكل التالي بدون أي شرح: {"actions":[{"type":"lang|font|bg|voice|ticker|reset","value":"..."}]}. اطلب من المستخدم: ' + text;
+    const res = await fetch('/api/ai?action=agent', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ provider:'claude', messages:[{ role:'user', content: sysNote }], token: authGet('aiapp_auth_token'), guestId: window.getGuestId ? window.getGuestId() : undefined })
+    });
+    const data = await res.json();
+    const raw = (data && (data.text || data.content || data.reply)) || '';
+    const match = String(raw).match(/\{[\s\S]*\}/);
+    if(!match) return false;
+    const parsed = JSON.parse(match[0]);
+    if(!parsed || !Array.isArray(parsed.actions) || !parsed.actions.length) return false;
+    await executeSettingsActions(parsed.actions);
+    return true;
+  }catch(e){ console.warn('settingsCmdAiFallback failed', e); return false; }
+}
+async function runSettingsCommand(){
+  const inp = document.getElementById('settingsCmdInput');
+  if(!inp) return;
+  const text = inp.value.trim();
+  if(!text) return;
+  const localActions = parseSettingsCommand(text);
+  if(localActions){
+    await executeSettingsActions(localActions);
+    inp.value = '';
+    return;
+  }
+  const ok = await settingsCmdAiFallback(text);
+  if(ok){ inp.value = ''; }
+  else {
+    const sug = settingsCmdClosestSuggestion(text);
+    if(sug){ settingsToast((t('settingsCmdNotUnderstood') || 'ما فهمت الطلب') + ' — هل تقصد: «' + sug + '»؟'); }
+    else { settingsToast(t('settingsCmdNotUnderstood') || 'ما فهمت الطلب، جرب صياغة ثانية'); }
+  }
+}
+(function(){
+  const sendBtn = document.getElementById('settingsCmdSendBtn');
+  const inp = document.getElementById('settingsCmdInput');
+  if(sendBtn) sendBtn.onclick = runSettingsCommand;
+  if(inp) inp.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); runSettingsCommand(); } });
+})();
+
+// ---- Mic button for the smart command box (reuses /api/stt) ----
+let settingsCmdRecorder = null, settingsCmdChunks = [], settingsCmdStream = null;
+async function settingsCmdMicToggle(){
+  const btn = document.getElementById('settingsCmdMicBtn');
+  if(settingsCmdRecorder && settingsCmdRecorder.state === 'recording'){ settingsCmdRecorder.stop(); return; }
+  try{ settingsCmdStream = await navigator.mediaDevices.getUserMedia({ audio:true }); }
+  catch(e){ settingsToast(t('micNotSupported') || 'الميكروفون غير متاح'); return; }
+  settingsCmdChunks = [];
+  const mimeType = (window.MediaRecorder && MediaRecorder.isTypeSupported('audio/webm')) ? 'audio/webm' : '';
+  settingsCmdRecorder = mimeType ? new MediaRecorder(settingsCmdStream, { mimeType }) : new MediaRecorder(settingsCmdStream);
+  settingsCmdRecorder.ondataavailable = (e) => { if(e.data && e.data.size) settingsCmdChunks.push(e.data); };
+  settingsCmdRecorder.onstop = async () => {
+    if(btn){ btn.classList.remove('recording'); btn.style.color = 'var(--accent)'; }
+    if(settingsCmdStream) settingsCmdStream.getTracks().forEach(tr => tr.stop());
+    try{
+      const blob = new Blob(settingsCmdChunks, { type: (settingsCmdRecorder && settingsCmdRecorder.mimeType) || 'audio/webm' });
+      if(blob.size < 500) return;
+      const audioBase64 = await blobToBase64(blob);
+      const res = await fetch('/api/stt', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ audioBase64, mimeType: blob.type, lang, token: authGet('aiapp_auth_token'), guestId: window.getGuestId ? window.getGuestId() : undefined })
+      });
+      const data = await res.json();
+      if(res.ok && data && data.text){
+        const inp = document.getElementById('settingsCmdInput');
+        if(inp){ inp.value = (inp.value ? inp.value + ' ' : '') + data.text.trim(); inp.focus(); }
+      }
+    }catch(e){ console.error('settingsCmdMicToggle transcribe failed', e); }
+  };
+  settingsCmdRecorder.start();
+  if(btn){ btn.classList.add('recording'); btn.style.color = '#ff4d4d'; }
+}
+(function(){
+  const micBtn = document.getElementById('settingsCmdMicBtn');
+  if(micBtn) micBtn.onclick = settingsCmdMicToggle;
+})();
+
+// ---- Feature ④: calm stock ticker toggle ----
+function setTickerEnabled(on){
+  localStorage.setItem('tickerEnabled', on ? '1' : '0');
+  if(on){
+    // إعادة التشغيل من الإعدادات تفتح الشريط المطوي أيضًا
+    try{ localStorage.removeItem('tickerHidden'); localStorage.removeItem('tickerCollapsed'); }catch(e){}
+    if(typeof window.__tickerStart === 'function') window.__tickerStart();
+  } else {
+    if(typeof window.__tickerStop === 'function') window.__tickerStop();
+  }
+  const sw = document.getElementById('tickerToggleSwitch');
+  if(sw) sw.checked = !!on;
+}
+window.setTickerEnabled = setTickerEnabled;
+// ===== Checkout / Payments (Stripe + PayPal, test mode) =====
+let checkoutCurrentPlan = null;
+let paypalSdkLoaded = false;
+
+// 💰 نظام النقاط — شراء باقة نقاط (يفعّل مع Stripe لاحقًا)
+function buyPointsPack(amount){
+  settingsToast(t('pricingComingSoon'));
+}
+window.buyPointsPack = buyPointsPack;
+
+// جلب رصيد النقاط وعرضه في صف المحفظة أعلى قسم الباقات
+async function refreshPointsWallet(){
+  const row = document.getElementById('pricingWalletRow');
+  const val = document.getElementById('pricingWalletValue');
+  if(!row || !val) return;
+  const token = authGet('aiapp_auth_token');
+  if(!token){ row.style.display = 'none'; return; }
+  try{
+    const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'balance', token }) });
+    const d = await r.json();
+    if(d && d.ok && d.authed){
+      row.style.display = 'flex';
+      val.textContent = d.unlimited ? '∞' : (d.points + ' ' + t('pricingPointsUnit'));
+      window.__pointsBalance = d.unlimited ? Infinity : d.points;
+    } else { row.style.display = 'none'; }
+  }catch(e){ /* صامت */ }
+}
+window.refreshPointsWallet = refreshPointsWallet;
+
+function openCheckout(plan){
+  checkoutCurrentPlan = plan;
+  const overlay = document.getElementById('checkoutModalOverlay');
+  const label = document.getElementById('checkoutPlanLabel');
+  const statusMsg = document.getElementById('checkoutStatusMsg');
+  if (label) label.textContent = t(plan === 'pro' ? 'checkoutPlanLabelPro' : 'checkoutPlanLabelBasic');
+  if (statusMsg) statusMsg.textContent = '';
+  if (overlay) overlay.style.display = 'flex';
+  loadPaypalButtons();
+}
+window.openCheckout = openCheckout;
+
+function closeCheckout(){
+  const overlay = document.getElementById('checkoutModalOverlay');
+  if (overlay) overlay.style.display = 'none';
+}
+window.closeCheckout = closeCheckout;
+
+async function startStripeCheckout(){
+  const statusMsg = document.getElementById('checkoutStatusMsg');
+  if (statusMsg) statusMsg.textContent = t('checkoutRedirecting');
+  try {
+    const r = await fetch('/api/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan: checkoutCurrentPlan, origin: window.location.origin }),
+    });
+    const data = await r.json();
+    if (!r.ok || !data.url) {
+      if (statusMsg) statusMsg.textContent = data.error || t('checkoutNotConfigured');
+      return;
+    }
+    window.location.href = data.url;
+  } catch (e) {
+    if (statusMsg) statusMsg.textContent = t('checkoutError');
+  }
+}
+window.startStripeCheckout = startStripeCheckout;
+
+async function loadPaypalButtons(){
+  const container = document.getElementById('paypalButtonContainer');
+  const fallbackBtn = document.getElementById('paypalFallbackBtn');
+  if (!container) return;
+  container.innerHTML = '';
+  try {
+    const r = await fetch('/api/paypal-client-id');
+    const data = await r.json();
+    if (!data.configured) {
+      if (fallbackBtn) fallbackBtn.style.display = 'flex';
+      return;
+    }
+    if (fallbackBtn) fallbackBtn.style.display = 'none';
+    if (!paypalSdkLoaded) {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(data.clientId)}&currency=USD&intent=capture`;
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+      paypalSdkLoaded = true;
+    }
+    if (window.paypal) {
+      window.paypal.Buttons({
+        createOrder: async () => {
+          const cr = await fetch('/api/paypal-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'create', plan: checkoutCurrentPlan }),
+          });
+          const cd = await cr.json();
+          if (!cr.ok) throw new Error(cd.error || 'error');
+          return cd.id;
+        },
+        onApprove: async (data) => {
+          const statusMsg = document.getElementById('checkoutStatusMsg');
+          const cap = await fetch('/api/paypal-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'capture', orderId: data.orderID, token: authGet('aiapp_auth_token') }),
+          });
+          const capData = await cap.json();
+          if (cap.ok && (capData.status === 'COMPLETED' || capData.status === 'APPROVED')) {
+            if (statusMsg) { statusMsg.style.color = '#22c55e'; statusMsg.textContent = t('checkoutSuccessMsg'); }
+            setTimeout(closeCheckout, 2500);
+          } else if (statusMsg) {
+            statusMsg.textContent = t('checkoutError');
+          }
+        },
+        onError: () => {
+          const statusMsg = document.getElementById('checkoutStatusMsg');
+          if (statusMsg) statusMsg.textContent = t('checkoutError');
+        },
+      }).render('#paypalButtonContainer');
+    }
+  } catch (e) {
+    if (fallbackBtn) fallbackBtn.style.display = 'flex';
+  }
+}
+
+async function startPaypalCheckout(){
+  const statusMsg = document.getElementById('checkoutStatusMsg');
+  if (statusMsg) statusMsg.textContent = t('checkoutNotConfigured');
+}
+window.startPaypalCheckout = startPaypalCheckout;
+
+// Handle Stripe redirect back (success/cancel)
+(function handleCheckoutRedirectResult(){
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const checkoutResult = params.get('checkout');
+    if (checkoutResult === 'success' || checkoutResult === 'cancel') {
+      const sessionId = params.get('session_id');
+      window.addEventListener('DOMContentLoaded', () => {
+        setTimeout(async () => {
+          if (checkoutResult === 'success' && sessionId) {
+            try {
+              const vr = await fetch('/api/account?action=verify-checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'verify-checkout', session_id: sessionId, token: authGet('aiapp_auth_token') }),
+              });
+              const vd = await vr.json();
+              alert(vr.ok && vd.ok ? t('checkoutSuccessMsg') : t('checkoutError'));
+            } catch (e) { alert(t('checkoutError')); }
+          } else {
+            alert(checkoutResult === 'success' ? t('checkoutSuccessMsg') : t('checkoutCancelMsg'));
+          }
+        }, 300);
+      });
+      params.delete('checkout');
+      params.delete('plan');
+      params.delete('session_id');
+      const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+      window.history.replaceState({}, '', newUrl);
+    }
+  } catch (e) {}
+})();
+const btnExportProjectsEl = $('#btnExportProjects');
+if(btnExportProjectsEl) btnExportProjectsEl.onclick = exportProjects;
+const btnImportProjectsEl = $('#btnImportProjects');
+const importProjectsFileEl = $('#importProjectsFile');
+if(btnImportProjectsEl && importProjectsFileEl){
+  btnImportProjectsEl.onclick = () => importProjectsFileEl.click();
+  importProjectsFileEl.onchange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if(file) importProjectsFromFile(file);
+    importProjectsFileEl.value = '';
+  };
+}
+$('#btnSettings').onclick = () => {
+  try {
+  collapseAllSettingsSections();
+  renderStats();
+  renderReferral();
+  $('#provider').value = localStorage.getItem('aiapp_provider') || 'claude';
+  $('#apiKey').value = localStorage.getItem('aiapp_apikey') || '';
+  $('#modelName').value = localStorage.getItem('aiapp_model') || 'gpt-4o-mini';
+  $('#geminiApiKey').value = localStorage.getItem('aiapp_gemini_apikey') || '';
+  $('#geminiModel').value = localStorage.getItem('aiapp_gemini_model') || 'gemini-flash-latest';
+  $('#groqApiKey').value = localStorage.getItem('aiapp_groq_apikey') || '';
+  $('#groqModel').value = localStorage.getItem('aiapp_groq_model') || 'llama-3.3-70b-versatile';
+  $('#claudeApiKey').value = localStorage.getItem('aiapp_claude_apikey') || '';
+  $('#claudeModel').value = localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-4-20250514';
+  $('#openrouterApiKey').value = localStorage.getItem('aiapp_openrouter_apikey') || '';
+  $('#openrouterModel').value = localStorage.getItem('aiapp_openrouter_model') || 'openai/gpt-4o-mini';
+  $('#perplexityApiKey').value = localStorage.getItem('aiapp_perplexity_apikey') || '';
+  $('#perplexityModel').value = localStorage.getItem('aiapp_perplexity_model') || 'sonar';
+  $('#mistralApiKey').value = localStorage.getItem('aiapp_mistral_apikey') || '';
+  $('#mistralModel').value = localStorage.getItem('aiapp_mistral_model') || 'mistral-small-latest';
+  $('#deepseekApiKey').value = localStorage.getItem('aiapp_deepseek_apikey') || '';
+  $('#deepseekModel').value = localStorage.getItem('aiapp_deepseek_model') || 'deepseek-chat';
+  $('#cohereApiKey').value = localStorage.getItem('aiapp_cohere_apikey') || '';
+  // 'command-r-plus' was retired by Cohere on 2025-09-15; if a visitor's
+  // browser still has it saved from before, silently upgrade it so requests
+  // don't fail with a 404 model-not-found error.
+  {
+    const savedCohereModel = localStorage.getItem('aiapp_cohere_model');
+    $('#cohereModel').value = normalizeCohereModel(savedCohereModel);
+  }
+  $('#chkIncludeOpenAI').checked = localStorage.getItem('aiapp_include_openai') !== 'false';
+  $('#chkIncludeGemini').checked = localStorage.getItem('aiapp_include_gemini') !== 'false';
+  $('#chkIncludeGroq').checked = localStorage.getItem('aiapp_include_groq') !== 'false';
+  $('#chkIncludeClaude').checked = localStorage.getItem('aiapp_include_claude') !== 'false';
+  $('#chkIncludeOpenRouter').checked = localStorage.getItem('aiapp_include_openrouter') !== 'false';
+  $('#chkIncludePerplexity').checked = localStorage.getItem('aiapp_include_perplexity') !== 'false';
+  $('#chkIncludeMistral').checked = localStorage.getItem('aiapp_include_mistral') !== 'false';
+  $('#chkIncludeDeepSeek').checked = localStorage.getItem('aiapp_include_deepseek') !== 'false';
+  $('#chkIncludeCohere').checked = localStorage.getItem('aiapp_include_cohere') !== 'false';
+  try { setVoiceGenderUI(localStorage.getItem('aiapp_voice_gender') || 'female'); } catch(e) { console.error(e); }
+  try { loadThemeToForm(); } catch(e) { console.error(e); }
+  try { populateVoicePicker(); } catch(e) { console.error(e); }
+  } catch(e) { console.error('settings populate error', e); }
+  try { renderSettingsNavList(); showSettingsHome(); } catch(e) { console.error(e); }
+  try { if (window.updateVersionLabel) window.updateVersionLabel(); } catch(e) {}
+  openDialogSafe(settingsDialog);
+};
+$('#btnResetColors').onclick = () => {
+  localStorage.removeItem('aiapp_theme');
+  localStorage.removeItem('aiapp_provider_colors');
+  const row = $('#colorPresetsRow');
+  if(row) row.innerHTML = '';
+  try { loadThemeToForm(); } catch(e) { console.error(e); }
+  applyTheme();
+  renderMessages();
+};
+$('#fetchClaudeModelsBtn').onclick = async () => {
+  const apiKey = $('#claudeApiKey').value.trim();
+  const listEl = $('#claudeModelList');
+  const btn = $('#fetchClaudeModelsBtn');
+  if(!apiKey){ alert(t('fetchModelsFail')); return; }
+  btn.disabled = true;
+  const originalText = btn.textContent;
+  btn.textContent = '...';
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/models?limit=1000', {
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+    });
+    if(!res.ok){ alert(t('fetchModelsFail')); return; }
+    const data = await res.json();
+    const models = (data.data || []).map(m => m.id);
+    if(!models.length){ alert(t('fetchModelsEmpty')); return; }
+    listEl.innerHTML = '<option value="">-- ' + t('fetchModelsBtn') + ' --</option>' + models.map(id => `<option value="${id}">${id}</option>`).join('');
+    listEl.style.display = 'block';
+    listEl.onchange = () => { if(listEl.value) $('#claudeModel').value = listEl.value; };
+  } catch(e) {
+    alert(t('fetchModelsFail'));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+};
+/* ===== Calendar & World Clock ===== */
+const CLOCK_TIMEZONES = [
+  {tz:'Etc/GMT', ar:'غرينتش (GMT)', en:'Greenwich (GMT)'},
+  {tz:'Asia/Riyadh', ar:'السعودية - الرياض/مكة', en:'Saudi Arabia - Riyadh/Makkah'},
+  {tz:'Asia/Dubai', ar:'الإمارات - دبي/أبوظبي', en:'UAE - Dubai/Abu Dhabi'},
+  {tz:'Asia/Kuwait', ar:'الكويت', en:'Kuwait'},
+  {tz:'Asia/Qatar', ar:'قطر - الدوحة', en:'Qatar - Doha'},
+  {tz:'Asia/Bahrain', ar:'البحرين', en:'Bahrain'},
+  {tz:'Asia/Muscat', ar:'عُمان - مسقط', en:'Oman - Muscat'},
+  {tz:'Africa/Cairo', ar:'مصر - القاهرة', en:'Egypt - Cairo'},
+  {tz:'Asia/Amman', ar:'الأردن - عمّان', en:'Jordan - Amman'},
+  {tz:'Asia/Beirut', ar:'لبنان - بيروت', en:'Lebanon - Beirut'},
+  {tz:'Asia/Damascus', ar:'سوريا - دمشق', en:'Syria - Damascus'},
+  {tz:'Asia/Baghdad', ar:'العراق - بغداد', en:'Iraq - Baghdad'},
+  {tz:'Asia/Gaza', ar:'فلسطين - غزة', en:'Palestine - Gaza'},
+  {tz:'Asia/Aden', ar:'اليمن - عدن', en:'Yemen - Aden'},
+  {tz:'Africa/Khartoum', ar:'السودان - الخرطوم', en:'Sudan - Khartoum'},
+  {tz:'Africa/Tripoli', ar:'ليبيا - طرابلس', en:'Libya - Tripoli'},
+  {tz:'Africa/Tunis', ar:'تونس', en:'Tunisia'},
+  {tz:'Africa/Algiers', ar:'الجزائر', en:'Algeria'},
+  {tz:'Africa/Casablanca', ar:'المغرب - الرباط', en:'Morocco - Rabat'},
+  {tz:'Europe/London', ar:'بريطانيا - لندن', en:'UK - London'},
+  {tz:'Europe/Paris', ar:'فرنسا - باريس', en:'France - Paris'},
+  {tz:'Europe/Berlin', ar:'ألمانيا - برلين', en:'Germany - Berlin'},
+  {tz:'Europe/Madrid', ar:'إسبانيا - مدريد', en:'Spain - Madrid'},
+  {tz:'Europe/Rome', ar:'إيطاليا - روما', en:'Italy - Rome'},
+  {tz:'Europe/Istanbul', ar:'تركيا - إسطنبول', en:'Turkey - Istanbul'},
+  {tz:'Europe/Moscow', ar:'روسيا - موسكو', en:'Russia - Moscow'},
+  {tz:'America/New_York', ar:'أمريكا - نيويورك', en:'USA - New York'},
+  {tz:'America/Chicago', ar:'أمريكا - شيكاغو', en:'USA - Chicago'},
+  {tz:'America/Los_Angeles', ar:'أمريكا - لوس أنجلوس', en:'USA - Los Angeles'},
+  {tz:'America/Toronto', ar:'كندا - تورنتو', en:'Canada - Toronto'},
+  {tz:'America/Sao_Paulo', ar:'البرازيل - ساو باولو', en:'Brazil - Sao Paulo'},
+  {tz:'Asia/Tokyo', ar:'اليابان - طوكيو', en:'Japan - Tokyo'},
+  {tz:'Asia/Shanghai', ar:'الصين - بكين/شنغهاي', en:'China - Beijing/Shanghai'},
+  {tz:'Asia/Seoul', ar:'كوريا الجنوبية - سيول', en:'South Korea - Seoul'},
+  {tz:'Asia/Kolkata', ar:'الهند - نيودلهي', en:'India - New Delhi'},
+  {tz:'Asia/Karachi', ar:'باكستان - كراتشي', en:'Pakistan - Karachi'},
+  {tz:'Asia/Dhaka', ar:'بنغلاديش - دكا', en:'Bangladesh - Dhaka'},
+  {tz:'Asia/Jakarta', ar:'إندونيسيا - جاكرتا', en:'Indonesia - Jakarta'},
+  {tz:'Asia/Kuala_Lumpur', ar:'ماليزيا - كوالالمبور', en:'Malaysia - Kuala Lumpur'},
+  {tz:'Australia/Sydney', ar:'أستراليا - سيدني', en:'Australia - Sydney'},
+  {tz:'Pacific/Auckland', ar:'نيوزيلندا - أوكلاند', en:'New Zealand - Auckland'},
+];
+const CLOCK_WORLD_STRIP = ['Asia/Riyadh','Asia/Dubai','Europe/London','America/New_York','Asia/Tokyo'];
+let clockIntervalId = null;
+
+function clockGmtOffset(tz){
+  try {
+    const dtf = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' });
+    const part = dtf.formatToParts(new Date()).find(p => p.type === 'timeZoneName');
+    return part ? part.value.replace('GMT','GMT ') : '';
+  } catch(e) { return ''; }
+}
+
+function clockFormatTime(tz){
+  try {
+    return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US', {
+      timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
+    }).format(new Date());
+  } catch(e) { return '--:--:--'; }
+}
+
+function populateClockTZSelect(){
+  const sel = $('#clockTZSelect');
+  if (!sel) return;
+  const saved = localStorage.getItem('aiapp_clock_tz');
+  sel.innerHTML = CLOCK_TIMEZONES.map(z => `<option value="${z.tz}">${lang === 'ar' ? z.ar : z.en}</option>`).join('');
+  const guess = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (saved && CLOCK_TIMEZONES.some(z => z.tz === saved)) sel.value = saved;
+  else if (CLOCK_TIMEZONES.some(z => z.tz === guess)) sel.value = guess;
+  else sel.value = 'Asia/Riyadh';
+}
+
+function updateHeaderClock(){
+  const el = $('#headerClockTime');
+  if (!el) return;
+  el.textContent = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US', {
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
+  }).format(new Date());
+}
+updateHeaderClock();
+setInterval(updateHeaderClock, 1000);
+
+function renderClockWorldStrip(){
+  const box = $('#clockWorldStrip');
+  if (!box) return;
+  box.innerHTML = CLOCK_WORLD_STRIP.map(tz => {
+    const meta = CLOCK_TIMEZONES.find(z => z.tz === tz);
+    const label = meta ? (lang === 'ar' ? meta.ar : meta.en) : tz;
+    return `<div class="clockStripRow" data-tz="${tz}" style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-radius:10px; background:var(--bg); border:1px solid var(--border);">
+      <span style="font-size:13px; font-weight:600;">${label}</span>
+      <span class="clockStripTime" style="font-size:15px; font-weight:800; direction:ltr;">--:--:--</span>
+    </div>`;
+  }).join('');
+}
+
+function updateClockDialog(){
+  const now = new Date();
+  const gEl = $('#clockGregorianTime');
+  const gdEl = $('#clockGregorianDate');
+  const hEl = $('#clockHijriDate');
+  if (gEl) gEl.textContent = clockFormatTime(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  if (gdEl) {
+    gdEl.textContent = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    }).format(now);
+  }
+  if (hEl) {
+    try {
+      const hijriStr = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-ca-islamic-umalqura-nu-latn' : 'en-US-u-ca-islamic-umalqura', {
+        year: 'numeric', month: 'long', day: 'numeric',
+      }).format(now);
+      hEl.textContent = '🕌 ' + hijriStr;
+    } catch(e) { hEl.textContent = '🕌 —'; }
+  }
+  const sel = $('#clockTZSelect');
+  if (sel && sel.value) {
+    const selTimeEl = $('#clockSelectedTime');
+    const selMetaEl = $('#clockSelectedMeta');
+    if (selTimeEl) selTimeEl.textContent = clockFormatTime(sel.value);
+    if (selMetaEl) selMetaEl.textContent = clockGmtOffset(sel.value);
+  }
+  document.querySelectorAll('.clockStripRow').forEach(row => {
+    const tz = row.getAttribute('data-tz');
+    const timeEl = row.querySelector('.clockStripTime');
+    if (timeEl) timeEl.textContent = clockFormatTime(tz) + '  ' + clockGmtOffset(tz);
+  });
+}
+
+$('#btnClock').onclick = () => {
+  populateClockTZSelect();
+  renderClockWorldStrip();
+  updateClockDialog();
+  if (clockIntervalId) clearInterval(clockIntervalId);
+  clockIntervalId = setInterval(updateClockDialog, 1000);
+  openDialogSafe($('#clockDialog'));
+};
+$('#clockTZSelect').onchange = updateClockDialog;
+$('#btnCloseClock').onclick = () => {
+  closeDialogSafe($('#clockDialog'));
+  if (clockIntervalId) { clearInterval(clockIntervalId); clockIntervalId = null; }
+};
+$('#btnSaveClock').onclick = () => {
+  const sel = $('#clockTZSelect');
+  if (sel && sel.value) localStorage.setItem('aiapp_clock_tz', sel.value);
+  closeDialogSafe($('#clockDialog'));
+  if (clockIntervalId) { clearInterval(clockIntervalId); clockIntervalId = null; }
+};
+
+$('#btnCancelSettings').onclick = () => closeDialogSafe(settingsDialog);
+$('#btnSaveSettings').onclick = () => {
+  localStorage.setItem('aiapp_provider', $('#provider').value);
+  localStorage.setItem('aiapp_apikey', $('#apiKey').value.trim());
+  localStorage.setItem('aiapp_model', $('#modelName').value.trim() || 'gpt-4o-mini');
+  localStorage.setItem('aiapp_gemini_apikey', $('#geminiApiKey').value.trim());
+  localStorage.setItem('aiapp_gemini_model', $('#geminiModel').value.trim() || 'gemini-flash-latest');
+  localStorage.setItem('aiapp_groq_apikey', $('#groqApiKey').value.trim());
+  localStorage.setItem('aiapp_groq_model', $('#groqModel').value.trim() || 'llama-3.3-70b-versatile');
+  localStorage.setItem('aiapp_claude_apikey', $('#claudeApiKey').value.trim());
+  localStorage.setItem('aiapp_claude_model', $('#claudeModel').value.trim() || 'claude-sonnet-4-20250514');
+  localStorage.setItem('aiapp_openrouter_apikey', $('#openrouterApiKey').value.trim());
+  (() => {
+    const sel = $('#openrouterModelSelect');
+    const finalModel = (sel.value === '__custom__') ? ($('#openrouterModel').value.trim() || 'openai/gpt-4o-mini') : sel.value;
+    localStorage.setItem('aiapp_openrouter_model', finalModel);
+  })();
+  localStorage.setItem('aiapp_perplexity_apikey', $('#perplexityApiKey').value.trim());
+  localStorage.setItem('aiapp_perplexity_model', $('#perplexityModel').value.trim() || 'sonar');
+  localStorage.setItem('aiapp_mistral_apikey', $('#mistralApiKey').value.trim());
+  localStorage.setItem('aiapp_mistral_model', $('#mistralModel').value.trim() || 'mistral-small-latest');
+  localStorage.setItem('aiapp_deepseek_apikey', $('#deepseekApiKey').value.trim());
+  localStorage.setItem('aiapp_deepseek_model', $('#deepseekModel').value.trim() || 'deepseek-chat');
+  localStorage.setItem('aiapp_cohere_apikey', $('#cohereApiKey').value.trim());
+  localStorage.setItem('aiapp_cohere_model', normalizeCohereModel($('#cohereModel').value));
+  localStorage.setItem('aiapp_include_openai', $('#chkIncludeOpenAI').checked ? 'true' : 'false');
+  localStorage.setItem('aiapp_include_gemini', $('#chkIncludeGemini').checked ? 'true' : 'false');
+  localStorage.setItem('aiapp_include_groq', $('#chkIncludeGroq').checked ? 'true' : 'false');
+  localStorage.setItem('aiapp_include_claude', $('#chkIncludeClaude').checked ? 'true' : 'false');
+  localStorage.setItem('aiapp_include_openrouter', $('#chkIncludeOpenRouter').checked ? 'true' : 'false');
+  localStorage.setItem('aiapp_include_perplexity', $('#chkIncludePerplexity').checked ? 'true' : 'false');
+  localStorage.setItem('aiapp_include_mistral', $('#chkIncludeMistral').checked ? 'true' : 'false');
+  localStorage.setItem('aiapp_include_deepseek', $('#chkIncludeDeepSeek').checked ? 'true' : 'false');
+  localStorage.setItem('aiapp_include_cohere', $('#chkIncludeCohere').checked ? 'true' : 'false');
+  saveThemeFromForm();
+  closeDialogSafe(settingsDialog);
+};
+
+// Allow manually editing the generated code directly in the code panel:
+// typing here now updates the project's stored code, saves it, and live-refreshes
+// the preview (HTML) or re-runs it (Python), instead of being a read-only view.
+let codeEditDebounce = null;
+codeEl.addEventListener('input', () => {
+  let cur = getCurrent();
+  if(!cur){
+    // No project exists yet: create one on-the-fly so typed code isn't lost.
+    cur = { id: Date.now().toString(), title: 'مشروعي', code: '', codeType: 'html', messages: [] };
+    state.projects.push(cur);
+    state.currentId = cur.id;
+    emptyState.style.display = 'none';
+    previewFrame.style.display = 'block';
+  }
+  cur.code = codeEl.value;
+  clearTimeout(codeEditDebounce);
+  codeEditDebounce = setTimeout(() => {
+    saveState();
+    if(cur.codeType === 'python'){
+      $('#pyOutput').textContent = '';
+      $('#pyStatus').textContent = '';
+      runPythonCode(cur.code);
+    } else {
+      previewFrame._lastSrc = cur.code; previewFrame._imageView = false;
+      previewFrame.srcdoc = cur.code;
+    }
+  }, 500);
+});
+
+// ▶️ Run pasted/edited code immediately and jump to preview
+$('#btnRunCode').onclick = () => {
+  const src = codeEl.value.trim();
+  if(!src) return;
+  let cur = getCurrent();
+  const looksPy = !/^\s*</.test(src) && /(^|\n)\s*(import |def |print\()/.test(src);
+  if(!cur){
+    cur = { id: Date.now().toString(), title: 'مشروعي', code: '', codeType: looksPy ? 'python' : 'html', messages: [] };
+    state.projects.push(cur);
+    state.currentId = cur.id;
+  }
+  cur.code = codeEl.value;
+  cur.codeType = looksPy ? 'python' : 'html';
+  saveState();
+  renderHistory();
+  renderCodeAndPreview();
+  if(cur.codeType === 'python'){
+    $('#pyOutput').textContent = '';
+    $('#pyStatus').textContent = '';
+    runPythonCode(cur.code);
+  } else {
+    previewFrame._lastSrc = cur.code; previewFrame._imageView = false;
+    previewFrame.srcdoc = cur.code;
+  }
+  switchWorkTab('preview');
+};
+
+$('#btnUploadCode').onclick = () => {
+  $('#codeUploadInput').click();
+};
+$('#codeUploadInput').addEventListener('change', (e) => {
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let cur = getCurrent();
+    const isPy = /\.py$/i.test(file.name);
+    if(!cur){
+      // No active project yet: create one from the uploaded file.
+      cur = { id: Date.now().toString(), title: file.name.replace(/\.[^.]+$/, ''), code: '', codeType: isPy ? 'python' : 'html', messages: [] };
+      state.projects.push(cur);
+      state.currentId = cur.id;
+    }
+    cur.code = reader.result;
+    cur.codeType = isPy ? 'python' : 'html';
+    saveState();
+    renderHistory();
+    renderCodeAndPreview();
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+(() => {
+  const btn = $('#btnCopyCode');
+  const copyIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+  const checkIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+  btn.innerHTML = copyIconSVG;
+  btn.style.background = 'rgba(255,255,255,0.06)';
+  btn.style.border = '1px solid var(--border,rgba(255,255,255,.12))';
+  btn.style.color = 'var(--muted,#98a0b3)';
+  btn.style.opacity = '1';
+  btn.onmouseenter = () => { btn.style.color = 'var(--accent2,#00e0b8)'; btn.style.background = 'rgba(255,255,255,0.12)'; };
+  btn.onmouseleave = () => { btn.style.color = 'var(--muted,#98a0b3)'; btn.style.background = 'rgba(255,255,255,0.06)'; };
+  btn.onclick = async () => {
+    const cur = getCurrent();
+    const codeToCopy = (cur && cur.code) ? cur.code : codeEl.value;
+    if(!codeToCopy){ return; }
+    try{
+      await navigator.clipboard.writeText(codeToCopy);
+    }catch(e){
+      codeEl.select();
+      document.execCommand('copy');
+    }
+    btn.innerHTML = checkIconSVG;
+    setTimeout(() => { btn.innerHTML = copyIconSVG; }, 1500);
+  };
+})();
+
+$('#btnDownload').onclick = () => {
+  const cur = getCurrent();
+  if(!cur || !cur.code){ alert(t('noCodeToDownload')); return; }
+  const isPy = cur.codeType === 'python';
+  const blob = new Blob([cur.code], {type: isPy ? 'text/x-python' : 'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = (cur.title || 'app') + (isPy ? '.py' : '.html');
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+
+// 📦 تصدير المشروع كملف ZIP جاهز للنشر (index.html + README)
+$('#btnExportZip').onclick = async () => {
+  const cur = getCurrent();
+  if(!cur || !cur.code){ alert(t('noCodeToDownload')); return; }
+  try{
+    if(!window.JSZip){
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    }
+    const zip = new JSZip();
+    const isPy = cur.codeType === 'python';
+    zip.file(isPy ? 'main.py' : 'index.html', cur.code);
+    zip.file('README.md', '# ' + (cur.title || 'App') + '\n\nBuilt with Omran AI Builder — https://omran-ai-builder.vercel.app\n\n' + (isPy ? 'Run: `python main.py`' : 'Open `index.html` in a browser, or deploy the folder to Vercel/Netlify.'));
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = (cur.title || 'app') + '.zip';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }catch(e){
+    console.error('zip export error', e);
+    alert('⚠️ ' + (e.message || e));
+  }
+};
+
+$('#btnRunPython').onclick = () => {
+  const cur = getCurrent();
+  if(cur && cur.code) runPythonCode(cur.code);
+};
+
+// 🔁 التصحيح الذاتي: يشغّل الكود المولّد في iframe مخفي معزول، يلتقط أخطاء
+// JavaScript وقت التشغيل، ويطلب من الذكاء إصلاحها قبل عرض النتيجة للمستخدم.
+// 📋 تقسيم المهام: يقسم الطلبات الكبيرة إلى خطوات ويتابع إنجازها
+const TASK_I18N = {
+  ar: { title: '📋 خطة العمل', planning: '📋 جاري تقسيم المهمة إلى خطوات...', verifying: '🔎 جاري التحقق من اكتمال كل الخطوات...', refining: '🧩 جاري إكمال الخطوات الناقصة...' },
+  en: { title: '📋 Work plan', planning: '📋 Breaking the task into steps...', verifying: '🔎 Verifying all steps are complete...', refining: '🧩 Completing the missing steps...' },
+  fr: { title: '📋 Plan de travail', planning: '📋 Découpage de la tâche en étapes...', verifying: '🔎 Vérification que toutes les étapes sont terminées...', refining: '🧩 Finalisation des étapes manquantes...' },
+  hi: { title: '📋 कार्य योजना', planning: '📋 कार्य को चरणों में बाँटा जा रहा है...', verifying: '🔎 सभी चरणों की जाँच हो रही है...', refining: '🧩 बचे हुए चरण पूरे किए जा रहे हैं...' },
+  ur: { title: '📋 ورک پلان', planning: '📋 کام کو مراحل میں تقسیم کیا جا رہا ہے...', verifying: '🔎 تمام مراحل کی تصدیق ہو رہی ہے...', refining: '🧩 باقی مراحل مکمل کیے جا رہے ہیں...' },
+  bn: { title: '📋 কাজের পরিকল্পনা', planning: '📋 কাজটি ধাপে ভাগ করা হচ্ছে...', verifying: '🔎 সব ধাপ সম্পূর্ণ কিনা যাচাই হচ্ছে...', refining: '🧩 বাকি ধাপগুলো সম্পন্ন করা হচ্ছে...' },
+  ne: { title: '📋 कार्य योजना', planning: '📋 कामलाई चरणहरूमा विभाजन गरिँदै...', verifying: '🔎 सबै चरणहरू पूरा भए/नभएको जाँच गरिँदै...', refining: '🧩 बाँकी चरणहरू पूरा गरिँदै...' },
+  id: { title: '📋 Rencana kerja', planning: '📋 Membagi tugas menjadi langkah-langkah...', verifying: '🔎 Memeriksa semua langkah sudah selesai...', refining: '🧩 Menyelesaikan langkah yang belum selesai...' },
+  fil: { title: '📋 Plano ng trabaho', planning: '📋 Hinahati ang gawain sa mga hakbang...', verifying: '🔎 Sinusuri kung kumpleto ang lahat ng hakbang...', refining: '🧩 Kinukumpleto ang mga natitirang hakbang...' },
+  tr: { title: '📋 Çalışma planı', planning: '📋 Görev adımlara bölünüyor...', verifying: '🔎 Tüm adımların tamamlandığı doğrulanıyor...', refining: '🧩 Eksik adımlar tamamlanıyor...' },
+  zh: { title: '📋 工作计划', planning: '📋 正在将任务拆分为步骤...', verifying: '🔎 正在检查所有步骤是否完成...', refining: '🧩 正在补全缺失的步骤...' },
+  ru: { title: '📋 План работы', planning: '📋 Разбиваем задачу на шаги...', verifying: '🔎 Проверяем, что все шаги выполнены...', refining: '🧩 Завершаем недостающие шаги...' },
+  es: { title: '📋 Plan de trabajo', planning: '📋 Dividiendo la tarea en pasos...', verifying: '🔎 Verificando que todos los pasos estén completos...', refining: '🧩 Completando los pasos faltantes...' },
+  ml: { title: '📋 വർക്ക് പ്ലാൻ', planning: '📋 ടാസ്ക് ഘട്ടങ്ങളായി വിഭജിക്കുന്നു...', verifying: '🔎 എല്ലാ ഘട്ടങ്ങളും പൂർത്തിയായോ എന്ന് പരിശോധിക്കുന്നു...', refining: '🧩 ബാക്കിയുള്ള ഘട്ടങ്ങൾ പൂർത്തിയാക്കുന്നു...' }
+};
+function taskTxt(key){
+  const l = localStorage.getItem('aiapp_lang') || 'ar';
+  return (TASK_I18N[l] || TASK_I18N.ar)[key];
+}
+function formatTaskPlan(steps, done){
+  return taskTxt('title') + ':\n' + steps.map((s, i) => ((done && done[i]) ? '✅ ' : '⬜ ') + s).join('\n');
+}
+// هوية التطبيق: تُلحق بكل برومبت نظام (بما فيها الدمج) حتى لا يقول أي موديل "ما أعرف" عن التطبيق.
+const APP_IDENTITY_NOTE = '\n(APP IDENTITY & KNOWLEDGE — always true, answer from this: You are the AI assistant inside "Omran AI Builder" / «عمران AI» (omran-ai-builder.vercel.app), an Arabic-first AI app-building platform made by فريق عمران AI (the Omran AI Team). CRITICAL ANTI-HALLUCINATION RULE: whenever the user mentions "عمران", "برنامج عمران", "تطبيق عمران", "Omran app" or similar, they ALWAYS mean THIS app you are inside — NEVER any other app, company, or project with a similar name; NEVER invent or guess information about other apps named Omran; if you genuinely do not know something, say so briefly instead of guessing. APP FEATURES: users describe an app/site/game in Arabic or any language and the AI builds it instantly as one working HTML file with live preview and code editor, downloadable as HTML or ZIP. 9 AI providers (OpenAI, Claude, Gemini, Groq, Cohere, DeepSeek, Mistral, OpenRouter, Perplexity); typing "اسأل الكل" asks all 9 and merges the best result. 7 interface languages (Arabic, English, French, Hindi, Urdu, Bengali, Nepali) from ⚙️ > اللغة. Main tabs: 💬 محادثة, 👁️ معاينة, 💻 كود, 🎙️ الصوت (live voice assistant مها). ⋮ menu sections: 📂 المشاريع, 🤖 وكيل عمران (AI agent, Pro), 📋 قوالب جاهزة, 🌍 استكشف, 🎬 صانع الفيديو (Runway + Veo 3, idea-to-film, talking actor), 🏗️ المقاولات (2D plans + cost estimates), 🕌 التفسير الديني, 💄 ديكور, 👗 أزياء, 🎨 ستوديو الصور, 📚 التعليم, 📈 سوق الأسهم (live quotes + AI analysis + trading lessons), 📧 مساعد البريد, 📲 تثبيت PWA, ↗️ مشاركة. Also: mic dictation, listen 🔊 TTS, image upload/analysis/editing, real web search, long-term memory, 20 animated 3D backgrounds (⚙️ > 🎨). Guest mode = 20 free messages, then login; plans in ⚙️ > 💳. Creator/developer if asked: فريق عمران AI — never a personal name.)'
+// قاعدة الاكتمال: تمنع تسليم "شاشة دخول فقط" عند طلب تطبيق كبير أو نسخة من تطبيق مشهور.
+const BUILD_COMPLETENESS_RULE = '\nCOMPLETENESS RULE (mandatory, highest priority): when the user asks to build an app — especially a clone of a famous/known app (e.g. Yoho, TikTok, WhatsApp, Instagram) — NEVER deliver only a login screen or a single screen. Silently plan ALL the core screens the real app has (for example a voice-chat rooms app needs: login, home with a list of live rooms, a full live room screen with speaker seats + text chat + gift animations, user profile, coins/store), then implement ALL of them inside the single HTML file with working navigation between screens and realistic demo data (sample rooms, users, avatars via emoji/SVG, messages). The very first reply must feel like a complete, usable, beautiful app — not a starting point.' +
+'\nGAME RULES (mandatory, highest priority, no exceptions): every game MUST be fully playable on BOTH mobile touchscreens and desktop keyboards. (1) Touch controls are REQUIRED: draw an on-screen virtual joystick or directional buttons (◀▲▼▶) plus action buttons (attack/jump/shoot) as fixed overlay elements, sized at least 56px, using touchstart/touchmove/touchend with e.preventDefault(); ALSO support keyboard (arrows/WASD/space) for desktop. NEVER ship a game controlled by keyboard only. (2) Graphics must be polished and rich: characters and objects must be real drawn shapes (detailed canvas drawings, SVG sprites, emoji sprites, gradients, glow, shadows, particle effects, animations) — plain colored rectangles/squares as characters are strictly FORBIDDEN. (3) Include a HUD (score/health), start screen, game-over screen with restart button, and sound effects via WebAudio API. (4) The canvas must resize responsively to fill the available screen on any device (window resize + orientationchange).' +
+'\nWORKING BUTTONS RULE (mandatory, highest priority): every button/control in the generated app MUST actually work when clicked. (1) NEVER use <script type="module"> — use a plain <script> placed at the END of <body>. (2) If you use inline onclick="fn()" attributes, the function MUST be declared at the global scope (plain `function fn(){}` at the top level of the script) — never inside DOMContentLoaded, an IIFE, or any closure. Preferred: attach handlers with document.getElementById(...).addEventListener("click", ...) at the end of the script. (3) Never reference DOM elements before they exist. (4) Wrap risky logic so one error cannot kill all buttons. (5) Elements created dynamically via innerHTML/insertAdjacentHTML LOSE their listeners — for any dynamic list/grid/options you MUST use event delegation (one listener on the static parent container checking e.target.closest(...)) OR re-attach listeners immediately after every render. (6) Screen/tab navigation MUST work: every nav button, tab, back button, menu item, retry/restart/home button must switch screens correctly (show target, hide others) and reset state where needed. NEVER leave href=\"#\" or an empty handler on any control. (7) MANDATORY FINAL SELF-TEST before output: mentally click EVERY single button/tab/menu item in the app one by one and trace the full flow (start → main → each action → result → restart/home) confirming each handler exists, is reachable, and its target elements exist. An app with even ONE dead button is a REJECTED, invalid answer.';
+// قاعدة التصاميم: إعلان/بوستر/شهادة/بطاقة = تصميم ثابت + زر حفظ كصورة، مو تطبيق.
+const DESIGN_POSTER_RULE = '\nDESIGN/POSTER RULE (mandatory, highest priority): when the user asks to design an AD, POSTER, FLYER, CERTIFICATE, CARD, INVITATION, LOGO, BANNER or COVER (إعلان، بوستر، شهادة، بطاقة، دعوة، لوجو، شعار، بنر، غلاف، منشور) — e.g. "صمم لي إعلان لهذا العقار مع الرقم" — the output is a STATIC VISUAL DESIGN, NOT an app. STRICTLY FORBIDDEN: navigation bars, menus, tabs, forms, input fields, multiple screens, or any app chrome. Deliver: (1) ONE polished poster centered on the page with a suitable aspect ratio (square or 4:5 for ads, landscape for certificates), built with rich CSS graphics — gradients, shapes, glow, elegant Arabic-friendly fonts via Google Fonts CDN, decorative SVG elements matching the subject (e.g. a building silhouette for real estate). (2) Every text and phone number the user provided must appear EXACTLY as written, large, high-contrast and instantly readable — phone numbers extra large. (3) Exactly ONE floating action button "⬇️ حفظ كصورة" fixed at the bottom, using html2canvas via CDN (https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js) to capture ONLY the poster element at scale:2 and download it as PNG. (4) NEVER present design options or variants or ask the user to choose — produce one beautiful finished design immediately; if the user later asks for changes (color, size, background, new design), modify exactly what was requested and return the full updated file. (5) REAL PHOTO BACKGROUNDS: when the user asks for a photo background (خلفية صور أبراج/مدينة/بحر…) or the subject is real estate / towers / city, you MUST use a REAL photograph as the poster background via CSS background-image with a dark gradient overlay for text readability — use these verified working URLs (pick the most fitting, you may combine several as section images like professional real-estate ads): Dubai Burj Khalifa skyline https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=1600&q=80 ; Dubai towers https://images.unsplash.com/photo-1518684079-3c830dcef090?w=1600&q=80 ; Dubai marina towers https://images.unsplash.com/photo-1546412414-e1885259563a?w=1600&q=80 ; city skyline https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=1600&q=80 ; modern buildings https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=1600&q=80 ; BRIGHT DAYTIME Dubai skyline (use this when clarity matters) https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=2400&q=90 . NEVER claim you cannot add real photos. (6) NAMES: STRICTLY FORBIDDEN to invent any company/brand/person name (e.g. "عقارات النخبة الذهبية") — use ONLY names and texts the user explicitly provided; if the user gave no company name, omit it entirely. (7) ARABIC TEXT SAFETY: STRICTLY FORBIDDEN to use letter-spacing (or any non-zero letter-spacing value) on ANY Arabic text — it breaks Arabic letter joining when saved as image; set letter-spacing:0 explicitly on Arabic elements. (8) NO TEXT CLIPPING: every text element must have generous inner padding (min 24px from poster edges), overflow visible, and NO fixed widths that cut words — long titles must wrap, never be clipped at the edge. (9) BACKGROUND CLARITY (mandatory): the background photo must stay SHARP and clearly visible — STRICTLY FORBIDDEN to apply filter:blur() or backdrop-filter:blur() to the background image itself, and any dark overlay on it must not exceed rgba(0,0,0,0.35) total; put readability effects (glass blur, semi-transparent panels) ONLY on the small text cards, never on the whole background. If the user asks for a clearer background (وضوح الخلفية / الخلفية غير واضحة / وضّح الصورة), you MUST do ALL of these literally: (a) remove EVERY overlay, gradient layer and blur from the background (zero overlays — not reduced, REMOVED), (b) switch the background photo to a BRIGHT DAYTIME high-resolution photo (use w=2400&q=90 in the Unsplash URL) — dark night-city photos are FORBIDDEN after a clarity request because they look dim even with no overlay, (c) shrink/condense the text cards so more of the photo is visible. Never just claim you did it. (10) RTL DIRECTION (mandatory): any design containing Arabic text MUST start with <html dir="rtl" lang="ar"> and every Arabic text element must render right-to-left — otherwise punctuation marks (! ? .) appear flipped on the wrong side, which is an automatic failure. (11) NO PLAIN/EMPTY DESIGNS: a bare white card with plain text is FORBIDDEN and counts as a failed answer — EVERY design (including greeting/congratulation cards like بطاقة تهنئة مولود) must have a rich premium look: a real photo background OR a luxurious multi-color gradient, plus decorative elements (SVG shapes, ornaments, soft glow, elegant Google Fonts like Amiri/Cairo/Tajawal) matching the occasion. (12) BACKGROUND MUST MATCH THE OCCASION: the city/towers photos in rule (5) are ONLY for real-estate/business/city subjects — using them for personal occasions is FORBIDDEN and absurd (e.g. Dubai towers on a baby card = failure). Newborn/baby card (تهنئة مولود): soft pastel gradient (baby blue or blush pink with cream/gold), cute SVG ornaments (stars, moon, clouds, balloons, tiny footprints). Wedding/engagement (زواج/خطوبة): elegant cream-gold with floral SVG ornaments. Eid/Ramadan (عيد/رمضان): deep green or navy with gold crescent, lanterns, Islamic patterns. Graduation (تخرج): navy-gold with cap and stars. Birthday (عيد ميلاد): festive colorful with balloons and confetti. Pick the theme from the occasion mentioned by the user, never default to city photos. (13) NO INVENTED CONTACT INFO (mandatory): STRICTLY FORBIDDEN to invent or add any phone number, WhatsApp number, email, address or website that the user did not explicitly provide — a made-up phone number on a design is an automatic failure; if the user gave no contact info, the design simply has none. (14) AD TEXT PLACEMENT QUESTION (mandatory): when the user requests a commercial AD (إعلان بيع/إيجار/ترويج لسيارة أو عقار أو منتج أو خدمة) and has NOT yet specified whether the text goes inside or outside the photo — and no earlier answer exists in this conversation — you MUST reply with ONLY this short question and nothing else (no design, no code): «📢 تبي كتابة تفاصيل الإعلان داخل الصورة نفسها، ولا الصورة بروحها والتفاصيل خارجها؟ (داخل / خارج)». This single question is the ONLY exception to rule (4). Once the user answers (داخل/فوق الصورة = INSIDE; خارج/تحت/حولها = OUTSIDE) or already specified it, immediately produce the COMPLETE design with zero further questions. Never ask it twice for the same ad, and never ask it for certificates/greeting cards/invitations/logos — commercial ads only. (15) AD TEMPLATE MODES: INSIDE mode = the photo is the FULL poster background (sharp, total dark overlay ≤ rgba(0,0,0,0.35)) with texts on small elegant glass cards over it — title at top, big gold price card, contact bar at the bottom. OUTSIDE mode = professional structured template top-to-bottom: ① top ribbon banner (e.g. «للبيــع» in gold on dark), ② hero photo inside a rounded framed card with a subtle gold border, ③ specs grid of 4–6 items each with a professional SVG line icon (NEVER emoji icons) — car: الموديل/السنة/الممشى/الجير/اللون/المواصفات; real-estate: الغرف/الحمامات/المساحة/المواقف/الطابق; product/service: key features; ④ large price card, ⑤ contact card ONLY if the user gave contact info. Category themes: car = dark navy #0d1b2a + gold #d4af37; real-estate = deep navy or green + gold; product = clean light with one brand accent; service = premium gradient; event ads follow rule (12) occasion themes. Only the data the user provided appears — empty fields are omitted, never invented. (16) USER PHOTO = HERO (mandatory): if the user attached a photo for the ad (or the message notes an attached ad photo), that photo MUST be the hero image — write EXACTLY src="__USER_IMAGE__" for the hero <img>, or background-image:url(\'__USER_IMAGE__\') in INSIDE mode; the app substitutes the real photo automatically. STRICTLY FORBIDDEN to use any stock/Unsplash photo when the user provided one, and never distort or flip the user\'s photo.';
+const NO_FAKE_EDIT_RULE = '\nNO-FAKE-EDIT RULE (mandatory, highest priority): when the user reports a bug or asks for a modification to an existing app/game/design (poster, card, certificate, logo…), you are STRICTLY FORBIDDEN from replying with only words like "عدّلت" or "أضفت" or a list of claimed changes. Every fix/modification reply MUST contain the COMPLETE updated HTML file inside one fenced code block, with the fix actually implemented in the code. A reply without the full code block is invalid. Specifically for touch-control bugs: rewrite the control handlers using pointerdown/pointerup AND touchstart/touchend with e.preventDefault() and { passive:false }, attach them to large fixed overlay buttons, and verify every on-screen button has a working handler.'
++ '\nNO-FAKE-PROMISE RULE (mandatory, highest priority): you are a TEXT model with NO ability to generate, render, draw or attach images, architectural renders, floor plans or videos. You are STRICTLY FORBIDDEN from promising to create any visual (e.g. "سأقوم بإنشاء منظور/مخطط", "إذا أعدت إرسال الطلب سأنشئ", "I will generate an image"), from listing visuals you will deliver, and from claiming you created one. If the user asks for an image/render/visual, reply with ONE short sentence telling them to phrase it with a drawing word (مثل: "ارسم لي..." أو "تصور معماري لـ...") so the built-in image generator runs — nothing more. Never promise future delivery and never describe the visuals as if they exist.';
+const TOPIC_FOLLOW_RULE = '\nTOPIC FOLLOW RULE (mandatory, highest priority): the user\'s LATEST message is your ONLY reference for what to do now. If the latest message changes the topic, follow the new topic IMMEDIATELY and completely drop the previous topic — never continue, mention, or mix in the old topic unless the user himself returns to it. Conversation history is background context only, never a task list. Requests like exams/tests/quizzes/tools/apps must be built as an interactive HTML app, NEVER as a Python script, unless the user explicitly asks for Python.';
+const CHAT_STYLE_RULE = '\nCHAT STYLE RULE (mandatory): outside the single fenced code block, write like a friendly human colleague chatting in the user\'s language — 2 to 4 short natural sentences: what you built/changed, then 2-3 concrete suggestions or next-step ideas phrased as a question (e.g. "تبي أضيف كذا؟"). NEVER put code, HTML tags, CSS, function names in backticks, or technical snippets in the conversational text. All code goes ONLY inside one fenced ``` block. The chat must read like a discussion between two people, never like documentation.'
+// ✅ v303: ممنوع «أنا موديل نصي لا أرسم» + ممنوع سلسلة الاستيضاحات + الرد القصير الموافق = تنفيذ فوري.
+const APP_CAPABILITY_RULE = '\nAPP CAPABILITY RULE (mandatory): This app AUTOMATICALLY generates real images (floor plans, facades, posters, photos) around your text replies. NEVER say you are a text-only model, that you cannot draw, or tell the user to type a different command to get an image — the app already handles image generation. FORBIDDEN: asking more than ONE clarifying question in a conversation thread. If the user replies with a short affirmative (نعم / ابدأ / يلا / تمام / ok / yes) or names a part of your own previous proposal (المخطط / الواجهة / الشكل الخارجي...), that IS full approval of your last proposal — execute it completely and immediately, never ask what they mean.';
++ '\nADDRESSING RULE (mandatory): NEVER call the user by any name (like عبدالله or أحمد) unless the user explicitly told you their name in THIS conversation. If you do not know the name, use no name at all.'
++ '\nGREETING RULE (mandatory): greet AT MOST ONCE per conversation — only if the user greeted you in their CURRENT message AND you have not greeted before in this conversation. NEVER open a reply with هلا/أهلاً/مرحبا/وعليكم السلام otherwise. Go straight to the answer.'
++ '\nPERSONA RULE (mandatory): you are a warm, sharp Gulf-Arabic assistant. Never call the user "كابتن" or any nickname. Keep replies SHORT (2-4 sentences), human and direct — answer first, then ONE concrete next-step suggestion or question. No generic filler, no lecture-style advice, no bullet lists in casual chat.'
++ '\nTOPIC RULE (mandatory): each user message may be a completely NEW topic. Detect topic switches instantly and answer the NEW topic only — never drag the previous topic into the reply or re-answer it.'
++ '\nQUESTION RULE (mandatory): if the user asks a question or wants a discussion, ONLY answer it. Do NOT offer to build an app, do NOT produce code, and do NOT list app screens unless the user explicitly commanded you to build something.'
++ '\nCONSULTATION RULE (mandatory): when the user explicitly asks for your opinion, advice or a discussion (شو رايك، وش تنصح، ناقشني، عطني رايك، أيهما أفضل، استشارة), switch to a thoughtful consultant style: give a clear honest opinion, 2-3 concrete reasons, mention one trade-off, and end with a short conclusion (خلاصة). This is the ONLY case where a longer structured reply is allowed — still no code and no offering to build.'
++ '\nLANGUAGE PURITY RULE (mandatory): reply ENTIRELY in the user\'s language. If the user writes Arabic, the whole reply must be Arabic — never mix English sentences or phrases into an Arabic reply (technical proper nouns like HTML are fine).'
++ '\nNO VISIBLE THINKING RULE (mandatory, highest priority): NEVER print your internal reasoning, chain-of-thought, self-analysis, rule-checking or planning process in the reply (e.g. "Okay, let me unpack this", "First, checking the system rules", "Final check"). All thinking stays silent and internal — output ONLY the final polished answer itself, nothing else.';
+
+// تنظيف نص المحادثة: يشيل أي كود متبقي (مسيّج أو خام) حتى لا يظهر في الدردشة.
+// 🔒 أثناء البث الحي: أول ما يبدأ المزود يكتب كودًا (سياج ``` أو HTML خام)
+// نقص العرض عند بداية الكود ونظهر مؤشر "يكتب الكود" بدل عرض الكود في المحادثة.
+function liveStripCode(text){
+  if(!text) return '';
+  const i = text.search(/```|<!doctype html|<html[\s>]/i);
+  if(i === -1) return text;
+  const before = text.slice(0, i).trim();
+  const lang = localStorage.getItem('aiapp_lang') || 'ar';
+  const label = (lang === 'ar') ? '⏳ يكتب الكود الآن…' : '⏳ Writing the code…';
+  return (before ? before + '\n\n' : '') + label;
+}
+
+function stripCodeFromChat(text){
+  if(!text) return '';
+  let out = String(text)
+    .replace(/```[\s\S]*?```/g, '')      // fenced blocks
+    .replace(/```[\s\S]*$/g, '');        // unclosed fence to end
+  // أسطر تبدو كود خام (وسوم HTML / CSS / JS) تنحذف
+  out = out.split('\n').filter(line => {
+    const s = line.trim();
+    if(!s) return true;
+    if(/^<[a-zA-Z!\/]/.test(s)) return false;
+    if(/^[.#@][\w-]+\s*\{/.test(s) || /^\}\s*$/.test(s)) return false;
+    if(/^(const|let|var|function|import|export|document\.|window\.)\b/.test(s)) return false;
+    return true;
+  }).join('\n');
+  return out.replace(/\n{3,}/g, '\n\n').trim();
+}
+
+async function planBuildSteps(text){
+  const langName = ({ar:'Arabic',en:'English',fr:'French',hi:'Hindi',ur:'Urdu',bn:'Bengali',ne:'Nepali',id:'Indonesian',fil:'Filipino',tr:'Turkish',zh:'Simplified Chinese',ru:'Russian',es:'Spanish',ml:'Malayalam'})[localStorage.getItem('aiapp_lang') || 'ar'] || 'Arabic';
+  const msgs = [
+    { role: 'system', content: 'You are an expert app architect. Turn the user\'s app-building request into ONE unified blueprint that every builder must follow exactly. If the request is a clone of a famous/known app (e.g. Yoho, TikTok, WhatsApp), enumerate ALL its essential screens (login, home/feed or room list, main interactive screen, chat, profile, store/coins, etc.) — never stop at a login screen. Reply with ONLY a JSON object, nothing else: {"name":"app name","style":"one line: exact color theme + visual style","screens":["every screen"],"steps":["4-10 short build steps in ' + langName + ', each max 12 words"]}' },
+    { role: 'user', content: text }
+  ];
+  const res = await callAIWithFallback(msgs, () => {});
+  const raw = ((res && res.reply) || '');
+  const om = raw.match(/\{[\s\S]*\}/);
+  if(om){
+    try{
+      const o = JSON.parse(om[0]);
+      const arr = o && o.steps;
+      if(Array.isArray(arr) && arr.length >= 2 && arr.every(s => typeof s === 'string')){
+        const steps = arr.slice(0, 10);
+        let spec = '';
+        if(o.name) spec += 'App name: ' + o.name + '\n';
+        if(o.style) spec += 'Visual style: ' + o.style + '\n';
+        if(Array.isArray(o.screens) && o.screens.length) spec += 'Screens (ALL required): ' + o.screens.join(' | ') + '\n';
+        steps.__spec = spec;
+        return steps;
+      }
+    }catch(e){}
+  }
+  const m = raw.match(/\[[\s\S]*?\]/);
+  if(!m) return null;
+  try{
+    const arr = JSON.parse(m[0]);
+    if(Array.isArray(arr) && arr.length >= 2 && arr.length <= 12 && arr.every(s => typeof s === 'string')) return arr.slice(0, 10);
+  }catch(e){}
+  return null;
+}
+async function verifyBuildSteps(code, steps){
+  const msgs = [
+    { role: 'system', content: 'You are a strict code reviewer. You receive an HTML app and a list of required build steps. For EACH step decide if the code implements it. Reply with ONLY a JSON array of booleans (same length/order as the steps), nothing else.' },
+    { role: 'user', content: 'Steps:\n' + steps.map((s, i) => (i + 1) + '. ' + s).join('\n') + '\n\nCode:\n```html\n' + String(code).slice(0, 60000) + '\n```' }
+  ];
+  const res = await callAIWithFallback(msgs, () => {});
+  const m = ((res && res.reply) || '').match(/\[[\s\S]*?\]/);
+  if(!m) return null;
+  try{
+    const arr = JSON.parse(m[0]);
+    if(Array.isArray(arr) && arr.length === steps.length) return arr.map(Boolean);
+  }catch(e){}
+  return null;
+}
+
+function testCodeInSandbox(code){
+  return new Promise((resolve) => {
+    const errors = [];
+    const token = 'heal_' + Math.random().toString(36).slice(2);
+    const catcher = '<scr' + 'ipt>(function(){function send(m){try{parent.postMessage({__heal:"' + token + '",err:String(m).slice(0,400)},"*");}catch(e){}}window.addEventListener("error",function(e){send((e.message||"Script error")+(e.lineno?" [line "+e.lineno+"]":""));});window.addEventListener("unhandledrejection",function(e){send("Unhandled rejection: "+((e.reason&&e.reason.message)||e.reason));});})();</scr' + 'ipt>';
+    let html = String(code);
+    if(/<head[^>]*>/i.test(html)) html = html.replace(/<head[^>]*>/i, m => m + catcher);
+    else html = catcher + html;
+    const frame = document.createElement('iframe');
+    frame.setAttribute('sandbox', 'allow-scripts');
+    frame.style.cssText = 'position:fixed;width:2px;height:2px;left:-9999px;top:-9999px;visibility:hidden;pointer-events:none;';
+    const onMsg = (e) => {
+      if(e.data && e.data.__heal === token && errors.length < 5){
+        const msg = e.data.err;
+        if(msg && !errors.includes(msg)) errors.push(msg);
+      }
+    };
+    window.addEventListener('message', onMsg);
+    frame.srcdoc = html;
+    document.body.appendChild(frame);
+    setTimeout(() => {
+      window.removeEventListener('message', onMsg);
+      try{ frame.remove(); }catch(e){}
+      resolve(errors);
+    }, 2500);
+  });
+}
+
+async function selfHealCode(code, codeType, onStatus){
+  // نفحص فقط أكواد HTML القابلة للعرض في المعاينة
+  if(!code || (codeType && codeType !== 'html' && codeType !== '') || !/<\w+[^>]*>/.test(code)) return code;
+  let current = code;
+  for(let attempt = 1; attempt <= 2; attempt++){
+    let errors;
+    try{ errors = await testCodeInSandbox(current); }catch(e){ return current; }
+    if(!errors.length) return current;
+    console.log('[selfHeal] attempt ' + attempt + ' errors:', errors);
+    if(onStatus) try{ onStatus(attempt, errors); }catch(e){}
+    try{
+      const fixMessages = [
+        { role: 'system', content: 'You are a senior code fixer. You receive a complete HTML file and the JavaScript runtime errors it produced when executed. Return the FULL corrected HTML file inside a single ```html code fence. Keep the design, texts and all features exactly the same - fix ONLY the errors. No explanations outside the fence.' },
+        { role: 'user', content: 'Runtime errors:\n' + errors.join('\n') + '\n\nCode:\n```html\n' + current + '\n```' }
+      ];
+      const res = await callAIWithFallback(fixMessages, () => {});
+      const fixed = extractReply((res && res.reply) || '');
+      if(fixed.code && fixed.code.length > current.length * 0.5){
+        current = fixed.code;
+      } else {
+        return current;
+      }
+    }catch(e){
+      return current;
+    }
+  }
+  return current;
+}
+
+// 🪧 v300: استبدال صورة المستخدم المرفقة مكان __USER_IMAGE__ في تصاميم الإعلانات
+function substUserImage(code){
+  try{
+    if(code && code.indexOf('__USER_IMAGE__') !== -1){
+      const c = getCurrent();
+      const im = c && c.lastEditedImage;
+      if(im && im.b64){
+        return code.split('__USER_IMAGE__').join('data:' + (im.mime || 'image/png') + ';base64,' + im.b64);
+      }
+    }
+  }catch(e){}
+  return code;
+}
+function extractHtml(text){
+  const match = text.match(/```(?:html)?\s*([\s\S]*?)```/i);
+  if(match) return substUserImage(match[1].trim());
+  return substUserImage(text.trim());
+}
+
+// 🧹 يشيل "التفكير الداخلي" المسرّب من بعض النماذج (DeepSeek R1 وأمثاله):
+// وسوم <think> الصريحة + فقرات التحليل الإنجليزية الطويلة قبل الجواب العربي.
+function stripLeakedThinking(text){
+  if(!text) return text;
+  let out = String(text);
+  // 1) وسوم التفكير الصريحة
+  out = out.replace(/<\s*(think|thinking|thought|reasoning)\s*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '').trim();
+  // 2) فقرات تمهيدية إنجليزية طويلة (تحليل داخلي) قبل جواب عربي
+  const paras = out.split(/\n\s*\n/);
+  if(paras.length >= 2){
+    let cut = 0, dropped = 0;
+    for(let i = 0; i < paras.length - 1; i++){
+      const p = paras[i];
+      const latin = (p.match(/[A-Za-z]/g) || []).length;
+      const arab = (p.match(/[\u0600-\u06FF]/g) || []).length;
+      const cotHint = /\b(okay|alright|let me|first,|checking|the user|i need to|final check|per the|unpack)\b/i.test(p);
+      if(latin > 60 && latin > arab * 2 && cotHint){ cut = i + 1; dropped += p.length; }
+      else break;
+    }
+    if(cut > 0 && dropped >= 150){
+      const rest = paras.slice(cut).join('\n\n').trim();
+      const restArab = (rest.match(/[\u0600-\u06FF]/g) || []).length;
+      if(rest && restArab >= 5) out = rest;
+    }
+  }
+  return out;
+}
+function extractReply(text){
+  const __r = extractReplyRaw(text);
+  if(__r && __r.code) __r.code = substUserImage(__r.code);
+  return __r;
+}
+function extractReplyRaw(text){
+  text = stripLeakedThinking(text);
+  const match = text.match(/```(\w*)\s*\n?([\s\S]*?)```/);
+  if(match){
+    const lang = (match[1] || '').toLowerCase();
+    const code = match[2].trim();
+    const explanation = (text.slice(0, match.index) + text.slice(match.index + match[0].length)).trim();
+    if((lang === 'python' || lang === 'py') && code.length > 3){
+      return { code, explanation, codeType: 'python' };
+    }
+    const looksLikeApp = code.length > 40 && /<html|<!doctype|<body|<script|<style|<div|<head/i.test(code);
+    if(looksLikeApp || lang === 'html'){
+      return { code, explanation, codeType: 'html' };
+    }
+  }
+  // No CLOSED fence found - but the provider may have hit its max-token limit
+  // mid-code, leaving an opening ``` with no closing one. Treat everything
+  // from that opening fence onward as (incomplete) code so it never renders
+  // raw in the chat bubble; only the text before it becomes the explanation.
+  const openMatch = text.match(/```(\w*)\s*\n?/);
+  if(openMatch){
+    const lang = (openMatch[1] || '').toLowerCase();
+    const code = text.slice(openMatch.index + openMatch[0].length).trim();
+    const explanation = text.slice(0, openMatch.index).trim();
+    const looksLikeApp = code.length > 40 && /<html|<!doctype|<body|<script|<style|<div|<head/i.test(code);
+    if(code.length > 3 && (lang === 'python' || lang === 'py')){
+      return { code, explanation, codeType: 'python' };
+    }
+    if(code.length > 3 && (looksLikeApp || lang === 'html')){
+      return { code, explanation, codeType: 'html' };
+    }
+  }
+  // Raw HTML with NO fences at all (some providers dump the full document
+  // as plain text). Detect it and route it to the code panel instead of chat.
+  const rawIdx = text.search(/<!doctype html|<html[\s>]/i);
+  if(rawIdx !== -1){
+    const endIdx = text.lastIndexOf('</html>');
+    const code = (endIdx !== -1 ? text.slice(rawIdx, endIdx + 7) : text.slice(rawIdx)).trim();
+    if(code.length > 200){
+      const explanation = (text.slice(0, rawIdx) + (endIdx !== -1 ? text.slice(endIdx + 7) : '')).trim();
+      return { code, explanation, codeType: 'html' };
+    }
+  }
+  return { code: '', explanation: text.trim(), codeType: '' };
+}
+
+function throwProviderError(status, errText){
+  // Every thrown error carries the original HTTP status on `.status` so callers
+  // (like the auto-fallback logic in callAIWithFallback) can tell a rate-limit
+  // (429) or daily-quota (402) failure apart from a hard failure worth surfacing
+  // immediately (auth, bad request, etc.).
+  let err;
+  if(status === 402){
+    // 👑 الرد الاحترافي: 402 مع reason:'points' يعني نفاد النقاط (وليس حد يومي).
+    let __pointsErr = false;
+    try{
+      const __p = JSON.parse(errText);
+      if(__p && (__p.reason === 'points' || __p.error === 'insufficient_points')) __pointsErr = true;
+    }catch(_){ if(/insufficient_points|"reason"\s*:\s*"points"/.test(errText || '')) __pointsErr = true; }
+    err = new Error(t('dailyLimitError'));
+    if(__pointsErr) err.premiumNoPoints = true;
+  } else if(status === 429){
+    err = new Error(t('quotaError'));
+  } else if(status === 401 || status === 403){
+    // Our own free-trial server proxies (openai/groq/claude) return a JSON
+    // {error: '...session expired...'} when the login token is missing/invalid,
+    // which is different from a bad upstream provider API key.
+    let sessionMsg = null;
+    try{
+      const parsed = JSON.parse(errText);
+      if(parsed && parsed.error && /الجلسة|session/i.test(parsed.error)) sessionMsg = parsed.error;
+    }catch(e){}
+    err = sessionMsg ? new Error('🔒 ' + sessionMsg) : new Error(t('authError'));
+  } else {
+    err = new Error(t('providerError') + status + ' - ' + (errText || '').slice(0, 200));
+  }
+  err.status = status;
+  throw err;
+}
+
+function toOpenAIVisionMessages(messages){
+  return messages.map(m => {
+    if(m.images && m.images.length){
+      const content = [{ type: 'text', text: m.content }];
+      m.images.forEach(img => content.push({ type: 'image_url', image_url: { url: img.dataUrl } }));
+      return { role: m.role, content };
+    }
+    return { role: m.role, content: m.content };
+  });
+}
+
+// Vision-capable model overrides used ONLY when an image is attached, so "Ask All"
+// still gets every one of the 9 providers to weigh in on an attached image, even
+// though each provider's normal default chat model is text-only.
+const GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+const MISTRAL_VISION_MODEL = 'pixtral-12b-2409';
+const OPENROUTER_VISION_MODEL = 'meta-llama/llama-4-scout';
+
+// DeepSeek, Cohere and Perplexity have no image-input model at all (with any key),
+// so when an image is attached we first ask Gemini for a detailed text description
+// of it, then hand that description to these providers as plain text instead of the
+// image itself - so they can still give a relevant answer about it. The description
+// is generated once per message and cached on the message object so every provider
+// in one "Ask All" round reuses the same single Gemini call instead of repeating it.
+async function getImageDescriptionForMessages(messages){
+  const lastImgMsg = messages.filter(m => m.images && m.images.length).slice(-1)[0];
+  if(!lastImgMsg) return null;
+  if(lastImgMsg._imgDescCache !== undefined) return lastImgMsg._imgDescCache;
+  if(!lastImgMsg._imgDescPromise){
+    lastImgMsg._imgDescPromise = (async () => {
+      try{
+        const descMessages = [
+          { role: 'system', content: 'صف هذه الصورة أو الصور وصفًا قويًا وشاملًا: أولًا انقل كل نص ظاهر فيها حرفيًا كما هو (عربي/إنجليزي/أرقام/جداول) بدون تلخيص، ثم صف العناصر والأشخاص والألوان والمكان والسياق وأي ملاحظات أو أخطاء مهمة. اكتب مباشرة بدون مقدمات، ليستخدمه نموذج آخر لا يملك القدرة على رؤية الصور.' },
+          { role: 'user', content: lastImgMsg.content || 'صف هذه الصورة بالتفصيل', images: lastImgMsg.images },
+        ];
+        return await callGemini(descMessages, null);
+      }catch(e){
+        return null;
+      }
+    })();
+  }
+  const result = await lastImgMsg._imgDescPromise;
+  lastImgMsg._imgDescCache = result;
+  return result;
+}
+
+// Replaces any image attachment with the Gemini-generated text description above
+// (falls back to plain stripping if the description call failed for any reason).
+async function stripImagesWithDescription(messages){
+  const hasImages = messages.some(m => m.images && m.images.length);
+  if(!hasImages) return messages.map(m => ({ role: m.role, content: m.content }));
+  const description = await getImageDescriptionForMessages(messages);
+  return messages.map(m => {
+    if(m.images && m.images.length && description){
+      return { role: m.role, content: (m.content || '') + '\n\n[وصف تلقائي للصورة المرفقة من نموذج آخر يدعم الرؤية، لأن هذا النموذج لا يدعم تحليل الصور مباشرة:\n' + description + ']' };
+    }
+    return { role: m.role, content: m.content };
+  });
+}
+
+// Reads an OpenAI-compatible SSE stream (used by OpenAI, Groq, OpenRouter,
+// Perplexity, Mistral, DeepSeek, Cohere) line-by-line, extracting the growing
+// text via each chunk's `choices[0].delta.content`. Calls onDelta(fullTextSoFar)
+// after every new piece of text so the UI can show a live typing effect.
+// Returns the final full text once the stream ends.
+async function readOpenAICompatibleStream(res, onDelta){
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let full = '';
+  let hadReasoning = false;
+  while(true){
+    const { done, value } = await reader.read();
+    if(done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+    for(const line of lines){
+      const trimmed = line.trim();
+      if(!trimmed.startsWith('data:')) continue;
+      const payload = trimmed.slice(5).trim();
+      if(payload === '[DONE]') continue;
+      try{
+        const json = JSON.parse(payload);
+        const d = json.choices && json.choices[0] ? json.choices[0].delta : null;
+        const delta = d ? d.content : null;
+        if(delta){
+          full += delta;
+          if(onDelta) onDelta(full);
+        } else if(d && d.reasoning_content && !full){
+          // 🆕 (27/7) موديلات التفكير (DeepSeek v4) تبث reasoning_content قبل الرد —
+          // نعرض مؤشر تفكير حتى لا تبدو الواجهة معلّقة.
+          hadReasoning = true;
+          if(onDelta) onDelta('🧠 يفكر الآن…');
+        }
+      }catch(e){ /* ignore partial/malformed chunk */ }
+    }
+  }
+  // v207: إذا انتهى البث أثناء التفكير بدون أي رد فعلي (انقطاع/مهلة) —
+  // نرمي خطأ 503 حتى ينتقل النظام تلقائيًا لمزود بديل بدل تعليق «يفكر الآن…».
+  if(!full && hadReasoning){
+    const err = new Error('thinking stream ended without content');
+    err.status = 503;
+    throw err;
+  }
+  return full;
+}
+
+// Reads a Gemini SSE stream (`alt=sse`), where each event is a full
+// GenerateContentResponse chunk whose parts contain the newly generated text.
+async function readGeminiStream(res, onDelta){
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let full = '';
+  while(true){
+    const { done, value } = await reader.read();
+    if(done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+    for(const line of lines){
+      const trimmed = line.trim();
+      if(!trimmed.startsWith('data:')) continue;
+      const payload = trimmed.slice(5).trim();
+      if(!payload) continue;
+      try{
+        const json = JSON.parse(payload);
+        const parts = json.candidates && json.candidates[0] && json.candidates[0].content ? json.candidates[0].content.parts : null;
+        if(parts){
+          const text = parts.map(p => p.text || '').join('');
+          if(text){
+            full += text;
+            if(onDelta) onDelta(full);
+          }
+        }
+      }catch(e){ /* ignore partial/malformed chunk */ }
+    }
+  }
+  return full;
+}
+
+// Reads an Anthropic Claude SSE stream, where `content_block_delta` events
+// carry `delta.text` pieces to append.
+async function readClaudeStream(res, onDelta){
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let full = '';
+  while(true){
+    const { done, value } = await reader.read();
+    if(done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+    for(const line of lines){
+      const trimmed = line.trim();
+      if(!trimmed.startsWith('data:')) continue;
+      const payload = trimmed.slice(5).trim();
+      if(!payload) continue;
+      try{
+        const json = JSON.parse(payload);
+        if(json.type === 'content_block_delta' && json.delta && typeof json.delta.text === 'string'){
+          full += json.delta.text;
+          if(onDelta) onDelta(full);
+        }
+      }catch(e){ /* ignore partial/malformed chunk */ }
+    }
+  }
+  return full;
+}
+
+async function callOpenAILike(messages, onDelta){
+  const apiKey = localStorage.getItem('aiapp_apikey');
+  const model = localStorage.getItem('aiapp_model') || 'gpt-4o-mini';
+  // If the visitor hasn't entered their own OpenAI key, fall back to the server-side
+  // proxy which uses the site owner's key (for quick trials without setup).
+  if(!apiKey){
+    const res = await fetch('/api/openai', {
+      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, messages: toOpenAIVisionMessages(messages), token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: !!onDelta, premium: (window.__premiumOn === true) }),
+    });
+    if(!res.ok){
+      const errText = await res.text();
+      throwProviderError(res.status, errText);
+    }
+    if(onDelta) return await readOpenAICompatibleStream(res, onDelta);
+    const data = await res.json();
+    return data.choices[0].message.content;
+  }
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey,
+    },
+    body: JSON.stringify({ model, messages: toOpenAIVisionMessages(messages), temperature: 0.7, stream: !!onDelta }),
+  });
+  if(!res.ok){
+    const errText = await res.text();
+    throwProviderError(res.status, errText);
+  }
+  if(onDelta) return await readOpenAICompatibleStream(res, onDelta);
+  const data = await res.json();
+  return data.choices[0].message.content;
+}
+
+async function callOpenRouter(messages, onDelta){
+  const apiKey = localStorage.getItem('aiapp_openrouter_apikey');
+  const hasImages = messages.some(m => m.images && m.images.length);
+  const model = hasImages ? OPENROUTER_VISION_MODEL : (localStorage.getItem('aiapp_openrouter_model') || 'openai/gpt-4o-mini');
+  // If the visitor hasn't entered their own OpenRouter key, fall back to the server-side
+  // proxy which uses the site owner's key (for quick trials without setup).
+  if(!apiKey){
+    const res = await fetch('/api/openrouter', {
+      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, messages: toOpenAIVisionMessages(messages), token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: !!onDelta }),
+    });
+    if(!res.ok){
+      const errText = await res.text();
+      throwProviderError(res.status, errText);
+    }
+    if(onDelta) return await readOpenAICompatibleStream(res, onDelta);
+    const data = await res.json();
+    return data.choices[0].message.content;
+  }
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey,
+    },
+    body: JSON.stringify({ model, messages: toOpenAIVisionMessages(messages), temperature: 0.7, stream: !!onDelta }),
+  });
+  if(!res.ok){
+    const errText = await res.text();
+    throwProviderError(res.status, errText);
+  }
+  if(onDelta) return await readOpenAICompatibleStream(res, onDelta);
+  const data = await res.json();
+  return data.choices[0].message.content;
+}
+
+function stripPplxCitations(s){
+  return String(s || '')
+    .replace(/\[\d{1,3}\]/g, '')
+    // v285: حذف أي صورة يحشرها Perplexity داخل الرد (ماركداون أو رابط صورة مباشر)
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+    .replace(/https?:\/\/\S+\.(?:png|jpe?g|gif|webp)(?:\?\S*)?/gi, '');
+}
+async function callPerplexity(messages, onDelta){
+  const apiKey = localStorage.getItem('aiapp_perplexity_apikey');
+  const model = localStorage.getItem('aiapp_perplexity_model') || 'sonar';
+  let plainMessages = await stripImagesWithDescription(messages);
+  plainMessages = [{ role: 'system', content: 'قاعدة صارمة: إذا كانت رسالة المستخدم مجرد تحية أو مجاملة قصيرة (مثل: السلام عليكم، مرحبا، هلا، صباح الخير، كيف حالك) فرُدّ بتحية ودية قصيرة وطبيعية فقط دون أي بحث أو شرح موسوعي أو مصادر. وفي كل الردود: ممنوع منعًا باتًا وضع أرقام مراجع أو استشهادات مثل [1] أو [2] داخل النص.' }, ...plainMessages];
+  if(onDelta){ const orig = onDelta; onDelta = (chunk) => orig(stripPplxCitations(chunk)); }
+  // If the visitor hasn't entered their own Perplexity key, fall back to the server-side
+  // proxy which uses the site owner's key (for quick trials without setup).
+  if(!apiKey){
+    const res = await fetch('/api/perplexity', {
+      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, messages: plainMessages, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: !!onDelta }),
+    });
+    if(!res.ok){
+      const errText = await res.text();
+      throwProviderError(res.status, errText);
+    }
+    if(onDelta) return stripPplxCitations(await readOpenAICompatibleStream(res, onDelta));
+    const data = await res.json();
+    return stripPplxCitations(data.choices[0].message.content);
+  }
+  const res = await fetch('https://api.perplexity.ai/chat/completions', {
+      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey,
+    },
+    body: JSON.stringify({ model, messages: plainMessages, temperature: 0.7, stream: !!onDelta }),
+  });
+  if(!res.ok){
+    const errText = await res.text();
+    throwProviderError(res.status, errText);
+  }
+  if(onDelta) return stripPplxCitations(await readOpenAICompatibleStream(res, onDelta));
+  const data = await res.json();
+  return stripPplxCitations(data.choices[0].message.content);
+}
+
+async function callGemini(messages, onDelta){
+  const apiKey = localStorage.getItem('aiapp_gemini_apikey');
+  let model = localStorage.getItem('aiapp_gemini_model') || 'gemini-flash-latest';
+  if(model === 'gemini-1.5-flash' || model === 'gemini-pro' || model === 'gemini-2.0-flash' || model === 'gemini-2.0-flash-001' || model === 'gemini-2.5-flash' || model === 'gemini-2.5-flash-lite'){ model = 'gemini-flash-latest'; localStorage.setItem('aiapp_gemini_model', model); }
+  const systemMsgs = messages.filter(m => m.role === 'system');
+  const systemMsg = systemMsgs.length ? { content: systemMsgs.map(m => m.content).join('\n\n') } : null;
+  const rest = messages.filter(m => m.role !== 'system');
+  const contents = rest.map(m => {
+    const parts = [{ text: m.content }];
+    if(m.images && m.images.length){
+      m.images.forEach(img => {
+        const base64 = img.dataUrl.split(',')[1];
+        parts.push({ inline_data: { mime_type: img.mime, data: base64 } });
+      });
+    }
+    return { role: m.role === 'assistant' ? 'model' : 'user', parts };
+  });
+  const systemInstruction = systemMsg ? { parts: [{ text: systemMsg.content }] } : undefined;
+  // If the visitor hasn't entered their own Gemini key, fall back to the server-side
+  // proxy which uses the site owner's key (for quick trials without setup).
+  if(!apiKey){
+    const res = await fetch('/api/gemini', {
+      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, contents, systemInstruction, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: !!onDelta, premium: (window.__premiumOn === true) }),
+    });
+    if(!res.ok){
+      const errText = await res.text();
+      throwProviderError(res.status, errText);
+    }
+    if(onDelta) return await readGeminiStream(res, onDelta);
+    const data = await res.json();
+    return data.candidates[0].content.parts.map(p => p.text).join('\n');
+  }
+  const endpoint = onDelta
+    ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`
+    : `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const body = { contents };
+  if(systemInstruction) body.systemInstruction = systemInstruction;
+  const res = await fetch(endpoint, {
+      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if(!res.ok){
+    const errText = await res.text();
+    throwProviderError(res.status, errText);
+  }
+  if(onDelta) return await readGeminiStream(res, onDelta);
+  const data = await res.json();
+  return data.candidates[0].content.parts.map(p => p.text).join('\n');
+}
+
+async function callGroq(messages, onDelta){
+  const apiKey = localStorage.getItem('aiapp_groq_apikey');
+  const hasImages = messages.some(m => m.images && m.images.length);
+  const model = hasImages ? GROQ_VISION_MODEL : (localStorage.getItem('aiapp_groq_model') || 'llama-3.3-70b-versatile');
+  const msgsOut = hasImages ? toOpenAIVisionMessages(messages) : messages;
+  // If the visitor hasn't entered their own Groq key, fall back to the server-side
+  // proxy which uses the site owner's key (for quick trials without setup).
+  if(!apiKey){
+    const res = await fetch('/api/groq', {
+      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, messages: msgsOut, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: !!onDelta }),
+    });
+    if(!res.ok){
+      const errText = await res.text();
+      throwProviderError(res.status, errText);
+    }
+    if(onDelta) return await readOpenAICompatibleStream(res, onDelta);
+    const data = await res.json();
+    return data.choices[0].message.content;
+  }
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey,
+    },
+    body: JSON.stringify({ model, messages: msgsOut, temperature: 0.7, stream: !!onDelta }),
+  });
+  if(!res.ok){
+    const errText = await res.text();
+    throwProviderError(res.status, errText);
+  }
+  if(onDelta) return await readOpenAICompatibleStream(res, onDelta);
+  const data = await res.json();
+  return data.choices[0].message.content;
+}
+
+// Strips non-standard fields (like our internal `images` array) that some providers'
+// APIs reject outright with "extra_forbidden" errors when messages don't support vision.
+function stripToPlainMessages(messages){
+  return messages.map(m => ({ role: m.role, content: m.content }));
+}
+
+async function callMistral(messages, onDelta){
+  const apiKey = localStorage.getItem('aiapp_mistral_apikey');
+  const model = localStorage.getItem('aiapp_mistral_model') || 'mistral-small-latest';
+  // If the visitor hasn't entered their own Mistral key, fall back to the server-side
+  // proxy which uses the site owner's key (for quick trials without setup).
+  if(!apiKey){
+    const res = await fetch('/api/mistral', {
+      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, messages: stripToPlainMessages(messages), token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: !!onDelta }),
+    });
+    if(!res.ok){
+      const errText = await res.text();
+      throwProviderError(res.status, errText);
+    }
+    if(onDelta) return await readOpenAICompatibleStream(res, onDelta);
+    const data = await res.json();
+    return data.choices[0].message.content;
+  }
+  const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
+      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey,
+    },
+    body: JSON.stringify({ model, messages: stripToPlainMessages(messages), temperature: 0.7, stream: !!onDelta }),
+  });
+  if(!res.ok){
+    const errText = await res.text();
+    throwProviderError(res.status, errText);
+  }
+  if(onDelta) return await readOpenAICompatibleStream(res, onDelta);
+  const data = await res.json();
+  return data.choices[0].message.content;
+}
+
+async function callDeepSeek(messages, onDelta){
+  const apiKey = localStorage.getItem('aiapp_deepseek_apikey');
+  const model = localStorage.getItem('aiapp_deepseek_model') || 'deepseek-chat';
+  const plainMessages = await stripImagesWithDescription(messages);
+  // If the visitor hasn't entered their own DeepSeek key, fall back to the server-side
+  // proxy which uses the site owner's key (for quick trials without setup).
+  if(!apiKey){
+    const res = await fetch('/api/deepseek', {
+      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, messages: plainMessages, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: !!onDelta }),
+    });
+    if(!res.ok){
+      const errText = await res.text();
+      throwProviderError(res.status, errText);
+    }
+    if(onDelta) return await readOpenAICompatibleStream(res, onDelta);
+    const data = await res.json();
+    return data.choices[0].message.content;
+  }
+  const res = await fetch('https://api.deepseek.com/chat/completions', {
+      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey,
+    },
+    body: JSON.stringify({ model, messages: plainMessages, temperature: 0.7, stream: !!onDelta }),
+  });
+  if(!res.ok){
+    const errText = await res.text();
+    throwProviderError(res.status, errText);
+  }
+  if(onDelta) return await readOpenAICompatibleStream(res, onDelta);
+  const data = await res.json();
+  return data.choices[0].message.content;
+}
+
+function normalizeCohereModel(raw){
+  const v = (raw || '').trim().toLowerCase();
+  if(!v || v === 'command-r-plus' || v === 'command-r' || v === 'command-r-plus-08-2024' || v === 'command-r-08-2024' || v === 'command') return 'command-a-03-2025';
+  return raw.trim();
+}
+async function callCohere(messages, onDelta){
+  const apiKey = localStorage.getItem('aiapp_cohere_apikey');
+  const savedModel = localStorage.getItem('aiapp_cohere_model');
+  const model = normalizeCohereModel(savedModel);
+  if(savedModel !== model) localStorage.setItem('aiapp_cohere_model', model);
+  // If the visitor hasn't entered their own Cohere key, fall back to the server-side
+  // proxy which uses the site owner's key (for quick trials without setup).
+  if(!apiKey){
+    const res = await fetch('/api/cohere', {
+      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, messages: stripToPlainMessages(messages), token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: !!onDelta }),
+    });
+    if(!res.ok){
+      const errText = await res.text();
+      throwProviderError(res.status, errText);
+    }
+    if(onDelta) return await readOpenAICompatibleStream(res, onDelta);
+    const data = await res.json();
+    return data.choices[0].message.content;
+  }
+  const res = await fetch('https://api.cohere.com/compatibility/v1/chat/completions', {
+      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey,
+    },
+    body: JSON.stringify({ model, messages: stripToPlainMessages(messages), temperature: 0.7, stream: !!onDelta }),
+  });
+  if(!res.ok){
+    const errText = await res.text();
+    throwProviderError(res.status, errText);
+  }
+  if(onDelta) return await readOpenAICompatibleStream(res, onDelta);
+  const data = await res.json();
+  return data.choices[0].message.content;
+}
+
+async function fetchClaudeModelList(apiKey){
+  const res = await fetch('https://api.anthropic.com/v1/models?limit=1000', {
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+  });
+  if(!res.ok) return [];
+  const data = await res.json();
+  return (data.data || []).map(m => m.id);
+}
+
+async function claudeMessagesRequest(apiKey, model, systemMsg, rest, stream){
+  return await fetch('https://api.anthropic.com/v1/messages', {
+      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+      'anthropic-beta': 'output-128k-2025-02-19',
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 16000,
+      system: systemMsg ? systemMsg.content : undefined,
+      messages: rest,
+      stream: !!stream,
+    }),
+  });
+}
+
+async function claudeProxyRequest(model, systemMsg, rest, stream){
+  return await fetch('/api/claude', {
+      signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model,
+      system: systemMsg ? systemMsg.content : undefined,
+      messages: rest,
+      token: authGet('aiapp_auth_token'), guestId: window.getGuestId(),
+      stream: !!stream,
+      thinking: window.__claudeThinking || undefined,
+      premium: (window.__premiumOn === true),
+    }),
+  });
+}
+
+async function callClaude(messages, onDelta){
+  const apiKey = localStorage.getItem('aiapp_claude_apikey');
+  let model = window.__claudeModelOverride || localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-4-20250514';
+  const systemMsgsC = messages.filter(m => m.role === 'system');
+  const systemMsg = systemMsgsC.length ? { content: systemMsgsC.map(m => m.content).join('\n\n') } : null;
+  const rest = messages.filter(m => m.role !== 'system').map(m => {
+    if(m.images && m.images.length){
+      const content = [{ type: 'text', text: m.content }];
+      m.images.forEach(img => {
+        const base64 = img.dataUrl.split(',')[1];
+        content.push({ type: 'image', source: { type: 'base64', media_type: img.mime, data: base64 } });
+      });
+      return { role: m.role === 'assistant' ? 'assistant' : 'user', content };
+    }
+    return { role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content };
+  });
+  // If the visitor hasn't entered their own Claude key, fall back to the server-side
+  // proxy which uses the site owner's key (for quick trials without setup).
+  if(!apiKey){
+    const res = await claudeProxyRequest(model, systemMsg, rest, !!onDelta);
+    if(!res.ok){
+      const errText = await res.text();
+      throwProviderError(res.status, errText);
+    }
+    if(onDelta) return await readClaudeStream(res, onDelta);
+    const data = await res.json();
+    return data.content.filter(c => c.type === 'text').map(c => c.text).join('\n');
+  }
+  let res = await claudeMessagesRequest(apiKey, model, systemMsg, rest, !!onDelta);
+  if(!res.ok && res.status === 404){
+    // Model not found — auto-discover a working model from this account and retry once.
+    const errTextFirst = await res.text();
+    if(/model/i.test(errTextFirst) && /not_found/i.test(errTextFirst)){
+      const available = await fetchClaudeModelList(apiKey);
+      if(available.length){
+        const preferred = available.find(id => /sonnet/i.test(id)) || available.find(id => /haiku/i.test(id)) || available[0];
+        model = preferred;
+        localStorage.setItem('aiapp_claude_model', model);
+        const modelInput = document.getElementById('claudeModel');
+        if(modelInput) modelInput.value = model;
+        res = await claudeMessagesRequest(apiKey, model, systemMsg, rest, !!onDelta);
+      } else {
+        throwProviderError(404, errTextFirst);
+      }
+    } else {
+      throwProviderError(404, errTextFirst);
+    }
+  }
+  if(!res.ok){
+    const errText = await res.text();
+    throwProviderError(res.status, errText);
+  }
+  if(onDelta) return await readClaudeStream(res, onDelta);
+  const data = await res.json();
+  return data.content.filter(c => c.type === 'text').map(c => c.text).join('\n');
+}
+
+// providerKey: 'default' uses the selected default provider (openai/openrouter/gemini/groq/claude/perplexity), or explicitly named
+async function callProviderAI(providerKey, messages, onDelta){
+  let effective = providerKey;
+  if(providerKey === 'default'){
+    effective = localStorage.getItem('aiapp_provider') || 'claude';
+  }
+  if(effective === 'gemini') return await callGemini(messages, onDelta);
+  if(effective === 'groq') return await callGroq(messages, onDelta);
+  if(effective === 'claude') return await callClaude(messages, onDelta);
+  if(effective === 'openrouter') return await callOpenRouter(messages, onDelta);
+  if(effective === 'perplexity') return await callPerplexity(messages, onDelta);
+  if(effective === 'mistral') return await callMistral(messages, onDelta);
+  if(effective === 'deepseek') return await callDeepSeek(messages, onDelta);
+  if(effective === 'cohere') return await callCohere(messages, onDelta);
+  return await callOpenAILike(messages, onDelta);
+}
+
+async function callAI(messages){
+  return await callProviderAI('default', messages);
+}
+
+// Providers tried in order after the user's chosen default, skipping ones that
+// need a personal API key the visitor hasn't entered (only Perplexity today).
+const AUTO_FALLBACK_ORDER = ['openai', 'mistral', 'deepseek', 'cohere', 'groq', 'gemini', 'claude', 'openrouter', 'perplexity'];
+
+// Sends the chat to the user's chosen default provider; if it fails with a
+// rate-limit (429) or daily-quota (402) error, automatically retries with the
+// next available provider (server-side ones use the owner's keys, so this is
+// invisible to the visitor besides a small "🔄 switched" note on the reply).
+// Any other kind of error (auth, bad request, etc.) fails immediately instead
+// of trying every provider.
+// If onDelta is given, the reply streams in live (word by word); onDelta is
+// called with the accumulated text so far, and is reset to empty each time a
+// new provider is attempted after a fallback switch.
+// v262 — 🛡️ شبكة أمان الرفض: يكشف ردود "آسف لا أستطيع" القصيرة من أي مزود
+// ويحوّل الطلب بصمت للمزود التالي (محاولتان إضافيتان كحد أقصى لضبط التكلفة).
+const REFUSAL_RE = /^(?:[^]{0,60})?(?:(?:آسف|عذر[اً]|أعتذر|المعذرة)[^]{0,80}?(?:لا\s*(?:أستطيع|يمكنني|أقدر)|ما\s*(?:أقدر|أستطيع|يمكنني))|لا\s*(?:أستطيع|يمكنني)\s*(?:مساعدت|تحليل|تقديم|القيام|فعل|تنفيذ|الإجابة)|I['’]?m?\s*(?:am\s*)?sorry,?\s*(?:but\s*)?I\s*can(?:['’]t|not)|I\s*can(?:['’]t|not)\s*(?:help|assist|analyz|provide|do that|answer|comply))/i;
+function isRefusalReply(txt){
+  const s = String(txt || '').trim();
+  return s.length > 0 && s.length < 700 && REFUSAL_RE.test(s.slice(0, 220));
+}
+// v262 — 🎯 مصنّف التخصص (الوضع الافتراضي فقط): كل مهنة لأستاذها خلف الكواليس.
+// محافظ عن قصد: الطب والقانون والبناء والعام تبقى عند Claude (الافتراضي).
+function pickSpecialtyProvider(txt){
+  const s = String(txt || '');
+  if(/رياضيات|معادل[ةه]|تكامل|تفاضل|مصفوف|لوغاريتم|جبر خطي|مثلثات|احتمالات|إحصاء|احصاء|مسأل[ةه] رياض|حل هذه المسأل|equation|integral|derivative|matrix|logarithm|trigonometry|probability|math problem/i.test(s)) return 'deepseek';
+  if(/قصيد[ةه]|شعر[اً]?\b|أبيات|ابيات|خاطر[ةه]|قص[ةه] قصير[ةه]|اكتب(?:\s+لي)?\s+قص[ةه]|رواي[ةه]|نص أدبي|رسال[ةه] عاطفي[ةه]|write (?:me )?a (?:story|poem)|poetry|short story/i.test(s)) return 'openai';
+  return null;
+}
+async function callAIWithFallback(messages, onDelta, preferredList){
+  // 🧹 v308: تعقيم نهائي — أي base64 عملاق داخل نص أي رسالة يُستبدل بعلامة
+  // قصيرة قبل الإرسال (الصور المرفقة الحقيقية تبقى في حقل images المنفصل).
+  try{
+    messages = messages.map(m => {
+      if(m && typeof m.content === 'string' && m.content.length > 100000){
+        const c = m.content.replace(/data:(image|audio|video)\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]{200,}/g, 'data:image/png;base64,EMBEDDED_MEDIA_OMITTED');
+        if(c !== m.content) return Object.assign({}, m, { content: c });
+      }
+      return m;
+    });
+  }catch(e){}
+  // v358 — التوجيه بالمجموعات الوظيفية: المزود المختار يوسَّع لسلسلة مجموعته
+  // (الاحتياط الصامت يبقى داخل نفس المجموعة أولًا)، ثم بقية المزودين كشبكة أمان أخيرة.
+  const __sel = localStorage.getItem('aiapp_provider') || 'claude';
+  const __grp = (typeof FUNCTIONAL_GROUPS !== 'undefined' && FUNCTIONAL_GROUPS[__sel]) ? FUNCTIONAL_GROUPS[__sel] : [__sel];
+  const head = (preferredList && preferredList.length) ? preferredList : __grp;
+  const order = [...head, ...AUTO_FALLBACK_ORDER.filter(p => !head.includes(p))];
+  let lastErr = null;
+  let firstRefusal = null; // أول رد رفض (نرجعه فقط إذا رفض الجميع)
+  let refusalTries = 0;    // حد أقصى محاولتين إضافيتين بعد الرفض
+  let errSwitched = false; // التبديل بسبب عطل/ضغط فقط هو اللي يظهر للمستخدم
+  for(const providerKey of order){
+    try{
+      const reply = await callProviderAI(providerKey, messages, onDelta);
+      // 🛡️ v309: رد فارغ = فشل → جرّب المزود التالي (يمنع الفقاعة الخفية)
+      if(!String(reply || '').trim()){ lastErr = new Error(t('providerError')); continue; }
+      if(isRefusalReply(reply) && refusalTries < 2){
+        if(!firstRefusal) firstRefusal = { reply, providerKey };
+        refusalTries++;
+        continue; // 🛡️ تحويل صامت للمزود التالي — بدون أي رسالة للمستخدم
+      }
+      return { reply, providerKey, switched: errSwitched && providerKey !== head[0], requestedKey: head[0] };
+    }catch(err){
+      lastErr = err;
+      if(err && (err.status === 429 || err.status === 402 || err.status >= 500)){ errSwitched = true; continue; }
+      // 🛡️ v309: أي فشل آخر (نفاد رصيد المزود 400/401/403، عطل شبكة...) —
+      // تحويل صامت للمزود التالي بدل إظهار خطأ أو رد فارغ للمستخدم.
+      continue;
+    }
+  }
+  if(firstRefusal) return { reply: firstRefusal.reply, providerKey: firstRefusal.providerKey, switched: false, requestedKey: head[0] };
+  throw lastErr || new Error(t('providerError') + ' - fallback');
+}
+
+$('#btnSend').onclick = sendPrompt;
+// إبراز سهم الإرسال عند الكتابة
+window.__updateSendReady = () => {
+  const hasAttach = (typeof pendingAttachments !== 'undefined') && pendingAttachments.length > 0;
+  $('#btnSend').classList.toggle('ready', $('#prompt').value.trim().length > 0 || hasAttach);
+};
+$('#prompt').addEventListener('input', window.__updateSendReady);
+// v209: صندوق الكتابة يبدأ بسطر واحد صغير ويكبر تلقائيًا مع الكتابة فقط
+(function(){
+  const p = $('#prompt');
+  function autoGrow(){
+    p.style.height = 'auto';
+    p.style.height = Math.min(p.scrollHeight, 110) + 'px';
+  }
+  p.addEventListener('input', autoGrow);
+  window.__promptAutoGrow = autoGrow;
+  autoGrow();
+})();
+$('#prompt').addEventListener('keydown', e => {
+  if(e.key === 'Enter' && !e.shiftKey){
+    e.preventDefault();
+    sendPrompt();
+  }
+});
+// ---- Voice chat: speech-to-text (mic) + auto-read replies ----
+const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognizer = null;
+let isListening = false;
+const btnMic = $('#btnMic');
+const btnVoiceChat = $('#btnVoiceChat');
+
+localStorage.removeItem('aiapp_voice_chat_mode'); // القراءة التلقائية ملغاة — الوضع الصوتي لا يُحفظ بين الجلسات
+btnVoiceChat.onclick = () => {
+  const on = !btnVoiceChat.classList.contains('active');
+  btnVoiceChat.classList.toggle('active', on);
+};
+
+// Aborts an in-flight AI generation request (set right before sending, cleared
+// when the request settles). Also lets the same ⏹️ button stop TTS/mic.
+let genAbortController = null;
+// v310: يبدأ العداد من طابع زمني — الرسائل القديمة المحفوظة تحمل _uid من جلسات
+// سابقة، ولو بدأنا من صفر يتصادم المعرف الجديد مع القديم فيُكتب نص البث داخل
+// فقاعة قديمة غلط (سبب تداخل النصوص على الآيفون).
+let askAllUidCounter = Date.now() % 2147483647;
+
+const btnStop = $('#btnStop');
+btnStop.onclick = () => {
+  stopAllSpeaking();
+  if(isListening && recognizer){ recognizer.stop(); }
+  if(genAbortController){ genAbortController.abort(); }
+};
+// v246 — قسم الصوت المبسط: زران (رجل/امرأة) يحفظان الاختيار فورًا + زر تجربة.
+function setVoiceGenderUI(val){
+  document.querySelectorAll('.voiceGenderBtn').forEach(b => b.classList.toggle('active', b.dataset.gender === val));
+}
+document.querySelectorAll('.voiceGenderBtn').forEach(b => {
+  b.onclick = () => {
+    localStorage.setItem('aiapp_voice_gender', b.dataset.gender);
+    setVoiceGenderUI(b.dataset.gender);
+  };
+});
+const btnTestVoice = $('#btnTestVoice');
+if(btnTestVoice){
+  btnTestVoice.onclick = () => {
+    const testTextByLang = {
+      ar: 'مرحبًا، هذا اختبار للصوت.',
+      en: 'Hello, this is a voice test.',
+      fr: 'Bonjour, ceci est un test de la voix.',
+      hi: 'नमस्ते, यह आवाज़ का परीक्षण है।',
+      ur: 'ہیلو، یہ آواز کا امتحان ہے۔'
+    };
+    speakSmart(testTextByLang[lang] || testTextByLang.en, null, null, true);
+  };
+}
+// ---- Mic: record audio (works on ALL devices: Android + iPhone + desktop) and
+// send it to the server, which transcribes it via Groq Whisper. This replaces the
+// old browser SpeechRecognition API, which is unsupported on iPhone Safari and
+// unreliable on many Android browsers. ----
+let mediaRecorder = null;
+let recordedChunks = [];
+let micStream = null;
+
+let activeMicBtn = null;
+async function startMicRecording(targetBtn){
+  activeMicBtn = targetBtn || btnMic;
+  micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  let mimeType = '';
+  for(const cand of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']){
+    if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(cand)){ mimeType = cand; break; }
+  }
+  mediaRecorder = mimeType ? new MediaRecorder(micStream, { mimeType }) : new MediaRecorder(micStream);
+  recordedChunks = [];
+  mediaRecorder.ondataavailable = (e) => { if(e.data && e.data.size > 0) recordedChunks.push(e.data); };
+  // timeslice=1000ms: collect audio progressively. On some Android/Chrome builds a
+  // single final chunk gets truncated on stop(), so only the first 1-2 words survive.
+  mediaRecorder.start(1000);
+  isListening = true;
+  activeMicBtn.classList.remove('maha-orb-idle');
+  activeMicBtn.classList.add('recording');
+}
+
+function blobToBase64(blob){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(String(reader.result).split(',')[1] || '');
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+function detectVoiceIntent(text){
+  const s = (text || '').toLowerCase();
+  const imageWords = ['صورة','صور ','ارسم','ارسمي','رسمة','رسمه','صمم صورة','صمّم صورة','اصنع صورة','سوي صورة','سوّي صورة','عطني صورة','picture','image','draw','photo'];
+  const videoWords = ['فيديو','مقطع فيديو','فيديوهات','video','clip'];
+  if(imageWords.some(w => s.includes(w))) return 'image';
+  if(videoWords.some(w => s.includes(w))) return 'video';
+  return 'code';
+}
+
+// Voice-tab image intent: no chat text is ever written - the generated image
+// is dropped straight into the code/preview area (as a tiny self-contained
+// HTML page showing it full-size), then a short spoken line confirms it.
+async function handleVoiceImageIntent(promptText){
+  let cur = getCurrent();
+  if(!cur){
+    const id = 'p_' + Date.now();
+    cur = {id, title: (promptText || 'صورة').slice(0, 30), messages: [], code: '', codeType: 'html'};
+    state.projects.push(cur);
+    state.currentId = id;
+  }
+  try{
+    const res = await fetch('/api/maha-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: promptText, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+    });
+    const data = await res.json();
+    if(!res.ok){
+      await voiceTabSpeak(t('voiceImageFailed'));
+      return;
+    }
+    const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
+    cur.code = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0b12;}img{max-width:100%;max-height:100vh;display:block;}</style></head><body><img src="' + dataUrl + '" alt="' + promptText.replace(/"/g, '') + '"></body></html>';
+    cur.codeType = 'html';
+    renderAll();
+    saveState();
+    await voiceTabSpeak(t('voiceImageDone'));
+  } catch(e){
+    await voiceTabSpeak(t('voiceImageFailed'));
+  }
+}
+
+// Voice-tab code/app intent: silently asks the AI to build/update the
+// current project's code (same as typing a request), applies the resulting
+// code straight to the code/preview panels - no chat bubble is ever created -
+// then speaks one short confirmation line.
+// Silently builds/updates the current project's code from a spoken
+// description (no chat bubble, no TTS here) - shared by both the classic
+// whisper voice-tab pipeline and the Maha-Realtime builder mode, which each
+// handle their own spoken confirmation afterwards.
+async function buildCodeFromPrompt(promptText){
+  let cur = getCurrent();
+  if(!cur){
+    const id = 'p_' + Date.now();
+    cur = {id, title: (promptText || 'مشروع').slice(0, 30), messages: [], code: '', codeType: 'html'};
+    state.projects.push(cur);
+    state.currentId = id;
+  }
+  try{
+    const apiMessages = [{role: 'system', content: t('systemPrompt') + APP_IDENTITY_NOTE + BUILD_COMPLETENESS_RULE + DESIGN_POSTER_RULE + NO_FAKE_EDIT_RULE + CHAT_STYLE_RULE + APP_CAPABILITY_RULE + TOPIC_FOLLOW_RULE}];
+    if(cur.code){
+      apiMessages.push({role: 'assistant', content: '```' + (cur.codeType === 'python' ? 'python' : 'html') + '\n' + codeForApi(cur.code) + '\n```'});
+    }
+    apiMessages.push({role: 'user', content: promptText});
+    const { reply } = await callAIWithFallback(apiMessages, null);
+    const { code } = extractReply(reply);
+    if(code){ cur.code = code; }
+    renderAll();
+    saveState();
+    switchWorkTab('preview');
+    return !!code;
+  } catch(e){
+    return false;
+  }
+}
+
+async function handleVoiceCodeIntent(promptText){
+  const ok = await buildCodeFromPrompt(promptText);
+  await voiceTabSpeak(ok ? t('voiceCodeDone') : t('voiceCodeFailed'));
+}
+
+// Simple spoken confirmation used by the voice tab (cheap OpenAI TTS via our
+// own /api/tts proxy) - not the full Maha Realtime pipeline, just one short
+// line so the user gets an audible "done"/"failed" without ever seeing text.
+async function voiceTabSpeak(text){
+  if(!text) return;
+  const btn = btnVoiceTabMic;
+  if(btn) btn.classList.add('voice-speaking');
+  try{
+    const resp = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ voice: localStorage.getItem('aiapp_cloud_voice_name') || 'nova', text: String(text).slice(0, 300) }),
+    });
+    if(resp.ok){
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      await new Promise((resolve) => {
+        const audio = new Audio(url);
+        audio.onended = resolve;
+        audio.onerror = resolve;
+        audio.play().catch(resolve);
+      });
+      URL.revokeObjectURL(url);
+    }
+  } catch(e){ /* silent - voice feedback is a nice-to-have, never block the UI */ }
+  if(btn) btn.classList.remove('voice-speaking');
+}
+
+function handleVoiceVideoIntent(promptText){
+  const btnOpenVideo = $('#btnVideoMaker');
+  const videoPromptEl = $('#videoMakerPrompt');
+  if(btnOpenVideo) btnOpenVideo.click();
+  setTimeout(() => {
+    if(videoPromptEl) videoPromptEl.value = promptText;
+    const genBtn = $('#videoMakerGenerateBtn');
+    if(genBtn) genBtn.click();
+  }, 200);
+}
+
+async function stopMicRecordingAndTranscribe(autoRoute){
+  if(!mediaRecorder) return;
+  const btn = activeMicBtn || btnMic;
+  const mimeType = mediaRecorder.mimeType || 'audio/webm';
+  const finished = new Promise((resolve) => { mediaRecorder.onstop = resolve; });
+  mediaRecorder.stop();
+  await finished;
+  if(micStream){ micStream.getTracks().forEach(tr => tr.stop()); micStream = null; }
+  isListening = false;
+  btn.classList.remove('recording');
+  btn.classList.add('transcribing');
+  try{
+    const blob = new Blob(recordedChunks, { type: mimeType });
+    if(blob.size < 500){ btn.classList.remove('transcribing'); return; } // too short / no audio
+    const audioBase64 = await blobToBase64(blob);
+    const res = await fetch('/api/stt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ audioBase64, mimeType, lang, langHint: (autoRoute ? undefined : lang), token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+    });
+    const data = await res.json();
+    btn.classList.remove('transcribing');
+    if(!res.ok){
+      alert(data && data.error ? data.error : t('micNotSupported'));
+      return;
+    }
+    const transcript = (data && data.text ? data.text : '').trim();
+    if(!transcript) return;
+    const promptEl = $('#prompt');
+    if(!autoRoute){
+      // Original behavior: just fill the textbox, user reviews & sends manually.
+      promptEl.value = (promptEl.value ? promptEl.value + ' ' : '') + transcript;
+      promptEl.dispatchEvent(new Event('input', { bubbles: true }));
+      promptEl.focus();
+      return;
+    }
+    // Voice-tab mode: detect intent and route automatically. Nothing is ever
+    // typed/shown as text anywhere - only the resulting code/image/video
+    // appears in the preview, plus a short spoken confirmation at the end.
+    const combinedText = transcript;
+    const intent = detectVoiceIntent(transcript);
+    btn.classList.add('transcribing');
+    try{
+      if(intent === 'image'){
+        await handleVoiceImageIntent(combinedText);
+      } else if(intent === 'video'){
+        await voiceTabSpeak(t('voiceVideoStarted'));
+        handleVoiceVideoIntent(combinedText);
+      } else {
+        await handleVoiceCodeIntent(combinedText);
+      }
+    } finally {
+      btn.classList.remove('transcribing');
+      btn.classList.add('maha-orb-idle');
+    }
+  } catch(e){
+    btn.classList.remove('transcribing');
+    alert(t('micNotSupported'));
+  }
+}
+
+btnMic.onclick = async () => {
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder){
+    alert(t('micNotSupported'));
+    return;
+  }
+  if(isListening){
+    stopMicRecordingAndTranscribe(false);
+    return;
+  }
+  try{
+    await startMicRecording(btnMic);
+  } catch(e){
+    alert(t('micNotSupported'));
+  }
+};
+
+// ---- Voice tab (drawer, next to code/preview): the exact same live
+// voice-to-voice technology/UI as Maha (OpenAI Realtime over WebRTC, same
+// call screen, same animated orb), but in "builder" mode: no chat text is
+// ever shown, results (image/app code) are dropped straight into the
+// preview/code panels, and the assistant only gives a short spoken
+// confirmation - available to every user (not owner-only). ----
+const btnVoiceTabMic = $('#btnVoiceTabMic');
+if(btnVoiceTabMic){
+  btnVoiceTabMic.onclick = () => { mahaUnlockAudio(); mahaStartCall('builder'); };
+}
+
+// ---- Reusable small 🎤 buttons attached to any free-text field site-wide
+// (video description, portrait/fashion/studio text fields, religious Q&A,
+// car issue description, feedback box, etc). Each button records via
+// MediaRecorder and transcribes via the same server-side /api/stt endpoint,
+// then appends the transcript directly into its target field's value. ----
+const miniMicStates = {};
+
+async function miniMicStart(btn, targetId){
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  let mimeType = '';
+  for(const cand of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']){
+    if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(cand)){ mimeType = cand; break; }
+  }
+  const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+  const chunks = [];
+  recorder.ondataavailable = (e) => { if(e.data && e.data.size > 0) chunks.push(e.data); };
+  recorder.start();
+  miniMicStates[targetId] = { stream, recorder, chunks, mimeType };
+  btn.classList.add('recording');
+}
+
+async function miniMicStop(btn, targetId){
+  const st = miniMicStates[targetId];
+  if(!st) return;
+  const finished = new Promise((resolve) => { st.recorder.onstop = resolve; });
+  st.recorder.stop();
+  await finished;
+  st.stream.getTracks().forEach(tr => tr.stop());
+  btn.classList.remove('recording');
+  btn.classList.add('transcribing');
+  try{
+    const blob = new Blob(st.chunks, { type: st.recorder.mimeType || st.mimeType || 'audio/webm' });
+    delete miniMicStates[targetId];
+    if(blob.size < 500){ btn.classList.remove('transcribing'); return; }
+    const audioBase64 = await blobToBase64(blob);
+    const res = await fetch('/api/stt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ audioBase64, mimeType: st.mimeType, lang, langHint: lang, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+    });
+    const data = await res.json();
+    btn.classList.remove('transcribing');
+    if(!res.ok){
+      alert(data && data.error ? data.error : t('micNotSupported'));
+      return;
+    }
+    const transcript = (data && data.text ? data.text : '').trim();
+    if(!transcript) return;
+    const targetEl = document.getElementById(targetId);
+    if(targetEl){
+      targetEl.value = (targetEl.value ? targetEl.value + ' ' : '') + transcript;
+      targetEl.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  } catch(e){
+    btn.classList.remove('transcribing');
+    alert(t('micNotSupported'));
+  }
+}
+
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.mini-mic-btn');
+  if(!btn) return;
+  const targetId = btn.getAttribute('data-target');
+  if(!targetId) return;
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder){
+    alert(t('micNotSupported'));
+    return;
+  }
+  if(btn.classList.contains('recording')){
+    miniMicStop(btn, targetId);
+  } else if(!btn.classList.contains('transcribing')){
+    try{ await miniMicStart(btn, targetId); } catch(err){ alert(t('micNotSupported')); }
+  }
+});
+// ---- "Maha" (مها): full-screen, voice-only conversational assistant ----
+// A dedicated hands-free "phone call" experience: no transcript/reply text is
+// ever shown on screen, only a small status word + an animated orb. She
+// listens, auto-detects silence to know when the user finished a sentence
+// (no button needed for that), auto-detects the spoken language (any language
+// in the world, not limited to the site's 5 UI languages) and always replies
+// with a female voice in that same language, then automatically starts
+// listening again until the user ends the call.
+// Base prompt template: {{NAME}} and {{GENDER_DESC}} are filled in at call
+// time based on the detected caller gender, so a male caller gets the
+// "Abdullah" male persona/voice and a female caller gets the "Maha" female
+// persona/voice - same personality and rules either way, just the name and
+// gender framing change.
+const MAHA_SYSTEM_PROMPT_TEMPLATE = "You are \"{{NAME}}\", a warm, witty, upbeat {{GENDER_DESC}} voice assistant having a live spoken phone call with the user - like a close, caring friend, never a formal robotic assistant. CRITICAL RULES: 1) Detect the language the user just spoke in (it can be ANY language in the world, not just Arabic or English) and ALWAYS reply in that exact same language. 2) If the user speaks Arabic, ALWAYS reply in natural, warm Khaleeji (Gulf) spoken dialect (never Modern Standard Arabic/Fus-ha) unless the user is clearly speaking a different Arabic dialect (e.g. Egyptian), in which case match their dialect naturally. 3) Never mix languages in a reply. 4) Keep replies VERY short and snappy, like a real quick back-and-forth phone chat: 1-2 short sentences, almost never more, unless the user explicitly asks for details or a list/recipe/steps. 5) Never use markdown, asterisks, headings, bullet points, emojis, or any symbols meant for reading on screen - your reply is spoken out loud only, plain natural speech. 6) You can chat about absolutely anything: news, general knowledge, advice, casual talk, jokes, banter. If unsure about very recent events, say so naturally and briefly. 7) Be lively and human: light humor, warmth, natural reactions - never stiff or overly formal. 8) STAY STRICTLY ON TOPIC: answer ONLY what the user actually asked about. Never drift into unrelated subjects like news, songs, sports, or recipes unless the user explicitly asked about that specific subject in their current or immediately preceding message. 9) For religious, factual, or sensitive topics (e.g. Quran, Islam, science, history), be extra precise and accurate, double-check your reasoning silently before answering, and if you are not fully certain, say so briefly instead of guessing or improvising. 10) Always use the full conversation history provided to understand context, but never let earlier topics leak into your answer to a new, different question. 11) NEVER think out loud and NEVER reveal your internal reasoning, uncertainty process, or self-questioning in your reply (e.g. never say things like 'does the user mean X or Y', 'is it possible that...', 'let me consider...'). If the transcript is unclear, garbled, or a word/name is ambiguous (e.g. a mis-heard city or place name), just ask ONE short, natural, casual clarifying question in the same language/dialect the user is speaking - nothing else, no meta-commentary. 12) Your entire reply must be 100% in a single language and a single dialect from start to finish, with absolutely zero words, phrases, or fragments from any other language mixed in, even mid-sentence.";
+
+let mahaStream = null, mahaMediaRecorder = null, mahaChunks = [];
+let mahaAudioCtx = null, mahaAnalyser = null, mahaVadRaf = null, mahaLastPeakRms = 0, mahaLowMicStreak = 0;
+let mahaCallActive = false, mahaState = 'idle'; // idle | listening | thinking | speaking
+let mahaHistory = [];
+let mahaIntroduced = false;
+let mahaCurrentAudio = null;
+// A single reusable <audio> element that gets "unlocked" synchronously inside
+// the user's click gesture, so later async .play() calls (after awaiting
+// fetch/TTS) are not blocked by mobile/desktop autoplay policies.
+const mahaAudioEl = new Audio();
+mahaAudioEl.setAttribute('playsinline', '');
+function mahaUnlockAudio(){
+  try{
+    mahaAudioEl.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQxAADB8AhSmxhIIEVCSiJrDCQBTcu93pgQGZgAAAA//tQxAADwAABpAAAACAAADSAAAAE';
+    const p = mahaAudioEl.play();
+    if(p && p.catch) p.catch(()=>{});
+  }catch(e){}
+}
+
+const btnMahaEl = document.getElementById('btnMaha');
+const mahaCallScreenEl = document.getElementById('mahaCallScreen');
+const mahaOrbEl = document.getElementById('mahaOrb');
+const mahaWaveEl = document.getElementById('mahaWave');
+const mahaStateLabelEl = document.getElementById('mahaStateLabel');
+const btnMahaEndCallEl = document.getElementById('btnMahaEndCall');
+
+/* ---------- مها floating draggable window ---------- */
+(function mahaDraggableSetup(){
+  const panel = mahaCallScreenEl;
+  const handle = document.getElementById('mahaDragHandle');
+  if(!panel || !handle) return;
+  const POS_KEY = 'mahaCallWindowPos';
+
+  function clampPos(x, y){
+    const w = panel.offsetWidth || 260;
+    const h = panel.offsetHeight || 340;
+    const maxX = Math.max(8, window.innerWidth - w - 8);
+    const maxY = Math.max(8, window.innerHeight - h - 8);
+    return { x: Math.min(Math.max(8, x), maxX), y: Math.min(Math.max(8, y), maxY) };
+  }
+
+  function applyPos(x, y){
+    panel.style.left = x + 'px';
+    panel.style.top = y + 'px';
+    panel.style.right = 'auto';
+    panel.style.bottom = 'auto';
+  }
+
+  const mahaCallScreenOriginalParent = panel.parentNode;
+  window.mahaPositionOnOpen = function(){
+    let x, y;
+    const isBuilder = (typeof mahaCallMode !== 'undefined' && mahaCallMode === 'builder');
+    if(isBuilder){
+      const voicePanel = document.getElementById('panel-voice');
+      if(voicePanel && panel.parentNode !== voicePanel) voicePanel.appendChild(panel);
+      panel.style.position = 'static';
+      panel.style.left = '';
+      panel.style.top = '';
+      panel.style.width = '100%';
+      panel.style.height = '100%';
+      panel.style.boxShadow = 'none';
+      panel.style.background = 'transparent';
+      panel.style.border = 'none';
+      panel.style.borderRadius = '0';
+      return;
+    }
+    if(panel.parentNode !== mahaCallScreenOriginalParent) mahaCallScreenOriginalParent.appendChild(panel);
+    panel.style.position = 'fixed';
+    panel.style.boxShadow = '0 12px 40px rgba(0,0,0,.55)';
+    panel.style.background = 'radial-gradient(circle at 50% 30%,#241a3d,#0c0a16 75%)';
+    panel.style.border = '1px solid rgba(255,255,255,.08)';
+    panel.style.borderRadius = '26px';
+    panel.style.width = '260px';
+    panel.style.height = '340px';
+    try {
+      const saved = JSON.parse(localStorage.getItem(POS_KEY) || 'null');
+      if(saved && typeof saved.x === 'number' && typeof saved.y === 'number'){
+        x = saved.x; y = saved.y;
+      }
+    } catch(e){}
+    if(x === undefined){
+      x = Math.round((window.innerWidth - 260) / 2);
+      y = Math.round((window.innerHeight - 340) / 2);
+    }
+    const c = clampPos(x, y);
+    applyPos(c.x, c.y);
+  };
+
+  let dragging = false, startX = 0, startY = 0, startLeft = 0, startTop = 0;
+
+  function pointerDown(e){
+    if(typeof mahaCallMode !== 'undefined' && mahaCallMode === 'builder') return;
+    dragging = true;
+    handle.style.cursor = 'grabbing';
+    const pt = e.touches ? e.touches[0] : e;
+    startX = pt.clientX; startY = pt.clientY;
+    const rect = panel.getBoundingClientRect();
+    startLeft = rect.left; startTop = rect.top;
+    e.preventDefault();
+  }
+  function pointerMove(e){
+    if(!dragging) return;
+    const pt = e.touches ? e.touches[0] : e;
+    const dx = pt.clientX - startX;
+    const dy = pt.clientY - startY;
+    const c = clampPos(startLeft + dx, startTop + dy);
+    applyPos(c.x, c.y);
+  }
+  function pointerUp(){
+    if(!dragging) return;
+    dragging = false;
+    handle.style.cursor = 'grab';
+    const rect = panel.getBoundingClientRect();
+    try { localStorage.setItem(POS_KEY, JSON.stringify({ x: rect.left, y: rect.top })); } catch(e){}
+  }
+
+  handle.addEventListener('mousedown', pointerDown);
+  window.addEventListener('mousemove', pointerMove);
+  window.addEventListener('mouseup', pointerUp);
+  handle.addEventListener('touchstart', pointerDown, { passive:false });
+  window.addEventListener('touchmove', pointerMove, { passive:false });
+  window.addEventListener('touchend', pointerUp);
+  window.addEventListener('resize', () => {
+    if(panel.style.display !== 'none' && panel.style.left){
+      const rect = panel.getBoundingClientRect();
+      const c = clampPos(rect.left, rect.top);
+      applyPos(c.x, c.y);
+    }
+  });
+})();
+
+function mahaSetState(state, customLabel){
+  mahaState = state;
+  if(mahaOrbEl) mahaOrbEl.className = 'maha-orb-' + (state === 'error' ? 'thinking' : state);
+  if(mahaWaveEl) mahaWaveEl.className = 'maha-wave-' + (state === 'error' ? 'thinking' : state);
+  if(mahaStateLabelEl){
+    const map = { idle: '', listening: t('mahaListening'), thinking: t('mahaThinking'), speaking: t('mahaSpeaking'), error: customLabel || t('mahaTryAgain') };
+    mahaStateLabelEl.textContent = customLabel || map[state] || '';
+  }
+}
+
+function mahaStopVad(){
+  if(mahaVadRaf){ cancelAnimationFrame(mahaVadRaf); mahaVadRaf = null; }
+  if(mahaAudioCtx){ try{ mahaAudioCtx.close(); }catch(e){} mahaAudioCtx = null; mahaAnalyser = null; }
+}
+
+function mahaStopStream(){
+  if(mahaStream){ mahaStream.getTracks().forEach(tr => tr.stop()); mahaStream = null; }
+}
+
+// Simple, well-known autocorrelation pitch detector (ACF2+), operating on a
+// Float32 time-domain buffer in the range [-1, 1]. Returns the estimated
+// fundamental frequency in Hz, or -1 if the signal is too quiet/unclear.
+function mahaAutoCorrelate(buf, sampleRate){
+  const SIZE = buf.length;
+  let rms = 0;
+  for(let i = 0; i < SIZE; i++){ rms += buf[i] * buf[i]; }
+  rms = Math.sqrt(rms / SIZE);
+  if(rms < 0.01) return -1;
+  let r1 = 0, r2 = SIZE - 1;
+  const thres = 0.2;
+  for(let i = 0; i < SIZE / 2; i++){ if(Math.abs(buf[i]) < thres){ r1 = i; break; } }
+  for(let i = 1; i < SIZE / 2; i++){ if(Math.abs(buf[SIZE - i]) < thres){ r2 = SIZE - i; break; } }
+  const trimmed = buf.slice(r1, r2);
+  const newSize = trimmed.length;
+  if(newSize < 8) return -1;
+  const c = new Array(newSize).fill(0);
+  for(let i = 0; i < newSize; i++){
+    for(let j = 0; j < newSize - i; j++){ c[i] += trimmed[j] * trimmed[j + i]; }
+  }
+  let d = 0;
+  while(d < newSize - 1 && c[d] > c[d + 1]) d++;
+  let maxval = -1, maxpos = -1;
+  for(let i = d; i < newSize; i++){
+    if(c[i] > maxval){ maxval = c[i]; maxpos = i; }
+  }
+  let T0 = maxpos;
+  if(T0 > 0 && T0 < newSize - 1){
+    const x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
+    const a = (x1 + x3 - 2 * x2) / 2, b = (x3 - x1) / 2;
+    if(a) T0 = T0 - b / (2 * a);
+  }
+  if(T0 <= 0) return -1;
+  return sampleRate / T0;
+}
+
+// Detected gender of the current caller, refreshed once per turn based on
+// pitch samples collected while they were speaking. Defaults to 'female'
+// (Maha's own natural voice) until enough real samples come in.
+let mahaDetectedGender = 'female';
+// Updates the on-screen call card name/icon to match the currently detected
+// caller gender: "مها" (female, 💁‍♀️) or "عبدالله" (male, 🧔).
+function mahaUpdatePersonaUI(){
+  const nameEl = document.getElementById('mahaCallNameLabel');
+  const orbEl = document.getElementById('mahaOrb');
+  const isMale = mahaDetectedGender === 'male';
+  if(nameEl) nameEl.textContent = isMale ? 'عبدالله' : 'مها';
+  if(orbEl) orbEl.textContent = isMale ? '🧔' : '💁\u200d♀️';
+}
+// All pitch samples collected across the *entire* call (not reset per turn).
+// A single noisy turn (background sound, echo, weak mic) can produce a wrong
+// per-turn reading, so we accumulate evidence over the whole conversation and
+// classify from the combined history - this makes the detected gender stable
+// and consistent for the rest of the call once enough samples are in.
+let mahaAllPitchSamples = [];
+
+let mahaInterruptStream = null, mahaInterruptCtx = null, mahaInterruptRaf = null;
+
+// Listens on the mic *while Maha is talking* so the user can interrupt her by
+// just speaking (barge-in), instead of having to wait for her to finish.
+// Fails silently if mic access isn't available for any reason.
+async function mahaStartInterruptListener(audio, onInterrupt){
+  try{
+    mahaInterruptStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+    });
+  }catch(e){ return; }
+  if(audio.paused || audio.ended){ mahaStopInterruptListener(); return; } // already done by the time mic opened
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  mahaInterruptCtx = new AudioCtx();
+  const source = mahaInterruptCtx.createMediaStreamSource(mahaInterruptStream);
+  const analyser = mahaInterruptCtx.createAnalyser();
+  analyser.fftSize = 2048;
+  source.connect(analyser);
+  const dataArr = new Uint8Array(analyser.fftSize);
+  const freqArr = new Uint8Array(analyser.frequencyBinCount);
+  const sampleRate = mahaInterruptCtx.sampleRate || 44100;
+  const binHz = sampleRate / analyser.fftSize;
+  // Human voice energy is concentrated roughly 200Hz-3500Hz. Random movement /
+  // bumps / mic handling noise is mostly low-frequency rumble or a broadband
+  // impulsive click, so we require the loud sound to also look "voice-shaped"
+  // (most of its energy inside the speech band) before treating it as speech.
+  const speechBinLo = Math.max(1, Math.round(200 / binHz));
+  const speechBinHi = Math.min(freqArr.length - 1, Math.round(3500 / binHz));
+  const INTERRUPT_THRESHOLD = 0.07; // higher than the listening threshold so speaker bleed-through doesn't self-trigger
+  const SPEECH_BAND_RATIO_MIN = 0.55; // fraction of total spectral energy that must sit in the speech band
+  const LOUD_FRAMES_NEEDED = 8; // ~8 consecutive voice-shaped frames (~250-300ms) avoids false triggers from taps/movement
+  let loudStreak = 0;
+  const tick = () => {
+    if(!mahaInterruptCtx || audio.paused || audio.ended) return;
+    analyser.getByteTimeDomainData(dataArr);
+    let sumSq = 0;
+    for(let i = 0; i < dataArr.length; i++){ const v = (dataArr[i] - 128) / 128; sumSq += v * v; }
+    const rms = Math.sqrt(sumSq / dataArr.length);
+    let isVoiceShaped = false;
+    if(rms > INTERRUPT_THRESHOLD){
+      analyser.getByteFrequencyData(freqArr);
+      let total = 0, band = 0;
+      for(let i = 1; i < freqArr.length; i++){
+        total += freqArr[i];
+        if(i >= speechBinLo && i <= speechBinHi) band += freqArr[i];
+      }
+      isVoiceShaped = total > 0 && (band / total) >= SPEECH_BAND_RATIO_MIN;
+    }
+    loudStreak = isVoiceShaped ? loudStreak + 1 : 0;
+    if(loudStreak >= LOUD_FRAMES_NEEDED){
+      try{ audio.pause(); }catch(e){}
+      onInterrupt();
+      return;
+    }
+    mahaInterruptRaf = requestAnimationFrame(tick);
+  };
+  mahaInterruptRaf = requestAnimationFrame(tick);
+}
+
+function mahaStopInterruptListener(){
+  if(mahaInterruptRaf){ cancelAnimationFrame(mahaInterruptRaf); mahaInterruptRaf = null; }
+  if(mahaInterruptCtx){ try{ mahaInterruptCtx.close(); }catch(e){} mahaInterruptCtx = null; }
+  if(mahaInterruptStream){ mahaInterruptStream.getTracks().forEach(tr => tr.stop()); mahaInterruptStream = null; }
+}
+
+// Language Maha should speak her reply in, refreshed each turn from Whisper's
+// own detection of what the caller actually spoke. Defaults to the site's
+// current UI language until we have a real detection.
+let mahaReplyLang = (typeof lang !== 'undefined' ? lang : 'ar');
+
+async function mahaSpeak(text){
+  return new Promise(async (resolve) => {
+    try{
+      const resp = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang })
+      });
+      if(!resp.ok){ resolve(); return; }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = mahaAudioEl;
+      mahaCurrentAudio = audio;
+      let settled = false;
+      const finish = () => {
+        if(settled) return;
+        settled = true;
+        mahaStopInterruptListener();
+        URL.revokeObjectURL(url);
+        resolve();
+      };
+      audio.onended = finish;
+      audio.onerror = finish;
+      audio.src = url;
+      await audio.play();
+      mahaStartInterruptListener(audio, finish);
+    }catch(e){ resolve(); }
+  });
+}
+
+// Records the mic and uses volume-based silence detection to know when the
+// user finished talking (hands-free - no button press needed per turn).
+async function mahaRecordUntilSilence(){
+  mahaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  let mimeType = '';
+  for(const cand of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']){
+    if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(cand)){ mimeType = cand; break; }
+  }
+  mahaMediaRecorder = mimeType ? new MediaRecorder(mahaStream, { mimeType }) : new MediaRecorder(mahaStream);
+  mahaChunks = [];
+  mahaMediaRecorder.ondataavailable = (e) => { if(e.data && e.data.size > 0) mahaChunks.push(e.data); };
+
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  mahaAudioCtx = new AudioCtx();
+  const source = mahaAudioCtx.createMediaStreamSource(mahaStream);
+  mahaAnalyser = mahaAudioCtx.createAnalyser();
+  mahaAnalyser.fftSize = 2048;
+  source.connect(mahaAnalyser);
+  const dataArr = new Uint8Array(mahaAnalyser.fftSize);
+
+  const finished = new Promise((resolve) => { mahaMediaRecorder.onstop = resolve; });
+  mahaMediaRecorder.start(); // single chunk on stop, same reliable pattern as the manual mic button
+
+  const startTime = Date.now();
+  const SILENCE_THRESHOLD = 0.022; // RMS amplitude below this = silence (raised so ambient/background noise isn't mistaken for speech)
+  const SILENCE_HOLD_MS = 900;     // how long silence must last to end the turn (raised from 550ms - 550ms was cutting people off mid-sentence during natural pauses, causing garbled/incomplete transcripts)
+  const MIN_TALK_MS = 1000;        // ignore silence before user has said anything (real speech needs to sustain longer than noise blips)
+  const MAX_TURN_MS = 20000;       // hard safety cap per turn
+  let lastLoudAt = Date.now();
+  let everLoud = false;
+  let peakRms = 0;
+  const floatBuf = new Float32Array(mahaAnalyser.fftSize);
+  const pitchSamples = [];
+  let pitchTickCounter = 0;
+
+  await new Promise((resolve) => {
+    const tick = () => {
+      if(!mahaCallActive || mahaMediaRecorder.state !== 'recording'){ resolve(); return; }
+      mahaAnalyser.getByteTimeDomainData(dataArr);
+      let sumSq = 0;
+      for(let i = 0; i < dataArr.length; i++){ const v = (dataArr[i] - 128) / 128; sumSq += v * v; }
+      const rms = Math.sqrt(sumSq / dataArr.length);
+      if(rms > peakRms) peakRms = rms;
+      // Live visual feedback so the user can see the mic is actually picking up sound.
+      if(mahaOrbEl){
+        const scale = 1 + Math.min(rms * 6, 0.35);
+        mahaOrbEl.style.transform = 'scale(' + scale.toFixed(3) + ')';
+      }
+      const now = Date.now();
+      if(rms > SILENCE_THRESHOLD){
+        lastLoudAt = now; everLoud = true;
+        // Sample the fundamental pitch every few frames while the user is
+        // actually talking, to later guess whether they sound male or female.
+        pitchTickCounter++;
+        if(pitchTickCounter % 4 === 0){
+          mahaAnalyser.getFloatTimeDomainData(floatBuf);
+          const freq = mahaAutoCorrelate(floatBuf, mahaAudioCtx.sampleRate);
+          if(freq > 70 && freq < 400) pitchSamples.push(freq);
+        }
+      }
+      const elapsed = now - startTime;
+      const silentFor = now - lastLoudAt;
+      if(elapsed > MAX_TURN_MS || (everLoud && elapsed > MIN_TALK_MS && silentFor > SILENCE_HOLD_MS)){
+        resolve();
+        return;
+      }
+      mahaVadRaf = requestAnimationFrame(tick);
+    };
+    mahaVadRaf = requestAnimationFrame(tick);
+  });
+  if(mahaOrbEl) mahaOrbEl.style.transform = '';
+  mahaLastPeakRms = peakRms;
+
+  // Estimate the caller's gender from the median pitch across the WHOLE call
+  // so far (not just this turn). Typical adult male fundamental frequency is
+  // roughly 85-165Hz, adult female roughly 165-255Hz, so ~165Hz is a
+  // reasonable split point. Combining every turn's samples smooths out any
+  // single noisy/echoey turn that would otherwise flip the voice mid-call.
+  if(pitchSamples.length >= 5){
+    // Drop this turn's own outliers first (keep the middle 70%) so one bad
+    // moment within the turn doesn't skew the pooled history either.
+    const turnSorted = pitchSamples.slice().sort((a, b) => a - b);
+    const lo = Math.floor(turnSorted.length * 0.15);
+    const hi = Math.ceil(turnSorted.length * 0.85);
+    const trimmed = turnSorted.slice(lo, hi).length ? turnSorted.slice(lo, hi) : turnSorted;
+    mahaAllPitchSamples.push(...trimmed);
+    // Cap history so very long calls don't grow unbounded.
+    if(mahaAllPitchSamples.length > 400) mahaAllPitchSamples = mahaAllPitchSamples.slice(-400);
+    // Only start classifying once we have a solid pool of samples; before
+    // that, keep the default so we don't flip on a single early turn.
+    if(mahaAllPitchSamples.length >= 12){
+      const sorted = mahaAllPitchSamples.slice().sort((a, b) => a - b);
+      const median = sorted[Math.floor(sorted.length / 2)];
+      mahaDetectedGender = median < 165 ? 'male' : 'female';
+    }
+  }
+
+  mahaStopVad();
+  if(mahaMediaRecorder.state === 'recording') mahaMediaRecorder.stop();
+  await finished;
+  mahaStopStream();
+
+  const blob = new Blob(mahaChunks, { type: mahaMediaRecorder.mimeType || mimeType || 'audio/webm' });
+  return blob;
+}
+
+// Heuristic: does this turn need live/real-time info from the internet
+// (weather, news, sports scores/results, prices, "today/now/currently" facts)?
+// Keeps Maha fast by only searching when it's actually likely to help.
+const MAHA_SEARCH_KEYWORDS = [
+  // Arabic (MSA + Gulf dialect)
+  'طقس','جو','درجة الحرارة','مطر','اخبار','أخبار','خبر','نتيجة','نتائج','مباراة','مباريات',
+  'الدوري','كأس','بطولة','سعر','أسعار','اسعار','سهم','اسهم','بورصة','عملة','دولار','ذهب','نفط',
+  'اشتراك','اشتراكات','الاشتراك','تكلفة','كلفة','التكلفة','بكم','كم يكلف','كم تكلف','رسوم','باقة','باقات',
+  'اليوم','الحين','الآن','حاليا','حالياً','آخر','احدث','أحدث','جديد','مين فاز','من فاز','نتيجة المباراة',
+  'وفاة','توفي','توفى','مات','ميت','متوفي','متوفى','رحيل','فارق الحياة','حي او ميت','حي أو ميت',
+  'انتخابات','رئيس','ملك','امير','أمير','حرب','زلزال','كارثة','حادث','اعلان','إعلان','قرار',
+  'سيارات','سيرات','سياير','ايجار','إيجار','اجار','تأجير','تاجير','استئجار',
+  'تذكرة','تذاكر','تذكره','طيران','رحلة','رحله','رحلات','حجز','فندق','فنادق','وظيفة','وظائف','وظيفه','شقة','شقه','شقق','فيلا','فلل',
+  'flight','ticket','tickets','hotel','booking','rent','apartment','villa','job','jobs',
+  // English
+  'weather','forecast','temperature','rain','news','score','result','match','game','league',
+  'championship','price','stock','currency','exchange rate','gold price','oil price',
+  'subscription','cost','pricing','how much','plan price','fee','fees',
+  'today','now','currently','latest','recent','who won','breaking',
+  'died','death','dead','passed away','alive','election','president','king','emir','war','earthquake',
+];
+
+function mahaNeedsSearch(text){
+  if(!text) return false;
+  const lower = text.toLowerCase();
+  return MAHA_SEARCH_KEYWORDS.some(kw => lower.includes(kw.toLowerCase()));
+}
+
+// If the user's turn looks like it needs real-time info, hit our Tavily-backed
+// /api/search endpoint and turn the results into a system message Maha can use.
+// Fails silently (returns null) on any error/timeout so a call never gets stuck.
+async function mahaMaybeSearch(transcript){
+  if(!mahaNeedsSearch(transcript)) return null;
+  return await fetchSearchNote(transcript);
+}
+
+// 🧭 موزّع البحث الذكي (المحادثة الرئيسية): يقرر بالمعنى - مثل ChatGPT -
+// إذا كان السؤال يحتاج بحث إنترنت حقيقي (أشخاص، شركات، حسابات تواصل،
+// أرقام، إعلانات بيع، أسعار، أخبار...) بدل الاعتماد على كلمات مفتاحية فقط.
+// قاعدة عمران: أي سؤال فيه "عمران/Omran" ممنوع البحث نهائيًا - يجاوب من
+// هويته الداخلية (منع خلط التطبيق مع تطبيقات أخرى بنفس الاسم).
+// 👋 كاشف التحية: رسالة قصيرة كلها تحية/مجاملة => لا بحث ولا مصادر ولا مواضيع قديمة.
+// 📄 v314: تحويل نص رد إلى صفحة PDF مرتبة عبر نافذة الطباعة (يشتغل على كل الأجهزة بدون مزود)
+function exportTextAsPdf(raw){
+  try{
+    const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    let txt = String(raw).replace(/```[\s\S]*?```/g, '').trim();
+    const lines = txt.split('\n');
+    let html = '', inList = false;
+    for(let ln of lines){
+      let l = esc(ln.trim());
+      l = l.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/__([^_]+)__/g, '<b>$1</b>');
+      if(!l){ if(inList){ html += '</ul>'; inList = false; } continue; }
+      if(/^#{1,4}\s/.test(l)){ if(inList){ html += '</ul>'; inList = false; } html += '<h2>' + l.replace(/^#{1,4}\s*/, '') + '</h2>'; }
+      else if(/^[-•*]\s/.test(l)){ if(!inList){ html += '<ul>'; inList = true; } html += '<li>' + l.replace(/^[-•*]\s*/, '') + '</li>'; }
+      else { if(inList){ html += '</ul>'; inList = false; } html += '<p>' + l + '</p>'; }
+    }
+    if(inList) html += '</ul>';
+    const isAr = /[\u0600-\u06FF]/.test(txt);
+    const doc = '<!DOCTYPE html><html dir="' + (isAr ? 'rtl' : 'ltr') + '"><head><meta charset="utf-8"><title>Omran AI Builder</title><style>body{font-family:"Segoe UI",Tahoma,Arial,sans-serif;color:#111;background:#fff;padding:28px 32px;line-height:1.9;font-size:14.5px}h2{font-size:17px;margin:18px 0 6px;color:#4c2a92;border-bottom:1px solid #eee;padding-bottom:4px}ul{margin:4px 0;padding-' + (isAr ? 'right' : 'left') + ':22px}p{margin:6px 0}footer{margin-top:30px;font-size:11px;color:#999;text-align:center}</style></head><body>' + html + '<footer>Omran AI Builder</footer></body></html>';
+    const fr = document.createElement('iframe');
+    fr.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;';
+    document.body.appendChild(fr);
+    fr.srcdoc = doc;
+    fr.onload = function(){
+      setTimeout(function(){
+        try{ fr.contentWindow.focus(); fr.contentWindow.print(); }catch(e){}
+        setTimeout(function(){ try{ fr.remove(); }catch(e){} }, 60000);
+      }, 250);
+    };
+  }catch(e){}
+}
+function isPureGreeting(t){
+  if(!t) return false;
+  const s = String(t).trim();
+  if(s.length > 60) return false;
+  // v313: «نعم/تمام/يلا/اوك...» = تأكيد لإكمال الموضوع — ليست تحية أبدًا.
+  if(/^(نعم|ايه|إيه|اي|أي|يب|اوك|أوك|اوكي|تمام|طيب|زين|يلا|ابدا|ابدأ|كمل|أكمل|واصل|صح|اكيد|أكيد|ماشي|موافق|سوها|سويها|نفذ|نفّذ|yes|ok|okay|yep|sure|go|continue)[\s،,.!؟?~\-_()]*$/i.test(s)) return false;
+  const greetRe = /السلام عليكم(\s*ورحمة الله(\s*وبركاته)?)?|وعليكم السلام|صباح الخير|صباح النور|مساء الخير|مساء النور|كيف حالك|كيف الحال|شحالك|شخبارك|شو الأخبار|كيفك|مرحبا|مرحبتين|هلا|أهلا|اهلين|أهلين|يا هلا|حياك|تحية طيبة|سلام|good morning|good evening|good afternoon|how are you|hello|hey|hi|salam|marhaba/gi;
+  if(!greetRe.test(s)) return false; // لازم تحتوي كلمة ترحيب فعلية
+  greetRe.lastIndex = 0;
+  const stripped = s.replace(greetRe, '').replace(/[\s،,.!؟?~\-_()🌹🌸😊🙏❤️💜👋🤍✨]+/g, '');
+  return stripped.length <= 3;
+}
+async function smartMaybeSearch(text, ctxMsgs){
+  if(!text) return null;
+  if(isPureGreeting(text)) return null;
+  if(/عمران|omran/i.test(text)) return null;
+  // v327: طلب لوجو/شعار/تصميم شخصي (لتطبيقي/شركتي/لي...) = مهمة تصميم — ممنوع البحث الحي نهائيًا.
+  if(/(لوجو|شعار|\blogo\b|تصميم|صمم|صمّم)/i.test(text) && /(لي|إلي|الي|لتطبيق|تطبيقي|لموقع|موقعي|لشرك|شركتي|لمشروع|مشروعي|لمتجر|متجري|لقناة|قناتي|خاص|my|for me)/i.test(text)) return null;
+
+  // v384: 🧠 بحث واعي بالسياق — إذا الرسالة قصيرة وتبدو متابعة (عطني الروابط / المزيد / تفاصيل...)
+  // نجيب الموضوع الأصلي من آخر رسائل المحادثة ونضيفه للاستعلام.
+  let searchQuery = text;
+  const __followUpRe = /^(عطني|أعطني|اعطني|هات|وريني|أرني|ابغي|أبي|ابي|أريد|اريد|المزيد|تفاصيل|أكثر|زيادة|كمل|أكمل|واصل|وش صار|شو عن|ايش عن|الروابط|المواقع|اللنكات|الخيارات|البدائل|give me|show me|more|details|links|what about|alternatives)/i;
+  if(ctxMsgs && text.length < 60 && __followUpRe.test(text)){
+    // خذ آخر رسالة مستخدم سابقة (اللي فيها الموضوع الأصلي)
+    const __prevUser = ctxMsgs.filter(m => m.role === 'user' && m.content && String(m.content).trim() !== text.trim() && String(m.content).length > 5);
+    // وآخر رد AI (قد يحتوي الموضوع أيضاً)
+    const __prevAI = ctxMsgs.filter(m => m.role !== 'user' && m.content && String(m.content).length > 20 && String(m.content).length < 2000);
+    let __topic = '';
+    if(__prevUser.length) __topic = String(__prevUser[__prevUser.length - 1].content).slice(0, 200);
+    else if(__prevAI.length) __topic = String(__prevAI[__prevAI.length - 1].content).slice(0, 200);
+    if(__topic) searchQuery = __topic + ' ' + text;
+  }
+
+  // v384: 🔬 Deep Research — استعلامات معقدة أو صريحة تحتاج بحث عميق بعدة زوايا.
+  const __deepRe = /بحث عميق|بحث شامل|تقرير مفصل|تحليل شامل|قارن بين|مقارنة.*بين|أفضل\s*(خيارات|بدائل|مواقع|شركات|تطبيقات)|deep research|comprehensive|detailed report|compare.*between/i;
+  const __wantDeep = __deepRe.test(text) || (text.length > 120 && mahaNeedsSearch(text));
+
+  // 🔗 طلب روابط/مواقع حقيقية = بحث حي إجباري (منع هلوسة الروابط الوهمية).
+  if(/روابط|لينكات|لنكات/i.test(text)
+    || /(رابط|لينك|\blink\b|\burl\b)[^\n]{0,25}(موقع|مواقع|منصة|منصات|صفحة|site|website)/i.test(text)
+    || /(موقع|مواقع|منصة|منصات|site|website)[^\n]{0,25}(رابط|لينك|\blink\b|\burl\b|\blinks\b)/i.test(text)
+    || /(عطني|اعطني|أعطني|هات|وريني|ابغي|أبغي|أبي|ابي|أريد|اريد|give me|show me)[^\n]{0,20}(موقع|مواقع|منصة|منصات|رابط|لينك|\bsites?\b|\bwebsites?\b|\blinks?\b)/i.test(text)){
+    return await fetchSearchNote(searchQuery, __wantDeep);
+  }
+  // مسار سريع: الكلمات المفتاحية القديمة => بحث مباشر بدون تصنيف.
+  if(mahaNeedsSearch(text)) return await fetchSearchNote(searchQuery, __wantDeep);
+  // غير ذلك: مصنّف Groq سريع بالسيرفر يقرر بالمعنى (يفشل بصمت => لا بحث).
+  try{
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch('/api/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: text, classify: true }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if(!res.ok) return null;
+    const data = await res.json();
+    if(!data || !data.search) return null;
+    return await fetchSearchNote(searchQuery, __wantDeep);
+  }catch(e){
+    return null;
+  }
+}
+
+async function fetchSearchNote(transcript, deep){
+  // 🔁 محاولة ثانية تلقائية: فشل البحث الأول (timeout/خطأ عابر) لا يعني رد
+  // "ما عندي معلومات" — نعيد المحاولة مرة وحدة قبل الاستسلام.
+  const first = await fetchSearchNoteOnce(transcript, deep);
+  if(first) return first;
+  return await fetchSearchNoteOnce(transcript, false);
+}
+async function fetchSearchNoteOnce(transcript, deep){
+  try{
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), deep ? 45000 : 25000);
+    const res = await fetch('/api/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      // 🖼️ Feature ②: also ask for images so informational/live-search
+      // replies can show a ChatGPT-style image strip + source badges above
+      // and below the answer text (data.sources/data.images below).
+      body: JSON.stringify({ query: transcript, images: true, deep: !!deep, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if(!res.ok) return null;
+    const data = await res.json();
+    if(!data) return null;
+    const parts = [];
+    if(data.answer) parts.push(data.answer);
+    // v384: Deep Research — عدة ملخصات من زوايا مختلفة
+    if(Array.isArray(data.deepAnswers) && data.deepAnswers.length > 1){
+      data.deepAnswers.slice(1).forEach(a => { if(a) parts.push('[Additional perspective]: ' + a); });
+    }
+    const __maxRes = data.deep ? 15 : 8;
+    if(Array.isArray(data.results)){
+      data.results.slice(0, __maxRes).forEach(r => {
+        if(r && r.content) parts.push(`- ${r.title || ''} [${r.url || ''}]: ${r.content}`);
+      });
+    }
+    // Google Custom Search + Google News results were being fetched by
+    // /api/search all along but silently dropped here - only Tavily's
+    // results were ever used. Include them too so Google is actually part
+    // of the grounding, not just called and ignored.
+    if(Array.isArray(data.google)){
+      data.google.slice(0, 3).forEach(r => {
+        if(r && r.content) parts.push(`- [Google] ${r.title || ''}: ${r.content}`);
+      });
+    }
+    if(Array.isArray(data.news)){
+      data.news.slice(0, 3).forEach(r => {
+        if(r && r.title) parts.push(`- [Google News] ${r.title}${r.content ? ' (' + r.content + ')' : ''}`);
+      });
+    }
+    if(!parts.length) return null;
+    const note = `Live internet search results for the user's question (use these to give an accurate, up-to-date answer; do not mention "search" or "internet" explicitly, just answer naturally as if you know this):\n${parts.join('\n')}\nIf the results are classified ads/listings (real estate, cars, jobs...): results marked "📌 إعلان مباشر" are individual ad pages — label their link "رابط الإعلان". Results marked "🔍 صفحة بحث" are generic category/search pages — you MUST label their link "رابط تصفح الإعلانات" and NEVER call it "رابط الإعلان". Prefer showing 📌 results first. ONLY IF your answer actually lists classified ads/listings with links, end it with this short tip in Arabic: "📞 افتح رابط الإعلان وبتلقى داخل الصفحة زر اتصال/واتساب." — if the answer contains no listings at all, DO NOT add this tip or mention it. Never claim you can provide owners' personal phone numbers as open lists. FLIGHTS: if the question is about flight tickets, list the cheapest options found (price + airline if available + booking link) and add one short Arabic note that prices change constantly and the final price is on the booking site. FRESHNESS RULE: base your answer ONLY on the search results above — STRICTLY FORBIDDEN to add programs, platforms, initiatives or facts from your own memory/training data (they may be outdated); if the search results don't mention something, don't mention it either. RELEVANCE RULE (ABSOLUTE): before using ANY search result, check it is DIRECTLY about the user's exact topic. If a result is about a different topic (e.g., motorcycles when the user asked about cars, or an unrelated product/article), you MUST completely ignore it — never mention it, never cite its link, never weave its details into your answer. It is better to use fewer results than to include one off-topic result.`;
+    // 📚🖼️ Feature ② — structured data for the ChatGPT-style UI: source
+    // badges (favicon+domain, from the backend's deduped `sources` field,
+    // with a client-side fallback in case an older cached response lacks
+    // it) and up to 4 live image URLs for the horizontal image strip.
+    let sources = Array.isArray(data.sources) ? data.sources.slice(0, 6) : [];
+    if(!sources.length){
+      const seenHosts = new Set();
+      [...(Array.isArray(data.results) ? data.results : []), ...(Array.isArray(data.google) ? data.google : [])].forEach(r => {
+        if(!r || !r.url || sources.length >= 6) return;
+        let host = '';
+        try{ host = new URL(r.url).hostname.replace(/^www\./, ''); }catch(e){ return; }
+        if(!host || seenHosts.has(host)) return;
+        seenHosts.add(host);
+        sources.push({ title: r.title || host, url: r.url });
+      });
+    }
+    const images = Array.isArray(data.images) ? data.images.slice(0, 4) : [];
+    return { note, sources, images };
+  }catch(e){
+    console.error('[maha] search failed:', e);
+    return null;
+  }
+}
+
+// Heuristic: does this turn look like a request to draw/create/edit a picture?
+// Used only by the classic (fallback) text pipeline, which has no real
+// function-calling - the Realtime voice-to-voice mode below detects this
+// itself via OpenAI's built-in tool calling instead.
+const MAHA_IMAGE_KEYWORDS = [
+  'ارسم','ارسمي','رسم','رسمة','صورة','سوي صورة','اعطني صورة','اعطيني صورة','ولد صورة','صمم',
+  'draw','generate an image','create an image','make an image','make a picture','draw me','picture of','image of','design a logo',
+];
+function mahaNeedsImage(text){
+  if(!text) return false;
+  const lower = text.toLowerCase();
+  return MAHA_IMAGE_KEYWORDS.some(kw => lower.includes(kw.toLowerCase()));
+}
+
+// Stores the most recently generated image in the current call (base64 +
+// mime), so a follow-up "edit it" request can reference it. Reset per call.
+let mahaLastImageBase64 = null;
+let mahaLastImageMime = null;
+// Call whenever the active project changes (new/switch/delete) so مها's
+// image reference never leaks from one project into another.
+function mahaClearImageRef(){
+  mahaLastImageBase64 = null;
+  mahaLastImageMime = null;
+  const mahaImgElClr = document.getElementById('mahaGenImage');
+  if(mahaImgElClr){ mahaImgElClr.style.display = 'none'; mahaImgElClr.src = ''; }
+}
+
+function mahaShowImage(base64, mimeType){
+  mahaLastImageBase64 = base64;
+  mahaLastImageMime = mimeType || 'image/png';
+  if(mahaCallMode === 'builder'){
+    // Builder voice mode: never show the image inside the call bubble -
+    // drop it straight into the code/preview panels instead, like every
+    // other builder action, then let the call orb keep animating normally.
+    let cur = getCurrent();
+    if(!cur){
+      const id = 'p_' + Date.now();
+      cur = {id, title: 'صورة', messages: [], code: '', codeType: 'html'};
+      state.projects.push(cur);
+      state.currentId = id;
+    }
+    const dataUrl = 'data:' + mahaLastImageMime + ';base64,' + base64;
+    cur.code = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0b12;}img{max-width:100%;max-height:100vh;display:block;}</style></head><body><img src="' + dataUrl + '" alt=""></body></html>';
+    cur.codeType = 'html';
+    renderAll();
+    switchWorkTab('preview');
+    // Don't persist the huge base64 image into localStorage (would fill
+    // storage fast). Keep a lightweight placeholder for saved state; the
+    // full image stays visible in-memory for this session only.
+    const fullCode = cur.code;
+    cur.code = '<!-- صورة مؤقتة من مها: لم تُحفظ لتفادي امتلاء التخزين -->';
+    saveState();
+    cur.code = fullCode;
+    return;
+  }
+  const el = document.getElementById('mahaGenImage');
+  const orb = document.getElementById('mahaOrb');
+  if(el){
+    el.src = 'data:' + mahaLastImageMime + ';base64,' + base64;
+    el.style.display = 'block';
+  }
+  if(orb) orb.style.display = 'none';
+}
+
+// Shows a real photo fetched from the live web (image URL) instead of an
+// AI-generated picture - used when the user asks about a real, existing
+// thing (a specific car/plane model, a place, a person...) so they see the
+// true real image, not an artist's imagined approximation.
+function mahaShowRealPhotoUrl(url){
+  mahaLastImageBase64 = null;
+  mahaLastImageMime = null;
+  if(mahaCallMode === 'builder'){
+    let cur = getCurrent();
+    if(!cur){
+      const id = 'p_' + Date.now();
+      cur = {id, title: 'صورة', messages: [], code: '', codeType: 'html'};
+      state.projects.push(cur);
+      state.currentId = id;
+    }
+    cur.code = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b0b12;}img{max-width:100%;max-height:100vh;display:block;}</style></head><body><img src="' + url + '" alt=""></body></html>';
+    cur.codeType = 'html';
+    renderAll();
+    switchWorkTab('preview');
+    saveState();
+    return;
+  }
+  const el = document.getElementById('mahaGenImage');
+  const orb = document.getElementById('mahaOrb');
+  if(el){
+    el.src = url;
+    el.style.display = 'block';
+  }
+  if(orb) orb.style.display = 'none';
+}
+
+// Searches the live web for a real photo of something that actually exists
+// (a specific car/plane model, place, person...) and shows the first result.
+async function mahaFindRealPhoto(query){
+  try{
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch('/api/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, images: true, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if(!res.ok) return { ok: false, error: 'HTTP ' + res.status };
+    const data = await res.json();
+    const url = Array.isArray(data.images) && data.images.length ? data.images[0] : null;
+    if(!url) return { ok: false, error: 'no image found' };
+    mahaShowRealPhotoUrl(url);
+    return { ok: true };
+  }catch(e){
+    console.error('[maha] real photo search failed:', e);
+    return { ok: false, error: e.message || String(e) };
+  }
+}
+
+// Calls the server-side Gemini image endpoint. If `editMode` is true and an
+// image already exists in this call, sends it along for editing instead of
+// generating a brand new one.
+async function mahaCallImageApi(promptText, useEditImage){
+  const body = { prompt: promptText, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() };
+  if(useEditImage && mahaLastImageBase64){
+    body.editImageBase64 = mahaLastImageBase64;
+    body.editMimeType = mahaLastImageMime;
+  }
+  const res = await fetch('/api/maha-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok || !data.imageBase64) return { ok: false, error: (data && data.error) || ('HTTP ' + res.status), status: res.status };
+  return { ok: true, imageBase64: data.imageBase64, mimeType: data.mimeType };
+}
+
+let mahaLastCleanImg = null; // آخر صورة نظيفة (بدون نص) — لإعادة كتابة النص بخط/لون جديد بدون رسم جديد
+async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontStyle, textColor, rewriteTextOnly){
+  try{
+    // تغيير الخط/اللون/النص فقط: نعيد الكتابة على آخر صورة نظيفة بدون استدعاء الرسم
+    if(rewriteTextOnly && mahaLastCleanImg && textToWrite && textToWrite.trim()){
+      try{
+        const nb64 = await overlayTextOnImage(mahaLastCleanImg.b64, mahaLastCleanImg.mime, textToWrite.trim(), fontStyle, textColor);
+        mahaShowImage(nb64, 'image/png');
+        return { ok: true };
+      }catch(e){ console.warn('[maha] rewrite-only failed, doing full flow:', e); }
+    }
+    // نص عربي/أي نص مطلوب داخل الصورة: نطلب صورة بدون نص ونكتبه نحن بخط سليم
+    if(textToWrite && textToWrite.trim()){
+      promptText = (promptText || '') + ' (IMPORTANT: the image itself must contain NO text, NO letters, NO words at all - leave clean space near the bottom)';
+    }
+    let r = await mahaCallImageApi(promptText, editMode);
+    if(!r.ok){
+      // Transient failure (rate limit/overload, common after several edits
+      // in one call) - retry once automatically before bothering the user.
+      console.warn('[maha] image attempt 1 failed:', r.error);
+      r = await mahaCallImageApi(promptText, editMode);
+    }
+    if(!r.ok && editMode){
+      // Editing the accumulated image keeps failing (likely because it grew
+      // too large/complex after several rounds) - fall back to a fresh
+      // generation from the text alone instead of dead-ending the user.
+      console.warn('[maha] edit still failing, falling back to fresh generate:', r.error);
+      r = await mahaCallImageApi(promptText, false);
+    }
+    if(!r.ok) return { ok: false, error: r.error };
+    let outB64 = r.imageBase64, outMime = r.mimeType;
+    if(textToWrite && textToWrite.trim()){
+      mahaLastCleanImg = { b64: r.imageBase64, mime: r.mimeType || 'image/png' };
+      try{
+        outB64 = await overlayTextOnImage(r.imageBase64, r.mimeType || 'image/png', textToWrite.trim(), fontStyle, textColor);
+        outMime = 'image/png';
+      }catch(e){ console.warn('[maha] text overlay failed, showing plain image:', e); outB64 = r.imageBase64; outMime = r.mimeType; }
+    }
+    mahaShowImage(outB64, outMime);
+    return { ok: true };
+  }catch(e){
+    console.error('[maha] image gen failed:', e);
+    return { ok: false, error: e.message || String(e) };
+  }
+}
+
+/* ---------- مها Realtime Voice (OpenAI gpt-realtime, true voice-to-voice) ----------
+ * Newer, higher-quality call mode: instead of record -> Whisper text ->
+ * LLM text -> TTS audio (the classic pipeline below, which has inherent
+ * per-turn delay and a more robotic voice ceiling), this connects the
+ * browser directly to OpenAI's Realtime API over WebRTC for natural,
+ * low-latency, end-to-end speech-to-speech. mahaStartCall() tries this
+ * first and only falls back to the classic pipeline if it fails for any
+ * reason (e.g. browser without WebRTC support, network blocking WebRTC,
+ * server missing the key, etc.) so the feature never just stops working. */
+let mahaRtPc = null, mahaRtDc = null, mahaRtStream = null, mahaRtAudioEl = null, mahaRtActive = false, mahaRtReconnecting = false;
+
+/* v283: مؤشر صوت المايك داخل مكالمة مها — يبين هل صوت المستخدم واصل */
+let mahaMicMeterCtx = null, mahaMicMeterRaf = 0, mahaMicSilenceStart = 0, mahaMicWarned = false;
+function mahaStartMicMeter(stream){
+  try{
+    mahaStopMicMeter();
+    const wrap = document.getElementById('mahaMicMeter');
+    const fill = document.getElementById('mahaMicMeterFill');
+    if(!wrap || !fill || !window.AudioContext) return;
+    wrap.style.display = 'block';
+    mahaMicMeterCtx = new AudioContext();
+    const src = mahaMicMeterCtx.createMediaStreamSource(stream);
+    const analyser = mahaMicMeterCtx.createAnalyser();
+    analyser.fftSize = 512;
+    src.connect(analyser);
+    const buf = new Uint8Array(analyser.frequencyBinCount);
+    mahaMicSilenceStart = Date.now(); mahaMicWarned = false;
+    (function tick(){
+      analyser.getByteTimeDomainData(buf);
+      let peak = 0;
+      for(let i = 0; i < buf.length; i++){ const d = Math.abs(buf[i] - 128); if(d > peak) peak = d; }
+      const lvl = Math.min(100, Math.round((peak / 128) * 260));
+      fill.style.width = lvl + '%';
+      if(lvl > 8){ mahaMicSilenceStart = Date.now(); if(mahaMicWarned){ mahaMicWarned = false; const st = document.getElementById('mahaStateLabel'); if(st) st.textContent = ''; } }
+      else if(!mahaMicWarned && Date.now() - mahaMicSilenceStart > 7000){
+        mahaMicWarned = true;
+        const st = document.getElementById('mahaStateLabel');
+        if(st) st.textContent = '⚠️ صوتك ما يوصل — تحقق من المايك';
+      }
+      mahaMicMeterRaf = requestAnimationFrame(tick);
+    })();
+  }catch(e){}
+}
+function mahaStopMicMeter(){
+  try{
+    if(mahaMicMeterRaf) cancelAnimationFrame(mahaMicMeterRaf);
+    mahaMicMeterRaf = 0;
+    if(mahaMicMeterCtx){ mahaMicMeterCtx.close().catch(() => {}); mahaMicMeterCtx = null; }
+    const wrap = document.getElementById('mahaMicMeter');
+    if(wrap) wrap.style.display = 'none';
+  }catch(e){}
+}
+
+let mahaRtCancelled = false;
+async function mahaStartRealtimeCall(){
+  mahaRtCancelled = false;
+  const tokenRes = await fetch('/api/realtime-session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      token: authGet('aiapp_auth_token'),
+      guestId: window.getGuestId(),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      mode: mahaCallMode,
+      desktop: !document.documentElement.classList.contains('mobile-ui'),
+    }),
+  });
+  const tokenData = await tokenRes.json().catch(() => ({}));
+  if(tokenRes.status === 402){
+    // رصيد النقاط غير كافٍ أو انتهت التجربة المجانية — لا fallback هنا
+    throw new Error('__points__');
+  }
+  if(!tokenRes.ok || !tokenData.clientSecret){
+    throw new Error((tokenData && tokenData.error) ? tokenData.error : ('realtime session failed: HTTP ' + tokenRes.status));
+  }
+  mahaStartPointsMeter(tokenData.mahaBudget);
+  const EPHEMERAL_KEY = tokenData.clientSecret;
+  if(mahaRtCancelled) throw new Error('cancelled');
+
+  mahaRtStream = await navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+  });
+  if(mahaRtCancelled){ mahaRtStream.getTracks().forEach(tr => tr.stop()); mahaRtStream = null; throw new Error('cancelled'); }
+  mahaStartMicMeter(mahaRtStream);
+
+  const pc = new RTCPeerConnection();
+  mahaRtPc = pc;
+  mahaRtAudioEl = new Audio();
+  mahaRtAudioEl.autoplay = true;
+  pc.ontrack = (e) => {
+    mahaRtAudioEl.srcObject = e.streams[0];
+    // Give the incoming audio a slightly larger jitter buffer so small
+    // network hiccups get smoothed out instead of causing an audible
+    // stutter/"choke" in Maha's voice. Supported in Chromium browsers.
+    try{
+      const receiver = e.receiver;
+      if(receiver && 'playoutDelayHint' in receiver){ receiver.playoutDelayHint = 0.25; }
+    }catch(err){}
+  };
+  pc.addTrack(mahaRtStream.getTracks()[0], mahaRtStream);
+
+  const dc = pc.createDataChannel('oai-events');
+  mahaRtDc = dc;
+  dc.addEventListener('message', (e) => {
+    let ev;
+    try{ ev = JSON.parse(e.data); }catch(err){ return; }
+    if(ev.type === 'input_audio_buffer.speech_started'){ mahaSetState('listening'); }
+    else if(ev.type === 'response.created'){ mahaSetState('thinking'); }
+    else if(ev.type === 'output_audio_buffer.started' || ev.type === 'response.audio.delta'){ mahaSetState('speaking'); }
+    else if(ev.type === 'output_audio_buffer.stopped' || ev.type === 'response.done'){ mahaSetState('listening'); }
+    else if(ev.type === 'response.function_call_arguments.done'){ mahaHandleRtFunctionCall(ev); }
+    else if(ev.type === 'error'){ console.error('[maha-realtime] server error:', ev); }
+  });
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+
+  const sdpResponse = await fetch('https://api.openai.com/v1/realtime/calls', {
+    method: 'POST',
+    body: offer.sdp,
+    headers: {
+      Authorization: 'Bearer ' + EPHEMERAL_KEY,
+      'Content-Type': 'application/sdp',
+    },
+  });
+  if(!sdpResponse.ok){
+    const errText = await sdpResponse.text().catch(() => '');
+    throw new Error('SDP exchange failed: ' + sdpResponse.status + ' ' + errText.slice(0, 200));
+  }
+  const answerSdp = await sdpResponse.text();
+  if(mahaRtCancelled) throw new Error('cancelled');
+  await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+
+  await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('Realtime connection timeout')), 10000);
+    pc.addEventListener('connectionstatechange', () => {
+      if(pc.connectionState === 'connected'){ clearTimeout(timeout); resolve(); }
+      else if(pc.connectionState === 'failed' || pc.connectionState === 'closed'){ clearTimeout(timeout); reject(new Error('Realtime connection ' + pc.connectionState)); }
+    });
+  });
+
+  mahaRtActive = true;
+  mahaSetState('listening');
+
+  // If the connection drops mid-call (e.g. brief network hiccup) after we
+  // were already connected, try to silently reconnect once instead of
+  // leaving Maha stuck or forcing the user to restart the call manually.
+  let mahaRtDisconnectTimer = null;
+  pc.addEventListener('connectionstatechange', () => {
+    if(pc !== mahaRtPc) return; // a newer call already replaced this one
+    if(pc.connectionState === 'connected'){
+      // Recovered on its own - cancel any pending reconnect.
+      if(mahaRtDisconnectTimer){ clearTimeout(mahaRtDisconnectTimer); mahaRtDisconnectTimer = null; }
+      return;
+    }
+    if(pc.connectionState === 'failed' && mahaCallActive && !mahaRtReconnecting){
+      // Truly dead - reconnect immediately.
+      if(mahaRtDisconnectTimer){ clearTimeout(mahaRtDisconnectTimer); mahaRtDisconnectTimer = null; }
+      mahaRtReconnecting = true;
+      mahaSetState('thinking');
+      mahaEndRealtimeCall();
+      mahaStartRealtimeCall()
+        .then(() => { mahaRtReconnecting = false; })
+        .catch((e) => {
+          mahaRtReconnecting = false;
+          console.error('[maha] auto-reconnect failed:', e);
+          mahaSetState('error', t('mahaConnectionLost') || 'تعذر إعادة الاتصال');
+        });
+    } else if(pc.connectionState === 'disconnected' && mahaCallActive && !mahaRtReconnecting){
+      // Brief network hiccup - WebRTC often self-recovers within a few
+      // seconds. Wait before tearing down the whole call so we don't cut
+      // Maha off mid-sentence for a blip that resolves on its own.
+      if(mahaRtDisconnectTimer) clearTimeout(mahaRtDisconnectTimer);
+      mahaRtDisconnectTimer = setTimeout(() => {
+        mahaRtDisconnectTimer = null;
+        if(pc !== mahaRtPc || !mahaCallActive || mahaRtReconnecting) return;
+        if(pc.connectionState !== 'disconnected' && pc.connectionState !== 'failed') return; // already recovered
+        mahaRtReconnecting = true;
+        mahaSetState('thinking');
+        mahaEndRealtimeCall();
+        mahaStartRealtimeCall()
+          .then(() => { mahaRtReconnecting = false; })
+          .catch((e) => {
+            mahaRtReconnecting = false;
+            console.error('[maha] auto-reconnect failed:', e);
+            mahaSetState('error', t('mahaConnectionLost') || 'تعذر إعادة الاتصال');
+          });
+      }, 1500);
+    }
+  });
+}
+
+// Handles a completed function call requested by the model over the Realtime
+// data channel (generate_image / edit_image / search_web). Runs the real
+// action server-side, sends the result back as a function_call_output, then
+// asks the model to continue the conversation using that result.
+// 📷 عين مها — كاميرا لأصحاب الهمم (وصف المحيط + قراءة النصوص بصوتها)
+let mahaCamStream = null;
+async function mahaCameraOn(){
+  if(mahaCamStream) return true;
+  try{
+    mahaCamStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 } }, audio: false });
+    const v = document.getElementById('mahaCamPreview');
+    if(v){ v.srcObject = mahaCamStream; v.style.display = 'block'; try{ await v.play(); }catch(e){} }
+    const b = document.getElementById('btnMahaCamera');
+    if(b) b.style.background = 'rgba(64,200,120,.55)';
+    return true;
+  }catch(e){ console.error('[maha-camera] failed:', e); mahaCamStream = null; return false; }
+}
+function mahaCameraOff(){
+  if(mahaCamStream){ try{ mahaCamStream.getTracks().forEach(tr => tr.stop()); }catch(e){} mahaCamStream = null; }
+  const v = document.getElementById('mahaCamPreview');
+  if(v){ v.style.display = 'none'; v.srcObject = null; }
+  const b = document.getElementById('btnMahaCamera');
+  if(b) b.style.background = 'rgba(255,255,255,.14)';
+}
+async function mahaCaptureCamFrame(){
+  const v = document.getElementById('mahaCamPreview');
+  if(!v || !mahaCamStream) return null;
+  // انتظر لحظة حتى تثبت الصورة بعد فتح الكاميرا
+  if(!v.videoWidth) await new Promise(r => setTimeout(r, 900));
+  if(!v.videoWidth) return null;
+  const maxDim = 1024;
+  const scale = Math.min(1, maxDim / Math.max(v.videoWidth, v.videoHeight));
+  const c = document.createElement('canvas');
+  c.width = Math.round(v.videoWidth * scale); c.height = Math.round(v.videoHeight * scale);
+  c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.85);
+}
+async function mahaLookCamera(question){
+  const on = await mahaCameraOn();
+  if(!on) return { ok: false, message: 'Camera could not be opened (permission denied or unavailable). Tell the user to allow camera access.' };
+  await new Promise(r => setTimeout(r, 600));
+  const frame = await mahaCaptureCamFrame();
+  if(!frame) return { ok: false, message: 'Could not capture a camera frame. Ask the user to try again.' };
+  try{
+    const desc = await callGemini([
+      { role: 'system', content: 'أنت عين مساعد صوتي لشخص كفيف أو ضعيف البصر. انظر للصورة الملتقطة من كاميرا هاتفه وأجب على سؤاله بدقة وعملية: صف المشهد والعناصر المهمة ومواقعها (يمين/يسار/أمام)، واقرأ أي نص ظاهر حرفياً بالكامل (أدوية، فواتير، لافتات، قوائم، مبالغ). اكتب الإجابة مباشرة بلغة السؤال نفسها، بدون مقدمات ولا رموز، لأنها ستُنطق صوتياً.' },
+      { role: 'user', content: question || 'صف لي ما تراه أمامي بدقة', images: [{ mime: 'image/jpeg', dataUrl: frame }] },
+    ], null);
+    if(desc && desc.trim()) return { ok: true, description: desc.trim() + ' — Speak this to the user naturally in their language.' };
+    return { ok: false, message: 'Vision analysis returned nothing. Ask the user to point the camera again.' };
+  }catch(e){
+    console.error('[maha-camera] vision failed:', e);
+    return { ok: false, message: 'Vision analysis failed. Tell the user to try again in a moment.' };
+  }
+}
+(function(){
+  const b = document.getElementById('btnMahaCamera');
+  if(b) b.onclick = () => { if(mahaCamStream) mahaCameraOff(); else mahaCameraOn(); };
+})();
+
+async function mahaHandleRtFunctionCall(ev){
+  if(!mahaRtDc || mahaRtDc.readyState !== 'open') return;
+  let args = {};
+  try{ args = JSON.parse(ev.arguments || '{}'); }catch(e){ /* ignore */ }
+
+  let output = { ok: false };
+  try{
+    mahaSetState('thinking');
+    if(ev.name === 'generate_image'){
+      const r = await mahaGenerateOrEditImage(args.prompt || '', false, args.text_to_write || '', args.font_style || '', args.text_color || '', false);
+      output = r.ok ? { ok: true, message: 'Image generated and shown to the user on screen.' } : { ok: false, message: 'Image generation failed: ' + (r.error || 'unknown error') };
+    }else if(ev.name === 'edit_image'){
+      if(!mahaLastImageBase64){
+        output = { ok: false, message: 'No image exists yet in this call to edit - tell the user to first ask you to create one.' };
+      }else{
+        const r = await mahaGenerateOrEditImage(args.instruction || '', true, args.text_to_write || '', args.font_style || '', args.text_color || '', !!args.rewrite_text_only);
+        output = r.ok ? { ok: true, message: 'Image edited and shown to the user on screen.' } : { ok: false, message: 'Image edit failed: ' + (r.error || 'unknown error') };
+      }
+    }else if(ev.name === 'search_web'){
+      const searchMsg = await mahaMaybeSearchForced(args.query || '');
+      output = searchMsg ? { ok: true, results: searchMsg } : { ok: false, message: 'No useful search results found; answer from your own knowledge and say briefly if unsure.' };
+    }else if(ev.name === 'find_real_photo'){
+      const r = await mahaFindRealPhoto(args.query || '');
+      output = r.ok ? { ok: true, message: 'A real photo was found on the web and shown to the user on screen - do not describe it in detail, just briefly confirm you found and showed it.' } : { ok: false, message: 'Could not find a real photo, tell the user briefly and offer to draw an artist impression instead if they want.' };
+    }else if(ev.name === 'build_app'){
+      const ok = await buildCodeFromPrompt(args.description || '');
+      output = ok ? { ok: true, message: 'App/website built and shown to the user in the code and preview panels.' } : { ok: false, message: 'Build failed, tell the user briefly.' };
+    }else if(ev.name === 'make_video'){
+      handleVoiceVideoIntent(args.description || '');
+      output = { ok: true, message: 'Video generation started and shown to the user; tell them briefly it is on the way.' };
+    }else if(ev.name === 'look_camera'){
+      output = await mahaLookCamera(args.question || '');
+    }else if(ev.name === 'remember_info'){
+      try{
+        const tk = authGet('aiapp_auth_token');
+        if(!tk){ output = { ok: false, message: 'User is a guest - memory only works for logged-in users; do not mention this unless asked.' }; }
+        else{
+          const r = await fetch('/api/system?action=memory', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: tk, op: 'append', fact: String(args.fact || '').slice(0, 200) }) });
+          output = r.ok ? { ok: true, message: 'Saved to long-term memory silently. Continue the conversation naturally without mentioning it.' } : { ok: false, message: 'Memory save failed silently; continue normally.' };
+        }
+      }catch(e){ output = { ok: false, message: 'Memory save failed silently; continue normally.' }; }
+    }else if(ev.name === 'set_reminder'){
+      const r = await mahaSetReminder(args);
+      output = r.ok ? { ok: true, message: 'Reminder set successfully.' } : { ok: false, message: 'Could not set reminder: ' + (r.error || 'unknown error') };
+    }else{
+      output = { ok: false, message: 'Unknown tool.' };
+    }
+  }catch(e){
+    console.error('[maha-realtime] function call failed:', ev.name, e);
+    output = { ok: false, message: 'Tool execution error.' };
+  }
+
+  try{
+    mahaRtDc.send(JSON.stringify({
+      type: 'conversation.item.create',
+      item: { type: 'function_call_output', call_id: ev.call_id, output: JSON.stringify(output) },
+    }));
+    mahaRtDc.send(JSON.stringify({ type: 'response.create' }));
+  }catch(e){ console.error('[maha-realtime] failed to send function result:', e); }
+}
+
+// Like mahaMaybeSearch, but always searches regardless of keyword heuristics
+// (used by the Realtime tool-call path, where the model itself already
+// decided a search is needed).
+async function mahaMaybeSearchForced(query){
+  if(!query) return null;
+  try{
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25000);
+    const res = await fetch('/api/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if(!res.ok) return null;
+    const data = await res.json();
+    if(!data) return null;
+    const parts = [];
+    if(data.answer) parts.push(data.answer);
+    if(Array.isArray(data.results)){
+      data.results.slice(0, 8).forEach(r => {
+        if(r && r.content) parts.push(`- ${r.title || ''} [${r.url || ''}]: ${r.content}`);
+      });
+    }
+    if(Array.isArray(data.news)){
+      data.news.slice(0, 3).forEach(n => {
+        if(n && n.title) parts.push(`- (Google News) ${n.title}${n.content ? ' - ' + n.content : ''}`);
+      });
+    }
+    return parts.length ? parts.join('\n') : null;
+  }catch(e){
+    console.error('[maha] forced search failed:', e);
+    return null;
+  }
+}
+
+// Gets the user's current device coordinates (cached in localStorage for up
+// to an hour so repeated prayer-time reminders in one session don't keep
+// re-prompting for location permission).
+function mahaGetLocation(){
+  return new Promise((resolve) => {
+    try{
+      const cached = JSON.parse(localStorage.getItem('aiapp_last_geo') || 'null');
+      if(cached && (Date.now() - cached.ts) < 3600000){ resolve({ lat: cached.lat, lng: cached.lng }); return; }
+    }catch(e){}
+    if(!navigator.geolocation){ resolve(null); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        try{ localStorage.setItem('aiapp_last_geo', JSON.stringify(Object.assign({ ts: Date.now() }, loc))); }catch(e){}
+        resolve(loc);
+      },
+      () => resolve(null),
+      { timeout: 8000, maximumAge: 3600000 }
+    );
+  });
+}
+
+// Handles the set_reminder tool call from مها: converts the model's local
+// date/hour/minute (or prayer_name/offset) into the request the /api/reminders
+// backend expects, using the browser's own clock/timezone for "once"/"daily"
+// types, and the device's real GPS coordinates for "prayer" types.
+async function mahaSetReminder(args){
+  try{
+    const token = authGet('aiapp_auth_token');
+    if(!token) return { ok: false, error: 'not logged in' };
+
+    const type = args.type === 'prayer' ? 'prayer' : (args.type === 'daily' ? 'daily' : 'once');
+    const body = { type, message: args.message || 'تذكير' };
+
+    if(type === 'once'){
+      const now = new Date();
+      const dateStr = args.date || (now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0'));
+      const [y,m,d] = dateStr.split('-').map(n=>parseInt(n,10));
+      const hour = Number.isFinite(args.hour) ? args.hour : now.getHours();
+      const minute = Number.isFinite(args.minute) ? args.minute : 0;
+      const target = new Date(y, (m||1)-1, d||1, hour, minute, 0, 0);
+      body.timeISO = target.toISOString();
+    }else if(type === 'daily'){
+      // Convert the local hour/minute the model gave us into their UTC
+      // equivalent once (matches how /api/check-reminders compares against
+      // now.getUTCHours()/getUTCMinutes() every minute).
+      const now = new Date();
+      const hour = Number.isFinite(args.hour) ? args.hour : 8;
+      const minute = Number.isFinite(args.minute) ? args.minute : 0;
+      const localTarget = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0, 0);
+      body.hour = localTarget.getUTCHours();
+      body.minute = localTarget.getUTCMinutes();
+    }else if(type === 'prayer'){
+      const loc = await mahaGetLocation();
+      if(!loc) return { ok: false, error: 'location unavailable' };
+      body.prayerName = args.prayer_name || 'Asr';
+      body.offsetMinutes = Number.isFinite(args.offset_minutes) ? args.offset_minutes : 0;
+      body.lat = loc.lat;
+      body.lng = loc.lng;
+    }
+
+    const res = await fetch('/api/reminders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify(body),
+    });
+    if(!res.ok) return { ok: false, error: 'server error' };
+    await mahaEnsurePushSubscribed();
+    return { ok: true };
+  }catch(e){
+    console.error('[maha] set_reminder failed:', e);
+    return { ok: false, error: String(e) };
+  }
+}
+
+// Ensures the browser has an active Web Push subscription registered with
+// the backend so /api/check-reminders can actually deliver notifications for
+// any reminders the user just set - runs once per session, silently no-ops
+// if the user denies notification permission or push isn't supported.
+let mahaPushSubscribeAttempted = false;
+async function mahaEnsurePushSubscribed(){
+  if(mahaPushSubscribeAttempted) return;
+  mahaPushSubscribeAttempted = true;
+  try{
+    if(!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    const token = authGet('aiapp_auth_token');
+    if(!token) return;
+    let permission = Notification.permission;
+    if(permission === 'default') permission = await Notification.requestPermission();
+    if(permission !== 'granted') return;
+
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if(!sub){
+      const keyRes = await fetch('/api/vapid-public-key');
+      const keyData = await keyRes.json();
+      if(!keyData || !keyData.publicKey) return;
+      const applicationServerKey = urlBase64ToUint8Array(keyData.publicKey);
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
+    }
+    await fetch('/api/push-subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ subscription: sub.toJSON() }),
+    });
+  }catch(e){ console.error('[maha] push subscribe failed:', e); }
+}
+
+function urlBase64ToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for(let i = 0; i < rawData.length; ++i){ outputArray[i] = rawData.charCodeAt(i); }
+  return outputArray;
+}
+
+function mahaEndRealtimeCall(){
+  mahaRtCancelled = true;
+  mahaRtActive = false;
+  if(mahaRtDc){ try{ mahaRtDc.close(); }catch(e){} mahaRtDc = null; }
+  if(mahaRtPc){ try{ mahaRtPc.close(); }catch(e){} mahaRtPc = null; }
+  mahaStopMicMeter();
+  if(mahaRtStream){ mahaRtStream.getTracks().forEach(tr => tr.stop()); mahaRtStream = null; }
+  if(mahaRtAudioEl){ try{ mahaRtAudioEl.pause(); mahaRtAudioEl.srcObject = null; }catch(e){} mahaRtAudioEl = null; }
+}
+
+async function mahaCallLoop(){
+  while(mahaCallActive){
+    mahaSetState('listening');
+    let blob;
+    try{
+      blob = await mahaRecordUntilSilence();
+    }catch(e){
+      mahaSetState('idle');
+      if(mahaStateLabelEl) mahaStateLabelEl.textContent = t('mahaMicDenied');
+      mahaCallActive = false;
+      break;
+    }
+    if(!mahaCallActive) break;
+    if(!blob || blob.size < 800 || mahaLastPeakRms < 0.03){
+      // Essentially silent/noise-only turn - the mic didn't pick up real speech,
+      // just background noise. Don't send it to speech-to-text at all (avoids
+      // the model hallucinating words from silence, and avoids replying unprompted).
+      mahaLowMicStreak++;
+      if(mahaLowMicStreak >= 3){
+        mahaSetState('error', t('mahaLowMic'));
+        await new Promise(r => setTimeout(r, 1800));
+        mahaLowMicStreak = 0;
+      }
+      continue;
+    }
+
+    mahaSetState('thinking');
+    try{
+      const audioBase64 = await blobToBase64(blob);
+      const res = await fetch('/api/stt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audioBase64, mimeType: blob.type, lang: (typeof lang !== 'undefined' ? lang : 'ar'), token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+      });
+      const data = await res.json();
+      if(!mahaCallActive) break;
+      if(!res.ok){
+        console.error('[maha] stt failed:', res.status, data);
+        const detail = (data && data.error) ? String(data.error) : ('HTTP ' + res.status);
+        mahaSetState('error', t('mahaSttError') + ' (' + detail.slice(0, 80) + ')');
+        await new Promise(r => setTimeout(r, 3000));
+        continue;
+      }
+      const transcript = (data && data.text ? data.text : '').trim();
+      if(!transcript){
+        mahaSetState('error', t('mahaNoSpeech'));
+        await new Promise(r => setTimeout(r, 1500));
+        continue;
+      }
+      mahaLowMicStreak = 0;
+
+      // Remember the language Whisper actually detected in the caller's own
+      // speech (not the site's UI language toggle), so Maha's spoken reply
+      // uses a matching native voice - this is what makes her work correctly
+      // for a caller speaking Nepali/Hindi/Urdu/Bengali/French/English even
+      // if the app's UI is still set to Arabic.
+      if(data && data.language) mahaReplyLang = data.language;
+
+      // Same approach real voice assistants (Siri, Google Assistant) use: if the
+      // speech-to-text engine itself flags low confidence in what it heard, don't
+      // guess an answer to a possibly-wrong transcript — ask the user to repeat.
+      if(data && data.lowConfidence){
+        console.log('[maha] low-confidence transcript, asking user to repeat:', transcript);
+        mahaSetState('speaking');
+        await mahaSpeak(t('mahaAskRepeat'));
+        continue;
+      }
+
+      mahaHistory.push({ role: 'user', content: transcript });
+      if(mahaHistory.length > 12) mahaHistory = mahaHistory.slice(-12);
+
+      // Classic pipeline has no real function-calling like the Realtime mode
+      // does, so image requests are detected via keywords instead: generate
+      // (or edit, if one already exists this call) the picture, show it, and
+      // reply with a short spoken confirmation instead of the normal LLM turn.
+      if(mahaNeedsImage(transcript)){
+        mahaSetState('thinking');
+        const editMode = !!mahaLastImageBase64;
+        const imgResult = await mahaGenerateOrEditImage(transcript, editMode);
+        let imgReply;
+        if(imgResult.ok){
+          imgReply = editMode ? t('mahaImageEditedReply') : t('mahaImageReadyReply');
+        }else{
+          imgReply = t('mahaImageFailedReply');
+        }
+        mahaHistory.push({ role: 'assistant', content: imgReply });
+        if(mahaHistory.length > 12) mahaHistory = mahaHistory.slice(-12);
+        mahaSetState('speaking');
+        await mahaSpeak(imgReply);
+        continue;
+      }
+
+      const mahaNowStr = new Date().toLocaleString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Dubai' });
+      const mahaDateSystemMsg = `The current real-world date and time right now is: ${mahaNowStr} (Gulf Standard Time, UAE). Always treat this as the true current date - never assume any other date, and never assume events after this date "haven't happened yet" just because you are unsure; if something is dated on or before this date, treat it as already having happened, and answer using your best knowledge plus common sense reasoning about the timeline. If truly asked about something very recent you can't know for certain, say so briefly instead of guessing wrong.`;
+
+      const mahaSearchSystemMsg = await mahaMaybeSearch(transcript);
+      // Persona swap: male caller -> "Abdullah" (male voice/persona), female
+      // caller -> "Maha" (female voice/persona). mahaDetectedGender is the
+      // accumulated pitch-based detection from the caller's own voice.
+      const mahaPersonaName = mahaDetectedGender === 'male' ? 'Abdullah' : 'Maha';
+      const mahaPersonaGenderDesc = mahaDetectedGender === 'male' ? 'male' : 'female';
+      const mahaSystemPrompt = MAHA_SYSTEM_PROMPT_TEMPLATE
+        .replace(/\{\{NAME\}\}/g, mahaPersonaName)
+        .replace(/\{\{GENDER_DESC\}\}/g, mahaPersonaGenderDesc);
+      const mahaSystemMsgs = [{ role: 'system', content: mahaSystemPrompt }, { role: 'system', content: mahaDateSystemMsg }];
+      if(!mahaIntroduced){
+        mahaSystemMsgs.push({ role: 'system', content: `This is the very first reply of the call. Before answering the user's message, briefly introduce yourself by saying your name is "${mahaPersonaName}" (in the same language/dialect you are replying in), then answer their message naturally in the same short reply - e.g. like "I'm ${mahaPersonaName}, ..." followed by your actual answer. Do this ONLY this one time.` });
+        mahaIntroduced = true;
+      }
+      if(mahaSearchSystemMsg) mahaSystemMsgs.push({ role: 'system', content: mahaSearchSystemMsg.note });
+      const messages = [...mahaSystemMsgs, ...mahaHistory];
+
+      let reply = '';
+      const order = ['gemini', 'openai', ...AUTO_FALLBACK_ORDER.filter(p => p !== 'gemini' && p !== 'openai' && p !== 'groq'), 'groq'];
+      let lastErr = null;
+      for(const providerKey of order){
+        try{ reply = await callProviderAI(providerKey, messages); lastErr = null; break; }
+        catch(e){ console.error('[maha] provider', providerKey, 'failed:', e); lastErr = e; continue; }
+      }
+      if(!mahaCallActive) break;
+      if(lastErr && !reply){
+        console.error('[maha] all providers failed');
+        mahaSetState('error', t('mahaConnectionError'));
+        await new Promise(r => setTimeout(r, 1800));
+        continue;
+      }
+      console.log('[maha] reply:', reply);
+
+      mahaHistory.push({ role: 'assistant', content: reply });
+      if(mahaHistory.length > 12) mahaHistory = mahaHistory.slice(-12);
+
+      mahaSetState('speaking');
+      await mahaSpeak(reply);
+    }catch(e){ console.error('[maha] turn error', e); }
+  }
+}
+
+// 💰 عداد نقاط مها داخل المكالمة: يظهر تحت الاسم وينقص كل دقيقة (10 نقاط).
+let mahaPointsTimer = null;
+function mahaStopPointsMeter(){
+  if(mahaPointsTimer){ clearInterval(mahaPointsTimer); mahaPointsTimer = null; }
+  const el = document.getElementById('mahaPointsMeter');
+  if(el) el.style.display = 'none';
+}
+function mahaStartPointsMeter(budget){
+  try{
+    mahaStopPointsMeter();
+    const el = document.getElementById('mahaPointsMeter');
+    const val = document.getElementById('mahaPointsMeterValue');
+    if(!el || !val) return;
+    if(!budget || budget.unlimited){ return; } // المالك: بلا عداد
+    let pts = Number(budget.points) || 0;
+    let trial = !!budget.trial;
+    const isGuest = !!budget.guest;
+    val.textContent = trial ? '🎁 1:00' : String(pts);
+    el.style.display = 'flex';
+    const isAr = (typeof lang !== 'undefined' ? lang : 'ar') === 'ar';
+    const endGently = ()=>{
+      mahaStopPointsMeter();
+      try{ mahaEndCall(); }catch(e){}
+      setTimeout(()=>{
+        try{
+          if(confirm(isAr ? 'خلصت نقاطك 🌸 تبي تشحن نقاط عشان نكمل سوالفنا؟' : 'Your points ran out 🌸 Top up to keep talking with me?')){
+            try{ document.getElementById('btnSettings').click(); }catch(e){}
+            try{ document.querySelector('.pointsPackBtn')?.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
+          }
+        }catch(e){}
+      }, 400);
+    };
+    mahaPointsTimer = setInterval(async ()=>{
+      if(!mahaCallActive){ mahaStopPointsMeter(); return; }
+      try{
+        if(trial){
+          trial = false;
+          if(isGuest){ endGently(); return; } // ضيف: دقيقة تجريبية وحدة فقط
+          try{
+            await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({ action:'maha-trial-used', token: authGet('aiapp_auth_token') }) });
+          }catch(e){}
+          if(pts < 10){ endGently(); return; }
+          val.textContent = String(pts);
+          return;
+        }
+        const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ action:'consume', amount:10, reason:'maha-minute', token: authGet('aiapp_auth_token') }) });
+        const d = await r.json().catch(()=>({}));
+        if(d && d.ok){
+          if(typeof d.points === 'number' && isFinite(d.points)){ pts = d.points; val.textContent = String(pts); }
+        } else if(d && d.reason === 'insufficient'){
+          endGently();
+        }
+      }catch(e){ /* خطأ شبكة مؤقت — نحاول الدقيقة الجاية */ }
+    }, 60000);
+  }catch(e){}
+}
+
+function mahaEndCall(){
+  mahaCallActive = false;
+  mahaStopPointsMeter();
+  mahaLowMicStreak = 0;
+  try{ mahaCameraOff(); }catch(e){}
+  if(mahaOrbEl) mahaOrbEl.style.transform = '';
+  mahaEndRealtimeCall();
+  mahaStopVad();
+  mahaStopStream();
+  mahaStopInterruptListener();
+  if(mahaMediaRecorder && mahaMediaRecorder.state === 'recording'){ try{ mahaMediaRecorder.stop(); }catch(e){} }
+  if(mahaCurrentAudio){ try{ mahaCurrentAudio.pause(); }catch(e){} mahaCurrentAudio = null; }
+  stopAllSpeaking();
+  if(mahaCallScreenEl) mahaCallScreenEl.style.display = 'none';
+  if(btnMahaEl) btnMahaEl.style.display = 'flex';
+  mahaSetState('idle');
+  mahaCallMode = 'assistant';
+}
+
+let mahaCallMode = 'assistant'; // 'assistant' (مها) or 'builder' (voice tab)
+async function mahaStartCall(mode){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    alert(t('micNotSupported'));
+    return;
+  }
+  mahaCallMode = mode === 'builder' ? 'builder' : 'assistant';
+  if(btnMahaEl) btnMahaEl.style.display = 'none';
+  stopAllSpeaking();
+  mahaHistory = [];
+  mahaAllPitchSamples = [];
+  mahaDetectedGender = 'female';
+  mahaIntroduced = false;
+  // ملاحظة: لا نمسح مرجع الصورة الأخيرة هنا — يبقى ثابت حتى يبدأ المستخدم "+ مشروع جديد" فعليًا
+  const mahaImgElStart = document.getElementById('mahaGenImage');
+  if(mahaImgElStart && !mahaLastImageBase64){ mahaImgElStart.style.display = 'none'; mahaImgElStart.src = ''; }
+  if(mahaOrbEl) mahaOrbEl.style.display = mahaCallMode === 'builder' ? 'none' : 'flex';
+  if(mahaWaveEl) mahaWaveEl.style.display = mahaCallMode === 'builder' ? 'flex' : 'none';
+  const mahaNameLabelEl = document.getElementById('mahaCallNameLabel');
+  if(mahaNameLabelEl) mahaNameLabelEl.textContent = mahaCallMode === 'builder' ? (t('voiceTabAssistantName') || 'المساعد') : 'مها';
+  if(mahaCallMode !== 'builder') mahaUpdatePersonaUI();
+  mahaCallActive = true;
+  if(mahaCallScreenEl){
+    mahaCallScreenEl.style.display = 'flex';
+    mahaCallScreenEl.classList.toggle('maha-builder-mode', mahaCallMode === 'builder');
+    if(typeof mahaPositionOnOpen === 'function') mahaPositionOnOpen();
+  }
+  // Try the new natural voice-to-voice mode (OpenAI Realtime) first. Only if
+  // that fails for any reason do we fall back to the classic record ->
+  // Whisper -> LLM -> TTS pipeline, so the call feature itself never breaks.
+  mahaSetState('thinking');
+  try{
+    await Promise.race([
+      mahaStartRealtimeCall(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Realtime setup timed out')), 12000)),
+    ]);
+    return;
+  }catch(e){
+    if(e && e.message === '__points__'){
+      // الرصيد خلص — رسالة لطيفة وإنهاء بدون fallback
+      mahaSetState('error', t('mahaNoPoints'));
+      setTimeout(() => { mahaEndCall(); }, 2600);
+      return;
+    }
+    console.error('[maha] realtime mode failed, falling back to classic pipeline:', e);
+    mahaEndRealtimeCall();
+  }
+  if(!mahaCallActive) return;
+  if(!window.MediaRecorder){
+    mahaSetState('error', t('micNotSupported'));
+    return;
+  }
+  // Skip the spoken greeting - jump straight to listening so Maha replies
+  // to whatever the user says first, without any intro audio.
+  if(mahaCallActive) mahaCallLoop();
+}
+
+if(btnMahaEl) btnMahaEl.onclick = () => { mahaUnlockAudio(); mahaStartCall(); };
+if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
+
+// v273: One-time intro tour for brand-new users — points at مها button
+// and the stock-ticker collapse arrow. Runs once ever (localStorage flag),
+// auto-dismisses after ~5s or on first tap. Translated to all 14 languages.
+(function introTour(){
+  let seen = false;
+  try{ seen = !!localStorage.getItem('introTourDone'); }catch(e){ seen = true; }
+  if(seen) return;
+  const L = (function(){ try{ return localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ return 'ar'; } })();
+  const T = {
+    ar:['مساعدتك الصوتية 🎙️ — تقدر تحركها وين ما تبي','من هنا تطوي شريط الأسهم'],
+    en:['Your voice assistant 🎙️ — you can drag it anywhere','Tap here to collapse the stock ticker'],
+    fr:['Votre assistante vocale 🎙️ — déplacez-la où vous voulez','Appuyez ici pour replier le bandeau boursier'],
+    hi:['आपकी वॉयस असिस्टेंट 🎙️ — इसे कहीं भी खींचें','स्टॉक टिकर छिपाने के लिए यहाँ दबाएँ'],
+    ur:['آپ کی صوتی معاون 🎙️ — اسے کہیں بھی گھسیٹیں','اسٹاک ٹکر چھپانے کے لیے یہاں دبائیں'],
+    bn:['আপনার ভয়েস সহকারী 🎙️ — যেকোনো জায়গায় টেনে নিন','স্টক টিকার লুকাতে এখানে চাপুন'],
+    ne:['तपाईंको आवाज सहायक 🎙️ — जहाँ पनि तान्नुहोस्','स्टक टिकर लुकाउन यहाँ थिच्नुहोस्'],
+    id:['Asisten suara Anda 🎙️ — seret ke mana saja','Ketuk di sini untuk menutup ticker saham'],
+    fil:['Ang iyong voice assistant 🎙️ — i-drag kahit saan','Pindutin ito para itago ang stock ticker'],
+    tr:['Sesli asistanınız 🎙️ — istediğiniz yere sürükleyin','Hisse bandını gizlemek için buraya dokunun'],
+    zh:['您的语音助手 🎙️ — 可拖动到任意位置','点这里收起股票行情条'],
+    ru:['Ваш голосовой помощник 🎙️ — перетащите куда угодно','Нажмите здесь, чтобы скрыть биржевую ленту'],
+    es:['Tu asistente de voz 🎙️ — arrástrala donde quieras','Toca aquí para ocultar la cinta bursátil'],
+    ml:['നിങ്ങളുടെ വോയ്സ് അസിസ്റ്റന്റ് 🎙️ — എവിടേക്കും വലിക്കാം','സ്റ്റോക്ക് ടിക്കർ മറയ്ക്കാൻ ഇവിടെ അമർത്തുക']
+  };
+  const txt = T[L] || T.en;
+  const isRTL = (L === 'ar' || L === 'ur');
+  function markDone(){ try{ localStorage.setItem('introTourDone','1'); }catch(e){} }
+
+  function buildOverlay(){
+    const ov = document.createElement('div');
+    ov.id = 'introTourOverlay';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.55);opacity:0;transition:opacity .3s;';
+    const ring = document.createElement('div');
+    ring.style.cssText = 'position:fixed;border:3px solid #a855f7;border-radius:50%;box-shadow:0 0 18px 6px rgba(168,85,247,.7);pointer-events:none;transition:all .45s ease;';
+    const bubble = document.createElement('div');
+    bubble.dir = isRTL ? 'rtl' : 'ltr';
+    bubble.style.cssText = 'position:fixed;max-width:230px;background:rgba(30,22,54,.97);color:#fff;font-size:14px;line-height:1.5;padding:10px 14px;border-radius:14px;border:1px solid rgba(168,85,247,.5);box-shadow:0 6px 24px rgba(0,0,0,.5);pointer-events:none;transition:all .45s ease;';
+    if(!document.getElementById('introTourPulseCss')){
+      const st = document.createElement('style');
+      st.id = 'introTourPulseCss';
+      st.textContent = '@keyframes introTourPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.12);}}#introTourOverlay div:first-child{animation:introTourPulse 1.1s ease-in-out infinite;}';
+      document.head.appendChild(st);
+    }
+    ov.appendChild(ring); ov.appendChild(bubble);
+    return { ov, ring, bubble };
+  }
+
+  function pointAt(ring, bubble, el, text){
+    const r = el.getBoundingClientRect();
+    const pad = 8;
+    ring.style.width = (r.width + pad*2) + 'px';
+    ring.style.height = (r.height + pad*2) + 'px';
+    ring.style.left = (r.left - pad) + 'px';
+    ring.style.top = (r.top - pad) + 'px';
+    bubble.textContent = text;
+    bubble.style.top = Math.min(window.innerHeight - 90, r.bottom + 14) + 'px';
+    const centerX = r.left + r.width/2;
+    let bl = centerX - 115;
+    bl = Math.max(10, Math.min(bl, window.innerWidth - 240));
+    bubble.style.left = bl + 'px';
+  }
+
+  function start(){
+    const mahaBtn = document.getElementById('btnMaha');
+    if(!mahaBtn || window.getComputedStyle(mahaBtn).display === 'none'){ markDone(); return; }
+    const { ov, ring, bubble } = buildOverlay();
+    document.body.appendChild(ov);
+    requestAnimationFrame(() => { ov.style.opacity = '1'; });
+    pointAt(ring, bubble, mahaBtn, txt[0]);
+    let t2 = null, t3 = null;
+    function dismiss(){
+      markDone();
+      if(t2) clearTimeout(t2);
+      if(t3) clearTimeout(t3);
+      ov.style.opacity = '0';
+      setTimeout(() => { try{ ov.remove(); }catch(e){} }, 320);
+    }
+    ov.addEventListener('pointerdown', dismiss, { once:true });
+    t2 = setTimeout(() => {
+      const tick = document.getElementById('stockTickerToggle');
+      const tickerBox = document.getElementById('stockTicker');
+      if(tick && tickerBox && window.getComputedStyle(tickerBox).display !== 'none'){
+        pointAt(ring, bubble, tick, txt[1]);
+        // Demo: collapse & re-open the ticker twice, slowly, so the new
+        // user sees exactly what the arrow does. Ends in the open state.
+        [700, 1500, 2300, 3100].forEach(ms => {
+          setTimeout(() => { try{ tick.click(); }catch(e){} }, ms);
+        });
+        t3 = setTimeout(dismiss, 3800);
+      } else {
+        dismiss();
+      }
+    }, 5000);
+  }
+  setTimeout(start, 1200);
+})();
+
+// Make the floating Maha launcher button draggable anywhere on screen.
+// Position is remembered across sessions via localStorage. Uses the
+// Pointer Events API so mouse, touch, and pen all work reliably and the
+// button always follows the finger/cursor exactly (no getting "stuck").
+(function mahaBtnDraggableSetup(){
+  const btn = btnMahaEl;
+  if(!btn) return;
+  const STORAGE_KEY = 'mahaBtnPos';
+  let dragging = false, moved = false, startX = 0, startY = 0, startLeft = 0, startTop = 0, activePointerId = null;
+
+  function clamp(val, min, max){ return Math.min(Math.max(val, min), max); }
+
+  // v204: minimum top so the icon can never sit on top of the header /
+  // provider strip, regardless of a saved or freshly-computed position.
+  function minTopAllowed(){
+    let bottom = 0;
+    const header = document.querySelector('header');
+    if(header){
+      const r = header.getBoundingClientRect();
+      if(r.height > 0) bottom = Math.max(bottom, r.bottom);
+    }
+    const strip = document.getElementById('providerStripMobile');
+    if(strip){
+      const cs = window.getComputedStyle(strip);
+      if(cs.display !== 'none'){
+        const r = strip.getBoundingClientRect();
+        if(r.height > 0) bottom = Math.max(bottom, r.bottom);
+      }
+    }
+    return bottom + 8;
+  }
+
+  function applyPos(left, top){
+    const w = btn.offsetWidth || 45, h = btn.offsetHeight || 45;
+    const maxLeft = Math.max(4, window.innerWidth - w - 4);
+    const maxTop = Math.max(4, window.innerHeight - h - 4);
+    // v205: full drag freedom — allowed anywhere on screen, even over the header.
+    left = clamp(left, 4, maxLeft);
+    top = clamp(top, 4, maxTop);
+    // Fully remove the logical "inset-inline-end" (used for the RTL default
+    // position) and the physical "right" property instead of just setting
+    // them to 'auto'. In Chrome, a logical inset property left in place
+    // (even as 'auto') wins the cascade over an explicit physical "left",
+    // which silently snapped the button's real horizontal position back to
+    // its RTL-computed spot on every drag (this is why it only ever
+    // appeared to move vertically). Removing the properties entirely avoids
+    // the conflict so "left" fully controls the horizontal position.
+    btn.style.removeProperty('right');
+    btn.style.removeProperty('inset-inline-end');
+    btn.style.removeProperty('bottom');
+    btn.style.left = left + 'px';
+    btn.style.top = top + 'px';
+    return { left, top };
+  }
+
+  function savePos(left, top){
+    // v205: position is intentionally NOT persisted — every app open starts
+    // at the exact center of the screen. Dragging only lasts for the session.
+  }
+
+  function restorePos(){
+    // v205: always start at the CENTER of the screen on every load.
+    try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+    const w = btn.offsetWidth || 45, h = btn.offsetHeight || 45;
+    applyPos((window.innerWidth - w) / 2, (window.innerHeight - h) / 2);
+  }
+
+  function resetToDefault(){
+    try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+    // v202: الموضع الافتراضي = منتصف حافة الشاشة عموديًا (نفس الجهة المعتادة)،
+    // بخاصية موضع منطقية واحدة حتى لا يحدث تعارض left/right.
+    btn.style.removeProperty('left');
+    btn.style.removeProperty('right');
+    btn.style.removeProperty('bottom');
+    btn.style.insetInlineEnd = '16px';
+    btn.style.top = 'calc(50% - ' + Math.round((btn.offsetHeight || 45) / 2) + 'px)';
+  }
+
+  function onPointerDown(e){
+    if(e.button !== undefined && e.button !== 0 && e.pointerType === 'mouse') return;
+    dragging = true; moved = false; activePointerId = e.pointerId;
+    const rect = btn.getBoundingClientRect();
+    startLeft = rect.left; startTop = rect.top;
+    startX = e.clientX; startY = e.clientY;
+    btn.style.transition = 'none';
+    btn.style.cursor = 'grabbing';
+    try{ btn.setPointerCapture(e.pointerId); }catch(err){}
+  }
+
+  function onPointerMove(e){
+    if(!dragging || e.pointerId !== activePointerId) return;
+    const dx = e.clientX - startX, dy = e.clientY - startY;
+    if(Math.abs(dx) > 8 || Math.abs(dy) > 8) moved = true;
+    if(moved) e.preventDefault();
+    applyPos(startLeft + dx, startTop + dy);
+  }
+
+  function onPointerUp(e){
+    if(!dragging || e.pointerId !== activePointerId) return;
+    dragging = false;
+    btn.style.transition = '';
+    btn.style.cursor = 'grab';
+    const rect = btn.getBoundingClientRect();
+    const pos = applyPos(rect.left, rect.top);
+    savePos(pos.left, pos.top);
+    try{ btn.releasePointerCapture(e.pointerId); }catch(err){}
+    activePointerId = null;
+    if(moved){
+      // Swallow the click that follows a drag so it doesn't start a call.
+      const suppressClick = (ev) => { ev.stopPropagation(); ev.preventDefault(); btn.removeEventListener('click', suppressClick, true); };
+      btn.addEventListener('click', suppressClick, true);
+    }
+  }
+
+  btn.style.touchAction = 'none';
+  btn.addEventListener('pointerdown', onPointerDown);
+  btn.addEventListener('pointermove', onPointerMove);
+  btn.addEventListener('pointerup', onPointerUp);
+  btn.addEventListener('pointercancel', onPointerUp);
+  // A real double-click/double-tap always resets the button to its default
+  // corner, in case it ever ends up somewhere awkward. Uses the native
+  // dblclick event (not manual timing) so it can never interfere with a
+  // normal single drag gesture.
+  btn.addEventListener('dblclick', (e) => { e.preventDefault(); e.stopPropagation(); resetToDefault(); });
+  window.addEventListener('resize', () => {
+    const rect = btn.getBoundingClientRect();
+    const pos = applyPos(rect.left, rect.top);
+    savePos(pos.left, pos.top);
+  });
+
+  restorePos();
+})();
+
+// Tap the small generated-image thumbnail in Maha's call window to view it
+// full-screen; tap anywhere on the overlay to close it again.
+(function mahaImageLightboxSetup(){
+  const thumb = document.getElementById('mahaGenImage');
+  const lightbox = document.getElementById('mahaImageLightbox');
+  const lightboxImg = document.getElementById('mahaImageLightboxImg');
+  if(!thumb || !lightbox || !lightboxImg) return;
+  thumb.addEventListener('click', () => {
+    if(!thumb.src) return;
+    lightboxImg.src = thumb.src;
+    lightbox.style.display = 'flex';
+  });
+  lightbox.addEventListener('click', () => { lightbox.style.display = 'none'; });
+})();
+// ---- Attachments (images + text/code files) ----
+let pendingAttachments = [];
+const MAX_TEXT_ATTACH_CHARS = 100000;
+const MAX_ATTACH_FILE_BYTES = 25 * 1024 * 1024; // 25MB hard cap per file
+const ARCHIVE_EXT_RE = /\.(zip|docx|xlsx|pptx|jar)$/i;
+const IMAGE_TYPES = /^image\//;
+
+function renderAttachStrip(){
+  const strip = $('#attachStrip');
+  strip.innerHTML = '';
+  try{ window.__updateSendReady && window.__updateSendReady(); }catch(e){}
+  pendingAttachments.forEach((a, idx) => {
+    const chip = document.createElement('div');
+    chip.className = 'attach-chip';
+    if(a.isImage){
+      const img = document.createElement('img');
+      img.src = a.dataUrl;
+      chip.appendChild(img);
+    }
+    const name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = a.name + (a.pending ? ' ⏳' : (a.error ? ' ⚠️' : ''));
+    chip.appendChild(name);
+    const rm = document.createElement('span');
+    rm.className = 'rm';
+    rm.textContent = '✕';
+    rm.onclick = () => { pendingAttachments.splice(idx, 1); renderAttachStrip(); };
+    chip.appendChild(rm);
+    strip.appendChild(chip);
+  });
+}
+
+function readFileAsDataUrl(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// Downscale + recompress an image before it ever touches localStorage or the
+// network. Phone photos can be 3-10MB, which blows past localStorage quotas
+// and provider payload limits, silently killing the whole send. We cap the
+// longest side at 1280px and re-encode as JPEG (unless it's a PNG with
+// transparency, which we keep as PNG) at moderate quality.
+const IMAGE_MAX_DIMENSION = 2048;
+const IMAGE_JPEG_QUALITY = 0.95;
+const IMAGE_PASSTHROUGH_BYTES = 3.5 * 1024 * 1024; // send as-is, zero re-encode
+// v381: نسخة مضغوطة للمزامنة بين الأجهزة (400px, JPEG 40%)
+const SERVER_THUMB_MAX = 400;
+const SERVER_THUMB_QUALITY = 0.4;
+function makeServerThumb(dataUrl){
+  return new Promise(function(resolve){
+    try{
+      var img = new Image();
+      img.onload = function(){
+        try{
+          var w = img.width, h = img.height;
+          var scale = Math.min(1, SERVER_THUMB_MAX / Math.max(w, h));
+          w = Math.round(w * scale); h = Math.round(h * scale);
+          var c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(c.toDataURL('image/jpeg', SERVER_THUMB_QUALITY));
+        }catch(e){ resolve(''); }
+      };
+      img.onerror = function(){ resolve(''); };
+      img.src = dataUrl;
+    }catch(e){ resolve(''); }
+  });
+}
+window.makeServerThumb = makeServerThumb;
+function resizeImageFile(file){
+  return new Promise((resolve, reject) => {
+    // Small enough: pass through untouched for perfect color fidelity
+    if (file.size <= IMAGE_PASSTHROUGH_BYTES && (file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/webp')){
+      const fr = new FileReader();
+      fr.onload = () => resolve({ dataUrl: fr.result, mime: file.type });
+      fr.onerror = reject;
+      fr.readAsDataURL(file);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try{
+        let { width, height } = img;
+        const scale = Math.min(1, IMAGE_MAX_DIMENSION / Math.max(width, height));
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        const keepPng = file.type === 'image/png' || file.type === 'image/gif';
+        const mime = keepPng ? 'image/png' : 'image/jpeg';
+        const dataUrl = canvas.toDataURL(mime, keepPng ? undefined : IMAGE_JPEG_QUALITY);
+        URL.revokeObjectURL(url);
+        resolve({ dataUrl, mime });
+      }catch(err){
+        URL.revokeObjectURL(url);
+        reject(err);
+      }
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image load failed')); };
+    img.src = url;
+  });
+}
+function readFileAsText(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
+}
+
+$('#btnAttach').onclick = () => $('#attachInput').click();
+
+// ---- Emoji picker ----
+const EMOJI_LIST = [
+  '😀','😁','😂','🤣','😊','😇','🙂','🙃','😉','😍','🥰','😘','😗','😙','😚','😋',
+  '😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤨','😐','😑','😶','🙄','😏','😣',
+  '😥','😮','🤐','😯','😪','😫','🥱','😴','😌','😛','😷','🤒','🤕','🤢','🤮','🤧',
+  '🥵','🥶','🥴','😵','🤯','🤠','🥳','😎','🤓','🧐','😕','😟','🙁','😮\u200d💨','😲','😳',
+  '🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','😤',
+  '😡','😠','🤬','😈','👿','💀','💩','🤡','👻','👽','🤖','🎃','😺','😸','😹','😻',
+  '😼','😽','🙀','😿','😾','❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️',
+  '💕','💞','💓','💗','💖','💘','💝','💟','💯','💢','💥','💫','💦','💨','🕳️','💣',
+  '👍','👎','👏','🙌','🙏','👋','🤝','💪','✌️','🤞','🤟','🤘','👌','🤌','✊','👊',
+  '😽','💋','😙','😚','🎉','🎊','🎁','🔥','⭐','🌟','✨','💐','🌹','🌸','🍕','🍔',
+  '🍟','🍰','🎂','☕','🍺','⚽','🏀','🎮','📱','💻','📸','🎵','🎶','✅','❌','⚠️'
+];
+const emojiPickerEl = $('#emojiPicker');
+emojiPickerEl.innerHTML = EMOJI_LIST.map(e => `<span class="em">${e}</span>`).join('');
+emojiPickerEl.addEventListener('click', e => {
+  const t = e.target.closest('.em');
+  if (!t) return;
+  const promptEl = $('#prompt');
+  const start = promptEl.selectionStart ?? promptEl.value.length;
+  const end = promptEl.selectionEnd ?? promptEl.value.length;
+  promptEl.value = promptEl.value.slice(0, start) + t.textContent + promptEl.value.slice(end);
+  const newPos = start + t.textContent.length;
+  promptEl.focus();
+  promptEl.setSelectionRange(newPos, newPos);
+  promptEl.dispatchEvent(new Event('input', {bubbles:true}));
+});
+$('#btnEmoji').onclick = (e) => {
+  e.stopPropagation();
+  // v207: أغلق قائمة ⋮ أولًا حتى لا تتداخل لوحة الإيموجي فوقها
+  const ptp = document.getElementById('plusToolsPopup');
+  if(ptp) ptp.classList.remove('show');
+  emojiPickerEl.classList.toggle('open');
+};
+document.addEventListener('click', (e) => {
+  if (emojiPickerEl.classList.contains('open') && !emojiPickerEl.contains(e.target) && e.target.id !== 'btnEmoji') {
+    emojiPickerEl.classList.remove('open');
+  }
+});
+// Uploads a file directly to Vercel Blob storage from the browser (bypassing
+// our serverless function body-size limits) using a short-lived client token
+// minted by /api/blob-client-upload, then returns the public blob URL.
+async function uploadFileToBlob(file){
+  const { upload } = await import('https://esm.sh/@vercel/blob@0.27.1/client');
+  const blob = await upload(file.name, file, {
+    access: 'public',
+    handleUploadUrl: '/api/blob-client-upload',
+  });
+  return blob.url;
+}
+
+// Archives (.zip/.docx/.xlsx/.pptx/.jar are all ZIP containers under the
+// hood) are uploaded then unpacked server-side by /api/analyze-zip, which
+// extracts readable text/code so every AI provider can actually read what's
+// inside instead of seeing raw binary garbage.
+async function processArchiveAttachment(file, attachment){
+  try{
+    const url = await uploadFileToBlob(file);
+    const resp = await fetch('/api/analyze-zip', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, filename: file.name })
+    });
+    const data = await resp.json();
+    if(!resp.ok || !data.ok) throw new Error(data.error || 'analyze failed');
+    attachment.text = data.content;
+  }catch(err){
+    console.error('archive analyze error', err);
+    attachment.error = true;
+    attachment.text = '⚠️ ' + t('attachTruncated') + ' (' + file.name + '): ' + (err.message || err);
+  }finally{
+    attachment.pending = false;
+    renderAttachStrip();
+  }
+}
+
+// 🛠️ أدوات إضافية: قراءة PDF داخل المتصفح (pdf.js يُحمّل عند أول استخدام فقط)
+async function extractPdfText(file){
+  if(!window.__pdfjs){
+    const mod = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.min.mjs');
+    mod.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.8.69/pdf.worker.min.mjs';
+    window.__pdfjs = mod;
+  }
+  const buf = await file.arrayBuffer();
+  const pdf = await window.__pdfjs.getDocument({ data: buf }).promise;
+  let out = '';
+  const maxPages = Math.min(pdf.numPages, 60);
+  for(let p = 1; p <= maxPages; p++){
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    out += tc.items.map(i => i.str).join(' ').replace(/\s+/g, ' ').trim() + '\n\n';
+    if(out.length > MAX_TEXT_ATTACH_CHARS) break;
+  }
+  if(pdf.numPages > maxPages) out += '\n... (' + pdf.numPages + ' pages total, first ' + maxPages + ' extracted)';
+  return out;
+}
+
+// 🛠️ أدوات إضافية: ملخص إحصائي فوري لملفات CSV/TSV قبل إرسالها للنموذج
+function summarizeCsvText(text){
+  try{
+    const delim = (text.indexOf('\t') !== -1 && text.indexOf('\t') < (text.indexOf(',') === -1 ? Infinity : text.indexOf(','))) ? '\t' : ',';
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if(lines.length < 2) return '';
+    const header = lines[0].split(delim).map(h => h.trim());
+    const rows = lines.slice(1, 5001).map(l => l.split(delim));
+    let summary = 'ROWS: ' + (lines.length - 1) + ' | COLUMNS (' + header.length + '): ' + header.join(', ') + '\n';
+    header.forEach((h, ci) => {
+      const vals = rows.map(r => parseFloat(r[ci])).filter(v => isFinite(v));
+      if(vals.length > rows.length * 0.6 && vals.length > 0){
+        const sum = vals.reduce((a, b) => a + b, 0);
+        summary += '- ' + h + ': min=' + Math.min(...vals) + ', max=' + Math.max(...vals) + ', avg=' + (sum / vals.length).toFixed(2) + '\n';
+      }
+    });
+    return summary;
+  }catch(_e){ return ''; }
+}
+
+$('#attachInput').addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files || []);
+  for(const file of files){
+    try{
+      if(file.size > MAX_ATTACH_FILE_BYTES){
+        console.error('attach file too large', file.name, file.size);
+        pendingAttachments.push({ name: file.name, isImage: false, error: true, text: '⚠️ ' + file.name + ': ' + t('attachTruncated') });
+        continue;
+      }
+      if(IMAGE_TYPES.test(file.type)){
+        let dataUrl, mime;
+        try{
+          const resized = await resizeImageFile(file);
+          dataUrl = resized.dataUrl;
+          mime = resized.mime;
+        }catch(resizeErr){
+          // Fall back to the original file if resizing fails for any reason
+          // (e.g. unsupported image type in <canvas>), but warn if it's huge.
+          console.error('image resize failed, using original', resizeErr);
+          dataUrl = await readFileAsDataUrl(file);
+          mime = file.type;
+        }
+        // v381: نسخة مضغوطة للمزامنة
+        var serverThumb = '';
+        try{ serverThumb = await makeServerThumb(dataUrl); }catch(e){}
+        pendingAttachments.push({ name: file.name, isImage: true, mime, dataUrl, serverThumb });
+      } else if(/\.pdf$/i.test(file.name)){
+        // 📄 PDF: استخراج النص صفحة بصفحة داخل المتصفح
+        const attachment = { name: file.name, isImage: false, pending: true, text: '' };
+        pendingAttachments.push(attachment);
+        renderAttachStrip();
+        extractPdfText(file).then(txt => {
+          attachment.text = txt && txt.trim() ? txt.slice(0, MAX_TEXT_ATTACH_CHARS) : '⚠️ (PDF بدون نص قابل للاستخراج — قد يكون صورًا ممسوحة)';
+          attachment.pending = false;
+          renderAttachStrip();
+        }).catch(pdfErr => {
+          console.error('pdf extract error', pdfErr);
+          attachment.text = '⚠️ ' + t('attachTruncated') + ' (' + file.name + '): ' + (pdfErr.message || pdfErr);
+          attachment.pending = false;
+          renderAttachStrip();
+        });
+      } else if(ARCHIVE_EXT_RE.test(file.name)){
+        // Large archive: upload to Blob storage then let the server unzip +
+        // extract its text content so all providers can read it - runs in
+        // the background while the user keeps composing; sendPrompt() is
+        // blocked while any attachment is still `pending`.
+        const attachment = { name: file.name, isImage: false, pending: true, text: '' };
+        pendingAttachments.push(attachment);
+        processArchiveAttachment(file, attachment);
+      } else {
+        let text = await readFileAsText(file);
+        if(text.length > MAX_TEXT_ATTACH_CHARS){
+          text = text.slice(0, MAX_TEXT_ATTACH_CHARS) + '\n... (' + t('attachTruncated') + ')';
+        }
+        pendingAttachments.push({ name: file.name, isImage: false, text });
+      }
+    }catch(err){ console.error('attach read error', err); }
+  }
+  renderAttachStrip();
+  e.target.value = '';
+});
+
+// "المدرب" (smart router): reads the user's message and picks the 2-3
+// providers best suited to it out of the eligible pool, so every message
+// automatically gets routed to specialists instead of always asking all 9.
+// No UI/buttons involved - this is silent, automatic, and always falls back
+// to the full eligible pool on any failure so a message is never blocked.
+const SMART_PROVIDER_SPECIALTIES = {
+  openai: 'محادثة عامة متوازنة، كتابة، أسئلة عامة',
+  gemini: 'سياق طويل جدًا، تحليل مستندات/فيديو كبيرة، أسئلة عامة',
+  groq: 'إجابات سريعة جدًا وبسيطة',
+  claude: 'أفضل خيار لتصميم واجهات وتصاميم كاملة، وأقوى خيار للبرمجة المعقدة والدقيقة',
+  openrouter: 'بديل عام متعدد النماذج',
+  perplexity: 'أسئلة تحتاج بحث حي بالإنترنت: أخبار، أسعار، أحداث الآن',
+  mistral: 'مهام سريعة وكفوءة بتكلفة منخفضة',
+  deepseek: 'برمجة أكواد قوية ورخيصة',
+  cohere: 'أسئلة تعتمد على مستندات/بيانات ولغات متعددة',
+};
+
+async function pickSmartProviders(userText, eligibleKeys){
+  if(!eligibleKeys || eligibleKeys.length <= 3) return eligibleKeys;
+  const safePick = ['claude', 'openai'].filter(k => eligibleKeys.includes(k));
+  if(safePick.length === 0) safePick.push(eligibleKeys[0]);
+  try{
+    const list = eligibleKeys.map(k => '- ' + k + ': ' + (SMART_PROVIDER_SPECIALTIES[k] || '')).join('\n');
+    const sys = 'أنت مصنّف مهام صامت. مهمتك اختيار أنسب مزودي ذكاء اصطناعي (من القائمة أدناه) لسؤال المستخدم، حسب تخصص كل مزود وحسب حجم/تعقيد المهمة:\n- مهمة بسيطة أو صغيرة (لعبة بسيطة، صفحة واحدة قصيرة، سؤال عام، شرح سريع): اختر مزود واحد فقط، الأسرع والأنسب.\n- مهمة متوسطة: اختر مزودين.\n- مهمة معقدة فعلًا (تطبيق كامل متعدد الصفحات، تصميم متقدم يحتاج مقارنة جودة): اختر 3 كحد أقصى.\nلا تختر أكثر من مزود واحد إلا إذا كانت المهمة فعلًا تستحق ذلك. رد فقط بمصفوفة JSON من المفاتيح بدون أي شرح، مثال: ["claude"]\n\nالمزودون المتاحون:\n' + list;
+    const res = await fetch('/api/groq', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          {role: 'system', content: sys},
+          {role: 'user', content: String(userText || '').slice(0, 2000)}
+        ],
+        token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: false
+      })
+    });
+    if(!res.ok) return safePick;
+    const data = await res.json();
+    const raw = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+    if(!raw) return safePick;
+    const match = raw.match(/\[[\s\S]*?\]/);
+    if(!match) return safePick;
+    const parsed = JSON.parse(match[0]);
+    const picked = parsed.filter(k => eligibleKeys.includes(k));
+    if(picked.length >= 1) return picked.slice(0, 3);
+    return safePick;
+  }catch(smartErr){
+    console.error('[smart router] classifier unavailable, using safe 2-provider fallback:', smartErr);
+    return safePick;
+  }
+}
+
+
+// ✍️ كتابة نص على الصورة محليًا (Canvas) — خط عربي سليم 100% بدل رسم Gemini المشوه
+function extractOverlayText(t){
+  let m = t.match(/["'«»“”](.+?)["'«»“”]/); if(m && m[1].trim()) return m[1].trim();
+  const clean = (x)=>{ x = (x||'').trim().replace(/[.!؟?]+$/,'').trim(); if(!x || /^(?:على|فوق|في)?\s*الصور/.test(x) || /^(?:on|in)?\s*(?:the\s+)?(?:image|photo|picture)/i.test(x)) return null; return x; };
+  m = t.match(/(?:اكتب|أكتب)\s+(?:لي\s+)?(?:كلمة\s+|نص\s+|اسم\s+)?(.+?)(?:\s+(?:على|فوق|في)\s+الصور[ةه].*)?$/); if(m){ const r=clean(m[1]); if(r) return r; }
+  m = t.match(/(?:حط|ضيف|أضف|اضف)\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)\s+(.+?)(?:\s+(?:على|فوق|في)\s+الصور[ةه].*)?$/); if(m){ const r=clean(m[1]); if(r) return r; }
+  m = t.match(/(?:write|put|add)\s+(?:the\s+)?(?:text\s+|name\s+|word\s+)?(.+?)(?:\s+(?:on|to|in)\s+(?:the\s+)?(?:image|photo|picture).*)?$/i); if(m){ const r=clean(m[1]); if(r) return r; }
+  return null;
+}
+// 🎨 استخراج سطور النص العربي من طلب التصميم (عنوان + اسم + مناسبة)
+function extractDesignLines(t){
+  t = String(t || '');
+  if(!/[\u0600-\u06FF]/.test(t)) return []; // طلب بغير العربية → نترك المولد يكتب
+  const lines = [];
+  const mTitle = t.match(/(شهادة|شهاده|بطاقة|بطاقه|دعوة|دعوه|تهنئة|تهنئه)\s*(ترقية|ترقيه|تهنئة|تهنئه|تقدير|شكر|تخرج|زواج|نجاح|دعوة|دعوه|عيد ميلاد|ميلاد)?/);
+  if(mTitle) lines.push((mTitle[1] + (mTitle[2] ? ' ' + mTitle[2] : '')).trim());
+  const mName = t.match(/(?:باسم|بإسم|إلى|الي|للسيد|للسيدة|لـ)\s+(.+?)(?=\s+(?:بمناسبة|بي\s*مناسبة|بمناسبه|في|على|الي\s+وكيل)|$)/);
+  if(mName){ const n = mName[1].trim().replace(/[،.]+$/, ''); if(n && n.length <= 60) lines.push(n); }
+  const mOcc = t.match(/(?:بمناسبة|بي\s*مناسبة|بمناسبه)\s+(.+)$/);
+  if(mOcc){ const o = ('بمناسبة ' + mOcc[1].trim()).replace(/[،.]+$/, ''); if(o.length <= 80) lines.push(o); }
+  return lines.slice(0, 3);
+}
+// 🧠 استخراج سطور التصميم بالذكاء الاصطناعي (Groq → Mistral) مهما كانت صياغة الطلب،
+// مع الرجوع للأنماط الثابتة إذا فشل الاستخراج.
+async function aiExtractDesignLines(t){
+  const rx = extractDesignLines(t);
+  if(!/[\u0600-\u06FF]/.test(String(t || ''))) return rx;
+  const sys = 'أنت مساعد يستخرج سطور النص التي ستُكتب على تصميم (شهادة/بطاقة/دعوة/بوستر...). أعد JSON فقط بهذا الشكل بالضبط: {"lines":["السطر1","السطر2"]} — من 2 إلى 4 سطور قصيرة: (1) عنوان التصميم مثل "شهادة ترقية" أو "بطاقة تهنئة"، (2) اسم الشخص إن وُجد، (3) المناسبة إن وُجدت مثل "بمناسبة ترقيته إلى وكيل أول"، (4) عبارة تهنئة قصيرة مناسبة. صحح الأخطاء الإملائية في النص المستخرج. لا تكتب أي شرح خارج الـJSON.';
+  const messages = [ { role: 'system', content: sys }, { role: 'user', content: String(t) } ];
+  for(const p of ['groq', 'mistral']){
+    try{
+      const r = await callProviderAI(p, messages, () => {});
+      const m = String(r || '').match(/\{[\s\S]*\}/);
+      if(m){
+        const j = JSON.parse(m[0]);
+        if(Array.isArray(j.lines)){
+          const ls = j.lines.map(s => String(s || '').trim()).filter(s => s && s.length <= 90).slice(0, 4);
+          if(ls.length >= 1) return ls;
+        }
+      }
+    }catch(e){ /* جرّب المزود التالي */ }
+  }
+  return rx;
+}
+// 🏆 اسأل الكل للتصاميم: كل مزود يقترح صياغته لنصوص الشهادة/البطاقة ثم يُختار أطيبهم
+async function competeDesignLines(t){
+  const sys = 'أنت كاتب تهانٍ محترف. المطلوب: أعد JSON فقط بهذا الشكل بالضبط: {"lines":["السطر1","السطر2"]} — من 2 إلى 4 سطور قصيرة وراقية لتصميم (شهادة/بطاقة/دعوة...): (1) عنوان التصميم، (2) اسم الشخص إن وُجد، (3) المناسبة إن وُجدت، (4) عبارة تهنئة بليغة ومؤثرة. صحح الأخطاء الإملائية. لا تكتب أي شرح خارج الـJSON.';
+  const messages = [ { role: 'system', content: sys }, { role: 'user', content: String(t) } ];
+  const provs = ['claude', 'gemini', 'openai', 'mistral', 'deepseek', 'cohere', 'groq', 'openrouter', 'perplexity'];
+  const parse = (r) => {
+    const m = String(r || '').match(/\{[\s\S]*\}/);
+    if(!m) return null;
+    try{
+      const j = JSON.parse(m[0]);
+      if(!Array.isArray(j.lines)) return null;
+      const ls = j.lines.map(s => String(s || '').trim()).filter(s => s && s.length <= 90).slice(0, 4);
+      return ls.length >= 2 ? ls : null;
+    }catch(e){ return null; }
+  };
+  const results = await Promise.all(provs.map(p => callProviderAI(p, messages, () => {}).then(parse).catch(() => null)));
+  const cands = results.filter(Boolean);
+  if(!cands.length) return await aiExtractDesignLines(t);
+  if(cands.length === 1) return cands[0];
+  // حكم سريع يختار أبلغ صياغة
+  const judgeSys = 'أنت حكم لغوي. ستصلك عدة صياغات مرقمة لنصوص تصميم. اختر الأبلغ والأجمل والأصح إملائيًا. أعد JSON فقط: {"best":الرقم} بدون أي شرح.';
+  const judgeUser = 'الطلب الأصلي: ' + String(t) + '\n\n' + cands.map((c, i) => (i + 1) + ') ' + c.join(' | ')).join('\n');
+  for(const p of ['groq', 'mistral']){
+    try{
+      const r = await callProviderAI(p, [ { role: 'system', content: judgeSys }, { role: 'user', content: judgeUser } ], () => {});
+      const m = String(r || '').match(/\{[\s\S]*\}/);
+      if(m){
+        const n = parseInt(JSON.parse(m[0]).best, 10);
+        if(n >= 1 && n <= cands.length) return cands[n - 1];
+      }
+    }catch(e){ /* جرّب الحكم التالي */ }
+  }
+  // بدون حكم: الأطول محتوى (غالبًا الأغنى صياغة)
+  return cands.sort((a, b) => b.join('').length - a.join('').length)[0];
+}
+// 🖋️ كتابة سطور عربية سليمة في وسط التصميم (عنوان كبير + سطور أصغر)
+function overlayDesignLines(b64, mime, lines){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      try{
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        const x = c.width / 2;
+        const sizes = [Math.floor(c.width / 10), Math.floor(c.width / 16), Math.floor(c.width / 20)];
+        const gap = Math.floor(c.height / 9);
+        const startY = c.height / 2 - ((lines.length - 1) * gap) / 2;
+        lines.forEach((txt, i) => {
+          let fs = sizes[Math.min(i, sizes.length - 1)];
+          const setF = () => { ctx.font = 'bold ' + fs + 'px "Segoe UI", Tahoma, Arial, sans-serif'; };
+          setF();
+          while(ctx.measureText(txt).width > c.width * 0.82 && fs > 14){ fs -= 2; setF(); }
+          const y = startY + i * gap;
+          ctx.lineWidth = Math.max(3, Math.floor(fs / 8));
+          ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.strokeText(txt, x, y);
+          ctx.fillStyle = '#5a3e1b'; ctx.fillText(txt, x, y);
+        });
+        resolve((c.toDataURL('image/png')).split(',')[1]);
+      }catch(e){ reject(e); }
+    };
+    img.onerror = reject;
+    img.src = 'data:' + mime + ';base64,' + b64;
+  });
+}
+const MAHA_FONTS = {
+  othmani: { css: 'Amiri', gf: 'Amiri:wght@700' },
+  naskh:   { css: 'Amiri', gf: 'Amiri:wght@700' },
+  ruqaa:   { css: 'Aref Ruqaa', gf: 'Aref+Ruqaa:wght@700' },
+  kufi:    { css: 'Reem Kufi', gf: 'Reem+Kufi:wght@700' },
+  diwani:  { css: 'Lateef', gf: 'Lateef:wght@700' },
+  modern:  { css: 'Cairo', gf: 'Cairo:wght@700' },
+};
+async function mahaLoadFont(key){
+  const f = MAHA_FONTS[key] || MAHA_FONTS.modern;
+  if(!document.getElementById('gf-' + f.css)){
+    const l = document.createElement('link');
+    l.id = 'gf-' + f.css; l.rel = 'stylesheet';
+    l.href = 'https://fonts.googleapis.com/css2?family=' + f.gf + '&display=swap';
+    document.head.appendChild(l);
+  }
+  try{ await document.fonts.load('bold 40px "' + f.css + '"', 'عيدكم مبارك'); }catch(_){}
+  return f.css;
+}
+async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr){
+  const fontCss = await mahaLoadFont(fontKey || 'modern');
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      try{
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        let fs = Math.floor(c.width / 9);
+        const setF = () => { ctx.font = 'bold ' + fs + 'px "' + fontCss + '", "Segoe UI", Tahoma, Arial, sans-serif'; };
+        setF();
+        while(ctx.measureText(txt).width > c.width * 0.9 && fs > 14){ fs -= 2; setF(); }
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        const x = c.width / 2, y = c.height - Math.max(20, Math.floor(c.height * 0.05));
+        ctx.lineWidth = Math.max(3, Math.floor(fs / 7));
+        const fill = (colorStr || '#ffffff');
+        // حدود داكنة للألوان الفاتحة وفاتحة للألوان الداكنة عشان يظل النص واضح
+        let dark = false;
+        if(/^#[0-9a-f]{6}$/i.test(fill)){
+          const lum = parseInt(fill.slice(1,3),16)*0.299 + parseInt(fill.slice(3,5),16)*0.587 + parseInt(fill.slice(5,7),16)*0.114;
+          dark = lum < 128;
+        }
+        ctx.strokeStyle = dark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.85)';
+        ctx.strokeText(txt, x, y);
+        ctx.fillStyle = fill; ctx.fillText(txt, x, y);
+        resolve((c.toDataURL('image/png')).split(',')[1]);
+      }catch(e){ reject(e); }
+    };
+    img.onerror = reject;
+    img.src = 'data:' + mime + ';base64,' + b64;
+  });
+}
+
+// 🤖 وكيل عمران — عميل الواجهة: يرسل المحادثة لنقطة /api/ai?action=agent ويستقبل
+// بث SSE (حالات + نص). أي كود html يُستخرج للوحة الكود والمعاينة تلقائيًا.
+window.__agentModeOn = false; // v321: الوكيل دائمًا مطفي عند الفتح — لا يُحفظ تشغيله أبدًا
+try{ localStorage.removeItem('aiapp_agent_mode'); }catch(e){}
+function updateAgentModeUI(){
+  const btn = document.getElementById('btnAgentMode');
+  const lbl = document.getElementById('agentModeLabel');
+  if(!btn || !lbl) return;
+  const on = !!window.__agentModeOn;
+  lbl.textContent = lang === 'ar' ? ('وكيل عمران: ' + (on ? 'شغال ✅' : 'إيقاف')) : ('Omran Agent: ' + (on ? 'ON ✅' : 'OFF'));
+  btn.style.color = on ? 'var(--accent, var(--accent))' : '';
+}
+function __stripCodeForHistory(role, s){
+  s = String(s || '');
+  if(role !== 'assistant') return s;
+  return s.replace(/```[\s\S]*?```/g, '[تم بناء/تعديل الكود بنجاح — الكود الكامل محفوظ في المشروع]').slice(0, 3000); // ✅ v325
+}
+async function runOmranAgent(cur, apiText, thinkingDiv){
+  thinkingDiv.textContent = '🤖 ' + (lang === 'ar' ? 'وكيل عمران يخطط…' : 'Omran Agent planning…');
+  const history = cur.messages.slice(-8).map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: __stripCodeForHistory(m.role, m.apiText || m.content) }));
+  const res = await fetch('/api/ai?action=agent', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal: genAbortController ? genAbortController.signal : undefined,
+    body: JSON.stringify({ messages: history, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), currentCode: cur.code || '' }),
+  });
+  if(!res.ok){
+    const errText = await res.text();
+    throwProviderError(res.status, errText);
+  }
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '', full = '', serverErr = null;
+  while(true){
+    let done, value;
+    try{ ({ done, value } = await reader.read()); }
+    catch(e){ if(full) break; throw e; } // انقطاع البث بعد وصول محتوى → نكمل بما وصل بدل خطأ شبكة
+    if(done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split('\n');
+    buf = lines.pop();
+    for(const line of lines){
+      if(!line.startsWith('data: ')) continue;
+      let ev; try{ ev = JSON.parse(line.slice(6)); }catch(e){ continue; }
+      if(ev.status) thinkingDiv.textContent = ev.status;
+      if(ev.delta){
+        full += ev.delta;
+        const clean = stripCodeFromChat(full).trim();
+        thinkingDiv.textContent = clean ? ('🤖 ' + clean.slice(-400)) : ('🤖 ' + (lang === 'ar' ? 'الوكيل يكتب الكود…' : 'Agent writing code…'));
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+      if(ev.error) serverErr = ev.error;
+    }
+  }
+  if(serverErr && !full) throw new Error(serverErr);
+  const parsed = extractReply(full);
+  let chatText;
+  let codeProducedThisTurn = false;
+  if(parsed && parsed.code){
+    cur.code = parsed.code;
+    cur.codeType = parsed.codeType || 'html';
+    codeProducedThisTurn = true;
+    chatText = stripCodeFromChat(full).trim();
+  } else {
+    // 🛟 كود ناقص/غير مغلق (```html بلا إغلاق أو <!DOCTYPE بلا نهاية) → نلتقطه للوحة الكود بدل ما يطيح في الشات
+    const fenceIdx = full.search(/```(?:html|HTML)?\s*\n/);
+    const docIdx = full.search(/<!DOCTYPE|<html/i);
+    const idx = fenceIdx >= 0 ? fenceIdx : docIdx;
+    if(idx >= 0 && (full.length - idx) > 300){
+      let codePart = full.slice(idx).replace(/^```(?:html|HTML)?\s*\n/, '').replace(/```\s*$/, '').trim();
+      cur.code = codePart;
+      cur.codeType = 'html';
+      codeProducedThisTurn = true;
+      chatText = full.slice(0, idx).replace(/```\s*$/, '').trim();
+      if(chatText) chatText += '\n\n' + (lang === 'ar' ? '⚠️ يبدو أن الكود انقطع قبل اكتماله — اكتب "كمل الكود" وسأكمله.' : '⚠️ The code seems truncated — type "continue" and I will finish it.');
+    } else {
+      chatText = stripCodeFromChat(full).trim();
+    }
+  }
+  if(!chatText) chatText = codeProducedThisTurn
+    ? (lang === 'ar' ? 'تم بناء التطبيق ✅ افتح المعاينة وجرّبه — وإذا شي ما اشتغل اكتب لي: "صلح المشكلة".' : 'App built ✅ Open the preview and try it — if something is broken, tell me: "fix it".')
+    : (lang === 'ar' ? 'تم ✅' : 'Done ✅');
+  const agentMsg = { role: 'assistant', content: '🤖 ' + chatText };
+  if(codeProducedThisTurn && cur.code){
+    // 🛠️ إصلاح ذاتي: يفحص كود الوكيل في iframe مخفي ويصلح أخطاء التشغيل تلقائيًا
+    try{
+      const healed = await selfHealCode(cur.code, cur.codeType || 'html');
+      if(healed && healed !== cur.code){
+        cur.code = healed;
+        agentMsg.content += '\n🛠️ ' + (lang === 'ar' ? 'تم فحص الكود وإصلاح أخطاء تلقائيًا.' : 'Code was tested and errors were auto-fixed.');
+      }
+    }catch(e){}
+    agentMsg.code = cur.code;
+    agentMsg.codeType = cur.codeType || 'html';
+    agentMsg.providerLabel = '🤖 ' + (lang === 'ar' ? 'وكيل عمران' : 'Omran Agent');
+  }
+  cur.messages.push(agentMsg);
+}
+
+async function sendPrompt(){
+  // ✅ v301: قفل الإرسال أثناء التوليد — Enter أو أي ضغطة إضافية لا ترسل
+  // الطلب مرة ثانية (كان زر الإرسال ينقفل لكن Enter يظل شغالًا فيتكرر الطلب).
+  try{ const __sb = $('#btnSend'); if(__sb && __sb.disabled) return; }catch(e){}
+  const promptEl = $('#prompt');
+  let text = promptEl.value.trim();
+  if(!text && pendingAttachments.length === 0) return;
+  if(pendingAttachments.some(a => a.pending)){
+    alert(lang === 'ar' ? 'الرجاء الانتظار حتى ينتهي تحليل الأرشيف' : 'Please wait until archive analysis finishes');
+    return;
+  }
+
+  // 🔒 بوابة البناء الطبيعية: أول طلب بناء → المزود يناقش الفكرة ويختم رده
+  // بسؤال «تبيني أبدأ البناء؟». البناء الفعلي لا يبدأ إلا بعد موافقة صريحة
+  // (نعم/ابدأ/سو...) في الرسالة التالية — بدون أي أزرار أو شرائط.
+  // فعل بناء صريح في بداية الرسالة + موضوع بعده = طلب بناء حتى لو الموضوع
+  // غير موجود في القوائم (ساعة، حاسبة، آلة حاسبة...). يغطي فجوة القوائم الثابتة.
+  const __strongBuildRe = /^\s*(?:ابني|ابنيلي|نبني|اعمل|أعمل|سوي|سوّي|سولي|سوّلي|صمم|صمّم|انشئ|أنشئ|اصنع|build|create|make|design)\s+\S{2,}/i;
+  // 🖼️ v330: متابعة بعد تعديل صورة (بدون مرفق جديد) → مسار تعديل الصورة مباشرة
+  // بآخر صورة محفوظة — ممنوع بوابة البناء وممنوع خطة عمل («ضيفه الرابط» كانت
+  // تروح للبوابة فيرسم المزود الصورة من خياله بدل تعديل الأصلية).
+  const __IMG_FOLLOW = (function(){
+    try{
+      const c = getCurrent();
+      if(!c || !c.lastMsgWasImageEdit || !c.lastEditedImage || !c.lastEditedImage.b64) return false;
+      if(pendingAttachments.some(a => a.isImage)) return false;
+      if(!text || text.length > 220) return false;
+      if(/بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|سكربت|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\bscript\b|\bcode\b|كود/i.test(text)) return false;
+      return /(ضيف|أضف|اضف|حط|عدل|عدّل|غير|غيّر|بدل|بدّل|امسح|احذف|ازل|أزل|شل|شيل|كبر|كبّر|صغر|صغّر|لون|لوّن|اكتب|أكتب|زخرف|خل|اجعل|حسن|حسّن|رتب|رتّب|نفس الصور|نفس الشعار|هالصور|هالشعار|عليها|فيها|منها|\badd\b|\bput\b|\bchange\b|\bremove\b|\berase\b|\bwrite\b|\brecolor\b|same image|same logo|on it)/i.test(text);
+    }catch(e){ return false; }
+  })();
+  let __gateNoBuild = false;
+  let __gateApprovedText = null; // ما كتبه المستخدم فعلًا (نعم/ابدأ) ليُعرض كما هو
+  {
+    const GATE_BUILD_RE = /بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|العاب|ألعاب|أداة|اداة|نسخة|نسخه|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\btool\b|\bclone\b/i;
+    const GATE_CMD_RE = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|ممكن|ابغي|أبغي|ابغى|أبغى|ابي|أبي|بغيت|اريد|أريد|عطني|أعطني|اعطني|هات|سولي|سوّلي|build|create|make|design|develop|\bwant\b|\bgive\b|\bcan you\b)/i;
+    const GATE_FIX_RE = /(صلح|أصلح|اصلح|إصلاح|اصلاح|خطأ|خطا|أخطاء|اخطاء|مشكل|عطل|توقف|خرب|ما\s*يشتغل|مو\s*شغال|لا\s*يعمل|\bfix\b|\berror\b|\bbug\b|\bdebug\b|\bbroken\b)/i;
+    const GATE_APPROVE_RE = /^\s*(نعم|أجل|اجل|اي(?:ه|وه|وا)?|إيه?|أيوه|ايوه|يلا|يالله|ابدأ|أبدأ|ابدا|ابدي|ابنيه?|ابنيها|سو|سوه|سوها|سويها|سوي|تمام|اوك|أوك|اوكي|اوكيه|موافق|زين|طيب|وافقت|yes|ok|okay|go|start|build)[\sء-ي!.،؟]{0,30}$/i;
+    // الطلب المعلّق يُحفظ في localStorage أيضًا حتى لا يضيع عند تحديث الصفحة
+    // بين سؤال «تبيني أبدأ؟» وموافقة المستخدم.
+    let __pend = window.__pendingBuildPrompt;
+    if(!__pend){ try{ __pend = localStorage.getItem('aiapp_pending_build') || null; }catch(e){} }
+    // رسالة تحتوي طلب بناء كامل (فعل + موضوع مثل «ابني لي لعبة») = طلب جديد،
+    // وليست موافقة قصيرة مثل «نعم/ابدأ» — حتى لو بدأت بكلمة تشبه الموافقة.
+    // v285: نص ملصوق (طويل/متعدد الأسطر/قوائم وإشعارات 📋⬜) بدون فعل بناء صريح
+    // في البداية = ليس طلب بناء أبدًا — يروح نقاش عادي فقط.
+    const __looksPasted = !!(text && !__strongBuildRe.test(text) && (
+      text.length > 400 ||
+      text.split('\n').length >= 6 ||
+      /[📋⬜☐🔹▪•✔️]/.test(text) ||
+      /^\s*(?:[-*]|\d+[.)])\s+\S.*\n\s*(?:[-*]|\d+[.)])\s+\S/m.test(text)
+    ));
+    const __isFullBuildReq = !!(text && !__looksPasted && ((GATE_BUILD_RE.test(text) && GATE_CMD_RE.test(text)) || __strongBuildRe.test(text)));
+    // 🤝 v345: موافقة قصيرة («نعم/تمام/يلا») بعد عرض بناء من المزود نفسه في
+    // رده السابق («أقدر أبنيلك أداة... تبيني أبدأ فيها؟») = موافقة تنفيذ فورية
+    // على ما عرضه المزود، لا إعادة تشغيل الطلب السابق المرفوض.
+    let __offerApproved = false;
+    if(text && !__isFullBuildReq && GATE_APPROVE_RE.test(text)){
+      try{
+        const __gp = getCurrent();
+        const __ms = __gp ? __gp.messages : [];
+        const __lastA = [...__ms].reverse().find(m => m.role === 'assistant' && m.content && !m.code);
+        const OFFER_RE = /(تبيني\s*أبدأ|تبيني\s*ابدأ|تبي\s*أبدأ|تبغى\s*أبدأ|أبنيلك|ابنيلك|أبنيها|ابنيها|أسويها|اسويها|أسوي\s*لك|اسوي\s*لك|نبدأ\s*فيها|أبدأ\s*فيها|تبيني\s*أسوي|تبيني\s*اسوي|تبيني\s*أبنيها|أبدأ\s*البناء|shall i build|want me to build|start building)/i;
+        if(__lastA && OFFER_RE.test(String(__lastA.content))) __offerApproved = true;
+      }catch(e){}
+    }
+    // شبكة أمان إضافية: لو ضاع الطلب المعلّق نهائيًا، نسترجعه من آخر رسالة
+    // بناء كتبها المستخدم في نفس المشروع.
+    if(!__pend && !__offerApproved && text && !__isFullBuildReq && GATE_APPROVE_RE.test(text)){
+      try{
+        const __gp = getCurrent();
+        const __ms = __gp ? __gp.messages : [];
+        // آخر طلب بناء كتبه المستخدم في هذا المشروع
+        const __lastU = [...__ms].reverse().find(m => {
+          const __t = String(m.apiText !== undefined ? m.apiText : (m.content || ''));
+          return m.role === 'user' && GATE_BUILD_RE.test(__t) && GATE_CMD_RE.test(__t);
+        });
+        if(__lastU){
+          const __idx = __ms.lastIndexOf(__lastU);
+          // إذا ما انبنى كود فعلي بعد ذلك الطلب → «ابدأ» معناها الموافقة على بنائه
+          const __builtAfter = __ms.slice(__idx + 1).some(m => m.role !== 'user' && m.code);
+          if(!__builtAfter) __pend = String(__lastU.apiText !== undefined ? __lastU.apiText : __lastU.content);
+        }
+      }catch(e){}
+    }
+    const __setPend = (v)=>{ window.__pendingBuildPrompt = v; try{ if(v) localStorage.setItem('aiapp_pending_build', v); else localStorage.removeItem('aiapp_pending_build'); }catch(e){} };
+    if(__offerApproved && text && !__isFullBuildReq && GATE_APPROVE_RE.test(text)){
+      // موافقة على عرض المزود نفسه → يبني بالضبط ما عرضه، فورًا وبالكامل.
+      __gateApprovedText = text;
+      text = 'نعم، ابدأ الآن ببناء الأداة/التطبيق الذي عرضته في ردك السابق بالكامل.';
+      window.__buildOfferApproved = true;
+      __setPend(null);
+    } else if(__pend && text && !__isFullBuildReq && GATE_APPROVE_RE.test(text)){
+      // موافقة → نفّذ طلب البناء الأصلي كاملًا الآن (ويظهر بالمحادثة ما كتبه المستخدم فقط).
+      __gateApprovedText = text;
+      text = __pend;
+      __setPend(null);
+    } else if(text && !__IMG_FOLLOW && !__looksPasted && ((GATE_BUILD_RE.test(text) && GATE_CMD_RE.test(text)) || __strongBuildRe.test(text)) && !GATE_FIX_RE.test(text)){
+      __setPend(text);
+      __gateNoBuild = true;
+    } else if(text){
+      __setPend(null);
+    }
+  }
+
+  // Guest gate: users without an account get GUEST_MSG_LIMIT free messages,
+  // then must log into an existing account (or sign up) to keep chatting.
+  if(!authGet('aiapp_auth_token')){
+    if(window.getGuestMsgCount() >= window.GUEST_MSG_LIMIT){
+      window.requireLogin('guestLimit');
+      return;
+    }
+    window.incrementGuestMsgCount();
+  }
+
+  try{ window.__fbCountMsg && window.__fbCountMsg(); }catch(_){ }
+
+  let cur = getCurrent();
+  if(!cur){
+    const id = 'p_' + Date.now();
+    cur = {id, title: (text || pendingAttachments[0]?.name || 'مشروع').slice(0, 30), messages: [], code: '', codeType: 'html'};
+    state.projects.push(cur);
+    state.currentId = id;
+  }
+  if(cur.messages.length === 0){
+    cur.title = (text || pendingAttachments[0]?.name || 'مشروع').slice(0, 30);
+  }
+
+  const attachmentsForMsg = pendingAttachments.slice();
+  const imageAttachments = attachmentsForMsg.filter(a => a.isImage);
+  const textAttachments = attachmentsForMsg.filter(a => !a.isImage);
+
+  // Build the text sent to the AI: original text + any text-file contents appended as code blocks
+  let apiText = text;
+  textAttachments.forEach(a => {
+    apiText += (apiText ? '\n\n' : '') + '📄 ' + a.name + ':\n```\n' + a.text + '\n```';
+  });
+  // 🛠️ أدوات إضافية: بيانات CSV/Excel → ملخص إحصائي + تعليمة تحليل بجداول Markdown
+  const dataAttachments = textAttachments.filter(a => /\.(csv|tsv|xlsx)$/i.test(a.name || ''));
+  if(dataAttachments.length){
+    dataAttachments.forEach(a => {
+      if(/\.(csv|tsv)$/i.test(a.name || '')){
+        const s = summarizeCsvText(a.text || '');
+        if(s) apiText += '\n\n📊 ' + a.name + ' (quick stats):\n' + s;
+      }
+    });
+    apiText += '\n\n[SYSTEM: The user attached data file(s). Analyze the data carefully and present your findings using clear Markdown tables, key statistics, and insights. Answer in the user\'s language.]';
+  }
+  if(imageAttachments.length){
+    apiText += (apiText ? '\n\n' : '') + '[' + t('imagesAttachedNote') + ': ' + imageAttachments.map(a => a.name).join(', ') + ']';
+  }
+
+  // 🧠 ذاكرة الصور (v293): طلب يذكر «الصورة/صورتي» بدون مرفق جديد → أرفق آخر
+  // صورة من المحادثة تلقائيًا (للتعديل أو السؤال) حتى لو مرّت رسائل نصية بينهما.
+  try{
+    const __memRefRe = /(الصورة|الصوره|هالصورة|هالصوره|صورتي|بالصورة|بالصوره|للصورة|للصوره|نفس الصورة|نفس الصوره|نفس الشعار|هالشعار|شعاري|الشعار السابق|الشعار اللي|الشعار الي|نفس اللوجو|هاللوجو|اللوجو اللي|اللوجو الي|the image|this image|that image|the photo|this photo|the picture|this picture|same logo|this logo|that logo)/i;
+    if(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && text && __memRefRe.test(text)){
+      imageAttachments.push({ isImage: true, name: 'memory.png', mime: cur.lastEditedImage.mime || 'image/png', dataUrl: 'data:' + (cur.lastEditedImage.mime || 'image/png') + ';base64,' + cur.lastEditedImage.b64, _fromMemory: true });
+    }
+  }catch(e){}
+  cur.messages.push({role: 'user', content: (__gateApprovedText || text) || (t('imagesAttachedNote')), attachments: attachmentsForMsg.length ? attachmentsForMsg : undefined, apiText, apiImages: imageAttachments.length ? imageAttachments : undefined});
+  promptEl.value = '';
+  try{ window.__promptAutoGrow && window.__promptAutoGrow(); }catch(e){}
+  try{ $('#btnSend').classList.remove('ready'); }catch(e){}
+  pendingAttachments = [];
+  renderAttachStrip();
+  renderAll();
+  saveState();
+
+  const sendBtn = $('#btnSend');
+  sendBtn.disabled = true;
+  sendBtn.innerHTML = '<span class="spinner"></span>';
+
+  // Let the ⏹️ button cancel this in-flight request; it lights up while
+  // generating so the user knows they can stop it and edit their message.
+  genAbortController = new AbortController();
+  btnStop.classList.add('live');
+
+  const thinkingDiv = document.createElement('div');
+  thinkingDiv.className = 'msg assistant';
+  thinkingDiv.textContent = t('building');
+  messagesEl.appendChild(thinkingDiv);
+  anchorLastUserMsgTop(thinkingDiv);
+
+  // A "continue with this only" selection (one or more providers picked from a
+  // previous ask-all round) always takes priority: it lets the user keep
+  // chatting with a custom subset of providers without needing to re-check
+  // "ask all". If nothing is pinned, fall back to the ask-all checkbox.
+  let customProviders = (cur.continueProviders && cur.continueProviders.length) ? cur.continueProviders.slice() : null;
+  // 🎭 فريق العمل الثلاثي (خطة المدرب عمران):
+  //   1. نقاش/أسئلة عادية  → Gemini Flash (مجاني وسريع) واحتياطه Claude Haiku.
+  //   2. إصلاح/تعديل كود موجود → Claude Sonnet "خلف الكواليس".
+  //   3. بناء تطبيق/موقع/بوت  → اسأل الكل بالدمج (بدون أي تغيير).
+  const __routeBuildRe = /بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|العاب|ألعاب|أداة|اداة|نسخة|نسخه|شهادة|شهاده|بطاقة|بطاقه|دعوة|دعوه|بوستر|شعار|لوجو|تهنئة|تهنئه|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\btool\b|\bclone\b|\bcertificate\b|\bcard\b|\binvitation\b|\bposter\b|\blogo\b/i;
+  const __routeFixRe = /(صلح|أصلح|اصلح|إصلاح|اصلاح|خطأ|خطا|أخطاء|اخطاء|مشكل|عطل|توقف|خرب|ما\s*يشتغل|مو\s*شغال|لا\s*يعمل|\bfix\b|\berror\b|\bbug\b|\bdebug\b|\bbroken\b)/i;
+  // ✏️ نية تعديل على المشروع المفتوح: فعل تعديل (عدّل/غيّر/حط/بدل/خل...) +
+  // عنصر داخل التصميم (نص/شعار/لون/خلفية/زر...) → يروح لمسار التعديل الحقيقي
+  // (Claude + الكود الحالي + إلزام إرجاع الملف كاملاً) بدل وضع النقاش الممنوع
+  // فيه الأكواد — هذا كان سبب رد "تم عدّلت" الوهمي بدون أي تغيير فعلي.
+  const __editVerbRe = /(عدل|عدّل|غير|غيّر|بدل|بدّل|ضيف|أضف|اضف|حط|خل|اجعل|زيد|زد|كبر|كبّر|صغر|صغّر|لون|لوّن|احذف|امسح|ازل|أزل|شل|شيل|رتب|حسن|حسّن|كتب|اكتب|أكتب|وضح|وضّح|\badd\b|\bchange\b|\bedit\b|\breplace\b|\bremove\b|\bmake\b|\bset\b|\bput\b)/i;
+  const __editObjRe = /(نص|كلام|كلمة|جملة|عبارة|شعار|لوجو|لون|ألوان|الوان|خلفية|صورة|زر|عنوان|اسم|أسماء|اسماء|تصميم|صفحة|خط|حجم|مكان|رقم|تاريخ|شكل|أيقونة|ايقونة|إطار|اطار|بطاقة|بوستر|دعوة|شهادة|مستطيل|مربع|دائرة|دايرة|خانة|خانه|عنصر|قسم|جزء|سطر|جدول|قائمة|أصفر|اصفر|أحمر|احمر|أخضر|اخضر|أزرق|ازرق|ذهبي|فضي|أسود|اسود|أبيض|ابيض|بنفسجي|وردي|برتقالي|\btext\b|\blogo\b|\bcolor\b|\bbackground\b|\bbutton\b|\btitle\b|\bfont\b|\bimage\b|\bname\b|\bbox\b|\brectangle\b|\bcircle\b|\bsection\b|\brow\b)/i;
+  // سؤال استفهامي واضح (شو/كيف/ليش...) = نقاش، مو أمر تعديل.
+  const __questionStartRe = /^(شو|وش|ايش|إيش|كيف|ليش|ليه|هل|متى|وين|كم|ما هو|ماهو|من هو|what|how|why|when|where|who)\b/i;
+  // مشروع مفتوح + فعل تعديل → مسار التعديل الحقيقي حتى لو العنصر مو في القائمة
+  // (كان "شيل المستطيل الأصفر" يروح للنقاش فيرد "شلت" بدون أي كود — خطأ 26/7).
+  const __editIntent = !!cur.code && __editVerbRe.test(text) && (__editObjRe.test(text) || (!__questionStartRe.test(text.trim()) && text.trim().length <= 90));
+  const __routeFix = (__routeFixRe.test(text) || __editIntent) && !!cur.code;
+  // البناء لا يبدأ إلا بفعل أمر صريح (ابني/بناء/سوي/اعمل...) + كلمة تطبيق/موقع/بوت.
+  const __routeCmdRe = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|اضف|أضف|عدل|عدّل|طور|طوّر|حدث|حدّث|كمل|أكمل|اكمل|ممكن|ابغي|أبغي|ابغى|أبغى|ابي|أبي|بغيت|اريد|أريد|عطني|أعطني|اعطني|هات|سولي|سوّلي|build|create|make|design|develop|add|update|improve|\bwant\b|\bgive\b|\bcan you\b)/i;
+  // 🚫 قرار نهائي (26/7): "اسأل الكل" ملغي بالكامل — لا زر ولا كتابة.
+  // كلود يبني ويرد بروحه دائمًا (وGPT احتياط صامت إذا فشل).
+  const __askAllExplicit = false;
+  customProviders = null;
+  const askAll = !!customProviders || __askAllExplicit || (!__gateNoBuild && ((__routeBuildRe.test(text) && __routeCmdRe.test(text)) || __strongBuildRe.test(text)) && !__routeFix);
+
+  try{
+    // 🤖 وكيل عمران: وضع الوكيل المستقل (Claude Sonnet 4 + أدوات) — يخطط ويبحث ويبني.
+    if(window.__agentModeOn && !imageAttachments.length){
+      await runOmranAgent(cur, apiText, thinkingDiv);
+      return;
+    }
+    // 🏛️ شعارات الجهات الحقيقية: "عطني شعار شرطة دبي" → جلب الشعار الأصلي
+    // من البحث المباشر وعرضه صورًا في الشات (بدون رسم نسخة مقلدة).
+    // "صمم لي لوجو" (تصميم جديد) يظل على مسار التصميم العادي.
+    const __logoFetchRe = /شعار|لوجو|\blogo\b/i;
+    const __logoDesignRe = /(صمم|صمّم|تصميم|ابتكر|انشئ|أنشئ|إنشاء|انشاء|اعمل|أعمل|سوي|سوّي|ابني|اقترح|\bdesign\b|\bcreate\b|\bmake\b|\binvent\b)/i;
+    // v295: 🖼️ بحث صور حقيقي عام — "عطني/هات/وريني صور [أي شي]" → صور حقيقية من النت
+    const __photoFetchRe = /(عطني|أعطني|اعطني|هات|جيب|وريني|أرني|ارني|اعرض|ابغي|أبي|ابي|اريد|أريد|show me|give me|find me)[^]{0,40}?(صور|صورة|photos?|images?|pictures?)/i;
+    const __genDrawRe = /(ارسم|ولّد|ولد لي|تخيل|اصنع|صمم|أنشئ صورة|انشئ صورة|generate|draw|imagine)/i;
+    // v322: "لوجو لتطبيقي/لشركتي/دعاية..." = تصميم جديد، مو بحث عن شعار رسمي موجود
+    const __logoNewRe = /(لتطبيق|لموقع|لشرك|لمشروع|لمتجر|لقناة|لبراند|لعلامت|لمطعم|لمحل|دعاي|اعلان|إعلان|جديد|خاص|هوية|براند|for my|my app|my site|my brand|my company|new logo|(لي|إلي|الي|حق|حگ)\s*(تطبيق|موقع|شرك|مشروع|متجر|قناة|براند|مطعم|محل))/i;
+    // v324: سؤال/متابعة عن شعار سبق ذكره بالمحادثة (وين الشعار اللي عطيتك...) = مو بحث — يروح للمزود عادي
+    const __logoRefRe = /(عطيتك|أعطيتك|اعطيتك|أرفقت|ارفقت|رفعت|حطيت|اللي عطيت|الي عطيت|وين|فين|ليش|ما استخدمت|مااستخدمت|استخدم|ضفه|أضفه|اضفه|حطه|بدله|غيره|عدله)/i;
+    // 🧭 v326 القبطان: بوابة بحث الشعارات الرسمية تفتح فقط في أول رسالة
+    // بمحادثة جديدة. محادثة فيها موضوع جاري = البوابة مقفولة نهائيًا مهما
+    // كانت الكلمات — «وين لوجو/هات الشعار» بنص المحادثة تروح للمزود يكمل
+    // على نفس الموضوع من السياق.
+    const __freshChat = cur.messages.filter(m => m.role === 'user').length <= 1;
+    const __isLogoFetch = __freshChat && __logoFetchRe.test(text) && !__logoDesignRe.test(text) && !__logoNewRe.test(text) && !__logoRefRe.test(text) && !(cur && cur.code);
+    const __isPhotoFetch = !__isLogoFetch && __photoFetchRe.test(text) && !__genDrawRe.test(text) && !cur.adMode && !cur.awaitingAdMode;
+    if(!imageAttachments.length && !__editIntent && (__isLogoFetch || __isPhotoFetch)){
+      const __logoMsg = { role: 'assistant', content: lang === 'ar' ? (__isLogoFetch ? '🔍 أجيب لك الشعار الأصلي من البحث…' : '🔍 أجيب لك صور حقيقية من البحث…') : '🔍 Fetching real images from live search…', _loading: true };
+      cur.messages.push(__logoMsg);
+      renderMessages(true);
+      try{
+        const __lr = await fetch('/api/search', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: text.replace(/عطني|أعطني|اعطني|هات|جيب|ابغي|أبي|اريد|أريد|وريني|أرني|ارني|اعرض/g, '').trim() + (__isLogoFetch ? ' logo png' : ''), images: true, lang, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
+        });
+        const __ld = await __lr.json();
+        const __imgs = (Array.isArray(__ld.images) ? __ld.images : []).slice(0, 4);
+        if(__imgs.length){
+          __logoMsg._loading = false;
+          __logoMsg.content = lang === 'ar' ? (__isLogoFetch ? 'هذا الشعار الأصلي من البحث المباشر 👇 اضغط على الصورة لعرضها كبيرة، أو حمّلها مباشرة.' : 'هذي صور حقيقية من البحث المباشر 👇 اضغط على أي صورة لعرضها كبيرة، أو حمّلها مباشرة.') : 'Here are real images from live search 👇';
+          __logoMsg.attachments = __imgs.map((u, i) => ({ isImage: true, dataUrl: (typeof u === 'string' ? u : (u && u.url) || ''), name: (__isLogoFetch ? 'logo-' : 'photo-') + (i + 1) + '.png' })).filter(a => a.dataUrl);
+        } else {
+          __logoMsg._loading = false;
+          __logoMsg.content = lang === 'ar' ? (__isLogoFetch ? 'ما حصلت الشعار في البحث المباشر 😕 جرب تكتب اسم الجهة بشكل أوضح (مثال: "شعار شرطة دبي").' : 'ما حصلت صور في البحث المباشر 😕 جرب توضح طلبك أكثر.') : 'Could not find images via live search. Try a clearer request.';
+        }
+      }catch(e){
+        __logoMsg._loading = false;
+        __logoMsg.content = lang === 'ar' ? 'تعذر جلب الشعار الآن — جرب مرة ثانية.' : 'Could not fetch the logo right now — try again.';
+      }
+      renderAll(); saveState();
+      thinkingDiv && thinkingDiv.remove();
+      return;
+    }
+    // 🖼️ تعديل الصور بالأوامر النصية: صورة مرفقة + طلب تعديل → Gemini يرجع الصورة معدّلة
+    // Follow-up edits on the same image work too ("زين، الحين كبّر الخط").
+    const __imgEditRe = /(عدل|عدّل|غير|غيّر|ضيف|أضف|اضف|حط|امسح|احذف|ازل|أزل|اجعل|خل|لون|لوّن|كبر|كبّر|صغر|صغّر|زخرف|اكتب|ارسم|حسن|حسّن|حول|حوّل|صمم|صمّم|نسق|نسّق|رتب|رتّب|ديكور|سوي|سوّي|سولي|سو لي|ادمج|أدمج|دمج|edit|change|add|put|remove|erase|make|recolor|write|draw|enhance|convert|transform|redesign|restyle|decor|merge|combine)/i;
+    const __codeWordRe = /(كود|تطبيق|موقع|صفحة|زر\s|لعبة|سكربت|code|app|website|page|button|game|script)/i;
+    const __srcImg = imageAttachments.length ? imageAttachments[imageAttachments.length - 1] : null;
+    // 🧠 v293: أي صورة مرفقة جديدة تنحفظ كآخر صورة في المحادثة
+    if(__srcImg && !__srcImg._fromMemory){
+      cur.lastEditedImage = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' };
+      cur.adMode = null; // صورة جديدة = وضع إعلان جديد
+    }
+    const __followUp = !__srcImg && cur.lastEditedImage && cur.lastMsgWasImageEdit;
+    // v311: رسالة تفاصيل إضافية أثناء تصميم إعلان قائم → تكمل التصميم نفسه.
+    if(text && cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && text.indexOf('ملاحظة للنظام') === -1){
+      text += '\n(ملاحظة للنظام: هذه تفاصيل إضافية للإعلان قيد التصميم — أكمل/حدّث تصميم الإعلان الكامل بهذه التفاصيل حسب قالب ' + (cur.adMode === 'inside' ? 'INSIDE فوق صورة المستخدم background-image:url(\'__USER_IMAGE__\')' : 'OUTSIDE مع src="__USER_IMAGE__"') + ' وأعد الملف كاملًا. ممنوع البحث في الإنترنت وممنوع عرض إعلانات مواقع أخرى وممنوع الرد بنص فقط)';
+    }
+    // 📄 v314: «حطه في PDF / حوله PDF» → التطبيق نفسه يجهز PDF من آخر رد
+    if(text && !__srcImg && !cur.awaitingAdMode && /(بي\s*دي\s*[اإ]ف|pdf)/i.test(text) && /(حط|حوّ?ل|سو|سوّ?ي|اعمل|أعمل|صدّ?ر|نزّ?ل|انزل|أنزل|اطبع|جهّ?ز|ممكن|ابي|أبي|ابغي|أبغي|اريد|أريد|عطني|أعطني|هات|save|make|convert|export|put)/i.test(text)){
+      let __pdfSrc = null;
+      for(let __i = cur.messages.length - 1; __i >= 0; __i--){
+        const __m = cur.messages[__i];
+        if(__m.role !== 'user' && __m.content && !__m._loading && String(__m.content).length > 60){ __pdfSrc = String(__m.content); break; }
+      }
+      if(__pdfSrc){
+        exportTextAsPdf(__pdfSrc);
+        renderAll(); saveState();
+        return;
+      }
+    }
+    // 🪧 v300: سؤال داخل/خارج قبل تصميم إعلان على صورة مرفقة
+    const __adIntentRe = /(إعلان|اعلان|أعلان|للبيع|للإيجار|للايجار)/i;
+    if(text && cur.awaitingAdMode){
+      // v311: «ثنتين/الاثنين/كلاهما» = داخل (صورة كاملة + كل التفاصيل فوقها).
+      const __ansInside = /(داخل|فوق|عليها|على الصور|ثنتين|ثنتينهم|الاثنين|الإثنين|الثنتين|كلاهما|كليهما|الكل|both|inside)/i.test(text);
+      const __ansOutside = !__ansInside && /(خارج|برا|بره|براها|تحت|حول|outside)/i.test(text);
+      if(!__ansInside && !__ansOutside){
+        // v311: رد غامض → نعيد السؤال باختصار بدل ما يضيع الطلب.
+        cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'رد بكلمة وحدة بس: **داخل** (كل التفاصيل مكتوبة فوق الصورة) أو **خارج** (الصورة بروحها والتفاصيل تحتها).' : 'One word please: **inside** (details written over the photo) or **outside** (photo alone, details below it).') });
+        renderAll(); saveState();
+        return;
+      }
+      cur.awaitingAdMode = false;
+      const __orig = cur.pendingAdText || '';
+      cur.pendingAdText = null;
+      if(__ansInside){
+        cur.adMode = 'inside';
+        if(__orig) text = __orig;
+        if(cur.lastEditedImage && cur.lastEditedImage.b64){
+          text += '\n(ملاحظة للنظام: المستخدم أرفق صورة لهذا الإعلان — اجعلها خلفية البوستر الكاملة باستخدام background-image:url(\'__USER_IMAGE__\') بالضبط، وصمم الإعلان الكامل حسب قالب INSIDE: كل التفاصيل والسعر وأي أرقام أعطاها المستخدم على بطاقات زجاجية أنيقة فوق الصورة — ممنوع الاكتفاء بلافتة أو كلمة وحدة)';
+        }
+      } else {
+        cur.adMode = 'outside';
+        if(__orig) text = __orig;
+        if(cur.lastEditedImage && cur.lastEditedImage.b64){
+          text += '\n(ملاحظة للنظام: المستخدم أرفق صورة لهذا الإعلان — اجعلها صورة البطل باستخدام src="__USER_IMAGE__" بالضبط، والتفاصيل خارج الصورة حسب قالب OUTSIDE)';
+        }
+      }
+    } else if(text && __srcImg && __adIntentRe.test(text) && !__codeWordRe.test(text) && !/(داخل|خارج|فوق الصور|تحت الصور)/i.test(text)){
+      cur.awaitingAdMode = true; cur.pendingAdText = text; cur.adMode = null;
+      cur.lastMsgWasImageEdit = true;
+      cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? '📢 قبل أصمم الإعلان — تبي كتابة التفاصيل **داخل الصورة نفسها**، ولا **الصورة بروحها والتفاصيل خارجها**؟ رد بكلمة: داخل / خارج' : '📢 Before I design the ad — do you want the details **inside the photo itself**, or **the photo alone with the details outside it**? Reply: inside / outside') });
+      renderAll(); saveState();
+      return;
+    } else if(text && (__srcImg || __followUp) && /(لوجو|شعار|logo|أيقون|ايقون|صمم|صمّم|تصميم|بطاقة|دعوة|بوستر|غلاف|بنر|نفس هذ|design)/i.test(text) && !cur.adMode && !cur.awaitingAdMode && text.indexOf('ملاحظة للنظام') === -1){
+      // 🎨 v328: صورة/شعار مرفق + طلب تصميم → صورة المستخدم تُضمَّن كما هي — ممنوع إعادة رسمها
+      text += '\n(ملاحظة للنظام: المستخدم أرفق صورة/شعارًا — إذا كان ردك تصميمًا أو كودًا يجب استخدام صورته نفسها كما هي عبر src="__USER_IMAGE__" أو background-image:url(\'__USER_IMAGE__\') بالضبط، والتطبيق يستبدلها بالصورة الحقيقية تلقائيًا. ممنوع منعًا باتًا استبدال صورة المستخدم بلوجو أو صورة من تصميمك أو من الإنترنت — صورة المستخدم هي الأصل الرسمي وتظهر بدون أي تشويه أو قلب أو قص)';
+    }
+    // 🖼️ صورة مرفقة بدون أي نص → نسأل المستخدم محليًا شو يبي (بدون أي استهلاك API)
+    if(__srcImg && !(text || '').trim()){
+      cur.lastEditedImage = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' };
+      cur.lastMsgWasImageEdit = true;
+      cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'وصلتني الصورة 👍 شو تبي أسوي فيها؟ مثلًا: عدّلها، حوّلها ديكور جديد، اكتب عليها، سوّ منها فيديو، أو اسألني أي سؤال عنها.' : 'Got the image 👍 What would you like me to do with it? For example: edit it, redesign the decor, write on it, turn it into a video, or ask me anything about it.') });
+      renderAll(); saveState();
+      return;
+    }
+    // 🎬 v363: شخصية كرتونية تتكلم من الدردشة مباشرة — صورة → كرتون (Gemini) → فيديو ناطق (Runway)
+    let __charImg = __srcImg
+      ? { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' }
+      : (cur.lastEditedImage ? { b64: cur.lastEditedImage.b64, mime: cur.lastEditedImage.mime || 'image/png' } : null);
+    const __talkCharRe = /(شخصية|شخصيه|كرتون|كارتون|كرتوني|كرتونية|كارتونية|character|cartoon|avatar|أفتار|افتار)/i;
+    const __speakRe = /(تتكلم|يتكلم|تحكي|يحكي|تتحدث|يتحدث|ناطق|ناطقة|يقول|تقول|talk|talking|speak|speaking|say)/i;
+    const __talkCharIntent = !!text && !__codeWordRe.test(text) && __talkCharRe.test(text) && __speakRe.test(text);
+    let __alreadyCartoon = false;
+    // 🎬 v367: طلب شخصية تتكلم بدون صورة مرفقة → افتح مكتبة شخصيات جاهزة يختار منها (أو يرفع صورته)
+    window.pickTalkCharacter = window.pickTalkCharacter || function(isAr){
+      return new Promise(function(resolve){
+        const chars = [
+          {id:'c1', name:(isAr?'شاب إماراتي':'Emirati man')},
+          {id:'c2', name:(isAr?'فتاة إماراتية':'Emirati woman')},
+          {id:'c3', name:(isAr?'روبوت':'Robot')},
+          {id:'c4', name:(isAr?'ولد':'Boy')},
+          {id:'c5', name:(isAr?'بنت':'Girl')},
+          {id:'c6', name:(isAr?'جدّ':'Grandpa')}
+        ];
+        const ov = document.createElement('div');
+        ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:18px;';
+        const dir=isAr?'rtl':'ltr';
+        let grid='';
+        chars.forEach(function(c){
+          grid += '<button class="__pcItem" data-id="'+c.id+'" style="border:2px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);border-radius:14px;padding:6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;">'
+            + '<img src="/assets/characters/'+c.id+'.png" style="width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:10px;background:#111;" loading="lazy">'
+            + '<span style="font-size:11.5px;color:#ddd;">'+c.name+'</span></button>';
+        });
+        ov.innerHTML='<div dir="'+dir+'" style="width:100%;max-width:380px;max-height:88vh;overflow:auto;background:#1c1c24;border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:18px;color:#fff;font-family:inherit;box-shadow:0 18px 50px rgba(0,0,0,.5);">'
+          + '<div style="font-size:16px;font-weight:700;margin-bottom:4px;">'+(isAr?'اختر شخصية تتكلم 🎭':'Pick a talking character 🎭')+'</div>'
+          + '<div style="font-size:12px;opacity:.7;margin-bottom:14px;">'+(isAr?'اختر شخصية جاهزة، أو ارفع صورتك.':'Pick a ready character, or upload your photo.')+'</div>'
+          + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">'+grid+'</div>'
+          + '<button id="__pcUpload" style="width:100%;padding:11px;border-radius:12px;border:1px dashed rgba(168,130,255,.5);background:rgba(168,130,255,.08);color:#c9b3ff;font-size:12.5px;cursor:pointer;margin-bottom:10px;">'+(isAr?'📎 أو ارفع صورتك بدل ذلك':'📎 Or upload your own photo')+'</button>'
+          + '<button id="__pcCancel" style="width:100%;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#aaa;font-size:13px;cursor:pointer;">'+(isAr?'إلغاء':'Cancel')+'</button>'
+          + '</div>';
+        document.body.appendChild(ov);
+        function done(v){ try{document.body.removeChild(ov);}catch(_){}; resolve(v); }
+        ov.querySelectorAll('.__pcItem').forEach(function(b){ b.onclick=function(){ done({id:b.getAttribute('data-id')}); }; });
+        ov.querySelector('#__pcUpload').onclick=function(){ done('upload'); };
+        ov.querySelector('#__pcCancel').onclick=function(){ done(null); };
+        ov.addEventListener('click', function(e){ if(e.target===ov) done(null); });
+      });
+    };
+    if(__talkCharIntent && !(__charImg && __charImg.b64)){
+      const __pick = await window.pickTalkCharacter(lang==='ar');
+      if(__pick === null){ thinkingDiv && thinkingDiv.remove(); return; }
+      if(__pick === 'upload'){
+        cur.messages.push({ role:'assistant', content:(lang==='ar'?'📎 ارفع صورتك من زر المشبك ثم أعد نفس الطلب مع الجملة اللي تبي الشخصية تقولها.':'📎 Attach your photo, then resend the same request with the line you want the character to say.') });
+        thinkingDiv && thinkingDiv.remove(); renderAll(); saveState(); return;
+      }
+      try{
+        const __pr = await fetch('/assets/characters/'+__pick.id+'.png');
+        const __pb = await __pr.blob();
+        const __pd = await new Promise(function(res){ const fr=new FileReader(); fr.onload=function(){res(fr.result);}; fr.readAsDataURL(__pb); });
+        __charImg = { b64: (String(__pd).split(',')[1]||''), mime:'image/png' };
+        __alreadyCartoon = true;
+      }catch(_){ thinkingDiv && thinkingDiv.remove(); cur.messages.push({ role:'assistant', content:(lang==='ar'?'⚠️ تعذّر تحميل الشخصية، جرّب مرة ثانية.':'⚠️ Could not load the character, try again.') }); renderAll(); saveState(); return; }
+    }
+    const __wantsTalkChar = __talkCharIntent && !!(__charImg && __charImg.b64);
+    if(__wantsTalkChar){
+      let __dialogue = '';
+      const __dm = text.match(/(?:يقول|تقول|قول(?:ي|ه|ها)?|says?|:|：)\s*[:：]?\s*(.+)$/i);
+      if(__dm && __dm[1]) __dialogue = __dm[1].trim().replace(/^["'«»\s]+|["'«»\s]+$/g,'');
+      // 🎬 v366: نافذة سؤالين سريعة عشان المستخدم يكون على بيّنة — حركة الشخصية + مدة الفيديو
+      window.askTalkCharOpts = window.askTalkCharOpts || function(isAr){
+        return new Promise(function(resolve){
+          const ov = document.createElement('div');
+          ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:18px;';
+          const dir = isAr ? 'rtl' : 'ltr';
+          ov.innerHTML = '<div dir="'+dir+'" style="width:100%;max-width:340px;background:#1c1c24;border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:20px;color:#fff;font-family:inherit;box-shadow:0 18px 50px rgba(0,0,0,.5);">'
+            + '<div style="font-size:16px;font-weight:700;margin-bottom:14px;">'+(isAr?'إعدادات الشخصية المتكلمة 🎬':'Talking character options 🎬')+'</div>'
+            + '<div style="font-size:13px;opacity:.75;margin-bottom:8px;">'+(isAr?'حركة الشخصية:':'Character motion:')+'</div>'
+            + '<div id="__tcMotion" style="display:flex;gap:8px;margin-bottom:16px;">'
+            +   '<button data-v="static" class="__tcOpt" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-size:13px;cursor:pointer;">'+(isAr?'ثابتة (تتكلم فقط)':'Static (talk only)')+'</button>'
+            +   '<button data-v="moving" class="__tcOpt" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-size:13px;cursor:pointer;">'+(isAr?'متحركة':'Moving')+'</button>'
+            + '</div>'
+            + '<div style="font-size:13px;opacity:.75;margin-bottom:8px;">'+(isAr?'مدة الفيديو:':'Video duration:')+'</div>'
+            + '<div id="__tcDur" style="display:flex;gap:8px;margin-bottom:16px;">'
+            +   '<button data-v="4" class="__tcD" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-size:13px;cursor:pointer;">'+(isAr?'٤ ثواني':'4s')+'</button>'
+            +   '<button data-v="6" class="__tcD" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-size:13px;cursor:pointer;">'+(isAr?'٦ ثواني':'6s')+'</button>'
+            +   '<button data-v="8" class="__tcD" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-size:13px;cursor:pointer;">'+(isAr?'٨ ثواني':'8s')+'</button>'
+            + '</div>'
+            + '<button data-v="more" id="__tcMore" style="width:100%;padding:10px;border-radius:12px;border:1px dashed rgba(168,130,255,.5);background:rgba(168,130,255,.08);color:#c9b3ff;font-size:12.5px;cursor:pointer;margin-bottom:14px;">'+(isAr?'أبي فيديو أطول / أكثر ✨':'I want a longer / more video ✨')+'</button>'
+            + '<div style="display:flex;gap:8px;">'
+            +   '<button id="__tcCancel" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#aaa;font-size:13px;cursor:pointer;">'+(isAr?'إلغاء':'Cancel')+'</button>'
+            +   '<button id="__tcGo" style="flex:2;padding:11px;border-radius:12px;border:none;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;font-weight:700;font-size:13px;cursor:pointer;">'+(isAr?'ابدأ 🎬':'Start 🎬')+'</button>'
+            + '</div></div>';
+          document.body.appendChild(ov);
+          let motion = 'moving', dur = 6;
+          function paint(){
+            ov.querySelectorAll('.__tcOpt').forEach(b=>{ b.style.background = b.getAttribute('data-v')===motion ? 'linear-gradient(135deg,#8b5cf6,#6d28d9)' : 'rgba(255,255,255,.05)'; b.style.borderColor = b.getAttribute('data-v')===motion ? 'transparent' : 'rgba(255,255,255,.15)'; });
+            ov.querySelectorAll('.__tcD').forEach(b=>{ b.style.background = parseInt(b.getAttribute('data-v'),10)===dur ? 'linear-gradient(135deg,#8b5cf6,#6d28d9)' : 'rgba(255,255,255,.05)'; b.style.borderColor = parseInt(b.getAttribute('data-v'),10)===dur ? 'transparent' : 'rgba(255,255,255,.15)'; });
+          }
+          paint();
+          ov.querySelectorAll('.__tcOpt').forEach(b=> b.onclick = ()=>{ motion = b.getAttribute('data-v'); paint(); });
+          ov.querySelectorAll('.__tcD').forEach(b=> b.onclick = ()=>{ dur = parseInt(b.getAttribute('data-v'),10); paint(); });
+          function done(val){ try{ document.body.removeChild(ov); }catch(_){} resolve(val); }
+          ov.querySelector('#__tcMore').onclick = ()=> done('more');
+          ov.querySelector('#__tcCancel').onclick = ()=> done(null);
+          ov.querySelector('#__tcGo').onclick = ()=> done({ motion, duration: dur });
+          ov.addEventListener('click', e=>{ if(e.target===ov) done(null); });
+        });
+      };
+      const __tcChoice = await window.askTalkCharOpts(lang==='ar');
+      if(__tcChoice === null){ thinkingDiv && thinkingDiv.remove(); return; }
+      if(__tcChoice === 'more'){
+        cur.messages.push({ role:'assistant', content:(lang==='ar'?'✨ الفيديوهات الأطول والخيارات الإضافية متاحة في الباقات المدفوعة — افتح ⚙️ ← الاشتراك لترقية باقتك وتطلّع فيديوهات أطول بجودة أعلى.':'✨ Longer videos and extra options are available on paid plans — open ⚙️ → Subscription to upgrade and create longer, higher-quality videos.') });
+        thinkingDiv && thinkingDiv.remove(); renderAll(); saveState(); return;
+      }
+      const __tcMotion = __tcChoice.motion, __tcDur = __tcChoice.duration;
+      try{
+        let __cartoonB64 = '', __cartoonMime = 'image/png';
+        if(__alreadyCartoon){
+          // الشخصية الجاهزة كرتونية أصلًا — نستخدمها مباشرة بدون تحويل
+          __cartoonB64 = __charImg.b64; __cartoonMime = __charImg.mime || 'image/png';
+        } else {
+          // ① تحويل الصورة لشخصية كرتونية عبر Gemini
+          thinkingDiv.textContent = lang === 'ar' ? '🎨 جاري تحويل صورتك لشخصية كرتونية…' : '🎨 Turning your photo into a cartoon character…';
+          const __cartoonPrompt = 'Transform this photo into a cute chibi-style 3D animated character: big adorable head, small short body, FULL BODY standing pose facing the camera, happy friendly expression, clean modern Pixar-like rendering. Keep the SAME face features, hairstyle, beard/facial hair, skin tone and the same clothing style and colors as the person in the photo (including traditional dress if worn). Soft simple pastel studio background, vertical 9:16 composition with the whole character visible from head to feet.';
+          for(let __ct = 0; __ct < 2 && !__cartoonB64; __ct++){
+            if(__ct) await new Promise(r=>setTimeout(r,1500));
+            const __cr = await fetch('/api/maha-image', {
+              method:'POST', headers:{'Content-Type':'application/json'}, signal: genAbortController.signal,
+              body: JSON.stringify({ prompt: __cartoonPrompt, editImageBase64: __charImg.b64, editMimeType: __charImg.mime, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
+            });
+            const __cd = await __cr.json().catch(()=>({}));
+            if(__cr.ok && __cd.imageBase64){ __cartoonB64 = __cd.imageBase64; __cartoonMime = __cd.mimeType || 'image/png'; }
+          }
+          if(!__cartoonB64) throw new Error(lang==='ar'?'تعذر تحويل الصورة لكرتون، جرّب صورة أوضح.':'Could not cartoonize the image, try a clearer photo.');
+          cur.messages.push({ role:'assistant', content:(lang==='ar'?'🎨 صارت شخصية كرتونية ✅ الحين أحرّكها تتكلم…':'🎨 Cartoon character ready ✅ now animating it to talk…'), attachments:[{ name:'cartoon.png', isImage:true, mime:__cartoonMime, dataUrl:'data:'+__cartoonMime+';base64,'+__cartoonB64 }] });
+          cur.lastEditedImage = { b64: __cartoonB64, mime: __cartoonMime };
+        }
+        // ② تحريكها لفيديو ناطق بصوت مسموع عبر Veo 3 (image-to-video + صوت أصلي)
+        //    Runway يطلّع فيديو صامت، فالصوت المنطوق يحتاج Veo 3 — عمودي 9:16.
+        thinkingDiv.textContent = lang === 'ar' ? '🎬 جاري تحريك الشخصية لتتكلم بصوت… قد يستغرق ١–٣ دقائق' : '🎬 Animating the character to talk with voice… 1–3 minutes';
+        const __voiceLang = /[\u0600-\u06FF]/.test((__dialogue || '') + ' ' + (text || '')) ? 'Arabic' : 'the same language as the line';
+        const __motionDesc = __tcMotion === 'static'
+          ? 'The character stands still in place, only the head and mouth move naturally while talking (minimal body motion)'
+          : 'The character is lively and animated: gentle body movement, waving hand gestures and expressive motion while talking';
+        const __talkPrompt = 'A cute chibi 3D cartoon character standing and talking directly to the camera, with natural mouth movement and accurate lip-sync, lively friendly facial expression. ' + __motionDesc + '. The character speaks out loud in ' + __voiceLang + (__dialogue ? (', clearly saying: "' + __dialogue.slice(0,300) + '"') : '') + '. Clear spoken voice audio, no background music. Keep the character exactly as in the provided image.';
+        const __vp = { promptText: __talkPrompt.slice(0,1400), ratio: '720:1280', quality: 'high', durationSeconds: __tcDur, token: authGet('aiapp_auth_token'), imageBase64: __cartoonB64, imageMime: __cartoonMime };
+        let __op = null, __verr = '';
+        for(let __a = 0; __a < 2 && !__op; __a++){
+          const __r = await fetch('/api/video?action=veo-create', { method:'POST', headers:{'Content-Type':'application/json'}, signal: genAbortController.signal, body: JSON.stringify(__vp) });
+          const __d = await __r.json().catch(()=>({}));
+          if(__r.ok && __d.op){ __op = __d.op; }
+          else { __verr = (__d && __d.error) || ('HTTP ' + __r.status); if(/auth_required/.test(__verr) || /points_insufficient/.test(__verr)) break; if(__a === 0) await new Promise(r=>setTimeout(r,6000)); }
+        }
+        if(!__op){
+          if(/auth_required/.test(__verr)) throw new Error(lang==='ar'?'سجّل الدخول أولًا عشان أسوي لك الفيديو.':'Please log in first to create videos.');
+          if(/points_insufficient/.test(__verr)) throw new Error(lang==='ar'?'رصيدك غير كافٍ لإنشاء فيديو ناطق.':'Not enough balance for a talking video.');
+          throw new Error(__verr);
+        }
+        let __vurl = null; const __vt0 = Date.now();
+        while(!__vurl){
+          if(Date.now() - __vt0 > 6*60*1000) throw new Error(lang==='ar'?'تأخر إنشاء الفيديو، جرّب مرة ثانية.':'Video generation timed out, please try again.');
+          await new Promise(r=>setTimeout(r,6000));
+          if(genAbortController.signal.aborted) throw Object.assign(new Error('aborted'), { name:'AbortError' });
+          const __sr = await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(__op), { signal: genAbortController.signal });
+          const __sd = await __sr.json().catch(()=>({}));
+          if(__sd.status === 'SUCCEEDED'){ __vurl = Array.isArray(__sd.output) ? __sd.output[0] : __sd.output; }
+          else if(__sd.status === 'FAILED'){ let __fr = __sd.failure || ''; if(/moderation|SAFETY|filtered|content did not pass/i.test(__fr)){ __fr = (lang==='ar')?'الرقابة رفضت المحتوى — جرّب صورة ثانية':'Content rejected by safety filters — try another photo'; } throw new Error((lang==='ar'?'فشل إنشاء الفيديو':'Video generation failed') + (__fr?(' — '+__fr):'')); }
+          else { thinkingDiv.textContent = (lang==='ar'?'🎬 جاري تحريك الشخصية بصوت… ':'🎬 Animating with voice… ') + (__sd.status || ''); }
+        }
+        cur.messages.push({ role:'assistant', content:(lang==='ar'?'🎬 شخصيتك الكرتونية تتكلم بصوت جاهزة ✅ (الرابط صالح ٢٤ ساعة — نزّله عشان يظل عندك)':'🎬 Your talking cartoon character (with voice) is ready ✅ (link valid 24h — download it to keep it)'), attachments:[{ name:'talking-character.mp4', isVideo:true, url:__vurl }] });
+        if(window.autoSaveVideo) window.autoSaveVideo(__vurl);
+      }catch(e){
+        if(!(e && e.name === 'AbortError')){ cur.messages.push({ role:'assistant', content:'⚠️ ' + (e && e.message ? e.message : String(e)) }); }
+      }
+      cur.lastMsgWasImageEdit = false;
+      renderAll(); saveState();
+      return;
+    }
+    // 🏠 طلب توليد صورة جديدة انطلاقًا من صورة مرفقة (مثال: مخطط منزل + "عطني تصميم خارجي")
+    const __imgGenIntentRe = /(عطني|أعطني|اعطني|هات|ابا|أبا|ابي|أبي|ابغي|أبغي|اريد|أريد|سو|سوي|سوّي|اعمل|أعمل|give me|make me|i want|show me)\s+(?:لي\s+)?.{0,20}?(تصميم|تصور|منظر|واجهة|صوره?|رسمة|شكل|design|render|view|image|picture|visual)/i;
+    // 🎬 فيديو من المحادثة مباشرة: صورة + "سوي فيديو/حركها" → Runway image_to_video،
+    // وبدون صورة مع طلب فيديو صريح → text_to_video. (كل الأقسام في مكان واحد)
+    const __videoWordRe = /فيديو|ڤيديو|\bvideo\b/i;
+    const __animateRe = /(حرك|حرّك|animate)/i;
+    const __vidSrc = __srcImg
+      ? { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' }
+      : (cur.lastEditedImage ? { b64: cur.lastEditedImage.b64, mime: cur.lastEditedImage.mime || 'image/png' } : null);
+    const __wantsVideo = !!text && !__codeWordRe.test(text) && (
+      (__videoWordRe.test(text) && (__routeCmdRe.test(text) || /(حول|حوّل|حوله|حوّله|ولد|ولّد|انتج|أنتج|اطلع لي|طلع لي|generate|convert|turn)/i.test(text) || /(فيديو|ڤيديو|video)\s+(عن|يظهر|فيه|about|of|showing)\s+\S/i.test(text))) ||
+      (!!__vidSrc && (__srcImg || cur.lastMsgWasImageEdit) && __animateRe.test(text))
+    );
+    // v204: a request like just "اريد فيديو" / "سوي فيديو" (no actual subject)
+    // used to fall straight into real Runway/Veo generation — burning credits
+    // on a random default scene. Strip the trigger words/pronouns/punctuation
+    // and require at least 2 remaining meaningful words before generating;
+    // otherwise ask what the video/image should be about instead of calling
+    // the generation API. Only applies to the text_to_video path (no source
+    // image) — when an image is attached/animated, the image itself is the
+    // subject, so this check is skipped for that flow.
+    const __mediaTriggerWordsRe = /[؟?!.,،؛:]|\b(اريد|أريد|ابي|أبي|ابغى|ابغي|أبغى|أبغي|ابا|أبا|سوي|سوّي|سو|اعمل|أعمل|اصنع|أصنع|انشئ|أنشئ|اعطني|أعطني|عطني|هات|لي|لى|إلي|الي|انا|أنا|فيديو|ڤيديو|video|صورة|image|picture|مقطع|clip|من فضلك|please|لو سمحت)\b/gi;
+    function __isVagueMediaRequest(raw){
+      const core = String(raw || '').replace(__mediaTriggerWordsRe, ' ').replace(/\s+/g, ' ').trim();
+      if(!core) return true;
+      return core.split(' ').filter(Boolean).length < 2;
+    }
+    const __videoHasConcreteSubject = !!(__vidSrc && (__srcImg || cur.lastMsgWasImageEdit) && __animateRe.test(text || ''));
+    if(__wantsVideo && !__videoHasConcreteSubject && __isVagueMediaRequest(text)){
+      cur.messages.push({ role: 'assistant', content: lang === 'ar' ? 'فيديو عن شو؟ وصفلي المشهد اللي تبيه 🎬' : 'A video about what? Describe the scene you want 🎬' });
+      renderAll(); saveState();
+      thinkingDiv && thinkingDiv.remove();
+      return;
+    }
+    if(__wantsVideo){
+      thinkingDiv.textContent = lang === 'ar' ? '🎬 جاري إنشاء الفيديو… قد يستغرق ١–٣ دقائق' : '🎬 Creating video… this can take 1–3 minutes';
+      try{
+        const __vp = { promptText: text.slice(0, 900), duration: 5, ratio: '1280:720', token: authGet('aiapp_auth_token') };
+        if(__vidSrc && __vidSrc.b64 && (__srcImg || __animateRe.test(text) || /منها|عليها|الصورة|صورتي|this image|the image|it/i.test(text))){
+          // Runway requires w/h ratio 0.5–2: pad the image if needed
+          try{
+            const __fixed = await new Promise((resolve) => {
+              const __im = new Image();
+              __im.onload = () => {
+                const __r2 = __im.width / __im.height;
+                if(__r2 >= 0.5 && __r2 <= 2) return resolve(null);
+                let __cw = __im.width, __ch = __im.height;
+                if(__r2 < 0.5) __cw = Math.ceil(__im.height * 0.52); else __ch = Math.ceil(__im.width * 0.52);
+                const __c = document.createElement('canvas');
+                __c.width = __cw; __c.height = __ch;
+                const __x = __c.getContext('2d');
+                __x.fillStyle = '#000'; __x.fillRect(0, 0, __cw, __ch);
+                __x.drawImage(__im, Math.round((__cw - __im.width) / 2), Math.round((__ch - __im.height) / 2));
+                resolve(__c.toDataURL('image/jpeg', 0.85).split(',')[1]);
+              };
+              __im.onerror = () => resolve(null);
+              __im.src = 'data:' + (__vidSrc.mime || 'image/png') + ';base64,' + __vidSrc.b64;
+            });
+            if(__fixed){ __vidSrc.b64 = __fixed; __vidSrc.mime = 'image/jpeg'; }
+          }catch(e){}
+          __vp.imageBase64 = __vidSrc.b64;
+          __vp.imageMime = __vidSrc.mime;
+        }
+        let __vid = null, __verr = '';
+        for(let __a = 0; __a < 2 && !__vid; __a++){
+          const __r = await fetch('/api/video-create', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            signal: genAbortController.signal,
+            body: JSON.stringify(__vp),
+          });
+          const __d = await __r.json().catch(() => ({}));
+          if(__r.ok && __d.id){ __vid = __d.id; }
+          else {
+            __verr = (__d && __d.error) || ('HTTP ' + __r.status);
+            if(__verr === 'auth_required' || __verr === 'daily_limit_reached') break;
+            if(__a === 0) await new Promise(r => setTimeout(r, 6000));
+          }
+        }
+        if(!__vid){
+          if(__verr === 'auth_required') throw new Error(lang === 'ar' ? 'سجّل الدخول أولًا عشان أسوي لك الفيديو.' : 'Please log in first to create videos.');
+          if(__verr === 'daily_limit_reached') throw new Error(lang === 'ar' ? 'وصلت حد الفيديوهات اليومي، جرّب بكرة.' : 'Daily video limit reached, try again tomorrow.');
+          throw new Error(__verr);
+        }
+        let __vurl = null;
+        const __vt0 = Date.now();
+        while(!__vurl){
+          if(Date.now() - __vt0 > 6 * 60 * 1000) throw new Error(lang === 'ar' ? 'تأخر إنشاء الفيديو، جرّب مرة ثانية.' : 'Video generation timed out, please try again.');
+          await new Promise(r => setTimeout(r, 5000));
+          if(genAbortController.signal.aborted) throw Object.assign(new Error('aborted'), { name: 'AbortError' });
+          const __sr = await fetch('/api/video-status?id=' + encodeURIComponent(__vid), { signal: genAbortController.signal });
+          const __sd = await __sr.json().catch(() => ({}));
+          if(__sd.status === 'SUCCEEDED'){ __vurl = Array.isArray(__sd.output) ? __sd.output[0] : __sd.output; }
+          else if(__sd.status === 'FAILED'){ let __fr = __sd.failure || ''; if(/moderation|SAFETY|content did not pass/i.test(__fr)){ __fr = (lang === 'ar') ? 'الرقابة رفضت المحتوى — جرّب وصفًا أهدأ أو شِل صورة الشخص' : 'Content rejected by safety filters — try a calmer description or remove the person photo'; } throw new Error((lang === 'ar' ? 'فشل إنشاء الفيديو' : 'Video generation failed') + (__fr ? (' — ' + __fr) : '')); }
+          else { thinkingDiv.textContent = (lang === 'ar' ? '🎬 جاري إنشاء الفيديو… ' : '🎬 Creating video… ') + (__sd.status || ''); }
+        }
+        cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? '🎬 فيديوك جاهز ✅ (الرابط صالح ٢٤ ساعة — نزّله عشان يظل عندك)' : '🎬 Your video is ready ✅ (link valid 24h — download it to keep it)'), attachments: [{ name: 'video.mp4', isVideo: true, url: __vurl }] });
+        if(window.autoSaveVideo) window.autoSaveVideo(__vurl);
+      }catch(e){
+        if(!(e && e.name === 'AbortError')){
+          cur.messages.push({ role: 'assistant', content: '⚠️ ' + (e && e.message ? e.message : String(e)) });
+        }
+      }
+      cur.lastMsgWasImageEdit = false;
+      renderAll(); saveState();
+      return;
+    }
+    if(text && !cur.adMode && (__IMG_FOLLOW || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && (__srcImg || __followUp || __IMG_FOLLOW)){
+      thinkingDiv.textContent = lang === 'ar' ? '🖼️ جاري تعديل الصورة…' : '🖼️ Editing image…';
+      const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : cur.lastEditedImage.b64;
+      const __mime = __srcImg ? (__srcImg.mime || 'image/png') : (cur.lastEditedImage.mime || 'image/png');
+      // ✍️ إذا الطلب كتابة نص/اسم على الصورة → نرسمه محليًا بخط سليم (بدون Gemini)
+      const __writeIntentRe = /(اكتب|أكتب|حط\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|(?:ضيف|أضف|اضف)\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|write|put\s+(?:my\s+)?name|add\s+(?:the\s+)?text)/i;
+      if(__writeIntentRe.test(text)){
+        const __txt = extractOverlayText(text);
+        if(__txt){
+          try{
+            const __outB64 = await overlayTextOnImage(__b64, __mime, __txt);
+            cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'تمت كتابة النص على الصورة ✅ اضغط عليها للتكبير، وتقدر تطلب تعديلات إضافية.' : 'Text added to the image ✅ Tap to enlarge — you can request more edits.'), attachments: [{ name: 'edited.png', isImage: true, mime: 'image/png', dataUrl: 'data:image/png;base64,' + __outB64 }] });
+            cur.lastEditedImage = { b64: __outB64, mime: 'image/png' };
+            cur.lastMsgWasImageEdit = true;
+            renderAll(); saveState();
+            return;
+          }catch(e){ /* فشل الرسم المحلي → نكمل عبر Gemini */ }
+        }
+      }
+      let __data = {}; let __ok = false;
+      for(let __try = 0; __try < 2 && !__ok; __try++){
+        const __res = await fetch('/api/maha-image', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          signal: genAbortController.signal,
+          body: JSON.stringify({ prompt: text, editImageBase64: __b64, editMimeType: __mime, extraImages: imageAttachments.length > 1 ? imageAttachments.slice(0, -1).map(a => ({ data: (a.dataUrl || '').split(',')[1] || '', mime: a.mime || 'image/png' })) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+        });
+        __data = await __res.json().catch(() => ({}));
+        __ok = __res.ok && !!__data.imageBase64;
+        if(!__ok && !__data) __data = {};
+        if(!__ok) __data.__status = __res.status;
+      }
+      if(__ok){
+        const __outMime = __data.mimeType || 'image/png';
+        cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'تم تعديل الصورة ✅ اضغط عليها للتكبير، وتقدر تطلب تعديلات إضافية عليها مباشرة.' : 'Image edited ✅ Tap it to enlarge — you can keep requesting more edits.'), attachments: [{ name: 'edited.png', isImage: true, mime: __outMime, dataUrl: 'data:' + __outMime + ';base64,' + __data.imageBase64 }] });
+        cur.lastEditedImage = { b64: __data.imageBase64, mime: __outMime };
+        cur.lastMsgWasImageEdit = true;
+      } else {
+        cur.messages.push({ role: 'assistant', content: imgErrFriendly(__data && __data.error, lang === 'ar') || ((lang === 'ar' ? '⚠️ تعذر تعديل الصورة: ' : '⚠️ Image edit failed: ') + ((__data && __data.error) || ('HTTP ' + (__data.__status || '?')))) });
+        cur.lastMsgWasImageEdit = false;
+      }
+      renderAll(); saveState();
+      return;
+    }
+    // 🏗️ v260: طلب تصميم معماري نصي من المحادثة (تصميم/مخطط + غرف/فيلا/بيت...)
+    // → مخطط 2D + واجهة خارجية + مواصفات نصية من المزود — كلها في رد واحد.
+    let __archImagesDone = false;
+    const __designDocRe = /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|سيرة ذاتية|certificate|invitation|poster|logo|banner|\bcv\b|resume)/i;
+    const __archVerbRe = /(تصميم|صمم|صمّم|صممي|مخطط|اسكتش|ابني|أبني|نبني|بناء|ارسم|أرسم|ارسمي)/i;
+    const __archHomeRe = /(غرف|غرفة|غرفتين|صالة|صاله|فيلا|فله|فلة|بيت|منزل|شقة|شقه|ملحق|مجلس|استراحة|عمارة|مزرعة|دور\s?أرضي|واجهة|villa|floor\s?plan|house\s?design|apartment\s?design)/i;
+    // ⛔ طلبات الإيجار/البيع/الأسعار = بحث حي، مو تصميم معماري.
+    const __archExcludeRe = /(ايجار|إيجار|اجار|أجار|تأجير|تاجير|استئجار|للبيع|شراء|اشتري|بكم|سعر|أسعار|اسعار|rent|for\s?sale|price)/i;
+    // 🏗️ v297: متابعة قصيرة بعد تصميم معماري («طابق 1»، «الواجهة»، «الدور الثاني»...) تكمل نفس المسار.
+    const __archFollowRe = /(طابق|الطابق|دور|الدور|واجهة|الواجهة|مخطط|المخطط|خارطة|توزيع|غرف|غرفة|مجلس|صالة|صاله|مطبخ|حمام|حديقة|مدخل|سور|مواقف|ملحق|سطح|قبو|الشكل الخارجي|شكل خارجي|floor|facade|plan|garden|entrance|roof|basement|exterior)/i;
+    // ✅ v303: «نعم/ابدأ/يلا/تمام» بعد رد معماري = تنفيذ فوري (مخطط + واجهة) بلا أسئلة.
+    const __archAffirmRe = /^\s*(نعم|أجل|اجل|ايه|إيه|اي نعم|اوك|أوك|اوكي|أوكي|تمام|زين|طيب|يلا|يالله|ابدا|ابدأ|أبدأ|ابدي|كمل|أكمل|اكمل|نفذ|نفّذ|سو|سوها|yes|ok|okay|go|start|sure|continue)[\s.!،؟]*$/i;
+    // ✅ v303: لو الرد الأخير من المساعد كان مواصفات معمارية نصية (بدون صور)، نعتبره سياق معماري حتى لو lastArchText فاضي.
+    let __archCtxText = cur.lastArchText || '';
+    if(!__archCtxText){
+      try{
+        const __la = [...cur.messages].reverse().find(m => m && m.role === 'assistant' && typeof m.content === 'string');
+        if(__la && __la.content.length > 250 && /(فيلا|فله|فلة|منزل|بيت|مخطط|واجهة|غرف(?:ة)?\s*نوم|م²|دور\s?أرضي|ماستر|floor\s?plan|facade)/i.test(__la.content) && !/```/.test(__la.content)){
+          __archCtxText = __la.content.replace(/\s+/g, ' ').slice(0, 1500);
+        }
+      }catch(e){}
+    }
+    // ✅ v373: السياق المعماري صالح فقط إذا كان آخر رد مساعد بنفس الموضوع —
+    // «نعم» بعد رد عن فنادق/مواضيع ثانية ممنوع يرجّع تصميم فيلا قديم من lastArchText.
+    if(__archCtxText){
+      try{
+        const __laChk = [...cur.messages].reverse().find(m => m && m.role === 'assistant' && typeof m.content === 'string');
+        if(!__laChk || !/(مخطط|واجهة|م²|متر مربع|دور\s?أرضي|ماستر|مواصفات|توزيع داخلي|الشكل الخارجي|floor\s?plan|facade|exterior)/i.test(__laChk.content)){
+          __archCtxText = '';
+          cur.lastArchText = '';
+        }
+      }catch(e){}
+    }
+    const __archAffirm = !!(__archCtxText && text && __archAffirmRe.test(text));
+    const __archFollowUp = !!(__archCtxText && text && !__srcImg && !__followUp &&
+       !__codeWordRe.test(text) && !__designDocRe.test(text) && !__archExcludeRe.test(text) &&
+       (__archAffirm || (text.length < 120 && __archFollowRe.test(text))));
+    if(text && !__srcImg && !__followUp && !__codeWordRe.test(text) && !__designDocRe.test(text) &&
+       ((__archVerbRe.test(text) && __archHomeRe.test(text) && !__archExcludeRe.test(text)) || __archFollowUp)){
+      const __archText = __archFollowUp ? (__archAffirm ? __archCtxText : (__archCtxText + ' — والمطلوب الآن تحديدًا: ' + text)) : text;
+      cur.lastArchText = __archFollowUp ? __archCtxText : text;
+      const __archGen = async (label, prompt) => {
+        thinkingDiv.textContent = label;
+        let __d = {}; let __k = false;
+        try{
+          for(let __t3 = 0; __t3 < 3 && !__k; __t3++){
+            // ✅ v301: مهلة متزايدة بين المحاولات — أخطاء Gemini المؤقتة (429/500)
+            // كانت تفشّل صورة الواجهة بصمت عند محاولتين متتاليتين بدون انتظار.
+            if(__t3) await new Promise(r => setTimeout(r, 1500 * __t3));
+            const __r = await fetch('/api/maha-image', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              signal: genAbortController.signal,
+              body: JSON.stringify({ prompt: prompt.slice(0, 1800), token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+            });
+            __d = await __r.json().catch(() => ({}));
+            __k = __r.ok && !!__d.imageBase64;
+          }
+        }catch(e){ if(e && e.name === 'AbortError') throw e; }
+        return __k ? __d : null;
+      };
+      try{
+        let __floorsCount = 0;
+        const __fm = __archText.match(/(\d+|واحد|وحده|وحدة|اثنين|ثنتين|ثلاث(?:ة)?|أربع(?:ة)?|اربع(?:ة)?)\s*(?:طوابق|طابق|أدوار|ادوار|دور|floors?|stor(?:y|ies))/i) || __archText.match(/(?:طابق|دور)\s*(واحد|1|١)/);
+        if(__fm){ const __w = __fm[1]; __floorsCount = /^\d+$/.test(__w) ? parseInt(__w) : ({'واحد':1,'وحده':1,'وحدة':1,'١':1,'1':1,'اثنين':2,'ثنتين':2,'ثلاث':3,'ثلاثة':3,'أربع':4,'أربعة':4,'اربع':4,'اربعة':4}[__w] || 0); }
+        if(!__floorsCount && /أرضي|ارضي/.test(__archText)) __floorsCount = 1;
+        const __floorRule = __floorsCount ? (' STRICT REQUIREMENT: the building must have EXACTLY ' + __floorsCount + ' floor(s)' + (__floorsCount === 1 ? ' — single-story ground-level building only, absolutely no upper floor, no first floor windows above, flat single-level roofline' : '') + '. Do not add extra floors.') : '';
+        // ✅ v304: مطابقة حرفية — موقع المسبح + عدد مواقف السيارات في صورة الواجهة.
+        let __poolRule = '';
+        if(/مسبح|حوض\s*سباح|swimming\s?pool|\bpool\b/i.test(__archText)){
+          __poolRule = /داخلي|وسط|حوش|فناء|courtyard|central|inner/i.test(__archText)
+            ? ' STRICT: the swimming pool is located in an INNER COURTYARD at the CENTER of the building, surrounded by the house wings — it must NOT appear in front of the villa; show it glimpsed through the central courtyard.'
+            : ' STRICT: include the swimming pool exactly where the request places it — do not relocate it.';
+        }
+        let __garageRule = '';
+        const __gm = __archText.match(/(?:كراج|جراج|مواقف|موقف|garage|carport|parking)[^\d٠-٩]{0,15}(\d+|١|٢|٣|٤|واحد|وحدة|اثنتين|اثنين|سيارتين|ثلاث(?:ة)?|أربع(?:ة)?|اربع(?:ة)?)|(\d+|سيارتين|ثلاث|أربع|اربع)\s*سيار(?:ات|ة)/i);
+        if(__gm){
+          const __gw = __gm[1] || __gm[2];
+          const __gn = /^\d+$/.test(__gw) ? parseInt(__gw) : ({'١':1,'٢':2,'٣':3,'٤':4,'واحد':1,'وحدة':1,'اثنين':2,'اثنتين':2,'سيارتين':2,'ثلاث':3,'ثلاثة':3,'أربع':4,'أربعة':4,'اربع':4,'اربعة':4}[__gw] || 0);
+          if(__gn) __garageRule = ' STRICT: the garage/carport must fit EXACTLY ' + __gn + ' car(s) — show ' + __gn + ' parking bay(s), not more, not fewer.';
+        }
+        const __planImg = await __archGen(
+          lang === 'ar' ? '📐 جاري رسم المخطط 2D…' : '📐 Drawing 2D floor plan…',
+          'Professional 2D architectural floor plan, top-down view, CAD blueprint style, for this request: "' + __archText + '". Clean technical drawing, every room labeled in Arabic with its area in square meters, dimensions in meters on all walls, furniture layout drawn inside rooms, thin black lines with soft pastel colored room fills, white background, no 3D, no photo. STRICTLY FORBIDDEN: any company names, brand names, phone numbers, account numbers, placeholder text, or watermarks anywhere in the image — the only text allowed is Arabic room labels, areas, and wall dimensions.');
+        if(__planImg){
+          const __pm = __planImg.mimeType || 'image/png';
+          cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? '📐 المخطط 2D بالمقاسات:' : '📐 2D floor plan with dimensions:'), attachments: [{ name: 'plan-2d.png', isImage: true, mime: __pm, dataUrl: 'data:' + __pm + ';base64,' + __planImg.imageBase64 }] });
+          renderAll(); saveState();
+        }
+        const __extImg = (__archFollowUp && !__archAffirm && !/واجهة|الواجهة|خارجي|الشكل|facade|exterior/i.test(text)) ? null : await __archGen(
+          lang === 'ar' ? '🏠 جاري توليد الواجهة الخارجية…' : '🏠 Generating exterior facade…',
+          'Photorealistic exterior architectural photograph of the finished building.' + __floorRule + __poolRule + __garageRule + ' Request: "' + __archText + '". STRICT CONSISTENCY REQUIREMENT: this exterior photo must depict the exact same building described in the request and its 2D floor plan — same number of floors, same entrances (including a separate majlis/guest entrance if mentioned), same garage/carport, swimming pool and outdoor kitchen only if mentioned, same facade materials and window sizes as specified. Do NOT invent floors, wings, or elements not in the request. Modern UAE/Gulf villa facade, sand-tone and stone finishes with dark window frames, covered entrance, landscaped front yard, clear daytime sky, ultra realistic professional real-estate photo, no text, no watermark.');
+        if(__extImg){
+          const __em = __extImg.mimeType || 'image/png';
+          cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? '🏠 الشكل الخارجي:' : '🏠 Exterior view:'), attachments: [{ name: 'exterior.png', isImage: true, mime: __em, dataUrl: 'data:' + __em + ';base64,' + __extImg.imageBase64 }] });
+          cur.lastEditedImage = { b64: __extImg.imageBase64, mime: __em };
+          renderAll(); saveState();
+        }
+        __archImagesDone = !!(__planImg || __extImg);
+      }catch(e){
+        if(e && e.name === 'AbortError'){ renderAll(); saveState(); return; }
+      }
+      if(__archImagesDone){
+        // ✅ v301: المسار المعماري نفّذ الطلب فعلًا (مخطط + واجهة) — تُلغى بوابة
+        // البناء والطلب المعلّق نهائيًا حتى لا يسأل مزود ثانٍ «تبيني أبدأ البناء؟».
+        __gateNoBuild = false;
+        try{ window.__pendingBuildPrompt = null; localStorage.removeItem('aiapp_pending_build'); }catch(e){}
+        thinkingDiv.textContent = lang === 'ar' ? '✍️ جاري كتابة المواصفات…' : '✍️ Writing the specifications…';
+      }
+      // لا return هنا — يكمل للمزود عشان يكتب المواصفات النصية تحت الصور.
+    }
+    // 🏛️ v225: طلب نصي بنية صورة بدون أي صورة مرفقة (تصور معماري/منظور/ارسم...)
+    // → توليد صورة فعلي بـ Gemini بدل رد نظري أو وعود فارغة من المزود.
+    const __txtOnlyImgRe = /(تصور|منظور|بورتريه|ارسم|أرسم|ارسمي|رسمة|معماري|معمارية|واجهات\s|تصميم\s*(?:لي\s*)?صوره?|صمم\s*(?:لي\s*)?صوره?|توليد\s*صوره?|(?:انشئ|أنشئ|انشاء|إنشاء|اصنع)\s*(?:لي\s*)?صوره?|صوره?\s*(?:من|عن)\s*الخيال|خيال\s*علمي|render|perspective|elevation|concept\s?art|\bdraw\b|\bpainting\b)/i;
+    if(text && !__srcImg && !__followUp && !__archImagesDone && !__codeWordRe.test(text) && !__designDocRe.test(text) &&
+       (__txtOnlyImgRe.test(text) || (__imgGenIntentRe.test(text) && /صور|رسمة|منظر|تصور|image|picture|visual/i.test(text)))){
+      if(!__txtOnlyImgRe.test(text) && __isVagueMediaRequest(text)){
+        cur.messages.push({ role: 'assistant', content: lang === 'ar' ? 'صورة عن شو؟ وصفلي اللي تبيه 🖼️' : 'An image of what? Describe what you want 🖼️' });
+        renderAll(); saveState();
+        thinkingDiv && thinkingDiv.remove();
+        return;
+      }
+      thinkingDiv.textContent = lang === 'ar' ? '🖼️ جاري إنشاء الصورة…' : '🖼️ Generating image…';
+      let __gData = {}; let __gOk = false;
+      try{
+        for(let __t2 = 0; __t2 < 2 && !__gOk; __t2++){
+          const __gRes = await fetch('/api/maha-image', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            signal: genAbortController.signal,
+            body: JSON.stringify({ prompt: text.slice(0, 490), token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+          });
+          __gData = await __gRes.json().catch(() => ({}));
+          __gOk = __gRes.ok && !!__gData.imageBase64;
+          if(!__gOk){ if(!__gData) __gData = {}; __gData.__status = __gRes.status; }
+        }
+      }catch(e){
+        if(e && e.name === 'AbortError'){ renderAll(); saveState(); return; }
+        __gData = { error: (e && e.message) ? e.message : String(e) };
+      }
+      if(__gOk){
+        const __gm = __gData.mimeType || 'image/png';
+        cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'هذي الصورة اللي طلبتها ✅ اضغط عليها للتكبير، وتقدر تطلب تعديلات عليها مباشرة.' : 'Here is your image ✅ Tap to enlarge — you can request edits directly.'), attachments: [{ name: 'generated.png', isImage: true, mime: __gm, dataUrl: 'data:' + __gm + ';base64,' + __gData.imageBase64 }] });
+        cur.lastEditedImage = { b64: __gData.imageBase64, mime: __gm };
+        cur.lastMsgWasImageEdit = true;
+      } else {
+        cur.messages.push({ role: 'assistant', content: imgErrFriendly(__gData && __gData.error, lang === 'ar') || ((lang === 'ar' ? '⚠️ تعذر إنشاء الصورة: ' : '⚠️ Image generation failed: ') + ((__gData && __gData.error) || ('HTTP ' + (__gData.__status || '?')))) });
+        cur.lastMsgWasImageEdit = false;
+      }
+      renderAll(); saveState();
+      return;
+    }
+    cur.lastMsgWasImageEdit = false;
+    const apiMessages = [{role: 'system', content: t('systemPrompt') + APP_IDENTITY_NOTE + BUILD_COMPLETENESS_RULE + DESIGN_POSTER_RULE + NO_FAKE_EDIT_RULE + CHAT_STYLE_RULE + APP_CAPABILITY_RULE + TOPIC_FOLLOW_RULE}];
+    // 🤝 v345: المستخدم وافق على عرض بناء قدّمه المزود في رده السابق — يبنيه الآن كاملًا.
+    if(window.__buildOfferApproved){
+      apiMessages.push({role: 'system', content: 'BUILD-OFFER APPROVAL (highest priority): In your PREVIOUS assistant message you offered to build a specific tool/app for the user and asked permission to start. The user has just approved. Build EXACTLY the tool/app you offered in that previous message NOW — completely, as ONE working single-file ```html app in this reply. Do NOT re-explain, do NOT repeat your earlier advice, do NOT ask again, and NEVER return to any earlier request that was rejected. Just build the offered tool fully.'});
+      window.__buildOfferApproved = false;
+    }
+    // 🏗️ v260: الصور المعمارية انعرضت فوق — المزود يكتب المواصفات فقط.
+    if(__archImagesDone){
+      apiMessages.push({role: 'system', content: 'IMPORTANT CONTEXT FOR THIS TURN ONLY: a 2D architectural floor plan image AND a photorealistic exterior facade image were ALREADY generated and shown to the user above for their request. Do NOT say you cannot draw, do NOT tell the user to rephrase, do NOT promise images. Your job now: write ONLY the full written specifications in Arabic for this design — التوزيع الداخلي بالمساحات بالمتر المربع لكل غرفة، المواصفات الداخلية (أرضيات، أسقف، إضاءة، تكييف، نوافذ)، المواصفات الخارجية (واجهة، مواد، سور، مواقف)، وتوصية واحدة حاسمة في النهاية. Start directly with the specifications.'});
+    }
+    // 👁️ صورة مرفقة مع السؤال → أمر صريح بتحليلها بالتفصيل وعدم الرد الفارغ
+    if(imageAttachments.length){
+      apiMessages.push({role: 'system', content: 'The user has ATTACHED an image with this message. You MUST look at the attached image carefully and answer based on its actual visual content in detail (identify objects, brands, models, text, measurements — whatever is relevant to the question). Never say you cannot see images, never give a generic answer that ignores the image, and never reply with empty or evasive text.'});
+    }
+    // 🧠 حقن ذاكرة المستخدم طويلة المدى
+    const __memMsg = memorySystemMsg();
+    if(__memMsg) apiMessages.push(__memMsg);
+    if(cur.code){
+      apiMessages.push({role: 'assistant', content: '```' + (cur.codeType === 'python' ? 'python' : 'html') + '\n' + codeForApi(cur.code) + '\n```'});
+    }
+    // Only the last few turns are sent (plus the current full code above) so that
+    // long-running projects (many edit rounds) don't blow past provider token
+    // limits and silently fail with no result.
+    // If the CURRENT message is just a plain question (not itself a build
+    // request), strip out any earlier "build me an app/bot/site" user turns
+    // from the history sent to the provider. Otherwise a model can see that
+    // old, already-fulfilled build request sitting in the history and decide
+    // to "helpfully" resume building it alongside the answer to the new,
+    // unrelated question - producing a reply that mixes a real answer with
+    // leftover app-building text the user never asked for this turn.
+    const __historyBuildRe = /بوت|تطبيق|برنامج|موقع|صفحة|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b/i;
+    // ⚠️ البناء لا يبدأ إلا بأمر صريح (ابنِ/اعمل/سوّي...) + كلمة تطبيق/موقع/بوت.
+    // مجرد ذكر "موقع" أو "تطبيق" في سؤال عادي (مثل "فكرة عن هذا الموقع") لا يشغّل البناء.
+    const __buildCmdRe = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|اضف|أضف|عدل|عدّل|طور|طوّر|حدث|حدّث|كمل|أكمل|اكمل|build|create|make|design|develop|add|update|improve|fix)/i;
+    const __curIsBuildTask = __historyBuildRe.test(text) && __buildCmdRe.test(text);
+    // Keep merged-answer messages (isMergeHeader) in history: they ARE the
+    // assistant's reply in ask-all mode. Without them, old user questions
+    // look unanswered, so providers "helpfully" re-answer them and mix topics.
+    // ردود المزود المختار ✅ (فقاعة مزود واحد بدون رأس دمج في نفس الدفعة) يجب أن
+    // تبقى في الذاكرة، وإلا تبدو أسئلة المستخدم القديمة بلا جواب فيعيد المزود
+    // الرد عليها ويخلط المواضيع.
+    let __historyMsgs = cur.messages.filter(m =>
+      !m.providerLabel || m.isMergeHeader ||
+      (m.askAllReply && !m._failed && m.batchId && !cur.messages.some(x => x !== m && x.isMergeHeader && x.batchId === m.batchId))
+    );
+    if(!__curIsBuildTask){
+      // ✅ v323: آخر 5 رسائل تبقى كاملة في الذاكرة حتى لو فيها كلمات بناء —
+      // حذفها كان يقطع سياق الموضوع الجاري (طلب تصميم ثم متابعة قصيرة).
+      const __keepFrom = __historyMsgs.length - 5;
+      __historyMsgs = __historyMsgs.filter((m, __i) => __i >= __keepFrom || !(m.role === 'user' && __historyBuildRe.test(m.apiText !== undefined ? m.apiText : (m.content || ''))));
+    }
+    // 🔒 الصور تُرسل فقط مع الرسالة الحالية (الأخيرة) — صور الرسائل القديمة
+    // لا تُعاد إرسالها أبدًا حتى لا يظل المزود يحلل صورة قديمة بدل السؤال الجديد.
+    {
+      // 🔒 منع تداخل المواضيع نهائيًا: الرسائل القديمة تُضغط في رسالة سياق
+      // واحدة مقفلة (للمرجعية فقط)، والسؤال الأخير يُرسل وحده كرسالة مستخدم
+      // وحيدة — فلا يستطيع أي مزود "اختيار" موضوع قديم والرد عليه.
+      const __h = __historyMsgs.slice(-20); // ✅ v325: ذاكرة موسعة — آخر 20 رسالة
+      // ✅ v301: الرسالة الأخيرة المرسلة للمزود يجب أن تكون رسالة المستخدم —
+      // بعد المسار المعماري تكون آخر رسالة في المحادثة رسالة صور (مساعد)،
+      // وإرسالها كآخر رسالة يسبّب خطأ 400 من Claude (messages فارغة بعد التصفية).
+      let __lastUi = __h.length - 1;
+      while(__lastUi > 0 && __h[__lastUi].role !== 'user') __lastUi--;
+      if(!__h[__lastUi] || __h[__lastUi].role !== 'user') __lastUi = __h.length - 1;
+      const __lastM = __h[__lastUi];
+      const __prev = __h.filter((m, __pi) => __pi !== __lastUi);
+      if(__prev.length){
+        const __ctx = __prev.map(m => {
+          let __txt = String(__stripCodeForHistory(m.role, (m.apiText !== undefined ? m.apiText : m.content)) || '');
+          __txt = __txt.replace(/\b\S+\.(jpg|jpeg|png|webp|gif)\b/gi, '(صورة قديمة)');
+          if(__txt.length > 2500) __txt = __txt.slice(0, 1600) + ' … ' + __txt.slice(-800); // ✅ v325: الرسائل تروح شبه كاملة — القص فقط للردود الطويلة جدًا
+          return (m.role === 'user' ? 'المستخدم: ' : 'المساعد: ') + __txt;
+        }).join('\n');
+        apiMessages.push({role: 'system', content: '📜 المحادثة السابقة بينك وبين المستخدم:\n' + __ctx + '\n\n✅ هذه ذاكرتك: استخدمها لفهم سؤال المستخدم الأخير والاستمرار معه في نفس الموضوع بشكل طبيعي (الأسئلة المتصلة تكمل الموضوع الجاري). إذا سألك «عن شو كنا نتكلم؟» أجبه بدقة من المحادثة أعلاه.\n⛔ الممنوع الوحيد: لا تفتح موضوعًا قديمًا من نفسك إذا كان سؤاله الجديد غير متعلق به، ولا تقترح متابعته («تبي نكمل…؟»). أجب عن رسالته الأخيرة وحدها. ممنوع بدء ردك بأي تحية (السلام عليكم/صباح الخير/مرحبا) — المحادثة مستمرة؛ ادخل في الجواب مباشرة.'});
+      }
+      if(__lastM) apiMessages.push({role: __lastM.role, content: (__lastM.apiText !== undefined ? __lastM.apiText : __lastM.content), images: (__lastM.role === 'user') ? __lastM.apiImages : undefined});
+    }
+
+    // 🔍 قراءة وتحليل قوي للصور المرفقة: تعليمة رؤية شاملة تُحقن فقط عند وجود صورة
+    if(imageAttachments.length){
+      apiMessages.push({role: 'system', content: 'صورة مرفقة — طبّق تحليلًا قويًا وشاملًا:\n1) اقرأ كل نص ظاهر في الصورة حرفيًا كما هو (عربي أو إنجليزي أو أي لغة) واذكره كاملًا بدون تلخيص.\n2) حلّل الصورة بعمق: العناصر، الأشخاص، الألوان، المكان، السياق، الأرقام، الجداول، أي أخطاء أو ملاحظات مهمة، واستنتاجاتك.\n3) إذا سأل المستخدم سؤالًا محددًا عن الصورة فأجب عنه بعمق وتفصيل أولًا ثم أضف الملاحظات المهمة.\n4) لا تقل أبدًا "لا أستطيع رؤية الصورة" — الصورة أمامك، حلّلها مباشرة.'});
+    }
+
+    // For plain questions (not app-building tasks), ground the answer in a
+    // real live web search when the question looks like it needs current/
+    // factual info, so providers don't guess or drift onto an unrelated
+    // topic. Reuses the same Tavily/Google-backed /api/search endpoint and
+    // keyword heuristic already used for مها's voice tab.
+    // 📚🖼️ Feature ②: kept in the outer scope (not just this `if` block) so
+    // the assistant message(s) pushed further below (single-provider reply
+    // and/or Ask-All merge reply) can attach __searchData.sources /
+    // __searchData.images for the ChatGPT-style image strip + source badges.
+    let __searchData = null;
+    // 👋 قاعدة التحية لكل المزودين التسعة: تحية = رد ترحيبي قصير فقط،
+    // ممنوع البحث وممنوع المصادر وممنوع فتح أي موضوع قديم من المحادثة.
+    if(isPureGreeting(text)){
+      apiMessages.push({role: 'system', content: 'رسالة المستخدم الأخيرة مجرد تحية/مجاملة. رُدّ بتحية ودية قصيرة وطبيعية فقط (سطر أو سطرين كحد أقصى). ممنوع منعًا باتًا: فتح أو إكمال أي موضوع سابق من المحادثة، أو عرض معلومات/روابط/مصادر، أو اقتراح "نكمل...؟". فقط حيّه واسأله كيف تقدر تساعده.'});
+    }
+    // v311: أثناء تصميم إعلان (adMode مفعّل) ممنوع البحث الحي نهائيًا —
+    // تفاصيل «بيت للبيع...» تكمل التصميم ولا تتحول لبحث دوبيزل.
+    // v327: صورة مرفقة = تحليل/تصميم — ممنوع البحث الحي (كان يجيب صور بحث بلا علاقة).
+    if(!__curIsBuildTask && !cur.adMode && !cur.awaitingAdMode && !imageAttachments.length){
+      // v384: مؤشر بحث عميق — يظهر للمستخدم أن البحث جاري
+      const __deepRe384 = /بحث عميق|بحث شامل|تقرير مفصل|تحليل شامل|قارن بين|مقارنة.*بين|أفضل\s*(خيارات|بدائل|مواقع|شركات|تطبيقات)|deep research|comprehensive|detailed report|compare.*between/i;
+      let __searchIndicator = null;
+      if(__deepRe384.test(text)){
+        __searchIndicator = { role: 'assistant', content: lang === 'ar' ? '🔍 يبحث بعمق…' : '🔍 Deep searching…', _loading: true };
+        cur.messages.push(__searchIndicator);
+        renderMessages(true);
+      }
+      __searchData = await smartMaybeSearch(text, cur.messages.filter(m => m !== __searchIndicator));
+      if(__searchIndicator){
+        cur.messages = cur.messages.filter(m => m !== __searchIndicator);
+        renderMessages(true);
+      }
+      if(__searchData){
+        apiMessages.push({role: 'system', content: __searchData.note});
+        // 🔒 سؤال معلوماتي (تذكرة/سيارة/وظيفة/سعر...) = جواب نصي فقط —
+        // ممنوع منعًا باتًا بناء تطبيق/موقع/صفحة HTML أو إرجاع أي كود.
+        apiMessages.push({role: 'system', content: 'This is an INFORMATION question, NOT a build request. Reply in plain conversational text only. STRICTLY FORBIDDEN: building any app/site/booking page/HTML page or returning any code block. Just answer with the real information and links from the search results.'});
+      }
+    }
+
+    // 📋 تقسيم المهام: للطلبات الكبيرة، نضع خطة خطوات ونتابعها حتى النهاية
+    let __taskPlan = null, __planMsg = null;
+    // 📋 v345: خطة العمل تظهر فقط في وضع «اسأل الكل» الصريح (متعدد المزودين) —
+    // في وضع الكينج يبني Claude وحده، فتظل الخطة يتيمة فارغة (⬜⬜) بلا تحقّق.
+    // لذلك نمنعها نهائيًا للمزود الواحد حتى لا تطلع خطة فارغة للمزودين غير Claude.
+    if(__askAllExplicit && askAll && __curIsBuildTask && text.length >= 12){
+      try{
+        __planMsg = { role: 'assistant', content: taskTxt('planning'), providerLabel: '📋' };
+        cur.messages.push(__planMsg);
+        renderMessages(true);
+        __taskPlan = await planBuildSteps(text);
+        if(__taskPlan && __taskPlan.length >= 2){
+          __planMsg.content = formatTaskPlan(__taskPlan, null);
+          apiMessages.push({ role: 'system', content: 'UNIFIED BUILD BLUEPRINT - this is the single agreed spec. Every builder MUST follow it exactly (same app, same screens, same style) - do not invent a different concept:\n' + (__taskPlan.__spec || '') + 'Steps - the final single HTML file MUST implement ALL of them:\n' + __taskPlan.map((s, i) => (i + 1) + '. ' + s).join('\n') });
+        } else {
+          cur.messages = cur.messages.filter(m => m !== __planMsg);
+          __taskPlan = null; __planMsg = null;
+        }
+        renderMessages(true);
+      }catch(planErr){
+        console.warn('[taskPlan] skipped:', planErr);
+        if(__planMsg){ cur.messages = cur.messages.filter(m => m !== __planMsg); __planMsg = null; }
+        __taskPlan = null;
+      }
+    }
+
+    if(askAll){
+      // All 9 providers now run server-side with the owner's keys.
+      const hasOpenAI = localStorage.getItem('aiapp_include_openai') !== 'false';
+      const hasGemini = localStorage.getItem('aiapp_include_gemini') !== 'false';
+      const hasGroq = localStorage.getItem('aiapp_include_groq') !== 'false';
+      const hasClaude = localStorage.getItem('aiapp_include_claude') !== 'false';
+      const hasOpenRouter = localStorage.getItem('aiapp_include_openrouter') !== 'false';
+      const hasPerplexity = localStorage.getItem('aiapp_include_perplexity') !== 'false';
+      const hasMistral = localStorage.getItem('aiapp_include_mistral') !== 'false';
+      const hasDeepSeek = localStorage.getItem('aiapp_include_deepseek') !== 'false';
+      const hasCohere = localStorage.getItem('aiapp_include_cohere') !== 'false';
+      const keyCount = [hasOpenAI, hasGemini, hasGroq, hasClaude, hasOpenRouter, hasPerplexity, hasMistral, hasDeepSeek, hasCohere].filter(Boolean).length;
+      if(!customProviders && keyCount < 2){
+        throw new Error(t('missingKeysAskAll'));
+      }
+      let providers = [];
+      if(hasOpenAI) providers.push({ key: 'openai', label: 'OpenAI' });
+      if(hasGemini) providers.push({ key: 'gemini', label: 'Google Gemini' });
+      if(hasGroq) providers.push({ key: 'groq', label: 'Groq' });
+      if(hasClaude) providers.push({ key: 'claude', label: 'Anthropic Claude' });
+      if(hasOpenRouter) providers.push({ key: 'openrouter', label: 'OpenRouter' });
+      if(hasPerplexity) providers.push({ key: 'perplexity', label: 'Perplexity' });
+      if(hasMistral) providers.push({ key: 'mistral', label: 'Mistral AI' });
+      if(hasDeepSeek) providers.push({ key: 'deepseek', label: 'DeepSeek' });
+      if(hasCohere) providers.push({ key: 'cohere', label: 'Cohere' });
+      const trueFullPoolKeys = providers.map(p => p.key);
+      // قرار نهائي: أي بناء أو "اسأل الكل" يستخدم كل المزودين دائمًا.
+      // اختيار ○/✅ الجانبي ما يقلّص القائمة أبدًا.
+      // "isBuildTask" must stay in the outer function scope (not just this
+      // block) because it's also used further below to decide whether any
+      // code block a provider happens to return should actually replace the
+      // live preview - a plain question should never touch the preview/app,
+      // even if a provider's answer happens to contain a stray ``` block.
+      let isBuildTask = false;
+      {
+        // "المدرب" smart router: silently narrow the eligible pool down to the
+        // best-suited providers for this specific message. Falls back to the
+        // full pool automatically on any failure - never blocks sending.
+        // Any request that's clearly "build me a full app/bot/page/site" is
+        // always treated as complex, regardless of what the classifier says
+        // AND regardless of any earlier "continue with this provider only"
+        // pin - a pin from a past simple reply should never lock a later
+        // full-app request down to a single provider.
+        const BUILD_TASK_RE = /بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|العاب|ألعاب|أداة|اداة|نسخة|نسخه|شهادة|شهاده|بطاقة|بطاقه|دعوة|دعوه|بوستر|شعار|لوجو|تهنئة|تهنئه|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\btool\b|\bclone\b|\bcertificate\b|\bcard\b|\binvitation\b|\bposter\b|\blogo\b/i;
+        isBuildTask = !__gateNoBuild && (BUILD_TASK_RE.test(text) || __strongBuildRe.test(text));
+        if(__gateNoBuild){
+          apiMessages.push({ role: 'system', content: 'The user asked to build something, but you must NOT build yet. Reply in plain conversational text only (no code blocks at all): briefly describe in 2-3 sentences what you plan to build, then END your reply with exactly one question asking permission to start, e.g. in Arabic: "تبيني أبدأ البناء الحين؟". Do not start building until the user approves in their next message.' });
+          // 💰 دور البوابة = وصف قصير فقط — مزود واحد يكفي بدل التسعة (توفير).
+          const __gateOne = ['claude', 'gemini', 'groq', 'deepseek'].find(k => providers.some(p => p.key === k));
+          if(__gateOne) providers = providers.filter(p => p.key === __gateOne);
+        }
+        if(isBuildTask){
+          // Hard rule: in a build turn every provider must BUILD immediately -
+          // never reply with just an idea/plan or ask "shall I start?".
+          apiMessages.push({ role: 'system', content: 'This turn is a BUILD request. You MUST return the complete, fully working app NOW as one single ```html code block in this same reply. Never reply with only an idea, a plan, or a question like "shall I start building?" - build it immediately and completely.' });
+        }
+        const fullPoolKeys = isBuildTask ? trueFullPoolKeys : providers.map(p => p.key);
+        if(fullPoolKeys.length > 1){
+          if(isBuildTask){
+            // البناء الافتراضي: Claude Sonnet 4 بكامل قوته لوحده — نفس نموذج claude.ai
+            // بالضبط، بدون دمج يخفف الجودة. كتابة "اسأل الكل" صراحةً ترجع دمج الكل.
+            let forced;
+            if(__askAllExplicit){
+              // 🎯 "كل واحد ودوره": بدل ما التسعة يبنون نفس الشي، نختار فرقة
+              // المتخصصين حسب نوع الطلب — أسرع وأرخص وأجود. Groq يظل المخطط
+              // (planBuildSteps) وClaude يظل المهندس الرئيسي للدمج.
+              const __DESIGN_RE = /شهادة|شهاده|بطاقة|بطاقه|دعوة|دعوه|بوستر|لوجو|شعار|بنر|غلاف|إعلان|اعلان|تهنئة|تهنئه|منشور|certificate|card|invitation|poster|logo|banner|cover|flyer/i;
+              const __GAME_RE = /لعبة|لعبه|العاب|ألعاب|\bgame\b/i;
+              let squad;
+              if(__DESIGN_RE.test(text)){
+                // فرقة التصميم: الأقوى بصريًا
+                squad = ['gemini', 'claude', 'openai'];
+              } else if(__GAME_RE.test(text)){
+                // فرقة الألعاب: منطق + رسوميات
+                squad = ['claude', 'openai', 'deepseek', 'gemini'];
+              } else {
+                // فرقة التطبيقات والمواقع
+                squad = ['claude', 'openai', 'deepseek', 'gemini', 'mistral'];
+              }
+              forced = squad.filter(k => fullPoolKeys.includes(k));
+              if(forced.length < 2) forced = fullPoolKeys.slice();
+            } else if(customProviders && customProviders.length && customProviders.some(k => fullPoolKeys.includes(k))){
+              // المستخدم اختار ✅ مزودًا معيّنًا → طلبات البناء التالية تروح له هو
+              // (وليس Claude الافتراضي) حتى يلغي الاختيار أو يكتب "اسأل الكل".
+              forced = customProviders.filter(k => fullPoolKeys.includes(k));
+            } else if(fullPoolKeys.includes('claude')){
+              forced = ['claude'];
+            } else {
+              forced = ['deepseek', 'openai', 'gemini'].filter(k => fullPoolKeys.includes(k)).slice(0, 1);
+            }
+            if(forced.length >= 1){
+              providers = forced.map(k => ({ key: k, label: functionalLabel(k) }));
+            }
+          } else if(customProviders && customProviders.length){
+            // "أكمل مع هذا المزود" — للسؤال العادي فقط: نستخدم المزودين
+            // المختارين ✅ فقط بدل الكل. البناء الكامل ما يتأثر بالاختيار.
+            const picked = providers.filter(p => customProviders.includes(p.key));
+            if(picked.length) providers = picked;
+          }
+        }
+      }
+
+      // Show every provider's bubble immediately (no waiting for the slowest
+      // one) and stream each provider's text into its own bubble live, word
+      // by word, as soon as it arrives - same spirit as single-provider mode.
+      // ✏️ مزود واحد مختار ✅ + طلب تعديل → الكود الراجع يُطبَّق مباشرة على
+      // المعاينة (مثل وضع المزود الواحد العادي) بدل أن يبقى حبيس الفقاعة.
+      const __pinEditRe = /(عدل|عدّل|غير|غيّر|ضيف|أضف|اضف|حط|زيد|زد|كبر|كبّر|صغر|صغّر|لون|لوّن|بدل|بدّل|احذف|امسح|ازل|أزل|صلح|أصلح|اصلح|طور|طوّر|حدث|حدّث|كمل|أكمل|اكمل|خل|اجعل|رتب|حسن|حسّن|\badd\b|\bchange\b|\bedit\b|\bfix\b|\bupdate\b|\bimprove\b|\bremove\b|\bmake\b|\bset\b)/i;
+      const __applyCode = isBuildTask || (providers.length === 1 && !!cur.code && __pinEditRe.test(text));
+      const askAllBatchId = 'batch' + (++askAllUidCounter);
+      const placeholders = providers.map(p => {
+        const msg = {role: 'assistant', content: '', providerLabel: p.label, providerKey: p.key, askAllReply: true, code: null, _loading: true, _uid: ++askAllUidCounter, batchId: askAllBatchId};
+        cur.messages.push(msg);
+        return msg;
+      });
+      // Show one visible "preparing best result" bubble immediately so the
+      // user always sees feedback while the 9 providers work silently in the
+      // background - it's removed the instant the real merge bubble appears.
+      // 🎯 مزود واحد فقط (اختيار ✅) → رده يظهر مباشرة بدون فقاعة تجهيز ولا دمج.
+      const prepMsg = { role: 'assistant', content: '🧠 ' + t('preparingBestResult'), providerLabel: '', code: null, _loading: true, _uid: ++askAllUidCounter, isAskAllPrep: true, batchId: askAllBatchId };
+      if(providers.length > 1) cur.messages.push(prepMsg);
+      renderMessages(true);
+
+      let autoApplied = false;
+      // Gently smooth out how fast each Ask-All bubble's text appears, so it
+      // doesn't all pop in at once - a light typewriter feel rather than a
+      // raw network-speed dump.
+      const revealStates = new Map();
+      const REVEAL_CHARS_PER_TICK = 2;
+      const REVEAL_TICK_MS = 35;
+      const ensureRevealTimer = (msg) => {
+        let st = revealStates.get(msg._uid);
+        if(!st){
+          st = { target: '', shown: 0, done: false, timer: null };
+          revealStates.set(msg._uid, st);
+        }
+        if(!st.timer){
+          st.timer = setInterval(() => {
+            if(st.shown < st.target.length){
+              st.shown = Math.min(st.target.length, st.shown + REVEAL_CHARS_PER_TICK);
+              // v310: msg.content يحمل النص الكامل دائمًا — الحركة عرض فقط.
+              // قبل: كان يُحفظ المقطع الجزئي، ولو سُكِّر التطبيق قبل نهاية
+              // الحركة ينحفظ الرد مقطوعًا للأبد (سبب الردود الناقصة بالآيفون).
+              msg.content = st.target;
+              const el = messagesEl.querySelector('[data-askuid="' + msg._uid + '"]');
+              if(el) el.textContent = st.target.slice(0, st.shown);
+            } else if(st.done){
+              clearInterval(st.timer);
+              st.timer = null;
+              revealStates.delete(msg._uid);
+              renderMessages(true);
+              saveState();
+            }
+          }, REVEAL_TICK_MS);
+        }
+        return st;
+      };
+      // 📊 عداد تقدم حي على فقاعة التحضير: المستخدم يشوف (4/9) بدل فقاعة
+      // صامتة تبدو معلقة — يعرف أن المزودين يشتغلون فعلًا.
+      const __prepStartTs = Date.now();
+      const __updatePrepCounter = () => {
+        if(providers.length > 1 && cur.messages.includes(prepMsg) && prepMsg._loading){
+          const doneCount = placeholders.filter(m => !m._loading).length;
+          const __el = Math.floor((Date.now() - __prepStartTs) / 1000);
+          const __mm = Math.floor(__el / 60), __ss = String(__el % 60).padStart(2, '0');
+          prepMsg.content = '🧠 ' + t('preparingBestResult') + ' (' + doneCount + '/' + providers.length + ') ⏱️ ' + __mm + ':' + __ss;
+          renderMessages(true);
+        }
+      };
+      // ⏱️ مؤقت مباشر كل ثانيتين حتى يعرف المستخدم أن العملية حية وليست معلقة.
+      const __prepTicker = setInterval(() => {
+        try{
+          if(!prepMsg._loading || !cur.messages.includes(prepMsg)){ clearInterval(__prepTicker); return; }
+          __updatePrepCounter();
+        }catch(e){ clearInterval(__prepTicker); }
+      }, 2000);
+      const finalizeOne = (msg) => {
+        msg._loading = false;
+        try{ __updatePrepCounter(); }catch(e){}
+        const st = revealStates.get(msg._uid);
+        if(st){
+          st.target = msg.content;
+          st.done = true;
+          ensureRevealTimer(msg);
+          // v310: حفظ فوري للرد الكامل — لا ننتظر نهاية حركة الكتابة.
+          try{ saveState(); }catch(e){}
+        } else {
+          renderMessages(true);
+          saveState();
+        }
+      };
+      // ⏱️ حارس التعليق: أي نداء ما يرسل ولا حرف جديد خلال stallMs، أو يتجاوز
+      // hardMs بالكامل، يُعتبر فاشلًا فورًا بدل ما يعلّق الصفحة إلى ما لا نهاية.
+      const callWithWatchdog = (key, msgs, onDelta, stallMs, hardMs) => new Promise((resolve, reject) => {
+        let done = false, lastTick = Date.now();
+        const start = Date.now();
+        const iv = setInterval(() => {
+          if(done) { clearInterval(iv); return; }
+          if(Date.now() - lastTick > stallMs || Date.now() - start > hardMs){
+            done = true; clearInterval(iv);
+            const e = new Error('انتهت مهلة المزود (توقف عن الرد)'); e.status = 408;
+            reject(e);
+          }
+        }, 5000);
+        callProviderAI(key, msgs, (t) => { lastTick = Date.now(); if(!done && onDelta) onDelta(t); })
+          .then(v => { if(!done){ done = true; clearInterval(iv); resolve(v); } },
+                e => { if(!done){ done = true; clearInterval(iv); reject(e); } });
+      });
+      const streamOne = async (p, msg) => {
+        const onDelta = (partial) => {
+          const st = ensureRevealTimer(msg);
+          // ✂️ لا يظهر الكود الخام في فقاعة المحادثة أثناء البث أبدًا
+          const stripped = liveStripCode(partial);
+          if(st.target && stripped.length < st.target.length) st.shown = Math.min(st.shown, Math.max(0, stripped.length - 1));
+          st.target = stripped;
+        };
+        try{
+          const reply = await callWithWatchdog(p.key, apiMessages, onDelta, 75000, 180000);
+          let { code, explanation } = extractReply(reply);
+          // 🔁 v326: مهمة بناء/تصميم رجعت نصًا بلا أي كود (مثل «تمام، هذا
+          // لوجو دعائي كامل» والمعاينة فاضية) → إعادة الطلب مرة وحدة بأمر
+          // صارم يلزم المزود يرجع الملف الكامل.
+          if(!code && isBuildTask && !__gateNoBuild){
+            try{
+              msg.content = '';
+              const __strictMsgs = apiMessages.concat([{ role: 'system', content: 'FINAL STRICT ORDER: your previous reply contained NO code block — that counts as a FAILED answer. Reply NOW with the COMPLETE finished design/app as ONE single ```html code block (the full file from <!DOCTYPE html> to </html>, nothing omitted). Claiming it is done without code is FORBIDDEN. Text-only replies are FORBIDDEN.' }]);
+              const __strictReply = await callWithWatchdog(p.key, __strictMsgs, onDelta, 75000, 180000);
+              const __r2 = extractReply(__strictReply);
+              if(__r2.code){ code = __r2.code; explanation = __r2.explanation; }
+            }catch(e){}
+          }
+          msg.content = (__applyCode ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : '');
+          msg.code = code || null;
+          if(code && __applyCode && !autoApplied){
+            cur.code = code;
+            msg.autoApplied = true;
+            autoApplied = true;
+          }
+          finalizeOne(msg);
+        }catch(err){
+          if(err && err.name === 'AbortError') throw err;
+          // In "Ask All" mode every provider is already being tried in parallel,
+          // so there is no other provider left to fall back to. Instead, a 429
+          // (rate limit) is very often transient - especially for shared
+          // free-tier keys like OpenRouter's - so retry the *same* provider a
+          // couple of times with a short backoff before giving up.
+          if(err && (err.status === 429 || err.status === 402)){
+            // OpenRouter's free tier is rate-limited per-minute (not a hard
+            // daily quota), and in "Ask All" mode every other provider key is
+            // already in use, so there is no alternate provider to fall back
+            // to. Use a longer backoff instead of giving up immediately.
+            const delays = (p.key === 'openrouter') ? [15000, 30000] : [2500, 5000];
+            for(const delay of delays){
+              await new Promise(r => setTimeout(r, delay));
+              try{
+                msg.content = '';
+                const retryReply = await callWithWatchdog(p.key, apiMessages, onDelta, 60000, 150000);
+                const { code, explanation } = extractReply(retryReply);
+                msg.content = (__applyCode ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : '');
+                msg.code = code || null;
+                if(code && __applyCode && !autoApplied){
+                  cur.code = code;
+                  msg.autoApplied = true;
+                  autoApplied = true;
+                }
+                finalizeOne(msg);
+                return;
+              }catch(retryErr){
+                if(retryErr && retryErr.name === 'AbortError') throw retryErr;
+                err = retryErr;
+                if(!(retryErr && (retryErr.status === 429 || retryErr.status === 402))) break;
+              }
+            }
+            // Still failing after retries - try ONE different provider not
+            // already included in this "Ask All" batch (single attempt only;
+            // do NOT chain through the whole fallback order, since if the
+            // account is rate-limited across the board that turns into a
+            // multi-minute cascade of 429s).
+            const triedKeys = new Set(providers.map(pp => pp.key));
+            const altKey = AUTO_FALLBACK_ORDER.find(k => !triedKeys.has(k));
+            if(altKey){
+              try{
+                msg.content = '';
+                const altReply = await callWithWatchdog(altKey, apiMessages, onDelta, 60000, 120000);
+                const { code, explanation } = extractReply(altReply);
+                msg.content = (__applyCode ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : '');
+                msg.code = code || null;
+                msg.providerLabel = '🔄 ' + functionalLabel(altKey);
+                msg.providerKey = altKey;
+                if(code && __applyCode && !autoApplied){
+                  cur.code = code;
+                  msg.autoApplied = true;
+                  autoApplied = true;
+                }
+                finalizeOne(msg);
+                return;
+              }catch(altErr){
+                if(altErr && altErr.name === 'AbortError') throw altErr;
+                if(!(altErr && (altErr.status === 429 || altErr.status === 402))) err = altErr;
+              }
+            }
+          }
+          msg._failed = true;
+          msg.content = '⚠️ ' + msg.providerLabel + ': ' + err.message;
+          finalizeOne(msg);
+        }
+      };
+
+      // 🚦 حد التزاحم: المتصفح يسمح بـ~6 اتصالات متزامنة لنفس النطاق فقط.
+      // إطلاق 9 بثوث دفعة واحدة كان يخنق الزائد عن الحد (يفشل بـ"توقف عن
+      // الرد") ويحشر نداء الدمج النهائي خلفهم. التشغيل بمجموعات من 5 يضمن
+      // اتصالًا حقيقيًا لكل مزود وطريقًا فاضيًا للمهندس الرئيسي بعدهم.
+      let __poolIdx = 0;
+      const __poolWorker = async () => {
+        while(__poolIdx < providers.length){
+          const __i = __poolIdx++;
+          try{ await streamOne(providers[__i], placeholders[__i]); }
+          catch(e){ if(e && e.name === 'AbortError') throw e; }
+        }
+      };
+      const settled = await Promise.allSettled(Array.from({ length: Math.min(5, providers.length) }, () => __poolWorker()));
+      if(genAbortController && genAbortController.signal.aborted){
+        // User cancelled while "ask all" was mid-flight: skip showing any of
+        // these results and let the outer catch restore the message for editing.
+        const abortErr = new Error('aborted');
+        abortErr.name = 'AbortError';
+        throw abortErr;
+      }
+      // If any provider genuinely rejected for a reason other than abort
+      // (already handled/logged inline above), nothing further to do here -
+      // each bubble already shows its own success/error text.
+      void settled;
+
+      // إخفاء المزودين الفاشلين بهدوء: إذا نجح مزوّد واحد على الأقل، تُحذف
+      // فقاعات الأخطاء (429/422/...) نهائيًا بدل إزعاج المستخدم برسائل تحذير.
+      {
+        const __okCount = placeholders.filter(m => !m._failed).length;
+        if(__okCount > 0){
+          let __removed = false;
+          for(const m of placeholders){
+            if(m._failed){
+              const i = cur.messages.indexOf(m);
+              if(i !== -1){ cur.messages.splice(i, 1); __removed = true; }
+            }
+          }
+          if(__removed){ renderMessages(true); saveState(); }
+        }
+      }
+
+      // After every provider has answered, synthesize all the successful
+      // replies into one unified, de-duplicated answer using a single
+      // strong provider - so the user gets one clean final answer in
+      // addition to the individual per-provider bubbles above.
+      const usableAnswers = placeholders
+        .filter(m => m.content && !m.content.startsWith('⚠️'))
+        .map(m => ({ label: m.providerLabel, text: m.content, code: m.code, codeType: m.codeType }));
+      {
+        const prepIdx = cur.messages.indexOf(prepMsg);
+        if(prepIdx !== -1) cur.messages.splice(prepIdx, 1);
+      }
+      if(providers.length > 1 && (usableAnswers.length >= 2 || (isBuildTask && usableAnswers.length === 1 && usableAnswers[0].code))){
+        const mergeMsg = { role: 'assistant', content: '', providerLabel: '🧠 ' + t('mergedAnswerLabel'), code: null, _loading: true, _uid: ++askAllUidCounter, isMergeHeader: true, batchId: askAllBatchId, batchCount: usableAnswers.length,
+          // 🚫 v368: الصور والمصادر لم تعد تُعرض في المحادثة — مكانها المتصفح فقط.
+          sources: undefined,
+          searchImages: undefined };
+        cur.messages.push(mergeMsg);
+        renderMessages(true);
+        // Only treat this as a code-merge (which would overwrite the live
+        // preview/app) when the user actually asked to build something this
+        // turn. A provider occasionally echoes a stray ``` code block inside
+        // an otherwise plain answer - that must never hijack the preview.
+        const hasAnyCode = usableAnswers.length >= 2 && usableAnswers.some(a => a.code);
+        const mergeOrder = ['claude', 'openai', 'gemini', ...AUTO_FALLBACK_ORDER];
+        let mergeDone = false;
+        try{
+        if(hasAnyCode){
+          // 🧩 نهج جديد (أساس + تعزيز): بدل خلط 4 أكواد كاملة (كان يفشل دائمًا)،
+          // نأخذ أفضل نسخة كاملة كأساس، نستخرج المميزات التي انفردت بها النسخ
+          // الأخرى، ثم نطلب من نموذج قوي إضافتها على الأساس - فتكون النتيجة
+          // فعليًا أقوى من أي مزود منفرد.
+          const looksCompleteCode = (code, type) => {
+            if(!code) return false;
+            const ty = (type || '').toLowerCase();
+            if(ty.includes('html') || /<html[\s>]/i.test(code)) return /<\/html>\s*$/i.test(code.trim());
+            return true;
+          };
+          const __rankScore = (a) => {
+            if(!a.code) return -1;
+            let s = a.code.length;
+            try{ if(looksCompleteCode(a.code, a.codeType)) s += 1000000; }catch(e){}
+            return s;
+          };
+          const __cands = usableAnswers.filter(a => a.code).sort((x, y) => __rankScore(y) - __rankScore(x));
+          const __base = __cands[0];
+          const __others = __cands.slice(1, 5);
+          const __useBaseAsIs = () => {
+            mergeMsg.providerLabel = '🏆 أفضل نسخة (' + (__base.label || '') + ')';
+            mergeMsg.content = t('buildSuccess');
+            mergeMsg.code = __base.code;
+            mergeMsg.codeType = __base.codeType;
+            cur.code = __base.code;
+            cur.codeType = __base.codeType;
+            mergeDone = true;
+          };
+          // 🧠 نهج Mixture of Agents: "المهندس الرئيسي" يقرأ أفضل المقترحات
+          // كاملة + مقتطفات أفكار من الباقين، ثم يعيد كتابة نسخة نهائية
+          // واحدة متفوقة من الصفر — مو لصق ميزات، إعادة بناء واعية.
+          if(__cands.length < 2){
+            __useBaseAsIs();
+          } else {
+            const __top = __cands.slice(0, 3);
+            const __rest = __cands.slice(3, 8);
+            const __budget = 110000;
+            let __used = 0;
+            const __parts = [];
+            for(const a of __top){
+              const __cap = Math.min(a.code.length, 40000, Math.max(0, __budget - __used));
+              if(__cap <= 0) break;
+              const chunk = a.code.slice(0, __cap);
+              __used += chunk.length;
+              __parts.push('### مقترح كامل (' + a.label + ')' + (chunk.length < a.code.length ? ' — (مقتطع)' : '') + '\n```' + (a.codeType || '') + '\n' + chunk + '\n```');
+            }
+            for(const a of __rest){
+              if(__used > __budget) break;
+              const chunk = a.code.slice(0, 3000);
+              __used += chunk.length;
+              __parts.push('### مقتطف أفكار إضافية (' + a.label + ')\n```\n' + chunk + '\n```');
+            }
+            const __lastUserMsg = (apiMessages.filter(m => m.role === 'user').slice(-1)[0] || {}).content || '';
+            const __moaSystem = APP_IDENTITY_NOTE + BUILD_COMPLETENESS_RULE + DESIGN_POSTER_RULE + NO_FAKE_EDIT_RULE + CHAT_STYLE_RULE +
+              '\n\nأنت المهندس الرئيسي والمدمج الذكي لفريق من نماذج ذكاء اصطناعي متعددة. أمامك مقترحات متعددة لنفس طلب المستخدم. مهمتك: حلّل المقترحات، وخذ أجمل تصميم وأقوى منطق وكل ميزة مفيدة ظهرت في أي مقترح، وتخلّص من الأخطاء والتكرار، ثم اكتب النسخة النهائية الواحدة فائقة الجودة كاملة من أول سطر إلى آخر سطر. يجب أن تكون النتيجة أفضل وأكمل من أي مقترح منفرد. أعد كودًا واحدًا كاملًا قابلًا للتشغيل داخل fence واحد، بدون شرح خارج الصندوق، وبدون اختصار أو وضع تعليقات بدل الكود.';
+            const __moaUser = 'طلب المستخدم الأصلي: "' + String(__lastUserMsg).slice(0, 2000) + '"\n\n' + __parts.join('\n\n') + '\n\nاكتب الآن النسخة النهائية الكاملة المتفوقة.';
+            const __mergePhaseStart = Date.now();
+            for(const mKey of ['gemini', 'claude', 'openai']){
+              if(mergeDone) break;
+              if(Date.now() - __mergePhaseStart > 480000) break;
+              try{
+                const __reply = await callWithWatchdog(mKey, [
+                  { role: 'system', content: __moaSystem },
+                  { role: 'user', content: __moaUser }
+                ], () => {}, 60000, 240000);
+                const { code: __mc, codeType: __mct, explanation: __mex } = extractReply(__reply || '');
+                if(!(__mc && looksCompleteCode(__mc, __mct) && __mc.length >= __base.code.length * 0.75)){
+                  console.warn('[MoA] rejected from ' + mKey + ': len=' + (__mc ? __mc.length : 0) + ' base=' + __base.code.length + ' complete=' + (__mc ? looksCompleteCode(__mc, __mct) : false));
+                }
+                if(__mc && looksCompleteCode(__mc, __mct) && __mc.length >= __base.code.length * 0.75){
+                  mergeMsg.providerLabel = '🧠 نسخة الفريق النهائية';
+                  mergeMsg.content = stripCodeFromChat(__mex) || t('buildSuccess');
+                  mergeMsg.code = __mc;
+                  mergeMsg.codeType = __mct || __base.codeType;
+                  cur.code = __mc;
+                  cur.codeType = mergeMsg.codeType;
+                  mergeDone = true;
+                }
+              }catch(mergeErr){ console.warn('[MoA] master ' + mKey + ' failed:', mergeErr && mergeErr.message); if(mergeErr && mergeErr.name === 'AbortError') break; }
+            }
+            if(!mergeDone) __useBaseAsIs();
+          }
+        } else {
+          const mergePrompt = usableAnswers.map((a, i) => '### ' + t('mergedAnswerSourceLabel') + ' ' + (i + 1) + ' (' + a.label + ')\n' + a.text).join('\n\n');
+          const mergeMessages = [
+            { role: 'system', content: t('mergedAnswerSystemPrompt') + '\n[قاعدة إلزامية]: أثناء الدمج ممنوع حذف أي بيانات ملموسة وردت في الإجابات: روابط الإعلانات المباشرة، الأسعار، أرقام الهواتف، أسماء المناطق. إذا احتوت الإجابات على إعلانات حقيقية (عقارات/سيارات/وظائف) بروابط، اعرضها في الإجابة النهائية كقائمة منظمة: العنوان + السعر + المنطقة + الرابط المباشر — ممنوع استبدالها بنصيحة عامة مثل "ادخل الموقع وابحث".' + APP_IDENTITY_NOTE + CHAT_STYLE_RULE },
+            ...apiMessages.filter(m => m.role !== 'system'),
+            { role: 'user', content: mergePrompt }
+          ];
+          for(const mKey of mergeOrder){
+            if(mergeDone) break;
+            try{
+              const mergedReply = await callProviderAI(mKey, mergeMessages, () => {});
+              // This branch is for plain Q&A merging (not a build task), so
+              // even if a provider slipped a ```code``` fence into its
+              // answer, we must never show raw code in the chat bubble here
+              // - strip it out and keep only the natural-language explanation.
+              const { explanation: mergedExplanation } = extractReply(mergedReply || '');
+              mergeMsg.content = (mergedExplanation && mergedExplanation.trim()) ? mergedExplanation : mergedReply;
+              mergeDone = true;
+            }catch(mergeErr){
+              if(mergeErr && mergeErr.name === 'AbortError') break;
+            }
+          }
+        }
+        }catch(outerMergeErr){
+          console.error('[askAll merge] unexpected error:', outerMergeErr);
+        }
+        // Safety net: no matter what happened above (success, checklist
+        // rejection, or an unexpected error we didn't anticipate), the user
+        // must always see a concrete final state here - never a failure
+        // message. If a real merge never completed, fall back to the
+        // strongest individual answer already collected above instead of
+        // showing an error - the user always gets a usable final result.
+        mergeMsg._loading = false;
+        // 🔒 ضمانة: في مهمة بناء، الرسالة النهائية لازم يظهر معها زر
+        // "استخدم هذا الإصدار" دائمًا - حتى لو الدمج رجع نصًا بدون كود
+        // مرفق، نربط أفضل كود متاح (المطبّق حاليًا أو أول نسخة ناجحة).
+        if(!mergeMsg.code && (isBuildTask || usableAnswers.some(a => a.code))){
+          const bestCodeAns = usableAnswers.find(a => a.code);
+          const fallbackCode = (bestCodeAns && bestCodeAns.code) || cur.code;
+          if(fallbackCode){
+            mergeMsg.code = fallbackCode;
+            mergeMsg.codeType = cur.codeType || (bestCodeAns && bestCodeAns.codeType) || 'html';
+            if(!cur.code){ cur.code = fallbackCode; cur.codeType = mergeMsg.codeType; }
+          }
+        }
+        if(!mergeMsg.code && !(mergeMsg.content && mergeMsg.content.trim())){
+          const bestText = usableAnswers.filter(a => !a.code).sort((a, b) => (b.text || '').length - (a.text || '').length)[0];
+          if(bestText && bestText.text){
+            mergeMsg.content = bestText.text;
+          } else {
+            const bestCodeAns = usableAnswers.find(a => a.code) || null;
+            if(bestCodeAns){
+              mergeMsg.content = t('buildSuccess');
+              mergeMsg.code = bestCodeAns.code;
+              mergeMsg.codeType = bestCodeAns.codeType;
+              cur.code = bestCodeAns.code;
+              cur.codeType = bestCodeAns.codeType;
+            } else {
+              mergeMsg.content = '⚠️ ' + t('mergedAnswerFailed');
+            }
+          }
+        }
+        if(mergeMsg.code){
+          // 🔁 التصحيح الذاتي: فحص الكود المدموج وإصلاح أخطائه قبل العرض
+          try{
+            // ⏱️ سقف زمني: الإصلاح الذاتي ما يحبس النتيجة النهائية أبدًا —
+            // إذا تجاوز 120 ثانية نعرض الكود كما هو (وهو أصلًا كامل وصالح).
+            const healed = await Promise.race([
+              selfHealCode(mergeMsg.code, mergeMsg.codeType, () => {
+                mergeMsg.content = t('selfHealing');
+                renderMessages(true);
+              }),
+              new Promise(res => setTimeout(() => res(null), 120000))
+            ]);
+            if(healed && healed !== mergeMsg.code){
+              mergeMsg.code = healed;
+              cur.code = healed;
+            }
+            if(mergeMsg.content === t('selfHealing')) mergeMsg.content = t('buildSuccess');
+          }catch(healErr){ console.warn('[selfHeal] skipped:', healErr); }
+          // 📋 تقسيم المهام: التحقق من إنجاز كل خطوة، وإكمال الناقص تلقائيًا
+          if(__taskPlan && __planMsg){
+            try{
+              __planMsg.content = formatTaskPlan(__taskPlan, null) + '\n\n' + taskTxt('verifying');
+              renderMessages(true);
+              let done = await verifyBuildSteps(mergeMsg.code, __taskPlan);
+              // بناء متعدد المراحل حقيقي: كل شاشة/ميزة ناقصة تُبنى في نداء مستقل
+              // فوق الكود الحالي، مع تحديث ⬜→✅ مباشرة أمام المستخدم.
+              let __refineBudget = 6;
+              if(done && done.some(d => !d)){
+                for(let i = 0; i < __taskPlan.length && __refineBudget > 0; i++){
+                  if(done[i]) continue;
+                  __planMsg.content = formatTaskPlan(__taskPlan, done) + '\n\n' + taskTxt('refining') + ' — ' + __taskPlan[i];
+                  renderMessages(true);
+                  __refineBudget--;
+                  try{
+                    const refMsgs = [
+                      { role: 'system', content: 'You are a senior developer. You receive a complete single-file HTML app and ONE missing feature/screen to add. Return the FULL updated HTML file inside a single ```html fence. Keep all existing code exactly the same - only ADD the missing feature as a beautiful, fully working screen with realistic demo data and working navigation to/from it. No explanations outside the fence.' },
+                      { role: 'user', content: 'Missing feature/screen to add now:\n' + __taskPlan[i] + '\n\nCode:\n```html\n' + mergeMsg.code + '\n```' }
+                    ];
+                    const r = await callAIWithFallback(refMsgs, () => {});
+                    const ref = extractReply((r && r.reply) || '');
+                    if(ref.code && ref.code.length > mergeMsg.code.length * 0.7){
+                      mergeMsg.code = ref.code;
+                      cur.code = ref.code;
+                      done[i] = true;
+                      renderAll(true);
+                    }
+                  }catch(refErr){ console.warn('[taskPlan refine] step failed:', refErr); }
+                }
+                // تحقق نهائي صادق: ما نعلّم ✅ إلا المنجز فعلاً
+                try{
+                  const recheck = await verifyBuildSteps(mergeMsg.code, __taskPlan);
+                  if(recheck) done = done.map((d, i) => d || recheck[i]);
+                }catch(e){}
+              }
+              __planMsg.content = formatTaskPlan(__taskPlan, done);
+            }catch(taskErr){
+              console.warn('[taskPlan verify] skipped:', taskErr);
+              __planMsg.content = formatTaskPlan(__taskPlan, null);
+            }
+          }
+          renderAll(true);
+          if(window.innerWidth <= 860 && localStorage.getItem('previewEnabled') !== 'off'){
+            switchWorkTab('preview');
+            setTimeout(() => openDrawer($('#workarea')), 200);
+          }
+        } else {
+          renderMessages(true);
+        }
+        saveState();
+      } else {
+        // Fewer than 2 usable answers - merging isn't useful, so just reveal
+        // whichever individual bubble(s) came back instead of showing nothing.
+        if(!cur.expandedAskAllBatches.includes(askAllBatchId)) cur.expandedAskAllBatches.push(askAllBatchId);
+        renderMessages(true);
+        saveState();
+      }
+    } else {
+      // Live-typing effect: as text streams in, show it raw in the "thinking"
+      // bubble; once the full reply is done, extractReply() runs on the
+      // complete text and renderAll() takes over with proper formatting/code.
+      // ⚡ v320: تحديث فقاعة البث بإيقاع الشاشة (إطار واحد) بدل كل قطعة نص واصلة.
+      const onDelta = (partial) => {
+        onDelta._p = partial;
+        if(onDelta._raf) return;
+        onDelta._raf = requestAnimationFrame(() => {
+          onDelta._raf = null;
+          thinkingDiv.textContent = liveStripCode(onDelta._p);
+          smartScrollBottom();
+        });
+      };
+      // المزود المختار من المستخدم يرد بنفسه (Claude هو الافتراضي)؛ الاحتياط صامت عند التعطل فقط
+      const isBuildTask = __routeFix && !__gateNoBuild;
+      const __selProv = localStorage.getItem('aiapp_provider') || 'claude';
+      // v262 — 🎯 التوجيه بالتخصص: في الوضع الافتراضي فقط (المستخدم ما اختار مزودًا بيده)
+      // الطلب يروح خلف الكواليس للمزود المتخصص، والواجهة تعرض المزود الافتراضي كما هو.
+      const __specProv = (!__routeFix && !localStorage.getItem('aiapp_provider_explicit')) ? pickSpecialtyProvider(text) : null;
+      // 🖼️→🌐 v272: صورة مرفقة + طلب ترجمة/قراءة نص → توجيه خلفي لأقوى مزود رؤية (Claude)
+      // حتى لو المستخدم واقف على مزود نظره ضعيف بالصور (Cohere/Groq...). الواجهة ما تتغير.
+      const __visionOverride = (imageAttachments.length && text && /(ترجم|ترجمه|ترجمة|ترجملي|translate|translation|اقرأ|اقري|إقرأ|قراءة|شو مكتوب|وش مكتوب|ما المكتوب|what does it say|read the)/i.test(text)) ? 'claude' : null;
+      // v382: بوابة البناء دائمًا تروح لـ Claude (الكينج) — أي مزود ثاني ممنوع يوصف البناء
+      const __effProv = __gateNoBuild ? 'claude' : (__visionOverride || __specProv || __selProv);
+      const __teamOrder = [__effProv, ...(__routeFix ? ['claude', 'openai', 'deepseek'] : ['claude', 'openai', 'gemini']).filter(p => p !== __effProv)];
+      window.__claudeModelOverride = null;
+      window.__claudeThinking = !__routeFix && __selProv === 'claude'; // 🧠 تفكير داخلي قبل الرد في النقاش العادي (Claude فقط)
+      if(__gateNoBuild){
+        // 🔒 دور البوابة: صف الفكرة واسأل الإذن — ممنوع البناء الآن.
+        apiMessages.push({ role: 'system', content: 'The user asked to build something, but you must NOT build yet. Reply in plain conversational text only (no code blocks at all): briefly describe in 2-3 sentences what you plan to build, then END your reply with exactly one question asking permission to start, e.g. in Arabic: "تبيني أبدأ البناء الحين؟". Do not start building until the user approves in their next message.' });
+      } else if(!__routeFix && __selProv !== 'claude'){
+        // 🎭 شخصية حرة: المزود المختار يرد بأسلوبه وشخصيته الأصلية — قواعد الأمانة فقط إلزامية.
+        apiMessages.unshift({ role: 'system', content: 'حافظ على شخصيتك وأسلوبك الطبيعي الخاص بالكامل — القواعد التالية قواعد أمانة إلزامية فقط ولا تغيّر أسلوبك:\n1) رد بلغة المستخدم نفسها، وجاوب على آخر رسالة فقط دون خلط أي موضوع سابق.\n2) أنت الآن في وضع نقاش عادي وليس وضع بناء: ممنوع أن تعرض بناء تطبيق أو موقع أو أي شيء، وممنوع وضع أكواد برمجية في الرد — إلا إذا طلب المستخدم البناء صراحةً.\n3) ممنوع الادعاء أنك سويت أو عدلت شيئًا لم تفعله فعلًا، وممنوع إنكار شيء موجود في المحادثة السابقة.\n4) ممنوع اختراع أرقام هواتف أو جهات تواصل، وممنوع تقديم معلومات غير مؤكدة كحقائق.\n5) ممنوع مناداة المستخدم بأي اسم يظهر داخل التصاميم أو الشهادات.\n6) هذا التطبيق اسمه "Omran AI Builder" من تطوير فريق عمران AI.' });
+      } else if(!__routeFix){
+        apiMessages.unshift({ role: 'system', content: 'أنت شريك نقاش حقيقي، مش مجرد مجيب أسئلة. أسلوبك الإلزامي:\n(0) أسلوبك العام: ودود عملي مباشر — جُمل قصيرة واضحة، دقة قبل كل شي (إذا ما أنت متأكد قلها صراحة ولا تخمّن)، تفهم اللهجة الإماراتية والخليجية بشكل طبيعي (مثل: شو، ليش، وايد، عيل، انزين، أبي/أبغي، مب، حق) وترد بعربية بسيطة قريبة من كلام المستخدم.\n(1) ناقش مثل إنسان خبير جالس مع صديقه: افهم قصده الحقيقي من كلامه حتى لو ما صاغه بدقة، وجاوب على القصد مش على الحروف.\n(2) الذاكرة للفهم فقط: استخدم سياق المحادثة لفهم المستخدم وتذكّر تفاصيله وقراراته ولا تسأله عن شي قاله من قبل — لكن جاوب على آخر رسالة فقط. ممنوع منعًا باتًا إعادة الإجابة على أي سؤال سابق تمت الإجابة عليه، وممنوع تلخيص أو استعادة مواضيع قديمة من نفسك.\n(3) كن صادقًا وواقعيًا ١٠٠٪: إذا فكرته فيها خطأ أو خطر قل له بوضوح واشرح السبب بالمنطق والأرقام — المجاملة الكاذبة ممنوعة. وإذا سُئلت عن شخص أو شي مغمور ما تعرفه فعلًا قل ذلك بصدق.\n(3ب) قاعدة إلزامية — جاوب بأفضل ما عندك من أول رد: ممنوع منعًا باتًا رفض الإجابة أو الرد بـ"ما عندي معلومات دقيقة أو مؤكدة" أو طلب تفاصيل قبل تقديم جواب كامل. أعطِ دائمًا أفضل وأشمل إجابة ممكنة من معرفتك العامة فورًا (ملخصات، نماذج امتحانات، خطط، أمثلة كاملة)، وإذا كانت تقريبية أضف تنويهًا من سطر واحد فقط في نهاية الرد، ثم اسأل سؤال تخصيص واحد إن لزم. الرفض أو طلب التفاصيل بدل الجواب = فشل.\n(4) لك رأي وشخصية: عند أي مقارنة أو قرار اعطِ توصيتك الواضحة مع السبب، ولا تكتفِ بسرد الخيارات. أسلوب المستشار الإلزامي عند طلب رأي أو نصيحة (شو رايك/انصحني/أيهما أفضل): ابدأ برأيك الصريح في جملة واحدة، ثم أسباب مرقمة (١، ٢، ٣) قصيرة، ثم اذكر نقطة مقابلة أو تحفظًا واحدًا إن وجد، واختم بخلاصة من سطر واحد. إذا الفكرة غلط قل بوضوح "لا أنصح" مع السبب — ممنوع المجاملة على حساب الصدق.\n(5) عمق الرد حسب الموضوع: سؤال بسيط = جواب مباشر في 1-3 جمل. نقاش أو قرار أو موضوع متشعب = رد غني منظم بعناوين أو نقاط قصيرة، بأمثلة عملية وأرقام حقيقية، بدون حد أقصى للطول ما دام كل جملة تضيف قيمة.\n(6) ممنوع الحشو والعموميات والمقدمات مثل "بالتأكيد!" أو "سؤال رائع"، وممنوع تكرار سؤال المستخدم، وممنوع مناداته بألقاب مثل "كابتن".\n(7) فكّر قبل ما ترد: حلّل المشكلة خطوة خطوة داخليًا، ثم قدّم الزبدة النهائية فقط.\n(7ب) مراجعة ذاتية إلزامية قبل الإرسال: افحص ردك — هل فيه معلومة غير مؤكدة قدمتها كحقيقة؟ هل يناقض شيئًا قلته سابقًا في المحادثة؟ هل فيه تركيب لغوي ركيك مترجم حرفيًا (مثل «إيش عن مسائك؟» أو «كيف يمكنني مساعدتك؟»)؟ صحح قبل الإرسال. ردك يجب أن يصمد أمام مهندس ومبرمج خبير — أي خطأ واضح = فشل.\n(7ج) ممنوع منعًا باتًا إنكار شي موجود في المحادثة السابقة أو الادعاء أن نقاشًا لم يحدث — راجع السياق أعلاه قبل أي نفي. وممنوع الادعاء أنك سويت أو عدلت شي ما سويته فعلًا.\n(8) اختم بسؤال أو اقتراح ذكي واحد فقط إذا كان يدفع النقاش فعلًا للأمام — وإلا لا تختم بشي.\n(9) ممنوع وضع أكواد برمجية في النقاش.\n(10) قاعدة صارمة: أنت الآن في وضع نقاش عادي، مش وضع بناء. السؤال العادي جاوبه كنقاش عادي — ممنوع منعًا باتًا أن تعرض بناء تطبيق أو موقع أو مساعد أو أي شي، وممنوع أن تفترض أن المستخدم يريد بناء شي، إلا إذا هو نفسه طلب البناء صراحة. إذا سألك "هل تعرف فلان/شي؟" وما تعرفه، قل "ما أعرف" واسأله عنه بفضول طبيعي كصديق — لا تحوّل السؤال لعرض خدمة مثل "أبنيها لك". ولا تخلط موضوعًا بموضوع: كل سؤال جديد عامله بمعزل عن أي طلب بناء سابق.\n(11) رد بلغة المستخدم نفسها وبروح دافئة واثقة، مع خفة دم خفيفة عند المناسبة.\n(12) أسلوب المستشار الخاص: ادخل بصلب الموضوع من أول كلمة بدون تمهيد، رأيك الصريح أولًا ثم الأسباب، ولا تسرد نصائح عامة يعرفها الجميع — أعطِ الزبدة اللي ما يقولها إلا خبير جالس معه.' });
+      }
+      let reply, providerKey, switched, requestedKey;
+      // 💬 عقل واحد: Claude وحده يرد في النقاش العادي — الاحتياط (GPT ثم Gemini)
+      // صامت ويشتغل فقط إذا Claude تعطل أو خلص حده.
+      try{
+        ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, onDelta, __teamOrder));
+      }finally{
+        window.__claudeModelOverride = null;
+        window.__claudeThinking = false;
+      }
+      let { code, explanation, codeType } = extractReply(reply);
+      if(code && isBuildTask){
+        // 🔁 التصحيح الذاتي: فحص الكود وإصلاح أخطائه قبل العرض
+        try{
+          const healed = await selfHealCode(code, codeType, () => {
+            thinkingDiv.textContent = t('selfHealing');
+            smartScrollBottom();
+          });
+          if(healed) code = healed;
+        }catch(healErr){ console.warn('[selfHeal] skipped:', healErr); }
+        cur.code = code;
+      }
+      // v359 — الشفافية الكاملة (قرار المستخدم): الفقاعة تعرض الاسم الحقيقي الشهير
+      // للمزود الذي ردّ فعلًا (Claude/Gemini/GPT أو الاحتياط الحقيقي مثل DeepSeek).
+      void __specProv; void __selProv; void switched;
+      let providerLabel = functionalLabel(providerKey);
+      void switched; void requestedKey;
+      cur.messages.push({role: 'assistant', content: (isBuildTask ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: isBuildTask ? code : null, providerLabel, providerKey, askAllReply: !isBuildTask,
+        // 🚫 v368: الصور والمصادر لم تعد تُعرض في المحادثة — مكانها المتصفح فقط.
+        sources: undefined,
+        searchImages: undefined});
+      // 👑 الرد الاحترافي اكتمل: حدّث رصيد النقاط وأظهر خصمًا متحركًا صغيرًا.
+      try{
+        if(window.__premiumOn === true && typeof isPremiumProvider === 'function' && isPremiumProvider()){
+          if(typeof showPremiumDeduction === 'function') showPremiumDeduction();
+          if(typeof refreshPremiumPoints === 'function') refreshPremiumPoints();
+        }
+      }catch(_){}
+    }
+  }catch(err){
+    if(err && err.name === 'AbortError'){
+      // User pressed ⏹️ to cancel: drop the just-sent message and put its
+      // text back in the box so they can fix it and resend.
+      const lastMsg = cur.messages[cur.messages.length - 1];
+      if(lastMsg && lastMsg.role === 'user'){
+        cur.messages.pop();
+      }
+      promptEl.value = text;
+    } else if(err && err.premiumNoPoints){
+      // 👑 نفاد النقاط أثناء الرد الاحترافي: رسالة ودّية + طريقة لشراء نقاط،
+      // وإطفاء الوضع الاحترافي حتى تكون الرسالة التالية مجانية.
+      window.__premiumOn = false;
+      try{ if(typeof updatePremiumToggleVisibility === 'function') updatePremiumToggleVisibility(); }catch(_){}
+      try{ settingsToast(t('premiumNoPoints')); }catch(_){}
+      try{ if(typeof openPremiumBuyPoints === 'function') openPremiumBuyPoints(); }catch(_){}
+    } else {
+      cur.messages.push({role: 'assistant', content: '⚠️ ' + err.message});
+    }
+  }finally{
+    genAbortController = null;
+    btnStop.classList.remove('live');
+    sendBtn.disabled = false;
+    sendBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px;display:block"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>';
+    saveState();
+    renderAll();
+    // 🧠 تحديث ذاكرة المستخدم بعد اكتمال الرد (بدون انتظار)
+    try{
+      const __lastA = cur.messages.filter(m => m.role === 'assistant').slice(-1)[0];
+      if(__lastA && __lastA.content && !String(__lastA.content).startsWith('⚠️')){
+        memoryUpdate(text, String(__lastA.content));
+        // 🗂️ v326: تحديث ملخص موضوع هذه المحادثة في الذاكرة السحابية
+        try{ window.memoryTopicUpdate && window.memoryTopicUpdate(cur, text, String(__lastA.content)); }catch(e){}
+      }
+    }catch(e){}
+    if($('#btnVoiceChat').classList.contains('active')){
+      const lastMsg = cur.messages[cur.messages.length - 1];
+      if(lastMsg && lastMsg.role === 'assistant' && lastMsg.content){
+        const assistantDivs = messagesEl.querySelectorAll('.msg.assistant');
+        const lastDiv = assistantDivs[assistantDivs.length - 1];
+        const wordEls = lastDiv ? Array.from(lastDiv.querySelectorAll('.tts-word')) : null;
+        speakSmart(lastMsg.content, null, null, false, wordEls);
+      }
+    }
+    // Preview no longer auto-opens on mobile after generation; the user
+    // must tap "استخدم هذا الإصدار" to view the result, matching Ask-All mode.
+    refreshProviderQuickBar();
+  }
+}
+
+localStorage.removeItem('autoSpeakReplies');
+applyLanguage();
+renderAll();
+try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
+// 💾 تحميل/ترحيل المشاريع من IndexedDB (سعة كبيرة، تحل مشكلة "مساحة التخزين ممتلئة").
+(async () => {
+  // v378: شبكة أمان — لو علّق التحميل المحلي لأي سبب، نفتح المزامنة بعد 10 ثواني.
+  setTimeout(() => { window.__localChatsLoaded = true; }, 10000);
+  if(!window.indexedDB){ window.__localChatsLoaded = true; return; }
+  try{
+    const migrated = localStorage.getItem('aiapp_idb_on') === '1';
+    if(!migrated){
+      // أول تشغيل: بيانات localStorage هي المصدر → ننسخها إلى IndexedDB ثم نحرر المساحة.
+      const idbOld = await idbGet('aiapp_projects');
+      const merged = Array.isArray(idbOld) && idbOld.length
+        ? idbOld.filter(p => !state.projects.some(q => q.id === p.id)).concat(state.projects)
+        : state.projects;
+      state.projects = merged;
+      await idbSet('aiapp_projects', JSON.parse(JSON.stringify(merged)));
+      localStorage.setItem('aiapp_idb_on', '1');
+      try{ localStorage.removeItem('aiapp_projects'); }catch(e){}
+      renderAll();
+    } else {
+      const idbProjects = await idbGet('aiapp_projects');
+      if(Array.isArray(idbProjects) && idbProjects.length){
+        // دمج أي مشاريع أنشئت قبل اكتمال التحميل (نادر) بدون فقدان.
+        const extra = state.projects.filter(p => !idbProjects.some(q => q.id === p.id));
+        state.projects = idbProjects.concat(extra);
+        renderAll();
+      }
+    }
+    // 🧹 v308: تنظيف لمرة واحدة — لقطات آلة الزمن القديمة المنتفخة بوسائط base64
+    // (كانت تنسخ الصور المضمنة 12 مرة وتفجّر تخزين iOS فتختفي المحادثات).
+    try{
+      let cleaned = false;
+      (state.projects || []).forEach(p => {
+        (p.codeHistory || []).forEach((s, si) => {
+          if(s && typeof s.code === 'string' && s.code.length > 500000){
+            let c = s.code.replace(/data:(image|audio|video)\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]{200,}/g, 'data:image/png;base64,SNAPSHOT_MEDIA_OMITTED');
+            if(c.length > 500000) c = c.slice(0, 500000);
+            s.code = c; cleaned = true;
+          }
+        });
+      });
+      if(cleaned) saveState();
+    }catch(e){}
+    // 🧹 v310: تنظيف بقايا الجلسات المقطوعة — معرفات _uid القديمة (تسبب تصادم
+    // البث مع فقاعات قديمة) + فقاعات "⏳/يجهز" عالقة انحفظت قبل اكتمال الرد.
+    try{
+      let fixed = false;
+      (state.projects || []).forEach(p => {
+        if(!Array.isArray(p.messages)) return;
+        const before = p.messages.length;
+        p.messages = p.messages.filter(m => !(m && (m.isAskAllPrep || (m._loading && !m.content))));
+        if(p.messages.length !== before) fixed = true;
+        p.messages.forEach(m => {
+          if(!m) return;
+          if(m._uid !== undefined){ delete m._uid; fixed = true; }
+          if(m._loading){ m._loading = false; fixed = true; }
+        });
+      });
+      if(fixed) saveState();
+    }catch(e){}
+    // 🔁 فتح آخر مشروع تلقائيًا حتى يشوف المستخدم آخر محادثته فورًا.
+    if(!state.currentId && state.projects.length){
+      const savedId = localStorage.getItem('aiapp_current_id');
+      const p = state.projects.find(q => q.id === savedId) || state.projects[state.projects.length - 1];
+      if(p){
+        state.currentId = p.id;
+        renderAll();
+        try{ messagesEl.scrollTop = messagesEl.scrollHeight; }catch(e){}
+      }
+    }
+  }catch(e){
+    console.error('IDB init/migration failed → staying on localStorage', e);
+    __idbBroken = true;
+  }
+  // v378: اكتمل تحميل المحادثات المحلية → المزامنة مع السيرفر مسموحة الآن.
+  window.__localChatsLoaded = true;
+})();
+if('speechSynthesis' in window){
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
+}
+// --- Offline banner ---
+(function(){
+  const banner = $('#offlineBanner');
+  let hideTimer = null;
+  function refreshBannerText(){
+    const span = banner.querySelector('[data-i18n]');
+    if(span) span.textContent = t(navigator.onLine ? 'backOnlineBanner' : 'offlineBanner');
+  }
+  function setOffline(){
+    clearTimeout(hideTimer);
+    refreshBannerText();
+    banner.style.background = '#b45309';
+    banner.style.display = 'block';
+  }
+  function setOnline(){
+    if(banner.style.display === 'none') return; // wasn't showing offline state, no need to flash
+    banner.style.background = '#16a34a';
+    banner.querySelector('[data-i18n]').setAttribute('data-i18n', 'backOnlineBanner');
+    banner.querySelector('[data-i18n]').textContent = t('backOnlineBanner');
+    hideTimer = setTimeout(() => {
+      banner.style.display = 'none';
+      banner.querySelector('[data-i18n]').setAttribute('data-i18n', 'offlineBanner');
+    }, 2500);
+  }
+  window.addEventListener('offline', setOffline);
+  window.addEventListener('online', setOnline);
+  if(!navigator.onLine) setOffline();
+})();
+
+// --- Freeze detector: uses a Web Worker heartbeat so it keeps ticking even
+// if the main thread is blocked. When the main thread finally catches up
+// with a large delay, we know it was frozen and warn the user (after
+// auto-saving their current project so nothing is lost). ---
+(function(){
+  const FREEZE_THRESHOLD_MS = 5000;
+  const banner = $('#freezeBanner');
+  const reloadBtn = $('#freezeReloadBtn');
+  const dismissBtn = $('#freezeDismissBtn');
+  if(!banner || !window.Worker) return;
+  let shown = false;
+  let dismissedUntil = 0;
+
+  reloadBtn.onclick = () => location.reload();
+  dismissBtn.onclick = () => {
+    banner.style.display = 'none';
+    shown = false;
+    dismissedUntil = Date.now() + 60000; // don't nag again for 1 minute
+  };
+
+  let worker = null;
+  try{
+    const workerSrc = "setInterval(function(){ postMessage(Date.now()); }, 1000);";
+    const blob = new Blob([workerSrc], {type: 'application/javascript'});
+    worker = new Worker(URL.createObjectURL(blob));
+  }catch(e){ return; }
+
+  worker.onmessage = (e) => {
+    const delay = Date.now() - e.data;
+    if(delay > FREEZE_THRESHOLD_MS && !shown && Date.now() > dismissedUntil){
+      try{ saveState(); }catch(err){}
+      shown = true;
+      banner.style.display = 'flex';
+    }
+  };
+  window.addEventListener('beforeunload', () => { try{ worker.terminate(); }catch(e){} });
+})();
+
+// --- PWA: service worker + install prompt ---
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      // Check for a newer service worker on every load, and whenever the tab regains focus.
+      reg.update().catch(() => {});
+      document.addEventListener('visibilitychange', () => {
+        if(document.visibilityState === 'visible') reg.update().catch(() => {});
+      });
+      // If a new worker takes control (after an update), the page it served is stale — reload once.
+      let refreshedOnce = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if(refreshedOnce) return;
+        refreshedOnce = true;
+        window.location.reload();
+      });
+    }).catch(() => {});
+  });
+}
+
+let deferredInstallPrompt = null;
+const btnInstall = $('#btnInstall');
+(function migrateOpenrouterModel(){
+  try {
+    const __orOld = localStorage.getItem('aiapp_openrouter_model');
+    if (__orOld === 'meta-llama/llama-3.1-8b-instruct:free' || __orOld === 'meta-llama/llama-3.3-70b-instruct:free') {
+      localStorage.setItem('aiapp_openrouter_model', 'nvidia/nemotron-3-super-120b-a12b:free');
+    }
+  } catch (e) {}
+})();
+const btnRefreshPage = $('#btnRefreshPage');
+if (btnRefreshPage) {
+  btnRefreshPage.onclick = () => { location.reload(); };
+}
+const btnInstallHeader = $('#btnInstallHeader');
+const installButtons = [btnInstall].filter(Boolean); // header install button retired in clean design
+
+function isStandalone(){
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+function showInstallButtons(show){
+  installButtons.forEach(b => { b.style.display = show ? 'inline-flex' : 'none'; });
+}
+
+// If already installed/running as an app, hide the buttons entirely.
+if(isStandalone()){
+  showInstallButtons(false);
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  showInstallButtons(true);
+  // Auto-show the native install dialog the first time this browser ever
+  // becomes eligible (Chrome/Edge on Android + desktop only — iOS Safari
+  // does not support beforeinstallprompt, so there users still see the
+  // manual "Add to Home Screen" instructions instead).
+  try {
+    // Auto-prompt removed: browsers require a user gesture for prompt().
+    // Install happens only via the install button click (onInstallBtnClick).
+    if(!isStandalone() && !localStorage.getItem('aiapp_autoinstall_prompted')){
+      localStorage.setItem('aiapp_autoinstall_prompted', '1');
+    }
+  } catch(err) {}
+});
+
+function showManualInstallInstructions(){
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  const isAndroid = /Android/i.test(ua);
+  let msgAr, msgEn;
+  if(isIOS){
+    msgAr = 'للتثبيت على الآيفون:\n1) افتح الموقع من متصفح Safari\n2) اضغط زر المشاركة (المربع مع السهم للأعلى) في الأسفل\n3) اختر "إضافة إلى الشاشة الرئيسية"\n4) اضغط "إضافة"';
+    msgEn = 'To install on iPhone:\n1) Open this site in Safari\n2) Tap the Share button (square with an up arrow)\n3) Choose "Add to Home Screen"\n4) Tap "Add"';
+  } else if(isAndroid){
+    msgAr = 'للتثبيت على أندرويد:\n1) افتح قائمة المتصفح (⋮) في الأعلى يمين\n2) اختر "تثبيت التطبيق" أو "إضافة إلى الشاشة الرئيسية"\n3) اتبع التعليمات لإتمام التثبيت';
+    msgEn = 'To install on Android:\n1) Open the browser menu (⋮) top-right\n2) Choose "Install app" or "Add to Home screen"\n3) Follow the prompts to finish installing';
+  } else {
+    msgAr = 'للتثبيت على الكمبيوتر:\nابحث عن أيقونة التثبيت (⊕ أو شاشة صغيرة) في شريط عنوان المتصفح، ثم اضغط عليها واختر "تثبيت".';
+    msgEn = 'To install on desktop:\nLook for the install icon (⊕ or small monitor) in your browser\'s address bar, click it, then choose "Install".';
+  }
+  const currentLang = (typeof lang !== 'undefined' && lang === 'ar') ? 'ar' : 'en';
+  alert(currentLang === 'ar' ? msgAr : msgEn);
+}
+
+const onInstallBtnClick = async () => {
+  if(deferredInstallPrompt){
+    try {
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+    } catch(e) {}
+    deferredInstallPrompt = null;
+    showInstallButtons(false);
+  } else {
+    showManualInstallInstructions();
+  }
+};
+installButtons.forEach(b => { b.onclick = onInstallBtnClick; });
+window.addEventListener('appinstalled', () => {
+  showInstallButtons(false);
+});
+
+/* ---------- Share App button ---------- */
+const btnShareApp = $('#btnShareApp');
+if(btnShareApp){
+  btnShareApp.onclick = async () => {
+    const shareUrl = 'https://omran-ai-builder.vercel.app';
+    const currentLang = (typeof lang !== 'undefined') ? lang : 'ar';
+    const titles = { ar:'عمران AI', en:'Omran AI', fr:'Omran AI', hi:'Omran AI', ur:'Omran AI', bn:'Omran AI', ne:'Omran AI' };
+    const texts = {
+      ar: 'جرّب تطبيق عمران AI لإنشاء تطبيقات بالذكاء الاصطناعي مجانًا:',
+      en: 'Try Omran AI to build apps with AI for free:',
+      fr: "Essayez Omran AI pour créer des applications avec l'IA gratuitement :",
+      hi: 'AI से मुफ्त में ऐप बनाने के लिए Omran AI आज़माएं:',
+      ur: 'مفت میں AI سے ایپس بنانے کے لیے Omran AI آزمائیں:',
+      bn: 'বিনামূল্যে AI দিয়ে অ্যাপ তৈরি করতে Omran AI ব্যবহার করুন:',
+      ne: 'निःशुल्क AI ले एप बनाउन Omran AI प्रयोग गर्नुहोस्:'
+    };
+    const shareText = texts[currentLang] || texts.ar;
+    if(navigator.share){
+      try {
+        await navigator.share({ title: titles[currentLang] || titles.ar, text: shareText, url: shareUrl });
+      } catch(e){ /* user cancelled share, ignore */ }
+    } else {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        const copiedMsg = { ar:'تم نسخ رابط التطبيق!', en:'App link copied!', fr:"Lien de l'application copié !", hi:'ऐप लिंक कॉपी हो गया!', ur:'ایپ کا لنک کاپی ہو گیا!', bn:'অ্যাপ লিঙ্ক কপি হয়েছে!', ne:'एप लिंक कपी भयो!' };
+        alert(copiedMsg[currentLang] || copiedMsg.ar);
+      } catch(e){
+        prompt('انسخ الرابط:', shareUrl);
+      }
+    }
+  };
+}
+
+/* ---------- Mobile drawers (projects / code / preview) ----------
+   On mobile the chat is the main screen. ☰ opens the code drawer,
+   💬 opens the preview drawer, 📂 opens the projects-history drawer. */
+const sidebarEl = $('#sidebar');
+const chatcolEl = $('#chatcol');
+const workareaEl = $('#workarea');
+const backdropEl = $('#drawerBackdrop');
+const btnToggleHistory = $('#btnToggleHistory'); // ☰ -> code/preview drawer
+const btnToggleProjects = $('#btnToggleProjects'); // 📂 -> project list
+// 🤖 وكيل عمران: زر التشغيل/الإيقاف في قائمة ⋮
+(function(){
+  const b = document.getElementById('btnAgentMode');
+  if(b){
+    b.onclick = () => {
+      window.__agentModeOn = !window.__agentModeOn;
+      updateAgentModeUI();
+      if(typeof closeHeaderMenu === 'function') closeHeaderMenu();
+    };
+  }
+  updateAgentModeUI();
+})();
+
+function closeDrawers(){
+  sidebarEl.classList.remove('open');
+  workareaEl.classList.remove('open');
+  backdropEl.classList.remove('show');
+}
+function openDrawer(el){
+  const isOpen = el.classList.contains('open');
+  closeDrawers();
+  if(!isOpen){
+    el.classList.add('open');
+    backdropEl.classList.add('show');
+    try{ document.getElementById('plusToolsPopup').classList.remove('show'); }catch(_){}
+  }
+}
+function switchWorkTab(tabName){
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tabName));
+}
+btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl); };
+
+// 🧠 Ask-All toggle button + first-time hint
+(function(){
+  const b = document.getElementById('btnAskAllToggle');
+  if(!b) return;
+  window.__askAllToggleOn = false;
+  const paint = () => {
+    b.style.background = window.__askAllToggleOn ? 'var(--accent)' : '';
+    b.style.color = window.__askAllToggleOn ? '#fff' : '';
+    b.style.boxShadow = window.__askAllToggleOn ? '0 0 0 2px rgba(var(--accent-rgb),.35)' : '';
+  };
+  b.addEventListener('click', () => {
+    window.__askAllToggleOn = !window.__askAllToggleOn;
+    paint();
+  });
+  // إعادة تعيين الزر تلقائيًا (لمرة واحدة لكل رسالة) حتى لا يظل «اسأل الكل»
+  // مفعّلًا فيتجاهل اختيار المستخدم ✅ للمزود في الرسائل التالية.
+  window.__resetAskAllToggle = () => { window.__askAllToggleOn = false; paint(); };
+  try{
+    if(!localStorage.getItem('askAllHintSeen')){
+      const tip = document.createElement('div');
+      tip.id = 'askAllHintTip';
+      const txt = (typeof t === 'function') ? t('askAllHintText') : '';
+      tip.textContent = (txt && txt !== 'askAllHintText') ? txt : "💡 اكتب طلبك عادي — والذكاء الاصطناعي يبني تطبيقك فورًا";
+      tip.style.cssText = 'margin:4px 12px 0; padding:8px 12px; border-radius:12px; background:rgba(var(--accent-rgb),.14); color:inherit; font-size:12.5px; cursor:pointer; text-align:center;';
+      const bar = document.getElementById('inputbar');
+      if(bar && bar.parentNode){
+        bar.parentNode.insertBefore(tip, bar);
+        const dismiss = () => { try{ tip.remove(); localStorage.setItem('askAllHintSeen','1'); }catch(e){} };
+        tip.addEventListener('click', dismiss);
+        setTimeout(dismiss, 25000);
+      }
+    }
+  }catch(e){}
+})();
+
+// ➕ composer tools popup
+(function(){
+  const plusBtn = document.getElementById('btnPlusTools');
+  const popup = document.getElementById('plusToolsPopup');
+  if(!plusBtn || !popup) return;
+  plusBtn.onclick = (e) => { e.stopPropagation(); popup.classList.toggle('show'); if(popup.classList.contains('show')){ try{ closeDrawers(); }catch(_){} try{ closeHeaderMenu(); }catch(_){} } };
+  popup.addEventListener('click', (e) => {
+    // close after choosing a tool (but keep open for stop toggling)
+    if(e.target.closest('button')) setTimeout(() => popup.classList.remove('show'), 150);
+  });
+  document.addEventListener('click', (e) => {
+    if(!e.target.closest('#plusToolsWrap')) popup.classList.remove('show');
+  });
+})();
+
+// v207: قائمة ⋮ في شريط التبويبات (رفع/تنزيل/ZIP)
+(function(){
+  const btn = document.getElementById('btnTabsMenu');
+  const dd = document.getElementById('tabsMenuDropdown');
+  if(!btn || !dd) return;
+  btn.onclick = (e) => { e.stopPropagation(); dd.classList.toggle('show'); btn.classList.toggle('active', dd.classList.contains('show')); };
+  dd.addEventListener('click', (e) => {
+    if(e.target.closest('button')) setTimeout(() => { dd.classList.remove('show'); btn.classList.remove('active'); }, 150);
+  });
+  document.addEventListener('click', (e) => {
+    if(!e.target.closest('#tabDownloadWrap')){ dd.classList.remove('show'); btn.classList.remove('active'); }
+  });
+})();
+
+// v207: تقسيم قائمة ⋮ الرئيسية إلى مجموعات بعناوين صغيرة
+(function(){
+  const dd = document.getElementById('headerMenuDropdown');
+  if(!dd) return;
+  const groups = [
+    { title: null, ids: ['btnSettings','btnAuthToggle','btnToggleHistory'] },
+    { title: 'grpCreate', ids: ['btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnExplore'] },
+    { title: 'grpSections', ids: ['btnStocks','btnConstruction','btnOmranEdu','btnExpense','btnDocs','btnGov','btnCV','btnReligion','btnEmailAssist'] },
+    { title: 'grpTools', ids: ['btnTemplates','btnAgentMode','btnInstall','btnShareApp'] }
+  ];
+  groups.forEach(g => {
+    if(g.title){
+      // v214: مجموعات قابلة للطي — سهم يفتح ويسكر
+      const h = document.createElement('div');
+      h.style.cssText = 'display:flex; align-items:center; justify-content:space-between; font-size:11.5px; color:var(--muted); padding:8px 10px 5px; border-top:1px solid var(--border); margin-top:4px; font-weight:700; cursor:pointer; user-select:none;';
+      const lbl = document.createElement('span');
+      lbl.setAttribute('data-i18n', g.title);
+      lbl.textContent = (typeof t === 'function') ? t(g.title) : g.title;
+      const chev = document.createElement('span');
+      chev.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transition:transform .18s; display:block;"><polyline points="6 9 12 15 18 9"></polyline></svg>';
+      h.appendChild(lbl); h.appendChild(chev);
+      dd.appendChild(h);
+      const body = document.createElement('div');
+      body.style.cssText = 'display:none; flex-direction:column; gap:4px;';
+      dd.appendChild(body);
+      g.ids.forEach(id => { const b = document.getElementById(id); if(b && b.parentElement === dd) body.appendChild(b); });
+      h.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const open = body.style.display !== 'flex';
+        body.style.display = open ? 'flex' : 'none';
+        const svg = chev.querySelector('svg');
+        if(svg) svg.style.transform = open ? 'rotate(180deg)' : '';
+      });
+    } else {
+      g.ids.forEach(id => { const b = document.getElementById(id); if(b && b.parentElement === dd) dd.appendChild(b); });
+    }
+  });
+  // v214: تسجيل الخروج دائمًا آخر خانة في القائمة
+  const lastLogout = document.getElementById('btnMenuLogout');
+  if(lastLogout) dd.appendChild(lastLogout);
+})();
+
+// v207: إغلاق الإعدادات بالضغط في أي مكان خارجها
+(function(){
+  const dlg = document.getElementById('settingsDialog');
+  if(!dlg) return;
+  dlg.addEventListener('click', (e) => {
+    if(e.target === dlg){
+      const r = dlg.getBoundingClientRect();
+      const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+      if(!inside) dlg.close();
+    }
+  });
+})();
+
+// «المتصفح» (v361) — خانة بحث ويب مربوطة بالمحادثة الحالية: المستخدم يكتب
+// موضوعًا، يُرسَل داخل نفس المحادثة عبر sendPrompt() فيكمّل النموذج على نفس
+// السياق (بحث حي + ربط بالكلام السابق). الدخول والخروج بحرية؛ الموضوع محفوظ.
+(function(){
+  const b = document.getElementById('btnPreviewToggle');
+  if(!b) return;
+  try{ if(localStorage.getItem('previewEnabled') === 'off') localStorage.removeItem('previewEnabled'); }catch(e){}
+  function isAr(){ return (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur'); }
+  function openBrowserBox(){
+    const ar = isAr();
+    const dir = ar ? 'rtl' : 'ltr';
+    let old = document.getElementById('webBrowserOverlay');
+    if(old) old.remove();
+    const ov = document.createElement('div');
+    ov.id = 'webBrowserOverlay';
+    ov.dir = dir;
+    ov.style.cssText = 'position:fixed; inset:0; z-index:950; background:rgba(0,0,0,.6); backdrop-filter:blur(4px); display:flex; align-items:flex-start; justify-content:center; padding:14vh 16px 16px;';
+    const card = document.createElement('div');
+    card.style.cssText = 'width:100%; max-width:560px; background:var(--panel,#141420); border:1px solid rgba(255,255,255,.12); border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,.5); overflow:hidden;';
+    const bar = document.createElement('div');
+    bar.style.cssText = 'display:flex; align-items:center; gap:8px; padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08);';
+    bar.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b8ba7" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>' +
+      '<input id="webBrowserInput" type="text" autocomplete="off" placeholder="' + (ar ? 'ابحث في الويب وتابع نفس الموضوع…' : 'Search the web, continue the same topic…') + '" style="flex:1; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:10px; color:#fff; font-size:15px; padding:11px 13px; outline:none;">' +
+      '<button id="webBrowserGo" type="button" style="flex-shrink:0; background:var(--accent,#7c4dff); border:none; color:#fff; border-radius:10px; padding:11px 15px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>';
+    const hint = document.createElement('div');
+    hint.style.cssText = 'padding:10px 16px 14px; color:#8b8ba7; font-size:12.5px; line-height:1.7;';
+    hint.textContent = ar ? 'اكتب موضوعك وبيكمّل مع محادثتك الحالية على نفس السياق. اضغط خارج الصندوق للإغلاق.' : 'Type your topic — it continues within your current chat and context. Tap outside to close.';
+    card.appendChild(bar); card.appendChild(hint); ov.appendChild(card);
+    document.body.appendChild(ov);
+    const input = document.getElementById('webBrowserInput');
+    setTimeout(() => { try{ input.focus(); }catch(e){} }, 50);
+    function go(){
+      const q = (input.value || '').trim();
+      if(!q) return;
+      ov.remove();
+      try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(e){}
+      try{
+        const p = document.getElementById('prompt');
+        if(p){
+          p.value = q;
+          p.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        if(typeof sendPrompt === 'function') sendPrompt();
+      }catch(e){}
+    }
+    document.getElementById('webBrowserGo').onclick = go;
+    input.addEventListener('keydown', (ev) => { if(ev.key === 'Enter'){ ev.preventDefault(); go(); } });
+    ov.addEventListener('click', (ev) => { if(ev.target === ov) ov.remove(); });
+  }
+  b.onclick = (e) => {
+    e.stopPropagation();
+    openBrowserBox();
+    setTimeout(() => {
+      const p = document.getElementById('plusToolsPopup'); if(p) p.classList.remove('show');
+      if(typeof closeHeaderMenu === 'function') try{ closeHeaderMenu(); }catch(e2){}
+    }, 100);
+  };
+})();
+
+// 🕰️ آلة الزمن — عرض واسترجاع إصدارات المشروع
+(function(){
+  const btn = document.getElementById('btnTimeMachine');
+  if(!btn) return;
+  btn.onclick = () => {
+    const cur = getCurrent();
+    const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
+    const hist = (cur && cur.codeHistory) ? cur.codeHistory.slice().reverse() : [];
+    let old = document.getElementById('tmOverlay');
+    if(old) old.remove();
+    const ov = document.createElement('div');
+    ov.id = 'tmOverlay';
+    ov.style.cssText = 'position:fixed; inset:0; z-index:900; background:rgba(0,0,0,.75); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; padding:16px;';
+    const box = document.createElement('div');
+    box.style.cssText = 'background:#12151d; border-radius:14px; max-width:560px; width:100%; max-height:80vh; display:flex; flex-direction:column; overflow:hidden;';
+    const head = document.createElement('div');
+    head.style.cssText = 'display:flex; align-items:center; gap:10px; padding:14px 16px; font-size:14px; font-weight:800;';
+    head.innerHTML = '<span>🕰️ ' + (isAr ? 'آلة الزمن — إصدارات المشروع' : 'Time Machine — project versions') + '</span><span style="flex:1;"></span>';
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '✖';
+    closeBtn.style.cssText = 'background:none; border:none; color:#fff; cursor:pointer; font-size:15px;';
+    closeBtn.onclick = () => ov.remove();
+    head.appendChild(closeBtn);
+    box.appendChild(head);
+    const body = document.createElement('div');
+    body.style.cssText = 'overflow:auto; flex:1; padding:0 16px 16px;';
+    if(!hist.length){
+      body.innerHTML = '<div style="color:#98a0b3; padding:12px 0;">' + (isAr ? 'لا توجد إصدارات محفوظة بعد — كل تعديل على الكود ينحفظ هنا تلقائيًا.' : 'No saved versions yet — every code change is saved here automatically.') + '</div>';
+    }
+    hist.forEach((h, idx) => {
+      const isCurrent = cur.code === h.code;
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex; align-items:center; gap:10px; padding:10px 0; font-size:13px;';
+      const d = new Date(h.ts);
+      const when = d.toLocaleString(isAr ? 'ar-AE' : 'en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+      const info = document.createElement('span');
+      info.style.cssText = 'flex:1; color:' + (isCurrent ? 'var(--accent2,#00e0b8)' : '#e8eaf1') + ';';
+      info.textContent = (isCurrent ? '✅ ' : '') + when + ' — ' + Math.round(h.code.length / 1024) + 'KB';
+      row.appendChild(info);
+      if(!isCurrent){
+        const diffB = document.createElement('button');
+        diffB.className = 'btn';
+        diffB.style.cssText = 'font-size:12px; padding:5px 10px;';
+        diffB.textContent = '🔀';
+        diffB.title = isAr ? 'الفروقات' : 'Diff';
+        diffB.onclick = () => showCodeDiff(cur.code, h.code, when);
+        row.appendChild(diffB);
+        const restB = document.createElement('button');
+        restB.className = 'btn';
+        restB.style.cssText = 'font-size:12px; padding:5px 10px;';
+        restB.textContent = isAr ? '↩️ استرجاع' : '↩️ Restore';
+        restB.onclick = () => {
+          cur.code = h.code;
+          cur.codeType = h.codeType || 'html';
+          saveState();
+          renderAll(true);
+          ov.remove();
+        };
+        row.appendChild(restB);
+      }
+      body.appendChild(row);
+    });
+    box.appendChild(body);
+    ov.appendChild(box);
+    ov.onclick = (e) => { if(e.target === ov) ov.remove(); };
+    document.body.appendChild(ov);
+  };
+})();
+
+// 🖼️ صور → PDF (client-side, no API cost)
+(function(){
+  const btn = document.getElementById('btnImgToPdf');
+  const input = document.getElementById('imgToPdfInput');
+  if(!btn || !input) return;
+  let jsPdfLoading = null;
+  function loadJsPdf(){
+    if(window.jspdf && window.jspdf.jsPDF) return Promise.resolve();
+    if(jsPdfLoading) return jsPdfLoading;
+    jsPdfLoading = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      s.onload = resolve; s.onerror = () => { jsPdfLoading = null; reject(new Error('load-failed')); };
+      document.head.appendChild(s);
+    });
+    return jsPdfLoading;
+  }
+  function readImage(file){
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => {
+        const img = new Image();
+        img.onload = () => resolve({ img, dataUrl: fr.result });
+        img.onerror = reject;
+        img.src = fr.result;
+      };
+      fr.onerror = reject;
+      fr.readAsDataURL(file);
+    });
+  }
+  btn.onclick = () => input.click();
+  input.onchange = async () => {
+    const files = Array.from(input.files || []).filter(f => f.type.indexOf('image/') === 0);
+    input.value = '';
+    if(!files.length) return;
+    const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
+    btn.disabled = true;
+    try{
+      await loadJsPdf();
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+      const pw = pdf.internal.pageSize.getWidth();
+      const ph = pdf.internal.pageSize.getHeight();
+      for(let i = 0; i < files.length; i++){
+        const { img, dataUrl } = await readImage(files[i]);
+        // draw to canvas as JPEG to keep the PDF small and support all formats
+        const cv = document.createElement('canvas');
+        const maxSide = 2000;
+        const sc = Math.min(1, maxSide / Math.max(img.width, img.height));
+        cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc);
+        const cx = cv.getContext('2d');
+        cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+        cx.drawImage(img, 0, 0, cv.width, cv.height);
+        const jpg = cv.toDataURL('image/jpeg', 0.88);
+        const margin = 24;
+        const fit = Math.min((pw - margin * 2) / cv.width, (ph - margin * 2) / cv.height);
+        const w = cv.width * fit, h = cv.height * fit;
+        if(i > 0) pdf.addPage();
+        pdf.addImage(jpg, 'JPEG', (pw - w) / 2, (ph - h) / 2, w, h);
+      }
+      pdf.save('omran-images.pdf');
+    }catch(err){
+      alert(isAr ? 'تعذر إنشاء ملف PDF — حاول مرة ثانية' : 'Could not create the PDF — please try again');
+    }
+    btn.disabled = false;
+  };
+})();
+
+// Brand title: click = home (reload), text follows language
+(function(){
+  const h1 = document.querySelector('header h1');
+  if(h1) h1.onclick = () => { try{ saveState(); }catch(_){} location.href = location.pathname; };
+  const syncBrand = () => {
+    const bt = document.getElementById('brandTitle');
+    const l = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
+    if(bt) bt.innerHTML = (l === 'ar' ? 'عمران AI' : 'Omran AI') + ' <span class="brandSpark">✨</span>';
+  };
+  syncBrand();
+  window.__syncBrandTitle = syncBrand;
+})();
+btnToggleProjects.onclick = () => { openDrawer(sidebarEl); closeHeaderMenu(); };
+
+// One-time onboarding hint for new/mobile users who don't know ☰ opens the
+// code + live-preview drawer: a pulsing glow + tooltip pointing at it, shown
+// only once (localStorage flag), dismissed on tap/close/timeout.
+(function initCodeHint(){
+  try{
+    return; // hint retired — code button now lives in the ⚙️ menu
+    if(localStorage.getItem('aiapp_seen_code_hint')) return;
+    if(window.innerWidth > 860) return; // mobile-only nudge
+    const tip = $('#codeHintTip');
+    const promptEl = $('#prompt');
+    if(!btnToggleHistory || !tip || !promptEl) return;
+    function position(){
+      const r = btnToggleHistory.getBoundingClientRect();
+      tip.style.top = (r.bottom + 10) + 'px';
+      const left = Math.max(8, Math.min(window.innerWidth - tip.offsetWidth - 8, r.left + r.width / 2 - tip.offsetWidth / 2));
+      tip.style.left = left + 'px';
+    }
+    function dismiss(){
+      try{ localStorage.setItem('aiapp_seen_code_hint', '1'); }catch(e){}
+      btnToggleHistory.classList.remove('code-hint-pulse');
+      tip.style.display = 'none';
+      window.removeEventListener('resize', position);
+    }
+    function show(){
+      btnToggleHistory.classList.add('code-hint-pulse');
+      tip.style.display = 'block';
+      position();
+      window.addEventListener('resize', position);
+      btnToggleHistory.addEventListener('click', dismiss, {once: true});
+      const closeBtn = $('#codeHintCloseBtn');
+      if(closeBtn) closeBtn.addEventListener('click', dismiss);
+      // dismiss automatically once the user sends the message, or after a timeout
+      promptEl.removeEventListener('keydown', onFirstKey);
+      setTimeout(dismiss, 9000);
+    }
+    function onFirstKey(){
+      promptEl.removeEventListener('input', onFirstKey);
+      promptEl.removeEventListener('keydown', onFirstKey);
+      show();
+    }
+    // Wait until the user actually starts typing their request before nudging
+    // them toward ☰ — this is the moment the tip is most relevant.
+    promptEl.addEventListener('input', onFirstKey, {once: true});
+    promptEl.addEventListener('keydown', onFirstKey, {once: true});
+  }catch(e){ console.error('codeHint init', e); }
+})();
+backdropEl.onclick = closeDrawers;
+
+/* ---------- Header "more" dropdown (📂 projects / 📲 install / 🚪 logout) ---------- */
+const btnHeaderMenu = $('#btnHeaderMenu');
+const headerMenuDropdown = $('#headerMenuDropdown');
+function closeHeaderMenu(){
+  headerMenuDropdown.classList.remove('show');
+  btnHeaderMenu.classList.remove('active');
+  const qc = $('#quickChips');
+  if(qc) qc.style.display = '';
+  const msgs = $('#messages');
+  if(msgs) msgs.style.visibility = '';
+  const pf = $('#previewFrame');
+  if(pf) pf.style.visibility = '';
+  const pc = $('#panel-code');
+  if(pc) pc.style.visibility = '';
+}
+// v202: بعض نصوص الترجمة تحتوي إيموجي (مثل 📈/✅) — ننظف تسميات قائمة الأقسام
+// لأن أيقوناتها الآن SVG احترافية فقط بدون أي إيموجي.
+function stripHeaderMenuEmoji(){
+  try{
+    const scopes = [headerMenuDropdown];
+    ['#btnDeleteAll','#authToggleBtn','#settingsLogoutBtn','#btnExportZip','[data-i18n="exportZip"]'].forEach(sel=>{
+      const el = document.querySelector(sel); if(el) scopes.push(el);
+    });
+    scopes.forEach(scope=>{
+      if(!scope) return;
+      const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
+      let n; const nodes=[];
+      while((n = walker.nextNode())) nodes.push(n);
+      nodes.forEach(tn=>{
+        const clean = tn.textContent.replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, '').replace(/\s{2,}/g, ' ');
+        if(clean !== tn.textContent) tn.textContent = clean;
+      });
+    });
+  }catch(e){}
+}
+try{ setInterval(stripHeaderMenuEmoji, 3000); setTimeout(stripHeaderMenuEmoji, 800); }catch(e){}
+function toggleHeaderMenu(){
+  const willShow = !headerMenuDropdown.classList.contains('show');
+  if(willShow){ stripHeaderMenuEmoji(); try{ const pg=document.getElementById('providerGridSidebar'); if(pg) pg.classList.remove('open'); }catch(_){} }
+  headerMenuDropdown.classList.toggle('show', willShow);
+  btnHeaderMenu.classList.toggle('active', willShow);
+  const qc = $('#quickChips');
+  if(qc) qc.style.display = willShow ? 'none' : '';
+  const msgs = $('#messages');
+  if(msgs) msgs.style.visibility = willShow ? 'hidden' : '';
+  const pf = $('#previewFrame');
+  if(pf) pf.style.visibility = willShow ? 'hidden' : '';
+  const pc = $('#panel-code');
+  if(pc) pc.style.visibility = willShow ? 'hidden' : '';
+}
+btnHeaderMenu.onclick = (e) => { e.stopPropagation(); toggleHeaderMenu(); };
+document.addEventListener('click', (e) => {
+  if(!headerMenuDropdown.classList.contains('show')) return;
+  if(e.target.closest('#headerMenuDropdown button')){ closeHeaderMenu(); return; }
+  if(headerMenuDropdown.contains(e.target) || e.target === btnHeaderMenu) return;
+  closeHeaderMenu();
+});
+
+window.addEventListener('resize', () => { if(window.innerWidth > 860) closeDrawers(); });
+
+/* ---------- Draggable resizers (desktop) ---------- */
+function setupResizer(resizerEl, panelEl, opts){
+  const { min = 180, max = 560, storeKey } = opts;
+  const saved = parseInt(localStorage.getItem(storeKey) || '', 10);
+  if(saved && saved >= min && saved <= max){
+    panelEl.style.width = saved + 'px';
+  }
+  let startX = 0, startWidth = 0, dragging = false;
+  const isRTL = () => document.documentElement.dir === 'rtl';
+
+  function onMove(clientX){
+    let delta = clientX - startX;
+    if(isRTL()) delta = -delta;
+    let newWidth = startWidth + delta;
+    newWidth = Math.max(min, Math.min(max, newWidth));
+    panelEl.style.width = newWidth + 'px';
+  }
+  function onUp(){
+    if(!dragging) return;
+    dragging = false;
+    resizerEl.classList.remove('dragging');
+    document.body.style.userSelect = '';
+    document.body.style.cursor = '';
+    document.body.classList.remove('resizing-active');
+    localStorage.setItem(storeKey, parseInt(panelEl.style.width, 10));
+    window.removeEventListener('mousemove', onMouseMove);
+    window.removeEventListener('mouseup', onUp);
+    window.removeEventListener('touchmove', onTouchMove);
+    window.removeEventListener('touchend', onUp);
+  }
+  function onMouseMove(e){ onMove(e.clientX); }
+  function onTouchMove(e){ if(e.touches[0]) onMove(e.touches[0].clientX); }
+  function onDown(clientX){
+    dragging = true;
+    startX = clientX;
+    startWidth = panelEl.getBoundingClientRect().width;
+    resizerEl.classList.add('dragging');
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+    document.body.classList.add('resizing-active');
+  }
+  resizerEl.addEventListener('mousedown', (e) => {
+    if(window.innerWidth <= 860) return;
+    onDown(e.clientX);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onUp);
+  });
+  resizerEl.addEventListener('touchstart', (e) => {
+    if(window.innerWidth <= 860) return;
+    if(e.touches[0]) onDown(e.touches[0].clientX);
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onUp);
+  }, { passive: true });
+}
+setupResizer($('#resizer1'), sidebarEl, { min: 180, max: 420, storeKey: 'panelWidthSidebar' });
+setupResizer($('#resizer2'), chatcolEl, { min: 280, max: 620, storeKey: 'panelWidthChat' });
+
+// On mobile, picking a project from the history list should close the drawer.
+$('#history').addEventListener('click', () => {
+  if(window.innerWidth <= 860) closeDrawers();
+});
+
+/* ---------- 🎓 Omran Edu (educational video builder, embedded in-app) ---------- */
+(function(){
+  const btn = $('#btnOmranEdu');
+  const modal = $('#omranEduModal');
+  const frame = $('#omranEduFrame');
+  const closeBtn = $('#omranEduCloseBtn');
+  if(!btn || !modal || !frame) return;
+  // v306: the OLD education modal's open logic, kept fully intact and exposed
+  // globally so the Edu Hub («التعليم») home card can open it.
+  function openOldEdu(){
+    if(frame.src === 'about:blank' || !frame.src){
+      frame.src = 'https://omran-edu.vercel.app';
+    }
+    modal.style.display = 'flex';
+    if(window.innerWidth <= 860 && typeof closeDrawers === 'function') closeDrawers();
+    const dd = $('#headerMenuDropdown');
+    if(dd) dd.classList.remove('show');
+  }
+  window.openOmranEduModal = openOldEdu;
+  // v306: the single «التعليم» button now opens the NEW Edu Hub; the old
+  // modal stays reachable from a card inside the Edu Hub home view.
+  btn.addEventListener('click', () => {
+    const dd = $('#headerMenuDropdown');
+    if(dd) dd.classList.remove('show');
+    if(window.innerWidth <= 860 && typeof closeDrawers === 'function') closeDrawers();
+    if(typeof window.eduHubOpen === 'function') window.eduHubOpen();
+    else openOldEdu();
+  });
+  function closeModal(){ modal.style.display = 'none'; }
+  if(closeBtn) closeBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); });
+})();
+
+/* ---------- 🔍 Explore public projects ---------- */
+(function(){
+  const btn = $('#btnExplore');
+  if(!btn) return;
+  btn.addEventListener('click', () => {
+    window.open('/explore.html', '_blank');
+    const dd = $('#headerMenuDropdown');
+    if(dd) dd.classList.remove('show');
+  });
+})();
+
+/* ---------- 🔗 Share project (public/private link) ---------- */
+let shareModalProject = null;
+function openShareModal(project){
+  shareModalProject = project;
+  const modal = $('#shareModal');
+  if(!modal) return;
+  $('#shareResultBox').style.display = 'none';
+  $('#shareStatusMsg').style.display = 'none';
+  $('#sharePublicYes').checked = true;
+  modal.style.display = 'flex';
+}
+(function(){
+  const modal = $('#shareModal');
+  if(!modal) return;
+  const closeBtn = $('#shareModalCloseBtn');
+  const createBtn = $('#shareCreateBtn');
+  const copyBtn = $('#shareCopyBtn');
+  const statusMsg = $('#shareStatusMsg');
+  const resultBox = $('#shareResultBox');
+  const resultUrl = $('#shareResultUrl');
+
+  function closeModal(){ modal.style.display = 'none'; shareModalProject = null; }
+  if(closeBtn) closeBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); });
+
+  if(createBtn) createBtn.addEventListener('click', async () => {
+    if(!shareModalProject) return;
+    const isPublic = $('#sharePublicYes').checked;
+    statusMsg.style.display = 'block';
+    statusMsg.textContent = t('shareCreating');
+    resultBox.style.display = 'none';
+    createBtn.disabled = true;
+    try{
+      const username = (typeof authGet === 'function' && authGet('aiapp_username')) ? authGet('aiapp_username') : 'زائر';
+      const resp = await fetch('/api/share', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          title: shareModalProject.title || t('defaultProjectTitle'),
+          code: shareModalProject.code || '',
+          username,
+          isPublic,
+        }),
+      });
+      const data = await resp.json();
+      if(!resp.ok || !data.id) throw new Error(data.error || 'error');
+      const fullUrl = location.origin + '/p.html?id=' + data.id;
+      resultUrl.value = fullUrl;
+      resultBox.style.display = 'block';
+      statusMsg.style.display = 'none';
+    }catch(e){
+      statusMsg.textContent = t('shareError');
+    }finally{
+      createBtn.disabled = false;
+    }
+  });
+
+  if(copyBtn) copyBtn.addEventListener('click', () => {
+    resultUrl.select();
+    navigator.clipboard && navigator.clipboard.writeText(resultUrl.value).catch(()=>{});
+    try{ document.execCommand('copy'); }catch(e){}
+    statusMsg.style.display = 'block';
+    statusMsg.textContent = t('shareCopied');
+  });
+})();
+/* ---------- 🎬 AI Video Maker (Runway / Veo 3, server-side owner key) ---------- */
+(function(){
+  const modal = $('#videoMakerModal');
+  const btnOpen = $('#btnVideoMaker');
+  const btnClose = $('#videoMakerCloseBtn');
+  const btnGenerate = $('#videoMakerGenerateBtn');
+  const promptEl = $('#videoMakerPrompt');
+  const modeEl = $('#videoMakerMode');
+  const signatureRow = $('#videoMakerSignatureRow');
+  const signatureEl = $('#videoMakerSignature');
+  const styleEl = $('#videoMakerStyle');
+  const durationEl = $('#videoMakerDuration');
+  const ratioEl = $('#videoMakerRatio');
+  const statusEl = $('#videoMakerStatus');
+  const resultEl = $('#videoMakerResult');
+  const downloadEl = $('#videoMakerDownloadLink');
+  // v291: تنزيل تلقائي للفيديو أول ما يجهز
+  async function autoSaveVideo(url, name){
+    try{
+      let href = url;
+      if(!/^blob:/.test(String(url))){
+        const b = await fetch(url).then(r => r.blob());
+        href = URL.createObjectURL(b);
+      }
+      const a = document.createElement('a');
+      a.href = href; a.download = name || 'omran-ai-video.mp4';
+      document.body.appendChild(a); a.click(); a.remove();
+    }catch(_){ /* فشل صامت — زر التحميل اليدوي موجود */ }
+  }
+  window.autoSaveVideo = autoSaveVideo;
+  const narrationToggle = $('#videoMakerNarrationToggle');
+  const narrationText = $('#videoMakerNarrationText');
+  const qualityToggle = $('#videoMakerQualityToggle');
+  const qualityRow = $('#videoMakerQualityRow');
+  let longMinutesOpt = document.getElementById('videoMakerDurationLongMinutesOpt');
+  const longMinutesRow = $('#videoMakerLongMinutesRow');
+  const longMinutesInput = $('#videoMakerLongMinutesInput');
+  if(!modal || !btnOpen) return;
+
+  function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function isOwnerAccount(){
+    const u = (typeof authGet === 'function') ? (authGet('aiapp_username') || '') : '';
+    const key = String(u).trim().toLowerCase();
+    return key === 'omran';
+  }
+
+  // 🩺 فحص تلقائي صامت عند فتح التطبيق (للمالك فقط، مرة كل 6 ساعات)
+  setTimeout(async function autoOwnerHealthCheck(){
+    try{
+      if(!isOwnerAccount()) return;
+      const last = parseInt(localStorage.getItem('aiapp_ownerHealthTs') || '0', 10);
+      if(Date.now() - last < 6*60*60*1000) return;
+      localStorage.setItem('aiapp_ownerHealthTs', String(Date.now()));
+      const problems = [];
+      const r = await fetch('/api/system?action=health&key=omran-monitor-2026', {cache:'no-store'});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error || r.status);
+      if(!d.redisOk) problems.push('قاعدة البيانات (Redis) لا تستجيب');
+      const missing = Object.entries(d.envKeys || {}).filter(([,v]) => !v).map(([k]) => k);
+      if(missing.length) problems.push('مفاتيح ناقصة: ' + missing.join(', '));
+      if(d.clientErrorsCount > 0){
+        const top = (d.clientErrors || []).slice(0,3).map(e => '• ' + String(e.message || '').slice(0,90)).join('\n');
+        problems.push('أخطاء مسجلة من المستخدمين: ' + d.clientErrorsCount + '\n' + top);
+      }
+      if(!problems.length) return; // كل شيء سليم → لا إزعاج
+      const bar = document.createElement('div');
+      bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#3a1010;color:#ffd7d7;padding:10px 44px 10px 14px;font-size:13px;line-height:1.6;white-space:pre-wrap;direction:rtl;box-shadow:0 2px 12px rgba(0,0,0,.5)';
+      bar.textContent = '🩺 تنبيه للمالك — توجد ملاحظات في النظام:\n' + problems.join('\n');
+      const x = document.createElement('button');
+      x.textContent = '✕';
+      x.style.cssText = 'position:absolute;top:8px;left:10px;background:none;border:none;color:#ffd7d7;font-size:16px;cursor:pointer';
+      x.onclick = () => bar.remove();
+      bar.appendChild(x);
+      document.body.appendChild(bar);
+    }catch(e){ /* فحص صامت — لا نزعج المستخدم إذا فشل */ }
+  }, 6000);
+
+  // 🩺 فحص النظام (لوحة المالك)
+  window.runHealthCheck = async function(){
+    const box = document.getElementById('adminHealthBox');
+    if(!box) return;
+    box.textContent = '⏳ جاري الفحص...';
+    const lines = [];
+    const mark = ok => ok ? '✅' : '❌';
+    // 1) الصفحات الأساسية
+    for(const [name, url] of [['الصفحة الرئيسية','/'], ['manifest.json','/manifest.json'], ['sw.js','/sw.js']]){
+      try{ const r = await fetch(url, {cache:'no-store'}); lines.push(mark(r.ok) + ' ' + name + ' (' + r.status + ')'); }
+      catch(e){ lines.push('❌ ' + name + ' (فشل الاتصال)'); }
+    }
+    // 2) فحص الخادم (مفاتيح + Blob + أخطاء المستخدمين)
+    try{
+      const r = await fetch('/api/system?action=health&key=omran-monitor-2026', {cache:'no-store'});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error || r.status);
+      lines.push(mark(d.redisOk) + ' قاعدة البيانات (Redis)');
+      const missing = Object.entries(d.envKeys || {}).filter(([,v]) => !v).map(([k]) => k);
+      lines.push(missing.length ? ('❌ مفاتيح ناقصة: ' + missing.join(', ')) : '✅ كل مفاتيح API موجودة');
+      if(d.clientErrorsCount > 0){
+        lines.push('⚠️ أخطاء مسجلة من المستخدمين: ' + d.clientErrorsCount);
+        d.clientErrors.slice(0,5).forEach(e => {
+          lines.push('   • ' + String(e.message || '').slice(0,120) + (e.count > 1 ? ' (x' + e.count + ')' : ''));
+        });
+      } else {
+        lines.push('✅ لا توجد أخطاء مسجلة من المستخدمين');
+      }
+    }catch(e){
+      lines.push('❌ فحص الخادم فشل: ' + e.message);
+    }
+    const allOk = !lines.some(l => l.startsWith('❌') || l.startsWith('⚠️'));
+    lines.unshift((allOk ? '🟢 النظام سليم' : '🔴 توجد ملاحظات') + ' — ' + new Date().toLocaleTimeString('en-GB'));
+    box.textContent = lines.join('\n');
+  };
+  window.clearClientErrors = async function(){
+    const box = document.getElementById('adminHealthBox');
+    try{
+      const r = await fetch('/api/system?action=client-errors&key=omran-monitor-2026', {method:'DELETE'});
+      if(box) box.textContent = r.ok ? '🧹 تم مسح سجل الأخطاء ✅' : '❌ فشل المسح (' + r.status + ')';
+    }catch(e){ if(box) box.textContent = '❌ فشل المسح: ' + e.message; }
+  };
+  function setStatus(text){
+    statusEl.style.display = text ? 'block' : 'none';
+    statusEl.textContent = text || '';
+  }
+  function ensureLongMinutesOption(show){
+    longMinutesOpt = document.getElementById('videoMakerDurationLongMinutesOpt');
+    if(show){
+      if(!longMinutesOpt){
+        longMinutesOpt = document.createElement('option');
+        longMinutesOpt.value = 'longMinutes';
+        longMinutesOpt.id = 'videoMakerDurationLongMinutesOpt';
+        longMinutesOpt.setAttribute('data-i18n', 'videoMakerDurationLongMinutes');
+        longMinutesOpt.textContent = (typeof t === 'function' ? t('videoMakerDurationLongMinutes') : null) || '🎥 طويل (دقائق) - المالك فقط';
+        durationEl.appendChild(longMinutesOpt);
+      }
+    } else {
+      if(longMinutesOpt && longMinutesOpt.parentNode){
+        longMinutesOpt.parentNode.removeChild(longMinutesOpt);
+      }
+      longMinutesOpt = null;
+    }
+  }
+
+  btnOpen.onclick = () => {
+    modal.style.display = 'flex';
+    closeHeaderMenu();
+    const owner = isOwnerAccount();
+    ensureLongMinutesOption(owner);
+    if(!owner && durationEl.value === 'longMinutes'){
+      durationEl.value = '5';
+      durationEl.onchange();
+    }
+  };
+  btnClose.onclick = () => { modal.style.display = 'none'; };
+  modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
+
+  function syncFilmHeroRow(){
+    const heroRowEl = document.getElementById('videoMakerHeroRow');
+    const noteEl = document.getElementById('videoMakerHeroVeoNote');
+    const isFilm = durationEl.value === 'film';
+    const isVeo = modeEl.value === 'veo';
+    if(heroRowEl) heroRowEl.style.display = (isFilm && !isVeo) ? 'block' : 'none';
+    if(noteEl) noteEl.style.display = (isFilm && isVeo) ? 'block' : 'none';
+    if(isVeo && window.__clearFilmHero) window.__clearFilmHero();
+  }
+  function updateModeUI(){
+    const m = modeEl.value;
+    signatureRow.style.display = (m === 'canvas' || m === 'hybrid') ? 'flex' : 'none';
+    const actorRowEl = document.getElementById('videoMakerActorRow');
+    if(actorRowEl) actorRowEl.style.display = (m === 'actor') ? 'flex' : 'none';
+    syncFilmHeroRow();
+  }
+  modeEl.onchange = updateModeUI;
+  updateModeUI();
+
+  narrationToggle.onchange = () => {
+    narrationText.style.display = narrationToggle.checked ? 'block' : 'none';
+    const narrationRowEl0 = document.getElementById('videoMakerNarrationRow');
+    if(narrationRowEl0) narrationRowEl0.style.display = narrationToggle.checked ? 'flex' : 'none';
+  };
+  durationEl.onchange = () => {
+    const isLong = durationEl.value === 'long20';
+    const isLongMinutes = durationEl.value === 'longMinutes';
+    const isFilm = durationEl.value === 'film';
+    if(isLong || isLongMinutes || isFilm){
+      qualityToggle.checked = false;
+      qualityToggle.disabled = true;
+      qualityRow.style.opacity = '0.5';
+    } else {
+      qualityToggle.disabled = false;
+      qualityRow.style.opacity = '1';
+    }
+    longMinutesRow.style.display = isLongMinutes ? 'block' : 'none';
+    syncFilmHeroRow();
+    if(isLongMinutes || isFilm){
+      narrationToggle.checked = false;
+      narrationToggle.disabled = true;
+      narrationText.style.display = 'none';
+    } else {
+      narrationToggle.disabled = false;
+    }
+  };
+
+  // Lazily loads ffmpeg.wasm (browser-side video processing) only when the
+  // user actually requests scene-chaining or narration — most single-scene,
+  // no-narration videos never need this, keeping the feature lightweight.
+  let ffmpegInstance = null;
+  async function getFFmpeg(){
+    if (ffmpegInstance) return ffmpegInstance;
+    const { FFmpeg } = await import('/ffmpeg/lib/index.js');
+    const ffmpeg = new FFmpeg();
+    await Promise.race([
+      ffmpeg.load({
+        coreURL: '/ffmpeg/core/ffmpeg-core.js',
+        wasmURL: '/ffmpeg/core/ffmpeg-core.wasm',
+        classWorkerURL: '/ffmpeg/lib/worker.js',
+      }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('ffmpeg load timeout')), 90000)),
+    ]);
+    ffmpegInstance = ffmpeg;
+    return ffmpeg;
+  }
+
+  async function concatScenes(urls){
+    const ffmpeg = await getFFmpeg();
+    const { fetchFile } = await import('/ffmpeg/util/index.js');
+    const rm = async (n) => { try{ await ffmpeg.deleteFile(n); } catch(e){} };
+    let listTxt = '';
+    for(let i = 0; i < urls.length; i++){
+      const name = 'scene' + i + '.mp4';
+      ffmpeg.writeFile(name, await fetchFile(urls[i]));
+      listTxt += "file '" + name + "'\n";
+    }
+    ffmpeg.writeFile('list.txt', listTxt);
+    await ffmpeg.exec(['-f', 'concat', '-safe', '0', '-i', 'list.txt', '-c', 'copy', 'out.mp4']);
+    for(let i = 0; i < urls.length; i++) await rm('scene' + i + '.mp4');
+    await rm('list.txt');
+    const data = await ffmpeg.readFile('out.mp4');
+    await rm('out.mp4');
+    return new Blob([data.buffer], { type: 'video/mp4' });
+  }
+
+  async function muxNarration(videoSrc, audioBlob){
+    const ffmpeg = await getFFmpeg();
+    const { fetchFile } = await import('/ffmpeg/util/index.js');
+    ffmpeg.writeFile('v.mp4', await fetchFile(videoSrc));
+    ffmpeg.writeFile('a.mp3', await fetchFile(audioBlob));
+    await ffmpeg.exec(['-i', 'v.mp4', '-i', 'a.mp3', '-c:v', 'copy', '-map', '0:v:0', '-map', '1:a:0', 'out2.mp4']);
+    const data = await ffmpeg.readFile('out2.mp4');
+    return new Blob([data.buffer], { type: 'video/mp4' });
+  }
+
+  // Builds one long final video out of many {videoUrl, audioBlob} scenes:
+  // muxes each scene's own narration onto its own visuals first (so the
+  // narration stays in sync per-scene), then concatenates all the muxed
+  // scenes together into a single continuous video. Used only by the
+  // owner-only "long video" (multi-minute) feature.
+  async function buildLongVideo(scenes, onProgress){
+    const ffmpeg = await getFFmpeg();
+    const { fetchFile } = await import('/ffmpeg/util/index.js');
+    const rm = async (n) => { try{ await ffmpeg.deleteFile(n); } catch(e){} };
+    let listTxt = '';
+    for(let i = 0; i < scenes.length; i++){
+      if(onProgress) onProgress(i, scenes.length);
+      ffmpeg.writeFile('v' + i + '.mp4', await fetchFile(scenes[i].videoUrl));
+      const hasAudio = scenes[i].audioBlob && scenes[i].audioBlob.size > 0;
+      if(hasAudio){
+        ffmpeg.writeFile('a' + i + '.mp3', await fetchFile(scenes[i].audioBlob));
+        await ffmpeg.exec(['-i', 'v' + i + '.mp4', '-i', 'a' + i + '.mp3', '-c:v', 'copy', '-map', '0:v:0', '-map', '1:a:0', 'm' + i + '.mp4']);
+        await rm('a' + i + '.mp3');
+      } else {
+        await ffmpeg.exec(['-i', 'v' + i + '.mp4', '-c', 'copy', 'm' + i + '.mp4']);
+      }
+      // Free memory scene-by-scene so phones don't run out of RAM and crash.
+      await rm('v' + i + '.mp4');
+      listTxt += "file 'm" + i + ".mp4'\n";
+    }
+    ffmpeg.writeFile('list.txt', listTxt);
+    await ffmpeg.exec(['-f', 'concat', '-safe', '0', '-i', 'list.txt', '-c', 'copy', 'outlong.mp4']);
+    for(let i = 0; i < scenes.length; i++) await rm('m' + i + '.mp4');
+    await rm('list.txt');
+    const data = await ffmpeg.readFile('outlong.mp4');
+    await rm('outlong.mp4');
+    return new Blob([data.buffer], { type: 'video/mp4' });
+  }
+
+  function pollTaskOnce(id){
+    return new Promise((resolve, reject) => {
+      const iv = setInterval(async () => {
+        try{
+          const res = await fetch('/api/video-status?id=' + encodeURIComponent(id));
+          const data = await res.json();
+          if(data.error){ clearInterval(iv); reject(new Error(data.error)); return; }
+          if(data.status === 'SUCCEEDED'){
+            clearInterval(iv);
+            resolve(Array.isArray(data.output) ? data.output[0] : data.output);
+          } else if(data.status === 'FAILED'){
+            clearInterval(iv);
+            let reason = data.failure || data.failureCode || (data.error) || '';
+            if(/moderation|SAFETY|content did not pass/i.test(reason)){
+              reason = isEn()
+                ? 'Content was rejected by safety filters — try a calmer description, or remove the person photo.'
+                : 'الرقابة رفضت المحتوى — جرّب وصفًا أهدأ (بدون عنف أو خطر)، أو شِل صورة الشخص وحاول من جديد.';
+            }
+            reject(new Error((isEn() ? 'Video generation failed.' : 'فشل إنشاء الفيديو.') + (reason ? (' — ' + reason) : '')));
+          } else {
+            setStatus((isEn() ? '⏳ Status: ' : '⏳ الحالة: ') + (data.status || '...'));
+          }
+        } catch(e){ /* transient network hiccup; keep polling */ }
+      }, 5000);
+    });
+  }
+
+  const SCENE_SECONDS_CONST = 10;
+
+  /* ----- 🎨 Canvas-only clip engine (no AI, free, runs entirely in-browser) ----- */
+  function ratioDims(ratio){
+    return ratio === '720:1280' ? { w: 720, h: 1280 } : { w: 1280, h: 720 };
+  }
+
+  function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight){
+    const words = String(text).split(/\s+/);
+    let line = '';
+    const lines = [];
+    for(const word of words){
+      const test = line ? line + ' ' + word : word;
+      if(ctx.measureText(test).width > maxWidth && line){
+        lines.push(line);
+        line = word;
+      } else {
+        line = test;
+      }
+    }
+    if(line) lines.push(line);
+    const startY = y - ((lines.length - 1) * lineHeight) / 2;
+    lines.forEach((l, i) => ctx.fillText(l, x, startY + i * lineHeight));
+  }
+
+  function recordCanvasClip({ title, signature, seconds, ratio }){
+    return new Promise((resolve, reject) => {
+      const { w, h } = ratioDims(ratio);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      const stream = canvas.captureStream(30);
+      let mimeType = 'video/webm;codecs=vp9';
+      if(!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/webm;codecs=vp8';
+      if(!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/webm';
+      let recorder;
+      try{ recorder = new MediaRecorder(stream, { mimeType }); }
+      catch(e){ recorder = new MediaRecorder(stream); }
+      const chunks = [];
+      recorder.ondataavailable = (e) => { if(e.data && e.data.size) chunks.push(e.data); };
+      recorder.onstop = () => resolve(new Blob(chunks, { type: 'video/webm' }));
+      recorder.onerror = (e) => reject((e && e.error) || new Error('recorder error'));
+      const start = performance.now();
+      let raf;
+      function draw(){
+        const elapsed = (performance.now() - start) / 1000;
+        const hue = (elapsed * 40) % 360;
+        const grad = ctx.createLinearGradient(0, 0, w, h);
+        grad.addColorStop(0, 'hsl(' + hue + ',70%,18%)');
+        grad.addColorStop(1, 'hsl(' + ((hue + 80) % 360) + ',70%,10%)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+        for(let i = 0; i < 14; i++){
+          const px = (w * ((i * 71) % 100) / 100) + Math.sin(elapsed + i) * 20;
+          const py = (h * ((i * 37) % 100) / 100) + Math.cos(elapsed * 0.7 + i) * 20;
+          const r = 30 + 10 * Math.sin(elapsed * 2 + i);
+          const pgrad = ctx.createRadialGradient(px, py, 0, px, py, r);
+          pgrad.addColorStop(0, 'rgba(255,255,255,0.10)');
+          pgrad.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.fillStyle = pgrad;
+          ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill();
+        }
+        if(title){
+          ctx.fillStyle = '#fff';
+          ctx.textAlign = 'center';
+          ctx.font = 'bold ' + Math.round(w * 0.045) + 'px sans-serif';
+          wrapCanvasText(ctx, title, w / 2, h / 2, w * 0.8, Math.round(w * 0.06));
+        }
+        if(signature){
+          ctx.fillStyle = 'rgba(255,255,255,0.85)';
+          ctx.textAlign = 'center';
+          ctx.font = Math.round(w * 0.028) + 'px sans-serif';
+          ctx.fillText(signature, w / 2, h - h * 0.08);
+        }
+        raf = requestAnimationFrame(draw);
+      }
+      draw();
+      recorder.start();
+      setTimeout(() => {
+        cancelAnimationFrame(raf);
+        recorder.stop();
+      }, Math.max(800, seconds * 1000));
+    });
+  }
+
+  function makeWatermarkPng(signature, ratio){
+    return new Promise((resolve) => {
+      const { w } = ratioDims(ratio);
+      const barH = Math.round(w * 0.06);
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = barH;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.font = Math.round(barH * 0.5) + 'px sans-serif';
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'right';
+      const textW = ctx.measureText(signature).width + 24;
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillRect(canvas.width - textW - 10, barH * 0.15, textW, barH * 0.7);
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.fillText(signature, canvas.width - 20, barH / 2);
+      canvas.toBlob((blob) => resolve(blob), 'image/png');
+    });
+  }
+
+  async function muxNarrationAny(videoSrc, audioBlob, isWebmSource){
+    const ffmpeg = await getFFmpeg();
+    const { fetchFile } = await import('/ffmpeg/util/index.js');
+    const inName = isWebmSource ? 'vin.webm' : 'vin.mp4';
+    ffmpeg.writeFile(inName, await fetchFile(videoSrc));
+    ffmpeg.writeFile('ain.mp3', await fetchFile(audioBlob));
+    const vcodec = isWebmSource ? ['-c:v', 'libx264', '-pix_fmt', 'yuv420p'] : ['-c:v', 'copy'];
+    await ffmpeg.exec(['-i', inName, '-i', 'ain.mp3', ...vcodec, '-map', '0:v:0', '-map', '1:a:0', '-shortest', 'muxout.mp4']);
+    const data = await ffmpeg.readFile('muxout.mp4');
+    return new Blob([data.buffer], { type: 'video/mp4' });
+  }
+
+  async function runCanvasOnly(text, ratio, seconds, signature, wantNarration, narrationVal){
+    setStatus(isEn() ? '🎨 Rendering canvas video...' : '🎨 جاري إنشاء فيديو الكانفا...');
+    const clipBlob = await recordCanvasClip({ title: text, signature, seconds, ratio });
+    let finalBlob = clipBlob;
+    if(wantNarration){
+      try{
+        setStatus(isEn() ? '🎙️ Generating narration...' : '🎙️ جاري إنشاء التعليق الصوتي...');
+        const narrationInput = narrationVal || text;
+        const ttsRes = await fetch('/api/tts', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: isEn() ? 'en' : 'ar' }),
+        });
+        if(ttsRes.ok){
+          const audioBlob = await ttsRes.blob();
+          setStatus(isEn() ? '🎚️ Merging narration...' : '🎚️ جاري دمج الصوت...');
+          finalBlob = await muxNarrationAny(clipBlob, audioBlob, true);
+        }
+      } catch(e){ /* keep silent clip on failure */ }
+    }
+    const finalUrl = URL.createObjectURL(finalBlob);
+    setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
+    resultEl.src = finalUrl;
+    resultEl.style.display = 'block';
+    downloadEl.href = finalUrl;
+    downloadEl.style.display = 'block';
+    autoSaveVideo(finalUrl);
+  }
+
+  async function runHybrid(text, style, ratio, durationVal, signature, token, wantNarration, narrationVal){
+    const seconds = (durationVal === 'long20') ? 10 : (parseInt(durationVal, 10) || 5);
+    setStatus(isEn() ? '🎨 Building intro...' : '🎨 جاري إنشاء المقدمة...');
+    const introBlob = await recordCanvasClip({ title: text, signature: '', seconds: 2, ratio });
+    setStatus(isEn() ? '🎨 Building outro...' : '🎨 جاري إنشاء الخاتمة...');
+    const outroBlob = await recordCanvasClip({
+      title: '',
+      signature: signature ? ((isEn() ? 'Made by: ' : 'صُنع بواسطة: ') + signature) : (isEn() ? 'Made with Omran AI Video' : 'صُنع بواسطة صانع فيديو عمران'),
+      seconds: 2, ratio,
+    });
+
+    setStatus(isEn() ? '🚀 Sending request to the AI video engine...' : '🚀 جاري إرسال الطلب لمحرك الفيديو الذكي...');
+    const mainUrl = await createSceneWithRetry(text, style, seconds, ratio, token, false, (attempt, max) => {
+      setStatus(isEn()
+        ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
+        : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
+    });
+    setStatus(isEn() ? '🎬 Finalizing your video...' : '🎬 جاري إنهاء الفيديو...');
+
+    const ffmpeg = await getFFmpeg();
+    const { fetchFile } = await import('/ffmpeg/util/index.js');
+
+    ffmpeg.writeFile('intro.webm', await fetchFile(introBlob));
+    ffmpeg.writeFile('outro.webm', await fetchFile(outroBlob));
+    ffmpeg.writeFile('main.mp4', await fetchFile(mainUrl));
+
+    let mainForConcat = 'main.mp4';
+    if(signature){
+      setStatus(isEn() ? '✍️ Adding your signature watermark...' : '✍️ جاري إضافة توقيعك على الفيديو...');
+      const wmBlob = await makeWatermarkPng(signature, ratio);
+      ffmpeg.writeFile('wm.png', await fetchFile(wmBlob));
+      await ffmpeg.exec(['-i', 'main.mp4', '-i', 'wm.png', '-filter_complex', 'overlay=0:H-h:shortest=1', '-c:a', 'copy', 'main_wm.mp4']);
+      mainForConcat = 'main_wm.mp4';
+    }
+
+    setStatus(isEn() ? '🔗 Merging canvas + AI video...' : '🔗 جاري دمج الكانفا مع فيديو الذكاء الاصطناعي...');
+    const { w, h } = ratioDims(ratio);
+    await ffmpeg.exec([
+      '-i', 'intro.webm', '-i', mainForConcat, '-i', 'outro.webm',
+      '-filter_complex',
+      '[0:v]scale=' + w + ':' + h + ',fps=30,format=yuv420p[v0];' +
+      '[1:v]scale=' + w + ':' + h + ',fps=30,format=yuv420p[v1];' +
+      '[2:v]scale=' + w + ':' + h + ',fps=30,format=yuv420p[v2];' +
+      '[v0][v1][v2]concat=n=3:v=1:a=0[outv]',
+      '-map', '[outv]', 'final.mp4',
+    ]);
+    const data = await ffmpeg.readFile('final.mp4');
+    let finalBlob = new Blob([data.buffer], { type: 'video/mp4' });
+
+    if(wantNarration){
+      try{
+        setStatus(isEn() ? '🎙️ Generating narration...' : '🎙️ جاري إنشاء التعليق الصوتي...');
+        const narrationInput = narrationVal || text;
+        const ttsRes = await fetch('/api/tts', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: isEn() ? 'en' : 'ar' }),
+        });
+        if(ttsRes.ok){
+          const audioBlob = await ttsRes.blob();
+          setStatus(isEn() ? '🎚️ Merging narration...' : '🎚️ جاري دمج الصوت...');
+          finalBlob = await muxNarrationAny(finalBlob, audioBlob, false);
+        }
+      } catch(e){ /* keep video without narration */ }
+    }
+
+    const finalUrl = URL.createObjectURL(finalBlob);
+    setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
+    resultEl.src = finalUrl;
+    resultEl.style.display = 'block';
+    downloadEl.href = finalUrl;
+    downloadEl.style.display = 'block';
+    autoSaveVideo(finalUrl);
+  }
+
+  async function createScene(text, style, duration, ratio, token, longMode, imageBase64, imageMime){
+    const payload = { promptText: text, style, duration, ratio, token, longMode: !!longMode };
+    if(imageBase64){ payload.imageBase64 = imageBase64; payload.imageMime = imageMime || 'image/jpeg'; }
+    const res = await fetch('/api/video-create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if(!res.ok || data.error) throw Object.assign(new Error(data.error || 'unknown'), { code: data.error });
+    return data.id;
+  }
+
+  // Runway's engine allows only 1 generation running at a time on our plan.
+  // If another request (from any user, or a stray earlier attempt) is
+  // occupying that single slot, a new task can come back THROTTLED and
+  // sometimes eventually FAILED — even though nothing is actually wrong
+  // with the video description. To make this invisible to the user, we
+  // automatically recreate and retry the task a couple of times (with a
+  // short backoff) before giving up and showing a real error.
+  async function createSceneWithRetry(text, style, duration, ratio, token, longMode, onRetryStatus, imageBase64, imageMime){
+    const maxAttempts = 3;
+    let lastErr;
+    for(let attempt = 1; attempt <= maxAttempts; attempt++){
+      try{
+        const id = await createScene(text, style, duration, ratio, token, longMode, imageBase64, imageMime);
+        const url = await pollTaskOnce(id);
+        return url;
+      } catch(e){
+        lastErr = e;
+        if(e && e.code === 'auth_required') throw e;
+        if(e && e.code === 'daily_limit_reached') throw e;
+        if(e && e.code === 'owner_only') throw e;
+        if(attempt < maxAttempts){
+          if(onRetryStatus) onRetryStatus(attempt, maxAttempts);
+          await new Promise((r) => setTimeout(r, 6000 * attempt));
+        }
+      }
+    }
+    throw lastErr;
+  }
+
+  /* 📸 صورتك بطل الفيلم — hero photo state */
+  let filmHeroBase64 = null, filmHeroMime = 'image/jpeg';
+  (function(){
+    const btn = document.getElementById('videoMakerHeroBtn');
+    const inp = document.getElementById('videoMakerHeroInput');
+    const prev = document.getElementById('videoMakerHeroPreview');
+    const clr = document.getElementById('videoMakerHeroClear');
+    if(!btn || !inp) return;
+    btn.onclick = () => inp.click();
+    clr.onclick = window.__clearFilmHero = () => {
+      filmHeroBase64 = null;
+      inp.value = '';
+      prev.style.display = 'none';
+      clr.style.display = 'none';
+    };
+    inp.onchange = () => {
+      const f = inp.files && inp.files[0];
+      if(!f) return;
+      const img = new Image();
+      img.onload = () => {
+        const max = 768;
+        let w = img.width, h = img.height;
+        if(Math.max(w, h) > max){ const k = max / Math.max(w, h); w = Math.round(w * k); h = Math.round(h * k); }
+        // Runway requires width/height ratio between 0.5 and 2 — pad if outside
+        let cw = w, ch = h;
+        if(w / h < 0.5) cw = Math.ceil(h * 0.52);
+        else if(w / h > 2) ch = Math.ceil(w * 0.52);
+        const c = document.createElement('canvas');
+        c.width = cw; c.height = ch;
+        const cx2 = c.getContext('2d');
+        cx2.fillStyle = '#000';
+        cx2.fillRect(0, 0, cw, ch);
+        cx2.drawImage(img, Math.round((cw - w) / 2), Math.round((ch - h) / 2), w, h);
+        const dataUrl = c.toDataURL('image/jpeg', 0.85);
+        filmHeroBase64 = dataUrl.split(',')[1];
+        filmHeroMime = 'image/jpeg';
+        prev.src = dataUrl;
+        prev.style.display = 'inline-block';
+        clr.style.display = 'inline-block';
+        URL.revokeObjectURL(img.src);
+      };
+      img.src = URL.createObjectURL(f);
+    };
+  })();
+
+  btnGenerate.onclick = async () => {
+    const text = (promptEl.value || '').trim();
+    if(!text && modeEl.value !== 'actor'){
+      setStatus(isEn() ? '⚠️ Please describe the video first.' : '⚠️ اكتب وصف الفيديو أولًا.');
+      return;
+    }
+    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+    if(!token){
+      setStatus(isEn() ? '🔑 Please log in first to use the Video Maker.' : '🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.');
+      return;
+    }
+
+    const style = styleEl.value;
+    const ratio = ratioEl.value;
+    const isLong = durationEl.value === 'long20';
+    const wantNarration = narrationToggle.checked;
+    const wantQuality = qualityToggle.checked && !isLong;
+
+    btnGenerate.disabled = true;
+    resultEl.style.display = 'none';
+    downloadEl.style.display = 'none';
+
+    function friendlyError(err){
+      const code = err && err.code;
+      if(code === 'auth_required') return isEn() ? '🔑 Please log in first to use the Video Maker.' : '🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.';
+      if(code === 'daily_limit_reached') return isEn() ? "⏳ You have reached today's free video limit. Try again tomorrow." : '⏳ لقد استهلكت حد الفيديوهات المجانية لليوم. حاول مرة أخرى غدًا.';
+      return (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (err && err.message ? err.message : String(err));
+    }
+
+    const creationMode = modeEl.value;
+    const signature = (signatureEl.value || '').trim().slice(0, 60);
+
+    /* ---- 🎬 Full mini-film: idea -> AI script -> multiple scenes -> narration -> merged film.
+       Available to ALL logged-in accounts (small scene count); owner gets more scenes. ---- */
+    /* Helper: check Runway credits BEFORE starting so nothing is charged on doomed runs. */
+    async function ensureRunwayCredits(needed){
+      try{
+        const r = await fetch('/api/video?action=video-balance');
+        const d = await r.json();
+        if(typeof d.credits === 'number' && d.credits >= 0 && d.credits < needed){
+          setStatus(isEn()
+            ? '⛔ Not enough Runway credits (' + d.credits + ' left, ' + needed + ' needed). Nothing was charged. Top up at runwayml.com first.'
+            : '⛔ رصيد Runway غير كافي (المتبقي ' + d.credits + '، المطلوب ' + needed + '). لم يُخصم أي شيء. اشحن الرصيد من runwayml.com أولًا.');
+          return false;
+        }
+      } catch(e){ /* balance check is best-effort; do not block on network errors */ }
+      return true;
+    }
+
+    /* Helper: generate ONE scene via Google Veo 3 (create + poll) and return its video URL. */
+    async function createVeoScene(prompt, sceneRatio, sceneToken, hq){
+      const cr = await fetch('/api/video?action=veo-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ promptText: prompt, ratio: sceneRatio, token: sceneToken, quality: hq ? 'high' : 'fast' }),
+      });
+      const crData = await cr.json();
+      if(!cr.ok || crData.error || !crData.op) throw new Error(crData.error || 'veo create failed');
+      return await new Promise((resolve, reject) => {
+        const iv = setInterval(async () => {
+          try{
+            const st = await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(crData.op));
+            const d = await st.json();
+            if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
+            if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
+            else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((isEn() ? 'Veo failed.' : 'فشل Veo.') + (d.failure ? ' — ' + d.failure : ''))); }
+          } catch(e){ /* keep polling */ }
+        }, 8000);
+      });
+    }
+
+    if(durationEl.value === 'film'){
+      try{
+        const filmUseVeo = (creationMode === 'veo');
+        if(filmUseVeo && !isOwnerAccount()){
+          setStatus(isEn() ? '🔒 Veo 3 is limited to the owner account for now.' : '🔒 Veo 3 مقتصر على حساب المالك حاليًا.');
+          btnGenerate.disabled = false;
+          return;
+        }
+        const filmScenes = isOwnerAccount() ? 5 : 3;
+        setStatus(isEn() ? '✍️ Writing the film script scene by scene...' : '✍️ جاري كتابة سيناريو الفيلم مشهد بمشهد...');
+        const scriptRes = await fetch('/api/video-script', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic: text, mode: 'film', sceneCount: filmScenes, style, lang: (isEn() ? 'en' : 'ar'), hero: !!filmHeroBase64, token }),
+        });
+        const scriptData = await scriptRes.json();
+        if(scriptRes.status === 401){ const e = new Error('auth'); e.code = 'auth_required'; throw e; }
+        if(scriptRes.status === 403 && scriptData && scriptData.error === 'daily_limit_reached'){ const e = new Error('limit'); e.code = 'daily_limit_reached'; throw e; }
+        if(!scriptRes.ok || scriptData.error || !Array.isArray(scriptData.scenes) || !scriptData.scenes.length){
+          throw new Error(scriptData.error || (isEn() ? 'Could not generate the film script.' : 'تعذّر إنشاء سيناريو الفيلم.'));
+        }
+        const scenes = scriptData.scenes.slice(0, filmScenes);
+        if(!filmUseVeo){
+          setStatus(isEn() ? '💳 Checking video credits...' : '💳 جاري التأكد من رصيد الفيديو...');
+          const ok = await ensureRunwayCredits(scenes.length * 50);
+          if(!ok){ btnGenerate.disabled = false; return; }
+        }
+        if(filmUseVeo && filmHeroBase64){
+          setStatus(isEn() ? 'ℹ️ Hero photo is supported with Runway only; continuing without it...' : 'ℹ️ صورة البطل مدعومة مع Runway فقط؛ سيتم المتابعة بدونها...');
+        }
+        const confirmMsg = isEn()
+          ? `🎬 "${scriptData.title || text}" — ${scenes.length} scenes (~${scenes.length * SCENE_SECONDS_CONST}s) with narration will be generated and merged. This uses ${scenes.length} of your daily video allowance. Continue?`
+          : `🎬 «${scriptData.title || text}» — راح نولّد ${scenes.length} مشاهد (~${scenes.length * SCENE_SECONDS_CONST} ثانية) مع سرد صوتي وندمجها بفيلم واحد. هذا يستهلك ${scenes.length} من حصتك اليومية للفيديو. تكمل؟`;
+        if(!window.confirm(confirmMsg)){
+          setStatus(isEn() ? '❌ Cancelled.' : '❌ تم الإلغاء.');
+          btnGenerate.disabled = false;
+          return;
+        }
+        const builtScenes = [];
+        for(let i = 0; i < scenes.length; i++){
+          const sc = scenes[i];
+          setStatus((isEn() ? '🎥 Generating scene ' : '🎥 جاري توليد المشهد ') + (i + 1) + '/' + scenes.length + (filmUseVeo ? ' (Veo 3)' : '') + '...');
+          const videoUrl = filmUseVeo
+            ? await createVeoScene(sc.visual || text, ratio, token, wantQuality)
+            : await createSceneWithRetry(sc.visual || text, style, SCENE_SECONDS_CONST, ratio, token, false, (attempt, max) => {
+                setStatus(isEn()
+                  ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
+                  : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
+              }, filmHeroBase64, filmHeroMime);
+          setStatus((isEn() ? '🎙️ Narrating scene ' : '🎙️ جاري تسجيل سرد المشهد ') + (i + 1) + '/' + scenes.length + '...');
+          let audioBlob = null;
+          try{
+            const ttsCtl = new AbortController();
+            const ttsTimer = setTimeout(() => ttsCtl.abort(), 45000);
+            const ttsRes = await fetch('/api/tts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ text: sc.narration || text, voice: 'onyx' }),
+              signal: ttsCtl.signal,
+            });
+            clearTimeout(ttsTimer);
+            if(ttsRes.ok) audioBlob = await ttsRes.blob();
+          } catch(e){ /* narration is best-effort per scene */ }
+          builtScenes.push({ videoUrl, audioBlob: audioBlob || new Blob() });
+        }
+        // Sequential playlist fallback: plays scenes back-to-back in the player
+        // and offers a download link per scene. Used on phones (where the
+        // in-browser merge can exhaust memory and crash the tab) or whenever
+        // the merge itself fails — so the user never loses generated scenes.
+        const showScenesPlaylist = () => {
+          let idx = 0;
+          resultEl.onended = () => {
+            idx++;
+            if(idx < builtScenes.length){
+              resultEl.src = builtScenes[idx].videoUrl;
+              resultEl.play().catch(() => {});
+              setStatus((isEn() ? '▶️ Scene ' : '▶️ المشهد ') + (idx + 1) + '/' + builtScenes.length);
+            } else {
+              setStatus(isEn() ? '✅ All scenes played.' : '✅ انتهى عرض كل المشاهد.');
+            }
+          };
+          resultEl.src = builtScenes[0].videoUrl;
+          resultEl.style.display = 'block';
+          downloadEl.style.display = 'none';
+          let linksEl = document.getElementById('filmSceneLinks');
+          if(!linksEl){
+            linksEl = document.createElement('div');
+            linksEl.id = 'filmSceneLinks';
+            linksEl.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;justify-content:center;';
+            resultEl.parentNode.insertBefore(linksEl, resultEl.nextSibling);
+          }
+          linksEl.innerHTML = '';
+          builtScenes.forEach((sc, i) => {
+            const a = document.createElement('a');
+            a.href = sc.videoUrl;
+            a.download = 'scene-' + (i + 1) + '.mp4';
+            a.textContent = (isEn() ? '⬇️ Scene ' : '⬇️ مشهد ') + (i + 1);
+            a.style.cssText = 'padding:6px 12px;border-radius:10px;background:rgba(139,92,246,.18);color:inherit;text-decoration:none;font-size:13px;';
+            linksEl.appendChild(a);
+          });
+          setStatus(isEn()
+            ? '✅ Your film is ready! Scenes will play back-to-back — download each scene below.'
+            : '✅ فيلمك جاهز! المشاهد تُعرض ورا بعض تلقائيًا — وتقدر تحمّل كل مشهد من الأزرار تحت.');
+        };
+        const oldLinks = document.getElementById('filmSceneLinks');
+        if(oldLinks) oldLinks.innerHTML = '';
+        resultEl.onended = null;
+        const isPhone = /Android|iPhone|iPad|iPod|Mobile|Huawei|HarmonyOS/i.test(navigator.userAgent) && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+        if(isPhone && builtScenes.length > 2){
+          // Skip the heavy in-browser merge entirely on phones — it crashes the tab.
+          showScenesPlaylist();
+        } else {
+          setStatus(isEn() ? '🔗 Merging all scenes into your final film...' : '🔗 جاري دمج كل المشاهد بالفيلم النهائي...');
+          let finalUrl = null;
+          try{
+            const finalBlob = await buildLongVideo(builtScenes, (i, total) => {
+              setStatus((isEn() ? '🔗 Merging scene ' : '🔗 جاري دمج المشهد ') + (i + 1) + '/' + total + '...');
+            });
+            finalUrl = URL.createObjectURL(finalBlob);
+          } catch(e){
+            try{
+              const blob = await concatScenes(builtScenes.map(s => s.videoUrl));
+              finalUrl = URL.createObjectURL(blob);
+              setStatus(isEn() ? '⚠️ Narration merge failed; film merged without narration.' : '⚠️ تعذّر دمج السرد؛ تم دمج الفيلم بدون السرد.');
+            } catch(e2){
+              finalUrl = null;
+            }
+          }
+          if(finalUrl){
+            setStatus(isEn() ? '✅ Your film is ready!' : '✅ فيلمك جاهز!');
+            resultEl.src = finalUrl;
+            resultEl.style.display = 'block';
+            downloadEl.href = finalUrl;
+            downloadEl.style.display = 'block';
+            autoSaveVideo(finalUrl);
+          } else {
+            // Merge failed — never lose the scenes: play them back-to-back instead.
+            showScenesPlaylist();
+          }
+        }
+      } catch(e){
+        setStatus(friendlyError(e));
+      } finally {
+        btnGenerate.disabled = false;
+      }
+      return;
+    }
+
+    if(creationMode === 'veo' || creationMode === 'actor'){
+      try{
+        if(!isOwnerAccount()){
+          setStatus(isEn() ? '🔒 Veo 3 is limited to the owner account for now.' : '🔒 Veo 3 مقتصر على حساب المالك حاليًا.');
+          return;
+        }
+        let veoPrompt = text;
+        if(creationMode === 'actor'){
+          const speechEl = document.getElementById('videoMakerActorSpeech');
+          const speech = speechEl ? speechEl.value.trim() : '';
+          if(!speech){
+            setStatus(isEn() ? '🗣️ Write what the actor should say first.' : '🗣️ اكتب أول شي وش يقول الممثل.');
+            return;
+          }
+          veoPrompt = (text || 'An Emirati man in traditional white kandura and ghutra, warm friendly face')
+            + '. The person looks directly at the camera and speaks in Emirati Gulf Arabic dialect (لهجة إماراتية خليجية), saying exactly these Arabic words: "' + speech + '". '
+            + 'Perfect accurate lip-sync matching the Arabic words, natural authentic Emirati voice and accent, natural hand gestures, cinematic lighting, realistic. No subtitles, no captions, no text on screen.';
+        }
+        setStatus(isEn() ? '🚀 Sending to Google Veo 3...' : '🚀 جاري الإرسال إلى Google Veo 3...');
+        const cr = await fetch('/api/video?action=veo-create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ promptText: veoPrompt, ratio, token, quality: wantQuality ? 'high' : 'fast' }),
+        });
+        const crData = await cr.json();
+        if(!cr.ok || crData.error || !crData.op) throw new Error(crData.error || 'veo create failed');
+        const videoUrl = await new Promise((resolve, reject) => {
+          const iv = setInterval(async () => {
+            try{
+              const st = await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(crData.op));
+              const d = await st.json();
+              if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
+              if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
+              else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((isEn() ? 'Veo failed.' : 'فشل Veo.') + (d.failure ? ' — ' + d.failure : ''))); }
+              else setStatus(isEn() ? '⏳ Veo 3 is generating (may take 1-3 min)...' : '⏳ Veo 3 يولّد الفيديو (قد يستغرق ١-٣ دقائق)...');
+            } catch(e){ /* keep polling */ }
+          }, 8000);
+        });
+        setStatus(isEn() ? '⬇️ Downloading the video...' : '⬇️ جاري تحميل الفيديو...');
+        const vres = await fetch(videoUrl);
+        if(!vres.ok) throw new Error('download failed ' + vres.status);
+        const vblob = await vres.blob();
+        const vurl = URL.createObjectURL(vblob);
+        setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
+        resultEl.src = vurl;
+        resultEl.style.display = 'block';
+        downloadEl.href = vurl;
+        downloadEl.style.display = 'block';
+        autoSaveVideo(vurl);
+      } catch(e){
+        setStatus(friendlyError(e));
+      } finally {
+        btnGenerate.disabled = false;
+      }
+      return;
+    }
+
+    if(creationMode === 'canvas'){
+      try{
+        const secs = (durationEl.value === 'long20') ? 20 : (durationEl.value === 'longMinutes' ? 30 : (parseInt(durationEl.value, 10) || 5));
+        await runCanvasOnly(text, ratio, secs, signature, wantNarration, (narrationText.value || '').trim());
+      } catch(e){
+        setStatus(friendlyError(e));
+      } finally {
+        btnGenerate.disabled = false;
+      }
+      return;
+    }
+
+    if(creationMode === 'hybrid'){
+      try{
+        await runHybrid(text, style, ratio, durationEl.value, signature, token, wantNarration, (narrationText.value || '').trim());
+      } catch(e){
+        setStatus(friendlyError(e));
+      } finally {
+        btnGenerate.disabled = false;
+      }
+      return;
+    }
+
+    if(durationEl.value === 'longMinutes'){
+      try{
+        if(!isOwnerAccount()){
+          setStatus(isEn() ? '🔒 This feature is limited to the owner account.' : '🔒 هذه الميزة مقتصرة على حساب المالك.');
+          btnGenerate.disabled = false;
+          return;
+        }
+        const mins = Math.max(1, Math.min(10, parseInt(longMinutesInput.value, 10) || 1));
+        setStatus(isEn() ? '✍️ Writing the full scene-by-scene script...' : '✍️ جاري كتابة السكربت كامل مشهد بمشهد...');
+        const scriptRes = await fetch('/api/video-script', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic: text, minutes: mins, style, lang: (isEn() ? 'en' : 'ar'), token }),
+        });
+        const scriptData = await scriptRes.json();
+        if(!scriptRes.ok || scriptData.error || !Array.isArray(scriptData.scenes) || !scriptData.scenes.length){
+          throw new Error(scriptData.error || (isEn() ? 'Could not generate the script.' : 'تعذّر إنشاء السكربت.'));
+        }
+        const scenes = scriptData.scenes;
+        setStatus(isEn() ? '💳 Checking video credits...' : '💳 جاري التأكد من رصيد الفيديو...');
+        const okBal = await ensureRunwayCredits(scenes.length * 50);
+        if(!okBal){ btnGenerate.disabled = false; return; }
+        const estLow = (scenes.length * 2).toFixed(0);
+        const estHigh = (scenes.length * 5).toFixed(0);
+        const confirmMsg = isEn()
+          ? `This video will generate ${scenes.length} scenes (~${(scenes.length * SCENE_SECONDS_CONST) / 60 | 0} min). Estimated real cost: about $${estLow}-$${estHigh} charged to your Runway account. Continue?`
+          : `هذا الفيديو راح يولّد ${scenes.length} مشهد (~${(scenes.length * SCENE_SECONDS_CONST / 60) | 0} دقيقة). التكلفة التقديرية الحقيقية: حوالي ${estLow}$-${estHigh}$ تُخصم من حساب Runway. تكمل؟`;
+        if(!window.confirm(confirmMsg)){
+          setStatus(isEn() ? '❌ Cancelled.' : '❌ تم الإلغاء.');
+          btnGenerate.disabled = false;
+          return;
+        }
+
+        const builtScenes = [];
+        for(let i = 0; i < scenes.length; i++){
+          const sc = scenes[i];
+          setStatus((isEn() ? '🚀 Sending scene ' : '🚀 جاري إرسال المشهد ') + (i + 1) + '/' + scenes.length + '...');
+          const videoUrl = await createSceneWithRetry(sc.visual || text, style, SCENE_SECONDS_CONST, ratio, token, true, (attempt, max) => {
+            setStatus(isEn()
+              ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
+              : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
+          });
+          setStatus((isEn() ? '🎙️ Narrating scene ' : '🎙️ جاري تسجيل صوت المشهد ') + (i + 1) + '/' + scenes.length + '...');
+          let audioBlob = null;
+          try{
+            const ttsCtl2 = new AbortController();
+            const ttsTimer2 = setTimeout(() => ttsCtl2.abort(), 45000);
+            const ttsRes = await fetch('/api/tts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ text: sc.narration || text, voice: 'onyx' }),
+              signal: ttsCtl2.signal,
+            });
+            clearTimeout(ttsTimer2);
+            if(ttsRes.ok) audioBlob = await ttsRes.blob();
+          } catch(e){ /* narration is best-effort */ }
+          builtScenes.push({ videoUrl, audioBlob: audioBlob || new Blob() });
+        }
+
+        setStatus(isEn() ? '🔗 Joining all scenes with narration into the final video...' : '🔗 جاري دمج كل المشاهد مع السرد بالفيديو النهائي...');
+        const finalBlob = await buildLongVideo(builtScenes, (i, total) => {
+          setStatus((isEn() ? '🔗 Joining scene ' : '🔗 جاري دمج المشهد ') + (i + 1) + '/' + total + '...');
+        });
+        const finalUrl = URL.createObjectURL(finalBlob);
+        setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
+        resultEl.src = finalUrl;
+        resultEl.style.display = 'block';
+        downloadEl.href = finalUrl;
+        downloadEl.style.display = 'block';
+      } catch(e){
+        setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      } finally {
+        btnGenerate.disabled = false;
+      }
+      return;
+    }
+
+    try{
+      let sceneUrls = [];
+      const okBal2 = await ensureRunwayCredits(isLong ? 100 : 50);
+      if(!okBal2){ btnGenerate.disabled = false; return; }
+      if(isLong){
+        const scenePrompts = [
+          text + (isEn() ? ' (opening moment of the scene)' : ' (اللحظة الافتتاحية للمشهد)'),
+          text + (isEn() ? ' (continuing the same scene, next moment)' : ' (استكمال نفس المشهد، اللحظة التالية)'),
+        ];
+        for(let i = 0; i < scenePrompts.length; i++){
+          setStatus((isEn() ? '🚀 Sending scene ' : '🚀 جاري إرسال المشهد ') + (i + 1) + '/' + scenePrompts.length + '...');
+          const url = await createSceneWithRetry(scenePrompts[i], style, 10, ratio, token, false, (attempt, max) => {
+            setStatus(isEn()
+              ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
+              : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
+          });
+          sceneUrls.push(url);
+        }
+      } else {
+        setStatus(isEn() ? '🚀 Sending request...' : '🚀 جاري إرسال الطلب...');
+        const url = await createSceneWithRetry(text, style, durationEl.value, ratio, token, false, (attempt, max) => {
+          setStatus(isEn()
+            ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
+            : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
+        });
+        sceneUrls.push(url);
+      }
+
+      let finalSrc = sceneUrls[0];
+      let finalIsBlob = false;
+
+      if(sceneUrls.length > 1){
+        setStatus(isEn() ? '🔗 Joining scenes together...' : '🔗 جاري دمج المشاهد معًا...');
+        try{
+          const blob = await concatScenes(sceneUrls);
+          finalSrc = blob;
+          finalIsBlob = true;
+        } catch(e){
+          setStatus(isEn() ? '⚠️ Could not join scenes; showing the first scene only.' : '⚠️ تعذّر دمج المشاهد؛ سيتم عرض المشهد الأول فقط.');
+        }
+      }
+
+      if(wantQuality){
+        try{
+          setStatus(isEn() ? '🔎 Upscaling video quality...' : '🔎 جاري ترقية جودة الفيديو...');
+          const upRes = await fetch('/api/video-upscale-create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ videoUrl: sceneUrls[0], token, resolution: '2k' }),
+          });
+          const upData = await upRes.json();
+          if(upRes.ok && !upData.error){
+            const upUrl = await pollTaskOnce(upData.id);
+            finalSrc = upUrl;
+            finalIsBlob = false;
+          }
+        } catch(e){ /* upscale is a best-effort enhancement; ignore failures */ }
+      }
+
+      if(wantNarration){
+        try{
+          setStatus(isEn() ? '🎙️ Generating narration...' : '🎙️ جاري إنشاء التعليق الصوتي...');
+          const narrationInput = (narrationText.value || '').trim() || text;
+          const ttsRes = await fetch('/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: narrationInput, voice: 'onyx' }),
+          });
+          if(ttsRes.ok){
+            const audioBlob = await ttsRes.blob();
+            setStatus(isEn() ? '🎚️ Adding narration to the video...' : '🎚️ جاري إضافة التعليق الصوتي للفيديو...');
+            const merged = await muxNarration(finalSrc, audioBlob);
+            finalSrc = merged;
+            finalIsBlob = true;
+          }
+        } catch(e){
+          setStatus(isEn() ? '⚠️ Could not add narration; showing the video without it.' : '⚠️ تعذّر إضافة التعليق الصوتي؛ سيتم عرض الفيديو بدونه.');
+        }
+      }
+
+      const finalUrl = finalIsBlob ? URL.createObjectURL(finalSrc) : finalSrc;
+      setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
+      resultEl.src = finalUrl;
+      resultEl.style.display = 'block';
+      downloadEl.href = finalUrl;
+      downloadEl.style.display = 'block';
+    } catch(e){
+      setStatus(friendlyError(e));
+    } finally {
+      btnGenerate.disabled = false;
+    }
+  };
+})();
+/* ---------- 🏠 AI Interior Design (Gemini image, server-side owner key) ---------- */
+(function(){
+  const modal = $('#designAiModal');
+  const btnOpen = $('#btnDesignAI');
+  const btnClose = $('#designAiCloseBtn');
+  const btnGenerate = $('#designAiGenerateBtn');
+  const btnSuggest = $('#designAiSuggestBtn');
+  const suggestBox = $('#designAiSuggestBox');
+  const suggestList = $('#designAiSuggestList');
+  const fileInput = $('#designAiFileInput');
+  const fileBtn = $('#designAiFileBtn');
+  const fileNameEl = $('#designAiFileName');
+  const sourcePreview = $('#designAiSourcePreview');
+  const styleEl = $('#designAiStyle');
+  const lightingEl = $('#designAiLighting');
+  const furnitureEl = $('#designAiFurniture');
+  const flooringEl = $('#designAiFlooring');
+  const fabricEl = $('#designAiFabric');
+  const wallColorEl = $('#designAiWallColor');
+  const curtainsEl = $('#designAiCurtains');
+  const rearrangeEl = $('#designAiRearrange');
+  const decorPlantsEl = $('#designAiDecorPlants');
+  const decorArtEl = $('#designAiDecorArt');
+  const decorAccessoriesEl = $('#designAiDecorAccessories');
+  const statusEl = $('#designAiStatus');
+  const resultEl = $('#designAiResult');
+  const downloadEl = $('#designAiDownloadLink');
+  if(!modal || !btnOpen) return;
+
+  function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function t(key){
+    const dict = (typeof I18N !== 'undefined') ? I18N[isEn() ? 'en' : 'ar'] : null;
+    return (dict && dict[key]) || key;
+  }
+  function setStatus(text){
+    statusEl.style.display = text ? 'block' : 'none';
+    statusEl.textContent = text || '';
+  }
+
+  let selectedFile = null;
+  let selectedBase64 = '';
+  let selectedMime = 'image/jpeg';
+
+  btnOpen.onclick = () => {
+    modal.style.display = 'flex';
+    closeHeaderMenu();
+  };
+  btnClose.onclick = () => { modal.style.display = 'none'; };
+  modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
+
+  if(fileBtn) fileBtn.onclick = () => fileInput.click();
+
+  fileInput.onchange = () => {
+    const file = fileInput.files && fileInput.files[0];
+    if(!file) return;
+    selectedFile = file;
+    selectedMime = file.type || 'image/jpeg';
+    if(fileNameEl) fileNameEl.textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '');
+      selectedBase64 = dataUrl.split(',')[1] || '';
+      sourcePreview.src = dataUrl;
+      sourcePreview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  };
+
+  let extraImagesB64 = [];
+  const multiWrap = $('#portraitMultiWrap');
+  const multiFileInput = $('#portraitMultiFileInput');
+  const multiFileBtn = $('#portraitMultiFileBtn');
+  const multiPreviewWrap = $('#portraitMultiPreviewWrap');
+  const multiLabel = $('#portraitMultiLabel');
+  if(multiFileBtn) multiFileBtn.onclick = () => multiFileInput.click();
+  if(multiFileInput){
+    multiFileInput.onchange = () => {
+      const maxCount = (styleEl.value === 'merge2') ? 1 : 3;
+      const files = Array.from(multiFileInput.files || []).slice(0, maxCount);
+      extraImagesB64 = [];
+      if(multiPreviewWrap) multiPreviewWrap.innerHTML = '';
+      files.forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = String(reader.result || '');
+          extraImagesB64.push({ base64: dataUrl.split(',')[1] || '', mime: file.type || 'image/jpeg' });
+          if(multiPreviewWrap){
+            const img = document.createElement('img');
+            img.src = dataUrl;
+            img.style.cssText = 'width:56px; height:56px; object-fit:cover; border-radius:8px;';
+            multiPreviewWrap.appendChild(img);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    };
+  }
+
+  btnGenerate.onclick = async () => {
+    if(!selectedBase64){
+      setStatus(t('designAiNeedImage'));
+      return;
+    }
+    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+    if(!token){
+      setStatus(t('designAiNeedLogin'));
+      return;
+    }
+
+    btnGenerate.disabled = true;
+    resultEl.style.display = 'none';
+    downloadEl.style.display = 'none';
+    setStatus(t('designAiGenerating'));
+
+    try{
+      const res = await fetch('/api/design-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: selectedBase64,
+          mimeType: selectedMime,
+          style: styleEl.value,
+          lighting: lightingEl ? lightingEl.value : '',
+          furniture: furnitureEl ? furnitureEl.value : '',
+          flooring: flooringEl ? flooringEl.value : '',
+          fabric: fabricEl ? fabricEl.value : '',
+          wallColor: wallColorEl ? wallColorEl.value : '',
+          curtains: curtainsEl ? curtainsEl.value : '',
+          rearrange: !!(rearrangeEl && rearrangeEl.checked),
+          decor: [
+            decorPlantsEl && decorPlantsEl.checked ? 'plants' : null,
+            decorArtEl && decorArtEl.checked ? 'art' : null,
+            decorAccessoriesEl && decorAccessoriesEl.checked ? 'accessories' : null,
+          ].filter(Boolean),
+          token,
+        }),
+      });
+      const data = await res.json();
+      if(!res.ok || data.error){
+        if(data.error === 'auth_required'){ setStatus(t('designAiNeedLogin')); return; }
+        if(data.error === 'daily_limit_reached'){ setStatus(t('designAiLimitReached')); return; }
+        throw new Error(data.error || 'unknown');
+      }
+      const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
+      resultEl.src = dataUrl;
+      resultEl.style.display = 'block';
+      downloadEl.href = dataUrl;
+      downloadEl.style.display = 'block';
+      setStatus(t('designAiDone'));
+    } catch(e){
+      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+    } finally {
+      btnGenerate.disabled = false;
+    }
+  };
+
+  if(btnSuggest) btnSuggest.onclick = async () => {
+    if(!selectedBase64){
+      setStatus(t('designAiNeedImage'));
+      return;
+    }
+    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+    if(!token){
+      setStatus(t('designAiNeedLogin'));
+      return;
+    }
+    btnSuggest.disabled = true;
+    suggestBox.style.display = 'none';
+    setStatus(t('designAiSuggesting'));
+    try{
+      const res = await fetch('/api/design-suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: selectedBase64, mimeType: selectedMime, lang: isEn() ? 'en' : (localStorage.getItem('aiapp_lang') || 'ar'), token }),
+      });
+      const data = await res.json();
+      if(!res.ok || data.error){
+        if(data.error === 'auth_required'){ setStatus(t('designAiNeedLogin')); return; }
+        throw new Error(data.error || 'unknown');
+      }
+      const ideas = Array.isArray(data.suggestions) ? data.suggestions : [];
+      suggestList.innerHTML = ideas.map((idea) => '<div style="margin-bottom:6px;">💡 ' + String(idea).replace(/</g,'&lt;') + '</div>').join('');
+      suggestBox.style.display = ideas.length ? 'block' : 'none';
+      setStatus(ideas.length ? '' : t('designAiSuggestError'));
+    } catch(e){
+      setStatus(t('designAiSuggestError'));
+    } finally {
+      btnSuggest.disabled = false;
+    }
+  };
+})();
+
+/* ---------- 🎨 Portrait Styles (Gemini image, server-side owner key) ---------- */
+(function(){
+  const modal = $('#portraitStyleModal');
+  const btnOpen = $('#btnPortraitStyle');
+  const btnClose = $('#portraitStyleCloseBtn');
+  const btnGenerate = $('#portraitStyleGenerateBtn');
+  const fileInput = $('#portraitStyleFileInput');
+  const fileBtn = $('#portraitStyleFileBtn');
+  const fileNameEl = $('#portraitStyleFileName');
+  const sourcePreview = $('#portraitStyleSourcePreview');
+  const styleEl = $('#portraitStyleSelect');
+  const backdropWrap = $('#portraitBackdropWrap');
+  const backdropEl = $('#portraitBackdropSelect');
+  const beautifyWrap = $('#portraitBeautifyWrap');
+  const beautifySkinEl = $('#portraitBeautifySkin');
+  const beautifyLightEl = $('#portraitBeautifyLight');
+  const beautifyTeethEl = $('#portraitBeautifyTeeth');
+  const favStarBtn = $('#portraitFavStarBtn');
+  const favGroup = $('#portraitFavGroup');
+  const FAV_KEY = 'portraitFavStyles';
+  function getFavs(){ try{ return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); }catch(e){ return []; } }
+  function setFavs(arr){ localStorage.setItem(FAV_KEY, JSON.stringify(arr)); }
+  function refreshFavGroup(){
+    if(!favGroup || !styleEl) return;
+    const favs = getFavs();
+    favGroup.innerHTML = '';
+    favGroup.label = t('portraitFavGroupLabel') || '⭐ المفضلة';
+    if(favs.length === 0){ favGroup.style.display = 'none'; return; }
+    favGroup.style.display = '';
+    favs.forEach((val) => {
+      const orig = styleEl.querySelector('option[value="' + val + '"]');
+      if(orig && orig.parentNode !== favGroup){
+        const clone = orig.cloneNode(true);
+        favGroup.appendChild(clone);
+      }
+    });
+  }
+  function refreshStarIcon(){
+    if(!favStarBtn || !styleEl) return;
+    const favs = getFavs();
+    favStarBtn.textContent = favs.includes(styleEl.value) ? '⭐' : '☆';
+  }
+  if(favStarBtn){
+    favStarBtn.onclick = () => {
+      const val = styleEl.value;
+      let favs = getFavs();
+      if(favs.includes(val)){ favs = favs.filter((v) => v !== val); }
+      else { favs.push(val); }
+      setFavs(favs);
+      refreshFavGroup();
+      refreshStarIcon();
+    };
+  }
+  if(styleEl){
+    styleEl.addEventListener('change', refreshStarIcon);
+    refreshFavGroup();
+    refreshStarIcon();
+  }
+  if(styleEl && backdropWrap){
+    styleEl.addEventListener('change', () => {
+      backdropWrap.style.display = (styleEl.value === 'removebg') ? 'block' : 'none';
+      if(beautifyWrap) beautifyWrap.style.display = (styleEl.value === 'beautify') ? 'block' : 'none';
+      const ageWrap = $('#portraitAgeWrap');
+      if(ageWrap) ageWrap.style.display = (styleEl.value === 'ageshift') ? 'block' : 'none';
+      const hairWrap = $('#portraitHairWrap');
+      if(hairWrap) hairWrap.style.display = (styleEl.value === 'hairstyle') ? 'block' : 'none';
+      const adWrap = $('#portraitAdWrap');
+      if(adWrap) adWrap.style.display = (styleEl.value === 'adposter') ? 'block' : 'none';
+      const celebWrap = $('#portraitCelebWrap');
+      if(celebWrap) celebWrap.style.display = (styleEl.value === 'celebtoon') ? 'block' : 'none';
+      const eraWrap = $('#portraitEraWrap');
+      if(eraWrap) eraWrap.style.display = (styleEl.value === 'timeshift') ? 'block' : 'none';
+      const multiWrapEl = $('#portraitMultiWrap');
+      const isFamily = (styleEl.value === 'familystyle');
+      const isMerge = (styleEl.value === 'merge2');
+      if(multiWrapEl) multiWrapEl.style.display = (isFamily || isMerge) ? 'block' : 'none';
+      const multiLabelEl = $('#portraitMultiLabel');
+      if(multiLabelEl) multiLabelEl.setAttribute('data-i18n', isMerge ? 'portraitMultiLabelMerge' : 'portraitMultiLabelFamily');
+      if(multiLabelEl && typeof t === 'function') multiLabelEl.textContent = isMerge ? t('portraitMultiLabelMerge') : t('portraitMultiLabelFamily');
+    });
+  }
+  const statusEl = $('#portraitStyleStatus');
+  const resultEl = $('#portraitStyleResult');
+  const downloadEl = $('#portraitStyleDownloadLink');
+  const compareWrap = $('#portraitCompareWrap');
+  const compareBefore = $('#portraitCompareBefore');
+  const compareAfterWrap = $('#portraitCompareAfterWrap');
+  const compareSlider = $('#portraitCompareSlider');
+  const shareBtn2 = $('#portraitShareBtn');
+  if(shareBtn2){
+    shareBtn2.onclick = async () => {
+      try{
+        const dataUrl = resultEl.src;
+        const resp = await fetch(dataUrl);
+        const blob = await resp.blob();
+        const file = new File([blob], 'omran-portrait-style.png', { type: blob.type || 'image/png' });
+        if(navigator.canShare && navigator.canShare({ files: [file] })){
+          await navigator.share({ files: [file], title: 'Omran AI', text: 'Omran AI ✨' });
+        } else if(navigator.share){
+          await navigator.share({ title: 'Omran AI', url: dataUrl });
+        } else {
+          downloadEl.click();
+        }
+      } catch(e){ /* user cancelled or unsupported, ignore */ }
+    };
+  }
+  function updateCompareSlider(){
+    if(!compareSlider || !compareAfterWrap) return;
+    compareAfterWrap.style.width = compareSlider.value + '%';
+    const divider = $('#portraitCompareDivider');
+    if(divider) divider.style.left = compareSlider.value + '%';
+  }
+  function layoutCompareAfter(){
+    if(!compareWrap || !resultEl) return;
+    const w = compareWrap.offsetWidth;
+    if(w) resultEl.style.width = w + 'px';
+  }
+  if(compareSlider) compareSlider.addEventListener('input', updateCompareSlider);
+  window.addEventListener('resize', layoutCompareAfter);
+  if(!modal || !btnOpen) return;
+
+  function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function t(key){
+    const dict = (typeof I18N !== 'undefined') ? I18N[isEn() ? 'en' : 'ar'] : null;
+    return (dict && dict[key]) || key;
+  }
+  function setStatus(text){
+    statusEl.style.display = text ? 'block' : 'none';
+    statusEl.textContent = text || '';
+  }
+
+  let selectedBase64 = '';
+  let selectedMime = 'image/jpeg';
+
+  btnOpen.onclick = () => {
+    modal.style.display = 'flex';
+    closeHeaderMenu();
+  };
+  btnClose.onclick = () => { modal.style.display = 'none'; };
+  modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
+
+  if(fileBtn) fileBtn.onclick = () => fileInput.click();
+
+  fileInput.onchange = () => {
+    const file = fileInput.files && fileInput.files[0];
+    if(!file) return;
+    selectedMime = file.type || 'image/jpeg';
+    if(fileNameEl) fileNameEl.textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '');
+      selectedBase64 = dataUrl.split(',')[1] || '';
+      sourcePreview.src = dataUrl;
+      sourcePreview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  };
+
+  btnGenerate.onclick = async () => {
+    if(!selectedBase64){
+      setStatus(t('portraitNeedImage'));
+      return;
+    }
+    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+    if(!token){
+      setStatus(t('portraitNeedLogin'));
+      return;
+    }
+
+    btnGenerate.disabled = true;
+    resultEl.style.display = 'none';
+    if(compareWrap) compareWrap.style.display = 'none';
+    if(compareSlider) compareSlider.style.display = 'none';
+    downloadEl.style.display = 'none';
+    if(shareBtn2) shareBtn2.style.display = 'none';
+    setStatus(t('portraitGenerating'));
+
+    try{
+      const res = await fetch('/api/portrait-style', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: selectedBase64, mimeType: selectedMime, style: styleEl.value, backdrop: (backdropEl ? backdropEl.value : ''), beautify: (styleEl.value === 'beautify') ? { skin: !!(beautifySkinEl && beautifySkinEl.checked), light: !!(beautifyLightEl && beautifyLightEl.checked), teeth: !!(beautifyTeethEl && beautifyTeethEl.checked) } : null, ageTarget: (styleEl.value === 'ageshift' && $('#portraitAgeSelect')) ? $('#portraitAgeSelect').value : '', hairStyle: (styleEl.value === 'hairstyle' && $('#portraitHairSelect')) ? $('#portraitHairSelect').value : '', adText: (styleEl.value === 'adposter' && $('#portraitAdTextInput')) ? $('#portraitAdTextInput').value : '', era: (styleEl.value === 'timeshift' && $('#portraitEraSelect')) ? $('#portraitEraSelect').value : '', extraImages: (styleEl.value === 'familystyle' || styleEl.value === 'merge2') ? extraImagesB64.map(function(x){ return x.base64; }) : [], token }),
+      });
+      const data = await res.json();
+      if(!res.ok || data.error){
+        if(data.error === 'auth_required'){ setStatus(t('portraitNeedLogin')); return; }
+        if(data.error === 'daily_limit_reached'){ setStatus(t('portraitLimitReached')); return; }
+        throw new Error(data.error || 'unknown');
+      }
+      if(styleEl.value === 'avatargif' && Array.isArray(data.frames) && data.frames.length){
+        setStatus(t('portraitBuildingGif'));
+        const { FFmpeg } = await import('/ffmpeg/lib/index.js');
+        const ffmpeg = new FFmpeg();
+        await ffmpeg.load({
+          coreURL: '/ffmpeg/core/ffmpeg-core.js',
+          wasmURL: '/ffmpeg/core/ffmpeg-core.wasm',
+          classWorkerURL: '/ffmpeg/lib/worker.js',
+        });
+        for(let i = 0; i < data.frames.length; i++){
+          const bin = atob(data.frames[i]);
+          const bytes = new Uint8Array(bin.length);
+          for(let j = 0; j < bin.length; j++){ bytes[j] = bin.charCodeAt(j); }
+          await ffmpeg.writeFile('f' + i + '.png', bytes);
+        }
+        await ffmpeg.exec(['-framerate', '2', '-i', 'f%d.png', '-vf', 'fps=6,scale=480:-1:flags=lanczos', '-loop', '0', 'avatar.gif']);
+        const gifData = await ffmpeg.readFile('avatar.gif');
+        const gifBlob = new Blob([gifData.buffer], { type: 'image/gif' });
+        const gifUrl = URL.createObjectURL(gifBlob);
+        resultEl.src = gifUrl;
+        resultEl.style.display = 'block';
+        if(compareWrap) compareWrap.style.display = 'none';
+        if(compareSlider) compareSlider.style.display = 'none';
+        downloadEl.href = gifUrl;
+        downloadEl.setAttribute('download', 'omran-avatar.gif');
+        downloadEl.style.display = 'block';
+        if(shareBtn2) shareBtn2.style.display = 'none';
+        setStatus(t('portraitDone'));
+      } else {
+        const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
+        resultEl.src = dataUrl;
+        resultEl.style.display = 'block';
+        if(compareWrap && compareBefore && compareSlider){
+          compareBefore.src = 'data:' + selectedMime + ';base64,' + selectedBase64;
+          compareWrap.style.display = 'block';
+          compareSlider.style.display = 'block';
+          compareSlider.value = 50;
+          updateCompareSlider();
+          layoutCompareAfter();
+        }
+        downloadEl.href = dataUrl;
+        downloadEl.setAttribute('download', 'omran-portrait-style.png');
+        downloadEl.style.display = 'block';
+        if(shareBtn2) shareBtn2.style.display = 'block';
+        setStatus(t('portraitDone'));
+      }
+    } catch(e){
+      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+    } finally {
+      btnGenerate.disabled = false;
+    }
+  };
+})();
+
+/* ---------- 👗 AI Fashion Design (Gemini image, server-side owner key) ---------- */
+(function(){
+  const modal = $('#fashionAiModal');
+  const btnOpen = $('#btnFashionAI');
+  const btnClose = $('#fashionAiCloseBtn');
+  const btnGenerate = $('#fashionAiGenerateBtn');
+  const tabImage = $('#fashionAiTabImage');
+  const tabText = $('#fashionAiTabText');
+  const imagePane = $('#fashionAiImagePane');
+  const textPane = $('#fashionAiTextPane');
+  const fileInput = $('#fashionAiFileInput');
+  const fileBtn = $('#fashionAiFileBtn');
+  const fileNameEl = $('#fashionAiFileName');
+  const sourcePreview = $('#fashionAiSourcePreview');
+  const descriptionEl = $('#fashionAiDescription');
+  const styleEl = $('#fashionAiStyle');
+  const statusEl = $('#fashionAiStatus');
+  const resultEl = $('#fashionAiResult');
+  const downloadEl = $('#fashionAiDownloadLink');
+  const resultWrap = $('#fashionAiResultWrap');
+  const beforeWrap = $('#fashionAiBeforeWrap');
+  const beforeImg = $('#fashionAiBeforeImg');
+  const sliderRange = $('#fashionAiSliderRange');
+  const favSaveBtn = $('#fashionAiFavoriteSaveBtn');
+  const favoritesBtn = $('#fashionAiFavoritesBtn');
+  const favoritesPanel = $('#fashionAiFavoritesPanel');
+  const profileHeightEl = $('#fashionProfileHeight');
+  const profileWeightEl = $('#fashionProfileWeight');
+  const profileSkinEl = $('#fashionProfileSkin');
+  const profileHairEl = $('#fashionProfileHair');
+  const profileSaveBtn = $('#fashionProfileSaveBtn');
+  const occasionEl = $('#fashionAiOccasion');
+  const seasonEl = $('#fashionAiSeason');
+  const suggestBtn = $('#fashionAiSuggestBtn');
+  const suggestionsEl = $('#fashionAiSuggestions');
+  const multiAngleEl = $('#fashionAiMultiAngle');
+  const compareChecksEl = $('#fashionAiCompareChecks');
+  const compareBtn = $('#fashionAiCompareBtn');
+  const compareStatusEl = $('#fashionAiCompareStatus');
+  const compareResultsEl = $('#fashionAiCompareResults');
+  if(!modal || !btnOpen) return;
+
+  function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function lang7(){ return (typeof currentLang === 'function') ? currentLang() : (localStorage.getItem('aiapp_lang') || 'ar'); }
+  function t(key){
+    const dict = (typeof I18N !== 'undefined') ? I18N[lang7()] : null;
+    return (dict && dict[key]) || key;
+  }
+  function setStatus(text){
+    statusEl.style.display = text ? 'block' : 'none';
+    statusEl.textContent = text || '';
+  }
+
+  /* ---- 👤 saved measurements profile ---- */
+  const PROFILE_KEY = 'aiapp_fashion_profile';
+  function loadProfile(){
+    try{ return JSON.parse(localStorage.getItem(PROFILE_KEY) || '{}'); }catch(e){ return {}; }
+  }
+  function fillProfileInputs(){
+    const p = loadProfile();
+    if(profileHeightEl) profileHeightEl.value = p.height || '';
+    if(profileWeightEl) profileWeightEl.value = p.weight || '';
+    if(profileSkinEl) profileSkinEl.value = p.skin || '';
+    if(profileHairEl) profileHairEl.value = p.hair || '';
+  }
+  fillProfileInputs();
+  if(profileSaveBtn) profileSaveBtn.onclick = () => {
+    const p = {
+      height: profileHeightEl.value.trim(),
+      weight: profileWeightEl.value.trim(),
+      skin: profileSkinEl.value.trim(),
+      hair: profileHairEl.value.trim(),
+    };
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+    setStatus(t('fashionProfileSaved'));
+  };
+
+  /* ---- ❤️ favorites ---- */
+  const FAV_KEY = 'aiapp_fashion_favorites';
+  function loadFavorites(){
+    try{ return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); }catch(e){ return []; }
+  }
+  function saveFavorite(dataUrl, styleLabel){
+    const favs = loadFavorites();
+    favs.unshift({ img: dataUrl, style: styleLabel || '', ts: Date.now() });
+    localStorage.setItem(FAV_KEY, JSON.stringify(favs.slice(0, 30)));
+  }
+  function renderFavorites(){
+    const favs = loadFavorites();
+    favoritesPanel.innerHTML = '';
+    if(!favs.length){
+      favoritesPanel.innerHTML = '<p style="font-size:12px; color:var(--muted,#999); text-align:center;">' + t('fashionNoFavorites') + '</p>';
+      return;
+    }
+    favs.forEach((f, idx) => {
+      const card = document.createElement('div');
+      card.style.cssText = 'display:flex; align-items:center; gap:8px; border:1px solid var(--border,#333); border-radius:8px; padding:6px;';
+      card.innerHTML = '<img src="' + f.img + '" style="width:50px; height:50px; object-fit:cover; border-radius:6px;">' +
+        '<span style="flex:1; font-size:11.5px; color:var(--muted,#999);">' + (f.style || '') + '</span>' +
+        '<button type="button" class="btn iconBtn" data-idx=' + idx + '" style="padding:2px 8px; font-size:12px;">✕</button>';
+      card.querySelector('button').onclick = () => {
+        const arr = loadFavorites();
+        arr.splice(idx, 1);
+        localStorage.setItem(FAV_KEY, JSON.stringify(arr));
+        renderFavorites();
+      };
+      favoritesPanel.appendChild(card);
+    });
+  }
+  if(favoritesBtn) favoritesBtn.onclick = () => {
+    const showing = favoritesPanel.style.display !== 'none' && favoritesPanel.style.display !== '';
+    if(showing){ favoritesPanel.style.display = 'none'; return; }
+    renderFavorites();
+    favoritesPanel.style.display = 'flex';
+  };
+  if(favSaveBtn) favSaveBtn.onclick = () => {
+    if(!resultEl.src) return;
+    saveFavorite(resultEl.src, styleEl.value);
+    favSaveBtn.textContent = t('fashionFavoriteSaved');
+    setTimeout(() => { favSaveBtn.textContent = t('fashionFavoriteSaveBtn'); }, 1800);
+  };
+
+  /* ---- 🔄 before/after slider ---- */
+  function setupBeforeAfter(afterUrl){
+    if(mode !== 'image' || !selectedBase64){
+      beforeWrap.style.display = 'none';
+      sliderRange.style.display = 'none';
+      return;
+    }
+    beforeImg.src = 'data:' + selectedMime + ';base64,' + selectedBase64;
+    beforeWrap.style.display = 'block';
+    sliderRange.style.display = 'block';
+    updateSliderClip(sliderRange.value);
+  }
+  function updateSliderClip(val){
+    const pct = Math.max(0, Math.min(100, Number(val)));
+    beforeWrap.style.width = pct + '%';
+    beforeImg.style.width = resultWrap.clientWidth + 'px';
+  }
+  if(sliderRange) sliderRange.oninput = () => updateSliderClip(sliderRange.value);
+
+  /* ---- 📊 compare checkboxes (built from style options) ---- */
+  function buildCompareChecks(){
+    compareChecksEl.innerHTML = '';
+    Array.from(styleEl.options).forEach(opt => {
+      const label = document.createElement('label');
+      label.style.cssText = 'display:flex; align-items:center; gap:4px; font-size:11.5px; color:var(--muted,#999); border:1px solid var(--border,#333); border-radius:6px; padding:4px 8px; cursor:pointer;';
+      label.innerHTML = '<input type="checkbox" class="fashionCompareCheck" value="' + opt.value + '"> ' + opt.textContent;
+      compareChecksEl.appendChild(label);
+    });
+  }
+  buildCompareChecks();
+
+  let mode = 'image';
+  let selectedBase64 = '';
+  let selectedMime = 'image/jpeg';
+
+  function setMode(next){
+    mode = next;
+    if(mode === 'image'){
+      tabImage.classList.add('primary');
+      tabText.classList.remove('primary');
+      imagePane.style.display = 'block';
+      textPane.style.display = 'none';
+    } else {
+      tabText.classList.add('primary');
+      tabImage.classList.remove('primary');
+      imagePane.style.display = 'none';
+      textPane.style.display = 'block';
+    }
+  }
+  tabImage.onclick = () => setMode('image');
+  tabText.onclick = () => setMode('text');
+
+  btnOpen.onclick = () => {
+    modal.style.display = 'flex';
+    closeHeaderMenu();
+  };
+  btnClose.onclick = () => { modal.style.display = 'none'; };
+  modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
+
+  if(fileBtn) fileBtn.onclick = () => fileInput.click();
+
+  fileInput.onchange = () => {
+    const file = fileInput.files && fileInput.files[0];
+    if(!file) return;
+    selectedMime = file.type || 'image/jpeg';
+    if(fileNameEl) fileNameEl.textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '');
+      selectedBase64 = dataUrl.split(',')[1] || '';
+      sourcePreview.src = dataUrl;
+      sourcePreview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  };
+
+  btnGenerate.onclick = async () => {
+    if(mode === 'image' && !selectedBase64){
+      setStatus(t('fashionAiNeedImage'));
+      return;
+    }
+    if(mode === 'text' && !descriptionEl.value.trim()){
+      setStatus(t('fashionAiNeedDescription'));
+      return;
+    }
+    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+    if(!token){
+      setStatus(t('fashionAiNeedLogin'));
+      return;
+    }
+
+    btnGenerate.disabled = true;
+    resultEl.style.display = 'none';
+    downloadEl.style.display = 'none';
+    favSaveBtn.style.display = 'none';
+    beforeWrap.style.display = 'none';
+    sliderRange.style.display = 'none';
+    setStatus(t('fashionAiGenerating'));
+
+    try{
+      const payload = { mode, style: styleEl.value, token, multiAngle: !!multiAngleEl.checked };
+      if(mode === 'image'){
+        payload.imageBase64 = selectedBase64;
+        payload.mimeType = selectedMime;
+      } else {
+        payload.description = descriptionEl.value.trim();
+      }
+      const res = await fetch('/api/fashion-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if(!res.ok || data.error){
+        if(data.error === 'auth_required'){ setStatus(t('fashionAiNeedLogin')); return; }
+        if(data.error === 'daily_limit_reached'){ setStatus(t('fashionAiLimitReached')); return; }
+        throw new Error(data.error || 'unknown');
+      }
+      const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
+      resultEl.src = dataUrl;
+      resultEl.style.display = 'block';
+      downloadEl.href = dataUrl;
+      downloadEl.style.display = 'block';
+      favSaveBtn.style.display = 'block';
+      favSaveBtn.textContent = t('fashionFavoriteSaveBtn');
+      setupBeforeAfter(dataUrl);
+      setStatus(t('fashionAiDone'));
+    } catch(e){
+      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+    } finally {
+      btnGenerate.disabled = false;
+    }
+  };
+
+  /* ---- 💡 suggest a look ---- */
+  if(suggestBtn) suggestBtn.onclick = async () => {
+    if(mode === 'image' && !selectedBase64 && !descriptionEl.value.trim()){
+      setStatus(t('fashionSuggestNeedImage'));
+      return;
+    }
+    if(mode === 'text' && !descriptionEl.value.trim()){
+      setStatus(t('fashionSuggestNeedImage'));
+      return;
+    }
+    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+    if(!token){ setStatus(t('fashionAiNeedLogin')); return; }
+
+    suggestBtn.disabled = true;
+    suggestionsEl.style.display = 'none';
+    suggestionsEl.innerHTML = '';
+    setStatus(t('fashionSuggestGenerating'));
+    try{
+      const payload = {
+        occasion: occasionEl.value, season: seasonEl.value,
+        profile: loadProfile(), lang: lang7(), token,
+      };
+      if(mode === 'image' && selectedBase64){
+        payload.imageBase64 = selectedBase64;
+        payload.mimeType = selectedMime;
+      } else {
+        payload.description = descriptionEl.value.trim();
+      }
+      const res = await fetch('/api/fashion-suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if(!res.ok || data.error){
+        if(data.error === 'auth_required'){ setStatus(t('fashionAiNeedLogin')); return; }
+        throw new Error(data.error || 'unknown');
+      }
+      const list = data.suggestions || [];
+      list.forEach(s => {
+        const card = document.createElement('div');
+        card.style.cssText = 'border:1px solid var(--border,#333); border-radius:10px; padding:10px;';
+        card.innerHTML =
+          '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+            '<strong style="font-size:13px;">' + (s.title || '') + '</strong>' +
+            '<span style="font-size:11.5px; color:#4ade80;">' + t('fashionMatchLabel') + ': ' + s.matchPercent + '%</span>' +
+          '</div>' +
+          '<p style="font-size:12px; color:var(--muted,#999); margin:6px 0 2px;">' + (s.clothing || '') + '</p>' +
+          '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0;">🎨 ' + (s.colors || '') + '</p>' +
+          '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0 8px;">👜 ' + (s.accessories || '') + '</p>' +
+          '<button type="button" class="btn primary useLookBtn" style="width:100%; font-size:12px; padding:5px;">' + t('fashionUseThisLook') + '</button>';
+        card.querySelector('.useLookBtn').onclick = () => {
+          if(mode === 'text' || !selectedBase64){
+            setMode('text');
+            descriptionEl.value = (s.clothing || '') + '. ' + (s.colors ? ('Colors: ' + s.colors + '. ') : '') + (s.accessories ? ('Accessories: ' + s.accessories) : '');
+          }
+        };
+        suggestionsEl.appendChild(card);
+      });
+      suggestionsEl.style.display = list.length ? 'flex' : 'none';
+      setStatus(list.length ? '' : t('fashionSuggestNeedImage'));
+    } catch(e){
+      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+    } finally {
+      suggestBtn.disabled = false;
+    }
+  };
+
+  /* ---- 📊 compare 2-3 looks ---- */
+  if(compareBtn) compareBtn.onclick = async () => {
+    const checks = Array.from(compareChecksEl.querySelectorAll('.fashionCompareCheck:checked')).map(c => c.value);
+    if(checks.length < 2){
+      compareStatusEl.style.display = 'block';
+      compareStatusEl.textContent = t('fashionCompareNeedTwo');
+      return;
+    }
+    const checkedCount = Math.min(checks.length, 3);
+    const stylesToRun = checks.slice(0, 3);
+    if(mode === 'image' && !selectedBase64){
+      setStatus(t('fashionAiNeedImage'));
+      return;
+    }
+    if(mode === 'text' && !descriptionEl.value.trim()){
+      setStatus(t('fashionAiNeedDescription'));
+      return;
+    }
+    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+    if(!token){ setStatus(t('fashionAiNeedLogin')); return; }
+
+    compareBtn.disabled = true;
+    compareResultsEl.style.display = 'none';
+    compareResultsEl.innerHTML = '';
+    compareStatusEl.style.display = 'block';
+    compareStatusEl.textContent = t('fashionCompareGenerating');
+
+    try{
+      const results = await Promise.all(stylesToRun.map(async (styleVal) => {
+        const payload = { mode, style: styleVal, token, multiAngle: false };
+        if(mode === 'image'){ payload.imageBase64 = selectedBase64; payload.mimeType = selectedMime; }
+        else { payload.description = descriptionEl.value.trim(); }
+        try{
+          const res = await fetch('/api/fashion-create', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          if(!res.ok || data.error) return { styleVal, error: data.error || 'unknown' };
+          return { styleVal, dataUrl: 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64 };
+        } catch(e){
+          return { styleVal, error: e.message };
+        }
+      }));
+      results.forEach(r => {
+        const cell = document.createElement('div');
+        cell.style.cssText = 'border:1px solid var(--border,#333); border-radius:8px; padding:6px; text-align:center;';
+        if(r.dataUrl){
+          const label = (styleEl.querySelector('option[value="' + r.styleVal + '"]') || {}).textContent || r.styleVal;
+          cell.innerHTML = '<img src="' + r.dataUrl + '" style="width:100%; border-radius:6px; background:#000;"><p style="font-size:11.5px; color:var(--muted,#999); margin:4px 0 0;">' + label + '</p>';
+        } else {
+          cell.innerHTML = '<p style="font-size:11.5px; color:#f87171;">❌ ' + (r.error || '') + '</p>';
+        }
+        compareResultsEl.appendChild(cell);
+      });
+      compareResultsEl.style.display = 'grid';
+      compareStatusEl.style.display = 'none';
+    } catch(e){
+      compareStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+    } finally {
+      compareBtn.disabled = false;
+    }
+  };
+})();
+
+/* ---------- 🕌 Religious Insights (verse tafsir / hadith / dream interpretation, text via Gemini) ---------- */
+(function(){
+  const modal = $('#religionModal');
+  const btnOpen = $('#btnReligion');
+  const btnClose = $('#religionCloseBtn');
+  const btnGenerate = $('#religionGenerateBtn');
+  const tabsWrap = $('#religionTabs');
+  const inputLabelEl = $('#religionInputLabel');
+  const inputEl = $('#religionInput');
+  const statusEl = $('#religionStatus');
+  const resultEl = $('#religionResult');
+  if(!modal || !btnOpen) return;
+
+  let tool = 'verse';
+
+  const SYSTEM_PROMPTS = {
+    verse: 'أنت عالم متخصص في تفسير القرآن الكريم. عند إعطائك آية أو اسم سورة ورقم آية، اشرحها بعمق ودقة معتمدًا على أشهر كتب التفسير المعتبرة (تفسير ابن كثير، تفسير الطبري، تفسير السعدي، تفسير القرطبي). اذكر: 1) نص الآية كاملة، 2) سبب النزول إن وجد، 3) المعنى الإجمالي، 4) أهم الفوائد والدروس المستفادة. اكتب بأسلوب واضح ومنظم بعناوين. اختم دائمًا بجملة: "هذا اجتهاد بشري في نقل التفسير المعتمد وليس فتوى شخصية، راجع أهل العلم للتأكد." أجب بنفس لغة سؤال المستخدم.',
+    hadith: 'أنت باحث متخصص في الحديث النبوي الشريف. عند إعطائك نص حديث أو موضوعًا، ابحث في معرفتك عن الحديث الأقرب لذلك من الكتب الصحيحة المعتبرة (صحيح البخاري، صحيح مسلم، سنن أبي داود، الترمذي، النسائي، ابن ماجه). اذكر: 1) نص الحديث كاملًا إن استطعت، 2) الراوي ومصدر التخريج، 3) درجة الحديث (صحيح/حسن/ضعيف) بحسب ما هو معروف ومشهور، 4) الشرح والمعنى، 5) الفوائد والأحكام المستفادة. إذا لم تكن متأكدًا من درجة الحديث بدقة تامة، وضّح ذلك صراحة وانصح بالرجوع لموقع الدرر السنية أو مختص. أجب بنفس لغة سؤال المستخدم.',
+    dream: 'أنت مفسر أحلام موسوعي متعمق يجمع بين كل الثقافات والأديان. عند إعطائك وصف حلم، قدّم تفسيرًا قويًا وعميقًا ومفصلاً (وليس سطحيًا) من زوايا متعددة، كل زاوية بعنوان واضح: 1) ☪️ التفسير الإسلامي (استنادًا لمنهج ابن سيرين والنابلسي، مع ربط الرموز بمعانيها التقليدية)، 2) ✝️ التفسير المسيحي (استنادًا لتفسيرات الكتاب المقدس والتقليد الكنسي لرموز الأحلام كيوسف ودانيال)، 3) ✡️ التفسير اليهودي (التلمود وتفسيرات الحاخامات التقليدية)، 4) 🕉️ التفسير الهندوسي/البوذي (المعاني الروحية والكارما والرموز الشرقية)، 5) 🧠 علم النفس الحديث (تحليل فرويد ويونغ للرموز واللاوعي والأرشيتايبس)، 6) 🌍 الرمزية الثقافية العامة المتعارف عليها عالميًا. حلل كل رمز رئيسي ذكره المستخدم في حلمه (الألوان، الحيوانات، الأماكن، الأفعال) بعمق داخل كل قسم. اختم بخلاصة عامة تجمع أهم المعاني المشتركة. أجب بنفس لغة سؤال المستخدم، وكن مفصلاً وغنيًا وليس مختصرًا.',
+  };
+
+  function setStatus(text){
+    statusEl.style.display = text ? 'block' : 'none';
+    statusEl.textContent = text || '';
+  }
+
+  function setTool(next){
+    tool = next;
+    tabsWrap.querySelectorAll('.religionTabBtn').forEach(b => b.classList.toggle('active', b.dataset.tool === next));
+    const labelKey = 'religionInputLabel' + next.charAt(0).toUpperCase() + next.slice(1);
+    const placeholderKey = 'religionInputPlaceholder' + next.charAt(0).toUpperCase() + next.slice(1);
+    if(inputLabelEl) inputLabelEl.textContent = t(labelKey);
+    if(inputEl) inputEl.setAttribute('placeholder', t(placeholderKey));
+    resultEl.style.display = 'none';
+    resultEl.textContent = '';
+    setStatus('');
+  }
+
+  tabsWrap.addEventListener('click', (e) => {
+    const b = e.target.closest('.religionTabBtn');
+    if(!b) return;
+    setTool(b.dataset.tool);
+  });
+
+  btnOpen.addEventListener('click', () => {
+    modal.style.display = 'flex';
+    setTool(tool);
+    if(typeof closeHeaderMenu === 'function') closeHeaderMenu();
+  });
+  btnClose.addEventListener('click', () => { modal.style.display = 'none'; });
+  modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
+
+  btnGenerate.addEventListener('click', async () => {
+    const query = (inputEl.value || '').trim();
+    if(!query){ setStatus(t('religionNeedInput')); return; }
+    btnGenerate.disabled = true;
+    setStatus(t('religionGenerating'));
+    resultEl.style.display = 'block';
+    resultEl.textContent = '';
+    try{
+      const messages = [
+        { role: 'system', content: SYSTEM_PROMPTS[tool] },
+        { role: 'user', content: query },
+      ];
+      const onDelta = (partial) => { resultEl.textContent = partial; };
+      const reply = await callGemini(messages, onDelta);
+      resultEl.textContent = reply;
+      setStatus(t('religionDone'));
+    }catch(e){
+      setStatus(t('religionError') + (e && e.message ? (': ' + e.message) : ''));
+    }finally{
+      btnGenerate.disabled = false;
+    }
+  });
+})();
+
+/* ---------- 📧 AI Email Assistant (Gmail connect, priority + language-matched drafts, approve-to-send) ---------- */
+(function(){
+  const modal = $('#emailAssistModal');
+  const btnOpen = $('#btnEmailAssist');
+  const btnClose = $('#emailAssistCloseBtn');
+  const connectBox = $('#emailAssistConnectBox');
+  const connectedBox = $('#emailAssistConnectedBox');
+  const connectBtn = $('#emailAssistConnectBtn');
+  const refreshBtn = $('#emailAssistRefreshBtn');
+  const gmailLabel = $('#emailAssistGmailLabel');
+  const statusEl = $('#emailAssistStatus');
+  const listEl = $('#emailAssistList');
+  const voiceBtn = $('#emailAssistVoiceBtn');
+  let lastLoadedEmails = [];
+  let emailSummaryAudio = null;
+  if(!modal || !btnOpen) return;
+
+  const en = () => (localStorage.getItem('aiapp_lang') === 'en');
+  const T = () => ({
+    connectText: en() ? 'Connect your Gmail account so the AI can read your emails and suggest ready replies you approve before sending.' : 'اربط حساب Gmail الخاص بك ليقرأ الذكاء الاصطناعي إيميلاتك ويقترح ردودًا جاهزة تعتمدها قبل الإرسال.',
+    connectBtn: en() ? '🔗 Connect Gmail' : '🔗 ربط Gmail',
+    disclaimer: en() ? '⚠️ No reply is ever sent without your explicit approval on each message.' : '⚠️ لن يتم إرسال أي رد إلا بعد موافقتك الصريحة على كل رسالة.',
+    title: en() ? '📧 AI Email Assistant' : '📧 مساعد البريد الذكي',
+    refresh: en() ? 'Refresh' : 'تحديث',
+    loading: en() ? 'Scanning your inbox…' : 'جارٍ فحص بريدك…',
+    empty: en() ? 'No new emails need a reply right now.' : 'لا توجد إيميلات جديدة تحتاج ردًا الآن.',
+    notConnected: en() ? 'Gmail is not connected, please reconnect.' : 'لم يتم ربط Gmail، يرجى إعادة الربط.',
+    send: en() ? '✅ Send' : '✅ إرسال',
+    ignore: en() ? '🚫 Ignore this sender' : '🚫 تجاهل هذا المرسل',
+    sending: en() ? 'Sending…' : 'جارٍ الإرسال…',
+    sent: en() ? '✅ Sent' : '✅ تم الإرسال',
+    ignored: en() ? '🚫 Ignored — won\'t show again' : '🚫 تم التجاهل — لن يظهر مرة أخرى',
+    error: en() ? '❌ Error: ' : '❌ خطأ: ',
+    voiceBtn: en() ? 'Voice summary' : 'ملخص صوتي',
+    addToCalendar: en() ? '📅 Add to Calendar' : '📅 أضف للتقويم',
+    addingEvent: en() ? 'Adding event…' : 'جارٍ إضافة الموعد…',
+    eventAdded: en() ? '✅ Added to your calendar' : '✅ انضاف لتقويمك',
+    calReauth: en() ? 'Reconnect Gmail to allow calendar access' : 'أعد ربط Gmail للسماح بالوصول للتقويم',
+    voiceLoading: en() ? '🔊 Preparing voice summary…' : '🔊 جارٍ تجهيز الملخص الصوتي…',
+    voiceEmpty: en() ? 'No emails to summarize.' : 'لا توجد إيميلات لتلخيصها.',
+    urgent: en() ? '🔴 Urgent' : '🔴 عاجل',
+    normal: en() ? '🟡 Normal' : '🟡 عادي',
+    low: en() ? '⚪ Low' : '⚪ منخفض',
+  });
+
+  function setStatus(text){
+    statusEl.style.display = text ? 'block' : 'none';
+    statusEl.textContent = text || '';
+  }
+
+  function priorityLabel(p){
+    const tr = T();
+    return p === 'urgent' ? tr.urgent : (p === 'low' ? tr.low : tr.normal);
+  }
+
+  function extractEmailAddress(fromHeader){
+    const m = String(fromHeader || '').match(/<([^>]+)>/);
+    return m ? m[1] : String(fromHeader || '').trim();
+  }
+
+  function renderEmails(emails){
+    const tr = T();
+    listEl.innerHTML = '';
+    if(!emails || !emails.length){
+      listEl.innerHTML = '<div style="text-align:center; font-size:13px; color:var(--muted,#999); padding:20px 0;">' + tr.empty + '</div>';
+      return;
+    }
+    emails.forEach((mail) => {
+      const card = document.createElement('div');
+      card.style.cssText = 'background:var(--panel2,#111); border:1px solid var(--border,#333); border-radius:10px; padding:12px;';
+      card.innerHTML =
+        '<div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">' +
+          '<div style="min-width:0;">' +
+            '<div style="font-size:12.5px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + (mail.subject || '').replace(/</g,'&lt;') + '</div>' +
+            '<div style="font-size:11.5px; color:var(--muted,#999); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + (mail.from || '').replace(/</g,'&lt;') + '</div>' +
+          '</div>' +
+          '<span style="font-size:11.5px; white-space:nowrap;">' + priorityLabel(mail.priority) + '</span>' +
+        '</div>' +
+        '<div style="font-size:12px; color:var(--muted,#999); margin-top:6px;">' + (mail.snippet || '').replace(/</g,'&lt;') + '</div>' +
+        '<textarea class="emailDraftInput" rows="4" style="width:100%; margin-top:8px; resize:vertical; font-size:13px;">' + (mail.draft || '') + '</textarea>' +
+        '<div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">' +
+          '<button type="button" class="btn primary emailSendBtn" style="flex:1; min-width:110px;">' + tr.send + '</button>' +
+          '<button type="button" class="btn emailIgnoreBtn" style="flex:1; min-width:110px;">' + tr.ignore + '</button>' +
+          (mail.meeting ? '<button type="button" class="btn emailCalBtn" style="flex:1; min-width:110px;">' + tr.addToCalendar + '</button>' : '') +
+        '</div>' +
+        (mail.meeting ? '<div style="font-size:11.5px; color:var(--muted,#999); margin-top:6px;">📅 ' + String(mail.meeting.title || '').replace(/</g,'&lt;') + ' — ' + String(mail.meeting.start || '').replace('T', ' ') + '</div>' : '') +
+        '<div class="emailCardStatus" style="display:none; font-size:12px; margin-top:6px; text-align:center;"></div>';
+
+      const sendBtn = card.querySelector('.emailSendBtn');
+      const ignoreBtn = card.querySelector('.emailIgnoreBtn');
+      const draftEl = card.querySelector('.emailDraftInput');
+      const cardStatus = card.querySelector('.emailCardStatus');
+      const calBtn = card.querySelector('.emailCalBtn');
+
+      if(calBtn) calBtn.addEventListener('click', async () => {
+        calBtn.disabled = true;
+        cardStatus.style.display = 'block';
+        cardStatus.textContent = tr.addingEvent;
+        try{
+          const token = localStorage.getItem('aiapp_auth_token');
+          const r = await fetch('/api/email-calendar', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, title: mail.meeting.title, start: mail.meeting.start, durationMin: mail.meeting.durationMin || 60, description: (mail.subject || '') + '\n' + (mail.from || '') }),
+          });
+          const d = await r.json();
+          if(!r.ok){
+            if(d && d.needsReauth) throw new Error(tr.calReauth);
+            throw new Error((d && d.error) || 'calendar failed');
+          }
+          cardStatus.textContent = tr.eventAdded;
+          calBtn.textContent = tr.eventAdded;
+        }catch(e){
+          cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
+          calBtn.disabled = false;
+        }
+      });
+
+      sendBtn.addEventListener('click', async () => {
+        const text = (draftEl.value || '').trim();
+        if(!text) return;
+        sendBtn.disabled = true; ignoreBtn.disabled = true;
+        cardStatus.style.display = 'block';
+        cardStatus.textContent = tr.sending;
+        try{
+          const token = localStorage.getItem('aiapp_auth_token');
+          const r = await fetch('/api/email-send', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, threadId: mail.threadId, to: extractEmailAddress(mail.from), subject: mail.subject, text, messageIdHeader: mail.messageIdHeader }),
+          });
+          const d = await r.json();
+          if(!r.ok) throw new Error(d.error || 'send failed');
+          cardStatus.textContent = tr.sent;
+          setTimeout(() => { card.remove(); }, 1200);
+        }catch(e){
+          cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
+          sendBtn.disabled = false; ignoreBtn.disabled = false;
+        }
+      });
+
+      ignoreBtn.addEventListener('click', async () => {
+        sendBtn.disabled = true; ignoreBtn.disabled = true;
+        cardStatus.style.display = 'block';
+        try{
+          const token = localStorage.getItem('aiapp_auth_token');
+          const pattern = extractEmailAddress(mail.from);
+          const r = await fetch('/api/email-ignore', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, pattern }),
+          });
+          const d = await r.json();
+          if(!r.ok) throw new Error(d.error || 'ignore failed');
+          cardStatus.textContent = tr.ignored;
+          setTimeout(() => { card.remove(); }, 1000);
+        }catch(e){
+          cardStatus.textContent = tr.error + (e && e.message ? e.message : String(e));
+          sendBtn.disabled = false; ignoreBtn.disabled = false;
+        }
+      });
+
+      listEl.appendChild(card);
+    });
+  }
+
+  async function loadEmails(){
+    const tr = T();
+    setStatus(tr.loading);
+    listEl.innerHTML = '';
+    try{
+      const token = localStorage.getItem('aiapp_auth_token');
+      const r = await fetch('/api/email-list', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+      const d = await r.json();
+      if(!r.ok){
+        if(d.notConnected || /invalid_grant/i.test(String(d.error || ''))){
+          connectBox.style.display = 'block';
+          connectedBox.style.display = 'none';
+          setStatus(d.notConnected ? '' : T().notConnected);
+          return;
+        }
+        throw new Error(d.error || 'load failed');
+      }
+      gmailLabel.textContent = d.gmailAddress || '';
+      setStatus('');
+      lastLoadedEmails = d.emails || [];
+      renderEmails(d.emails);
+    }catch(e){
+      setStatus(tr.error + (e && e.message ? e.message : String(e)));
+    }
+  }
+
+  function applyStaticText(){
+    const tr = T();
+    const setTxt = (sel, val) => { const el = $(sel); if(el) el.textContent = val; };
+    setTxt('#emailAssistHeaderTitle', tr.title);
+    setTxt('#emailAssistDisclaimer', tr.disclaimer);
+    setTxt('#emailAssistConnectText', tr.connectText);
+    if(connectBtn) connectBtn.textContent = tr.connectBtn;
+    setTxt('#emailAssistRefreshLabel', tr.refresh);
+    setTxt('#emailAssistVoiceLabel', tr.voiceBtn);
+  }
+
+  function buildEmailSummaryText(){
+    const isEn = en();
+    const emails = lastLoadedEmails || [];
+    if(!emails.length) return '';
+    const urgentOnes = emails.filter(m => m.priority === 'urgent');
+    const senderName = (from) => String(from || '').replace(/<[^>]*>/g, '').replace(/["']/g, '').trim() || (isEn ? 'unknown sender' : 'مرسل غير معروف');
+    let s;
+    if(isEn){
+      s = 'Hello! You have ' + emails.length + ' emails waiting. ';
+      if(urgentOnes.length) s += urgentOnes.length + ' of them are urgent. ';
+      emails.slice(0, 5).forEach((m, i) => {
+        s += 'Email ' + (i + 1) + ': from ' + senderName(m.from) + ', subject: ' + (m.subject || 'no subject') + '. ';
+      });
+      if(emails.length > 5) s += 'Plus ' + (emails.length - 5) + ' more emails.';
+    }else{
+      s = 'هلا! عندك ' + emails.length + ' إيميلات بانتظارك. ';
+      if(urgentOnes.length) s += 'منها ' + urgentOnes.length + ' عاجلة. ';
+      emails.slice(0, 5).forEach((m, i) => {
+        s += 'الإيميل ' + (i + 1) + ': من ' + senderName(m.from) + '، بخصوص: ' + (m.subject || 'بدون عنوان') + '. ';
+      });
+      if(emails.length > 5) s += 'وبعد عندك ' + (emails.length - 5) + ' إيميلات إضافية.';
+    }
+    return s;
+  }
+
+  if(voiceBtn) voiceBtn.addEventListener('click', async () => {
+    const tr = T();
+    if(emailSummaryAudio){ try{ emailSummaryAudio.pause(); }catch(e){} emailSummaryAudio = null; voiceBtn.style.opacity = ''; setStatus(''); return; }
+    const text = buildEmailSummaryText();
+    if(!text){ setStatus(tr.voiceEmpty); setTimeout(() => setStatus(''), 2500); return; }
+    voiceBtn.disabled = true;
+    setStatus(tr.voiceLoading);
+    try{
+      const resp = await fetch('/api/tts', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voice: 'nova', text: text.slice(0, 4000) })
+      });
+      if(!resp.ok){ let msg = 'tts failed'; try{ const j = await resp.json(); if(j && j.error) msg = j.error; }catch(e){} throw new Error(msg); }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      emailSummaryAudio = new Audio(url);
+      emailSummaryAudio.onended = () => { emailSummaryAudio = null; voiceBtn.style.opacity = ''; };
+      voiceBtn.style.opacity = '0.6';
+      setStatus('');
+      await emailSummaryAudio.play();
+    }catch(e){
+      setStatus(tr.error + (e && e.message ? e.message : String(e)));
+    }finally{
+      voiceBtn.disabled = false;
+    }
+  });
+
+  btnOpen.addEventListener('click', () => {
+    modal.style.display = 'flex';
+    applyStaticText();
+    if(typeof closeHeaderMenu === 'function') closeHeaderMenu();
+    const token = localStorage.getItem('aiapp_auth_token');
+    if(!token){
+      connectBox.style.display = 'block';
+      connectedBox.style.display = 'none';
+      return;
+    }
+    // Try loading directly — if not connected yet, loadEmails() will show the connect box.
+    connectBox.style.display = 'none';
+    connectedBox.style.display = 'block';
+    loadEmails();
+  });
+  btnClose.addEventListener('click', () => { modal.style.display = 'none'; });
+  modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
+
+  connectBtn.addEventListener('click', () => {
+    const token = localStorage.getItem('aiapp_auth_token');
+    if(!token){
+      modal.style.display = 'none';
+      const authBtn = $('#btnAuthToggle');
+      if(authBtn) authBtn.click();
+      return;
+    }
+    const clientId = '533765051685-2334rjfvu738sd2i50p7rb8gck1d00i2.apps.googleusercontent.com';
+    const redirectUri = window.location.origin + '/api/email-callback';
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar.events',
+      access_type: 'offline',
+      prompt: 'consent',
+      state: token,
+    });
+    window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+  });
+
+  refreshBtn.addEventListener('click', loadEmails);
+
+  // Handle the redirect back from /api/email-callback (?emailconnected=1 or ?emailerror=...)
+  (function(){
+    try{
+      const params = new URLSearchParams(window.location.search);
+      const connected = params.get('emailconnected');
+      const err = params.get('emailerror');
+      if(connected || err){
+        const cleanUrl = window.location.origin + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+        if(connected){
+          setTimeout(() => { btnOpen.click(); }, 300);
+        }
+        if(err){
+          setTimeout(() => { alert('⚠️ خطأ ربط Gmail: ' + err); }, 300);
+        }
+      }
+    }catch(e){ /* ignore */ }
+  })();
+})();
+/* ---------- 📈 Stocks (Twelve Data, server-side owner key) ---------- */
+(function(){
+  const modal = $('#stocksModal');
+  const btnOpen = $('#btnStocks');
+  if(!modal || !btnOpen) return;
+  const btnClose = $('#stocksCloseBtn');
+  const input = $('#stockSymbolInput');
+  const loadBtn = $('#stockLoadBtn');
+  const chips = $('#stockChips');
+  const intervalSel = $('#stockInterval');
+  const statusEl = $('#stockStatus');
+  const card = $('#stockQuoteCard');
+  const chart = $('#stockChart');
+
+  function setStatus(t){ statusEl.style.display = t ? 'block' : 'none'; statusEl.textContent = t || ''; }
+
+  async function api(payload){
+    const r = await fetch('/api/tools?action=stocks', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    const j = await r.json();
+    if(!r.ok) throw new Error(j.error || 'HTTP '+r.status);
+    return j;
+  }
+
+  function fmt(n, d){ return (typeof n === 'number' && isFinite(n)) ? n.toLocaleString('en-US', {maximumFractionDigits: d==null?2:d}) : '—'; }
+
+  function drawChart(values){
+    if(!values || values.length < 2){ chart.style.display='none'; return; }
+    const ctx = chart.getContext('2d');
+    const W = chart.width, H = chart.height, P = 50;
+    ctx.clearRect(0,0,W,H);
+    const closes = values.map(v=>v.c);
+    let min = Math.min(...closes), max = Math.max(...closes);
+    if(max === min){ max += 1; min -= 1; }
+    const x = i => P + (W - 2*P) * i / (values.length - 1);
+    const y = c => H - P - (H - 2*P) * (c - min) / (max - min);
+    // grid + labels
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.font = '20px sans-serif'; ctx.lineWidth = 1;
+    for(let g=0; g<=4; g++){
+      const val = min + (max-min)*g/4, gy = y(val);
+      ctx.beginPath(); ctx.moveTo(P, gy); ctx.lineTo(W-P, gy); ctx.stroke();
+      ctx.fillText(fmt(val), 4, gy+6);
+    }
+    const up = closes[closes.length-1] >= closes[0];
+    const col = up ? '#22c55e' : '#ef4444';
+    // area fill
+    const grad = ctx.createLinearGradient(0, P, 0, H-P);
+    grad.addColorStop(0, up ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.beginPath();
+    values.forEach((v,i)=>{ i ? ctx.lineTo(x(i), y(v.c)) : ctx.moveTo(x(0), y(v.c)); });
+    ctx.lineTo(x(values.length-1), H-P); ctx.lineTo(x(0), H-P); ctx.closePath();
+    ctx.fillStyle = grad; ctx.fill();
+    // line
+    ctx.beginPath();
+    values.forEach((v,i)=>{ i ? ctx.lineTo(x(i), y(v.c)) : ctx.moveTo(x(0), y(v.c)); });
+    ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.stroke();
+    // date labels (first, middle, last)
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    [0, Math.floor(values.length/2), values.length-1].forEach(i=>{
+      const label = String(values[i].t).slice(0, 10);
+      ctx.fillText(label, Math.min(x(i), W - 130), H - 12);
+    });
+    chart.style.display = 'block';
+  }
+
+  async function loadSymbol(sym){
+    sym = String(sym || input.value || '').trim().toUpperCase();
+    if(!sym) return;
+    input.value = sym;
+    setStatus('⏳ ...');
+    card.style.display = 'none'; chart.style.display = 'none';
+    try{
+      const [q, s] = await Promise.all([
+        api({ mode:'quote', symbol: sym }),
+        api({ mode:'series', symbol: sym, interval: intervalSel.value }),
+      ]);
+      setStatus('');
+      $('#stockName').textContent = (q.name || sym) + ' (' + (q.symbol || sym) + ')';
+      $('#stockExchange').textContent = [q.exchange, q.currency].filter(Boolean).join(' · ');
+      $('#stockPrice').textContent = fmt(q.price);
+      const chEl = $('#stockChange');
+      const up = (q.change || 0) >= 0;
+      chEl.textContent = (up?'▲ +':'▼ ') + fmt(q.change) + ' (' + fmt(q.changePct) + '%)';
+      chEl.style.color = up ? '#22c55e' : '#ef4444';
+      $('#stockDetails').innerHTML = '';
+      [['O', q.open], ['H', q.high], ['L', q.low], ['Vol', q.volume]].forEach(function(pair){
+        const sp = document.createElement('span');
+        sp.textContent = pair[0] + ': ' + fmt(pair[1], pair[0]==='Vol'?0:2);
+        $('#stockDetails').appendChild(sp);
+      });
+      card.style.display = 'block';
+      drawChart(s.values);
+    }catch(err){
+      setStatus('⚠️ ' + (err && err.message || err));
+    }
+  }
+
+  /* ----- Live ticker bar ----- */
+  const tickerWrap = $('#stockTicker');
+  const tickerTrack = $('#stockTickerTrack');
+  const TICKER_SYMS = (function(){
+    try{ const s = JSON.parse(localStorage.getItem('stockTickerSyms')||'null'); if(Array.isArray(s) && s.length) return s.slice(0,5); }catch(e){}
+    return ['AAPL','TSLA','NVDA','MSFT','BTC/USD'];
+  })();
+  let tickerTimer = null, tickerAnim = null, tickerX = 0;
+
+  function renderTicker(items){
+    if(!items || !items.length){ tickerWrap.style.display='none'; return; }
+    let html = '';
+    items.forEach(function(it){
+      const up = (it.change||0) >= 0;
+      const col = up ? '#22c55e' : '#ef4444';
+      html += '<span data-tsym="'+(it.gold?'__GOLD':it.symbol)+'" style="cursor:pointer; padding:0 18px; font-size:13px; font-weight:600;">' +
+        it.symbol + ' <span style="color:'+col+';">' + (up?'▲':'▼') + ' ' + fmt(it.price) + (it.unit?(' '+it.unit):'') + (it.noPct?'':' (' + fmt(it.changePct) + '%)') + '</span></span><span style="color:rgba(255,255,255,0.2);">|</span>';
+    });
+    tickerTrack.innerHTML = html + html; // duplicate for seamless loop
+    tickerWrap.style.display = 'block';
+    if(!tickerAnim){
+      const step = function(){
+        tickerX -= 0.6;
+        const half = tickerTrack.scrollWidth / 2;
+        if(half > 0 && -tickerX >= half) tickerX = 0;
+        tickerTrack.style.transform = 'translateX(' + tickerX + 'px)';
+        tickerAnim = requestAnimationFrame(step);
+      };
+      tickerAnim = requestAnimationFrame(step);
+    }
+  }
+
+  async function refreshTicker(){
+    try{
+      const j = await api({ mode:'ticker', symbols: TICKER_SYMS.join(',') });
+      try{ const g = await api({ mode:'gold' }); if(g && g.ozUsd && j && j.items){
+        const kt = t('goldKt') || 'Gold {k}K', aed = t('aedUnit') || 'AED';
+        [['24',g.gram24],['22',g.gram22],['21',g.gram21],['18',g.gram18]].forEach(function(p){ if(p[1]) j.items.push({ symbol: kt.replace('{k}', p[0]), price:p[1], change:g.change, changePct:g.changePct, unit:aed, gold:1, noPct:1 }); });
+        const ozA = g.ozAed || (g.ozUsd * 3.6725);
+        j.items.push({ symbol: (t('goldOunce')||'Gold Ounce'), price:ozA, change:g.change, changePct:g.changePct, unit:aed, gold:1 });
+      } }catch(e){}
+      renderTicker(j.items);
+    }catch(e){ /* keep old ticker on error */ }
+  }
+
+  function tickerIsCollapsed(){ return localStorage.getItem('tickerCollapsed') === '1'; }
+  function applyTickerCollapse(){
+    const collapsed = tickerIsCollapsed();
+    tickerTrack.style.display = collapsed ? 'none' : 'inline-block';
+    tickerWrap.style.minHeight = '';
+    tickerWrap.style.padding = collapsed ? '0' : '6px 0';
+    tickerWrap.style.height = collapsed ? '0' : '';
+    tickerWrap.style.borderBottom = collapsed ? 'none' : '1px solid rgba(255,255,255,0.08)';
+    tickerWrap.style.overflow = collapsed ? 'visible' : 'hidden';
+    const tbtn = document.getElementById('stockTickerToggle');
+    if(tbtn){ tbtn.style.top = collapsed ? '2px' : '50%'; tbtn.style.transform = collapsed ? 'none' : 'translateY(-50%)'; }
+    const icon = document.getElementById('stockTickerToggleIcon');
+    if(icon) icon.style.transform = collapsed ? 'rotate(180deg)' : '';
+    if(collapsed){
+      if(tickerTimer){ clearInterval(tickerTimer); tickerTimer = null; }
+      if(tickerAnim){ cancelAnimationFrame(tickerAnim); tickerAnim = null; }
+    }
+  }
+  function startTicker(){
+    tickerWrap.style.display = 'block';
+    applyTickerCollapse();
+    if(tickerIsCollapsed()) return;
+    refreshTicker();
+    if(!tickerTimer) tickerTimer = setInterval(refreshTicker, 900000);
+  }
+  function stopTicker(){
+    if(tickerTimer){ clearInterval(tickerTimer); tickerTimer = null; }
+    if(tickerAnim){ cancelAnimationFrame(tickerAnim); tickerAnim = null; }
+    tickerWrap.style.display = 'none';
+  }
+  window.__tickerStart = startTicker;
+  window.__tickerStop = stopTicker;
+  tickerTrack.addEventListener('click', function(e){
+    const s = e.target.closest('[data-tsym]');
+    if(s){
+      modal.style.display = 'flex';
+      const sym = s.getAttribute('data-tsym');
+      if(sym === '__GOLD'){ if(window.__stkShowTab) window.__stkShowTab('global'); return; }
+      if(window.__stkShowTab) window.__stkShowTab('search');
+      loadSymbol(sym);
+    }
+  });
+  // v214: زر طي/فتح بنفس المكان — يسكر الشريط ويفتحه بدون حذف
+  try{ if(localStorage.getItem('tickerHidden') === '1'){ localStorage.setItem('tickerCollapsed','1'); localStorage.removeItem('tickerHidden'); } }catch(err){}
+  const tickerToggleBtn = $('#stockTickerToggle');
+  if(tickerToggleBtn) tickerToggleBtn.addEventListener('click', function(e){
+    e.stopPropagation();
+    try{ localStorage.setItem('tickerCollapsed', tickerIsCollapsed() ? '0' : '1'); }catch(err){}
+    startTicker();
+  });
+  // الشريط خارجي: يظهر لكل من يفتح التطبيق (ما لم يوقفه المستخدم من الإعدادات).
+  startTicker();
+
+  /* ----- AI analyst ----- */
+  const analyzeWrap = $('#stockAnalyzeWrap');
+  const analyzeBtn = $('#stockAnalyzeBtn');
+  const questionEl = $('#stockQuestion');
+  const analysisEl = $('#stockAnalysis');
+  let currentSym = '';
+
+  analyzeBtn.addEventListener('click', async function(){
+    if(!currentSym) return;
+    analyzeBtn.disabled = true;
+    analysisEl.style.display = 'block';
+    analysisEl.textContent = '🤖 ...';
+    try{
+      const lang = (localStorage.getItem('aiapp_lang')||'ar').slice(0,2);
+      const j = await api({ mode:'analyze', symbol: currentSym, question: questionEl.value.trim(), lang: lang });
+      analysisEl.textContent = j.analysis || '⚠️';
+    }catch(err){
+      analysisEl.textContent = '⚠️ ' + (err && err.message || err);
+    }
+    analyzeBtn.disabled = false;
+  });
+
+  /* ----- Learn trading (live-market lessons) ----- */
+  const learnBtn = $('#stocksLearnBtn');
+  const learnWrap = $('#stockLearnWrap');
+  const learnChips = $('#stockLearnChips');
+  const learnQ = $('#stockLearnQ');
+  const learnAskBtn = $('#stockLearnAskBtn');
+  const lessonEl = $('#stockLesson');
+  let lessonBusy = false;
+
+  learnBtn.addEventListener('click', function(){ stkShowTab('learn'); });
+
+  async function runLesson(topic, question){
+    if(lessonBusy) return;
+    lessonBusy = true;
+    lessonEl.style.display = 'block';
+    lessonEl.textContent = '🎓 ...';
+    try{
+      const lang = (localStorage.getItem('aiapp_lang')||'ar').slice(0,2);
+      const j = await api({ mode:'learn', topic: topic||'', question: question||'', symbol: currentSym || 'AAPL', lang: lang });
+      lessonEl.textContent = j.lesson || ('⚠️ ' + (j.claudeError || ''));
+    }catch(err){
+      lessonEl.textContent = '⚠️ ' + (err && err.message || err);
+    }
+    lessonBusy = false;
+  }
+  learnChips.addEventListener('click', function(e){
+    const b = e.target.closest('[data-topic]');
+    if(b) runLesson(b.getAttribute('data-topic'), '');
+  });
+  learnAskBtn.addEventListener('click', function(){
+    const q = learnQ.value.trim();
+    if(q) runLesson('', q);
+  });
+  learnQ.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); learnAskBtn.click(); } });
+
+  /* ----- 🌍 Global markets ----- */
+  const globalWrap = $('#stockGlobalWrap');
+  let globalLoaded = false;
+  function uiLang(){ return (localStorage.getItem('aiapp_lang')||'ar').slice(0,2); }
+  function setTvChart(sym){
+    $('#tvChart').src = 'https://s.tradingview.com/widgetembed/?symbol=' + encodeURIComponent(sym) +
+      '&interval=60&theme=dark&style=1&locale=' + uiLang() + '&hide_side_toolbar=1&allow_symbol_change=1&withdateranges=1';
+  }
+  async function loadGlobal(){
+    setTvChart('OANDA:XAUUSD');
+    const ov = { colorTheme:'dark', dateRange:'1D', showChart:false, locale: uiLang(), isTransparent:true, width:'100%', height:400,
+      tabs:[
+        { title:'Indices', symbols:[{s:'DJ:DJI',d:'Dow Jones'},{s:'NASDAQ:IXIC',d:'NASDAQ'},{s:'SP:SPX',d:'S&P 500'},{s:'XETR:DAX',d:'DAX'},{s:'TVC:NI225',d:'Nikkei 225'}] },
+        { title:'Commodities', symbols:[{s:'OANDA:XAUUSD',d:'Gold'},{s:'TVC:SILVER',d:'Silver'},{s:'TVC:USOIL',d:'Oil WTI'},{s:'TVC:UKOIL',d:'Brent'}] },
+        { title:'Forex', symbols:[{s:'FX:EURUSD'},{s:'FX:GBPUSD'},{s:'FX:USDJPY'},{s:'FX_IDC:USDAED',d:'USD/AED'}] },
+        { title:'Crypto', symbols:[{s:'BITSTAMP:BTCUSD',d:'Bitcoin'},{s:'BITSTAMP:ETHUSD',d:'Ethereum'}] }
+      ] };
+    $('#tvOverview').src = 'https://s.tradingview.com/embed-widget/market-overview/?locale=' + uiLang() + '#' + encodeURIComponent(JSON.stringify(ov));
+    try{
+      const g = await api({ mode:'gold' });
+      if(g && g.ozUsd){
+        $('#goldOz').textContent = '$' + fmt(g.ozUsd) + '/oz';
+        const up = (g.change||0) >= 0;
+        const chg = $('#goldChg'); chg.style.color = up ? '#22c55e' : '#ef4444';
+        chg.textContent = (up?'▲':'▼') + ' ' + fmt(g.changePct) + '%';
+        $('#goldG24').textContent = fmt(g.gram24); $('#goldG22').textContent = fmt(g.gram22); $('#goldG21').textContent = fmt(g.gram21);
+        $('#goldCard').style.display = 'block';
+      }
+    }catch(e){}
+  }
+  function showGlobal(){
+    globalWrap.style.display = 'block';
+    if(!globalLoaded){ globalLoaded = true; loadGlobal(); }
+  }
+  $('#globalChips').addEventListener('click', function(e){
+    const b = e.target.closest('[data-tv]');
+    if(b) setTvChart(b.getAttribute('data-tv'));
+  });
+
+  /* ----- Fullscreen market-screen mode ----- */
+  const fullBtn = $('#stocksFullBtn');
+  const panel = modal.firstElementChild;
+  let isFull = false;
+  fullBtn.addEventListener('click', function(){
+    isFull = !isFull;
+    if(isFull){
+      panel.style.maxWidth = '100%'; panel.style.maxHeight = '100vh'; panel.style.height = '100vh';
+      panel.style.borderRadius = '0'; modal.style.padding = '0';
+      fullBtn.textContent = '🗗';
+      if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function(){});
+    }else{
+      panel.style.maxWidth = '560px'; panel.style.maxHeight = '90vh'; panel.style.height = '';
+      panel.style.borderRadius = '16px'; modal.style.padding = '20px';
+      fullBtn.textContent = '🖥️';
+      if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function(){});
+    }
+  });
+
+  const origLoad = loadSymbol;
+  loadSymbol = async function(sym){
+    await origLoad(sym);
+    currentSym = String(input.value || '').trim().toUpperCase();
+    if(currentSym && card.style.display !== 'none') analyzeWrap.style.display = 'block';
+  };
+
+  const searchWrap = $('#stockSearchWrap');
+  const stkTabBtns = { global: $('#stocksGlobalBtn'), search: $('#stocksSearchBtn'), learn: learnBtn };
+  function stkShowTab(t){
+    searchWrap.style.display = t==='search' ? 'block' : 'none';
+    learnWrap.style.display = t==='learn' ? 'block' : 'none';
+    globalWrap.style.display = t==='global' ? 'block' : 'none';
+    Object.keys(stkTabBtns).forEach(function(k){ var b = stkTabBtns[k]; if(b) b.style.background = (k===t) ? 'rgba(124,58,237,0.45)' : ''; });
+    if(t==='global') showGlobal();
+  }
+  window.__stkShowTab = stkShowTab;
+  $('#stocksGlobalBtn').addEventListener('click', function(){ stkShowTab('global'); });
+  $('#stocksSearchBtn').addEventListener('click', function(){ stkShowTab('search'); });
+  btnOpen.addEventListener('click', function(){ modal.style.display = 'flex'; stkShowTab('global'); });
+  btnClose.addEventListener('click', function(){
+    modal.style.display = 'none';
+    if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function(){});
+  });
+  modal.addEventListener('click', function(e){ if(e.target === modal && !isFull){ modal.style.display = 'none'; } });
+  loadBtn.addEventListener('click', function(){ loadSymbol(); });
+  input.addEventListener('keydown', function(e){ if(e.key === 'Enter') loadSymbol(); });
+  intervalSel.addEventListener('change', function(){ if(input.value.trim()) loadSymbol(); });
+  chips.addEventListener('click', function(e){
+    const b = e.target.closest('[data-sym]');
+    if(b) loadSymbol(b.getAttribute('data-sym'));
+  });
+})();
+
+
+/* ---------- 🏗️ Construction/Contracting Design (Gemini text+image, server-side owner key) ---------- */
+(function(){
+  const modal = $('#constructionModal');
+  const btnOpen = $('#btnConstruction');
+  const btnClose = $('#constructionCloseBtn');
+  const btnRun = $('#constructionRunBtn');
+  const typeEl = $('#constructionType');
+  const floorsEl = $('#constructionFloors');
+  const areaEl = $('#constructionArea');
+  const styleEl = $('#constructionStyle');
+  const notesEl = $('#constructionNotes');
+  const budgetEl = $('#constructionBudget');
+  const statusEl = $('#constructionStatus');
+  const resultImageWrap = $('#constructionResultImageWrap');
+  const resultImageEl = $('#constructionResultImage');
+  const downloadLink = $('#constructionDownloadLink');
+  const photoWrap = $('#constructionPhotoImageWrap');
+  const photoImageEl = $('#constructionPhotoImage');
+  const photoDownloadLink = $('#constructionPhotoDownloadLink');
+  const interiorWrap = $('#constructionInteriorImageWrap');
+  const interiorImageEl = $('#constructionInteriorImage');
+  const interiorDownloadLink = $('#constructionInteriorDownloadLink');
+  const modePlanEl = $('#constructionModePlan');
+  const modePhotoEl = $('#constructionModePhoto');
+  const libraryBtn = $('#constructionLibraryBtn');
+  const libraryWrap = $('#constructionLibraryWrap');
+  const libraryEmptyEl = $('#constructionLibraryEmpty');
+  const planTextEl = $('#constructionPlanText');
+  const viewsSection = $('#constructionViewsSection');
+  const angleBtns = document.querySelectorAll('#constructionViewsSection [data-angle]');
+  const angleStatusEl = $('#constructionAngleStatus');
+  const angleImageWrap = $('#constructionAngleImageWrap');
+  const angleImageEl = $('#constructionAngleImage');
+  const angleDownloadLink = $('#constructionAngleDownloadLink');
+  const roomSelectEl = $('#constructionRoomSelect');
+  const roomColorEl = $('#constructionRoomColor');
+  const roomViewBtn = $('#constructionRoomViewBtn');
+  const roomStatusEl = $('#constructionRoomStatus');
+  const roomImageWrap = $('#constructionRoomImageWrap');
+  const roomImageEl = $('#constructionRoomImage');
+  const roomDownloadLink = $('#constructionRoomDownloadLink');
+  if(!modal || !btnOpen) return;
+
+  function currentParams(){
+    return {
+      buildingType: typeEl.value,
+      floors: floorsEl.value,
+      area: areaEl.value,
+      style: styleEl.value,
+      notes: notesEl.value,
+    };
+  }
+
+  function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function t(key){
+    const dict = (typeof I18N !== 'undefined') ? I18N[isEn() ? 'en' : 'ar'] : null;
+    return (dict && dict[key]) || key;
+  }
+  function setStatus(text){
+    statusEl.style.display = text ? 'block' : 'none';
+    statusEl.textContent = text || '';
+  }
+
+  btnOpen.onclick = () => {
+    modal.style.display = 'flex';
+    if(typeof closeHeaderMenu === 'function') closeHeaderMenu();
+  };
+  btnClose.onclick = () => { modal.style.display = 'none'; };
+  modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
+
+  if(libraryBtn){
+    libraryBtn.onclick = async () => {
+      libraryBtn.disabled = true;
+      libraryEmptyEl.style.display = 'none';
+      libraryWrap.style.display = 'none';
+      libraryWrap.innerHTML = '';
+      try{
+        const res = await fetch('/api/construction-library', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ buildingType: typeEl.value, floors: floorsEl.value, area: areaEl.value }),
+        });
+        const data = await res.json();
+        const items = (data && data.items) || [];
+        if(!items.length){
+          libraryEmptyEl.style.display = 'block';
+        }else{
+          items.forEach((item) => {
+            const img = document.createElement('img');
+            img.src = 'data:' + (item.planMimeType || 'image/png') + ';base64,' + item.planImageBase64;
+            img.style.cssText = 'width:100%; aspect-ratio:1; object-fit:cover; border-radius:6px; cursor:pointer; background:#000;';
+            img.title = (item.floors || '') + ' | ' + (item.area || '') + ' m²';
+            img.onclick = () => {
+              resultImageEl.src = img.src;
+              downloadLink.href = img.src;
+              resultImageWrap.style.display = 'block';
+              resultImageWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            };
+            libraryWrap.appendChild(img);
+          });
+          libraryWrap.style.display = 'grid';
+        }
+      }catch(e){
+        libraryEmptyEl.style.display = 'block';
+      }finally{
+        libraryBtn.disabled = false;
+      }
+    };
+  }
+
+  btnRun.onclick = async () => {
+    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+    if(!token){
+      setStatus(t('designAiNeedLogin'));
+      return;
+    }
+    btnRun.disabled = true;
+    resultImageWrap.style.display = 'none';
+    planTextEl.style.display = 'none';
+    viewsSection.style.display = 'none';
+    setStatus(t('constructionGenerating'));
+
+    try{
+      const res = await fetch('/api/construction-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.assign(currentParams(), {
+          budget: budgetEl.value,
+          annexes: Array.from(document.querySelectorAll('.constructionAnnex:checked')).map((el) => el.value),
+          includeInterior: !!($('#constructionIncludeInterior') && $('#constructionIncludeInterior').checked),
+          token,
+        })),
+      });
+      const data = await res.json();
+      if(!res.ok){
+        if(data.error === 'auth_required'){
+          setStatus(t('designAiNeedLogin'));
+        }else if(data.error === 'daily_limit_reached'){
+          setStatus(t('designAiLimitReached'));
+        }else{
+          setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (data.error || 'unknown'));
+        }
+        return;
+      }
+      if(data.imageBase64){
+        resultImageEl.src = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
+        downloadLink.href = resultImageEl.src;
+        resultImageWrap.style.display = 'block';
+      }
+      if(data.photoImageBase64){
+        photoImageEl.src = 'data:' + (data.photoMimeType || 'image/png') + ';base64,' + data.photoImageBase64;
+        photoDownloadLink.href = photoImageEl.src;
+        photoWrap.style.display = 'block';
+      }
+      if(data.interiorImageBase64){
+        interiorImageEl.src = 'data:' + (data.interiorMimeType || 'image/png') + ';base64,' + data.interiorImageBase64;
+        interiorDownloadLink.href = interiorImageEl.src;
+        interiorWrap.style.display = 'block';
+      }
+      if(data.planText){
+        planTextEl.textContent = data.planText;
+        planTextEl.style.display = 'block';
+      }
+      viewsSection.style.display = 'block';
+      angleImageWrap.style.display = 'none';
+      roomImageWrap.style.display = 'none';
+      setStatus('');
+    }catch(e){
+      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+    }finally{
+      btnRun.disabled = false;
+    }
+  };
+
+  angleBtns.forEach((btn) => {
+    btn.onclick = async () => {
+      const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+      if(!token){ angleStatusEl.style.display = 'block'; angleStatusEl.textContent = t('designAiNeedLogin'); return; }
+      angleBtns.forEach((b) => { b.disabled = true; });
+      angleImageWrap.style.display = 'none';
+      angleStatusEl.style.display = 'block';
+      angleStatusEl.textContent = t('constructionGenerating');
+      try{
+        const res = await fetch('/api/construction-view', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(Object.assign(currentParams(), { mode: 'angle', angle: btn.getAttribute('data-angle'), token })),
+        });
+        const data = await res.json();
+        if(!res.ok){
+          if(data.error === 'auth_required') angleStatusEl.textContent = t('designAiNeedLogin');
+          else if(data.error === 'daily_limit_reached') angleStatusEl.textContent = t('designAiLimitReached');
+          else angleStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (data.error || 'unknown');
+          return;
+        }
+        angleImageEl.src = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
+        angleDownloadLink.href = angleImageEl.src;
+        angleImageWrap.style.display = 'block';
+        angleStatusEl.style.display = 'none';
+      }catch(e){
+        angleStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+      }finally{
+        angleBtns.forEach((b) => { b.disabled = false; });
+      }
+    };
+  });
+
+  roomViewBtn.onclick = async () => {
+    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+    if(!token){ roomStatusEl.style.display = 'block'; roomStatusEl.textContent = t('designAiNeedLogin'); return; }
+    roomViewBtn.disabled = true;
+    roomImageWrap.style.display = 'none';
+    roomStatusEl.style.display = 'block';
+    roomStatusEl.textContent = t('constructionGenerating');
+    try{
+      const res = await fetch('/api/construction-view', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.assign(currentParams(), { mode: 'room', room: roomSelectEl.value, color: roomColorEl.value, token })),
+      });
+      const data = await res.json();
+      if(!res.ok){
+        if(data.error === 'auth_required') roomStatusEl.textContent = t('designAiNeedLogin');
+        else if(data.error === 'daily_limit_reached') roomStatusEl.textContent = t('designAiLimitReached');
+        else roomStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (data.error || 'unknown');
+        return;
+      }
+      roomImageEl.src = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
+      roomDownloadLink.href = roomImageEl.src;
+      roomImageWrap.style.display = 'block';
+      roomStatusEl.style.display = 'none';
+    }catch(e){
+      roomStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+    }finally{
+      roomViewBtn.disabled = false;
+    }
+  };
+})();
+
+/* ---------- 💄 AI Style Studio (Gemini image, server-side owner key) ---------- */
+(function(){
+  const modal = $('#studioAiModal');
+  const btnOpen = $('#btnStudioAI');
+  const btnClose = $('#studioAiCloseBtn');
+  const btnGenerate = $('#studioAiGenerateBtn');
+  const tabsWrap = $('#studioAiTabs');
+  const imageAWrap = $('#studioAiImageAWrap');
+  const imageBWrap = $('#studioAiImageBWrap');
+  const imageALabelEl = $('#studioAiImageALabelEl');
+  const fileBtnA = $('#studioAiFileBtnA');
+  const fileInputA = $('#studioAiFileInputA');
+  const fileNameA = $('#studioAiFileNameA');
+  const previewA = $('#studioAiSourcePreviewA');
+  const fileBtnB = $('#studioAiFileBtnB');
+  const fileInputB = $('#studioAiFileInputB');
+  const fileNameB = $('#studioAiFileNameB');
+  const previewB = $('#studioAiSourcePreviewB');
+  const styleWrap = $('#studioAiStyleWrap');
+  const styleEl = $('#studioAiStyle');
+  const descriptionEl = $('#studioAiDescription');
+  const statusEl = $('#studioAiStatus');
+  const resultEl = $('#studioAiResult');
+  const downloadEl = $('#studioAiDownloadLink');
+  const resultWrap = $('#studioAiResultWrap');
+  const beforeWrap = $('#studioAiBeforeWrap');
+  const beforeImg = $('#studioAiBeforeImg');
+  const sliderRange = $('#studioAiSliderRange');
+  const multiAngleEl = $('#studioAiMultiAngle');
+  const favSaveBtn = $('#studioAiFavoriteSaveBtn');
+  const favoritesBtn = $('#studioAiFavoritesBtn');
+  const favoritesPanel = $('#studioAiFavoritesPanel');
+  const profileFaceShapeEl = $('#studioProfileFaceShape');
+  const profileSkinEl = $('#studioProfileSkin');
+  const profileHairEl = $('#studioProfileHair');
+  const profileSaveBtn = $('#studioProfileSaveBtn');
+  const occasionEl = $('#studioAiOccasion');
+  const suggestBtn = $('#studioAiSuggestBtn');
+  const suggestionsEl = $('#studioAiSuggestions');
+  const compareChecksEl = $('#studioAiCompareChecks');
+  const compareBtn = $('#studioAiCompareBtn');
+  const compareStatusEl = $('#studioAiCompareStatus');
+  const compareResultsEl = $('#studioAiCompareResults');
+  const heritageCompareWrap = $('#studioAiHeritageCompareWrap');
+  const heritageCompareBtn = $('#studioAiHeritageCompareBtn');
+  const heritageCompareStatusEl = $('#studioAiHeritageCompareStatus');
+  const heritageCompareResultsEl = $('#studioAiHeritageCompareResults');
+  if(!modal || !btnOpen) return;
+
+  function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function lang7(){ return (typeof currentLang === 'function') ? currentLang() : (localStorage.getItem('aiapp_lang') || 'ar'); }
+  function t2(key){
+    const dict = (typeof I18N !== 'undefined') ? I18N[lang7()] : null;
+    return (dict && dict[key]) || key;
+  }
+
+  // Per-feature dropdown options. Only ar/en are fully authored; other UI
+  // languages fall back to the English label for these short tag words
+  // (same approach as system voice names elsewhere in the app).
+  const STUDIO_OPTIONS = {
+    hair: [
+      { value:'black', ar:'⚫ أسود', en:'⚫ Black', fr:'⚫ Noir', hi:'⚫ काला', ur:'⚫ کالا', bn:'⚫ কালো', ne:'⚫ कालो' },
+      { value:'brown', ar:'🟤 بني', en:'🟤 Brown', fr:'🟤 Brun', hi:'🟤 भूरा', ur:'🟤 بھورا', bn:'🟤 বাদামী', ne:'🟤 खैरो' },
+      { value:'blonde', ar:'🟡 أشقر', en:'🟡 Blonde', fr:'🟡 Blond', hi:'🟡 सुनहरे', ur:'🟡 سنہرا', bn:'🟡 সোনালি', ne:'🟡 सुनौलो' },
+      { value:'red', ar:'🔴 أحمر', en:'🔴 Red', fr:'🔴 Rouge', hi:'🔴 लाल', ur:'🔴 سرخ', bn:'🔴 লাল', ne:'🔴 रातो' },
+      { value:'silver', ar:'⚪ فضي/رمادي', en:'⚪ Silver/Gray', fr:'⚪ Argenté/Gris', hi:'⚪ चांदी/स्लेटी', ur:'⚪ چاندی/سرمئی', bn:'⚪ রূপালি/ধূসর', ne:'⚪ चाँदी/खरानी' },
+      { value:'colorful', ar:'🌈 ملوّن', en:'🌈 Colorful', fr:'🌈 Coloré', hi:'🌈 रंगीन', ur:'🌈 رنگین', bn:'🌈 রঙিন', ne:'🌈 रंगीन' },
+    ],
+    nails: [
+      { value:'red', ar:'🔴 أحمر', en:'🔴 Red', fr:'🔴 Rouge', hi:'🔴 लाल', ur:'🔴 سرخ', bn:'🔴 লাল', ne:'🔴 रातो' },
+      { value:'nude', ar:'🟤 نودي', en:'🟤 Nude', fr:'🟤 Nude', hi:'🟤 न्यूड', ur:'🟤 نیوڈ', bn:'🟤 নুড', ne:'🟤 न्युड' },
+      { value:'black', ar:'⚫ أسود', en:'⚫ Black', fr:'⚫ Noir', hi:'⚫ काला', ur:'⚫ کالا', bn:'⚫ কালো', ne:'⚫ कालो' },
+      { value:'french', ar:'⚪ فرنشي', en:'⚪ French', fr:'⚪ Française', hi:'⚪ फ्रेंच', ur:'⚪ فرانسیسی', bn:'⚪ ফরাসি', ne:'⚪ फ्रेन्च' },
+      { value:'pink', ar:'🌸 وردي', en:'🌸 Pink', fr:'🌸 Rose', hi:'🌸 गुलाबी', ur:'🌸 گلابی', bn:'🌸 গোলাপি', ne:'🌸 गुलाबी' },
+      { value:'gold', ar:'🟡 ذهبي', en:'🟡 Gold', fr:'🟡 Doré', hi:'🟡 सुनहरा', ur:'🟡 سنہری', bn:'🟡 সোনালি', ne:'🟡 सुनौलो' },
+    ],
+    makeup: [
+      { value:'natural', ar:'🌿 طبيعي خفيف', en:'🌿 Natural', fr:'🌿 Naturel', hi:'🌿 प्राकृतिक', ur:'🌿 قدرتی', bn:'🌿 প্রাকৃতিক', ne:'🌿 प्राकृतिक' },
+      { value:'glam', ar:'✨ سهرة فخمة', en:'✨ Glam Evening', fr:'✨ Soirée glamour', hi:'✨ ग्लैम इवनिंग', ur:'✨ گلیم ایوننگ', bn:'✨ গ্ল্যাম ইভনিং', ne:'✨ ग्ल्याम साँझ' },
+      { value:'smokey', ar:'⚫ سموكي', en:'⚫ Smokey Eyes', fr:'⚫ Yeux smoky', hi:'⚫ स्मोकी आइज़', ur:'⚫ اسموکی آئیز', bn:'⚫ স্মোকি আইজ', ne:'⚫ स्मोकी आँखा' },
+      { value:'redlips', ar:'💋 أحمر شفاه جريء', en:'💋 Bold Red Lips', fr:'💋 Lèvres rouges audacieuses', hi:'💋 बोल्ड रेड लिप्स', ur:'💋 بولڈ ریڈ لپس', bn:'💋 বোল্ড রেড লিপস', ne:'💋 बोल्ड रातो ओठ' },
+      { value:'bridal', ar:'👰 عروس', en:'👰 Bridal', fr:'👰 Mariée', hi:'👰 दुल्हन', ur:'👰 دلہن', bn:'👰 কনে', ne:'👰 दुलही' },
+    ],
+    beard: [
+      { value:'full', ar:'🧔 لحية كاملة', en:'🧔 Full Beard', fr:'🧔 Barbe complète', hi:'🧔 पूरी दाढ़ी', ur:'🧔 مکمل داڑھی', bn:'🧔 পূর্ণ দাড়ি', ne:'🧔 पूरा दाह्री' },
+      { value:'stubble', ar:'🪒 لحية خفيفة', en:'🪒 Light Stubble', fr:'🪒 Léger chaume', hi:'🪒 हल्की स्टबल', ur:'🪒 ہلکی داڑھی', bn:'🪒 হালকা দাড়ি', ne:'🪒 हल्का दाह्री' },
+      { value:'mustache', ar:'👨 شنب فقط', en:'👨 Mustache Only', fr:'👨 Moustache seulement', hi:'👨 सिर्फ मूंछ', ur:'👨 صرف مونچھیں', bn:'👨 শুধু গোঁফ', ne:'👨 जुँगा मात्र' },
+      { value:'goatee', ar:'🐐 لحية عنزة', en:'🐐 Goatee', fr:'🐐 Bouc', hi:'🐐 गोटी दाढ़ी', ur:'🐐 بکری داڑھی', bn:'🐐 ছাগল দাড়ি', ne:'🐐 गोटी दाह्री' },
+      { value:'clean', ar:'✨ حليق نظيف', en:'✨ Clean Shave', fr:'✨ Rasé de près', hi:'✨ क्लीन शेव', ur:'✨ صاف شیو', bn:'✨ ক্লিন শেভ', ne:'✨ सफा सेभ' },
+    ],
+    skin: [
+      { value:'subtle', ar:'✨ تنعيم خفيف', en:'✨ Subtle Smoothing', fr:'✨ Lissage subtil', hi:'✨ हल्का स्मूदिंग', ur:'✨ ہلکی ہمواری', bn:'✨ হালকা মসৃণতা', ne:'✨ हल्का चिल्लो' },
+      { value:'glow', ar:'🌟 توهج طبيعي', en:'🌟 Natural Glow', fr:'🌟 Éclat naturel', hi:'🌟 प्राकृतिक चमक', ur:'🌟 قدرتی چمک', bn:'🌟 প্রাকৃতিক উজ্জ্বলতা', ne:'🌟 प्राकृतिक चमक' },
+      { value:'circles', ar:'👁️ تقليل الهالات', en:'👁️ Reduce Dark Circles', fr:'👁️ Réduire les cernes', hi:'👁️ डार्क सर्कल कम करें', ur:'👁️ ڈارک سرکلز کم کریں', bn:'👁️ ডার্ক সার্কেল কমান', ne:'👁️ अँध्यारो घेरा घटाउनुहोस्' },
+    ],
+    glasses: [
+      { value:'sunglasses', ar:'🕶️ شمسية كلاسيكية', en:'🕶️ Classic Sunglasses', fr:'🕶️ Lunettes de soleil classiques', hi:'🕶️ क्लासिक सनग्लासेज़', ur:'🕶️ کلاسک دھوپ کے چشمے', bn:'🕶️ ক্লাসিক সানগ্লাস', ne:'🕶️ क्लासिक घाम चश्मा' },
+      { value:'round', ar:'⭕ دائرية', en:'⭕ Round', fr:'⭕ Rondes', hi:'⭕ गोल', ur:'⭕ گول', bn:'⭕ গোলাকার', ne:'⭕ गोलो' },
+      { value:'catseye', ar:'🐱 عين القطة', en:'🐱 Cat-Eye', fr:'🐱 Œil de chat', hi:'🐱 कैट-आई', ur:'🐱 کیٹ آئی', bn:'🐱 ক্যাট-আই', ne:'🐱 क्याट-आई' },
+      { value:'aviator', ar:'✈️ طيار', en:'✈️ Aviator', fr:'✈️ Aviateur', hi:'✈️ एविएटर', ur:'✈️ ایویٹر', bn:'✈️ এভিয়েটর', ne:'✈️ एभिएटर' },
+      { value:'rimless', ar:'🔲 بدون إطار', en:'🔲 Rimless', fr:'🔲 Sans monture', hi:'🔲 रिमलेस', ur:'🔲 بغیر فریم', bn:'🔲 রিমলেস', ne:'🔲 रिमलेस' },
+    ],
+    tattoo: [
+      { value:'sleeve', ar:'💪 كم كامل', en:'💪 Full Sleeve', fr:'💪 Manche complète', hi:'💪 फुल स्लीव', ur:'💪 فل سلیو', bn:'💪 ফুল স্লিভ', ne:'💪 पूरा स्लिभ' },
+      { value:'wrist', ar:'✋ صغير بالمعصم', en:'✋ Small Wrist', fr:'✋ Petit poignet', hi:'✋ छोटी कलाई', ur:'✋ چھوٹی کلائی', bn:'✋ ছোট কব্জি', ne:'✋ सानो नाडी' },
+      { value:'back', ar:'🔙 على الظهر', en:'🔙 Back Piece', fr:'🔙 Dos', hi:'🔙 पीठ पर', ur:'🔙 پیٹھ پر', bn:'🔙 পিঠে', ne:'🔙 ढाडमा' },
+      { value:'tribal', ar:'⚫ قبلي', en:'⚫ Tribal', fr:'⚫ Tribal', hi:'⚫ ट्राइबल', ur:'⚫ قبائلی', bn:'⚫ ট্রাইবাল', ne:'⚫ ट्राइबल' },
+      { value:'custom', ar:'📝 حسب الوصف', en:'📝 Custom (from description)', fr:'📝 Personnalisé (selon description)', hi:'📝 कस्टम (विवरण अनुसार)', ur:'📝 حسب تفصیل', bn:'📝 কাস্টম (বর্ণনা অনুযায়ী)', ne:'📝 कस्टम (विवरण अनुसार)' },
+    ],
+    anime: [
+      { value:'classic', ar:'🎌 أنمي ياباني كلاسيكي', en:'🎌 Classic Anime', fr:'🎌 Anime classique', hi:'🎌 क्लासिक एनीमे', ur:'🎌 کلاسک اینیمے', bn:'🎌 ক্লাসিক অ্যানিমে', ne:'🎌 क्लासिक एनिमे' },
+      { value:'chibi', ar:'🧸 تشيبي', en:'🧸 Chibi', fr:'🧸 Chibi', hi:'🧸 चिबी', ur:'🧸 چیبی', bn:'🧸 চিবি', ne:'🧸 चिबी' },
+      { value:'ghibli', ar:'🌱 ستايل غيبلي', en:'🌱 Ghibli Style', fr:'🌱 Style Ghibli', hi:'🌱 घिबली स्टाइल', ur:'🌱 غبلی اسٹائل', bn:'🌱 ঘিবলি স্টাইল', ne:'🌱 घिब्ली शैली' },
+      { value:'cyberpunk', ar:'🌆 سايبربنك أنمي', en:'🌆 Cyberpunk Anime', fr:'🌆 Anime cyberpunk', hi:'🌆 साइबरपंक एनीमे', ur:'🌆 سائبرپنک اینیمے', bn:'🌆 সাইবারপাঙ্ক অ্যানিমে', ne:'🌆 साइबरपंक एनिमे' },
+      { value:'manga', ar:'⬛ مانجا أبيض وأسود', en:'⬛ Manga B&W', fr:'⬛ Manga N&B', hi:'⬛ मंगा ब्लैक एंड व्हाइट', ur:'⬛ مانگا بلیک اینڈ وائٹ', bn:'⬛ মাঙ্গা সাদাকালো', ne:'⬛ मंगा कालो-सेतो' },
+    ],
+    heritage: [
+      { value:'kandora', ar:'👳 كندورة وغترة خليجية', en:'👳 Gulf Kandora & Ghutra', fr:'👳 Kandora du Golfe', hi:'👳 खाड़ी कंदुरा', ur:'👳 خلیجی کندورہ', bn:'👳 উপসাগরীয় কান্দুরা', ne:'👳 खाडी कान्दुरा' },
+      { value:'bisht', ar:'🧥 بشت فاخر', en:'🧥 Luxury Bisht Cloak', fr:'🧥 Cape Bisht de luxe', hi:'🧥 शानदार बिश्त', ur:'🧥 پرتعیش بشت', bn:'🧥 বিলাসবহুল বিশত', ne:'🧥 विलासी बिश्त' },
+      { value:'abaya', ar:'🖤 عباءة تقليدية', en:'🖤 Traditional Abaya', fr:'🖤 Abaya traditionnelle', hi:'🖤 पारंपरिक अबाया', ur:'🖤 روایتی عبایہ', bn:'🖤 ঐতিহ্যবাহী আবায়া', ne:'🖤 परम्परागत अबाया' },
+      { value:'embroidered', ar:'🧵 ثوب نشل مطرز', en:'🧵 Embroidered Thobe Nashal', fr:'🧵 Robe brodée', hi:'🧵 कढ़ाई वाला थोब', ur:'🧵 کڑھائی والا لباس', bn:'🧵 সূচিকর্ম করা পোশাক', ne:'🧵 कसीदाकारी पोशाक' },
+      { value:'saudi', ar:'🇸🇦 ثوب سعودي وشماغ', en:'🇸🇦 Saudi Thobe & Shemagh', fr:'🇸🇦 Thobe saoudien', hi:'🇸🇦 सऊदी थोब', ur:'🇸🇦 سعودی لباس', bn:'🇸🇦 সৌদি পোশাক', ne:'🇸🇦 साउदी पोशाक' },
+      { value:'emirati', ar:'🇦🇪 كافتان إماراتي مطرز', en:'🇦🇪 Emirati Embroidered Kaftan', fr:'🇦🇪 Caftan émirati', hi:'🇦🇪 इमिराती काफ्तान', ur:'🇦🇪 اماراتی قفطان', bn:'🇦🇪 আমিরাতি কাফতান', ne:'🇦🇪 इमिराती काफ्तान' },
+    ],
+    merge: [],
+  };
+
+  let feature = 'hair';
+  let selectedBase64A = '', selectedMimeA = 'image/jpeg';
+  let selectedBase64B = '', selectedMimeB = 'image/jpeg';
+
+  function setStatus(text){
+    statusEl.style.display = text ? 'block' : 'none';
+    statusEl.textContent = text || '';
+  }
+
+  function populateStyleSelect(){
+    const opts = STUDIO_OPTIONS[feature] || [];
+    const langKey = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
+    styleEl.innerHTML = opts.map((o) => '<option value="' + o.value + '">' + (o[langKey] || o.en) + '</option>').join('');
+  }
+
+  /* ---- 👤 saved face profile ---- */
+  const PROFILE_KEY = 'aiapp_studio_profile';
+  function loadProfile(){
+    try{ return JSON.parse(localStorage.getItem(PROFILE_KEY) || '{}'); }catch(e){ return {}; }
+  }
+  function fillProfileInputs(){
+    const p = loadProfile();
+    if(profileFaceShapeEl) profileFaceShapeEl.value = p.faceShape || '';
+    if(profileSkinEl) profileSkinEl.value = p.skin || '';
+    if(profileHairEl) profileHairEl.value = p.hair || '';
+  }
+  fillProfileInputs();
+  if(profileSaveBtn) profileSaveBtn.onclick = () => {
+    const p = {
+      faceShape: profileFaceShapeEl.value.trim(),
+      skin: profileSkinEl.value.trim(),
+      hair: profileHairEl.value.trim(),
+    };
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+    setStatus(t2('studioProfileSaved'));
+  };
+
+  /* ---- ❤️ favorites ---- */
+  const FAV_KEY = 'aiapp_studio_favorites';
+  function loadFavorites(){
+    try{ return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); }catch(e){ return []; }
+  }
+  function saveFavorite(dataUrl, featureLabel, styleLabel){
+    const favs = loadFavorites();
+    favs.unshift({ img: dataUrl, feature: featureLabel || '', style: styleLabel || '', ts: Date.now() });
+    localStorage.setItem(FAV_KEY, JSON.stringify(favs.slice(0, 30)));
+  }
+  function renderFavorites(){
+    const favs = loadFavorites();
+    favoritesPanel.innerHTML = '';
+    if(!favs.length){
+      favoritesPanel.innerHTML = '<p style="font-size:12px; color:var(--muted,#999); text-align:center;">' + t2('studioNoFavorites') + '</p>';
+      return;
+    }
+    favs.forEach((f, idx) => {
+      const card = document.createElement('div');
+      card.style.cssText = 'display:flex; align-items:center; gap:8px; border:1px solid var(--border,#333); border-radius:8px; padding:6px;';
+      card.innerHTML = '<img src="' + f.img + '" style="width:50px; height:50px; object-fit:cover; border-radius:6px;">' +
+        '<span style="flex:1; font-size:11.5px; color:var(--muted,#999);">' + (f.feature || '') + (f.style ? (' · ' + f.style) : '') + '</span>' +
+        '<button type="button" class="btn iconBtn" data-idx=' + idx + '" style="padding:2px 8px; font-size:12px;">✕</button>';
+      card.querySelector('button').onclick = () => {
+        const arr = loadFavorites();
+        arr.splice(idx, 1);
+        localStorage.setItem(FAV_KEY, JSON.stringify(arr));
+        renderFavorites();
+      };
+      favoritesPanel.appendChild(card);
+    });
+  }
+  if(favoritesBtn) favoritesBtn.onclick = () => {
+    const showing = favoritesPanel.style.display !== 'none' && favoritesPanel.style.display !== '';
+    if(showing){ favoritesPanel.style.display = 'none'; return; }
+    renderFavorites();
+    favoritesPanel.style.display = 'flex';
+  };
+  if(favSaveBtn) favSaveBtn.onclick = () => {
+    if(!resultEl.src) return;
+    const styleLabel = (styleEl.querySelector('option[value="' + styleEl.value + '"]') || {}).textContent || styleEl.value;
+    saveFavorite(resultEl.src, feature, styleLabel);
+    favSaveBtn.textContent = t2('studioFavoriteSaved');
+    setTimeout(() => { favSaveBtn.textContent = t2('studioFavoriteSaveBtn'); }, 1800);
+  };
+
+  /* ---- 🔄 before/after slider ---- */
+  function setupBeforeAfter(){
+    if(feature === 'merge' || !selectedBase64A){
+      beforeWrap.style.display = 'none';
+      sliderRange.style.display = 'none';
+      return;
+    }
+    beforeImg.src = 'data:' + selectedMimeA + ';base64,' + selectedBase64A;
+    beforeWrap.style.display = 'block';
+    sliderRange.style.display = 'block';
+    updateSliderClip(sliderRange.value);
+  }
+  function updateSliderClip(val){
+    const pct = Math.max(0, Math.min(100, Number(val)));
+    beforeWrap.style.width = pct + '%';
+    beforeImg.style.width = resultWrap.clientWidth + 'px';
+  }
+  if(sliderRange) sliderRange.oninput = () => updateSliderClip(sliderRange.value);
+
+  /* ---- 📊 compare checkboxes (built from style options) ---- */
+  function buildCompareChecks(){
+    compareChecksEl.innerHTML = '';
+    Array.from(styleEl.options).forEach(opt => {
+      const label = document.createElement('label');
+      label.style.cssText = 'display:flex; align-items:center; gap:4px; font-size:11.5px; color:var(--muted,#999); border:1px solid var(--border,#333); border-radius:6px; padding:4px 8px; cursor:pointer;';
+      label.innerHTML = '<input type="checkbox" class="studioCompareCheck" value="' + opt.value + '"> ' + opt.textContent;
+      compareChecksEl.appendChild(label);
+    });
+  }
+
+  function setFeature(next){
+    feature = next;
+    Array.from(tabsWrap.querySelectorAll('.studioAiTabBtn')).forEach((b) => {
+      b.classList.toggle('active', b.dataset.feature === next);
+      b.classList.toggle('primary', b.dataset.feature === next);
+    });
+    if(feature === 'merge'){
+      imageBWrap.style.display = 'block';
+      styleWrap.style.display = 'none';
+      if(imageALabelEl) imageALabelEl.textContent = t('studioAiImageALabel');
+    } else {
+      imageBWrap.style.display = 'none';
+      styleWrap.style.display = 'block';
+      if(imageALabelEl) imageALabelEl.textContent = t('studioAiImageALabel');
+    }
+    populateStyleSelect();
+    buildCompareChecks();
+    heritageCompareWrap.style.display = (feature === 'heritage') ? 'block' : 'none';
+    resultWrap.style.display = 'none';
+    resultEl.style.display = 'none';
+    downloadEl.style.display = 'none';
+    favSaveBtn.style.display = 'none';
+    beforeWrap.style.display = 'none';
+    sliderRange.style.display = 'none';
+    setStatus('');
+  }
+
+  Array.from(tabsWrap.querySelectorAll('.studioAiTabBtn')).forEach((b) => {
+    b.onclick = () => setFeature(b.dataset.feature);
+  });
+
+  btnOpen.onclick = () => {
+    modal.style.display = 'flex';
+    closeHeaderMenu();
+    setFeature(feature);
+  };
+  btnClose.onclick = () => { modal.style.display = 'none'; };
+  modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
+
+  if(fileBtnA) fileBtnA.onclick = () => fileInputA.click();
+  if(fileBtnB) fileBtnB.onclick = () => fileInputB.click();
+
+  fileInputA.onchange = () => {
+    const file = fileInputA.files && fileInputA.files[0];
+    if(!file) return;
+    selectedMimeA = file.type || 'image/jpeg';
+    if(fileNameA) fileNameA.textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '');
+      selectedBase64A = dataUrl.split(',')[1] || '';
+      previewA.src = dataUrl;
+      previewA.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  };
+
+  fileInputB.onchange = () => {
+    const file = fileInputB.files && fileInputB.files[0];
+    if(!file) return;
+    selectedMimeB = file.type || 'image/jpeg';
+    if(fileNameB) fileNameB.textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '');
+      selectedBase64B = dataUrl.split(',')[1] || '';
+      previewB.src = dataUrl;
+      previewB.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  };
+
+  btnGenerate.onclick = async () => {
+    if(feature === 'merge'){
+      if(!selectedBase64A || !selectedBase64B){
+        setStatus(t('studioAiNeedTwoImages'));
+        return;
+      }
+    } else if(!selectedBase64A){
+      setStatus(t('studioAiNeedImage'));
+      return;
+    }
+    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+    if(!token){
+      setStatus(t('studioAiNeedLogin'));
+      return;
+    }
+
+    btnGenerate.disabled = true;
+    resultWrap.style.display = 'none';
+    resultEl.style.display = 'none';
+    downloadEl.style.display = 'none';
+    favSaveBtn.style.display = 'none';
+    beforeWrap.style.display = 'none';
+    sliderRange.style.display = 'none';
+    setStatus(t('studioAiGenerating'));
+
+    try{
+      const payload = {
+        feature,
+        style: styleEl.value,
+        description: descriptionEl.value.trim(),
+        token,
+        imageBase64: selectedBase64A,
+        mimeType: selectedMimeA,
+        multiAngle: !!(multiAngleEl && multiAngleEl.checked),
+      };
+      if(feature === 'merge'){
+        payload.imageBase64B = selectedBase64B;
+        payload.mimeTypeB = selectedMimeB;
+      }
+      const res = await fetch('/api/studio-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if(!res.ok || data.error){
+        if(data.error === 'auth_required'){ setStatus(t('studioAiNeedLogin')); return; }
+        if(data.error === 'daily_limit_reached'){ setStatus(t('studioAiLimitReached')); return; }
+        throw new Error(data.error || 'unknown');
+      }
+      const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
+      resultWrap.style.display = 'block';
+      resultEl.src = dataUrl;
+      resultEl.style.display = 'block';
+      downloadEl.href = dataUrl;
+      downloadEl.style.display = 'block';
+      favSaveBtn.style.display = 'block';
+      favSaveBtn.textContent = t2('studioFavoriteSaveBtn');
+      setupBeforeAfter();
+      setStatus(t('studioAiDone'));
+    } catch(e){
+      setStatus((lang === 'ar' ? '❌ خطأ: ' : '❌ Error: ') + (e && e.message ? e.message : String(e)));
+    } finally {
+      btnGenerate.disabled = false;
+    }
+  };
+
+  /* ---- 💡 suggest a style ---- */
+  if(suggestBtn) suggestBtn.onclick = async () => {
+    if(!selectedBase64A){
+      setStatus(t('studioAiNeedImage'));
+      return;
+    }
+    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+    if(!token){ setStatus(t('studioAiNeedLogin')); return; }
+
+    suggestBtn.disabled = true;
+    suggestionsEl.style.display = 'none';
+    suggestionsEl.innerHTML = '';
+    setStatus(t2('studioSuggestGenerating'));
+    try{
+      const payload = {
+        imageBase64: selectedBase64A, mimeType: selectedMimeA,
+        feature, occasion: occasionEl.value,
+        profile: loadProfile(), lang: lang7(), token,
+      };
+      const res = await fetch('/api/studio-suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if(!res.ok || data.error){
+        if(data.error === 'auth_required'){ setStatus(t('studioAiNeedLogin')); return; }
+        throw new Error(data.error || 'unknown');
+      }
+      const list = data.suggestions || [];
+      list.forEach(s => {
+        const card = document.createElement('div');
+        card.style.cssText = 'border:1px solid var(--border,#333); border-radius:10px; padding:10px;';
+        card.innerHTML =
+          '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+            '<strong style="font-size:13px;">' + (s.title || '') + '</strong>' +
+            '<span style="font-size:11.5px; color:#4ade80;">' + t2('fashionMatchLabel') + ': ' + s.matchPercent + '%</span>' +
+          '</div>' +
+          '<p style="font-size:12px; color:var(--muted,#999); margin:6px 0 2px;">' + (s.description || '') + '</p>' +
+          '<p style="font-size:12px; color:var(--muted,#999); margin:2px 0 8px;">🎨 ' + (s.colors || '') + '</p>';
+        suggestionsEl.appendChild(card);
+      });
+      suggestionsEl.style.display = list.length ? 'flex' : 'none';
+      setStatus(list.length ? '' : t('studioAiNeedImage'));
+    } catch(e){
+      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+    } finally {
+      suggestBtn.disabled = false;
+    }
+  };
+
+  /* ---- 📊 compare 2-3 styles ---- */
+  if(compareBtn) compareBtn.onclick = async () => {
+    const checks = Array.from(compareChecksEl.querySelectorAll('.studioCompareCheck:checked')).map(c => c.value);
+    if(checks.length < 2){
+      compareStatusEl.style.display = 'block';
+      compareStatusEl.textContent = t2('fashionCompareNeedTwo');
+      return;
+    }
+    const stylesToRun = checks.slice(0, 3);
+    if(!selectedBase64A){
+      setStatus(t('studioAiNeedImage'));
+      return;
+    }
+    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+    if(!token){ setStatus(t('studioAiNeedLogin')); return; }
+
+    compareBtn.disabled = true;
+    compareResultsEl.style.display = 'none';
+    compareResultsEl.innerHTML = '';
+    compareStatusEl.style.display = 'block';
+    compareStatusEl.textContent = t2('fashionCompareGenerating');
+
+    try{
+      const results = await Promise.all(stylesToRun.map(async (styleVal) => {
+        const payload = { feature, style: styleVal, token, imageBase64: selectedBase64A, mimeType: selectedMimeA, multiAngle: false };
+        try{
+          const res = await fetch('/api/studio-create', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          if(!res.ok || data.error) return { styleVal, error: data.error || 'unknown' };
+          return { styleVal, dataUrl: 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64 };
+        } catch(e){
+          return { styleVal, error: e.message };
+        }
+      }));
+      results.forEach(r => {
+        const cell = document.createElement('div');
+        cell.style.cssText = 'border:1px solid var(--border,#333); border-radius:8px; padding:6px; text-align:center;';
+        if(r.dataUrl){
+          const label = (styleEl.querySelector('option[value="' + r.styleVal + '"]') || {}).textContent || r.styleVal;
+          cell.innerHTML = '<img src="' + r.dataUrl + '" style="width:100%; border-radius:6px; background:#000;"><p style="font-size:11.5px; color:var(--muted,#999); margin:4px 0 0;">' + label + '</p>';
+        } else {
+          cell.innerHTML = '<p style="font-size:11.5px; color:#f87171;">❌ ' + (r.error || '') + '</p>';
+        }
+        compareResultsEl.appendChild(cell);
+      });
+      compareResultsEl.style.display = 'grid';
+      compareStatusEl.style.display = 'none';
+    } catch(e){
+      compareStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+    } finally {
+      compareBtn.disabled = false;
+    }
+  };
+
+  /* ---- 🏛️ heritage: compare casual ⟷ formal ---- */
+  if(heritageCompareBtn) heritageCompareBtn.onclick = async () => {
+    if(!selectedBase64A){
+      setStatus(t('studioAiNeedImage'));
+      return;
+    }
+    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+    if(!token){ setStatus(t('studioAiNeedLogin')); return; }
+
+    heritageCompareBtn.disabled = true;
+    heritageCompareResultsEl.style.display = 'none';
+    heritageCompareResultsEl.innerHTML = '';
+    heritageCompareStatusEl.style.display = 'block';
+    heritageCompareStatusEl.textContent = t2('fashionCompareGenerating');
+
+    const variants = [
+      { key: 'casual', extra: 'Style it in a relaxed, everyday casual way, simple and comfortable.' },
+      { key: 'formal', extra: 'Style it in an elegant, formal ceremonial way, suited for a special formal occasion.' },
+    ];
+
+    try{
+      const results = await Promise.all(variants.map(async (v) => {
+        const baseDesc = descriptionEl.value.trim();
+        const payload = {
+          feature: 'heritage', style: styleEl.value, token,
+          imageBase64: selectedBase64A, mimeType: selectedMimeA, multiAngle: false,
+          description: (baseDesc ? (baseDesc + '. ') : '') + v.extra,
+        };
+        try{
+          const res = await fetch('/api/studio-create', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          if(!res.ok || data.error) return { key: v.key, error: data.error || 'unknown' };
+          return { key: v.key, dataUrl: 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64 };
+        } catch(e){
+          return { key: v.key, error: e.message };
+        }
+      }));
+      results.forEach(r => {
+        const cell = document.createElement('div');
+        cell.style.cssText = 'border:1px solid var(--border,#333); border-radius:8px; padding:6px; text-align:center;';
+        const label = r.key === 'casual' ? t2('studioHeritageCasualLabel') : t2('studioHeritageFormalLabel');
+        if(r.dataUrl){
+          cell.innerHTML = '<img src="' + r.dataUrl + '" style="width:100%; border-radius:6px; background:#000;"><p style="font-size:11.5px; color:var(--muted,#999); margin:4px 0 0;">' + label + '</p>';
+        } else {
+          cell.innerHTML = '<p style="font-size:11.5px; color:#f87171;">❌ ' + (r.error || '') + '</p>';
+        }
+        heritageCompareResultsEl.appendChild(cell);
+      });
+      heritageCompareResultsEl.style.display = 'grid';
+      heritageCompareStatusEl.style.display = 'none';
+    } catch(e){
+      heritageCompareStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+    } finally {
+      heritageCompareBtn.disabled = false;
+    }
+  };
+})();
+window.updateVersionLabel = function(){
+  var APP_VERSION = 'v384';
+  var el = document.getElementById('appVersionLabel');
+  if (!el) return;
+  var u = '';
+  try { u = (typeof authGet === 'function') ? (authGet('aiapp_username') || '') : (localStorage.getItem('aiapp_username') || ''); } catch(e){}
+  if (String(u).trim().toLowerCase() === 'omran') {
+    var fmt = function(ts){ if(!ts) return '—'; try{ var d=new Date(ts); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2); }catch(e){ return '—'; } };
+    var pull = (typeof window.__chatsLastPull === 'number') ? window.__chatsLastPull : 0;
+    var push = (typeof window.__chatsLastPush === 'number') ? window.__chatsLastPush : 0;
+    var n = 0; try{ n = (state.projects||[]).length; }catch(e){}
+    var pullErr = window.__chatsLastPullErr ? (' ⚠️' + window.__chatsLastPullErr) : '';
+    var pushErr = window.__chatsLastPushErr ? (' ⚠️' + window.__chatsLastPushErr) : '';
+    var srvN = (typeof window.__chatsServerCount === 'number') ? window.__chatsServerCount : '?';
+    var mrgR = window.__chatsMergeResult || '—';
+    var mrgE = window.__chatsMergeErr || '';
+    el.textContent = 'Omran AI Builder — ' + APP_VERSION
+      + ' · سحب: ' + fmt(pull) + pullErr
+      + ' · رفع: ' + fmt(push) + pushErr
+      + ' · سيرفر: ' + srvN
+      + ' · محلي: ' + n
+      + ' · دمج: ' + mrgR
+      + (mrgE ? (' ⚠️' + mrgE) : '');
+    el.style.display = '';
+    if (!window.__verLabelTimer) { window.__verLabelTimer = setInterval(function(){ try{ window.updateVersionLabel(); }catch(e){} }, 5000); }
+  } else {
+    el.textContent = '';
+    el.style.display = 'none';
+  }
+};
+window.updateVersionLabel();
