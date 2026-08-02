@@ -5,6 +5,8 @@
 // and the client falls back to localStorage.
 // Installs a time-to-first-byte timeout on every outbound fetch (see _lib/_fetch-timeout.js).
 require('./_lib/_fetch-timeout.js');
+// Nothing thrown in this router escapes unrecorded (see _lib/_errors.js).
+const { withErrorCapture } = require('./_lib/_errors.js');
 
 const { verifyToken } = require('./_lib/auth.js');
 const { kvGetJSON, kvPutJSON, kvIncr, kvExpire } = require('./_lib/kv.js');
@@ -229,7 +231,7 @@ async function callClaudeExpense(apiKey, contentBlocks, lang) {
   return extractJSON(text);
 }
 
-module.exports = async (req, res) => {
+module.exports = withErrorCapture('edu', async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -530,4 +532,4 @@ module.exports = async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: 'Edu error: ' + (e && e.message ? e.message : String(e)) });
   }
-};
+});

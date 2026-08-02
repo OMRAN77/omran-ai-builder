@@ -3,6 +3,11 @@
 // Old public paths (e.g. /api/openai) are preserved via vercel.json rewrites
 // that append ?action=<name>. Requires use literal paths so Vercel's file
 // tracer (@vercel/nft) includes each module in the deployment bundle.
+// Installs a time-to-first-byte timeout on every outbound fetch (see _lib/_fetch-timeout.js).
+require('./_lib/_fetch-timeout.js');
+// Nothing thrown in this router escapes unrecorded (see _lib/_errors.js).
+const { withErrorCapture } = require('./_lib/_errors.js');
+
 function load(action) {
   switch (action) {
     case 'openai': return require('./_lib/openai.js');
@@ -214,7 +219,7 @@ function injectNote(action, body, country) {
 
 const PROVIDERS = ['openai', 'gemini', 'groq', 'claude', 'cohere', 'deepseek', 'mistral', 'openrouter', 'perplexity'];
 
-module.exports = async (req, res) => {
+module.exports = withErrorCapture('ai', async (req, res) => {
   const action = (req.query && req.query.action) || '';
   const handler = load(action);
   if (!handler) {
@@ -237,4 +242,4 @@ module.exports = async (req, res) => {
     } catch (e) { /* never block the request over the note */ }
   }
   return handler(req, res);
-};
+});

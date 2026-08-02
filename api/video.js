@@ -1,4 +1,9 @@
 // Router: consolidates video creation/status/upscale/script endpoints.
+// Installs a time-to-first-byte timeout on every outbound fetch (see _lib/_fetch-timeout.js).
+require('./_lib/_fetch-timeout.js');
+// Nothing thrown in this router escapes unrecorded (see _lib/_errors.js).
+const { withErrorCapture } = require('./_lib/_errors.js');
+
 function load(action) {
   switch (action) {
     case 'video-create': return require('./_lib/video-create.js');
@@ -13,7 +18,7 @@ function load(action) {
   }
 }
 
-module.exports = async (req, res) => {
+module.exports = withErrorCapture('video', async (req, res) => {
   const action = (req.query && req.query.action) || '';
   const handler = load(action);
   if (!handler) {
@@ -21,4 +26,4 @@ module.exports = async (req, res) => {
     return;
   }
   return handler(req, res);
-};
+});

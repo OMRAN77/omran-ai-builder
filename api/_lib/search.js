@@ -11,6 +11,48 @@
 const { checkAndConsumeCustom, clientIp } = require('./_usage.js');
 const SEARCH_DAILY_LIMIT = 40;
 
+/**
+ * Reorders merged search results by actual relevance to the question.
+ * Falls back silently to the original order when no key is set or the call fails.
+ */
+async function rerankResults(query, results, topN) {
+  const key = (process.env.COHERE_API_KEY || '').trim();
+  if (!key || !Array.isArray(results) || results.length < 4) return results;
+
+  const docs = results.map((r) =>
+    [r.title || '', (r.content || '').slice(0, 1200)].filter(Boolean).join(' — ').slice(0, 1500)
+  );
+
+  try {
+    const res = await fetch('https://api.cohere.com/v2/rerank', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+      body: JSON.stringify({
+        model: process.env.COHERE_RERANK_MODEL || 'rerank-v3.5',
+        query: String(query || '').slice(0, 1000),
+        documents: docs,
+        top_n: Math.min(topN || 15, docs.length),
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return results;
+    const data = await res.json();
+    const ranked = Array.isArray(data && data.results) ? data.results : [];
+    if (!ranked.length) return results;
+
+    const out = [];
+    for (const item of ranked) {
+      const src = results[item.index];
+      if (src) out.push(Object.assign({}, src, { relevance: item.relevance_score }));
+    }
+    const kept = new Set(ranked.map((x) => x.index));
+    results.forEach((r, i) => { if (!kept.has(i)) out.push(r); });
+    return out;
+  } catch (e) {
+    return results;
+  }
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -141,7 +183,7 @@ module.exports = async (req, res) => {
 
       // 3) دمج وإزالة التكرار
       const seenUrls = new Set();
-      const mergedResults = [];
+      let mergedResults = [];
       const answers = [];
       const allImages = [];
       for (const d of deepResults) {
@@ -156,6 +198,9 @@ module.exports = async (req, res) => {
         }
         if (wantImages && Array.isArray(d.images)) allImages.push(...d.images);
       }
+
+      // 3.5) ترتيب النتائج بالأهمية الحقيقية قبل قصّها (Cohere Rerank)
+      mergedResults = await rerankResults(query, mergedResults, 15);
 
       // 4) مصادر مُنقّحة
       const deepSources = [];

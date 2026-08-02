@@ -1,4 +1,9 @@
 // Router: consolidates reminders/push/search/realtime-session endpoints.
+// Installs a time-to-first-byte timeout on every outbound fetch (see _lib/_fetch-timeout.js).
+require('./_lib/_fetch-timeout.js');
+// Nothing thrown in this router escapes unrecorded (see _lib/_errors.js).
+const { withErrorCapture } = require('./_lib/_errors.js');
+
 function load(action) {
   switch (action) {
     case 'check-reminders': return require('./_lib/check-reminders.js');
@@ -20,7 +25,7 @@ function load(action) {
   }
 }
 
-module.exports = async (req, res) => {
+module.exports = withErrorCapture('system', async (req, res) => {
   const action = (req.query && req.query.action) || '';
   const handler = load(action);
   if (!handler) {
@@ -28,4 +33,4 @@ module.exports = async (req, res) => {
     return;
   }
   return handler(req, res);
-};
+});

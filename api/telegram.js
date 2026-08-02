@@ -1,6 +1,11 @@
 // Telegram bot webhook: @OmranAIBuilder_bot
 // Receives Telegram updates, replies via Claude (owner's key).
 // Free tier: 10 messages/day per user, then promotes the app.
+// Installs a time-to-first-byte timeout on every outbound fetch (see _lib/_fetch-timeout.js).
+require('./_lib/_fetch-timeout.js');
+// Nothing thrown in this router escapes unrecorded (see _lib/_errors.js).
+const { withErrorCapture } = require('./_lib/_errors.js');
+
 const { kvGetJSON, kvPutJSON, kvIncr, kvExpire } = require('./_lib/kv');
 
 const APP_URL = 'https://omran-ai-builder.vercel.app';
@@ -29,7 +34,7 @@ async function tg(token, method, payload) {
   } catch (e) { return null; }
 }
 
-module.exports = async (req, res) => {
+module.exports = withErrorCapture('telegram', async (req, res) => {
   if (req.method !== 'POST') { res.status(405).json({ ok: false }); return; }
 
   const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -140,4 +145,4 @@ module.exports = async (req, res) => {
   } catch (e) {
     ack();
   }
-};
+});

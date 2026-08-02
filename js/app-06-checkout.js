@@ -1592,10 +1592,23 @@ function isRefusalReply(txt){
   const s = String(txt || '').trim();
   return s.length > 0 && s.length < 700 && REFUSAL_RE.test(s.slice(0, 220));
 }
+/* Short social turns ("مرحبا", "شكرا", "شو رايك") don't need a frontier
+   model. Routing them to the fast one is the single biggest cost saving in
+   the app, and the user cannot tell the difference on a greeting.
+   Deliberately narrow: only very short messages with no question depth. */
+const CASUAL_RE = /^(?:\s*)(?:مرحبا|مرحبتين|هلا|هلو|اهلا|أهلا|السلام عليكم|سلام|صباح الخير|مساء الخير|كيف حالك|كيفك|شلونك|شخبارك|تمام|تمم|اوك|أوك|اوكي|ok|okay|thanks|thank you|شكرا|شكراً|مشكور|يعطيك العافية|تسلم|باي|مع السلامة|hi|hello|hey|good morning|good evening|how are you)(?:\s|!|\.|؟|\?|,|،)*$/i;
+
+function isCasualTurn(txt){
+  const s = String(txt || '').trim();
+  if(!s || s.length > 40) return false;
+  return CASUAL_RE.test(s);
+}
+
 // v262 — 🎯 مصنّف التخصص (الوضع الافتراضي فقط): كل مهنة لأستاذها خلف الكواليس.
 // محافظ عن قصد: الطب والقانون والبناء والعام تبقى عند Claude (الافتراضي).
 function pickSpecialtyProvider(txt){
   const s = String(txt || '');
+  if(isCasualTurn(s)) return 'groq';
   if(/رياضيات|معادل[ةه]|تكامل|تفاضل|مصفوف|لوغاريتم|جبر خطي|مثلثات|احتمالات|إحصاء|احصاء|مسأل[ةه] رياض|حل هذه المسأل|equation|integral|derivative|matrix|logarithm|trigonometry|probability|math problem/i.test(s)) return 'deepseek';
   if(/قصيد[ةه]|شعر[اً]?\b|أبيات|ابيات|خاطر[ةه]|قص[ةه] قصير[ةه]|اكتب(?:\s+لي)?\s+قص[ةه]|رواي[ةه]|نص أدبي|رسال[ةه] عاطفي[ةه]|write (?:me )?a (?:story|poem)|poetry|short story/i.test(s)) return 'openai';
   return null;
