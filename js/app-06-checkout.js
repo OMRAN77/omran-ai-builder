@@ -354,8 +354,8 @@ function renderClockWorldStrip(){
     const meta = CLOCK_TIMEZONES.find(z => z.tz === tz);
     const label = meta ? (lang === 'ar' ? meta.ar : meta.en) : tz;
     return `<div class="clockStripRow" data-tz="${tz}" style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-radius:10px; background:var(--bg); border:1px solid var(--border);">
-      <span style="font-size:13px; font-weight:600;">${label}</span>
-      <span class="clockStripTime" style="font-size:15px; font-weight:800; direction:ltr;">--:--:--</span>
+      <span style="font-size:13px; font-weight:500;">${label}</span>
+      <span class="clockStripTime" style="font-size:15px; font-weight:700; direction:ltr;">--:--:--</span>
     </div>`;
   }).join('');
 }
@@ -1655,11 +1655,12 @@ async function callAIWithFallback(messages, onDelta, preferredList){
       return { reply, providerKey, switched: errSwitched && providerKey !== head[0], requestedKey: head[0] };
     }catch(err){
       lastErr = err;
-      if(err && (err.status === 429 || err.status === 402 || err.status >= 500)){
-        errSwitched = true;
-        try{ if(window.__chatStatus) window.__chatStatus.note('⚠️', lang === 'ar' ? 'المزود الأساسي لم يستجب — جارٍ التحويل…' : 'Primary provider unavailable — switching…'); }catch(e){}
-        continue;
-      }
+      // A silent switch means the user gets different quality with no
+      // explanation and blames the app. Say it plainly.
+      try{
+        if(window.__chatStatus) window.__chatStatus.note('⚠️', 'المزود الأساسي لم يستجب — جارٍ التحويل…');
+      }catch(e){ console.warn('[status] fallback note failed', e); }
+      if(err && (err.status === 429 || err.status === 402 || err.status >= 500)){ errSwitched = true; continue; }
       // 🛡️ v309: أي فشل آخر (نفاد رصيد المزود 400/401/403، عطل شبكة...) —
       // تحويل صامت للمزود التالي بدل إظهار خطأ أو رد فارغ للمستخدم.
       continue;
