@@ -146,20 +146,21 @@ module.exports = async (req, res) => {
     const budgetArText = budget && BUDGET_LABELS_AR[budget] ? BUDGET_LABELS_AR[budget] : '';
     const budgetRangeArText = budget && BUDGET_RANGE_AR[budget] ? BUDGET_RANGE_AR[budget] : '';
 
-    const imgEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=' + apiKey;
+    const imgEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
 
     const planPrompt =
       'A clean 2D architectural floor plan (top-down blueprint style, black and white line drawing) of ' +
       floorsText + buildingDesc + ', approximately ' + area + ' square meters.' + notesText + annexEnText +
       ' Show clearly labeled rooms with their approximate dimensions in meters written inside each room, walls, doors, and windows. ' +
       'Professional architectural floor plan style, straight lines, no color rendering, no perspective, no people, no furniture photos — just a clear labeled technical floor plan drawing.';
-    const planReqBody = { contents: [{ parts: [{ text: planPrompt }] }] };
+    const planReqBody = { contents: [{ parts: [{ text: planPrompt }] }], generationConfig: { imageConfig: { imageSize: '2K' } } };
 
     const photoPrompt =
       'A photorealistic architectural exterior render of ' + floorsText + buildingDesc +
       ', approximately ' + area + ' square meters, in ' + styleDesc + '.' + notesText + annexEnText + budgetEnText +
+      ' STRICT CONSISTENCY: this exterior must match the floor plan of the same request exactly — same number of floors, same garage capacity, pool and annexes only if requested and in their requested location. Do not invent extra floors or elements.' +
       ' Daytime, clear sky, professional architectural visualization, high detail, no people, no text overlays.';
-    const photoReqBody = { contents: [{ parts: [{ text: photoPrompt }] }] };
+    const photoReqBody = { contents: [{ parts: [{ text: photoPrompt }] }], generationConfig: { imageConfig: { imageSize: '2K' } } };
 
     const textPrompt =
       'أنت مستشار مقاولات وبناء. بناءً على هذا الوصف: ' + floorsText + buildingDesc + '، المساحة تقريبًا ' + area + ' متر مربع، ' +
@@ -199,7 +200,7 @@ module.exports = async (req, res) => {
         'A photorealistic interior design render of a ' + styleDesc + ' main living room / majlis inside ' +
         floorsText + buildingDesc + notesText + annexEnText +
         ' Warm lighting, tasteful furniture, high-end interior design magazine quality, no people, no text overlays.';
-      const interiorReqBody = { contents: [{ parts: [{ text: interiorPrompt }] }] };
+      const interiorReqBody = { contents: [{ parts: [{ text: interiorPrompt }] }], generationConfig: { imageConfig: { imageSize: '2K' } } };
       fetchTasks.push(fetch(imgEndpoint.replace(apiKey, apiKey), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(interiorReqBody) }));
     }
 

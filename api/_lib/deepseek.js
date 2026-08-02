@@ -44,6 +44,13 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // 🛠️ قاعدة الكود الكامل: DeepSeek يدّعي "بنيت" بدون كود → إلزام صريح
+    try {
+      const __sys = Array.isArray(messages) ? messages.find(m => m && m.role === 'system') : null;
+      const __codeRule = '\n[قاعدة الكود — مطلقة]: إذا قلت إنك بنيت أو عدّلت أو أضفت شيئًا في تطبيق/موقع/لعبة فيجب أن يحتوي ردك نفسه على الكود الكامل داخل كتلة ```html واحدة من <!DOCTYPE html> إلى </html>. ممنوع منعًا باتًا الادعاء بالتنفيذ بدون إرجاع الكود كاملًا في نفس الرد.';
+      if (__sys && typeof __sys.content === 'string' && !__sys.content.includes('[قاعدة الكود — مطلقة]')) __sys.content += __codeRule;
+    } catch (e) {}
+
     const wantStream = !!body.stream;
     const upstream = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',

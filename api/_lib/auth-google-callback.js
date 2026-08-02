@@ -77,7 +77,21 @@ module.exports = async (req, res) => {
     }
 
     const email = String(profile.email).trim().toLowerCase();
-    const key = 'g_' + email; // namespaced so it never collides with a manually chosen username
+    let key = 'g_' + email; // namespaced so it never collides with a manually chosen username
+
+    // v380: توحيد الحسابات — لو فيه ربط يدوي (alias) أو حساب عادي بنفس الإيميل،
+    // الدخول بجوجل يفتح الحساب الأساسي نفسه بدل إنشاء حساب منفصل.
+    try {
+      const { kvGetJSON } = require('./kv.js');
+      const alias = await kvGetJSON('db/alias/' + key);
+      if (alias && alias.primary) {
+        key = String(alias.primary);
+      } else {
+        const idx = await kvGetJSON('db/email-index/' + email);
+        if (idx && idx.username) key = String(idx.username);
+      }
+    } catch (e) {}
+
     let user = await getUser(key);
 
     if (!user || user.deleted) {

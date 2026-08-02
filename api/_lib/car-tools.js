@@ -65,12 +65,13 @@ module.exports = async (req, res) => {
         '". Keep everything else about the car and scene identical: same angle, same background, same lighting, ' +
         'same car model shape — only change what was requested (e.g. paint color, rims/wheels, body kit, window tint, ride height). ' +
         'Make the edit look photorealistic and natural. Output a single image only.';
-      const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=' + apiKey;
+      const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
       const upstream = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: editPrompt }, { inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } }] }],
+          generationConfig: { imageConfig: { imageSize: '2K' } },
         }),
       });
       const data = await upstream.json();

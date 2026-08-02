@@ -2,6 +2,7 @@
 // owner's own server-side API key (ANTHROPIC_API_KEY env var), so visitors can try the
 // app without entering their own key. This key is NEVER exposed to the client.
 const { checkAndConsume, DAILY_LIMIT } = require('./_usage');
+const { spendPoints, refundPoints, verifyPointsToken, PREMIUM_MODELS, PREMIUM_COST } = require('./points.js');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -34,6 +35,7 @@ module.exports = async (req, res) => {
       return;
     }
 
+    let premiumRefund = null;
     const usage = await checkAndConsume(token, guestId, 'claude');
     if (!usage.allowed) {
       if (usage.reason === 'auth') {
@@ -68,7 +70,17 @@ module.exports = async (req, res) => {
       }),
     });
 
-    let upstream = await doRequest(useModel, wantStream);
+    const doRequestSafe = async (m, stream) => {
+      try { return await doRequest(m, stream); }
+      catch (e) { await new Promise((r) => setTimeout(r, 2000)); return doRequest(m, stream); }
+    };
+    let upstream = await doRequestSafe(useModel, wantStream);
+    // 🔁 إعادة محاولة تلقائية عند تحميل/تأخر أنثروبيك (529/503/502/500/429) قبل بدء البث
+    for (let attempt = 0; attempt < 2 && !upstream.ok && [429, 500, 502, 503, 529].includes(upstream.status); attempt++) {
+      try { await upstream.text(); } catch (e) { /* drain */ }
+      await new Promise((r) => setTimeout(r, 2500 * (attempt + 1)));
+      upstream = await doRequest(useModel, wantStream);
+    }
     if (!upstream.ok && upstream.status === 404) {
       const errTextFirst = await upstream.text();
       if (/model/i.test(errTextFirst) && /not_found/i.test(errTextFirst)) {
@@ -118,6 +130,7 @@ module.exports = async (req, res) => {
     }
 
     const data = await upstream.text();
+    if (premiumRefund && !upstream.ok) { try { await refundPoints(premiumRefund.user, premiumRefund.amt); } catch (e2) { /* best-effort */ } }
     res.status(upstream.status).setHeader('Content-Type', 'application/json').send(data);
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });

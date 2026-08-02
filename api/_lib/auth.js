@@ -177,10 +177,20 @@ module.exports = async (req, res) => {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
     const { action, username, password, token, recoveryCode, newPassword, newUsername, currentPassword, avatarDataUrl, lang, ref, email, resetToken } = body;
+
     const isEn = lang === 'en';
     // Small helper to return the message matching the caller's UI language
     // (client always sends its current language along with every request).
     const m = (ar, en) => (isEn ? en : ar);
+
+    // Hardening: cap input lengths to block scrypt CPU-exhaustion and junk-data attacks.
+    const tooLong = [username, newUsername].some(v => v && String(v).length > 64) ||
+      [password, newPassword, currentPassword, recoveryCode].some(v => v && String(v).length > 128) ||
+      (email && String(email).length > 254);
+    if (tooLong) {
+      res.status(400).json({ error: m('المدخلات طويلة جدًا', 'Input too long') });
+      return;
+    }
 
     if (action === 'signup') {
       if (!username || !password || String(username).length < 3 || String(password).length < 4) {
@@ -206,12 +216,13 @@ module.exports = async (req, res) => {
         email: email ? String(email).trim().toLowerCase() : null,
         avatar: null,
         createdAt: Date.now(),
-        // 🎁 welcome gift: 30 points credited at signup (points system activates
-        // when the pricing/points pages launch — balance is already stored here).
-        points: 30,
+        // 🎁 هدية الترحيب: 70 نقطة عند التسجيل = فيديو واحد (60) + صورة واحدة (10).
+        points: 70,
         welcomeGift: true,
       };
       await putUser(key, user);
+      // v380: فهرس الإيميل → الدخول بجوجل بنفس الإيميل يفتح هذا الحساب نفسه
+      if (user.email) { try { const { kvPutJSON } = require('./kv.js'); await kvPutJSON('db/email-index/' + user.email, { username: key }); } catch (e) {} }
       res.status(200).json({ ok: true, token: makeToken(key), username: user.username, recoveryCode: recCode, avatar: null });
       return;
     }

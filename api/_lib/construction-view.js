@@ -101,8 +101,8 @@ module.exports = async (req, res) => {
         ' Show room proportions and furniture layout clearly, warm lighting, high-end interior design magazine quality, no people, no text overlays.';
     }
 
-    const imgEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=' + apiKey;
-    const imgReqBody = { contents: [{ parts: [{ text: prompt }] }] };
+    const imgEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
+    const imgReqBody = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { imageConfig: { imageSize: '2K' } } };
 
     const upstream = await fetch(imgEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(imgReqBody) });
     const data = await upstream.json();

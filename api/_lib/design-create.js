@@ -122,7 +122,7 @@ module.exports = async (req, res) => {
       'Keep the same room layout, walls, windows and camera angle, but replace the furniture, ' +
       'colors, decor and finishes to match the requested style. Output a single photorealistic image of the redesigned room.';
 
-    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=' + apiKey;
+    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
     const reqBody = {
       contents: [
         {
@@ -132,6 +132,7 @@ module.exports = async (req, res) => {
           ],
         },
       ],
+      generationConfig: { imageConfig: { imageSize: '2K' } },
     };
 
     const upstream = await fetch(endpoint, {
