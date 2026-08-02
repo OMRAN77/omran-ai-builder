@@ -61,6 +61,19 @@ module.exports = async (req, res) => {
       }
     }
 
+    // 💰 نظام النقاط: فيديو Runway = 60 نقطة لغير المالك. يُخصم قبل
+    // الإنشاء ويُسترجع تلقائيًا لو فشل الطلب عند Runway.
+    const pointsLib = require('./points.js');
+    let chargedUser = null;
+    if (usageResult.username && !pointsLib.isOwnerUsername(usageResult.username)) {
+      const pay = await pointsLib.spendPoints(usageResult.username, pointsLib.COSTS.runway_video, 'runway_video');
+      if (!pay.ok) {
+        res.status(402).json({ error: 'points_insufficient', needed: pointsLib.COSTS.runway_video, points: pay.points || 0 });
+        return;
+      }
+      chargedUser = usageResult.username;
+    }
+
     const picked = pickKey();
     if (!picked) {
       res.status(500).json({ error: 'Server is missing RUNWAY_API_KEY' });
@@ -118,6 +131,7 @@ module.exports = async (req, res) => {
     if (!upstream.ok) {
       // Always include Runway's FULL response body (it puts the useful
       // validation details in extra fields, not just in .error).
+      if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.runway_video);
       res.status(upstream.status).json({ error: 'Runway error: ' + JSON.stringify(data).slice(0, 700) });
       return;
     }

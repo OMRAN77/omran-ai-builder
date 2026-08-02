@@ -185,8 +185,8 @@ module.exports = async (req, res) => {
       parts.push({ inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } });
     }
 
-    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=' + apiKey;
-    const reqBody = { contents: [{ parts }] };
+    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
+    const reqBody = { contents: [{ parts }], generationConfig: { imageConfig: { imageSize: '2K' } } };
 
     const upstream = await fetch(endpoint, {
       method: 'POST',
