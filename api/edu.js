@@ -3,6 +3,9 @@
 // Lessons persist per registered user in Upstash Redis (edu:lessons:{username}).
 // Guests: `process` works (capped 3/day per IP), save/list/etc. return {guest:true}
 // and the client falls back to localStorage.
+// Installs a time-to-first-byte timeout on every outbound fetch (see _lib/_fetch-timeout.js).
+require('./_lib/_fetch-timeout.js');
+
 const { verifyToken } = require('./_lib/auth.js');
 const { kvGetJSON, kvPutJSON, kvIncr, kvExpire } = require('./_lib/kv.js');
 const { clientIp } = require('./_lib/_usage.js');
@@ -11,6 +14,27 @@ const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').trim().toLowerCas
 const MODEL = 'claude-sonnet-4-20250514'; // keep in sync with api/_lib/claude.js
 const MAX_BASE64_CHARS = 14 * 1024 * 1024; // ~14MB of base64 payload
 const GUEST_PROCESS_PER_DAY = 3;
+// Registered users were previously uncapped, and signing up takes two seconds
+// with no email verification — so the guest cap was bypassable by anyone.
+// Every analysis is a Claude call with a large PDF and a big output budget.
+const USER_PROCESS_PER_DAY = Number(process.env.EDU_USER_DAILY || 25);
+const USER_GRADE_PER_DAY = Number(process.env.EDU_GRADE_DAILY || 120);
+
+/**
+ * One daily counter per subject (ip or username) per bucket. Owner is exempt.
+ * Returns true when the caller is over the limit.
+ */
+async function overDailyLimit(subject, bucket, max) {
+  const key = 'edu:' + bucket + ':' + encodeURIComponent(subject) + ':' + todayStr();
+  let count = 0;
+  try {
+    count = await kvIncr(key);
+    if (count === 1) await kvExpire(key, 172800);
+  } catch (e) {
+    return false; // never block a student over a bookkeeping failure
+  }
+  return count > max;
+}
 
 function lessonsKey(u) { return 'edu:lessons:' + encodeURIComponent(u); }
 function streakKey(u) { return 'edu:streak:' + encodeURIComponent(u); }
@@ -24,6 +48,7 @@ function lightLesson(l) {
     title: l.title,
     createdAt: l.createdAt,
     bestScore: typeof l.bestScore === 'number' ? l.bestScore : null,
+    scores: l.scores && typeof l.scores === 'object' ? l.scores : {},
     cardsKnown: typeof l.cardsKnown === 'number' ? l.cardsKnown : 0,
     cardCount: Array.isArray(l.flashcards) ? l.flashcards.length : 0,
     quizCount: Array.isArray(l.quiz) ? l.quiz.length : 0,
@@ -62,14 +87,42 @@ async function resolveModel(apiKey) {
   return MODEL;
 }
 
-async function callClaude(apiKey, contentBlocks, lang) {
+// Language bridge: the student understands in one language but is examined in
+// another (an Arabic-speaking med student sitting an English exam, a Malayalam
+// speaker in an English-medium school). Explanations follow the native
+// language; terms and quiz wording follow the exam language.
+function languageRules(lang, nativeLang, examLang) {
+  const native = (nativeLang || '').trim();
+  const exam = (examLang || '').trim();
+  if (native && exam && native !== exam) {
+    return 'جسر اللغة — إلزامي: اشرح واكتب الملخص ووجه البطاقات بلغة الطالب الأم: ' + native + '. '
+      + 'أمّا المصطلحات العلمية وأسئلة الاختبار وخياراته فبلغة الامتحان: ' + exam + '. '
+      + 'في كل بطاقة مراجعة اذكر المصطلح باللغتين معًا بهذا الشكل: المصطلح بلغة الامتحان (المقابل بلغة الطالب). '
+      + 'الهدف أن يفهم الطالب بلغته ويتعرّف على المصطلح كما سيراه في ورقة الامتحان.';
+  }
+  if (native) return 'اكتب كل شيء بلغة الطالب: ' + native + '.';
+  return 'اكتب كل شيء (العنوان والمادة والملخص والبطاقات والاختبار) بنفس لغة محتوى المحاضرة نفسها'
+    + (lang ? ' (وإن كان المحتوى نصًا قصيرًا غامض اللغة فاستخدم اللغة: ' + lang + ')' : '') + '.';
+}
+
+async function callClaude(apiKey, contentBlocks, lang, nativeLang, examLang, stage) {
+  const level = (stage || 'university') === 'university' ? 'جامعي' : 'مدرسي مناسب لمرحلة: ' + stage;
   const sys = 'أنت مساعد تعليمي خبير. يُرسل إليك محتوى محاضرة (نص أو PDF أو صور). '
     + 'حلل المحتوى وأعد فقط JSON صالحًا بلا أي نص خارجه وبلا أسوار كود، بهذا الشكل بالضبط:\n'
-    + '{"title":"عنوان قصير للدرس","subject":"اسم المادة المقترح (كلمة أو كلمتان)","summary":"ملخص منظم بصيغة ماركداون (عناوين، نقاط، **غامق**) يغطي كل الأفكار المهمة","flashcards":[{"q":"سؤال","a":"جواب"}],"quiz":[{"q":"سؤال","options":["أ","ب","ج","د"],"correct":0,"explain":"شرح قصير"}]}\n'
-    + 'القواعد: flashcards بين 8 و14 بطاقة. quiz بين 8 و12 سؤالًا، ولكل سؤال 4 خيارات بالضبط و"correct" رقم من 0 إلى 3. '
-    + 'اكتب كل شيء (العنوان والمادة والملخص والبطاقات والاختبار) بنفس لغة محتوى المحاضرة نفسها'
-    + (lang ? ' (وإن كان المحتوى نصًا قصيرًا غامض اللغة فاستخدم اللغة: ' + lang + ')' : '')
-    + '. لا تكتب أي شيء خارج كائن JSON.';
+    + '{"title":"عنوان قصير للدرس","subject":"اسم المادة المقترح (كلمة أو كلمتان)","summary":"ملخص منظم بصيغة ماركداون (عناوين، نقاط، **غامق**) يغطي كل الأفكار المهمة","flashcards":[{"q":"سؤال","a":"جواب"}],"quiz":[{"q":"سؤال","options":["أ","ب","ج","د"],"correct":0,"explain":"شرح قصير","level":"basic","section":"عنوان القسم في الملخص"}],"written":[{"q":"سؤال مقالي قصير","rubric":["نقطة يجب أن ترد في الإجابة الكاملة"],"level":"mid","section":"عنوان القسم في الملخص"}]}\n'
+    + 'القواعد:\n'
+    + '- flashcards بين 8 و14 بطاقة.\n'
+    + '- quiz = 15 سؤالًا بالضبط: 5 بمستوى "basic" و5 بمستوى "mid" و5 بمستوى "advanced". لكل سؤال 4 خيارات بالضبط و"correct" رقم من 0 إلى 3.\n'
+    + '- معنى المستويات (مهم جدًا — الفرق في نوع التفكير المطلوب لا في التعقيد اللغوي):\n'
+    + '  basic = استدعاء وتذكّر: تعريف، مصطلح، صيغة، حقيقة وردت نصًا في المحاضرة.\n'
+    + '  mid = تطبيق: يطبّق الطالب قاعدة أو خطوة على حالة مشابهة لما ورد في المحاضرة.\n'
+    + '  advanced = فهم وتحليل: لماذا؟ ماذا يحدث لو تغيّر شرط؟ مقارنة، استنتاج، أو حالة لم ترد حرفيًا في المحاضرة لكنها تُشتق منها.\n'
+    + '- ممنوع أن يكون سؤال advanced مجرد سؤال basic بصياغة أطول أو بأرقام أكبر. إن لم تجد مادة كافية لخمسة أسئلة advanced حقيقية فأعطِ ما تجده واملأ الباقي من mid.\n'
+    + '- written = 3 أسئلة مقالية قصيرة (واحد لكل مستوى)، لكل سؤال "rubric" فيه 2 إلى 4 نقاط محدّدة يجب أن ترد في الإجابة الكاملة. النقاط ملموسة وقابلة للتحقق، لا عبارات عامة.\n'
+    + '- "section" في كل سؤال = عنوان القسم في الملخص الذي يغطي هذا السؤال، منسوخ حرفيًا من عناوين الملخص، ليُوجَّه الطالب لمراجعته عند الخطأ.\n'
+    + '- مستوى الصياغة والعمق: ' + level + '.\n'
+    + languageRules(lang, nativeLang, examLang)
+    + ' لا تكتب أي شيء خارج كائن JSON.';
   const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -101,6 +154,44 @@ async function callClaude(apiKey, contentBlocks, lang) {
   const text = (data && data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
   return extractJSON(text);
 }
+// ---------- ✍️ تصحيح إجابة مقالية مقابل معيار (نص فقط — رخيص) ----------
+// Deliberately NOT a pass/fail verdict. A student learns from "you covered X,
+// you missed Y, go re-read Z" — not from a number. The rubric is echoed back
+// so the student can see what they were judged against and challenge it.
+async function callClaudeGrade(apiKey, payload, lang, nativeLang) {
+  const sys = 'أنت مصحّح تعليمي منصف. يُعطى إليك سؤال مقالي، ومعيار تصحيح (قائمة نقاط يجب أن ترد في الإجابة الكاملة)، وإجابة الطالب. '
+    + 'قيّم الإجابة مقابل المعيار فقط. أعد JSON صالحًا بلا أي نص خارجه وبلا أسوار كود:\n'
+    + '{"score":0,"max":10,"covered":["نقطة من المعيار وردت فعلًا في إجابة الطالب"],"missing":["نقطة من المعيار لم ترد"],"feedback":"ملاحظة قصيرة موجّهة للطالب","review":"عنوان القسم الذي يُنصح بمراجعته أو نص فارغ"}\n'
+    + 'قواعد التصحيح:\n'
+    + '- الدرجة من 10، وتُشتق من نسبة نقاط المعيار التي غطّاها الطالب فعلًا.\n'
+    + '- صحّح المعنى لا الصياغة: إجابة صحيحة بكلمات مختلفة أو بترتيب مختلف تُحتسب كاملة. لا تخصم على الأسلوب أو الإملاء أو الطول.\n'
+    + '- إن كانت الإجابة صحيحة وأضافت معلومة خارج المعيار فلا تخصم عليها.\n'
+    + '- إن كانت الإجابة فارغة أو لا علاقة لها بالسؤال فالدرجة 0 وقل ذلك بلطف.\n'
+    + '- خاطب الطالب مباشرة بصيغة مشجّعة ومحدّدة، لا عبارات عامة مثل "إجابة جيدة".\n'
+    + '- اكتب كل النصوص بلغة إجابة الطالب' + (nativeLang ? ' (لغته: ' + nativeLang + ')' : (lang ? ' (اللغة: ' + lang + ')' : '')) + '.\n'
+    + 'لا تكتب أي شيء خارج كائن JSON.';
+
+  const user = 'السؤال:\n' + String(payload.question || '').slice(0, 4000)
+    + '\n\nمعيار التصحيح (النقاط المطلوبة):\n'
+    + (Array.isArray(payload.rubric) ? payload.rubric : []).map((r, i) => (i + 1) + '. ' + String(r).slice(0, 500)).join('\n')
+    + '\n\nإجابة الطالب:\n"""\n' + String(payload.answer || '').slice(0, 8000) + '\n"""'
+    + (payload.dispute ? '\n\nاعتراض الطالب على تصحيح سابق (أعد التقييم بإنصاف وخذه بجدية):\n' + String(payload.dispute).slice(0, 1500) : '');
+
+  const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: m, max_tokens: 2000, system: sys, messages: [{ role: 'user', content: user }] }),
+  });
+  let res = await doRequest(RESOLVED_MODEL || MODEL);
+  let data = await res.json().catch(() => null);
+  if (!res.ok && res.status === 404 && data && data.error && /model/i.test(JSON.stringify(data.error))) {
+    RESOLVED_MODEL = null; const m = await resolveModel(apiKey); res = await doRequest(m); data = await res.json().catch(() => null);
+  }
+  if (!res.ok) { const msg = (data && data.error && data.error.message) || ('HTTP ' + res.status); const err = new Error(msg); err.status = res.status; throw err; }
+  const text = (data && data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+  return extractJSON(text);
+}
+
 // ---------- 📊 محلّل المصاريف: يقرأ كشف حساب (PDF/صور/نص) ويصنّف المصاريف ----------
 async function callClaudeExpense(apiKey, contentBlocks, lang) {
   const sys = 'أنت محلل مالي شخصي خبير. يُرسل إليك كشف حساب بنكي أو قائمة مصاريف (نص أو PDF أو صور). '
@@ -138,117 +229,6 @@ async function callClaudeExpense(apiKey, contentBlocks, lang) {
   return extractJSON(text);
 }
 
-// ---------- 📄 مساعد المستندات: يلخّص عقد/فاتورة/تقرير/عرض سعر ويستخرج نقاطه ----------
-async function callClaudeDoc(apiKey, contentBlocks, lang) {
-  const sys = 'أنت مساعد قانوني وإداري خبير. يُرسل إليك مستند (عقد، فاتورة، تقرير، عرض سعر، خطاب رسمي...) كنص أو PDF أو صور. '
-    + 'اقرأه بدقة واستخرج جوهره. أعد فقط JSON صالحًا بلا أي نص خارجه وبلا أسوار كود، بهذا الشكل بالضبط:\n'
-    + '{"title":"عنوان قصير يصف المستند","docType":"نوع المستند (عقد/فاتورة/تقرير/عرض سعر/خطاب/أخرى)","summary":"ملخص واضح بصيغة ماركداون (نقاط، **غامق**) يغطي الغرض والأطراف والالتزامات الرئيسية","keypoints":["أهم النقاط والبنود التي يجب الانتباه لها، خصوصًا الغرامات والشروط الجزائية والمواعيد"],"fields":[{"label":"اسم الحقل (مثل: المبلغ الإجمالي، تاريخ الانتهاء، الطرف الأول، رقم الفاتورة)","value":"القيمة كما وردت"}],"docText":"النص الكامل المستخرج من المستند بالكامل (لاستخدامه لاحقًا في الأسئلة)"}\n'
-    + 'القواعد: keypoints بين 3 و8 نقاط. fields أهم 4-10 بيانات ملموسة (مبالغ، تواريخ، أطراف، أرقام مرجعية). '
-    + 'docText = انسخ كل النص المقروء من المستند حرفيًا قدر الإمكان (حتى 20000 حرف). '
-    + 'إن لم تجد قيمة لحقل، لا تخترعها — اتركه. لا تخمّن أرقامًا غير موجودة. '
-    + 'اكتب النصوص '
-    + (lang && /^ar/i.test(lang) ? 'بالعربية.' : ('باللغة: ' + (lang || 'ar') + '.'))
-    + ' لا تكتب أي شيء خارج كائن JSON.';
-  const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: m, max_tokens: 12000, system: sys, messages: [{ role: 'user', content: contentBlocks }] }),
-  });
-  let res = await doRequest(RESOLVED_MODEL || MODEL);
-  let data = await res.json().catch(() => null);
-  if (!res.ok && res.status === 404 && data && data.error && /model/i.test(JSON.stringify(data.error))) {
-    RESOLVED_MODEL = null; const m = await resolveModel(apiKey); res = await doRequest(m); data = await res.json().catch(() => null);
-  }
-  if (!res.ok) { const msg = (data && data.error && data.error.message) || ('HTTP ' + res.status); const err = new Error(msg); err.status = res.status; throw err; }
-  const text = (data && data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
-  return extractJSON(text);
-}
-// ---------- 📄 سؤال متابعة على مستند سبق تحليله (نص فقط — رخيص) ----------
-async function callClaudeDocAsk(apiKey, docText, question, history, lang) {
-  const sys = 'أنت مساعد يجيب على أسئلة المستخدم حول مستند محدّد أُرسل إليك نصه فقط. '
-    + 'اعتمد حصريًا على نص المستند — لا تخترع معلومات غير موجودة فيه. '
-    + 'إذا لم تكن المعلومة في المستند قل بصراحة إنها غير مذكورة. '
-    + 'أجب باختصار وبدقة وبنفس لغة سؤال المستخدم'
-    + (lang && /^ar/i.test(lang) ? ' (العربية افتراضيًا).' : ('. اللغة الافتراضية: ' + (lang || 'ar') + '.'));
-  const msgs = [];
-  if (Array.isArray(history)) history.slice(-6).forEach((h) => { if (h && h.role && h.content) msgs.push({ role: h.role === 'assistant' ? 'assistant' : 'user', content: String(h.content).slice(0, 4000) }); });
-  msgs.push({ role: 'user', content: 'نص المستند:\n"""\n' + String(docText || '').slice(0, 60000) + '\n"""\n\nسؤالي: ' + String(question || '').slice(0, 2000) });
-  const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: m, max_tokens: 2000, system: sys, messages: msgs }),
-  });
-  let res = await doRequest(RESOLVED_MODEL || MODEL);
-  let data = await res.json().catch(() => null);
-  if (!res.ok && res.status === 404) { RESOLVED_MODEL = null; const m = await resolveModel(apiKey); res = await doRequest(m); data = await res.json().catch(() => null); }
-  if (!res.ok) { const msg = (data && data.error && data.error.message) || ('HTTP ' + res.status); const err = new Error(msg); err.status = res.status; throw err; }
-  return (data && data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
-}
-// ---------- 🧾 بحث Tavily مصغّر (للمعاملات الحكومية) ----------
-async function tavilySearchGov(query) {
-  const apiKey = process.env.TAVILY_API_KEY;
-  if (!apiKey) return null;
-  try {
-    const r = await fetch('https://api.tavily.com/search', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ api_key: apiKey, query: query, country: 'united arab emirates', search_depth: 'advanced', include_answer: true, max_results: 6 }),
-    });
-    if (!r.ok) return null;
-    return await r.json();
-  } catch (e) { return null; }
-}
-// ---------- 🧾 مساعد المعاملات الحكومية: خطوات + رسوم + رابط رسمي (ببحث حي) ----------
-async function callClaudeGov(apiKey, query, searchData, lang) {
-  const results = (searchData && Array.isArray(searchData.results) ? searchData.results : [])
-    .map((r, i) => (i + 1) + '. ' + (r.title || '') + '\n   ' + (r.url || '') + '\n   ' + String(r.content || '').slice(0, 500)).join('\n\n');
-  const answer = (searchData && searchData.answer) ? ('ملخص بحث: ' + searchData.answer + '\n\n') : '';
-  const sys = 'أنت مساعد حكومي إماراتي خبير في المعاملات الرسمية (تجديد الإقامة، الرخص التجارية، التأمين، المخالفات، بطاقة الهوية، تأشيرات...). '
-    + 'يُعطى إليك سؤال المستخدم ونتائج بحث حية من مصادر رسمية. '
-    + 'اشرح خطوات إنجاز المعاملة بالترتيب + الرسوم التقريبية (بالدرهم) + الجهة المسؤولة + الرابط الرسمي. '
-    + 'اعتمد على نتائج البحث الحية فقط للرسوم والروابط — ممنوع منعًا باتًا اختراع أي رابط أو رسم من ذاكرتك. '
-    + 'إن لم تجد الرسم في نتائج البحث قل "الرسوم تختلف حسب الحالة — راجع الرابط الرسمي". '
-    + 'اكتب بصيغة ماركداون منظمة (عناوين، خطوات مرقّمة، **غامق** للرسوم). أضف في النهاية سطر تنويه: "⚠️ الرسوم تقريبية وقد تتغير — الرابط الرسمي هو المرجع." '
-    + 'اكتب '
-    + (lang && /^ar/i.test(lang) ? 'بالعربية.' : ('باللغة: ' + (lang || 'ar') + '.'));
-  const userMsg = 'سؤال المستخدم: ' + query + '\n\n' + answer + 'نتائج البحث الحية:\n' + (results || '(لا توجد نتائج — اعتذر واطلب من المستخدم زيارة الموقع الرسمي للجهة)');
-  const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: m, max_tokens: 3000, system: sys, messages: [{ role: 'user', content: userMsg }] }),
-  });
-  let res = await doRequest(RESOLVED_MODEL || MODEL);
-  let data = await res.json().catch(() => null);
-  if (!res.ok && res.status === 404) { RESOLVED_MODEL = null; const m = await resolveModel(apiKey); res = await doRequest(m); data = await res.json().catch(() => null); }
-  if (!res.ok) { const msg = (data && data.error && data.error.message) || ('HTTP ' + res.status); const err = new Error(msg); err.status = res.status; throw err; }
-  const md = (data && data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
-  const sources = (searchData && Array.isArray(searchData.results) ? searchData.results : []).slice(0, 5).map((r) => ({ title: r.title || r.url, url: r.url }));
-  return { answer: md, sources };
-}
-// ---------- 💼 مولّد السيرة الذاتية: CV احترافي + خطاب تقديم (HTML جاهز للطباعة PDF) ----------
-async function callClaudeCV(apiKey, info, lang) {
-  const isAr = !lang || /^ar/i.test(lang);
-  const sys = 'أنت خبير توظيف ومصمم سير ذاتية محترف. تُعطى بيانات المستخدم كـ JSON. '
-    + 'أنشئ سيرة ذاتية احترافية أنيقة + خطاب تقديم قصير. أعد فقط JSON صالحًا بلا نص خارجه وبلا أسوار كود بهذا الشكل:\n'
-    + '{"cvHtml":"مستند HTML كامل ومستقل (inline CSS فقط) للسيرة الذاتية","coverLetter":"نص خطاب تقديم احترافي قصير (ماركداون)"}\n'
-    + 'قواعد تصميم cvHtml: '
-    + 'صفحة A4 نظيفة عصرية، هوامش مريحة، خط واضح (Segoe UI/Arial)، لون تمييز واحد أنيق (كحلي أو أخضر داكن) للعناوين والخط الفاصل. '
-    + 'أقسام: الاسم + المسمى الوظيفي كترويسة، معلومات التواصل، نبذة مختصرة، الخبرات العملية (مع التواريخ والإنجازات)، التعليم، المهارات (وسوم/نقاط)، اللغات. '
-    + 'إذا كانت اللغة عربية استخدم dir="rtl" وحاذِ يمينًا؛ ممنوع letter-spacing على النص العربي. '
-    + 'ممنوع اختراع خبرات أو شهادات غير موجودة في البيانات — استخدم فقط ما زوّدك به المستخدم، ونسّقه بشكل احترافي. '
-    + 'إن نقص قسم فتجاهله بدل اختراعه. اكتب المحتوى '
-    + (isAr ? 'بالعربية.' : ('باللغة: ' + lang + '.'))
-    + ' لا تكتب شيئًا خارج كائن JSON.';
-  const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: m, max_tokens: 8000, system: sys, messages: [{ role: 'user', content: 'بيانات المستخدم:\n' + JSON.stringify(info).slice(0, 12000) + '\n\nأنشئ السيرة الذاتية وخطاب التقديم وأعد JSON فقط.' }] }),
-  });
-  let res = await doRequest(RESOLVED_MODEL || MODEL);
-  let data = await res.json().catch(() => null);
-  if (!res.ok && res.status === 404) { RESOLVED_MODEL = null; const m = await resolveModel(apiKey); res = await doRequest(m); data = await res.json().catch(() => null); }
-  if (!res.ok) { const msg = (data && data.error && data.error.message) || ('HTTP ' + res.status); const err = new Error(msg); err.status = res.status; throw err; }
-  const text = (data && data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
-  return extractJSON(text);
-}
-
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -268,19 +248,22 @@ module.exports = async (req, res) => {
       const apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
 
-      // Guests: cap N process calls per day per IP (owner + registered users pass).
-      if (!username) {
-        const ip = (typeof clientIp === 'function' && clientIp(req)) || 'unknown';
-        const key = 'edu:proc:' + encodeURIComponent(ip) + ':' + todayStr();
-        let count = 0;
-        try { count = await kvIncr(key); if (count === 1) await kvExpire(key, 172800); } catch (e) { count = 0; }
-        if (count > GUEST_PROCESS_PER_DAY) {
-          res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + GUEST_PROCESS_PER_DAY + ' محاضرات). سجّل الدخول أو عد غدًا 🌙' });
+      // Daily cap. Guests are limited by IP, registered users by account, and
+      // only the owner is exempt.
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        const max = username ? USER_PROCESS_PER_DAY : GUEST_PROCESS_PER_DAY;
+        if (await overDailyLimit(subject, 'proc', max)) {
+          res.status(402).json({
+            error: username
+              ? 'وصلت للحد اليومي (' + max + ' محاضرة). عد غدًا 🌙'
+              : 'وصلت للحد اليومي المجاني (' + max + ' محاضرات). سجّل الدخول أو عد غدًا 🌙',
+          });
           return;
         }
       }
 
-      const { fileBase64, mime, text, images, lang } = body;
+      const { fileBase64, mime, text, images, lang, nativeLang, examLang, stage } = body;
       let totalB64 = (fileBase64 || '').length;
       if (Array.isArray(images)) images.forEach((im) => { totalB64 += ((im && im.base64) || '').length; });
       if (totalB64 > MAX_BASE64_CHARS) {
@@ -307,7 +290,7 @@ module.exports = async (req, res) => {
 
       let result = null;
       try {
-        result = await callClaude(apiKey, blocks, lang);
+        result = await callClaude(apiKey, blocks, lang, nativeLang, examLang, stage);
       } catch (e) {
         res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذر تحليل المحاضرة: ' + (e.message || 'خطأ في الخادم') + ' — حاول مرة أخرى.' });
         return;
@@ -384,91 +367,57 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // ---------------- 📄 document assistant (analyze) ----------------
-    if (action === 'docqa') {
+    // ---------------- ✍️ grade a written answer against its rubric ----------------
+    if (action === 'grade') {
       const apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
-      if (!username) {
-        const ip = (typeof clientIp === 'function' && clientIp(req)) || 'unknown';
-        const key = 'doc:proc:' + encodeURIComponent(ip) + ':' + todayStr();
-        let count = 0;
-        try { count = await kvIncr(key); if (count === 1) await kvExpire(key, 172800); } catch (e) { count = 0; }
-        if (count > GUEST_PROCESS_PER_DAY) { res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + GUEST_PROCESS_PER_DAY + ' مستندات). سجّل الدخول أو عد غدًا 🌙' }); return; }
+
+      const { question, rubric, answer, dispute, lang, nativeLang } = body;
+      if (!question || !Array.isArray(rubric) || !rubric.length) {
+        res.status(400).json({ error: 'ناقص السؤال أو معيار التصحيح.' });
+        return;
       }
-      const { fileBase64, mime, text, images, lang } = body;
-      let totalB64 = (fileBase64 || '').length;
-      if (Array.isArray(images)) images.forEach((im) => { totalB64 += ((im && im.base64) || '').length; });
-      if (totalB64 > MAX_BASE64_CHARS) { res.status(413).json({ error: 'حجم الملف كبير جدًا (الحد الأقصى ~10 ميغابايت). جرّب ملفًا أصغر.' }); return; }
-      const blocks = [];
-      if (fileBase64 && /pdf/i.test(mime || '')) blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: fileBase64 } });
-      else if (fileBase64 && /^image\//i.test(mime || '')) blocks.push({ type: 'image', source: { type: 'base64', media_type: mime, data: fileBase64 } });
-      if (Array.isArray(images)) images.slice(0, 10).forEach((im) => { if (im && im.base64) blocks.push({ type: 'image', source: { type: 'base64', media_type: im.mime || 'image/jpeg', data: im.base64 } }); });
-      if (text && String(text).trim()) blocks.push({ type: 'text', text: 'محتوى المستند:\n\n' + String(text).slice(0, 200000) });
-      if (!blocks.length) { res.status(400).json({ error: 'لا يوجد مستند للتحليل — ارفع ملفًا أو الصق نصًا.' }); return; }
-      blocks.push({ type: 'text', text: 'حلّل هذا المستند وأعد JSON فقط بالصيغة المطلوبة.' });
+      if (typeof answer !== 'string' || !answer.trim()) {
+        res.status(400).json({ error: 'اكتب إجابتك أولًا.' });
+        return;
+      }
+
+      // Grading is cheap per call but trivially loopable — cap it like process.
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        const cap = username ? USER_GRADE_PER_DAY : 10;
+        if (await overDailyLimit(subject, 'grade', cap)) {
+          res.status(402).json({ error: 'وصلت للحد اليومي للتصحيح (' + cap + '). عد غدًا 🌙' });
+          return;
+        }
+      }
+
       let result = null;
-      try { result = await callClaudeDoc(apiKey, blocks, lang); }
-      catch (e) { res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذر تحليل المستند: ' + (e.message || 'خطأ') + ' — حاول مرة أخرى.' }); return; }
-      if (!result || !result.summary) { res.status(502).json({ error: 'تعذر فهم رد الذكاء الاصطناعي — حاول مرة أخرى.' }); return; }
-      result.keypoints = Array.isArray(result.keypoints) ? result.keypoints.filter((k) => k && String(k).trim()) : [];
-      result.fields = Array.isArray(result.fields) ? result.fields.filter((f) => f && f.label && f.value) : [];
-      res.status(200).json({ ok: true, doc: result, guest: !username });
-      return;
-    }
-
-    // ---------------- 📄 document assistant (follow-up question) ----------------
-    if (action === 'docask') {
-      const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
-      const { docText, question, history, lang } = body;
-      if (!docText || !question) { res.status(400).json({ error: 'ناقص نص المستند أو السؤال.' }); return; }
-      let answer = '';
-      try { answer = await callClaudeDocAsk(apiKey, docText, question, history, lang); }
-      catch (e) { res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذر الرد: ' + (e.message || 'خطأ') + ' — حاول مرة أخرى.' }); return; }
-      res.status(200).json({ ok: true, answer: answer || 'لم أجد إجابة في المستند.' });
-      return;
-    }
-
-    // ---------------- 🧾 government transactions assistant ----------------
-    if (action === 'gov') {
-      const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
-      if (!username) {
-        const ip = (typeof clientIp === 'function' && clientIp(req)) || 'unknown';
-        const key = 'gov:proc:' + encodeURIComponent(ip) + ':' + todayStr();
-        let count = 0;
-        try { count = await kvIncr(key); if (count === 1) await kvExpire(key, 172800); } catch (e) { count = 0; }
-        if (count > GUEST_PROCESS_PER_DAY) { res.status(402).json({ error: 'وصلت للحد اليومي المجاني. سجّل الدخول أو عد غدًا 🌙' }); return; }
+      try {
+        result = await callClaudeGrade(apiKey, { question, rubric, answer, dispute }, lang, nativeLang);
+      } catch (e) {
+        res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذّر التصحيح: ' + (e.message || 'خطأ') + ' — حاول مرة أخرى.' });
+        return;
       }
-      const { query, lang } = body;
-      if (!query || !String(query).trim()) { res.status(400).json({ error: 'اكتب سؤالك عن المعاملة.' }); return; }
-      const q = String(query).trim().slice(0, 300);
-      const searchData = await tavilySearchGov(q + ' الإمارات معاملة حكومية رسوم خطوات الموقع الرسمي');
-      let out = null;
-      try { out = await callClaudeGov(apiKey, q, searchData, lang); }
-      catch (e) { res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذر الرد: ' + (e.message || 'خطأ') + ' — حاول مرة أخرى.' }); return; }
-      res.status(200).json({ ok: true, answer: out.answer, sources: out.sources, guest: !username });
-      return;
-    }
-
-    // ---------------- 💼 CV generator ----------------
-    if (action === 'cv') {
-      const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
-      if (!username) {
-        const ip = (typeof clientIp === 'function' && clientIp(req)) || 'unknown';
-        const key = 'cv:proc:' + encodeURIComponent(ip) + ':' + todayStr();
-        let count = 0;
-        try { count = await kvIncr(key); if (count === 1) await kvExpire(key, 172800); } catch (e) { count = 0; }
-        if (count > GUEST_PROCESS_PER_DAY) { res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + GUEST_PROCESS_PER_DAY + ' سير ذاتية). سجّل الدخول أو عد غدًا 🌙' }); return; }
+      if (!result || typeof result.score !== 'number') {
+        res.status(502).json({ error: 'تعذّر قراءة نتيجة التصحيح. حاول مرة أخرى.' });
+        return;
       }
-      const { info, lang } = body;
-      if (!info || typeof info !== 'object' || !(info.name || info.fullName)) { res.status(400).json({ error: 'عبّئ بياناتك أولًا (الاسم على الأقل).' }); return; }
-      let result = null;
-      try { result = await callClaudeCV(apiKey, info, lang); }
-      catch (e) { res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذر إنشاء السيرة: ' + (e.message || 'خطأ') + ' — حاول مرة أخرى.' }); return; }
-      if (!result || !result.cvHtml) { res.status(502).json({ error: 'تعذر إنشاء السيرة — حاول مرة أخرى.' }); return; }
-      res.status(200).json({ ok: true, cvHtml: result.cvHtml, coverLetter: result.coverLetter || '', guest: !username });
+
+      const MAXG = 10;
+      res.status(200).json({
+        ok: true,
+        grade: {
+          score: Math.max(0, Math.min(MAXG, Math.round(result.score))),
+          max: MAXG,
+          covered: Array.isArray(result.covered) ? result.covered.slice(0, 8) : [],
+          missing: Array.isArray(result.missing) ? result.missing.slice(0, 8) : [],
+          feedback: String(result.feedback || '').slice(0, 1200),
+          review: String(result.review || '').slice(0, 200),
+          // Echoed back so the student can see what they were judged against.
+          rubric: rubric.slice(0, 8),
+        },
+      });
       return;
     }
 
@@ -489,9 +438,13 @@ module.exports = async (req, res) => {
           title: String(l.title).slice(0, 160),
           summary: String(l.summary).slice(0, 60000),
           flashcards: Array.isArray(l.flashcards) ? l.flashcards.slice(0, 30) : [],
-          quiz: Array.isArray(l.quiz) ? l.quiz.slice(0, 20) : [],
+          quiz: Array.isArray(l.quiz) ? l.quiz.slice(0, 24) : [],
+          written: Array.isArray(l.written) ? l.written.slice(0, 6) : [],
           createdAt: l.createdAt || Date.now(),
           bestScore: typeof l.bestScore === 'number' ? l.bestScore : null,
+          // One number hides the thing that matters: a student can score 70%
+          // overall while understanding none of the "why". Kept per level.
+          scores: l.scores && typeof l.scores === 'object' ? l.scores : {},
           cardsKnown: typeof l.cardsKnown === 'number' ? l.cardsKnown : 0,
         };
         lessons = lessons.filter((x) => x.id !== lesson.id);
@@ -541,6 +494,17 @@ module.exports = async (req, res) => {
         }
         if (typeof body.cardsKnown === 'number') {
           found.cardsKnown = Math.max(0, Math.min(999, Math.round(body.cardsKnown)));
+        }
+        if (body.scores && typeof body.scores === 'object') {
+          // Best-ever per level, so one bad night never erases real progress.
+          found.scores = found.scores && typeof found.scores === 'object' ? found.scores : {};
+          for (const lvl of ['basic', 'mid', 'advanced']) {
+            const v = body.scores[lvl];
+            if (typeof v === 'number' && Number.isFinite(v)) {
+              const pct = Math.max(0, Math.min(100, Math.round(v)));
+              found.scores[lvl] = Math.max(found.scores[lvl] || 0, pct);
+            }
+          }
         }
         await kvPutJSON(key, lessons);
         // streak on any activity

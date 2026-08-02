@@ -2506,7 +2506,7 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
 })();
 </script>
 <script src="/templates-data.js"></script>
-    <script src="/js/app.bundle.js?v=387"></script>
+    <script src="/js/app.bundle.js?v=388"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <style id="eduHubStyle">
 #eduHubModal{position:fixed;inset:0;z-index:10050;display:none;background:rgba(8,6,18,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
@@ -2745,6 +2745,7 @@ function showHome(){
    +'<textarea id="eduPasteTxt" placeholder="'+esc(T('pastePh'))+'"></textarea>'
    +'<button class="eduPrimary" id="eduAnalyzeTxtBtn">'+esc(T('analyze'))+'</button></div>'
    +(getToken()?'':'<div class="eduNote">'+esc(T('guestNote'))+'</div>')
+   +eduExamLangControl()
    +'<div class="eduSecTitle">'+esc(T('mySubjects'))+'</div>'
    +'<div id="eduSubjWrap"><div class="eduEmpty">…</div></div>'
    /* v306: entry to the OLD education modal so nothing old is lost */
@@ -2866,25 +2867,113 @@ function renderCards(pane,lesson){
 }
 /* ---------- quiz ---------- */
 function renderQuiz(pane,lesson){
-  var qs=lesson.quiz||[]; var i=0,score=0;
-  if(!qs.length){ pane.innerHTML='<div class="eduEmpty">—</div>'; return; }
-  function draw(){
-    if(i>=qs.length){
-      var pct=Math.round(score/qs.length*100);
-      var msg=pct>=85?T('great'):(pct>=60?T('good'):T('keepGoing'));
-      pane.innerHTML='<div class="eduCenter"><div style="font-size:13px;opacity:.7;">'+esc(T('yourScore'))+'</div>'
-        +'<div class="eduScoreBig">'+pct+'%</div><p style="font-size:14px;">'+esc(msg)+'</p>'
-        +'<button class="eduPrimary" id="eduRetry">'+esc(T('retry'))+'</button></div>';
-      document.getElementById('eduRetry').onclick=function(){ i=0;score=0;draw(); };
-      saveProgress(lesson.id,{bestScore:pct});
-      return;
+  var all=(lesson.quiz||[]).slice();
+  var written=(lesson.written||[]).slice();
+  if(!all.length){ pane.innerHTML='<div class="eduEmpty">—</div>'; return; }
+
+  var LEVELS=['basic','mid','advanced'];
+  var LABEL={basic:T2('أساسي','Basic'),mid:T2('متوسط','Intermediate'),advanced:T2('متقدّم','Advanced')};
+  function T2(ar,en){ return (typeof AL==='function'&&AL()==='en')?en:ar; }
+
+  /* Legacy lessons saved before levels existed carry no `level` — treat the
+     whole set as one "mid" pool so old lessons still work unchanged. */
+  var byLevel={basic:[],mid:[],advanced:[]};
+  var tagged=false;
+  all.forEach(function(q){
+    var lv=(q.level||'').toLowerCase();
+    if(LEVELS.indexOf(lv)>-1){ byLevel[lv].push(q); tagged=true; }
+    else byLevel.mid.push(q);
+  });
+
+  var ROUND=5;
+  var level=tagged?'mid':'mid';           /* start mid: never insult, never crush */
+  var used={basic:0,mid:0,advanced:0};
+  var stats={basic:{right:0,total:0},mid:{right:0,total:0},advanced:{right:0,total:0}};
+  var round=[], i=0, roundRight=0;
+
+  function nextRound(){
+    var pool=byLevel[level].slice(used[level]);
+    if(!pool.length){
+      /* level exhausted — slide to any level that still has questions */
+      var alt=LEVELS.filter(function(l){ return byLevel[l].length>used[l]; });
+      if(!alt.length){ finish(); return false; }
+      level=alt[alt.length-1];
+      pool=byLevel[level].slice(used[level]);
     }
-    var q=qs[i];
-    var html='<div style="font-size:12px;opacity:.65;margin-bottom:8px;">'+(i+1)+' / '+qs.length+'</div>'
+    round=pool.slice(0,ROUND);
+    used[level]+=round.length;
+    i=0; roundRight=0;
+    return true;
+  }
+
+  function pct(o){ return o.total?Math.round(o.right/o.total*100):null; }
+
+  function finish(){
+    var s3={};
+    LEVELS.forEach(function(l){ var v=pct(stats[l]); if(v!==null) s3[l]=v; });
+    var done=LEVELS.filter(function(l){ return stats[l].total; });
+    var overallR=0,overallT=0;
+    done.forEach(function(l){ overallR+=stats[l].right; overallT+=stats[l].total; });
+    var overall=overallT?Math.round(overallR/overallT*100):0;
+
+    var html='<div class="eduCenter"><div style="font-size:13px;opacity:.7;">'+esc(T('yourScore'))+'</div>'
+      +'<div class="eduScoreBig">'+overall+'%</div>'
+      +'<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:14px 0 4px;">';
+    LEVELS.forEach(function(l){
+      var v=s3[l];
+      if(v===undefined) return;
+      var col=v>=80?'#2e9e6b':(v>=50?'#c98a10':'#c0453f');
+      html+='<div style="min-width:96px;padding:10px 12px;border-radius:12px;background:rgba(127,127,127,.10);">'
+        +'<div style="font-size:11px;opacity:.75;margin-bottom:4px;">'+esc(LABEL[l])+'</div>'
+        +'<div style="font-size:19px;font-weight:700;color:'+col+';">'+v+'%</div></div>';
+    });
+    html+='</div>';
+
+    /* The weakest level is the actual advice — say it plainly. */
+    var weak=null;
+    done.forEach(function(l){ if(weak===null||s3[l]<s3[weak]) weak=l; });
+    if(weak!==null&&s3[weak]<70){
+      html+='<p style="font-size:14px;line-height:1.8;max-width:340px;margin:6px auto 0;">'
+        +esc(T2('ركّز مراجعتك على مستوى ','Focus your review on the '))
+        +'<b>'+esc(LABEL[weak])+'</b>'
+        +esc(T2('.','level.'))+'</p>';
+    }
+    html+='<div style="margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">'
+      +'<button class="eduPrimary" id="eduRetry">'+esc(T('retry'))+'</button>';
+    if(written.length) html+='<button class="eduPrimary" id="eduWritten" style="background:transparent;border:1px solid currentColor;">'+esc(T2('أسئلة مقالية ✍️','Written questions ✍️'))+'</button>';
+    html+='</div></div>';
+    pane.innerHTML=html;
+
+    document.getElementById('eduRetry').onclick=function(){
+      used={basic:0,mid:0,advanced:0};
+      stats={basic:{right:0,total:0},mid:{right:0,total:0},advanced:{right:0,total:0}};
+      level='mid'; if(nextRound()) draw();
+    };
+    var wb=document.getElementById('eduWritten');
+    if(wb) wb.onclick=function(){ renderWritten(pane,lesson,written); };
+
+    saveProgress(lesson.id,{bestScore:overall,scores:s3});
+  }
+
+  function draw(){
+    if(i>=round.length){
+      /* 4+/5 → step up, <3/5 → step down. Otherwise stay. */
+      var idx=LEVELS.indexOf(level);
+      if(roundRight>=4&&idx<2) level=LEVELS[idx+1];
+      else if(roundRight<3&&idx>0) level=LEVELS[idx-1];
+      var remaining=LEVELS.some(function(l){ return byLevel[l].length>used[l]; });
+      if(!remaining||stats.basic.total+stats.mid.total+stats.advanced.total>=15){ finish(); return; }
+      if(!nextRound()) return;
+    }
+    var q=round[i];
+    var html='<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;opacity:.7;margin-bottom:8px;">'
+      +'<span>'+(i+1)+' / '+round.length+'</span>'
+      +'<span style="padding:3px 9px;border-radius:20px;background:rgba(127,127,127,.14);">'+esc(LABEL[level])+'</span></div>'
       +'<div style="font-size:15px;font-weight:700;margin-bottom:14px;line-height:1.7;">'+esc(q.q)+'</div>';
     (q.options||[]).forEach(function(o,idx){ html+='<button class="eduQOpt" data-idx="'+idx+'">'+esc(o)+'</button>'; });
-    html+='<div id="eduExpl"></div><div style="text-align:center;margin-top:14px;"><button class="eduPrimary" id="eduNextQ" style="display:none;">'+esc(i===qs.length-1?T('finish'):T('next'))+'</button></div>';
+    html+='<div id="eduExpl"></div><div style="text-align:center;margin-top:14px;"><button class="eduPrimary" id="eduNextQ" style="display:none;">'+esc(T('next'))+'</button></div>';
     pane.innerHTML=html;
+
     var answered=false;
     pane.querySelectorAll('.eduQOpt').forEach(function(btn){
       btn.onclick=function(){
@@ -2895,20 +2984,128 @@ function renderQuiz(pane,lesson){
           else if(bi===idx) b.classList.add('wrong');
           b.style.cursor='default';
         });
-        if(idx===q.correct) score++;
-        if(q.explain) document.getElementById('eduExpl').innerHTML='<div class="eduExplain">💡 '+esc(q.explain)+'</div>';
+        var ok=(idx===q.correct);
+        if(ok){ roundRight++; stats[level].right++; }
+        stats[level].total++;
+        var ex='';
+        if(q.explain) ex+='💡 '+esc(q.explain);
+        /* Wrong answer points back into the summary, not just "incorrect". */
+        if(!ok&&q.section) ex+=(ex?'<br>':'')+'📌 '+esc(T2('راجع: ','Review: '))+'<b>'+esc(q.section)+'</b>';
+        if(ex) document.getElementById('eduExpl').innerHTML='<div class="eduExplain">'+ex+'</div>';
         document.getElementById('eduNextQ').style.display='';
       };
     });
     document.getElementById('eduNextQ').onclick=function(){ i++; draw(); };
   }
+
+  if(nextRound()) draw();
+}
+
+/* ---------- written questions graded by the model against a rubric ---------- */
+function renderWritten(pane,lesson,written){
+  var i=0;
+  function draw(){
+    if(i>=written.length){
+      pane.innerHTML='<div class="eduCenter"><div style="font-size:34px;margin-bottom:10px;">✍️</div>'
+        +'<p style="font-size:15px;">'+esc(TW('أنهيت الأسئلة المقالية.','You finished the written questions.'))+'</p>'
+        +'<button class="eduPrimary" id="eduBackQuiz">'+esc(TW('رجوع','Back'))+'</button></div>';
+      document.getElementById('eduBackQuiz').onclick=function(){ renderQuiz(pane,lesson); };
+      return;
+    }
+    var w=written[i];
+    pane.innerHTML='<div style="font-size:12px;opacity:.7;margin-bottom:8px;">'+(i+1)+' / '+written.length+' · ✍️</div>'
+      +'<div style="font-size:15px;font-weight:700;margin-bottom:12px;line-height:1.7;">'+esc(w.q)+'</div>'
+      +'<textarea id="eduAns" rows="6" placeholder="'+esc(TW('اكتب إجابتك هنا…','Write your answer here…'))+'" '
+      +'style="width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid rgba(127,127,127,.35);background:transparent;color:inherit;font:inherit;line-height:1.8;resize:vertical;"></textarea>'
+      +'<div style="text-align:center;margin-top:12px;"><button class="eduPrimary" id="eduGrade">'+esc(TW('صحّح إجابتي','Grade my answer'))+'</button></div>'
+      +'<div id="eduGradeOut"></div>';
+    document.getElementById('eduGrade').onclick=function(){ grade(w,document.getElementById('eduAns').value,null); };
+  }
+
+  function TW(ar,en){ return (typeof AL==='function'&&AL()==='en')?en:ar; }
+
+  function grade(w,answer,dispute){
+    var out=document.getElementById('eduGradeOut');
+    var btn=document.getElementById('eduGrade');
+    if(!answer||!answer.trim()){ out.innerHTML='<div class="eduExplain">'+esc(TW('اكتب إجابتك أولًا.','Write your answer first.'))+'</div>'; return; }
+    if(btn){ btn.disabled=true; btn.textContent=TW('جارٍ التصحيح…','Grading…'); }
+    api({action:'grade',question:w.q,rubric:w.rubric||[],answer:answer,dispute:dispute||undefined})
+      .then(function(j){
+        var g=j.grade||{};
+        var col=g.score>=8?'#2e9e6b':(g.score>=5?'#c98a10':'#c0453f');
+        var html='<div style="margin-top:16px;padding:14px;border-radius:12px;background:rgba(127,127,127,.10);">'
+          +'<div style="font-size:22px;font-weight:700;color:'+col+';margin-bottom:10px;">'+g.score+' / '+g.max+'</div>';
+        if((g.covered||[]).length){
+          html+='<div style="font-size:13px;line-height:1.9;margin-bottom:8px;"><b>✅ '+esc(TW('أصبتَ في:','You covered:'))+'</b><ul style="margin:4px 0 0;padding-inline-start:20px;">';
+          g.covered.forEach(function(c){ html+='<li>'+esc(c)+'</li>'; }); html+='</ul></div>';
+        }
+        if((g.missing||[]).length){
+          html+='<div style="font-size:13px;line-height:1.9;margin-bottom:8px;"><b>⚠️ '+esc(TW('نقصك:','You missed:'))+'</b><ul style="margin:4px 0 0;padding-inline-start:20px;">';
+          g.missing.forEach(function(c){ html+='<li>'+esc(c)+'</li>'; }); html+='</ul></div>';
+        }
+        if(g.feedback) html+='<p style="font-size:14px;line-height:1.8;margin:8px 0 0;">'+esc(g.feedback)+'</p>';
+        if(g.review) html+='<p style="font-size:13px;opacity:.8;margin:8px 0 0;">📌 '+esc(TW('راجع: ','Review: '))+'<b>'+esc(g.review)+'</b></p>';
+        /* The model is not infallible — always show the rubric it judged
+           against, and let the student contest the result. */
+        if((g.rubric||[]).length){
+          html+='<details style="margin-top:10px;"><summary style="font-size:12px;opacity:.75;cursor:pointer;">'+esc(TW('على أي أساس صُحِّحت إجابتي؟','What was I graded against?'))+'</summary>'
+            +'<ul style="font-size:12px;line-height:1.9;margin:6px 0 0;padding-inline-start:20px;opacity:.85;">';
+          g.rubric.forEach(function(r){ html+='<li>'+esc(r)+'</li>'; });
+          html+='</ul></details>';
+        }
+        html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">'
+          +'<button class="eduPrimary" id="eduNextW">'+esc(i===written.length-1?TW('إنهاء','Finish'):TW('التالي','Next'))+'</button>'
+          +'<button class="eduPrimary" id="eduDispute" style="background:transparent;border:1px solid currentColor;">'+esc(TW('راجع تصحيحي','Contest this'))+'</button>'
+          +'</div><p style="font-size:11px;opacity:.6;margin:10px 0 0;">'+esc(TW('هذا تقدير للمذاكرة، وليس درجة رسمية.','This is a study estimate, not an official grade.'))+'</p></div>';
+        out.innerHTML=html;
+        if(btn){ btn.disabled=false; btn.textContent=TW('صحّح إجابتي','Grade my answer'); }
+        document.getElementById('eduNextW').onclick=function(){ i++; draw(); };
+        document.getElementById('eduDispute').onclick=function(){
+          var why=prompt(TW('لماذا ترى أن التصحيح غير منصف؟','Why do you think the grading was unfair?'));
+          if(why&&why.trim()) grade(w,document.getElementById('eduAns').value,why.trim());
+        };
+      })
+      .catch(function(e){
+        out.innerHTML='<div class="eduExplain">'+esc(e.message||TW('تعذّر التصحيح.','Grading failed.'))+'</div>';
+        if(btn){ btn.disabled=false; btn.textContent=TW('صحّح إجابتي','Grade my answer'); }
+      });
+  }
   draw();
 }
 /* ---------- processing (upload / paste) ---------- */
 function showBusy(){ setBack(false); body.innerHTML='<div class="eduBusyBox"><div class="eduSpin"></div><div style="font-size:14px;">'+esc(T('analyzing'))+'</div></div>'; }
+/* Language bridge: the student may study in one language and be examined in
+   another. Native language follows the app UI; exam language is chosen once
+   and remembered. Empty exam language = same as native, i.e. bridge off. */
+/* One-line control: "I study in X but my exam is in Y". Off by default —
+   only students who actually need the bridge ever see a difference. */
+var EDU_EXAM_LANGS=[['','—'],['ar','العربية'],['en','English'],['fr','Français'],['hi','हिन्दी'],['ur','اردو'],['ml','മലയാളം'],['bn','বাংলা'],['id','Bahasa'],['tr','Türkçe'],['es','Español'],['zh','中文'],['ru','Русский']];
+function eduExamLangControl(){
+  var cur=eduExamLang();
+  var isEn=(typeof AL==='function'&&AL()==='en');
+  var label=isEn?'My exam language':'لغة امتحاني';
+  var hint=isEn?'Explanations stay in your language; terms follow the exam.':'الشرح بلغتك، والمصطلحات بلغة الامتحان.';
+  var h='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0 2px;font-size:13px;">'
+    +'<span style="opacity:.85;">'+esc(label)+'</span>'
+    +'<select id="eduExamLangSel" style="padding:7px 10px;border-radius:9px;border:1px solid rgba(127,127,127,.35);background:transparent;color:inherit;font:inherit;font-size:13px;">';
+  EDU_EXAM_LANGS.forEach(function(o){
+    h+='<option value="'+esc(o[0])+'"'+(o[0]===cur?' selected':'')+'>'+esc(o[1])+'</option>';
+  });
+  h+='</select></div><div style="font-size:11.5px;opacity:.6;line-height:1.7;margin-bottom:4px;">'+esc(hint)+'</div>';
+  return h;
+}
+function bindEduExamLang(){
+  var el=document.getElementById('eduExamLangSel');
+  if(el) el.onchange=function(){ setEduExamLang(el.value); };
+}
+
+function eduNativeLang(){ try{ return AL()||'ar'; }catch(e){ return 'ar'; } }
+function eduExamLang(){ try{ return localStorage.getItem('edu_exam_lang')||''; }catch(e){ return ''; } }
+function setEduExamLang(v){ try{ if(v) localStorage.setItem('edu_exam_lang',v); else localStorage.removeItem('edu_exam_lang'); }catch(e){} }
+
 function processContent(payload){
   showBusy();
-  api(Object.assign({action:'process'},payload)).then(function(j){
+  api(Object.assign({action:'process',nativeLang:eduNativeLang(),examLang:eduExamLang()},payload)).then(function(j){
     var L=j.lesson||{};
     return listLessons().then(function(r){
       var subs=[]; (r.lessons||[]).forEach(function(x){ if(subs.indexOf(x.subject||'—')<0) subs.push(x.subject||'—'); });
@@ -2918,7 +3115,8 @@ function processContent(payload){
         subject:subj,
         color:(subs.indexOf(subj)>=0?subs.indexOf(subj):subs.length)%PALETTE.length,
         title:L.title||subj, summary:L.summary||'', flashcards:L.flashcards||[], quiz:L.quiz||[],
-        createdAt:Date.now(), bestScore:null, cardsKnown:0
+        written:L.written||[],
+        createdAt:Date.now(), bestScore:null, scores:{}, cardsKnown:0
       };
       return persistLesson(lesson).then(function(){ showLesson(lesson,showHome); });
     });
