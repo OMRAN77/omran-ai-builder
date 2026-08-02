@@ -99,7 +99,7 @@ module.exports = async (req, res) => {
         'Take this exact photo and redraw it as the SAME simple animated-avatar illustration style as before, same person, same outfit, same background, but this time with their eyes gently closed (mid-blink) and the head tilted very slightly. Keep facial identity recognizable. Output a single square-ish portrait image only.',
         'Take this exact photo and redraw it as the SAME simple animated-avatar illustration style as before, same person, same outfit, same background, but this time with a bigger warm open smile and eyes open. Keep facial identity recognizable. Output a single square-ish portrait image only.',
       ];
-      const endpointGif = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=' + apiKey;
+      const endpointGif = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
       const frames = [];
       for (let i = 0; i < FRAME_PROMPTS.length; i++) {
         const frameReqBody = {
@@ -111,6 +111,7 @@ module.exports = async (req, res) => {
               ],
             },
           ],
+          generationConfig: { imageConfig: { imageSize: '2K' } },
         };
         const frameUpstream = await fetch(endpointGif, {
           method: 'POST',
@@ -232,7 +233,7 @@ module.exports = async (req, res) => {
         'entire image (face, clothes, and background) in the requested art style. Output a single image only.';
     }
 
-    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=' + apiKey;
+    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
     const genParts = [
       { text: promptText },
       { inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } },
@@ -249,6 +250,7 @@ module.exports = async (req, res) => {
           parts: genParts,
         },
       ],
+      generationConfig: { imageConfig: { imageSize: '2K' } },
     };
 
     const upstream = await fetch(endpoint, {
