@@ -1637,6 +1637,13 @@ async function callAIWithFallback(messages, onDelta, preferredList){
   let errSwitched = false; // التبديل بسبب عطل/ضغط فقط هو اللي يظهر للمستخدم
   for(const providerKey of order){
     try{
+      // Shown for every provider — the silent spinner was the reason Gemini
+      // and GPT felt "dead" next to Claude, which had its own thinking output.
+      try{
+        if(window.__chatStatus && !window.__chatStatus.isReleased()){
+          window.__chatStatus.phase('💭', (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey) + ' يكتب…');
+        }
+      }catch(e){ console.warn('[status] provider phase failed', e); }
       const reply = await callProviderAI(providerKey, messages, onDelta);
       // 🛡️ v309: رد فارغ = فشل → جرّب المزود التالي (يمنع الفقاعة الخفية)
       if(!String(reply || '').trim()){ lastErr = new Error(t('providerError')); continue; }

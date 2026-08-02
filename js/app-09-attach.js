@@ -1,3 +1,12 @@
+/* Global shim so the dozen per-feature status writes scattered through the
+   send flow can feed the same bar instead of wiping it with textContent=.
+   Falls back to the old behaviour when no bar exists. */
+function chatPhase(icon, text, el){
+  const st = window.__chatStatus;
+  if(st && !st.isReleased()){ st.phase(icon, text); return; }
+  if(el) el.textContent = (icon ? icon + ' ' : '') + text;
+}
+
 /* ───────── شريط الحالة: ماذا يفعل الذكاء الاصطناعي الآن ─────────
    Steps ACCUMULATE instead of overwriting each other.
    Rule: only report what actually happened. */
@@ -33,8 +42,24 @@ function makeChatStatus(el){
         fail: function(note){ s.state = 'fail'; if(note) s.text = text + ' — ' + note; render(); },
       };
     },
+    /* A named phase. Calling it again with the same icon UPDATES the current
+       line instead of adding a new one — video/image polling ticks every few
+       seconds and would otherwise flood the bar with identical rows. */
+    phase: function(icon, text){
+      const last = steps[steps.length - 1];
+      if(last && last.state === 'run' && last.icon === icon){ last.text = text; render(); return; }
+      if(last && last.state === 'run') last.state = 'done';
+      steps.push({ icon: icon, text: text, state: 'run' });
+      render();
+    },
     note: function(icon, text){ steps.push({ icon: icon, text: text, state: 'note' }); render(); },
-    release: function(){ finished = true; },
+    release: function(){
+      const last = steps[steps.length - 1];
+      if(last && last.state === 'run') last.state = 'done';
+      finished = true;
+      render();
+    },
+    isReleased: function(){ return finished; },
     isEmpty: function(){ return steps.length === 0; },
   };
 }
