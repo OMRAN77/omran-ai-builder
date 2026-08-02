@@ -313,7 +313,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   const groups = [
     { title: null, ids: ['btnSettings','btnAuthToggle','btnToggleHistory'] },
     { title: 'grpCreate', ids: ['btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnExplore'] },
-    { title: 'grpSections', ids: ['btnStocks','btnConstruction','btnOmranEdu','btnExpense','btnDocs','btnGov','btnCV','btnReligion','btnEmailAssist'] },
+    { title: 'grpSections', ids: ['btnStocks','btnOmranEdu','btnExpense','btnReligion','btnEmailAssist'] },
     { title: 'grpTools', ids: ['btnTemplates','btnAgentMode','btnInstall','btnShareApp'] }
   ];
   groups.forEach(g => {

@@ -3138,7 +3138,6 @@ const QUICK_SUGGESTIONS = [
   {icon:'📷', ar:'معرض صور', en:'Photo gallery', fr:'Galerie photo', hi:'फ़ोटो गैलरी', ur:'فوٹو گیلری', bn:'ফটো গ্যালারি', ne:'फोटो ग्यालेरी', prompt:{ar:'أنشئ لي معرض صور تفاعلي بتأثيرات جميلة', en:'Build an interactive photo gallery with nice effects', fr:'Crée-moi une galerie photo interactive avec de beaux effets', hi:'मेरे लिए अच्छे इफेक्ट्स के साथ एक इंटरैक्टिव फ़ोटो गैलरी बनाएं', ur:'میرے لیے اچھے اثرات کے ساتھ ایک انٹرایکٹو فوٹو گیلری بنائیں', bn:'আমার জন্য সুন্দর প্রভাব সহ একটি ইন্টারেক্টিভ ফটো গ্যালারি তৈরি করুন', ne:'मेरो लागि राम्रो प्रभावसहितको इन्टरएक्टिभ फोटो ग्यालेरी बनाउनुहोस्'}},
   {icon:'🧠', ar:'اختبار ذكاء', en:'Quiz app', fr:'App de quiz', hi:'क्विज़ ऐप', ur:'کوئز ایپ', bn:'কুইজ অ্যাপ', ne:'क्विज एप', prompt:{ar:'أنشئ لي تطبيق اختبار أسئلة وأجوبة تفاعلي', en:'Build an interactive quiz app', fr:'Crée-moi une application de quiz interactive', hi:'मेरे लिए एक इंटरैक्टिव क्विज़ ऐप बनाएं', ur:'میرے لیے ایک انٹرایکٹو کوئز ایپ بنائیں', bn:'আমার জন্য একটি ইন্টারেক্টিভ কুইজ অ্যাপ তৈরি করুন', ne:'मेरो लागि इन्टरएक्टिभ क्विज एप बनाउनुहोस्'}},
   {icon:'🍳', ar:'كتاب وصفات', en:'Recipe book', fr:'Livre de recettes', hi:'रेसिपी बुक', ur:'ریسپی بک', bn:'রেসিপি বই', ne:'रेसिपी बुक', prompt:{ar:'أنشئ لي موقع كتاب وصفات طبخ', en:'Build a recipe book website', fr:'Crée-moi un site de livre de recettes', hi:'मेरे लिए एक रेसिपी बुक वेबसाइट बनाएं', ur:'میرے لیے ایک ریسپی بک ویب سائٹ بنائیں', bn:'আমার জন্য একটি রেসিপি বই ওয়েবসাইট তৈরি করুন', ne:'मेरो लागि रेसिपी बुक वेबसाइट बनाउनुहोस्'}},
-  {icon:'📄', ar:'سيرة ذاتية', en:'Resume', fr:'CV', hi:'रिज़्यूमे', ur:'ریزیومے', bn:'জীবনবৃত্তান্ত', ne:'बायोडाटा', prompt:{ar:'أنشئ لي صفحة سيرة ذاتية احترافية', en:'Build a professional resume page', fr:'Crée-moi une page de CV professionnelle', hi:'मेरे लिए एक पेशेवर रिज़्यूमे पेज बनाएं', ur:'میرے لیے ایک پیشہ ورانہ ریزیومے صفحہ بنائیں', bn:'আমার জন্য একটি পেশাদার জীবনবৃত্তান্ত পেজ তৈরি করুন', ne:'मेरो लागि व्यावसायिक बायोडाटा पेज बनाउनुहोस्'}},
   {icon:'🎵', ar:'مشغل موسيقى', en:'Music player', fr:'Lecteur de musique', hi:'म्यूज़िक प्लेयर', ur:'میوزک پلیئر', bn:'মিউজিক প্লেয়ার', ne:'म्युजिक प्लेयर', prompt:{ar:'أنشئ لي واجهة مشغل موسيقى أنيقة', en:'Build a sleek music player UI', fr:'Crée-moi une interface de lecteur de musique élégante', hi:'मेरे लिए एक स्टाइलिश म्यूज़िक प्लेयर UI बनाएं', ur:'میرے لیے ایک خوبصورت میوزک پلیئر UI بنائیں', bn:'আমার জন্য একটি সুন্দর মিউজিক প্লেয়ার ইউআই তৈরি করুন', ne:'मेरो लागि स्टाइलिश म्युजिक प्लेयर UI बनाउनुहोस्'}},
   {icon:'⚖️', ar:'بوت استشارات قانونية', en:'Legal advice bot', priority:true, prompt:{ar:'أنشئ لي صفحة ويب واحدة (HTML/CSS/JS) اسمها "بوت استشارات قانونية — قوانين دولة الإمارات". لكل سؤال يكتبه المستخدم: أولاً أرسل fetch POST إلى المسار النسبي /api/search بالجسم {query: السؤال + " قانون الإمارات المادة", lang:"ar", domains:["uaelegislation.gov.ae","moj.gov.ae","u.ae","elaws.moj.gov.ae"]} (JSON)، انتظر النتيجة. إذا رجعت نتائج قليلة أو فارغة أعد المحاولة مرة واحدة بدون حقل domains. ثم اعرض الإجابة بهذه الصيغة الإلزامية: 1) 📜 اسم القانون ورقمه وسنته، 2) 🔢 رقم المادة، 3) النص من نتائج البحث الفعلية (title/url/content)، 4) 💡 شرح مبسط بالعربي، 5) 🔗 رابط المصدر الرسمي. لا تختلق نص مواد أو أرقام قوانين من عندك أبدًا؛ إن لم تجد المادة في النتائج قل صراحة "لم أجد نص المادة في المصادر الرسمية" واعرض الروابط. أضف أسفل كل إجابة تنويه: "هذه معلومات إرشادية وليست استشارة قانونية رسمية". إن فشل البحث اعرض "تعذر جلب معلومات دقيقة الآن". صمم الواجهة بسيطة ونظيفة بدون مربعات/حدود، نفس أسلوب التطبيق (خلفية شفافة، نص فقط، أيقونة نسخ SVG تحت كل رد).', en:'Build a single-page web app (HTML/CSS/JS) called "UAE Legal Advice Bot". For every user question: first send a POST fetch to the relative path /api/search with body {query: question + " UAE law article", lang:"en", domains:["uaelegislation.gov.ae","moj.gov.ae","u.ae","elaws.moj.gov.ae"]} (JSON), wait for the result. If results are empty or too few, retry once without the domains field. Then answer in this mandatory format: 1) 📜 law name, number and year, 2) 🔢 article number, 3) the text taken from the actual search results (title/url/content), 4) 💡 simple explanation, 5) 🔗 official source link. Never invent article texts or law numbers; if the article text is not in the results, say clearly "Article text not found in official sources" and show the links. Add under every answer: "This is guidance information, not official legal advice". If the search fails show "Could not fetch accurate information right now". Keep the UI clean, no boxes/borders, matching the app style (transparent background, text only, SVG copy icon under each reply).'}},
   {icon:'🩺', ar:'بوت استشارات طبية', en:'Medical advice bot', priority:true, prompt:{ar:'أنشئ لي صفحة ويب واحدة (HTML/CSS/JS) اسمها "بوت استشارات طبية أولية". لكل سؤال يكتبه المستخدم عن أعراض أو معلومات صحية: أولاً أرسل fetch POST إلى المسار النسبي /api/search بالجسم {query, lang:"ar"} (JSON)، انتظر النتيجة، ثم اعرض ملخصاً دقيقاً مبنياً فعلياً على نتائج البحث المرجعة (title/url/content) مع ذكر المصادر كروابط. لا تختلق معلومات طبية من عندك؛ إن فشل البحث اعرض رسالة "تعذر جلب معلومات دقيقة الآن". صمم الواجهة بسيطة ونظيفة بدون مربعات/حدود، نفس أسلوب التطبيق (خلفية شفافة، نص فقط، أيقونة نسخ SVG تحت كل رد).', en:'Build a single-page web app (HTML/CSS/JS) called "Preliminary Medical Advice Bot". For every symptom/health question: first send a POST fetch to the relative path /api/search with body {query, lang:"en"} (JSON), wait for the result, then show an accurate summary based on the actual returned search results (title/url/content), citing sources as links. Do not invent medical information; if the search fails show "Could not fetch accurate information right now". Keep the UI clean, no boxes/borders, matching the app style (transparent background, text only, SVG copy icon under each reply).'}},
@@ -4471,12 +4470,7 @@ document.addEventListener('click', closeMsgMoreMenu);
 // + ملاحظة تلقائية تقترح الميزة المناسبة. الأزرار القديمة في ⋮ تبقى كما هي؛
 // هذا باب إضافي (المكانين) عشان المستخدم يختار اللي يريحه.
 var APP_CAPABILITIES = [
-  { id:'btnCV',       icon:'💼', ar:'مولّد السيرة الذاتية', en:'CV Builder',
-    kw:/(سيرة ذاتية|سيره ذاتيه|سي\s?في|resume|\bcv\b|خطاب تقديم|cover letter)/i },
-  { id:'btnDocs',     icon:'📄', ar:'مساعد المستندات', en:'Document Assistant',
-    kw:/(?:حلل|حلّل|اقرأ|افهم|لخص|لخّص|راجع|افحص).{0,18}(?:مستند|عقد|فاتورة|تقرير|ملف|اتفاقية|pdf)|(?:مستند|عقد|فاتورة|اتفاقية|contract|invoice)\b/i },
-  { id:'btnGov',      icon:'🧾', ar:'المعاملات الحكومية', en:'Government Services',
-    kw:/(إقامة|اقامة|رخصة تجارية|رخصه|تجديد.{0,10}(هوية|جواز|رخصة|إقامة)|تأشيرة|تاشيرة|فيزا|بلدية|معاملة حكوم|خدمة حكوم|residence visa|business license|govern)/i },
+
   { id:'btnReligion', icon:'☪️', ar:'التفسير الديني', en:'Religious Guidance',
     kw:/(ما\s?حكم|وش\s?حكم|شو\s?حكم|فتوى|حلال\s?أو?\s?حرام|تفسير\s?(آية|اية|سورة)|معنى\s?الحديث|fatwa|is it halal|is it haram)/i },
 ];
@@ -12845,7 +12839,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   const groups = [
     { title: null, ids: ['btnSettings','btnAuthToggle','btnToggleHistory'] },
     { title: 'grpCreate', ids: ['btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnExplore'] },
-    { title: 'grpSections', ids: ['btnStocks','btnConstruction','btnOmranEdu','btnExpense','btnDocs','btnGov','btnCV','btnReligion','btnEmailAssist'] },
+    { title: 'grpSections', ids: ['btnStocks','btnOmranEdu','btnExpense','btnReligion','btnEmailAssist'] },
     { title: 'grpTools', ids: ['btnTemplates','btnAgentMode','btnInstall','btnShareApp'] }
   ];
   groups.forEach(g => {
@@ -16032,245 +16026,6 @@ function openShareModal(project){
 })();
 
 
-/* ---------- 🏗️ Construction/Contracting Design (Gemini text+image, server-side owner key) ---------- */
-(function(){
-  const modal = $('#constructionModal');
-  const btnOpen = $('#btnConstruction');
-  const btnClose = $('#constructionCloseBtn');
-  const btnRun = $('#constructionRunBtn');
-  const typeEl = $('#constructionType');
-  const floorsEl = $('#constructionFloors');
-  const areaEl = $('#constructionArea');
-  const styleEl = $('#constructionStyle');
-  const notesEl = $('#constructionNotes');
-  const budgetEl = $('#constructionBudget');
-  const statusEl = $('#constructionStatus');
-  const resultImageWrap = $('#constructionResultImageWrap');
-  const resultImageEl = $('#constructionResultImage');
-  const downloadLink = $('#constructionDownloadLink');
-  const photoWrap = $('#constructionPhotoImageWrap');
-  const photoImageEl = $('#constructionPhotoImage');
-  const photoDownloadLink = $('#constructionPhotoDownloadLink');
-  const interiorWrap = $('#constructionInteriorImageWrap');
-  const interiorImageEl = $('#constructionInteriorImage');
-  const interiorDownloadLink = $('#constructionInteriorDownloadLink');
-  const modePlanEl = $('#constructionModePlan');
-  const modePhotoEl = $('#constructionModePhoto');
-  const libraryBtn = $('#constructionLibraryBtn');
-  const libraryWrap = $('#constructionLibraryWrap');
-  const libraryEmptyEl = $('#constructionLibraryEmpty');
-  const planTextEl = $('#constructionPlanText');
-  const viewsSection = $('#constructionViewsSection');
-  const angleBtns = document.querySelectorAll('#constructionViewsSection [data-angle]');
-  const angleStatusEl = $('#constructionAngleStatus');
-  const angleImageWrap = $('#constructionAngleImageWrap');
-  const angleImageEl = $('#constructionAngleImage');
-  const angleDownloadLink = $('#constructionAngleDownloadLink');
-  const roomSelectEl = $('#constructionRoomSelect');
-  const roomColorEl = $('#constructionRoomColor');
-  const roomViewBtn = $('#constructionRoomViewBtn');
-  const roomStatusEl = $('#constructionRoomStatus');
-  const roomImageWrap = $('#constructionRoomImageWrap');
-  const roomImageEl = $('#constructionRoomImage');
-  const roomDownloadLink = $('#constructionRoomDownloadLink');
-  if(!modal || !btnOpen) return;
-
-  function currentParams(){
-    return {
-      buildingType: typeEl.value,
-      floors: floorsEl.value,
-      area: areaEl.value,
-      style: styleEl.value,
-      notes: notesEl.value,
-    };
-  }
-
-  function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
-  function t(key){
-    const dict = (typeof I18N !== 'undefined') ? I18N[isEn() ? 'en' : 'ar'] : null;
-    return (dict && dict[key]) || key;
-  }
-  function setStatus(text){
-    statusEl.style.display = text ? 'block' : 'none';
-    statusEl.textContent = text || '';
-  }
-
-  btnOpen.onclick = () => {
-    modal.style.display = 'flex';
-    if(typeof closeHeaderMenu === 'function') closeHeaderMenu();
-  };
-  btnClose.onclick = () => { modal.style.display = 'none'; };
-  modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
-
-  if(libraryBtn){
-    libraryBtn.onclick = async () => {
-      libraryBtn.disabled = true;
-      libraryEmptyEl.style.display = 'none';
-      libraryWrap.style.display = 'none';
-      libraryWrap.innerHTML = '';
-      try{
-        const res = await fetch('/api/construction-library', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ buildingType: typeEl.value, floors: floorsEl.value, area: areaEl.value }),
-        });
-        const data = await res.json();
-        const items = (data && data.items) || [];
-        if(!items.length){
-          libraryEmptyEl.style.display = 'block';
-        }else{
-          items.forEach((item) => {
-            const img = document.createElement('img');
-            img.src = 'data:' + (item.planMimeType || 'image/png') + ';base64,' + item.planImageBase64;
-            img.style.cssText = 'width:100%; aspect-ratio:1; object-fit:cover; border-radius:6px; cursor:pointer; background:#000;';
-            img.title = (item.floors || '') + ' | ' + (item.area || '') + ' m²';
-            img.onclick = () => {
-              resultImageEl.src = img.src;
-              downloadLink.href = img.src;
-              resultImageWrap.style.display = 'block';
-              resultImageWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            };
-            libraryWrap.appendChild(img);
-          });
-          libraryWrap.style.display = 'grid';
-        }
-      }catch(e){
-        libraryEmptyEl.style.display = 'block';
-      }finally{
-        libraryBtn.disabled = false;
-      }
-    };
-  }
-
-  btnRun.onclick = async () => {
-    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
-    if(!token){
-      setStatus(t('designAiNeedLogin'));
-      return;
-    }
-    btnRun.disabled = true;
-    resultImageWrap.style.display = 'none';
-    planTextEl.style.display = 'none';
-    viewsSection.style.display = 'none';
-    setStatus(t('constructionGenerating'));
-
-    try{
-      const res = await fetch('/api/construction-create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.assign(currentParams(), {
-          budget: budgetEl.value,
-          annexes: Array.from(document.querySelectorAll('.constructionAnnex:checked')).map((el) => el.value),
-          includeInterior: !!($('#constructionIncludeInterior') && $('#constructionIncludeInterior').checked),
-          token,
-        })),
-      });
-      const data = await res.json();
-      if(!res.ok){
-        if(data.error === 'auth_required'){
-          setStatus(t('designAiNeedLogin'));
-        }else if(data.error === 'daily_limit_reached'){
-          setStatus(t('designAiLimitReached'));
-        }else{
-          setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (data.error || 'unknown'));
-        }
-        return;
-      }
-      if(data.imageBase64){
-        resultImageEl.src = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
-        downloadLink.href = resultImageEl.src;
-        resultImageWrap.style.display = 'block';
-      }
-      if(data.photoImageBase64){
-        photoImageEl.src = 'data:' + (data.photoMimeType || 'image/png') + ';base64,' + data.photoImageBase64;
-        photoDownloadLink.href = photoImageEl.src;
-        photoWrap.style.display = 'block';
-      }
-      if(data.interiorImageBase64){
-        interiorImageEl.src = 'data:' + (data.interiorMimeType || 'image/png') + ';base64,' + data.interiorImageBase64;
-        interiorDownloadLink.href = interiorImageEl.src;
-        interiorWrap.style.display = 'block';
-      }
-      if(data.planText){
-        planTextEl.textContent = data.planText;
-        planTextEl.style.display = 'block';
-      }
-      viewsSection.style.display = 'block';
-      angleImageWrap.style.display = 'none';
-      roomImageWrap.style.display = 'none';
-      setStatus('');
-    }catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
-    }finally{
-      btnRun.disabled = false;
-    }
-  };
-
-  angleBtns.forEach((btn) => {
-    btn.onclick = async () => {
-      const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
-      if(!token){ angleStatusEl.style.display = 'block'; angleStatusEl.textContent = t('designAiNeedLogin'); return; }
-      angleBtns.forEach((b) => { b.disabled = true; });
-      angleImageWrap.style.display = 'none';
-      angleStatusEl.style.display = 'block';
-      angleStatusEl.textContent = t('constructionGenerating');
-      try{
-        const res = await fetch('/api/construction-view', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(Object.assign(currentParams(), { mode: 'angle', angle: btn.getAttribute('data-angle'), token })),
-        });
-        const data = await res.json();
-        if(!res.ok){
-          if(data.error === 'auth_required') angleStatusEl.textContent = t('designAiNeedLogin');
-          else if(data.error === 'daily_limit_reached') angleStatusEl.textContent = t('designAiLimitReached');
-          else angleStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (data.error || 'unknown');
-          return;
-        }
-        angleImageEl.src = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
-        angleDownloadLink.href = angleImageEl.src;
-        angleImageWrap.style.display = 'block';
-        angleStatusEl.style.display = 'none';
-      }catch(e){
-        angleStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
-      }finally{
-        angleBtns.forEach((b) => { b.disabled = false; });
-      }
-    };
-  });
-
-  roomViewBtn.onclick = async () => {
-    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
-    if(!token){ roomStatusEl.style.display = 'block'; roomStatusEl.textContent = t('designAiNeedLogin'); return; }
-    roomViewBtn.disabled = true;
-    roomImageWrap.style.display = 'none';
-    roomStatusEl.style.display = 'block';
-    roomStatusEl.textContent = t('constructionGenerating');
-    try{
-      const res = await fetch('/api/construction-view', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.assign(currentParams(), { mode: 'room', room: roomSelectEl.value, color: roomColorEl.value, token })),
-      });
-      const data = await res.json();
-      if(!res.ok){
-        if(data.error === 'auth_required') roomStatusEl.textContent = t('designAiNeedLogin');
-        else if(data.error === 'daily_limit_reached') roomStatusEl.textContent = t('designAiLimitReached');
-        else roomStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (data.error || 'unknown');
-        return;
-      }
-      roomImageEl.src = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
-      roomDownloadLink.href = roomImageEl.src;
-      roomImageWrap.style.display = 'block';
-      roomStatusEl.style.display = 'none';
-    }catch(e){
-      roomStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
-    }finally{
-      roomViewBtn.disabled = false;
-    }
-  };
-})();
-
 /* ---------- 💄 AI Style Studio (Gemini image, server-side owner key) ---------- */
 (function(){
   const modal = $('#studioAiModal');
@@ -16817,7 +16572,7 @@ function openShareModal(project){
   };
 })();
 window.updateVersionLabel = function(){
-  var APP_VERSION = 'v384';
+  var APP_VERSION = 'v386';
   var el = document.getElementById('appVersionLabel');
   if (!el) return;
   var u = '';

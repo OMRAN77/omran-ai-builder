@@ -1,8 +1,13 @@
-const CACHE_NAME = 'omran-ai-builder-v384';
+const CACHE_NAME = 'omran-ai-builder-v386';
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './js/app.js',
+  // was './js/app.js' — that file has never existed (the bundle is
+  // app.bundle.js). Because cache.addAll() is all-or-nothing, that single
+  // wrong path rejected the whole precache on every install, and the
+  // .catch(() => {}) below swallowed the error silently.
+  './js/app.bundle.js',
+  './templates-data.js',
   './manifest.json',
   './icons/icon-192-v2.png',
   './icons/icon-512-v2.png',
@@ -12,7 +17,17 @@ const STATIC_ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)).catch(() => {})
+    caches.open(CACHE_NAME).then((cache) =>
+      // Added one by one on purpose: a single 404 must degrade the offline
+      // shell, not wipe it out entirely the way addAll() does.
+      Promise.all(
+        STATIC_ASSETS.map((url) =>
+          cache.add(url).catch((err) => {
+            console.warn('[sw] precache skipped:', url, err && err.message);
+          })
+        )
+      )
+    )
   );
   self.skipWaiting();
 });
@@ -65,6 +80,7 @@ function isStaticAsset(url) {
     url.pathname.endsWith('.jpg') ||
     url.pathname.endsWith('.svg') ||
     url.pathname.endsWith('.ico') ||
+    url.pathname.endsWith('.woff2') ||
     url.pathname.endsWith('manifest.json')
   );
 }

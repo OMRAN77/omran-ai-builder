@@ -64,12 +64,7 @@ document.addEventListener('click', closeMsgMoreMenu);
 // + ملاحظة تلقائية تقترح الميزة المناسبة. الأزرار القديمة في ⋮ تبقى كما هي؛
 // هذا باب إضافي (المكانين) عشان المستخدم يختار اللي يريحه.
 var APP_CAPABILITIES = [
-  { id:'btnCV',       icon:'💼', ar:'مولّد السيرة الذاتية', en:'CV Builder',
-    kw:/(سيرة ذاتية|سيره ذاتيه|سي\s?في|resume|\bcv\b|خطاب تقديم|cover letter)/i },
-  { id:'btnDocs',     icon:'📄', ar:'مساعد المستندات', en:'Document Assistant',
-    kw:/(?:حلل|حلّل|اقرأ|افهم|لخص|لخّص|راجع|افحص).{0,18}(?:مستند|عقد|فاتورة|تقرير|ملف|اتفاقية|pdf)|(?:مستند|عقد|فاتورة|اتفاقية|contract|invoice)\b/i },
-  { id:'btnGov',      icon:'🧾', ar:'المعاملات الحكومية', en:'Government Services',
-    kw:/(إقامة|اقامة|رخصة تجارية|رخصه|تجديد.{0,10}(هوية|جواز|رخصة|إقامة)|تأشيرة|تاشيرة|فيزا|بلدية|معاملة حكوم|خدمة حكوم|residence visa|business license|govern)/i },
+
   { id:'btnReligion', icon:'☪️', ar:'التفسير الديني', en:'Religious Guidance',
     kw:/(ما\s?حكم|وش\s?حكم|شو\s?حكم|فتوى|حلال\s?أو?\s?حرام|تفسير\s?(آية|اية|سورة)|معنى\s?الحديث|fatwa|is it halal|is it haram)/i },
 ];
