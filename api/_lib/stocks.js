@@ -5,6 +5,7 @@ const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
 const BASE = 'https://api.twelvedata.com';
 const tickerCache = new Map();
+let goldCache = { t: 0, j: null };
 const learnCache = new Map(); // symbol -> { t, live } (60s cache to respect free-plan credits)
 
 const tdCache = new Map(); // in-memory layer (per instance)
@@ -131,6 +132,28 @@ module.exports = async (req, res) => {
         country: d.country, currency: d.currency, type: d.instrument_type,
       }));
       res.status(200).json({ items });
+      return;
+    }
+
+    if (mode === 'gold') {
+      // Live gold price (Yahoo GC=F futures) + AED gram prices (USD peg 3.6725)
+      if (goldCache.t && Date.now() - goldCache.t < 900000) { res.status(200).json(goldCache.j); return; }
+      const gr = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/GC%3DF?range=1d&interval=5m', { headers: { 'User-Agent': 'Mozilla/5.0' } });
+      const gy = await gr.json();
+      const gm = gy && gy.chart && gy.chart.result && gy.chart.result[0] && gy.chart.result[0].meta;
+      if (!gm || !gm.regularMarketPrice) {
+        if (goldCache.j) { res.status(200).json(goldCache.j); return; }
+        res.status(502).json({ error: 'gold unavailable' }); return;
+      }
+      const ozUsd = gm.regularMarketPrice;
+      const prev = gm.chartPreviousClose || gm.previousClose || ozUsd;
+      const g24 = ozUsd / 31.1034768 * 3.6725;
+      const out = {
+        ozUsd: +ozUsd.toFixed(2), change: +(ozUsd - prev).toFixed(2), changePct: +(((ozUsd - prev) / prev) * 100).toFixed(2),
+        gram24: +g24.toFixed(2), gram22: +(g24 * 22 / 24).toFixed(2), gram21: +(g24 * 21 / 24).toFixed(2), gram18: +(g24 * 18 / 24).toFixed(2), ozAed: +(ozUsd * 3.6725).toFixed(2),
+      };
+      goldCache = { t: Date.now(), j: out };
+      res.status(200).json(out);
       return;
     }
 
