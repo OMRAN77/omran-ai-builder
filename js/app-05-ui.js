@@ -1870,3 +1870,16 @@ function setTickerEnabled(on){
   if(sw) sw.checked = !!on;
 }
 window.setTickerEnabled = setTickerEnabled;
+
+/* ── AI Status Bar (v386) ── */
+window.setAIStatus = function(text){
+  const bar = document.getElementById('aiStatusBar');
+  if(!bar) return;
+  const txt = bar.querySelector('.ai-status-text');
+  if(txt) txt.textContent = text;
+  bar.classList.remove('ai-status-hidden');
+};
+window.clearAIStatus = function(){
+  const bar = document.getElementById('aiStatusBar');
+  if(bar) bar.classList.add('ai-status-hidden');
+};

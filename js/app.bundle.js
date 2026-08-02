@@ -6276,6 +6276,19 @@ function setTickerEnabled(on){
   if(sw) sw.checked = !!on;
 }
 window.setTickerEnabled = setTickerEnabled;
+
+/* ── AI Status Bar (v386) ── */
+window.setAIStatus = function(text){
+  const bar = document.getElementById('aiStatusBar');
+  if(!bar) return;
+  const txt = bar.querySelector('.ai-status-text');
+  if(txt) txt.textContent = text;
+  bar.classList.remove('ai-status-hidden');
+};
+window.clearAIStatus = function(){
+  const bar = document.getElementById('aiStatusBar');
+  if(bar) bar.classList.add('ai-status-hidden');
+};
 // ===== Checkout / Payments (Stripe + PayPal, test mode) =====
 let checkoutCurrentPlan = null;
 let paypalSdkLoaded = false;
@@ -10676,6 +10689,7 @@ function __stripCodeForHistory(role, s){
 }
 async function runOmranAgent(cur, apiText, thinkingDiv){
   thinkingDiv.textContent = '🤖 ' + (lang === 'ar' ? 'وكيل عمران يخطط…' : 'Omran Agent planning…');
+  if(window.setAIStatus) window.setAIStatus(lang === 'ar' ? '🤖 وكيل عمران يخطط…' : '🤖 Omran Agent planning…');
   const history = cur.messages.slice(-8).map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: __stripCodeForHistory(m.role, m.apiText || m.content) }));
   const res = await fetch('/api/ai?action=agent', {
     method: 'POST',
@@ -10706,6 +10720,7 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
         full += ev.delta;
         const clean = stripCodeFromChat(full).trim();
         thinkingDiv.textContent = clean ? ('🤖 ' + clean.slice(-400)) : ('🤖 ' + (lang === 'ar' ? 'الوكيل يكتب الكود…' : 'Agent writing code…'));
+        if(window.setAIStatus) window.setAIStatus(lang === 'ar' ? '🤖 الوكيل يكتب الكود…' : '🤖 Agent writing code…');
         messagesEl.scrollTop = messagesEl.scrollHeight;
       }
       if(ev.error) serverErr = ev.error;
@@ -10939,6 +10954,7 @@ async function sendPrompt(){
   thinkingDiv.textContent = t('building');
   messagesEl.appendChild(thinkingDiv);
   anchorLastUserMsgTop(thinkingDiv);
+  if(window.setAIStatus) window.setAIStatus(lang === 'ar' ? '🧠 يفكر…' : '🧠 Thinking…');
 
   // A "continue with this only" selection (one or more providers picked from a
   // previous ask-all round) always takes priority: it lets the user keep
@@ -10998,6 +11014,7 @@ async function sendPrompt(){
     const __isPhotoFetch = !__isLogoFetch && __photoFetchRe.test(text) && !__genDrawRe.test(text) && !cur.adMode && !cur.awaitingAdMode;
     if(!imageAttachments.length && !__editIntent && (__isLogoFetch || __isPhotoFetch)){
       const __logoMsg = { role: 'assistant', content: lang === 'ar' ? (__isLogoFetch ? '🔍 أجيب لك الشعار الأصلي من البحث…' : '🔍 أجيب لك صور حقيقية من البحث…') : '🔍 Fetching real images from live search…', _loading: true };
+      if(window.setAIStatus) window.setAIStatus(lang === 'ar' ? '🔍 يبحث عن صور…' : '🔍 Searching for images…');
       cur.messages.push(__logoMsg);
       renderMessages(true);
       try{
@@ -11020,7 +11037,7 @@ async function sendPrompt(){
         __logoMsg.content = lang === 'ar' ? 'تعذر جلب الشعار الآن — جرب مرة ثانية.' : 'Could not fetch the logo right now — try again.';
       }
       renderAll(); saveState();
-      thinkingDiv && thinkingDiv.remove();
+      thinkingDiv && thinkingDiv.remove(); if(window.clearAIStatus) window.clearAIStatus();
       return;
     }
     // 🖼️ تعديل الصور بالأوامر النصية: صورة مرفقة + طلب تعديل → Gemini يرجع الصورة معدّلة
@@ -11142,10 +11159,10 @@ async function sendPrompt(){
     };
     if(__talkCharIntent && !(__charImg && __charImg.b64)){
       const __pick = await window.pickTalkCharacter(lang==='ar');
-      if(__pick === null){ thinkingDiv && thinkingDiv.remove(); return; }
+      if(__pick === null){ thinkingDiv && thinkingDiv.remove(); if(window.clearAIStatus) window.clearAIStatus(); return; }
       if(__pick === 'upload'){
         cur.messages.push({ role:'assistant', content:(lang==='ar'?'📎 ارفع صورتك من زر المشبك ثم أعد نفس الطلب مع الجملة اللي تبي الشخصية تقولها.':'📎 Attach your photo, then resend the same request with the line you want the character to say.') });
-        thinkingDiv && thinkingDiv.remove(); renderAll(); saveState(); return;
+        thinkingDiv && thinkingDiv.remove(); if(window.clearAIStatus) window.clearAIStatus(); renderAll(); saveState(); return;
       }
       try{
         const __pr = await fetch('/assets/characters/'+__pick.id+'.png');
@@ -11153,7 +11170,7 @@ async function sendPrompt(){
         const __pd = await new Promise(function(res){ const fr=new FileReader(); fr.onload=function(){res(fr.result);}; fr.readAsDataURL(__pb); });
         __charImg = { b64: (String(__pd).split(',')[1]||''), mime:'image/png' };
         __alreadyCartoon = true;
-      }catch(_){ thinkingDiv && thinkingDiv.remove(); cur.messages.push({ role:'assistant', content:(lang==='ar'?'⚠️ تعذّر تحميل الشخصية، جرّب مرة ثانية.':'⚠️ Could not load the character, try again.') }); renderAll(); saveState(); return; }
+      }catch(_){ thinkingDiv && thinkingDiv.remove(); if(window.clearAIStatus) window.clearAIStatus(); cur.messages.push({ role:'assistant', content:(lang==='ar'?'⚠️ تعذّر تحميل الشخصية، جرّب مرة ثانية.':'⚠️ Could not load the character, try again.') }); renderAll(); saveState(); return; }
     }
     const __wantsTalkChar = __talkCharIntent && !!(__charImg && __charImg.b64);
     if(__wantsTalkChar){
@@ -11201,10 +11218,10 @@ async function sendPrompt(){
         });
       };
       const __tcChoice = await window.askTalkCharOpts(lang==='ar');
-      if(__tcChoice === null){ thinkingDiv && thinkingDiv.remove(); return; }
+      if(__tcChoice === null){ thinkingDiv && thinkingDiv.remove(); if(window.clearAIStatus) window.clearAIStatus(); return; }
       if(__tcChoice === 'more'){
         cur.messages.push({ role:'assistant', content:(lang==='ar'?'✨ الفيديوهات الأطول والخيارات الإضافية متاحة في الباقات المدفوعة — افتح ⚙️ ← الاشتراك لترقية باقتك وتطلّع فيديوهات أطول بجودة أعلى.':'✨ Longer videos and extra options are available on paid plans — open ⚙️ → Subscription to upgrade and create longer, higher-quality videos.') });
-        thinkingDiv && thinkingDiv.remove(); renderAll(); saveState(); return;
+        thinkingDiv && thinkingDiv.remove(); if(window.clearAIStatus) window.clearAIStatus(); renderAll(); saveState(); return;
       }
       const __tcMotion = __tcChoice.motion, __tcDur = __tcChoice.duration;
       try{
@@ -11301,11 +11318,12 @@ async function sendPrompt(){
     if(__wantsVideo && !__videoHasConcreteSubject && __isVagueMediaRequest(text)){
       cur.messages.push({ role: 'assistant', content: lang === 'ar' ? 'فيديو عن شو؟ وصفلي المشهد اللي تبيه 🎬' : 'A video about what? Describe the scene you want 🎬' });
       renderAll(); saveState();
-      thinkingDiv && thinkingDiv.remove();
+      thinkingDiv && thinkingDiv.remove(); if(window.clearAIStatus) window.clearAIStatus();
       return;
     }
     if(__wantsVideo){
       thinkingDiv.textContent = lang === 'ar' ? '🎬 جاري إنشاء الفيديو… قد يستغرق ١–٣ دقائق' : '🎬 Creating video… this can take 1–3 minutes';
+      if(window.setAIStatus) window.setAIStatus(lang === 'ar' ? '🎬 ينشئ الفيديو…' : '🎬 Creating video…');
       try{
         const __vp = { promptText: text.slice(0, 900), duration: 5, ratio: '1280:720', token: authGet('aiapp_auth_token') };
         if(__vidSrc && __vidSrc.b64 && (__srcImg || __animateRe.test(text) || /منها|عليها|الصورة|صورتي|this image|the image|it/i.test(text))){
@@ -11537,7 +11555,7 @@ async function sendPrompt(){
       if(!__txtOnlyImgRe.test(text) && __isVagueMediaRequest(text)){
         cur.messages.push({ role: 'assistant', content: lang === 'ar' ? 'صورة عن شو؟ وصفلي اللي تبيه 🖼️' : 'An image of what? Describe what you want 🖼️' });
         renderAll(); saveState();
-        thinkingDiv && thinkingDiv.remove();
+        thinkingDiv && thinkingDiv.remove(); if(window.clearAIStatus) window.clearAIStatus();
         return;
       }
       thinkingDiv.textContent = lang === 'ar' ? '🖼️ جاري إنشاء الصورة…' : '🖼️ Generating image…';
@@ -11679,6 +11697,9 @@ async function sendPrompt(){
         __searchIndicator = { role: 'assistant', content: lang === 'ar' ? '🔍 يبحث بعمق…' : '🔍 Deep searching…', _loading: true };
         cur.messages.push(__searchIndicator);
         renderMessages(true);
+        if(window.setAIStatus) window.setAIStatus(lang === 'ar' ? '🔍 يبحث بعمق…' : '🔍 Deep searching…');
+      } else {
+        if(window.setAIStatus) window.setAIStatus(lang === 'ar' ? '🔍 يبحث…' : '🔍 Searching…');
       }
       __searchData = await smartMaybeSearch(text, cur.messages.filter(m => m !== __searchIndicator));
       if(__searchIndicator){
@@ -11720,6 +11741,7 @@ async function sendPrompt(){
     }
 
     if(askAll){
+      if(window.setAIStatus) window.setAIStatus(lang === 'ar' ? '🏗️ يبني التطبيق…' : '🏗️ Building app…');
       // All 9 providers now run server-side with the owner's keys.
       const hasOpenAI = localStorage.getItem('aiapp_include_openai') !== 'false';
       const hasGemini = localStorage.getItem('aiapp_include_gemini') !== 'false';
@@ -12322,6 +12344,7 @@ async function sendPrompt(){
       // ⚡ v320: تحديث فقاعة البث بإيقاع الشاشة (إطار واحد) بدل كل قطعة نص واصلة.
       const onDelta = (partial) => {
         onDelta._p = partial;
+        if(!onDelta._statusSet){ onDelta._statusSet = true; if(window.setAIStatus) window.setAIStatus(lang === 'ar' ? '💬 يردّ…' : '💬 Replying…'); }
         if(onDelta._raf) return;
         onDelta._raf = requestAnimationFrame(() => {
           onDelta._raf = null;
@@ -12330,6 +12353,7 @@ async function sendPrompt(){
         });
       };
       // المزود المختار من المستخدم يرد بنفسه (Claude هو الافتراضي)؛ الاحتياط صامت عند التعطل فقط
+      if(window.setAIStatus) window.setAIStatus(lang === 'ar' ? '🧠 يفكر…' : '🧠 Thinking…');
       const isBuildTask = __routeFix && !__gateNoBuild;
       const __selProv = localStorage.getItem('aiapp_provider') || 'claude';
       // v262 — 🎯 التوجيه بالتخصص: في الوضع الافتراضي فقط (المستخدم ما اختار مزودًا بيده)
@@ -12413,6 +12437,7 @@ async function sendPrompt(){
     genAbortController = null;
     btnStop.classList.remove('live');
     sendBtn.disabled = false;
+    if(window.clearAIStatus) window.clearAIStatus();
     sendBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px;display:block"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>';
     saveState();
     renderAll();
@@ -16572,7 +16597,7 @@ function openShareModal(project){
   };
 })();
 window.updateVersionLabel = function(){
-  var APP_VERSION = 'v386';
+  var APP_VERSION = 'v387';
   var el = document.getElementById('appVersionLabel');
   if (!el) return;
   var u = '';
