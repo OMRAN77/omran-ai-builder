@@ -1,0 +1,1394 @@
+window.I18N = I18N;
+const I18N_LAZY = ['fr','hi','ur','bn','ne','id','fil','tr','zh','ru','es','ml'];
+const I18N_LOADING = {};
+function loadLangFile(lg){
+  return new Promise(function(res){
+    if(I18N[lg] || I18N_LAZY.indexOf(lg) < 0) return res();
+    if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
+    I18N_LOADING[lg] = [res];
+    var sc = document.createElement('script');
+    sc.src = 'i18n/' + lg + '.js?v=342';
+    sc.onload = sc.onerror = function(){
+      (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){}});
+      delete I18N_LOADING[lg];
+    };
+    document.head.appendChild(sc);
+  });
+}
+
+let lang = localStorage.getItem('aiapp_lang') || (function(){
+  // 🌍 كشف لغة الهاتف تلقائيًا عند أول زيارة — الاختيار اليدوي المحفوظ له الأولوية دائمًا
+  try {
+    const navs = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'en']).map(x => String(x).toLowerCase());
+    const map = { ar:'ar', en:'en', fr:'fr', hi:'hi', ur:'ur', bn:'bn', ne:'ne', id:'id', 'in':'id', fil:'fil', tl:'fil', tr:'tr', zh:'zh', ru:'ru', es:'es', ml:'ml' };
+    for(const nav of navs){
+      for(const p in map){ if(nav === p || nav.startsWith(p + '-')) return map[p]; }
+    }
+  } catch(e) {}
+  return 'en';
+})();
+// Language-specific shareable links: /ar, /en, /fr, /hi, /ur, /bn, /ne
+// Opening one of these paths forces that language immediately (no need to
+// open settings and switch manually) — meant for sending direct links to
+// people who speak a specific language.
+(function(){
+  try {
+    const urlLangMatch = location.pathname.match(/^\/(ar|en|fr|hi|ur|bn|ne|id|fil|tr|zh|ru|es|ml)\/?$/i);
+    if(urlLangMatch){
+      lang = urlLangMatch[1].toLowerCase();
+      localStorage.setItem('aiapp_lang', lang);
+    }
+  } catch(e) {}
+})();
+
+function t(key){
+  const v = I18N[lang] ? I18N[lang][key] : undefined;
+  if (v !== undefined) return v;
+  const fb = I18N.ar[key];
+  return fb !== undefined ? fb : (I18N.en ? I18N.en[key] : key) ?? key;
+}
+
+function applyLanguage(){
+  if(!I18N[lang] && I18N_LAZY.indexOf(lang) >= 0){
+    loadLangFile(lang).then(function(){ if(I18N[lang]) { applyLanguage(); try{ renderAll(); }catch(_){} } });
+  }
+  const dict = I18N[lang] || I18N.en || I18N.ar;
+  try{ if(window.__syncBrandTitle) window.__syncBrandTitle(); }catch(_){}
+  document.documentElement.lang = lang;
+  document.documentElement.dir = dict.dir;
+  document.title = dict.pageTitle;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const raw = el.getAttribute('data-i18n');
+    const m = raw.match(/^\[(.+)\]([\s\S]+)$/);
+    if(m){
+      const attrName = m[1];
+      const key = m[2];
+      if(dict[key] !== undefined) el.setAttribute(attrName, dict[key]);
+    } else if(dict[raw] !== undefined){
+      el.innerHTML = dict[raw];
+    }
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = dict[el.getAttribute('data-i18n-placeholder')];
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const key = el.getAttribute('data-i18n-title');
+    if(dict[key] !== undefined) el.setAttribute('title', dict[key]);
+  });
+  // v212: refresh settings nav list + open page title on language switch
+  try{
+    if(typeof renderSettingsNavList === 'function') renderSettingsNavList();
+    const act = document.querySelector('.settingsPageSection.settingsPageActive');
+    if(act && typeof stripUiEmoji === 'function'){
+      const h3 = act.querySelector('.settingsSectionHeader h3');
+      const t = document.getElementById('settingsPageTitle');
+      if(h3 && t) t.textContent = stripUiEmoji(h3.textContent);
+    }
+  }catch(_){}
+  document.querySelectorAll('.langFlagBtn').forEach(b => b.classList.remove('active'));
+  const idMap = {
+    ar: ['btnLangAr','btnAuthLangAr'],
+    en: ['btnLangEn','btnAuthLangEn'],
+    fr: ['btnLangFr','btnAuthLangFr'],
+    hi: ['btnLangHi','btnAuthLangHi'],
+    ur: ['btnLangUr','btnAuthLangUr'],
+    bn: ['btnLangBn','btnAuthLangBn'],
+    ne: ['btnLangNe','btnAuthLangNe'],
+    id: ['btnLangId'],
+    fil: ['btnLangFil'],
+    tr: ['btnLangTr'],
+    zh: ['btnLangZh'],
+    ru: ['btnLangRu'],
+    es: ['btnLangEs'],
+    ml: ['btnLangMl'],
+  };
+  const activeIds = idMap[lang] || idMap.ar;
+  activeIds.forEach(id => { const el = $('#'+id); if(el) el.classList.add('active'); });
+  localStorage.setItem('aiapp_lang', lang);
+  renderQuickChips();
+  try{ if(window.__refreshProjMenuLabels) window.__refreshProjMenuLabels(); }catch(_){}
+}
+
+const QUICK_SUGGESTIONS = [
+  {icon:'🎮', ar:'صمم لي لعبة', en:'Design a game', fr:'Créer un jeu', hi:'गेम डिज़ाइन करें', ur:'گیم بنائیں', bn:'গেম ডিজাইন', ne:'गेम डिजाइन', prompt:{ar:'صمم لي لعبة بسيطة وممتعة', en:'Design a simple, fun game', fr:'Crée-moi un jeu simple et amusant', hi:'मेरे लिए एक सरल और मज़ेदार गेम बनाएं', ur:'میرے لیے ایک آسان اور دلچسپ گیم بنائیں', bn:'আমার জন্য একটি সহজ এবং মজার গেম তৈরি করুন', ne:'मेरो लागि एक सरल र रमाइलो गेम बनाउनुहोस्'}},
+  {icon:'🍽️', ar:'موقع مطعم', en:'Restaurant site', fr:'Site de restaurant', hi:'रेस्टोरेंट साइट', ur:'ریسٹورنٹ سائٹ', bn:'রেস্তোরাঁ সাইট', ne:'रेस्टुरेन्ट साइट', prompt:{ar:'أنشئ لي موقع لمطعم يعرض القائمة والحجوزات', en:'Build a restaurant website with a menu and reservations', fr:'Crée-moi un site de restaurant avec menu et réservations', hi:'मेरे लिए मेन्यू और आरक्षण वाली रेस्टोरेंट वेबसाइट बनाएं', ur:'میرے لیے مینو اور ریزرویشن والی ریسٹورنٹ ویب سائٹ بنائیں', bn:'আমার জন্য মেনু এবং রিজার্ভেশন সহ একটি রেস্তোরাঁ ওয়েবসাইট তৈরি করুন', ne:'मेरो लागि मेनु र आरक्षण भएको रेस्टुरेन्ट वेबसाइट बनाउनुहोस्'}},
+  {icon:'💼', ar:'بورتفوليو', en:'Portfolio', fr:'Portfolio', hi:'पोर्टफोलियो', ur:'پورٹ فولیو', bn:'পোর্টফোলিও', ne:'पोर्टफोलियो', prompt:{ar:'أنشئ لي صفحة بورتفوليو شخصي احترافية', en:'Build a professional personal portfolio page', fr:'Crée-moi une page de portfolio personnel professionnel', hi:'मेरे लिए एक पेशेवर पर्सनल पोर्टफोलियो पेज बनाएं', ur:'میرے لیے ایک پیشہ ورانہ ذاتی پورٹ فولیو صفحہ بنائیں', bn:'আমার জন্য একটি পেশাদার ব্যক্তিগত পোর্টফোলিও পেজ তৈরি করুন', ne:'मेरो लागि एक व्यावसायिक व्यक्तिगत पोर्टफोलियो पेज बनाउनुहोस्'}},
+  {icon:'✅', ar:'تطبيق مهام', en:'Task app', fr:'App de tâches', hi:'टास्क ऐप', ur:'ٹاسک ایپ', bn:'টাস্ক অ্যাপ', ne:'टास्क एप', prompt:{ar:'أنشئ لي تطبيق قائمة مهام يومية', en:'Build a daily to-do list app', fr:'Crée-moi une application de liste de tâches quotidiennes', hi:'मेरे लिए एक दैनिक टू-डू लिस्ट ऐप बनाएं', ur:'میرے لیے روزانہ ٹو ڈو لسٹ ایپ بنائیں', bn:'আমার জন্য একটি দৈনিক টু-ডু লিস্ট অ্যাপ তৈরি করুন', ne:'मेरो लागि दैनिक टु-डु लिस्ट एप बनाउनुहोस्'}},
+  {icon:'🧮', ar:'آلة حاسبة', en:'Calculator', fr:'Calculatrice', hi:'कैलकुलेटर', ur:'کیلکولیٹر', bn:'ক্যালকুলেটর', ne:'क्यालकुलेटर', prompt:{ar:'أنشئ لي آلة حاسبة أنيقة', en:'Build a sleek calculator', fr:'Crée-moi une calculatrice élégante', hi:'मेरे लिए एक स्टाइलिश कैलकुलेटर बनाएं', ur:'میرے لیے ایک خوبصورت کیلکولیٹر بنائیں', bn:'আমার জন্য একটি সুন্দর ক্যালকুলেটর তৈরি করুন', ne:'मेरो लागि एक स्टाइलिश क्यालकुलेटर बनाउनुहोस्'}},
+  {icon:'📊', ar:'لوحة تحكم', en:'Dashboard', fr:'Tableau de bord', hi:'डैशबोर्ड', ur:'ڈیش بورڈ', bn:'ড্যাশবোর্ড', ne:'ड्यासबोर्ड', prompt:{ar:'أنشئ لي لوحة تحكم بإحصائيات وهمية', en:'Build a dashboard with mock stats', fr:'Crée-moi un tableau de bord avec des statistiques fictives', hi:'मेरे लिए मॉक आँकड़ों के साथ एक डैशबोर्ड बनाएं', ur:'میرے لیے فرضی اعداد و شمار کے ساتھ ڈیش بورڈ بنائیں', bn:'আমার জন্য নকল পরিসংখ্যান সহ একটি ড্যাশবোর্ড তৈরি করুন', ne:'मेरो लागि नक्कली तथ्याङ्कसहितको ड्यासबोर्ड बनाउनुहोस्'}},
+  {icon:'📝', ar:'مدونة', en:'Blog', fr:'Blog', hi:'ब्लॉग', ur:'بلاگ', bn:'ব্লগ', ne:'ब्लग', prompt:{ar:'أنشئ لي موقع مدونة بسيط بتصميم أنيق', en:'Build a simple, stylish blog website', fr:'Crée-moi un site de blog simple et élégant', hi:'मेरे लिए एक सरल, स्टाइलिश ब्लॉग वेबसाइट बनाएं', ur:'میرے لیے ایک سادہ اور خوبصورت بلاگ ویب سائٹ بنائیں', bn:'আমার জন্য একটি সাধারণ, স্টাইলিশ ব্লগ ওয়েবসাইট তৈরি করুন', ne:'मेरो लागि एक साधारण, स्टाइलिश ब्लग वेबसाइट बनाउनुहोस्'}},
+  {icon:'⏳', ar:'عداد تنازلي', en:'Countdown', fr:'Compte à rebours', hi:'काउंटडाउन', ur:'کاؤنٹ ڈاؤن', bn:'কাউন্টডাউন', ne:'काउन्टडाउन', prompt:{ar:'أنشئ لي عداد تنازلي لمناسبة قادمة', en:'Build a countdown timer for an upcoming event', fr:'Crée-moi un compte à rebours pour un événement à venir', hi:'मेरे लिए आने वाले इवेंट के लिए काउंटडाउन टाइमर बनाएं', ur:'میرے لیے آنے والے ایونٹ کے لیے کاؤنٹ ڈاؤن ٹائمر بنائیں', bn:'আমার জন্য একটি আসন্ন ইভেন্টের জন্য কাউন্টডাউন টাইমার তৈরি করুন', ne:'मेरो लागि आगामी कार्यक्रमको लागि काउन्टडाउन टाइमर बनाउनुहोस्'}},
+  {icon:'📬', ar:'نموذج تواصل', en:'Contact form', fr:'Formulaire de contact', hi:'संपर्क फ़ॉर्म', ur:'رابطہ فارم', bn:'যোগাযোগ ফর্ম', ne:'सम्पर्क फारम', prompt:{ar:'أنشئ لي صفحة تواصل معنا بتصميم جميل', en:'Build a nicely designed contact-us page', fr:'Crée-moi une belle page de contact', hi:'मेरे लिए एक खूबसूरत संपर्क पेज बनाएं', ur:'میرے لیے ایک خوبصورت رابطہ صفحہ بنائیں', bn:'আমার জন্য একটি সুন্দর ডিজাইন করা যোগাযোগ পেজ তৈরি করুন', ne:'मेरो लागि राम्रोसँग डिजाइन गरिएको सम्पर्क पेज बनाउनुहोस्'}},
+  {icon:'🛒', ar:'متجر إلكتروني', en:'Online store', fr:'Boutique en ligne', hi:'ऑनलाइन स्टोर', ur:'آن لائن اسٹور', bn:'অনলাইন স্টোর', ne:'अनलाइन स्टोर', prompt:{ar:'أنشئ لي صفحة متجر إلكتروني بمنتجات وسلة شراء', en:'Build an online store page with products and a shopping cart', fr:'Crée-moi une boutique en ligne avec des produits et un panier', hi:'मेरे लिए उत्पादों और शॉपिंग कार्ट के साथ एक ऑनलाइन स्टोर बनाएं', ur:'میرے لیے مصنوعات اور شاپنگ کارٹ کے ساتھ آن لائن اسٹور بنائیں', bn:'আমার জন্য পণ্য এবং শপিং কার্ট সহ একটি অনলাইন স্টোর পেজ তৈরি করুন', ne:'मेरो लागि उत्पादन र शपिङ कार्ट भएको अनलाइन स्टोर पेज बनाउनुहोस्'}},
+  {icon:'🎯', ar:'لعبة تخمين', en:'Guessing game', fr:'Jeu de devinettes', hi:'अनुमान खेल', ur:'اندازہ گیم', bn:'অনুমান খেলা', ne:'अनुमान खेल', prompt:{ar:'أنشئ لي لعبة تخمين رقم ممتعة', en:'Build a fun number-guessing game', fr:'Crée-moi un jeu amusant de devinette de nombre', hi:'मेरे लिए एक मज़ेदार नंबर-गेसिंग गेम बनाएं', ur:'میرے لیے ایک دلچسپ نمبر گیسنگ گیم بنائیں', bn:'আমার জন্য একটি মজার সংখ্যা অনুমান খেলা তৈরি করুন', ne:'मेरो लागि रमाइलो नम्बर अनुमान खेल बनाउनुहोस्'}},
+  {icon:'🌦️', ar:'تطبيق طقس', en:'Weather app', fr:'App météo', hi:'मौसम ऐप', ur:'موسم ایپ', bn:'আবহাওয়া অ্যাপ', ne:'मौसम एप', prompt:{ar:'أنشئ لي تطبيق طقس بتصميم جميل وبيانات وهمية', en:'Build a nicely designed weather app with mock data', fr:'Crée-moi une application météo bien conçue avec des données fictives', hi:'मेरे लिए मॉक डेटा के साथ एक अच्छी तरह से डिज़ाइन की गई मौसम ऐप बनाएं', ur:'میرے لیے فرضی ڈیٹا کے ساتھ ایک خوبصورت موسم ایپ بنائیں', bn:'আমার জন্য নকল ডেটা সহ একটি সুন্দর ডিজাইন করা আবহাওয়া অ্যাপ তৈরি করুন', ne:'मेरो लागि नक्कली डाटा सहितको राम्रो डिजाइन गरिएको मौसम एप बनाउनुहोस्'}},
+  {icon:'📷', ar:'معرض صور', en:'Photo gallery', fr:'Galerie photo', hi:'फ़ोटो गैलरी', ur:'فوٹو گیلری', bn:'ফটো গ্যালারি', ne:'फोटो ग्यालेरी', prompt:{ar:'أنشئ لي معرض صور تفاعلي بتأثيرات جميلة', en:'Build an interactive photo gallery with nice effects', fr:'Crée-moi une galerie photo interactive avec de beaux effets', hi:'मेरे लिए अच्छे इफेक्ट्स के साथ एक इंटरैक्टिव फ़ोटो गैलरी बनाएं', ur:'میرے لیے اچھے اثرات کے ساتھ ایک انٹرایکٹو فوٹو گیلری بنائیں', bn:'আমার জন্য সুন্দর প্রভাব সহ একটি ইন্টারেক্টিভ ফটো গ্যালারি তৈরি করুন', ne:'मेरो लागि राम्रो प्रभावसहितको इन्टरएक्टिभ फोटो ग्यालेरी बनाउनुहोस्'}},
+  {icon:'🧠', ar:'اختبار ذكاء', en:'Quiz app', fr:'App de quiz', hi:'क्विज़ ऐप', ur:'کوئز ایپ', bn:'কুইজ অ্যাপ', ne:'क्विज एप', prompt:{ar:'أنشئ لي تطبيق اختبار أسئلة وأجوبة تفاعلي', en:'Build an interactive quiz app', fr:'Crée-moi une application de quiz interactive', hi:'मेरे लिए एक इंटरैक्टिव क्विज़ ऐप बनाएं', ur:'میرے لیے ایک انٹرایکٹو کوئز ایپ بنائیں', bn:'আমার জন্য একটি ইন্টারেক্টিভ কুইজ অ্যাপ তৈরি করুন', ne:'मेरो लागि इन्टरएक्टिभ क्विज एप बनाउनुहोस्'}},
+  {icon:'🍳', ar:'كتاب وصفات', en:'Recipe book', fr:'Livre de recettes', hi:'रेसिपी बुक', ur:'ریسپی بک', bn:'রেসিপি বই', ne:'रेसिपी बुक', prompt:{ar:'أنشئ لي موقع كتاب وصفات طبخ', en:'Build a recipe book website', fr:'Crée-moi un site de livre de recettes', hi:'मेरे लिए एक रेसिपी बुक वेबसाइट बनाएं', ur:'میرے لیے ایک ریسپی بک ویب سائٹ بنائیں', bn:'আমার জন্য একটি রেসিপি বই ওয়েবসাইট তৈরি করুন', ne:'मेरो लागि रेसिपी बुक वेबसाइट बनाउनुहोस्'}},
+  {icon:'📄', ar:'سيرة ذاتية', en:'Resume', fr:'CV', hi:'रिज़्यूमे', ur:'ریزیومے', bn:'জীবনবৃত্তান্ত', ne:'बायोडाटा', prompt:{ar:'أنشئ لي صفحة سيرة ذاتية احترافية', en:'Build a professional resume page', fr:'Crée-moi une page de CV professionnelle', hi:'मेरे लिए एक पेशेवर रिज़्यूमे पेज बनाएं', ur:'میرے لیے ایک پیشہ ورانہ ریزیومے صفحہ بنائیں', bn:'আমার জন্য একটি পেশাদার জীবনবৃত্তান্ত পেজ তৈরি করুন', ne:'मेरो लागि व्यावसायिक बायोडाटा पेज बनाउनुहोस्'}},
+  {icon:'🎵', ar:'مشغل موسيقى', en:'Music player', fr:'Lecteur de musique', hi:'म्यूज़िक प्लेयर', ur:'میوزک پلیئر', bn:'মিউজিক প্লেয়ার', ne:'म्युजिक प्लेयर', prompt:{ar:'أنشئ لي واجهة مشغل موسيقى أنيقة', en:'Build a sleek music player UI', fr:'Crée-moi une interface de lecteur de musique élégante', hi:'मेरे लिए एक स्टाइलिश म्यूज़िक प्लेयर UI बनाएं', ur:'میرے لیے ایک خوبصورت میوزک پلیئر UI بنائیں', bn:'আমার জন্য একটি সুন্দর মিউজিক প্লেয়ার ইউআই তৈরি করুন', ne:'मेरो लागि स्टाइलिश म्युजिक प्लेयर UI बनाउनुहोस्'}},
+  {icon:'⚖️', ar:'بوت استشارات قانونية', en:'Legal advice bot', priority:true, prompt:{ar:'أنشئ لي صفحة ويب واحدة (HTML/CSS/JS) اسمها "بوت استشارات قانونية — قوانين دولة الإمارات". لكل سؤال يكتبه المستخدم: أولاً أرسل fetch POST إلى المسار النسبي /api/search بالجسم {query: السؤال + " قانون الإمارات المادة", lang:"ar", domains:["uaelegislation.gov.ae","moj.gov.ae","u.ae","elaws.moj.gov.ae"]} (JSON)، انتظر النتيجة. إذا رجعت نتائج قليلة أو فارغة أعد المحاولة مرة واحدة بدون حقل domains. ثم اعرض الإجابة بهذه الصيغة الإلزامية: 1) 📜 اسم القانون ورقمه وسنته، 2) 🔢 رقم المادة، 3) النص من نتائج البحث الفعلية (title/url/content)، 4) 💡 شرح مبسط بالعربي، 5) 🔗 رابط المصدر الرسمي. لا تختلق نص مواد أو أرقام قوانين من عندك أبدًا؛ إن لم تجد المادة في النتائج قل صراحة "لم أجد نص المادة في المصادر الرسمية" واعرض الروابط. أضف أسفل كل إجابة تنويه: "هذه معلومات إرشادية وليست استشارة قانونية رسمية". إن فشل البحث اعرض "تعذر جلب معلومات دقيقة الآن". صمم الواجهة بسيطة ونظيفة بدون مربعات/حدود، نفس أسلوب التطبيق (خلفية شفافة، نص فقط، أيقونة نسخ SVG تحت كل رد).', en:'Build a single-page web app (HTML/CSS/JS) called "UAE Legal Advice Bot". For every user question: first send a POST fetch to the relative path /api/search with body {query: question + " UAE law article", lang:"en", domains:["uaelegislation.gov.ae","moj.gov.ae","u.ae","elaws.moj.gov.ae"]} (JSON), wait for the result. If results are empty or too few, retry once without the domains field. Then answer in this mandatory format: 1) 📜 law name, number and year, 2) 🔢 article number, 3) the text taken from the actual search results (title/url/content), 4) 💡 simple explanation, 5) 🔗 official source link. Never invent article texts or law numbers; if the article text is not in the results, say clearly "Article text not found in official sources" and show the links. Add under every answer: "This is guidance information, not official legal advice". If the search fails show "Could not fetch accurate information right now". Keep the UI clean, no boxes/borders, matching the app style (transparent background, text only, SVG copy icon under each reply).'}},
+  {icon:'🩺', ar:'بوت استشارات طبية', en:'Medical advice bot', priority:true, prompt:{ar:'أنشئ لي صفحة ويب واحدة (HTML/CSS/JS) اسمها "بوت استشارات طبية أولية". لكل سؤال يكتبه المستخدم عن أعراض أو معلومات صحية: أولاً أرسل fetch POST إلى المسار النسبي /api/search بالجسم {query, lang:"ar"} (JSON)، انتظر النتيجة، ثم اعرض ملخصاً دقيقاً مبنياً فعلياً على نتائج البحث المرجعة (title/url/content) مع ذكر المصادر كروابط. لا تختلق معلومات طبية من عندك؛ إن فشل البحث اعرض رسالة "تعذر جلب معلومات دقيقة الآن". صمم الواجهة بسيطة ونظيفة بدون مربعات/حدود، نفس أسلوب التطبيق (خلفية شفافة، نص فقط، أيقونة نسخ SVG تحت كل رد).', en:'Build a single-page web app (HTML/CSS/JS) called "Preliminary Medical Advice Bot". For every symptom/health question: first send a POST fetch to the relative path /api/search with body {query, lang:"en"} (JSON), wait for the result, then show an accurate summary based on the actual returned search results (title/url/content), citing sources as links. Do not invent medical information; if the search fails show "Could not fetch accurate information right now". Keep the UI clean, no boxes/borders, matching the app style (transparent background, text only, SVG copy icon under each reply).'}},
+  {icon:'🎓', ar:'بوت مساعدة طلابية', en:'Student helper bot', priority:true, prompt:{ar:'أنشئ لي صفحة ويب واحدة (HTML/CSS/JS) اسمها "بوت مساعدة طلابية". لكل سؤال دراسي/منهجي يكتبه الطالب: أولاً أرسل fetch POST إلى المسار النسبي /api/search بالجسم {query, lang:"ar"} (JSON)، انتظر النتيجة، ثم اشرح الإجابة بأسلوب مبسط تعليمي مبني فعلياً على نتائج البحث المرجعة (title/url/content) مع ذكر المصادر كروابط للمزيد من القراءة. لا تختلق معلومات من عندك؛ إن فشل البحث اعرض رسالة "تعذر جلب معلومات دقيقة الآن". صمم الواجهة بسيطة ونظيفة بدون مربعات/حدود، نفس أسلوب التطبيق (خلفية شفافة، نص فقط، أيقونة نسخ SVG تحت كل رد).', en:'Build a single-page web app (HTML/CSS/JS) called "Student Helper Bot". For every curriculum/study question: first send a POST fetch to the relative path /api/search with body {query, lang:"en"} (JSON), wait for the result, then explain the answer in a simple educational style based on the actual returned search results (title/url/content), citing sources as links for further reading. Do not invent information; if the search fails show "Could not fetch accurate information right now". Keep the UI clean, no boxes/borders, matching the app style (transparent background, text only, SVG copy icon under each reply).'}},
+];
+
+function renderQuickChips(){
+  const wrap = $('#quickChips');
+  if(!wrap) return;
+  const order = QUICK_SUGGESTIONS.map((s,i) => i)
+    .sort((a,b) => {
+      const pa = QUICK_SUGGESTIONS[a].priority ? 0 : 1;
+      const pb = QUICK_SUGGESTIONS[b].priority ? 0 : 1;
+      if(pa !== pb) return pa - pb;
+      return (QUICK_SUGGESTIONS[a][lang]||QUICK_SUGGESTIONS[a].en).length - (QUICK_SUGGESTIONS[b][lang]||QUICK_SUGGESTIONS[b].en).length;
+    });
+  wrap.innerHTML = order.map(i => {
+    const s = QUICK_SUGGESTIONS[i];
+    return `<button type="button" class="btn quickChip" data-idx="${i}" style="display:block; width:100%; text-align:right; background:none; border:none; box-shadow:none; font-size:13px; padding:5px 8px; min-height:0; line-height:1.4;">${s[lang] || s.en}</button>`;
+  }).join('');
+  wrap.querySelectorAll('.quickChip').forEach(btn => {
+    btn.onclick = () => {
+      const s = QUICK_SUGGESTIONS[+btn.dataset.idx];
+      $('#prompt').value = s.prompt[lang] || s.prompt.en;
+      closeQuickTemplates();
+      sendPrompt();
+    };
+  });
+}
+
+function closeQuickTemplates(){
+  const wrap = $('#chatQuickChipsWrap');
+  if(wrap) wrap.style.display = 'none';
+  const btn = $('#btnQuickTemplates');
+  if(btn) btn.classList.remove('active');
+  const msgs = $('#messages');
+  if(msgs) msgs.style.visibility = '';
+}
+function toggleQuickTemplates(){
+  const wrap = $('#chatQuickChipsWrap');
+  if(!wrap) return;
+  const willShow = wrap.style.display === 'none' || !wrap.style.display;
+  wrap.style.display = willShow ? 'block' : 'none';
+  const btn = $('#btnQuickTemplates');
+  if(btn) btn.classList.toggle('active', willShow);
+  const msgs = $('#messages');
+  if(msgs) msgs.style.visibility = willShow ? 'hidden' : '';
+}
+if($('#btnQuickTemplates')) $('#btnQuickTemplates').onclick = (e) => { e.stopPropagation(); toggleQuickTemplates(); };
+document.addEventListener('click', (e) => {
+  const wrap = $('#chatQuickChipsWrap');
+  if(!wrap || wrap.style.display === 'none' || !wrap.style.display) return;
+  if(wrap.contains(e.target) || e.target === $('#btnQuickTemplates')) return;
+  closeQuickTemplates();
+});
+
+function toggleLang(){
+  lang = lang === 'ar' ? 'en' : 'ar';
+  applyLanguage();
+  renderAll();
+}
+function setLang(newLang){ try{ setTimeout(()=>{ if(typeof markActiveLang==="function") markActiveLang(); },0); }catch(e){}
+  if(lang === newLang) return;
+  lang = newLang;
+  applyLanguage();
+  renderAll();
+  try { populateVoicePicker(); } catch(e) {}
+}
+$('#btnLangAr').onclick = () => setLang('ar');
+$('#btnLangEn').onclick = () => setLang('en');
+if($('#btnLangFr')) $('#btnLangFr').onclick = () => setLang('fr');
+if($('#btnLangHi')) $('#btnLangHi').onclick = () => setLang('hi');
+if($('#btnLangUr')) $('#btnLangUr').onclick = () => setLang('ur');
+if($('#btnLangBn')) $('#btnLangBn').onclick = () => setLang('bn');
+if($('#btnLangNe')) $('#btnLangNe').onclick = () => setLang('ne');
+if($('#btnLangId')) $('#btnLangId').onclick = () => setLang('id');
+if($('#btnLangFil')) $('#btnLangFil').onclick = () => setLang('fil');
+if($('#btnLangTr')) $('#btnLangTr').onclick = () => setLang('tr');
+if($('#btnLangZh')) $('#btnLangZh').onclick = () => setLang('zh');
+if($('#btnLangRu')) $('#btnLangRu').onclick = () => setLang('ru');
+if($('#btnLangEs')) $('#btnLangEs').onclick = () => setLang('es');
+if($('#btnLangMl')) $('#btnLangMl').onclick = () => setLang('ml');
+function markActiveLang(){
+  const map={ar:'Ar',en:'En',fr:'Fr',hi:'Hi',ur:'Ur',bn:'Bn',ne:'Ne',id:'Id',fil:'Fil',tr:'Tr',zh:'Zh',ru:'Ru',es:'Es',ml:'Ml'};
+  const cur=map[(typeof lang!=='undefined'&&lang)?lang:(localStorage.getItem('aiapp_lang')||'ar')]||'Ar';
+  document.querySelectorAll('#langListWrap .langFlagBtn').forEach(b=>{
+    const on=b.id==='btnLang'+cur;
+    const c=b.querySelector('.langCheck'); if(c) c.style.display=on?'block':'none';
+    b.style.background=on?'rgba(var(--accent-rgb),.12)':'none';
+    b.style.fontWeight=on?'600':'400';
+  });
+}
+markActiveLang();
+
+// The login/signup overlay sits above the header (so it can fully block the
+// app until the user authenticates), which means the header's own language
+// buttons are not reachable while it's open. Mirror the same controls here so
+// users can still switch AR/EN from the login screen itself.
+const authLangArInit = $('#btnAuthLangAr');
+const authLangEnInit = $('#btnAuthLangEn');
+if(authLangArInit) authLangArInit.onclick = () => setLang('ar');
+if(authLangEnInit) authLangEnInit.onclick = () => setLang('en');
+
+let state = {
+  projects: JSON.parse(localStorage.getItem('aiapp_projects') || '[]'),
+  currentId: null,
+};
+
+// 💾 IndexedDB storage — سعة بالجيجات بدل حد 5MB في localStorage.
+// المشاريع/المحادثات/الصور تنحفظ هنا؛ localStorage يبقى للإعدادات الصغيرة فقط.
+const IDB_NAME = 'aiapp_db', IDB_STORE = 'kv';
+function idbOpen(){
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(IDB_NAME, 1);
+    r.onupgradeneeded = () => { r.result.createObjectStore(IDB_STORE); };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+function idbSet(key, val){
+  return idbOpen().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(val, key);
+    tx.oncomplete = () => { db.close(); res(); };
+    tx.onerror = () => { db.close(); rej(tx.error); };
+  }));
+}
+function idbGet(key){
+  return idbOpen().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(IDB_STORE, 'readonly');
+    const rq = tx.objectStore(IDB_STORE).get(key);
+    rq.onsuccess = () => { db.close(); res(rq.result); };
+    rq.onerror = () => { db.close(); rej(rq.error); };
+  }));
+}
+let __idbBroken = false;
+
+// Strips old image data (keeps a small placeholder) to free up localStorage
+// space. Keeps the most recent images in the active project untouched so the
+// current conversation still looks right; purges everything older/elsewhere.
+function purgeOldImages(keepCount){
+  if(keepCount === undefined) keepCount = 4;
+  let purgedAny = false;
+  const currentId = state.currentId;
+  state.projects.forEach(p => {
+    const isCurrent = p.id === currentId;
+    const msgs = p.messages || [];
+    msgs.forEach((m, idx) => {
+      const keepThis = isCurrent && keepCount > 0 && idx >= msgs.length - keepCount;
+      if(keepThis) return;
+      if(m.attachments && m.attachments.length){
+        m.attachments.forEach(a => {
+          if(a.isImage && a.dataUrl){ a.dataUrl = ''; a.purged = true; purgedAny = true; }
+        });
+      }
+      if(m.apiImages && m.apiImages.length){
+        m.apiImages.forEach(a => { if(a.dataUrl){ a.dataUrl = ''; purgedAny = true; } });
+      }
+    });
+  });
+  return purgedAny;
+}
+
+// 🕰️ آلة الزمن — لقطة تلقائية لكل تغيير في كود المشروع
+function pushCodeSnapshot(){
+  try{
+    const cur = getCurrent();
+    if(!cur || !cur.code) return;
+    cur.codeHistory = cur.codeHistory || [];
+    const last = cur.codeHistory[cur.codeHistory.length - 1];
+    if(last && last.code === cur.code) return;
+    // 🧹 v308: اللقطات بدون وسائط مضمنة — نسخة واحدة كاملة تكفي (المشروع نفسه)،
+    // أما 12 لقطة × صور base64 عملاقة = انفجار تخزين iOS واختفاء المحادثات.
+    let snapCode = cur.code;
+    if(snapCode.length > 500000){
+      snapCode = snapCode.replace(/data:(image|audio|video)\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]{200,}/g, 'data:image/png;base64,SNAPSHOT_MEDIA_OMITTED');
+      if(snapCode.length > 500000) snapCode = snapCode.slice(0, 500000);
+    }
+    // v318: الكود المقصوص يولّد لقطة مختلفة عن الأصل كل مرة → انفجار لقطات. قارن اللقطة نفسها.
+    if(last && last.code === snapCode) return;
+    cur.codeHistory.push({ ts: Date.now(), code: snapCode, codeType: cur.codeType || 'html' });
+    if(cur.codeHistory.length > 12) cur.codeHistory.splice(0, cur.codeHistory.length - 12);
+  }catch(e){}
+}
+/* v318: الحفظ المجمّع — بدل نسخ JSON كامل لكل المشاريع عشرات المرات أثناء
+   الرد الواحد (كان يجمّد الخيط الرئيسي ويطلّع «يستجيب ببطء»)، نجمع الطلبات
+   ونكتب مرة كل 1.5 ثانية كحد أقصى، مع حفظة فورية مضمونة عند إخفاء/إغلاق الصفحة. */
+let __saveTimer = null;
+let __saveDirty = false;
+function __saveFlush(){
+  if(!__saveDirty) return;
+  __saveDirty = false;
+  try{ clearTimeout(__saveTimer); }catch(e){}
+  __saveTimer = null;
+  if(!__idbBroken && window.indexedDB){
+    try{
+      idbSet('aiapp_projects', state.projects).catch(err => {
+        console.error('IDB save failed → fallback to localStorage', err);
+        __idbBroken = true;
+        saveStateLocal();
+      });
+      return;
+    }catch(err){
+      // كائن غير قابل للاستنساخ البنيوي → نسخة JSON نظيفة مرة واحدة.
+      try{
+        idbSet('aiapp_projects', JSON.parse(JSON.stringify(state.projects))).catch(() => { __idbBroken = true; saveStateLocal(); });
+        return;
+      }catch(e2){ __idbBroken = true; }
+    }
+  }
+  saveStateLocal();
+}
+window.addEventListener('pagehide', __saveFlush);
+document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') __saveFlush(); });
+function saveState(){
+  pushCodeSnapshot();
+  try{ localStorage.setItem('aiapp_current_id', state.currentId || ''); }catch(e){}
+  // ☁️ v306: مزامنة صامتة مؤجَّلة مع السيرفر للمستخدمين المسجّلين.
+  try{ scheduleChatsServerSync(); }catch(e){}
+  __saveDirty = true;
+  if(__saveTimer) return;
+  __saveTimer = setTimeout(__saveFlush, 1500);
+}
+// ⚡ v320: الحفظ يعالج المشروع المفتوح فقط — الباقي من نسخة نصية جاهزة (كاش).
+let __projJsonCache = new WeakMap();
+function __projectsToJson(){
+  const curId = state.currentId;
+  const parts = state.projects.map(p => {
+    if(p.id !== curId){
+      const c = __projJsonCache.get(p);
+      if(c !== undefined) return c;
+    }
+    const s = JSON.stringify(p);
+    __projJsonCache.set(p, s);
+    return s;
+  });
+  return '[' + parts.join(',') + ']';
+}
+function saveStateLocal(){
+  try{
+    localStorage.setItem('aiapp_projects', __projectsToJson());
+  }catch(err){
+    console.error('saveState failed, attempting auto-cleanup of old images', err);
+    __projJsonCache = new WeakMap(); // الكاش قد يصير قديمًا بعد التنظيف
+    // Progressive cleanup: first try keeping only the last 4 messages' images,
+    // then last 2, then just the very last message (the one currently being
+    // sent to the AI providers) — never 0, so an in-flight send never loses
+    // its own image data out from under it.
+    const steps = [4, 2, 1];
+    for(const keepCount of steps){
+      const purged = purgeOldImages(keepCount);
+      if(!purged) continue;
+      try{
+        localStorage.setItem('aiapp_projects', JSON.stringify(state.projects));
+        renderHistory();
+        return; // recovered silently, no need to alarm the user
+      }catch(err2){
+        console.error('saveState failed again after cleanup (keepCount=' + keepCount + ')', err2);
+      }
+    }
+    // Quota exceeded (usually from many/large image attachments piling up in
+    // history) must never silently break the send flow. Surface it instead.
+    if(!saveState._warned){
+      saveState._warned = true;
+      setTimeout(() => { saveState._warned = false; }, 15000);
+      alert(t('storageFullWarning'));
+    }
+  }
+}
+
+/* ☁️ v306: مزامنة المحادثات مع السيرفر للمستخدمين المسجّلين فقط.
+   iOS Safari يمسح localStorage/IndexedDB أحيانًا → المحادثات تختفي.
+   الحل: نسخة احتياطية في السيرفر (chats:{username}) تُدمج عند فتح التطبيق.
+   الضيوف بدون أي تغيير. أخطاء الشبكة صامتة تمامًا. */
+let __chatsSyncTimer = null;
+let __chatsLoadedFor = null;
+function chatsAuthToken(){
+  try{ return (window.authGet && window.authGet('aiapp_auth_token')) || ''; }catch(e){ return ''; }
+}
+/* v381: تطبيع الرسالة قبل الرفع — الصور الكبيرة تُستبدل بـ serverThumb المضغوط.
+   الصور الصغيرة (< 150KB base64) تبقى كما هي. بدون thumb + كبيرة = [media]. */
+function __msgForServer(m){
+  try{
+    var o = JSON.parse(JSON.stringify(m));
+    // المرفقات: استخدم serverThumb إذا موجود، أو احتفظ بالصغيرة
+    function fixImg(a){
+      if(!a || !a.isImage) return;
+      if(a.serverThumb){
+        a.dataUrl = a.serverThumb;
+        delete a.serverThumb;
+      } else if(a.dataUrl && a.dataUrl.length > 150000){
+        a.dataUrl = '[media]';
+      }
+      // الصغيرة تبقى كما هي
+    }
+    if(o.attachments) o.attachments.forEach(fixImg);
+    if(o.apiImages) o.apiImages.forEach(fixImg);
+    // النص الطويل
+    if(o && typeof o.content === 'string' && o.content.length > 12001){
+      o.content = o.content.slice(0, 12000) + '…';
+    }
+    // الكود المضمن في المحتوى
+    if(o && typeof o.content === 'string'){
+      o.content = o.content.replace(/data:(image|audio|video)\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]{200,}/g, '[media]');
+    }
+    return o || m;
+  }catch(e){ return m; }
+}
+function chatsSlimForServer(){
+  let list = (state.projects || []).map(p => ({
+    id: p.id,
+    title: p.title || '',
+    provider: p.provider || '',
+    messages: Array.isArray(p.messages) ? p.messages.map(__msgForServer) : [],
+    code: (typeof p.code === 'string') ? p.code : '',
+  })).filter(p => p.id);
+  const size = l => { try{ return JSON.stringify(l).length; }catch(e){ return Infinity; } };
+  // v381: رفع الحد لـ 2MB عشان الصور المضغوطة تمر
+  let i = 0;
+  while(size(list) > 2000000 && i < list.length){
+    if(list[i].code) list[i] = Object.assign({}, list[i], { code: '' });
+    i++;
+  }
+  while(size(list) > 2000000 && list.length > 0) list.shift();
+  return list;
+}
+// v311: أي صورة داخل المحادثة يفشل تحميلها (انحذفت من المزامنة) تختفي
+// بهدوء بدل ما يظهر «⚠️ Load failed» ويشوه المحادثة.
+document.addEventListener('error', function(e){
+  try{
+    const t = e.target;
+    if(t && t.tagName === 'IMG' && t.closest && t.closest('.msg')) t.style.display = 'none';
+  }catch(err){}
+}, true);
+/* v375: سجل المحادثات المحذوفة عمدًا — المزامنة ممنوعة ترجّعها أبدًا. */
+function chatsDeletedIds(){
+  try{ const a = JSON.parse(localStorage.getItem('aiapp_deleted_chats') || '[]'); return Array.isArray(a) ? a : []; }catch(e){ return []; }
+}
+window.chatsMarkDeleted = function(id){
+  if(!id) return;
+  try{
+    const ids = chatsDeletedIds();
+    if(ids.indexOf(id) === -1){
+      ids.push(id);
+      while(ids.length > 300) ids.shift();
+      localStorage.setItem('aiapp_deleted_chats', JSON.stringify(ids));
+    }
+  }catch(e){}
+};
+/* v375: رفع فوري للسيرفر (بدون انتظار 4 ثواني) — يُستدعى بعد الحذف مباشرة. */
+window.chatsServerSaveNow = function(){
+  try{ clearTimeout(__chatsSyncTimer); }catch(e){}
+  try{ chatsServerSave(); }catch(e){}
+};
+/* v376: دمج نسخة السيرفر مع المحلي — دالة مشتركة يستخدمها
+   الفتح + المزامنة الدورية + الدمج قبل كل رفع. ترجّع true إذا تغيّر شيء. */
+function __chatsMergeServer(server, deletedIds){
+  var hasServer = Array.isArray(server) && server.length > 0;
+  var hasDeleted = Array.isArray(deletedIds) && deletedIds.length > 0;
+  if(!hasServer && !hasDeleted) return false;
+  // v383: بناء قائمة المحذوفات من السيرفر
+  var delSet = Object.create(null);
+  if(hasDeleted) for(var di=0; di<deletedIds.length; di++) delSet[deletedIds[di]] = 1;
+  // v382: بصمة سريعة قبل الدمج — لو ما تغيّر شي نتجاوز إعادة الرسم
+  var __fingerprint = function(list){
+    var fp = '';
+    for(var i=0; i<list.length; i++){
+      var p = list[i];
+      if(!p || !p.id) continue;
+      var ml = Array.isArray(p.messages) ? p.messages.length : 0;
+      fp += p.id + ':' + ml + ':' + (p.title||'') + ':' + (p.provider||'') + ';';
+    }
+    return fp;
+  };
+  var fpBefore = __fingerprint(state.projects);
+  // v381c: بسّط — السيرفر هو المصدر الوحيد.
+  const localById = Object.create(null);
+  state.projects.forEach(p => { if(p && p.id) localById[p.id] = p; });
+  const result = [];
+  const seen = Object.create(null);
+  server.forEach(sp => {
+    if(!sp || !sp.id) return;
+    seen[sp.id] = 1;
+    const local = localById[sp.id];
+    if(local){
+      const lMsgs = Array.isArray(local.messages) ? local.messages : [];
+      const sMsgs = Array.isArray(sp.messages) ? sp.messages : [];
+      if(sMsgs.length > lMsgs.length){
+        local.messages = sMsgs;
+      }
+      if(sp.title && !local.title) local.title = sp.title;
+      if(sp.code && !local.code) local.code = sp.code;
+      if(sp.provider && !local.provider) local.provider = sp.provider;
+      result.push(local);
+    } else {
+      result.push(sp);
+    }
+  });
+  state.projects.forEach(p => {
+    if(p && p.id && !seen[p.id] && !delSet[p.id]) result.push(p);
+  });
+  state.projects = result;
+  var fpAfter = __fingerprint(result);
+  if(fpAfter === fpBefore){
+    // v382: لا تغيير → لا إعادة رسم = لا وميض
+    return false;
+  }
+  try{ saveState(); }catch(e){}
+  try{ renderHistory(); }catch(e){}
+  try{ if(typeof renderAll === 'function') renderAll(); }catch(e){}
+  try{ if(typeof buildChatList === 'function') buildChatList(); }catch(e){}
+  return true;
+}
+/* v376: تنزيل نسخة السيرفر ودمجها ثم استدعاء cb. */
+function chatsServerPull(cb){
+  const token = chatsAuthToken();
+  if(!token){ if(cb) cb(); return; }
+  fetch('/api/account?action=chats_load', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  }).then(r => {
+    // v378: رد خطأ من السيرفر (500/429...) = فشل، مو قائمة فاضية.
+    if(!r.ok) throw new Error('http ' + r.status);
+    return r.json();
+  }).then(d => {
+    const server = (d && Array.isArray(d.projects)) ? d.projects : [];
+    const __deletedIds = (d && Array.isArray(d.deletedIds)) ? d.deletedIds : [];
+    window.__chatsServerCount = server.length;
+    try{
+      var mergeResult = __chatsMergeServer(server, __deletedIds);
+      window.__chatsMergeResult = mergeResult ? 'changed' : 'no-change';
+      window.__chatsMergeErr = '';
+    }catch(e){
+      window.__chatsMergeErr = String(e && e.message || e).slice(0,60);
+      window.__chatsMergeResult = 'ERROR';
+    }
+    window.__chatsLastPull = Date.now(); window.__chatsLastPullErr = '';
+    if(cb) cb(true);
+  }).catch(err => { window.__chatsLastPullErr = String(err && err.message || err).slice(0,40); if(cb) cb(false); });
+}
+function __chatsPushNow(){
+  const token = chatsAuthToken();
+  if(!token) return;
+  const __slim = chatsSlimForServer();
+  // v311: قائمة بلا أي رسالة = لا ترفع أبدًا (لا تمسح النسخة الاحتياطية).
+  let __total = 0;
+  try{ (__slim || []).forEach(p => { __total += (Array.isArray(p.messages) ? p.messages.length : 0); }); }catch(e){}
+  if(!__total) return;
+  try{
+    fetch('/api/account?action=chats_save', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, projects: __slim }),
+    }).then(r => {
+      if(r && r.ok){ window.__chatsLastPush = Date.now(); window.__chatsLastPushErr = ''; }
+      else { window.__chatsLastPushErr = 'http ' + (r ? r.status : '?'); }
+    }).catch(err => { window.__chatsLastPushErr = String(err && err.message || err).slice(0,40); });
+  }catch(e){}
+}
+function chatsServerSave(){
+  const token = chatsAuthToken();
+  if(!token) return;
+  // v378: البوابة الوحيدة = اكتمال تحميل المحادثات المحلية (IndexedDB) —
+  // لو لسه ما اكتمل نعيد الجدولة بدل ما نمنع الرفع للأبد.
+  if(!window.__localChatsLoaded){ scheduleChatsServerSync(); return; }
+  // v376/v378: دمج قبل كل رفع — والرفع فقط بعد سحب "ناجح" حتى لا نكتب
+  // فوق شغل جهاز آخر عند فشل الشبكة.
+  chatsServerPull(ok => {
+    if(ok === false){ scheduleChatsServerSync(); return; }
+    window.__chatsMergeDone = true;
+    try{ __chatsPushNow(); }catch(e){}
+  });
+}
+window.appFullCleanup = function(){
+  var msg = 'سيتم حذف كل المحادثات والمشاريع نهائيًا. هل أنت متأكد؟';
+  try{ var m = (typeof t === 'function') ? t('acctCleanupConfirm') : ''; if(m && m !== 'acctCleanupConfirm') msg = m; }catch(e){}
+  if(!confirm(msg)) return;
+  try{ clearTimeout(__chatsSyncTimer); }catch(e){}
+  window.__chatsMergeDone = false;
+  var token = '';
+  try{ token = chatsAuthToken(); }catch(e){}
+  var finish = function(){
+    try{ localStorage.removeItem('aiapp_projects'); }catch(e){}
+    try{ localStorage.removeItem('aiapp_current_id'); }catch(e){}
+    try{ localStorage.removeItem('aiapp_provider_projects'); }catch(e){}
+    try{ if(window.indexedDB) indexedDB.deleteDatabase('aiapp_db'); }catch(e){}
+    setTimeout(function(){ location.reload(); }, 400);
+  };
+  if(token){
+    fetch('/api/account?action=chats_wipe', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    }).catch(function(){}).finally(finish);
+  } else { finish(); }
+};
+function scheduleChatsServerSync(){
+  if(!chatsAuthToken()) return;
+  try{ clearTimeout(__chatsSyncTimer); }catch(e){}
+  __chatsSyncTimer = setTimeout(chatsServerSave, 4000);
+}
+window.chatsSyncOnAuth = function(){
+  const token = chatsAuthToken();
+  if(!token || __chatsLoadedFor === token) return;
+  __chatsLoadedFor = token;
+  // v378: ننتظر اكتمال تحميل IndexedDB "فعليًا" (ترتيب حتمي) بدل مهلة عمياء 1500ms.
+  var __waited = 0;
+  var __tick = function(){
+    if(!window.__localChatsLoaded && __waited < 10000){ __waited += 200; setTimeout(__tick, 200); return; }
+    chatsServerPull(ok => {
+      // v378: فشل التنزيل (شبكة/خطأ سيرفر) → إعادة المحاولة تلقائيًا بعد 8 ثواني.
+      if(ok === false){ __chatsLoadedFor = null; setTimeout(function(){ try{ window.chatsSyncOnAuth(); }catch(e){} }, 8000); return; }
+      // بعد أول دمج ناجح: يُسمح بالرفع + رفع نسخة موحّدة.
+      window.__chatsMergeDone = true;
+      scheduleChatsServerSync();
+      // v376: مزامنة مستمرة — نفس الحساب = نفس المحادثات على كل الأجهزة.
+      __chatsStartLiveSync();
+    });
+  };
+  __tick();
+};
+/* v376: مزامنة حيّة — سحب دوري من السيرفر + كل ما يرجع المستخدم للتطبيق. */
+var __chatsLivePollTimer = null;
+var __chatsLastPull = 0;
+function __chatsPullMerge(){
+  if(!chatsAuthToken() || !window.__chatsMergeDone) return;
+  __chatsLastPull = Date.now();
+  try{ chatsServerPull(() => {}); }catch(e){}
+}
+function __chatsStartLiveSync(){
+  if(__chatsLivePollTimer) return;
+  // سحب كل 20 ثانية طول ما التطبيق مفتوح وظاهر.
+  __chatsLivePollTimer = setInterval(() => {
+    if(document.visibilityState === 'visible') __chatsPullMerge();
+  }, 20000);
+  // رجوع للتطبيق (فتح تبويب/عودة من الخلفية) → سحب فوري مع تهدئة 5 ثواني.
+  var onFocus = () => {
+    if(document.visibilityState !== 'visible') return;
+    if(Date.now() - __chatsLastPull < 5000) return;
+    __chatsPullMerge();
+  };
+  try{ document.addEventListener('visibilitychange', onFocus); }catch(e){}
+  try{ window.addEventListener('focus', onFocus); }catch(e){}
+}
+
+function getCurrent(){
+  return state.projects.find(p => p.id === state.currentId);
+}
+
+// 🧹 v307: تنظيف الكود قبل إرساله للمزود — الصور المضمنة base64 (عدة ميغا)
+// تُستبدل بعلامة قصيرة + سقف للحجم، حتى لا يتجاوز الطلب حد التوكنات ويفشل.
+function codeForApi(code){
+  let c = String(code || '');
+  c = c.replace(/data:(image|audio|video)\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=\s]{200,}/g, 'data:image/png;base64,EMBEDDED_MEDIA_OMITTED');
+  if(c.length > 300000) c = c.slice(0, 300000) + '\n<!-- … الكود طويل جدًا: تم اقتطاع الباقي … -->';
+  return c;
+}
+
+function renderHistory(){
+  historyEl.innerHTML = '';
+  // 🆕 (27/7) كل مزود يشوف مشاريعه فقط — أي مشروع بلا وسم ينتمي للمزود الحالي
+  const provKey = localStorage.getItem('aiapp_provider') || 'claude';
+  let provDirty = false;
+  state.projects.forEach(p => { if(!p.provider){ p.provider = provKey; provDirty = true; } });
+  if(provDirty) saveState();
+  // v380: القائمة تعرض كل المحادثات من كل المزودات — حساب واحد، قائمة وحدة.
+  [...state.projects].reverse().forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'hist-item' + (p.id === state.currentId ? ' active' : '');
+
+    const thumb = document.createElement('div');
+    thumb.className = 'hist-thumb';
+    if(p.code && p.codeType !== 'python'){
+      const iframe = document.createElement('iframe');
+      iframe.setAttribute('sandbox', '');
+      iframe.setAttribute('loading', 'lazy');
+      iframe.srcdoc = p.code;
+      thumb.appendChild(iframe);
+    } else {
+      const ph = document.createElement('span');
+      ph.className = 'hist-thumb-emoji';
+      ph.innerHTML = p.codeType === 'python'
+        ? '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>'
+        : '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>';
+      thumb.appendChild(ph);
+    }
+    div.appendChild(thumb);
+
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'hist-title';
+    titleSpan.textContent = p.title;
+    titleSpan.onclick = () => {
+      // v380: الضغط على محادثة من مزود آخر → ينتقل لمزودها تلقائيًا (بدون إنشاء محادثة جديدة)
+      try{
+        const cur = localStorage.getItem('aiapp_provider') || 'claude';
+        if(p.provider && p.provider !== cur){
+          localStorage.setItem('aiapp_provider', p.provider);
+          const sel = document.getElementById('provider');
+          if(sel) sel.value = p.provider;
+          let pm = {};
+          try{ pm = JSON.parse(localStorage.getItem('aiapp_provider_projects') || '{}'); }catch(e){}
+          pm[p.provider] = p.id;
+          localStorage.setItem('aiapp_provider_projects', JSON.stringify(pm));
+          if(typeof updateProviderQuickBarActive === 'function') updateProviderQuickBarActive();
+        }
+      }catch(e){}
+      state.currentId = p.id; mahaClearImageRef(); renderAll();
+    };
+    div.appendChild(titleSpan);
+
+    // v202: بدل أزرار الحذف/المشاركة الظاهرة — زر ⋮ صغير يفتح قائمة (إعادة تسمية / حذف / مشاركة)
+    const menuBtn = document.createElement('button');
+    menuBtn.className = 'hist-menu-btn';
+    menuBtn.type = 'button';
+    menuBtn.title = '';
+    menuBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>';
+    menuBtn.onclick = (e) => {
+      e.stopPropagation();
+      openHistItemMenu(menuBtn, p, provKey);
+    };
+    div.appendChild(menuBtn);
+
+    historyEl.appendChild(div);
+  });
+}
+
+// v202: قائمة ⋮ الصغيرة لكل مشروع — إعادة تسمية / حذف (بتأكيد) / مشاركة
+function ensureHistItemMenu(){
+  let m = document.getElementById('histItemMenu');
+  if(!m){
+    m = document.createElement('div');
+    m.id = 'histItemMenu';
+    document.body.appendChild(m);
+    document.addEventListener('click', (e) => {
+      if(!e.target.closest('#histItemMenu') && !e.target.closest('.hist-menu-btn')) m.classList.remove('show');
+    });
+    window.addEventListener('resize', () => m.classList.remove('show'));
+  }
+  return m;
+}
+function histRenameProject(p){
+  const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
+  const nv = prompt(isAr ? 'الاسم الجديد للمشروع:' : 'New project name:', p.title);
+  if(nv === null) return;
+  const clean = String(nv).trim();
+  if(!clean) return;
+  p.title = clean;
+  saveState();
+  renderAll();
+}
+function histDeleteProject(p, provKey){
+  if(!confirm(t('confirmDeleteProject').replace('{name}', p.title))) return;
+  state.projects = state.projects.filter(x => x.id !== p.id);
+  if(state.currentId === p.id){
+    const sameProv = state.projects.filter(x => (x.provider || provKey) === provKey);
+    state.currentId = sameProv.length ? sameProv[sameProv.length - 1].id : null;
+    mahaClearImageRef();
+  }
+  if(!state.currentId){
+    const id = 'p_' + Date.now();
+    state.projects.push({id, title: t('defaultProjectTitle'), messages: [], code: '', provider: provKey});
+    state.currentId = id;
+    mahaClearImageRef();
+  }
+  saveState();
+  renderAll();
+}
+function openHistItemMenu(anchorBtn, p, provKey){
+  const m = ensureHistItemMenu();
+  const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
+  m.innerHTML = '';
+  const mkBtn = (label, svg, cls, fn) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    if(cls) b.className = cls;
+    b.innerHTML = svg + '<span>' + label + '</span>';
+    b.onclick = (e) => { e.stopPropagation(); m.classList.remove('show'); fn(); };
+    m.appendChild(b);
+  };
+  const svgPre = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+  mkBtn(isAr ? 'إعادة تسمية' : 'Rename',
+    svgPre + '<path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"></path></svg>',
+    '', () => histRenameProject(p));
+  mkBtn(t('shareProjectBtnTitle') || (isAr ? 'مشاركة' : 'Share'),
+    svgPre + '<circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>',
+    '', () => { if(typeof openShareModal === 'function') openShareModal(p); });
+  mkBtn(isAr ? 'حذف' : 'Delete',
+    svgPre + '<polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>',
+    'danger', () => histDeleteProject(p, provKey));
+  // موضع القائمة بجانب زر ⋮ مع البقاء داخل الشاشة
+  m.classList.add('show');
+  const r = anchorBtn.getBoundingClientRect();
+  const mw = m.offsetWidth || 140, mh = m.offsetHeight || 100;
+  let left = document.documentElement.dir === 'rtl' ? r.left - mw + r.width : r.right - mw;
+  left = Math.max(6, Math.min(left, window.innerWidth - mw - 6));
+  let top = r.bottom + 4;
+  if(top + mh > window.innerHeight - 6) top = Math.max(6, r.top - mh - 4);
+  m.style.left = left + 'px';
+  m.style.top = top + 'px';
+}
+
+// 🔀 محرك الفروقات — line diff بين كود المشروع الحالي وإصدار المزود
+function computeLineDiff(oldText, newText){
+  const a = String(oldText || '').split('\n');
+  const b = String(newText || '').split('\n');
+  const MAX = 2500;
+  if(a.length > MAX || b.length > MAX){
+    return null; // too large for in-browser LCS
+  }
+  // trim common prefix/suffix to shrink LCS matrix
+  let start = 0;
+  while(start < a.length && start < b.length && a[start] === b[start]) start++;
+  let endA = a.length, endB = b.length;
+  while(endA > start && endB > start && a[endA - 1] === b[endB - 1]){ endA--; endB--; }
+  const ca = a.slice(start, endA), cb = b.slice(start, endB);
+  const n = ca.length, mm = cb.length;
+  const dp = new Uint16Array((n + 1) * (mm + 1));
+  for(let i = n - 1; i >= 0; i--){
+    for(let j = mm - 1; j >= 0; j--){
+      dp[i * (mm + 1) + j] = ca[i] === cb[j]
+        ? dp[(i + 1) * (mm + 1) + j + 1] + 1
+        : Math.max(dp[(i + 1) * (mm + 1) + j], dp[i * (mm + 1) + j + 1]);
+    }
+  }
+  const ops = [];
+  for(let k = 0; k < start; k++) ops.push({ t: ' ', line: a[k] });
+  let i = 0, j = 0;
+  while(i < n && j < mm){
+    if(ca[i] === cb[j]){ ops.push({ t: ' ', line: ca[i] }); i++; j++; }
+    else if(dp[(i + 1) * (mm + 1) + j] >= dp[i * (mm + 1) + j + 1]){ ops.push({ t: '-', line: ca[i] }); i++; }
+    else { ops.push({ t: '+', line: cb[j] }); j++; }
+  }
+  while(i < n){ ops.push({ t: '-', line: ca[i] }); i++; }
+  while(j < mm){ ops.push({ t: '+', line: cb[j] }); j++; }
+  for(let k = endA; k < a.length; k++) ops.push({ t: ' ', line: a[k] });
+  return ops;
+}
+function showCodeDiff(oldCode, newCode, label){
+  const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
+  const ops = computeLineDiff(oldCode, newCode);
+  let old = document.getElementById('diffOverlay');
+  if(old) old.remove();
+  const ov = document.createElement('div');
+  ov.id = 'diffOverlay';
+  ov.style.cssText = 'position:fixed; inset:0; z-index:900; background:rgba(0,0,0,.75); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; padding:16px;';
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#12151d; border-radius:14px; max-width:920px; width:100%; max-height:88vh; display:flex; flex-direction:column; overflow:hidden;';
+  const added = ops ? ops.filter(o => o.t === '+').length : 0;
+  const removed = ops ? ops.filter(o => o.t === '-').length : 0;
+  const head = document.createElement('div');
+  head.style.cssText = 'display:flex; align-items:center; gap:10px; padding:12px 16px; font-size:13px; font-weight:700;';
+  head.innerHTML = '<span>🔀 ' + (isAr ? 'الفروقات' : 'Differences') + (label ? ' — ' + label : '') + '</span>'
+    + '<span style="color:#2ecc71;">+' + added + '</span><span style="color:#ff5f56;">−' + removed + '</span>'
+    + '<span style="flex:1;"></span>';
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '✖';
+  closeBtn.style.cssText = 'background:none; border:none; color:#fff; cursor:pointer; font-size:15px;';
+  closeBtn.onclick = () => ov.remove();
+  head.appendChild(closeBtn);
+  box.appendChild(head);
+  const body = document.createElement('div');
+  body.style.cssText = 'overflow:auto; flex:1; padding:0 8px 12px; direction:ltr; font-family:monospace; font-size:12px; line-height:1.5; white-space:pre;';
+  if(!ops){
+    body.style.cssText += 'direction:rtl; font-family:inherit; padding:16px; white-space:normal;';
+    body.textContent = isAr ? 'الكود كبير جدًا للمقارنة التفصيلية — الفروقات بالحجم: '
+      + (String(newCode||'').length - String(oldCode||'').length) + ' حرف'
+      : 'Code too large for a detailed diff.';
+  } else {
+    let shown = 0;
+    let skipRun = 0;
+    const flushSkip = () => {
+      if(skipRun > 3){
+        const gap = document.createElement('div');
+        gap.style.cssText = 'color:#5a6070; padding:2px 8px;';
+        gap.textContent = '··· ' + (skipRun) + ' ···';
+        body.appendChild(gap);
+      }
+      skipRun = 0;
+    };
+    for(let k = 0; k < ops.length; k++){
+      const o = ops[k];
+      const nearChange = ops.slice(Math.max(0, k - 2), k + 3).some(x => x.t !== ' ');
+      if(o.t === ' ' && !nearChange){ skipRun++; continue; }
+      flushSkip();
+      const row = document.createElement('div');
+      row.textContent = (o.t === ' ' ? '  ' : o.t + ' ') + o.line;
+      row.style.cssText = o.t === '+' ? 'background:rgba(46,204,113,.14); color:#7ee2a8;'
+        : o.t === '-' ? 'background:rgba(255,95,86,.12); color:#ff9d97;' : 'color:#98a0b3;';
+      body.appendChild(row);
+      if(++shown > 1200){ const more = document.createElement('div'); more.textContent = '…'; body.appendChild(more); break; }
+    }
+    flushSkip();
+    if(!added && !removed){
+      body.style.cssText += 'direction:rtl; font-family:inherit; padding:16px; white-space:normal;';
+      body.textContent = isAr ? 'لا توجد فروقات — الكودان متطابقان ✅' : 'No differences — identical ✅';
+    }
+  }
+  box.appendChild(body);
+  ov.appendChild(box);
+  ov.onclick = (e) => { if(e.target === ov) ov.remove(); };
+  document.body.appendChild(ov);
+}
+function renderMessages(keepScroll){
+  const prevScrollTop = keepScroll ? messagesEl.scrollTop : null;
+  messagesEl.innerHTML = '';
+  const cur = getCurrent();
+  const chipsWrap = $('#chatQuickChipsWrap');
+  if(chipsWrap && cur && cur.messages && cur.messages.length) chipsWrap.style.display = 'none';
+  if(!cur) return;
+  let compareGroup = null;
+  cur.expandedAskAllBatches = cur.expandedAskAllBatches || [];
+  // ⚡ v320: نافذة عرض — نرسم آخر 30 رسالة فقط؛ الأقدم تظهر بزر عند الطلب.
+  const __MSGWIN = 30;
+  const __winStart = cur.__showAllMsgs ? 0 : Math.max(0, cur.messages.length - __MSGWIN);
+  if(__winStart > 0){
+    const __OLDT = { ar:'عرض الرسائل الأقدم', en:'Show older messages', fr:'Afficher les messages plus anciens', hi:'पुराने संदेश दिखाएँ', ur:'پرانے پیغامات دکھائیں', bn:'পুরনো বার্তা দেখান', ne:'पुराना सन्देशहरू देखाउनुहोस्', id:'Tampilkan pesan lama', fil:'Ipakita ang mga lumang mensahe', tr:'Eski mesajları göster', zh:'显示较早的消息', ru:'Показать старые сообщения', es:'Mostrar mensajes anteriores', ml:'പഴയ സന്ദേശങ്ങൾ കാണിക്കുക' };
+    const __uiL = localStorage.getItem('aiapp_lang') || 'ar';
+    const olderBtn = document.createElement('button');
+    olderBtn.type = 'button';
+    olderBtn.textContent = '⬆ ' + (__OLDT[__uiL] || __OLDT.en) + ' (' + __winStart + ')';
+    olderBtn.style.cssText = 'display:block; margin:8px auto 14px; padding:7px 16px; border-radius:20px; border:1px solid var(--border,rgba(255,255,255,.15)); background:transparent; color:var(--accent2,#a78bfa); font-size:12.5px; cursor:pointer;';
+    olderBtn.onclick = () => { cur.__showAllMsgs = true; renderMessages(false); };
+    messagesEl.appendChild(olderBtn);
+  }
+  cur.messages.forEach((m, mIdx) => {
+    if(mIdx < __winStart) return;
+    const isAskAllReply = !!(m.providerLabel && (m.askAllReply || Object.values(PROVIDER_KEY_LABELS).includes(m.providerLabel))) && !m.isMergeHeader;
+    if(m.askAllReply && !m.isMergeHeader && m.batchId && !cur.expandedAskAllBatches.includes(m.batchId) && cur.messages.some(x => x !== m && (x.isMergeHeader || x.isAskAllPrep) && x.batchId === m.batchId)){
+      return; // individual per-provider replies stay hidden until the user expands them
+    }
+    let rowWrap = null;
+    if(isAskAllReply){
+      rowWrap = document.createElement('div');
+      rowWrap.style.cssText = 'display:flex; align-items:flex-start; gap:6px; max-width:100%;';
+    }
+    const div = document.createElement('div');
+    div.className = 'msg ' + (m.role === 'user' ? 'user' : 'assistant');
+    if(isAskAllReply) div.style.flex = '1 1 auto';
+    let copyMsgBtn = null;
+    let pColor = null;
+    if(m.providerLabel){
+      const label = document.createElement('div');
+      pColor = getProviderColors()[m.providerLabel] || null;
+      // v311: اسم المزود يظهر كامل داخل الشاشة بدون قص (سفاري الآيفون).
+      label.style.cssText = 'font-size:11px; font-weight:800; color:' + (pColor || 'var(--accent2)') + '; margin-bottom:4px; display:block; unicode-bidi:isolate; max-width:100%; overflow-wrap:anywhere; white-space:normal;';
+      label.textContent = m.providerLabel;
+      div.appendChild(label);
+    }
+    const textDiv = document.createElement('div');
+    textDiv.className = 'msg-text';
+    if(pColor) textDiv.style.setProperty('--msg-accent', pColor);
+    if(m._uid) textDiv.dataset.askuid = m._uid;
+    if(m._loading && !m.content){
+      const dots = document.createElement('span');
+      dots.className = 'ask-all-typing-dots';
+      dots.textContent = '⏳';
+      textDiv.appendChild(dots);
+    }
+    let msgWordEls = null;
+    if(m.role !== 'user' && m.content){
+      msgWordEls = buildSpokenWordSpans(textDiv, m.content);
+    } else {
+      textDiv.textContent = m.content;
+    }
+    // 🖼️ Feature ② — image strip ABOVE the reply text: up to 4 live images
+    // returned by the search backend, ChatGPT-style horizontal scroller.
+    if(m.role !== 'user' && Array.isArray(m.searchImages) && m.searchImages.length){
+      const imgStrip = document.createElement('div');
+      imgStrip.className = 'msgSearchImgStrip';
+      m.searchImages.slice(0, 4).forEach(url => {
+        const img = document.createElement('img');
+        img.src = url;
+        img.loading = 'lazy';
+        img.alt = '';
+        img.onerror = () => { img.remove(); };
+        imgStrip.appendChild(img);
+      });
+      div.appendChild(imgStrip);
+    }
+    div.appendChild(textDiv);
+    // 📚 Feature ② — source badges AFTER the reply text: small pills with a
+    // favicon + domain, opening the real source url in a new tab. Never
+    // invented — only what the search backend actually returned.
+    if(m.role !== 'user' && Array.isArray(m.sources) && m.sources.length){
+      const srcWrap = document.createElement('div');
+      srcWrap.className = 'msgSourceBadges';
+      m.sources.slice(0, 6).forEach(s => {
+        if(!s || !s.url) return;
+        let host = '';
+        try{ host = new URL(s.url).hostname.replace(/^www\./, ''); }catch(e){ return; }
+        const badge = document.createElement('a');
+        badge.className = 'msgSourceBadge';
+        badge.href = s.url;
+        badge.target = '_blank';
+        badge.rel = 'noopener noreferrer';
+        badge.title = s.title || host;
+        const fav = document.createElement('img');
+        fav.src = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(host) + '&sz=32';
+        fav.alt = '';
+        fav.loading = 'lazy';
+        fav.onerror = () => { fav.remove(); };
+        const label = document.createElement('span');
+        label.textContent = host;
+        badge.appendChild(fav);
+        badge.appendChild(label);
+        srcWrap.appendChild(badge);
+      });
+      if(srcWrap.childElementCount) div.appendChild(srcWrap);
+    }
+    if(m.attachments && m.attachments.length){
+      const wrap = document.createElement('div');
+      wrap.className = 'msg-attachments';
+      m.attachments.forEach(a => {
+        if(a.isVideo && a.url){
+          const vid = document.createElement('video');
+          vid.src = a.url;
+          vid.controls = true;
+          vid.playsInline = true;
+          vid.style.maxWidth = 'min(320px, 100%)';
+          vid.style.borderRadius = '10px';
+          wrap.appendChild(vid);
+          const dl = document.createElement('a');
+          dl.href = a.url;
+          dl.download = a.name || 'video.mp4';
+          dl.target = '_blank';
+          dl.className = 'file-chip';
+          dl.textContent = '⬇️ ' + (lang === 'ar' ? 'تنزيل الفيديو' : 'Download video');
+          dl.style.textDecoration = 'none';
+          dl.style.alignSelf = 'center';
+          wrap.appendChild(dl);
+        } else if(a.isImage && a.purged){
+          const chip = document.createElement('div');
+          chip.className = 'file-chip';
+          chip.textContent = '🗑️ ' + t('imagePurgedNote');
+          wrap.appendChild(chip);
+        } else if(a.isImage){
+          const img = document.createElement('img');
+          img.src = a.dataUrl;
+          img.title = a.name;
+          img.style.cursor = 'pointer';
+          img.onclick = () => {
+            previewFrame.style.display = 'block';
+            $('#pyConsole').style.display = 'none';
+            emptyState.style.display = 'none';
+            previewFrame._imageView = true;
+            previewFrame._lastSrc = null;
+            previewFrame.srcdoc = '<html><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="' + a.dataUrl + '" style="max-width:100%;max-height:100vh;object-fit:contain;"></body></html>';
+            switchWorkTab('preview');
+            closeDrawers();
+            if(localStorage.getItem('previewEnabled') !== 'off'){
+              workareaEl.classList.add('open');
+              backdropEl.classList.add('show');
+            }
+          };
+          wrap.appendChild(img);
+        } else {
+          const chip = document.createElement('div');
+          chip.className = 'file-chip';
+          chip.textContent = '📄 ' + a.name;
+          if(a.text){
+            chip.style.cursor = 'pointer';
+            chip.title = a.name;
+            chip.onclick = () => {
+              previewFrame.style.display = 'block';
+              $('#pyConsole').style.display = 'none';
+              emptyState.style.display = 'none';
+              const esc = (a.text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+              previewFrame.srcdoc = '<html><body style="margin:0;background:#111;color:#eee;font-family:monospace;white-space:pre-wrap;word-break:break-word;padding:16px;">' + esc + '</body></html>';
+              switchWorkTab('preview');
+              closeDrawers();
+              if(localStorage.getItem('previewEnabled') !== 'off'){
+                workareaEl.classList.add('open');
+                backdropEl.classList.add('show');
+              }
+            };
+          }
+          wrap.appendChild(chip);
+        }
+      });
+      div.appendChild(wrap);
+    }
+    if(m.content && m.content.trim()){
+      const actionBar = document.createElement('div');
+      actionBar.className = 'msgActionBar';
+      const copyIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+      const checkIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      if(m.role !== 'user'){
+        // ⋮ more (convert) menu
+        const moreBtn = document.createElement('button');
+        moreBtn.type = 'button';
+        moreBtn.title = t('moreOptionsTitle') || 'خيارات إضافية';
+        moreBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>';
+        moreBtn.onclick = (e) => { e.stopPropagation(); openMsgMoreMenu(moreBtn, m.content); };
+        actionBar.appendChild(moreBtn);
+
+        // share
+        const shareBtn = document.createElement('button');
+        shareBtn.type = 'button';
+        shareBtn.title = t('shareMsgTitle') || 'مشاركة';
+        shareBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.6" y1="10.5" x2="15.4" y2="6.5"></line><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"></line></svg>';
+        shareBtn.onclick = async () => {
+          try{
+            if(navigator.share){ await navigator.share({ text: m.content }); return; }
+            throw new Error('no-share-api');
+          }catch(e){
+            try{ await navigator.clipboard.writeText(m.content); }catch(e2){ /* ignore */ }
+            if(typeof settingsToast === 'function') settingsToast(t('copiedToast') || 'تم النسخ');
+          }
+        };
+        actionBar.appendChild(shareBtn);
+
+        // 🔊 listen — exact existing speakSmart logic, icon-based
+        const speakIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.5 8.5a5 5 0 0 1 0 7"></path><path d="M18.5 5.5a9 9 0 0 1 0 13"></path></svg>';
+        const stopSpeakIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="1.5"></rect></svg>';
+        const speakBtn = document.createElement('button');
+        speakBtn.type = 'button';
+        speakBtn.title = t('speakBtn') || 'استماع';
+        speakBtn.innerHTML = speakIconSVG;
+        speakBtn.onclick = () => {
+          if(speakBtn._speaking){
+            stopAllSpeaking();
+            speakBtn.innerHTML = speakIconSVG;
+            speakBtn.style.color = '';
+            speakBtn._speaking = false;
+            return;
+          }
+          speakBtn._speaking = true;
+          speakBtn.innerHTML = stopSpeakIconSVG;
+          speakBtn.style.color = 'var(--accent2,#00e0b8)';
+          speakSmart(m.content, null, () => { speakBtn.innerHTML = speakIconSVG; speakBtn.style.color = ''; speakBtn._speaking = false; }, true, msgWordEls);
+        };
+        actionBar.appendChild(speakBtn);
+
+        // 👎 / 👍 feedback (mutually exclusive, in-memory only)
+        const thumbDownIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path></svg>';
+        const thumbUpIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>';
+        const thumbDownBtn = document.createElement('button');
+        thumbDownBtn.type = 'button';
+        thumbDownBtn.title = t('thumbDownTitle') || 'غير مفيد';
+        thumbDownBtn.innerHTML = thumbDownIconSVG;
+        const thumbUpBtn = document.createElement('button');
+        thumbUpBtn.type = 'button';
+        thumbUpBtn.title = t('thumbUpTitle') || 'مفيد';
+        thumbUpBtn.innerHTML = thumbUpIconSVG;
+        thumbDownBtn.onclick = () => {
+          m._feedback = m._feedback === 'down' ? null : 'down';
+          thumbDownBtn.classList.toggle('msgThumbDownActive', m._feedback === 'down');
+          thumbUpBtn.classList.remove('msgThumbActive');
+        };
+        thumbUpBtn.onclick = () => {
+          m._feedback = m._feedback === 'up' ? null : 'up';
+          thumbUpBtn.classList.toggle('msgThumbActive', m._feedback === 'up');
+          thumbDownBtn.classList.remove('msgThumbDownActive');
+        };
+        if(m._feedback === 'down') thumbDownBtn.classList.add('msgThumbDownActive');
+        if(m._feedback === 'up') thumbUpBtn.classList.add('msgThumbActive');
+        actionBar.appendChild(thumbDownBtn);
+        actionBar.appendChild(thumbUpBtn);
+
+        // 🚩 report inappropriate AI content (Store policy 11.16)
+        const flagIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg>';
+        const reportBtn = document.createElement('button');
+        reportBtn.type = 'button';
+        reportBtn.title = t('reportMsgTitle') || 'الإبلاغ عن محتوى غير لائق';
+        reportBtn.innerHTML = flagIconSVG;
+        reportBtn.onclick = async () => {
+          if(reportBtn._done) return;
+          if(!confirm(t('reportConfirm') || 'هل تريد الإبلاغ عن هذا الرد كمحتوى غير لائق؟')) return;
+          reportBtn._done = true;
+          reportBtn.style.color = '#ff5c6c';
+          try{
+            let u='guest'; try{ u = (typeof authGet==='function'&&authGet('aiapp_username'))||'guest'; }catch(_){ }
+            fetch('/api/system?action=feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'report',content:String(m.content||'').slice(0,2000),provider:(m.provider||''),user:u,lang:(typeof lang!=='undefined'?lang:'')})});
+          }catch(e){ /* ignore */ }
+          if(typeof settingsToast === 'function') settingsToast(t('reportSentToast') || 'تم استلام البلاغ — شكرًا لك');
+        };
+        actionBar.appendChild(reportBtn);
+
+        // ✨ v363: قدرات التطبيق — أيقونة سريعة توديك لأي ميزة (سيرة/مستندات/معاملات/تفسير/شخصية تتكلم)
+        const capIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.6 4.6L18 9l-4.4 1.4L12 15l-1.6-4.6L6 9l4.4-1.4z"></path><path d="M19 14l.7 2 .3 2 .3-.7L21 16l2-.7L21 15z"></path><path d="M5 15l.6 1.6L7 17l-1.4.4L5 19l-.6-1.6L3 17l1.4-.4z"></path></svg>';
+        const capBtn = document.createElement('button');
+        capBtn.type = 'button';
+        capBtn.title = (typeof lang!=='undefined'&&lang==='en') ? 'What can I do' : 'شنو أقدر أسوي';
+        capBtn.innerHTML = capIconSVG;
+        capBtn.onclick = (e) => { e.stopPropagation(); openCapabilitiesMenu(capBtn); };
+        actionBar.appendChild(capBtn);
+      }
+
+      // v204 fix: this used to be built directly into the `copyMsgBtn`
+      // variable, which was then REASSIGNED a few lines below to the whole
+      // `actionBar` (so it could be appended alongside the message bubble).
+      // Because the onclick/onmouseenter/onmouseleave closures below
+      // captured that same variable by reference (not by value), by the
+      // time the user actually clicked, `copyMsgBtn` inside the closures
+      // pointed at `actionBar`, not the button — so
+      // `copyMsgBtn.innerHTML = checkIconSVG` wiped out the ENTIRE action
+      // bar's HTML (all buttons for that message, i.e. the whole message's
+      // action row) instead of just swapping the copy icon. Using a
+      // dedicated `copyBtnEl` for the button itself (never reassigned)
+      // fixes this: only the copy icon markup ever changes, nothing else
+      // in the DOM is touched.
+      const copyBtnEl = document.createElement('button');
+      copyBtnEl.type = 'button';
+      copyBtnEl.onmouseenter = () => { copyBtnEl.style.color = 'var(--accent2,#00e0b8)'; };
+      copyBtnEl.onmouseleave = () => { copyBtnEl.style.color = 'var(--muted,#98a0b3)'; };
+      copyBtnEl.innerHTML = copyIconSVG;
+      copyBtnEl.title = t('copyMsgTitle') || 'نسخ';
+      copyBtnEl.onclick = async (e) => {
+        e.stopPropagation();
+        try{
+          try{
+            await navigator.clipboard.writeText(m.content);
+          }catch(e1){
+            const ta = document.createElement('textarea');
+            ta.value = m.content;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+          }
+          copyBtnEl.innerHTML = checkIconSVG;
+          setTimeout(() => { copyBtnEl.innerHTML = copyIconSVG; }, 1500);
+        }catch(e2){ /* never let a copy failure affect the rest of the UI */ }
+      };
+      actionBar.appendChild(copyBtnEl);
+      copyMsgBtn = actionBar;
+    }
+    if(m.code && m.providerLabel){
+      const isActive = cur.code === m.code;
+      const btn = document.createElement('button');
+      btn.className = 'btn';
+      btn.style.cssText = 'margin-top:8px; margin-inline-end:8px; font-size:12px; padding:6px 12px;' + (isActive ? ' opacity:.85;' : '');
+      btn.textContent = isActive ? '✅ ' + t('useThisVersion') : t('useThisVersion');
+      btn.onclick = () => {
+        cur.code = m.code;
+        cur.codeType = m.codeType;
+        saveState();
+        renderAll(true);
+        if(window.innerWidth <= 860 && localStorage.getItem('previewEnabled') !== 'off'){
+          switchWorkTab('preview');
+          setTimeout(() => openDrawer($('#workarea')), 200);
+        }
+      };
+      div.appendChild(btn);
+      // 🔀 زر الفروقات — أُزيل بطلب المستخدم
+    }
+    if(m.isMergeHeader && m.batchId && m.batchCount){
+      const expanded = cur.expandedAskAllBatches.includes(m.batchId);
+      const toggleBtn = document.createElement('button');
+      toggleBtn.className = 'btn';
+      toggleBtn.style.cssText = 'margin-top:8px; font-size:12px; padding:6px 12px;';
+      toggleBtn.textContent = '📋 ' + t('viewIndividualReplies').replace('{n}', m.batchCount);
+      toggleBtn.onclick = () => {
+        const pos = cur.expandedAskAllBatches.indexOf(m.batchId);
+        if(pos === -1) cur.expandedAskAllBatches.push(m.batchId);
+        else cur.expandedAskAllBatches.splice(pos, 1);
+        saveState();
+        renderMessages(true);
+      };
+      div.appendChild(toggleBtn);
+      void expanded;
+    }
+    if(isAskAllReply){
+      const providerFailed = !m.code && /^⚠️/.test(m.content || '');
+      // 🔑 المفتاح مخزّن داخل الرسالة نفسها (m.providerKey) — مطابقة الاسم كانت
+      // تفشل بصمت مع فقاعات البديل «🔄 …» فيصير زر ✅ بلا مفعول.
+      const __cleanLbl = String(m.providerLabel || '').replace(/^🔄\s*/, '');
+      const providerKey = m.providerKey || Object.keys(PROVIDER_KEY_LABELS).find(k => PROVIDER_KEY_LABELS[k] === __cleanLbl);
+      if(!cur.continueProviders) cur.continueProviders = [];
+      const isChosen = providerKey && cur.continueProviders.includes(providerKey);
+      const chooseBtn = document.createElement('button');
+      chooseBtn.className = 'btn';
+      chooseBtn.title = t('continueWithProvider');
+      chooseBtn.setAttribute('aria-label', t('continueWithProvider'));
+      chooseBtn.style.cssText = 'flex:0 0 auto; align-self:flex-start; margin-top:4px; width:30px; height:30px; border-radius:50%; padding:0; font-size:15px; line-height:1; display:flex; align-items:center; justify-content:center;' + (isChosen ? ' background:var(--accent2,#2ecc71); color:#fff; border-color:var(--accent2,#2ecc71);' : ' opacity:.55;');
+      chooseBtn.textContent = isChosen ? '✅' : '○';
+      chooseBtn.onclick = () => {
+        if(!cur.continueProviders) cur.continueProviders = [];
+        const pos = providerKey ? cur.continueProviders.indexOf(providerKey) : -1;
+        if(pos === -1){
+          if(providerKey) cur.continueProviders.push(providerKey);
+          if(m.code){ cur.code = m.code; cur.codeType = m.codeType; }
+          // اختيار مزود ✅ = المستخدم يريد الاستمرار معه → أطفئ زر 🧠 «اسأل الكل».
+          if(window.__resetAskAllToggle) window.__resetAskAllToggle();
+        } else {
+          cur.continueProviders.splice(pos, 1);
+        }
+        saveState();
+        renderAll(true);
+        // v204: removed the "✅ أسئلتك القادمة ستذهب إلى: ... فقط" toast
+        // entirely per spec — provider switching itself is unchanged, only
+        // the confirmation popup is gone.
+      };
+      if(copyMsgBtn){
+        const bubbleCol = document.createElement('div');
+        bubbleCol.style.cssText = 'display:flex; flex-direction:column; align-items:' + (m.role === 'user' ? 'flex-end' : 'flex-start') + '; flex:1 1 auto; min-width:0;';
+        bubbleCol.appendChild(div);
+        bubbleCol.appendChild(copyMsgBtn);
+        rowWrap.appendChild(bubbleCol);
+      } else {
+        rowWrap.appendChild(div);
+      }
+      // v208: أيقونة اختيار المزود ○/✅ أُزيلت نهائيًا — شريط المزودات يغني عنها
+      void providerFailed; void chooseBtn;
+      if(!compareGroup){
+        const layout = localStorage.getItem('askAllLayout') || 'horizontal';
+        compareGroup = document.createElement('div');
+        compareGroup.className = 'ask-all-compare-row';
+        if(layout === 'vertical'){
+          compareGroup.style.cssText = 'display:flex; flex-direction:column; gap:10px; max-width:100%; padding-bottom:6px; align-items:stretch;';
+        } else {
+          compareGroup.style.cssText = 'display:flex; gap:10px; overflow-x:auto; max-width:100%; padding-bottom:6px; align-items:flex-start; scroll-snap-type:x proximity;';
+        }
+        messagesEl.appendChild(compareGroup);
+      }
+      const layoutNow = localStorage.getItem('askAllLayout') || 'horizontal';
+      if(layoutNow === 'vertical'){
+        rowWrap.style.cssText += ' width:100%; max-width:100%;';
+      } else {
+        rowWrap.style.cssText += ' min-width:260px; max-width:340px; flex:1 0 260px; scroll-snap-align:start;';
+      }
+      compareGroup.appendChild(rowWrap);
+    } else {
+      compareGroup = null;
+      if(copyMsgBtn){
+        const bubbleCol = document.createElement('div');
+        bubbleCol.style.cssText = 'display:flex; flex-direction:column; align-items:' + (m.role === 'user' ? 'flex-end' : 'flex-start') + '; max-width:100%;';
+        bubbleCol.appendChild(div);
+        bubbleCol.appendChild(copyMsgBtn);
+        // ✨ v363: ملاحظة تلقائية آخر الرد تقترح الميزة المناسبة من رسالة المستخدم السابقة
+        try{
+          if(m.role !== 'user' && m.content && m.content.trim() && !m.code &&
+             !(m.attachments && m.attachments.some(a => a && (a.isImage || a.isVideo)))){
+            let __prevU = '';
+            for(let __j = mIdx - 1; __j >= 0; __j--){
+              if(cur.messages[__j] && cur.messages[__j].role === 'user'){ __prevU = String(cur.messages[__j].content || ''); break; }
+            }
+            const __hint = capabilityHintFor(__prevU);
+            if(__hint){
+              const __isEn = (typeof lang!=='undefined' && lang==='en');
+              const __note = document.createElement('div');
+              __note.style.cssText = 'font-size:12px; color:var(--muted,#98a0b3); margin-top:6px; line-height:1.7; max-width:100%;';
+              const __lbl = __isEn ? __hint.en : __hint.ar;
+              __note.appendChild(document.createTextNode('💡 ' + (__isEn ? 'Note: you can do this with ' : 'ملاحظة: تقدر تسوي هذا عن طريق ')));
+              const __a = document.createElement('a');
+              __a.textContent = __hint.icon + ' ' + __lbl;
+              __a.href = 'javascript:void(0)';
+              __a.style.cssText = 'color:var(--accent2,#a78bfa); text-decoration:none; font-weight:600; cursor:pointer;';
+              __a.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openFeatureById(__hint.id); };
+              __note.appendChild(__a);
+              bubbleCol.appendChild(__note);
+            }
+          }
+        }catch(__e){}
+        messagesEl.appendChild(bubbleCol);
+      } else {
+        messagesEl.appendChild(div);
+      }
+    }
+  });
+  if(keepScroll){
+    messagesEl.scrollTop = prevScrollTop;
+  } else {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+}
