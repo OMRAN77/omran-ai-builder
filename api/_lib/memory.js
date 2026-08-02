@@ -7,8 +7,8 @@ const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
 const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
 
-const MAX_MEMORY_CHARS = 1200;   // سقف حجم الذاكرة المخزنة
-const MIN_UPDATE_GAP_MS = 45 * 1000; // لا نحدّث أكثر من مرة كل 45 ثانية لكل مستخدم
+const MAX_MEMORY_CHARS = 2800;   // سقف حجم الذاكرة المخزنة (سنة كاملة من المعلومات)
+const MIN_UPDATE_GAP_MS = 20 * 1000; // لا نحدّث أكثر من مرة كل 20 ثانية لكل مستخدم
 
 function verifyToken(token) {
   try {
@@ -30,24 +30,86 @@ function memPath(username) {
 async function readMemory(username) {
   try {
     const data = await kvGetJSON(memPath(username));
-    if (!data) return { memory: '', updatedAt: 0 };
-    return { memory: String(data.memory || ''), updatedAt: Number(data.updatedAt || 0) };
+    if (!data) return { memory: '', updatedAt: 0, topics: [] };
+    return {
+      memory: String(data.memory || ''),
+      updatedAt: Number(data.updatedAt || 0),
+      topics: Array.isArray(data.topics) ? data.topics : [],
+    };
   } catch (e) {
-    return { memory: '', updatedAt: 0 };
+    return { memory: '', updatedAt: 0, topics: [] };
   }
 }
 
-async function writeMemory(username, memory) {
-  await kvPutJSON(memPath(username), { memory, updatedAt: Date.now() });
+async function writeMemory(username, memory, topics) {
+  const cur = topics === undefined ? await readMemory(username) : null;
+  await kvPutJSON(memPath(username), {
+    memory,
+    updatedAt: Date.now(),
+    topics: topics !== undefined ? topics : (cur ? cur.topics : []),
+  });
+}
+
+// يستدعي نموذجًا لدمج الذاكرة عبر سلسلة احتياطية: Groq → OpenAI → Gemini.
+// طالما أي مفتاح واحد يعمل، الذاكرة تُحفظ دائمًا (لا تعتمد على Groq وحده).
+async function callMergeModel(sys, user) {
+  // ① Groq (llama-3.3-70b) — سريع ومجاني
+  const groqKey = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_;
+  if (groqKey) {
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + groqKey },
+        body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [ { role: 'system', content: sys }, { role: 'user', content: user } ], temperature: 0.2, max_tokens: 900 }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        const out = (((d.choices || [])[0] || {}).message || {}).content || '';
+        if (out.trim()) return out.trim();
+      }
+    } catch (e) {}
+  }
+  // ② OpenAI (gpt-4.1-mini) — احتياطي أول
+  const oaKey = process.env.OPENAI_API_KEY;
+  if (oaKey) {
+    try {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + oaKey },
+        body: JSON.stringify({ model: 'gpt-4.1-mini', messages: [ { role: 'system', content: sys }, { role: 'user', content: user } ], temperature: 0.2, max_tokens: 900 }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        const out = (((d.choices || [])[0] || {}).message || {}).content || '';
+        if (out.trim()) return out.trim();
+      }
+    } catch (e) {}
+  }
+  // ③ Gemini (flash) — احتياطي أخير (مفتاح المالك)
+  const gKey = process.env.GEMINI_API_KEY;
+  if (gKey) {
+    try {
+      const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + gKey, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: [{ role: 'user', parts: [{ text: user }] }], generationConfig: { temperature: 0.2, maxOutputTokens: 900 } }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        const out = ((((d.candidates || [])[0] || {}).content || {}).parts || []).map(p => p.text || '').join('');
+        if (out.trim()) return out.trim();
+      }
+    } catch (e) {}
+  }
+  return null;
 }
 
 async function mergeWithModel(existing, userText, aiText) {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) return null;
   const sys =
     'أنت مدير ذاكرة لمساعد ذكي. مهمتك تحديث "ملف ذاكرة المستخدم" بناءً على آخر تبادل في المحادثة.\n' +
-    'احتفظ فقط بالمعلومات المفيدة طويلة المدى: اسم المستخدم، لغته المفضلة، مشاريعه وأفكاره، تفضيلاته في التصميم والأسلوب، اهتماماته، معلومات شخصية ذكرها بنفسه.\n' +
-    'لا تحفظ: أسئلة عابرة، تحيات، تفاصيل تقنية مؤقتة، أو أي كلمات سر/مفاتيح.\n' +
+    'الأولوية القصوى (لا تُحذف أبدًا مهما ضاق الملف): هوية المستخدم — اسمه، أسماء أفراد عائلته، عمله، مدينته. هذه الأسطر تبقى دائمًا في أول الملف.\n' +
+    'ثم المعلومات المفيدة طويلة المدى: لغته المفضلة، مشاريعه وأفكاره، تفضيلاته، اهتماماته، معلومات شخصية ذكرها بنفسه.\n' +
+    'ممنوع منعًا باتًا حفظ: أسئلة عابرة، تحيات، تفاصيل تقنية مؤقتة (أرقام إصدارات، أخطاء برمجية، تفاصيل كود، عمليات نشر)، أو أي كلمات سر/مفاتيح. إذا وجدت مثل هذه الأسطر في الملف القديم فاحذفها.\n' +
     'أعد كتابة الملف كاملًا كنقاط قصيرة (سطر لكل معلومة يبدأ بـ "- ")، وادمج الجديد مع القديم بدون تكرار. إذا لم يوجد جديد مفيد، أعد الملف القديم كما هو.\n' +
     'الحد الأقصى ' + MAX_MEMORY_CHARS + ' حرفًا — إذا زاد، احذف الأقل أهمية والأقدم.\n' +
     'أجب بمحتوى الملف فقط بدون أي مقدمة أو شرح. إذا كان الملف فارغًا ولا يوجد جديد مفيد، أجب بكلمة: EMPTY';
@@ -55,26 +117,11 @@ async function mergeWithModel(existing, userText, aiText) {
     'ملف الذاكرة الحالي:\n' + (existing || '(فارغ)') +
     '\n\nآخر رسالة من المستخدم:\n' + String(userText || '').slice(0, 1500) +
     '\n\nملخص رد المساعد:\n' + String(aiText || '').slice(0, 800);
-  try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [ { role: 'system', content: sys }, { role: 'user', content: user } ],
-        temperature: 0.2,
-        max_tokens: 700,
-      }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    let out = (((data.choices || [])[0] || {}).message || {}).content || '';
-    out = out.trim();
-    if (!out || out === 'EMPTY') return '';
-    return out.slice(0, MAX_MEMORY_CHARS);
-  } catch (e) {
-    return null;
-  }
+  let out = await callMergeModel(sys, user);
+  if (out === null) return null;      // كل النماذج غير متاحة
+  out = out.trim();
+  if (!out || out === 'EMPTY') return '';
+  return out.slice(0, MAX_MEMORY_CHARS);
 }
 
 module.exports = async (req, res) => {
@@ -93,13 +140,55 @@ module.exports = async (req, res) => {
 
     if (op === 'get') {
       const cur = await readMemory(username);
-      res.status(200).json({ memory: cur.memory });
+      res.status(200).json({ memory: cur.memory, topics: cur.topics });
       return;
     }
 
     if (op === 'clear') {
-      await writeMemory(username, '');
+      await writeMemory(username, '', []);
       res.status(200).json({ ok: true, memory: '' });
+      return;
+    }
+
+    if (op === 'topic') {
+      // 🗂️ v326 ذاكرة المواضيع: ملخص سطرين عن كل محادثة (بدون نموذج — رخيص).
+      // upsert بمعرّف المحادثة، ونحتفظ بآخر 10 مواضيع فقط.
+      const id = String(body.id || '').slice(0, 40);
+      const title = String(body.title || '').trim().slice(0, 80);
+      const snip = String(body.snip || '').trim().slice(0, 220);
+      if (!id || (!title && !snip)) { res.status(400).json({ error: 'empty topic' }); return; }
+      const cur = await readMemory(username);
+      const topics = (cur.topics || []).filter(t => t && t.id !== id);
+      topics.unshift({ id, title, snip, at: Date.now() });
+      const trimmed = topics.slice(0, 10);
+      await writeMemory(username, cur.memory, trimmed);
+      res.status(200).json({ ok: true, topics: trimmed });
+      return;
+    }
+
+    if (op === 'append') {
+      // إضافة مباشرة من مها (أداة remember_info): بدون نموذج وبدون خانق
+      const fact = String(body.fact || '').trim().slice(0, 200);
+      if (!fact) { res.status(400).json({ error: 'empty fact' }); return; }
+      const cur = await readMemory(username);
+      let mem = cur.memory || '';
+      if (mem.includes(fact)) { res.status(200).json({ ok: true, memory: mem }); return; }
+      // معلومات الهوية (اسم/عائلة) تدخل أول الملف ولا تُحذف أبدًا
+      const isIdentity = /اسم|يدعى|اسمي|زوجت|ولد|بنت|ابن|أبنا|عائل|أسرت|name is|my name|wife|son|daughter/i.test(fact);
+      if (isIdentity) mem = '- ' + fact + (mem ? '\n' + mem : '');
+      else mem = (mem ? mem + '\n' : '') + '- ' + fact;
+      if (mem.length > MAX_MEMORY_CHARS) {
+        // احذف أقدم الأسطر غير المتعلقة بالهوية حتى يدخل الجديد
+        const idRe = /اسم|يدعى|اسمي|زوجت|ولد|بنت|ابن|أبنا|عائل|أسرت|name is|my name|wife|son|daughter/i;
+        const lines = mem.split('\n');
+        while (lines.join('\n').length > MAX_MEMORY_CHARS && lines.length > 1) {
+          const idx = lines.findIndex(l => !idRe.test(l));
+          if (idx === -1) { lines.pop(); } else { lines.splice(idx, 1); }
+        }
+        mem = lines.join('\n');
+      }
+      await writeMemory(username, mem);
+      res.status(200).json({ ok: true, memory: mem });
       return;
     }
 

@@ -2,6 +2,7 @@
 // owner's own server-side API key (GEMINI_API_KEY env var), so visitors can try the
 // app without entering their own key. This key is NEVER exposed to the client.
 const { checkAndConsume, DAILY_LIMIT } = require('./_usage');
+const { spendPoints, refundPoints, verifyPointsToken, PREMIUM_MODELS, PREMIUM_COST } = require('./points.js');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -34,6 +35,7 @@ module.exports = async (req, res) => {
       return;
     }
 
+    let premiumRefund = null;
     const usage = await checkAndConsume(token, guestId, 'gemini');
     if (!usage.allowed) {
       if (usage.reason === 'auth') {
@@ -77,6 +79,7 @@ module.exports = async (req, res) => {
     }
 
     const data = await upstream.text();
+    if (premiumRefund && !upstream.ok) { try { await refundPoints(premiumRefund.user, premiumRefund.amt); } catch (e2) { /* best-effort */ } }
     res.status(upstream.status).setHeader('Content-Type', 'application/json').send(data);
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
