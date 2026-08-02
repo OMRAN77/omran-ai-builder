@@ -60,12 +60,14 @@ module.exports = async (req, res) => {
       body: JSON.stringify(reqBody),
     });
 
+    // A streaming request that failed never reaches the block below, so surface
+    // it here rather than letting it fall through as an empty stream.
     if (wantStream && !upstream.ok) {
       let detail = '';
       try {
         const parsed = JSON.parse(await upstream.text());
         detail = (parsed && parsed.error && parsed.error.message) || '';
-      } catch (e2) {}
+      } catch (e2) { /* non-JSON error body */ }
       console.error('[gemini] stream ' + upstream.status + ' (' + useModel + '): ' + detail);
       res.status(upstream.status).json({
         error: 'Gemini (' + upstream.status + '): ' + (detail || 'خطأ غير معروف'),
@@ -96,6 +98,10 @@ module.exports = async (req, res) => {
     const data = await upstream.text();
     if (premiumRefund && !upstream.ok) { try { await refundPoints(premiumRefund.user, premiumRefund.amt); } catch (e2) { /* best-effort */ } }
 
+    // Gemini's own error text is the only thing that says WHY it refused —
+    // "contents must end with a user turn", "model not found", "quota". It used
+    // to be forwarded as an opaque blob, then swallowed by the silent fallback,
+    // so the user only ever saw "Gemini doesn't work".
     if (!upstream.ok) {
       let detail = '';
       try {

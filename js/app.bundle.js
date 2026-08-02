@@ -4710,7 +4710,7 @@ $('#btnDeleteAll').onclick = () => {
 #fbInner::after{content:'';position:absolute;bottom:-80px;left:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(6,182,212,.18),transparent 70%);pointer-events:none;}
 #fbHeart{width:64px;height:64px;margin:0 auto 12px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--accent,#8b5cf6),#ec4899);box-shadow:0 0 32px color-mix(in srgb,var(--accent,#8b5cf6) 55%,transparent);animation:fbBeat 1.6s ease-in-out infinite;}
 @keyframes fbBeat{0%,100%{transform:scale(1)}12%{transform:scale(1.12)}24%{transform:scale(1)}36%{transform:scale(1.08)}48%{transform:scale(1)}}
-#fbTitle{font-size:21px;font-weight:800;background:linear-gradient(90deg,#fff,color-mix(in srgb,var(--accent,#8b5cf6) 60%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:4px;}
+#fbTitle{font-size:21px;font-weight:700;background:linear-gradient(90deg,#fff,color-mix(in srgb,var(--accent,#8b5cf6) 60%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:4px;}
 #fbSub{font-size:13px;color:var(--muted,#9aa);margin-bottom:18px;}
 #fbStars{display:flex;justify-content:center;gap:8px;margin-bottom:18px;direction:ltr;}
 .fbStar{width:42px;height:42px;cursor:pointer;transition:transform .18s;fill:none;stroke:#4b476b;stroke-width:1.6;}
@@ -4762,7 +4762,7 @@ $('#btnDeleteAll').onclick = () => {
     </div>
     <div id="fbThanksView">
       <svg id="fbCheck" viewBox="0 0 90 90"><circle cx="45" cy="45" r="39"/><path d="M28 46 l12 12 l22 -24"/></svg>
-      <div id="fbThanksT" style="font-size:19px;font-weight:800;color:#fff;margin-bottom:6px;"></div>
+      <div id="fbThanksT" style="font-size:19px;font-weight:700;color:#fff;margin-bottom:6px;"></div>
       <div id="fbThanksS" style="font-size:13px;color:var(--muted,#9aa);"></div>
     </div>
     <div id="fbList"></div>
@@ -6277,6 +6277,20 @@ function setTickerEnabled(on){
 }
 window.setTickerEnabled = setTickerEnabled;
 
+/* يضبط شكل المحادثة كما يشترطه Gemini — يُستدعى قبل كل طلب. */
+function sanitizeGeminiContents(list){
+  const src = Array.isArray(list) ? list.filter(c => c && Array.isArray(c.parts) && c.parts.length) : [];
+  const out = [];
+  for(const c of src){
+    const last = out[out.length - 1];
+    if(last && last.role === c.role){ last.parts = last.parts.concat(c.parts); continue; }
+    out.push({ role: c.role === 'model' ? 'model' : 'user', parts: c.parts.slice() });
+  }
+  while(out.length && out[0].role !== 'user') out.shift();   // must open on a user turn
+  while(out.length && out[out.length - 1].role !== 'user') out.pop(); // and close on one
+  return out;
+}
+
 // ===== Checkout / Payments (Stripe + PayPal, test mode) =====
 let checkoutCurrentPlan = null;
 let paypalSdkLoaded = false;
@@ -6633,8 +6647,8 @@ function renderClockWorldStrip(){
     const meta = CLOCK_TIMEZONES.find(z => z.tz === tz);
     const label = meta ? (lang === 'ar' ? meta.ar : meta.en) : tz;
     return `<div class="clockStripRow" data-tz="${tz}" style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-radius:10px; background:var(--bg); border:1px solid var(--border);">
-      <span style="font-size:13px; font-weight:600;">${label}</span>
-      <span class="clockStripTime" style="font-size:15px; font-weight:800; direction:ltr;">--:--:--</span>
+      <span style="font-size:13px; font-weight:500;">${label}</span>
+      <span class="clockStripTime" style="font-size:15px; font-weight:700; direction:ltr;">--:--:--</span>
     </div>`;
   }).join('');
 }
@@ -7506,16 +7520,19 @@ async function callGemini(messages, onDelta){
   const systemMsgs = messages.filter(m => m.role === 'system');
   const systemMsg = systemMsgs.length ? { content: systemMsgs.map(m => m.content).join('\n\n') } : null;
   const rest = messages.filter(m => m.role !== 'system');
-  const contents = rest.map(m => {
+  const rawContents = rest.map(m => {
     const parts = [{ text: m.content }];
     if(m.images && m.images.length){
       m.images.forEach(img => {
-        const base64 = img.dataUrl.split(',')[1];
-        parts.push({ inline_data: { mime_type: img.mime, data: base64 } });
+        try{
+          const base64 = String(img.dataUrl || '').split(',')[1];
+          if(base64) parts.push({ inline_data: { mime_type: img.mime, data: base64 } });
+        }catch(e){ console.warn('[gemini] skipped an unreadable image', e); }
       });
     }
     return { role: m.role === 'assistant' ? 'model' : 'user', parts };
-  });
+  }).filter(c => c.parts.length);
+  const contents = sanitizeGeminiContents(rawContents);
   const systemInstruction = systemMsg ? { parts: [{ text: systemMsg.content }] } : undefined;
   // If the visitor hasn't entered their own Gemini key, fall back to the server-side
   // proxy which uses the site owner's key (for quick trials without setup).
@@ -7934,11 +7951,12 @@ async function callAIWithFallback(messages, onDelta, preferredList){
       return { reply, providerKey, switched: errSwitched && providerKey !== head[0], requestedKey: head[0] };
     }catch(err){
       lastErr = err;
-      if(err && (err.status === 429 || err.status === 402 || err.status >= 500)){
-        errSwitched = true;
-        try{ if(window.__chatStatus) window.__chatStatus.note('⚠️', lang === 'ar' ? 'المزود الأساسي لم يستجب — جارٍ التحويل…' : 'Primary provider unavailable — switching…'); }catch(e){}
-        continue;
-      }
+      // A silent switch means the user gets different quality with no
+      // explanation and blames the app. Say it plainly.
+      try{
+        if(window.__chatStatus) window.__chatStatus.note('⚠️', 'المزود الأساسي لم يستجب — جارٍ التحويل…');
+      }catch(e){ console.warn('[status] fallback note failed', e); }
+      if(err && (err.status === 429 || err.status === 402 || err.status >= 500)){ errSwitched = true; continue; }
       // 🛡️ v309: أي فشل آخر (نفاد رصيد المزود 400/401/403، عطل شبكة...) —
       // تحويل صامت للمزود التالي بدل إظهار خطأ أو رد فارغ للمستخدم.
       continue;
@@ -16688,7 +16706,7 @@ function openShareModal(project){
   };
 })();
 window.updateVersionLabel = function(){
-  var APP_VERSION = 'v392';
+  var APP_VERSION = 'v395';
   var el = document.getElementById('appVersionLabel');
   if (!el) return;
   var u = '';

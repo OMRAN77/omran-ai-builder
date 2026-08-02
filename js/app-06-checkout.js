@@ -7,8 +7,8 @@ function sanitizeGeminiContents(list){
     if(last && last.role === c.role){ last.parts = last.parts.concat(c.parts); continue; }
     out.push({ role: c.role === 'model' ? 'model' : 'user', parts: c.parts.slice() });
   }
-  while(out.length && out[0].role !== 'user') out.shift();
-  while(out.length && out[out.length - 1].role !== 'user') out.pop();
+  while(out.length && out[0].role !== 'user') out.shift();   // must open on a user turn
+  while(out.length && out[out.length - 1].role !== 'user') out.pop(); // and close on one
   return out;
 }
 
@@ -1245,12 +1245,14 @@ async function callGemini(messages, onDelta){
     const parts = [{ text: m.content }];
     if(m.images && m.images.length){
       m.images.forEach(img => {
-        const base64 = img.dataUrl.split(',')[1];
-        parts.push({ inline_data: { mime_type: img.mime, data: base64 } });
+        try{
+          const base64 = String(img.dataUrl || '').split(',')[1];
+          if(base64) parts.push({ inline_data: { mime_type: img.mime, data: base64 } });
+        }catch(e){ console.warn('[gemini] skipped an unreadable image', e); }
       });
     }
     return { role: m.role === 'assistant' ? 'model' : 'user', parts };
-  });
+  }).filter(c => c.parts.length);
   const contents = sanitizeGeminiContents(rawContents);
   const systemInstruction = systemMsg ? { parts: [{ text: systemMsg.content }] } : undefined;
   // If the visitor hasn't entered their own Gemini key, fall back to the server-side
