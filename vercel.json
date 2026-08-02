@@ -1,5 +1,17 @@
 {
   "regions": ["bom1"],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "microphone=(self), camera=(self), geolocation=(self), payment=(self)" }
+      ]
+    }
+  ],
   "functions": {
     "api/*.js": { "regions": ["bom1"], "maxDuration": 300 }
   },
@@ -37,6 +49,7 @@
     { "source": "/api/admin-actions", "destination": "/api/account?action=admin-actions" },
     { "source": "/api/admin-stats", "destination": "/api/account?action=admin-stats" },
     { "source": "/api/usage-status", "destination": "/api/account?action=usage-status" },
+    { "source": "/api/points", "destination": "/api/account?action=points" },
     { "source": "/api/create-checkout-session", "destination": "/api/account?action=create-checkout-session" },
     { "source": "/api/paypal-client-id", "destination": "/api/account?action=paypal-client-id" },
     { "source": "/api/paypal-order", "destination": "/api/account?action=paypal-order" },
@@ -67,6 +80,13 @@
     { "source": "/hi", "destination": "/index.html" },
     { "source": "/ur", "destination": "/index.html" },
     { "source": "/bn", "destination": "/index.html" },
-    { "source": "/ne", "destination": "/index.html" }
+    { "source": "/ne", "destination": "/index.html" },
+    { "source": "/id", "destination": "/index.html" },
+    { "source": "/fil", "destination": "/index.html" },
+    { "source": "/tr", "destination": "/index.html" },
+    { "source": "/zh", "destination": "/index.html" },
+    { "source": "/ru", "destination": "/index.html" },
+    { "source": "/es", "destination": "/index.html" },
+    { "source": "/ml", "destination": "/index.html" }
   ]
 }
