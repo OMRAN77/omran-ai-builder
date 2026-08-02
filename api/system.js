@@ -15,6 +15,7 @@ function load(action) {
     case 'memory': return require('./_lib/memory.js');
     case 'client-errors': return require('./_lib/client-errors.js');
     case 'health': return require('./_lib/health.js');
+    case 'feedback': return require('./_lib/feedback.js');
     default: return null;
   }
 }
