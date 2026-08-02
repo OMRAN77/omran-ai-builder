@@ -1648,7 +1648,11 @@ async function callAIWithFallback(messages, onDelta, preferredList){
       return { reply, providerKey, switched: errSwitched && providerKey !== head[0], requestedKey: head[0] };
     }catch(err){
       lastErr = err;
-      if(err && (err.status === 429 || err.status === 402 || err.status >= 500)){ errSwitched = true; continue; }
+      if(err && (err.status === 429 || err.status === 402 || err.status >= 500)){
+        errSwitched = true;
+        try{ if(window.__chatStatus) window.__chatStatus.note('⚠️', lang === 'ar' ? 'المزود الأساسي لم يستجب — جارٍ التحويل…' : 'Primary provider unavailable — switching…'); }catch(e){}
+        continue;
+      }
       // 🛡️ v309: أي فشل آخر (نفاد رصيد المزود 400/401/403، عطل شبكة...) —
       // تحويل صامت للمزود التالي بدل إظهار خطأ أو رد فارغ للمستخدم.
       continue;

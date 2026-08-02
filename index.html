@@ -311,13 +311,7 @@
   }
   html[dir="rtl"] #chatcol{border-left:1px solid var(--border);}
   html[dir="ltr"] #chatcol{border-right:1px solid var(--border);}
-  /* AI Status Bar */
-  #aiStatusBar{display:flex;align-items:center;gap:8px;padding:8px 16px;font-size:13px;color:var(--accent,#a78bfa);background:rgba(167,139,250,.08);border-bottom:1px solid rgba(167,139,250,.15);transition:all .3s ease;overflow:hidden;flex-shrink:0;}
-  #aiStatusBar.ai-status-hidden{max-height:0;padding:0 16px;border-bottom:none;opacity:0;}
-  #aiStatusBar:not(.ai-status-hidden){max-height:44px;opacity:1;}
-  .ai-status-dot{width:8px;height:8px;border-radius:50%;background:var(--accent,#a78bfa);animation:aiPulse 1.2s ease-in-out infinite;flex-shrink:0;}
-  @keyframes aiPulse{0%,100%{opacity:.4;transform:scale(.85)}50%{opacity:1;transform:scale(1.15)}}
-  .ai-status-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  @keyframes omranPulse{0%,100%{opacity:.6}50%{opacity:1}}
   #messages{flex:1; overflow-y:auto; overflow-x:hidden; padding:16px 16px 3px; display:flex; flex-direction:column; gap:12px;}
   /* v292: تثبيت الدردشة أفقيًا — لا حركة يمين/يسار أبدًا */
   .msg{max-width:92%; min-width:0; overflow-wrap:anywhere; word-break:break-word;}
@@ -1781,7 +1775,7 @@
   <div class="resizer" id="resizer1"></div>
 
   <div id="chatcol">
-    <div id="aiStatusBar" class="ai-status-hidden"><span class="ai-status-dot"></span><span class="ai-status-text"></span></div>
+
     <div id="messages"></div>
     
     <div id="chatQuickChipsWrap" style="display:none; position:absolute; bottom:64px; inset-inline-end:14px; z-index:400; background:none; border:none; box-shadow:none; padding:4px; max-height:60vh; overflow-y:auto;">

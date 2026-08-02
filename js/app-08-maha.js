@@ -572,6 +572,9 @@ async function fetchSearchNote(transcript, deep){
   return await fetchSearchNoteOnce(transcript, false);
 }
 async function fetchSearchNoteOnce(transcript, deep){
+  const __st = (window.__chatStatus && !window.__chatStatus.__released)
+    ? window.__chatStatus.step('🔍', deep ? 'يبحث في الإنترنت (بحث موسّع)…' : 'يبحث في الإنترنت…')
+    : null;
   try{
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), deep ? 45000 : 25000);
@@ -626,13 +629,15 @@ async function fetchSearchNoteOnce(transcript, deep){
       [...(Array.isArray(data.results) ? data.results : []), ...(Array.isArray(data.google) ? data.google : [])].forEach(r => {
         if(!r || !r.url || sources.length >= 6) return;
         let host = '';
-        try{ host = new URL(r.url).hostname.replace(/^www\./, ''); }catch(e){ return; }
+        try{ host = new URL(r.url).hostname.replace(/^www\./, ''); }catch(e){
+    if(__st) __st.fail('تعذّر'); return; }
         if(!host || seenHosts.has(host)) return;
         seenHosts.add(host);
         sources.push({ title: r.title || host, url: r.url });
       });
     }
     const images = Array.isArray(data.images) ? data.images.slice(0, 4) : [];
+    if(__st) __st.done();
     return { note, sources, images };
   }catch(e){
     console.error('[maha] search failed:', e);

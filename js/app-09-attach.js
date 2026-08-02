@@ -1,3 +1,44 @@
+/* ───────── شريط الحالة: ماذا يفعل الذكاء الاصطناعي الآن ─────────
+   Steps ACCUMULATE instead of overwriting each other.
+   Rule: only report what actually happened. */
+function makeChatStatus(el){
+  const steps = [];
+  let finished = false;
+  function render(){
+    if(!el || finished) return;
+    el.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.7;opacity:.9;';
+    steps.forEach(function(s, i){
+      const row = document.createElement('div');
+      const isLast = (i === steps.length - 1);
+      row.style.cssText = 'display:flex;align-items:flex-start;gap:7px;' + (s.state === 'fail' ? 'opacity:.75;' : '');
+      const icon = document.createElement('span');
+      icon.textContent = s.state === 'fail' ? '✗' : (s.state === 'done' ? '✓' : s.icon || '•');
+      icon.style.cssText = 'flex:0 0 auto;' + (s.state === 'done' ? 'color:#2e9e6b;' : (s.state === 'fail' ? 'color:#c0453f;' : ''));
+      const txt = document.createElement('span');
+      txt.textContent = s.text;
+      if(isLast && s.state === 'run') txt.style.cssText = 'animation:omranPulse 1.4s ease-in-out infinite;';
+      row.appendChild(icon); row.appendChild(txt);
+      wrap.appendChild(row);
+    });
+    el.appendChild(wrap);
+  }
+  return {
+    step: function(icon, text){
+      const s = { icon: icon, text: text, state: 'run' };
+      steps.push(s); render();
+      return {
+        done: function(note){ s.state = 'done'; if(note) s.text = text + ' — ' + note; render(); },
+        fail: function(note){ s.state = 'fail'; if(note) s.text = text + ' — ' + note; render(); },
+      };
+    },
+    note: function(icon, text){ steps.push({ icon: icon, text: text, state: 'note' }); render(); },
+    release: function(){ finished = true; },
+    isEmpty: function(){ return steps.length === 0; },
+  };
+}
+
 // ---- Attachments (images + text/code files) ----
 let pendingAttachments = [];
 const MAX_TEXT_ATTACH_CHARS = 100000;
@@ -535,8 +576,9 @@ function __stripCodeForHistory(role, s){
   return s.replace(/```[\s\S]*?```/g, '[تم بناء/تعديل الكود بنجاح — الكود الكامل محفوظ في المشروع]').slice(0, 3000); // ✅ v325
 }
 async function runOmranAgent(cur, apiText, thinkingDiv){
-  thinkingDiv.textContent = '🤖 ' + (lang === 'ar' ? 'وكيل عمران يخطط…' : 'Omran Agent planning…');
-  if(window.setAIStatus) window.setAIStatus(lang === 'ar' ? '🤖 وكيل عمران يخطط…' : '🤖 Omran Agent planning…');
+  const agentStatus = makeChatStatus(thinkingDiv);
+  window.__chatStatus = agentStatus;
+  let __agentStep = agentStatus.step('🤖', lang === 'ar' ? 'وكيل عمران يخطط…' : 'Omran Agent planning…');
   const history = cur.messages.slice(-8).map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: __stripCodeForHistory(m.role, m.apiText || m.content) }));
   const res = await fetch('/api/ai?action=agent', {
     method: 'POST',
@@ -562,12 +604,12 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
     for(const line of lines){
       if(!line.startsWith('data: ')) continue;
       let ev; try{ ev = JSON.parse(line.slice(6)); }catch(e){ continue; }
-      if(ev.status) thinkingDiv.textContent = ev.status;
+      if(ev.status){ if(__agentStep) __agentStep.done(); __agentStep = agentStatus.step('🤖', ev.status); }
       if(ev.delta){
         full += ev.delta;
         const clean = stripCodeFromChat(full).trim();
         thinkingDiv.textContent = clean ? ('🤖 ' + clean.slice(-400)) : ('🤖 ' + (lang === 'ar' ? 'الوكيل يكتب الكود…' : 'Agent writing code…'));
-        if(window.setAIStatus) window.setAIStatus(lang === 'ar' ? '🤖 الوكيل يكتب الكود…' : '🤖 Agent writing code…');
+        if(__agentStep){ __agentStep.done(); __agentStep = agentStatus.step('✍️', lang === 'ar' ? 'الوكيل يكتب الكود…' : 'Agent writing code…'); }
         messagesEl.scrollTop = messagesEl.scrollHeight;
       }
       if(ev.error) serverErr = ev.error;
@@ -801,7 +843,8 @@ async function sendPrompt(){
   thinkingDiv.textContent = t('building');
   messagesEl.appendChild(thinkingDiv);
   anchorLastUserMsgTop(thinkingDiv);
-  if(window.setAIStatus) window.setAIStatus(lang === 'ar' ? '🧠 يفكر…' : '🧠 Thinking…');
+  const chatStatus = makeChatStatus(thinkingDiv);
+  window.__chatStatus = chatStatus;
 
   // A "continue with this only" selection (one or more providers picked from a
   // previous ask-all round) always takes priority: it lets the user keep
@@ -861,7 +904,7 @@ async function sendPrompt(){
     const __isPhotoFetch = !__isLogoFetch && __photoFetchRe.test(text) && !__genDrawRe.test(text) && !cur.adMode && !cur.awaitingAdMode;
     if(!imageAttachments.length && !__editIntent && (__isLogoFetch || __isPhotoFetch)){
       const __logoMsg = { role: 'assistant', content: lang === 'ar' ? (__isLogoFetch ? '🔍 أجيب لك الشعار الأصلي من البحث…' : '🔍 أجيب لك صور حقيقية من البحث…') : '🔍 Fetching real images from live search…', _loading: true };
-      if(window.setAIStatus) window.setAIStatus(lang === 'ar' ? '🔍 يبحث عن صور…' : '🔍 Searching for images…');
+      const __imgStep = chatStatus.step('🔍', lang === 'ar' ? 'يبحث عن صور…' : 'Searching for images…');
       cur.messages.push(__logoMsg);
       renderMessages(true);
       try{
@@ -884,7 +927,7 @@ async function sendPrompt(){
         __logoMsg.content = lang === 'ar' ? 'تعذر جلب الشعار الآن — جرب مرة ثانية.' : 'Could not fetch the logo right now — try again.';
       }
       renderAll(); saveState();
-      thinkingDiv && thinkingDiv.remove(); if(window.clearAIStatus) window.clearAIStatus();
+      thinkingDiv && thinkingDiv.remove(); if(window.__chatStatus){ window.__chatStatus.release(); delete window.__chatStatus; }
       return;
     }
     // 🖼️ تعديل الصور بالأوامر النصية: صورة مرفقة + طلب تعديل → Gemini يرجع الصورة معدّلة
@@ -1006,10 +1049,10 @@ async function sendPrompt(){
     };
     if(__talkCharIntent && !(__charImg && __charImg.b64)){
       const __pick = await window.pickTalkCharacter(lang==='ar');
-      if(__pick === null){ thinkingDiv && thinkingDiv.remove(); if(window.clearAIStatus) window.clearAIStatus(); return; }
+      if(__pick === null){ thinkingDiv && thinkingDiv.remove(); if(window.__chatStatus){ window.__chatStatus.release(); delete window.__chatStatus; } return; }
       if(__pick === 'upload'){
         cur.messages.push({ role:'assistant', content:(lang==='ar'?'📎 ارفع صورتك من زر المشبك ثم أعد نفس الطلب مع الجملة اللي تبي الشخصية تقولها.':'📎 Attach your photo, then resend the same request with the line you want the character to say.') });
-        thinkingDiv && thinkingDiv.remove(); if(window.clearAIStatus) window.clearAIStatus(); renderAll(); saveState(); return;
+        thinkingDiv && thinkingDiv.remove(); if(window.__chatStatus){ window.__chatStatus.release(); delete window.__chatStatus; } renderAll(); saveState(); return;
       }
       try{
         const __pr = await fetch('/assets/characters/'+__pick.id+'.png');
@@ -1017,7 +1060,7 @@ async function sendPrompt(){
         const __pd = await new Promise(function(res){ const fr=new FileReader(); fr.onload=function(){res(fr.result);}; fr.readAsDataURL(__pb); });
         __charImg = { b64: (String(__pd).split(',')[1]||''), mime:'image/png' };
         __alreadyCartoon = true;
-      }catch(_){ thinkingDiv && thinkingDiv.remove(); if(window.clearAIStatus) window.clearAIStatus(); cur.messages.push({ role:'assistant', content:(lang==='ar'?'⚠️ تعذّر تحميل الشخصية، جرّب مرة ثانية.':'⚠️ Could not load the character, try again.') }); renderAll(); saveState(); return; }
+      }catch(_){ thinkingDiv && thinkingDiv.remove(); if(window.__chatStatus){ window.__chatStatus.release(); delete window.__chatStatus; } cur.messages.push({ role:'assistant', content:(lang==='ar'?'⚠️ تعذّر تحميل الشخصية، جرّب مرة ثانية.':'⚠️ Could not load the character, try again.') }); renderAll(); saveState(); return; }
     }
     const __wantsTalkChar = __talkCharIntent && !!(__charImg && __charImg.b64);
     if(__wantsTalkChar){
@@ -1065,10 +1108,10 @@ async function sendPrompt(){
         });
       };
       const __tcChoice = await window.askTalkCharOpts(lang==='ar');
-      if(__tcChoice === null){ thinkingDiv && thinkingDiv.remove(); if(window.clearAIStatus) window.clearAIStatus(); return; }
+      if(__tcChoice === null){ thinkingDiv && thinkingDiv.remove(); if(window.__chatStatus){ window.__chatStatus.release(); delete window.__chatStatus; } return; }
       if(__tcChoice === 'more'){
         cur.messages.push({ role:'assistant', content:(lang==='ar'?'✨ الفيديوهات الأطول والخيارات الإضافية متاحة في الباقات المدفوعة — افتح ⚙️ ← الاشتراك لترقية باقتك وتطلّع فيديوهات أطول بجودة أعلى.':'✨ Longer videos and extra options are available on paid plans — open ⚙️ → Subscription to upgrade and create longer, higher-quality videos.') });
-        thinkingDiv && thinkingDiv.remove(); if(window.clearAIStatus) window.clearAIStatus(); renderAll(); saveState(); return;
+        thinkingDiv && thinkingDiv.remove(); if(window.__chatStatus){ window.__chatStatus.release(); delete window.__chatStatus; } renderAll(); saveState(); return;
       }
       const __tcMotion = __tcChoice.motion, __tcDur = __tcChoice.duration;
       try{
@@ -1165,12 +1208,12 @@ async function sendPrompt(){
     if(__wantsVideo && !__videoHasConcreteSubject && __isVagueMediaRequest(text)){
       cur.messages.push({ role: 'assistant', content: lang === 'ar' ? 'فيديو عن شو؟ وصفلي المشهد اللي تبيه 🎬' : 'A video about what? Describe the scene you want 🎬' });
       renderAll(); saveState();
-      thinkingDiv && thinkingDiv.remove(); if(window.clearAIStatus) window.clearAIStatus();
+      thinkingDiv && thinkingDiv.remove(); if(window.__chatStatus){ window.__chatStatus.release(); delete window.__chatStatus; }
       return;
     }
     if(__wantsVideo){
       thinkingDiv.textContent = lang === 'ar' ? '🎬 جاري إنشاء الفيديو… قد يستغرق ١–٣ دقائق' : '🎬 Creating video… this can take 1–3 minutes';
-      if(window.setAIStatus) window.setAIStatus(lang === 'ar' ? '🎬 ينشئ الفيديو…' : '🎬 Creating video…');
+      chatStatus.step('🎬', lang === 'ar' ? 'ينشئ الفيديو…' : 'Creating video…');
       try{
         const __vp = { promptText: text.slice(0, 900), duration: 5, ratio: '1280:720', token: authGet('aiapp_auth_token') };
         if(__vidSrc && __vidSrc.b64 && (__srcImg || __animateRe.test(text) || /منها|عليها|الصورة|صورتي|this image|the image|it/i.test(text))){
@@ -1402,7 +1445,7 @@ async function sendPrompt(){
       if(!__txtOnlyImgRe.test(text) && __isVagueMediaRequest(text)){
         cur.messages.push({ role: 'assistant', content: lang === 'ar' ? 'صورة عن شو؟ وصفلي اللي تبيه 🖼️' : 'An image of what? Describe what you want 🖼️' });
         renderAll(); saveState();
-        thinkingDiv && thinkingDiv.remove(); if(window.clearAIStatus) window.clearAIStatus();
+        thinkingDiv && thinkingDiv.remove(); if(window.__chatStatus){ window.__chatStatus.release(); delete window.__chatStatus; }
         return;
       }
       thinkingDiv.textContent = lang === 'ar' ? '🖼️ جاري إنشاء الصورة…' : '🖼️ Generating image…';
@@ -1544,9 +1587,9 @@ async function sendPrompt(){
         __searchIndicator = { role: 'assistant', content: lang === 'ar' ? '🔍 يبحث بعمق…' : '🔍 Deep searching…', _loading: true };
         cur.messages.push(__searchIndicator);
         renderMessages(true);
-        if(window.setAIStatus) window.setAIStatus(lang === 'ar' ? '🔍 يبحث بعمق…' : '🔍 Deep searching…');
+        var __searchStep = chatStatus.step('🔍', lang === 'ar' ? 'يبحث بعمق…' : 'Deep searching…');
       } else {
-        if(window.setAIStatus) window.setAIStatus(lang === 'ar' ? '🔍 يبحث…' : '🔍 Searching…');
+        var __searchStep = chatStatus.step('🔍', lang === 'ar' ? 'يبحث…' : 'Searching…');
       }
       __searchData = await smartMaybeSearch(text, cur.messages.filter(m => m !== __searchIndicator));
       if(__searchIndicator){
@@ -1588,7 +1631,7 @@ async function sendPrompt(){
     }
 
     if(askAll){
-      if(window.setAIStatus) window.setAIStatus(lang === 'ar' ? '🏗️ يبني التطبيق…' : '🏗️ Building app…');
+      chatStatus.step('🏗️', lang === 'ar' ? 'يبني التطبيق…' : 'Building app…');
       // All 9 providers now run server-side with the owner's keys.
       const hasOpenAI = localStorage.getItem('aiapp_include_openai') !== 'false';
       const hasGemini = localStorage.getItem('aiapp_include_gemini') !== 'false';
@@ -2191,7 +2234,7 @@ async function sendPrompt(){
       // ⚡ v320: تحديث فقاعة البث بإيقاع الشاشة (إطار واحد) بدل كل قطعة نص واصلة.
       const onDelta = (partial) => {
         onDelta._p = partial;
-        if(!onDelta._statusSet){ onDelta._statusSet = true; if(window.setAIStatus) window.setAIStatus(lang === 'ar' ? '💬 يردّ…' : '💬 Replying…'); }
+        if(!onDelta._statusSet){ onDelta._statusSet = true; if(window.__chatStatus) window.__chatStatus.release(); }
         if(onDelta._raf) return;
         onDelta._raf = requestAnimationFrame(() => {
           onDelta._raf = null;
@@ -2200,7 +2243,8 @@ async function sendPrompt(){
         });
       };
       // المزود المختار من المستخدم يرد بنفسه (Claude هو الافتراضي)؛ الاحتياط صامت عند التعطل فقط
-      if(window.setAIStatus) window.setAIStatus(lang === 'ar' ? '🧠 يفكر…' : '🧠 Thinking…');
+      const chatStatus = makeChatStatus(thinkingDiv);
+  window.__chatStatus = chatStatus;
       const isBuildTask = __routeFix && !__gateNoBuild;
       const __selProv = localStorage.getItem('aiapp_provider') || 'claude';
       // v262 — 🎯 التوجيه بالتخصص: في الوضع الافتراضي فقط (المستخدم ما اختار مزودًا بيده)
@@ -2284,7 +2328,7 @@ async function sendPrompt(){
     genAbortController = null;
     btnStop.classList.remove('live');
     sendBtn.disabled = false;
-    if(window.clearAIStatus) window.clearAIStatus();
+    if(window.__chatStatus){ window.__chatStatus.release(); delete window.__chatStatus; }
     sendBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px;display:block"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>';
     saveState();
     renderAll();
