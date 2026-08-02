@@ -1823,6 +1823,10 @@
       <div class="tab" data-tab="code" data-i18n="code">الكود</div>
       <div id="tabDownloadWrap">
         <input type="file" id="codeUploadInput" accept=".html,.htm,.py,.txt" style="display:none;">
+        <div id="omranTestBar" style="display:none; align-items:center; gap:6px;">
+          <button type="button" id="btnTestApp" class="btn iconBtn" title="جرّبه لي"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6v5a1 1 0 01-1 1h-4a1 1 0 01-1-1V3z"/><path d="M7 8l-2 13h14L17 8"/><circle cx="12" cy="15" r="2"/></svg> 🧪</button>
+          <button type="button" id="btnTestStop" class="btn iconBtn" title="إيقاف" style="display:none;">■</button>
+        </div>
         <button class="tab" id="btnTabsMenu" data-i18n-title="tabsMenuTitle" type="button" title="خيارات الملف" style="border:none; padding:12px 14px;"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>
         <div id="tabsMenuDropdown">
           <button class="btn" id="btnUploadCode" title="رفع ملف كود" data-i18n-title="uploadCodeTitle"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> <span class="btnLabel" data-i18n="uploadCode">رفع</span></button>

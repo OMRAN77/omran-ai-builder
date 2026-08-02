@@ -629,7 +629,10 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
     for(const line of lines){
       if(!line.startsWith('data: ')) continue;
       let ev; try{ ev = JSON.parse(line.slice(6)); }catch(e){ continue; }
-      if(ev.status){ if(__agentStep) __agentStep.done(); __agentStep = agentStatus.step('🤖', ev.status); }
+      if(ev.status){
+        if(__agentStep) __agentStep.done();
+        __agentStep = agentStatus.step('•', String(ev.status).replace(/^[^\p{L}\p{N}]+/u, '').trim() || ev.status);
+      }
       if(ev.delta){
         full += ev.delta;
         const clean = stripCodeFromChat(full).trim();
@@ -640,6 +643,8 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
       if(ev.error) serverErr = ev.error;
     }
   }
+  if(__agentStep){ __agentStep.done(); __agentStep = null; }
+  agentStatus.release();
   if(serverErr && !full) throw new Error(serverErr);
   const parsed = extractReply(full);
   let chatText;
