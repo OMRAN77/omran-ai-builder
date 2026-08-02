@@ -60,6 +60,21 @@ module.exports = async (req, res) => {
       body: JSON.stringify(reqBody),
     });
 
+    if (wantStream && !upstream.ok) {
+      let detail = '';
+      try {
+        const parsed = JSON.parse(await upstream.text());
+        detail = (parsed && parsed.error && parsed.error.message) || '';
+      } catch (e2) {}
+      console.error('[gemini] stream ' + upstream.status + ' (' + useModel + '): ' + detail);
+      res.status(upstream.status).json({
+        error: 'Gemini (' + upstream.status + '): ' + (detail || 'خطأ غير معروف'),
+        provider: 'gemini',
+        model: useModel,
+      });
+      return;
+    }
+
     if (wantStream && upstream.ok && upstream.body) {
       res.status(200);
       res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
@@ -80,6 +95,24 @@ module.exports = async (req, res) => {
 
     const data = await upstream.text();
     if (premiumRefund && !upstream.ok) { try { await refundPoints(premiumRefund.user, premiumRefund.amt); } catch (e2) { /* best-effort */ } }
+
+    if (!upstream.ok) {
+      let detail = '';
+      try {
+        const parsed = JSON.parse(data);
+        detail = (parsed && parsed.error && parsed.error.message) || '';
+      } catch (e2) {
+        detail = String(data || '').slice(0, 300);
+      }
+      console.error('[gemini] upstream ' + upstream.status + ' (' + useModel + '): ' + detail);
+      res.status(upstream.status).json({
+        error: 'Gemini (' + upstream.status + '): ' + (detail || 'خطأ غير معروف'),
+        provider: 'gemini',
+        model: useModel,
+        detail: detail,
+      });
+      return;
+    }
     res.status(upstream.status).setHeader('Content-Type', 'application/json').send(data);
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });

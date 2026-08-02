@@ -892,7 +892,7 @@
   };
 })();
 window.updateVersionLabel = function(){
-  var APP_VERSION = 'v393';
+  var APP_VERSION = 'v394';
   var el = document.getElementById('appVersionLabel');
   if (!el) return;
   var u = '';

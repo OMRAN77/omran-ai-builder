@@ -1,3 +1,17 @@
+/* يضبط شكل المحادثة كما يشترطه Gemini — يُستدعى قبل كل طلب. */
+function sanitizeGeminiContents(list){
+  const src = Array.isArray(list) ? list.filter(c => c && Array.isArray(c.parts) && c.parts.length) : [];
+  const out = [];
+  for(const c of src){
+    const last = out[out.length - 1];
+    if(last && last.role === c.role){ last.parts = last.parts.concat(c.parts); continue; }
+    out.push({ role: c.role === 'model' ? 'model' : 'user', parts: c.parts.slice() });
+  }
+  while(out.length && out[0].role !== 'user') out.shift();
+  while(out.length && out[out.length - 1].role !== 'user') out.pop();
+  return out;
+}
+
 // ===== Checkout / Payments (Stripe + PayPal, test mode) =====
 let checkoutCurrentPlan = null;
 let paypalSdkLoaded = false;
@@ -1227,7 +1241,7 @@ async function callGemini(messages, onDelta){
   const systemMsgs = messages.filter(m => m.role === 'system');
   const systemMsg = systemMsgs.length ? { content: systemMsgs.map(m => m.content).join('\n\n') } : null;
   const rest = messages.filter(m => m.role !== 'system');
-  const contents = rest.map(m => {
+  const rawContents = rest.map(m => {
     const parts = [{ text: m.content }];
     if(m.images && m.images.length){
       m.images.forEach(img => {
@@ -1237,6 +1251,7 @@ async function callGemini(messages, onDelta){
     }
     return { role: m.role === 'assistant' ? 'model' : 'user', parts };
   });
+  const contents = sanitizeGeminiContents(rawContents);
   const systemInstruction = systemMsg ? { parts: [{ text: systemMsg.content }] } : undefined;
   // If the visitor hasn't entered their own Gemini key, fall back to the server-side
   // proxy which uses the site owner's key (for quick trials without setup).

@@ -217,6 +217,27 @@ function injectNote(action, body, country) {
   }
 }
 
+/**
+ * Enforces the conversation shape Gemini requires: no empty parts, no two
+ * consecutive turns with the same role, opens on `user` and closes on `user`.
+ * Anything else comes back as a 400 that used to be swallowed by the silent
+ * fallback, so the user just saw "Gemini doesn't work" with no reason given.
+ */
+function sanitizeGeminiContents(list) {
+  const src = (Array.isArray(list) ? list : []).filter(
+    (c) => c && Array.isArray(c.parts) && c.parts.some((p) => p && (p.text || p.inline_data || p.inlineData))
+  );
+  const out = [];
+  for (const c of src) {
+    const last = out[out.length - 1];
+    if (last && last.role === c.role) { last.parts = last.parts.concat(c.parts); continue; }
+    out.push({ role: c.role === 'model' ? 'model' : 'user', parts: c.parts.slice() });
+  }
+  while (out.length && out[0].role !== 'user') out.shift();
+  while (out.length && out[out.length - 1].role !== 'user') out.pop();
+  return out;
+}
+
 const PROVIDERS = ['openai', 'gemini', 'groq', 'claude', 'cohere', 'deepseek', 'mistral', 'openrouter', 'perplexity'];
 
 module.exports = withErrorCapture('ai', async (req, res) => {
@@ -235,6 +256,9 @@ module.exports = withErrorCapture('ai', async (req, res) => {
         // برسالة مستخدم — أي رسائل مساعد عالقة في النهاية تُحذف.
         if (action === 'claude' && Array.isArray(b.messages)) {
           while (b.messages.length && b.messages[b.messages.length - 1] && b.messages[b.messages.length - 1].role !== 'user') b.messages.pop();
+        }
+        if (action === 'gemini' && Array.isArray(b.contents)) {
+          b.contents = sanitizeGeminiContents(b.contents);
         }
         const geoCountry = (req.headers && (req.headers['x-vercel-ip-country'] || req.headers['x-country'])) || '';
         injectNote(action, b, geoCountry); req.body = b;
