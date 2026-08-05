@@ -1127,7 +1127,7 @@
 
   if(voiceBtn) voiceBtn.addEventListener('click', async () => {
     const tr = T();
-    if(emailSummaryAudio){ try{ emailSummaryAudio.pause(); }catch(e){} emailSummaryAudio = null; voiceBtn.style.opacity = ''; setStatus(''); return; }
+    if(emailSummaryAudio){ try{ emailSummaryAudio.pause(); }catch(e){ __swallow(e, "misc:app-12-studios#1"); } emailSummaryAudio = null; voiceBtn.style.opacity = ''; setStatus(''); return; }
     const text = buildEmailSummaryText();
     if(!text){ setStatus(tr.voiceEmpty); setTimeout(() => setStatus(''), 2500); return; }
     voiceBtn.disabled = true;
@@ -1137,7 +1137,7 @@
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ voice: 'nova', text: text.slice(0, 4000) })
       });
-      if(!resp.ok){ let msg = 'tts failed'; try{ const j = await resp.json(); if(j && j.error) msg = j.error; }catch(e){} throw new Error(msg); }
+      if(!resp.ok){ let msg = 'tts failed'; try{ const j = await resp.json(); if(j && j.error) msg = j.error; }catch(e){ __swallow(e, "misc:app-12-studios#2"); } throw new Error(msg); }
       const blob = await resp.blob();
       const url = URL.createObjectURL(blob);
       emailSummaryAudio = new Audio(url);

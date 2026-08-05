@@ -102,7 +102,7 @@
   const tickerWrap = $('#stockTicker');
   const tickerTrack = $('#stockTickerTrack');
   const TICKER_SYMS = (function(){
-    try{ const s = JSON.parse(localStorage.getItem('stockTickerSyms')||'null'); if(Array.isArray(s) && s.length) return s.slice(0,5); }catch(e){}
+    try{ const s = JSON.parse(localStorage.getItem('stockTickerSyms')||'null'); if(Array.isArray(s) && s.length) return s.slice(0,5); }catch(e){ __swallow(e, "misc:app-13-stocks-init#1"); }
     return ['AAPL','TSLA','NVDA','MSFT','BTC/USD'];
   })();
   let tickerTimer = null, tickerAnim = null, tickerX = 0;
@@ -113,7 +113,7 @@
     items.forEach(function(it){
       const up = (it.change||0) >= 0;
       const col = up ? '#22c55e' : '#ef4444';
-      html += '<span data-tsym="'+(it.gold?'__GOLD':it.symbol)+'" style="cursor:pointer; padding:0 18px; font-size:13px; font-weight:600;">' +
+      html += '<span data-tsym="'+(it.gold?'__GOLD':it.symbol)+'" style="cursor:pointer; padding:0 18px; font-size:13px; font-weight:500;">' +
         it.symbol + ' <span style="color:'+col+';">' + (up?'▲':'▼') + ' ' + fmt(it.price) + (it.unit?(' '+it.unit):'') + (it.noPct?'':' (' + fmt(it.changePct) + '%)') + '</span></span><span style="color:rgba(255,255,255,0.2);">|</span>';
     });
     tickerTrack.innerHTML = html + html; // duplicate for seamless loop
@@ -138,7 +138,7 @@
         [['24',g.gram24],['22',g.gram22],['21',g.gram21],['18',g.gram18]].forEach(function(p){ if(p[1]) j.items.push({ symbol: kt.replace('{k}', p[0]), price:p[1], change:g.change, changePct:g.changePct, unit:aed, gold:1, noPct:1 }); });
         const ozA = g.ozAed || (g.ozUsd * 3.6725);
         j.items.push({ symbol: (t('goldOunce')||'Gold Ounce'), price:ozA, change:g.change, changePct:g.changePct, unit:aed, gold:1 });
-      } }catch(e){}
+      } }catch(e){ __swallow(e, "misc:app-13-stocks-init#2"); }
       renderTicker(j.items);
     }catch(e){ /* keep old ticker on error */ }
   }
@@ -186,11 +186,11 @@
     }
   });
   // v214: زر طي/فتح بنفس المكان — يسكر الشريط ويفتحه بدون حذف
-  try{ if(localStorage.getItem('tickerHidden') === '1'){ localStorage.setItem('tickerCollapsed','1'); localStorage.removeItem('tickerHidden'); } }catch(err){}
+  try{ if(localStorage.getItem('tickerHidden') === '1'){ localStorage.setItem('tickerCollapsed','1'); localStorage.removeItem('tickerHidden'); } }catch(err){ __swallow(err, "save:app-13-stocks-init#3"); }
   const tickerToggleBtn = $('#stockTickerToggle');
   if(tickerToggleBtn) tickerToggleBtn.addEventListener('click', function(e){
     e.stopPropagation();
-    try{ localStorage.setItem('tickerCollapsed', tickerIsCollapsed() ? '0' : '1'); }catch(err){}
+    try{ localStorage.setItem('tickerCollapsed', tickerIsCollapsed() ? '0' : '1'); }catch(err){ __swallow(err, "save:app-13-stocks-init#4"); }
     startTicker();
   });
   // الشريط خارجي: يظهر لكل من يفتح التطبيق (ما لم يوقفه المستخدم من الإعدادات).
@@ -281,7 +281,7 @@
         $('#goldG24').textContent = fmt(g.gram24); $('#goldG22').textContent = fmt(g.gram22); $('#goldG21').textContent = fmt(g.gram21);
         $('#goldCard').style.display = 'block';
       }
-    }catch(e){}
+    }catch(e){ __swallow(e, "ui:app-13-stocks-init#5"); }
   }
   function showGlobal(){
     globalWrap.style.display = 'block';
@@ -324,7 +324,7 @@
     searchWrap.style.display = t==='search' ? 'block' : 'none';
     learnWrap.style.display = t==='learn' ? 'block' : 'none';
     globalWrap.style.display = t==='global' ? 'block' : 'none';
-    Object.keys(stkTabBtns).forEach(function(k){ var b = stkTabBtns[k]; if(b) b.style.background = (k===t) ? 'rgba(124,58,237,0.45)' : ''; });
+    Object.keys(stkTabBtns).forEach(function(k){ var b = stkTabBtns[k]; if(b) b.style.background = (k===t) ? 'rgba(212,175,55,0.45)' : ''; });
     if(t==='global') showGlobal();
   }
   window.__stkShowTab = stkShowTab;
@@ -345,6 +345,245 @@
   });
 })();
 
+
+/* ---------- 🏗️ Construction/Contracting Design (Gemini text+image, server-side owner key) ---------- */
+(function(){
+  const modal = $('#constructionModal');
+  const btnOpen = $('#btnConstruction');
+  const btnClose = $('#constructionCloseBtn');
+  const btnRun = $('#constructionRunBtn');
+  const typeEl = $('#constructionType');
+  const floorsEl = $('#constructionFloors');
+  const areaEl = $('#constructionArea');
+  const styleEl = $('#constructionStyle');
+  const notesEl = $('#constructionNotes');
+  const budgetEl = $('#constructionBudget');
+  const statusEl = $('#constructionStatus');
+  const resultImageWrap = $('#constructionResultImageWrap');
+  const resultImageEl = $('#constructionResultImage');
+  const downloadLink = $('#constructionDownloadLink');
+  const photoWrap = $('#constructionPhotoImageWrap');
+  const photoImageEl = $('#constructionPhotoImage');
+  const photoDownloadLink = $('#constructionPhotoDownloadLink');
+  const interiorWrap = $('#constructionInteriorImageWrap');
+  const interiorImageEl = $('#constructionInteriorImage');
+  const interiorDownloadLink = $('#constructionInteriorDownloadLink');
+  const modePlanEl = $('#constructionModePlan');
+  const modePhotoEl = $('#constructionModePhoto');
+  const libraryBtn = $('#constructionLibraryBtn');
+  const libraryWrap = $('#constructionLibraryWrap');
+  const libraryEmptyEl = $('#constructionLibraryEmpty');
+  const planTextEl = $('#constructionPlanText');
+  const viewsSection = $('#constructionViewsSection');
+  const angleBtns = document.querySelectorAll('#constructionViewsSection [data-angle]');
+  const angleStatusEl = $('#constructionAngleStatus');
+  const angleImageWrap = $('#constructionAngleImageWrap');
+  const angleImageEl = $('#constructionAngleImage');
+  const angleDownloadLink = $('#constructionAngleDownloadLink');
+  const roomSelectEl = $('#constructionRoomSelect');
+  const roomColorEl = $('#constructionRoomColor');
+  const roomViewBtn = $('#constructionRoomViewBtn');
+  const roomStatusEl = $('#constructionRoomStatus');
+  const roomImageWrap = $('#constructionRoomImageWrap');
+  const roomImageEl = $('#constructionRoomImage');
+  const roomDownloadLink = $('#constructionRoomDownloadLink');
+  if(!modal || !btnOpen) return;
+
+  function currentParams(){
+    return {
+      buildingType: typeEl.value,
+      floors: floorsEl.value,
+      area: areaEl.value,
+      style: styleEl.value,
+      notes: notesEl.value,
+    };
+  }
+
+  function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function t(key){
+    const dict = (typeof I18N !== 'undefined') ? I18N[isEn() ? 'en' : 'ar'] : null;
+    return (dict && dict[key]) || key;
+  }
+  function setStatus(text){
+    statusEl.style.display = text ? 'block' : 'none';
+    statusEl.textContent = text || '';
+  }
+
+  btnOpen.onclick = () => {
+    modal.style.display = 'flex';
+    if(typeof closeHeaderMenu === 'function') closeHeaderMenu();
+  };
+  btnClose.onclick = () => { modal.style.display = 'none'; };
+  modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
+
+  if(libraryBtn){
+    libraryBtn.onclick = async () => {
+      libraryBtn.disabled = true;
+      libraryEmptyEl.style.display = 'none';
+      libraryWrap.style.display = 'none';
+      libraryWrap.innerHTML = '';
+      try{
+        const res = await fetch('/api/construction-library', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ buildingType: typeEl.value, floors: floorsEl.value, area: areaEl.value }),
+        });
+        const data = await res.json();
+        const items = (data && data.items) || [];
+        if(!items.length){
+          libraryEmptyEl.style.display = 'block';
+        }else{
+          items.forEach((item) => {
+            const img = document.createElement('img');
+            img.src = 'data:' + (item.planMimeType || 'image/png') + ';base64,' + item.planImageBase64;
+            img.style.cssText = 'width:100%; aspect-ratio:1; object-fit:cover; border-radius:6px; cursor:pointer; background:#000;';
+            img.title = (item.floors || '') + ' | ' + (item.area || '') + ' m²';
+            img.onclick = () => {
+              resultImageEl.src = img.src;
+              downloadLink.href = img.src;
+              resultImageWrap.style.display = 'block';
+              resultImageWrap.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            };
+            libraryWrap.appendChild(img);
+          });
+          libraryWrap.style.display = 'grid';
+        }
+      }catch(e){
+        libraryEmptyEl.style.display = 'block';
+      }finally{
+        libraryBtn.disabled = false;
+      }
+    };
+  }
+
+  btnRun.onclick = async () => {
+    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+    if(!token){
+      setStatus(t('designAiNeedLogin'));
+      return;
+    }
+    btnRun.disabled = true;
+    resultImageWrap.style.display = 'none';
+    planTextEl.style.display = 'none';
+    viewsSection.style.display = 'none';
+    setStatus(t('constructionGenerating'));
+
+    try{
+      const res = await fetch('/api/construction-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.assign(currentParams(), {
+          budget: budgetEl.value,
+          annexes: Array.from(document.querySelectorAll('.constructionAnnex:checked')).map((el) => el.value),
+          includeInterior: !!($('#constructionIncludeInterior') && $('#constructionIncludeInterior').checked),
+          token,
+        })),
+      });
+      const data = await res.json();
+      if(!res.ok){
+        if(data.error === 'auth_required'){
+          setStatus(t('designAiNeedLogin'));
+        }else if(data.error === 'daily_limit_reached'){
+          setStatus(t('designAiLimitReached'));
+        }else{
+          setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (data.error || 'unknown'));
+        }
+        return;
+      }
+      if(data.imageBase64){
+        resultImageEl.src = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
+        downloadLink.href = resultImageEl.src;
+        resultImageWrap.style.display = 'block';
+      }
+      if(data.photoImageBase64){
+        photoImageEl.src = 'data:' + (data.photoMimeType || 'image/png') + ';base64,' + data.photoImageBase64;
+        photoDownloadLink.href = photoImageEl.src;
+        photoWrap.style.display = 'block';
+      }
+      if(data.interiorImageBase64){
+        interiorImageEl.src = 'data:' + (data.interiorMimeType || 'image/png') + ';base64,' + data.interiorImageBase64;
+        interiorDownloadLink.href = interiorImageEl.src;
+        interiorWrap.style.display = 'block';
+      }
+      if(data.planText){
+        planTextEl.textContent = data.planText;
+        planTextEl.style.display = 'block';
+      }
+      viewsSection.style.display = 'block';
+      angleImageWrap.style.display = 'none';
+      roomImageWrap.style.display = 'none';
+      setStatus('');
+    }catch(e){
+      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+    }finally{
+      btnRun.disabled = false;
+    }
+  };
+
+  angleBtns.forEach((btn) => {
+    btn.onclick = async () => {
+      const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+      if(!token){ angleStatusEl.style.display = 'block'; angleStatusEl.textContent = t('designAiNeedLogin'); return; }
+      angleBtns.forEach((b) => { b.disabled = true; });
+      angleImageWrap.style.display = 'none';
+      angleStatusEl.style.display = 'block';
+      angleStatusEl.textContent = t('constructionGenerating');
+      try{
+        const res = await fetch('/api/construction-view', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(Object.assign(currentParams(), { mode: 'angle', angle: btn.getAttribute('data-angle'), token })),
+        });
+        const data = await res.json();
+        if(!res.ok){
+          if(data.error === 'auth_required') angleStatusEl.textContent = t('designAiNeedLogin');
+          else if(data.error === 'daily_limit_reached') angleStatusEl.textContent = t('designAiLimitReached');
+          else angleStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (data.error || 'unknown');
+          return;
+        }
+        angleImageEl.src = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
+        angleDownloadLink.href = angleImageEl.src;
+        angleImageWrap.style.display = 'block';
+        angleStatusEl.style.display = 'none';
+      }catch(e){
+        angleStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+      }finally{
+        angleBtns.forEach((b) => { b.disabled = false; });
+      }
+    };
+  });
+
+  roomViewBtn.onclick = async () => {
+    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+    if(!token){ roomStatusEl.style.display = 'block'; roomStatusEl.textContent = t('designAiNeedLogin'); return; }
+    roomViewBtn.disabled = true;
+    roomImageWrap.style.display = 'none';
+    roomStatusEl.style.display = 'block';
+    roomStatusEl.textContent = t('constructionGenerating');
+    try{
+      const res = await fetch('/api/construction-view', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.assign(currentParams(), { mode: 'room', room: roomSelectEl.value, color: roomColorEl.value, token })),
+      });
+      const data = await res.json();
+      if(!res.ok){
+        if(data.error === 'auth_required') roomStatusEl.textContent = t('designAiNeedLogin');
+        else if(data.error === 'daily_limit_reached') roomStatusEl.textContent = t('designAiLimitReached');
+        else roomStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (data.error || 'unknown');
+        return;
+      }
+      roomImageEl.src = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
+      roomDownloadLink.href = roomImageEl.src;
+      roomImageWrap.style.display = 'block';
+      roomStatusEl.style.display = 'none';
+    }catch(e){
+      roomStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+    }finally{
+      roomViewBtn.disabled = false;
+    }
+  };
+})();
 
 /* ---------- 💄 AI Style Studio (Gemini image, server-side owner key) ---------- */
 (function(){
@@ -892,16 +1131,16 @@
   };
 })();
 window.updateVersionLabel = function(){
-  var APP_VERSION = 'v395';
+  var APP_VERSION = 'v461';
   var el = document.getElementById('appVersionLabel');
   if (!el) return;
   var u = '';
-  try { u = (typeof authGet === 'function') ? (authGet('aiapp_username') || '') : (localStorage.getItem('aiapp_username') || ''); } catch(e){}
+  try { u = (typeof authGet === 'function') ? (authGet('aiapp_username') || '') : (localStorage.getItem('aiapp_username') || ''); } catch(e){ __swallow(e, "misc:app-13-stocks-init#6"); }
   if (String(u).trim().toLowerCase() === 'omran') {
     var fmt = function(ts){ if(!ts) return '—'; try{ var d=new Date(ts); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2); }catch(e){ return '—'; } };
     var pull = (typeof window.__chatsLastPull === 'number') ? window.__chatsLastPull : 0;
     var push = (typeof window.__chatsLastPush === 'number') ? window.__chatsLastPush : 0;
-    var n = 0; try{ n = (state.projects||[]).length; }catch(e){}
+    var n = 0; try{ n = (state.projects||[]).length; }catch(e){ __swallow(e, "misc:app-13-stocks-init#7"); }
     var pullErr = window.__chatsLastPullErr ? (' ⚠️' + window.__chatsLastPullErr) : '';
     var pushErr = window.__chatsLastPushErr ? (' ⚠️' + window.__chatsLastPushErr) : '';
     var srvN = (typeof window.__chatsServerCount === 'number') ? window.__chatsServerCount : '?';
@@ -915,7 +1154,7 @@ window.updateVersionLabel = function(){
       + ' · دمج: ' + mrgR
       + (mrgE ? (' ⚠️' + mrgE) : '');
     el.style.display = '';
-    if (!window.__verLabelTimer) { window.__verLabelTimer = setInterval(function(){ try{ window.updateVersionLabel(); }catch(e){} }, 5000); }
+    if (!window.__verLabelTimer) { window.__verLabelTimer = setInterval(function(){ try{ window.updateVersionLabel(); }catch(e){ __swallow(e, "ui:app-13-stocks-init#8"); } }, 5000); }
   } else {
     el.textContent = '';
     el.style.display = 'none';

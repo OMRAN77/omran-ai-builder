@@ -34,7 +34,7 @@
   function agentScript(token) {
     return '<scr' + 'ipt>(function(){' +
       'var TK=' + JSON.stringify(token) + ';' +
-      'function send(p){try{parent.postMessage(Object.assign({__omranTest:TK},p),"*");}catch(e){}}' +
+      'function send(p){try{parent.postMessage(Object.assign({__omranTest:TK},p),"*");}catch(e){ __swallow(e, "misc:app-14-tester#1"); }}' +
       'window.addEventListener("error",function(e){send({type:"error",message:(e.message||"Script error")+(e.lineno?" [line "+e.lineno+"]":"")});});' +
       'window.addEventListener("unhandledrejection",function(e){send({type:"error",message:"Unhandled rejection: "+((e.reason&&e.reason.message)||e.reason)});});' +
       'function label(el){' +
