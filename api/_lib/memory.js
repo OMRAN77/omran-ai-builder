@@ -194,7 +194,7 @@ module.exports = async (req, res) => {
 
     if (op === 'update') {
       const cur = await readMemory(username);
-      // خانق بسيط: لا نستدعي النموذج أكثر من مرة كل 45 ثانية لكل مستخدم
+      // خانق بسيط: لا نستدعي النموذج أكثر من مرة كل 20 ثانية لكل مستخدم (MIN_UPDATE_GAP_MS)
       if (cur.updatedAt && Date.now() - cur.updatedAt < MIN_UPDATE_GAP_MS) {
         res.status(200).json({ ok: true, skipped: 'throttled', memory: cur.memory });
         return;
@@ -214,3 +214,7 @@ module.exports = async (req, res) => {
     res.status(500).json({ error: String((e && e.message) || e) });
   }
 };
+
+// الوكيل (agent.js) يحتاج قراءة الذاكرة مباشرة دون نداء HTTP لنفسه.
+// إضافة خاصية على الدالة لا تغيّر كونها معالج الطلب، فالتوجيه سليم كما هو.
+module.exports.readMemory = readMemory;

@@ -183,13 +183,22 @@ async function fetchPage(url) {
  * والمهلة إلزامية: متصفح أُغلق يعني انتظارًا حتى تنتهي مهلة الدالة كلها.
  */
 async function runInClient(name, input) {
-  const { kvGetJSON, kvDel } = require('./kv.js');
+  const { kvGetJSON, kvDel, kvPutJSON, kvExpire } = require('./kv.js');
   const id = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   const key = 'agent/tool/' + id;
 
+  // تصريح انتظار: نقطة agent-tool-result كانت تقبل أي معرّف يطابق النمط، فيستطيع
+  // غريب حشو ناتج أداة. الآن لا تُقبل إلا معرّفات أصدرها هذا الخادم وما زالت تنتظر.
+  try {
+    await kvPutJSON('agent/wait/' + id, { at: Date.now() });
+    await kvExpire('agent/wait/' + id, 120);
+  } catch (e) { console.warn('[agent] claim failed', e && e.message); }
+
   send({ clientTool: { id, name, input } });
 
-  const deadline = Date.now() + 12000;
+  // 25 ثانية لا 12: التنفيذ في المتصفح يقف عند 6 ثوانٍ، لكن التبويب في الخلفية
+  // يخنق مؤقتاته فيتأخّر بلا أن يفشل. المهلة القصيرة كانت تكذّب نتيجة صحيحة.
+  const deadline = Date.now() + 25000;
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 400));
     let rec = null;
@@ -199,7 +208,7 @@ async function runInClient(name, input) {
       return rec.output.slice(0, 4000);
     }
   }
-  return 'لم يستجب متصفح المستخدم خلال 12 ثانية — لم يُنفَّذ. أكمل بلا هذه الأداة أو قل إنك لم تتحقّق.';
+  return 'لم يستجب متصفح المستخدم خلال 25 ثانية — لم يُنفَّذ. أكمل بلا هذه الأداة أو قل إنك لم تتحقّق.';
 }
 
 module.exports = async (req, res) => {
@@ -231,6 +240,19 @@ module.exports = async (req, res) => {
   const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); } catch (e) {} };
 
   let system = SYSTEM;
+
+  // ذاكرة المستخدم: memory.js يحفظها منذ زمن، والوكيل لم يكن يفتحها أبدًا — فكان
+  // يبدأ كل مرة غريبًا لا يعرف من يخاطب. القراءة مفتاح KV واحد، وتفشل بصمت.
+  if (usage.username) {
+    try {
+      const { readMemory } = require('./memory.js');
+      const mem = await readMemory(usage.username);
+      if (mem && mem.memory && mem.memory.trim()) {
+        system += '\n\nما تعرفه عن هذا المستخدم من محادثات سابقة (استعمله بلا أن تعلن أنك تقرأ ذاكرة):\n' + mem.memory.slice(0, 2800);
+      }
+    } catch (e) { console.warn('[agent] memory read failed', e && e.message); }
+  }
+
   if (currentCode) {
     system += '\n\nالكود الحالي للمشروع (عدّل عليه إذا طلب المستخدم تعديلًا وأعد الملف كاملًا):\n```html\n' + String(currentCode).slice(0, 60000) + '\n```';
   }
@@ -311,7 +333,10 @@ module.exports = async (req, res) => {
           { name: 'Mistral', url: 'https://api.mistral.ai/v1/chat/completions', key: process.env.MISTRAL_API_KEY, model: 'mistral-large-latest' },
           { name: 'Groq', url: 'https://api.groq.com/openai/v1/chat/completions', key: process.env.GROQ_API_KEY, model: 'llama-3.3-70b-versatile' },
         ];
-        const plainMsgs = [{ role: 'system', content: system }].concat(convo.map((m) => ({
+        // هبوط بلا أدوات: البديل لا يشغّل ولا يفحص شيئًا، فيجب ألّا يوهم المستخدم
+        // بأنه جرّب. الصمت هنا أسوأ من الاعتراف — كلام جميل عن عمل لم يحدث.
+        const noTools = '\n\n⚠️ تنبيه تشغيلي: في هذا الردّ لا تملك أي أداة — لا تشغيل كود، ولا اختبار صفحة، ولا بحث في الويب. لا تقل أبدًا إنك شغّلت أو اختبرت أو تحقّقت. قدّم الحل نصًّا واذكر صراحةً أنك لم تتمكّن من تجربته.';
+        const plainMsgs = [{ role: 'system', content: system + noTools }].concat(convo.map((m) => ({
           role: m.role === 'assistant' ? 'assistant' : 'user',
           content: typeof m.content === 'string' ? m.content
             : (Array.isArray(m.content) ? m.content.map((c) => c.text || c.content || '').filter(Boolean).join('\n') : ''),
@@ -325,7 +350,7 @@ module.exports = async (req, res) => {
               body: JSON.stringify({ model: fb.model, messages: plainMsgs, max_tokens: 8000, stream: true }),
             });
             if (!fr.ok) continue;
-            send({ status: '⚠️ تم التحويل تلقائيًا إلى ' + fb.name });
+            send({ status: '⚠️ تعذّر Claude — رددتُ عبر ' + fb.name + ' بلا أدوات: لم أشغّل شيئًا ولم أختبره في هذا الردّ.' });
             const frd = fr.body.getReader();
             const fdec = new TextDecoder();
             let fbuf = '';
