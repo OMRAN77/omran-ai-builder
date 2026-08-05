@@ -29,7 +29,7 @@ function mahaUnlockAudio(){
     mahaAudioEl.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQxAADB8AhSmxhIIEVCSiJrDCQBTcu93pgQGZgAAAA//tQxAADwAABpAAAACAAADSAAAAE';
     const p = mahaAudioEl.play();
     if(p && p.catch) p.catch(()=>{});
-  }catch(e){}
+  }catch(e){ __swallow(e, "misc:app-08-maha#1"); }
 }
 
 const btnMahaEl = document.getElementById('btnMaha');
@@ -92,7 +92,7 @@ const btnMahaEndCallEl = document.getElementById('btnMahaEndCall');
       if(saved && typeof saved.x === 'number' && typeof saved.y === 'number'){
         x = saved.x; y = saved.y;
       }
-    } catch(e){}
+    } catch(e){ __swallow(e, "ui:app-08-maha#2"); }
     if(x === undefined){
       x = Math.round((window.innerWidth - 260) / 2);
       y = Math.round((window.innerHeight - 340) / 2);
@@ -126,7 +126,7 @@ const btnMahaEndCallEl = document.getElementById('btnMahaEndCall');
     dragging = false;
     handle.style.cursor = 'grab';
     const rect = panel.getBoundingClientRect();
-    try { localStorage.setItem(POS_KEY, JSON.stringify({ x: rect.left, y: rect.top })); } catch(e){}
+    try { localStorage.setItem(POS_KEY, JSON.stringify({ x: rect.left, y: rect.top })); } catch(e){ __swallow(e, "save:app-08-maha#3"); }
   }
 
   handle.addEventListener('mousedown', pointerDown);
@@ -156,7 +156,7 @@ function mahaSetState(state, customLabel){
 
 function mahaStopVad(){
   if(mahaVadRaf){ cancelAnimationFrame(mahaVadRaf); mahaVadRaf = null; }
-  if(mahaAudioCtx){ try{ mahaAudioCtx.close(); }catch(e){} mahaAudioCtx = null; mahaAnalyser = null; }
+  if(mahaAudioCtx){ try{ mahaAudioCtx.close(); }catch(e){ __swallow(e, "misc:app-08-maha#4"); } mahaAudioCtx = null; mahaAnalyser = null; }
 }
 
 function mahaStopStream(){
@@ -269,7 +269,7 @@ async function mahaStartInterruptListener(audio, onInterrupt){
     }
     loudStreak = isVoiceShaped ? loudStreak + 1 : 0;
     if(loudStreak >= LOUD_FRAMES_NEEDED){
-      try{ audio.pause(); }catch(e){}
+      try{ audio.pause(); }catch(e){ __swallow(e, "misc:app-08-maha#5"); }
       onInterrupt();
       return;
     }
@@ -280,7 +280,7 @@ async function mahaStartInterruptListener(audio, onInterrupt){
 
 function mahaStopInterruptListener(){
   if(mahaInterruptRaf){ cancelAnimationFrame(mahaInterruptRaf); mahaInterruptRaf = null; }
-  if(mahaInterruptCtx){ try{ mahaInterruptCtx.close(); }catch(e){} mahaInterruptCtx = null; }
+  if(mahaInterruptCtx){ try{ mahaInterruptCtx.close(); }catch(e){ __swallow(e, "misc:app-08-maha#6"); } mahaInterruptCtx = null; }
   if(mahaInterruptStream){ mahaInterruptStream.getTracks().forEach(tr => tr.stop()); mahaInterruptStream = null; }
 }
 
@@ -430,7 +430,7 @@ async function mahaRecordUntilSilence(){
 // Keeps Maha fast by only searching when it's actually likely to help.
 const MAHA_SEARCH_KEYWORDS = [
   // Arabic (MSA + Gulf dialect)
-  'طقس','جو','درجة الحرارة','مطر','اخبار','أخبار','خبر','نتيجة','نتائج','مباراة','مباريات',
+  'طقس','جو','درجة الحرارة','مطر','أمطار','امطار','الامطار','الأمطار','توقعات','توقع','ابحث','أبحث','بحث لي','مصدر','مصادر','المصدر','اخبار','أخبار','خبر','نتيجة','نتائج','مباراة','مباريات',
   'الدوري','كأس','بطولة','سعر','أسعار','اسعار','سهم','اسهم','بورصة','عملة','دولار','ذهب','نفط',
   'اشتراك','اشتراكات','الاشتراك','تكلفة','كلفة','التكلفة','بكم','كم يكلف','كم تكلف','رسوم','باقة','باقات',
   'اليوم','الحين','الآن','حاليا','حالياً','آخر','احدث','أحدث','جديد','مين فاز','من فاز','نتيجة المباراة',
@@ -491,11 +491,11 @@ function exportTextAsPdf(raw){
     fr.srcdoc = doc;
     fr.onload = function(){
       setTimeout(function(){
-        try{ fr.contentWindow.focus(); fr.contentWindow.print(); }catch(e){}
-        setTimeout(function(){ try{ fr.remove(); }catch(e){} }, 60000);
+        try{ fr.contentWindow.focus(); fr.contentWindow.print(); }catch(e){ __swallow(e, "ui:app-08-maha#7"); }
+        setTimeout(function(){ try{ fr.remove(); }catch(e){ __swallow(e, "ui:app-08-maha#8"); } }, 60000);
       }, 250);
     };
-  }catch(e){}
+  }catch(e){ __swallow(e, "ui:app-08-maha#9"); }
 }
 function isPureGreeting(t){
   if(!t) return false;
@@ -519,16 +519,20 @@ async function smartMaybeSearch(text, ctxMsgs){
   // v384: 🧠 بحث واعي بالسياق — إذا الرسالة قصيرة وتبدو متابعة (عطني الروابط / المزيد / تفاصيل...)
   // نجيب الموضوع الأصلي من آخر رسائل المحادثة ونضيفه للاستعلام.
   let searchQuery = text;
-  const __followUpRe = /^(عطني|أعطني|اعطني|هات|وريني|أرني|ابغي|أبي|ابي|أريد|اريد|المزيد|تفاصيل|أكثر|زيادة|كمل|أكمل|واصل|وش صار|شو عن|ايش عن|الروابط|المواقع|اللنكات|الخيارات|البدائل|give me|show me|more|details|links|what about|alternatives)/i;
+  const __followUpRe = /^(عطني|أعطني|اعطني|هات|وريني|أرني|ابغي|أبي|ابي|أريد|اريد|ممكن|المزيد|تفاصيل|أكثر|زيادة|كمل|أكمل|واصل|وش صار|شو عن|ايش عن|الروابط|المواقع|اللنكات|الخيارات|البدائل|give me|show me|more|details|links|what about|alternatives)/i;
   if(ctxMsgs && text.length < 60 && __followUpRe.test(text)){
     // خذ آخر رسالة مستخدم سابقة (اللي فيها الموضوع الأصلي)
     const __prevUser = ctxMsgs.filter(m => m.role === 'user' && m.content && String(m.content).trim() !== text.trim() && String(m.content).length > 5);
-    // وآخر رد AI (قد يحتوي الموضوع أيضاً)
-    const __prevAI = ctxMsgs.filter(m => m.role !== 'user' && m.content && String(m.content).length > 20 && String(m.content).length < 2000);
+    // v467b: وآخر رد AI — نأخذ أول 300 حرف لأنه يحتوي الموضوع الفعلي (أسماء دول/أماكن/شركات)
+    const __prevAI = ctxMsgs.filter(m => m.role !== 'user' && m.content && String(m.content).length > 20);
     let __topic = '';
     if(__prevUser.length) __topic = String(__prevUser[__prevUser.length - 1].content).slice(0, 200);
-    else if(__prevAI.length) __topic = String(__prevAI[__prevAI.length - 1].content).slice(0, 200);
-    if(__topic) searchQuery = __topic + ' ' + text;
+    // v467b: ندمج سياق رد الـAI مع رسالة المستخدم — هذا يحل مشكلة "اسأل عن السعودية يبحث بالإمارات"
+    if(__prevAI.length){
+      const __aiSnippet = String(__prevAI[__prevAI.length - 1].content).slice(0, 300);
+      __topic = __topic ? (__topic + ' ' + __aiSnippet) : __aiSnippet;
+    }
+    if(__topic) searchQuery = (__topic + ' ' + text).slice(0, 500);
   }
 
   // v384: 🔬 Deep Research — استعلامات معقدة أو صريحة تحتاج بحث عميق بعدة زوايا.
@@ -536,7 +540,7 @@ async function smartMaybeSearch(text, ctxMsgs){
   const __wantDeep = __deepRe.test(text) || (text.length > 120 && mahaNeedsSearch(text));
 
   // 🔗 طلب روابط/مواقع حقيقية = بحث حي إجباري (منع هلوسة الروابط الوهمية).
-  if(/روابط|لينكات|لنكات/i.test(text)
+  if(/رابط|روابط|لينك|لنك|لينكات|لنكات/i.test(text)
     || /(رابط|لينك|\blink\b|\burl\b)[^\n]{0,25}(موقع|مواقع|منصة|منصات|صفحة|site|website)/i.test(text)
     || /(موقع|مواقع|منصة|منصات|site|website)[^\n]{0,25}(رابط|لينك|\blink\b|\burl\b|\blinks\b)/i.test(text)
     || /(عطني|اعطني|أعطني|هات|وريني|ابغي|أبغي|أبي|ابي|أريد|اريد|give me|show me)[^\n]{0,20}(موقع|مواقع|منصة|منصات|رابط|لينك|\bsites?\b|\bwebsites?\b|\blinks?\b)/i.test(text)){
@@ -572,6 +576,7 @@ async function fetchSearchNote(transcript, deep){
   return await fetchSearchNoteOnce(transcript, false);
 }
 async function fetchSearchNoteOnce(transcript, deep){
+  // Live search is the longest silent gap in ordinary chat — up to 45s.
   const __st = (window.__chatStatus && !window.__chatStatus.__released)
     ? window.__chatStatus.step('🔍', deep ? 'يبحث في الإنترنت (بحث موسّع)…' : 'يبحث في الإنترنت…')
     : null;
@@ -871,7 +876,7 @@ function mahaStartMicMeter(stream){
       }
       mahaMicMeterRaf = requestAnimationFrame(tick);
     })();
-  }catch(e){}
+  }catch(e){ __swallow(e, "misc:app-08-maha#10"); }
 }
 function mahaStopMicMeter(){
   try{
@@ -880,7 +885,7 @@ function mahaStopMicMeter(){
     if(mahaMicMeterCtx){ mahaMicMeterCtx.close().catch(() => {}); mahaMicMeterCtx = null; }
     const wrap = document.getElementById('mahaMicMeter');
     if(wrap) wrap.style.display = 'none';
-  }catch(e){}
+  }catch(e){ __swallow(e, "ui:app-08-maha#11"); }
 }
 
 let mahaRtCancelled = false;
@@ -927,7 +932,7 @@ async function mahaStartRealtimeCall(){
     try{
       const receiver = e.receiver;
       if(receiver && 'playoutDelayHint' in receiver){ receiver.playoutDelayHint = 0.25; }
-    }catch(err){}
+    }catch(err){ __swallow(err, "misc:app-08-maha#12"); }
   };
   pc.addTrack(mahaRtStream.getTracks()[0], mahaRtStream);
 
@@ -1033,14 +1038,14 @@ async function mahaCameraOn(){
   try{
     mahaCamStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 } }, audio: false });
     const v = document.getElementById('mahaCamPreview');
-    if(v){ v.srcObject = mahaCamStream; v.style.display = 'block'; try{ await v.play(); }catch(e){} }
+    if(v){ v.srcObject = mahaCamStream; v.style.display = 'block'; try{ await v.play(); }catch(e){ __swallow(e, "ui:app-08-maha#13"); } }
     const b = document.getElementById('btnMahaCamera');
     if(b) b.style.background = 'rgba(64,200,120,.55)';
     return true;
   }catch(e){ console.error('[maha-camera] failed:', e); mahaCamStream = null; return false; }
 }
 function mahaCameraOff(){
-  if(mahaCamStream){ try{ mahaCamStream.getTracks().forEach(tr => tr.stop()); }catch(e){} mahaCamStream = null; }
+  if(mahaCamStream){ try{ mahaCamStream.getTracks().forEach(tr => tr.stop()); }catch(e){ __swallow(e, "misc:app-08-maha#14"); } mahaCamStream = null; }
   const v = document.getElementById('mahaCamPreview');
   if(v){ v.style.display = 'none'; v.srcObject = null; }
   const b = document.getElementById('btnMahaCamera');
@@ -1188,12 +1193,12 @@ function mahaGetLocation(){
     try{
       const cached = JSON.parse(localStorage.getItem('aiapp_last_geo') || 'null');
       if(cached && (Date.now() - cached.ts) < 3600000){ resolve({ lat: cached.lat, lng: cached.lng }); return; }
-    }catch(e){}
+    }catch(e){ __swallow(e, "misc:app-08-maha#15"); }
     if(!navigator.geolocation){ resolve(null); return; }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        try{ localStorage.setItem('aiapp_last_geo', JSON.stringify(Object.assign({ ts: Date.now() }, loc))); }catch(e){}
+        try{ localStorage.setItem('aiapp_last_geo', JSON.stringify(Object.assign({ ts: Date.now() }, loc))); }catch(e){ __swallow(e, "save:app-08-maha#16"); }
         resolve(loc);
       },
       () => resolve(null),
@@ -1300,11 +1305,11 @@ function urlBase64ToUint8Array(base64String){
 function mahaEndRealtimeCall(){
   mahaRtCancelled = true;
   mahaRtActive = false;
-  if(mahaRtDc){ try{ mahaRtDc.close(); }catch(e){} mahaRtDc = null; }
-  if(mahaRtPc){ try{ mahaRtPc.close(); }catch(e){} mahaRtPc = null; }
+  if(mahaRtDc){ try{ mahaRtDc.close(); }catch(e){ __swallow(e, "misc:app-08-maha#17"); } mahaRtDc = null; }
+  if(mahaRtPc){ try{ mahaRtPc.close(); }catch(e){ __swallow(e, "misc:app-08-maha#18"); } mahaRtPc = null; }
   mahaStopMicMeter();
   if(mahaRtStream){ mahaRtStream.getTracks().forEach(tr => tr.stop()); mahaRtStream = null; }
-  if(mahaRtAudioEl){ try{ mahaRtAudioEl.pause(); mahaRtAudioEl.srcObject = null; }catch(e){} mahaRtAudioEl = null; }
+  if(mahaRtAudioEl){ try{ mahaRtAudioEl.pause(); mahaRtAudioEl.srcObject = null; }catch(e){ __swallow(e, "misc:app-08-maha#19"); } mahaRtAudioEl = null; }
 }
 
 async function mahaCallLoop(){
@@ -1466,14 +1471,14 @@ function mahaStartPointsMeter(budget){
     const isAr = (typeof lang !== 'undefined' ? lang : 'ar') === 'ar';
     const endGently = ()=>{
       mahaStopPointsMeter();
-      try{ mahaEndCall(); }catch(e){}
+      try{ mahaEndCall(); }catch(e){ __swallow(e, "points:app-08-maha#20"); }
       setTimeout(()=>{
         try{
           if(confirm(isAr ? 'خلصت نقاطك 🌸 تبي تشحن نقاط عشان نكمل سوالفنا؟' : 'Your points ran out 🌸 Top up to keep talking with me?')){
-            try{ document.getElementById('btnSettings').click(); }catch(e){}
-            try{ document.querySelector('.pointsPackBtn')?.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
+            try{ document.getElementById('btnSettings').click(); }catch(e){ __swallow(e, "points:app-08-maha#21"); }
+            try{ document.querySelector('.pointsPackBtn')?.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){ __swallow(e, "points:app-08-maha#22"); }
           }
-        }catch(e){}
+        }catch(e){ __swallow(e, "points:app-08-maha#23"); }
       }, 400);
     };
     mahaPointsTimer = setInterval(async ()=>{
@@ -1485,7 +1490,7 @@ function mahaStartPointsMeter(budget){
           try{
             await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'},
               body: JSON.stringify({ action:'maha-trial-used', token: authGet('aiapp_auth_token') }) });
-          }catch(e){}
+          }catch(e){ __swallow(e, "auth:app-08-maha#24"); }
           if(pts < 10){ endGently(); return; }
           val.textContent = String(pts);
           return;
@@ -1500,21 +1505,21 @@ function mahaStartPointsMeter(budget){
         }
       }catch(e){ /* خطأ شبكة مؤقت — نحاول الدقيقة الجاية */ }
     }, 60000);
-  }catch(e){}
+  }catch(e){ __swallow(e, "points:app-08-maha#25"); }
 }
 
 function mahaEndCall(){
   mahaCallActive = false;
   mahaStopPointsMeter();
   mahaLowMicStreak = 0;
-  try{ mahaCameraOff(); }catch(e){}
+  try{ mahaCameraOff(); }catch(e){ __swallow(e, "points:app-08-maha#26"); }
   if(mahaOrbEl) mahaOrbEl.style.transform = '';
   mahaEndRealtimeCall();
   mahaStopVad();
   mahaStopStream();
   mahaStopInterruptListener();
-  if(mahaMediaRecorder && mahaMediaRecorder.state === 'recording'){ try{ mahaMediaRecorder.stop(); }catch(e){} }
-  if(mahaCurrentAudio){ try{ mahaCurrentAudio.pause(); }catch(e){} mahaCurrentAudio = null; }
+  if(mahaMediaRecorder && mahaMediaRecorder.state === 'recording'){ try{ mahaMediaRecorder.stop(); }catch(e){ __swallow(e, "ui:app-08-maha#27"); } }
+  if(mahaCurrentAudio){ try{ mahaCurrentAudio.pause(); }catch(e){ __swallow(e, "misc:app-08-maha#28"); } mahaCurrentAudio = null; }
   stopAllSpeaking();
   if(mahaCallScreenEl) mahaCallScreenEl.style.display = 'none';
   if(btnMahaEl) btnMahaEl.style.display = 'flex';
@@ -1608,17 +1613,17 @@ if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
   };
   const txt = T[L] || T.en;
   const isRTL = (L === 'ar' || L === 'ur');
-  function markDone(){ try{ localStorage.setItem('introTourDone','1'); }catch(e){} }
+  function markDone(){ try{ localStorage.setItem('introTourDone','1'); }catch(e){ __swallow(e, "save:app-08-maha#29"); } }
 
   function buildOverlay(){
     const ov = document.createElement('div');
     ov.id = 'introTourOverlay';
     ov.style.cssText = 'position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.55);opacity:0;transition:opacity .3s;';
     const ring = document.createElement('div');
-    ring.style.cssText = 'position:fixed;border:3px solid #a855f7;border-radius:50%;box-shadow:0 0 18px 6px rgba(168,85,247,.7);pointer-events:none;transition:all .45s ease;';
+    ring.style.cssText = 'position:fixed;border:3px solid #d4af37;border-radius:50%;box-shadow:0 0 18px 6px rgba(212,175,55,.7);pointer-events:none;transition:all .45s ease;';
     const bubble = document.createElement('div');
     bubble.dir = isRTL ? 'rtl' : 'ltr';
-    bubble.style.cssText = 'position:fixed;max-width:230px;background:rgba(30,22,54,.97);color:#fff;font-size:14px;line-height:1.5;padding:10px 14px;border-radius:14px;border:1px solid rgba(168,85,247,.5);box-shadow:0 6px 24px rgba(0,0,0,.5);pointer-events:none;transition:all .45s ease;';
+    bubble.style.cssText = 'position:fixed;max-width:230px;background:rgba(30,22,54,.97);color:#fff;font-size:14px;line-height:1.5;padding:10px 14px;border-radius:14px;border:1px solid rgba(212,175,55,.5);box-shadow:0 6px 24px rgba(0,0,0,.5);pointer-events:none;transition:all .45s ease;';
     if(!document.getElementById('introTourPulseCss')){
       const st = document.createElement('style');
       st.id = 'introTourPulseCss';
@@ -1657,7 +1662,7 @@ if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
       if(t2) clearTimeout(t2);
       if(t3) clearTimeout(t3);
       ov.style.opacity = '0';
-      setTimeout(() => { try{ ov.remove(); }catch(e){} }, 320);
+      setTimeout(() => { try{ ov.remove(); }catch(e){ __swallow(e, "ui:app-08-maha#30"); } }, 320);
     }
     ov.addEventListener('pointerdown', dismiss, { once:true });
     t2 = setTimeout(() => {
@@ -1668,7 +1673,7 @@ if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
         // Demo: collapse & re-open the ticker twice, slowly, so the new
         // user sees exactly what the arrow does. Ends in the open state.
         [700, 1500, 2300, 3100].forEach(ms => {
-          setTimeout(() => { try{ tick.click(); }catch(e){} }, ms);
+          setTimeout(() => { try{ tick.click(); }catch(e){ __swallow(e, "misc:app-08-maha#31"); } }, ms);
         });
         t3 = setTimeout(dismiss, 3800);
       } else {
@@ -1741,13 +1746,13 @@ if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
 
   function restorePos(){
     // v205: always start at the CENTER of the screen on every load.
-    try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+    try{ localStorage.removeItem(STORAGE_KEY); }catch(e){ __swallow(e, "auth:app-08-maha#32"); }
     const w = btn.offsetWidth || 45, h = btn.offsetHeight || 45;
     applyPos((window.innerWidth - w) / 2, (window.innerHeight - h) / 2);
   }
 
   function resetToDefault(){
-    try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+    try{ localStorage.removeItem(STORAGE_KEY); }catch(e){ __swallow(e, "misc:app-08-maha#33"); }
     // v202: الموضع الافتراضي = منتصف حافة الشاشة عموديًا (نفس الجهة المعتادة)،
     // بخاصية موضع منطقية واحدة حتى لا يحدث تعارض left/right.
     btn.style.removeProperty('left');
@@ -1765,7 +1770,7 @@ if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
     startX = e.clientX; startY = e.clientY;
     btn.style.transition = 'none';
     btn.style.cursor = 'grabbing';
-    try{ btn.setPointerCapture(e.pointerId); }catch(err){}
+    try{ btn.setPointerCapture(e.pointerId); }catch(err){ __swallow(err, "ui:app-08-maha#34"); }
   }
 
   function onPointerMove(e){
@@ -1784,7 +1789,7 @@ if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
     const rect = btn.getBoundingClientRect();
     const pos = applyPos(rect.left, rect.top);
     savePos(pos.left, pos.top);
-    try{ btn.releasePointerCapture(e.pointerId); }catch(err){}
+    try{ btn.releasePointerCapture(e.pointerId); }catch(err){ __swallow(err, "ui:app-08-maha#35"); }
     activePointerId = null;
     if(moved){
       // Swallow the click that follows a drag so it doesn't start a call.

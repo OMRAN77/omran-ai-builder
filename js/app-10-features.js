@@ -57,12 +57,12 @@
   worker.onmessage = (e) => {
     const delay = Date.now() - e.data;
     if(delay > FREEZE_THRESHOLD_MS && !shown && Date.now() > dismissedUntil){
-      try{ saveState(); }catch(err){}
+      try{ saveState(); }catch(err){ __swallow(err, "save:app-10-features#1"); }
       shown = true;
       banner.style.display = 'flex';
     }
   };
-  window.addEventListener('beforeunload', () => { try{ worker.terminate(); }catch(e){} });
+  window.addEventListener('beforeunload', () => { try{ worker.terminate(); }catch(e){ __swallow(e, "save:app-10-features#2"); } });
 })();
 
 // --- PWA: service worker + install prompt ---
@@ -93,7 +93,7 @@ const btnInstall = $('#btnInstall');
     if (__orOld === 'meta-llama/llama-3.1-8b-instruct:free' || __orOld === 'meta-llama/llama-3.3-70b-instruct:free') {
       localStorage.setItem('aiapp_openrouter_model', 'nvidia/nemotron-3-super-120b-a12b:free');
     }
-  } catch (e) {}
+  } catch(e){ __swallow(e, "save:app-10-features#3"); }
 })();
 const btnRefreshPage = $('#btnRefreshPage');
 if (btnRefreshPage) {
@@ -128,7 +128,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     if(!isStandalone() && !localStorage.getItem('aiapp_autoinstall_prompted')){
       localStorage.setItem('aiapp_autoinstall_prompted', '1');
     }
-  } catch(err) {}
+  } catch(err){ __swallow(err, "save:app-10-features#4"); }
 });
 
 function showManualInstallInstructions(){
@@ -155,7 +155,7 @@ const onInstallBtnClick = async () => {
     try {
       deferredInstallPrompt.prompt();
       await deferredInstallPrompt.userChoice;
-    } catch(e) {}
+    } catch(e){ __swallow(e, "misc:app-10-features#5"); }
     deferredInstallPrompt = null;
     showInstallButtons(false);
   } else {
@@ -233,7 +233,7 @@ function openDrawer(el){
   if(!isOpen){
     el.classList.add('open');
     backdropEl.classList.add('show');
-    try{ document.getElementById('plusToolsPopup').classList.remove('show'); }catch(_){}
+    try{ document.getElementById('plusToolsPopup').classList.remove('show'); }catch(_){ __swallow(_, "ui:app-10-features#6"); }
   }
 }
 function switchWorkTab(tabName){
@@ -269,12 +269,12 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       const bar = document.getElementById('inputbar');
       if(bar && bar.parentNode){
         bar.parentNode.insertBefore(tip, bar);
-        const dismiss = () => { try{ tip.remove(); localStorage.setItem('askAllHintSeen','1'); }catch(e){} };
+        const dismiss = () => { try{ tip.remove(); localStorage.setItem('askAllHintSeen','1'); }catch(e){ __swallow(e, "save:app-10-features#7"); } };
         tip.addEventListener('click', dismiss);
         setTimeout(dismiss, 25000);
       }
     }
-  }catch(e){}
+  }catch(e){ __swallow(e, "save:app-10-features#8"); }
 })();
 
 // ➕ composer tools popup
@@ -282,7 +282,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   const plusBtn = document.getElementById('btnPlusTools');
   const popup = document.getElementById('plusToolsPopup');
   if(!plusBtn || !popup) return;
-  plusBtn.onclick = (e) => { e.stopPropagation(); popup.classList.toggle('show'); if(popup.classList.contains('show')){ try{ closeDrawers(); }catch(_){} try{ closeHeaderMenu(); }catch(_){} } };
+  plusBtn.onclick = (e) => { e.stopPropagation(); popup.classList.toggle('show'); if(popup.classList.contains('show')){ try{ closeDrawers(); }catch(_){ __swallow(_, "ui:app-10-features#9"); } try{ closeHeaderMenu(); }catch(_){ __swallow(_, "ui:app-10-features#10"); } } };
   popup.addEventListener('click', (e) => {
     // close after choosing a tool (but keep open for stop toggling)
     if(e.target.closest('button')) setTimeout(() => popup.classList.remove('show'), 150);
@@ -313,31 +313,62 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   const groups = [
     { title: null, ids: ['btnSettings','btnAuthToggle','btnToggleHistory'] },
     { title: 'grpCreate', ids: ['btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnExplore'] },
-    { title: 'grpSections', ids: ['btnStocks','btnOmranEdu','btnExpense','btnReligion','btnEmailAssist'] },
+    { title: 'grpSections', ids: ['btnStocks','btnConstruction','btnOmranEdu','btnExpense','btnDocs','btnGov','btnCV','btnReligion','btnEmailAssist'] },
     { title: 'grpTools', ids: ['btnTemplates','btnAgentMode','btnInstall','btnShareApp'] }
   ];
+  // v433: مجموعات الإبداع/الأقسام/الأدوات في مربع الأدوات المنفصل (تبويب الأدوات)
+  const ptPopup = document.getElementById('sectionsToolsPopup');
+  const ptOverlay = document.getElementById('sectionsToolsOverlay');
+  if(ptOverlay){
+    ptOverlay.addEventListener('click', (e) => { if(e.target === ptOverlay) ptOverlay.classList.remove('show'); });
+  }
+  const stpCloseBtn = document.getElementById('stpCloseBtn');
+  if(stpCloseBtn && ptOverlay){ stpCloseBtn.onclick = () => ptOverlay.classList.remove('show'); }
+  // v434: أيقونات Microsoft Fluent 3D الرسمية لبطاقات تبويب الأدوات
+  const STP_3D = 'https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/';
+  const STP_ICONS = {
+    btnVideoMaker:  'Clapper%20board/3D/clapper_board_3d.png',
+    btnDesignAI:    'Artist%20palette/3D/artist_palette_3d.png',
+    btnFashionAI:   'Dress/3D/dress_3d.png',
+    btnStudioAI:    'Magic%20wand/3D/magic_wand_3d.png',
+    btnExplore:     'Magnifying%20glass%20tilted%20left/3D/magnifying_glass_tilted_left_3d.png',
+    btnStocks:      'Chart%20increasing/3D/chart_increasing_3d.png',
+    btnConstruction:'Building%20construction/3D/building_construction_3d.png',
+    btnOmranEdu:    'Graduation%20cap/3D/graduation_cap_3d.png',
+    btnExpense:     'Money%20bag/3D/money_bag_3d.png',
+    btnReligion:    'Mosque/3D/mosque_3d.png',
+    btnEmailAssist: 'E-mail/3D/e-mail_3d.png',
+    btnTemplates:   'Light%20bulb/3D/light_bulb_3d.png',
+    btnAgentMode:   'Robot/3D/robot_3d.png',
+    btnInstall:     'Mobile%20phone/3D/mobile_phone_3d.png',
+    btnShareApp:    'Outbox%20tray/3D/outbox_tray_3d.png'
+  };
+  function stpApply3d(b, id){
+    const path = STP_ICONS[id];
+    if(!path) return;
+    const img = document.createElement('img');
+    img.className = 'stp3d';
+    img.loading = 'lazy';
+    img.alt = '';
+    img.src = STP_3D + path;
+    b.insertBefore(img, b.firstChild);
+    b.classList.add('has3d');
+  }
   groups.forEach(g => {
-    if(g.title){
-      // v214: مجموعات قابلة للطي — سهم يفتح ويسكر
+    if(g.title && ptPopup){
       const h = document.createElement('div');
-      h.style.cssText = 'display:flex; align-items:center; justify-content:space-between; font-size:11.5px; color:var(--muted); padding:8px 10px 5px; border-top:1px solid var(--border); margin-top:4px; font-weight:700; cursor:pointer; user-select:none;';
+      h.className = 'ptSectionTitle';
       const lbl = document.createElement('span');
       lbl.setAttribute('data-i18n', g.title);
       lbl.textContent = (typeof t === 'function') ? t(g.title) : g.title;
-      const chev = document.createElement('span');
-      chev.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transition:transform .18s; display:block;"><polyline points="6 9 12 15 18 9"></polyline></svg>';
-      h.appendChild(lbl); h.appendChild(chev);
-      dd.appendChild(h);
-      const body = document.createElement('div');
-      body.style.cssText = 'display:none; flex-direction:column; gap:4px;';
-      dd.appendChild(body);
-      g.ids.forEach(id => { const b = document.getElementById(id); if(b && b.parentElement === dd) body.appendChild(b); });
-      h.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const open = body.style.display !== 'flex';
-        body.style.display = open ? 'flex' : 'none';
-        const svg = chev.querySelector('svg');
-        if(svg) svg.style.transform = open ? 'rotate(180deg)' : '';
+      h.appendChild(lbl);
+      ptPopup.appendChild(h);
+      const grid = document.createElement('div');
+      grid.className = 'ptGrid';
+      ptPopup.appendChild(grid);
+      g.ids.forEach(id => { const b = document.getElementById(id); if(b){ grid.appendChild(b); stpApply3d(b, id); } });
+      grid.addEventListener('click', (e) => {
+        if(e.target.closest('button')) setTimeout(() => { if(ptOverlay) ptOverlay.classList.remove('show'); }, 120);
       });
     } else {
       g.ids.forEach(id => { const b = document.getElementById(id); if(b && b.parentElement === dd) dd.appendChild(b); });
@@ -365,9 +396,9 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
 // موضوعًا، يُرسَل داخل نفس المحادثة عبر sendPrompt() فيكمّل النموذج على نفس
 // السياق (بحث حي + ربط بالكلام السابق). الدخول والخروج بحرية؛ الموضوع محفوظ.
 (function(){
-  const b = document.getElementById('btnPreviewToggle');
+  const b = document.getElementById('omranBtnWeb') || document.getElementById('btnPreviewToggle');
   if(!b) return;
-  try{ if(localStorage.getItem('previewEnabled') === 'off') localStorage.removeItem('previewEnabled'); }catch(e){}
+  try{ if(localStorage.getItem('previewEnabled') === 'off') localStorage.removeItem('previewEnabled'); }catch(e){ __swallow(e, "misc:app-10-features#11"); }
   function isAr(){ return (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur'); }
   function openBrowserBox(){
     const ar = isAr();
@@ -379,24 +410,24 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
     ov.dir = dir;
     ov.style.cssText = 'position:fixed; inset:0; z-index:950; background:rgba(0,0,0,.6); backdrop-filter:blur(4px); display:flex; align-items:flex-start; justify-content:center; padding:14vh 16px 16px;';
     const card = document.createElement('div');
-    card.style.cssText = 'width:100%; max-width:560px; background:var(--panel,#141420); border:1px solid rgba(255,255,255,.12); border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,.5); overflow:hidden;';
+    card.style.cssText = 'width:100%; max-width:560px; background:var(--panel,#000000); border:1px solid rgba(255,255,255,.12); border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,.5); overflow:hidden;';
     const bar = document.createElement('div');
     bar.style.cssText = 'display:flex; align-items:center; gap:8px; padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.08);';
     bar.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8b8ba7" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>' +
       '<input id="webBrowserInput" type="text" autocomplete="off" placeholder="' + (ar ? 'ابحث في الويب وتابع نفس الموضوع…' : 'Search the web, continue the same topic…') + '" style="flex:1; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:10px; color:#fff; font-size:15px; padding:11px 13px; outline:none;">' +
-      '<button id="webBrowserGo" type="button" style="flex-shrink:0; background:var(--accent,#7c4dff); border:none; color:#fff; border-radius:10px; padding:11px 15px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>';
+      '<button id="webBrowserGo" type="button" style="flex-shrink:0; background:var(--accent,#d4af37); border:none; color:#fff; border-radius:10px; padding:11px 15px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button>';
     const hint = document.createElement('div');
     hint.style.cssText = 'padding:10px 16px 14px; color:#8b8ba7; font-size:12.5px; line-height:1.7;';
     hint.textContent = ar ? 'اكتب موضوعك وبيكمّل مع محادثتك الحالية على نفس السياق. اضغط خارج الصندوق للإغلاق.' : 'Type your topic — it continues within your current chat and context. Tap outside to close.';
     card.appendChild(bar); card.appendChild(hint); ov.appendChild(card);
     document.body.appendChild(ov);
     const input = document.getElementById('webBrowserInput');
-    setTimeout(() => { try{ input.focus(); }catch(e){} }, 50);
+    setTimeout(() => { try{ input.focus(); }catch(e){ __swallow(e, "ui:app-10-features#12"); } }, 50);
     function go(){
       const q = (input.value || '').trim();
       if(!q) return;
       ov.remove();
-      try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(e){}
+      try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(e){ __swallow(e, "ui:app-10-features#13"); }
       try{
         const p = document.getElementById('prompt');
         if(p){
@@ -404,7 +435,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
           p.dispatchEvent(new Event('input', { bubbles: true }));
         }
         if(typeof sendPrompt === 'function') sendPrompt();
-      }catch(e){}
+      }catch(e){ __swallow(e, "misc:app-10-features#14"); }
     }
     document.getElementById('webBrowserGo').onclick = go;
     input.addEventListener('keydown', (ev) => { if(ev.key === 'Enter'){ ev.preventDefault(); go(); } });
@@ -415,7 +446,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
     openBrowserBox();
     setTimeout(() => {
       const p = document.getElementById('plusToolsPopup'); if(p) p.classList.remove('show');
-      if(typeof closeHeaderMenu === 'function') try{ closeHeaderMenu(); }catch(e2){}
+      if(typeof closeHeaderMenu === 'function') try{ closeHeaderMenu(); }catch(e2){ __swallow(e2, "ui:app-10-features#15"); }
     }, 100);
   };
 })();
@@ -436,7 +467,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
     const box = document.createElement('div');
     box.style.cssText = 'background:#12151d; border-radius:14px; max-width:560px; width:100%; max-height:80vh; display:flex; flex-direction:column; overflow:hidden;';
     const head = document.createElement('div');
-    head.style.cssText = 'display:flex; align-items:center; gap:10px; padding:14px 16px; font-size:14px; font-weight:800;';
+    head.style.cssText = 'display:flex; align-items:center; gap:10px; padding:14px 16px; font-size:14px; font-weight:700;';
     head.innerHTML = '<span>🕰️ ' + (isAr ? 'آلة الزمن — إصدارات المشروع' : 'Time Machine — project versions') + '</span><span style="flex:1;"></span>';
     const closeBtn = document.createElement('button');
     closeBtn.textContent = '✖';
@@ -560,11 +591,16 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
 // Brand title: click = home (reload), text follows language
 (function(){
   const h1 = document.querySelector('header h1');
-  if(h1) h1.onclick = () => { try{ saveState(); }catch(_){} location.href = location.pathname; };
+  if(h1) h1.onclick = () => { try{ saveState(); }catch(_){ __swallow(_, "save:app-10-features#16"); } location.href = location.pathname; };
   const syncBrand = () => {
     const bt = document.getElementById('brandTitle');
     const l = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
-    if(bt) bt.innerHTML = (l === 'ar' ? 'عمران AI' : 'Omran AI') + ' <span class="brandSpark">✨</span>';
+    const isAr = (l === 'ar' || l === 'ur');
+    if(bt){
+      const imgSrc = isAr ? 'icons/brand-ar.png' : 'icons/brand-en.png';
+      const imgAlt = isAr ? 'عمران Ai' : 'Omran Ai';
+      bt.innerHTML = '<img src="' + imgSrc + '" alt="' + imgAlt + '" class="brandImg">';
+    }
   };
   syncBrand();
   window.__syncBrandTitle = syncBrand;
@@ -589,7 +625,7 @@ btnToggleProjects.onclick = () => { openDrawer(sidebarEl); closeHeaderMenu(); };
       tip.style.left = left + 'px';
     }
     function dismiss(){
-      try{ localStorage.setItem('aiapp_seen_code_hint', '1'); }catch(e){}
+      try{ localStorage.setItem('aiapp_seen_code_hint', '1'); }catch(e){ __swallow(e, "save:app-10-features#17"); }
       btnToggleHistory.classList.remove('code-hint-pulse');
       tip.style.display = 'none';
       window.removeEventListener('resize', position);
@@ -638,7 +674,7 @@ function closeHeaderMenu(){
 // لأن أيقوناتها الآن SVG احترافية فقط بدون أي إيموجي.
 function stripHeaderMenuEmoji(){
   try{
-    const scopes = [headerMenuDropdown];
+    const scopes = [headerMenuDropdown, document.getElementById('plusToolsPopup'), document.getElementById('sectionsToolsPopup')];
     ['#btnDeleteAll','#authToggleBtn','#settingsLogoutBtn','#btnExportZip','[data-i18n="exportZip"]'].forEach(sel=>{
       const el = document.querySelector(sel); if(el) scopes.push(el);
     });
@@ -652,12 +688,12 @@ function stripHeaderMenuEmoji(){
         if(clean !== tn.textContent) tn.textContent = clean;
       });
     });
-  }catch(e){}
+  }catch(e){ __swallow(e, "misc:app-10-features#18"); }
 }
-try{ setInterval(stripHeaderMenuEmoji, 3000); setTimeout(stripHeaderMenuEmoji, 800); }catch(e){}
+try{ setInterval(stripHeaderMenuEmoji, 3000); setTimeout(stripHeaderMenuEmoji, 800); }catch(e){ __swallow(e, "misc:app-10-features#19"); }
 function toggleHeaderMenu(){
   const willShow = !headerMenuDropdown.classList.contains('show');
-  if(willShow){ stripHeaderMenuEmoji(); try{ const pg=document.getElementById('providerGridSidebar'); if(pg) pg.classList.remove('open'); }catch(_){} }
+  if(willShow){ stripHeaderMenuEmoji(); try{ const pg=document.getElementById('providerGridSidebar'); if(pg) pg.classList.remove('open'); }catch(_){ __swallow(_, "ui:app-10-features#20"); } }
   headerMenuDropdown.classList.toggle('show', willShow);
   btnHeaderMenu.classList.toggle('active', willShow);
   const qc = $('#quickChips');
@@ -845,7 +881,7 @@ function openShareModal(project){
   if(copyBtn) copyBtn.addEventListener('click', () => {
     resultUrl.select();
     navigator.clipboard && navigator.clipboard.writeText(resultUrl.value).catch(()=>{});
-    try{ document.execCommand('copy'); }catch(e){}
+    try{ document.execCommand('copy'); }catch(e){ __swallow(e, "misc:app-10-features#21"); }
     statusMsg.style.display = 'block';
     statusMsg.textContent = t('shareCopied');
   });

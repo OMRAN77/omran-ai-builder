@@ -2,7 +2,7 @@
 // نافذة إنشاء حساب تلقائيًا للضيف الذي استهلك صوره المجانية.
 function imgErrFriendly(err, isAr){
   if(err === 'guest_image_used'){
-    setTimeout(() => { try{ window.requireLogin && window.requireLogin('guestImage'); }catch(e){} }, 1500);
+    setTimeout(() => { try{ window.requireLogin && window.requireLogin('guestImage'); }catch(e){ __swallow(e, "auth:app-02-tts#1"); } }, 1500);
     return isAr
       ? '🎁 خلصت صورك المجانية الثلاث كضيف! أنشئ حسابًا مجانيًا خلال ثوانٍ وبتحصل على 70 نقطة هدية تكمل فيها توليد وتعديل الصور بلا توقف.'
       : '🎁 You have used your 3 free guest images! Create a free account in seconds and get 70 gift points to keep generating and editing images.';
@@ -83,7 +83,8 @@ function setActiveWord(wordEls, idx){
 function buildSpokenWordSpans(container, text){
   container.innerHTML = '';
   const wordEls = [];
-  const re = /\S+/g;
+  // v467: capture markdown links [text](url) — even with spaces — as a single token
+  const re = /\[[^\]]*\]\(https?:\/\/[^\s)]+\)[.,،؛!؟)]*|\S+/g;
   let m, lastIndex = 0;
   let boldOpen = false;
   let headerLevel = 0; // >0 while inside a "## ..." heading line
@@ -191,7 +192,7 @@ function wordStartOffsets(text){
 }
 function stopAllSpeaking(){
   if('speechSynthesis' in window) window.speechSynthesis.cancel();
-  if(currentCloudAudio){ try{ currentCloudAudio.pause(); }catch(e){} currentCloudAudio = null; }
+  if(currentCloudAudio){ try{ currentCloudAudio.pause(); }catch(e){ __swallow(e, "misc:app-02-tts#2"); } currentCloudAudio = null; }
   if(ttsHighlightRaf){ cancelAnimationFrame(ttsHighlightRaf); ttsHighlightRaf = null; }
   clearWordHighlight();
   ttsHighlightWordEls = null;
@@ -208,7 +209,7 @@ async function fetchCloudSpeech(text){
   });
   if(!resp.ok){
     let msg = 'cloud-tts-failed:' + resp.status;
-    try{ const j = await resp.json(); if(j && j.error) msg = j.error; }catch(e){}
+    try{ const j = await resp.json(); if(j && j.error) msg = j.error; }catch(e){ __swallow(e, "misc:app-02-tts#3"); }
     throw new Error(msg);
   }
   const blob = await resp.blob();
@@ -276,7 +277,7 @@ function unlockCloudAudio(){
     cloudAudioEl.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
     const p = cloudAudioEl.play();
     if(p && p.catch) p.catch(()=>{});
-  }catch(e){}
+  }catch(e){ __swallow(e, "misc:app-02-tts#4"); }
 }
 async function speakSmart(text, onStart, onEnd, verbose, wordEls){
   if(!text) return;
@@ -334,7 +335,7 @@ async function speakSmart(text, onStart, onEnd, verbose, wordEls){
         // العنصر الجديد يُمنع تشغيله على آيفون لأنه خارج ضغطة المستخدم.
         const audio = cloudAudioEl || new Audio();
         cloudAudioEl = audio;
-        try{ audio.pause(); }catch(e){}
+        try{ audio.pause(); }catch(e){ __swallow(e, "misc:app-02-tts#5"); }
         audio.src = url;
         currentCloudAudio = audio;
         if(!started){ started = true; if(onStart) onStart(); }
@@ -442,26 +443,16 @@ if('speechSynthesis' in window){
 }
 const messagesEl = $('#messages');
 
-// v331: تثبيت رسالة المستخدم أعلى الشاشة (نمط ChatGPT) — الرد يُكتب تحتها
-function anchorLastUserMsgTop(spacerEl){
-  try{
-    const rows = messagesEl.querySelectorAll('.msg.user');
-    const uel = rows[rows.length - 1];
-    if(!uel) return;
-    if(spacerEl){
-      const need = messagesEl.clientHeight - uel.offsetHeight - 70;
-      if(need > 0) spacerEl.style.minHeight = need + 'px';
-    }
-    const mRect = messagesEl.getBoundingClientRect();
-    messagesEl.scrollTop += (uel.getBoundingClientRect().top - mRect.top) - 10;
-  }catch(e){}
+// v463: سكرول طبيعي — المحادثة تتحرك كلها مع بعض
+function anchorLastUserMsgTop(){
+  try{ messagesEl.scrollTop = messagesEl.scrollHeight; }catch(e){}
 }
 // v331: أثناء البث لا نسحب الشاشة لتحت إلا إذا كان المستخدم أصلاً عند الأسفل
 function smartScrollBottom(){
   try{
     const gap = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight;
     if(gap < 140) messagesEl.scrollTop = messagesEl.scrollHeight;
-  }catch(e){}
+  }catch(e){ __swallow(e, "misc:app-02-tts#7"); }
 }
 
 const codeEl = $('#code');

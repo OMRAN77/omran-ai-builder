@@ -5,7 +5,7 @@ function sanitizeGeminiContents(list){
   for(const c of src){
     const last = out[out.length - 1];
     if(last && last.role === c.role){ last.parts = last.parts.concat(c.parts); continue; }
-    out.push({ role: c.role === 'model' ? 'model' : 'user', parts: c.parts.slice() });
+    out.push({ role: c.role, parts: c.parts.slice() });
   }
   while(out.length && out[0].role !== 'user') out.shift();   // must open on a user turn
   while(out.length && out[out.length - 1].role !== 'user') out.pop(); // and close on one
@@ -177,7 +177,7 @@ window.startPaypalCheckout = startPaypalCheckout;
       const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
       window.history.replaceState({}, '', newUrl);
     }
-  } catch (e) {}
+  } catch(e){ __swallow(e, "auth:app-06-checkout#1"); }
 })();
 const btnExportProjectsEl = $('#btnExportProjects');
 if(btnExportProjectsEl) btnExportProjectsEl.onclick = exportProjects;
@@ -235,7 +235,7 @@ $('#btnSettings').onclick = () => {
   try { populateVoicePicker(); } catch(e) { console.error(e); }
   } catch(e) { console.error('settings populate error', e); }
   try { renderSettingsNavList(); showSettingsHome(); } catch(e) { console.error(e); }
-  try { if (window.updateVersionLabel) window.updateVersionLabel(); } catch(e) {}
+  try { if (window.updateVersionLabel) window.updateVersionLabel(); } catch(e){ __swallow(e, "misc:app-06-checkout#2"); }
   openDialogSafe(settingsDialog);
 };
 $('#btnResetColors').onclick = () => {
@@ -649,8 +649,10 @@ function taskTxt(key){
 function formatTaskPlan(steps, done){
   return taskTxt('title') + ':\n' + steps.map((s, i) => ((done && done[i]) ? '✅ ' : '⬜ ') + s).join('\n');
 }
-// هوية التطبيق: تُلحق بكل برومبت نظام (بما فيها الدمج) حتى لا يقول أي موديل "ما أعرف" عن التطبيق.
-const APP_IDENTITY_NOTE = '\n(APP IDENTITY & KNOWLEDGE — always true, answer from this: You are the AI assistant inside "Omran AI Builder" / «عمران AI» (omran-ai-builder.vercel.app), an Arabic-first AI app-building platform made by فريق عمران AI (the Omran AI Team). CRITICAL ANTI-HALLUCINATION RULE: whenever the user mentions "عمران", "برنامج عمران", "تطبيق عمران", "Omran app" or similar, they ALWAYS mean THIS app you are inside — NEVER any other app, company, or project with a similar name; NEVER invent or guess information about other apps named Omran; if you genuinely do not know something, say so briefly instead of guessing. APP FEATURES: users describe an app/site/game in Arabic or any language and the AI builds it instantly as one working HTML file with live preview and code editor, downloadable as HTML or ZIP. 9 AI providers (OpenAI, Claude, Gemini, Groq, Cohere, DeepSeek, Mistral, OpenRouter, Perplexity); typing "اسأل الكل" asks all 9 and merges the best result. 7 interface languages (Arabic, English, French, Hindi, Urdu, Bengali, Nepali) from ⚙️ > اللغة. Main tabs: 💬 محادثة, 👁️ معاينة, 💻 كود, 🎙️ الصوت (live voice assistant مها). ⋮ menu sections: 📂 المشاريع, 🤖 وكيل عمران (AI agent, Pro), 📋 قوالب جاهزة, 🌍 استكشف, 🎬 صانع الفيديو (Runway + Veo 3, idea-to-film, talking actor), 🏗️ المقاولات (2D plans + cost estimates), 🕌 التفسير الديني, 💄 ديكور, 👗 أزياء, 🎨 ستوديو الصور, 📚 التعليم, 📈 سوق الأسهم (live quotes + AI analysis + trading lessons), 📧 مساعد البريد, 📲 تثبيت PWA, ↗️ مشاركة. Also: mic dictation, listen 🔊 TTS, image upload/analysis/editing, real web search, long-term memory, 20 animated 3D backgrounds (⚙️ > 🎨). Guest mode = 20 free messages, then login; plans in ⚙️ > 💳. Creator/developer if asked: فريق عمران AI — never a personal name.)'
+// هوية التطبيق — نسخة مختصرة: الأساسيات فقط لتوفير التوكنز.
+const APP_IDENTITY_NOTE = '\n(APP IDENTITY: You are inside "Omran AI Builder" by فريق عمران AI. "عمران/Omran" = THIS app only. Features: AI app builder, 3 public providers (Claude/GPT/Gemini), مها voice assistant, image+video generation, live web search, memory, education, stocks. Creator: فريق عمران AI.)'
+// v464 — قاعدة جودة المحادثة: أسلوب راقي وطبيعي مثل ChatGPT الرسمي.
+const CONVERSATION_QUALITY_RULE = '\nCONVERSATION QUALITY (mandatory, always active):\n- You are a deeply knowledgeable AI. Answer ANY topic expertly: science, health, law, tech, business, education, culture, history, cooking, sports, religion — everything.\n- Be warm, articulate and refined — like an expert friend, never robotic. Vary your expressions; never repeat stock phrases like "بالتأكيد!" or "أنا جاهز أساعدك".\n- Match the user\'s language and dialect naturally. If they speak Gulf Arabic, reply in Gulf Arabic.\n- Structure longer answers with clear sections for readability. Keep casual answers short and punchy (2-4 sentences).\n- After the first exchange, skip greetings — go straight to the answer.\n- NEVER call the user by a name unless they told you their name in THIS conversation.\n- If the user asks a general question, ONLY answer it conversationally — do NOT offer to build an app or produce code unless explicitly asked.\n- Read the user\'s mood: serious topic = serious tone; playful = match their energy.\n- Give real, actionable answers with practical next steps — not vague advice.'
 // قاعدة الاكتمال: تمنع تسليم "شاشة دخول فقط" عند طلب تطبيق كبير أو نسخة من تطبيق مشهور.
 const BUILD_COMPLETENESS_RULE = '\nCOMPLETENESS RULE (mandatory, highest priority): when the user asks to build an app — especially a clone of a famous/known app (e.g. Yoho, TikTok, WhatsApp, Instagram) — NEVER deliver only a login screen or a single screen. Silently plan ALL the core screens the real app has (for example a voice-chat rooms app needs: login, home with a list of live rooms, a full live room screen with speaker seats + text chat + gift animations, user profile, coins/store), then implement ALL of them inside the single HTML file with working navigation between screens and realistic demo data (sample rooms, users, avatars via emoji/SVG, messages). The very first reply must feel like a complete, usable, beautiful app — not a starting point.' +
 '\nGAME RULES (mandatory, highest priority, no exceptions): every game MUST be fully playable on BOTH mobile touchscreens and desktop keyboards. (1) Touch controls are REQUIRED: draw an on-screen virtual joystick or directional buttons (◀▲▼▶) plus action buttons (attack/jump/shoot) as fixed overlay elements, sized at least 56px, using touchstart/touchmove/touchend with e.preventDefault(); ALSO support keyboard (arrows/WASD/space) for desktop. NEVER ship a game controlled by keyboard only. (2) Graphics must be polished and rich: characters and objects must be real drawn shapes (detailed canvas drawings, SVG sprites, emoji sprites, gradients, glow, shadows, particle effects, animations) — plain colored rectangles/squares as characters are strictly FORBIDDEN. (3) Include a HUD (score/health), start screen, game-over screen with restart button, and sound effects via WebAudio API. (4) The canvas must resize responsively to fill the available screen on any device (window resize + orientationchange).' +
@@ -724,14 +726,14 @@ async function planBuildSteps(text){
         steps.__spec = spec;
         return steps;
       }
-    }catch(e){}
+    }catch(e){ __swallow(e, "misc:app-06-checkout#3"); }
   }
   const m = raw.match(/\[[\s\S]*?\]/);
   if(!m) return null;
   try{
     const arr = JSON.parse(m[0]);
     if(Array.isArray(arr) && arr.length >= 2 && arr.length <= 12 && arr.every(s => typeof s === 'string')) return arr.slice(0, 10);
-  }catch(e){}
+  }catch(e){ __swallow(e, "misc:app-06-checkout#4"); }
   return null;
 }
 async function verifyBuildSteps(code, steps){
@@ -745,7 +747,7 @@ async function verifyBuildSteps(code, steps){
   try{
     const arr = JSON.parse(m[0]);
     if(Array.isArray(arr) && arr.length === steps.length) return arr.map(Boolean);
-  }catch(e){}
+  }catch(e){ __swallow(e, "misc:app-06-checkout#5"); }
   return null;
 }
 
@@ -753,7 +755,7 @@ function testCodeInSandbox(code){
   return new Promise((resolve) => {
     const errors = [];
     const token = 'heal_' + Math.random().toString(36).slice(2);
-    const catcher = '<scr' + 'ipt>(function(){function send(m){try{parent.postMessage({__heal:"' + token + '",err:String(m).slice(0,400)},"*");}catch(e){}}window.addEventListener("error",function(e){send((e.message||"Script error")+(e.lineno?" [line "+e.lineno+"]":""));});window.addEventListener("unhandledrejection",function(e){send("Unhandled rejection: "+((e.reason&&e.reason.message)||e.reason));});})();</scr' + 'ipt>';
+    const catcher = '<scr' + 'ipt>(function(){function send(m){try{parent.postMessage({__heal:"' + token + '",err:String(m).slice(0,400)},"*");}catch(e){ __swallow(e, "misc:app-06-checkout#6"); }}window.addEventListener("error",function(e){send((e.message||"Script error")+(e.lineno?" [line "+e.lineno+"]":""));});window.addEventListener("unhandledrejection",function(e){send("Unhandled rejection: "+((e.reason&&e.reason.message)||e.reason));});})();</scr' + 'ipt>';
     let html = String(code);
     if(/<head[^>]*>/i.test(html)) html = html.replace(/<head[^>]*>/i, m => m + catcher);
     else html = catcher + html;
@@ -771,7 +773,7 @@ function testCodeInSandbox(code){
     document.body.appendChild(frame);
     setTimeout(() => {
       window.removeEventListener('message', onMsg);
-      try{ frame.remove(); }catch(e){}
+      try{ frame.remove(); }catch(e){ __swallow(e, "misc:app-06-checkout#7"); }
       resolve(errors);
     }, 2500);
   });
@@ -786,7 +788,7 @@ async function selfHealCode(code, codeType, onStatus){
     try{ errors = await testCodeInSandbox(current); }catch(e){ return current; }
     if(!errors.length) return current;
     console.log('[selfHeal] attempt ' + attempt + ' errors:', errors);
-    if(onStatus) try{ onStatus(attempt, errors); }catch(e){}
+    if(onStatus) try{ onStatus(attempt, errors); }catch(e){ __swallow(e, "misc:app-06-checkout#8"); }
     try{
       const fixMessages = [
         { role: 'system', content: 'You are a senior code fixer. You receive a complete HTML file and the JavaScript runtime errors it produced when executed. Return the FULL corrected HTML file inside a single ```html code fence. Keep the design, texts and all features exactly the same - fix ONLY the errors. No explanations outside the fence.' },
@@ -816,7 +818,7 @@ function substUserImage(code){
         return code.split('__USER_IMAGE__').join('data:' + (im.mime || 'image/png') + ';base64,' + im.b64);
       }
     }
-  }catch(e){}
+  }catch(e){ __swallow(e, "misc:app-06-checkout#9"); }
   return code;
 }
 function extractHtml(text){
@@ -928,7 +930,7 @@ function throwProviderError(status, errText){
     try{
       const parsed = JSON.parse(errText);
       if(parsed && parsed.error && /الجلسة|session/i.test(parsed.error)) sessionMsg = parsed.error;
-    }catch(e){}
+    }catch(e){ __swallow(e, "auth:app-06-checkout#10"); }
     err = sessionMsg ? new Error('🔒 ' + sessionMsg) : new Error(t('authError'));
   } else {
     err = new Error(t('providerError') + status + ' - ' + (errText || '').slice(0, 200));
@@ -1119,7 +1121,7 @@ async function callOpenAILike(messages, onDelta){
       signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, messages: toOpenAIVisionMessages(messages), token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: !!onDelta, premium: (window.__premiumOn === true) }),
+      body: JSON.stringify({ model, messages: toOpenAIVisionMessages(messages), token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: !!onDelta, premium: (window.__premiumOn === true), mode: AI_MODE_NAME() }),
     });
     if(!res.ok){
       const errText = await res.text();
@@ -1241,8 +1243,21 @@ async function callGemini(messages, onDelta){
   const systemMsgs = messages.filter(m => m.role === 'system');
   const systemMsg = systemMsgs.length ? { content: systemMsgs.map(m => m.content).join('\n\n') } : null;
   const rest = messages.filter(m => m.role !== 'system');
+  /* Gemini is the strictest of the three on conversation shape, and it was the
+     only one with no sanitising step. Claude already gets a trailing-assistant
+     trim in api/ai.js (the v262 "assistant prefill" fix); GPT tolerates almost
+     anything. Gemini rejects with 400 when:
+       · the last turn is `model`
+       · two turns in a row share a role
+       · the first turn is not `user`
+       · any `parts` array is empty
+     Those exact states are what image edits, regenerations and silent provider
+     switches leave behind — which is why it worked in a clean chat and stopped
+     after attaching or editing an image. */
   const rawContents = rest.map(m => {
-    const parts = [{ text: m.content }];
+    const parts = [];
+    const txt = String(m.content == null ? '' : m.content).trim();
+    if(txt) parts.push({ text: txt });
     if(m.images && m.images.length){
       m.images.forEach(img => {
         try{
@@ -1253,6 +1268,7 @@ async function callGemini(messages, onDelta){
     }
     return { role: m.role === 'assistant' ? 'model' : 'user', parts };
   }).filter(c => c.parts.length);
+
   const contents = sanitizeGeminiContents(rawContents);
   const systemInstruction = systemMsg ? { parts: [{ text: systemMsg.content }] } : undefined;
   // If the visitor hasn't entered their own Gemini key, fall back to the server-side
@@ -1262,7 +1278,7 @@ async function callGemini(messages, onDelta){
       signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, contents, systemInstruction, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: !!onDelta, premium: (window.__premiumOn === true) }),
+      body: JSON.stringify({ model, contents, systemInstruction, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), stream: !!onDelta, premium: (window.__premiumOn === true), mode: AI_MODE_NAME() }),
     });
     if(!res.ok){
       const errText = await res.text();
@@ -1507,6 +1523,7 @@ async function claudeProxyRequest(model, systemMsg, rest, stream){
       stream: !!stream,
       thinking: window.__claudeThinking || undefined,
       premium: (window.__premiumOn === true),
+      mode: AI_MODE_NAME(),
     }),
   });
 }
@@ -1609,6 +1626,8 @@ function isRefusalReply(txt){
   const s = String(txt || '').trim();
   return s.length > 0 && s.length < 700 && REFUSAL_RE.test(s.slice(0, 220));
 }
+// v262 — 🎯 مصنّف التخصص (الوضع الافتراضي فقط): كل مهنة لأستاذها خلف الكواليس.
+// محافظ عن قصد: الطب والقانون والبناء والعام تبقى عند Claude (الافتراضي).
 /* Short social turns ("مرحبا", "شكرا", "شو رايك") don't need a frontier
    model. Routing them to the fast one is the single biggest cost saving in
    the app, and the user cannot tell the difference on a greeting.
@@ -1621,8 +1640,6 @@ function isCasualTurn(txt){
   return CASUAL_RE.test(s);
 }
 
-// v262 — 🎯 مصنّف التخصص (الوضع الافتراضي فقط): كل مهنة لأستاذها خلف الكواليس.
-// محافظ عن قصد: الطب والقانون والبناء والعام تبقى عند Claude (الافتراضي).
 function pickSpecialtyProvider(txt){
   const s = String(txt || '');
   if(isCasualTurn(s)) return 'groq';
@@ -1641,7 +1658,7 @@ async function callAIWithFallback(messages, onDelta, preferredList){
       }
       return m;
     });
-  }catch(e){}
+  }catch(e){ __swallow(e, "misc:app-06-checkout#11"); }
   // v358 — التوجيه بالمجموعات الوظيفية: المزود المختار يوسَّع لسلسلة مجموعته
   // (الاحتياط الصامت يبقى داخل نفس المجموعة أولًا)، ثم بقية المزودين كشبكة أمان أخيرة.
   const __sel = localStorage.getItem('aiapp_provider') || 'claude';
@@ -1674,8 +1691,16 @@ async function callAIWithFallback(messages, onDelta, preferredList){
       lastErr = err;
       // A silent switch means the user gets different quality with no
       // explanation and blames the app. Say it plainly.
+      // نسمّي من فشل ولماذا. الرسالة العامة كانت تترك المستخدم يرى مزوّدًا
+      // غير الذي اختاره بلا تفسير — فيظنّ أن الاختيار معطّل، والحقيقة أن
+      // المزوّد المختار فشل وأُخفي فشله.
       try{
-        if(window.__chatStatus) window.__chatStatus.note('⚠️', 'المزود الأساسي لم يستجب — جارٍ التحويل…');
+        if(window.__chatStatus){
+          const who = (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey);
+          const why = (err && (err.status ? ('HTTP ' + err.status) : String(err.message || '').slice(0, 70))) || 'سبب غير معروف';
+          window.__chatStatus.note('⚠️', who + ' لم يستجب (' + why + ') — جارٍ التحويل…');
+          console.warn('[fallback] ' + providerKey + ' failed:', err);
+        }
       }catch(e){ console.warn('[status] fallback note failed', e); }
       if(err && (err.status === 429 || err.status === 402 || err.status >= 500)){ errSwitched = true; continue; }
       // 🛡️ v309: أي فشل آخر (نفاد رصيد المزود 400/401/403، عطل شبكة...) —
@@ -1711,3 +1736,25 @@ $('#prompt').addEventListener('keydown', e => {
     sendPrompt();
   }
 });
+
+/* ───────── تأكيد قبل صرف النقاط ─────────
+   الخادم يرجع 428 مع السعر بدل التنفيذ الصامت. هنا نعرضه ونعيد الطلب
+   بـ confirmed:true فقط بعد موافقة صريحة. */
+async function postWithConfirm(url, payload){
+  const send = (body) => fetch(url, {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body),
+    signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+  });
+  let res = await send(payload);
+  if(res.status !== 428) return res;
+
+  let q = {};
+  try { q = await res.json(); } catch(e){ console.warn('[confirm] bad quote', e); }
+  const isEn = (typeof AL === 'function' && AL() === 'en');
+  const msg = q.message_ar || ((isEn ? 'This will cost ' : 'هذه العملية تخصم ')
+    + (q.cost || '?') + (isEn ? ' points' : ' نقطة') + (q.label ? ' (' + q.label + ')' : '') + '.');
+  const okToSpend = confirm(msg + '\n' + (isEn ? 'Continue?' : 'أكمل؟'));
+  if(!okToSpend) return res;
+  return await send(Object.assign({}, payload, { confirmed: true }));
+}
+window.postWithConfirm = postWithConfirm;

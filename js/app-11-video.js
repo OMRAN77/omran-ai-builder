@@ -223,7 +223,7 @@
   async function concatScenes(urls){
     const ffmpeg = await getFFmpeg();
     const { fetchFile } = await import('/ffmpeg/util/index.js');
-    const rm = async (n) => { try{ await ffmpeg.deleteFile(n); } catch(e){} };
+    const rm = async (n) => { try{ await ffmpeg.deleteFile(n); } catch(e){ __swallow(e, "misc:app-11-video#1"); } };
     let listTxt = '';
     for(let i = 0; i < urls.length; i++){
       const name = 'scene' + i + '.mp4';
@@ -257,7 +257,7 @@
   async function buildLongVideo(scenes, onProgress){
     const ffmpeg = await getFFmpeg();
     const { fetchFile } = await import('/ffmpeg/util/index.js');
-    const rm = async (n) => { try{ await ffmpeg.deleteFile(n); } catch(e){} };
+    const rm = async (n) => { try{ await ffmpeg.deleteFile(n); } catch(e){ __swallow(e, "misc:app-11-video#2"); } };
     let listTxt = '';
     for(let i = 0; i < scenes.length; i++){
       if(onProgress) onProgress(i, scenes.length);
@@ -532,11 +532,12 @@
   async function createScene(text, style, duration, ratio, token, longMode, imageBase64, imageMime){
     const payload = { promptText: text, style, duration, ratio, token, longMode: !!longMode };
     if(imageBase64){ payload.imageBase64 = imageBase64; payload.imageMime = imageMime || 'image/jpeg'; }
-    const res = await fetch('/api/video-create', {
+    // v405: postWithConfirm يتعامل مع 428 confirm_required (تأكيد التكلفة)
+    const res = await (window.postWithConfirm ? window.postWithConfirm('/api/video-create', payload) : fetch('/api/video-create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-    });
+    }));
     const data = await res.json();
     if(!res.ok || data.error) throw Object.assign(new Error(data.error || 'unknown'), { code: data.error });
     return data.id;

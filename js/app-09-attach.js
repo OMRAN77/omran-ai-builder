@@ -8,8 +8,12 @@ function chatPhase(icon, text, el){
 }
 
 /* ───────── شريط الحالة: ماذا يفعل الذكاء الاصطناعي الآن ─────────
-   Steps ACCUMULATE instead of overwriting each other.
-   Rule: only report what actually happened. */
+   Steps ACCUMULATE instead of overwriting each other. The old code did
+   a plain textContent assignment, so the user only ever saw the last
+   step and never learned that three searches ran, or that one of them failed.
+   A silent wait reads as a frozen app; an explained wait reads as work.
+   Rule: only report what actually happened. Never invent "thinking deeply…"
+   while waiting on a socket. */
 function makeChatStatus(el){
   const steps = [];
   let finished = false;
@@ -34,6 +38,7 @@ function makeChatStatus(el){
     el.appendChild(wrap);
   }
   return {
+    /* Adds a step and returns a handle to close it later. */
     step: function(icon, text){
       const s = { icon: icon, text: text, state: 'run' };
       steps.push(s); render();
@@ -52,18 +57,35 @@ function makeChatStatus(el){
       steps.push({ icon: icon, text: text, state: 'run' });
       render();
     },
+    /* One-off note that needs no completion state. */
     note: function(icon, text){ steps.push({ icon: icon, text: text, state: 'note' }); render(); },
+    /* Streaming text has started — the bar hands over to the reply itself. */
     release: function(){
       const last = steps[steps.length - 1];
       if(last && last.state === 'run') last.state = 'done';
-      finished = true;
       render();
+      finished = true;
     },
     isReleased: function(){ return finished; },
     isEmpty: function(){ return steps.length === 0; },
   };
 }
 
+/* وضع النظام: balanced (افتراضي) / guided / factory (اختبار فقط).
+   localStorage 'aiapp_mode' → يُرسل مع كل طلب AI.
+   balanced = هوية مختصرة + تاريخ + دولة.
+   guided = الشخصية الكاملة القديمة.
+   factory = بدون أي إضافات (للاختبار فقط). */
+function AI_MODE_NAME(){
+  try {
+    const m = (localStorage.getItem('aiapp_mode') || 'balanced').trim().toLowerCase();
+    /* minimal مرادف قديم لـ balanced. */
+    if (m === 'minimal') return 'balanced';
+    return ['factory','balanced','guided'].indexOf(m) !== -1 ? m : 'balanced';
+  } catch(e){ return 'balanced'; }
+}
+/* v401 — balanced هو الافتراضي. Factory متاح للاختبار فقط. */
+function AI_FACTORY_MODE(){ return AI_MODE_NAME() === 'factory'; }
 // ---- Attachments (images + text/code files) ----
 let pendingAttachments = [];
 const MAX_TEXT_ATTACH_CHARS = 100000;
@@ -74,7 +96,7 @@ const IMAGE_TYPES = /^image\//;
 function renderAttachStrip(){
   const strip = $('#attachStrip');
   strip.innerHTML = '';
-  try{ window.__updateSendReady && window.__updateSendReady(); }catch(e){}
+  try{ window.__updateSendReady && window.__updateSendReady(); }catch(e){ __swallow(e, "upload:app-09-attach#1"); }
   pendingAttachments.forEach((a, idx) => {
     const chip = document.createElement('div');
     chip.className = 'attach-chip';
@@ -241,21 +263,111 @@ async function uploadFileToBlob(file){
 // hood) are uploaded then unpacked server-side by /api/analyze-zip, which
 // extracts readable text/code so every AI provider can actually read what's
 // inside instead of seeing raw binary garbage.
-async function processArchiveAttachment(file, attachment){
+// v402: الأرشيف يُرسَل مع الطلب مباشرة بدل الرفع لتخزين خارجي.
+//
+// المسار القديم كان: المتصفح → Vercel Blob → رابط → /api/analyze-zip.
+// لكن Vercel Blob عُلِّق و/api/blob-client-upload صار يرجع 503 عمدًا، فانقطعت
+// الخطوة الأولى وتوقّفت الميزة كلها. الحد الجديد ~3 م.ب لأن جسم دالة Vercel
+// محدود — وهو يكفي مشروع كود، لا مشروعًا مليئًا بالصور.
+const MAX_ARCHIVE_DIRECT_BYTES = 3 * 1024 * 1024;
+
+/* v412 — قراءة مجزّأة بدل FileReader.readAsDataURL:
+ * ① arrayBuffer() يرمي خطأً يحمل اسمه وسببه (بدل onerror الصامت).
+ * ② التحويل على أجزاء 32 ك.ب يبقي الذاكرة منخفضة. */
+async function fileToBase64(file){
+  let buf;
+  try {
+    buf = await file.arrayBuffer();
+  } catch (e) {
+    const why = (e && (e.name || e.message)) ? (' (' + (e.name || e.message) + ')') : '';
+    throw new Error('تعذّر قراءة الملف' + why +
+      '. تأكد أنه محمّل على جهازك فعلًا وليس على السحابة فقط، ثم أعد المحاولة.');
+  }
+  if (!buf || !buf.byteLength) throw new Error('الملف فارغ أو تعذّر فتحه.');
+  const bytes = new Uint8Array(buf);
+  let binary = '';
+  const CHUNK = 32768;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+/* v412 — فكّ الأرشيف في المتصفح: يزيل حدّ الـ3 م.ب كليًا. بدل إرسال الأرشيف
+ * كاملًا للخادم، نرسل النص المستخرج فقط (الصور والثنائيات وnode_modules
+ * و.git تُستبعد أصلًا — مشروع 20 م.ب قد يصير 200 ك.ب نصًّا مفيدًا). */
+async function unzipInBrowser(file){
+  if(!window.JSZip){
+    await new Promise((res, rej) => {
+      const sc = document.createElement('script');
+      sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+      sc.onload = res; sc.onerror = () => rej(new Error('تعذّر تحميل أداة فكّ الضغط. تحقّق من الاتصال.'));
+      document.head.appendChild(sc);
+    });
+  }
+  const zip = await window.JSZip.loadAsync(await file.arrayBuffer());
+  const TEXT = /\.(txt|md|markdown|js|jsx|ts|tsx|mjs|cjs|json|html?|css|scss|less|py|rb|php|java|c|cpp|h|hpp|cs|go|rs|swift|kt|sh|bash|yml|yaml|xml|sql|env|vue|svelte|toml|ini|conf|csv)$/i;
+  const SKIP = /(^|\/)(node_modules|\.git|dist|build|\.next|__pycache__|__MACOSX)\//;
+  const names = Object.keys(zip.files)
+    .filter(n => !zip.files[n].dir && TEXT.test(n) && !SKIP.test(n))
+    .slice(0, 120);
+  if(!names.length) throw new Error('لا توجد ملفات نصية قابلة للقراءة داخل الأرشيف.');
+
+  const parts = ['ملفات داخل الأرشيف "' + file.name + '" (' + names.length + ' ملف):', names.join('\n'), '', '=== المحتوى ==='];
+  let used = 0, readCount = 0, truncatedFiles = 0, skippedFiles = 0;
+  const MAX_TOTAL = 300000;
+  // ملف واحد كبير (مثل index.html) لا يُقصّ إلى 20K — يُعطى كاملًا حتى حدّ الإجمالي.
+  const MAX_PER_FILE = names.length === 1 ? MAX_TOTAL : 80000;
+  for(const n of names){
+    if(used >= MAX_TOTAL) { skippedFiles++; continue; }
+    let txt = '';
+    try{ txt = await zip.files[n].async('string'); }
+    catch(e){ continue; }
+    const full = txt.length;
+    txt = txt.slice(0, Math.min(MAX_PER_FILE, MAX_TOTAL - used));
+    if(txt.length < full) truncatedFiles++;
+    parts.push('\n--- ' + n + ' ---\n' + txt);
+    used += txt.length;
+    readCount++;
+  }
+  // خلاصة صريحة بدل «قُصّ الباقي» التي توهم النموذج أن الملف انقطع/تالف.
+  let note = '\n\n=== خلاصة القراءة ===\nقُرئ ' + readCount + ' من ' + names.length +
+    ' ملف (' + used.toLocaleString('en-US') + ' حرف).';
+  if(truncatedFiles) note += ' اختُصر ' + truncatedFiles + ' ملف كبير جدًا.';
+  if(skippedFiles) note += ' لم يُقرأ ' + skippedFiles + ' ملف بعد بلوغ الحد الإجمالي.';
+  parts.push(note);
+  return parts.join('\n');
+}
+
+async function processArchiveAttachment(file, attachment, preReadB64){
   try{
-    const url = await uploadFileToBlob(file);
+    // v412 — المسار الأول: الفكّ في المتصفح — بلا حدّ حجم عمليًا.
+    try{
+      attachment.text = await unzipInBrowser(file);
+      return;
+    }catch(localErr){
+      console.warn('[archive] local unzip failed, falling back to server:', localErr && localErr.message);
+      // ملفات Office (docx/xlsx/pptx) بنيتها خاصة — الخادم يعرف كيف يقرأها.
+    }
+    if(file.size > MAX_ARCHIVE_DIRECT_BYTES){
+      throw new Error('الملف ' + (file.size / 1048576).toFixed(1) + ' م.ب — الحد ' +
+        (MAX_ARCHIVE_DIRECT_BYTES / 1048576) + ' م.ب للتحليل على الخادم. احذف مجلدات مثل node_modules وأعد الضغط.');
+    }
+    const fileBase64 = preReadB64 || await fileToBase64(file);
     const resp = await fetch('/api/analyze-zip', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, filename: file.name })
+      body: JSON.stringify({ fileBase64, filename: file.name })
     });
-    const data = await resp.json();
-    if(!resp.ok || !data.ok) throw new Error(data.error || 'analyze failed');
+    const data = await resp.json().catch(() => ({}));
+    if(!resp.ok || !data.ok) throw new Error(data.error || ('فشل التحليل (HTTP ' + resp.status + ')'));
     attachment.text = data.content;
   }catch(err){
     console.error('archive analyze error', err);
     attachment.error = true;
-    attachment.text = '⚠️ ' + t('attachTruncated') + ' (' + file.name + '): ' + (err.message || err);
+    // نعرض السبب الحقيقي — الرسالة العامة كانت تترك المستخدم بلا فكرة
+    // عمّا يفعله (يصغّر الملف؟ يعيد المحاولة؟ الميزة معطّلة؟).
+    attachment.text = '⚠️ ' + file.name + ': ' + (err.message || err);
   }finally{
     attachment.pending = false;
     renderAttachStrip();
@@ -327,7 +439,7 @@ $('#attachInput').addEventListener('change', async (e) => {
         }
         // v381: نسخة مضغوطة للمزامنة
         var serverThumb = '';
-        try{ serverThumb = await makeServerThumb(dataUrl); }catch(e){}
+        try{ serverThumb = await makeServerThumb(dataUrl); }catch(e){ __swallow(e, "misc:app-09-attach#2"); }
         pendingAttachments.push({ name: file.name, isImage: true, mime, dataUrl, serverThumb });
       } else if(/\.pdf$/i.test(file.name)){
         // 📄 PDF: استخراج النص صفحة بصفحة داخل المتصفح
@@ -351,7 +463,12 @@ $('#attachInput').addEventListener('change', async (e) => {
         // blocked while any attachment is still `pending`.
         const attachment = { name: file.name, isImage: false, pending: true, text: '' };
         pendingAttachments.push(attachment);
-        processArchiveAttachment(file, attachment);
+        // v405: نقرأ البايتات هنا (قبل ما يُمسح input.value في نهاية المعالج)
+        // — القراءة المؤجلة كانت تجد الملف منفصلًا فتفشل بـ«تعذّر قراءة الملف».
+        // التحليل نفسه يبقى بالخلفية.
+        let archiveB64 = null;
+        try{ archiveB64 = file.size <= MAX_ARCHIVE_DIRECT_BYTES ? await fileToBase64(file) : null; }catch(e){ __swallow(e, 'attach:zipread'); }
+        processArchiveAttachment(file, attachment, archiveB64);
       } else {
         let text = await readFileAsText(file);
         if(text.length > MAX_TEXT_ATTACH_CHARS){
@@ -545,7 +662,7 @@ async function mahaLoadFont(key){
     l.href = 'https://fonts.googleapis.com/css2?family=' + f.gf + '&display=swap';
     document.head.appendChild(l);
   }
-  try{ await document.fonts.load('bold 40px "' + f.css + '"', 'عيدكم مبارك'); }catch(_){}
+  try{ await document.fonts.load('bold 40px "' + f.css + '"', 'عيدكم مبارك'); }catch(_){ __swallow(_, "misc:app-09-attach#3"); }
   return f.css;
 }
 async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr){
@@ -586,7 +703,7 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr){
 // 🤖 وكيل عمران — عميل الواجهة: يرسل المحادثة لنقطة /api/ai?action=agent ويستقبل
 // بث SSE (حالات + نص). أي كود html يُستخرج للوحة الكود والمعاينة تلقائيًا.
 window.__agentModeOn = false; // v321: الوكيل دائمًا مطفي عند الفتح — لا يُحفظ تشغيله أبدًا
-try{ localStorage.removeItem('aiapp_agent_mode'); }catch(e){}
+try{ localStorage.removeItem('aiapp_agent_mode'); }catch(e){ __swallow(e, "misc:app-09-attach#4"); }
 function updateAgentModeUI(){
   const btn = document.getElementById('btnAgentMode');
   const lbl = document.getElementById('agentModeLabel');
@@ -630,21 +747,37 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
       if(!line.startsWith('data: ')) continue;
       let ev; try{ ev = JSON.parse(line.slice(6)); }catch(e){ continue; }
       if(ev.status){
+        // Each server step closes the previous one and opens its own line, so
+        // the whole trail stays visible instead of being overwritten.
         if(__agentStep) __agentStep.done();
         __agentStep = agentStatus.step('•', String(ev.status).replace(/^[^\p{L}\p{N}]+/u, '').trim() || ev.status);
       }
+      if(ev.clientTool && window.omranAgentTools){
+        // v411: الوكيل طلب تشغيل كود. ننفّذه في إطار معزول هنا ونعيد الناتج عبر
+        // نقطة منفصلة — البث في اتجاه واحد فلا يمكن الرد عليه مباشرة.
+        (async function(ct){
+          var out;
+          try{ out = await window.omranAgentTools.run(ct.name, ct.input); }
+          catch(err){ out = 'تعذّر التنفيذ: ' + (err && err.message || err); }
+          try{
+            await fetch('/api/agent-tool-result', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: ct.id, output: out }),
+            });
+          }catch(err){ __swallow(err, 'misc:agenttool'); }
+        })(ev.clientTool);
+      }
       if(ev.delta){
+        if(__agentStep){ __agentStep.done(); __agentStep = null; }
+        agentStatus.release();
         full += ev.delta;
         const clean = stripCodeFromChat(full).trim();
         thinkingDiv.textContent = clean ? ('🤖 ' + clean.slice(-400)) : ('🤖 ' + (lang === 'ar' ? 'الوكيل يكتب الكود…' : 'Agent writing code…'));
-        if(__agentStep){ __agentStep.done(); __agentStep = agentStatus.step('✍️', lang === 'ar' ? 'الوكيل يكتب الكود…' : 'Agent writing code…'); }
         messagesEl.scrollTop = messagesEl.scrollHeight;
       }
       if(ev.error) serverErr = ev.error;
     }
   }
-  if(__agentStep){ __agentStep.done(); __agentStep = null; }
-  agentStatus.release();
   if(serverErr && !full) throw new Error(serverErr);
   const parsed = extractReply(full);
   let chatText;
@@ -682,7 +815,7 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
         cur.code = healed;
         agentMsg.content += '\n🛠️ ' + (lang === 'ar' ? 'تم فحص الكود وإصلاح أخطاء تلقائيًا.' : 'Code was tested and errors were auto-fixed.');
       }
-    }catch(e){}
+    }catch(e){ __swallow(e, "misc:app-09-attach#5"); }
     agentMsg.code = cur.code;
     agentMsg.codeType = cur.codeType || 'html';
     agentMsg.providerLabel = '🤖 ' + (lang === 'ar' ? 'وكيل عمران' : 'Omran Agent');
@@ -693,7 +826,7 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
 async function sendPrompt(){
   // ✅ v301: قفل الإرسال أثناء التوليد — Enter أو أي ضغطة إضافية لا ترسل
   // الطلب مرة ثانية (كان زر الإرسال ينقفل لكن Enter يظل شغالًا فيتكرر الطلب).
-  try{ const __sb = $('#btnSend'); if(__sb && __sb.disabled) return; }catch(e){}
+  try{ const __sb = $('#btnSend'); if(__sb && __sb.disabled) return; }catch(e){ __swallow(e, "misc:app-09-attach#6"); }
   const promptEl = $('#prompt');
   let text = promptEl.value.trim();
   if(!text && pendingAttachments.length === 0) return;
@@ -731,7 +864,7 @@ async function sendPrompt(){
     // الطلب المعلّق يُحفظ في localStorage أيضًا حتى لا يضيع عند تحديث الصفحة
     // بين سؤال «تبيني أبدأ؟» وموافقة المستخدم.
     let __pend = window.__pendingBuildPrompt;
-    if(!__pend){ try{ __pend = localStorage.getItem('aiapp_pending_build') || null; }catch(e){} }
+    if(!__pend){ try{ __pend = localStorage.getItem('aiapp_pending_build') || null; }catch(e){ __swallow(e, "misc:app-09-attach#7"); } }
     // رسالة تحتوي طلب بناء كامل (فعل + موضوع مثل «ابني لي لعبة») = طلب جديد،
     // وليست موافقة قصيرة مثل «نعم/ابدأ» — حتى لو بدأت بكلمة تشبه الموافقة.
     // v285: نص ملصوق (طويل/متعدد الأسطر/قوائم وإشعارات 📋⬜) بدون فعل بناء صريح
@@ -754,7 +887,7 @@ async function sendPrompt(){
         const __lastA = [...__ms].reverse().find(m => m.role === 'assistant' && m.content && !m.code);
         const OFFER_RE = /(تبيني\s*أبدأ|تبيني\s*ابدأ|تبي\s*أبدأ|تبغى\s*أبدأ|أبنيلك|ابنيلك|أبنيها|ابنيها|أسويها|اسويها|أسوي\s*لك|اسوي\s*لك|نبدأ\s*فيها|أبدأ\s*فيها|تبيني\s*أسوي|تبيني\s*اسوي|تبيني\s*أبنيها|أبدأ\s*البناء|shall i build|want me to build|start building)/i;
         if(__lastA && OFFER_RE.test(String(__lastA.content))) __offerApproved = true;
-      }catch(e){}
+      }catch(e){ __swallow(e, "misc:app-09-attach#8"); }
     }
     // شبكة أمان إضافية: لو ضاع الطلب المعلّق نهائيًا، نسترجعه من آخر رسالة
     // بناء كتبها المستخدم في نفس المشروع.
@@ -773,9 +906,9 @@ async function sendPrompt(){
           const __builtAfter = __ms.slice(__idx + 1).some(m => m.role !== 'user' && m.code);
           if(!__builtAfter) __pend = String(__lastU.apiText !== undefined ? __lastU.apiText : __lastU.content);
         }
-      }catch(e){}
+      }catch(e){ __swallow(e, "misc:app-09-attach#9"); }
     }
-    const __setPend = (v)=>{ window.__pendingBuildPrompt = v; try{ if(v) localStorage.setItem('aiapp_pending_build', v); else localStorage.removeItem('aiapp_pending_build'); }catch(e){} };
+    const __setPend = (v)=>{ window.__pendingBuildPrompt = v; try{ if(v) localStorage.setItem('aiapp_pending_build', v); else localStorage.removeItem('aiapp_pending_build'); }catch(e){ __swallow(e, "save:app-09-attach#10"); } };
     if(__offerApproved && text && !__isFullBuildReq && GATE_APPROVE_RE.test(text)){
       // موافقة على عرض المزود نفسه → يبني بالضبط ما عرضه، فورًا وبالكامل.
       __gateApprovedText = text;
@@ -805,7 +938,7 @@ async function sendPrompt(){
     window.incrementGuestMsgCount();
   }
 
-  try{ window.__fbCountMsg && window.__fbCountMsg(); }catch(_){ }
+  try{ window.__fbCountMsg && window.__fbCountMsg(); }catch(_){ __swallow(_, "auth:app-09-attach#11"); }
 
   let cur = getCurrent();
   if(!cur){
@@ -849,13 +982,15 @@ async function sendPrompt(){
     if(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && text && __memRefRe.test(text)){
       imageAttachments.push({ isImage: true, name: 'memory.png', mime: cur.lastEditedImage.mime || 'image/png', dataUrl: 'data:' + (cur.lastEditedImage.mime || 'image/png') + ';base64,' + cur.lastEditedImage.b64, _fromMemory: true });
     }
-  }catch(e){}
+  }catch(e){ __swallow(e, "upload:app-09-attach#12"); }
   cur.messages.push({role: 'user', content: (__gateApprovedText || text) || (t('imagesAttachedNote')), attachments: attachmentsForMsg.length ? attachmentsForMsg : undefined, apiText, apiImages: imageAttachments.length ? imageAttachments : undefined});
   promptEl.value = '';
-  try{ window.__promptAutoGrow && window.__promptAutoGrow(); }catch(e){}
-  try{ $('#btnSend').classList.remove('ready'); }catch(e){}
+  try{ window.__promptAutoGrow && window.__promptAutoGrow(); }catch(e){ __swallow(e, "upload:app-09-attach#13"); }
+  try{ $('#btnSend').classList.remove('ready'); }catch(e){ __swallow(e, "upload:app-09-attach#14"); }
   pendingAttachments = [];
   renderAttachStrip();
+  // v462: توقيت — CSS class msg-anim يضاف أثناء بناء العنصر لمدة 800ms
+  window.__userAnimUntil = Date.now() + 800;
   renderAll();
   saveState();
 
@@ -872,9 +1007,10 @@ async function sendPrompt(){
   thinkingDiv.className = 'msg assistant';
   thinkingDiv.textContent = t('building');
   messagesEl.appendChild(thinkingDiv);
-  anchorLastUserMsgTop(thinkingDiv);
+  // شريط الحالة: يُظهر خطوات العمل بدل انتظار صامت.
   const chatStatus = makeChatStatus(thinkingDiv);
   window.__chatStatus = chatStatus;
+  anchorLastUserMsgTop(thinkingDiv);
 
   // A "continue with this only" selection (one or more providers picked from a
   // previous ask-all round) always takes priority: it lets the user keep
@@ -900,7 +1036,7 @@ async function sendPrompt(){
   const __editIntent = !!cur.code && __editVerbRe.test(text) && (__editObjRe.test(text) || (!__questionStartRe.test(text.trim()) && text.trim().length <= 90));
   const __routeFix = (__routeFixRe.test(text) || __editIntent) && !!cur.code;
   // البناء لا يبدأ إلا بفعل أمر صريح (ابني/بناء/سوي/اعمل...) + كلمة تطبيق/موقع/بوت.
-  const __routeCmdRe = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|اضف|أضف|عدل|عدّل|طور|طوّر|حدث|حدّث|كمل|أكمل|اكمل|ممكن|ابغي|أبغي|ابغى|أبغى|ابي|أبي|بغيت|اريد|أريد|عطني|أعطني|اعطني|هات|سولي|سوّلي|build|create|make|design|develop|add|update|improve|\bwant\b|\bgive\b|\bcan you\b)/i;
+  const __routeCmdRe = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|اضف|أضف|عدل|عدّل|طور|طوّر|حدث|حدّث|كمل|أكمل|اكمل|ممكن|ابغي|أبغي|ابغى|أبغى|ابي|أبي|بغيت|اريد|أريد|عطني|أعطني|اعطني|هات|سولي|سوّلي|(?:^|\s)سو\s|build|create|make|design|develop|add|update|improve|\bwant\b|\bgive\b|\bcan you\b)/i;
   // 🚫 قرار نهائي (26/7): "اسأل الكل" ملغي بالكامل — لا زر ولا كتابة.
   // كلود يبني ويرد بروحه دائمًا (وGPT احتياط صامت إذا فشل).
   const __askAllExplicit = false;
@@ -934,7 +1070,6 @@ async function sendPrompt(){
     const __isPhotoFetch = !__isLogoFetch && __photoFetchRe.test(text) && !__genDrawRe.test(text) && !cur.adMode && !cur.awaitingAdMode;
     if(!imageAttachments.length && !__editIntent && (__isLogoFetch || __isPhotoFetch)){
       const __logoMsg = { role: 'assistant', content: lang === 'ar' ? (__isLogoFetch ? '🔍 أجيب لك الشعار الأصلي من البحث…' : '🔍 أجيب لك صور حقيقية من البحث…') : '🔍 Fetching real images from live search…', _loading: true };
-      const __imgStep = chatStatus.step('🔍', lang === 'ar' ? 'يبحث عن صور…' : 'Searching for images…');
       cur.messages.push(__logoMsg);
       renderMessages(true);
       try{
@@ -957,7 +1092,7 @@ async function sendPrompt(){
         __logoMsg.content = lang === 'ar' ? 'تعذر جلب الشعار الآن — جرب مرة ثانية.' : 'Could not fetch the logo right now — try again.';
       }
       renderAll(); saveState();
-      thinkingDiv && thinkingDiv.remove(); if(window.__chatStatus){ window.__chatStatus.release(); delete window.__chatStatus; }
+      thinkingDiv && thinkingDiv.remove();
       return;
     }
     // 🖼️ تعديل الصور بالأوامر النصية: صورة مرفقة + طلب تعديل → Gemini يرجع الصورة معدّلة
@@ -1070,7 +1205,7 @@ async function sendPrompt(){
           + '<button id="__pcCancel" style="width:100%;padding:10px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#aaa;font-size:13px;cursor:pointer;">'+(isAr?'إلغاء':'Cancel')+'</button>'
           + '</div>';
         document.body.appendChild(ov);
-        function done(v){ try{document.body.removeChild(ov);}catch(_){}; resolve(v); }
+        function done(v){ try{document.body.removeChild(ov);}catch(_){ __swallow(_, "misc:app-09-attach#15"); }; resolve(v); }
         ov.querySelectorAll('.__pcItem').forEach(function(b){ b.onclick=function(){ done({id:b.getAttribute('data-id')}); }; });
         ov.querySelector('#__pcUpload').onclick=function(){ done('upload'); };
         ov.querySelector('#__pcCancel').onclick=function(){ done(null); };
@@ -1079,10 +1214,10 @@ async function sendPrompt(){
     };
     if(__talkCharIntent && !(__charImg && __charImg.b64)){
       const __pick = await window.pickTalkCharacter(lang==='ar');
-      if(__pick === null){ thinkingDiv && thinkingDiv.remove(); if(window.__chatStatus){ window.__chatStatus.release(); delete window.__chatStatus; } return; }
+      if(__pick === null){ thinkingDiv && thinkingDiv.remove(); return; }
       if(__pick === 'upload'){
         cur.messages.push({ role:'assistant', content:(lang==='ar'?'📎 ارفع صورتك من زر المشبك ثم أعد نفس الطلب مع الجملة اللي تبي الشخصية تقولها.':'📎 Attach your photo, then resend the same request with the line you want the character to say.') });
-        thinkingDiv && thinkingDiv.remove(); if(window.__chatStatus){ window.__chatStatus.release(); delete window.__chatStatus; } renderAll(); saveState(); return;
+        thinkingDiv && thinkingDiv.remove(); renderAll(); saveState(); return;
       }
       try{
         const __pr = await fetch('/assets/characters/'+__pick.id+'.png');
@@ -1090,7 +1225,7 @@ async function sendPrompt(){
         const __pd = await new Promise(function(res){ const fr=new FileReader(); fr.onload=function(){res(fr.result);}; fr.readAsDataURL(__pb); });
         __charImg = { b64: (String(__pd).split(',')[1]||''), mime:'image/png' };
         __alreadyCartoon = true;
-      }catch(_){ thinkingDiv && thinkingDiv.remove(); if(window.__chatStatus){ window.__chatStatus.release(); delete window.__chatStatus; } cur.messages.push({ role:'assistant', content:(lang==='ar'?'⚠️ تعذّر تحميل الشخصية، جرّب مرة ثانية.':'⚠️ Could not load the character, try again.') }); renderAll(); saveState(); return; }
+      }catch(_){ thinkingDiv && thinkingDiv.remove(); cur.messages.push({ role:'assistant', content:(lang==='ar'?'⚠️ تعذّر تحميل الشخصية، جرّب مرة ثانية.':'⚠️ Could not load the character, try again.') }); renderAll(); saveState(); return; }
     }
     const __wantsTalkChar = __talkCharIntent && !!(__charImg && __charImg.b64);
     if(__wantsTalkChar){
@@ -1119,18 +1254,18 @@ async function sendPrompt(){
             + '<button data-v="more" id="__tcMore" style="width:100%;padding:10px;border-radius:12px;border:1px dashed rgba(168,130,255,.5);background:rgba(168,130,255,.08);color:#c9b3ff;font-size:12.5px;cursor:pointer;margin-bottom:14px;">'+(isAr?'أبي فيديو أطول / أكثر ✨':'I want a longer / more video ✨')+'</button>'
             + '<div style="display:flex;gap:8px;">'
             +   '<button id="__tcCancel" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#aaa;font-size:13px;cursor:pointer;">'+(isAr?'إلغاء':'Cancel')+'</button>'
-            +   '<button id="__tcGo" style="flex:2;padding:11px;border-radius:12px;border:none;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;font-weight:700;font-size:13px;cursor:pointer;">'+(isAr?'ابدأ 🎬':'Start 🎬')+'</button>'
+            +   '<button id="__tcGo" style="flex:2;padding:11px;border-radius:12px;border:none;background:linear-gradient(135deg,#d4af37,#8a6d1f);color:#fff;font-weight:700;font-size:13px;cursor:pointer;">'+(isAr?'ابدأ 🎬':'Start 🎬')+'</button>'
             + '</div></div>';
           document.body.appendChild(ov);
           let motion = 'moving', dur = 6;
           function paint(){
-            ov.querySelectorAll('.__tcOpt').forEach(b=>{ b.style.background = b.getAttribute('data-v')===motion ? 'linear-gradient(135deg,#8b5cf6,#6d28d9)' : 'rgba(255,255,255,.05)'; b.style.borderColor = b.getAttribute('data-v')===motion ? 'transparent' : 'rgba(255,255,255,.15)'; });
-            ov.querySelectorAll('.__tcD').forEach(b=>{ b.style.background = parseInt(b.getAttribute('data-v'),10)===dur ? 'linear-gradient(135deg,#8b5cf6,#6d28d9)' : 'rgba(255,255,255,.05)'; b.style.borderColor = parseInt(b.getAttribute('data-v'),10)===dur ? 'transparent' : 'rgba(255,255,255,.15)'; });
+            ov.querySelectorAll('.__tcOpt').forEach(b=>{ b.style.background = b.getAttribute('data-v')===motion ? 'linear-gradient(135deg,#d4af37,#8a6d1f)' : 'rgba(255,255,255,.05)'; b.style.borderColor = b.getAttribute('data-v')===motion ? 'transparent' : 'rgba(255,255,255,.15)'; });
+            ov.querySelectorAll('.__tcD').forEach(b=>{ b.style.background = parseInt(b.getAttribute('data-v'),10)===dur ? 'linear-gradient(135deg,#d4af37,#8a6d1f)' : 'rgba(255,255,255,.05)'; b.style.borderColor = parseInt(b.getAttribute('data-v'),10)===dur ? 'transparent' : 'rgba(255,255,255,.15)'; });
           }
           paint();
           ov.querySelectorAll('.__tcOpt').forEach(b=> b.onclick = ()=>{ motion = b.getAttribute('data-v'); paint(); });
           ov.querySelectorAll('.__tcD').forEach(b=> b.onclick = ()=>{ dur = parseInt(b.getAttribute('data-v'),10); paint(); });
-          function done(val){ try{ document.body.removeChild(ov); }catch(_){} resolve(val); }
+          function done(val){ try{ document.body.removeChild(ov); }catch(_){ __swallow(_, "misc:app-09-attach#16"); } resolve(val); }
           ov.querySelector('#__tcMore').onclick = ()=> done('more');
           ov.querySelector('#__tcCancel').onclick = ()=> done(null);
           ov.querySelector('#__tcGo').onclick = ()=> done({ motion, duration: dur });
@@ -1138,10 +1273,10 @@ async function sendPrompt(){
         });
       };
       const __tcChoice = await window.askTalkCharOpts(lang==='ar');
-      if(__tcChoice === null){ thinkingDiv && thinkingDiv.remove(); if(window.__chatStatus){ window.__chatStatus.release(); delete window.__chatStatus; } return; }
+      if(__tcChoice === null){ thinkingDiv && thinkingDiv.remove(); return; }
       if(__tcChoice === 'more'){
         cur.messages.push({ role:'assistant', content:(lang==='ar'?'✨ الفيديوهات الأطول والخيارات الإضافية متاحة في الباقات المدفوعة — افتح ⚙️ ← الاشتراك لترقية باقتك وتطلّع فيديوهات أطول بجودة أعلى.':'✨ Longer videos and extra options are available on paid plans — open ⚙️ → Subscription to upgrade and create longer, higher-quality videos.') });
-        thinkingDiv && thinkingDiv.remove(); if(window.__chatStatus){ window.__chatStatus.release(); delete window.__chatStatus; } renderAll(); saveState(); return;
+        thinkingDiv && thinkingDiv.remove(); renderAll(); saveState(); return;
       }
       const __tcMotion = __tcChoice.motion, __tcDur = __tcChoice.duration;
       try{
@@ -1151,7 +1286,7 @@ async function sendPrompt(){
           __cartoonB64 = __charImg.b64; __cartoonMime = __charImg.mime || 'image/png';
         } else {
           // ① تحويل الصورة لشخصية كرتونية عبر Gemini
-          thinkingDiv.textContent = lang === 'ar' ? '🎨 جاري تحويل صورتك لشخصية كرتونية…' : '🎨 Turning your photo into a cartoon character…';
+          chatPhase('🎨', lang === 'ar' ? 'جاري تحويل صورتك لشخصية كرتونية…' : 'Turning your photo into a cartoon character…', thinkingDiv);
           const __cartoonPrompt = 'Transform this photo into a cute chibi-style 3D animated character: big adorable head, small short body, FULL BODY standing pose facing the camera, happy friendly expression, clean modern Pixar-like rendering. Keep the SAME face features, hairstyle, beard/facial hair, skin tone and the same clothing style and colors as the person in the photo (including traditional dress if worn). Soft simple pastel studio background, vertical 9:16 composition with the whole character visible from head to feet.';
           for(let __ct = 0; __ct < 2 && !__cartoonB64; __ct++){
             if(__ct) await new Promise(r=>setTimeout(r,1500));
@@ -1168,7 +1303,7 @@ async function sendPrompt(){
         }
         // ② تحريكها لفيديو ناطق بصوت مسموع عبر Veo 3 (image-to-video + صوت أصلي)
         //    Runway يطلّع فيديو صامت، فالصوت المنطوق يحتاج Veo 3 — عمودي 9:16.
-        thinkingDiv.textContent = lang === 'ar' ? '🎬 جاري تحريك الشخصية لتتكلم بصوت… قد يستغرق ١–٣ دقائق' : '🎬 Animating the character to talk with voice… 1–3 minutes';
+        chatPhase('🎬', lang === 'ar' ? 'جاري تحريك الشخصية لتتكلم بصوت… قد يستغرق ١–٣ دقائق' : 'Animating the character to talk with voice… 1–3 minutes', thinkingDiv);
         const __voiceLang = /[\u0600-\u06FF]/.test((__dialogue || '') + ' ' + (text || '')) ? 'Arabic' : 'the same language as the line';
         const __motionDesc = __tcMotion === 'static'
           ? 'The character stands still in place, only the head and mouth move naturally while talking (minimal body motion)'
@@ -1196,7 +1331,7 @@ async function sendPrompt(){
           const __sd = await __sr.json().catch(()=>({}));
           if(__sd.status === 'SUCCEEDED'){ __vurl = Array.isArray(__sd.output) ? __sd.output[0] : __sd.output; }
           else if(__sd.status === 'FAILED'){ let __fr = __sd.failure || ''; if(/moderation|SAFETY|filtered|content did not pass/i.test(__fr)){ __fr = (lang==='ar')?'الرقابة رفضت المحتوى — جرّب صورة ثانية':'Content rejected by safety filters — try another photo'; } throw new Error((lang==='ar'?'فشل إنشاء الفيديو':'Video generation failed') + (__fr?(' — '+__fr):'')); }
-          else { thinkingDiv.textContent = (lang==='ar'?'🎬 جاري تحريك الشخصية بصوت… ':'🎬 Animating with voice… ') + (__sd.status || ''); }
+          else { chatPhase('🎬', (lang==='ar'?'جاري تحريك الشخصية بصوت… ':'Animating with voice… ') + (__sd.status || ''), thinkingDiv); }
         }
         cur.messages.push({ role:'assistant', content:(lang==='ar'?'🎬 شخصيتك الكرتونية تتكلم بصوت جاهزة ✅ (الرابط صالح ٢٤ ساعة — نزّله عشان يظل عندك)':'🎬 Your talking cartoon character (with voice) is ready ✅ (link valid 24h — download it to keep it)'), attachments:[{ name:'talking-character.mp4', isVideo:true, url:__vurl }] });
         if(window.autoSaveVideo) window.autoSaveVideo(__vurl);
@@ -1238,12 +1373,11 @@ async function sendPrompt(){
     if(__wantsVideo && !__videoHasConcreteSubject && __isVagueMediaRequest(text)){
       cur.messages.push({ role: 'assistant', content: lang === 'ar' ? 'فيديو عن شو؟ وصفلي المشهد اللي تبيه 🎬' : 'A video about what? Describe the scene you want 🎬' });
       renderAll(); saveState();
-      thinkingDiv && thinkingDiv.remove(); if(window.__chatStatus){ window.__chatStatus.release(); delete window.__chatStatus; }
+      thinkingDiv && thinkingDiv.remove();
       return;
     }
     if(__wantsVideo){
-      thinkingDiv.textContent = lang === 'ar' ? '🎬 جاري إنشاء الفيديو… قد يستغرق ١–٣ دقائق' : '🎬 Creating video… this can take 1–3 minutes';
-      chatStatus.step('🎬', lang === 'ar' ? 'ينشئ الفيديو…' : 'Creating video…');
+      chatPhase('🎬', lang === 'ar' ? 'جاري إنشاء الفيديو… قد يستغرق ١–٣ دقائق' : 'Creating video… this can take 1–3 minutes', thinkingDiv);
       try{
         const __vp = { promptText: text.slice(0, 900), duration: 5, ratio: '1280:720', token: authGet('aiapp_auth_token') };
         if(__vidSrc && __vidSrc.b64 && (__srcImg || __animateRe.test(text) || /منها|عليها|الصورة|صورتي|this image|the image|it/i.test(text))){
@@ -1267,17 +1401,14 @@ async function sendPrompt(){
               __im.src = 'data:' + (__vidSrc.mime || 'image/png') + ';base64,' + __vidSrc.b64;
             });
             if(__fixed){ __vidSrc.b64 = __fixed; __vidSrc.mime = 'image/jpeg'; }
-          }catch(e){}
+          }catch(e){ __swallow(e, "misc:app-09-attach#17"); }
           __vp.imageBase64 = __vidSrc.b64;
           __vp.imageMime = __vidSrc.mime;
         }
         let __vid = null, __verr = '';
         for(let __a = 0; __a < 2 && !__vid; __a++){
-          const __r = await fetch('/api/video-create', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            signal: genAbortController.signal,
-            body: JSON.stringify(__vp),
-          });
+          // v405: postWithConfirm يتعامل مع 428 confirm_required (تأكيد التكلفة) بدل خطأ خام
+          const __r = await postWithConfirm('/api/video-create', __vp);
           const __d = await __r.json().catch(() => ({}));
           if(__r.ok && __d.id){ __vid = __d.id; }
           else {
@@ -1301,7 +1432,7 @@ async function sendPrompt(){
           const __sd = await __sr.json().catch(() => ({}));
           if(__sd.status === 'SUCCEEDED'){ __vurl = Array.isArray(__sd.output) ? __sd.output[0] : __sd.output; }
           else if(__sd.status === 'FAILED'){ let __fr = __sd.failure || ''; if(/moderation|SAFETY|content did not pass/i.test(__fr)){ __fr = (lang === 'ar') ? 'الرقابة رفضت المحتوى — جرّب وصفًا أهدأ أو شِل صورة الشخص' : 'Content rejected by safety filters — try a calmer description or remove the person photo'; } throw new Error((lang === 'ar' ? 'فشل إنشاء الفيديو' : 'Video generation failed') + (__fr ? (' — ' + __fr) : '')); }
-          else { thinkingDiv.textContent = (lang === 'ar' ? '🎬 جاري إنشاء الفيديو… ' : '🎬 Creating video… ') + (__sd.status || ''); }
+          else { chatPhase('🎬', (lang === 'ar' ? 'جاري إنشاء الفيديو… ' : 'Creating video… ') + (__sd.status || ''), thinkingDiv); }
         }
         cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? '🎬 فيديوك جاهز ✅ (الرابط صالح ٢٤ ساعة — نزّله عشان يظل عندك)' : '🎬 Your video is ready ✅ (link valid 24h — download it to keep it)'), attachments: [{ name: 'video.mp4', isVideo: true, url: __vurl }] });
         if(window.autoSaveVideo) window.autoSaveVideo(__vurl);
@@ -1315,7 +1446,7 @@ async function sendPrompt(){
       return;
     }
     if(text && !cur.adMode && (__IMG_FOLLOW || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && (__srcImg || __followUp || __IMG_FOLLOW)){
-      thinkingDiv.textContent = lang === 'ar' ? '🖼️ جاري تعديل الصورة…' : '🖼️ Editing image…';
+      chatPhase('🖼️', lang === 'ar' ? 'جاري تعديل الصورة…' : 'Editing image…', thinkingDiv);
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : cur.lastEditedImage.b64;
       const __mime = __srcImg ? (__srcImg.mime || 'image/png') : (cur.lastEditedImage.mime || 'image/png');
       // ✍️ إذا الطلب كتابة نص/اسم على الصورة → نرسمه محليًا بخط سليم (بدون Gemini)
@@ -1374,21 +1505,21 @@ async function sendPrompt(){
     if(!__archCtxText){
       try{
         const __la = [...cur.messages].reverse().find(m => m && m.role === 'assistant' && typeof m.content === 'string');
-        if(__la && __la.content.length > 250 && /(فيلا|فله|فلة|منزل|بيت|مخطط|واجهة|غرف(?:ة)?\s*نوم|م²|دور\s?أرضي|ماستر|floor\s?plan|facade)/i.test(__la.content) && !/```/.test(__la.content)){
+        if(__la && __la.content.length > 250 && /(فيلا|فله|فلة|منزل|بيت|مخطط|واجهة(?!\s*(?:المستخدم|مستخدم|برمجي))|غرف(?:ة)?\s*نوم|م²|دور\s?أرضي|ماستر|floor\s?plan|facade)/i.test(__la.content) && !/```/.test(__la.content) && !/(function|class |const |import |namespace|#include|برمج|كود|code|script|API|SDK|C#|C\+\+|Python|Java(?:Script)?)/i.test(__la.content)){
           __archCtxText = __la.content.replace(/\s+/g, ' ').slice(0, 1500);
         }
-      }catch(e){}
+      }catch(e){ __swallow(e, "misc:app-09-attach#18"); }
     }
     // ✅ v373: السياق المعماري صالح فقط إذا كان آخر رد مساعد بنفس الموضوع —
     // «نعم» بعد رد عن فنادق/مواضيع ثانية ممنوع يرجّع تصميم فيلا قديم من lastArchText.
     if(__archCtxText){
       try{
         const __laChk = [...cur.messages].reverse().find(m => m && m.role === 'assistant' && typeof m.content === 'string');
-        if(!__laChk || !/(مخطط|واجهة|م²|متر مربع|دور\s?أرضي|ماستر|مواصفات|توزيع داخلي|الشكل الخارجي|floor\s?plan|facade|exterior)/i.test(__laChk.content)){
+        if(!__laChk || !/(مخطط|واجهة(?!\s*(?:المستخدم|مستخدم|برمجي))|م²|متر مربع|دور\s?أرضي|ماستر|مواصفات|توزيع داخلي|الشكل الخارجي|floor\s?plan|facade|exterior)/i.test(__laChk.content) || /(function|class |const |import |namespace|#include|برمج|كود|code|script|API|SDK|C#|C\+\+|Python|Java(?:Script)?)/i.test(__laChk.content)){
           __archCtxText = '';
           cur.lastArchText = '';
         }
-      }catch(e){}
+      }catch(e){ __swallow(e, "misc:app-09-attach#19"); }
     }
     const __archAffirm = !!(__archCtxText && text && __archAffirmRe.test(text));
     const __archFollowUp = !!(__archCtxText && text && !__srcImg && !__followUp &&
@@ -1399,7 +1530,7 @@ async function sendPrompt(){
       const __archText = __archFollowUp ? (__archAffirm ? __archCtxText : (__archCtxText + ' — والمطلوب الآن تحديدًا: ' + text)) : text;
       cur.lastArchText = __archFollowUp ? __archCtxText : text;
       const __archGen = async (label, prompt) => {
-        thinkingDiv.textContent = label;
+        chatPhase('⚙️', label, thinkingDiv);
         let __d = {}; let __k = false;
         try{
           for(let __t3 = 0; __t3 < 3 && !__k; __t3++){
@@ -1462,8 +1593,8 @@ async function sendPrompt(){
         // ✅ v301: المسار المعماري نفّذ الطلب فعلًا (مخطط + واجهة) — تُلغى بوابة
         // البناء والطلب المعلّق نهائيًا حتى لا يسأل مزود ثانٍ «تبيني أبدأ البناء؟».
         __gateNoBuild = false;
-        try{ window.__pendingBuildPrompt = null; localStorage.removeItem('aiapp_pending_build'); }catch(e){}
-        thinkingDiv.textContent = lang === 'ar' ? '✍️ جاري كتابة المواصفات…' : '✍️ Writing the specifications…';
+        try{ window.__pendingBuildPrompt = null; localStorage.removeItem('aiapp_pending_build'); }catch(e){ __swallow(e, "misc:app-09-attach#20"); }
+        chatPhase('✍️', lang === 'ar' ? 'جاري كتابة المواصفات…' : 'Writing the specifications…', thinkingDiv);
       }
       // لا return هنا — يكمل للمزود عشان يكتب المواصفات النصية تحت الصور.
     }
@@ -1475,10 +1606,10 @@ async function sendPrompt(){
       if(!__txtOnlyImgRe.test(text) && __isVagueMediaRequest(text)){
         cur.messages.push({ role: 'assistant', content: lang === 'ar' ? 'صورة عن شو؟ وصفلي اللي تبيه 🖼️' : 'An image of what? Describe what you want 🖼️' });
         renderAll(); saveState();
-        thinkingDiv && thinkingDiv.remove(); if(window.__chatStatus){ window.__chatStatus.release(); delete window.__chatStatus; }
+        thinkingDiv && thinkingDiv.remove();
         return;
       }
-      thinkingDiv.textContent = lang === 'ar' ? '🖼️ جاري إنشاء الصورة…' : '🖼️ Generating image…';
+      chatPhase('🖼️', lang === 'ar' ? 'جاري إنشاء الصورة…' : 'Generating image…', thinkingDiv);
       let __gData = {}; let __gOk = false;
       try{
         for(let __t2 = 0; __t2 < 2 && !__gOk; __t2++){
@@ -1508,7 +1639,20 @@ async function sendPrompt(){
       return;
     }
     cur.lastMsgWasImageEdit = false;
-    const apiMessages = [{role: 'system', content: t('systemPrompt') + APP_IDENTITY_NOTE + BUILD_COMPLETENESS_RULE + DESIGN_POSTER_RULE + NO_FAKE_EDIT_RULE + CHAT_STYLE_RULE + APP_CAPABILITY_RULE + TOPIC_FOLLOW_RULE}];
+    // v464 — حقن ذكي: قواعد البناء الثقيلة تُرسل فقط عند طلب بناء/تصميم فعلي.
+    // الأسئلة العادية تحصل على system prompt خفيف = ردود أفضل + ما يشفّر.
+    const __bldRe = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|سو\b|سوّ\b|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|عدل|عدّل|طور|طوّر|اضف|أضف|كمل|أكمل|build|create|make|design|develop|fix|add|update|improve)/i;
+    const __appWd = /(تطبيق|موقع|لعبة|برنامج|بوت|صفحة|أداة|app|website|game|bot|page|tool|clone)/i;
+    const __dsnRe = /(إعلان|بوستر|شهادة|بطاقة|دعوة|لوجو|شعار|بنر|غلاف|منشور|poster|flyer|certificate|card|invitation|logo|banner|cover)/i;
+    const __needsBuild = (__bldRe.test(text) && __appWd.test(text)) || __dsnRe.test(text) || !!cur.code || !!window.__buildOfferApproved;
+    // v465: removed CONVERSATION_QUALITY_RULE from base — Q&A prompt already covers it.
+    // This prevents duplicate style rules that confuse models after several messages.
+    let __sys = t('systemPrompt') + APP_IDENTITY_NOTE + TOPIC_FOLLOW_RULE;
+    if(__needsBuild){
+      __sys += BUILD_COMPLETENESS_RULE + NO_FAKE_EDIT_RULE + CHAT_STYLE_RULE + APP_CAPABILITY_RULE;
+      if(__dsnRe.test(text)) __sys += DESIGN_POSTER_RULE;
+    }
+    const apiMessages = [{role: 'system', content: __sys}];
     // 🤝 v345: المستخدم وافق على عرض بناء قدّمه المزود في رده السابق — يبنيه الآن كاملًا.
     if(window.__buildOfferApproved){
       apiMessages.push({role: 'system', content: 'BUILD-OFFER APPROVAL (highest priority): In your PREVIOUS assistant message you offered to build a specific tool/app for the user and asked permission to start. The user has just approved. Build EXACTLY the tool/app you offered in that previous message NOW — completely, as ONE working single-file ```html app in this reply. Do NOT re-explain, do NOT repeat your earlier advice, do NOT ask again, and NEVER return to any earlier request that was rejected. Just build the offered tool fully.'});
@@ -1604,7 +1748,7 @@ async function sendPrompt(){
     // 👋 قاعدة التحية لكل المزودين التسعة: تحية = رد ترحيبي قصير فقط،
     // ممنوع البحث وممنوع المصادر وممنوع فتح أي موضوع قديم من المحادثة.
     if(isPureGreeting(text)){
-      apiMessages.push({role: 'system', content: 'رسالة المستخدم الأخيرة مجرد تحية/مجاملة. رُدّ بتحية ودية قصيرة وطبيعية فقط (سطر أو سطرين كحد أقصى). ممنوع منعًا باتًا: فتح أو إكمال أي موضوع سابق من المحادثة، أو عرض معلومات/روابط/مصادر، أو اقتراح "نكمل...؟". فقط حيّه واسأله كيف تقدر تساعده.'});
+      apiMessages.push({role: 'system', content: 'رسالة المستخدم الأخيرة مجرد تحية/مجاملة. رُدّ بتحية ودية قصيرة وطبيعية فقط (سطر أو سطرين كحد أقصى). ممنوع منعًا باتًا: فتح أو إكمال أي موضوع سابق من المحادثة، أو عرض معلومات/روابط/مصادر، أو اقتراح "نكمل...؟". ممنوع مناداة المستخدم بأي اسم (لا «محمد» ولا غيره) إلا إذا كان محفوظًا في ذاكرته. فقط حيّه واسأله كيف تقدر تساعده.'});
     }
     // v311: أثناء تصميم إعلان (adMode مفعّل) ممنوع البحث الحي نهائيًا —
     // تفاصيل «بيت للبيع...» تكمل التصميم ولا تتحول لبحث دوبيزل.
@@ -1617,9 +1761,6 @@ async function sendPrompt(){
         __searchIndicator = { role: 'assistant', content: lang === 'ar' ? '🔍 يبحث بعمق…' : '🔍 Deep searching…', _loading: true };
         cur.messages.push(__searchIndicator);
         renderMessages(true);
-        var __searchStep = chatStatus.step('🔍', lang === 'ar' ? 'يبحث بعمق…' : 'Deep searching…');
-      } else {
-        var __searchStep = chatStatus.step('🔍', lang === 'ar' ? 'يبحث…' : 'Searching…');
       }
       __searchData = await smartMaybeSearch(text, cur.messages.filter(m => m !== __searchIndicator));
       if(__searchIndicator){
@@ -1661,7 +1802,6 @@ async function sendPrompt(){
     }
 
     if(askAll){
-      chatStatus.step('🏗️', lang === 'ar' ? 'يبني التطبيق…' : 'Building app…');
       // All 9 providers now run server-side with the owner's keys.
       const hasOpenAI = localStorage.getItem('aiapp_include_openai') !== 'false';
       const hasGemini = localStorage.getItem('aiapp_include_gemini') !== 'false';
@@ -1839,14 +1979,14 @@ async function sendPrompt(){
       }, 2000);
       const finalizeOne = (msg) => {
         msg._loading = false;
-        try{ __updatePrepCounter(); }catch(e){}
+        try{ __updatePrepCounter(); }catch(e){ __swallow(e, "misc:app-09-attach#21"); }
         const st = revealStates.get(msg._uid);
         if(st){
           st.target = msg.content;
           st.done = true;
           ensureRevealTimer(msg);
           // v310: حفظ فوري للرد الكامل — لا ننتظر نهاية حركة الكتابة.
-          try{ saveState(); }catch(e){}
+          try{ saveState(); }catch(e){ __swallow(e, "save:app-09-attach#22"); }
         } else {
           renderMessages(true);
           saveState();
@@ -1890,7 +2030,7 @@ async function sendPrompt(){
               const __strictReply = await callWithWatchdog(p.key, __strictMsgs, onDelta, 75000, 180000);
               const __r2 = extractReply(__strictReply);
               if(__r2.code){ code = __r2.code; explanation = __r2.explanation; }
-            }catch(e){}
+            }catch(e){ __swallow(e, "misc:app-09-attach#23"); }
           }
           msg.content = (__applyCode ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : '');
           msg.code = code || null;
@@ -2050,7 +2190,7 @@ async function sendPrompt(){
           const __rankScore = (a) => {
             if(!a.code) return -1;
             let s = a.code.length;
-            try{ if(looksCompleteCode(a.code, a.codeType)) s += 1000000; }catch(e){}
+            try{ if(looksCompleteCode(a.code, a.codeType)) s += 1000000; }catch(e){ __swallow(e, "misc:app-09-attach#24"); }
             return s;
           };
           const __cands = usableAnswers.filter(a => a.code).sort((x, y) => __rankScore(y) - __rankScore(x));
@@ -2233,7 +2373,7 @@ async function sendPrompt(){
                 try{
                   const recheck = await verifyBuildSteps(mergeMsg.code, __taskPlan);
                   if(recheck) done = done.map((d, i) => d || recheck[i]);
-                }catch(e){}
+                }catch(e){ __swallow(e, "misc:app-09-attach#25"); }
               }
               __planMsg.content = formatTaskPlan(__taskPlan, done);
             }catch(taskErr){
@@ -2264,17 +2404,15 @@ async function sendPrompt(){
       // ⚡ v320: تحديث فقاعة البث بإيقاع الشاشة (إطار واحد) بدل كل قطعة نص واصلة.
       const onDelta = (partial) => {
         onDelta._p = partial;
-        if(!onDelta._statusSet){ onDelta._statusSet = true; if(window.__chatStatus) window.__chatStatus.release(); }
         if(onDelta._raf) return;
         onDelta._raf = requestAnimationFrame(() => {
           onDelta._raf = null;
-          thinkingDiv.textContent = liveStripCode(onDelta._p);
+          (function(){ try{ if(window.__chatStatus) window.__chatStatus.release(); }catch(e){ __swallow(e, "misc:app-09-attach#26"); } })();
+        thinkingDiv.textContent = liveStripCode(onDelta._p);
           smartScrollBottom();
         });
       };
       // المزود المختار من المستخدم يرد بنفسه (Claude هو الافتراضي)؛ الاحتياط صامت عند التعطل فقط
-      const chatStatus = makeChatStatus(thinkingDiv);
-  window.__chatStatus = chatStatus;
       const isBuildTask = __routeFix && !__gateNoBuild;
       const __selProv = localStorage.getItem('aiapp_provider') || 'claude';
       // v262 — 🎯 التوجيه بالتخصص: في الوضع الافتراضي فقط (المستخدم ما اختار مزودًا بيده)
@@ -2284,18 +2422,43 @@ async function sendPrompt(){
       // حتى لو المستخدم واقف على مزود نظره ضعيف بالصور (Cohere/Groq...). الواجهة ما تتغير.
       const __visionOverride = (imageAttachments.length && text && /(ترجم|ترجمه|ترجمة|ترجملي|translate|translation|اقرأ|اقري|إقرأ|قراءة|شو مكتوب|وش مكتوب|ما المكتوب|what does it say|read the)/i.test(text)) ? 'claude' : null;
       // v382: بوابة البناء دائمًا تروح لـ Claude (الكينج) — أي مزود ثاني ممنوع يوصف البناء
-      const __effProv = __gateNoBuild ? 'claude' : (__visionOverride || __specProv || __selProv);
+      // v401: البناء وإصلاح الكود يثبتان على Claude — لا كل رسالة قصيرة.
+      //
+      // v388 استخدم __routeFix، وكان خطأ: تعريفه أوسع بكثير من اسمه. فهو يشمل
+      // __editIntent، الذي يتحقّق لأي رسالة ≤ 90 حرفًا فيها فعل من __routeCmdRe
+      // — وتلك القائمة تحوي «ممكن» و«أبي» و«أريد» و«عطني». فبمجرد وجود مشروع
+      // مفتوح، «ممكن تشرح لي كذا» كانت تُعتبر تعديل كود وتُحوَّل إلى Claude رغم
+      // اختيار المستخدم Gemini.
+      //
+      // الصحيح: بوابة البناء (موافقة صريحة) أو طلب إصلاح صريح («صلّح»، «ما
+      // يشتغل»، «error»). أما «ممكن…» فتحترم الزر الذي ضغطه المستخدم.
+      // v405: احترام الزر خيارٌ للمستخدم — من يريد مزوده في كل شيء يثبته ويتحمّل نتيجته.
+      var __pinProv = false;
+      try{ __pinProv = localStorage.getItem('aiapp_pin_provider') === '1'; }catch(e){ __swallow(e, 'ui:pinprov'); }
+      const __effProv = (!__pinProv && (__gateNoBuild || __routeFix)) ? 'claude' : (__visionOverride || __specProv || __selProv);
+      // v405: التحويل يُعلَن بدل الصمت — المستخدم يرى مزودًا غير الذي اختاره فيظن الاختيار معطّلًا.
+      try{
+        var __selLabel = (typeof functionalLabel === 'function') ? functionalLabel(__selProv) : __selProv;
+        if(__effProv !== __selProv && window.__chatStatus && !window.__chatStatus.isReleased()){
+          var __why = (__gateNoBuild || __routeFix) ? 'البناء وتعديل الكود'
+                    : (__visionOverride ? 'قراءة الصور' : 'هذا النوع من الطلبات');
+          window.__chatStatus.note('↪️', 'اخترتَ ' + __selLabel + ' — و' + __why + ' يُنفَّذ بـ ' +
+            ((typeof functionalLabel === 'function') ? functionalLabel(__effProv) : __effProv) +
+            ' لأنه الأدقّ فيه. محادثتك العادية تبقى على ' + __selLabel + '.');
+        }
+      }catch(e){ __swallow(e, 'ui:switchnote'); }
       const __teamOrder = [__effProv, ...(__routeFix ? ['claude', 'openai', 'deepseek'] : ['claude', 'openai', 'gemini']).filter(p => p !== __effProv)];
       window.__claudeModelOverride = null;
       window.__claudeThinking = !__routeFix && __selProv === 'claude'; // 🧠 تفكير داخلي قبل الرد في النقاش العادي (Claude فقط)
       if(__gateNoBuild){
         // 🔒 دور البوابة: صف الفكرة واسأل الإذن — ممنوع البناء الآن.
         apiMessages.push({ role: 'system', content: 'The user asked to build something, but you must NOT build yet. Reply in plain conversational text only (no code blocks at all): briefly describe in 2-3 sentences what you plan to build, then END your reply with exactly one question asking permission to start, e.g. in Arabic: "تبيني أبدأ البناء الحين؟". Do not start building until the user approves in their next message.' });
-      } else if(!__routeFix && __selProv !== 'claude'){
+      } else if(!__routeFix && __selProv !== 'claude' && !AI_FACTORY_MODE()){
         // 🎭 شخصية حرة: المزود المختار يرد بأسلوبه وشخصيته الأصلية — قواعد الأمانة فقط إلزامية.
-        apiMessages.unshift({ role: 'system', content: 'حافظ على شخصيتك وأسلوبك الطبيعي الخاص بالكامل — القواعد التالية قواعد أمانة إلزامية فقط ولا تغيّر أسلوبك:\n1) رد بلغة المستخدم نفسها، وجاوب على آخر رسالة فقط دون خلط أي موضوع سابق.\n2) أنت الآن في وضع نقاش عادي وليس وضع بناء: ممنوع أن تعرض بناء تطبيق أو موقع أو أي شيء، وممنوع وضع أكواد برمجية في الرد — إلا إذا طلب المستخدم البناء صراحةً.\n3) ممنوع الادعاء أنك سويت أو عدلت شيئًا لم تفعله فعلًا، وممنوع إنكار شيء موجود في المحادثة السابقة.\n4) ممنوع اختراع أرقام هواتف أو جهات تواصل، وممنوع تقديم معلومات غير مؤكدة كحقائق.\n5) ممنوع مناداة المستخدم بأي اسم يظهر داخل التصاميم أو الشهادات.\n6) هذا التطبيق اسمه "Omran AI Builder" من تطوير فريق عمران AI.' });
-      } else if(!__routeFix){
-        apiMessages.unshift({ role: 'system', content: 'أنت شريك نقاش حقيقي، مش مجرد مجيب أسئلة. أسلوبك الإلزامي:\n(0) أسلوبك العام: ودود عملي مباشر — جُمل قصيرة واضحة، دقة قبل كل شي (إذا ما أنت متأكد قلها صراحة ولا تخمّن)، تفهم اللهجة الإماراتية والخليجية بشكل طبيعي (مثل: شو، ليش، وايد، عيل، انزين، أبي/أبغي، مب، حق) وترد بعربية بسيطة قريبة من كلام المستخدم.\n(1) ناقش مثل إنسان خبير جالس مع صديقه: افهم قصده الحقيقي من كلامه حتى لو ما صاغه بدقة، وجاوب على القصد مش على الحروف.\n(2) الذاكرة للفهم فقط: استخدم سياق المحادثة لفهم المستخدم وتذكّر تفاصيله وقراراته ولا تسأله عن شي قاله من قبل — لكن جاوب على آخر رسالة فقط. ممنوع منعًا باتًا إعادة الإجابة على أي سؤال سابق تمت الإجابة عليه، وممنوع تلخيص أو استعادة مواضيع قديمة من نفسك.\n(3) كن صادقًا وواقعيًا ١٠٠٪: إذا فكرته فيها خطأ أو خطر قل له بوضوح واشرح السبب بالمنطق والأرقام — المجاملة الكاذبة ممنوعة. وإذا سُئلت عن شخص أو شي مغمور ما تعرفه فعلًا قل ذلك بصدق.\n(3ب) قاعدة إلزامية — جاوب بأفضل ما عندك من أول رد: ممنوع منعًا باتًا رفض الإجابة أو الرد بـ"ما عندي معلومات دقيقة أو مؤكدة" أو طلب تفاصيل قبل تقديم جواب كامل. أعطِ دائمًا أفضل وأشمل إجابة ممكنة من معرفتك العامة فورًا (ملخصات، نماذج امتحانات، خطط، أمثلة كاملة)، وإذا كانت تقريبية أضف تنويهًا من سطر واحد فقط في نهاية الرد، ثم اسأل سؤال تخصيص واحد إن لزم. الرفض أو طلب التفاصيل بدل الجواب = فشل.\n(4) لك رأي وشخصية: عند أي مقارنة أو قرار اعطِ توصيتك الواضحة مع السبب، ولا تكتفِ بسرد الخيارات. أسلوب المستشار الإلزامي عند طلب رأي أو نصيحة (شو رايك/انصحني/أيهما أفضل): ابدأ برأيك الصريح في جملة واحدة، ثم أسباب مرقمة (١، ٢، ٣) قصيرة، ثم اذكر نقطة مقابلة أو تحفظًا واحدًا إن وجد، واختم بخلاصة من سطر واحد. إذا الفكرة غلط قل بوضوح "لا أنصح" مع السبب — ممنوع المجاملة على حساب الصدق.\n(5) عمق الرد حسب الموضوع: سؤال بسيط = جواب مباشر في 1-3 جمل. نقاش أو قرار أو موضوع متشعب = رد غني منظم بعناوين أو نقاط قصيرة، بأمثلة عملية وأرقام حقيقية، بدون حد أقصى للطول ما دام كل جملة تضيف قيمة.\n(6) ممنوع الحشو والعموميات والمقدمات مثل "بالتأكيد!" أو "سؤال رائع"، وممنوع تكرار سؤال المستخدم، وممنوع مناداته بألقاب مثل "كابتن".\n(7) فكّر قبل ما ترد: حلّل المشكلة خطوة خطوة داخليًا، ثم قدّم الزبدة النهائية فقط.\n(7ب) مراجعة ذاتية إلزامية قبل الإرسال: افحص ردك — هل فيه معلومة غير مؤكدة قدمتها كحقيقة؟ هل يناقض شيئًا قلته سابقًا في المحادثة؟ هل فيه تركيب لغوي ركيك مترجم حرفيًا (مثل «إيش عن مسائك؟» أو «كيف يمكنني مساعدتك؟»)؟ صحح قبل الإرسال. ردك يجب أن يصمد أمام مهندس ومبرمج خبير — أي خطأ واضح = فشل.\n(7ج) ممنوع منعًا باتًا إنكار شي موجود في المحادثة السابقة أو الادعاء أن نقاشًا لم يحدث — راجع السياق أعلاه قبل أي نفي. وممنوع الادعاء أنك سويت أو عدلت شي ما سويته فعلًا.\n(8) اختم بسؤال أو اقتراح ذكي واحد فقط إذا كان يدفع النقاش فعلًا للأمام — وإلا لا تختم بشي.\n(9) ممنوع وضع أكواد برمجية في النقاش.\n(10) قاعدة صارمة: أنت الآن في وضع نقاش عادي، مش وضع بناء. السؤال العادي جاوبه كنقاش عادي — ممنوع منعًا باتًا أن تعرض بناء تطبيق أو موقع أو مساعد أو أي شي، وممنوع أن تفترض أن المستخدم يريد بناء شي، إلا إذا هو نفسه طلب البناء صراحة. إذا سألك "هل تعرف فلان/شي؟" وما تعرفه، قل "ما أعرف" واسأله عنه بفضول طبيعي كصديق — لا تحوّل السؤال لعرض خدمة مثل "أبنيها لك". ولا تخلط موضوعًا بموضوع: كل سؤال جديد عامله بمعزل عن أي طلب بناء سابق.\n(11) رد بلغة المستخدم نفسها وبروح دافئة واثقة، مع خفة دم خفيفة عند المناسبة.\n(12) أسلوب المستشار الخاص: ادخل بصلب الموضوع من أول كلمة بدون تمهيد، رأيك الصريح أولًا ثم الأسباب، ولا تسرد نصائح عامة يعرفها الجميع — أعطِ الزبدة اللي ما يقولها إلا خبير جالس معه.' });
+        apiMessages.unshift({ role: 'system', content: 'حافظ على شخصيتك وأسلوبك الطبيعي الخاص بالكامل — القواعد التالية قواعد أمانة إلزامية فقط ولا تغيّر أسلوبك:\n1) رد بلغة المستخدم نفسها. افهم آخر رسالة في سياق المحادثة كلها — إذا الرسالة كلمة أو كلمتين (مثل اسم مكان أو تأكيد) فهي تكملة للموضوع السابق وليست سؤالًا جديدًا مستقلًا.\n2) وضع نقاش عادي — ممنوع عرض بناء أو كود إلا إذا طُلب صراحة.\n3) ممنوع الادعاء أنك سويت شيئًا لم تفعله، وممنوع إنكار شيء موجود بالمحادثة.\n4) ممنوع اختراع أرقام هواتف أو معلومات تواصل.\n5) ممنوع مناداة المستخدم بأي اسم إلا إذا كان محفوظًا في ذاكرته — لا «محمد» ولا أي اسم افتراضي.\n6) هذا التطبيق اسمه "Omran AI Builder" من تطوير فريق عمران AI.' });
+      } else if(!__routeFix && !AI_FACTORY_MODE()){
+        // v465: compressed Q&A prompt — from ~6000 chars to ~1200 to prevent model confusion after many messages
+        apiMessages.unshift({ role: 'system', content: 'أنت شريك نقاش حقيقي — خبير ودود وصادق. تفهم اللهجة الإماراتية والخليجية طبيعيًا.\n(1) افهم آخر رسالة في سياق المحادثة كلها — إذا الرسالة كلمة أو كلمتين (اسم مكان/تأكيد) فهي تكملة للموضوع السابق وليست سؤالًا جديدًا مستقلًا.\n(2) جاوب بأفضل ما عندك فورًا. إذا تقريبي أضف تنويه سطر واحد بالنهاية.\n(3) كن صادقًا 100%: إذا ما تعرف قل ما أعرف. ممنوع اختراع أرقام هواتف أو معلومات تواصل.\n(4) سؤال بسيط = 1-3 جمل. موضوع متشعب = رد منظم بعناوين.\n(5) ممنوع: مناداة المستخدم بأي اسم إلا إذا محفوظ بالذاكرة — الحشو — ألقاب — الادعاء أنك سويت شي ما سويته.\n(6) وضع نقاش عادي — ممنوع عرض بناء أو كود إلا إذا طُلب صراحة.\n(7) رد بلغة المستخدم — ادخل بصلب الموضوع من أول كلمة.' });
       }
       let reply, providerKey, switched, requestedKey;
       // 💬 عقل واحد: Claude وحده يرد في النقاش العادي — الاحتياط (GPT ثم Gemini)
@@ -2311,7 +2474,7 @@ async function sendPrompt(){
         // 🔁 التصحيح الذاتي: فحص الكود وإصلاح أخطائه قبل العرض
         try{
           const healed = await selfHealCode(code, codeType, () => {
-            thinkingDiv.textContent = t('selfHealing');
+            chatPhase('🩹', t('selfHealing'), thinkingDiv);
             smartScrollBottom();
           });
           if(healed) code = healed;
@@ -2323,7 +2486,8 @@ async function sendPrompt(){
       void __specProv; void __selProv; void switched;
       let providerLabel = functionalLabel(providerKey);
       void switched; void requestedKey;
-      cur.messages.push({role: 'assistant', content: (isBuildTask ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: isBuildTask ? code : null, providerLabel, providerKey, askAllReply: !isBuildTask,
+      // v463: askAllReply=false — الردود العادية ما تدخل compare-row
+      cur.messages.push({role: 'assistant', content: (isBuildTask ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: isBuildTask ? code : null, providerLabel, providerKey, askAllReply: false,
         // 🚫 v368: الصور والمصادر لم تعد تُعرض في المحادثة — مكانها المتصفح فقط.
         sources: undefined,
         searchImages: undefined});
@@ -2333,7 +2497,7 @@ async function sendPrompt(){
           if(typeof showPremiumDeduction === 'function') showPremiumDeduction();
           if(typeof refreshPremiumPoints === 'function') refreshPremiumPoints();
         }
-      }catch(_){}
+      }catch(_){ __swallow(_, "points:app-09-attach#27"); }
     }
   }catch(err){
     if(err && err.name === 'AbortError'){
@@ -2348,9 +2512,9 @@ async function sendPrompt(){
       // 👑 نفاد النقاط أثناء الرد الاحترافي: رسالة ودّية + طريقة لشراء نقاط،
       // وإطفاء الوضع الاحترافي حتى تكون الرسالة التالية مجانية.
       window.__premiumOn = false;
-      try{ if(typeof updatePremiumToggleVisibility === 'function') updatePremiumToggleVisibility(); }catch(_){}
-      try{ settingsToast(t('premiumNoPoints')); }catch(_){}
-      try{ if(typeof openPremiumBuyPoints === 'function') openPremiumBuyPoints(); }catch(_){}
+      try{ if(typeof updatePremiumToggleVisibility === 'function') updatePremiumToggleVisibility(); }catch(_){ __swallow(_, "points:app-09-attach#28"); }
+      try{ settingsToast(t('premiumNoPoints')); }catch(_){ __swallow(_, "points:app-09-attach#29"); }
+      try{ if(typeof openPremiumBuyPoints === 'function') openPremiumBuyPoints(); }catch(_){ __swallow(_, "points:app-09-attach#30"); }
     } else {
       cur.messages.push({role: 'assistant', content: '⚠️ ' + err.message});
     }
@@ -2358,7 +2522,6 @@ async function sendPrompt(){
     genAbortController = null;
     btnStop.classList.remove('live');
     sendBtn.disabled = false;
-    if(window.__chatStatus){ window.__chatStatus.release(); delete window.__chatStatus; }
     sendBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px;display:block"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>';
     saveState();
     renderAll();
@@ -2368,9 +2531,9 @@ async function sendPrompt(){
       if(__lastA && __lastA.content && !String(__lastA.content).startsWith('⚠️')){
         memoryUpdate(text, String(__lastA.content));
         // 🗂️ v326: تحديث ملخص موضوع هذه المحادثة في الذاكرة السحابية
-        try{ window.memoryTopicUpdate && window.memoryTopicUpdate(cur, text, String(__lastA.content)); }catch(e){}
+        try{ window.memoryTopicUpdate && window.memoryTopicUpdate(cur, text, String(__lastA.content)); }catch(e){ __swallow(e, "misc:app-09-attach#31"); }
       }
-    }catch(e){}
+    }catch(e){ __swallow(e, "misc:app-09-attach#32"); }
     if($('#btnVoiceChat').classList.contains('active')){
       const lastMsg = cur.messages[cur.messages.length - 1];
       if(lastMsg && lastMsg.role === 'assistant' && lastMsg.content){
@@ -2406,7 +2569,7 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
       state.projects = merged;
       await idbSet('aiapp_projects', JSON.parse(JSON.stringify(merged)));
       localStorage.setItem('aiapp_idb_on', '1');
-      try{ localStorage.removeItem('aiapp_projects'); }catch(e){}
+      try{ localStorage.removeItem('aiapp_projects'); }catch(e){ __swallow(e, "save:app-09-attach#33"); }
       renderAll();
     } else {
       const idbProjects = await idbGet('aiapp_projects');
@@ -2431,7 +2594,7 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
         });
       });
       if(cleaned) saveState();
-    }catch(e){}
+    }catch(e){ __swallow(e, "save:app-09-attach#34"); }
     // 🧹 v310: تنظيف بقايا الجلسات المقطوعة — معرفات _uid القديمة (تسبب تصادم
     // البث مع فقاعات قديمة) + فقاعات "⏳/يجهز" عالقة انحفظت قبل اكتمال الرد.
     try{
@@ -2448,7 +2611,7 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
         });
       });
       if(fixed) saveState();
-    }catch(e){}
+    }catch(e){ __swallow(e, "save:app-09-attach#35"); }
     // 🔁 فتح آخر مشروع تلقائيًا حتى يشوف المستخدم آخر محادثته فورًا.
     if(!state.currentId && state.projects.length){
       const savedId = localStorage.getItem('aiapp_current_id');
@@ -2456,7 +2619,7 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
       if(p){
         state.currentId = p.id;
         renderAll();
-        try{ messagesEl.scrollTop = messagesEl.scrollHeight; }catch(e){}
+        try{ messagesEl.scrollTop = messagesEl.scrollHeight; }catch(e){ __swallow(e, "misc:app-09-attach#36"); }
       }
     }
   }catch(e){
@@ -2470,3 +2633,25 @@ if('speechSynthesis' in window){
   window.speechSynthesis.getVoices();
   window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
 }
+
+/* ───────── تأكيد قبل صرف النقاط ─────────
+   الخادم يرجع 428 مع السعر بدل التنفيذ الصامت. هنا نعرضه ونعيد الطلب
+   بـ confirmed:true فقط بعد موافقة صريحة. */
+async function postWithConfirm(url, payload){
+  const send = (body) => fetch(url, {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body),
+    signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+  });
+  let res = await send(payload);
+  if(res.status !== 428) return res;
+
+  let q = {};
+  try { q = await res.json(); } catch(e){ console.warn('[confirm] bad quote', e); }
+  const isEn = (typeof AL === 'function' && AL() === 'en');
+  const msg = q.message_ar || ((isEn ? 'This will cost ' : 'هذه العملية تخصم ')
+    + (q.cost || '?') + (isEn ? ' points' : ' نقطة') + (q.label ? ' (' + q.label + ')' : '') + '.');
+  const okToSpend = confirm(msg + '\n' + (isEn ? 'Continue?' : 'أكمل؟'));
+  if(!okToSpend) return res;
+  return await send(Object.assign({}, payload, { confirmed: true }));
+}
+window.postWithConfirm = postWithConfirm;

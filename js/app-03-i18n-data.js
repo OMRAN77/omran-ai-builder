@@ -64,7 +64,7 @@ const I18N = {
 
     fileChooseBtn: '📁 اختيار ملف',
     fileNoneChosen: 'لم يتم اختيار ملف',
-    pageTitle: 'مُنشئ التطبيقات بالذكاء الاصطناعي',
+    pageTitle: ' ',
     appTitle: 'مُنشئ التطبيقات بالذكاء الاصطناعي',
     offlineBanner: '⚠️ أنت غير متصل بالإنترنت — تقدر تتصفح المحادثات المحفوظة، لكن الذكاء الاصطناعي يحتاج اتصالًا',
     backOnlineBanner: '✅ عاد الاتصال بالإنترنت',
@@ -109,6 +109,7 @@ const I18N = {
     importProjectsError: '❌ الملف غير صالح، تأكد أنه ملف تصدير مشاريع سليم',
     acctAvatarBtn: '📷 تغيير الصورة',
     acctUsernameLabel: 'اسم المستخدم',
+    acctPasswordRow: 'كلمة المرور',
     acctSaveBtn: 'حفظ',
     acctEmailLabel: '📧 الإيميل الاحتياطي (لاسترجاع كلمة المرور)',
     acctInvalidEmail: 'صيغة الإيميل غير صحيحة',
@@ -312,6 +313,9 @@ const I18N = {
     constructionRoomColorPh: 'لون الديكور (مثال: بيج وذهبي)',
     constructionRoomViewBtn: '👁️ شاهد الغرفة',
     constructionRunBtn: '✨ ولّد التصميم',
+    snapBuildLabel: '📸 ورّني وأبنيه',
+    constructionEditorBtn: '📐 محرّر المخططات التفاعلي — اسحب وعدّل بنفسك',
+    constructionEditorHint: 'مخطط بمساحات محسوبة رياضيًا، تعدّله بأصبعك، ثم تولّد صور الواجهة والمجلس منه',
     constructionGenerating: '⏳ جارٍ توليد التصميم...',
     carToolsDesc: '11 أداة ذكاء اصطناعي لكل ما يخص سيارتك: تشخيص، تعديل صور، مقارنة، فحص، وأكثر.',
     carTool1: '🔧 تصليح AI', carTool2: '🎨 تعديل صورة السيارة', carTool3: '⚙️ تزويد المحرك',
@@ -571,7 +575,29 @@ const I18N = {
     uploadCode: 'رفع',
     uploadCodeTitle: 'رفع ملف كود (HTML أو Python)',
     newProject: '+ مشروع جديد',
-    promptPlaceholder: 'صف التطبيق أو اللعبة أو الموقع الذي تريد بناءه... مثال: لعبة ثعبان بسيطة',
+    promptPlaceholder: 'اكتب رسالتك هنا ...',
+    omNavHome: 'الرئيسية',
+    omNavChats: 'المحادثات',
+    omNavTools: 'الأدوات',
+    omNavFiles: 'الملفات',
+    omNavSettings: 'الإعدادات',
+    quickToolsTitle: 'أدوات سريعة',
+    tplMathName: 'حل مسائل رياضية',
+    tplMathDesc: 'حل ونمذجة خطوات',
+    tplSumName: 'تلخيص المقالات',
+    tplSumDesc: 'تلخيص ذكي وسريع',
+    tplWriteName: 'كتابة محتوى احترافي',
+    tplWriteDesc: 'مقالات ونصوص إبداعية',
+    tplCodeName: 'مساعدة في البرمجة',
+    tplCodeDesc: 'كود وحلول تقنية',
+    tplImageName: 'إنشاء الصور',
+    tplImageDesc: 'صور احترافية بالذكاء الاصطناعي',
+    tplEduName: 'شرح مواضيع معقدة',
+    tplEduDesc: 'تبسيط وفهم أعمق',
+    qtWebSearch: 'بحث في الإنترنت',
+    qtTranslate: 'ترجمة نص',
+    qtSummarize: 'تلخيص نص',
+    qtAnalyzeFile: 'تحليل ملف',
     send: 'إرسال',
     preview: 'المعاينة',
     code: 'الكود',
@@ -728,13 +754,12 @@ const I18N = {
     shareAppBtn: 'مشاركة التطبيق',
     refreshBtnTitle: 'تحديث الصفحة',
     langBtn: 'EN',
-    systemPrompt: `أنت المساعد الذكي داخل تطبيق «Omran AI Builder» من تطوير فريق عمران AI. إذا سُئلت عن اسم هذا التطبيق أو من طوّره، أجب بذلك. أنت مساعد ودود يتكلم عربي، ومتخصص أيضًا في بناء تطبيقات ويب كاملة داخل ملف HTML واحد، وأيضًا كتابة سكربتات بايثون قابلة للتشغيل مباشرة.
-- إذا كانت رسالة المستخدم مجرد سلام أو سؤال عادي أو دردشة (وليست طلب بناء أو تعديل تطبيق)، رُدّ عليه بشكل طبيعي ومحادثي عادي بدون أي كود ولا كتلة كود إطلاقًا.
-- الوضع الافتراضي: إذا طلب المستخدم صراحة إنشاء أو تعديل تطبيق/أداة/لعبة/موقع، ابنِ تطبيقًا كاملاً يعمل مباشرة باستخدام HTML وCSS وJavaScript فقط داخل ملف واحد (بدون طلبات خارجية أو مكتبات تحتاج تثبيت، يمكن استخدام CDN عند الحاجة). في هذه الحالة: اكتب أولاً شرحًا قصيرًا جدًا وودودًا (سطر إلى سطرين فقط، بدون تفاصيل تقنية مطولة) عن اللي بنيته أو عدّلته، ثم أعد الكود الكامل مباشرة داخل كتلة كود واحدة بصيغة \`\`\`html ... \`\`\`. لا تشرح كيف يعمل الكود بالتفصيل في الرد النصي؛ اجعل الشرح التقني (إن وجد) كتعليقات مختصرة داخل الكود نفسه فقط.
-- تطبيقات/ألعاب 3D: يمكنك بناء مشاهد وألعاب ثلاثية الأبعاد فعلية داخل المتصفح باستخدام مكتبة Three.js عبر CDN (مثال: <scr` + `ipt src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></scr` + `ipt>) داخل نفس ملف HTML. وضّح دائمًا للمستخدم أن هذه ألعاب/مشاهد ويب ثلاثية الأبعاد مبسطة، وأنها لا يمكن أن تضاهي واقعية محركات ألعاب احترافية مثل Unity أو Unreal Engine، لكنها تعمل فعليًا وبشكل تفاعلي داخل المتصفح مباشرة.
-- الخوارزميات: أنت متمكّن من كل أنواع الخوارزميات وتستخدمها بذكاء عند بناء أي تطبيق يحتاجها، مثل: خوارزميات الترتيب (Bubble/Quick/Merge/Heap Sort)، البحث (Binary Search، البحث الخطي)، هياكل البيانات (Stack، Queue، Linked List، Tree، Heap، Hash Map/Set، Trie، Graph)، خوارزميات الرسوم البيانية (BFS، DFS، Dijkstra، A* لإيجاد أقصر مسار)، البرمجة الديناميكية (Dynamic Programming) والخوارزميات الجشعة (Greedy) والتراجع (Backtracking) لحل المسائل المعقدة، خوارزميات النصوص (مطابقة الأنماط، Levenshtein Distance)، خوارزميات رياضية (الأعداد الأولية، GCD/LCM، الاحتمالات)، وخوارزميات الذكاء الاصطناعي البسيطة (Minimax مع Alpha-Beta Pruning لألعاب مثل XO والشطرنج، خوارزميات المسارات لألعاب المتاهات وحركة الأعداء). اختر دائمًا الخوارزمية الأنسب والأكفأ من حيث الأداء (تعقيد الوقت والذاكرة) حسب حجم المدخلات المتوقع، واشرح باختصار في ردك أي خوارزمية استخدمتها وسبب اختيارها إذا كانت جوهر الطلب (مثل حل مسألة خوارزمية أو لعبة ذكاء اصطناعي).
-- بايثون: فقط إذا طلب المستخدم صراحة كود بايثون أو سكربت بايثون أو حل بلغة بايثون (وليس تطبيق ويب)، اكتب شرحًا قصيرًا ثم أعد كود بايثون كاملاً داخل كتلة كود بصيغة \`\`\`python ... \`\`\` فقط (بدون مكتبات خارجية تحتاج تثبيت عبر pip؛ فقط مكتبات بايثون القياسية أو numpy/pandas إن وُجدت). هذا الكود سيُشغَّل تلقائيًا داخل المتصفح ويظهر ناتجه (print) للمستخدم مباشرة.
-- إذا كان تعديلاً على تطبيق أو كود سابق، اشرح باختصار وش غيّرت، ثم عدّل الكود الموجود وأعد الملف كاملاً محدّثًا داخل كتلة الكود بنفس اللغة (html أو python) المستخدمة سابقًا.`,
+    systemPrompt: `أنت ذكاء اصطناعي واسع المعرفة داخل تطبيق «Omran AI Builder» من فريق عمران AI.
+أسلوبك: راقي وطبيعي — مثل خبير ودود يفهم كل شي ويتكلم بوضوح وعمق. نوّع تعبيراتك ولا تكرر العبارات الجاهزة. رتّب إجاباتك بشكل مريح للقراءة.
+- سؤال عادي أو دردشة = رد محادثي غني بالمعلومات. بدون أي كود.
+- طلب بناء/تعديل تطبيق أو موقع أو لعبة = اشرح باختصار (سطرين) ثم أعد ملف HTML+CSS+JS كامل يعمل مباشرة في كتلة \`\`\`html واحدة. يمكنك استخدام CDN. الألعاب 3D = Three.js عبر CDN.
+- تعديل كود موجود = غيّر الجزء المطلوب فقط وأعد الملف كاملاً.
+- بايثون = فقط إذا طُلب صراحة. كتلة \`\`\`python واحدة.`,
     guestLimitMsg: '🎉 استخدمت رسائلك المجانية العشرين! سجّل الدخول لحسابك (أو أنشئ حسابًا جديدًا) عشان تكمل الدردشة.',
     guestImageMsg: '🎁 خلصت صورك المجانية الثلاث كضيف! أنشئ حسابًا مجانيًا خلال ثوانٍ وبتحصل على 70 نقطة هدية تكمل فيها توليد وتعديل الصور.',
     pricingSectionTitle: 'الباقات والنقاط',
@@ -847,7 +872,7 @@ const I18N = {
 
     fileChooseBtn: '📁 Choose file',
     fileNoneChosen: 'No file chosen',
-    pageTitle: 'AI App Builder',
+    pageTitle: ' ',
     appTitle: 'AI App Builder',
     offlineBanner: "⚠️ You're offline — you can browse saved chats, but AI replies need an internet connection",
     freezeBannerMsg: '⚠️ The app is responding slowly… your work was auto-saved. Reload now?',
@@ -939,6 +964,7 @@ const I18N = {
     importProjectsError: '❌ Invalid file, make sure it is a valid projects export file',
     acctAvatarBtn: '📷 Change photo',
     acctUsernameLabel: 'Username',
+    acctPasswordRow: 'Password',
     acctSaveBtn: 'Save',
     acctEmailLabel: '📧 Backup email (for password recovery)',
     acctReferralLabel: '🔗 Invite friends link',
@@ -993,7 +1019,29 @@ const I18N = {
     copyMsgTitle: 'Copy reply',
     uploadCodeTitle: 'Upload a code file (HTML or Python)',
     newProject: '+ New Project',
-    promptPlaceholder: 'Describe the app, game, or website you want to build... e.g. a simple snake game',
+    promptPlaceholder: 'Type your message here ...',
+    omNavHome: 'Home',
+    omNavChats: 'Chats',
+    omNavTools: 'Tools',
+    omNavFiles: 'Files',
+    omNavSettings: 'Settings',
+    quickToolsTitle: 'Quick Tools',
+    tplMathName: 'Solve Math Problems',
+    tplMathDesc: 'Step-by-step solutions',
+    tplSumName: 'Summarize Articles',
+    tplSumDesc: 'Smart, fast summaries',
+    tplWriteName: 'Professional Writing',
+    tplWriteDesc: 'Articles & creative texts',
+    tplCodeName: 'Coding Help',
+    tplCodeDesc: 'Code & tech solutions',
+    tplImageName: 'Create Images',
+    tplImageDesc: 'Professional AI images',
+    tplEduName: 'Explain Complex Topics',
+    tplEduDesc: 'Simplified, deeper understanding',
+    qtWebSearch: 'Web Search',
+    qtTranslate: 'Translate Text',
+    qtSummarize: 'Summarize Text',
+    qtAnalyzeFile: 'Analyze File',
     send: 'Send',
     preview: 'Preview',
     code: 'Code',
@@ -1246,6 +1294,9 @@ const I18N = {
     constructionRoomColorPh: 'Decor color (e.g. beige and gold)',
     constructionRoomViewBtn: '👁️ View room',
     constructionRunBtn: '✨ Generate design',
+    snapBuildLabel: '📸 Snap & build',
+    constructionEditorBtn: '📐 Interactive floor-plan editor — drag & edit yourself',
+    constructionEditorHint: 'A plan with mathematically computed areas — edit by touch, then generate facade & majlis images from it',
     constructionGenerating: '⏳ Generating design...',
     carToolsDesc: '11 AI tools for everything about your car: diagnostics, photo edits, comparisons, inspections, and more.',
     carTool1: '🔧 AI Repair', carTool2: '🎨 Edit Car Photo', carTool3: '⚙️ Engine Tuning',
@@ -1573,19 +1624,12 @@ const I18N = {
     shareAppBtn: 'Share App',
     refreshBtnTitle: 'Refresh Page',
     langBtn: 'ع',
-    systemPrompt: `You are the AI assistant inside the app 'Omran AI Builder', developed by the Omran AI Team (فريق عمران AI). If asked about this app's name or its developer, answer with that. You are a friendly assistant who is also an expert at building complete web apps as a single HTML file, and also at writing standalone Python scripts that can run directly.
-- If the user's message is just a greeting, a general question, or casual chat (not a request to build or modify an app), reply normally in a conversational way with NO code block at all.
-- Default mode: if the user explicitly asks to create or modify an app/tool/game/website, build a fully working app using only HTML, CSS, and JavaScript in one single file (no external requests or libraries requiring installation; CDN links are allowed if needed). In that case: first write a short, friendly explanation (2-4 lines) about what you built or changed and its key features, then return the full code inside a single \`\`\`html ... \`\`\` code block.
-- 3D apps/games: you can build real, interactive 3D scenes and games directly in the browser using the Three.js library via CDN (e.g. <scr` + `ipt src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></scr` + `ipt>) inside the same HTML file. When the project needs real physics (gravity, collisions, objects rolling or falling, joints/constraints), add the Cannon-es library via CDN as an ES module (e.g. <scr` + `ipt type="module">import * as CANNON from "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js";</scr` + `ipt>), pair each Three.js Mesh with a matching Cannon.Body, and sync the Mesh's position/rotation from the physics step (world.step) inside the requestAnimationFrame loop. This gives genuinely realistic physical interaction (bouncing balls, colliding boxes, falling characters) at a very solid level for the web. Always make clear to the user that these are 3D web scenes/games with simplified physics, and cannot match the realism of professional game engines like Unity or Unreal Engine (which are massive installed applications with far more advanced graphics and physics engines), but they do run fully and interactively right in the browser with zero installation.
-- Python: only if the user explicitly asks for Python code, a Python script, or a solution in Python (not a web app), write a short explanation then return the full Python code inside a single \`\`\`python ... \`\`\` code block only (no external packages requiring pip install; standard library or numpy/pandas if available). This code will automatically run in the browser and its output (print) will be shown to the user directly.
-- If it's an edit to a previous app or script, briefly explain what you changed, then modify the existing code and return the complete updated file inside the code block, in the same language (html or python) used previously.
-STRICT MANDATORY RULES when editing existing code (always follow, no exceptions):
-1. Only change the specific part the user asked to change. Do not touch any other line, element, function, or styling unrelated to the request.
-2. Preserve the rest of the code 100% verbatim: same variable names, function names, ids, classes, comments, and formatting — no unrequested rewrites or "improvements".
-3. Never delete any existing feature, button, or piece of code unless the user explicitly asked to remove it.
-4. Never rewrite the app from scratch for a small edit request; keep the current structure and design intact.
-5. Always return the full file (existing code + only the requested change), never a partial snippet.
-6. If unsure about the intent of an edit, choose the most conservative interpretation (minimal change) rather than the most creative one.`,
+    systemPrompt: `You are a deeply knowledgeable AI inside 'Omran AI Builder', developed by the Omran AI Team (فريق عمران AI).
+Style: refined and natural — like a warm, articulate expert. Vary your language; never repeat stock phrases. Structure answers for easy reading.
+- General questions or chat = rich, informative conversational reply. NO code.
+- Build/modify an app, site, or game = brief explanation (2 lines) then one complete working HTML+CSS+JS file in a \`\`\`html block. CDN allowed. 3D games = Three.js via CDN.
+- Edits = change only what was requested, return the full file.
+- Python = only if explicitly requested. One \`\`\`python block.`,
     acctInvalidEmail: "Invalid email format",
     emailAssistTitle: "📧 Smart Email Assistant",
     diffBtn: "Differences",

@@ -143,7 +143,17 @@ async function buildCodeFromPrompt(promptText){
     state.currentId = id;
   }
   try{
-    const apiMessages = [{role: 'system', content: t('systemPrompt') + APP_IDENTITY_NOTE + BUILD_COMPLETENESS_RULE + DESIGN_POSTER_RULE + NO_FAKE_EDIT_RULE + CHAT_STYLE_RULE + APP_CAPABILITY_RULE + TOPIC_FOLLOW_RULE}];
+    // v464 — حقن ذكي: قواعد البناء فقط إذا الطلب صوتي فيه نية بناء.
+    const __vBldRe = /(ابني|ابن\s|بناء|اعمل|أعمل|سوي|سوّي|صمم|انشئ|أنشئ|build|create|make|design)/i;
+    const __vAppRe = /(تطبيق|موقع|لعبة|برنامج|بوت|app|website|game|bot)/i;
+    const __vDsnRe = /(إعلان|بوستر|شهادة|بطاقة|poster|flyer|certificate|card|logo|banner)/i;
+    const __vNeedsBuild = (__vBldRe.test(promptText) && __vAppRe.test(promptText)) || __vDsnRe.test(promptText) || !!cur.code;
+    let __vSys = t('systemPrompt') + APP_IDENTITY_NOTE + CONVERSATION_QUALITY_RULE + TOPIC_FOLLOW_RULE;
+    if(__vNeedsBuild){
+      __vSys += BUILD_COMPLETENESS_RULE + NO_FAKE_EDIT_RULE + CHAT_STYLE_RULE + APP_CAPABILITY_RULE;
+      if(__vDsnRe.test(promptText)) __vSys += DESIGN_POSTER_RULE;
+    }
+    const apiMessages = [{role: 'system', content: __vSys}];
     if(cur.code){
       apiMessages.push({role: 'assistant', content: '```' + (cur.codeType === 'python' ? 'python' : 'html') + '\n' + codeForApi(cur.code) + '\n```'});
     }
@@ -366,3 +376,25 @@ document.addEventListener('click', async (e) => {
     try{ await miniMicStart(btn, targetId); } catch(err){ alert(t('micNotSupported')); }
   }
 });
+
+/* ───────── تأكيد قبل صرف النقاط ─────────
+   الخادم يرجع 428 مع السعر بدل التنفيذ الصامت. هنا نعرضه ونعيد الطلب
+   بـ confirmed:true فقط بعد موافقة صريحة. */
+async function postWithConfirm(url, payload){
+  const send = (body) => fetch(url, {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body),
+    signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+  });
+  let res = await send(payload);
+  if(res.status !== 428) return res;
+
+  let q = {};
+  try { q = await res.json(); } catch(e){ console.warn('[confirm] bad quote', e); }
+  const isEn = (typeof AL === 'function' && AL() === 'en');
+  const msg = q.message_ar || ((isEn ? 'This will cost ' : 'هذه العملية تخصم ')
+    + (q.cost || '?') + (isEn ? ' points' : ' نقطة') + (q.label ? ' (' + q.label + ')' : '') + '.');
+  const okToSpend = confirm(msg + '\n' + (isEn ? 'Continue?' : 'أكمل؟'));
+  if(!okToSpend) return res;
+  return await send(Object.assign({}, payload, { confirmed: true }));
+}
+window.postWithConfirm = postWithConfirm;

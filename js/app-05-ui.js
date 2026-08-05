@@ -14,7 +14,7 @@ function exportReplyAsPdf(text){
   if(!w) return;
   const html = '<html><head><meta charset="utf-8"><title>عمران AI</title><style>body{font-family:Tahoma,Arial,sans-serif;direction:rtl;padding:28px;line-height:2;color:#111;white-space:pre-wrap;word-break:break-word;}</style></head><body>' + msgEscapeHtml(text) + '</body></html>';
   w.document.open(); w.document.write(html); w.document.close();
-  setTimeout(() => { try{ w.focus(); w.print(); }catch(e){} }, 350);
+  setTimeout(() => { try{ w.focus(); w.print(); }catch(e){ __swallow(e, "ui:app-05-ui#1"); } }, 350);
 }
 function exportReplyAsWord(text){
   const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>عمران AI</title></head><body dir="rtl" style="font-family:Tahoma,Arial,sans-serif; line-height:2; white-space:pre-wrap;">' + msgEscapeHtml(text) + '</body></html>';
@@ -64,7 +64,12 @@ document.addEventListener('click', closeMsgMoreMenu);
 // + ملاحظة تلقائية تقترح الميزة المناسبة. الأزرار القديمة في ⋮ تبقى كما هي؛
 // هذا باب إضافي (المكانين) عشان المستخدم يختار اللي يريحه.
 var APP_CAPABILITIES = [
-
+  { id:'btnCV',       icon:'💼', ar:'مولّد السيرة الذاتية', en:'CV Builder',
+    kw:/(سيرة ذاتية|سيره ذاتيه|سي\s?في|resume|\bcv\b|خطاب تقديم|cover letter)/i },
+  { id:'btnDocs',     icon:'📄', ar:'مساعد المستندات', en:'Document Assistant',
+    kw:/(?:حلل|حلّل|اقرأ|افهم|لخص|لخّص|راجع|افحص).{0,18}(?:مستند|عقد|فاتورة|تقرير|ملف|اتفاقية|pdf)|(?:مستند|عقد|فاتورة|اتفاقية|contract|invoice)\b/i },
+  { id:'btnGov',      icon:'🧾', ar:'المعاملات الحكومية', en:'Government Services',
+    kw:/(إقامة|اقامة|رخصة تجارية|رخصه|تجديد.{0,10}(هوية|جواز|رخصة|إقامة)|تأشيرة|تاشيرة|فيزا|بلدية|معاملة حكوم|خدمة حكوم|residence visa|business license|govern)/i },
   { id:'btnReligion', icon:'☪️', ar:'التفسير الديني', en:'Religious Guidance',
     kw:/(ما\s?حكم|وش\s?حكم|شو\s?حكم|فتوى|حلال\s?أو?\s?حرام|تفسير\s?(آية|اية|سورة)|معنى\s?الحديث|fatwa|is it halal|is it haram)/i },
 ];
@@ -77,14 +82,14 @@ function startTalkingCharFlow(){
       p.value = isEn ? 'Turn my photo into a talking cartoon character that says: '
                      : 'حوّل صورتي لشخصية كرتونية تتكلم وتقول: ';
       p.focus();
-      try{ p.setSelectionRange(p.value.length, p.value.length); }catch(_){}
+      try{ p.setSelectionRange(p.value.length, p.value.length); }catch(_){ __swallow(_, "ui:app-05-ui#2"); }
     }
     if(typeof settingsToast==='function') settingsToast((typeof lang!=='undefined'&&lang==='en')?'📎 Attach your photo, then send.':'📎 أرفق صورتك ثم أرسل.');
-  }catch(e){}
+  }catch(e){ __swallow(e, "upload:app-05-ui#3"); }
 }
 function openFeatureById(id){
   if(id==='__talk'){ startTalkingCharFlow(); return; }
-  try{ var b=document.getElementById(id); if(b) b.click(); }catch(e){}
+  try{ var b=document.getElementById(id); if(b) b.click(); }catch(e){ __swallow(e, "upload:app-05-ui#4"); }
 }
 // ملاحظة تلقائية: تفحص رسالة المستخدم السابقة وترجّع الميزة المناسبة (أو null)
 function capabilityHintFor(userText){
@@ -269,7 +274,7 @@ $('#btnDeleteAll').onclick = () => {
   if(!confirm(t('confirmDeleteAll'))) return;
   // v381: حذف كل المحادثات عبر chats_delete (tombstone) — ما يمسح السيرفر بالكامل.
   const __allIds = state.projects.map(p => p.id).filter(Boolean);
-  try{ __allIds.forEach(id => { if(window.chatsMarkDeleted) chatsMarkDeleted(id); }); }catch(err){}
+  try{ __allIds.forEach(id => { if(window.chatsMarkDeleted) chatsMarkDeleted(id); }); }catch(err){ __swallow(err, "misc:app-05-ui#5"); }
   state.projects = [];
   const id = 'p_' + Date.now();
   state.projects.push({id, title: t('defaultProjectTitle'), messages: [], code: ''});
@@ -284,7 +289,7 @@ $('#btnDeleteAll').onclick = () => {
         body: JSON.stringify({ token: tok, ids: __allIds }),
       }).catch(() => {});
     }
-  }catch(err){}
+  }catch(err){ __swallow(err, "misc:app-05-ui#6"); }
   renderAll();
 };
 
@@ -295,16 +300,16 @@ $('#btnDeleteAll').onclick = () => {
 #fbOverlay{position:fixed;inset:0;z-index:10050;display:none;align-items:center;justify-content:center;background:rgba(8,6,20,.62);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:16px;}
 #fbOverlay.open{display:flex;animation:fbFade .3s ease;}
 @keyframes fbFade{from{opacity:0}to{opacity:1}}
-#fbCard{position:relative;width:100%;max-width:420px;max-height:92vh;overflow-y:auto;border-radius:28px;padding:2px;background:conic-gradient(from var(--fbAng,0deg),var(--accent,#8b5cf6),#06b6d4,#f59e0b,#ec4899,var(--accent,#8b5cf6));animation:fbSpin 5s linear infinite,fbPop .45s cubic-bezier(.2,1.4,.4,1);}
+#fbCard{position:relative;width:100%;max-width:420px;max-height:92vh;overflow-y:auto;border-radius:28px;padding:2px;background:conic-gradient(from var(--fbAng,0deg),var(--accent,#d4af37),#06b6d4,#f59e0b,#ec4899,var(--accent,#d4af37));animation:fbSpin 5s linear infinite,fbPop .45s cubic-bezier(.2,1.4,.4,1);}
 @property --fbAng{syntax:'<angle>';initial-value:0deg;inherits:false;}
 @keyframes fbSpin{to{--fbAng:360deg}}
 @keyframes fbPop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
 #fbInner{border-radius:26px;background:linear-gradient(160deg,rgba(22,18,42,.98),rgba(10,8,24,.98));padding:28px 24px 24px;text-align:center;position:relative;overflow:hidden;}
-#fbInner::before{content:'';position:absolute;top:-70px;right:-70px;width:190px;height:190px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent,#8b5cf6) 32%,transparent),transparent 70%);pointer-events:none;}
+#fbInner::before{content:'';position:absolute;top:-70px;right:-70px;width:190px;height:190px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent,#d4af37) 32%,transparent),transparent 70%);pointer-events:none;}
 #fbInner::after{content:'';position:absolute;bottom:-80px;left:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(6,182,212,.18),transparent 70%);pointer-events:none;}
-#fbHeart{width:64px;height:64px;margin:0 auto 12px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--accent,#8b5cf6),#ec4899);box-shadow:0 0 32px color-mix(in srgb,var(--accent,#8b5cf6) 55%,transparent);animation:fbBeat 1.6s ease-in-out infinite;}
+#fbHeart{width:64px;height:64px;margin:0 auto 12px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--accent,#d4af37),#ec4899);box-shadow:0 0 32px color-mix(in srgb,var(--accent,#d4af37) 55%,transparent);animation:fbBeat 1.6s ease-in-out infinite;}
 @keyframes fbBeat{0%,100%{transform:scale(1)}12%{transform:scale(1.12)}24%{transform:scale(1)}36%{transform:scale(1.08)}48%{transform:scale(1)}}
-#fbTitle{font-size:21px;font-weight:700;background:linear-gradient(90deg,#fff,color-mix(in srgb,var(--accent,#8b5cf6) 60%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:4px;}
+#fbTitle{font-size:21px;font-weight:700;background:linear-gradient(90deg,#fff,color-mix(in srgb,var(--accent,#d4af37) 60%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:4px;}
 #fbSub{font-size:13px;color:var(--muted,#9aa);margin-bottom:18px;}
 #fbStars{display:flex;justify-content:center;gap:8px;margin-bottom:18px;direction:ltr;}
 .fbStar{width:42px;height:42px;cursor:pointer;transition:transform .18s;fill:none;stroke:#4b476b;stroke-width:1.6;}
@@ -313,11 +318,11 @@ $('#btnDeleteAll').onclick = () => {
 @keyframes fbStarPop{50%{transform:scale(1.35)}}
 #fbChips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-bottom:16px;}
 .fbChip{padding:7px 14px;border-radius:999px;font-size:12.5px;cursor:pointer;color:#cfcbe8;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);transition:all .2s;user-select:none;}
-.fbChip.on{background:linear-gradient(135deg,var(--accent,#8b5cf6),#ec4899);border-color:transparent;color:#fff;box-shadow:0 4px 14px color-mix(in srgb,var(--accent,#8b5cf6) 45%,transparent);transform:translateY(-1px);}
+.fbChip.on{background:linear-gradient(135deg,var(--accent,#d4af37),#ec4899);border-color:transparent;color:#fff;box-shadow:0 4px 14px color-mix(in srgb,var(--accent,#d4af37) 45%,transparent);transform:translateY(-1px);}
 #fbNote{width:100%;min-height:72px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#eee;font-size:13.5px;padding:12px;resize:none;outline:none;margin-bottom:16px;font-family:inherit;}
-#fbNote:focus{border-color:var(--accent,#8b5cf6);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent,#8b5cf6) 22%,transparent);}
-#fbSendBtn{width:100%;padding:13px;border:none;border-radius:14px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(135deg,var(--accent,#8b5cf6),#ec4899);position:relative;overflow:hidden;transition:transform .15s,box-shadow .2s;}
-#fbSendBtn:hover{transform:translateY(-2px);box-shadow:0 8px 24px color-mix(in srgb,var(--accent,#8b5cf6) 50%,transparent);}
+#fbNote:focus{border-color:var(--accent,#d4af37);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent,#d4af37) 22%,transparent);}
+#fbSendBtn{width:100%;padding:13px;border:none;border-radius:14px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(135deg,var(--accent,#d4af37),#ec4899);position:relative;overflow:hidden;transition:transform .15s,box-shadow .2s;}
+#fbSendBtn:hover{transform:translateY(-2px);box-shadow:0 8px 24px color-mix(in srgb,var(--accent,#d4af37) 50%,transparent);}
 #fbSendBtn::after{content:'';position:absolute;top:0;left:-80%;width:50%;height:100%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.35),transparent);animation:fbShine 2.8s ease-in-out infinite;}
 @keyframes fbShine{0%,60%{left:-80%}100%{left:130%}}
 #fbClose{position:absolute;top:14px;inset-inline-end:14px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,.08);color:#bbb;font-size:16px;cursor:pointer;z-index:2;}
@@ -409,17 +414,17 @@ $('#btnDeleteAll').onclick = () => {
     if(!fbRating){ document.getElementById('fbStars').style.animation='fbStarPop .35s'; setTimeout(()=>document.getElementById('fbStars').style.animation='',400); return; }
     const chips = [...document.querySelectorAll('#fbChips .fbChip.on')].map(c=>c.dataset.k);
     const note = document.getElementById('fbNote').value.trim();
-    let user='guest'; try{ user = (typeof authGet==='function'&&authGet('aiapp_username'))||'guest'; }catch(_){ }
+    let user='guest'; try{ user = (typeof authGet==='function'&&authGet('aiapp_username'))||'guest'; }catch(_){ __swallow(_, "misc:app-05-ui#7"); }
     try{
       fetch('/api/system?action=feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rating:fbRating,chips,note,user,lang:(typeof lang!=='undefined'?lang:'')})});
-    }catch(_){ }
+    }catch(_){ __swallow(_, "misc:app-05-ui#8"); }
     localStorage.setItem('fbDone','1');
     document.getElementById('fbFormView').style.display='none';
     const tv = document.getElementById('fbThanksView');
     tv.style.display='block';
     document.getElementById('fbThanksT').textContent = t('fbThanks');
     document.getElementById('fbThanksS').textContent = t('fbThanksSub');
-    const colors=['#8b5cf6','#ec4899','#f5b942','#22c55e','#06b6d4'];
+    const colors=['#d4af37','#ec4899','#f5b942','#22c55e','#06b6d4'];
     for(let i=0;i<26;i++){
       const p=document.createElement('span'); p.className='fbConf';
       p.style.background=colors[i%colors.length];
@@ -457,7 +462,7 @@ $('#btnDeleteAll').onclick = () => {
   };
 
   const fbBtn = document.getElementById('btnFeedback');
-  if(fbBtn) fbBtn.onclick = (e)=>{ e.stopPropagation(); try{document.getElementById('plusToolsPopup').classList.remove('open');}catch(_){ } window.openFeedback(); };
+  if(fbBtn) fbBtn.onclick = (e)=>{ e.stopPropagation(); try{document.getElementById('plusToolsPopup').classList.remove('open');}catch(_){ __swallow(_, "ui:app-05-ui#9"); } window.openFeedback(); };
 
   // عرض ذكي مرة واحدة بعد 10 رسائل ناجحة
   window.__fbCountMsg = function(){
@@ -466,7 +471,7 @@ $('#btnDeleteAll').onclick = () => {
       const n = (parseInt(localStorage.getItem('fbMsgCount')||'0',10)||0)+1;
       localStorage.setItem('fbMsgCount', String(n));
       if(n>=10){ localStorage.setItem('fbAsked','1'); setTimeout(()=>window.openFeedback(),1500); }
-    }catch(_){ }
+    }catch(_){ __swallow(_, "save:app-05-ui#10"); }
   };
 })();
 
@@ -476,7 +481,7 @@ $('#btnDeleteAll').onclick = () => {
   if(!b) return;
   b.onclick = (e) => {
     e.stopPropagation();
-    try{ document.getElementById('plusToolsPopup').classList.remove('open'); }catch(_){}
+    try{ document.getElementById('plusToolsPopup').classList.remove('open'); }catch(_){ __swallow(_, "ui:app-05-ui#11"); }
     const cur = state.projects.find(p => p.id === state.currentId);
     let src = null;
     if(cur && cur.messages){
@@ -498,7 +503,7 @@ $('#btnDeleteAll').onclick = () => {
     e.stopPropagation();
     if(!confirm(t('confirmDeleteChat'))) return;
     const __delId = state.currentId;
-    try{ if(window.chatsMarkDeleted) chatsMarkDeleted(__delId); }catch(err){}
+    try{ if(window.chatsMarkDeleted) chatsMarkDeleted(__delId); }catch(err){ __swallow(err, "misc:app-05-ui#12"); }
     state.projects = state.projects.filter(p => p.id !== __delId);
     if(!state.projects.length){
       state.projects.push({id: 'p_' + Date.now(), title: t('defaultProjectTitle'), messages: [], code: ''});
@@ -515,7 +520,7 @@ $('#btnDeleteAll').onclick = () => {
           body: JSON.stringify({ token: tok, ids: [__delId] }),
         }).catch(() => {});
       }
-    }catch(err){}
+    }catch(err){ __swallow(err, "misc:app-05-ui#13"); }
     renderAll();
     setTimeout(() => { const p = document.getElementById('plusToolsPopup'); if(p) p.classList.remove('show'); }, 150);
   };
@@ -562,7 +567,7 @@ $('#btnDeleteAll').onclick = () => {
       if(bDel) bDel.textContent = clean(t('deleteAllProjects')) || 'حذف الكل';
       if(searchBtn) searchBtn.textContent = t('projSearchLabel') || 'بحث عن مشروع';
       if(searchInput) searchInput.placeholder = t('projSearchLabel') || 'بحث عن مشروع';
-    }catch(_){}
+    }catch(_){ __swallow(_, "misc:app-05-ui#14"); }
   };
   window.__refreshProjMenuLabels();
 })();
@@ -643,11 +648,11 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.querySelectorAll('.fontSizeBtn').forEach(b => b.classList.toggle('active', b.dataset.fs === v));
   }
   let saved = 'normal';
-  try{ saved = localStorage.getItem('chatFontSize') || 'normal'; }catch(e){}
+  try{ saved = localStorage.getItem('chatFontSize') || 'normal'; }catch(e){ __swallow(e, "ui:app-05-ui#15"); }
   applyFS(saved);
   document.querySelectorAll('.fontSizeBtn').forEach(b => {
     b.onclick = function(){
-      try{ localStorage.setItem('chatFontSize', b.dataset.fs); }catch(e){}
+      try{ localStorage.setItem('chatFontSize', b.dataset.fs); }catch(e){ __swallow(e, "save:app-05-ui#16"); }
       applyFS(b.dataset.fs);
     };
   });
@@ -671,12 +676,12 @@ document.querySelectorAll('.tab').forEach(tab => {
     wa.classList.toggle('waCollapsed', collapsed);
     if(rz) rz.classList.toggle('waCollapsed', collapsed);
     document.body.classList.toggle('waCollapsedMode', collapsed);
-    try{ localStorage.setItem('waCollapsed', collapsed ? '1' : '0'); }catch(e){}
+    try{ localStorage.setItem('waCollapsed', collapsed ? '1' : '0'); }catch(e){ __swallow(e, "save:app-05-ui#17"); }
   }
   btn.onclick = () => setWA(true);
   ro.onclick = () => setWA(false);
   window.waAutoExpand = function(){ if(wa.classList.contains('waCollapsed')) setWA(false); };
-  try{ if(localStorage.getItem('waCollapsed') === '1' && !document.documentElement.classList.contains('mobile-ui')) setWA(true); }catch(e){}
+  try{ if(localStorage.getItem('waCollapsed') === '1' && !document.documentElement.classList.contains('mobile-ui')) setWA(true); }catch(e){ __swallow(e, "ui:app-05-ui#18"); }
   // كود جديد يوصل → اللوحة تفتح تلقائيًا
   try{
     if(typeof renderCodeAndPreview === 'function'){
@@ -689,17 +694,17 @@ document.querySelectorAll('.tab').forEach(tab => {
           const code = (cur && cur.code) || '';
           if(_waLastCode !== null && code && code !== _waLastCode && !document.documentElement.classList.contains('mobile-ui')) window.waAutoExpand();
           _waLastCode = code;
-        }catch(e){}
+        }catch(e){ __swallow(e, "ui:app-05-ui#19"); }
         return r;
       };
     }
-  }catch(e){}
+  }catch(e){ __swallow(e, "ui:app-05-ui#20"); }
 })();
 
 // ===== Theme & provider colors =====
 const THEME_DEFAULTS = {
-  accent: '#7c5cff', text: '#eef0f6', bg: '#0a0b10',
-  userBubble: 'var(--accent)', assistantBubble: '#161622'
+  accent: '#d4af37', text: '#eef0f6', bg: '#000000',
+  userBubble: 'var(--accent)', assistantBubble: '#1e1e1e'
 };
 const PROVIDER_COLOR_DEFAULTS = {
   'OpenAI': '#10a37f',
@@ -733,7 +738,7 @@ function providerPickToast(){
     el.style.opacity = '1';
     clearTimeout(el._t);
     el._t = setTimeout(() => { el.style.opacity = '0'; }, 2500);
-  }catch(e){}
+  }catch(e){ __swallow(e, "ui:app-05-ui#21"); }
 }
 const PROVIDER_KEY_LABELS = {
   openai: 'OpenAI',
@@ -780,7 +785,7 @@ const PROVIDER_QUICK_LIST = [
   { key: 'openai', name: 'GPT',    color: '#10a37f' },
 ];
 // ترحيل: من اختار «العميق» (deepseek) في v358 يرجع للزر الظاهر الجديد GPT.
-try{ if(localStorage.getItem('aiapp_provider') === 'deepseek') localStorage.setItem('aiapp_provider', 'openai'); }catch(e){}
+try{ if(localStorage.getItem('aiapp_provider') === 'deepseek') localStorage.setItem('aiapp_provider', 'openai'); }catch(e){ __swallow(e, "save:app-05-ui#22"); }
 let providerQuickBarBuilt = false;
 function selectProviderKey(key){
   const prev = localStorage.getItem('aiapp_provider') || 'claude';
@@ -795,7 +800,7 @@ function selectProviderKey(key){
     // 🆕 (27/7) كل مزود له مشروعه/محادثته الخاصة — لا دمج بين المزودين.
     // v216: عزل صارم بحقل provider على كل مشروع — يمنع مشاركة نفس المشروع بين مزودين.
     let provMap = {};
-    try{ provMap = JSON.parse(localStorage.getItem('aiapp_provider_projects') || '{}'); }catch(e){}
+    try{ provMap = JSON.parse(localStorage.getItem('aiapp_provider_projects') || '{}'); }catch(e){ __swallow(e, "misc:app-05-ui#23"); }
     provMap[prev] = state.currentId; // احفظ محادثة المزود السابق
     const curProj = state.projects.find(p => p.id === state.currentId);
     if(curProj && !curProj.provider) curProj.provider = prev; // ثبّت ملكية المشروع الحالي للمزود السابق
@@ -827,7 +832,7 @@ function selectProviderKey(key){
     if(inp && window.matchMedia && !window.matchMedia('(pointer:coarse)').matches) inp.focus();
     const chatEl = document.getElementById('chat') || document.getElementById('messages');
     if(chatEl) chatEl.scrollTop = chatEl.scrollHeight;
-  }catch(e){}
+  }catch(e){ __swallow(e, "ui:app-05-ui#24"); }
 }
 function buildProviderQuickBar(){
   const grid = document.getElementById('providerGridCells');
@@ -868,7 +873,7 @@ function provDDUpdateButton(){
     const name = document.getElementById('provDDName');
     if(logo && p){ logo.innerHTML = PROVIDER_LOGOS[p.key] || ''; logo.style.color = p.color; }
     if(name && p){ name.textContent = functionalLabel(p.key); }
-  }catch(e){}
+  }catch(e){ __swallow(e, "ui:app-05-ui#25"); }
 }
 let _provDDInited = false;
 function initProvDropdown(){
@@ -888,9 +893,9 @@ function initProvDropdown(){
   }
   btn.onclick = (e) => {
     e.stopPropagation();
-    try{ if(typeof closeHeaderMenu === 'function') closeHeaderMenu(); }catch(_){}
+    try{ if(typeof closeHeaderMenu === 'function') closeHeaderMenu(); }catch(_){ __swallow(_, "ui:app-05-ui#26"); }
     wrap.classList.toggle('open');
-    if(wrap.classList.contains('open') && search){ search.value = ''; provDDFilter(''); try{ search.focus(); }catch(_){} }
+    if(wrap.classList.contains('open') && search){ search.value = ''; provDDFilter(''); try{ search.focus(); }catch(_){ __swallow(_, "ui:app-05-ui#27"); } }
   };
   document.addEventListener('click', (e) => { if(!wrap.contains(e.target)) wrap.classList.remove('open'); });
   panel.addEventListener('click', (e) => { const cell = e.target.closest('.prov-cell'); if(cell) wrap.classList.remove('open'); });
@@ -908,7 +913,7 @@ function updateProviderQuickBarActive(){
   try{
     const active = document.querySelector('.prov-chip-m.active');
     if(active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
-  }catch(e){}
+  }catch(e){ __swallow(e, "points:app-05-ui#28"); }
 }
 async function refreshProviderQuickBar(){
   if(!providerQuickBarBuilt) buildProviderQuickBar();
@@ -952,9 +957,29 @@ function getTheme(){
   catch(e){ return Object.assign({}, THEME_DEFAULTS); }
 }
 function applyTheme(){
+  // v418: فرض الذهبي مرة وحدة على كل الأجهزة اللي عندها لون قديم (بنفسجي) محفوظ محليًا
+  try{
+    if(!localStorage.getItem('aiapp_gold_forced_v418')){
+      const cust = JSON.parse(localStorage.getItem('aiapp_theme') || '{}');
+      const OLD_PURPLE = ['#7c5cff','#9b6bff','#a78bfa','#8b5cf6','#818cf8','#6467f2'];
+      if(cust.accent && OLD_PURPLE.includes(cust.accent.toLowerCase())){
+        delete cust.accent;
+        localStorage.setItem('aiapp_theme', JSON.stringify(cust));
+      }
+      localStorage.setItem('aiapp_gold_forced_v418', '1');
+    }
+  }catch(e){ __swallow(e, "misc:app-05-ui#gold-force"); }
+  // v441: فرض الخلفية السوداء الصافية مرة وحدة — حذف أي خلفية قديمة محفوظة محليًا
+  try{
+    if(!localStorage.getItem('aiapp_black_bg_forced_v441')){
+      const cust = JSON.parse(localStorage.getItem('aiapp_theme') || '{}');
+      if(cust.bg){ delete cust.bg; localStorage.setItem('aiapp_theme', JSON.stringify(cust)); }
+      localStorage.setItem('aiapp_black_bg_forced_v441', '1');
+    }
+  }catch(e){ __swallow(e, "misc:app-05-ui#black-bg-force"); }
   const th = getTheme();
   const root = document.documentElement.style;
-  try{ const cust = JSON.parse(localStorage.getItem('aiapp_theme') || '{}'); if(cust.accent) root.setProperty('--accent', cust.accent); }catch(e){}
+  try{ const cust = JSON.parse(localStorage.getItem('aiapp_theme') || '{}'); if(cust.accent) root.setProperty('--accent', cust.accent); }catch(e){ __swallow(e, "misc:app-05-ui#29"); }
   root.setProperty('--text', th.text);
   root.setProperty('--bg', th.bg);
   root.setProperty('--user-bubble', th.userBubble);
@@ -979,7 +1004,7 @@ document.addEventListener('focusin', (e) => {
 document.addEventListener('input', (e) => {
   if(e.target && e.target.classList && e.target.classList.contains('hex-color-input')) updateSwatchFor(e.target);
 });
-const COLOR_PRESETS = ['#7c5cff','#10a37f','#4285f4','#ff0000','#d97757','#6467f2','#20808d','#ff7000','#4d6bfe','#39594d','#eef0f6','#0a0b10','#ffffff','#000000','#ff4d6d','#00c2a8'];
+const COLOR_PRESETS = ['#d4af37','#10a37f','#4285f4','#ff0000','#d97757','#6467f2','#20808d','#ff7000','#4d6bfe','#39594d','#eef0f6','#0a0b10','#ffffff','#000000','#ff4d6d','#00c2a8'];
 function buildColorPresetsRow(){
   const row = $('#colorPresetsRow');
   if(!row || row.children.length) return;
@@ -1112,11 +1137,11 @@ let bg3dAutoTimer = null;
 let currentCustomBg = null; // {raf, resizeHandler, canvas}
 function destroyBg3D(){
   if(currentVantaEffect){
-    try { currentVantaEffect.destroy(); } catch(e){}
+    try { currentVantaEffect.destroy(); } catch(e){ __swallow(e, "misc:app-05-ui#30"); }
     currentVantaEffect = null;
   }
   if(currentCustomBg){
-    try { cancelAnimationFrame(currentCustomBg.raf); } catch(e){}
+    try { cancelAnimationFrame(currentCustomBg.raf); } catch(e){ __swallow(e, "misc:app-05-ui#31"); }
     if(currentCustomBg.resizeHandler) window.removeEventListener('resize', currentCustomBg.resizeHandler);
     currentCustomBg = null;
   }
@@ -1632,7 +1657,7 @@ function settingsToast(msg){
     el.style.opacity = '1';
     clearTimeout(el._t);
     el._t = setTimeout(() => { el.style.opacity = '0'; }, 2200);
-  }catch(e){}
+  }catch(e){ __swallow(e, "ui:app-05-ui#32"); }
 }
 const SETTINGS_CMD_LANG_MAP = [
   { code:'ar', words:['عربي','العربية','arabic'] },
@@ -1770,7 +1795,7 @@ async function executeSettingsActions(actions){
         doneMsgs.push(t('settingsCmdDoneFont') || 'تم تغيير حجم الخط');
       }
       else if(act.type === 'bg'){ if(typeof applyBg3D === 'function') applyBg3D(act.value, true); doneMsgs.push(t('settingsCmdDoneBg') || 'تم تغيير الخلفية'); }
-      else if(act.type === 'voice'){ localStorage.setItem('aiapp_voice_gender', act.value); try{ setVoiceGenderUI(act.value); }catch(e){} doneMsgs.push(t('settingsCmdDoneVoice') || 'تم تغيير الصوت'); }
+      else if(act.type === 'voice'){ localStorage.setItem('aiapp_voice_gender', act.value); try{ setVoiceGenderUI(act.value); }catch(e){ __swallow(e, "save:app-05-ui#33"); } doneMsgs.push(t('settingsCmdDoneVoice') || 'تم تغيير الصوت'); }
       else if(act.type === 'ticker'){ setTickerEnabled(act.value === 'on'); doneMsgs.push(act.value === 'on' ? (t('settingsCmdDoneTickerOn') || 'تم تشغيل شريط الأسهم') : (t('settingsCmdDoneTickerOff') || 'تم إيقاف شريط الأسهم')); }
     }catch(e){ console.error('settings command action failed', act, e); }
   }
@@ -1861,7 +1886,7 @@ function setTickerEnabled(on){
   localStorage.setItem('tickerEnabled', on ? '1' : '0');
   if(on){
     // إعادة التشغيل من الإعدادات تفتح الشريط المطوي أيضًا
-    try{ localStorage.removeItem('tickerHidden'); localStorage.removeItem('tickerCollapsed'); }catch(e){}
+    try{ localStorage.removeItem('tickerHidden'); localStorage.removeItem('tickerCollapsed'); }catch(e){ __swallow(e, "save:app-05-ui#34"); }
     if(typeof window.__tickerStart === 'function') window.__tickerStart();
   } else {
     if(typeof window.__tickerStop === 'function') window.__tickerStop();
@@ -1871,3 +1896,24 @@ function setTickerEnabled(on){
 }
 window.setTickerEnabled = setTickerEnabled;
 
+/* ───────── تأكيد قبل صرف النقاط ─────────
+   الخادم يرجع 428 مع السعر بدل التنفيذ الصامت. هنا نعرضه ونعيد الطلب
+   بـ confirmed:true فقط بعد موافقة صريحة. */
+async function postWithConfirm(url, payload){
+  const send = (body) => fetch(url, {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body),
+    signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
+  });
+  let res = await send(payload);
+  if(res.status !== 428) return res;
+
+  let q = {};
+  try { q = await res.json(); } catch(e){ console.warn('[confirm] bad quote', e); }
+  const isEn = (typeof AL === 'function' && AL() === 'en');
+  const msg = q.message_ar || ((isEn ? 'This will cost ' : 'هذه العملية تخصم ')
+    + (q.cost || '?') + (isEn ? ' points' : ' نقطة') + (q.label ? ' (' + q.label + ')' : '') + '.');
+  const okToSpend = confirm(msg + '\n' + (isEn ? 'Continue?' : 'أكمل؟'));
+  if(!okToSpend) return res;
+  return await send(Object.assign({}, payload, { confirmed: true }));
+}
+window.postWithConfirm = postWithConfirm;

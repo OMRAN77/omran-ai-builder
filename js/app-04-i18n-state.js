@@ -9,7 +9,7 @@ function loadLangFile(lg){
     var sc = document.createElement('script');
     sc.src = 'i18n/' + lg + '.js?v=342';
     sc.onload = sc.onerror = function(){
-      (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){}});
+      (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
     };
     document.head.appendChild(sc);
@@ -24,7 +24,7 @@ let lang = localStorage.getItem('aiapp_lang') || (function(){
     for(const nav of navs){
       for(const p in map){ if(nav === p || nav.startsWith(p + '-')) return map[p]; }
     }
-  } catch(e) {}
+  } catch(e){ __swallow(e, "misc:app-04-i18n-state#2"); }
   return 'en';
 })();
 // Language-specific shareable links: /ar, /en, /fr, /hi, /ur, /bn, /ne
@@ -38,7 +38,7 @@ let lang = localStorage.getItem('aiapp_lang') || (function(){
       lang = urlLangMatch[1].toLowerCase();
       localStorage.setItem('aiapp_lang', lang);
     }
-  } catch(e) {}
+  } catch(e){ __swallow(e, "save:app-04-i18n-state#3"); }
 })();
 
 function t(key){
@@ -50,10 +50,10 @@ function t(key){
 
 function applyLanguage(){
   if(!I18N[lang] && I18N_LAZY.indexOf(lang) >= 0){
-    loadLangFile(lang).then(function(){ if(I18N[lang]) { applyLanguage(); try{ renderAll(); }catch(_){} } });
+    loadLangFile(lang).then(function(){ if(I18N[lang]) { applyLanguage(); try{ renderAll(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#4"); } } });
   }
   const dict = I18N[lang] || I18N.en || I18N.ar;
-  try{ if(window.__syncBrandTitle) window.__syncBrandTitle(); }catch(_){}
+  try{ if(window.__syncBrandTitle) window.__syncBrandTitle(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#5"); }
   document.documentElement.lang = lang;
   document.documentElement.dir = dict.dir;
   document.title = dict.pageTitle;
@@ -84,7 +84,7 @@ function applyLanguage(){
       const t = document.getElementById('settingsPageTitle');
       if(h3 && t) t.textContent = stripUiEmoji(h3.textContent);
     }
-  }catch(_){}
+  }catch(_){ __swallow(_, "misc:app-04-i18n-state#6"); }
   document.querySelectorAll('.langFlagBtn').forEach(b => b.classList.remove('active'));
   const idMap = {
     ar: ['btnLangAr','btnAuthLangAr'],
@@ -106,7 +106,7 @@ function applyLanguage(){
   activeIds.forEach(id => { const el = $('#'+id); if(el) el.classList.add('active'); });
   localStorage.setItem('aiapp_lang', lang);
   renderQuickChips();
-  try{ if(window.__refreshProjMenuLabels) window.__refreshProjMenuLabels(); }catch(_){}
+  try{ if(window.__refreshProjMenuLabels) window.__refreshProjMenuLabels(); }catch(_){ __swallow(_, "save:app-04-i18n-state#7"); }
 }
 
 const QUICK_SUGGESTIONS = [
@@ -125,6 +125,7 @@ const QUICK_SUGGESTIONS = [
   {icon:'📷', ar:'معرض صور', en:'Photo gallery', fr:'Galerie photo', hi:'फ़ोटो गैलरी', ur:'فوٹو گیلری', bn:'ফটো গ্যালারি', ne:'फोटो ग्यालेरी', prompt:{ar:'أنشئ لي معرض صور تفاعلي بتأثيرات جميلة', en:'Build an interactive photo gallery with nice effects', fr:'Crée-moi une galerie photo interactive avec de beaux effets', hi:'मेरे लिए अच्छे इफेक्ट्स के साथ एक इंटरैक्टिव फ़ोटो गैलरी बनाएं', ur:'میرے لیے اچھے اثرات کے ساتھ ایک انٹرایکٹو فوٹو گیلری بنائیں', bn:'আমার জন্য সুন্দর প্রভাব সহ একটি ইন্টারেক্টিভ ফটো গ্যালারি তৈরি করুন', ne:'मेरो लागि राम्रो प्रभावसहितको इन्टरएक्टिभ फोटो ग्यालेरी बनाउनुहोस्'}},
   {icon:'🧠', ar:'اختبار ذكاء', en:'Quiz app', fr:'App de quiz', hi:'क्विज़ ऐप', ur:'کوئز ایپ', bn:'কুইজ অ্যাপ', ne:'क्विज एप', prompt:{ar:'أنشئ لي تطبيق اختبار أسئلة وأجوبة تفاعلي', en:'Build an interactive quiz app', fr:'Crée-moi une application de quiz interactive', hi:'मेरे लिए एक इंटरैक्टिव क्विज़ ऐप बनाएं', ur:'میرے لیے ایک انٹرایکٹو کوئز ایپ بنائیں', bn:'আমার জন্য একটি ইন্টারেক্টিভ কুইজ অ্যাপ তৈরি করুন', ne:'मेरो लागि इन्टरएक्टिभ क्विज एप बनाउनुहोस्'}},
   {icon:'🍳', ar:'كتاب وصفات', en:'Recipe book', fr:'Livre de recettes', hi:'रेसिपी बुक', ur:'ریسپی بک', bn:'রেসিপি বই', ne:'रेसिपी बुक', prompt:{ar:'أنشئ لي موقع كتاب وصفات طبخ', en:'Build a recipe book website', fr:'Crée-moi un site de livre de recettes', hi:'मेरे लिए एक रेसिपी बुक वेबसाइट बनाएं', ur:'میرے لیے ایک ریسپی بک ویب سائٹ بنائیں', bn:'আমার জন্য একটি রেসিপি বই ওয়েবসাইট তৈরি করুন', ne:'मेरो लागि रेसिपी बुक वेबसाइट बनाउनुहोस्'}},
+  {icon:'📄', ar:'سيرة ذاتية', en:'Resume', fr:'CV', hi:'रिज़्यूमे', ur:'ریزیومے', bn:'জীবনবৃত্তান্ত', ne:'बायोडाटा', prompt:{ar:'أنشئ لي صفحة سيرة ذاتية احترافية', en:'Build a professional resume page', fr:'Crée-moi une page de CV professionnelle', hi:'मेरे लिए एक पेशेवर रिज़्यूमे पेज बनाएं', ur:'میرے لیے ایک پیشہ ورانہ ریزیومے صفحہ بنائیں', bn:'আমার জন্য একটি পেশাদার জীবনবৃত্তান্ত পেজ তৈরি করুন', ne:'मेरो लागि व्यावसायिक बायोडाटा पेज बनाउनुहोस्'}},
   {icon:'🎵', ar:'مشغل موسيقى', en:'Music player', fr:'Lecteur de musique', hi:'म्यूज़िक प्लेयर', ur:'میوزک پلیئر', bn:'মিউজিক প্লেয়ার', ne:'म्युजिक प्लेयर', prompt:{ar:'أنشئ لي واجهة مشغل موسيقى أنيقة', en:'Build a sleek music player UI', fr:'Crée-moi une interface de lecteur de musique élégante', hi:'मेरे लिए एक स्टाइलिश म्यूज़िक प्लेयर UI बनाएं', ur:'میرے لیے ایک خوبصورت میوزک پلیئر UI بنائیں', bn:'আমার জন্য একটি সুন্দর মিউজিক প্লেয়ার ইউআই তৈরি করুন', ne:'मेरो लागि स्टाइलिश म्युजिक प्लेयर UI बनाउनुहोस्'}},
   {icon:'⚖️', ar:'بوت استشارات قانونية', en:'Legal advice bot', priority:true, prompt:{ar:'أنشئ لي صفحة ويب واحدة (HTML/CSS/JS) اسمها "بوت استشارات قانونية — قوانين دولة الإمارات". لكل سؤال يكتبه المستخدم: أولاً أرسل fetch POST إلى المسار النسبي /api/search بالجسم {query: السؤال + " قانون الإمارات المادة", lang:"ar", domains:["uaelegislation.gov.ae","moj.gov.ae","u.ae","elaws.moj.gov.ae"]} (JSON)، انتظر النتيجة. إذا رجعت نتائج قليلة أو فارغة أعد المحاولة مرة واحدة بدون حقل domains. ثم اعرض الإجابة بهذه الصيغة الإلزامية: 1) 📜 اسم القانون ورقمه وسنته، 2) 🔢 رقم المادة، 3) النص من نتائج البحث الفعلية (title/url/content)، 4) 💡 شرح مبسط بالعربي، 5) 🔗 رابط المصدر الرسمي. لا تختلق نص مواد أو أرقام قوانين من عندك أبدًا؛ إن لم تجد المادة في النتائج قل صراحة "لم أجد نص المادة في المصادر الرسمية" واعرض الروابط. أضف أسفل كل إجابة تنويه: "هذه معلومات إرشادية وليست استشارة قانونية رسمية". إن فشل البحث اعرض "تعذر جلب معلومات دقيقة الآن". صمم الواجهة بسيطة ونظيفة بدون مربعات/حدود، نفس أسلوب التطبيق (خلفية شفافة، نص فقط، أيقونة نسخ SVG تحت كل رد).', en:'Build a single-page web app (HTML/CSS/JS) called "UAE Legal Advice Bot". For every user question: first send a POST fetch to the relative path /api/search with body {query: question + " UAE law article", lang:"en", domains:["uaelegislation.gov.ae","moj.gov.ae","u.ae","elaws.moj.gov.ae"]} (JSON), wait for the result. If results are empty or too few, retry once without the domains field. Then answer in this mandatory format: 1) 📜 law name, number and year, 2) 🔢 article number, 3) the text taken from the actual search results (title/url/content), 4) 💡 simple explanation, 5) 🔗 official source link. Never invent article texts or law numbers; if the article text is not in the results, say clearly "Article text not found in official sources" and show the links. Add under every answer: "This is guidance information, not official legal advice". If the search fails show "Could not fetch accurate information right now". Keep the UI clean, no boxes/borders, matching the app style (transparent background, text only, SVG copy icon under each reply).'}},
   {icon:'🩺', ar:'بوت استشارات طبية', en:'Medical advice bot', priority:true, prompt:{ar:'أنشئ لي صفحة ويب واحدة (HTML/CSS/JS) اسمها "بوت استشارات طبية أولية". لكل سؤال يكتبه المستخدم عن أعراض أو معلومات صحية: أولاً أرسل fetch POST إلى المسار النسبي /api/search بالجسم {query, lang:"ar"} (JSON)، انتظر النتيجة، ثم اعرض ملخصاً دقيقاً مبنياً فعلياً على نتائج البحث المرجعة (title/url/content) مع ذكر المصادر كروابط. لا تختلق معلومات طبية من عندك؛ إن فشل البحث اعرض رسالة "تعذر جلب معلومات دقيقة الآن". صمم الواجهة بسيطة ونظيفة بدون مربعات/حدود، نفس أسلوب التطبيق (خلفية شفافة، نص فقط، أيقونة نسخ SVG تحت كل رد).', en:'Build a single-page web app (HTML/CSS/JS) called "Preliminary Medical Advice Bot". For every symptom/health question: first send a POST fetch to the relative path /api/search with body {query, lang:"en"} (JSON), wait for the result, then show an accurate summary based on the actual returned search results (title/url/content), citing sources as links. Do not invent medical information; if the search fails show "Could not fetch accurate information right now". Keep the UI clean, no boxes/borders, matching the app style (transparent background, text only, SVG copy icon under each reply).'}},
@@ -186,12 +187,12 @@ function toggleLang(){
   applyLanguage();
   renderAll();
 }
-function setLang(newLang){ try{ setTimeout(()=>{ if(typeof markActiveLang==="function") markActiveLang(); },0); }catch(e){}
+function setLang(newLang){ try{ setTimeout(()=>{ if(typeof markActiveLang==="function") markActiveLang(); },0); }catch(e){ __swallow(e, "misc:app-04-i18n-state#8"); }
   if(lang === newLang) return;
   lang = newLang;
   applyLanguage();
   renderAll();
-  try { populateVoicePicker(); } catch(e) {}
+  try { populateVoicePicker(); } catch(e){ __swallow(e, "misc:app-04-i18n-state#9"); }
 }
 $('#btnLangAr').onclick = () => setLang('ar');
 $('#btnLangEn').onclick = () => setLang('en');
@@ -214,7 +215,7 @@ function markActiveLang(){
     const on=b.id==='btnLang'+cur;
     const c=b.querySelector('.langCheck'); if(c) c.style.display=on?'block':'none';
     b.style.background=on?'rgba(var(--accent-rgb),.12)':'none';
-    b.style.fontWeight=on?'600':'400';
+    b.style.fontWeight=on?'700':'400';
   });
 }
 markActiveLang();
@@ -307,7 +308,7 @@ function pushCodeSnapshot(){
     if(last && last.code === snapCode) return;
     cur.codeHistory.push({ ts: Date.now(), code: snapCode, codeType: cur.codeType || 'html' });
     if(cur.codeHistory.length > 12) cur.codeHistory.splice(0, cur.codeHistory.length - 12);
-  }catch(e){}
+  }catch(e){ __swallow(e, "misc:app-04-i18n-state#10"); }
 }
 /* v318: الحفظ المجمّع — بدل نسخ JSON كامل لكل المشاريع عشرات المرات أثناء
    الرد الواحد (كان يجمّد الخيط الرئيسي ويطلّع «يستجيب ببطء»)، نجمع الطلبات
@@ -317,7 +318,7 @@ let __saveDirty = false;
 function __saveFlush(){
   if(!__saveDirty) return;
   __saveDirty = false;
-  try{ clearTimeout(__saveTimer); }catch(e){}
+  try{ clearTimeout(__saveTimer); }catch(e){ __swallow(e, "save:app-04-i18n-state#11"); }
   __saveTimer = null;
   if(!__idbBroken && window.indexedDB){
     try{
@@ -341,9 +342,9 @@ window.addEventListener('pagehide', __saveFlush);
 document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') __saveFlush(); });
 function saveState(){
   pushCodeSnapshot();
-  try{ localStorage.setItem('aiapp_current_id', state.currentId || ''); }catch(e){}
+  try{ localStorage.setItem('aiapp_current_id', state.currentId || ''); }catch(e){ __swallow(e, "save:app-04-i18n-state#12"); }
   // ☁️ v306: مزامنة صامتة مؤجَّلة مع السيرفر للمستخدمين المسجّلين.
-  try{ scheduleChatsServerSync(); }catch(e){}
+  try{ scheduleChatsServerSync(); }catch(e){ __swallow(e, "save:app-04-i18n-state#13"); }
   __saveDirty = true;
   if(__saveTimer) return;
   __saveTimer = setTimeout(__saveFlush, 1500);
@@ -457,7 +458,7 @@ document.addEventListener('error', function(e){
   try{
     const t = e.target;
     if(t && t.tagName === 'IMG' && t.closest && t.closest('.msg')) t.style.display = 'none';
-  }catch(err){}
+  }catch(err){ __swallow(err, "ui:app-04-i18n-state#14"); }
 }, true);
 /* v375: سجل المحادثات المحذوفة عمدًا — المزامنة ممنوعة ترجّعها أبدًا. */
 function chatsDeletedIds(){
@@ -472,12 +473,12 @@ window.chatsMarkDeleted = function(id){
       while(ids.length > 300) ids.shift();
       localStorage.setItem('aiapp_deleted_chats', JSON.stringify(ids));
     }
-  }catch(e){}
+  }catch(e){ __swallow(e, "save:app-04-i18n-state#15"); }
 };
 /* v375: رفع فوري للسيرفر (بدون انتظار 4 ثواني) — يُستدعى بعد الحذف مباشرة. */
 window.chatsServerSaveNow = function(){
-  try{ clearTimeout(__chatsSyncTimer); }catch(e){}
-  try{ chatsServerSave(); }catch(e){}
+  try{ clearTimeout(__chatsSyncTimer); }catch(e){ __swallow(e, "save:app-04-i18n-state#16"); }
+  try{ chatsServerSave(); }catch(e){ __swallow(e, "sync:app-04-i18n-state#17"); }
 };
 /* v376: دمج نسخة السيرفر مع المحلي — دالة مشتركة يستخدمها
    الفتح + المزامنة الدورية + الدمج قبل كل رفع. ترجّع true إذا تغيّر شيء. */
@@ -513,7 +514,17 @@ function __chatsMergeServer(server, deletedIds){
       const lMsgs = Array.isArray(local.messages) ? local.messages : [];
       const sMsgs = Array.isArray(sp.messages) ? sp.messages : [];
       if(sMsgs.length > lMsgs.length){
-        local.messages = sMsgs;
+        // v456: دمج ذكي — لو الرسالة المحلية فيها محتوى والسيرفر فاضي، نحتفظ بالمحلي
+        const merged = sMsgs.map((sm, idx) => {
+          const lm = lMsgs[idx];
+          if(!lm) return sm;
+          // لو المحلي فيه محتوى والسيرفر فاضي → خذ المحلي
+          if(lm.content && (!sm.content || sm.content === '[media]')) return lm;
+          // لو المحلي أطول بكثير → خذ المحلي (السيرفر مقصوص)
+          if(lm.content && sm.content && lm.content.length > sm.content.length + 50) return lm;
+          return sm;
+        });
+        local.messages = merged;
       }
       if(sp.title && !local.title) local.title = sp.title;
       if(sp.code && !local.code) local.code = sp.code;
@@ -532,10 +543,10 @@ function __chatsMergeServer(server, deletedIds){
     // v382: لا تغيير → لا إعادة رسم = لا وميض
     return false;
   }
-  try{ saveState(); }catch(e){}
-  try{ renderHistory(); }catch(e){}
-  try{ if(typeof renderAll === 'function') renderAll(); }catch(e){}
-  try{ if(typeof buildChatList === 'function') buildChatList(); }catch(e){}
+  try{ saveState(); }catch(e){ __swallow(e, "save:app-04-i18n-state#18"); }
+  try{ renderHistory(); }catch(e){ __swallow(e, "save:app-04-i18n-state#19"); }
+  try{ if(typeof renderAll === 'function') renderAll(); }catch(e){ __swallow(e, "save:app-04-i18n-state#20"); }
+  try{ if(typeof buildChatList === 'function') buildChatList(); }catch(e){ __swallow(e, "save:app-04-i18n-state#21"); }
   return true;
 }
 /* v376: تنزيل نسخة السيرفر ودمجها ثم استدعاء cb. */
@@ -571,7 +582,7 @@ function __chatsPushNow(){
   const __slim = chatsSlimForServer();
   // v311: قائمة بلا أي رسالة = لا ترفع أبدًا (لا تمسح النسخة الاحتياطية).
   let __total = 0;
-  try{ (__slim || []).forEach(p => { __total += (Array.isArray(p.messages) ? p.messages.length : 0); }); }catch(e){}
+  try{ (__slim || []).forEach(p => { __total += (Array.isArray(p.messages) ? p.messages.length : 0); }); }catch(e){ __swallow(e, "misc:app-04-i18n-state#22"); }
   if(!__total) return;
   try{
     fetch('/api/account?action=chats_save', {
@@ -581,7 +592,7 @@ function __chatsPushNow(){
       if(r && r.ok){ window.__chatsLastPush = Date.now(); window.__chatsLastPushErr = ''; }
       else { window.__chatsLastPushErr = 'http ' + (r ? r.status : '?'); }
     }).catch(err => { window.__chatsLastPushErr = String(err && err.message || err).slice(0,40); });
-  }catch(e){}
+  }catch(e){ __swallow(e, "misc:app-04-i18n-state#23"); }
 }
 function chatsServerSave(){
   const token = chatsAuthToken();
@@ -594,22 +605,22 @@ function chatsServerSave(){
   chatsServerPull(ok => {
     if(ok === false){ scheduleChatsServerSync(); return; }
     window.__chatsMergeDone = true;
-    try{ __chatsPushNow(); }catch(e){}
+    try{ __chatsPushNow(); }catch(e){ __swallow(e, "sync:app-04-i18n-state#24"); }
   });
 }
 window.appFullCleanup = function(){
   var msg = 'سيتم حذف كل المحادثات والمشاريع نهائيًا. هل أنت متأكد؟';
-  try{ var m = (typeof t === 'function') ? t('acctCleanupConfirm') : ''; if(m && m !== 'acctCleanupConfirm') msg = m; }catch(e){}
+  try{ var m = (typeof t === 'function') ? t('acctCleanupConfirm') : ''; if(m && m !== 'acctCleanupConfirm') msg = m; }catch(e){ __swallow(e, "misc:app-04-i18n-state#25"); }
   if(!confirm(msg)) return;
-  try{ clearTimeout(__chatsSyncTimer); }catch(e){}
+  try{ clearTimeout(__chatsSyncTimer); }catch(e){ __swallow(e, "sync:app-04-i18n-state#26"); }
   window.__chatsMergeDone = false;
   var token = '';
-  try{ token = chatsAuthToken(); }catch(e){}
+  try{ token = chatsAuthToken(); }catch(e){ __swallow(e, "sync:app-04-i18n-state#27"); }
   var finish = function(){
-    try{ localStorage.removeItem('aiapp_projects'); }catch(e){}
-    try{ localStorage.removeItem('aiapp_current_id'); }catch(e){}
-    try{ localStorage.removeItem('aiapp_provider_projects'); }catch(e){}
-    try{ if(window.indexedDB) indexedDB.deleteDatabase('aiapp_db'); }catch(e){}
+    try{ localStorage.removeItem('aiapp_projects'); }catch(e){ __swallow(e, "sync:app-04-i18n-state#28"); }
+    try{ localStorage.removeItem('aiapp_current_id'); }catch(e){ __swallow(e, "misc:app-04-i18n-state#29"); }
+    try{ localStorage.removeItem('aiapp_provider_projects'); }catch(e){ __swallow(e, "misc:app-04-i18n-state#30"); }
+    try{ if(window.indexedDB) indexedDB.deleteDatabase('aiapp_db'); }catch(e){ __swallow(e, "save:app-04-i18n-state#31"); }
     setTimeout(function(){ location.reload(); }, 400);
   };
   if(token){
@@ -621,7 +632,7 @@ window.appFullCleanup = function(){
 };
 function scheduleChatsServerSync(){
   if(!chatsAuthToken()) return;
-  try{ clearTimeout(__chatsSyncTimer); }catch(e){}
+  try{ clearTimeout(__chatsSyncTimer); }catch(e){ __swallow(e, "sync:app-04-i18n-state#32"); }
   __chatsSyncTimer = setTimeout(chatsServerSave, 4000);
 }
 window.chatsSyncOnAuth = function(){
@@ -634,7 +645,7 @@ window.chatsSyncOnAuth = function(){
     if(!window.__localChatsLoaded && __waited < 10000){ __waited += 200; setTimeout(__tick, 200); return; }
     chatsServerPull(ok => {
       // v378: فشل التنزيل (شبكة/خطأ سيرفر) → إعادة المحاولة تلقائيًا بعد 8 ثواني.
-      if(ok === false){ __chatsLoadedFor = null; setTimeout(function(){ try{ window.chatsSyncOnAuth(); }catch(e){} }, 8000); return; }
+      if(ok === false){ __chatsLoadedFor = null; setTimeout(function(){ try{ window.chatsSyncOnAuth(); }catch(e){ __swallow(e, "sync:app-04-i18n-state#33"); } }, 8000); return; }
       // بعد أول دمج ناجح: يُسمح بالرفع + رفع نسخة موحّدة.
       window.__chatsMergeDone = true;
       scheduleChatsServerSync();
@@ -650,7 +661,7 @@ var __chatsLastPull = 0;
 function __chatsPullMerge(){
   if(!chatsAuthToken() || !window.__chatsMergeDone) return;
   __chatsLastPull = Date.now();
-  try{ chatsServerPull(() => {}); }catch(e){}
+  try{ chatsServerPull(() => {}); }catch(e){ __swallow(e, "sync:app-04-i18n-state#34"); }
 }
 function __chatsStartLiveSync(){
   if(__chatsLivePollTimer) return;
@@ -664,8 +675,8 @@ function __chatsStartLiveSync(){
     if(Date.now() - __chatsLastPull < 5000) return;
     __chatsPullMerge();
   };
-  try{ document.addEventListener('visibilitychange', onFocus); }catch(e){}
-  try{ window.addEventListener('focus', onFocus); }catch(e){}
+  try{ document.addEventListener('visibilitychange', onFocus); }catch(e){ __swallow(e, "sync:app-04-i18n-state#35"); }
+  try{ window.addEventListener('focus', onFocus); }catch(e){ __swallow(e, "sync:app-04-i18n-state#36"); }
 }
 
 function getCurrent(){
@@ -723,12 +734,12 @@ function renderHistory(){
           const sel = document.getElementById('provider');
           if(sel) sel.value = p.provider;
           let pm = {};
-          try{ pm = JSON.parse(localStorage.getItem('aiapp_provider_projects') || '{}'); }catch(e){}
+          try{ pm = JSON.parse(localStorage.getItem('aiapp_provider_projects') || '{}'); }catch(e){ __swallow(e, "save:app-04-i18n-state#37"); }
           pm[p.provider] = p.id;
           localStorage.setItem('aiapp_provider_projects', JSON.stringify(pm));
           if(typeof updateProviderQuickBarActive === 'function') updateProviderQuickBarActive();
         }
-      }catch(e){}
+      }catch(e){ __swallow(e, "save:app-04-i18n-state#38"); }
       state.currentId = p.id; mahaClearImageRef(); renderAll();
     };
     div.appendChild(titleSpan);
@@ -949,7 +960,8 @@ function renderMessages(keepScroll){
   }
   cur.messages.forEach((m, mIdx) => {
     if(mIdx < __winStart) return;
-    const isAskAllReply = !!(m.providerLabel && (m.askAllReply || Object.values(PROVIDER_KEY_LABELS).includes(m.providerLabel))) && !m.isMergeHeader;
+    // v463: فقط الردود المعلّمة askAllReply تدخل compare-row — الردود العادية تُعرض طبيعي
+    const isAskAllReply = !!(m.askAllReply && m.providerLabel) && !m.isMergeHeader;
     if(m.askAllReply && !m.isMergeHeader && m.batchId && !cur.expandedAskAllBatches.includes(m.batchId) && cur.messages.some(x => x !== m && (x.isMergeHeader || x.isAskAllPrep) && x.batchId === m.batchId)){
       return; // individual per-provider replies stay hidden until the user expands them
     }
@@ -959,7 +971,8 @@ function renderMessages(keepScroll){
       rowWrap.style.cssText = 'display:flex; align-items:flex-start; gap:6px; max-width:100%;';
     }
     const div = document.createElement('div');
-    div.className = 'msg ' + (m.role === 'user' ? 'user' : 'assistant');
+    const _isLastUser = m.role === 'user' && mIdx === cur.messages.length - 1 && window.__userAnimUntil > Date.now();
+    div.className = 'msg ' + (m.role === 'user' ? 'user' : 'assistant') + (_isLastUser ? ' msg-anim' : '');
     if(isAskAllReply) div.style.flex = '1 1 auto';
     let copyMsgBtn = null;
     let pColor = null;
@@ -967,7 +980,7 @@ function renderMessages(keepScroll){
       const label = document.createElement('div');
       pColor = getProviderColors()[m.providerLabel] || null;
       // v311: اسم المزود يظهر كامل داخل الشاشة بدون قص (سفاري الآيفون).
-      label.style.cssText = 'font-size:11px; font-weight:800; color:' + (pColor || 'var(--accent2)') + '; margin-bottom:4px; display:block; unicode-bidi:isolate; max-width:100%; overflow-wrap:anywhere; white-space:normal;';
+      label.style.cssText = 'font-size:11px; font-weight:700; color:' + (pColor || 'var(--accent2)') + '; margin-bottom:4px; display:block; unicode-bidi:isolate; max-width:100%; overflow-wrap:anywhere; white-space:normal;';
       label.textContent = m.providerLabel;
       div.appendChild(label);
     }
@@ -1194,7 +1207,7 @@ function renderMessages(keepScroll){
           reportBtn._done = true;
           reportBtn.style.color = '#ff5c6c';
           try{
-            let u='guest'; try{ u = (typeof authGet==='function'&&authGet('aiapp_username'))||'guest'; }catch(_){ }
+            let u='guest'; try{ u = (typeof authGet==='function'&&authGet('aiapp_username'))||'guest'; }catch(_){ __swallow(_, "ui:app-04-i18n-state#39"); }
             fetch('/api/system?action=feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'report',content:String(m.content||'').slice(0,2000),provider:(m.provider||''),user:u,lang:(typeof lang!=='undefined'?lang:'')})});
           }catch(e){ /* ignore */ }
           if(typeof settingsToast === 'function') settingsToast(t('reportSentToast') || 'تم استلام البلاغ — شكرًا لك');
@@ -1372,13 +1385,13 @@ function renderMessages(keepScroll){
               const __a = document.createElement('a');
               __a.textContent = __hint.icon + ' ' + __lbl;
               __a.href = 'javascript:void(0)';
-              __a.style.cssText = 'color:var(--accent2,#a78bfa); text-decoration:none; font-weight:600; cursor:pointer;';
+              __a.style.cssText = 'color:var(--accent2,#a78bfa); text-decoration:none; font-weight:500; cursor:pointer;';
               __a.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openFeatureById(__hint.id); };
               __note.appendChild(__a);
               bubbleCol.appendChild(__note);
             }
           }
-        }catch(__e){}
+        }catch(__e){ __swallow(__e, "misc:app-04-i18n-state#40"); }
         messagesEl.appendChild(bubbleCol);
       } else {
         messagesEl.appendChild(div);
@@ -1390,4 +1403,5 @@ function renderMessages(keepScroll){
   } else {
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
+  // v462: أنيميشن رسالة المستخدم — CSS class msg-anim يضاف أثناء بناء العنصر (سطر 973)
 }

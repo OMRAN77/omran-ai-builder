@@ -15,7 +15,7 @@
       localStorage.removeItem('aiapp_' + p + '_model');
     });
     localStorage.setItem(MIGRATION_FLAG, '1');
-  }catch(e){}
+  }catch(e){ __swallow(e, "save:app-01-boot-auth#1"); }
 })();
 
 // Some mobile browsers (notably Huawei Browser) can misreport a wide CSS viewport,
@@ -195,7 +195,7 @@ const $ = s => document.querySelector(s);
     if(authRemembered()){ localStorage.setItem(key, value); sessionStorage.removeItem(key); }
     else { sessionStorage.setItem(key, value); localStorage.removeItem(key); }
     // عند تسجيل الدخول: حمّل ذاكرة المستخدم فورًا
-    if(key === 'aiapp_auth_token'){ try{ memoryLoad(); }catch(e){} try{ if(window.refreshPremiumPoints) window.refreshPremiumPoints(); }catch(e){} }
+    if(key === 'aiapp_auth_token'){ try{ memoryLoad(); }catch(e){ __swallow(e, "auth:app-01-boot-auth#2"); } try{ if(window.refreshPremiumPoints) window.refreshPremiumPoints(); }catch(e){ __swallow(e, "auth:app-01-boot-auth#3"); } }
   }
 
   // ===== 🧠 ذاكرة المستخدم طويلة المدى =====
@@ -212,7 +212,7 @@ const $ = s => document.querySelector(s);
         body: JSON.stringify({ token, op: 'get' })
       });
       if(r.ok){ const d = await r.json(); userMemory = d.memory || ''; userTopics = Array.isArray(d.topics) ? d.topics : []; }
-    }catch(e){}
+    }catch(e){ __swallow(e, "misc:app-01-boot-auth#4"); }
   }
   function memoryUpdate(userText, aiText){
     try{
@@ -224,7 +224,7 @@ const $ = s => document.querySelector(s);
       }).then(r => r.ok ? r.json() : null)
         .then(d => { if(d && typeof d.memory === 'string') userMemory = d.memory; })
         .catch(() => {});
-    }catch(e){}
+    }catch(e){ __swallow(e, "misc:app-01-boot-auth#5"); }
   }
   // 🗂️ v326: تحديث ملخص موضوع المحادثة الحالية (بدون نموذج — رخيص وسريع).
   // خانق 60 ثانية لكل محادثة حتى ما نكتب مع كل رسالة.
@@ -244,24 +244,24 @@ const $ = s => document.querySelector(s);
       }).then(r => r.ok ? r.json() : null)
         .then(d => { if(d && Array.isArray(d.topics)) userTopics = d.topics; })
         .catch(() => {});
-    }catch(e){}
+    }catch(e){ __swallow(e, "misc:app-01-boot-auth#6"); }
   }
   function memoryTopicsBlock(){
     return ''; // 🚫 v368: أوقفنا حقن مواضيع المحادثات السابقة نهائيًا — كانت تسبب تداخل المواضيع. الذاكرة الشخصية (الاسم/التفضيلات) تبقى.
     if(!userTopics || !userTopics.length) return '';
     const lines = userTopics.slice(0, 10).map(tp => {
       let dt = '';
-      try{ dt = new Date(tp.at || 0).toLocaleDateString('ar-AE', { day: 'numeric', month: 'short' }); }catch(e){}
+      try{ dt = new Date(tp.at || 0).toLocaleDateString('ar-AE', { day: 'numeric', month: 'short' }); }catch(e){ __swallow(e, "misc:app-01-boot-auth#7"); }
       return '- [' + dt + '] ' + (tp.title || '') + ': ' + (tp.snip || '');
     }).join('\n');
     return '\n\n🗂️ مواضيع محادثات المستخدم السابقة (مرجع فقط): إذا أشار المستخدم بنفسه لعمل سابق (مثل «كمل على اللي سويناه أمس» أو «وين تصميم الدعاية») ولا يوجد في المحادثة الحالية ما يفسره، افهم قصده من هذه القائمة وكمّل عليه بشكل طبيعي. ممنوع منعًا باتًا فتح أو ذكر أي موضوع منها من عندك بدون إشارة صريحة من المستخدم:\n' + lines;
   }
   function memorySystemMsg(){
     if(!userMemory && !(userTopics && userTopics.length)) return null;
-    if(!userMemory) return { role: 'system', content: 'لا توجد معلومات شخصية محفوظة.' + memoryTopicsBlock() };
-    return { role: 'system', content: '🧠 [ذاكرة المستخدم طويلة المدى — أنت تعرف هذا الشخص]: هذه معلومات حقيقية محفوظة عن المستخدم الذي تحدّثه الآن، جمعتها من محادثاتكم السابقة عبر الأيام والأشهر. تعامل معه كصديق قديم تعرفه فعلًا، تمامًا مثل مساعد يتذكر أصحابه:\n' + userMemory + '\n\n📌 كيف تستخدم هذه الذاكرة:\n(1) أنت تعرف هذا الشخص — إذا كان اسمه محفوظًا فوق فخاطبه باسمه بشكل طبيعي ودافئ عند المناسبة، ولا تسأله «من أنت؟» أبدًا.\n(2) الاسترجاع فوري وإلزامي: إذا سألك عن أي شيء ذكره سابقًا («شو قلت لك المرة اللي فاتت»، «تتذكر مشروعي»، «قبل فترة كلمتك عن...») → تذكّره فورًا من المعلومات أعلاه بثقة وبالتفصيل. ممنوع منعًا باتًا أن تقول «لا أتذكر» أو «لا أحتفظ بمحادثات سابقة» — أنت تحتفظ بها وهي أمامك.\n(3) القاعدة الوحيدة للأدب: لا تبدأ أنت من نفسك بفتح أو اقتراح مشاريع/ألعاب/مواضيع قديمة في التحية أو أول رد بدون أن يشير لها المستخدم — دعه يقود. لكن بمجرد ما يسأل أو يشير، استرجع كل شيء فورًا.\n(4) استخدم تفضيلاته المحفوظة (لغته، اهتماماته، أسلوبه) لتخصيص ردودك تلقائيًا.' + memoryTopicsBlock() };
+    if(!userMemory) return { role: 'system', content: 'لا توجد معلومات شخصية محفوظة عن هذا المستخدم. ممنوع مناداته بأي اسم افتراضي.' + memoryTopicsBlock() };
+    return { role: 'system', content: '🧠 [ذاكرة المستخدم طويلة المدى — أنت تعرف هذا الشخص]: هذه معلومات حقيقية محفوظة عن المستخدم الذي تحدّثه الآن، جمعتها من محادثاتكم السابقة عبر الأيام والأشهر. تعامل معه كصديق قديم تعرفه فعلًا، تمامًا مثل مساعد يتذكر أصحابه:\n' + userMemory + '\n\n📌 كيف تستخدم هذه الذاكرة:\n(1) إذا كان اسمه محفوظًا فوق فخاطبه باسمه بشكل طبيعي. ⚠️ إذا لم يكن الاسم محفوظًا فوق، ممنوع منعًا باتًا مناداته بأي اسم — لا «محمد» ولا «أحمد» ولا أي اسم افتراضي. استخدم فقط صيغة عامة.\n(2) إذا سألك عن شيء ذكره سابقًا → تذكّره فورًا من المعلومات أعلاه بثقة. ممنوع أن تقول «لا أتذكر».\n(3) لا تبدأ أنت بفتح مواضيع قديمة بدون إشارة من المستخدم.\n(4) استخدم تفضيلاته المحفوظة لتخصيص ردودك تلقائيًا.' + memoryTopicsBlock() };
   }
-  try{ memoryLoad(); }catch(e){}
+  try{ memoryLoad(); }catch(e){ __swallow(e, "misc:app-01-boot-auth#8"); }
   function authRemove(key){ localStorage.removeItem(key); sessionStorage.removeItem(key); }
   // Expose globally so other parts of the app (outside this auth IIFE) can
   // read the token/username honoring the "remember me" choice.
@@ -278,7 +278,7 @@ const $ = s => document.querySelector(s);
     if(avatar){ localStorage.setItem('aiapp_avatar', avatar); }
     else if(avatar === null){ localStorage.removeItem('aiapp_avatar'); }
     // ☁️ v306: استرجاع/دمج المحادثات من السيرفر (عند الإقلاع وعند تسجيل الدخول).
-    try{ if(window.chatsSyncOnAuth) window.chatsSyncOnAuth(); }catch(e){}
+    try{ if(window.chatsSyncOnAuth) window.chatsSyncOnAuth(); }catch(e){ __swallow(e, "save:app-01-boot-auth#9"); }
     hideOverlay();
     setAuthToggleUI(true);
     if(userLabel) userLabel.textContent = username;
@@ -345,7 +345,7 @@ const $ = s => document.querySelector(s);
     wrap.innerHTML = users.map(u => {
       const safeName = String(u.username).replace(/'/g,"\\'");
       return '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333);flex-wrap:wrap">'
-        + '<span style="flex:1;min-width:110px;font-weight:600">' + (u.banned ? '🚫 ' : '') + u.username + '</span>'
+        + '<span style="flex:1;min-width:110px;font-weight:500">' + (u.banned ? '🚫 ' : '') + u.username + '</span>'
         + '<span style="font-size:11px;opacity:.6">' + (u.email || 'بدون إيميل') + '</span>'
         + '<button type="button" onclick="adminMessageUser(\'' + safeName + '\')" title="إرسال رسالة" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">📩</button>'
         + '<button type="button" onclick="adminToggleBan(\'' + safeName + '\', ' + (!u.banned) + ')" title="' + (u.banned ? 'فك الحظر' : 'حظر') + '" style="background:none;border:1px solid var(--border,#444);border-radius:6px;padding:4px 8px;cursor:pointer">' + (u.banned ? '✅' : '🚫') + '</button>'
@@ -405,6 +405,33 @@ const $ = s => document.querySelector(s);
     if(headerLoginBtn){
       headerLoginBtn.style.display = loggedIn ? 'none' : 'inline-flex';
       headerLoginBtn.onclick = () => { setMode('login'); showOverlay(); };
+    }
+    const headerUserBtn = $('#btnHeaderUser');
+    const headerUserDD = $('#headerUserDropdown');
+    if(headerUserBtn){
+      headerUserBtn.style.display = loggedIn ? 'inline-flex' : 'none';
+      const nm = $('#headerUserName');
+      if(nm) nm.textContent = (authGet('aiapp_username') || '');
+      // v444: صورة المستخدم الحقيقية في زر الهيدر
+      const hAv = $('#headerUserAvatarImg');
+      const hEm = $('#headerUserEmoji');
+      if(hAv && hEm){
+        const avUrl = localStorage.getItem('aiapp_avatar') || '';
+        if(loggedIn && avUrl){ hAv.src = avUrl; hAv.style.display = 'inline-block'; hEm.style.display = 'none'; }
+        else { hAv.style.display = 'none'; hEm.style.display = ''; }
+      }
+      headerUserBtn.onclick = (e) => {
+        e.stopPropagation();
+        if(headerUserDD) headerUserDD.style.display = headerUserDD.style.display === 'block' ? 'none' : 'block';
+      };
+    }
+    const headerUserLogout = $('#btnHeaderUserLogout');
+    if(headerUserLogout){
+      headerUserLogout.onclick = () => { if(headerUserDD) headerUserDD.style.display = 'none'; doLogout(); };
+    }
+    if(!window.__headerUserDDBound){
+      window.__headerUserDDBound = true;
+      document.addEventListener('click', () => { const d = document.querySelector('#headerUserDropdown'); if(d) d.style.display = 'none'; });
     }
     const menuRow = $('#menuUserRow');
     if(menuRow){
@@ -473,7 +500,20 @@ const $ = s => document.querySelector(s);
       const gavatar = params.get('gavatar');
       const gerror = params.get('gerror');
       const cleanUrl = window.location.origin + window.location.pathname;
+      // نرفض أي جلسة لم يبدأها هذا التبويب. بلا هذا الفحص يستطيع مهاجم أن
+      // يدفع متصفحك لإكمال تسجيل دخول بحسابه هو، فتعمل داخل حسابه دون أن تدري.
       if(gtoken && guser){
+        let expected = null;
+        try { expected = sessionStorage.getItem('aiapp_oauth_state'); } catch(e){ console.warn('[oauth] no sessionStorage', e); }
+        const returned = params.get('state');
+        if(expected && returned !== expected){
+          console.error('[oauth] state mismatch — login refused');
+          try { sessionStorage.removeItem('aiapp_oauth_state'); } catch(e){ __swallow(e, "auth:app-01-boot-auth#10"); }
+          window.history.replaceState({}, document.title, cleanUrl);
+          alert('تعذّر إكمال تسجيل الدخول (تحقّق أمني). حاول من جديد.');
+          return;
+        }
+        try { sessionStorage.removeItem('aiapp_oauth_state'); } catch(e){ __swallow(e, "auth:app-01-boot-auth#11"); }
         authSet('aiapp_auth_token', gtoken);
         authSet('aiapp_username', guser);
         if(gavatar){ localStorage.setItem('aiapp_avatar', gavatar); }
@@ -495,12 +535,23 @@ const $ = s => document.querySelector(s);
     googleBtnEl.onclick = () => {
       const clientId = '533765051685-2334rjfvu738sd2i50p7rb8gck1d00i2.apps.googleusercontent.com';
       const redirectUri = window.location.origin + '/api/auth-google-callback';
+      // state: قيمة عشوائية تُحفظ محليًا ويعيدها جوجل كما هي. بدونها يستطيع
+      // مهاجم أن يدفع متصفح الضحية لإكمال تسجيل دخول بـ code يخصّه هو (CSRF)،
+      // فتنتهي الضحية داخل حسابه دون أن تدري.
+      let oauthState = '';
+      try {
+        const buf = new Uint8Array(16);
+        (window.crypto || window.msCrypto).getRandomValues(buf);
+        oauthState = Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('');
+        sessionStorage.setItem('aiapp_oauth_state', oauthState);
+      } catch(e){ console.warn('[oauth] could not generate state', e); }
       const params = new URLSearchParams({
         client_id: clientId,
         redirect_uri: redirectUri,
         response_type: 'code',
         scope: 'openid email profile',
         prompt: 'select_account',
+        state: oauthState,
       });
       window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
     };
@@ -519,6 +570,13 @@ const $ = s => document.querySelector(s);
     if(preview && placeholder){
       if(avatar){ preview.src = avatar; preview.style.display = 'block'; placeholder.style.display = 'none'; }
       else { preview.style.display = 'none'; placeholder.style.display = 'flex'; }
+    }
+    // v444: مزامنة صورة زر الهيدر
+    const hAv = $('#headerUserAvatarImg');
+    const hEm = $('#headerUserEmoji');
+    if(hAv && hEm){
+      if(avatar){ hAv.src = avatar; hAv.style.display = 'inline-block'; hEm.style.display = 'none'; }
+      else { hAv.style.display = 'none'; hEm.style.display = ''; }
     }
     // v214: مزامنة صورة القائمة ⋮
     const mAv = $('#menuUserAvatar');
