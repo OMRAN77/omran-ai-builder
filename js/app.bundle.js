@@ -11200,6 +11200,24 @@ function __stripCodeForHistory(role, s){
   if(role !== 'assistant') return s;
   return s.replace(/```[\s\S]*?```/g, '[تم بناء/تعديل الكود بنجاح — الكود الكامل محفوظ في المشروع]').slice(0, 3000); // ✅ v325
 }
+// 🕯️ الدوام: انقطاع البث لا يعني ضياع العمل — الخادم يكمل ويكتب دفتره كل خطوة.
+// نسأل الدفتر حتى ينتهي التشغيل ونستعيد نصّه، بدل رمي خطأ شبكة في وجه المستخدم.
+async function __agentRecoverRun(onWait){
+  const deadline = Date.now() + 150000;
+  while(Date.now() < deadline){
+    await new Promise(r => setTimeout(r, 3000));
+    let run = null;
+    try{
+      const r = await fetch('/api/ai?action=agent', { method:'POST', headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ runState: true, token: authGet('aiapp_auth_token') }) });
+      if(r.ok) run = (await r.json()).run;
+    }catch(e){ continue; } // الشبكة ما زالت مقطوعة — نعيد السؤال
+    if(!run) return '';    // ضيف أو دفتر انتهى عمره → لا استعادة ممكنة
+    if(run.status !== 'running') return String(run.text || '');
+    if(onWait) onWait(run.step || 0);
+  }
+  return '';
+}
 async function runOmranAgent(cur, apiText, thinkingDiv){
   const agentStatus = makeChatStatus(thinkingDiv);
   window.__chatStatus = agentStatus;
@@ -11217,11 +11235,11 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
   }
   const reader = res.body.getReader();
   const dec = new TextDecoder();
-  let buf = '', full = '', serverErr = null;
+  let buf = '', full = '', serverErr = null, streamBroke = null;
   while(true){
     let done, value;
     try{ ({ done, value } = await reader.read()); }
-    catch(e){ if(full) break; throw e; } // انقطاع البث بعد وصول محتوى → نكمل بما وصل بدل خطأ شبكة
+    catch(e){ if(e && e.name === 'AbortError'){ if(full) break; throw e; } streamBroke = e; break; } // انقطاع لا إلغاء → نستعيد من الدفتر
     if(done) break;
     buf += dec.decode(value, { stream: true });
     const lines = buf.split('\n');
@@ -11260,6 +11278,13 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
       }
       if(ev.error) serverErr = ev.error;
     }
+  }
+  if(streamBroke){
+    const saved = await __agentRecoverRun(function(n){
+      thinkingDiv.textContent = '🔌 ' + (lang === 'ar' ? ('انقطع الاتصال — الوكيل يكمل على الخادم (خطوة ' + n + ')…') : ('Connection lost — agent still working on the server (step ' + n + ')…'));
+    });
+    if(saved.length > full.length) full = saved;
+    if(!full) throw streamBroke;
   }
   if(serverErr && !full) throw new Error(serverErr);
   const parsed = extractReply(full);

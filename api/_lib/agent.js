@@ -211,6 +211,24 @@ async function runInClient(name, input) {
   return 'لم يستجب متصفح المستخدم خلال 25 ثانية — لم يُنفَّذ. أكمل بلا هذه الأداة أو قل إنك لم تتحقّق.';
 }
 
+// ── الدوام: دفتر الرحلة ───────────────────────────────────────────────────
+// حالة الحلقة كانت تعيش في ذاكرة الدالّة وحدها، والدالّة تستمرّ بعد رحيل
+// المستمع — فانقطاع شبكة كان يمحو عملًا اكتمل على الخادم فعلًا. الدفتر مفتاح
+// KV واحد لكل مستخدم، يُحدَّث عند كل خطوة ويعيش ساعة، وكتابته تفشل بصمت:
+// ترفٌ لا يجوز أن يُسقط تشغيلًا ناجحًا.
+const RUN_TTL_SEC = 3600;
+function runKey(user) {
+  return 'db/agentrun/' + encodeURIComponent(String(user).toLowerCase()) + '.json';
+}
+async function journal(user, run) {
+  if (!user) return; // الضيف بلا هوية ثابتة → لا دفتر له
+  try {
+    const { kvPutJSON, kvExpire } = require('./kv.js');
+    await kvPutJSON(runKey(user), run);
+    await kvExpire(runKey(user), RUN_TTL_SEC);
+  } catch (e) { console.warn('[agent] journal failed', e && e.message); }
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -224,6 +242,16 @@ module.exports = async (req, res) => {
   let body = req.body;
   if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
   const { messages, token, guestId, currentCode } = body;
+
+  // استئناف: قراءة دفتر آخر تشغيل — بلا حصّة ولا بثّ، ولصاحب الدفتر وحده.
+  if (body.runState) {
+    const who = require('./auth.js').verifyToken(token);
+    if (!who) { res.status(401).json({ error: 'auth_required' }); return; }
+    const { kvGetJSON } = require('./kv.js');
+    res.status(200).json({ run: (await kvGetJSON(runKey(who))) || null });
+    return;
+  }
+
   if (!messages || !messages.length) { res.status(400).json({ error: 'Missing messages' }); return; }
 
   const usage = await checkAndConsume(token, guestId, 'agent', clientIp(req));
@@ -238,6 +266,12 @@ module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
   const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); } catch (e) {} };
+
+  const runUser = usage.username || '';
+  const run = { runId: 'r' + Date.now().toString(36), startedAt: Date.now(), updatedAt: Date.now(), step: 0,
+    status: 'running', ask: String((messages[messages.length - 1] || {}).content || '').slice(0, 200), text: '' };
+  send({ runId: run.runId });
+  await journal(runUser, run);
 
   let system = SYSTEM;
 
@@ -299,6 +333,7 @@ module.exports = async (req, res) => {
     while (steps < MAX_STEPS) {
       if (Date.now() - taskStart > MAX_TASK_MS) {
         send({ status: '⏱️ انتهت مهلة المهمة — أوقفتُ العمل عند الخطوة ' + steps + '.' });
+        run.status = 'timeout';
         break;
       }
       steps++;
@@ -365,10 +400,11 @@ module.exports = async (req, res) => {
                 try {
                   const fe = JSON.parse(fl.slice(6));
                   const d = fe.choices && fe.choices[0] && fe.choices[0].delta && fe.choices[0].delta.content;
-                  if (d) send({ delta: d });
+                  if (d) { send({ delta: d }); run.text += d; }
                 } catch (e) {}
               }
             }
+            run.status = 'fallback'; run.updatedAt = Date.now(); await journal(runUser, run);
             send({ done: true });
             res.end();
             return;
@@ -416,6 +452,11 @@ module.exports = async (req, res) => {
         }
       }
 
+      // نهاية كل خطوة تُقيَّد في الدفتر: ما وصل هنا لم يبقَ رهنًا ببقاء المستمع.
+      run.step = steps; run.updatedAt = Date.now();
+      run.text = (run.text + contentBlocks.filter(Boolean).map((cb) => cb.text || '').join('')).slice(-60000);
+      await journal(runUser, run);
+
       if (stopReason === 'tool_use') {
         // Append assistant turn + tool results, then continue the loop.
         const assistantContent = contentBlocks.filter(Boolean).map((cb) => {
@@ -458,13 +499,18 @@ module.exports = async (req, res) => {
       }
 
       // Finished normally.
+      run.status = 'done'; await journal(runUser, run);
       send({ done: true });
       res.end();
       return;
     }
+    if (run.status === 'running') run.status = 'stopped'; // بلغ سقف الخطوات
+    await journal(runUser, run);
     send({ done: true });
     res.end();
   } catch (e) {
+    run.status = 'error'; run.error = String((e && e.message) || e).slice(0, 200);
+    await journal(runUser, run);
     send({ error: 'Agent error: ' + e.message });
     try { res.end(); } catch (e2) {}
   }
