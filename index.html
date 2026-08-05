@@ -804,35 +804,22 @@ html.mobile-ui #omranBelowComposer{display:none !important;}
 #omranBtnWeb, #omranBtnClip{background:none; border:none; box-shadow:none; padding:8px; color:var(--text); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; border-radius:10px;}
 #omranBtnWeb:hover, #omranBtnClip:hover{background:rgba(212,175,55,.12);}
 
-/* ---------------- Right panel (رصيدك + أدوات سريعة) ---------------- */
-#omranRightPanel{display:none; width:252px; flex:0 0 252px; flex-direction:column; gap:10px; padding:16px 14px; overflow-y:auto; border-inline-start:1px solid var(--border);}
 .omPanelTitle{margin:2px 2px 6px; font-size:12.5px; color:var(--muted);}
-#omranBalanceCard{border:1px solid var(--omGold); border-radius:14px; padding:13px 12px; background:rgba(212,175,55,.045); text-align:center; display:flex; flex-direction:column; gap:8px;}
-#omranBalanceTop{display:flex; align-items:center; justify-content:center; gap:8px;}
-html[dir="rtl"] #omranBalanceTop{flex-direction:row-reverse;}
-#omranBalanceNum{font-size:22px; font-weight:700; color:var(--text); line-height:1.2;}
-.omBalanceCoin{width:24px; height:24px; border-radius:50%; background:linear-gradient(135deg,#e8c766,#d4af37); display:inline-flex; align-items:center; justify-content:center; color:#241c00; font-size:12px;}
-#omranBalanceUnit{font-size:11px; color:var(--muted);}
-#omranTopUpBtn{margin-top:2px; padding:8px 10px; background:rgba(212,175,55,.08); border:1px solid var(--omGold); border-radius:10px; color:var(--omGold); font-family:inherit; font-size:12px; font-weight:600; cursor:pointer;}
-#omranTopUpBtn:hover{background:rgba(212,175,55,.18);}
 .omQuickList{display:flex; flex-direction:column; gap:8px;}
 .omQuickRow{display:flex; align-items:center; gap:10px; width:100%; padding:11px 12px; background:rgba(255,255,255,.015); border:1px solid var(--omLine); border-radius:12px; font-family:inherit; font-size:12.5px; color:var(--text); cursor:pointer; text-align:start;}
 .omQuickRow:hover{border-color:var(--omGold); background:rgba(212,175,55,.06);}
 .omQuickRow .omQIcon{margin-inline-start:auto; display:inline-flex; color:var(--muted);}
 .omQuickRow:hover .omQIcon{color:var(--omGold);}
 
-/* ---------------- Desktop layout: sidebar يسار / رصيدك يمين ---------------- */
+/* ---------------- Desktop layout: sidebar يسار ---------------- */
 @media (min-width:861px){
   html[dir="rtl"]:not(.mobile-ui) main{flex-direction:row-reverse;}
   html:not(.mobile-ui) #sidebar{border-left:none !important; border-right:1px solid var(--border) !important;}
   html:not(.mobile-ui) #chatcol{border-left:none !important; border-right:1px solid var(--border) !important;}
-  html:not(.mobile-ui) #omranRightPanel{border-inline-start:none; border-left:1px solid var(--border);}
-  html:not(.mobile-ui) #omranRightPanel{display:flex;}
   html:not(.mobile-ui) body.omranWelcome #workarea,
   html:not(.mobile-ui) body.omranWelcome #resizer2{display:none !important;}
   html:not(.mobile-ui) body.omranWelcome #chatcol{width:auto !important; flex:1 1 auto;}
 }
-@media (max-width:1199px){ #omranRightPanel{display:none !important;} }
 
 /* ---------------- Mobile ---------------- */
 #omranBottomNav{display:none; position:fixed; bottom:0; left:0; right:0; z-index:50; background:rgba(14,14,14,.97); backdrop-filter:blur(14px); border-top:1px solid var(--omLine); padding:5px 2px calc(4px + env(safe-area-inset-bottom,0px));}
@@ -2247,23 +2234,6 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
       <div class="panel" id="panel-voice" style="flex-direction:column; align-items:center; justify-content:center; height:100%;"></div>
     </div>
   </div>
-  <aside id="omranRightPanel">
-    <div>
-      <div class="omPanelTitle">رصيدك</div>
-      <div id="omranBalanceCard">
-        <div id="omranBalanceTop">
-          <span id="omranBalanceNum">—</span>
-          <span class="omBalanceCoin"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></span>
-        </div>
-        <div id="omranBalanceUnit">نقطة</div>
-        <button type="button" id="omranTopUpBtn">شحن الرصيد</button>
-      </div>
-    </div>
-    <div>
-      <div class="omPanelTitle" style="margin-top:8px;" data-i18n="quickToolsTitle">أدوات سريعة</div>
-      <div class="omQuickList" id="omranQuickList"></div>
-    </div>
-  </aside>
 </main>
 
 <style>@keyframes mahaGlow{0%,100%{box-shadow:0 0 6px 2px rgba(212,175,55,.45);}50%{box-shadow:0 0 18px 7px rgba(212,175,55,.85);}}#btnMaha{animation:mahaGlow 1.8s ease-in-out infinite;}</style><button type="button" id="btnMaha" title="مها" data-i18n-title="mahaTitle" style="position:fixed; top:calc(50% - 23px); inset-inline-end:16px; z-index:9998; width:45px; height:45px; border-radius:50%; border:none; background:none; overflow:hidden; padding:0; box-shadow:none; cursor:grab; display:flex; align-items:center; justify-content:center; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;"><img src="/icons/maha-icon.png" alt="مها" draggable="false" style="width:100%; height:100%; object-fit:cover; border-radius:50%; pointer-events:none; -webkit-user-drag:none;"></button>
@@ -4264,7 +4234,7 @@ renderStreak();
     { icon:'list',  k:'qtSummarize', name:'تلخيص نص',        run:function(){ fillPrompt('لخّص النص التالي:\n'); } },
     { icon:'upload',  k:'qtAnalyzeFile', name:'تحليل ملف',       run:function(){ tap('#btnAttach'); } }
   ];
-  ['#omranQuickList', '#omranQuickListMobile'].forEach(function(sel){
+  ['#omranQuickListMobile'].forEach(function(sel){
     var host = $(sel);
     if(!host) return;
     QUICK.forEach(function(q){
@@ -4299,7 +4269,6 @@ renderStreak();
   var ptsSrc = $('#premiumPointsChipValue');
   function syncPoints(){
     var v = (ptsSrc && ptsSrc.textContent || '').trim() || '—';
-    var n = $('#omranBalanceNum'); if(n) n.textContent = v;
     var h = $('#omranUserPoints'); if(h) h.textContent = 'رصيدك: ' + v + ' نقطة';
   }
   if(ptsSrc && window.MutationObserver){
@@ -4357,8 +4326,6 @@ renderStreak();
   var newBtn = $('#omranNewChatBtn'); if(newBtn) newBtn.addEventListener('click', function(){ tap('#btnNew'); });
   var fd = $('#omranFootDelete'); if(fd) fd.addEventListener('click', function(){ tap('#btnDeleteAll'); });
   var fs = $('#omranFootSettings'); if(fs) fs.addEventListener('click', function(){ tap('#btnSettings'); });
-  var topUp = $('#omranTopUpBtn');
-  if(topUp) topUp.addEventListener('click', function(){ tap('#btnSettings'); });
 
   /* ---------- 8) أزرار الصندوق الجديدة ---------- */
   var bw = $('#omranBtnWeb'); if(bw) bw.addEventListener('click', function(){ tap('#btnPreviewToggle'); });
