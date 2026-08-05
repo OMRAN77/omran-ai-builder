@@ -1,0 +1,46 @@
+# Kept in the repo, never shipped to the CDN.
+
+# js/app.bundle.js is a byte-for-byte concatenation of these 13 files, and
+# index.html loads only the bundle. Deploying both shipped ~1 MB of JavaScript
+# twice. Edit these, rebuild the bundle, deploy the bundle.
+js/app-00-swallow.js
+js/app-01-boot-auth.js
+js/app-02-tts.js
+js/app-03-i18n-data.js
+js/app-04-i18n-state.js
+js/app-05-ui.js
+js/app-06-checkout.js
+js/app-07-voice.js
+js/app-08-maha.js
+js/app-09-attach.js
+js/app-10-features.js
+js/app-11-video.js
+js/app-12-studios.js
+js/app-13-stocks-init.js
+js/app-14-tester.js
+js/app-15-floorplan.js
+
+# Change specs — internal notes, not part of the product.
+specs/
+
+# Never publish a source archive from the web root: it hands an attacker the
+# full server logic, and the old copy still contained the hardcoded
+# 'fallback-dev-secret-change-me' default.
+source-code.zip
+*.zip
+
+# Scratch output from the in-browser ffmpeg pipeline.
+videos_tmp/
+
+# Marketing renders and demo clips. Nothing in the app links to these paths —
+# the two demo videos the UI actually plays are served from Vercel Blob
+# storage (6tfgxvttzyoiavtu.public.blob.vercel-storage.com), not from here.
+# 44 MB of CDN weight for files no visitor ever requests.
+# NOTE: assets/characters/ IS used by the app and is deliberately NOT ignored.
+video/
+assets/*.mp4
+
+# ميزة متقاعدة (v403) — حارس _retired.js يرفض مسارها، وملفها لا يُنشر.
+api/_lib/car-tools.js
+js/app-16-snapbuild.js
+js/_floorplan-editor-client.js
