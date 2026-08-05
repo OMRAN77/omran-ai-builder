@@ -241,7 +241,7 @@ module.exports = async (req, res) => {
 
   let body = req.body;
   if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
-  const { messages, token, guestId, currentCode } = body;
+  const { messages, token, guestId, currentCode, projId } = body;
 
   // استئناف: قراءة دفتر آخر تشغيل — بلا حصّة ولا بثّ، ولصاحب الدفتر وحده.
   if (body.runState) {
@@ -269,7 +269,10 @@ module.exports = async (req, res) => {
 
   const runUser = usage.username || '';
   const run = { runId: 'r' + Date.now().toString(36), startedAt: Date.now(), updatedAt: Date.now(), step: 0,
-    status: 'running', ask: String((messages[messages.length - 1] || {}).content || '').slice(0, 200), text: '' };
+    status: 'running', ask: String((messages[messages.length - 1] || {}).content || '').slice(0, 200), text: '',
+    // الدفتر كان لصاحبه لا لمشروعه: يعرف أن عملًا اكتمل، ولا يعرف أين يُوضع بعد
+    // إعادة التحميل. معرّف المشروع يجعل الاستئناف ممكنًا بلا تخمين.
+    projId: String(projId || '').slice(0, 64) };
   send({ runId: run.runId });
   await journal(runUser, run);
 
