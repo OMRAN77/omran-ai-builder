@@ -4,7 +4,7 @@
 const crypto = require('crypto');
 const { getUser, putUser } = require('./auth.js');
 
-const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
+const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').trim().toLowerCase();
 
 function verifyToken(token) {

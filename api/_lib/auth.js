@@ -8,7 +8,7 @@
 const crypto = require('crypto');
 const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
-const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
+const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 
 function userPath(key) {
   // key must already be the normalized (lowercased, trimmed) username.
@@ -222,7 +222,18 @@ module.exports = async (req, res) => {
       };
       await putUser(key, user);
       // v380: فهرس الإيميل → الدخول بجوجل بنفس الإيميل يفتح هذا الحساب نفسه
-      if (user.email) { try { const { kvPutJSON } = require('./kv.js'); await kvPutJSON('db/email-index/' + user.email, { username: key }); } catch (e) {} }
+      // الفهرس يُكتب مرة واحدة فقط (أول من يدّعي البريد)، ولا يُستخدم للدخول
+      // إلا بموافقة صريحة عبر ALLOW_EMAIL_AUTOLINK. الكتابة فوق مدخل قائم كانت
+      // هي الخطوة التي تسمح بانتحال بريد شخص آخر.
+      if (user.email) {
+        try {
+          const { kvGetJSON, kvPutJSON } = require('./kv.js');
+          const existing = await kvGetJSON('db/email-index/' + user.email);
+          if (!existing || !existing.username) {
+            await kvPutJSON('db/email-index/' + user.email, { username: key, at: Date.now() });
+          }
+        } catch (e) { console.warn('[auth] email index write skipped:', e && e.message); }
+      }
       res.status(200).json({ ok: true, token: makeToken(key), username: user.username, recoveryCode: recCode, avatar: null });
       return;
     }
@@ -358,8 +369,26 @@ module.exports = async (req, res) => {
         res.status(404).json({ error: m('تعذر العثور على الحساب', 'Could not find the account') });
         return;
       }
-      user.email = String(email).trim().toLowerCase();
+      const nextEmail = String(email).trim().toLowerCase();
+      // بريد مرتبط بحساب آخر لا يُدّعى. هذا هو الباب الذي كان يسمح بالاستيلاء
+      // على مدخل الفهرس ثم توجيه دخول جوجل الخاص بالضحية.
+      try {
+        const { kvGetJSON } = require('./kv.js');
+        const claimed = await kvGetJSON('db/email-index/' + nextEmail);
+        if (claimed && claimed.username && String(claimed.username) !== u) {
+          res.status(409).json({
+            error: m('هذا الإيميل مرتبط بحساب آخر.', 'This email is already linked to another account.'),
+          });
+          return;
+        }
+      } catch (e) { console.warn('[auth] email claim check failed:', e && e.message); }
+      user.email = nextEmail;
       await putUser(u, user);
+      try {
+        const { kvGetJSON, kvPutJSON } = require('./kv.js');
+        const existing = await kvGetJSON('db/email-index/' + nextEmail);
+        if (!existing || !existing.username) await kvPutJSON('db/email-index/' + nextEmail, { username: u, at: Date.now() });
+      } catch (e) { console.warn('[auth] email index write skipped:', e && e.message); }
       res.status(200).json({ ok: true, email: user.email });
       return;
     }

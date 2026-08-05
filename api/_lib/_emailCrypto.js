@@ -3,7 +3,7 @@
 // tokens — this AES-256-GCM wrapping keeps them useless without AUTH_SECRET.
 const crypto = require('crypto');
 
-const SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
+const SECRET = require('./_secrets.js').AUTH_SECRET;
 const KEY = crypto.createHash('sha256').update(SECRET).digest();
 
 function encrypt(text) {

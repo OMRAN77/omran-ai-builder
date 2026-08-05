@@ -70,6 +70,28 @@ async function fetchPrayerTimeMs(lat, lng, prayerName, dateStr) {
 }
 
 module.exports = async (req, res) => {
+  // ‏Vercel Cron يرسل ترويسة توقيع؛ ونقبل أيضًا مفتاح المراقبة للتشغيل اليدوي.
+  // بلا هذا كانت النقطة مفتوحة: أي زائر يشغّل دورة كاملة تمسح كل المستخدمين
+  // وترسل إشعاراتهم — استنزاف بلا فائدة، وإزعاج للمستخدمين.
+  {
+    const isVercelCron = !!(req.headers && (req.headers['x-vercel-cron'] || String(req.headers['user-agent'] || '').indexOf('vercel-cron') !== -1));
+    const key = (req.query && req.query.key) || '';
+    const monitor = (process.env.MONITOR_KEY || '').trim();
+    if (!isVercelCron && !(monitor && key === monitor)) {
+      // v405 — «نبضة» مدفوعة بحركة المستخدمين: خطة Hobby لا تسمح بكرون كل دقيقة،
+      // فالتطبيق المفتوح عند أي مستخدم ينبض كل دقيقة. قفل Redis (55 ثانية) يضمن
+      // أن آلاف النبضات المتزامنة تنفّذ دورة واحدة فقط — والمهاجم الذي يستدعيها
+      // يدويًا لا يحقق أكثر مما يحققه الكرون المقصود نفسه.
+      const isTick = !!(req.query && req.query.tick);
+      if (!isTick) { res.status(401).json({ error: 'unauthorized' }); return; }
+      try {
+        const { kvSetIfAbsent } = require('./kv.js');
+        const got = await kvSetIfAbsent('reminders:tick-lock', String(Date.now()), 55);
+        if (!got) { res.status(200).json({ ok: true, skipped: 'locked' }); return; }
+      } catch (e) { res.status(200).json({ ok: false, reason: 'lock-failed' }); return; }
+    }
+  }
+
   if (!VAPID_PUBLIC || !VAPID_PRIVATE) { res.status(200).json({ ok: false, reason: 'no vapid keys configured' }); return; }
 
   const now = new Date();

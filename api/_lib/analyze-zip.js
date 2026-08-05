@@ -64,19 +64,52 @@ function stripXmlTags(xml) {
   return xml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-export default async function handler(req, res) {
+// v405 — كان `export default` (صيغة ESM) بينما tools.js يستدعيه بـ require
+// (CommonJS)، فكان الرفع المباشر يفشل بـ«handler is not a function» منذ v402.
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
   try {
-    const { url, filename } = req.body || {};
-    if (!url) { res.status(400).json({ error: 'Missing url' }); return; }
+    const { url, filename, fileBase64 } = req.body || {};
 
-    const fileResp = await fetch(url);
-    if (!fileResp.ok) { res.status(400).json({ error: 'Could not download uploaded file' }); return; }
-    const arrBuf = await fileResp.arrayBuffer();
-    const buf = Buffer.from(arrBuf);
+    // مسار الرفع المباشر (fileBase64) هو الأساسي الآن.
+    //
+    // كان الملف يُرفع من المتصفح إلى Vercel Blob ثم يُنزَّل هنا برابط. لكن
+    // Vercel Blob عُلِّق والتخزين انتقل إلى Redis، و/api/blob-client-upload
+    // صار يرجع 503 عمدًا — فانقطعت الخطوة الأولى وتوقّفت ميزة الأرشيف
+    // بالكامل. الطريق الوحيد الباقي هو أن يصل الملف مع الطلب نفسه.
+    //
+    // مسار url يبقى مدعومًا لو أُعيد تفعيل تخزين خارجي لاحقًا.
+    let buf;
+    if (fileBase64) {
+      try {
+        buf = Buffer.from(String(fileBase64), 'base64');
+      } catch (e) {
+        res.status(400).json({ error: 'تعذّر قراءة الملف المرسل.' });
+        return;
+      }
+      // جسم دالة Vercel محدود بـ ~4.5 م.ب، وbase64 يزيد الحجم ~33%.
+      // نرفض مبكرًا برسالة مفهومة بدل أن تفشل المنصة برسالة غامضة.
+      if (buf.length > 3 * 1024 * 1024) {
+        res.status(413).json({
+          error: 'الملف كبير جدًا للتحليل المباشر (الحد ~3 ميجابايت). احذف مجلدات مثل node_modules أو أرسل الملفات المهمة فقط.',
+        });
+        return;
+      }
+    } else if (url) {
+      const fileResp = await fetch(url, { signal: AbortSignal.timeout(20000) });
+      if (!fileResp.ok) { res.status(400).json({ error: 'تعذّر تنزيل الملف من الرابط.' }); return; }
+      buf = Buffer.from(await fileResp.arrayBuffer());
+    } else {
+      res.status(400).json({ error: 'لم يصل الملف. حاول اختياره مجددًا.' });
+      return;
+    }
 
+    if (!buf || !buf.length) {
+      res.status(400).json({ error: 'الملف فارغ.' });
+      return;
+    }
     if (buf.length > 30 * 1024 * 1024) {
-      res.status(400).json({ error: 'File too large to analyze' });
+      res.status(400).json({ error: 'الأرشيف كبير جدًا للتحليل.' });
       return;
     }
 
@@ -84,7 +117,7 @@ export default async function handler(req, res) {
     try {
       files = unzip(buf);
     } catch (err) {
-      res.status(400).json({ error: 'Not a readable archive: ' + (err.message || err) });
+      res.status(400).json({ error: 'الملف ليس أرشيفًا صالحًا (تأكد أنه zip أو docx أو xlsx أو pptx سليم).' });
       return;
     }
 

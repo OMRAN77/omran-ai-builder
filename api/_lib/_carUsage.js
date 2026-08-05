@@ -4,7 +4,7 @@
 const crypto = require('crypto');
 const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
-const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
+const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 
 const CAR_DAILY_LIMIT = 8;
 const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').toLowerCase();

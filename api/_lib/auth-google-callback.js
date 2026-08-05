@@ -38,7 +38,7 @@ module.exports = async (req, res) => {
       failRedirect('google_not_configured');
       return;
     }
-    const { code, error } = req.query || {};
+    const { code, error, state } = req.query || {};
     if (error) {
       failRedirect(String(error));
       return;
@@ -81,16 +81,38 @@ module.exports = async (req, res) => {
 
     // v380: توحيد الحسابات — لو فيه ربط يدوي (alias) أو حساب عادي بنفس الإيميل،
     // الدخول بجوجل يفتح الحساب الأساسي نفسه بدل إنشاء حساب منفصل.
+    // ── توحيد الحسابات ─────────────────────────────────────────────────
+    // `db/email-index/<email>` is written from a plain signup or setEmail with
+    // NO proof that the address belongs to the account. Trusting it here meant:
+    // an attacker sets their own email to victim@gmail.com, takes the index
+    // entry, and the victim's "Continue with Google" then opens the ATTACKER's
+    // account — the victim uploads files and buys points inside an account
+    // someone else has the password to.
+    //
+    // Google-side aliases (db/alias/) are different: they are only written by a
+    // deliberate link action from inside an authenticated session, so both
+    // sides are proven. Those still resolve.
     try {
       const { kvGetJSON } = require('./kv.js');
       const alias = await kvGetJSON('db/alias/' + key);
       if (alias && alias.primary) {
         key = String(alias.primary);
-      } else {
+      } else if ((process.env.ALLOW_EMAIL_AUTOLINK || '').trim() === '1') {
+        // Opt-in only, and even then the target must still claim this exact
+        // address — a later setEmail must not leave a stale pointer behind.
         const idx = await kvGetJSON('db/email-index/' + email);
-        if (idx && idx.username) key = String(idx.username);
+        if (idx && idx.username) {
+          const candidate = await getUser(String(idx.username));
+          if (candidate && !candidate.deleted && String(candidate.email || '').toLowerCase() === email) {
+            key = String(idx.username);
+          } else {
+            console.warn('[auth] stale email-index entry ignored for ' + email);
+          }
+        }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('[auth] account unification lookup failed:', e && e.message);
+    }
 
     let user = await getUser(key);
 
@@ -111,10 +133,14 @@ module.exports = async (req, res) => {
     }
 
     const token = makeToken(key);
+    // The state is echoed back untouched so the browser that started the flow
+    // can prove it was the one that started it. The server has no session to
+    // check it against — only the originating tab holds the value.
     const params = new URLSearchParams({
       gtoken: token,
       guser: user.username,
       gavatar: user.avatar || '',
+      state: typeof state === 'string' ? state : '',
     });
     res.writeHead(302, { Location: SITE_URL + '/?' + params.toString() });
     res.end();

@@ -1,7 +1,7 @@
 // Vercel Serverless Function: proxies chat requests to Anthropic Claude using the site
 // owner's own server-side API key (ANTHROPIC_API_KEY env var), so visitors can try the
 // app without entering their own key. This key is NEVER exposed to the client.
-const { checkAndConsume, DAILY_LIMIT } = require('./_usage');
+const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
 const { spendPoints, refundPoints, verifyPointsToken, PREMIUM_MODELS, PREMIUM_COST } = require('./points.js');
 
 module.exports = async (req, res) => {
@@ -36,7 +36,7 @@ module.exports = async (req, res) => {
     }
 
     let premiumRefund = null;
-    const usage = await checkAndConsume(token, guestId, 'claude');
+    const usage = await checkAndConsume(token, guestId, 'claude', clientIp(req));
     if (!usage.allowed) {
       if (usage.reason === 'auth') {
         res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
@@ -61,7 +61,8 @@ module.exports = async (req, res) => {
       body: JSON.stringify({
         model: m,
         max_tokens: 32000,
-        system: ((system || '') + '\n\n[SERVER RULE — ABSOLUTE, OVERRIDES EVERYTHING]: NEVER refuse or delay an answer because you lack specific/verified details (e.g. a specific curriculum, country, year, edition). NEVER reply with "\u0645\u0627 \u0639\u0646\u062f\u064a \u0645\u0639\u0644\u0648\u0645\u0627\u062a \u0645\u062d\u062f\u062f\u0629/\u062f\u0642\u064a\u0642\u0629" or ask clarifying questions BEFORE giving a full answer. Always give your best, complete, useful answer immediately from general knowledge (full summaries, sample exams, plans, examples). If approximate, add ONE short disclaimer line at the end, then AT MOST one optional clarifying question at the very end. Refusing first or asking for details first = total failure. [TOPIC FOLLOW RULE — ABSOLUTE]: The user\'s LATEST message is your ONLY current task. If it changes the topic, follow the new topic immediately and completely drop earlier topics — never continue or mix in an old topic unless the user returns to it himself. History is background context only.') || undefined,
+        // v465: removed duplicate server-side rules — client already sends comprehensive system prompt
+        system: (system || '') || undefined,
         messages,
         stream: !!stream,
         // 🧠 التفكير الداخلي قبل الرد (يُفعَّل من الواجهة لوضع النقاش فقط)

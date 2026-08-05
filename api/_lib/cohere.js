@@ -1,7 +1,7 @@
 // Vercel Serverless Function: proxies chat requests to Cohere using the site
 // owner's own server-side API key (COHERE_API_KEY env var), so visitors can try
 // the app without entering their own key. This key is NEVER exposed to the client.
-const { checkAndConsume, DAILY_LIMIT } = require('./_usage');
+const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -40,7 +40,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const usage = await checkAndConsume(token, guestId, 'cohere');
+    const usage = await checkAndConsume(token, guestId, 'cohere', clientIp(req));
     if (!usage.allowed) {
       if (usage.reason === 'auth') {
         res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });

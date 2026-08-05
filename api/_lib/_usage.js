@@ -8,7 +8,7 @@ const crypto = require('crypto');
 const { getUser, putUser } = require('./auth.js');
 const { kvIncr, kvExpire, kvGetJSON } = require('./kv.js');
 
-const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
+const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 
 // Combined daily limit shared across all three free server-proxied providers
 // (Groq + OpenAI + Claude), per logged-in account.
@@ -94,7 +94,7 @@ function isValidGuestId(id) {
 // If there is no valid login token but a guestId is supplied, falls back to a
 // lifetime free-trial allowance for that anonymous browser instead of hard
 // requiring an account (guest mode UX promise: N free messages, no login).
-async function checkAndConsume(token, guestId, provider) {
+async function checkAndConsume(token, guestId, provider, ip) {
   // Each AI provider (mistral / deepseek / cohere / openai / claude / gemini /
   // groq / openrouter / perplexity) gets its own fully independent daily
   // allowance, so "Ask All" only spends 1 message per provider instead of
@@ -131,8 +131,15 @@ async function checkAndConsume(token, guestId, provider) {
     return { allowed: true, username, remaining: DAILY_LIMIT - (count + 1) };
   }
 
-  if (isValidGuestId(guestId)) {
-    const key = 'guest_' + guestId + '_' + providerKey;
+  // Guests are counted by network address, not by the id their own browser
+  // generated. `guestId` lives in localStorage: one line of script produced a
+  // fresh one per request, so the "lifetime" allowance was no allowance at all
+  // and the owner's nine API keys were effectively open to anyone.
+  // api/edu.js already limits by IP — this is the same approach, applied to the
+  // path that actually spends money.
+  const addr = ip && String(ip).trim() ? String(ip).trim() : null;
+  if (addr) {
+    const key = 'guestip_' + addr + '_' + providerKey;
     const count = await countTally(key);
     if (count >= GUEST_LIMIT) {
       return { allowed: false, reason: 'limit', username: null };
@@ -141,6 +148,8 @@ async function checkAndConsume(token, guestId, provider) {
     return { allowed: true, username: null, remaining: GUEST_LIMIT - (count + 1) };
   }
 
+  // No address and no session: refuse rather than fall back to a
+  // client-controlled identifier.
   return { allowed: false, reason: 'auth', username: null };
 }
 
@@ -200,8 +209,12 @@ async function checkAndConsumeCustom(token, guestId, ip, provider, dailyLimit) {
     return { allowed: true, username, remaining: dailyLimit - (count + 1) };
   }
 
-  if (isValidGuestId(guestId)) {
-    const key = 'guest_' + guestId + '_' + providerKey;
+  // Guests: meter by network address first, so rotating the client-supplied
+  // guestId (trivially reset from localStorage) can no longer mint fresh
+  // per-endpoint quota. This mirrors checkAndConsume()'s guestip_ approach.
+  const cleanIp = (typeof ip === 'string' && ip.trim()) ? ip.trim().slice(0, 64) : null;
+  if (cleanIp) {
+    const key = 'ip_' + cleanIp + '_' + todayStr() + '_' + providerKey;
     const count = await countTally(key);
     if (count >= dailyLimit) {
       return { allowed: false, reason: 'limit', username: null };
@@ -210,11 +223,11 @@ async function checkAndConsumeCustom(token, guestId, ip, provider, dailyLimit) {
     return { allowed: true, username: null, remaining: dailyLimit - (count + 1) };
   }
 
-  // No login/guest id sent at all (today's frontend for tts/translate/search)
-  // -> meter by IP instead of blocking outright.
-  const cleanIp = (typeof ip === 'string' && ip.trim()) ? ip.trim().slice(0, 64) : null;
-  if (cleanIp) {
-    const key = 'ip_' + cleanIp + '_' + todayStr() + '_' + providerKey;
+  // Only when no IP is discoverable at all (rare on Vercel) do we fall back to
+  // the client-supplied guestId — better than nothing, and no longer the
+  // primary gate. Bucketed by day to match dailyLimit semantics.
+  if (isValidGuestId(guestId)) {
+    const key = 'guest_' + guestId + '_' + todayStr() + '_' + providerKey;
     const count = await countTally(key);
     if (count >= dailyLimit) {
       return { allowed: false, reason: 'limit', username: null };

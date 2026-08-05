@@ -7,7 +7,7 @@ const crypto = require('crypto');
 const { getUserOnce } = require('./auth.js');
 const { kvList, kvGetJSON } = require('./kv.js');
 
-const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
+const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').trim().toLowerCase();
 
 // User records are stored encrypted at rest (see auth.js). Always go through

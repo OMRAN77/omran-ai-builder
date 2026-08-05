@@ -2,9 +2,32 @@
 // Multi-step: plans → searches the web when needed → builds complete code →
 // self-reviews. Streams SSE events to the client:
 //   {status:"..."} step updates, {delta:"..."} text chunks, {done:true} end.
-const { checkAndConsume, DAILY_LIMIT } = require('./_usage');
+const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
 
 const TOOLS = [
+  {
+    name: 'run_js',
+    description: 'شغّل كود JavaScript في بيئة معزولة في متصفح المستخدم وأعد ناتجه وأخطاءه. استخدمها للتحقق من منطق كتبته، أو لحساب شيء بدقة، أو لاختبار دالة قبل تسليمها. لا تسلّم كودًا تظنه يعمل — شغّله أولًا.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'كود JavaScript. آخر تعبير أو ما تطبعه بـ console.log هو الناتج.' },
+      },
+      required: ['code'],
+    },
+  },
+  {
+    name: 'test_html',
+    description: 'شغّل ملف HTML كاملًا في بيئة معزولة وأعد أخطاء التشغيل التي ظهرت فيه. استخدمها قبل تسليم أي تطبيق أو صفحة بنيتها — الأخطاء التي تظهر هنا هي نفسها التي سيراها المستخدم.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        html: { type: 'string', description: 'ملف HTML كامل.' },
+      },
+      required: ['html'],
+    },
+  },
+
   {
     name: 'web_search',
     description: 'ابحث في الإنترنت عن معلومات حديثة أو حقائق أو أخبار أو أسعار. إجباري قبل ذكر أي معلومة عن مواقع أو أسعار أو إجراءات رسمية أو روابط.',
@@ -40,9 +63,11 @@ const SYSTEM = `أنت "وكيل عمران" 🤖 — وكيل ذكاء اصطن
 
 ═══ الأسلوب والمشاعر ═══
 9. ردودك قصيرة ومباشرة + اقتراح خطوة تالية واحدة فقط.
-10. بدون حماس مبالغ أو عبارات جاهزة ("أبشر! 🔥") — هدوء واحترافية ودفء.
+10. أسلوبك راقي وطبيعي — مثل خبير ودود يعرف كل شي. نوّع تعبيراتك ولا تكرر نفس العبارات الجاهزة ("أبشر! 🔥" / "بالتأكيد!" ممنوعة).
 11. ممنوع الإيموجي نهائيًا في كل ردودك — ولا إيموجي واحد. اقرأ مزاج المستخدم: إذا متضايق أو الموضوع جدّي رد بجدية واحترام تام.
 12. حنون وذكي اجتماعيًا: جارِ أسلوب المتحدث — يمزح؟ مازحه بخفة. جدّي؟ كن جديًا. مبتدئ؟ بسّط. خبير؟ ادخل بالعمق. كن دافئًا قريبًا من القلب بدون تكلّف.
+12ب. أجب على أي موضوع بعمق وخبرة: صحة، قانون، تقنية، أعمال، تعليم، ثقافة، تاريخ، طبخ، رياضة، دين — كل شي. ما ترفض أي سؤال إلا إذا فعلاً خطير.
+12ج. أجوبتك عملية ملموسة — مو نصايح عامة. اعطِ أرقام وخطوات وأمثلة من واقع الإمارات والخليج.
 13. طابق لغة المستخدم ولهجته (عربي/إنجليزي/أوردو/أي لغة).
 14. صبر تام مع كبار السن والمبتدئين — أعد الشرح أبسط بدون ملل أو تعالٍ.
 15. حساسية ثقافية: احترم الدين والعادات، لا تقترح ما لا يناسب بيئة الخليج.
@@ -55,6 +80,7 @@ const SYSTEM = `أنت "وكيل عمران" 🤖 — وكيل ذكاء اصطن
 20. قبل أي تغيير جوهري على مشروع المستخدم (حذف ميزة، تغيير تصميم كامل): قل "بأسوي كذا، موافق؟" وانتظر موافقته. التعديلات الصغيرة المطلوبة صراحةً نفذها مباشرة.
 20-ب. عند تسليم كود: ابدأ ردك دائمًا بجملتين أو ثلاث بالعربي تشرح ما بنيته وكيف يستخدمه المستخدم، ثم ضع الكود. ممنوع رد فارغ أو كلمة "تم" فقط.
 21. معايير الجودة الإلزامية: كل زر يعمل، لا أخطاء JavaScript، تصميم متجاوب للجوال. قاعدة الأزرار: ممنوع script type=module؛ السكربت عادي في نهاية body؛ أي دالة onclick يجب أن تكون معرفة globally (ليست داخل DOMContentLoaded أو IIFE)؛ الأفضل addEventListener في نهاية السكربت؛ تحقق قبل التسليم أن كل زر مربوط بدالة موجودة فعلًا. الألعاب: تحكم لمس (جويستيك + زر) + شاشة بداية + نقاط + شاشة نهاية + أصوات + رسومات محترمة (ممنوع مربعات ملونة كشخصيات).
+21-ب. ممنوع تقول \"جاهز\" أو \"أصلحته\" قبل أن تشغّله فعلًا بـ test_html أو run_js وترى أنه يعمل. إذا لم تستطع التشغيل قل صراحة \"ما تحققت منه\" — الثقة بلا تحقّق أسوأ من الخطأ نفسه لأنها تخفيه.
 22. إذا فشل شيء: شخّص السبب واشرحه وأصلحه بنفسك. إذا فشلت مرتين بنفس الشيء: توقف وقل بصراحة "ما قدرت، السبب كذا" — ممنوع اللف والدوران.
 23. في المحادثة اكتب فقط 2-3 جمل: ماذا أنجزت + اقتراح واحد. الكود كله داخل كتلة \`\`\`html فقط.
 
@@ -146,6 +172,36 @@ async function fetchPage(url) {
   }
 }
 
+
+/**
+ * يطلب من متصفح المستخدم تنفيذ أداة وينتظر ناتجها.
+ *
+ * ⚠️ الملتقى عبر Redis لا عبر الذاكرة: دوال Vercel بلا حالة، وردّ المتصفح
+ * قد يصل نسخة أخرى من الدالة غير التي تنتظر. الانتظار في متغيّر محلي كان
+ * سيعمل في التجربة ويفشل عشوائيًا في الإنتاج — وهو أسوأ صنف من الأعطال.
+ *
+ * والمهلة إلزامية: متصفح أُغلق يعني انتظارًا حتى تنتهي مهلة الدالة كلها.
+ */
+async function runInClient(name, input) {
+  const { kvGetJSON, kvDel } = require('./kv.js');
+  const id = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const key = 'agent/tool/' + id;
+
+  send({ clientTool: { id, name, input } });
+
+  const deadline = Date.now() + 12000;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 400));
+    let rec = null;
+    try { rec = await kvGetJSON(key); } catch (e) { /* شبكة متعثّرة — نعيد المحاولة */ }
+    if (rec && typeof rec.output === 'string') {
+      try { await kvDel(key); } catch (e) { /* التنظيف اختياري، وTTL يتكفّل */ }
+      return rec.output.slice(0, 4000);
+    }
+  }
+  return 'لم يستجب متصفح المستخدم خلال 12 ثانية — لم يُنفَّذ. أكمل بلا هذه الأداة أو قل إنك لم تتحقّق.';
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -161,7 +217,7 @@ module.exports = async (req, res) => {
   const { messages, token, guestId, currentCode } = body;
   if (!messages || !messages.length) { res.status(400).json({ error: 'Missing messages' }); return; }
 
-  const usage = await checkAndConsume(token, guestId, 'agent');
+  const usage = await checkAndConsume(token, guestId, 'agent', clientIp(req));
   if (!usage.allowed) {
     if (usage.reason === 'auth') res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
     else res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + DAILY_LIMIT + ' رسالة) للوكيل. انتظر الغد أو اشترك.' });
@@ -206,9 +262,26 @@ module.exports = async (req, res) => {
   try {
     let model = 'claude-sonnet-4-20250514';
     let steps = 0;
-    const MAX_STEPS = 4;
+
+    // 4 خطوات لا تكفي «اقرأ ← افهم ← جرّب ← أخطأت ← صحّح ← تحقّق». المهام
+    // الحقيقية تحتاج عشرات الجولات، وكان الوكيل يتوقف في منتصف عمله فيبدو
+    // عاجزًا وهو لم يُمنح فرصة.
+    //
+    // لكن الرفع بلا قيد يفتح بابًا على فاتورتك: كل خطوة استدعاء كامل بسياق
+    // متراكم، فالخطوة العشرون أغلى من الأولى بكثير. لذلك سقفان لا واحد:
+    // عدد الخطوات، وميزانية وقت للمهمة كلها.
+    const MAX_STEPS = Math.max(1, Math.min(40, Number(process.env.AGENT_MAX_STEPS) || 25));
+    const MAX_TASK_MS = Math.max(30000, Number(process.env.AGENT_MAX_MS) || 240000);
+    const taskStart = Date.now();
+
     while (steps < MAX_STEPS) {
+      if (Date.now() - taskStart > MAX_TASK_MS) {
+        send({ status: '⏱️ انتهت مهلة المهمة — أوقفتُ العمل عند الخطوة ' + steps + '.' });
+        break;
+      }
       steps++;
+      // يرى المستخدم أين وصل بدل انتظار صامت طويل
+      if (steps > 1) send({ status: '🔄 الخطوة ' + steps + ' من ' + MAX_STEPS });
       const doCall = (m) => fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -305,6 +378,8 @@ module.exports = async (req, res) => {
             contentBlocks[curIdx] = { type: cb.type, text: '', name: cb.name, id: cb.id, inputJson: '' };
             if (cb.type === 'tool_use' && cb.name === 'web_search') send({ status: '🔍 الوكيل يبحث في الإنترنت…' });
             else if (cb.type === 'tool_use' && cb.name === 'fetch_page') send({ status: '🌐 الوكيل يقرأ صفحة ويب…' });
+            else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ status: '⚙️ الوكيل يشغّل كودًا للتحقق…' });
+            else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ status: '🧪 الوكيل يختبر ما بناه…' });
           } else if (ev.type === 'content_block_delta') {
             const cb = contentBlocks[ev.index];
             if (!cb) continue;
@@ -336,6 +411,11 @@ module.exports = async (req, res) => {
           let result = 'أداة غير معروفة';
           if (cb.name === 'web_search') result = await tavilySearch(input.query || '');
           else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
+          else if (cb.name === 'run_js' || cb.name === 'test_html') {
+            // التنفيذ في متصفح المستخدم لا هنا: الخادم دالة بلا حالة ومحدودة
+            // الزمن، والكود الذي يكتبه النموذج يجب ألا يعمل قط على بنيتك.
+            result = await runInClient(cb.name, input);
+          }
           toolResults.push({ type: 'tool_result', tool_use_id: cb.id, content: result.slice(0, 8000) });
         }
         convo.push({ role: 'user', content: toolResults });

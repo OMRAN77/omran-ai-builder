@@ -5,7 +5,7 @@ const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
 const LOG_PATH = 'db/client-errors/log.json';
 const MAX_ITEMS = 60;
-const MONITOR_KEY = process.env.MONITOR_KEY || 'omran-monitor-2026';
+const MONITOR_KEY = require('./_secrets.js').MONITOR_KEY;
 
 async function readLog() {
   try {
