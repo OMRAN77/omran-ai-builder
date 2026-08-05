@@ -40,7 +40,15 @@ module.exports = withErrorCapture('telegram', async (req, res) => {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const secret = process.env.TG_WEBHOOK_SECRET;
   if (!token) { res.status(500).json({ ok: false }); return; }
-  if (secret && req.headers['x-telegram-bot-api-secret-token'] !== secret) {
+  // Fail closed. The old `if (secret && …)` skipped the whole check whenever
+  // TG_WEBHOOK_SECRET was unset, so anyone who found the URL could post forged
+  // Telegram updates. A missing secret is a misconfiguration, not permission.
+  if (!secret) {
+    console.error('[telegram] TG_WEBHOOK_SECRET is not set — refusing every webhook call.');
+    res.status(503).json({ error: 'webhook not configured' });
+    return;
+  }
+  if (req.headers['x-telegram-bot-api-secret-token'] !== secret) {
     res.status(401).json({ ok: false }); return;
   }
 

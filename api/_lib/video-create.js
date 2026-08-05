@@ -66,6 +66,8 @@ module.exports = async (req, res) => {
     const pointsLib = require('./points.js');
     let chargedUser = null;
     if (usageResult.username && !pointsLib.isOwnerUsername(usageResult.username)) {
+      const gateRw = pointsLib.requireConfirmation(body, pointsLib.COSTS.runway_video, 'فيديو Runway');
+      if (gateRw) { res.status(gateRw.status).json(gateRw.payload); return; }
       const pay = await pointsLib.spendPoints(usageResult.username, pointsLib.COSTS.runway_video, 'runway_video');
       if (!pay.ok) {
         res.status(402).json({ error: 'points_insufficient', needed: pointsLib.COSTS.runway_video, points: pay.points || 0 });

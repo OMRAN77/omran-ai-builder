@@ -7,6 +7,8 @@
 require('./_lib/_fetch-timeout.js');
 // Nothing thrown in this router escapes unrecorded (see _lib/_errors.js).
 const { withErrorCapture } = require('./_lib/_errors.js');
+// حارس الميزات المتقاعدة — يُفحص قبل أي تحميل وحدة أو استخدام مفتاح.
+const { isRetired, retiredResponse } = require('./_lib/_retired.js');
 
 const { verifyToken } = require('./_lib/auth.js');
 const { kvGetJSON, kvPutJSON, kvIncr, kvExpire } = require('./_lib/kv.js');
@@ -127,6 +129,8 @@ async function callClaude(apiKey, contentBlocks, lang, nativeLang, examLang, sta
     + ' لا تكتب أي شيء خارج كائن JSON.';
   const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
+    // v407: مهلة خاصة 120ث — التحليل التعليمي الثقيل يتجاوز مهلة الـ30ث العامة
+    signal: AbortSignal.timeout(120000),
     headers: {
       'Content-Type': 'application/json',
       'x-api-key': apiKey,
@@ -181,6 +185,8 @@ async function callClaudeGrade(apiKey, payload, lang, nativeLang) {
 
   const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
+    // v407: مهلة خاصة 120ث — التحليل التعليمي الثقيل يتجاوز مهلة الـ30ث العامة
+    signal: AbortSignal.timeout(120000),
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify({ model: m, max_tokens: 2000, system: sys, messages: [{ role: 'user', content: user }] }),
   });
@@ -212,6 +218,8 @@ async function callClaudeExpense(apiKey, contentBlocks, lang) {
     + ' لا تكتب أي شيء خارج كائن JSON.';
   const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
+    // v407: مهلة خاصة 120ث — التحليل التعليمي الثقيل يتجاوز مهلة الـ30ث العامة
+    signal: AbortSignal.timeout(120000),
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify({ model: m, max_tokens: 8000, system: sys, messages: [{ role: 'user', content: contentBlocks }] }),
   });
@@ -242,6 +250,8 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
     const action = body.action || '';
+    // حارس الميزات المتقاعدة — 410 قبل أي استخدام مفتاح (docqa/docask/gov/cv).
+    if (isRetired(action)) { retiredResponse(res, action); return; }
     const username = body.token ? verifyToken(body.token) : null;
     const isOwner = !!username && String(username).trim().toLowerCase() === OWNER_USERNAME;
 

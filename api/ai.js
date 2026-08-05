@@ -25,6 +25,59 @@ function load(action) {
 }
 
 // --- Server-side real date/time injection (UAE) + topic-follow rule ---
+/**
+ * أجزاء التعليمة مفكّكة بالاسم.
+ *
+ * The split follows one criterion, and it is not "fact vs style" — it is
+ * EVIDENCE: does removing this line cause a bug we actually observed?
+ *   • date, country, links → wrong answers without them
+ *   • provider identity    → v287: DeepSeek claimed to be Grok
+ *   • confirmation         → v335: model re-asked after the user said نعم
+ *   • capabilities         → model refused features the app really has
+ * Everything else (persona, app marketing, topic and ads rules) is style, and
+ * style is what made every provider sound the same.
+ */
+function noteDate() {
+  const now = new Date();
+  const opts = { timeZone: 'Asia/Dubai', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true };
+  let ar = '', en = '';
+  try { ar = new Intl.DateTimeFormat('ar-AE', opts).format(now); } catch (e) { /* locale unavailable */ }
+  try { en = new Intl.DateTimeFormat('en-GB', opts).format(now); } catch (e) { /* locale unavailable */ }
+  return '\n\n[التاريخ الحقيقي الآن — توقيت الإمارات]: ' + ar + ' — ' + en + '. أجب بالتاريخ الكامل إذا سُئلت (اسم اليوم + الرقم + الشهر + السنة). تجاهل أي تاريخ من بيانات تدريبك.';
+}
+
+function noteCountry(country) {
+  const code = (typeof country === 'string' ? country.trim().toUpperCase() : '');
+  let cAr = '', cEn = '';
+  if (code && /^[A-Z]{2}$/.test(code)) {
+    try { cAr = new Intl.DisplayNames(['ar'], { type: 'region' }).of(code) || ''; } catch (e) { /* region unavailable */ }
+    try { cEn = new Intl.DisplayNames(['en'], { type: 'region' }).of(code) || ''; } catch (e) { /* region unavailable */ }
+  }
+  return (cAr || code)
+    ? '\n[قاعدة الدولة — مطلقة]: المستخدم يتصفّح الآن من دولة: ' + (cAr || code) + (cEn ? ' (' + cEn + ')' : '') + '. أي سؤال عن خدمات أو عقارات أو قوانين أو أسعار أو جهات حكومية أو أرقام تواصل أو منصات محلية = أجب بمعلومات هذه الدولة تحديدًا (مفتاح هاتفها الدولي، جهاتها الحكومية الرسمية، منصاتها المحلية المعروفة فيها). ممنوع منعًا باتًا افتراض أي دولة أخرى أو اقتراح جهات/منصات/أرقام من دولة مختلفة. الاستثناء الوحيد: إذا ذكر المستخدم دولة أخرى صراحةً في رسالته فاتبع الدولة التي ذكرها.'
+    : '\n[قاعدة الدولة الافتراضية — مطلقة]: لم تُعرف دولة المستخدم من الشبكة، فافترض أنه في دولة الإمارات العربية المتحدة. أي سؤال عن خدمات أو عقارات أو قوانين أو أسعار أو جهات حكومية أو أرقام تواصل أو منصات محلية = أجب بمعلومات الإمارات (مفتاح +971، جهات ومنصات إماراتية). الاستثناء: إذا ذكر المستخدم دولة أخرى صراحةً فاتبعها.';
+}
+
+const NOTE_LINKS = '\n[قاعدة الروابط]: ممنوع كتابة أي رابط URL من ذاكرتك. الروابط المسموحة فقط: من نتائج البحث الحية أو من المستخدم نفسه. إذا ما عندك رابط حقيقي اذكر اسم الموقع بدون URL.';
+
+// v335 — بدونها يعيد المزوّد السؤال بعد أن يقول المستخدم «نعم».
+const NOTE_CONFIRM = '\n[قاعدة التأكيد]: تأكيد قصير (نعم/تمام/يلا/اوك) بعد سؤالك = موافقة — جاوب فورًا بلا إعادة سؤال.';
+
+// الصياغة القديمة كانت «ممنوع تقول ما أقدر» — وهي تدفع النموذج ليعد بما لا
+// يفعله: التطبيق يولّد الصور عبر أداة منفصلة، لا النموذج في ردّه النصّي.
+// فيرد «نعم أقدر» ثم لا يحدث شيء. هذه الصياغة صادقة وتحلّ نفس الرفض.
+const NOTE_CAPS = '\n[القدرات]: التطبيق — لا أنت — يوفّر توليد الصور والفيديو وتحويل PDF. إذا طلب المستخدم أحدها فأرشده إليه داخل التطبيق بدل قول "ما أقدر".';
+
+// v464 — جودة المحادثة: أسلوب راقي وطبيعي.
+const NOTE_QUALITY = '\n[الأسلوب]: رد بعمق وخبرة على أي موضوع. كن طبيعيًا ودودًا وراقيًا — نوّع تعبيراتك ولا تكرر عبارات جاهزة. طابق لغة ولهجة المستخدم.';
+
+// v287 — الهوية وحدها. اسم التطبيق كان مدسوسًا هنا وهو تسويق لا تصحيح.
+function noteIdentity(action) {
+  const idn = PROVIDER_IDENTITY[action];
+  if (!idn) return '';
+  return '\n[قاعدة الهوية — مطلقة]: ' + idn + '. إذا سُئلت من أنت أو ما اسم نموذجك فأجب بهذه الهوية فقط — ممنوع الادعاء أنك نموذج آخر.';
+}
+
 function serverNote(country) {
   const now = new Date();
   const opts = { timeZone: 'Asia/Dubai', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true };
@@ -179,7 +232,76 @@ const IDENTITY_BEHAVIOR_NOTE = '\n[الهوية]: أنت داخل تطبيق «O
 // v293/v330 — 👑 أسلوب «الكينج» (Claude فقط): المستشار الشخصي — عقل الموقع.
 const CLAUDE_STYLE_NOTE = '\n[أسلوب الكينج]: أنت العقل المدبر — بناء وتعديل وتشخيص. مستشار محترف: افهم أولًا، نفّذ كاملًا. ردود قصيرة عملية. تشخيص جذري + حل كامل. رأي صريح. عمق تخصصي حقيقي. ممنوع تدّعي شيء ما سوّيته.';
 
+// ---------------------------------------------------------------------------
+// 🏭 وضع المصنع (factory) — الافتراضي.
+//
+// Every note below (date, country, persona, identity, academic, image, and the
+// signature/graphology rules) is a prompt this app pushes into the model on top
+// of whatever the user actually typed. In factory mode none of it is sent: each
+// provider answers exactly as its makers shipped it.
+//
+// Three things this buys, beyond "the model sounds like itself":
+//   1. Cost — the notes ran to thousands of characters on EVERY message,
+//      including "مرحبا". That was billed on every single turn.
+//   2. Honesty — several notes existed to push a model past its own refusals
+//      (medical images, face reading, forgery verdicts). Overriding a model's
+//      judgment to make it answer anyway is not a feature.
+//   3. Debuggability — when a provider gives a bad answer you now know it came
+//      from the model, not from a note fighting it.
+//
+// Set AI_MODE=guided to restore the old behaviour globally, or send
+// { mode: 'guided' } on a single request.
+const AI_MODE = (process.env.AI_MODE || 'balanced').trim().toLowerCase();
+// `minimal` مرادف لـ `balanced` حفاظًا على التوافق مع أي إعداد قائم.
+const MODES = ['factory', 'balanced', 'minimal', 'guided'];
+function canonMode(m) { return m === 'minimal' ? 'balanced' : m; }
+
+/**
+ * factory (default) — nothing is added. Each provider answers exactly as its
+ *   makers shipped it.
+ * minimal — only the two notes that prevent a WRONG ANSWER rather than impose
+ *   a style: today's real date, and a ban on inventing URLs. ~150 chars instead
+ *   of the 1,800 that `guided` sent on every single message.
+ * guided — the full original stack (persona, identity, country, capabilities…).
+ */
+function resolveMode(body) {
+  const perRequest = body && typeof body.mode === 'string' ? body.mode.trim().toLowerCase() : '';
+  if (MODES.indexOf(perRequest) !== -1) return canonMode(perRequest);
+  return MODES.indexOf(AI_MODE) !== -1 ? canonMode(AI_MODE) : 'balanced';
+}
+
+function isFactory(body) {
+  return resolveMode(body) === 'factory';
+}
+
+/**
+ * The two facts a model cannot know and will otherwise state confidently:
+ * what day it is, and whether a URL it remembers still exists. Everything
+ * else that `guided` injected was style, identity or marketing.
+ */
+/**
+ * balanced — الافتراضي.
+ * ست قواعد فقط، كلٌّ منها يمنع عطلًا مُشاهَدًا: التاريخ · الدولة · الروابط ·
+ * هوية المزوّد (v287) · التأكيد (v335) · القدرات.
+ * المحذوف عن guided: الشخصية المفروضة، وهوية التطبيق، وقاعدة الموضوع،
+ * وقاعدة الإعلانات — كلها أسلوب، وهي سبب تشابه المزوّدين التسعة.
+ */
+function balancedNote(action, country) {
+  // v465: NOTE_QUALITY removed — client-side Q&A prompt already covers style rules.
+  // Keeping only factual/functional notes to avoid overwhelming the model with duplicates.
+  return noteDate() + noteCountry(country) + NOTE_LINKS + noteIdentity(action) + NOTE_CONFIRM + NOTE_CAPS;
+}
+
+
 function injectNote(action, body, country) {
+  const mode = resolveMode(body);
+  // Factory: hand the request to the provider untouched.
+  if (mode === 'factory') return;
+  if (mode === 'balanced') {
+    applyNote(action, body, balancedNote(action, country));
+    return;
+  }
+
   // v359 — 👑 الوضع الاحترافي «شبه‑خام»: أقوى نموذج بحرية كاملة بلا قيود أسلوب أو
   // شخصية أو تسويق — نُبقي فقط الحواجز التقنية الإلزامية (serverNote: التاريخ +
   // الإمارات + منع هلوسة الروابط + متابعة الموضوع) وقاعدة الهوية (لا يكشف مزوده
@@ -190,8 +312,7 @@ function injectNote(action, body, country) {
     if (action === 'claude') note += CLAUDE_STYLE_NOTE;
     else note += ORIGINAL_PERSONA_NOTE;
   }
-  const idn = PROVIDER_IDENTITY[action];
-  if (idn) note += '\n[قاعدة الهوية — مطلقة]: ' + idn + '، وتعمل الآن داخل تطبيق "Omran AI Builder" من تطوير فريق عمران AI. إذا سُئلت من أنت أو ما اسم نموذجك فأجب بهذه الهوية فقط — ممنوع منعًا باتًا الادعاء أنك Grok أو ChatGPT أو أي نموذج آخر غير هويتك المذكورة هنا.';
+  note += noteIdentity(action);
   if (!isPremium) {
     note += IDENTITY_BEHAVIOR_NOTE;
     if (ACADEMIC_RE.test(lastUserText(action, body))) note += ACADEMIC_NOTE;
@@ -203,6 +324,12 @@ function injectNote(action, body, country) {
     }
   }
   tagLastUserMessage(action, body);
+  applyNote(action, body, note);
+}
+
+/** Attaches a note to whichever system field the provider actually reads. */
+function applyNote(action, body, note) {
+  if (!note) return;
   if (action === 'gemini') {
     const si = body.systemInstruction;
     if (typeof si === 'string') body.systemInstruction = si + note;
@@ -257,6 +384,9 @@ module.exports = withErrorCapture('ai', async (req, res) => {
         if (action === 'claude' && Array.isArray(b.messages)) {
           while (b.messages.length && b.messages[b.messages.length - 1] && b.messages[b.messages.length - 1].role !== 'user') b.messages.pop();
         }
+        // Same guard for Gemini — it is stricter than Claude, not looser, yet it
+        // was the only provider with no sanitising at all. A request can also
+        // reach here from a path that never went through the browser helper.
         if (action === 'gemini' && Array.isArray(b.contents)) {
           b.contents = sanitizeGeminiContents(b.contents);
         }

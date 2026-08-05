@@ -13,7 +13,17 @@ const SEARCH_DAILY_LIMIT = 40;
 
 /**
  * Reorders merged search results by actual relevance to the question.
- * Falls back silently to the original order when no key is set or the call fails.
+ *
+ * Without this, results from 4-5 parallel sub-queries are concatenated in
+ * whatever order they arrived and then truncated — so a genuinely good hit
+ * sitting at position 23 is never seen by the model. Cohere Rerank is built
+ * for exactly this and it is one call.
+ *
+ * Two wins, not one: better answers, and fewer tokens sent downstream because
+ * 5 strong results replace 20 mediocre ones.
+ *
+ * Falls back silently to the original order when no key is set or the call
+ * fails — search must never break because reranking is unavailable.
  */
 async function rerankResults(query, results, topN) {
   const key = (process.env.COHERE_API_KEY || '').trim();
@@ -45,6 +55,7 @@ async function rerankResults(query, results, topN) {
       const src = results[item.index];
       if (src) out.push(Object.assign({}, src, { relevance: item.relevance_score }));
     }
+    // Anything the reranker dropped is appended, so nothing is silently lost.
     const kept = new Set(ranked.map((x) => x.index));
     results.forEach((r, i) => { if (!kept.has(i)) out.push(r); });
     return out;
@@ -143,7 +154,8 @@ module.exports = async (req, res) => {
     // v384: 🔬 Deep Research — بحث عميق بعدة زوايا: يولّد 3-5 استعلامات فرعية
     // عبر Groq ثم يبحث بالتوازي ويدمج النتائج المكررة.
     if (wantDeep) {
-      const geoSuffix = (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE');
+      // v467b: لا نضيف geo suffix إذا الاستعلام طويل (مُثرى بالسياق) — فيه سياق كافي
+      const geoSuffix = query.length > 120 ? '' : ((geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE'));
       // 1) توليد استعلامات فرعية بـ Groq
       let subQueries = [query];
       try {
@@ -183,7 +195,7 @@ module.exports = async (req, res) => {
 
       // 3) دمج وإزالة التكرار
       const seenUrls = new Set();
-      let mergedResults = [];
+      let mergedResults = []; // reassigned after reranking
       const answers = [];
       const allImages = [];
       for (const d of deepResults) {
@@ -230,7 +242,15 @@ module.exports = async (req, res) => {
     // results with longer content so the AI can present ACTUAL current listings
     // (title, price, area, direct link) instead of telling the user to go
     // browse the sites himself.
-    const isListing = !domains && /عقار|شق(ة|ق|تين)|فيلا|فلل|أرض للبيع|ارض للبيع|للبيع|للايجار|للإيجار|إيجار|ايجار|محل تجاري|مكتب للـ|سياره|سيارة|سيارات|سيرات|سياير|اجار|آجار|تأجير|تاجير|استئجار|rent a car|car rental|وظيفة|وظائف|توظيف|apartment|villa|property|for sale|for rent|listing|car for|job vacanc|طيران|تذكرة|تذاكر|رحلة إلى|رحله الى|رحلات|flight|air ticket|airfare|فندق|فنادق|منتجع|منتجعات|شاليه|شاليهات|hotel|resort/i.test(query);
+    // v467b: طلب "رابط/مصدر/الموقع الرسمي" = المستخدم يبي المصدر الرسمي، مو مواقع حجز
+    const __wantsOfficialSource = /رابط|روابط|مصدر|مصادر|المصدر|الموقع الرسمي|official|source|لينك|لنك/i.test(query);
+    // v467b: "طيران" لوحدها = معلوماتي (عن شركة طيران)؛ "طيران" + كلمة حجز = حجز تذاكر
+    const __hasBookingIntent = /تذكرة|تذاكر|حجز|احجز|بوكنج|رحلة إلى|رحله الى|رحلات إلى|book|booking|ticket/i.test(query);
+    const __flightListing = /طيران|flight|airfare/i.test(query) && __hasBookingIntent;
+    // v467c: إذا السياق/الاستعلام يذكر دولة غير الإمارات → لا نقفل على مواقع إماراتية
+    const __foreignCountryRe = /نيبال|nepal|فلبين|فليبين|philippin|بنجلاديش|بنغلاديش|bangladesh|هند(?!سي)|india|باكستان|pakistan|سعودي|saudi|مصر|egypt|عمان(?! (ai|builder))|oman|قطر|qatar|كويت|kuwait|بحرين|bahrain|أردن|jordan|عراق|iraq|سوري|syria|يمن|yemen|لبنان|lebanon|ليبيا|libya|تونس|tunis|جزائر|algeria|مغرب|morocco|سودان|sudan|صومال|somal|تركي|turk|إيران|iran|أفغان|afghan|إندونيسي|indonesia|ماليزي|malays|تايلاند|thai|فيتنام|vietnam|كمبودي|cambodia|ميانمار|myanmar|سريلانك|sri lanka|كوري|korea|ياباني|japan|صين|china|روسي|russ|أمريك|americ|كند|canad|بريطان|british|uk|ألمان|german|فرنس|franc|إيطالي|ital|إسبان|spain|برتغال|portug|هولند|netherl|بلجيك|belg|سويسر|swiss|أسترال|austral|نيوزيلند|new zealand|برازيل|brazil|أرجنتين|argentin|مكسيك|mexic|كولومبي|colombi|تشيلي|chile|بيرو|peru|جنوب أفريقي|south afric|كيني|kenya|نيجيري|nigeria|غان|ghana|تنزاني|tanzania|أثيوبي|ethiopi|أوغند|uganda/i;
+    const __hasForeignCountry = __foreignCountryRe.test(query);
+    const isListing = !domains && !__wantsOfficialSource && !__hasForeignCountry && (/عقار|شق(ة|ق|تين)|فيلا|فلل|أرض للبيع|ارض للبيع|للبيع|للايجار|للإيجار|إيجار|ايجار|محل تجاري|مكتب للـ|سياره|سيارة|سيارات|سيرات|سياير|اجار|آجار|تأجير|تاجير|استئجار|rent a car|car rental|وظيفة|وظائف|توظيف|apartment|villa|property|for sale|for rent|listing|car for|job vacanc|تذكرة|تذاكر|رحلة إلى|رحله الى|رحلات|air ticket|فندق|فنادق|منتجع|منتجعات|شاليه|شاليهات|hotel|resort/i.test(query) || __flightListing);
     const listingDomains = /طيران|تذكرة|تذاكر|رحلة|رحله|رحلات|flight|air ticket|airfare/i.test(query)
       ? ['skyscanner.ae', 'skyscanner.net', 'wego.ae', 'wego.com', 'kayak.ae', 'cheapflights.ae']
       : /فندق|فنادق|منتجع|منتجعات|شاليه|شاليهات|hotel|resort/i.test(query)
@@ -261,7 +281,8 @@ module.exports = async (req, res) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           api_key: apiKey,
-          query: (/سعود|إمارات|الامارات|دبي|أبوظبي|ابوظبي|الشارقة|عجمان|مصر|قطر|كويت|عمان|بحرين|أردن|saudi|uae|dubai|abu dhabi|sharjah|egypt|qatar|kuwait|oman|bahrain|jordan|usa|america|uk|india|pakistan/i.test(query) ? query : query + ' ' + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE')),
+          // v467b: geo-suffix فقط للاستعلامات القصيرة بدون سياق. الاستعلامات المُثراة (طويلة) عندها سياق كافي.
+          query: (/سعود|إمارات|الامارات|دبي|أبوظبي|ابوظبي|الشارقة|عجمان|مصر|قطر|كويت|عمان|بحرين|أردن|saudi|uae|dubai|abu dhabi|sharjah|egypt|qatar|kuwait|oman|bahrain|jordan|usa|america|uk|india|pakistan|فلبين|فليبين|philippin|هند|india|صين|china|يابان|japan|كور|korea|ترك|turk|ألمان|german|فرنس|franc|بريطان|british|إندونيس|indonesia|ماليز|malays|تايلا|thai|روس|russ|أمريك|americ|كند|canad|أسترال|austral/i.test(query) ? query : (query.length > 120 ? query : query + ' ' + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE'))),
           country: (geoNameEn ? geoNameEn.toLowerCase() : 'united arab emirates'),
           search_depth: isListing ? 'advanced' : 'basic',
           include_answer: true,

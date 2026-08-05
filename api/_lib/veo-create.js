@@ -29,6 +29,8 @@ module.exports = async (req, res) => {
       if (gate.reason === 'auth') { res.status(401).json({ error: 'auth_required' }); return; }
       const username = pointsLib.verifyPointsToken(token);
       if (!username) { res.status(401).json({ error: 'auth_required' }); return; }
+      const gateVeo = pointsLib.requireConfirmation(body, pointsLib.COSTS.veo_video, 'فيديو Veo 3');
+      if (gateVeo) { res.status(gateVeo.status).json(gateVeo.payload); return; }
       const pay = await pointsLib.spendPoints(username, pointsLib.COSTS.veo_video, 'veo_video');
       if (!pay.ok) {
         res.status(402).json({ error: 'points_insufficient', needed: pointsLib.COSTS.veo_video, points: pay.points || 0 });

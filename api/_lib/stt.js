@@ -3,7 +3,7 @@
 // button work reliably on ALL devices (Android + iPhone + desktop), since it just
 // records audio (getUserMedia, supported everywhere) instead of relying on the
 // inconsistent/unsupported browser SpeechRecognition API.
-const { checkAndConsume, DAILY_LIMIT } = require('./_usage');
+const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -36,7 +36,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const usage = await checkAndConsume(token, guestId, 'stt');
+    const usage = await checkAndConsume(token, guestId, 'stt', clientIp(req));
     if (!usage.allowed) {
       if (usage.reason === 'auth') {
         res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });

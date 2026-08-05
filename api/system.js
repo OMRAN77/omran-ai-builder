@@ -10,6 +10,7 @@ function load(action) {
     case 'push-subscribe': return require('./_lib/push-subscribe.js');
     case 'reminders': return require('./_lib/reminders.js');
     case 'vapid-public-key': return require('./_lib/vapid-public-key.js');
+    case 'agent-tool-result': return require('./_lib/agent-tool-result.js');
     case 'search': return require('./_lib/search.js');
     case 'realtime-session': return require('./_lib/realtime-session.js');
     case 'email-callback': return require('./_lib/email-callback.js');

@@ -5,7 +5,7 @@
 // secondary, optional enhancement on a video the user already generated.
 const crypto = require('crypto');
 
-const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
+const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 const RUNWAY_VERSION = '2024-11-06';
 const { pickKey, encodeTaskId } = require('./runway-keys');
 
