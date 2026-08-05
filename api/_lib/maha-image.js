@@ -64,7 +64,11 @@ module.exports = async (req, res) => {
     }
 
     const parts = [];
-    const cleanPrompt = String(prompt).slice(0, 500);
+    // 500 حرفًا تكفي طلبًا عاديًا («قطة على كرسي»)، ولا تكفي وصفًا هندسيًا
+    // يحمل عدد الطوابق وسعة الكراج والطراز والمواد — وهو ما يجعل الواجهة
+    // تطابق المخطط. الوصف الهندسي يُسمح له بمساحة أوسع.
+    const isArchitectural = !!(body && body.architectural);
+    const cleanPrompt = String(prompt).slice(0, isArchitectural ? 2400 : 500);
     const extras = Array.isArray(extraImages) ? extraImages.filter((x) => x && x.data).slice(0, 5) : [];
     if (editImageBase64 && extras.length) {
       // 🧩 دمج عدة صور في تصميم واحد
@@ -78,6 +82,13 @@ module.exports = async (req, res) => {
       const artistic = /رسم|كرتون|أنمي|انمي|بطاقة|لوجو|شعار|ملصق|خط|زخرف|cartoon|anime|logo|sticker|illustration|drawing|painting|pixel|3d render|calligraphy/i.test(cleanPrompt);
       if (artistic) {
         parts.push({ text: 'Generate a single high-quality artistic image of: ' + cleanPrompt + '.' });
+      } else if (isArchitectural) {
+        // عرض معماري لا صورة شخص: لا حاجة لملمس البشرة ولا عدسة 85مم،
+        // والمطلوب دقة في عدد الطوابق والفتحات لأنها هي التي يقارنها
+        // المستخدم بالمخطط.
+        parts.push({ text: 'Architectural visualization: ' + cleanPrompt +
+          '\n\nCRITICAL: follow the stated floor count, garage capacity and features EXACTLY — they must match a floor plan the client already has. ' +
+          'Style: professional 3D architectural render, daylight, clear blue sky, eye-level three-quarter view, realistic materials and shadows, landscaped surroundings, no people, no text, no watermarks, no floor plan overlay.' });
       } else {
         parts.push({ text: 'Generate a single ultra-realistic photograph of: ' + cleanPrompt + '. Requirements: shot on a professional DSLR camera, 85mm lens, sharp focus, natural realistic skin texture with pores (no smoothing, no waxy skin), natural lighting with soft shadows, high dynamic range, crisp fine details, 8K quality, no grain, no noise, no digital artifacts. It must look like a real photo, not CGI or AI-generated.' });
       }

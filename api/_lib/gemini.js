@@ -1,7 +1,7 @@
 // Vercel Serverless Function: proxies chat requests to Google Gemini using the site
 // owner's own server-side API key (GEMINI_API_KEY env var), so visitors can try the
 // app without entering their own key. This key is NEVER exposed to the client.
-const { checkAndConsume, DAILY_LIMIT } = require('./_usage');
+const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
 const { spendPoints, refundPoints, verifyPointsToken, PREMIUM_MODELS, PREMIUM_COST } = require('./points.js');
 
 module.exports = async (req, res) => {
@@ -36,7 +36,7 @@ module.exports = async (req, res) => {
     }
 
     let premiumRefund = null;
-    const usage = await checkAndConsume(token, guestId, 'gemini');
+    const usage = await checkAndConsume(token, guestId, 'gemini', clientIp(req));
     if (!usage.allowed) {
       if (usage.reason === 'auth') {
         res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });

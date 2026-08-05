@@ -3,11 +3,11 @@
 // browser connect directly to OpenAI via WebRTC for natural, low-latency
 // speech-to-speech, using the site owner's own OPENAI_API_KEY (never exposed
 // to the client - only the short-lived ephemeral token is sent to the browser).
-const { checkAndConsume, DAILY_LIMIT } = require('./_usage');
+const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
 const crypto = require('crypto');
 const { kvGetJSON } = require('./kv.js');
 
-const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
+const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 function rtVerifyToken(token) {
   try {
     const [payload, sig] = String(token).split('.');
@@ -52,7 +52,7 @@ module.exports = async (req, res) => {
     const mode = body.mode === 'builder' ? 'builder' : 'assistant';
     const isDesktop = body.desktop === true; // v283: كمبيوتر = مايك قريب + حساسية أخف
 
-    const usage = await checkAndConsume(token, guestId, 'maha-realtime');
+    const usage = await checkAndConsume(token, guestId, 'maha-realtime', clientIp(req));
     if (!usage.allowed) {
       if (usage.reason === 'auth') {
         res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });

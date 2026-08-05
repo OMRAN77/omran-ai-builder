@@ -6,7 +6,7 @@ const { kvGetJSON, kvPutJSON } = require('./kv.js');
 const LOG_PATH = 'db/feedback/list.json';
 const REPORTS_PATH = 'db/reports/list.json';
 const MAX_ITEMS = 200;
-const MONITOR_KEY = process.env.MONITOR_KEY || 'omran-monitor-2026';
+const MONITOR_KEY = require('./_secrets.js').MONITOR_KEY;
 
 async function readList() {
   try {

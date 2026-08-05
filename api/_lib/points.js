@@ -6,7 +6,7 @@
 const crypto = require('crypto');
 const { getUser, putUser } = require('./auth.js');
 
-const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
+const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').trim().toLowerCase();
 
 // أسعار الخدمات بالنقاط — المرجع الوحيد في كل الخادم.
@@ -57,12 +57,62 @@ function verifyToken(token) {
 async function readPoints(username) {
   const user = await getUser(username);
   if (!user || user.deleted) return null;
+  // The live counter wins when it exists — the record is only a mirror.
+  try {
+    const raw = await kvGetRaw(balanceKey(username));
+    if (raw !== null && raw !== undefined && String(raw) !== '') {
+      const live = Number(raw);
+      if (Number.isFinite(live)) return { user, points: Math.max(0, Math.floor(live)) };
+    }
+  } catch (e) { /* fall through to the record */ }
   if (typeof user.points !== 'number' || !Number.isFinite(user.points)) {
     user.points = WELCOME_POINTS;
     user.welcomeGift = true;
     try { await putUser(username, user); } catch (e) { /* best-effort */ }
   }
   return { user, points: Math.max(0, Math.floor(user.points)) };
+}
+
+// ---------------------------------------------------------------------------
+// المحفظة الذرّية
+// ---------------------------------------------------------------------------
+// The balance used to live only inside the user record, so spending was
+// read → check → write. Ten concurrent requests all read the same number and
+// all passed the check, which let a 70-point account start several 400-point
+// Veo videos — a real cash cost, not a quota overrun.
+//
+// The live balance now lives in its own Redis integer and moves with DECRBY,
+// which Redis evaluates under its own lock. The user record keeps a mirror so
+// nothing else in the app has to change, and so an existing account migrates
+// on first touch instead of losing its points.
+const { kvIncrBy, kvDecrBy, kvSetIfAbsent, kvGetRaw } = require('./kv.js');
+
+function balanceKey(username) {
+  return 'points:' + encodeURIComponent(String(username).trim().toLowerCase());
+}
+
+/** Seeds the counter from the user record the first time we see this account. */
+async function ensureBalance(username) {
+  const key = balanceKey(username);
+  const raw = await kvGetRaw(key);
+  if (raw !== null && raw !== undefined && String(raw) !== '') return Number(raw);
+  const rec = await readPoints(username);
+  const seed = rec ? rec.points : 0;
+  await kvSetIfAbsent(key, seed);
+  const now = await kvGetRaw(key);
+  return Number(now == null ? seed : now);
+}
+
+/** Keeps the user record in step with the counter. Best-effort by design. */
+async function mirrorToUser(username, points) {
+  try {
+    const rec = await readPoints(username);
+    if (!rec) return;
+    rec.user.points = Math.max(0, Math.floor(points));
+    await putUser(username, rec.user);
+  } catch (e) {
+    console.warn('[points] mirror failed for ' + username + ':', e && e.message);
+  }
 }
 
 // يخصم نقاطًا من رصيد المستخدم. المالك لا يُخصم منه.
@@ -72,23 +122,51 @@ async function spendPoints(username, amount, reason) {
   if (isOwner(username)) return { ok: true, points: Infinity, owner: true };
   const amt = Math.max(0, Math.floor(Number(amount) || 0));
   if (amt === 0) return { ok: true, points: 0 };
-  const rec = await readPoints(username);
-  if (!rec) return { ok: false, reason: 'auth', points: 0 };
-  if (rec.points < amt) return { ok: false, reason: 'insufficient', points: rec.points, needed: amt };
-  rec.user.points = rec.points - amt;
-  await putUser(username, rec.user);
-  return { ok: true, points: rec.user.points, spent: amt, reason };
+
+  let before;
+  try {
+    before = await ensureBalance(username);
+  } catch (e) {
+    console.error('[points] balance unavailable:', e && e.message);
+    return { ok: false, reason: 'auth', points: 0 };
+  }
+  if (!Number.isFinite(before)) return { ok: false, reason: 'auth', points: 0 };
+  if (before < amt) return { ok: false, reason: 'insufficient', points: Math.max(0, before), needed: amt };
+
+  // Deduct first, then look at the result. Losing the race means the balance
+  // went negative — we hand the points straight back and refuse, so two callers
+  // can never both spend the same last credit.
+  let after;
+  try {
+    after = Number(await kvDecrBy(balanceKey(username), amt));
+  } catch (e) {
+    console.error('[points] DECRBY failed:', e && e.message);
+    return { ok: false, reason: 'auth', points: 0 };
+  }
+  if (after < 0) {
+    try { await kvIncrBy(balanceKey(username), amt); } catch (e) { console.error('[points] rollback failed:', e && e.message); }
+    return { ok: false, reason: 'insufficient', points: Math.max(0, after + amt), needed: amt };
+  }
+
+  await mirrorToUser(username, after);
+  return { ok: true, points: after, spent: amt, reason };
 }
 
 // يعيد نقاطًا للمستخدم (استرجاع عند فشل توليد بعد الخصم).
 async function refundPoints(username, amount) {
   if (!username || isOwner(username)) return;
+  const amt = Math.max(0, Math.floor(Number(amount) || 0));
+  if (!amt) return;
+  // Must go through the same atomic counter as the deduction. A read-modify-
+  // write refund running next to a concurrent spend would overwrite it and
+  // silently hand back points that were legitimately taken.
   try {
-    const rec = await readPoints(username);
-    if (!rec) return;
-    rec.user.points = rec.points + Math.max(0, Math.floor(Number(amount) || 0));
-    await putUser(username, rec.user);
-  } catch (e) { /* best-effort */ }
+    await ensureBalance(username);
+    const after = Number(await kvIncrBy(balanceKey(username), amt));
+    await mirrorToUser(username, after);
+  } catch (e) {
+    console.error('[points] refund failed for ' + username + ':', e && e.message);
+  }
 }
 
 // نفس دوال الخصم لكن عبر التوكن مباشرة (للاستخدام من نقاط النهاية الأخرى).
@@ -167,3 +245,33 @@ module.exports.refundPoints = refundPoints;
 module.exports.readPoints = readPoints;
 module.exports.isOwnerUsername = isOwner;
 module.exports.verifyPointsToken = verifyToken;
+
+/**
+ * بوابة تأكيد قبل أي عملية تصرف نقاطًا.
+ *
+ * v204 سجّل الحادثة التي وُجدت هذه من أجلها: مستخدم كتب «أريد فيديو» فقط،
+ * فولّد التطبيق مقطعًا عشوائيًا وأحرق 60 نقطة على شيء لم يطلبه أحد.
+ *
+ * Now that tools are invoked by the model rather than by an explicit button,
+ * that mistake gets easier, not harder — so the check lives in the code, not
+ * in a model instruction that can be talked around.
+ *
+ * The caller must send { confirmed: true }. Without it the endpoint returns a
+ * price quote and spends nothing.
+ */
+function requireConfirmation(body, cost, label) {
+  const confirmed = !!(body && (body.confirmed === true || body.confirm === true));
+  if (confirmed) return null;
+  return {
+    status: 428,
+    payload: {
+      error: 'confirm_required',
+      needsConfirmation: true,
+      cost: cost,
+      label: label,
+      message_ar: 'هذه العملية تخصم ' + cost + ' نقطة (' + label + '). أكّد للمتابعة.',
+    },
+  };
+}
+
+module.exports.requireConfirmation = requireConfirmation;

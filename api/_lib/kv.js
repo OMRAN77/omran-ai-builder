@@ -95,4 +95,29 @@ async function kvExpire(key, seconds) {
   }
 }
 
-module.exports = { kvGetJSON, kvPutJSON, kvDel, kvList, kvIncr, kvExpire };
+// Atomic arithmetic. Redis evaluates these under its own lock, so N concurrent
+// callers can never each read the same balance and all pass the check — which
+// is exactly how a 70-point account could start several 400-point Veo videos.
+async function kvIncrBy(key, amount) {
+  return await command(['INCRBY', key, String(Math.trunc(Number(amount) || 0))]);
+}
+
+async function kvDecrBy(key, amount) {
+  return await command(['DECRBY', key, String(Math.trunc(Number(amount) || 0))]);
+}
+
+/** SET only if the key does not exist. Returns true when this call created it. */
+async function kvSetIfAbsent(key, value, ttlSec) {
+  // ‏TTL داخل نفس الأمر (NX EX) لا EXPIRE منفصل: انهيار بين الخطوتين كان
+  // سيترك قفلًا أبديًا يعطّل الميزة المعتمدة عليه بصمت.
+  const cmd = ['SET', key, String(value), 'NX'];
+  if (ttlSec) cmd.push('EX', String(Math.max(1, Math.trunc(ttlSec))));
+  const res = await command(cmd);
+  return res === 'OK';
+}
+
+async function kvGetRaw(key) {
+  return await command(['GET', key]);
+}
+
+module.exports = { kvGetJSON, kvPutJSON, kvDel, kvList, kvIncr, kvExpire, kvIncrBy, kvDecrBy, kvSetIfAbsent, kvGetRaw };

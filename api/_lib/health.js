@@ -2,7 +2,7 @@
 // GET ?key=MONITOR_KEY -> runs server-side checks and returns JSON summary.
 const { kvPutJSON, kvGetJSON } = require('./kv.js');
 
-const MONITOR_KEY = process.env.MONITOR_KEY || 'omran-monitor-2026';
+const MONITOR_KEY = require('./_secrets.js').MONITOR_KEY;
 
 async function checkRedis() {
   try {

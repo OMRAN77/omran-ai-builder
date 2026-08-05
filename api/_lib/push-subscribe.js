@@ -4,7 +4,7 @@
 const crypto = require('crypto');
 const { kvPutJSON } = require('./kv.js');
 
-const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
+const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 
 function subPath(username) {
   return 'db/push-subs/' + encodeURIComponent(username) + '.json';

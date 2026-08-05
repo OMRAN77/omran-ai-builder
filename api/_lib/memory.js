@@ -5,7 +5,7 @@
 const crypto = require('crypto');
 const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
-const AUTH_SECRET = process.env.AUTH_SECRET || 'fallback-dev-secret-change-me';
+const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 
 const MAX_MEMORY_CHARS = 2800;   // سقف حجم الذاكرة المخزنة (سنة كاملة من المعلومات)
 const MIN_UPDATE_GAP_MS = 20 * 1000; // لا نحدّث أكثر من مرة كل 20 ثانية لكل مستخدم
