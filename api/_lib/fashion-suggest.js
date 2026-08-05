@@ -10,8 +10,12 @@ const { checkFashionQuota } = require('./_fashionUsage');
 const OCCASION_NAMES = {
   wedding: 'a wedding', work: 'work/office', casual: 'a casual day out',
   sport: 'sport/exercise', travel: 'travel', formal: 'a formal event',
+  graduation: 'a graduation ceremony', religious: 'a religious occasion',
 };
-const SEASON_NAMES = { summer: 'summer/hot weather', winter: 'winter/cold weather' };
+const SEASON_NAMES = {
+  summer: 'summer/hot weather', autumn: 'autumn/cool weather',
+  winter: 'winter/cold weather', spring: 'spring/mild weather',
+};
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');

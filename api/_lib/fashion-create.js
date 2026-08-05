@@ -16,6 +16,26 @@ const STYLE_PROMPTS = {
   traditional: 'a traditional Gulf/Khaleeji women\'s fashion style, elegant and modest',
 };
 
+// v417 — تفاصيل اختيارية. إن غابت كلها فالنصّ النهائي مطابق تمامًا لما قبلها.
+const SUBJECTS = { men: 'a man', women: 'a woman', kids: 'a child' };
+const WEAR = { men: 'menswear', women: 'womenswear', kids: "children's wear" };
+const SEASON_HINTS = {
+  summer: 'hot summer weather with lightweight breathable fabrics',
+  autumn: 'cool autumn weather with layered fabrics',
+  winter: 'cold winter weather with warm layers',
+  spring: 'mild spring weather with fresh light fabrics',
+};
+const OCCASIONS = {
+  wedding: 'a wedding', work: 'the workplace', casual: 'an everyday casual outing',
+  sport: 'sport and exercise', travel: 'travel', formal: 'a formal event',
+  graduation: 'a graduation ceremony', religious: 'a religious occasion',
+};
+function joinList(v) {
+  if (!Array.isArray(v)) return '';
+  return v.filter((x) => typeof x === 'string' && x.trim())
+    .slice(0, 8).map((x) => x.trim().slice(0, 24)).join(', ');
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -41,7 +61,8 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { mode, imageBase64, mimeType, style, description, token, multiAngle } = body;
+    const { mode, imageBase64, mimeType, style, description, token, multiAngle,
+      gender, colors, extras, season, occasion } = body;
 
     if (mode === 'image' && !imageBase64) {
       res.status(400).json({ error: 'Missing imageBase64' });
@@ -63,6 +84,15 @@ module.exports = async (req, res) => {
     }
 
     const styleDesc = STYLE_PROMPTS[style] || STYLE_PROMPTS.evening;
+    const subject = SUBJECTS[gender] || 'a woman';
+    const colorList = joinList(colors);
+    const extraList = joinList(extras);
+    const detailClause =
+      (WEAR[gender] ? ' The outfit must be ' + WEAR[gender] + '.' : '') +
+      (colorList ? ' Preferred colour palette: ' + colorList + '.' : '') +
+      (extraList ? ' Add these accessories: ' + extraList + '.' : '') +
+      (SEASON_HINTS[season] ? ' Dress for ' + SEASON_HINTS[season] + '.' : '') +
+      (OCCASIONS[occasion] ? ' The look is intended for ' + OCCASIONS[occasion] + '.' : '');
     const parts = [];
     const multiAngleClause = multiAngle
       ? ' Output a single image laid out as a clean 3-panel collage side by side showing the SAME outfit and person from three angles: front view, side view, and back view.'
@@ -72,15 +102,15 @@ module.exports = async (req, res) => {
       const promptText =
         'Redress the person in this photo into a new outfit in ' + styleDesc + '. ' +
         'Keep the same person, pose, face and background, but change only the clothing/outfit to match the requested style.' +
-        multiAngleClause;
+        detailClause + multiAngleClause;
       parts.push({ text: promptText });
       parts.push({ inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } });
     } else {
       const promptText =
-        'Generate a photorealistic fashion design image of a woman wearing ' + styleDesc + '. ' +
+        'Generate a photorealistic fashion design image of ' + subject + ' wearing ' + styleDesc + '. ' +
         'Specific description: ' + String(description).slice(0, 500) + '. ' +
         'Full-body studio fashion photography, elegant pose, clean background.' +
-        multiAngleClause;
+        detailClause + multiAngleClause;
       parts.push({ text: promptText });
     }
 

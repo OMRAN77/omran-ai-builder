@@ -15772,6 +15772,7 @@ function openShareModal(project){
 
     try{
       const payload = { mode, style: styleEl.value, token, multiAngle: !!multiAngleEl.checked };
+      try{ if(window.omranFashionExtras) Object.assign(payload, window.omranFashionExtras()); }catch(err){ console.warn('[fashion] extras merge failed:', err); }
       if(mode === 'image'){
         payload.imageBase64 = selectedBase64;
         payload.mimeType = selectedMime;
@@ -15903,6 +15904,7 @@ function openShareModal(project){
     try{
       const results = await Promise.all(stylesToRun.map(async (styleVal) => {
         const payload = { mode, style: styleVal, token, multiAngle: false };
+        try{ if(window.omranFashionExtras) Object.assign(payload, window.omranFashionExtras()); }catch(err){ console.warn('[fashion] extras merge failed:', err); }
         if(mode === 'image'){ payload.imageBase64 = selectedBase64; payload.mimeType = selectedMime; }
         else { payload.description = descriptionEl.value.trim(); }
         try{
