@@ -109,7 +109,9 @@ const $ = s => document.querySelector(s);
   let pendingAuthed = null; // { username } to apply after recovery modal ack
 
   function curT(){
-    const lang = localStorage.getItem('aiapp_lang') || 'ar';
+    // v425: اللغة الحيّة أوّلًا. المفتاح المحفوظ يُكتب فقط عند اختيار يدويّ، فزائرٌ
+    //       جديد بمتصفّح إنجليزيّ كان يرى رسائل الدخول عربيّة داخل واجهة إنجليزيّة.
+    const lang = document.documentElement.lang || localStorage.getItem('aiapp_lang') || 'ar';
     if(typeof window.__i18nDict === 'function') return window.__i18nDict(lang) || {};
     // ⚠️ ٦ أغسطس — سجل الأخطاء الحقيقي، حادثتان: «I18N is not defined» من هذا السطر.
     // I18N يُصرَّح بـ const في app-03، أي في نطاق السكربت لا على window، وتنفيذه يأتي

@@ -1,6 +1,9 @@
 {
   "name": "omran-ai-builder",
   "version": "1.0.0",
+  "engines": {
+    "node": "24.x"
+  },
   "private": true,
   "dependencies": {
     "@vercel/blob": "^0.27.1",

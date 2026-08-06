@@ -217,8 +217,8 @@ function setLang(newLang){ try{ setTimeout(()=>{ if(typeof markActiveLang==="fun
   renderAll();
   try { populateVoicePicker(); } catch(e){ __swallow(e, "misc:app-04-i18n-state#9"); }
 }
-$('#btnLangAr').onclick = () => setLang('ar');
-$('#btnLangEn').onclick = () => setLang('en');
+if($('#btnLangAr')) $('#btnLangAr').onclick = () => setLang('ar');
+if($('#btnLangEn')) $('#btnLangEn').onclick = () => setLang('en');
 if($('#btnLangFr')) $('#btnLangFr').onclick = () => setLang('fr');
 if($('#btnLangHi')) $('#btnLangHi').onclick = () => setLang('hi');
 if($('#btnLangUr')) $('#btnLangUr').onclick = () => setLang('ur');
