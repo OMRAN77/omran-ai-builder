@@ -324,6 +324,8 @@ const $ = s => document.querySelector(s);
   // Expose globally so other parts of the app (outside this auth IIFE) can
   // read the token/username honoring the "remember me" choice.
   window.authGet = authGet;
+  // لوحات المالك تنادي النقاط الرقابية برمز جلستها، لا بسرٍّ مكتوبٍ في الحزمة.
+  window.ownerToken = function ownerToken(){ try{ return encodeURIComponent(authGet('aiapp_auth_token') || ''); }catch(e){ return ''; } };
   window.authSet = authSet;
   window.authRemove = authRemove;
   // sendMessage (outside this IIFE) needs the memory helpers too.
@@ -5042,7 +5044,7 @@ $('#btnDeleteAll').onclick = () => {
     list.style.display='block';
     list.innerHTML = '<div style="text-align:center;color:#889;padding:20px;">…</div>';
     try{
-      const r = await fetch('/api/system?action=feedback&key=omran-monitor-2026',{cache:'no-store'});
+      const r = await fetch('/api/system?action=feedback&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '',{cache:'no-store'});
       const d = await r.json();
       const items = (d&&d.feedback)||[];
       const reports = (d&&d.reports)||[];
@@ -14241,7 +14243,7 @@ function openShareModal(project){
       if(Date.now() - last < 6*60*60*1000) return;
       localStorage.setItem('aiapp_ownerHealthTs', String(Date.now()));
       const problems = [];
-      const r = await fetch('/api/system?action=health&key=omran-monitor-2026', {cache:'no-store'});
+      const r = await fetch('/api/system?action=health&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {cache:'no-store'});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error || r.status);
       if(!d.redisOk) problems.push('قاعدة البيانات (Redis) لا تستجيب');
@@ -14278,7 +14280,7 @@ function openShareModal(project){
     }
     // 2) فحص الخادم (مفاتيح + Blob + أخطاء المستخدمين)
     try{
-      const r = await fetch('/api/system?action=health&key=omran-monitor-2026', {cache:'no-store'});
+      const r = await fetch('/api/system?action=health&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {cache:'no-store'});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error || r.status);
       lines.push(mark(d.redisOk) + ' قاعدة البيانات (Redis)');
@@ -14302,7 +14304,7 @@ function openShareModal(project){
   window.clearClientErrors = async function(){
     const box = document.getElementById('adminHealthBox');
     try{
-      const r = await fetch('/api/system?action=client-errors&key=omran-monitor-2026', {method:'DELETE'});
+      const r = await fetch('/api/system?action=client-errors&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {method:'DELETE'});
       if(box) box.textContent = r.ok ? '🧹 تم مسح سجل الأخطاء ✅' : '❌ فشل المسح (' + r.status + ')';
     }catch(e){ if(box) box.textContent = '❌ فشل المسح: ' + e.message; }
   };

@@ -443,7 +443,7 @@ $('#btnDeleteAll').onclick = () => {
     list.style.display='block';
     list.innerHTML = '<div style="text-align:center;color:#889;padding:20px;">…</div>';
     try{
-      const r = await fetch('/api/system?action=feedback&key=omran-monitor-2026',{cache:'no-store'});
+      const r = await fetch('/api/system?action=feedback&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '',{cache:'no-store'});
       const d = await r.json();
       const items = (d&&d.feedback)||[];
       const reports = (d&&d.reports)||[];

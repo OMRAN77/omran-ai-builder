@@ -1,8 +1,8 @@
 // 🩺 System health check — owner dashboard endpoint.
-// GET ?key=MONITOR_KEY -> runs server-side checks and returns JSON summary.
+// GET ?key=MONITOR_KEY أو ?token=<جلسة المالك> -> runs server-side checks and returns JSON summary.
 const { kvPutJSON, kvGetJSON } = require('./kv.js');
 
-const MONITOR_KEY = require('./_secrets.js').MONITOR_KEY;
+const { isOwner } = require('./_owner.js');
 
 async function checkRedis() {
   try {
@@ -25,7 +25,7 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'GET') { res.status(405).json({ error: 'method' }); return; }
-  if ((req.query.key || '') !== MONITOR_KEY) { res.status(401).json({ error: 'unauthorized' }); return; }
+  if (!isOwner(req)) { res.status(401).json({ error: 'unauthorized' }); return; }
 
   const envKeys = {
     OpenAI: !!process.env.OPENAI_API_KEY,

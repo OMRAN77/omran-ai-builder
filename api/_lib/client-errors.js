@@ -1,11 +1,11 @@
 // Client-side error reporting: the app reports its own JS errors here.
 // POST { message, source, line, col, stack, url, ua } -> stored in Redis (deduped, capped)
-// GET ?key=OWNER_MONITOR_KEY -> list of recent errors (for health monitor)
+// GET ?key=MONITOR_KEY أو ?token=<جلسة المالك> -> list of recent errors (for health monitor)
 const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
 const LOG_PATH = 'db/client-errors/log.json';
 const MAX_ITEMS = 60;
-const MONITOR_KEY = require('./_secrets.js').MONITOR_KEY;
+const { isOwner } = require('./_owner.js');
 
 async function readLog() {
   try {
@@ -24,14 +24,14 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
 
   if (req.method === 'GET') {
-    if ((req.query.key || '') !== MONITOR_KEY) { res.status(401).json({ error: 'unauthorized' }); return; }
+    if (!isOwner(req)) { res.status(401).json({ error: 'unauthorized' }); return; }
     const items = await readLog();
     res.status(200).json({ errors: items });
     return;
   }
 
   if (req.method === 'DELETE') {
-    if ((req.query.key || '') !== MONITOR_KEY) { res.status(401).json({ error: 'unauthorized' }); return; }
+    if (!isOwner(req)) { res.status(401).json({ error: 'unauthorized' }); return; }
     await writeLog([]);
     res.status(200).json({ ok: true });
     return;

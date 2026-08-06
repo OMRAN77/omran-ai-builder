@@ -52,7 +52,7 @@
       if(Date.now() - last < 6*60*60*1000) return;
       localStorage.setItem('aiapp_ownerHealthTs', String(Date.now()));
       const problems = [];
-      const r = await fetch('/api/system?action=health&key=omran-monitor-2026', {cache:'no-store'});
+      const r = await fetch('/api/system?action=health&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {cache:'no-store'});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error || r.status);
       if(!d.redisOk) problems.push('قاعدة البيانات (Redis) لا تستجيب');
@@ -89,7 +89,7 @@
     }
     // 2) فحص الخادم (مفاتيح + Blob + أخطاء المستخدمين)
     try{
-      const r = await fetch('/api/system?action=health&key=omran-monitor-2026', {cache:'no-store'});
+      const r = await fetch('/api/system?action=health&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {cache:'no-store'});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error || r.status);
       lines.push(mark(d.redisOk) + ' قاعدة البيانات (Redis)');
@@ -113,7 +113,7 @@
   window.clearClientErrors = async function(){
     const box = document.getElementById('adminHealthBox');
     try{
-      const r = await fetch('/api/system?action=client-errors&key=omran-monitor-2026', {method:'DELETE'});
+      const r = await fetch('/api/system?action=client-errors&token=' + (typeof ownerToken === 'function' ? ownerToken() : '') + '', {method:'DELETE'});
       if(box) box.textContent = r.ok ? '🧹 تم مسح سجل الأخطاء ✅' : '❌ فشل المسح (' + r.status + ')';
     }catch(e){ if(box) box.textContent = '❌ فشل المسح: ' + e.message; }
   };

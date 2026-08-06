@@ -266,6 +266,8 @@ const $ = s => document.querySelector(s);
   // Expose globally so other parts of the app (outside this auth IIFE) can
   // read the token/username honoring the "remember me" choice.
   window.authGet = authGet;
+  // لوحات المالك تنادي النقاط الرقابية برمز جلستها، لا بسرٍّ مكتوبٍ في الحزمة.
+  window.ownerToken = function ownerToken(){ try{ return encodeURIComponent(authGet('aiapp_auth_token') || ''); }catch(e){ return ''; } };
   window.authSet = authSet;
   window.authRemove = authRemove;
   // sendMessage (outside this IIFE) needs the memory helpers too.

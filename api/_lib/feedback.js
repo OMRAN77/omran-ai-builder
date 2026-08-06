@@ -1,12 +1,12 @@
 // رأيك يهمنا — user feedback storage (Upstash Redis)
 // POST { rating, chips, note, user, lang } -> saved (capped list)
-// GET ?key=MONITOR_KEY -> { feedback: [...] } (owner only)
+// GET ?key=MONITOR_KEY أو ?token=<جلسة المالك> -> { feedback: [...] } (owner only)
 const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
 const LOG_PATH = 'db/feedback/list.json';
 const REPORTS_PATH = 'db/reports/list.json';
 const MAX_ITEMS = 200;
-const MONITOR_KEY = require('./_secrets.js').MONITOR_KEY;
+const { isOwner } = require('./_owner.js');
 
 async function readList() {
   try {
@@ -21,7 +21,7 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
 
   if (req.method === 'GET') {
-    if ((req.query.key || '') !== MONITOR_KEY) { res.status(401).json({ error: 'unauthorized' }); return; }
+    if (!isOwner(req)) { res.status(401).json({ error: 'unauthorized' }); return; }
     const items = await readList();
     let reports = [];
     try { const r = await kvGetJSON(REPORTS_PATH); if (Array.isArray(r)) reports = r; } catch (e) {}
