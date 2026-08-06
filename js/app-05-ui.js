@@ -1362,30 +1362,18 @@ function buildBg3DPicker(){
     };
     grid.appendChild(btn);
   });
+  // 🕯️ ٦ أغسطس: التبديل التلقائي مقتول بأمر عمران — لا مفتاح يُعرض ولا مؤقّت يُخلق.
   const chkAuto = $('#chkBg3dAuto');
   if(chkAuto){
-    chkAuto.checked = localStorage.getItem('aiapp_bg3d_auto') === 'true';
-    chkAuto.onchange = () => {
-      localStorage.setItem('aiapp_bg3d_auto', chkAuto.checked ? 'true' : 'false');
-      setupBg3DAutoTimer();
-    };
+    chkAuto.checked = false;
+    const row = chkAuto.closest('label') || chkAuto.parentElement;
+    if(row) row.style.display = 'none';
   }
 }
 function setupBg3DAutoTimer(){
+  // مقتول: يوقف أي مؤقّت قديم ويمحو المفتاح المخزَّن فلا تعود الخلفية تتبدّل وحدها.
   if(bg3dAutoTimer){ clearInterval(bg3dAutoTimer); bg3dAutoTimer = null; }
-  if(localStorage.getItem('aiapp_bg3d_auto') === 'true'){
-    bg3dAutoTimer = setInterval(() => {
-      const options = BG3D_EFFECTS.filter(e => e.id !== 'none');
-      const pick = options[Math.floor(Math.random() * options.length)];
-      applyBg3D(pick.id);
-      const grid = $('#bg3dGrid');
-      if(grid){
-        grid.querySelectorAll('.bg3dOption').forEach(b => b.classList.remove('active'));
-        const idx = BG3D_EFFECTS.findIndex(e => e.id === pick.id);
-        if(grid.children[idx]) grid.children[idx].classList.add('active');
-      }
-    }, 60000);
-  }
+  try{ localStorage.removeItem('aiapp_bg3d_auto'); }catch(e){ __swallow(e, 'bg3d:autokill'); }
 }
 document.addEventListener('DOMContentLoaded', () => {
   const saved = localStorage.getItem('aiapp_bg3d') || 'none';

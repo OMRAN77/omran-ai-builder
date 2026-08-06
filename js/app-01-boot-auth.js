@@ -110,7 +110,7 @@ const $ = s => document.querySelector(s);
 
   function curT(){
     const lang = localStorage.getItem('aiapp_lang') || 'ar';
-    return I18N[lang] || I18N.ar;
+    return window.__i18nDict ? window.__i18nDict(lang) : (I18N[lang] || I18N.ar);
   }
 
   function setMode(m){

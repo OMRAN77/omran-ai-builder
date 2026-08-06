@@ -1,8 +1,8 @@
 # Kept in the repo, never shipped to the CDN.
 
-# js/app.bundle.js is a byte-for-byte concatenation of these 13 files, and
+# js/app.bundle.js is a byte-for-byte concatenation of these files, and
 # index.html loads only the bundle. Deploying both shipped ~1 MB of JavaScript
-# twice. Edit these, rebuild the bundle, deploy the bundle.
+# twice. Edit these, run `npm run bundle`, deploy the bundle.
 js/app-00-swallow.js
 js/app-01-boot-auth.js
 js/app-02-tts.js
@@ -19,6 +19,7 @@ js/app-12-studios.js
 js/app-13-stocks-init.js
 js/app-14-tester.js
 js/app-15-floorplan.js
+js/app-17-agent-tools.js
 
 # Change specs — internal notes, not part of the product.
 specs/
@@ -44,3 +45,6 @@ assets/*.mp4
 api/_lib/car-tools.js
 js/app-16-snapbuild.js
 js/_floorplan-editor-client.js
+
+# أدوات البناء تعيش في المستودع لا على الـCDN.
+scripts/

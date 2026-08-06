@@ -717,28 +717,116 @@ function __stripCodeForHistory(role, s){
   if(role !== 'assistant') return s;
   return s.replace(/```[\s\S]*?```/g, '[تم بناء/تعديل الكود بنجاح — الكود الكامل محفوظ في المشروع]').slice(0, 3000); // ✅ v325
 }
+// 🕯️ الدوام: انقطاع البث لا يعني ضياع العمل — الخادم يكمل ويكتب دفتره كل خطوة.
+// نسأل الدفتر حتى ينتهي التشغيل ونستعيد نصّه، بدل رمي خطأ شبكة في وجه المستخدم.
+async function __agentRecoverRun(onWait){
+  const deadline = Date.now() + 150000;
+  while(Date.now() < deadline){
+    await new Promise(r => setTimeout(r, 3000));
+    let run = null;
+    try{
+      const r = await fetch('/api/ai?action=agent', { method:'POST', headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ runState: true, token: authGet('aiapp_auth_token') }) });
+      if(r.ok) run = (await r.json()).run;
+    }catch(e){ continue; } // الشبكة ما زالت مقطوعة — نعيد السؤال
+    if(!run) return '';    // ضيف أو دفتر انتهى عمره → لا استعادة ممكنة
+    if(run.status !== 'running') return String(run.text || '');
+    if(onWait) onWait(run.step || 0);
+  }
+  return '';
+}
+// 🪞 الأثر المرئي: ما فعله الوكيل فعلًا، مقروءًا من دفتره لا من كلامه. مَن غاب
+// عن الشاشة ثم عاد كان يجد ناتجًا بلا سياق — الآن يجد الخطّة والخطوات.
+function __agentTrailText(run){
+  let out = '';
+  try{
+    if(run && run.plan) out += '\n\n🗺️ ' + String(run.plan).slice(0, 160);
+    const tr = (run && Array.isArray(run.trail)) ? run.trail : [];
+    if(tr.length){
+      out += '\n' + (lang === 'ar' ? 'ما جرى فعلًا:' : 'What actually happened:');
+      tr.slice(-8).forEach(function(s){
+        out += '\n• ' + String((s && s.did) || '').slice(0, 90) + ' — ' + String((s && s.got) || '').slice(0, 80);
+      });
+    }
+  }catch(e){ /* الأثر ترفٌ لا يُسقط ناتجًا */ }
+  return out;
+}
+// 🕯️ الدوام٢: إعادة تحميل الصفحة كانت تقطع الخيط. الخادم يكمل ويكتب دفتره،
+// لكن لا أحد يسأل عنه عند الفتح — فعملٌ اكتمل فعلًا كان يُرمى. هنا نسأل مرة
+// واحدة: إن نجا تشغيل هذا المشروع، نعيده إلى مكانه.
+async function __agentResumeOnLoad(){
+  let mark = null;
+  try{ mark = JSON.parse(localStorage.getItem('aiapp_agent_live') || 'null'); }catch(e){ mark = null; }
+  const drop = () => { try{ localStorage.removeItem('aiapp_agent_live'); }catch(e){} };
+  if(!mark || !mark.p) return;                                        // لا تشغيل كان قائمًا
+  if(Date.now() - (mark.t || 0) > 3540000){ drop(); return; }          // انتهى عمر الدفتر (ساعة)
+  if(!window.authGet || !window.authGet('aiapp_auth_token')) return;   // جلسة غائبة → لا دفتر يُقرأ، ولا نمحو العلامة
+  const cur = (state.projects || []).find(p => p.id === mark.p);
+  if(!cur){ drop(); return; }                                         // المشروع حُذف بين الجلستين
+  let run = null;
+  try{
+    const r = await fetch('/api/ai?action=agent', { method:'POST', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ runState: true, token: window.authGet('aiapp_auth_token') }) });
+    if(r.ok) run = (await r.json()).run;
+  }catch(e){ return; }                                                // شبكة ساقطة → نحاول في فتحة قادمة
+  // دفتر لمشروع آخر أو لتشغيل أقدم من علامتنا = ليس عملنا. لا نلصقه بمكان لا يخصّه.
+  if(!run || run.projId !== mark.p || (run.startedAt || 0) < (mark.t || 0) - 5000){ drop(); return; }
+  state.currentId = cur.id;
+  const note = { role:'assistant', content: '🕯️ ' + (lang === 'ar' ? 'وكيل عمران كان يعمل قبل إعادة التحميل — أتحقّق من عمله…' : 'Omran Agent was working before the reload — checking on its work…'), _loading: true };
+  cur.messages.push(note);
+  renderAll();
+  let text = String(run.text || ''), finished = (run.status !== 'running');
+  if(!finished){
+    const later = await __agentRecoverRun(function(n){
+      note.content = '🔌 ' + (lang === 'ar' ? ('الوكيل يكمل على الخادم (خطوة ' + n + ')…') : ('Agent still working on the server (step ' + n + ')…'));
+      renderMessages(true);
+    });
+    if(later){ finished = true; if(later.length > text.length) text = later; }
+  }
+  const i = cur.messages.indexOf(note);
+  if(i >= 0) cur.messages.splice(i, 1);                               // الفقاعة المؤقتة لا تُحفظ أبدًا
+  if(finished && text){
+    await __agentApplyResult(cur, text);
+    const last = cur.messages[cur.messages.length - 1];
+    if(last) last.content = '🕯️ ' + (lang === 'ar' ? 'اكتمل على الخادم بعد إعادة التحميل.' : 'Completed on the server after the reload.') + __agentTrailText(run) + '\n' + last.content;
+    drop();
+  } else if(!finished){
+    // ما زال يعمل بعد ١٥٠ ثانية: نُبقي العلامة — الفتحة القادمة تسأل من جديد.
+    cur.messages.push({ role:'assistant', content: '🕯️ ' + (lang === 'ar' ? 'الوكيل ما زال يعمل على الخادم — أعد تحميل الصفحة بعد قليل ليظهر عمله.' : 'The agent is still working on the server — reload in a moment to see its work.') });
+  } else {
+    cur.messages.push({ role:'assistant', content: '🕯️ ' + (lang === 'ar' ? ('التشغيل السابق لم يكمل — الحالة: ' + (run.status || 'غير معروفة') + '. اكتب طلبك من جديد.') : ('The previous run did not finish — status: ' + (run.status || 'unknown') + '. Please ask again.')) });
+    drop();
+  }
+  saveState();
+  renderAll();
+}
 async function runOmranAgent(cur, apiText, thinkingDiv){
   const agentStatus = makeChatStatus(thinkingDiv);
   window.__chatStatus = agentStatus;
   let __agentStep = agentStatus.step('🤖', lang === 'ar' ? 'وكيل عمران يخطط…' : 'Omran Agent planning…');
   const history = cur.messages.slice(-8).map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: __stripCodeForHistory(m.role, m.apiText || m.content) }));
+  // العلامة تُكتب قبل الطلب لا بعده: لو أُعيد التحميل في الثانية الأولى وجب أن
+  // نعرف أن هناك دفترًا يُنتظر. localStorage لأنها تنجو من إغلاق التبويب وتُكتب
+  // فورًا — IndexedDB غير متزامنة فقد لا تصل قبل موت الصفحة. والضيف بلا دفتر.
+  try{ if(authGet('aiapp_auth_token')) localStorage.setItem('aiapp_agent_live', JSON.stringify({ p: cur.id, t: Date.now() })); }catch(e){ __swallow(e, 'misc:agentlive'); }
   const res = await fetch('/api/ai?action=agent', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     signal: genAbortController ? genAbortController.signal : undefined,
-    body: JSON.stringify({ messages: history, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), currentCode: cur.code || '' }),
+    body: JSON.stringify({ messages: history, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), currentCode: cur.code || '', projId: cur.id }),
   });
   if(!res.ok){
+    try{ localStorage.removeItem('aiapp_agent_live'); }catch(e){ /* لم يبدأ تشغيل */ }
     const errText = await res.text();
     throwProviderError(res.status, errText);
   }
   const reader = res.body.getReader();
   const dec = new TextDecoder();
-  let buf = '', full = '', serverErr = null;
+  let buf = '', full = '', serverErr = null, streamBroke = null;
   while(true){
     let done, value;
     try{ ({ done, value } = await reader.read()); }
-    catch(e){ if(full) break; throw e; } // انقطاع البث بعد وصول محتوى → نكمل بما وصل بدل خطأ شبكة
+    catch(e){ if(e && e.name === 'AbortError'){ try{ localStorage.removeItem('aiapp_agent_live'); }catch(_){} if(full) break; throw e; } streamBroke = e; break; } // انقطاع لا إلغاء → نستعيد من الدفتر
     if(done) break;
     buf += dec.decode(value, { stream: true });
     const lines = buf.split('\n');
@@ -778,7 +866,21 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
       if(ev.error) serverErr = ev.error;
     }
   }
+  if(streamBroke){
+    const saved = await __agentRecoverRun(function(n){
+      thinkingDiv.textContent = '🔌 ' + (lang === 'ar' ? ('انقطع الاتصال — الوكيل يكمل على الخادم (خطوة ' + n + ')…') : ('Connection lost — agent still working on the server (step ' + n + ')…'));
+    });
+    if(saved.length > full.length) full = saved;
+    if(!full) throw streamBroke;
+  }
   if(serverErr && !full) throw new Error(serverErr);
+  await __agentApplyResult(cur, full);
+  try{ localStorage.removeItem('aiapp_agent_live'); }catch(e){ /* العلامة ترفٌ */ }
+}
+// 🕯️ الدوام٢: تركيب ناتج الوكيل في المشروع (كود + رسالة + إصلاح ذاتي). كان
+// محبوسًا في ذيل runOmranAgent، فمسارُ الاستئناف لم يملك طريقًا لتطبيق عملٍ
+// اكتمل على الخادم. استُخرج كما هو — بلا تغيير سلوك — ليخدم المسارين.
+async function __agentApplyResult(cur, full){
   const parsed = extractReply(full);
   let chatText;
   let codeProducedThisTurn = false;
@@ -2417,7 +2519,9 @@ async function sendPrompt(){
       const __selProv = localStorage.getItem('aiapp_provider') || 'claude';
       // v262 — 🎯 التوجيه بالتخصص: في الوضع الافتراضي فقط (المستخدم ما اختار مزودًا بيده)
       // الطلب يروح خلف الكواليس للمزود المتخصص، والواجهة تعرض المزود الافتراضي كما هو.
-      const __specProv = (!__routeFix && !localStorage.getItem('aiapp_provider_explicit')) ? pickSpecialtyProvider(text) : null;
+      // ٦ أغسطس: الاختيار الصريح يُحترم فقط حيث توجد قائمة تُختار منها (الجوال).
+      const __respectExplicit = !__provUiHidden() && !!localStorage.getItem('aiapp_provider_explicit');
+      const __specProv = (!__routeFix && !__respectExplicit) ? pickSpecialtyProvider(text) : null;
       // 🖼️→🌐 v272: صورة مرفقة + طلب ترجمة/قراءة نص → توجيه خلفي لأقوى مزود رؤية (Claude)
       // حتى لو المستخدم واقف على مزود نظره ضعيف بالصور (Cohere/Groq...). الواجهة ما تتغير.
       const __visionOverride = (imageAttachments.length && text && /(ترجم|ترجمه|ترجمة|ترجملي|translate|translation|اقرأ|اقري|إقرأ|قراءة|شو مكتوب|وش مكتوب|ما المكتوب|what does it say|read the)/i.test(text)) ? 'claude' : null;
@@ -2435,14 +2539,15 @@ async function sendPrompt(){
       // v405: احترام الزر خيارٌ للمستخدم — من يريد مزوده في كل شيء يثبته ويتحمّل نتيجته.
       var __pinProv = false;
       try{ __pinProv = localStorage.getItem('aiapp_pin_provider') === '1'; }catch(e){ __swallow(e, 'ui:pinprov'); }
-      const __effProv = (!__pinProv && (__gateNoBuild || __routeFix)) ? 'claude' : (__visionOverride || __specProv || __selProv);
+      const __effProv0 = (!__pinProv && (__gateNoBuild || __routeFix)) ? 'claude' : (__visionOverride || __specProv || __selProv);
+      const __effProv = __convLockProvider(cur, __effProv0, !!(__gateNoBuild || __routeFix || __visionOverride), __respectExplicit);
       // v405: التحويل يُعلَن بدل الصمت — المستخدم يرى مزودًا غير الذي اختاره فيظن الاختيار معطّلًا.
       try{
         var __selLabel = (typeof functionalLabel === 'function') ? functionalLabel(__selProv) : __selProv;
         if(__effProv !== __selProv && window.__chatStatus && !window.__chatStatus.isReleased()){
           var __why = (__gateNoBuild || __routeFix) ? 'البناء وتعديل الكود'
                     : (__visionOverride ? 'قراءة الصور' : 'هذا النوع من الطلبات');
-          window.__chatStatus.note('↪️', 'اخترتَ ' + __selLabel + ' — و' + __why + ' يُنفَّذ بـ ' +
+          window.__chatStatus.note('↪️', (__provUiHidden() ? 'محادثتك على ' : 'اخترتَ ') + __selLabel + ' — و' + __why + ' يُنفَّذ بـ ' +
             ((typeof functionalLabel === 'function') ? functionalLabel(__effProv) : __effProv) +
             ' لأنه الأدقّ فيه. محادثتك العادية تبقى على ' + __selLabel + '.');
         }
@@ -2622,6 +2727,9 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
         try{ messagesEl.scrollTop = messagesEl.scrollHeight; }catch(e){ __swallow(e, "misc:app-09-attach#36"); }
       }
     }
+    // 🕯️ الدوام٢: المشاريع صارت في اليد → اسأل الدفتر إن كان تشغيل قد نجا.
+    // بلا await: الاستئناف قد ينتظر دقائق، ولا يجوز أن يحبس بقيّة التحميل.
+    __agentResumeOnLoad().catch(e => console.warn('[agent] resume on load failed', e));
   }catch(e){
     console.error('IDB init/migration failed → staying on localStorage', e);
     __idbBroken = true;

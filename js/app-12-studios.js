@@ -478,7 +478,7 @@
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
   function lang7(){ return (typeof currentLang === 'function') ? currentLang() : (localStorage.getItem('aiapp_lang') || 'ar'); }
   function t(key){
-    const dict = (typeof I18N !== 'undefined') ? I18N[lang7()] : null;
+    const dict = (typeof window.__i18nDict === 'function') ? window.__i18nDict(lang7()) : ((typeof I18N !== 'undefined') ? I18N[lang7()] : null);
     return (dict && dict[key]) || key;
   }
   function setStatus(text){

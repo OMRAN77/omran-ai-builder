@@ -1632,7 +1632,7 @@ function isRefusalReply(txt){
    model. Routing them to the fast one is the single biggest cost saving in
    the app, and the user cannot tell the difference on a greeting.
    Deliberately narrow: only very short messages with no question depth. */
-const CASUAL_RE = /^(?:\s*)(?:مرحبا|مرحبتين|هلا|هلو|اهلا|أهلا|السلام عليكم|سلام|صباح الخير|مساء الخير|كيف حالك|كيفك|شلونك|شخبارك|تمام|تمم|اوك|أوك|اوكي|ok|okay|thanks|thank you|شكرا|شكراً|مشكور|يعطيك العافية|تسلم|باي|مع السلامة|hi|hello|hey|good morning|good evening|how are you)(?:\s|!|\.|؟|\?|,|،)*$/i;
+const CASUAL_RE = /^(?:\s*)(?:مرحبا|مرحبتين|هلا وغلا|هلا|هلو|اهلا|أهلا|السلام عليكم|سلام|صباح الخير|مساء الخير|كيف حالك|كيفك|شلونك|شخبارك|تمام|تمم|اوك|أوك|اوكي|ok|okay|thanks|thank you|شكرا|شكراً|مشكور|يعطيك العافية|تسلم|باي|مع السلامة|hi|hello|hey|good morning|good evening|how are you)(?:\s|!|\.|؟|\?|,|،)*$/i;
 
 function isCasualTurn(txt){
   const s = String(txt || '').trim();
@@ -1640,11 +1640,36 @@ function isCasualTurn(txt){
   return CASUAL_RE.test(s);
 }
 
+// 🎯 ٦ أغسطس — قائمة المزوّدين مخفيّة على الكمبيوتر، فالتوجيه بالتخصص يعمل للجميع هناك.
+// الجوال لم يُلمس: شريطه باق، واختياره الصريح يُحترم كما كان.
+function __provUiHidden(){
+  try{
+    return !document.documentElement.classList.contains('mobile-ui') && window.innerWidth >= 861;
+  }catch(e){ return false; }
+}
+// 🔗 قفل المحادثة: أول مزوّد يُقرَّر لخيط يبقى له حتى نهايته، فلا تتنقّل أجوبة
+// الخيط الواحد بين عقول مختلفة. البناء والإصلاح والرؤية استثناء لهذه النوبة وحدها.
+function __convLockProvider(conv, decided, oneOff, respectExplicit){
+  try{
+    if(!conv || oneOff || respectExplicit) return decided;
+    if(conv.aiProvider) return conv.aiProvider;
+    conv.aiProvider = decided;
+    if(typeof saveState === 'function') saveState();
+  }catch(e){ __swallow(e, 'route:convlock'); }
+  return decided;
+}
+// ٦ قواعد التوجيه — الثلاث الأولى كانت موجودة، والثلاث التالية جديدة.
+const ROUTE_NEWS_RE = /آخر\s*(?:الأخبار|أخبار|المستجدات)|أخبار|اخبار|ما\s*الجديد|سعر\s|أسعار|اسعار|الدولار|الذهب|بيتكوين|البتكوين|سهم\s|الطقس|طقس\s|نتيجة\s*مباراة|من\s*فاز|latest\s*news|current\s*price|stock\s*price|weather|who\s*won/i;
+const ROUTE_TRANSLATE_RE = /ترجم|ترجملي|ترجمة|لخّص|لخص(?=\s|$|[.،!؟])|تلخيص|اختصر|translate|translation|summarize|summary|tl;dr/i;
+const ROUTE_ANALYSIS_RE = /حلّل|حلل(?=\s|$|[.،!؟])|تحليل|قارن|قارِن|مقارنة|أيهما أفضل|ايهما افضل|دراسة جدوى|اكتب تقرير|تقرير عن|analyz|analyse|compare|comparison|pros and cons/i;
 function pickSpecialtyProvider(txt){
   const s = String(txt || '');
   if(isCasualTurn(s)) return 'groq';
-  if(/رياضيات|معادل[ةه]|تكامل|تفاضل|مصفوف|لوغاريتم|جبر خطي|مثلثات|احتمالات|إحصاء|احصاء|مسأل[ةه] رياض|حل هذه المسأل|equation|integral|derivative|matrix|logarithm|trigonometry|probability|math problem/i.test(s)) return 'deepseek';
-  if(/قصيد[ةه]|شعر[اً]?\b|أبيات|ابيات|خاطر[ةه]|قص[ةه] قصير[ةه]|اكتب(?:\s+لي)?\s+قص[ةه]|رواي[ةه]|نص أدبي|رسال[ةه] عاطفي[ةه]|write (?:me )?a (?:story|poem)|poetry|short story/i.test(s)) return 'openai';
+  if(/رياضيات|معادل[ةه]|تكامل|تفاضل|مصفوف|لوغاريتم|جبر خطي|مثلثات|احتمالات|إحصاء|احصاء|مسأل[ةه] رياض|حل هذه المسأل|equation|integral|derivative|matrix|logarithm|trigonometry|probability|math problem/i.test(s)) return 'openai';   // كان deepseek — وهو مُهجَّر أصلًا في هذا الملف
+  if(/قصيد[ةه]|شعر[اً]?(?=\s|$|[.،!؟])|أبيات|ابيات|خاطر[ةه]|قص[ةه] قصير[ةه]|اكتب(?:\s+لي)?\s+قص[ةه]|رواي[ةه]|نص أدبي|رسال[ةه] عاطفي[ةه]|write (?:me )?a (?:story|poem)|poetry|short story/i.test(s)) return 'openai';
+  if(ROUTE_NEWS_RE.test(s)) return 'perplexity';        // ④ خبر/سعر/طقس → الباحث الحيّ
+  if(ROUTE_TRANSLATE_RE.test(s)) return 'gemini';       // ⑤ ترجمة/تلخيص → السريع الواسع
+  if(ROUTE_ANALYSIS_RE.test(s)) return 'openai';        // ⑥ تحليل/مقارنة/تقرير → العميق
   return null;
 }
 async function callAIWithFallback(messages, onDelta, preferredList){
