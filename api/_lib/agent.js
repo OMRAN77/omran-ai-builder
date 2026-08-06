@@ -46,12 +46,55 @@ const TOOLS = [
       required: ['url'],
     },
   },
+  {
+    name: 'publish',
+    description: 'انشر التطبيق الذي بنيتَه في هذا التشغيل واحصل على رابط حقيقي يفتحه أي أحد. لا تستدعها إلا إذا طلب المستخدم النشر أو الرابط صراحة. تنشر ما بنيتَه الآن فقط — إن لم تكتب كودًا كاملًا في هذا التشغيل فستُرفض، ولن تنشر كودًا قديمًا أبدًا.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'اسم قصير للمشروع يظهر في صفحة المشاركة.' },
+        to_explore: { type: 'boolean', description: 'أضِفه إلى صفحة «استكشف» العامة أمام كل الناس. false افتراضًا — لا تجعلها true إلا إذا طلب المستخدم ذلك صراحة.' },
+      },
+      required: ['title'],
+    },
+  },
 ];
 
 // 🪞 الأثر المرئي — «فعلتُ س فحصلت ص». كل سطر يُشتقّ من مُدخل الأداة الحقيقي
 // ومن ناتجها الحقيقي، لا من ادّعاء النموذج. فما يقرأه المستخدم هو ما جرى فعلًا.
 // كان الوكيل يقول «🔍 يبحث في الإنترنت…» ولا يقول عن ماذا بحث ولا ماذا وجد،
 // فيبقى العمل كلّه على الثقة العارية.
+// 🔗 مصدر النشر: آخر كتلة كود مكتملة كتبها الوكيل في هذا التشغيل. المكتملة فقط
+// (مُسوَّرة بإغلاقها أو منتهية بـ</html>) — فنصف ملف يُنشر أسوأ من لا نشر.
+function lastCodeIn(text) {
+  const t = String(text || '');
+  let best = '';
+  const re = /```(?:html|HTML)?\s*\n([\s\S]*?)```/g;
+  let m;
+  while ((m = re.exec(t))) { const c = (m[1] || '').trim(); if (c.length > 200) best = c; }
+  if (!best) {
+    const i = t.search(/<!DOCTYPE|<html/i);
+    const j = t.toLowerCase().lastIndexOf('</html>');
+    if (i >= 0 && j > i) best = t.slice(i, j + 7).trim();
+  }
+  return best;
+}
+
+// النشر يلفّ share.js القائم بثلاثة قيود مقصودة: المصدر من هذا التشغيل، و«استكشف»
+// العامة لا تُفتح إلا بطلب صريح، والرابط يعود حرفًا بحرف من التخزين لا من تأليف.
+async function doPublish(input, code, user, host) {
+  if (!code) return '✗ لا كود مكتمل في هذا التشغيل. اكتب الملف كاملًا في كتلة ```html مغلقة (أو اختبره بـtest_html) ثم انشر — لن أنشر كودًا قديمًا.';
+  try {
+    const { createShare } = require('./share.js');
+    const made = await createShare({ title: input.title || 'مشروع', code: code, username: user || '', isPublic: !!input.to_explore });
+    if (!made || made.error) return '✗ فشل النشر: ' + ((made && made.error) || 'سبب غير معروف');
+    const base = host ? ('https://' + String(host).replace(/^https?:\/\//, '').replace(/\/$/, '')) : '';
+    return '✅ نُشر (' + code.length + ' حرفًا). الرابط: ' + base + made.url
+      + (input.to_explore ? '\nوأُضيف إلى صفحة استكشف العامة.' : '\nخاص بمن يملك الرابط — ليس في صفحة استكشف.')
+      + '\nأعطِ المستخدم هذا الرابط كما هو حرفًا بحرف.';
+  } catch (e) { return '✗ فشل النشر: ' + String((e && e.message) || e).slice(0, 120); }
+}
+
 function trailDid(name, input) {
   const s = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
   if (name === 'web_search') return 'بحثتُ عن «' + (s(input.query, 60) || '؟') + '»';
@@ -62,6 +105,7 @@ function trailDid(name, input) {
   }
   if (name === 'run_js') return 'شغّلتُ كودًا (' + String(input.code || '').length + ' حرفًا)';
   if (name === 'test_html') return 'اختبرتُ صفحة (' + String(input.html || '').length + ' حرفًا)';
+  if (name === 'publish') return 'نشرتُ «' + (s(input.title, 40) || 'مشروعًا') + '»';
   return 'استخدمتُ ' + name;
 }
 function trailGot(name, result) {
@@ -74,6 +118,7 @@ function trailGot(name, result) {
     return 'فحصلتُ ' + (n === 1 ? 'نتيجة واحدة' : n === 2 ? 'نتيجتين' : n <= 10 ? (n + ' نتائج') : (n + ' نتيجة'));
   }
   if (name === 'fetch_page') return 'فحصلتُ ' + r.length + ' حرفًا من الصفحة';
+  if (name === 'publish') { const u = r.match(/https?:\/\/\S+/); return u ? ('فحصلتُ رابطًا: ' + u[0]) : ('فلم يُنشر: ' + r.trim().slice(0, 70)); }
   if (name === 'test_html') {
     if (/^✅/.test(r.trim())) return 'فما ظهر خطأ تشغيل';
     const first = r.split('\n').filter((l) => l.trim() && !/^⚠️/.test(l.trim()))[0] || '';
@@ -130,7 +175,8 @@ const SYSTEM = `أنت "وكيل عمران" 🤖 — وكيل ذكاء اصطن
 ═══ المعرفة والدقة ═══
 24. أنت خبير بتطبيق Omran AI Builder نفسه: الإعدادات ⚙️ (اللغة، حسابي، الإحصائيات، التخصيص، الصوت، الخطط)، اسأل الكل، مها الصوتية، القوالب الجاهزة، تبويبات المعاينة/الكود/الصوت — أرشد المستخدم داخل التطبيق بدقة.
 25. أي رابط تعطيه: تأكد منه بـ web_search أو fetch_page أولًا — ممنوع روابط من الذاكرة.
-26. قبل أول أداة في أي مهمة تحتاج أكثر من خطوة واحدة: اكتب سطرًا واحدًا فقط يبدأ بـ🗺️ يعلن خطتك بـ١٥ كلمة أو أقل، ثم انطلق فورًا. سطر واحد لا قائمة، ولا تنتظر موافقة عليه، ولا تكرره لاحقًا. المهمة التي تُنجزها بلا أدوات لا تحتاج هذا السطر.
+25-ب. قبل أول أداة في أي مهمة تحتاج أكثر من خطوة واحدة: اكتب سطرًا واحدًا فقط يبدأ بـ🗺️ يعلن خطتك بـ١٥ كلمة أو أقل، ثم انطلق فورًا. سطر واحد لا قائمة، ولا تنتظر موافقة عليه، ولا تكرره لاحقًا. المهمة التي تُنجزها بلا أدوات لا تحتاج هذا السطر.
+25-ج. أداة publish تنشر ما بنيتَه في هذا التشغيل وتعيد رابطًا حقيقيًا: لا تستدعها إلا إذا طلب المستخدم النشر أو رابطًا صراحة، ولا تعطِ إلا الرابط الذي أعادته الأداة حرفًا بحرف (ممنوع تأليف رابط)، ولا تضعه في صفحة «استكشف» العامة إلا بطلب صريح. وبعد النشر اذكر أن الرابط عام لمن يملكه.
 26. أي رقم أو سعر أو إحصائية: اذكر مصدرها.
 27. إذا سُئلت "أيهم أفضل؟": أعطِ جدول مقارنة واضح.
 28. إذا اكتشفت أن ردك السابق خطأ: قل "أصحح معلومتي" وصحح بشجاعة — لا تكابر.
@@ -320,6 +366,7 @@ module.exports = async (req, res) => {
   send({ runId: run.runId });
   await journal(runUser, run);
 
+  let lastTested = ''; // آخر HTML اختبره الوكيل في هذا الطلب — مصدر نشر احتياطي
   let system = SYSTEM;
 
   // ذاكرة المستخدم: memory.js يحفظها منذ زمن، والوكيل لم يكن يفتحها أبدًا — فكان
@@ -488,6 +535,7 @@ module.exports = async (req, res) => {
             else if (cb.type === 'tool_use' && cb.name === 'fetch_page') send({ status: '🌐 الوكيل يقرأ صفحة ويب…' });
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ status: '⚙️ الوكيل يشغّل كودًا للتحقق…' });
             else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ status: '🧪 الوكيل يختبر ما بناه…' });
+            else if (cb.type === 'tool_use' && cb.name === 'publish') send({ status: '🔗 الوكيل ينشر التطبيق…' });
           } else if (ev.type === 'content_block_delta') {
             const cb = contentBlocks[ev.index];
             if (!cb) continue;
@@ -534,6 +582,14 @@ module.exports = async (req, res) => {
             // التنفيذ في متصفح المستخدم لا هنا: الخادم دالة بلا حالة ومحدودة
             // الزمن، والكود الذي يكتبه النموذج يجب ألا يعمل قط على بنيتك.
             result = await runInClient(cb.name, input);
+            // ما اختُبر فعلًا يصلح مصدرًا للنشر: بناه الآن وشغّله الآن.
+            if (cb.name === 'test_html' && input.html) lastTested = String(input.html);
+          } else if (cb.name === 'publish') {
+            // سقف ثلاث نشرات في التشغيل الواحد: حلقة تنشر بلا حدّ تُغرق تخزينك.
+            run.pubs = (run.pubs || 0) + 1;
+            result = run.pubs > 3
+              ? '✗ نشرتَ ثلاث مرات في هذا التشغيل وهذا حدّ مقصود — سلّم المستخدم آخر رابط حصلتَ عليه.'
+              : await doPublish(input, lastCodeIn(run.text) || lastTested, runUser, req.headers && req.headers.host);
           }
           toolResults.push({ type: 'tool_result', tool_use_id: cb.id, content: result.slice(0, 8000) });
 

@@ -54,6 +54,21 @@ async function listExplore(limit) {
   return items.filter(Boolean);
 }
 
+// v423: إنشاء المشاركة صار دالّة واحدة يستدعيها المسار العام وأداة الوكيل معًا.
+// نسختان من منطق تخزين واحد = عطبان يومًا ما، وتكرار المنطق أصل أعطاب هذا المستودع.
+async function createShare(opts) {
+  const o = opts || {};
+  if (!o.code || typeof o.code !== 'string') return { error: 'Missing code' };
+  if (o.code.length > MAX_CODE_SIZE) return { error: 'code_too_large' };
+  const id = crypto.randomBytes(6).toString('hex');
+  const createdAt = Date.now();
+  const safeTitle = (o.title || 'مشروع بدون اسم').toString().slice(0, 120);
+  const safeUser = (o.username || 'زائر').toString().slice(0, 60);
+  await putBlob(sharePath(id), { id, title: safeTitle, code: o.code, username: safeUser, createdAt, public: !!o.isPublic });
+  if (o.isPublic) await putBlob('db/explore/' + createdAt + '_' + id + '.json', { id, title: safeTitle, username: safeUser, createdAt });
+  return { id, url: '/p.html?id=' + id };
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
@@ -102,20 +117,9 @@ module.exports = async (req, res) => {
         res.status(413).json({ error: 'code_too_large' });
         return;
       }
-      const id = crypto.randomBytes(6).toString('hex');
-      const createdAt = Date.now();
-      const safeTitle = (title || 'مشروع بدون اسم').toString().slice(0, 120);
-      const safeUser = (username || 'زائر').toString().slice(0, 60);
-      const share = { id, title: safeTitle, code, username: safeUser, createdAt, public: !!isPublic };
-
-      await putBlob(sharePath(id), share);
-
-      if (isPublic) {
-        const indexEntry = { id, title: safeTitle, username: safeUser, createdAt };
-        await putBlob('db/explore/' + createdAt + '_' + id + '.json', indexEntry);
-      }
-
-      res.status(200).json({ id, url: '/p.html?id=' + id });
+      const made = await createShare({ title, code, username, isPublic });
+      if (made.error) { res.status(made.error === 'code_too_large' ? 413 : 400).json({ error: made.error }); return; }
+      res.status(200).json(made);
       return;
     }
 
@@ -155,3 +159,4 @@ module.exports = async (req, res) => {
     res.status(500).json({ error: 'Server error: ' + (e && e.message ? e.message : String(e)) });
   }
 };
+module.exports.createShare = createShare; // ليستدعيها وكيل عمران بلا نداء HTTP على نفسه
