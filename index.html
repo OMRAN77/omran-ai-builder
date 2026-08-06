@@ -872,6 +872,8 @@ html.mobile-ui #omranBelowComposer{display:none !important;}
   html:not(.mobile-ui) body.omranWelcome #omranHero{position:relative;}
   html:not(.mobile-ui) body.omranWelcome #omranHero::before{content:""; position:absolute; inset:0; pointer-events:none; z-index:0; background:radial-gradient(closest-side at 50% 46%, rgba(212,175,55,.075), rgba(212,175,55,.026) 55%, transparent 78%);}
   html:not(.mobile-ui) #omranToolsGrid{position:relative; z-index:1;}
+  /* v411: (كمبيوتر فقط) تقليص الفراغ فوق البطاقات — كان ٢٠٩px من التمركز الرأسيّ */
+  html:not(.mobile-ui) body.omranWelcome #omranHero{justify-content:flex-start; padding-top:48px;}
   html:not(.mobile-ui) .omToolCard{transition:transform .18s ease, box-shadow .22s ease, background .22s ease;}
   html:not(.mobile-ui) .omToolCard .omToolIcon{transition:transform .18s ease;}
   html:not(.mobile-ui) .omToolCard .omToolName{transition:color .18s ease;}
