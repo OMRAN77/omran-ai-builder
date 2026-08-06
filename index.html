@@ -79,6 +79,17 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{
+    /* ===== السلّم النصّي (v415) — مصدر واحد لكل مقاس ووزن ===== */
+    --fs-1:21px;    /* عنوان رئيسي */
+    --fs-2:17px;    /* عنوان قسم / نافذة */
+    --fs-3:14px;    /* النصّ الأساسي */
+    --fs-4:12.5px;  /* ثانوي / تسمية */
+    --fs-5:11.5px;  /* تفصيل دقيق / تلميح */
+    --w-bold:700;   /* العناوين والأزرار الرئيسية وحدها */
+    --w-mid:500;    /* التسميات والثانوي */
+    --w-body:400;   /* النصّ العادي */
+    --lh-body:1.6;  /* إيقاع قراءة النصّ العربي */
+    --lh-tight:1.3; /* العناوين */
     --bg:#000000; --bg2:#000000; --panel:#000000; --panel2:#000000; --border:rgba(255,255,255,.08);
     --text:#eef0f6; --muted:#9a9a9e; --accent:#d4af37; --accent-rgb:212,175,55; --accent-light:#e8c766; --accent2:#e8c766;
     --grad: linear-gradient(135deg,var(--accent) 0%, var(--accent-light) 100%);
@@ -104,7 +115,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
     border-bottom:1px solid var(--border); flex-shrink:0; z-index:10;
   }
   /* v213: الهيدر يتبع اتجاه اللغة — عربي: الاسم يمين و⋮ يسار، إنجليزي: العكس */
-  header h1{font-size:17px; margin:0; display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:0;}
+  header h1{font-size: var(--fs-2); margin:0; display:flex; align-items:center; gap:10px; font-weight: var(--w-bold); letter-spacing:0;}
   header h1 .brand{display:none !important;}
   body{background-size:200% 200%; animation:bgShift 22s ease infinite;}
   @keyframes bgShift{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
@@ -130,7 +141,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
   header{flex-direction:row-reverse;}
   #headerActions{flex-direction:row-reverse;}
   #headerMenuDropdown{inset-inline-end:auto; inset-inline-start:0;}
-  header h1 .subtitle{font-size:11px; color:var(--muted); font-weight:500; display:block; margin-top:1px;}
+  header h1 .subtitle{font-size: var(--fs-5); color:var(--muted); font-weight: var(--w-mid); display:block; margin-top:1px;}
   header h1{cursor:pointer;}
   .brandTitle{position:relative; display:inline-flex; align-items:center; height:48px;}
   .brandImg{height:42px; width:auto; object-fit:contain; display:block;}
@@ -141,7 +152,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
   header h1 .titles{display:flex; flex-direction:column; line-height:1.3;}
   .btn{
     background:var(--panel2); color:var(--text); border:1px solid var(--border);
-    padding:8px 16px; border-radius:10px; cursor:pointer; font-size:13px; font-weight:500;
+    padding:8px 16px; border-radius:10px; cursor:pointer; font-size: var(--fs-3); font-weight: var(--w-mid);
     transition:all .18s ease; display:inline-flex; align-items:center; gap:6px;
   }
   .btn:hover{border-color:var(--accent); background:rgba(var(--accent-rgb),.12); transform:translateY(-1px);}
@@ -170,7 +181,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
   html[dir="ltr"] #sidebar{border-right:1px solid var(--border);}
   #history{flex:1; overflow-y:auto; padding:10px;}
   .hist-item{
-    padding:11px 12px; border-radius:10px; margin-bottom:2px; cursor:pointer; font-size:13px;
+    padding:11px 12px; border-radius:10px; margin-bottom:2px; cursor:pointer; font-size: var(--fs-3);
     background:none; border:1px solid transparent; color:var(--muted);
     transition:all .15s ease;
     display:flex; align-items:center; gap:8px;
@@ -180,7 +191,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
   .hist-item .hist-title{flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .hist-item .hist-del{
     flex:none; opacity:.5; background:none; border:none; color:inherit; cursor:pointer;
-    font-size:14px; padding:2px 4px; border-radius:6px; transition:all .15s ease; line-height:1;
+    font-size: var(--fs-3); padding:2px 4px; border-radius:6px; transition:all .15s ease; line-height:1;
   }
   .hist-item .hist-del:hover{opacity:1; color:#ff6b6b; background:rgba(255,107,107,.12);}
   /* v202: زر ⋮ لكل مشروع — يظهر عند التمرير على الكمبيوتر ودائمًا على الجوال */
@@ -207,7 +218,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
   #histItemMenu button svg{flex:0 0 auto;}
   /* v202: لوحة التحكم (المالك) — خط أصغر ومسافات أضيق حتى تتسق بشكل نظيف */
   #adminSectionContent{zoom:.85; font-size:12px;}
-  #adminSectionContent button{font-size:11.5px !important;}
+  #adminSectionContent button{font-size: var(--fs-5) !important;}
   #adminSectionContent > div{margin-top:10px !important;}
   .hist-thumb{
     flex:none; width:44px; height:32px; border-radius:6px; overflow:hidden; position:relative;
@@ -222,7 +233,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
   #sidebar .newbtn:hover{background:rgba(var(--accent-rgb),.08); transform:none;}
   /* ===== المزودين التسعة — شبكة الدرج (كمبيوتر) + شريط التلفون ===== */
   #providerGridSidebar{flex-shrink:0; padding:10px 10px 8px; border-bottom:1px solid var(--border, rgba(255,255,255,.08));}
-  #providerGridTitle{font-size:11px; opacity:.65; margin:0 4px 8px; text-align:center;}
+  #providerGridTitle{font-size: var(--fs-5); opacity:.65; margin:0 4px 8px; text-align:center;}
   #providerGridCells{display:grid; grid-template-columns:repeat(3,1fr); gap:6px;}
   .prov-cell{position:relative; display:flex; flex-direction:column; align-items:center; gap:4px; padding:8px 2px 6px; border-radius:12px; background:rgba(255,255,255,.04); border:1.5px solid rgba(255,255,255,.09); cursor:pointer; opacity:.75; transition:opacity .15s, border-color .15s, box-shadow .15s, background .15s; user-select:none;}
   .prov-cell:hover{opacity:1; background:rgba(255,255,255,.08);}
@@ -236,7 +247,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
   .prov-dot.out{background:#ef4444;}
   #providerStripMobile{display:none; gap:6px; overflow-x:auto; padding:7px 10px; background:rgba(0,0,0,.35); border-bottom:1px solid rgba(255,255,255,.08); scrollbar-width:none; -webkit-overflow-scrolling:touch;}
   #providerStripMobile::-webkit-scrollbar{display:none;}
-  .prov-chip-m{position:relative; display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:20px; background:rgba(255,255,255,.05); border:1.5px solid rgba(255,255,255,.1); font-size:11.5px; color:var(--muted,#aab); white-space:nowrap; flex-shrink:0; cursor:pointer; user-select:none; opacity:.8;}
+  .prov-chip-m{position:relative; display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:20px; background:rgba(255,255,255,.05); border:1.5px solid rgba(255,255,255,.1); font-size: var(--fs-5); color:var(--muted,#aab); white-space:nowrap; flex-shrink:0; cursor:pointer; user-select:none; opacity:.8;}
   .prov-chip-m svg{width:15px; height:15px; display:block;}
   .prov-chip-m.active{opacity:1; border-color:var(--accent); background:transparent; color:#f0d98a; font-weight:bold; box-shadow:0 0 6px rgba(212,175,55,.35);}
   /* v336: عناصر القائمة المنسدلة — مخفية افتراضيًا (الجوال يظل مثل ما هو) */
@@ -248,7 +259,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
   /* v336: (كمبيوتر فقط) قائمة المزودين المنسدلة + طي لوحة الكود/المعاينة */
   @media (min-width:861px){
     html:not(.mobile-ui) #providerGridSidebar{position:relative;}
-    html:not(.mobile-ui) #provDropdownBtn{display:flex; align-items:center; gap:10px; width:100%; padding:9px 12px; border-radius:12px; background:rgba(255,255,255,.05); border:1.5px solid rgba(255,255,255,.1); cursor:pointer; color:var(--text); font-family:inherit; font-size:13px; user-select:none;}
+    html:not(.mobile-ui) #provDropdownBtn{display:flex; align-items:center; gap:10px; width:100%; padding:9px 12px; border-radius:12px; background:rgba(255,255,255,.05); border:1.5px solid rgba(255,255,255,.1); cursor:pointer; color:var(--text); font-family:inherit; font-size: var(--fs-3); user-select:none;}
     html:not(.mobile-ui) #provDropdownBtn:hover{background:rgba(255,255,255,.09);}
     html:not(.mobile-ui) #provDDLogo{display:inline-flex; flex-shrink:0;}
     html:not(.mobile-ui) #provDDLogo svg{width:18px; height:18px; display:block;}
@@ -259,20 +270,20 @@ window.__swallow = window.__swallow || function (err, ctx) {
     html:not(.mobile-ui) #providerGridSidebar.open #provDropdownPanel{display:block;}
   #premiumToggleWrap{display:none; align-items:center; gap:8px; flex-wrap:wrap;}
   #premiumToggleWrap.pt-visible{display:flex;}
-  #btnPremiumToggle{flex:1; display:inline-flex; align-items:center; gap:8px; padding:8px 11px; border-radius:12px; background:var(--panel2, rgba(255,255,255,.05)); border:1.5px solid var(--border, rgba(255,255,255,.1)); color:var(--text); font-family:inherit; font-size:12.5px; font-weight:500; cursor:pointer; user-select:none; transition:box-shadow .18s, border-color .18s, background .18s;}
+  #btnPremiumToggle{flex:1; display:inline-flex; align-items:center; gap:8px; padding:8px 11px; border-radius:12px; background:var(--panel2, rgba(255,255,255,.05)); border:1.5px solid var(--border, rgba(255,255,255,.1)); color:var(--text); font-family:inherit; font-size:12.5px; font-weight: var(--w-mid); cursor:pointer; user-select:none; transition:box-shadow .18s, border-color .18s, background .18s;}
   #btnPremiumToggle:hover{background:rgba(255,255,255,.09);}
   #btnPremiumToggle .premCrown{flex-shrink:0; opacity:.75; transition:opacity .18s, color .18s; display:inline-flex; align-items:center; justify-content:center;}
   #btnPremiumToggle .premCrown svg{width:17px; height:17px; display:block;}
   #btnPremiumToggle .premLabel{flex:1; text-align:start; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
-  #premiumCostHint{flex-shrink:0; font-size:11px; font-weight:700; color:var(--muted, #9aa0b5); opacity:.9;}
+  #premiumCostHint{flex-shrink:0; font-size: var(--fs-5); font-weight: var(--w-mid); color:var(--muted, #9aa0b5); opacity:.9;}
   #btnPremiumToggle.premium-on{border-color:var(--accent); background:transparent; box-shadow:0 0 0 1px var(--accent);}
   #btnPremiumToggle.premium-on .premCrown{opacity:1; color:var(--accent);}
   #btnPremiumToggle.premium-on #premiumCostHint{color:var(--accent); opacity:1;}
   /* Fair-Use: hidden by default (normal replies/images/sections feel free); shown only for premium-capable providers where the "professional reply" counter is relevant. */
-  #premiumPointsChip{flex-shrink:0; display:none; align-items:center; gap:3px; padding:5px 8px; border-radius:10px; background:var(--panel2, rgba(255,255,255,.05)); border:1px solid var(--border, rgba(255,255,255,.1)); color:#e8e2ff; font-size:12px; font-weight:700;}
+  #premiumPointsChip{flex-shrink:0; display:none; align-items:center; gap:3px; padding:5px 8px; border-radius:10px; background:var(--panel2, rgba(255,255,255,.05)); border:1px solid var(--border, rgba(255,255,255,.1)); color:#e8e2ff; font-size:12px; font-weight: var(--w-mid);}
   #premiumPointsChip.pp-visible{display:inline-flex;}
   #premiumPointsChip svg{flex-shrink:0; opacity:.85;}
-  .premium-deduct-fly{position:absolute; top:-6px; inset-inline-end:6px; z-index:90; font-size:12px; font-weight:700; color:var(--accent); pointer-events:none; opacity:1; transform:translateY(0); transition:opacity 1.1s ease, transform 1.1s ease; text-shadow:0 1px 4px rgba(0,0,0,.5);}
+  .premium-deduct-fly{position:absolute; top:-6px; inset-inline-end:6px; z-index:90; font-size:12px; font-weight: var(--w-bold); color:var(--accent); pointer-events:none; opacity:1; transform:translateY(0); transition:opacity 1.1s ease, transform 1.1s ease; text-shadow:0 1px 4px rgba(0,0,0,.5);}
   .premium-deduct-fly.gone{opacity:0; transform:translateY(-16px);}
     html:not(.mobile-ui) #provSearchInput{display:block; width:100%; box-sizing:border-box; padding:8px 12px; margin-bottom:6px; border-radius:10px; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.05); color:var(--text); font-size:12.5px; font-family:inherit; outline:none;}
     html:not(.mobile-ui) #providerGridCells{display:flex; flex-direction:column; gap:2px;}
@@ -282,7 +293,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
     html:not(.mobile-ui) .prov-cell svg{width:17px; height:17px;}
     html:not(.mobile-ui) .prov-cell .prov-name{font-size:13px;}
     html:not(.mobile-ui) .prov-cell .prov-dot{position:static; margin-inline-start:auto; flex-shrink:0;}
-    html:not(.mobile-ui) .prov-cell.active::after{content:'✓'; color:var(--accent); font-weight:bold; font-size:13px; margin-inline-start:4px;}
+    html:not(.mobile-ui) .prov-cell.active::after{content:'✓'; color:var(--accent); font-weight:bold; font-size: var(--fs-3); margin-inline-start:4px;}
     /* طي لوحة الكود/المعاينة */
     html:not(.mobile-ui) #workarea.waCollapsed, html:not(.mobile-ui) #resizer2.waCollapsed{display:none !important;}
     html:not(.mobile-ui) #waCollapseBtn{display:inline-flex; align-items:center; justify-content:center; background:none; border:none; color:var(--muted); cursor:pointer; padding:10px 12px;}
@@ -301,16 +312,17 @@ window.__swallow = window.__swallow || function (err, ctx) {
   html[dir="ltr"] #chatcol{border-right:1px solid var(--border);}
   #messages{flex:1; overflow-y:auto; overflow-x:hidden; padding:16px 16px 3px; display:flex; flex-direction:column; gap:12px;}
   /* v292: تثبيت الدردشة أفقيًا — لا حركة يمين/يسار أبدًا */
-  .msg{max-width:92%; min-width:0; overflow-wrap:anywhere; word-break:break-word;}
+  .msg{max-width:92%; min-width:0; overflow-wrap:anywhere; word-break:break-word; line-height:var(--lh-body);}
+  .msg p, .msg li{line-height:var(--lh-body);}
   .msg-text{max-width:100%; overflow-wrap:anywhere; word-break:break-word;}
   .msg img, .msg video, .msg iframe{max-width:100%;}
   .msg table{display:block; max-width:100%; overflow-x:auto;}
-  .msg{padding:2px 2px; border-radius:0; font-size:13.5px; line-height:1.7; max-width:92%; background:transparent !important; border:none !important; box-shadow:none !important; backdrop-filter:none !important;}
+  .msg{padding:2px 2px; border-radius:0; font-size: var(--fs-3); line-height:1.7; max-width:92%; background:transparent !important; border:none !important; box-shadow:none !important; backdrop-filter:none !important;}
   /* v338: حجم خط المحادثة */
   html.fs-small .msg{font-size:12px;}
   html.fs-large .msg{font-size:15.5px;}
   html.fs-xlarge .msg{font-size:18px;}
-  .fontSizeBtn{display:flex; align-items:center; justify-content:space-between; width:100%; padding:11px 12px; font-size:14px; background:none; border:none; cursor:pointer; color:var(--text); text-align:start; border-radius:8px;}
+  .fontSizeBtn{display:flex; align-items:center; justify-content:space-between; width:100%; padding:11px 12px; font-size: var(--fs-3); background:none; border:none; cursor:pointer; color:var(--text); text-align:start; border-radius:8px;}
   .fontSizeBtn .fsCheck{display:none; color:var(--accent);}
   .fontSizeBtn.active .fsCheck{display:block;}
   @keyframes pop{from{opacity:0; transform:translateY(12px) scale(0.96);} to{opacity:1; transform:translateY(0) scale(1);}}
@@ -328,7 +340,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
   .msg-text p, .msg-text li, .msg-text div{unicode-bidi:plaintext;}
   /* صناديق الكود داخل المحادثة — بنمط Tasklet/GitHub */
   .chat-codeblock{background:#0d1117;border:1px solid #21262d;border-radius:10px;margin:10px 0;direction:ltr;text-align:left;overflow:hidden;}
-  .chat-codeblock-head{display:flex;align-items:center;justify-content:space-between;padding:5px 12px;font-size:11px;font-weight:700;color:#8b949e;background:#161b22;border-bottom:1px solid #21262d;font-family:ui-monospace,Consolas,monospace;}
+  .chat-codeblock-head{display:flex;align-items:center;justify-content:space-between;padding:5px 12px;font-size: var(--fs-5);font-weight: var(--w-bold);color:#8b949e;background:#161b22;border-bottom:1px solid #21262d;font-family:ui-monospace,Consolas,monospace;}
   .chat-codeblock-copy{background:none;border:none;cursor:pointer;color:#8b949e;padding:2px 4px;line-height:1;display:flex;align-items:center;}
   .chat-codeblock-copy:hover{color:#e6edf3;}
   .chat-codeblock pre{margin:0;padding:12px;overflow-x:auto;font-family:ui-monospace,Consolas,Menlo,monospace;font-size:12.5px;line-height:1.55;color:#e6edf3;white-space:pre;}
@@ -348,7 +360,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
   #btnStop{display:none; opacity:.6;}
   #btnStop.live{display:inline-flex; opacity:1; background:#ff4d4d; color:#fff; border-radius:12px;}
   #plusToolsWrap{position:relative; display:inline-flex;}
-  #btnPlusTools{font-size:17px;}
+  #btnPlusTools{font-size: var(--fs-2);}
   #plusToolsPopup{
     display:none; position:absolute; bottom:calc(100% + 6px); inset-inline-start:0;
     background:#000000; border:1px solid rgba(255,255,255,.09); border-radius:12px;
@@ -356,7 +368,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
     flex-direction:column; gap:1px; min-width:170px;
   }
   #plusToolsPopup.show{display:flex;}
-  #plusToolsPopup .btn{width:100%; justify-content:flex-start; background:none; border:none; box-shadow:none; font-size:13px; gap:7px; padding:6px 8px; min-height:0; line-height:1.3;}
+  #plusToolsPopup .btn{width:100%; justify-content:flex-start; background:none; border:none; box-shadow:none; font-size: var(--fs-3); gap:7px; padding:6px 8px; min-height:0; line-height:1.3;}
   #plusToolsPopup .btn:hover{background:rgba(var(--accent-rgb),.12);}
   #plusToolsPopup .btn .btnLabel{display:inline-flex !important;}
   #plusToolsPopup .btn svg, #btnPlusTools svg, #btnMic svg{flex:0 0 auto; display:block;}
@@ -370,10 +382,10 @@ window.__swallow = window.__swallow || function (err, ctx) {
   html[dir="ltr"] #sectionsToolsPopup .stpClose{margin:0 auto 4px 0;}
   #sectionsToolsPopup .ptGrid .btn img.stp3d{width:34px; height:34px; object-fit:contain; pointer-events:none;}
   #sectionsToolsPopup .ptGrid .btn.has3d svg{display:none;}
-  #sectionsToolsPopup .ptSectionTitle{font-size:12px; color:var(--omGold,var(--accent)); font-weight:700; padding:10px 6px 6px;}
+  #sectionsToolsPopup .ptSectionTitle{font-size:12px; color:var(--omGold,var(--accent)); font-weight: var(--w-bold); padding:10px 6px 6px;}
   #sectionsToolsPopup .ptGrid .btn .btnLabel{display:inline-flex !important;}
   #sectionsToolsPopup .ptGrid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:2px 2px 6px;}
-  #sectionsToolsPopup .ptGrid .btn{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; width:100%; background:rgba(255,255,255,.02); border:1px solid var(--omGoldSoft); border-radius:14px; padding:12px 4px; font-size:11px; min-height:80px; text-align:center; white-space:normal; line-height:1.35;}
+  #sectionsToolsPopup .ptGrid .btn{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; width:100%; background:rgba(255,255,255,.02); border:1px solid var(--omGoldSoft); border-radius:14px; padding:12px 4px; font-size: var(--fs-5); min-height:80px; text-align:center; white-space:normal; line-height:1.35;}
   #sectionsToolsPopup .ptGrid .btn:hover{border-color:var(--omGold); background:rgba(212,175,55,.08);}
   #sectionsToolsPopup .ptGrid .btn svg{width:22px; height:22px;}
   #sectionsToolsPopup .ptGrid .btn .rowChevron{display:none;}
@@ -411,7 +423,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
   .attach-chip .rm:hover{color:#e55;}
   .msg-attachments{display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;}
   .msg-attachments img{width:60px; height:60px; object-fit:cover; border-radius:6px; border:1px solid var(--border);}
-  .msg-attachments .file-chip{font-size:11px; background:var(--panel2, #1e2330); border:1px solid var(--border); border-radius:6px; padding:3px 6px;}
+  .msg-attachments .file-chip{font-size: var(--fs-5); background:var(--panel2, #1e2330); border:1px solid var(--border); border-radius:6px; padding:3px 6px;}
   #composerBox{
     background:var(--panel2); border:1px solid var(--border); border-radius:16px;
     padding:8px 10px 6px; display:flex; flex-direction:row; flex-wrap:wrap; align-items:center; gap:2px;
@@ -438,12 +450,12 @@ window.__swallow = window.__swallow || function (err, ctx) {
   #prompt::placeholder{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   #prompt{
     flex:1 1 auto; resize:none; background:none; border:none;
-    color:var(--text); border-radius:12px; padding:5px 9px 2px; font-family:inherit; font-size:13px; min-height:26px; max-height:110px;
+    color:var(--text); border-radius:12px; padding:5px 9px 2px; font-family:inherit; font-size: var(--fs-3); min-height:26px; max-height:110px;
   }
   #prompt:focus{outline:none; box-shadow:none;}
   #workarea{flex:1; display:flex; flex-direction:column; min-width:0;}
   #tabs{display:flex; border-bottom:1px solid var(--border); background:rgba(13,15,22,.5);}
-  .tab{padding:12px 20px; cursor:pointer; font-size:13.5px; color:var(--muted); font-weight:500; position:relative; transition:color .15s ease;}
+  .tab{padding:12px 20px; cursor:pointer; font-size: var(--fs-3); color:var(--muted); font-weight: var(--w-mid); position:relative; transition:color .15s ease;}
   button.tab{background:none; appearance:none; -webkit-appearance:none; font-family:inherit;}
   html[dir="rtl"] .tab{border-left:none;}
   html[dir="ltr"] .tab{border-right:none;}
@@ -455,15 +467,15 @@ window.__swallow = window.__swallow || function (err, ctx) {
   .panel.active{display:flex;}
   #code{
     width:100%; height:100%; background:#0a0c12; color:#d4d8e2; border:none; resize:none;
-    font-family:'Consolas','Courier New',monospace; font-size:13px; padding:16px; direction:ltr; text-align:left;
+    font-family:'Consolas','Courier New',monospace; font-size: var(--fs-3); padding:16px; direction:ltr; text-align:left;
     outline:none; line-height:1.6; caret-color:var(--accent); cursor:default;
   }
   #code:focus{ cursor:text; }
   #previewFrame{width:100%; height:100%; border:none; background:white;}
   #pyConsole{width:100%; height:100%; display:flex; flex-direction:column; background:#0d1117; color:#c9d1d9; box-sizing:border-box;}
   #pyConsoleToolbar{display:flex; align-items:center; gap:10px; padding:8px 10px; border-bottom:1px solid #30363d; flex-shrink:0;}
-  #pyStatus{font-size:13px; opacity:.8;}
-  #pyOutput{flex:1; margin:0; padding:12px; overflow:auto; white-space:pre-wrap; word-break:break-word; font-family:'Fira Code', monospace; font-size:13px; line-height:1.5;}
+  #pyStatus{font-size: var(--fs-3); opacity:.8;}
+  #pyOutput{flex:1; margin:0; padding:12px; overflow:auto; white-space:pre-wrap; word-break:break-word; font-family:'Fira Code', monospace; font-size: var(--fs-3); line-height:1.5;}
   .empty{display:flex; flex:1; align-items:center; justify-content:center; color:var(--muted); text-align:center; flex-direction:column; gap:14px; padding:20px;}
   .empty .icon{
     width:72px;height:72px;border-radius:20px;background:var(--grad);
@@ -471,7 +483,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
     box-shadow:var(--shadow-glow); animation:float 3s ease-in-out infinite;
   }
   @keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
-  .empty h2{color:var(--text); font-size:21px; margin:0; font-weight:700;}
+  .empty h2{color:var(--text); font-size: var(--fs-1); margin:0; font-weight: var(--w-bold);}
   .empty p{max-width:380px; margin:0;}
   dialog{
     background:#000000; color:var(--text); border:1px solid var(--border); border-radius:16px;
@@ -490,10 +502,10 @@ window.__swallow = window.__swallow || function (err, ctx) {
   dialog > *{padding-left:24px; padding-right:24px;}
   dialog > h3{padding-top:24px;}
   dialog h3{font-weight:700;}
-  dialog label{font-size:13px; color:var(--muted); display:block; margin:12px 0 6px; font-weight:500;}
+  dialog label{font-size: var(--fs-3); color:var(--muted); display:block; margin:12px 0 6px; font-weight: var(--w-mid);}
   dialog input, dialog select{
     width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--border);
-    background:var(--panel2); color:var(--text); font-size:13.5px; font-family:inherit;
+    background:var(--panel2); color:var(--text); font-size: var(--fs-3); font-family:inherit;
   }
   dialog input:focus, dialog select:focus{outline:none; border-color:var(--accent);}
   dialog select option{ background:#000000; color:#f1f1f4; }
@@ -514,7 +526,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
   /* v282: شريط تمرير واحد كامل للمحادثة فقط — إخفاء أي أشرطة داخلية */
   #messages *{scrollbar-width:none;}
   #messages *::-webkit-scrollbar{display:none; width:0; height:0;}
-  small.hint{color:var(--muted); font-size:11.5px; display:block; margin-top:10px; line-height:1.7;}
+  small.hint{color:var(--muted); font-size: var(--fs-5); display:block; margin-top:10px; line-height:1.7;}
   #btnLang{min-width:56px; justify-content:center; font-weight:700;}
   .langFlagBtn{width:38px; height:38px; padding:0; font-size:18px; display:flex; align-items:center; justify-content:center; border-radius:8px; opacity:.5; transition:opacity .15s, box-shadow .15s;}
   .langFlagBtn.active{opacity:1; box-shadow:0 0 0 2px var(--accent,#d4af37) inset;}
@@ -527,7 +539,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
     box-shadow:0 10px 30px rgba(0,0,0,.45);
   }
   #tabsMenuDropdown.show{display:flex;}
-  #tabsMenuDropdown .btn{width:100%; justify-content:flex-start; background:none; border:none; box-shadow:none; gap:8px; font-size:13px; padding:8px 10px;}
+  #tabsMenuDropdown .btn{width:100%; justify-content:flex-start; background:none; border:none; box-shadow:none; gap:8px; font-size: var(--fs-3); padding:8px 10px;}
   #tabsMenuDropdown .btn:hover{background:rgba(var(--accent-rgb),.12);}
   #tabsMenuDropdown .btn .btnLabel{display:inline-flex !important;}
   #btnTabsMenu.active{color:var(--text);}
@@ -554,14 +566,14 @@ window.__swallow = window.__swallow || function (err, ctx) {
   }
   #codeHintTip{
     position:fixed; z-index:9999; background:#1f6feb; color:#fff; padding:8px 12px;
-    border-radius:10px; font-size:12.5px; font-weight:500; max-width:220px; line-height:1.5;
+    border-radius:10px; font-size:12.5px; font-weight: var(--w-mid); max-width:220px; line-height:1.5;
     box-shadow:0 6px 20px rgba(0,0,0,.35); display:none;
   }
   #codeHintTip::after{
     content:''; position:absolute; top:-6px; left:50%; transform:translateX(-50%);
     border-left:6px solid transparent; border-right:6px solid transparent; border-bottom:6px solid #1f6feb;
   }
-  #codeHintTip .hintCloseBtn{ position:absolute; top:2px; inset-inline-end:6px; cursor:pointer; opacity:.85; font-size:11px; }
+  #codeHintTip .hintCloseBtn{ position:absolute; top:2px; inset-inline-end:6px; cursor:pointer; opacity:.85; font-size: var(--fs-5); }
 
   /* ---- Mobile layout ----
      On mobile the CHAT is the main/default screen. ☰ opens the CODE drawer,
@@ -676,7 +688,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
   body.vantaActive{background:transparent !important; animation:none !important;}
   #vantaBg{position:fixed; inset:0; z-index:-1; pointer-events:none;}
   .bg3dGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:8px; margin-top:10px;}
-  .bg3dOption{display:flex; flex-direction:column; align-items:center; gap:4px; padding:8px 4px; border-radius:10px; border:1px solid var(--border); background:var(--panel2); cursor:pointer; font-size:11px; text-align:center; transition:.15s;}
+  .bg3dOption{display:flex; flex-direction:column; align-items:center; gap:4px; padding:8px 4px; border-radius:10px; border:1px solid var(--border); background:var(--panel2); cursor:pointer; font-size: var(--fs-5); text-align:center; transition:.15s;}
   .bg3dOption:hover{border-color:var(--accent);}
   .bg3dOption.active{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent) inset;}
   .bg3dOption .bg3dEmoji{font-size:20px;}
@@ -692,11 +704,11 @@ window.__swallow = window.__swallow || function (err, ctx) {
   .settingsNavRow:last-child{ border-bottom:none; }
   .settingsNavRow:hover, .settingsNavRow:active{ background:var(--panel2); }
   .settingsNavRow .settingsNavIcon{ flex:0 0 auto; width:20px; height:20px; display:flex; align-items:center; justify-content:center; color:var(--muted); }
-  .settingsNavRow .settingsNavLabel{ flex:1 1 auto; font-size:14px; min-width:0; }
+  .settingsNavRow .settingsNavLabel{ flex:1 1 auto; font-size: var(--fs-3); min-width:0; }
   .settingsNavRow .settingsNavChevron{ flex:0 0 auto; width:16px; height:16px; color:var(--muted); opacity:.7; }
   [dir="rtl"] .settingsNavRow .settingsNavChevron{ transform:scaleX(-1); }
   [dir="rtl"] #settingsBackSvg{ transform:scaleX(-1); }
-  .voiceGenderBtn{ flex:1 1 0; display:flex; flex-direction:column; align-items:center; gap:8px; padding:16px 10px; background:var(--panel2); border:2px solid transparent; border-radius:14px; cursor:pointer; color:var(--muted); font-size:14px; transition:border-color .15s, color .15s; }
+  .voiceGenderBtn{ flex:1 1 0; display:flex; flex-direction:column; align-items:center; gap:8px; padding:16px 10px; background:var(--panel2); border:2px solid transparent; border-radius:14px; cursor:pointer; color:var(--muted); font-size: var(--fs-3); transition:border-color .15s, color .15s; }
   .voiceGenderBtn.active{ border-color:var(--accent); color:var(--text); }
   /* iOS-style toggle switch, used by ticker calm-mode + reused wherever needed */
   .iosSwitch{ position:relative; display:inline-block; width:44px; height:26px; flex:0 0 auto; }
@@ -718,10 +730,16 @@ window.__swallow = window.__swallow || function (err, ctx) {
   .msgActionBar button:hover{ color:var(--accent2,#e8c766); }
   .msgActionBar button.msgThumbActive{ color:var(--accent2,#e8c766); }
   .msgActionBar button.msgThumbDownActive{ color:#ef4444; }
-  .msgMoreMenu{ position:absolute; z-index:9999; background:var(--panel,#1c2230); border:1px solid var(--border,rgba(255,255,255,.12)); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.4); padding:6px; min-width:170px; font-size:13px; }
-  .msgMoreMenu button{ display:flex; width:100%; text-align:start; background:none; border:none; padding:9px 10px; border-radius:6px; cursor:pointer; color:var(--text); font-size:13px; }
+  .msgMoreMenu{ position:absolute; z-index:9999; background:var(--panel,#1c2230); border:1px solid var(--border,rgba(255,255,255,.12)); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.4); padding:6px; min-width:170px; font-size: var(--fs-3); }
+  .msgMoreMenu button{ display:flex; width:100%; text-align:start; background:none; border:none; padding:9px 10px; border-radius:6px; cursor:pointer; color:var(--text); font-size: var(--fs-3); }
   .msgMoreMenu button:hover{ background:var(--panel2); }
 @keyframes omranPulse{0%,100%{opacity:.6}50%{opacity:1}}
+  /* v418 (٦ أغسطس): قائمة المزوّدين التسعة مخفيّة على الكمبيوتر — التوجيه صار تلقائيًّا بالتخصص.
+     الجوال لم يُلمس (#providerStripMobile باقٍ). زرّ الوضع الاحترافي باقٍ لأنه ليس اختيار مزوّد. */
+  @media (min-width:861px){
+    html:not(.mobile-ui) #provDropdownBtn,
+    html:not(.mobile-ui) #provDropdownPanel{display:none !important;}
+  }
 </style>
 <style id="omranRedesignCSS">
 /* ================== Omran AI Builder — redesign (visual only, v400) ==================
@@ -729,28 +747,19 @@ window.__swallow = window.__swallow || function (err, ctx) {
 :root{ --omGold:#d4af37; --omGoldSoft:rgba(212,175,55,.32); --omLine:rgba(255,255,255,.09); }
 
 /* ---------------- Header ---------------- */
-#omranSearchWrap{flex:1 1 auto; display:flex; justify-content:center; align-items:center; min-width:0; padding:0 10px;}
-#omranSearchBox{display:flex; align-items:center; gap:8px; width:100%; max-width:340px; background:rgba(255,255,255,.03); border:1px solid var(--omGoldSoft); border-radius:12px; padding:7px 12px;}
-#omranSearchBox:focus-within{border-color:var(--omGold);}
-#omranSearchBox > svg{flex:0 0 auto; opacity:.5;}
-#omranSearchInput{flex:1 1 auto; min-width:0; background:none; border:none; outline:none; color:var(--text); font-family:inherit; font-size:12.5px;}
-#omranSearchInput::placeholder{color:var(--muted); opacity:.8;}
 .omIconBtn{display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:10px; background:none; border:1px solid transparent; color:var(--muted); cursor:pointer; padding:0; flex:0 0 auto;}
 .omIconBtn:hover{color:var(--omGold); background:rgba(212,175,55,.10);}
-#omranBellWrap{position:relative; display:inline-flex; flex:0 0 auto;}
-#omranBellPanel{display:none; position:absolute; top:calc(100% + 8px); inset-inline-start:0; min-width:230px; background:rgba(18,18,18,.98); border:1px solid var(--omGoldSoft); border-radius:12px; padding:11px 13px; font-size:12.5px; color:var(--muted); z-index:900; box-shadow:0 14px 34px rgba(0,0,0,.6); text-align:start;}
-#omranBellPanel.show{display:block;}
 #omranUserBlock{display:flex; align-items:center; gap:9px; flex:0 0 auto;}
 html[dir="rtl"] #omranUserBlock{flex-direction:row-reverse;}
 #omranUserMeta{display:flex; flex-direction:column; line-height:1.25; align-items:flex-end;}
-#omranUserNameRow{display:inline-flex; align-items:center; gap:4px; font-size:13px; font-weight:600; color:var(--text); cursor:pointer; background:none; border:none; padding:0; font-family:inherit;}
+#omranUserNameRow{display:inline-flex; align-items:center; gap:4px; font-size: var(--fs-3); font-weight: var(--w-bold); color:var(--text); cursor:pointer; background:none; border:none; padding:0; font-family:inherit;}
 #omranUserNameRow:hover{color:var(--omGold);}
-#omranUserPoints{font-size:10.5px; color:var(--muted); white-space:nowrap;}
+#omranUserPoints{font-size: var(--fs-5); color:var(--muted); white-space:nowrap;}
 #omranAvatarBtn{width:34px; height:34px; border-radius:50%; border:1px solid var(--omGold); background:linear-gradient(135deg,#e8c766,var(--accent)); color:#241c00; font-weight:700; font-size:14px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; flex:0 0 auto; padding:0; font-family:inherit;}
 #omranHamburger{display:none;}
 
 /* ---------------- Sidebar (المحادثات) ---------------- */
-#omranNewChatBtn{order:-2; display:flex; align-items:center; justify-content:center; gap:7px; margin:12px 12px 8px; padding:10px 12px; background:rgba(212,175,55,.06); border:1px solid var(--omGold); border-radius:12px; color:var(--omGold); font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; flex:0 0 auto;}
+#omranNewChatBtn{order:-2; display:flex; align-items:center; justify-content:center; gap:7px; margin:12px 12px 8px; padding:10px 12px; background:rgba(212,175,55,.06); border:1px solid var(--omGold); border-radius:12px; color:var(--omGold); font-family:inherit; font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer; flex:0 0 auto;}
 #omranNewChatBtn:hover{background:rgba(212,175,55,.14);}
 body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #omranNewChatBtn{margin-top:26px;} /* حجز فراغ لسهم طيّ شريط الأسهم كي لا يغطّي الزر */
 #omranNewChatBtn{position:relative; margin-bottom:18px;} /* مساحة تنفّس للفاصل */
@@ -776,25 +785,21 @@ html:not(.mobile-ui) #projMenuWrap{order:2;}
 #omranHero{display:none; flex:1 1 auto; min-height:0; overflow-y:auto; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:22px 16px 6px; text-align:center;}
 body.omranWelcome #omranHero{display:flex;}
 body.omranWelcome #messages{display:none;}
-#omranWelcomeWrap{display:flex; flex-direction:column; align-items:center; gap:6px;}
-#omranWelcomeTitle{margin:0; font-size:34px; font-weight:700; color:var(--omGold); line-height:1.35;}
-#omranWelcomeTitle .omSpark{font-size:22px;}
-#omranWelcomeSub{margin:0 0 8px; font-size:17px; color:var(--text); opacity:.9;}
 #omranToolsGrid{direction:ltr; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; width:100%; max-width:640px;}
 .omToolCard{direction:rtl; display:flex; flex-direction:column; align-items:center; gap:7px; padding:14px 8px; background:rgba(255,255,255,.015); border:1px solid var(--omGoldSoft); border-radius:14px; cursor:pointer; font-family:inherit; text-align:center; transition:border-color .15s ease, background .15s ease, transform .15s ease;}
 .omToolCard:hover{border-color:var(--omGold); background:rgba(212,175,55,.07); transform:translateY(-2px);}
 .omToolCard .omToolIcon{display:flex; align-items:center; justify-content:center; height:30px;}
-.omToolCard .omToolName{font-size:12px; font-weight:600; color:var(--text); line-height:1.4;}
-.omToolCard .omToolDesc{font-size:9.5px; color:var(--muted); line-height:1.45;}
+.omToolCard .omToolName{font-size:12px; font-weight: var(--w-bold); color:var(--text); line-height:1.4;}
+.omToolCard .omToolDesc{font-size: var(--fs-5); color:var(--muted); line-height:1.45;}
 #omranQuickMobileWrap{display:none;}
 
 /* ---------------- Below composer (chips + disclaimer) ---------------- */
 #omranBelowComposer{display:none; flex-direction:column; align-items:center; gap:7px; padding:6px 4px 0;}
 body.omranWelcome #omranBelowComposer{display:flex;}
 #omranChips{display:flex; flex-wrap:wrap; gap:7px; justify-content:center;}
-.omChip{background:rgba(255,255,255,.02); border:1px solid var(--omLine); border-radius:10px; padding:5px 12px; font-size:11.5px; color:var(--muted); cursor:pointer; font-family:inherit;}
+.omChip{background:rgba(255,255,255,.02); border:1px solid var(--omLine); border-radius:10px; padding:5px 12px; font-size: var(--fs-5); color:var(--muted); cursor:pointer; font-family:inherit;}
 .omChip:hover{border-color:var(--omGold); color:var(--text);}
-#omranDisclaimer{font-size:10px; color:var(--muted); opacity:.55;}
+#omranDisclaimer{font-size: var(--fs-5); color:var(--muted); opacity:.55;}
 
 /* ---------------- Composer: أيقونات يسار + إرسال يمين ---------------- */
 #composerBox{border:1px solid var(--omGoldSoft) !important; border-radius:16px !important;}
@@ -866,8 +871,8 @@ html.mobile-ui #omranBelowComposer{display:none !important;}
   /* v411: (كمبيوتر فقط) داخل نافذة صانع الفيديو — حقول زجاجية ذهبية بدل عناصر النظام الخام */
   html:not(.mobile-ui) #videoMakerModal{background:rgba(0,0,0,.78) !important; backdrop-filter:blur(7px);}
   html:not(.mobile-ui) #videoMakerModal > div{background:linear-gradient(180deg,#17171d 0%,#101014 100%) !important; border:1px solid rgba(212,175,55,.22) !important; box-shadow:0 24px 70px rgba(0,0,0,.66), inset 0 1px 0 rgba(255,255,255,.05) !important;}
-  html:not(.mobile-ui) #videoMakerModal h3{color:var(--accent-light); font-size:16px;}
-  html:not(.mobile-ui) #videoMakerModal :is(select,textarea,input[type=text],input[type=number]){-webkit-appearance:none; appearance:none; box-sizing:border-box; background-color:rgba(255,255,255,.045); color:var(--text); font-family:inherit; font-size:13px; border:1px solid rgba(255,255,255,.10); border-radius:11px; padding:10px 12px; outline:none; transition:border-color .16s ease, box-shadow .16s ease, background .16s ease;}
+  html:not(.mobile-ui) #videoMakerModal h3{color:var(--accent-light); font-size: var(--fs-2);}
+  html:not(.mobile-ui) #videoMakerModal :is(select,textarea,input[type=text],input[type=number]){-webkit-appearance:none; appearance:none; box-sizing:border-box; background-color:rgba(255,255,255,.045); color:var(--text); font-family:inherit; font-size: var(--fs-3); border:1px solid rgba(255,255,255,.10); border-radius:11px; padding:10px 12px; outline:none; transition:border-color .16s ease, box-shadow .16s ease, background .16s ease;}
   html:not(.mobile-ui) #videoMakerModal :is(select,textarea,input[type=text],input[type=number]):hover{border-color:rgba(212,175,55,.34);}
   html:not(.mobile-ui) #videoMakerModal :is(select,textarea,input[type=text],input[type=number]):focus{border-color:var(--accent); background-color:rgba(212,175,55,.055); box-shadow:0 0 0 3px rgba(212,175,55,.13);}
   html:not(.mobile-ui) #videoMakerModal select{cursor:pointer; padding-left:34px; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1.6 6 6.4 11 1.6' fill='none' stroke='%23d4af37' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/></svg>"); background-repeat:no-repeat; background-position:left 12px center;}
@@ -883,7 +888,7 @@ html.mobile-ui #omranBelowComposer{display:none !important;}
   html:not(.mobile-ui) #videoMakerModal #videoMakerHeroBtn{background:rgba(255,255,255,.045); color:var(--text); border:1px solid rgba(255,255,255,.10); font-family:inherit; font-size:12.5px; transition:border-color .16s ease, background .16s ease;}
   html:not(.mobile-ui) #videoMakerModal #videoMakerHeroBtn:hover{border-color:var(--accent); background:rgba(212,175,55,.12);}
   html:not(.mobile-ui) #videoMakerModal #videoMakerHeroPreview{border:1px solid rgba(212,175,55,.30);}
-  html:not(.mobile-ui) #videoMakerModal #videoMakerGenerateBtn{padding:13px; font-size:14.5px; border-radius:12px; letter-spacing:.3px;}
+  html:not(.mobile-ui) #videoMakerModal #videoMakerGenerateBtn{padding:13px; font-size: var(--fs-3); border-radius:12px; letter-spacing:.3px;}
 }
 
 /* ---------------- Mobile ---------------- */
@@ -932,11 +937,11 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 <body>
 
 <div id="vantaBg"></div>
-<div id="offlineBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:10000; background:#b45309; color:#fff; font-size:13px; text-align:center; padding:7px 10px;">
+<div id="offlineBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:10000; background:#b45309; color:#fff; font-size: var(--fs-3); text-align:center; padding:7px 10px;">
   <span data-i18n="offlineBanner">⚠️ أنت غير متصل بالإنترنت — تقدر تتصفح المحادثات المحفوظة، لكن الذكاء الاصطناعي يحتاج اتصالًا</span>
 </div>
 
-<div id="freezeBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:10001; background:#7f1d1d; color:#fff; font-size:13px; text-align:center; padding:8px 10px; gap:8px; align-items:center; justify-content:center; flex-wrap:wrap;">
+<div id="freezeBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:10001; background:#7f1d1d; color:#fff; font-size: var(--fs-3); text-align:center; padding:8px 10px; gap:8px; align-items:center; justify-content:center; flex-wrap:wrap;">
   <span data-i18n="freezeBannerMsg">⚠️ البرنامج يستجيب ببطء… تم حفظ عملك تلقائيًا. تحب تعيد التحميل؟</span>
   <button type="button" id="freezeReloadBtn" class="btn" style="font-size:12px; padding:4px 12px;" data-i18n="freezeReloadBtn">🔄 إعادة تحميل</button>
   <button type="button" id="freezeDismissBtn" class="btn" style="font-size:12px; padding:4px 12px; background:transparent; border:1px solid #fff;" data-i18n="freezeDismissBtn">تجاهل</button>
@@ -945,7 +950,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 <div id="authOverlay" style="position:fixed; inset:0; z-index:9999; background:var(--bg,#111); display:flex; align-items:center; justify-content:center; padding:20px;">
   <div style="max-width:380px; width:100%; background:var(--panel,#1a1a1a); border-radius:16px; padding:26px; box-shadow:0 10px 40px rgba(0,0,0,0.5); position:relative;">
     <h2 style="margin-top:0; text-align:center;" data-i18n="authTitle">🔐 مرحبًا بك</h2>
-    <p style="text-align:center; font-size:13px; color:var(--muted); margin-top:-8px;" data-i18n="authSubtitle">سجّل الدخول أو أنشئ حسابًا جديدًا للمتابعة</p>
+    <p style="text-align:center; font-size: var(--fs-3); color:var(--muted); margin-top:-8px;" data-i18n="authSubtitle">سجّل الدخول أو أنشئ حسابًا جديدًا للمتابعة</p>
     <div style="display:flex; gap:8px; margin:14px 0;">
       <button type="button" class="btn" id="authTabLogin" style="flex:1;" data-i18n="authTabLogin">تسجيل الدخول</button>
       <button type="button" class="btn" id="authTabSignup" style="flex:1;" data-i18n="authTabSignup">حساب جديد</button>
@@ -970,7 +975,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
         <button type="button" id="authTogglePassBtn" title="👁" style="position:absolute; inset-inline-end:2px; top:2px; height:36px; width:36px; border:none; background:transparent; cursor:pointer; font-size:16px; color:var(--muted); display:flex; align-items:center; justify-content:center;">🙈</button>
       </div>
     </label>
-    <label id="authRememberRow" style="display:flex; align-items:center; gap:6px; margin-bottom:6px; font-size:13px; cursor:pointer; user-select:none;">
+    <label id="authRememberRow" style="display:flex; align-items:center; gap:6px; margin-bottom:6px; font-size: var(--fs-3); cursor:pointer; user-select:none;">
       <input type="checkbox" id="authRememberMe" checked style="width:16px; height:16px; cursor:pointer;">
       <span data-i18n="authRememberMe">تذكرني</span>
     </label>
@@ -980,7 +985,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
       <a href="#" id="authUseCodeLink" style="font-size:12px; color:var(--accent,#d4af37); text-decoration:none; display:none;" data-i18n="authUseCodeLink">لدي رمز استرجاع بدلًا من ذلك</a>
       <a href="#" id="authBackToLoginLink" style="font-size:12px; color:var(--accent,#d4af37); text-decoration:none; display:none;" data-i18n="authBackToLogin">رجوع لتسجيل الدخول</a>
     </div>
-    <div id="authError" style="color:#ef4444; font-size:13px; min-height:18px; margin-bottom:6px;"></div>
+    <div id="authError" style="color:#ef4444; font-size: var(--fs-3); min-height:18px; margin-bottom:6px;"></div>
     <button type="submit" class="btn primary" id="authSubmitBtn" style="width:100%; height:44px; font-weight:bold;" data-i18n="authSubmitLogin">دخول</button>
     </form>
     <div style="display:flex; align-items:center; gap:8px; margin:14px 0;">
@@ -988,7 +993,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
       <span style="font-size:12px; color:var(--muted);" data-i18n="authOrDivider">أو</span>
       <div style="flex:1; height:1px; background:var(--border,#333);"></div>
     </div>
-    <button type="button" id="authGoogleBtn" title="Continue with Google" style="width:100%; height:44px; border-radius:8px; border:1px solid var(--border,#333); background:#fff; display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; font-size:14px; font-weight:500; color:#3c4043;">
+    <button type="button" id="authGoogleBtn" title="Continue with Google" style="width:100%; height:44px; border-radius:8px; border:1px solid var(--border,#333); background:#fff; display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; font-size: var(--fs-3); font-weight: var(--w-bold); color:#3c4043;">
       <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/></svg>
       <span data-i18n="authGoogleBtn">المتابعة بجوجل</span>
     </button>
@@ -998,7 +1003,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 <div id="authRecoveryModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
   <div style="max-width:420px; width:100%; background:var(--panel,#1a1a1a); border-radius:16px; padding:26px; box-shadow:0 10px 40px rgba(0,0,0,0.5); text-align:center;">
     <h3 style="margin-top:0;" data-i18n="authRecoveryModalTitle">🔑 احتفظ برمز الاسترجاع هذا</h3>
-    <p style="font-size:13px; color:var(--muted);" data-i18n="authRecoveryModalDesc">هذا هو الرمز الوحيد الذي يمكنك استخدامه لاستعادة حسابك إذا نسيت كلمة المرور. احفظه في مكان آمن — لن يظهر مرة أخرى.</p>
+    <p style="font-size: var(--fs-3); color:var(--muted);" data-i18n="authRecoveryModalDesc">هذا هو الرمز الوحيد الذي يمكنك استخدامه لاستعادة حسابك إذا نسيت كلمة المرور. احفظه في مكان آمن — لن يظهر مرة أخرى.</p>
     <div id="authRecoveryCodeDisplay" style="font-family:monospace; font-size:18px; direction:ltr; background:var(--bg,#111); border-radius:10px; padding:14px; margin:14px 0; letter-spacing:1px; word-break:break-all;"></div>
     <div style="display:flex; gap:8px;">
       <button type="button" class="btn" id="authCopyRecoveryBtn" style="flex:1;" data-i18n="authCopyBtn">📋 نسخ</button>
@@ -1097,11 +1102,11 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
         <button type="button" id="videoMakerHeroClear" style="display:none; cursor:pointer; background:none; border:none; font-size:16px;">✖</button>
       </div>
       <input type="file" id="videoMakerHeroInput" accept="image/*" style="display:none;">
-      <p style="font-size:11.5px; color:var(--muted); margin-top:6px;" data-i18n="videoMakerHeroNote">ارفع صورتك أو صورة أي شخص — راح يكون بطل كل مشاهد الفيلم.</p>
+      <p style="font-size: var(--fs-5); color:var(--muted); margin-top:6px;" data-i18n="videoMakerHeroNote">ارفع صورتك أو صورة أي شخص — راح يكون بطل كل مشاهد الفيلم.</p>
     </div>
     <p id="videoMakerHeroVeoNote" style="display:none; font-size:11.5px; color:#e8a13c; margin-top:10px;" data-i18n="videoMakerHeroVeoNote">ℹ️ صورة البطل متاحة مع محرك Runway فقط — Veo 3 لا يقبل صورة في وضع الفيلم.</p>
 
-    <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size:13px; cursor:pointer;">
+    <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size: var(--fs-3); cursor:pointer;">
       <input type="checkbox" id="videoMakerNarrationToggle">
       <span data-i18n="videoMakerNarrationToggleLabel">🎙️ إضافة تعليق صوتي (صوت مُولّد)</span>
     </label>
@@ -1110,14 +1115,14 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
     <button type="button" class="mini-mic-btn" data-target="videoMakerNarrationText" title="🎤" data-i18n-title="micTitle">🎤</button>
     </div>
 
-    <label style="display:flex; align-items:center; gap:8px; margin-top:10px; font-size:13px; cursor:pointer;" id="videoMakerQualityRow">
+    <label style="display:flex; align-items:center; gap:8px; margin-top:10px; font-size: var(--fs-3); cursor:pointer;" id="videoMakerQualityRow">
       <input type="checkbox" id="videoMakerQualityToggle">
       <span data-i18n="videoMakerQualityToggleLabel">🔎 جودة أعلى (ترقية دقة الفيديو، متاحة فقط للفيديو القصير)</span>
     </label>
 
     <button type="button" class="btn primary" id="videoMakerGenerateBtn" style="width:100%; margin-top:14px;" data-i18n="videoMakerGenerateBtn">✨ إنشاء الفيديو</button>
 
-    <div id="videoMakerStatus" style="display:none; margin-top:14px; text-align:center; font-size:13px; color:var(--muted);"></div>
+    <div id="videoMakerStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
     <video id="videoMakerResult" controls style="display:none; width:100%; margin-top:14px; border-radius:10px; background:#000;"></video>
     <a id="videoMakerDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-ai-video.mp4" data-i18n="videoMakerDownloadBtn">⬇️ تحميل الفيديو</a>
   </div>
@@ -1171,7 +1176,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
       <div id="designAiSuggestList"></div>
     </div>
 
-    <p style="font-size:11.5px; color:var(--muted); margin:14px 0 6px;" data-i18n="designAiOptionalHint">الخيارات التالية اختيارية — اختر ما يناسبك فقط</p>
+    <p style="font-size: var(--fs-5); color:var(--muted); margin:14px 0 6px;" data-i18n="designAiOptionalHint">الخيارات التالية اختيارية — اختر ما يناسبك فقط</p>
 
     <div style="margin-top:8px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="designAiLightingLabel">💡 الإضاءة</label>
@@ -1261,7 +1266,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 
     <button type="button" class="btn primary" id="designAiGenerateBtn" style="width:100%; margin-top:14px;" data-i18n="designAiGenerateBtn">✨ صمم الغرفة</button>
 
-    <div id="designAiStatus" style="display:none; margin-top:14px; text-align:center; font-size:13px; color:var(--muted);"></div>
+    <div id="designAiStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
     <img id="designAiResult" style="display:none; width:100%; margin-top:14px; border-radius:10px; background:#000;">
     <a id="designAiDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-design-ai.png" data-i18n="designAiDownloadBtn">⬇️ تحميل الصورة</a>
   </div>
@@ -1484,7 +1489,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
     <div style="margin-top:12px;">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
         <label style="font-size:12px; color:var(--muted); display:block;" data-i18n="portraitStyleLabel">ستايل الرسم</label>
-        <button type="button" id="portraitFavStarBtn" title="⭐" style="background:none; border:none; cursor:pointer; font-size:17px; padding:2px 4px; line-height:1;">☆</button>
+        <button type="button" id="portraitFavStarBtn" title="⭐" style="background:none; border:none; cursor:pointer; font-size: var(--fs-2); padding:2px 4px; line-height:1;">☆</button>
       </div>
       <select id="portraitStyleSelect" style="width:100%;">
         <optgroup id="portraitFavGroup" label="⭐ المفضلة" data-i18n-label="portraitFavGroupLabel" style="display:none;"></optgroup>
@@ -1553,7 +1558,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
       <input type="text" id="portraitCelebInput" maxlength="60" style="width:100%; padding:8px; border-radius:8px;" data-i18n-placeholder="portraitCelebPlaceholder" placeholder="مثال: بطل كرتوني مغامر بملابس ملونة">
       <button type="button" class="mini-mic-btn" data-target="portraitCelebInput" title="🎤" data-i18n-title="micTitle">🎤</button>
       </div>
-      <div style="font-size:11px; color:var(--muted); margin-top:4px;" data-i18n="portraitCelebNote">ملاحظة: أنت المسؤول عن اختيار اسم لا يخالف حقوق الملكية الفكرية.</div>
+      <div style="font-size: var(--fs-5); color:var(--muted); margin-top:4px;" data-i18n="portraitCelebNote">ملاحظة: أنت المسؤول عن اختيار اسم لا يخالف حقوق الملكية الفكرية.</div>
     </div>
     <div id="portraitAdWrap" style="margin-top:10px; display:none;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="portraitAdTextLabel">نص الإعلان (اختياري)</label>
@@ -1587,13 +1592,13 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
       </select>
     </div>
     <div id="portraitBeautifyWrap" style="margin-top:10px; display:none;">
-      <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:6px;">
+      <label style="display:flex; align-items:center; gap:8px; font-size: var(--fs-3); margin-bottom:6px;">
         <input type="checkbox" id="portraitBeautifySkin" checked> <span data-i18n="portraitBeautifySkin">🧴 تنعيم البشرة</span>
       </label>
-      <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:6px;">
+      <label style="display:flex; align-items:center; gap:8px; font-size: var(--fs-3); margin-bottom:6px;">
         <input type="checkbox" id="portraitBeautifyLight" checked> <span data-i18n="portraitBeautifyLight">💡 تحسين الإضاءة</span>
       </label>
-      <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:6px;">
+      <label style="display:flex; align-items:center; gap:8px; font-size: var(--fs-3); margin-bottom:6px;">
         <input type="checkbox" id="portraitBeautifyTeeth" checked> <span data-i18n="portraitBeautifyTeeth">😁 تبييض الأسنان</span>
       </label>
     </div>
@@ -1615,15 +1620,15 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 
     <button type="button" class="btn primary" id="portraitStyleGenerateBtn" style="width:100%; margin-top:14px;" data-i18n="portraitGenerateBtn">✨ حوّلها</button>
 
-    <div id="portraitStyleStatus" style="display:none; margin-top:14px; text-align:center; font-size:13px; color:var(--muted);"></div>
+    <div id="portraitStyleStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
     <div id="portraitCompareWrap" style="display:none; position:relative; margin-top:14px; border-radius:10px; overflow:hidden; background:#000; width:100%; user-select:none;">
       <img id="portraitCompareBefore" style="display:block; width:100%;">
       <div id="portraitCompareAfterWrap" style="position:absolute; top:0; left:0; height:100%; overflow:hidden; width:50%;">
         <img id="portraitStyleResult" style="position:absolute; top:0; left:0; height:100%;">
       </div>
       <div id="portraitCompareDivider" style="position:absolute; top:0; bottom:0; left:50%; width:2px; margin-left:-1px; background:#fff; box-shadow:0 0 6px rgba(0,0,0,.7); pointer-events:none;"></div>
-      <span style="position:absolute; top:6px; left:8px; font-size:11px; background:rgba(0,0,0,.55); color:#fff; padding:2px 7px; border-radius:6px;" data-i18n="portraitCompareBeforeLabel">قبل</span>
-      <span style="position:absolute; top:6px; right:8px; font-size:11px; background:rgba(0,0,0,.55); color:#fff; padding:2px 7px; border-radius:6px;" data-i18n="portraitCompareAfterLabel">بعد</span>
+      <span style="position:absolute; top:6px; left:8px; font-size: var(--fs-5); background:rgba(0,0,0,.55); color:#fff; padding:2px 7px; border-radius:6px;" data-i18n="portraitCompareBeforeLabel">قبل</span>
+      <span style="position:absolute; top:6px; right:8px; font-size: var(--fs-5); background:rgba(0,0,0,.55); color:#fff; padding:2px 7px; border-radius:6px;" data-i18n="portraitCompareAfterLabel">بعد</span>
     </div>
     <input type="range" id="portraitCompareSlider" min="0" max="100" value="50" style="width:100%; margin-top:8px; display:none;">
     <a id="portraitStyleDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-portrait-style.png" data-i18n="portraitDownloadBtn">⬇️ تحميل الصورة</a>
@@ -1680,19 +1685,19 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
       <summary style="cursor:pointer; font-size:12.5px; color:var(--muted);" data-i18n="fashionProfileTitle">👤 ملفي (المقاسات)</summary>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
         <div>
-          <label style="font-size:11.5px; color:var(--muted); display:block; margin-bottom:3px;" data-i18n="fashionProfileHeight">الطول (سم)</label>
+          <label style="font-size: var(--fs-5); color:var(--muted); display:block; margin-bottom:3px;" data-i18n="fashionProfileHeight">الطول (سم)</label>
           <input type="number" id="fashionProfileHeight" style="width:100%;" min="100" max="230">
         </div>
         <div>
-          <label style="font-size:11.5px; color:var(--muted); display:block; margin-bottom:3px;" data-i18n="fashionProfileWeight">الوزن (كغ)</label>
+          <label style="font-size: var(--fs-5); color:var(--muted); display:block; margin-bottom:3px;" data-i18n="fashionProfileWeight">الوزن (كغ)</label>
           <input type="number" id="fashionProfileWeight" style="width:100%;" min="30" max="200">
         </div>
         <div>
-          <label style="font-size:11.5px; color:var(--muted); display:block; margin-bottom:3px;" data-i18n="fashionProfileSkin">لون البشرة</label>
+          <label style="font-size: var(--fs-5); color:var(--muted); display:block; margin-bottom:3px;" data-i18n="fashionProfileSkin">لون البشرة</label>
           <input type="text" id="fashionProfileSkin" style="width:100%;">
         </div>
         <div>
-          <label style="font-size:11.5px; color:var(--muted); display:block; margin-bottom:3px;" data-i18n="fashionProfileHair">لون الشعر</label>
+          <label style="font-size: var(--fs-5); color:var(--muted); display:block; margin-bottom:3px;" data-i18n="fashionProfileHair">لون الشعر</label>
           <input type="text" id="fashionProfileHair" style="width:100%;">
         </div>
       </div>
@@ -1746,7 +1751,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 
     <button type="button" class="btn primary" id="fashionAiGenerateBtn" style="width:100%; margin-top:14px;" data-i18n="fashionAiGenerateBtn">✨ صمم التصميم</button>
 
-    <div id="fashionAiStatus" style="display:none; margin-top:14px; text-align:center; font-size:13px; color:var(--muted);"></div>
+    <div id="fashionAiStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
 
     <div id="fashionAiResultWrap" style="display:none; position:relative; margin-top:14px; border-radius:10px; overflow:hidden; background:#000;">
       <img id="fashionAiResult" style="display:block; width:100%; border-radius:10px; background:#000;">
@@ -1763,10 +1768,10 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
       <strong style="font-size:13px;" data-i18n="fashionCompareTitle">📊 قارن بين إطلالات</strong>
       <button type="button" class="btn" id="fashionAiFavoritesBtn" style="padding:4px 10px; font-size:12px;" data-i18n="fashionFavoritesBtn">❤️ المفضلة</button>
     </div>
-    <p style="font-size:11.5px; color:var(--muted); margin:4px 0 8px;" data-i18n="fashionCompareHint">اختر إطلالتين أو ثلاث لمقارنتها جنبًا إلى جنب</p>
+    <p style="font-size: var(--fs-5); color:var(--muted); margin:4px 0 8px;" data-i18n="fashionCompareHint">اختر إطلالتين أو ثلاث لمقارنتها جنبًا إلى جنب</p>
     <div id="fashionAiCompareChecks" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
     <button type="button" class="btn" id="fashionAiCompareBtn" style="width:100%; margin-top:8px;" data-i18n="fashionCompareBtn">📊 قارن الإطلالات</button>
-    <div id="fashionAiCompareStatus" style="display:none; margin-top:10px; text-align:center; font-size:13px; color:var(--muted);"></div>
+    <div id="fashionAiCompareStatus" style="display:none; margin-top:10px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
     <div id="fashionAiCompareResults" style="display:none; margin-top:10px; display:grid; grid-template-columns:1fr 1fr; gap:8px;"></div>
 
     <div id="fashionAiFavoritesPanel" style="display:none; margin-top:10px; flex-direction:column; gap:8px;"></div>
@@ -1813,15 +1818,15 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
       <summary style="cursor:pointer; font-size:12.5px; color:var(--muted);" data-i18n="studioProfileTitle">👤 بروفايل الوجه (اختياري)</summary>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
         <div>
-          <label style="font-size:11.5px; color:var(--muted); display:block; margin-bottom:3px;" data-i18n="studioProfileFaceShape">شكل الوجه</label>
+          <label style="font-size: var(--fs-5); color:var(--muted); display:block; margin-bottom:3px;" data-i18n="studioProfileFaceShape">شكل الوجه</label>
           <input type="text" id="studioProfileFaceShape" style="width:100%;">
         </div>
         <div>
-          <label style="font-size:11.5px; color:var(--muted); display:block; margin-bottom:3px;" data-i18n="studioProfileSkin">لون البشرة</label>
+          <label style="font-size: var(--fs-5); color:var(--muted); display:block; margin-bottom:3px;" data-i18n="studioProfileSkin">لون البشرة</label>
           <input type="text" id="studioProfileSkin" style="width:100%;">
         </div>
         <div>
-          <label style="font-size:11.5px; color:var(--muted); display:block; margin-bottom:3px;" data-i18n="studioProfileHair">لون الشعر</label>
+          <label style="font-size: var(--fs-5); color:var(--muted); display:block; margin-bottom:3px;" data-i18n="studioProfileHair">لون الشعر</label>
           <input type="text" id="studioProfileHair" style="width:100%;">
         </div>
       </div>
@@ -1884,11 +1889,11 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 
     <div id="studioAiHeritageCompareWrap" style="display:none; margin-top:8px;">
       <button type="button" class="btn" id="studioAiHeritageCompareBtn" style="width:100%;" data-i18n="studioHeritageCompareBtn">📊 قارن كاجوال ⟷ رسمي</button>
-      <div id="studioAiHeritageCompareStatus" style="display:none; margin-top:8px; text-align:center; font-size:13px; color:var(--muted);"></div>
+      <div id="studioAiHeritageCompareStatus" style="display:none; margin-top:8px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
       <div id="studioAiHeritageCompareResults" style="display:none; margin-top:8px; display:grid; grid-template-columns:1fr 1fr; gap:8px;"></div>
     </div>
 
-    <div id="studioAiStatus" style="display:none; margin-top:14px; text-align:center; font-size:13px; color:var(--muted);"></div>
+    <div id="studioAiStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
 
     <div id="studioAiResultWrap" style="display:none; position:relative; margin-top:14px; border-radius:10px; overflow:hidden; background:#000;">
       <img id="studioAiResult" style="display:block; width:100%; border-radius:10px; background:#000;">
@@ -1906,10 +1911,10 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
       <strong style="font-size:13px;" data-i18n="studioCompareTitle">📊 قارن بين ستايلات</strong>
       <button type="button" class="btn" id="studioAiFavoritesBtn" style="padding:4px 10px; font-size:12px;" data-i18n="studioFavoritesBtn">❤️ المفضلة</button>
     </div>
-    <p style="font-size:11.5px; color:var(--muted); margin:4px 0 8px;" data-i18n="studioCompareHint">اختر ستايلين أو ثلاثة لمقارنتها جنبًا إلى جنب</p>
+    <p style="font-size: var(--fs-5); color:var(--muted); margin:4px 0 8px;" data-i18n="studioCompareHint">اختر ستايلين أو ثلاثة لمقارنتها جنبًا إلى جنب</p>
     <div id="studioAiCompareChecks" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
     <button type="button" class="btn" id="studioAiCompareBtn" style="width:100%; margin-top:8px;" data-i18n="studioCompareBtn">📊 قارن الستايلات</button>
-    <div id="studioAiCompareStatus" style="display:none; margin-top:10px; text-align:center; font-size:13px; color:var(--muted);"></div>
+    <div id="studioAiCompareStatus" style="display:none; margin-top:10px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
     <div id="studioAiCompareResults" style="display:none; margin-top:10px; display:grid; grid-template-columns:1fr 1fr; gap:8px;"></div>
 
     <div id="studioAiFavoritesPanel" style="display:none; margin-top:10px; flex-direction:column; gap:8px;"></div>
@@ -1940,8 +1945,8 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 
     <button type="button" class="btn primary" id="religionGenerateBtn" style="width:100%; margin-top:14px;" data-i18n="religionGenerateBtn">✨ فسّر</button>
 
-    <div id="religionStatus" style="display:none; margin-top:14px; text-align:center; font-size:13px; color:var(--muted);"></div>
-    <div id="religionResult" style="display:none; margin-top:14px; white-space:pre-wrap; line-height:1.9; font-size:14.5px; background:var(--panel2,#111); border:1px solid var(--border,#333); border-radius:10px; padding:14px;"></div>
+    <div id="religionStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
+    <div id="religionResult" style="display:none; margin-top:14px; white-space:pre-wrap; line-height:1.9; font-size: var(--fs-3); background:var(--panel2,#111); border:1px solid var(--border,#333); border-radius:10px; padding:14px;"></div>
   </div>
 </div>
 
@@ -1954,7 +1959,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
     <p id="emailAssistDisclaimer" style="font-size:12px; color:#f0b90b; background:rgba(240,185,11,0.1); border:1px solid rgba(240,185,11,0.3); border-radius:8px; padding:8px 10px; margin-top:8px;">⚠️ لن يتم إرسال أي رد إلا بعد موافقتك الصريحة على كل رسالة.</p>
 
     <div id="emailAssistConnectBox" style="margin-top:16px; text-align:center;">
-      <p id="emailAssistConnectText" style="font-size:13.5px; color:var(--muted);">اربط حساب Gmail الخاص بك ليقرأ الذكاء الاصطناعي إيميلاتك ويقترح ردودًا جاهزة تعتمدها قبل الإرسال.</p>
+      <p id="emailAssistConnectText" style="font-size: var(--fs-3); color:var(--muted);">اربط حساب Gmail الخاص بك ليقرأ الذكاء الاصطناعي إيميلاتك ويقترح ردودًا جاهزة تعتمدها قبل الإرسال.</p>
       <button type="button" class="btn primary" id="emailAssistConnectBtn" data-i18n="eaConnectBtn" style="width:100%; margin-top:10px;">🔗 ربط Gmail</button>
     </div>
 
@@ -1964,7 +1969,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
         <button type="button" class="btn" id="emailAssistVoiceBtn" data-i18n="eaVoiceBtn" style="padding:6px 12px; font-size:12.5px;">🔊 <span id="emailAssistVoiceLabel">ملخص صوتي</span></button>
         <button type="button" class="btn" id="emailAssistRefreshBtn" data-i18n="eaRefreshBtn" style="padding:6px 12px; font-size:12.5px;">🔄 <span id="emailAssistRefreshLabel">تحديث</span></button>
       </div>
-      <div id="emailAssistStatus" style="display:none; margin-top:14px; text-align:center; font-size:13px; color:var(--muted);"></div>
+      <div id="emailAssistStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
       <div id="emailAssistList" style="margin-top:14px; display:flex; flex-direction:column; gap:14px;"></div>
     </div>
   </div>
@@ -1990,9 +1995,9 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
       <div id="goldCard" style="display:none; margin-bottom:12px;">
         <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:6px;">
           <div style="font-size:13.5px; font-weight:500;" data-i18n="goldNowTitle">🥇 الذهب الآن</div>
-          <div><span id="goldOz" style="font-size:16px; font-weight:700;"></span> <span id="goldChg" style="font-size:12px;"></span></div>
+          <div><span id="goldOz" style="font-size: var(--fs-2); font-weight: var(--w-bold);"></span> <span id="goldChg" style="font-size:12px;"></span></div>
         </div>
-        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px; font-size:13px; text-align:center;">
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px; font-size: var(--fs-3); text-align:center;">
           <span>24K: <b id="goldG24"></b> AED/g</span>
           <span>22K: <b id="goldG22"></b> AED/g</span>
           <span>21K: <b id="goldG21"></b> AED/g</span>
@@ -2034,17 +2039,17 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
         <option value="1week" data-i18n="stocksIntWeek">أسبوعي</option>
       </select>
     </div>
-    <div id="stockStatus" style="display:none; margin-top:14px; text-align:center; font-size:13px; color:var(--muted);"></div>
+    <div id="stockStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
 
     <div id="stockQuoteCard" style="display:none; margin-top:14px;">
       <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:6px;">
         <div>
-          <div id="stockName" style="font-size:15px; font-weight:500;"></div>
-          <div id="stockExchange" style="font-size:11.5px; color:var(--muted);"></div>
+          <div id="stockName" style="font-size: var(--fs-2); font-weight: var(--w-bold);"></div>
+          <div id="stockExchange" style="font-size: var(--fs-5); color:var(--muted);"></div>
         </div>
         <div style="text-align:end;">
-          <div id="stockPrice" style="font-size:22px; font-weight:700;"></div>
-          <div id="stockChange" style="font-size:13px;"></div>
+          <div id="stockPrice" style="font-size: var(--fs-1); font-weight: var(--w-bold);"></div>
+          <div id="stockChange" style="font-size: var(--fs-3);"></div>
         </div>
       </div>
       <div id="stockDetails" style="display:flex; gap:14px; flex-wrap:wrap; margin-top:8px; font-size:12px; color:var(--muted);"></div>
@@ -2057,7 +2062,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
         <input id="stockQuestion" type="text" style="flex:1;" placeholder="سؤال اختياري: شرايك بالسهم؟" data-i18n-placeholder="stocksQuestionPh">
         <button type="button" class="btn primary" id="stockAnalyzeBtn" data-i18n="stocksAnalyzeBtn">🤖 حلل السهم</button>
       </div>
-      <div id="stockAnalysis" style="display:none; margin-top:12px; font-size:13.5px; line-height:1.8; white-space:pre-wrap; border-radius:10px; background:rgba(0,0,0,0.25); padding:14px;"></div>
+      <div id="stockAnalysis" style="display:none; margin-top:12px; font-size: var(--fs-3); line-height:1.8; white-space:pre-wrap; border-radius:10px; background:rgba(0,0,0,0.25); padding:14px;"></div>
     </div>
     </div>
 
@@ -2077,7 +2082,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
         <input id="stockLearnQ" type="text" style="flex:1;" placeholder="أو اكتب سؤالك عن التداول..." data-i18n-placeholder="stocksLearnQPh">
         <button type="button" class="btn primary" id="stockLearnAskBtn" data-i18n="stocksLearnAsk">اشرح لي</button>
       </div>
-      <div id="stockLesson" style="display:none; margin-top:12px; font-size:13.5px; line-height:1.8; white-space:pre-wrap; border-radius:10px; background:rgba(0,0,0,0.25); padding:14px;"></div>
+      <div id="stockLesson" style="display:none; margin-top:12px; font-size: var(--fs-3); line-height:1.8; white-space:pre-wrap; border-radius:10px; background:rgba(0,0,0,0.25); padding:14px;"></div>
     </div>
 
     <p style="margin-top:14px; font-size:11.5px; color:var(--muted); text-align:center;" data-i18n="stocksDisclaimer">⚠️ بيانات تقريبية وقد تتأخر — ليست نصيحة استثمارية.</p>
@@ -2106,11 +2111,11 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;">
       <div>
-        <label style="font-size:11.5px; color:var(--muted); display:block; margin-bottom:3px;" data-i18n="constructionFloors">عدد الأدوار</label>
+        <label style="font-size: var(--fs-5); color:var(--muted); display:block; margin-bottom:3px;" data-i18n="constructionFloors">عدد الأدوار</label>
         <input type="number" id="constructionFloors" style="width:100%;" min="1" max="60" value="1">
       </div>
       <div>
-        <label style="font-size:11.5px; color:var(--muted); display:block; margin-bottom:3px;" data-i18n="constructionArea">المساحة (م²)</label>
+        <label style="font-size: var(--fs-5); color:var(--muted); display:block; margin-bottom:3px;" data-i18n="constructionArea">المساحة (م²)</label>
         <input type="number" id="constructionArea" style="width:100%;" min="20" max="100000" value="300">
       </div>
     </div>
@@ -2159,7 +2164,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
         <option value="b3" data-i18n="constructionBudgetB3">💎 600 ألف - 1 مليون درهم</option>
         <option value="b4" data-i18n="constructionBudgetB4">👑 أكثر من 1 مليون درهم</option>
       </select>
-      <div style="font-size:10.5px; color:var(--muted); margin-top:4px;" data-i18n="constructionBudgetDisclaimer">* هذا المبلغ تقريبي فقط ولا يشمل أجرة المقاول.</div>
+      <div style="font-size: var(--fs-5); color:var(--muted); margin-top:4px;" data-i18n="constructionBudgetDisclaimer">* هذا المبلغ تقريبي فقط ولا يشمل أجرة المقاول.</div>
     </div>
 
     <div style="margin-top:10px;">
@@ -2180,9 +2185,9 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 
     <button type="button" class="btn primary" id="constructionRunBtn" style="width:100%; margin-top:14px;" data-i18n="constructionRunBtn">✨ ولّد التصميم</button>
     <button type="button" class="btn" id="constructionEditorBtn" style="width:100%; margin-top:8px; background:#2E9E6B; border-color:#2E9E6B; color:#fff;" data-i18n="constructionEditorBtn">📐 محرّر المخططات التفاعلي — اسحب وعدّل بنفسك</button>
-    <div style="font-size:10.5px; color:var(--muted); margin-top:4px; text-align:center;" data-i18n="constructionEditorHint">مخطط بمساحات محسوبة رياضيًا، تعدّله بأصبعك، ثم تولّد صور الواجهة والمجلس منه</div>
+    <div style="font-size: var(--fs-5); color:var(--muted); margin-top:4px; text-align:center;" data-i18n="constructionEditorHint">مخطط بمساحات محسوبة رياضيًا، تعدّله بأصبعك، ثم تولّد صور الواجهة والمجلس منه</div>
 
-    <div id="constructionStatus" style="display:none; margin-top:14px; text-align:center; font-size:13px; color:var(--muted);"></div>
+    <div id="constructionStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
     <div id="constructionResultImageWrap" style="display:none; margin-top:14px;">
       <p style="font-size:11.5px; color:var(--muted); margin:0 0 4px;" data-i18n="constructionPlanImageLabel">📐 المخطط 2D بالمقاسات</p>
       <img id="constructionResultImage" style="display:block; width:100%; border-radius:10px; background:#000;">
@@ -2198,7 +2203,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
       <img id="constructionInteriorImage" style="display:block; width:100%; border-radius:10px; background:#000;">
       <a id="constructionInteriorDownloadLink" style="display:block; margin-top:8px; text-align:center;" class="btn primary" download="omran-construction-interior.png" data-i18n="portraitDownloadBtn">⬇️ تحميل الصورة</a>
     </div>
-    <div id="constructionPlanText" style="display:none; margin-top:14px; white-space:pre-wrap; line-height:1.9; font-size:14px; background:var(--panel2,#111); border:1px solid var(--border,#333); border-radius:10px; padding:14px;"></div>
+    <div id="constructionPlanText" style="display:none; margin-top:14px; white-space:pre-wrap; line-height:1.9; font-size: var(--fs-3); background:var(--panel2,#111); border:1px solid var(--border,#333); border-radius:10px; padding:14px;"></div>
 
     <div id="constructionViewsSection" style="display:none; margin-top:18px; border-top:1px solid var(--border,#333); padding-top:14px;">
       <p style="font-size:12.5px; color:var(--muted); margin:0 0 8px;" data-i18n="constructionAnglesLabel">📷 شاهد المبنى من زوايا أخرى</p>
@@ -2244,11 +2249,11 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
     </div>
     <p style="font-size:12.5px; color:var(--muted); margin-top:2px;" data-i18n="shareModalDesc">أنشئ رابطًا عامًا لمشروعك. يقدر أي شخص فتحه ومعاينته بدون تسجيل دخول.</p>
 
-    <label style="display:flex; align-items:flex-start; gap:8px; margin-top:14px; font-size:13px; cursor:pointer;">
+    <label style="display:flex; align-items:flex-start; gap:8px; margin-top:14px; font-size: var(--fs-3); cursor:pointer;">
       <input type="radio" name="sharePublicOpt" id="sharePublicYes" checked style="margin-top:3px;">
       <span data-i18n="sharePublicLabel">اعرضه أيضًا في صفحة 🔍 استكشف (يشوفه الجميع)</span>
     </label>
-    <label style="display:flex; align-items:flex-start; gap:8px; margin-top:8px; font-size:13px; cursor:pointer;">
+    <label style="display:flex; align-items:flex-start; gap:8px; margin-top:8px; font-size: var(--fs-3); cursor:pointer;">
       <input type="radio" name="sharePublicOpt" id="sharePublicNo" style="margin-top:3px;">
       <span data-i18n="sharePrivateLabel">رابط خاص فقط (لمن تشاركه معهم)</span>
     </label>
@@ -2274,15 +2279,15 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
     <div id="codeHintTip" style="display:none;"><span class="hintCloseBtn" id="codeHintCloseBtn">✕</span><span data-i18n="codeHintText">اضغط هنا لعرض الكود والمعاينة المباشرة لتطبيقك 👈</span></div>
     <button class="btn" id="btnClock" title="التقويم والوقت" data-i18n-title="clockBtnTitle" style="display:none; font-variant-numeric:tabular-nums; background:none; border:none;">🕐 <span id="headerClockTime" style="direction:ltr; font-weight:700;">--:--:--</span></button>
     <button class="btn" id="btnInstallHeader" title="تثبيت التطبيق" data-i18n-title="install" style="display:none;">📲 <span class="btnLabel" data-i18n="install">تثبيت التطبيق</span></button>
-    <span id="authUserBadge" title="" data-i18n-title="loggedInAs" style="display:none; align-items:center; gap:6px; padding:6px 10px; border-radius:10px; background:none; border:none; font-size:12.5px; font-weight:500; color:var(--text);">
+    <span id="authUserBadge" title="" data-i18n-title="loggedInAs" style="display:none; align-items:center; gap:6px; padding:6px 10px; border-radius:10px; background:none; border:none; font-size:12.5px; font-weight: var(--w-bold); color:var(--text);">
       <img id="authUserAvatarImg" alt="" style="display:none; width:20px; height:20px; border-radius:50%; object-fit:cover;">
       <span id="authUserBadgeEmoji">👤</span> <span id="authUserLabel"></span>
     </span>
-    <button class="btn" id="btnHeaderLogin" style="display:none; background:none; border:none; border-radius:10px; font-weight:700; font-size:12.5px; padding:7px 12px; color:var(--accent);"><span data-i18n="loginAction">تسجيل الدخول</span></button>
+    <button class="btn" id="btnHeaderLogin" style="display:none; background:none; border:none; border-radius:10px; font-weight: var(--w-bold); font-size:12.5px; padding:7px 12px; color:var(--accent);"><span data-i18n="loginAction">تسجيل الدخول</span></button>
     <div id="headerUserWrap" style="position:relative; display:inline-block;">
-      <button class="btn" id="btnHeaderUser" style="display:none; align-items:center; gap:6px; background:none; border:none; color:var(--accent); border-radius:10px; font-weight:700; font-size:12.5px; padding:5px 12px;"><img id="headerUserAvatarImg" alt="" style="display:none; width:22px; height:22px; border-radius:50%; object-fit:cover;"><span id="headerUserEmoji">👤</span><span id="headerUserName"></span></button>
+      <button class="btn" id="btnHeaderUser" style="display:none; align-items:center; gap:6px; background:none; border:none; color:var(--accent); border-radius:10px; font-weight: var(--w-bold); font-size:12.5px; padding:5px 12px;"><img id="headerUserAvatarImg" alt="" style="display:none; width:22px; height:22px; border-radius:50%; object-fit:cover;"><span id="headerUserEmoji">👤</span><span id="headerUserName"></span></button>
       <div id="headerUserDropdown" style="display:none; position:absolute; top:calc(100% + 6px); right:0; left:auto; background:#000000; border:1px solid rgba(212,175,55,.45); border-radius:10px; padding:4px; z-index:9999; min-width:auto; box-shadow:0 8px 24px rgba(0,0,0,.5);">
-        <button id="btnHeaderUserLogout" style="display:block; width:100%; background:none; border:none; color:var(--accent); font-weight:700; font-size:12.5px; padding:7px 12px; border-radius:8px; cursor:pointer; text-align:center; white-space:nowrap;" data-i18n="logoutTitle">تسجيل الخروج</button>
+        <button id="btnHeaderUserLogout" style="display:block; width:100%; background:none; border:none; color:var(--accent); font-weight: var(--w-bold); font-size:12.5px; padding:7px 12px; border-radius:8px; cursor:pointer; text-align:center; white-space:nowrap;" data-i18n="logoutTitle">تسجيل الخروج</button>
       </div>
     </div>
     <div id="headerMenuWrap">
@@ -2345,12 +2350,12 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
       </div>
     </div>
     <div id="projMenuWrap" style="margin:6px 10px;">
-      <button class="btn" id="btnProjMenuToggle" type="button" style="background:none; border:none; box-shadow:none; padding:6px 8px; display:inline-flex; align-items:center; gap:6px;"><svg id="projMenuChevron" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transition:transform .18s;"><polyline points="6 9 12 15 18 9"></polyline></svg><span style="font-size:13px;">المشاريع</span></button>
+      <button class="btn" id="btnProjMenuToggle" type="button" style="background:none; border:none; box-shadow:none; padding:6px 8px; display:inline-flex; align-items:center; gap:6px;"><svg id="projMenuChevron" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transition:transform .18s;"><polyline points="6 9 12 15 18 9"></polyline></svg><span style="font-size: var(--fs-3);">المشاريع</span></button>
       <div id="projMenuPanel" style="display:none; flex-direction:column; gap:2px; padding:2px 4px;">
-        <button class="btn" id="btnNew" type="button" style="background:none; border:none; box-shadow:none; justify-content:flex-start; font-size:13px; padding:6px 8px; min-height:0;">مشروع جديد</button>
-        <button class="btn" id="btnProjSearch" type="button" style="background:none; border:none; box-shadow:none; justify-content:flex-start; font-size:13px; padding:6px 8px; min-height:0;">بحث عن مشروع</button>
+        <button class="btn" id="btnNew" type="button" style="background:none; border:none; box-shadow:none; justify-content:flex-start; font-size: var(--fs-3); padding:6px 8px; min-height:0;">مشروع جديد</button>
+        <button class="btn" id="btnProjSearch" type="button" style="background:none; border:none; box-shadow:none; justify-content:flex-start; font-size: var(--fs-3); padding:6px 8px; min-height:0;">بحث عن مشروع</button>
         <input type="text" id="projSearchInput" style="display:none; width:100%; padding:6px 8px; border-radius:8px; border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px; margin:2px 0;">
-        <button class="btn" id="btnDeleteAll" type="button" style="background:none; border:none; box-shadow:none; justify-content:flex-start; font-size:13px; padding:6px 8px; min-height:0; color:#e66;">حذف الكل</button>
+        <button class="btn" id="btnDeleteAll" type="button" style="background:none; border:none; box-shadow:none; justify-content:flex-start; font-size: var(--fs-3); padding:6px 8px; min-height:0; color:#e66;">حذف الكل</button>
       </div>
     </div>
     <div id="history"></div>
@@ -2487,10 +2492,10 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 <div id="mahaCallScreen" style="display:none; position:fixed; z-index:99999; background:radial-gradient(circle at 50% 30%,#241a3d,#0c0a16 75%); flex-direction:column; align-items:center; justify-content:space-between; padding:26px 20px 22px; width:260px; height:340px; border-radius:26px; box-shadow:0 12px 40px rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.08); touch-action:none;">
   <div id="mahaDragHandle" style="text-align:center; width:100%; cursor:grab; padding-bottom:6px;">
     <div style="width:36px; height:4px; border-radius:2px; background:rgba(255,255,255,.25); margin:0 auto 10px;"></div>
-    <div id="mahaCallNameLabel" style="font-size:20px; font-weight:700; color:#fff; letter-spacing:0;">مها</div>
-    <div id="mahaStateLabel" style="margin-top:6px; font-size:13px; color:#c9c1e0; min-height:18px;"></div>
+    <div id="mahaCallNameLabel" style="font-size: var(--fs-1); font-weight: var(--w-bold); color:#fff; letter-spacing:0;">مها</div>
+    <div id="mahaStateLabel" style="margin-top:6px; font-size: var(--fs-3); color:#c9c1e0; min-height:18px;"></div>
     <div id="mahaMicMeter" style="display:none; margin:5px auto 0; width:120px; height:5px; border-radius:3px; background:rgba(255,255,255,.12); overflow:hidden;"><div id="mahaMicMeterFill" style="width:0%; height:100%; border-radius:3px; background:linear-gradient(90deg,#22c55e,#4ade80); transition:width .08s linear;"></div></div>
-    <div id="mahaPointsMeter" style="display:none; margin-top:4px; align-items:center; justify-content:center; gap:5px; font-size:13px; color:#e8e2ff;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg><span id="mahaPointsMeterValue"></span></div>
+    <div id="mahaPointsMeter" style="display:none; margin-top:4px; align-items:center; justify-content:center; gap:5px; font-size: var(--fs-3); color:#e8e2ff;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg><span id="mahaPointsMeterValue"></span></div>
   </div>
   <div style="flex:1; display:flex; align-items:center; justify-content:center; position:relative;">
     <div id="mahaOrb" class="maha-orb-idle" style="width:150px; height:150px; border-radius:50%; background:linear-gradient(135deg,#ff5fa2,#7b5cff); display:flex; align-items:center; justify-content:center; font-size:56px; box-shadow:0 0 40px rgba(123,92,255,.5);">💁‍♀️</div>
@@ -2537,7 +2542,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 <div id="settingsHomeView">
   <div id="settingsCmdBox" style="display:flex; align-items:center; gap:6px; background:var(--panel2); border:1px solid var(--border); border-radius:16px; padding:6px 8px; margin:6px 0 16px;">
     <button type="button" id="settingsCmdMicBtn" title="تسجيل صوتي" data-i18n-title="micTitle" style="flex:0 0 auto; background:none; border:none; cursor:pointer; color:var(--muted); display:flex; align-items:center; justify-content:center; padding:6px; border-radius:50%;"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1"></path><line x1="12" y1="18" x2="12" y2="22"></line><line x1="8" y1="22" x2="16" y2="22"></line></svg></button>
-    <input type="text" id="settingsCmdInput" data-i18n-placeholder="settingsCmdPh" placeholder="اكتب ما تريد تغييره… مثال: خط أكبر وخلفية بحرية" style="flex:1 1 auto; min-width:0; border:none; background:none; outline:none; color:var(--text); font-size:14px; padding:6px 2px;">
+    <input type="text" id="settingsCmdInput" data-i18n-placeholder="settingsCmdPh" placeholder="اكتب ما تريد تغييره… مثال: خط أكبر وخلفية بحرية" style="flex:1 1 auto; min-width:0; border:none; background:none; outline:none; color:var(--text); font-size: var(--fs-3); padding:6px 2px;">
     <button type="button" id="settingsCmdSendBtn" title="تنفيذ" data-i18n-title="settingsCmdSend" style="flex:0 0 auto; background:none; border:none; cursor:pointer; color:var(--accent); display:flex; align-items:center; justify-content:center; padding:6px; border-radius:50%;"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
   </div>
   <div id="settingsNavList"></div>
@@ -2545,7 +2550,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 </div>
 <div id="settingsPageHeader" style="display:none; align-items:center; gap:10px; margin-top:26px; margin-bottom:14px;">
   <button type="button" id="settingsPageBackBtn" title="رجوع" data-i18n-title="back" style="background:none; border:none; cursor:pointer; color:var(--text); display:flex; align-items:center; justify-content:center; padding:4px; border-radius:50%;"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" id="settingsBackSvg"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg></button>
-  <h3 id="settingsPageTitle" style="margin:0; font-size:15px;"></h3>
+  <h3 id="settingsPageTitle" style="margin:0; font-size: var(--fs-2);"></h3>
 </div>
 
 
@@ -2580,7 +2585,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
       </div>
       <button type="button" id="acctAvatarBtn" style="background:none; border:none; cursor:pointer; color:var(--accent); font-size:13px; font-weight:500; padding:2px 8px;" data-i18n="acctAvatarBtn">📷 تغيير الصورة</button>
     </div>
-    <div><button type="button" onclick="acctToggleRow('acctRowUser',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size:14px; text-align:start;"><span data-i18n="acctUsernameLabel">اسم المستخدم</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+    <div><button type="button" onclick="acctToggleRow('acctRowUser',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctUsernameLabel">اسم المستخدم</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
     <div id="acctRowUser" style="display:none; padding:8px 8px 12px;">
       <div style="display:flex; gap:8px;">
         <input type="text" id="acctUsername" style="flex:1;" autocomplete="username">
@@ -2588,7 +2593,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
       </div>
       <div id="acctUsernameMsg" style="font-size:12px; min-height:16px; margin-top:4px;"></div>
     </div></div>
-    <div><button type="button" onclick="acctToggleRow('acctRowPass',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size:14px; text-align:start;"><span data-i18n="acctPasswordRow">كلمة المرور</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+    <div><button type="button" onclick="acctToggleRow('acctRowPass',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctPasswordRow">كلمة المرور</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
     <div id="acctRowPass" style="display:none; padding:8px 8px 12px;">
       <label data-i18n="acctCurrentPasswordLabel">كلمة المرور الحالية</label>
       <input type="password" id="acctCurrentPassword" autocomplete="current-password">
@@ -2599,7 +2604,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
       </div>
       <div id="acctPasswordMsg" style="font-size:12px; min-height:16px; margin-top:4px;"></div>
     </div></div>
-    <div><button type="button" onclick="acctToggleRow('acctRowEmail',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size:14px; text-align:start;"><span data-i18n="acctEmailLabel">📧 الإيميل الاحتياطي (لاسترجاع كلمة المرور)</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+    <div><button type="button" onclick="acctToggleRow('acctRowEmail',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctEmailLabel">📧 الإيميل الاحتياطي (لاسترجاع كلمة المرور)</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
     <div id="acctRowEmail" style="display:none; padding:8px 8px 12px;">
       <div style="display:flex; gap:8px;">
         <input type="email" id="acctEmail" style="flex:1; direction:ltr;" autocomplete="email">
@@ -2607,19 +2612,19 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
       </div>
       <div id="acctEmailMsg" style="font-size:12px; min-height:16px; margin-top:4px;"></div>
     </div></div>
-    <div><button type="button" onclick="acctToggleRow('acctRowRef',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size:14px; text-align:start;"><span data-i18n="acctReferralLabel">🔗 رابط دعوة أصدقائك</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+    <div><button type="button" onclick="acctToggleRow('acctRowRef',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctReferralLabel">🔗 رابط دعوة أصدقائك</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
     <div id="acctRowRef" style="display:none; padding:8px 8px 12px;">
       <div style="display:flex; gap:8px;">
         <input type="text" id="acctReferralLink" readonly style="flex:1;">
         <button type="button" class="btn" id="acctReferralCopyBtn" style="width:auto; white-space:nowrap;" data-i18n="acctCopyBtn">📋 نسخ</button>
       </div>
       <div id="acctReferralMsg" style="font-size:12px; min-height:16px; margin-top:4px; color:var(--muted);" data-i18n="acctReferralHint">لكل صديق يسجّل برابطك، تحصلان أنت وهو على 10 رسائل مجانية إضافية 🎁</div>
-      <div id="acctReferralBonus" style="font-size:13px; font-weight:700; margin-top:6px;"></div>
+      <div id="acctReferralBonus" style="font-size: var(--fs-3); font-weight: var(--w-bold); margin-top:6px;"></div>
     </div></div>
-    <div><button type="button" onclick="acctToggleRow('acctRowCleanup',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:#ef4444; font-size:14px; text-align:start;"><span style="display:flex; align-items:center; gap:8px;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg><span data-i18n="acctCleanupLabel">تنظيف التطبيق</span></span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+    <div><button type="button" onclick="acctToggleRow('acctRowCleanup',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:#ef4444; font-size: var(--fs-3); text-align:start;"><span style="display:flex; align-items:center; gap:8px;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg><span data-i18n="acctCleanupLabel">تنظيف التطبيق</span></span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
     <div id="acctRowCleanup" style="display:none; padding:8px 8px 12px;">
       <div style="font-size:12px; color:var(--muted); margin-bottom:8px;" data-i18n="acctCleanupHint">يحذف كل المحادثات والمشاريع نهائيًا من هذا الجهاز ومن السحابة. حسابك ولغتك يبقيان.</div>
-      <button type="button" onclick="appFullCleanup()" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(239,68,68,.5); background:rgba(239,68,68,.12); color:#ef4444; font-size:13px; font-weight:700; cursor:pointer;" data-i18n="acctCleanupBtn">حذف الكل الآن</button>
+      <button type="button" onclick="appFullCleanup()" style="width:100%; padding:10px; border-radius:10px; border:1px solid rgba(239,68,68,.5); background:rgba(239,68,68,.12); color:#ef4444; font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer;" data-i18n="acctCleanupBtn">حذف الكل الآن</button>
     </div></div>
     </div>
     <script>
@@ -2640,7 +2645,7 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
 
   <div id="statsSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('statsSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="statsSectionTitle">📊 إحصائياتي</h3><span class="settingsSectionArrow" id="statsSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="statsSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
-    <div><div style="display:flex; align-items:center; justify-content:space-between; padding:13px 8px; border-bottom:1px solid rgba(128,128,128,.15); font-size:14px;"><span data-i18n="statsProjectsLabel">عدد المشاريع</span><b id="statProjectsCount" style="font-size:15px;">0</b></div><div style="display:flex; align-items:center; justify-content:space-between; padding:13px 8px; border-bottom:1px solid rgba(128,128,128,.15); font-size:14px;"><span data-i18n="statsMessagesLabel">إجمالي الرسائل المُرسلة</span><b id="statMessagesCount" style="font-size:15px;">0</b></div><div style="display:flex; align-items:center; justify-content:space-between; padding:13px 8px; border-bottom:1px solid rgba(128,128,128,.15); font-size:14px;"><span data-i18n="statsFavProviderLabel">أكثر مزوّد تستخدمه</span><b id="statFavProvider" style="font-size:15px;">—</b></div><button type="button" id="btnExportProjects" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size:14px; text-align:start;"><span data-i18n="statsExportBtn">تصدير المشاريع</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted); flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button><button type="button" id="btnImportProjects" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size:14px; text-align:start;"><span data-i18n="statsImportBtn">استيراد مشاريع</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted); flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></button></div>
+    <div><div style="display:flex; align-items:center; justify-content:space-between; padding:13px 8px; border-bottom:1px solid rgba(128,128,128,.15); font-size: var(--fs-3);"><span data-i18n="statsProjectsLabel">عدد المشاريع</span><b id="statProjectsCount" style="font-size: var(--fs-2);">0</b></div><div style="display:flex; align-items:center; justify-content:space-between; padding:13px 8px; border-bottom:1px solid rgba(128,128,128,.15); font-size: var(--fs-3);"><span data-i18n="statsMessagesLabel">إجمالي الرسائل المُرسلة</span><b id="statMessagesCount" style="font-size: var(--fs-2);">0</b></div><div style="display:flex; align-items:center; justify-content:space-between; padding:13px 8px; border-bottom:1px solid rgba(128,128,128,.15); font-size: var(--fs-3);"><span data-i18n="statsFavProviderLabel">أكثر مزوّد تستخدمه</span><b id="statFavProvider" style="font-size: var(--fs-2);">—</b></div><button type="button" id="btnExportProjects" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="statsExportBtn">تصدير المشاريع</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted); flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button><button type="button" id="btnImportProjects" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="statsImportBtn">استيراد مشاريع</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted); flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></button></div>
       <input type="file" id="importProjectsFile" accept="application/json" style="display:none;">
       </div>
     </div>
@@ -2800,15 +2805,15 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
   <div id="themeSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('themeSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="themeSectionLabel">🎨 تخصيص الألوان والمظهر</h3><span class="settingsSectionArrow" id="themeSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="themeSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
       <div style="display:flex; flex-direction:column; gap:0; padding:10px 12px; margin-bottom:14px; background:var(--panel2); border-radius:10px;">
-        <div onclick="toggleSubRow('appColorSub')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><span data-i18n="appColorTitle" style="font-size:13px;">لون التطبيق</span><span id="appColorSubArrow" style="font-size:12px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
+        <div onclick="toggleSubRow('appColorSub')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><span data-i18n="appColorTitle" style="font-size: var(--fs-3);">لون التطبيق</span><span id="appColorSubArrow" style="font-size:12px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
         <div id="appColorSubContent" style="display:none; padding-top:10px;"><div id="themeCircles" style="display:flex; flex-wrap:nowrap; justify-content:space-between; gap:4px; padding:2px;"></div></div>
       </div>
       <div style="display:flex; flex-direction:column; gap:0; padding:10px 12px; margin-bottom:14px; background:var(--panel2); border-radius:10px;">
-        <div onclick="toggleSubRow('tickerColorSub')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><span data-i18n="tickerColorLabel" style="font-size:13px;">لون شريط الأسهم</span><span id="tickerColorSubArrow" style="font-size:12px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
+        <div onclick="toggleSubRow('tickerColorSub')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><span data-i18n="tickerColorLabel" style="font-size: var(--fs-3);">لون شريط الأسهم</span><span id="tickerColorSubArrow" style="font-size:12px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
         <div id="tickerColorSubContent" style="display:none; padding-top:10px;"><div id="tickerColorCircles" style="display:flex; flex-wrap:nowrap; justify-content:space-between; gap:4px; padding:2px;"></div></div>
       </div>
   <div style="display:flex; flex-direction:column; gap:0; padding:10px 12px; margin-bottom:14px; background:var(--panel2); border-radius:10px;">
-    <div onclick="toggleSubRow('customColorsSub')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><span data-i18n="customColorsLabel" style="font-size:13px;">ألوان مخصصة</span><span id="customColorsSubArrow" style="font-size:12px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
+    <div onclick="toggleSubRow('customColorsSub')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><span data-i18n="customColorsLabel" style="font-size: var(--fs-3);">ألوان مخصصة</span><span id="customColorsSubArrow" style="font-size:12px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
     <div id="customColorsSubContent" style="display:none; padding-top:10px;">
   <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-top:8px;">
     <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
@@ -2873,7 +2878,7 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
   </div></div>
 
   <div id="fontSizeSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
-    <div class="settingsSectionHeader" onclick="toggleSettingsSection('fontSizeSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="fontSizeSectionLabel">حجم الخط</h3><span class="settingsSectionArrow" id="fontSizeSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="fontSizeSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('fontSizeSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size: var(--fs-3);" data-i18n="fontSizeSectionLabel">حجم الخط</h3><span class="settingsSectionArrow" id="fontSizeSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="fontSizeSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
       <div id="fontSizeBtns" style="display:flex; flex-direction:column; gap:2px;">
         <button type="button" class="fontSizeBtn" data-fs="small"><span data-i18n="fontSizeSmall">صغير</span><svg class="fsCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
         <button type="button" class="fontSizeBtn" data-fs="normal"><span data-i18n="fontSizeNormal">عادي</span><svg class="fsCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
@@ -2883,7 +2888,7 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
     </div></div>
 
   <div id="voiceSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
-    <div class="settingsSectionHeader" onclick="toggleSettingsSection('voiceSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="voiceSectionLabel">الصوت</h3><span class="settingsSectionArrow" id="voiceSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="voiceSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('voiceSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size: var(--fs-3);" data-i18n="voiceSectionLabel">الصوت</h3><span class="settingsSectionArrow" id="voiceSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="voiceSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
   <label data-i18n="voiceGenderLabel">نوع الصوت المفضل</label>
   <div id="voiceGenderBtns" style="display:flex; gap:12px; margin-top:10px;">
     <button type="button" class="voiceGenderBtn" data-gender="male"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span data-i18n="voiceGenderMale">صوت رجل</span></button>
@@ -2894,35 +2899,35 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
 
   <div id="pricingSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('pricingSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="pricingSectionTitle">💳 خطط الأسعار</h3><span class="settingsSectionArrow" id="pricingSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="pricingSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
-  <div id="pricingWalletRow" style="display:none; align-items:center; gap:8px; padding:10px 4px; font-size:14px;">
+  <div id="pricingWalletRow" style="display:none; align-items:center; gap:8px; padding:10px 4px; font-size: var(--fs-3);">
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
     <span data-i18n="pricingWalletLabel">رصيدك من النقاط</span>
-    <b id="pricingWalletValue" style="margin-inline-start:auto; font-size:15px;">—</b>
+    <b id="pricingWalletValue" style="margin-inline-start:auto; font-size: var(--fs-2);">—</b>
   </div>
   <div style="display:flex; flex-direction:column; gap:10px;">
     <div style="border-inline-start:4px solid #6b7280; border-radius:10px; padding:10px 14px; background:var(--panel2);">
-      <div style="font-weight:700; font-size:14px;" data-i18n="pricingFreeTitle">مجاني</div>
-      <div style="font-size:13px; color:var(--muted); margin-top:2px;" data-i18n="pricingFreeDesc">20 رسالة يوميًا + هدية ترحيب 70 نقطة</div>
+      <div style="font-weight: var(--w-bold); font-size: var(--fs-3);" data-i18n="pricingFreeTitle">مجاني</div>
+      <div style="font-size: var(--fs-3); color:var(--muted); margin-top:2px;" data-i18n="pricingFreeDesc">20 رسالة يوميًا + هدية ترحيب 70 نقطة</div>
     </div>
     <div style="border-inline-start:4px solid #3b82f6; border-radius:10px; padding:10px 14px; background:var(--panel2);">
-      <div style="font-weight:700; font-size:14px;" data-i18n="pricingBasicTitle">Plus — ‏10$ شهريًا</div>
-      <div style="font-size:13px; color:var(--muted); margin-top:2px;" data-i18n="pricingBasicDesc">300 رسالة شهريًا + 60 نقطة هدية كل شهر (فيديو مجاني شهريًا)</div>
+      <div style="font-weight: var(--w-bold); font-size: var(--fs-3);" data-i18n="pricingBasicTitle">Plus — ‏10$ شهريًا</div>
+      <div style="font-size: var(--fs-3); color:var(--muted); margin-top:2px;" data-i18n="pricingBasicDesc">300 رسالة شهريًا + 60 نقطة هدية كل شهر (فيديو مجاني شهريًا)</div>
       <button type="button" class="btn" onclick="openCheckout('basic')" style="margin-top:8px; background:#3b82f6; color:#fff; border:none; padding:6px 14px; border-radius:8px; font-size:12px; cursor:pointer;" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
     <div style="border-inline-start:4px solid #f59e0b; border-radius:10px; padding:10px 14px; background:var(--panel2);">
-      <div style="font-weight:700; font-size:14px;" data-i18n="pricingProTitle">Pro — ‏20$ شهريًا</div>
-      <div style="font-size:13px; color:var(--muted); margin-top:2px;" data-i18n="pricingProDesc">رسائل بلا حدود + وكيل عمران + 200 نقطة شهريًا + أولوية سرعة + شارة ذهبية</div>
+      <div style="font-weight: var(--w-bold); font-size: var(--fs-3);" data-i18n="pricingProTitle">Pro — ‏20$ شهريًا</div>
+      <div style="font-size: var(--fs-3); color:var(--muted); margin-top:2px;" data-i18n="pricingProDesc">رسائل بلا حدود + وكيل عمران + 200 نقطة شهريًا + أولوية سرعة + شارة ذهبية</div>
       <button type="button" class="btn" onclick="openCheckout('pro')" style="margin-top:8px; background:#f59e0b; color:#fff; border:none; padding:6px 14px; border-radius:8px; font-size:12px; cursor:pointer;" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
   </div>
   <div style="margin-top:16px;">
-    <div style="font-weight:700; font-size:14px;" data-i18n="pricingPointsTitle">باقات النقاط</div>
+    <div style="font-weight: var(--w-bold); font-size: var(--fs-3);" data-i18n="pricingPointsTitle">باقات النقاط</div>
     <div style="font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.6;" data-i18n="pricingPointsDesc">النقاط عملة موحدة — تُصرف على مها الصوتية والفيديو والصور، بدون اشتراك. مها: 10 نقاط/دقيقة • فيديو: 60 • Veo 3: ‏400 • صورة: 10</div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;">
-      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(100)" style="padding:10px 8px; border-radius:10px; background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size:14px;">100</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);">$4.99</span></button>
-      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(300)" style="padding:10px 8px; border-radius:10px; background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size:14px;">300</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);">$12.99</span></button>
-      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(700)" style="padding:10px 8px; border-radius:10px; background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size:14px;">700</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);">$24.99</span></button>
-      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(900)" style="padding:10px 8px; border-radius:10px; background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size:14px;">900</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);">$34.99</span></button>
+      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(100)" style="padding:10px 8px; border-radius:10px; background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">100</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);">$4.99</span></button>
+      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(300)" style="padding:10px 8px; border-radius:10px; background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">300</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);">$12.99</span></button>
+      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(700)" style="padding:10px 8px; border-radius:10px; background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">700</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);">$24.99</span></button>
+      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(900)" style="padding:10px 8px; border-radius:10px; background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">900</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);">$34.99</span></button>
     </div>
   </div>
   <small class="hint" style="display:block; margin-top:10px;" data-i18n="pricingTestNote">🧪 وضع تجريبي حاليًا — سيتم التفعيل الكامل عند الحصول على الرخصة التجارية</small>
@@ -2934,7 +2939,7 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
 
   <div id="aboutSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('aboutSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="aboutSectionTitle">ℹ️ عن البرنامج والفيديوهات التعريفية</h3><span class="settingsSectionArrow" id="aboutSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="aboutSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
-  <div style="font-size:13px; line-height:1.9; color:var(--text); background:var(--panel2); border-radius:10px; padding:12px 14px;" data-i18n="aboutText">
+  <div style="font-size: var(--fs-3); line-height:1.9; color:var(--text); background:var(--panel2); border-radius:10px; padding:12px 14px;" data-i18n="aboutText">
     <b>عمران AI Builder</b> هو منصة عربية بالكامل لبناء التطبيقات بالذكاء الاصطناعي، طوّرها فريق عمران AI. يتيح لك التحدث مع الذكاء الاصطناعي بالعربية أو الإنجليزية للحصول فورًا على كود تطبيق كامل، مع محرر كود ومعاينة حيّة جنبًا إلى جنب.<br><br>
     يدعم البرنامج 9 مزوّدين مختلفين للذكاء الاصطناعي (OpenAI، Gemini، Groq، Claude، OpenRouter، Perplexity، Mistral، DeepSeek، Cohere)، ويمكنك اختيار أكثر من مزوّد في نفس الوقت لطرح سؤال واحد والحصول على إجابات من الجميع للمقارنة بينها.<br><br>
     يعمل البرنامج كتطبيق PWA قابل للتثبيت على أندرويد وآيفون مثل أي تطبيق عادي، ويدعم المحادثة الصوتية (تحويل الكلام إلى نص والاستماع للردود)، مع نظام حسابات كامل (تسجيل دخول/تسجيل حساب/استرجاع كلمة المرور)، ووضع ضيف يتيح تجربة 20 رسالة مجانية دون تسجيل.<br><br>
@@ -2995,7 +3000,7 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('adminSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;">🛠️ لوحة التحكم (خاص بالمالك)</h3><span class="settingsSectionArrow" id="adminSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
     <div id="adminSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
       <button type="button" id="adminStatsRefreshBtn" onclick="loadAdminStats()" style="padding:8px 14px; border-radius:8px; border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:13px; cursor:pointer; margin-bottom:10px;">🔄 تحديث الإحصائيات</button>
-      <div id="adminStatsBox" style="font-size:13px; line-height:1.9; background:var(--panel2); border-radius:10px; padding:12px 14px; white-space:pre-wrap;">اضغط "تحديث" لعرض الإحصائيات...</div>
+      <div id="adminStatsBox" style="font-size: var(--fs-3); line-height:1.9; background:var(--panel2); border-radius:10px; padding:12px 14px; white-space:pre-wrap;">اضغط "تحديث" لعرض الإحصائيات...</div>
       <div style="margin-top:14px; font-size:13px; font-weight:700; opacity:.8;">👤 إدارة المستخدمين (حظر / حذف / رسالة)</div>
       <div id="adminUsersTable" style="margin-top:8px; background:var(--panel2); border-radius:10px; padding:6px 10px; max-height:320px; overflow-y:auto;"></div>
 
@@ -3017,28 +3022,28 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
     <div style="background:var(--panel); border-radius:14px; padding:20px; width:min(420px, 92vw); max-height:88vh; overflow-y:auto; position:relative;">
       <button type="button" onclick="closeCheckout()" style="position:absolute; inset-inline-end:12px; top:12px; background:none; border:none; font-size:20px; cursor:pointer; color:var(--text);">✕</button>
       <h3 style="margin:0 0 4px;" data-i18n="checkoutTitle">إتمام الاشتراك</h3>
-      <div id="checkoutPlanLabel" style="font-size:13px; color:var(--muted); margin-bottom:14px;"></div>
+      <div id="checkoutPlanLabel" style="font-size: var(--fs-3); color:var(--muted); margin-bottom:14px;"></div>
       <span style="display:inline-block; background:#eab308; color:#000; font-size:11px; font-weight:700; padding:2px 8px; border-radius:6px; margin-bottom:12px;" data-i18n="checkoutTestBadge">🧪 وضع تجريبي (Test Mode)</span>
 
       <div style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">
-        <button type="button" onclick="startStripeCheckout()" style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--panel2); cursor:pointer; font-size:14px; color:var(--text);">
+        <button type="button" onclick="startStripeCheckout()" style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--panel2); cursor:pointer; font-size: var(--fs-3); color:var(--text);">
           <span style="font-size:20px;">💳</span>
           <span data-i18n="checkoutCardOption">فيزا / ماستركارد</span>
         </button>
 
         <div id="paypalButtonContainer" style="min-height:45px;"></div>
-        <button type="button" id="paypalFallbackBtn" onclick="startPaypalCheckout()" style="display:none; align-items:center; gap:10px; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--panel2); cursor:pointer; font-size:14px; color:var(--text);">
+        <button type="button" id="paypalFallbackBtn" onclick="startPaypalCheckout()" style="display:none; align-items:center; gap:10px; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--panel2); cursor:pointer; font-size: var(--fs-3); color:var(--text);">
           <span style="font-size:20px;">🅿️</span>
           <span>PayPal</span>
         </button>
 
-        <button type="button" disabled style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--panel2); opacity:.5; cursor:not-allowed; font-size:14px; color:var(--text);">
+        <button type="button" disabled style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--panel2); opacity:.5; cursor:not-allowed; font-size: var(--fs-3); color:var(--text);">
           <span style="font-size:20px;">📶</span>
           <span data-i18n="checkoutTelecomOption">فاتورة الاتصالات (اتصالات/du)</span>
-          <span style="margin-inline-start:auto; font-size:11px;" data-i18n="checkoutComingSoon">قريبًا</span>
+          <span style="margin-inline-start:auto; font-size: var(--fs-5);" data-i18n="checkoutComingSoon">قريبًا</span>
         </button>
       </div>
-      <div id="checkoutStatusMsg" style="margin-top:12px; font-size:13px; text-align:center;"></div>
+      <div id="checkoutStatusMsg" style="margin-top:12px; font-size: var(--fs-3); text-align:center;"></div>
     </div>
   </div>
 
@@ -3053,10 +3058,10 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
 
   <div id="clockMainBox" style="border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; background:var(--panel2); text-align:center;">
     <div id="clockGregorianTime" style="font-size:32px; font-weight:700; letter-spacing:1px; direction:ltr;">--:--:--</div>
-    <div id="clockGregorianDate" style="font-size:14px; color:var(--muted); margin-top:6px;">--</div>
+    <div id="clockGregorianDate" style="font-size: var(--fs-3); color:var(--muted); margin-top:6px;">--</div>
     <div style="height:1px; background:var(--border); margin:12px 0;"></div>
-    <div id="clockHijriDate" style="font-size:15px; font-weight:700;">--</div>
-    <div style="font-size:11px; color:var(--muted); margin-top:2px;" data-i18n="clockLocalTZ">توقيتك المحلي</div>
+    <div id="clockHijriDate" style="font-size: var(--fs-2); font-weight: var(--w-bold);">--</div>
+    <div style="font-size: var(--fs-5); color:var(--muted); margin-top:2px;" data-i18n="clockLocalTZ">توقيتك المحلي</div>
   </div>
 
   <label data-i18n="clockSelectCountry">اختر الدولة / المدينة</label>
@@ -3132,39 +3137,39 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
 #eduHubModal.open{display:flex;align-items:stretch;justify-content:center;}
 #eduHubModal .eduWrap{width:100%;max-width:860px;height:100%;display:flex;flex-direction:column;background:linear-gradient(160deg,rgba(30,22,54,.92),rgba(12,10,22,.96));border-inline:1px solid var(--border,rgba(255,255,255,.08));overflow:hidden;}
 #eduHubModal .eduHead{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border,rgba(255,255,255,.08));background:linear-gradient(90deg,rgba(212,175,55,.14),rgba(99,102,241,.06));flex:0 0 auto;}
-#eduHubModal .eduHead h2{margin:0;font-size:16.5px;font-weight:700;flex:1;display:flex;align-items:center;gap:8px;background:linear-gradient(90deg,var(--accent-light),var(--accent-light),#818cf8);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
-#eduHubModal .eduStreak{font-size:12.5px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(251,146,60,.14);border:1px solid rgba(251,146,60,.35);color:#fdba74;white-space:nowrap;}
+#eduHubModal .eduHead h2{margin:0;font-size: var(--fs-2);font-weight: var(--w-bold);flex:1;display:flex;align-items:center;gap:8px;background:linear-gradient(90deg,var(--accent-light),var(--accent-light),#818cf8);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+#eduHubModal .eduStreak{font-size:12.5px;font-weight: var(--w-bold);padding:4px 10px;border-radius:999px;background:rgba(251,146,60,.14);border:1px solid rgba(251,146,60,.35);color:#fdba74;white-space:nowrap;}
 #eduHubModal .eduIconBtn{background:rgba(255,255,255,.06);border:1px solid var(--border,rgba(255,255,255,.1));color:inherit;border-radius:10px;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;transition:background .15s;}
 #eduHubModal .eduIconBtn:hover{background:rgba(212,175,55,.22);}
 #eduHubModal .eduBody{flex:1;overflow-y:auto;padding:18px 16px 30px;}
-#eduHubModal .eduUploadBtn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:18px;border-radius:16px;border:1.5px dashed rgba(232,199,102,.55);background:linear-gradient(135deg,rgba(212,175,55,.16),rgba(99,102,241,.08));color:#e9e4ff;font-size:15.5px;font-weight:700;cursor:pointer;transition:transform .12s,background .15s;}
+#eduHubModal .eduUploadBtn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:18px;border-radius:16px;border:1.5px dashed rgba(232,199,102,.55);background:linear-gradient(135deg,rgba(212,175,55,.16),rgba(99,102,241,.08));color:#e9e4ff;font-size: var(--fs-2);font-weight: var(--w-bold);cursor:pointer;transition:transform .12s,background .15s;}
 #eduHubModal .eduUploadBtn:hover{transform:translateY(-1px);background:linear-gradient(135deg,rgba(212,175,55,.26),rgba(99,102,241,.14));}
-#eduHubModal .eduPasteToggle{background:none;border:none;color:var(--accent-light);font-size:13px;cursor:pointer;margin-top:10px;text-decoration:underline;}
+#eduHubModal .eduPasteToggle{background:none;border:none;color:var(--accent-light);font-size: var(--fs-3);cursor:pointer;margin-top:10px;text-decoration:underline;}
 #eduHubModal .eduPasteArea{display:none;margin-top:10px;}
-#eduHubModal .eduPasteArea textarea{width:100%;min-height:130px;resize:vertical;background:rgba(255,255,255,.05);border:1px solid var(--border,rgba(255,255,255,.12));border-radius:12px;color:inherit;padding:12px;font:inherit;font-size:13.5px;}
-#eduHubModal .eduPrimary{margin-top:10px;padding:10px 18px;border-radius:12px;border:none;cursor:pointer;font-weight:700;font-size:13.5px;color:#fff;background:linear-gradient(90deg,var(--accent),#b8860b);display:inline-flex;align-items:center;gap:8px;}
+#eduHubModal .eduPasteArea textarea{width:100%;min-height:130px;resize:vertical;background:rgba(255,255,255,.05);border:1px solid var(--border,rgba(255,255,255,.12));border-radius:12px;color:inherit;padding:12px;font:inherit;font-size: var(--fs-3);}
+#eduHubModal .eduPrimary{margin-top:10px;padding:10px 18px;border-radius:12px;border:none;cursor:pointer;font-weight: var(--w-bold);font-size: var(--fs-3);color:#fff;background:linear-gradient(90deg,var(--accent),#b8860b);display:inline-flex;align-items:center;gap:8px;}
 #eduHubModal .eduPrimary:disabled{opacity:.55;cursor:default;}
-#eduHubModal .eduSecTitle{font-size:14px;font-weight:700;margin:26px 0 12px;color:#cabffd;display:flex;align-items:center;gap:8px;}
+#eduHubModal .eduSecTitle{font-size: var(--fs-3);font-weight: var(--w-bold);margin:26px 0 12px;color:#cabffd;display:flex;align-items:center;gap:8px;}
 #eduHubModal .eduSubjGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
 #eduHubModal .eduSubjCard{border-radius:16px;padding:14px;cursor:pointer;border:1px solid rgba(255,255,255,.1);position:relative;overflow:hidden;transition:transform .12s;min-height:96px;display:flex;flex-direction:column;justify-content:space-between;}
 #eduHubModal .eduSubjCard:hover{transform:translateY(-2px);}
-#eduHubModal .eduSubjName{font-weight:700;font-size:14.5px;}
-#eduHubModal .eduSubjCount{font-size:11.5px;opacity:.85;margin-top:2px;}
+#eduHubModal .eduSubjName{font-weight: var(--w-bold);font-size: var(--fs-3);}
+#eduHubModal .eduSubjCount{font-size: var(--fs-5);opacity:.85;margin-top:2px;}
 #eduHubModal .eduBar{height:6px;border-radius:99px;background:rgba(0,0,0,.3);margin-top:10px;overflow:hidden;}
 #eduHubModal .eduBar>i{display:block;height:100%;border-radius:99px;background:rgba(255,255,255,.85);}
-#eduHubModal .eduEmpty{opacity:.6;font-size:13px;padding:8px 2px;}
+#eduHubModal .eduEmpty{opacity:.6;font-size: var(--fs-3);padding:8px 2px;}
 #eduHubModal .eduBusyBox{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:70px 20px;text-align:center;}
 #eduHubModal .eduSpin{width:42px;height:42px;border-radius:50%;border:3px solid rgba(232,199,102,.25);border-top-color:var(--accent-light);animation:eduSpin 0.9s linear infinite;}
 @keyframes eduSpin{to{transform:rotate(360deg);}}
 #eduHubModal .eduLessonRow{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid var(--border,rgba(255,255,255,.08));margin-bottom:10px;cursor:pointer;transition:background .15s;}
 #eduHubModal .eduLessonRow:hover{background:rgba(212,175,55,.12);}
-#eduHubModal .eduLessonTitle{flex:1;font-size:13.5px;font-weight:500;}
-#eduHubModal .eduLessonMeta{font-size:11px;opacity:.65;}
+#eduHubModal .eduLessonTitle{flex:1;font-size: var(--fs-3);font-weight: var(--w-bold);}
+#eduHubModal .eduLessonMeta{font-size: var(--fs-5);opacity:.65;}
 #eduHubModal .eduDelBtn{background:none;border:none;color:#f87171;cursor:pointer;padding:6px;border-radius:8px;flex:0 0 auto;display:inline-flex;}
 #eduHubModal .eduTabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
-#eduHubModal .eduTab{padding:8px 16px;border-radius:999px;border:1px solid var(--border,rgba(255,255,255,.1));background:rgba(255,255,255,.05);color:inherit;cursor:pointer;font-size:13px;font-weight:500;}
+#eduHubModal .eduTab{padding:8px 16px;border-radius:999px;border:1px solid var(--border,rgba(255,255,255,.1));background:rgba(255,255,255,.05);color:inherit;cursor:pointer;font-size: var(--fs-3);font-weight: var(--w-mid);}
 #eduHubModal .eduTab.on{background:linear-gradient(90deg,var(--accent),#b8860b);border-color:transparent;color:#fff;}
-#eduHubModal .eduSummary{font-size:14px;line-height:1.9;}
+#eduHubModal .eduSummary{font-size: var(--fs-3);line-height:1.9;}
 #eduHubModal .eduSummary h3,#eduHubModal .eduSummary h4{color:var(--accent-light);margin:16px 0 6px;}
 #eduHubModal .eduSummary ul,#eduHubModal .eduSummary ol{padding-inline-start:22px;margin:6px 0;}
 #eduHubModal .eduCardStage{perspective:1200px;max-width:520px;margin:0 auto;}
@@ -3176,20 +3181,20 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
 #eduHubModal .eduCardBtns{display:flex;gap:10px;justify-content:center;margin-top:16px;flex-wrap:wrap;}
 #eduHubModal .eduKnowBtn{background:rgba(16,185,129,.18);border:1px solid rgba(52,211,153,.4);color:#6ee7b7;}
 #eduHubModal .eduReviewBtn{background:rgba(251,191,36,.14);border:1px solid rgba(251,191,36,.4);color:#fcd34d;}
-#eduHubModal .eduCardBtns button{padding:9px 18px;border-radius:12px;cursor:pointer;font-weight:700;font-size:13px;}
-#eduHubModal .eduHintTxt{text-align:center;font-size:11.5px;opacity:.6;margin-top:10px;}
-#eduHubModal .eduQOpt{display:block;width:100%;text-align:start;padding:12px 14px;border-radius:12px;border:1px solid var(--border,rgba(255,255,255,.12));background:rgba(255,255,255,.05);color:inherit;cursor:pointer;font-size:13.5px;margin-bottom:9px;transition:background .12s;}
+#eduHubModal .eduCardBtns button{padding:9px 18px;border-radius:12px;cursor:pointer;font-weight: var(--w-mid);font-size: var(--fs-3);}
+#eduHubModal .eduHintTxt{text-align:center;font-size: var(--fs-5);opacity:.6;margin-top:10px;}
+#eduHubModal .eduQOpt{display:block;width:100%;text-align:start;padding:12px 14px;border-radius:12px;border:1px solid var(--border,rgba(255,255,255,.12));background:rgba(255,255,255,.05);color:inherit;cursor:pointer;font-size: var(--fs-3);margin-bottom:9px;transition:background .12s;}
 #eduHubModal .eduQOpt:hover{background:rgba(212,175,55,.14);}
 #eduHubModal .eduQOpt.right{background:rgba(16,185,129,.22)!important;border-color:#34d399;}
 #eduHubModal .eduQOpt.wrong{background:rgba(239,68,68,.2)!important;border-color:#f87171;}
-#eduHubModal .eduExplain{margin-top:10px;padding:12px;border-radius:12px;background:rgba(99,102,241,.12);border:1px solid rgba(129,140,248,.3);font-size:13px;line-height:1.8;}
+#eduHubModal .eduExplain{margin-top:10px;padding:12px;border-radius:12px;background:rgba(99,102,241,.12);border:1px solid rgba(129,140,248,.3);font-size: var(--fs-3);line-height:1.8;}
 #eduHubModal .eduScoreBig{font-size:44px;font-weight:700;background:linear-gradient(90deg,var(--accent-light),#818cf8);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
 #eduHubModal .eduCenter{text-align:center;padding:30px 10px;}
-#eduHubModal .eduNote{font-size:11.5px;opacity:.6;margin-top:14px;}
+#eduHubModal .eduNote{font-size: var(--fs-5);opacity:.6;margin-top:14px;}
 #eduIntroCard{position:fixed;bottom:18px;inset-inline:12px;margin:auto;max-width:440px;z-index:10040;background:linear-gradient(150deg,rgba(45,34,80,.96),rgba(18,14,34,.97));border:1px solid rgba(232,199,102,.4);border-radius:16px;padding:14px 16px;box-shadow:0 12px 40px rgba(0,0,0,.5);display:none;backdrop-filter:blur(10px);}
 #eduIntroCard.show{display:block;animation:eduUp .35s ease;}
 @keyframes eduUp{from{transform:translateY(16px);opacity:0;}to{transform:none;opacity:1;}}
-#eduIntroCard p{margin:0 0 10px;font-size:13px;line-height:1.7;}
+#eduIntroCard p{margin:0 0 10px;font-size: var(--fs-3);line-height:1.7;}
 #eduChatHint{position:fixed;bottom:110px;inset-inline:14px;margin:auto;max-width:380px;z-index:10035;background:rgba(35,27,63,.96);border:1px solid rgba(232,199,102,.4);border-radius:14px;padding:10px 14px;font-size:12.5px;display:none;box-shadow:0 8px 26px rgba(0,0,0,.45);}
 #eduChatHint.show{display:flex;align-items:center;gap:10px;animation:eduUp .3s ease;}
 #eduChatHint button{flex:0 0 auto;}
@@ -3537,7 +3542,7 @@ function renderQuiz(pane,lesson){
     done.forEach(function(l){ overallR+=stats[l].right; overallT+=stats[l].total; });
     var overall=overallT?Math.round(overallR/overallT*100):0;
 
-    var html='<div class="eduCenter"><div style="font-size:13px;opacity:.7;">'+esc(T('yourScore'))+'</div>'
+    var html='<div class="eduCenter"><div style="font-size: var(--fs-3);opacity:.7;">'+esc(T('yourScore'))+'</div>'
       +'<div class="eduScoreBig">'+overall+'%</div>'
       +'<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:14px 0 4px;">';
     LEVELS.forEach(function(l){
@@ -3545,8 +3550,8 @@ function renderQuiz(pane,lesson){
       if(v===undefined) return;
       var col=v>=80?'#2e9e6b':(v>=50?'#c98a10':'#c0453f');
       html+='<div style="min-width:96px;padding:10px 12px;border-radius:12px;background:rgba(127,127,127,.10);">'
-        +'<div style="font-size:11px;opacity:.75;margin-bottom:4px;">'+esc(LABEL[l])+'</div>'
-        +'<div style="font-size:19px;font-weight:700;color:'+col+';">'+v+'%</div></div>';
+        +'<div style="font-size: var(--fs-5);opacity:.75;margin-bottom:4px;">'+esc(LABEL[l])+'</div>'
+        +'<div style="font-size: var(--fs-1);font-weight: var(--w-bold);color:'+col+';">'+v+'%</div></div>';
     });
     html+='</div>';
 
@@ -3554,7 +3559,7 @@ function renderQuiz(pane,lesson){
     var weak=null;
     done.forEach(function(l){ if(weak===null||s3[l]<s3[weak]) weak=l; });
     if(weak!==null&&s3[weak]<70){
-      html+='<p style="font-size:14px;line-height:1.8;max-width:340px;margin:6px auto 0;">'
+      html+='<p style="font-size: var(--fs-3);line-height:1.8;max-width:340px;margin:6px auto 0;">'
         +esc(T2('ركّز مراجعتك على مستوى ','Focus your review on the '))
         +'<b>'+esc(LABEL[weak])+'</b>'
         +esc(T2('.','level.'))+'</p>';
@@ -3590,7 +3595,7 @@ function renderQuiz(pane,lesson){
     var html='<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;opacity:.7;margin-bottom:8px;">'
       +'<span>'+(i+1)+' / '+round.length+'</span>'
       +'<span style="padding:3px 9px;border-radius:20px;background:rgba(127,127,127,.14);">'+esc(LABEL[level])+'</span></div>'
-      +'<div style="font-size:15px;font-weight:700;margin-bottom:14px;line-height:1.7;">'+esc(q.q)+'</div>';
+      +'<div style="font-size: var(--fs-2);font-weight: var(--w-bold);margin-bottom:14px;line-height:1.7;">'+esc(q.q)+'</div>';
     (q.options||[]).forEach(function(o,idx){ html+='<button class="eduQOpt" data-idx="'+idx+'">'+esc(o)+'</button>'; });
     html+='<div id="eduExpl"></div><div style="text-align:center;margin-top:14px;"><button class="eduPrimary" id="eduNextQ" style="display:none;">'+esc(T('next'))+'</button></div>';
     pane.innerHTML=html;
@@ -3628,14 +3633,14 @@ function renderWritten(pane,lesson,written){
   function draw(){
     if(i>=written.length){
       pane.innerHTML='<div class="eduCenter"><div style="font-size:34px;margin-bottom:10px;">✍️</div>'
-        +'<p style="font-size:15px;">'+esc(TW('أنهيت الأسئلة المقالية.','You finished the written questions.'))+'</p>'
+        +'<p style="font-size: var(--fs-2);">'+esc(TW('أنهيت الأسئلة المقالية.','You finished the written questions.'))+'</p>'
         +'<button class="eduPrimary" id="eduBackQuiz">'+esc(TW('رجوع','Back'))+'</button></div>';
       document.getElementById('eduBackQuiz').onclick=function(){ renderQuiz(pane,lesson); };
       return;
     }
     var w=written[i];
     pane.innerHTML='<div style="font-size:12px;opacity:.7;margin-bottom:8px;">'+(i+1)+' / '+written.length+' · ✍️</div>'
-      +'<div style="font-size:15px;font-weight:700;margin-bottom:12px;line-height:1.7;">'+esc(w.q)+'</div>'
+      +'<div style="font-size: var(--fs-2);font-weight: var(--w-bold);margin-bottom:12px;line-height:1.7;">'+esc(w.q)+'</div>'
       +'<textarea id="eduAns" rows="6" placeholder="'+esc(TW('اكتب إجابتك هنا…','Write your answer here…'))+'" '
       +'style="width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid rgba(127,127,127,.35);background:transparent;color:inherit;font:inherit;line-height:1.8;resize:vertical;"></textarea>'
       +'<div style="text-align:center;margin-top:12px;"><button class="eduPrimary" id="eduGrade">'+esc(TW('صحّح إجابتي','Grade my answer'))+'</button></div>'
@@ -3655,16 +3660,16 @@ function renderWritten(pane,lesson,written){
         var g=j.grade||{};
         var col=g.score>=8?'#2e9e6b':(g.score>=5?'#c98a10':'#c0453f');
         var html='<div style="margin-top:16px;padding:14px;border-radius:12px;background:rgba(127,127,127,.10);">'
-          +'<div style="font-size:22px;font-weight:700;color:'+col+';margin-bottom:10px;">'+g.score+' / '+g.max+'</div>';
+          +'<div style="font-size: var(--fs-1);font-weight: var(--w-bold);color:'+col+';margin-bottom:10px;">'+g.score+' / '+g.max+'</div>';
         if((g.covered||[]).length){
-          html+='<div style="font-size:13px;line-height:1.9;margin-bottom:8px;"><b>✅ '+esc(TW('أصبتَ في:','You covered:'))+'</b><ul style="margin:4px 0 0;padding-inline-start:20px;">';
+          html+='<div style="font-size: var(--fs-3);line-height:1.9;margin-bottom:8px;"><b>✅ '+esc(TW('أصبتَ في:','You covered:'))+'</b><ul style="margin:4px 0 0;padding-inline-start:20px;">';
           g.covered.forEach(function(c){ html+='<li>'+esc(c)+'</li>'; }); html+='</ul></div>';
         }
         if((g.missing||[]).length){
-          html+='<div style="font-size:13px;line-height:1.9;margin-bottom:8px;"><b>⚠️ '+esc(TW('نقصك:','You missed:'))+'</b><ul style="margin:4px 0 0;padding-inline-start:20px;">';
+          html+='<div style="font-size: var(--fs-3);line-height:1.9;margin-bottom:8px;"><b>⚠️ '+esc(TW('نقصك:','You missed:'))+'</b><ul style="margin:4px 0 0;padding-inline-start:20px;">';
           g.missing.forEach(function(c){ html+='<li>'+esc(c)+'</li>'; }); html+='</ul></div>';
         }
-        if(g.feedback) html+='<p style="font-size:14px;line-height:1.8;margin:8px 0 0;">'+esc(g.feedback)+'</p>';
+        if(g.feedback) html+='<p style="font-size: var(--fs-3);line-height:1.8;margin:8px 0 0;">'+esc(g.feedback)+'</p>';
         if(g.review) html+='<p style="font-size:13px;opacity:.8;margin:8px 0 0;">📌 '+esc(TW('راجع: ','Review: '))+'<b>'+esc(g.review)+'</b></p>';
         /* The model is not infallible — always show the rubric it judged
            against, and let the student contest the result. */
@@ -3677,7 +3682,7 @@ function renderWritten(pane,lesson,written){
         html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">'
           +'<button class="eduPrimary" id="eduNextW">'+esc(i===written.length-1?TW('إنهاء','Finish'):TW('التالي','Next'))+'</button>'
           +'<button class="eduPrimary" id="eduDispute" style="background:transparent;border:1px solid currentColor;">'+esc(TW('راجع تصحيحي','Contest this'))+'</button>'
-          +'</div><p style="font-size:11px;opacity:.6;margin:10px 0 0;">'+esc(TW('هذا تقدير للمذاكرة، وليس درجة رسمية.','This is a study estimate, not an official grade.'))+'</p></div>';
+          +'</div><p style="font-size: var(--fs-5);opacity:.6;margin:10px 0 0;">'+esc(TW('هذا تقدير للمذاكرة، وليس درجة رسمية.','This is a study estimate, not an official grade.'))+'</p></div>';
         out.innerHTML=html;
         if(btn){ btn.disabled=false; btn.textContent=TW('صحّح إجابتي','Grade my answer'); }
         document.getElementById('eduNextW').onclick=function(){ i++; draw(); };
@@ -3694,7 +3699,7 @@ function renderWritten(pane,lesson,written){
   draw();
 }
 /* ---------- processing (upload / paste) ---------- */
-function showBusy(){ setBack(false); body.innerHTML='<div class="eduBusyBox"><div class="eduSpin"></div><div style="font-size:14px;">'+esc(T('analyzing'))+'</div></div>'; }
+function showBusy(){ setBack(false); body.innerHTML='<div class="eduBusyBox"><div class="eduSpin"></div><div style="font-size: var(--fs-3);">'+esc(T('analyzing'))+'</div></div>'; }
 /* Language bridge: the student may study in one language and be examined in
    another. Native language follows the app UI; exam language is chosen once
    and remembered. Empty exam language = same as native, i.e. bridge off. */
@@ -3706,13 +3711,13 @@ function eduExamLangControl(){
   var isEn=(typeof AL==='function'&&AL()==='en');
   var label=isEn?'My exam language':'لغة امتحاني';
   var hint=isEn?'Explanations stay in your language; terms follow the exam.':'الشرح بلغتك، والمصطلحات بلغة الامتحان.';
-  var h='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0 2px;font-size:13px;">'
+  var h='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0 2px;font-size: var(--fs-3);">'
     +'<span style="opacity:.85;">'+esc(label)+'</span>'
-    +'<select id="eduExamLangSel" style="padding:7px 10px;border-radius:9px;border:1px solid rgba(127,127,127,.35);background:transparent;color:inherit;font:inherit;font-size:13px;">';
+    +'<select id="eduExamLangSel" style="padding:7px 10px;border-radius:9px;border:1px solid rgba(127,127,127,.35);background:transparent;color:inherit;font:inherit;font-size: var(--fs-3);">';
   EDU_EXAM_LANGS.forEach(function(o){
     h+='<option value="'+esc(o[0])+'"'+(o[0]===cur?' selected':'')+'>'+esc(o[1])+'</option>';
   });
-  h+='</select></div><div style="font-size:11.5px;opacity:.6;line-height:1.7;margin-bottom:4px;">'+esc(hint)+'</div>';
+  h+='</select></div><div style="font-size: var(--fs-5);opacity:.6;line-height:1.7;margin-bottom:4px;">'+esc(hint)+'</div>';
   return h;
 }
 function bindEduExamLang(){
@@ -3742,7 +3747,7 @@ function processContent(payload){
       return persistLesson(lesson).then(function(){ showLesson(lesson,showHome); });
     });
   }).catch(function(err){
-    body.innerHTML='<div class="eduCenter"><p style="color:#f87171;font-size:13.5px;line-height:1.8;">'+esc(err.message||T('err'))+'</p>'
+    body.innerHTML='<div class="eduCenter"><p style="color:#f87171;font-size: var(--fs-3);line-height:1.8;">'+esc(err.message||T('err'))+'</p>'
       +'<button class="eduPrimary" id="eduErrBack">'+esc(T('retry'))+'</button></div>';
     document.getElementById('eduErrBack').onclick=showHome;
     setBack(true); navStack=[showHome];
@@ -3788,7 +3793,7 @@ function handleFiles(files){
 function handleArchive(file){
   showBusy();
   function fail(msg){
-    body.innerHTML='<div class="eduCenter"><p style="font-size:13.5px;line-height:1.9">'+esc(msg)+'</p>'+
+    body.innerHTML='<div class="eduCenter"><p style="font-size: var(--fs-3);line-height:1.9">'+esc(msg)+'</p>'+
       '<button class="eduPrimary" id="eduErrBack">حسنًا</button></div>';
     document.getElementById('eduErrBack').onclick=showHome; setBack(true); navStack=[showHome];
   }
@@ -3820,7 +3825,7 @@ function handleArchive(file){
 }
 function handleDocx(file){
   showBusy();
-  function fail(){ body.innerHTML='<div class="eduCenter"><p style="font-size:13.5px;">'+esc(T('docxFail'))+'</p><button class="eduPrimary" id="eduErrBack">OK</button></div>'; document.getElementById('eduErrBack').onclick=showHome; setBack(true); navStack=[showHome]; }
+  function fail(){ body.innerHTML='<div class="eduCenter"><p style="font-size: var(--fs-3);">'+esc(T('docxFail'))+'</p><button class="eduPrimary" id="eduErrBack">OK</button></div>'; document.getElementById('eduErrBack').onclick=showHome; setBack(true); navStack=[showHome]; }
   function run(){
     file.arrayBuffer().then(function(buf){ return window.JSZip.loadAsync(buf); })
       .then(function(zip){ var f=zip.file('word/document.xml'); if(!f) throw new Error('no xml'); return f.async('string'); })
@@ -4012,40 +4017,40 @@ renderStreak();
 #expModal.open{display:flex;align-items:stretch;justify-content:center;}
 #expModal .expWrap{width:100%;max-width:820px;height:100%;display:flex;flex-direction:column;background:linear-gradient(160deg,rgba(30,22,54,.94),rgba(12,10,22,.97));border-inline:1px solid var(--border,rgba(255,255,255,.08));overflow:hidden;}
 #expModal .expHead{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border,rgba(255,255,255,.08));background:linear-gradient(90deg,rgba(16,185,129,.16),rgba(212,175,55,.06));flex:0 0 auto;}
-#expModal .expHead h2{margin:0;font-size:16.5px;font-weight:700;flex:1;display:flex;align-items:center;gap:8px;background:linear-gradient(90deg,#6ee7b7,#34d399,var(--accent-light));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+#expModal .expHead h2{margin:0;font-size: var(--fs-2);font-weight: var(--w-bold);flex:1;display:flex;align-items:center;gap:8px;background:linear-gradient(90deg,#6ee7b7,#34d399,var(--accent-light));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
 #expModal .expX{background:rgba(255,255,255,.06);border:1px solid var(--border,rgba(255,255,255,.1));color:inherit;border-radius:10px;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;}
 #expModal .expX:hover{background:rgba(212,175,55,.22);}
 #expModal .expBody{flex:1;overflow-y:auto;padding:18px 16px 40px;}
-#expModal .expDrop{width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:26px 18px;border-radius:18px;border:1.6px dashed rgba(52,211,153,.55);background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(212,175,55,.06));color:#e9fff5;font-size:15px;font-weight:700;cursor:pointer;text-align:center;transition:transform .12s,background .15s;}
+#expModal .expDrop{width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:26px 18px;border-radius:18px;border:1.6px dashed rgba(52,211,153,.55);background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(212,175,55,.06));color:#e9fff5;font-size: var(--fs-2);font-weight: var(--w-bold);cursor:pointer;text-align:center;transition:transform .12s,background .15s;}
 #expModal .expDrop:hover{transform:translateY(-1px);background:linear-gradient(135deg,rgba(16,185,129,.22),rgba(212,175,55,.1));}
-#expModal .expDrop small{font-weight:500;opacity:.75;font-size:12px;}
-#expModal .expPasteToggle{background:none;border:none;color:#34d399;font-size:13px;cursor:pointer;margin-top:12px;text-decoration:underline;}
+#expModal .expDrop small{font-weight: var(--w-mid);opacity:.75;font-size:12px;}
+#expModal .expPasteToggle{background:none;border:none;color:#34d399;font-size: var(--fs-3);cursor:pointer;margin-top:12px;text-decoration:underline;}
 #expModal .expPaste{display:none;margin-top:10px;}
-#expModal .expPaste textarea{width:100%;min-height:120px;resize:vertical;background:rgba(255,255,255,.05);border:1px solid var(--border,rgba(255,255,255,.12));border-radius:12px;color:inherit;padding:12px;font:inherit;font-size:13.5px;box-sizing:border-box;}
-#expModal .expGo{margin-top:12px;width:100%;padding:13px 18px;border-radius:14px;border:none;cursor:pointer;font-weight:700;font-size:14.5px;color:#fff;background:linear-gradient(90deg,#10b981,var(--accent));}
+#expModal .expPaste textarea{width:100%;min-height:120px;resize:vertical;background:rgba(255,255,255,.05);border:1px solid var(--border,rgba(255,255,255,.12));border-radius:12px;color:inherit;padding:12px;font:inherit;font-size: var(--fs-3);box-sizing:border-box;}
+#expModal .expGo{margin-top:12px;width:100%;padding:13px 18px;border-radius:14px;border:none;cursor:pointer;font-weight: var(--w-bold);font-size: var(--fs-3);color:#fff;background:linear-gradient(90deg,#10b981,var(--accent));}
 #expModal .expGo:disabled{opacity:.55;cursor:default;}
 #expModal .expBusy{display:flex;flex-direction:column;align-items:center;gap:14px;padding:70px 20px;text-align:center;}
 #expModal .expSpin{width:42px;height:42px;border-radius:50%;border:3px solid rgba(52,211,153,.25);border-top-color:#34d399;animation:eduSpin .9s linear infinite;}
-#expModal .expErr{margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.35);color:#fca5a5;font-size:13.5px;}
+#expModal .expErr{margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.35);color:#fca5a5;font-size: var(--fs-3);}
 #expModal .expTotal{text-align:center;padding:18px;border-radius:18px;background:linear-gradient(135deg,rgba(16,185,129,.14),rgba(212,175,55,.08));border:1px solid rgba(52,211,153,.28);margin-bottom:18px;}
 #expModal .expTotal .lab{font-size:12.5px;opacity:.8;}
 #expModal .expTotal .val{font-size:30px;font-weight:700;margin-top:4px;color:#6ee7b7;letter-spacing:0;}
-#expModal .expTotal .sub{font-size:11.5px;opacity:.65;margin-top:4px;}
+#expModal .expTotal .sub{font-size: var(--fs-5);opacity:.65;margin-top:4px;}
 #expModal .expChartWrap{display:flex;align-items:center;justify-content:center;gap:22px;flex-wrap:wrap;margin-bottom:20px;}
 #expModal .expDonut{width:150px;height:150px;border-radius:50%;flex:0 0 auto;position:relative;}
 #expModal .expDonut::after{content:'';position:absolute;inset:26px;border-radius:50%;background:#161226;}
 #expModal .expLegend{flex:1;min-width:190px;display:flex;flex-direction:column;gap:8px;}
-#expModal .expLegRow{display:flex;align-items:center;gap:9px;font-size:13px;}
+#expModal .expLegRow{display:flex;align-items:center;gap:9px;font-size: var(--fs-3);}
 #expModal .expDot{width:12px;height:12px;border-radius:4px;flex:0 0 auto;}
 #expModal .expLegName{flex:1;font-weight:500;}
 #expModal .expLegVal{opacity:.85;font-weight:700;letter-spacing:0;}
-#expModal .expLegPct{opacity:.6;font-size:11.5px;min-width:34px;text-align:end;}
-#expModal .expSecTitle{font-size:14px;font-weight:700;margin:22px 0 12px;color:#a7f3d0;}
-#expModal .expBig{padding:13px 15px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid var(--border,rgba(255,255,255,.08));font-size:13.5px;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;}
-#expModal .expTip{padding:12px 14px;border-radius:14px;background:rgba(16,185,129,.08);border:1px solid rgba(52,211,153,.22);font-size:13.5px;margin-bottom:9px;display:flex;gap:9px;align-items:flex-start;line-height:1.6;}
+#expModal .expLegPct{opacity:.6;font-size: var(--fs-5);min-width:34px;text-align:end;}
+#expModal .expSecTitle{font-size: var(--fs-3);font-weight: var(--w-bold);margin:22px 0 12px;color:#a7f3d0;}
+#expModal .expBig{padding:13px 15px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid var(--border,rgba(255,255,255,.08));font-size: var(--fs-3);display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;}
+#expModal .expTip{padding:12px 14px;border-radius:14px;background:rgba(16,185,129,.08);border:1px solid rgba(52,211,153,.22);font-size: var(--fs-3);margin-bottom:9px;display:flex;gap:9px;align-items:flex-start;line-height:1.6;}
 #expModal .expTip span{color:#34d399;flex:0 0 auto;font-weight:700;}
-#expModal .expDisc{margin-top:22px;font-size:11.5px;opacity:.55;text-align:center;line-height:1.6;}
-#expModal .expAgain{margin-top:18px;width:100%;padding:11px;border-radius:12px;border:1px solid var(--border,rgba(255,255,255,.12));background:rgba(255,255,255,.05);color:inherit;font-weight:700;font-size:13.5px;cursor:pointer;}
+#expModal .expDisc{margin-top:22px;font-size: var(--fs-5);opacity:.55;text-align:center;line-height:1.6;}
+#expModal .expAgain{margin-top:18px;width:100%;padding:11px;border-radius:12px;border:1px solid var(--border,rgba(255,255,255,.12));background:rgba(255,255,255,.05);color:inherit;font-weight: var(--w-mid);font-size: var(--fs-3);cursor:pointer;}
 @media(max-width:600px){#expModal .expTotal .val{font-size:26px;}}
 </style>
 <div id="expModal" role="dialog" aria-modal="true">
@@ -4087,7 +4092,7 @@ renderStreak();
   function renderIntro(err){
     pending=null; fileInput.value='';
     body.innerHTML =
-      '<p style="opacity:.8;font-size:13.5px;text-align:center;margin:2px 0 16px;line-height:1.6">'+eEsc(eT('intro'))+'</p>'+
+      '<p style="opacity:.8;font-size: var(--fs-3);text-align:center;margin:2px 0 16px;line-height:1.6">'+eEsc(eT('intro'))+'</p>'+
       '<div class="expDrop" id="expDrop"><svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><span id="expDropLabel">'+eEsc(eT('pick'))+'</span><small>'+eEsc(eT('hint'))+'</small></div>'+
       '<div style="text-align:center"><button class="expPasteToggle" id="expPasteToggle">'+eEsc(eT('paste'))+'</button></div>'+
       '<div class="expPaste" id="expPaste"><textarea id="expText" placeholder="'+eEsc(eT('pastePh'))+'"></textarea></div>'+
@@ -4107,7 +4112,7 @@ renderStreak();
     rd.readAsDataURL(f);
   };
 
-  function renderBusy(){ body.innerHTML='<div class="expBusy"><div class="expSpin"></div><div style="font-size:14px;font-weight:500;opacity:.85">'+eEsc(eT('busy'))+'</div></div>'; }
+  function renderBusy(){ body.innerHTML='<div class="expBusy"><div class="expSpin"></div><div style="font-size: var(--fs-3);font-weight: var(--w-mid);opacity:.85">'+eEsc(eT('busy'))+'</div></div>'; }
 
   function doAnalyze(){
     var txt=''; var ta=document.getElementById('expText'); if(ta) txt=ta.value.trim();
@@ -4159,37 +4164,37 @@ renderStreak();
 .xm.open{display:flex;align-items:stretch;justify-content:center;}
 .xm .xmWrap{width:100%;max-width:840px;height:100%;display:flex;flex-direction:column;background:linear-gradient(160deg,rgba(30,22,54,.94),rgba(12,10,22,.97));border-inline:1px solid rgba(255,255,255,.08);overflow:hidden;}
 .xm .xmHead{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);flex:0 0 auto;background:linear-gradient(90deg,rgba(212,175,55,.16),rgba(212,175,55,.10));}
-.xm .xmHead h2{margin:0;font-size:16.5px;font-weight:700;flex:1;background:linear-gradient(90deg,var(--accent-light),#6ee7b7);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.xm .xmHead h2{margin:0;font-size: var(--fs-2);font-weight: var(--w-bold);flex:1;background:linear-gradient(90deg,var(--accent-light),#6ee7b7);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
 .xm .xmX{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:inherit;border-radius:10px;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;}
 .xm .xmX:hover{background:rgba(212,175,55,.22);}
 .xm .xmBody{flex:1;overflow-y:auto;padding:18px 16px 40px;}
-.xm .xmDrop{width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;padding:26px 18px;border-radius:18px;border:1.6px dashed rgba(212,175,55,.55);background:linear-gradient(135deg,rgba(212,175,55,.14),rgba(212,175,55,.10));color:#efeaff;font-size:15px;font-weight:700;cursor:pointer;text-align:center;box-sizing:border-box;}
+.xm .xmDrop{width:100%;display:flex;flex-direction:column;align-items:center;gap:8px;padding:26px 18px;border-radius:18px;border:1.6px dashed rgba(212,175,55,.55);background:linear-gradient(135deg,rgba(212,175,55,.14),rgba(212,175,55,.10));color:#efeaff;font-size: var(--fs-2);font-weight: var(--w-bold);cursor:pointer;text-align:center;box-sizing:border-box;}
 .xm .xmDrop:hover{background:linear-gradient(135deg,rgba(212,175,55,.22),rgba(212,175,55,.10));}
-.xm .xmDrop small{font-weight:500;opacity:.75;font-size:12px;}
-.xm .xmLink{background:none;border:none;color:var(--accent-light);font-size:13px;cursor:pointer;margin-top:12px;text-decoration:underline;}
+.xm .xmDrop small{font-weight: var(--w-mid);opacity:.75;font-size:12px;}
+.xm .xmLink{background:none;border:none;color:var(--accent-light);font-size: var(--fs-3);cursor:pointer;margin-top:12px;text-decoration:underline;}
 .xm .xmPaste{display:none;margin-top:10px;}
-.xm textarea,.xm input.xmInp{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:12px;color:inherit;padding:11px 12px;font:inherit;font-size:13.5px;box-sizing:border-box;}
+.xm textarea,.xm input.xmInp{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:12px;color:inherit;padding:11px 12px;font:inherit;font-size: var(--fs-3);box-sizing:border-box;}
 .xm textarea{min-height:100px;resize:vertical;}
-.xm .xmGo{margin-top:12px;width:100%;padding:13px 18px;border-radius:14px;border:none;cursor:pointer;font-weight:700;font-size:14.5px;color:#fff;background:linear-gradient(90deg,var(--accent),#10b981);}
+.xm .xmGo{margin-top:12px;width:100%;padding:13px 18px;border-radius:14px;border:none;cursor:pointer;font-weight: var(--w-bold);font-size: var(--fs-3);color:#fff;background:linear-gradient(90deg,var(--accent),#10b981);}
 .xm .xmGo:disabled{opacity:.55;cursor:default;}
 .xm .xmBusy{display:flex;flex-direction:column;align-items:center;gap:14px;padding:60px 20px;text-align:center;}
 .xm .xmSpin{width:42px;height:42px;border-radius:50%;border:3px solid rgba(212,175,55,.25);border-top-color:var(--accent-light);animation:eduSpin .9s linear infinite;}
-.xm .xmErr{margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.35);color:#fca5a5;font-size:13.5px;}
+.xm .xmErr{margin-top:14px;padding:12px 14px;border-radius:12px;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.35);color:#fca5a5;font-size: var(--fs-3);}
 .xm .xmField{margin-bottom:12px;}
-.xm .xmField label{display:block;font-size:12.5px;opacity:.8;margin-bottom:5px;font-weight:500;}
-.xm .xmSecTitle{font-size:14px;font-weight:700;margin:18px 0 10px;color:var(--accent-light);}
-.xm .xmBadge{display:inline-block;padding:3px 12px;border-radius:20px;background:rgba(212,175,55,.2);border:1px solid rgba(212,175,55,.4);font-size:12px;font-weight:700;color:var(--accent-light);margin-bottom:12px;}
-.xm .xmMd{font-size:14px;line-height:1.85;}
-.xm .xmMd h3{font-size:15px;color:var(--accent-light);margin:14px 0 6px;}
+.xm .xmField label{display:block;font-size:12.5px;opacity:.8;margin-bottom:5px;font-weight: var(--w-mid);}
+.xm .xmSecTitle{font-size: var(--fs-3);font-weight: var(--w-bold);margin:18px 0 10px;color:var(--accent-light);}
+.xm .xmBadge{display:inline-block;padding:3px 12px;border-radius:20px;background:rgba(212,175,55,.2);border:1px solid rgba(212,175,55,.4);font-size:12px;font-weight: var(--w-mid);color:var(--accent-light);margin-bottom:12px;}
+.xm .xmMd{font-size: var(--fs-3);line-height:1.85;}
+.xm .xmMd h3{font-size: var(--fs-2);color:var(--accent-light);margin:14px 0 6px;}
 .xm .xmMd strong{color:#e9d5ff;}
 .xm .xmMd ul,.xm .xmMd ol{margin:6px 0;padding-inline-start:22px;}
 .xm .xmMd li{margin:4px 0;}
 .xm .xmFields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0 4px;}
 .xm .xmFCard{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 12px;}
-.xm .xmFCard .k{font-size:11.5px;opacity:.65;margin-bottom:3px;}
-.xm .xmFCard .v{font-size:14px;font-weight:700;color:#e9fff5;word-break:break-word;}
+.xm .xmFCard .k{font-size: var(--fs-5);opacity:.65;margin-bottom:3px;}
+.xm .xmFCard .v{font-size: var(--fs-3);font-weight: var(--w-bold);color:#e9fff5;word-break:break-word;}
 .xm .xmKp{list-style:none;padding:0;margin:0;}
-.xm .xmKp li{position:relative;padding:9px 12px 9px 34px;margin-bottom:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;font-size:13.5px;line-height:1.6;}
+.xm .xmKp li{position:relative;padding:9px 12px 9px 34px;margin-bottom:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;font-size: var(--fs-3);line-height:1.6;}
 .xm .xmKp li::before{content:"⚠️";position:absolute;inset-inline-start:10px;top:9px;}
 .xm .xmSrc{display:block;padding:9px 12px;margin-bottom:7px;background:rgba(212,175,55,.08);border:1px solid rgba(212,175,55,.22);border-radius:12px;color:var(--accent-light);text-decoration:none;font-size:12.5px;word-break:break-word;}
 .xm .xmSrc:hover{background:rgba(212,175,55,.16);}
@@ -4200,12 +4205,12 @@ renderStreak();
 .xm .xmQwrap input{flex:1;}
 .xm .xmQwrap button{flex:0 0 auto;padding:0 16px;border-radius:12px;border:none;background:linear-gradient(90deg,var(--accent),#10b981);color:#fff;font-weight:700;cursor:pointer;}
 .xm .xmQA{margin-top:12px;}
-.xm .xmQ{background:rgba(255,255,255,.06);border-radius:14px 14px 4px 14px;padding:9px 13px;font-size:13.5px;margin:10px 0 6px auto;max-width:88%;width:fit-content;}
-.xm .xmA{font-size:13.5px;line-height:1.75;padding:2px 4px;}
+.xm .xmQ{background:rgba(255,255,255,.06);border-radius:14px 14px 4px 14px;padding:9px 13px;font-size: var(--fs-3);margin:10px 0 6px auto;max-width:88%;width:fit-content;}
+.xm .xmA{font-size: var(--fs-3);line-height:1.75;padding:2px 4px;}
 .xm .xmActBtns{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
-.xm .xmActBtns button{flex:1;min-width:130px;padding:12px;border-radius:12px;border:1px solid rgba(212,175,55,.4);background:rgba(212,175,55,.15);color:#e9d5ff;font-weight:700;cursor:pointer;font-size:13.5px;}
+.xm .xmActBtns button{flex:1;min-width:130px;padding:12px;border-radius:12px;border:1px solid rgba(212,175,55,.4);background:rgba(212,175,55,.15);color:#e9d5ff;font-weight: var(--w-mid);cursor:pointer;font-size: var(--fs-3);}
 .xm .xmActBtns button:hover{background:rgba(212,175,55,.28);}
-.xm .xmDisc{margin-top:16px;font-size:11.5px;opacity:.6;text-align:center;line-height:1.6;}
+.xm .xmDisc{margin-top:16px;font-size: var(--fs-5);opacity:.6;text-align:center;line-height:1.6;}
 @media(max-width:560px){.xm .xmFields{grid-template-columns:1fr;}}
 </style>
 
@@ -4285,7 +4290,7 @@ renderStreak();
       var kps=(doc.keypoints||[]).map(function(k){ return '<li>'+E(k)+'</li>'; }).join('');
       body.innerHTML=''+
         '<div class="xmBadge">'+E(doc.docType||T('مستند','Document'))+'</div>'+
-        '<h2 style="margin:0 0 10px;font-size:18px">'+E(doc.title||'')+'</h2>'+
+        '<h2 style="margin:0 0 10px;font-size: var(--fs-1)">'+E(doc.title||'')+'</h2>'+
         (fields?'<div class="xmSecTitle">'+T('البيانات الرئيسية','Key details')+'</div><div class="xmFields">'+fields+'</div>':'')+
         '<div class="xmSecTitle">'+T('الملخص','Summary')+'</div><div class="xmMd">'+md(doc.summary)+'</div>'+
         (kps?'<div class="xmSecTitle">'+T('نقاط مهمة','Important points')+'</div><ul class="xmKp">'+kps+'</ul>':'')+
@@ -4327,7 +4332,7 @@ renderStreak();
     function close(){ modal.classList.remove('open'); }
     function intro(){
       body.innerHTML=''+
-        '<div style="font-size:13.5px;opacity:.85;line-height:1.7;margin-bottom:10px">'+T('اسأل عن أي معاملة حكومية إماراتية — الخطوات والرسوم والرابط الرسمي، ببحث حي.','Ask about any UAE government service — steps, fees and the official link, with live search.')+'</div>'+
+        '<div style="font-size: var(--fs-3);opacity:.85;line-height:1.7;margin-bottom:10px">'+T('اسأل عن أي معاملة حكومية إماراتية — الخطوات والرسوم والرابط الرسمي، ببحث حي.','Ask about any UAE government service — steps, fees and the official link, with live search.')+'</div>'+
         '<div class="xmChips" id="govChips">'+
           ['تجديد الإقامة','تجديد رخصة تجارية','دفع مخالفات مرورية','تجديد بطاقة الهوية','تأمين على السيارة','تجديد جواز السفر'].map(function(c,i){
             var en=['Renew residence visa','Renew trade license','Pay traffic fines','Renew Emirates ID','Car insurance','Renew passport'][i];
@@ -4362,7 +4367,7 @@ renderStreak();
     function fld(id,label,ph,ta){ return '<div class="xmField"><label>'+E(label)+'</label>'+(ta?'<textarea id="'+id+'" placeholder="'+E(ph)+'"></textarea>':'<input class="xmInp" id="'+id+'" placeholder="'+E(ph)+'">')+'</div>'; }
     function form(){
       body.innerHTML=''+
-        '<div style="font-size:13px;opacity:.8;margin-bottom:14px">'+T('عبّئ بياناتك وسنصمّم لك سيرة ذاتية احترافية + خطاب تقديم جاهز للطباعة PDF.','Fill your info and get a professional CV + cover letter ready as PDF.')+'</div>'+
+        '<div style="font-size: var(--fs-3);opacity:.8;margin-bottom:14px">'+T('عبّئ بياناتك وسنصمّم لك سيرة ذاتية احترافية + خطاب تقديم جاهز للطباعة PDF.','Fill your info and get a professional CV + cover letter ready as PDF.')+'</div>'+
         fld('cvName',T('الاسم الكامل *','Full name *'),T('عمر عبدالله','John Doe'))+
         fld('cvJob',T('المسمى الوظيفي','Job title'),T('مهندس برمجيات','Software Engineer'))+
         '<div class="xmFields">'+
@@ -4596,20 +4601,20 @@ html:not(.mobile-ui) #videoMakerModal .vmk-studio>div:first-child{grid-column:1/
 html:not(.mobile-ui) #videoMakerModal .vmk-side{display:flex;flex-direction:column;gap:11px;position:sticky;top:0;max-height:calc(90vh - 150px);overflow-y:auto;scrollbar-width:none}
 html:not(.mobile-ui) #videoMakerModal .vmk-stage{margin-inline:auto;width:100%;position:relative;aspect-ratio:var(--vmk-ar,16/9);border-radius:14px;border:1px solid rgba(232,161,60,.26);background:radial-gradient(120% 90% at 50% 0,rgba(232,161,60,.10),transparent 62%),#0b0b0e;display:grid;place-items:center;overflow:hidden}
 html:not(.mobile-ui) #videoMakerModal .vmk-ph{font-size:46px;opacity:.3;filter:grayscale(.4)}
-html:not(.mobile-ui) #videoMakerModal .vmk-dim{direction:ltr;position:absolute;bottom:8px;inset-inline-end:11px;font-size:10.5px;letter-spacing:.6px;color:#82828c;font-family:ui-monospace,monospace}
+html:not(.mobile-ui) #videoMakerModal .vmk-dim{direction:ltr;position:absolute;bottom:8px;inset-inline-end:11px;font-size: var(--fs-5);letter-spacing:.6px;color:#82828c;font-family:ui-monospace,monospace}
 html:not(.mobile-ui) #videoMakerModal .vmk-stage>video{position:absolute!important;inset:0;width:100%!important;height:100%!important;margin:0!important;border-radius:13px!important;object-fit:contain}
 html:not(.mobile-ui) #videoMakerModal .vmk-chips{display:flex;flex-wrap:wrap;gap:6px}
-html:not(.mobile-ui) #videoMakerModal .vmk-chip{font-size:11.5px;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);color:#c9c9d1}
+html:not(.mobile-ui) #videoMakerModal .vmk-chip{font-size: var(--fs-5);padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);color:#c9c9d1}
 html:not(.mobile-ui) #videoMakerModal .vmk-chip.gold{border-color:rgba(232,161,60,.4);background:rgba(232,161,60,.1);color:#f0be7a}
-html:not(.mobile-ui) #videoMakerModal .vmk-side>p{font-size:11.5px!important;line-height:1.65;color:#7d7d87!important;margin:2px 0 0!important}
-html:not(.mobile-ui) #videoMakerModal .vmk-main label[data-i18n]{font-size:10.5px!important;letter-spacing:.8px;color:#9698a2!important;text-transform:uppercase;font-weight:600;margin-bottom:7px!important}
+html:not(.mobile-ui) #videoMakerModal .vmk-side>p{font-size: var(--fs-5)!important;line-height:1.65;color:#7d7d87!important;margin:2px 0 0!important}
+html:not(.mobile-ui) #videoMakerModal .vmk-main label[data-i18n]{font-size: var(--fs-5)!important;letter-spacing:.8px;color:#9698a2!important;text-transform:uppercase;font-weight: var(--w-mid);margin-bottom:7px!important}
 html:not(.mobile-ui) #videoMakerModal .vmk-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:8px}
 html:not(.mobile-ui) #videoMakerModal .vmk-card{display:flex;flex-direction:column;gap:3px;padding:11px 12px;border-radius:13px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.035);cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s,background .18s}
 html:not(.mobile-ui) #videoMakerModal .vmk-card:hover{transform:translateY(-2px);border-color:rgba(232,161,60,.45);background:rgba(255,255,255,.055)}
 html:not(.mobile-ui) #videoMakerModal .vmk-card[aria-checked=true]{border-color:rgba(232,161,60,.75);background:linear-gradient(180deg,rgba(232,161,60,.17),rgba(232,161,60,.04));box-shadow:0 8px 22px -12px rgba(232,161,60,.75)}
 html:not(.mobile-ui) #videoMakerModal .vmk-card i{font-size:19px;font-style:normal;line-height:1}
-html:not(.mobile-ui) #videoMakerModal .vmk-card b{font-size:12.5px;font-weight:600;color:#eceef4}
-html:not(.mobile-ui) #videoMakerModal .vmk-card s{text-decoration:none;font-size:10px;letter-spacing:.3px;color:#e8a13c;opacity:.95}
+html:not(.mobile-ui) #videoMakerModal .vmk-card b{font-size:12.5px;font-weight: var(--w-mid);color:#eceef4}
+html:not(.mobile-ui) #videoMakerModal .vmk-card s{text-decoration:none;font-size: var(--fs-5);letter-spacing:.3px;color:#e8a13c;opacity:.95}
 html:not(.mobile-ui) #videoMakerModal .vmk-pills{display:flex;flex-wrap:wrap;gap:6px}
 html:not(.mobile-ui) #videoMakerModal .vmk-pill{font-size:12px;padding:6px 13px;border-radius:999px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#d5d5dd;cursor:pointer;transition:.15s;white-space:nowrap}
 html:not(.mobile-ui) #videoMakerModal .vmk-pill:hover{border-color:rgba(232,161,60,.55);color:#f0be7a}
@@ -4622,7 +4627,7 @@ html:not(.mobile-ui) #videoMakerModal details.vmk-adv{margin-top:16px;border-top
 html:not(.mobile-ui) #videoMakerModal details.vmk-adv>summary{cursor:pointer;font-size:12.5px;color:#b9b9c4;list-style:none;padding:3px 0}
 html:not(.mobile-ui) #videoMakerModal details.vmk-adv>summary::-webkit-details-marker{display:none}
 html:not(.mobile-ui) #videoMakerModal details.vmk-adv>summary:hover{color:#e8a13c}
-html:not(.mobile-ui) #videoMakerModal #videoMakerGenerateBtn{margin-top:18px!important;padding:13px!important;font-size:14.5px!important;letter-spacing:.3px;position:sticky;bottom:-2px;z-index:2;box-shadow:0 -14px 26px -6px var(--panel,#1a1a1a),0 8px 24px -12px rgba(232,161,60,.6)}
+html:not(.mobile-ui) #videoMakerModal #videoMakerGenerateBtn{margin-top:18px!important;padding:13px!important;font-size: var(--fs-3)!important;letter-spacing:.3px;position:sticky;bottom:-2px;z-index:2;box-shadow:0 -14px 26px -6px var(--panel,#1a1a1a),0 8px 24px -12px rgba(232,161,60,.6)}
 html:not(.mobile-ui) #videoMakerModal .vmk-main::-webkit-scrollbar{width:6px}
 html:not(.mobile-ui) #videoMakerModal .vmk-main::-webkit-scrollbar-track{background:transparent}
 html:not(.mobile-ui) #videoMakerModal .vmk-main::-webkit-scrollbar-thumb{background:rgba(232,161,60,.28);border-radius:8px}

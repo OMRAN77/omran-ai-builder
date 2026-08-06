@@ -5933,30 +5933,18 @@ function buildBg3DPicker(){
     };
     grid.appendChild(btn);
   });
+  // 🕯️ ٦ أغسطس: التبديل التلقائي مقتول بأمر عمران — لا مفتاح يُعرض ولا مؤقّت يُخلق.
   const chkAuto = $('#chkBg3dAuto');
   if(chkAuto){
-    chkAuto.checked = localStorage.getItem('aiapp_bg3d_auto') === 'true';
-    chkAuto.onchange = () => {
-      localStorage.setItem('aiapp_bg3d_auto', chkAuto.checked ? 'true' : 'false');
-      setupBg3DAutoTimer();
-    };
+    chkAuto.checked = false;
+    const row = chkAuto.closest('label') || chkAuto.parentElement;
+    if(row) row.style.display = 'none';
   }
 }
 function setupBg3DAutoTimer(){
+  // مقتول: يوقف أي مؤقّت قديم ويمحو المفتاح المخزَّن فلا تعود الخلفية تتبدّل وحدها.
   if(bg3dAutoTimer){ clearInterval(bg3dAutoTimer); bg3dAutoTimer = null; }
-  if(localStorage.getItem('aiapp_bg3d_auto') === 'true'){
-    bg3dAutoTimer = setInterval(() => {
-      const options = BG3D_EFFECTS.filter(e => e.id !== 'none');
-      const pick = options[Math.floor(Math.random() * options.length)];
-      applyBg3D(pick.id);
-      const grid = $('#bg3dGrid');
-      if(grid){
-        grid.querySelectorAll('.bg3dOption').forEach(b => b.classList.remove('active'));
-        const idx = BG3D_EFFECTS.findIndex(e => e.id === pick.id);
-        if(grid.children[idx]) grid.children[idx].classList.add('active');
-      }
-    }, 60000);
-  }
+  try{ localStorage.removeItem('aiapp_bg3d_auto'); }catch(e){ __swallow(e, 'bg3d:autokill'); }
 }
 document.addEventListener('DOMContentLoaded', () => {
   const saved = localStorage.getItem('aiapp_bg3d') || 'none';
@@ -8122,7 +8110,7 @@ function isRefusalReply(txt){
    model. Routing them to the fast one is the single biggest cost saving in
    the app, and the user cannot tell the difference on a greeting.
    Deliberately narrow: only very short messages with no question depth. */
-const CASUAL_RE = /^(?:\s*)(?:مرحبا|مرحبتين|هلا|هلو|اهلا|أهلا|السلام عليكم|سلام|صباح الخير|مساء الخير|كيف حالك|كيفك|شلونك|شخبارك|تمام|تمم|اوك|أوك|اوكي|ok|okay|thanks|thank you|شكرا|شكراً|مشكور|يعطيك العافية|تسلم|باي|مع السلامة|hi|hello|hey|good morning|good evening|how are you)(?:\s|!|\.|؟|\?|,|،)*$/i;
+const CASUAL_RE = /^(?:\s*)(?:مرحبا|مرحبتين|هلا وغلا|هلا|هلو|اهلا|أهلا|السلام عليكم|سلام|صباح الخير|مساء الخير|كيف حالك|كيفك|شلونك|شخبارك|تمام|تمم|اوك|أوك|اوكي|ok|okay|thanks|thank you|شكرا|شكراً|مشكور|يعطيك العافية|تسلم|باي|مع السلامة|hi|hello|hey|good morning|good evening|how are you)(?:\s|!|\.|؟|\?|,|،)*$/i;
 
 function isCasualTurn(txt){
   const s = String(txt || '').trim();
@@ -8130,11 +8118,36 @@ function isCasualTurn(txt){
   return CASUAL_RE.test(s);
 }
 
+// 🎯 ٦ أغسطس — قائمة المزوّدين مخفيّة على الكمبيوتر، فالتوجيه بالتخصص يعمل للجميع هناك.
+// الجوال لم يُلمس: شريطه باق، واختياره الصريح يُحترم كما كان.
+function __provUiHidden(){
+  try{
+    return !document.documentElement.classList.contains('mobile-ui') && window.innerWidth >= 861;
+  }catch(e){ return false; }
+}
+// 🔗 قفل المحادثة: أول مزوّد يُقرَّر لخيط يبقى له حتى نهايته، فلا تتنقّل أجوبة
+// الخيط الواحد بين عقول مختلفة. البناء والإصلاح والرؤية استثناء لهذه النوبة وحدها.
+function __convLockProvider(conv, decided, oneOff, respectExplicit){
+  try{
+    if(!conv || oneOff || respectExplicit) return decided;
+    if(conv.aiProvider) return conv.aiProvider;
+    conv.aiProvider = decided;
+    if(typeof saveState === 'function') saveState();
+  }catch(e){ __swallow(e, 'route:convlock'); }
+  return decided;
+}
+// ٦ قواعد التوجيه — الثلاث الأولى كانت موجودة، والثلاث التالية جديدة.
+const ROUTE_NEWS_RE = /آخر\s*(?:الأخبار|أخبار|المستجدات)|أخبار|اخبار|ما\s*الجديد|سعر\s|أسعار|اسعار|الدولار|الذهب|بيتكوين|البتكوين|سهم\s|الطقس|طقس\s|نتيجة\s*مباراة|من\s*فاز|latest\s*news|current\s*price|stock\s*price|weather|who\s*won/i;
+const ROUTE_TRANSLATE_RE = /ترجم|ترجملي|ترجمة|لخّص|لخص(?=\s|$|[.،!؟])|تلخيص|اختصر|translate|translation|summarize|summary|tl;dr/i;
+const ROUTE_ANALYSIS_RE = /حلّل|حلل(?=\s|$|[.،!؟])|تحليل|قارن|قارِن|مقارنة|أيهما أفضل|ايهما افضل|دراسة جدوى|اكتب تقرير|تقرير عن|analyz|analyse|compare|comparison|pros and cons/i;
 function pickSpecialtyProvider(txt){
   const s = String(txt || '');
   if(isCasualTurn(s)) return 'groq';
-  if(/رياضيات|معادل[ةه]|تكامل|تفاضل|مصفوف|لوغاريتم|جبر خطي|مثلثات|احتمالات|إحصاء|احصاء|مسأل[ةه] رياض|حل هذه المسأل|equation|integral|derivative|matrix|logarithm|trigonometry|probability|math problem/i.test(s)) return 'deepseek';
-  if(/قصيد[ةه]|شعر[اً]?\b|أبيات|ابيات|خاطر[ةه]|قص[ةه] قصير[ةه]|اكتب(?:\s+لي)?\s+قص[ةه]|رواي[ةه]|نص أدبي|رسال[ةه] عاطفي[ةه]|write (?:me )?a (?:story|poem)|poetry|short story/i.test(s)) return 'openai';
+  if(/رياضيات|معادل[ةه]|تكامل|تفاضل|مصفوف|لوغاريتم|جبر خطي|مثلثات|احتمالات|إحصاء|احصاء|مسأل[ةه] رياض|حل هذه المسأل|equation|integral|derivative|matrix|logarithm|trigonometry|probability|math problem/i.test(s)) return 'openai';   // كان deepseek — وهو مُهجَّر أصلًا في هذا الملف
+  if(/قصيد[ةه]|شعر[اً]?(?=\s|$|[.،!؟])|أبيات|ابيات|خاطر[ةه]|قص[ةه] قصير[ةه]|اكتب(?:\s+لي)?\s+قص[ةه]|رواي[ةه]|نص أدبي|رسال[ةه] عاطفي[ةه]|write (?:me )?a (?:story|poem)|poetry|short story/i.test(s)) return 'openai';
+  if(ROUTE_NEWS_RE.test(s)) return 'perplexity';        // ④ خبر/سعر/طقس → الباحث الحيّ
+  if(ROUTE_TRANSLATE_RE.test(s)) return 'gemini';       // ⑤ ترجمة/تلخيص → السريع الواسع
+  if(ROUTE_ANALYSIS_RE.test(s)) return 'openai';        // ⑥ تحليل/مقارنة/تقرير → العميق
   return null;
 }
 async function callAIWithFallback(messages, onDelta, preferredList){
@@ -12986,7 +12999,9 @@ async function sendPrompt(){
       const __selProv = localStorage.getItem('aiapp_provider') || 'claude';
       // v262 — 🎯 التوجيه بالتخصص: في الوضع الافتراضي فقط (المستخدم ما اختار مزودًا بيده)
       // الطلب يروح خلف الكواليس للمزود المتخصص، والواجهة تعرض المزود الافتراضي كما هو.
-      const __specProv = (!__routeFix && !localStorage.getItem('aiapp_provider_explicit')) ? pickSpecialtyProvider(text) : null;
+      // ٦ أغسطس: الاختيار الصريح يُحترم فقط حيث توجد قائمة تُختار منها (الجوال).
+      const __respectExplicit = !__provUiHidden() && !!localStorage.getItem('aiapp_provider_explicit');
+      const __specProv = (!__routeFix && !__respectExplicit) ? pickSpecialtyProvider(text) : null;
       // 🖼️→🌐 v272: صورة مرفقة + طلب ترجمة/قراءة نص → توجيه خلفي لأقوى مزود رؤية (Claude)
       // حتى لو المستخدم واقف على مزود نظره ضعيف بالصور (Cohere/Groq...). الواجهة ما تتغير.
       const __visionOverride = (imageAttachments.length && text && /(ترجم|ترجمه|ترجمة|ترجملي|translate|translation|اقرأ|اقري|إقرأ|قراءة|شو مكتوب|وش مكتوب|ما المكتوب|what does it say|read the)/i.test(text)) ? 'claude' : null;
@@ -13004,14 +13019,15 @@ async function sendPrompt(){
       // v405: احترام الزر خيارٌ للمستخدم — من يريد مزوده في كل شيء يثبته ويتحمّل نتيجته.
       var __pinProv = false;
       try{ __pinProv = localStorage.getItem('aiapp_pin_provider') === '1'; }catch(e){ __swallow(e, 'ui:pinprov'); }
-      const __effProv = (!__pinProv && (__gateNoBuild || __routeFix)) ? 'claude' : (__visionOverride || __specProv || __selProv);
+      const __effProv0 = (!__pinProv && (__gateNoBuild || __routeFix)) ? 'claude' : (__visionOverride || __specProv || __selProv);
+      const __effProv = __convLockProvider(cur, __effProv0, !!(__gateNoBuild || __routeFix || __visionOverride), __respectExplicit);
       // v405: التحويل يُعلَن بدل الصمت — المستخدم يرى مزودًا غير الذي اختاره فيظن الاختيار معطّلًا.
       try{
         var __selLabel = (typeof functionalLabel === 'function') ? functionalLabel(__selProv) : __selProv;
         if(__effProv !== __selProv && window.__chatStatus && !window.__chatStatus.isReleased()){
           var __why = (__gateNoBuild || __routeFix) ? 'البناء وتعديل الكود'
                     : (__visionOverride ? 'قراءة الصور' : 'هذا النوع من الطلبات');
-          window.__chatStatus.note('↪️', 'اخترتَ ' + __selLabel + ' — و' + __why + ' يُنفَّذ بـ ' +
+          window.__chatStatus.note('↪️', (__provUiHidden() ? 'محادثتك على ' : 'اخترتَ ') + __selLabel + ' — و' + __why + ' يُنفَّذ بـ ' +
             ((typeof functionalLabel === 'function') ? functionalLabel(__effProv) : __effProv) +
             ' لأنه الأدقّ فيه. محادثتك العادية تبقى على ' + __selLabel + '.');
         }
