@@ -9,6 +9,9 @@
   "scripts": {
     "bundle": "node scripts/build.mjs",
     "verify": "node scripts/build.mjs && git diff --exit-code js/app.bundle.js index.html sw.js",
-    "check": "for f in js/app-*.js sw.js api/*.js api/_lib/*.js; do node --check \"$f\" || exit 1; done"
+    "check": "for f in js/app-*.js sw.js api/*.js api/_lib/*.js; do node --check \"$f\" || exit 1; done",
+    "guard": "node scripts/guard.mjs",
+    "test": "node tests/owner-gate.test.cjs",
+    "ci": "npm run check && npm run guard && npm run verify && npm test"
   }
 }
