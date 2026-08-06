@@ -110,7 +110,14 @@ const $ = s => document.querySelector(s);
 
   function curT(){
     const lang = localStorage.getItem('aiapp_lang') || 'ar';
-    return window.__i18nDict ? window.__i18nDict(lang) : (I18N[lang] || I18N.ar);
+    if(typeof window.__i18nDict === 'function') return window.__i18nDict(lang) || {};
+    // ⚠️ ٦ أغسطس — سجل الأخطاء الحقيقي، حادثتان: «I18N is not defined» من هذا السطر.
+    // I18N يُصرَّح بـ const في app-03، أي في نطاق السكربت لا على window، وتنفيذه يأتي
+    // بعد جسم app-01. فالقراءة العارية أثناء الإقلاع ترمي ReferenceError وتقتل بقيّة
+    // إقلاع واجهة الدخول كلّها. الغياب الآن يُرجع {} — نصوص فارغة تُعاد كتابتها عند
+    // applyLanguage، وهذا أرحم من شاشة دخول ميتة.
+    const D = (typeof window.I18N === 'object' && window.I18N) || null;
+    return D ? (D[lang] || D.ar || {}) : {};
   }
 
   function setMode(m){

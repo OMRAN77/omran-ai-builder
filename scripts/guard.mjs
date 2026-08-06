@@ -12,6 +12,13 @@
 //     القاعدة: إمّا تسجيل (`logError` في الخادم، `__swallow` في الواجهة)
 //     وإمّا تعليق صريح داخل الأقواس يشرح لماذا الصمت مقصود.
 //
+// (د) ترتيب التحميل بين js/app-NN-*.js. كل ملفّ سكربت مستقلّ: لا رفع تصريحات
+//     بينها. اسمٌ يُستعمل وقت التحميل ويُعرَّف في ملفّ لاحق = undefined بصمت.
+//     كلفته الحقيقية: `$('#btnSend').onclick = sendPrompt;` في app-06 و sendPrompt
+//     في app-09 → زرّ الإرسال ميت، ١١ حادثة في سجل الأخطاء. والوجه الثاني:
+//     `I18N` مُصرَّح بـ const في app-03، فقراءته العارية في app-01 ترمي
+//     ReferenceError وتقتل الإقلاع — حادثتان. القاعدة: نداء متأخّر أو window.
+//
 // يُشغَّل: node scripts/guard.mjs   ·   يخرج ١ عند أول اكتشاف.
 // للاستثناء المتعمَّد: اكتب guard-ok في نفس السطر واشرح لماذا.
 
@@ -127,10 +134,35 @@ for (const d of ['js', 'scripts']) {
 }
 for (const f of own) await catches(f);
 
+// ④ ترتيب التحميل بين الملفّات المقسّمة (العطب «د»).
+const appFiles = (await readdir(ROOT + 'js')).filter((f) => /^app-\d\d-.*\.js$/.test(f)).sort();
+const declaredIn = {};
+const bodies = {};
+for (let i = 0; i < appFiles.length; i++) {
+  bodies[appFiles[i]] = await readFile(ROOT + 'js/' + appFiles[i], 'utf8');
+  for (const m of bodies[appFiles[i]].matchAll(/^(?:async\s+)?(?:function|const|let|var)\s+([A-Za-z_$][\w$]*)/gm))
+    if (declaredIn[m[1]] === undefined) declaredIn[m[1]] = i;
+}
+for (let i = 0; i < appFiles.length; i++) {
+  const rel = 'js/' + appFiles[i];
+  const lines = bodies[appFiles[i]].split('\n');
+  lines.forEach((L, k) => {
+    if (L.includes('guard-ok')) return;
+    // (د-١) إسناد اسمٍ مجرّد يُعرَّف لاحقًا: onclick = fn;  ← يخزّن undefined
+    const a = L.match(/=\s*([A-Za-z_$][\w$]*)\s*;\s*$/);
+    if (a && declaredIn[a[1]] > i)
+      found.push(`${rel}:${k + 1}  إسناد مبكّر → ${a[1]} يُعرَّف في ${appFiles[declaredIn[a[1]]]}؛ استخدم نداءً متأخّرًا`);
+    // (د-٢) قراءة I18N عارية في ملفّ يسبق مُصرِّحها
+    if (declaredIn.I18N !== undefined && i < declaredIn.I18N &&
+        /(?<![A-Za-z0-9_.$])I18N(?![A-Za-z0-9_])/.test(L.replace(/\/\/.*$/, '')))
+      found.push(`${rel}:${k + 1}  I18N عارٍ قبل ${appFiles[declaredIn.I18N]} → استخدم window.I18N`);
+  });
+}
+
 if (found.length) {
   console.error(`\n✗ الحارس: ${found.length} اكتشافًا — لا نشر.\n`);
   for (const f of found) console.error(`  ${f}`);
   console.error('\nإن كان مقصودًا: اكتب guard-ok في السطر واشرح السبب.\n');
   process.exit(1);
 }
-console.log(`✓ الحارس: ${seen.size} ملفًا نظيفًا — لا سرّ في العميل، لا بديل منشور، لا كتمة صامتة.`);
+console.log(`✓ الحارس: ${seen.size} ملفًا نظيفًا — لا سرّ في العميل، لا بديل منشور، لا كتمة صامتة، ولا اسمٌ قبل تعريفه.`);

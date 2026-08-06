@@ -1737,7 +1737,11 @@ async function callAIWithFallback(messages, onDelta, preferredList){
   throw lastErr || new Error(t('providerError') + ' - fallback');
 }
 
-$('#btnSend').onclick = sendPrompt;
+// ⚠️ ٦ أغسطس — سجل الأخطاء الحقيقي، ١١ حادثة: «sendPrompt is not defined». الدالة
+// تُعرَّف في app-09، بعد هذا الملفّ. في الحزمة الواحدة يكفي رفع التصريح، أمّا
+// الملفّات المقسّمة فسكربتات مستقلّة لا رفع بينها: الإسناد المباشر كان يضع undefined
+// فيموت زرّ الإرسال صمتًا. الربط المتأخّر يُصلح الحالتين.
+$('#btnSend').onclick = (e) => { if(typeof sendPrompt === 'function') return sendPrompt(e); };
 // إبراز سهم الإرسال عند الكتابة
 window.__updateSendReady = () => {
   const hasAttach = (typeof pendingAttachments !== 'undefined') && pendingAttachments.length > 0;
