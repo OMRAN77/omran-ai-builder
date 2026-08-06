@@ -1,0 +1,559 @@
+/* المرحلة ٣ · الشريحة ٧ب — بنية المودالات، منقولة حرفيًّا من index.html.
+   تُدرَج عند نفس نقطة التحليل، فترتيب DOM مطابق بايت-ببايت.
+   sha256(المحتوى) = f9958a3957e3b1a29d24822d6639ade8 */
+(function(){
+  var S = document.currentScript;
+  var H = String.raw`<dialog id="settingsDialog">
+  <h3 id="settingsDlgTitle" data-i18n-title="settingsDlgMaxTitle" style="display:none; margin-top:0; cursor:zoom-in; user-select:none;" title="دبل كلك للتكبير/التصغير" data-i18n="settingsTitle">إعدادات الاتصال بالذكاء الاصطناعي</h3>
+
+<div id="settingsHomeView">
+  <div id="settingsCmdBox" style="display:flex; align-items:center; gap:6px; background:var(--panel2); border:1px solid var(--border); border-radius:var(--r-4); padding:6px 8px; margin:6px 0 16px;">
+    <button type="button" id="settingsCmdMicBtn" title="تسجيل صوتي" data-i18n-title="micTitle" style="flex:0 0 auto; background:none; border:none; cursor:pointer; color:var(--muted); display:flex; align-items:center; justify-content:center; padding:6px; border-radius:50%;"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1"></path><line x1="12" y1="18" x2="12" y2="22"></line><line x1="8" y1="22" x2="16" y2="22"></line></svg></button>
+    <input type="text" id="settingsCmdInput" data-i18n-placeholder="settingsCmdPh" placeholder="اكتب ما تريد تغييره… مثال: خط أكبر وخلفية بحرية" style="flex:1 1 auto; min-width:0; border:none; background:none; outline:none; color:var(--text); font-size: var(--fs-3); padding:6px 2px;">
+    <button type="button" id="settingsCmdSendBtn" title="تنفيذ" data-i18n-title="settingsCmdSend" style="flex:0 0 auto; background:none; border:none; cursor:pointer; color:var(--accent); display:flex; align-items:center; justify-content:center; padding:6px; border-radius:50%;"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
+  </div>
+  <div id="settingsNavList"></div>
+  <div id="appVersionLabel" style="text-align:center; color:var(--muted); font-size:12px; opacity:.7; margin-top:22px; padding-bottom:6px; user-select:text;"></div>
+</div>
+<div id="settingsPageHeader" style="display:none; align-items:center; gap:10px; margin-top:26px; margin-bottom:14px;">
+  <button type="button" id="settingsPageBackBtn" title="رجوع" data-i18n-title="back" style="background:none; border:none; cursor:pointer; color:var(--text); display:flex; align-items:center; justify-content:center; padding:4px; border-radius:50%;"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" id="settingsBackSvg"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg></button>
+  <h3 id="settingsPageTitle" style="margin:0; font-size: var(--fs-2);"></h3>
+</div>
+
+
+
+  <div id="langSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('langSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="langSectionTitle">🌐 اللغة</h3><span class="settingsSectionArrow" id="langSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="langSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+    <div id="langListWrap" style="display:flex; flex-direction:column; gap:2px;">
+      <button type="button" class="langFlagBtn" id="btnLangEn" title="English" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:11px 12px; font-size:14px; background:none; border:none; cursor:pointer; color:var(--text); text-align:start; border-radius:var(--r-2);"><span>English</span><svg class="langCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="display:none; color:var(--accent);"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+      <button type="button" class="langFlagBtn" id="btnLangZh" title="中文" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:11px 12px; font-size:14px; background:none; border:none; cursor:pointer; color:var(--text); text-align:start; border-radius:var(--r-2);"><span>中文</span><svg class="langCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="display:none; color:var(--accent);"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+      <button type="button" class="langFlagBtn" id="btnLangHi" title="हिन्दी" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:11px 12px; font-size:14px; background:none; border:none; cursor:pointer; color:var(--text); text-align:start; border-radius:var(--r-2);"><span>हिन्दी</span><svg class="langCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="display:none; color:var(--accent);"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+      <button type="button" class="langFlagBtn" id="btnLangEs" title="Español" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:11px 12px; font-size:14px; background:none; border:none; cursor:pointer; color:var(--text); text-align:start; border-radius:var(--r-2);"><span>Español</span><svg class="langCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="display:none; color:var(--accent);"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+      <button type="button" class="langFlagBtn" id="btnLangFr" title="Français" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:11px 12px; font-size:14px; background:none; border:none; cursor:pointer; color:var(--text); text-align:start; border-radius:var(--r-2);"><span>Français</span><svg class="langCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="display:none; color:var(--accent);"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+      <button type="button" class="langFlagBtn" id="btnLangAr" title="العربية" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:11px 12px; font-size:14px; background:none; border:none; cursor:pointer; color:var(--text); text-align:start; border-radius:var(--r-2);"><span>العربية</span><svg class="langCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="display:none; color:var(--accent);"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+      <button type="button" class="langFlagBtn" id="btnLangBn" title="বাংলা" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:11px 12px; font-size:14px; background:none; border:none; cursor:pointer; color:var(--text); text-align:start; border-radius:var(--r-2);"><span>বাংলা</span><svg class="langCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="display:none; color:var(--accent);"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+      <button type="button" class="langFlagBtn" id="btnLangRu" title="Русский" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:11px 12px; font-size:14px; background:none; border:none; cursor:pointer; color:var(--text); text-align:start; border-radius:var(--r-2);"><span>Русский</span><svg class="langCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="display:none; color:var(--accent);"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+      <button type="button" class="langFlagBtn" id="btnLangUr" title="اردو" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:11px 12px; font-size:14px; background:none; border:none; cursor:pointer; color:var(--text); text-align:start; border-radius:var(--r-2);"><span>اردو</span><svg class="langCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="display:none; color:var(--accent);"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+      <button type="button" class="langFlagBtn" id="btnLangId" title="Bahasa Indonesia" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:11px 12px; font-size:14px; background:none; border:none; cursor:pointer; color:var(--text); text-align:start; border-radius:var(--r-2);"><span>Bahasa Indonesia</span><svg class="langCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="display:none; color:var(--accent);"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+      <button type="button" class="langFlagBtn" id="btnLangFil" title="Filipino" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:11px 12px; font-size:14px; background:none; border:none; cursor:pointer; color:var(--text); text-align:start; border-radius:var(--r-2);"><span>Filipino</span><svg class="langCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="display:none; color:var(--accent);"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+      <button type="button" class="langFlagBtn" id="btnLangTr" title="Türkçe" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:11px 12px; font-size:14px; background:none; border:none; cursor:pointer; color:var(--text); text-align:start; border-radius:var(--r-2);"><span>Türkçe</span><svg class="langCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="display:none; color:var(--accent);"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+      <button type="button" class="langFlagBtn" id="btnLangNe" title="नेपाली" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:11px 12px; font-size:14px; background:none; border:none; cursor:pointer; color:var(--text); text-align:start; border-radius:var(--r-2);"><span>नेपाली</span><svg class="langCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="display:none; color:var(--accent);"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+      <button type="button" class="langFlagBtn" id="btnLangMl" title="മലയാളം" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:11px 12px; font-size:14px; background:none; border:none; cursor:pointer; color:var(--text); text-align:start; border-radius:var(--r-2);"><span>മലയാളം</span><svg class="langCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="display:none; color:var(--accent);"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+    </div>
+  </div></div>
+
+  <div id="accountSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('accountSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="acctSectionTitle">👤 حسابي</h3><span class="settingsSectionArrow" id="accountSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="accountSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;"><div style="display:flex; flex-direction:column; width:100%;">
+    <div style="display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:14px;">
+      <div style="position:relative;">
+        <img id="acctAvatarPreview" src="" alt="" style="width:72px; height:72px; border-radius:50%; object-fit:cover; background:var(--bg); border:1px solid var(--border); display:none;">
+        <div id="acctAvatarPlaceholder" style="width:72px; height:72px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:34px; background:var(--bg); border:1px solid var(--border);">👤</div>
+        <input type="file" id="acctAvatarInput" accept="image/*" style="display:none;">
+      </div>
+      <button type="button" id="acctAvatarBtn" style="background:none; border:none; cursor:pointer; color:var(--accent); font-size:13px; font-weight:500; padding:2px 8px;" data-i18n="acctAvatarBtn">📷 تغيير الصورة</button>
+    </div>
+    <div><button type="button" onclick="acctToggleRow('acctRowUser',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctUsernameLabel">اسم المستخدم</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+    <div id="acctRowUser" style="display:none; padding:8px 8px 12px;">
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="acctUsername" style="flex:1;" autocomplete="username">
+        <button type="button" class="btn" id="acctUsernameSaveBtn" style="width:auto; white-space:nowrap;" data-i18n="acctSaveBtn">حفظ</button>
+      </div>
+      <div id="acctUsernameMsg" style="font-size:12px; min-height:16px; margin-top:4px;"></div>
+    </div></div>
+    <div><button type="button" onclick="acctToggleRow('acctRowPass',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctPasswordRow">كلمة المرور</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+    <div id="acctRowPass" style="display:none; padding:8px 8px 12px;">
+      <label data-i18n="acctCurrentPasswordLabel">كلمة المرور الحالية</label>
+      <input type="password" id="acctCurrentPassword" autocomplete="current-password">
+      <label data-i18n="acctNewPasswordLabel2">كلمة المرور الجديدة</label>
+      <div style="display:flex; gap:8px;">
+        <input type="password" id="acctNewPassword" style="flex:1;" autocomplete="new-password">
+        <button type="button" class="btn" id="acctPasswordSaveBtn" style="width:auto; white-space:nowrap;" data-i18n="acctSaveBtn">حفظ</button>
+      </div>
+      <div id="acctPasswordMsg" style="font-size:12px; min-height:16px; margin-top:4px;"></div>
+    </div></div>
+    <div><button type="button" onclick="acctToggleRow('acctRowEmail',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctEmailLabel">📧 الإيميل الاحتياطي (لاسترجاع كلمة المرور)</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+    <div id="acctRowEmail" style="display:none; padding:8px 8px 12px;">
+      <div style="display:flex; gap:8px;">
+        <input type="email" id="acctEmail" style="flex:1; direction:ltr;" autocomplete="email">
+        <button type="button" class="btn" id="acctEmailSaveBtn" style="width:auto; white-space:nowrap;" data-i18n="acctSaveBtn">حفظ</button>
+      </div>
+      <div id="acctEmailMsg" style="font-size:12px; min-height:16px; margin-top:4px;"></div>
+    </div></div>
+    <div><button type="button" onclick="acctToggleRow('acctRowRef',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="acctReferralLabel">🔗 رابط دعوة أصدقائك</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+    <div id="acctRowRef" style="display:none; padding:8px 8px 12px;">
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="acctReferralLink" readonly style="flex:1;">
+        <button type="button" class="btn" id="acctReferralCopyBtn" style="width:auto; white-space:nowrap;" data-i18n="acctCopyBtn">📋 نسخ</button>
+      </div>
+      <div id="acctReferralMsg" style="font-size:12px; min-height:16px; margin-top:4px; color:var(--muted);" data-i18n="acctReferralHint">لكل صديق يسجّل برابطك، تحصلان أنت وهو على 10 رسائل مجانية إضافية 🎁</div>
+      <div id="acctReferralBonus" style="font-size: var(--fs-3); font-weight: var(--w-bold); margin-top:6px;"></div>
+    </div></div>
+    <div><button type="button" onclick="acctToggleRow('acctRowCleanup',this)" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:#ef4444; font-size: var(--fs-3); text-align:start;"><span style="display:flex; align-items:center; gap:8px;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg><span data-i18n="acctCleanupLabel">تنظيف التطبيق</span></span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s; color:var(--muted); flex-shrink:0;"><polyline points="9 18 15 12 9 6"></polyline></svg></button>
+    <div id="acctRowCleanup" style="display:none; padding:8px 8px 12px;">
+      <div style="font-size:12px; color:var(--muted); margin-bottom:8px;" data-i18n="acctCleanupHint">يحذف كل المحادثات والمشاريع نهائيًا من هذا الجهاز ومن السحابة. حسابك ولغتك يبقيان.</div>
+      <button type="button" onclick="appFullCleanup()" style="width:100%; padding:10px; border-radius:var(--r-2); border:1px solid rgba(239,68,68,.5); background:rgba(239,68,68,.12); color:#ef4444; font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer;" data-i18n="acctCleanupBtn">حذف الكل الآن</button>
+    </div></div>
+    </div>
+    <script src="/js/themes.js?v=421"></script>
+    <script>window.acctToggleRow=function(id,btn){var p=document.getElementById(id);var open=p.style.display==='none';p.style.display=open?'block':'none';var s=btn.querySelector('svg');if(s)s.style.transform=open?'rotate(90deg)':'';};</script>
+  </div></div>
+
+  <div id="statsSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('statsSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="statsSectionTitle">📊 إحصائياتي</h3><span class="settingsSectionArrow" id="statsSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="statsSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+    <div><div style="display:flex; align-items:center; justify-content:space-between; padding:13px 8px; border-bottom:1px solid rgba(128,128,128,.15); font-size: var(--fs-3);"><span data-i18n="statsProjectsLabel">عدد المشاريع</span><b id="statProjectsCount" style="font-size: var(--fs-2);">0</b></div><div style="display:flex; align-items:center; justify-content:space-between; padding:13px 8px; border-bottom:1px solid rgba(128,128,128,.15); font-size: var(--fs-3);"><span data-i18n="statsMessagesLabel">إجمالي الرسائل المُرسلة</span><b id="statMessagesCount" style="font-size: var(--fs-2);">0</b></div><div style="display:flex; align-items:center; justify-content:space-between; padding:13px 8px; border-bottom:1px solid rgba(128,128,128,.15); font-size: var(--fs-3);"><span data-i18n="statsFavProviderLabel">أكثر مزوّد تستخدمه</span><b id="statFavProvider" style="font-size: var(--fs-2);">—</b></div><button type="button" id="btnExportProjects" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="statsExportBtn">تصدير المشاريع</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted); flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button><button type="button" id="btnImportProjects" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:13px 8px; background:none; border:none; border-bottom:1px solid rgba(128,128,128,.15); cursor:pointer; color:var(--text); font-size: var(--fs-3); text-align:start;"><span data-i18n="statsImportBtn">استيراد مشاريع</span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted); flex-shrink:0;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg></button></div>
+      <input type="file" id="importProjectsFile" accept="application/json" style="display:none;">
+      </div>
+    </div>
+  </div></div>
+
+  <div id="apiKeysSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('apiKeysSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="apiKeysSectionTitle">🔑 مفاتيح API لمزوّدي الخدمة</h3><span class="settingsSectionArrow" id="apiKeysSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="apiKeysSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+  <label data-i18n="provider">مزوّد الخدمة الافتراضي</label>
+  <select id="provider">
+    <option value="openai">OpenAI (platform.openai.com)</option>
+    <option value="openrouter">OpenRouter (openrouter.ai)</option>
+    <option value="gemini">Google Gemini (aistudio.google.com)</option>
+    <option value="groq">Groq (console.groq.com)</option>
+    <option value="claude">Anthropic Claude (console.anthropic.com)</option>
+    <option value="perplexity">Perplexity (perplexity.ai)</option>
+    <option value="mistral">Mistral AI (mistral.ai)</option>
+    <option value="deepseek">DeepSeek (platform.deepseek.com)</option>
+    <option value="cohere">Cohere (cohere.com)</option>
+  </select>
+    <div style="margin-top:14px;">
+  <div class="api-provider-card" style="border-inline-start:4px solid #10a37f; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
+    <label style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+      <span data-i18n="apiKeyLabel" style="font-weight:bold; color:#10a37f;">مفتاح API</span>
+      <span style="display:flex; align-items:center; gap:6px; font-weight:normal; font-size:0.85em;">
+        <input type="checkbox" id="chkIncludeOpenAI" style="width:auto;"> <span data-i18n="includeInAskAll">ضِمن اسأل الكل</span>
+      </span>
+    </label>
+    <input type="password" id="apiKey" placeholder="sk-...">
+    <label data-i18n="modelLabel">اسم النموذج</label>
+    <input type="text" id="modelName" placeholder="gpt-4o-mini">
+  </div>
+  <div class="api-provider-card" style="border-inline-start:4px solid var(--accent); background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
+    <label style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+      <span data-i18n="openrouterApiKeyLabel" style="font-weight:bold; color:var(--accent);">مفتاح API</span>
+      <span style="display:flex; align-items:center; gap:6px; font-weight:normal; font-size:0.85em;">
+        <input type="checkbox" id="chkIncludeOpenRouter" style="width:auto;"> <span data-i18n="includeInAskAll">ضِمن اسأل الكل</span>
+      </span>
+    </label>
+    <input type="password" id="openrouterApiKey" placeholder="sk-or-...">
+    <label data-i18n="openrouterModelLabel">اختر النموذج</label>
+    <select id="openrouterModelSelect">
+      <optgroup label="🆓 Free" data-i18n="[label]orFreeGroup">
+        <option value="nvidia/nemotron-3-super-120b-a12b:free">Nemotron 3 Super 120B (free)</option>
+        <option value="google/gemini-flash-1.5:free">Google Gemini Flash 1.5 (free)</option>
+        <option value="mistralai/mistral-7b-instruct:free">Mistral 7B (free)</option>
+      </optgroup>
+      <optgroup label="💰 Paid" data-i18n="[label]orPaidGroup">
+        <option value="openai/gpt-4o-mini">OpenAI GPT-4o mini</option>
+        <option value="openai/gpt-4o">OpenAI GPT-4o</option>
+        <option value="anthropic/claude-3.5-sonnet">Anthropic Claude 3.5 Sonnet</option>
+        <option value="google/gemini-pro-1.5">Google Gemini Pro 1.5</option>
+        <option value="meta-llama/llama-3.1-70b-instruct">Meta Llama 3.1 70B</option>
+        <option value="deepseek/deepseek-chat">DeepSeek Chat</option>
+      </optgroup>
+      <option value="__custom__" data-i18n="orCustomOption">✏️ مخصص...</option>
+    </select>
+    <input type="text" id="openrouterModel" placeholder="openai/gpt-4o-mini" style="display:none; margin-top:6px;">
+  </div>
+  <div class="api-provider-card" style="border-inline-start:4px solid #20b8cd; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
+    <label style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+      <span data-i18n="perplexityApiKeyLabel" style="font-weight:bold; color:#20b8cd;">مفتاح API</span>
+      <span style="display:flex; align-items:center; gap:6px; font-weight:normal; font-size:0.85em;">
+        <input type="checkbox" id="chkIncludePerplexity" style="width:auto;"> <span data-i18n="includeInAskAll">ضِمن اسأل الكل</span>
+      </span>
+    </label>
+    <input type="password" id="perplexityApiKey" placeholder="pplx-...">
+    <label data-i18n="perplexityModelLabel">اسم النموذج</label>
+    <input type="text" id="perplexityModel" placeholder="sonar">
+  </div>
+  <div class="api-provider-card" style="border-inline-start:4px solid #fa500f; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
+    <label style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+      <span data-i18n="mistralApiKeyLabel" style="font-weight:bold; color:#fa500f;">مفتاح API</span>
+      <span style="display:flex; align-items:center; gap:6px; font-weight:normal; font-size:0.85em;">
+        <input type="checkbox" id="chkIncludeMistral" style="width:auto;"> <span data-i18n="includeInAskAll">ضِمن اسأل الكل</span>
+      </span>
+    </label>
+    <input type="password" id="mistralApiKey" placeholder="...">
+    <label data-i18n="mistralModelLabel">اسم النموذج</label>
+    <input type="text" id="mistralModel" placeholder="mistral-small-latest">
+  </div>
+  <div class="api-provider-card" style="border-inline-start:4px solid #4d6bfe; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
+    <label style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+      <span data-i18n="deepseekApiKeyLabel" style="font-weight:bold; color:#4d6bfe;">مفتاح API</span>
+      <span style="display:flex; align-items:center; gap:6px; font-weight:normal; font-size:0.85em;">
+        <input type="checkbox" id="chkIncludeDeepSeek" style="width:auto;"> <span data-i18n="includeInAskAll">ضِمن اسأل الكل</span>
+      </span>
+    </label>
+    <input type="password" id="deepseekApiKey" placeholder="sk-...">
+    <label data-i18n="deepseekModelLabel">اسم النموذج</label>
+    <input type="text" id="deepseekModel" placeholder="deepseek-chat">
+  </div>
+  <div class="api-provider-card" style="border-inline-start:4px solid #d18ee2; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
+    <label style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+      <span data-i18n="cohereApiKeyLabel" style="font-weight:bold; color:#d18ee2;">مفتاح API</span>
+      <span style="display:flex; align-items:center; gap:6px; font-weight:normal; font-size:0.85em;">
+        <input type="checkbox" id="chkIncludeCohere" style="width:auto;"> <span data-i18n="includeInAskAll">ضِمن اسأل الكل</span>
+      </span>
+    </label>
+    <input type="password" id="cohereApiKey" placeholder="...">
+    <label data-i18n="cohereModelLabel">اسم النموذج</label>
+    <input type="text" id="cohereModel" placeholder="command-r-plus">
+  </div>
+  <div class="api-provider-card" style="border-inline-start:4px solid #4285f4; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
+    <label style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+      <span data-i18n="geminiApiKeyLabel" style="font-weight:bold; color:#4285f4;">مفتاح API</span>
+      <span style="display:flex; align-items:center; gap:6px; font-weight:normal; font-size:0.85em;">
+        <input type="checkbox" id="chkIncludeGemini" style="width:auto;"> <span data-i18n="includeInAskAll">ضِمن اسأل الكل</span>
+      </span>
+    </label>
+    <input type="password" id="geminiApiKey" placeholder="AIza...">
+    <label data-i18n="geminiModelLabel">اسم النموذج</label>
+    <input type="text" id="geminiModel" placeholder="gemini-flash-latest">
+  </div>
+  <div class="api-provider-card" style="border-inline-start:4px solid #f55036; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
+    <label style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+      <span data-i18n="groqApiKeyLabel" style="font-weight:bold; color:#f55036;">مفتاح API</span>
+      <span style="display:flex; align-items:center; gap:6px; font-weight:normal; font-size:0.85em;">
+        <input type="checkbox" id="chkIncludeGroq" style="width:auto;"> <span data-i18n="includeInAskAll">ضِمن اسأل الكل</span>
+      </span>
+    </label>
+    <input type="password" id="groqApiKey" placeholder="gsk_...">
+    <label data-i18n="groqModelLabel">اسم النموذج</label>
+    <input type="text" id="groqModel" placeholder="llama-3.3-70b-versatile">
+  </div>
+  <div class="api-provider-card" style="border-inline-start:4px solid #d97757; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
+    <label style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+      <span data-i18n="claudeApiKeyLabel" style="font-weight:bold; color:#d97757;">مفتاح API</span>
+      <span style="display:flex; align-items:center; gap:6px; font-weight:normal; font-size:0.85em;">
+        <input type="checkbox" id="chkIncludeClaude" style="width:auto;"> <span data-i18n="includeInAskAll">ضِمن اسأل الكل</span>
+      </span>
+    </label>
+    <input type="password" id="claudeApiKey" placeholder="sk-ant-...">
+    <label data-i18n="claudeModelLabel">اسم نموذج Claude</label>
+    <div style="display:flex; gap:6px;">
+      <input type="text" id="claudeModel" placeholder="claude-sonnet-4-20250514" style="flex:1;">
+      <button type="button" id="fetchClaudeModelsBtn" style="white-space:nowrap; padding:6px 10px;" data-i18n="fetchModelsBtn">جلب الموديلات المتاحة</button>
+    </div>
+    <select id="claudeModelList" style="display:none; margin-top:6px;"></select>
+  </div>
+    </div>
+  <small class="hint" data-i18n="settingsHint" style="display:block; margin-top:10px;">
+    🔒 يُحفظ مفتاحك محليًا في متصفحك فقط (localStorage) ولا يُرسل إلى أي خادم تابع لنا. كل طلب توليد يُرسَل مباشرة من متصفحك إلى مزوّد الذكاء الاصطناعي الذي اخترته باستخدام مفتاحك الخاص.<br><br>
+    <b>📝 كيف تحصل على مفتاح لكل مزوّد:</b><br><br>
+    🔹 <b>OpenAI</b>: احصل على مفتاح من platform.openai.com/api-keys<br>
+    🔹 <b>Gemini</b>: احصل على مفتاح مجاني من aistudio.google.com/app/apikey<br>
+    🔹 <b>Groq</b>: احصل على مفتاح مجاني من console.groq.com/keys<br>
+    🔹 <b>Claude</b>: احصل على مفتاح من console.anthropic.com/settings/keys<br>
+    🔹 <b>OpenRouter</b>: احصل على مفتاح من openrouter.ai/keys (يوفر نماذج مجانية أيضًا)<br>
+    🔹 <b>Perplexity</b>: احصل على مفتاح من perplexity.ai/settings/api (مدفوع، ويوفر بحث حي)<br>
+    🔹 <b>Mistral AI</b>: احصل على مفتاح مجاني من console.mistral.ai/api-keys<br>
+    🔹 <b>DeepSeek</b>: احصل على مفتاح من platform.deepseek.com/api_keys (رخيص جدًا وحصة مجانية)<br>
+    🔹 <b>Cohere</b>: احصل على مفتاح مجاني من dashboard.cohere.com/api-keys
+  </small>
+  </div></div>
+
+
+  <div id="themeSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('themeSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="themeSectionLabel">🎨 تخصيص الألوان والمظهر</h3><span class="settingsSectionArrow" id="themeSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="themeSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+      <div style="display:flex; flex-direction:column; gap:0; padding:10px 12px; margin-bottom:14px; background:var(--panel2); border-radius:var(--r-2);">
+        <div onclick="toggleSubRow('appColorSub')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><span data-i18n="appColorTitle" style="font-size: var(--fs-3);">لون التطبيق</span><span id="appColorSubArrow" style="font-size:12px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
+        <div id="appColorSubContent" style="display:none; padding-top:10px;"><div id="themeCircles" style="display:flex; flex-wrap:nowrap; justify-content:space-between; gap:4px; padding:2px;"></div></div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:0; padding:10px 12px; margin-bottom:14px; background:var(--panel2); border-radius:var(--r-2);">
+        <div onclick="toggleSubRow('tickerColorSub')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><span data-i18n="tickerColorLabel" style="font-size: var(--fs-3);">لون شريط الأسهم</span><span id="tickerColorSubArrow" style="font-size:12px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
+        <div id="tickerColorSubContent" style="display:none; padding-top:10px;"><div id="tickerColorCircles" style="display:flex; flex-wrap:nowrap; justify-content:space-between; gap:4px; padding:2px;"></div></div>
+      </div>
+  <div style="display:flex; flex-direction:column; gap:0; padding:10px 12px; margin-bottom:14px; background:var(--panel2); border-radius:var(--r-2);">
+    <div onclick="toggleSubRow('customColorsSub')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><span data-i18n="customColorsLabel" style="font-size: var(--fs-3);">ألوان مخصصة</span><span id="customColorsSubArrow" style="font-size:12px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
+    <div id="customColorsSubContent" style="display:none; padding-top:10px;">
+  <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-top:8px;">
+    <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+      <span data-i18n="themeAccentLabel">اللون الأساسي (Accent)</span>
+      <div class="color-field-wrap" style="display:flex; gap:6px; align-items:center;">
+        <span class="color-swatch" data-for="themeAccent" style="width:34px; height:34px; border-radius:var(--r-2); flex-shrink:0; border:1px solid rgba(255,255,255,0.2);"></span>
+        <input type="text" class="hex-color-input" id="themeAccent" maxlength="7" style="flex:1; font-family:monospace; height:34px; padding:2px 8px; border-radius:var(--r-2);">
+      </div>
+    </label>
+    <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+      <span data-i18n="themeTextLabel">لون النص</span>
+      <div class="color-field-wrap" style="display:flex; gap:6px; align-items:center;">
+        <span class="color-swatch" data-for="themeText" style="width:34px; height:34px; border-radius:var(--r-2); flex-shrink:0; border:1px solid rgba(255,255,255,0.2);"></span>
+        <input type="text" class="hex-color-input" id="themeText" maxlength="7" style="flex:1; font-family:monospace; height:34px; padding:2px 8px; border-radius:var(--r-2);">
+      </div>
+    </label>
+    <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+      <span data-i18n="themeBgLabel">لون الخلفية</span>
+      <div class="color-field-wrap" style="display:flex; gap:6px; align-items:center;">
+        <span class="color-swatch" data-for="themeBg" style="width:34px; height:34px; border-radius:var(--r-2); flex-shrink:0; border:1px solid rgba(255,255,255,0.2);"></span>
+        <input type="text" class="hex-color-input" id="themeBg" maxlength="7" style="flex:1; font-family:monospace; height:34px; padding:2px 8px; border-radius:var(--r-2);">
+      </div>
+    </label>
+    <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+      <span data-i18n="themeUserBubbleLabel">لون فقاعة رسالتك</span>
+      <div class="color-field-wrap" style="display:flex; gap:6px; align-items:center;">
+        <span class="color-swatch" data-for="themeUserBubble" style="width:34px; height:34px; border-radius:var(--r-2); flex-shrink:0; border:1px solid rgba(255,255,255,0.2);"></span>
+        <input type="text" class="hex-color-input" id="themeUserBubble" maxlength="7" style="flex:1; font-family:monospace; height:34px; padding:2px 8px; border-radius:var(--r-2);">
+      </div>
+    </label>
+    <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
+      <span data-i18n="themeAssistantBubbleLabel">لون فقاعة الرد</span>
+      <div class="color-field-wrap" style="display:flex; gap:6px; align-items:center;">
+        <span class="color-swatch" data-for="themeAssistantBubble" style="width:34px; height:34px; border-radius:var(--r-2); flex-shrink:0; border:1px solid rgba(255,255,255,0.2);"></span>
+        <input type="text" class="hex-color-input" id="themeAssistantBubble" maxlength="7" style="flex:1; font-family:monospace; height:34px; padding:2px 8px; border-radius:var(--r-2);">
+      </div>
+    </label>
+  </div>
+
+  <div id="colorPresetsRow" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;"></div>
+  <button type="button" class="btn" id="btnResetColors" style="margin-top:10px;">↺ <span data-i18n="resetColorsBtn">إعادة الألوان الافتراضية</span></button>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:0; padding:10px 12px; margin-bottom:14px; background:var(--panel2); border-radius:var(--r-2);">
+    <div onclick="toggleSubRow('providerColorsSub')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><span data-i18n="providerColorsLabel" style="font-size:13px;">🤖 لون كل مزوّد ذكاء اصطناعي (يظهر باسمه في المحادثة)</span><span id="providerColorsSubArrow" style="font-size:12px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
+    <div id="providerColorsSubContent" style="display:none; padding-top:10px;">
+  <div id="providerColorGrid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-top:8px;"></div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:0; padding:10px 12px; margin-bottom:14px; background:var(--panel2); border-radius:var(--r-2);">
+    <div onclick="toggleSubRow('bg3dSub')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><span data-i18n="bg3dSectionLabel" style="font-size:13px;">🌌 خلفية ثلاثية الأبعاد متحركة</span><span id="bg3dSubArrow" style="font-size:12px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
+    <div id="bg3dSubContent" style="display:none; padding-top:10px;">
+  <div id="bg3dGrid" class="bg3dGrid"></div>
+  <label style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+    <input type="checkbox" id="chkBg3dAuto" style="width:auto;">
+    <span data-i18n="bg3dAutoLabel">🔀 تبديل تلقائي بين الخلفيات كل دقيقة</span>
+  </label>
+    </div>
+  </div>
+  </div></div>
+
+  <div id="fontSizeSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('fontSizeSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size: var(--fs-3);" data-i18n="fontSizeSectionLabel">حجم الخط</h3><span class="settingsSectionArrow" id="fontSizeSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="fontSizeSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+      <div id="fontSizeBtns" style="display:flex; flex-direction:column; gap:2px;">
+        <button type="button" class="fontSizeBtn" data-fs="small"><span data-i18n="fontSizeSmall">صغير</span><svg class="fsCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+        <button type="button" class="fontSizeBtn" data-fs="normal"><span data-i18n="fontSizeNormal">عادي</span><svg class="fsCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+        <button type="button" class="fontSizeBtn" data-fs="large"><span data-i18n="fontSizeLarge">كبير</span><svg class="fsCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+        <button type="button" class="fontSizeBtn" data-fs="xlarge"><span data-i18n="fontSizeXLarge">كبير جدًا</span><svg class="fsCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
+      </div>
+    </div></div>
+
+  <div id="voiceSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('voiceSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size: var(--fs-3);" data-i18n="voiceSectionLabel">الصوت</h3><span class="settingsSectionArrow" id="voiceSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="voiceSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+  <label data-i18n="voiceGenderLabel">نوع الصوت المفضل</label>
+  <div id="voiceGenderBtns" style="display:flex; gap:12px; margin-top:10px;">
+    <button type="button" class="voiceGenderBtn" data-gender="male"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span data-i18n="voiceGenderMale">صوت رجل</span></button>
+    <button type="button" class="voiceGenderBtn" data-gender="female"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"></circle><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><path d="M8 3.5C9 2.5 10.4 2 12 2s3 .5 4 1.5"></path></svg><span data-i18n="voiceGenderFemale">صوت امرأة</span></button>
+  </div>
+  <button type="button" class="btn" id="btnTestVoice" style="margin-top:16px; display:inline-flex; align-items:center; gap:8px;"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg><span data-i18n="testVoiceBtn">تجربة الصوت</span></button>
+  </div></div>
+
+  <div id="pricingSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('pricingSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="pricingSectionTitle">💳 خطط الأسعار</h3><span class="settingsSectionArrow" id="pricingSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="pricingSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+  <div id="pricingWalletRow" style="display:none; align-items:center; gap:8px; padding:10px 4px; font-size: var(--fs-3);">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+    <span data-i18n="pricingWalletLabel">رصيدك من النقاط</span>
+    <b id="pricingWalletValue" style="margin-inline-start:auto; font-size: var(--fs-2);">—</b>
+  </div>
+  <div style="display:flex; flex-direction:column; gap:10px;">
+    <div style="border-inline-start:4px solid #6b7280; border-radius:var(--r-2); padding:10px 14px; background:var(--panel2);">
+      <div style="font-weight: var(--w-bold); font-size: var(--fs-3);" data-i18n="pricingFreeTitle">مجاني</div>
+      <div style="font-size: var(--fs-3); color:var(--muted); margin-top:2px;" data-i18n="pricingFreeDesc">20 رسالة يوميًا + هدية ترحيب 70 نقطة</div>
+    </div>
+    <div style="border-inline-start:4px solid #3b82f6; border-radius:var(--r-2); padding:10px 14px; background:var(--panel2);">
+      <div style="font-weight: var(--w-bold); font-size: var(--fs-3);" data-i18n="pricingBasicTitle">Plus — ‏10$ شهريًا</div>
+      <div style="font-size: var(--fs-3); color:var(--muted); margin-top:2px;" data-i18n="pricingBasicDesc">300 رسالة شهريًا + 60 نقطة هدية كل شهر (فيديو مجاني شهريًا)</div>
+      <button type="button" class="btn" onclick="openCheckout('basic')" style="margin-top:8px; background:#3b82f6; color:#fff; border:none; padding:6px 14px; border-radius:var(--r-2); font-size:12px; cursor:pointer;" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+    </div>
+    <div style="border-inline-start:4px solid #f59e0b; border-radius:var(--r-2); padding:10px 14px; background:var(--panel2);">
+      <div style="font-weight: var(--w-bold); font-size: var(--fs-3);" data-i18n="pricingProTitle">Pro — ‏20$ شهريًا</div>
+      <div style="font-size: var(--fs-3); color:var(--muted); margin-top:2px;" data-i18n="pricingProDesc">رسائل بلا حدود + وكيل عمران + 200 نقطة شهريًا + أولوية سرعة + شارة ذهبية</div>
+      <button type="button" class="btn" onclick="openCheckout('pro')" style="margin-top:8px; background:#f59e0b; color:#fff; border:none; padding:6px 14px; border-radius:var(--r-2); font-size:12px; cursor:pointer;" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+    </div>
+  </div>
+  <div style="margin-top:16px;">
+    <div style="font-weight: var(--w-bold); font-size: var(--fs-3);" data-i18n="pricingPointsTitle">باقات النقاط</div>
+    <div style="font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.6;" data-i18n="pricingPointsDesc">النقاط عملة موحدة — تُصرف على مها الصوتية والفيديو والصور، بدون اشتراك. مها: 10 نقاط/دقيقة • فيديو: 60 • Veo 3: ‏400 • صورة: 10</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;">
+      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(100)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">100</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);">$4.99</span></button>
+      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(300)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">300</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);">$12.99</span></button>
+      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(700)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">700</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);">$24.99</span></button>
+      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(900)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">900</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);">$34.99</span></button>
+    </div>
+  </div>
+  <small class="hint" style="display:block; margin-top:10px;" data-i18n="pricingTestNote">🧪 وضع تجريبي حاليًا — سيتم التفعيل الكامل عند الحصول على الرخصة التجارية</small>
+  <div style="margin-top:10px; display:flex; gap:14px; font-size:12px;">
+    <a href="/terms.html" target="_blank" style="color:var(--accent,#3b82f6); text-decoration:none;" data-i18n="termsLink">📜 الشروط والأحكام</a>
+    <a href="/privacy.html" target="_blank" style="color:var(--accent,#3b82f6); text-decoration:none;" data-i18n="privacyLink">🔒 سياسة الخصوصية</a>
+  </div>
+  </div></div>
+
+  <div id="aboutSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('aboutSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="aboutSectionTitle">ℹ️ عن البرنامج والفيديوهات التعريفية</h3><span class="settingsSectionArrow" id="aboutSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="aboutSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+  <div style="font-size: var(--fs-3); line-height:1.9; color:var(--text); background:var(--panel2); border-radius:var(--r-2); padding:12px 14px;" data-i18n="aboutText">
+    <b>عمران AI Builder</b> هو منصة عربية بالكامل لبناء التطبيقات بالذكاء الاصطناعي، طوّرها فريق عمران AI. يتيح لك التحدث مع الذكاء الاصطناعي بالعربية أو الإنجليزية للحصول فورًا على كود تطبيق كامل، مع محرر كود ومعاينة حيّة جنبًا إلى جنب.<br><br>
+    يدعم البرنامج 9 مزوّدين مختلفين للذكاء الاصطناعي (OpenAI، Gemini، Groq، Claude، OpenRouter، Perplexity، Mistral، DeepSeek، Cohere)، ويمكنك اختيار أكثر من مزوّد في نفس الوقت لطرح سؤال واحد والحصول على إجابات من الجميع للمقارنة بينها.<br><br>
+    يعمل البرنامج كتطبيق PWA قابل للتثبيت على أندرويد وآيفون مثل أي تطبيق عادي، ويدعم المحادثة الصوتية (تحويل الكلام إلى نص والاستماع للردود)، مع نظام حسابات كامل (تسجيل دخول/تسجيل حساب/استرجاع كلمة المرور)، ووضع ضيف يتيح تجربة 20 رسالة مجانية دون تسجيل.<br><br>
+    كل إعدادات المظهر والألوان قابلة للتخصيص بالكامل، ومفاتيح API الخاصة بك تُحفظ في متصفحك فقط ولا تُرسل لأي خادم خارجي — خصوصيتك أولوية.
+  </div>
+
+  <div style="margin-top:14px; display:flex; flex-direction:column; gap:14px;">
+    <div class="lang-videos-ar">
+      <div style="font-weight:700; font-size:13px; margin-bottom:6px;" data-i18n="videoArShortTitle">🎬 فيديو تعريفي عربي (قصير)</div>
+      <video controls preload="none" playsinline style="width:100%; border-radius:var(--r-2); background:#000;" poster="">
+        <source src="https://6tfgxvttzyoiavtu.public.blob.vercel-storage.com/omran_ai_builder_ar_short.mp4" type="video/mp4">
+      </video>
+    </div>
+    <div class="lang-videos-ar">
+      <div style="font-weight:700; font-size:13px; margin-bottom:6px;" data-i18n="videoArLongTitle">🎬 فيديو تعريفي عربي (كامل)</div>
+      <video controls preload="none" playsinline style="width:100%; border-radius:var(--r-2); background:#000;" poster="">
+        <source src="https://6tfgxvttzyoiavtu.public.blob.vercel-storage.com/omran_ai_builder_ar_long.mp4" type="video/mp4">
+      </video>
+    </div>
+    <div class="lang-videos-en">
+      <div style="font-weight:700; font-size:13px; margin-bottom:6px;" data-i18n="videoEnShortTitle">🎬 English intro video (short)</div>
+      <video controls preload="none" playsinline style="width:100%; border-radius:var(--r-2); background:#000;" poster="">
+        <source src="https://6tfgxvttzyoiavtu.public.blob.vercel-storage.com/omran_ai_builder_en_short.mp4" type="video/mp4">
+      </video>
+    </div>
+    <div class="lang-videos-en">
+      <div style="font-weight:700; font-size:13px; margin-bottom:6px;" data-i18n="videoEnLongTitle">🎬 English intro video (full)</div>
+      <video controls preload="none" playsinline style="width:100%; border-radius:var(--r-2); background:#000;" poster="">
+        <source src="https://6tfgxvttzyoiavtu.public.blob.vercel-storage.com/omran_ai_builder_en_long.mp4" type="video/mp4">
+      </video>
+    </div>
+  </div>
+
+  <div style="margin-top:16px;">
+    <div style="font-weight:700; font-size:13px; margin-bottom:8px;" data-i18n="socialTitle">📱 تابعنا على منصات التواصل</div>
+    <div style="display:flex; gap:16px;">
+      <a href="#" title="Instagram" style="text-decoration:none; display:flex; width:38px; height:38px; align-items:center; justify-content:center; border-radius:var(--r-2); background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12 2.2c3.2 0 3.6 0 4.9.07 1.2.06 2 .25 2.6.5.7.28 1.2.6 1.7 1.1.5.5.9 1 1.1 1.7.25.6.44 1.4.5 2.6.06 1.3.07 1.7.07 4.9s0 3.6-.07 4.9c-.06 1.2-.25 2-.5 2.6-.28.7-.6 1.2-1.1 1.7-.5.5-1 .9-1.7 1.1-.6.25-1.4.44-2.6.5-1.3.06-1.7.07-4.9.07s-3.6 0-4.9-.07c-1.2-.06-2-.25-2.6-.5-.7-.28-1.2-.6-1.7-1.1-.5-.5-.9-1-1.1-1.7-.25-.6-.44-1.4-.5-2.6C2.2 15.6 2.2 15.2 2.2 12s0-3.6.07-4.9c.06-1.2.25-2 .5-2.6.28-.7.6-1.2 1.1-1.7.5-.5 1-.9 1.7-1.1.6-.25 1.4-.44 2.6-.5C8.4 2.2 8.8 2.2 12 2.2zm0 1.8c-3.14 0-3.5 0-4.75.07-1 .05-1.6.2-1.98.35-.5.2-.85.42-1.22.8-.38.37-.6.72-.8 1.22-.15.38-.3.98-.35 1.98C2.8 8.5 2.8 8.86 2.8 12s0 3.5.07 4.75c.05 1 .2 1.6.35 1.98.2.5.42.85.8 1.22.37.38.72.6 1.22.8.38.15.98.3 1.98.35 1.25.07 1.61.07 4.75.07s3.5 0 4.75-.07c1-.05 1.6-.2 1.98-.35.5-.2.85-.42 1.22-.8.38-.37.6-.72.8-1.22.15-.38.3-.98.35-1.98.07-1.25.07-1.61.07-4.75s0-3.5-.07-4.75c-.05-1-.2-1.6-.35-1.98-.2-.5-.42-.85-.8-1.22-.37-.38-.72-.6-1.22-.8-.38-.15-.98-.3-1.98-.35C15.5 4 15.14 4 12 4zm0 3.4a4.6 4.6 0 110 9.2 4.6 4.6 0 010-9.2zm0 1.8a2.8 2.8 0 100 5.6 2.8 2.8 0 000-5.6zm4.8-2.2a1.08 1.08 0 110 2.16 1.08 1.08 0 010-2.16z"/></svg>
+      </a>
+      <a href="#" title="X / Twitter" style="text-decoration:none; display:flex; width:38px; height:38px; align-items:center; justify-content:center; border-radius:var(--r-2); background:#000;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M18.9 2H22l-7.6 8.7L23.3 22h-6.9l-5.4-6.9L4.7 22H1.6l8.2-9.3L1 2h7.1l4.9 6.4L18.9 2zm-1.2 18h1.9L7.4 4H5.4l12.3 16z"/></svg>
+      </a>
+      <a href="#" title="TikTok" style="text-decoration:none; display:flex; width:38px; height:38px; align-items:center; justify-content:center; border-radius:var(--r-2); background:#000;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M16.6 2h-3.3v13.5a3 3 0 11-2.1-2.9V9.2a6.1 6.1 0 104.4 5.9V8.5a7.8 7.8 0 004.6 1.5V6.8a4.6 4.6 0 01-3.6-4.8z"/></svg>
+      </a>
+      <a href="#" title="YouTube" style="text-decoration:none; display:flex; width:38px; height:38px; align-items:center; justify-content:center; border-radius:var(--r-2); background:#FF0000;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M23.5 6.2a3 3 0 00-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 00.5 6.2 31 31 0 000 12a31 31 0 00.5 5.8 3 3 0 002.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 002.1-2.1A31 31 0 0024 12a31 31 0 00-.5-5.8zM9.6 15.5v-7l6.3 3.5-6.3 3.5z"/></svg>
+      </a>
+      <a href="#" title="WhatsApp" style="text-decoration:none; display:flex; width:38px; height:38px; align-items:center; justify-content:center; border-radius:var(--r-2); background:#25D366;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M17.5 14.4c-.3-.1-1.7-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6.1-.3-.1-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.6-2.1-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.1.2-.3.3-.5.1-.2 0-.4 0-.5C10 9 9.4 7.6 9.2 7c-.2-.5-.4-.5-.6-.5h-.5c-.2 0-.5.1-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3 4.8 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.7-.7 2-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.5-.3zM12 2a10 10 0 00-8.6 15L2 22l5.1-1.3A10 10 0 1012 2zm0 18.3c-1.6 0-3.2-.4-4.5-1.2l-.3-.2-3 .8.8-3-.2-.3A8.3 8.3 0 1120.3 12 8.3 8.3 0 0112 20.3z"/></svg>
+      </a>
+    </div>
+  </div>
+  </div></div>
+
+
+  <div id="adminSectionWrap" style="display:none;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('adminSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;">🛠️ لوحة التحكم (خاص بالمالك)</h3><span class="settingsSectionArrow" id="adminSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
+    <div id="adminSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+      <button type="button" id="adminStatsRefreshBtn" onclick="loadAdminStats()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:13px; cursor:pointer; margin-bottom:10px;">🔄 تحديث الإحصائيات</button>
+      <div id="adminStatsBox" style="font-size: var(--fs-3); line-height:1.9; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; white-space:pre-wrap;">اضغط "تحديث" لعرض الإحصائيات...</div>
+      <div style="margin-top:14px; font-size:13px; font-weight:700; opacity:.8;">👤 إدارة المستخدمين (حظر / حذف / رسالة)</div>
+      <div id="adminUsersTable" style="margin-top:8px; background:var(--panel2); border-radius:var(--r-2); padding:6px 10px; max-height:320px; overflow-y:auto;"></div>
+
+
+      <div style="margin-top:18px; font-size:13px; font-weight:700; opacity:.8;">🩺 فحص النظام</div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button type="button" id="adminHealthBtn" onclick="runHealthCheck()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">🩺 افحص الآن</button>
+        <button type="button" id="adminHealthClearBtn" onclick="clearClientErrors()" style="flex:1; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">🧹 مسح سجل الأخطاء</button>
+      </div>
+      <div id="adminHealthBox" style="margin-top:10px; font-size:12.5px; line-height:1.9; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; white-space:pre-wrap;">اضغط "افحص الآن" لتشغيل الفحص...</div>
+    </div>
+  </div>
+
+  <button type="button" id="settingsLogoutBtn" style="display:none !important; width:100%; margin-top:18px; padding:12px; border-radius:var(--r-2); border:none; background:none; color:#fff; font-weight:700; font-size:14px; cursor:pointer;">🔑 <span id="settingsLogoutBtnLabel" data-i18n="loginAction">دخول</span></button>
+
+  <div style="height:24px;"></div>
+
+  <div id="checkoutModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:var(--panel); border-radius:var(--r-3); padding:20px; width:min(420px, 92vw); max-height:88vh; overflow-y:auto; position:relative;">
+      <button type="button" onclick="closeCheckout()" style="position:absolute; inset-inline-end:12px; top:12px; background:none; border:none; font-size:20px; cursor:pointer; color:var(--text);">✕</button>
+      <h3 style="margin:0 0 4px;" data-i18n="checkoutTitle">إتمام الاشتراك</h3>
+      <div id="checkoutPlanLabel" style="font-size: var(--fs-3); color:var(--muted); margin-bottom:14px;"></div>
+      <span style="display:inline-block; background:#eab308; color:#000; font-size:11px; font-weight:700; padding:2px 8px; border-radius:var(--r-1); margin-bottom:12px;" data-i18n="checkoutTestBadge">🧪 وضع تجريبي (Test Mode)</span>
+
+      <div style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">
+        <button type="button" onclick="startStripeCheckout()" style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--panel2); cursor:pointer; font-size: var(--fs-3); color:var(--text);">
+          <span style="font-size:20px;">💳</span>
+          <span data-i18n="checkoutCardOption">فيزا / ماستركارد</span>
+        </button>
+
+        <div id="paypalButtonContainer" style="min-height:45px;"></div>
+        <button type="button" id="paypalFallbackBtn" onclick="startPaypalCheckout()" style="display:none; align-items:center; gap:10px; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--panel2); cursor:pointer; font-size: var(--fs-3); color:var(--text);">
+          <span style="font-size:20px;">🅿️</span>
+          <span>PayPal</span>
+        </button>
+
+        <button type="button" disabled style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); opacity:.5; cursor:not-allowed; font-size: var(--fs-3); color:var(--text);">
+          <span style="font-size:20px;">📶</span>
+          <span data-i18n="checkoutTelecomOption">فاتورة الاتصالات (اتصالات/du)</span>
+          <span style="margin-inline-start:auto; font-size: var(--fs-5);" data-i18n="checkoutComingSoon">قريبًا</span>
+        </button>
+      </div>
+      <div id="checkoutStatusMsg" style="margin-top:12px; font-size: var(--fs-3); text-align:center;"></div>
+    </div>
+  </div>
+
+  <div class="dlg-actions">
+    <button class="btn" id="btnCancelSettings" style="background:none; border:none; box-shadow:none;">✖️ <span data-i18n="cancel">إلغاء</span></button>
+    <button class="btn primary" id="btnSaveSettings" style="background:none; border:none; box-shadow:none; color:var(--accent);">💾 <span data-i18n="save">حفظ</span></button>
+  </div>
+</dialog>
+
+<dialog id="clockDialog" style="width:480px;">
+  <h3 style="margin-top:0;" data-i18n="clockDialogTitle">🕌🕐 التقويم والوقت</h3>
+
+  <div id="clockMainBox" style="border:1px solid var(--border); border-radius:var(--r-3); padding:16px; margin-bottom:16px; background:var(--panel2); text-align:center;">
+    <div id="clockGregorianTime" style="font-size:32px; font-weight:700; letter-spacing:1px; direction:ltr;">--:--:--</div>
+    <div id="clockGregorianDate" style="font-size: var(--fs-3); color:var(--muted); margin-top:6px;">--</div>
+    <div style="height:1px; background:var(--border); margin:12px 0;"></div>
+    <div id="clockHijriDate" style="font-size: var(--fs-2); font-weight: var(--w-bold);">--</div>
+    <div style="font-size: var(--fs-5); color:var(--muted); margin-top:2px;" data-i18n="clockLocalTZ">توقيتك المحلي</div>
+  </div>
+
+  <label data-i18n="clockSelectCountry">اختر الدولة / المدينة</label>
+  <select id="clockTZSelect"></select>
+
+  <div id="clockSelectedBox" style="border:1px solid var(--border); border-radius:var(--r-3); padding:14px; margin:10px 0 16px; background:var(--panel2); text-align:center;">
+    <div id="clockSelectedTime" style="font-size:26px; font-weight:700; direction:ltr;">--:--:--</div>
+    <div id="clockSelectedMeta" style="font-size:12px; color:var(--muted); margin-top:4px;">--</div>
+  </div>
+
+  <label data-i18n="clockWorldLabel">🌍 الساعة العالمية</label>
+  <div id="clockWorldStrip" style="display:flex; flex-direction:column; gap:8px; margin-top:6px;"></div>
+
+  <div class="dlg-actions">
+    <button class="btn" id="btnCloseClock">✖️ <span data-i18n="cancel">إلغاء</span></button>
+    <button class="btn primary" id="btnSaveClock">💾 <span data-i18n="save">حفظ</span></button>
+  </div>
+</dialog>
+
+<!-- Templates gallery modal -->
+<dialog id="templatesModal" style="border:1px solid #262b36; border-radius:var(--r-4); background:#000000; color:#eef0f6; max-width:920px; width:92vw; max-height:85vh; padding:0;">
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:calc(18px + env(safe-area-inset-top, 0px)) 22px 18px; border-bottom:1px solid #262b36;">
+    <h3 style="margin:0; font-size:18px;" data-i18n="templatesModalTitle">🧩 اختر قالبًا جاهزًا</h3>
+    <button type="button" id="btnCloseTemplates" style="width:38px; height:38px; min-width:38px; border-radius:50%; background:#fff; color:#12141d; border:none; font-size:18px; font-weight:700; cursor:pointer; box-shadow:var(--sh-1); display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
+  </div>
+  <div id="templatesGrid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px; padding:22px; overflow-y:auto; max-height:calc(85vh - 60px);"></div>
+  <div id="templatePreviewWrap" style="display:none; position:relative; height:calc(85vh - 60px);">
+    <button type="button" id="btnClosePreviewTpl" style="position:absolute; top:calc(12px + env(safe-area-inset-top, 0px)); inset-inline-start:12px; z-index:5; width:38px; height:38px; border-radius:50%; background:#fff; color:#12141d; border:none; font-size:18px; font-weight:700; cursor:pointer; box-shadow:var(--sh-1); display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
+    <iframe id="templatePreviewFrame" style="width:100%; height:100%; border:0; background:#fff;"></iframe>
+    <div style="position:absolute; bottom:0; inset-inline:0; padding:14px 22px; background:linear-gradient(0deg,#12141d,transparent); display:flex; justify-content:flex-end;">
+      <button type="button" class="btn primary" id="btnUseThisTemplate" data-i18n="useThisTemplate">✅ استخدام هذا القالب</button>
+    </div>
+  </div>
+</dialog>`;
+  if (document.readyState === 'loading') { document.write(H); return; }
+  var d = document.createElement('div'); d.innerHTML = H;
+  var f = document.createDocumentFragment();
+  while (d.firstChild) f.appendChild(d.firstChild);
+  (S && S.parentNode ? S.parentNode : document.body).insertBefore(f, S || null);
+})();
