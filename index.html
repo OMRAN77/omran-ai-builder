@@ -96,6 +96,14 @@ window.__swallow = window.__swallow || function (err, ctx) {
     --r-3:14px;     /* بطاقة / لوح */
     --r-4:20px;     /* نافذة / سطح كبير */
     --r-pill:999px; /* حبّة دواء */
+    /* ===== سلّم العمق (v421) — مصدر واحد لكل ظلّ ===== */
+    --sh-1:0 2px 10px rgba(0,0,0,.45);      /* شارة / عنصر صغير */
+    --sh-2:0 8px 24px rgba(0,0,0,.45);      /* بطاقة / قائمة منسدلة */
+    --sh-3:0 10px 40px rgba(0,0,0,.5);      /* لوح / نافذة */
+    --sh-4:0 10px 50px rgba(0,0,0,.55);     /* نافذة كبيرة فوق طبقة تعتيم */
+    --sh-gold:0 8px 22px -12px rgba(var(--accent-rgb),.55); /* توهّج ذهبي عند المرور */
+    --ease:cubic-bezier(.22,.61,.36,1);
+    --t-fast:.14s; --t-mid:.26s;
     --bg:#000000; --bg2:#000000; --panel:#000000; --panel2:#000000; --border:rgba(255,255,255,.08);
     --text:#eef0f6; --muted:#9a9a9e; --accent:#d4af37; --accent-rgb:212,175,55; --accent-light:#e8c766; --accent2:#e8c766;
     --grad: linear-gradient(135deg,var(--accent) 0%, var(--accent-light) 100%);
@@ -212,7 +220,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
   #histItemMenu{
     position:fixed; z-index:10000; display:none; flex-direction:column; gap:1px;
     background:var(--panel,#151529); border:1px solid var(--border,#2a2f3d); border-radius:var(--r-2);
-    box-shadow:0 8px 24px rgba(0,0,0,.45); padding:4px; min-width:130px;
+    box-shadow:var(--sh-2); padding:4px; min-width:130px;
   }
   #histItemMenu.show{display:flex;}
   #histItemMenu button{
@@ -663,7 +671,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
   html.mobile-ui main{position:relative;}
   html.mobile-ui #sidebar, html.mobile-ui #workarea{
     position:fixed; top:0; bottom:0; left:0; width:92vw; max-width:420px; height:100%;
-    z-index:60; transition:transform .25s ease; box-shadow:0 10px 50px rgba(0,0,0,.55);
+    z-index:60; transition:transform .25s ease; box-shadow:var(--sh-4);
     background:var(--bg2); opacity:1;
   }
   html.mobile-ui #sidebar > *, html.mobile-ui #workarea > *{ position:relative; z-index:1; }
@@ -736,7 +744,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
   .msgActionBar button:hover{ color:var(--accent2,#e8c766); }
   .msgActionBar button.msgThumbActive{ color:var(--accent2,#e8c766); }
   .msgActionBar button.msgThumbDownActive{ color:#ef4444; }
-  .msgMoreMenu{ position:absolute; z-index:9999; background:var(--panel,#1c2230); border:1px solid var(--border,rgba(255,255,255,.12)); border-radius:var(--r-2); box-shadow:0 8px 24px rgba(0,0,0,.4); padding:6px; min-width:170px; font-size: var(--fs-3); }
+  .msgMoreMenu{ position:absolute; z-index:9999; background:var(--panel,#1c2230); border:1px solid var(--border,rgba(255,255,255,.12)); border-radius:var(--r-2); box-shadow:var(--sh-2); padding:6px; min-width:170px; font-size: var(--fs-3); }
   .msgMoreMenu button{ display:flex; width:100%; text-align:start; background:none; border:none; padding:9px 10px; border-radius:var(--r-1); cursor:pointer; color:var(--text); font-size: var(--fs-3); }
   .msgMoreMenu button:hover{ background:var(--panel2); }
 @keyframes omranPulse{0%,100%{opacity:.6}50%{opacity:1}}
@@ -954,7 +962,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 </div>
 
 <div id="authOverlay" style="position:fixed; inset:0; z-index:9999; background:var(--bg,#111); display:flex; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:380px; width:100%; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:0 10px 40px rgba(0,0,0,0.5); position:relative;">
+  <div style="max-width:380px; width:100%; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3); position:relative;">
     <h2 style="margin-top:0; text-align:center;" data-i18n="authTitle">🔐 مرحبًا بك</h2>
     <p style="text-align:center; font-size: var(--fs-3); color:var(--muted); margin-top:-8px;" data-i18n="authSubtitle">سجّل الدخول أو أنشئ حسابًا جديدًا للمتابعة</p>
     <div style="display:flex; gap:8px; margin:14px 0;">
@@ -1007,7 +1015,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 </div>
 
 <div id="authRecoveryModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:420px; width:100%; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:0 10px 40px rgba(0,0,0,0.5); text-align:center;">
+  <div style="max-width:420px; width:100%; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3); text-align:center;">
     <h3 style="margin-top:0;" data-i18n="authRecoveryModalTitle">🔑 احتفظ برمز الاسترجاع هذا</h3>
     <p style="font-size: var(--fs-3); color:var(--muted);" data-i18n="authRecoveryModalDesc">هذا هو الرمز الوحيد الذي يمكنك استخدامه لاستعادة حسابك إذا نسيت كلمة المرور. احفظه في مكان آمن — لن يظهر مرة أخرى.</p>
     <div id="authRecoveryCodeDisplay" style="font-family:monospace; font-size:18px; direction:ltr; background:var(--bg,#111); border-radius:var(--r-2); padding:14px; margin:14px 0; letter-spacing:1px; word-break:break-all;"></div>
@@ -1029,7 +1037,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 </div>
 
 <div id="videoMakerModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
       <h3 style="margin:0;" data-i18n="videoMakerModalTitle">🎬 صانع الفيديو بالذكاء الاصطناعي</h3>
       <button type="button" class="btn iconBtn" id="videoMakerCloseBtn" style="padding:4px 10px;">✕</button>
@@ -1135,7 +1143,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 </div>
 
 <div id="designAiModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
       <h3 style="margin:0;" data-i18n="designAiModalTitle">🏠 ديكور بالذكاء الاصطناعي</h3>
       <button type="button" class="btn iconBtn" id="designAiCloseBtn" style="padding:4px 10px;">✕</button>
@@ -1478,7 +1486,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 </script>
 
 <div id="portraitStyleModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
       <h3 style="margin:0;" data-i18n="portraitModalTitle">🎨 أنماط الصور الشخصية</h3>
       <button type="button" class="btn iconBtn" id="portraitStyleCloseBtn" style="padding:4px 10px;">✕</button>
@@ -1643,7 +1651,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 </div>
 
 <div id="fashionAiModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
       <h3 style="margin:0;" data-i18n="fashionAiModalTitle">👗 تصميم أزياء بالذكاء الاصطناعي</h3>
       <button type="button" class="btn iconBtn" id="fashionAiCloseBtn" style="padding:4px 10px;">✕</button>
@@ -1785,7 +1793,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 </div>
 
 <div id="studioAiModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:460px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+  <div style="max-width:460px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
       <h3 style="margin:0;" data-i18n="studioAiModalTitle">💄 ستايل الذكاء الاصطناعي</h3>
       <button type="button" class="btn iconBtn" id="studioAiCloseBtn" style="padding:4px 10px;">✕</button>
@@ -1928,7 +1936,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 </div>
 
 <div id="religionModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
       <h3 style="margin:0;" data-i18n="religionModalTitle">🕌 التفسير الديني</h3>
       <button type="button" class="btn iconBtn" id="religionCloseBtn" style="padding:4px 10px;">✕</button>
@@ -1957,7 +1965,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 </div>
 
 <div id="emailAssistModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:560px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+  <div style="max-width:560px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
       <h3 style="margin:0;" id="emailAssistHeaderTitle">📧 مساعد البريد الذكي</h3>
       <button type="button" class="btn iconBtn" id="emailAssistCloseBtn" style="padding:4px 10px;">✕</button>
@@ -1983,7 +1991,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 
 
 <div id="stocksModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:560px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+  <div style="max-width:560px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
     <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px;">
       <h3 style="margin:0; font-size:15px; line-height:1.3;" data-i18n="stocksTitle">📈 سوق الأسهم العالمي</h3>
       <div style="display:flex; gap:6px;">
@@ -2096,7 +2104,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 </div>
 
 <div id="constructionModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
       <h3 style="margin:0;" data-i18n="constructionTitle">🏗️ تصاميم المقاولات والبناء</h3>
       <button type="button" class="btn iconBtn" id="constructionCloseBtn" style="padding:4px 10px;">✕</button>
@@ -2248,7 +2256,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 </div>
 
 <div id="shareModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:440px; width:100%; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+  <div style="max-width:440px; width:100%; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
       <h3 style="margin:0;" data-i18n="shareModalTitle">🔗 مشاركة المشروع</h3>
       <button type="button" class="btn iconBtn" id="shareModalCloseBtn" style="padding:4px 10px;">✕</button>
@@ -2292,7 +2300,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
     <button class="btn" id="btnHeaderLogin" style="display:none; background:none; border:none; border-radius:var(--r-2); font-weight: var(--w-bold); font-size:12.5px; padding:7px 12px; color:var(--accent);"><span data-i18n="loginAction">تسجيل الدخول</span></button>
     <div id="headerUserWrap" style="position:relative; display:inline-block;">
       <button class="btn" id="btnHeaderUser" style="display:none; align-items:center; gap:6px; background:none; border:none; color:var(--accent); border-radius:var(--r-2); font-weight: var(--w-bold); font-size:12.5px; padding:5px 12px;"><img id="headerUserAvatarImg" alt="" style="display:none; width:22px; height:22px; border-radius:50%; object-fit:cover;"><span id="headerUserEmoji">👤</span><span id="headerUserName"></span></button>
-      <div id="headerUserDropdown" style="display:none; position:absolute; top:calc(100% + 6px); right:0; left:auto; background:#000000; border:1px solid rgba(212,175,55,.45); border-radius:var(--r-2); padding:4px; z-index:9999; min-width:auto; box-shadow:0 8px 24px rgba(0,0,0,.5);">
+      <div id="headerUserDropdown" style="display:none; position:absolute; top:calc(100% + 6px); right:0; left:auto; background:#000000; border:1px solid rgba(212,175,55,.45); border-radius:var(--r-2); padding:4px; z-index:9999; min-width:auto; box-shadow:var(--sh-2);">
         <button id="btnHeaderUserLogout" style="display:block; width:100%; background:none; border:none; color:var(--accent); font-weight: var(--w-bold); font-size:12.5px; padding:7px 12px; border-radius:var(--r-2); cursor:pointer; text-align:center; white-space:nowrap;" data-i18n="logoutTitle">تسجيل الخروج</button>
       </div>
     </div>
@@ -3091,11 +3099,11 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
 <dialog id="templatesModal" style="border:1px solid #262b36; border-radius:var(--r-4); background:#000000; color:#eef0f6; max-width:920px; width:92vw; max-height:85vh; padding:0;">
   <div style="display:flex; align-items:center; justify-content:space-between; padding:calc(18px + env(safe-area-inset-top, 0px)) 22px 18px; border-bottom:1px solid #262b36;">
     <h3 style="margin:0; font-size:18px;" data-i18n="templatesModalTitle">🧩 اختر قالبًا جاهزًا</h3>
-    <button type="button" id="btnCloseTemplates" style="width:38px; height:38px; min-width:38px; border-radius:50%; background:#fff; color:#12141d; border:none; font-size:18px; font-weight:700; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
+    <button type="button" id="btnCloseTemplates" style="width:38px; height:38px; min-width:38px; border-radius:50%; background:#fff; color:#12141d; border:none; font-size:18px; font-weight:700; cursor:pointer; box-shadow:var(--sh-1); display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
   </div>
   <div id="templatesGrid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:14px; padding:22px; overflow-y:auto; max-height:calc(85vh - 60px);"></div>
   <div id="templatePreviewWrap" style="display:none; position:relative; height:calc(85vh - 60px);">
-    <button type="button" id="btnClosePreviewTpl" style="position:absolute; top:calc(12px + env(safe-area-inset-top, 0px)); inset-inline-start:12px; z-index:5; width:38px; height:38px; border-radius:50%; background:#fff; color:#12141d; border:none; font-size:18px; font-weight:700; cursor:pointer; box-shadow:0 2px 10px rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
+    <button type="button" id="btnClosePreviewTpl" style="position:absolute; top:calc(12px + env(safe-area-inset-top, 0px)); inset-inline-start:12px; z-index:5; width:38px; height:38px; border-radius:50%; background:#fff; color:#12141d; border:none; font-size:18px; font-weight:700; cursor:pointer; box-shadow:var(--sh-1); display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
     <iframe id="templatePreviewFrame" style="width:100%; height:100%; border:0; background:#fff;"></iframe>
     <div style="position:absolute; bottom:0; inset-inline:0; padding:14px 22px; background:linear-gradient(0deg,#12141d,transparent); display:flex; justify-content:flex-end;">
       <button type="button" class="btn primary" id="btnUseThisTemplate" data-i18n="useThisTemplate">✅ استخدام هذا القالب</button>
@@ -3201,7 +3209,7 @@ if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded'
 #eduIntroCard.show{display:block;animation:eduUp .35s ease;}
 @keyframes eduUp{from{transform:translateY(16px);opacity:0;}to{transform:none;opacity:1;}}
 #eduIntroCard p{margin:0 0 10px;font-size: var(--fs-3);line-height:1.7;}
-#eduChatHint{position:fixed;bottom:110px;inset-inline:14px;margin:auto;max-width:380px;z-index:10035;background:rgba(35,27,63,.96);border:1px solid rgba(232,199,102,.4);border-radius:var(--r-3);padding:10px 14px;font-size:12.5px;display:none;box-shadow:0 8px 26px rgba(0,0,0,.45);}
+#eduChatHint{position:fixed;bottom:110px;inset-inline:14px;margin:auto;max-width:380px;z-index:10035;background:rgba(35,27,63,.96);border:1px solid rgba(232,199,102,.4);border-radius:var(--r-3);padding:10px 14px;font-size:12.5px;display:none;box-shadow:var(--sh-2);}
 #eduChatHint.show{display:flex;align-items:center;gap:10px;animation:eduUp .3s ease;}
 #eduChatHint button{flex:0 0 auto;}
 @media (max-width:640px){#eduHubModal .eduWrap{max-width:100%;border:none;}}
@@ -4749,6 +4757,47 @@ html:not(.mobile-ui) #sidebar,html:not(.mobile-ui) #chatcol{border-image:linear-
 html:not(.mobile-ui) #eduIntroCard,html.mobile-ui #eduIntroCard{background:linear-gradient(160deg,rgba(22,19,13,.95),rgba(8,7,5,.97))!important;border:1px solid rgba(212,175,55,.3)!important;box-shadow:0 12px 34px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.05)!important;backdrop-filter:blur(10px)}
 /* 9) شعرة أسفل الترويسة */
 header{box-shadow:0 1px 0 rgba(212,175,55,.13)}
+
+/* ════════ v421 — ٤ لمسات ديكور · كمبيوتر فقط ════════ */
+/* ① عمق: ظلّ من السلّم + شعرة ضوء داخلية أعلى السطح */
+html:not(.mobile-ui) .omToolCard:hover{box-shadow:var(--sh-2),0 0 0 1px rgba(212,175,55,.22),inset 0 1px 0 rgba(255,255,255,.07)!important}
+html:not(.mobile-ui) #eduIntroCard{box-shadow:var(--sh-2),inset 0 1px 0 rgba(212,175,55,.09)!important}
+html:not(.mobile-ui) #omranNewChatBtn:hover{box-shadow:var(--sh-gold),inset 0 1px 0 rgba(255,255,255,.07)!important}
+html:not(.mobile-ui) #stockTickerToggle{box-shadow:var(--sh-1)!important}
+
+/* ② خلفية: هالة ذهبية علوية + حُبيبات فيلم — ساكنة، لا تعترض النقر */
+html:not(.mobile-ui) body::before{
+  content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+  background:radial-gradient(1180px 640px at 50% -14%,rgba(212,175,55,.085),transparent 62%),
+             radial-gradient(820px 560px at 108% 112%,rgba(212,175,55,.05),transparent 66%);
+}
+html:not(.mobile-ui) body::after{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.03;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");background-size:120px 120px;
+}
+
+/* ③ حياة عند اللمس: انتقال موحّد + ضغطة محسوسة (بلا رفعٍ جديد) */
+html:not(.mobile-ui) .btn,html:not(.mobile-ui) .omNavBtn,html:not(.mobile-ui) #stockTickerToggle{
+  transition:box-shadow var(--t-mid) var(--ease),border-color var(--t-mid) var(--ease),
+             background-color var(--t-mid) var(--ease),transform var(--t-fast) var(--ease),
+             filter var(--t-mid) var(--ease),color var(--t-mid) var(--ease);
+}
+html:not(.mobile-ui) .btn:not(:disabled):not(#btnSend):not(#btnMaha):active{transform:scale(.972)}
+html:not(.mobile-ui) .omToolCard:active{transform:translateY(-1px) scale(.988)}
+html:not(.mobile-ui) .omNavBtn:hover{filter:brightness(1.14)}
+html:not(.mobile-ui) #stockTickerToggle:hover{background:rgba(212,175,55,.16)!important;border-color:rgba(212,175,55,.55)!important;box-shadow:var(--sh-gold)!important}
+
+/* ④ تفاصيل */
+html:not(.mobile-ui) ::selection{background:rgba(212,175,55,.3);color:#fff}
+html:not(.mobile-ui) :focus-visible{outline:2px solid rgba(212,175,55,.6);outline-offset:2px}
+html:not(.mobile-ui) ::-webkit-scrollbar-thumb{background:linear-gradient(180deg,rgba(212,175,55,.3),rgba(212,175,55,.14));border-radius:var(--r-pill)}
+html:not(.mobile-ui) ::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,rgba(212,175,55,.55),rgba(212,175,55,.28))}
+html:not(.mobile-ui) hr{border:none;height:1px;background:linear-gradient(90deg,transparent,rgba(212,175,55,.28),transparent)}
+@media (prefers-reduced-motion:reduce){
+  html:not(.mobile-ui) *,html:not(.mobile-ui) *::before,html:not(.mobile-ui) *::after{
+    animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;
+  }
+}
 </style>
 </body>
 </html>
