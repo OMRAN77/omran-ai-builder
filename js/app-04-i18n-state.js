@@ -248,7 +248,7 @@ if(authLangArInit) authLangArInit.onclick = () => setLang('ar');
 if(authLangEnInit) authLangEnInit.onclick = () => setLang('en');
 
 let state = {
-  projects: JSON.parse(localStorage.getItem('aiapp_projects') || '[]'),
+  projects: safeParseLS('aiapp_projects', []),
   currentId: null,
 };
 

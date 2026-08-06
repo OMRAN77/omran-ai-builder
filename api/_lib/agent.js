@@ -4,6 +4,7 @@
 //   {status:"..."} step updates, {delta:"..."} text chunks, {done:true} end.
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
 const { logError } = require('./log-error.js');
+const { safeParse } = require('./safe-parse.js');
 
 const TOOLS = [
   {
@@ -331,7 +332,7 @@ module.exports = async (req, res) => {
   if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
 
   let body = req.body;
-  if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
+  if (!body || typeof body === 'string') body = safeParse(body, {}, 'agent:body');
   const { messages, token, guestId, currentCode, projId } = body;
 
   // استئناف: قراءة دفتر آخر تشغيل — بلا حصّة ولا بثّ، ولصاحب الدفتر وحده.

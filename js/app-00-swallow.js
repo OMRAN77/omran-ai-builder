@@ -56,3 +56,21 @@
     }
   };
 })();
+
+/* safeParse/safeParseLS: قيمة تالفة واحدة في localStorage كانت تكفي لرمي
+ * استثناء في المستوى الأعلى للحزمة فتموت كل الملفّات بعده. هنا يُرجَع
+ * البديل، ويُسجَّل الفشل، ويُنظَّف المفتاح التالف فلا يتكرّر كل إقلاع. */
+function safeParse(raw, fallback, scope){
+  if(raw === null || raw === undefined || raw === '') return fallback;
+  try{ var v = JSON.parse(raw); return (v === null || v === undefined) ? fallback : v; }
+  catch(e){ window.__swallow(e, 'parse:' + (scope || '?')); return fallback; }
+}
+function safeParseLS(key, fallback){
+  var raw = null;
+  try{ raw = localStorage.getItem(key); }catch(e){ window.__swallow(e, 'parse:read:' + key); return fallback; }
+  var v = safeParse(raw, undefined, 'ls:' + key);
+  if(v !== undefined) return v;
+  if(raw !== null && raw !== ''){ try{ localStorage.removeItem(key); }catch(e){ window.__swallow(e, 'parse:purge:' + key); } }
+  return fallback;
+}
+window.safeParse = safeParse; window.safeParseLS = safeParseLS;
