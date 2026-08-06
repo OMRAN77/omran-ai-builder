@@ -1,4 +1,9 @@
 I18N['ur'] = {
+    ncNewChatLabel: "نئی چیٹ ✨",
+    sbProjectsTitle: "پراجیکٹس",
+    sbNewProject: "نیا پراجیکٹ",
+    sbProjSearch: "پراجیکٹ تلاش کریں",
+    sbDeleteAll: "سب حذف کریں",
     pricingSectionTitle: 'پلانز اور پوائنٹس',
     pricingFreeTitle: 'مفت',
     pricingFreeDesc: 'روزانہ 20 پیغامات + 70 پوائنٹس خوش آمدید تحفہ',

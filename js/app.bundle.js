@@ -168,7 +168,7 @@ const $ = s => document.querySelector(s);
 
   function curT(){
     const lang = localStorage.getItem('aiapp_lang') || 'ar';
-    return I18N[lang] || I18N.ar;
+    return window.__i18nDict ? window.__i18nDict(lang) : (I18N[lang] || I18N.ar);
   }
 
   function setMode(m){
@@ -3173,6 +3173,21 @@ Style: refined and natural — like a warm, articulate expert. Vary your languag
     diffBtn: "Differences",
   }
 };window.I18N = I18N;
+/* v424: أساس الاحتياط للّغات. سبعة ملفّات لغة ناقصة (٣٠ مفتاحًا من ٧٩٦) كانت
+   تُظهر العربية لمن لا يقرأها. الإنجليزية أساسٌ أصدق، ولغة الملفّ تبقى فوقه.
+   العربية والإنجليزية تُعادان كما هما — لا دمج ولا كلفة على الجمهور الأوّل. */
+var __i18nDictCache = {};
+window.__i18nDict = function(lg){
+  var own = I18N[lg];
+  if(lg === 'ar' || lg === 'en') return own || I18N.en || I18N.ar || {};
+  var base = I18N.en || I18N.ar || {};
+  if(!own) return base;
+  var c = __i18nDictCache[lg];
+  if(c && c.src === own) return c.dict;
+  var merged = Object.assign({}, base, own);
+  __i18nDictCache[lg] = { src: own, dict: merged };
+  return merged;
+};
 const I18N_LAZY = ['fr','hi','ur','bn','ne','id','fil','tr','zh','ru','es','ml'];
 const I18N_LOADING = {};
 function loadLangFile(lg){
@@ -3218,15 +3233,18 @@ let lang = localStorage.getItem('aiapp_lang') || (function(){
 function t(key){
   const v = I18N[lang] ? I18N[lang][key] : undefined;
   if (v !== undefined) return v;
-  const fb = I18N.ar[key];
-  return fb !== undefined ? fb : (I18N.en ? I18N.en[key] : key) ?? key;
+  // v424: الإنجليزية قبل العربية — الناقص كان يخرج عربيًّا في واجهة صينية
+  const vEn = I18N.en ? I18N.en[key] : undefined;
+  if (vEn !== undefined) return vEn;
+  const fb = I18N.ar ? I18N.ar[key] : undefined;
+  return fb !== undefined ? fb : key;
 }
 
 function applyLanguage(){
   if(!I18N[lang] && I18N_LAZY.indexOf(lang) >= 0){
     loadLangFile(lang).then(function(){ if(I18N[lang]) { applyLanguage(); try{ renderAll(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#4"); } } });
   }
-  const dict = I18N[lang] || I18N.en || I18N.ar;
+  const dict = window.__i18nDict ? window.__i18nDict(lang) : (I18N[lang] || I18N.en || I18N.ar);
   try{ if(window.__syncBrandTitle) window.__syncBrandTitle(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#5"); }
   document.documentElement.lang = lang;
   document.documentElement.dir = dict.dir;
@@ -15737,7 +15755,7 @@ function openShareModal(project){
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
   function lang7(){ return (typeof currentLang === 'function') ? currentLang() : (localStorage.getItem('aiapp_lang') || 'ar'); }
   function t(key){
-    const dict = (typeof I18N !== 'undefined') ? I18N[lang7()] : null;
+    const dict = (typeof window.__i18nDict === 'function') ? window.__i18nDict(lang7()) : ((typeof I18N !== 'undefined') ? I18N[lang7()] : null);
     return (dict && dict[key]) || key;
   }
   function setStatus(text){
@@ -17113,7 +17131,7 @@ function openShareModal(project){
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
   function lang7(){ return (typeof currentLang === 'function') ? currentLang() : (localStorage.getItem('aiapp_lang') || 'ar'); }
   function t2(key){
-    const dict = (typeof I18N !== 'undefined') ? I18N[lang7()] : null;
+    const dict = (typeof window.__i18nDict === 'function') ? window.__i18nDict(lang7()) : ((typeof I18N !== 'undefined') ? I18N[lang7()] : null);
     return (dict && dict[key]) || key;
   }
 

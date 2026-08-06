@@ -1,4 +1,9 @@
 I18N['ne'] = {
+    ncNewChatLabel: "नयाँ च्याट ✨",
+    sbProjectsTitle: "परियोजनाहरू",
+    sbNewProject: "नयाँ परियोजना",
+    sbProjSearch: "परियोजना खोज्नुहोस्",
+    sbDeleteAll: "सबै मेटाउनुहोस्",
     pricingSectionTitle: 'योजना र अंक',
     pricingFreeTitle: 'निःशुल्क',
     pricingFreeDesc: 'प्रतिदिन २० सन्देश + ७० अंक स्वागत उपहार',

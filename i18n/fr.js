@@ -1,4 +1,9 @@
 I18N['fr'] = {
+    ncNewChatLabel: "Nouvelle discussion ✨",
+    sbProjectsTitle: "Projets",
+    sbNewProject: "Nouveau projet",
+    sbProjSearch: "Rechercher un projet",
+    sbDeleteAll: "Tout supprimer",
     pricingSectionTitle: 'Forfaits et points',
     pricingFreeTitle: 'Gratuit',
     pricingFreeDesc: '20 messages/jour + cadeau de bienvenue de 70 points',

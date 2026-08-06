@@ -1,4 +1,9 @@
 I18N['bn'] = {
+    ncNewChatLabel: "নতুন চ্যাট ✨",
+    sbProjectsTitle: "প্রকল্প",
+    sbNewProject: "নতুন প্রকল্প",
+    sbProjSearch: "প্রকল্প খুঁজুন",
+    sbDeleteAll: "সব মুছুন",
     pricingSectionTitle: 'প্ল্যান ও পয়েন্ট',
     pricingFreeTitle: 'ফ্রি',
     pricingFreeDesc: 'প্রতিদিন ২০টি বার্তা + ৭০ পয়েন্ট স্বাগত উপহার',
