@@ -7,6 +7,11 @@
 //     'fallback-dev-secret-change-me'` كان في ١٠+ ملفات: أي نشرة تفقد
 //     المتغيّر تقبل رموز جلسة مُلفَّقة لأي مستخدم، والمالك ضمنهم.
 //
+// (ج) `catch {}` فارغة تمامًا. الفارغة تعني أنّ الخطأ لا يُرى إطلاقًا: لا في
+//     الطرفية ولا في سجل المالك. هكذا عاش عطب الـservice worker شهورًا.
+//     القاعدة: إمّا تسجيل (`logError` في الخادم، `__swallow` في الواجهة)
+//     وإمّا تعليق صريح داخل الأقواس يشرح لماذا الصمت مقصود.
+//
 // يُشغَّل: node scripts/guard.mjs   ·   يخرج ١ عند أول اكتشاف.
 // للاستثناء المتعمَّد: اكتب guard-ok في نفس السطر واشرح لماذا.
 
@@ -79,10 +84,53 @@ for (const d of ['api', 'api/_lib']) {
 }
 for (const f of apiFiles) await scan(f, [['بديل سرّيّ منشور', PUBLISHED_DEFAULT]], { skipComments: true });
 
+// (ج) لا كتمة صامتة. النصوص الحرفيّة تُفرَّغ أوّلًا وإلّا صار `catch(e){}` داخل
+// شيفرة مُولَّدة اكتشافًا كاذبًا. والتعليقات تُستبدل بحرف **غير** فراغ: التعليق
+// الصريح هو صيغة الصمت المسموحة، فبقاؤه يمنع مطابقة «الجسم الفارغ».
+const blank = (t) => t.replace(/[^\n]/g, ' ');
+const keep = (t) => t.replace(/[^\n]/g, '#');
+function strip(src) {
+  let out = '', i = 0;
+  while (i < src.length) {
+    const c = src[i], n = src[i + 1];
+    if (c === '/' && n === '*') { const e = src.indexOf('*/', i + 2); const j = e < 0 ? src.length : e + 2; out += keep(src.slice(i, j)); i = j; continue; }
+    if (c === '/' && n === '/') { let j = src.indexOf('\n', i); if (j < 0) j = src.length; out += keep(src.slice(i, j)); i = j; continue; }
+    if (c === '"' || c === "'" || c === '`') {
+      let j = i + 1;
+      while (j < src.length && src[j] !== c) { if (src[j] === '\\') j++; j++; }
+      out += c + blank(src.slice(i + 1, j)) + (src[j] || ''); i = j + 1; continue;
+    }
+    out += c; i++;
+  }
+  return out;
+}
+
+const EMPTY_CATCH = /catch\s*(\([^)]*\))?\s*\{\s*\}/g;
+async function catches(rel) {
+  let text;
+  try { text = await readFile(ROOT + rel, 'utf8'); } catch { return; }
+  const clean = strip(text);
+  const lines = text.split('\n');
+  let m;
+  EMPTY_CATCH.lastIndex = 0;
+  while ((m = EMPTY_CATCH.exec(clean))) {
+    const ln = clean.slice(0, m.index).split('\n').length;
+    if ((lines[ln - 1] || '').includes('guard-ok')) continue;
+    found.push(`${rel}:${ln}  كتمة صامتة → ${m[0].replace(/\s+/g, ' ')}`);
+  }
+}
+const own = ['sw.js', ...apiFiles];
+for (const d of ['js', 'scripts']) {
+  let names = [];
+  try { names = await readdir(ROOT + d); } catch { /* */ }
+  for (const n of names) if (/\.(js|mjs)$/.test(n) && n !== 'app.bundle.js') own.push(`${d}/${n}`);
+}
+for (const f of own) await catches(f);
+
 if (found.length) {
   console.error(`\n✗ الحارس: ${found.length} اكتشافًا — لا نشر.\n`);
   for (const f of found) console.error(`  ${f}`);
   console.error('\nإن كان مقصودًا: اكتب guard-ok في السطر واشرح السبب.\n');
   process.exit(1);
 }
-console.log(`✓ الحارس: ${seen.size} ملفًا نظيفًا — لا سرّ في العميل، لا بديل سرّيّ منشور.`);
+console.log(`✓ الحارس: ${seen.size} ملفًا نظيفًا — لا سرّ في العميل، لا بديل منشور، لا كتمة صامتة.`);

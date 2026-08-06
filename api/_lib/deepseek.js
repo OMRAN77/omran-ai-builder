@@ -2,6 +2,7 @@
 // owner's own server-side API key (DEEPSEEK_API_KEY env var), so visitors can try
 // the app without entering their own key. This key is NEVER exposed to the client.
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
+const { logError } = require('./log-error.js');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -49,7 +50,7 @@ module.exports = async (req, res) => {
       const __sys = Array.isArray(messages) ? messages.find(m => m && m.role === 'system') : null;
       const __codeRule = '\n[قاعدة الكود — مطلقة]: إذا قلت إنك بنيت أو عدّلت أو أضفت شيئًا في تطبيق/موقع/لعبة فيجب أن يحتوي ردك نفسه على الكود الكامل داخل كتلة ```html واحدة من <!DOCTYPE html> إلى </html>. ممنوع منعًا باتًا الادعاء بالتنفيذ بدون إرجاع الكود كاملًا في نفس الرد.';
       if (__sys && typeof __sys.content === 'string' && !__sys.content.includes('[قاعدة الكود — مطلقة]')) __sys.content += __codeRule;
-    } catch (e) {}
+    } catch (e) { logError('deepseek/code-rule-inject', e); }
 
     const wantStream = !!body.stream;
     const upstream = await fetch('https://api.deepseek.com/chat/completions', {

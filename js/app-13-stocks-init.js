@@ -302,12 +302,12 @@
       panel.style.maxWidth = '100%'; panel.style.maxHeight = '100vh'; panel.style.height = '100vh';
       panel.style.borderRadius = '0'; modal.style.padding = '0';
       fullBtn.textContent = '🗗';
-      if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function(){});
+      if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function(){ /* المتصفّح يرفض ملء الشاشة بلا إيماءة مستخدم */ });
     }else{
       panel.style.maxWidth = '560px'; panel.style.maxHeight = '90vh'; panel.style.height = '';
       panel.style.borderRadius = '16px'; modal.style.padding = '20px';
       fullBtn.textContent = '🖥️';
-      if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function(){});
+      if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function(){ /* لم نكن في ملء الشاشة — لا شيء يُغلق */ });
     }
   });
 
@@ -333,7 +333,7 @@
   btnOpen.addEventListener('click', function(){ modal.style.display = 'flex'; stkShowTab('global'); });
   btnClose.addEventListener('click', function(){
     modal.style.display = 'none';
-    if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function(){});
+    if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function(){ /* لم نكن في ملء الشاشة — لا شيء يُغلق */ });
   });
   modal.addEventListener('click', function(e){ if(e.target === modal && !isFull){ modal.style.display = 'none'; } });
   loadBtn.addEventListener('click', function(){ loadSymbol(); });

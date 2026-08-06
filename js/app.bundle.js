@@ -1514,7 +1514,7 @@ const messagesEl = $('#messages');
 
 // v463: سكرول طبيعي — المحادثة تتحرك كلها مع بعض
 function anchorLastUserMsgTop(){
-  try{ messagesEl.scrollTop = messagesEl.scrollHeight; }catch(e){}
+  try{ messagesEl.scrollTop = messagesEl.scrollHeight; }catch(e){ window.__swallow && window.__swallow(e,'ui.scrollAnchor'); }
 }
 // v331: أثناء البث لا نسحب الشاشة لتحت إلا إذا كان المستخدم أصلاً عند الأسفل
 function smartScrollBottom(){
@@ -3821,7 +3821,7 @@ window.appFullCleanup = function(){
     fetch('/api/account?action=chats_wipe', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token }),
-    }).catch(function(){}).finally(finish);
+    }).catch(function(e){ window.__swallow && window.__swallow(e,'chats.wipe'); }).finally(finish);
   } else { finish(); }
 };
 function scheduleChatsServerSync(){
@@ -11295,7 +11295,7 @@ function __agentTrailText(run){
 async function __agentResumeOnLoad(){
   let mark = null;
   try{ mark = JSON.parse(localStorage.getItem('aiapp_agent_live') || 'null'); }catch(e){ mark = null; }
-  const drop = () => { try{ localStorage.removeItem('aiapp_agent_live'); }catch(e){} };
+  const drop = () => { try{ localStorage.removeItem('aiapp_agent_live'); }catch(e){ window.__swallow && window.__swallow(e,'agentLive.clear'); } };
   if(!mark || !mark.p) return;                                        // لا تشغيل كان قائمًا
   if(Date.now() - (mark.t || 0) > 3540000){ drop(); return; }          // انتهى عمر الدفتر (ساعة)
   if(!window.authGet || !window.authGet('aiapp_auth_token')) return;   // جلسة غائبة → لا دفتر يُقرأ، ولا نمحو العلامة
@@ -11364,7 +11364,7 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
   while(true){
     let done, value;
     try{ ({ done, value } = await reader.read()); }
-    catch(e){ if(e && e.name === 'AbortError'){ try{ localStorage.removeItem('aiapp_agent_live'); }catch(_){} if(full) break; throw e; } streamBroke = e; break; } // انقطاع لا إلغاء → نستعيد من الدفتر
+    catch(e){ if(e && e.name === 'AbortError'){ try{ localStorage.removeItem('aiapp_agent_live'); }catch(_){ window.__swallow && window.__swallow(_,'agentLive.clear'); } if(full) break; throw e; } streamBroke = e; break; } // انقطاع لا إلغاء → نستعيد من الدفتر
     if(done) break;
     buf += dec.decode(value, { stream: true });
     const lines = buf.split('\n');
@@ -16798,12 +16798,12 @@ function openShareModal(project){
       panel.style.maxWidth = '100%'; panel.style.maxHeight = '100vh'; panel.style.height = '100vh';
       panel.style.borderRadius = '0'; modal.style.padding = '0';
       fullBtn.textContent = '🗗';
-      if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function(){});
+      if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function(){ /* المتصفّح يرفض ملء الشاشة بلا إيماءة مستخدم */ });
     }else{
       panel.style.maxWidth = '560px'; panel.style.maxHeight = '90vh'; panel.style.height = '';
       panel.style.borderRadius = '16px'; modal.style.padding = '20px';
       fullBtn.textContent = '🖥️';
-      if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function(){});
+      if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function(){ /* لم نكن في ملء الشاشة — لا شيء يُغلق */ });
     }
   });
 
@@ -16829,7 +16829,7 @@ function openShareModal(project){
   btnOpen.addEventListener('click', function(){ modal.style.display = 'flex'; stkShowTab('global'); });
   btnClose.addEventListener('click', function(){
     modal.style.display = 'none';
-    if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function(){});
+    if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function(){ /* لم نكن في ملء الشاشة — لا شيء يُغلق */ });
   });
   modal.addEventListener('click', function(e){ if(e.target === modal && !isFull){ modal.style.display = 'none'; } });
   loadBtn.addEventListener('click', function(){ loadSymbol(); });

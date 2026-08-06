@@ -4,6 +4,7 @@
 // الطرفان ملتقى. Redis هو الملتقى لأن دوال Vercel بلا حالة: الردّ قد يصل
 // نسخة غير التي تنتظر.
 const { kvPutJSON, kvExpire, kvGetJSON, kvDel } = require('./kv.js');
+const { logError } = require('./log-error.js');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') { res.status(405).json({ error: 'method' }); return; }
@@ -20,7 +21,7 @@ module.exports = async (req, res) => {
     let claim = null, kvOk = true;
     try { claim = await kvGetJSON('agent/wait/' + id); } catch (e) { kvOk = false; }
     if (kvOk && !claim) { res.status(403).json({ error: 'no pending call' }); return; }
-    try { await kvDel('agent/wait/' + id); } catch (e) {}
+    try { await kvDel('agent/wait/' + id); } catch (e) { logError('agent-tool-result/kv-del', e); }
 
     const key = 'agent/tool/' + id;
     await kvPutJSON(key, { output: output.slice(0, 6000), at: Date.now() });

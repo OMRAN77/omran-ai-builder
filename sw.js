@@ -1,4 +1,4 @@
-const CACHE_NAME = 'omran-ai-builder-4f5b3218';
+const CACHE_NAME = 'omran-ai-builder-98a24832';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -36,7 +36,7 @@ self.addEventListener('install', (event) => {
 // with the app fully closed (e.g. "ذكرني قبل صلاة العصر" / "صحّيني للدوام").
 self.addEventListener('push', (event) => {
   let data = { title: 'مها', body: 'تذكير' };
-  try { if (event.data) data = event.data.json(); } catch (e) {}
+  try { if (event.data) data = event.data.json(); } catch (e) { /* حِمْل الدفع ليس JSON — يمضي بالتذكير الافتراضي أعلاه */ }
   event.waitUntil(
     self.registration.showNotification(data.title || 'مها', {
       body: data.body || 'تذكير',

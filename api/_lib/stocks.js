@@ -2,6 +2,7 @@
 // Proxies Twelve Data API with the owner's server-side key.
 // Actions: quote (latest price) | series (time series for chart) | search (symbol lookup)
 const { kvGetJSON, kvPutJSON } = require('./kv.js');
+const { logError } = require('./log-error.js');
 
 const BASE = 'https://api.twelvedata.com';
 const tickerCache = new Map();
@@ -21,7 +22,7 @@ async function blobCacheGet(cKey, allowStale) {
   try {
     const d = await kvGetJSON(cachePath(cKey));
     if (d && d.k === cKey && (allowStale || Date.now() - d.t < TD_TTL)) return d.j;
-  } catch (e) {}
+  } catch (e) { logError('stocks/cache-read', e); }
   return null;
 }
 
@@ -29,7 +30,7 @@ async function blobCachePut(cKey, j) {
   if (!process.env.UPSTASH_REDIS_REST_URL) return;
   try {
     await kvPutJSON(cachePath(cKey), { k: cKey, t: Date.now(), j });
-  } catch (e) {}
+  } catch (e) { logError('stocks/cache-write', e); }
 }
 
 async function td(path, params, apiKey) {
@@ -340,7 +341,7 @@ module.exports = async (req, res) => {
           const nj = await nr.json();
           news = (nj.results || []).map(x => ({ title: x.title, snippet: (x.content || '').slice(0, 200) }));
         }
-      } catch (_) {}
+      } catch (_) { /* أخبار السهم إضافة اختيارية — غيابها لا يعطّل التسعير */ }
 
       const closes = (series && series.values || []).map(v => +v.close).reverse();
       const sma20 = closes.length >= 20 ? (closes.slice(-20).reduce((a, b) => a + b, 0) / 20).toFixed(2) : null;

@@ -3,6 +3,7 @@
 // self-reviews. Streams SSE events to the client:
 //   {status:"..."} step updates, {delta:"..."} text chunks, {done:true} end.
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
+const { logError } = require('./log-error.js');
 
 const TOOLS = [
   {
@@ -355,7 +356,7 @@ module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
-  const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); } catch (e) {} };
+  const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); } catch (e) { /* العميل أغلق مجرى SSE — لا وجهة للكتابة، والمحاولة التالية ستكتشف ذلك */ } };
 
   const runUser = usage.username || '';
   const run = { runId: 'r' + Date.now().toString(36), startedAt: Date.now(), updatedAt: Date.now(), step: 0,
@@ -495,7 +496,7 @@ module.exports = async (req, res) => {
                   const fe = JSON.parse(fl.slice(6));
                   const d = fe.choices && fe.choices[0] && fe.choices[0].delta && fe.choices[0].delta.content;
                   if (d) { send({ delta: d }); run.text += d; }
-                } catch (e) {}
+                } catch (e) { logError('agent/stream-frame', e); }
               }
             }
             run.status = 'fallback'; run.updatedAt = Date.now(); await journal(runUser, run);
@@ -563,7 +564,7 @@ module.exports = async (req, res) => {
         const assistantContent = contentBlocks.filter(Boolean).map((cb) => {
           if (cb.type === 'tool_use') {
             let input = {};
-            try { input = JSON.parse(cb.inputJson || '{}'); } catch (e) {}
+            try { input = JSON.parse(cb.inputJson || '{}'); } catch (e) { logError('agent/tool-input-parse', e); }
             return { type: 'tool_use', id: cb.id, name: cb.name, input };
           }
           return { type: 'text', text: cb.text || ' ' };
@@ -574,7 +575,7 @@ module.exports = async (req, res) => {
         for (const cb of contentBlocks.filter(Boolean)) {
           if (cb.type !== 'tool_use') continue;
           let input = {};
-          try { input = JSON.parse(cb.inputJson || '{}'); } catch (e) {}
+          try { input = JSON.parse(cb.inputJson || '{}'); } catch (e) { logError('agent/tool-input-parse', e); }
           let result = 'أداة غير معروفة';
           if (cb.name === 'web_search') result = await tavilySearch(input.query || '');
           else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
@@ -631,6 +632,6 @@ module.exports = async (req, res) => {
     run.status = 'error'; run.error = String((e && e.message) || e).slice(0, 200);
     await journal(runUser, run);
     send({ error: 'Agent error: ' + e.message });
-    try { res.end(); } catch (e2) {}
+    try { res.end(); } catch (e2) { /* المجرى مُغلق أصلًا — لا شيء يُنهى */ }
   }
 };

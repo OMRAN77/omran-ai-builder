@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const { kvGetJSON, kvPutJSON } = require('./kv.js');
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
+const { logError } = require('./log-error.js');
 
 const MAX_MEMORY_CHARS = 2800;   // سقف حجم الذاكرة المخزنة (سنة كاملة من المعلومات)
 const MIN_UPDATE_GAP_MS = 20 * 1000; // لا نحدّث أكثر من مرة كل 20 ثانية لكل مستخدم
@@ -69,7 +70,7 @@ async function callMergeModel(sys, user) {
         const out = (((d.choices || [])[0] || {}).message || {}).content || '';
         if (out.trim()) return out.trim();
       }
-    } catch (e) {}
+    } catch (e) { logError('memory/groq', e); }
   }
   // ② OpenAI (gpt-4.1-mini) — احتياطي أول
   const oaKey = process.env.OPENAI_API_KEY;
@@ -85,7 +86,7 @@ async function callMergeModel(sys, user) {
         const out = (((d.choices || [])[0] || {}).message || {}).content || '';
         if (out.trim()) return out.trim();
       }
-    } catch (e) {}
+    } catch (e) { logError('memory/openai', e); }
   }
   // ③ Gemini (flash) — احتياطي أخير (مفتاح المالك)
   const gKey = process.env.GEMINI_API_KEY;
@@ -101,7 +102,7 @@ async function callMergeModel(sys, user) {
         const out = ((((d.candidates || [])[0] || {}).content || {}).parts || []).map(p => p.text || '').join('');
         if (out.trim()) return out.trim();
       }
-    } catch (e) {}
+    } catch (e) { logError('memory/gemini', e); }
   }
   return null;
 }

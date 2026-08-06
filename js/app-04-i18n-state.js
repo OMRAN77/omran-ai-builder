@@ -645,7 +645,7 @@ window.appFullCleanup = function(){
     fetch('/api/account?action=chats_wipe', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token }),
-    }).catch(function(){}).finally(finish);
+    }).catch(function(e){ window.__swallow && window.__swallow(e,'chats.wipe'); }).finally(finish);
   } else { finish(); }
 };
 function scheduleChatsServerSync(){

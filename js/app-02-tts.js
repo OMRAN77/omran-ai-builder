@@ -445,7 +445,7 @@ const messagesEl = $('#messages');
 
 // v463: سكرول طبيعي — المحادثة تتحرك كلها مع بعض
 function anchorLastUserMsgTop(){
-  try{ messagesEl.scrollTop = messagesEl.scrollHeight; }catch(e){}
+  try{ messagesEl.scrollTop = messagesEl.scrollHeight; }catch(e){ window.__swallow && window.__swallow(e,'ui.scrollAnchor'); }
 }
 // v331: أثناء البث لا نسحب الشاشة لتحت إلا إذا كان المستخدم أصلاً عند الأسفل
 function smartScrollBottom(){

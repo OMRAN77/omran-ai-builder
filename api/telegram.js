@@ -7,6 +7,7 @@ require('./_lib/_fetch-timeout.js');
 const { withErrorCapture } = require('./_lib/_errors.js');
 
 const { kvGetJSON, kvPutJSON, kvIncr, kvExpire } = require('./_lib/kv');
+const { logError } = require('./_lib/log-error.js');
 
 const APP_URL = 'https://omran-ai-builder.vercel.app';
 const DAILY_LIMIT = 10;
@@ -53,7 +54,7 @@ module.exports = withErrorCapture('telegram', async (req, res) => {
   }
 
   // Always ACK Telegram quickly so it doesn't retry.
-  const ack = () => { try { res.status(200).json({ ok: true }); } catch (e) {} };
+  const ack = () => { try { res.status(200).json({ ok: true }); } catch (e) { /* تلغرام أغلق الاتصال أو رُدَّ عليه مرّتين — لا شيء يُفعل */ } };
 
   try {
     let body = req.body;
@@ -137,7 +138,7 @@ module.exports = withErrorCapture('telegram', async (req, res) => {
         if (pick) out = await callClaude(pick);
       }
       if (typeof out === 'string') reply = out;
-    } catch (e) {}
+    } catch (e) { logError('telegram/reply', e); }
 
     if (!reply) reply = 'صار خلل بسيط — عيد إرسال رسالتك بعد لحظات 🙏';
 

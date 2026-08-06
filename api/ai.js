@@ -7,6 +7,7 @@
 require('./_lib/_fetch-timeout.js');
 // Nothing thrown in this router escapes unrecorded (see _lib/_errors.js).
 const { withErrorCapture } = require('./_lib/_errors.js');
+const { logError } = require('./_lib/log-error.js');
 
 function load(action) {
   switch (action) {
@@ -82,15 +83,15 @@ function serverNote(country) {
   const now = new Date();
   const opts = { timeZone: 'Asia/Dubai', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true };
   let ar = '', en = '';
-  try { ar = new Intl.DateTimeFormat('ar-AE', opts).format(now); } catch (e) {}
-  try { en = new Intl.DateTimeFormat('en-GB', opts).format(now); } catch (e) {}
+  try { ar = new Intl.DateTimeFormat('ar-AE', opts).format(now); } catch (e) { /* لغة لا يعرفها Intl — يبقى النصّ فارغًا ويُستكمل من الطرف الآخر */ }
+  try { en = new Intl.DateTimeFormat('en-GB', opts).format(now); } catch (e) { /* كسابقه */ }
   // v360 — 🌍 كشف دولة المستخدم من الشبكة (ترويسة Vercel x-vercel-ip-country) عالميًا.
   // نحوّل رمز الدولة (ISO-2) إلى اسمها العربي والإنجليزي تلقائيًا بلا قوائم ثابتة.
   const code = (typeof country === 'string' ? country.trim().toUpperCase() : '');
   let cAr = '', cEn = '';
   if (code && /^[A-Z]{2}$/.test(code)) {
-    try { cAr = new Intl.DisplayNames(['ar'], { type: 'region' }).of(code) || ''; } catch (e) {}
-    try { cEn = new Intl.DisplayNames(['en'], { type: 'region' }).of(code) || ''; } catch (e) {}
+    try { cAr = new Intl.DisplayNames(['ar'], { type: 'region' }).of(code) || ''; } catch (e) { /* Intl لا يعرف رمز الدولة — اسم فارغ مقبول */ }
+    try { cEn = new Intl.DisplayNames(['en'], { type: 'region' }).of(code) || ''; } catch (e) { /* كسابقه */ }
   }
   const countryLine = (cAr || code)
     ? '\n[قاعدة الدولة — مطلقة]: المستخدم يتصفّح الآن من دولة: ' + (cAr || code) + (cEn ? ' (' + cEn + ')' : '') + '. أي سؤال عن خدمات أو عقارات أو قوانين أو أسعار أو جهات حكومية أو أرقام تواصل أو منصات محلية = أجب بمعلومات هذه الدولة تحديدًا (مفتاح هاتفها الدولي، جهاتها الحكومية الرسمية، منصاتها المحلية المعروفة فيها). ممنوع منعًا باتًا افتراض أي دولة أخرى أو اقتراح جهات/منصات/أرقام من دولة مختلفة. الاستثناء الوحيد: إذا ذكر المستخدم دولة أخرى صراحةً في رسالته فاتبع الدولة التي ذكرها.'
@@ -144,7 +145,7 @@ function lastUserText(action, body) {
       }
       return '';
     }
-  } catch (e) {}
+  } catch (e) { logError('ai/last-user-text', e); }
   return '';
 }
 

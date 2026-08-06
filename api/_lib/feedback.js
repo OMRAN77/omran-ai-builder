@@ -7,6 +7,7 @@ const LOG_PATH = 'db/feedback/list.json';
 const REPORTS_PATH = 'db/reports/list.json';
 const MAX_ITEMS = 200;
 const { isOwner } = require('./_owner.js');
+const { logError } = require('./log-error.js');
 
 async function readList() {
   try {
@@ -24,7 +25,7 @@ module.exports = async (req, res) => {
     if (!isOwner(req)) { res.status(401).json({ error: 'unauthorized' }); return; }
     const items = await readList();
     let reports = [];
-    try { const r = await kvGetJSON(REPORTS_PATH); if (Array.isArray(r)) reports = r; } catch (e) {}
+    try { const r = await kvGetJSON(REPORTS_PATH); if (Array.isArray(r)) reports = r; } catch (e) { logError('feedback/kv-read', e); }
     res.status(200).json({ feedback: items, reports });
     return;
   }
@@ -41,7 +42,7 @@ module.exports = async (req, res) => {
       const content = String(body.content || '').slice(0, 2000);
       if (!content) { res.status(400).json({ error: 'no content' }); return; }
       let reports = [];
-      try { const r = await kvGetJSON(REPORTS_PATH); if (Array.isArray(r)) reports = r; } catch (e) {}
+      try { const r = await kvGetJSON(REPORTS_PATH); if (Array.isArray(r)) reports = r; } catch (e) { logError('feedback/kv-read', e); }
       reports.unshift({
         content,
         provider: String(body.provider || '').slice(0, 30),

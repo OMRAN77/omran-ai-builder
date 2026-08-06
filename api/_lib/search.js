@@ -142,8 +142,8 @@ module.exports = async (req, res) => {
     const geoCode = (req.headers && (req.headers['x-vercel-ip-country'] || req.headers['x-country']) || '').toString().trim().toUpperCase();
     let geoNameEn = '', geoNameAr = '';
     if (/^[A-Z]{2}$/.test(geoCode)) {
-      try { geoNameEn = new Intl.DisplayNames(['en'], { type: 'region' }).of(geoCode) || ''; } catch (e) {}
-      try { geoNameAr = new Intl.DisplayNames(['ar'], { type: 'region' }).of(geoCode) || ''; } catch (e) {}
+      try { geoNameEn = new Intl.DisplayNames(['en'], { type: 'region' }).of(geoCode) || ''; } catch (e) { /* Intl لا يعرف رمز الدولة — يبقى الاسم فارغًا وهذا مقبول */ }
+      try { geoNameAr = new Intl.DisplayNames(['ar'], { type: 'region' }).of(geoCode) || ''; } catch (e) { /* كسابقه */ }
     }
     const wantImages = !!(body && body.images);
     const wantDeep = !!(body && body.deep);
