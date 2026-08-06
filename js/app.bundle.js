@@ -3267,6 +3267,11 @@ function t(key){
   return fb !== undefined ? fb : key;
 }
 
+/* قفل t: عالميّ و writable — كودٌ خارجيّ (إضافة متصفّح، سطر مُحقَّن) يكتب t = شيء
+ * فيُسقط كلّ ترجمة بعده؛ استُنسخ حيًّا (عمود ٢٩ في renderCodeAndPreview).
+ * القفل يحوّل الاختطاف إلى لا-عمليّة صامتة بلا كسر أيّ قراءة. */
+try{ Object.defineProperty(window, "t", { writable: false }); }catch(_){ __swallow(_, "lock:app-04-t"); }
+
 function applyLanguage(){
   if(!I18N[lang] && I18N_LAZY.indexOf(lang) >= 0){
     loadLangFile(lang).then(function(){ if(I18N[lang]) { applyLanguage(); try{ renderAll(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#4"); } } });
@@ -3275,7 +3280,7 @@ function applyLanguage(){
   try{ if(window.__syncBrandTitle) window.__syncBrandTitle(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#5"); }
   document.documentElement.lang = lang;
   document.documentElement.dir = dict.dir;
-  document.title = dict.pageTitle;
+  if (dict.pageTitle && dict.pageTitle.trim()) document.title = dict.pageTitle;
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const raw = el.getAttribute('data-i18n');
     const m = raw.match(/^\[(.+)\]([\s\S]+)$/);
