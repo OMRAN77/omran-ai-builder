@@ -30,7 +30,7 @@ module.exports = async (req, res) => {
   const envKeys = {
     OpenAI: !!process.env.OPENAI_API_KEY,
     Gemini: !!process.env.GEMINI_API_KEY,
-    Groq: !!(process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_1),
+    Groq: !!process.env.GROQ_API_KEY, // اسم واحد؛ GROQ_API_KEY_1 غير مضبوط في البيئة
     Claude: !!process.env.ANTHROPIC_API_KEY,
     OpenRouter: !!process.env.OPENROUTER_API_KEY,
     Mistral: !!process.env.MISTRAL_API_KEY,

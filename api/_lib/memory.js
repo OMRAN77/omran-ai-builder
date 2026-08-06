@@ -54,7 +54,9 @@ async function writeMemory(username, memory, topics) {
 // طالما أي مفتاح واحد يعمل، الذاكرة تُحفظ دائمًا (لا تعتمد على Groq وحده).
 async function callMergeModel(sys, user) {
   // ① Groq (llama-3.3-70b) — سريع ومجاني
-  const groqKey = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_;
+  // اسم واحد لمفتاح Groq. كان هنا احتياطيّ `GROQ_API_KEY_` (شرطة زائدة) لا وجود
+  // له في البيئة — يوهم القارئ بمفتاح ثانٍ، ويخفي أنّ السلسلة تعتمد على واحد.
+  const groqKey = process.env.GROQ_API_KEY;
   if (groqKey) {
     try {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
