@@ -1740,15 +1740,27 @@ if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
   }
 
   function savePos(left, top){
-    // v205: position is intentionally NOT persisted — every app open starts
-    // at the exact center of the screen. Dragging only lasts for the session.
+    // v420: مها تتذكّر موضعها. يُحفظ ما يضعه المستخدم بيده فقط، والنقر المزدوج
+    // يمحو الذاكرة ويعيدها إلى موضعها الافتراضي (resetToDefault).
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ left: Math.round(left), top: Math.round(top) }));
+    }catch(e){ __swallow(e, "save:app-08-maha#32b"); }
   }
 
   function restorePos(){
-    // v205: always start at the CENTER of the screen on every load.
-    try{ localStorage.removeItem(STORAGE_KEY); }catch(e){ __swallow(e, "auth:app-08-maha#32"); }
+    // v420: الافتراضي لم يتغيّر — منتصف الشاشة. الموضع المحفوظ يُقرأ إن وُجد،
+    // ويمرّ على applyPos فيُقصّ داخل الشاشة الحالية (نافذة أصغر لا تُخفيها).
     const w = btn.offsetWidth || 45, h = btn.offsetHeight || 45;
-    applyPos((window.innerWidth - w) / 2, (window.innerHeight - h) / 2);
+    var saved = null;
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        var pos = JSON.parse(raw);
+        if(pos && isFinite(pos.left) && isFinite(pos.top)) saved = pos;
+      }
+    }catch(e){ __swallow(e, "auth:app-08-maha#32"); }
+    if(saved) applyPos(saved.left, saved.top);
+    else applyPos((window.innerWidth - w) / 2, (window.innerHeight - h) / 2);
   }
 
   function resetToDefault(){

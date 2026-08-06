@@ -1528,6 +1528,11 @@ const emptyState = $('#emptyState');
 const historyEl = $('#history');
 const I18N = {
   ar: {
+    ncNewChatLabel: 'محادثة جديدة ✨',
+    sbProjectsTitle: 'المشاريع',
+    sbNewProject: 'مشروع جديد',
+    sbProjSearch: 'بحث عن مشروع',
+    sbDeleteAll: 'حذف الكل',
     pricingPointsTitle: 'باقات النقاط',
     pricingPointsDesc: 'النقاط عملة موحدة — تُصرف على مها الصوتية والفيديو والصور، بدون اشتراك. مها: 10 نقاط/دقيقة • فيديو: 60 • Veo 3: ‏400 • صورة: 10',
     pricingWalletLabel: 'رصيدك من النقاط',
@@ -2344,6 +2349,11 @@ const I18N = {
     shareCopied: 'تم نسخ الرابط! ✅',
   },
   en: {
+    ncNewChatLabel: 'New chat ✨',
+    sbProjectsTitle: 'Projects',
+    sbNewProject: 'New project',
+    sbProjSearch: 'Search projects',
+    sbDeleteAll: 'Delete all',
     pricingPointsTitle: 'Points Packs',
     pricingPointsDesc: 'Points are one universal currency — spend them on Maha voice, videos and images, no subscription needed. Maha: 10 pts/min • Video: 60 • Veo 3: 400 • Image: 10',
     pricingWalletLabel: 'Your points balance',
@@ -10403,15 +10413,27 @@ if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
   }
 
   function savePos(left, top){
-    // v205: position is intentionally NOT persisted — every app open starts
-    // at the exact center of the screen. Dragging only lasts for the session.
+    // v420: مها تتذكّر موضعها. يُحفظ ما يضعه المستخدم بيده فقط، والنقر المزدوج
+    // يمحو الذاكرة ويعيدها إلى موضعها الافتراضي (resetToDefault).
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ left: Math.round(left), top: Math.round(top) }));
+    }catch(e){ __swallow(e, "save:app-08-maha#32b"); }
   }
 
   function restorePos(){
-    // v205: always start at the CENTER of the screen on every load.
-    try{ localStorage.removeItem(STORAGE_KEY); }catch(e){ __swallow(e, "auth:app-08-maha#32"); }
+    // v420: الافتراضي لم يتغيّر — منتصف الشاشة. الموضع المحفوظ يُقرأ إن وُجد،
+    // ويمرّ على applyPos فيُقصّ داخل الشاشة الحالية (نافذة أصغر لا تُخفيها).
     const w = btn.offsetWidth || 45, h = btn.offsetHeight || 45;
-    applyPos((window.innerWidth - w) / 2, (window.innerHeight - h) / 2);
+    var saved = null;
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        var pos = JSON.parse(raw);
+        if(pos && isFinite(pos.left) && isFinite(pos.top)) saved = pos;
+      }
+    }catch(e){ __swallow(e, "auth:app-08-maha#32"); }
+    if(saved) applyPos(saved.left, saved.top);
+    else applyPos((window.innerWidth - w) / 2, (window.innerHeight - h) / 2);
   }
 
   function resetToDefault(){

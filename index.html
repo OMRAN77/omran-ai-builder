@@ -2338,7 +2338,7 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 
 <main>
   <div id="sidebar">
-    <button type="button" id="omranNewChatBtn"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg><span class="ncLabel">محادثة جديدة ✨</span></button>
+    <button type="button" id="omranNewChatBtn"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg><span class="ncLabel" data-i18n="ncNewChatLabel">محادثة جديدة ✨</span></button>
     <div id="omranHistTitle"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> المحادثات</div>
     <div id="providerGridSidebar">
       <button id="provDropdownBtn" type="button"><span id="provDDLogo"></span><span class="provDDName" id="provDDName"></span><svg class="provDDChev" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
@@ -2356,12 +2356,12 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
       </div>
     </div>
     <div id="projMenuWrap" style="margin:6px 10px;">
-      <button class="btn" id="btnProjMenuToggle" type="button" style="background:none; border:none; box-shadow:none; padding:6px 8px; display:inline-flex; align-items:center; gap:6px;"><svg id="projMenuChevron" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transition:transform .18s;"><polyline points="6 9 12 15 18 9"></polyline></svg><span style="font-size: var(--fs-3);">المشاريع</span></button>
+      <button class="btn" id="btnProjMenuToggle" type="button" style="background:none; border:none; box-shadow:none; padding:6px 8px; display:inline-flex; align-items:center; gap:6px;"><svg id="projMenuChevron" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transition:transform .18s;"><polyline points="6 9 12 15 18 9"></polyline></svg><span style="font-size: var(--fs-3);" data-i18n="sbProjectsTitle">المشاريع</span></button>
       <div id="projMenuPanel" style="display:none; flex-direction:column; gap:2px; padding:2px 4px;">
-        <button class="btn" id="btnNew" type="button" style="background:none; border:none; box-shadow:none; justify-content:flex-start; font-size: var(--fs-3); padding:6px 8px; min-height:0;">مشروع جديد</button>
-        <button class="btn" id="btnProjSearch" type="button" style="background:none; border:none; box-shadow:none; justify-content:flex-start; font-size: var(--fs-3); padding:6px 8px; min-height:0;">بحث عن مشروع</button>
+        <button class="btn" id="btnNew" data-i18n="sbNewProject" type="button" style="background:none; border:none; box-shadow:none; justify-content:flex-start; font-size: var(--fs-3); padding:6px 8px; min-height:0;">مشروع جديد</button>
+        <button class="btn" id="btnProjSearch" data-i18n="sbProjSearch" type="button" style="background:none; border:none; box-shadow:none; justify-content:flex-start; font-size: var(--fs-3); padding:6px 8px; min-height:0;">بحث عن مشروع</button>
         <input type="text" id="projSearchInput" style="display:none; width:100%; padding:6px 8px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px; margin:2px 0;">
-        <button class="btn" id="btnDeleteAll" type="button" style="background:none; border:none; box-shadow:none; justify-content:flex-start; font-size: var(--fs-3); padding:6px 8px; min-height:0; color:#e66;">حذف الكل</button>
+        <button class="btn" id="btnDeleteAll" data-i18n="sbDeleteAll" type="button" style="background:none; border:none; box-shadow:none; justify-content:flex-start; font-size: var(--fs-3); padding:6px 8px; min-height:0; color:#e66;">حذف الكل</button>
       </div>
     </div>
     <div id="history"></div>

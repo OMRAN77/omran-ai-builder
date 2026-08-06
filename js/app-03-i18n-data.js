@@ -1,5 +1,10 @@
 const I18N = {
   ar: {
+    ncNewChatLabel: 'محادثة جديدة ✨',
+    sbProjectsTitle: 'المشاريع',
+    sbNewProject: 'مشروع جديد',
+    sbProjSearch: 'بحث عن مشروع',
+    sbDeleteAll: 'حذف الكل',
     pricingPointsTitle: 'باقات النقاط',
     pricingPointsDesc: 'النقاط عملة موحدة — تُصرف على مها الصوتية والفيديو والصور، بدون اشتراك. مها: 10 نقاط/دقيقة • فيديو: 60 • Veo 3: ‏400 • صورة: 10',
     pricingWalletLabel: 'رصيدك من النقاط',
@@ -816,6 +821,11 @@ const I18N = {
     shareCopied: 'تم نسخ الرابط! ✅',
   },
   en: {
+    ncNewChatLabel: 'New chat ✨',
+    sbProjectsTitle: 'Projects',
+    sbNewProject: 'New project',
+    sbProjSearch: 'Search projects',
+    sbDeleteAll: 'Delete all',
     pricingPointsTitle: 'Points Packs',
     pricingPointsDesc: 'Points are one universal currency — spend them on Maha voice, videos and images, no subscription needed. Maha: 10 pts/min • Video: 60 • Veo 3: 400 • Image: 10',
     pricingWalletLabel: 'Your points balance',
