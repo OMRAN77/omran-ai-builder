@@ -3,6 +3,7 @@
 const { kvPutJSON, kvGetJSON } = require('./kv.js');
 
 const { isOwner } = require('./_owner.js');
+const { envReport } = require('./env.js');
 
 async function checkRedis() {
   try {
@@ -50,6 +51,8 @@ module.exports = async (req, res) => {
     time: new Date().toISOString(),
     redisOk,
     envKeys,
+    env: envReport(), // فهرس الـ٥٠ متغيّرًا — حضور فقط، لا قيم
+
     clientErrorsCount: clientErrors.length,
     clientErrors
   });
