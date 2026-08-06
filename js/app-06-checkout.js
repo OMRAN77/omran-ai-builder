@@ -1608,7 +1608,7 @@ async function callAI(messages){
 
 // Providers tried in order after the user's chosen default, skipping ones that
 // need a personal API key the visitor hasn't entered (only Perplexity today).
-const AUTO_FALLBACK_ORDER = ['openai', 'mistral', 'deepseek', 'cohere', 'groq', 'gemini', 'claude', 'openrouter', 'perplexity'];
+const AUTO_FALLBACK_ORDER = ['claude', 'gemini', 'openai', 'groq'];
 
 // Sends the chat to the user's chosen default provider; if it fails with a
 // rate-limit (429) or daily-quota (402) error, automatically retries with the

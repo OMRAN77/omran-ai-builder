@@ -110,15 +110,10 @@
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('apiKeysSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="apiKeysSectionTitle">🔑 مفاتيح API لمزوّدي الخدمة</h3><span class="settingsSectionArrow" id="apiKeysSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="apiKeysSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
   <label data-i18n="provider">مزوّد الخدمة الافتراضي</label>
   <select id="provider">
-    <option value="openai">OpenAI (platform.openai.com)</option>
-    <option value="openrouter">OpenRouter (openrouter.ai)</option>
-    <option value="gemini">Google Gemini (aistudio.google.com)</option>
-    <option value="groq">Groq (console.groq.com)</option>
     <option value="claude">Anthropic Claude (console.anthropic.com)</option>
-    <option value="perplexity">Perplexity (perplexity.ai)</option>
-    <option value="mistral">Mistral AI (mistral.ai)</option>
-    <option value="deepseek">DeepSeek (platform.deepseek.com)</option>
-    <option value="cohere">Cohere (cohere.com)</option>
+    <option value="gemini">Google Gemini (aistudio.google.com)</option>
+    <option value="openai">OpenAI (platform.openai.com)</option>
+    <option value="groq">Groq (console.groq.com)</option>
   </select>
     <div style="margin-top:14px;">
   <div class="api-provider-card" style="border-inline-start:4px solid #10a37f; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
@@ -132,7 +127,7 @@
     <label data-i18n="modelLabel">اسم النموذج</label>
     <input type="text" id="modelName" placeholder="gpt-4o-mini">
   </div>
-  <div class="api-provider-card" style="border-inline-start:4px solid var(--accent); background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
+  <div class="api-provider-card" style="display:none; border-inline-start:4px solid var(--accent); background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
     <label style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
       <span data-i18n="openrouterApiKeyLabel" style="font-weight:bold; color:var(--accent);">مفتاح API</span>
       <span style="display:flex; align-items:center; gap:6px; font-weight:normal; font-size:0.85em;">
@@ -159,7 +154,7 @@
     </select>
     <input type="text" id="openrouterModel" placeholder="openai/gpt-4o-mini" style="display:none; margin-top:6px;">
   </div>
-  <div class="api-provider-card" style="border-inline-start:4px solid #20b8cd; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
+  <div class="api-provider-card" style="display:none; border-inline-start:4px solid #20b8cd; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
     <label style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
       <span data-i18n="perplexityApiKeyLabel" style="font-weight:bold; color:#20b8cd;">مفتاح API</span>
       <span style="display:flex; align-items:center; gap:6px; font-weight:normal; font-size:0.85em;">
@@ -170,7 +165,7 @@
     <label data-i18n="perplexityModelLabel">اسم النموذج</label>
     <input type="text" id="perplexityModel" placeholder="sonar">
   </div>
-  <div class="api-provider-card" style="border-inline-start:4px solid #fa500f; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
+  <div class="api-provider-card" style="display:none; border-inline-start:4px solid #fa500f; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
     <label style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
       <span data-i18n="mistralApiKeyLabel" style="font-weight:bold; color:#fa500f;">مفتاح API</span>
       <span style="display:flex; align-items:center; gap:6px; font-weight:normal; font-size:0.85em;">
@@ -181,7 +176,7 @@
     <label data-i18n="mistralModelLabel">اسم النموذج</label>
     <input type="text" id="mistralModel" placeholder="mistral-small-latest">
   </div>
-  <div class="api-provider-card" style="border-inline-start:4px solid #4d6bfe; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
+  <div class="api-provider-card" style="display:none; border-inline-start:4px solid #4d6bfe; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
     <label style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
       <span data-i18n="deepseekApiKeyLabel" style="font-weight:bold; color:#4d6bfe;">مفتاح API</span>
       <span style="display:flex; align-items:center; gap:6px; font-weight:normal; font-size:0.85em;">
@@ -192,7 +187,7 @@
     <label data-i18n="deepseekModelLabel">اسم النموذج</label>
     <input type="text" id="deepseekModel" placeholder="deepseek-chat">
   </div>
-  <div class="api-provider-card" style="border-inline-start:4px solid #d18ee2; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
+  <div class="api-provider-card" style="display:none; border-inline-start:4px solid #d18ee2; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
     <label style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
       <span data-i18n="cohereApiKeyLabel" style="font-weight:bold; color:#d18ee2;">مفتاح API</span>
       <span style="display:flex; align-items:center; gap:6px; font-weight:normal; font-size:0.85em;">
@@ -248,11 +243,6 @@
     🔹 <b>Gemini</b>: احصل على مفتاح مجاني من aistudio.google.com/app/apikey<br>
     🔹 <b>Groq</b>: احصل على مفتاح مجاني من console.groq.com/keys<br>
     🔹 <b>Claude</b>: احصل على مفتاح من console.anthropic.com/settings/keys<br>
-    🔹 <b>OpenRouter</b>: احصل على مفتاح من openrouter.ai/keys (يوفر نماذج مجانية أيضًا)<br>
-    🔹 <b>Perplexity</b>: احصل على مفتاح من perplexity.ai/settings/api (مدفوع، ويوفر بحث حي)<br>
-    🔹 <b>Mistral AI</b>: احصل على مفتاح مجاني من console.mistral.ai/api-keys<br>
-    🔹 <b>DeepSeek</b>: احصل على مفتاح من platform.deepseek.com/api_keys (رخيص جدًا وحصة مجانية)<br>
-    🔹 <b>Cohere</b>: احصل على مفتاح مجاني من dashboard.cohere.com/api-keys
   </small>
   </div></div>
 
@@ -396,7 +386,7 @@
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('aboutSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="aboutSectionTitle">ℹ️ عن البرنامج والفيديوهات التعريفية</h3><span class="settingsSectionArrow" id="aboutSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="aboutSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
   <div style="font-size: var(--fs-3); line-height:1.9; color:var(--text); background:var(--panel2); border-radius:var(--r-2); padding:12px 14px;" data-i18n="aboutText">
     <b>عمران AI Builder</b> هو منصة عربية بالكامل لبناء التطبيقات بالذكاء الاصطناعي، طوّرها فريق عمران AI. يتيح لك التحدث مع الذكاء الاصطناعي بالعربية أو الإنجليزية للحصول فورًا على كود تطبيق كامل، مع محرر كود ومعاينة حيّة جنبًا إلى جنب.<br><br>
-    يدعم البرنامج 9 مزوّدين مختلفين للذكاء الاصطناعي (OpenAI، Gemini، Groq، Claude، OpenRouter، Perplexity، Mistral، DeepSeek، Cohere)، ويمكنك اختيار أكثر من مزوّد في نفس الوقت لطرح سؤال واحد والحصول على إجابات من الجميع للمقارنة بينها.<br><br>
+    يدعم البرنامج 4 مزوّدين للذكاء الاصطناعي (Claude، Gemini، OpenAI، Groq)، ويمكنك اختيار أكثر من مزوّد في نفس الوقت لطرح سؤال واحد والحصول على إجابات من الجميع للمقارنة بينها.<br><br>
     يعمل البرنامج كتطبيق PWA قابل للتثبيت على أندرويد وآيفون مثل أي تطبيق عادي، ويدعم المحادثة الصوتية (تحويل الكلام إلى نص والاستماع للردود)، مع نظام حسابات كامل (تسجيل دخول/تسجيل حساب/استرجاع كلمة المرور)، ووضع ضيف يتيح تجربة 20 رسالة مجانية دون تسجيل.<br><br>
     كل إعدادات المظهر والألوان قابلة للتخصيص بالكامل، ومفاتيح API الخاصة بك تُحفظ في متصفحك فقط ولا تُرسل لأي خادم خارجي — خصوصيتك أولوية.
   </div>

@@ -758,8 +758,8 @@ const PROVIDER_LOGOS = {"openai":"<svg fill=\"currentColor\" fill-rule=\"evenodd
 // v359 — 3 مجموعات: الرأس ظاهر بشعاره الحقيقي، وبقية المجموعة احتياط صامت خلفه.
 const FUNCTIONAL_GROUPS = {
   claude: ['claude'],                                                // 👑 الكينج — بناء/تعديل/تشخيص
-  gemini: ['gemini', 'groq', 'mistral'],                             // ⚡ السريع — ردود فورية/دردشة
-  openai: ['openai', 'deepseek', 'perplexity', 'cohere', 'openrouter'], // 🧠 العميق — تحليل/بحث/مستندات
+  gemini: ['gemini', 'groq'],                                        // ⚡ السريع — ردود فورية/دردشة
+  openai: ['openai', 'perplexity'],                                  // 🧠 العميق — تحليل/بحث/مستندات
 };
 function funcPrimaryOf(key){
   for(const primary in FUNCTIONAL_GROUPS){ if(FUNCTIONAL_GROUPS[primary].indexOf(key) !== -1) return primary; }

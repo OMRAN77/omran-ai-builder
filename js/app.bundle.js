@@ -2166,7 +2166,7 @@ const I18N = {
     emptyTitle: 'ابدأ ببناء أول تطبيق لك',
     emptyDesc: 'اكتب وصفًا في المربع على اليسار، مثال:<br>"لعبة كسر الطوب"، "موقع لمطعم بيتزا"، "قائمة مهام يومية"',
     generatingInProgressTitle: 'جاري إنشاء تطبيقك...',
-    generatingInProgressDesc: 'قد يستغرق هذا حتى دقيقة عند استخدام "اسأل الكل" لأنه يدمج نتائج 9 مزودين. الرجاء الانتظار ⏳',
+    generatingInProgressDesc: 'قد يستغرق هذا حتى دقيقة عند استخدام "اسأل الكل" لأنه يدمج نتائج 4 مزودين. الرجاء الانتظار ⏳',
     voiceTab: '🎙️ صوت',
     voiceTabDesc: 'اضغط وابدأ محادثة صوتية حية — تتكلم فقط بدون كتابة، والنتيجة (صورة أو تطبيق) تظهر مباشرة في المعاينة والكود.',
     voiceImageDone: "تمت الصورة، شوفها بالمعاينة.",
@@ -2230,7 +2230,7 @@ const I18N = {
     fetchModelsFail: 'تعذّر جلب قائمة الموديلات، تأكد من إدخال مفتاح Claude صحيح أولاً.',
     fetchModelsEmpty: 'لم يتم العثور على أي موديلات متاحة لهذا المفتاح.',
     askAllLabel: 'اسأل كل المزوّدين معًا (مقارنة)',
-    askAllBtnTitle: 'اسأل الكل — 9 نماذج AI تبني تطبيقك معًا',
+    askAllBtnTitle: 'اسأل الكل — 4 نماذج AI تبني تطبيقك معًا',
     askAllHintText: "💡 اكتب طلبك عادي — والذكاء الاصطناعي يبني تطبيقك فورًا",
     mergedAnswerLabel: 'الإجابة الموحّدة',
     mergedAnswerSourceLabel: 'مصدر',
@@ -2615,7 +2615,7 @@ const I18N = {
     emptyTitle: 'Start building your first app',
     emptyDesc: 'Type a description in the box, e.g.:<br>"a brick breaker game", "a pizza restaurant website", "a daily to-do list"',
     generatingInProgressTitle: 'Building your app...',
-    generatingInProgressDesc: 'This can take up to a minute with "Ask All" since it merges results from 9 providers. Please wait ⏳',
+    generatingInProgressDesc: 'This can take up to a minute with "Ask All" since it merges results from 4 providers. Please wait ⏳',
     voiceTab: '🎙️ Voice',
     voiceTabDesc: 'Just speak, no typing — we\'ll detect your request automatically (image, video, or app) and send it right away.',
     voiceImageDone: "Image ready, check the preview.",
@@ -2675,7 +2675,7 @@ const I18N = {
     perplexityApiKeyLabel: 'Perplexity API Key',
     perplexityModelLabel: 'Perplexity Model Name',
     askAllLabel: 'Ask all providers together (compare)',
-    askAllBtnTitle: 'Ask All — 9 AI models build your app together',
+    askAllBtnTitle: 'Ask All — 4 AI models build your app together',
     askAllHintText: "💡 Type your request normally — AI will build your app instantly",
     mergedAnswerLabel: 'Merged Answer',
     mergedAnswerSourceLabel: 'Source',
@@ -5391,8 +5391,8 @@ const PROVIDER_LOGOS = {"openai":"<svg fill=\"currentColor\" fill-rule=\"evenodd
 // v359 — 3 مجموعات: الرأس ظاهر بشعاره الحقيقي، وبقية المجموعة احتياط صامت خلفه.
 const FUNCTIONAL_GROUPS = {
   claude: ['claude'],                                                // 👑 الكينج — بناء/تعديل/تشخيص
-  gemini: ['gemini', 'groq', 'mistral'],                             // ⚡ السريع — ردود فورية/دردشة
-  openai: ['openai', 'deepseek', 'perplexity', 'cohere', 'openrouter'], // 🧠 العميق — تحليل/بحث/مستندات
+  gemini: ['gemini', 'groq'],                                        // ⚡ السريع — ردود فورية/دردشة
+  openai: ['openai', 'perplexity'],                                  // 🧠 العميق — تحليل/بحث/مستندات
 };
 function funcPrimaryOf(key){
   for(const primary in FUNCTIONAL_GROUPS){ if(FUNCTIONAL_GROUPS[primary].indexOf(key) !== -1) return primary; }
@@ -8148,7 +8148,7 @@ async function callAI(messages){
 
 // Providers tried in order after the user's chosen default, skipping ones that
 // need a personal API key the visitor hasn't entered (only Perplexity today).
-const AUTO_FALLBACK_ORDER = ['openai', 'mistral', 'deepseek', 'cohere', 'groq', 'gemini', 'claude', 'openrouter', 'perplexity'];
+const AUTO_FALLBACK_ORDER = ['claude', 'gemini', 'openai', 'groq'];
 
 // Sends the chat to the user's chosen default provider; if it fails with a
 // rate-limit (429) or daily-quota (402) error, automatically retries with the
@@ -11066,11 +11066,6 @@ const SMART_PROVIDER_SPECIALTIES = {
   gemini: 'سياق طويل جدًا، تحليل مستندات/فيديو كبيرة، أسئلة عامة',
   groq: 'إجابات سريعة جدًا وبسيطة',
   claude: 'أفضل خيار لتصميم واجهات وتصاميم كاملة، وأقوى خيار للبرمجة المعقدة والدقيقة',
-  openrouter: 'بديل عام متعدد النماذج',
-  perplexity: 'أسئلة تحتاج بحث حي بالإنترنت: أخبار، أسعار، أحداث الآن',
-  mistral: 'مهام سريعة وكفوءة بتكلفة منخفضة',
-  deepseek: 'برمجة أكواد قوية ورخيصة',
-  cohere: 'أسئلة تعتمد على مستندات/بيانات ولغات متعددة',
 };
 
 async function pickSmartProviders(userText, eligibleKeys){
@@ -11157,7 +11152,7 @@ async function aiExtractDesignLines(t){
 async function competeDesignLines(t){
   const sys = 'أنت كاتب تهانٍ محترف. المطلوب: أعد JSON فقط بهذا الشكل بالضبط: {"lines":["السطر1","السطر2"]} — من 2 إلى 4 سطور قصيرة وراقية لتصميم (شهادة/بطاقة/دعوة...): (1) عنوان التصميم، (2) اسم الشخص إن وُجد، (3) المناسبة إن وُجدت، (4) عبارة تهنئة بليغة ومؤثرة. صحح الأخطاء الإملائية. لا تكتب أي شرح خارج الـJSON.';
   const messages = [ { role: 'system', content: sys }, { role: 'user', content: String(t) } ];
-  const provs = ['claude', 'gemini', 'openai', 'mistral', 'deepseek', 'cohere', 'groq', 'openrouter', 'perplexity'];
+  const provs = ['claude', 'gemini', 'openai', 'groq'];
   const parse = (r) => {
     const m = String(r || '').match(/\{[\s\S]*\}/);
     if(!m) return null;
@@ -12478,30 +12473,20 @@ async function sendPrompt(){
     }
 
     if(askAll){
-      // All 9 providers now run server-side with the owner's keys.
-      const hasOpenAI = localStorage.getItem('aiapp_include_openai') !== 'false';
-      const hasGemini = localStorage.getItem('aiapp_include_gemini') !== 'false';
-      const hasGroq = localStorage.getItem('aiapp_include_groq') !== 'false';
+      // v426 — الأربعة المعتمدون فقط يعملون بمفاتيح المالك (قرار عمران ٦ أغسطس).
       const hasClaude = localStorage.getItem('aiapp_include_claude') !== 'false';
-      const hasOpenRouter = localStorage.getItem('aiapp_include_openrouter') !== 'false';
-      const hasPerplexity = localStorage.getItem('aiapp_include_perplexity') !== 'false';
-      const hasMistral = localStorage.getItem('aiapp_include_mistral') !== 'false';
-      const hasDeepSeek = localStorage.getItem('aiapp_include_deepseek') !== 'false';
-      const hasCohere = localStorage.getItem('aiapp_include_cohere') !== 'false';
-      const keyCount = [hasOpenAI, hasGemini, hasGroq, hasClaude, hasOpenRouter, hasPerplexity, hasMistral, hasDeepSeek, hasCohere].filter(Boolean).length;
+      const hasGemini = localStorage.getItem('aiapp_include_gemini') !== 'false';
+      const hasOpenAI = localStorage.getItem('aiapp_include_openai') !== 'false';
+      const hasGroq = localStorage.getItem('aiapp_include_groq') !== 'false';
+      const keyCount = [hasClaude, hasGemini, hasOpenAI, hasGroq].filter(Boolean).length;
       if(!customProviders && keyCount < 2){
         throw new Error(t('missingKeysAskAll'));
       }
       let providers = [];
-      if(hasOpenAI) providers.push({ key: 'openai', label: 'OpenAI' });
-      if(hasGemini) providers.push({ key: 'gemini', label: 'Google Gemini' });
-      if(hasGroq) providers.push({ key: 'groq', label: 'Groq' });
       if(hasClaude) providers.push({ key: 'claude', label: 'Anthropic Claude' });
-      if(hasOpenRouter) providers.push({ key: 'openrouter', label: 'OpenRouter' });
-      if(hasPerplexity) providers.push({ key: 'perplexity', label: 'Perplexity' });
-      if(hasMistral) providers.push({ key: 'mistral', label: 'Mistral AI' });
-      if(hasDeepSeek) providers.push({ key: 'deepseek', label: 'DeepSeek' });
-      if(hasCohere) providers.push({ key: 'cohere', label: 'Cohere' });
+      if(hasGemini) providers.push({ key: 'gemini', label: 'Google Gemini' });
+      if(hasOpenAI) providers.push({ key: 'openai', label: 'OpenAI' });
+      if(hasGroq) providers.push({ key: 'groq', label: 'Groq' });
       const trueFullPoolKeys = providers.map(p => p.key);
       // قرار نهائي: أي بناء أو "اسأل الكل" يستخدم كل المزودين دائمًا.
       // اختيار ○/✅ الجانبي ما يقلّص القائمة أبدًا.
@@ -12525,7 +12510,7 @@ async function sendPrompt(){
         if(__gateNoBuild){
           apiMessages.push({ role: 'system', content: 'The user asked to build something, but you must NOT build yet. Reply in plain conversational text only (no code blocks at all): briefly describe in 2-3 sentences what you plan to build, then END your reply with exactly one question asking permission to start, e.g. in Arabic: "تبيني أبدأ البناء الحين؟". Do not start building until the user approves in their next message.' });
           // 💰 دور البوابة = وصف قصير فقط — مزود واحد يكفي بدل التسعة (توفير).
-          const __gateOne = ['claude', 'gemini', 'groq', 'deepseek'].find(k => providers.some(p => p.key === k));
+          const __gateOne = ['claude', 'gemini', 'groq'].find(k => providers.some(p => p.key === k));
           if(__gateOne) providers = providers.filter(p => p.key === __gateOne);
         }
         if(isBuildTask){
@@ -12551,10 +12536,10 @@ async function sendPrompt(){
                 squad = ['gemini', 'claude', 'openai'];
               } else if(__GAME_RE.test(text)){
                 // فرقة الألعاب: منطق + رسوميات
-                squad = ['claude', 'openai', 'deepseek', 'gemini'];
+                squad = ['claude', 'openai', 'gemini'];
               } else {
                 // فرقة التطبيقات والمواقع
-                squad = ['claude', 'openai', 'deepseek', 'gemini', 'mistral'];
+                squad = ['claude', 'openai', 'gemini', 'groq'];
               }
               forced = squad.filter(k => fullPoolKeys.includes(k));
               if(forced.length < 2) forced = fullPoolKeys.slice();
@@ -12565,7 +12550,7 @@ async function sendPrompt(){
             } else if(fullPoolKeys.includes('claude')){
               forced = ['claude'];
             } else {
-              forced = ['deepseek', 'openai', 'gemini'].filter(k => fullPoolKeys.includes(k)).slice(0, 1);
+              forced = ['claude', 'openai', 'gemini'].filter(k => fullPoolKeys.includes(k)).slice(0, 1);
             }
             if(forced.length >= 1){
               providers = forced.map(k => ({ key: k, label: functionalLabel(k) }));
@@ -13126,7 +13111,7 @@ async function sendPrompt(){
             ' لأنه الأدقّ فيه. محادثتك العادية تبقى على ' + __selLabel + '.');
         }
       }catch(e){ __swallow(e, 'ui:switchnote'); }
-      const __teamOrder = [__effProv, ...(__routeFix ? ['claude', 'openai', 'deepseek'] : ['claude', 'openai', 'gemini']).filter(p => p !== __effProv)];
+      const __teamOrder = [__effProv, ...(__routeFix ? ['claude', 'openai', 'gemini'] : ['claude', 'openai', 'gemini']).filter(p => p !== __effProv)];
       window.__claudeModelOverride = null;
       window.__claudeThinking = !__routeFix && __selProv === 'claude'; // 🧠 تفكير داخلي قبل الرد في النقاش العادي (Claude فقط)
       if(__gateNoBuild){
