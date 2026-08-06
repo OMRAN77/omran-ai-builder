@@ -48,6 +48,49 @@ const TOOLS = [
   },
 ];
 
+// 🪞 الأثر المرئي — «فعلتُ س فحصلت ص». كل سطر يُشتقّ من مُدخل الأداة الحقيقي
+// ومن ناتجها الحقيقي، لا من ادّعاء النموذج. فما يقرأه المستخدم هو ما جرى فعلًا.
+// كان الوكيل يقول «🔍 يبحث في الإنترنت…» ولا يقول عن ماذا بحث ولا ماذا وجد،
+// فيبقى العمل كلّه على الثقة العارية.
+function trailDid(name, input) {
+  const s = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
+  if (name === 'web_search') return 'بحثتُ عن «' + (s(input.query, 60) || '؟') + '»';
+  if (name === 'fetch_page') {
+    let h = s(input.url, 80);
+    try { h = new URL(String(input.url)).hostname || h; } catch (e) { /* رابط مشوّه → نعرض ما أُرسل */ }
+    return 'قرأتُ ' + h;
+  }
+  if (name === 'run_js') return 'شغّلتُ كودًا (' + String(input.code || '').length + ' حرفًا)';
+  if (name === 'test_html') return 'اختبرتُ صفحة (' + String(input.html || '').length + ' حرفًا)';
+  return 'استخدمتُ ' + name;
+}
+function trailGot(name, result) {
+  const r = String(result == null ? '' : result);
+  if (!r.trim()) return 'فلم يعُد شيء';
+  if (/^(تعذّر|أداة غير معروفة|✗|فشل)/.test(r.trim())) return 'ففشلت: ' + r.trim().slice(0, 80);
+  if (name === 'web_search') {
+    const n = (r.match(/(?:^|\n)\s*(?:\d+[.)]|[-•])\s/g) || []).length;
+    if (!n) return 'فحصلتُ ' + r.length + ' حرفًا';
+    return 'فحصلتُ ' + (n === 1 ? 'نتيجة واحدة' : n === 2 ? 'نتيجتين' : n <= 10 ? (n + ' نتائج') : (n + ' نتيجة'));
+  }
+  if (name === 'fetch_page') return 'فحصلتُ ' + r.length + ' حرفًا من الصفحة';
+  if (name === 'test_html') {
+    if (/^✅/.test(r.trim())) return 'فما ظهر خطأ تشغيل';
+    const first = r.split('\n').filter((l) => l.trim() && !/^⚠️/.test(l.trim()))[0] || '';
+    return 'فظهر خطأ: ' + first.trim().slice(0, 70);
+  }
+  if (name === 'run_js') {
+    // الخطأ يصل بوجهين: قسم «أخطاء:» من الإطار، أو سطر يبدأ بـ✗ كتبه الغلاف
+    // حين رمى الكود استثناءً. تجاهُل الثاني كان يقول «نجح» عن كود سقط.
+    const m = r.match(/أخطاء:\n([\s\S]*)$/);
+    if (m) return 'فظهر خطأ: ' + String(m[1]).split('\n')[0].trim().slice(0, 70);
+    const bad = r.split('\n').filter((l) => /^\s*✗/.test(l))[0];
+    if (bad) return 'فظهر خطأ: ' + bad.replace(/^\s*✗\s*/, '').trim().slice(0, 70);
+    return 'فعاد ناتج ' + r.length + ' حرفًا';
+  }
+  return 'فحصلتُ ' + r.length + ' حرفًا';
+}
+
 const SYSTEM = `أنت "وكيل عمران" 🤖 — وكيل ذكاء اصطناعي مستقل داخل تطبيق Omran AI Builder.
 
 ═══ ذكاء الردود ═══
@@ -87,6 +130,7 @@ const SYSTEM = `أنت "وكيل عمران" 🤖 — وكيل ذكاء اصطن
 ═══ المعرفة والدقة ═══
 24. أنت خبير بتطبيق Omran AI Builder نفسه: الإعدادات ⚙️ (اللغة، حسابي، الإحصائيات، التخصيص، الصوت، الخطط)، اسأل الكل، مها الصوتية، القوالب الجاهزة، تبويبات المعاينة/الكود/الصوت — أرشد المستخدم داخل التطبيق بدقة.
 25. أي رابط تعطيه: تأكد منه بـ web_search أو fetch_page أولًا — ممنوع روابط من الذاكرة.
+26. قبل أول أداة في أي مهمة تحتاج أكثر من خطوة واحدة: اكتب سطرًا واحدًا فقط يبدأ بـ🗺️ يعلن خطتك بـ١٥ كلمة أو أقل، ثم انطلق فورًا. سطر واحد لا قائمة، ولا تنتظر موافقة عليه، ولا تكرره لاحقًا. المهمة التي تُنجزها بلا أدوات لا تحتاج هذا السطر.
 26. أي رقم أو سعر أو إحصائية: اذكر مصدرها.
 27. إذا سُئلت "أيهم أفضل؟": أعطِ جدول مقارنة واضح.
 28. إذا اكتشفت أن ردك السابق خطأ: قل "أصحح معلومتي" وصحح بشجاعة — لا تكابر.
@@ -458,6 +502,12 @@ module.exports = async (req, res) => {
       // نهاية كل خطوة تُقيَّد في الدفتر: ما وصل هنا لم يبقَ رهنًا ببقاء المستمع.
       run.step = steps; run.updatedAt = Date.now();
       run.text = (run.text + contentBlocks.filter(Boolean).map((cb) => cb.text || '').join('')).slice(-60000);
+      // الخطّة المعلنة تُقيَّد مرّة واحدة: مَن يعود بعد إعادة تحميل يجب أن يعرف
+      // ما كان الوكيل ذاهبًا إليه، لا أن يرى ناتجًا هابطًا من فراغ.
+      if (!run.plan) {
+        const pm = run.text.match(/\u{1F5FA}\uFE0F?\s*(\S[^\n]{2,159})/u);
+        if (pm) { run.plan = pm[1].trim(); }
+      }
       await journal(runUser, run);
 
       if (stopReason === 'tool_use') {
@@ -486,7 +536,17 @@ module.exports = async (req, res) => {
             result = await runInClient(cb.name, input);
           }
           toolResults.push({ type: 'tool_result', tool_use_id: cb.id, content: result.slice(0, 8000) });
+
+          // سطر واحد صادق لكل أداة: ماذا فعلتُ وماذا حصلتُ. يُبثّ حالًا ويُقيَّد
+          // في الدفتر — فالأثر يبقى وإن سقط الاتصال أو أُغلق التبويب.
+          const did = trailDid(cb.name, input), got = trailGot(cb.name, result);
+          send({ status: '↳ ' + did + ' — ' + got });
+          if (!Array.isArray(run.trail)) run.trail = [];
+          run.trail.push({ n: run.trail.length + 1, did: did, got: got, at: Date.now() });
+          if (run.trail.length > 24) run.trail.splice(0, run.trail.length - 24);
         }
+        run.updatedAt = Date.now();
+        await journal(runUser, run);
         convo.push({ role: 'user', content: toolResults });
         send({ status: '🧠 الوكيل يكمل العمل…' });
         continue;

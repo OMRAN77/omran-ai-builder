@@ -11253,6 +11253,22 @@ async function __agentRecoverRun(onWait){
   }
   return '';
 }
+// 🪞 الأثر المرئي: ما فعله الوكيل فعلًا، مقروءًا من دفتره لا من كلامه. مَن غاب
+// عن الشاشة ثم عاد كان يجد ناتجًا بلا سياق — الآن يجد الخطّة والخطوات.
+function __agentTrailText(run){
+  let out = '';
+  try{
+    if(run && run.plan) out += '\n\n🗺️ ' + String(run.plan).slice(0, 160);
+    const tr = (run && Array.isArray(run.trail)) ? run.trail : [];
+    if(tr.length){
+      out += '\n' + (lang === 'ar' ? 'ما جرى فعلًا:' : 'What actually happened:');
+      tr.slice(-8).forEach(function(s){
+        out += '\n• ' + String((s && s.did) || '').slice(0, 90) + ' — ' + String((s && s.got) || '').slice(0, 80);
+      });
+    }
+  }catch(e){ /* الأثر ترفٌ لا يُسقط ناتجًا */ }
+  return out;
+}
 // 🕯️ الدوام٢: إعادة تحميل الصفحة كانت تقطع الخيط. الخادم يكمل ويكتب دفتره،
 // لكن لا أحد يسأل عنه عند الفتح — فعملٌ اكتمل فعلًا كان يُرمى. هنا نسأل مرة
 // واحدة: إن نجا تشغيل هذا المشروع، نعيده إلى مكانه.
@@ -11290,7 +11306,7 @@ async function __agentResumeOnLoad(){
   if(finished && text){
     await __agentApplyResult(cur, text);
     const last = cur.messages[cur.messages.length - 1];
-    if(last) last.content = '🕯️ ' + (lang === 'ar' ? 'اكتمل على الخادم بعد إعادة التحميل.' : 'Completed on the server after the reload.') + '\n' + last.content;
+    if(last) last.content = '🕯️ ' + (lang === 'ar' ? 'اكتمل على الخادم بعد إعادة التحميل.' : 'Completed on the server after the reload.') + __agentTrailText(run) + '\n' + last.content;
     drop();
   } else if(!finished){
     // ما زال يعمل بعد ١٥٠ ثانية: نُبقي العلامة — الفتحة القادمة تسأل من جديد.
