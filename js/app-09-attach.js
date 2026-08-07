@@ -954,7 +954,7 @@ async function sendPrompt(){
   let __gateNoBuild = false;
   let __gateApprovedText = null; // ما كتبه المستخدم فعلًا (نعم/ابدأ) ليُعرض كما هو
   {
-    const GATE_BUILD_RE = /بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|العاب|ألعاب|أداة|اداة|نسخة|نسخه|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\btool\b|\bclone\b/i;
+    const GATE_BUILD_RE = /بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|العاب|ألعاب|أداة|اداة|نسخة|نسخه|شهادة|شهاده|بطاقة|بطاقه|دعوة|دعوه|بوستر|شعار|لوجو|تهنئة|تهنئه|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\btool\b|\bclone\b|\bcertificate\b|\bcard\b|\binvitation\b|\bposter\b|\blogo\b/i;
     const GATE_CMD_RE = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|ممكن|ابغي|أبغي|ابغى|أبغى|ابي|أبي|بغيت|اريد|أريد|عطني|أعطني|اعطني|هات|سولي|سوّلي|build|create|make|design|develop|\bwant\b|\bgive\b|\bcan you\b)/i;
     const GATE_FIX_RE = /(صلح|أصلح|اصلح|إصلاح|اصلاح|خطأ|خطا|أخطاء|اخطاء|مشكل|عطل|توقف|خرب|ما\s*يشتغل|مو\s*شغال|لا\s*يعمل|\bfix\b|\berror\b|\bbug\b|\bdebug\b|\bbroken\b)/i;
     const GATE_APPROVE_RE = /^\s*(نعم|أجل|اجل|اي(?:ه|وه|وا)?|إيه?|أيوه|ايوه|يلا|يالله|ابدأ|أبدأ|ابدا|ابدي|ابنيه?|ابنيها|سو|سوه|سوها|سويها|سوي|تمام|اوك|أوك|اوكي|اوكيه|موافق|زين|طيب|وافقت|yes|ok|okay|go|start|build)[\sء-ي!.،؟]{0,30}$/i;
