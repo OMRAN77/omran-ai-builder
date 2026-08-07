@@ -1147,6 +1147,34 @@ function destroyBg3D(){
   const el = document.getElementById('vantaBg');
   if(el) el.innerHTML = '';
 }
+// v444: لوحة ألوان موحّدة — كلّ خلفيّات 3D تقرأ منها فتتبع الوضع الفاتح/الداكن
+function bg3dPalette(){
+  const light = document.documentElement.getAttribute('data-mode') === 'light';
+  if(!light) return { light:false, bgHex:0x0a0b10,
+    oceanTop:'#04101f', oceanBot:'#062a44',
+    wave:['rgba(30,140,190,0.55)','rgba(20,100,160,0.55)','rgba(10,60,110,0.6)'],
+    deep:'#03101c', bubble:'140,220,255',
+    skyTop:'#01030a', skyBot:'#0a1330', star:'255,255,255',
+    snowBg:'#0b1220', flake:'255,255,255,0.85',
+    rainBg:'rgba(8,12,20,1)', rainLine:'rgba(160,200,255,0.35)',
+    forest:'#020a05', glow:'200,255,120', fly:'220,255,150' };
+  return { light:true, bgHex:0xeef2f8,
+    oceanTop:'#f3f7fc', oceanBot:'#dbe6f2',
+    wave:['rgba(120,165,205,0.40)','rgba(95,140,185,0.40)','rgba(70,115,165,0.45)'],
+    deep:'#eaf1f8', bubble:'45,105,155',
+    skyTop:'#f4f7fc', skyBot:'#dde6f3', star:'55,72,105',
+    snowBg:'#e9eff7', flake:'95,120,155,0.85',
+    rainBg:'rgba(234,239,246,1)', rainLine:'rgba(80,120,170,0.45)',
+    forest:'#eef4e8', glow:'110,150,45', fly:'120,160,50' };
+}
+// مؤثّرات Vanta التي تتجاهل backgroundColor لها مفاتيحها الخاصّة — في الوضع الفاتح فقط
+const BG3D_LIGHT_EXTRA = {
+  waves:   { color: 0x9fb4cc },
+  fog:     { baseColor: 0xeef2f8, highlightColor: 0xffffff, midtoneColor: 0xc9d8ea, lowlightColor: 0x93a8c2, blurFactor: 0.6 },
+  cells:   { color1: 0xd3ddec, color2: 0x8fa5c0 },
+  clouds:  { skyColor: 0xdfe9f5, cloudColor: 0xffffff, cloudShadowColor: 0xbecbdc, sunColor: 0xffffff, sunGlareColor: 0xf1f5fa, sunlightColor: 0xffffff },
+  clouds2: { skyColor: 0xdfe9f5, cloudColor: 0xffffff, lightColor: 0xffffff }
+};
 function initCustomBg3D(id){
   const container = document.getElementById('vantaBg');
   if(!container) return;
@@ -1187,16 +1215,17 @@ function initCustomBg3D(id){
   window.addEventListener('resize', resizeAndReset);
 
   function drawOcean(){
+    const P = bg3dPalette();
     t += 0.02;
     const grad = ctx.createLinearGradient(0,0,0,h);
-    grad.addColorStop(0, '#04101f');
-    grad.addColorStop(1, '#062a44');
+    grad.addColorStop(0, P.oceanTop);
+    grad.addColorStop(1, P.oceanBot);
     ctx.fillStyle = grad;
     ctx.fillRect(0,0,w,h);
     const layers = [
-      { amp: 18, freq: 0.008, speed: 1.0, color: 'rgba(30,140,190,0.55)', base: h*0.62 },
-      { amp: 26, freq: 0.006, speed: 0.6, color: 'rgba(20,100,160,0.55)', base: h*0.72 },
-      { amp: 34, freq: 0.004, speed: 0.35,color: 'rgba(10,60,110,0.6)',  base: h*0.84 }
+      { amp: 18, freq: 0.008, speed: 1.0, color: P.wave[0], base: h*0.62 },
+      { amp: 26, freq: 0.006, speed: 0.6, color: P.wave[1], base: h*0.72 },
+      { amp: 34, freq: 0.004, speed: 0.35,color: P.wave[2], base: h*0.84 }
     ];
     layers.forEach(L => {
       ctx.beginPath();
@@ -1212,7 +1241,8 @@ function initCustomBg3D(id){
     });
   }
   function drawBubbles(){
-    ctx.fillStyle = '#03101c';
+    const P = bg3dPalette();
+    ctx.fillStyle = P.deep;
     ctx.fillRect(0,0,w,h);
     particles.forEach(p => {
       p.y -= p.s;
@@ -1221,17 +1251,18 @@ function initCustomBg3D(id){
       if(p.y < -20){ p.y = h+20; p.x = rand(0,w); }
       ctx.beginPath();
       ctx.arc(bx, p.y, p.r, 0, Math.PI*2);
-      ctx.strokeStyle = 'rgba(140,220,255,0.55)';
+      ctx.strokeStyle = 'rgba(' + P.bubble + ',0.55)';
       ctx.lineWidth = 1.2;
       ctx.stroke();
-      ctx.fillStyle = 'rgba(140,220,255,0.12)';
+      ctx.fillStyle = 'rgba(' + P.bubble + ',0.12)';
       ctx.fill();
     });
   }
   function drawStars(){
+    const P = bg3dPalette();
     const grad = ctx.createLinearGradient(0,0,0,h);
-    grad.addColorStop(0, '#01030a');
-    grad.addColorStop(1, '#0a1330');
+    grad.addColorStop(0, P.skyTop);
+    grad.addColorStop(1, P.skyBot);
     ctx.fillStyle = grad;
     ctx.fillRect(0,0,w,h);
     particles.forEach(p => {
@@ -1239,12 +1270,12 @@ function initCustomBg3D(id){
       const alpha = 0.3 + Math.abs(Math.sin(p.phase))*0.7;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-      ctx.fillStyle = 'rgba(255,255,255,' + alpha.toFixed(2) + ')';
+      ctx.fillStyle = 'rgba(' + P.star + ',' + alpha.toFixed(2) + ')';
       ctx.fill();
     });
     if(Math.random() < 0.006){
       const sx = rand(0,w*0.6), sy = rand(0,h*0.3);
-      ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+      ctx.strokeStyle = 'rgba(' + P.star + ',0.8)';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(sx, sy);
@@ -1253,7 +1284,8 @@ function initCustomBg3D(id){
     }
   }
   function drawSnow(){
-    ctx.fillStyle = '#0b1220';
+    const P = bg3dPalette();
+    ctx.fillStyle = P.snowBg;
     ctx.fillRect(0,0,w,h);
     particles.forEach(p => {
       p.y += p.s;
@@ -1262,14 +1294,15 @@ function initCustomBg3D(id){
       if(p.y > h+10){ p.y = -10; p.x = rand(0,w); }
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.fillStyle = 'rgba(' + P.flake + ')';
       ctx.fill();
     });
   }
   function drawRain(){
-    ctx.fillStyle = 'rgba(8,12,20,1)';
+    const P = bg3dPalette();
+    ctx.fillStyle = P.rainBg;
     ctx.fillRect(0,0,w,h);
-    ctx.strokeStyle = 'rgba(160,200,255,0.35)';
+    ctx.strokeStyle = P.rainLine;
     ctx.lineWidth = 1;
     particles.forEach(p => {
       p.y += p.s;
@@ -1281,7 +1314,8 @@ function initCustomBg3D(id){
     });
   }
   function drawFireflies(){
-    ctx.fillStyle = '#020a05';
+    const P = bg3dPalette();
+    ctx.fillStyle = P.forest;
     ctx.fillRect(0,0,w,h);
     particles.forEach(p => {
       p.x += p.vx; p.y += p.vy;
@@ -1292,8 +1326,8 @@ function initCustomBg3D(id){
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
       ctx.shadowBlur = 12;
-      ctx.shadowColor = 'rgba(200,255,120,' + glow + ')';
-      ctx.fillStyle = 'rgba(220,255,150,' + glow + ')';
+      ctx.shadowColor = 'rgba(' + P.glow + ',' + glow + ')';
+      ctx.fillStyle = 'rgba(' + P.fly + ',' + glow + ')';
       ctx.fill();
       ctx.shadowBlur = 0;
     });
@@ -1312,7 +1346,7 @@ function getBg3DAccentColorHex(){
     let a = (getComputedStyle(document.documentElement).getPropertyValue('--accent') || '').trim();
     if(!/^#[0-9a-fA-F]{6}$/.test(a)) a = '#6b7280';
     return parseInt(a.slice(1), 16);
-  } catch(e){ return 0xd4af37; }
+  } catch(e){ return 0x6b7280; }
 }
 async function applyBg3D(id, save){
   if(save !== false) localStorage.setItem('aiapp_bg3d', id);
@@ -1330,7 +1364,8 @@ async function applyBg3D(id, save){
     await ensureVantaEffectScript(id);
     if(!window.VANTA || !window.VANTA[id.toUpperCase()]) return;
     const color = getBg3DAccentColorHex();
-    currentVantaEffect = window.VANTA[id.toUpperCase()]({
+    const P = bg3dPalette();
+    currentVantaEffect = window.VANTA[id.toUpperCase()](Object.assign({
       el: '#vantaBg',
       mouseControls: true,
       touchControls: true,
@@ -1340,11 +1375,12 @@ async function applyBg3D(id, save){
       scale: 1.00,
       scaleMobile: 1.00,
       color: color,
-      backgroundColor: document.documentElement.getAttribute('data-mode') === 'light' ? 0xffffff : 0x0a0b10
-    });
+      backgroundColor: P.bgHex
+    }, P.light ? (BG3D_LIGHT_EXTRA[id] || {}) : {}));
   } catch(e){ console.warn('bg3d init failed', e); }
 }
-// v443: الخلفيّة ثلاثيّة الأبعاد تتبع الوضع الفاتح/الداكن — تُعاد بلونها الصحيح عند التبديل
+// v443/v444: تبديل الوضع يعيد بناء الخلفيّة الحاليّة أيًّا كان محرّكها — applyBg3D يوزّع
+// على Vanta/three وp5 وCanvas اليدويّ، ودوالّ Canvas تقرأ اللوحة كلّ إطار فتنقلب فورًا.
 try{ new MutationObserver(()=>{ const _b = localStorage.getItem('aiapp_bg3d') || 'none'; if(_b !== 'none') applyBg3D(_b, false); }).observe(document.documentElement, { attributes:true, attributeFilter:['data-mode'] }); }catch(e){ __swallow(e, "misc:app-05-ui#bg3d-mode"); }
 function buildBg3DPicker(){
   const grid = $('#bg3dGrid');
