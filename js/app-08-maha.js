@@ -203,6 +203,8 @@ function mahaAutoCorrelate(buf, sampleRate){
 // pitch samples collected while they were speaking. Defaults to 'female'
 // (Maha's own natural voice) until enough real samples come in.
 let mahaDetectedGender = 'female';
+let mahaSelectedVoice = 'female';
+try { mahaSelectedVoice = localStorage.getItem('mahaVoiceGender') || 'female'; } catch(e) {}
 // Updates the on-screen call card name/icon to match the currently detected
 // caller gender: "مها" (female, 💁‍♀️) or "عبدالله" (male, 🧔).
 function mahaUpdatePersonaUI(){
@@ -211,6 +213,18 @@ function mahaUpdatePersonaUI(){
   const isMale = mahaDetectedGender === 'male';
   if(nameEl) nameEl.textContent = isMale ? 'عبدالله' : 'مها';
   if(orbEl) orbEl.textContent = isMale ? '🧔' : '💁\u200d♀️';
+}
+function mahaSetVoiceGender(g) {
+  mahaSelectedVoice = g;
+  try { localStorage.setItem('mahaVoiceGender', g); } catch(e) {}
+  const nameEl = document.getElementById('mahaCallNameLabel');
+  const orbEl = document.getElementById('mahaOrb');
+  if(nameEl && mahaCallMode !== 'builder') nameEl.textContent = g === 'male' ? 'عبدالله' : 'مها';
+  if(orbEl && mahaCallMode !== 'builder') orbEl.textContent = g === 'male' ? '🧔' : '💁\u200d♀️';
+  const btnF = document.getElementById('mahaVoiceFemale');
+  const btnM = document.getElementById('mahaVoiceMale');
+  if(btnF) btnF.style.background = g === 'female' ? 'rgba(168,85,247,.45)' : 'rgba(255,255,255,.1)';
+  if(btnM) btnM.style.background = g === 'male' ? 'rgba(59,130,246,.45)' : 'rgba(255,255,255,.1)';
 }
 // All pitch samples collected across the *entire* call (not reset per turn).
 // A single noisy turn (background sound, echo, weak mic) can produce a wrong
@@ -295,7 +309,7 @@ async function mahaSpeak(text){
       const resp = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang })
+        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaSelectedVoice, lang: mahaReplyLang })
       });
       if(!resp.ok){ resolve(); return; }
       const blob = await resp.blob();
@@ -900,6 +914,7 @@ async function mahaStartRealtimeCall(){
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       mode: mahaCallMode,
       desktop: !document.documentElement.classList.contains('mobile-ui'),
+      voiceGender: mahaSelectedVoice,
     }),
   });
   const tokenData = await tokenRes.json().catch(() => ({}));
@@ -1411,8 +1426,8 @@ async function mahaCallLoop(){
       // Persona swap: male caller -> "Abdullah" (male voice/persona), female
       // caller -> "Maha" (female voice/persona). mahaDetectedGender is the
       // accumulated pitch-based detection from the caller's own voice.
-      const mahaPersonaName = mahaDetectedGender === 'male' ? 'Abdullah' : 'Maha';
-      const mahaPersonaGenderDesc = mahaDetectedGender === 'male' ? 'male' : 'female';
+      const mahaPersonaName = mahaSelectedVoice === 'male' ? 'Abdullah' : 'Maha';
+      const mahaPersonaGenderDesc = mahaSelectedVoice === 'male' ? 'male' : 'female';
       const mahaSystemPrompt = MAHA_SYSTEM_PROMPT_TEMPLATE
         .replace(/\{\{NAME\}\}/g, mahaPersonaName)
         .replace(/\{\{GENDER_DESC\}\}/g, mahaPersonaGenderDesc);
@@ -1539,14 +1554,17 @@ async function mahaStartCall(mode){
   mahaHistory = [];
   mahaAllPitchSamples = [];
   mahaDetectedGender = 'female';
+  mahaSetVoiceGender(mahaSelectedVoice);
   mahaIntroduced = false;
   // ملاحظة: لا نمسح مرجع الصورة الأخيرة هنا — يبقى ثابت حتى يبدأ المستخدم "+ مشروع جديد" فعليًا
   const mahaImgElStart = document.getElementById('mahaGenImage');
   if(mahaImgElStart && !mahaLastImageBase64){ mahaImgElStart.style.display = 'none'; mahaImgElStart.src = ''; }
   if(mahaOrbEl) mahaOrbEl.style.display = mahaCallMode === 'builder' ? 'none' : 'flex';
   if(mahaWaveEl) mahaWaveEl.style.display = mahaCallMode === 'builder' ? 'flex' : 'none';
+  const mahaVoiceToggleEl = document.getElementById('mahaVoiceToggle');
+  if(mahaVoiceToggleEl) mahaVoiceToggleEl.style.display = mahaCallMode === 'builder' ? 'none' : 'flex';
   const mahaNameLabelEl = document.getElementById('mahaCallNameLabel');
-  if(mahaNameLabelEl) mahaNameLabelEl.textContent = mahaCallMode === 'builder' ? (t('voiceTabAssistantName') || 'المساعد') : 'مها';
+  if(mahaNameLabelEl) mahaNameLabelEl.textContent = mahaCallMode === 'builder' ? (t('voiceTabAssistantName') || 'المساعد') : (mahaSelectedVoice === 'male' ? 'عبدالله' : 'مها');
   if(mahaCallMode !== 'builder') mahaUpdatePersonaUI();
   mahaCallActive = true;
   if(mahaCallScreenEl){
