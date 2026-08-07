@@ -673,10 +673,9 @@
 @keyframes omranPulse{0%,100%{opacity:.6}50%{opacity:1}}
   /* v418 (٦ أغسطس): قائمة المزوّدين التسعة مخفيّة على الكمبيوتر — التوجيه صار تلقائيًّا بالتخصص.
      الجوال لم يُلمس (#providerStripMobile باقٍ). زرّ الوضع الاحترافي باقٍ لأنه ليس اختيار مزوّد. */
-  @media (min-width:861px){
-    html:not(.mobile-ui) #provDropdownBtn,
-    html:not(.mobile-ui) #provDropdownPanel{display:none !important;}
-  }
+  /* v449 (٧ أغسطس، أمر عمران): نفس الإخفاء على الجوّال أيضًا. */
+  #provDropdownBtn,
+  #provDropdownPanel{display:none !important;}
 
   /* ===== v434 — الوضع الفاتح (طبقة تغليف فوق الداكن؛ لا يُعاد كتابة أي لون) =====
      الذهبي --accent ثابت في الوضعين. التفعيل: html[data-mode="light"] */
