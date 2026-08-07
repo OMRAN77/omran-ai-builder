@@ -756,3 +756,4 @@
   /* v452 — شعار عمران في زرّ الوكيل: حجم موحّد كمبيوتر + جوّال (أمر عمران ٧ أغسطس ٢٠٢٦) */
   #btnPremiumToggle .premCrown{display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; opacity:1;}
   #btnPremiumToggle .premCrown img{width:22px; height:22px; display:block; object-fit:contain;}
+  @media (max-width:860px){ #btnPremiumToggle .premCrown img{width:30px; height:30px;} }
