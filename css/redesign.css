@@ -105,7 +105,7 @@ html.mobile-ui #omranBelowComposer{display:none !important;}
   html:not(.mobile-ui) .omToolCard{border-color:transparent !important;}
   html:not(.mobile-ui) #eduIntroCard{border-color:transparent !important;}
   /* v405: (كمبيوتر فقط) توحيد الخلفيات — كل الصناديق بنفس لون الخلفية */
-  html:not(.mobile-ui) #omranNewChatBtn, html:not(.mobile-ui) #provDropdownBtn, html:not(.mobile-ui) #btnPremiumToggle, html:not(.mobile-ui) #premiumPointsChip{background:transparent !important; background-image:none !important; border-color:transparent !important; box-shadow:none !important;}
+  html:not(.mobile-ui) #omranNewChatBtn, html:not(.mobile-ui) #provDropdownBtn, html:not(.mobile-ui) #premiumPointsChip{background:transparent !important; background-image:none !important; border-color:transparent !important; box-shadow:none !important;}
   html:not(.mobile-ui) .hist-item, html:not(.mobile-ui) .hist-item.active{background:transparent !important; border-color:transparent !important; box-shadow:none !important;}
   html:not(.mobile-ui) .omToolCard, html:not(.mobile-ui) .omQuickRow, html:not(.mobile-ui) #eduIntroCard{background:transparent !important; background-image:none !important; box-shadow:none !important;}
   /* v406: (كمبيوتر فقط) إسقاط بطاقتي التعليم تحت النوافذ (z=10000) — كانتا تحجبان زرّ «إنشاء الفيديو» */
