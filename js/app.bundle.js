@@ -12366,7 +12366,12 @@ async function sendPrompt(){
     // الرد عليها ويخلط المواضيع.
     let __historyMsgs = cur.messages.filter(m =>
       !m.providerLabel || m.isMergeHeader ||
-      (m.askAllReply && !m._failed && m.batchId && !cur.messages.some(x => x !== m && x.isMergeHeader && x.batchId === m.batchId))
+      // 🧠 إصلاح الذاكرة (٧ أغسطس ٢٠٢٦): كان الشرط يشترط askAllReply — وهي false
+      // لكل ردّ عاديّ منذ v463، فكانت كل ردود المساعد تسقط من السياق: المستخدم يسأل
+      // والتطبيق لا يتذكّر أنه أجاب. الآن يبقى كل ردّ حقيقيّ، ويسقط فقط الفاشل
+      // والجاري وردود دفعة «اسأل الكل» التي لها رأس دمج يمثّلها.
+      (!m._failed && !m._loading &&
+        !(m.batchId && cur.messages.some(x => x !== m && x.isMergeHeader && x.batchId === m.batchId)))
     );
     if(!__curIsBuildTask){
       // ✅ v323: آخر 5 رسائل تبقى كاملة في الذاكرة حتى لو فيها كلمات بناء —
