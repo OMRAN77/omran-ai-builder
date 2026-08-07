@@ -810,6 +810,15 @@ async function selfHealCode(code, codeType, onStatus){
 
 // 🪧 v300: استبدال صورة المستخدم المرفقة مكان __USER_IMAGE__ في تصاميم الإعلانات
 function substUserImage(code){
+  // 🎨 الصور التي رسمها النموذج بنفسه في هذا الردّ: الرمز → data URI.
+  // يجري قبل __USER_IMAGE__ لأنّ الاثنين قد يجتمعان في صفحة واحدة.
+  try{
+    if(code && code.indexOf('__IMG_') !== -1 && window.__genImages){
+      for(const k in window.__genImages){
+        if(code.indexOf(k) !== -1) code = code.split(k).join(window.__genImages[k]);
+      }
+    }
+  }catch(e){ __swallow(e, 'img:subst'); }
   try{
     if(code && code.indexOf('__USER_IMAGE__') !== -1){
       const c = getCurrent();

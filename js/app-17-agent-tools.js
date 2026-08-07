@@ -70,6 +70,35 @@
           if (!r2.errors.length) return '✅ شُغِّل بلا أخطاء تشغيل.' + (r2.logs.length ? '\nالطرفية:\n' + r2.logs.join('\n') : '');
           return '⚠️ أخطاء تشغيل:\n' + r2.errors.join('\n');
         }
+        // 🎨 صورة حقيقية بدل رابط عشوائي. تُخزَّن محليًّا ويُعاد للنموذج رمز قصير
+        // (__IMG_n__) يضعه في src؛ العميل يستبدله بـdata URI قبل العرض — فلا
+        // تدخل مئات الكيلوبايت في سياق النموذج ولا في سجلّ المحادثة.
+        if (name === 'generate_image') {
+          var prompt = String((args && args.prompt) || '').trim();
+          if (!prompt) return 'وصف الصورة فارغ — لم تُرسم.';
+          window.__genImages = window.__genImages || {};
+          if (Object.keys(window.__genImages).length >= 4) {
+            return 'بلغتَ حدّ أربع صور في هذا الردّ. أكمل الصفحة بخلفيات CSS بدل صور إضافية.';
+          }
+          var resp = await fetch('/api/media?action=maha-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              prompt: prompt,
+              token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
+              guestId: window.getGuestId ? window.getGuestId() : '',
+            }),
+          });
+          var j = null;
+          try { j = await resp.json(); } catch (e) { j = null; }
+          if (!resp.ok || !j || !j.imageBase64) {
+            return 'تعذّر رسم الصورة: ' + (((j && j.error) || ('HTTP ' + resp.status)) + '').slice(0, 120) +
+                   '. لا تخترع رابط صورة — استعمل خلفية CSS بدلها.';
+          }
+          var tok = '__IMG_' + (Object.keys(window.__genImages).length + 1) + '__';
+          window.__genImages[tok] = 'data:' + (j.mimeType || 'image/png') + ';base64,' + j.imageBase64;
+          return '✅ رُسمت الصورة. ضع هذا الرمز حرفيًّا في src بلا أي إضافة: ' + tok;
+        }
         return 'أداة غير معروفة: ' + name;
       } catch (e) {
         return 'تعذّر التنفيذ: ' + String(e && e.message || e);

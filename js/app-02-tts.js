@@ -158,9 +158,16 @@ function buildSpokenWordSpans(container, text){
         if(markerCount % 2 === 1) boldOpen = !boldOpen;
       }
       // 🔗 clickable links: markdown [text](url) or plain URLs
-      const linkM = display.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)([.,،؛!؟)]*)$/);
-      const urlM = !linkM && display.match(/^(https?:\/\/[^\s<>"']{4,}|www\.[^\s<>"']{4,})([.,،؛!؟)]*)$/);
+      // v467: الرابط المسبوق بقوس أو علامة اقتباس — (https://…) أو «https://…» —
+      // كان يسقط من الالتقاط فيخرج نصًّا يُنسخ باليد. نفصل البادئة، ونوسّع
+      // اللاحقة لتشمل : » " ' ] التي تلتصق بنهايات الروابط في النصّ العربي.
+      let __lead = '';
+      const __leadM = display.match(/^[(«"'\[]+(?=(?:\[|https?:\/\/|www\.))/);
+      if(__leadM){ __lead = __leadM[0]; display = display.slice(__lead.length); }
+      const linkM = display.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)([.,،؛:!؟)»"'\]]*)$/);
+      const urlM = !linkM && display.match(/^(https?:\/\/[^\s<>"']{4,}|www\.[^\s<>"']{4,})([.,،؛:!؟)»"'\]]*)$/);
       if(linkM || urlM){
+        if(__lead) span.appendChild(document.createTextNode(__lead));
         const rawUrl = linkM ? linkM[2] : urlM[1];
         const href = rawUrl.indexOf('www.') === 0 ? 'https://' + rawUrl : rawUrl;
         const a = document.createElement('a');
@@ -171,7 +178,7 @@ function buildSpokenWordSpans(container, text){
         const trail = linkM ? linkM[3] : urlM[2];
         if(trail) span.appendChild(document.createTextNode(trail));
       } else {
-        span.textContent = display;
+        span.textContent = __lead + display;
       }
       if(wasBold || markerCount) span.classList.add('md-bold');
       if(headerLevel) span.classList.add('md-h' + headerLevel);

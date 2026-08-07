@@ -26,13 +26,32 @@ const TOOLS = [
     description: 'شغّل كود JavaScript في بيئة معزولة في متصفّح المستخدم وأعد ناتجه. استخدمها لأي حساب رقمي أو تاريخ أو منطق تريد التأكّد منه — لا تعتمد على حسابك الذهني.',
     input_schema: { type: 'object', properties: { code: { type: 'string', description: 'كود JavaScript. ما تطبعه بـconsole.log هو الناتج.' } }, required: ['code'] },
   },
+  {
+    name: 'generate_image',
+    description: 'ارسم صورة حقيقية من وصف نصّي. استخدمها لصور المواقع التي تبنيها (طبق، واجهة مطعم، منتج، بطل الصفحة) بدل روابط عشوائية. تُعيد لك رمزًا مثل __IMG_1__ تضعه حرفيًّا في src.',
+    input_schema: { type: 'object', properties: { prompt: { type: 'string', description: 'وصف الصورة بالإنجليزية، دقيق ومحدّد (نمط، إضاءة، زاوية).' } }, required: ['prompt'] },
+  },
+  {
+    name: 'test_html',
+    description: 'شغّل صفحة HTML كاملة في بيئة معزولة وأعد أخطاء التشغيل. استدعها مرّة واحدة على الصفحة النهائية قبل تسليمها.',
+    input_schema: { type: 'object', properties: { html: { type: 'string', description: 'مستند HTML كامل.' } }, required: ['html'] },
+  },
 ];
 
-const TOOLS_NOTE = '\n\n[أدواتك الحقيقية — ثلاث، وهي تعمل فعلًا الآن]:\n' +
+const TOOLS_NOTE = '\n\n[أدواتك الحقيقية — خمس، وهي تعمل فعلًا الآن]:\n' +
   '• web_search — أي سعر أو خبر أو طقس أو نتيجة أو رسوم رسمية أو معلومة قد تكون تغيّرت: ابحث أولًا.\n' +
   '• fetch_page — أي رابط ذكره المستخدم أو ظهر في البحث وتحتاج محتواه: افتحه واقرأه.\n' +
   '• run_js — أي حساب رقمي أو فرق تواريخ أو منطق: شغّله وخذ الناتج منه.\n' +
-  'قواعد ملزمة:\n' +
+  '• generate_image — ترسم صورة حقيقية وتعيد رمزًا مثل __IMG_1__ تضعه حرفيًّا في src.\n' +
+  '• test_html — تشغّل صفحتك النهائية وتعيد أخطاء التشغيل.\n' +
+  '\n[البناء — تبني بنفسك الآن، لا تصف ولا تستأذن]:\n' +
+  '(ب١) إن طلب المستخدم موقعًا أو صفحة أو تطبيقًا أو أداة: ابنِه كاملًا في هذا الردّ داخل كتلة ```html واحدة، مستندًا كاملًا يبدأ بـ<!DOCTYPE html>. ممنوع منعًا باتًا أن تقول «خلّني أصمّم لك» أو «سأعمل لك» أو تصف ما ستفعله ثم تقف — الوصف بلا بناء كذب.\n' +
+  '(ب٢) ممنوع أن تسأل «هل تريد أن أبدأ؟». ابنِ أوّلًا بأفضل اجتهادك، ثم اعرض في سطر واحد ما يمكن تغييره.\n' +
+  '(ب٣) الصور: استدعِ generate_image لكل صورة تحتاجها — بحدّ أقصى أربع صور في الردّ الواحد — وضع الرمز العائد حرفيًّا في src. ممنوع picsum أو placeholder أو روابط صور مخترعة؛ إن لم ترسم فاستعمل خلفية CSS أو رمزًا نصّيًّا.\n' +
+  '(ب٤) عربيّ؟ dir="rtl" وخطّ عربيّ. وتصميم يعمل على الجوال والكمبيوتر معًا.\n' +
+  '(ب٥) بعد اكتمال الصفحة استدعِ test_html مرّة واحدة، وأصلح أي خطأ قبل التسليم.\n' +
+  '(ب٦) أي نموذج (حجز/تواصل) يجب أن يكون صادقًا: إمّا يرسل فعلًا عبر mailto أو واتساب، أو يقول للزائر بوضوح أنّ الحجز غير مفعّل بعد. ممنوع «تمّ الحجز» وهميّة.\n' +
+  '\nقواعد ملزمة:\n' +
   '(١) ممنوع منعًا باتًا أن تقول «لا أستطيع الوصول للإنترنت» أو «راجع الموقع الرسمي» أو «الأسعار تتغيّر فتحقّق بنفسك» قبل أن تستدعي الأداة. أنت تصل، فاستخدمها.\n' +
   '(٢) ممنوع أن تدّعي أنك بحثتَ أو فتحتَ صفحة أو شغّلتَ كودًا إن لم تستدعِ الأداة فعلًا في هذا الردّ.\n' +
   '(٣) السؤال الذي لا يحتاج أداة (تحية، رأي، شرح مفهوم ثابت، صياغة نصّ) أجب عنه مباشرة بلا أداة ولا مقدّمات.\n' +
@@ -104,12 +123,14 @@ function trailLine(name, input, result) {
     const bad = r.match(/أخطاء:\n([\s\S]*)$/) || r.split('\n').filter((l) => /^\s*✗/.test(l))[0];
     return 'شغّلتُ كودًا — ' + (bad ? 'ظهر خطأ' : ('عاد ناتج ' + r.length + ' حرفًا'));
   }
+  if (name === 'generate_image') return /__IMG_/.test(r) ? 'رسمتُ صورة ✅' : ('تعذّرت الصورة — ' + s(r, 60));
+  if (name === 'test_html') return /^✅/.test(r) ? 'جرّبتُ الصفحة — بلا أخطاء ✅' : 'جرّبتُ الصفحة — ظهرت أخطاء';
   return 'استخدمتُ ' + name;
 }
 
 // التنفيذ في متصفّح المستخدم لا هنا: نفس ملتقى Redis الذي يستعمله الوكيل،
 // لأنّ دوال Vercel بلا حالة وردّ المتصفّح قد يصل نسخة أخرى من الدالّة.
-async function runInClient(send, name, input) {
+async function runInClient(send, name, input, waitMs) {
   const { kvGetJSON, kvDel, kvPutJSON, kvExpire } = require('./kv.js');
   const id = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   const key = 'agent/tool/' + id;
@@ -118,7 +139,7 @@ async function runInClient(send, name, input) {
     await kvExpire('agent/wait/' + id, 120);
   } catch (e) { console.warn('[chat] claim failed', e && e.message); }
   send({ clientTool: { id, name, input } });
-  const deadline = Date.now() + 20000;
+  const deadline = Date.now() + (Number(waitMs) || 20000);
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 400));
     let rec = null;
@@ -173,8 +194,8 @@ module.exports = async (req, res) => {
   try {
     // ثمان خطوات لا خمس وعشرين: المحادثة ليست بناءً طويلًا، وكلّ خطوة استدعاء
     // كامل بسياق متراكم. السقفان معًا — خطوات ووقت — يمنعان فاتورة مفتوحة.
-    const MAX_STEPS = Math.max(1, Math.min(12, Number(process.env.CHAT_MAX_STEPS) || 8));
-    const MAX_MS = Math.max(20000, Number(process.env.CHAT_MAX_MS) || 110000);
+    const MAX_STEPS = Math.max(1, Math.min(16, Number(process.env.CHAT_MAX_STEPS) || 12));
+    const MAX_MS = Math.max(20000, Number(process.env.CHAT_MAX_MS) || 240000);
     const t0 = Date.now();
     let steps = 0;
     let anyText = false;
@@ -186,7 +207,7 @@ module.exports = async (req, res) => {
       const upstream = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 8000, system, messages: convo, tools: TOOLS, stream: true }),
+        body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 16000, system, messages: convo, tools: TOOLS, stream: true }),
       });
 
       if (!upstream.ok) {
@@ -219,6 +240,8 @@ module.exports = async (req, res) => {
             if (cb.type === 'tool_use' && cb.name === 'web_search') send({ status: '🔍 يبحث في الإنترنت…' });
             else if (cb.type === 'tool_use' && cb.name === 'fetch_page') send({ status: '🌐 يقرأ صفحة…' });
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ status: '⚙️ يشغّل كودًا للتحقّق…' });
+            else if (cb.type === 'tool_use' && cb.name === 'generate_image') send({ status: '🎨 يرسم صورة…' });
+            else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ status: '🧪 يجرّب الصفحة…' });
           } else if (ev.type === 'content_block_delta') {
             const cb = blocks[ev.index];
             if (!cb) continue;
@@ -251,6 +274,8 @@ module.exports = async (req, res) => {
         if (cb.name === 'web_search') result = await tavilySearch(input.query || '');
         else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
         else if (cb.name === 'run_js') result = await runInClient(send, 'run_js', input);
+        else if (cb.name === 'generate_image') result = await runInClient(send, 'generate_image', input, 75000);
+        else if (cb.name === 'test_html') result = await runInClient(send, 'test_html', input, 30000);
         toolResults.push({ type: 'tool_result', tool_use_id: cb.id, content: String(result).slice(0, 8000) });
         send({ status: '↳ ' + trailLine(cb.name, input, result) });
       }

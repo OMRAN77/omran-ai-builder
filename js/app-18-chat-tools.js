@@ -51,6 +51,10 @@
    * @returns {{reply:string, providerKey:string, switched:boolean, requestedKey:string}}
    */
   window.callChatWithTools = async function (messages, onDelta) {
+    // صور هذا الردّ فقط: تُمسح عند كلّ طلب جديد فلا يتراكم عشرات الميغابايت في
+    // الذاكرة، وحدّ الأربع يبقى حدَّ ردٍّ لا حدَّ جلسة. الكود المبنيّ يُستبدل فيه
+    // الرمز فور وصوله، فلا يضرّه المسح لاحقًا.
+    window.__genImages = {};
     var res = await fetch('/api/ai?action=chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

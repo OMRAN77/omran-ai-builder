@@ -1138,7 +1138,7 @@ async function sendPrompt(){
   // كلود يبني ويرد بروحه دائمًا (وGPT احتياط صامت إذا فشل).
   const __askAllExplicit = false;
   customProviders = null;
-  const askAll = !!customProviders || __askAllExplicit || (!__gateNoBuild && ((__routeBuildRe.test(text) && __routeCmdRe.test(text)) || __strongBuildRe.test(text)) && !__routeFix);
+  const askAll = !!customProviders || __askAllExplicit || (!__gateNoBuild && !__gateApprovedText && ((__routeBuildRe.test(text) && __routeCmdRe.test(text)) || __strongBuildRe.test(text)) && !__routeFix);
 
   try{
     // 🤖 وكيل عمران: وضع الوكيل المستقل (Claude Sonnet 4 + أدوات) — يخطط ويبحث ويبني.
@@ -1939,7 +1939,7 @@ async function sendPrompt(){
         const BUILD_TASK_RE = /بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|العاب|ألعاب|أداة|اداة|نسخة|نسخه|شهادة|شهاده|بطاقة|بطاقه|دعوة|دعوه|بوستر|شعار|لوجو|تهنئة|تهنئه|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\btool\b|\bclone\b|\bcertificate\b|\bcard\b|\binvitation\b|\bposter\b|\blogo\b/i;
         isBuildTask = !__gateNoBuild && (BUILD_TASK_RE.test(text) || __strongBuildRe.test(text));
         if(__gateNoBuild){
-          apiMessages.push({ role: 'system', content: 'The user asked to build something, but you must NOT build yet. Reply in plain conversational text only (no code blocks at all): briefly describe in 2-3 sentences what you plan to build, then END your reply with exactly one question asking permission to start, e.g. in Arabic: "تبيني أبدأ البناء الحين؟". Do not start building until the user approves in their next message.' });
+          apiMessages.push({ role: 'system', content: 'المستخدم طلب بناء شيء. ممنوع أن تبنيه الآن. ردّ بنصّ محادثة فقط بلا أيّ كتلة كود: اذكر في سطرين إلى ثلاثة ماذا ستبني بالضبط (الأقسام الرئيسية + أنّك سترسم الصور بنفسك)، ثمّ اختم بسؤال واحد فقط: «تبيني أبدأ البناء الحين؟». لا تبدأ البناء حتّى يوافق المستخدم في رسالته التالية.' });
           // 💰 دور البوابة = وصف قصير فقط — مزود واحد يكفي بدل التسعة (توفير).
           const __gateOne = ['claude', 'gemini', 'groq'].find(k => providers.some(p => p.key === k));
           if(__gateOne) providers = providers.filter(p => p.key === __gateOne);
@@ -2545,17 +2545,27 @@ async function sendPrompt(){
       const __teamOrder = [__effProv, ...(__routeFix ? ['claude', 'openai', 'gemini'] : ['claude', 'openai', 'gemini']).filter(p => p !== __effProv)];
       window.__claudeModelOverride = null;
       window.__claudeThinking = !__routeFix && __selProv === 'claude'; // 🧠 تفكير داخلي قبل الرد في النقاش العادي (Claude فقط)
-      if(__gateNoBuild){
+      // 🛠️ v468: البوّابة تعلو على اليد — في دور الاستئذان لا تُمرَّر الأدوات
+      // إطلاقًا، وإلّا غلبت تعليمة «ابنِ ولا تستأذن» داخل chat.js. بعد الموافقة
+      // يسقط __gateNoBuild فتعمل اليد كاملة (صور + كود + تجربة).
+      const __toolsWillRun = (window.__chatToolsOn !== false && !__routeFix && (!__gateNoBuild || !!__gateApprovedText) && !imageAttachments.length
+        && (__effProv === 'claude' || __selProv === 'claude')
+        && typeof window.callChatWithTools === 'function');
+      if(__gateApprovedText && __toolsWillRun){
+        // ✅ وافق المستخدم → يبني الآن كاملًا باليد الكاملة (صور مرسومة + كود + تجربة).
+        apiMessages.push({ role: 'system', content: 'وافق المستخدم على البناء. ابنِه الآن كاملًا في هذا الردّ داخل كتلة ```html واحدة، مستندًا كاملًا. استدعِ generate_image لكل صورة تحتاجها (حتّى أربع) وضع الرمز العائد حرفيًّا في src — ممنوع picsum أو placeholder أو أي رابط صورة خارجي. ممنوع أن تسأل مرّة أخرى.' });
+      } else if(__gateNoBuild){
         // 🔒 دور البوابة: صف الفكرة واسأل الإذن — ممنوع البناء الآن.
-        apiMessages.push({ role: 'system', content: 'The user asked to build something, but you must NOT build yet. Reply in plain conversational text only (no code blocks at all): briefly describe in 2-3 sentences what you plan to build, then END your reply with exactly one question asking permission to start, e.g. in Arabic: "تبيني أبدأ البناء الحين؟". Do not start building until the user approves in their next message.' });
+        apiMessages.push({ role: 'system', content: 'المستخدم طلب بناء شيء. ممنوع أن تبنيه الآن. ردّ بنصّ محادثة فقط بلا أيّ كتلة كود: اذكر في سطرين إلى ثلاثة ماذا ستبني بالضبط (الأقسام الرئيسية + أنّك سترسم الصور بنفسك)، ثمّ اختم بسؤال واحد فقط: «تبيني أبدأ البناء الحين؟». لا تبدأ البناء حتّى يوافق المستخدم في رسالته التالية.' });
       } else if(!__routeFix && __selProv !== 'claude' && !AI_FACTORY_MODE()){
         // 🎭 شخصية حرة: المزود المختار يرد بأسلوبه وشخصيته الأصلية — قواعد الأمانة فقط إلزامية.
         apiMessages.unshift({ role: 'system', content: 'حافظ على شخصيتك وأسلوبك الطبيعي الخاص بالكامل — القواعد التالية قواعد أمانة إلزامية فقط ولا تغيّر أسلوبك:\n1) رد بلغة المستخدم نفسها. افهم آخر رسالة في سياق المحادثة كلها — إذا الرسالة كلمة أو كلمتين (مثل اسم مكان أو تأكيد) فهي تكملة للموضوع السابق وليست سؤالًا جديدًا مستقلًا.\n2) وضع نقاش عادي — ممنوع عرض بناء أو كود إلا إذا طُلب صراحة.\n3) ممنوع الادعاء أنك سويت شيئًا لم تفعله، وممنوع إنكار شيء موجود بالمحادثة.\n4) ممنوع اختراع أرقام هواتف أو معلومات تواصل.\n5) ممنوع مناداة المستخدم بأي اسم إلا إذا كان محفوظًا في ذاكرته — لا «محمد» ولا أي اسم افتراضي.\n6) هذا التطبيق اسمه "Omran AI Builder" من تطوير فريق عمران AI.' });
       } else if(!__routeFix && !AI_FACTORY_MODE()){
         // v465: compressed Q&A prompt — from ~6000 chars to ~1200 to prevent model confusion after many messages
-        apiMessages.unshift({ role: 'system', content: 'أنت شريك نقاش حقيقي — خبير ودود وصادق. تفهم اللهجة الإماراتية والخليجية طبيعيًا.\n(1) افهم آخر رسالة في سياق المحادثة كلها — إذا الرسالة كلمة أو كلمتين (اسم مكان/تأكيد) فهي تكملة للموضوع السابق وليست سؤالًا جديدًا مستقلًا.\n(2) جاوب بأفضل ما عندك فورًا. إذا تقريبي أضف تنويه سطر واحد بالنهاية.\n(3) كن صادقًا 100%: إذا ما تعرف قل ما أعرف. ممنوع اختراع أرقام هواتف أو معلومات تواصل.\n(4) سؤال بسيط = 1-3 جمل. موضوع متشعب = رد منظم بعناوين.\n(5) ممنوع: مناداة المستخدم بأي اسم إلا إذا محفوظ بالذاكرة — الحشو — ألقاب — الادعاء أنك سويت شي ما سويته.\n(6) وضع نقاش عادي — ممنوع عرض بناء أو كود إلا إذا طُلب صراحة.\n(7) رد بلغة المستخدم — ادخل بصلب الموضوع من أول كلمة.' });
+        apiMessages.unshift({ role: 'system', content: 'أنت شريك نقاش حقيقي — خبير ودود وصادق. تفهم اللهجة الإماراتية والخليجية طبيعيًا.\n(1) افهم آخر رسالة في سياق المحادثة كلها — إذا الرسالة كلمة أو كلمتين (اسم مكان/تأكيد) فهي تكملة للموضوع السابق وليست سؤالًا جديدًا مستقلًا.\n(2) جاوب بأفضل ما عندك فورًا. إذا تقريبي أضف تنويه سطر واحد بالنهاية.\n(3) كن صادقًا 100%: إذا ما تعرف قل ما أعرف. ممنوع اختراع أرقام هواتف أو معلومات تواصل.\n(4) سؤال بسيط = 1-3 جمل. موضوع متشعب = رد منظم بعناوين.\n(5) ممنوع: مناداة المستخدم بأي اسم إلا إذا محفوظ بالذاكرة — الحشو — ألقاب — الادعاء أنك سويت شي ما سويته.\n(6) إذا طلب المستخدم موقعًا أو صفحة أو تطبيقًا أو أداة — بأي صياغة كانت — فابنِه فورًا كاملًا في نفس الرد داخل كتلة ```html تبدأ بـ<!DOCTYPE html>، بصور من generate_image لا روابط مخترعة. ممنوع أن تصفه وتقف، وممنوع أن تسأل «هل أبدأ؟»، وممنوع أن تبحث عن مواقع جاهزة بدل البناء. وفي غير طلبات البناء لا تعرض كودًا بلا طلب.\n(7) رد بلغة المستخدم — ادخل بصلب الموضوع من أول كلمة.' });
       }
       let reply, providerKey, switched, requestedKey;
+      let __ctUsed = false;
       // 💬 عقل واحد: Claude وحده يرد في النقاش العادي — الاحتياط (GPT ثم Gemini)
       // صامت ويشتغل فقط إذا Claude تعطل أو خلص حده.
       // 🛠️ ومعه يداه: النقاش العادي على Claude يمرّ بحلقة الأدوات (بحث · قراءة
@@ -2563,19 +2573,21 @@ async function sendPrompt(){
       // عنه أنماط نصّيّة في المتصفّح. أيّ عثرة تهبط صامتة إلى المسار القديم.
       try{
         let __ct = null;
-        if(window.__chatToolsOn !== false && !__gateNoBuild && !__routeFix && !imageAttachments.length
-           && __effProv === 'claude' && typeof window.callChatWithTools === 'function'){
+        if(__toolsWillRun){
           try{ __ct = await window.callChatWithTools(apiMessages, onDelta); }
           catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; __swallow(e, 'chat:tools'); }
         }
-        if(__ct) ({ reply, providerKey, switched, requestedKey } = __ct);
+        if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); }
         else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, onDelta, __teamOrder));
       }finally{
         window.__claudeModelOverride = null;
         window.__claudeThinking = false;
       }
       let { code, explanation, codeType } = extractReply(reply);
-      if(code && isBuildTask){
+      // v467: ما تبنيه يد المحادثة يُعرض في المعاينة كأي بناء — وإلّا بقي
+      // الموقع حبيس فقاعة نصّيّة لا تُرى.
+      const __builtByTools = !!(code && __ctUsed && !isBuildTask);
+      if(code && (isBuildTask || __builtByTools)){
         // 🔁 التصحيح الذاتي: فحص الكود وإصلاح أخطائه قبل العرض
         try{
           const healed = await selfHealCode(code, codeType, () => {
