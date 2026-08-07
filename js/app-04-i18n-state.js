@@ -1005,7 +1005,7 @@ function renderMessages(keepScroll){
       // v311: اسم المزود يظهر كامل داخل الشاشة بدون قص (سفاري الآيفون).
       label.style.cssText = 'font-size:11px; font-weight:700; color:' + (pColor || 'var(--accent2)') + '; margin-bottom:4px; display:block; unicode-bidi:isolate; max-width:100%; overflow-wrap:anywhere; white-space:normal;';
       label.textContent = m.providerLabel;
-      div.appendChild(label);
+      if(isAskAllReply) div.appendChild(label); // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ»)
     }
     const textDiv = document.createElement('div');
     textDiv.className = 'msg-text';
