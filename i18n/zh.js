@@ -840,4 +840,8 @@ I18N['zh'] = {
     govTitle: '政府服务',
     premiumToggleLabel: '专业模式',
     snapBuildLabel: '📸 拍照即建',
+    omranDisclaimerTxt: '信息可能不准确，请核实重要内容。',
+    eduIntroTxtKey: '新功能：🎓 学习 — 上传讲义，获取摘要、闪卡和测验',
+    eduIntroOpenKey: '立即试用',
+    sbNewProject: '新建项目',
 };

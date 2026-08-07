@@ -751,3 +751,9 @@
   /* v438: سماكة الخطّ الأساسيّة — أمر عمران ٧ أغسطس ٢٠٢٦ */
   body{font-weight:var(--w-body);}
   button,input,textarea,select{font-weight:inherit;}
+
+  /* v442 (٧ أغسطس): الجوّال صار كالكمبيوتر — لا اختيار مزوّد إطلاقًا (أمر عمران «أ»).
+     شريط الشاشة الرئيسية #providerStripMobile حُذف من index.html. */
+  #provDropdownPanel, #provSearchInput{display:none !important;}
+  @media (max-width:860px){ #providerGridSidebar{display:none;} }
+  html.mobile-ui #providerGridSidebar{display:none;}

@@ -840,4 +840,8 @@ I18N['id'] = {
     govTitle: 'Layanan pemerintah',
     premiumToggleLabel: 'Mode profesional',
     snapBuildLabel: '📸 Foto & bangun',
+    omranDisclaimerTxt: 'Informasi bisa saja tidak akurat — periksa detail penting.',
+    eduIntroTxtKey: 'Baru: 🎓 Edukasi — unggah materi kuliahmu dan dapatkan ringkasan, kartu, dan kuis',
+    eduIntroOpenKey: 'Coba sekarang',
+    sbNewProject: 'Proyek baru',
 };

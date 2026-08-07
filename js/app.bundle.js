@@ -1560,6 +1560,9 @@ const I18N = {
     ncNewChatLabel: 'محادثة جديدة ✨',
     sbProjectsTitle: 'المشاريع',
     sbNewProject: 'مشروع جديد',
+    omranDisclaimerTxt: 'قد تكون المعلومات غير دقيقة، تحقق من المعلومات المهمة.',
+    eduIntroTxtKey: 'جديد: 🎓 التعليم — ارفع محاضرتك واحصل على ملخص وبطاقات واختبار',
+    eduIntroOpenKey: 'جرّبه الآن',
     sbProjSearch: 'بحث عن مشروع',
     sbDeleteAll: 'حذف الكل',
     pricingPointsTitle: 'باقات النقاط',
@@ -2381,6 +2384,9 @@ const I18N = {
     ncNewChatLabel: 'New chat ✨',
     sbProjectsTitle: 'Projects',
     sbNewProject: 'New project',
+    omranDisclaimerTxt: 'Information may be inaccurate — verify important details.',
+    eduIntroTxtKey: 'New: 🎓 Education — upload your lecture and get a summary, flashcards and a quiz',
+    eduIntroOpenKey: 'Try it now',
     sbProjSearch: 'Search projects',
     sbDeleteAll: 'Delete all',
     pricingPointsTitle: 'Points Packs',
@@ -3225,7 +3231,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=342';
+    sc.src = 'i18n/' + lg + '.js?v=442';
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];

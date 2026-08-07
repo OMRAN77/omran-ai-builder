@@ -840,4 +840,8 @@ I18N['es'] = {
     govTitle: 'Trámites gubernamentales',
     premiumToggleLabel: 'Modo profesional',
     snapBuildLabel: '📸 Fotografía y constrúyelo',
+    omranDisclaimerTxt: 'La información puede ser inexacta: verifica los datos importantes.',
+    eduIntroTxtKey: 'Nuevo: 🎓 Educación — sube tu clase y obtén un resumen, tarjetas y un test',
+    eduIntroOpenKey: 'Pruébalo',
+    sbNewProject: 'Nuevo proyecto',
 };

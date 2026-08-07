@@ -796,4 +796,7 @@ I18N['ur'] = {
     govTitle: 'سرکاری خدمات',
     premiumToggleLabel: 'پروفیشنل موڈ',
     snapBuildLabel: '📸 تصویر لیں اور بنائیں',
+    omranDisclaimerTxt: 'معلومات غلط ہو سکتی ہیں — اہم تفصیلات کی تصدیق کریں۔',
+    eduIntroTxtKey: 'نیا: 🎓 تعلیم — اپنا لیکچر اپ لوڈ کریں اور خلاصہ، فلیش کارڈز اور کوئز حاصل کریں',
+    eduIntroOpenKey: 'ابھی آزمائیں',
 };

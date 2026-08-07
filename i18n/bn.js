@@ -797,4 +797,7 @@ I18N['bn'] = {
     govTitle: 'সরকারি সেবা',
     premiumToggleLabel: 'প্রফেশনাল মোড',
     snapBuildLabel: '📸 ছবি তুলুন ও তৈরি করুন',
+    omranDisclaimerTxt: 'তথ্য ভুল হতে পারে — গুরুত্বপূর্ণ তথ্য যাচাই করুন।',
+    eduIntroTxtKey: 'নতুন: 🎓 শিক্ষা — আপনার লেকচার আপলোড করুন এবং সারাংশ, ফ্ল্যাশকার্ড ও কুইজ পান',
+    eduIntroOpenKey: 'এখনই চেষ্টা করুন',
 };

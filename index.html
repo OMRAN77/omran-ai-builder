@@ -77,7 +77,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/tokens.css?v=441">
+<link rel="stylesheet" href="css/tokens.css?v=442">
 <link rel="stylesheet" href="css/redesign.css?v=441">
 <link rel="stylesheet" href="css/modules.css?v=442">
 <script>
@@ -178,7 +178,6 @@ window.__swallow = window.__swallow || function (err, ctx) {
   </div>
 </header>
 
-<div id="providerStripMobile"></div>
 
 <div id="stockTicker" dir="ltr" style="display:none; overflow:hidden; white-space:nowrap; background:rgba(0,0,0,0.45); padding:6px 0; position:relative; border-bottom:1px solid rgba(255,255,255,0.08);">
   <div id="stockTickerTrack" style="display:inline-block; white-space:nowrap; will-change:transform;"></div>
@@ -290,7 +289,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
           <button type="button" class="omChip" data-omchip="اكتب مقالاً احترافياً عن: ">كتابة مقال احترافي</button>
           <button type="button" class="omChip" data-omchip="اقترح لي أفكاراً لمشروع: ">أفكار لمشروع</button>
         </div>
-        <div id="omranDisclaimer">قد تكون المعلومات غير دقيقة، تحقق من المعلومات المهمة.</div>
+        <div id="omranDisclaimer" data-i18n="omranDisclaimerTxt">قد تكون المعلومات غير دقيقة، تحقق من المعلومات المهمة.</div>
       </div>
     </div>
   </div>
@@ -375,7 +374,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <script src="/js/selfdiag.js?v=421"></script>
 <script src="/templates-data.js"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script src="/js/app.bundle.js?v=177e12c0"></script>
+    <script src="/js/app.bundle.js?v=c68349c3"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
   <div class="eduWrap">
@@ -389,9 +388,9 @@ window.__swallow = window.__swallow || function (err, ctx) {
   </div>
 </div>
 <div id="eduIntroCard">
-  <p id="eduIntroTxt">جديد: 🎓 التعليم — ارفع محاضرتك واحصل على ملخص وبطاقات واختبار</p>
+  <p id="eduIntroTxt" data-i18n="eduIntroTxtKey">جديد: 🎓 التعليم — ارفع محاضرتك واحصل على ملخص وبطاقات واختبار</p>
   <div style="display:flex;gap:8px;justify-content:flex-end;">
-    <button class="eduPrimary" id="eduIntroOpen" style="margin-top:0;padding:8px 16px;border:none;border-radius:var(--r-2);cursor:pointer;font-weight:700;color:var(--accent-on-surface);background:linear-gradient(90deg,var(--accent-surface),var(--accent-surface));">جرّبه الآن</button>
+    <button class="eduPrimary" id="eduIntroOpen" data-i18n="eduIntroOpenKey" style="margin-top:0;padding:8px 16px;border:none;border-radius:var(--r-2);cursor:pointer;font-weight:700;color:var(--accent-on-surface);background:linear-gradient(90deg,var(--accent-surface),var(--accent-surface));">جرّبه الآن</button>
     <button id="eduIntroClose" style="background:none;border:1px solid rgba(255,255,255,.15);border-radius:var(--r-2);color:inherit;padding:8px 14px;cursor:pointer;">✕</button>
   </div>
 </div>

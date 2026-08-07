@@ -796,4 +796,7 @@ I18N['fr'] = {
     govTitle: 'Services gouvernementaux',
     premiumToggleLabel: 'Mode professionnel',
     snapBuildLabel: '📸 Photographie et construis',
+    omranDisclaimerTxt: 'Les informations peuvent être inexactes — vérifiez les détails importants.',
+    eduIntroTxtKey: 'Nouveau : 🎓 Éducation — importez votre cours et obtenez un résumé, des cartes et un quiz',
+    eduIntroOpenKey: 'Essayer',
 };

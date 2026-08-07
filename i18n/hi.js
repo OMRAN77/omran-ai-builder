@@ -797,4 +797,7 @@ I18N['hi'] = {
     govTitle: 'सरकारी सेवाएं',
     premiumToggleLabel: 'प्रोफेशनल मोड',
     snapBuildLabel: '📸 फोटो लें और बनाएं',
+    omranDisclaimerTxt: 'जानकारी गलत हो सकती है — महत्वपूर्ण विवरण की पुष्टि करें।',
+    eduIntroTxtKey: 'नया: 🎓 शिक्षा — अपना लेक्चर अपलोड करें और सारांश, फ्लैशकार्ड व क्विज़ पाएं',
+    eduIntroOpenKey: 'अभी आज़माएं',
 };

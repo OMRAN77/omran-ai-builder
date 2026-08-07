@@ -840,4 +840,8 @@ I18N['fil'] = {
     govTitle: 'Serbisyong pampamahalaan',
     premiumToggleLabel: 'Professional mode',
     snapBuildLabel: '📸 Kuhanan at buuin',
+    omranDisclaimerTxt: 'Maaaring hindi tumpak ang impormasyon — i-verify ang mahahalagang detalye.',
+    eduIntroTxtKey: 'Bago: 🎓 Edukasyon — i-upload ang lecture mo at kumuha ng buod, flashcards at pagsusulit',
+    eduIntroOpenKey: 'Subukan ngayon',
+    sbNewProject: 'Bagong proyekto',
 };

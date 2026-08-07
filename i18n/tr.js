@@ -840,4 +840,8 @@ I18N['tr'] = {
     govTitle: 'Devlet Hizmetleri',
     premiumToggleLabel: 'Profesyonel mod',
     snapBuildLabel: '📸 Çek ve inşa et',
+    omranDisclaimerTxt: 'Bilgiler yanlış olabilir — önemli ayrıntıları doğrulayın.',
+    eduIntroTxtKey: 'Yeni: 🎓 Eğitim — dersini yükle; özet, kart ve sınav al',
+    eduIntroOpenKey: 'Şimdi dene',
+    sbNewProject: 'Yeni proje',
 };
