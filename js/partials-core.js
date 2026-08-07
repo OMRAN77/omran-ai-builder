@@ -35,11 +35,11 @@
       <input type="checkbox" id="authRememberMe" checked style="width:16px; height:16px; cursor:pointer;">
       <span data-i18n="authRememberMe">تذكرني</span>
     </label>
-    <div id="authInfoMsg" style="display:none; font-size:12px; color:var(--accent,#d4af37); margin-bottom:6px; text-align:center;"></div>
+    <div id="authInfoMsg" style="display:none; font-size:12px; color:var(--accent,#6b7280); margin-bottom:6px; text-align:center;"></div>
     <div style="text-align:end; margin-bottom:6px;">
-      <a href="#" id="authForgotLink" style="font-size:12px; color:var(--accent,#d4af37); text-decoration:none;" data-i18n="authForgotLink">نسيت كلمة المرور؟</a>
-      <a href="#" id="authUseCodeLink" style="font-size:12px; color:var(--accent,#d4af37); text-decoration:none; display:none;" data-i18n="authUseCodeLink">لدي رمز استرجاع بدلًا من ذلك</a>
-      <a href="#" id="authBackToLoginLink" style="font-size:12px; color:var(--accent,#d4af37); text-decoration:none; display:none;" data-i18n="authBackToLogin">رجوع لتسجيل الدخول</a>
+      <a href="#" id="authForgotLink" style="font-size:12px; color:var(--accent,#6b7280); text-decoration:none;" data-i18n="authForgotLink">نسيت كلمة المرور؟</a>
+      <a href="#" id="authUseCodeLink" style="font-size:12px; color:var(--accent,#6b7280); text-decoration:none; display:none;" data-i18n="authUseCodeLink">لدي رمز استرجاع بدلًا من ذلك</a>
+      <a href="#" id="authBackToLoginLink" style="font-size:12px; color:var(--accent,#6b7280); text-decoration:none; display:none;" data-i18n="authBackToLogin">رجوع لتسجيل الدخول</a>
     </div>
     <div id="authError" style="color:#ef4444; font-size: var(--fs-3); min-height:18px; margin-bottom:6px;"></div>
     <button type="submit" class="btn primary" id="authSubmitBtn" style="width:100%; height:44px; font-weight:bold;" data-i18n="authSubmitLogin">دخول</button>

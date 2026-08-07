@@ -1351,13 +1351,13 @@ async function sendPrompt(){
             + '<button data-v="more" id="__tcMore" style="width:100%;padding:10px;border-radius:12px;border:1px dashed rgba(168,130,255,.5);background:rgba(168,130,255,.08);color:#c9b3ff;font-size:12.5px;cursor:pointer;margin-bottom:14px;">'+(isAr?'أبي فيديو أطول / أكثر ✨':'I want a longer / more video ✨')+'</button>'
             + '<div style="display:flex;gap:8px;">'
             +   '<button id="__tcCancel" style="flex:1;padding:11px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:transparent;color:#aaa;font-size:13px;cursor:pointer;">'+(isAr?'إلغاء':'Cancel')+'</button>'
-            +   '<button id="__tcGo" style="flex:2;padding:11px;border-radius:12px;border:none;background:linear-gradient(135deg,#d4af37,#8a6d1f);color:#fff;font-weight:700;font-size:13px;cursor:pointer;">'+(isAr?'ابدأ 🎬':'Start 🎬')+'</button>'
+            +   '<button id="__tcGo" style="flex:2;padding:11px;border-radius:12px;border:none;background:linear-gradient(135deg,#6b7280,#4b5563);color:#fff;font-weight:700;font-size:13px;cursor:pointer;">'+(isAr?'ابدأ 🎬':'Start 🎬')+'</button>'
             + '</div></div>';
           document.body.appendChild(ov);
           let motion = 'moving', dur = 6;
           function paint(){
-            ov.querySelectorAll('.__tcOpt').forEach(b=>{ b.style.background = b.getAttribute('data-v')===motion ? 'linear-gradient(135deg,#d4af37,#8a6d1f)' : 'rgba(255,255,255,.05)'; b.style.borderColor = b.getAttribute('data-v')===motion ? 'transparent' : 'rgba(255,255,255,.15)'; });
-            ov.querySelectorAll('.__tcD').forEach(b=>{ b.style.background = parseInt(b.getAttribute('data-v'),10)===dur ? 'linear-gradient(135deg,#d4af37,#8a6d1f)' : 'rgba(255,255,255,.05)'; b.style.borderColor = parseInt(b.getAttribute('data-v'),10)===dur ? 'transparent' : 'rgba(255,255,255,.15)'; });
+            ov.querySelectorAll('.__tcOpt').forEach(b=>{ b.style.background = b.getAttribute('data-v')===motion ? 'linear-gradient(135deg,#6b7280,#4b5563)' : 'rgba(255,255,255,.05)'; b.style.borderColor = b.getAttribute('data-v')===motion ? 'transparent' : 'rgba(255,255,255,.15)'; });
+            ov.querySelectorAll('.__tcD').forEach(b=>{ b.style.background = parseInt(b.getAttribute('data-v'),10)===dur ? 'linear-gradient(135deg,#6b7280,#4b5563)' : 'rgba(255,255,255,.05)'; b.style.borderColor = parseInt(b.getAttribute('data-v'),10)===dur ? 'transparent' : 'rgba(255,255,255,.15)'; });
           }
           paint();
           ov.querySelectorAll('.__tcOpt').forEach(b=> b.onclick = ()=>{ motion = b.getAttribute('data-v'); paint(); });

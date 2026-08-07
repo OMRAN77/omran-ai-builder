@@ -94,7 +94,7 @@
       <button type="button" onclick="appFullCleanup()" style="width:100%; padding:10px; border-radius:var(--r-2); border:1px solid rgba(239,68,68,.5); background:rgba(239,68,68,.12); color:#ef4444; font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer;" data-i18n="acctCleanupBtn">حذف الكل الآن</button>
     </div></div>
     </div>
-    <script src="/js/themes.js?v=435"></script>
+    <script src="/js/themes.js?v=441"></script>
     <script>window.acctToggleRow=function(id,btn){var p=document.getElementById(id);var open=p.style.display==='none';p.style.display=open?'block':'none';var s=btn.querySelector('svg');if(s)s.style.transform=open?'rotate(90deg)':'';};</script>
   </div></div>
 

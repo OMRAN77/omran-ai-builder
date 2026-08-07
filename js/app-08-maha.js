@@ -1620,10 +1620,10 @@ if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
     ov.id = 'introTourOverlay';
     ov.style.cssText = 'position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.55);opacity:0;transition:opacity .3s;';
     const ring = document.createElement('div');
-    ring.style.cssText = 'position:fixed;border:3px solid #d4af37;border-radius:50%;box-shadow:0 0 18px 6px rgba(212,175,55,.7);pointer-events:none;transition:all .45s ease;';
+    ring.style.cssText = 'position:fixed;border:3px solid #6b7280;border-radius:50%;box-shadow:0 0 18px 6px rgba(107,114,128,.7);pointer-events:none;transition:all .45s ease;';
     const bubble = document.createElement('div');
     bubble.dir = isRTL ? 'rtl' : 'ltr';
-    bubble.style.cssText = 'position:fixed;max-width:230px;background:rgba(30,22,54,.97);color:#fff;font-size:14px;line-height:1.5;padding:10px 14px;border-radius:14px;border:1px solid rgba(212,175,55,.5);box-shadow:0 6px 24px rgba(0,0,0,.5);pointer-events:none;transition:all .45s ease;';
+    bubble.style.cssText = 'position:fixed;max-width:230px;background:rgba(30,22,54,.97);color:#fff;font-size:14px;line-height:1.5;padding:10px 14px;border-radius:14px;border:1px solid rgba(107,114,128,.5);box-shadow:0 6px 24px rgba(0,0,0,.5);pointer-events:none;transition:all .45s ease;';
     if(!document.getElementById('introTourPulseCss')){
       const st = document.createElement('style');
       st.id = 'introTourPulseCss';

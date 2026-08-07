@@ -324,7 +324,7 @@
     searchWrap.style.display = t==='search' ? 'block' : 'none';
     learnWrap.style.display = t==='learn' ? 'block' : 'none';
     globalWrap.style.display = t==='global' ? 'block' : 'none';
-    Object.keys(stkTabBtns).forEach(function(k){ var b = stkTabBtns[k]; if(b) b.style.background = (k===t) ? 'rgba(212,175,55,0.45)' : ''; });
+    Object.keys(stkTabBtns).forEach(function(k){ var b = stkTabBtns[k]; if(b) b.style.background = (k===t) ? 'rgba(107,114,128,0.45)' : ''; });
     if(t==='global') showGlobal();
   }
   window.__stkShowTab = stkShowTab;

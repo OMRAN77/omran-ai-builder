@@ -300,16 +300,16 @@ $('#btnDeleteAll').onclick = () => {
 #fbOverlay{position:fixed;inset:0;z-index:10050;display:none;align-items:center;justify-content:center;background:rgba(8,6,20,.62);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:16px;}
 #fbOverlay.open{display:flex;animation:fbFade .3s ease;}
 @keyframes fbFade{from{opacity:0}to{opacity:1}}
-#fbCard{position:relative;width:100%;max-width:420px;max-height:92vh;overflow-y:auto;border-radius:28px;padding:2px;background:conic-gradient(from var(--fbAng,0deg),var(--accent,#d4af37),#06b6d4,#f59e0b,#ec4899,var(--accent,#d4af37));animation:fbSpin 5s linear infinite,fbPop .45s cubic-bezier(.2,1.4,.4,1);}
+#fbCard{position:relative;width:100%;max-width:420px;max-height:92vh;overflow-y:auto;border-radius:28px;padding:2px;background:conic-gradient(from var(--fbAng,0deg),var(--accent,#6b7280),#06b6d4,#f59e0b,#ec4899,var(--accent,#6b7280));animation:fbSpin 5s linear infinite,fbPop .45s cubic-bezier(.2,1.4,.4,1);}
 @property --fbAng{syntax:'<angle>';initial-value:0deg;inherits:false;}
 @keyframes fbSpin{to{--fbAng:360deg}}
 @keyframes fbPop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
 #fbInner{border-radius:26px;background:linear-gradient(160deg,rgba(22,18,42,.98),rgba(10,8,24,.98));padding:28px 24px 24px;text-align:center;position:relative;overflow:hidden;}
-#fbInner::before{content:'';position:absolute;top:-70px;right:-70px;width:190px;height:190px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent,#d4af37) 32%,transparent),transparent 70%);pointer-events:none;}
+#fbInner::before{content:'';position:absolute;top:-70px;right:-70px;width:190px;height:190px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent,#6b7280) 32%,transparent),transparent 70%);pointer-events:none;}
 #fbInner::after{content:'';position:absolute;bottom:-80px;left:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(6,182,212,.18),transparent 70%);pointer-events:none;}
-#fbHeart{width:64px;height:64px;margin:0 auto 12px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--accent,#d4af37),#ec4899);box-shadow:0 0 32px color-mix(in srgb,var(--accent,#d4af37) 55%,transparent);animation:fbBeat 1.6s ease-in-out infinite;}
+#fbHeart{width:64px;height:64px;margin:0 auto 12px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--accent,#6b7280),#ec4899);box-shadow:0 0 32px color-mix(in srgb,var(--accent,#6b7280) 55%,transparent);animation:fbBeat 1.6s ease-in-out infinite;}
 @keyframes fbBeat{0%,100%{transform:scale(1)}12%{transform:scale(1.12)}24%{transform:scale(1)}36%{transform:scale(1.08)}48%{transform:scale(1)}}
-#fbTitle{font-size:21px;font-weight:700;background:linear-gradient(90deg,#fff,color-mix(in srgb,var(--accent,#d4af37) 60%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:4px;}
+#fbTitle{font-size:21px;font-weight:700;background:linear-gradient(90deg,#fff,color-mix(in srgb,var(--accent,#6b7280) 60%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:4px;}
 #fbSub{font-size:13px;color:var(--muted,#9aa);margin-bottom:18px;}
 #fbStars{display:flex;justify-content:center;gap:8px;margin-bottom:18px;direction:ltr;}
 .fbStar{width:42px;height:42px;cursor:pointer;transition:transform .18s;fill:none;stroke:#4b476b;stroke-width:1.6;}
@@ -318,11 +318,11 @@ $('#btnDeleteAll').onclick = () => {
 @keyframes fbStarPop{50%{transform:scale(1.35)}}
 #fbChips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-bottom:16px;}
 .fbChip{padding:7px 14px;border-radius:999px;font-size:12.5px;cursor:pointer;color:#cfcbe8;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);transition:all .2s;user-select:none;}
-.fbChip.on{background:linear-gradient(135deg,var(--accent,#d4af37),#ec4899);border-color:transparent;color:#fff;box-shadow:0 4px 14px color-mix(in srgb,var(--accent,#d4af37) 45%,transparent);transform:translateY(-1px);}
+.fbChip.on{background:linear-gradient(135deg,var(--accent,#6b7280),#ec4899);border-color:transparent;color:#fff;box-shadow:0 4px 14px color-mix(in srgb,var(--accent,#6b7280) 45%,transparent);transform:translateY(-1px);}
 #fbNote{width:100%;min-height:72px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#eee;font-size:13.5px;padding:12px;resize:none;outline:none;margin-bottom:16px;font-family:inherit;}
-#fbNote:focus{border-color:var(--accent,#d4af37);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent,#d4af37) 22%,transparent);}
-#fbSendBtn{width:100%;padding:13px;border:none;border-radius:14px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(135deg,var(--accent,#d4af37),#ec4899);position:relative;overflow:hidden;transition:transform .15s,box-shadow .2s;}
-#fbSendBtn:hover{transform:translateY(-2px);box-shadow:0 8px 24px color-mix(in srgb,var(--accent,#d4af37) 50%,transparent);}
+#fbNote:focus{border-color:var(--accent,#6b7280);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent,#6b7280) 22%,transparent);}
+#fbSendBtn{width:100%;padding:13px;border:none;border-radius:14px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(135deg,var(--accent,#6b7280),#ec4899);position:relative;overflow:hidden;transition:transform .15s,box-shadow .2s;}
+#fbSendBtn:hover{transform:translateY(-2px);box-shadow:0 8px 24px color-mix(in srgb,var(--accent,#6b7280) 50%,transparent);}
 #fbSendBtn::after{content:'';position:absolute;top:0;left:-80%;width:50%;height:100%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.35),transparent);animation:fbShine 2.8s ease-in-out infinite;}
 @keyframes fbShine{0%,60%{left:-80%}100%{left:130%}}
 #fbClose{position:absolute;top:14px;inset-inline-end:14px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,.08);color:#bbb;font-size:16px;cursor:pointer;z-index:2;}
@@ -424,7 +424,7 @@ $('#btnDeleteAll').onclick = () => {
     tv.style.display='block';
     document.getElementById('fbThanksT').textContent = t('fbThanks');
     document.getElementById('fbThanksS').textContent = t('fbThanksSub');
-    const colors=['#d4af37','#ec4899','#f5b942','#22c55e','#06b6d4'];
+    const colors=['#6b7280','#ec4899','#f5b942','#22c55e','#06b6d4'];
     for(let i=0;i<26;i++){
       const p=document.createElement('span'); p.className='fbConf';
       p.style.background=colors[i%colors.length];
@@ -703,7 +703,7 @@ document.querySelectorAll('.tab').forEach(tab => {
 
 // ===== Theme & provider colors =====
 const THEME_DEFAULTS = {
-  accent: '#d4af37', text: '#eef0f6', bg: '#000000',
+  accent: '#6b7280', text: '#eef0f6', bg: '#000000',
   userBubble: 'var(--accent)', assistantBubble: '#1e1e1e'
 };
 const PROVIDER_COLOR_DEFAULTS = {
@@ -1004,7 +1004,7 @@ document.addEventListener('focusin', (e) => {
 document.addEventListener('input', (e) => {
   if(e.target && e.target.classList && e.target.classList.contains('hex-color-input')) updateSwatchFor(e.target);
 });
-const COLOR_PRESETS = ['#d4af37','#10a37f','#4285f4','#ff0000','#d97757','#6467f2','#20808d','#ff7000','#4d6bfe','#39594d','#eef0f6','#0a0b10','#ffffff','#000000','#ff4d6d','#00c2a8'];
+const COLOR_PRESETS = ['#6b7280','#10a37f','#4285f4','#ff0000','#d97757','#6467f2','#20808d','#ff7000','#4d6bfe','#39594d','#eef0f6','#0a0b10','#ffffff','#000000','#ff4d6d','#00c2a8'];
 function buildColorPresetsRow(){
   const row = $('#colorPresetsRow');
   if(!row || row.children.length) return;
@@ -1310,7 +1310,7 @@ function initCustomBg3D(id){
 function getBg3DAccentColorHex(){
   try {
     let a = (getComputedStyle(document.documentElement).getPropertyValue('--accent') || '').trim();
-    if(!/^#[0-9a-fA-F]{6}$/.test(a)) a = '#d4af37';
+    if(!/^#[0-9a-fA-F]{6}$/.test(a)) a = '#6b7280';
     return parseInt(a.slice(1), 16);
   } catch(e){ return 0xd4af37; }
 }

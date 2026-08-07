@@ -2,7 +2,7 @@
 'use strict';
 /* ============ 🎓 التعليم (Edu Hub) — omran-ai-builder v306 ============ */
 var LS_GUEST='eduHubLessons', LS_STREAK='eduHubStreak', LS_INTRO='eduHubIntroSeen';
-var PALETTE=['#d4af37','#0ea5e9','#10b981','#f59e0b','#ef4444','#ec4899','#14b8a6','#b8860b'];
+var PALETTE=['#6b7280','#0ea5e9','#10b981','#f59e0b','#ef4444','#ec4899','#14b8a6','#b8860b'];
 var RTL_LANGS=['ar','ur'];
 function appLang(){ try{ return localStorage.getItem('aiapp_lang')||'ar'; }catch(e){ return 'ar'; } }
 var I18N={

@@ -1,6 +1,6 @@
 /* ================== Omran AI Builder — redesign (visual only, v400) ==================
    حدود مستقيمة 1px solid فقط — لا أي تأثير رسم يد أو حدود متعرجة. */
-:root{ --omGold:#d4af37; --omGoldSoft:rgba(212,175,55,.32); --omLine:rgba(255,255,255,.09); }
+:root{ --omGold:#6b7280; --omGoldSoft:rgba(var(--accent-tint-rgb),.32); --omLine:rgba(255,255,255,.09); }
 
 /* ---------------- Header ---------------- */
 .omIconBtn{display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:var(--r-2); background:none; border:1px solid transparent; color:var(--muted); cursor:pointer; padding:0; flex:0 0 auto;}
@@ -95,7 +95,7 @@ html.mobile-ui #omranBelowComposer{display:none !important;}
   /* v400: (كمبيوتر فقط) تنظيف الهيدر والشريط السفلي + خطّان ذهبيّان */
   html:not(.mobile-ui) #btnHeaderMenu{display:none !important;} /* ⋮ — محتواه المرئي (المشاريع/الإعدادات) موجود بالشريط الجانبي */
   html:not(.mobile-ui) #stockTicker::before{content:""; position:absolute; left:0; right:0; top:0; height:1px; background:linear-gradient(90deg,rgba(var(--accent-tint-rgb),0),rgba(var(--accent-tint-rgb),.65) 18%,rgba(var(--accent-tint-rgb),.65) 82%,rgba(var(--accent-tint-rgb),0)); pointer-events:none;}
-  html:not(.mobile-ui) #omranSidebarFoot{border-top:1px solid rgba(212,175,55,.65);}
+  html:not(.mobile-ui) #omranSidebarFoot{border-top:1px solid rgba(var(--accent-tint-rgb),.65);}
   html:not(.mobile-ui) #omranChips{display:none !important;}
   html:not(.mobile-ui) .omDeskNav[data-omnav="chats"]{display:none !important;}
   html:not(.mobile-ui) #omranHistTitle{display:none !important;} /* v401: عنوان «المحادثات» في الشريط الجانبي */
@@ -128,11 +128,11 @@ html.mobile-ui #omranBelowComposer{display:none !important;}
   html:not(.mobile-ui) #eduIntroOpen{box-shadow:0 6px 18px rgba(var(--accent-glow-rgb),.20);}
   /* v411: (كمبيوتر فقط) داخل نافذة صانع الفيديو — حقول زجاجية ذهبية بدل عناصر النظام الخام */
   html:not(.mobile-ui) #videoMakerModal{background:rgba(0,0,0,.78) !important; backdrop-filter:blur(7px);}
-  html:not(.mobile-ui) #videoMakerModal > div{background:linear-gradient(180deg,#17171d 0%,#101014 100%) !important; border:1px solid rgba(212,175,55,.22) !important; box-shadow:0 24px 70px rgba(0,0,0,.66), inset 0 1px 0 rgba(255,255,255,.05) !important;}
+  html:not(.mobile-ui) #videoMakerModal > div{background:linear-gradient(180deg,#17171d 0%,#101014 100%) !important; border:1px solid rgba(var(--accent-tint-rgb),.22) !important; box-shadow:0 24px 70px rgba(0,0,0,.66), inset 0 1px 0 rgba(255,255,255,.05) !important;}
   html:not(.mobile-ui) #videoMakerModal h3{color:var(--accent-ink); font-size: var(--fs-2);}
   html:not(.mobile-ui) #videoMakerModal :is(select,textarea,input[type=text],input[type=number]){-webkit-appearance:none; appearance:none; box-sizing:border-box; background-color:rgba(255,255,255,.045); color:var(--text); font-family:inherit; font-size: var(--fs-3); border:1px solid rgba(255,255,255,.10); border-radius:var(--r-2); padding:10px 12px; outline:none; transition:border-color .16s ease, box-shadow .16s ease, background .16s ease;}
-  html:not(.mobile-ui) #videoMakerModal :is(select,textarea,input[type=text],input[type=number]):hover{border-color:rgba(212,175,55,.34);}
-  html:not(.mobile-ui) #videoMakerModal :is(select,textarea,input[type=text],input[type=number]):focus{border-color:var(--accent); background-color:rgba(var(--accent-tint-rgb),.055); box-shadow:0 0 0 3px rgba(212,175,55,.13);}
+  html:not(.mobile-ui) #videoMakerModal :is(select,textarea,input[type=text],input[type=number]):hover{border-color:rgba(var(--accent-tint-rgb),.34);}
+  html:not(.mobile-ui) #videoMakerModal :is(select,textarea,input[type=text],input[type=number]):focus{border-color:var(--accent); background-color:rgba(var(--accent-tint-rgb),.055); box-shadow:0 0 0 3px rgba(var(--accent-tint-rgb),.13);}
   html:not(.mobile-ui) #videoMakerModal select{cursor:pointer; padding-left:34px; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1.6 6 6.4 11 1.6' fill='none' stroke='%23888f9c' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/></svg>"); background-repeat:no-repeat; background-position:left 12px center;}
   html:not(.mobile-ui) #videoMakerModal select option{background:#15151b; color:var(--text);}
   html:not(.mobile-ui) #videoMakerModal textarea{line-height:1.6; resize:vertical;}
@@ -140,12 +140,12 @@ html.mobile-ui #omranBelowComposer{display:none !important;}
   html:not(.mobile-ui) #videoMakerModal .mini-mic-btn{width:38px; height:38px; border-radius:50%; margin-top:0; background:rgba(255,255,255,.045); border-color:rgba(255,255,255,.10); transition:background .16s ease, border-color .16s ease, transform .16s ease;}
   html:not(.mobile-ui) #videoMakerModal .mini-mic-btn:hover{background:rgba(var(--accent-tint-rgb),.14); border-color:var(--accent); transform:scale(1.07);}
   html:not(.mobile-ui) #videoMakerModal input[type=checkbox]{-webkit-appearance:none; appearance:none; position:relative; width:18px; height:18px; border:1px solid rgba(255,255,255,.22); border-radius:var(--r-1); background:rgba(255,255,255,.045); cursor:pointer; flex-shrink:0; transition:background .16s ease, border-color .16s ease;}
-  html:not(.mobile-ui) #videoMakerModal input[type=checkbox]:hover{border-color:rgba(212,175,55,.55);}
+  html:not(.mobile-ui) #videoMakerModal input[type=checkbox]:hover{border-color:rgba(var(--accent-tint-rgb),.55);}
   html:not(.mobile-ui) #videoMakerModal input[type=checkbox]:checked{background:var(--grad); border-color:transparent;}
   html:not(.mobile-ui) #videoMakerModal input[type=checkbox]:checked::after{content:"\2713"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900; color:#14140f;}
   html:not(.mobile-ui) #videoMakerModal #videoMakerHeroBtn{background:rgba(255,255,255,.045); color:var(--text); border:1px solid rgba(255,255,255,.10); font-family:inherit; font-size:12.5px; transition:border-color .16s ease, background .16s ease;}
   html:not(.mobile-ui) #videoMakerModal #videoMakerHeroBtn:hover{border-color:var(--accent); background:rgba(var(--accent-tint-rgb),.12);}
-  html:not(.mobile-ui) #videoMakerModal #videoMakerHeroPreview{border:1px solid rgba(212,175,55,.30);}
+  html:not(.mobile-ui) #videoMakerModal #videoMakerHeroPreview{border:1px solid rgba(var(--accent-tint-rgb),.30);}
   html:not(.mobile-ui) #videoMakerModal #videoMakerGenerateBtn{padding:13px; font-size: var(--fs-3); border-radius:var(--r-3); letter-spacing:.3px;}
 }
 

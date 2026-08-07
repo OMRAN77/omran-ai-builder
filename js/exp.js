@@ -8,7 +8,7 @@
   function eRTL(){ return ['ar','ur'].indexOf(eLang())>=0; }
   function eEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function eTok(){ try{ return (typeof authGet==='function'?authGet('aiapp_auth_token'):null)||localStorage.getItem('aiapp_auth_token')||sessionStorage.getItem('aiapp_auth_token')||''; }catch(e){ return ''; } }
-  var PAL = ['#34d399','#d4af37','#f59e0b','#38bdf8','#f472b6','#a3e635','#fb7185','#e8c766'];
+  var PAL = ['#34d399','#6b7280','#f59e0b','#38bdf8','#f472b6','#a3e635','#fb7185','#9ca3af'];
   var modal=document.getElementById('expModal'), body=document.getElementById('expBody'), fileInput=document.getElementById('expFile');
   var pending=null; // {base64,mime,name}
 

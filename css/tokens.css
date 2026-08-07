@@ -25,7 +25,7 @@
     --ease:cubic-bezier(.22,.61,.36,1);
     --t-fast:.14s; --t-mid:.26s;
     --bg:#000000; --bg2:#000000; --panel:#000000; --panel2:#000000; --border:rgba(255,255,255,.08);
-    --text:#eef0f6; --muted:#9a9a9e; --accent:#d4af37; --accent-rgb:212,175,55; --accent-light:#e8c766; --accent2:#e8c766;
+    --text:#eef0f6; --muted:#9a9a9e; --accent:#6b7280; --accent-rgb:107,114,128; --accent-light:#9ca3af; --accent2:#9ca3af;
     /* ===== v439 — ترتيب الذهبيّ (ب): الذهبيّ للحدود والفواصل فقط ===== */
     --accent-ink:#eef0f6; --accent-surface:#2b2e35; --accent-on-surface:#eef0f6;
     --accent-tint-rgb:255,255,255; --accent-glow-rgb:255,255,255;
@@ -466,7 +466,7 @@
   small.hint{color:var(--muted); font-size: var(--fs-5); display:block; margin-top:10px; line-height:1.7;}
   #btnLang{min-width:56px; justify-content:center; font-weight:700;}
   .langFlagBtn{width:38px; height:38px; padding:0; font-size:18px; display:flex; align-items:center; justify-content:center; border-radius:var(--r-2); opacity:.5; transition:opacity .15s, box-shadow .15s;}
-  .langFlagBtn.active{opacity:1; box-shadow:0 0 0 2px var(--accent,#d4af37) inset;}
+  .langFlagBtn.active{opacity:1; box-shadow:0 0 0 2px var(--accent,#6b7280) inset;}
   #tabDownloadWrap{display:flex; align-items:center; margin-inline-start:auto; padding-inline-end:8px; position:relative;}
   /* v207: قائمة ⋮ لأزرار رفع/تنزيل/ZIP */
   #tabsMenuDropdown{
@@ -659,7 +659,7 @@
   .msgSearchImgStrip img{ height:140px; width:auto; max-width:220px; object-fit:cover; border-radius:var(--r-3); flex:0 0 auto; background:var(--panel,#1c2230); }
   .msgSourceBadges{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
   .msgSourceBadge{ display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:var(--r-pill); background:var(--panel,#1c2230); border:1px solid var(--border,rgba(255,255,255,.12)); color:var(--muted); text-decoration:none; font-size:12px; max-width:180px; }
-  .msgSourceBadge:hover{ color:var(--text); border-color:var(--accent2,#e8c766); }
+  .msgSourceBadge:hover{ color:var(--text); border-color:var(--accent2,#9ca3af); }
   .msgSourceBadge img{ width:14px; height:14px; border-radius:var(--r-1); flex:0 0 auto; }
   .msgSourceBadge span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .msgActionBar{ display:flex; align-items:center; gap:12px; margin-top:8px; flex-wrap:nowrap; white-space:nowrap; }
