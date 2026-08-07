@@ -2558,8 +2558,18 @@ async function sendPrompt(){
       let reply, providerKey, switched, requestedKey;
       // 💬 عقل واحد: Claude وحده يرد في النقاش العادي — الاحتياط (GPT ثم Gemini)
       // صامت ويشتغل فقط إذا Claude تعطل أو خلص حده.
+      // 🛠️ ومعه يداه: النقاش العادي على Claude يمرّ بحلقة الأدوات (بحث · قراءة
+      // صفحة · تشغيل كود)، فيقرّر النموذج بنفسه متى يحتاج أداة بدل أن تقرّر
+      // عنه أنماط نصّيّة في المتصفّح. أيّ عثرة تهبط صامتة إلى المسار القديم.
       try{
-        ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, onDelta, __teamOrder));
+        let __ct = null;
+        if(window.__chatToolsOn !== false && !__gateNoBuild && !__routeFix && !imageAttachments.length
+           && __effProv === 'claude' && typeof window.callChatWithTools === 'function'){
+          try{ __ct = await window.callChatWithTools(apiMessages, onDelta); }
+          catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; __swallow(e, 'chat:tools'); }
+        }
+        if(__ct) ({ reply, providerKey, switched, requestedKey } = __ct);
+        else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, onDelta, __teamOrder));
       }finally{
         window.__claudeModelOverride = null;
         window.__claudeThinking = false;

@@ -21,6 +21,7 @@ function load(action) {
     case 'openrouter': return require('./_lib/openrouter.js');
     case 'perplexity': return require('./_lib/perplexity.js');
     case 'agent': return require('./_lib/agent.js');
+    case 'chat': return require('./_lib/chat.js');
     default: return null;
   }
 }
