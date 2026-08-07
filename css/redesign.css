@@ -190,3 +190,6 @@ html.mobile-ui .omToolCard{padding:12px 6px;}
 html.mobile-ui .omToolCard .omToolName{font-size:11.5px;}
 html.mobile-ui .omToolCard .omToolDesc{display:none;}
 html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start; border-top:1px solid var(--omLine); padding-top:10px;}
+/* v444: أمر عمران ٧ أغسطس ٢٠٢٦ — إخفاء بطاقات الاقتراحات وإشعار التعليم (كمبيوتر + جوّال) */
+#omranToolsGrid{display:none !important;}
+#eduIntroCard, #eduIntroCard.show{display:none !important;}
