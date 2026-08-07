@@ -238,7 +238,7 @@ $('#btnSettings').onclick = () => {
   try { if (window.updateVersionLabel) window.updateVersionLabel(); } catch(e){ __swallow(e, "misc:app-06-checkout#2"); }
   openDialogSafe(settingsDialog);
 };
-$('#btnResetColors').onclick = () => {
+if($('#btnResetColors')) $('#btnResetColors').onclick = () => {
   localStorage.removeItem('aiapp_theme');
   localStorage.removeItem('aiapp_provider_colors');
   const row = $('#colorPresetsRow');

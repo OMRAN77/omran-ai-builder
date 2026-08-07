@@ -1015,6 +1015,7 @@ function buildColorPresetsRow(){
     btn.style.cssText = 'width:26px; height:26px; border-radius:50%; border:1px solid rgba(255,255,255,0.25); background:'+hex+'; cursor:pointer; padding:0;';
     btn.onclick = () => {
       const target = lastFocusedColorInput || $('#themeAccent');
+      if(!target) return;
       target.value = hex;
       updateSwatchFor(target);
     };
@@ -1053,31 +1054,29 @@ function buildProviderColorGrid(){
 }
 function loadThemeToForm(){
   const th = getTheme();
-  $('#themeAccent').value = th.accent;
-  $('#themeText').value = th.text;
-  $('#themeBg').value = th.bg;
-  $('#themeUserBubble').value = th.userBubble;
-  $('#themeAssistantBubble').value = th.assistantBubble;
-  ['themeAccent','themeText','themeBg','themeUserBubble','themeAssistantBubble'].forEach(id => updateSwatchFor($('#'+id)));
+  const THEME_FIELDS = {themeAccent:'accent',themeText:'text',themeBg:'bg',themeUserBubble:'userBubble',themeAssistantBubble:'assistantBubble'};
+  Object.keys(THEME_FIELDS).forEach(id => { const el = $('#'+id); if(!el) return; el.value = th[THEME_FIELDS[id]]; updateSwatchFor(el); });
   buildColorPresetsRow();
   buildProviderColorGrid();
   try { buildBg3DPicker(); } catch(e) { console.error(e); }
 }
 function saveThemeFromForm(){
+  const cur = getTheme();
+  const pick = (id, fb) => { const el = $('#'+id); return (el && isValidHex(el.value)) ? el.value : fb; };
   const th = {
-    accent: isValidHex($('#themeAccent').value) ? $('#themeAccent').value : getTheme().accent,
-    text: isValidHex($('#themeText').value) ? $('#themeText').value : getTheme().text,
-    bg: isValidHex($('#themeBg').value) ? $('#themeBg').value : getTheme().bg,
-    userBubble: isValidHex($('#themeUserBubble').value) ? $('#themeUserBubble').value : getTheme().userBubble,
-    assistantBubble: isValidHex($('#themeAssistantBubble').value) ? $('#themeAssistantBubble').value : getTheme().assistantBubble
+    accent: pick('themeAccent', cur.accent),
+    text: pick('themeText', cur.text),
+    bg: pick('themeBg', cur.bg),
+    userBubble: pick('themeUserBubble', cur.userBubble),
+    assistantBubble: pick('themeAssistantBubble', cur.assistantBubble)
   };
   localStorage.setItem('aiapp_theme', JSON.stringify(th));
-  const colors = {};
-  const defaults = getProviderColors();
-  document.querySelectorAll('#providerColorGrid input.hex-color-input').forEach(inp => {
-    colors[inp.dataset.providerName] = isValidHex(inp.value) ? inp.value : defaults[inp.dataset.providerName];
-  });
-  localStorage.setItem('aiapp_provider_colors', JSON.stringify(colors));
+  const inputs = document.querySelectorAll('#providerColorGrid input.hex-color-input');
+  if(inputs.length){
+    const colors = {}; const defaults = getProviderColors();
+    inputs.forEach(inp => { colors[inp.dataset.providerName] = isValidHex(inp.value) ? inp.value : defaults[inp.dataset.providerName]; });
+    localStorage.setItem('aiapp_provider_colors', JSON.stringify(colors));
+  }
   applyTheme();
   renderMessages();
 }
@@ -1310,9 +1309,10 @@ function initCustomBg3D(id){
 }
 function getBg3DAccentColorHex(){
   try {
-    const accent = getTheme().accent || 'var(--accent)';
-    return parseInt(accent.replace('#',''), 16);
-  } catch(e){ return 0x7c5cff; }
+    let a = (getComputedStyle(document.documentElement).getPropertyValue('--accent') || '').trim();
+    if(!/^#[0-9a-fA-F]{6}$/.test(a)) a = '#d4af37';
+    return parseInt(a.slice(1), 16);
+  } catch(e){ return 0xd4af37; }
 }
 async function applyBg3D(id, save){
   if(save !== false) localStorage.setItem('aiapp_bg3d', id);

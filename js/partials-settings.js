@@ -249,66 +249,6 @@
 
   <div id="themeSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('themeSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="themeSectionLabel">🎨 تخصيص الألوان والمظهر</h3><span class="settingsSectionArrow" id="themeSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="themeSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
-      <div style="display:flex; flex-direction:column; gap:0; padding:10px 12px; margin-bottom:14px; background:var(--panel2); border-radius:var(--r-2);">
-        <div onclick="toggleSubRow('appColorSub')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><span data-i18n="appColorTitle" style="font-size: var(--fs-3);">لون التطبيق</span><span id="appColorSubArrow" style="font-size:12px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
-        <div id="appColorSubContent" style="display:none; padding-top:10px;"><div id="themeCircles" style="display:flex; flex-wrap:nowrap; justify-content:space-between; gap:4px; padding:2px;"></div></div>
-      </div>
-      <div style="display:flex; flex-direction:column; gap:0; padding:10px 12px; margin-bottom:14px; background:var(--panel2); border-radius:var(--r-2);">
-        <div onclick="toggleSubRow('tickerColorSub')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><span data-i18n="tickerColorLabel" style="font-size: var(--fs-3);">لون شريط الأسهم</span><span id="tickerColorSubArrow" style="font-size:12px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
-        <div id="tickerColorSubContent" style="display:none; padding-top:10px;"><div id="tickerColorCircles" style="display:flex; flex-wrap:nowrap; justify-content:space-between; gap:4px; padding:2px;"></div></div>
-      </div>
-  <div style="display:flex; flex-direction:column; gap:0; padding:10px 12px; margin-bottom:14px; background:var(--panel2); border-radius:var(--r-2);">
-    <div onclick="toggleSubRow('customColorsSub')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><span data-i18n="customColorsLabel" style="font-size: var(--fs-3);">ألوان مخصصة</span><span id="customColorsSubArrow" style="font-size:12px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
-    <div id="customColorsSubContent" style="display:none; padding-top:10px;">
-  <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-top:8px;">
-    <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
-      <span data-i18n="themeAccentLabel">اللون الأساسي (Accent)</span>
-      <div class="color-field-wrap" style="display:flex; gap:6px; align-items:center;">
-        <span class="color-swatch" data-for="themeAccent" style="width:34px; height:34px; border-radius:var(--r-2); flex-shrink:0; border:1px solid rgba(255,255,255,0.2);"></span>
-        <input type="text" class="hex-color-input" id="themeAccent" maxlength="7" style="flex:1; font-family:monospace; height:34px; padding:2px 8px; border-radius:var(--r-2);">
-      </div>
-    </label>
-    <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
-      <span data-i18n="themeTextLabel">لون النص</span>
-      <div class="color-field-wrap" style="display:flex; gap:6px; align-items:center;">
-        <span class="color-swatch" data-for="themeText" style="width:34px; height:34px; border-radius:var(--r-2); flex-shrink:0; border:1px solid rgba(255,255,255,0.2);"></span>
-        <input type="text" class="hex-color-input" id="themeText" maxlength="7" style="flex:1; font-family:monospace; height:34px; padding:2px 8px; border-radius:var(--r-2);">
-      </div>
-    </label>
-    <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
-      <span data-i18n="themeBgLabel">لون الخلفية</span>
-      <div class="color-field-wrap" style="display:flex; gap:6px; align-items:center;">
-        <span class="color-swatch" data-for="themeBg" style="width:34px; height:34px; border-radius:var(--r-2); flex-shrink:0; border:1px solid rgba(255,255,255,0.2);"></span>
-        <input type="text" class="hex-color-input" id="themeBg" maxlength="7" style="flex:1; font-family:monospace; height:34px; padding:2px 8px; border-radius:var(--r-2);">
-      </div>
-    </label>
-    <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
-      <span data-i18n="themeUserBubbleLabel">لون فقاعة رسالتك</span>
-      <div class="color-field-wrap" style="display:flex; gap:6px; align-items:center;">
-        <span class="color-swatch" data-for="themeUserBubble" style="width:34px; height:34px; border-radius:var(--r-2); flex-shrink:0; border:1px solid rgba(255,255,255,0.2);"></span>
-        <input type="text" class="hex-color-input" id="themeUserBubble" maxlength="7" style="flex:1; font-family:monospace; height:34px; padding:2px 8px; border-radius:var(--r-2);">
-      </div>
-    </label>
-    <label style="display:flex; flex-direction:column; gap:4px; font-size:12px;">
-      <span data-i18n="themeAssistantBubbleLabel">لون فقاعة الرد</span>
-      <div class="color-field-wrap" style="display:flex; gap:6px; align-items:center;">
-        <span class="color-swatch" data-for="themeAssistantBubble" style="width:34px; height:34px; border-radius:var(--r-2); flex-shrink:0; border:1px solid rgba(255,255,255,0.2);"></span>
-        <input type="text" class="hex-color-input" id="themeAssistantBubble" maxlength="7" style="flex:1; font-family:monospace; height:34px; padding:2px 8px; border-radius:var(--r-2);">
-      </div>
-    </label>
-  </div>
-
-  <div id="colorPresetsRow" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;"></div>
-  <button type="button" class="btn" id="btnResetColors" style="margin-top:10px;">↺ <span data-i18n="resetColorsBtn">إعادة الألوان الافتراضية</span></button>
-    </div>
-  </div>
-
-  <div style="display:flex; flex-direction:column; gap:0; padding:10px 12px; margin-bottom:14px; background:var(--panel2); border-radius:var(--r-2);">
-    <div onclick="toggleSubRow('providerColorsSub')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><span data-i18n="providerColorsLabel" style="font-size:13px;">🤖 لون كل مزوّد ذكاء اصطناعي (يظهر باسمه في المحادثة)</span><span id="providerColorsSubArrow" style="font-size:12px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
-    <div id="providerColorsSubContent" style="display:none; padding-top:10px;">
-  <div id="providerColorGrid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-top:8px;"></div>
-    </div>
-  </div>
 
   <div style="display:flex; flex-direction:column; gap:0; padding:10px 12px; margin-bottom:14px; background:var(--panel2); border-radius:var(--r-2);">
     <div onclick="toggleSubRow('bg3dSub')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><span data-i18n="bg3dSectionLabel" style="font-size:13px;">🌌 خلفية ثلاثية الأبعاد متحركة</span><span id="bg3dSubArrow" style="font-size:12px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>

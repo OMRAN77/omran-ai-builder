@@ -735,13 +735,6 @@
   /* لوحة الكود ومربّعات الكود تبقى داكنة عمدًا — أوضح للقراءة في الوضعين. */
 
 
-  /* ===== v436 (٧ أغسطس) — أمر عمران: «احذف الألوان اللي في الإعدادات لكن خلّ الأبعاد المتحرّكة».
-     إخفاء لا حذف: حقول اللون تبقى في DOM لأنّ getTheme() يقرأ #themeAccent،
-     والخلفيّات ثلاثيّة الأبعاد تأخذ لونها منه. حذف الوسم يكسرها. ===== */
-  #themeSection div:has(> #appColorSubContent),
-  #themeSection div:has(> #tickerColorSubContent),
-  #themeSection div:has(> #customColorsSubContent),
-  #themeSection div:has(> #providerColorsSubContent){display:none !important;}
 
   /* أطراف الشريط: التدرّج كان #000 صريحًا — يذوب في الداكن، يظهر أسودَ في الفاتح. */
   html[data-mode="light"] #stockTicker::before{
