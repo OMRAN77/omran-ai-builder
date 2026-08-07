@@ -1,0 +1,8 @@
+deployment=dpl_9c4drWiSQVs5HRppJPwYjURFdFqc
+target=production
+rollbackTo=dpl_7tnvqSJT7YeaBVvfnuFmHfg287WU
+changedFiles=api/_lib/_knowledge.js api/_lib/chat.js api/_lib/agent.js
+urls=omran-ai-builder-91rlq4eh7-omran4.vercel.app omran-ai-builder-omran4.vercel.app omran-ai-builder-ommntr77-5598-omran4.vercel.app
+smoke=green
+at=2026-08-07T17:23:08.052Z
+change=معرفة عمران داخل التطبيق — مقفلة على المالك

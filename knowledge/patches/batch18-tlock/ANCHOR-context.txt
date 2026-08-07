@@ -1,0 +1,17 @@
+function t(key){
+  const v = I18N[lang] ? I18N[lang][key] : undefined;
+  if (v !== undefined) return v;
+  // v424: الإنجليزية قبل العربية — الناقص كان يخرج عربيًّا في واجهة ص
+  const vEn = I18N.en ? I18N.en[key] : undefined;
+  if (vEn !== undefined) return vEn;
+  const fb = I18N.ar ? I18N.ar[key] : undefined;
+  return fb !== undefined ? fb : key;
+}
+
+/* قفل t: عالميّ و writable — كودٌ خارجيّ (إضافة متصفّح، سطر مُحقَّن) يكت
+ * فيُسقط كلّ ترجمة بعده؛ استُنسخ حيًّا (عمود ٢٩ في renderCodeAndPreview).
+ * القفل يحوّل الاختطاف إلى لا-عمليّة صامتة بلا كسر أيّ قراءة. */
+try{ Object.defineProperty(window, "t", { writable: false }); }catch(_){ __swallow(_, "lock:app-04-t"); }
+
+function applyLanguage(){
+  if(!I18N[lang] && I18N_LAZY.indexOf(lang) >= 0){
