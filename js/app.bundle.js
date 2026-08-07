@@ -17064,6 +17064,13 @@ function openShareModal(project){
   const roomImageWrap = $('#constructionRoomImageWrap');
   const roomImageEl = $('#constructionRoomImage');
   const roomDownloadLink = $('#constructionRoomDownloadLink');
+  const plotEl = $('#constructionPlot');
+  const emirateEl = $('#constructionEmirate');
+  const boqWrap = $('#constructionBoqWrap');
+  const exportRow = $('#constructionExportRow');
+  const boqBtn = $('#constructionBoqBtn');
+  const pdfBtn = $('#constructionPdfBtn');
+  let lastData = null;
   if(!modal || !btnOpen) return;
 
   function currentParams(){
@@ -17073,7 +17080,26 @@ function openShareModal(project){
       area: areaEl.value,
       style: styleEl.value,
       notes: notesEl.value,
+      plotArea: plotEl ? plotEl.value : '',
+      emirate: emirateEl ? emirateEl.value : '',
     };
+  }
+
+  function csvEsc(v){ return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }
+  function boqRows(){ return (lastData && Array.isArray(lastData.boq) && lastData.boq.length > 1) ? lastData.boq : null; }
+  function esc(s){ return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function renderBoq(rows){
+    if(!boqWrap) return;
+    if(!rows){ boqWrap.style.display = 'none'; boqWrap.innerHTML = ''; return; }
+    let html = '<table style="width:100%; border-collapse:collapse; font-size:12.5px;">';
+    rows.forEach(function(r, i){
+      const g = i === 0 ? 'th' : 'td';
+      html += '<tr>' + r.map(function(c){
+        return '<' + g + ' style="border:1px solid var(--border,#333); padding:5px 7px; text-align:start;' + (i === 0 ? 'background:rgba(15,118,110,.28);' : '') + '">' + esc(c) + '</' + g + '>';
+      }).join('') + '</tr>';
+    });
+    boqWrap.innerHTML = html + '</table>';
+    boqWrap.style.display = 'block';
   }
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
@@ -17172,6 +17198,9 @@ function openShareModal(project){
     resultImageWrap.style.display = 'none';
     planTextEl.style.display = 'none';
     viewsSection.style.display = 'none';
+    lastData = null;
+    renderBoq(null);
+    if(exportRow) exportRow.style.display = 'none';
     setStatus(t('constructionGenerating'));
 
     try{
@@ -17213,10 +17242,13 @@ function openShareModal(project){
         interiorDownloadLink.href = interiorImageEl.src;
         interiorWrap.style.display = 'block';
       }
+      lastData = data;
       if(data.planText){
         planTextEl.textContent = data.planText;
         planTextEl.style.display = 'block';
       }
+      renderBoq(boqRows());
+      if(exportRow && (data.planText || boqRows())) exportRow.style.display = 'grid';
       viewsSection.style.display = 'block';
       angleImageWrap.style.display = 'none';
       roomImageWrap.style.display = 'none';
@@ -17228,6 +17260,60 @@ function openShareModal(project){
     }finally{
       btnRun.disabled = false;
     }
+  };
+
+  if(boqBtn) boqBtn.onclick = function(){
+    const rows = boqRows();
+    if(!rows){ setStatus(isEn() ? '⚠️ This result has no bill of quantities.' : '⚠️ لا يوجد جدول كميات في هذه النتيجة.'); return; }
+    const csv = '\ufeff' + rows.map(function(r){ return r.map(csvEsc).join(','); }).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = 'omran-boq.csv';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ try{ URL.revokeObjectURL(a.href); a.remove(); }catch(e){} }, 1500);
+  };
+
+  if(pdfBtn) pdfBtn.onclick = function(){
+    if(!lastData){ setStatus(isEn() ? '⚠️ Generate a design first.' : '⚠️ ولّد التصميم أولًا.'); return; }
+    const w = window.open('', '_blank');
+    if(!w){ setStatus(isEn() ? '⚠️ Allow pop-ups to export the report.' : '⚠️ اسمح بالنوافذ المنبثقة لتصدير التقرير.'); return; }
+    const fig = function(b64, mime, cap){
+      return b64 ? ('<figure><img src="data:' + (mime || 'image/png') + ';base64,' + b64 + '"><figcaption>' + cap + '</figcaption></figure>') : '';
+    };
+    const rows = boqRows();
+    let tbl = '';
+    if(rows){
+      tbl = '<h2>📊 جدول الكميات</h2><table>' + rows.map(function(r, i){
+        const g = i === 0 ? 'th' : 'td';
+        return '<tr>' + r.map(function(c){ return '<' + g + '>' + esc(c) + '</' + g + '>'; }).join('') + '</tr>';
+      }).join('') + '</table>';
+    }
+    const oTxt = function(el){ return (el && el.options[el.selectedIndex]) ? el.options[el.selectedIndex].text : ''; };
+    const meta = [oTxt(typeEl), floorsEl.value + ' أدوار', areaEl.value + ' م² بناء',
+      (plotEl && plotEl.value ? plotEl.value + ' م² أرض' : ''), oTxt(styleEl),
+      (emirateEl && emirateEl.value ? oTxt(emirateEl) : '')].filter(Boolean).join(' · ');
+    w.document.write('<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>تقرير مشروع البناء</title><style>'
+      + 'body{font-family:"Segoe UI",Tahoma,Arial,sans-serif;margin:0;padding:0 26px 26px;color:#111;}'
+      + 'header{background:linear-gradient(135deg,#0f766e,#134e4a);color:#fff;margin:0 -26px 18px;padding:20px 26px;}'
+      + 'header h1{margin:0;font-size:21px}header p{margin:6px 0 0;font-size:13px;opacity:.92}'
+      + 'h2{font-size:16px;border-bottom:2px solid #0f766e;padding-bottom:4px;margin:20px 0 8px}'
+      + 'table{width:100%;border-collapse:collapse;font-size:12px}'
+      + 'th,td{border:1px solid #bbb;padding:5px 7px;text-align:right}th{background:#e6f2f0}'
+      + 'figure{margin:0 0 12px;page-break-inside:avoid}img{width:100%;border:1px solid #ccc;border-radius:6px}'
+      + 'figcaption{font-size:11.5px;color:#555;margin-top:4px;text-align:center}'
+      + 'pre{white-space:pre-wrap;font-family:inherit;font-size:12.5px;line-height:1.85;margin:0}'
+      + 'footer{margin-top:22px;font-size:11px;color:#666;border-top:1px solid #ddd;padding-top:8px}'
+      + '@media print{header,th{-webkit-print-color-adjust:exact;print-color-adjust:exact}}'
+      + '</style></head><body><header><h1>🏗️ تقرير مشروع البناء</h1><p>' + esc(meta)
+      + '</p><p>' + esc(new Date().toLocaleDateString('ar-AE')) + '</p></header>'
+      + fig(lastData.imageBase64, lastData.mimeType, 'المخطط المعماري')
+      + fig(lastData.photoImageBase64, lastData.photoMimeType, 'الواجهة الخارجية')
+      + fig(lastData.interiorImageBase64, lastData.interiorMimeType, 'التصميم الداخلي')
+      + '<h2>📋 التفاصيل والتكلفة</h2><pre>' + esc(lastData.planText || '') + '</pre>' + tbl
+      + '<footer>تصوّر أولي فقط — لا يغني عن مهندس مرخّص أو رخصة بناء رسمية. صادر من تطبيق عمران.</footer>'
+      + '</body></html>');
+    w.document.close();
+    setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} }, 800);
   };
 
   angleBtns.forEach((btn) => {

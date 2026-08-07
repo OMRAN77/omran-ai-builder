@@ -1067,6 +1067,26 @@
       </div>
     </div>
 
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;">
+      <div>
+        <label style="font-size: var(--fs-5); color:var(--muted); display:block; margin-bottom:3px;">مساحة الأرض (م²) — اختياري</label>
+        <input type="number" id="constructionPlot" style="width:100%;" min="50" max="200000" placeholder="مثال: 500">
+      </div>
+      <div>
+        <label style="font-size: var(--fs-5); color:var(--muted); display:block; margin-bottom:3px;">الإمارة — اختياري</label>
+        <select id="constructionEmirate" style="width:100%;">
+          <option value="">— بدون —</option>
+          <option value="dubai">دبي</option>
+          <option value="abudhabi">أبوظبي</option>
+          <option value="sharjah">الشارقة</option>
+          <option value="ajman">عجمان</option>
+          <option value="ummalquwain">أم القيوين</option>
+          <option value="rasalkhaimah">رأس الخيمة</option>
+          <option value="fujairah">الفجيرة</option>
+        </select>
+      </div>
+    </div>
+
     <div style="margin-top:10px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="constructionStyleLabel">الطراز المعماري</label>
       <select id="constructionStyle" style="width:100%;">
@@ -1167,6 +1187,11 @@
       <p style="font-size:11.5px; color:var(--muted); margin:0 0 4px;" data-i18n="constructionInteriorLabel">🛋️ التصميم الداخلي</p>
       <img id="constructionInteriorImage" style="display:block; width:100%; border-radius:var(--r-2); background:#000;">
       <a id="constructionInteriorDownloadLink" style="display:block; margin-top:8px; text-align:center;" class="btn primary" download="omran-construction-interior.png" data-i18n="portraitDownloadBtn">⬇️ تحميل الصورة</a>
+    </div>
+    <div id="constructionBoqWrap" style="display:none; margin-top:12px; overflow-x:auto;"></div>
+    <div id="constructionExportRow" style="display:none; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;">
+      <button type="button" class="btn" id="constructionBoqBtn">📊 تنزيل جدول الكميات</button>
+      <button type="button" class="btn" id="constructionPdfBtn">📄 تقرير PDF</button>
     </div>
     <div id="constructionPlanText" style="display:none; margin-top:14px; white-space:pre-wrap; line-height:1.9; font-size: var(--fs-3); background:var(--panel2,#111); border:1px solid var(--border,#333); border-radius:var(--r-2); padding:14px;"></div>
 

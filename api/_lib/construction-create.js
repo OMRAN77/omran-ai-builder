@@ -128,6 +128,16 @@ const ROOM_LABELS_EN = {
   dining: 'dining room',
 };
 
+const EMIRATE_LABELS_AR = {
+  dubai: 'دبي — بلدية دبي · هيئة كهرباء ومياه دبي (ديوا) · الدفاع المدني',
+  abudhabi: 'أبوظبي — دائرة البلديات والنقل (DMT) · شركة أبوظبي للتوزيع · الدفاع المدني',
+  sharjah: 'الشارقة — بلدية الشارقة · هيئة كهرباء ومياه وغاز الشارقة (سيوا) · الدفاع المدني',
+  ajman: 'عجمان — بلدية ودائرة التخطيط بعجمان · اتحاد الماء والكهرباء · الدفاع المدني',
+  ummalquwain: 'أم القيوين — بلدية أم القيوين · اتحاد الماء والكهرباء · الدفاع المدني',
+  rasalkhaimah: 'رأس الخيمة — بلدية رأس الخيمة · دائرة الكهرباء والماء · الدفاع المدني',
+  fujairah: 'الفجيرة — بلدية الفجيرة · اتحاد الماء والكهرباء · الدفاع المدني',
+};
+
 const ANGLE_LABELS_AR = {
   front: 'الواجهة الأمامية',
   side: 'الواجهة الجانبية',
@@ -166,7 +176,7 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { buildingType, floors, area, style, notes, token, annexes, includeInterior, budget, includePlan, includePhoto } = body;
+    const { buildingType, floors, area, style, notes, token, annexes, includeInterior, budget, includePlan, includePhoto, plotArea, emirate } = body;
     const wantPlan = includePlan !== false; // default true
     const wantPhoto = !!includePhoto;
     if (!buildingType || !area) {
@@ -190,6 +200,10 @@ module.exports = async (req, res) => {
     const floorsText = floors ? (floors + '-floor ') : '';
     const notesText = notes ? (' Additional requirements: ' + notes + '.') : '';
 
+    const plotNum = (plotArea && !isNaN(Number(plotArea)) && Number(plotArea) > 0) ? Number(plotArea) : null;
+    const emirateText = (emirate && EMIRATE_LABELS_AR[emirate]) ? EMIRATE_LABELS_AR[emirate] : '';
+    const plotEnText = plotNum ? (' The total plot area is ' + plotNum + ' square meters — draw the building footprint inside the plot boundary with visible setbacks, driveway and garden space.') : '';
+
     const annexEnText = annexList.length ? (' The design also includes: ' + annexList.map((a) => ANNEX_LABELS_EN[a]).join(', ') + '.') : '';
     const annexArText = annexList.length ? annexList.map((a) => ANNEX_LABELS_AR[a]).join('، ') : '';
 
@@ -201,7 +215,7 @@ module.exports = async (req, res) => {
 
     const planPrompt =
       'A clean 2D architectural floor plan (top-down blueprint style, black and white line drawing) of ' +
-      floorsText + buildingDesc + ', approximately ' + area + ' square meters.' + notesText + annexEnText +
+      floorsText + buildingDesc + ', approximately ' + area + ' square meters.' + plotEnText + notesText + annexEnText +
       ' Show clearly labeled rooms with their approximate dimensions in meters written inside each room, walls, doors, and windows. ' +
       'Professional architectural floor plan style, straight lines, no color rendering, no perspective, no people, no furniture photos — just a clear labeled technical floor plan drawing.';
     const planReqBody = { contents: [{ parts: [{ text: planPrompt }] }], generationConfig: { imageConfig: { imageSize: '2K' } } };
@@ -240,7 +254,26 @@ module.exports = async (req, res) => {
       '- **الإجمالي التقريبي: رقم واحد صريح بالدرهم**\n' +
       '- قارن الإجمالي بالميزانية المختارة وقل بوضوح: ضمن الميزانية أم يتجاوزها وبكم.\n' +
       'ثم أضف سطرًا أخيرًا: "هذا المبلغ تقريبي فقط ولا يشمل أجرة المقاول، وقد يختلف حسب المنطقة وأسعار السوق."\n\n' +
-      'كن مختصرًا جدًا وواضحًا، استخدم نقاط قصيرة فقط تحت كل عنوان.';
+      (plotNum ? (
+        '### 📏 نسبة البناء والارتدادات\n' +
+        'مساحة الأرض ' + plotNum + ' م² ومساحة البناء ' + area + ' م².\n' +
+        '- احسب نسبة البناء (البناء ÷ الأرض × 100) واذكرها نسبة مئوية صريحة.\n' +
+        '- قل بوضوح: ضمن الحدود المعتادة في الإمارات لهذا النوع أم تتجاوزها.\n' +
+        '- اذكر الارتدادات المعتادة بالمتر (أمامي/جانبي/خلفي) والمساحة المتبقية للحديقة والمواقف.\n\n'
+      ) : '') +
+      '### 🗓️ الجدول الزمني التنفيذي\n' +
+      'سطر واحد لكل مرحلة بصيغة: المرحلة — المدة بالأسابيع. غطِّ: التصميم والرخصة، الحفر والأساسات، الهيكل الخرساني، الطابوق والتمديدات، اللياسة والعزل، التشطيبات، الأعمال الخارجية، التسليم. ثم اذكر المدة الإجمالية بالأشهر.\n\n' +
+      (emirateText ? (
+        '### 📋 الموافقات والرخص\n' +
+        'الإمارة: ' + emirateText + '.\n' +
+        'اذكر خطوات الترخيص بالترتيب، كل خطوة بسطر: الخطوة — الجهة المسؤولة — المدة التقريبية.\n\n'
+      ) : '') +
+      'كن مختصرًا جدًا وواضحًا، استخدم نقاط قصيرة فقط تحت كل عنوان.\n\n' +
+      'وفي نهاية ردّك تمامًا أضف جدول الكميات بهذه الصيغة الحرفية بلا أي نص بعده:\n' +
+      '<<<BOQ>>>\n' +
+      'البند|الوحدة|الكمية|سعر الوحدة (درهم)|الإجمالي (درهم)\n' +
+      '<<<END>>>\n' +
+      'املأه بـ 14-18 بندًا يغطي: الحفر والردم، الأساسات، الخرسانة، حديد التسليح، الطابوق، اللياسة، العزل، البلاط والرخام، الأبواب والشبابيك، الدهانات، الكهرباء، السباكة، التكييف، المطبخ، الأدوات الصحية، الأعمال الخارجية، والملاحق المطلوبة. الكميات والأسعار أرقام مجردة بلا فواصل أو رموز، وآخر سطر للإجمالي.';
 
     const textEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + apiKey;
     const textReqBody = { contents: [{ parts: [{ text: textPrompt }] }] };
@@ -320,6 +353,18 @@ module.exports = async (req, res) => {
     } catch (e) {
       planText = '';
     }
+    let boq = null;
+    try {
+      const bm = planText.match(/<<<BOQ>>>([\s\S]*?)<<<END>>>/);
+      if (bm) {
+        boq = bm[1].trim().split('\n')
+          .map((r) => r.split('|').map((x) => x.trim().replace(/^\*+|\*+$/g, '')))
+          .filter((r) => r.length >= 3 && r.join('').replace(/[-|\s]/g, '').length > 0);
+        planText = planText.replace(bm[0], '').trim();
+        if (boq.length < 2) boq = null;
+      }
+    } catch (e) { boq = null; }
+
     const disclaimer = '\n\n⚠️ تصور أولي فقط لأغراض العرض — لا يغني عن مهندس مرخّص أو رخصة بناء رسمية.';
 
     const remaining = await consumeConstruction(quota.username);
@@ -348,6 +393,7 @@ module.exports = async (req, res) => {
       interiorImageBase64,
       interiorMimeType,
       planText: (planText || '') + disclaimer,
+      boq,
       remaining,
       dailyLimit: CONSTRUCTION_DAILY_LIMIT,
     });
