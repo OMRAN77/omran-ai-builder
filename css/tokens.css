@@ -7,7 +7,7 @@
     --fs-5:11.5px;  /* تفصيل دقيق / تلميح */
     --w-bold:700;   /* العناوين والأزرار الرئيسية وحدها */
     --w-mid:500;    /* التسميات والثانوي */
-    --w-body:400;   /* النصّ العادي */
+    --w-body:500;   /* النصّ العادي */
     --lh-body:1.6;  /* إيقاع قراءة النصّ العربي */
     --lh-tight:1.3; /* العناوين */
     /* ===== سلّم الاستدارة (v419) — مصدر واحد لكل انحناء ===== */
@@ -173,7 +173,7 @@
   .prov-cell:hover{opacity:1; background:rgba(255,255,255,.08);}
   .prov-cell.active{opacity:1; border-color:var(--accent); background:transparent; box-shadow:0 0 8px rgba(212,175,55,.35);}
   .prov-cell svg{width:20px; height:20px; display:block;}
-  .prov-cell .prov-name{font-size:9.5px; line-height:1; color:var(--muted,#aab); white-space:nowrap;}
+  .prov-cell .prov-name{font-size:9.5px; line-height:1; font-weight:600; color:var(--muted,#aab); white-space:nowrap;}
   .prov-cell.active .prov-name{color:#f0d98a; font-weight:bold;}
   .prov-dot{position:absolute; top:4px; inset-inline-end:4px; width:7px; height:7px; border-radius:50%; background:transparent;}
   .prov-dot.ok{background:#22c55e;}
@@ -181,7 +181,7 @@
   .prov-dot.out{background:#ef4444;}
   #providerStripMobile{display:none; gap:6px; overflow-x:auto; padding:7px 10px; background:rgba(0,0,0,.35); border-bottom:1px solid rgba(255,255,255,.08); scrollbar-width:none; -webkit-overflow-scrolling:touch;}
   #providerStripMobile::-webkit-scrollbar{display:none;}
-  .prov-chip-m{position:relative; display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:var(--r-4); background:rgba(255,255,255,.05); border:1.5px solid rgba(255,255,255,.1); font-size: var(--fs-5); color:var(--muted,#aab); white-space:nowrap; flex-shrink:0; cursor:pointer; user-select:none; opacity:.8;}
+  .prov-chip-m{font-weight:600; position:relative; display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:var(--r-4); background:rgba(255,255,255,.05); border:1.5px solid rgba(255,255,255,.1); font-size: var(--fs-5); color:var(--muted,#aab); white-space:nowrap; flex-shrink:0; cursor:pointer; user-select:none; opacity:.8;}
   .prov-chip-m svg{width:15px; height:15px; display:block;}
   .prov-chip-m.active{opacity:1; border-color:var(--accent); background:transparent; color:#f0d98a; font-weight:bold; box-shadow:0 0 6px rgba(212,175,55,.35);}
   /* v336: عناصر القائمة المنسدلة — مخفية افتراضيًا (الجوال يظل مثل ما هو) */
@@ -193,7 +193,7 @@
   /* v336: (كمبيوتر فقط) قائمة المزودين المنسدلة + طي لوحة الكود/المعاينة */
   @media (min-width:861px){
     html:not(.mobile-ui) #providerGridSidebar{position:relative;}
-    html:not(.mobile-ui) #provDropdownBtn{display:flex; align-items:center; gap:10px; width:100%; padding:9px 12px; border-radius:var(--r-3); background:rgba(255,255,255,.05); border:1.5px solid rgba(255,255,255,.1); cursor:pointer; color:var(--text); font-family:inherit; font-size: var(--fs-3); user-select:none;}
+    html:not(.mobile-ui) #provDropdownBtn{font-weight:600; display:flex; align-items:center; gap:10px; width:100%; padding:9px 12px; border-radius:var(--r-3); background:rgba(255,255,255,.05); border:1.5px solid rgba(255,255,255,.1); cursor:pointer; color:var(--text); font-family:inherit; font-size: var(--fs-3); user-select:none;}
     html:not(.mobile-ui) #provDropdownBtn:hover{background:rgba(255,255,255,.09);}
     html:not(.mobile-ui) #provDDLogo{display:inline-flex; flex-shrink:0;}
     html:not(.mobile-ui) #provDDLogo svg{width:18px; height:18px; display:block;}
@@ -742,3 +742,7 @@
                linear-gradient(90deg,#f4f4f4 0,rgba(244,244,244,0) 84px),
                linear-gradient(270deg,#f4f4f4 0,rgba(244,244,244,0) 84px) !important;
   }
+
+  /* v438: سماكة الخطّ الأساسيّة — أمر عمران ٧ أغسطس ٢٠٢٦ */
+  body{font-weight:var(--w-body);}
+  button,input,textarea,select{font-weight:inherit;}
