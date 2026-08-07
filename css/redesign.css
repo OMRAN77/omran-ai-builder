@@ -193,3 +193,5 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 /* v444: أمر عمران ٧ أغسطس ٢٠٢٦ — إخفاء بطاقات الاقتراحات وإشعار التعليم (كمبيوتر + جوّال) */
 #omranToolsGrid{display:none !important;}
 #eduIntroCard, #eduIntroCard.show{display:none !important;}
+/* v445: أمر عمران ٧ أغسطس ٢٠٢٦ — إخفاء «أدوات سريعة» فوق صندوق المحادثة */
+#omranQuickMobileWrap, html.mobile-ui #omranQuickMobileWrap{display:none !important;}
