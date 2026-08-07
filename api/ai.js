@@ -289,9 +289,9 @@ function isFactory(body) {
  * وقاعدة الإعلانات — كلها أسلوب، وهي سبب تشابه المزوّدين التسعة.
  */
 function balancedNote(action, country) {
-  // v465: NOTE_QUALITY removed — client-side Q&A prompt already covers style rules.
-  // Keeping only factual/functional notes to avoid overwhelming the model with duplicates.
-  return noteDate() + noteCountry(country) + NOTE_LINKS + noteIdentity(action) + NOTE_CONFIRM + NOTE_CAPS;
+  // v469: Q&A خفيف — التاريخ والدولة فقط (حقائق لا يعرفها النموذج).
+  // باقي القواعد (روابط، هوية، تأكيد، قدرات) انتقلت للعميل.
+  return noteDate() + noteCountry(country);
 }
 
 
