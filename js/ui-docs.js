@@ -197,3 +197,107 @@
     modal.addEventListener('click',function(e){ if(e.target===modal) close(); });
   })();
 })();
+
+/* ══════════════════════════════════════════════════════════════════════════
+   v472 · Strangler: زرّ «مولّد السيرة الذاتية» → حوار داخل الدردشة
+   ──────────────────────────────────────────────────────────────────────────
+   • لم يُحذف سطر واحد من المسار القديم (نافذة ١٠ حقول → api/cv → 410).
+     النقر يُعترض في مرحلة الالتقاط على document فلا يصل إلى المستمع القديم.
+     التراجع = حذف هذه الكتلة وحدها، ويعود القديم كما كان.
+   • الصياغة مُختبرة ضدّ بوّابات الحزمة الخمس (__strongBuildRe · GATE_BUILD_RE
+     · GATE_CMD_RE · BUILD_TASK_RE · __deepRe384): صفر تطابق — فتبقى حوارًا
+     ولا تُقرأ كطلب بناء صفحة HTML. («أريد سيرة ذاتية…» كانت تُطابق
+     GATE_CMD_RE فاستُبدلت بـ«ساعدني…».)
+   • «أنا في الإمارات»: قياس حيّ أثبت أنّ الردّ يفترض الولايات المتحدة تلقائيًّا.
+     السياق مزروع في الصياغة — لا في الخادم — فيبقى الإصلاح داخل هذا الملفّ.
+   • كتم البحث الحيّ وملاحظة القدرات: تغليف مقيّد بمطابقة حرفيّة لنصوصنا
+     وحدها (MINE). أي طلب آخر يمرّ إلى الدالّة الأصليّة بلا تغيير.
+     قياس حيّ أثبت أنّ نداء الحزمة يمرّ عبر window فالتغليف فعّال.
+   • يعمل أيضًا مع النقر البرمجيّ من openFeatureById() (أيقونة القدرات ✨)،
+     فيُغلَق الطريق إلى النافذة المتقاعدة من بابيه.
+   ══════════════════════════════════════════════════════════════════════════ */
+(function(){
+  var CHAT_ROUTES = {
+    btnCV: {
+      ar: 'ساعدني في إعداد سيرتي الذاتية. أنا في الإمارات — لا تفترض أي بلد آخر. اسألني سؤالاً واحداً في كل مرة، وابدأ الآن بالسؤال الأول.',
+      en: 'Help me prepare my CV. I am in the UAE — do not assume any other country. Ask me one question at a time, and start now with the first question.'
+    }
+  };
+
+  /* نصوصنا بالحرف — مرجع الكتم الوحيد. لا شيء خارجها يُمَسّ. */
+  var MINE = [];
+  Object.keys(CHAT_ROUTES).forEach(function(k){
+    var r = CHAT_ROUTES[k];
+    Object.keys(r).forEach(function(L){ MINE.push(String(r[L]).trim()); });
+  });
+  function isMine(t){ return MINE.indexOf(String(t == null ? '' : t).trim()) !== -1; }
+
+  /* التغليف يُركَّب عند أوّل نقر: الحزمة تكون قد حُمّلت بالكامل حينها. */
+  var wrapped = false;
+  function silenceForOurPrompts(){
+    if(wrapped) return;
+    wrapped = true;
+    var origSearch = window.smartMaybeSearch;
+    if(typeof origSearch === 'function'){
+      window.smartMaybeSearch = function(text){
+        /* طلبنا حوار لا سؤال معلوماتيّ: لا بحث حيّ، ولا تأخير، ولا تلويث للردّ. */
+        if(isMine(text)) return Promise.resolve(null);
+        return origSearch.apply(this, arguments);
+      };
+    }
+    var origHint = window.capabilityHintFor;
+    if(typeof origHint === 'function'){
+      window.capabilityHintFor = function(userText){
+        /* لا تقترح على عمران الميزة التي هو داخلها أصلًا. */
+        if(isMine(userText)) return null;
+        return origHint.apply(this, arguments);
+      };
+    }
+  }
+
+  function pick(r){
+    var L = 'ar';
+    try{
+      L = (document.documentElement.getAttribute('lang') || 'ar').slice(0,2).toLowerCase();
+    }catch(e){ /* صمت مقصود: تعذّر قراءة سمة اللغة ⇒ العربيّة هي الافتراض أصلًا */ }
+    return r[L] || r.ar;
+  }
+
+  function toChat(txt){
+    silenceForOurPrompts();
+    try{
+      if(typeof window.closeDrawers === 'function') window.closeDrawers();
+    }catch(e){ /* صمت مقصود: فشل إغلاق الأدراج تجميليّ ولا يجوز أن يمنع الحوار */ }
+    try{
+      if(typeof window.closeMsgMoreMenu === 'function') window.closeMsgMoreMenu();
+    }catch(e){ /* صمت مقصود: القائمة الصغيرة تُغلق بالنقرة التالية على أي حال */ }
+    var p = document.getElementById('prompt');
+    if(!p) return;
+    p.value = txt;
+    try{
+      p.dispatchEvent(new Event('input', { bubbles: true }));
+    }catch(e){ /* صمت مقصود: الحدث لتنمية الصندوق فقط — النصّ مزروع والإرسال يتمّ */ }
+    if(typeof window.sendPrompt === 'function'){
+      try{ window.sendPrompt(); return; }
+      catch(e){ /* صمت مقصود: نسقط إلى نقر زرّ الإرسال أدناه كبديل مكافئ */ }
+    }
+    var s = document.getElementById('btnSend');
+    if(s){
+      try{ s.click(); return; }
+      catch(e){ /* صمت مقصود: نسقط إلى تبئير الصندوق ليُرسل عمران بنفسه */ }
+    }
+    try{ p.focus(); }
+    catch(e){ /* صمت مقصود: التبئير آخر محاولة تحسينيّة، والنصّ ظاهر أمامه */ }
+  }
+
+  document.addEventListener('click', function(e){
+    var t = (e.target && e.target.closest) ? e.target.closest('button[id]') : null;
+    if(!t) return;
+    var r = CHAT_ROUTES[t.id];
+    if(!r) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if(e.stopImmediatePropagation) e.stopImmediatePropagation();
+    toChat(pick(r));
+  }, true);
+})();
