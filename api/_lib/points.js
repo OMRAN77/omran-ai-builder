@@ -5,6 +5,7 @@
 // المالك (omran) = بلا حدود، لا يُخصم منه شيء أبدًا.
 const crypto = require('crypto');
 const { getUser, putUser } = require('./auth.js');
+const { isVip } = require('./_vip.js');
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').trim().toLowerCase();
@@ -38,6 +39,10 @@ const WELCOME_POINTS = 70;
 function isOwner(username) {
   return !!username && String(username).trim().toLowerCase() === OWNER_USERNAME;
 }
+
+// VIP = نفس معاملة المالك في النقاط بالضبط: لا خصم، لا رصيد، لا حدّ
+// (see _lib/_vip.js). المالك يُفحص أوّلًا دائمًا فلا يمسّ Redis، وقائمة
+// VIP تُقرأ من ذاكرة ٣٠ ثانية. isVip لا ترمي: عطبٌ فيها = مستخدم عاديّ.
 
 function verifyToken(token) {
   try {
@@ -119,7 +124,11 @@ async function mirrorToUser(username, points) {
 // يرجع { ok:true, points } أو { ok:false, reason:'insufficient'|'auth', points }.
 async function spendPoints(username, amount, reason) {
   if (!username) return { ok: false, reason: 'auth', points: 0 };
+  // owner:true للـVIP أيضًا وعن قصد: نداءٌ واحد على الأقل يقرأ هذا الحقل
+  // ليقرّر «هل أجدول استرجاعًا؟» (api/_lib/openai.js). VIP لم يُخصم منه
+  // شيء، فاسترجاعه كان سيهديه نقاطًا من العدم. الحقل vip يميّز الحالتين.
   if (isOwner(username)) return { ok: true, points: Infinity, owner: true };
+  if (await isVip(username)) return { ok: true, points: Infinity, owner: true, vip: true };
   const amt = Math.max(0, Math.floor(Number(amount) || 0));
   if (amt === 0) return { ok: true, points: 0 };
 
@@ -155,6 +164,7 @@ async function spendPoints(username, amount, reason) {
 // يعيد نقاطًا للمستخدم (استرجاع عند فشل توليد بعد الخصم).
 async function refundPoints(username, amount) {
   if (!username || isOwner(username)) return;
+  if (await isVip(username)) return; // لم يُخصم منه شيء، فلا شيء يُعاد.
   const amt = Math.max(0, Math.floor(Number(amount) || 0));
   if (!amt) return;
   // Must go through the same atomic counter as the deduction. A read-modify-
@@ -192,6 +202,9 @@ module.exports = async (req, res) => {
     if (action === 'balance') {
       if (!username) { res.status(200).json({ ok: true, authed: false, points: 0 }); return; }
       if (isOwner(username)) { res.status(200).json({ ok: true, authed: true, owner: true, points: null, unlimited: true, costs: COSTS }); return; }
+      // VIP: الواجهة تقرأ unlimited وحده (∞ بدل الرقم)، وowner يبقى false
+      // لأنّه ليس مالكًا — لوحة التحكّم لا تُفتح له، الحدّ وحده يسقط.
+      if (await isVip(username)) { res.status(200).json({ ok: true, authed: true, owner: false, vip: true, points: null, unlimited: true, costs: COSTS }); return; }
       const rec = await readPoints(username);
       if (!rec) { res.status(200).json({ ok: true, authed: false, points: 0 }); return; }
       res.status(200).json({

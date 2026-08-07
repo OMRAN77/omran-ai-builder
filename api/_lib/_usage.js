@@ -7,6 +7,7 @@
 const crypto = require('crypto');
 const { getUser, putUser } = require('./auth.js');
 const { kvIncr, kvExpire, kvGetJSON } = require('./kv.js');
+const { isVip } = require('./_vip.js');
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 
@@ -23,6 +24,11 @@ const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').trim().toLowerCas
 function isOwnerUsername(username) {
   return !!username && String(username).trim().toLowerCase() === OWNER_USERNAME;
 }
+
+// قائمة VIP (see _vip.js): أسماء يمنحها المالك نفس الإعفاء من الحدّ اليوميّ.
+// تُفحص بعد فحص المالك دائمًا، فحساب المالك لا يمسّ Redis أصلًا، وفحص
+// الباقين يمرّ من ذاكرة ٣٠ ثانية داخل العملية لا من نداء لكل رسالة.
+// isVip لا ترمي أبدًا: عطبٌ في القائمة = «ليس VIP» = الحدّ كما كان.
 
 function verifyToken(token) {
   try {
@@ -104,8 +110,9 @@ async function checkAndConsume(token, guestId, provider, ip) {
 
   const username = verifyToken(token);
   if (username) {
-    // Owner account: unlimited, always allowed, never tallied.
-    if (isOwnerUsername(username)) {
+    // Owner account: unlimited, always allowed, never tallied. VIP accounts
+    // get the exact same treatment (المالك أوّلًا: قصر الدائرة بلا نداء Redis).
+    if (isOwnerUsername(username) || await isVip(username)) {
       return { allowed: true, username, remaining: Infinity };
     }
     // Tally key includes today's date, so yesterday's marks simply stop
@@ -164,7 +171,7 @@ async function getAllRemaining(token, guestId) {
   if (!username && !isGuest) {
     return { authed: false, username: null, remaining: {} };
   }
-  if (username && isOwnerUsername(username)) {
+  if (username && (isOwnerUsername(username) || await isVip(username))) {
     const remaining = {};
     ALL_PROVIDERS.forEach((p) => { remaining[p] = Infinity; });
     return { authed: true, username, remaining, limit: Infinity };
@@ -197,7 +204,7 @@ async function checkAndConsumeCustom(token, guestId, ip, provider, dailyLimit) {
 
   const username = verifyToken(token);
   if (username) {
-    if (isOwnerUsername(username)) {
+    if (isOwnerUsername(username) || await isVip(username)) {
       return { allowed: true, username, remaining: Infinity };
     }
     const key = username + '_' + todayStr() + '_' + providerKey;

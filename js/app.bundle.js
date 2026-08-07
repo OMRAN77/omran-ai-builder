@@ -484,6 +484,69 @@ const $ = s => document.querySelector(s);
     }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
   };
 
+  // ⭐ صلاحيات VIP — قائمة يملؤها المالك، مَن فيها بلا حدود (api/_lib/_vip.js).
+  // البوّابة في الخادم لا هنا: إخفاء القسم زينة، وrمز الجلسة هو ما يُفحص.
+  function vipEscape(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function renderVipList(list){
+    const box = document.getElementById('vipListBox');
+    if(!box) return;
+    const items = list || [];
+    if(!items.length){ box.innerHTML = '<div style="opacity:.6;padding:8px">لا أحد في قائمة VIP.</div>'; return; }
+    box.innerHTML = items.map(id => {
+      const safeAttr = String(id).replace(/'/g,"\\'");
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333);flex-wrap:wrap">'
+        + '<span style="flex:1;min-width:110px;font-weight:500">⭐ ' + vipEscape(id) + '</span>'
+        + '<button type="button" onclick="removeVipUser(\'' + vipEscape(safeAttr) + '\')" title="إزالة من VIP" style="background:none;border:1px solid #a33;color:#e66;border-radius:6px;padding:4px 8px;cursor:pointer">🗑️</button>'
+        + '</div>';
+    }).join('');
+  }
+  window.loadVipList = async function loadVipList(){
+    const box = document.getElementById('vipListBox');
+    if(!box) return;
+    box.textContent = '⏳ جارِ التحميل...';
+    try{
+      const token = authGet('aiapp_auth_token');
+      const res = await fetch('/api/vip?token=' + encodeURIComponent(token || ''));
+      const data = await res.json();
+      if(!res.ok){ box.textContent = '❌ ' + (data.error || 'غير مصرح'); return; }
+      renderVipList(data.list || []);
+    }catch(e){
+      box.textContent = '❌ تعذر التحميل: ' + (e && e.message || e);
+    }
+  };
+  window.addVipUser = async function addVipUser(){
+    const input = document.getElementById('vipInput');
+    const id = input ? String(input.value || '').trim() : '';
+    if(!id){ alert('اكتب إيميلًا أو اسم مستخدم أولًا.'); return; }
+    try{
+      const token = authGet('aiapp_auth_token');
+      const res = await fetch('/api/vip', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ token, id }),
+      });
+      const data = await res.json();
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
+      if(input) input.value = '';
+      renderVipList(data.list || []);
+    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+  };
+  window.removeVipUser = async function removeVipUser(id){
+    if(!confirm('إزالة "' + id + '" من قائمة VIP؟')) return;
+    try{
+      const token = authGet('aiapp_auth_token');
+      // المعرّف في المسار والجسم معًا: بعض الوسطاء يُسقط جسم DELETE بصمت.
+      const res = await fetch('/api/vip?token=' + encodeURIComponent(token || '') + '&id=' + encodeURIComponent(id), {
+        method: 'DELETE', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ token, id }),
+      });
+      const data = await res.json();
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
+      renderVipList(data.list || []);
+    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+  };
+
   function setAuthToggleUI(loggedIn){
     const t = curT();
     // v214: قبل الدخول = زر «دخول» في الهيدر فقط؛ بعد الدخول = الاسم داخل قائمة ⋮ + خروج آخر خانة
@@ -543,7 +606,11 @@ const $ = s => document.querySelector(s);
     const adminWrap = $('#adminSectionWrap');
     if(adminWrap){
       const uname = String(authGet('aiapp_username') || '').trim().toLowerCase();
-      adminWrap.style.display = (loggedIn && uname === 'omran') ? '' : 'none';
+      const isAdminUI = (loggedIn && uname === 'omran');
+      adminWrap.style.display = isAdminUI ? '' : 'none';
+      // القائمة تُملأ عند كشف القسم لا عند فتحه: زرّ «تحديث» موجود
+      // للإحصائيات وحدها، وVIP قائمة قصيرة نداؤها رخيص.
+      if(isAdminUI && window.loadVipList) window.loadVipList();
     }
     const btnMahaOwnerEl = $('#btnMaha');
     if(btnMahaOwnerEl){ btnMahaOwnerEl.style.display = 'flex'; }

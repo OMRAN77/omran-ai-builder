@@ -68,6 +68,7 @@
     { "source": "/api/auth-google-callback", "destination": "/api/account?action=auth-google-callback" },
     { "source": "/api/admin-actions", "destination": "/api/account?action=admin-actions" },
     { "source": "/api/admin-stats", "destination": "/api/account?action=admin-stats" },
+    { "source": "/api/vip", "destination": "/api/account?action=vip" },
     { "source": "/api/usage-status", "destination": "/api/account?action=usage-status" },
     { "source": "/api/points", "destination": "/api/account?action=points" },
     { "source": "/api/create-checkout-session", "destination": "/api/account?action=create-checkout-session" },

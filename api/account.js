@@ -10,6 +10,7 @@ function load(action) {
     case 'auth-google-callback': return require('./_lib/auth-google-callback.js');
     case 'admin-actions': return require('./_lib/admin-actions.js');
     case 'admin-stats': return require('./_lib/admin-stats.js');
+    case 'vip': return require('./_lib/vip.js');
     case 'usage-status': return require('./_lib/usage-status.js');
     case 'points': return require('./_lib/points.js');
     case 'create-checkout-session': return require('./_lib/create-checkout-session.js');

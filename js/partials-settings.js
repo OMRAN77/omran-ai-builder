@@ -389,6 +389,13 @@
       <div style="margin-top:14px; font-size:13px; font-weight:700; opacity:.8;">👤 إدارة المستخدمين (حظر / حذف / رسالة)</div>
       <div id="adminUsersTable" style="margin-top:8px; background:var(--panel2); border-radius:var(--r-2); padding:6px 10px; max-height:320px; overflow-y:auto;"></div>
 
+      <div style="margin-top:18px; font-size:13px; font-weight:700; opacity:.8;">⭐ صلاحيات VIP (بلا حدود)</div>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <input type="text" id="vipInput" placeholder="إيميل أو اسم مستخدم" style="flex:1; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px;">
+        <button type="button" id="vipAddBtn" onclick="addVipUser()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">➕ إضافة</button>
+      </div>
+      <div id="vipListBox" style="margin-top:8px; background:var(--panel2); border-radius:var(--r-2); padding:6px 10px; max-height:240px; overflow-y:auto;"></div>
+
 
       <div style="margin-top:18px; font-size:13px; font-weight:700; opacity:.8;">🩺 فحص النظام</div>
       <div style="display:flex; gap:8px; margin-top:8px;">
