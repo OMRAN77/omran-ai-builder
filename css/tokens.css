@@ -674,3 +674,62 @@
     html:not(.mobile-ui) #provDropdownBtn,
     html:not(.mobile-ui) #provDropdownPanel{display:none !important;}
   }
+
+  /* ===== v434 — الوضع الفاتح (طبقة تغليف فوق الداكن؛ لا يُعاد كتابة أي لون) =====
+     الذهبي --accent ثابت في الوضعين. التفعيل: html[data-mode="light"] */
+  html[data-mode="light"]{
+    /* !important: التطبيق يكتب --bg/--text سطريًّا على <html>؛ المهمّ يعلو على السطريّ العادي */
+    --bg:#ffffff !important; --text:#14161a !important;
+    --user-bubble:rgba(0,0,0,.05) !important; --assistant-bubble:#f1f2f5 !important;
+    --bg2:#ffffff; --panel:#f4f5f7; --panel2:#eef0f3;
+    --border:rgba(0,0,0,.13); --muted:#5d6270;
+    --sh-1:0 2px 10px rgba(0,0,0,.10); --sh-2:0 8px 24px rgba(0,0,0,.12);
+    --sh-3:0 10px 40px rgba(0,0,0,.14); --sh-4:0 10px 50px rgba(0,0,0,.16);
+    --shadow-glow:0 0 40px rgba(var(--accent-rgb),.20);
+    --omLine:rgba(0,0,0,.10);
+    color-scheme:light;
+  }
+  html[data-mode="light"] body{background:var(--bg); color:var(--text);}
+  html[data-mode="light"] header{background:rgba(255,255,255,.85);}
+  html[data-mode="light"] #chatcol{background:rgba(0,0,0,.022);}
+  html[data-mode="light"] #tabs{background:rgba(0,0,0,.03);}
+  html[data-mode="light"] .msg.user{
+    background:rgba(0,0,0,.05) !important; border:1px solid rgba(0,0,0,.09) !important; color:var(--text) !important;
+  }
+  html[data-mode="light"] dialog,
+  html[data-mode="light"] #plusToolsPopup,
+  html[data-mode="light"] #headerMenuDropdown,
+  html[data-mode="light"] #headerUserDropdown,
+  html[data-mode="light"] #tabsMenuDropdown,
+  html[data-mode="light"] #histItemMenu,
+  html[data-mode="light"] .msgMoreMenu,
+  html[data-mode="light"] .dlg-actions{background:#ffffff;}
+  html[data-mode="light"]:not(.mobile-ui) #provDropdownPanel{background:#ffffff;}
+  html[data-mode="light"] dialog::backdrop{background:rgba(0,0,0,.45);}
+  html[data-mode="light"] dialog select option,
+  html[data-mode="light"] select option{background:#ffffff; color:#14161a;}
+  html[data-mode="light"] .omChip,
+  html[data-mode="light"] .prov-cell:hover,
+  html[data-mode="light"] .prov-chip-m,
+  html[data-mode="light"] #btnPremiumToggle,
+  html[data-mode="light"] #btnPremiumToggle:hover{background:rgba(0,0,0,.04);}
+  html[data-mode="light"]:not(.mobile-ui) #provDropdownBtn,
+  html[data-mode="light"]:not(.mobile-ui) #provDropdownBtn:hover,
+  html[data-mode="light"]:not(.mobile-ui) .prov-cell:hover{background:rgba(0,0,0,.05);}
+  html[data-mode="light"] #providerStripMobile{background:rgba(0,0,0,.03); border-bottom-color:rgba(0,0,0,.10);}
+  html[data-mode="light"] ::-webkit-scrollbar-thumb{background:rgba(0,0,0,.20);}
+  html[data-mode="light"] .miniSwitch,
+  html[data-mode="light"] .iosSwitch .iosSwitchTrack{background:rgba(0,0,0,.20);}
+  html[data-mode="light"] .spinner{border-color:rgba(0,0,0,.25); border-top-color:var(--accent);}
+  html[data-mode="light"] .btn.primary,
+  html[data-mode="light"] #btnSend{color:#14161a;}
+  html[data-mode="light"] #sidebar, html[data-mode="light"] #workarea{background:var(--bg2);}
+  html[data-mode="light"] .omToolCard{background:rgba(0,0,0,.03);}
+  html[data-mode="light"] .attach-chip,
+  html[data-mode="light"] .msg-attachments .file-chip,
+  html[data-mode="light"] .msgSourceBadge{background:var(--panel2);}
+  html[data-mode="light"] #stockTicker{background:rgba(0,0,0,.045) !important;}
+  html[data-mode="light"] #stockTickerToggle{background:rgba(0,0,0,.06) !important;}
+  html[data-mode="light"]:not(.mobile-ui) #eduIntroCard, html[data-mode="light"].mobile-ui #eduIntroCard{background:linear-gradient(160deg,#ffffff,#f2f3f6) !important; border-color:rgba(0,0,0,.14) !important;}
+  html[data-mode="light"] #stockTicker > div{color:#14161a !important;}
+  /* لوحة الكود ومربّعات الكود تبقى داكنة عمدًا — أوضح للقراءة في الوضعين. */
