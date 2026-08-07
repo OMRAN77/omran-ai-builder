@@ -369,7 +369,7 @@ module.exports = async (req, res) => {
   await journal(runUser, run);
 
   let lastTested = ''; // آخر HTML اختبره الوكيل في هذا الطلب — مصدر نشر احتياطي
-  let system = SYSTEM;
+  let system = SYSTEM + require('./_knowledge.js').ownerKnowledge(req, token); // معرفة عمران — للمالك وحده
 
   // ذاكرة المستخدم: memory.js يحفظها منذ زمن، والوكيل لم يكن يفتحها أبدًا — فكان
   // يبدأ كل مرة غريبًا لا يعرف من يخاطب. القراءة مفتاح KV واحد، وتفشل بصمت.

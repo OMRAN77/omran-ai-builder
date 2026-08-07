@@ -178,7 +178,8 @@ module.exports = async (req, res) => {
   const sysParts = messages.filter((m) => m && m.role === 'system' && typeof m.content === 'string').map((m) => m.content);
   if (typeof body.system === 'string' && body.system.trim()) sysParts.push(body.system);
   const country = (req.headers && (req.headers['x-vercel-ip-country'] || req.headers['x-country'])) || '';
-  const system = sysParts.join('\n\n') + nowNote() + countryNote(country) + TOOLS_NOTE;
+  const system = sysParts.join('\n\n') + nowNote() + countryNote(country) + TOOLS_NOTE
+    + require('./_knowledge.js').ownerKnowledge(req, token); // معرفة عمران — للمالك وحده
 
   const convo = messages
     .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && m.content)
