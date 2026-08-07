@@ -77,9 +77,9 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/tokens.css?v=438">
-<link rel="stylesheet" href="css/redesign.css?v=418">
-<link rel="stylesheet" href="css/modules.css?v=419">
+<link rel="stylesheet" href="css/tokens.css?v=439">
+<link rel="stylesheet" href="css/redesign.css?v=439">
+<link rel="stylesheet" href="css/modules.css?v=439">
 <script>
 /* v434 — الوضع الفاتح/الداكن. الذهبي ثابت في الاثنين. */
 (function(){var K='aiapp_mode';
@@ -140,11 +140,11 @@ window.__swallow = window.__swallow || function (err, ctx) {
       <img id="authUserAvatarImg" alt="" style="display:none; width:20px; height:20px; border-radius:50%; object-fit:cover;">
       <span id="authUserBadgeEmoji">👤</span> <span id="authUserLabel"></span>
     </span>
-    <button class="btn" id="btnHeaderLogin" style="display:none; background:none; border:none; border-radius:var(--r-2); font-weight: var(--w-bold); font-size:12.5px; padding:7px 12px; color:var(--accent);"><span data-i18n="loginAction">تسجيل الدخول</span></button>
+    <button class="btn" id="btnHeaderLogin" style="display:none; background:none; border:none; border-radius:var(--r-2); font-weight: var(--w-bold); font-size:12.5px; padding:7px 12px; color:var(--accent-ink);"><span data-i18n="loginAction">تسجيل الدخول</span></button>
     <div id="headerUserWrap" style="position:relative; display:inline-block;">
-      <button class="btn" id="btnHeaderUser" style="display:none; align-items:center; gap:6px; background:none; border:none; color:var(--accent); border-radius:var(--r-2); font-weight: var(--w-bold); font-size:12.5px; padding:5px 12px;"><img id="headerUserAvatarImg" alt="" style="display:none; width:22px; height:22px; border-radius:50%; object-fit:cover;"><span id="headerUserEmoji">👤</span><span id="headerUserName"></span></button>
+      <button class="btn" id="btnHeaderUser" style="display:none; align-items:center; gap:6px; background:none; border:none; color:var(--accent-ink); border-radius:var(--r-2); font-weight: var(--w-bold); font-size:12.5px; padding:5px 12px;"><img id="headerUserAvatarImg" alt="" style="display:none; width:22px; height:22px; border-radius:50%; object-fit:cover;"><span id="headerUserEmoji">👤</span><span id="headerUserName"></span></button>
       <div id="headerUserDropdown" style="display:none; position:absolute; top:calc(100% + 6px); right:0; left:auto; background:#000000; border:1px solid rgba(212,175,55,.45); border-radius:var(--r-2); padding:4px; z-index:9999; min-width:auto; box-shadow:var(--sh-2);">
-        <button id="btnHeaderUserLogout" style="display:block; width:100%; background:none; border:none; color:var(--accent); font-weight: var(--w-bold); font-size:12.5px; padding:7px 12px; border-radius:var(--r-2); cursor:pointer; text-align:center; white-space:nowrap;" data-i18n="logoutTitle">تسجيل الخروج</button>
+        <button id="btnHeaderUserLogout" style="display:block; width:100%; background:none; border:none; color:var(--accent-ink); font-weight: var(--w-bold); font-size:12.5px; padding:7px 12px; border-radius:var(--r-2); cursor:pointer; text-align:center; white-space:nowrap;" data-i18n="logoutTitle">تسجيل الخروج</button>
       </div>
     </div>
     <div id="headerMenuWrap">
@@ -335,7 +335,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
       </div>
       <div class="panel" id="panel-code" style="position:absolute;">
         <textarea id="code" spellcheck="false" data-i18n-placeholder="codePlaceholder" placeholder="سيظهر الكود المولّد هنا..."></textarea>
-        <button id="btnRunCode" title="تشغيل الكود" data-i18n-title="runCodeTitle" style="position:absolute; top:10px; right:60px; margin-top:8px; padding:6px 10px; background:var(--accent); border:none; cursor:pointer; line-height:1; border-radius:var(--r-2); display:inline-flex; align-items:center; justify-content:center; color:#fff; z-index:5; font-size:14px;">▶️ <span data-i18n="runCodeBtn" style="margin-inline-start:4px;">تشغيل</span></button>
+        <button id="btnRunCode" title="تشغيل الكود" data-i18n-title="runCodeTitle" style="position:absolute; top:10px; right:60px; margin-top:8px; padding:6px 10px; background:var(--accent-surface); border:none; cursor:pointer; line-height:1; border-radius:var(--r-2); display:inline-flex; align-items:center; justify-content:center; color:var(--accent-on-surface); z-index:5; font-size:14px;">▶️ <span data-i18n="runCodeBtn" style="margin-inline-start:4px;">تشغيل</span></button>
         <button id="btnTimeMachine" title="آلة الزمن — إصدارات سابقة" data-i18n-title="timeMachineTitle" style="position:absolute; top:10px; right:160px; margin-top:8px; padding:6px 10px; background:transparent; border:none; cursor:pointer; opacity:.8; line-height:1; border-radius:var(--r-2); display:inline-flex; align-items:center; justify-content:center; color:#fff; z-index:5; font-size:16px;">🕰️</button>
         <button id="btnCopyCode" title="نسخ الكود" data-i18n-title="copyCodeTitle" style="position:absolute; top:10px; right:14px; margin-top:8px; padding:6px; background:transparent; border:none; cursor:pointer; opacity:0.75; line-height:1; border-radius:var(--r-1); display:inline-flex; align-items:center; justify-content:center; color:#fff; z-index:5;"></button>
       </div>
@@ -391,11 +391,11 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <div id="eduIntroCard">
   <p id="eduIntroTxt">جديد: 🎓 التعليم — ارفع محاضرتك واحصل على ملخص وبطاقات واختبار</p>
   <div style="display:flex;gap:8px;justify-content:flex-end;">
-    <button class="eduPrimary" id="eduIntroOpen" style="margin-top:0;padding:8px 16px;border:none;border-radius:var(--r-2);cursor:pointer;font-weight:700;color:#fff;background:linear-gradient(90deg,var(--accent),#b8860b);">جرّبه الآن</button>
+    <button class="eduPrimary" id="eduIntroOpen" style="margin-top:0;padding:8px 16px;border:none;border-radius:var(--r-2);cursor:pointer;font-weight:700;color:var(--accent-on-surface);background:linear-gradient(90deg,var(--accent-surface),var(--accent-surface));">جرّبه الآن</button>
     <button id="eduIntroClose" style="background:none;border:1px solid rgba(255,255,255,.15);border-radius:var(--r-2);color:inherit;padding:8px 14px;cursor:pointer;">✕</button>
   </div>
 </div>
-<div id="eduChatHint"><span id="eduChatHintTxt" style="flex:1;"></span><button class="eduPrimary" id="eduChatHintBtn" style="margin-top:0;padding:7px 12px;font-size:12px;border:none;border-radius:var(--r-2);cursor:pointer;color:#fff;background:linear-gradient(90deg,var(--accent),#b8860b);">التعليم</button></div>
+<div id="eduChatHint"><span id="eduChatHintTxt" style="flex:1;"></span><button class="eduPrimary" id="eduChatHintBtn" style="margin-top:0;padding:7px 12px;font-size:12px;border:none;border-radius:var(--r-2);cursor:pointer;color:var(--accent-on-surface);background:linear-gradient(90deg,var(--accent-surface),var(--accent-surface));">التعليم</button></div>
 <script src="/js/edu.js?v=419"></script>
 
 <!-- 👑 الرد الاحترافي (Premium Reply) — client-side wiring only. Server enforces real deduction. -->
