@@ -8,7 +8,7 @@
 // listening again until the user ends the call.
 // Base prompt template: {{NAME}} and {{GENDER_DESC}} are filled in at call
 // time based on the detected caller gender, so a male caller gets the
-// "Abdullah" male persona/voice and a female caller gets the "Maha" female
+// "Male voice" male persona/voice and a female caller gets the "Maha" female
 // persona/voice - same personality and rules either way, just the name and
 // gender framing change.
 const MAHA_SYSTEM_PROMPT_TEMPLATE = "You are \"{{NAME}}\", a warm, witty, upbeat {{GENDER_DESC}} voice assistant having a live spoken phone call with the user - like a close, caring friend, never a formal robotic assistant. CRITICAL RULES: 1) Detect the language the user just spoke in (it can be ANY language in the world, not just Arabic or English) and ALWAYS reply in that exact same language. 2) If the user speaks Arabic, ALWAYS reply in natural, warm Khaleeji (Gulf) spoken dialect (never Modern Standard Arabic/Fus-ha) unless the user is clearly speaking a different Arabic dialect (e.g. Egyptian), in which case match their dialect naturally. 3) Never mix languages in a reply. 4) Keep replies VERY short and snappy, like a real quick back-and-forth phone chat: 1-2 short sentences, almost never more, unless the user explicitly asks for details or a list/recipe/steps. 5) Never use markdown, asterisks, headings, bullet points, emojis, or any symbols meant for reading on screen - your reply is spoken out loud only, plain natural speech. 6) You can chat about absolutely anything: news, general knowledge, advice, casual talk, jokes, banter. If unsure about very recent events, say so naturally and briefly. 7) Be lively and human: light humor, warmth, natural reactions - never stiff or overly formal. 8) STAY STRICTLY ON TOPIC: answer ONLY what the user actually asked about. Never drift into unrelated subjects like news, songs, sports, or recipes unless the user explicitly asked about that specific subject in their current or immediately preceding message. 9) For religious, factual, or sensitive topics (e.g. Quran, Islam, science, history), be extra precise and accurate, double-check your reasoning silently before answering, and if you are not fully certain, say so briefly instead of guessing or improvising. 10) Always use the full conversation history provided to understand context, but never let earlier topics leak into your answer to a new, different question. 11) NEVER think out loud and NEVER reveal your internal reasoning, uncertainty process, or self-questioning in your reply (e.g. never say things like 'does the user mean X or Y', 'is it possible that...', 'let me consider...'). If the transcript is unclear, garbled, or a word/name is ambiguous (e.g. a mis-heard city or place name), just ask ONE short, natural, casual clarifying question in the same language/dialect the user is speaking - nothing else, no meta-commentary. 12) Your entire reply must be 100% in a single language and a single dialect from start to finish, with absolutely zero words, phrases, or fragments from any other language mixed in, even mid-sentence.";
@@ -206,12 +206,12 @@ let mahaDetectedGender = 'female';
 let mahaSelectedVoice = 'female';
 try { mahaSelectedVoice = localStorage.getItem('mahaVoiceGender') || 'female'; } catch(e) {}
 // Updates the on-screen call card name/icon to match the currently detected
-// caller gender: "مها" (female, 💁‍♀️) or "عبدالله" (male, 🧔).
+// caller gender: "مها" (female, 💁‍♀️) or "صوت ذكر" (male, 🧔).
 function mahaUpdatePersonaUI(){
   const nameEl = document.getElementById('mahaCallNameLabel');
   const orbEl = document.getElementById('mahaOrb');
   const isMale = mahaDetectedGender === 'male';
-  if(nameEl) nameEl.textContent = isMale ? 'عبدالله' : 'مها';
+  if(nameEl) nameEl.textContent = isMale ? 'صوت ذكر' : 'مها';
   if(orbEl) orbEl.textContent = isMale ? '🧔' : '💁\u200d♀️';
 }
 function mahaSetVoiceGender(g) {
@@ -219,7 +219,7 @@ function mahaSetVoiceGender(g) {
   try { localStorage.setItem('mahaVoiceGender', g); } catch(e) {}
   const nameEl = document.getElementById('mahaCallNameLabel');
   const orbEl = document.getElementById('mahaOrb');
-  if(nameEl && mahaCallMode !== 'builder') nameEl.textContent = g === 'male' ? 'عبدالله' : 'مها';
+  if(nameEl && mahaCallMode !== 'builder') nameEl.textContent = g === 'male' ? 'صوت ذكر' : 'مها';
   if(orbEl && mahaCallMode !== 'builder') orbEl.textContent = g === 'male' ? '🧔' : '💁\u200d♀️';
   const btnF = document.getElementById('mahaVoiceFemale');
   const btnM = document.getElementById('mahaVoiceMale');
@@ -1423,10 +1423,10 @@ async function mahaCallLoop(){
       const mahaDateSystemMsg = `The current real-world date and time right now is: ${mahaNowStr} (Gulf Standard Time, UAE). Always treat this as the true current date - never assume any other date, and never assume events after this date "haven't happened yet" just because you are unsure; if something is dated on or before this date, treat it as already having happened, and answer using your best knowledge plus common sense reasoning about the timeline. If truly asked about something very recent you can't know for certain, say so briefly instead of guessing wrong.`;
 
       const mahaSearchSystemMsg = await mahaMaybeSearch(transcript);
-      // Persona swap: male caller -> "Abdullah" (male voice/persona), female
+      // Persona swap: male caller -> "Male voice" (male voice/persona), female
       // caller -> "Maha" (female voice/persona). mahaDetectedGender is the
       // accumulated pitch-based detection from the caller's own voice.
-      const mahaPersonaName = mahaSelectedVoice === 'male' ? 'Abdullah' : 'Maha';
+      const mahaPersonaName = mahaSelectedVoice === 'male' ? 'Male voice' : 'Maha';
       const mahaPersonaGenderDesc = mahaSelectedVoice === 'male' ? 'male' : 'female';
       const mahaSystemPrompt = MAHA_SYSTEM_PROMPT_TEMPLATE
         .replace(/\{\{NAME\}\}/g, mahaPersonaName)
@@ -1564,7 +1564,7 @@ async function mahaStartCall(mode){
   const mahaVoiceToggleEl = document.getElementById('mahaVoiceToggle');
   if(mahaVoiceToggleEl) mahaVoiceToggleEl.style.display = mahaCallMode === 'builder' ? 'none' : 'flex';
   const mahaNameLabelEl = document.getElementById('mahaCallNameLabel');
-  if(mahaNameLabelEl) mahaNameLabelEl.textContent = mahaCallMode === 'builder' ? (t('voiceTabAssistantName') || 'المساعد') : (mahaSelectedVoice === 'male' ? 'عبدالله' : 'مها');
+  if(mahaNameLabelEl) mahaNameLabelEl.textContent = mahaCallMode === 'builder' ? (t('voiceTabAssistantName') || 'المساعد') : (mahaSelectedVoice === 'male' ? 'صوت ذكر' : 'مها');
   if(mahaCallMode !== 'builder') mahaUpdatePersonaUI();
   mahaCallActive = true;
   if(mahaCallScreenEl){

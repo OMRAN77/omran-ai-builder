@@ -8864,7 +8864,7 @@ window.postWithConfirm = postWithConfirm;
 // listening again until the user ends the call.
 // Base prompt template: {{NAME}} and {{GENDER_DESC}} are filled in at call
 // time based on the detected caller gender, so a male caller gets the
-// "Abdullah" male persona/voice and a female caller gets the "Maha" female
+// "Male voice" male persona/voice and a female caller gets the "Maha" female
 // persona/voice - same personality and rules either way, just the name and
 // gender framing change.
 const MAHA_SYSTEM_PROMPT_TEMPLATE = "You are \"{{NAME}}\", a warm, witty, upbeat {{GENDER_DESC}} voice assistant having a live spoken phone call with the user - like a close, caring friend, never a formal robotic assistant. CRITICAL RULES: 1) Detect the language the user just spoke in (it can be ANY language in the world, not just Arabic or English) and ALWAYS reply in that exact same language. 2) If the user speaks Arabic, ALWAYS reply in natural, warm Khaleeji (Gulf) spoken dialect (never Modern Standard Arabic/Fus-ha) unless the user is clearly speaking a different Arabic dialect (e.g. Egyptian), in which case match their dialect naturally. 3) Never mix languages in a reply. 4) Keep replies VERY short and snappy, like a real quick back-and-forth phone chat: 1-2 short sentences, almost never more, unless the user explicitly asks for details or a list/recipe/steps. 5) Never use markdown, asterisks, headings, bullet points, emojis, or any symbols meant for reading on screen - your reply is spoken out loud only, plain natural speech. 6) You can chat about absolutely anything: news, general knowledge, advice, casual talk, jokes, banter. If unsure about very recent events, say so naturally and briefly. 7) Be lively and human: light humor, warmth, natural reactions - never stiff or overly formal. 8) STAY STRICTLY ON TOPIC: answer ONLY what the user actually asked about. Never drift into unrelated subjects like news, songs, sports, or recipes unless the user explicitly asked about that specific subject in their current or immediately preceding message. 9) For religious, factual, or sensitive topics (e.g. Quran, Islam, science, history), be extra precise and accurate, double-check your reasoning silently before answering, and if you are not fully certain, say so briefly instead of guessing or improvising. 10) Always use the full conversation history provided to understand context, but never let earlier topics leak into your answer to a new, different question. 11) NEVER think out loud and NEVER reveal your internal reasoning, uncertainty process, or self-questioning in your reply (e.g. never say things like 'does the user mean X or Y', 'is it possible that...', 'let me consider...'). If the transcript is unclear, garbled, or a word/name is ambiguous (e.g. a mis-heard city or place name), just ask ONE short, natural, casual clarifying question in the same language/dialect the user is speaking - nothing else, no meta-commentary. 12) Your entire reply must be 100% in a single language and a single dialect from start to finish, with absolutely zero words, phrases, or fragments from any other language mixed in, even mid-sentence.";
@@ -9059,14 +9059,28 @@ function mahaAutoCorrelate(buf, sampleRate){
 // pitch samples collected while they were speaking. Defaults to 'female'
 // (Maha's own natural voice) until enough real samples come in.
 let mahaDetectedGender = 'female';
+let mahaSelectedVoice = 'female';
+try { mahaSelectedVoice = localStorage.getItem('mahaVoiceGender') || 'female'; } catch(e) {}
 // Updates the on-screen call card name/icon to match the currently detected
-// caller gender: "مها" (female, 💁‍♀️) or "عبدالله" (male, 🧔).
+// caller gender: "مها" (female, 💁‍♀️) or "صوت ذكر" (male, 🧔).
 function mahaUpdatePersonaUI(){
   const nameEl = document.getElementById('mahaCallNameLabel');
   const orbEl = document.getElementById('mahaOrb');
   const isMale = mahaDetectedGender === 'male';
-  if(nameEl) nameEl.textContent = isMale ? 'عبدالله' : 'مها';
+  if(nameEl) nameEl.textContent = isMale ? 'صوت ذكر' : 'مها';
   if(orbEl) orbEl.textContent = isMale ? '🧔' : '💁\u200d♀️';
+}
+function mahaSetVoiceGender(g) {
+  mahaSelectedVoice = g;
+  try { localStorage.setItem('mahaVoiceGender', g); } catch(e) {}
+  const nameEl = document.getElementById('mahaCallNameLabel');
+  const orbEl = document.getElementById('mahaOrb');
+  if(nameEl && mahaCallMode !== 'builder') nameEl.textContent = g === 'male' ? 'صوت ذكر' : 'مها';
+  if(orbEl && mahaCallMode !== 'builder') orbEl.textContent = g === 'male' ? '🧔' : '💁\u200d♀️';
+  const btnF = document.getElementById('mahaVoiceFemale');
+  const btnM = document.getElementById('mahaVoiceMale');
+  if(btnF) btnF.style.background = g === 'female' ? 'rgba(168,85,247,.45)' : 'rgba(255,255,255,.1)';
+  if(btnM) btnM.style.background = g === 'male' ? 'rgba(59,130,246,.45)' : 'rgba(255,255,255,.1)';
 }
 // All pitch samples collected across the *entire* call (not reset per turn).
 // A single noisy turn (background sound, echo, weak mic) can produce a wrong
@@ -9151,7 +9165,7 @@ async function mahaSpeak(text){
       const resp = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang })
+        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaSelectedVoice, lang: mahaReplyLang })
       });
       if(!resp.ok){ resolve(); return; }
       const blob = await resp.blob();
@@ -9756,6 +9770,7 @@ async function mahaStartRealtimeCall(){
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       mode: mahaCallMode,
       desktop: !document.documentElement.classList.contains('mobile-ui'),
+      voiceGender: mahaSelectedVoice,
     }),
   });
   const tokenData = await tokenRes.json().catch(() => ({}));
@@ -10264,11 +10279,11 @@ async function mahaCallLoop(){
       const mahaDateSystemMsg = `The current real-world date and time right now is: ${mahaNowStr} (Gulf Standard Time, UAE). Always treat this as the true current date - never assume any other date, and never assume events after this date "haven't happened yet" just because you are unsure; if something is dated on or before this date, treat it as already having happened, and answer using your best knowledge plus common sense reasoning about the timeline. If truly asked about something very recent you can't know for certain, say so briefly instead of guessing wrong.`;
 
       const mahaSearchSystemMsg = await mahaMaybeSearch(transcript);
-      // Persona swap: male caller -> "Abdullah" (male voice/persona), female
+      // Persona swap: male caller -> "Male voice" (male voice/persona), female
       // caller -> "Maha" (female voice/persona). mahaDetectedGender is the
       // accumulated pitch-based detection from the caller's own voice.
-      const mahaPersonaName = mahaDetectedGender === 'male' ? 'Abdullah' : 'Maha';
-      const mahaPersonaGenderDesc = mahaDetectedGender === 'male' ? 'male' : 'female';
+      const mahaPersonaName = mahaSelectedVoice === 'male' ? 'Male voice' : 'Maha';
+      const mahaPersonaGenderDesc = mahaSelectedVoice === 'male' ? 'male' : 'female';
       const mahaSystemPrompt = MAHA_SYSTEM_PROMPT_TEMPLATE
         .replace(/\{\{NAME\}\}/g, mahaPersonaName)
         .replace(/\{\{GENDER_DESC\}\}/g, mahaPersonaGenderDesc);
@@ -10395,14 +10410,17 @@ async function mahaStartCall(mode){
   mahaHistory = [];
   mahaAllPitchSamples = [];
   mahaDetectedGender = 'female';
+  mahaSetVoiceGender(mahaSelectedVoice);
   mahaIntroduced = false;
   // ملاحظة: لا نمسح مرجع الصورة الأخيرة هنا — يبقى ثابت حتى يبدأ المستخدم "+ مشروع جديد" فعليًا
   const mahaImgElStart = document.getElementById('mahaGenImage');
   if(mahaImgElStart && !mahaLastImageBase64){ mahaImgElStart.style.display = 'none'; mahaImgElStart.src = ''; }
   if(mahaOrbEl) mahaOrbEl.style.display = mahaCallMode === 'builder' ? 'none' : 'flex';
   if(mahaWaveEl) mahaWaveEl.style.display = mahaCallMode === 'builder' ? 'flex' : 'none';
+  const mahaVoiceToggleEl = document.getElementById('mahaVoiceToggle');
+  if(mahaVoiceToggleEl) mahaVoiceToggleEl.style.display = mahaCallMode === 'builder' ? 'none' : 'flex';
   const mahaNameLabelEl = document.getElementById('mahaCallNameLabel');
-  if(mahaNameLabelEl) mahaNameLabelEl.textContent = mahaCallMode === 'builder' ? (t('voiceTabAssistantName') || 'المساعد') : 'مها';
+  if(mahaNameLabelEl) mahaNameLabelEl.textContent = mahaCallMode === 'builder' ? (t('voiceTabAssistantName') || 'المساعد') : (mahaSelectedVoice === 'male' ? 'صوت ذكر' : 'مها');
   if(mahaCallMode !== 'builder') mahaUpdatePersonaUI();
   mahaCallActive = true;
   if(mahaCallScreenEl){
@@ -12443,12 +12461,20 @@ async function sendPrompt(){
     const __appWd = /(تطبيق|موقع|لعبة|برنامج|بوت|صفحة|أداة|app|website|game|bot|page|tool|clone)/i;
     const __dsnRe = /(إعلان|بوستر|شهادة|بطاقة|دعوة|لوجو|شعار|بنر|غلاف|منشور|poster|flyer|certificate|card|invitation|logo|banner|cover)/i;
     const __needsBuild = (__bldRe.test(text) && __appWd.test(text)) || __dsnRe.test(text) || !!cur.code || !!window.__buildOfferApproved;
-    // v465: removed CONVERSATION_QUALITY_RULE from base — Q&A prompt already covers it.
-    // This prevents duplicate style rules that confuse models after several messages.
-    let __sys = t('systemPrompt') + APP_IDENTITY_NOTE + TOPIC_FOLLOW_RULE;
+    // v469: Q&A = بروم خفيف مثل ChatGPT؛ البناء = تعليمات كاملة.
+    let __sys;
     if(__needsBuild){
-      __sys += BUILD_COMPLETENESS_RULE + NO_FAKE_EDIT_RULE + CHAT_STYLE_RULE + APP_CAPABILITY_RULE;
+      __sys = t('systemPrompt') + APP_IDENTITY_NOTE + TOPIC_FOLLOW_RULE + BUILD_COMPLETENESS_RULE + NO_FAKE_EDIT_RULE + CHAT_STYLE_RULE + APP_CAPABILITY_RULE;
       if(__dsnRe.test(text)) __sys += DESIGN_POSTER_RULE;
+    } else {
+      __sys = 'أنت مساعد ذكي في تطبيق Omran AI من فريق عمران AI. أجب بلغة المستخدم ولهجته بعمق وخبرة وطبيعية.\n' +
+        '(1) ادخل بصلب الموضوع من أول كلمة — بدون مقدمات. سؤال بسيط = 1-3 جمل. موضوع متشعب = رد منظم بعناوين.\n' +
+        '(2) كن صادقًا 100%: إذا ما تعرف قل ما أعرف. ممنوع اختراع أرقام هواتف أو روابط URL.\n' +
+        '(3) تأكيد قصير (نعم/تمام/يلا/اوك) بعد سؤالك = موافقة — جاوب فورًا.\n' +
+        '(4) ممنوع مناداة المستخدم بأي اسم إلا إذا محفوظ بالذاكرة.\n' +
+        '(5) رسالة قصيرة (كلمة/كلمتين) = تكملة للموضوع السابق.\n' +
+        '(6) وضع نقاش — ممنوع عرض كود إلا إذا طُلب صراحة.\n' +
+        '(7) التطبيق يوفّر توليد صور وفيديو وPDF — أرشد إليها بدل "ما أقدر".';
     }
     const apiMessages = [{role: 'system', content: __sys}];
     // 🤝 v345: المستخدم وافق على عرض بناء قدّمه المزود في رده السابق — يبنيه الآن كاملًا.
@@ -13258,13 +13284,8 @@ async function sendPrompt(){
       } else if(__gateNoBuild){
         // 🔒 دور البوابة: صف الفكرة واسأل الإذن — ممنوع البناء الآن.
         apiMessages.push({ role: 'system', content: 'المستخدم طلب بناء شيء. ممنوع أن تبنيه الآن. ردّ بنصّ محادثة فقط بلا أيّ كتلة كود: اذكر في سطرين إلى ثلاثة ماذا ستبني بالضبط (الأقسام الرئيسية + أنّك سترسم الصور بنفسك)، ثمّ اختم بسؤال واحد فقط: «تبيني أبدأ البناء الحين؟». لا تبدأ البناء حتّى يوافق المستخدم في رسالته التالية.' });
-      } else if(!__routeFix && __selProv !== 'claude' && !AI_FACTORY_MODE()){
-        // 🎭 شخصية حرة: المزود المختار يرد بأسلوبه وشخصيته الأصلية — قواعد الأمانة فقط إلزامية.
-        apiMessages.unshift({ role: 'system', content: 'حافظ على شخصيتك وأسلوبك الطبيعي الخاص بالكامل — القواعد التالية قواعد أمانة إلزامية فقط ولا تغيّر أسلوبك:\n1) رد بلغة المستخدم نفسها. افهم آخر رسالة في سياق المحادثة كلها — إذا الرسالة كلمة أو كلمتين (مثل اسم مكان أو تأكيد) فهي تكملة للموضوع السابق وليست سؤالًا جديدًا مستقلًا.\n2) وضع نقاش عادي — ممنوع عرض بناء أو كود إلا إذا طُلب صراحة.\n3) ممنوع الادعاء أنك سويت شيئًا لم تفعله، وممنوع إنكار شيء موجود بالمحادثة.\n4) ممنوع اختراع أرقام هواتف أو معلومات تواصل.\n5) ممنوع مناداة المستخدم بأي اسم إلا إذا كان محفوظًا في ذاكرته — لا «محمد» ولا أي اسم افتراضي.\n6) هذا التطبيق اسمه "Omran AI Builder" من تطوير فريق عمران AI.' });
-      } else if(!__routeFix && !AI_FACTORY_MODE()){
-        // v465: compressed Q&A prompt — from ~6000 chars to ~1200 to prevent model confusion after many messages
-        apiMessages.unshift({ role: 'system', content: 'أنت شريك نقاش حقيقي — خبير ودود وصادق. تفهم اللهجة الإماراتية والخليجية طبيعيًا.\n(1) افهم آخر رسالة في سياق المحادثة كلها — إذا الرسالة كلمة أو كلمتين (اسم مكان/تأكيد) فهي تكملة للموضوع السابق وليست سؤالًا جديدًا مستقلًا.\n(2) جاوب بأفضل ما عندك فورًا. إذا تقريبي أضف تنويه سطر واحد بالنهاية.\n(3) كن صادقًا 100%: إذا ما تعرف قل ما أعرف. ممنوع اختراع أرقام هواتف أو معلومات تواصل.\n(4) سؤال بسيط = 1-3 جمل. موضوع متشعب = رد منظم بعناوين.\n(5) ممنوع: مناداة المستخدم بأي اسم إلا إذا محفوظ بالذاكرة — الحشو — ألقاب — الادعاء أنك سويت شي ما سويته.\n(6) إذا طلب المستخدم موقعًا أو صفحة أو تطبيقًا أو أداة — بأي صياغة كانت — فابنِه فورًا كاملًا في نفس الرد داخل كتلة ```html تبدأ بـ<!DOCTYPE html>، بصور من generate_image لا روابط مخترعة. ممنوع أن تصفه وتقف، وممنوع أن تسأل «هل أبدأ؟»، وممنوع أن تبحث عن مواقع جاهزة بدل البناء. وفي غير طلبات البناء لا تعرض كودًا بلا طلب.\n(7) رد بلغة المستخدم — ادخل بصلب الموضوع من أول كلمة.' });
       }
+      // v469: Q&A system prompt مدمج في __sys — لا حاجة لـ unshift إضافي.
       let reply, providerKey, switched, requestedKey;
       let __ctUsed = false;
       // 💬 عقل واحد: Claude وحده يرد في النقاش العادي — الاحتياط (GPT ثم Gemini)
