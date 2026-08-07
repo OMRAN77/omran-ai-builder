@@ -137,7 +137,7 @@ module.exports = async (req, res) => {
     }
 
     if (mode === 'gold') {
-      // Live gold price (Yahoo GC=F futures) + AED gram prices (USD peg 3.6725)
+      // Live gold: SPOT XAU for the price level + GC=F futures for the daily change; AED gram prices (USD peg 3.6725)
       if (goldCache.t && Date.now() - goldCache.t < 900000) { res.status(200).json(goldCache.j); return; }
       const gr = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/GC%3DF?range=1d&interval=5m', { headers: { 'User-Agent': 'Mozilla/5.0' } });
       const gy = await gr.json();
@@ -146,8 +146,15 @@ module.exports = async (req, res) => {
         if (goldCache.j) { res.status(200).json(goldCache.j); return; }
         res.status(502).json({ error: 'gold unavailable' }); return;
       }
-      const ozUsd = gm.regularMarketPrice;
-      const prev = gm.chartPreviousClose || gm.previousClose || ozUsd;
+      let ozUsd = gm.regularMarketPrice;
+      let prev = gm.chartPreviousClose || gm.previousClose || ozUsd;
+      // Retail gram rates are quoted off SPOT, not futures (futures trade ~1-2% above spot). Prefer spot, keep the futures ratio for the daily change.
+      try {
+        const sr = await fetch('https://api.gold-api.com/price/XAU', { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        const sj = await sr.json();
+        const sp = sj && Number(sj.price);
+        if (sp > 100 && Math.abs(sp - ozUsd) / ozUsd < 0.1) { prev = sp * (prev / ozUsd); ozUsd = sp; }
+      } catch (_e) { /* spot unavailable -> keep futures price */ }
       const g24 = ozUsd / 31.1034768 * 3.6725;
       const out = {
         ozUsd: +ozUsd.toFixed(2), change: +(ozUsd - prev).toFixed(2), changePct: +(((ozUsd - prev) / prev) * 100).toFixed(2),
