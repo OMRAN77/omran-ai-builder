@@ -756,8 +756,8 @@
   /* v452 — شعار عمران في زرّ الوكيل: حجم موحّد كمبيوتر + جوّال (أمر عمران ٧ أغسطس ٢٠٢٦) */
   #btnPremiumToggle .premCrown{display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; opacity:1;}
   #btnPremiumToggle .premCrown img{width:22px; height:22px; display:block; object-fit:contain;}
-  /* v456 — توحيد شكل زرّ الوكيل: كمبيوتر + جوّال معًا (أمر عمران ٧ أغسطس ٢٠٢٦) */
-  #btnPremiumToggle{display:inline-flex; align-items:center; gap:8px; padding:4px 12px; border-radius:999px; background:transparent; border:1px solid rgba(128,128,128,.35); color:var(--text,#eef0f6); font-size:13px; font-weight:600; line-height:1;}
-  #btnPremiumToggle .premCrown img{width:30px; height:30px; border-radius:50%;}
+  /* v457 — بلا حدّ + شعار بحجم أيقونة مها ٤٥ (أمر عمران ٧ أغسطس ٢٠٢٦) */
+  #btnPremiumToggle{display:inline-flex; align-items:center; gap:8px; padding:2px 10px; border-radius:999px; background:transparent; border:0; box-shadow:none; color:var(--text,#eef0f6); font-size:13px; font-weight:600; line-height:1;}
+  #btnPremiumToggle .premCrown img{width:45px; height:45px; border-radius:50%;}
   #btnPremiumToggle .premLabel{white-space:nowrap;}
   #btnPremiumToggle #premiumCostHint{color:var(--muted,#9a9a9e); font-weight:500;}
