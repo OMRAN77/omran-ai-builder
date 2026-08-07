@@ -46,8 +46,8 @@ module.exports = async (req, res) => {
       return;
     }
 
-    let useModel = model || 'claude-sonnet-4-20250514';
-    if (useModel === 'claude-3-5-sonnet-latest') useModel = 'claude-sonnet-4-20250514';
+    let useModel = model || 'claude-sonnet-5';
+    if (useModel === 'claude-3-5-sonnet-latest' || useModel === 'claude-sonnet-4-20250514') useModel = 'claude-sonnet-5';
     const wantStream = !!body.stream;
 
     const doRequest = (m, stream) => fetch('https://api.anthropic.com/v1/messages', {

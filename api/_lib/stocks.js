@@ -274,7 +274,7 @@ module.exports = async (req, res) => {
         headers: { 'x-api-key': aKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: m, max_tokens: 1600, messages: [{ role: 'user', content: prompt }] }),
       });
-      let ar = await callClaude('claude-sonnet-4-20250514');
+      let ar = await callClaude('claude-sonnet-5');
       if (ar.status === 404) {
         const lr = await fetch('https://api.anthropic.com/v1/models?limit=1000', {
           headers: { 'x-api-key': aKey, 'anthropic-version': '2023-06-01' },
@@ -379,7 +379,7 @@ module.exports = async (req, res) => {
         headers: { 'x-api-key': aKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: m, max_tokens: 1500, messages: [{ role: 'user', content: prompt }] }),
       });
-      let ar = await callClaude('claude-sonnet-4-20250514');
+      let ar = await callClaude('claude-sonnet-5');
       if (ar.status === 404) {
         // model unavailable on this key — pick best available sonnet/haiku
         const lr = await fetch('https://api.anthropic.com/v1/models?limit=1000', {

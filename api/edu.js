@@ -15,7 +15,7 @@ const { kvGetJSON, kvPutJSON, kvIncr, kvExpire } = require('./_lib/kv.js');
 const { clientIp } = require('./_lib/_usage.js');
 
 const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').trim().toLowerCase();
-const MODEL = 'claude-sonnet-4-20250514'; // keep in sync with api/_lib/claude.js
+const MODEL = 'claude-sonnet-5'; // keep in sync with api/_lib/claude.js
 const MAX_BASE64_CHARS = 14 * 1024 * 1024; // ~14MB of base64 payload
 const GUEST_PROCESS_PER_DAY = 3;
 // Registered users were previously uncapped, and signing up takes two seconds

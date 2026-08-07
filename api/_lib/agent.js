@@ -401,8 +401,8 @@ module.exports = async (req, res) => {
       if (!r.ok) return 'claude-3-5-sonnet-latest';
       const ids = ((await r.json()).data || []).map((m) => m.id);
       return (
+        ids.find((id) => /sonnet-5/.test(id)) ||
         ids.find((id) => /sonnet-4/.test(id)) ||
-        ids.find((id) => /3-7-sonnet/.test(id)) ||
         ids.find((id) => /3-5-sonnet/.test(id)) ||
         ids[0] || 'claude-3-5-sonnet-latest'
       );
@@ -412,7 +412,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    let model = 'claude-sonnet-4-20250514';
+    let model = 'claude-sonnet-5';
     let steps = 0;
 
     // 4 خطوات لا تكفي «اقرأ ← افهم ← جرّب ← أخطأت ← صحّح ← تحقّق». المهام
