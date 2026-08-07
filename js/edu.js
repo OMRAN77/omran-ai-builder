@@ -480,7 +480,7 @@ function showBusy(){ setBack(false); body.innerHTML='<div class="eduBusyBox"><di
    and remembered. Empty exam language = same as native, i.e. bridge off. */
 /* One-line control: "I study in X but my exam is in Y". Off by default —
    only students who actually need the bridge ever see a difference. */
-var EDU_EXAM_LANGS=[['','—'],['ar','العربية'],['en','English'],['fr','Français'],['hi','हिन्दी'],['ur','اردو'],['ml','മലയാളം'],['bn','বাংলা'],['id','Bahasa'],['tr','Türkçe'],['es','Español'],['zh','中文'],['ru','Русский']];
+var EDU_EXAM_LANGS=[['','—'],['ar','العربية'],['en','English'],['fr','Français'],['hi','हिन्दी'],['ur','اردو'],['ml','മലയാളം'],['bn','বাংলা'],['ne','नेपाली'],['id','Bahasa'],['fil','Filipino'],['tr','Türkçe'],['es','Español'],['zh','中文'],['ru','Русский']];
 function eduExamLangControl(){
   var cur=eduExamLang();
   var isEn=(typeof AL==='function'&&AL()==='en');
