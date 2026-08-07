@@ -15714,6 +15714,12 @@ function openShareModal(project){
       if(adWrap) adWrap.style.display = (styleEl.value === 'adposter') ? 'block' : 'none';
       const celebWrap = $('#portraitCelebWrap');
       if(celebWrap) celebWrap.style.display = (styleEl.value === 'celebtoon') ? 'block' : 'none';
+      const removeWrap = $('#portraitRemoveWrap');
+      if(removeWrap) removeWrap.style.display = (styleEl.value === 'objectremove') ? 'block' : 'none';
+      const outfitWrap = $('#portraitOutfitWrap');
+      if(outfitWrap) outfitWrap.style.display = (styleEl.value === 'outfit') ? 'block' : 'none';
+      const profWrap = $('#portraitProfWrap');
+      if(profWrap) profWrap.style.display = (styleEl.value === 'profession') ? 'block' : 'none';
       const eraWrap = $('#portraitEraWrap');
       if(eraWrap) eraWrap.style.display = (styleEl.value === 'timeshift') ? 'block' : 'none';
       const multiWrapEl = $('#portraitMultiWrap');
@@ -15825,7 +15831,7 @@ function openShareModal(project){
       const res = await fetch('/api/portrait-style', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: selectedBase64, mimeType: selectedMime, style: styleEl.value, backdrop: (backdropEl ? backdropEl.value : ''), beautify: (styleEl.value === 'beautify') ? { skin: !!(beautifySkinEl && beautifySkinEl.checked), light: !!(beautifyLightEl && beautifyLightEl.checked), teeth: !!(beautifyTeethEl && beautifyTeethEl.checked) } : null, ageTarget: (styleEl.value === 'ageshift' && $('#portraitAgeSelect')) ? $('#portraitAgeSelect').value : '', hairStyle: (styleEl.value === 'hairstyle' && $('#portraitHairSelect')) ? $('#portraitHairSelect').value : '', adText: (styleEl.value === 'adposter' && $('#portraitAdTextInput')) ? $('#portraitAdTextInput').value : '', era: (styleEl.value === 'timeshift' && $('#portraitEraSelect')) ? $('#portraitEraSelect').value : '', extraImages: (styleEl.value === 'familystyle' || styleEl.value === 'merge2') ? extraImagesB64.map(function(x){ return x.base64; }) : [], token }),
+        body: JSON.stringify({ imageBase64: selectedBase64, mimeType: selectedMime, style: styleEl.value, backdrop: (backdropEl ? backdropEl.value : ''), beautify: (styleEl.value === 'beautify') ? { skin: !!(beautifySkinEl && beautifySkinEl.checked), light: !!(beautifyLightEl && beautifyLightEl.checked), teeth: !!(beautifyTeethEl && beautifyTeethEl.checked) } : null, ageTarget: (styleEl.value === 'ageshift' && $('#portraitAgeSelect')) ? $('#portraitAgeSelect').value : '', hairStyle: (styleEl.value === 'hairstyle' && $('#portraitHairSelect')) ? $('#portraitHairSelect').value : '', adText: (styleEl.value === 'adposter' && $('#portraitAdTextInput')) ? $('#portraitAdTextInput').value : '', charName: (styleEl.value === 'celebtoon' && $('#portraitCelebInput')) ? $('#portraitCelebInput').value : '', removeText: (styleEl.value === 'objectremove' && $('#portraitRemoveInput')) ? $('#portraitRemoveInput').value : '', outfit: (styleEl.value === 'outfit' && $('#portraitOutfitSelect')) ? $('#portraitOutfitSelect').value : '', profession: (styleEl.value === 'profession' && $('#portraitProfSelect')) ? $('#portraitProfSelect').value : '', era: (styleEl.value === 'timeshift' && $('#portraitEraSelect')) ? $('#portraitEraSelect').value : '', extraImages: (styleEl.value === 'familystyle' || styleEl.value === 'merge2') ? extraImagesB64.map(function(x){ return x.base64; }) : [], token }),
       });
       const data = await res.json();
       if(!res.ok || data.error){

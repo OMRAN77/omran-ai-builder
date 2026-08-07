@@ -37,6 +37,26 @@ const STYLE_PROMPTS = {
   eid: 'a joyful Eid al-Fitr/Eid al-Adha festive portrait, keep the person and their real clothing exactly as-is but add a beautiful decorative Eid-themed frame/border around the photo with crescent moons, stars, lanterns (fanoos) and elegant gold Islamic geometric patterns, festive warm golden lighting glow, an "Eid Mubarak" feel',
   national: 'a UAE National Day celebratory portrait, keep the person exactly the same but add a patriotic decorative frame/border themed around the UAE flag colors (red, green, white, black), subtle falcon and Sheikh Zayed-era heritage motifs, small UAE flags, festive fireworks glow in the background corners',
   ramadan: 'a peaceful Ramadan-themed portrait, keep the person exactly the same but add an elegant decorative Ramadan frame/border with crescent moon and star motifs, ornate mosque lantern (fanoos) illustrations, warm soft nighttime glow, gentle Islamic geometric patterns along the edges',
+  figurine: 'a collectible action-figure toy style, the person as a highly detailed vinyl figurine standing inside a clear plastic blister pack with printed cardboard backing, glossy toy finish, studio product photography',
+  ghibli: 'a hand-painted Japanese animated-film style inspired by classic Studio Ghibli films, soft watercolor backgrounds, gentle warm light, simple expressive features',
+  lego: 'a LEGO minifigure style, the person rebuilt entirely from plastic building bricks with a blocky minifigure head, cylindrical hands and glossy toy plastic finish',
+  chibi: 'a cute chibi style, oversized head with big sparkling eyes, tiny rounded body, soft pastel colors, adorable kawaii look',
+  statue: 'a classical white marble sculpture style, the person carved as a museum marble bust with realistic stone texture and chisel marks, neutral gallery lighting',
+  polaroid: 'a vintage Polaroid instant photo style, slightly faded washed-out colors, soft focus, gentle light leaks and a thick white instant-film border',
+  superhero: 'an epic superhero style, the person wearing an original heroic superhero suit with a flowing cape, dynamic action pose, glowing energy effects and a city skyline behind them',
+  astronaut: 'a realistic astronaut style, the person wearing a detailed white space suit with the helmet visor open showing their face, stars, planets and a space station in the background',
+  hajj: 'a blessed Hajj and Umrah congratulation portrait, keep the person exactly the same but add an elegant decorative frame/border with a Kaaba silhouette, ornate gold Islamic geometric patterns, soft green and gold tones and a gentle sacred glow, a "Hajj Mabrour" feel',
+  birthday: 'a joyful birthday portrait, keep the person exactly the same but add a festive decorative frame/border with colorful balloons, falling confetti, a birthday cake with lit candles, party streamers and a warm celebratory glow',
+  newborn: 'a gentle newborn-congratulation portrait, keep the person exactly the same but add a soft decorative frame/border with pastel clouds, tiny twinkling stars, a crescent moon, small baby footprints and a delicate soft-focus glow',
+};
+
+const EDIT_PROMPTS = {
+  passport: 'reframe it into a formal official ID / passport photograph: head and shoulders centered and facing straight at the camera, neutral closed-mouth expression, plain pure-white background, even shadow-free lighting, no glare on glasses, natural true-to-life skin tones, sharp and print-ready.',
+  restore: 'restore this damaged old photograph: repair scratches, tears, creases, stains, dust and missing areas, remove fading and yellowing, rebuild lost detail in the face, hair and clothing, and sharpen it so it looks like a well-preserved original print. Keep it black-and-white if the original is black-and-white.',
+  colorize: 'colorize this black-and-white photograph with natural, historically believable colors: realistic skin tones, period-appropriate clothing colors and natural background colors. Do not change the composition, content or expression in any way.',
+  upscale: 'enhance its technical quality only: increase sharpness and fine detail, remove noise, grain and compression artifacts, recover crisp texture in the face, hair and fabric, and correct the exposure and white balance. Do NOT restyle it and do NOT change the content.',
+  productshot: 'turn it into a professional commercial product photograph: place the main subject on a clean seamless studio background with soft even lighting, a subtle natural reflection and a soft shadow beneath it, crisp focus and rich accurate colors, like a premium e-commerce catalogue shot.',
+  stickerpack: 'turn it into a sticker sheet: a 2x3 grid of six cute cartoon-style stickers of the same person showing six different expressions (happy, laughing, sad, surprised, angry, winking), each sticker with a thick white die-cut outline, arranged on a plain light background.',
 };
 
 const BACKDROP_PROMPTS = {
@@ -77,7 +97,7 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { imageBase64, mimeType, style, backdrop, beautify, ageTarget, hairStyle, adText, era, extraImages, token } = body;
+    const { imageBase64, mimeType, style, backdrop, beautify, ageTarget, hairStyle, adText, era, extraImages, token, charName, removeText, outfit, profession } = body;
     if (!imageBase64) {
       res.status(400).json({ error: 'Missing imageBase64' });
       return;
@@ -212,13 +232,67 @@ module.exports = async (req, res) => {
         'Create ONE single combined photo showing BOTH people together naturally in the same scene, standing next to each other, ' +
         'with consistent matching lighting, perspective, and photo style. ' +
         'Keep each person\'s facial identity, clothing, and features exactly recognizable and unchanged. Output a single combined image only.';
+    } else if (style === 'ageshift') {
+      const AGE_MAP = {
+        younger_child: 'a young child of about 6 years old',
+        younger_teen: 'a teenager of about 15 years old',
+        younger_20s: 'about twenty years younger than they are now',
+        older_middle: 'middle-aged, about 50 years old',
+        older_senior: 'an elderly person of about 75 years old',
+      };
+      const ageDesc = AGE_MAP[ageTarget] || AGE_MAP.younger_20s;
+      promptText =
+        'Take this exact photo and realistically change ONLY the apparent age of the person so that they look like ' + ageDesc + '. ' +
+        'Adjust facial structure, skin texture, wrinkles, hair color and hair density naturally and believably for that age, while keeping it clearly the SAME person with the same recognizable identity and features. ' +
+        'Keep the pose, framing, clothing, lighting and background unchanged. The result must stay a realistic photograph, not a cartoon or illustration. Output a single image only.';
+    } else if (style === 'objectremove') {
+      const target = (removeText && String(removeText).trim()) ? String(removeText).trim() : 'any distracting person or object in the background';
+      promptText =
+        'Take this exact photo and cleanly remove the following from the image: ' + target + '. ' +
+        'Realistically reconstruct whatever was hidden behind it so the result looks natural and untouched, matching the surrounding texture, colors, lighting and perspective seamlessly. ' +
+        'Keep everything else in the photo completely identical and unchanged. Output a single image only.';
+    } else if (style === 'outfit') {
+      const OUTFIT_MAP = {
+        kandura: 'a crisp white Emirati kandura with a white ghutra and a black agal',
+        abaya: 'an elegant black abaya with a matching shayla headscarf',
+        suit: 'a sharp well-tailored business suit with a dress shirt and tie',
+        dress: 'an elegant formal evening dress',
+        casual: 'smart casual clothing: a clean shirt with a light jacket',
+        sport: 'modern athletic sportswear',
+        thobe: 'a traditional Gulf thobe with a red-and-white shemagh',
+        winter: 'a warm winter coat with a scarf',
+      };
+      const outfitDesc = OUTFIT_MAP[outfit] || OUTFIT_MAP.suit;
+      promptText =
+        'Take this exact photo and change ONLY the clothing of the person to ' + outfitDesc + '. ' +
+        'Keep everything else identical: same face, identity, hair, pose, body proportions, lighting and background, completely unchanged. ' +
+        'Render the new clothing naturally and realistically with correct fit, folds and shadows that match the photo. Output a single image only.';
+    } else if (style === 'profession') {
+      const PROF_MAP = {
+        doctor: 'a doctor wearing a white medical coat over scrubs with a stethoscope around the neck, in a bright modern clinic',
+        pilot: 'an airline captain wearing a dark pilot uniform with gold sleeve stripes and a captain cap, inside an aircraft cockpit',
+        police: 'a police officer wearing a smart police uniform with a cap and badge, standing in front of a police vehicle',
+        chef: 'a professional chef wearing a white chef jacket and toque, in a busy restaurant kitchen',
+        engineer: 'a site engineer wearing a hard hat, a high-visibility safety vest and work clothes, at a construction site',
+        teacher: 'a teacher in smart professional clothing, standing in front of a classroom whiteboard',
+        firefighter: 'a firefighter in full turnout gear with a helmet, standing in front of a fire engine',
+        scientist: 'a scientist wearing a white lab coat and safety glasses, in a modern research laboratory',
+      };
+      const profDesc = PROF_MAP[profession] || PROF_MAP.doctor;
+      promptText =
+        'Take this photo and restyle the person as ' + profDesc + '. ' +
+        'Keep the face and identity of the person clearly recognizable and unchanged, but replace their clothing and background so they realistically match that profession, with consistent natural lighting. Output a single image only.';
+    } else if (EDIT_PROMPTS[style]) {
+      promptText =
+        'Take this exact photo and ' + EDIT_PROMPTS[style] + ' ' +
+        'Keep the facial identity and likeness of the person clearly recognizable and unchanged. Output a single image only.';
     } else if (style === 'celebtoon') {
       const charDesc = (charName && String(charName).trim()) ? String(charName).trim() : 'a generic friendly famous-style cartoon hero';
       promptText =
         'Take this exact photo and redraw the person as an original, generic cartoon-hero illustration INSPIRED BY the general vibe/theme the user described as: "' + charDesc + '". ' +
         'IMPORTANT: Do NOT copy any specific copyrighted character design, costume, logo, or exact likeness — create an ORIGINAL character design that only captures the general mood/energy/color-palette described, blended with the person\'s own recognizable facial identity. ' +
         'Keep the person\'s face and identity clearly recognizable. Make it a fun, high-quality cartoon-style illustration. Output a single image only.';
-    } else if (style === 'eid' || style === 'national' || style === 'ramadan') {
+    } else if (['eid', 'national', 'ramadan', 'hajj', 'birthday', 'newborn'].indexOf(style) !== -1) {
       const occasionDesc = STYLE_PROMPTS[style];
       promptText =
         'Take this exact photo and keep the person completely unchanged (same face, identity, clothes, pose, background). ' +

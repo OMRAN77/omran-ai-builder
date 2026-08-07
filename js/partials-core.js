@@ -390,6 +390,35 @@
         <option value="familystyle" data-i18n="portraitStyleFamily">👨‍👩‍👧‍👦 ستايل عائلي موحّد</option>
         <option value="merge2" data-i18n="portraitStyleMerge2">🧑‍🤝‍🧑 دمج شخصين بصورة واحدة</option>
         <option value="avatargif" data-i18n="portraitStyleAvatarGif">🎞️ أفاتار متحرك بسيط (GIF)</option>
+        <optgroup label="🛠️ أدوات عملية">
+        <option value="passport">🫎 صورة جواز/هوية رسمية</option>
+        <option value="restore">🔧 ترميم صورة قديمة</option>
+        <option value="colorize">🎨 تلوين أبيض وأسود</option>
+        <option value="upscale">🔍 رفع الدقة والوضوح</option>
+        <option value="objectremove">🧹 إزالة شخص أو عنصر</option>
+        <option value="outfit">👕 تبديل الملابس</option>
+        <option value="productshot">📦 تصوير منتج احترافي</option>
+        </optgroup>
+        <optgroup label="🎉 مناسبات">
+        <option value="hajj">🕋 تهنئة حج وعمرة</option>
+        <option value="birthday">🎂 إطار عيد ميلاد</option>
+        <option value="newborn">👶 تهنئة مولود جديد</option>
+        </optgroup>
+        <optgroup label="🔥 رائجة">
+        <option value="figurine">🧸 مجسّم أكشن في علبة</option>
+        <option value="ghibli">🍃 ستايل جيبلي</option>
+        <option value="lego">🧱 شخصية ليغو</option>
+        <option value="stickerpack">💬 ملصقات واتساب (٦ تعبيرات)</option>
+        <option value="chibi">🐣 شيبي لطيف</option>
+        <option value="statue">🗿 تمثال رخامي</option>
+        <option value="polaroid">📸 بولارويد قديمة</option>
+        <option value="celebtoon">🦸 شخصية كرتونية مفضلة</option>
+        </optgroup>
+        <optgroup label="🎭 تلبيس">
+        <option value="profession">👩‍⚕️ مهنة (طبيب · طيار · شرطي...)</option>
+        <option value="superhero">🦸‍♂️ بطل خارق بزي كامل</option>
+        <option value="astronaut">🚀 رائد فضاء</option>
+        </optgroup>
       </select>
     </div>
     <div id="portraitMultiWrap" style="margin-top:10px; display:none;">
@@ -458,6 +487,36 @@
       <label style="display:flex; align-items:center; gap:8px; font-size: var(--fs-3); margin-bottom:6px;">
         <input type="checkbox" id="portraitBeautifyTeeth" checked> <span data-i18n="portraitBeautifyTeeth">😁 تبييض الأسنان</span>
       </label>
+    </div>
+    <div id="portraitRemoveWrap" style="margin-top:10px; display:none;">
+      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">ماذا تريد إزالته من الصورة؟</label>
+      <input type="text" id="portraitRemoveInput" maxlength="80" style="width:100%; padding:8px; border-radius:var(--r-2);" placeholder="مثال: الشخص الذي خلفي · السيارة · العمود">
+    </div>
+    <div id="portraitOutfitWrap" style="margin-top:10px; display:none;">
+      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">اختر الملابس</label>
+      <select id="portraitOutfitSelect" style="width:100%;">
+        <option value="kandura">👔 كندورة إماراتية + غترة</option>
+        <option value="abaya">🧕 عباية + شيلة</option>
+        <option value="thobe">🧣 ثوب خليجي + شماغ</option>
+        <option value="suit">🧵 بدلة رسمية</option>
+        <option value="dress">👗 فستان سهرة</option>
+        <option value="casual">🧥 كاجوال أنيق</option>
+        <option value="sport">🎽️ ملابس رياضية</option>
+        <option value="winter">🧤 معطف شتوي</option>
+      </select>
+    </div>
+    <div id="portraitProfWrap" style="margin-top:10px; display:none;">
+      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">اختر المهنة</label>
+      <select id="portraitProfSelect" style="width:100%;">
+        <option value="doctor">👩‍⚕️ طبيب</option>
+        <option value="pilot">🧑‍✈️ طيار</option>
+        <option value="police">👮 شرطي</option>
+        <option value="chef">🧑‍🍳 طبّاخ</option>
+        <option value="engineer">👷 مهندس موقع</option>
+        <option value="teacher">🧑‍🏫 معلم</option>
+        <option value="firefighter">🧑‍🚒 إطفائي</option>
+        <option value="scientist">🧑‍🔬 عالم مختبر</option>
+      </select>
     </div>
     <div id="portraitBackdropWrap" style="margin-top:10px; display:none;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="portraitBackdropLabel">اختر الخلفية</label>
