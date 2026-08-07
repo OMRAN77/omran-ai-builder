@@ -752,3 +752,7 @@
   /* v438: سماكة الخطّ الأساسيّة — أمر عمران ٧ أغسطس ٢٠٢٦ */
   body{font-weight:var(--w-body);}
   button,input,textarea,select{font-weight:inherit;}
+
+  /* v452 — شعار عمران في زرّ الوكيل: حجم موحّد كمبيوتر + جوّال (أمر عمران ٧ أغسطس ٢٠٢٦) */
+  #btnPremiumToggle .premCrown{display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; opacity:1;}
+  #btnPremiumToggle .premCrown img{width:18px; height:18px; display:block; object-fit:contain;}

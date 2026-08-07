@@ -26,11 +26,10 @@
     if(!wrap) return;
     if(isPremiumProvider()){
       wrap.classList.add('pt-visible');
-      // v359 — أيقونة الزر = شعار الموديل الفعلي الذي سيشتغل بالوضع الاحترافي.
+      // v452 — أيقونة الزر = شعار عمران ثابتًا (أمر عمران ٧ أغسطس ٢٠٢٦). لا شعار مزوّد.
       try{
-        const p = localStorage.getItem('aiapp_provider') || 'claude';
         const iconWrap = document.getElementById('premIconWrap');
-        if(iconWrap && typeof PROVIDER_LOGOS !== 'undefined' && PROVIDER_LOGOS[p]) iconWrap.innerHTML = PROVIDER_LOGOS[p];
+        if(iconWrap && !iconWrap.querySelector('img')) iconWrap.innerHTML = '<img src="/icons/omran-mark-64.png" alt="" width="17" height="17">';
       }catch(_){ __swallow(_, "misc:index#15"); }
       const hint = document.getElementById('premiumCostHint');
       if(hint) hint.textContent = '\u2212' + currentPremiumCost() + ' \u26A1';
