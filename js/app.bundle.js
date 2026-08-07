@@ -5979,10 +5979,12 @@ async function applyBg3D(id, save){
       scale: 1.00,
       scaleMobile: 1.00,
       color: color,
-      backgroundColor: 0x0a0b10
+      backgroundColor: document.documentElement.getAttribute('data-mode') === 'light' ? 0xffffff : 0x0a0b10
     });
   } catch(e){ console.warn('bg3d init failed', e); }
 }
+// v443: الخلفيّة ثلاثيّة الأبعاد تتبع الوضع الفاتح/الداكن — تُعاد بلونها الصحيح عند التبديل
+try{ new MutationObserver(()=>{ const _b = localStorage.getItem('aiapp_bg3d') || 'none'; if(_b !== 'none') applyBg3D(_b, false); }).observe(document.documentElement, { attributes:true, attributeFilter:['data-mode'] }); }catch(e){ __swallow(e, "misc:app-05-ui#bg3d-mode"); }
 function buildBg3DPicker(){
   const grid = $('#bg3dGrid');
   if(!grid) return;
