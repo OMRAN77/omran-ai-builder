@@ -722,6 +722,8 @@
   html[data-mode="light"]:not(.mobile-ui) #provDropdownBtn:hover,
   html[data-mode="light"]:not(.mobile-ui) .prov-cell:hover{background:rgba(0,0,0,.05);}
   html[data-mode="light"] #providerStripMobile{background:rgba(0,0,0,.03); border-bottom-color:rgba(0,0,0,.10);}
+  /* v443: شريط الجوّال السفليّ يتبع الوضع الفاتح — كان أسود ثابتًا فيبتلع زرّ «الرئيسية» النشط */
+  html[data-mode="light"] #omranBottomNav{background:rgba(255,255,255,.97); border-top-color:var(--omLine);}
   html[data-mode="light"] ::-webkit-scrollbar-thumb{background:rgba(0,0,0,.20);}
   html[data-mode="light"] .miniSwitch,
   html[data-mode="light"] .iosSwitch .iosSwitchTrack{background:rgba(0,0,0,.20);}
