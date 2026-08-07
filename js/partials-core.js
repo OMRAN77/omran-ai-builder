@@ -1005,23 +1005,54 @@
   </div>
 </div>
 
+<style id="cxSkin">
+#constructionModal .cx-head{margin:-26px -26px 16px; padding:16px 22px; background:linear-gradient(135deg,#0f766e 0%,#134e4a 100%); border-radius:var(--r-4) var(--r-4) 0 0;}
+#constructionModal .cx-head h3{color:#fff;}
+#constructionModal .cx-quota{margin-inline-start:auto; margin-inline-end:10px; font-size:11.5px; padding:4px 11px; border-radius:999px; background:rgba(255,255,255,.18); color:#fff; white-space:nowrap;}
+#constructionModal .cx-sec{border:1px solid var(--border,#333); border-radius:14px; padding:14px 14px 16px; margin-top:14px; background:rgba(255,255,255,.025);}
+#constructionModal .cx-h{margin:0 0 10px; font-size:12.5px; opacity:.92; letter-spacing:.2px;}
+#constructionModal .cx-pill{display:flex; align-items:center; gap:8px; padding:9px 12px; border:1px solid var(--border,#333); border-radius:999px; cursor:pointer; font-size:12.5px; background:var(--panel2,#141414); transition:border-color .15s, background .15s;}
+#constructionModal .cx-pill:hover{border-color:#2E9E6B;}
+#constructionModal .cx-pill input{accent-color:#2E9E6B; flex:none;}
+#constructionModal .cx-pill:has(input:checked){border-color:#2E9E6B; background:rgba(46,158,107,.14);}
+#constructionModal select,#constructionModal textarea,#constructionModal input[type=number],#constructionModal input[type=text]{border-radius:10px; padding:9px 10px;}
+#constructionModal optgroup{font-size:11.5px; opacity:.75;}
+#constructionModal .cx-out{border:1px solid var(--border,#333); border-radius:14px; overflow:hidden;}
+#constructionModal #constructionRunBtn{border-radius:12px; padding:12px; font-weight:600;}
+@media(max-width:640px){#constructionModal .cx-pill{padding:8px 10px;}}
+</style>
 <div id="constructionModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+  <div style="max-width:760px; width:100%; max-height:92vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
+    <div class="cx-head" style="display:flex; align-items:center;">
       <h3 style="margin:0;" data-i18n="constructionTitle">🏗️ تصاميم المقاولات والبناء</h3>
+      <span class="cx-quota" id="constructionQuotaBadge" style="display:none;"></span>
       <button type="button" class="btn iconBtn" id="constructionCloseBtn" style="padding:4px 10px;">✕</button>
     </div>
     <p style="font-size:12.5px; color:var(--muted); margin-top:2px;" data-i18n="constructionDesc">صف مشروع البناء، وسيولّد الذكاء الاصطناعي تصورًا معماريًا أوليًا + قائمة مواد + تقدير تكلفة تقريبي. تصور أولي فقط، لا يغني عن مهندس مرخّص.</p>
 
+    <div class="cx-sec">
+      <h4 class="cx-h">📋 بيانات المشروع</h4>
     <div style="margin-top:12px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="constructionTypeLabel">نوع المبنى</label>
       <select id="constructionType" style="width:100%;">
+        <optgroup label="🏠 سكني">
         <option value="villa" data-i18n="constructionTypeVilla">🏡 فيلا سكنية</option>
         <option value="apartment" data-i18n="constructionTypeApartment">🏢 عمارة سكنية</option>
+        <option value="rest">🌴 استراحة</option>
+        <option value="farm">🌾 مزرعة</option>
+        <option value="annexhome">🏘️ ملحق سكني</option>
+        </optgroup>
+        <optgroup label="🏢 تجاري وإداري">
         <option value="office" data-i18n="constructionTypeOffice">🏬 مبنى مكاتب</option>
-        <option value="warehouse" data-i18n="constructionTypeWarehouse">🏭 مستودع</option>
-        <option value="mosque" data-i18n="constructionTypeMosque">🕌 مسجد</option>
         <option value="shop" data-i18n="constructionTypeShop">🏪 محل تجاري</option>
+        <option value="mall">🛍️ مجمّع تجاري</option>
+        <option value="warehouse" data-i18n="constructionTypeWarehouse">🏭 مستودع</option>
+        </optgroup>
+        <optgroup label="🕌 عام وخدمي">
+        <option value="mosque" data-i18n="constructionTypeMosque">🕌 مسجد</option>
+        <option value="school">🏫 مدرسة</option>
+        <option value="hall">💒 صالة أفراح</option>
+        </optgroup>
       </select>
     </div>
 
@@ -1044,9 +1075,17 @@
         <option value="gulf" data-i18n="constructionStyleGulf">🕌 خليجي تراثي</option>
         <option value="luxury" data-i18n="constructionStyleLuxury">💎 فخم</option>
         <option value="industrial" data-i18n="constructionStyleIndustrial">🏭 صناعي</option>
+        <option value="andalusi">🕌 أندلسي</option>
+        <option value="islamic">🌙 إسلامي معاصر</option>
+        <option value="mediterranean">🏖️ متوسطي</option>
+        <option value="najdi">🏜️ نجدي</option>
+        <option value="neoclassic">🏛️ نيو كلاسيك</option>
       </select>
     </div>
+    </div>
 
+    <div class="cx-sec">
+      <h4 class="cx-h">🏠 التفاصيل والملاحق</h4>
     <div style="margin-top:12px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="constructionNotesLabel">ملاحظات إضافية (اختياري)</label>
       <div class="mini-mic-field-row">
@@ -1058,16 +1097,25 @@
     <div style="margin-top:12px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:6px;" data-i18n="constructionAnnexesLabel">🏠 الملاحق (اختياري)</label>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:12.5px;">
-        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" class="constructionAnnex" value="majlis"><span data-i18n="constructionAnnexMajlis">مجلس رجال منفصل</span></label>
-        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" class="constructionAnnex" value="servant"><span data-i18n="constructionAnnexServant">ملحق خادمة/سائق</span></label>
-        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" class="constructionAnnex" value="pool"><span data-i18n="constructionAnnexPool">مسبح</span></label>
-        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" class="constructionAnnex" value="carport"><span data-i18n="constructionAnnexCarport">مواقف سيارات مغطاة</span></label>
-        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" class="constructionAnnex" value="garden"><span data-i18n="constructionAnnexGarden">حديقة/برجولة</span></label>
-        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" class="constructionAnnex" value="laundry"><span data-i18n="constructionAnnexLaundry">غرفة غسيل/تخزين</span></label>
+        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="majlis"><span data-i18n="constructionAnnexMajlis">مجلس رجال منفصل</span></label>
+        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="servant"><span data-i18n="constructionAnnexServant">ملحق خادمة/سائق</span></label>
+        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="pool"><span data-i18n="constructionAnnexPool">مسبح</span></label>
+        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="carport"><span data-i18n="constructionAnnexCarport">مواقف سيارات مغطاة</span></label>
+        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="garden"><span data-i18n="constructionAnnexGarden">حديقة/برجولة</span></label>
+        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="laundry"><span data-i18n="constructionAnnexLaundry">غرفة غسيل/تخزين</span></label>
+        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="elevator"><span>مصعد داخلي</span></label>
+        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="storage"><span>مخزن خارجي</span></label>
+        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="tank"><span>خزان مياه</span></label>
+        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="solar"><span>ألواح شمسية</span></label>
+        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="playground"><span>ملعب خارجي</span></label>
+        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="carport2"><span>مظلة سيارات إضافية</span></label>
       </div>
     </div>
+    </div>
 
-    <label style="display:flex; align-items:center; gap:6px; margin-top:10px; font-size:12.5px; cursor:pointer;">
+    <div class="cx-sec">
+      <h4 class="cx-h">💰 الميزانية والمخرجات</h4>
+    <label class="cx-pill" style="margin-top:2px;">
       <input type="checkbox" id="constructionIncludeInterior">
       <span data-i18n="constructionIncludeInteriorLabel">🛋️ ولّد أيضًا صورة تصميم داخلي</span>
     </label>
@@ -1085,14 +1133,15 @@
 
     <div style="margin-top:10px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="constructionOutputModeLabel">📄 نوع النتيجة</label>
-      <label style="display:flex; align-items:center; gap:6px; font-size:12.5px; margin-bottom:4px;">
+      <label class="cx-pill" style="margin-bottom:6px;">
         <input type="checkbox" id="constructionModePlan" checked>
         <span data-i18n="constructionModePlanLabel">📐 مخطط 2D بالمقاسات</span>
       </label>
-      <label style="display:flex; align-items:center; gap:6px; font-size:12.5px;">
+      <label class="cx-pill">
         <input type="checkbox" id="constructionModePhoto">
         <span data-i18n="constructionModePhotoLabel">🖼️ صورة فوتوغرافية للتصميم (اختياري بالذكاء الاصطناعي)</span>
       </label>
+    </div>
     </div>
 
     <button type="button" class="btn" id="constructionLibraryBtn" style="width:100%; margin-top:12px;" data-i18n="constructionLibraryBtn">📚 تصفح تصاميم مشابهة محفوظة</button>
@@ -1104,12 +1153,12 @@
     <div style="font-size: var(--fs-5); color:var(--muted); margin-top:4px; text-align:center;" data-i18n="constructionEditorHint">مخطط بمساحات محسوبة رياضيًا، تعدّله بأصبعك، ثم تولّد صور الواجهة والمجلس منه</div>
 
     <div id="constructionStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
-    <div id="constructionResultImageWrap" style="display:none; margin-top:14px;">
+    <div id="constructionResultImageWrap" class="cx-out" style="display:none; margin-top:14px;">
       <p style="font-size:11.5px; color:var(--muted); margin:0 0 4px;" data-i18n="constructionPlanImageLabel">📐 المخطط 2D بالمقاسات</p>
       <img id="constructionResultImage" style="display:block; width:100%; border-radius:var(--r-2); background:#000;">
       <a id="constructionDownloadLink" style="display:block; margin-top:8px; text-align:center;" class="btn primary" download="omran-construction-plan.png" data-i18n="portraitDownloadBtn">⬇️ تحميل الصورة</a>
     </div>
-    <div id="constructionPhotoImageWrap" style="display:none; margin-top:14px;">
+    <div id="constructionPhotoImageWrap" class="cx-out" style="display:none; margin-top:14px;">
       <p style="font-size:11.5px; color:var(--muted); margin:0 0 4px;" data-i18n="constructionExteriorLabel">🖼️ صورة فوتوغرافية للتصميم</p>
       <img id="constructionPhotoImage" style="display:block; width:100%; border-radius:var(--r-2); background:#000;">
       <a id="constructionPhotoDownloadLink" style="display:block; margin-top:8px; text-align:center;" class="btn primary" download="omran-construction-photo.png" data-i18n="portraitDownloadBtn">⬇️ تحميل الصورة</a>
@@ -1144,6 +1193,10 @@
           <option value="kitchen" data-i18n="constructionRoomKitchen">🍽️ المطبخ</option>
           <option value="bathroom" data-i18n="constructionRoomBathroom">🚿 الحمام</option>
           <option value="dining" data-i18n="constructionRoomDining">🍽️ غرفة الطعام</option>
+          <option value="office">🧑‍💻 مكتب منزلي</option>
+          <option value="kids">🧸 غرفة أطفال</option>
+          <option value="stairs">🪜 الدرج والمدخل</option>
+          <option value="roof">🌇 السطح</option>
         </select>
         <input type="text" id="constructionRoomColor" data-i18n-placeholder="constructionRoomColorPh" placeholder="لون الديكور (مثال: بيج وذهبي)">
       </div>

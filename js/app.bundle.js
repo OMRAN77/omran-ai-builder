@@ -17085,6 +17085,29 @@ function openShareModal(project){
     statusEl.style.display = text ? 'block' : 'none';
     statusEl.textContent = text || '';
   }
+  let refImage = null;
+  function showQuota(d){
+    const b = $('#constructionQuotaBadge');
+    if(!b || !d || typeof d.remaining !== 'number') return;
+    b.style.display = 'inline-block';
+    b.textContent = (isEn() ? 'Left today: ' : 'المتبقّي اليوم: ') + d.remaining + ' / ' + (d.dailyLimit || 6);
+  }
+  function shrinkRef(b64, mime){
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        try{
+          const s = Math.min(1, 768 / Math.max(img.width, img.height));
+          const c = document.createElement('canvas');
+          c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          resolve(c.toDataURL('image/jpeg', 0.82).split(',')[1]);
+        }catch(e){ resolve(null); }
+      };
+      img.onerror = () => resolve(null);
+      img.src = 'data:' + (mime || 'image/png') + ';base64,' + b64;
+    });
+  }
 
   btnOpen.onclick = () => {
     modal.style.display = 'flex';
@@ -17139,7 +17162,13 @@ function openShareModal(project){
       setStatus(t('designAiNeedLogin'));
       return;
     }
+    if(modePlanEl && modePhotoEl && !modePlanEl.checked && !modePhotoEl.checked){
+      setStatus(isEn() ? 'Pick at least one output type.' : 'اختر نوع نتيجة واحدًا على الأقل.');
+      return;
+    }
     btnRun.disabled = true;
+    photoWrap.style.display = 'none';
+    interiorWrap.style.display = 'none';
     resultImageWrap.style.display = 'none';
     planTextEl.style.display = 'none';
     viewsSection.style.display = 'none';
@@ -17153,6 +17182,8 @@ function openShareModal(project){
           budget: budgetEl.value,
           annexes: Array.from(document.querySelectorAll('.constructionAnnex:checked')).map((el) => el.value),
           includeInterior: !!($('#constructionIncludeInterior') && $('#constructionIncludeInterior').checked),
+          includePlan: !modePlanEl || modePlanEl.checked,
+          includePhoto: !!(modePhotoEl && modePhotoEl.checked),
           token,
         })),
       });
@@ -17189,7 +17220,9 @@ function openShareModal(project){
       viewsSection.style.display = 'block';
       angleImageWrap.style.display = 'none';
       roomImageWrap.style.display = 'none';
-      setStatus('');
+      showQuota(data);
+      refImage = data.photoImageBase64 ? await shrinkRef(data.photoImageBase64, data.photoMimeType) : null;
+      setStatus((modePhotoEl && modePhotoEl.checked && !data.photoImageBase64) ? (isEn() ? '⚠️ Exterior render failed — plan only.' : '⚠️ تعذّر توليد الصورة الفوتوغرافية — المخطط فقط.') : '');
     }catch(e){
       setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
     }finally{
@@ -17209,7 +17242,7 @@ function openShareModal(project){
         const res = await fetch('/api/construction-view', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(Object.assign(currentParams(), { mode: 'angle', angle: btn.getAttribute('data-angle'), token })),
+          body: JSON.stringify(Object.assign(currentParams(), { mode: 'angle', angle: btn.getAttribute('data-angle'), refImageBase64: refImage, token })),
         });
         const data = await res.json();
         if(!res.ok){
@@ -17222,6 +17255,7 @@ function openShareModal(project){
         angleDownloadLink.href = angleImageEl.src;
         angleImageWrap.style.display = 'block';
         angleStatusEl.style.display = 'none';
+        showQuota(data);
       }catch(e){
         angleStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
       }finally{
@@ -17254,6 +17288,7 @@ function openShareModal(project){
       roomDownloadLink.href = roomImageEl.src;
       roomImageWrap.style.display = 'block';
       roomStatusEl.style.display = 'none';
+      showQuota(data);
     }catch(e){
       roomStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
     }finally{

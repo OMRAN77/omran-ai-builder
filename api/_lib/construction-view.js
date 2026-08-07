@@ -12,6 +12,12 @@ const BUILDING_LABELS = {
   warehouse: 'an industrial warehouse',
   mosque: 'a mosque',
   shop: 'a retail shop/storefront',
+  rest: 'a private weekend rest house (istiraha) with a majlis and outdoor seating',
+  farm: 'a farm house with surrounding agricultural land',
+  annexhome: 'a small residential annex / guest house',
+  mall: 'a small commercial retail mall',
+  school: 'a school building with classrooms',
+  hall: 'a wedding and events hall',
 };
 
 const STYLE_LABELS = {
@@ -20,6 +26,11 @@ const STYLE_LABELS = {
   gulf: 'traditional Gulf/Emirati architectural style, mashrabiya patterns, sand-tone facade',
   luxury: 'luxurious high-end architectural style, premium materials, dramatic lighting',
   industrial: 'industrial architectural style, exposed steel and concrete',
+  andalusi: 'Andalusian Moorish architectural style, horseshoe arches, carved plasterwork, patterned tilework, inner courtyard',
+  islamic: 'contemporary Islamic architectural style, geometric mashrabiya screens, clean modern volumes, subtle pointed arches',
+  mediterranean: 'Mediterranean architectural style, white stucco walls, terracotta roof tiles, arched openings, wooden shutters',
+  najdi: 'traditional Najdi architectural style, thick earth-tone walls, triangular openings, exposed wooden roof beams',
+  neoclassic: 'neo-classical architectural style, symmetrical facade, ornate cornices, tall columns, cream stone finish',
 };
 
 const ANGLE_LABELS_EN = {
@@ -36,6 +47,10 @@ const ROOM_LABELS_EN = {
   kitchen: 'kitchen',
   bathroom: 'bathroom',
   dining: 'dining room',
+  office: 'home office / study room',
+  kids: "children's bedroom",
+  stairs: 'main staircase and entrance hall',
+  roof: 'rooftop terrace with outdoor seating',
 };
 
 module.exports = async (req, res) => {
@@ -63,7 +78,7 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { mode, buildingType, floors, area, style, notes, token, angle, room, color } = body;
+    const { mode, buildingType, floors, area, style, notes, token, angle, room, color, refImageBase64 } = body;
     if (!buildingType || !area || (mode !== 'angle' && mode !== 'room')) {
       res.status(400).json({ error: 'Missing/invalid parameters' });
       return;
@@ -102,7 +117,12 @@ module.exports = async (req, res) => {
     }
 
     const imgEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
-    const imgReqBody = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { imageConfig: { imageSize: '2K' } } };
+    const promptParts = [{ text: prompt }];
+    if (mode === 'angle' && typeof refImageBase64 === 'string' && refImageBase64.length > 100) {
+      promptParts[0].text += ' IMPORTANT: the attached reference image shows this exact same building. Keep identical facade materials, colors, proportions, window and door layout, floor count and annexes — change ONLY the camera angle.';
+      promptParts.unshift({ inlineData: { mimeType: 'image/jpeg', data: refImageBase64 } });
+    }
+    const imgReqBody = { contents: [{ parts: promptParts }], generationConfig: { imageConfig: { imageSize: '2K' } } };
 
     const upstream = await fetch(imgEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(imgReqBody) });
     const data = await upstream.json();

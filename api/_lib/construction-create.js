@@ -14,6 +14,27 @@ const BUILDING_LABELS = {
   warehouse: 'an industrial warehouse',
   mosque: 'a mosque',
   shop: 'a retail shop/storefront',
+  rest: 'a private weekend rest house (istiraha) with a majlis and outdoor seating',
+  farm: 'a farm house with surrounding agricultural land',
+  annexhome: 'a small residential annex / guest house',
+  mall: 'a small commercial retail mall',
+  school: 'a school building with classrooms',
+  hall: 'a wedding and events hall',
+};
+
+const BUILDING_LABELS_AR = {
+  villa: 'فيلا سكنية',
+  apartment: 'عمارة سكنية',
+  office: 'مبنى مكاتب',
+  warehouse: 'مستودع صناعي',
+  mosque: 'مسجد',
+  shop: 'محل تجاري',
+  rest: 'استراحة',
+  farm: 'مزرعة',
+  annexhome: 'ملحق سكني',
+  mall: 'مجمّع تجاري',
+  school: 'مدرسة',
+  hall: 'صالة أفراح',
 };
 
 const STYLE_LABELS = {
@@ -22,6 +43,24 @@ const STYLE_LABELS = {
   gulf: 'traditional Gulf/Emirati architectural style, mashrabiya patterns, sand-tone facade',
   luxury: 'luxurious high-end architectural style, premium materials, dramatic lighting',
   industrial: 'industrial architectural style, exposed steel and concrete',
+  andalusi: 'Andalusian Moorish architectural style, horseshoe arches, carved plasterwork, patterned tilework, inner courtyard',
+  islamic: 'contemporary Islamic architectural style, geometric mashrabiya screens, clean modern volumes, subtle pointed arches',
+  mediterranean: 'Mediterranean architectural style, white stucco walls, terracotta roof tiles, arched openings, wooden shutters',
+  najdi: 'traditional Najdi architectural style, thick earth-tone walls, triangular openings, exposed wooden roof beams',
+  neoclassic: 'neo-classical architectural style, symmetrical facade, ornate cornices, tall columns, cream stone finish',
+};
+
+const STYLE_LABELS_AR = {
+  modern: 'عصري بسيط',
+  classic: 'كلاسيكي',
+  gulf: 'خليجي تراثي',
+  luxury: 'فخم',
+  industrial: 'صناعي',
+  andalusi: 'أندلسي',
+  islamic: 'إسلامي معاصر',
+  mediterranean: 'متوسطي',
+  najdi: 'نجدي',
+  neoclassic: 'نيو كلاسيك',
 };
 
 const ANNEX_LABELS_AR = {
@@ -31,6 +70,12 @@ const ANNEX_LABELS_AR = {
   carport: 'مواقف سيارات مغطاة',
   garden: 'حديقة/برجولة',
   laundry: 'غرفة غسيل/تخزين',
+  elevator: 'مصعد داخلي',
+  storage: 'مخزن خارجي',
+  tank: 'خزان مياه',
+  solar: 'ألواح طاقة شمسية',
+  playground: 'ملعب خارجي',
+  carport2: 'مظلة سيارات إضافية',
 };
 const ANNEX_LABELS_EN = {
   majlis: 'a separate men\'s majlis annex',
@@ -39,6 +84,12 @@ const ANNEX_LABELS_EN = {
   carport: 'a covered car parking area',
   garden: 'a garden with pergola',
   laundry: 'a laundry/storage room',
+  elevator: 'an internal passenger elevator',
+  storage: 'an external storage room',
+  tank: 'a water tank room',
+  solar: 'rooftop solar panels',
+  playground: 'an outdoor sports court',
+  carport2: 'an additional covered car canopy',
 };
 
 const BUDGET_RANGE_AR = {
@@ -163,8 +214,8 @@ module.exports = async (req, res) => {
     const photoReqBody = { contents: [{ parts: [{ text: photoPrompt }] }], generationConfig: { imageConfig: { imageSize: '2K' } } };
 
     const textPrompt =
-      'أنت مستشار مقاولات وبناء. بناءً على هذا الوصف: ' + floorsText + buildingDesc + '، المساحة تقريبًا ' + area + ' متر مربع، ' +
-      'الطراز: ' + (style || 'عصري') + '.' + (notes ? (' ملاحظات إضافية: ' + notes + '.') : '') +
+      'أنت مستشار مقاولات وبناء في الإمارات. بناءً على هذا الوصف: ' + (floors ? (floors + ' أدوار — ') : '') + (BUILDING_LABELS_AR[buildingType] || 'مبنى') + '، المساحة تقريبًا ' + area + ' متر مربع، ' +
+      'الطراز: ' + (STYLE_LABELS_AR[style] || 'عصري') + '.' + (notes ? (' ملاحظات إضافية: ' + notes + '.') : '') +
       (annexArText ? (' الملاحق المطلوبة: ' + annexArText + '.') : '') + '\n\n' +
       'أعطني بالعربية وبإيجاز شديد (نقاط قصيرة، بدون مقدمات)، بهذا الترتيب بالضبط تحت عناوين واضحة:\n\n' +
       '### 📐 مساحات الغرف التقريبية\n' +
@@ -179,7 +230,16 @@ module.exports = async (req, res) => {
       (annexArText ? ('اعتبر الملاحق التالية ضمن الكميات والتكلفة: ' + annexArText + '.\n') : '') + '\n' +
       '### 💰 تقدير التكلفة\n' +
       'الميزانية المختارة: ' + (budgetRangeArText || 'غير محددة') + (budgetArText ? (' — ' + budgetArText) : '') + '.\n' +
-      'اذكر نقطة واحدة فقط: "هذا المبلغ تقريبي فقط ولا يشمل أجرة المقاول، وقد يختلف حسب المنطقة وأسعار السوق."\n\n' +
+      'اعتمد أسعار السوق الإماراتي الحالية للمتر المربع حسب مستوى التشطيب أعلاه، واذكر أرقامًا صريحة بالدرهم لكل بند:\n' +
+      '- سعر المتر المربع التقريبي (درهم/م²)\n' +
+      '- العظم والهيكل الإنشائي\n' +
+      '- التشطيبات\n' +
+      '- الكهرباء والسباكة\n' +
+      '- التكييف\n' +
+      '- الملاحق الإضافية\n' +
+      '- **الإجمالي التقريبي: رقم واحد صريح بالدرهم**\n' +
+      '- قارن الإجمالي بالميزانية المختارة وقل بوضوح: ضمن الميزانية أم يتجاوزها وبكم.\n' +
+      'ثم أضف سطرًا أخيرًا: "هذا المبلغ تقريبي فقط ولا يشمل أجرة المقاول، وقد يختلف حسب المنطقة وأسعار السوق."\n\n' +
       'كن مختصرًا جدًا وواضحًا، استخدم نقاط قصيرة فقط تحت كل عنوان.';
 
     const textEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + apiKey;
