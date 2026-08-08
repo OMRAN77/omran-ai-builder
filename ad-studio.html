@@ -551,15 +551,17 @@ function render(){
     '<span><bdi dir="ltr">'+tel+'</bdi></span></div></div>';
 
   const rawSpec=String(S.spec||c.spec), rawTitle=String(S.title||c.title).trim();
+  const nrm=x=>String(x).replace(/[\s\u064B-\u0652\u060C,.:\u00b7]/g,''), seenF=new Set();
   const facts=(S.facts&&S.facts.length?S.facts:rawSpec.split('\u00b7').concat(chips))
-    .map(x=>String(x).trim()).filter(Boolean).slice(0,8);
+    .map(x=>String(x).trim()).filter(x=>x&&!seenF.has(nrm(x))&&seenF.add(nrm(x))).slice(0,8);
+  const jsub=spec.split('\u00b7').map(x=>x.trim()).filter(x=>x&&!seenF.has(nrm(x))).slice(0,2).join(' \u00b7 ');
   const ICO=['\ud83d\udcc5','\ud83c\udf10','\u23f1','\u2728','\ud83d\udd27','\ud83d\udee1','\u2b50','\ud83d\udd0b'];
   const tw=rawTitle.split(/\s+/).map((w,k)=>k%2?'<u>'+esc(w)+'</u>':esc(w)).join(' ');
   const place=esc(S.place||(String(S.kick||c.kick).split('\u00b7')[1]||'').trim());
   const note=esc(S.note||'');
   const J='<div class="canvas J'+ni+'" style="--ac:'+ac+';--grad:'+grad+'">'+bg+
     '<div class="ovl jv"></div><div class="jbd">'+kick.split('\u00b7')[0].trim()+'</div>'+
-    '<h2>'+tw+'</h2><div class="jsub">'+spec.split('\u00b7').slice(0,2).join(' \u00b7 ')+'</div>'+
+    '<h2>'+tw+'</h2>'+(jsub?'<div class="jsub">'+jsub+'</div>':'')+
     '<div class="jgrid">'+facts.map((f,k)=>'<span><i>'+ICO[k%8]+'</i>'+esc(f)+'</span>').join('')+'</div>'+
     '<div class="jrow"><div><em>\u0627\u0644\u0633\u0639\u0631 / '+unit+'</em><b>'+price+'</b></div>'+
     '<div><em>\u0644\u0644\u062a\u0648\u0627\u0635\u0644</em><b><bdi dir="ltr">'+tel+'</bdi></b></div></div>'+
