@@ -31,23 +31,25 @@ function memPath(username) {
 async function readMemory(username) {
   try {
     const data = await kvGetJSON(memPath(username));
-    if (!data) return { memory: '', updatedAt: 0, topics: [] };
+    if (!data) return { memory: '', updatedAt: 0, topics: [], pending: [] };
     return {
       memory: String(data.memory || ''),
       updatedAt: Number(data.updatedAt || 0),
       topics: Array.isArray(data.topics) ? data.topics : [],
+      pending: Array.isArray(data.pending) ? data.pending : [], // v475
     };
   } catch (e) {
-    return { memory: '', updatedAt: 0, topics: [] };
+    return { memory: '', updatedAt: 0, topics: [], pending: [] };
   }
 }
 
-async function writeMemory(username, memory, topics) {
-  const cur = topics === undefined ? await readMemory(username) : null;
+async function writeMemory(username, memory, topics, pending) {
+  const cur = (topics === undefined || pending === undefined) ? await readMemory(username) : null;
   await kvPutJSON(memPath(username), {
     memory,
     updatedAt: Date.now(),
     topics: topics !== undefined ? topics : (cur ? cur.topics : []),
+    pending: pending !== undefined ? pending : (cur ? cur.pending : []), // v475
   });
 }
 
@@ -198,16 +200,25 @@ module.exports = async (req, res) => {
     if (op === 'update') {
       const cur = await readMemory(username);
       // خانق بسيط: لا نستدعي النموذج أكثر من مرة كل 20 ثانية لكل مستخدم (MIN_UPDATE_GAP_MS)
+      // v475: الخانق يمنع استدعاء النموذج — لا يرمي كلام المستخدم.
+      // ما يصل أثناء الخانق يُصفّ في pending ويُدمج كاملًا في أول تحديث مسموح.
+      const __txt = String(body.userText || '').trim().slice(0, 300);
       if (cur.updatedAt && Date.now() - cur.updatedAt < MIN_UPDATE_GAP_MS) {
-        res.status(200).json({ ok: true, skipped: 'throttled', memory: cur.memory });
+        if (__txt) {
+          const q = cur.pending.concat([__txt]).slice(-12);
+          await kvPutJSON(memPath(username), { memory: cur.memory, updatedAt: cur.updatedAt, topics: cur.topics, pending: q });
+        }
+        res.status(200).json({ ok: true, skipped: 'queued', memory: cur.memory });
         return;
       }
-      const merged = await mergeWithModel(cur.memory, body.userText, body.aiText);
+      let __userText = body.userText;
+      if (cur.pending.length) __userText = ('- ' + cur.pending.join('\n- ') + '\n- ' + String(body.userText || '')).slice(0, 1400);
+      const merged = await mergeWithModel(cur.memory, __userText, body.aiText);
       if (merged === null) {
         res.status(200).json({ ok: false, skipped: 'model_unavailable', memory: cur.memory });
         return;
       }
-      if (merged !== cur.memory) await writeMemory(username, merged);
+      if (merged !== cur.memory || cur.pending.length) await writeMemory(username, merged, undefined, []); // v475
       res.status(200).json({ ok: true, memory: merged });
       return;
     }
