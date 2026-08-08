@@ -3507,7 +3507,8 @@ function toggleQuickTemplates(){
   const btn = $('#btnQuickTemplates');
   if(btn) btn.classList.toggle('active', willShow);
   const msgs = $('#messages');
-  if(msgs) msgs.style.visibility = willShow ? 'hidden' : '';
+  if(msgs) msgs.style.visibility = '';
+  if(willShow){ try{ const p = document.getElementById('plusToolsPopup'); if(p){ p.classList.remove('show'); p.classList.remove('open'); } }catch(_){ __swallow(_, "ui:quicksug#close-plus"); } }
 }
 if($('#btnQuickTemplates')) $('#btnQuickTemplates').onclick = (e) => { e.stopPropagation(); toggleQuickTemplates(); };
 document.addEventListener('click', (e) => {
