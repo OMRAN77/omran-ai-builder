@@ -43,6 +43,14 @@ a.back{display:inline-block;margin-top:10px;margin-right:8px;color:#8b939d;font-
 .dragbar{display:flex;align-items:center;gap:10px;margin:12px 0 0;font-size:12px;color:#8b939d;flex-wrap:wrap}
 .rst,.rstAll{background:#1c1f25;border:1px solid #2b3038;color:#cbd2da;font:600 11px 'Tajawal';padding:4px 10px;border-radius:99px;cursor:pointer}
 .rst{margin-right:auto}
+.genB{background:linear-gradient(135deg,#a855f7,#22d3ee);border:0;color:#0b0d10;font:800 11.5px 'Tajawal';padding:5px 13px;border-radius:99px;cursor:pointer}
+.genB:disabled{opacity:.55;cursor:default}
+#genOut{display:none;margin-top:18px}
+#genOut.on{display:block}
+#genOut h3{font-size:13px;font-weight:700;color:#c9d1d9;margin-bottom:9px}
+#genOut img{max-width:min(420px,100%);border-radius:14px;box-shadow:0 10px 34px rgba(0,0,0,.5);display:block}
+#genOut a{display:inline-block;margin-top:9px;background:#1c1f25;border:1px solid #2b3038;color:#cbd2da;font:700 12px 'Tajawal';padding:7px 14px;border-radius:99px;text-decoration:none}
+.gwait{color:#9aa3ad;font:600 12.5px 'Tajawal';padding:14px;border:1px dashed #2b3038;border-radius:12px}
 .rst:hover,.rstAll:hover{background:#262b33}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px;margin-top:20px;align-items:start}
 .col h3{font-size:13px;font-weight:700;color:#c9d1d9;margin-bottom:9px;display:flex;align-items:center;gap:7px}
@@ -53,7 +61,13 @@ a.back{display:inline-block;margin-top:10px;margin-right:8px;color:#8b939d;font-
 .col.chosen .pick{background:var(--ac);color:#12141a;border-color:var(--ac)}
 .col.chosen .canvas{outline:2px solid var(--ac);outline-offset:3px}
 
-.canvas{position:relative;aspect-ratio:4/5;overflow:hidden;border-radius:14px;background:#07090c;box-shadow:0 10px 34px rgba(0,0,0,.5);cursor:zoom-in}
+.canvas{position:relative;aspect-ratio:4/5;overflow:hidden;border-radius:14px;background:#07090c;box-shadow:0 10px 34px rgba(0,0,0,.5);cursor:zoom-in;color:var(--ink);--ink:#fff;--ink-soft:rgba(255,255,255,.66)}
+body.ink .canvas{--ink:#0b0d10;--ink-soft:rgba(11,13,16,.66)}
+body.ink .canvas .bg{filter:brightness(1.5) saturate(.92)}
+body.ink .canvas .ovl.veil,body.ink .canvas .ovl.tint,body.ink .canvas .ovl.soft,body.ink .canvas .ovl.vig,body.ink .canvas .ovl.nv,body.ink .canvas .ovl.hpan{background:linear-gradient(to top,rgba(255,255,255,.90) 2%,rgba(255,255,255,.60) 24%,rgba(255,255,255,.20) 56%,rgba(255,255,255,.34) 100%)}
+body.ink .canvas .ibd,body.ink .canvas .icard,body.ink .canvas .ibar span,body.ink .canvas .stamp{background:rgba(255,255,255,.62)}
+body.ink .canvas.noImg,body.ink .canvas.I{background:linear-gradient(165deg,#f2f4f7 0%,#dfe3e9 100%)}
+body.ink .I h2{text-shadow:0 0 10px rgba(255,255,255,.9)}
 .canvas.noImg{background:var(--grad)}
 .canvas .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 42%}
 .zoomWrap{position:fixed;inset:0;background:rgba(4,6,9,.94);z-index:99;display:none;align-items:center;justify-content:center;padding:18px;cursor:zoom-out}
@@ -63,16 +77,16 @@ a.back{display:inline-block;margin-top:10px;margin-right:8px;color:#8b939d;font-
 
 /* أ — سينمائيّ */
 .A .ovl.veil{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.90) 2%,rgba(0,0,0,.58) 15%,rgba(0,0,0,.06) 33%,transparent 55%,transparent 84%,rgba(0,0,0,.34) 100%)}
-.A .kick{position:absolute;top:20px;right:20px;font:700 11px/1 'Tajawal';color:#fff;opacity:.9}
+.A .kick{position:absolute;top:20px;right:20px;font:700 11px/1 'Tajawal';color:var(--ink);opacity:.9}
 .A .rule{position:absolute;top:40px;right:20px;width:26px;height:2px;background:var(--ac)}
 .A .body{position:absolute;right:22px;left:22px;bottom:20px}
 .A h2{font-size:28px;font-weight:900;line-height:1.15;text-shadow:0 2px 22px rgba(0,0,0,.7)}
-.A .spec{margin-top:9px;font-size:12px;color:rgba(255,255,255,.76);line-height:1.7}
+.A .spec{margin-top:9px;font-size:12px;color:var(--ink-soft);line-height:1.7}
 .A .foot{display:flex;align-items:flex-end;justify-content:space-between;margin-top:16px;padding-top:13px;border-top:1px solid rgba(255,255,255,.18)}
 .A .pr{font-size:38px;font-weight:900;color:var(--ac);line-height:.9}
-.A .pr em{font-style:normal;font-size:12px;font-weight:600;color:rgba(255,255,255,.62);display:block;margin-bottom:5px}
-.A .tel{font-size:14px;font-weight:700;color:#fff;text-align:left;opacity:.95}
-.A .tel em{font-style:normal;display:block;font-size:10px;font-weight:500;color:rgba(255,255,255,.5);margin-bottom:3px}
+.A .pr em{font-style:normal;font-size:12px;font-weight:600;color:var(--ink-soft);display:block;margin-bottom:5px}
+.A .tel{font-size:14px;font-weight:700;color:var(--ink);text-align:left;opacity:.95}
+.A .tel em{font-style:normal;display:block;font-size:10px;font-weight:500;color:var(--ink-soft);margin-bottom:3px}
 
 /* ب — طبقات */
 .B{background:var(--grad)}
@@ -80,14 +94,14 @@ a.back{display:inline-block;margin-top:10px;margin-right:8px;color:#8b939d;font-
 .B .ghost{position:absolute;left:0;right:0;top:30%;transform:translateY(-50%);text-align:center;font-weight:900;line-height:.85;color:transparent;-webkit-text-stroke:1.7px rgba(255,255,255,.72);white-space:nowrap;filter:drop-shadow(0 2px 8px rgba(0,0,0,.45));z-index:4}
 .B .arch{position:absolute;left:50%;bottom:19%;transform:translateX(-50%);width:69%;aspect-ratio:3/4.15;border-radius:999px 999px 12px 12px;overflow:hidden;box-shadow:0 26px 44px rgba(0,0,0,.55)}
 .B .arch img{width:100%;height:100%;object-fit:cover}
-.B .top{position:absolute;top:19px;right:20px;left:20px;display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:700;color:rgba(255,255,255,.72)}
+.B .top{position:absolute;top:19px;right:20px;left:20px;display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:700;color:var(--ink-soft)}
 .B .top b{color:var(--ac);font-weight:900}
 .B h2{position:absolute;right:20px;left:20px;bottom:13%;text-align:center;font-size:22px;font-weight:900;line-height:1.2;text-shadow:0 3px 18px rgba(0,0,0,.6)}
 .B .bar{position:absolute;right:20px;left:20px;bottom:20px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(255,255,255,.16);padding-top:11px}
 .B .p{font-size:26px;font-weight:900;color:var(--ac);line-height:1}
-.B .p em{font-style:normal;font-size:11px;color:rgba(255,255,255,.6);font-weight:600}
-.B .t{font-size:13px;font-weight:700;color:rgba(255,255,255,.92)}
-.B .chps{position:absolute;right:20px;left:20px;bottom:8.5%;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;font-size:10.5px;color:rgba(255,255,255,.66)}
+.B .p em{font-style:normal;font-size:11px;color:var(--ink-soft);font-weight:600}
+.B .t{font-size:13px;font-weight:700;color:var(--ink-soft)}
+.B .chps{position:absolute;right:20px;left:20px;bottom:8.5%;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;font-size:10.5px;color:var(--ink-soft)}
 
 /* ج — ملصق حرّ */
 .C .ovl.tint{position:absolute;inset:0;background:linear-gradient(145deg,rgba(0,0,0,.44) 0%,rgba(0,0,0,0) 34%,rgba(0,0,0,0) 56%,rgba(0,0,0,.58) 100%)}
@@ -96,54 +110,54 @@ a.back{display:inline-block;margin-top:10px;margin-right:8px;color:#8b939d;font-
 .C .slash{position:absolute;right:16px;top:22%;width:52%;height:3px;background:var(--ac);transform:rotate(-5.5deg);transform-origin:right center}
 .C .stamp{position:absolute;left:16px;top:7%;width:86px;height:86px;border-radius:50%;border:1.5px solid var(--ac);background:rgba(0,0,0,.34);backdrop-filter:blur(3px);display:grid;place-content:center;text-align:center;transform:rotate(-11deg);line-height:1.15}
 .C .stamp b{display:block;font-size:19px;font-weight:900;color:var(--ac)}
-.C .stamp i{font-style:normal;font-size:9.5px;color:rgba(255,255,255,.75)}
+.C .stamp i{font-style:normal;font-size:9.5px;color:var(--ink-soft)}
 .C .scat{position:absolute;right:18px;bottom:23%;display:flex;flex-direction:column;gap:5px;align-items:flex-start}
-.C .scat span{font-size:11px;font-weight:600;color:rgba(255,255,255,.86);background:rgba(0,0,0,.3);padding:2px 0}
+.C .scat span{font-size:11px;font-weight:600;color:var(--ink-soft);background:rgba(0,0,0,.3);padding:2px 0}
 .C .telc{position:absolute;left:16px;bottom:18px;text-align:left;transform:rotate(-2deg)}
-.C .telc b{display:block;font-size:15px;font-weight:900;color:#fff}
-.C .telc i{font-style:normal;font-size:9.5px;color:rgba(255,255,255,.55)}
+.C .telc b{display:block;font-size:15px;font-weight:900;color:var(--ink)}
+.C .telc i{font-style:normal;font-size:9.5px;color:var(--ink-soft)}
 
 /* د — أنيق */
 .D .ovl.soft{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.72) 0%,rgba(0,0,0,.12) 34%,rgba(0,0,0,.05) 62%,rgba(0,0,0,.5) 100%)}
 .D .ovl.frm{position:absolute;inset:16px;border:1px solid rgba(255,255,255,.42)}
-.D .dk{position:absolute;top:34px;right:0;left:0;text-align:center;font:600 10px 'Tajawal';letter-spacing:5px;color:rgba(255,255,255,.82)}
+.D .dk{position:absolute;top:34px;right:0;left:0;text-align:center;font:600 10px 'Tajawal';letter-spacing:5px;color:var(--ink-soft)}
 .D h2{position:absolute;right:30px;left:30px;bottom:32%;text-align:center;font-size:27px;font-weight:400;line-height:1.35;letter-spacing:1px}
 .D .dl{position:absolute;left:50%;bottom:29%;transform:translateX(-50%);width:44px;height:1px;background:var(--ac)}
-.D .dsp{position:absolute;right:30px;left:30px;bottom:23%;text-align:center;font-size:11.5px;color:rgba(255,255,255,.72);line-height:1.8}
+.D .dsp{position:absolute;right:30px;left:30px;bottom:23%;text-align:center;font-size:11.5px;color:var(--ink-soft);line-height:1.8}
 .D .dpr{position:absolute;right:0;left:0;bottom:12%;text-align:center;font-size:22px;font-weight:800;color:var(--ac)}
-.D .dpr em{font-style:normal;font-size:10px;font-weight:500;color:rgba(255,255,255,.6);display:block;letter-spacing:3px;margin-bottom:4px}
-.D .dtl{position:absolute;right:0;left:0;bottom:34px;text-align:center;font:700 12.5px 'Tajawal';color:#fff;letter-spacing:1px}
+.D .dpr em{font-style:normal;font-size:10px;font-weight:500;color:var(--ink-soft);display:block;letter-spacing:3px;margin-bottom:4px}
+.D .dtl{position:absolute;right:0;left:0;bottom:34px;text-align:center;font:700 12.5px 'Tajawal';color:var(--ink);letter-spacing:1px}
 
 /* هـ — جريء */
 .E .ovl.tint{position:absolute;inset:0;background:linear-gradient(200deg,rgba(0,0,0,.15) 0%,rgba(0,0,0,.35) 45%,rgba(0,0,0,.85) 100%)}
 .E .band{position:absolute;right:-6%;top:15%;width:112%;padding:7px 0;background:var(--ac);color:#111;font:900 13px 'Tajawal';text-align:center;transform:rotate(-4deg);letter-spacing:1px}
 .E h2{position:absolute;right:18px;left:18px;bottom:31%;font-size:40px;font-weight:900;line-height:.98;text-shadow:0 5px 24px rgba(0,0,0,.6)}
 .E .ech{position:absolute;right:18px;bottom:26%;display:flex;gap:6px;flex-wrap:wrap}
-.E .ech span{font:700 10.5px 'Tajawal';border:1px solid rgba(255,255,255,.45);border-radius:99px;padding:3px 10px;color:#fff}
+.E .ech span{font:700 10.5px 'Tajawal';border:1px solid rgba(255,255,255,.45);border-radius:99px;padding:3px 10px;color:var(--ink)}
 .E .epr{position:absolute;right:18px;bottom:18px;background:var(--ac);color:#111;font:900 26px 'Tajawal';padding:6px 16px 8px;border-radius:10px;line-height:1}
 .E .epr em{font-style:normal;font-size:10px;font-weight:700;display:block;opacity:.75}
-.E .etl{position:absolute;left:18px;bottom:22px;text-align:left;font:900 16px 'Tajawal';color:#fff}
-.E .etl em{font-style:normal;display:block;font-size:9.5px;font-weight:500;color:rgba(255,255,255,.55)}
+.E .etl{position:absolute;left:18px;bottom:22px;text-align:left;font:900 16px 'Tajawal';color:var(--ink)}
+.E .etl em{font-style:normal;display:block;font-size:9.5px;font-weight:500;color:var(--ink-soft)}
 
 /* و — فخم */
 .F .ovl.vig{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,rgba(0,0,0,.06) 0%,rgba(0,0,0,.55) 62%,rgba(0,0,0,.9) 100%)}
 .F .ovl.frm{position:absolute;inset:13px;border:1px solid var(--ac);opacity:.55}
 .F .ovl.frm2{position:absolute;inset:19px;border:1px solid rgba(255,255,255,.16)}
 .F .mono{position:absolute;top:36px;left:50%;transform:translateX(-50%);width:52px;height:52px;border-radius:50%;border:1px solid var(--ac);display:grid;place-content:center;font:900 19px 'Tajawal';color:var(--ac)}
-.F .fk{position:absolute;top:100px;right:0;left:0;text-align:center;font:600 9.5px 'Tajawal';letter-spacing:6px;color:rgba(255,255,255,.66)}
-.F h2{position:absolute;right:26px;left:26px;bottom:35%;text-align:center;font-size:26px;font-weight:800;line-height:1.3;color:#fff}
+.F .fk{position:absolute;top:100px;right:0;left:0;text-align:center;font:600 9.5px 'Tajawal';letter-spacing:6px;color:var(--ink-soft)}
+.F h2{position:absolute;right:26px;left:26px;bottom:35%;text-align:center;font-size:26px;font-weight:800;line-height:1.3;color:var(--ink)}
 .F .fl{position:absolute;left:50%;bottom:32%;transform:translateX(-50%);width:70px;height:1px;background:var(--ac);opacity:.8}
-.F .fsp{position:absolute;right:26px;left:26px;bottom:25%;text-align:center;font-size:11.5px;color:rgba(255,255,255,.7);line-height:1.85}
+.F .fsp{position:absolute;right:26px;left:26px;bottom:25%;text-align:center;font-size:11.5px;color:var(--ink-soft);line-height:1.85}
 .F .fpr{position:absolute;right:0;left:0;bottom:14%;text-align:center;font:900 27px 'Tajawal';color:var(--ac)}
-.F .fpr em{font-style:normal;display:block;font-size:10px;font-weight:500;letter-spacing:3px;color:rgba(255,255,255,.55);margin-bottom:5px}
-.F .ftl{position:absolute;right:0;left:0;bottom:36px;text-align:center;font:700 13px 'Tajawal';color:rgba(255,255,255,.9);letter-spacing:1px}
+.F .fpr em{font-style:normal;display:block;font-size:10px;font-weight:500;letter-spacing:3px;color:var(--ink-soft);margin-bottom:5px}
+.F .ftl{position:absolute;right:0;left:0;bottom:36px;text-align:center;font:700 13px 'Tajawal';color:var(--ink-soft);letter-spacing:1px}
 
 /* ز — بسيط */
 .G .ovl.tint{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.78) 0%,rgba(0,0,0,.18) 26%,transparent 46%)}
 .G h2{position:absolute;right:22px;left:22px;bottom:74px;font-size:25px;font-weight:800;line-height:1.25}
-.G .gsp{position:absolute;right:22px;left:22px;bottom:52px;font-size:11.5px;color:rgba(255,255,255,.7)}
+.G .gsp{position:absolute;right:22px;left:22px;bottom:52px;font-size:11.5px;color:var(--ink-soft)}
 .G .gpill{position:absolute;right:22px;bottom:18px;background:var(--ac);color:#111;font:900 14px 'Tajawal';padding:6px 14px;border-radius:99px}
-.G .gtl{position:absolute;left:22px;bottom:22px;font:700 13px 'Tajawal';color:rgba(255,255,255,.9)}
+.G .gtl{position:absolute;left:22px;bottom:22px;font:700 13px 'Tajawal';color:var(--ink-soft)}
 
 /* ح — مجلّة */
 .H .ovl.hph{position:absolute;top:0;right:0;left:0;height:62%;overflow:hidden}
@@ -151,12 +165,70 @@ a.back{display:inline-block;margin-top:10px;margin-right:8px;color:#8b939d;font-
 .H .ovl.hpan{position:absolute;bottom:0;right:0;left:0;height:38%;background:#101216}
 .H .hnum{position:absolute;top:calc(62% - 34px);right:20px;font:900 46px 'Tajawal';color:var(--ac);line-height:1;opacity:.95}
 .H .hk{position:absolute;top:calc(62% + 20px);right:20px;font:700 10px 'Tajawal';letter-spacing:3px;color:var(--ac)}
-.H h2{position:absolute;right:20px;left:20px;top:calc(62% + 40px);font-size:23px;font-weight:900;line-height:1.2;color:#fff}
-.H .hsp{position:absolute;right:20px;left:20px;top:calc(62% + 78px);font-size:11.5px;color:rgba(255,255,255,.6);line-height:1.7}
+.H h2{position:absolute;right:20px;left:20px;top:calc(62% + 40px);font-size:23px;font-weight:900;line-height:1.2;color:var(--ink)}
+.H .hsp{position:absolute;right:20px;left:20px;top:calc(62% + 78px);font-size:11.5px;color:var(--ink-soft);line-height:1.7}
 .H .hbar{position:absolute;right:20px;left:20px;bottom:18px;display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid rgba(255,255,255,.14);padding-top:10px}
 .H .hbar b{font:900 21px 'Tajawal';color:var(--ac)}
-.H .hbar b em{font-style:normal;font-size:10px;font-weight:600;color:rgba(255,255,255,.5);display:block}
-.H .hbar span{font:700 13px 'Tajawal';color:#fff}
+.H .hbar b em{font-style:normal;font-size:10px;font-weight:600;color:var(--ink-soft);display:block}
+.H .hbar span{font:700 13px 'Tajawal';color:var(--ink)}
+
+/* ط — نيون (ستوري عموديّ) */
+.canvas.I{aspect-ratio:9/16;background:#05060a}
+.I .bg{opacity:.62;object-position:center 46%}
+.I .ovl.ng{position:absolute;left:50%;top:33%;width:126%;height:54%;transform:translate(-50%,-50%);background:radial-gradient(ellipse at center,var(--ac) 0%,transparent 63%);opacity:.32;filter:blur(4px)}
+.I .ovl.nv{position:absolute;inset:0;background:linear-gradient(to top,#05060a 3%,rgba(5,6,10,.74) 24%,rgba(5,6,10,.16) 50%,rgba(5,6,10,.30) 78%,rgba(5,6,10,.62) 100%)}
+.I .ibd{position:absolute;top:15px;left:50%;transform:translateX(-50%);font:800 10px/1 'Tajawal';letter-spacing:2px;color:var(--ink);padding:6px 15px;border:1px solid var(--ac);border-radius:99px;background:rgba(0,0,0,.34);box-shadow:0 0 13px var(--ac),inset 0 0 9px rgba(255,255,255,.07);white-space:nowrap}
+.I h2{position:absolute;left:0;right:0;top:13%;text-align:center;font-family:'Tajawal';font-weight:900;line-height:.94;color:var(--ink);text-shadow:0 0 5px var(--ac),0 0 20px var(--ac),0 0 46px var(--ac);padding:0 12px}
+.I .isub{position:absolute;left:0;right:0;top:26.5%;display:flex;align-items:center;justify-content:center;gap:9px;font:700 11px 'Tajawal';color:var(--ink);opacity:.93;padding:0 16px}
+.I .isub:before,.I .isub:after{content:'';height:1px;flex:1;max-width:54px;background:linear-gradient(to right,transparent,var(--ac))}
+.I .icard{position:absolute;left:50%;bottom:14.5%;transform:translateX(-50%);text-align:center;padding:8px 22px 10px;border:1px solid var(--ac);border-radius:12px;background:rgba(0,0,0,.44);box-shadow:0 0 15px var(--ac),inset 0 0 13px rgba(255,255,255,.05)}
+.I .icard em{display:block;font-style:normal;font:700 9px 'Tajawal';letter-spacing:2px;color:var(--ink);opacity:.6}
+.I .icard b{font:900 25px 'Tajawal';color:var(--ink);text-shadow:0 0 9px var(--ac)}
+.I .ibar{position:absolute;left:11px;right:11px;bottom:13px;display:flex;gap:5px}
+.I .ibar span{flex:1;text-align:center;font:700 8.5px 'Tajawal';color:var(--ink);padding:7px 2px;border:1px solid var(--ac);border-radius:8px;background:rgba(0,0,0,.36);box-shadow:inset 0 0 9px var(--ac);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* ي — بطاقة مواصفات */
+.canvas.J{aspect-ratio:3/4;background:#0a0806}
+.canvas.J.noImg{background:var(--grad)}
+.J .bg{height:56%;bottom:auto;object-position:center 48%}
+.J .ovl.jv{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(10,8,6,.74) 0%,rgba(10,8,6,.30) 17%,rgba(10,8,6,.08) 33%,rgba(10,8,6,.88) 51%,#0a0806 59%)}
+.J .jbd{position:absolute;top:13px;left:50%;transform:translateX(-50%);font:900 15px/1 'Tajawal';letter-spacing:5px;color:var(--ac);padding:6px 26px;border:2px solid var(--ac);border-radius:7px;background:rgba(0,0,0,.38);white-space:nowrap}
+.J h2{position:absolute;left:10px;right:10px;top:9.5%;text-align:center;font:900 24px/1.14 'Tajawal';color:var(--ink);text-shadow:0 2px 16px rgba(0,0,0,.75)}
+.J h2 u{text-decoration:none;color:var(--ac)}
+.J .jsub{position:absolute;left:24px;right:24px;top:19.5%;display:flex;align-items:center;justify-content:center;gap:10px;font:900 14px 'Tajawal';color:var(--ink);text-shadow:0 2px 12px rgba(0,0,0,.7)}
+.J .jsub:before,.J .jsub:after{content:'';height:1px;flex:1;background:linear-gradient(to right,transparent,var(--ac))}
+.J .jgrid{position:absolute;left:11px;right:11px;top:55%;display:grid;grid-template-columns:1fr 1fr;background:#14100c;border:1px solid #2a231a;border-radius:13px;overflow:hidden}
+.J .jgrid span{display:flex;align-items:center;gap:6px;flex-direction:row-reverse;justify-content:flex-end;padding:6px 9px;font:600 9.5px/1.35 'Tajawal';color:var(--ink);border-bottom:1px solid #241d15;min-height:30px}
+.J .jgrid span i{font-style:normal;color:var(--ac);font-size:11px;flex:none}
+.J .jgrid span:nth-child(even){border-left:1px solid #241d15}
+.J .jgrid span:nth-child(odd):last-child{grid-column:1/-1}
+.J .jrow{position:absolute;left:11px;right:11px;top:79.5%;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.J .jrow div{background:#14100c;border:1px solid #2a231a;border-radius:13px;padding:6px 8px;text-align:center;overflow:hidden}
+.J .jrow em{display:block;font-style:normal;font:800 9.5px 'Tajawal';color:var(--ink);opacity:.85}
+.J .jrow b{font:900 19px 'Tajawal';color:var(--ac);white-space:nowrap}
+.J .jloc,.J .jnote{position:absolute;left:11px;right:11px;background:#14100c;border:1px solid #2a231a;border-radius:13px;padding:5px 9px;text-align:center;font:700 10px/1.5 'Tajawal';color:var(--ink)}
+.J .jloc{top:88.5%}
+.J .jnote{top:94.5%;font-size:9px}
+.J .jloc b,.J .jnote b{color:var(--ac)}
+/* لون الكتابة — أبيض/أسود بلا لمس الخلفيّة */
+body.inkw .canvas{--ink:#fff;--ink-soft:rgba(255,255,255,.72)}
+body.inkb .canvas{--ink:#0b0d10;--ink-soft:rgba(11,13,16,.72)}
+body.inkb .canvas h2,body.inkb .canvas .drg{text-shadow:0 0 3px #fff,0 0 9px rgba(255,255,255,.95)}
+body.inkw .canvas h2{text-shadow:0 1px 12px rgba(0,0,0,.85)}
+.swat b.w{background:#fff}
+.swat b.k{background:#0b0d10;border-color:#5a626c}
+.dlB{display:block;width:100%;margin-top:6px;background:#161a20;border:1px solid #2b3038;color:#cbd2da;font:700 12px 'Tajawal';padding:7px;border-radius:9px;cursor:pointer}
+.dlB:hover{border-color:var(--ac);color:#fff}
+.dlB:disabled{opacity:.6;cursor:default}
+
+/* تحديد + تكبير */
+.canvas .drg.sel{outline:1.5px dashed var(--ac);outline-offset:3px}
+.swat{display:inline-flex;gap:5px;align-items:center;flex-wrap:wrap}
+.swat b{width:17px;height:17px;border-radius:50%;cursor:pointer;border:1.5px solid #3a4049;display:inline-block}
+.swat b.auto{background:conic-gradient(#e0a94a,#a855f7,#3b82f6,#22c55e,#ef4444,#e0a94a);opacity:.8}
+.swat b.on{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.22)}
+.szb{display:inline-flex;gap:4px}
+.szb button{width:26px;height:23px;background:#1c1f25;border:1px solid #2b3038;color:#cbd2da;font:800 14px 'Tajawal';border-radius:7px;cursor:pointer;line-height:1}
+.szb button:hover{background:#262b33}
 
 /* سحب */
 .canvas .drg{touch-action:none;cursor:grab}
@@ -170,7 +242,7 @@ a.back{display:inline-block;margin-top:10px;margin-right:8px;color:#8b939d;font-
 <body>
 <div class="wrap">
   <h1>استوديو الإعلانات — تحدّث، ثمّ اختر تصميمك</h1>
-  <div class="sub">تكتب ما تريد الإعلان عنه بكلامك، تُجيب عن سؤالين، ترفع صورتك — فتخرج ثمانية تصاميم جاهزة تختار منها.</div>
+  <div class="sub">تكتب ما تريد الإعلان عنه بكلامك، تُجيب عن سؤالين، ترفع صورتك — فتخرج تسعة تصاميم جاهزة تختار منها.</div>
   <a class="back" href="/">← رجوع إلى التطبيق</a>
 
   <div class="chat">
@@ -185,8 +257,9 @@ a.back{display:inline-block;margin-top:10px;margin-right:8px;color:#8b939d;font-
   <input type="file" id="file" accept="image/*" style="display:none">
 
   <div class="gwrap" id="gwrap">
-    <div class="gtitle">ثمانية تصاميم — اختر واحدًا</div>
-    <div class="dragbar">اسحب أيّ نصّ داخل أيّ إعلان إلى المكان الذي تريده — يثبت مكانه<button class="rstAll">أعِد الكلّ لأصله</button></div>
+    <div class="gtitle">تسعة تصاميم — اختر واحدًا</div>
+    <div class="dragbar">اسحب أيّ نصّ — والمسه ثمّ كبّره أو صغّره<span class="szb"><button id="szM">−</button><button id="szP">+</button></span><span class="swat" id="sw"></span><button class="genB" id="genB">🎨 ولّد الإعلان صورةً</button><button class="rstAll" id="inkT">خلفيّة فاتحة</button><button class="rstAll">أعِد الكلّ لأصله</button></div>
+    <div id="genOut"></div>
     <div class="grid" id="grid"></div>
   </div>
 
@@ -239,7 +312,7 @@ const KW = {car:['سيار','سيّار','مرسيدس','تويوتا','لكزس
  service:['خدم','صيان','تنظيف','نقل','عفش','سباك','كهرب','تكييف','نجار','دهان','برمج','تصميم','محاسب']};
 
 /* ================= الحالة ================= */
-const S = {cat:null, title:'', spec:'', price:'', unit:'', tel:'', kick:'', chips:null, img:null, step:0, chosen:null};
+const S = {cat:null, title:'', spec:'', price:'', unit:'', tel:'', kick:'', chips:null, facts:null, place:'', note:'', img:null, step:0, chosen:null};
 const cb=document.getElementById('cbody'), chipsEl=document.getElementById('chips'),
       inp=document.getElementById('inp'), snd=document.getElementById('snd'),
       fileEl=document.getElementById('file'), stepLbl=document.getElementById('stepLbl');
@@ -353,6 +426,9 @@ function applyAd(o){
   if(o.tel)  S.tel  =String(o.tel);
   if(o.kick) S.kick =String(o.kick).slice(0,26);
   if(Array.isArray(o.chips)&&o.chips.length) S.chips=o.chips.slice(0,3).map(x=>String(x).slice(0,18));
+  if(Array.isArray(o.facts)&&o.facts.length) S.facts=o.facts.slice(0,8).map(x=>String(x).slice(0,30));
+  if(o.place) S.place=String(o.place).slice(0,34);
+  if(o.note)  S.note =String(o.note).slice(0,70);
 }
 
 async function turn(text){
@@ -401,12 +477,12 @@ snd.onclick=send;
 inp.addEventListener('keydown',e=>{ if(e.key==='Enter') send(); });
 
 /* ================= المعرض ================= */
-const NAMES=['سينمائيّ','طبقات','ملصق حرّ','أنيق','جريء','فخم','بسيط','مجلّة'];
-const CAPS=['الصورة كاملة والنصّ منسوج في قاعها.','الصورة تطفو داخل قوس والكلمة العملاقة خلفها.','نصّ مائل وختم دائريّ — طابع ملصق شارع.','إطار رفيع ومسافات واسعة — هدوء وثقة.','شريط مائل وعنوان ضخم — يوقف الإصبع.','إطار مزدوج وحرف مفرد — طابع فاخر.','صورة تتنفّس وسطر واحد فقط.','صورة فوق ولوحة نصّ تحت — طابع مجلّة.'];
+const NAMES=['سينمائيّ','طبقات','ملصق حرّ','أنيق','جريء','فخم','بسيط','مجلّة','نيون','بطاقة مواصفات'];
+const CAPS=['الصورة كاملة والنصّ منسوج في قاعها.','الصورة تطفو داخل قوس والكلمة العملاقة خلفها.','نصّ مائل وختم دائريّ — طابع ملصق شارع.','إطار رفيع ومسافات واسعة — هدوء وثقة.','شريط مائل وعنوان ضخم — يوقف الإصبع.','إطار مزدوج وحرف مفرد — طابع فاخر.','صورة تتنفّس وسطر واحد فقط.','صورة فوق ولوحة نصّ تحت — طابع مجلّة.','ستوري عموديّ متوهّج — جاهز لواتساب وإنستغرام.','كلّ التفاصيل في جدول مرتّب — أسلوب إعلانات البيع.'];
 
 function esc(s){ return String(s).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
 function render(){
-  const c=CATS[S.cat], ac=c.ac, grad=c.grad;
+  const c=CATS[S.cat], ac=S.ac||c.ac, grad=c.grad, nc=S.ac||'#a855f7';
   const img=S.img, title=esc(S.title||c.title), spec=esc(S.spec||c.spec),
         price=esc(S.price||c.price), unit=esc(S.unit||c.unit), tel=esc(S.tel||'050 504 0108'),
         kick=esc(S.kick||c.kick), chips=(S.chips&&S.chips.length?S.chips:c.chips), ghost=(S.title||c.title).split(' ')[0].slice(0,9),
@@ -462,9 +538,35 @@ function render(){
     '<h2>'+title+'</h2><div class="hsp">'+spec+'</div>'+
     '<div class="hbar"><b><em>'+unit+'</em>'+price+'</b><span><bdi dir="ltr">'+tel+'</bdi></span></div></div>';
 
-  document.getElementById('grid').innerHTML=[A,B,C,D,E,F,G,H].map((h,i)=>
+  const ti=(S.title||c.title).trim(), isz = ti.length>15?25:ti.length>10?31:39;
+  const I='<div class="canvas I'+ni+'" style="--ac:'+nc+';--grad:'+grad+'">'+bg+
+    '<div class="ovl ng"></div><div class="ovl nv"></div><div class="ibd">'+kick+'</div>'+
+    '<h2 style="font-size:'+isz+'px">'+title+'</h2><div class="isub">'+spec+'</div>'+
+    '<div class="icard"><em>'+unit+'</em><b>'+price+'</b></div>'+
+    '<div class="ibar">'+chips.slice(0,4).map(x=>'<span>'+esc(x)+'</span>').join('')+
+    '<span><bdi dir="ltr">'+tel+'</bdi></span></div></div>';
+
+  const rawSpec=String(S.spec||c.spec), rawTitle=String(S.title||c.title).trim();
+  const facts=(S.facts&&S.facts.length?S.facts:rawSpec.split('\u00b7').concat(chips))
+    .map(x=>String(x).trim()).filter(Boolean).slice(0,8);
+  const ICO=['\ud83d\udcc5','\ud83c\udf10','\u23f1','\u2728','\ud83d\udd27','\ud83d\udee1','\u2b50','\ud83d\udd0b'];
+  const tw=rawTitle.split(/\s+/).map((w,k)=>k%2?'<u>'+esc(w)+'</u>':esc(w)).join(' ');
+  const place=esc(S.place||(String(S.kick||c.kick).split('\u00b7')[1]||'').trim());
+  const note=esc(S.note||'');
+  const J='<div class="canvas J'+ni+'" style="--ac:'+ac+';--grad:'+grad+'">'+bg+
+    '<div class="ovl jv"></div><div class="jbd">'+kick.split('\u00b7')[0].trim()+'</div>'+
+    '<h2>'+tw+'</h2><div class="jsub">'+spec.split('\u00b7').slice(0,2).join(' \u00b7 ')+'</div>'+
+    '<div class="jgrid">'+facts.map((f,k)=>'<span><i>'+ICO[k%8]+'</i>'+esc(f)+'</span>').join('')+'</div>'+
+    '<div class="jrow"><div><em>\u0627\u0644\u0633\u0639\u0631 / '+unit+'</em><b>'+price+'</b></div>'+
+    '<div><em>\u0644\u0644\u062a\u0648\u0627\u0635\u0644</em><b><bdi dir="ltr">'+tel+'</bdi></b></div></div>'+
+    (place?'<div class="jloc"><b>\ud83d\udccd \u0627\u0644\u0645\u0639\u0627\u064a\u0646\u0629:</b> '+place+'</div>':'')+
+    (note?'<div class="jnote"><b>\u26a0\ufe0f</b> '+note+'</div>':'')+'</div>';
+
+  document.getElementById('grid').innerHTML=[A,B,C,D,E,F,G,H,I,J].map((h,i)=>
     '<div class="col" data-ci="'+i+'" style="--ac:'+ac+'"><h3><i></i>'+NAMES[i]+'</h3>'+h+
-    '<div class="cap">'+CAPS[i]+'</div><button class="pick">اختر هذا التصميم</button></div>').join('');
+    '<div class="cap">'+CAPS[i]+'</div><button class="pick">اختر هذا التصميم</button>'+
+    '<button class="dlB">\u2b07\ufe0e نزّل PNG</button></div>').join('');
+  if(S.chosen!=null){const cc=document.querySelector('#grid .col[data-ci="'+S.chosen+'"]'); if(cc)cc.classList.add('chosen');}
   initDrag();
 }
 
@@ -478,8 +580,9 @@ function applyCanvas(cv){
   if(!cv) return;
   const w=cv.clientWidth,h=cv.clientHeight;
   cv.querySelectorAll('.drg').forEach(el=>{
-    const p=POS[kOf(cv,el)]||[0,0];
+    const p=POS[kOf(cv,el)]||[0,0,1];
     el.style.translate=(p[0]*w/100).toFixed(2)+'px '+(p[1]*h/100).toFixed(2)+'px';
+    el.style.scale=String(p[2]||1);
   });
 }
 const applyAll=()=>document.querySelectorAll('.canvas').forEach(applyCanvas);
@@ -510,7 +613,7 @@ addEventListener('pointerdown', e=>{
   const ox=p[0]*cv.clientWidth/100, oy=p[1]*cv.clientHeight/100;
   drg={els:[el],cv,ox,oy,nx:ox,ny:oy,sx:e.clientX,sy:e.clientY,
        bx:er.left-cr.left-ox, by:er.top-cr.top-oy, bw:er.width, bh:er.height};
-  moved=false; el.classList.add('dragging');
+  moved=false; el.classList.add('dragging'); setSel(el);
   try{el.setPointerCapture(e.pointerId)}catch(_){}
   e.preventDefault();
 });
@@ -537,7 +640,7 @@ addEventListener('pointermove', e=>{
 function endDrag(){
   if(!drg) return;
   const cv=drg.cv, pct=[drg.nx/cv.clientWidth*100, drg.ny/cv.clientHeight*100];
-  if(moved){ drg.els.forEach(n=>{POS[kOf(cv,n)]=pct;}); save(); justDragged=true; setTimeout(()=>justDragged=false,80); }
+  if(moved){ drg.els.forEach(n=>{const q=POS[kOf(cv,n)]||[]; POS[kOf(cv,n)]=[pct[0],pct[1],q[2]||1];}); save(); justDragged=true; setTimeout(()=>justDragged=false,80); }
   drg.els.forEach(n=>n.classList.remove('dragging'));
   cv.querySelectorAll('.gl').forEach(g=>g.style.display='none');
   drg=null; applyAll();
@@ -559,6 +662,7 @@ document.getElementById('grid').addEventListener('click', e=>{
     col.classList.add('chosen'); S.chosen=+col.dataset.ci;
     push('a','اخترت تصميم <b>'+NAMES[S.chosen]+'</b> ✅\nاسحب أيّ نصّ داخله إلى المكان الذي تريده.');
     cb.scrollTop=cb.scrollHeight; return; }
+  if(e.target.closest('.drg')){ e.stopPropagation(); return; }
   const c=e.target.closest('.canvas');
   if(c){ const z=document.getElementById('zoomWrap');
     z.querySelectorAll('.canvas').forEach(n=>n.remove());
@@ -567,6 +671,84 @@ document.getElementById('grid').addEventListener('click', e=>{
 });
 document.getElementById('zoomWrap').onclick=()=>document.getElementById('zoomWrap').classList.remove('on');
 document.querySelector('.rstAll').onclick=()=>{ POS={}; save(); applyAll(); };
+
+/* ============ تحديد + تكبير/تصغير + ألوان + لون الكتابة ============ */
+let SEL=null;
+function setSel(el){
+  document.querySelectorAll('.drg.sel').forEach(n=>n.classList.remove('sel'));
+  SEL=el||null; if(SEL) SEL.classList.add('sel');
+}
+function bump(d){
+  if(!SEL||!SEL.isConnected){ push('a','المس أيّ نصّ داخل الإعلان أوّلًا، ثمّ اضغط ＋ أو －.'); cb.scrollTop=cb.scrollHeight; return; }
+  const cv=SEL.closest('.canvas'); if(!cv) return;
+  const k=kOf(cv,SEL), q=POS[k]||[0,0,1];
+  POS[k]=[q[0]||0,q[1]||0,Math.min(2.8,Math.max(.4,+((q[2]||1)+d).toFixed(3)))];
+  save(); applyAll();
+}
+document.getElementById('szP').onclick=()=>bump(.08);
+document.getElementById('szM').onclick=()=>bump(-.08);
+addEventListener('wheel',e=>{ const el=e.target.closest('.drg'); if(!el) return;
+  e.preventDefault(); setSel(el); bump(e.deltaY<0?.06:-.06); },{passive:false});
+
+const SWA=[['','تلقائيّ'],['#a855f7','بنفسجيّ'],['#3b82f6','أزرق'],['#e0a94a','ذهبيّ'],['#ef4444','أحمر'],['#22c55e','أخضر'],['#22d3ee','فيروزيّ']];
+const swEl=document.getElementById('sw');
+swEl.innerHTML=SWA.map(([c,n],i)=>'<b class="'+(c?'':'auto ')+(i===0?'on':'')+'" data-c="'+c+'" title="'+n+'"'+(c?' style="background:'+c+'"':'')+'></b>').join('');
+swEl.insertAdjacentHTML('beforeend','<b class="w" data-ink="w" title="كتابة بيضاء"></b><b class="k" data-ink="k" title="كتابة سوداء"></b>');
+swEl.onclick=e=>{ const b=e.target.closest('b[data-c]'); if(!b) return;
+  S.ac=b.dataset.c||''; [...swEl.querySelectorAll('b[data-c]')].forEach(n=>n.classList.toggle('on',n===b));
+  if(S.cat) render(); };
+swEl.addEventListener('click',e=>{ const b=e.target.closest('b[data-ink]'); if(!b) return;
+  const want=b.classList.contains('on')?null:b.dataset.ink;
+  document.body.classList.remove('inkw','inkb');
+  [...swEl.querySelectorAll('b[data-ink]')].forEach(n=>n.classList.remove('on'));
+  if(want){ document.body.classList.add(want==='w'?'inkw':'inkb'); b.classList.add('on'); } });
+
+const inkT=document.getElementById('inkT');
+inkT.onclick=()=>{ const on=document.body.classList.toggle('ink');
+  inkT.textContent=on?'خلفيّة داكنة':'خلفيّة فاتحة'; };
+
+/* ============ توليد الإعلان صورةً كاملة (OpenAI gpt-image-1) ============ */
+const LOOKMAP=['cinema','layers','poster','elegant','bold','luxe','minimal','magazine','neon'];
+const genB=document.getElementById('genB'), genOut=document.getElementById('genOut');
+genB.onclick=async()=>{
+  if(!S.cat){ push('a','أكمل بيانات الإعلان أوّلًا، ثمّ اضغط «ولّد الإعلان صورةً».'); cb.scrollTop=cb.scrollHeight; return; }
+  const c=CATS[S.cat], m=(S.img||'').match(/^data:(image\/[a-z]+);base64,(.+)$/);
+  const old=genB.textContent; genB.disabled=true; genB.textContent='يُولَّد…';
+  genOut.className='on'; genOut.innerHTML='<div class="gwait">🎨 يرسم إعلانك… قد يستغرق دقيقة. لا تغلق الصفحة.</div>';
+  genOut.scrollIntoView({behavior:'smooth',block:'nearest'});
+  try{
+    const r=await fetch('/api/adimage',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({token:TOKEN,look:LOOKMAP[S.chosen||0]||'neon',ac:S.ac||'',
+        title:S.title||c.title,spec:S.spec||c.spec,price:S.price||c.price,unit:S.unit||c.unit,
+        tel:S.tel||'',kick:S.kick||c.kick,imageBase64:m?m[2]:'',mimeType:m?m[1]:''})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.imageBase64){ genOut.innerHTML='<div class="gwait">⚠️ '+esc(j.message_ar||j.error||('خطأ '+r.status))+'</div>'; }
+    else{ const src='data:'+(j.mimeType||'image/png')+';base64,'+j.imageBase64;
+      genOut.innerHTML='<h3>إعلانك المولَّد</h3><img src="'+src+'"><a download="ad.png" href="'+src+'">⬇︎ نزّل الصورة</a>'; }
+  }catch(e){ genOut.innerHTML='<div class="gwait">⚠️ '+esc(e.message||'تعذّر الاتصال')+'</div>'; }
+  genB.disabled=false; genB.textContent=old;
+};
+
+/* ============ تنزيل أيّ تصميم صورةً PNG ============ */
+let H2I=null;
+function h2iLib(){ return H2I||(H2I=new Promise((ok,no)=>{ const t=document.createElement('script');
+  t.src='/js/vendor/html-to-image.js'; t.onload=()=>window.htmlToImage?ok(window.htmlToImage):no(new Error('lib'));
+  t.onerror=()=>no(new Error('load')); document.head.appendChild(t); })); }
+async function cardPng(cv){ const L=await h2iLib();
+  return await L.toPng(cv,{pixelRatio:2,cacheBust:true,backgroundColor:'#07090c',
+    width:cv.offsetWidth,height:cv.offsetHeight}); }
+document.getElementById('grid').addEventListener('click',async e=>{
+  const b=e.target.closest('.dlB'); if(!b) return;
+  const col=b.closest('.col'), cv=col&&col.querySelector('.canvas'); if(!cv) return;
+  const old=b.textContent; b.disabled=true; b.textContent='يُجهَّز…';
+  try{ const url=await cardPng(cv);
+    const a=document.createElement('a'); a.href=url;
+    a.download='ad-'+(NAMES[col.dataset.ci]||'design')+'.png'; document.body.appendChild(a); a.click(); a.remove();
+    b.textContent='✅ نُزّل';
+  }catch(err){ b.textContent='⚠️ تعذّر'; }
+  setTimeout(()=>{ b.textContent=old; b.disabled=false; },1600);
+});
+window.__cardPng=cardPng;
 
 start();
 </script>
