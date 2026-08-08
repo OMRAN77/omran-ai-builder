@@ -13349,7 +13349,10 @@ async function sendPrompt(){
       // v467: ما تبنيه يد المحادثة يُعرض في المعاينة كأي بناء — وإلّا بقي
       // الموقع حبيس فقاعة نصّيّة لا تُرى.
       const __builtByTools = !!(code && __ctUsed && !isBuildTask);
-      if(code && (isBuildTask || __builtByTools)){
+      // v491: أيّ كود مُستخرَج يصل المعاينة دائمًا — حتّى لو لم يعرف كاشف
+      // النيّة الطلب (مثال: ردّ المستخدم «أبدأ» على سؤال البوّابة).
+      void __builtByTools;
+      if(code){
         // 🔁 التصحيح الذاتي: فحص الكود وإصلاح أخطائه قبل العرض
         try{
           const healed = await selfHealCode(code, codeType, () => {
@@ -13366,7 +13369,7 @@ async function sendPrompt(){
       let providerLabel = functionalLabel(providerKey);
       void switched; void requestedKey;
       // v463: askAllReply=false — الردود العادية ما تدخل compare-row
-      cur.messages.push({role: 'assistant', content: (isBuildTask ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: isBuildTask ? code : null, providerLabel, providerKey, askAllReply: false,
+      cur.messages.push({role: 'assistant', content: (code ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: code || null, providerLabel, providerKey, askAllReply: false,
         // 🚫 v368: الصور والمصادر لم تعد تُعرض في المحادثة — مكانها المتصفح فقط.
         sources: undefined,
         searchImages: undefined});
