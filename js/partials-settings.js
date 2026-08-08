@@ -284,25 +284,68 @@
 
   <div id="pricingSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('pricingSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="pricingSectionTitle">💳 خطط الأسعار</h3><span class="settingsSectionArrow" id="pricingSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="pricingSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+  <a href="/pricing.html" target="_blank" rel="noopener" id="openFullPricing" style="display:flex; align-items:center; justify-content:center; gap:8px; margin:2px 0 14px; padding:12px 14px; border:1px solid var(--line,rgba(128,128,128,.22)); border-radius:14px; background:var(--panel2); color:inherit; text-decoration:none; font-size:13px; font-weight:600;"><span>عرض كل الباقات والأسعار بعملتك</span><span style="font-size:12px;">↗</span></a>
   <div id="pricingWalletRow" style="display:none; align-items:center; gap:8px; padding:10px 4px; font-size: var(--fs-3);">
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
     <span data-i18n="pricingWalletLabel">رصيدك من النقاط</span>
     <b id="pricingWalletValue" style="margin-inline-start:auto; font-size: var(--fs-2);">—</b>
   </div>
-  <div style="display:flex; flex-direction:column; gap:10px;">
-    <div style="border-inline-start:4px solid #6b7280; border-radius:var(--r-2); padding:10px 14px; background:var(--panel2);">
-      <div style="font-weight: var(--w-bold); font-size: var(--fs-3);" data-i18n="pricingFreeTitle">مجاني</div>
-      <div style="font-size: var(--fs-3); color:var(--muted); margin-top:2px;" data-i18n="pricingFreeDesc">20 رسالة يوميًا + هدية ترحيب 70 نقطة</div>
+  <style>
+  .planGrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(178px,1fr)); gap:12px; align-items:stretch; margin-top:6px;}
+  .pcard{position:relative; background:var(--panel2); border:1px solid var(--line,rgba(128,128,128,.18)); border-radius:16px; padding:20px 16px 16px; display:flex; flex-direction:column;}
+  .pcard.feat{border-color:rgba(201,162,39,.45);}
+  .pcard .ptag{position:absolute; top:-10px; inset-inline-start:16px; background:#c9a227; color:#0a0a0a; font-size:10px; font-weight:700; padding:3px 9px; border-radius:999px;}
+  .pcard .pname{font-size:12px; font-weight:600; color:var(--muted); letter-spacing:.6px; text-transform:uppercase;}
+  .pcard .pprice{display:flex; align-items:baseline; gap:5px; margin:12px 0 2px;}
+  .pcard .pnum{font-size:32px; font-weight:300; line-height:1;}
+  .pcard .pcur{font-size:15px; color:var(--muted);}
+  .pcard .pper{font-size:11.5px; color:var(--muted); min-height:15px;}
+  .pcard .ppts{margin:14px 0 12px; padding:9px 11px; background:var(--panel,rgba(128,128,128,.10)); border-radius:10px; display:flex; align-items:baseline; justify-content:space-between; gap:6px;}
+  .pcard .ppts b{font-size:18px;}
+  .pcard.feat .ppts b{color:#c9a227;}
+  .pcard .ppts span{font-size:11px; color:var(--muted); text-align:end;}
+  .pcard ul{list-style:none; display:flex; flex-direction:column; gap:9px; flex:1; padding:0; margin:0;}
+  .pcard li{font-size:13px; line-height:1.5; color:var(--text);}
+  .pcard li::before{content:"✓"; color:var(--muted); margin-inline-end:7px; font-size:12px;}
+  .pcard.feat li::before{color:#c9a227;}
+  .pcard li.off{opacity:.5;}
+  .pcard li.off::before{content:"×";}
+  .pcard .pbtn{margin-top:18px; width:100%; padding:11px; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid var(--line2,rgba(128,128,128,.30)); background:transparent; color:var(--text); font-family:inherit;}
+  .pcard .pbtn.primary{background:#c9a227; border-color:#c9a227; color:#0a0a0a;}
+  .pcard .pbtn.ghost{opacity:.45; cursor:default;}
+  </style>
+  <div class="planGrid">
+    <div class="pcard">
+      <div class="pname" data-i18n="pricingFreeTitle">مجاني</div>
+      <div class="pprice"><span class="pnum">0</span><span class="pcur">$</span></div>
+      <div class="pper" data-i18n="planFreePer">للتجربة</div>
+      <div class="ppts"><b>70</b><span data-i18n="planPtsFree">نقطة ترحيب — مرّة واحدة</span></div>
+      <ul data-i18n="planFreeFeats"><li>20 رسالة يوميًا</li><li>دقيقة واحدة محادثة صوتية</li><li>3 صور بالذكاء الاصطناعي</li><li class="off">بلا فيديو</li></ul>
+      <button type="button" class="pbtn ghost" disabled data-i18n="planCurrentBtn">باقتك الحالية</button>
     </div>
-    <div style="border-inline-start:4px solid #3b82f6; border-radius:var(--r-2); padding:10px 14px; background:var(--panel2);">
-      <div style="font-weight: var(--w-bold); font-size: var(--fs-3);" data-i18n="pricingBasicTitle">Plus — ‏10$ شهريًا</div>
-      <div style="font-size: var(--fs-3); color:var(--muted); margin-top:2px;" data-i18n="pricingBasicDesc">300 رسالة شهريًا + 60 نقطة هدية كل شهر (فيديو مجاني شهريًا)</div>
-      <button type="button" class="btn" onclick="openCheckout('basic')" style="margin-top:8px; background:#3b82f6; color:#fff; border:none; padding:6px 14px; border-radius:var(--r-2); font-size:12px; cursor:pointer;" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+    <div class="pcard">
+      <div class="pname">Plus</div>
+      <div class="pprice"><span class="pnum">10</span><span class="pcur">$</span></div>
+      <div class="pper" data-i18n="planPer">شهريًا</div>
+      <div class="ppts"><b>300</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
+      <ul data-i18n="planPlusFeats"><li>300 رسالة شهريًا</li><li>30 دقيقة محادثة صوتية</li><li>15 صورة</li><li>5 مقاطع فيديو</li></ul>
+      <button type="button" class="pbtn" onclick="openCheckout('basic')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
-    <div style="border-inline-start:4px solid #f59e0b; border-radius:var(--r-2); padding:10px 14px; background:var(--panel2);">
-      <div style="font-weight: var(--w-bold); font-size: var(--fs-3);" data-i18n="pricingProTitle">Pro — ‏20$ شهريًا</div>
-      <div style="font-size: var(--fs-3); color:var(--muted); margin-top:2px;" data-i18n="pricingProDesc">رسائل بلا حدود + وكيل عمران + 200 نقطة شهريًا + أولوية سرعة + شارة ذهبية</div>
-      <button type="button" class="btn" onclick="openCheckout('pro')" style="margin-top:8px; background:#f59e0b; color:#fff; border:none; padding:6px 14px; border-radius:var(--r-2); font-size:12px; cursor:pointer;" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+    <div class="pcard feat"><span class="ptag" data-i18n="planTag">الأكثر اختيارًا</span>
+      <div class="pname">Pro</div>
+      <div class="pprice"><span class="pnum">20</span><span class="pcur">$</span></div>
+      <div class="pper" data-i18n="planPer">شهريًا</div>
+      <div class="ppts"><b>800</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
+      <ul data-i18n="planProFeats"><li>رسائل بلا حدود</li><li>80 دقيقة محادثة صوتية</li><li>40 صورة · 13 فيديو · 2 سينمائي</li><li>الوكيل الذكي</li><li>أولوية في السرعة · شارة ذهبية</li></ul>
+      <button type="button" class="pbtn primary" onclick="openCheckout('pro')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
+    </div>
+    <div class="pcard">
+      <div class="pname">Max</div>
+      <div class="pprice"><span class="pnum">100</span><span class="pcur">$</span></div>
+      <div class="pper" data-i18n="planPer">شهريًا</div>
+      <div class="ppts"><b>5,000</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
+      <ul data-i18n="planMaxFeats"><li>كل مزايا Pro</li><li>500 دقيقة محادثة صوتية</li><li>250 صورة · 83 فيديو · 12 سينمائي</li><li>دعم مخصّص</li></ul>
+      <button type="button" class="pbtn ghost" disabled data-i18n="planSoonBtn">قريبًا</button>
     </div>
   </div>
   <div style="margin-top:16px;">

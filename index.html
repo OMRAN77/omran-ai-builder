@@ -79,7 +79,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/tokens.css?v=457">
 <link rel="stylesheet" href="css/redesign.css?v=457">
-<link rel="stylesheet" href="css/modules.css?v=442">
+<link rel="stylesheet" href="css/modules.css?v=500">
 <script>
 /* v434 — الوضع الفاتح/الداكن. الذهبي ثابت في الاثنين. */
 (function(){var K='aiapp_mode';
@@ -356,23 +356,23 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 
 <button type="button" id="btnMaha" title="مها" data-i18n-title="mahaTitle" style="position:fixed; top:calc(50% - 23px); inset-inline-end:16px; z-index:9998; width:45px; height:45px; border-radius:50%; border:none; background:none; overflow:hidden; padding:0; box-shadow:none; cursor:grab; display:flex; align-items:center; justify-content:center; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;"><img src="/icons/maha-icon.png" alt="مها" draggable="false" style="width:100%; height:100%; object-fit:cover; border-radius:50%; pointer-events:none; -webkit-user-drag:none;"></button>
 
-<div id="mahaCallScreen" style="display:none; position:fixed; z-index:99999; background:radial-gradient(circle at 50% 30%,#241a3d,#0c0a16 75%); flex-direction:column; align-items:center; justify-content:space-between; padding:26px 20px 22px; width:260px; height:340px; border-radius:var(--r-4); box-shadow:0 12px 40px rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.08); touch-action:none;">
-  <div id="mahaDragHandle" style="text-align:center; width:100%; cursor:grab; padding-bottom:6px;">
-    <div style="width:36px; height:4px; border-radius:var(--r-1); background:rgba(255,255,255,.25); margin:0 auto 10px;"></div>
-    <div id="mahaCallNameLabel" style="font-size: var(--fs-1); font-weight: var(--w-bold); color:#fff; letter-spacing:0;">مها</div>
-    <div id="mahaStateLabel" style="margin-top:6px; font-size: var(--fs-3); color:#c9c1e0; min-height:18px;"></div>
-    <div id="mahaMicMeter" style="display:none; margin:5px auto 0; width:120px; height:5px; border-radius:var(--r-1); background:rgba(255,255,255,.12); overflow:hidden;"><div id="mahaMicMeterFill" style="width:0%; height:100%; border-radius:var(--r-1); background:linear-gradient(90deg,#22c55e,#4ade80); transition:width .08s linear;"></div></div>
-    <div id="mahaPointsMeter" style="display:none; margin-top:4px; align-items:center; justify-content:center; gap:5px; font-size: var(--fs-3); color:#e8e2ff;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg><span id="mahaPointsMeterValue"></span></div>
+<div id="mahaCallScreen" style="display:none; position:fixed; z-index:99999; background:none; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:0; width:auto; height:auto; border-radius:0; box-shadow:none; border:none; touch-action:none;">
+  <div id="mahaDragHandle" style="text-align:center; width:100%; cursor:grab; padding-bottom:4px;">
+    <div style="display:none;"></div>
+    <div id="mahaCallNameLabel" style="font-size:15px; font-weight: var(--w-bold); color:#fff; letter-spacing:0; text-shadow:0 1px 6px rgba(0,0,0,.8), 0 0 2px rgba(0,0,0,.6);">مها</div>
+    <div id="mahaStateLabel" style="margin-top:4px; font-size:10px; color:#e2ddf5; min-height:13px; text-shadow:0 1px 6px rgba(0,0,0,.8), 0 0 2px rgba(0,0,0,.6);"></div>
+    <div id="mahaMicMeter" style="display:none; margin:4px auto 0; width:84px; height:4px; border-radius:var(--r-1); background:rgba(255,255,255,.12); overflow:hidden;"><div id="mahaMicMeterFill" style="width:0%; height:100%; border-radius:var(--r-1); background:linear-gradient(90deg,#22c55e,#4ade80); transition:width .08s linear;"></div></div>
+    <div id="mahaPointsMeter" style="display:none; margin-top:3px; align-items:center; justify-content:center; gap:4px; font-size:10px; color:#e8e2ff;"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg><span id="mahaPointsMeterValue"></span></div>
   </div>
   <div style="flex:1; display:flex; align-items:center; justify-content:center; position:relative;">
-    <div id="mahaOrb" class="maha-orb-idle" style="width:150px; height:150px; border-radius:50%; background:linear-gradient(135deg,#ff5fa2,#7b5cff); display:flex; align-items:center; justify-content:center; font-size:56px; box-shadow:0 0 40px rgba(123,92,255,.5);">💁‍♀️</div>
-    <img id="mahaGenImage" alt="" style="display:none; width:150px; height:150px; border-radius:var(--r-4); object-fit:cover; box-shadow:0 0 40px rgba(123,92,255,.5); cursor:zoom-in;" />
-    <div id="mahaWave" class="maha-wave-idle" style="display:none; width:110px; height:110px; border-radius:50%;"></div>
+    <div id="mahaOrb" class="maha-orb-idle" style="width:105px; height:105px; border-radius:50%; background:linear-gradient(135deg,#ff5fa2,#7b5cff); display:flex; align-items:center; justify-content:center; font-size:39px; box-shadow:0 0 28px rgba(123,92,255,.5);">💁‍♀️</div>
+    <img id="mahaGenImage" alt="" style="display:none; width:105px; height:105px; border-radius:var(--r-4); object-fit:cover; box-shadow:0 0 40px rgba(123,92,255,.5); cursor:zoom-in;" />
+    <div id="mahaWave" class="maha-wave-idle" style="display:none; width:77px; height:77px; border-radius:50%;"></div>
   </div>
-  <video id="mahaCamPreview" autoplay playsinline muted style="display:none; position:absolute; top:52px; left:12px; width:84px; height:112px; object-fit:cover; border-radius:var(--r-3); border:2px solid rgba(255,255,255,.35); box-shadow:0 4px 14px rgba(0,0,0,.45); z-index:2;"></video>
-  <div style="display:flex; align-items:center; gap:18px;">
-    <button type="button" id="btnMahaCamera" data-i18n-title="mahaCameraTitle" title="الكاميرا — عين مها" style="width:52px; height:52px; border-radius:50%; border:none; background:rgba(255,255,255,.14); color:#fff; font-size:22px; cursor:pointer;">📷</button>
-    <button type="button" id="btnMahaEndCall" style="width:64px; height:64px; border-radius:50%; border:none; background:#ff4d4d; color:#fff; font-size:26px; box-shadow:0 6px 16px rgba(255,77,77,.5); cursor:pointer;">✕</button>
+  <video id="mahaCamPreview" autoplay playsinline muted style="display:none; position:absolute; top:auto; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%); width:59px; height:78px; object-fit:cover; border-radius:var(--r-3); border:2px solid rgba(255,255,255,.35); box-shadow:0 4px 14px rgba(0,0,0,.45); z-index:2;"></video>
+  <div style="display:flex; align-items:center; gap:13px;">
+    <button type="button" id="btnMahaCamera" data-i18n-title="mahaCameraTitle" title="الكاميرا — عين مها" style="width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,.14); color:#fff; font-size:15px; cursor:pointer;">📷</button>
+    <button type="button" id="btnMahaEndCall" style="width:45px; height:45px; border-radius:50%; border:none; background:#ff4d4d; color:#fff; font-size:18px; box-shadow:0 4px 11px rgba(255,77,77,.5); cursor:pointer;">✕</button>
   </div>
 </div>
 <div id="mahaImageLightbox" style="display:none; position:fixed; inset:0; z-index:100000; background:rgba(0,0,0,.88); align-items:center; justify-content:center; cursor:zoom-out;">
@@ -380,12 +380,12 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧ب: الإعدادات + الساعة + القوالب نُقلت إلى js/partials-settings.js -->
-<script src="/js/partials-settings.js?v=441"></script>
+<script src="/js/partials-settings.js?v=509"></script>
 
 <script src="/js/selfdiag.js?v=421"></script>
 <script src="/templates-data.js"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script src="/js/app.bundle.js?v=a08fa57b"></script>
+    <script src="/js/app.bundle.js?v=506a1b1d29"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
   <div class="eduWrap">

@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>الباقات والنقاط — بكل العملات</title>
+<style>
+  :root{
+    --bg:#000; --panel:#0b0c0e; --panel2:#111214;
+    --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.16);
+    --text:#eef0f6; --muted:#8b8f99; --gold:#c9a227; --goldsoft:rgba(201,162,39,.35);
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;
+       padding:40px 32px 64px; -webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px; margin:0 auto}
+
+  .head{text-align:center; margin-bottom:8px}
+  .head h1{font-size:30px; font-weight:600; letter-spacing:-.4px}
+  .head p{color:var(--muted); font-size:14px; margin-top:8px}
+
+  /* منتقي الدولة */
+  .picker{display:flex; align-items:center; justify-content:center; gap:10px; margin:22px auto 10px}
+  .pk{display:flex; align-items:center; gap:9px; background:var(--panel); border:1px solid var(--line);
+      border-radius:12px; padding:8px 14px; transition:border-color .2s}
+  .pk:hover{border-color:var(--line2)}
+  .pk label{font-size:11.5px; color:var(--muted); letter-spacing:.3px}
+  select{background:transparent; border:none; color:var(--text); font-family:inherit; font-size:14px;
+         font-weight:600; outline:none; cursor:pointer; max-width:230px}
+  select option, select optgroup{background:#111; color:#eee}
+  .cbadge{font-size:11.5px; color:var(--gold); border:1px solid var(--goldsoft); border-radius:999px;
+          padding:4px 11px; font-variant-numeric:tabular-nums}
+
+  .trial{display:flex; align-items:center; justify-content:center; gap:8px; margin:14px auto 34px;
+    max-width:560px; padding:9px 16px; border:1px solid var(--line); border-radius:999px;
+    color:var(--muted); font-size:12.5px; background:var(--panel)}
+  .dot{width:6px; height:6px; border-radius:50%; background:var(--gold); flex:0 0 auto}
+
+  .grid{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; align-items:stretch}
+  .card{position:relative; background:var(--panel); border:1px solid var(--line); border-radius:18px;
+        padding:26px 22px 24px; display:flex; flex-direction:column; transition:border-color .2s, transform .2s}
+  .card:hover{border-color:var(--line2); transform:translateY(-2px)}
+  .card.feat{border-color:var(--goldsoft); background:linear-gradient(180deg,rgba(201,162,39,.05),var(--panel) 46%)}
+  .tag{position:absolute; top:-10px; inset-inline-start:22px; background:var(--gold); color:#0a0a0a;
+       font-size:10.5px; font-weight:700; letter-spacing:.3px; padding:3px 10px; border-radius:999px}
+
+  .name{font-size:13px; font-weight:600; color:var(--muted); letter-spacing:.6px; text-transform:uppercase}
+  .price{display:flex; align-items:baseline; gap:6px; margin:14px 0 2px}
+  .price .num{font-size:38px; font-weight:300; letter-spacing:-1.5px; line-height:1; font-variant-numeric:tabular-nums}
+  .price .cur{font-size:16px; font-weight:400; color:var(--muted)}
+  .per{font-size:12px; color:var(--muted); min-height:16px}
+
+  .pts{margin:18px 0 16px; padding:11px 13px; background:var(--panel2); border:1px solid var(--line);
+       border-radius:11px; display:flex; align-items:baseline; justify-content:space-between}
+  .pts b{font-size:20px; font-weight:600; letter-spacing:-.5px}
+  .pts.gold b{color:var(--gold)}
+  .pts span{font-size:11.5px; color:var(--muted)}
+
+  ul{list-style:none; display:flex; flex-direction:column; gap:11px; flex:1}
+  li{display:flex; align-items:flex-start; gap:9px; font-size:13.5px; line-height:1.5; color:#d6d9e0}
+  li svg{flex:0 0 auto; margin-top:3px; color:var(--muted)}
+  .card.feat li svg{color:var(--gold)}
+  li.off{color:#54575e}
+
+  .btn{margin-top:22px; width:100%; padding:12px; border-radius:11px; font-size:13.5px; font-weight:600;
+       cursor:pointer; border:1px solid var(--line2); background:transparent; color:var(--text); font-family:inherit;
+       transition:background .18s,border-color .18s}
+  .btn:hover{background:rgba(255,255,255,.06)}
+  .btn.primary{background:var(--gold); border-color:var(--gold); color:#0a0a0a}
+  .btn.primary:hover{background:#d8b02f}
+  .btn.ghost{opacity:.45; cursor:default}
+  .btn.ghost:hover{background:transparent}
+
+  .sec{margin-top:56px}
+  .sec h2{font-size:19px; font-weight:600; margin-bottom:6px}
+  .sec .sub{font-size:13px; color:var(--muted); margin-bottom:20px}
+
+  .rates{border:1px solid var(--line); border-radius:16px; overflow:hidden; background:var(--panel)}
+  .row{display:grid; grid-template-columns:1.6fr .7fr .9fr; align-items:center; padding:14px 20px;
+       border-bottom:1px solid var(--line); font-size:13.5px}
+  .row:last-child{border-bottom:none}
+  .row.h{color:var(--muted); font-size:11.5px; letter-spacing:.4px; background:var(--panel2)}
+  .row .lbl{display:flex; align-items:center; gap:11px}
+  .row .val{font-weight:600; font-variant-numeric:tabular-nums}
+  .row .loc{color:var(--muted); font-variant-numeric:tabular-nums}
+  .free{color:var(--gold); font-weight:600}
+  .ic{width:30px; height:30px; border-radius:9px; background:var(--panel2); border:1px solid var(--line);
+      display:flex; align-items:center; justify-content:center; color:var(--muted); flex:0 0 auto}
+
+  .packs{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:20px}
+  .pack{background:var(--panel); border:1px solid var(--line); border-radius:15px; padding:20px;
+        text-align:center; cursor:pointer; transition:border-color .2s}
+  .pack:hover{border-color:var(--line2)}
+  .pack .n{font-size:29px; font-weight:300; letter-spacing:-1px}
+  .pack .u{font-size:11.5px; color:var(--muted); margin-top:3px}
+  .pack .p{margin-top:13px; padding-top:13px; border-top:1px solid var(--line); font-size:15px; font-weight:600;
+           font-variant-numeric:tabular-nums}
+  .pack .save{display:inline-block; margin-top:7px; font-size:10.5px; color:var(--gold);
+               border:1px solid var(--goldsoft); border-radius:999px; padding:2px 9px}
+
+  /* جداول قابلة للطيّ */
+  .toggle{display:flex; align-items:center; justify-content:space-between; width:100%; cursor:pointer;
+    background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:15px 20px;
+    color:var(--text); font-family:inherit; font-size:14px; font-weight:600; transition:border-color .2s}
+  .toggle:hover{border-color:var(--line2)}
+  .toggle .cnt{font-size:11.5px; color:var(--muted); font-weight:400}
+  .panelbox{display:none; margin-top:14px; border:1px solid var(--line); border-radius:16px;
+    overflow:hidden; background:var(--panel)}
+  .panelbox.open{display:block}
+  .search{width:100%; padding:13px 20px; background:var(--panel2); border:none; border-bottom:1px solid var(--line);
+    color:var(--text); font-family:inherit; font-size:13.5px; outline:none}
+  .search::placeholder{color:#5b5e66}
+  .tblwrap{max-height:460px; overflow-y:auto}
+  table{width:100%; border-collapse:collapse; font-size:13px}
+  th{position:sticky; top:0; background:var(--panel2); color:var(--muted); font-weight:500; font-size:11.5px;
+     text-align:start; padding:11px 16px; border-bottom:1px solid var(--line); letter-spacing:.3px}
+  td{padding:11px 16px; border-bottom:1px solid rgba(255,255,255,.05); font-variant-numeric:tabular-nums}
+  tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:rgba(255,255,255,.03)}
+  td.c{color:var(--muted); font-size:12px}
+  td.g{color:var(--gold); font-weight:600}
+  .flag{font-size:15px; margin-inline-end:7px}
+  .pos{color:#4ade80; font-weight:600}
+  .neg{color:#f87171; font-weight:600}
+
+  .note{margin-top:14px; padding:14px 18px; border:1px solid var(--line); border-radius:13px;
+    background:var(--panel); color:var(--muted); font-size:12.5px; line-height:1.85}
+  .note b{color:var(--text); font-weight:600}
+
+  .foot{margin-top:44px; text-align:center; color:#5b5e66; font-size:11.5px; line-height:1.9}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="head">
+    <h1>الباقات والنقاط</h1>
+    <p>اشترك شهريًا، أو اشترِ نقاطًا متى احتجت. النقاط عملة موحّدة لكل الخدمات.</p>
+  </div>
+
+  <div class="picker">
+    <div class="pk">
+      <label>الدولة</label>
+      <select id="sel"></select>
+    </div>
+    <span class="cbadge" id="cbadge">—</span>
+  </div>
+
+  <div class="trial"><span class="dot"></span> وضع تجريبي — التفعيل الكامل عند صدور الرخصة التجارية</div>
+
+  <div class="grid">
+
+    <div class="card">
+      <div class="name">مجاني</div>
+      <div class="price"><span class="num" data-usd="0">0</span><span class="cur cursym">$</span></div>
+      <div class="per" data-per="للتجربة" data-usd="0">للتجربة</div>
+      <div class="pts"><b>70</b><span>نقطة ترحيب — مرّة واحدة</span></div>
+      <ul>
+        <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>20 رسالة يوميًا</li>
+        <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>دقيقة واحدة مع المتحدث الصوتي</li>
+        <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>3 صور بالذكاء الاصطناعي</li>
+        <li class="off"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>بلا فيديو</li>
+      </ul>
+      <button class="btn ghost">باقتك الحالية</button>
+    </div>
+
+    <div class="card">
+      <div class="name">Plus</div>
+      <div class="price"><span class="num" data-usd="10">10</span><span class="cur cursym">$</span></div>
+      <div class="per" data-per="شهريًا" data-usd="10">شهريًا</div>
+      <div class="pts"><b>300</b><span>نقطة كل شهر</span></div>
+      <ul>
+        <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>300 رسالة شهريًا</li>
+        <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>30 دقيقة مع المتحدث الصوتي</li>
+        <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>15 صورة</li>
+        <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>5 مقاطع فيديو</li>
+      </ul>
+      <button class="btn">اشترك</button>
+    </div>
+
+    <div class="card feat">
+      <span class="tag">الأكثر اختيارًا</span>
+      <div class="name">Pro</div>
+      <div class="price"><span class="num" data-usd="20">20</span><span class="cur cursym">$</span></div>
+      <div class="per" data-per="شهريًا" data-usd="20">شهريًا</div>
+      <div class="pts gold"><b>800</b><span>نقطة كل شهر</span></div>
+      <ul>
+        <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>رسائل بلا حدود</li>
+        <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>80 دقيقة مع المتحدث الصوتي</li>
+        <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>40 صورة · 13 فيديو · 2 سينمائي</li>
+        <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>الوكيل الذكي</li>
+        <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>أولوية في السرعة · شارة ذهبية</li>
+      </ul>
+      <button class="btn primary">اشترك</button>
+    </div>
+
+    <div class="card">
+      <div class="name">Max</div>
+      <div class="price"><span class="num" data-usd="100">100</span><span class="cur cursym">$</span></div>
+      <div class="per" data-per="شهريًا" data-usd="100">شهريًا</div>
+      <div class="pts"><b>5,000</b><span>نقطة كل شهر</span></div>
+      <ul>
+        <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>كل مزايا Pro</li>
+        <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>500 دقيقة مع المتحدث الصوتي</li>
+        <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>250 صورة · 83 فيديو · 12 سينمائي</li>
+        <li><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>دعم مخصّص</li>
+      </ul>
+      <button class="btn">اشترك</button>
+    </div>
+
+  </div>
+
+  <div class="sec">
+    <h2>كم تكلّف كل خدمة؟</h2>
+    <div class="sub">النقاط عملة موحّدة — تُصرف من نفس الرصيد على كل الخدمات.</div>
+    <div class="rates">
+      <div class="row h"><div>الخدمة</div><div>النقاط</div><div id="colcur">ما يعادلها</div></div>
+
+      <div class="row"><div class="lbl"><span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="18" x2="12" y2="22"/></svg></span>المتحدث الصوتي — دقيقة</div><div class="val">10</div><div class="loc" data-usd="0.20"></div></div>
+
+      <div class="row"><div class="lbl"><span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>صورة بالذكاء الاصطناعي</div><div class="val">20</div><div class="loc" data-usd="0.40"></div></div>
+
+      <div class="row"><div class="lbl"><span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 5.4 5.6.6-4.2 3.9 1.2 5.7L12 14.8 6.9 17.6l1.2-5.7L4 8l5.6-.6z"/></svg></span>ردّ احترافي (أقوى نموذج)</div><div class="val">20</div><div class="loc" data-usd="0.40"></div></div>
+
+      <div class="row"><div class="lbl"><span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></span>فيديو 10 ثوانٍ</div><div class="val">60</div><div class="loc" data-usd="1.20"></div></div>
+
+      <div class="row"><div class="lbl"><span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/><path d="M6 10v4"/><path d="M9 9v6"/></svg></span>فيديو سينمائي بصوت — 8 ثوانٍ</div><div class="val">400</div><div class="loc" data-usd="8.00"></div></div>
+
+      <div class="row"><div class="lbl"><span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>الرسائل العادية</div><div class="val free">مجانية</div><div class="loc">—</div></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2>شراء نقاط بلا اشتراك</h2>
+    <div class="sub">تُضاف لرصيدك فورًا ولا تنتهي صلاحيتها.</div>
+    <div class="packs">
+      <div class="pack"><div class="n">200</div><div class="u">نقطة</div><div class="p"><span class="pn" data-usd="5"></span> <span class="cursym">$</span></div></div>
+      <div class="pack"><div class="n">500</div><div class="u">نقطة</div><div class="p"><span class="pn" data-usd="10"></span> <span class="cursym">$</span></div><span class="save">أوفر 20%</span></div>
+      <div class="pack"><div class="n">1,200</div><div class="u">نقطة</div><div class="p"><span class="pn" data-usd="20"></span> <span class="cursym">$</span></div><span class="save">أوفر 40%</span></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2>باقات المتحدث الصوتي</h2>
+    <div class="sub">دقائق محادثة صوتية تُضاف لرصيدك فورًا ولا تنتهي صلاحيتها.</div>
+    <div class="packs" style="grid-template-columns:repeat(4,1fr)">
+      <div class="pack"><div class="n">15</div><div class="u">دقيقة</div><div class="p"><span class="pn" data-usd="2.99"></span> <span class="cursym">$</span></div></div>
+      <div class="pack"><div class="n">30</div><div class="u">دقيقة</div><div class="p"><span class="pn" data-usd="4.99"></span> <span class="cursym">$</span></div><span class="save">أوفر 17%</span></div>
+      <div class="pack"><div class="n">100</div><div class="u">دقيقة</div><div class="p"><span class="pn" data-usd="13.99"></span> <span class="cursym">$</span></div><span class="save">أوفر 30%</span></div>
+      <div class="pack"><div class="n">300</div><div class="u">دقيقة</div><div class="p"><span class="pn" data-usd="36.99"></span> <span class="cursym">$</span></div><span class="save">أوفر 38%</span></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <button class="toggle" id="tg1">أسعار كل الدول <span class="cnt" id="cnt1"></span></button>
+    <div class="panelbox" id="pb1">
+      <input class="search" id="q1" placeholder="ابحث عن دولة أو عملة…">
+      <div class="tblwrap">
+        <table id="t1">
+          <thead><tr><th>الدولة</th><th>العملة</th><th>Plus</th><th>Pro</th><th>Max</th><th>500 نقطة</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="note">
+      الأسعار <b>مثبَّتة</b> لكل دولة ولا تتغيّر يوميًا مع سعر الصرف — تُراجَع كل ٣ أشهر.
+      التحويل يعتمد سعر صرف مرجعيًّا ويُقرَّب إلى أقرب رقم مريح بعملتك.
+    </div>
+  </div>
+
+  <div class="foot">
+    الأسعار تشمل الضريبة حيث تنطبق · الدفع بعملتك المحلية<br>
+    <a href="/terms.html" target="_blank" style="color:inherit">الشروط والأحكام</a> · <a href="/privacy.html" target="_blank" style="color:inherit">سياسة الخصوصية</a>
+  </div>
+
+</div>
+
+<script>
+const RAW = `
+AE|الإمارات|🇦🇪|AED|د.إ|3.6725|الخليج والعالم العربي
+SA|السعودية|🇸🇦|SAR|ر.س|3.75|الخليج والعالم العربي
+KW|الكويت|🇰🇼|KWD|د.ك|0.307|الخليج والعالم العربي
+QA|قطر|🇶🇦|QAR|ر.ق|3.64|الخليج والعالم العربي
+BH|البحرين|🇧🇭|BHD|د.ب|0.376|الخليج والعالم العربي
+OM|عُمان|🇴🇲|OMR|ر.ع|0.3845|الخليج والعالم العربي
+JO|الأردن|🇯🇴|JOD|د.أ|0.709|الخليج والعالم العربي
+EG|مصر|🇪🇬|EGP|ج.م|48.5|الخليج والعالم العربي
+MA|المغرب|🇲🇦|MAD|د.م|9.9|الخليج والعالم العربي
+DZ|الجزائر|🇩🇿|DZD|د.ج|134|الخليج والعالم العربي
+TN|تونس|🇹🇳|TND|د.ت|3.12|الخليج والعالم العربي
+LY|ليبيا|🇱🇾|LYD|د.ل|4.85|الخليج والعالم العربي
+IQ|العراق|🇮🇶|IQD|د.ع|1310|الخليج والعالم العربي
+SD|السودان|🇸🇩|SDG|ج.س|601|الخليج والعالم العربي
+SY|سوريا|🇸🇾|SYP|ل.س|13000|الخليج والعالم العربي
+YE|اليمن|🇾🇪|YER|ر.ي|250|الخليج والعالم العربي
+LB|لبنان|🇱🇧|USD|$|1|الخليج والعالم العربي
+PS|فلسطين|🇵🇸|ILS|₪|3.70|الخليج والعالم العربي
+MR|موريتانيا|🇲🇷|MRU|أوقية|39.8|الخليج والعالم العربي
+SO|الصومال|🇸🇴|SOS|ش.ص|571|الخليج والعالم العربي
+DJ|جيبوتي|🇩🇯|DJF|ف.ج|178|الخليج والعالم العربي
+KM|جزر القمر|🇰🇲|KMF|ف.ق|452|الخليج والعالم العربي
+US|الولايات المتحدة|🇺🇸|USD|$|1|الأمريكتان
+CA|كندا|🇨🇦|CAD|C$|1.39|الأمريكتان
+MX|المكسيك|🇲🇽|MXN|MX$|20.2|الأمريكتان
+BR|البرازيل|🇧🇷|BRL|R$|5.78|الأمريكتان
+AR|الأرجنتين|🇦🇷|ARS|AR$|1010|الأمريكتان
+CL|تشيلي|🇨🇱|CLP|CLP$|970|الأمريكتان
+CO|كولومبيا|🇨🇴|COP|COL$|4400|الأمريكتان
+PE|بيرو|🇵🇪|PEN|S/|3.78|الأمريكتان
+UY|أوروغواي|🇺🇾|UYU|$U|42.5|الأمريكتان
+PY|باراغواي|🇵🇾|PYG|₲|7800|الأمريكتان
+BO|بوليفيا|🇧🇴|BOB|Bs|6.91|الأمريكتان
+VE|فنزويلا|🇻🇪|VES|Bs|45|الأمريكتان
+EC|الإكوادور|🇪🇨|USD|$|1|الأمريكتان
+PA|بنما|🇵🇦|USD|$|1|الأمريكتان
+SV|السلفادور|🇸🇻|USD|$|1|الأمريكتان
+GT|غواتيمالا|🇬🇹|GTQ|Q|7.72|الأمريكتان
+CR|كوستاريكا|🇨🇷|CRC|₡|515|الأمريكتان
+HN|هندوراس|🇭🇳|HNL|L|25.3|الأمريكتان
+NI|نيكاراغوا|🇳🇮|NIO|C$|36.8|الأمريكتان
+DO|الدومينيكان|🇩🇴|DOP|RD$|60.5|الأمريكتان
+JM|جامايكا|🇯🇲|JMD|J$|157|الأمريكتان
+TT|ترينيداد وتوباغو|🇹🇹|TTD|TT$|6.80|الأمريكتان
+HT|هايتي|🇭🇹|HTG|G|131|الأمريكتان
+GY|غيانا|🇬🇾|GYD|G$|209|الأمريكتان
+BS|الباهاما|🇧🇸|BSD|B$|1|الأمريكتان
+DE|ألمانيا|🇩🇪|EUR|€|0.92|أوروبا
+FR|فرنسا|🇫🇷|EUR|€|0.92|أوروبا
+IT|إيطاليا|🇮🇹|EUR|€|0.92|أوروبا
+ES|إسبانيا|🇪🇸|EUR|€|0.92|أوروبا
+NL|هولندا|🇳🇱|EUR|€|0.92|أوروبا
+BE|بلجيكا|🇧🇪|EUR|€|0.92|أوروبا
+AT|النمسا|🇦🇹|EUR|€|0.92|أوروبا
+PT|البرتغال|🇵🇹|EUR|€|0.92|أوروبا
+IE|أيرلندا|🇮🇪|EUR|€|0.92|أوروبا
+GR|اليونان|🇬🇷|EUR|€|0.92|أوروبا
+FI|فنلندا|🇫🇮|EUR|€|0.92|أوروبا
+LU|لوكسمبورغ|🇱🇺|EUR|€|0.92|أوروبا
+CY|قبرص|🇨🇾|EUR|€|0.92|أوروبا
+MT|مالطا|🇲🇹|EUR|€|0.92|أوروبا
+SK|سلوفاكيا|🇸🇰|EUR|€|0.92|أوروبا
+SI|سلوفينيا|🇸🇮|EUR|€|0.92|أوروبا
+EE|إستونيا|🇪🇪|EUR|€|0.92|أوروبا
+LV|لاتفيا|🇱🇻|EUR|€|0.92|أوروبا
+LT|ليتوانيا|🇱🇹|EUR|€|0.92|أوروبا
+HR|كرواتيا|🇭🇷|EUR|€|0.92|أوروبا
+GB|بريطانيا|🇬🇧|GBP|£|0.79|أوروبا
+CH|سويسرا|🇨🇭|CHF|Fr|0.88|أوروبا
+SE|السويد|🇸🇪|SEK|kr|10.9|أوروبا
+NO|النرويج|🇳🇴|NOK|kr|11.0|أوروبا
+DK|الدنمارك|🇩🇰|DKK|kr|6.87|أوروبا
+PL|بولندا|🇵🇱|PLN|zł|4.05|أوروبا
+CZ|التشيك|🇨🇿|CZK|Kč|23.4|أوروبا
+HU|المجر|🇭🇺|HUF|Ft|385|أوروبا
+RO|رومانيا|🇷🇴|RON|lei|4.58|أوروبا
+BG|بلغاريا|🇧🇬|BGN|лв|1.80|أوروبا
+RS|صربيا|🇷🇸|RSD|дин|108|أوروبا
+UA|أوكرانيا|🇺🇦|UAH|₴|41.5|أوروبا
+TR|تركيا|🇹🇷|TRY|₺|34.5|أوروبا
+IS|آيسلندا|🇮🇸|ISK|kr|138|أوروبا
+AL|ألبانيا|🇦🇱|ALL|L|92|أوروبا
+BA|البوسنة والهرسك|🇧🇦|BAM|KM|1.80|أوروبا
+MK|مقدونيا الشمالية|🇲🇰|MKD|ден|57|أوروبا
+MD|مولدوفا|🇲🇩|MDL|L|17.9|أوروبا
+GE|جورجيا|🇬🇪|GEL|₾|2.72|أوروبا
+AM|أرمينيا|🇦🇲|AMD|֏|388|أوروبا
+AZ|أذربيجان|🇦🇿|AZN|₼|1.70|أوروبا
+RU|روسيا|🇷🇺|RUB|₽|92|أوروبا
+IN|الهند|🇮🇳|INR|₹|84|آسيا
+PK|باكستان|🇵🇰|PKR|₨|278|آسيا
+BD|بنغلاديش|🇧🇩|BDT|৳|120|آسيا
+LK|سريلانكا|🇱🇰|LKR|Rs|293|آسيا
+NP|نيبال|🇳🇵|NPR|Rs|134|آسيا
+MV|المالديف|🇲🇻|MVR|Rf|15.4|آسيا
+CN|الصين|🇨🇳|CNY|¥|7.15|آسيا
+JP|اليابان|🇯🇵|JPY|¥|150|آسيا
+KR|كوريا الجنوبية|🇰🇷|KRW|₩|1370|آسيا
+TW|تايوان|🇹🇼|TWD|NT$|32.5|آسيا
+HK|هونغ كونغ|🇭🇰|HKD|HK$|7.79|آسيا
+SG|سنغافورة|🇸🇬|SGD|S$|1.34|آسيا
+MY|ماليزيا|🇲🇾|MYR|RM|4.42|آسيا
+ID|إندونيسيا|🇮🇩|IDR|Rp|15800|آسيا
+TH|تايلاند|🇹🇭|THB|฿|34.3|آسيا
+VN|فيتنام|🇻🇳|VND|₫|25300|آسيا
+PH|الفلبين|🇵🇭|PHP|₱|58.5|آسيا
+KH|كمبوديا|🇰🇭|KHR|៛|4050|آسيا
+MM|ميانمار|🇲🇲|MMK|K|2100|آسيا
+LA|لاوس|🇱🇦|LAK|₭|21800|آسيا
+BN|بروناي|🇧🇳|BND|B$|1.34|آسيا
+MN|منغوليا|🇲🇳|MNT|₮|3400|آسيا
+KZ|كازاخستان|🇰🇿|KZT|₸|492|آسيا
+UZ|أوزبكستان|🇺🇿|UZS|soʻm|12800|آسيا
+KG|قيرغيزستان|🇰🇬|KGS|с|86|آسيا
+TJ|طاجيكستان|🇹🇯|TJS|SM|10.9|آسيا
+TM|تركمانستان|🇹🇲|TMT|m|3.50|آسيا
+AF|أفغانستان|🇦🇫|AFN|؋|68|آسيا
+ZA|جنوب أفريقيا|🇿🇦|ZAR|R|17.8|أفريقيا
+NG|نيجيريا|🇳🇬|NGN|₦|1650|أفريقيا
+KE|كينيا|🇰🇪|KES|KSh|129|أفريقيا
+GH|غانا|🇬🇭|GHS|₵|15.8|أفريقيا
+TZ|تنزانيا|🇹🇿|TZS|TSh|2700|أفريقيا
+UG|أوغندا|🇺🇬|UGX|USh|3680|أفريقيا
+ET|إثيوبيا|🇪🇹|ETB|Br|123|أفريقيا
+RW|رواندا|🇷🇼|RWF|FRw|1370|أفريقيا
+ZM|زامبيا|🇿🇲|ZMW|ZK|27.2|أفريقيا
+AO|أنغولا|🇦🇴|AOA|Kz|912|أفريقيا
+MZ|موزمبيق|🇲🇿|MZN|MT|63.9|أفريقيا
+BW|بوتسوانا|🇧🇼|BWP|P|13.6|أفريقيا
+NA|ناميبيا|🇳🇦|NAD|N$|17.8|أفريقيا
+MU|موريشيوس|🇲🇺|MUR|Rs|46.5|أفريقيا
+SN|السنغال|🇸🇳|XOF|CFA|604|أفريقيا
+CI|ساحل العاج|🇨🇮|XOF|CFA|604|أفريقيا
+ML|مالي|🇲🇱|XOF|CFA|604|أفريقيا
+BF|بوركينا فاسو|🇧🇫|XOF|CFA|604|أفريقيا
+NE|النيجر|🇳🇪|XOF|CFA|604|أفريقيا
+BJ|بنين|🇧🇯|XOF|CFA|604|أفريقيا
+TG|توغو|🇹🇬|XOF|CFA|604|أفريقيا
+GN|غينيا|🇬🇳|GNF|FG|8600|أفريقيا
+CM|الكاميرون|🇨🇲|XAF|FCFA|604|أفريقيا
+GA|الغابون|🇬🇦|XAF|FCFA|604|أفريقيا
+TD|تشاد|🇹🇩|XAF|FCFA|604|أفريقيا
+CG|الكونغو|🇨🇬|XAF|FCFA|604|أفريقيا
+CD|الكونغو الديمقراطية|🇨🇩|CDF|FC|2850|أفريقيا
+CV|الرأس الأخضر|🇨🇻|CVE|Esc|101|أفريقيا
+MW|مالاوي|🇲🇼|MWK|MK|1740|أفريقيا
+MG|مدغشقر|🇲🇬|MGA|Ar|4600|أفريقيا
+ZW|زيمبابوي|🇿🇼|USD|$|1|أفريقيا
+SC|سيشل|🇸🇨|SCR|₨|14.5|أفريقيا
+GM|غامبيا|🇬🇲|GMD|D|71|أفريقيا
+SL|سيراليون|🇸🇱|SLE|Le|22.7|أفريقيا
+LR|ليبيريا|🇱🇷|LRD|L$|190|أفريقيا
+BI|بوروندي|🇧🇮|BIF|FBu|2950|أفريقيا
+SS|جنوب السودان|🇸🇸|SSP|£|3800|أفريقيا
+SZ|إسواتيني|🇸🇿|SZL|E|17.8|أفريقيا
+LS|ليسوتو|🇱🇸|LSL|L|17.8|أفريقيا
+AU|أستراليا|🇦🇺|AUD|A$|1.53|أوقيانوسيا
+NZ|نيوزيلندا|🇳🇿|NZD|NZ$|1.68|أوقيانوسيا
+FJ|فيجي|🇫🇯|FJD|FJ$|2.26|أوقيانوسيا
+PG|بابوا غينيا الجديدة|🇵🇬|PGK|K|3.95|أوقيانوسيا
+NC|كاليدونيا الجديدة|🇳🇨|XPF|F|110|أوقيانوسيا
+`;
+
+const L = RAW.trim().split('\n').map(s=>{
+  const p = s.split('|');
+  return {c:p[0], n:p[1], f:p[2], cc:p[3], sy:p[4], r:parseFloat(p[5]), g:p[6]};
+});
+
+const STEPS=[0.01,0.02,0.05,0.1,0.25,0.5,1,2.5,5,10,25,50,100,250,500,1000,2500,5000,10000,25000,50000,100000,250000,500000];
+
+function pretty(raw){
+  if(!(raw>0)) return 0;
+  for(let i=STEPS.length-1;i>=0;i--){
+    const s=STEPS[i];
+    const c=Math.ceil(raw/s)*s;
+    if(c>=raw-1e-9 && c/raw<=1.045) return Math.round(c*1e6)/1e6;
+  }
+  return Math.ceil(raw*100)/100;
+}
+function fnum(v){
+  let d=0;
+  if(Math.abs(v-Math.round(v))>1e-9) d = Math.abs(v*10-Math.round(v*10))>1e-9 ? 2 : 1;
+  return v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+}
+function loc(usd,C){ return fnum(pretty(usd*C.r)) + ' ' + C.sy; }
+
+let C = L[0];
+
+function render(){
+  document.querySelectorAll('.num[data-usd]').forEach(e=>{
+    e.textContent = fnum(pretty(parseFloat(e.dataset.usd)*C.r));
+  });
+  document.querySelectorAll('.pn[data-usd]').forEach(e=>{
+    e.textContent = fnum(pretty(parseFloat(e.dataset.usd)*C.r));
+  });
+  document.querySelectorAll('.cursym').forEach(e=>{ e.textContent = C.sy; });
+  document.querySelectorAll('.per[data-per]').forEach(e=>{
+    const u = parseFloat(e.dataset.usd);
+    e.textContent = (C.cc==='USD' || !u) ? e.dataset.per : e.dataset.per + ' · ما يعادل ' + u + ' $';
+  });
+  document.querySelectorAll('.loc[data-usd]').forEach(e=>{
+    e.textContent = loc(parseFloat(e.dataset.usd), C);
+  });
+  document.getElementById('colcur').textContent = 'ما يعادلها بـ' + C.sy;
+  document.getElementById('cbadge').textContent = C.cc + ' · 1 $ = ' + fnum(C.r) + ' ' + C.sy;
+}
+
+// منتقي الدولة
+const sel = document.getElementById('sel');
+const groups = [...new Set(L.map(x=>x.g))];
+groups.forEach(g=>{
+  const og = document.createElement('optgroup'); og.label = g;
+  L.filter(x=>x.g===g).forEach(x=>{
+    const o = document.createElement('option');
+    o.value = x.c; o.textContent = x.f + '  ' + x.n + ' — ' + x.cc;
+    og.appendChild(o);
+  });
+  sel.appendChild(og);
+});
+sel.onchange = ()=>{ C = L.find(x=>x.c===sel.value) || L[0]; render(); };
+
+// كشف تلقائي
+(function(){
+  let code='AE';
+  try{
+    const lang = navigator.language || '';
+    const m = lang.match(/[-_]([A-Z]{2})$/i);
+    if(m && L.find(x=>x.c===m[1].toUpperCase())) code = m[1].toUpperCase();
+  }catch(e){}
+  sel.value = code; C = L.find(x=>x.c===code) || L[0];
+})();
+render();
+
+// جدول كل الدول
+const tb = document.querySelector('#t1 tbody');
+document.getElementById('cnt1').textContent = L.length + ' دولة · ' + new Set(L.map(x=>x.cc)).size + ' عملة';
+function buildTable(filter){
+  const f = (filter||'').trim().toLowerCase();
+  tb.innerHTML = '';
+  L.filter(x=> !f || x.n.toLowerCase().includes(f) || x.cc.toLowerCase().includes(f) || x.c.toLowerCase()===f)
+   .forEach(x=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td><span class="flag">'+x.f+'</span>'+x.n+'</td>'
+      + '<td class="c">'+x.cc+'</td>'
+      + '<td>'+loc(10,x)+'</td>'
+      + '<td class="g">'+loc(20,x)+'</td>'
+      + '<td>'+loc(100,x)+'</td>'
+      + '<td class="c">'+loc(10,x)+'</td>';
+    tb.appendChild(tr);
+  });
+}
+buildTable('');
+document.getElementById('q1').oninput = e=>buildTable(e.target.value);
+
+document.getElementById('tg1').onclick = ()=>document.getElementById('pb1').classList.toggle('open');
+
+// مزامنة الارتفاع إذا عُرضت الصفحة داخل إطار
+function syncH(){ try{ if(window.frameElement) window.frameElement.style.height=(document.documentElement.scrollHeight+8)+'px'; }catch(e){} }
+try{ new ResizeObserver(syncH).observe(document.body); }catch(e){}
+window.addEventListener('load',syncH); document.addEventListener('click',()=>setTimeout(syncH,60)); syncH();
+</script>
+</body>
+</html>
