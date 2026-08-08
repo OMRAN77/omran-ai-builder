@@ -22,6 +22,7 @@ function load(action) {
     case 'portrait-style': return require('./_lib/portrait-style.js');
     case 'analyze-zip': return require('./_lib/analyze-zip.js');
     case 'stocks': return require('./_lib/stocks.js');
+    case 'adchat': return require('./_lib/adchat.js');
     default: return null;
   }
 }
