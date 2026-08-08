@@ -3479,7 +3479,7 @@ function renderQuickChips(){
     });
   wrap.innerHTML = order.map(i => {
     const s = QUICK_SUGGESTIONS[i];
-    return `<button type="button" class="btn quickChip" data-idx="${i}" style="display:block; width:100%; text-align:right; background:none; border:none; box-shadow:none; font-size:13px; padding:5px 8px; min-height:0; line-height:1.4;">${s[lang] || s.en}</button>`;
+    return `<button type="button" class="btn quickChip" data-idx="${i}" style="display:block; width:100%; text-align:right; background:none; border:none; box-shadow:none; color:#e8ecf5; font-size:13px; padding:5px 8px; min-height:0; line-height:1.4;">${s[lang] || s.en}</button>`;
   }).join('');
   wrap.querySelectorAll('.quickChip').forEach(btn => {
     btn.onclick = () => {
