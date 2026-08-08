@@ -1325,7 +1325,10 @@ function buildSpokenWordSpans(container, text){
       // كان يسقط من الالتقاط فيخرج نصًّا يُنسخ باليد. نفصل البادئة، ونوسّع
       // اللاحقة لتشمل : » " ' ] التي تلتصق بنهايات الروابط في النصّ العربي.
       let __lead = '';
-      const __leadM = display.match(/^[(«"'\[]+(?=(?:\[|https?:\/\/|www\.))/);
+      // v476: «[نص](رابط)» كان يبدأ بـ"[" فتقتطعه بادئةُ v467 فينكسر الماركداون
+      // ويظهر «النص](الرابط)» ملتصقًا. نتخطّى الاقتطاع متى كان التوكن رابطَ ماركداون.
+      const __isMd = /^\[[^\]]+\]\(https?:\/\/[^\s)]+\)/.test(display);
+      const __leadM = __isMd ? null : display.match(/^[(«"'\[]+(?=(?:\[|https?:\/\/|www\.))/);
       if(__leadM){ __lead = __leadM[0]; display = display.slice(__lead.length); }
       const linkM = display.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)([.,،؛:!؟)»"'\]]*)$/);
       const urlM = !linkM && display.match(/^(https?:\/\/[^\s<>"']{4,}|www\.[^\s<>"']{4,})([.,،؛:!؟)»"'\]]*)$/);
@@ -1336,7 +1339,8 @@ function buildSpokenWordSpans(container, text){
         const a = document.createElement('a');
         a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
         a.textContent = linkM ? linkM[1] : rawUrl;
-        a.style.cssText = 'color:var(--accent2); text-decoration:underline; word-break:break-all;';
+        a.setAttribute('dir', 'auto'); // v476 bidi
+        a.style.cssText = 'color:var(--accent2); text-decoration:underline; word-break:break-all; unicode-bidi:isolate;';
         span.appendChild(a);
         const trail = linkM ? linkM[3] : urlM[2];
         if(trail) span.appendChild(document.createTextNode(trail));
@@ -1351,6 +1355,31 @@ function buildSpokenWordSpans(container, text){
     lastIndex = m.index + m[0].length;
   }
   if(lastIndex < text.length) container.appendChild(document.createTextNode(text.slice(lastIndex)));
+  // v476: عزل الاتجاه — «(+9714) 708 1111» داخل جملة عربية كان يُعرض معكوسًا
+  // لأن المسافات بين الأرقام تتبع اتجاه الفقرة. نلفّ كل تتابع لاتيني/رقمي
+  // متجاور في غلاف dir=ltr معزول. لا يغيّر عدد spans فمحاذاة TTS تبقى سليمة.
+  try{
+    const __RTL = /[\u0600-\u08ff\ufb50-\ufeff]/, __LTR = /[0-9A-Za-z]/;
+    const __GLUE = /^[\s\u00a0()\[\]{}.,:;+\-\/\\#*'"]*$/;
+    let __run = [];
+    const __flush = () => {
+      if(__run.length > 2){
+        const w = document.createElement('span');
+        w.setAttribute('dir', 'ltr');
+        w.style.unicodeBidi = 'isolate';
+        container.insertBefore(w, __run[0]);
+        __run.forEach(n => w.appendChild(n));
+      }
+      __run = [];
+    };
+    for(const n of Array.from(container.childNodes)){
+      const t = n.textContent || '';
+      if(__RTL.test(t) || (n.nodeType === 1 && n.className === 'chat-codeblock')) __flush();
+      else if(__LTR.test(t) || (__run.length && __GLUE.test(t))) __run.push(n);
+      else __flush();
+    }
+    __flush();
+  }catch(e){ __swallow(e, 'bidi:isolate'); }
   return wordEls;
 }
 function wordStartOffsets(text){
@@ -8864,7 +8893,7 @@ window.postWithConfirm = postWithConfirm;
 // listening again until the user ends the call.
 // Base prompt template: {{NAME}} and {{GENDER_DESC}} are filled in at call
 // time based on the detected caller gender, so a male caller gets the
-// "Male voice" male persona/voice and a female caller gets the "Maha" female
+// "Abdullah" male persona/voice and a female caller gets the "Maha" female
 // persona/voice - same personality and rules either way, just the name and
 // gender framing change.
 const MAHA_SYSTEM_PROMPT_TEMPLATE = "You are \"{{NAME}}\", a warm, witty, upbeat {{GENDER_DESC}} voice assistant having a live spoken phone call with the user - like a close, caring friend, never a formal robotic assistant. CRITICAL RULES: 1) Detect the language the user just spoke in (it can be ANY language in the world, not just Arabic or English) and ALWAYS reply in that exact same language. 2) If the user speaks Arabic, ALWAYS reply in natural, warm Khaleeji (Gulf) spoken dialect (never Modern Standard Arabic/Fus-ha) unless the user is clearly speaking a different Arabic dialect (e.g. Egyptian), in which case match their dialect naturally. 3) Never mix languages in a reply. 4) Keep replies VERY short and snappy, like a real quick back-and-forth phone chat: 1-2 short sentences, almost never more, unless the user explicitly asks for details or a list/recipe/steps. 5) Never use markdown, asterisks, headings, bullet points, emojis, or any symbols meant for reading on screen - your reply is spoken out loud only, plain natural speech. 6) You can chat about absolutely anything: news, general knowledge, advice, casual talk, jokes, banter. If unsure about very recent events, say so naturally and briefly. 7) Be lively and human: light humor, warmth, natural reactions - never stiff or overly formal. 8) STAY STRICTLY ON TOPIC: answer ONLY what the user actually asked about. Never drift into unrelated subjects like news, songs, sports, or recipes unless the user explicitly asked about that specific subject in their current or immediately preceding message. 9) For religious, factual, or sensitive topics (e.g. Quran, Islam, science, history), be extra precise and accurate, double-check your reasoning silently before answering, and if you are not fully certain, say so briefly instead of guessing or improvising. 10) Always use the full conversation history provided to understand context, but never let earlier topics leak into your answer to a new, different question. 11) NEVER think out loud and NEVER reveal your internal reasoning, uncertainty process, or self-questioning in your reply (e.g. never say things like 'does the user mean X or Y', 'is it possible that...', 'let me consider...'). If the transcript is unclear, garbled, or a word/name is ambiguous (e.g. a mis-heard city or place name), just ask ONE short, natural, casual clarifying question in the same language/dialect the user is speaking - nothing else, no meta-commentary. 12) Your entire reply must be 100% in a single language and a single dialect from start to finish, with absolutely zero words, phrases, or fragments from any other language mixed in, even mid-sentence.";
@@ -9059,28 +9088,14 @@ function mahaAutoCorrelate(buf, sampleRate){
 // pitch samples collected while they were speaking. Defaults to 'female'
 // (Maha's own natural voice) until enough real samples come in.
 let mahaDetectedGender = 'female';
-let mahaSelectedVoice = 'female';
-try { mahaSelectedVoice = localStorage.getItem('mahaVoiceGender') || 'female'; } catch(e) {}
 // Updates the on-screen call card name/icon to match the currently detected
-// caller gender: "مها" (female, 💁‍♀️) or "صوت ذكر" (male, 🧔).
+// caller gender: "مها" (female, 💁‍♀️) or "عبدالله" (male, 🧔).
 function mahaUpdatePersonaUI(){
   const nameEl = document.getElementById('mahaCallNameLabel');
   const orbEl = document.getElementById('mahaOrb');
   const isMale = mahaDetectedGender === 'male';
-  if(nameEl) nameEl.textContent = isMale ? 'صوت ذكر' : 'مها';
+  if(nameEl) nameEl.textContent = isMale ? 'عبدالله' : 'مها';
   if(orbEl) orbEl.textContent = isMale ? '🧔' : '💁\u200d♀️';
-}
-function mahaSetVoiceGender(g) {
-  mahaSelectedVoice = g;
-  try { localStorage.setItem('mahaVoiceGender', g); } catch(e) {}
-  const nameEl = document.getElementById('mahaCallNameLabel');
-  const orbEl = document.getElementById('mahaOrb');
-  if(nameEl && mahaCallMode !== 'builder') nameEl.textContent = g === 'male' ? 'صوت ذكر' : 'مها';
-  if(orbEl && mahaCallMode !== 'builder') orbEl.textContent = g === 'male' ? '🧔' : '💁\u200d♀️';
-  const btnF = document.getElementById('mahaVoiceFemale');
-  const btnM = document.getElementById('mahaVoiceMale');
-  if(btnF) btnF.style.background = g === 'female' ? 'rgba(168,85,247,.45)' : 'rgba(255,255,255,.1)';
-  if(btnM) btnM.style.background = g === 'male' ? 'rgba(59,130,246,.45)' : 'rgba(255,255,255,.1)';
 }
 // All pitch samples collected across the *entire* call (not reset per turn).
 // A single noisy turn (background sound, echo, weak mic) can produce a wrong
@@ -9165,7 +9180,7 @@ async function mahaSpeak(text){
       const resp = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaSelectedVoice, lang: mahaReplyLang })
+        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang })
       });
       if(!resp.ok){ resolve(); return; }
       const blob = await resp.blob();
@@ -9770,7 +9785,6 @@ async function mahaStartRealtimeCall(){
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       mode: mahaCallMode,
       desktop: !document.documentElement.classList.contains('mobile-ui'),
-      voiceGender: mahaSelectedVoice,
     }),
   });
   const tokenData = await tokenRes.json().catch(() => ({}));
@@ -10279,11 +10293,11 @@ async function mahaCallLoop(){
       const mahaDateSystemMsg = `The current real-world date and time right now is: ${mahaNowStr} (Gulf Standard Time, UAE). Always treat this as the true current date - never assume any other date, and never assume events after this date "haven't happened yet" just because you are unsure; if something is dated on or before this date, treat it as already having happened, and answer using your best knowledge plus common sense reasoning about the timeline. If truly asked about something very recent you can't know for certain, say so briefly instead of guessing wrong.`;
 
       const mahaSearchSystemMsg = await mahaMaybeSearch(transcript);
-      // Persona swap: male caller -> "Male voice" (male voice/persona), female
+      // Persona swap: male caller -> "Abdullah" (male voice/persona), female
       // caller -> "Maha" (female voice/persona). mahaDetectedGender is the
       // accumulated pitch-based detection from the caller's own voice.
-      const mahaPersonaName = mahaSelectedVoice === 'male' ? 'Male voice' : 'Maha';
-      const mahaPersonaGenderDesc = mahaSelectedVoice === 'male' ? 'male' : 'female';
+      const mahaPersonaName = mahaDetectedGender === 'male' ? 'Abdullah' : 'Maha';
+      const mahaPersonaGenderDesc = mahaDetectedGender === 'male' ? 'male' : 'female';
       const mahaSystemPrompt = MAHA_SYSTEM_PROMPT_TEMPLATE
         .replace(/\{\{NAME\}\}/g, mahaPersonaName)
         .replace(/\{\{GENDER_DESC\}\}/g, mahaPersonaGenderDesc);
@@ -10410,17 +10424,14 @@ async function mahaStartCall(mode){
   mahaHistory = [];
   mahaAllPitchSamples = [];
   mahaDetectedGender = 'female';
-  mahaSetVoiceGender(mahaSelectedVoice);
   mahaIntroduced = false;
   // ملاحظة: لا نمسح مرجع الصورة الأخيرة هنا — يبقى ثابت حتى يبدأ المستخدم "+ مشروع جديد" فعليًا
   const mahaImgElStart = document.getElementById('mahaGenImage');
   if(mahaImgElStart && !mahaLastImageBase64){ mahaImgElStart.style.display = 'none'; mahaImgElStart.src = ''; }
   if(mahaOrbEl) mahaOrbEl.style.display = mahaCallMode === 'builder' ? 'none' : 'flex';
   if(mahaWaveEl) mahaWaveEl.style.display = mahaCallMode === 'builder' ? 'flex' : 'none';
-  const mahaVoiceToggleEl = document.getElementById('mahaVoiceToggle');
-  if(mahaVoiceToggleEl) mahaVoiceToggleEl.style.display = mahaCallMode === 'builder' ? 'none' : 'flex';
   const mahaNameLabelEl = document.getElementById('mahaCallNameLabel');
-  if(mahaNameLabelEl) mahaNameLabelEl.textContent = mahaCallMode === 'builder' ? (t('voiceTabAssistantName') || 'المساعد') : (mahaSelectedVoice === 'male' ? 'صوت ذكر' : 'مها');
+  if(mahaNameLabelEl) mahaNameLabelEl.textContent = mahaCallMode === 'builder' ? (t('voiceTabAssistantName') || 'المساعد') : 'مها';
   if(mahaCallMode !== 'builder') mahaUpdatePersonaUI();
   mahaCallActive = true;
   if(mahaCallScreenEl){
