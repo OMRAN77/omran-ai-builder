@@ -7601,6 +7601,27 @@ function extractReplyRaw(text){
       return { code, explanation, codeType: 'html' };
     }
   }
+  // 🩹 v490: مقطع كود بلا سياج ولا <html> (يبدأ بـ<div>/<style>/<script>…).
+  // بدونه كان يُمسح من فقاعة المحادثة (stripCodeFromChat) ولا يصل المعاينة أبدًا
+  // = فجوة بيضاء صامتة. نلتقطه ونلفّه في مستند كامل ليُعرض.
+  const fragM = text.match(/^[ \t]*<(div|style|script|body|canvas|section|main|form|svg|table|nav|header|article)[\s>]/im);
+  if(fragM){
+    const start = fragM.index + fragM[0].indexOf('<');
+    let end = -1;
+    ['div','style','script','body','canvas','section','main','form','svg','table','nav','header','article'].forEach(function(tg){
+      const j = text.lastIndexOf('</' + tg + '>');
+      if(j !== -1 && j + tg.length + 3 > end) end = j + tg.length + 3;
+    });
+    if(end <= start) end = text.length;
+    let code = text.slice(start, end).trim();
+    if(code.length > 200 && /<\/[a-z]+>/i.test(code)){
+      const explanation = (text.slice(0, start) + '\n' + text.slice(end)).trim();
+      if(!/<html[\s>]|<!doctype/i.test(code)){
+        code = '<!doctype html>\n<html lang="ar">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n</head>\n<body>\n' + code + '\n</body>\n</html>';
+      }
+      return { code: code, explanation: explanation, codeType: 'html' };
+    }
+  }
   return { code: '', explanation: text.trim(), codeType: '' };
 }
 
@@ -11631,6 +11652,10 @@ async function __agentApplyResult(cur, full){
       if(chatText) chatText += '\n\n' + (lang === 'ar' ? '⚠️ يبدو أن الكود انقطع قبل اكتماله — اكتب "كمل الكود" وسأكمله.' : '⚠️ The code seems truncated — type "continue" and I will finish it.');
     } else {
       chatText = stripCodeFromChat(full).trim();
+      // ⚠️ v490: مسار الوكيل كان صامتًا — كود مُلغى/محذوف ⇒ رسالة صريحة بدل معاينة فارغة.
+      if(/```|<\/[a-z]+>|<!doctype|<html[\s>]/i.test(full || '')){
+        chatText = (chatText ? chatText + '\n\n' : '') + t('buildNoCode');
+      }
     }
   }
   if(!chatText) chatText = codeProducedThisTurn
