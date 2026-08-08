@@ -2315,6 +2315,7 @@ const I18N = {
     imagesAttachedNote: 'مرفقات',
     building: 'جارٍ البناء...',
     buildSuccess: 'تم إنشاء/تحديث التطبيق بنجاح ✅ يمكنك معاينته من تبويب "المعاينة".',
+    buildNoCode: '⚠️ لم يصل كود من المزوّد — المعاينة فارغة. أعد إرسال الطلب أو جرّب مزوّدًا آخر.',
     selfHealing: '🔧 اكتشفت أخطاء في الكود... جاري الإصلاح الذاتي',
     noCodeToDownload: 'لا يوجد كود لتنزيله بعد.',
     geminiApiKeyLabel: 'مفتاح API — Google Gemini',
@@ -2762,6 +2763,7 @@ const I18N = {
     imagePurgedNote: 'Image auto-removed to save space',
     building: 'Building...',
     buildSuccess: 'App created/updated successfully ✅ You can preview it in the "Preview" tab.',
+    buildNoCode: '⚠️ No code came back from the provider — the preview is empty. Send the request again or try another provider.',
     selfHealing: '🔧 Errors detected in the code... self-healing in progress',
     noCodeToDownload: 'No code to download yet.',
     runPythonBtn: '▶️ Run code',
@@ -12810,6 +12812,7 @@ async function sendPrompt(){
       }, 2000);
       const finalizeOne = (msg) => {
         msg._loading = false;
+        if(isBuildTask && !__gateNoBuild && !msg.code && !msg._failed && !msg._noCode){ msg._noCode = 1; msg.content = (msg.content ? msg.content + '\n\n' : '') + t('buildNoCode'); }
         try{ __updatePrepCounter(); }catch(e){ __swallow(e, "misc:app-09-attach#21"); }
         const st = revealStates.get(msg._uid);
         if(st){
