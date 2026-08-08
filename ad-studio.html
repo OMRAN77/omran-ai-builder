@@ -454,10 +454,12 @@ async function turn(text){
   }
   HIST.push({role:'assistant',content:out});
 
-  const m=out.match(/@@AD\s*(\{[\s\S]*\})/);
-  let visible=out.replace(/@@AD[\s\S]*$/,'').trim();
-  if(m){
-    try{ applyAd(JSON.parse(m[1])); }catch(e){ if(!S.cat) S.cat=detect(text)||'other'; }
+  const raw=out.replace(/```+[a-zA-Z]*\n?/g,'');       // اسحب أسوار الكود إن أضافها النموذج
+  const m=raw.match(/@@AD\s*(\{[\s\S]*\})/);
+  const b=m||raw.match(/(\{[\s\S]*?"(?:cat|title)"\s*:[\s\S]*\})/); // JSON عارٍ بلا علامة @@AD
+  let visible=(m?raw.replace(/@@AD[\s\S]*$/,''):(b?raw.replace(b[0],''):raw)).trim();
+  if(b){
+    try{ applyAd(JSON.parse(b[1])); }catch(e){ if(!S.cat) S.cat=detect(text)||'other'; }
     if(visible) push('a',fmtA(visible));
     askPhoto(); return;
   }
