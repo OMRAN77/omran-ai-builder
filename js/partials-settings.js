@@ -314,10 +314,10 @@
   .pcard .pbtn.primary{background:#c9a227; border-color:#c9a227; color:#0a0a0a;}
   .pcard .pbtn.ghost{opacity:.45; cursor:default;}
   </style>
-  <div class="planGrid">
+  <div id="setCurBox" style="display:flex; align-items:center; gap:8px; margin:0 0 12px;"><span style="font-size:12.5px; color:var(--muted); flex:0 0 auto;">العملة</span><select id="setCurSel" aria-label="اختر الدولة" style="flex:1 1 auto; min-width:0; padding:8px 10px; border-radius:10px; border:1px solid var(--line,rgba(128,128,128,.22)); background:var(--panel2); color:var(--text); font-family:inherit; font-size:13px;"></select></div><div class="planGrid">
     <div class="pcard">
       <div class="pname" data-i18n="pricingFreeTitle">مجاني</div>
-      <div class="pprice"><span class="pnum">0</span><span class="pcur">$</span></div>
+      <div class="pprice"><span class="pnum" data-usd="0">0</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planFreePer">للتجربة</div>
       <div class="ppts"><b>70</b><span data-i18n="planPtsFree">نقطة ترحيب — مرّة واحدة</span></div>
       <ul data-i18n="planFreeFeats"><li>20 رسالة يوميًا</li><li>دقيقة واحدة محادثة صوتية</li><li>3 صور بالذكاء الاصطناعي</li><li class="off">بلا فيديو</li></ul>
@@ -325,7 +325,7 @@
     </div>
     <div class="pcard">
       <div class="pname">Plus</div>
-      <div class="pprice"><span class="pnum">10</span><span class="pcur">$</span></div>
+      <div class="pprice"><span class="pnum" data-usd="10">10</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
       <div class="ppts"><b>300</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
       <ul data-i18n="planPlusFeats"><li>300 رسالة شهريًا</li><li>30 دقيقة محادثة صوتية</li><li>15 صورة</li><li>5 مقاطع فيديو</li></ul>
@@ -333,7 +333,7 @@
     </div>
     <div class="pcard feat"><span class="ptag" data-i18n="planTag">الأكثر اختيارًا</span>
       <div class="pname">Pro</div>
-      <div class="pprice"><span class="pnum">20</span><span class="pcur">$</span></div>
+      <div class="pprice"><span class="pnum" data-usd="20">20</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
       <div class="ppts"><b>800</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
       <ul data-i18n="planProFeats"><li>رسائل بلا حدود</li><li>80 دقيقة محادثة صوتية</li><li>40 صورة · 13 فيديو · 2 سينمائي</li><li>الوكيل الذكي</li><li>أولوية في السرعة · شارة ذهبية</li></ul>
@@ -341,7 +341,7 @@
     </div>
     <div class="pcard">
       <div class="pname">Max</div>
-      <div class="pprice"><span class="pnum">100</span><span class="pcur">$</span></div>
+      <div class="pprice"><span class="pnum" data-usd="100">100</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
       <div class="ppts"><b>5,000</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
       <ul data-i18n="planMaxFeats"><li>كل مزايا Pro</li><li>500 دقيقة محادثة صوتية</li><li>250 صورة · 83 فيديو · 12 سينمائي</li><li>دعم مخصّص</li></ul>
@@ -352,10 +352,10 @@
     <div style="font-weight: var(--w-bold); font-size: var(--fs-3);" data-i18n="pricingPointsTitle">باقات النقاط</div>
     <div style="font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.6;" data-i18n="pricingPointsDesc">النقاط عملة موحدة — تُصرف على مها الصوتية والفيديو والصور، بدون اشتراك. مها: 10 نقاط/دقيقة • فيديو: 60 • Veo 3: ‏400 • صورة: 10</div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;">
-      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(100)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">100</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);">$4.99</span></button>
-      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(300)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">300</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);">$12.99</span></button>
-      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(700)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">700</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);">$24.99</span></button>
-      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(900)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">900</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);">$34.99</span></button>
+      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(100)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">100</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);"><span class="pn" data-usd="4.99">4.99</span> <span class="cursym">$</span></span></button>
+      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(300)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">300</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);"><span class="pn" data-usd="12.99">12.99</span> <span class="cursym">$</span></span></button>
+      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(700)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">700</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);"><span class="pn" data-usd="24.99">24.99</span> <span class="cursym">$</span></span></button>
+      <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(900)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">900</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);"><span class="pn" data-usd="34.99">34.99</span> <span class="cursym">$</span></span></button>
     </div>
   </div>
   <small class="hint" style="display:block; margin-top:10px;" data-i18n="pricingTestNote">🧪 وضع تجريبي حاليًا — سيتم التفعيل الكامل عند الحصول على الرخصة التجارية</small>
@@ -531,9 +531,41 @@
     </div>
   </div>
 </dialog>`;
-  if (document.readyState === 'loading') { document.write(H); return; }
+  // — توحيد العملة: يحمّل المحرّك المشترك ويركّبه على شاشة الباقات —
+  function __mountCur() {
+    function go() {
+      var root = document.getElementById('settingsDialog');
+      var sel = document.getElementById('setCurSel');
+      if (root && sel && window.OmranCur) { try { window.OmranCur.mount(root, sel); } catch (e) {} } // guard-ok: تعثّر منتقي العملة يجب ألّا يُسقط شاشة الإعدادات كلّها
+    }
+    function loadCur() {
+      if (window.OmranCur) { go(); return; }
+      var sc = document.querySelector('script[data-omran-cur]');
+      if (!sc) {
+        sc = document.createElement('script');
+        sc.src = '/js/currency.js?v=2';
+        sc.charset = 'utf-8';
+        sc.setAttribute('data-omran-cur', '1');
+        sc.addEventListener('load', go);
+        document.head.appendChild(sc);
+      } else { sc.addEventListener('load', go); }
+    }
+    if (window.OmranGeo) { loadCur(); return; }
+    var g = document.querySelector('script[data-omran-geo]');
+    if (!g) {
+      g = document.createElement('script');
+      g.src = '/js/geo.js?v=1';
+      g.charset = 'utf-8';
+      g.setAttribute('data-omran-geo', '1');
+      g.addEventListener('load', loadCur);
+      g.addEventListener('error', loadCur);
+      document.head.appendChild(g);
+    } else { g.addEventListener('load', loadCur); }
+  }
+  if (document.readyState === 'loading') { document.write(H); __mountCur(); return; }
   var d = document.createElement('div'); d.innerHTML = H;
   var f = document.createDocumentFragment();
   while (d.firstChild) f.appendChild(d.firstChild);
   (S && S.parentNode ? S.parentNode : document.body).insertBefore(f, S || null);
+  __mountCur();
 })();
