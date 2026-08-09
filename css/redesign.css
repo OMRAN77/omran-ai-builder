@@ -214,8 +214,6 @@ html[data-mode="light"] #omModeBtn:hover{background:rgba(0,0,0,.05);}
 #plusToolsPopup .omModeItem .omModeIc{display:inline-block;width:20px;text-align:center;font-size:15px;line-height:1;}
 #plusToolsPopup .omModeSep{height:1px;background:rgba(0,0,0,.10);margin:6px 6px;}
 
-/* v533: إزالة تكرار — سطح المكتب فقط. العنصران يبقيان في DOM (تناديهما modes.js و ui-wiring.js) */
-@media (min-width:861px){
-  #omranBtnWeb{display:none !important;}
-  #btnNew{display:none !important;}
-}
+/* v534: إزالة تكرار — سطح المكتب والجوّال. العنصران يبقيان في DOM (تناديهما modes.js و ui-wiring.js) */
+#omranBtnWeb{display:none !important;}
+#btnNew{display:none !important;}
