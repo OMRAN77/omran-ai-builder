@@ -50,7 +50,7 @@
    * @param {Function} onDelta تُستدعى بالنصّ المتراكم كلّما وصلت قطعة.
    * @returns {{reply:string, providerKey:string, switched:boolean, requestedKey:string}}
    */
-  window.callChatWithTools = async function (messages, onDelta) {
+  window.callChatWithTools = async function (messages, onDelta, provider) {
     // صور هذا الردّ فقط: تُمسح عند كلّ طلب جديد فلا يتراكم عشرات الميغابايت في
     // الذاكرة، وحدّ الأربع يبقى حدَّ ردٍّ لا حدَّ جلسة. الكود المبنيّ يُستبدل فيه
     // الرمز فور وصوله، فلا يضرّه المسح لاحقًا.
@@ -61,6 +61,7 @@
       signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
       body: JSON.stringify({
         messages: messages,
+        provider: provider || 'claude',
         token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
         guestId: window.getGuestId ? window.getGuestId() : '',
       }),
@@ -100,12 +101,7 @@
 
     // لا نصّ = لم يحدث شيء يُعرض؛ نرمي ليهبط المستدعي إلى مساره القديم.
     if (!full.trim()) throw new Error(serverErr || 'chat: empty reply');
-    return { reply: full, providerKey: 'claude', switched: false, requestedKey: 'claude' };
+    var __p = provider || 'claude';
+    return { reply: full, providerKey: __p, switched: false, requestedKey: __p };
   };
-})();
-
-// v478: «استوديو الإعلانات» — صفحة مستقلّة (ad-studio.html). زرّ في مجموعة الإبداع.
-(function(){
-  var b=document.getElementById('btnAdStudio');
-  if(b) b.addEventListener('click', function(){ location.href='/ad-studio.html'; });
 })();

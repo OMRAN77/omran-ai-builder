@@ -66,6 +66,19 @@ const TOOLS_NOTE = '\n\n[أدواتك الحقيقية — خمس، وهي تع�
   '(ص٥) رقم بلا مصدر ممنوع. وإن لم يجد البحث المعلومة، قل ذلك صراحةً ولا تملأ الفراغ.\n' +
   '(ص٦) اسأل سؤالًا واحدًا في المرّة لا قائمة أسئلة. وتابع ما قاله المستخدم قبل قليل — ممنوع أن تعيد سؤاله عن شيء ذكره في هذه المحادثة.';
 
+// 🛠️ v528 — اليدان للجميع: نفس الحلقة ونفس الأدوات الخمس، ولا يتغيّر إلّا اسم
+// النموذج. البروتوكول (أحداث البثّ · tool_use · stop_reason) مُتحقَّق حيًّا على كلّ
+// نموذج أدناه في ٩ أغسطس ٢٠٢٦. cohere وperplexity غائبان عمدًا: لا يدعمان
+// الأدوات على هذا الطريق، فيبقيان على مسارهما القديم بلا كذب.
+const OR_MODELS = {
+  claude: 'anthropic/claude-opus-5',
+  openai: 'openai/gpt-5.6-terra',
+  gemini: 'google/gemini-3.5-flash',
+  deepseek: 'deepseek/deepseek-v3.2',
+  mistral: 'mistralai/mistral-medium-3-5',
+  groq: 'meta-llama/llama-4-maverick',
+};
+
 function nowNote() {
   const opts = { timeZone: 'Asia/Dubai', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true };
   let ar = '';
@@ -167,15 +180,24 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+  // كلود عبر OpenRouter: البروتوكول مطابق حرفيًّا (تحقّق حيّ ٩ أغسطس ٢٠٢٦) — نفس
+  // أحداث البثّ ونفس ترويسة x-api-key، فلا يتغيّر شيء تحت هذه السطور.
+  const viaOR = !!process.env.OPENROUTER_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) { res.status(500).json({ error: 'Server is missing OPENROUTER_API_KEY' }); return; }
+  const CHAT_URL = viaOR ? 'https://openrouter.ai/api/v1/messages' : 'https://api.anthropic.com/v1/messages';
+  // النموذج يُحسم بعد قراءة الجسم — المزوّد يأتي منه.
 
   let body = req.body;
   if (!body || typeof body === 'string') body = safeParse(body, {}, 'chat:body');
   const { messages, token, guestId } = body;
   if (!Array.isArray(messages) || !messages.length) { res.status(400).json({ error: 'Missing messages' }); return; }
 
-  const usage = await checkAndConsume(token, guestId, 'claude', clientIp(req));
+  const reqProv = String((body && body.provider) || '').toLowerCase();
+  const prov = Object.prototype.hasOwnProperty.call(OR_MODELS, reqProv) ? reqProv : 'claude';
+  const CHAT_MODEL = viaOR ? OR_MODELS[prov] : 'claude-sonnet-5';
+
+  const usage = await checkAndConsume(token, guestId, prov, clientIp(req));
   if (!usage.allowed) {
     if (usage.reason === 'auth') res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
     else res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + DAILY_LIMIT + ' رسالة). انتظر الغد أو اشترك.' });
@@ -213,10 +235,10 @@ module.exports = async (req, res) => {
       if (Date.now() - t0 > MAX_MS) { send({ status: '⏱️ انتهت مهلة الردّ.' }); break; }
       steps++;
 
-      const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+      const upstream = await fetch(CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 16000, system, messages: convo, tools: TOOLS, stream: true }),
+        body: JSON.stringify({ model: CHAT_MODEL, max_tokens: 16000, system, messages: convo, tools: TOOLS, stream: true }),
       });
 
       if (!upstream.ok) {
