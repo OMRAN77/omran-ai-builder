@@ -545,21 +545,6 @@
     </div>
     <p style="font-size:12.5px; color:var(--muted); margin-top:2px;" data-i18n="fashionAiDesc">اختر: ارفع صورة وغيّر الزي، أو اكتب وصف تصميم واتركه يبتكر صورة من الصفر. ميزة قيد التجربة بحد أقصى قليل يوميًا لكل حساب.</p>
 
-    <div style="margin-top:10px;">
-      <div class="lang-videos-ar">
-        <div style="font-weight:700; font-size:13px; margin-bottom:6px;" data-i18n="fashionAiVideoTitle">🎬 فيديو توضيحي: كيف تستخدم أزياء AI</div>
-        <video controls preload="none" playsinline style="width:100%; border-radius:var(--r-2); background:#000;">
-          <source src="https://6tfgxvttzyoiavtu.public.blob.vercel-storage.com/fashionai_ar-iiTJd8VUR9S0z9NRUK7pe3wkVjkCcO.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="lang-videos-en">
-        <div style="font-weight:700; font-size:13px; margin-bottom:6px;" data-i18n="fashionAiVideoTitle">🎬 Tutorial video: How to use Fashion AI</div>
-        <video controls preload="none" playsinline style="width:100%; border-radius:var(--r-2); background:#000;">
-          <source src="https://6tfgxvttzyoiavtu.public.blob.vercel-storage.com/fashionai_en-CqfaXd8EI9myXI1PLzC49bJIf41FmU.mp4" type="video/mp4">
-        </video>
-      </div>
-    </div>
-
     <div style="display:flex; gap:8px; margin-top:12px;">
       <button type="button" class="btn primary" id="fashionAiTabImage" style="flex:1;" data-i18n="fashionAiTabImage">📷 من صورة</button>
       <button type="button" class="btn" id="fashionAiTabText" style="flex:1;" data-i18n="fashionAiTabText">✍️ من وصف نصي</button>
