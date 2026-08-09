@@ -192,21 +192,6 @@
     </div>
     <p style="font-size:12.5px; color:var(--muted); margin-top:2px;" data-i18n="designAiDesc">ارفع صورة لغرفتك واختر نمط الديكور، وسيقوم الذكاء الاصطناعي بإعادة تصميمها. ميزة قيد التجربة بحد أقصى قليل يوميًا لكل حساب.</p>
 
-    <div style="margin-top:10px;">
-      <div class="lang-videos-ar">
-        <div style="font-weight:700; font-size:13px; margin-bottom:6px;" data-i18n="designAiVideoTitle">🎬 فيديو توضيحي: كيف تستخدم ديكور AI</div>
-        <video controls preload="none" playsinline style="width:100%; border-radius:var(--r-2); background:#000;">
-          <source src="https://6tfgxvttzyoiavtu.public.blob.vercel-storage.com/designai_ar-UODQG3FscwL48p86mtNRUclowYoca8.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="lang-videos-en">
-        <div style="font-weight:700; font-size:13px; margin-bottom:6px;" data-i18n="designAiVideoTitle">🎬 Tutorial video: How to use Decor AI</div>
-        <video controls preload="none" playsinline style="width:100%; border-radius:var(--r-2); background:#000;">
-          <source src="https://6tfgxvttzyoiavtu.public.blob.vercel-storage.com/designai_en-y9229rMvmrHH3wwLiZmoMrd4Fnx9c2.mp4" type="video/mp4">
-        </video>
-      </div>
-    </div>
-
     <input type="file" id="designAiFileInput" accept="image/*" style="display:none;">
     <div style="display:flex; align-items:center; gap:10px; margin-top:12px;">
       <button type="button" class="btn" id="designAiFileBtn" style="width:auto; white-space:nowrap;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
@@ -701,21 +686,6 @@
       <button type="button" class="btn iconBtn" id="studioAiCloseBtn" style="padding:4px 10px;">✕</button>
     </div>
     <p style="font-size:12.5px; color:var(--muted); margin-top:2px;" data-i18n="studioAiDesc">اختر ميزة، ارفع صورتك (أو صورتين للدمج)، واختر الخيار المناسب. ميزة قيد التجربة بحد أقصى قليل يوميًا لكل حساب.</p>
-
-    <div style="margin-top:10px;">
-      <div class="lang-videos-ar">
-        <div style="font-weight:700; font-size:13px; margin-bottom:6px;" data-i18n="studioAiVideoTitle">🎬 فيديو توضيحي: كيف تستخدم ستايل AI</div>
-        <video controls preload="none" playsinline style="width:100%; border-radius:var(--r-2); background:#000;">
-          <source src="https://6tfgxvttzyoiavtu.public.blob.vercel-storage.com/styleai_ar_v2.mp4" type="video/mp4">
-        </video>
-      </div>
-      <div class="lang-videos-en">
-        <div style="font-weight:700; font-size:13px; margin-bottom:6px;" data-i18n="studioAiVideoTitle">🎬 Tutorial video: How to use Style AI</div>
-        <video controls preload="none" playsinline style="width:100%; border-radius:var(--r-2); background:#000;">
-          <source src="https://6tfgxvttzyoiavtu.public.blob.vercel-storage.com/styleai_en-6XRhEu8MCNCUbS221LeQz1HQU4daq7.mp4" type="video/mp4">
-        </video>
-      </div>
-    </div>
 
     <div id="studioAiTabs" style="display:flex; gap:6px; overflow-x:auto; margin-top:12px; padding-bottom:4px;">
       <button type="button" class="btn studioAiTabBtn active" data-feature="hair" style="white-space:nowrap;" data-i18n="studioAiTabHair">💇 الشعر</button>
