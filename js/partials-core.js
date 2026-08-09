@@ -843,7 +843,6 @@
       <h3 style="margin:0;" data-i18n="religionModalTitle">🕌 التفسير الديني</h3>
       <button type="button" class="btn iconBtn" id="religionCloseBtn" style="padding:4px 10px;">✕</button>
     </div>
-    <p style="font-size:12px; color:#f0b90b; background:rgba(240,185,11,0.1); border:1px solid rgba(240,185,11,0.3); border-radius:var(--r-2); padding:8px 10px; margin-top:8px;" data-i18n="religionDisclaimer">⚠️ هذا اجتهاد ذكاء اصطناعي وليس فتوى شرعية أو حكمًا قطعيًا، يُرجى الرجوع لأهل العلم والمختصين.</p>
 
     <div id="religionTabs" style="display:flex; gap:6px; overflow-x:auto; margin-top:12px; padding-bottom:4px;">
       <button type="button" class="btn religionTabBtn active" data-tool="verse" style="white-space:nowrap;" data-i18n="religionTabVerse">🕌 تفسير آية</button>
@@ -872,7 +871,6 @@
       <h3 style="margin:0;" id="emailAssistHeaderTitle">📧 مساعد البريد الذكي</h3>
       <button type="button" class="btn iconBtn" id="emailAssistCloseBtn" style="padding:4px 10px;">✕</button>
     </div>
-    <p id="emailAssistDisclaimer" style="font-size:12px; color:#f0b90b; background:rgba(240,185,11,0.1); border:1px solid rgba(240,185,11,0.3); border-radius:var(--r-2); padding:8px 10px; margin-top:8px;">⚠️ لن يتم إرسال أي رد إلا بعد موافقتك الصريحة على كل رسالة.</p>
 
     <div id="emailAssistConnectBox" style="margin-top:16px; text-align:center;">
       <p id="emailAssistConnectText" style="font-size: var(--fs-3); color:var(--muted);">اربط حساب Gmail الخاص بك ليقرأ الذكاء الاصطناعي إيميلاتك ويقترح ردودًا جاهزة تعتمدها قبل الإرسال.</p>
