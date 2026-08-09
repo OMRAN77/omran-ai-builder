@@ -2299,9 +2299,10 @@ async function sendPrompt(){
       }
       if(providers.length > 1 && (usableAnswers.length >= 2 || (isBuildTask && usableAnswers.length === 1 && usableAnswers[0].code))){
         const mergeMsg = { role: 'assistant', content: '', providerLabel: '🧠 ' + t('mergedAnswerLabel'), code: null, _loading: true, _uid: ++askAllUidCounter, isMergeHeader: true, batchId: askAllBatchId, batchCount: usableAnswers.length,
-          // 🚫 v368: الصور والمصادر لم تعد تُعرض في المحادثة — مكانها المتصفح فقط.
-          sources: undefined,
-          searchImages: undefined };
+          // ✅ v535: عادت المصادر والصور إلى المحادثة. إطفاء v368 كان مؤقّتًا
+          // بانتظار «المتصفح» — وقد أُلغي المتصفح نهائيًّا، فلا سبب للإخفاء.
+          sources: (__searchData && __searchData.sources) || undefined,
+          searchImages: (__searchData && __searchData.images) || undefined };
         cur.messages.push(mergeMsg);
         renderMessages(true);
         // Only treat this as a code-merge (which would overwrite the live
@@ -2647,9 +2648,9 @@ async function sendPrompt(){
       void switched; void requestedKey;
       // v463: askAllReply=false — الردود العادية ما تدخل compare-row
       cur.messages.push({role: 'assistant', content: (code ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: code || null, providerLabel, providerKey, askAllReply: false,
-        // 🚫 v368: الصور والمصادر لم تعد تُعرض في المحادثة — مكانها المتصفح فقط.
-        sources: undefined,
-        searchImages: undefined});
+        // ✅ v535: عادت المصادر والصور إلى المحادثة (إلغاء إطفاء v368).
+        sources: (__searchData && __searchData.sources) || undefined,
+        searchImages: (__searchData && __searchData.images) || undefined});
       // 👑 الرد الاحترافي اكتمل: حدّث رصيد النقاط وأظهر خصمًا متحركًا صغيرًا.
       try{
         if(window.__premiumOn === true && typeof isPremiumProvider === 'function' && isPremiumProvider()){
