@@ -64,6 +64,101 @@ async function rerankResults(query, results, topN) {
   }
 }
 
+// v536: 📱 حسابات التواصل الاجتماعي على نفس موضوع البحث.
+// مُقاس حيًّا: Tavily يُرجع **صفر** نتيجة عند تقييده بـ include_domains على
+// منصّات التواصل، لكنه يُرجع الحسابات بدقّة حين تُذكر المنصّات داخل نص
+// الاستعلام. لذلك: استدعاء موازٍ مستقل + ترشيح بالمضيف + تفضيل صفحات
+// الحسابات على المنشورات المفردة. فشله لا يؤثّر على أي مصدر آخر.
+const SOCIAL_PLATFORMS = [
+  { host: 'instagram.com', name: 'إنستغرام', acct: /^\/([A-Za-z0-9._]{2,40})\/?$/ },
+  { host: 'tiktok.com',    name: 'تيك توك',  acct: /^\/(@[A-Za-z0-9._]{2,40})\/?$/ },
+  { host: 'x.com',         name: 'إكس',      acct: /^\/([A-Za-z0-9_]{2,15})\/?$/ },
+  { host: 'twitter.com',   name: 'إكس',      acct: /^\/([A-Za-z0-9_]{2,15})\/?$/ },
+  { host: 'youtube.com',   name: 'يوتيوب',   acct: /^\/(@[A-Za-z0-9._-]{2,40}|c\/[^/]+|channel\/[^/]+|user\/[^/]+)\/?$/ },
+  { host: 'facebook.com',  name: 'فيسبوك',   acct: /^\/([A-Za-z0-9.]{3,50})\/?$/ },
+  { host: 'snapchat.com',  name: 'سناب شات', acct: /^\/add\/([A-Za-z0-9._-]{2,40})\/?$/ },
+];
+
+// يلتقط روابط المنصّات من أي قائمة نتائج ويسمّيها بالعربي.
+function pickSocial(items) {
+    const out = [];
+    const seen = new Set();
+    (Array.isArray(items) ? items : []).forEach(it => {
+      let u;
+      try { u = new URL(it && it.url); } catch (e) { return; }
+      const host = u.hostname.replace(/^(www|m|mobile)\./, '');
+      const plat = SOCIAL_PLATFORMS.find(sp => host === sp.host || host.endsWith('.' + sp.host));
+      if (!plat) return;
+      const m = u.pathname.match(plat.acct);
+      const handle = m ? m[1].replace(/^(c|channel|user)\//, '') : '';
+      // مُقاس على الإنتاج: درجة Tavily تفصل بدقّة بين الصلة والضجيج
+      // (مطعم برجر «جدة» = 0.45 · حساب رسمي @AlWaslSC = 0.40). لذلك عتبتان.
+      const sc = (typeof it.score === 'number') ? it.score : null;
+      if (sc !== null && sc < (handle ? 0.38 : 0.50)) return;
+      const key = plat.name + '|' + (handle || u.pathname);
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push({
+        platform: plat.name,
+        isAccount: !!handle,
+        url: it.url,
+        score: (typeof it.score === 'number' ? it.score : null),
+        title: plat.name + ' · ' + (
+          // معرّف قناة يوتيوب الخام (UC…) ليس اسمًا يُعرض؛ نرجع لعنوان الصفحة.
+          (handle && !/^UC[A-Za-z0-9_-]{16,}$/.test(handle))
+            ? (handle.charAt(0) === '@' ? handle : '@' + handle)
+            : (((it.title || '').replace(/\s*[|\-–—]\s*(YouTube|Instagram|TikTok|Facebook|X)\s*$/i, '').trim() || 'منشور').slice(0, 34))
+        ),
+      });
+    });
+    return out;
+}
+
+// v536b: مُقاس — إلحاق كلمات المنصّات باستعلام يذكر «حسابات/التواصل الاجتماعي»
+// أصلًا يُنتج ركامًا يعيد مقالات عامّة عن السوشال ميديا بدل حسابات الموضوع.
+// لذلك نجرّد السؤال إلى موضوعه أوّلًا.
+function socialQuery(query) {
+  const topic = String(query || '')
+    .replace(/^\s*(وش|ايش|أيش|شو|ما هي|ماهي|ما|من|كيف|وين|أين|what|which|who)\s+(هو|هي)?\s*/i, '')
+    .replace(/(^|\s)(ابي|أبي|ابغى|أبغى|ابغا|اريد|أريد|بدي|بغيت|عايز|ودي|اعطني|أعطني|عطني|سوي|سو|اعمل|i want|give me)(?=\s|$)/gi, ' ')
+    .replace(/حساب(ات)?|صفح(ة|ات)|التواصل الاجتماعي|السوشال|سوشال ميديا|social media|accounts?|official|الرسمي(ة)?|رسمي(ة)?|[?؟]/gi, ' ')
+    .replace(/\s+/g, ' ').trim();
+  return (topic.length >= 3 ? topic : String(query || '')).slice(0, 160)
+    + ' instagram tiktok youtube official account';
+}
+
+async function fetchSocial(apiKey, query) {
+  try {
+    const r = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: apiKey,
+        query: socialQuery(query),
+        search_depth: 'basic',
+        include_answer: false,
+        max_results: 12,
+      }),
+    });
+    if (!r.ok) return [];
+    const j = await r.json();
+    return pickSocial(j.results);
+  } catch (e) { return []; }
+}
+
+// يدمج مصدرين للسوشال، يزيل التكرار، ويقدّم صفحات الحسابات على المنشورات.
+function mergeSocial(a, b) {
+  const out = [];
+  const seen = new Set();
+  [...(a || []), ...(b || [])].forEach(sc => {
+    if (!sc || seen.has(sc.url)) return;
+    seen.add(sc.url);
+    out.push(sc);
+  });
+  out.sort((x, y) => (y.isAccount ? 1 : 0) - (x.isAccount ? 1 : 0));
+  return out.slice(0, 4);
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -178,6 +273,7 @@ module.exports = async (req, res) => {
       } catch (e) { /* fallback: just original query */ }
 
       // 2) بحث بالتوازي
+      const deepSocialP = fetchSocial(apiKey, query);
       const deepResults = await Promise.all(subQueries.map(q =>
         fetch('https://api.tavily.com/search', {
           method: 'POST',
@@ -226,11 +322,14 @@ module.exports = async (req, res) => {
         deepSources.push({ title: r.title || host, url: r.url });
       });
 
+      const deepSocial = mergeSocial(await deepSocialP, pickSocial(mergedResults));
+      deepSocial.forEach(sc => { if (deepSources.length < 14) deepSources.push({ title: sc.title, url: sc.url }); });
       res.status(200).json({
         answer: answers[0] || '',
         deepAnswers: answers,
         results: mergedResults.slice(0, 15),
         sources: deepSources,
+        social: deepSocial,
         images: wantImages ? [...new Set(allImages)].slice(0, 6) : [],
         deep: true,
       });
@@ -275,7 +374,7 @@ module.exports = async (req, res) => {
       ? `https://www.googleapis.com/customsearch/v1?key=${gKey}&cx=${gCx}&q=${encodeURIComponent(query)}&num=3`
       : null;
 
-    const [tavilyResp, newsResp, googleResp] = await Promise.all([
+    const [tavilyResp, newsResp, googleResp, socialItems] = await Promise.all([
       fetch('https://api.tavily.com/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -293,6 +392,7 @@ module.exports = async (req, res) => {
       }),
       fetch(newsUrl).catch(() => null),
       googleUrl ? fetch(googleUrl).catch(() => null) : Promise.resolve(null),
+      fetchSocial(apiKey, query),
     ]);
 
     if (!tavilyResp.ok) {
@@ -379,13 +479,22 @@ module.exports = async (req, res) => {
       });
     } catch (e) { /* non-critical, sources stay whatever was collected so far */ }
 
+    const socialAll = mergeSocial(socialItems, pickSocial(data.results));
+    const socialHosts = new Set(socialAll.map(sc => { try { return new URL(sc.url).hostname.replace(/^www\./, ''); } catch (e) { return ''; } }));
+    // المنصّة تُمثَّل ببطاقتها المسمّاة («إنستغرام · @handle») بدل عنوان خام مكرّر.
+    const sourcesOut = sources.filter(x => { try { return !socialHosts.has(new URL(x.url).hostname.replace(/^www\./, '')); } catch (e) { return true; } }).slice(0, 6);
+    socialAll.forEach(sc => {
+      if (sourcesOut.length < 10) sourcesOut.push({ title: sc.title, url: sc.url });
+    });
+
     res.status(200).json({
       answer: data.answer || '',
       results,
       google: googleItems,
       news: newsItems,
       images,
-      sources: sources.slice(0, 6),
+      sources: sourcesOut,
+      social: socialAll,
     });
   } catch (err) {
     res.status(500).json({ error: 'Search failed', detail: String(err && err.message || err) });

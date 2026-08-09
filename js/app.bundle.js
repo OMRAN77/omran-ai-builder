@@ -4430,7 +4430,7 @@ function renderMessages(keepScroll){
     if(m.role !== 'user' && Array.isArray(m.sources) && m.sources.length){
       const srcWrap = document.createElement('div');
       srcWrap.className = 'msgSourceBadges';
-      m.sources.slice(0, 6).forEach(s => {
+      m.sources.slice(0, 10).forEach(s => {
         if(!s || !s.url) return;
         let host = '';
         try{ host = new URL(s.url).hostname.replace(/^www\./, ''); }catch(e){ return; }
@@ -4446,7 +4446,9 @@ function renderMessages(keepScroll){
         fav.loading = 'lazy';
         fav.onerror = () => { fav.remove(); };
         const label = document.createElement('span');
-        label.textContent = host;
+        // v536: بطاقة حساب تواصل تُعرَض باسم المنصّة والمعرّف («إنستغرام · @x»)
+        // بدل المضيف الخام. المصادر العاديّة تبقى بالمضيف كما هي.
+        label.textContent = (s.title && /^(إنستغرام|تيك توك|إكس|يوتيوب|فيسبوك|سناب شات) · /.test(s.title)) ? s.title : host;
         badge.appendChild(fav);
         badge.appendChild(label);
         srcWrap.appendChild(badge);
@@ -9652,13 +9654,19 @@ async function fetchSearchNoteOnce(transcript, deep){
         if(r && r.title) parts.push(`- [Google News] ${r.title}${r.content ? ' (' + r.content + ')' : ''}`);
       });
     }
+    // v536: حسابات التواصل الاجتماعي على نفس الموضوع — تُمرَّر للنموذج ليذكر
+    // المناسب منها بالاسم والرابط، لا كبطاقات صامتة فقط.
+    if(Array.isArray(data.social) && data.social.length){
+      parts.push('- [Social media accounts about this exact topic — if any is clearly relevant, mention it in your answer with its @handle and link]: '
+        + data.social.map(sc => `${sc.title} [${sc.url}]`).join(' | '));
+    }
     if(!parts.length) return null;
     const note = `Live internet search results for the user's question (use these to give an accurate, up-to-date answer; do not mention "search" or "internet" explicitly, just answer naturally as if you know this):\n${parts.join('\n')}\nIf the results are classified ads/listings (real estate, cars, jobs...): results marked "📌 إعلان مباشر" are individual ad pages — label their link "رابط الإعلان". Results marked "🔍 صفحة بحث" are generic category/search pages — you MUST label their link "رابط تصفح الإعلانات" and NEVER call it "رابط الإعلان". Prefer showing 📌 results first. ONLY IF your answer actually lists classified ads/listings with links, end it with this short tip in Arabic: "📞 افتح رابط الإعلان وبتلقى داخل الصفحة زر اتصال/واتساب." — if the answer contains no listings at all, DO NOT add this tip or mention it. Never claim you can provide owners' personal phone numbers as open lists. FLIGHTS: if the question is about flight tickets, list the cheapest options found (price + airline if available + booking link) and add one short Arabic note that prices change constantly and the final price is on the booking site. FRESHNESS RULE: base your answer ONLY on the search results above — STRICTLY FORBIDDEN to add programs, platforms, initiatives or facts from your own memory/training data (they may be outdated); if the search results don't mention something, don't mention it either. RELEVANCE RULE (ABSOLUTE): before using ANY search result, check it is DIRECTLY about the user's exact topic. If a result is about a different topic (e.g., motorcycles when the user asked about cars, or an unrelated product/article), you MUST completely ignore it — never mention it, never cite its link, never weave its details into your answer. It is better to use fewer results than to include one off-topic result.`;
     // 📚🖼️ Feature ② — structured data for the ChatGPT-style UI: source
     // badges (favicon+domain, from the backend's deduped `sources` field,
     // with a client-side fallback in case an older cached response lacks
     // it) and up to 4 live image URLs for the horizontal image strip.
-    let sources = Array.isArray(data.sources) ? data.sources.slice(0, 6) : [];
+    let sources = Array.isArray(data.sources) ? data.sources.slice(0, 10) : [];
     if(!sources.length){
       const seenHosts = new Set();
       [...(Array.isArray(data.results) ? data.results : []), ...(Array.isArray(data.google) ? data.google : [])].forEach(r => {

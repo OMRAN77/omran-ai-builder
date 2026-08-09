@@ -1093,7 +1093,7 @@ function renderMessages(keepScroll){
     if(m.role !== 'user' && Array.isArray(m.sources) && m.sources.length){
       const srcWrap = document.createElement('div');
       srcWrap.className = 'msgSourceBadges';
-      m.sources.slice(0, 6).forEach(s => {
+      m.sources.slice(0, 10).forEach(s => {
         if(!s || !s.url) return;
         let host = '';
         try{ host = new URL(s.url).hostname.replace(/^www\./, ''); }catch(e){ return; }
@@ -1109,7 +1109,9 @@ function renderMessages(keepScroll){
         fav.loading = 'lazy';
         fav.onerror = () => { fav.remove(); };
         const label = document.createElement('span');
-        label.textContent = host;
+        // v536: بطاقة حساب تواصل تُعرَض باسم المنصّة والمعرّف («إنستغرام · @x»)
+        // بدل المضيف الخام. المصادر العاديّة تبقى بالمضيف كما هي.
+        label.textContent = (s.title && /^(إنستغرام|تيك توك|إكس|يوتيوب|فيسبوك|سناب شات) · /.test(s.title)) ? s.title : host;
         badge.appendChild(fav);
         badge.appendChild(label);
         srcWrap.appendChild(badge);
