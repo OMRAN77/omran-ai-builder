@@ -96,7 +96,6 @@ html.mobile-ui #omranBelowComposer{display:none !important;}
   html:not(.mobile-ui) #btnHeaderMenu{display:none !important;} /* ⋮ — محتواه المرئي (المشاريع/الإعدادات) موجود بالشريط الجانبي */
   html:not(.mobile-ui) #stockTicker::before{content:""; position:absolute; left:0; right:0; top:0; height:1px; background:linear-gradient(90deg,rgba(var(--accent-tint-rgb),0),rgba(var(--accent-tint-rgb),.65) 18%,rgba(var(--accent-tint-rgb),.65) 82%,rgba(var(--accent-tint-rgb),0)); pointer-events:none;}
   html:not(.mobile-ui) #omranSidebarFoot{border-top:1px solid rgba(var(--accent-tint-rgb),.65);}
-  html:not(.mobile-ui) #omranChips{display:none !important;}
   html:not(.mobile-ui) .omDeskNav[data-omnav="chats"]{display:none !important;}
   html:not(.mobile-ui) #omranHistTitle{display:none !important;} /* v401: عنوان «المحادثات» في الشريط الجانبي */
   /* v404: (كمبيوتر فقط) حذف الإطارات — نستخدم transparent كي لا يتزحزح التخطيط */
@@ -195,3 +194,22 @@ html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start
 #eduIntroCard, #eduIntroCard.show{display:none !important;}
 /* v445: أمر عمران ٧ أغسطس ٢٠٢٦ — إخفاء «أدوات سريعة» فوق صندوق المحادثة */
 #omranQuickMobileWrap, html.mobile-ui #omranQuickMobileWrap{display:none !important;}
+
+/* 🎯 v526 — الأوضاع الصريحة */
+#omModeBtn{background:none;border:none;padding:6px;cursor:pointer;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;font:600 17px/1 inherit;border-radius:var(--r-2);}
+#omModeBtn:hover{color:var(--omGold);background:rgba(255,255,255,.05);}
+#omModeBtn.on{color:var(--omGold);}
+#omModeChip{flex:0 0 100%;order:-1;display:flex;align-items:center;gap:6px;padding:2px 2px 6px;}
+.omModePill{display:inline-flex;align-items:center;gap:6px;background:rgba(212,175,55,.12);border:1px solid var(--omGoldSoft,rgba(212,175,55,.4));color:var(--text);border-radius:999px;padding:3px 10px;font-size:var(--fs-5,13px);line-height:1.6;}
+.omModeX{background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;line-height:1;padding:0 0 0 2px;}
+.omModeX:hover{color:#ff6b6b;}
+#omModeMenu{position:fixed;z-index:10000;display:none;flex-direction:column;min-width:210px;padding:6px;background:var(--panel2,#1b1b22);border:1px solid var(--border,#333);border-radius:var(--r-3,12px);box-shadow:0 12px 34px rgba(0,0,0,.4);}
+#omModeMenu.open{display:flex;}
+.omModeItem{display:flex;align-items:center;gap:10px;width:100%;background:none;border:none;color:var(--text,#eee);cursor:pointer;padding:9px 11px;border-radius:var(--r-2,8px);font:inherit;font-size:var(--fs-5,13.5px);text-align:start;}
+.omModeItem:hover{background:rgba(212,175,55,.14);}
+.omModeIc{font-size:15px;line-height:1;}
+html[data-mode="light"] #omModeMenu{background:#fff;border-color:#d8d8d8;box-shadow:0 12px 34px rgba(0,0,0,.14);}
+html[data-mode="light"] .omModeItem{color:#1a1a1a;}
+html[data-mode="light"] #omModeBtn:hover{background:rgba(0,0,0,.05);}
+#plusToolsPopup .omModeItem .omModeIc{display:inline-block;width:20px;text-align:center;font-size:15px;line-height:1;}
+#plusToolsPopup .omModeSep{height:1px;background:rgba(0,0,0,.10);margin:6px 6px;}

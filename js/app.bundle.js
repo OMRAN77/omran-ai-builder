@@ -1669,11 +1669,11 @@ const I18N = {
     sbProjSearch: 'بحث عن مشروع',
     sbDeleteAll: 'حذف الكل',
     pricingPointsTitle: 'باقات النقاط',
-    pricingPointsDesc: 'النقاط عملة موحدة — تُصرف على مها الصوتية والفيديو والصور، بدون اشتراك. مها: 10 نقاط/دقيقة • فيديو: 60 • Veo 3: ‏400 • صورة: 10',
+    pricingPointsDesc: 'النقاط عملة موحدة — تُصرف على المحادثة الصوتية والفيديو والصور، بدون اشتراك. الصوت: 10 نقاط/دقيقة • فيديو: 60 • Veo 3: ‏400 • صورة: 10',
     pricingWalletLabel: 'رصيدك من النقاط',
     pricingPointsUnit: 'نقطة',
     pricingBuyBtn: 'شراء',
-    mahaNoPoints: 'رصيدك من النقاط خلص 💜 اشحن من قسم الباقات وكمّل مع مها',
+    mahaNoPoints: 'رصيدك من النقاط خلص 💜 اشحن من قسم الباقات وكمّل مع {voice}',
     "appColorTitle": "لون التطبيق", "customColorsLabel": "ألوان مخصصة",
     fbMenuLabel: "رأيك يهمنا", fbTitle: "رأيك يهمنا", fbSubtitle: "ساعدنا نطوّر تجربتك — تقييمك يوصل لنا مباشرة", fbChipEasy: "سهل الاستخدام", fbChipDesign: "التصميم رائع", fbChipAI: "ذكاء ممتاز", fbChipSlow: "بطيء أحيانًا", fbChipBug: "واجهت مشكلة", fbNotePh: "شو تحب نطوّر؟ اكتب ملاحظتك (اختياري)", fbSend: "إرسال التقييم", fbThanks: "شكرًا لك!", fbThanksSub: "رأيك وصل وبيساعدنا نطوّر التطبيق", fbOwnerList: "آراء المستخدمين", fbEmpty: "لا توجد تقييمات بعد",
     "eaConnectBtn": "🔗 ربط Gmail",
@@ -2437,6 +2437,17 @@ const I18N = {
     pricingBasicTitle: 'Plus — ‏10$ شهريًا',
     pricingBasicDesc: '300 رسالة شهريًا + 60 نقطة هدية كل شهر (فيديو مجاني شهريًا)',
     pricingProTitle: 'Pro — ‏20$ شهريًا',
+    planPer: 'شهريًا',
+    planFreePer: 'للتجربة',
+    planPtsFree: 'نقطة ترحيب — مرّة واحدة',
+    planPtsMo: 'نقطة كل شهر',
+    planTag: 'الأكثر اختيارًا',
+    planCurrentBtn: 'باقتك الحالية',
+    planSoonBtn: 'قريبًا',
+    planFreeFeats: '<li>20 رسالة يوميًا</li><li>دقيقة واحدة محادثة صوتية</li><li>3 صور بالذكاء الاصطناعي</li><li class="off">بلا فيديو</li>',
+    planPlusFeats: '<li>300 رسالة شهريًا</li><li>30 دقيقة محادثة صوتية</li><li>15 صورة</li><li>5 مقاطع فيديو</li>',
+    planProFeats: '<li>رسائل بلا حدود</li><li>80 دقيقة محادثة صوتية</li><li>40 صورة · 13 فيديو · 2 سينمائي</li><li>الوكيل الذكي</li><li>أولوية في السرعة · شارة ذهبية</li>',
+    planMaxFeats: '<li>كل مزايا Pro</li><li>500 دقيقة محادثة صوتية</li><li>250 صورة · 83 فيديو · 12 سينمائي</li><li>دعم مخصّص</li>',
     pricingProDesc: 'رسائل بلا حدود + وكيل عمران + 200 نقطة شهريًا + أولوية سرعة + شارة ذهبية',
     pricingComingSoon: 'قريبًا 🚀 — الاشتراك غير متاح حاليًا',
     pricingSubscribeBtn: 'اشترك الآن',
@@ -2445,8 +2456,8 @@ const I18N = {
     checkoutCardOption: 'فيزا / ماستركارد',
     checkoutTelecomOption: 'فاتورة الاتصالات (اتصالات/du)',
     checkoutComingSoon: 'قريبًا',
-    checkoutPlanLabelBasic: 'الخطة الأساسية 5$ شهريًا — 300 رسالة',
-    checkoutPlanLabelPro: 'الخطة الاحترافية 15$ شهريًا — رسائل غير محدودة',
+    checkoutPlanLabelBasic: 'الخطة الأساسية 10$ شهريًا — 300 رسالة',
+    checkoutPlanLabelPro: 'الخطة الاحترافية 20$ شهريًا — رسائل غير محدودة',
     checkoutRedirecting: 'جارٍ التحويل إلى صفحة الدفع...',
     checkoutError: 'حدث خطأ ما، حاول مرة أخرى',
     checkoutNotConfigured: 'الدفع غير مفعّل من الإدارة بعد',
@@ -2494,11 +2505,11 @@ const I18N = {
     sbProjSearch: 'Search projects',
     sbDeleteAll: 'Delete all',
     pricingPointsTitle: 'Points Packs',
-    pricingPointsDesc: 'Points are one universal currency — spend them on Maha voice, videos and images, no subscription needed. Maha: 10 pts/min • Video: 60 • Veo 3: 400 • Image: 10',
+    pricingPointsDesc: 'Points are one universal currency — spend them on voice chat, videos and images, no subscription needed. Voice: 10 pts/min • Video: 60 • Veo 3: 400 • Image: 10',
     pricingWalletLabel: 'Your points balance',
     pricingPointsUnit: 'pts',
     pricingBuyBtn: 'Buy',
-    mahaNoPoints: 'Your points balance is empty 💜 Top up in the Plans section to continue with Maha',
+    mahaNoPoints: 'Your points balance is empty 💜 Top up in the Plans section to continue with {voice}',
     "appColorTitle": "App color", "customColorsLabel": "Custom colors",
     fbMenuLabel: "We value your feedback", fbTitle: "We value your feedback", fbSubtitle: "Help us improve your experience — your rating reaches us directly", fbChipEasy: "Easy to use", fbChipDesign: "Great design", fbChipAI: "Excellent AI", fbChipSlow: "Sometimes slow", fbChipBug: "Found a problem", fbNotePh: "What should we improve? (optional)", fbSend: "Send feedback", fbThanks: "Thank you!", fbThanksSub: "Your feedback was received and helps us improve", fbOwnerList: "User feedback", fbEmpty: "No feedback yet",
     "eaConnectBtn": "🔗 Connect Gmail",
@@ -2594,6 +2605,17 @@ const I18N = {
     pricingBasicTitle: 'Plus — $10 / month',
     pricingBasicDesc: '300 messages/month + 60 gift points monthly (a free video every month)',
     pricingProTitle: 'Pro — $20 / month',
+    planPer: 'per month',
+    planFreePer: 'to try',
+    planPtsFree: 'welcome points — one time',
+    planPtsMo: 'points every month',
+    planTag: 'Most popular',
+    planCurrentBtn: 'Your current plan',
+    planSoonBtn: 'Soon',
+    planFreeFeats: '<li>20 messages daily</li><li>1 minute voice chat</li><li>3 AI images</li><li class="off">No video</li>',
+    planPlusFeats: '<li>300 messages / month</li><li>30 minutes voice chat</li><li>15 images</li><li>5 videos</li>',
+    planProFeats: '<li>Unlimited messages</li><li>80 minutes voice chat</li><li>40 images · 13 videos · 2 cinematic</li><li>Smart agent</li><li>Speed priority · gold badge</li>',
+    planMaxFeats: '<li>Everything in Pro</li><li>500 minutes voice chat</li><li>250 images · 83 videos · 12 cinematic</li><li>Dedicated support</li>',
     pricingProDesc: 'Unlimited messages + Omran Agent + 200 points/month + priority speed + gold badge',
     pricingComingSoon: 'Coming soon 🚀 — subscriptions aren\'t available yet',
     pricingSubscribeBtn: 'Subscribe now',
@@ -2619,8 +2641,8 @@ const I18N = {
     checkoutCardOption: 'Visa / Mastercard',
     checkoutTelecomOption: 'Carrier Billing (Etisalat/du)',
     checkoutComingSoon: 'Coming soon',
-    checkoutPlanLabelBasic: 'Basic Plan $5/mo — 300 messages',
-    checkoutPlanLabelPro: 'Pro Plan $15/mo — Unlimited messages',
+    checkoutPlanLabelBasic: 'Basic Plan $10/mo — 300 messages',
+    checkoutPlanLabelPro: 'Pro Plan $20/mo — Unlimited messages',
     checkoutRedirecting: 'Redirecting to payment page...',
     checkoutError: 'Something went wrong, please try again',
     checkoutNotConfigured: 'Payments not configured by admin yet',
@@ -3370,7 +3392,32 @@ let lang = localStorage.getItem('aiapp_lang') || (function(){
   } catch(e){ __swallow(e, "save:app-04-i18n-state#3"); }
 })();
 
+function mahaPersonaName(){
+  var male = false;
+  try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) {}
+  var isAr = false;
+  try { isAr = (typeof lang !== 'undefined' && lang === 'ar'); } catch(e) {}
+  if (male) return isAr ? 'عبدالله' : 'Abdullah';
+  return isAr ? 'مها' : 'Maha';
+}
+function __voiceFill(v){
+  if (typeof v !== 'string' || v.indexOf('{voice') === -1) return v;
+  var male = false;
+  try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) {}
+  return v.split('{voiceAdj}').join(male ? 'الصوتي' : 'الصوتية')
+          .split('{voice}').join(mahaPersonaName());
+}
 function t(key){
+  var v = tRaw(key);
+  if (typeof v === 'string' && v.indexOf('{voice') !== -1) {
+    var male = false;
+    try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) {}
+    return v.split('{voiceAdj}').join(male ? 'الصوتي' : 'الصوتية')
+            .split('{voice}').join(mahaPersonaName());
+  }
+  return v;
+}
+function tRaw(key){
   const v = I18N[lang] ? I18N[lang][key] : undefined;
   if (v !== undefined) return v;
   // v424: الإنجليزية قبل العربية — الناقص كان يخرج عربيًّا في واجهة صينية
@@ -3402,7 +3449,7 @@ function applyLanguage(){
       const key = m[2];
       if(dict[key] !== undefined) el.setAttribute(attrName, dict[key]);
     } else if(dict[raw] !== undefined){
-      el.innerHTML = dict[raw];
+      el.innerHTML = __voiceFill(dict[raw]);
     }
   });
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
@@ -3443,6 +3490,7 @@ function applyLanguage(){
   activeIds.forEach(id => { const el = $('#'+id); if(el) el.classList.add('active'); });
   localStorage.setItem('aiapp_lang', lang);
   renderQuickChips();
+  renderOmranBotChips();
   try{ if(window.__refreshProjMenuLabels) window.__refreshProjMenuLabels(); }catch(_){ __swallow(_, "save:app-04-i18n-state#7"); }
 }
 
@@ -3490,6 +3538,28 @@ function renderQuickChips(){
       closeQuickTemplates();
       sendPrompt();
     };
+  });
+}
+
+/* v532: بوتات جاهزة كشرائح تحت صندوق المحادثة — نفس مصدر «الاقتراحات» عند ＋ */
+function renderOmranBotChips(){
+  const wrap = $('#omranChips');
+  if(!wrap) return;
+  wrap.innerHTML = '';
+  QUICK_SUGGESTIONS.filter(s => s.priority).forEach(s => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'omChip';
+    b.textContent = (s.icon ? s.icon + ' ' : '') + (s[lang] || s.en);
+    b.setAttribute('data-omchip', s.prompt[lang] || s.prompt.en);
+    b.onclick = () => {
+      const p = $('#prompt');
+      if(!p) return;
+      p.value = b.getAttribute('data-omchip') || '';
+      try{ p.dispatchEvent(new Event('input', { bubbles:true })); }catch(_){ __swallow(_, "ui:botchips#input"); }
+      try{ p.focus(); p.selectionStart = p.selectionEnd = p.value.length; }catch(_){ __swallow(_, "ui:botchips#focus"); }
+    };
+    wrap.appendChild(b);
   });
 }
 
@@ -4414,6 +4484,8 @@ function renderMessages(keepScroll){
           img.src = a.dataUrl;
           img.title = a.name;
           img.style.cursor = 'pointer';
+          // v531: صور المساعد مولَّدة ⇒ تُعرض كبيرة. مرفقات المستخدم تبقى رقاقات صغيرة.
+          if(m.role !== 'user' && !a._fromMemory) img.classList.add('genImg');
           img.onclick = () => {
             previewFrame.style.display = 'block';
             $('#pyConsole').style.display = 'none';
@@ -5467,7 +5539,7 @@ const PROVIDER_COLOR_DEFAULTS = {
 function providerPickToast(){
   try{
     const cur = getCurrent();
-    const names = (cur && cur.continueProviders || []).map(k => PROVIDER_KEY_LABELS[k] || k);
+    const names = (cur && cur.continueProviders || []).map(k => functionalLabel(k));
     const ar = (localStorage.getItem('aiapp_lang') || 'ar') === 'ar';
     const msg = names.length
       ? (ar ? '✅ أسئلتك القادمة ستذهب إلى: ' + names.join('، ') + ' فقط' : '✅ Next questions go to: ' + names.join(', ') + ' only')
@@ -5513,9 +5585,9 @@ function funcPrimaryOf(key){
 // v359 — الشفافية الكاملة (قرار المستخدم): كل رد يظهر بالاسم الحقيقي الشهير للمزود
 // الذي ردّ فعلًا. لو انشغل الرأس وردّ احتياطي مخفي → يظهر باسمه الحقيقي، لا اسم مموّه.
 const PROVIDER_DISPLAY = {
-  claude: 'Claude', gemini: 'Gemini', openai: 'GPT', groq: 'Groq',
-  mistral: 'Mistral', deepseek: 'DeepSeek', perplexity: 'Perplexity',
-  cohere: 'Cohere', openrouter: 'OpenRouter',
+  claude: 'الكينج', gemini: 'السريع', openai: 'العميق', groq: 'السريع',
+  mistral: 'السريع', deepseek: 'العميق', perplexity: 'العميق',
+  cohere: 'العميق', openrouter: 'العميق',
 };
 function functionalLabel(key){
   // v362 — الستة المخفيون لا يظهر اسمهم أبدًا: أي مزود يرد → يُعرض باسم
@@ -5525,9 +5597,9 @@ function functionalLabel(key){
 }
 // v359 — 3 أزرار بأسمائها الحقيقية الشهيرة (الناس تعرفها) + شعاراتها الأصلية.
 const PROVIDER_QUICK_LIST = [
-  { key: 'claude', name: 'Claude', color: '#d97757' },
-  { key: 'gemini', name: 'Gemini', color: '#4285f4' },
-  { key: 'openai', name: 'GPT',    color: '#10a37f' },
+  { key: 'claude', name: 'الكينج', color: '#d97757' },
+  { key: 'gemini', name: 'السريع', color: '#4285f4' },
+  { key: 'openai', name: 'العميق', color: '#10a37f' },
 ];
 // ترحيل: من اختار «العميق» (deepseek) في v358 يرجع للزر الظاهر الجديد GPT.
 try{ if(localStorage.getItem('aiapp_provider') === 'deepseek') localStorage.setItem('aiapp_provider', 'openai'); }catch(e){ __swallow(e, "save:app-05-ui#22"); }
@@ -5651,7 +5723,7 @@ function updateProviderQuickBarActive(){
   const current = localStorage.getItem('aiapp_provider') || 'claude';
   document.querySelectorAll('.prov-cell, .prov-chip-m').forEach(el => {
     el.classList.toggle('active', el.dataset.provider === current);
-    el.title = PROVIDER_KEY_LABELS[el.dataset.provider] || el.dataset.provider;
+    el.title = functionalLabel(el.dataset.provider);
   });
   if(typeof provDDUpdateButton === 'function') provDDUpdateButton();
   if(typeof updatePremiumToggleVisibility === 'function') updatePremiumToggleVisibility();
@@ -5680,7 +5752,7 @@ async function refreshProviderQuickBar(){
       if(r === undefined) return;
       if(r === null || limit === null){ // owner: unlimited (Infinity serializes to null)
         dot.classList.add('ok');
-        const lbl = PROVIDER_KEY_LABELS[cell.dataset.provider] || cell.dataset.provider;
+        const lbl = functionalLabel(cell.dataset.provider);
         cell.title = lbl + ' — بلا حدود';
         return;
       }
@@ -8306,6 +8378,11 @@ async function callClaude(messages, onDelta){
 }
 
 // providerKey: 'default' uses the selected default provider (openai/openrouter/gemini/groq/claude/perplexity), or explicitly named
+// 🛠️ v528 — المزوّدون الذين تعمل معهم حلقة الأدوات الخمس (مُتحقَّق حيًّا).
+// cohere وperplexity وopenrouter خارجها عمدًا: الأوّلان لا يدعمان الأدوات على
+// هذا الطريق، والثالث مفتاح المستخدم نفسه.
+const TOOL_PROVIDERS = ['claude', 'openai', 'gemini', 'deepseek', 'mistral', 'groq'];
+
 async function callProviderAI(providerKey, messages, onDelta){
   let effective = providerKey;
   if(providerKey === 'default'){
@@ -8990,12 +9067,12 @@ const btnMahaEndCallEl = document.getElementById('btnMahaEndCall');
     }
     if(panel.parentNode !== mahaCallScreenOriginalParent) mahaCallScreenOriginalParent.appendChild(panel);
     panel.style.position = 'fixed';
-    panel.style.boxShadow = '0 12px 40px rgba(0,0,0,.55)';
-    panel.style.background = 'radial-gradient(circle at 50% 30%,#241a3d,#0c0a16 75%)';
-    panel.style.border = '1px solid rgba(255,255,255,.08)';
-    panel.style.borderRadius = '26px';
-    panel.style.width = '260px';
-    panel.style.height = '340px';
+    panel.style.boxShadow = 'none';
+    panel.style.background = 'none';
+    panel.style.border = 'none';
+    panel.style.borderRadius = '0';
+    panel.style.width = 'auto';
+    panel.style.height = 'auto';
     try {
       const saved = JSON.parse(localStorage.getItem(POS_KEY) || 'null');
       if(saved && typeof saved.x === 'number' && typeof saved.y === 'number'){
@@ -9003,8 +9080,8 @@ const btnMahaEndCallEl = document.getElementById('btnMahaEndCall');
       }
     } catch(e){ __swallow(e, "ui:app-08-maha#2"); }
     if(x === undefined){
-      x = Math.round((window.innerWidth - 260) / 2);
-      y = Math.round((window.innerHeight - 340) / 2);
+      x = Math.round((window.innerWidth - (panel.offsetWidth || 133)) / 2);
+      y = Math.round((window.innerHeight - (panel.offsetHeight || 203)) / 2);
     }
     const c = clampPos(x, y);
     applyPos(c.x, c.y);
@@ -9108,18 +9185,62 @@ function mahaAutoCorrelate(buf, sampleRate){
   return sampleRate / T0;
 }
 
-// Detected gender of the current caller, refreshed once per turn based on
-// pitch samples collected while they were speaking. Defaults to 'female'
-// (Maha's own natural voice) until enough real samples come in.
-let mahaDetectedGender = 'female';
-// Updates the on-screen call card name/icon to match the currently detected
-// caller gender: "مها" (female, 💁‍♀️) or "عبدالله" (male, 🧔).
+// The assistant voice the user PICKED (first-run card or ⚙️ settings) — never a
+// guess from the caller's own pitch. 'female' -> مها, 'male' -> عبدالله. Same
+// persona, same dialect, same knowledge either way: only voice + name differ.
+function mahaReadVoiceGender(){
+  try{ return localStorage.getItem('aiapp_voice_gender') === 'male' ? 'male' : 'female'; }
+  catch(e){ return 'female'; }
+}
+let mahaDetectedGender = mahaReadVoiceGender();
+// Syncs the on-screen call card name with the chosen voice. The orb artwork is
+// intentionally identical for both voices — only the name changes.
 function mahaUpdatePersonaUI(){
+  mahaDetectedGender = mahaReadVoiceGender();
+  const male = mahaDetectedGender === 'male';
   const nameEl = document.getElementById('mahaCallNameLabel');
-  const orbEl = document.getElementById('mahaOrb');
-  const isMale = mahaDetectedGender === 'male';
-  if(nameEl) nameEl.textContent = isMale ? 'عبدالله' : 'مها';
-  if(orbEl) orbEl.textContent = isMale ? '🧔' : '💁\u200d♀️';
+  if(nameEl) nameEl.textContent = male ? 'عبدالله' : 'مها';
+  const orb = document.getElementById('mahaOrb');
+  if(orb){
+    orb.textContent = male ? '🧔' : '💁‍♀️';
+    orb.style.background = male ? 'linear-gradient(135deg,#ffd77a,#b8860b)' : 'linear-gradient(135deg,#ff5fa2,#7b5cff)';
+    orb.style.boxShadow = male ? '0 0 35px rgba(184,134,11,.6)' : '0 0 28px rgba(123,92,255,.5)';
+    orb.style.border = 'none';
+    orb.style.fontSize = '39px';
+  }
+}
+// First-run voice picker: shown once, before the very first call, then stored.
+// Changeable any time from ⚙️ الإعدادات › الصوت.
+function mahaEnsureVoiceChosen(){
+  return new Promise(resolve => {
+    let already = null;
+    try{ already = localStorage.getItem('aiapp_voice_gender'); }catch(e){}
+    if(already === 'male' || already === 'female') return resolve(already);
+    const wrap = document.createElement('div');
+    wrap.id = 'voicePickFirstRun';
+    wrap.style.cssText = 'position:fixed; inset:0; z-index:100000; display:flex; align-items:center; justify-content:center; background:rgba(8,7,14,.82); backdrop-filter:blur(6px);';
+    const card = document.createElement('div');
+    card.dir = 'rtl';
+    card.style.cssText = 'width:min(92vw,420px); background:#12101c; border:1px solid rgba(255,255,255,.10); border-radius:22px; padding:26px 22px; text-align:center; box-shadow:0 24px 60px rgba(0,0,0,.55);';
+    const opt = (g, name) => '<button type="button" data-g="' + g + '" class="vpFirstBtn" style="flex:1; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.10); border-radius:18px; padding:18px 10px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:12px;">'
+      + '<span style="width:74px; height:74px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:36px; background:' + (g === 'male' ? 'linear-gradient(135deg,#ffd77a,#b8860b)' : 'linear-gradient(135deg,#ff5fa2,#7b5cff)') + '; box-shadow:' + (g === 'male' ? '0 0 50px rgba(184,134,11,.6)' : '0 0 40px rgba(123,92,255,.5)') + ';">'
+      + (g === 'male' ? '🧔' : '💁‍♀️')
+      + '</span><span style="color:#fff; font-size:17px; font-weight:700;">' + name + '</span></button>';
+    card.innerHTML = '<div style="color:#fff; font-size:19px; font-weight:700; margin-bottom:6px;">اختر صوت المساعد</div>'
+      + '<div style="color:#a9a2bd; font-size:13px; margin-bottom:20px;">تقدر تغيّره لاحقًا من الإعدادات</div>'
+      + '<div style="display:flex; gap:12px;">' + opt('female','مها') + opt('male','عبدالله') + '</div>';
+    wrap.appendChild(card);
+    document.body.appendChild(wrap);
+    card.querySelectorAll('.vpFirstBtn').forEach(b => {
+      b.onclick = () => {
+        const g = b.getAttribute('data-g');
+        try{ localStorage.setItem('aiapp_voice_gender', g); }catch(e){}
+        if(typeof setVoiceGenderUI === 'function'){ try{ setVoiceGenderUI(g); }catch(e){} }
+        wrap.remove();
+        resolve(g);
+      };
+    });
+  });
 }
 // All pitch samples collected across the *entire* call (not reset per turn).
 // A single noisy turn (background sound, echo, weak mic) can produce a wrong
@@ -9321,7 +9442,7 @@ async function mahaRecordUntilSilence(){
     if(mahaAllPitchSamples.length >= 12){
       const sorted = mahaAllPitchSamples.slice().sort((a, b) => a - b);
       const median = sorted[Math.floor(sorted.length / 2)];
-      mahaDetectedGender = median < 165 ? 'male' : 'female';
+      void median; // v493: pitch no longer picks the voice — the user does.
     }
   }
 
@@ -9808,6 +9929,7 @@ async function mahaStartRealtimeCall(){
       guestId: window.getGuestId(),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       mode: mahaCallMode,
+      voiceGender: mahaReadVoiceGender(),
       desktop: !document.documentElement.classList.contains('mobile-ui'),
     }),
   });
@@ -10228,9 +10350,10 @@ async function mahaCallLoop(){
     try{
       blob = await mahaRecordUntilSilence();
     }catch(e){
-      mahaSetState('idle');
-      if(mahaStateLabelEl) mahaStateLabelEl.textContent = t('mahaMicDenied');
+      var __m = mahaMicMsg(e);
+      mahaSetState('error', __m);
       mahaCallActive = false;
+      alert(__m);
       break;
     }
     if(!mahaCallActive) break;
@@ -10437,17 +10560,64 @@ function mahaEndCall(){
 }
 
 let mahaCallMode = 'assistant'; // 'assistant' (مها) or 'builder' (voice tab)
+// v500: رسالة صريحة بدل الصمت عند تعذّر المايك — تُميّز رفض الإذن / لا يوجد جهاز / مشغول.
+function mahaMicMsg(e){
+  var L = "ar"; try{ L = localStorage.getItem("aiapp_lang") || "ar"; }catch(_){ }
+  var ar = L === "ar";
+  var n = (e && e.name) ? String(e.name) : "";
+  if(/NotAllowed|Permission|Security/i.test(n))
+    return ar ? "🎤 المايك مرفوض. اضغط 🔒 في شريط العنوان ← Microphone ← Allow ثمّ أعد المحاولة."
+             : "🎤 Microphone blocked. Click 🔒 in the address bar → Microphone → Allow, then try again.";
+  if(/NotFound|DevicesNotFound|OverconstrainedError/i.test(n))
+    return ar ? "🎤 ما في ميكروفون موصول بالجهاز." : "🎤 No microphone found on this device.";
+  if(/NotReadable|TrackStart|Aborted/i.test(n))
+    return ar ? "🎤 المايك مشغول ببرنامج ثاني. سكّره وجرّب مرّة ثانية." : "🎤 The mic is used by another app. Close it and try again.";
+  if(n === "__timeout__")
+    return ar ? "🎤 ما وصلني إذن المايك. أجب على طلب الإذن، أو اضغط 🔒 في شريط العنوان ← Microphone ← Allow، ثمّ اضغط مها مرّة ثانية."
+             : "🎤 No mic permission yet. Answer the browser prompt, or click 🔒 in the address bar → Microphone → Allow, then tap Maha again.";
+  return (ar ? "🎤 تعذّر فتح المايك" : "🎤 Could not open the microphone") + (n ? " (" + n + ")" : "");
+}
+// فحص مسبق: نطلب الإذن قبل فتح شاشة النداء، فلا تتجمّد الشاشة ١٢ ثانية بلا سبب ظاهر.
+async function mahaMicPreflight(){
+  var perm = "";
+  try{ perm = (await navigator.permissions.query({ name: "microphone" })).state; }catch(_){ }
+  if(perm === "denied") return mahaMicMsg({ name: "NotAllowedError" });
+  try{
+    var s = await Promise.race([
+      navigator.mediaDevices.getUserMedia({ audio: true }),
+      new Promise(function(_res, rej){ setTimeout(function(){ rej({ name: "__timeout__" }); }, 15000); })
+    ]);
+    s.getTracks().forEach(function(tr){ try{ tr.stop(); }catch(_){ } });
+    return null;
+  }catch(e){ console.error("[maha] mic preflight failed:", e); return mahaMicMsg(e); }
+}
+
 async function mahaStartCall(mode){
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
     alert(t('micNotSupported'));
     return;
   }
+  var __ar = true; try{ __ar = (localStorage.getItem("aiapp_lang") || "ar") === "ar"; }catch(_){ }
   mahaCallMode = mode === 'builder' ? 'builder' : 'assistant';
+  if(mahaCallMode !== 'builder'){ await mahaEnsureVoiceChosen(); }
+  if(mahaCallScreenEl){
+    mahaCallScreenEl.style.display = "flex";
+    if(mahaOrbEl) mahaOrbEl.style.display = "flex";
+    mahaSetState("thinking", __ar ? "🎤 بانتظار إذن المايك…" : "🎤 Waiting for mic permission…");
+    if(typeof mahaPositionOnOpen === "function") mahaPositionOnOpen();
+  }
+  var __micErr = await mahaMicPreflight();
+  if(__micErr){
+    mahaSetState("error", __micErr);
+    if(mahaCallScreenEl) mahaCallScreenEl.style.display = "none";
+    alert(__micErr);
+    return;
+  }
   if(btnMahaEl) btnMahaEl.style.display = 'none';
   stopAllSpeaking();
   mahaHistory = [];
   mahaAllPitchSamples = [];
-  mahaDetectedGender = 'female';
+  mahaDetectedGender = mahaReadVoiceGender();
   mahaIntroduced = false;
   // ملاحظة: لا نمسح مرجع الصورة الأخيرة هنا — يبقى ثابت حتى يبدأ المستخدم "+ مشروع جديد" فعليًا
   const mahaImgElStart = document.getElementById('mahaGenImage');
@@ -11678,6 +11848,31 @@ async function __agentApplyResult(cur, full){
   cur.messages.push(agentMsg);
 }
 
+async function omModeGenerateImage(cur, promptText, thinkingDiv){
+  const __m = { role: 'assistant', content: lang === 'ar' ? '🎨 أرسم لك الصورة…' : '🎨 Generating your image…', _loading: true };
+  cur.messages.push(__m); renderAll();
+  try{
+    const __r = await fetch('/api/maha-image', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: promptText, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
+    });
+    const __d = await __r.json().catch(() => ({}));
+    __m._loading = false;
+    if(__r.ok && __d && __d.imageBase64){
+      const __mime = __d.mimeType || 'image/png';
+      __m.content = lang === 'ar' ? 'تفضّل 👇' : 'Here you go 👇';
+      __m.attachments = [{ isImage: true, dataUrl: 'data:' + __mime + ';base64,' + __d.imageBase64, name: 'image.png' }];
+      try{ cur.lastEditedImage = { b64: __d.imageBase64, mime: __mime }; }catch(e){}
+    } else {
+      __m.content = lang === 'ar' ? ('تعذّر توليد الصورة الآن — ' + ((__d && __d.error) || ('HTTP ' + __r.status))) : ('Image generation failed — ' + ((__d && __d.error) || ('HTTP ' + __r.status)));
+    }
+  }catch(e){
+    __m._loading = false;
+    __m.content = lang === 'ar' ? 'تعذّر توليد الصورة الآن — جرّب مرّة ثانية.' : 'Image generation failed — please try again.';
+  }
+  renderAll(); saveState();
+  try{ thinkingDiv && thinkingDiv.remove(); }catch(e){}
+}
 async function sendPrompt(){
   // ✅ v301: قفل الإرسال أثناء التوليد — Enter أو أي ضغطة إضافية لا ترسل
   // الطلب مرة ثانية (كان زر الإرسال ينقفل لكن Enter يظل شغالًا فيتكرر الطلب).
@@ -11812,6 +12007,7 @@ async function sendPrompt(){
 
   // Build the text sent to the AI: original text + any text-file contents appended as code blocks
   let apiText = text;
+  try{ if(window.__omMode==='think') apiText = (lang==='ar'?'فكّر بعمق خطوة بخطوة، وحلّل الاحتمالات قبل أن تجيب.\n\n':'Think deeply, step by step, before answering.\n\n') + apiText; else if(window.__omMode==='learn') apiText = (lang==='ar'?'اشرح لي كمعلّم صبور: خطوات مرقّمة، أمثلة بسيطة، ثمّ سؤال يختبر فهمي.\n\n':'Teach me patiently: numbered steps, simple examples, then one question.\n\n') + apiText; }catch(e){}
   textAttachments.forEach(a => {
     apiText += (apiText ? '\n\n' : '') + '📄 ' + a.name + ':\n```\n' + a.text + '\n```';
   });
@@ -11902,6 +12098,11 @@ async function sendPrompt(){
     // 🤖 وكيل عمران: وضع الوكيل المستقل (Claude Sonnet 4 + أدوات) — يخطط ويبحث ويبني.
     if(window.__agentModeOn && !imageAttachments.length){
       await runOmranAgent(cur, apiText, thinkingDiv);
+      return;
+    }
+    // 🎯 v526: الوضع الصريح @صورة — يتخطّى كلّ الكواشف ويولّد مباشرة
+    if(window.__omMode === 'image' && apiText && !imageAttachments.length){
+      await omModeGenerateImage(cur, apiText, thinkingDiv);
       return;
     }
     // 🏛️ شعارات الجهات الحقيقية: "عطني شعار شرطة دبي" → جلب الشعار الأصلي
@@ -13316,7 +13517,7 @@ async function sendPrompt(){
       // إطلاقًا، وإلّا غلبت تعليمة «ابنِ ولا تستأذن» داخل chat.js. بعد الموافقة
       // يسقط __gateNoBuild فتعمل اليد كاملة (صور + كود + تجربة).
       const __toolsWillRun = (window.__chatToolsOn !== false && !__routeFix && (!__gateNoBuild || !!__gateApprovedText) && !imageAttachments.length
-        && (__effProv === 'claude' || __selProv === 'claude')
+        && TOOL_PROVIDERS.indexOf(__effProv) !== -1
         && typeof window.callChatWithTools === 'function');
       if(__gateApprovedText && __toolsWillRun){
         // ✅ وافق المستخدم → يبني الآن كاملًا باليد الكاملة (صور مرسومة + كود + تجربة).
@@ -13336,7 +13537,7 @@ async function sendPrompt(){
       try{
         let __ct = null;
         if(__toolsWillRun){
-          try{ __ct = await window.callChatWithTools(apiMessages, onDelta); }
+          try{ __ct = await window.callChatWithTools(apiMessages, onDelta, __effProv); }
           catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; __swallow(e, 'chat:tools'); }
         }
         if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); }
@@ -19315,7 +19516,7 @@ window.updateVersionLabel();
    * @param {Function} onDelta تُستدعى بالنصّ المتراكم كلّما وصلت قطعة.
    * @returns {{reply:string, providerKey:string, switched:boolean, requestedKey:string}}
    */
-  window.callChatWithTools = async function (messages, onDelta) {
+  window.callChatWithTools = async function (messages, onDelta, provider) {
     // صور هذا الردّ فقط: تُمسح عند كلّ طلب جديد فلا يتراكم عشرات الميغابايت في
     // الذاكرة، وحدّ الأربع يبقى حدَّ ردٍّ لا حدَّ جلسة. الكود المبنيّ يُستبدل فيه
     // الرمز فور وصوله، فلا يضرّه المسح لاحقًا.
@@ -19326,6 +19527,7 @@ window.updateVersionLabel();
       signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
       body: JSON.stringify({
         messages: messages,
+        provider: provider || 'claude',
         token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
         guestId: window.getGuestId ? window.getGuestId() : '',
       }),
@@ -19365,7 +19567,8 @@ window.updateVersionLabel();
 
     // لا نصّ = لم يحدث شيء يُعرض؛ نرمي ليهبط المستدعي إلى مساره القديم.
     if (!full.trim()) throw new Error(serverErr || 'chat: empty reply');
-    return { reply: full, providerKey: 'claude', switched: false, requestedKey: 'claude' };
+    var __p = provider || 'claude';
+    return { reply: full, providerKey: __p, switched: false, requestedKey: __p };
   };
 })();
 
