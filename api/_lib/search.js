@@ -401,13 +401,17 @@ module.exports = async (req, res) => {
       fetchSocial(apiKey, query),
     ]);
 
-    if (!tavilyResp.ok) {
-      const errText = await tavilyResp.text().catch(() => '');
-      res.status(502).json({ error: 'Search provider error', detail: errText });
-      return;
+    // 🛡️ شبكة أمان: سقوط Tavily (حصّة · مفتاح · عطل مزوّد) كان يقطع البحث كلّه
+    // بشاشة 502. الآن نُكمل بما جمعته المزوّدات الأخرى بالتوازي، و502 لا تُرجع
+    // إلّا لو خلا الجميع. (مزوّد مجّانيّ بديل جُرّب وسقط: DuckDuckGo محجوب من
+    // خوادم Vercel بـ403، وBing RSS يردّ 200 بنتائج لا صلة لها بالسؤال.)
+    let tavilyDown = false;
+    let data = { results: [] };
+    if (tavilyResp.ok) {
+      data = await tavilyResp.json();
+    } else {
+      tavilyDown = true;
     }
-
-    const data = await tavilyResp.json();
     // dep61: distinguish individual ad/detail pages from generic category/search pages
     // so the AI never labels a category page as "رابط الإعلان".
     const isDetailUrl = (u) => /bayut\.com\/(ar\/)?property\/|details-\d+\.html|propertyfinder\.ae\/(ar\/|en\/)?plp\/|dubizzle\.com\/.+\/\d{4}\/\d{1,2}\/\d{1,2}\/|---[a-zA-Z0-9]+\/?$|\/ad\/|dubizzle\.com\/.+\/j\/|dubicars\.com\/.+-\d+|yallamotor\.com\/.+\/\d{4,}|cars24\.ae\/.+-\d{4,}|bayt\.com\/.+\/jobs?\/.+\d|indeed\.(ae|com)\/.*(viewjob|jk=)|naukrigulf\.com\/.+-\d|gulftalent\.com\/.+\/\d/i.test(u || '');
@@ -466,6 +470,10 @@ module.exports = async (req, res) => {
       }
     } catch (e) { /* ignore Google Search parse errors, non-critical */ }
 
+    // chat.js يقرأ results وحدها، فلو بقيت فارغة لما رأى المحرّك شيئًا مهما
+    // جمعت المزوّدات الأخرى. عند سقوط Tavily تصير حصيلتها هي النتائج.
+    if (tavilyDown && !results.length) results = [...googleItems, ...newsItems].slice(0, 6);
+
     // 📚 Feature ②: unified, deduped source list (title+url) built from all
     // three providers (Tavily results, Google Custom Search, Google News) so
     // the frontend can render clean ChatGPT-style source badges without
@@ -501,6 +509,11 @@ module.exports = async (req, res) => {
     socialAll.forEach(sc => {
       if (sourcesOut.length < 10) sourcesOut.push({ title: sc.title, url: sc.url });
     });
+
+    if (tavilyDown && !results.length) {
+      res.status(502).json({ error: 'Search provider error', detail: 'all providers unavailable' });
+      return;
+    }
 
     res.status(200).json({
       answer: data.answer || '',
