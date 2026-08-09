@@ -95,13 +95,19 @@ function pickSocial(items) {
       // (مطعم برجر «جدة» = 0.45 · حساب رسمي @AlWaslSC = 0.40). لذلك عتبتان.
       const sc = (typeof it.score === 'number') ? it.score : null;
       if (sc !== null && sc < (handle ? 0.38 : 0.50)) return;
+      // منشور لا حساب: الميزة اسمها «حسابات التواصل»، وبطاقة منشور تظهر بعنوان
+      // مبتور بلا معنى («#viral #fyp…»). بلا معرّف يُرفض المنشور، ومع معرّف
+      // يُقصّ الرابط إلى صفحة الحساب نفسها — وهذا يسقط ?hl=en ويوحّد الروابط.
+      const isPost = /^\/(p|reel|reels|tv|status|video|watch|shorts|photo|posts|stories)(\/|$)/i.test(u.pathname);
+      if (isPost && !handle) return;
+      const acctUrl = m ? (u.origin + u.pathname.slice(0, m.index + m[0].length)) : it.url;
       const key = plat.name + '|' + (handle || u.pathname);
       if (seen.has(key)) return;
       seen.add(key);
       out.push({
         platform: plat.name,
         isAccount: !!handle,
-        url: it.url,
+        url: acctUrl,
         score: (typeof it.score === 'number' ? it.score : null),
         title: plat.name + ' · ' + (
           // معرّف قناة يوتيوب الخام (UC…) ليس اسمًا يُعرض؛ نرجع لعنوان الصفحة.
@@ -468,11 +474,20 @@ module.exports = async (req, res) => {
     // are untouched.
     const sources = [];
     try {
+      // نطاق جذر: dubai.dubizzle.com و uae.dubizzle.com موقع واحد لا موقعان.
+      // اللواحق الثنائيّة (co.uk · com.eg · gov.ae) تأخذ ثلاثة أجزاء لئلّا يندمج
+      // كلّ نطاقات الدولة في مفتاح واحد.
+      const rootDomain = (h) => {
+        const q = String(h || '').split('.').filter(Boolean);
+        if (q.length <= 2) return q.join('.');
+        const two = ['co', 'com', 'net', 'org', 'gov', 'edu', 'ac', 'or', 'ne', 'go'];
+        return two.includes(q[q.length - 2]) ? q.slice(-3).join('.') : q.slice(-2).join('.');
+      };
       const seenHosts = new Set();
       [...results, ...googleItems, ...newsItems].forEach(r => {
         if (!r || !r.url) return;
         let host = '';
-        try { host = new URL(r.url).hostname.replace(/^www\./, ''); } catch (e) { return; }
+        try { host = rootDomain(new URL(r.url).hostname.replace(/^www\./, '')); } catch (e) { return; }
         if (!host || seenHosts.has(host)) return;
         seenHosts.add(host);
         sources.push({ title: (r.title || host).replace(/^📌\s*إعلان مباشر:\s*|^🔍\s*صفحة بحث:\s*/, ''), url: r.url });
