@@ -4,7 +4,7 @@
 // هدية الترحيب عند التسجيل = 70 نقطة (تكفي: فيديو واحد + صورة واحدة).
 // المالك (omran) = بلا حدود، لا يُخصم منه شيء أبدًا.
 const crypto = require('crypto');
-const { getUser, putUser } = require('./auth.js');
+const { getUser, putUser, isBanned } = require('./auth.js');
 const { isVip } = require('./_vip.js');
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
@@ -129,6 +129,8 @@ async function spendPoints(username, amount, reason) {
   // شيء، فاسترجاعه كان سيهديه نقاطًا من العدم. الحقل vip يميّز الحالتين.
   if (isOwner(username)) return { ok: true, points: Infinity, owner: true };
   if (await isVip(username)) return { ok: true, points: Infinity, owner: true, vip: true };
+  // Suspended account: never let a live token drain the points balance.
+  if (await isBanned(username)) return { ok: false, reason: 'auth', banned: true, points: 0 };
   const amt = Math.max(0, Math.floor(Number(amount) || 0));
   if (amt === 0) return { ok: true, points: 0 };
 

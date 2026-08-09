@@ -3,6 +3,7 @@
 // interferes with the interior-design feature's quota.
 const crypto = require('crypto');
 const { kvGetJSON, kvPutJSON } = require('./kv.js');
+const { isBanned } = require('./auth.js');
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 
@@ -46,6 +47,9 @@ async function checkConstructionQuota(token) {
   if (!username) {
     return { allowed: false, reason: 'auth', username: null };
   }
+  // Suspended accounts hold a valid token for up to 30 days; the ban
+  // has to bite on the paths that actually spend money, not just login.
+  if (await isBanned(username)) return { allowed: false, reason: 'auth', banned: true, username };
   const today = todayStr();
   let usage = await getUsage(username);
   if (!usage || usage.date !== today) {

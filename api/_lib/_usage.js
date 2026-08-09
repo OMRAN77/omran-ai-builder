@@ -5,7 +5,7 @@
 // separate from the account record in db/users/, and resets automatically each
 // day (UTC) via a 2-day TTL on the counter key.
 const crypto = require('crypto');
-const { getUser, putUser } = require('./auth.js');
+const { getUser, putUser, isBanned } = require('./auth.js');
 const { kvIncr, kvExpire, kvGetJSON } = require('./kv.js');
 const { isVip } = require('./_vip.js');
 
@@ -115,6 +115,9 @@ async function checkAndConsume(token, guestId, provider, ip) {
     if (isOwnerUsername(username) || await isVip(username)) {
       return { allowed: true, username, remaining: Infinity };
     }
+    // Suspended accounts keep a valid token until it expires; refuse here so
+    // the ban actually costs them access instead of only the login screen.
+    if (await isBanned(username)) return { allowed: false, reason: 'auth', banned: true, username };
     // Tally key includes today's date, so yesterday's marks simply stop
     // counting (no cleanup needed) and the limit naturally resets at UTC
     // midnight.
@@ -207,6 +210,7 @@ async function checkAndConsumeCustom(token, guestId, ip, provider, dailyLimit) {
     if (isOwnerUsername(username) || await isVip(username)) {
       return { allowed: true, username, remaining: Infinity };
     }
+    if (await isBanned(username)) return { allowed: false, reason: 'auth', banned: true, username };
     const key = username + '_' + todayStr() + '_' + providerKey;
     const count = await countTally(key);
     if (count >= dailyLimit) {

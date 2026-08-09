@@ -530,3 +530,36 @@ module.exports.makeToken = makeToken;
 module.exports.verifyToken = verifyToken;
 module.exports.encryptUserBlob = encryptUserBlob;
 module.exports.decryptUserBlob = decryptUserBlob;
+
+// A ban set from the admin panel only ever guarded the *login* endpoint.
+// Any session token minted before the ban stayed valid for its full 30 days,
+// so a banned account kept spending the server's AI keys, points, minutes and
+// video quota untouched. Every metered path now asks here first.
+//
+// Two deliberate choices:
+//   * fails OPEN — a Redis hiccup must never lock out the whole user base;
+//     a handful of banned accounts slipping through beats a total outage.
+//   * 5s memo — one request can hit several gates (quota then points), and
+//     re-reading the same record each time would double Redis traffic on the
+//     hot path. A banned user waits at most 5 seconds longer.
+const _banMemo = new Map();
+async function isBanned(username) {
+  if (!username) return false;
+  const now = Date.now();
+  const hit = _banMemo.get(username);
+  if (hit && hit.exp > now) return hit.v;
+  let v = false;
+  try {
+    // getUserOnce, NOT getUser: the latter retries 4x with a growing sleep
+    // (~1.8s total) when a record is missing. That is fine on a login form and
+    // ruinous on a path every single chat message walks through.
+    const user = await getUserOnce(username);
+    v = !!(user && user.banned);
+  } catch (e) {
+    v = false; // fail open — see note above
+  }
+  if (_banMemo.size > 500) _banMemo.clear();
+  _banMemo.set(username, { v, exp: now + 5000 });
+  return v;
+}
+module.exports.isBanned = isBanned;
