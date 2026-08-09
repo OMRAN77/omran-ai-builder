@@ -924,6 +924,31 @@ async function __agentApplyResult(cur, full){
   cur.messages.push(agentMsg);
 }
 
+async function omModeGenerateImage(cur, promptText, thinkingDiv){
+  const __m = { role: 'assistant', content: lang === 'ar' ? '🎨 أرسم لك الصورة…' : '🎨 Generating your image…', _loading: true };
+  cur.messages.push(__m); renderAll();
+  try{
+    const __r = await fetch('/api/maha-image', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: promptText, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
+    });
+    const __d = await __r.json().catch(() => ({}));
+    __m._loading = false;
+    if(__r.ok && __d && __d.imageBase64){
+      const __mime = __d.mimeType || 'image/png';
+      __m.content = lang === 'ar' ? 'تفضّل 👇' : 'Here you go 👇';
+      __m.attachments = [{ isImage: true, dataUrl: 'data:' + __mime + ';base64,' + __d.imageBase64, name: 'image.png' }];
+      try{ cur.lastEditedImage = { b64: __d.imageBase64, mime: __mime }; }catch(e){}
+    } else {
+      __m.content = lang === 'ar' ? ('تعذّر توليد الصورة الآن — ' + ((__d && __d.error) || ('HTTP ' + __r.status))) : ('Image generation failed — ' + ((__d && __d.error) || ('HTTP ' + __r.status)));
+    }
+  }catch(e){
+    __m._loading = false;
+    __m.content = lang === 'ar' ? 'تعذّر توليد الصورة الآن — جرّب مرّة ثانية.' : 'Image generation failed — please try again.';
+  }
+  renderAll(); saveState();
+  try{ thinkingDiv && thinkingDiv.remove(); }catch(e){}
+}
 async function sendPrompt(){
   // ✅ v301: قفل الإرسال أثناء التوليد — Enter أو أي ضغطة إضافية لا ترسل
   // الطلب مرة ثانية (كان زر الإرسال ينقفل لكن Enter يظل شغالًا فيتكرر الطلب).
@@ -1058,6 +1083,7 @@ async function sendPrompt(){
 
   // Build the text sent to the AI: original text + any text-file contents appended as code blocks
   let apiText = text;
+  try{ if(window.__omMode==='think') apiText = (lang==='ar'?'فكّر بعمق خطوة بخطوة، وحلّل الاحتمالات قبل أن تجيب.\n\n':'Think deeply, step by step, before answering.\n\n') + apiText; else if(window.__omMode==='learn') apiText = (lang==='ar'?'اشرح لي كمعلّم صبور: خطوات مرقّمة، أمثلة بسيطة، ثمّ سؤال يختبر فهمي.\n\n':'Teach me patiently: numbered steps, simple examples, then one question.\n\n') + apiText; }catch(e){}
   textAttachments.forEach(a => {
     apiText += (apiText ? '\n\n' : '') + '📄 ' + a.name + ':\n```\n' + a.text + '\n```';
   });
@@ -1148,6 +1174,11 @@ async function sendPrompt(){
     // 🤖 وكيل عمران: وضع الوكيل المستقل (Claude Sonnet 4 + أدوات) — يخطط ويبحث ويبني.
     if(window.__agentModeOn && !imageAttachments.length){
       await runOmranAgent(cur, apiText, thinkingDiv);
+      return;
+    }
+    // 🎯 v526: الوضع الصريح @صورة — يتخطّى كلّ الكواشف ويولّد مباشرة
+    if(window.__omMode === 'image' && apiText && !imageAttachments.length){
+      await omModeGenerateImage(cur, apiText, thinkingDiv);
       return;
     }
     // 🏛️ شعارات الجهات الحقيقية: "عطني شعار شرطة دبي" → جلب الشعار الأصلي
@@ -2562,7 +2593,7 @@ async function sendPrompt(){
       // إطلاقًا، وإلّا غلبت تعليمة «ابنِ ولا تستأذن» داخل chat.js. بعد الموافقة
       // يسقط __gateNoBuild فتعمل اليد كاملة (صور + كود + تجربة).
       const __toolsWillRun = (window.__chatToolsOn !== false && !__routeFix && (!__gateNoBuild || !!__gateApprovedText) && !imageAttachments.length
-        && (__effProv === 'claude' || __selProv === 'claude')
+        && TOOL_PROVIDERS.indexOf(__effProv) !== -1
         && typeof window.callChatWithTools === 'function');
       if(__gateApprovedText && __toolsWillRun){
         // ✅ وافق المستخدم → يبني الآن كاملًا باليد الكاملة (صور مرسومة + كود + تجربة).
@@ -2582,7 +2613,7 @@ async function sendPrompt(){
       try{
         let __ct = null;
         if(__toolsWillRun){
-          try{ __ct = await window.callChatWithTools(apiMessages, onDelta); }
+          try{ __ct = await window.callChatWithTools(apiMessages, onDelta, __effProv); }
           catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; __swallow(e, 'chat:tools'); }
         }
         if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); }

@@ -105,3 +105,9 @@
     return { reply: full, providerKey: __p, switched: false, requestedKey: __p };
   };
 })();
+
+// v478: «استوديو الإعلانات» — صفحة مستقلّة (ad-studio.html). زرّ في مجموعة الإبداع.
+(function(){
+  var b=document.getElementById('btnAdStudio');
+  if(b) b.addEventListener('click', function(){ location.href='/ad-studio.html'; });
+})();

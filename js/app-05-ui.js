@@ -722,7 +722,7 @@ const PROVIDER_COLOR_DEFAULTS = {
 function providerPickToast(){
   try{
     const cur = getCurrent();
-    const names = (cur && cur.continueProviders || []).map(k => PROVIDER_KEY_LABELS[k] || k);
+    const names = (cur && cur.continueProviders || []).map(k => functionalLabel(k));
     const ar = (localStorage.getItem('aiapp_lang') || 'ar') === 'ar';
     const msg = names.length
       ? (ar ? '✅ أسئلتك القادمة ستذهب إلى: ' + names.join('، ') + ' فقط' : '✅ Next questions go to: ' + names.join(', ') + ' only')
@@ -768,9 +768,9 @@ function funcPrimaryOf(key){
 // v359 — الشفافية الكاملة (قرار المستخدم): كل رد يظهر بالاسم الحقيقي الشهير للمزود
 // الذي ردّ فعلًا. لو انشغل الرأس وردّ احتياطي مخفي → يظهر باسمه الحقيقي، لا اسم مموّه.
 const PROVIDER_DISPLAY = {
-  claude: 'Claude', gemini: 'Gemini', openai: 'GPT', groq: 'Groq',
-  mistral: 'Mistral', deepseek: 'DeepSeek', perplexity: 'Perplexity',
-  cohere: 'Cohere', openrouter: 'OpenRouter',
+  claude: 'الكينج', gemini: 'السريع', openai: 'العميق', groq: 'السريع',
+  mistral: 'السريع', deepseek: 'العميق', perplexity: 'العميق',
+  cohere: 'العميق', openrouter: 'العميق',
 };
 function functionalLabel(key){
   // v362 — الستة المخفيون لا يظهر اسمهم أبدًا: أي مزود يرد → يُعرض باسم
@@ -780,9 +780,9 @@ function functionalLabel(key){
 }
 // v359 — 3 أزرار بأسمائها الحقيقية الشهيرة (الناس تعرفها) + شعاراتها الأصلية.
 const PROVIDER_QUICK_LIST = [
-  { key: 'claude', name: 'Claude', color: '#d97757' },
-  { key: 'gemini', name: 'Gemini', color: '#4285f4' },
-  { key: 'openai', name: 'GPT',    color: '#10a37f' },
+  { key: 'claude', name: 'الكينج', color: '#d97757' },
+  { key: 'gemini', name: 'السريع', color: '#4285f4' },
+  { key: 'openai', name: 'العميق', color: '#10a37f' },
 ];
 // ترحيل: من اختار «العميق» (deepseek) في v358 يرجع للزر الظاهر الجديد GPT.
 try{ if(localStorage.getItem('aiapp_provider') === 'deepseek') localStorage.setItem('aiapp_provider', 'openai'); }catch(e){ __swallow(e, "save:app-05-ui#22"); }
@@ -906,7 +906,7 @@ function updateProviderQuickBarActive(){
   const current = localStorage.getItem('aiapp_provider') || 'claude';
   document.querySelectorAll('.prov-cell, .prov-chip-m').forEach(el => {
     el.classList.toggle('active', el.dataset.provider === current);
-    el.title = PROVIDER_KEY_LABELS[el.dataset.provider] || el.dataset.provider;
+    el.title = functionalLabel(el.dataset.provider);
   });
   if(typeof provDDUpdateButton === 'function') provDDUpdateButton();
   if(typeof updatePremiumToggleVisibility === 'function') updatePremiumToggleVisibility();
@@ -935,7 +935,7 @@ async function refreshProviderQuickBar(){
       if(r === undefined) return;
       if(r === null || limit === null){ // owner: unlimited (Infinity serializes to null)
         dot.classList.add('ok');
-        const lbl = PROVIDER_KEY_LABELS[cell.dataset.provider] || cell.dataset.provider;
+        const lbl = functionalLabel(cell.dataset.provider);
         cell.title = lbl + ' — بلا حدود';
         return;
       }

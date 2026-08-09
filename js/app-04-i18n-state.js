@@ -153,6 +153,7 @@ function applyLanguage(){
   activeIds.forEach(id => { const el = $('#'+id); if(el) el.classList.add('active'); });
   localStorage.setItem('aiapp_lang', lang);
   renderQuickChips();
+  renderOmranBotChips();
   try{ if(window.__refreshProjMenuLabels) window.__refreshProjMenuLabels(); }catch(_){ __swallow(_, "save:app-04-i18n-state#7"); }
 }
 
@@ -200,6 +201,28 @@ function renderQuickChips(){
       closeQuickTemplates();
       sendPrompt();
     };
+  });
+}
+
+/* v532: بوتات جاهزة كشرائح تحت صندوق المحادثة — نفس مصدر «الاقتراحات» عند ＋ */
+function renderOmranBotChips(){
+  const wrap = $('#omranChips');
+  if(!wrap) return;
+  wrap.innerHTML = '';
+  QUICK_SUGGESTIONS.filter(s => s.priority).forEach(s => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'omChip';
+    b.textContent = (s.icon ? s.icon + ' ' : '') + (s[lang] || s.en);
+    b.setAttribute('data-omchip', s.prompt[lang] || s.prompt.en);
+    b.onclick = () => {
+      const p = $('#prompt');
+      if(!p) return;
+      p.value = b.getAttribute('data-omchip') || '';
+      try{ p.dispatchEvent(new Event('input', { bubbles:true })); }catch(_){ __swallow(_, "ui:botchips#input"); }
+      try{ p.focus(); p.selectionStart = p.selectionEnd = p.value.length; }catch(_){ __swallow(_, "ui:botchips#focus"); }
+    };
+    wrap.appendChild(b);
   });
 }
 
@@ -1124,6 +1147,8 @@ function renderMessages(keepScroll){
           img.src = a.dataUrl;
           img.title = a.name;
           img.style.cursor = 'pointer';
+          // v531: صور المساعد مولَّدة ⇒ تُعرض كبيرة. مرفقات المستخدم تبقى رقاقات صغيرة.
+          if(m.role !== 'user' && !a._fromMemory) img.classList.add('genImg');
           img.onclick = () => {
             previewFrame.style.display = 'block';
             $('#pyConsole').style.display = 'none';
