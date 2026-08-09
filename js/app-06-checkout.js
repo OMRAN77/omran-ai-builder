@@ -1,3 +1,4 @@
+window.postWithConfirm = postWithConfirm;
 /* يضبط شكل المحادثة كما يشترطه Gemini — يُستدعى قبل كل طلب. */
 function sanitizeGeminiContents(list){
   const src = Array.isArray(list) ? list.filter(c => c && Array.isArray(c.parts) && c.parts.length) : [];
@@ -911,6 +912,27 @@ function extractReplyRaw(text){
       return { code, explanation, codeType: 'html' };
     }
   }
+  // 🩹 v490: مقطع كود بلا سياج ولا <html> (يبدأ بـ<div>/<style>/<script>…).
+  // بدونه كان يُمسح من فقاعة المحادثة (stripCodeFromChat) ولا يصل المعاينة أبدًا
+  // = فجوة بيضاء صامتة. نلتقطه ونلفّه في مستند كامل ليُعرض.
+  const fragM = text.match(/^[ \t]*<(div|style|script|body|canvas|section|main|form|svg|table|nav|header|article)[\s>]/im);
+  if(fragM){
+    const start = fragM.index + fragM[0].indexOf('<');
+    let end = -1;
+    ['div','style','script','body','canvas','section','main','form','svg','table','nav','header','article'].forEach(function(tg){
+      const j = text.lastIndexOf('</' + tg + '>');
+      if(j !== -1 && j + tg.length + 3 > end) end = j + tg.length + 3;
+    });
+    if(end <= start) end = text.length;
+    let code = text.slice(start, end).trim();
+    if(code.length > 200 && /<\/[a-z]+>/i.test(code)){
+      const explanation = (text.slice(0, start) + '\n' + text.slice(end)).trim();
+      if(!/<html[\s>]|<!doctype/i.test(code)){
+        code = '<!doctype html>\n<html lang="ar">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n</head>\n<body>\n' + code + '\n</body>\n</html>';
+      }
+      return { code: code, explanation: explanation, codeType: 'html' };
+    }
+  }
   return { code: '', explanation: text.trim(), codeType: '' };
 }
 
@@ -1795,4 +1817,3 @@ async function postWithConfirm(url, payload){
   if(!okToSpend) return res;
   return await send(Object.assign({}, payload, { confirmed: true }));
 }
-window.postWithConfirm = postWithConfirm;

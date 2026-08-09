@@ -162,7 +162,10 @@ function buildSpokenWordSpans(container, text){
       // كان يسقط من الالتقاط فيخرج نصًّا يُنسخ باليد. نفصل البادئة، ونوسّع
       // اللاحقة لتشمل : » " ' ] التي تلتصق بنهايات الروابط في النصّ العربي.
       let __lead = '';
-      const __leadM = display.match(/^[(«"'\[]+(?=(?:\[|https?:\/\/|www\.))/);
+      // v476: «[نص](رابط)» كان يبدأ بـ"[" فتقتطعه بادئةُ v467 فينكسر الماركداون
+      // ويظهر «النص](الرابط)» ملتصقًا. نتخطّى الاقتطاع متى كان التوكن رابطَ ماركداون.
+      const __isMd = /^\[[^\]]+\]\(https?:\/\/[^\s)]+\)/.test(display);
+      const __leadM = __isMd ? null : display.match(/^[(«"'\[]+(?=(?:\[|https?:\/\/|www\.))/);
       if(__leadM){ __lead = __leadM[0]; display = display.slice(__lead.length); }
       const linkM = display.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)([.,،؛:!؟)»"'\]]*)$/);
       const urlM = !linkM && display.match(/^(https?:\/\/[^\s<>"']{4,}|www\.[^\s<>"']{4,})([.,،؛:!؟)»"'\]]*)$/);
@@ -173,7 +176,8 @@ function buildSpokenWordSpans(container, text){
         const a = document.createElement('a');
         a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
         a.textContent = linkM ? linkM[1] : rawUrl;
-        a.style.cssText = 'color:var(--accent2); text-decoration:underline; word-break:break-all;';
+        a.setAttribute('dir', 'auto'); // v476 bidi
+        a.style.cssText = 'color:var(--accent2); text-decoration:underline; word-break:break-all; unicode-bidi:isolate;';
         span.appendChild(a);
         const trail = linkM ? linkM[3] : urlM[2];
         if(trail) span.appendChild(document.createTextNode(trail));
@@ -188,6 +192,31 @@ function buildSpokenWordSpans(container, text){
     lastIndex = m.index + m[0].length;
   }
   if(lastIndex < text.length) container.appendChild(document.createTextNode(text.slice(lastIndex)));
+  // v476: عزل الاتجاه — «(+9714) 708 1111» داخل جملة عربية كان يُعرض معكوسًا
+  // لأن المسافات بين الأرقام تتبع اتجاه الفقرة. نلفّ كل تتابع لاتيني/رقمي
+  // متجاور في غلاف dir=ltr معزول. لا يغيّر عدد spans فمحاذاة TTS تبقى سليمة.
+  try{
+    const __RTL = /[\u0600-\u08ff\ufb50-\ufeff]/, __LTR = /[0-9A-Za-z]/;
+    const __GLUE = /^[\s\u00a0()\[\]{}.,:;+\-\/\\#*'"]*$/;
+    let __run = [];
+    const __flush = () => {
+      if(__run.length > 2){
+        const w = document.createElement('span');
+        w.setAttribute('dir', 'ltr');
+        w.style.unicodeBidi = 'isolate';
+        container.insertBefore(w, __run[0]);
+        __run.forEach(n => w.appendChild(n));
+      }
+      __run = [];
+    };
+    for(const n of Array.from(container.childNodes)){
+      const t = n.textContent || '';
+      if(__RTL.test(t) || (n.nodeType === 1 && n.className === 'chat-codeblock')) __flush();
+      else if(__LTR.test(t) || (__run.length && __GLUE.test(t))) __run.push(n);
+      else __flush();
+    }
+    __flush();
+  }catch(e){ __swallow(e, 'bidi:isolate'); }
   return wordEls;
 }
 function wordStartOffsets(text){
@@ -462,7 +491,3 @@ function smartScrollBottom(){
   }catch(e){ __swallow(e, "misc:app-02-tts#7"); }
 }
 
-const codeEl = $('#code');
-const previewFrame = $('#previewFrame');
-const emptyState = $('#emptyState');
-const historyEl = $('#history');

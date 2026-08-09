@@ -1,3 +1,4 @@
+window.postWithConfirm = postWithConfirm;
 // ---- "Maha" (مها): full-screen, voice-only conversational assistant ----
 // A dedicated hands-free "phone call" experience: no transcript/reply text is
 // ever shown on screen, only a small status word + an animated orb. She
@@ -8,7 +9,7 @@
 // listening again until the user ends the call.
 // Base prompt template: {{NAME}} and {{GENDER_DESC}} are filled in at call
 // time based on the detected caller gender, so a male caller gets the
-// "Male voice" male persona/voice and a female caller gets the "Maha" female
+// "Abdullah" male persona/voice and a female caller gets the "Maha" female
 // persona/voice - same personality and rules either way, just the name and
 // gender framing change.
 const MAHA_SYSTEM_PROMPT_TEMPLATE = "You are \"{{NAME}}\", a warm, witty, upbeat {{GENDER_DESC}} voice assistant having a live spoken phone call with the user - like a close, caring friend, never a formal robotic assistant. CRITICAL RULES: 1) Detect the language the user just spoke in (it can be ANY language in the world, not just Arabic or English) and ALWAYS reply in that exact same language. 2) If the user speaks Arabic, ALWAYS reply in natural, warm Khaleeji (Gulf) spoken dialect (never Modern Standard Arabic/Fus-ha) unless the user is clearly speaking a different Arabic dialect (e.g. Egyptian), in which case match their dialect naturally. 3) Never mix languages in a reply. 4) Keep replies VERY short and snappy, like a real quick back-and-forth phone chat: 1-2 short sentences, almost never more, unless the user explicitly asks for details or a list/recipe/steps. 5) Never use markdown, asterisks, headings, bullet points, emojis, or any symbols meant for reading on screen - your reply is spoken out loud only, plain natural speech. 6) You can chat about absolutely anything: news, general knowledge, advice, casual talk, jokes, banter. If unsure about very recent events, say so naturally and briefly. 7) Be lively and human: light humor, warmth, natural reactions - never stiff or overly formal. 8) STAY STRICTLY ON TOPIC: answer ONLY what the user actually asked about. Never drift into unrelated subjects like news, songs, sports, or recipes unless the user explicitly asked about that specific subject in their current or immediately preceding message. 9) For religious, factual, or sensitive topics (e.g. Quran, Islam, science, history), be extra precise and accurate, double-check your reasoning silently before answering, and if you are not fully certain, say so briefly instead of guessing or improvising. 10) Always use the full conversation history provided to understand context, but never let earlier topics leak into your answer to a new, different question. 11) NEVER think out loud and NEVER reveal your internal reasoning, uncertainty process, or self-questioning in your reply (e.g. never say things like 'does the user mean X or Y', 'is it possible that...', 'let me consider...'). If the transcript is unclear, garbled, or a word/name is ambiguous (e.g. a mis-heard city or place name), just ask ONE short, natural, casual clarifying question in the same language/dialect the user is speaking - nothing else, no meta-commentary. 12) Your entire reply must be 100% in a single language and a single dialect from start to finish, with absolutely zero words, phrases, or fragments from any other language mixed in, even mid-sentence.";
@@ -81,12 +82,12 @@ const btnMahaEndCallEl = document.getElementById('btnMahaEndCall');
     }
     if(panel.parentNode !== mahaCallScreenOriginalParent) mahaCallScreenOriginalParent.appendChild(panel);
     panel.style.position = 'fixed';
-    panel.style.boxShadow = '0 12px 40px rgba(0,0,0,.55)';
-    panel.style.background = 'radial-gradient(circle at 50% 30%,#241a3d,#0c0a16 75%)';
-    panel.style.border = '1px solid rgba(255,255,255,.08)';
-    panel.style.borderRadius = '26px';
-    panel.style.width = '260px';
-    panel.style.height = '340px';
+    panel.style.boxShadow = 'none';
+    panel.style.background = 'none';
+    panel.style.border = 'none';
+    panel.style.borderRadius = '0';
+    panel.style.width = 'auto';
+    panel.style.height = 'auto';
     try {
       const saved = JSON.parse(localStorage.getItem(POS_KEY) || 'null');
       if(saved && typeof saved.x === 'number' && typeof saved.y === 'number'){
@@ -94,8 +95,8 @@ const btnMahaEndCallEl = document.getElementById('btnMahaEndCall');
       }
     } catch(e){ __swallow(e, "ui:app-08-maha#2"); }
     if(x === undefined){
-      x = Math.round((window.innerWidth - 260) / 2);
-      y = Math.round((window.innerHeight - 340) / 2);
+      x = Math.round((window.innerWidth - (panel.offsetWidth || 133)) / 2);
+      y = Math.round((window.innerHeight - (panel.offsetHeight || 203)) / 2);
     }
     const c = clampPos(x, y);
     applyPos(c.x, c.y);
@@ -199,32 +200,62 @@ function mahaAutoCorrelate(buf, sampleRate){
   return sampleRate / T0;
 }
 
-// Detected gender of the current caller, refreshed once per turn based on
-// pitch samples collected while they were speaking. Defaults to 'female'
-// (Maha's own natural voice) until enough real samples come in.
-let mahaDetectedGender = 'female';
-let mahaSelectedVoice = 'female';
-try { mahaSelectedVoice = localStorage.getItem('mahaVoiceGender') || 'female'; } catch(e) {}
-// Updates the on-screen call card name/icon to match the currently detected
-// caller gender: "مها" (female, 💁‍♀️) or "صوت ذكر" (male, 🧔).
-function mahaUpdatePersonaUI(){
-  const nameEl = document.getElementById('mahaCallNameLabel');
-  const orbEl = document.getElementById('mahaOrb');
-  const isMale = mahaDetectedGender === 'male';
-  if(nameEl) nameEl.textContent = isMale ? 'صوت ذكر' : 'مها';
-  if(orbEl) orbEl.textContent = isMale ? '🧔' : '💁\u200d♀️';
+// The assistant voice the user PICKED (first-run card or ⚙️ settings) — never a
+// guess from the caller's own pitch. 'female' -> مها, 'male' -> عبدالله. Same
+// persona, same dialect, same knowledge either way: only voice + name differ.
+function mahaReadVoiceGender(){
+  try{ return localStorage.getItem('aiapp_voice_gender') === 'male' ? 'male' : 'female'; }
+  catch(e){ return 'female'; }
 }
-function mahaSetVoiceGender(g) {
-  mahaSelectedVoice = g;
-  try { localStorage.setItem('mahaVoiceGender', g); } catch(e) {}
+let mahaDetectedGender = mahaReadVoiceGender();
+// Syncs the on-screen call card name with the chosen voice. The orb artwork is
+// intentionally identical for both voices — only the name changes.
+function mahaUpdatePersonaUI(){
+  mahaDetectedGender = mahaReadVoiceGender();
+  const male = mahaDetectedGender === 'male';
   const nameEl = document.getElementById('mahaCallNameLabel');
-  const orbEl = document.getElementById('mahaOrb');
-  if(nameEl && mahaCallMode !== 'builder') nameEl.textContent = g === 'male' ? 'صوت ذكر' : 'مها';
-  if(orbEl && mahaCallMode !== 'builder') orbEl.textContent = g === 'male' ? '🧔' : '💁\u200d♀️';
-  const btnF = document.getElementById('mahaVoiceFemale');
-  const btnM = document.getElementById('mahaVoiceMale');
-  if(btnF) btnF.style.background = g === 'female' ? 'rgba(168,85,247,.45)' : 'rgba(255,255,255,.1)';
-  if(btnM) btnM.style.background = g === 'male' ? 'rgba(59,130,246,.45)' : 'rgba(255,255,255,.1)';
+  if(nameEl) nameEl.textContent = male ? 'عبدالله' : 'مها';
+  const orb = document.getElementById('mahaOrb');
+  if(orb){
+    orb.textContent = male ? '🧔' : '💁‍♀️';
+    orb.style.background = male ? 'linear-gradient(135deg,#ffd77a,#b8860b)' : 'linear-gradient(135deg,#ff5fa2,#7b5cff)';
+    orb.style.boxShadow = male ? '0 0 35px rgba(184,134,11,.6)' : '0 0 28px rgba(123,92,255,.5)';
+    orb.style.border = 'none';
+    orb.style.fontSize = '39px';
+  }
+}
+// First-run voice picker: shown once, before the very first call, then stored.
+// Changeable any time from ⚙️ الإعدادات › الصوت.
+function mahaEnsureVoiceChosen(){
+  return new Promise(resolve => {
+    let already = null;
+    try{ already = localStorage.getItem('aiapp_voice_gender'); }catch(e){}
+    if(already === 'male' || already === 'female') return resolve(already);
+    const wrap = document.createElement('div');
+    wrap.id = 'voicePickFirstRun';
+    wrap.style.cssText = 'position:fixed; inset:0; z-index:100000; display:flex; align-items:center; justify-content:center; background:rgba(8,7,14,.82); backdrop-filter:blur(6px);';
+    const card = document.createElement('div');
+    card.dir = 'rtl';
+    card.style.cssText = 'width:min(92vw,420px); background:#12101c; border:1px solid rgba(255,255,255,.10); border-radius:22px; padding:26px 22px; text-align:center; box-shadow:0 24px 60px rgba(0,0,0,.55);';
+    const opt = (g, name) => '<button type="button" data-g="' + g + '" class="vpFirstBtn" style="flex:1; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.10); border-radius:18px; padding:18px 10px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:12px;">'
+      + '<span style="width:74px; height:74px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:36px; background:' + (g === 'male' ? 'linear-gradient(135deg,#ffd77a,#b8860b)' : 'linear-gradient(135deg,#ff5fa2,#7b5cff)') + '; box-shadow:' + (g === 'male' ? '0 0 50px rgba(184,134,11,.6)' : '0 0 40px rgba(123,92,255,.5)') + ';">'
+      + (g === 'male' ? '🧔' : '💁‍♀️')
+      + '</span><span style="color:#fff; font-size:17px; font-weight:700;">' + name + '</span></button>';
+    card.innerHTML = '<div style="color:#fff; font-size:19px; font-weight:700; margin-bottom:6px;">اختر صوت المساعد</div>'
+      + '<div style="color:#a9a2bd; font-size:13px; margin-bottom:20px;">تقدر تغيّره لاحقًا من الإعدادات</div>'
+      + '<div style="display:flex; gap:12px;">' + opt('female','مها') + opt('male','عبدالله') + '</div>';
+    wrap.appendChild(card);
+    document.body.appendChild(wrap);
+    card.querySelectorAll('.vpFirstBtn').forEach(b => {
+      b.onclick = () => {
+        const g = b.getAttribute('data-g');
+        try{ localStorage.setItem('aiapp_voice_gender', g); }catch(e){}
+        if(typeof setVoiceGenderUI === 'function'){ try{ setVoiceGenderUI(g); }catch(e){} }
+        wrap.remove();
+        resolve(g);
+      };
+    });
+  });
 }
 // All pitch samples collected across the *entire* call (not reset per turn).
 // A single noisy turn (background sound, echo, weak mic) can produce a wrong
@@ -309,7 +340,7 @@ async function mahaSpeak(text){
       const resp = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaSelectedVoice, lang: mahaReplyLang })
+        body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang })
       });
       if(!resp.ok){ resolve(); return; }
       const blob = await resp.blob();
@@ -426,7 +457,7 @@ async function mahaRecordUntilSilence(){
     if(mahaAllPitchSamples.length >= 12){
       const sorted = mahaAllPitchSamples.slice().sort((a, b) => a - b);
       const median = sorted[Math.floor(sorted.length / 2)];
-      mahaDetectedGender = median < 165 ? 'male' : 'female';
+      void median; // v493: pitch no longer picks the voice — the user does.
     }
   }
 
@@ -913,8 +944,8 @@ async function mahaStartRealtimeCall(){
       guestId: window.getGuestId(),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       mode: mahaCallMode,
+      voiceGender: mahaReadVoiceGender(),
       desktop: !document.documentElement.classList.contains('mobile-ui'),
-      voiceGender: mahaSelectedVoice,
     }),
   });
   const tokenData = await tokenRes.json().catch(() => ({}));
@@ -1334,9 +1365,10 @@ async function mahaCallLoop(){
     try{
       blob = await mahaRecordUntilSilence();
     }catch(e){
-      mahaSetState('idle');
-      if(mahaStateLabelEl) mahaStateLabelEl.textContent = t('mahaMicDenied');
+      var __m = mahaMicMsg(e);
+      mahaSetState('error', __m);
       mahaCallActive = false;
+      alert(__m);
       break;
     }
     if(!mahaCallActive) break;
@@ -1423,11 +1455,11 @@ async function mahaCallLoop(){
       const mahaDateSystemMsg = `The current real-world date and time right now is: ${mahaNowStr} (Gulf Standard Time, UAE). Always treat this as the true current date - never assume any other date, and never assume events after this date "haven't happened yet" just because you are unsure; if something is dated on or before this date, treat it as already having happened, and answer using your best knowledge plus common sense reasoning about the timeline. If truly asked about something very recent you can't know for certain, say so briefly instead of guessing wrong.`;
 
       const mahaSearchSystemMsg = await mahaMaybeSearch(transcript);
-      // Persona swap: male caller -> "Male voice" (male voice/persona), female
+      // Persona swap: male caller -> "Abdullah" (male voice/persona), female
       // caller -> "Maha" (female voice/persona). mahaDetectedGender is the
       // accumulated pitch-based detection from the caller's own voice.
-      const mahaPersonaName = mahaSelectedVoice === 'male' ? 'Male voice' : 'Maha';
-      const mahaPersonaGenderDesc = mahaSelectedVoice === 'male' ? 'male' : 'female';
+      const mahaPersonaName = mahaDetectedGender === 'male' ? 'Abdullah' : 'Maha';
+      const mahaPersonaGenderDesc = mahaDetectedGender === 'male' ? 'male' : 'female';
       const mahaSystemPrompt = MAHA_SYSTEM_PROMPT_TEMPLATE
         .replace(/\{\{NAME\}\}/g, mahaPersonaName)
         .replace(/\{\{GENDER_DESC\}\}/g, mahaPersonaGenderDesc);
@@ -1543,28 +1575,72 @@ function mahaEndCall(){
 }
 
 let mahaCallMode = 'assistant'; // 'assistant' (مها) or 'builder' (voice tab)
+// v500: رسالة صريحة بدل الصمت عند تعذّر المايك — تُميّز رفض الإذن / لا يوجد جهاز / مشغول.
+function mahaMicMsg(e){
+  var L = "ar"; try{ L = localStorage.getItem("aiapp_lang") || "ar"; }catch(_){ }
+  var ar = L === "ar";
+  var n = (e && e.name) ? String(e.name) : "";
+  if(/NotAllowed|Permission|Security/i.test(n))
+    return ar ? "🎤 المايك مرفوض. اضغط 🔒 في شريط العنوان ← Microphone ← Allow ثمّ أعد المحاولة."
+             : "🎤 Microphone blocked. Click 🔒 in the address bar → Microphone → Allow, then try again.";
+  if(/NotFound|DevicesNotFound|OverconstrainedError/i.test(n))
+    return ar ? "🎤 ما في ميكروفون موصول بالجهاز." : "🎤 No microphone found on this device.";
+  if(/NotReadable|TrackStart|Aborted/i.test(n))
+    return ar ? "🎤 المايك مشغول ببرنامج ثاني. سكّره وجرّب مرّة ثانية." : "🎤 The mic is used by another app. Close it and try again.";
+  if(n === "__timeout__")
+    return ar ? "🎤 ما وصلني إذن المايك. أجب على طلب الإذن، أو اضغط 🔒 في شريط العنوان ← Microphone ← Allow، ثمّ اضغط مها مرّة ثانية."
+             : "🎤 No mic permission yet. Answer the browser prompt, or click 🔒 in the address bar → Microphone → Allow, then tap Maha again.";
+  return (ar ? "🎤 تعذّر فتح المايك" : "🎤 Could not open the microphone") + (n ? " (" + n + ")" : "");
+}
+// فحص مسبق: نطلب الإذن قبل فتح شاشة النداء، فلا تتجمّد الشاشة ١٢ ثانية بلا سبب ظاهر.
+async function mahaMicPreflight(){
+  var perm = "";
+  try{ perm = (await navigator.permissions.query({ name: "microphone" })).state; }catch(_){ }
+  if(perm === "denied") return mahaMicMsg({ name: "NotAllowedError" });
+  try{
+    var s = await Promise.race([
+      navigator.mediaDevices.getUserMedia({ audio: true }),
+      new Promise(function(_res, rej){ setTimeout(function(){ rej({ name: "__timeout__" }); }, 15000); })
+    ]);
+    s.getTracks().forEach(function(tr){ try{ tr.stop(); }catch(_){ } });
+    return null;
+  }catch(e){ console.error("[maha] mic preflight failed:", e); return mahaMicMsg(e); }
+}
+
 async function mahaStartCall(mode){
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
     alert(t('micNotSupported'));
     return;
   }
+  var __ar = true; try{ __ar = (localStorage.getItem("aiapp_lang") || "ar") === "ar"; }catch(_){ }
   mahaCallMode = mode === 'builder' ? 'builder' : 'assistant';
+  if(mahaCallMode !== 'builder'){ await mahaEnsureVoiceChosen(); }
+  if(mahaCallScreenEl){
+    mahaCallScreenEl.style.display = "flex";
+    if(mahaOrbEl) mahaOrbEl.style.display = "flex";
+    mahaSetState("thinking", __ar ? "🎤 بانتظار إذن المايك…" : "🎤 Waiting for mic permission…");
+    if(typeof mahaPositionOnOpen === "function") mahaPositionOnOpen();
+  }
+  var __micErr = await mahaMicPreflight();
+  if(__micErr){
+    mahaSetState("error", __micErr);
+    if(mahaCallScreenEl) mahaCallScreenEl.style.display = "none";
+    alert(__micErr);
+    return;
+  }
   if(btnMahaEl) btnMahaEl.style.display = 'none';
   stopAllSpeaking();
   mahaHistory = [];
   mahaAllPitchSamples = [];
-  mahaDetectedGender = 'female';
-  mahaSetVoiceGender(mahaSelectedVoice);
+  mahaDetectedGender = mahaReadVoiceGender();
   mahaIntroduced = false;
   // ملاحظة: لا نمسح مرجع الصورة الأخيرة هنا — يبقى ثابت حتى يبدأ المستخدم "+ مشروع جديد" فعليًا
   const mahaImgElStart = document.getElementById('mahaGenImage');
   if(mahaImgElStart && !mahaLastImageBase64){ mahaImgElStart.style.display = 'none'; mahaImgElStart.src = ''; }
   if(mahaOrbEl) mahaOrbEl.style.display = mahaCallMode === 'builder' ? 'none' : 'flex';
   if(mahaWaveEl) mahaWaveEl.style.display = mahaCallMode === 'builder' ? 'flex' : 'none';
-  const mahaVoiceToggleEl = document.getElementById('mahaVoiceToggle');
-  if(mahaVoiceToggleEl) mahaVoiceToggleEl.style.display = mahaCallMode === 'builder' ? 'none' : 'flex';
   const mahaNameLabelEl = document.getElementById('mahaCallNameLabel');
-  if(mahaNameLabelEl) mahaNameLabelEl.textContent = mahaCallMode === 'builder' ? (t('voiceTabAssistantName') || 'المساعد') : (mahaSelectedVoice === 'male' ? 'صوت ذكر' : 'مها');
+  if(mahaNameLabelEl) mahaNameLabelEl.textContent = mahaCallMode === 'builder' ? (t('voiceTabAssistantName') || 'المساعد') : 'مها';
   if(mahaCallMode !== 'builder') mahaUpdatePersonaUI();
   mahaCallActive = true;
   if(mahaCallScreenEl){

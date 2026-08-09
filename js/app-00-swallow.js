@@ -73,4 +73,3 @@ function safeParseLS(key, fallback){
   if(raw !== null && raw !== ''){ try{ localStorage.removeItem(key); }catch(e){ window.__swallow(e, 'parse:purge:' + key); } }
   return fallback;
 }
-window.safeParse = safeParse; window.safeParseLS = safeParseLS;

@@ -1942,4 +1942,3 @@ async function postWithConfirm(url, payload){
   if(!okToSpend) return res;
   return await send(Object.assign({}, payload, { confirmed: true }));
 }
-window.postWithConfirm = postWithConfirm;

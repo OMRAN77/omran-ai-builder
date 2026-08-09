@@ -1,3 +1,4 @@
+window.safeParse = safeParse; window.safeParseLS = safeParseLS;
 // ONE-TIME MIGRATION: earlier versions of this app let visitors paste their own
 // provider API keys/models into localStorage for direct (client-side) calls.
 // Now all 8 providers (except Perplexity) are proxied server-side with the

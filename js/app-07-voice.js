@@ -1,3 +1,4 @@
+window.postWithConfirm = postWithConfirm;
 // ---- Voice chat: speech-to-text (mic) + auto-read replies ----
 const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognizer = null;
@@ -397,4 +398,3 @@ async function postWithConfirm(url, payload){
   if(!okToSpend) return res;
   return await send(Object.assign({}, payload, { confirmed: true }));
 }
-window.postWithConfirm = postWithConfirm;

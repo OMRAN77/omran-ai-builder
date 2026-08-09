@@ -1281,4 +1281,3 @@ window.updateVersionLabel = function(){
     el.style.display = 'none';
   }
 };
-window.updateVersionLabel();

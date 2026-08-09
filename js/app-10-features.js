@@ -1,3 +1,4 @@
+window.postWithConfirm = postWithConfirm;
 // --- Offline banner ---
 (function(){
   const banner = $('#offlineBanner');
@@ -312,7 +313,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   if(!dd) return;
   const groups = [
     { title: null, ids: ['btnSettings','btnAuthToggle','btnToggleHistory'] },
-    { title: 'grpCreate', ids: ['btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnExplore'] },
+    { title: 'grpCreate', ids: ['btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnAdStudio','btnExplore'] },
     { title: 'grpSections', ids: ['btnStocks','btnConstruction','btnOmranEdu','btnExpense','btnDocs','btnGov','btnCV','btnReligion','btnEmailAssist'] },
     { title: 'grpTools', ids: ['btnTemplates','btnAgentMode','btnInstall','btnShareApp'] }
   ];
@@ -331,6 +332,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
     btnDesignAI:    'Artist%20palette/3D/artist_palette_3d.png',
     btnFashionAI:   'Dress/3D/dress_3d.png',
     btnStudioAI:    'Magic%20wand/3D/magic_wand_3d.png',
+    btnAdStudio:    'Megaphone/3D/megaphone_3d.png',
     btnExplore:     'Magnifying%20glass%20tilted%20left/3D/magnifying_glass_tilted_left_3d.png',
     btnStocks:      'Chart%20increasing/3D/chart_increasing_3d.png',
     btnConstruction:'Building%20construction/3D/building_construction_3d.png',

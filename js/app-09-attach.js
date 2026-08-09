@@ -898,6 +898,10 @@ async function __agentApplyResult(cur, full){
       if(chatText) chatText += '\n\n' + (lang === 'ar' ? '⚠️ يبدو أن الكود انقطع قبل اكتماله — اكتب "كمل الكود" وسأكمله.' : '⚠️ The code seems truncated — type "continue" and I will finish it.');
     } else {
       chatText = stripCodeFromChat(full).trim();
+      // ⚠️ v490: مسار الوكيل كان صامتًا — كود مُلغى/محذوف ⇒ رسالة صريحة بدل معاينة فارغة.
+      if(/```|<\/[a-z]+>|<!doctype|<html[\s>]/i.test(full || '')){
+        chatText = (chatText ? chatText + '\n\n' : '') + t('buildNoCode');
+      }
     }
   }
   if(!chatText) chatText = codeProducedThisTurn
@@ -2079,6 +2083,7 @@ async function sendPrompt(){
       }, 2000);
       const finalizeOne = (msg) => {
         msg._loading = false;
+        if(isBuildTask && !__gateNoBuild && !msg.code && !msg._failed && !msg._noCode){ msg._noCode = 1; msg.content = (msg.content ? msg.content + '\n\n' : '') + t('buildNoCode'); }
         try{ __updatePrepCounter(); }catch(e){ __swallow(e, "misc:app-09-attach#21"); }
         const st = revealStates.get(msg._uid);
         if(st){
@@ -2590,7 +2595,10 @@ async function sendPrompt(){
       // v467: ما تبنيه يد المحادثة يُعرض في المعاينة كأي بناء — وإلّا بقي
       // الموقع حبيس فقاعة نصّيّة لا تُرى.
       const __builtByTools = !!(code && __ctUsed && !isBuildTask);
-      if(code && (isBuildTask || __builtByTools)){
+      // v491: أيّ كود مُستخرَج يصل المعاينة دائمًا — حتّى لو لم يعرف كاشف
+      // النيّة الطلب (مثال: ردّ المستخدم «أبدأ» على سؤال البوّابة).
+      void __builtByTools;
+      if(code){
         // 🔁 التصحيح الذاتي: فحص الكود وإصلاح أخطائه قبل العرض
         try{
           const healed = await selfHealCode(code, codeType, () => {
@@ -2607,7 +2615,7 @@ async function sendPrompt(){
       let providerLabel = functionalLabel(providerKey);
       void switched; void requestedKey;
       // v463: askAllReply=false — الردود العادية ما تدخل compare-row
-      cur.messages.push({role: 'assistant', content: (isBuildTask ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: isBuildTask ? code : null, providerLabel, providerKey, askAllReply: false,
+      cur.messages.push({role: 'assistant', content: (code ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: code || null, providerLabel, providerKey, askAllReply: false,
         // 🚫 v368: الصور والمصادر لم تعد تُعرض في المحادثة — مكانها المتصفح فقط.
         sources: undefined,
         searchImages: undefined});
@@ -2777,4 +2785,3 @@ async function postWithConfirm(url, payload){
   if(!okToSpend) return res;
   return await send(Object.assign({}, payload, { confirmed: true }));
 }
-window.postWithConfirm = postWithConfirm;

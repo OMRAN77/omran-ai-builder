@@ -1,4 +1,3 @@
-window.I18N = I18N;
 /* v424: أساس الاحتياط للّغات. سبعة ملفّات لغة ناقصة (٣٠ مفتاحًا من ٧٩٦) كانت
    تُظهر العربية لمن لا يقرأها. الإنجليزية أساسٌ أصدق، ولغة الملفّ تبقى فوقه.
    العربية والإنجليزية تُعادان كما هما — لا دمج ولا كلفة على الجمهور الأوّل. */
@@ -56,7 +55,32 @@ let lang = localStorage.getItem('aiapp_lang') || (function(){
   } catch(e){ __swallow(e, "save:app-04-i18n-state#3"); }
 })();
 
+function mahaPersonaName(){
+  var male = false;
+  try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) {}
+  var isAr = false;
+  try { isAr = (typeof lang !== 'undefined' && lang === 'ar'); } catch(e) {}
+  if (male) return isAr ? 'عبدالله' : 'Abdullah';
+  return isAr ? 'مها' : 'Maha';
+}
+function __voiceFill(v){
+  if (typeof v !== 'string' || v.indexOf('{voice') === -1) return v;
+  var male = false;
+  try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) {}
+  return v.split('{voiceAdj}').join(male ? 'الصوتي' : 'الصوتية')
+          .split('{voice}').join(mahaPersonaName());
+}
 function t(key){
+  var v = tRaw(key);
+  if (typeof v === 'string' && v.indexOf('{voice') !== -1) {
+    var male = false;
+    try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) {}
+    return v.split('{voiceAdj}').join(male ? 'الصوتي' : 'الصوتية')
+            .split('{voice}').join(mahaPersonaName());
+  }
+  return v;
+}
+function tRaw(key){
   const v = I18N[lang] ? I18N[lang][key] : undefined;
   if (v !== undefined) return v;
   // v424: الإنجليزية قبل العربية — الناقص كان يخرج عربيًّا في واجهة صينية
@@ -88,7 +112,7 @@ function applyLanguage(){
       const key = m[2];
       if(dict[key] !== undefined) el.setAttribute(attrName, dict[key]);
     } else if(dict[raw] !== undefined){
-      el.innerHTML = dict[raw];
+      el.innerHTML = __voiceFill(dict[raw]);
     }
   });
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
@@ -167,7 +191,7 @@ function renderQuickChips(){
     });
   wrap.innerHTML = order.map(i => {
     const s = QUICK_SUGGESTIONS[i];
-    return `<button type="button" class="btn quickChip" data-idx="${i}" style="display:block; width:100%; text-align:right; background:none; border:none; box-shadow:none; font-size:13px; padding:5px 8px; min-height:0; line-height:1.4;">${s[lang] || s.en}</button>`;
+    return `<button type="button" class="btn quickChip" data-idx="${i}" style="display:block; width:100%; text-align:right; background:none; border:none; box-shadow:none; color:var(--text); font-size:13px; padding:5px 8px; min-height:0; line-height:1.4;">${s[lang] || s.en}</button>`;
   }).join('');
   wrap.querySelectorAll('.quickChip').forEach(btn => {
     btn.onclick = () => {
@@ -195,7 +219,8 @@ function toggleQuickTemplates(){
   const btn = $('#btnQuickTemplates');
   if(btn) btn.classList.toggle('active', willShow);
   const msgs = $('#messages');
-  if(msgs) msgs.style.visibility = willShow ? 'hidden' : '';
+  if(msgs) msgs.style.visibility = '';
+  if(willShow){ try{ const p = document.getElementById('plusToolsPopup'); if(p){ p.classList.remove('show'); p.classList.remove('open'); } }catch(_){ __swallow(_, "ui:quicksug#close-plus"); } }
 }
 if($('#btnQuickTemplates')) $('#btnQuickTemplates').onclick = (e) => { e.stopPropagation(); toggleQuickTemplates(); };
 document.addEventListener('click', (e) => {
