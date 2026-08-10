@@ -272,6 +272,13 @@
       </div>
     </div></div>
 
+  <div id="memorySection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('memorySection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size: var(--fs-3);" data-i18n="memorySectionLabel">ذاكرتي</h3><span class="settingsSectionArrow" id="memorySectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">&#9654;</span></div><div id="memorySectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+      <p style="margin:0 0 10px; opacity:.75; font-size:var(--fs-6); line-height:1.7;" data-i18n="memoryIntro">ما يتذكّره التطبيق عنك من محادثاتك السابقة. محفوظ في حسابك وحدك ولا يراه غيرك.</p>
+      <div id="memoryBox" style="white-space:pre-wrap; line-height:1.9; font-size:var(--fs-6); background:rgba(127,127,127,.08); border:1px solid rgba(127,127,127,.18); border-radius:12px; padding:12px; min-height:56px; max-height:320px; overflow:auto;"></div>
+      <button type="button" id="memoryClearBtn" style="margin-top:12px; padding:9px 16px; border-radius:10px; border:1px solid rgba(220,70,70,.45); background:transparent; color:#e05555; cursor:pointer; font-size:var(--fs-6);" data-i18n="memoryClearBtn">حذف ذاكرتي</button>
+    </div></div>
+
   <div id="voiceSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('voiceSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size: var(--fs-3);" data-i18n="voiceSectionLabel">الصوت</h3><span class="settingsSectionArrow" id="voiceSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="voiceSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
   <label data-i18n="voiceGenderLabel">نوع الصوت المفضل</label>

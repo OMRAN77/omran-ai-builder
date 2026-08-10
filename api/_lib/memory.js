@@ -81,7 +81,7 @@ async function callMergeModel(sys, user) {
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + oaKey },
-        body: JSON.stringify({ model: 'gpt-4.1-mini', messages: [ { role: 'system', content: sys }, { role: 'user', content: user } ], temperature: 0.2, max_tokens: 900 }),
+        body: JSON.stringify({ store: false, model: 'gpt-4.1-mini', messages: [ { role: 'system', content: sys }, { role: 'user', content: user } ], temperature: 0.2, max_tokens: 900 }),
       });
       if (res.ok) {
         const d = await res.json();
@@ -219,6 +219,8 @@ module.exports = async (req, res) => {
         return;
       }
       if (merged !== cur.memory || cur.pending.length) await writeMemory(username, merged, undefined, []); // v475
+      // v545 — المعرفة الجماعيّة: تُستخرج من نفس المقتطف، وتفشل بصمت دائمًا.
+      try { await require('./collective.js').learn(username, __userText, body.aiText); } catch (e) { /* guard-ok: collective learning is optional; personal memory still succeeds. */ }
       res.status(200).json({ ok: true, memory: merged });
       return;
     }
@@ -232,3 +234,4 @@ module.exports = async (req, res) => {
 // الوكيل (agent.js) يحتاج قراءة الذاكرة مباشرة دون نداء HTTP لنفسه.
 // إضافة خاصية على الدالة لا تغيّر كونها معالج الطلب، فالتوجيه سليم كما هو.
 module.exports.readMemory = readMemory;
+module.exports.callMergeModel = callMergeModel; // v545 — يستعمله collective.js

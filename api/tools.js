@@ -23,6 +23,7 @@ function load(action) {
     case 'analyze-zip': return require('./_lib/analyze-zip.js');
     case 'stocks': return require('./_lib/stocks.js');
     case 'adchat': return require('./_lib/adchat.js');
+    case 'adimage': return require('./_lib/adimage.js');
     default: return null;
   }
 }

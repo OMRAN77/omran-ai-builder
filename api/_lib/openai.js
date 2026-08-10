@@ -59,7 +59,7 @@ module.exports = async (req, res) => {
     }
 
     const wantStream = !!body.stream;
-    const payload = { model: useModel, messages, stream: wantStream };
+    const payload = { model: useModel, messages, stream: wantStream, store: false }; // v544: لا تُخزَّن عند المزوّد
     if (!isPremium) payload.temperature = 0.7; // موديلات gpt-5.x قد ترفض temperature مخصص
     const upstream = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',

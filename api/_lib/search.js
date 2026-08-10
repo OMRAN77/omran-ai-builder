@@ -165,6 +165,62 @@ function mergeSocial(a, b) {
   return out.slice(0, 4);
 }
 
+// 📍 v542: Google Places API (New) — Text Search. سؤال «وين أحسن مطعم؟» جوابه
+// اسمٌ وعنوانٌ وتقييم، لا مقالة. محرّك الويب العام لا يملك هذا؛ Places يملكه.
+// شرط الرخصة: إسناد ظاهر «Google Maps» + لا تخزين — لذلك تُمرَّر حيّة ولا تُحفظ.
+// فشلها صامت تمامًا: البحث العادي يكمل كأنّها لم تكن.
+async function fetchPlaces(key, query, lang, regionCode) {
+  if (!key) return [];
+  try {
+    const r = await fetch('https://places.googleapis.com/v1/places:searchText', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': key,
+        'X-Goog-FieldMask': [
+          'places.displayName', 'places.formattedAddress', 'places.rating',
+          'places.userRatingCount', 'places.priceLevel', 'places.googleMapsUri',
+          'places.websiteUri', 'places.currentOpeningHours.openNow',
+          'places.primaryTypeDisplayName',
+        ].join(','),
+      },
+      body: JSON.stringify({
+        textQuery: String(query || '').slice(0, 300),
+        languageCode: (lang === 'ar' ? 'ar' : 'en'),
+        maxResultCount: 20,
+        ...(/^[A-Z]{2}$/.test(regionCode || '') ? { regionCode } : {}),
+      }),
+      signal: AbortSignal.timeout(9000),
+    });
+    if (!r.ok) return [];
+    const j = await r.json();
+    return (Array.isArray(j.places) ? j.places : []).map((p) => ({
+      name: (p.displayName && p.displayName.text) || '',
+      address: p.formattedAddress || '',
+      rating: (typeof p.rating === 'number') ? p.rating : null,
+      reviews: p.userRatingCount || 0,
+      price: (p.priceLevel || '').replace('PRICE_LEVEL_', '').toLowerCase(),
+      type: (p.primaryTypeDisplayName && p.primaryTypeDisplayName.text) || '',
+      openNow: !!(p.currentOpeningHours && p.currentOpeningHours.openNow),
+      url: p.googleMapsUri || '',
+      site: p.websiteUri || '',
+    })).filter((p) => p.name).slice(0, 20);
+  } catch (e) { return []; }
+}
+
+// 🏷️ v556: أسماء مواقع المجالات كما هي مكتوبة في القوائم أعلاه. تُعرض حين
+// يسقط مزوّد البحث، فيرى المستخدم مواقع مجاله لا روابط أخبار لا صلة لها.
+const LISTING_SITE_AR = {
+  'bayut.com': 'بايوت', 'dubizzle.com': 'دوبيزل', 'propertyfinder.ae': 'بروبرتي فايندر',
+  'dubicars.com': 'دوبي كارز', 'yallamotor.com': 'يالا موتور', 'cars24.ae': 'كارز 24',
+  'autotraders.ae': 'أوتو تريدرز', 'oneclickdrive.com': 'ون كليك درايف', 'selfdrive.ae': 'سيلف درايف',
+  'booking.com': 'بوكينج', 'agoda.com': 'أجودا', 'hotels.com': 'هوتيلز', 'airbnb.com': 'إير بي إن بي',
+  'almosafer.com': 'المسافر', 'wego.ae': 'ويجو', 'bayt.com': 'بيت', 'indeed.ae': 'إنديد',
+  'naukrigulf.com': 'نوكري جلف', 'gulftalent.com': 'جلف تالنت', 'skyscanner.ae': 'سكاي سكانر',
+  'skyscanner.net': 'سكاي سكانر', 'kayak.ae': 'كاياك', 'cheapflights.ae': 'تشيب فلايتس',
+  'xplate.com': 'إكس بليت', 's-plate.com': 'إس بليت',
+};
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -355,8 +411,13 @@ module.exports = async (req, res) => {
     // v467c: إذا السياق/الاستعلام يذكر دولة غير الإمارات → لا نقفل على مواقع إماراتية
     const __foreignCountryRe = /نيبال|nepal|فلبين|فليبين|philippin|بنجلاديش|بنغلاديش|bangladesh|هند(?!سي)|india|باكستان|pakistan|سعودي|saudi|مصر|egypt|عمان(?! (ai|builder))|oman|قطر|qatar|كويت|kuwait|بحرين|bahrain|أردن|jordan|عراق|iraq|سوري|syria|يمن|yemen|لبنان|lebanon|ليبيا|libya|تونس|tunis|جزائر|algeria|مغرب|morocco|سودان|sudan|صومال|somal|تركي|turk|إيران|iran|أفغان|afghan|إندونيسي|indonesia|ماليزي|malays|تايلاند|thai|فيتنام|vietnam|كمبودي|cambodia|ميانمار|myanmar|سريلانك|sri lanka|كوري|korea|ياباني|japan|صين|china|روسي|russ|أمريك|americ|كند|canad|بريطان|british|uk|ألمان|german|فرنس|franc|إيطالي|ital|إسبان|spain|برتغال|portug|هولند|netherl|بلجيك|belg|سويسر|swiss|أسترال|austral|نيوزيلند|new zealand|برازيل|brazil|أرجنتين|argentin|مكسيك|mexic|كولومبي|colombi|تشيلي|chile|بيرو|peru|جنوب أفريقي|south afric|كيني|kenya|نيجيري|nigeria|غان|ghana|تنزاني|tanzania|أثيوبي|ethiopi|أوغند|uganda/i;
     const __hasForeignCountry = __foreignCountryRe.test(query);
-    const isListing = !domains && !__wantsOfficialSource && !__hasForeignCountry && (/عقار|شق(ة|ق|تين)|فيلا|فلل|أرض للبيع|ارض للبيع|للبيع|للايجار|للإيجار|إيجار|ايجار|محل تجاري|مكتب للـ|سياره|سيارة|سيارات|سيرات|سياير|اجار|آجار|تأجير|تاجير|استئجار|rent a car|car rental|وظيفة|وظائف|توظيف|apartment|villa|property|for sale|for rent|listing|car for|job vacanc|تذكرة|تذاكر|رحلة إلى|رحله الى|رحلات|air ticket|فندق|فنادق|منتجع|منتجعات|شاليه|شاليهات|hotel|resort/i.test(query) || __flightListing);
-    const listingDomains = /طيران|تذكرة|تذاكر|رحلة|رحله|رحلات|flight|air ticket|airfare/i.test(query)
+    // 🔢 v543: أسئلة اللوحات/الأرقام المميزة → موقعان فقط: xplate + SHub (s-plate).
+    const NUMBERS_RE = /لوح(ة|ات|تين)\s*(سيار|مركب|مرور|مميز|رقم|دبي|أبوظبي|ابوظبي|الشارقة|عجمان|رأس الخيمة|راس الخيمة|أم القيوين|ام القيوين|الفجيرة)|[أا]?رقام(\s+\S+)?\s*مميزة|رقم(\s+\S+)?\s*مميز|بلايت|بليت|number plate|license plate|special number|vip number|plate for sale/i;
+    const isNumbers = !domains && !__wantsOfficialSource && !__hasForeignCountry && NUMBERS_RE.test(query);
+    const isListing = isNumbers || (!domains && !__wantsOfficialSource && !__hasForeignCountry && (/عقار|شق(ة|ق|تين)|فيلا|فلل|أرض للبيع|ارض للبيع|للبيع|للايجار|للإيجار|إيجار|ايجار|محل تجاري|مكتب للـ|سياره|سيارة|سيارات|سيرات|سياير|اجار|آجار|تأجير|تاجير|استئجار|rent a car|car rental|وظيفة|وظائف|توظيف|apartment|villa|property|for sale|for rent|listing|car for|job vacanc|تذكرة|تذاكر|رحلة إلى|رحله الى|رحلات|air ticket|فندق|فنادق|منتجع|منتجعات|شاليه|شاليهات|hotel|resort/i.test(query) || __flightListing));
+    const listingDomains = isNumbers
+      ? ['xplate.com', 's-plate.com']
+      : /طيران|تذكرة|تذاكر|رحلة|رحله|رحلات|flight|air ticket|airfare/i.test(query)
       ? ['skyscanner.ae', 'skyscanner.net', 'wego.ae', 'wego.com', 'kayak.ae', 'cheapflights.ae']
       : /فندق|فنادق|منتجع|منتجعات|شاليه|شاليهات|hotel|resort/i.test(query)
       ? ['booking.com', 'agoda.com', 'hotels.com', 'airbnb.com', 'almosafer.com', 'wego.ae']
@@ -374,13 +435,22 @@ module.exports = async (req, res) => {
     const gnCeid = gnGl + ':' + (lang === 'ar' ? 'ar' : 'en');
     const newsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=${gnHl}&gl=${gnGl}&ceid=${gnCeid}`;
 
+    // 📍 v542: كاشف أسئلة الأماكن. يُستثنى ما يخدمه محرّك القوائم أصلًا (عقار ·
+    // سيارات · وظائف · فنادق · طيران) وما قُيّد بنطاقات، فلا تتغيّر نتيجة قائمة.
+    const PLACES_RE = /مطعم|مطاعم|مطاعمه|مقهى|مقاهي|كافيه|كافيهات|كوفي|بوفيه|مخبز|مخابز|حلويات|صيدلي(ة|ات)|مستشفى|مستشفيات|عياد(ة|ات)|طبيب|أطباء|دكتور|أسنان|صالون|حلاق|مشغل|سبا|جيم|نادي رياضي|صالة رياضية|مول|مولات|أسواق|متجر|بقالة|سوبرماركت|هايبر|محطة وقود|بنزين|حديق(ة|ات)|متحف|متاحف|شاطئ|شواطئ|ملاهي|معلم سياحي|معالم|أماكن سياحية|وين أروح|وين اروح|أماكن|مسجد|مساجد|كنيسة|مدرسة|مدارس|حضانة|مغسلة|كراج|ورشة|restaurant|cafe|coffee shop|bakery|pharmacy|hospital|clinic|dentist|salon|barber|spa|gym|mall|supermarket|grocery|gas station|park|museum|beach|attraction|things to do|near me|قريب مني|قريبة مني|بالقرب/i;
+    // 🏨 v555: الفنادق تُخدَم بخرائط جوجل أيضًا (أسماء وتقييمات فنادق حقيقيّة)
+    // لا بمواقع الحجز وحدها. تبقى في محرّك القوائم كما هي.
+    const HOTEL_RE = /فندق|فنادق|منتجع|منتجعات|شاليه|شاليهات|hotel|resort/i;
+    const isPlaces = !domains && (PLACES_RE.test(query) || HOTEL_RE.test(query)) && (!isListing || HOTEL_RE.test(query));
+    const placesKey = (process.env.GOOGLE_PLACES_API_KEY || '').trim();
+
     const gKey = process.env.GOOGLE_SEARCH_API_KEY;
     const gCx = process.env.GOOGLE_SEARCH_CX;
     const googleUrl = (gKey && gCx)
       ? `https://www.googleapis.com/customsearch/v1?key=${gKey}&cx=${gCx}&q=${encodeURIComponent(query)}&num=3`
       : null;
 
-    const [tavilyResp, newsResp, googleResp, socialItems] = await Promise.all([
+    const [tavilyResp, newsResp, googleResp, socialItems, placeItems] = await Promise.all([
       fetch('https://api.tavily.com/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -399,6 +469,7 @@ module.exports = async (req, res) => {
       fetch(newsUrl).catch(() => null),
       googleUrl ? fetch(googleUrl).catch(() => null) : Promise.resolve(null),
       fetchSocial(apiKey, query),
+      isPlaces ? fetchPlaces(placesKey, query, lang, geoCode) : Promise.resolve([]),
     ]);
 
     // 🛡️ شبكة أمان: سقوط Tavily (حصّة · مفتاح · عطل مزوّد) كان يقطع البحث كلّه
@@ -418,7 +489,8 @@ module.exports = async (req, res) => {
     if (isListing && Array.isArray(data.results)) {
       // drop results from domains outside the listing portals (Tavily sometimes leaks others)
       const onPortal = data.results.filter(r => listingDomains.some(d => (r.url || '').includes(d)));
-      if (onPortal.length >= 3) data.results = onPortal;
+      // 🔢 v543c: سؤال الأرقام مقفول على الموقعين دون عتبة — لا تسرّب نتائج غريبة.
+      if (isNumbers || onPortal.length >= 3) data.results = onPortal;
     }
     const isFlight = /طيران|تذكرة|تذاكر|رحلة إلى|رحله الى|رحلات|flight|air ticket|airfare/i.test(query);
     if (isFlight && Array.isArray(data.results)) {
@@ -436,6 +508,36 @@ module.exports = async (req, res) => {
       content: (r.content || '').slice(0, isListing ? 1200 : 350),
     })) : [];
     if (isListing) results.sort((a, b) => (b.title.startsWith('📌') ? 1 : 0) - (a.title.startsWith('📌') ? 1 : 0));
+    // 🔢 v543b: سؤال الأرقام لا يخرج فارغًا أبدًا — بوّابتا xplate وSHub تُضمّنان.
+    if (isNumbers) {
+      const gates = [
+        { h: 'xplate.com', title: '🔢 xplate — لوحات سيارات وأرقام هواتف للبيع', url: 'https://xplate.com/ar/numbers', content: 'سوق إماراتي لبيع وشراء لوحات السيارات المميزة وأرقام الهواتف — مفروزة بالإمارة والسعر.' },
+        { h: 's-plate.com', title: '🔢 SHub — سوق اللوحات والأرقام المميزة', url: 'https://s-plate.com/ar', content: 'منصّة SHub لبيع وشراء لوحات المركبات والأرقام المميزة في الإمارات.' },
+      ];
+      const have = new Set(results.map(r => { try { return new URL(r.url).hostname.replace(/^www\./, ''); } catch { return ''; } }));
+      for (const g of gates) if (!have.has(g.h)) results.push({ title: g.title, url: g.url, content: g.content });
+    }
+    // 📍 v542: الأماكن تتصدّر لأنّها الجواب نفسه. الإسناد «Google Maps» مكتوب
+    // داخل كلّ بطاقة — شرطُ رخصةٍ لا زينة.
+    if (isPlaces && placeItems.length) {
+      const placeCards = placeItems.map((p) => ({
+        title: '📍 ' + p.name + (p.rating ? ' · ⭐ ' + p.rating + (p.reviews ? ' (' + p.reviews + ')' : '') : ''),
+        // 🏨 v558: بطاقة الفندق تفتح صفحة حجز لا دبّوس خرائط. الإسناد لجوجل
+        // يبقى مكتوبًا داخل البطاقة — الرخصة محفوظة، والنقرة صارت مفيدة.
+        url: HOTEL_RE.test(query)
+          ? 'https://www.booking.com/searchresults.html?ss=' + encodeURIComponent(p.name)
+          : (p.url || p.site || ''),
+        content: [
+          p.type, p.address,
+          p.rating ? 'التقييم ' + p.rating + '/5 من ' + p.reviews + ' مراجعة' : '',
+          p.price ? 'مستوى السعر: ' + p.price : '',
+          p.openNow ? 'مفتوح الآن' : '',
+          p.site ? 'الموقع: ' + p.site : '',
+          'المصدر: Google Maps',
+        ].filter(Boolean).join(' — '),
+      }));
+      results = [...placeCards, ...results].slice(0, 24);
+    }
 
     let newsItems = [];
     try {
@@ -472,7 +574,19 @@ module.exports = async (req, res) => {
 
     // chat.js يقرأ results وحدها، فلو بقيت فارغة لما رأى المحرّك شيئًا مهما
     // جمعت المزوّدات الأخرى. عند سقوط Tavily تصير حصيلتها هي النتائج.
-    if (tavilyDown && !results.length) results = [...googleItems, ...newsItems].slice(0, 6);
+    // 🏷️ v556: السؤال التجاريّ (عقار · سيارات · تأجير · فنادق · وظائف · طيران ·
+    // لوحات) لا علاقة له بالأخبار. فتُطفأ الأخبار له تمامًا، وعند سقوط المزوّد
+    // تُعرض مواقع مجاله المكتوبة في القوائم أعلاه. صفر نداء خارجيّ · صفر كلفة.
+    if (isListing) newsItems = [];
+    if (tavilyDown && !results.length) {
+      results = isListing
+        ? listingDomains.map(d => ({
+            title: LISTING_SITE_AR[d] || d,
+            url: 'https://' + d,
+            content: 'موقع متخصّص في هذا المجال — ابحث فيه مباشرة.',
+          }))
+        : [...googleItems, ...newsItems].slice(0, 6);
+    }
 
     // 📚 Feature ②: unified, deduped source list (title+url) built from all
     // three providers (Tavily results, Google Custom Search, Google News) so
@@ -523,8 +637,12 @@ module.exports = async (req, res) => {
       images,
       sources: sourcesOut,
       social: socialAll,
+      places: (isPlaces && placeItems.length) ? placeItems : [],
+      attribution: (isPlaces && placeItems.length) ? 'Google Maps' : '',
     });
   } catch (err) {
     res.status(500).json({ error: 'Search failed', detail: String(err && err.message || err) });
   }
 };
+
+module.exports.fetchPlaces = fetchPlaces;

@@ -57,16 +57,16 @@ let lang = localStorage.getItem('aiapp_lang') || (function(){
 
 function mahaPersonaName(){
   var male = false;
-  try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) {}
+  try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) { /* guard-ok: unavailable storage falls back to the default persona. */ }
   var isAr = false;
-  try { isAr = (typeof lang !== 'undefined' && lang === 'ar'); } catch(e) {}
+  try { isAr = (typeof lang !== 'undefined' && lang === 'ar'); } catch(e) { /* guard-ok: unavailable language state falls back to English. */ }
   if (male) return isAr ? 'عبدالله' : 'Abdullah';
   return isAr ? 'مها' : 'Maha';
 }
 function __voiceFill(v){
   if (typeof v !== 'string' || v.indexOf('{voice') === -1) return v;
   var male = false;
-  try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) {}
+  try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) { /* guard-ok: unavailable storage keeps the default voice label. */ }
   return v.split('{voiceAdj}').join(male ? 'الصوتي' : 'الصوتية')
           .split('{voice}').join(mahaPersonaName());
 }
@@ -74,7 +74,7 @@ function t(key){
   var v = tRaw(key);
   if (typeof v === 'string' && v.indexOf('{voice') !== -1) {
     var male = false;
-    try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) {}
+    try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) { /* guard-ok: unavailable storage keeps the default translation. */ }
     return v.split('{voiceAdj}').join(male ? 'الصوتي' : 'الصوتية')
             .split('{voice}').join(mahaPersonaName());
   }
@@ -1073,7 +1073,10 @@ function renderMessages(keepScroll){
     }
     // 🖼️ Feature ② — image strip ABOVE the reply text: up to 4 live images
     // returned by the search backend, ChatGPT-style horizontal scroller.
-    if(m.role !== 'user' && Array.isArray(m.searchImages) && m.searchImages.length){
+    // 🚫 v547 — شريط صور البحث مُطفأ: الصور كانت تُجلب من بحث صور عامّ على
+    // الويب المفتوح بلا تدقيق مصدر ولا موضوع. لإعادته: SEARCH_IMG_ON = true.
+    const SEARCH_IMG_ON = false;
+    if(SEARCH_IMG_ON && m.role !== 'user' && Array.isArray(m.searchImages) && m.searchImages.length){
       const imgStrip = document.createElement('div');
       imgStrip.className = 'msgSearchImgStrip';
       m.searchImages.slice(0, 4).forEach(url => {
@@ -1478,5 +1481,6 @@ function renderMessages(keepScroll){
   } else {
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
+  try{ if(typeof syncChatJumpButton === 'function') syncChatJumpButton(); }catch(e){ __swallow(e, "ui:chatJump"); }
   // v462: أنيميشن رسالة المستخدم — CSS class msg-anim يضاف أثناء بناء العنصر (سطر 973)
 }

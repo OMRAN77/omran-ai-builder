@@ -248,6 +248,9 @@
   html[dir="rtl"] #chatcol{border-left:1px solid var(--border);}
   html[dir="ltr"] #chatcol{border-right:1px solid var(--border);}
   #messages{flex:1; overflow-y:auto; overflow-x:hidden; padding:16px 16px 3px; display:flex; flex-direction:column; gap:12px;}
+  #chatJumpBottom{display:none;}
+  html:not(.mobile-ui) #chatJumpBottom.visible{display:flex; position:absolute; z-index:25; inset-inline-start:50%; transform:translateX(-50%); bottom:126px; width:34px; height:34px; align-items:center; justify-content:center; border-radius:50%; border:1px solid var(--border); background:var(--panel); color:var(--text); box-shadow:0 8px 24px rgba(0,0,0,.28); cursor:pointer; font-size:19px;}
+  html[dir="rtl"]:not(.mobile-ui) #chatJumpBottom.visible{transform:translateX(50%);}
   /* v292: تثبيت الدردشة أفقيًا — لا حركة يمين/يسار أبدًا */
   .msg{max-width:92%; min-width:0; overflow-wrap:anywhere; word-break:break-word; line-height:var(--lh-body);}
   .msg p, .msg li{line-height:var(--lh-body);}
@@ -360,6 +363,7 @@
   .attach-chip .rm:hover{color:#e55;}
   .msg-attachments{display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;}
   .msg-attachments img{width:60px; height:60px; object-fit:cover; border-radius:var(--r-1); border:1px solid var(--border);}
+  .msg-attachments img.genImg{width:auto; height:auto; max-width:min(460px,100%); max-height:62vh; object-fit:contain; border-radius:var(--r-3); cursor:zoom-in;}
   .msg-attachments .file-chip{font-size: var(--fs-5); background:var(--panel2, #1e2330); border:1px solid var(--border); border-radius:var(--r-1); padding:3px 6px;}
   #composerBox{
     background:var(--panel2); border:1px solid var(--border); border-radius:var(--r-4);
@@ -670,6 +674,18 @@
   .msgMoreMenu{ position:absolute; z-index:9999; background:var(--panel,#1c2230); border:1px solid var(--border,rgba(255,255,255,.12)); border-radius:var(--r-2); box-shadow:var(--sh-2); padding:6px; min-width:170px; font-size: var(--fs-3); }
   .msgMoreMenu button{ display:flex; width:100%; text-align:start; background:none; border:none; padding:9px 10px; border-radius:var(--r-1); cursor:pointer; color:var(--text); font-size: var(--fs-3); }
   .msgMoreMenu button:hover{ background:var(--panel2); }
+  html:not(.mobile-ui) .chat-status-fold{font-size:13px; line-height:1.7; opacity:.9;}
+  html:not(.mobile-ui) .chat-status-fold summary{display:flex; align-items:center; gap:7px; cursor:pointer; list-style:none; width:max-content; max-width:100%;}
+  html:not(.mobile-ui) .chat-status-fold summary::-webkit-details-marker{display:none;}
+  html:not(.mobile-ui) .chat-status-fold summary::after{content:'⌄'; color:var(--muted); font-size:11px; margin-inline-start:2px;}
+  html:not(.mobile-ui) .chat-status-fold[open] summary::after{transform:rotate(180deg);}
+  html:not(.mobile-ui) .chat-status-icon{flex:0 0 auto; color:var(--accent2);}
+  html:not(.mobile-ui) .chat-status-running{animation:omranPulse 1.4s ease-in-out infinite;}
+  html:not(.mobile-ui) .chat-status-history{display:flex; flex-direction:column; gap:4px; margin-top:6px; padding-inline-start:18px; color:var(--muted);}
+  html:not(.mobile-ui) .chat-status-row{display:flex; align-items:flex-start; gap:7px;}
+  html:not(.mobile-ui) .chat-status-row.done>span:first-child{color:#2e9e6b;}
+  html:not(.mobile-ui) .chat-status-row.fail>span:first-child{color:#c0453f;}
+  html:not(.mobile-ui) .msg.msg-streaming::after{content:''; display:inline-block; width:6px; height:1em; margin-inline-start:3px; vertical-align:-.15em; border-radius:3px; background:currentColor; opacity:.55; animation:omranPulse 1s ease-in-out infinite;}
 @keyframes omranPulse{0%,100%{opacity:.6}50%{opacity:1}}
   /* v418 (٦ أغسطس): قائمة المزوّدين التسعة مخفيّة على الكمبيوتر — التوجيه صار تلقائيًّا بالتخصص.
      الجوال لم يُلمس (#providerStripMobile باقٍ). زرّ الوضع الاحترافي باقٍ لأنه ليس اختيار مزوّد. */
@@ -681,10 +697,10 @@
      الذهبي --accent ثابت في الوضعين. التفعيل: html[data-mode="light"] */
   html[data-mode="light"]{
     /* !important: التطبيق يكتب --bg/--text سطريًّا على <html>؛ المهمّ يعلو على السطريّ العادي */
-    --bg:#ffffff !important; --text:#14161a !important;
-    --user-bubble:rgba(0,0,0,.05) !important; --assistant-bubble:#f1f2f5 !important;
-    --bg2:#ffffff; --panel:#f4f5f7; --panel2:#eef0f3;
-    --border:rgba(0,0,0,.13); --muted:#5d6270;
+    --bg:#ffffff !important; --text:#0d0d0d !important;
+    --user-bubble:rgba(0,0,0,.05) !important; --assistant-bubble:transparent !important;
+    --bg2:#ffffff; --panel:#ffffff; --panel2:#ffffff;
+    --border:rgba(0,0,0,.05); --muted:#5d5d5d;
     --accent-surface:#e7e9ee; --accent-tint-rgb:0,0,0; --accent-glow-rgb:0,0,0;
     --accent-ink:#14161a !important; --accent-on-surface:#14161a !important;
     --sh-1:0 2px 10px rgba(0,0,0,.10); --sh-2:0 8px 24px rgba(0,0,0,.12);
@@ -694,9 +710,19 @@
     color-scheme:light;
   }
   html[data-mode="light"] body{background:var(--bg); color:var(--text);}
-  html[data-mode="light"] header{background:rgba(255,255,255,.85);}
-  html[data-mode="light"] #chatcol{background:rgba(0,0,0,.022);}
-  html[data-mode="light"] #tabs{background:rgba(0,0,0,.03);}
+  html[data-mode="light"] header{background:#ffffff;}
+  html[data-mode="light"] #chatcol{background:transparent;}
+  html[data-mode="light"] #tabs{background:transparent;}
+  html[data-mode="light"] #code{background:#ffffff; color:#1f2328;}
+  /* v519 — أبيض ورقيّ: إطفاء آخر رماديّين في الفاتح (زرّ محادثة جديدة + الصفّ النشِط) */
+  html[data-mode="light"]:not(.mobile-ui) #omranNewChatBtn,
+  html[data-mode="light"]:not(.mobile-ui) #omranNewChatBtn:hover{
+    background:#ffffff !important; background-image:none !important;
+    border-color:rgba(0,0,0,.10) !important;
+  }
+  html[data-mode="light"] .hist-item.active{background:#ffffff !important;}
+  html[data-mode="light"] #sidebar,
+  html[data-mode="light"] #workarea{background:#ffffff !important;}
   html[data-mode="light"] .msg.user{
     background:rgba(0,0,0,.05) !important; border:1px solid rgba(0,0,0,.09) !important; color:var(--text) !important;
   }
@@ -761,3 +787,26 @@
   #btnPremiumToggle .premCrown img{width:45px; height:45px; border-radius:50%;}
   #btnPremiumToggle .premLabel{white-space:nowrap;}
   #btnPremiumToggle #premiumCostHint{color:var(--muted,#9a9a9e); font-weight:500;}
+
+/* ═══ v520 — درجة عمران: السطوح #EBEBEB · المنطقة السفليّة #E5E5E5 (أغمق بدرجتين) ═══ */
+html[data-mode="light"]{
+  --bg:#EBEBEB !important; --bg2:#EBEBEB; --panel:#EBEBEB; --panel2:#EBEBEB;
+}
+html[data-mode="light"] body,
+html[data-mode="light"] header,
+html[data-mode="light"] #sidebar,
+html[data-mode="light"] #workarea,
+html[data-mode="light"] #code,
+html[data-mode="light"] .hist-item.active,
+html[data-mode="light"] dialog,
+html[data-mode="light"] #plusToolsPopup,
+html[data-mode="light"] #headerMenuDropdown,
+html[data-mode="light"] #headerUserDropdown,
+html[data-mode="light"] #tabsMenuDropdown,
+html[data-mode="light"] #histItemMenu,
+html[data-mode="light"] .msgMoreMenu,
+html[data-mode="light"] .dlg-actions{background:#EBEBEB !important;}
+html[data-mode="light"]:not(.mobile-ui) #omranNewChatBtn,
+html[data-mode="light"]:not(.mobile-ui) #omranNewChatBtn:hover{background:#EBEBEB !important;}
+html[data-mode="light"] #inputbar,
+html[data-mode="light"] #composerBox{background:#E5E5E5 !important;}
