@@ -2380,6 +2380,12 @@ const I18N = {
     resetColorsBtn: 'إعادة الألوان الافتراضية',
     downloadSourceBtn: 'تحميل الكود المصدري (ZIP)',
     voiceSectionLabel: 'الصوت',
+    memorySectionLabel: 'ذاكرتي',
+    memoryIntro: 'ما يتذكّره التطبيق عنك من محادثاتك السابقة. محفوظ في حسابك وحدك ولا يراه غيرك.',
+    memoryClearBtn: 'حذف ذاكرتي',
+    memoryEmpty: 'لا توجد معلومات محفوظة عنك بعد.',
+    memoryGuest: 'سجّل دخولك لعرض ذاكرتك.',
+    memoryConfirm: 'حذف كلّ ما يتذكّره التطبيق عنك؟ لا يمكن التراجع.',
     fontSizeSectionLabel: 'حجم الخط',
     fontSizeSmall: 'صغير',
     fontSizeNormal: 'عادي',
@@ -2426,6 +2432,10 @@ const I18N = {
     langBtn: 'EN',
     systemPrompt: `أنت ذكاء اصطناعي واسع المعرفة داخل تطبيق «Omran AI Builder» من فريق عمران AI.
 أسلوبك: راقي وطبيعي — مثل خبير ودود يفهم كل شي ويتكلم بوضوح وعمق. نوّع تعبيراتك ولا تكرر العبارات الجاهزة. رتّب إجاباتك بشكل مريح للقراءة.
+- لهجتك الافتراضيّة إماراتيّة بيضاء مفهومة للجميع: «هلا والله» · «أبشر» · «على طول» · «شو تحب» · «تسلم». بلا مبالغة ولا كلمات محلّيّة غامضة.
+- جارِ لهجة المستخدم: كتب مصري = ردّ مصري · شامي = شامي · سعودي = سعودي · مغاربي = مغاربي · عراقي = عراقي · فصحى = فصحى مبسّطة. الإماراتيّة هي الافتراضيّ فقط.
+- جارِ شخصيّته: مختصر = اختصر · يمزح = مازحه بخفّة · رسميّ = كن رسميًّا · كبير في السنّ أو مرتبك = اصبر وبسّط ولا تستعجله.
+- المصطلحات التقنيّة والأسماء والأرقام تبقى كما هي — اللهجة في الكلام لا في المحتوى.
 - سؤال عادي أو دردشة = رد محادثي غني بالمعلومات. بدون أي كود.
 - طلب بناء/تعديل تطبيق أو موقع أو لعبة = اشرح باختصار (سطرين) ثم أعد ملف HTML+CSS+JS كامل يعمل مباشرة في كتلة \`\`\`html واحدة. يمكنك استخدام CDN. الألعاب 3D = Three.js عبر CDN.
 - تعديل كود موجود = غيّر الجزء المطلوب فقط وأعد الملف كاملاً.
@@ -3283,6 +3293,12 @@ const I18N = {
     micNotSupported: 'This browser does not support voice input. Try Chrome on Android or desktop.',
     downloadSourceBtn: 'Download Source Code (ZIP)',
     voiceSectionLabel: 'Voice',
+    memorySectionLabel: 'My memory',
+    memoryIntro: 'What the app remembers about you from past chats. Stored in your account only; nobody else can see it.',
+    memoryClearBtn: 'Delete my memory',
+    memoryEmpty: 'Nothing saved about you yet.',
+    memoryGuest: 'Sign in to view your memory.',
+    memoryConfirm: 'Delete everything the app remembers about you? This cannot be undone.',
     fontSizeSectionLabel: 'Font Size',
     fontSizeSmall: 'Small',
     fontSizeNormal: 'Normal',
@@ -4413,7 +4429,10 @@ function renderMessages(keepScroll){
     }
     // 🖼️ Feature ② — image strip ABOVE the reply text: up to 4 live images
     // returned by the search backend, ChatGPT-style horizontal scroller.
-    if(m.role !== 'user' && Array.isArray(m.searchImages) && m.searchImages.length){
+    // 🚫 v547 — شريط صور البحث مُطفأ: الصور كانت تُجلب من بحث صور عامّ على
+    // الويب المفتوح بلا تدقيق مصدر ولا موضوع. لإعادته: SEARCH_IMG_ON = true.
+    const SEARCH_IMG_ON = false;
+    if(SEARCH_IMG_ON && m.role !== 'user' && Array.isArray(m.searchImages) && m.searchImages.length){
       const imgStrip = document.createElement('div');
       imgStrip.className = 'msgSearchImgStrip';
       m.searchImages.slice(0, 4).forEach(url => {
@@ -6288,7 +6307,7 @@ function closeDialogSafe(dlg){
   dlg.removeAttribute('open');
   dlg.style.display = '';
 }
-const SETTINGS_SECTION_IDS = ['langSection','accountSection','statsSection','apiKeysSection','themeSection','fontSizeSection','voiceSection','pricingSection','aboutSection','adminSection'];
+const SETTINGS_SECTION_IDS = ['langSection','accountSection','statsSection','apiKeysSection','themeSection','fontSizeSection','voiceSection','memorySection','pricingSection','aboutSection','adminSection'];
 function renderStats(){
   const projects = state.projects || [];
   let messagesCount = 0;
@@ -6423,7 +6442,7 @@ function collapseAllSettingsSections(){
 }
 
 // ===== v199 Settings redesign: two-level nav (ChatGPT style) =====
-const SETTINGS_NAV_IDS = ['langSection','accountSection','statsSection','apiKeysSection','themeSection','fontSizeSection','voiceSection','pricingSection','aboutSection'];
+const SETTINGS_NAV_IDS = ['langSection','accountSection','statsSection','apiKeysSection','themeSection','fontSizeSection','voiceSection','memorySection','pricingSection','aboutSection'];
 const SETTINGS_NAV_ICONS = {
   langSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`,
   accountSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`,
@@ -6432,6 +6451,7 @@ const SETTINGS_NAV_ICONS = {
   themeSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>`,
   fontSizeSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 14h-5"></path><path d="M16 16v-3.5a2.5 2.5 0 0 1 5 0V16"></path><path d="M4.5 13h6"></path><path d="m3 16 4.5-9 4.5 9"></path></svg>`,
   voiceSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.5 8.5a5 5 0 0 1 0 7"></path><path d="M18.5 5.5a9 9 0 0 1 0 13"></path></svg>`,
+  memorySection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 0 0-3 3 3 3 0 0 0-1 5.8V16a3 3 0 0 0 4 2.8A3 3 0 0 0 16 16v-2.2A3 3 0 0 0 15 8a3 3 0 0 0-3-3Z"/><path d="M12 5v14"/></svg>`,
   pricingSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>`,
   aboutSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`,
   feedbackSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`
@@ -12725,7 +12745,10 @@ async function sendPrompt(){
         '(4) ممنوع مناداة المستخدم بأي اسم إلا إذا محفوظ بالذاكرة.\n' +
         '(5) رسالة قصيرة (كلمة/كلمتين) = تكملة للموضوع السابق.\n' +
         '(6) وضع نقاش — ممنوع عرض كود إلا إذا طُلب صراحة.\n' +
-        '(7) التطبيق يوفّر توليد صور وفيديو وPDF — أرشد إليها بدل "ما أقدر".';
+        '(7) التطبيق يوفّر توليد صور وفيديو وPDF — أرشد إليها بدل "ما أقدر".\n' +
+        '(8) العربية: لهجتك الافتراضيّة إماراتيّة بيضاء مفهومة للجميع (هلا والله · أبشر · على طول · شو تحب · تسلم) بلا مبالغة ولا كلمات غامضة. اللغات الأخرى = أسلوب طبيعي بلغة المستخدم بلا لهجة عربية.\n' +
+        '(9) جارِ لهجة المستخدم العربية: كتب مصري = ردّ مصري · شامي = شامي · سعودي = سعودي · مغاربي = مغاربي · عراقي = عراقي · فصحى = فصحى مبسّطة. الإماراتيّة هي الافتراضيّ فقط.\n' +
+        '(10) جارِ شخصيّته: مختصر = اختصر · يمزح = مازحه بخفّة · رسميّ = كن رسميًّا · كبير في السنّ أو مرتبك = اصبر وبسّط. المصطلحات والأسماء والأرقام تبقى كما هي — اللهجة في الكلام لا في المحتوى.';
     }
     const apiMessages = [{role: 'system', content: __sys}];
     // 🤝 v345: المستخدم وافق على عرض بناء قدّمه المزود في رده السابق — يبنيه الآن كاملًا.
@@ -19588,4 +19611,41 @@ window.updateVersionLabel();
 (function(){
   var b=document.getElementById('btnAdStudio');
   if(b) b.addEventListener('click', function(){ location.href='/ad-studio.html'; });
+})();
+
+/* v544 — شاشة «ذاكرتي»: عرض ما حُفظ عن المستخدم + حذفه. القراءة والمسح من الخادم بالتوكن وحده. */
+(function(){
+  function tok(){ try{ return sessionStorage.getItem('aiapp_auth_token') || localStorage.getItem('aiapp_auth_token') || ''; }catch(e){ return ''; } }
+  function tr(k, fb){ try{ var d = window.__i18nDict ? window.__i18nDict(document.documentElement.lang || 'ar') : null; return (d && d[k]) || fb; }catch(e){ return fb; } }
+  function memCall(op){
+    var t = tok(); if(!t) return Promise.resolve(null);
+    return fetch('/api/system?action=memory', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token: t, op: op }) })
+      .then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; });
+  }
+  function render(){
+    var box = document.getElementById('memoryBox'), btn = document.getElementById('memoryClearBtn');
+    if(!box) return;
+    if(!tok()){ box.textContent = tr('memoryGuest', 'سجّل دخولك لعرض ذاكرتك.'); if(btn) btn.style.display = 'none'; return; }
+    box.textContent = '…';
+    memCall('get').then(function(d){
+      var txt = (d && typeof d.memory === 'string') ? d.memory.trim() : '';
+      box.textContent = txt || tr('memoryEmpty', 'لا توجد معلومات محفوظة عنك بعد.');
+      if(btn) btn.style.display = txt ? '' : 'none';
+    });
+  }
+  window.renderMemorySection = render;
+  document.addEventListener('click', function(e){
+    var b = e.target && e.target.closest ? e.target.closest('#memoryClearBtn') : null;
+    if(b){
+      if(!confirm(tr('memoryConfirm', 'حذف كلّ ما يتذكّره التطبيق عنك؟ لا يمكن التراجع.'))) return;
+      b.disabled = true;
+      memCall('clear').then(function(){ try{ if('userMemory' in window) window.userMemory = ''; }catch(_){ } b.disabled = false; render(); });
+      return;
+    }
+    setTimeout(function(){
+      var s = document.getElementById('memorySection'); if(!s) return;
+      if(s.classList.contains('settingsPageActive')){ if(s.dataset.memOn !== '1'){ s.dataset.memOn = '1'; render(); } }
+      else s.dataset.memOn = '';
+    }, 60);
+  }, true);
 })();
