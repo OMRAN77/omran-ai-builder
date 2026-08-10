@@ -1247,7 +1247,8 @@ function buildSpokenWordSpans(container, text){
   container.innerHTML = '';
   const wordEls = [];
   // v467: capture markdown links [text](url) — even with spaces — as a single token
-  const re = /\[[^\]]*\]\(https?:\/\/[^\s)]+\)[.,،؛!؟)]*|\S+/g;
+  // v541: **[نص](رابط)** كان ينكسر لأن ** تسبق [ فتُقسَّم على المسافات
+  const re = /(?:\*\*)?\[[^\]]*\]\(https?:\/\/[^\s)]+\)(?:\*\*)?[.,،؛!؟)]*|\S+/g;
   let m, lastIndex = 0;
   let boldOpen = false;
   let headerLevel = 0; // >0 while inside a "## ..." heading line
