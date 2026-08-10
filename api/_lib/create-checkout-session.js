@@ -14,8 +14,9 @@
 const { verifyToken, getUser, putUser } = require('./auth.js');
 
 const PLANS = {
-  basic: { amount: 500, name: 'خطة 5$ - 300 رسالة شهريًا / Basic Plan - 300 msgs/mo' },
-  pro: { amount: 1500, name: 'خطة 15$ - رسائل غير محدودة / Pro Plan - Unlimited msgs' },
+  basic: { amount: 1000, name: 'خطة 10$ - 300 رسالة شهريًا / Basic Plan - 300 msgs/mo' },
+  pro: { amount: 2000, name: 'خطة 20$ - رسائل غير محدودة / Pro Plan - Unlimited msgs' },
+  max: { amount: 10000, name: 'خطة 100$ - Max / Max Plan - 5000 pts/mo' },
 };
 
 async function createCheckoutSession(req, res) {

@@ -47,7 +47,7 @@ function openCheckout(plan){
   const overlay = document.getElementById('checkoutModalOverlay');
   const label = document.getElementById('checkoutPlanLabel');
   const statusMsg = document.getElementById('checkoutStatusMsg');
-  if (label) label.textContent = t(plan === 'pro' ? 'checkoutPlanLabelPro' : 'checkoutPlanLabelBasic');
+  if (label) label.textContent = t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
   if (statusMsg) statusMsg.textContent = '';
   if (overlay) overlay.style.display = 'flex';
   loadPaypalButtons();

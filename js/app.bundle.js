@@ -2458,6 +2458,7 @@ const I18N = {
     checkoutComingSoon: 'قريبًا',
     checkoutPlanLabelBasic: 'الخطة الأساسية 10$ شهريًا — 300 رسالة',
     checkoutPlanLabelPro: 'الخطة الاحترافية 20$ شهريًا — رسائل غير محدودة',
+    checkoutPlanLabelMax: 'خطة Max ‏100$ شهريًا — 5000 نقطة',
     checkoutRedirecting: 'جارٍ التحويل إلى صفحة الدفع...',
     checkoutError: 'حدث خطأ ما، حاول مرة أخرى',
     checkoutNotConfigured: 'الدفع غير مفعّل من الإدارة بعد',
@@ -2643,6 +2644,7 @@ const I18N = {
     checkoutComingSoon: 'Coming soon',
     checkoutPlanLabelBasic: 'Basic Plan $10/mo — 300 messages',
     checkoutPlanLabelPro: 'Pro Plan $20/mo — Unlimited messages',
+    checkoutPlanLabelMax: 'Max Plan $100/mo — 5000 points',
     checkoutRedirecting: 'Redirecting to payment page...',
     checkoutError: 'Something went wrong, please try again',
     checkoutNotConfigured: 'Payments not configured by admin yet',
@@ -6810,7 +6812,7 @@ function openCheckout(plan){
   const overlay = document.getElementById('checkoutModalOverlay');
   const label = document.getElementById('checkoutPlanLabel');
   const statusMsg = document.getElementById('checkoutStatusMsg');
-  if (label) label.textContent = t(plan === 'pro' ? 'checkoutPlanLabelPro' : 'checkoutPlanLabelBasic');
+  if (label) label.textContent = t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
   if (statusMsg) statusMsg.textContent = '';
   if (overlay) overlay.style.display = 'flex';
   loadPaypalButtons();

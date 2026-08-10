@@ -345,7 +345,7 @@
       <div class="pper" data-i18n="planPer">شهريًا</div>
       <div class="ppts"><b>5,000</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
       <ul data-i18n="planMaxFeats"><li>كل مزايا Pro</li><li>500 دقيقة محادثة صوتية</li><li>250 صورة · 83 فيديو · 12 سينمائي</li><li>دعم مخصّص</li></ul>
-      <button type="button" class="pbtn ghost" disabled data-i18n="planSoonBtn">قريبًا</button>
+      <button type="button" class="pbtn" onclick="openCheckout('max')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
   </div>
   <div style="margin-top:16px;">
