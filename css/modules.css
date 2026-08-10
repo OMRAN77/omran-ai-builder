@@ -32,14 +32,20 @@
 @keyframes mahaGlow{0%,100%{box-shadow:0 0 6px 2px rgba(var(--accent-glow-rgb),.45);}50%{box-shadow:0 0 18px 7px rgba(var(--accent-glow-rgb),.85);}}#btnMaha{animation:mahaGlow 1.8s ease-in-out infinite;}
 
 /* ── من index.html سطر 1660 ── */
-@keyframes mahaBreathe{0%{transform:scale(1);}50%{transform:scale(1.08);}100%{transform:scale(1);}}
+@keyframes mahaBreathe{0%{transform:scale(1) translateY(0);box-shadow:0 0 20px rgba(123,92,255,.45);}50%{transform:scale(1.13) translateY(-7px);box-shadow:0 0 46px rgba(255,95,162,.8);}100%{transform:scale(1) translateY(0);box-shadow:0 0 20px rgba(123,92,255,.45);}}
 @keyframes mahaListen{0%{box-shadow:0 0 0 0 rgba(255,77,77,.55);}70%{box-shadow:0 0 0 26px rgba(255,77,77,0);}100%{box-shadow:0 0 0 0 rgba(255,77,77,0);}}
 @keyframes mahaThink{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
 @keyframes mahaSpeak{0%{transform:scale(1);}25%{transform:scale(1.05);}50%{transform:scale(0.97);}75%{transform:scale(1.06);}100%{transform:scale(1);}}
-.maha-orb-idle{animation:mahaBreathe 2.6s ease-in-out infinite;}
+.maha-orb-idle{animation:mahaBreathe 2s ease-in-out infinite;}
 .maha-orb-listening{animation:mahaListen 1.1s infinite;}
 .maha-orb-thinking{animation:mahaThink 1.4s linear infinite;}
 .maha-orb-speaking{animation:mahaSpeak 0.5s ease-in-out infinite;}
+@media (prefers-reduced-motion:reduce){
+  .maha-orb-idle{animation:mahaBreathe 2s ease-in-out infinite!important;}
+  .maha-orb-listening{animation:mahaListen 1.1s infinite!important;}
+  .maha-orb-thinking{animation:mahaThink 1.4s linear infinite!important;}
+  .maha-orb-speaking{animation:mahaSpeak 0.5s ease-in-out infinite!important;}
+}
 #mahaCallScreen.maha-builder-mode{padding:8px 6px !important; border-radius:0 !important; cursor:default !important;}
 #mahaCallScreen.maha-builder-mode #mahaCallNameLabel{display:none !important;}
 #mahaCallScreen.maha-builder-mode #mahaDragHandle{cursor:default !important;}
@@ -47,6 +53,8 @@
 #mahaCallScreen.maha-builder-mode #mahaStateLabel{font-size:12px !important; margin-top:6px !important;}
 #mahaCallScreen.maha-builder-mode #mahaWave{width:72px !important; height:72px !important;}
 #mahaCallScreen.maha-builder-mode #btnMahaEndCall{width:38px !important; height:38px !important; font-size:16px !important;}
+#mahaCallScreen.maha-builder-mode #mahaCamPreview{top:52px !important; bottom:auto !important; left:12px !important; transform:none !important;}
+#mahaCallScreen.maha-builder-mode{gap:0 !important;}
 @keyframes mahaWaveListen{0%{box-shadow:0 0 0 0 rgba(255,255,255,.5);}70%{box-shadow:0 0 0 30px rgba(255,255,255,0);}100%{box-shadow:0 0 0 0 rgba(255,255,255,0);}}
 @keyframes mahaWaveThink{0%{box-shadow:0 0 18px 4px rgba(255,213,79,.35);}50%{box-shadow:0 0 30px 10px rgba(255,213,79,.65);}100%{box-shadow:0 0 18px 4px rgba(255,213,79,.35);}}
 @keyframes mahaWaveSpeak{0%{box-shadow:0 0 20px 6px rgba(80,230,150,.4);}50%{box-shadow:0 0 36px 14px rgba(80,230,150,.75);}100%{box-shadow:0 0 20px 6px rgba(80,230,150,.4);}}
@@ -321,3 +329,53 @@ html:not(.mobile-ui) hr{border:none;height:1px;background:linear-gradient(90deg,
     animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;
   }
 }
+
+
+/* v517: (كمبيوتر فقط) الوضع الفاتح — إطفاء هالات الخلفيّة الثلاث */
+html[data-mode="light"]:not(.mobile-ui) body::before,
+html[data-mode="light"]:not(.mobile-ui) body::after,
+html[data-mode="light"]:not(.mobile-ui) body.omranWelcome #omranHero::before{background:none; opacity:0;}
+
+/* ═══ v521 — النوافذ الأربع تسمع الوضع الفاتح (إضافة فقط) ═══ */
+html[data-mode="light"] #eduHubModal,
+html[data-mode="light"] #expModal,
+html[data-mode="light"] .xm{background:rgba(0,0,0,.32) !important;}
+
+html[data-mode="light"] #eduHubModal .eduWrap,
+html[data-mode="light"] #expModal .expWrap,
+html[data-mode="light"] .xm .xmWrap,
+html[data-mode="light"] #videoMakerModal .vmk-stage{
+  background:#EBEBEB !important; color:var(--text) !important;
+  border-color:rgba(0,0,0,.10) !important;
+}
+
+html[data-mode="light"] #eduHubModal .eduHead,
+html[data-mode="light"] #expModal .expHead,
+html[data-mode="light"] .xm .xmHead{background:#E5E5E5 !important; border-color:rgba(0,0,0,.08) !important;}
+
+html[data-mode="light"] #eduHubModal .eduCardFront,
+html[data-mode="light"] #eduHubModal .eduCardBack,
+html[data-mode="light"] #eduHubModal .eduSubjCard,
+html[data-mode="light"] .xm .xmFCard,
+html[data-mode="light"] #videoMakerModal .vmk-card{background:#ffffff !important; color:var(--text) !important; border-color:rgba(0,0,0,.10) !important;}
+
+html[data-mode="light"] #expModal .expDonut::after{background:#EBEBEB !important;}
+
+html[data-mode="light"] #eduHubModal .eduIconBtn,
+html[data-mode="light"] #eduHubModal .eduPasteArea textarea,
+html[data-mode="light"] #videoMakerModal .vmk-pill,
+html[data-mode="light"] .xm .xmBody input,
+html[data-mode="light"] .xm .xmBody textarea{background:rgba(0,0,0,.05) !important; color:var(--text) !important; border-color:rgba(0,0,0,.12) !important;}
+
+html[data-mode="light"] #eduHubModal .eduSecTitle,
+html[data-mode="light"] .xm .xmMd strong,
+html[data-mode="light"] .xm .xmFCard .v,
+html[data-mode="light"] #videoMakerModal .vmk-card b,
+html[data-mode="light"] #videoMakerModal .vmk-pill{color:var(--text) !important;}
+
+html[data-mode="light"] #videoMakerModal .vmk-dim,
+html[data-mode="light"] #videoMakerModal .vmk-chip,
+html[data-mode="light"] #videoMakerModal .vmk-main label[data-i18n],
+html[data-mode="light"] #videoMakerModal details.vmk-adv>summary,
+html[data-mode="light"] #eduHubModal .eduHintTxt,
+html[data-mode="light"] #eduHubModal .eduNote{color:var(--muted) !important;}

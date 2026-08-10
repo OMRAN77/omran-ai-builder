@@ -383,6 +383,9 @@ module.exports = async (req, res) => {
     } catch (e) { console.warn('[agent] memory read failed', e && e.message); }
   }
 
+  // v545 — المعرفة الجماعيّة (لا تُحقن لمها الصوتيّة: شخصيّتها ومعلوماتها لا تُمَسّ).
+  try { system += await require('./collective.js').blockAsync(); } catch (e) { /* guard-ok: collective enrichment is optional; the chat request must continue. */ }
+
   if (currentCode) {
     system += '\n\nالكود الحالي للمشروع (عدّل عليه إذا طلب المستخدم تعديلًا وأعد الملف كاملًا):\n```html\n' + String(currentCode).slice(0, 60000) + '\n```';
   }

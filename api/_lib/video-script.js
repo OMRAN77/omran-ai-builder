@@ -104,6 +104,7 @@ module.exports = async (req, res) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        store: false,
         model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: sys },

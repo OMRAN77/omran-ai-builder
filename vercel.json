@@ -59,6 +59,7 @@
     { "source": "/api/portrait-style", "destination": "/api/tools?action=portrait-style" },
     { "source": "/api/analyze-zip", "destination": "/api/tools?action=analyze-zip" },
     { "source": "/api/adchat", "destination": "/api/tools?action=adchat" },
+    { "source": "/api/adimage", "destination": "/api/tools?action=adimage" },
 
     { "source": "/api/video-create", "destination": "/api/video?action=video-create" },
     { "source": "/api/video-script", "destination": "/api/video?action=video-script" },

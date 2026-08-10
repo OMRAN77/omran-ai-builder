@@ -723,6 +723,12 @@ const I18N = {
     resetColorsBtn: 'إعادة الألوان الافتراضية',
     downloadSourceBtn: 'تحميل الكود المصدري (ZIP)',
     voiceSectionLabel: 'الصوت',
+    memorySectionLabel: 'ذاكرتي',
+    memoryIntro: 'ما يتذكّره التطبيق عنك من محادثاتك السابقة. محفوظ في حسابك وحدك ولا يراه غيرك.',
+    memoryClearBtn: 'حذف ذاكرتي',
+    memoryEmpty: 'لا توجد معلومات محفوظة عنك بعد.',
+    memoryGuest: 'سجّل دخولك لعرض ذاكرتك.',
+    memoryConfirm: 'حذف كلّ ما يتذكّره التطبيق عنك؟ لا يمكن التراجع.',
     fontSizeSectionLabel: 'حجم الخط',
     fontSizeSmall: 'صغير',
     fontSizeNormal: 'عادي',
@@ -769,6 +775,10 @@ const I18N = {
     langBtn: 'EN',
     systemPrompt: `أنت ذكاء اصطناعي واسع المعرفة داخل تطبيق «Omran AI Builder» من فريق عمران AI.
 أسلوبك: راقي وطبيعي — مثل خبير ودود يفهم كل شي ويتكلم بوضوح وعمق. نوّع تعبيراتك ولا تكرر العبارات الجاهزة. رتّب إجاباتك بشكل مريح للقراءة.
+- لهجتك الافتراضيّة إماراتيّة بيضاء مفهومة للجميع: «هلا والله» · «أبشر» · «على طول» · «شو تحب» · «تسلم». بلا مبالغة ولا كلمات محلّيّة غامضة.
+- جارِ لهجة المستخدم: كتب مصري = ردّ مصري · شامي = شامي · سعودي = سعودي · مغاربي = مغاربي · عراقي = عراقي · فصحى = فصحى مبسّطة. الإماراتيّة هي الافتراضيّ فقط.
+- جارِ شخصيّته: مختصر = اختصر · يمزح = مازحه بخفّة · رسميّ = كن رسميًّا · كبير في السنّ أو مرتبك = اصبر وبسّط ولا تستعجله.
+- المصطلحات التقنيّة والأسماء والأرقام تبقى كما هي — اللهجة في الكلام لا في المحتوى.
 - سؤال عادي أو دردشة = رد محادثي غني بالمعلومات. بدون أي كود.
 - طلب بناء/تعديل تطبيق أو موقع أو لعبة = اشرح باختصار (سطرين) ثم أعد ملف HTML+CSS+JS كامل يعمل مباشرة في كتلة \`\`\`html واحدة. يمكنك استخدام CDN. الألعاب 3D = Three.js عبر CDN.
 - تعديل كود موجود = غيّر الجزء المطلوب فقط وأعد الملف كاملاً.
@@ -1626,6 +1636,12 @@ const I18N = {
     micNotSupported: 'This browser does not support voice input. Try Chrome on Android or desktop.',
     downloadSourceBtn: 'Download Source Code (ZIP)',
     voiceSectionLabel: 'Voice',
+    memorySectionLabel: 'My memory',
+    memoryIntro: 'What the app remembers about you from past chats. Stored in your account only; nobody else can see it.',
+    memoryClearBtn: 'Delete my memory',
+    memoryEmpty: 'Nothing saved about you yet.',
+    memoryGuest: 'Sign in to view your memory.',
+    memoryConfirm: 'Delete everything the app remembers about you? This cannot be undone.',
     fontSizeSectionLabel: 'Font Size',
     fontSizeSmall: 'Small',
     fontSizeNormal: 'Normal',

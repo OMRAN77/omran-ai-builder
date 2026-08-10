@@ -85,7 +85,7 @@ function buildSpokenWordSpans(container, text){
   const wordEls = [];
   // v467: capture markdown links [text](url) — even with spaces — as a single token
   // v541: **[نص](رابط)** كان ينكسر لأن ** تسبق [ فتُقسَّم على المسافات
-  const re = /(?:\*\*)?\[[^\]]*\]\(https?:\/\/[^\s)]+\)(?:\*\*)?[.,،؛!؟)]*|\S+/g;
+  const re = /[^\s\[!\x60]*(?:\*\*)?\[[^\]]*\]\(https?:\/\/[^\s)]+\)(?:\*\*)?[.,،؛!؟)]*|\S+/g;
   let m, lastIndex = 0;
   let boldOpen = false;
   let headerLevel = 0; // >0 while inside a "## ..." heading line
@@ -166,7 +166,7 @@ function buildSpokenWordSpans(container, text){
       // v476: «[نص](رابط)» كان يبدأ بـ"[" فتقتطعه بادئةُ v467 فينكسر الماركداون
       // ويظهر «النص](الرابط)» ملتصقًا. نتخطّى الاقتطاع متى كان التوكن رابطَ ماركداون.
       const __isMd = /^\[[^\]]+\]\(https?:\/\/[^\s)]+\)/.test(display);
-      const __leadM = __isMd ? null : display.match(/^[(«"'\[]+(?=(?:\[|https?:\/\/|www\.))/);
+      const __leadM = __isMd ? null : (display.match(/^([^\[!\x60]+)(?=\[[^\]]+\]\(https?:\/\/)/) || display.match(/^[(«"'\[]+(?=(?:\[|https?:\/\/|www\.))/));
       if(__leadM){ __lead = __leadM[0]; display = display.slice(__lead.length); }
       const linkM = display.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)([.,،؛:!؟)»"'\]]*)$/);
       const urlM = !linkM && display.match(/^(https?:\/\/[^\s<>"']{4,}|www\.[^\s<>"']{4,})([.,،؛:!؟)»"'\]]*)$/);
@@ -482,13 +482,52 @@ const messagesEl = $('#messages');
 
 // v463: سكرول طبيعي — المحادثة تتحرك كلها مع بعض
 function anchorLastUserMsgTop(){
-  try{ messagesEl.scrollTop = messagesEl.scrollHeight; }catch(e){ window.__swallow && window.__swallow(e,'ui.scrollAnchor'); }
+  try{ messagesEl.scrollTop = messagesEl.scrollHeight; syncChatJumpButton(); }catch(e){ window.__swallow && window.__swallow(e,'ui.scrollAnchor'); }
 }
-// v331: أثناء البث لا نسحب الشاشة لتحت إلا إذا كان المستخدم أصلاً عند الأسفل
-function smartScrollBottom(){
+// رتم البث: نأخذ قرار المتابعة قبل أن يكبر الرد. القياس بعد إضافة النص
+// كان يظن أن المستخدم صعد للأعلى، فيتوقف التمرير وحده وسط الرد الطويل.
+function chatIsNearBottom(threshold){
   try{
     const gap = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight;
-    if(gap < 140) messagesEl.scrollTop = messagesEl.scrollHeight;
+    return gap < (threshold == null ? 160 : threshold);
+  }catch(e){ return true; }
+}
+function syncChatJumpButton(){
+  try{
+    const btn = $('#chatJumpBottom');
+    if(!btn) return;
+    btn.classList.toggle('visible', !chatIsNearBottom());
   }catch(e){ __swallow(e, "misc:app-02-tts#7"); }
+}
+function smartScrollBottom(wasNearBottom){
+  try{
+    const follow = (typeof wasNearBottom === 'boolean') ? wasNearBottom : chatIsNearBottom();
+    if(follow) messagesEl.scrollTop = messagesEl.scrollHeight;
+    syncChatJumpButton();
+  }catch(e){ __swallow(e, "misc:app-02-tts#8"); }
+}
+const chatJumpBottomBtn = $('#chatJumpBottom');
+if(messagesEl){
+  messagesEl.addEventListener('scroll', syncChatJumpButton, {passive:true});
+}
+if(chatJumpBottomBtn){
+  chatJumpBottomBtn.onclick = () => {
+    messagesEl.scrollTo ? messagesEl.scrollTo({top:messagesEl.scrollHeight, behavior:'smooth'}) : (messagesEl.scrollTop = messagesEl.scrollHeight);
+    setTimeout(syncChatJumpButton, 220);
+  };
+}
+
+// أثناء البث نخفي علامات Markdown الناقصة وننسّق المكتمل فورًا؛ عند اكتمال
+// الرابط يعود نصّه نفسه كرابط قابل للنقر بدل القفزة من نص خام إلى تنسيق نهائي.
+function streamingMarkdownDisplayText(text){
+  return String(text || '')
+    .replace(/\*{0,2}\[([^\]\n]+)\]\((?:https?:\/\/)?[^\s)\n]*$/g, '$1')
+    .replace(/\*{0,2}\[([^\]\n]+)\]$/g, '$1')
+    .replace(/\*{0,2}\[([^\]\n]*)$/g, '$1');
+}
+function renderStreamingAssistant(el, text){
+  if(!el) return;
+  el.classList.add('msg-streaming');
+  buildSpokenWordSpans(el, streamingMarkdownDisplayText(text));
 }
 

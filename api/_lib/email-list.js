@@ -78,6 +78,7 @@ async function getStyleProfile(accessToken, user, username) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
       body: JSON.stringify({
+        store: false,
         model: 'gpt-4o-mini',
         messages: [{ role: 'user', content: 'Below are emails written by one person. Describe their writing style in 3-4 short bullet points (tone, greeting/closing habits, formality, typical length, language quirks). Reply with the bullet points only.\n\n' + samples.map((s, i) => '--- Email ' + (i + 1) + ' ---\n' + s).join('\n') }],
         temperature: 0.2,
@@ -113,6 +114,7 @@ async function draftReply(fromName, subject, bodyText, styleProfile) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
       body: JSON.stringify({
+        store: false,
         model: 'gpt-4o-mini',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.4,
