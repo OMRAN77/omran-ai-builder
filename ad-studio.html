@@ -45,6 +45,9 @@ a.back{display:inline-block;margin-top:10px;margin-right:8px;color:#8b939d;font-
 .rst{margin-right:auto}
 .genB{background:linear-gradient(135deg,#a855f7,#22d3ee);border:0;color:#0b0d10;font:800 11.5px 'Tajawal';padding:5px 13px;border-radius:99px;cursor:pointer}
 .genB:disabled{opacity:.55;cursor:default}
+.rtb{display:inline-flex;gap:4px;margin:0 6px;vertical-align:middle}
+.rtb button{background:#1c1f25;border:1px solid #2b3038;color:#8b939d;font:700 11px 'Tajawal';padding:4px 10px;border-radius:99px;cursor:pointer}
+.rtb button.on{background:rgba(34,211,238,.14);border-color:#22d3ee;color:#cbd2da}
 #genOut{display:none;margin-top:18px}
 #genOut.on{display:block}
 #genOut h3{font-size:13px;font-weight:700;color:#c9d1d9;margin-bottom:9px}
@@ -260,7 +263,7 @@ body.inkb .canvas :is(.pr,.p,.dpr,.fpr,.hnum,.hk,.hbar b,.mono,.stamp b,.top b,h
 
   <div class="gwrap" id="gwrap">
     <div class="gtitle">تسعة تصاميم — اختر واحدًا</div>
-    <div class="dragbar">اسحب أيّ نصّ — والمسه ثمّ كبّره أو صغّره<span class="szb"><button id="szM">−</button><button id="szP">+</button></span><span class="swat" id="sw"></span><button class="genB" id="genB">🎨 ولّد الإعلان صورةً</button><button class="rstAll" id="inkT">خلفيّة فاتحة</button><button class="rstAll">أعِد الكلّ لأصله</button></div>
+    <div class="dragbar">اسحب أيّ نصّ — والمسه ثمّ كبّره أو صغّره<span class="szb"><button id="szM">−</button><button id="szP">+</button></span><span class="swat" id="sw"></span><span class="rtb" id="rt" title="نسبة الصورة المولَّدة"><button data-r="square">◻ مربّع</button><button data-r="tall" class="on">▯ طولي</button><button data-r="wide">▭ عرضي</button></span><button class="genB" id="genB">🎨 ولّد الإعلان صورةً</button><button class="rstAll" id="inkT">خلفيّة فاتحة</button><button class="rstAll">أعِد الكلّ لأصله</button></div>
     <div id="genOut"></div>
     <div class="grid" id="grid"></div>
   </div>
@@ -314,7 +317,7 @@ const KW = {car:['سيار','سيّار','مرسيدس','تويوتا','لكزس
  service:['خدم','صيان','تنظيف','نقل','عفش','سباك','كهرب','تكييف','نجار','دهان','برمج','تصميم','محاسب']};
 
 /* ================= الحالة ================= */
-const S = {cat:null, title:'', spec:'', price:'', unit:'', tel:'', kick:'', chips:null, facts:null, place:'', note:'', img:null, step:0, chosen:null};
+const S = {cat:null, title:'', spec:'', price:'', unit:'', tel:'', kick:'', chips:null, facts:null, place:'', note:'', img:null, step:0, chosen:null, ratio:'tall'};
 const cb=document.getElementById('cbody'), chipsEl=document.getElementById('chips'),
       inp=document.getElementById('inp'), snd=document.getElementById('snd'),
       fileEl=document.getElementById('file'), stepLbl=document.getElementById('stepLbl');
@@ -713,6 +716,11 @@ const inkT=document.getElementById('inkT');
 inkT.onclick=()=>{ const on=document.body.classList.toggle('ink');
   inkT.textContent=on?'خلفيّة داكنة':'خلفيّة فاتحة'; };
 
+const rtEl=document.getElementById('rt');
+rtEl.onclick=e=>{ const b=e.target.closest('button[data-r]'); if(!b) return;
+  S.ratio=b.dataset.r;
+  [...rtEl.querySelectorAll('button')].forEach(n=>n.classList.toggle('on',n===b)); };
+
 /* ============ توليد الإعلان صورةً كاملة (OpenAI gpt-image-1) ============ */
 const LOOKMAP=['cinema','layers','poster','elegant','bold','luxe','minimal','magazine','neon'];
 const genB=document.getElementById('genB'), genOut=document.getElementById('genOut');
@@ -724,13 +732,13 @@ genB.onclick=async()=>{
   genOut.scrollIntoView({behavior:'smooth',block:'nearest'});
   try{
     const r=await fetch('/api/adimage',{method:'POST',headers:{'content-type':'application/json'},
-      body:JSON.stringify({token:TOKEN,look:LOOKMAP[S.chosen||0]||'neon',ac:S.ac||'',
+      body:JSON.stringify({token:TOKEN,ratio:S.ratio||'tall',look:LOOKMAP[S.chosen||0]||'neon',ac:S.ac||'',
         title:S.title||c.title,spec:S.spec||c.spec,price:S.price||c.price,unit:S.unit||c.unit,
         tel:S.tel||'',kick:S.kick||c.kick,imageBase64:m?m[2]:'',mimeType:m?m[1]:''})});
     const j=await r.json().catch(()=>({}));
     if(!r.ok||!j.imageBase64){ genOut.innerHTML='<div class="gwait">⚠️ '+esc(j.message_ar||j.error||('خطأ '+r.status))+'</div>'; }
-    else{ const src='data:'+(j.mimeType||'image/png')+';base64,'+j.imageBase64;
-      genOut.innerHTML='<h3>إعلانك المولَّد</h3><img src="'+src+'"><a download="ad.png" href="'+src+'">⬇︎ نزّل الصورة</a>'; }
+    else{ const mt=j.mimeType||'image/webp', src='data:'+mt+';base64,'+j.imageBase64, ext=(mt.split('/')[1]||'webp');
+      genOut.innerHTML='<h3>إعلانك المولَّد</h3><img src="'+src+'"><a download="ad.'+ext+'" href="'+src+'">⬇︎ نزّل الصورة</a>'; }
   }catch(e){ genOut.innerHTML='<div class="gwait">⚠️ '+esc(e.message||'تعذّر الاتصال')+'</div>'; }
   genB.disabled=false; genB.textContent=old;
 };

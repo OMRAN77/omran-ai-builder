@@ -52,6 +52,7 @@ module.exports = async (req, res) => {
         'Authorization': 'Bearer ' + apiKey,
       },
       body: JSON.stringify({
+        provider: { data_collection: 'deny' }, // v544: امنع المزوّدين الذين يجمعون البيانات
         model: model || 'openai/gpt-4o-mini',
         messages,
         temperature: 0.7,

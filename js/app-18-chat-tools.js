@@ -111,3 +111,40 @@
   var b=document.getElementById('btnAdStudio');
   if(b) b.addEventListener('click', function(){ location.href='/ad-studio.html'; });
 })();
+
+/* v544 — شاشة «ذاكرتي»: عرض ما حُفظ عن المستخدم + حذفه. القراءة والمسح من الخادم بالتوكن وحده. */
+(function(){
+  function tok(){ try{ return sessionStorage.getItem('aiapp_auth_token') || localStorage.getItem('aiapp_auth_token') || ''; }catch(e){ return ''; } }
+  function tr(k, fb){ try{ var d = window.__i18nDict ? window.__i18nDict(document.documentElement.lang || 'ar') : null; return (d && d[k]) || fb; }catch(e){ return fb; } }
+  function memCall(op){
+    var t = tok(); if(!t) return Promise.resolve(null);
+    return fetch('/api/system?action=memory', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token: t, op: op }) })
+      .then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; });
+  }
+  function render(){
+    var box = document.getElementById('memoryBox'), btn = document.getElementById('memoryClearBtn');
+    if(!box) return;
+    if(!tok()){ box.textContent = tr('memoryGuest', 'سجّل دخولك لعرض ذاكرتك.'); if(btn) btn.style.display = 'none'; return; }
+    box.textContent = '…';
+    memCall('get').then(function(d){
+      var txt = (d && typeof d.memory === 'string') ? d.memory.trim() : '';
+      box.textContent = txt || tr('memoryEmpty', 'لا توجد معلومات محفوظة عنك بعد.');
+      if(btn) btn.style.display = txt ? '' : 'none';
+    });
+  }
+  window.renderMemorySection = render;
+  document.addEventListener('click', function(e){
+    var b = e.target && e.target.closest ? e.target.closest('#memoryClearBtn') : null;
+    if(b){
+      if(!confirm(tr('memoryConfirm', 'حذف كلّ ما يتذكّره التطبيق عنك؟ لا يمكن التراجع.'))) return;
+      b.disabled = true;
+      memCall('clear').then(function(){ try{ if('userMemory' in window) window.userMemory = ''; }catch(_){ /* guard-ok: optional local cache cleanup follows successful server deletion. */ } b.disabled = false; render(); });
+      return;
+    }
+    setTimeout(function(){
+      var s = document.getElementById('memorySection'); if(!s) return;
+      if(s.classList.contains('settingsPageActive')){ if(s.dataset.memOn !== '1'){ s.dataset.memOn = '1'; render(); } }
+      else s.dataset.memOn = '';
+    }, 60);
+  }, true);
+})();

@@ -229,7 +229,7 @@ function mahaUpdatePersonaUI(){
 function mahaEnsureVoiceChosen(){
   return new Promise(resolve => {
     let already = null;
-    try{ already = localStorage.getItem('aiapp_voice_gender'); }catch(e){}
+    try{ already = localStorage.getItem('aiapp_voice_gender'); }catch(e){ /* guard-ok: unavailable storage shows the safe first-run picker. */ }
     if(already === 'male' || already === 'female') return resolve(already);
     const wrap = document.createElement('div');
     wrap.id = 'voicePickFirstRun';
@@ -249,8 +249,8 @@ function mahaEnsureVoiceChosen(){
     card.querySelectorAll('.vpFirstBtn').forEach(b => {
       b.onclick = () => {
         const g = b.getAttribute('data-g');
-        try{ localStorage.setItem('aiapp_voice_gender', g); }catch(e){}
-        if(typeof setVoiceGenderUI === 'function'){ try{ setVoiceGenderUI(g); }catch(e){} }
+        try{ localStorage.setItem('aiapp_voice_gender', g); }catch(e){ /* guard-ok: voice selection still applies for this session. */ }
+        if(typeof setVoiceGenderUI === 'function'){ try{ setVoiceGenderUI(g); }catch(e){ /* guard-ok: optional settings mirror must not block the call. */ } }
         wrap.remove();
         resolve(g);
       };
@@ -1583,7 +1583,7 @@ function mahaEndCall(){
 let mahaCallMode = 'assistant'; // 'assistant' (مها) or 'builder' (voice tab)
 // v500: رسالة صريحة بدل الصمت عند تعذّر المايك — تُميّز رفض الإذن / لا يوجد جهاز / مشغول.
 function mahaMicMsg(e){
-  var L = "ar"; try{ L = localStorage.getItem("aiapp_lang") || "ar"; }catch(_){ }
+  var L = "ar"; try{ L = localStorage.getItem("aiapp_lang") || "ar"; }catch(_){ /* guard-ok: unavailable storage uses the Arabic fallback. */ }
   var ar = L === "ar";
   var n = (e && e.name) ? String(e.name) : "";
   if(/NotAllowed|Permission|Security/i.test(n))
@@ -1601,14 +1601,14 @@ function mahaMicMsg(e){
 // فحص مسبق: نطلب الإذن قبل فتح شاشة النداء، فلا تتجمّد الشاشة ١٢ ثانية بلا سبب ظاهر.
 async function mahaMicPreflight(){
   var perm = "";
-  try{ perm = (await navigator.permissions.query({ name: "microphone" })).state; }catch(_){ }
+  try{ perm = (await navigator.permissions.query({ name: "microphone" })).state; }catch(_){ /* guard-ok: unsupported Permissions API falls through to getUserMedia. */ }
   if(perm === "denied") return mahaMicMsg({ name: "NotAllowedError" });
   try{
     var s = await Promise.race([
       navigator.mediaDevices.getUserMedia({ audio: true }),
       new Promise(function(_res, rej){ setTimeout(function(){ rej({ name: "__timeout__" }); }, 15000); })
     ]);
-    s.getTracks().forEach(function(tr){ try{ tr.stop(); }catch(_){ } });
+    s.getTracks().forEach(function(tr){ try{ tr.stop(); }catch(_){ /* guard-ok: an already-ended track needs no cleanup. */ } });
     return null;
   }catch(e){ console.error("[maha] mic preflight failed:", e); return mahaMicMsg(e); }
 }
@@ -1618,7 +1618,7 @@ async function mahaStartCall(mode){
     alert(t('micNotSupported'));
     return;
   }
-  var __ar = true; try{ __ar = (localStorage.getItem("aiapp_lang") || "ar") === "ar"; }catch(_){ }
+  var __ar = true; try{ __ar = (localStorage.getItem("aiapp_lang") || "ar") === "ar"; }catch(_){ /* guard-ok: unavailable storage retains the Arabic fallback. */ }
   mahaCallMode = mode === 'builder' ? 'builder' : 'assistant';
   if(mahaCallMode !== 'builder'){ await mahaEnsureVoiceChosen(); }
   if(mahaCallScreenEl){

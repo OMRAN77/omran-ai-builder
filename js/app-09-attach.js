@@ -18,24 +18,58 @@ function makeChatStatus(el){
   const steps = [];
   let finished = false;
   function render(){
-    if(!el || finished) return;
+    if(!el || finished || !steps.length) return;
+    // الجوال خارج نطاق هذه المرحلة: نحافظ على عرضه السابق حرفيًا.
+    if(document.documentElement.classList.contains('mobile-ui')){
+      el.innerHTML = '';
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.7;opacity:.9;';
+      steps.forEach(function(s, i){
+        const row = document.createElement('div');
+        const isLast = (i === steps.length - 1);
+        row.style.cssText = 'display:flex;align-items:flex-start;gap:7px;' + (s.state === 'fail' ? 'opacity:.75;' : '');
+        const icon = document.createElement('span');
+        icon.textContent = s.state === 'fail' ? '✗' : (s.state === 'done' ? '✓' : s.icon || '•');
+        icon.style.cssText = 'flex:0 0 auto;' + (s.state === 'done' ? 'color:#2e9e6b;' : (s.state === 'fail' ? 'color:#c0453f;' : ''));
+        const txt = document.createElement('span');
+        txt.textContent = s.text;
+        if(isLast && s.state === 'run') txt.style.cssText = 'animation:omranPulse 1.4s ease-in-out infinite;';
+        row.appendChild(icon); row.appendChild(txt); wrap.appendChild(row);
+      });
+      el.appendChild(wrap);
+      return;
+    }
+    const oldDetails = el.querySelector && el.querySelector('.chat-status-fold');
+    const wasOpen = !!(oldDetails && oldDetails.open);
     el.innerHTML = '';
-    const wrap = document.createElement('div');
-    wrap.style.cssText = 'display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.7;opacity:.9;';
-    steps.forEach(function(s, i){
-      const row = document.createElement('div');
-      const isLast = (i === steps.length - 1);
-      row.style.cssText = 'display:flex;align-items:flex-start;gap:7px;' + (s.state === 'fail' ? 'opacity:.75;' : '');
-      const icon = document.createElement('span');
-      icon.textContent = s.state === 'fail' ? '✗' : (s.state === 'done' ? '✓' : s.icon || '•');
-      icon.style.cssText = 'flex:0 0 auto;' + (s.state === 'done' ? 'color:#2e9e6b;' : (s.state === 'fail' ? 'color:#c0453f;' : ''));
-      const txt = document.createElement('span');
-      txt.textContent = s.text;
-      if(isLast && s.state === 'run') txt.style.cssText = 'animation:omranPulse 1.4s ease-in-out infinite;';
-      row.appendChild(icon); row.appendChild(txt);
-      wrap.appendChild(row);
-    });
-    el.appendChild(wrap);
+    const current = steps[steps.length - 1];
+    const details = document.createElement('details');
+    details.className = 'chat-status-fold';
+    details.open = wasOpen;
+    const summary = document.createElement('summary');
+    const currentIcon = document.createElement('span');
+    currentIcon.className = 'chat-status-icon';
+    currentIcon.textContent = current.state === 'fail' ? '✗' : (current.state === 'done' ? '✓' : current.icon || '•');
+    const currentText = document.createElement('span');
+    currentText.textContent = current.text;
+    if(current.state === 'run') currentText.className = 'chat-status-running';
+    summary.appendChild(currentIcon); summary.appendChild(currentText);
+    details.appendChild(summary);
+    if(steps.length > 1){
+      const history = document.createElement('div');
+      history.className = 'chat-status-history';
+      steps.slice(0, -1).forEach(function(s){
+        const row = document.createElement('div');
+        row.className = 'chat-status-row ' + s.state;
+        const icon = document.createElement('span');
+        icon.textContent = s.state === 'fail' ? '✗' : (s.state === 'done' ? '✓' : s.icon || '•');
+        const txt = document.createElement('span');
+        txt.textContent = s.text;
+        row.appendChild(icon); row.appendChild(txt); history.appendChild(row);
+      });
+      details.appendChild(history);
+    }
+    el.appendChild(details);
   }
   return {
     /* Adds a step and returns a handle to close it later. */
@@ -1790,7 +1824,10 @@ async function sendPrompt(){
         '(4) ممنوع مناداة المستخدم بأي اسم إلا إذا محفوظ بالذاكرة.\n' +
         '(5) رسالة قصيرة (كلمة/كلمتين) = تكملة للموضوع السابق.\n' +
         '(6) وضع نقاش — ممنوع عرض كود إلا إذا طُلب صراحة.\n' +
-        '(7) التطبيق يوفّر توليد صور وفيديو وPDF — أرشد إليها بدل "ما أقدر".';
+        '(7) التطبيق يوفّر توليد صور وفيديو وPDF — أرشد إليها بدل "ما أقدر".\n' +
+        '(8) العربية: لهجتك الافتراضيّة إماراتيّة بيضاء مفهومة للجميع (هلا والله · أبشر · على طول · شو تحب · تسلم) بلا مبالغة ولا كلمات غامضة. اللغات الأخرى = أسلوب طبيعي بلغة المستخدم بلا لهجة عربية.\n' +
+        '(9) جارِ لهجة المستخدم العربية: كتب مصري = ردّ مصري · شامي = شامي · سعودي = سعودي · مغاربي = مغاربي · عراقي = عراقي · فصحى = فصحى مبسّطة. الإماراتيّة هي الافتراضيّ فقط.\n' +
+        '(10) جارِ شخصيّته: مختصر = اختصر · يمزح = مازحه بخفّة · رسميّ = كن رسميًّا · كبير في السنّ أو مرتبك = اصبر وبسّط. المصطلحات والأسماء والأرقام تبقى كما هي — اللهجة في الكلام لا في المحتوى.';
     }
     const apiMessages = [{role: 'system', content: __sys}];
     // 🤝 v345: المستخدم وافق على عرض بناء قدّمه المزود في رده السابق — يبنيه الآن كاملًا.
@@ -1807,7 +1844,9 @@ async function sendPrompt(){
       apiMessages.push({role: 'system', content: 'The user has ATTACHED an image with this message. You MUST look at the attached image carefully and answer based on its actual visual content in detail (identify objects, brands, models, text, measurements — whatever is relevant to the question). Never say you cannot see images, never give a generic answer that ignores the image, and never reply with empty or evasive text.'});
     }
     // 🧠 حقن ذاكرة المستخدم طويلة المدى
-    const __memMsg = memorySystemMsg();
+    // v548: تحية صافية ⇒ لا حقن ذاكرة في هذا الدور وحده — الذاكرة كانت تجعل
+    // الرد يستعرض مواضيع المستخدم المحفوظة على مجرد «هلا». الأسئلة العادية بلا تغيير.
+    const __memMsg = isPureGreeting(text) ? null : memorySystemMsg();
     if(__memMsg) apiMessages.push(__memMsg);
     if(cur.code){
       apiMessages.push({role: 'assistant', content: '```' + (cur.codeType === 'python' ? 'python' : 'html') + '\n' + codeForApi(cur.code) + '\n```'});
@@ -1893,7 +1932,7 @@ async function sendPrompt(){
     // 👋 قاعدة التحية لكل المزودين التسعة: تحية = رد ترحيبي قصير فقط،
     // ممنوع البحث وممنوع المصادر وممنوع فتح أي موضوع قديم من المحادثة.
     if(isPureGreeting(text)){
-      apiMessages.push({role: 'system', content: 'رسالة المستخدم الأخيرة مجرد تحية/مجاملة. رُدّ بتحية ودية قصيرة وطبيعية فقط (سطر أو سطرين كحد أقصى). ممنوع منعًا باتًا: فتح أو إكمال أي موضوع سابق من المحادثة، أو عرض معلومات/روابط/مصادر، أو اقتراح "نكمل...؟". ممنوع مناداة المستخدم بأي اسم (لا «محمد» ولا غيره) إلا إذا كان محفوظًا في ذاكرته. فقط حيّه واسأله كيف تقدر تساعده.'});
+      apiMessages.push({role: 'system', content: 'رسالة المستخدم الأخيرة مجرد تحية. رُدّ بسطر واحد قصير جدًا يحيّه ويسأله وش يحتاج، بلهجة إماراتية طبيعية بلا تكلّف — وإذا حيّاك بلهجة أخرى (مصري/شامي/سعودي/مغاربي) أو بالإنجليزي فجاوبه بنفس لهجته ولغته. ⚠️ ممنوع منعًا باتًا في هذا الرد: أي اقتراح أو عرض خدمات أو أمثلة على ما تقدر تسويه (لا مطاعم ولا أسعار ولا ذهب ولا تصميم ولا نماذج ولا عبارة «أو أي شيء آخر»)، أي معلومة أو رقم أو رابط أو مصدر، أي موضوع سابق من المحادثة أو من ذاكرة المستخدم، وأي سؤال إضافي بعد «وش تحتاج». وممنوع العبارات الفصحى الجاهزة مثل «كيف يمكنني مساعدتك اليوم؟». ممنوع مناداة المستخدم بأي اسم.'});
     }
     // v311: أثناء تصميم إعلان (adMode مفعّل) ممنوع البحث الحي نهائيًا —
     // تفاصيل «بيت للبيع...» تكمل التصميم ولا تتحول لبحث دوبيزل.
@@ -2535,18 +2574,27 @@ async function sendPrompt(){
         saveState();
       }
     } else {
-      // Live-typing effect: as text streams in, show it raw in the "thinking"
-      // bubble; once the full reply is done, extractReply() runs on the
-      // complete text and renderAll() takes over with proper formatting/code.
-      // ⚡ v320: تحديث فقاعة البث بإيقاع الشاشة (إطار واحد) بدل كل قطعة نص واصلة.
+      // فقاعة واحدة من الانتظار حتى آخر كلمة: ننسّق Markdown المكتمل داخل
+      // البث نفسه، ونأخذ قرار متابعة التمرير قبل أن يكبر الرد.
       const onDelta = (partial) => {
         onDelta._p = partial;
         if(onDelta._raf) return;
         onDelta._raf = requestAnimationFrame(() => {
           onDelta._raf = null;
+          const __desktopRhythm = !document.documentElement.classList.contains('mobile-ui');
+          const __followReply = __desktopRhythm && typeof chatIsNearBottom === 'function' ? chatIsNearBottom() : true;
           (function(){ try{ if(window.__chatStatus) window.__chatStatus.release(); }catch(e){ __swallow(e, "misc:app-09-attach#26"); } })();
-        thinkingDiv.textContent = liveStripCode(onDelta._p);
-          smartScrollBottom();
+          if(__desktopRhythm){
+            renderStreamingAssistant(thinkingDiv, liveStripCode(onDelta._p));
+            smartScrollBottom(__followReply);
+          } else {
+            // سلوك الجوال السابق كما هو؛ هذه المرحلة لسطح المكتب فقط.
+            thinkingDiv.textContent = liveStripCode(onDelta._p);
+            try{
+              const __mobileGap = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight;
+              if(__mobileGap < 140) messagesEl.scrollTop = messagesEl.scrollHeight;
+            }catch(e){ __swallow(e, "misc:app-09-attach#26-mobile"); }
+          }
         });
       };
       // المزود المختار من المستخدم يرد بنفسه (Claude هو الافتراضي)؛ الاحتياط صامت عند التعطل فقط
@@ -2647,9 +2695,12 @@ async function sendPrompt(){
       let providerLabel = functionalLabel(providerKey);
       void switched; void requestedKey;
       // v463: askAllReply=false — الردود العادية ما تدخل compare-row
+      // v559: لا بطاقات مصادر تحت سؤال توضيحي قصير بلا نتائج.
+      const __ansTxt = String((code ? stripCodeFromChat(explanation) : explanation) || '').trim();
+      const __clarifyQ = __ansTxt.length < 140 && /[?？؟]\s*$/.test(__ansTxt);
       cur.messages.push({role: 'assistant', content: (code ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: code || null, providerLabel, providerKey, askAllReply: false,
         // ✅ v535: عادت المصادر والصور إلى المحادثة (إلغاء إطفاء v368).
-        sources: (__searchData && __searchData.sources) || undefined,
+        sources: (!__clarifyQ && __searchData && __searchData.sources) || undefined,
         searchImages: (__searchData && __searchData.images) || undefined});
       // 👑 الرد الاحترافي اكتمل: حدّث رصيد النقاط وأظهر خصمًا متحركًا صغيرًا.
       try{
@@ -2679,12 +2730,13 @@ async function sendPrompt(){
       cur.messages.push({role: 'assistant', content: '⚠️ ' + err.message});
     }
   }finally{
+    const __keepReaderPosition = !document.documentElement.classList.contains('mobile-ui') && typeof chatIsNearBottom === 'function' ? !chatIsNearBottom() : false;
     genAbortController = null;
     btnStop.classList.remove('live');
     sendBtn.disabled = false;
     sendBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px;display:block"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>';
     saveState();
-    renderAll();
+    renderAll(__keepReaderPosition);
     // 🧠 تحديث ذاكرة المستخدم بعد اكتمال الرد (بدون انتظار)
     try{
       const __lastA = cur.messages.filter(m => m.role === 'assistant').slice(-1)[0];

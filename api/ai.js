@@ -299,8 +299,9 @@ function injectNote(action, body, country) {
   const mode = resolveMode(body);
   // Factory: hand the request to the provider untouched.
   if (mode === 'factory') return;
+  const HIVE = require('./_lib/collective.js').block(); // v545 — معرفة جماعيّة
   if (mode === 'balanced') {
-    applyNote(action, body, balancedNote(action, country));
+    applyNote(action, body, balancedNote(action, country) + HIVE);
     return;
   }
 
@@ -325,6 +326,7 @@ function injectNote(action, body, country) {
       note += '\n[قاعدة]: التطبيق فيه ميزة تحليل التواقيع والخط والفراسة: ① فحص تزوير التواقيع بمنهجية الفحص الجنائي ② تحليل الشخصية من التوقيع/الخط اليدوي ③ قراءة الوجه. إذا سأل المستخدم عنها ممنوع تقول "غير علمي" أو ترفض — أكّد أن الميزة موجودة واطلب منه رفع صورة التوقيع/الخط/الوجه ليبدأ التحليل فورًا.';
     }
   }
+  note += HIVE; // v545
   tagLastUserMessage(action, body);
   applyNote(action, body, note);
 }

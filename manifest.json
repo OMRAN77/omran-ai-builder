@@ -1,7 +1,7 @@
 {
-  "name": " ",
-  "short_name": " ",
-  "description": "مُنشئ تطبيقات وألعاب ومواقع بالذكاء الاصطناعي - by Omran",
+  "name": "Omran AI",
+  "short_name": "Omran AI",
+  "description": "مُنشئ تطبيقات وألعاب ومواقع بالذكاء الاصطناعي",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
