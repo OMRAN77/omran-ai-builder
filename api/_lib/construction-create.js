@@ -290,15 +290,24 @@ module.exports = async (req, res) => {
         body: JSON.stringify(requestBody),
       }),
     });
+    // The image model accepts only a small number of simultaneous generations.
+    // Queue plan/photo/interior so the first long request cannot make the others
+    // exhaust their retries against an in-flight generation.
+    let imageQueue = Promise.resolve();
+    const queueImage = (requestBody) => {
+      const task = imageQueue.then(() => requestImage(requestBody));
+      imageQueue = task.then(() => undefined, () => undefined);
+      return task;
+    };
     const fetchTasks = [
-      wantPlan ? requestImage(planReqBody) : Promise.resolve(null),
+      wantPlan ? queueImage(planReqBody) : Promise.resolve(null),
       fetch(textEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(textReqBody),
         signal: AbortSignal.timeout(TEXT_TIMEOUT_MS),
       }),
-      wantPhoto ? requestImage(photoReqBody) : Promise.resolve(null),
+      wantPhoto ? queueImage(photoReqBody) : Promise.resolve(null),
     ];
 
     if (includeInterior) {
@@ -307,7 +316,7 @@ module.exports = async (req, res) => {
         floorsText + buildingDesc + notesText + annexEnText +
         ' Warm lighting, tasteful furniture, high-end interior design magazine quality, no people, no text overlays.';
       const interiorReqBody = { contents: [{ parts: [{ text: interiorPrompt }] }], generationConfig: { imageConfig: { imageSize: '2K' } } };
-      fetchTasks.push(requestImage(interiorReqBody));
+      fetchTasks.push(queueImage(interiorReqBody));
     }
 
     const results = await Promise.all(fetchTasks);

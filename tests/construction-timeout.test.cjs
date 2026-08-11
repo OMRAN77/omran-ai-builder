@@ -68,11 +68,17 @@ const request = {
 
 (async () => {
   let imageCalls = 0;
+  let activeImages = 0;
+  let maxActiveImages = 0;
   let textCalls = 0;
   global.fetch = async (url, init) => {
     assert.ok(init && init.signal instanceof AbortSignal, 'every construction provider call needs its own timeout signal');
     if (String(url).includes('gemini-3-pro-image')) {
       imageCalls++;
+      activeImages++;
+      maxActiveImages = Math.max(maxActiveImages, activeImages);
+      await new Promise(resolve => setTimeout(resolve, 5));
+      activeImages--;
       return imageResponse('image-' + imageCalls);
     }
     textCalls++;
@@ -83,6 +89,7 @@ const request = {
   await handler(request, successRes);
   assert.equal(successRes.statusCode, 200);
   assert.equal(imageCalls, 2, 'plan and exterior image must both use the long image path');
+  assert.equal(maxActiveImages, 1, 'image generations must be queued instead of competing in parallel');
   assert.equal(textCalls, 1);
   assert.equal(successRes.payload.imageBase64, 'image-1');
   assert.equal(successRes.payload.photoImageBase64, 'image-2');
