@@ -627,6 +627,20 @@ async function fetchSearchNote(transcript, deep){
   if(first) return first;
   return await fetchSearchNoteOnce(transcript, false);
 }
+
+// دفاع واجهة مستقل: المصدر المحذوف لا يظهر حتى لو وصل من استجابة قديمة.
+const REMOVED_SEARCH_SOURCE_HOST = 'news.google.com';
+const REMOVED_SEARCH_SOURCE_TEXT_RE = /(?:https?:\/\/)?(?:www\.)?news\.google\.com(?:\/[^\s<>()\]]*)?/gi;
+function isAllowedSearchSource(item){
+  try{
+    const host = new URL(item && item.url || '').hostname.toLowerCase().replace(/^www\./, '');
+    return host !== REMOVED_SEARCH_SOURCE_HOST && !host.endsWith('.' + REMOVED_SEARCH_SOURCE_HOST);
+  }catch(e){ return true; }
+}
+function withoutRemovedSearchSourceMentions(value){
+  return String(value || '').replace(REMOVED_SEARCH_SOURCE_TEXT_RE, '').replace(/\s{2,}/g, ' ').trim();
+}
+
 async function fetchSearchNoteOnce(transcript, deep){
   // Live search is the longest silent gap in ordinary chat — up to 45s.
   const __st = (window.__chatStatus && !window.__chatStatus.__released)
@@ -648,30 +662,32 @@ async function fetchSearchNoteOnce(transcript, deep){
     if(!res.ok) return null;
     const data = await res.json();
     if(!data) return null;
+    const cleanResult = r => ({ ...r,
+      title: withoutRemovedSearchSourceMentions(r && r.title),
+      content: withoutRemovedSearchSourceMentions(r && r.content),
+    });
+    const searchResults = Array.isArray(data.results) ? data.results.filter(isAllowedSearchSource).map(cleanResult) : [];
+    const googleResults = Array.isArray(data.google) ? data.google.filter(isAllowedSearchSource).map(cleanResult) : [];
     const parts = [];
-    if(data.answer) parts.push(data.answer);
+    const cleanAnswer = withoutRemovedSearchSourceMentions(data.answer);
+    if(cleanAnswer) parts.push(cleanAnswer);
     // v384: Deep Research — عدة ملخصات من زوايا مختلفة
     if(Array.isArray(data.deepAnswers) && data.deepAnswers.length > 1){
-      data.deepAnswers.slice(1).forEach(a => { if(a) parts.push('[Additional perspective]: ' + a); });
+      data.deepAnswers.slice(1).forEach(a => {
+        const clean = withoutRemovedSearchSourceMentions(a);
+        if(clean) parts.push('[Additional perspective]: ' + clean);
+      });
     }
     const __maxRes = data.deep ? 15 : 8;
-    if(Array.isArray(data.results)){
-      data.results.slice(0, __maxRes).forEach(r => {
+    if(searchResults.length){
+      searchResults.slice(0, __maxRes).forEach(r => {
         if(r && r.content) parts.push(`- ${r.title || ''} [${r.url || ''}]: ${r.content}`);
       });
     }
-    // Google Custom Search + Google News results were being fetched by
-    // /api/search all along but silently dropped here - only Tavily's
-    // results were ever used. Include them too so Google is actually part
-    // of the grounding, not just called and ignored.
-    if(Array.isArray(data.google)){
-      data.google.slice(0, 3).forEach(r => {
+    // Google Custom Search results are included in the grounding alongside Tavily.
+    if(googleResults.length){
+      googleResults.slice(0, 3).forEach(r => {
         if(r && r.content) parts.push(`- [Google] ${r.title || ''}: ${r.content}`);
-      });
-    }
-    if(Array.isArray(data.news)){
-      data.news.slice(0, 3).forEach(r => {
-        if(r && r.title) parts.push(`- [Google News] ${r.title}${r.content ? ' (' + r.content + ')' : ''}`);
       });
     }
     // v536: حسابات التواصل الاجتماعي على نفس الموضوع — تُمرَّر للنموذج ليذكر
@@ -686,10 +702,10 @@ async function fetchSearchNoteOnce(transcript, deep){
     // badges (favicon+domain, from the backend's deduped `sources` field,
     // with a client-side fallback in case an older cached response lacks
     // it) and up to 4 live image URLs for the horizontal image strip.
-    let sources = Array.isArray(data.sources) ? data.sources.slice(0, 10) : [];
+    let sources = Array.isArray(data.sources) ? data.sources.filter(isAllowedSearchSource).slice(0, 10).map(s => ({ ...s, title: withoutRemovedSearchSourceMentions(s && s.title) })) : [];
     if(!sources.length){
       const seenHosts = new Set();
-      [...(Array.isArray(data.results) ? data.results : []), ...(Array.isArray(data.google) ? data.google : [])].forEach(r => {
+      [...searchResults, ...googleResults].forEach(r => {
         if(!r || !r.url || sources.length >= 6) return;
         let host = '';
         try{ host = new URL(r.url).hostname.replace(/^www\./, ''); }catch(e){
@@ -1225,16 +1241,16 @@ async function mahaMaybeSearchForced(query){
     if(!res.ok) return null;
     const data = await res.json();
     if(!data) return null;
+    const searchResults = Array.isArray(data.results) ? data.results.filter(isAllowedSearchSource).map(r => ({ ...r,
+      title: withoutRemovedSearchSourceMentions(r && r.title),
+      content: withoutRemovedSearchSourceMentions(r && r.content),
+    })) : [];
     const parts = [];
-    if(data.answer) parts.push(data.answer);
-    if(Array.isArray(data.results)){
-      data.results.slice(0, 8).forEach(r => {
+    const cleanAnswer = withoutRemovedSearchSourceMentions(data.answer);
+    if(cleanAnswer) parts.push(cleanAnswer);
+    if(searchResults.length){
+      searchResults.slice(0, 8).forEach(r => {
         if(r && r.content) parts.push(`- ${r.title || ''} [${r.url || ''}]: ${r.content}`);
-      });
-    }
-    if(Array.isArray(data.news)){
-      data.news.slice(0, 3).forEach(n => {
-        if(n && n.title) parts.push(`- (Google News) ${n.title}${n.content ? ' - ' + n.content : ''}`);
       });
     }
     return parts.length ? parts.join('\n') : null;

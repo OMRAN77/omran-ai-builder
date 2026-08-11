@@ -11,6 +11,24 @@
 const { checkAndConsumeCustom, clientIp } = require('./_usage.js');
 const SEARCH_DAILY_LIMIT = 40;
 
+// مصدر محذوف بقرار المالك: لا يُطلب مباشرةً ولا يُسمح له بالمرور من مزوّد آخر.
+const REMOVED_SOURCE_HOST = 'news.google.com';
+function isRemovedSearchSource(item) {
+  try {
+    const host = new URL(item && item.url || '').hostname.toLowerCase().replace(/^www\./, '');
+    return host === REMOVED_SOURCE_HOST || host.endsWith('.' + REMOVED_SOURCE_HOST);
+  } catch (e) {
+    return false;
+  }
+}
+function withoutRemovedSearchSources(items) {
+  return (Array.isArray(items) ? items : []).filter(item => !isRemovedSearchSource(item));
+}
+const REMOVED_SOURCE_TEXT_RE = /(?:https?:\/\/)?(?:www\.)?news\.google\.com(?:\/[^\s<>()\]]*)?/gi;
+function withoutRemovedSourceMentions(value) {
+  return String(value || '').replace(REMOVED_SOURCE_TEXT_RE, '').replace(/\s{2,}/g, ' ').trim();
+}
+
 /**
  * Reorders merged search results by actual relevance to the question.
  *
@@ -357,17 +375,24 @@ module.exports = async (req, res) => {
       const answers = [];
       const allImages = [];
       for (const d of deepResults) {
-        if (d.answer) answers.push(d.answer);
+        if (d.answer) answers.push(withoutRemovedSourceMentions(d.answer));
         if (Array.isArray(d.results)) {
           for (const r of d.results) {
             if (r && r.url && !seenUrls.has(r.url)) {
               seenUrls.add(r.url);
-              mergedResults.push({ title: r.title || '', url: r.url, content: (r.content || '').slice(0, 800) });
+              mergedResults.push({
+                title: withoutRemovedSourceMentions(r.title),
+                url: r.url,
+                content: withoutRemovedSourceMentions((r.content || '').slice(0, 800)),
+              });
             }
           }
         }
         if (wantImages && Array.isArray(d.images)) allImages.push(...d.images);
       }
+
+      // المصدر المحذوف لا يمرّ حتى لو أعاده Tavily ضمن نتائج البحث الموسّع.
+      mergedResults = withoutRemovedSearchSources(mergedResults);
 
       // 3.5) ترتيب النتائج بالأهمية الحقيقية قبل قصّها (Cohere Rerank)
       mergedResults = await rerankResults(query, mergedResults, 15);
@@ -430,10 +455,6 @@ module.exports = async (req, res) => {
         : ['bayut.com', 'dubizzle.com', 'propertyfinder.ae'];
 
     const lang = (body && body.lang || 'ar').toString().slice(0, 2);
-    const gnHl = lang === 'ar' ? 'ar' : 'en-US';
-    const gnGl = /^[A-Z]{2}$/.test(geoCode) ? geoCode : (lang === 'ar' ? 'AE' : 'US');
-    const gnCeid = gnGl + ':' + (lang === 'ar' ? 'ar' : 'en');
-    const newsUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=${gnHl}&gl=${gnGl}&ceid=${gnCeid}`;
 
     // 📍 v542: كاشف أسئلة الأماكن. يُستثنى ما يخدمه محرّك القوائم أصلًا (عقار ·
     // سيارات · وظائف · فنادق · طيران) وما قُيّد بنطاقات، فلا تتغيّر نتيجة قائمة.
@@ -450,7 +471,7 @@ module.exports = async (req, res) => {
       ? `https://www.googleapis.com/customsearch/v1?key=${gKey}&cx=${gCx}&q=${encodeURIComponent(query)}&num=3`
       : null;
 
-    const [tavilyResp, newsResp, googleResp, socialItems, placeItems] = await Promise.all([
+    const [tavilyResp, googleResp, socialItems, placeItems] = await Promise.all([
       fetch('https://api.tavily.com/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -466,7 +487,6 @@ module.exports = async (req, res) => {
           ...(isListing ? { include_domains: listingDomains } : (domains ? { include_domains: domains } : {})),
         }),
       }),
-      fetch(newsUrl).catch(() => null),
       googleUrl ? fetch(googleUrl).catch(() => null) : Promise.resolve(null),
       fetchSocial(apiKey, query),
       isPlaces ? fetchPlaces(placesKey, query, lang, geoCode) : Promise.resolve([]),
@@ -483,6 +503,7 @@ module.exports = async (req, res) => {
     } else {
       tavilyDown = true;
     }
+    data.results = withoutRemovedSearchSources(data.results);
     // dep61: distinguish individual ad/detail pages from generic category/search pages
     // so the AI never labels a category page as "رابط الإعلان".
     const isDetailUrl = (u) => /bayut\.com\/(ar\/)?property\/|details-\d+\.html|propertyfinder\.ae\/(ar\/|en\/)?plp\/|dubizzle\.com\/.+\/\d{4}\/\d{1,2}\/\d{1,2}\/|---[a-zA-Z0-9]+\/?$|\/ad\/|dubizzle\.com\/.+\/j\/|dubicars\.com\/.+-\d+|yallamotor\.com\/.+\/\d{4,}|cars24\.ae\/.+-\d{4,}|bayt\.com\/.+\/jobs?\/.+\d|indeed\.(ae|com)\/.*(viewjob|jk=)|naukrigulf\.com\/.+-\d|gulftalent\.com\/.+\/\d/i.test(u || '');
@@ -503,9 +524,9 @@ module.exports = async (req, res) => {
       });
     }
     let results = Array.isArray(data.results) ? data.results.slice(0, isListing ? 8 : 3).map(r => ({
-      title: (isListing && !/^📌|^🔍/.test(r.title || '') ? (isDetailUrl(r.url) ? '📌 إعلان مباشر: ' : '🔍 صفحة بحث: ') : '') + (r.title || ''),
+      title: withoutRemovedSourceMentions((isListing && !/^📌|^🔍/.test(r.title || '') ? (isDetailUrl(r.url) ? '📌 إعلان مباشر: ' : '🔍 صفحة بحث: ') : '') + (r.title || '')),
       url: r.url,
-      content: (r.content || '').slice(0, isListing ? 1200 : 350),
+      content: withoutRemovedSourceMentions((r.content || '').slice(0, isListing ? 1200 : 350)),
     })) : [];
     if (isListing) results.sort((a, b) => (b.title.startsWith('📌') ? 1 : 0) - (a.title.startsWith('📌') ? 1 : 0));
     // 🔢 v543b: سؤال الأرقام لا يخرج فارغًا أبدًا — بوّابتا xplate وSHub تُضمّنان.
@@ -539,45 +560,23 @@ module.exports = async (req, res) => {
       results = [...placeCards, ...results].slice(0, 24);
     }
 
-    let newsItems = [];
-    try {
-      if (newsResp && newsResp.ok) {
-        const xml = await newsResp.text();
-        const itemBlocks = xml.split('<item>').slice(1, 4);
-        newsItems = itemBlocks.map(block => {
-          const titleMatch = block.match(/<title>([\s\S]*?)<\/title>/);
-          const linkMatch = block.match(/<link>([\s\S]*?)<\/link>/);
-          const pubMatch = block.match(/<pubDate>([\s\S]*?)<\/pubDate>/);
-          const title = titleMatch ? titleMatch[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim() : '';
-          return title ? {
-            title,
-            url: linkMatch ? linkMatch[1].trim() : '',
-            content: pubMatch ? `Google News - ${pubMatch[1].trim()}` : 'Google News',
-          } : null;
-        }).filter(Boolean);
-      }
-    } catch (e) { /* ignore Google News parse errors, non-critical */ }
-
     const images = wantImages && Array.isArray(data.images) ? data.images.slice(0, 4) : [];
 
     let googleItems = [];
     try {
       if (googleResp && googleResp.ok) {
         const gData = await googleResp.json();
-        googleItems = Array.isArray(gData.items) ? gData.items.slice(0, 3).map(it => ({
-          title: it.title,
+        googleItems = withoutRemovedSearchSources(Array.isArray(gData.items) ? gData.items.slice(0, 3).map(it => ({
+          title: withoutRemovedSourceMentions(it.title),
           url: it.link,
-          content: (it.snippet || '').slice(0, 350),
-        })) : [];
+          content: withoutRemovedSourceMentions((it.snippet || '').slice(0, 350)),
+        })) : []);
       }
     } catch (e) { /* ignore Google Search parse errors, non-critical */ }
 
     // chat.js يقرأ results وحدها، فلو بقيت فارغة لما رأى المحرّك شيئًا مهما
-    // جمعت المزوّدات الأخرى. عند سقوط Tavily تصير حصيلتها هي النتائج.
-    // 🏷️ v556: السؤال التجاريّ (عقار · سيارات · تأجير · فنادق · وظائف · طيران ·
-    // لوحات) لا علاقة له بالأخبار. فتُطفأ الأخبار له تمامًا، وعند سقوط المزوّد
-    // تُعرض مواقع مجاله المكتوبة في القوائم أعلاه. صفر نداء خارجيّ · صفر كلفة.
-    if (isListing) newsItems = [];
+    // جمع Google Custom Search. عند سقوط Tavily تصير حصيلته هي النتائج؛
+    // وأسئلة القوائم تستخدم بوّابات المجال المكتوبة أعلاه.
     if (tavilyDown && !results.length) {
       results = isListing
         ? listingDomains.map(d => ({
@@ -585,15 +584,13 @@ module.exports = async (req, res) => {
             url: 'https://' + d,
             content: 'موقع متخصّص في هذا المجال — ابحث فيه مباشرة.',
           }))
-        : [...googleItems, ...newsItems].slice(0, 6);
+        : googleItems.slice(0, 6);
     }
 
-    // 📚 Feature ②: unified, deduped source list (title+url) built from all
-    // three providers (Tavily results, Google Custom Search, Google News) so
-    // the frontend can render clean ChatGPT-style source badges without
-    // re-implementing this merge/dedupe logic itself. Backward-compatible:
-    // purely additive field, existing consumers (results/google/news/images)
-    // are untouched.
+    // 📚 Feature ②: unified, deduped source list (title+url) built from
+    // Tavily results and Google Custom Search so the frontend can render
+    // clean ChatGPT-style source badges without
+    // re-implementing this merge/dedupe logic itself.
     const sources = [];
     try {
       // نطاق جذر: dubai.dubizzle.com و uae.dubizzle.com موقع واحد لا موقعان.
@@ -606,7 +603,7 @@ module.exports = async (req, res) => {
         return two.includes(q[q.length - 2]) ? q.slice(-3).join('.') : q.slice(-2).join('.');
       };
       const seenHosts = new Set();
-      [...results, ...googleItems, ...newsItems].forEach(r => {
+      [...results, ...googleItems].forEach(r => {
         if (!r || !r.url) return;
         let host = '';
         try { host = rootDomain(new URL(r.url).hostname.replace(/^www\./, '')); } catch (e) { return; }
@@ -630,10 +627,9 @@ module.exports = async (req, res) => {
     }
 
     res.status(200).json({
-      answer: data.answer || '',
+      answer: withoutRemovedSourceMentions(data.answer),
       results,
       google: googleItems,
-      news: newsItems,
       images,
       sources: sourcesOut,
       social: socialAll,
