@@ -457,7 +457,7 @@ module.exports = async (req, res) => {
         ? ['oneclickdrive.com', 'selfdrive.ae', 'dubizzle.com', 'yallamotor.com']
       : /سيار|سيرات|سياير|car/i.test(qb)
         ? ['dubizzle.com', 'dubicars.com', 'yallamotor.com', 'cars24.ae', 'autotraders.ae']
-        : ['bayut.com', 'dubizzle.com', 'propertyfinder.ae'];
+        : ['bayut.com', 'propertyfinder.ae'];
 
     const lang = (body && body.lang || 'ar').toString().slice(0, 2);
 

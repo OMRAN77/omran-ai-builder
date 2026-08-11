@@ -139,6 +139,16 @@ const NUM_NOTE = '\n\n[طلب أرقام أو لوحات — إلزاميّ في
   'المستخدم يطلب لوحة سيارة أو رقمًا مميّزًا للبيع. ممنوع أن تسأله أي سؤال، وممنوع بطاقات الخيارات.\n' +
   'استعمل web_search فورًا وأعطِ في هذا الردّ نفسه نتائج وروابط حقيقية من موقعَي الأرقام المتخصّصين.\n' +
   'أي تفصيل ناقص (الإمارة، الميزانية، عدد الخانات، نوع الرقم) افترض فيه الأوسع ولا تسأل عنه.';
+// 🏠 v560 — عقار للبيع/الشراء: موقعا العقارات على مستوى الدولة فورًا، بلا
+// سؤال ميزانيّة وبلا خرائط. دوبيزل مستبعد من هذا المسار بأمر المالك.
+const RE_SELF_RE = /عقار(?!ب)|real\s?estate/i;
+const RE_KW_RE = /شق(ة|ق|ت)|فيلا(?!دلف)|فلل|منزل|منازل|بيوت(?!ي)|أرض(?![يى])|ارض(?![يى])|أراضي|اراضي|بنتهاوس|تاونهاوس|عمار(ة|ات)|\b(apartments?|villas?|propert(y|ies)|townhouses?|penthouses?)\b/i;
+const RE_ACT_RE = /للبيع|للشراء|أشتري|اشتري|شراء|تمليك|أبيع|ابيع|بكم|سعر|أسعار|اسعار|\b(for\s?sale|buy|purchase)\b/i;
+const isRealEstateAsk = (q) => { const t = String(q || ''); return RE_SELF_RE.test(t) || (RE_KW_RE.test(t) && RE_ACT_RE.test(t)); };
+const RE_NOTE = '\n\n[طلب عقار — إلزاميّ في هذا الردّ]:\n' +
+  'المستخدم يسأل عن عقار للبيع أو الشراء. ممنوع أن تسأله أي سؤال (ميزانيّة، منطقة، عدد الغرف) وممنوع بطاقات الخيارات.\n' +
+  'استعمل web_search فورًا وأعطِ في هذا الردّ نفسه روابط حقيقية من موقعَي العقارات على مستوى الدولة.\n' +
+  'ممنوع ذكر دوبيزل. أي تفصيل ناقص افترض فيه الأوسع ولا تسأل عنه.';
 const WIZARD_RE = /كتالوج|كتالوق|منيو|قائمة طعام|قائمة الطعام|بروفايل شرك/;
 
 // 🛠️ v528 — اليدان للجميع: نفس الحلقة ونفس الأدوات الخمس، ولا يتغيّر إلّا اسم
@@ -176,6 +186,12 @@ async function tavilySearch(query) {
     return '1. XPlate — سوق لوحات وأرقام مميّزة للبيع في الإمارات\nhttps://www.xplate.com/\n\n'
       + '2. S-Plate (SHub) — لوحات وأرقام مميّزة للبيع في الإمارات\nhttps://s-plate.com/ar\n\n'
       + 'المصدر: موقعا الأرقام المتخصّصان. اعرض هذين الرابطين فقط، ولا تذكر أي موقع آخر ولا سطر خرائط.';
+  }
+  // 🏠 v560 — عقار للبيع أو الشراء: موقعا الدولة وحدهما، لا خرائط ولا دوبيزل.
+  if (isRealEstateAsk(query)) {
+    return '1. بايوت — أكبر سوق عقارات في الإمارات: شقق وفلل وأراضٍ للبيع في السبع إمارات\nhttps://www.bayut.com/\n\n'
+      + '2. بروبرتي فايندر — سوق عقارات الإمارات: عقارات للبيع في السبع إمارات\nhttps://www.propertyfinder.ae/ar/buy/properties-for-sale.html\n\n'
+      + 'المصدر: موقعا العقارات على مستوى الدولة. اعرض هذين الرابطين فقط، ولا تذكر دوبيزل ولا أي موقع آخر ولا سطر خرائط.';
   }
   const places = await fetchPlaces(process.env.GOOGLE_PLACES_API_KEY, query, 'ar');
   if (places.length) {
@@ -305,7 +321,7 @@ module.exports = async (req, res) => {
   const casualCheckInTurn = isCasualCheckIn(lastUser && lastUser.content);
   const quietSocialTurn = pureGreetingTurn || casualCheckInTurn;
   const wizardTurn = messages.some((m) => m && typeof m.content === 'string' && WIZARD_RE.test(m.content));
-  const askCapNote = ((lastUser && NUM_ASK_RE.test(lastUser.content)) ? NUM_NOTE : '') + ((!wizardTurn && askStreak(messages) >= 2) ? ASK_CAP_NOTE : '');
+  const askCapNote = ((lastUser && NUM_ASK_RE.test(lastUser.content)) ? NUM_NOTE : ((!wizardTurn && lastUser && isRealEstateAsk(lastUser.content)) ? RE_NOTE : '')) + ((!wizardTurn && askStreak(messages) >= 2) ? ASK_CAP_NOTE : '');
   const socialReply = deterministicSocialReply(lastUser && lastUser.content);
   if (socialReply) {
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
