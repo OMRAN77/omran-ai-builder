@@ -7,6 +7,7 @@ const attach = fs.readFileSync('js/app-09-attach.js', 'utf8');
 const checkout = fs.readFileSync('js/app-06-checkout.js', 'utf8');
 const i18n = fs.readFileSync('js/app-03-i18n-data.js', 'utf8');
 const bundle = fs.readFileSync('js/app.bundle.js', 'utf8');
+const chatServer = fs.readFileSync('api/_lib/chat.js', 'utf8');
 const prompts = attach + '\n' + i18n + '\n' + checkout;
 
 function check(ok, label) {
@@ -35,6 +36,25 @@ for (const text of ['كيف الحال', 'كيف حالك؟', 'هلا كيف ا�
 for (const text of ['كيف الحال', 'كيف حالك؟', 'هلا كيف الحال', 'how are you?']) {
   check(greetingFns.isCasualCheckIn(text), `تُعرف المجاملة لتجاوز البحث فقط: ${text}`);
 }
+
+const styleRule = vm.runInNewContext(`(() => {
+  ${sliceBetween(checkout, 'const CONVERSATION_QUALITY_RULE', '// قاعدة الاكتمال')}
+  return CONVERSATION_QUALITY_RULE;
+})()`);
+const generalStyle = styleRule.split('[قواعد مشروطة')[0];
+const generalNumbers = generalStyle.match(/\([١٢٣٤٥٦]\)/g) || [];
+check(generalNumbers.length === 6 && new Set(generalNumbers).size === 6, 'طبقة الأسلوب تحتوي ست قواعد عامة فقط');
+check(styleRule.includes('الدليل: عند البحث أو التحقق') && styleRule.includes('لا تحوّل الدردشة العامة إلى تقرير مصادر'), 'الدليل مشروط بنوع الطلب');
+check(styleRule.includes('التصحيح: صحّح باختصار ووضوح فقط عند وجود خطأ مادي') && styleRule.includes('لا تفتعل تصحيحًا'), 'التصحيح لا يعمل بلا خطأ مادي');
+check(styleRule.includes('الخطوة التالية: أضفها فقط إذا كان الطلب عمليًّا متعدد الخطوات') && styleRule.includes('لا تختم كل رد باقتراح أو سؤال'), 'الخطوة التالية ليست خاتمة آلية');
+check(styleRule.includes('بلا تقليد لعباراته أو مزاجه'), 'فهم النبرة لا يتحول إلى تقليد المستخدم');
+check(styleRule.includes('السؤال البسيط جواب قصير من ١–٣ جمل بلا عناوين أو تعداد'), 'السؤال البسيط له حد سلوكي قابل للقياس');
+check(attach.includes("APP_IDENTITY_NOTE + CONVERSATION_QUALITY_RULE") && attach.includes("'أنت مساعد ذكي في تطبيق Omran AI من فريق عمران AI.' + CONVERSATION_QUALITY_RULE"), 'القواعد المركزية مستخدمة في البناء والمحادثة العادية');
+check(!checkout.includes('then ONE concrete next-step suggestion or question') && !checkout.includes('then 2-3 concrete suggestions'), 'أزيل فرض الاقتراح والسؤال من كل رد');
+check(chatServer.includes('أضف خطوة تنفيذيّة واحدة فقط إذا كان الطلب عمليًّا متعدد الخطوات') && chatServer.includes('وإلّا اختم بعد المعلومة بلا اقتراح آلي'), 'الخادم لا يعيد فرض خطوة تالية على كل جواب');
+check(chatServer.includes('اسأل سؤالًا واحدًا فقط عندما تنقص معلومة تؤثّر فعليًّا') && chatServer.includes('لا تُلحق سؤالًا عامًا بكل رد'), 'سؤال الخادم مشروط بنقص مؤثر');
+check(!chatServer.includes('بعد المعلومة أعطِ خطوة تنفيذيّة واحدة يقدر عليها اليوم'), 'أزيل التعارض القديم من تعليمات أدوات الخادم');
+check(chatServer.includes('أمّا سؤال المفهوم الثابت البسيط الذي تجيبه بلا أداة') && chatServer.includes('بلا عناوين أو تعداد أو خطوة تالية أو سؤال'), 'قواعد نتائج البحث لا تتسرّب إلى السؤال الثابت البسيط');
 
 const casual = vm.runInNewContext(`(() => {
   ${sliceBetween(checkout, 'const CASUAL_RE', '// 🎯 ٦ أغسطس')}
