@@ -147,8 +147,73 @@ const RE_ACT_RE = /للبيع|للشراء|أشتري|اشتري|شراء|تمل
 const isRealEstateAsk = (q) => { const t = String(q || ''); return RE_SELF_RE.test(t) || (RE_KW_RE.test(t) && RE_ACT_RE.test(t)); };
 const RE_NOTE = '\n\n[طلب عقار — إلزاميّ في هذا الردّ]:\n' +
   'المستخدم يسأل عن عقار للبيع أو الشراء. ممنوع أن تسأله أي سؤال (ميزانيّة، منطقة، عدد الغرف) وممنوع بطاقات الخيارات.\n' +
-  'استعمل web_search فورًا وأعطِ في هذا الردّ نفسه روابط حقيقية من موقعَي العقارات على مستوى الدولة.\n' +
+  'استعمل web_search فورًا واعرض في هذا الردّ نفسه الروابط التي ترجعها الأداة كما هي بلا تغيير ولا إضافة.\n' +
   'ممنوع ذكر دوبيزل. أي تفصيل ناقص افترض فيه الأوسع ولا تسأل عنه.';
+// 🏠 v561 — الكشف التدريجيّ: الردّ الأوّل موقعان، وكلّ «المزيد» يفتح موقعين
+// جديدين حتّى تنتهي القائمة. كلّ رابط أدناه مُتحقَّق HTTP 200 في ١١ أغسطس ٢٠٢٦.
+const MORE_RE = /(المزيد|مزيد|زدني|زد(?![\u0621-\u064A])|زيد(?![\u0621-\u064A])|كمّل|كمل|أكثر|اكثر|باقي|غيرها|غيرهم|تابع|واصل|مواقع\s*(أخرى|اخرى|ثاني)|\bmore\b|\bnext\b)/i;
+const RE_EMIRATE = [
+  [/دبي|dubai/i, 'dubai', 'دبي'],
+  [/أبو\s?ظبي|ابو\s?ظبي|abu\s?dhabi/i, 'abu-dhabi', 'أبوظبي'],
+  [/العين|\bal[\s-]?ain\b/i, 'al-ain', 'العين'],
+  [/الشارقة|الشارقه|sharjah/i, 'sharjah', 'الشارقة'],
+  [/عجمان|ajman/i, 'ajman', 'عجمان'],
+  [/(رأس|راس)\s?الخيم(ة|ه)|ras\s?al\s?khaimah/i, 'ras-al-khaimah', 'رأس الخيمة'],
+  [/(أم|ام|أمّ)\s?القيوين|umm\s?al\s?quwain/i, 'umm-al-quwain', 'أم القيوين'],
+  [/الفجير(ة|ه)|fujairah/i, 'fujairah', 'الفجيرة'],
+];
+const RE_TYPE = [
+  [/شق(ة|ق|ت)|\b(apartments?|flats?)\b/i, 'apartments', 'شقق'],
+  [/فيلا(?!دلف)|فلل|\bvillas?\b/i, 'villas', 'فلل'],
+  [/تاونهاوس|\btownhouses?\b/i, 'townhouses', 'تاونهاوس'],
+  [/أرض(?![يى])|ارض(?![يى])|أراضي|اراضي|\b(land|plots?)\b/i, 'land', 'أراضٍ'],
+];
+const RE_EXTRA = [
+  [['إعمار — المطوّر مباشرةً بلا وسيط: دبي هيلز ووسط المدينة', 'https://www.emaar.com/'],
+   ['داماك — فلل وأبراج ومجتمعات للبيع من المطوّر', 'https://www.damacproperties.com/']],
+  [['الدار — أكبر مطوّر في أبوظبي: ياس والسعديات والريم', 'https://www.aldar.com/'],
+   ['نخيل — نخلة جميرا وجزر ديرة ومشاريع دبي', 'https://www.nakheel.com/']],
+  [['بايوت — المشاريع الجديدة قيد الإنشاء وخطط السداد', 'https://www.bayut.com/new-projects/'],
+   ['بروبرتي فايندر — مشاريع على الخريطة مع خطط سداد', 'https://www.propertyfinder.ae/ar/new-projects']],
+  [['درفن بروبرتيز — وكالة عقارات فاخرة في دبي', 'https://www.drivenproperties.com/'],
+   ['دائرة الأراضي والأملاك — التحقّق الرسميّ من المالك والرسوم', 'https://dubailand.gov.ae/']],
+  [['أوفاليوت — تقييم العقار وتحليل السوق قبل الشراء', 'https://www.ovaluate.com/'],
+   ['مورتجيج فايندر — مقارنة عروض التمويل العقاريّ', 'https://www.mortgagefinder.ae/']],
+];
+
+// ذاكرة «آخر مجال»: بدونها كلمة «المزيد» وحدها لا تعرف أنّنا في العقارات.
+function reCtx(messages) {
+  let on = false, layer = 0, src = '';
+  for (const m of (messages || [])) {
+    if (!m || m.role !== 'user' || typeof m.content !== 'string') continue;
+    if (isRealEstateAsk(m.content)) { on = true; layer = 0; src = m.content; }
+    else if (on && m.content.trim().length <= 40 && MORE_RE.test(m.content)) layer += 1;
+    else if (on) on = false;
+  }
+  return on ? { layer: layer, src: src } : null;
+}
+
+function reResult(ctx) {
+  const em = RE_EMIRATE.find((e) => e[0].test(ctx.src));
+  const ty = RE_TYPE.find((t) => t[0].test(ctx.src));
+  const label = (ty ? ty[2] : 'عقارات') + ' للبيع في ' + (em ? em[2] : 'الإمارات');
+  const first = [
+    ['بايوت — ' + label + ': أكبر سوق عقارات في الإمارات',
+      'https://www.bayut.com/for-sale/' + (ty ? ty[1] : 'property') + '/' + (em ? em[1] : 'uae') + '/'],
+    ['بروبرتي فايندر — ' + label + ': فلاتر متقدّمة وحاسبة تمويل',
+      em ? ('https://www.propertyfinder.ae/en/buy/' + em[1] + '/properties-for-sale.html')
+         : 'https://www.propertyfinder.ae/ar/buy/properties-for-sale.html'],
+  ];
+  const pool = [first].concat(RE_EXTRA);
+  const last = ctx.layer >= pool.length - 1;
+  const pick = pool[Math.min(ctx.layer, pool.length - 1)];
+  const lines = pick.map((s, i) => (i + 1) + '. ' + s[0] + '\n' + s[1]).join('\n\n');
+  return lines + '\n\nالمصدر: قائمة مواقع العقارات المُتحقَّقة. اعرض هذين الرابطين فقط، '
+    + 'ولا تذكر دوبيزل ولا أي موقع آخر ولا سطر خرائط. '
+    + (last ? 'وهذه آخر دفعة — أخبر المستخدم أنّ القائمة انتهت هنا.'
+            : 'وأخبر المستخدم في سطر أخير أنّ كلمة «المزيد» تفتح موقعين آخرين.');
+}
+
 const WIZARD_RE = /كتالوج|كتالوق|منيو|قائمة طعام|قائمة الطعام|بروفايل شرك/;
 
 // 🛠️ v528 — اليدان للجميع: نفس الحلقة ونفس الأدوات الخمس، ولا يتغيّر إلّا اسم
@@ -179,7 +244,7 @@ function countryNote(code) {
   return '\n[الدولة]: المستخدم يتصفّح من ' + (ar || c) + ' — أجب بمعلومات هذه الدولة (عملتها، جهاتها الرسمية) ما لم يذكر غيرها.';
 }
 
-async function tavilySearch(query) {
+async function tavilySearch(query, reC) {
   // 🔢 v558 — الأرقام واللوحات للبيع: الموقعان المتخصّصان وحدهما. مسار الدردشة كان
   // يمرّ على Google Places أوّلًا فيرجع مكاتب على الخريطة بدل سوقَي الأرقام.
   if (NUM_ASK_RE.test(query)) {
@@ -187,12 +252,9 @@ async function tavilySearch(query) {
       + '2. S-Plate (SHub) — لوحات وأرقام مميّزة للبيع في الإمارات\nhttps://s-plate.com/ar\n\n'
       + 'المصدر: موقعا الأرقام المتخصّصان. اعرض هذين الرابطين فقط، ولا تذكر أي موقع آخر ولا سطر خرائط.';
   }
-  // 🏠 v560 — عقار للبيع أو الشراء: موقعا الدولة وحدهما، لا خرائط ولا دوبيزل.
-  if (isRealEstateAsk(query)) {
-    return '1. بايوت — أكبر سوق عقارات في الإمارات: شقق وفلل وأراضٍ للبيع في السبع إمارات\nhttps://www.bayut.com/\n\n'
-      + '2. بروبرتي فايندر — سوق عقارات الإمارات: عقارات للبيع في السبع إمارات\nhttps://www.propertyfinder.ae/ar/buy/properties-for-sale.html\n\n'
-      + 'المصدر: موقعا العقارات على مستوى الدولة. اعرض هذين الرابطين فقط، ولا تذكر دوبيزل ولا أي موقع آخر ولا سطر خرائط.';
-  }
+  // 🏠 v561 — عقار للبيع أو الشراء: طبقة واحدة في المرّة، لا خرائط ولا دوبيزل.
+  const rc = reC || (isRealEstateAsk(query) ? { layer: 0, src: query } : null);
+  if (rc) return reResult(rc);
   const places = await fetchPlaces(process.env.GOOGLE_PLACES_API_KEY, query, 'ar');
   if (places.length) {
     return places.map((p, i) => [
@@ -321,7 +383,8 @@ module.exports = async (req, res) => {
   const casualCheckInTurn = isCasualCheckIn(lastUser && lastUser.content);
   const quietSocialTurn = pureGreetingTurn || casualCheckInTurn;
   const wizardTurn = messages.some((m) => m && typeof m.content === 'string' && WIZARD_RE.test(m.content));
-  const askCapNote = ((lastUser && NUM_ASK_RE.test(lastUser.content)) ? NUM_NOTE : ((!wizardTurn && lastUser && isRealEstateAsk(lastUser.content)) ? RE_NOTE : '')) + ((!wizardTurn && askStreak(messages) >= 2) ? ASK_CAP_NOTE : '');
+  const reC = wizardTurn ? null : reCtx(messages);
+  const askCapNote = ((lastUser && NUM_ASK_RE.test(lastUser.content)) ? NUM_NOTE : (reC ? RE_NOTE : '')) + ((!wizardTurn && askStreak(messages) >= 2) ? ASK_CAP_NOTE : '');
   const socialReply = deterministicSocialReply(lastUser && lastUser.content);
   if (socialReply) {
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
@@ -443,7 +506,7 @@ module.exports = async (req, res) => {
         let input = {};
         try { input = JSON.parse(cb.inputJson || '{}'); } catch (e) { logError('chat/tool-input-parse', e); }
         let result = 'أداة غير معروفة';
-        if (cb.name === 'web_search') result = await tavilySearch(input.query || '');
+        if (cb.name === 'web_search') result = await tavilySearch(input.query || '', reC);
         else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
         else if (cb.name === 'run_js') result = await runInClient(send, 'run_js', input);
         else if (cb.name === 'generate_image') result = await runInClient(send, 'generate_image', input, 75000);
