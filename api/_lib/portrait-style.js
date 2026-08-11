@@ -4,6 +4,7 @@
 // style while keeping their identity/likeness recognizable. Returns a
 // base64 PNG/JPEG the client can preview and download.
 const { checkPortraitQuota, consumePortrait, PORTRAIT_DAILY_LIMIT } = require('./_portraitUsage');
+const { sourceStylePreservationRule } = require('./image-prompt');
 
 const STYLE_PROMPTS = {
   anime: 'a Japanese anime illustration style, clean cel-shaded colors, expressive anime eyes',
@@ -307,6 +308,9 @@ module.exports = async (req, res) => {
         'entire image (face, clothes, and background) in the requested art style. Output a single image only.';
     }
 
+    const isLocalizedEdit = ['hairstyle', 'beautify', 'ageshift', 'objectremove', 'outfit', 'passport', 'restore', 'colorize', 'upscale'].includes(style);
+    if (isLocalizedEdit) promptText += '\n' + sourceStylePreservationRule();
+
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
     const genParts = [
       { text: promptText },
@@ -324,7 +328,7 @@ module.exports = async (req, res) => {
           parts: genParts,
         },
       ],
-      generationConfig: { imageConfig: { imageSize: '2K' } },
+      generationConfig: { temperature: isLocalizedEdit ? 0.15 : 0.65, imageConfig: { imageSize: '2K' } },
     };
 
     const upstream = await fetch(endpoint, {

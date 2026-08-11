@@ -4,7 +4,7 @@
 // model (server-side owner key, GEMINI_API_KEY) - the only one of the 9
 // providers that can actually output images.
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
-const { cleanImagePrompt, buildGenerationPrompt } = require('./image-prompt');
+const { cleanImagePrompt, buildGenerationPrompt, buildEditPrompt } = require('./image-prompt');
 const { authorPrayerPlan } = require('./prayer-plan');
 const { fetchImageWithRetry, isImageTimeoutError } = require('./image-fetch');
 
@@ -102,7 +102,7 @@ module.exports = async (req, res) => {
       parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
       for (const x of extras) parts.push({ inlineData: { mimeType: x.mime || 'image/png', data: x.data } });
     } else if (editImageBase64) {
-      parts.push({ text: 'TASK: "' + cleanPrompt + '"\n\nThis is a LOCALIZED EDIT of the attached image, not a re-creation. Rules:\n1. Change ONLY what the instruction explicitly asks. Everything else (faces, skin tone, facial features, clothing, colors, lighting, textures, proportions, composition) must be carried over from the original image pixel-accurately, as if untouched.\n2. Do NOT re-draw, re-light, re-color, smooth, beautify or stylize any region the instruction did not mention. Any person must remain 100% identical and recognizable.\n3. The instruction names specific item(s) - use exactly those item(s), exactly as named, with no substitution for a different brand/model/type/color of your own choosing. Do not simplify or generalize a specific name into a generic version of it.\n4. Preserve the original image resolution, sharpness and color fidelity.\n5. COLOR ACCURACY IS CRITICAL: keep the exact white balance, exposure, saturation and skin tones of the original. No brightening, no warming/cooling, no color grading, no filters of any kind.\n6. NEVER write, draw, translate or render the instruction text itself anywhere inside the image. Text already present in the image (signs, banners, labels, clothing, screens, packaging) must be reproduced character-for-character, in its original language and script, unless the instruction explicitly states the new wording to write.\n7. If the instruction is vague and names no specific element (e.g. \"change the image\", \"edit it\", \"make it better\"), return the image essentially unchanged and modify NO text whatsoever.\nRe-read the instruction now: "' + cleanPrompt + '". Output a single edited image.' });
+      parts.push({ text: buildEditPrompt(cleanPrompt) });
       parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
     } else {
       parts.push({ text: buildGenerationPrompt(cleanPrompt, {

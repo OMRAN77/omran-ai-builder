@@ -1,7 +1,8 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { buildGenerationPrompt } = require('../api/_lib/image-prompt');
+const fs = require('node:fs');
+const { buildGenerationPrompt, buildEditPrompt, sourceStylePreservationRule } = require('../api/_lib/image-prompt');
 
 test('generation prompt follows the subject instead of forcing one camera style', () => {
   const p = buildGenerationPrompt('شمس مرسومة بأسلوب مائي فوق الجبال');
@@ -40,4 +41,24 @@ test('architectural requests retain exact feature constraints without generic ph
   assert.match(p, /floor count, room count, openings, garage capacity/);
   assert.match(p, /فيلا من طابقين وكراج لسيارتين/);
   assert.doesNotMatch(p, /85mm|skin texture/i);
+});
+
+test('localized edits preserve a real photo and never invent anime styling', () => {
+  const p = buildEditPrompt('غيّر الملابس إلى بدلة زرقاء فقط');
+  assert.match(p, /غيّر الملابس إلى بدلة زرقاء فقط/);
+  assert.match(p, /A real photograph must remain a real photorealistic photograph/);
+  assert.match(p, /Never convert it to anime, cartoon, illustration, painting, 3D render/);
+  assert.match(p, /unless the USER REQUEST explicitly asks/);
+});
+
+test('all image-edit entry points apply style preservation except explicit anime mode', () => {
+  const maha = fs.readFileSync('api/_lib/maha-image.js', 'utf8');
+  const portrait = fs.readFileSync('api/_lib/portrait-style.js', 'utf8');
+  const studio = fs.readFileSync('api/_lib/studio-create.js', 'utf8');
+  assert.match(maha, /buildEditPrompt\(cleanPrompt\)/);
+  assert.match(portrait, /\['hairstyle',[\s\S]*?'outfit'[\s\S]*?\]\.includes\(style\)/);
+  assert.match(portrait, /temperature: isLocalizedEdit \? 0\.15 : 0\.65/);
+  assert.match(studio, /if \(feature !== 'anime'\) promptText \+=/);
+  assert.match(studio, /temperature: feature === 'anime' \? 0\.65 : 0\.15/);
+  assert.match(sourceStylePreservationRule(), /unless the USER REQUEST explicitly asks/);
 });

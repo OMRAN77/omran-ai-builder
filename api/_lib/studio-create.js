@@ -12,6 +12,7 @@
 //   merge   - merge two photos into a single combined image
 // Returns a base64 PNG/JPEG the client can preview and download.
 const { checkStudioQuota, consumeStudio, STUDIO_DAILY_LIMIT } = require('./_studioUsage');
+const { sourceStylePreservationRule } = require('./image-prompt');
 
 const STYLE_TEXT = {
   hair: {
@@ -178,6 +179,7 @@ module.exports = async (req, res) => {
         return;
       }
       let promptText = buildFn(styleDesc);
+      if (feature !== 'anime') promptText += '\n' + sourceStylePreservationRule();
       if (multiAngle && (feature === 'hair' || feature === 'heritage' || feature === 'beard')) {
         promptText += ' Output a single image laid out as a clean 3-panel collage side by side showing the SAME person and look from three angles: front view, side view, and back view.';
       }
@@ -186,7 +188,7 @@ module.exports = async (req, res) => {
     }
 
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
-    const reqBody = { contents: [{ parts }], generationConfig: { imageConfig: { imageSize: '2K' } } };
+    const reqBody = { contents: [{ parts }], generationConfig: { temperature: feature === 'anime' ? 0.65 : 0.15, imageConfig: { imageSize: '2K' } } };
 
     const upstream = await fetch(endpoint, {
       method: 'POST',
