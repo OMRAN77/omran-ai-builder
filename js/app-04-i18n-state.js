@@ -226,8 +226,53 @@ function renderOmranBotChips(){
   });
 }
 
+// v549: رصف شريط الاقتراحات داخل مربّع الأدوات — يُفتح في مكانه لا يقذف المستخدم إلى المحادثة
+(function(){
+  const OV  = () => document.getElementById('sectionsToolsOverlay');
+  const POP = () => document.getElementById('sectionsToolsPopup');
+  const W   = () => document.getElementById('chatQuickChipsWrap');
+  let home = null, homeNext = null, homeStyle = null;
+  const DOCK_STYLE = 'display:block; position:static; inset:auto; margin:2px 2px 6px; max-height:38vh; overflow-y:auto; background:rgba(255,255,255,.02); border:1px solid var(--omGoldSoft); border-radius:var(--r-3); padding:8px; box-shadow:none; z-index:auto;';
+  function isDocked(){ const w = W(), pop = POP(); return !!(w && pop && pop.contains(w)); }
+  window.__sugDock = function(){
+    const w = W(), pop = POP();
+    if(!w || !pop || isDocked()) return;
+    home = w.parentNode; homeNext = w.nextSibling; homeStyle = w.getAttribute('style') || '';
+    pop.appendChild(w);
+    w.setAttribute('style', DOCK_STYLE);
+    try{ w.scrollIntoView({ block:'nearest', behavior:'smooth' }); }catch(_){ __swallow(_, "ui:sugdock#scroll"); }
+  };
+  window.__sugUndock = function(){
+    const w = W();
+    if(!w || !isDocked()) return;
+    try{ if(home) home.insertBefore(w, homeNext || null); }catch(_){ __swallow(_, "ui:sugdock#restore"); }
+    if(homeStyle !== null) w.setAttribute('style', homeStyle);
+    w.style.display = 'none';
+    home = null; homeNext = null; homeStyle = null;
+  };
+  const ov = OV();
+  if(ov && window.MutationObserver){
+    new MutationObserver(() => {
+      if(!ov.classList.contains('show') && isDocked()){
+        window.__sugUndock();
+        const b = document.getElementById('btnQuickTemplates');
+        if(b) b.classList.remove('active');
+      }
+    }).observe(ov, { attributes:true, attributeFilter:['class'] });
+  }
+  const chips = document.getElementById('quickChips');
+  if(chips) chips.addEventListener('click', (e) => {
+    if(!isDocked()) return;
+    if(!e.target.closest || !e.target.closest('button')) return;
+    setTimeout(() => {
+      try{ const o = OV(); if(o) o.classList.remove('show'); }catch(_){ __swallow(_, "ui:sugdock#pick"); }
+    }, 60);
+  }, true);
+})();
+
 function closeQuickTemplates(){
   const wrap = $('#chatQuickChipsWrap');
+  try{ if(typeof __sugUndock === 'function') __sugUndock(); }catch(_){ __swallow(_, "ui:quicksug#undock"); }
   if(wrap) wrap.style.display = 'none';
   const btn = $('#btnQuickTemplates');
   if(btn) btn.classList.remove('active');
@@ -238,6 +283,11 @@ function toggleQuickTemplates(){
   const wrap = $('#chatQuickChipsWrap');
   if(!wrap) return;
   const willShow = wrap.style.display === 'none' || !wrap.style.display;
+  try{
+    const _ov = document.getElementById('sectionsToolsOverlay');
+    if(willShow && _ov && _ov.classList.contains('show')){ if(typeof __sugDock === 'function') __sugDock(); }
+    else if(!willShow){ if(typeof __sugUndock === 'function') __sugUndock(); }
+  }catch(_){ __swallow(_, "ui:quicksug#dock"); }
   wrap.style.display = willShow ? 'block' : 'none';
   const btn = $('#btnQuickTemplates');
   if(btn) btn.classList.toggle('active', willShow);

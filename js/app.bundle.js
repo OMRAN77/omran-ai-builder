@@ -3634,8 +3634,53 @@ function renderOmranBotChips(){
   });
 }
 
+// v549: رصف شريط الاقتراحات داخل مربّع الأدوات — يُفتح في مكانه لا يقذف المستخدم إلى المحادثة
+(function(){
+  const OV  = () => document.getElementById('sectionsToolsOverlay');
+  const POP = () => document.getElementById('sectionsToolsPopup');
+  const W   = () => document.getElementById('chatQuickChipsWrap');
+  let home = null, homeNext = null, homeStyle = null;
+  const DOCK_STYLE = 'display:block; position:static; inset:auto; margin:2px 2px 6px; max-height:38vh; overflow-y:auto; background:rgba(255,255,255,.02); border:1px solid var(--omGoldSoft); border-radius:var(--r-3); padding:8px; box-shadow:none; z-index:auto;';
+  function isDocked(){ const w = W(), pop = POP(); return !!(w && pop && pop.contains(w)); }
+  window.__sugDock = function(){
+    const w = W(), pop = POP();
+    if(!w || !pop || isDocked()) return;
+    home = w.parentNode; homeNext = w.nextSibling; homeStyle = w.getAttribute('style') || '';
+    pop.appendChild(w);
+    w.setAttribute('style', DOCK_STYLE);
+    try{ w.scrollIntoView({ block:'nearest', behavior:'smooth' }); }catch(_){ __swallow(_, "ui:sugdock#scroll"); }
+  };
+  window.__sugUndock = function(){
+    const w = W();
+    if(!w || !isDocked()) return;
+    try{ if(home) home.insertBefore(w, homeNext || null); }catch(_){ __swallow(_, "ui:sugdock#restore"); }
+    if(homeStyle !== null) w.setAttribute('style', homeStyle);
+    w.style.display = 'none';
+    home = null; homeNext = null; homeStyle = null;
+  };
+  const ov = OV();
+  if(ov && window.MutationObserver){
+    new MutationObserver(() => {
+      if(!ov.classList.contains('show') && isDocked()){
+        window.__sugUndock();
+        const b = document.getElementById('btnQuickTemplates');
+        if(b) b.classList.remove('active');
+      }
+    }).observe(ov, { attributes:true, attributeFilter:['class'] });
+  }
+  const chips = document.getElementById('quickChips');
+  if(chips) chips.addEventListener('click', (e) => {
+    if(!isDocked()) return;
+    if(!e.target.closest || !e.target.closest('button')) return;
+    setTimeout(() => {
+      try{ const o = OV(); if(o) o.classList.remove('show'); }catch(_){ __swallow(_, "ui:sugdock#pick"); }
+    }, 60);
+  }, true);
+})();
+
 function closeQuickTemplates(){
   const wrap = $('#chatQuickChipsWrap');
+  try{ if(typeof __sugUndock === 'function') __sugUndock(); }catch(_){ __swallow(_, "ui:quicksug#undock"); }
   if(wrap) wrap.style.display = 'none';
   const btn = $('#btnQuickTemplates');
   if(btn) btn.classList.remove('active');
@@ -3646,6 +3691,11 @@ function toggleQuickTemplates(){
   const wrap = $('#chatQuickChipsWrap');
   if(!wrap) return;
   const willShow = wrap.style.display === 'none' || !wrap.style.display;
+  try{
+    const _ov = document.getElementById('sectionsToolsOverlay');
+    if(willShow && _ov && _ov.classList.contains('show')){ if(typeof __sugDock === 'function') __sugDock(); }
+    else if(!willShow){ if(typeof __sugUndock === 'function') __sugUndock(); }
+  }catch(_){ __swallow(_, "ui:quicksug#dock"); }
   wrap.style.display = willShow ? 'block' : 'none';
   const btn = $('#btnQuickTemplates');
   if(btn) btn.classList.toggle('active', willShow);
@@ -9107,6 +9157,108 @@ async function postWithConfirm(url, payload){
   if(!okToSpend) return res;
   return await send(Object.assign({}, payload, { confirmed: true }));
 }
+/* Exact image text parsing: keeps user wording out of the image model, then the client draws it verbatim. */
+(function(root){
+  function firstMatch(source, regex){
+    const m = regex.exec(source);
+    return m ? { index:m.index, value:m[0] } : null;
+  }
+  function findTextMarker(source){
+    let strong = firstMatch(source, /(?:أكتب|اكتب(?:ي|وا)?|مكتوب(?:ة)?\s+(?:عليها|عليه|فيها|على\s+(?:هذه\s+)?(?:الصورة|الصوره))|write)/i);
+    const placed = firstMatch(source, /(?:عليها|عليه|فيها|فوقها|تتضمن|تحمل|على\s+(?:هذه\s+)?(?:الصورة|الصوره)|(?:with|containing|on\s+it)\s+)(?:\s*(?:عبارة|النص|نص|كلمة|الكلام|اسم|دعاء|شعر|بيت\s+شعر|the\s+text|text|words?|name|quote)\s*)?(?=[«“"'])/i);
+    if(placed && (!strong || placed.index < strong.index)) strong = placed;
+    const weak = firstMatch(source, /(?:ضع|حط|أضف|اضف|ضيف|put|add)/i);
+    if(!weak) return strong;
+    const tail = source.slice(weak.index + weak.value.length);
+    const weakIsText = /^\s*(?:لي\s+)?(?:عليها|عليه|فوقها|فيها|على\s+(?:هذه\s+)?(?:الصورة|الصوره)|النص|العبارة|الكلام|كلمة|اسم|دعاء|شعر|بيت\s+شعر|the\s+text|text|words?|name|quote)(?=\s|[:：«“"'\-–—]|$)/i.test(tail) || /[«“"']/.test(tail);
+    if(!weakIsText) return strong;
+    if(!strong || weak.index < strong.index) return weak;
+    return strong;
+  }
+  function quotedValue(rest){
+    const patterns = [/«([\s\S]*?)»/, /“([\s\S]*?)”/, /"([\s\S]*?)"/, /'([\s\S]*?)'/];
+    let best = null;
+    patterns.forEach((re) => {
+      const m = re.exec(rest);
+      if(m && (!best || m.index < best.index)) best = { index:m.index, whole:m[0], value:m[1] };
+    });
+    return best;
+  }
+  function textFont(source){
+    if(/ديواني|diwani/i.test(source)) return 'diwani';
+    if(/رقعة|رقعه|ruqaa|ruqa/i.test(source)) return 'ruqaa';
+    if(/كوفي|kufi/i.test(source)) return 'kufi';
+    if(/عثماني|othmani/i.test(source)) return 'othmani';
+    if(/نسخ|naskh/i.test(source)) return 'naskh';
+    return 'modern';
+  }
+  function textColor(source){
+    if(/ذهبي|ذهبية|gold/i.test(source)) return '#f4cf65';
+    if(/أسود|اسود|black/i.test(source)) return '#111111';
+    if(/أخضر|اخضر|green/i.test(source)) return '#2e8b57';
+    if(/أزرق|ازرق|blue/i.test(source)) return '#2979ff';
+    if(/أحمر|احمر|red/i.test(source)) return '#d32f2f';
+    if(/بيج|beige/i.test(source)) return '#ead9bd';
+    return '#ffffff';
+  }
+  function textPosition(source){
+    if(/(?:في|بال|إلى|الى)?\s*(?:أعلى|اعلى|فوق)|\btop\b/i.test(source)) return 'top';
+    if(/(?:في|بال)?\s*(?:وسط|منتصف|المنتصف|المركز)|\b(?:middle|center)\b/i.test(source)) return 'center';
+    return 'bottom';
+  }
+  function cleanVisual(value){
+    return String(value || '').replace(/\s*(?:و|and)\s*$/i, '').trim();
+  }
+  function fallbackVisual(kind, exactText){
+    if(kind === 'prayer' || /(?:اللهم|ربنا|يا\s+رب)/.test(exactText || '')) return 'خلفية هادئة ومهيبة مناسبة لدعاء عربي';
+    if(kind === 'poetry') return 'خلفية فنية أصيلة مناسبة لشعر عربي';
+    return 'خلفية فنية أنيقة مناسبة للنص المطلوب';
+  }
+  function isExplicitImageEdit(input){
+    const source = String(input || '').trim();
+    if(!source) return false;
+    if(/(?:نفس\s+(?:الصورة|الصوره)|هذه\s+(?:الصورة|الصوره)|هذي\s+(?:الصورة|الصوره)|هالصورة|هالصوره|الصورة\s+السابقة|الصوره\s+السابقه|(?:same|this|previous)\s+(?:image|picture))/i.test(source)) return true;
+    const editVerb = /(?:^|[\s،,.!?؟])(?:عدل|عدّل|حرر|حرّر|غير|غيّر|بدل|بدّل|احذف|امسح|ازل|أزل|شيل|أضف|اضف|ضيف|حط|اكتب|أكتب|خل|اجعل|كبر|كبّر|صغر|صغّر)(?=$|[\s،,.!?؟]|ها)/i.test(source) || /\b(?:edit|change|modify|remove|delete|add|put|write|resize)\b/i.test(source);
+    const imageRef = /(?:الصورة|الصوره|هالصورة|هالصوره|عليها|فيها|منها|لها|\S+ها(?:\s|$)|\bit\b|this\s+(?:image|picture)|the\s+(?:image|picture))/i.test(source);
+    return editVerb && imageRef;
+  }
+  function parseImageTextSpec(input){
+    const source = String(input || '').replace(/\r\n?/g, '\n');
+    const marker = findTextMarker(source);
+    if(!marker) return { wantsText:false, exactText:null, visualPrompt:source.trim(), fontKey:'modern', color:'#ffffff', position:'bottom' };
+    let rest = source.slice(marker.index + marker.value.length);
+    rest = rest.replace(/^\s*(?:لي\s+)?/i, '');
+    rest = rest.replace(/^\s*(?:عليها|عليه|فوقها|فيها|على\s+(?:هذه\s+)?(?:الصورة|الصوره)|فوق\s+(?:الصورة|الصوره)|on\s+(?:the\s+)?(?:image|photo|picture))\s*/i, '');
+    rest = rest.replace(/^\s*(?:النص|العبارة|الكلام|الكلمة|كلمة|اسم|the\s+text|text|words?|name|quote)?\s*(?:هو|وهو|التالي|is)?\s*[:：\-–—]?\s*/i, '');
+    let kind = '';
+    const kindMatch = rest.match(/^\s*(دعاء|الشعر|شعر|بيت\s+شعر|قصيدة)(?=\s|[:：\-–—]|$)\s*[:：\-–—]?\s*/i);
+    if(kindMatch){
+      kind = /دعاء/i.test(kindMatch[1]) ? 'prayer' : 'poetry';
+      rest = rest.slice(kindMatch[0].length);
+    }
+    const quoted = quotedValue(rest);
+    let exactText = null, suffix = '', styleSource = '';
+    if(quoted){
+      exactText = quoted.value;
+      suffix = rest.slice(quoted.index + quoted.whole.length);
+      styleSource = rest.slice(0, quoted.index) + ' ' + suffix;
+    }else{
+      const styleTail = rest.match(/\s+(?:،|,)?\s*(?:(?:بخط|بالخط)\s+\S+(?:\s+(?:ذهبي(?:ة)?|أبيض|ابيض|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|بيج|gold|white|black|green|blue|red|beige))?|(?:بلون|باللون|لون\s+النص)\s+\S+|(?:واجعل|اجعل|وخلي|خلي)\s+النص\s+(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|الوسط|المنتصف|الأسفل|الاسفل))(?:\s+(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|فوق|الوسط|المنتصف|المركز|الأسفل|الاسفل))?\s*$/i);
+      if(styleTail && styleTail.index >= 0){ suffix = rest.slice(styleTail.index); rest = rest.slice(0, styleTail.index); }
+      styleSource = suffix;
+      exactText = rest.trim();
+    }
+    if(exactText == null || !exactText.trim() || /^(?:دعاء|شعر|بيت\s+شعر|قصيدة|نص|كلام|prayer|poem|text)$/i.test(exactText.trim())) exactText = null;
+    let visualPrompt = cleanVisual(source.slice(0, marker.index));
+    const visualSuffix = suffix.replace(/(?:بخط|بالخط)\s+\S+(?:\s+(?:ذهبي(?:ة)?|أبيض|ابيض|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|بيج|gold|white|black|green|blue|red|beige))?|(?:بلون|باللون|لون\s+النص)\s+\S+|(?:واجعل|اجعل|وخلي|خلي)\s+النص\s+(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|الوسط|المنتصف|الأسفل|الاسفل)|(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|فوق|الوسط|المنتصف|المركز|الأسفل|الاسفل)|(?:on|in)\s+(?:the\s+)?(?:image|photo|picture|top|middle|center|bottom)/gi, '').replace(/^[\s،,و]+|[\s،,]+$/g, '');
+    if(visualSuffix) visualPrompt = (visualPrompt + ' ' + visualSuffix).trim();
+    if(!visualPrompt || /^(?:(?:أنشئ|انشئ|اصنع|ولد|ولّد|صمم|ارسم|create|generate|make|draw)\s*(?:لي\s*)?)?(?:صورة|صوره|image|picture)?\s*$/i.test(visualPrompt)) visualPrompt = fallbackVisual(kind, exactText);
+    return { wantsText:true, exactText, visualPrompt, fontKey:textFont(styleSource), color:textColor(styleSource), position:textPosition(styleSource), kind };
+  }
+  root.__parseImageTextSpec = parseImageTextSpec;
+  root.__isExplicitImageEdit = isExplicitImageEdit;
+  if(typeof module !== 'undefined' && module.exports) module.exports = { parseImageTextSpec, isExplicitImageEdit };
+})(typeof window !== 'undefined' ? window : globalThis);
 window.postWithConfirm = postWithConfirm;
 // ---- "Maha" (مها): full-screen, voice-only conversational assistant ----
 // A dedicated hands-free "phone call" experience: no transcript/reply text is
@@ -9838,8 +9990,8 @@ async function fetchSearchNoteOnce(transcript, deep){
 // function-calling - the Realtime voice-to-voice mode below detects this
 // itself via OpenAI's built-in tool calling instead.
 const MAHA_IMAGE_KEYWORDS = [
-  'ارسم','ارسمي','رسم','رسمة','صورة','سوي صورة','اعطني صورة','اعطيني صورة','ولد صورة','صمم',
-  'draw','generate an image','create an image','make an image','make a picture','draw me','picture of','image of','design a logo',
+  'ارسم','ارسمي','رسم','رسمة','صورة','سوي صورة','اعطني صورة','اعطيني صورة','ولد صورة','صمم','عدّلها','عدلها','غيّرها','غيرها',
+  'draw','generate an image','create an image','make an image','make a picture','draw me','picture of','image of','design a logo','edit it','change it',
 ];
 function mahaNeedsImage(text){
   if(!text) return false;
@@ -10568,13 +10720,12 @@ async function mahaCallLoop(){
       mahaHistory.push({ role: 'user', content: transcript });
       if(mahaHistory.length > 12) mahaHistory = mahaHistory.slice(-12);
 
-      // Classic pipeline has no real function-calling like the Realtime mode
-      // does, so image requests are detected via keywords instead: generate
-      // (or edit, if one already exists this call) the picture, show it, and
-      // reply with a short spoken confirmation instead of the normal LLM turn.
+      // Classic pipeline has no real function-calling like the Realtime mode.
+      // A previous image is sent back only when this turn explicitly refers to
+      // editing it; a new-image request must always start from a clean canvas.
       if(mahaNeedsImage(transcript)){
         mahaSetState('thinking');
-        const editMode = !!mahaLastImageBase64;
+        const editMode = !!mahaLastImageBase64 && !!(window.__isExplicitImageEdit && window.__isExplicitImageEdit(transcript));
         const imgResult = await mahaGenerateOrEditImage(transcript, editMode);
         let imgReply;
         if(imgResult.ok){
@@ -11643,12 +11794,8 @@ async function pickSmartProviders(userText, eligibleKeys){
 
 // ✍️ كتابة نص على الصورة محليًا (Canvas) — خط عربي سليم 100% بدل رسم Gemini المشوه
 function extractOverlayText(t){
-  let m = t.match(/["'«»“”](.+?)["'«»“”]/); if(m && m[1].trim()) return m[1].trim();
-  const clean = (x)=>{ x = (x||'').trim().replace(/[.!؟?]+$/,'').trim(); if(!x || /^(?:على|فوق|في)?\s*الصور/.test(x) || /^(?:on|in)?\s*(?:the\s+)?(?:image|photo|picture)/i.test(x)) return null; return x; };
-  m = t.match(/(?:اكتب|أكتب)\s+(?:لي\s+)?(?:كلمة\s+|نص\s+|اسم\s+)?(.+?)(?:\s+(?:على|فوق|في)\s+الصور[ةه].*)?$/); if(m){ const r=clean(m[1]); if(r) return r; }
-  m = t.match(/(?:حط|ضيف|أضف|اضف)\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)\s+(.+?)(?:\s+(?:على|فوق|في)\s+الصور[ةه].*)?$/); if(m){ const r=clean(m[1]); if(r) return r; }
-  m = t.match(/(?:write|put|add)\s+(?:the\s+)?(?:text\s+|name\s+|word\s+)?(.+?)(?:\s+(?:on|to|in)\s+(?:the\s+)?(?:image|photo|picture).*)?$/i); if(m){ const r=clean(m[1]); if(r) return r; }
-  return null;
+  const spec = window.__parseImageTextSpec ? window.__parseImageTextSpec(t) : null;
+  return spec && spec.exactText ? spec.exactText : null;
 }
 // 🎨 استخراج سطور النص العربي من طلب التصميم (عنوان + اسم + مناسبة)
 function extractDesignLines(t){
@@ -11771,7 +11918,9 @@ async function mahaLoadFont(key){
   try{ await document.fonts.load('bold 40px "' + f.css + '"', 'عيدكم مبارك'); }catch(_){ __swallow(_, "misc:app-09-attach#3"); }
   return f.css;
 }
-async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr){
+async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
+  const exact = String(txt == null ? '' : txt).replace(/\r\n?/g, '\n');
+  if(!exact.trim()) throw new Error('missing_exact_text');
   const fontCss = await mahaLoadFont(fontKey || 'modern');
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -11781,24 +11930,53 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr){
         c.width = img.naturalWidth; c.height = img.naturalHeight;
         const ctx = c.getContext('2d');
         ctx.drawImage(img, 0, 0);
-        let fs = Math.floor(c.width / 9);
-        const setF = () => { ctx.font = 'bold ' + fs + 'px "' + fontCss + '", "Segoe UI", Tahoma, Arial, sans-serif'; };
+        const maxWidth = c.width * 0.82, maxHeight = c.height * 0.34;
+        let fs = Math.floor(Math.min(c.width / 9, c.height / 8));
+        let lines = [];
+        const setF = () => { ctx.font = '700 ' + fs + 'px "' + fontCss + '", "Segoe UI", Tahoma, Arial, sans-serif'; };
+        const wrap = (line) => {
+          if(!line) return [''];
+          if(ctx.measureText(line).width <= maxWidth) return [line];
+          const words = line.split(/\s+/), out = []; let row = '';
+          words.forEach((word) => {
+            const next = row ? row + ' ' + word : word;
+            if(row && ctx.measureText(next).width > maxWidth){ out.push(row); row = word; }
+            else row = next;
+          });
+          if(row) out.push(row);
+          return out;
+        };
+        do{
+          setF();
+          lines = exact.split('\n').flatMap(wrap);
+          if(lines.length * fs * 1.38 <= maxHeight && lines.every((line) => ctx.measureText(line).width <= maxWidth)) break;
+          fs -= 2;
+        }while(fs > Math.max(22, Math.floor(c.width / 65)));
         setF();
-        while(ctx.measureText(txt).width > c.width * 0.9 && fs > 14){ fs -= 2; setF(); }
-        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-        const x = c.width / 2, y = c.height - Math.max(20, Math.floor(c.height * 0.05));
-        ctx.lineWidth = Math.max(3, Math.floor(fs / 7));
-        const fill = (colorStr || '#ffffff');
-        // حدود داكنة للألوان الفاتحة وفاتحة للألوان الداكنة عشان يظل النص واضح
+        const lineHeight = fs * 1.38, totalHeight = lines.length * lineHeight;
+        let firstY = c.height - c.height * 0.07 - totalHeight + lineHeight / 2;
+        if(position === 'top') firstY = c.height * 0.08 + lineHeight / 2;
+        if(position === 'center') firstY = c.height / 2 - totalHeight / 2 + lineHeight / 2;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.direction = /[\u0600-\u06FF]/.test(exact) ? 'rtl' : 'ltr';
+        const fill = colorStr || '#ffffff';
         let dark = false;
         if(/^#[0-9a-f]{6}$/i.test(fill)){
           const lum = parseInt(fill.slice(1,3),16)*0.299 + parseInt(fill.slice(3,5),16)*0.587 + parseInt(fill.slice(5,7),16)*0.114;
           dark = lum < 128;
         }
-        ctx.strokeStyle = dark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.85)';
-        ctx.strokeText(txt, x, y);
-        ctx.fillStyle = fill; ctx.fillText(txt, x, y);
-        resolve((c.toDataURL('image/png')).split(',')[1]);
+        ctx.lineJoin = 'round'; ctx.miterLimit = 2;
+        ctx.lineWidth = Math.max(3, Math.floor(fs / 11));
+        ctx.strokeStyle = dark ? 'rgba(255,255,255,.92)' : 'rgba(0,0,0,.84)';
+        ctx.fillStyle = fill;
+        ctx.shadowColor = dark ? 'rgba(255,255,255,.35)' : 'rgba(0,0,0,.55)';
+        ctx.shadowBlur = Math.max(4, Math.floor(fs / 9));
+        lines.forEach((line, i) => {
+          const y = firstY + i * lineHeight;
+          ctx.strokeText(line, c.width / 2, y, maxWidth);
+          ctx.fillText(line, c.width / 2, y, maxWidth);
+        });
+        resolve(c.toDataURL('image/png').split(',')[1]);
       }catch(e){ reject(e); }
     };
     img.onerror = reject;
@@ -12036,26 +12214,39 @@ async function __agentApplyResult(cur, full){
 }
 
 async function omModeGenerateImage(cur, promptText, thinkingDiv){
+  const textSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(promptText) : { wantsText:false, exactText:null, visualPrompt:promptText };
   const __m = { role: 'assistant', content: lang === 'ar' ? '🎨 أرسم لك الصورة…' : '🎨 Generating your image…', _loading: true };
   cur.messages.push(__m); renderAll();
+  if(textSpec.wantsText && !textSpec.exactText){
+    __m._loading = false;
+    __m.content = lang === 'ar' ? 'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.' : 'Send the exact wording you want on the image, and I will reproduce it verbatim.';
+    renderAll(); saveState();
+    try{ thinkingDiv && thinkingDiv.remove(); }catch(e){}
+    return;
+  }
   try{
     const __r = await fetch('/api/maha-image', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: promptText, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
+      signal: genAbortController ? genAbortController.signal : undefined,
+      body: JSON.stringify({ prompt: String(textSpec.visualPrompt || promptText).slice(0,1200), reserveTextArea: !!textSpec.exactText, textPosition: textSpec.position, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
     });
     const __d = await __r.json().catch(() => ({}));
     __m._loading = false;
     if(__r.ok && __d && __d.imageBase64){
-      const __mime = __d.mimeType || 'image/png';
+      let __mime = __d.mimeType || 'image/png', __b64 = __d.imageBase64;
+      if(textSpec.exactText){
+        __b64 = await overlayTextOnImage(__b64, __mime, textSpec.exactText, textSpec.fontKey, textSpec.color, textSpec.position);
+        __mime = 'image/png';
+      }
       __m.content = lang === 'ar' ? 'تفضّل 👇' : 'Here you go 👇';
-      __m.attachments = [{ isImage: true, dataUrl: 'data:' + __mime + ';base64,' + __d.imageBase64, name: 'image.png' }];
-      try{ cur.lastEditedImage = { b64: __d.imageBase64, mime: __mime }; }catch(e){}
+      __m.attachments = [{ isImage: true, mime: __mime, dataUrl: 'data:' + __mime + ';base64,' + __b64, name: 'image.png' }];
+      try{ cur.lastEditedImage = { b64: __b64, mime: __mime }; cur.lastMsgWasImageEdit = true; }catch(e){}
     } else {
       __m.content = lang === 'ar' ? ('تعذّر توليد الصورة الآن — ' + ((__d && __d.error) || ('HTTP ' + __r.status))) : ('Image generation failed — ' + ((__d && __d.error) || ('HTTP ' + __r.status)));
     }
   }catch(e){
     __m._loading = false;
-    __m.content = lang === 'ar' ? 'تعذّر توليد الصورة الآن — جرّب مرّة ثانية.' : 'Image generation failed — please try again.';
+    __m.content = (e && e.name === 'AbortError') ? (lang === 'ar' ? 'تم إيقاف إنشاء الصورة.' : 'Image generation stopped.') : (lang === 'ar' ? 'تعذّر توليد الصورة الآن — جرّب مرّة ثانية.' : 'Image generation failed — please try again.');
   }
   renderAll(); saveState();
   try{ thinkingDiv && thinkingDiv.remove(); }catch(e){}
@@ -12141,9 +12332,16 @@ async function sendPrompt(){
       if(pendingAttachments.some(a => a.isImage)) return false;
       if(!text || text.length > 220) return false;
       if(/بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|سكربت|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\bscript\b|\bcode\b|كود/i.test(text)) return false;
-      return /(ضيف|أضف|اضف|حط|عدل|عدّل|غير|غيّر|بدل|بدّل|امسح|احذف|ازل|أزل|شل|شيل|كبر|كبّر|صغر|صغّر|لون|لوّن|اكتب|أكتب|زخرف|خل|اجعل|حسن|حسّن|رتب|رتّب|نفس الصور|نفس الشعار|هالصور|هالشعار|عليها|فيها|منها|\badd\b|\bput\b|\bchange\b|\bremove\b|\berase\b|\bwrite\b|\brecolor\b|same image|same logo|on it)/i.test(text);
+      if(typeof window.__isExplicitImageEdit === 'function') return !!window.__isExplicitImageEdit(text);
+      const __editVerb = /(عدل|عدّل|غير|غيّر|بدل|بدّل|امسح|احذف|ازل|أزل|شيل|أضف|اضف|ضيف|حط|اكتب|أكتب|خل|اجعل|كبر|كبّر|صغر|صغّر|\bedit\b|\bchange\b|\bremove\b|\badd\b|\bput\b|\bwrite\b)/i;
+      const __priorRef = /(الصورة\s+السابقة|الصوره\s+السابقه|هذه\s+الصورة|هذي\s+الصورة|هالصورة|عليها|فيها|منها|\bit\b|this\s+(?:image|picture)|previous\s+(?:image|picture))/i;
+      return __editVerb.test(text) && __priorRef.test(text);
     }catch(e){ return false; }
   })();
+  const __entryImageTextSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(text) : { wantsText:false };
+  const __explicitImageTextRequest = !!(__entryImageTextSpec.wantsText &&
+    /(?:صورة|صوره|بطاقة|بطاقه|دعوة|دعوه|بوستر|ملصق|شهادة|شهاده|غلاف|بنر|شعار|لوجو|image|picture|card|invitation|poster|banner|cover|logo)/i.test(text) &&
+    !/(?:تطبيق|برنامج|موقع|صفحة|لعبة|سكربت|كود|\bapp\b|\bwebsite\b|\bpage\b|\bgame\b|\bscript\b|\bcode\b)/i.test(text));
   let __gateNoBuild = false;
   let __gateApprovedText = null; // ما كتبه المستخدم فعلًا (نعم/ابدأ) ليُعرض كما هو
   {
@@ -12210,7 +12408,7 @@ async function sendPrompt(){
       __gateApprovedText = text;
       text = __pend;
       __setPend(null);
-    } else if(text && !__IMG_FOLLOW && !__looksPasted && ((GATE_BUILD_RE.test(text) && GATE_CMD_RE.test(text)) || __strongBuildRe.test(text)) && !GATE_FIX_RE.test(text)){
+    } else if(text && !__IMG_FOLLOW && !__explicitImageTextRequest && !__looksPasted && ((GATE_BUILD_RE.test(text) && GATE_CMD_RE.test(text)) || __strongBuildRe.test(text)) && !GATE_FIX_RE.test(text)){
       __setPend(text);
       __gateNoBuild = true;
     } else if(text){
@@ -12426,7 +12624,7 @@ async function sendPrompt(){
       cur.lastEditedImage = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' };
       cur.adMode = null; // صورة جديدة = وضع إعلان جديد
     }
-    const __followUp = !__srcImg && cur.lastEditedImage && cur.lastMsgWasImageEdit;
+    const __followUp = !__srcImg && cur.lastEditedImage && cur.lastMsgWasImageEdit && __IMG_FOLLOW;
     // v311: رسالة تفاصيل إضافية أثناء تصميم إعلان قائم → تكمل التصميم نفسه.
     if(text && cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && text.indexOf('ملاحظة للنظام') === -1){
       text += '\n(ملاحظة للنظام: هذه تفاصيل إضافية للإعلان قيد التصميم — أكمل/حدّث تصميم الإعلان الكامل بهذه التفاصيل حسب قالب ' + (cur.adMode === 'inside' ? 'INSIDE فوق صورة المستخدم background-image:url(\'__USER_IMAGE__\')' : 'OUTSIDE مع src="__USER_IMAGE__"') + ' وأعد الملف كاملًا. ممنوع البحث في الإنترنت وممنوع عرض إعلانات مواقع أخرى وممنوع الرد بنص فقط)';
@@ -12772,17 +12970,24 @@ async function sendPrompt(){
       const __mime = __srcImg ? (__srcImg.mime || 'image/png') : (cur.lastEditedImage.mime || 'image/png');
       // ✍️ إذا الطلب كتابة نص/اسم على الصورة → نرسمه محليًا بخط سليم (بدون Gemini)
       const __writeIntentRe = /(اكتب|أكتب|حط\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|(?:ضيف|أضف|اضف)\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|write|put\s+(?:my\s+)?name|add\s+(?:the\s+)?text)/i;
-      if(__writeIntentRe.test(text)){
-        const __txt = extractOverlayText(text);
-        if(__txt){
-          try{
-            const __outB64 = await overlayTextOnImage(__b64, __mime, __txt);
-            cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'تمت كتابة النص على الصورة ✅ اضغط عليها للتكبير، وتقدر تطلب تعديلات إضافية.' : 'Text added to the image ✅ Tap to enlarge — you can request more edits.'), attachments: [{ name: 'edited.png', isImage: true, mime: 'image/png', dataUrl: 'data:image/png;base64,' + __outB64 }] });
-            cur.lastEditedImage = { b64: __outB64, mime: 'image/png' };
-            cur.lastMsgWasImageEdit = true;
-            renderAll(); saveState();
-            return;
-          }catch(e){ /* فشل الرسم المحلي → نكمل عبر Gemini */ }
+      const __textSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(text) : { wantsText:__writeIntentRe.test(text), exactText:extractOverlayText(text), fontKey:'modern', color:'#ffffff', position:'bottom' };
+      if(__textSpec.wantsText){
+        if(!__textSpec.exactText){
+          cur.messages.push({ role:'assistant', content:lang==='ar'?'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.':'Send the exact wording you want on the image, and I will reproduce it verbatim.' });
+          renderAll(); saveState();
+          return;
+        }
+        try{
+          const __outB64 = await overlayTextOnImage(__b64, __mime, __textSpec.exactText, __textSpec.fontKey, __textSpec.color, __textSpec.position);
+          cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'تمت كتابة النص على الصورة ✅ اضغط عليها للتكبير، وتقدر تطلب تعديلات إضافية.' : 'Text added to the image ✅ Tap to enlarge — you can request more edits.'), attachments: [{ name: 'edited.png', isImage: true, mime: 'image/png', dataUrl: 'data:image/png;base64,' + __outB64 }] });
+          cur.lastEditedImage = { b64: __outB64, mime: 'image/png' };
+          cur.lastMsgWasImageEdit = true;
+          renderAll(); saveState();
+          return;
+        }catch(e){
+          cur.messages.push({ role:'assistant', content:lang==='ar'?'تعذّرت كتابة النص على الصورة دون تغييرها.':'Could not add the text without altering the image.' });
+          renderAll(); saveState();
+          return;
         }
       }
       let __data = {}; let __ok = false;
@@ -12922,10 +13127,17 @@ async function sendPrompt(){
     // 🏛️ v225: طلب نصي بنية صورة بدون أي صورة مرفقة (تصور معماري/منظور/ارسم...)
     // → توليد صورة فعلي بـ Gemini بدل رد نظري أو وعود فارغة من المزود.
     const __txtOnlyImgRe = /(تصور|منظور|بورتريه|ارسم|أرسم|ارسمي|رسمة|معماري|معمارية|واجهات\s|تصميم\s*(?:لي\s*)?صوره?|صمم\s*(?:لي\s*)?صوره?|توليد\s*صوره?|(?:انشئ|أنشئ|انشاء|إنشاء|اصنع)\s*(?:لي\s*)?صوره?|صوره?\s*(?:من|عن)\s*الخيال|خيال\s*علمي|render|perspective|elevation|concept\s?art|\bdraw\b|\bpainting\b)/i;
-    if(text && !__srcImg && !__followUp && !__archImagesDone && !__codeWordRe.test(text) && !__designDocRe.test(text) &&
-       (__txtOnlyImgRe.test(text) || (__imgGenIntentRe.test(text) && /صور|رسمة|منظر|تصور|image|picture|visual/i.test(text)))){
+    if(text && !__srcImg && !__followUp && !__archImagesDone && !__codeWordRe.test(text) && (!__designDocRe.test(text) || __explicitImageTextRequest) &&
+       (__explicitImageTextRequest || __txtOnlyImgRe.test(text) || (__imgGenIntentRe.test(text) && /صور|رسمة|منظر|تصور|image|picture|visual/i.test(text)))){
       if(!__txtOnlyImgRe.test(text) && __isVagueMediaRequest(text)){
         cur.messages.push({ role: 'assistant', content: lang === 'ar' ? 'صورة عن شو؟ وصفلي اللي تبيه 🖼️' : 'An image of what? Describe what you want 🖼️' });
+        renderAll(); saveState();
+        thinkingDiv && thinkingDiv.remove();
+        return;
+      }
+      const __genTextSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(text) : { wantsText:false, exactText:null, visualPrompt:text };
+      if(__genTextSpec.wantsText && !__genTextSpec.exactText){
+        cur.messages.push({ role:'assistant', content:lang==='ar'?'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.':'Send the exact wording you want on the image, and I will reproduce it verbatim.' });
         renderAll(); saveState();
         thinkingDiv && thinkingDiv.remove();
         return;
@@ -12937,14 +13149,19 @@ async function sendPrompt(){
           const __gRes = await fetch('/api/maha-image', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             signal: genAbortController.signal,
-            body: JSON.stringify({ prompt: text.slice(0, 490), token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+            body: JSON.stringify({ prompt: String(__genTextSpec.visualPrompt || text).slice(0,1200), reserveTextArea:!!__genTextSpec.exactText, textPosition:__genTextSpec.position, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
           });
           __gData = await __gRes.json().catch(() => ({}));
           __gOk = __gRes.ok && !!__gData.imageBase64;
           if(!__gOk){ if(!__gData) __gData = {}; __gData.__status = __gRes.status; }
         }
+        if(__gOk && __genTextSpec.exactText){
+          __gData.imageBase64 = await overlayTextOnImage(__gData.imageBase64, __gData.mimeType || 'image/png', __genTextSpec.exactText, __genTextSpec.fontKey, __genTextSpec.color, __genTextSpec.position);
+          __gData.mimeType = 'image/png';
+        }
       }catch(e){
         if(e && e.name === 'AbortError'){ renderAll(); saveState(); return; }
+        __gOk = false;
         __gData = { error: (e && e.message) ? e.message : String(e) };
       }
       if(__gOk){
@@ -14355,7 +14572,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   if(!dd) return;
   const groups = [
     { title: null, ids: ['btnSettings','btnAuthToggle','btnToggleHistory'] },
-    { title: 'grpCreate', ids: ['btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnAdStudio','btnExplore'] },
+    { title: 'grpCreate', ids: ['btnQuickTemplates','btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnAdStudio','btnExplore'] },
     { title: 'grpSections', ids: ['btnStocks','btnConstruction','btnOmranEdu','btnExpense','btnDocs','btnGov','btnCV','btnReligion','btnEmailAssist'] },
     { title: 'grpTools', ids: ['btnTemplates','btnAgentMode','btnInstall','btnShareApp'] }
   ];
@@ -14412,7 +14629,9 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       ptPopup.appendChild(grid);
       g.ids.forEach(id => { const b = document.getElementById(id); if(b){ grid.appendChild(b); stpApply3d(b, id); } });
       grid.addEventListener('click', (e) => {
-        if(e.target.closest('button')) setTimeout(() => { if(ptOverlay) ptOverlay.classList.remove('show'); }, 120);
+        const _hit = e.target.closest ? e.target.closest('button') : null;
+        if(_hit && _hit.id === 'btnQuickTemplates') return; // v549: الاقتراحات تُفتح داخل المربّع — لا يُغلق تحتها
+        if(_hit) setTimeout(() => { if(ptOverlay) ptOverlay.classList.remove('show'); }, 120);
       });
     } else {
       g.ids.forEach(id => { const b = document.getElementById(id); if(b && b.parentElement === dd) dd.appendChild(b); });

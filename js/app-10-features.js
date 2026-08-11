@@ -313,7 +313,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   if(!dd) return;
   const groups = [
     { title: null, ids: ['btnSettings','btnAuthToggle','btnToggleHistory'] },
-    { title: 'grpCreate', ids: ['btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnAdStudio','btnExplore'] },
+    { title: 'grpCreate', ids: ['btnQuickTemplates','btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnAdStudio','btnExplore'] },
     { title: 'grpSections', ids: ['btnStocks','btnConstruction','btnOmranEdu','btnExpense','btnDocs','btnGov','btnCV','btnReligion','btnEmailAssist'] },
     { title: 'grpTools', ids: ['btnTemplates','btnAgentMode','btnInstall','btnShareApp'] }
   ];
@@ -370,7 +370,9 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       ptPopup.appendChild(grid);
       g.ids.forEach(id => { const b = document.getElementById(id); if(b){ grid.appendChild(b); stpApply3d(b, id); } });
       grid.addEventListener('click', (e) => {
-        if(e.target.closest('button')) setTimeout(() => { if(ptOverlay) ptOverlay.classList.remove('show'); }, 120);
+        const _hit = e.target.closest ? e.target.closest('button') : null;
+        if(_hit && _hit.id === 'btnQuickTemplates') return; // v549: الاقتراحات تُفتح داخل المربّع — لا يُغلق تحتها
+        if(_hit) setTimeout(() => { if(ptOverlay) ptOverlay.classList.remove('show'); }, 120);
       });
     } else {
       g.ids.forEach(id => { const b = document.getElementById(id); if(b && b.parentElement === dd) dd.appendChild(b); });

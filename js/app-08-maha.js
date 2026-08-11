@@ -729,8 +729,8 @@ async function fetchSearchNoteOnce(transcript, deep){
 // function-calling - the Realtime voice-to-voice mode below detects this
 // itself via OpenAI's built-in tool calling instead.
 const MAHA_IMAGE_KEYWORDS = [
-  'ارسم','ارسمي','رسم','رسمة','صورة','سوي صورة','اعطني صورة','اعطيني صورة','ولد صورة','صمم',
-  'draw','generate an image','create an image','make an image','make a picture','draw me','picture of','image of','design a logo',
+  'ارسم','ارسمي','رسم','رسمة','صورة','سوي صورة','اعطني صورة','اعطيني صورة','ولد صورة','صمم','عدّلها','عدلها','غيّرها','غيرها',
+  'draw','generate an image','create an image','make an image','make a picture','draw me','picture of','image of','design a logo','edit it','change it',
 ];
 function mahaNeedsImage(text){
   if(!text) return false;
@@ -1459,13 +1459,12 @@ async function mahaCallLoop(){
       mahaHistory.push({ role: 'user', content: transcript });
       if(mahaHistory.length > 12) mahaHistory = mahaHistory.slice(-12);
 
-      // Classic pipeline has no real function-calling like the Realtime mode
-      // does, so image requests are detected via keywords instead: generate
-      // (or edit, if one already exists this call) the picture, show it, and
-      // reply with a short spoken confirmation instead of the normal LLM turn.
+      // Classic pipeline has no real function-calling like the Realtime mode.
+      // A previous image is sent back only when this turn explicitly refers to
+      // editing it; a new-image request must always start from a clean canvas.
       if(mahaNeedsImage(transcript)){
         mahaSetState('thinking');
-        const editMode = !!mahaLastImageBase64;
+        const editMode = !!mahaLastImageBase64 && !!(window.__isExplicitImageEdit && window.__isExplicitImageEdit(transcript));
         const imgResult = await mahaGenerateOrEditImage(transcript, editMode);
         let imgReply;
         if(imgResult.ok){
