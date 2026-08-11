@@ -6,6 +6,8 @@
 // Uses the server-side owner API key (GEMINI_API_KEY). Returns a base64
 // PNG/JPEG the client can preview and download.
 const { checkFashionQuota, consumeFashion, FASHION_DAILY_LIMIT } = require('./_fashionUsage');
+const { sourceStylePreservationRule } = require('./image-prompt');
+const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 
 const STYLE_PROMPTS = {
   evening: 'an elegant evening gown style, flowing fabric, refined and glamorous',
@@ -53,7 +55,8 @@ module.exports = async (req, res) => {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      res.status(500).json({ error: 'Server is missing GEMINI_API_KEY' });
+      console.error('[fashion-create] image provider is not configured');
+      res.status(503).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
       return;
     }
 
@@ -101,8 +104,8 @@ module.exports = async (req, res) => {
     if (mode === 'image') {
       const promptText =
         'Redress the person in this photo into a new outfit in ' + styleDesc + '. ' +
-        'Keep the same person, pose, face and background, but change only the clothing/outfit to match the requested style.' +
-        detailClause + multiAngleClause;
+        'Keep the same person, pose, face and background, but change only the clothing/outfit to match the requested style. ' +
+        sourceStylePreservationRule() + detailClause + multiAngleClause;
       parts.push({ text: promptText });
       parts.push({ inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } });
     } else {
@@ -125,7 +128,8 @@ module.exports = async (req, res) => {
 
     const data = await upstream.json();
     if (!upstream.ok) {
-      res.status(upstream.status).json({ error: (data && data.error && data.error.message) || 'Upstream error' });
+      console.error('[fashion-create] upstream failed status=' + upstream.status + ' detail=' + ((data && data.error && data.error.message) || 'unknown'));
+      res.status(502).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
       return;
     }
 
@@ -136,6 +140,22 @@ module.exports = async (req, res) => {
       return;
     }
 
+    if (mode === 'image') {
+      const guard = await verifyLocalizedImageEdit({
+        apiKey,
+        sourceBase64: imageBase64,
+        sourceMime: mimeType || 'image/jpeg',
+        resultBase64: imgPart.inlineData.data,
+        resultMime: imgPart.inlineData.mimeType || 'image/png',
+        userPrompt: [styleDesc, description, detailClause, multiAngleClause].filter(Boolean).join(' '),
+      });
+      if (!guard.ok) {
+        const unavailable = guard.reason === 'validation_unavailable';
+        res.status(unavailable ? 502 : 422).json({ error: publicGuardError(guard), retryable: unavailable });
+        return;
+      }
+    }
+
     const remaining = await consumeFashion(quota.username);
     res.status(200).json({
       imageBase64: imgPart.inlineData.data,
@@ -144,6 +164,7 @@ module.exports = async (req, res) => {
       dailyLimit: FASHION_DAILY_LIMIT,
     });
   } catch (e) {
-    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+    console.error('[fashion-create] exception: ' + (e && e.stack ? e.stack : e));
+    res.status(500).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
   }
 };

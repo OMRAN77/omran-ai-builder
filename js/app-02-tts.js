@@ -27,6 +27,21 @@ function imgErrFriendly(err, isAr){
       ? 'تعذّر إنشاء الصورة هذه المرة. جرّب مرة أخرى.'
       : 'The image could not be generated this time. Please try again.';
   }
+  if(err === 'image_edit_style_mismatch'){
+    return isAr
+      ? 'أوقفت النتيجة لأنها غيّرت الصورة إلى أسلوب مختلف. أعد المحاولة وسيبقى الأصل كما هو.'
+      : 'I stopped the result because it changed the image style. Try again; the original remains unchanged.';
+  }
+  if(err === 'image_edit_identity_mismatch'){
+    return isAr
+      ? 'أوقفت النتيجة لأنها غيّرت هوية الشخص أو أشياء لم تطلبها. بقيت الصورة الأصلية محفوظة.'
+      : 'I stopped the result because it changed the person or unrelated details. The original remains saved.';
+  }
+  if(err === 'image_edit_validation_failed'){
+    return isAr
+      ? 'تعذّر التحقق من سلامة التعديل، لذلك لم أعرض النتيجة ولم أغيّر الأصل. جرّب بعد لحظة.'
+      : 'The edit could not be verified, so I did not show it or replace the original. Try again shortly.';
+  }
   return null;
 }
 

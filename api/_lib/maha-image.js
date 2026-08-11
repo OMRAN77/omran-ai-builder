@@ -4,7 +4,8 @@
 // model (server-side owner key, GEMINI_API_KEY) - the only one of the 9
 // providers that can actually output images.
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
-const { cleanImagePrompt, buildGenerationPrompt, buildEditPrompt } = require('./image-prompt');
+const { cleanImagePrompt, buildGenerationPrompt, buildEditPrompt, explicitlyRequestsStyleChange } = require('./image-prompt');
+const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 const { authorPrayerPlan } = require('./prayer-plan');
 const { fetchImageWithRetry, isImageTimeoutError } = require('./image-fetch');
 
@@ -22,10 +23,30 @@ module.exports = async (req, res) => {
     return;
   }
 
+  let pointsLib = null;
+  let mahaImgCharged = null;
+  let guestImageCharge = null;
+  async function refundImageCharge() {
+    if (mahaImgCharged && pointsLib) {
+      const user = mahaImgCharged;
+      mahaImgCharged = null;
+      try { await pointsLib.refundPoints(user, pointsLib.COSTS.image); } catch (error) { console.error('[maha-image] user refund failed'); }
+    }
+    if (guestImageCharge) {
+      const charge = guestImageCharge;
+      guestImageCharge = null;
+      try {
+        const { kvDecrBy } = require('./kv.js');
+        await kvDecrBy(charge.counterKey, 1);
+      } catch (error) { console.error('[maha-image] guest refund failed'); }
+    }
+  }
+
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      res.status(500).json({ error: 'Server is missing GEMINI_API_KEY' });
+      console.error('[maha-image] image provider is not configured');
+      res.status(503).json({ error: 'image_generation_failed', retryable: false });
       return;
     }
 
@@ -64,9 +85,8 @@ module.exports = async (req, res) => {
 
     // 💰 نظام النقاط: توليد/تعديل صورة = 10 نقاط لغير المالك.
     // الضيف (بدون حساب) له صورة واحدة مجانية مدى الحياة كتجربة.
-    const pointsLib = require('./points.js');
+    pointsLib = require('./points.js');
     const mahaImgUser = pointsLib.verifyPointsToken(token);
-    let mahaImgCharged = null;
     if (mahaImgUser) {
       if (!pointsLib.isOwnerUsername(mahaImgUser)) {
         const pay = await pointsLib.spendPoints(mahaImgUser, pointsLib.COSTS.image, 'image');
@@ -77,13 +97,20 @@ module.exports = async (req, res) => {
         mahaImgCharged = mahaImgUser;
       }
     } else if (typeof guestId === 'string' && /^[a-zA-Z0-9_-]{6,64}$/.test(guestId)) {
-      const { kvGetJSON, kvPutJSON } = require('./kv.js');
+      const { kvGetJSON, kvSetIfAbsent, kvIncr, kvDecrBy } = require('./kv.js');
       const flagKey = 'db/points/guest-image/' + encodeURIComponent(guestId);
-      const used = await kvGetJSON(flagKey);
-      // 🎁 الضيف له 3 صور مجانية (العلم القديم بدون count = صورة واحدة مستهلكة)
-      const usedCount = used ? (typeof used.count === 'number' ? used.count : 1) : 0;
-      if (usedCount >= 3) { res.status(402).json({ error: 'guest_image_used' }); return; }
-      await kvPutJSON(flagKey, { count: usedCount + 1, at: Date.now() });
+      const counterKey = flagKey + '/count';
+      const legacy = await kvGetJSON(flagKey);
+      const legacyCount = legacy ? (typeof legacy.count === 'number' ? legacy.count : 1) : 0;
+      await kvSetIfAbsent(counterKey, legacyCount);
+      const usedCount = await kvIncr(counterKey);
+      // الحجز والاسترداد ذريّان؛ الطلبات المتزامنة لا تضيع محاولة مجانية.
+      if (usedCount > 3) {
+        await kvDecrBy(counterKey, 1);
+        res.status(402).json({ error: 'guest_image_used' });
+        return;
+      }
+      guestImageCharge = { counterKey };
     } else {
       res.status(401).json({ error: 'auth_required' });
       return;
@@ -94,7 +121,8 @@ module.exports = async (req, res) => {
     // يحمل عدد الطوابق وسعة الكراج والطراز والمواد — وهو ما يجعل الواجهة
     // تطابق المخطط. الوصف الهندسي يُسمح له بمساحة أوسع.
     const isArchitectural = !!(body && body.architectural);
-    const cleanPrompt = cleanImagePrompt(prayerPlan ? prayerPlan.visualBrief : prompt).slice(0, isArchitectural ? 2400 : 1800);
+    const promptLimit = isArchitectural ? 2400 : (editImageBase64 ? 8000 : 1800);
+    const cleanPrompt = cleanImagePrompt(prayerPlan ? prayerPlan.visualBrief : prompt).slice(0, promptLimit);
     const extras = Array.isArray(extraImages) ? extraImages.filter((x) => x && x.data).slice(0, 5) : [];
     if (editImageBase64 && extras.length) {
       // 🧩 دمج عدة صور في تصميم واحد
@@ -135,7 +163,7 @@ module.exports = async (req, res) => {
     const data = imageResult.data || {};
 
     if (!upstream || !upstream.ok) {
-      if (mahaImgCharged) await pointsLib.refundPoints(mahaImgCharged, pointsLib.COSTS.image);
+      await refundImageCharge();
       const timedOut = isImageTimeoutError(imageResult.error);
       const retryable = timedOut || !!(upstream && (upstream.status === 429 || upstream.status >= 500));
       const errorCode = timedOut ? 'image_generation_timeout' : (retryable ? 'image_generation_busy' : 'image_generation_failed');
@@ -147,10 +175,29 @@ module.exports = async (req, res) => {
     const respParts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
     const imgPart = respParts.find((p) => p.inlineData && p.inlineData.data);
     if (!imgPart) {
-      if (mahaImgCharged) await pointsLib.refundPoints(mahaImgCharged, pointsLib.COSTS.image);
+      await refundImageCharge();
       console.error('[maha-image] no image part in response: ' + JSON.stringify(data).slice(0, 2000));
       res.status(500).json({ error: 'لم يرجع الموديل صورة، حاول توصيف مختلف.' });
       return;
+    }
+
+    if (editImageBase64 && !extras.length) {
+      const guard = await verifyLocalizedImageEdit({
+        apiKey,
+        sourceBase64: editImageBase64,
+        sourceMime: editMimeType || 'image/png',
+        resultBase64: imgPart.inlineData.data,
+        resultMime: imgPart.inlineData.mimeType || 'image/png',
+        userPrompt: cleanPrompt,
+        allowStyleChange: explicitlyRequestsStyleChange(cleanPrompt),
+      });
+      if (!guard.ok) {
+        await refundImageCharge();
+        const unavailable = guard.reason === 'validation_unavailable';
+        console.error('[maha-image] rejected edited image: ' + guard.reason);
+        res.status(unavailable ? 502 : 422).json({ error: publicGuardError(guard), retryable: unavailable });
+        return;
+      }
     }
 
     res.status(200).json({
@@ -161,6 +208,7 @@ module.exports = async (req, res) => {
       prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined,
     });
   } catch (e) {
+    await refundImageCharge();
     console.error('[maha-image] proxy exception: ' + (e && e.stack ? e.stack : e));
     res.status(500).json({ error: 'image_generation_failed', retryable: true });
   }

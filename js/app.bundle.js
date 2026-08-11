@@ -1191,6 +1191,21 @@ function imgErrFriendly(err, isAr){
       ? 'تعذّر إنشاء الصورة هذه المرة. جرّب مرة أخرى.'
       : 'The image could not be generated this time. Please try again.';
   }
+  if(err === 'image_edit_style_mismatch'){
+    return isAr
+      ? 'أوقفت النتيجة لأنها غيّرت الصورة إلى أسلوب مختلف. أعد المحاولة وسيبقى الأصل كما هو.'
+      : 'I stopped the result because it changed the image style. Try again; the original remains unchanged.';
+  }
+  if(err === 'image_edit_identity_mismatch'){
+    return isAr
+      ? 'أوقفت النتيجة لأنها غيّرت هوية الشخص أو أشياء لم تطلبها. بقيت الصورة الأصلية محفوظة.'
+      : 'I stopped the result because it changed the person or unrelated details. The original remains saved.';
+  }
+  if(err === 'image_edit_validation_failed'){
+    return isAr
+      ? 'تعذّر التحقق من سلامة التعديل، لذلك لم أعرض النتيجة ولم أغيّر الأصل. جرّب بعد لحظة.'
+      : 'The edit could not be verified, so I did not show it or replace the original. Try again shortly.';
+  }
   return null;
 }
 
@@ -10138,11 +10153,19 @@ function mahaNeedsImage(text){
 // mime), so a follow-up "edit it" request can reference it. Reset per call.
 let mahaLastImageBase64 = null;
 let mahaLastImageMime = null;
+// مصدر ثابت لسلسلة التعديل، مع تعليمات تراكمية. هذا يمنع تمرير الناتج
+// المعاد توليده كأصل جديد في كل متابعة وتراكم تغيّر الهوية أو النمط.
+let mahaEditSourceBase64 = null;
+let mahaEditSourceMime = null;
+let mahaImageEditInstructions = [];
 // Call whenever the active project changes (new/switch/delete) so مها's
 // image reference never leaks from one project into another.
 function mahaClearImageRef(){
   mahaLastImageBase64 = null;
   mahaLastImageMime = null;
+  mahaEditSourceBase64 = null;
+  mahaEditSourceMime = null;
+  mahaImageEditInstructions = [];
   const mahaImgElClr = document.getElementById('mahaGenImage');
   if(mahaImgElClr){ mahaImgElClr.style.display = 'none'; mahaImgElClr.src = ''; }
 }
@@ -10191,6 +10214,9 @@ function mahaShowImage(base64, mimeType){
 function mahaShowRealPhotoUrl(url){
   mahaLastImageBase64 = null;
   mahaLastImageMime = null;
+  mahaEditSourceBase64 = null;
+  mahaEditSourceMime = null;
+  mahaImageEditInstructions = [];
   if(mahaCallMode === 'builder'){
     let cur = getCurrent();
     if(!cur){
@@ -10243,11 +10269,12 @@ async function mahaFindRealPhoto(query){
 // Calls the server-side Gemini image endpoint. If `editMode` is true and an
 // image already exists in this call, sends it along for editing instead of
 // generating a brand new one.
-async function mahaCallImageApi(promptText, useEditImage){
+async function mahaCallImageApi(promptText, useEditImage, sourceOverride){
   const body = { prompt: promptText, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() };
-  if(useEditImage && mahaLastImageBase64){
-    body.editImageBase64 = mahaLastImageBase64;
-    body.editMimeType = mahaLastImageMime;
+  const editSource = sourceOverride || (mahaEditSourceBase64 ? { b64: mahaEditSourceBase64, mime: mahaEditSourceMime } : null);
+  if(useEditImage && (editSource || mahaLastImageBase64)){
+    body.editImageBase64 = editSource ? editSource.b64 : mahaLastImageBase64;
+    body.editMimeType = (editSource && editSource.mime) || mahaLastImageMime || 'image/png';
   }
   const res = await fetch('/api/maha-image', {
     method: 'POST',
@@ -10260,34 +10287,42 @@ async function mahaCallImageApi(promptText, useEditImage){
 }
 
 let mahaLastCleanImg = null; // آخر صورة نظيفة (بدون نص) — لإعادة كتابة النص بخط/لون جديد بدون رسم جديد
+function mahaCombinedEditPrompt(value){
+  const clean = String(value || '').trim();
+  const edits = mahaImageEditInstructions.slice();
+  if(clean && edits[edits.length - 1] !== clean) edits.push(clean);
+  return { edits, prompt: edits.length <= 1 ? clean : ('طبّق جميع التعديلات التالية مجتمعة على الصورة الأصلية:\n' + edits.map((item, i) => (i + 1) + '. ' + item).join('\n') + '\nلا تغيّر أي شيء آخر.') };
+}
 async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontStyle, textColor, rewriteTextOnly){
   try{
     // تغيير الخط/اللون/النص فقط: نعيد الكتابة على آخر صورة نظيفة بدون استدعاء الرسم
     if(rewriteTextOnly && mahaLastCleanImg && textToWrite && textToWrite.trim()){
       try{
         const nb64 = await overlayTextOnImage(mahaLastCleanImg.b64, mahaLastCleanImg.mime, textToWrite.trim(), fontStyle, textColor);
+        mahaEditSourceBase64 = nb64;
+        mahaEditSourceMime = 'image/png';
+        mahaImageEditInstructions = [];
         mahaShowImage(nb64, 'image/png');
         return { ok: true };
       }catch(e){ console.warn('[maha] rewrite-only failed, doing full flow:', e); }
+    }
+    let pendingEditInstructions = null;
+    let sourceOverride = null;
+    if(editMode){
+      sourceOverride = mahaEditSourceBase64
+        ? { b64: mahaEditSourceBase64, mime: mahaEditSourceMime || 'image/png' }
+        : { b64: mahaLastImageBase64, mime: mahaLastImageMime || 'image/png' };
+      const combined = mahaCombinedEditPrompt(promptText);
+      promptText = combined.prompt;
+      pendingEditInstructions = combined.edits;
     }
     // نص عربي/أي نص مطلوب داخل الصورة: نطلب صورة بدون نص ونكتبه نحن بخط سليم
     if(textToWrite && textToWrite.trim()){
       promptText = (promptText || '') + ' (IMPORTANT: the image itself must contain NO text, NO letters, NO words at all - leave clean space near the bottom)';
     }
-    let r = await mahaCallImageApi(promptText, editMode);
-    if(!r.ok){
-      // Transient failure (rate limit/overload, common after several edits
-      // in one call) - retry once automatically before bothering the user.
-      console.warn('[maha] image attempt 1 failed:', r.error);
-      r = await mahaCallImageApi(promptText, editMode);
-    }
-    if(!r.ok && editMode){
-      // Editing the accumulated image keeps failing (likely because it grew
-      // too large/complex after several rounds) - fall back to a fresh
-      // generation from the text alone instead of dead-ending the user.
-      console.warn('[maha] edit still failing, falling back to fresh generate:', r.error);
-      r = await mahaCallImageApi(promptText, false);
-    }
+    // تعديل الصورة يفشل بأمان: لا نعيد الطلب عشوائيًا ولا نسقط الصورة الأصلية
+    // ونولّد من الوصف وحده، لأن ذلك كان يحوّل الشخص والصورة إلى شكل جديد.
+    const r = await mahaCallImageApi(promptText, editMode, sourceOverride);
     if(!r.ok) return { ok: false, error: r.error };
     let outB64 = r.imageBase64, outMime = r.mimeType;
     if(textToWrite && textToWrite.trim()){
@@ -10296,6 +10331,18 @@ async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontSt
         outB64 = await overlayTextOnImage(r.imageBase64, r.mimeType || 'image/png', textToWrite.trim(), fontStyle, textColor);
         outMime = 'image/png';
       }catch(e){ console.warn('[maha] text overlay failed, showing plain image:', e); outB64 = r.imageBase64; outMime = r.mimeType; }
+    }
+    if(!editMode){
+      mahaEditSourceBase64 = outB64;
+      mahaEditSourceMime = outMime || 'image/png';
+      mahaImageEditInstructions = [];
+    }else{
+      // لا نعتمد المصدر أو التعليمات إلا بعد أن أعاد الخادم نتيجة مقبولة.
+      if(!mahaEditSourceBase64 && sourceOverride){
+        mahaEditSourceBase64 = sourceOverride.b64;
+        mahaEditSourceMime = sourceOverride.mime || 'image/png';
+      }
+      mahaImageEditInstructions = pendingEditInstructions || [];
     }
     mahaShowImage(outB64, outMime);
     return { ok: true };
@@ -12441,6 +12488,28 @@ function deterministicSocialReply(raw){
   return 'هلا وغلا';
 }
 
+function latestOriginalUserImage(cur){
+  try{
+    const messages = (cur && cur.messages) || [];
+    for(let i = messages.length - 1; i >= 0; i--){
+      const msg = messages[i];
+      if(!msg || msg.role !== 'user' || !Array.isArray(msg.attachments)) continue;
+      for(let j = msg.attachments.length - 1; j >= 0; j--){
+        const image = msg.attachments[j];
+        if(image && image.isImage && image.dataUrl && !image._fromMemory) return image;
+      }
+    }
+  }catch(e){ __swallow(e, 'img:original-source'); }
+  return null;
+}
+function cumulativeImageEditPrompt(cur, currentText, reset){
+  const edits = reset ? [] : (Array.isArray(cur.imageEditInstructions) ? cur.imageEditInstructions.slice() : []);
+  const clean = String(currentText || '').trim();
+  if(clean && edits[edits.length - 1] !== clean) edits.push(clean);
+  const prompt = edits.length <= 1 ? clean : ('طبّق جميع التعديلات التالية مجتمعة على الصورة الأصلية:\n' + edits.map((item, i) => (i + 1) + '. ' + item).join('\n') + '\nلا تغيّر أي شيء آخر.');
+  return { prompt, edits };
+}
+
 async function sendPrompt(){
   // ✅ v301: قفل الإرسال أثناء التوليد — Enter أو أي ضغطة إضافية لا ترسل
   // الطلب مرة ثانية (كان زر الإرسال ينقفل لكن Enter يظل شغالًا فيتكرر الطلب).
@@ -12759,6 +12828,8 @@ async function sendPrompt(){
     // 🧠 v293: أي صورة مرفقة جديدة تنحفظ كآخر صورة في المحادثة
     if(__srcImg && !__srcImg._fromMemory){
       cur.lastEditedImage = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' };
+      cur.imageEditInstructions = [];
+      cur.imageEditSource = null;
       cur.adMode = null; // صورة جديدة = وضع إعلان جديد
     }
     const __followUp = !__srcImg && cur.lastEditedImage && cur.lastMsgWasImageEdit && __IMG_FOLLOW;
@@ -13105,6 +13176,7 @@ async function sendPrompt(){
       chatPhase('🖼️', lang === 'ar' ? 'جاري تعديل الصورة…' : 'Editing image…', thinkingDiv);
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : cur.lastEditedImage.b64;
       const __mime = __srcImg ? (__srcImg.mime || 'image/png') : (cur.lastEditedImage.mime || 'image/png');
+      const __isNewImageSource = !!(__srcImg && !__srcImg._fromMemory);
       // ✍️ إذا الطلب كتابة نص/اسم على الصورة → نرسمه محليًا بخط سليم (بدون Gemini)
       const __writeIntentRe = /(اكتب|أكتب|حط\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|(?:ضيف|أضف|اضف)\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|write|put\s+(?:my\s+)?name|add\s+(?:the\s+)?text)/i;
       const __textSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(text) : { wantsText:__writeIntentRe.test(text), exactText:extractOverlayText(text), fontKey:'modern', color:'#ffffff', position:'bottom' };
@@ -13135,26 +13207,35 @@ async function sendPrompt(){
           return;
         }
       }
-      let __data = {}; let __ok = false;
-      for(let __try = 0; __try < 2 && !__ok; __try++){
-        const __res = await fetch('/api/maha-image', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          signal: genAbortController.signal,
-          body: JSON.stringify({ prompt: text, editImageBase64: __b64, editMimeType: __mime, extraImages: imageAttachments.length > 1 ? imageAttachments.slice(0, -1).map(a => ({ data: (a.dataUrl || '').split(',')[1] || '', mime: a.mime || 'image/png' })) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
-        });
-        __data = await __res.json().catch(() => ({}));
-        __ok = __res.ok && !!__data.imageBase64;
-        if(!__ok && !__data) __data = {};
-        if(!__ok) __data.__status = __res.status;
-      }
+      const __continuesEditChain = !__isNewImageSource && cur.imageEditSource && cur.lastEditedImage && cur.lastEditedImage.b64 === __b64;
+      const __original = latestOriginalUserImage(cur);
+      const __pendingImageEditSource = __continuesEditChain ? cur.imageEditSource : {
+        b64: (__isNewImageSource && __original && __original.dataUrl) ? ((__original.dataUrl || '').split(',')[1] || __b64) : __b64,
+        mime: (__isNewImageSource && __original && __original.mime) || __mime,
+      };
+      const __combinedEdit = cumulativeImageEditPrompt(cur, text, !__continuesEditChain);
+      const __editB64 = __pendingImageEditSource.b64;
+      const __editMime = __pendingImageEditSource.mime;
+      const __editPrompt = __combinedEdit.prompt;
+      const __pendingImageEditInstructions = __combinedEdit.edits;
+      const __res = await fetch('/api/maha-image', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        signal: genAbortController.signal,
+        body: JSON.stringify({ prompt: __editPrompt, editImageBase64: __editB64, editMimeType: __editMime, extraImages: imageAttachments.length > 1 ? imageAttachments.slice(0, -1).map(a => ({ data: (a.dataUrl || '').split(',')[1] || '', mime: a.mime || 'image/png' })) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+      });
+      const __data = await __res.json().catch(() => ({}));
+      const __ok = __res.ok && !!__data.imageBase64;
+      if(!__ok) __data.__status = __res.status;
       if(__ok){
         const __outMime = __data.mimeType || 'image/png';
         cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'تم تعديل الصورة ✅ اضغط عليها للتكبير، وتقدر تطلب تعديلات إضافية عليها مباشرة.' : 'Image edited ✅ Tap it to enlarge — you can keep requesting more edits.'), attachments: [{ name: 'edited.png', isImage: true, mime: __outMime, dataUrl: 'data:' + __outMime + ';base64,' + __data.imageBase64 }] });
         cur.lastEditedImage = { b64: __data.imageBase64, mime: __outMime };
+        cur.imageEditSource = __pendingImageEditSource;
+        cur.imageEditInstructions = __pendingImageEditInstructions;
         cur.lastMsgWasImageEdit = true;
       } else {
         cur.messages.push({ role: 'assistant', content: imgErrFriendly(__data && __data.error, lang === 'ar') || ((lang === 'ar' ? '⚠️ تعذر تعديل الصورة: ' : '⚠️ Image edit failed: ') + ((__data && __data.error) || ('HTTP ' + (__data.__status || '?')))) });
-        cur.lastMsgWasImageEdit = false;
+        cur.lastMsgWasImageEdit = true;
       }
       renderAll(); saveState();
       return;

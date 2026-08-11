@@ -749,11 +749,19 @@ function mahaNeedsImage(text){
 // mime), so a follow-up "edit it" request can reference it. Reset per call.
 let mahaLastImageBase64 = null;
 let mahaLastImageMime = null;
+// مصدر ثابت لسلسلة التعديل، مع تعليمات تراكمية. هذا يمنع تمرير الناتج
+// المعاد توليده كأصل جديد في كل متابعة وتراكم تغيّر الهوية أو النمط.
+let mahaEditSourceBase64 = null;
+let mahaEditSourceMime = null;
+let mahaImageEditInstructions = [];
 // Call whenever the active project changes (new/switch/delete) so مها's
 // image reference never leaks from one project into another.
 function mahaClearImageRef(){
   mahaLastImageBase64 = null;
   mahaLastImageMime = null;
+  mahaEditSourceBase64 = null;
+  mahaEditSourceMime = null;
+  mahaImageEditInstructions = [];
   const mahaImgElClr = document.getElementById('mahaGenImage');
   if(mahaImgElClr){ mahaImgElClr.style.display = 'none'; mahaImgElClr.src = ''; }
 }
@@ -802,6 +810,9 @@ function mahaShowImage(base64, mimeType){
 function mahaShowRealPhotoUrl(url){
   mahaLastImageBase64 = null;
   mahaLastImageMime = null;
+  mahaEditSourceBase64 = null;
+  mahaEditSourceMime = null;
+  mahaImageEditInstructions = [];
   if(mahaCallMode === 'builder'){
     let cur = getCurrent();
     if(!cur){
@@ -854,11 +865,12 @@ async function mahaFindRealPhoto(query){
 // Calls the server-side Gemini image endpoint. If `editMode` is true and an
 // image already exists in this call, sends it along for editing instead of
 // generating a brand new one.
-async function mahaCallImageApi(promptText, useEditImage){
+async function mahaCallImageApi(promptText, useEditImage, sourceOverride){
   const body = { prompt: promptText, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() };
-  if(useEditImage && mahaLastImageBase64){
-    body.editImageBase64 = mahaLastImageBase64;
-    body.editMimeType = mahaLastImageMime;
+  const editSource = sourceOverride || (mahaEditSourceBase64 ? { b64: mahaEditSourceBase64, mime: mahaEditSourceMime } : null);
+  if(useEditImage && (editSource || mahaLastImageBase64)){
+    body.editImageBase64 = editSource ? editSource.b64 : mahaLastImageBase64;
+    body.editMimeType = (editSource && editSource.mime) || mahaLastImageMime || 'image/png';
   }
   const res = await fetch('/api/maha-image', {
     method: 'POST',
@@ -871,34 +883,42 @@ async function mahaCallImageApi(promptText, useEditImage){
 }
 
 let mahaLastCleanImg = null; // آخر صورة نظيفة (بدون نص) — لإعادة كتابة النص بخط/لون جديد بدون رسم جديد
+function mahaCombinedEditPrompt(value){
+  const clean = String(value || '').trim();
+  const edits = mahaImageEditInstructions.slice();
+  if(clean && edits[edits.length - 1] !== clean) edits.push(clean);
+  return { edits, prompt: edits.length <= 1 ? clean : ('طبّق جميع التعديلات التالية مجتمعة على الصورة الأصلية:\n' + edits.map((item, i) => (i + 1) + '. ' + item).join('\n') + '\nلا تغيّر أي شيء آخر.') };
+}
 async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontStyle, textColor, rewriteTextOnly){
   try{
     // تغيير الخط/اللون/النص فقط: نعيد الكتابة على آخر صورة نظيفة بدون استدعاء الرسم
     if(rewriteTextOnly && mahaLastCleanImg && textToWrite && textToWrite.trim()){
       try{
         const nb64 = await overlayTextOnImage(mahaLastCleanImg.b64, mahaLastCleanImg.mime, textToWrite.trim(), fontStyle, textColor);
+        mahaEditSourceBase64 = nb64;
+        mahaEditSourceMime = 'image/png';
+        mahaImageEditInstructions = [];
         mahaShowImage(nb64, 'image/png');
         return { ok: true };
       }catch(e){ console.warn('[maha] rewrite-only failed, doing full flow:', e); }
+    }
+    let pendingEditInstructions = null;
+    let sourceOverride = null;
+    if(editMode){
+      sourceOverride = mahaEditSourceBase64
+        ? { b64: mahaEditSourceBase64, mime: mahaEditSourceMime || 'image/png' }
+        : { b64: mahaLastImageBase64, mime: mahaLastImageMime || 'image/png' };
+      const combined = mahaCombinedEditPrompt(promptText);
+      promptText = combined.prompt;
+      pendingEditInstructions = combined.edits;
     }
     // نص عربي/أي نص مطلوب داخل الصورة: نطلب صورة بدون نص ونكتبه نحن بخط سليم
     if(textToWrite && textToWrite.trim()){
       promptText = (promptText || '') + ' (IMPORTANT: the image itself must contain NO text, NO letters, NO words at all - leave clean space near the bottom)';
     }
-    let r = await mahaCallImageApi(promptText, editMode);
-    if(!r.ok){
-      // Transient failure (rate limit/overload, common after several edits
-      // in one call) - retry once automatically before bothering the user.
-      console.warn('[maha] image attempt 1 failed:', r.error);
-      r = await mahaCallImageApi(promptText, editMode);
-    }
-    if(!r.ok && editMode){
-      // Editing the accumulated image keeps failing (likely because it grew
-      // too large/complex after several rounds) - fall back to a fresh
-      // generation from the text alone instead of dead-ending the user.
-      console.warn('[maha] edit still failing, falling back to fresh generate:', r.error);
-      r = await mahaCallImageApi(promptText, false);
-    }
+    // تعديل الصورة يفشل بأمان: لا نعيد الطلب عشوائيًا ولا نسقط الصورة الأصلية
+    // ونولّد من الوصف وحده، لأن ذلك كان يحوّل الشخص والصورة إلى شكل جديد.
+    const r = await mahaCallImageApi(promptText, editMode, sourceOverride);
     if(!r.ok) return { ok: false, error: r.error };
     let outB64 = r.imageBase64, outMime = r.mimeType;
     if(textToWrite && textToWrite.trim()){
@@ -907,6 +927,18 @@ async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontSt
         outB64 = await overlayTextOnImage(r.imageBase64, r.mimeType || 'image/png', textToWrite.trim(), fontStyle, textColor);
         outMime = 'image/png';
       }catch(e){ console.warn('[maha] text overlay failed, showing plain image:', e); outB64 = r.imageBase64; outMime = r.mimeType; }
+    }
+    if(!editMode){
+      mahaEditSourceBase64 = outB64;
+      mahaEditSourceMime = outMime || 'image/png';
+      mahaImageEditInstructions = [];
+    }else{
+      // لا نعتمد المصدر أو التعليمات إلا بعد أن أعاد الخادم نتيجة مقبولة.
+      if(!mahaEditSourceBase64 && sourceOverride){
+        mahaEditSourceBase64 = sourceOverride.b64;
+        mahaEditSourceMime = sourceOverride.mime || 'image/png';
+      }
+      mahaImageEditInstructions = pendingEditInstructions || [];
     }
     mahaShowImage(outB64, outMime);
     return { ok: true };

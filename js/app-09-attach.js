@@ -1078,6 +1078,28 @@ function deterministicSocialReply(raw){
   return 'هلا وغلا';
 }
 
+function latestOriginalUserImage(cur){
+  try{
+    const messages = (cur && cur.messages) || [];
+    for(let i = messages.length - 1; i >= 0; i--){
+      const msg = messages[i];
+      if(!msg || msg.role !== 'user' || !Array.isArray(msg.attachments)) continue;
+      for(let j = msg.attachments.length - 1; j >= 0; j--){
+        const image = msg.attachments[j];
+        if(image && image.isImage && image.dataUrl && !image._fromMemory) return image;
+      }
+    }
+  }catch(e){ __swallow(e, 'img:original-source'); }
+  return null;
+}
+function cumulativeImageEditPrompt(cur, currentText, reset){
+  const edits = reset ? [] : (Array.isArray(cur.imageEditInstructions) ? cur.imageEditInstructions.slice() : []);
+  const clean = String(currentText || '').trim();
+  if(clean && edits[edits.length - 1] !== clean) edits.push(clean);
+  const prompt = edits.length <= 1 ? clean : ('طبّق جميع التعديلات التالية مجتمعة على الصورة الأصلية:\n' + edits.map((item, i) => (i + 1) + '. ' + item).join('\n') + '\nلا تغيّر أي شيء آخر.');
+  return { prompt, edits };
+}
+
 async function sendPrompt(){
   // ✅ v301: قفل الإرسال أثناء التوليد — Enter أو أي ضغطة إضافية لا ترسل
   // الطلب مرة ثانية (كان زر الإرسال ينقفل لكن Enter يظل شغالًا فيتكرر الطلب).
@@ -1396,6 +1418,8 @@ async function sendPrompt(){
     // 🧠 v293: أي صورة مرفقة جديدة تنحفظ كآخر صورة في المحادثة
     if(__srcImg && !__srcImg._fromMemory){
       cur.lastEditedImage = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' };
+      cur.imageEditInstructions = [];
+      cur.imageEditSource = null;
       cur.adMode = null; // صورة جديدة = وضع إعلان جديد
     }
     const __followUp = !__srcImg && cur.lastEditedImage && cur.lastMsgWasImageEdit && __IMG_FOLLOW;
@@ -1742,6 +1766,7 @@ async function sendPrompt(){
       chatPhase('🖼️', lang === 'ar' ? 'جاري تعديل الصورة…' : 'Editing image…', thinkingDiv);
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : cur.lastEditedImage.b64;
       const __mime = __srcImg ? (__srcImg.mime || 'image/png') : (cur.lastEditedImage.mime || 'image/png');
+      const __isNewImageSource = !!(__srcImg && !__srcImg._fromMemory);
       // ✍️ إذا الطلب كتابة نص/اسم على الصورة → نرسمه محليًا بخط سليم (بدون Gemini)
       const __writeIntentRe = /(اكتب|أكتب|حط\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|(?:ضيف|أضف|اضف)\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|write|put\s+(?:my\s+)?name|add\s+(?:the\s+)?text)/i;
       const __textSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(text) : { wantsText:__writeIntentRe.test(text), exactText:extractOverlayText(text), fontKey:'modern', color:'#ffffff', position:'bottom' };
@@ -1772,26 +1797,35 @@ async function sendPrompt(){
           return;
         }
       }
-      let __data = {}; let __ok = false;
-      for(let __try = 0; __try < 2 && !__ok; __try++){
-        const __res = await fetch('/api/maha-image', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          signal: genAbortController.signal,
-          body: JSON.stringify({ prompt: text, editImageBase64: __b64, editMimeType: __mime, extraImages: imageAttachments.length > 1 ? imageAttachments.slice(0, -1).map(a => ({ data: (a.dataUrl || '').split(',')[1] || '', mime: a.mime || 'image/png' })) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
-        });
-        __data = await __res.json().catch(() => ({}));
-        __ok = __res.ok && !!__data.imageBase64;
-        if(!__ok && !__data) __data = {};
-        if(!__ok) __data.__status = __res.status;
-      }
+      const __continuesEditChain = !__isNewImageSource && cur.imageEditSource && cur.lastEditedImage && cur.lastEditedImage.b64 === __b64;
+      const __original = latestOriginalUserImage(cur);
+      const __pendingImageEditSource = __continuesEditChain ? cur.imageEditSource : {
+        b64: (__isNewImageSource && __original && __original.dataUrl) ? ((__original.dataUrl || '').split(',')[1] || __b64) : __b64,
+        mime: (__isNewImageSource && __original && __original.mime) || __mime,
+      };
+      const __combinedEdit = cumulativeImageEditPrompt(cur, text, !__continuesEditChain);
+      const __editB64 = __pendingImageEditSource.b64;
+      const __editMime = __pendingImageEditSource.mime;
+      const __editPrompt = __combinedEdit.prompt;
+      const __pendingImageEditInstructions = __combinedEdit.edits;
+      const __res = await fetch('/api/maha-image', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        signal: genAbortController.signal,
+        body: JSON.stringify({ prompt: __editPrompt, editImageBase64: __editB64, editMimeType: __editMime, extraImages: imageAttachments.length > 1 ? imageAttachments.slice(0, -1).map(a => ({ data: (a.dataUrl || '').split(',')[1] || '', mime: a.mime || 'image/png' })) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+      });
+      const __data = await __res.json().catch(() => ({}));
+      const __ok = __res.ok && !!__data.imageBase64;
+      if(!__ok) __data.__status = __res.status;
       if(__ok){
         const __outMime = __data.mimeType || 'image/png';
         cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'تم تعديل الصورة ✅ اضغط عليها للتكبير، وتقدر تطلب تعديلات إضافية عليها مباشرة.' : 'Image edited ✅ Tap it to enlarge — you can keep requesting more edits.'), attachments: [{ name: 'edited.png', isImage: true, mime: __outMime, dataUrl: 'data:' + __outMime + ';base64,' + __data.imageBase64 }] });
         cur.lastEditedImage = { b64: __data.imageBase64, mime: __outMime };
+        cur.imageEditSource = __pendingImageEditSource;
+        cur.imageEditInstructions = __pendingImageEditInstructions;
         cur.lastMsgWasImageEdit = true;
       } else {
         cur.messages.push({ role: 'assistant', content: imgErrFriendly(__data && __data.error, lang === 'ar') || ((lang === 'ar' ? '⚠️ تعذر تعديل الصورة: ' : '⚠️ Image edit failed: ') + ((__data && __data.error) || ('HTTP ' + (__data.__status || '?')))) });
-        cur.lastMsgWasImageEdit = false;
+        cur.lastMsgWasImageEdit = true;
       }
       renderAll(); saveState();
       return;

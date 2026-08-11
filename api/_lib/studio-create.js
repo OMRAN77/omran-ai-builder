@@ -13,6 +13,7 @@
 // Returns a base64 PNG/JPEG the client can preview and download.
 const { checkStudioQuota, consumeStudio, STUDIO_DAILY_LIMIT } = require('./_studioUsage');
 const { sourceStylePreservationRule } = require('./image-prompt');
+const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 
 const STYLE_TEXT = {
   hair: {
@@ -110,7 +111,8 @@ module.exports = async (req, res) => {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      res.status(500).json({ error: 'Server is missing GEMINI_API_KEY' });
+      console.error('[studio-create] image provider is not configured');
+      res.status(503).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
       return;
     }
 
@@ -198,7 +200,8 @@ module.exports = async (req, res) => {
 
     const data = await upstream.json();
     if (!upstream.ok) {
-      res.status(upstream.status).json({ error: (data && data.error && data.error.message) || 'Upstream error' });
+      console.error('[studio-create] upstream failed status=' + upstream.status + ' detail=' + ((data && data.error && data.error.message) || 'unknown'));
+      res.status(502).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
       return;
     }
 
@@ -209,6 +212,23 @@ module.exports = async (req, res) => {
       return;
     }
 
+    if (feature !== 'merge') {
+      const guard = await verifyLocalizedImageEdit({
+        apiKey,
+        sourceBase64: imageBase64,
+        sourceMime: mimeType || 'image/jpeg',
+        resultBase64: imgPart.inlineData.data,
+        resultMime: imgPart.inlineData.mimeType || 'image/png',
+        userPrompt: [feature, style, description].filter(Boolean).join(' '),
+        allowStyleChange: feature === 'anime',
+      });
+      if (!guard.ok) {
+        const unavailable = guard.reason === 'validation_unavailable';
+        res.status(unavailable ? 502 : 422).json({ error: publicGuardError(guard), retryable: unavailable });
+        return;
+      }
+    }
+
     const remaining = await consumeStudio(quota.username);
     res.status(200).json({
       imageBase64: imgPart.inlineData.data,
@@ -217,6 +237,7 @@ module.exports = async (req, res) => {
       dailyLimit: STUDIO_DAILY_LIMIT,
     });
   } catch (e) {
-    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+    console.error('[studio-create] exception: ' + (e && e.stack ? e.stack : e));
+    res.status(500).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
   }
 };

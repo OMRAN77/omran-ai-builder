@@ -47,12 +47,22 @@ function sourceStylePreservationRule(){
   return 'Preserve the source image medium and visual style exactly. A real photograph must remain a real photorealistic photograph. Never convert it to anime, cartoon, illustration, painting, 3D render or any other stylized medium unless the USER REQUEST explicitly asks for that exact transformation.';
 }
 
+function explicitlyRequestsStyleChange(value){
+  const text = cleanImagePrompt(value).toLowerCase().replace(/أ|إ|آ/g, 'ا');
+  const style = '(?:انمي|anime|كرتون(?:ي(?:ة)?)?|كارتون(?:ي(?:ة)?)?|cartoon(?:ish)?|illustration|رسم(?:ة|ي|ية)?|لوحة|painting|sketch|pixel art|بيكسار|pixar|ghibli|جيبلي|3d render)';
+  const denied = new RegExp('(?:لا|لات|مو|مب|مش|بدون|من دون|ممنوع|لا اريد|ما\\s+(?:ابي|ابغى|ابغي|اريد)|do not|don.t|without|no)[^\\n,.،؛]{0,36}' + style, 'i');
+  if(denied.test(text)) return false;
+  const affirmative = new RegExp('(?:حول|حوّل|غيّر|غير(?:ها|ه|الصورة|الصوره)|اجعل|خلي|خل|صير|صيّر|ارسم|سوي|سوّي|اعط|أعط|ابي|ابغى|ابغي|اريد|ودي|نسخة|ستايل|نمط|طابع|transform|convert|change|restyle|make|turn|redraw|render|give|apply|want|would like|version|style|look)[^\\n,.،؛]{0,40}' + style, 'i');
+  const styleFirst = new RegExp('^\\s*' + style + '(?:\\s+(?:version|style|look|نسخة|ستايل|نمط))?\\s*[.!؟]*$', 'i');
+  return affirmative.test(text) || styleFirst.test(text);
+}
+
 function buildEditPrompt(userPrompt){
   const prompt = cleanImagePrompt(userPrompt);
   return [
     'TASK: "' + prompt + '"',
     '',
-    'This is a LOCALIZED EDIT of the attached image, not a re-creation. Rules:',
+    'This is a LOCALIZED EDIT of the attached ORIGINAL SOURCE image, not a re-creation. Apply the complete current task directly to this source; do not continue any style or appearance invented by a previous generated result. Rules:',
     '1. Change ONLY what the USER REQUEST explicitly asks. Everything else (faces, skin tone, facial features, clothing, colors, lighting, textures, proportions and composition) must be carried over from the original image pixel-accurately, as if untouched.',
     '2. Do NOT re-draw, re-light, re-color, smooth, beautify or stylize any region the USER REQUEST did not mention. Every person must remain identical and recognizable.',
     '3. ' + sourceStylePreservationRule(),
@@ -64,4 +74,4 @@ function buildEditPrompt(userPrompt){
   ].join('\n');
 }
 
-module.exports = { cleanImagePrompt, buildGenerationPrompt, buildEditPrompt, sourceStylePreservationRule, subjectDirection };
+module.exports = { cleanImagePrompt, buildGenerationPrompt, buildEditPrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };

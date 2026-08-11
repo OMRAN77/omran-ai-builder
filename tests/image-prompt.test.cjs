@@ -2,7 +2,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { buildGenerationPrompt, buildEditPrompt, sourceStylePreservationRule } = require('../api/_lib/image-prompt');
+const { buildGenerationPrompt, buildEditPrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange } = require('../api/_lib/image-prompt');
+const { assessEditVerdict, publicGuardError } = require('../api/_lib/image-edit-guard');
 
 test('generation prompt follows the subject instead of forcing one camera style', () => {
   const p = buildGenerationPrompt('شمس مرسومة بأسلوب مائي فوق الجبال');
@@ -55,10 +56,73 @@ test('all image-edit entry points apply style preservation except explicit anime
   const maha = fs.readFileSync('api/_lib/maha-image.js', 'utf8');
   const portrait = fs.readFileSync('api/_lib/portrait-style.js', 'utf8');
   const studio = fs.readFileSync('api/_lib/studio-create.js', 'utf8');
+  const fashion = fs.readFileSync('api/_lib/fashion-create.js', 'utf8');
   assert.match(maha, /buildEditPrompt\(cleanPrompt\)/);
   assert.match(portrait, /\['hairstyle',[\s\S]*?'outfit'[\s\S]*?\]\.includes\(style\)/);
   assert.match(portrait, /temperature: isLocalizedEdit \? 0\.15 : 0\.65/);
   assert.match(studio, /if \(feature !== 'anime'\) promptText \+=/);
   assert.match(studio, /temperature: feature === 'anime' \? 0\.65 : 0\.15/);
   assert.match(sourceStylePreservationRule(), /unless the USER REQUEST explicitly asks/);
+  assert.match(maha, /verifyLocalizedImageEdit/);
+  assert.match(portrait, /if \(!isMultiSourceComposition\)/);
+  assert.match(portrait, /allowStyleChange: !!STYLE_PROMPTS\[style\]/);
+  assert.match(portrait, /const frameGuard = await verifyLocalizedImageEdit/);
+  assert.match(studio, /if \(feature !== 'merge'\)/);
+  assert.match(studio, /allowStyleChange: feature === 'anime'/);
+  assert.match(fashion, /verifyLocalizedImageEdit/);
+  assert.match(fashion, /sourceStylePreservationRule/);
+});
+
+test('style-change intent distinguishes an explicit request from a prohibition', () => {
+  assert.equal(explicitlyRequestsStyleChange('حوّل الصورة إلى أنمي ياباني'), true);
+  assert.equal(explicitlyRequestsStyleChange('أريدها رسمة كرتونية'), true);
+  assert.equal(explicitlyRequestsStyleChange('I want an anime version'), true);
+  assert.equal(explicitlyRequestsStyleChange('Give it a cartoon style'), true);
+  assert.equal(explicitlyRequestsStyleChange('أعطها طابع كرتوني'), true);
+  assert.equal(explicitlyRequestsStyleChange('غيّرها إلى أنمي'), true);
+  assert.equal(explicitlyRequestsStyleChange('change it to anime'), true);
+  assert.equal(explicitlyRequestsStyleChange('انمي'), true);
+  assert.equal(explicitlyRequestsStyleChange('خل الملابس سوداء بس مو كرتون'), false);
+  assert.equal(explicitlyRequestsStyleChange('غيّر الملابس ولا تحولها أنمي'), false);
+  assert.equal(explicitlyRequestsStyleChange('لا أريدها رسمة كرتونية'), false);
+  assert.equal(explicitlyRequestsStyleChange('حافظ عليها واقعية without a cartoon look'), false);
+});
+
+test('localized edit quality gate rejects anime drift and identity changes', () => {
+  assert.deepEqual(assessEditVerdict({ sourceIsPhotograph:true, resultIsPhotograph:false, sameVisualMedium:false, identityPreserved:true, onlyRequestedChange:true }), { ok:false, reason:'style_mismatch' });
+  assert.deepEqual(assessEditVerdict({ sourceIsPhotograph:true, resultIsPhotograph:true, sameVisualMedium:true, identityPreserved:false, onlyRequestedChange:true }), { ok:false, reason:'identity_or_scope_mismatch' });
+  assert.deepEqual(assessEditVerdict({ sourceIsPhotograph:true, resultIsPhotograph:true, sameVisualMedium:true, identityPreserved:true, onlyRequestedChange:true }), { ok:true, reason:'accepted' });
+  assert.deepEqual(assessEditVerdict({ sourceIsPhotograph:true, resultIsPhotograph:false, sameVisualMedium:false, identityPreserved:true, onlyRequestedChange:true }, { allowStyleChange:true }), { ok:true, reason:'accepted_explicit_style_change' });
+  assert.deepEqual(assessEditVerdict({ sourceIsPhotograph:true, resultIsPhotograph:false, sameVisualMedium:false, identityPreserved:false, onlyRequestedChange:true }, { allowStyleChange:true }), { ok:false, reason:'identity_or_scope_mismatch' });
+  assert.equal(publicGuardError({ reason:'style_mismatch' }), 'image_edit_style_mismatch');
+});
+
+test('chat edit flow anchors repeated edits to the original and never auto-recreates from text', () => {
+  const attach = fs.readFileSync('js/app-09-attach.js', 'utf8');
+  const maha = fs.readFileSync('js/app-08-maha.js', 'utf8');
+  assert.match(attach, /latestOriginalUserImage\(cur\)/);
+  assert.match(attach, /cumulativeImageEditPrompt\(cur, text/);
+  assert.match(attach, /cur\.imageEditSource = __pendingImageEditSource/);
+  assert.match(attach, /cur\.imageEditInstructions = __pendingImageEditInstructions/);
+  assert.doesNotMatch(attach, /imageEditStylized/);
+  assert.doesNotMatch(attach, /imageEditInstructions\.slice\(-/);
+  const mahaApi = fs.readFileSync('api/_lib/maha-image.js', 'utf8');
+  assert.match(maha, /mahaEditSourceBase64/);
+  assert.match(maha, /mahaCombinedEditPrompt\(promptText\)/);
+  assert.doesNotMatch(maha, /mahaImageEditInstructions\.slice\(-/);
+  assert.doesNotMatch(maha, /requestedStyleChange/);
+  assert.match(mahaApi, /guestImageCharge = \{ counterKey \}/);
+  assert.match(mahaApi, /await kvDecrBy\(charge\.counterKey, 1\)/);
+  assert.match(mahaApi, /await refundImageCharge\(\)/);
+  assert.doesNotMatch(maha, /mahaCallImageApi\(promptText, false\)/);
+});
+
+test('specialized image routes do not expose provider errors to the user', () => {
+  for (const file of ['api/_lib/portrait-style.js', 'api/_lib/studio-create.js', 'api/_lib/fashion-create.js']) {
+    const source = fs.readFileSync(file, 'utf8');
+    assert.doesNotMatch(source, /json\(\{ error: 'Proxy error: '/);
+    assert.doesNotMatch(source, /json\(\{ error: \(data && data\.error && data\.error\.message\)/);
+    assert.doesNotMatch(source, /json\(\{ error: 'Server is missing GEMINI_API_KEY'/);
+    assert.doesNotMatch(source, /json\(\{ error: \(frameData && frameData\.error/);
+  }
 });
