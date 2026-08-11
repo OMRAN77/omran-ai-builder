@@ -115,6 +115,26 @@ const WIZARD_NOTE = '\n\n[بطاقات الخيارات — استعملها ك�
   'ممنوع دمج خطوتين في ردّ واحد. وممنوع اختراع اسم أو رقم أو موقع من عندك — اسأل.\n' +
   'نفس الأسلوب (خطوة خطوة ببطاقات) لأي طلب مشابه: متجر، عيادة، صالون، ألعاب، بروفايل شركة.\n';
 
+// 🚦 v557 — سقف الأسئلة: سؤالان ثمّ نتائج. المستخدم يتعب من الاستجواب، والردّ
+// الذي يأتي بعد سبعة أسئلة بلا رابط واحد هو أسوأ من ردّ تقريبيّ فيه روابط.
+// نعدّ أسئلة المساعد المتتالية الأخيرة فقط؛ أي ردّ فيه نتائج يصفّر العدّاد.
+const ASK_CAP_NOTE = '\n\n[سقف الأسئلة — إلزاميّ في هذا الردّ]:\n' +
+  'سألتَ المستخدم سؤالين متتاليين. ممنوع منعًا باتًّا أن تسأله سؤالًا ثالثًا أو تعرض بطاقات خيارات الآن.\n' +
+  'استعمل web_search فورًا بما جمعتَه، وأعطِ نتائج وروابط حقيقية في هذا الردّ.\n' +
+  'أي تفصيل ناقص افترض فيه الأوسع (كلّ المناطق، كلّ الأنواع، كلّ الميزانيات) ولا تسأل عنه.\n' +
+  'ممنوع ردّ بلا روابط: إن لم تجد إعلانًا بعينه، أعطِ روابط بحث جاهزة داخل المنصّات المناسبة بالفلاتر التي ذكرها، ولا تعتذر عن عدم الدقّة.\n' +
+  'اختم بسطر واحد قصير: يقدر يضيّق البحث لو حاب.';
+// بطاقات الخيارات أو ردّ قصير منتهٍ بعلامة استفهام = سؤال. الردّ الطويل نتائج.
+const isAskTurn = (t) => { const x = String(t || '').trim();
+  return x.includes('[[OPT]]') || (x.length < 600 && /[?؟]\s*$/.test(x)); };
+const askStreak = (msgs) => { let n = 0;
+  for (let i = msgs.length - 1; i >= 0; i--) { const m = msgs[i];
+    if (!m || m.role !== 'assistant' || typeof m.content !== 'string') continue;
+    if (!isAskTurn(m.content)) break; n++; }
+  return n; };
+// معالج الكتالوج ستّ خطوات بأمر صريح — السقف لا يمسّه.
+const WIZARD_RE = /كتالوج|كتالوق|منيو|قائمة طعام|قائمة الطعام|بروفايل شرك/;
+
 // 🛠️ v528 — اليدان للجميع: نفس الحلقة ونفس الأدوات الخمس، ولا يتغيّر إلّا اسم
 // النموذج. البروتوكول (أحداث البثّ · tool_use · stop_reason) مُتحقَّق حيًّا على كلّ
 // نموذج أدناه في ٩ أغسطس ٢٠٢٦. cohere وperplexity غائبان عمدًا: لا يدعمان
@@ -271,6 +291,8 @@ module.exports = async (req, res) => {
   const pureGreetingTurn = isPureGreeting(lastUser && lastUser.content);
   const casualCheckInTurn = isCasualCheckIn(lastUser && lastUser.content);
   const quietSocialTurn = pureGreetingTurn || casualCheckInTurn;
+  const wizardTurn = messages.some((m) => m && typeof m.content === 'string' && WIZARD_RE.test(m.content));
+  const askCapNote = (!wizardTurn && askStreak(messages) >= 2) ? ASK_CAP_NOTE : '';
   const socialReply = deterministicSocialReply(lastUser && lastUser.content);
   if (socialReply) {
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
@@ -297,7 +319,7 @@ module.exports = async (req, res) => {
   // السياقات في «كيف الحال» هو ما حوّلها إلى قائمة فنادق ومواضيع قديمة.
   const system = quietSocialTurn
     ? sysParts.join('\n\n') + (casualCheckInTurn ? '\n\n[هذا دور اجتماعي قصير]: أجب عن سؤال الحال مباشرةً في جملة طبيعية واحدة. المحادثة مستمرة، فلا تبدأ بتحية جديدة، ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق.' : '')
-    : sysParts.join('\n\n') + nowNote() + countryNote(country) + TOOLS_NOTE + WIZARD_NOTE
+    : sysParts.join('\n\n') + nowNote() + countryNote(country) + TOOLS_NOTE + WIZARD_NOTE + askCapNote
       + require('./_knowledge.js').ownerKnowledge(req, token); // معرفة عمران — للمالك وحده
 
   const convoSource = quietSocialTurn ? [lastUser] : messages;
