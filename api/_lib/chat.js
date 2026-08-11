@@ -133,6 +133,12 @@ const askStreak = (msgs) => { let n = 0;
     if (!isAskTurn(m.content)) break; n++; }
   return n; };
 // معالج الكتالوج ستّ خطوات بأمر صريح — السقف لا يمسّه.
+// 🔢 v558 — أرقام ولوحات للبيع: الموقعان المتخصّصان فورًا، بلا أيّ سؤال.
+const NUM_ASK_RE = /لوح(ة|ات|تين)\s*(سيار|مركب|مرور|مميز|رقم|للبيع)|[أا]رقام\s*(هواتف|هاتف|جوالات|جوال|موبايل|شرائح|شريحة|للبيع|مميز)|رقم\s*(هاتف|جوال|موبايل)?\s*(مميز|vip)|بليت|بلايت|number plate|license plate|plate for sale/i;
+const NUM_NOTE = '\n\n[طلب أرقام أو لوحات — إلزاميّ في هذا الردّ]:\n' +
+  'المستخدم يطلب لوحة سيارة أو رقمًا مميّزًا للبيع. ممنوع أن تسأله أي سؤال، وممنوع بطاقات الخيارات.\n' +
+  'استعمل web_search فورًا وأعطِ في هذا الردّ نفسه نتائج وروابط حقيقية من موقعَي الأرقام المتخصّصين.\n' +
+  'أي تفصيل ناقص (الإمارة، الميزانية، عدد الخانات، نوع الرقم) افترض فيه الأوسع ولا تسأل عنه.';
 const WIZARD_RE = /كتالوج|كتالوق|منيو|قائمة طعام|قائمة الطعام|بروفايل شرك/;
 
 // 🛠️ v528 — اليدان للجميع: نفس الحلقة ونفس الأدوات الخمس، ولا يتغيّر إلّا اسم
@@ -292,7 +298,7 @@ module.exports = async (req, res) => {
   const casualCheckInTurn = isCasualCheckIn(lastUser && lastUser.content);
   const quietSocialTurn = pureGreetingTurn || casualCheckInTurn;
   const wizardTurn = messages.some((m) => m && typeof m.content === 'string' && WIZARD_RE.test(m.content));
-  const askCapNote = (!wizardTurn && askStreak(messages) >= 2) ? ASK_CAP_NOTE : '';
+  const askCapNote = ((lastUser && NUM_ASK_RE.test(lastUser.content)) ? NUM_NOTE : '') + ((!wizardTurn && askStreak(messages) >= 2) ? ASK_CAP_NOTE : '');
   const socialReply = deterministicSocialReply(lastUser && lastUser.content);
   if (socialReply) {
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
