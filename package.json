@@ -14,7 +14,7 @@
     "verify": "node scripts/verify-bundle.mjs",
     "check": "for f in js/app-*.js sw.js api/*.js api/_lib/*.js; do node --check \"$f\" || exit 1; done",
     "guard": "node scripts/guard.mjs",
-    "test": "node tests/owner-gate.test.cjs && node tests/memory-profile.test.cjs && node tests/chat-style.test.cjs && node tests/removed-search-source.test.cjs && node tests/image-prompt.test.cjs && node tests/prayer-plan.test.cjs && node tests/image-text.test.cjs && node tests/image-fetch.test.cjs && node tests/construction-timeout.test.cjs",
+    "test": "node tests/owner-gate.test.cjs && node tests/memory-profile.test.cjs && node tests/chat-style.test.cjs && node tests/removed-search-source.test.cjs && node tests/image-prompt.test.cjs && node tests/prayer-plan.test.cjs && node tests/image-text.test.cjs && node tests/image-fetch.test.cjs && node tests/construction-timeout.test.cjs && node tests/floorplan-provider.test.cjs",
     "ci": "npm run check && npm run guard && npm run verify && npm test",
     "smoke": "node scripts/smoke.mjs"
   }

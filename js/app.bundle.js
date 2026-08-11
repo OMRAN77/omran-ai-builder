@@ -19722,11 +19722,11 @@ window.updateVersionLabel();
         if (res.ok && data.imageBase64) {
           reply({ ok: true, dataUrl: 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64 });
         } else {
-          reply({ ok: false, error: (data && data.error) || ('HTTP ' + res.status) });
+          reply({ ok: false, error: 'تعذر توليد الصورة الآن. حاول مرة أخرى بعد قليل.' });
         }
       });
-    }).catch(function (err) {
-      reply({ ok: false, error: String((err && err.message) || err) });
+    }).catch(function () {
+      reply({ ok: false, error: 'تعذر توليد الصورة الآن. حاول مرة أخرى بعد قليل.' });
     });
   });
 
@@ -19764,27 +19764,39 @@ window.updateVersionLabel();
     ].filter(Boolean).join('\n');
   }
 
+  function requestPlanSpec(desc) {
+    return fetch('/api/gemini', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gemini-flash-latest',
+        systemInstruction: { parts: [{ text: FP.PROMPT }] },
+        contents: [{ role: 'user', parts: [{ text: desc }] }],
+        token: authGet('aiapp_auth_token'),
+        guestId: window.getGuestId(),
+        stream: false,
+        mode: 'factory',
+      }),
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (data) {
+        if (!res.ok) throw new Error('plan_provider_failed');
+        var candidates = data && data.candidates;
+        var parts = candidates && candidates[0] && candidates[0].content && candidates[0].content.parts;
+        var text = Array.isArray(parts) ? parts.map(function (p) { return (p && p.text) || ''; }).join('') : '';
+        var spec = FP.extractSpec(text);
+        if (!spec) throw new Error('invalid_plan_spec');
+        return spec;
+      });
+    });
+  }
+
   btn.addEventListener('click', function () {
     var label = btn.textContent;
     btn.disabled = true;
     btn.textContent = '⏳ يجهّز المخطط…';
     statusMsg('📐 المهندس الذكي يوزّع الغرف والمقاسات…');
 
-    var desc = buildDescription();
-    claudeProxyRequest(
-      'claude-sonnet-4-20250514',
-      { content: FP.PROMPT },
-      [{ role: 'user', content: desc }],
-      false
-    ).then(function (res) {
-      return res.json().catch(function () { return {}; }).then(function (data) {
-        var text = '';
-        if (data && Array.isArray(data.content)) {
-          text = data.content.map(function (c) { return (c && c.text) || ''; }).join('');
-        }
-        var spec = FP.extractSpec(text);
-        if (!spec) throw new Error((data && data.error && (data.error.message || data.error)) || 'لم يصل مخطط صالح — جرّب مرة ثانية');
-
+    requestPlanSpec(buildDescription()).then(function (spec) {
         /* مشروع جديد يفتح في المعاينة — نفس مسار التطبيقات المبنية */
         var code = FP.renderPlan(spec);
         var cur = { id: Date.now().toString(), title: String(spec.title || 'مخطط بيتي'), code: code, codeType: 'html', messages: [] };
@@ -19802,9 +19814,8 @@ window.updateVersionLabel();
         statusMsg('');
         var modal = document.getElementById('constructionModal');
         if (modal) modal.style.display = 'none';
-      });
-    }).catch(function (err) {
-      statusMsg('⚠️ ' + String((err && err.message) || err));
+    }).catch(function () {
+      statusMsg('⚠️ تعذر تجهيز المخطط الآن. حاول مرة أخرى بعد قليل.');
     }).finally(function () {
       btn.disabled = false;
       btn.textContent = label;
