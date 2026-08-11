@@ -1090,6 +1090,12 @@ function renderMessages(keepScroll){
       div.appendChild(imgStrip);
     }
     div.appendChild(textDiv);
+    if(m.role !== 'user' && m._stopped && !document.documentElement.classList.contains('mobile-ui')){
+      const stoppedNote = document.createElement('div');
+      stoppedNote.className = 'msgStoppedNote';
+      stoppedNote.textContent = lang === 'ar' ? 'تم إيقاف الرد' : 'Response stopped';
+      div.appendChild(stoppedNote);
+    }
     // 📚 Feature ② — source badges AFTER the reply text: small pills with a
     // favicon + domain, opening the real source url in a new tab. Never
     // invented — only what the search backend actually returned.
@@ -1201,6 +1207,16 @@ function renderMessages(keepScroll){
       const copyIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
       const checkIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
       if(m.role !== 'user'){
+        // ↻ إعادة توليد آخر الدور من سؤال المستخدم نفسه — بلا فقاعة مكررة.
+        if(!document.documentElement.classList.contains('mobile-ui') && !m._loading && !m.askAllReply && !m.isAskAllPrep){
+          const retryBtn = document.createElement('button');
+          retryBtn.type = 'button';
+          retryBtn.title = lang === 'ar' ? 'إعادة توليد الرد' : 'Regenerate response';
+          retryBtn.setAttribute('aria-label', retryBtn.title);
+          retryBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5"></path><path d="M4 17v-5h5"></path><path d="M6.1 9a7 7 0 0 1 11.5-2.6L20 9"></path><path d="M17.9 15a7 7 0 0 1-11.5 2.6L4 15"></path></svg>';
+          retryBtn.onclick = () => { if(window.chatRegenerateMessage) window.chatRegenerateMessage(mIdx); };
+          actionBar.appendChild(retryBtn);
+        }
         // ⋮ more (convert) menu
         const moreBtn = document.createElement('button');
         moreBtn.type = 'button';
@@ -1300,6 +1316,14 @@ function renderMessages(keepScroll){
         capBtn.innerHTML = capIconSVG;
         capBtn.onclick = (e) => { e.stopPropagation(); openCapabilitiesMenu(capBtn); };
         actionBar.appendChild(capBtn);
+      } else if(!document.documentElement.classList.contains('mobile-ui')){
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.title = lang === 'ar' ? 'تعديل الرسالة' : 'Edit message';
+        editBtn.setAttribute('aria-label', editBtn.title);
+        editBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"></path></svg>';
+        editBtn.onclick = () => { if(window.chatStartEditMessage) window.chatStartEditMessage(mIdx); };
+        actionBar.appendChild(editBtn);
       }
 
       // v204 fix: this used to be built directly into the `copyMsgBtn`

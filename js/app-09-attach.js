@@ -983,6 +983,45 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
   renderAll(); saveState();
   try{ thinkingDiv && thinkingDiv.remove(); }catch(e){}
 }
+
+// v560: تحرير رسالة قديمة يعيد المحادثة من تلك النقطة، وإعادة التوليد تعيد
+// إرسال آخر سؤال بلا فقاعة مستخدم مكررة. لا نلمس واجهة الجوال في هذه المرحلة.
+function setChatEditNotice(on){
+  const notice = $('#chatEditNotice');
+  if(!notice) return;
+  notice.hidden = !on;
+  const cancel = notice.querySelector('button');
+  if(cancel) cancel.onclick = () => window.chatCancelEditMessage();
+}
+window.chatCancelEditMessage = function(){
+  window.__chatEditRequest = null;
+  setChatEditNotice(false);
+};
+window.chatStartEditMessage = function(index){
+  if(document.documentElement.classList.contains('mobile-ui') || genAbortController) return false;
+  const cur = getCurrent();
+  const msg = cur && cur.messages && cur.messages[index];
+  if(!cur || !msg || msg.role !== 'user') return false;
+  window.__chatEditRequest = { projectId: cur.id, index: index };
+  const prompt = $('#prompt');
+  prompt.value = String(msg.content || '');
+  setChatEditNotice(true);
+  try{ window.__promptAutoGrow && window.__promptAutoGrow(); }catch(e){ __swallow(e, 'ui:chat-edit-grow'); }
+  try{ window.__updateSendReady && window.__updateSendReady(); }catch(e){ __swallow(e, 'ui:chat-edit-ready'); }
+  prompt.focus();
+  prompt.setSelectionRange(prompt.value.length, prompt.value.length);
+  return true;
+};
+window.chatRegenerateMessage = function(index){
+  if(document.documentElement.classList.contains('mobile-ui') || genAbortController) return;
+  const cur = getCurrent();
+  if(!cur || !Array.isArray(cur.messages)) return;
+  let userIndex = Math.min(Number(index) || 0, cur.messages.length - 1);
+  while(userIndex >= 0 && cur.messages[userIndex].role !== 'user') userIndex--;
+  if(userIndex < 0 || !window.chatStartEditMessage(userIndex)) return;
+  sendPrompt();
+};
+
 async function sendPrompt(){
   // ✅ v301: قفل الإرسال أثناء التوليد — Enter أو أي ضغطة إضافية لا ترسل
   // الطلب مرة ثانية (كان زر الإرسال ينقفل لكن Enter يظل شغالًا فيتكرر الطلب).
@@ -1107,11 +1146,18 @@ async function sendPrompt(){
     state.projects.push(cur);
     state.currentId = id;
   }
+  const __editReq = window.__chatEditRequest;
+  const __editIndex = (__editReq && __editReq.projectId === cur.id && Number.isInteger(__editReq.index) &&
+    __editReq.index >= 0 && __editReq.index < cur.messages.length && cur.messages[__editReq.index].role === 'user') ? __editReq.index : -1;
+  const __editedOriginal = __editIndex >= 0 ? cur.messages[__editIndex] : null;
   if(cur.messages.length === 0){
     cur.title = (text || pendingAttachments[0]?.name || 'مشروع').slice(0, 30);
   }
 
-  const attachmentsForMsg = pendingAttachments.slice();
+  // عند إعادة التوليد نعيد استخدام مرفقات السؤال الأصلي؛ وعند التحرير مع
+  // مرفقات جديدة نعتمد الجديدة. هكذا لا تضيع الصورة/الملف بصمت.
+  const attachmentsForMsg = pendingAttachments.length ? pendingAttachments.slice() :
+    (__editedOriginal && Array.isArray(__editedOriginal.attachments) ? __editedOriginal.attachments.slice() : []);
   const imageAttachments = attachmentsForMsg.filter(a => a.isImage);
   const textAttachments = attachmentsForMsg.filter(a => !a.isImage);
 
@@ -1144,7 +1190,16 @@ async function sendPrompt(){
       imageAttachments.push({ isImage: true, name: 'memory.png', mime: cur.lastEditedImage.mime || 'image/png', dataUrl: 'data:' + (cur.lastEditedImage.mime || 'image/png') + ';base64,' + cur.lastEditedImage.b64, _fromMemory: true });
     }
   }catch(e){ __swallow(e, "upload:app-09-attach#12"); }
-  cur.messages.push({role: 'user', content: (__gateApprovedText || text) || (t('imagesAttachedNote')), attachments: attachmentsForMsg.length ? attachmentsForMsg : undefined, apiText, apiImages: imageAttachments.length ? imageAttachments : undefined});
+  const __nextUserMessage = {role: 'user', content: (__gateApprovedText || text) || (t('imagesAttachedNote')), attachments: attachmentsForMsg.length ? attachmentsForMsg : undefined, apiText, apiImages: imageAttachments.length ? imageAttachments : undefined};
+  if(__editIndex >= 0){
+    // ChatGPT-like branch semantics في مخزن خطّي: التعديل يلغي الردود اللاحقة
+    // ثم يولّد جوابًا جديدًا من الرسالة المعدّلة، بلا نسخ السؤال مرتين.
+    cur.messages.splice(__editIndex, cur.messages.length - __editIndex, __nextUserMessage);
+  } else {
+    cur.messages.push(__nextUserMessage);
+  }
+  window.__chatEditRequest = null;
+  setChatEditNotice(false);
   promptEl.value = '';
   try{ window.__promptAutoGrow && window.__promptAutoGrow(); }catch(e){ __swallow(e, "upload:app-09-attach#13"); }
   try{ $('#btnSend').classList.remove('ready'); }catch(e){ __swallow(e, "upload:app-09-attach#14"); }
@@ -1203,6 +1258,8 @@ async function sendPrompt(){
   const __askAllExplicit = false;
   customProviders = null;
   const askAll = !!customProviders || __askAllExplicit || (!__gateNoBuild && !__gateApprovedText && ((__routeBuildRe.test(text) && __routeCmdRe.test(text)) || __strongBuildRe.test(text)) && !__routeFix);
+  // آخر نص كامل وصل من البث؛ نحتفظ به إذا أوقف المستخدم التوليد.
+  let __lastStreamPartial = '';
 
   try{
     // 🤖 وكيل عمران: وضع الوكيل المستقل (Claude Sonnet 4 + أدوات) — يخطط ويبحث ويبني.
@@ -2578,6 +2635,7 @@ async function sendPrompt(){
       // البث نفسه، ونأخذ قرار متابعة التمرير قبل أن يكبر الرد.
       const onDelta = (partial) => {
         onDelta._p = partial;
+        __lastStreamPartial = liveStripCode(partial);
         if(onDelta._raf) return;
         onDelta._raf = requestAnimationFrame(() => {
           onDelta._raf = null;
@@ -2712,13 +2770,22 @@ async function sendPrompt(){
     }
   }catch(err){
     if(err && err.name === 'AbortError'){
-      // User pressed ⏹️ to cancel: drop the just-sent message and put its
-      // text back in the box so they can fix it and resend.
+      // الإيقاف لا يمحو سؤال المستخدم ولا يعيده إلى الصندوق. نثبّت آخر نص
+      // وصل من البث كإجابة متوقفة، فيستطيع المستخدم قراءته أو إعادة توليده.
+      try{ thinkingDiv.remove(); }catch(e){ __swallow(e, 'ui:chat-stop-remove'); }
       const lastMsg = cur.messages[cur.messages.length - 1];
       if(lastMsg && lastMsg.role === 'user'){
-        cur.messages.pop();
+        const partial = String(__lastStreamPartial || '').trim();
+        cur.messages.push({
+          role: 'assistant',
+          content: partial || (lang === 'ar' ? 'تم إيقاف الرد قبل اكتماله.' : 'The response was stopped before it completed.'),
+          _stopped: true,
+          askAllReply: false
+        });
       }
-      promptEl.value = text;
+      promptEl.value = '';
+      window.__chatEditRequest = null;
+      setChatEditNotice(false);
     } else if(err && err.premiumNoPoints){
       // 👑 نفاد النقاط أثناء الرد الاحترافي: رسالة ودّية + طريقة لشراء نقاط،
       // وإطفاء الوضع الاحترافي حتى تكون الرسالة التالية مجانية.

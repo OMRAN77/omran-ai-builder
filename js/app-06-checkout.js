@@ -1749,6 +1749,15 @@ async function callAIWithFallback(messages, onDelta, preferredList){
       }
       return { reply, providerKey, switched: errSwitched && providerKey !== head[0], requestedKey: head[0] };
     }catch(err){
+      // الإلغاء قرار المستخدم، لا عطل مزوّد. لا نحوّله إلى مزوّد آخر وإلا بدا
+      // زر الإيقاف معطّلًا واستمر الرد سرًّا بعد الضغط عليه.
+      if((err && err.name === 'AbortError') ||
+        (typeof genAbortController !== 'undefined' && genAbortController && genAbortController.signal.aborted)){
+        if(err && err.name === 'AbortError') throw err;
+        const abortErr = new Error('Generation stopped');
+        abortErr.name = 'AbortError';
+        throw abortErr;
+      }
       lastErr = err;
       // A silent switch means the user gets different quality with no
       // explanation and blames the app. Say it plainly.

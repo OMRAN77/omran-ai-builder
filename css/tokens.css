@@ -671,6 +671,12 @@
   .msgActionBar button:hover{ color:var(--accent-ink); }
   .msgActionBar button.msgThumbActive{ color:var(--accent-ink); }
   .msgActionBar button.msgThumbDownActive{ color:#ef4444; }
+
+  /* v560: تحرير/إعادة توليد بأسلوب ChatGPT — سطح المكتب فقط. */
+  html:not(.mobile-ui) #chatEditNotice{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 10px 2px;padding:7px 10px;border-bottom:1px solid var(--border);color:var(--muted);font-size:12px}
+  html:not(.mobile-ui) #chatEditNotice[hidden]{display:none}
+  html:not(.mobile-ui) #chatEditNotice button{border:0;background:none;color:var(--accent-ink);font:inherit;cursor:pointer;padding:2px 4px}
+  html:not(.mobile-ui) .msgStoppedNote{margin-top:8px;color:var(--muted);font-size:12px}
   .msgMoreMenu{ position:absolute; z-index:9999; background:var(--panel,#1c2230); border:1px solid var(--border,rgba(255,255,255,.12)); border-radius:var(--r-2); box-shadow:var(--sh-2); padding:6px; min-width:170px; font-size: var(--fs-3); }
   .msgMoreMenu button{ display:flex; width:100%; text-align:start; background:none; border:none; padding:9px 10px; border-radius:var(--r-1); cursor:pointer; color:var(--text); font-size: var(--fs-3); }
   .msgMoreMenu button:hover{ background:var(--panel2); }

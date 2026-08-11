@@ -4485,6 +4485,12 @@ function renderMessages(keepScroll){
       div.appendChild(imgStrip);
     }
     div.appendChild(textDiv);
+    if(m.role !== 'user' && m._stopped && !document.documentElement.classList.contains('mobile-ui')){
+      const stoppedNote = document.createElement('div');
+      stoppedNote.className = 'msgStoppedNote';
+      stoppedNote.textContent = lang === 'ar' ? 'تم إيقاف الرد' : 'Response stopped';
+      div.appendChild(stoppedNote);
+    }
     // 📚 Feature ② — source badges AFTER the reply text: small pills with a
     // favicon + domain, opening the real source url in a new tab. Never
     // invented — only what the search backend actually returned.
@@ -4596,6 +4602,16 @@ function renderMessages(keepScroll){
       const copyIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
       const checkIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
       if(m.role !== 'user'){
+        // ↻ إعادة توليد آخر الدور من سؤال المستخدم نفسه — بلا فقاعة مكررة.
+        if(!document.documentElement.classList.contains('mobile-ui') && !m._loading && !m.askAllReply && !m.isAskAllPrep){
+          const retryBtn = document.createElement('button');
+          retryBtn.type = 'button';
+          retryBtn.title = lang === 'ar' ? 'إعادة توليد الرد' : 'Regenerate response';
+          retryBtn.setAttribute('aria-label', retryBtn.title);
+          retryBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5"></path><path d="M4 17v-5h5"></path><path d="M6.1 9a7 7 0 0 1 11.5-2.6L20 9"></path><path d="M17.9 15a7 7 0 0 1-11.5 2.6L4 15"></path></svg>';
+          retryBtn.onclick = () => { if(window.chatRegenerateMessage) window.chatRegenerateMessage(mIdx); };
+          actionBar.appendChild(retryBtn);
+        }
         // ⋮ more (convert) menu
         const moreBtn = document.createElement('button');
         moreBtn.type = 'button';
@@ -4695,6 +4711,14 @@ function renderMessages(keepScroll){
         capBtn.innerHTML = capIconSVG;
         capBtn.onclick = (e) => { e.stopPropagation(); openCapabilitiesMenu(capBtn); };
         actionBar.appendChild(capBtn);
+      } else if(!document.documentElement.classList.contains('mobile-ui')){
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.title = lang === 'ar' ? 'تعديل الرسالة' : 'Edit message';
+        editBtn.setAttribute('aria-label', editBtn.title);
+        editBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4z"></path></svg>';
+        editBtn.onclick = () => { if(window.chatStartEditMessage) window.chatStartEditMessage(mIdx); };
+        actionBar.appendChild(editBtn);
       }
 
       // v204 fix: this used to be built directly into the `copyMsgBtn`
@@ -8575,6 +8599,15 @@ async function callAIWithFallback(messages, onDelta, preferredList){
       }
       return { reply, providerKey, switched: errSwitched && providerKey !== head[0], requestedKey: head[0] };
     }catch(err){
+      // الإلغاء قرار المستخدم، لا عطل مزوّد. لا نحوّله إلى مزوّد آخر وإلا بدا
+      // زر الإيقاف معطّلًا واستمر الرد سرًّا بعد الضغط عليه.
+      if((err && err.name === 'AbortError') ||
+        (typeof genAbortController !== 'undefined' && genAbortController && genAbortController.signal.aborted)){
+        if(err && err.name === 'AbortError') throw err;
+        const abortErr = new Error('Generation stopped');
+        abortErr.name = 'AbortError';
+        throw abortErr;
+      }
       lastErr = err;
       // A silent switch means the user gets different quality with no
       // explanation and blames the app. Say it plainly.
@@ -11978,6 +12011,45 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
   renderAll(); saveState();
   try{ thinkingDiv && thinkingDiv.remove(); }catch(e){}
 }
+
+// v560: تحرير رسالة قديمة يعيد المحادثة من تلك النقطة، وإعادة التوليد تعيد
+// إرسال آخر سؤال بلا فقاعة مستخدم مكررة. لا نلمس واجهة الجوال في هذه المرحلة.
+function setChatEditNotice(on){
+  const notice = $('#chatEditNotice');
+  if(!notice) return;
+  notice.hidden = !on;
+  const cancel = notice.querySelector('button');
+  if(cancel) cancel.onclick = () => window.chatCancelEditMessage();
+}
+window.chatCancelEditMessage = function(){
+  window.__chatEditRequest = null;
+  setChatEditNotice(false);
+};
+window.chatStartEditMessage = function(index){
+  if(document.documentElement.classList.contains('mobile-ui') || genAbortController) return false;
+  const cur = getCurrent();
+  const msg = cur && cur.messages && cur.messages[index];
+  if(!cur || !msg || msg.role !== 'user') return false;
+  window.__chatEditRequest = { projectId: cur.id, index: index };
+  const prompt = $('#prompt');
+  prompt.value = String(msg.content || '');
+  setChatEditNotice(true);
+  try{ window.__promptAutoGrow && window.__promptAutoGrow(); }catch(e){ __swallow(e, 'ui:chat-edit-grow'); }
+  try{ window.__updateSendReady && window.__updateSendReady(); }catch(e){ __swallow(e, 'ui:chat-edit-ready'); }
+  prompt.focus();
+  prompt.setSelectionRange(prompt.value.length, prompt.value.length);
+  return true;
+};
+window.chatRegenerateMessage = function(index){
+  if(document.documentElement.classList.contains('mobile-ui') || genAbortController) return;
+  const cur = getCurrent();
+  if(!cur || !Array.isArray(cur.messages)) return;
+  let userIndex = Math.min(Number(index) || 0, cur.messages.length - 1);
+  while(userIndex >= 0 && cur.messages[userIndex].role !== 'user') userIndex--;
+  if(userIndex < 0 || !window.chatStartEditMessage(userIndex)) return;
+  sendPrompt();
+};
+
 async function sendPrompt(){
   // ✅ v301: قفل الإرسال أثناء التوليد — Enter أو أي ضغطة إضافية لا ترسل
   // الطلب مرة ثانية (كان زر الإرسال ينقفل لكن Enter يظل شغالًا فيتكرر الطلب).
@@ -12102,11 +12174,18 @@ async function sendPrompt(){
     state.projects.push(cur);
     state.currentId = id;
   }
+  const __editReq = window.__chatEditRequest;
+  const __editIndex = (__editReq && __editReq.projectId === cur.id && Number.isInteger(__editReq.index) &&
+    __editReq.index >= 0 && __editReq.index < cur.messages.length && cur.messages[__editReq.index].role === 'user') ? __editReq.index : -1;
+  const __editedOriginal = __editIndex >= 0 ? cur.messages[__editIndex] : null;
   if(cur.messages.length === 0){
     cur.title = (text || pendingAttachments[0]?.name || 'مشروع').slice(0, 30);
   }
 
-  const attachmentsForMsg = pendingAttachments.slice();
+  // عند إعادة التوليد نعيد استخدام مرفقات السؤال الأصلي؛ وعند التحرير مع
+  // مرفقات جديدة نعتمد الجديدة. هكذا لا تضيع الصورة/الملف بصمت.
+  const attachmentsForMsg = pendingAttachments.length ? pendingAttachments.slice() :
+    (__editedOriginal && Array.isArray(__editedOriginal.attachments) ? __editedOriginal.attachments.slice() : []);
   const imageAttachments = attachmentsForMsg.filter(a => a.isImage);
   const textAttachments = attachmentsForMsg.filter(a => !a.isImage);
 
@@ -12139,7 +12218,16 @@ async function sendPrompt(){
       imageAttachments.push({ isImage: true, name: 'memory.png', mime: cur.lastEditedImage.mime || 'image/png', dataUrl: 'data:' + (cur.lastEditedImage.mime || 'image/png') + ';base64,' + cur.lastEditedImage.b64, _fromMemory: true });
     }
   }catch(e){ __swallow(e, "upload:app-09-attach#12"); }
-  cur.messages.push({role: 'user', content: (__gateApprovedText || text) || (t('imagesAttachedNote')), attachments: attachmentsForMsg.length ? attachmentsForMsg : undefined, apiText, apiImages: imageAttachments.length ? imageAttachments : undefined});
+  const __nextUserMessage = {role: 'user', content: (__gateApprovedText || text) || (t('imagesAttachedNote')), attachments: attachmentsForMsg.length ? attachmentsForMsg : undefined, apiText, apiImages: imageAttachments.length ? imageAttachments : undefined};
+  if(__editIndex >= 0){
+    // ChatGPT-like branch semantics في مخزن خطّي: التعديل يلغي الردود اللاحقة
+    // ثم يولّد جوابًا جديدًا من الرسالة المعدّلة، بلا نسخ السؤال مرتين.
+    cur.messages.splice(__editIndex, cur.messages.length - __editIndex, __nextUserMessage);
+  } else {
+    cur.messages.push(__nextUserMessage);
+  }
+  window.__chatEditRequest = null;
+  setChatEditNotice(false);
   promptEl.value = '';
   try{ window.__promptAutoGrow && window.__promptAutoGrow(); }catch(e){ __swallow(e, "upload:app-09-attach#13"); }
   try{ $('#btnSend').classList.remove('ready'); }catch(e){ __swallow(e, "upload:app-09-attach#14"); }
@@ -12198,6 +12286,8 @@ async function sendPrompt(){
   const __askAllExplicit = false;
   customProviders = null;
   const askAll = !!customProviders || __askAllExplicit || (!__gateNoBuild && !__gateApprovedText && ((__routeBuildRe.test(text) && __routeCmdRe.test(text)) || __strongBuildRe.test(text)) && !__routeFix);
+  // آخر نص كامل وصل من البث؛ نحتفظ به إذا أوقف المستخدم التوليد.
+  let __lastStreamPartial = '';
 
   try{
     // 🤖 وكيل عمران: وضع الوكيل المستقل (Claude Sonnet 4 + أدوات) — يخطط ويبحث ويبني.
@@ -13573,6 +13663,7 @@ async function sendPrompt(){
       // البث نفسه، ونأخذ قرار متابعة التمرير قبل أن يكبر الرد.
       const onDelta = (partial) => {
         onDelta._p = partial;
+        __lastStreamPartial = liveStripCode(partial);
         if(onDelta._raf) return;
         onDelta._raf = requestAnimationFrame(() => {
           onDelta._raf = null;
@@ -13707,13 +13798,22 @@ async function sendPrompt(){
     }
   }catch(err){
     if(err && err.name === 'AbortError'){
-      // User pressed ⏹️ to cancel: drop the just-sent message and put its
-      // text back in the box so they can fix it and resend.
+      // الإيقاف لا يمحو سؤال المستخدم ولا يعيده إلى الصندوق. نثبّت آخر نص
+      // وصل من البث كإجابة متوقفة، فيستطيع المستخدم قراءته أو إعادة توليده.
+      try{ thinkingDiv.remove(); }catch(e){ __swallow(e, 'ui:chat-stop-remove'); }
       const lastMsg = cur.messages[cur.messages.length - 1];
       if(lastMsg && lastMsg.role === 'user'){
-        cur.messages.pop();
+        const partial = String(__lastStreamPartial || '').trim();
+        cur.messages.push({
+          role: 'assistant',
+          content: partial || (lang === 'ar' ? 'تم إيقاف الرد قبل اكتماله.' : 'The response was stopped before it completed.'),
+          _stopped: true,
+          askAllReply: false
+        });
       }
-      promptEl.value = text;
+      promptEl.value = '';
+      window.__chatEditRequest = null;
+      setChatEditNotice(false);
     } else if(err && err.premiumNoPoints){
       // 👑 نفاد النقاط أثناء الرد الاحترافي: رسالة ودّية + طريقة لشراء نقاط،
       // وإطفاء الوضع الاحترافي حتى تكون الرسالة التالية مجانية.
