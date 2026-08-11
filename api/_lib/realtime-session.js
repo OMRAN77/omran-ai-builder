@@ -5,7 +5,6 @@
 // to the client - only the short-lived ephemeral token is sent to the browser).
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
 const crypto = require('crypto');
-const { kvGetJSON } = require('./kv.js');
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 const { logError } = require('./log-error.js');
@@ -153,12 +152,10 @@ module.exports = async (req, res) => {
       try {
         const username = rtVerifyToken(token);
         if (username) {
-          const memData = await kvGetJSON('db/memory/' + encodeURIComponent(String(username).toLowerCase()) + '.json');
-          const memText = memData && memData.memory ? String(memData.memory).slice(0, 1200) : '';
-          if (memText) {
-            memoryContext = ' USER MEMORY (long-term facts you already know about THIS user from previous conversations - use them naturally to personalize your replies and remember who they are; NEVER recite this list out loud or mention that you have a memory file): ' + memText;
-          }
-          memoryContext += " MEMORY SAVING: whenever the user shares a NEW lasting personal fact worth remembering across future calls (their name, family members, preferences, projects, interests, important dates), silently call remember_info with that single fact as one short sentence - do NOT announce that you are saving it, just continue the conversation naturally. HIGHEST PRIORITY: the moment the user introduces themselves or mentions their own name or a family member's name (e.g. 'أنا اسمي فلان', 'my name is...'), you MUST immediately call remember_info with it (e.g. 'اسم المستخدم فلان'). If the user asks 'من أنا' or 'شو تعرف عني', answer warmly from USER MEMORY; if memory has no name yet, politely ask their name once and save it. Never save passwords, secrets, or trivial small talk.";
+          const { readMemory, memoryPromptBlock } = require('./memory.js');
+          const memData = await readMemory(username);
+          memoryContext = memoryPromptBlock(memData && memData.memory);
+          memoryContext += " MEMORY SAVING: whenever the user shares a NEW lasting personal fact worth remembering across future calls (their name, family members, preferences, projects, project decisions or next steps, interests, important dates, and preferred communication style), silently call remember_info with that single fact as one short sentence - do NOT announce that you are saving it, just continue the conversation naturally. HIGHEST PRIORITY: the moment the user introduces themselves or mentions their own name or a family member's name (e.g. 'أنا اسمي فلان', 'my name is...'), you MUST immediately call remember_info with it (e.g. 'اسم المستخدم فلان'). If the user asks 'من أنا' or 'شو تعرف عني', answer warmly from USER MEMORY; if memory has no name yet, politely ask their name once and save it. Never save passwords, secrets, financial data, or trivial small talk. Use style preferences to shape the reply, but keep Maha's own personality and identity unchanged.";
         }
       } catch (e) { logError('realtime/memory-load', e); }
     }

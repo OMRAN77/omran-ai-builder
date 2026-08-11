@@ -112,33 +112,62 @@
   if(b) b.addEventListener('click', function(){ location.href='/ad-studio.html'; });
 })();
 
-/* v544 — شاشة «ذاكرتي»: عرض ما حُفظ عن المستخدم + حذفه. القراءة والمسح من الخادم بالتوكن وحده. */
+/* شاشة «ذاكرتي»: عرض الذاكرة المرتبطة بالحساب وتعديلها وحذفها من أي جهاز. */
 (function(){
   function tok(){ try{ return sessionStorage.getItem('aiapp_auth_token') || localStorage.getItem('aiapp_auth_token') || ''; }catch(e){ return ''; } }
   function tr(k, fb){ try{ var d = window.__i18nDict ? window.__i18nDict(document.documentElement.lang || 'ar') : null; return (d && d[k]) || fb; }catch(e){ return fb; } }
-  function memCall(op){
+  function memCall(op, extra){
     var t = tok(); if(!t) return Promise.resolve(null);
-    return fetch('/api/system?action=memory', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ token: t, op: op }) })
+    var payload = Object.assign({ token: t, op: op }, extra || {});
+    return fetch('/api/system?action=memory', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
       .then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; });
   }
+  function status(text, bad){
+    var el = document.getElementById('memoryStatus'); if(!el) return;
+    el.textContent = text || ''; el.style.color = bad ? '#e05555' : '';
+  }
   function render(){
-    var box = document.getElementById('memoryBox'), btn = document.getElementById('memoryClearBtn');
+    var box = document.getElementById('memoryBox'), clear = document.getElementById('memoryClearBtn'), save = document.getElementById('memorySaveBtn');
     if(!box) return;
-    if(!tok()){ box.textContent = tr('memoryGuest', 'سجّل دخولك لعرض ذاكرتك.'); if(btn) btn.style.display = 'none'; return; }
-    box.textContent = '…';
+    status('');
+    if(!tok()){
+      box.value = ''; box.placeholder = tr('memoryGuest', 'سجّل دخولك لعرض ذاكرتك.'); box.disabled = true;
+      if(clear) clear.style.display = 'none'; if(save) save.style.display = 'none'; return;
+    }
+    box.disabled = true; box.value = ''; box.placeholder = '…';
+    if(save) save.style.display = ''; if(clear) clear.style.display = 'none';
     memCall('get').then(function(d){
-      var txt = (d && typeof d.memory === 'string') ? d.memory.trim() : '';
-      box.textContent = txt || tr('memoryEmpty', 'لا توجد معلومات محفوظة عنك بعد.');
-      if(btn) btn.style.display = txt ? '' : 'none';
+      if(!d){ box.placeholder = tr('memoryLoadError', 'تعذّر تحميل الذاكرة الآن.'); status(box.placeholder, true); return; }
+      var txt = typeof d.memory === 'string' ? d.memory.trim() : '';
+      box.disabled = false; box.value = txt; box.placeholder = tr('memoryEmpty', 'لا توجد معلومات محفوظة عنك بعد.');
+      if(clear) clear.style.display = txt ? '' : 'none';
+      if(window.setUserMemory) window.setUserMemory(txt);
     });
   }
   window.renderMemorySection = render;
   document.addEventListener('click', function(e){
-    var b = e.target && e.target.closest ? e.target.closest('#memoryClearBtn') : null;
-    if(b){
+    var save = e.target && e.target.closest ? e.target.closest('#memorySaveBtn') : null;
+    if(save){
+      var box = document.getElementById('memoryBox'); if(!box || box.disabled) return;
+      save.disabled = true; status('…');
+      memCall('set', { memory: box.value }).then(function(d){
+        save.disabled = false;
+        if(!d){ status(tr('memorySaveError', 'تعذّر الحفظ. حاول مرة أخرى.'), true); return; }
+        box.value = d.memory || ''; if(window.setUserMemory) window.setUserMemory(box.value);
+        status(tr('memorySaved', 'حُفظت وتزامنت مع حسابك.'));
+        var clear = document.getElementById('memoryClearBtn'); if(clear) clear.style.display = box.value.trim() ? '' : 'none';
+      });
+      return;
+    }
+    var clear = e.target && e.target.closest ? e.target.closest('#memoryClearBtn') : null;
+    if(clear){
       if(!confirm(tr('memoryConfirm', 'حذف كلّ ما يتذكّره التطبيق عنك؟ لا يمكن التراجع.'))) return;
-      b.disabled = true;
-      memCall('clear').then(function(){ try{ if('userMemory' in window) window.userMemory = ''; }catch(_){ /* guard-ok: optional local cache cleanup follows successful server deletion. */ } b.disabled = false; render(); });
+      clear.disabled = true;
+      memCall('clear').then(function(d){
+        clear.disabled = false;
+        if(!d){ status(tr('memorySaveError', 'تعذّر الحذف. حاول مرة أخرى.'), true); return; }
+        if(window.setUserMemory) window.setUserMemory(''); render();
+      });
       return;
     }
     setTimeout(function(){

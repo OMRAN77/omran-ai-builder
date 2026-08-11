@@ -371,15 +371,13 @@ module.exports = async (req, res) => {
   let lastTested = ''; // آخر HTML اختبره الوكيل في هذا الطلب — مصدر نشر احتياطي
   let system = SYSTEM + require('./_knowledge.js').ownerKnowledge(req, token); // معرفة عمران — للمالك وحده
 
-  // ذاكرة المستخدم: memory.js يحفظها منذ زمن، والوكيل لم يكن يفتحها أبدًا — فكان
-  // يبدأ كل مرة غريبًا لا يعرف من يخاطب. القراءة مفتاح KV واحد، وتفشل بصمت.
+  // ملف الحساب نفسه يصل إلى الوكيل والمحادثة على كل جهاز. صيغة الحقن المشتركة
+  // تكيّف الأسلوب وتذكّر المشاريع من دون أن تستبدل شخصية الوكيل أو قواعده.
   if (usage.username) {
     try {
-      const { readMemory } = require('./memory.js');
+      const { readMemory, memoryPromptBlock } = require('./memory.js');
       const mem = await readMemory(usage.username);
-      if (mem && mem.memory && mem.memory.trim()) {
-        system += '\n\nما تعرفه عن هذا المستخدم من محادثات سابقة (استعمله بلا أن تعلن أنك تقرأ ذاكرة):\n' + mem.memory.slice(0, 2800);
-      }
+      system += memoryPromptBlock(mem && mem.memory);
     } catch (e) { console.warn('[agent] memory read failed', e && e.message); }
   }
 

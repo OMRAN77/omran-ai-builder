@@ -10,6 +10,16 @@ const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
 const { logError } = require('./log-error.js');
 const { safeParse } = require('./safe-parse.js');
 const { fetchPlaces } = require('./search.js');
+const { readMemory, memoryPromptBlock } = require('./memory.js');
+
+function isPureGreeting(text) {
+  return /^(?:هلا+|هلا والله|مرحبا+|مرحبًا|السلام عليكم(?: ورحمة الله(?: وبركاته)?)?|سلام|صباح الخير|مساء الخير|hello|hi|hey)[!؟?.،\s]*$/i.test(String(text || '').trim());
+}
+
+function isClientMemoryNote(text) {
+  const s = String(text || '');
+  return s.includes('[ذاكرة المستخدم طويلة المدى') || s.startsWith('هذه معلومات مؤكدة ومحفوظة عن المستخدم من محادثات سابقة:');
+}
 
 const TOOLS = [
   {
@@ -218,9 +228,20 @@ module.exports = async (req, res) => {
     return;
   }
 
-  // رسائل النظام تأتي من العميل داخل messages — تُفصَل كما يفعل مسار Claude.
-  const sysParts = messages.filter((m) => m && m.role === 'system' && typeof m.content === 'string').map((m) => m.content);
-  if (typeof body.system === 'string' && body.system.trim()) sysParts.push(body.system);
+  // الذاكرة تُقرأ من الحساب في الخادم لكل رسالة، لا من نسخة الجهاز. هكذا يرى
+  // الكمبيوتر والجوال الملف نفسه حتى لو كان أحدهما لم يحدّث صفحته بعد.
+  const lastUser = messages.slice().reverse().find((m) => m && m.role === 'user' && typeof m.content === 'string');
+  let accountMemory = '';
+  if (usage.username && !isPureGreeting(lastUser && lastUser.content)) {
+    const cur = await readMemory(usage.username);
+    accountMemory = memoryPromptBlock(cur.memory);
+  }
+  // نستبعد نسخة الذاكرة التي أرسلها عميل قديم كي لا تتكرر أو تتعارض مع الحساب.
+  const sysParts = messages
+    .filter((m) => m && m.role === 'system' && typeof m.content === 'string' && !isClientMemoryNote(m.content))
+    .map((m) => m.content);
+  if (typeof body.system === 'string' && body.system.trim() && !isClientMemoryNote(body.system)) sysParts.push(body.system);
+  if (accountMemory) sysParts.push(accountMemory);
   const country = (req.headers && (req.headers['x-vercel-ip-country'] || req.headers['x-country'])) || '';
   const system = sysParts.join('\n\n') + nowNote() + countryNote(country) + TOOLS_NOTE
     + require('./_knowledge.js').ownerKnowledge(req, token); // معرفة عمران — للمالك وحده
