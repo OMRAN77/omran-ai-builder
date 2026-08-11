@@ -18157,57 +18157,73 @@ function openShareModal(project){
     setStatus(t('constructionGenerating'));
 
     try{
-      const res = await fetch('/api/construction-create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.assign(currentParams(), {
-          budget: budgetEl.value,
-          annexes: Array.from(document.querySelectorAll('.constructionAnnex:checked')).map((el) => el.value),
-          includeInterior: !!($('#constructionIncludeInterior') && $('#constructionIncludeInterior').checked),
-          includePlan: !modePlanEl || modePlanEl.checked,
-          includePhoto: !!(modePhotoEl && modePhotoEl.checked),
-          token,
-        })),
+      const params = Object.assign(currentParams(), {
+        budget: budgetEl.value,
+        annexes: Array.from(document.querySelectorAll('.constructionAnnex:checked')).map((el) => el.value),
+        includeInterior: !!($('#constructionIncludeInterior') && $('#constructionIncludeInterior').checked),
+        includePlan: !modePlanEl || modePlanEl.checked,
+        includePhoto: !!(modePhotoEl && modePhotoEl.checked),
+        token,
       });
-      const data = await res.json();
-      if(!res.ok){
-        if(data.error === 'auth_required'){
-          setStatus(t('designAiNeedLogin'));
-        }else if(data.error === 'daily_limit_reached'){
-          setStatus(t('designAiLimitReached'));
-        }else{
-          showGenerationFailure();
+      const parts = [];
+      if(params.includePlan) parts.push('plan');
+      if(params.includePhoto) parts.push('photo');
+      if(params.includeInterior) parts.push('interior');
+      let data = {};
+      let jobTicket = null;
+
+      for(let i = 0; i < parts.length; i++){
+        setStatus(t('constructionGenerating') + ' (' + (i + 1) + '/' + parts.length + ')');
+        const res = await fetch('/api/construction-create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(Object.assign({}, params, { part: parts[i], parts, jobTicket })),
+        });
+        const partData = await res.json();
+        if(!res.ok){
+          if(partData.error === 'auth_required'){
+            setStatus(t('designAiNeedLogin'));
+          }else if(partData.error === 'daily_limit_reached'){
+            setStatus(t('designAiLimitReached'));
+          }else{
+            showGenerationFailure();
+          }
+          return;
         }
-        return;
+        jobTicket = partData.jobTicket || jobTicket;
+        ['imageBase64', 'mimeType', 'photoImageBase64', 'photoMimeType', 'interiorImageBase64', 'interiorMimeType', 'planText', 'boq', 'remaining', 'dailyLimit'].forEach((key) => {
+          if(partData[key] !== null && partData[key] !== undefined) data[key] = partData[key];
+        });
+        if(data.imageBase64){
+          resultImageEl.src = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
+          downloadLink.href = resultImageEl.src;
+          resultImageWrap.style.display = 'block';
+        }
+        if(data.photoImageBase64){
+          photoImageEl.src = 'data:' + (data.photoMimeType || 'image/png') + ';base64,' + data.photoImageBase64;
+          photoDownloadLink.href = photoImageEl.src;
+          photoWrap.style.display = 'block';
+        }
+        if(data.interiorImageBase64){
+          interiorImageEl.src = 'data:' + (data.interiorMimeType || 'image/png') + ';base64,' + data.interiorImageBase64;
+          interiorDownloadLink.href = interiorImageEl.src;
+          interiorWrap.style.display = 'block';
+        }
+        lastData = data;
+        if(data.planText){
+          planTextEl.textContent = data.planText;
+          planTextEl.style.display = 'block';
+        }
+        renderBoq(boqRows());
+        if(exportRow && (data.planText || boqRows())) exportRow.style.display = 'grid';
+        showQuota(data);
       }
-      if(data.imageBase64){
-        resultImageEl.src = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
-        downloadLink.href = resultImageEl.src;
-        resultImageWrap.style.display = 'block';
-      }
-      if(data.photoImageBase64){
-        photoImageEl.src = 'data:' + (data.photoMimeType || 'image/png') + ';base64,' + data.photoImageBase64;
-        photoDownloadLink.href = photoImageEl.src;
-        photoWrap.style.display = 'block';
-      }
-      if(data.interiorImageBase64){
-        interiorImageEl.src = 'data:' + (data.interiorMimeType || 'image/png') + ';base64,' + data.interiorImageBase64;
-        interiorDownloadLink.href = interiorImageEl.src;
-        interiorWrap.style.display = 'block';
-      }
-      lastData = data;
-      if(data.planText){
-        planTextEl.textContent = data.planText;
-        planTextEl.style.display = 'block';
-      }
-      renderBoq(boqRows());
-      if(exportRow && (data.planText || boqRows())) exportRow.style.display = 'grid';
+
       viewsSection.style.display = 'block';
       angleImageWrap.style.display = 'none';
       roomImageWrap.style.display = 'none';
-      showQuota(data);
       refImage = data.photoImageBase64 ? await shrinkRef(data.photoImageBase64, data.photoMimeType) : null;
-      setStatus((modePhotoEl && modePhotoEl.checked && !data.photoImageBase64) ? (isEn() ? '⚠️ Exterior render failed — plan only.' : '⚠️ تعذّر توليد الصورة الفوتوغرافية — المخطط فقط.') : '');
+      setStatus('');
     }catch(e){
       showGenerationFailure();
     }finally{

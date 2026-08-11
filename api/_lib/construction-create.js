@@ -4,12 +4,61 @@
 // text plan: rough material list + rough cost estimate range + a mandatory
 // disclaimer that this is NOT an engineering document / building permit.
 // Server-side owner API key only (GEMINI_API_KEY).
+const crypto = require('crypto');
 const { checkConstructionQuota, consumeConstruction, CONSTRUCTION_DAILY_LIMIT } = require('./_constructionUsage');
 const { saveDesign } = require('./_constructionLibrary');
 const { fetchImageWithRetry, isImageTimeoutError } = require('./image-fetch');
+const { kvSetIfAbsent, kvDel } = require('./kv');
+const AUTH_SECRET = require('./_secrets').AUTH_SECRET;
 
 const TEXT_TIMEOUT_MS = 60000;
+const JOB_TTL_MS = 15 * 60 * 1000;
 const GENERATION_ERROR = 'construction_generation_failed';
+const OUTPUT_PARTS = ['plan', 'photo', 'interior'];
+
+function requestHash(body) {
+  const stable = {
+    buildingType: body.buildingType || '',
+    floors: body.floors || '',
+    area: body.area || '',
+    style: body.style || '',
+    notes: body.notes || '',
+    annexes: Array.isArray(body.annexes) ? body.annexes.slice().sort() : [],
+    budget: body.budget || '',
+    plotArea: body.plotArea || '',
+    emirate: body.emirate || '',
+  };
+  return crypto.createHash('sha256').update(JSON.stringify(stable)).digest('base64url');
+}
+
+function signJob(username, parts, body, remaining) {
+  const payload = Buffer.from(JSON.stringify({
+    u: username,
+    p: parts,
+    h: requestHash(body),
+    r: remaining,
+    n: crypto.randomBytes(12).toString('hex'),
+    e: Date.now() + JOB_TTL_MS,
+  })).toString('base64url');
+  const signature = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
+  return payload + '.' + signature;
+}
+
+function verifyJob(ticket, username, part, body) {
+  try {
+    const [payload, signature] = String(ticket || '').split('.');
+    const expected = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
+    const given = Buffer.from(signature || '');
+    const wanted = Buffer.from(expected);
+    if (given.length !== wanted.length || !crypto.timingSafeEqual(given, wanted)) return null;
+    const job = JSON.parse(Buffer.from(payload, 'base64url').toString());
+    if (job.u !== username || job.e < Date.now() || job.h !== requestHash(body)) return null;
+    if (!Array.isArray(job.p) || !job.p.includes(part) || !/^[a-f0-9]{24}$/.test(job.n || '')) return null;
+    return job;
+  } catch (e) {
+    return null;
+  }
+}
 
 const BUILDING_LABELS = {
   villa: 'a residential villa',
@@ -156,6 +205,13 @@ const ANGLE_LABELS_EN = {
 };
 
 module.exports = async (req, res) => {
+  let claimKey = null;
+  const releaseClaim = async () => {
+    if (!claimKey) return;
+    await kvDel(claimKey);
+    claimKey = null;
+  };
+
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -183,6 +239,10 @@ module.exports = async (req, res) => {
     const { buildingType, floors, area, style, notes, token, annexes, includeInterior, budget, includePlan, includePhoto, plotArea, emirate } = body;
     const wantPlan = includePlan !== false; // default true
     const wantPhoto = !!includePhoto;
+    const stagePart = OUTPUT_PARTS.includes(body.part) ? body.part : '';
+    const requestedParts = Array.isArray(body.parts)
+      ? [...new Set(body.parts.filter((part) => OUTPUT_PARTS.includes(part)))]
+      : [];
     if (!buildingType || !area) {
       res.status(400).json({ error: 'Missing buildingType or area' });
       return;
@@ -190,14 +250,45 @@ module.exports = async (req, res) => {
     const annexList = Array.isArray(annexes) ? annexes.filter((a) => ANNEX_LABELS_AR[a]) : [];
 
     const quota = await checkConstructionQuota(token);
-    if (!quota.allowed) {
-      if (quota.reason === 'auth') {
+    let firstStage = false;
+    let job = null;
+    if (stagePart && body.jobTicket) {
+      if (!quota.username || quota.banned) {
         res.status(401).json({ error: 'auth_required' });
-      } else {
-        res.status(402).json({ error: 'daily_limit_reached' });
+        return;
       }
-      return;
+      job = verifyJob(body.jobTicket, quota.username, stagePart, body);
+      if (!job) {
+        res.status(401).json({ error: 'invalid_generation_job' });
+        return;
+      }
+      claimKey = 'db/construction-job-claims/' + job.n + '/' + stagePart;
+      if (!(await kvSetIfAbsent(claimKey, '1', Math.ceil(JOB_TTL_MS / 1000)))) {
+        res.status(409).json({ error: 'generation_part_already_used' });
+        return;
+      }
+    } else {
+      if (!quota.allowed) {
+        if (quota.reason === 'auth') {
+          res.status(401).json({ error: 'auth_required' });
+        } else {
+          res.status(402).json({ error: 'daily_limit_reached' });
+        }
+        return;
+      }
+      if (stagePart) {
+        if (!requestedParts.length || requestedParts[0] !== stagePart) {
+          res.status(400).json({ error: 'invalid_generation_parts' });
+          return;
+        }
+        firstStage = true;
+      }
     }
+
+    const generatePlan = stagePart ? stagePart === 'plan' : wantPlan;
+    const generatePhoto = stagePart ? stagePart === 'photo' : wantPhoto;
+    const generateInterior = stagePart ? stagePart === 'interior' : !!includeInterior;
+    const generateText = !stagePart || firstStage;
 
     const buildingDesc = BUILDING_LABELS[buildingType] || 'a building';
     const styleDesc = STYLE_LABELS[style] || STYLE_LABELS.modern;
@@ -216,7 +307,9 @@ module.exports = async (req, res) => {
     const budgetRangeArText = budget && BUDGET_RANGE_AR[budget] ? BUDGET_RANGE_AR[budget] : '';
 
     const imgEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
-    const imageSize = wantPlan && wantPhoto && includeInterior ? '1K' : '2K';
+    // A staged request returns only one image, keeping both runtime and response
+    // size below the serverless limits even when all three outputs are selected.
+    const imageSize = stagePart || (wantPlan && wantPhoto && includeInterior) ? '1K' : '2K';
 
     const planPrompt =
       'A clean 2D architectural floor plan (top-down blueprint style, black and white line drawing) of ' +
@@ -301,17 +394,17 @@ module.exports = async (req, res) => {
       return task;
     };
     const fetchTasks = [
-      wantPlan ? queueImage(planReqBody) : Promise.resolve(null),
-      fetch(textEndpoint, {
+      generatePlan ? queueImage(planReqBody) : Promise.resolve(null),
+      generateText ? fetch(textEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(textReqBody),
         signal: AbortSignal.timeout(TEXT_TIMEOUT_MS),
-      }),
-      wantPhoto ? queueImage(photoReqBody) : Promise.resolve(null),
+      }) : Promise.resolve(null),
+      generatePhoto ? queueImage(photoReqBody) : Promise.resolve(null),
     ];
 
-    if (includeInterior) {
+    if (generateInterior) {
       const interiorPrompt =
         'A photorealistic interior design render of a ' + styleDesc + ' main living room / majlis inside ' +
         floorsText + buildingDesc + notesText + annexEnText +
@@ -322,18 +415,20 @@ module.exports = async (req, res) => {
 
     const results = await Promise.all(fetchTasks);
     const [planResult, textUpstream, photoResult, interiorResult] = results;
-    if (planResult && planResult.error) throw planResult.error;
-
-    const planUpstream = planResult && planResult.response;
-    const planData = planResult ? planResult.data : null;
-    const textData = await textUpstream.json();
-    const photoData = photoResult ? photoResult.data : null;
-    const interiorData = interiorResult ? interiorResult.data : null;
-
-    if (wantPlan && planUpstream && !planUpstream.ok) {
-      res.status(planUpstream.status).json({ error: GENERATION_ERROR });
+    const imageResults = [planResult, photoResult, interiorResult].filter(Boolean);
+    const imageError = imageResults.find((result) => result.error);
+    if (imageError) throw imageError.error;
+    const rejectedImage = imageResults.find((result) => result.response && !result.response.ok);
+    if (rejectedImage) {
+      await releaseClaim();
+      res.status(rejectedImage.response.status).json({ error: GENERATION_ERROR });
       return;
     }
+
+    const planData = planResult ? planResult.data : null;
+    const textData = textUpstream ? await textUpstream.json() : {};
+    const photoData = photoResult ? photoResult.data : null;
+    const interiorData = interiorResult ? interiorResult.data : null;
 
     let planImageBase64 = null;
     let planMimeType = null;
@@ -343,9 +438,6 @@ module.exports = async (req, res) => {
       if (pPart) {
         planImageBase64 = pPart.inlineData.data;
         planMimeType = pPart.inlineData.mimeType || 'image/png';
-      } else if (wantPlan) {
-        res.status(500).json({ error: 'لم يرجع الموديل صورة المخطط. حاول بوصف آخر.' });
-        return;
       }
     }
 
@@ -371,6 +463,12 @@ module.exports = async (req, res) => {
       }
     }
 
+    if ((generatePlan && !planImageBase64) || (generatePhoto && !photoImageBase64) || (generateInterior && !interiorImageBase64)) {
+      await releaseClaim();
+      res.status(500).json({ error: GENERATION_ERROR });
+      return;
+    }
+
     let planText = '';
     try {
       const tParts = (((textData.candidates || [])[0] || {}).content || {}).parts || [];
@@ -392,7 +490,14 @@ module.exports = async (req, res) => {
 
     const disclaimer = '\n\n⚠️ تصور أولي فقط لأغراض العرض — لا يغني عن مهندس مرخّص أو رخصة بناء رسمية.';
 
-    const remaining = await consumeConstruction(quota.username);
+    let remaining = job ? job.r : quota.remaining;
+    let jobTicket = null;
+    if (!stagePart || firstStage) {
+      remaining = await consumeConstruction(quota.username);
+      if (stagePart && requestedParts.length > 1) {
+        jobTicket = signJob(quota.username, requestedParts.slice(1), body, remaining);
+      }
+    }
 
     // Best-effort: save this generated design into the shared library so
     // future users with similar requirements can browse it before generating
@@ -417,12 +522,14 @@ module.exports = async (req, res) => {
       photoMimeType,
       interiorImageBase64,
       interiorMimeType,
-      planText: (planText || '') + disclaimer,
-      boq,
+      planText: generateText ? (planText || '') + disclaimer : null,
+      boq: generateText ? boq : null,
       remaining,
       dailyLimit: CONSTRUCTION_DAILY_LIMIT,
+      jobTicket,
     });
   } catch (e) {
+    await releaseClaim();
     const status = isImageTimeoutError(e) ? 504 : 500;
     res.status(status).json({ error: GENERATION_ERROR });
   }

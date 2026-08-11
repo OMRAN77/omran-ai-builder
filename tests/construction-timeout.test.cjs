@@ -1,6 +1,8 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
+process.env.AUTH_SECRET = 'test-auth-secret-for-construction-staging';
+
 function response(status, body) {
   return {
     ok: status >= 200 && status < 300,
@@ -34,13 +36,15 @@ function makeRes() {
 
 const usagePath = require.resolve('../api/_lib/_constructionUsage.js');
 const libraryPath = require.resolve('../api/_lib/_constructionLibrary.js');
+const kvPath = require.resolve('../api/_lib/kv.js');
+let consumeCalls = 0;
 require.cache[usagePath] = {
   id: usagePath,
   filename: usagePath,
   loaded: true,
   exports: {
-    checkConstructionQuota: async () => ({ allowed: true, username: 'test-user' }),
-    consumeConstruction: async () => 4,
+    checkConstructionQuota: async () => ({ allowed: true, username: 'test-user', remaining: 5 }),
+    consumeConstruction: async () => { consumeCalls++; return 4; },
     CONSTRUCTION_DAILY_LIMIT: 5,
   },
 };
@@ -49,6 +53,16 @@ require.cache[libraryPath] = {
   filename: libraryPath,
   loaded: true,
   exports: { saveDesign: async () => {} },
+};
+const claims = new Set();
+require.cache[kvPath] = {
+  id: kvPath,
+  filename: kvPath,
+  loaded: true,
+  exports: {
+    kvSetIfAbsent: async (key) => claims.has(key) ? false : (claims.add(key), true),
+    kvDel: async (key) => { claims.delete(key); },
+  },
 };
 
 process.env.GEMINI_API_KEY = 'test-key';
@@ -93,6 +107,41 @@ const request = {
   assert.equal(textCalls, 1);
   assert.equal(successRes.payload.imageBase64, 'image-1');
   assert.equal(successRes.payload.photoImageBase64, 'image-2');
+  assert.equal(consumeCalls, 1);
+
+  imageCalls = 0;
+  textCalls = 0;
+  maxActiveImages = 0;
+  const stagedBody = {
+    ...request.body,
+    includeInterior: true,
+    parts: ['plan', 'photo', 'interior'],
+  };
+  const planRes = makeRes();
+  await handler({ method: 'POST', body: { ...stagedBody, part: 'plan' } }, planRes);
+  assert.equal(planRes.statusCode, 200);
+  assert.equal(planRes.payload.imageBase64, 'image-1');
+  assert.equal(planRes.payload.photoImageBase64, null);
+  assert.ok(planRes.payload.jobTicket, 'first stage must authorize the remaining outputs');
+
+  const photoRes = makeRes();
+  await handler({ method: 'POST', body: { ...stagedBody, part: 'photo', jobTicket: planRes.payload.jobTicket } }, photoRes);
+  assert.equal(photoRes.statusCode, 200);
+  assert.equal(photoRes.payload.photoImageBase64, 'image-2');
+  assert.equal(photoRes.payload.planText, null);
+
+  const replayRes = makeRes();
+  await handler({ method: 'POST', body: { ...stagedBody, part: 'photo', jobTicket: planRes.payload.jobTicket } }, replayRes);
+  assert.equal(replayRes.statusCode, 409, 'a staged image authorization must be single-use');
+
+  const interiorRes = makeRes();
+  await handler({ method: 'POST', body: { ...stagedBody, part: 'interior', jobTicket: planRes.payload.jobTicket } }, interiorRes);
+  assert.equal(interiorRes.statusCode, 200);
+  assert.equal(interiorRes.payload.interiorImageBase64, 'image-3');
+  assert.equal(imageCalls, 3, 'triple output must use three separate one-image stages');
+  assert.equal(textCalls, 1, 'text generation belongs to the first stage only');
+  assert.equal(maxActiveImages, 1);
+  assert.equal(consumeCalls, 2, 'one staged click must consume quota only once');
 
   global.fetch = async (url) => {
     if (String(url).includes('gemini-3-pro-image')) return imageResponse('safe-image');
