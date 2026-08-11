@@ -227,6 +227,9 @@
         <option value="luxury" data-i18n="designAiStyleLuxury">💎 فخم</option>
         <option value="arabic" data-i18n="designAiStyleArabic">🕌 مجلس عربي</option>
         <option value="classic" data-i18n="designAiStyleClassic">🪵 كلاسيكي</option>
+        <option value="najdi" data-en="🏜️ Najdi">🏜️ نجدي</option>
+        <option value="islamic" data-en="✳️ Modern Islamic">✳️ إسلامي معاصر</option>
+        <option value="andalusi" data-en="🏛️ Andalusian">🏛️ أندلسي</option>
       </select>
     </div>
 
@@ -322,6 +325,11 @@
           <input type="checkbox" id="designAiDecorAccessories"><span data-i18n="designAiDecorAccessories">إكسسوارات فخمة</span>
         </label>
       </div>
+    </div>
+
+    <div style="margin-top:12px;">
+      <label id="designAiNotesLbl" style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">✍️ اكتب تفاصيلك بكلماتك (اختياري)</label>
+      <textarea id="designAiNotes" rows="3" maxlength="400" style="width:100%; resize:vertical; font-family:inherit;" placeholder="مثال: مطعم إيطالي ٤٠ كرسي، سقف عالي، طابع صناعي"></textarea>
     </div>
 
     <button type="button" class="btn primary" id="designAiGenerateBtn" style="width:100%; margin-top:14px;" data-i18n="designAiGenerateBtn">✨ صمم الغرفة</button>

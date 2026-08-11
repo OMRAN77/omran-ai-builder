@@ -12,6 +12,9 @@ const STYLE_PROMPTS = {
   simple: 'a simple minimalist interior design style, light colors, uncluttered, functional furniture',
   arabic: 'a traditional Arabic/Majlis interior design style, ornate patterns, rich fabrics, low seating',
   classic: 'a classic elegant interior design style, warm wood tones, traditional furniture',
+  najdi: 'a traditional Najdi Saudi interior design style, carved gypsum wall panels with geometric triangular motifs, earthy clay and sand tones, exposed wooden ceiling beams, floor seating with patterned cushions',
+  islamic: 'a contemporary Islamic interior design style, mashrabiya screens, arched niches, subtle geometric patterns, warm neutral palette with brass and walnut accents',
+  andalusi: 'an Andalusian Moorish interior design style, horseshoe arches, zellige mosaic tilework, carved stucco details, deep blue and terracotta palette, lush courtyard feel',
 };
 
 const LIGHTING_PROMPTS = {
@@ -103,7 +106,9 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { imageBase64, mimeType, style, lighting, furniture, flooring, fabric, wallColor, curtains, rearrange, decor, token, place, count } = body;
+    const { imageBase64, mimeType, style, lighting, furniture, flooring, fabric, wallColor, curtains, rearrange, decor, token, place, count, notes, variantOf } = body;
+    const notesText = String(notes || '').replace(/[\r\n]+/g, ' ').replace(/["`\\]/g, '').trim().slice(0, 400);
+    const notesPart = notesText ? (' User request (highest priority, follow it closely): ' + notesText + '.') : '';
     if (!imageBase64 && !place) {
       res.status(400).json({ error: 'Missing imageBase64 or place' });
       return;
@@ -154,14 +159,42 @@ module.exports = async (req, res) => {
       ];
       const base = 'Photorealistic interior design photograph of ' + placeDesc + ', decorated in ' + styleDesc + '.' + extrasText +
         ' Professional architectural photography, realistic materials and lighting, balanced composition, high detail.' +
-        ' No people, no text, no watermark, no logo.';
+        ' No people, no text, no watermark, no logo.' + notesPart;
+      const vSrc = String(variantOf || '');
+      if (vSrc && vSrc.length > 64) {
+        try {
+          const fd = new FormData();
+          fd.append('model', 'gpt-image-2');
+          fd.append('prompt', 'Create a new variation of this interior photograph. Keep the same overall design style, color palette, materials and camera angle, but vary the furniture arrangement and the decorative details.' + notesPart + ' Photorealistic architectural photography. No people, no text, no watermark, no logo.');
+          fd.append('size', '1536x1024');
+          fd.append('quality', 'medium');
+          fd.append('n', String(n));
+          fd.append('output_format', 'webp');
+          fd.append('output_compression', '82');
+          fd.append('image', new Blob([Buffer.from(vSrc, 'base64')], { type: 'image/webp' }), 'ref.webp');
+          const vr = await fetch('https://api.openai.com/v1/images/edits', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + oaKey },
+            body: fd,
+            signal: AbortSignal.timeout(240000),
+          });
+          const vd = await vr.json();
+          const vimgs = (((vd && vd.data) || []).map((x) => x && x.b64_json).filter(Boolean))
+            .map((b64) => ({ imageBase64: b64, mimeType: 'image/webp' }));
+          if (vimgs.length) {
+            const vrem = await consumeDesign(quota.username);
+            res.status(200).json({ images: vimgs, remaining: vrem, dailyLimit: DESIGN_DAILY_LIMIT });
+            return;
+          }
+        } catch (e) { /* fallback to normal generation below */ }
+      }
       const shots = await Promise.all(Array.from({ length: n }, (_, i) => fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + oaKey, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'gpt-image-2',
           prompt: base + ' Camera: ' + VIEWS[i % VIEWS.length] + '.',
-          size: '1024x1024',
+          size: '1536x1024',
           quality: 'medium',
           n: 1,
           output_format: 'webp',
@@ -182,7 +215,7 @@ module.exports = async (req, res) => {
     const promptText =
       'Redesign this room photo into ' + styleDesc + '.' + extrasText + ' ' +
       'Keep the same room layout, walls, windows and camera angle, but replace the furniture, ' +
-      'colors, decor and finishes to match the requested style. Output a single photorealistic image of the redesigned room.';
+      'colors, decor and finishes to match the requested style. Output a single photorealistic image of the redesigned room.' + notesPart;
 
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
     const reqBody = {

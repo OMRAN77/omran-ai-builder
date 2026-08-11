@@ -72,6 +72,11 @@
       var g=buildGrid(s); s.parentElement.appendChild(g);
       if(!s.getAttribute('data-gridhook')){ s.setAttribute('data-gridhook','1'); s.addEventListener('change',function(){ var gg=s.parentElement.querySelector('.optGrid'); if(gg) mark(gg,s); }); }
     });
+    var nt=document.getElementById('designAiNotes');
+    if(nt){ var ien=(document.documentElement.lang||'ar')==='en';
+      nt.placeholder=ien?'e.g. Italian restaurant, 40 seats, high ceiling, industrial vibe':'\u0645\u062B\u0627\u0644: \u0645\u0637\u0639\u0645 \u0625\u064A\u0637\u0627\u0644\u064A \u0664\u0660 \u0643\u0631\u0633\u064A\u060C \u0633\u0642\u0641 \u0639\u0627\u0644\u064A\u060C \u0637\u0627\u0628\u0639 \u0635\u0646\u0627\u0639\u064A';
+      var nl=document.getElementById('designAiNotesLbl'); if(nl) nl.textContent=ien?'\u270D\uFE0F Describe it in your own words (optional)':'\u270D\uFE0F \u0627\u0643\u062A\u0628 \u062A\u0641\u0627\u0635\u064A\u0644\u0643 \u0628\u0643\u0644\u0645\u0627\u062A\u0643 (\u0627\u062E\u062A\u064A\u0627\u0631\u064A)';
+    }
     var anchor=document.getElementById('designAiDecorPlants');
     if(anchor&&anchor.parentElement&&anchor.parentElement.parentElement){
       var wrap=anchor.parentElement.parentElement, host=wrap.parentElement;

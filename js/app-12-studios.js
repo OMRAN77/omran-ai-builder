@@ -106,8 +106,10 @@
     };
   }
 
+  let variantSrc = null;
   btnGenerate.onclick = async () => {
     const placeVal = placeEl ? placeEl.value : '';
+    const notesEl = document.getElementById('designAiNotes');
     if(!selectedBase64 && !placeVal){
       setStatus(t('designAiNeedPick'));
       return;
@@ -133,6 +135,8 @@
           mimeType: selectedMime,
           place: placeVal,
           count: selectedBase64 ? 1 : 4,
+          notes: notesEl ? String(notesEl.value || '').slice(0, 400) : '',
+          variantOf: variantSrc || '',
           style: styleEl.value,
           lighting: lightingEl ? lightingEl.value : '',
           furniture: furnitureEl ? furnitureEl.value : '',
@@ -149,6 +153,8 @@
           token,
         }),
       });
+      variantSrc = null;
+      variantSrc = null;
       const data = await res.json();
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('designAiNeedLogin')); return; }
@@ -168,7 +174,16 @@
           g.src = u;
           g.style.cssText = 'width:100%; display:block;';
           a.appendChild(g);
-          gridEl.appendChild(a);
+          const cell = document.createElement('div');
+          cell.appendChild(a);
+          const vb = document.createElement('button');
+          vb.type = 'button';
+          vb.className = 'btn';
+          vb.textContent = isEn() ? '\u2728 More like this' : '\u2728 \u0632\u0648\u0651\u062F\u0646\u064A \u0645\u062B\u0644\u0647';
+          vb.style.cssText = 'width:100%; margin-top:5px; font-size:11.5px; padding:5px 4px;';
+          vb.onclick = (ev) => { ev.preventDefault(); variantSrc = im.imageBase64; btnGenerate.onclick(); };
+          cell.appendChild(vb);
+          gridEl.appendChild(cell);
         });
         setStatus(t('designAiDone'));
         return;
