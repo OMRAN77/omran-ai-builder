@@ -21,12 +21,9 @@ test('multiline poetry and punctuation are preserved verbatim', () => {
   assert.equal(s.visualPrompt, 'صورة ليل');
 });
 
-test('vague text request asks for wording instead of inventing it', () => {
-  const s = parseImageTextSpec('أنشئ صورة واكتب عليها دعاء');
-  assert.equal(s.wantsText, true);
-  assert.equal(s.exactText, null);
-  assert.match(s.visualPrompt, /دعاء عربي/);
-});
+test('general and named prayers are authored automatically', () => {
+  const specs = ['دعاء', 'دعاء الاستخارة', 'دعاء الصباح', 'دعاء المساء'].map(parseImageTextSpec);
+  assert.equal(specs.every((s) => s.wantsText && s.exactText && s.autoAuthored) && /أستخيرك بعلمك/.test(specs[1].exactText) && specs[2].exactText !== specs[3].exactText, true); });
 
 test('putting an object in a scene is not misclassified as writing', () => {
   const s = parseImageTextSpec('ضع شمسًا في السماء فوق البحر');
