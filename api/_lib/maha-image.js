@@ -6,6 +6,7 @@
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
 const { cleanImagePrompt, buildGenerationPrompt } = require('./image-prompt');
 const { authorPrayerPlan } = require('./prayer-plan');
+const { fetchImageWithRetry, isImageTimeoutError } = require('./image-fetch');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -115,28 +116,31 @@ module.exports = async (req, res) => {
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
     const reqBody = JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: editImageBase64 ? 0.15 : 0.65, imageConfig: { imageSize: '2K' } } });
 
-    // Transient upstream errors (rate limit / overload) happen more often the
-    // more edits pile up in one call. Retry a couple of times with a short
-    // backoff before giving up, instead of surfacing the error to the user.
-    let upstream, data;
-    const maxAttempts = 3;
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      upstream = await fetch(endpoint, {
+    // Image generation normally takes 35–50 seconds, so it must bypass the
+    // shared 30-second fetch guard. Retry transient failures inside this one
+    // request; the user should not have to resend the same prompt.
+    const imageResult = await fetchImageWithRetry({
+      url: endpoint,
+      init: {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: reqBody,
-      });
-      data = await upstream.json().catch(() => ({}));
-      if (upstream.ok) break;
-      const retryable = upstream.status === 429 || upstream.status === 500 || upstream.status === 503;
-      console.error('[maha-image] upstream error attempt ' + attempt + '/' + maxAttempts + ' status=' + upstream.status + ' body=' + JSON.stringify(data));
-      if (!retryable || attempt === maxAttempts) break;
-      await new Promise((r) => setTimeout(r, 700 * attempt));
-    }
+      },
+      onRetry: ({ attempt, response, error }) => {
+        const detail = response ? ('status=' + response.status) : ('error=' + String(error && error.name || 'fetch'));
+        console.error('[maha-image] retrying upstream image request after attempt ' + attempt + ' ' + detail);
+      },
+    });
+    const upstream = imageResult.response;
+    const data = imageResult.data || {};
 
-    if (!upstream.ok) {
+    if (!upstream || !upstream.ok) {
       if (mahaImgCharged) await pointsLib.refundPoints(mahaImgCharged, pointsLib.COSTS.image);
-      res.status(upstream.status).json({ error: (data && data.error && data.error.message) || 'Upstream error', retryable: upstream.status === 429 || upstream.status === 500 || upstream.status === 503 });
+      const timedOut = isImageTimeoutError(imageResult.error);
+      const retryable = timedOut || !!(upstream && (upstream.status === 429 || upstream.status >= 500));
+      const errorCode = timedOut ? 'image_generation_timeout' : (retryable ? 'image_generation_busy' : 'image_generation_failed');
+      console.error('[maha-image] upstream image request failed after ' + imageResult.attempts + ' attempt(s)' + (upstream ? ' status=' + upstream.status : ''));
+      res.status(timedOut ? 504 : 502).json({ error: errorCode, retryable });
       return;
     }
 
@@ -158,6 +162,6 @@ module.exports = async (req, res) => {
     });
   } catch (e) {
     console.error('[maha-image] proxy exception: ' + (e && e.stack ? e.stack : e));
-    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+    res.status(500).json({ error: 'image_generation_failed', retryable: true });
   }
 };

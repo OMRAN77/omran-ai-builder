@@ -1176,6 +1176,21 @@ function imgErrFriendly(err, isAr){
       ? '⚡ نقاطك الحالية ما تكفي لهذه الصورة (تحتاج 10 نقاط). افتح الإعدادات ← الباقات لشحن نقاطك وتكمل مباشرة.'
       : '⚡ Not enough points for this image (needs 10). Open Settings → Plans to top up and continue.';
   }
+  if(err === 'image_generation_timeout'){
+    return isAr
+      ? 'تأخر إنشاء الصورة هذه المرة. أعد المحاولة بعد لحظة.'
+      : 'Image generation took too long this time. Please try again in a moment.';
+  }
+  if(err === 'image_generation_busy'){
+    return isAr
+      ? 'خدمة الصور مشغولة الآن. أعد المحاولة بعد لحظة.'
+      : 'Image generation is busy right now. Please try again in a moment.';
+  }
+  if(err === 'image_generation_failed'){
+    return isAr
+      ? 'تعذّر إنشاء الصورة هذه المرة. جرّب مرة أخرى.'
+      : 'The image could not be generated this time. Please try again.';
+  }
   return null;
 }
 
