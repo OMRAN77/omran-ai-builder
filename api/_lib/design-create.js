@@ -56,6 +56,22 @@ const CURTAIN_PROMPTS = {
   remove: 'no curtains at all (remove existing curtains)',
 };
 
+// أنواع الأماكن — مسار «بلا صورة»: يبني المشهد من الصفر بدل تعديل صورة.
+const PLACE_PROMPTS = {
+  restaurant: 'a restaurant dining hall interior',
+  cafe: 'a coffee shop / cafe interior',
+  bedroom: 'a bedroom interior',
+  majlis: 'a traditional Arabic majlis sitting room interior',
+  living: 'a living room interior',
+  kitchen: 'a kitchen interior',
+  office: 'an office workspace interior',
+  shop: 'a retail shop interior',
+  bath: 'a bathroom interior',
+  kids: "a children's bedroom interior",
+  entrance: 'a home entrance / foyer interior',
+  garden: 'an outdoor garden terrace seating area',
+};
+
 const DECOR_PROMPTS = {
   plants: 'add decorative indoor plants',
   art: 'add wall art/paintings',
@@ -87,9 +103,9 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { imageBase64, mimeType, style, lighting, furniture, flooring, fabric, wallColor, curtains, rearrange, decor, token } = body;
-    if (!imageBase64) {
-      res.status(400).json({ error: 'Missing imageBase64' });
+    const { imageBase64, mimeType, style, lighting, furniture, flooring, fabric, wallColor, curtains, rearrange, decor, token, place, count } = body;
+    if (!imageBase64 && !place) {
+      res.status(400).json({ error: 'Missing imageBase64 or place' });
       return;
     }
 
@@ -116,6 +132,52 @@ module.exports = async (req, res) => {
       decor.forEach((d) => { if (DECOR_PROMPTS[d]) extras.push(DECOR_PROMPTS[d]); });
     }
     const extrasText = extras.length ? (' Additionally apply these specific changes: ' + extras.join('; ') + '.') : '';
+
+    // ── مسار «بلا صورة»: أشكال جاهزة من نوع المكان. يعمل على OpenAI لا على نموذج جوجل. ──
+    if (!imageBase64) {
+      const oaKey = process.env.OPENAI_API_KEY;
+      if (!oaKey) {
+        res.status(500).json({ error: 'Server is missing OPENAI_API_KEY' });
+        return;
+      }
+      const placeDesc = PLACE_PROMPTS[place];
+      if (!placeDesc) {
+        res.status(400).json({ error: 'Unknown place' });
+        return;
+      }
+      const n = Math.min(Math.max(parseInt(count, 10) || 4, 1), 4);
+      const VIEWS = [
+        'wide establishing shot taken from the doorway',
+        'view from the opposite corner of the space',
+        'closer shot focused on the main seating or feature area',
+        'elevated three-quarter angle showing the whole layout',
+      ];
+      const base = 'Photorealistic interior design photograph of ' + placeDesc + ', decorated in ' + styleDesc + '.' + extrasText +
+        ' Professional architectural photography, realistic materials and lighting, balanced composition, high detail.' +
+        ' No people, no text, no watermark, no logo.';
+      const shots = await Promise.all(Array.from({ length: n }, (_, i) => fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + oaKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gpt-image-2',
+          prompt: base + ' Camera: ' + VIEWS[i % VIEWS.length] + '.',
+          size: '1024x1024',
+          quality: 'medium',
+          n: 1,
+          output_format: 'webp',
+          output_compression: 82,
+        }),
+        signal: AbortSignal.timeout(240000),
+      }).then((r) => r.json()).then((d) => (((d && d.data) || [])[0] || {}).b64_json || null).catch(() => null)));
+      const images = shots.filter(Boolean).map((b64) => ({ imageBase64: b64, mimeType: 'image/webp' }));
+      if (!images.length) {
+        res.status(502).json({ error: 'لم يرجع النموذج أي شكل. جرّب نمطًا أو نوع مكان آخر.' });
+        return;
+      }
+      const rem = await consumeDesign(quota.username);
+      res.status(200).json({ images, remaining: rem, dailyLimit: DESIGN_DAILY_LIMIT });
+      return;
+    }
 
     const promptText =
       'Redesign this room photo into ' + styleDesc + '.' + extrasText + ' ' +

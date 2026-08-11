@@ -1902,7 +1902,9 @@ const I18N = {
     designAiModalTitle: '🏠 ديكور بالذكاء الاصطناعي',
     designAiVideoTitle: '🎬 فيديو توضيحي: كيف تستخدم ديكور AI',
     fashionAiVideoTitle: '🎬 فيديو توضيحي: كيف تستخدم أزياء AI',
-    designAiDesc: 'ارفع صورة لغرفتك واختر نمط الديكور، وسيقوم الذكاء الاصطناعي بإعادة تصميمها. ميزة قيد التجربة بحد أقصى قليل يوميًا لكل حساب.',
+    designAiDesc: 'اختر نوع المكان والنمط ليعطيك الذكاء الاصطناعي أشكال تصاميم جاهزة — أو ارفع صورة مكانك ليعيد تصميمه. ميزة قيد التجربة بحد أقصى قليل يوميًا لكل حساب.',
+    designAiPlaceLabel: 'نوع المكان',
+    designAiNeedPick: 'اختر نوع المكان أو ارفع صورة أولاً',
     designAiStyleLabel: 'نمط الديكور',
     designAiStyleModern: '✨ عصري',
     designAiStyleSimple: '🤍 بسيط',
@@ -2935,7 +2937,9 @@ const I18N = {
     designAiModalTitle: '🏠 AI Interior Design',
     designAiVideoTitle: '🎬 Tutorial video: How to use Decor AI',
     fashionAiVideoTitle: '🎬 Tutorial video: How to use Fashion AI',
-    designAiDesc: 'Upload a photo of your room and pick a decor style, and AI will redesign it. This feature is in testing with a small daily limit per account.',
+    designAiDesc: 'Pick a place type and a style to get ready-made design ideas — or upload a photo of your own space to redesign it. Experimental feature with a small daily cap per account.',
+    designAiPlaceLabel: 'Place type',
+    designAiNeedPick: 'Pick a place type or upload a photo first',
     designAiStyleLabel: 'Decor style',
     designAiStyleModern: '✨ Modern',
     designAiStyleSimple: '🤍 Simple',
@@ -16251,6 +16255,16 @@ function openShareModal(project){
   const fileBtn = $('#designAiFileBtn');
   const fileNameEl = $('#designAiFileName');
   const sourcePreview = $('#designAiSourcePreview');
+  const placeEl = $('#designAiPlace');
+  const gridEl = $('#designAiGrid');
+  function syncPlace(){
+    const on = !!(placeEl && placeEl.value);
+    const dz = modal.querySelector('.dzArea');
+    if(dz) dz.style.display = on ? 'none' : '';
+    if(on && sourcePreview) sourcePreview.style.display = 'none';
+  }
+  if(placeEl) placeEl.addEventListener('change', syncPlace);
+  if(btnOpen) btnOpen.addEventListener('click', () => setTimeout(syncPlace, 0));
   const styleEl = $('#designAiStyle');
   const lightingEl = $('#designAiLighting');
   const furnitureEl = $('#designAiFurniture');
@@ -16337,8 +16351,9 @@ function openShareModal(project){
   }
 
   btnGenerate.onclick = async () => {
-    if(!selectedBase64){
-      setStatus(t('designAiNeedImage'));
+    const placeVal = placeEl ? placeEl.value : '';
+    if(!selectedBase64 && !placeVal){
+      setStatus(t('designAiNeedPick'));
       return;
     }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
@@ -16350,6 +16365,7 @@ function openShareModal(project){
     btnGenerate.disabled = true;
     resultEl.style.display = 'none';
     downloadEl.style.display = 'none';
+    if(gridEl){ gridEl.style.display = 'none'; gridEl.innerHTML = ''; }
     setStatus(t('designAiGenerating'));
 
     try{
@@ -16357,8 +16373,10 @@ function openShareModal(project){
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          imageBase64: selectedBase64,
+          imageBase64: placeVal ? '' : selectedBase64,
           mimeType: selectedMime,
+          place: placeVal,
+          count: selectedBase64 ? 1 : 4,
           style: styleEl.value,
           lighting: lightingEl ? lightingEl.value : '',
           furniture: furnitureEl ? furnitureEl.value : '',
@@ -16380,6 +16398,24 @@ function openShareModal(project){
         if(data.error === 'auth_required'){ setStatus(t('designAiNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('designAiLimitReached')); return; }
         throw new Error(data.error || 'unknown');
+      }
+      if(Array.isArray(data.images) && data.images.length && gridEl){
+        gridEl.innerHTML = '';
+        gridEl.style.display = 'grid';
+        data.images.forEach((im, i) => {
+          const u = 'data:' + (im.mimeType || 'image/webp') + ';base64,' + im.imageBase64;
+          const a = document.createElement('a');
+          a.href = u;
+          a.download = 'omran-design-' + (i + 1) + '.webp';
+          a.style.cssText = 'display:block; border-radius:var(--r-2); overflow:hidden; background:#000;';
+          const g = document.createElement('img');
+          g.src = u;
+          g.style.cssText = 'width:100%; display:block;';
+          a.appendChild(g);
+          gridEl.appendChild(a);
+        });
+        setStatus(t('designAiDone'));
+        return;
       }
       const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
       resultEl.src = dataUrl;

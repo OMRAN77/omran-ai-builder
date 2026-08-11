@@ -192,6 +192,25 @@
     </div>
     <p style="font-size:12.5px; color:var(--muted); margin-top:2px;" data-i18n="designAiDesc">ارفع صورة لغرفتك واختر نمط الديكور، وسيقوم الذكاء الاصطناعي بإعادة تصميمها. ميزة قيد التجربة بحد أقصى قليل يوميًا لكل حساب.</p>
 
+    <div style="margin-top:12px;">
+      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="designAiPlaceLabel">نوع المكان</label>
+      <select id="designAiPlace" style="width:100%;">
+        <option value="" data-en="📷 From my photo">📷 من صورتي</option>
+        <option value="restaurant" data-en="🍽️ Restaurant">🍽️ مطعم</option>
+        <option value="cafe" data-en="☕ Cafe">☕ كافيه</option>
+        <option value="bedroom" data-en="🛏️ Bedroom">🛏️ غرفة نوم</option>
+        <option value="majlis" data-en="🪑 Majlis">🪑 مجلس</option>
+        <option value="living" data-en="🛋️ Living room">🛋️ صالة</option>
+        <option value="kitchen" data-en="🍳 Kitchen">🍳 مطبخ</option>
+        <option value="office" data-en="💼 Office">💼 مكتب</option>
+        <option value="shop" data-en="🛍️ Shop">🛍️ محل</option>
+        <option value="bath" data-en="🛁 Bathroom">🛁 حمام</option>
+        <option value="kids" data-en="🧸 Kids room">🧸 غرفة أطفال</option>
+        <option value="entrance" data-en="🚪 Entrance">🚪 مدخل</option>
+        <option value="garden" data-en="🌳 Garden">🌳 حديقة</option>
+      </select>
+    </div>
+
     <input type="file" id="designAiFileInput" accept="image/*" style="display:none;">
     <div style="display:flex; align-items:center; gap:10px; margin-top:12px;">
       <button type="button" class="btn" id="designAiFileBtn" style="width:auto; white-space:nowrap;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
@@ -309,6 +328,7 @@
 
     <div id="designAiStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
     <img id="designAiResult" style="display:none; width:100%; margin-top:14px; border-radius:var(--r-2); background:#000;">
+    <div id="designAiGrid" style="display:none; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px;"></div>
     <a id="designAiDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-design-ai.png" data-i18n="designAiDownloadBtn">⬇️ تحميل الصورة</a>
   </div>
 </div>

@@ -11,6 +11,16 @@
   const fileBtn = $('#designAiFileBtn');
   const fileNameEl = $('#designAiFileName');
   const sourcePreview = $('#designAiSourcePreview');
+  const placeEl = $('#designAiPlace');
+  const gridEl = $('#designAiGrid');
+  function syncPlace(){
+    const on = !!(placeEl && placeEl.value);
+    const dz = modal.querySelector('.dzArea');
+    if(dz) dz.style.display = on ? 'none' : '';
+    if(on && sourcePreview) sourcePreview.style.display = 'none';
+  }
+  if(placeEl) placeEl.addEventListener('change', syncPlace);
+  if(btnOpen) btnOpen.addEventListener('click', () => setTimeout(syncPlace, 0));
   const styleEl = $('#designAiStyle');
   const lightingEl = $('#designAiLighting');
   const furnitureEl = $('#designAiFurniture');
@@ -97,8 +107,9 @@
   }
 
   btnGenerate.onclick = async () => {
-    if(!selectedBase64){
-      setStatus(t('designAiNeedImage'));
+    const placeVal = placeEl ? placeEl.value : '';
+    if(!selectedBase64 && !placeVal){
+      setStatus(t('designAiNeedPick'));
       return;
     }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
@@ -110,6 +121,7 @@
     btnGenerate.disabled = true;
     resultEl.style.display = 'none';
     downloadEl.style.display = 'none';
+    if(gridEl){ gridEl.style.display = 'none'; gridEl.innerHTML = ''; }
     setStatus(t('designAiGenerating'));
 
     try{
@@ -117,8 +129,10 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          imageBase64: selectedBase64,
+          imageBase64: placeVal ? '' : selectedBase64,
           mimeType: selectedMime,
+          place: placeVal,
+          count: selectedBase64 ? 1 : 4,
           style: styleEl.value,
           lighting: lightingEl ? lightingEl.value : '',
           furniture: furnitureEl ? furnitureEl.value : '',
@@ -140,6 +154,24 @@
         if(data.error === 'auth_required'){ setStatus(t('designAiNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('designAiLimitReached')); return; }
         throw new Error(data.error || 'unknown');
+      }
+      if(Array.isArray(data.images) && data.images.length && gridEl){
+        gridEl.innerHTML = '';
+        gridEl.style.display = 'grid';
+        data.images.forEach((im, i) => {
+          const u = 'data:' + (im.mimeType || 'image/webp') + ';base64,' + im.imageBase64;
+          const a = document.createElement('a');
+          a.href = u;
+          a.download = 'omran-design-' + (i + 1) + '.webp';
+          a.style.cssText = 'display:block; border-radius:var(--r-2); overflow:hidden; background:#000;';
+          const g = document.createElement('img');
+          g.src = u;
+          g.style.cssText = 'width:100%; display:block;';
+          a.appendChild(g);
+          gridEl.appendChild(a);
+        });
+        setStatus(t('designAiDone'));
+        return;
       }
       const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
       resultEl.src = dataUrl;
