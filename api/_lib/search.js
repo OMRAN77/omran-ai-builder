@@ -436,21 +436,26 @@ module.exports = async (req, res) => {
     // v467c: إذا السياق/الاستعلام يذكر دولة غير الإمارات → لا نقفل على مواقع إماراتية
     const __foreignCountryRe = /نيبال|nepal|فلبين|فليبين|philippin|بنجلاديش|بنغلاديش|bangladesh|هند(?!سي)|india|باكستان|pakistan|سعودي|saudi|مصر|egypt|عمان(?! (ai|builder))|oman|قطر|qatar|كويت|kuwait|بحرين|bahrain|أردن|jordan|عراق|iraq|سوري|syria|يمن|yemen|لبنان|lebanon|ليبيا|libya|تونس|tunis|جزائر|algeria|مغرب|morocco|سودان|sudan|صومال|somal|تركي|turk|إيران|iran|أفغان|afghan|إندونيسي|indonesia|ماليزي|malays|تايلاند|thai|فيتنام|vietnam|كمبودي|cambodia|ميانمار|myanmar|سريلانك|sri lanka|كوري|korea|ياباني|japan|صين|china|روسي|russ|أمريك|americ|كند|canad|بريطان|british|uk|ألمان|german|فرنس|franc|إيطالي|ital|إسبان|spain|برتغال|portug|هولند|netherl|بلجيك|belg|سويسر|swiss|أسترال|austral|نيوزيلند|new zealand|برازيل|brazil|أرجنتين|argentin|مكسيك|mexic|كولومبي|colombi|تشيلي|chile|بيرو|peru|جنوب أفريقي|south afric|كيني|kenya|نيجيري|nigeria|غان|ghana|تنزاني|tanzania|أثيوبي|ethiopi|أوغند|uganda/i;
     const __hasForeignCountry = __foreignCountryRe.test(query);
+    // v556: إذا ذكر المستخدم مجالًا صريحًا في رسالته نفسها => المجال يُحسم منها وحدها،
+    // لا من السياق المحقون. يمنع تسرّب فرع (لوحات/عقار/سيارات/وظائف/فنادق) إلى سؤال مجال آخر.
+    const __q0 = (body && body.q0 || '').toString().trim();
+    const __DOM_RE = /لوح(ة|ات|تين)|رقم\s*مميز|[\u0623\u0627]رقام\s*مميزة|بليت|بلايت|plate|عقار|شق(ة|ق|تين)|فيلا|فلل|[\u0623\u0627]رض|اراضي|apartment|villa|property|سيار|سيرات|سياير|مركب|\bcars?\b|وظيف|وظائف|توظيف|\bjobs?\b|فندق|فنادق|منتجع|شاليه|hotel|resort|طيران|تذكرة|تذاكر|flight/i;
+    const qb = (__q0 && __DOM_RE.test(__q0)) ? __q0 : query;
     // 🔢 v543: أسئلة اللوحات/الأرقام المميزة → موقعان فقط: xplate + SHub (s-plate).
     const NUMBERS_RE = /لوح(ة|ات|تين)\s*(سيار|مركب|مرور|مميز|رقم|دبي|أبوظبي|ابوظبي|الشارقة|عجمان|رأس الخيمة|راس الخيمة|أم القيوين|ام القيوين|الفجيرة)|[أا]?رقام(\s+\S+)?\s*مميزة|رقم(\s+\S+)?\s*مميز|بلايت|بليت|number plate|license plate|special number|vip number|plate for sale/i;
-    const isNumbers = !domains && !__wantsOfficialSource && !__hasForeignCountry && NUMBERS_RE.test(query);
-    const isListing = isNumbers || (!domains && !__wantsOfficialSource && !__hasForeignCountry && (/عقار|شق(ة|ق|تين)|فيلا|فلل|أرض للبيع|ارض للبيع|للبيع|للايجار|للإيجار|إيجار|ايجار|محل تجاري|مكتب للـ|سياره|سيارة|سيارات|سيرات|سياير|اجار|آجار|تأجير|تاجير|استئجار|rent a car|car rental|وظيفة|وظائف|توظيف|apartment|villa|property|for sale|for rent|listing|car for|job vacanc|تذكرة|تذاكر|رحلة إلى|رحله الى|رحلات|air ticket|فندق|فنادق|منتجع|منتجعات|شاليه|شاليهات|hotel|resort/i.test(query) || __flightListing));
+    const isNumbers = !domains && !__wantsOfficialSource && !__hasForeignCountry && NUMBERS_RE.test(qb);
+    const isListing = isNumbers || (!domains && !__wantsOfficialSource && !__hasForeignCountry && (/عقار|شق(ة|ق|تين)|فيلا|فلل|أرض للبيع|ارض للبيع|للبيع|للايجار|للإيجار|إيجار|ايجار|محل تجاري|مكتب للـ|سياره|سيارة|سيارات|سيرات|سياير|اجار|آجار|تأجير|تاجير|استئجار|rent a car|car rental|وظيفة|وظائف|توظيف|apartment|villa|property|for sale|for rent|listing|car for|job vacanc|تذكرة|تذاكر|رحلة إلى|رحله الى|رحلات|air ticket|فندق|فنادق|منتجع|منتجعات|شاليه|شاليهات|hotel|resort/i.test(qb) || __flightListing));
     const listingDomains = isNumbers
       ? ['xplate.com', 's-plate.com']
-      : /طيران|تذكرة|تذاكر|رحلة|رحله|رحلات|flight|air ticket|airfare/i.test(query)
+      : /طيران|تذكرة|تذاكر|رحلة|رحله|رحلات|flight|air ticket|airfare/i.test(qb)
       ? ['skyscanner.ae', 'skyscanner.net', 'wego.ae', 'wego.com', 'kayak.ae', 'cheapflights.ae']
-      : /فندق|فنادق|منتجع|منتجعات|شاليه|شاليهات|hotel|resort/i.test(query)
+      : /فندق|فنادق|منتجع|منتجعات|شاليه|شاليهات|hotel|resort/i.test(qb)
       ? ['booking.com', 'agoda.com', 'hotels.com', 'airbnb.com', 'almosafer.com', 'wego.ae']
-      : /وظيفة|وظائف|توظيف|job/i.test(query)
+      : /وظيفة|وظائف|توظيف|job/i.test(qb)
       ? ['bayt.com', 'dubizzle.com', 'indeed.ae', 'naukrigulf.com', 'gulftalent.com']
-      : (/سيار|سيرات|سياير|car/i.test(query) && /اجار|آجار|تأجير|تاجير|استئجار|rent/i.test(query))
+      : (/سيار|سيرات|سياير|car/i.test(qb) && /اجار|آجار|تأجير|تاجير|استئجار|rent/i.test(qb))
         ? ['oneclickdrive.com', 'selfdrive.ae', 'dubizzle.com', 'yallamotor.com']
-      : /سيار|سيرات|سياير|car/i.test(query)
+      : /سيار|سيرات|سياير|car/i.test(qb)
         ? ['dubizzle.com', 'dubicars.com', 'yallamotor.com', 'cars24.ae', 'autotraders.ae']
         : ['bayut.com', 'dubizzle.com', 'propertyfinder.ae'];
 

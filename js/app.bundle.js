@@ -9925,6 +9925,9 @@ async function smartMaybeSearch(text, ctxMsgs){
   // v327: طلب لوجو/شعار/تصميم شخصي (لتطبيقي/شركتي/لي...) = مهمة تصميم — ممنوع البحث الحي نهائيًا.
   if(/(لوجو|شعار|\blogo\b|تصميم|صمم|صمّم)/i.test(text) && /(لي|إلي|الي|لتطبيق|تطبيقي|لموقع|موقعي|لشرك|شركتي|لمشروع|مشروعي|لمتجر|متجري|لقناة|قناتي|خاص|my|for me)/i.test(text)) return null;
 
+  // v556: خريطة مجالات — تمنع حقن سياق من مجال مختلف (عيب: «اريد عقارات» بعد حديث اللوحات).
+  const __DOMS = [[/لوح(ة|ات|تين)|رقم\s*مميز|[\u0623\u0627]رقام\s*مميزة|بليت|بلايت|plate/i,'num'],[/عقار|شق(ة|ق|تين)|فيلا|فلل|[\u0623\u0627]رض|اراضي|\u0623راضي|apartment|villa|property/i,'re'],[/سيار|سيرات|سياير|مركب|\bcars?\b/i,'car'],[/وظيف|وظائف|توظيف|شغل|\bjobs?\b|vacanc/i,'job'],[/فندق|فنادق|منتجع|شاليه|hotel|resort/i,'htl'],[/طيران|تذكرة|تذاكر|flight|airfare/i,'fly'],[/مطعم|مطاعم|كافيه|منيو|كتالوج/i,'food']];
+  const __domOf = s => { for(const d of __DOMS){ if(d[0].test(s)) return d[1]; } return ''; };
   // v384: 🧠 بحث واعي بالسياق — إذا الرسالة قصيرة وتبدو متابعة (عطني الروابط / المزيد / تفاصيل...)
   // نجيب الموضوع الأصلي من آخر رسائل المحادثة ونضيفه للاستعلام.
   let searchQuery = text;
@@ -9941,7 +9944,11 @@ async function smartMaybeSearch(text, ctxMsgs){
       const __aiSnippet = String(__prevAI[__prevAI.length - 1].content).slice(0, 300);
       __topic = __topic ? (__topic + ' ' + __aiSnippet) : __aiSnippet;
     }
-    if(__topic) searchQuery = (__topic + ' ' + text).slice(0, 500);
+    if(__topic){
+      // v556: مجال جديد صريح يختلف عن مجال السياق => سؤال مستقل، صفر حقن.
+      const __dNew = __domOf(text), __dCtx = __domOf(__topic);
+      searchQuery = (__dNew && __dCtx && __dNew !== __dCtx) ? text : (__topic + ' ' + text).slice(0, 500);
+    }
   }
 
   // v384: 🔬 Deep Research — استعلامات معقدة أو صريحة تحتاج بحث عميق بعدة زوايا.
@@ -9953,10 +9960,10 @@ async function smartMaybeSearch(text, ctxMsgs){
     || /(رابط|لينك|\blink\b|\burl\b)[^\n]{0,25}(موقع|مواقع|منصة|منصات|صفحة|site|website)/i.test(text)
     || /(موقع|مواقع|منصة|منصات|site|website)[^\n]{0,25}(رابط|لينك|\blink\b|\burl\b|\blinks\b)/i.test(text)
     || /(عطني|اعطني|أعطني|هات|وريني|ابغي|أبغي|أبي|ابي|أريد|اريد|give me|show me)[^\n]{0,20}(موقع|مواقع|منصة|منصات|رابط|لينك|\bsites?\b|\bwebsites?\b|\blinks?\b)/i.test(text)){
-    return await fetchSearchNote(searchQuery, __wantDeep);
+    return await fetchSearchNote(searchQuery, __wantDeep, text);
   }
   // مسار سريع: الكلمات المفتاحية القديمة => بحث مباشر بدون تصنيف.
-  if(mahaNeedsSearch(text)) return await fetchSearchNote(searchQuery, __wantDeep);
+  if(mahaNeedsSearch(text)) return await fetchSearchNote(searchQuery, __wantDeep, text);
   // غير ذلك: مصنّف Groq سريع بالسيرفر يقرر بالمعنى (يفشل بصمت => لا بحث).
   try{
     const controller = new AbortController();
@@ -9971,18 +9978,18 @@ async function smartMaybeSearch(text, ctxMsgs){
     if(!res.ok) return null;
     const data = await res.json();
     if(!data || !data.search) return null;
-    return await fetchSearchNote(searchQuery, __wantDeep);
+    return await fetchSearchNote(searchQuery, __wantDeep, text);
   }catch(e){
     return null;
   }
 }
 
-async function fetchSearchNote(transcript, deep){
+async function fetchSearchNote(transcript, deep, q0){
   // 🔁 محاولة ثانية تلقائية: فشل البحث الأول (timeout/خطأ عابر) لا يعني رد
   // "ما عندي معلومات" — نعيد المحاولة مرة وحدة قبل الاستسلام.
-  const first = await fetchSearchNoteOnce(transcript, deep);
+  const first = await fetchSearchNoteOnce(transcript, deep, q0);
   if(first) return first;
-  return await fetchSearchNoteOnce(transcript, false);
+  return await fetchSearchNoteOnce(transcript, false, q0);
 }
 
 // دفاع واجهة مستقل: المصدر المحذوف لا يظهر حتى لو وصل من استجابة قديمة.
@@ -9998,7 +10005,7 @@ function withoutRemovedSearchSourceMentions(value){
   return String(value || '').replace(REMOVED_SEARCH_SOURCE_TEXT_RE, '').replace(/\s{2,}/g, ' ').trim();
 }
 
-async function fetchSearchNoteOnce(transcript, deep){
+async function fetchSearchNoteOnce(transcript, deep, q0){
   // Live search is the longest silent gap in ordinary chat — up to 45s.
   const __st = (window.__chatStatus && !window.__chatStatus.__released)
     ? window.__chatStatus.step('🔍', deep ? 'يبحث في الإنترنت (بحث موسّع)…' : 'يبحث في الإنترنت…')
@@ -10012,7 +10019,7 @@ async function fetchSearchNoteOnce(transcript, deep){
       // 🖼️ Feature ②: also ask for images so informational/live-search
       // replies can show a ChatGPT-style image strip + source badges above
       // and below the answer text (data.sources/data.images below).
-      body: JSON.stringify({ query: transcript, images: true, deep: !!deep, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+      body: JSON.stringify({ query: transcript, q0: q0 || '', images: true, deep: !!deep, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
       signal: controller.signal,
     });
     clearTimeout(timeout);
@@ -19722,11 +19729,11 @@ window.updateVersionLabel();
         if (res.ok && data.imageBase64) {
           reply({ ok: true, dataUrl: 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64 });
         } else {
-          reply({ ok: false, error: 'تعذر توليد الصورة الآن. حاول مرة أخرى بعد قليل.' });
+          reply({ ok: false, error: (data && data.error) || ('HTTP ' + res.status) });
         }
       });
-    }).catch(function () {
-      reply({ ok: false, error: 'تعذر توليد الصورة الآن. حاول مرة أخرى بعد قليل.' });
+    }).catch(function (err) {
+      reply({ ok: false, error: String((err && err.message) || err) });
     });
   });
 
@@ -19764,39 +19771,27 @@ window.updateVersionLabel();
     ].filter(Boolean).join('\n');
   }
 
-  function requestPlanSpec(desc) {
-    return fetch('/api/gemini', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'gemini-flash-latest',
-        systemInstruction: { parts: [{ text: FP.PROMPT }] },
-        contents: [{ role: 'user', parts: [{ text: desc }] }],
-        token: authGet('aiapp_auth_token'),
-        guestId: window.getGuestId(),
-        stream: false,
-        mode: 'factory',
-      }),
-    }).then(function (res) {
-      return res.json().catch(function () { return {}; }).then(function (data) {
-        if (!res.ok) throw new Error('plan_provider_failed');
-        var candidates = data && data.candidates;
-        var parts = candidates && candidates[0] && candidates[0].content && candidates[0].content.parts;
-        var text = Array.isArray(parts) ? parts.map(function (p) { return (p && p.text) || ''; }).join('') : '';
-        var spec = FP.extractSpec(text);
-        if (!spec) throw new Error('invalid_plan_spec');
-        return spec;
-      });
-    });
-  }
-
   btn.addEventListener('click', function () {
     var label = btn.textContent;
     btn.disabled = true;
     btn.textContent = '⏳ يجهّز المخطط…';
     statusMsg('📐 المهندس الذكي يوزّع الغرف والمقاسات…');
 
-    requestPlanSpec(buildDescription()).then(function (spec) {
+    var desc = buildDescription();
+    claudeProxyRequest(
+      'claude-sonnet-4-20250514',
+      { content: FP.PROMPT },
+      [{ role: 'user', content: desc }],
+      false
+    ).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (data) {
+        var text = '';
+        if (data && Array.isArray(data.content)) {
+          text = data.content.map(function (c) { return (c && c.text) || ''; }).join('');
+        }
+        var spec = FP.extractSpec(text);
+        if (!spec) throw new Error((data && data.error && (data.error.message || data.error)) || 'لم يصل مخطط صالح — جرّب مرة ثانية');
+
         /* مشروع جديد يفتح في المعاينة — نفس مسار التطبيقات المبنية */
         var code = FP.renderPlan(spec);
         var cur = { id: Date.now().toString(), title: String(spec.title || 'مخطط بيتي'), code: code, codeType: 'html', messages: [] };
@@ -19814,8 +19809,9 @@ window.updateVersionLabel();
         statusMsg('');
         var modal = document.getElementById('constructionModal');
         if (modal) modal.style.display = 'none';
-    }).catch(function () {
-      statusMsg('⚠️ تعذر تجهيز المخطط الآن. حاول مرة أخرى بعد قليل.');
+      });
+    }).catch(function (err) {
+      statusMsg('⚠️ ' + String((err && err.message) || err));
     }).finally(function () {
       btn.disabled = false;
       btn.textContent = label;

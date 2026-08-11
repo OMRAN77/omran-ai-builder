@@ -568,6 +568,9 @@ async function smartMaybeSearch(text, ctxMsgs){
   // v327: طلب لوجو/شعار/تصميم شخصي (لتطبيقي/شركتي/لي...) = مهمة تصميم — ممنوع البحث الحي نهائيًا.
   if(/(لوجو|شعار|\blogo\b|تصميم|صمم|صمّم)/i.test(text) && /(لي|إلي|الي|لتطبيق|تطبيقي|لموقع|موقعي|لشرك|شركتي|لمشروع|مشروعي|لمتجر|متجري|لقناة|قناتي|خاص|my|for me)/i.test(text)) return null;
 
+  // v556: خريطة مجالات — تمنع حقن سياق من مجال مختلف (عيب: «اريد عقارات» بعد حديث اللوحات).
+  const __DOMS = [[/لوح(ة|ات|تين)|رقم\s*مميز|[\u0623\u0627]رقام\s*مميزة|بليت|بلايت|plate/i,'num'],[/عقار|شق(ة|ق|تين)|فيلا|فلل|[\u0623\u0627]رض|اراضي|\u0623راضي|apartment|villa|property/i,'re'],[/سيار|سيرات|سياير|مركب|\bcars?\b/i,'car'],[/وظيف|وظائف|توظيف|شغل|\bjobs?\b|vacanc/i,'job'],[/فندق|فنادق|منتجع|شاليه|hotel|resort/i,'htl'],[/طيران|تذكرة|تذاكر|flight|airfare/i,'fly'],[/مطعم|مطاعم|كافيه|منيو|كتالوج/i,'food']];
+  const __domOf = s => { for(const d of __DOMS){ if(d[0].test(s)) return d[1]; } return ''; };
   // v384: 🧠 بحث واعي بالسياق — إذا الرسالة قصيرة وتبدو متابعة (عطني الروابط / المزيد / تفاصيل...)
   // نجيب الموضوع الأصلي من آخر رسائل المحادثة ونضيفه للاستعلام.
   let searchQuery = text;
@@ -584,7 +587,11 @@ async function smartMaybeSearch(text, ctxMsgs){
       const __aiSnippet = String(__prevAI[__prevAI.length - 1].content).slice(0, 300);
       __topic = __topic ? (__topic + ' ' + __aiSnippet) : __aiSnippet;
     }
-    if(__topic) searchQuery = (__topic + ' ' + text).slice(0, 500);
+    if(__topic){
+      // v556: مجال جديد صريح يختلف عن مجال السياق => سؤال مستقل، صفر حقن.
+      const __dNew = __domOf(text), __dCtx = __domOf(__topic);
+      searchQuery = (__dNew && __dCtx && __dNew !== __dCtx) ? text : (__topic + ' ' + text).slice(0, 500);
+    }
   }
 
   // v384: 🔬 Deep Research — استعلامات معقدة أو صريحة تحتاج بحث عميق بعدة زوايا.
@@ -596,10 +603,10 @@ async function smartMaybeSearch(text, ctxMsgs){
     || /(رابط|لينك|\blink\b|\burl\b)[^\n]{0,25}(موقع|مواقع|منصة|منصات|صفحة|site|website)/i.test(text)
     || /(موقع|مواقع|منصة|منصات|site|website)[^\n]{0,25}(رابط|لينك|\blink\b|\burl\b|\blinks\b)/i.test(text)
     || /(عطني|اعطني|أعطني|هات|وريني|ابغي|أبغي|أبي|ابي|أريد|اريد|give me|show me)[^\n]{0,20}(موقع|مواقع|منصة|منصات|رابط|لينك|\bsites?\b|\bwebsites?\b|\blinks?\b)/i.test(text)){
-    return await fetchSearchNote(searchQuery, __wantDeep);
+    return await fetchSearchNote(searchQuery, __wantDeep, text);
   }
   // مسار سريع: الكلمات المفتاحية القديمة => بحث مباشر بدون تصنيف.
-  if(mahaNeedsSearch(text)) return await fetchSearchNote(searchQuery, __wantDeep);
+  if(mahaNeedsSearch(text)) return await fetchSearchNote(searchQuery, __wantDeep, text);
   // غير ذلك: مصنّف Groq سريع بالسيرفر يقرر بالمعنى (يفشل بصمت => لا بحث).
   try{
     const controller = new AbortController();
@@ -614,18 +621,18 @@ async function smartMaybeSearch(text, ctxMsgs){
     if(!res.ok) return null;
     const data = await res.json();
     if(!data || !data.search) return null;
-    return await fetchSearchNote(searchQuery, __wantDeep);
+    return await fetchSearchNote(searchQuery, __wantDeep, text);
   }catch(e){
     return null;
   }
 }
 
-async function fetchSearchNote(transcript, deep){
+async function fetchSearchNote(transcript, deep, q0){
   // 🔁 محاولة ثانية تلقائية: فشل البحث الأول (timeout/خطأ عابر) لا يعني رد
   // "ما عندي معلومات" — نعيد المحاولة مرة وحدة قبل الاستسلام.
-  const first = await fetchSearchNoteOnce(transcript, deep);
+  const first = await fetchSearchNoteOnce(transcript, deep, q0);
   if(first) return first;
-  return await fetchSearchNoteOnce(transcript, false);
+  return await fetchSearchNoteOnce(transcript, false, q0);
 }
 
 // دفاع واجهة مستقل: المصدر المحذوف لا يظهر حتى لو وصل من استجابة قديمة.
@@ -641,7 +648,7 @@ function withoutRemovedSearchSourceMentions(value){
   return String(value || '').replace(REMOVED_SEARCH_SOURCE_TEXT_RE, '').replace(/\s{2,}/g, ' ').trim();
 }
 
-async function fetchSearchNoteOnce(transcript, deep){
+async function fetchSearchNoteOnce(transcript, deep, q0){
   // Live search is the longest silent gap in ordinary chat — up to 45s.
   const __st = (window.__chatStatus && !window.__chatStatus.__released)
     ? window.__chatStatus.step('🔍', deep ? 'يبحث في الإنترنت (بحث موسّع)…' : 'يبحث في الإنترنت…')
@@ -655,7 +662,7 @@ async function fetchSearchNoteOnce(transcript, deep){
       // 🖼️ Feature ②: also ask for images so informational/live-search
       // replies can show a ChatGPT-style image strip + source badges above
       // and below the answer text (data.sources/data.images below).
-      body: JSON.stringify({ query: transcript, images: true, deep: !!deep, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+      body: JSON.stringify({ query: transcript, q0: q0 || '', images: true, deep: !!deep, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
       signal: controller.signal,
     });
     clearTimeout(timeout);
