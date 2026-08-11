@@ -18,58 +18,24 @@ function makeChatStatus(el){
   const steps = [];
   let finished = false;
   function render(){
-    if(!el || finished || !steps.length) return;
-    // الجوال خارج نطاق هذه المرحلة: نحافظ على عرضه السابق حرفيًا.
-    if(document.documentElement.classList.contains('mobile-ui')){
-      el.innerHTML = '';
-      const wrap = document.createElement('div');
-      wrap.style.cssText = 'display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.7;opacity:.9;';
-      steps.forEach(function(s, i){
-        const row = document.createElement('div');
-        const isLast = (i === steps.length - 1);
-        row.style.cssText = 'display:flex;align-items:flex-start;gap:7px;' + (s.state === 'fail' ? 'opacity:.75;' : '');
-        const icon = document.createElement('span');
-        icon.textContent = s.state === 'fail' ? '✗' : (s.state === 'done' ? '✓' : s.icon || '•');
-        icon.style.cssText = 'flex:0 0 auto;' + (s.state === 'done' ? 'color:#2e9e6b;' : (s.state === 'fail' ? 'color:#c0453f;' : ''));
-        const txt = document.createElement('span');
-        txt.textContent = s.text;
-        if(isLast && s.state === 'run') txt.style.cssText = 'animation:omranPulse 1.4s ease-in-out infinite;';
-        row.appendChild(icon); row.appendChild(txt); wrap.appendChild(row);
-      });
-      el.appendChild(wrap);
-      return;
-    }
-    const oldDetails = el.querySelector && el.querySelector('.chat-status-fold');
-    const wasOpen = !!(oldDetails && oldDetails.open);
+    if(!el || finished) return;
     el.innerHTML = '';
-    const current = steps[steps.length - 1];
-    const details = document.createElement('details');
-    details.className = 'chat-status-fold';
-    details.open = wasOpen;
-    const summary = document.createElement('summary');
-    const currentIcon = document.createElement('span');
-    currentIcon.className = 'chat-status-icon';
-    currentIcon.textContent = current.state === 'fail' ? '✗' : (current.state === 'done' ? '✓' : current.icon || '•');
-    const currentText = document.createElement('span');
-    currentText.textContent = current.text;
-    if(current.state === 'run') currentText.className = 'chat-status-running';
-    summary.appendChild(currentIcon); summary.appendChild(currentText);
-    details.appendChild(summary);
-    if(steps.length > 1){
-      const history = document.createElement('div');
-      history.className = 'chat-status-history';
-      steps.slice(0, -1).forEach(function(s){
-        const row = document.createElement('div');
-        row.className = 'chat-status-row ' + s.state;
-        const icon = document.createElement('span');
-        icon.textContent = s.state === 'fail' ? '✗' : (s.state === 'done' ? '✓' : s.icon || '•');
-        const txt = document.createElement('span');
-        txt.textContent = s.text;
-        row.appendChild(icon); row.appendChild(txt); history.appendChild(row);
-      });
-      details.appendChild(history);
-    }
-    el.appendChild(details);
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.7;opacity:.9;';
+    steps.forEach(function(s, i){
+      const row = document.createElement('div');
+      const isLast = (i === steps.length - 1);
+      row.style.cssText = 'display:flex;align-items:flex-start;gap:7px;' + (s.state === 'fail' ? 'opacity:.75;' : '');
+      const icon = document.createElement('span');
+      icon.textContent = s.state === 'fail' ? '✗' : (s.state === 'done' ? '✓' : s.icon || '•');
+      icon.style.cssText = 'flex:0 0 auto;' + (s.state === 'done' ? 'color:#2e9e6b;' : (s.state === 'fail' ? 'color:#c0453f;' : ''));
+      const txt = document.createElement('span');
+      txt.textContent = s.text;
+      if(isLast && s.state === 'run') txt.style.cssText = 'animation:omranPulse 1.4s ease-in-out infinite;';
+      row.appendChild(icon); row.appendChild(txt);
+      wrap.appendChild(row);
+    });
+    el.appendChild(wrap);
   }
   return {
     /* Adds a step and returns a handle to close it later. */
@@ -566,8 +532,12 @@ async function pickSmartProviders(userText, eligibleKeys){
 
 // ✍️ كتابة نص على الصورة محليًا (Canvas) — خط عربي سليم 100% بدل رسم Gemini المشوه
 function extractOverlayText(t){
-  const spec = window.__parseImageTextSpec ? window.__parseImageTextSpec(t) : null;
-  return spec && spec.exactText ? spec.exactText : null;
+  let m = t.match(/["'«»“”](.+?)["'«»“”]/); if(m && m[1].trim()) return m[1].trim();
+  const clean = (x)=>{ x = (x||'').trim().replace(/[.!؟?]+$/,'').trim(); if(!x || /^(?:على|فوق|في)?\s*الصور/.test(x) || /^(?:on|in)?\s*(?:the\s+)?(?:image|photo|picture)/i.test(x)) return null; return x; };
+  m = t.match(/(?:اكتب|أكتب)\s+(?:لي\s+)?(?:كلمة\s+|نص\s+|اسم\s+)?(.+?)(?:\s+(?:على|فوق|في)\s+الصور[ةه].*)?$/); if(m){ const r=clean(m[1]); if(r) return r; }
+  m = t.match(/(?:حط|ضيف|أضف|اضف)\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)\s+(.+?)(?:\s+(?:على|فوق|في)\s+الصور[ةه].*)?$/); if(m){ const r=clean(m[1]); if(r) return r; }
+  m = t.match(/(?:write|put|add)\s+(?:the\s+)?(?:text\s+|name\s+|word\s+)?(.+?)(?:\s+(?:on|to|in)\s+(?:the\s+)?(?:image|photo|picture).*)?$/i); if(m){ const r=clean(m[1]); if(r) return r; }
+  return null;
 }
 // 🎨 استخراج سطور النص العربي من طلب التصميم (عنوان + اسم + مناسبة)
 function extractDesignLines(t){
@@ -690,9 +660,7 @@ async function mahaLoadFont(key){
   try{ await document.fonts.load('bold 40px "' + f.css + '"', 'عيدكم مبارك'); }catch(_){ __swallow(_, "misc:app-09-attach#3"); }
   return f.css;
 }
-async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
-  const exact = String(txt == null ? '' : txt).replace(/\r\n?/g, '\n');
-  if(!exact.trim()) throw new Error('missing_exact_text');
+async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr){
   const fontCss = await mahaLoadFont(fontKey || 'modern');
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -702,53 +670,24 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
         c.width = img.naturalWidth; c.height = img.naturalHeight;
         const ctx = c.getContext('2d');
         ctx.drawImage(img, 0, 0);
-        const maxWidth = c.width * 0.82, maxHeight = c.height * 0.34;
-        let fs = Math.floor(Math.min(c.width / 9, c.height / 8));
-        let lines = [];
-        const setF = () => { ctx.font = '700 ' + fs + 'px "' + fontCss + '", "Segoe UI", Tahoma, Arial, sans-serif'; };
-        const wrap = (line) => {
-          if(!line) return [''];
-          if(ctx.measureText(line).width <= maxWidth) return [line];
-          const words = line.split(/\s+/), out = []; let row = '';
-          words.forEach((word) => {
-            const next = row ? row + ' ' + word : word;
-            if(row && ctx.measureText(next).width > maxWidth){ out.push(row); row = word; }
-            else row = next;
-          });
-          if(row) out.push(row);
-          return out;
-        };
-        do{
-          setF();
-          lines = exact.split('\n').flatMap(wrap);
-          if(lines.length * fs * 1.38 <= maxHeight && lines.every((line) => ctx.measureText(line).width <= maxWidth)) break;
-          fs -= 2;
-        }while(fs > Math.max(22, Math.floor(c.width / 65)));
+        let fs = Math.floor(c.width / 9);
+        const setF = () => { ctx.font = 'bold ' + fs + 'px "' + fontCss + '", "Segoe UI", Tahoma, Arial, sans-serif'; };
         setF();
-        const lineHeight = fs * 1.38, totalHeight = lines.length * lineHeight;
-        let firstY = c.height - c.height * 0.07 - totalHeight + lineHeight / 2;
-        if(position === 'top') firstY = c.height * 0.08 + lineHeight / 2;
-        if(position === 'center') firstY = c.height / 2 - totalHeight / 2 + lineHeight / 2;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.direction = /[\u0600-\u06FF]/.test(exact) ? 'rtl' : 'ltr';
-        const fill = colorStr || '#ffffff';
+        while(ctx.measureText(txt).width > c.width * 0.9 && fs > 14){ fs -= 2; setF(); }
+        ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        const x = c.width / 2, y = c.height - Math.max(20, Math.floor(c.height * 0.05));
+        ctx.lineWidth = Math.max(3, Math.floor(fs / 7));
+        const fill = (colorStr || '#ffffff');
+        // حدود داكنة للألوان الفاتحة وفاتحة للألوان الداكنة عشان يظل النص واضح
         let dark = false;
         if(/^#[0-9a-f]{6}$/i.test(fill)){
           const lum = parseInt(fill.slice(1,3),16)*0.299 + parseInt(fill.slice(3,5),16)*0.587 + parseInt(fill.slice(5,7),16)*0.114;
           dark = lum < 128;
         }
-        ctx.lineJoin = 'round'; ctx.miterLimit = 2;
-        ctx.lineWidth = Math.max(3, Math.floor(fs / 11));
-        ctx.strokeStyle = dark ? 'rgba(255,255,255,.92)' : 'rgba(0,0,0,.84)';
-        ctx.fillStyle = fill;
-        ctx.shadowColor = dark ? 'rgba(255,255,255,.35)' : 'rgba(0,0,0,.55)';
-        ctx.shadowBlur = Math.max(4, Math.floor(fs / 9));
-        lines.forEach((line, i) => {
-          const y = firstY + i * lineHeight;
-          ctx.strokeText(line, c.width / 2, y, maxWidth);
-          ctx.fillText(line, c.width / 2, y, maxWidth);
-        });
-        resolve(c.toDataURL('image/png').split(',')[1]);
+        ctx.strokeStyle = dark ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.85)';
+        ctx.strokeText(txt, x, y);
+        ctx.fillStyle = fill; ctx.fillText(txt, x, y);
+        resolve((c.toDataURL('image/png')).split(',')[1]);
       }catch(e){ reject(e); }
     };
     img.onerror = reject;
@@ -959,10 +898,6 @@ async function __agentApplyResult(cur, full){
       if(chatText) chatText += '\n\n' + (lang === 'ar' ? '⚠️ يبدو أن الكود انقطع قبل اكتماله — اكتب "كمل الكود" وسأكمله.' : '⚠️ The code seems truncated — type "continue" and I will finish it.');
     } else {
       chatText = stripCodeFromChat(full).trim();
-      // ⚠️ v490: مسار الوكيل كان صامتًا — كود مُلغى/محذوف ⇒ رسالة صريحة بدل معاينة فارغة.
-      if(/```|<\/[a-z]+>|<!doctype|<html[\s>]/i.test(full || '')){
-        chatText = (chatText ? chatText + '\n\n' : '') + t('buildNoCode');
-      }
     }
   }
   if(!chatText) chatText = codeProducedThisTurn
@@ -983,99 +918,6 @@ async function __agentApplyResult(cur, full){
     agentMsg.providerLabel = '🤖 ' + (lang === 'ar' ? 'وكيل عمران' : 'Omran Agent');
   }
   cur.messages.push(agentMsg);
-}
-
-async function omModeGenerateImage(cur, promptText, thinkingDiv){
-  const textSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(promptText) : { wantsText:false, exactText:null, visualPrompt:promptText };
-  const __m = { role: 'assistant', content: lang === 'ar' ? '🎨 أرسم لك الصورة…' : '🎨 Generating your image…', _loading: true };
-  cur.messages.push(__m); renderAll();
-  if(textSpec.wantsText && !textSpec.exactText && !textSpec.autoAuthored){
-    __m._loading = false;
-    __m.content = lang === 'ar' ? 'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.' : 'Send the exact wording you want on the image, and I will reproduce it verbatim.';
-    renderAll(); saveState();
-    try{ thinkingDiv && thinkingDiv.remove(); }catch(e){}
-    return;
-  }
-  try{
-    const __r = await fetch('/api/maha-image', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      signal: genAbortController ? genAbortController.signal : undefined,
-      body: JSON.stringify({ prompt: String(textSpec.visualPrompt || promptText).slice(0,1200), reserveTextArea: !!textSpec.wantsText, textPosition: textSpec.position, prayerRequest: textSpec.autoAuthored ? String(textSpec.prayerRequest || promptText).slice(0,800) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
-    });
-    const __d = await __r.json().catch(() => ({}));
-    __m._loading = false;
-    if(__r.ok && __d && __d.imageBase64){
-      let __mime = __d.mimeType || 'image/png', __b64 = __d.imageBase64;
-      const __overlayText = textSpec.exactText || (textSpec.autoAuthored && typeof __d.authoredText === 'string' ? __d.authoredText.trim() : '');
-      if(textSpec.wantsText && !__overlayText) throw new Error('missing_authored_prayer');
-      if(__overlayText){
-        __b64 = await overlayTextOnImage(__b64, __mime, __overlayText, textSpec.fontKey, textSpec.color, textSpec.position);
-        __mime = 'image/png';
-      }
-      __m.content = lang === 'ar' ? 'تفضّل 👇' : 'Here you go 👇';
-      __m.attachments = [{ isImage: true, mime: __mime, dataUrl: 'data:' + __mime + ';base64,' + __b64, name: 'image.png' }];
-      try{ cur.lastEditedImage = { b64: __b64, mime: __mime }; cur.lastMsgWasImageEdit = true; }catch(e){}
-    } else {
-      __m.content = lang === 'ar' ? ('تعذّر توليد الصورة الآن — ' + ((__d && __d.error) || ('HTTP ' + __r.status))) : ('Image generation failed — ' + ((__d && __d.error) || ('HTTP ' + __r.status)));
-    }
-  }catch(e){
-    __m._loading = false;
-    __m.content = (e && e.name === 'AbortError') ? (lang === 'ar' ? 'تم إيقاف إنشاء الصورة.' : 'Image generation stopped.') : (lang === 'ar' ? 'تعذّر توليد الصورة الآن — جرّب مرّة ثانية.' : 'Image generation failed — please try again.');
-  }
-  renderAll(); saveState();
-  try{ thinkingDiv && thinkingDiv.remove(); }catch(e){}
-}
-
-// v560: تحرير رسالة قديمة يعيد المحادثة من تلك النقطة، وإعادة التوليد تعيد
-// إرسال آخر سؤال بلا فقاعة مستخدم مكررة. لا نلمس واجهة الجوال في هذه المرحلة.
-function setChatEditNotice(on){
-  const notice = $('#chatEditNotice');
-  if(!notice) return;
-  notice.hidden = !on;
-  const cancel = notice.querySelector('button');
-  if(cancel) cancel.onclick = () => window.chatCancelEditMessage();
-}
-window.chatCancelEditMessage = function(){
-  window.__chatEditRequest = null;
-  setChatEditNotice(false);
-};
-window.chatStartEditMessage = function(index){
-  if(document.documentElement.classList.contains('mobile-ui') || genAbortController) return false;
-  const cur = getCurrent();
-  const msg = cur && cur.messages && cur.messages[index];
-  if(!cur || !msg || msg.role !== 'user') return false;
-  window.__chatEditRequest = { projectId: cur.id, index: index };
-  const prompt = $('#prompt');
-  prompt.value = String(msg.content || '');
-  setChatEditNotice(true);
-  try{ window.__promptAutoGrow && window.__promptAutoGrow(); }catch(e){ __swallow(e, 'ui:chat-edit-grow'); }
-  try{ window.__updateSendReady && window.__updateSendReady(); }catch(e){ __swallow(e, 'ui:chat-edit-ready'); }
-  prompt.focus();
-  prompt.setSelectionRange(prompt.value.length, prompt.value.length);
-  return true;
-};
-window.chatRegenerateMessage = function(index){
-  if(document.documentElement.classList.contains('mobile-ui') || genAbortController) return;
-  const cur = getCurrent();
-  if(!cur || !Array.isArray(cur.messages)) return;
-  let userIndex = Math.min(Number(index) || 0, cur.messages.length - 1);
-  while(userIndex >= 0 && cur.messages[userIndex].role !== 'user') userIndex--;
-  if(userIndex < 0 || !window.chatStartEditMessage(userIndex)) return;
-  sendPrompt();
-};
-
-// الردود الاجتماعية القصيرة لا تحتاج نموذجًا أو بحثًا. إبقاؤها محلية يمنع
-// البتر والتغيّر وتسرب الذاكرة حتى لو تعطّل أي مزود أو انتقل التطبيق للاحتياط.
-function deterministicSocialReply(raw){
-  const s = String(raw || '').trim();
-  const english = !/[\u0600-\u06FF]/.test(s);
-  if(isCasualCheckIn(s)) return english ? "I'm good, how are you?" : 'بخير، كيف أنت؟';
-  if(!isPureGreeting(s)) return null;
-  if(/السلام عليكم/i.test(s)) return 'وعليكم السلام';
-  if(/صباح الخير/i.test(s)) return 'صباح النور';
-  if(/مساء الخير/i.test(s)) return 'مساء النور';
-  if(english) return 'Hello!';
-  return 'هلا وغلا';
 }
 
 async function sendPrompt(){
@@ -1106,16 +948,9 @@ async function sendPrompt(){
       if(pendingAttachments.some(a => a.isImage)) return false;
       if(!text || text.length > 220) return false;
       if(/بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|سكربت|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\bscript\b|\bcode\b|كود/i.test(text)) return false;
-      if(typeof window.__isExplicitImageEdit === 'function') return !!window.__isExplicitImageEdit(text);
-      const __editVerb = /(عدل|عدّل|غير|غيّر|بدل|بدّل|امسح|احذف|ازل|أزل|شيل|أضف|اضف|ضيف|حط|اكتب|أكتب|خل|اجعل|كبر|كبّر|صغر|صغّر|\bedit\b|\bchange\b|\bremove\b|\badd\b|\bput\b|\bwrite\b)/i;
-      const __priorRef = /(الصورة\s+السابقة|الصوره\s+السابقه|هذه\s+الصورة|هذي\s+الصورة|هالصورة|عليها|فيها|منها|\bit\b|this\s+(?:image|picture)|previous\s+(?:image|picture))/i;
-      return __editVerb.test(text) && __priorRef.test(text);
+      return /(ضيف|أضف|اضف|حط|عدل|عدّل|غير|غيّر|بدل|بدّل|امسح|احذف|ازل|أزل|شل|شيل|كبر|كبّر|صغر|صغّر|لون|لوّن|اكتب|أكتب|زخرف|خل|اجعل|حسن|حسّن|رتب|رتّب|سوي|سوّي|سولي|سوّلي|سو لي|نفس الصور|نفس الشعار|هالصور|هالشعار|عليها|فيها|منها|\badd\b|\bput\b|\bchange\b|\bremove\b|\berase\b|\bwrite\b|\brecolor\b|same image|same logo|on it)/i.test(text);
     }catch(e){ return false; }
   })();
-  const __entryImageTextSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(text) : { wantsText:false };
-  const __explicitImageTextRequest = !!(__entryImageTextSpec.wantsText &&
-    /(?:صورة|صوره|بطاقة|بطاقه|دعوة|دعوه|بوستر|ملصق|شهادة|شهاده|غلاف|بنر|شعار|لوجو|image|picture|card|invitation|poster|banner|cover|logo)/i.test(text) &&
-    !/(?:تطبيق|برنامج|موقع|صفحة|لعبة|سكربت|كود|\bapp\b|\bwebsite\b|\bpage\b|\bgame\b|\bscript\b|\bcode\b)/i.test(text));
   let __gateNoBuild = false;
   let __gateApprovedText = null; // ما كتبه المستخدم فعلًا (نعم/ابدأ) ليُعرض كما هو
   {
@@ -1182,7 +1017,7 @@ async function sendPrompt(){
       __gateApprovedText = text;
       text = __pend;
       __setPend(null);
-    } else if(text && !__IMG_FOLLOW && !__explicitImageTextRequest && !__looksPasted && ((GATE_BUILD_RE.test(text) && GATE_CMD_RE.test(text)) || __strongBuildRe.test(text)) && !GATE_FIX_RE.test(text)){
+    } else if(text && !__IMG_FOLLOW && !__looksPasted && ((GATE_BUILD_RE.test(text) && GATE_CMD_RE.test(text)) || __strongBuildRe.test(text)) && !GATE_FIX_RE.test(text) && !(function(){ try{ const _c=getCurrent(); return _c && _c.lastEditedImage && _c.lastEditedImage.b64 && _c.lastMsgWasImageEdit && !/(كود|تطبيق|موقع|صفحة|لعبة|سكربت|\bapp\b|\bwebsite\b|\bpage\b|\bgame\b)/i.test(text); }catch(_){return false;} })()){
       __setPend(text);
       __gateNoBuild = true;
     } else if(text){
@@ -1209,24 +1044,16 @@ async function sendPrompt(){
     state.projects.push(cur);
     state.currentId = id;
   }
-  const __editReq = window.__chatEditRequest;
-  const __editIndex = (__editReq && __editReq.projectId === cur.id && Number.isInteger(__editReq.index) &&
-    __editReq.index >= 0 && __editReq.index < cur.messages.length && cur.messages[__editReq.index].role === 'user') ? __editReq.index : -1;
-  const __editedOriginal = __editIndex >= 0 ? cur.messages[__editIndex] : null;
   if(cur.messages.length === 0){
     cur.title = (text || pendingAttachments[0]?.name || 'مشروع').slice(0, 30);
   }
 
-  // عند إعادة التوليد نعيد استخدام مرفقات السؤال الأصلي؛ وعند التحرير مع
-  // مرفقات جديدة نعتمد الجديدة. هكذا لا تضيع الصورة/الملف بصمت.
-  const attachmentsForMsg = pendingAttachments.length ? pendingAttachments.slice() :
-    (__editedOriginal && Array.isArray(__editedOriginal.attachments) ? __editedOriginal.attachments.slice() : []);
+  const attachmentsForMsg = pendingAttachments.slice();
   const imageAttachments = attachmentsForMsg.filter(a => a.isImage);
   const textAttachments = attachmentsForMsg.filter(a => !a.isImage);
 
   // Build the text sent to the AI: original text + any text-file contents appended as code blocks
   let apiText = text;
-  try{ if(window.__omMode==='think') apiText = (lang==='ar'?'فكّر بعمق خطوة بخطوة، وحلّل الاحتمالات قبل أن تجيب.\n\n':'Think deeply, step by step, before answering.\n\n') + apiText; else if(window.__omMode==='learn') apiText = (lang==='ar'?'اشرح لي كمعلّم صبور: خطوات مرقّمة، أمثلة بسيطة، ثمّ سؤال يختبر فهمي.\n\n':'Teach me patiently: numbered steps, simple examples, then one question.\n\n') + apiText; }catch(e){}
   textAttachments.forEach(a => {
     apiText += (apiText ? '\n\n' : '') + '📄 ' + a.name + ':\n```\n' + a.text + '\n```';
   });
@@ -1253,16 +1080,7 @@ async function sendPrompt(){
       imageAttachments.push({ isImage: true, name: 'memory.png', mime: cur.lastEditedImage.mime || 'image/png', dataUrl: 'data:' + (cur.lastEditedImage.mime || 'image/png') + ';base64,' + cur.lastEditedImage.b64, _fromMemory: true });
     }
   }catch(e){ __swallow(e, "upload:app-09-attach#12"); }
-  const __nextUserMessage = {role: 'user', content: (__gateApprovedText || text) || (t('imagesAttachedNote')), attachments: attachmentsForMsg.length ? attachmentsForMsg : undefined, apiText, apiImages: imageAttachments.length ? imageAttachments : undefined};
-  if(__editIndex >= 0){
-    // ChatGPT-like branch semantics في مخزن خطّي: التعديل يلغي الردود اللاحقة
-    // ثم يولّد جوابًا جديدًا من الرسالة المعدّلة، بلا نسخ السؤال مرتين.
-    cur.messages.splice(__editIndex, cur.messages.length - __editIndex, __nextUserMessage);
-  } else {
-    cur.messages.push(__nextUserMessage);
-  }
-  window.__chatEditRequest = null;
-  setChatEditNotice(false);
+  cur.messages.push({role: 'user', content: (__gateApprovedText || text) || (t('imagesAttachedNote')), attachments: attachmentsForMsg.length ? attachmentsForMsg : undefined, apiText, apiImages: imageAttachments.length ? imageAttachments : undefined});
   promptEl.value = '';
   try{ window.__promptAutoGrow && window.__promptAutoGrow(); }catch(e){ __swallow(e, "upload:app-09-attach#13"); }
   try{ $('#btnSend').classList.remove('ready'); }catch(e){ __swallow(e, "upload:app-09-attach#14"); }
@@ -1321,25 +1139,11 @@ async function sendPrompt(){
   const __askAllExplicit = false;
   customProviders = null;
   const askAll = !!customProviders || __askAllExplicit || (!__gateNoBuild && !__gateApprovedText && ((__routeBuildRe.test(text) && __routeCmdRe.test(text)) || __strongBuildRe.test(text)) && !__routeFix);
-  // آخر نص كامل وصل من البث؛ نحتفظ به إذا أوقف المستخدم التوليد.
-  let __lastStreamPartial = '';
 
   try{
-    // تحية/سؤال حال بلا مرفقات: جواب محلي حاسم، قبل أي وضع أو مزود أو بحث.
-    const __socialReply = attachmentsForMsg.length ? null : deterministicSocialReply(text);
-    if(__socialReply){
-      try{ if(window.__chatStatus) window.__chatStatus.release(); }catch(e){ __swallow(e, 'ui:social-reply'); }
-      cur.messages.push({ role: 'assistant', content: __socialReply, askAllReply: false, _localSocial: true });
-      return;
-    }
     // 🤖 وكيل عمران: وضع الوكيل المستقل (Claude Sonnet 4 + أدوات) — يخطط ويبحث ويبني.
     if(window.__agentModeOn && !imageAttachments.length){
       await runOmranAgent(cur, apiText, thinkingDiv);
-      return;
-    }
-    // 🎯 v526: الوضع الصريح @صورة — يتخطّى كلّ الكواشف ويولّد مباشرة
-    if(window.__omMode === 'image' && apiText && !imageAttachments.length){
-      await omModeGenerateImage(cur, apiText, thinkingDiv);
       return;
     }
     // 🏛️ شعارات الجهات الحقيقية: "عطني شعار شرطة دبي" → جلب الشعار الأصلي
@@ -1398,7 +1202,7 @@ async function sendPrompt(){
       cur.lastEditedImage = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' };
       cur.adMode = null; // صورة جديدة = وضع إعلان جديد
     }
-    const __followUp = !__srcImg && cur.lastEditedImage && cur.lastMsgWasImageEdit && __IMG_FOLLOW;
+    const __followUp = !__srcImg && cur.lastEditedImage && cur.lastMsgWasImageEdit;
     // v311: رسالة تفاصيل إضافية أثناء تصميم إعلان قائم → تكمل التصميم نفسه.
     if(text && cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && text.indexOf('ملاحظة للنظام') === -1){
       text += '\n(ملاحظة للنظام: هذه تفاصيل إضافية للإعلان قيد التصميم — أكمل/حدّث تصميم الإعلان الكامل بهذه التفاصيل حسب قالب ' + (cur.adMode === 'inside' ? 'INSIDE فوق صورة المستخدم background-image:url(\'__USER_IMAGE__\')' : 'OUTSIDE مع src="__USER_IMAGE__"') + ' وأعد الملف كاملًا. ممنوع البحث في الإنترنت وممنوع عرض إعلانات مواقع أخرى وممنوع الرد بنص فقط)';
@@ -1644,9 +1448,11 @@ async function sendPrompt(){
     const __vidSrc = __srcImg
       ? { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' }
       : (cur.lastEditedImage ? { b64: cur.lastEditedImage.b64, mime: cur.lastEditedImage.mime || 'image/png' } : null);
+    // v471: "بالفيديو/كفيديو" في وصف طويل (>15 حرف) = طلب فيديو حتى بدون فعل أمر.
     const __wantsVideo = !!text && !__codeWordRe.test(text) && (
       (__videoWordRe.test(text) && (__routeCmdRe.test(text) || /(حول|حوّل|حوله|حوّله|ولد|ولّد|انتج|أنتج|اطلع لي|طلع لي|generate|convert|turn)/i.test(text) || /(فيديو|ڤيديو|video)\s+(عن|يظهر|فيه|about|of|showing)\s+\S/i.test(text))) ||
-      (!!__vidSrc && (__srcImg || cur.lastMsgWasImageEdit) && __animateRe.test(text))
+      (!!__vidSrc && (__srcImg || cur.lastMsgWasImageEdit) && __animateRe.test(text)) ||
+      (__videoWordRe.test(text) && text.length > 15 && /(بال|كـ?)(?:فيديو|ڤيديو)/i.test(text))
     );
     // v204: a request like just "اريد فيديو" / "سوي فيديو" (no actual subject)
     // used to fall straight into real Runway/Veo generation — burning credits
@@ -1744,32 +1550,17 @@ async function sendPrompt(){
       const __mime = __srcImg ? (__srcImg.mime || 'image/png') : (cur.lastEditedImage.mime || 'image/png');
       // ✍️ إذا الطلب كتابة نص/اسم على الصورة → نرسمه محليًا بخط سليم (بدون Gemini)
       const __writeIntentRe = /(اكتب|أكتب|حط\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|(?:ضيف|أضف|اضف)\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|write|put\s+(?:my\s+)?name|add\s+(?:the\s+)?text)/i;
-      const __textSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(text) : { wantsText:__writeIntentRe.test(text), exactText:extractOverlayText(text), fontKey:'modern', color:'#ffffff', position:'bottom' };
-      if(__textSpec.wantsText){
-        let __resolvedText = __textSpec.exactText;
-        if(!__resolvedText && __textSpec.autoAuthored){
+      if(__writeIntentRe.test(text)){
+        const __txt = extractOverlayText(text);
+        if(__txt){
           try{
-            const __planRes = await fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal:genAbortController.signal, body:JSON.stringify({ prayerRequest:String(__textSpec.prayerRequest || text).slice(0,800), planPrayerOnly:true, textPosition:__textSpec.position, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() }) });
-            const __planData = await __planRes.json().catch(() => ({}));
-            if(__planRes.ok && typeof __planData.authoredText === 'string') __resolvedText = __planData.authoredText.trim();
-          }catch(e){ if(e && e.name === 'AbortError') return; }
-        }
-        if(!__resolvedText){
-          cur.messages.push({ role:'assistant', content:__textSpec.autoAuthored ? (lang==='ar'?'تعذّر تأليف الدعاء بدقة الآن. جرّب مرة أخرى.':'Could not author the prayer accurately. Please try again.') : (lang==='ar'?'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.':'Send the exact wording you want on the image, and I will reproduce it verbatim.') });
-          renderAll(); saveState();
-          return;
-        }
-        try{
-          const __outB64 = await overlayTextOnImage(__b64, __mime, __resolvedText, __textSpec.fontKey, __textSpec.color, __textSpec.position);
-          cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'تمت كتابة النص على الصورة ✅ اضغط عليها للتكبير، وتقدر تطلب تعديلات إضافية.' : 'Text added to the image ✅ Tap to enlarge — you can request more edits.'), attachments: [{ name: 'edited.png', isImage: true, mime: 'image/png', dataUrl: 'data:image/png;base64,' + __outB64 }] });
-          cur.lastEditedImage = { b64: __outB64, mime: 'image/png' };
-          cur.lastMsgWasImageEdit = true;
-          renderAll(); saveState();
-          return;
-        }catch(e){
-          cur.messages.push({ role:'assistant', content:lang==='ar'?'تعذّرت كتابة النص على الصورة دون تغييرها.':'Could not add the text without altering the image.' });
-          renderAll(); saveState();
-          return;
+            const __outB64 = await overlayTextOnImage(__b64, __mime, __txt);
+            cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'تمت كتابة النص على الصورة ✅ اضغط عليها للتكبير، وتقدر تطلب تعديلات إضافية.' : 'Text added to the image ✅ Tap to enlarge — you can request more edits.'), attachments: [{ name: 'edited.png', isImage: true, mime: 'image/png', dataUrl: 'data:image/png;base64,' + __outB64 }] });
+            cur.lastEditedImage = { b64: __outB64, mime: 'image/png' };
+            cur.lastMsgWasImageEdit = true;
+            renderAll(); saveState();
+            return;
+          }catch(e){ /* فشل الرسم المحلي → نكمل عبر Gemini */ }
         }
       }
       let __data = {}; let __ok = false;
@@ -1909,17 +1700,10 @@ async function sendPrompt(){
     // 🏛️ v225: طلب نصي بنية صورة بدون أي صورة مرفقة (تصور معماري/منظور/ارسم...)
     // → توليد صورة فعلي بـ Gemini بدل رد نظري أو وعود فارغة من المزود.
     const __txtOnlyImgRe = /(تصور|منظور|بورتريه|ارسم|أرسم|ارسمي|رسمة|معماري|معمارية|واجهات\s|تصميم\s*(?:لي\s*)?صوره?|صمم\s*(?:لي\s*)?صوره?|توليد\s*صوره?|(?:انشئ|أنشئ|انشاء|إنشاء|اصنع)\s*(?:لي\s*)?صوره?|صوره?\s*(?:من|عن)\s*الخيال|خيال\s*علمي|render|perspective|elevation|concept\s?art|\bdraw\b|\bpainting\b)/i;
-    if(text && !__srcImg && !__followUp && !__archImagesDone && !__codeWordRe.test(text) && (!__designDocRe.test(text) || __explicitImageTextRequest) &&
-       (__explicitImageTextRequest || __txtOnlyImgRe.test(text) || (__imgGenIntentRe.test(text) && /صور|رسمة|منظر|تصور|image|picture|visual/i.test(text)))){
+    if(text && !__srcImg && !__followUp && !__archImagesDone && !__codeWordRe.test(text) && !__designDocRe.test(text) &&
+       (__txtOnlyImgRe.test(text) || (__imgGenIntentRe.test(text) && /صور|رسمة|منظر|تصور|image|picture|visual/i.test(text)))){
       if(!__txtOnlyImgRe.test(text) && __isVagueMediaRequest(text)){
         cur.messages.push({ role: 'assistant', content: lang === 'ar' ? 'صورة عن شو؟ وصفلي اللي تبيه 🖼️' : 'An image of what? Describe what you want 🖼️' });
-        renderAll(); saveState();
-        thinkingDiv && thinkingDiv.remove();
-        return;
-      }
-      const __genTextSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(text) : { wantsText:false, exactText:null, visualPrompt:text };
-      if(__genTextSpec.wantsText && !__genTextSpec.exactText && !__genTextSpec.autoAuthored){
-        cur.messages.push({ role:'assistant', content:lang==='ar'?'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.':'Send the exact wording you want on the image, and I will reproduce it verbatim.' });
         renderAll(); saveState();
         thinkingDiv && thinkingDiv.remove();
         return;
@@ -1931,23 +1715,14 @@ async function sendPrompt(){
           const __gRes = await fetch('/api/maha-image', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             signal: genAbortController.signal,
-            body: JSON.stringify({ prompt: String(__genTextSpec.visualPrompt || text).slice(0,1200), reserveTextArea:!!__genTextSpec.wantsText, textPosition:__genTextSpec.position, prayerRequest:__genTextSpec.autoAuthored ? String(__genTextSpec.prayerRequest || text).slice(0,800) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+            body: JSON.stringify({ prompt: text.slice(0, 490), token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
           });
           __gData = await __gRes.json().catch(() => ({}));
           __gOk = __gRes.ok && !!__gData.imageBase64;
           if(!__gOk){ if(!__gData) __gData = {}; __gData.__status = __gRes.status; }
         }
-        if(__gOk){
-          const __resolvedText = __genTextSpec.exactText || (__genTextSpec.autoAuthored && typeof __gData.authoredText === 'string' ? __gData.authoredText.trim() : '');
-          if(__genTextSpec.wantsText && !__resolvedText) throw new Error('missing_authored_prayer');
-          if(__resolvedText){
-            __gData.imageBase64 = await overlayTextOnImage(__gData.imageBase64, __gData.mimeType || 'image/png', __resolvedText, __genTextSpec.fontKey, __genTextSpec.color, __genTextSpec.position);
-            __gData.mimeType = 'image/png';
-          }
-        }
       }catch(e){
         if(e && e.name === 'AbortError'){ renderAll(); saveState(); return; }
-        __gOk = false;
         __gData = { error: (e && e.message) ? e.message : String(e) };
       }
       if(__gOk){
@@ -1972,25 +1747,19 @@ async function sendPrompt(){
     // v469: Q&A = بروم خفيف مثل ChatGPT؛ البناء = تعليمات كاملة.
     let __sys;
     if(__needsBuild){
-      __sys = t('systemPrompt') + APP_IDENTITY_NOTE + CONVERSATION_QUALITY_RULE + TOPIC_FOLLOW_RULE + BUILD_COMPLETENESS_RULE + NO_FAKE_EDIT_RULE + CHAT_STYLE_RULE + APP_CAPABILITY_RULE;
+      __sys = t('systemPrompt') + APP_IDENTITY_NOTE + TOPIC_FOLLOW_RULE + BUILD_COMPLETENESS_RULE + NO_FAKE_EDIT_RULE + CHAT_STYLE_RULE + APP_CAPABILITY_RULE;
       if(__dsnRe.test(text)) __sys += DESIGN_POSTER_RULE;
     } else {
-      __sys = 'أنت مساعد ذكي في تطبيق Omran AI من فريق عمران AI.' + CONVERSATION_QUALITY_RULE +
-        '\n[قواعد سياق المحادثة]:\n' +
-        '- التأكيد القصير بعد سؤال منك (نعم/تمام/يلا/أوكي) موافقة؛ أكمل فورًا.\n' +
-        '- لا تنادِ المستخدم باسم إلا إذا كان محفوظًا في ذاكرته أو ذكره في هذه المحادثة.\n' +
-        '- الرسالة القصيرة قد تكون متابعة للموضوع السابق؛ افهمها من السياق بدل معاملتها كموضوع عشوائي.\n' +
-        '- السؤال العادي أو النقاش يُجاب عنه نصيًّا بلا كود ما لم يطلب المستخدم البناء صراحة.\n' +
-        '- التطبيق يوفّر توليد الصور والفيديو وPDF؛ استخدم القدرة المناسبة بدل ادعاء العجز.\n' +
-        '- التحية الخالصة لها رد قصير مستقل. أمّا سؤال المجاملة أو المتابعة مثل «كيف الحال؟» فأجب عنه كحديث مستمر بلا إعادة تحية أو عرض خدمة.';
-    }
-    // الدور الاجتماعي القصير يُعزل عن الذاكرة والمواضيع السابقة، لكن سؤال الحال
-    // يبقى استمرارًا للمحادثة لا تحية جديدة.
-    const __quietSocialTurn = isPureGreeting(text) || isCasualCheckIn(text);
-    if(isPureGreeting(text)){
-      __sys = 'المستخدم أرسل تحية لفظية خالصة. أجب بتحية عربية قصيرة فقط من كلمة إلى ثلاث كلمات. لا تسأل أي سؤال، ولا تستخدم علامة استفهام، ولا تقل «كيف حالك» أو «كيف أساعدك»، ولا تعرض أي خدمة. لا تضف شيئًا بعد التحية.';
-    } else if(isCasualCheckIn(text)){
-      __sys = 'هذا سؤال حال ضمن محادثة مستمرة، وليس تحية جديدة. أجب عن حالك مباشرةً بجملة عربية قصيرة وطبيعية واحدة، ويمكنك أن تسأله عن حاله باختصار. لا تبدأ بتحية، ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق، ولا تلتزم صيغة محفوظة.';
+      // v471: Q&A prompt — أقصر + تنفيذ فوري + بدون أسئلة زايدة.
+      __sys = 'أنت مساعد ذكي في تطبيق Omran AI من فريق عمران AI. أجب بلغة المستخدم ولهجته بعمق وخبرة وطبيعية.\n' +
+        '(1) ادخل بصلب الموضوع من أول كلمة — بدون مقدمات ولا تكرار السؤال. سؤال بسيط = 1-3 جمل فقط. موضوع متشعب = رد منظم بعناوين.\n' +
+        '(2) كن صادقًا 100%: إذا ما تعرف قل ما أعرف. ممنوع اختراع أرقام هواتف أو روابط URL.\n' +
+        '(3) تأكيد قصير (نعم/تمام/يلا/اوك) بعد سؤالك = موافقة — جاوب فورًا.\n' +
+        '(4) ممنوع مناداة المستخدم بأي اسم إلا إذا محفوظ بالذاكرة.\n' +
+        '(5) رسالة قصيرة (كلمة/كلمتين) بدون سياق سابق = نفّذ المعنى الأوضح فورًا. مثلاً "كوره" = أجب عن كرة القدم مباشرة. ممنوع تسأل "أي نوع كورة؟" أو تعطي 4 احتمالات.\n' +
+        '(6) وضع نقاش — ممنوع عرض كود إلا إذا طُلب صراحة.\n' +
+        '(7) التطبيق يوفّر توليد صور وفيديو وPDF — أرشد إليها بدل "ما أقدر".\n' +
+        '(8) ممنوع ردود طويلة على أسئلة بسيطة. لا تعطي قوائم 4-5 خيارات إذا الجواب واضح. نفّذ بدل ما تسأل.';
     }
     const apiMessages = [{role: 'system', content: __sys}];
     // 🤝 v345: المستخدم وافق على عرض بناء قدّمه المزود في رده السابق — يبنيه الآن كاملًا.
@@ -2006,9 +1775,8 @@ async function sendPrompt(){
     if(imageAttachments.length){
       apiMessages.push({role: 'system', content: 'The user has ATTACHED an image with this message. You MUST look at the attached image carefully and answer based on its actual visual content in detail (identify objects, brands, models, text, measurements — whatever is relevant to the question). Never say you cannot see images, never give a generic answer that ignores the image, and never reply with empty or evasive text.'});
     }
-    // 🧠 الذاكرة طويلة المدى لا تدخل التحية أو سؤال الحال؛ كلاهما لا يحتاج
-    // مشاريع المستخدم واهتماماته، وكانت هي مصدر فتح المواضيع القديمة.
-    const __memMsg = __quietSocialTurn ? null : memorySystemMsg();
+    // 🧠 حقن ذاكرة المستخدم طويلة المدى
+    const __memMsg = memorySystemMsg();
     if(__memMsg) apiMessages.push(__memMsg);
     if(cur.code){
       apiMessages.push({role: 'assistant', content: '```' + (cur.codeType === 'python' ? 'python' : 'html') + '\n' + codeForApi(cur.code) + '\n```'});
@@ -2063,9 +1831,7 @@ async function sendPrompt(){
       while(__lastUi > 0 && __h[__lastUi].role !== 'user') __lastUi--;
       if(!__h[__lastUi] || __h[__lastUi].role !== 'user') __lastUi = __h.length - 1;
       const __lastM = __h[__lastUi];
-      // سؤال الحال لا يحتاج سجل المواضيع كي يُفهم؛ إبقاؤه هنا كان يسمح بتسرب
-      // آخر الفنادق أو السيارات إلى جواب اجتماعي بسيط.
-      const __prev = __quietSocialTurn ? [] : __h.filter((m, __pi) => __pi !== __lastUi);
+      const __prev = __h.filter((m, __pi) => __pi !== __lastUi);
       if(__prev.length){
         const __ctx = __prev.map(m => {
           let __txt = String(__stripCodeForHistory(m.role, (m.apiText !== undefined ? m.apiText : m.content)) || '');
@@ -2093,10 +1859,10 @@ async function sendPrompt(){
     // and/or Ask-All merge reply) can attach __searchData.sources /
     // __searchData.images for the ChatGPT-style image strip + source badges.
     let __searchData = null;
-    // 👋 التحية اللفظية وحدها: رد قصير طبيعي بلا صيغة محفوظة.
-    // سؤال المجاملة («كيف الحال؟») يبقى محادثة متصلة ولا يدخل هذا المسار.
+    // 👋 قاعدة التحية لكل المزودين التسعة: تحية = رد ترحيبي قصير فقط،
+    // ممنوع البحث وممنوع المصادر وممنوع فتح أي موضوع قديم من المحادثة.
     if(isPureGreeting(text)){
-      apiMessages.push({role: 'system', content: 'رسالة المستخدم الأخيرة تحية لفظية فقط وليست سؤالًا. اكتفِ بتحية قصيرة وطبيعية بلغة المستخدم، من دون صيغة ثابتة؛ لا تطرح أي سؤال ولا تعرض خدمات أو أمثلة، ولا تفتح موضوعًا سابقًا أو تستخدم الذاكرة، ولا تنادِ المستخدم باسم.'});
+      apiMessages.push({role: 'system', content: 'رسالة المستخدم الأخيرة مجرد تحية/مجاملة. رُدّ بتحية ودية قصيرة وطبيعية فقط (سطر أو سطرين كحد أقصى). ممنوع منعًا باتًا: فتح أو إكمال أي موضوع سابق من المحادثة، أو عرض معلومات/روابط/مصادر، أو اقتراح "نكمل...؟". ممنوع مناداة المستخدم بأي اسم (لا «محمد» ولا غيره) إلا إذا كان محفوظًا في ذاكرته. فقط حيّه واسأله كيف تقدر تساعده.'});
     }
     // v311: أثناء تصميم إعلان (adMode مفعّل) ممنوع البحث الحي نهائيًا —
     // تفاصيل «بيت للبيع...» تكمل التصميم ولا تتحول لبحث دوبيزل.
@@ -2317,7 +2083,6 @@ async function sendPrompt(){
       }, 2000);
       const finalizeOne = (msg) => {
         msg._loading = false;
-        if(isBuildTask && !__gateNoBuild && !msg.code && !msg._failed && !msg._noCode){ msg._noCode = 1; msg.content = (msg.content ? msg.content + '\n\n' : '') + t('buildNoCode'); }
         try{ __updatePrepCounter(); }catch(e){ __swallow(e, "misc:app-09-attach#21"); }
         const st = revealStates.get(msg._uid);
         if(st){
@@ -2502,10 +2267,9 @@ async function sendPrompt(){
       }
       if(providers.length > 1 && (usableAnswers.length >= 2 || (isBuildTask && usableAnswers.length === 1 && usableAnswers[0].code))){
         const mergeMsg = { role: 'assistant', content: '', providerLabel: '🧠 ' + t('mergedAnswerLabel'), code: null, _loading: true, _uid: ++askAllUidCounter, isMergeHeader: true, batchId: askAllBatchId, batchCount: usableAnswers.length,
-          // ✅ v535: عادت المصادر والصور إلى المحادثة. إطفاء v368 كان مؤقّتًا
-          // بانتظار «المتصفح» — وقد أُلغي المتصفح نهائيًّا، فلا سبب للإخفاء.
-          sources: (__searchData && __searchData.sources) || undefined,
-          searchImages: (__searchData && __searchData.images) || undefined };
+          // 🚫 v368: الصور والمصادر لم تعد تُعرض في المحادثة — مكانها المتصفح فقط.
+          sources: undefined,
+          searchImages: undefined };
         cur.messages.push(mergeMsg);
         renderMessages(true);
         // Only treat this as a code-merge (which would overwrite the live
@@ -2602,7 +2366,7 @@ async function sendPrompt(){
         } else {
           const mergePrompt = usableAnswers.map((a, i) => '### ' + t('mergedAnswerSourceLabel') + ' ' + (i + 1) + ' (' + a.label + ')\n' + a.text).join('\n\n');
           const mergeMessages = [
-            { role: 'system', content: t('mergedAnswerSystemPrompt') + '\n[قاعدة إلزامية]: أثناء الدمج ممنوع حذف أي بيانات ملموسة وردت في الإجابات: روابط الإعلانات المباشرة، الأسعار، أرقام الهواتف، أسماء المناطق. إذا احتوت الإجابات على إعلانات حقيقية (عقارات/سيارات/وظائف) بروابط، اعرضها في الإجابة النهائية كقائمة منظمة: العنوان + السعر + المنطقة + الرابط المباشر — ممنوع استبدالها بنصيحة عامة مثل "ادخل الموقع وابحث".' + APP_IDENTITY_NOTE + CONVERSATION_QUALITY_RULE + CHAT_STYLE_RULE },
+            { role: 'system', content: t('mergedAnswerSystemPrompt') + '\n[قاعدة إلزامية]: أثناء الدمج ممنوع حذف أي بيانات ملموسة وردت في الإجابات: روابط الإعلانات المباشرة، الأسعار، أرقام الهواتف، أسماء المناطق. إذا احتوت الإجابات على إعلانات حقيقية (عقارات/سيارات/وظائف) بروابط، اعرضها في الإجابة النهائية كقائمة منظمة: العنوان + السعر + المنطقة + الرابط المباشر — ممنوع استبدالها بنصيحة عامة مثل "ادخل الموقع وابحث".' + APP_IDENTITY_NOTE + CHAT_STYLE_RULE },
             ...apiMessages.filter(m => m.role !== 'system'),
             { role: 'user', content: mergePrompt }
           ];
@@ -2738,28 +2502,18 @@ async function sendPrompt(){
         saveState();
       }
     } else {
-      // فقاعة واحدة من الانتظار حتى آخر كلمة: ننسّق Markdown المكتمل داخل
-      // البث نفسه، ونأخذ قرار متابعة التمرير قبل أن يكبر الرد.
+      // Live-typing effect: as text streams in, show it raw in the "thinking"
+      // bubble; once the full reply is done, extractReply() runs on the
+      // complete text and renderAll() takes over with proper formatting/code.
+      // ⚡ v320: تحديث فقاعة البث بإيقاع الشاشة (إطار واحد) بدل كل قطعة نص واصلة.
       const onDelta = (partial) => {
         onDelta._p = partial;
-        __lastStreamPartial = liveStripCode(partial);
         if(onDelta._raf) return;
         onDelta._raf = requestAnimationFrame(() => {
           onDelta._raf = null;
-          const __desktopRhythm = !document.documentElement.classList.contains('mobile-ui');
-          const __followReply = __desktopRhythm && typeof chatIsNearBottom === 'function' ? chatIsNearBottom() : true;
           (function(){ try{ if(window.__chatStatus) window.__chatStatus.release(); }catch(e){ __swallow(e, "misc:app-09-attach#26"); } })();
-          if(__desktopRhythm){
-            renderStreamingAssistant(thinkingDiv, liveStripCode(onDelta._p));
-            smartScrollBottom(__followReply);
-          } else {
-            // سلوك الجوال السابق كما هو؛ هذه المرحلة لسطح المكتب فقط.
-            thinkingDiv.textContent = liveStripCode(onDelta._p);
-            try{
-              const __mobileGap = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight;
-              if(__mobileGap < 140) messagesEl.scrollTop = messagesEl.scrollHeight;
-            }catch(e){ __swallow(e, "misc:app-09-attach#26-mobile"); }
-          }
+        thinkingDiv.textContent = liveStripCode(onDelta._p);
+          smartScrollBottom();
         });
       };
       // المزود المختار من المستخدم يرد بنفسه (Claude هو الافتراضي)؛ الاحتياط صامت عند التعطل فقط
@@ -2788,7 +2542,7 @@ async function sendPrompt(){
       var __pinProv = false;
       try{ __pinProv = localStorage.getItem('aiapp_pin_provider') === '1'; }catch(e){ __swallow(e, 'ui:pinprov'); }
       const __effProv0 = (!__pinProv && (__gateNoBuild || __routeFix)) ? 'claude' : (__visionOverride || __specProv || __selProv);
-      const __effProv = __convLockProvider(cur, __effProv0, !!(__gateNoBuild || __routeFix || __visionOverride), __respectExplicit, isCasualTurn(text));
+      const __effProv = __convLockProvider(cur, __effProv0, !!(__gateNoBuild || __routeFix || __visionOverride), __respectExplicit);
       // v405: التحويل يُعلَن بدل الصمت — المستخدم يرى مزودًا غير الذي اختاره فيظن الاختيار معطّلًا.
       try{
         var __selLabel = (typeof functionalLabel === 'function') ? functionalLabel(__selProv) : __selProv;
@@ -2807,7 +2561,7 @@ async function sendPrompt(){
       // إطلاقًا، وإلّا غلبت تعليمة «ابنِ ولا تستأذن» داخل chat.js. بعد الموافقة
       // يسقط __gateNoBuild فتعمل اليد كاملة (صور + كود + تجربة).
       const __toolsWillRun = (window.__chatToolsOn !== false && !__routeFix && (!__gateNoBuild || !!__gateApprovedText) && !imageAttachments.length
-        && TOOL_PROVIDERS.indexOf(__effProv) !== -1
+        && (__effProv === 'claude' || __selProv === 'claude')
         && typeof window.callChatWithTools === 'function');
       if(__gateApprovedText && __toolsWillRun){
         // ✅ وافق المستخدم → يبني الآن كاملًا باليد الكاملة (صور مرسومة + كود + تجربة).
@@ -2827,7 +2581,7 @@ async function sendPrompt(){
       try{
         let __ct = null;
         if(__toolsWillRun){
-          try{ __ct = await window.callChatWithTools(apiMessages, onDelta, __effProv); }
+          try{ __ct = await window.callChatWithTools(apiMessages, onDelta); }
           catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; __swallow(e, 'chat:tools'); }
         }
         if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); }
@@ -2840,10 +2594,7 @@ async function sendPrompt(){
       // v467: ما تبنيه يد المحادثة يُعرض في المعاينة كأي بناء — وإلّا بقي
       // الموقع حبيس فقاعة نصّيّة لا تُرى.
       const __builtByTools = !!(code && __ctUsed && !isBuildTask);
-      // v491: أيّ كود مُستخرَج يصل المعاينة دائمًا — حتّى لو لم يعرف كاشف
-      // النيّة الطلب (مثال: ردّ المستخدم «أبدأ» على سؤال البوّابة).
-      void __builtByTools;
-      if(code){
+      if(code && (isBuildTask || __builtByTools)){
         // 🔁 التصحيح الذاتي: فحص الكود وإصلاح أخطائه قبل العرض
         try{
           const healed = await selfHealCode(code, codeType, () => {
@@ -2860,13 +2611,10 @@ async function sendPrompt(){
       let providerLabel = functionalLabel(providerKey);
       void switched; void requestedKey;
       // v463: askAllReply=false — الردود العادية ما تدخل compare-row
-      // v559: لا بطاقات مصادر تحت سؤال توضيحي قصير بلا نتائج.
-      const __ansTxt = String((code ? stripCodeFromChat(explanation) : explanation) || '').trim();
-      const __clarifyQ = __ansTxt.length < 140 && /[?？؟]\s*$/.test(__ansTxt);
-      cur.messages.push({role: 'assistant', content: (code ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: code || null, providerLabel, providerKey, askAllReply: false,
-        // ✅ v535: عادت المصادر والصور إلى المحادثة (إلغاء إطفاء v368).
-        sources: (!__clarifyQ && __searchData && __searchData.sources) || undefined,
-        searchImages: (__searchData && __searchData.images) || undefined});
+      cur.messages.push({role: 'assistant', content: (isBuildTask ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: isBuildTask ? code : null, providerLabel, providerKey, askAllReply: false,
+        // 🚫 v368: الصور والمصادر لم تعد تُعرض في المحادثة — مكانها المتصفح فقط.
+        sources: undefined,
+        searchImages: undefined});
       // 👑 الرد الاحترافي اكتمل: حدّث رصيد النقاط وأظهر خصمًا متحركًا صغيرًا.
       try{
         if(window.__premiumOn === true && typeof isPremiumProvider === 'function' && isPremiumProvider()){
@@ -2877,22 +2625,13 @@ async function sendPrompt(){
     }
   }catch(err){
     if(err && err.name === 'AbortError'){
-      // الإيقاف لا يمحو سؤال المستخدم ولا يعيده إلى الصندوق. نثبّت آخر نص
-      // وصل من البث كإجابة متوقفة، فيستطيع المستخدم قراءته أو إعادة توليده.
-      try{ thinkingDiv.remove(); }catch(e){ __swallow(e, 'ui:chat-stop-remove'); }
+      // User pressed ⏹️ to cancel: drop the just-sent message and put its
+      // text back in the box so they can fix it and resend.
       const lastMsg = cur.messages[cur.messages.length - 1];
       if(lastMsg && lastMsg.role === 'user'){
-        const partial = String(__lastStreamPartial || '').trim();
-        cur.messages.push({
-          role: 'assistant',
-          content: partial || (lang === 'ar' ? 'تم إيقاف الرد قبل اكتماله.' : 'The response was stopped before it completed.'),
-          _stopped: true,
-          askAllReply: false
-        });
+        cur.messages.pop();
       }
-      promptEl.value = '';
-      window.__chatEditRequest = null;
-      setChatEditNotice(false);
+      promptEl.value = text;
     } else if(err && err.premiumNoPoints){
       // 👑 نفاد النقاط أثناء الرد الاحترافي: رسالة ودّية + طريقة لشراء نقاط،
       // وإطفاء الوضع الاحترافي حتى تكون الرسالة التالية مجانية.
@@ -2904,17 +2643,16 @@ async function sendPrompt(){
       cur.messages.push({role: 'assistant', content: '⚠️ ' + err.message});
     }
   }finally{
-    const __keepReaderPosition = !document.documentElement.classList.contains('mobile-ui') && typeof chatIsNearBottom === 'function' ? !chatIsNearBottom() : false;
     genAbortController = null;
     btnStop.classList.remove('live');
     sendBtn.disabled = false;
     sendBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px;display:block"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>';
     saveState();
-    renderAll(__keepReaderPosition);
+    renderAll();
     // 🧠 تحديث ذاكرة المستخدم بعد اكتمال الرد (بدون انتظار)
     try{
       const __lastA = cur.messages.filter(m => m.role === 'assistant').slice(-1)[0];
-      if(__lastA && __lastA.content && !String(__lastA.content).startsWith('⚠️') && !(isPureGreeting(text) || isCasualCheckIn(text))){
+      if(__lastA && __lastA.content && !String(__lastA.content).startsWith('⚠️')){
         memoryUpdate(text, String(__lastA.content));
         // 🗂️ v326: تحديث ملخص موضوع هذه المحادثة في الذاكرة السحابية
         try{ window.memoryTopicUpdate && window.memoryTopicUpdate(cur, text, String(__lastA.content)); }catch(e){ __swallow(e, "misc:app-09-attach#31"); }
@@ -3043,3 +2781,4 @@ async function postWithConfirm(url, payload){
   if(!okToSpend) return res;
   return await send(Object.assign({}, payload, { confirmed: true }));
 }
+window.postWithConfirm = postWithConfirm;
