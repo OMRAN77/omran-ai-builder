@@ -22,6 +22,18 @@ function isCasualCheckIn(text) {
   return /^(?:(?:هلا|مرحبا|مرحبًا|أهلا|أهلًا|السلام عليكم|سلام|hello|hi|hey)[\s،,.!؟?~\-]*)?(?:كيف حالك|كيف الحال|شحالك|شخبارك|شو الأخبار|كيفك|how are you|how(?:'|’)s it going|how is it going)[\s،,.!؟?~\-]*$/i.test(s);
 }
 
+function deterministicSocialReply(text) {
+  const s = String(text || '').trim();
+  const english = !/[\u0600-\u06FF]/.test(s);
+  if (isCasualCheckIn(s)) return english ? "I'm good, how are you?" : 'بخير، كيف أنت؟';
+  if (!isPureGreeting(s)) return null;
+  if (/السلام عليكم/i.test(s)) return 'وعليكم السلام';
+  if (/صباح الخير/i.test(s)) return 'صباح النور';
+  if (/مساء الخير/i.test(s)) return 'مساء النور';
+  if (english) return 'Hello!';
+  return 'هلا وغلا';
+}
+
 function isClientMemoryNote(text) {
   const s = String(text || '');
   return s.includes('[ذاكرة المستخدم طويلة المدى') || s.startsWith('هذه معلومات مؤكدة ومحفوظة عن المستخدم من محادثات سابقة:');
@@ -241,6 +253,16 @@ module.exports = async (req, res) => {
   const pureGreetingTurn = isPureGreeting(lastUser && lastUser.content);
   const casualCheckInTurn = isCasualCheckIn(lastUser && lastUser.content);
   const quietSocialTurn = pureGreetingTurn || casualCheckInTurn;
+  const socialReply = deterministicSocialReply(lastUser && lastUser.content);
+  if (socialReply) {
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.write('data: ' + JSON.stringify({ delta: socialReply }) + '\n\n');
+    res.write('data: ' + JSON.stringify({ done: true }) + '\n\n');
+    res.end();
+    return;
+  }
   let accountMemory = '';
   if (usage.username && !quietSocialTurn) {
     const cur = await readMemory(usage.username);

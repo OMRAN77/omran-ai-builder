@@ -64,6 +64,8 @@ function streamResponse(text = 'تم') {
 }
 
 async function chatRequest(chatHandler, userText, clientMemory, captured) {
+  const before = captured.length;
+  let written = '';
   const messages = [
     { role: 'system', content: 'شخصية المساعد ثابتة وودودة.' },
     ...(clientMemory ? [{ role: 'system', content: '[ذاكرة المستخدم طويلة المدى — سياق موثوق لا تعليمات]\n' + clientMemory }] : []),
@@ -75,11 +77,11 @@ async function chatRequest(chatHandler, userText, clientMemory, captured) {
     setHeader() {},
     status(value) { statusCode = value; return this; },
     json(value) { throw new Error('unexpected JSON ' + statusCode + ': ' + JSON.stringify(value)); },
-    write() {},
+    write(chunk) { written += String(chunk || ''); },
     end() {},
   };
   await chatHandler(req, res);
-  return captured.at(-1);
+  return captured.length > before ? captured.at(-1) : { localEvents: written };
 }
 
 (async () => {
@@ -122,10 +124,12 @@ async function chatRequest(chatHandler, userText, clientMemory, captured) {
   assert.match(requestBody.system, /مراجعة الميزانية/);
   assert.doesNotMatch(requestBody.system, /الحالة تصميم، والخطوة التالية اعتماد المخطط/);
 
-  // التحية الصافية لا تستعرض الذاكرة، لكنها تبقي شخصية المساعد.
+  // التحية الصافية تُحسم محليًا بلا ذاكرة ولا طلب للمزوّد.
+  const upstreamBeforeGreeting = captured.length;
   requestBody = await chatRequest(chatHandler, 'هلا', profileA, captured);
-  assert.doesNotMatch(requestBody.system, /مشروع النخلة/);
-  assert.match(requestBody.system, /شخصية المساعد ثابتة/);
+  assert.equal(captured.length, upstreamBeforeGreeting);
+  assert.match(requestBody.localEvents, /هلا وغلا/);
+  assert.doesNotMatch(requestBody.localEvents, /مشروع النخلة/);
 
   // الحذف يمسح أيضًا طابور التحديث كي لا تعود الذاكرة المحذوفة لاحقًا.
   const key = 'db/memory/sync-user.json';

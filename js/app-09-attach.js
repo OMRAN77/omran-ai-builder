@@ -1022,6 +1022,20 @@ window.chatRegenerateMessage = function(index){
   sendPrompt();
 };
 
+// الردود الاجتماعية القصيرة لا تحتاج نموذجًا أو بحثًا. إبقاؤها محلية يمنع
+// البتر والتغيّر وتسرب الذاكرة حتى لو تعطّل أي مزود أو انتقل التطبيق للاحتياط.
+function deterministicSocialReply(raw){
+  const s = String(raw || '').trim();
+  const english = !/[\u0600-\u06FF]/.test(s);
+  if(isCasualCheckIn(s)) return english ? "I'm good, how are you?" : 'بخير، كيف أنت؟';
+  if(!isPureGreeting(s)) return null;
+  if(/السلام عليكم/i.test(s)) return 'وعليكم السلام';
+  if(/صباح الخير/i.test(s)) return 'صباح النور';
+  if(/مساء الخير/i.test(s)) return 'مساء النور';
+  if(english) return 'Hello!';
+  return 'هلا وغلا';
+}
+
 async function sendPrompt(){
   // ✅ v301: قفل الإرسال أثناء التوليد — Enter أو أي ضغطة إضافية لا ترسل
   // الطلب مرة ثانية (كان زر الإرسال ينقفل لكن Enter يظل شغالًا فيتكرر الطلب).
@@ -1262,6 +1276,13 @@ async function sendPrompt(){
   let __lastStreamPartial = '';
 
   try{
+    // تحية/سؤال حال بلا مرفقات: جواب محلي حاسم، قبل أي وضع أو مزود أو بحث.
+    const __socialReply = attachmentsForMsg.length ? null : deterministicSocialReply(text);
+    if(__socialReply){
+      try{ if(window.__chatStatus) window.__chatStatus.release(); }catch(e){ __swallow(e, 'ui:social-reply'); }
+      cur.messages.push({ role: 'assistant', content: __socialReply, askAllReply: false, _localSocial: true });
+      return;
+    }
     // 🤖 وكيل عمران: وضع الوكيل المستقل (Claude Sonnet 4 + أدوات) — يخطط ويبحث ويبني.
     if(window.__agentModeOn && !imageAttachments.length){
       await runOmranAgent(cur, apiText, thinkingDiv);

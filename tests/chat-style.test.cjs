@@ -26,6 +26,11 @@ const greetingFns = vm.runInNewContext(`(() => {
   ${sliceBetween(maha, 'function isPureGreeting', 'async function smartMaybeSearch')}
   return { isPureGreeting, isCasualCheckIn };
 })()`);
+const deterministicSocial = vm.runInNewContext(`(() => {
+  ${sliceBetween(maha, 'function isPureGreeting', 'async function smartMaybeSearch')}
+  ${sliceBetween(attach, 'function deterministicSocialReply', 'async function sendPrompt')}
+  return deterministicSocialReply;
+})()`);
 
 for (const text of ['هلا', 'أهلًا', 'السلام عليكم', 'صباح الخير', 'hello']) {
   check(greetingFns.isPureGreeting(text), `تُعرف التحية اللفظية: ${text}`);
@@ -36,6 +41,20 @@ for (const text of ['كيف الحال', 'كيف حالك؟', 'هلا كيف ا�
 for (const text of ['كيف الحال', 'كيف حالك؟', 'هلا كيف الحال', 'how are you?']) {
   check(greetingFns.isCasualCheckIn(text), `تُعرف المجاملة لتجاوز البحث فقط: ${text}`);
 }
+for (const [text, expected] of [
+  ['هلا', 'هلا وغلا'],
+  ['السلام عليكم', 'وعليكم السلام'],
+  ['صباح الخير', 'صباح النور'],
+  ['مساء الخير', 'مساء النور'],
+  ['كيف الحال', 'بخير، كيف أنت؟'],
+  ['hello', 'Hello!'],
+  ['how are you?', "I'm good, how are you?"],
+]) {
+  assert.equal(deterministicSocial(text), expected);
+  check(true, `الرد الاجتماعي ثابت وكامل: ${text} ← ${expected}`);
+}
+assert.equal(deterministicSocial('أريد فنادق في دبي'), null);
+check(true, 'الطلبات الفعلية لا تدخل مسار الرد الاجتماعي المحلي');
 
 const styleRule = vm.runInNewContext(`(() => {
   ${sliceBetween(checkout, 'const CONVERSATION_QUALITY_RULE', '// قاعدة الاكتمال')}
@@ -79,7 +98,8 @@ check(conv.aiProvider === 'claude', 'المجاملة اللاحقة تحافظ 
 check(prompts.includes('تحية لفظية فقط وليست سؤالًا'), 'التحية وحدها لها توجيه قصير طبيعي');
 check(prompts.includes('أجب بتحية عربية قصيرة فقط من كلمة إلى ثلاث كلمات'), 'التحية لها توجيه مباشر لا يضيع وسط القواعد العامة');
 check(prompts.includes('ولا تستخدم علامة استفهام'), 'توجيه التحية يمنع أي سؤال صراحةً');
-check(prompts.includes('من دون صيغة ثابتة'), 'لا توجد إجابة تحية محفوظة');
+check(attach.includes('const __socialReply = attachmentsForMsg.length ? null : deterministicSocialReply(text)') && attach.includes('_localSocial: true'), 'التحية وسؤال الحال يُحسمان محليًا قبل أي مزود أو بحث');
+check(chatServer.includes('const socialReply = deterministicSocialReply') && chatServer.includes("JSON.stringify({ delta: socialReply })"), 'الخادم يعيد الرد الاجتماعي الثابت أيضًا للعملاء القديمة');
 check(prompts.includes('«كيف الحال؟» أجب عنه كحديث مستمر'), 'سؤال المجاملة يُعامل كمحادثة مستمرة');
 check(attach.includes('const __quietSocialTurn = isPureGreeting(text) || isCasualCheckIn(text)') && attach.includes('const __memMsg = __quietSocialTurn ? null : memorySystemMsg()'), 'سؤال الحال لا يحقن ذاكرة الحساب في العميل');
 check(attach.includes('const __prev = __quietSocialTurn ? [] :'), 'سؤال الحال لا يرسل المواضيع السابقة إلى المزود');
