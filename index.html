@@ -68,7 +68,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
 }
 </script>
 
-<link rel="manifest" href="/manifest.json">
+<link rel="manifest" href="/manifest.json?v=513-omranai">
 <meta name="theme-color" content="#000000">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -77,9 +77,9 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/tokens.css?v=457">
-<link rel="stylesheet" href="css/redesign.css?v=457">
-<link rel="stylesheet" href="css/modules.css?v=442">
+<link rel="stylesheet" href="css/tokens.css?v=531">
+<link rel="stylesheet" href="css/redesign.css?v=552f1e9a">
+<link rel="stylesheet" href="css/modules.css?v=521">
 <script>
 /* v434 — الوضع الفاتح/الداكن. الذهبي ثابت في الاثنين. */
 (function(){var K='aiapp_mode';
@@ -101,6 +101,16 @@ window.__swallow = window.__swallow || function (err, ctx) {
 })();
 </script>
 
+<style>
+/* v473 — إخفاء ٥ عناصر بأمر عمران (٨ أغسطس ٢٠٢٦). الرجوع: احذف هذه الكتلة كاملةً. */
+#btnTemplates, #btnAgentMode, #btnInstall, #btnInstallHeader, #btnShareApp, #btnGov { display: none !important; }
+/* مجموعة «الأدوات» فقدت أزرارها الأربعة — نخفي عنوانها وشبكتها كي لا يبقى عنوان يتيم */
+.ptSectionTitle:has([data-i18n="grpTools"]) { display: none !important; }
+.ptSectionTitle:has([data-i18n="grpTools"]) + .ptGrid { display: none !important; }
+/* v474 — لون روابط الردّ: فيروزيّ (أمر عمران «٢»، ٨ أغسطس ٢٠٢٦). الرجوع: احذف هذه الكتلة. */
+.msg-text a{ color:#2dd4bf !important; }
+html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
+</style>
 </head>
 <body>
 
@@ -116,10 +126,10 @@ window.__swallow = window.__swallow || function (err, ctx) {
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧أ: مودالات الأساس نُقلت إلى js/partials-core.js -->
-<script src="/js/partials-core.js?v=471"></script>
+<script src="/js/partials-core.js?v=524"></script>
 
 <!-- v416 · ديكور AI: منطقة رفع + شبكات بطاقات + رقاقات بدل القوائم المنسدلة. العقد مع app.bundle.js لم يتغيّر: القوائم ومربّعات الاختيار باقية في الصفحة مخفيّة وتُحدَّث برمجيًا. -->
-<script src="/js/design-sels.js?v=421"></script>
+<script src="/js/design-sels.js?v=553"></script>
 <!-- v417 · أزياء AI: فئة + بطاقات نمط/موسم/مناسبة + دائرات ألوان + رقاقات إضافات. الحقول الجديدة تصل إلى /api/fashion-create عبر window.omranFashionExtras. القوائم الأصلية باقية مخفيّة. -->
 <script src="/js/design-gen.js?v=421"></script>
 
@@ -160,6 +170,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
         <button class="btn" id="btnDesignAI" title="ديكور بالذكاء الاصطناعي" data-i18n-title="designAiTitle"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg> <span class="btnLabel" data-i18n="designAiTitle">ديكور AI</span></button>
         <button class="btn" id="btnFashionAI" title="تصميم أزياء بالذكاء الاصطناعي" data-i18n-title="fashionAiTitle"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><line x1="20" y1="4" x2="8.12" y2="15.88"></line><line x1="14.47" y1="14.48" x2="20" y2="20"></line><line x1="8.12" y1="8.12" x2="12" y2="12"></line></svg> <span class="btnLabel" data-i18n="fashionAiTitle">أزياء AI</span></button>
         <button class="btn" id="btnStudioAI" title="ستوديو الذكاء الاصطناعي" data-i18n-title="studioAiTitle"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17.5" y1="15" x2="9" y2="15"></line></svg> <span class="btnLabel" data-i18n="studioAiTitle">ستوديو AI</span></button>
+        <button class="btn" id="btnAdStudio" title="استوديو الإعلانات — اصنع إعلانك بالمحادثة"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11v2a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1z"></path><path d="M16 8.5a4 4 0 0 1 0 7"></path><path d="M19 6a7 7 0 0 1 0 12"></path></svg> <span class="btnLabel">استوديو الإعلانات</span></button>
         <button class="btn" id="btnOmranEdu" title="التعليم" data-i18n-title="omranEduTitle"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg> <span class="btnLabel" data-i18n="omranEduTitle">التعليم</span></button>
 
         <button class="btn" id="btnExpense" title="محلّل مصاريفي" data-i18n-title="expenseTitle"><svg class="hmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9"></path><path d="M12 12l7-5"></path><path d="M12 3v9h9"></path></svg> <span class="btnLabel" data-i18n="expenseTitle">محلّل مصاريفي</span></button>
@@ -238,8 +249,9 @@ window.__swallow = window.__swallow || function (err, ctx) {
       </div>
     </div>
     <div id="messages"></div>
+    <button type="button" id="chatJumpBottom" title="أحدث رسالة" aria-label="الانتقال إلى أحدث رسالة">↓</button>
     
-    <div id="chatQuickChipsWrap" style="display:none; position:absolute; bottom:64px; inset-inline-end:14px; z-index:400; background:none; border:none; box-shadow:none; padding:4px; max-height:60vh; overflow-y:auto;">
+    <div id="chatQuickChipsWrap" style="display:none; position:absolute; bottom:64px; inset-inline-end:14px; z-index:2100; background:var(--panel); backdrop-filter:blur(14px); border:1px solid var(--border); border-radius:14px; box-shadow:0 12px 34px rgba(0,0,0,.55); color:var(--text); padding:8px; max-height:60vh; overflow-y:auto;">
       <div id="quickChips" style="display:flex; flex-direction:column; gap:2px; align-items:stretch;"></div>
     </div>
     <div id="attachStrip"></div>
@@ -247,13 +259,14 @@ window.__swallow = window.__swallow || function (err, ctx) {
       <input type="file" id="attachInput" accept="image/*,.txt,.md,.js,.jsx,.ts,.tsx,.py,.json,.csv,.html,.css,.log,.zip,.docx,.xlsx,.pptx,.jar,.pdf,.xml,.yml,.yaml,.sh,.php,.java,.c,.cpp,.go,.rs,.rb,.sql,.env,*" multiple style="display:none;">
       <div id="emojiPicker"></div>
       <div id="composerBox">
+      <div id="chatEditNotice" hidden><span>تعديل الرسالة</span><button type="button" aria-label="إلغاء التعديل">إلغاء</button></div>
       <textarea id="prompt" rows="1" data-i18n-placeholder="promptPlaceholder" placeholder="اكتب رسالتك هنا ..."></textarea>
       <div class="inputbar-tools">
         <div class="inputbar-tools-left">
           <div id="plusToolsWrap">
             <button class="btn" id="btnPlusTools" data-i18n-title="plusToolsTitle" type="button" title="أدوات إضافية"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
             <div id="plusToolsPopup">
-              <button class="btn" id="btnAttach" type="button" title="إرفاق" data-i18n-title="attachTitle"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg> <span class="btnLabel" data-i18n="attachTitle">إرفاق</span></button>
+              <button class="btn" id="btnAttach" type="button" style="display:none !important;" title="إرفاق" data-i18n-title="attachTitle"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg> <span class="btnLabel" data-i18n="attachTitle">إرفاق</span></button>
               <button class="btn" id="btnSnapBuild" type="button" title="ورّني وأبنيه" data-i18n-title="snapBuildLabel"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg> <span class="btnLabel" data-i18n="snapBuildLabel">📸 ورّني وأبنيه</span></button>
               <button class="btn" id="btnQuickTemplates" type="button" title="اقتراحات" data-i18n-title="quickTemplatesTitle"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path><path d="M9 18h6"></path><path d="M10 22h4"></path></svg> <span class="btnLabel" data-i18n="quickTemplatesTitle">اقتراحات</span></button>
               <button class="btn" id="btnEmoji" type="button" title="إيموجي" data-i18n-title="emojiTitle"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg> <span class="btnLabel" data-i18n="emojiTitle">إيموجي</span></button>
@@ -273,6 +286,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
               <div id="sectionsToolsPopup"><button type="button" class="stpClose" id="stpCloseBtn" aria-label="close"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div>
             </div>
           </div>
+          <button type="button" id="omModeBtn" title="الأوضاع" aria-label="modes">@</button>
           <button type="button" id="omranBtnWeb" title="بحث في الإنترنت"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><line x1="3" y1="12" x2="21" y2="12"></line><path d="M12 3a15 15 0 0 1 4 9 15 15 0 0 1-4 9 15 15 0 0 1-4-9 15 15 0 0 1 4-9z"></path></svg></button>
           <button type="button" id="omranBtnClip" title="إرفاق ملف"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg></button>
           <button class="btn" id="btnMic" type="button" title="تحدث بدل الكتابة" data-i18n-title="micTitle"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg></button>
@@ -345,27 +359,23 @@ window.__swallow = window.__swallow || function (err, ctx) {
 
 <button type="button" id="btnMaha" title="مها" data-i18n-title="mahaTitle" style="position:fixed; top:calc(50% - 23px); inset-inline-end:16px; z-index:9998; width:45px; height:45px; border-radius:50%; border:none; background:none; overflow:hidden; padding:0; box-shadow:none; cursor:grab; display:flex; align-items:center; justify-content:center; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;"><img src="/icons/maha-icon.png" alt="مها" draggable="false" style="width:100%; height:100%; object-fit:cover; border-radius:50%; pointer-events:none; -webkit-user-drag:none;"></button>
 
-<div id="mahaCallScreen" style="display:none; position:fixed; z-index:99999; background:radial-gradient(circle at 50% 30%,#241a3d,#0c0a16 75%); flex-direction:column; align-items:center; justify-content:space-between; padding:26px 20px 22px; width:260px; height:340px; border-radius:var(--r-4); box-shadow:0 12px 40px rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.08); touch-action:none;">
-  <div id="mahaDragHandle" style="text-align:center; width:100%; cursor:grab; padding-bottom:6px;">
-    <div style="width:36px; height:4px; border-radius:var(--r-1); background:rgba(255,255,255,.25); margin:0 auto 10px;"></div>
-    <div id="mahaCallNameLabel" style="font-size: var(--fs-1); font-weight: var(--w-bold); color:#fff; letter-spacing:0;">مها</div>
-    <div id="mahaStateLabel" style="margin-top:6px; font-size: var(--fs-3); color:#c9c1e0; min-height:18px;"></div>
-    <div id="mahaMicMeter" style="display:none; margin:5px auto 0; width:120px; height:5px; border-radius:var(--r-1); background:rgba(255,255,255,.12); overflow:hidden;"><div id="mahaMicMeterFill" style="width:0%; height:100%; border-radius:var(--r-1); background:linear-gradient(90deg,#22c55e,#4ade80); transition:width .08s linear;"></div></div>
-    <div id="mahaPointsMeter" style="display:none; margin-top:4px; align-items:center; justify-content:center; gap:5px; font-size: var(--fs-3); color:#e8e2ff;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg><span id="mahaPointsMeterValue"></span></div>
-    <div id="mahaVoiceToggle" style="display:none; gap:8px; margin-top:8px; justify-content:center;">
-      <button type="button" id="mahaVoiceFemale" onclick="if(typeof mahaSetVoiceGender==='function')mahaSetVoiceGender('female')" style="padding:4px 14px; border-radius:20px; border:1px solid rgba(255,255,255,.2); color:#fff; font-size:13px; cursor:pointer; background:rgba(168,85,247,.45);">👩 مها</button>
-      <button type="button" id="mahaVoiceMale" onclick="if(typeof mahaSetVoiceGender==='function')mahaSetVoiceGender('male')" style="padding:4px 14px; border-radius:20px; border:1px solid rgba(255,255,255,.2); color:#fff; font-size:13px; cursor:pointer; background:rgba(255,255,255,.1);">👨 عبدالله</button>
-    </div>
+<div id="mahaCallScreen" style="display:none; position:fixed; z-index:99999; background:none; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:0; width:auto; height:auto; border-radius:0; box-shadow:none; border:none; touch-action:none;">
+  <div id="mahaDragHandle" style="text-align:center; width:100%; cursor:grab; padding-bottom:4px;">
+    <div style="display:none;"></div>
+    <div id="mahaCallNameLabel" style="font-size:15px; font-weight: var(--w-bold); color:#fff; letter-spacing:0; text-shadow:0 1px 6px rgba(0,0,0,.8), 0 0 2px rgba(0,0,0,.6);">مها</div>
+    <div id="mahaStateLabel" style="margin-top:4px; font-size:10px; color:#e2ddf5; min-height:13px; text-shadow:0 1px 6px rgba(0,0,0,.8), 0 0 2px rgba(0,0,0,.6);"></div>
+    <div id="mahaMicMeter" style="display:none; margin:4px auto 0; width:84px; height:4px; border-radius:var(--r-1); background:rgba(255,255,255,.12); overflow:hidden;"><div id="mahaMicMeterFill" style="width:0%; height:100%; border-radius:var(--r-1); background:linear-gradient(90deg,#22c55e,#4ade80); transition:width .08s linear;"></div></div>
+    <div id="mahaPointsMeter" style="display:none; margin-top:3px; align-items:center; justify-content:center; gap:4px; font-size:10px; color:#e8e2ff;"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg><span id="mahaPointsMeterValue"></span></div>
   </div>
   <div style="flex:1; display:flex; align-items:center; justify-content:center; position:relative;">
-    <div id="mahaOrb" class="maha-orb-idle" style="width:150px; height:150px; border-radius:50%; background:linear-gradient(135deg,#ff5fa2,#7b5cff); display:flex; align-items:center; justify-content:center; font-size:56px; box-shadow:0 0 40px rgba(123,92,255,.5);">💁‍♀️</div>
-    <img id="mahaGenImage" alt="" style="display:none; width:150px; height:150px; border-radius:var(--r-4); object-fit:cover; box-shadow:0 0 40px rgba(123,92,255,.5); cursor:zoom-in;" />
-    <div id="mahaWave" class="maha-wave-idle" style="display:none; width:110px; height:110px; border-radius:50%;"></div>
+    <div id="mahaOrb" class="maha-orb-idle" style="width:105px; height:105px; border-radius:50%; background:linear-gradient(135deg,#ff5fa2,#7b5cff); display:flex; align-items:center; justify-content:center; font-size:39px; box-shadow:0 0 28px rgba(123,92,255,.5);">💁‍♀️</div>
+    <img id="mahaGenImage" alt="" style="display:none; width:105px; height:105px; border-radius:var(--r-4); object-fit:cover; box-shadow:0 0 40px rgba(123,92,255,.5); cursor:zoom-in;" />
+    <div id="mahaWave" class="maha-wave-idle" style="display:none; width:77px; height:77px; border-radius:50%;"></div>
   </div>
-  <video id="mahaCamPreview" autoplay playsinline muted style="display:none; position:absolute; top:52px; left:12px; width:84px; height:112px; object-fit:cover; border-radius:var(--r-3); border:2px solid rgba(255,255,255,.35); box-shadow:0 4px 14px rgba(0,0,0,.45); z-index:2;"></video>
-  <div style="display:flex; align-items:center; gap:18px;">
-    <button type="button" id="btnMahaCamera" data-i18n-title="mahaCameraTitle" title="الكاميرا — عين مها" style="width:52px; height:52px; border-radius:50%; border:none; background:rgba(255,255,255,.14); color:#fff; font-size:22px; cursor:pointer;">📷</button>
-    <button type="button" id="btnMahaEndCall" style="width:64px; height:64px; border-radius:50%; border:none; background:#ff4d4d; color:#fff; font-size:26px; box-shadow:0 6px 16px rgba(255,77,77,.5); cursor:pointer;">✕</button>
+  <video id="mahaCamPreview" autoplay playsinline muted style="display:none; position:absolute; top:auto; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%); width:59px; height:78px; object-fit:cover; border-radius:var(--r-3); border:2px solid rgba(255,255,255,.35); box-shadow:0 4px 14px rgba(0,0,0,.45); z-index:2;"></video>
+  <div style="display:flex; align-items:center; gap:13px;">
+    <button type="button" id="btnMahaCamera" data-i18n-title="mahaCameraTitle" title="الكاميرا — عين مها" style="width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,.14); color:#fff; font-size:15px; cursor:pointer;">📷</button>
+    <button type="button" id="btnMahaEndCall" style="width:45px; height:45px; border-radius:50%; border:none; background:#ff4d4d; color:#fff; font-size:18px; box-shadow:0 4px 11px rgba(255,77,77,.5); cursor:pointer;">✕</button>
   </div>
 </div>
 <div id="mahaImageLightbox" style="display:none; position:fixed; inset:0; z-index:100000; background:rgba(0,0,0,.88); align-items:center; justify-content:center; cursor:zoom-out;">
@@ -373,12 +383,13 @@ window.__swallow = window.__swallow || function (err, ctx) {
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧ب: الإعدادات + الساعة + القوالب نُقلت إلى js/partials-settings.js -->
-<script src="/js/partials-settings.js?v=471"></script>
+<script src="/js/partials-settings.js?v=544"></script>
 
 <script src="/js/selfdiag.js?v=421"></script>
 <script src="/templates-data.js"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script src="/js/app.bundle.js?v=8a5d8f80"></script>
+    <script src="/js/app.bundle.js?v=f7da275e"></script>
+    <script src="/js/modes.js?v=552f1e9a"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
   <div class="eduWrap">
@@ -424,7 +435,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <div class="xm" id="govModal" dir="rtl"><div class="xmWrap"><div class="xmHead"><h2 id="govTitleH">🧾 المعاملات الحكومية</h2><button class="xmX" id="govX">✕</button></div><div class="xmBody" id="govBody"></div></div></div>
 <div class="xm" id="cvModal" dir="rtl"><div class="xmWrap"><div class="xmHead"><h2 id="cvTitleH">💼 مولّد السيرة الذاتية</h2><button class="xmX" id="cvX">✕</button></div><div class="xmBody" id="cvBody"></div></div></div>
 
-<script src="/js/ui-docs.js?v=420"></script>
+<script src="/js/ui-docs.js?v=472"></script>
 <nav id="omranBottomNav" aria-label="التنقل">
   <button type="button" class="omNavBtn active" data-omnav="home"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg><span data-i18n="omNavHome">الرئيسية</span></button>
   <button type="button" class="omNavBtn" data-omnav="chats"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><span data-i18n="omNavChats">المحادثات</span></button>
