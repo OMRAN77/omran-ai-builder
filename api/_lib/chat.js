@@ -16,6 +16,12 @@ function isPureGreeting(text) {
   return /^(?:هلا+|هلا والله|مرحبا+|مرحبًا|السلام عليكم(?: ورحمة الله(?: وبركاته)?)?|سلام|صباح الخير|مساء الخير|hello|hi|hey)[!؟?.،\s]*$/i.test(String(text || '').trim());
 }
 
+function isCasualCheckIn(text) {
+  const s = String(text || '').trim();
+  if (!s || s.length > 80) return false;
+  return /^(?:(?:هلا|مرحبا|مرحبًا|أهلا|أهلًا|السلام عليكم|سلام|hello|hi|hey)[\s،,.!؟?~\-]*)?(?:كيف حالك|كيف الحال|شحالك|شخبارك|شو الأخبار|كيفك|how are you|how(?:'|’)s it going|how is it going)[\s،,.!؟?~\-]*$/i.test(s);
+}
+
 function isClientMemoryNote(text) {
   const s = String(text || '');
   return s.includes('[ذاكرة المستخدم طويلة المدى') || s.startsWith('هذه معلومات مؤكدة ومحفوظة عن المستخدم من محادثات سابقة:');
@@ -232,8 +238,11 @@ module.exports = async (req, res) => {
   // الذاكرة تُقرأ من الحساب في الخادم لكل رسالة، لا من نسخة الجهاز. هكذا يرى
   // الكمبيوتر والجوال الملف نفسه حتى لو كان أحدهما لم يحدّث صفحته بعد.
   const lastUser = messages.slice().reverse().find((m) => m && m.role === 'user' && typeof m.content === 'string');
+  const pureGreetingTurn = isPureGreeting(lastUser && lastUser.content);
+  const casualCheckInTurn = isCasualCheckIn(lastUser && lastUser.content);
+  const quietSocialTurn = pureGreetingTurn || casualCheckInTurn;
   let accountMemory = '';
-  if (usage.username && !isPureGreeting(lastUser && lastUser.content)) {
+  if (usage.username && !quietSocialTurn) {
     const cur = await readMemory(usage.username);
     accountMemory = memoryPromptBlock(cur.memory);
   }
@@ -244,10 +253,15 @@ module.exports = async (req, res) => {
   if (typeof body.system === 'string' && body.system.trim() && !isClientMemoryNote(body.system)) sysParts.push(body.system);
   if (accountMemory) sysParts.push(accountMemory);
   const country = (req.headers && (req.headers['x-vercel-ip-country'] || req.headers['x-country'])) || '';
-  const system = sysParts.join('\n\n') + nowNote() + countryNote(country) + TOOLS_NOTE
-    + require('./_knowledge.js').ownerKnowledge(req, token); // معرفة عمران — للمالك وحده
+  // المجاملة القصيرة لا تحتاج تاريخًا أو دولة أو أدوات أو ملف المالك؛ حقن هذه
+  // السياقات في «كيف الحال» هو ما حوّلها إلى قائمة فنادق ومواضيع قديمة.
+  const system = quietSocialTurn
+    ? sysParts.join('\n\n') + (casualCheckInTurn ? '\n\n[هذا دور اجتماعي قصير]: أجب عن سؤال الحال مباشرةً في جملة طبيعية واحدة. المحادثة مستمرة، فلا تبدأ بتحية جديدة، ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق.' : '')
+    : sysParts.join('\n\n') + nowNote() + countryNote(country) + TOOLS_NOTE
+      + require('./_knowledge.js').ownerKnowledge(req, token); // معرفة عمران — للمالك وحده
 
-  const convo = messages
+  const convoSource = quietSocialTurn ? [lastUser] : messages;
+  const convo = convoSource
     .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && m.content)
     .map((m) => ({ role: m.role, content: typeof m.content === 'string' ? m.content.slice(0, 30000) : m.content }));
   while (convo.length && convo[convo.length - 1].role !== 'user') convo.pop();
@@ -274,7 +288,7 @@ module.exports = async (req, res) => {
       const upstream = await fetch(CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: CHAT_MODEL, max_tokens: 16000, system, messages: convo, tools: TOOLS, stream: true }),
+        body: JSON.stringify({ model: CHAT_MODEL, max_tokens: quietSocialTurn ? 120 : 16000, system, messages: convo, tools: quietSocialTurn ? undefined : TOOLS, stream: true }),
       });
 
       if (!upstream.ok) {

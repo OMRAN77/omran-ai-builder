@@ -1883,10 +1883,13 @@ async function sendPrompt(){
         '- التطبيق يوفّر توليد الصور والفيديو وPDF؛ استخدم القدرة المناسبة بدل ادعاء العجز.\n' +
         '- التحية الخالصة لها رد قصير مستقل. أمّا سؤال المجاملة أو المتابعة مثل «كيف الحال؟» فأجب عنه كحديث مستمر بلا إعادة تحية أو عرض خدمة.';
     }
-    // التحية الخالصة تحتاج توجيهًا قصيرًا مباشرًا؛ دفنها وسط قواعد المحادثة
-    // جعل المزود السريع يضيف سؤال خدمة أو «كيف حالك؟» رغم المنع الصريح.
+    // الدور الاجتماعي القصير يُعزل عن الذاكرة والمواضيع السابقة، لكن سؤال الحال
+    // يبقى استمرارًا للمحادثة لا تحية جديدة.
+    const __quietSocialTurn = isPureGreeting(text) || isCasualCheckIn(text);
     if(isPureGreeting(text)){
       __sys = 'المستخدم أرسل تحية لفظية خالصة. أجب بتحية عربية قصيرة فقط من كلمة إلى ثلاث كلمات. لا تسأل أي سؤال، ولا تستخدم علامة استفهام، ولا تقل «كيف حالك» أو «كيف أساعدك»، ولا تعرض أي خدمة. لا تضف شيئًا بعد التحية.';
+    } else if(isCasualCheckIn(text)){
+      __sys = 'هذا سؤال حال ضمن محادثة مستمرة، وليس تحية جديدة. أجب عن حالك مباشرةً بجملة عربية قصيرة وطبيعية واحدة، ويمكنك أن تسأله عن حاله باختصار. لا تبدأ بتحية، ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق، ولا تلتزم صيغة محفوظة.';
     }
     const apiMessages = [{role: 'system', content: __sys}];
     // 🤝 v345: المستخدم وافق على عرض بناء قدّمه المزود في رده السابق — يبنيه الآن كاملًا.
@@ -1902,10 +1905,9 @@ async function sendPrompt(){
     if(imageAttachments.length){
       apiMessages.push({role: 'system', content: 'The user has ATTACHED an image with this message. You MUST look at the attached image carefully and answer based on its actual visual content in detail (identify objects, brands, models, text, measurements — whatever is relevant to the question). Never say you cannot see images, never give a generic answer that ignores the image, and never reply with empty or evasive text.'});
     }
-    // 🧠 حقن ذاكرة المستخدم طويلة المدى
-    // v548: تحية صافية ⇒ لا حقن ذاكرة في هذا الدور وحده — الذاكرة كانت تجعل
-    // الرد يستعرض مواضيع المستخدم المحفوظة على مجرد «هلا». الأسئلة العادية بلا تغيير.
-    const __memMsg = isPureGreeting(text) ? null : memorySystemMsg();
+    // 🧠 الذاكرة طويلة المدى لا تدخل التحية أو سؤال الحال؛ كلاهما لا يحتاج
+    // مشاريع المستخدم واهتماماته، وكانت هي مصدر فتح المواضيع القديمة.
+    const __memMsg = __quietSocialTurn ? null : memorySystemMsg();
     if(__memMsg) apiMessages.push(__memMsg);
     if(cur.code){
       apiMessages.push({role: 'assistant', content: '```' + (cur.codeType === 'python' ? 'python' : 'html') + '\n' + codeForApi(cur.code) + '\n```'});
@@ -1960,7 +1962,9 @@ async function sendPrompt(){
       while(__lastUi > 0 && __h[__lastUi].role !== 'user') __lastUi--;
       if(!__h[__lastUi] || __h[__lastUi].role !== 'user') __lastUi = __h.length - 1;
       const __lastM = __h[__lastUi];
-      const __prev = __h.filter((m, __pi) => __pi !== __lastUi);
+      // سؤال الحال لا يحتاج سجل المواضيع كي يُفهم؛ إبقاؤه هنا كان يسمح بتسرب
+      // آخر الفنادق أو السيارات إلى جواب اجتماعي بسيط.
+      const __prev = __quietSocialTurn ? [] : __h.filter((m, __pi) => __pi !== __lastUi);
       if(__prev.length){
         const __ctx = __prev.map(m => {
           let __txt = String(__stripCodeForHistory(m.role, (m.apiText !== undefined ? m.apiText : m.content)) || '');
@@ -2809,7 +2813,7 @@ async function sendPrompt(){
     // 🧠 تحديث ذاكرة المستخدم بعد اكتمال الرد (بدون انتظار)
     try{
       const __lastA = cur.messages.filter(m => m.role === 'assistant').slice(-1)[0];
-      if(__lastA && __lastA.content && !String(__lastA.content).startsWith('⚠️')){
+      if(__lastA && __lastA.content && !String(__lastA.content).startsWith('⚠️') && !(isPureGreeting(text) || isCasualCheckIn(text))){
         memoryUpdate(text, String(__lastA.content));
         // 🗂️ v326: تحديث ملخص موضوع هذه المحادثة في الذاكرة السحابية
         try{ window.memoryTopicUpdate && window.memoryTopicUpdate(cur, text, String(__lastA.content)); }catch(e){ __swallow(e, "misc:app-09-attach#31"); }

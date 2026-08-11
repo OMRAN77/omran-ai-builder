@@ -81,6 +81,14 @@ check(prompts.includes('أجب بتحية عربية قصيرة فقط من كل
 check(prompts.includes('ولا تستخدم علامة استفهام'), 'توجيه التحية يمنع أي سؤال صراحةً');
 check(prompts.includes('من دون صيغة ثابتة'), 'لا توجد إجابة تحية محفوظة');
 check(prompts.includes('«كيف الحال؟» أجب عنه كحديث مستمر'), 'سؤال المجاملة يُعامل كمحادثة مستمرة');
+check(attach.includes('const __quietSocialTurn = isPureGreeting(text) || isCasualCheckIn(text)') && attach.includes('const __memMsg = __quietSocialTurn ? null : memorySystemMsg()'), 'سؤال الحال لا يحقن ذاكرة الحساب في العميل');
+check(attach.includes('const __prev = __quietSocialTurn ? [] :'), 'سؤال الحال لا يرسل المواضيع السابقة إلى المزود');
+check(attach.includes('هذا سؤال حال ضمن محادثة مستمرة، وليس تحية جديدة') && attach.includes('ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق'), 'سؤال الحال له توجيه مباشر يمنع عرض الخدمة والمواضيع القديمة');
+check(attach.includes('!(isPureGreeting(text) || isCasualCheckIn(text))'), 'الدور الاجتماعي العابر لا يلوث الذاكرة طويلة المدى');
+check(chatServer.includes('function isCasualCheckIn(text)') && chatServer.includes('if (usage.username && !quietSocialTurn)'), 'الخادم لا يقرأ ذاكرة الحساب لسؤال الحال');
+check(chatServer.includes('const system = quietSocialTurn') && chatServer.includes('ولا تذكر أي مشروع أو اهتمام أو موضوع سابق'), 'الخادم يعزل الدور الاجتماعي عن التاريخ ومعرفة المالك');
+check(chatServer.includes('tools: quietSocialTurn ? undefined : TOOLS'), 'الخادم لا يتيح أدوات البحث للدور الاجتماعي');
+check(chatServer.includes('const convoSource = quietSocialTurn ? [lastUser] : messages'), 'الخادم لا يرسل تاريخ المواضيع في سؤال الحال');
 check(prompts.includes('لا تطرح أي سؤال ولا تعرض المساعدة'), 'التحية تبقى قصيرة بلا سؤال أو عرض خدمة');
 check(prompts.includes('لا تعرض المساعدة بدل الجواب'), 'سؤال الحال يُجاب عنه ولا يتحول إلى عرض خدمة');
 check(prompts.includes('لا تبدأ بتحية من نفسك'), 'بداية المحادثة صامتة');
