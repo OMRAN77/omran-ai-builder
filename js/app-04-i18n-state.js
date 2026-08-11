@@ -1075,7 +1075,7 @@ function omranExtractOptions(txt){
   const blocks = [];
   const clean = String(txt).replace(/\[\[(OPT|MULTI)\]\]([\s\S]*?)\[\[\/(?:OPT|MULTI)\]\]/g, function(m, kind, body){
     const items = body.split('|').map(function(x){ return x.trim(); }).filter(Boolean);
-    if(items.length) blocks.push({ multi: kind === 'MULTI', items: items.slice(0, 16) });
+    if(items.length) blocks.push({ multi: kind === 'MULTI', items: items.slice(0, 28) });
     return '';
   }).replace(/\n{3,}/g, '\n\n').trim();
   return blocks.length ? { text: clean, blocks: blocks } : null;
