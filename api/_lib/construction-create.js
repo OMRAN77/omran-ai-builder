@@ -6,6 +6,10 @@
 // Server-side owner API key only (GEMINI_API_KEY).
 const { checkConstructionQuota, consumeConstruction, CONSTRUCTION_DAILY_LIMIT } = require('./_constructionUsage');
 const { saveDesign } = require('./_constructionLibrary');
+const { fetchImageWithRetry, isImageTimeoutError } = require('./image-fetch');
+
+const TEXT_TIMEOUT_MS = 60000;
+const GENERATION_ERROR = 'construction_generation_failed';
 
 const BUILDING_LABELS = {
   villa: 'a residential villa',
@@ -278,14 +282,23 @@ module.exports = async (req, res) => {
     const textEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + apiKey;
     const textReqBody = { contents: [{ parts: [{ text: textPrompt }] }] };
 
+    const requestImage = (requestBody) => fetchImageWithRetry({
+      url: imgEndpoint,
+      makeInit: () => ({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      }),
+    });
     const fetchTasks = [
-      wantPlan
-        ? fetch(imgEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(planReqBody) })
-        : Promise.resolve(null),
-      fetch(textEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(textReqBody) }),
-      wantPhoto
-        ? fetch(imgEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(photoReqBody) })
-        : Promise.resolve(null),
+      wantPlan ? requestImage(planReqBody) : Promise.resolve(null),
+      fetch(textEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(textReqBody),
+        signal: AbortSignal.timeout(TEXT_TIMEOUT_MS),
+      }),
+      wantPhoto ? requestImage(photoReqBody) : Promise.resolve(null),
     ];
 
     if (includeInterior) {
@@ -294,19 +307,21 @@ module.exports = async (req, res) => {
         floorsText + buildingDesc + notesText + annexEnText +
         ' Warm lighting, tasteful furniture, high-end interior design magazine quality, no people, no text overlays.';
       const interiorReqBody = { contents: [{ parts: [{ text: interiorPrompt }] }], generationConfig: { imageConfig: { imageSize: '2K' } } };
-      fetchTasks.push(fetch(imgEndpoint.replace(apiKey, apiKey), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(interiorReqBody) }));
+      fetchTasks.push(requestImage(interiorReqBody));
     }
 
     const results = await Promise.all(fetchTasks);
-    const [planUpstream, textUpstream, photoUpstream, interiorUpstream] = results;
+    const [planResult, textUpstream, photoResult, interiorResult] = results;
+    if (planResult && planResult.error) throw planResult.error;
 
-    const planData = planUpstream ? await planUpstream.json() : null;
+    const planUpstream = planResult && planResult.response;
+    const planData = planResult ? planResult.data : null;
     const textData = await textUpstream.json();
-    const photoData = photoUpstream ? await photoUpstream.json() : null;
-    const interiorData = interiorUpstream ? await interiorUpstream.json() : null;
+    const photoData = photoResult ? photoResult.data : null;
+    const interiorData = interiorResult ? interiorResult.data : null;
 
     if (wantPlan && planUpstream && !planUpstream.ok) {
-      res.status(planUpstream.status).json({ error: (planData && planData.error && planData.error.message) || 'Upstream image error' });
+      res.status(planUpstream.status).json({ error: GENERATION_ERROR });
       return;
     }
 
@@ -398,6 +413,7 @@ module.exports = async (req, res) => {
       dailyLimit: CONSTRUCTION_DAILY_LIMIT,
     });
   } catch (e) {
-    res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
+    const status = isImageTimeoutError(e) ? 504 : 500;
+    res.status(status).json({ error: GENERATION_ERROR });
   }
 };

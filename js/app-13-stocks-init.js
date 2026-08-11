@@ -505,6 +505,10 @@
     };
   }
 
+  const showGenerationFailure = () => setStatus(isEn()
+    ? '⚠️ Design generation took too long or the service is temporarily busy. Please try again.'
+    : '⚠️ تعذّر إكمال التصميم الآن؛ قد تستغرق العملية وقتًا أطول أو تكون الخدمة مشغولة مؤقتًا. حاول مرة أخرى.');
+
   btnRun.onclick = async () => {
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
     if(!token){
@@ -546,7 +550,7 @@
         }else if(data.error === 'daily_limit_reached'){
           setStatus(t('designAiLimitReached'));
         }else{
-          setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (data.error || 'unknown'));
+          showGenerationFailure();
         }
         return;
       }
@@ -579,7 +583,7 @@
       refImage = data.photoImageBase64 ? await shrinkRef(data.photoImageBase64, data.photoMimeType) : null;
       setStatus((modePhotoEl && modePhotoEl.checked && !data.photoImageBase64) ? (isEn() ? '⚠️ Exterior render failed — plan only.' : '⚠️ تعذّر توليد الصورة الفوتوغرافية — المخطط فقط.') : '');
     }catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      showGenerationFailure();
     }finally{
       btnRun.disabled = false;
     }
