@@ -5063,12 +5063,44 @@ function msgDownloadBlob(blob, filename){
 function msgEscapeHtml(str){
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+function msgPdfFontSpec(){
+  const fallback = {family:"'Tajawal'", google:'', line:1.7};
+  try{
+    const api = window.Omran && window.Omran.fonts;
+    if(!api || !api.current || !api.list) return fallback;
+    return api.list().find(f => f.id === api.current()) || fallback;
+  }catch(e){ __swallow(e, 'pdf:font-spec'); return fallback; }
+}
+function msgPdfFontHead(font){
+  const family = font.family + ", 'Tajawal', Tahoma, Arial, sans-serif";
+  const query = (font.google ? 'family=' + font.google + '&family=' : 'family=') + 'Tajawal:wght@400;500;700';
+  return {family, link:'<link rel="stylesheet" data-pdf-font href="https://fonts.googleapis.com/css2?' + query + '&display=swap">'};
+}
+function msgPrintAfterFont(view, family, ctx){
+  let done = false;
+  const print = () => { if(done) return; done = true; try{ view.focus(); view.print(); }catch(e){ __swallow(e, ctx); } };
+  const timer = setTimeout(print, 3000);
+  const wait = () => {
+    try{
+      const fonts = view.document.fonts;
+      if(fonts && fonts.load) fonts.load('16px ' + family).then(() => fonts.ready).then(() => { clearTimeout(timer); print(); }, () => {});
+      else print();
+    }catch(e){ __swallow(e, ctx + ':font-load'); }
+  };
+  try{
+    const link = view.document.querySelector('link[data-pdf-font]');
+    if(link && !link.sheet){ link.addEventListener('load', wait, {once:true}); link.addEventListener('error', print, {once:true}); }
+    else wait();
+  }catch(e){ __swallow(e, ctx + ':font-link'); wait(); }
+}
 function exportReplyAsPdf(text){
   const w = window.open('', '_blank');
   if(!w) return;
-  const html = '<html><head><meta charset="utf-8"><title>عمران AI</title><style>body{font-family:Tahoma,Arial,sans-serif;direction:rtl;padding:28px;line-height:2;color:#111;white-space:pre-wrap;word-break:break-word;}</style></head><body>' + msgEscapeHtml(text) + '</body></html>';
+  const font = msgPdfFontSpec();
+  const pdfFont = msgPdfFontHead(font);
+  const html = '<html><head><meta charset="utf-8"><title>عمران AI</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';direction:rtl;padding:28px;line-height:' + font.line + ';color:#111;white-space:pre-wrap;word-break:break-word;}</style></head><body>' + msgEscapeHtml(text) + '</body></html>';
   w.document.open(); w.document.write(html); w.document.close();
-  setTimeout(() => { try{ w.focus(); w.print(); }catch(e){ __swallow(e, "ui:app-05-ui#1"); } }, 350);
+  msgPrintAfterFont(w, pdfFont.family, 'ui:app-05-ui#1');
 }
 function exportReplyAsWord(text){
   const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>عمران AI</title></head><body dir="rtl" style="font-family:Tahoma,Arial,sans-serif; line-height:2; white-space:pre-wrap;">' + msgEscapeHtml(text) + '</body></html>';
@@ -9886,16 +9918,16 @@ function exportTextAsPdf(raw){
     }
     if(inList) html += '</ul>';
     const isAr = /[\u0600-\u06FF]/.test(txt);
-    const doc = '<!DOCTYPE html><html dir="' + (isAr ? 'rtl' : 'ltr') + '"><head><meta charset="utf-8"><title>Omran AI Builder</title><style>body{font-family:"Segoe UI",Tahoma,Arial,sans-serif;color:#111;background:#fff;padding:28px 32px;line-height:1.9;font-size:14.5px}h2{font-size:17px;margin:18px 0 6px;color:#4c2a92;border-bottom:1px solid #eee;padding-bottom:4px}ul{margin:4px 0;padding-' + (isAr ? 'right' : 'left') + ':22px}p{margin:6px 0}footer{margin-top:30px;font-size:11px;color:#999;text-align:center}</style></head><body>' + html + '<footer>Omran AI Builder</footer></body></html>';
+    const font = msgPdfFontSpec();
+    const pdfFont = msgPdfFontHead(font);
+    const doc = '<!DOCTYPE html><html dir="' + (isAr ? 'rtl' : 'ltr') + '"><head><meta charset="utf-8"><title>Omran AI Builder</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';color:#111;background:#fff;padding:28px 32px;line-height:' + font.line + ';font-size:14.5px}h2{font-size:17px;margin:18px 0 6px;color:#4c2a92;border-bottom:1px solid #eee;padding-bottom:4px}ul{margin:4px 0;padding-' + (isAr ? 'right' : 'left') + ':22px}p{margin:6px 0}footer{margin-top:30px;font-size:11px;color:#999;text-align:center}</style></head><body>' + html + '<footer>Omran AI Builder</footer></body></html>';
     const fr = document.createElement('iframe');
     fr.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;';
     document.body.appendChild(fr);
     fr.srcdoc = doc;
     fr.onload = function(){
-      setTimeout(function(){
-        try{ fr.contentWindow.focus(); fr.contentWindow.print(); }catch(e){ __swallow(e, "ui:app-08-maha#7"); }
-        setTimeout(function(){ try{ fr.remove(); }catch(e){ __swallow(e, "ui:app-08-maha#8"); } }, 60000);
-      }, 250);
+      msgPrintAfterFont(fr.contentWindow, pdfFont.family, 'ui:app-08-maha#7');
+      setTimeout(function(){ try{ fr.remove(); }catch(e){ __swallow(e, "ui:app-08-maha#8"); } }, 60000);
     };
   }catch(e){ __swallow(e, "ui:app-08-maha#9"); }
 }

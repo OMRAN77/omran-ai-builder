@@ -529,16 +529,16 @@ function exportTextAsPdf(raw){
     }
     if(inList) html += '</ul>';
     const isAr = /[\u0600-\u06FF]/.test(txt);
-    const doc = '<!DOCTYPE html><html dir="' + (isAr ? 'rtl' : 'ltr') + '"><head><meta charset="utf-8"><title>Omran AI Builder</title><style>body{font-family:"Segoe UI",Tahoma,Arial,sans-serif;color:#111;background:#fff;padding:28px 32px;line-height:1.9;font-size:14.5px}h2{font-size:17px;margin:18px 0 6px;color:#4c2a92;border-bottom:1px solid #eee;padding-bottom:4px}ul{margin:4px 0;padding-' + (isAr ? 'right' : 'left') + ':22px}p{margin:6px 0}footer{margin-top:30px;font-size:11px;color:#999;text-align:center}</style></head><body>' + html + '<footer>Omran AI Builder</footer></body></html>';
+    const font = msgPdfFontSpec();
+    const pdfFont = msgPdfFontHead(font);
+    const doc = '<!DOCTYPE html><html dir="' + (isAr ? 'rtl' : 'ltr') + '"><head><meta charset="utf-8"><title>Omran AI Builder</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';color:#111;background:#fff;padding:28px 32px;line-height:' + font.line + ';font-size:14.5px}h2{font-size:17px;margin:18px 0 6px;color:#4c2a92;border-bottom:1px solid #eee;padding-bottom:4px}ul{margin:4px 0;padding-' + (isAr ? 'right' : 'left') + ':22px}p{margin:6px 0}footer{margin-top:30px;font-size:11px;color:#999;text-align:center}</style></head><body>' + html + '<footer>Omran AI Builder</footer></body></html>';
     const fr = document.createElement('iframe');
     fr.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;';
     document.body.appendChild(fr);
     fr.srcdoc = doc;
     fr.onload = function(){
-      setTimeout(function(){
-        try{ fr.contentWindow.focus(); fr.contentWindow.print(); }catch(e){ __swallow(e, "ui:app-08-maha#7"); }
-        setTimeout(function(){ try{ fr.remove(); }catch(e){ __swallow(e, "ui:app-08-maha#8"); } }, 60000);
-      }, 250);
+      msgPrintAfterFont(fr.contentWindow, pdfFont.family, 'ui:app-08-maha#7');
+      setTimeout(function(){ try{ fr.remove(); }catch(e){ __swallow(e, "ui:app-08-maha#8"); } }, 60000);
     };
   }catch(e){ __swallow(e, "ui:app-08-maha#9"); }
 }
