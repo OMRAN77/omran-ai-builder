@@ -1692,7 +1692,9 @@ function streamingMarkdownDisplayText(text){
 function renderStreamingAssistant(el, text){
   if(!el) return;
   el.classList.add('msg-streaming');
-  buildSpokenWordSpans(el, streamingMarkdownDisplayText(text));
+  let __st = streamingMarkdownDisplayText(text);
+  if(__st && __st.indexOf('[[') >= 0) __st = __st.replace(/\[\[(?:OPT|MULTI)\]\][\s\S]*$/, '').trimEnd();
+  buildSpokenWordSpans(el, __st);
 }
 
 const codeEl = $('#code');
@@ -4469,6 +4471,69 @@ function showCodeDiff(oldCode, newCode, label){
   ov.onclick = (e) => { if(e.target === ov) ov.remove(); };
   document.body.appendChild(ov);
 }
+/* ═══ v555 — بطاقات الخيارات داخل ردّ المساعد (معالج الكتالوج) ═══ */
+function omranOptCss(){
+  if(document.getElementById('omranOptCss')) return;
+  const st = document.createElement('style');
+  st.id = 'omranOptCss';
+  st.textContent = '.omranOpts{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 2px;}'
+    + '.omranOpt{padding:8px 14px;border-radius:14px;border:1px solid var(--border,rgba(255,255,255,.16));background:rgba(255,255,255,.05);color:var(--text,#eee);font:inherit;font-size:13.5px;cursor:pointer;transition:.15s;}'
+    + '.omranOpt:hover{border-color:var(--accent2,#a78bfa);transform:translateY(-1px);}'
+    + '.omranOpt.on{background:var(--accent2,#a78bfa);color:#fff;border-color:transparent;}'
+    + '.omranOptDone{padding:8px 18px;border-radius:14px;border:0;background:linear-gradient(135deg,var(--accent2,#a78bfa),#06b6d4);color:#fff;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;}'
+    + '.omranOptDone:disabled{opacity:.45;cursor:default;}';
+  document.head.appendChild(st);
+}
+function omranExtractOptions(txt){
+  if(!txt || txt.indexOf('[[') < 0) return null;
+  const blocks = [];
+  const clean = String(txt).replace(/\[\[(OPT|MULTI)\]\]([\s\S]*?)\[\[\/(?:OPT|MULTI)\]\]/g, function(m, kind, body){
+    const items = body.split('|').map(function(x){ return x.trim(); }).filter(Boolean);
+    if(items.length) blocks.push({ multi: kind === 'MULTI', items: items.slice(0, 16) });
+    return '';
+  }).replace(/\n{3,}/g, '\n\n').trim();
+  return blocks.length ? { text: clean, blocks: blocks } : null;
+}
+function omranSendOption(val){
+  const el = document.getElementById('prompt');
+  if(!el || typeof sendPrompt !== 'function') return;
+  el.value = val;
+  try{ el.dispatchEvent(new Event('input', { bubbles: true })); }catch(e){ __swallow(e, "misc:app-04-i18n-state#opt"); }
+  sendPrompt();
+}
+function omranRenderOptions(host, blocks){
+  omranOptCss();
+  blocks.forEach(function(b){
+    const wrap = document.createElement('div');
+    wrap.className = 'omranOpts';
+    const picked = [];
+    let doneBtn = null;
+    b.items.forEach(function(label){
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'omranOpt';
+      btn.textContent = label;
+      btn.onclick = function(){
+        if(!b.multi){ omranSendOption(label); return; }
+        const i = picked.indexOf(label);
+        if(i < 0){ picked.push(label); btn.classList.add('on'); }
+        else { picked.splice(i, 1); btn.classList.remove('on'); }
+        if(doneBtn) doneBtn.disabled = !picked.length;
+      };
+      wrap.appendChild(btn);
+    });
+    if(b.multi){
+      doneBtn = document.createElement('button');
+      doneBtn.type = 'button';
+      doneBtn.className = 'omranOptDone';
+      doneBtn.disabled = true;
+      doneBtn.textContent = ((localStorage.getItem('aiapp_lang') || 'ar') === 'ar') ? 'تمّ ✅' : 'Done ✅';
+      doneBtn.onclick = function(){ if(picked.length) omranSendOption(picked.join('، ')); };
+      wrap.appendChild(doneBtn);
+    }
+    host.appendChild(wrap);
+  });
+}
 function renderMessages(keepScroll){
   const prevScrollTop = keepScroll ? messagesEl.scrollTop : null;
   messagesEl.innerHTML = '';
@@ -4529,7 +4594,9 @@ function renderMessages(keepScroll){
     }
     let msgWordEls = null;
     if(m.role !== 'user' && m.content){
-      msgWordEls = buildSpokenWordSpans(textDiv, m.content);
+      const __oOpt = omranExtractOptions(m.content);
+      msgWordEls = buildSpokenWordSpans(textDiv, __oOpt ? __oOpt.text : m.content);
+      if(__oOpt && mIdx === cur.messages.length - 1) omranRenderOptions(textDiv, __oOpt.blocks);
     } else {
       textDiv.textContent = m.content;
     }

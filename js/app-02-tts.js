@@ -528,6 +528,8 @@ function streamingMarkdownDisplayText(text){
 function renderStreamingAssistant(el, text){
   if(!el) return;
   el.classList.add('msg-streaming');
-  buildSpokenWordSpans(el, streamingMarkdownDisplayText(text));
+  let __st = streamingMarkdownDisplayText(text);
+  if(__st && __st.indexOf('[[') >= 0) __st = __st.replace(/\[\[(?:OPT|MULTI)\]\][\s\S]*$/, '').trimEnd();
+  buildSpokenWordSpans(el, __st);
 }
 
