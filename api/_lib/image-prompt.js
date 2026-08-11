@@ -28,6 +28,9 @@ function buildGenerationPrompt(userPrompt, options){
     subjectDirection(prompt, !!opts.reserveTextArea),
     'Do not impose a fixed portrait lens, photorealistic look or repeated composition. If the user names a style, medium, framing or aspect, follow it exactly; otherwise choose what naturally fits this particular subject. Treat this as a brand-new image, never as an instruction to alter or continue a previous image.'
   ];
+  if(opts.prayerArt){
+    rules.push('This is a topic-specific supplication artwork based on an approved visual plan. Follow the concrete scene in USER REQUEST; do not replace it with generic religious imagery. Unless the USER REQUEST itself explicitly calls for one, exclude boats, ships, coastlines, sunsets, mosque silhouettes and posed people praying. Make the scene visually distinct through its subject, viewpoint, composition and palette.');
+  }
   if(opts.architectural){
     rules.push('This is an architectural visualization. Keep geometry buildable and coherent, use realistic materials and an architectural viewpoint suited to the request. Preserve every named constraint exactly, including floor count, room count, openings, garage capacity, materials and dimensions. Do not add people unless requested.');
   }

@@ -21,9 +21,20 @@ test('multiline poetry and punctuation are preserved verbatim', () => {
   assert.equal(s.visualPrompt, 'صورة ليل');
 });
 
-test('general and named prayers are authored automatically', () => {
-  const specs = ['دعاء', 'دعاء الاستخارة', 'دعاء الصباح', 'دعاء المساء'].map(parseImageTextSpec);
-  assert.equal(specs.every((s) => s.wantsText && s.exactText && s.autoAuthored) && /أستخيرك بعلمك/.test(specs[1].exactText) && specs[2].exactText !== specs[3].exactText, true); });
+test('arbitrary prayer topics route to dynamic authorship without a fixed text', () => {
+  const requests = ['دعاء للطمأنينة عند القلق', 'دعاء لمن يبدأ مشروعًا جديدًا', 'دعاء لمريض بعيد عن أهله'];
+  const specs = requests.map(parseImageTextSpec);
+  assert.equal(specs.every((s, i) => s.wantsText && !s.exactText && s.autoAuthored && s.prayerRequest === requests[i]), true);
+});
+
+test('explicit prayer wording remains character-for-character and bypasses authorship', () => {
+  const exact = 'اللهم اكتب لنا الخير حيث كان.';
+  const quoted = parseImageTextSpec('صورة نافذة واكتب عليها دعاء «' + exact + '»');
+  assert.equal(quoted.exactText, exact);
+  assert.equal(quoted.autoAuthored, undefined);
+  const literal = parseImageTextSpec('صورة بطاقة واكتب عليها النص: دعاء للوالدين');
+  assert.equal(literal.exactText, 'دعاء للوالدين');
+});
 
 test('putting an object in a scene is not misclassified as writing', () => {
   const s = parseImageTextSpec('ضع شمسًا في السماء فوق البحر');

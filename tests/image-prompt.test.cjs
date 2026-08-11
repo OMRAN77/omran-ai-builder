@@ -28,6 +28,13 @@ test('generation never asks the image model to reproduce user wording', () => {
   assert.doesNotMatch(p, /reproduce it exactly/i);
 });
 
+test('prayer artwork follows its semantic plan and rejects the old default scene', () => {
+  const p = buildGenerationPrompt('مصباح مطفأ قرب نافذة في ليلة ممطرة، منظور داخلي قريب', { prayerArt:true, reserveTextArea:true });
+  assert.match(p, /topic-specific supplication artwork/);
+  assert.match(p, /do not replace it with generic religious imagery/);
+  assert.match(p, /exclude boats, ships, coastlines, sunsets, mosque silhouettes/);
+});
+
 test('architectural requests retain exact feature constraints without generic photo styling', () => {
   const p = buildGenerationPrompt('فيلا من طابقين وكراج لسيارتين', { architectural:true });
   assert.match(p, /floor count, room count, openings, garage capacity/);

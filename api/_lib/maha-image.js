@@ -3,8 +3,9 @@
 // or to edit the picture she just made. Powered by Gemini's image-generation
 // model (server-side owner key, GEMINI_API_KEY) - the only one of the 9
 // providers that can actually output images.
-const { checkAndConsume, DAILY_LIMIT } = require('./_usage');
+const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
 const { cleanImagePrompt, buildGenerationPrompt } = require('./image-prompt');
+const { authorPrayerPlan } = require('./prayer-plan');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -32,9 +33,32 @@ module.exports = async (req, res) => {
       body = JSON.parse(body || '{}');
     }
     const { prompt, editImageBase64, editMimeType, extraImages, token, guestId } = body;
-    if (!prompt) {
+    const prayerRequest = typeof body.prayerRequest === 'string' ? body.prayerRequest.trim().slice(0, 800) : '';
+    if (!prompt && !prayerRequest) {
       res.status(400).json({ error: 'Missing prompt' });
       return;
+    }
+
+    // تأليف أي دعاء ووضع فكرته البصرية يتمان ديناميكيًا من معنى الطلب، لا من
+    // قائمة أسماء محفوظة. نعدّ التخطيط كطلب نصي مستقل قبل خصم نقاط الصورة.
+    let prayerPlan = null;
+    if (prayerRequest) {
+      const planUsage = await checkAndConsume(token, guestId, 'prayer-plan', clientIp(req));
+      if (!planUsage.allowed) {
+        res.status(planUsage.reason === 'auth' ? 401 : 402).json({ error: planUsage.reason === 'auth' ? 'auth_required' : 'prayer_plan_limit' });
+        return;
+      }
+      try {
+        prayerPlan = await authorPrayerPlan(apiKey, prayerRequest, { textPosition: body.textPosition });
+      } catch (error) {
+        console.error('[maha-image] prayer planner failed: ' + (error && error.message ? error.message : error));
+        res.status(502).json({ error: 'تعذّر تأليف الدعاء وفكرته البصرية بدقة الآن. جرّب مرة أخرى.' });
+        return;
+      }
+      if (body.planPrayerOnly === true) {
+        res.status(200).json({ authoredText: prayerPlan.prayerText, visualPrompt: prayerPlan.visualBrief, prayerTopic: prayerPlan.topicLabel });
+        return;
+      }
     }
 
     // 💰 نظام النقاط: توليد/تعديل صورة = 10 نقاط لغير المالك.
@@ -69,7 +93,7 @@ module.exports = async (req, res) => {
     // يحمل عدد الطوابق وسعة الكراج والطراز والمواد — وهو ما يجعل الواجهة
     // تطابق المخطط. الوصف الهندسي يُسمح له بمساحة أوسع.
     const isArchitectural = !!(body && body.architectural);
-    const cleanPrompt = cleanImagePrompt(prompt).slice(0, isArchitectural ? 2400 : 1200);
+    const cleanPrompt = cleanImagePrompt(prayerPlan ? prayerPlan.visualBrief : prompt).slice(0, isArchitectural ? 2400 : 1800);
     const extras = Array.isArray(extraImages) ? extraImages.filter((x) => x && x.data).slice(0, 5) : [];
     if (editImageBase64 && extras.length) {
       // 🧩 دمج عدة صور في تصميم واحد
@@ -82,6 +106,7 @@ module.exports = async (req, res) => {
     } else {
       parts.push({ text: buildGenerationPrompt(cleanPrompt, {
         architectural: isArchitectural,
+        prayerArt: !!prayerPlan,
         reserveTextArea: body.reserveTextArea === true,
         textPosition: body.textPosition
       }) });
@@ -118,6 +143,7 @@ module.exports = async (req, res) => {
     const respParts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
     const imgPart = respParts.find((p) => p.inlineData && p.inlineData.data);
     if (!imgPart) {
+      if (mahaImgCharged) await pointsLib.refundPoints(mahaImgCharged, pointsLib.COSTS.image);
       console.error('[maha-image] no image part in response: ' + JSON.stringify(data).slice(0, 2000));
       res.status(500).json({ error: 'لم يرجع الموديل صورة، حاول توصيف مختلف.' });
       return;
@@ -126,6 +152,9 @@ module.exports = async (req, res) => {
     res.status(200).json({
       imageBase64: imgPart.inlineData.data,
       mimeType: imgPart.inlineData.mimeType || 'image/png',
+      authoredText: prayerPlan ? prayerPlan.prayerText : undefined,
+      visualPrompt: prayerPlan ? prayerPlan.visualBrief : undefined,
+      prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined,
     });
   } catch (e) {
     console.error('[maha-image] proxy exception: ' + (e && e.stack ? e.stack : e));

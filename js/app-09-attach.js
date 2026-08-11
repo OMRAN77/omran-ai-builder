@@ -989,7 +989,7 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
   const textSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(promptText) : { wantsText:false, exactText:null, visualPrompt:promptText };
   const __m = { role: 'assistant', content: lang === 'ar' ? '🎨 أرسم لك الصورة…' : '🎨 Generating your image…', _loading: true };
   cur.messages.push(__m); renderAll();
-  if(textSpec.wantsText && !textSpec.exactText){
+  if(textSpec.wantsText && !textSpec.exactText && !textSpec.autoAuthored){
     __m._loading = false;
     __m.content = lang === 'ar' ? 'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.' : 'Send the exact wording you want on the image, and I will reproduce it verbatim.';
     renderAll(); saveState();
@@ -1000,14 +1000,16 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
     const __r = await fetch('/api/maha-image', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       signal: genAbortController ? genAbortController.signal : undefined,
-      body: JSON.stringify({ prompt: String(textSpec.visualPrompt || promptText).slice(0,1200), reserveTextArea: !!textSpec.exactText, textPosition: textSpec.position, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
+      body: JSON.stringify({ prompt: String(textSpec.visualPrompt || promptText).slice(0,1200), reserveTextArea: !!textSpec.wantsText, textPosition: textSpec.position, prayerRequest: textSpec.autoAuthored ? String(textSpec.prayerRequest || promptText).slice(0,800) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
     });
     const __d = await __r.json().catch(() => ({}));
     __m._loading = false;
     if(__r.ok && __d && __d.imageBase64){
       let __mime = __d.mimeType || 'image/png', __b64 = __d.imageBase64;
-      if(textSpec.exactText){
-        __b64 = await overlayTextOnImage(__b64, __mime, textSpec.exactText, textSpec.fontKey, textSpec.color, textSpec.position);
+      const __overlayText = textSpec.exactText || (textSpec.autoAuthored && typeof __d.authoredText === 'string' ? __d.authoredText.trim() : '');
+      if(textSpec.wantsText && !__overlayText) throw new Error('missing_authored_prayer');
+      if(__overlayText){
+        __b64 = await overlayTextOnImage(__b64, __mime, __overlayText, textSpec.fontKey, textSpec.color, textSpec.position);
         __mime = 'image/png';
       }
       __m.content = lang === 'ar' ? 'تفضّل 👇' : 'Here you go 👇';
@@ -1744,13 +1746,21 @@ async function sendPrompt(){
       const __writeIntentRe = /(اكتب|أكتب|حط\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|(?:ضيف|أضف|اضف)\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|write|put\s+(?:my\s+)?name|add\s+(?:the\s+)?text)/i;
       const __textSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(text) : { wantsText:__writeIntentRe.test(text), exactText:extractOverlayText(text), fontKey:'modern', color:'#ffffff', position:'bottom' };
       if(__textSpec.wantsText){
-        if(!__textSpec.exactText){
-          cur.messages.push({ role:'assistant', content:lang==='ar'?'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.':'Send the exact wording you want on the image, and I will reproduce it verbatim.' });
+        let __resolvedText = __textSpec.exactText;
+        if(!__resolvedText && __textSpec.autoAuthored){
+          try{
+            const __planRes = await fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal:genAbortController.signal, body:JSON.stringify({ prayerRequest:String(__textSpec.prayerRequest || text).slice(0,800), planPrayerOnly:true, textPosition:__textSpec.position, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() }) });
+            const __planData = await __planRes.json().catch(() => ({}));
+            if(__planRes.ok && typeof __planData.authoredText === 'string') __resolvedText = __planData.authoredText.trim();
+          }catch(e){ if(e && e.name === 'AbortError') return; }
+        }
+        if(!__resolvedText){
+          cur.messages.push({ role:'assistant', content:__textSpec.autoAuthored ? (lang==='ar'?'تعذّر تأليف الدعاء بدقة الآن. جرّب مرة أخرى.':'Could not author the prayer accurately. Please try again.') : (lang==='ar'?'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.':'Send the exact wording you want on the image, and I will reproduce it verbatim.') });
           renderAll(); saveState();
           return;
         }
         try{
-          const __outB64 = await overlayTextOnImage(__b64, __mime, __textSpec.exactText, __textSpec.fontKey, __textSpec.color, __textSpec.position);
+          const __outB64 = await overlayTextOnImage(__b64, __mime, __resolvedText, __textSpec.fontKey, __textSpec.color, __textSpec.position);
           cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'تمت كتابة النص على الصورة ✅ اضغط عليها للتكبير، وتقدر تطلب تعديلات إضافية.' : 'Text added to the image ✅ Tap to enlarge — you can request more edits.'), attachments: [{ name: 'edited.png', isImage: true, mime: 'image/png', dataUrl: 'data:image/png;base64,' + __outB64 }] });
           cur.lastEditedImage = { b64: __outB64, mime: 'image/png' };
           cur.lastMsgWasImageEdit = true;
@@ -1908,7 +1918,7 @@ async function sendPrompt(){
         return;
       }
       const __genTextSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(text) : { wantsText:false, exactText:null, visualPrompt:text };
-      if(__genTextSpec.wantsText && !__genTextSpec.exactText){
+      if(__genTextSpec.wantsText && !__genTextSpec.exactText && !__genTextSpec.autoAuthored){
         cur.messages.push({ role:'assistant', content:lang==='ar'?'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.':'Send the exact wording you want on the image, and I will reproduce it verbatim.' });
         renderAll(); saveState();
         thinkingDiv && thinkingDiv.remove();
@@ -1921,15 +1931,19 @@ async function sendPrompt(){
           const __gRes = await fetch('/api/maha-image', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             signal: genAbortController.signal,
-            body: JSON.stringify({ prompt: String(__genTextSpec.visualPrompt || text).slice(0,1200), reserveTextArea:!!__genTextSpec.exactText, textPosition:__genTextSpec.position, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+            body: JSON.stringify({ prompt: String(__genTextSpec.visualPrompt || text).slice(0,1200), reserveTextArea:!!__genTextSpec.wantsText, textPosition:__genTextSpec.position, prayerRequest:__genTextSpec.autoAuthored ? String(__genTextSpec.prayerRequest || text).slice(0,800) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
           });
           __gData = await __gRes.json().catch(() => ({}));
           __gOk = __gRes.ok && !!__gData.imageBase64;
           if(!__gOk){ if(!__gData) __gData = {}; __gData.__status = __gRes.status; }
         }
-        if(__gOk && __genTextSpec.exactText){
-          __gData.imageBase64 = await overlayTextOnImage(__gData.imageBase64, __gData.mimeType || 'image/png', __genTextSpec.exactText, __genTextSpec.fontKey, __genTextSpec.color, __genTextSpec.position);
-          __gData.mimeType = 'image/png';
+        if(__gOk){
+          const __resolvedText = __genTextSpec.exactText || (__genTextSpec.autoAuthored && typeof __gData.authoredText === 'string' ? __gData.authoredText.trim() : '');
+          if(__genTextSpec.wantsText && !__resolvedText) throw new Error('missing_authored_prayer');
+          if(__resolvedText){
+            __gData.imageBase64 = await overlayTextOnImage(__gData.imageBase64, __gData.mimeType || 'image/png', __resolvedText, __genTextSpec.fontKey, __genTextSpec.color, __genTextSpec.position);
+            __gData.mimeType = 'image/png';
+          }
         }
       }catch(e){
         if(e && e.name === 'AbortError'){ renderAll(); saveState(); return; }

@@ -9226,18 +9226,27 @@ async function postWithConfirm(url, payload){
     const imageRef = /(?:الصورة|الصوره|هالصورة|هالصوره|عليها|فيها|منها|لها|\S+ها(?:\s|$)|\bit\b|this\s+(?:image|picture)|the\s+(?:image|picture))/i.test(source);
     return editVerb && imageRef;
   }
-  function autoPrayerSpec(source){ const m = !/(?:النص|العبارة|الكلام|الكلمة|كلمة)\s*[:：\-–—]?\s*دعاء/i.test(source) && String(source || '').match(/(?:^|\s)(دعاء(?:\s+(?:الاستخارة|الصباح|المساء|السفر|(?:قبل|عند)\s+النوم|النوم|(?:بعد\s+)?الاستيقاظ|المطر|المرض|الشفاء|للوالدين|للأبوين|الرزق|المغفرة|التوبة|الدراسة|النجاح|التوفيق|الزواج|دخول\s+البيت|الخروج\s+من\s+البيت))?)(?=\s*(?:بخط|بالخط|بلون|باللون|في\s+(?:الأعلى|الاعلى|الوسط|المنتصف|الأسفل|الاسفل)|$))/i); if(!m) return null; const prayers = [[/استخار/,'اللهم إني أستخيرك بعلمك، وأستقدرك بقدرتك، وأسألك من فضلك العظيم، فإنك تقدر ولا أقدر، وتعلم ولا أعلم، وأنت علام الغيوب. اللهم إن كنت تعلم أن هذا الأمر خير لي في ديني ومعاشي وعاقبة أمري، فاقدره لي ويسره لي، ثم بارك لي فيه، وإن كنت تعلم أن هذا الأمر شر لي في ديني ومعاشي وعاقبة أمري، فاصرفه عني واصرفني عنه، واقدر لي الخير حيث كان، ثم أرضني به.'],[/صباح/,'أصبحنا وأصبح الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له، له الملك وله الحمد وهو على كل شيء قدير. رب أسألك خير ما في هذا اليوم وخير ما بعده، وأعوذ بك من شر ما في هذا اليوم وشر ما بعده.'],[/مساء/,'أمسينا وأمسى الملك لله، والحمد لله، لا إله إلا الله وحده لا شريك له، له الملك وله الحمد وهو على كل شيء قدير. رب أسألك خير ما في هذه الليلة وخير ما بعدها، وأعوذ بك من شر ما في هذه الليلة وشر ما بعدها.'],[/سفر/,'سبحان الذي سخر لنا هذا وما كنا له مقرنين، وإنا إلى ربنا لمنقلبون. اللهم إنا نسألك في سفرنا هذا البر والتقوى، ومن العمل ما ترضى. اللهم هون علينا سفرنا هذا واطو عنا بعده.'],[/استيقاظ/,'الحمد لله الذي أحيانا بعدما أماتنا وإليه النشور.'],[/نوم/,'باسمك اللهم أموت وأحيا.'],[/مطر/,'اللهم صيبا نافعا.'],[/(?:مرض|شفاء)/,'اللهم رب الناس، أذهب البأس، واشف أنت الشافي، لا شفاء إلا شفاؤك، شفاء لا يغادر سقما.'],[/(?:الوالدين|الأبوين)/,'رب ارحمهما كما ربياني صغيرا.'],[/رزق/,'اللهم إني أسألك علما نافعا، ورزقا طيبا، وعملا متقبلا.'],[/(?:مغفر|توب)/,'رب اغفر لي وتب علي، إنك أنت التواب الرحيم.'],[/(?:دراسة|نجاح|توفيق)/,'رب اشرح لي صدري، ويسر لي أمري، واحلل عقدة من لساني يفقهوا قولي.'],[/زواج/,'ربنا هب لنا من أزواجنا وذرياتنا قرة أعين، واجعلنا للمتقين إماما.'],[/دخول\s+البيت/,'اللهم إني أسألك خير المولج وخير المخرج، باسم الله ولجنا، وباسم الله خرجنا، وعلى الله ربنا توكلنا.'],[/الخروج\s+من\s+البيت/,'بسم الله، توكلت على الله، ولا حول ولا قوة إلا بالله.']]; const hit = prayers.find((item) => item[0].test(m[1])); return { title:m[1], text:hit ? hit[1] : 'ربنا آتنا في الدنيا حسنة، وفي الآخرة حسنة، وقنا عذاب النار.' }; }
+  function autoPrayerSpec(input){
+    const source = String(input || '').trim();
+    if(!/(?:^|[\s،,.!?؟])(?:دعاء|prayer|du[’']?a)(?=$|[\s،,.!?؟:：\-–—])/i.test(source)) return null;
+    // «النص: دعاء...» أو «اكتب كلمة دعاء» يعني نصًا حرفيًا، لا طلب تأليف.
+    if(/(?:النص|العبارة|الكلام|الكلمة|كلمة|text|words?)\s*(?:هو|is)?\s*[:：\-–—]?\s*(?:دعاء|prayer|du[’']?a)(?=$|[\s،,.!?؟])/i.test(source)) return null;
+    // كل نص بين علامات اقتباس يبقى حرفيًا كما كتبه المستخدم.
+    if(quotedValue(source)) return null;
+    return { request:source };
+  }
   function parseImageTextSpec(input){
     const source = String(input || '').replace(/\r\n?/g, '\n');
     const autoPrayer = autoPrayerSpec(source), marker = autoPrayer ? null : findTextMarker(source);
-    if(!marker) return autoPrayer ? { wantsText:true, exactText:autoPrayer.text, visualPrompt:'مشهد فني هادئ ومهيب مستوحى من ' + autoPrayer.title + '، بتكوين وإضاءة مناسبين لمعناه دون كتابة', fontKey:textFont(source), color:textColor(source), position:textPosition(source), kind:'prayer', autoAuthored:true } : { wantsText:false, exactText:null, visualPrompt:source.trim(), fontKey:'modern', color:'#ffffff', position:'bottom' };
+    if(!marker) return autoPrayer ? { wantsText:true, exactText:null, visualPrompt:source.trim(), prayerRequest:autoPrayer.request, fontKey:textFont(source), color:textColor(source), position:textPosition(source), kind:'prayer', autoAuthored:true } : { wantsText:false, exactText:null, visualPrompt:source.trim(), fontKey:'modern', color:'#ffffff', position:'bottom' };
+    const literalPrayerText = /(?:النص|العبارة|الكلام|الكلمة|كلمة|text|words?)\s*(?:هو|is)?\s*[:：\-–—]?\s*(?:دعاء|prayer|du[’']?a)(?=$|[\s،,.!?؟])/i.test(source.slice(marker.index));
     let rest = source.slice(marker.index + marker.value.length);
     rest = rest.replace(/^\s*(?:لي\s+)?/i, '');
     rest = rest.replace(/^\s*(?:عليها|عليه|فوقها|فيها|على\s+(?:هذه\s+)?(?:الصورة|الصوره)|فوق\s+(?:الصورة|الصوره)|on\s+(?:the\s+)?(?:image|photo|picture))\s*/i, '');
     rest = rest.replace(/^\s*(?:النص|العبارة|الكلام|الكلمة|كلمة|اسم|the\s+text|text|words?|name|quote)?\s*(?:هو|وهو|التالي|is)?\s*[:：\-–—]?\s*/i, '');
     let kind = '';
     const kindMatch = rest.match(/^\s*(دعاء|الشعر|شعر|بيت\s+شعر|قصيدة)(?=\s|[:：\-–—]|$)\s*[:：\-–—]?\s*/i);
-    if(kindMatch){
+    if(kindMatch && !literalPrayerText){
       kind = /دعاء/i.test(kindMatch[1]) ? 'prayer' : 'poetry';
       rest = rest.slice(kindMatch[0].length);
     }
@@ -12222,7 +12231,7 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
   const textSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(promptText) : { wantsText:false, exactText:null, visualPrompt:promptText };
   const __m = { role: 'assistant', content: lang === 'ar' ? '🎨 أرسم لك الصورة…' : '🎨 Generating your image…', _loading: true };
   cur.messages.push(__m); renderAll();
-  if(textSpec.wantsText && !textSpec.exactText){
+  if(textSpec.wantsText && !textSpec.exactText && !textSpec.autoAuthored){
     __m._loading = false;
     __m.content = lang === 'ar' ? 'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.' : 'Send the exact wording you want on the image, and I will reproduce it verbatim.';
     renderAll(); saveState();
@@ -12233,14 +12242,16 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
     const __r = await fetch('/api/maha-image', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       signal: genAbortController ? genAbortController.signal : undefined,
-      body: JSON.stringify({ prompt: String(textSpec.visualPrompt || promptText).slice(0,1200), reserveTextArea: !!textSpec.exactText, textPosition: textSpec.position, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
+      body: JSON.stringify({ prompt: String(textSpec.visualPrompt || promptText).slice(0,1200), reserveTextArea: !!textSpec.wantsText, textPosition: textSpec.position, prayerRequest: textSpec.autoAuthored ? String(textSpec.prayerRequest || promptText).slice(0,800) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
     });
     const __d = await __r.json().catch(() => ({}));
     __m._loading = false;
     if(__r.ok && __d && __d.imageBase64){
       let __mime = __d.mimeType || 'image/png', __b64 = __d.imageBase64;
-      if(textSpec.exactText){
-        __b64 = await overlayTextOnImage(__b64, __mime, textSpec.exactText, textSpec.fontKey, textSpec.color, textSpec.position);
+      const __overlayText = textSpec.exactText || (textSpec.autoAuthored && typeof __d.authoredText === 'string' ? __d.authoredText.trim() : '');
+      if(textSpec.wantsText && !__overlayText) throw new Error('missing_authored_prayer');
+      if(__overlayText){
+        __b64 = await overlayTextOnImage(__b64, __mime, __overlayText, textSpec.fontKey, textSpec.color, textSpec.position);
         __mime = 'image/png';
       }
       __m.content = lang === 'ar' ? 'تفضّل 👇' : 'Here you go 👇';
@@ -12977,13 +12988,21 @@ async function sendPrompt(){
       const __writeIntentRe = /(اكتب|أكتب|حط\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|(?:ضيف|أضف|اضف)\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|write|put\s+(?:my\s+)?name|add\s+(?:the\s+)?text)/i;
       const __textSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(text) : { wantsText:__writeIntentRe.test(text), exactText:extractOverlayText(text), fontKey:'modern', color:'#ffffff', position:'bottom' };
       if(__textSpec.wantsText){
-        if(!__textSpec.exactText){
-          cur.messages.push({ role:'assistant', content:lang==='ar'?'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.':'Send the exact wording you want on the image, and I will reproduce it verbatim.' });
+        let __resolvedText = __textSpec.exactText;
+        if(!__resolvedText && __textSpec.autoAuthored){
+          try{
+            const __planRes = await fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal:genAbortController.signal, body:JSON.stringify({ prayerRequest:String(__textSpec.prayerRequest || text).slice(0,800), planPrayerOnly:true, textPosition:__textSpec.position, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() }) });
+            const __planData = await __planRes.json().catch(() => ({}));
+            if(__planRes.ok && typeof __planData.authoredText === 'string') __resolvedText = __planData.authoredText.trim();
+          }catch(e){ if(e && e.name === 'AbortError') return; }
+        }
+        if(!__resolvedText){
+          cur.messages.push({ role:'assistant', content:__textSpec.autoAuthored ? (lang==='ar'?'تعذّر تأليف الدعاء بدقة الآن. جرّب مرة أخرى.':'Could not author the prayer accurately. Please try again.') : (lang==='ar'?'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.':'Send the exact wording you want on the image, and I will reproduce it verbatim.') });
           renderAll(); saveState();
           return;
         }
         try{
-          const __outB64 = await overlayTextOnImage(__b64, __mime, __textSpec.exactText, __textSpec.fontKey, __textSpec.color, __textSpec.position);
+          const __outB64 = await overlayTextOnImage(__b64, __mime, __resolvedText, __textSpec.fontKey, __textSpec.color, __textSpec.position);
           cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'تمت كتابة النص على الصورة ✅ اضغط عليها للتكبير، وتقدر تطلب تعديلات إضافية.' : 'Text added to the image ✅ Tap to enlarge — you can request more edits.'), attachments: [{ name: 'edited.png', isImage: true, mime: 'image/png', dataUrl: 'data:image/png;base64,' + __outB64 }] });
           cur.lastEditedImage = { b64: __outB64, mime: 'image/png' };
           cur.lastMsgWasImageEdit = true;
@@ -13141,7 +13160,7 @@ async function sendPrompt(){
         return;
       }
       const __genTextSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(text) : { wantsText:false, exactText:null, visualPrompt:text };
-      if(__genTextSpec.wantsText && !__genTextSpec.exactText){
+      if(__genTextSpec.wantsText && !__genTextSpec.exactText && !__genTextSpec.autoAuthored){
         cur.messages.push({ role:'assistant', content:lang==='ar'?'أرسل النص نفسه الذي تريده على الصورة، وسأكتبه حرفيًا بلا تغيير.':'Send the exact wording you want on the image, and I will reproduce it verbatim.' });
         renderAll(); saveState();
         thinkingDiv && thinkingDiv.remove();
@@ -13154,15 +13173,19 @@ async function sendPrompt(){
           const __gRes = await fetch('/api/maha-image', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             signal: genAbortController.signal,
-            body: JSON.stringify({ prompt: String(__genTextSpec.visualPrompt || text).slice(0,1200), reserveTextArea:!!__genTextSpec.exactText, textPosition:__genTextSpec.position, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+            body: JSON.stringify({ prompt: String(__genTextSpec.visualPrompt || text).slice(0,1200), reserveTextArea:!!__genTextSpec.wantsText, textPosition:__genTextSpec.position, prayerRequest:__genTextSpec.autoAuthored ? String(__genTextSpec.prayerRequest || text).slice(0,800) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
           });
           __gData = await __gRes.json().catch(() => ({}));
           __gOk = __gRes.ok && !!__gData.imageBase64;
           if(!__gOk){ if(!__gData) __gData = {}; __gData.__status = __gRes.status; }
         }
-        if(__gOk && __genTextSpec.exactText){
-          __gData.imageBase64 = await overlayTextOnImage(__gData.imageBase64, __gData.mimeType || 'image/png', __genTextSpec.exactText, __genTextSpec.fontKey, __genTextSpec.color, __genTextSpec.position);
-          __gData.mimeType = 'image/png';
+        if(__gOk){
+          const __resolvedText = __genTextSpec.exactText || (__genTextSpec.autoAuthored && typeof __gData.authoredText === 'string' ? __gData.authoredText.trim() : '');
+          if(__genTextSpec.wantsText && !__resolvedText) throw new Error('missing_authored_prayer');
+          if(__resolvedText){
+            __gData.imageBase64 = await overlayTextOnImage(__gData.imageBase64, __gData.mimeType || 'image/png', __resolvedText, __genTextSpec.fontKey, __genTextSpec.color, __genTextSpec.position);
+            __gData.mimeType = 'image/png';
+          }
         }
       }catch(e){
         if(e && e.name === 'AbortError'){ renderAll(); saveState(); return; }
