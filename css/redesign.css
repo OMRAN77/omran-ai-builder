@@ -217,3 +217,22 @@ html[data-mode="light"] #omModeBtn:hover{background:rgba(0,0,0,.05);}
 /* v534: إزالة تكرار — سطح المكتب والجوّال. العنصران يبقيان في DOM (تناديهما modes.js و ui-wiring.js) */
 #omranBtnWeb{display:none !important;}
 #btnNew{display:none !important;}
+
+/* v549 — hide from plus-menu + bot chips (owner order 2026-08-11) */
+#btnSnapBuild, #btnEmoji, #btnVoiceChat{display:none !important;}
+#omranChips{display:none !important;}
+/* v550 — plus-menu owner order (2026-08-11): image · portrait · img→pdf · chat→pdf · learn · feedback · delete */
+#plusToolsPopup .omModeItem[data-mode="web"], #plusToolsPopup .omModeItem[data-mode="think"]{display:none !important;}
+#plusToolsPopup .omModeItem[data-mode="image"]{order:10;}
+#plusToolsPopup #btnPortraitStyle{order:20;}
+#plusToolsPopup #btnImgToPdf{order:30;}
+#plusToolsPopup #btnChatToPdf{order:40;}
+#plusToolsPopup .omModeItem[data-mode="learn"]{order:50;}
+#plusToolsPopup #btnFeedback{order:60;}
+#plusToolsPopup .omModeSep{order:65;}
+#plusToolsPopup #btnDeleteChat{order:70;}
+
+/* v551 — أيقونات خطّيّة للأوضاع (إنشاء صورة · تعلّم) بدل الإيموجي */
+#plusToolsPopup .omModeItem .omModeIc{display:inline-flex;align-items:center;justify-content:center;}
+.omModeIc svg{display:block;width:20px;height:20px;}
+.omModePill .omModeIc svg{width:15px;height:15px;}
