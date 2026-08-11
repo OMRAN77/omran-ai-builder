@@ -1230,7 +1230,7 @@ async function callPerplexity(messages, onDelta){
   const apiKey = localStorage.getItem('aiapp_perplexity_apikey');
   const model = localStorage.getItem('aiapp_perplexity_model') || 'sonar';
   let plainMessages = await stripImagesWithDescription(messages);
-  plainMessages = [{ role: 'system', content: 'قاعدة صارمة: إذا كانت رسالة المستخدم مجرد تحية أو مجاملة قصيرة (مثل: السلام عليكم، مرحبا، هلا، صباح الخير، كيف حالك) فرُدّ بتحية ودية قصيرة وطبيعية فقط دون أي بحث أو شرح موسوعي أو مصادر. وفي كل الردود: ممنوع منعًا باتًا وضع أرقام مراجع أو استشهادات مثل [1] أو [2] داخل النص.' }, ...plainMessages];
+  plainMessages = [{ role: 'system', content: 'قاعدة صارمة: إذا كانت رسالة المستخدم تحية لفظية فقط (مثل: السلام عليكم، مرحبا، هلا، صباح الخير) فردّ بتحية قصيرة وطبيعية من دون صيغة ثابتة أو بحث أو مصادر. أمّا سؤال المجاملة مثل «كيف حالك؟» فأجب عنه طبيعيًا ضمن سياق المحادثة ولا تكرر التحية. وفي كل الردود: ممنوع منعًا باتًا وضع أرقام مراجع أو استشهادات مثل [1] أو [2] داخل النص.' }, ...plainMessages];
   if(onDelta){ const orig = onDelta; onDelta = (chunk) => orig(stripPplxCitations(chunk)); }
   // If the visitor hasn't entered their own Perplexity key, fall back to the server-side
   // proxy which uses the site owner's key (for quick trials without setup).
@@ -1668,7 +1668,7 @@ function isRefusalReply(txt){
    model. Routing them to the fast one is the single biggest cost saving in
    the app, and the user cannot tell the difference on a greeting.
    Deliberately narrow: only very short messages with no question depth. */
-const CASUAL_RE = /^(?:\s*)(?:مرحبا|مرحبتين|هلا وغلا|هلا|هلو|اهلا|أهلا|السلام عليكم|سلام|صباح الخير|مساء الخير|كيف حالك|كيفك|شلونك|شخبارك|تمام|تمم|اوك|أوك|اوكي|ok|okay|thanks|thank you|شكرا|شكراً|مشكور|يعطيك العافية|تسلم|باي|مع السلامة|hi|hello|hey|good morning|good evening|how are you)(?:\s|!|\.|؟|\?|,|،)*$/i;
+const CASUAL_RE = /^(?:\s*)(?:مرحبا|مرحبًا|مرحبتين|هلا وغلا|هلا|هلو|اهلا|أهلا|أهلًا|السلام عليكم|سلام|صباح الخير|مساء الخير|كيف حالك|كيف الحال|كيفك|شلونك|شحالك|شخبارك|شو الأخبار|تمام|تمم|اوك|أوك|اوكي|ok|okay|thanks|thank you|شكرا|شكراً|مشكور|يعطيك العافية|تسلم|باي|مع السلامة|hi|hello|hey|good morning|good evening|how are you)(?:\s|!|\.|؟|\?|,|،)*$/i;
 
 function isCasualTurn(txt){
   const s = String(txt || '').trim();
@@ -1685,10 +1685,12 @@ function __provUiHidden(){
 }
 // 🔗 قفل المحادثة: أول مزوّد يُقرَّر لخيط يبقى له حتى نهايته، فلا تتنقّل أجوبة
 // الخيط الواحد بين عقول مختلفة. البناء والإصلاح والرؤية استثناء لهذه النوبة وحدها.
-function __convLockProvider(conv, decided, oneOff, respectExplicit){
+function __convLockProvider(conv, decided, oneOff, respectExplicit, deferLock){
   try{
     if(!conv || oneOff || respectExplicit) return decided;
     if(conv.aiProvider) return conv.aiProvider;
+    // التحية والمجاملة القصيرة لا تختاران عقل الخيط كله؛ أول طلب فعلي هو الذي يثبّته.
+    if(deferLock) return decided;
     conv.aiProvider = decided;
     if(typeof saveState === 'function') saveState();
   }catch(e){ __swallow(e, 'route:convlock'); }

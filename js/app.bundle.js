@@ -2478,7 +2478,7 @@ const I18N = {
     langBtn: 'EN',
     systemPrompt: `أنت ذكاء اصطناعي واسع المعرفة داخل تطبيق «Omran AI Builder» من فريق عمران AI.
 أسلوبك: راقٍ وهادئ وطبيعي — مثل خبير ودود يفهم المقصود ويتكلم بوضوح وعمق. نوّع تعبيراتك ولا تكرر العبارات الجاهزة. رتّب إجاباتك بشكل مريح للقراءة.
-- العربية الافتراضيّة بيضاء واضحة ومهذّبة، بلا لهجة مصطنعة أو مبالغة أو عبارات محفوظة. لا تبدأ بتحية من نفسك؛ وإذا بدأ المستخدم بتحية، فردّ بتحية قصيرة راقية فقط.
+- العربية الافتراضيّة بيضاء واضحة ومهذّبة، بلا لهجة مصطنعة أو مبالغة أو عبارات محفوظة. لا تبدأ بتحية من نفسك. إذا كانت رسالة المستخدم تحية لفظية فقط، فحيّه باختصار طبيعي ومن دون صيغة ثابتة. سؤال المجاملة أو المتابعة مثل «كيف الحال؟» أجب عنه كحديث مستمر، ولا تكرر التحية.
 - افهم لهجة المستخدم وردّ بلغة مألوفة له من دون تقليد عباراته أو فقدان صوتك. قابل الفصحى بفصحى مبسّطة، واللهجات بعربية بيضاء طبيعية.
 - كيّف طول الرد وتنظيمه: مختصر = اختصر · يمزح = خفّة محسوبة · رسمي = كن رسميًّا · مرتبك = اصبر وبسّط. حافظ دائمًا على شخصية المساعد الراقية والودودة وهويته؛ لا تقلّد شخصية المستخدم.
 - المصطلحات التقنيّة والأسماء والأرقام تبقى كما هي.
@@ -8094,7 +8094,7 @@ async function callPerplexity(messages, onDelta){
   const apiKey = localStorage.getItem('aiapp_perplexity_apikey');
   const model = localStorage.getItem('aiapp_perplexity_model') || 'sonar';
   let plainMessages = await stripImagesWithDescription(messages);
-  plainMessages = [{ role: 'system', content: 'قاعدة صارمة: إذا كانت رسالة المستخدم مجرد تحية أو مجاملة قصيرة (مثل: السلام عليكم، مرحبا، هلا، صباح الخير، كيف حالك) فرُدّ بتحية ودية قصيرة وطبيعية فقط دون أي بحث أو شرح موسوعي أو مصادر. وفي كل الردود: ممنوع منعًا باتًا وضع أرقام مراجع أو استشهادات مثل [1] أو [2] داخل النص.' }, ...plainMessages];
+  plainMessages = [{ role: 'system', content: 'قاعدة صارمة: إذا كانت رسالة المستخدم تحية لفظية فقط (مثل: السلام عليكم، مرحبا، هلا، صباح الخير) فردّ بتحية قصيرة وطبيعية من دون صيغة ثابتة أو بحث أو مصادر. أمّا سؤال المجاملة مثل «كيف حالك؟» فأجب عنه طبيعيًا ضمن سياق المحادثة ولا تكرر التحية. وفي كل الردود: ممنوع منعًا باتًا وضع أرقام مراجع أو استشهادات مثل [1] أو [2] داخل النص.' }, ...plainMessages];
   if(onDelta){ const orig = onDelta; onDelta = (chunk) => orig(stripPplxCitations(chunk)); }
   // If the visitor hasn't entered their own Perplexity key, fall back to the server-side
   // proxy which uses the site owner's key (for quick trials without setup).
@@ -8532,7 +8532,7 @@ function isRefusalReply(txt){
    model. Routing them to the fast one is the single biggest cost saving in
    the app, and the user cannot tell the difference on a greeting.
    Deliberately narrow: only very short messages with no question depth. */
-const CASUAL_RE = /^(?:\s*)(?:مرحبا|مرحبتين|هلا وغلا|هلا|هلو|اهلا|أهلا|السلام عليكم|سلام|صباح الخير|مساء الخير|كيف حالك|كيفك|شلونك|شخبارك|تمام|تمم|اوك|أوك|اوكي|ok|okay|thanks|thank you|شكرا|شكراً|مشكور|يعطيك العافية|تسلم|باي|مع السلامة|hi|hello|hey|good morning|good evening|how are you)(?:\s|!|\.|؟|\?|,|،)*$/i;
+const CASUAL_RE = /^(?:\s*)(?:مرحبا|مرحبًا|مرحبتين|هلا وغلا|هلا|هلو|اهلا|أهلا|أهلًا|السلام عليكم|سلام|صباح الخير|مساء الخير|كيف حالك|كيف الحال|كيفك|شلونك|شحالك|شخبارك|شو الأخبار|تمام|تمم|اوك|أوك|اوكي|ok|okay|thanks|thank you|شكرا|شكراً|مشكور|يعطيك العافية|تسلم|باي|مع السلامة|hi|hello|hey|good morning|good evening|how are you)(?:\s|!|\.|؟|\?|,|،)*$/i;
 
 function isCasualTurn(txt){
   const s = String(txt || '').trim();
@@ -8549,10 +8549,12 @@ function __provUiHidden(){
 }
 // 🔗 قفل المحادثة: أول مزوّد يُقرَّر لخيط يبقى له حتى نهايته، فلا تتنقّل أجوبة
 // الخيط الواحد بين عقول مختلفة. البناء والإصلاح والرؤية استثناء لهذه النوبة وحدها.
-function __convLockProvider(conv, decided, oneOff, respectExplicit){
+function __convLockProvider(conv, decided, oneOff, respectExplicit, deferLock){
   try{
     if(!conv || oneOff || respectExplicit) return decided;
     if(conv.aiProvider) return conv.aiProvider;
+    // التحية والمجاملة القصيرة لا تختاران عقل الخيط كله؛ أول طلب فعلي هو الذي يثبّته.
+    if(deferLock) return decided;
     conv.aiProvider = decided;
     if(typeof saveState === 'function') saveState();
   }catch(e){ __swallow(e, 'route:convlock'); }
@@ -9645,15 +9647,22 @@ function isPureGreeting(t){
   if(s.length > 60) return false;
   // v313: «نعم/تمام/يلا/اوك...» = تأكيد لإكمال الموضوع — ليست تحية أبدًا.
   if(/^(نعم|ايه|إيه|اي|أي|يب|اوك|أوك|اوكي|تمام|طيب|زين|يلا|ابدا|ابدأ|كمل|أكمل|واصل|صح|اكيد|أكيد|ماشي|موافق|سوها|سويها|نفذ|نفّذ|yes|ok|okay|yep|sure|go|continue)[\s،,.!؟?~\-_()]*$/i.test(s)) return false;
-  const greetRe = /السلام عليكم(\s*ورحمة الله(\s*وبركاته)?)?|وعليكم السلام|صباح الخير|صباح النور|مساء الخير|مساء النور|كيف حالك|كيف الحال|شحالك|شخبارك|شو الأخبار|كيفك|مرحبا|مرحبتين|هلا|أهلا|اهلين|أهلين|يا هلا|حياك|تحية طيبة|سلام|good morning|good evening|good afternoon|how are you|hello|hey|hi|salam|marhaba/gi;
+  // التحية اللفظية فقط. سؤال المجاملة («كيف الحال؟») محادثة، لا تحية محفوظة.
+  const greetRe = /السلام عليكم(\s*ورحمة الله(\s*وبركاته)?)?|وعليكم السلام|صباح الخير|صباح النور|مساء الخير|مساء النور|مرحبا|مرحبًا|مرحبتين|هلا|أهلا|أهلًا|اهلين|أهلين|يا هلا|حياك|تحية طيبة|سلام|good morning|good evening|good afternoon|hello|hey|hi|salam|marhaba/gi;
   if(!greetRe.test(s)) return false; // لازم تحتوي كلمة ترحيب فعلية
   greetRe.lastIndex = 0;
   const stripped = s.replace(greetRe, '').replace(/[\s،,.!؟?~\-_()🌹🌸😊🙏❤️💜👋🤍✨]+/g, '');
   return stripped.length <= 3;
 }
+function isCasualCheckIn(t){
+  if(!t) return false;
+  const s = String(t).trim();
+  if(s.length > 80) return false;
+  return /^(?:(?:هلا|مرحبا|مرحبًا|أهلا|أهلًا|السلام عليكم|سلام|hello|hi|hey)[\s،,.!؟?~\-]*)?(?:كيف حالك|كيف الحال|شحالك|شخبارك|شو الأخبار|كيفك|how are you|how(?:'|’)s it going|how is it going)[\s،,.!؟?~\-]*$/i.test(s);
+}
 async function smartMaybeSearch(text, ctxMsgs){
   if(!text) return null;
-  if(isPureGreeting(text)) return null;
+  if(isPureGreeting(text) || isCasualCheckIn(text)) return null;
   if(/عمران|omran/i.test(text)) return null;
   // v327: طلب لوجو/شعار/تصميم شخصي (لتطبيقي/شركتي/لي...) = مهمة تصميم — ممنوع البحث الحي نهائيًا.
   if(/(لوجو|شعار|\blogo\b|تصميم|صمم|صمّم)/i.test(text) && /(لي|إلي|الي|لتطبيق|تطبيقي|لموقع|موقعي|لشرك|شركتي|لمشروع|مشروعي|لمتجر|متجري|لقناة|قناتي|خاص|my|for me)/i.test(text)) return null;
@@ -12924,7 +12933,7 @@ async function sendPrompt(){
         '(5) رسالة قصيرة (كلمة/كلمتين) = تكملة للموضوع السابق.\n' +
         '(6) وضع نقاش — ممنوع عرض كود إلا إذا طُلب صراحة.\n' +
         '(7) التطبيق يوفّر توليد صور وفيديو وPDF — أرشد إليها بدل "ما أقدر".\n' +
-        '(8) العربية الافتراضيّة بيضاء واضحة ومهذّبة، بلا لهجة مصطنعة أو مبالغة أو عبارات محفوظة. لا تبدأ بتحية من نفسك؛ وإذا بدأ المستخدم بتحية، فردّ بتحية قصيرة راقية فقط.\n' +
+        '(8) العربية الافتراضيّة بيضاء واضحة ومهذّبة، بلا لهجة مصطنعة أو مبالغة أو عبارات محفوظة. لا تبدأ بتحية من نفسك. إذا كانت رسالة المستخدم تحية لفظية فقط، فحيّه باختصار طبيعي ومن دون صيغة ثابتة. سؤال المجاملة أو المتابعة مثل «كيف الحال؟» أجب عنه كحديث مستمر، ولا تكرر التحية.\n' +
         '(9) افهم لهجة المستخدم وردّ بلغة مألوفة له من دون تقليد عباراته أو فقدان صوتك. قابل الفصحى بفصحى مبسّطة، واللهجات بعربية بيضاء طبيعية.\n' +
         '(10) كيّف طول الرد وتنظيمه فقط: مختصر = اختصر · يمزح = خفّة محسوبة · رسمي = كن رسميًّا · مرتبك = اصبر وبسّط. حافظ دائمًا على شخصية المساعد الراقية والودودة وهويته؛ لا تقلّد شخصية المستخدم. المصطلحات والأسماء والأرقام تبقى كما هي.';
     }
@@ -13028,10 +13037,10 @@ async function sendPrompt(){
     // and/or Ask-All merge reply) can attach __searchData.sources /
     // __searchData.images for the ChatGPT-style image strip + source badges.
     let __searchData = null;
-    // 👋 قاعدة التحية لكل المزودين التسعة: تحية = رد ترحيبي قصير فقط،
-    // ممنوع البحث وممنوع المصادر وممنوع فتح أي موضوع قديم من المحادثة.
+    // 👋 التحية اللفظية وحدها: رد قصير طبيعي بلا صيغة محفوظة.
+    // سؤال المجاملة («كيف الحال؟») يبقى محادثة متصلة ولا يدخل هذا المسار.
     if(isPureGreeting(text)){
-      apiMessages.push({role: 'system', content: 'رسالة المستخدم الأخيرة مجرد تحية. إذا كانت بالعربية، فردّ حرفيًا: «أهلًا بك.» فقط. وإذا كانت بلغة أخرى، فردّ بتحية مهذّبة واحدة بلغته. لا تسأل سؤالًا لاحقًا، ولا تعرض خدمات أو أمثلة، ولا تفتح موضوعًا سابقًا أو تستخدم الذاكرة، ولا تنادِ المستخدم باسم.'});
+      apiMessages.push({role: 'system', content: 'رسالة المستخدم الأخيرة تحية لفظية فقط وليست سؤالًا. ردّ بتحية قصيرة وطبيعية بلغة المستخدم، من دون صيغة ثابتة أو سؤال محفوظ. لا تعرض خدمات أو أمثلة، ولا تفتح موضوعًا سابقًا أو تستخدم الذاكرة، ولا تنادِ المستخدم باسم.'});
     }
     // v311: أثناء تصميم إعلان (adMode مفعّل) ممنوع البحث الحي نهائيًا —
     // تفاصيل «بيت للبيع...» تكمل التصميم ولا تتحول لبحث دوبيزل.
@@ -13723,7 +13732,7 @@ async function sendPrompt(){
       var __pinProv = false;
       try{ __pinProv = localStorage.getItem('aiapp_pin_provider') === '1'; }catch(e){ __swallow(e, 'ui:pinprov'); }
       const __effProv0 = (!__pinProv && (__gateNoBuild || __routeFix)) ? 'claude' : (__visionOverride || __specProv || __selProv);
-      const __effProv = __convLockProvider(cur, __effProv0, !!(__gateNoBuild || __routeFix || __visionOverride), __respectExplicit);
+      const __effProv = __convLockProvider(cur, __effProv0, !!(__gateNoBuild || __routeFix || __visionOverride), __respectExplicit, isCasualTurn(text));
       // v405: التحويل يُعلَن بدل الصمت — المستخدم يرى مزودًا غير الذي اختاره فيظن الاختيار معطّلًا.
       try{
         var __selLabel = (typeof functionalLabel === 'function') ? functionalLabel(__selProv) : __selProv;

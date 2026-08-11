@@ -548,15 +548,22 @@ function isPureGreeting(t){
   if(s.length > 60) return false;
   // v313: «نعم/تمام/يلا/اوك...» = تأكيد لإكمال الموضوع — ليست تحية أبدًا.
   if(/^(نعم|ايه|إيه|اي|أي|يب|اوك|أوك|اوكي|تمام|طيب|زين|يلا|ابدا|ابدأ|كمل|أكمل|واصل|صح|اكيد|أكيد|ماشي|موافق|سوها|سويها|نفذ|نفّذ|yes|ok|okay|yep|sure|go|continue)[\s،,.!؟?~\-_()]*$/i.test(s)) return false;
-  const greetRe = /السلام عليكم(\s*ورحمة الله(\s*وبركاته)?)?|وعليكم السلام|صباح الخير|صباح النور|مساء الخير|مساء النور|كيف حالك|كيف الحال|شحالك|شخبارك|شو الأخبار|كيفك|مرحبا|مرحبتين|هلا|أهلا|اهلين|أهلين|يا هلا|حياك|تحية طيبة|سلام|good morning|good evening|good afternoon|how are you|hello|hey|hi|salam|marhaba/gi;
+  // التحية اللفظية فقط. سؤال المجاملة («كيف الحال؟») محادثة، لا تحية محفوظة.
+  const greetRe = /السلام عليكم(\s*ورحمة الله(\s*وبركاته)?)?|وعليكم السلام|صباح الخير|صباح النور|مساء الخير|مساء النور|مرحبا|مرحبًا|مرحبتين|هلا|أهلا|أهلًا|اهلين|أهلين|يا هلا|حياك|تحية طيبة|سلام|good morning|good evening|good afternoon|hello|hey|hi|salam|marhaba/gi;
   if(!greetRe.test(s)) return false; // لازم تحتوي كلمة ترحيب فعلية
   greetRe.lastIndex = 0;
   const stripped = s.replace(greetRe, '').replace(/[\s،,.!؟?~\-_()🌹🌸😊🙏❤️💜👋🤍✨]+/g, '');
   return stripped.length <= 3;
 }
+function isCasualCheckIn(t){
+  if(!t) return false;
+  const s = String(t).trim();
+  if(s.length > 80) return false;
+  return /^(?:(?:هلا|مرحبا|مرحبًا|أهلا|أهلًا|السلام عليكم|سلام|hello|hi|hey)[\s،,.!؟?~\-]*)?(?:كيف حالك|كيف الحال|شحالك|شخبارك|شو الأخبار|كيفك|how are you|how(?:'|’)s it going|how is it going)[\s،,.!؟?~\-]*$/i.test(s);
+}
 async function smartMaybeSearch(text, ctxMsgs){
   if(!text) return null;
-  if(isPureGreeting(text)) return null;
+  if(isPureGreeting(text) || isCasualCheckIn(text)) return null;
   if(/عمران|omran/i.test(text)) return null;
   // v327: طلب لوجو/شعار/تصميم شخصي (لتطبيقي/شركتي/لي...) = مهمة تصميم — ممنوع البحث الحي نهائيًا.
   if(/(لوجو|شعار|\blogo\b|تصميم|صمم|صمّم)/i.test(text) && /(لي|إلي|الي|لتطبيق|تطبيقي|لموقع|موقعي|لشرك|شركتي|لمشروع|مشروعي|لمتجر|متجري|لقناة|قناتي|خاص|my|for me)/i.test(text)) return null;
