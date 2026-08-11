@@ -31,7 +31,7 @@ async function verifyLocalizedImageEdit(options) {
     const instruction = [
       'You are a strict quality gate for a localized image edit.',
       'Compare SOURCE and RESULT against USER REQUEST: ' + String(opts.userPrompt || '').slice(0, 800),
-      'Return JSON only with four booleans:',
+      'Return JSON only with five booleans:',
       'sourceIsPhotograph: SOURCE is a real camera photograph.',
       'resultIsPhotograph: RESULT is still a real camera-like photograph, not anime, cartoon, illustration, painting, CGI or 3D render.',
       opts.allowStyleChange === true
@@ -53,7 +53,7 @@ async function verifyLocalizedImageEdit(options) {
           { inlineData: { mimeType: opts.resultMime || 'image/png', data: opts.resultBase64 } },
           { text: instruction }
         ] }],
-        generationConfig: { temperature: 0, maxOutputTokens: 180, responseMimeType: 'application/json' }
+        generationConfig: { temperature: 0, maxOutputTokens: 768, responseMimeType: 'application/json' }
       })
     });
     if (!response.ok) return { ok: false, reason: 'validation_unavailable' };
