@@ -2425,6 +2425,8 @@ const I18N = {
     memoryEmpty: 'لا توجد معلومات محفوظة عنك بعد.',
     memoryGuest: 'سجّل دخولك لعرض ذاكرتك.',
     memoryConfirm: 'حذف كلّ ما يتذكّره التطبيق عنك؟ لا يمكن التراجع.',
+    fontFamilySectionLabel: 'نوع الخط',
+    fontFamilyHint: 'يغيّر خط رسائل المحادثة على الكمبيوتر والجوال، ولا يغيّر خط الأكواد أو تخطيط الواجهة.',
     fontSizeSectionLabel: 'حجم الخط',
     fontSizeSmall: 'صغير',
     fontSizeNormal: 'عادي',
@@ -3338,6 +3340,8 @@ const I18N = {
     memoryEmpty: 'Nothing saved about you yet.',
     memoryGuest: 'Sign in to view your memory.',
     memoryConfirm: 'Delete everything the app remembers about you? This cannot be undone.',
+    fontFamilySectionLabel: 'Font style',
+    fontFamilyHint: 'Changes chat messages on desktop and mobile without changing code blocks or the app layout.',
     fontSizeSectionLabel: 'Font Size',
     fontSizeSmall: 'Small',
     fontSizeNormal: 'Normal',
@@ -6371,7 +6375,7 @@ function closeDialogSafe(dlg){
   dlg.removeAttribute('open');
   dlg.style.display = '';
 }
-const SETTINGS_SECTION_IDS = ['langSection','accountSection','statsSection','apiKeysSection','themeSection','fontSizeSection','voiceSection','memorySection','pricingSection','aboutSection','adminSection'];
+const SETTINGS_SECTION_IDS = ['langSection','accountSection','statsSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','memorySection','pricingSection','aboutSection','adminSection'];
 function renderStats(){
   const projects = state.projects || [];
   let messagesCount = 0;
@@ -6506,13 +6510,14 @@ function collapseAllSettingsSections(){
 }
 
 // ===== v199 Settings redesign: two-level nav (ChatGPT style) =====
-const SETTINGS_NAV_IDS = ['langSection','accountSection','statsSection','apiKeysSection','themeSection','fontSizeSection','voiceSection','memorySection','pricingSection','aboutSection'];
+const SETTINGS_NAV_IDS = ['langSection','accountSection','statsSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','memorySection','pricingSection','aboutSection'];
 const SETTINGS_NAV_ICONS = {
   langSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`,
   accountSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`,
   statsSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>`,
   apiKeysSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"></circle><path d="M21 2l-9.6 9.6"></path><path d="M15.5 7.5l3 3L22 7l-3-3"></path></svg>`,
   themeSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>`,
+  fontFamilySection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14"></path><path d="M12 5v14"></path><path d="M8 19h8"></path></svg>`,
   fontSizeSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 14h-5"></path><path d="M16 16v-3.5a2.5 2.5 0 0 1 5 0V16"></path><path d="M4.5 13h6"></path><path d="m3 16 4.5-9 4.5 9"></path></svg>`,
   voiceSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.5 8.5a5 5 0 0 1 0 7"></path><path d="M18.5 5.5a9 9 0 0 1 0 13"></path></svg>`,
   memorySection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 0 0-3 3 3 3 0 0 0-1 5.8V16a3 3 0 0 0 4 2.8A3 3 0 0 0 16 16v-2.2A3 3 0 0 0 15 8a3 3 0 0 0-3-3Z"/><path d="M12 5v14"/></svg>`,
@@ -19837,4 +19842,136 @@ window.updateVersionLabel();
       else s.dataset.memOn = '';
     }, 60);
   }, true);
+})();
+/* v545: تسعة خيارات لخط رسائل المحادثة، بتحميل عند الطلب وحفظ محلي. */
+(function(){
+  'use strict';
+  var KEY = 'omran_font';
+  var loaded = Object.create(null);
+  var fonts = [
+    {id:'default', ar:'الافتراضي', en:'Default', family:"'Tajawal'", google:'', line:1.7},
+    {id:'kufi', ar:'الكوفي', en:'Kufi', family:"'Reem Kufi'", google:'Reem+Kufi:wght@400..700', line:1.85},
+    {id:'naskh', ar:'النسخ', en:'Naskh', family:"'Amiri'", google:'Amiri:ital,wght@0,400;0,700;1,400', line:1.95},
+    {id:'naskh2', ar:'نسخ نوتو', en:'Noto Naskh', family:"'Noto Naskh Arabic'", google:'Noto+Naskh+Arabic:wght@400..700', line:1.9},
+    {id:'thuluth', ar:'الثلث', en:'Thuluth', family:"'Aref Ruqaa'", google:'Aref+Ruqaa:wght@400;700', line:2.05, alt:true},
+    {id:'farsi', ar:'الفارسي', en:'Nastaliq', family:"'Gulzar'", google:'Gulzar', line:2.45},
+    {id:'diwani', ar:'الديواني', en:'Diwani', family:"'Katibeh'", google:'Katibeh', line:2.05, alt:true},
+    {id:'ruqaa', ar:'الرقعة', en:'Ruqaa', family:"'Rakkas'", google:'Rakkas', line:1.95, alt:true},
+    {id:'quran', ar:'المصحف', en:'Quranic', family:"'Scheherazade New'", google:'Scheherazade+New:wght@400;700', line:2.15}
+  ];
+
+  function report(e, ctx){
+    try{ if(typeof window.__swallow === 'function') window.__swallow(e, ctx); else console.warn(ctx, e); }
+    catch(_){ /* guard-ok: تعذّر التسجيل نفسه؛ لا نُسقط الواجهة. */ }
+  }
+  function byId(id){
+    for(var i=0;i<fonts.length;i++) if(fonts[i].id === id) return fonts[i];
+    return fonts[0];
+  }
+  function current(){
+    try{ return byId(localStorage.getItem(KEY) || 'default').id; }
+    catch(e){ report(e, 'fonts:read'); return 'default'; }
+  }
+  function isArabic(){ return (document.documentElement.lang || 'ar').toLowerCase() === 'ar'; }
+  function load(font){
+    if(!font.google || loaded[font.id]) return;
+    loaded[font.id] = true;
+    try{
+      var link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?family=' + font.google + '&display=swap';
+      link.setAttribute('data-chat-font', font.id);
+      link.onerror = function(){ loaded[font.id] = false; };
+      document.head.appendChild(link);
+    }catch(e){ loaded[font.id] = false; report(e, 'fonts:load'); }
+  }
+  function sync(){
+    var ar = isArabic();
+    var id = document.documentElement.getAttribute('data-omran-font') || current();
+    document.querySelectorAll('#omranFontPicker .ofp-card').forEach(function(card){
+      var font = byId(card.getAttribute('data-font-id'));
+      var on = font.id === id;
+      card.classList.toggle('is-active', on);
+      card.setAttribute('aria-pressed', on ? 'true' : 'false');
+      card.title = ar ? font.ar : font.en;
+      var name = card.querySelector('.ofp-name');
+      if(name) name.textContent = ar ? font.ar : font.en;
+      var badge = card.querySelector('.ofp-badge');
+      if(badge) badge.textContent = ar ? 'أقرب بديل' : 'closest match';
+    });
+  }
+  function apply(id, save){
+    var font = byId(id);
+    load(font);
+    var root = document.documentElement;
+    root.style.setProperty('--omran-chat-font', font.family + ", 'Tajawal', 'Inter', Tahoma, Arial, sans-serif");
+    root.style.setProperty('--omran-chat-line', String(font.line));
+    root.setAttribute('data-omran-font', font.id);
+    if(save){
+      try{ localStorage.setItem(KEY, font.id); }
+      catch(e){ report(e, 'fonts:save'); }
+    }
+    sync();
+    try{ window.dispatchEvent(new CustomEvent('omran:fontchange', {detail:{id:font.id}})); }
+    catch(e){ report(e, 'fonts:event'); }
+    return font;
+  }
+  function render(){
+    var mount = document.getElementById('omranFontPicker');
+    if(!mount || mount.childElementCount) return;
+    var reveal = null;
+    try{
+      if('IntersectionObserver' in window) reveal = new IntersectionObserver(function(entries){
+        entries.forEach(function(entry){
+          if(!entry.isIntersecting) return;
+          load(byId(entry.target.getAttribute('data-font-id')));
+          reveal.unobserve(entry.target);
+        });
+      });
+    }catch(e){ report(e, 'fonts:preview'); }
+    fonts.forEach(function(font){
+      var card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'ofp-card';
+      card.setAttribute('data-font-id', font.id);
+      card.setAttribute('aria-pressed', 'false');
+      var name = document.createElement('span');
+      name.className = 'ofp-name';
+      var preview = document.createElement('span');
+      preview.className = 'ofp-preview';
+      preview.textContent = 'عمران AI';
+      preview.style.fontFamily = font.family + ", 'Tajawal', sans-serif";
+      preview.style.lineHeight = String(font.line);
+      card.appendChild(name);
+      card.appendChild(preview);
+      if(font.alt){
+        var badge = document.createElement('span');
+        badge.className = 'ofp-badge';
+        card.appendChild(badge);
+      }
+      var warm = function(){ load(font); };
+      card.addEventListener('pointerenter', warm, {once:true});
+      card.addEventListener('focus', warm, {once:true});
+      card.addEventListener('click', function(){ apply(font.id, true); });
+      mount.appendChild(card);
+      if(reveal) reveal.observe(card);
+    });
+    sync();
+  }
+  function init(){
+    render();
+    apply(current(), false);
+    try{ new MutationObserver(sync).observe(document.documentElement, {attributes:true, attributeFilter:['lang']}); }
+    catch(e){ report(e, 'fonts:language'); }
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once:true});
+  else init();
+
+  window.Omran = window.Omran || {};
+  window.Omran.fonts = {
+    list:function(){ return fonts.slice(); },
+    apply:function(id){ return apply(id, true); },
+    current:current,
+    reset:function(){ return apply('default', true); }
+  };
 })();

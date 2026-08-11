@@ -265,6 +265,30 @@
   .fontSizeBtn{display:flex; align-items:center; justify-content:space-between; width:100%; padding:11px 12px; font-size: var(--fs-3); background:none; border:none; cursor:pointer; color:var(--text); text-align:start; border-radius:var(--r-2);}
   .fontSizeBtn .fsCheck{display:none; color:var(--accent-ink);}
   .fontSizeBtn.active .fsCheck{display:block;}
+
+  /* اختيار خط المحادثة — المحتوى فقط، ويعمل على الكمبيوتر والجوال */
+  :root{--omran-chat-font:'Tajawal','Inter',Tahoma,Arial,sans-serif;--omran-chat-line:1.7;}
+  html[data-omran-font] .msg,
+  html[data-omran-font] .msg-text,
+  html[data-omran-font] .msg-text *{font-family:var(--omran-chat-font);}
+  html[data-omran-font] .msg,
+  html[data-omran-font] .msg p,
+  html[data-omran-font] .msg li{line-height:var(--omran-chat-line);}
+  html[data-omran-font] .chat-codeblock,
+  html[data-omran-font] .chat-codeblock *,
+  html[data-omran-font] code,
+  html[data-omran-font] pre,
+  html[data-omran-font] kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace !important;}
+  html[data-omran-font] .chat-codeblock pre{line-height:1.55;}
+  .fontFamilyHint{margin:0 0 12px;color:var(--muted);font-size:var(--fs-5);line-height:1.7;}
+  .ofp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;}
+  .ofp-card{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:88px;padding:12px 8px;border:1px solid var(--border);border-radius:var(--r-3);background:var(--panel2);color:var(--text);cursor:pointer;text-align:center;transition:border-color var(--t-fast),background var(--t-fast),transform var(--t-fast);}
+  .ofp-card:hover{border-color:var(--accent);transform:translateY(-1px);}
+  .ofp-card:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .ofp-card.is-active{border-color:var(--accent);background:rgba(var(--accent-tint-rgb),.10);box-shadow:inset 0 0 0 1px var(--accent);}
+  .ofp-name{font-family:'Tajawal','Inter',sans-serif;font-size:var(--fs-5);color:var(--muted);}
+  .ofp-preview{font-size:21px;line-height:1.7;letter-spacing:0;color:var(--text);}
+  .ofp-badge{position:absolute;top:5px;inset-inline-end:5px;padding:1px 5px;border-radius:var(--r-pill);background:rgba(127,127,127,.13);color:var(--muted);font-family:'Tajawal','Inter',sans-serif;font-size:8.5px;}
   @keyframes pop{from{opacity:0; transform:translateY(12px) scale(0.96);} to{opacity:1; transform:translateY(0) scale(1);}}
   .msg.user{color:var(--text,#fff); align-self:flex-end; background:rgba(255,255,255,0.07) !important; border:1px solid rgba(255,255,255,0.08) !important; border-radius:var(--r-3) !important; padding:9px 13px !important; max-width:85%;}
   .msg.assistant{align-self:flex-start;}

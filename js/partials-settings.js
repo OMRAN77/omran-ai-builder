@@ -262,6 +262,12 @@
   </div>
   </div></div>
 
+  <div id="fontFamilySection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('fontFamilySection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:var(--fs-3);" data-i18n="fontFamilySectionLabel">نوع الخط</h3><span class="settingsSectionArrow" id="fontFamilySectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="fontFamilySectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+      <p class="fontFamilyHint" data-i18n="fontFamilyHint">يغيّر خط رسائل المحادثة على الكمبيوتر والجوال، ولا يغيّر خط الأكواد أو تخطيط الواجهة.</p>
+      <div id="omranFontPicker" class="ofp-grid" aria-live="polite"></div>
+    </div></div>
+
   <div id="fontSizeSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('fontSizeSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size: var(--fs-3);" data-i18n="fontSizeSectionLabel">حجم الخط</h3><span class="settingsSectionArrow" id="fontSizeSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="fontSizeSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
       <div id="fontSizeBtns" style="display:flex; flex-direction:column; gap:2px;">
