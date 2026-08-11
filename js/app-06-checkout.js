@@ -1230,7 +1230,7 @@ async function callPerplexity(messages, onDelta){
   const apiKey = localStorage.getItem('aiapp_perplexity_apikey');
   const model = localStorage.getItem('aiapp_perplexity_model') || 'sonar';
   let plainMessages = await stripImagesWithDescription(messages);
-  plainMessages = [{ role: 'system', content: 'قاعدة صارمة: إذا كانت رسالة المستخدم تحية لفظية فقط (مثل: السلام عليكم، مرحبا، هلا، صباح الخير) فردّ بتحية قصيرة وطبيعية من دون صيغة ثابتة أو بحث أو مصادر. أمّا سؤال المجاملة مثل «كيف حالك؟» فأجب عنه طبيعيًا ضمن سياق المحادثة ولا تكرر التحية. وفي كل الردود: ممنوع منعًا باتًا وضع أرقام مراجع أو استشهادات مثل [1] أو [2] داخل النص.' }, ...plainMessages];
+  plainMessages = [{ role: 'system', content: 'قاعدة صارمة: إذا كانت رسالة المستخدم تحية لفظية فقط (مثل: السلام عليكم، مرحبا، هلا، صباح الخير) فردّ بتحية قصيرة وطبيعية من دون صيغة ثابتة أو بحث أو مصادر، ولا تسأل «كيف أساعدك؟». أمّا سؤال المجاملة مثل «كيف حالك؟» فأجب عن حالك مباشرة واسأل المستخدم عن حاله عند الملاءمة؛ لا تكرر التحية ولا تعرض المساعدة بدل الجواب. وفي كل الردود: ممنوع منعًا باتًا وضع أرقام مراجع أو استشهادات مثل [1] أو [2] داخل النص.' }, ...plainMessages];
   if(onDelta){ const orig = onDelta; onDelta = (chunk) => orig(stripPplxCitations(chunk)); }
   // If the visitor hasn't entered their own Perplexity key, fall back to the server-side
   // proxy which uses the site owner's key (for quick trials without setup).
