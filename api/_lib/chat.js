@@ -170,6 +170,13 @@ function countryNote(code) {
 }
 
 async function tavilySearch(query) {
+  // 🔢 v558 — الأرقام واللوحات للبيع: الموقعان المتخصّصان وحدهما. مسار الدردشة كان
+  // يمرّ على Google Places أوّلًا فيرجع مكاتب على الخريطة بدل سوقَي الأرقام.
+  if (NUM_ASK_RE.test(query)) {
+    return '1. XPlate — سوق لوحات وأرقام مميّزة للبيع في الإمارات\nhttps://www.xplate.com/\n\n'
+      + '2. S-Plate (SHub) — لوحات وأرقام مميّزة للبيع في الإمارات\nhttps://s-plate.com/ar\n\n'
+      + 'المصدر: موقعا الأرقام المتخصّصان. اعرض هذين الرابطين فقط، ولا تذكر أي موقع آخر ولا سطر خرائط.';
+  }
   const places = await fetchPlaces(process.env.GOOGLE_PLACES_API_KEY, query, 'ar');
   if (places.length) {
     return places.map((p, i) => [
