@@ -13,6 +13,19 @@ const VISUAL_DIRECTIONS = [
   'a tactile abstract composition made from natural materials linked to the request',
   'an overhead composition of meaningful objects, with strong negative space',
   'a quiet interior scene whose details tell the request’s story without religious clichés',
+  // v578: ٨ اتجاهات كانت تُعيد نفس عائلة المشاهد. ١٢ اتجاهًا إضافيًّا توسّع مدى المخطّط.
+  'a weather-driven scene where the atmosphere itself carries the request',
+  'a single texture studied at close range, filling the whole frame',
+  'a long-distance landscape whose scale dwarfs every human trace',
+  'a night scene lit only by one practical light source inside the environment',
+  'a symmetrical architectural frame with the subject deliberately off-centre',
+  'traces left behind by an action, with the actor absent from the frame',
+  'a reflective surface that doubles and reorganizes the scene',
+  'a view shot through an intervening layer such as glass, mesh, or foliage',
+  'a seasonal agricultural landscape at one specific stage of growth',
+  'an aerial geometric pattern formed by terrain or manmade lines',
+  'motion frozen mid-air inside an otherwise completely still environment',
+  'a narrow slice of a much larger space, implying what lies outside the frame',
 ];
 
 function cleanRequest(value) {

@@ -142,7 +142,7 @@ module.exports = async (req, res) => {
     }
 
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
-    const reqBody = JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: editImageBase64 ? 0.15 : 0.65, imageConfig: { imageSize: '2K' } } });
+    const reqBody = JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: editImageBase64 ? 0.15 : 0.85, imageConfig: { imageSize: '2K' } } });
 
     // Image generation normally takes 35–50 seconds, so it must bypass the
     // shared 30-second fetch guard. Retry transient failures inside this one
