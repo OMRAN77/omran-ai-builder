@@ -80,6 +80,9 @@ test('only explicit follow-ups reuse a previous image', () => {
   assert.equal(isExplicitImageEdit('عدّل الصورة واجعلها ليلًا'), true);
   assert.equal(isExplicitImageEdit('غيّر لونها إلى الأزرق'), true);
   assert.equal(isExplicitImageEdit('نفس الصورة ولكن ليلًا'), true);
+  assert.equal(isExplicitImageEdit('غيّر الخلفية إلى مكتب'), true);
+  assert.equal(isExplicitImageEdit('خل الخلفية مكتب'), true);
+  assert.equal(isExplicitImageEdit('غيّر رأيك في الموضوع'), false);
   assert.equal(isExplicitImageEdit('ارسم صورة جديدة فيها قمر'), false);
   assert.equal(isExplicitImageEdit('ارسم صورة صغيرة فيها قمر'), false);
   assert.equal(isExplicitImageEdit('أضف كلبًا إلى صورة ليل جديدة'), false);
