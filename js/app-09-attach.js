@@ -167,7 +167,13 @@ window.__omranImgTools = function(wrap, dataUrl){
       + '.oImgBtn.ico{width:40px;padding:0}'
       + '.oImgBtn:hover{background:rgba(0,0,0,.55)}'
       + '.oImgBtn:active{transform:scale(.94)}'
-      + '.oImgBtn svg{width:21px;height:21px;flex:none}';
+      + '.oImgBtn svg{width:21px;height:21px;flex:none}'
+      + '.msg.assistant.oImgMsg{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08);border-radius:var(--r-3,18px);padding:10px 13px 12px;width:-moz-fit-content;width:fit-content;max-width:min(486px,100%);box-sizing:border-box;overflow:hidden}'
+      + 'html[data-mode="light"] .msg.assistant.oImgMsg{background:rgba(0,0,0,.05);border-color:rgba(0,0,0,.09)}'
+      + '.msg.assistant.oImgMsg .msg-text{margin:0 0 9px;padding:0;min-width:0;overflow-wrap:break-word}'
+      + '.msg.assistant.oImgMsg .msg-attachments{margin:0;min-width:0;max-width:100%}'
+      + '.msg.assistant.oImgMsg .oImgBox{max-width:100%}'
+      + '.msg.assistant.oImgMsg .oImgBox>img{max-width:100%;border-radius:12px}';
     document.head.appendChild(st);
   }
   const ICON = {
@@ -207,6 +213,8 @@ window.__omranImgTools = function(wrap, dataUrl){
     const p = $('#prompt'); if(p){ p.focus(); p.placeholder = ar ? 'اكتب التعديل المطلوب على هذي الصورة…' : 'Describe the edit you want…'; }
   });
   wrap.classList.add('oImgBox');
+  // 🧊 v583 — الصورة تعيش داخل صندوق المحادثة، لا سابحة خارجه (أمر عمران).
+  try{ const __mb = wrap.closest && wrap.closest('.msg.assistant'); if(__mb) __mb.classList.add('oImgMsg'); }catch(e){}
   wrap.style.position = 'relative'; wrap.__imgTools = 1;
   try{
     const im = wrap.querySelector('img');
@@ -1183,7 +1191,17 @@ function cumulativeImageEditPrompt(cur, currentText, reset){
 async function sendPrompt(){
   // ✅ v301: قفل الإرسال أثناء التوليد — Enter أو أي ضغطة إضافية لا ترسل
   // الطلب مرة ثانية (كان زر الإرسال ينقفل لكن Enter يظل شغالًا فيتكرر الطلب).
-  try{ const __sb = $('#btnSend'); if(__sb && __sb.disabled) return; }catch(e){ __swallow(e, "misc:app-09-attach#6"); }
+  // 🔓 v583 — قفل يتيم: الزرّ يبقى معطّلًا لو جُمّدت الصفحة أو انقطعت الشبكة
+  // أثناء توليد صورة (المتصفّح لا يُنهي الوعد ⇒ finally لا يعمل). لو ما فيه
+  // طلب جارٍ فعلًا، فُكّ القفل بدل ما يصير الزرّ «شكل بلا فعل» (بلاغ عمران).
+  try{
+    const __sb = $('#btnSend');
+    if(__sb && __sb.disabled){
+      if(typeof genAbortController !== 'undefined' && genAbortController) return;
+      __sb.disabled = false;
+      __sb.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px;display:block"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>';
+    }
+  }catch(e){ __swallow(e, "misc:app-09-attach#6"); }
   const promptEl = $('#prompt');
   let text = promptEl.value.trim();
   if(!text && pendingAttachments.length === 0) return;
