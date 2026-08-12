@@ -12637,7 +12637,7 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
     }
   }catch(e){
     __m._loading = false;
-    __m.content = (e && e.name === 'AbortError') ? (lang === 'ar' ? 'تم إيقاف إنشاء الصورة.' : 'Image generation stopped.') : (lang === 'ar' ? 'تعذّر توليد الصورة الآن — جرّب مرّة ثانية.' : 'Image generation failed — please try again.');
+    __m.content = (e && e.name === 'AbortError') ? (window.__omranTimedOut ? (lang === 'ar' ? '⚠️ انقطع الاتصال قبل وصول الصورة — أعد المحاولة.' : '⚠️ The connection dropped before the image arrived — please try again.') : (lang === 'ar' ? 'تم إيقاف إنشاء الصورة.' : 'Image generation stopped.')) : (lang === 'ar' ? 'تعذّر توليد الصورة الآن — جرّب مرّة ثانية.' : 'Image generation failed — please try again.');
   }
   renderAll(); saveState();
   try{ thinkingDiv && thinkingDiv.remove(); }catch(e){}
@@ -12716,6 +12716,66 @@ function cumulativeImageEditPrompt(cur, currentText, reset){
   const prompt = edits.length <= 1 ? clean : ('طبّق جميع التعديلات التالية مجتمعة على الصورة الأصلية:\n' + edits.map((item, i) => (i + 1) + '. ' + item).join('\n') + '\nلا تغيّر أي شيء آخر.');
   return { prompt, edits };
 }
+
+// ⏱️ v586 — حارس الطلب المعلّق. المتصفّح لا يفرض مهلة على fetch وسقف
+// الخادم ٣٠٠ ثانية؛ فلو تعثّر المزوّد أو جُمّدت الصفحة (قفل شاشة / تبديل
+// تطبيق على الجوّال) بقي الوعد معلّقًا للأبد ⇒ كتلة finally لا تُنفّذ ⇒ زرّ
+// الإرسال دوّار والنتيجة لا تصل. الحارس يقطع ويُعيد الزرّ ويقول لماذا.
+var __omranWdTimer = null, __omranWdWake = null, __omranReqStartedAt = 0;
+var __OMRAN_WD_HARD_MS  = 300000;  // سقف صلب = سقف الخادم نفسه
+var __OMRAN_WD_STALE_MS = 120000;   // طلب أقدم من ذلك حين تعود الصفحة = مشبوه
+var __OMRAN_WD_GRACE_MS = 20000;   // مهلة سماح بعد العودة قبل القطع
+
+// إعادة زرّ الإرسال إلى هيئته الطبيعيّة (نفس أيقونة finally).
+function __omranRestoreSendBtn(){
+  try{
+    var __b = document.getElementById('btnSend');
+    if(!__b) return;
+    __b.disabled = false;
+    __b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="width:22px;height:22px;display:block"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>';
+    try{ document.getElementById('btnStop').classList.remove('live'); }catch(_){ }
+  }catch(e){ try{ __swallow(e, 'misc:wd-restore'); }catch(_){ } }
+}
+function __omranAbortStuck(){
+  try{
+    if(typeof genAbortController === 'undefined' || !genAbortController) return;
+    window.__omranTimedOut = true;
+    genAbortController.abort();
+    // ضمان أخير: لو لم تُنفّذ كتلة finally لأي سبب، يُفكّ قفل الزرّ قسرًا.
+    setTimeout(function(){
+      try{ var __b = document.getElementById('btnSend'); if(__b && __b.disabled) __omranRestoreSendBtn(); }catch(_){ }
+    }, 6000);
+  }catch(e){ try{ __swallow(e, 'misc:wd-abort'); }catch(_){ } }
+}
+function __omranDisarmWatchdog(){
+  try{ clearTimeout(__omranWdTimer); }catch(_){ }
+  try{ clearTimeout(__omranWdWake); }catch(_){ }
+  __omranWdTimer = null; __omranWdWake = null; __omranReqStartedAt = 0;
+}
+function __omranArmWatchdog(){
+  __omranDisarmWatchdog();
+  window.__omranTimedOut = false;
+  __omranReqStartedAt = Date.now();
+  __omranWdTimer = setTimeout(__omranAbortStuck, __OMRAN_WD_HARD_MS);
+}
+// عودة الصفحة من الخلفيّة: طلب قديم لم يعد يُمنح مهلة سماح ثمّ يُقطع؛
+// ولو بقي الزرّ معطّلًا بلا طلب جارٍ أصلًا يُفكّ قفله فورًا بلا انتظار ضغطة.
+try{
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState !== 'visible') return;
+    var __live = (typeof genAbortController !== 'undefined' && genAbortController);
+    if(!__live){
+      try{
+        var __b = document.getElementById('btnSend');
+        if(__b && __b.disabled && typeof __omranRestoreSendBtn === 'function') __omranRestoreSendBtn();
+      }catch(_){ }
+      return;
+    }
+    if(!__omranReqStartedAt || (Date.now() - __omranReqStartedAt) < __OMRAN_WD_STALE_MS) return;
+    try{ clearTimeout(__omranWdWake); }catch(_){ }
+    __omranWdWake = setTimeout(__omranAbortStuck, __OMRAN_WD_GRACE_MS);
+  });
+}catch(e){ try{ __swallow(e, 'misc:wd-vis'); }catch(_){ } }
 
 async function sendPrompt(){
   // ✅ v301: قفل الإرسال أثناء التوليد — Enter أو أي ضغطة إضافية لا ترسل
@@ -12939,6 +12999,7 @@ async function sendPrompt(){
   // generating so the user knows they can stop it and edit their message.
   genAbortController = new AbortController();
   btnStop.classList.add('live');
+  __omranArmWatchdog();  // v586
 
   const thinkingDiv = document.createElement('div');
   thinkingDiv.className = 'msg assistant';
@@ -14594,7 +14655,7 @@ async function sendPrompt(){
         const partial = String(__lastStreamPartial || '').trim();
         cur.messages.push({
           role: 'assistant',
-          content: partial || (lang === 'ar' ? 'تم إيقاف الرد قبل اكتماله.' : 'The response was stopped before it completed.'),
+          content: partial || (window.__omranTimedOut ? (lang === 'ar' ? '⚠️ انقطع الاتصال قبل وصول النتيجة — أعد المحاولة.' : '⚠️ The connection dropped before the result arrived — please try again.') : (lang === 'ar' ? 'تم إيقاف الرد قبل اكتماله.' : 'The response was stopped before it completed.')),
           _stopped: true,
           askAllReply: false
         });
@@ -14613,6 +14674,7 @@ async function sendPrompt(){
       cur.messages.push({role: 'assistant', content: '⚠️ ' + err.message});
     }
   }finally{
+    __omranDisarmWatchdog();  // v586
     const __keepReaderPosition = !document.documentElement.classList.contains('mobile-ui') && typeof chatIsNearBottom === 'function' ? !chatIsNearBottom() : false;
     genAbortController = null;
     btnStop.classList.remove('live');
