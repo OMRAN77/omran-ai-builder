@@ -214,7 +214,9 @@ window.__omranImgTools = function(wrap, dataUrl){
   });
   wrap.classList.add('oImgBox');
   // 🧊 v583 — الصورة تعيش داخل صندوق المحادثة، لا سابحة خارجه (أمر عمران).
-  try{ const __mb = wrap.closest && wrap.closest('.msg.assistant'); if(__mb) __mb.classList.add('oImgMsg'); }catch(e){}
+  // وقت الاستدعاء يكون العنصر خارج شجرة الصفحة ⇒ closest = null، فيلزم وسم مؤجَّل.
+  const __markBox = () => { try{ const __mb = wrap.closest && wrap.closest('.msg.assistant'); if(__mb) __mb.classList.add('oImgMsg'); }catch(e){} };
+  __markBox(); setTimeout(__markBox, 0);
   wrap.style.position = 'relative'; wrap.__imgTools = 1;
   try{
     const im = wrap.querySelector('img');
