@@ -9424,9 +9424,9 @@ async function postWithConfirm(url, payload){
     if(!source) return false;
     if(textStyleEdit(source) || parseImageTextSpec(source).wantsText) return true;
     if(/(?:نفس\s+(?:الصورة|الصوره)|هذه\s+(?:الصورة|الصوره)|هذي\s+(?:الصورة|الصوره)|هالصورة|هالصوره|الصورة\s+السابقة|الصوره\s+السابقه|(?:same|this|previous)\s+(?:image|picture))/i.test(source)) return true;
-    const editVerb = /(?:^|[\s،,.!?؟])(?:عدل|عدّل|حرر|حرّر|غير|غيّر|بدل|بدّل|احذف|امسح|ازل|أزل|شيل|أضف|اضف|ضيف|حط|اكتب|أكتب|خل|اجعل|كبر|كبّر|صغر|صغّر)(?=$|[\s،,.!?؟]|ها)/i.test(source) || /\b(?:edit|change|modify|remove|delete|add|put|write|resize)\b/i.test(source);
+    const editVerb = /(?:^|[\s،,.!?؟])(?:عدل|عدّل|حرر|حرّر|غير|غيّر|بدل|بدّل|احذف|امسح|ازل|أزل|شيل|أضف|اضف|ضيف|حط|اكتب|أكتب|خل|خلي|خلّي|اجعل|سو|سوي|سوّي|حول|حوّل|زيد|قص|كبر|كبّر|صغر|صغّر)(?=$|[\s،,.!?؟]|ها)/i.test(source) || /\b(?:edit|change|modify|remove|delete|add|put|write|resize)\b/i.test(source);
     const imageRef = /(?:الصورة|الصوره|هالصورة|هالصوره|عليها|فيها|منها|لها|\S+ها(?:\s|$)|\bit\b|this\s+(?:image|picture)|the\s+(?:image|picture))/i.test(source);
-    const visualTarget = /(?:الخلفية|الخلفيه|الملابس|اللبس|الشعر|الوجه|الإضاءة|الاضاءة|الألوان|الالوان|background|outfit|clothes|hair|face|lighting|colou?rs?)/i.test(source);
+    const visualTarget = /(?:الخلفية|الخلفيه|الملابس|اللبس|الشعر|الوجه|الإضاءة|الاضاءة|الألوان|الالوان|تسريح[ةه]|قص[ةه]\s+الشعر|فستان|قميص|نظار[ةه]|لحي[ةه]|شنب|مكياج|حجاب|شماغ|كندور[ةه]|قبع[ةه]|تاج|بشر[ةه]|background|outfit|clothes|hair|hairstyle|ponytail|face|lighting|colou?rs?)/i.test(source);
     return editVerb && (imageRef || visualTarget);
   }
   function autoPrayerSpec(input){
@@ -12644,6 +12644,9 @@ async function sendPrompt(){
   // 🖼️ v330: متابعة بعد تعديل صورة (بدون مرفق جديد) → مسار تعديل الصورة مباشرة
   // بآخر صورة محفوظة — ممنوع بوابة البناء وممنوع خطة عمل («ضيفه الرابط» كانت
   // تروح للبوابة فيرسم المزود الصورة من خياله بدل تعديل الأصلية).
+  // v577: قائمة سوداء للمتابعة — هذه وحدها تخرج من «تعديل نفس الصورة».
+  const __IMGF_NEW_RE = /(?:صورة|صوره|بطاق[ةه]|بوستر|ملصق|شهاد[ةه]|غلاف|بنر|لوجو|شعار|image|picture|card|poster)\s*(?:جديد[ةه]|ثاني[ةه]|أخرى|اخرى|new|another)(?=$|[\s،,.!?؟])|(?:^|[\s،,])(?:ارسم|أرسم|اصنع|انشئ|أنشئ|صمم|صمّم|ولّد|ولد|draw|create|generate|design)\s*(?:لي\s*)?(?:صورة|صوره|بطاق[ةه]|بوستر|ملصق|شهاد[ةه]|غلاف|بنر|لوجو|شعار|image|picture|card|poster|logo|banner)(?=$|[\s،,.!?؟])/i;
+  const __IMGF_NOT_RE = /^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|لماذا|ماذا|ما|من|why|how|what|where|when|who)(?=$|[\s،,.!?؟])|[؟?]\s*$|(?:^|[\s،,])(?:ابحث|دور|اعطني|أعطني|معلومات|سعر|أسعار|اسعار|فندق|فنادق|مطعم|مطاعم|طيران|تذاكر|وظيف[ةه]|وظائف|عقار|شق[ةه]|سيار[ةه]|سيارات|أخبار|اخبار|طقس|أسهم|اسهم|ذهب|search|find|price|hotel|restaurant|flight|news|weather)(?=$|[\s،,.!?؟])|^(?:شكرا|شكرًا|مشكور|تسلم|تمام|اوك|أوك|زين|طيب|ايه|أيه|نعم|لا|يب|ok|okay|thanks|yes|no)[\s!.،,]*$|(?:^|[\s،,])(?:فيديو|حركها|حركه|حرك|صوت|video|animate|audio)(?=$|[\s،,.!?؟])/i;
   const __IMG_FOLLOW = (function(){
     try{
       const c = getCurrent();
@@ -12651,7 +12654,13 @@ async function sendPrompt(){
       if(pendingAttachments.some(a => a.isImage)) return false;
       if(!text || text.length > 220) return false;
       if(/بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|سكربت|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\bscript\b|\bcode\b|كود/i.test(text)) return false;
-      if(typeof window.__isExplicitImageEdit === 'function') return !!window.__isExplicitImageEdit(text);
+      if(typeof window.__isExplicitImageEdit === 'function' && window.__isExplicitImageEdit(text)) return true;
+      // v577: «سوي التسريحه ذيل حصان» كانت تسقط للدردشة فترسم شخصًا جديدًا.
+      // الافتراضيّ الآن: تعديل على نفس الصورة، إلّا إذا طلبت صورة جديدة أو سألت.
+      if(__IMGF_NEW_RE.test(text) || __IMGF_NOT_RE.test(text)) return false;
+      const __wc = String(text).trim().split(/\s+/).filter(Boolean);
+      if(__wc.length < 2 && String(text).trim().length < 12) return false;
+      if(typeof window.__isExplicitImageEdit === 'function') return true;
       const __editVerb = /(عدل|عدّل|غير|غيّر|بدل|بدّل|امسح|احذف|ازل|أزل|شيل|أضف|اضف|ضيف|حط|اكتب|أكتب|خل|اجعل|كبر|كبّر|صغر|صغّر|\bedit\b|\bchange\b|\bremove\b|\badd\b|\bput\b|\bwrite\b)/i;
       const __priorRef = /(الصورة\s+السابقة|الصوره\s+السابقه|هذه\s+الصورة|هذي\s+الصورة|هالصورة|عليها|فيها|منها|\bit\b|this\s+(?:image|picture)|previous\s+(?:image|picture))/i;
       return __editVerb.test(text) && __priorRef.test(text);
