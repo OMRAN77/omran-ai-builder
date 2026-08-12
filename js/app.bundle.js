@@ -11662,14 +11662,25 @@ function renderAttachStrip(){
     const chip = document.createElement('div');
     chip.className = 'attach-chip';
     if(a.isImage){
+      // v587 — داخل صندوق الكتابة: مصغّرة وحدها بلا اسم
+      chip.classList.add('img');
+      chip.title = a.name;
       const img = document.createElement('img');
       img.src = a.dataUrl;
+      img.alt = a.name;
       chip.appendChild(img);
+      if(a.pending || a.error){
+        const bdg = document.createElement('span');
+        bdg.className = 'badge';
+        bdg.textContent = a.pending ? '⏳' : '⚠️';
+        chip.appendChild(bdg);
+      }
+    } else {
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = a.name + (a.pending ? ' ⏳' : (a.error ? ' ⚠️' : ''));
+      chip.appendChild(name);
     }
-    const name = document.createElement('span');
-    name.className = 'name';
-    name.textContent = a.name + (a.pending ? ' ⏳' : (a.error ? ' ⚠️' : ''));
-    chip.appendChild(name);
     const rm = document.createElement('span');
     rm.className = 'rm';
     rm.textContent = '✕';

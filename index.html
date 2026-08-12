@@ -254,12 +254,13 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
     <div id="chatQuickChipsWrap" style="display:none; position:absolute; bottom:64px; inset-inline-end:14px; z-index:2100; background:var(--panel); backdrop-filter:blur(14px); border:1px solid var(--border); border-radius:14px; box-shadow:0 12px 34px rgba(0,0,0,.55); color:var(--text); padding:8px; max-height:60vh; overflow-y:auto;">
       <div id="quickChips" style="display:flex; flex-direction:column; gap:2px; align-items:stretch;"></div>
     </div>
-    <div id="attachStrip"></div>
     <div id="inputbar">
       <input type="file" id="attachInput" accept="image/*,.txt,.md,.js,.jsx,.ts,.tsx,.py,.json,.csv,.html,.css,.log,.zip,.docx,.xlsx,.pptx,.jar,.pdf,.xml,.yml,.yaml,.sh,.php,.java,.c,.cpp,.go,.rs,.rb,.sql,.env,*" multiple style="display:none;">
       <div id="emojiPicker"></div>
       <div id="composerBox">
       <div id="chatEditNotice" hidden><span>تعديل الرسالة</span><button type="button" aria-label="إلغاء التعديل">إلغاء</button></div>
+      <!-- v587 — المرفقات داخل صندوق الكتابة نفسه -->
+      <div id="attachStrip"></div>
       <textarea id="prompt" rows="1" data-i18n-placeholder="promptPlaceholder" placeholder="اكتب رسالتك هنا ..."></textarea>
       <div class="inputbar-tools">
         <div class="inputbar-tools-left">
@@ -388,7 +389,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 <script src="/js/selfdiag.js?v=421"></script>
 <script src="/templates-data.js"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script src="/js/app.bundle.js?v=2f6527e8"></script>
+    <script src="/js/app.bundle.js?v=b6e4f152"></script>
     <script src="/js/modes.js?v=552f1e9a"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
