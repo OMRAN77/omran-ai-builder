@@ -236,7 +236,9 @@ const LISTING_SITE_AR = {
   'almosafer.com': 'المسافر', 'wego.ae': 'ويجو', 'bayt.com': 'بيت', 'indeed.ae': 'إنديد',
   'naukrigulf.com': 'نوكري جلف', 'gulftalent.com': 'جلف تالنت', 'skyscanner.ae': 'سكاي سكانر',
   'skyscanner.net': 'سكاي سكانر', 'kayak.ae': 'كاياك', 'cheapflights.ae': 'تشيب فلايتس',
-  'xplate.com': 'إكس بليت', 's-plate.com': 'إس بليت',
+  'xplate.com': 'إكس بليت', 's-plate.com': 'إس بليت', 'souq.ma7room.com': 'سوق محروم',
+  'uaedir.ae': 'دليل الإمارات', 'ae.opensooq.com': 'السوق المفتوح', 'barbahar.com': 'بربهار',
+  'mourjan.com': 'مرجان',
 };
 
 module.exports = async (req, res) => {
@@ -442,11 +444,11 @@ module.exports = async (req, res) => {
     const __DOM_RE = /لوح(ة|ات|تين)|رقم\s*مميز|[\u0623\u0627]رقام\s*مميزة|بليت|بلايت|plate|عقار|شق(ة|ق|تين)|فيلا|فلل|[\u0623\u0627]رض|اراضي|apartment|villa|property|سيار|سيرات|سياير|مركب|\bcars?\b|وظيف|وظائف|توظيف|\bjobs?\b|فندق|فنادق|منتجع|شاليه|hotel|resort|طيران|تذكرة|تذاكر|flight/i;
     const qb = (__q0 && __DOM_RE.test(__q0)) ? __q0 : query;
     // 🔢 v543: أسئلة اللوحات/الأرقام المميزة → موقعان فقط: xplate + SHub (s-plate).
-    const NUMBERS_RE = /لوح(ة|ات|تين)\s*(سيار|مركب|مرور|مميز|رقم|للبيع|دبي|أبوظبي|ابوظبي|الشارقة|عجمان|رأس الخيمة|راس الخيمة|أم القيوين|ام القيوين|الفجيرة)|[أا]?رقام(\s+\S+)?\s*مميزة|رقم(\s+\S+)?\s*مميز|[أا]رقام\s*(هواتف|هاتف|جوالات|جوال|موبايل|شرائح|شريحة|للبيع|مميز)|رقم\s*(هاتف|جوال|موبايل)?\s*(vip|في اي بي)|بلايت|بليت|number plate|license plate|special number|vip number|plate for sale/i;
+    const NUMBERS_RE = /لوح(ة|ات|تين)\s*([أا]رقام|سيار|مركب|مرور|مميز|رقم|للبيع|دبي|أبوظبي|ابوظبي|الشارقة|عجمان|رأس الخيمة|راس الخيمة|أم القيوين|ام القيوين|الفجيرة)|[أا]?رقام(\s+\S+)?\s*مميزة|رقم(\s+\S+)?\s*مميز|[أا]رقام\s*(سيارات|سيارة|سيارتي|مركبات|مركبة|لوحات|لوحة|هواتف|هاتف|جوالات|جوال|موبايل|شرائح|شريحة|للبيع|مميز)|رقم\s*(سيارة|مركبة)\s*(للبيع|لي البيع)|رقم\s*(هاتف|جوال|موبايل)?\s*(vip|في اي بي)|بلايت|بليت|number plate|license plate|special number|vip number|plate for sale/i;
     const isNumbers = !domains && !__wantsOfficialSource && !__hasForeignCountry && NUMBERS_RE.test(qb);
     const isListing = isNumbers || (!domains && !__wantsOfficialSource && !__hasForeignCountry && (/عقار|شق(ة|ق|تين)|فيلا|فلل|أرض للبيع|ارض للبيع|للبيع|للايجار|للإيجار|إيجار|ايجار|محل تجاري|مكتب للـ|سياره|سيارة|سيارات|سيرات|سياير|اجار|آجار|تأجير|تاجير|استئجار|rent a car|car rental|وظيفة|وظائف|توظيف|apartment|villa|property|for sale|for rent|listing|car for|job vacanc|تذكرة|تذاكر|رحلة إلى|رحله الى|رحلات|air ticket|فندق|فنادق|منتجع|منتجعات|شاليه|شاليهات|hotel|resort/i.test(qb) || __flightListing));
     const listingDomains = isNumbers
-      ? ['xplate.com', 's-plate.com']
+      ? ['xplate.com', 's-plate.com', 'souq.ma7room.com', 'uaedir.ae', 'ae.opensooq.com', 'barbahar.com', 'mourjan.com']
       : /طيران|تذكرة|تذاكر|رحلة|رحله|رحلات|flight|air ticket|airfare/i.test(qb)
       ? ['skyscanner.ae', 'skyscanner.net', 'wego.ae', 'wego.com', 'kayak.ae', 'cheapflights.ae']
       : /فندق|فنادق|منتجع|منتجعات|شاليه|شاليهات|hotel|resort/i.test(qb)
@@ -539,6 +541,11 @@ module.exports = async (req, res) => {
       const gates = [
         { h: 'xplate.com', title: '🔢 xplate — لوحات سيارات وأرقام هواتف للبيع', url: 'https://xplate.com/ar/numbers', content: 'سوق إماراتي لبيع وشراء لوحات السيارات المميزة وأرقام الهواتف — مفروزة بالإمارة والسعر.' },
         { h: 's-plate.com', title: '🔢 SHub — سوق اللوحات والأرقام المميزة', url: 'https://s-plate.com/ar', content: 'منصّة SHub لبيع وشراء لوحات المركبات والأرقام المميزة في الإمارات.' },
+        { h: 'souq.ma7room.com', title: '🔢 سوق محروم — أرقام سيارات للبيع', url: 'https://souq.ma7room.com/%D8%A3%D8%B1%D9%82%D8%A7%D9%85-%D8%B3%D9%8A%D8%A7%D8%B1%D8%A7%D8%AA/', content: 'قسم أرقام السيارات في سوق محروم — إعلانات بيع أرقام ولوحات مميزة.' },
+        { h: 'uaedir.ae', title: '🔢 دليل الإمارات — لوحات وأرقام سيارات', url: 'https://uaedir.ae/car-plates.php', content: 'صفحة لوحات وأرقام السيارات في دليل الإمارات.' },
+        { h: 'ae.opensooq.com', title: '🔢 السوق المفتوح — أرقام مركبات مميزة للبيع', url: 'https://ae.opensooq.com/ar/%D8%B9%D8%AC%D9%85%D8%A7%D9%86/%D8%B3%D9%8A%D8%A7%D8%B1%D8%A7%D8%AA-%D9%88%D9%85%D8%B1%D9%83%D8%A8%D8%A7%D8%AA/%D8%A3%D8%B1%D9%82%D8%A7%D9%85-%D9%85%D8%B1%D9%83%D8%A8%D8%A7%D8%AA-%D9%85%D9%85%D9%8A%D8%B2%D8%A9-%D9%84%D9%84%D8%A8%D9%8A%D8%B9', content: 'إعلانات أرقام المركبات المميزة للبيع في السوق المفتوح.' },
+        { h: 'barbahar.com', title: '🔢 بربهار — أرقام سيارات مميزة للبيع', url: 'https://barbahar.com/Used-cars-for-sale/Special-Car-Plates/', content: 'أرقام سيارات مميزة للبيع في دبي وأبوظبي والشارقة وعجمان وأم القيوين ورأس الخيمة والفجيرة — ثنائي وثلاثي ورباعي وخماسي.' },
+        { h: 'mourjan.com', title: '🔢 مرجان — أرقام سيارات للبيع', url: 'https://www.mourjan.com/ae/car-numbers/for-sale/', content: 'إعلانات أرقام ولوحات السيارات للبيع في الإمارات على مرجان.' },
       ];
       const have = new Set(results.map(r => { try { return new URL(r.url).hostname.replace(/^www\./, ''); } catch { return ''; } }));
       for (const g of gates) if (!have.has(g.h)) results.push({ title: g.title, url: g.url, content: g.content });
