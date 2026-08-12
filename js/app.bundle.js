@@ -11686,57 +11686,61 @@ window.__omranImgTools = function(wrap, dataUrl){
   const ar = (typeof lang !== 'undefined' && lang === 'ar');
   if(!document.getElementById('oImgToolsCss')){
     const st = document.createElement('style'); st.id = 'oImgToolsCss';
-    st.textContent = '.oImgScrim{position:absolute;left:0;right:0;bottom:0;height:82px;background:linear-gradient(to top,rgba(0,0,0,.5),rgba(0,0,0,.14) 52%,transparent);pointer-events:none;z-index:1}'
-      + '.oImgBar{position:absolute;left:10px;right:10px;bottom:10px;display:flex;gap:8px;justify-content:flex-end;direction:ltr;pointer-events:none;z-index:2}'
-      + '.oImgBtn{pointer-events:auto;display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 14px;border:1px solid rgba(255,255,255,.18);border-radius:10px;font-family:inherit;font-size:12.5px;font-weight:600;letter-spacing:.2px;line-height:1;color:#f5f5f7;background:rgba(16,16,18,.5);-webkit-backdrop-filter:blur(16px) saturate(1.5);backdrop-filter:blur(16px) saturate(1.5);box-shadow:0 6px 18px rgba(0,0,0,.32);cursor:pointer;transition:background .18s ease,border-color .18s ease,transform .12s ease}'
-      + '.oImgBtn:hover{background:rgba(34,34,38,.7);border-color:rgba(255,255,255,.3)}'
-      + '.oImgBtn:active{transform:scale(.965)}'
-      + '.oImgBtn svg{width:15px;height:15px;flex:none;opacity:.92}';
+    st.textContent = '.oImgBox{position:relative;display:block;width:-moz-fit-content;width:fit-content;min-width:0;max-width:min(460px,100%)}'
+      + '.oImgBox>img{display:block;width:auto;max-width:100%;height:auto;max-height:62vh;object-fit:contain}'
+      + '.oImgBar{position:absolute;left:12px;right:12px;bottom:12px;display:flex;align-items:center;justify-content:space-between;direction:ltr;pointer-events:none;z-index:2}'
+      + '.oImgBtn{pointer-events:auto;display:inline-flex;align-items:center;justify-content:center;height:40px;border:0;border-radius:999px;font-family:inherit;font-size:15px;font-weight:600;line-height:1;color:#fff;background:rgba(0,0,0,.38);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);cursor:pointer;transition:background .16s ease,transform .12s ease}'
+      + '.oImgBtn.txt{padding:0 20px}'
+      + '.oImgBtn.ico{width:40px;padding:0}'
+      + '.oImgBtn:hover{background:rgba(0,0,0,.55)}'
+      + '.oImgBtn:active{transform:scale(.94)}'
+      + '.oImgBtn svg{width:21px;height:21px;flex:none}';
     document.head.appendChild(st);
   }
   const ICON = {
-    edit: '<path d="M4.2 20.3h4.1L20 8.6a2.3 2.3 0 0 0-3.2-3.2L5 17.1v3.2z"/><path d="M14.9 7.4l3.2 3.2"/>',
-    save: '<path d="M12 3.9v11.3"/><path d="M8.2 11.4L12 15.2l3.8-3.8"/><path d="M4.8 19.3h14.4"/>',
+    share: '<circle cx="18" cy="5.2" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="18.8" r="2.6"/><path d="M8.35 10.8l7.3-4.3"/><path d="M8.35 13.2l7.3 4.3"/>',
     done: '<path d="M4.9 12.7l4.5 4.5L19.1 7.5"/>'
   };
-  const svg = (k) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON[k] + '</svg>';
+  const svg = (k) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON[k] + '</svg>';
   const bar = document.createElement('div'); bar.className = 'oImgBar';
-  const mk = (icon, label, fn) => {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'oImgBtn';
-    b.style.direction = ar ? 'rtl' : 'ltr';
-    b.innerHTML = svg(icon) + '<span>' + label + '</span>';
-    b.setAttribute('aria-label', label);
+  const mk = (cls, html, label, fn) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'oImgBtn ' + cls;
+    b.innerHTML = html;
+    b.setAttribute('aria-label', label); b.title = label;
     b.onclick = (ev) => { ev.stopPropagation(); fn(b); };
     bar.appendChild(b);
+    return b;
   };
-  const flash = (b, icon, label) => {
+  const flash = (b, html) => {
     const prev = b.innerHTML;
-    b.innerHTML = svg(icon) + '<span>' + label + '</span>';
-    setTimeout(() => { b.innerHTML = prev; }, 1600);
+    b.innerHTML = html;
+    setTimeout(() => { b.innerHTML = prev; }, 1400);
   };
-  mk('edit', ar ? 'تعديل' : 'Edit', (b) => {
-    pendingAttachments.push({ name: 'edit-' + Date.now() + '.png', isImage: true, mime: dataUrl.slice(5).split(';')[0] || 'image/png', dataUrl: dataUrl });
-    renderAttachStrip();
-    flash(b, 'done', ar ? 'جاهزة' : 'Ready');
-    const p = $('#prompt'); if(p){ p.focus(); p.placeholder = ar ? 'اكتب التعديل المطلوب على هذي الصورة…' : 'Describe the edit you want…'; }
-  });
-  mk('save', ar ? 'حفظ' : 'Save', async (b) => {
+  // يسار: أيقونة الحفظ/المشاركة — بلا كلمة (أمر عمران v582)
+  mk('ico', svg('share'), ar ? 'حفظ' : 'Save', async (b) => {
     try{
       const bl = await (await fetch(dataUrl)).blob(), nm = 'image-' + Date.now() + '.png';
       const f = new File([bl], nm, { type: bl.type || 'image/png' });
       if(navigator.canShare && navigator.canShare({ files: [f] })){ await navigator.share({ files: [f] }); return; }
       const u = URL.createObjectURL(bl), a = document.createElement('a'); a.href = u; a.download = nm; a.click(); setTimeout(() => URL.revokeObjectURL(u), 4000);
-      flash(b, 'done', ar ? 'تمّ' : 'Saved');
-    }catch(e){ __swallow(e, "upload:app-09-attach#v581"); }
+      flash(b, svg('done'));
+    }catch(e){ __swallow(e, "upload:app-09-attach#v582"); }
   });
+  // يمين: «تعديل» نصّ فقط
+  mk('txt', '<span>' + (ar ? 'تعديل' : 'Edit') + '</span>', ar ? 'تعديل' : 'Edit', (b) => {
+    pendingAttachments.push({ name: 'edit-' + Date.now() + '.png', isImage: true, mime: dataUrl.slice(5).split(';')[0] || 'image/png', dataUrl: dataUrl });
+    renderAttachStrip();
+    flash(b, '<span>' + (ar ? 'جاهزة' : 'Ready') + '</span>');
+    const p = $('#prompt'); if(p){ p.focus(); p.placeholder = ar ? 'اكتب التعديل المطلوب على هذي الصورة…' : 'Describe the edit you want…'; }
+  });
+  wrap.classList.add('oImgBox');
   wrap.style.position = 'relative'; wrap.__imgTools = 1;
   try{
     const im = wrap.querySelector('img');
     const r = im ? getComputedStyle(im).borderRadius : '';
     if(r && r !== '0px'){ wrap.style.borderRadius = r; wrap.style.overflow = 'hidden'; }
   }catch(e){}
-  const scrim = document.createElement('div'); scrim.className = 'oImgScrim';
-  wrap.appendChild(scrim); wrap.appendChild(bar);
+  wrap.appendChild(bar);
 };
 
 function readFileAsDataUrl(file){
