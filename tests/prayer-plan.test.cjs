@@ -14,6 +14,7 @@ test('planner instructions are dynamic rather than a fixed prayer list', () => {
   assert.match(prompt, /Understand any supplication topic dynamically/);
   assert.match(prompt, /دعاء لمن يبدأ عملًا جديدًا/);
   assert.match(prompt, /Keep the top region calm/);
+  assert.match(buildPlannerPrompt('أريد شعرًا', { kind:'poetry' }), /original polished 2–4 line Arabic poem/);
   assert.doesNotMatch(prompt, /دعاء الصباح|دعاء المساء|دعاء الاستخارة/);
 });
 

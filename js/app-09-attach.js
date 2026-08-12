@@ -672,15 +672,11 @@ function overlayDesignLines(b64, mime, lines){
   });
 }
 const MAHA_FONTS = {
-  othmani: { css: 'Amiri', gf: 'Amiri:wght@700' },
-  naskh:   { css: 'Amiri', gf: 'Amiri:wght@700' },
-  ruqaa:   { css: 'Aref Ruqaa', gf: 'Aref+Ruqaa:wght@700' },
-  kufi:    { css: 'Reem Kufi', gf: 'Reem+Kufi:wght@700' },
-  diwani:  { css: 'Lateef', gf: 'Lateef:wght@700' },
-  modern:  { css: 'Cairo', gf: 'Cairo:wght@700' },
+  default:{css:'Tajawal',gf:'Tajawal:wght@700'}, kufi:{css:'Reem Kufi',gf:'Reem+Kufi:wght@700'}, naskh:{css:'Amiri',gf:'Amiri:wght@700'}, naskh2:{css:'Noto Naskh Arabic',gf:'Noto+Naskh+Arabic:wght@700'},
+  thuluth:{css:'Aref Ruqaa',gf:'Aref+Ruqaa:wght@700'}, farsi:{css:'Gulzar',gf:'Gulzar'}, diwani:{css:'Katibeh',gf:'Katibeh'}, ruqaa:{css:'Rakkas',gf:'Rakkas'}, quran:{css:'Scheherazade New',gf:'Scheherazade+New:wght@700'}, othmani:{css:'Scheherazade New',gf:'Scheherazade+New:wght@700'}
 };
 async function mahaLoadFont(key){
-  const f = MAHA_FONTS[key] || MAHA_FONTS.modern;
+  const f = MAHA_FONTS[key] || MAHA_FONTS.default;
   if(!document.getElementById('gf-' + f.css)){
     const l = document.createElement('link');
     l.id = 'gf-' + f.css; l.rel = 'stylesheet';
@@ -1420,6 +1416,7 @@ async function sendPrompt(){
       cur.lastEditedImage = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' };
       cur.imageEditInstructions = [];
       cur.imageEditSource = null;
+      cur.imageTextLayer = null;
       cur.adMode = null; // صورة جديدة = وضع إعلان جديد
     }
     const __followUp = !__srcImg && cur.lastEditedImage && cur.lastMsgWasImageEdit && __IMG_FOLLOW;
@@ -1770,11 +1767,12 @@ async function sendPrompt(){
       // ✍️ إذا الطلب كتابة نص/اسم على الصورة → نرسمه محليًا بخط سليم (بدون Gemini)
       const __writeIntentRe = /(اكتب|أكتب|حط\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|(?:ضيف|أضف|اضف)\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|write|put\s+(?:my\s+)?name|add\s+(?:the\s+)?text)/i;
       const __textSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(text) : { wantsText:__writeIntentRe.test(text), exactText:extractOverlayText(text), fontKey:'modern', color:'#ffffff', position:'bottom' };
+      if(__textSpec.styleEdit && cur.imageTextLayer){ const __l=Object.assign({},cur.imageTextLayer); Object.keys(__textSpec.styleEdit).forEach(k=>{if(__textSpec.styleEdit[k])__l[k]=__textSpec.styleEdit[k]}); try{const __outB64=await overlayTextOnImage(__l.baseB64,__l.baseMime,__l.text,__l.fontKey,__l.color,__l.position);cur.imageTextLayer=__l;cur.lastEditedImage={b64:__outB64,mime:'image/png'};cur.lastMsgWasImageEdit=true;cur.messages.push({role:'assistant',content:lang==='ar'?'تم تعديل تنسيق الكتابة على الصورة نفسها ✅':'Text styling updated on the same image ✅',attachments:[{name:'edited.png',isImage:true,mime:'image/png',dataUrl:'data:image/png;base64,'+__outB64}]})}catch(e){cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر تعديل تنسيق الكتابة.':'Could not update the text styling.'})} renderAll();saveState();return; }
       if(__textSpec.wantsText){
         let __resolvedText = __textSpec.exactText;
         if(!__resolvedText && __textSpec.autoAuthored){
           try{
-            const __planRes = await fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal:genAbortController.signal, body:JSON.stringify({ prayerRequest:String(__textSpec.prayerRequest || text).slice(0,800), planPrayerOnly:true, textPosition:__textSpec.position, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() }) });
+            const __planRes = await fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal:genAbortController.signal, body:JSON.stringify({ prayerRequest:String(__textSpec.prayerRequest || text).slice(0,800), textKind:__textSpec.kind, planPrayerOnly:true, textPosition:__textSpec.position, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() }) });
             const __planData = await __planRes.json().catch(() => ({}));
             if(__planRes.ok && typeof __planData.authoredText === 'string') __resolvedText = __planData.authoredText.trim();
           }catch(e){ if(e && e.name === 'AbortError') return; }
@@ -1786,6 +1784,7 @@ async function sendPrompt(){
         }
         try{
           const __outB64 = await overlayTextOnImage(__b64, __mime, __resolvedText, __textSpec.fontKey, __textSpec.color, __textSpec.position);
+          cur.imageTextLayer = { baseB64:__b64, baseMime:__mime, text:__resolvedText, fontKey:__textSpec.fontKey, color:__textSpec.color, position:__textSpec.position };
           cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'تمت كتابة النص على الصورة ✅ اضغط عليها للتكبير، وتقدر تطلب تعديلات إضافية.' : 'Text added to the image ✅ Tap to enlarge — you can request more edits.'), attachments: [{ name: 'edited.png', isImage: true, mime: 'image/png', dataUrl: 'data:image/png;base64,' + __outB64 }] });
           cur.lastEditedImage = { b64: __outB64, mime: 'image/png' };
           cur.lastMsgWasImageEdit = true;
@@ -1797,13 +1796,10 @@ async function sendPrompt(){
           return;
         }
       }
-      const __continuesEditChain = !__isNewImageSource && cur.imageEditSource && cur.lastEditedImage && cur.lastEditedImage.b64 === __b64;
+      const __continuesEditChain = !__isNewImageSource && cur.lastEditedImage && cur.lastEditedImage.b64 === __b64;
       const __original = latestOriginalUserImage(cur);
-      const __pendingImageEditSource = __continuesEditChain ? cur.imageEditSource : {
-        b64: (__isNewImageSource && __original && __original.dataUrl) ? ((__original.dataUrl || '').split(',')[1] || __b64) : __b64,
-        mime: (__isNewImageSource && __original && __original.mime) || __mime,
-      };
-      const __combinedEdit = cumulativeImageEditPrompt(cur, text, !__continuesEditChain);
+      const __pendingImageEditSource = { b64:__b64, mime:__mime };
+      const __combinedEdit = cumulativeImageEditPrompt(cur, text, true);
       const __editB64 = __pendingImageEditSource.b64;
       const __editMime = __pendingImageEditSource.mime;
       const __editPrompt = __combinedEdit.prompt;
@@ -1822,6 +1818,7 @@ async function sendPrompt(){
         cur.lastEditedImage = { b64: __data.imageBase64, mime: __outMime };
         cur.imageEditSource = __pendingImageEditSource;
         cur.imageEditInstructions = __pendingImageEditInstructions;
+        cur.imageTextLayer = null;
         cur.lastMsgWasImageEdit = true;
       } else {
         cur.messages.push({ role: 'assistant', content: imgErrFriendly(__data && __data.error, lang === 'ar') || ((lang === 'ar' ? '⚠️ تعذر تعديل الصورة: ' : '⚠️ Image edit failed: ') + ((__data && __data.error) || ('HTTP ' + (__data.__status || '?')))) });
@@ -1965,7 +1962,7 @@ async function sendPrompt(){
           const __gRes = await fetch('/api/maha-image', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             signal: genAbortController.signal,
-            body: JSON.stringify({ prompt: String(__genTextSpec.visualPrompt || text).slice(0,1200), reserveTextArea:!!__genTextSpec.wantsText, textPosition:__genTextSpec.position, prayerRequest:__genTextSpec.autoAuthored ? String(__genTextSpec.prayerRequest || text).slice(0,800) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+            body: JSON.stringify({ prompt: String(__genTextSpec.visualPrompt || text).slice(0,1200), reserveTextArea:!!__genTextSpec.wantsText, textPosition:__genTextSpec.position, prayerRequest:__genTextSpec.autoAuthored ? String(__genTextSpec.prayerRequest || text).slice(0,800) : undefined, textKind:__genTextSpec.kind, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
           });
           __gData = await __gRes.json().catch(() => ({}));
           __gOk = __gRes.ok && !!__gData.imageBase64;
@@ -1975,6 +1972,7 @@ async function sendPrompt(){
           const __resolvedText = __genTextSpec.exactText || (__genTextSpec.autoAuthored && typeof __gData.authoredText === 'string' ? __gData.authoredText.trim() : '');
           if(__genTextSpec.wantsText && !__resolvedText) throw new Error('missing_authored_prayer');
           if(__resolvedText){
+            cur.imageTextLayer = { baseB64:__gData.imageBase64, baseMime:__gData.mimeType||'image/png', text:__resolvedText, fontKey:__genTextSpec.fontKey, color:__genTextSpec.color, position:__genTextSpec.position };
             __gData.imageBase64 = await overlayTextOnImage(__gData.imageBase64, __gData.mimeType || 'image/png', __resolvedText, __genTextSpec.fontKey, __genTextSpec.color, __genTextSpec.position);
             __gData.mimeType = 'image/png';
           }
