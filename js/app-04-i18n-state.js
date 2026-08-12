@@ -1207,7 +1207,8 @@ function renderMessages(keepScroll){
         gimg.src = url; gimg.alt = ''; gimg.loading = 'lazy';
         gimg.style.cssText = 'max-width:min(100%,320px);border-radius:12px';
         gimg.onerror = () => { gimg.remove(); };
-        genStrip.appendChild(gimg);
+        if(window.__omranImgTools){ const gb = document.createElement('div'); gb.style.cssText = 'position:relative;display:inline-block;max-width:100%'; gb.appendChild(gimg); window.__omranImgTools(gb, url); genStrip.appendChild(gb); }
+        else genStrip.appendChild(gimg);
       });
       div.appendChild(genStrip);
     }
@@ -1314,7 +1315,11 @@ function renderMessages(keepScroll){
               backdropEl.classList.add('show');
             }
           };
-          wrap.appendChild(img);
+          if(m.role !== 'user' && !a._fromMemory && window.__omranImgTools){
+            const ibox = document.createElement('div');
+            ibox.style.cssText = 'position:relative;display:inline-block;max-width:100%';
+            ibox.appendChild(img); window.__omranImgTools(ibox, a.dataUrl); wrap.appendChild(ibox);
+          } else wrap.appendChild(img);
         } else {
           const chip = document.createElement('div');
           chip.className = 'file-chip';

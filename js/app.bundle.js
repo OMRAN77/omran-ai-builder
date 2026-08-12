@@ -4651,7 +4651,8 @@ function renderMessages(keepScroll){
         gimg.src = url; gimg.alt = ''; gimg.loading = 'lazy';
         gimg.style.cssText = 'max-width:min(100%,320px);border-radius:12px';
         gimg.onerror = () => { gimg.remove(); };
-        genStrip.appendChild(gimg);
+        if(window.__omranImgTools){ const gb = document.createElement('div'); gb.style.cssText = 'position:relative;display:inline-block;max-width:100%'; gb.appendChild(gimg); window.__omranImgTools(gb, url); genStrip.appendChild(gb); }
+        else genStrip.appendChild(gimg);
       });
       div.appendChild(genStrip);
     }
@@ -4758,7 +4759,11 @@ function renderMessages(keepScroll){
               backdropEl.classList.add('show');
             }
           };
-          wrap.appendChild(img);
+          if(m.role !== 'user' && !a._fromMemory && window.__omranImgTools){
+            const ibox = document.createElement('div');
+            ibox.style.cssText = 'position:relative;display:inline-block;max-width:100%';
+            ibox.appendChild(img); window.__omranImgTools(ibox, a.dataUrl); wrap.appendChild(ibox);
+          } else wrap.appendChild(img);
         } else {
           const chip = document.createElement('div');
           chip.className = 'file-chip';
@@ -11674,6 +11679,30 @@ function renderAttachStrip(){
   });
 }
 
+// 🖼️ v579 — أزرار فوق الصورة نفسها: «تعديل» يرجّع الصورة إلى صندوق الكتابة
+// كمرفق (فيمشي مسار تعديل نفس الصورة بلا لبس)، و«حفظ» يشارك الملف أو ينزّله.
+window.__omranImgTools = function(wrap, dataUrl){
+  if(!wrap || !dataUrl || String(dataUrl).slice(0, 5) !== 'data:' || wrap.__imgTools) return;
+  const ar = (typeof lang !== 'undefined' && lang === 'ar');
+  const bar = document.createElement('div');
+  bar.style.cssText = 'position:absolute;left:8px;right:8px;bottom:8px;display:flex;gap:6px;justify-content:space-between;pointer-events:none;z-index:2';
+  const mk = (label, fn) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.style.cssText = 'pointer-events:auto;border:0;border-radius:999px;padding:6px 13px;font-size:12px;font-weight:600;color:#fff;background:rgba(0,0,0,.58);cursor:pointer'; b.onclick = (ev) => { ev.stopPropagation(); fn(); }; bar.appendChild(b); };
+  mk(ar ? '✏️ تعديل' : '✏️ Edit', () => {
+    pendingAttachments.push({ name: 'edit-' + Date.now() + '.png', isImage: true, mime: dataUrl.slice(5).split(';')[0] || 'image/png', dataUrl: dataUrl });
+    renderAttachStrip();
+    const p = $('#prompt'); if(p){ p.focus(); p.placeholder = ar ? 'اكتب التعديل المطلوب على هذي الصورة…' : 'Describe the edit you want…'; }
+  });
+  mk(ar ? '⬇️ حفظ' : '⬇️ Save', async () => {
+    try{
+      const bl = await (await fetch(dataUrl)).blob(), nm = 'image-' + Date.now() + '.png';
+      const f = new File([bl], nm, { type: bl.type || 'image/png' });
+      if(navigator.canShare && navigator.canShare({ files: [f] })){ await navigator.share({ files: [f] }); return; }
+      const u = URL.createObjectURL(bl), a = document.createElement('a'); a.href = u; a.download = nm; a.click(); setTimeout(() => URL.revokeObjectURL(u), 4000);
+    }catch(e){ __swallow(e, "upload:app-09-attach#v579"); }
+  });
+  wrap.style.position = 'relative'; wrap.__imgTools = 1; wrap.appendChild(bar);
+};
+
 function readFileAsDataUrl(file){
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -13310,7 +13339,10 @@ async function sendPrompt(){
       renderAll(); saveState();
       return;
     }
-    if(text && !cur.adMode && (__IMG_FOLLOW || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && (__srcImg || __followUp || __IMG_FOLLOW)){
+    // v579: صورة مرفقة + طلب قصير (مثلًا بعد زرّ «تعديل») = تعديل عليها افتراضيًّا — إلّا سؤال/بحث/فيديو/شكر/صورة جديدة/قراءة-ترجمة-وصف.
+    const __ATT_VISION_RE = /(ترجم|translate|اقرأ|اقري|إقرأ|قراءة|\bread\b|وصف|اوصف|صف\s|describe|حلل|حلّل|analyz|قارن|compare)/i;
+    const __ATT_EDIT = !!(__srcImg && !__srcImg._fromMemory && text && text.length <= 220 && !__IMGF_NOT_RE.test(text) && !__IMGF_NEW_RE.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text));
+    if(text && !cur.adMode && (__IMG_FOLLOW || __ATT_EDIT || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && (__srcImg || __followUp || __IMG_FOLLOW)){
       chatPhase('🖼️', lang === 'ar' ? 'جاري تعديل الصورة…' : 'Editing image…', thinkingDiv);
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : cur.lastEditedImage.b64;
       const __mime = __srcImg ? (__srcImg.mime || 'image/png') : (cur.lastEditedImage.mime || 'image/png');
