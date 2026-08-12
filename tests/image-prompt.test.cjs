@@ -97,10 +97,10 @@ test('localized edit quality gate rejects anime drift and identity changes', () 
   assert.equal(publicGuardError({ reason:'style_mismatch' }), 'image_edit_style_mismatch');
 });
 
-test('chat edit flow anchors repeated edits to the original and never auto-recreates from text', () => {
+test('chat edit flow continues from the latest edited pixels and never auto-recreates from text', () => {
   const attach = fs.readFileSync('js/app-09-attach.js', 'utf8');
   const maha = fs.readFileSync('js/app-08-maha.js', 'utf8');
-  assert.match(attach, /latestOriginalUserImage\(cur\)/);
+  assert.match(attach, /__pendingImageEditSource = \{ b64:__b64, mime:__mime \}/); assert.match(attach, /__side=\/\^\(right\|left\)-\//); assert.match(require('../api/_lib/prayer-plan').buildPlannerPrompt('أريد شعرًا', { kind:'poetry' }), /original polished 2–4 line Arabic poem/); assert.equal(require('../js/app-08-image-text.js').parseImageTextSpec('اكتب «نص» أعلى يمين الصورة').position, 'right-top');
   assert.match(attach, /cumulativeImageEditPrompt\(cur, text/);
   assert.match(attach, /cur\.imageEditSource = __pendingImageEditSource/);
   assert.match(attach, /cur\.imageEditInstructions = __pendingImageEditInstructions/);
