@@ -30,10 +30,12 @@
     if(/رقعة|رقعه|ruqaa|ruqa/i.test(source)) return 'ruqaa';
     if(/كوفي|kufi/i.test(source)) return 'kufi';
     if(/عثماني|othmani/i.test(source)) return 'othmani';
+    if(/نسخ\s*نوتو|نوتو|noto\s*naskh/i.test(source)) return 'naskh2'; if(/ثلث|thuluth/i.test(source)) return 'thuluth'; if(/فارسي|نستعليق|farsi|nastaliq/i.test(source)) return 'farsi'; if(/مصحف|قرآني|quran/i.test(source)) return 'quran';
     if(/نسخ|naskh/i.test(source)) return 'naskh';
-    return 'modern';
+    return 'default';
   }
   function textColor(source){
+    if(/أصفر|اصفر|yellow/i.test(source)) return '#ffd400';
     if(/ذهبي|ذهبية|gold/i.test(source)) return '#f4cf65';
     if(/أسود|اسود|black/i.test(source)) return '#111111';
     if(/أخضر|اخضر|green/i.test(source)) return '#2e8b57';
@@ -55,9 +57,13 @@
     if(kind === 'poetry') return 'خلفية فنية أصيلة مناسبة لشعر عربي';
     return 'خلفية فنية أنيقة مناسبة للنص المطلوب';
   }
+  function textStyleEdit(source){ if(findTextMarker(source)||!/(?:النص|الكتابة|الكتابه|الكلام|الخط|text|writing|font)/i.test(source)) return null;
+    const color=/(?:أصفر|اصفر|ذهبي|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|أبيض|ابيض|بيج|yellow|gold|black|green|blue|red|white|beige)/i.test(source)?textColor(source):null, fontKey=/(?:ديواني|رقعة|رقعه|كوفي|عثماني|نسخ|نوتو|ثلث|فارسي|نستعليق|مصحف|قرآني|diwani|ruqaa|kufi|othmani|naskh|thuluth|farsi|nastaliq|quran)/i.test(source)?textFont(source):null, position=/(?:أعلى|اعلى|فوق|وسط|منتصف|المركز|أسفل|اسفل|تحت|top|middle|center|bottom)/i.test(source)?textPosition(source):null;
+    return color||fontKey||position ? {color,fontKey,position} : null; }
   function isExplicitImageEdit(input){
     const source = String(input || '').trim();
     if(!source) return false;
+    if(textStyleEdit(source) || parseImageTextSpec(source).wantsText) return true;
     if(/(?:نفس\s+(?:الصورة|الصوره)|هذه\s+(?:الصورة|الصوره)|هذي\s+(?:الصورة|الصوره)|هالصورة|هالصوره|الصورة\s+السابقة|الصوره\s+السابقه|(?:same|this|previous)\s+(?:image|picture))/i.test(source)) return true;
     const editVerb = /(?:^|[\s،,.!?؟])(?:عدل|عدّل|حرر|حرّر|غير|غيّر|بدل|بدّل|احذف|امسح|ازل|أزل|شيل|أضف|اضف|ضيف|حط|اكتب|أكتب|خل|اجعل|كبر|كبّر|صغر|صغّر)(?=$|[\s،,.!?؟]|ها)/i.test(source) || /\b(?:edit|change|modify|remove|delete|add|put|write|resize)\b/i.test(source);
     const imageRef = /(?:الصورة|الصوره|هالصورة|هالصوره|عليها|فيها|منها|لها|\S+ها(?:\s|$)|\bit\b|this\s+(?:image|picture)|the\s+(?:image|picture))/i.test(source);
@@ -66,17 +72,17 @@
   }
   function autoPrayerSpec(input){
     const source = String(input || '').trim();
-    if(!/(?:^|[\s،,.!?؟])(?:دعاء|prayer|du[’']?a)(?=$|[\s،,.!?؟:：\-–—])/i.test(source)) return null;
+    if(!/(?:^|[\s،,.!?؟])(?:دعاء|شعر|قصيدة|كلام\s+(?:غزل|رومانسي)|غزل|prayer|poem|romantic\s+words?)(?=$|[\s،,.!?؟:：\-–—])/i.test(source)) return null;
     // «النص: دعاء...» أو «اكتب كلمة دعاء» يعني نصًا حرفيًا، لا طلب تأليف.
-    if(/(?:النص|العبارة|الكلام|الكلمة|كلمة|text|words?)\s*(?:هو|is)?\s*[:：\-–—]?\s*(?:دعاء|prayer|du[’']?a)(?=$|[\s،,.!?؟])/i.test(source)) return null;
+    if(/(?:النص|العبارة|الكلام|الكلمة|كلمة|text|words?)\s*(?:هو|is)?\s*[:：\-–—]?\s*(?:دعاء|شعر|قصيدة|غزل|prayer|poem)(?=$|[\s،,.!?؟])/i.test(source)) return null;
     // كل نص بين علامات اقتباس يبقى حرفيًا كما كتبه المستخدم.
     if(quotedValue(source)) return null;
-    return { request:source };
+    return { request:source, kind:/(?:شعر|قصيدة|poem)/i.test(source)?'poetry':/(?:غزل|رومانسي|romantic)/i.test(source)?'flirt':'prayer' };
   }
   function parseImageTextSpec(input){
     const source = String(input || '').replace(/\r\n?/g, '\n');
-    const autoPrayer = autoPrayerSpec(source), marker = autoPrayer ? null : findTextMarker(source);
-    if(!marker) return autoPrayer ? { wantsText:true, exactText:null, visualPrompt:source.trim(), prayerRequest:autoPrayer.request, fontKey:textFont(source), color:textColor(source), position:textPosition(source), kind:'prayer', autoAuthored:true } : { wantsText:false, exactText:null, visualPrompt:source.trim(), fontKey:'modern', color:'#ffffff', position:'bottom' };
+    const styleEdit = textStyleEdit(source), autoPrayer = styleEdit ? null : autoPrayerSpec(source), marker = autoPrayer ? null : findTextMarker(source); if(styleEdit) return { wantsText:false, exactText:null, visualPrompt:'', styleEdit };
+    if(!marker) return autoPrayer ? { wantsText:true, exactText:null, visualPrompt:source.trim(), prayerRequest:autoPrayer.request, fontKey:textFont(source), color:textColor(source), position:(/(?:يمين|right)/i.test(source)?'right-':/(?:يسار|left)/i.test(source)?'left-':'')+textPosition(source), kind:autoPrayer.kind, autoAuthored:true } : { wantsText:false, exactText:null, visualPrompt:source.trim(), fontKey:'default', color:'#ffffff', position:'bottom' };
     const literalPrayerText = /(?:النص|العبارة|الكلام|الكلمة|كلمة|text|words?)\s*(?:هو|is)?\s*[:：\-–—]?\s*(?:دعاء|prayer|du[’']?a)(?=$|[\s،,.!?؟])/i.test(source.slice(marker.index));
     let rest = source.slice(marker.index + marker.value.length);
     rest = rest.replace(/^\s*(?:لي\s+)?/i, '');
@@ -105,7 +111,7 @@
     const visualSuffix = suffix.replace(/(?:بخط|بالخط)\s+\S+(?:\s+(?:ذهبي(?:ة)?|أبيض|ابيض|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|بيج|gold|white|black|green|blue|red|beige))?|(?:بلون|باللون|لون\s+النص)\s+\S+|(?:واجعل|اجعل|وخلي|خلي)\s+النص\s+(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|الوسط|المنتصف|الأسفل|الاسفل)|(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|فوق|الوسط|المنتصف|المركز|الأسفل|الاسفل)|(?:on|in)\s+(?:the\s+)?(?:image|photo|picture|top|middle|center|bottom)/gi, '').replace(/^[\s،,و]+|[\s،,]+$/g, '');
     if(visualSuffix) visualPrompt = (visualPrompt + ' ' + visualSuffix).trim();
     if(!visualPrompt || /^(?:(?:أنشئ|انشئ|اصنع|ولد|ولّد|صمم|ارسم|create|generate|make|draw)\s*(?:لي\s*)?)?(?:صورة|صوره|image|picture)?\s*$/i.test(visualPrompt)) visualPrompt = fallbackVisual(kind, exactText);
-    return { wantsText:true, exactText, visualPrompt, fontKey:textFont(styleSource), color:textColor(styleSource), position:textPosition(styleSource), kind };
+    return { wantsText:true, exactText, visualPrompt, fontKey:textFont(styleSource), color:textColor(styleSource), position:(/(?:يمين|right)/i.test(styleSource)?'right-':/(?:يسار|left)/i.test(styleSource)?'left-':'')+textPosition(styleSource), kind, prayerRequest:!exactText&&kind?source:undefined, autoAuthored:!exactText&&kind?true:undefined };
   }
   root.__parseImageTextSpec = parseImageTextSpec;
   root.__isExplicitImageEdit = isExplicitImageEdit;

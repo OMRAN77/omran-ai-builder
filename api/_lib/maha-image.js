@@ -71,7 +71,7 @@ module.exports = async (req, res) => {
         return;
       }
       try {
-        prayerPlan = await authorPrayerPlan(apiKey, prayerRequest, { textPosition: body.textPosition });
+        prayerPlan = await authorPrayerPlan(apiKey, prayerRequest, { textPosition: body.textPosition, kind: body.textKind });
       } catch (error) {
         console.error('[maha-image] prayer planner failed: ' + (error && error.message ? error.message : error));
         res.status(502).json({ error: 'تعذّر تأليف الدعاء وفكرته البصرية بدقة الآن. جرّب مرة أخرى.' });
