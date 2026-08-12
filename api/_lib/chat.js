@@ -134,7 +134,7 @@ const askStreak = (msgs) => { let n = 0;
   return n; };
 // معالج الكتالوج ستّ خطوات بأمر صريح — السقف لا يمسّه.
 // 🔢 v558 — أرقام ولوحات للبيع: الموقعان المتخصّصان فورًا، بلا أيّ سؤال.
-const NUM_ASK_RE = /لوح(ة|ات|تين)\s*(سيار|مركب|مرور|مميز|رقم|للبيع)|[أا]رقام\s*(هواتف|هاتف|جوالات|جوال|موبايل|شرائح|شريحة|للبيع|مميز)|رقم\s*(هاتف|جوال|موبايل)?\s*(مميز|vip)|بليت|بلايت|number plate|license plate|plate for sale/i;
+const NUM_ASK_RE = /لوح(ة|ات|تين)\s*([أا]رقام|سيار|مركب|مرور|مميز|رقم|للبيع)|[أا]رقام\s*(سيارات|سيارة|سيارتي|مركبات|مركبة|لوحات|لوحة|هواتف|هاتف|جوالات|جوال|موبايل|شرائح|شريحة|للبيع|مميز)|رقم\s*(سيارة|سيارتي|مركبة|هاتف|جوال|موبايل)?\s*(مميز|vip)|رقم\s*(سيارة|مركبة)\s*(للبيع|لي البيع)|بليت|بلايت|number plate|license plate|plate for sale/i;
 const NUM_NOTE = '\n\n[طلب أرقام أو لوحات — إلزاميّ في هذا الردّ]:\n' +
   'المستخدم يطلب لوحة سيارة أو رقمًا مميّزًا للبيع. ممنوع أن تسأله أي سؤال، وممنوع بطاقات الخيارات.\n' +
   'استعمل web_search فورًا وأعطِ في هذا الردّ نفسه نتائج وروابط حقيقية من موقعَي الأرقام المتخصّصين.\n' +
@@ -267,10 +267,10 @@ function countryNote(code) {
   return '\n[الدولة]: المستخدم يتصفّح من ' + (ar || c) + ' — أجب بمعلومات هذه الدولة (عملتها، جهاتها الرسمية) ما لم يذكر غيرها.';
 }
 
-async function tavilySearch(query, reC) {
+async function tavilySearch(query, reC, plateAsk) {
   // 🔢 v558 — الأرقام واللوحات للبيع: الموقعان المتخصّصان وحدهما. مسار الدردشة كان
   // يمرّ على Google Places أوّلًا فيرجع مكاتب على الخريطة بدل سوقَي الأرقام.
-  if (NUM_ASK_RE.test(query)) {
+  if (plateAsk || NUM_ASK_RE.test(query)) {
     return '1. XPlate — سوق لوحات وأرقام مميّزة للبيع في الإمارات\nhttps://www.xplate.com/\n\n'
       + '2. S-Plate (SHub) — لوحات وأرقام مميّزة للبيع في الإمارات\nhttps://s-plate.com/ar\n\n'
       + 'المصدر: موقعا الأرقام المتخصّصان. اعرض هذين الرابطين فقط، ولا تذكر أي موقع آخر ولا سطر خرائط.';
@@ -529,7 +529,7 @@ module.exports = async (req, res) => {
         let input = {};
         try { input = JSON.parse(cb.inputJson || '{}'); } catch (e) { logError('chat/tool-input-parse', e); }
         let result = 'أداة غير معروفة';
-        if (cb.name === 'web_search') result = await tavilySearch(input.query || '', reC);
+        if (cb.name === 'web_search') result = await tavilySearch(input.query || '', reC, !!(lastUser && NUM_ASK_RE.test(lastUser.content)));
         else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
         else if (cb.name === 'run_js') result = await runInClient(send, 'run_js', input);
         else if (cb.name === 'generate_image') result = await runInClient(send, 'generate_image', input, 75000);
