@@ -672,8 +672,7 @@ function overlayDesignLines(b64, mime, lines){
   });
 }
 const MAHA_FONTS = {
-  default:{css:'Tajawal',gf:'Tajawal:wght@700'}, kufi:{css:'Reem Kufi',gf:'Reem+Kufi:wght@700'}, naskh:{css:'Amiri',gf:'Amiri:wght@700'}, naskh2:{css:'Noto Naskh Arabic',gf:'Noto+Naskh+Arabic:wght@700'},
-  thuluth:{css:'Aref Ruqaa',gf:'Aref+Ruqaa:wght@700'}, farsi:{css:'Gulzar',gf:'Gulzar'}, diwani:{css:'Katibeh',gf:'Katibeh'}, ruqaa:{css:'Rakkas',gf:'Rakkas'}, quran:{css:'Scheherazade New',gf:'Scheherazade+New:wght@700'}, othmani:{css:'Scheherazade New',gf:'Scheherazade+New:wght@700'}
+  default:{css:'Tajawal',gf:'Tajawal:wght@700'}, kufi:{css:'Reem Kufi',gf:'Reem+Kufi:wght@700'}, naskh:{css:'Amiri',gf:'Amiri:wght@700'}, naskh2:{css:'Noto Naskh Arabic',gf:'Noto+Naskh+Arabic:wght@700'}, thuluth:{css:'Aref Ruqaa',gf:'Aref+Ruqaa:wght@700'}, farsi:{css:'Gulzar',gf:'Gulzar'}, diwani:{css:'Katibeh',gf:'Katibeh'}, ruqaa:{css:'Rakkas',gf:'Rakkas'}, quran:{css:'Scheherazade New',gf:'Scheherazade+New:wght@700'}, othmani:{css:'Scheherazade New',gf:'Scheherazade+New:wght@700'}
 };
 async function mahaLoadFont(key){
   const f = MAHA_FONTS[key] || MAHA_FONTS.default;

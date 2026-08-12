@@ -9349,9 +9349,7 @@ async function postWithConfirm(url, payload){
     if(kind === 'poetry') return 'خلفية فنية أصيلة مناسبة لشعر عربي';
     return 'خلفية فنية أنيقة مناسبة للنص المطلوب';
   }
-  function textStyleEdit(source){ if(findTextMarker(source)||!/(?:النص|الكتابة|الكتابه|الكلام|الخط|text|writing|font)/i.test(source)) return null;
-    const color=/(?:أصفر|اصفر|ذهبي|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|أبيض|ابيض|بيج|yellow|gold|black|green|blue|red|white|beige)/i.test(source)?textColor(source):null, fontKey=/(?:ديواني|رقعة|رقعه|كوفي|عثماني|نسخ|نوتو|ثلث|فارسي|نستعليق|مصحف|قرآني|diwani|ruqaa|kufi|othmani|naskh|thuluth|farsi|nastaliq|quran)/i.test(source)?textFont(source):null, position=/(?:أعلى|اعلى|فوق|وسط|منتصف|المركز|أسفل|اسفل|تحت|top|middle|center|bottom)/i.test(source)?textPosition(source):null;
-    return color||fontKey||position ? {color,fontKey,position} : null; }
+  function textStyleEdit(source){ if(findTextMarker(source)||!/(?:النص|الكتابة|الكتابه|الكلام|الخط|text|writing|font)/i.test(source)) return null; const color=/(?:أصفر|اصفر|ذهبي|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|أبيض|ابيض|بيج|yellow|gold|black|green|blue|red|white|beige)/i.test(source)?textColor(source):null, fontKey=/(?:ديواني|رقعة|رقعه|كوفي|عثماني|نسخ|نوتو|ثلث|فارسي|نستعليق|مصحف|قرآني|diwani|ruqaa|kufi|othmani|naskh|thuluth|farsi|nastaliq|quran)/i.test(source)?textFont(source):null, position=/(?:أعلى|اعلى|فوق|وسط|منتصف|المركز|أسفل|اسفل|تحت|top|middle|center|bottom)/i.test(source)?textPosition(source):null; return color||fontKey||position ? {color,fontKey,position} : null; }
   function isExplicitImageEdit(input){
     const source = String(input || '').trim();
     if(!source) return false;
@@ -12089,8 +12087,7 @@ function overlayDesignLines(b64, mime, lines){
   });
 }
 const MAHA_FONTS = {
-  default:{css:'Tajawal',gf:'Tajawal:wght@700'}, kufi:{css:'Reem Kufi',gf:'Reem+Kufi:wght@700'}, naskh:{css:'Amiri',gf:'Amiri:wght@700'}, naskh2:{css:'Noto Naskh Arabic',gf:'Noto+Naskh+Arabic:wght@700'},
-  thuluth:{css:'Aref Ruqaa',gf:'Aref+Ruqaa:wght@700'}, farsi:{css:'Gulzar',gf:'Gulzar'}, diwani:{css:'Katibeh',gf:'Katibeh'}, ruqaa:{css:'Rakkas',gf:'Rakkas'}, quran:{css:'Scheherazade New',gf:'Scheherazade+New:wght@700'}, othmani:{css:'Scheherazade New',gf:'Scheherazade+New:wght@700'}
+  default:{css:'Tajawal',gf:'Tajawal:wght@700'}, kufi:{css:'Reem Kufi',gf:'Reem+Kufi:wght@700'}, naskh:{css:'Amiri',gf:'Amiri:wght@700'}, naskh2:{css:'Noto Naskh Arabic',gf:'Noto+Naskh+Arabic:wght@700'}, thuluth:{css:'Aref Ruqaa',gf:'Aref+Ruqaa:wght@700'}, farsi:{css:'Gulzar',gf:'Gulzar'}, diwani:{css:'Katibeh',gf:'Katibeh'}, ruqaa:{css:'Rakkas',gf:'Rakkas'}, quran:{css:'Scheherazade New',gf:'Scheherazade+New:wght@700'}, othmani:{css:'Scheherazade New',gf:'Scheherazade+New:wght@700'}
 };
 async function mahaLoadFont(key){
   const f = MAHA_FONTS[key] || MAHA_FONTS.default;
