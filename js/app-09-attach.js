@@ -698,7 +698,7 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
         c.width = img.naturalWidth; c.height = img.naturalHeight;
         const ctx = c.getContext('2d');
         ctx.drawImage(img, 0, 0);
-        const maxWidth = c.width * 0.82, maxHeight = c.height * 0.34;
+        const __side=/^(right|left)-/.exec(position||''), maxWidth=c.width*(__side?.[1]?0.28:0.82), maxHeight=c.height*0.34; if(__side){ctx.translate((__side[1]==='right'?1:-1)*c.width*.33,0);position=position.slice(__side[0].length);}
         let fs = Math.floor(Math.min(c.width / 9, c.height / 8));
         let lines = [];
         const setF = () => { ctx.font = '700 ' + fs + 'px "' + fontCss + '", "Segoe UI", Tahoma, Arial, sans-serif'; };

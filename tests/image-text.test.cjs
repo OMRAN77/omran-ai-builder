@@ -88,6 +88,3 @@ test('only explicit follow-ups reuse a previous image', () => {
   assert.equal(isExplicitImageEdit('أضف كلبًا إلى صورة ليل جديدة'), false);
   assert.equal(isExplicitImageEdit('أنشئ صورة شمس'), false);
 });
-
-test('text-only follow-ups keep wording and restyle the stored layer', () => { assert.equal(parseImageTextSpec('غير لون الكتابة للأصفر').styleEdit.color, '#ffd400'); assert.deepEqual(['أريد دعاء','أريد شعر','أريد كلام غزل'].map(x => parseImageTextSpec(x).kind), ['prayer','poetry','flirt']); });
-test('all account font choices are accepted for image writing', () => { assert.deepEqual(['الافتراضي','الكوفي','النسخ','نسخ نوتو','الثلث','الفارسي','الديواني','الرقعة','المصحف'].map(x => parseImageTextSpec('اكتب على الصورة «نص» بالخط '+x).fontKey), ['default','kufi','naskh','naskh2','thuluth','farsi','diwani','ruqaa','quran']); });

@@ -9374,7 +9374,7 @@ async function postWithConfirm(url, payload){
   function parseImageTextSpec(input){
     const source = String(input || '').replace(/\r\n?/g, '\n');
     const styleEdit = textStyleEdit(source), autoPrayer = styleEdit ? null : autoPrayerSpec(source), marker = autoPrayer ? null : findTextMarker(source); if(styleEdit) return { wantsText:false, exactText:null, visualPrompt:'', styleEdit };
-    if(!marker) return autoPrayer ? { wantsText:true, exactText:null, visualPrompt:source.trim(), prayerRequest:autoPrayer.request, fontKey:textFont(source), color:textColor(source), position:textPosition(source), kind:autoPrayer.kind, autoAuthored:true } : { wantsText:false, exactText:null, visualPrompt:source.trim(), fontKey:'default', color:'#ffffff', position:'bottom' };
+    if(!marker) return autoPrayer ? { wantsText:true, exactText:null, visualPrompt:source.trim(), prayerRequest:autoPrayer.request, fontKey:textFont(source), color:textColor(source), position:(/(?:يمين|right)/i.test(source)?'right-':/(?:يسار|left)/i.test(source)?'left-':'')+textPosition(source), kind:autoPrayer.kind, autoAuthored:true } : { wantsText:false, exactText:null, visualPrompt:source.trim(), fontKey:'default', color:'#ffffff', position:'bottom' };
     const literalPrayerText = /(?:النص|العبارة|الكلام|الكلمة|كلمة|text|words?)\s*(?:هو|is)?\s*[:：\-–—]?\s*(?:دعاء|prayer|du[’']?a)(?=$|[\s،,.!?؟])/i.test(source.slice(marker.index));
     let rest = source.slice(marker.index + marker.value.length);
     rest = rest.replace(/^\s*(?:لي\s+)?/i, '');
@@ -9403,7 +9403,7 @@ async function postWithConfirm(url, payload){
     const visualSuffix = suffix.replace(/(?:بخط|بالخط)\s+\S+(?:\s+(?:ذهبي(?:ة)?|أبيض|ابيض|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|بيج|gold|white|black|green|blue|red|beige))?|(?:بلون|باللون|لون\s+النص)\s+\S+|(?:واجعل|اجعل|وخلي|خلي)\s+النص\s+(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|الوسط|المنتصف|الأسفل|الاسفل)|(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|فوق|الوسط|المنتصف|المركز|الأسفل|الاسفل)|(?:on|in)\s+(?:the\s+)?(?:image|photo|picture|top|middle|center|bottom)/gi, '').replace(/^[\s،,و]+|[\s،,]+$/g, '');
     if(visualSuffix) visualPrompt = (visualPrompt + ' ' + visualSuffix).trim();
     if(!visualPrompt || /^(?:(?:أنشئ|انشئ|اصنع|ولد|ولّد|صمم|ارسم|create|generate|make|draw)\s*(?:لي\s*)?)?(?:صورة|صوره|image|picture)?\s*$/i.test(visualPrompt)) visualPrompt = fallbackVisual(kind, exactText);
-    return { wantsText:true, exactText, visualPrompt, fontKey:textFont(styleSource), color:textColor(styleSource), position:textPosition(styleSource), kind, prayerRequest:!exactText&&kind?source:undefined, autoAuthored:!exactText&&kind?true:undefined };
+    return { wantsText:true, exactText, visualPrompt, fontKey:textFont(styleSource), color:textColor(styleSource), position:(/(?:يمين|right)/i.test(styleSource)?'right-':/(?:يسار|left)/i.test(styleSource)?'left-':'')+textPosition(styleSource), kind, prayerRequest:!exactText&&kind?source:undefined, autoAuthored:!exactText&&kind?true:undefined };
   }
   root.__parseImageTextSpec = parseImageTextSpec;
   root.__isExplicitImageEdit = isExplicitImageEdit;
@@ -12115,7 +12115,7 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
         c.width = img.naturalWidth; c.height = img.naturalHeight;
         const ctx = c.getContext('2d');
         ctx.drawImage(img, 0, 0);
-        const maxWidth = c.width * 0.82, maxHeight = c.height * 0.34;
+        const __side=/^(right|left)-/.exec(position||''), maxWidth=c.width*(__side?.[1]?0.28:0.82), maxHeight=c.height*0.34; if(__side){ctx.translate((__side[1]==='right'?1:-1)*c.width*.33,0);position=position.slice(__side[0].length);}
         let fs = Math.floor(Math.min(c.width / 9, c.height / 8));
         let lines = [];
         const setF = () => { ctx.font = '700 ' + fs + 'px "' + fontCss + '", "Segoe UI", Tahoma, Arial, sans-serif'; };
