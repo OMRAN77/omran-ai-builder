@@ -6,12 +6,12 @@
   }
   function findTextMarker(source){
     let strong = firstMatch(source, /(?:أكتب|اكتب(?:ي|وا)?|مكتوب(?:ة)?\s+(?:عليها|عليه|فيها|على\s+(?:هذه\s+)?(?:الصورة|الصوره))|write)/i);
-    const placed = firstMatch(source, /(?:عليها|عليه|فيها|فوقها|تتضمن|تحمل|على\s+(?:هذه\s+)?(?:الصورة|الصوره)|(?:with|containing|on\s+it)\s+)(?:\s*(?:عبارة|النص|نص|كلمة|الكلام|اسم|دعاء|شعر|بيت\s+شعر|the\s+text|text|words?|name|quote)\s*)?(?=[«“"'])/i);
+    const placed = firstMatch(source, /(?:عليها|عليه|فيها|فوقها|تتضمن|تحمل|على\s+(?:هذه\s+)?(?:الصورة|الصوره)|(?:with|containing|on\s+it)\s+)(?:\s*(?:عبارة|النص|نص|كلمة|الكلام|اسم|دعا[ءدهً]?|شعر|بيت\s+شعر|the\s+text|text|words?|name|quote)\s*)?(?=[«“"'])/i);
     if(placed && (!strong || placed.index < strong.index)) strong = placed;
     const weak = firstMatch(source, /(?:ضع|حط|أضف|اضف|ضيف|put|add)/i);
     if(!weak) return strong;
     const tail = source.slice(weak.index + weak.value.length);
-    const weakIsText = /^\s*(?:لي\s+)?(?:عليها|عليه|فوقها|فيها|على\s+(?:هذه\s+)?(?:الصورة|الصوره)|النص|العبارة|الكلام|كلام|كلمة|اسمي|اسم|دعاء|شعر|بيت\s+شعر|the\s+text|text|words?|name|quote)(?=\s|[:：«“"'\-–—]|$)/i.test(tail) || /[«“"']/.test(tail);
+    const weakIsText = /^\s*(?:لي\s+)?(?:عليها|عليه|فوقها|فيها|على\s+(?:هذه\s+)?(?:الصورة|الصوره)|النص|العبارة|الكلام|كلام|كلمة|اسمي|اسم|دعا[ءدهً]?|شعر|بيت\s+شعر|the\s+text|text|words?|name|quote)(?=\s|[:：«“"'\-–—]|$)/i.test(tail) || /[«“"']/.test(tail);
     if(!weakIsText) return strong;
     if(!strong || weak.index < strong.index) return weak;
     return strong;
@@ -76,7 +76,7 @@
     return color || fontKey || position ? { color, fontKey, position } : null;
   }
   // وصف طلب («كلام حلو»، «جمله عن النجاح») مقابل نصّ حرفيّ («عمران»).
-  const KIND_HEAD_RE = /^(?:أي|اي|شي|شيء)?\s*(كلام|كلمات|كلمتين|جملة|جمله|جمل|عبارة|عباره|عبارات|كلمة|كلمه|حكمة|حكمه|اقتباس|مقولة|مقوله|بيت\s+شعر|أبيات|ابيات|قصيدة|قصيده|دعاء|أدعية|ادعية|شعر|غزل|تهنئة|تهنئه|معايدة|معايده|رسالة|رساله)(?=$|[\s،,.!?؟:])/;
+  const KIND_HEAD_RE = /^(?:أي|اي|شي|شيء)?\s*(كلام|كلمات|كلمتين|جملة|جمله|جمل|عبارة|عباره|عبارات|كلمة|كلمه|حكمة|حكمه|اقتباس|مقولة|مقوله|بيت\s+شعر|أبيات|ابيات|قصيدة|قصيده|دعا[ءدهً]?|[أا]دعي[ةه]|شعر|غزل|تهنئة|تهنئه|معايدة|معايده|رسالة|رساله)(?=$|[\s،,.!?؟:])/;
   const DESCRIBER_RE = /(?:^|[\s،,])(?:حلو|حلوة|حلوه|حلوين|جميل|جميلة|جميله|قصير|قصيرة|قصيره|طويل|طويلة|مؤثر|مؤثرة|مؤثره|قوي|قوية|قويه|رائع|رائعة|أنيق|انيق|مناسب|مناسبة|زين|زينة|عن|nice|short|about)(?=$|[\s،,.!?؟])/;
   function looksLikeRequest(value){
     const s = String(value || '').trim();
@@ -91,7 +91,7 @@
   function requestKind(s){
     if(/(?:شعر|قصيدة|قصيده|بيت|أبيات|ابيات)/.test(s)) return 'poetry';
     if(/(?:غزل|رومانسي)/.test(s)) return 'flirt';
-    if(/(?:دعاء|أدعية|ادعية)/.test(s)) return 'prayer';
+    if(/(?:دعا[ءدهً]?(?![\u0621-\u064a])|[أا]دعي[ةه])/.test(s)) return 'prayer';
     return 'phrase';
   }
   // نيّة كتابة صريحة: ممنوع على مولّد الصور أن يلمس الصورة في هذه الحالة.
@@ -114,24 +114,33 @@
   }
   function autoPrayerSpec(input){
     const source = String(input || '').trim();
-    if(!/(?:^|[\s،,.!?؟])(?:دعاء|شعر|قصيدة|كلام\s+(?:غزل|رومانسي)|غزل|prayer|poem|romantic\s+words?)(?=$|[\s،,.!?؟:：\-–—])/i.test(source)) return null;
+    if(!/(?:^|[\s،,.!?؟])(?:دعا[ءدهً]?|[أا]دعي[ةه]|شعر|قصيدة|كلام\s+(?:غزل|رومانسي)|غزل|prayer|poem|romantic\s+words?)(?=$|[\s،,.!?؟:：\-–—])/i.test(source)) return null;
     // «النص: دعاء...» أو «اكتب كلمة دعاء» يعني نصًا حرفيًا، لا طلب تأليف.
-    if(/(?:النص|العبارة|الكلام|الكلمة|كلمة|text|words?)\s*(?:هو|is)?\s*[:：\-–—]?\s*(?:دعاء|شعر|قصيدة|غزل|prayer|poem)(?=$|[\s،,.!?؟])/i.test(source)) return null;
+    if(/(?:النص|العبارة|الكلام|الكلمة|كلمة|text|words?)\s*(?:هو|is)?\s*[:：\-–—]?\s*(?:دعا[ءدهً]?|شعر|قصيدة|غزل|prayer|poem)(?=$|[\s،,.!?؟])/i.test(source)) return null;
     // كل نص بين علامات اقتباس يبقى حرفيًا كما كتبه المستخدم.
     if(quotedValue(source)) return null;
     return { request:source, kind:/(?:شعر|قصيدة|poem)/i.test(source)?'poetry':/(?:غزل|رومانسي|romantic)/i.test(source)?'flirt':'prayer' };
   }
+  // «مع كتابة دعاء» أمرٌ للعميل لا وصفٌ للمولّد. تبقى في الوصف ⇒ المولّد يرسم
+  // خطًّا عربيًّا مزيّفًا أو اسمًا تحت طبقتنا. تُنزع قبل أن يرى الطلب.
+  const TYPE_ALT = 'دعا[ءدهً]?|[أا]دعي[ةه]|شعر|قصيدة|قصيده|بيت\\s+شعر|[أا]بيات|غزل|رومانسي|prayer|poem';
+  const WRITE_VERB_RE = new RegExp('\\s*[،,]?\\s*(?:و\\s*)?(?:مع\\s+|وفيها\\s+|وعليها\\s+|عليها\\s+|فيها\\s+)?(?:كتابة|كتابه|اكتب(?:ي|لي)?|أكتب|تكتب|يكتب|حط|ضع|أضف|اضف|ضيف)\\s*(?:لي\\s+)?(?:عليها|عليه|فوقها|فيها)?\\s*(?:النص|نص|عبارة|عباره|كلام|كلمات|جملة|جمله)?\\s*(?:' + TYPE_ALT + ')?', 'gi');
+  const WITH_TYPE_RE = new RegExp('\\s*[،,]?\\s*(?:و\\s*)?(?:مع|وفيها|وعليها|عليها|فيها|فيه|تحمل|تتضمن)\\s+(?:النص\\s+|نص\\s+|عبارة\\s+|كلام\\s+)?(?:' + TYPE_ALT + ')(?:\\s+(?:جميل|جميلة|حلو|حلوة|قصير|قصيرة|مؤثر|مؤثرة|مناسب|مناسبة))?', 'gi');
+  function authorVisual(source, kind){
+    const v = cleanVisual(stripOnImage(source).replace(WRITE_VERB_RE, ' ').replace(WITH_TYPE_RE, ' ').replace(/\s{2,}/g, ' ').replace(/^[\s،,و]+|[\s،,]+$/g, ''));
+    return (!v || /^(?:(?:أنشئ|انشئ|اصنع|ولد|ولّد|صمم|ارسم|create|generate|make|draw)\s*(?:لي\s*)?)?(?:صورة|صوره|image|picture)?\s*$/i.test(v)) ? fallbackVisual(kind, null) : v;
+  }
   function parseImageTextSpec(input){
     const source = String(input || '').replace(/\r\n?/g, '\n');
     const styleEdit = textStyleEdit(source), autoPrayer = styleEdit ? null : autoPrayerSpec(source), marker = autoPrayer ? null : findTextMarker(source); if(styleEdit) return { wantsText:false, exactText:null, visualPrompt:'', styleEdit, styleEditLoose:styleEdit };
-    if(!marker) return autoPrayer ? { wantsText:true, exactText:null, visualPrompt:source.trim(), prayerRequest:autoPrayer.request, fontKey:textFont(source), color:textColor(source), position:(/(?:يمين|right)/i.test(source)?'right-':/(?:يسار|left)/i.test(source)?'left-':'')+textPosition(source), positionAuto:!positionExplicit(source), kind:autoPrayer.kind, autoAuthored:true } : { wantsText:false, exactText:null, visualPrompt:source.trim(), fontKey:'default', color:'#ffffff', position:'bottom', styleEditLoose:textStyleEditLoose(source) };
-    const literalPrayerText = /(?:النص|العبارة|الكلام|الكلمة|كلمة|text|words?)\s*(?:هو|is)?\s*[:：\-–—]?\s*(?:دعاء|prayer|du[’']?a)(?=$|[\s،,.!?؟])/i.test(source.slice(marker.index));
+    if(!marker) return autoPrayer ? { wantsText:true, exactText:null, visualPrompt:authorVisual(source, autoPrayer.kind), prayerRequest:autoPrayer.request, fontKey:textFont(source), color:textColor(source), position:(/(?:يمين|right)/i.test(source)?'right-':/(?:يسار|left)/i.test(source)?'left-':'')+textPosition(source), positionAuto:!positionExplicit(source), kind:autoPrayer.kind, autoAuthored:true } : { wantsText:false, exactText:null, visualPrompt:source.trim(), fontKey:'default', color:'#ffffff', position:'bottom', styleEditLoose:textStyleEditLoose(source) };
+    const literalPrayerText = /(?:النص|العبارة|الكلام|الكلمة|كلمة|text|words?)\s*(?:هو|is)?\s*[:：\-–—]?\s*(?:دعا[ءدهً]?|prayer|du[’']?a)(?=$|[\s،,.!?؟])/i.test(source.slice(marker.index));
     let rest = source.slice(marker.index + marker.value.length);
     rest = rest.replace(/^\s*(?:لي\s+)?/i, '');
     rest = rest.replace(/^\s*(?:عليها|عليه|فوقها|فيها|على\s+(?:هذه\s+)?(?:الصورة|الصوره)|فوق\s+(?:الصورة|الصوره)|on\s+(?:the\s+)?(?:image|photo|picture))\s*/i, '');
     rest = rest.replace(/^\s*(?:النص|العبارة|الكلام|الكلمة|كلمة|اسمي|اسم|the\s+text|text|words?|name|quote)?\s*(?:هو|وهو|التالي|is)?\s*[:：\-–—]?\s*/i, '');
     let kind = '';
-    const kindMatch = rest.match(/^\s*(دعاء|الشعر|شعر|بيت\s+شعر|قصيدة)(?=\s|[:：\-–—]|$)\s*[:：\-–—]?\s*/i);
+    const kindMatch = rest.match(/^\s*(دعا[ءدهً]?|الشعر|شعر|بيت\s+شعر|قصيدة)(?=\s|[:：\-–—]|$)\s*[:：\-–—]?\s*/i);
     if(kindMatch && !literalPrayerText){
       kind = /دعاء/i.test(kindMatch[1]) ? 'prayer' : 'poetry';
       rest = rest.slice(kindMatch[0].length);
@@ -149,7 +158,7 @@
       // ذيل «على الصورة / فوق الصورة» ليس جزءًا من النصّ المكتوب.
       exactText = rest.trim().replace(/\s*(?:،|,)?\s*(?:على|فوق|في)\s*(?:هذه\s*|هذي\s*|هال)?(?:الصورة|الصوره)(?:\s*نفسها)?\s*$/i, '').trim();
     }
-    if(exactText == null || !exactText.trim() || /^(?:دعاء|شعر|بيت\s+شعر|قصيدة|نص|كلام|prayer|poem|text)$/i.test(exactText.trim())){
+    if(exactText == null || !exactText.trim() || /^(?:دعا[ءدهً]?|شعر|بيت\s+شعر|قصيدة|نص|كلام|prayer|poem|text)$/i.test(exactText.trim())){
       if(!kind && exactText && exactText.trim()) kind = requestKind(exactText.trim());
       exactText = null;
     }else if(!quoted && !literalPrayerText && looksLikeRequest(exactText)){

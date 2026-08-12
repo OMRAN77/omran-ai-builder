@@ -1178,13 +1178,38 @@ function renderMessages(keepScroll){
       dots.textContent = '⏳';
       textDiv.appendChild(dots);
     }
+    // 🎨 رمز الصورة (__IMG_n__) عقدٌ بين النموذج والعميل لبناء المواقع — لا نصّ
+    // يُقرأ. كان يُطبع خامًّا في الدردشة؛ الآن يصير صورةً ويُنزع من الكلام.
+    let __mc = m.content, __genShown = null;
+    if(m.role !== 'user' && typeof __mc === 'string' && __mc.indexOf('__IMG_') !== -1){
+      __genShown = [];
+      __mc = __mc.replace(/!?\[[^\]]*\]\(\s*(__IMG_\d+__)\s*\)|`?(__IMG_\d+__)`?/g, (whole, a, b) => {
+        const url = (window.__genImages || {})[a || b];
+        if(!url) return '';
+        if(__genShown.indexOf(url) === -1) __genShown.push(url);
+        return '';
+      }).replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+      if(!__mc && !__genShown.length) __mc = m.content;
+    }
     let msgWordEls = null;
-    if(m.role !== 'user' && m.content){
-      const __oOpt = omranExtractOptions(m.content);
-      msgWordEls = buildSpokenWordSpans(textDiv, __oOpt ? __oOpt.text : m.content);
+    if(m.role !== 'user' && __mc){
+      const __oOpt = omranExtractOptions(__mc);
+      msgWordEls = buildSpokenWordSpans(textDiv, __oOpt ? __oOpt.text : __mc);
       if(__oOpt && mIdx === cur.messages.length - 1) omranRenderOptions(textDiv, __oOpt.blocks);
     } else {
-      textDiv.textContent = m.content;
+      textDiv.textContent = __mc;
+    }
+    if(__genShown && __genShown.length){
+      const genStrip = document.createElement('div');
+      genStrip.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin:6px 0';
+      __genShown.slice(0, 4).forEach((url) => {
+        const gimg = document.createElement('img');
+        gimg.src = url; gimg.alt = ''; gimg.loading = 'lazy';
+        gimg.style.cssText = 'max-width:min(100%,320px);border-radius:12px';
+        gimg.onerror = () => { gimg.remove(); };
+        genStrip.appendChild(gimg);
+      });
+      div.appendChild(genStrip);
     }
     // 🖼️ Feature ② — image strip ABOVE the reply text: up to 4 live images
     // returned by the search backend, ChatGPT-style horizontal scroller.
