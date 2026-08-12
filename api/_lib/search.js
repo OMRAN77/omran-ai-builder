@@ -628,7 +628,7 @@ module.exports = async (req, res) => {
     const socialAll = mergeSocial(socialItems, pickSocial(data.results));
     const socialHosts = new Set(socialAll.map(sc => { try { return new URL(sc.url).hostname.replace(/^www\./, ''); } catch (e) { return ''; } }));
     // المنصّة تُمثَّل ببطاقتها المسمّاة («إنستغرام · @handle») بدل عنوان خام مكرّر.
-    const sourcesOut = sources.filter(x => { try { return !socialHosts.has(new URL(x.url).hostname.replace(/^www\./, '')); } catch (e) { return true; } }).slice(0, 6);
+    const sourcesOut = sources.filter(x => { try { return !socialHosts.has(new URL(x.url).hostname.replace(/^www\./, '')); } catch (e) { return true; } }).slice(0, 8);
     socialAll.forEach(sc => {
       if (sourcesOut.length < 10) sourcesOut.push({ title: sc.title, url: sc.url });
     });
