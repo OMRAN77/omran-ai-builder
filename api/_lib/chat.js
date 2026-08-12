@@ -11,6 +11,7 @@ const { logError } = require('./log-error.js');
 const { safeParse } = require('./safe-parse.js');
 const { fetchPlaces } = require('./search.js');
 const { readMemory, memoryPromptBlock } = require('./memory.js');
+const { BIDI_RULE } = require('./_bidi.js'); // v568
 
 function isPureGreeting(text) {
   return /^(?:هلا+|هلا والله|مرحبا+|مرحبًا|السلام عليكم(?: ورحمة الله(?: وبركاته)?)?|سلام|صباح الخير|مساء الخير|hello|hi|hey)[!؟?.،\s]*$/i.test(String(text || '').trim());
@@ -553,7 +554,7 @@ module.exports = async (req, res) => {
   // السياقات في «كيف الحال» هو ما حوّلها إلى قائمة فنادق ومواضيع قديمة.
   const system = quietSocialTurn
     ? sysParts.join('\n\n') + (casualCheckInTurn ? '\n\n[هذا دور اجتماعي قصير]: أجب عن سؤال الحال مباشرةً في جملة طبيعية واحدة. المحادثة مستمرة، فلا تبدأ بتحية جديدة، ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق.' : '')
-    : sysParts.join('\n\n') + nowNote() + countryNote(country) + TOOLS_NOTE + WIZARD_NOTE + askCapNote
+    : sysParts.join('\n\n') + nowNote() + countryNote(country) + TOOLS_NOTE + BIDI_RULE + WIZARD_NOTE + askCapNote
       + require('./_knowledge.js').ownerKnowledge(req, token); // معرفة عمران — للمالك وحده
 
   const convoSource = quietSocialTurn ? [lastUser] : messages;

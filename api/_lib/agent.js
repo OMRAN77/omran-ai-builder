@@ -369,7 +369,7 @@ module.exports = async (req, res) => {
   await journal(runUser, run);
 
   let lastTested = ''; // آخر HTML اختبره الوكيل في هذا الطلب — مصدر نشر احتياطي
-  let system = SYSTEM + require('./_knowledge.js').ownerKnowledge(req, token); // معرفة عمران — للمالك وحده
+  let system = SYSTEM + require('./_bidi.js').BIDI_RULE + require('./_knowledge.js').ownerKnowledge(req, token); // معرفة عمران — للمالك وحده
 
   // ملف الحساب نفسه يصل إلى الوكيل والمحادثة على كل جهاز. صيغة الحقن المشتركة
   // تكيّف الأسلوب وتذكّر المشاريع من دون أن تستبدل شخصية الوكيل أو قواعده.

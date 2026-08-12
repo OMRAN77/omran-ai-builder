@@ -8,6 +8,7 @@ require('./_lib/_fetch-timeout.js');
 // Nothing thrown in this router escapes unrecorded (see _lib/_errors.js).
 const { withErrorCapture } = require('./_lib/_errors.js');
 const { logError } = require('./_lib/log-error.js');
+const { BIDI_RULE } = require('./_lib/_bidi.js'); // v568
 
 function load(action) {
   switch (action) {
@@ -103,7 +104,8 @@ function serverNote(country) {
     '\n[قاعدة الموضوع]: أجب على آخر رسالة فقط. إذا غيّر الموضوع اتبعه فورًا.' +
     '\n[قاعدة الإعلانات والنتائج]: نتائج بحث حقيقية (عقارات، فنادق، وظائف) = اعرضها مباشرة بجدول: العنوان + السعر + المنطقة + الرابط. الأسعار بعملة بلد المستخدم.' +
     '\n[قاعدة التأكيد]: تأكيد قصير (نعم/تمام/يلا/اوك) بعد سؤالك = موافقة — جاوب فورًا بلا إعادة سؤال.' +
-    '\n[القدرات]: التطبيق فيه توليد صور + فيديو + تحويل PDF — ممنوع تقول "ما أقدر".';
+    '\n[القدرات]: التطبيق فيه توليد صور + فيديو + تحويل PDF — ممنوع تقول "ما أقدر".' +
+    BIDI_RULE;
 }
 
 // v330 — 👑 هيكلة «الكينج»: المزودون الثمانية يرجعون لشخصياتهم الأصلية
@@ -291,7 +293,7 @@ function isFactory(body) {
 function balancedNote(action, country) {
   // v469: Q&A خفيف — التاريخ والدولة فقط (حقائق لا يعرفها النموذج).
   // باقي القواعد (روابط، هوية، تأكيد، قدرات) انتقلت للعميل.
-  return noteDate() + noteCountry(country);
+  return noteDate() + noteCountry(country) + BIDI_RULE;
 }
 
 
