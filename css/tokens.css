@@ -840,3 +840,6 @@ html[data-mode="light"]:not(.mobile-ui) #omranNewChatBtn,
 html[data-mode="light"]:not(.mobile-ui) #omranNewChatBtn:hover{background:#EBEBEB !important;}
 html[data-mode="light"] #inputbar,
 html[data-mode="light"] #composerBox{background:#E5E5E5 !important;}
+
+/* v569: الروابط لا تتقطّع في منتصف الكلمة — الكسر عند المسافة، والكلمة الأطول من السطر وحدها تُكسر */
+.msg a, .msg-text a{overflow-wrap:break-word; word-break:normal; hyphens:none;}
