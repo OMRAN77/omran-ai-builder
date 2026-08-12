@@ -539,11 +539,11 @@ module.exports = async (req, res) => {
     // 🔢 v543b: سؤال الأرقام لا يخرج فارغًا أبدًا — بوّابتا xplate وSHub تُضمّنان.
     if (isNumbers) {
       const gates = [
-        { h: 'xplate.com', title: '🔢 xplate — لوحات سيارات وأرقام هواتف للبيع', url: 'https://xplate.com/ar/numbers', content: 'سوق إماراتي لبيع وشراء لوحات السيارات المميزة وأرقام الهواتف — مفروزة بالإمارة والسعر.' },
-        { h: 's-plate.com', title: '🔢 SHub — سوق اللوحات والأرقام المميزة', url: 'https://s-plate.com/ar', content: 'منصّة SHub لبيع وشراء لوحات المركبات والأرقام المميزة في الإمارات.' },
+        { h: 'xplate.com', title: '🔢 إكس بليت (xplate) — لوحات سيارات وأرقام هواتف للبيع', url: 'https://xplate.com/ar/numbers', content: 'سوق إماراتي لبيع وشراء لوحات السيارات المميزة وأرقام الهواتف — مفروزة بالإمارة والسعر.' },
+        { h: 's-plate.com', title: '🔢 إس بليت (SHub) — سوق اللوحات والأرقام المميزة', url: 'https://s-plate.com/ar', content: 'منصّة SHub لبيع وشراء لوحات المركبات والأرقام المميزة في الإمارات.' },
         { h: 'souq.ma7room.com', title: '🔢 سوق محروم — أرقام سيارات للبيع', url: 'https://souq.ma7room.com/%D8%A3%D8%B1%D9%82%D8%A7%D9%85-%D8%B3%D9%8A%D8%A7%D8%B1%D8%A7%D8%AA/', content: 'قسم أرقام السيارات في سوق محروم — إعلانات بيع أرقام ولوحات مميزة.' },
         { h: 'uaedir.ae', title: '🔢 دليل الإمارات — لوحات وأرقام سيارات', url: 'https://uaedir.ae/car-plates.php', content: 'صفحة لوحات وأرقام السيارات في دليل الإمارات.' },
-        { h: 'ae.opensooq.com', title: '🔢 السوق المفتوح — أرقام مركبات مميزة للبيع', url: 'https://ae.opensooq.com/ar/%D8%B9%D8%AC%D9%85%D8%A7%D9%86/%D8%B3%D9%8A%D8%A7%D8%B1%D8%A7%D8%AA-%D9%88%D9%85%D8%B1%D9%83%D8%A8%D8%A7%D8%AA/%D8%A3%D8%B1%D9%82%D8%A7%D9%85-%D9%85%D8%B1%D9%83%D8%A8%D8%A7%D8%AA-%D9%85%D9%85%D9%8A%D8%B2%D8%A9-%D9%84%D9%84%D8%A8%D9%8A%D8%B9', content: 'إعلانات أرقام المركبات المميزة للبيع في السوق المفتوح.' },
+        { h: 'ae.opensooq.com', title: '🔢 السوق المفتوح — أرقام مركبات مميزة للبيع', url: 'https://ae.opensooq.com/ar/%D8%B3%D9%8A%D8%A7%D8%B1%D8%A7%D8%AA-%D9%88%D9%85%D8%B1%D9%83%D8%A8%D8%A7%D8%AA/%D8%A3%D8%B1%D9%82%D8%A7%D9%85-%D9%85%D8%B1%D9%83%D8%A8%D8%A7%D8%AA-%D9%85%D9%85%D9%8A%D8%B2%D8%A9-%D9%84%D9%84%D8%A8%D9%8A%D8%B9', content: 'إعلانات أرقام المركبات المميزة للبيع في السوق المفتوح.' },
         { h: 'barbahar.com', title: '🔢 بربهار — أرقام سيارات مميزة للبيع', url: 'https://barbahar.com/Used-cars-for-sale/Special-Car-Plates/', content: 'أرقام سيارات مميزة للبيع في دبي وأبوظبي والشارقة وعجمان وأم القيوين ورأس الخيمة والفجيرة — ثنائي وثلاثي ورباعي وخماسي.' },
         { h: 'mourjan.com', title: '🔢 مرجان — أرقام سيارات للبيع', url: 'https://www.mourjan.com/ae/car-numbers/for-sale/', content: 'إعلانات أرقام ولوحات السيارات للبيع في الإمارات على مرجان.' },
       ];
