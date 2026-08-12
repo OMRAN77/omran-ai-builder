@@ -209,7 +209,7 @@ function reCtx(messages) {
   let on = false, layer = 0, src = '';
   for (const m of unrollHistory(messages)) {
     if (!m || m.role !== 'user' || typeof m.content !== 'string') continue;
-    if (isRealEstateAsk(m.content)) { on = true; layer = 0; src = m.content; }
+    if (isRealEstateAsk(m.content) && !isForeignAsk(m.content)) { on = true; layer = 0; src = m.content; }
     else if (on && m.content.trim().length <= 40 && MORE_RE.test(m.content)) layer += 1;
     else if (on) on = false;
   }
@@ -236,6 +236,28 @@ function reResult(ctx) {
     + (last ? 'وهذه آخر دفعة — أخبر المستخدم أنّ القائمة انتهت هنا.'
             : 'وأخبر المستخدم في سطر أخير أنّ كلمة «المزيد» تفتح موقعين آخرين.');
 }
+
+// 🌍 v566 — قلب المعمار: العالم هو الافتراضيّ، والإمارات تخصيص.
+// قبل هذه الرقعة كان أي سؤال فيه كلمة «عقار» يُشعل فرع بايوت/الإمارات، حتّى لو
+// كان عن طوكيو أو لندن أو نيروبي — مقيس: ٦ من ٦ أسئلة أجنبيّة ترجع عقارات دبي.
+// الكاشف كان موجودًا في search.js (لا تناديه الدردشة) فنُقل هنا وأُضيفت المدن،
+// لأنّ «عقارات في طوكيو» لا يذكر اسم الدولة أصلًا. وذكر الإمارات يغلب دائمًا:
+// «سيارات يابانية في دبي» يبقى محلّيًّا.
+const UAE_RE = /الإمارات|الامارات|إمارات|\buae\b|u\.a\.e|دبي|dubai|أبوظبي|ابوظبي|أبو ظبي|ابو ظبي|abu ?dhabi|الشارقة|الشارجة|sharjah|عجمان|ajman|رأس الخيمة|راس الخيمة|ras al ?khaim|أم القيوين|ام القيوين|umm al ?quwain|الفجيرة|fujairah|العين|al ?ain|خورفكان|خور فكان/i;
+const FOREIGN_COUNTRY_RE = /نيبال|nepal|فلبين|فليبين|philippin|بنجلاديش|بنغلاديش|bangladesh|هند(?!سي)|india|باكستان|pakistan|سعودي|السعودية|saudi|مصر(?!في)|egypt|عمان(?! (ai|builder))|oman|قطر|qatar|كويت|kuwait|بحرين|bahrain|أردن|jordan|عراق|iraq|سوري|syria|يمن|yemen|لبنان|lebanon|ليبيا|libya|تونس|tunis|جزائر|algeria|مغرب|morocco|سودان|sudan|صومال|somal|تركي|تركيا|turk|إيران|iran|أفغان|afghan|إندونيسي|إندونيسيا|indonesia|ماليزي|ماليزيا|malays|تايلاند|thai|فيتنام|vietnam|كمبودي|cambodia|ميانمار|myanmar|سريلانك|sri lanka|كوري|كوريا|korea|ياباني|اليابان|japan|صين|china|روسي|روسيا|russ|أمريك|americ|\busa\b|كند|canad|بريطان|british|\buk\b|england|ألمان|german|فرنس|franc|إيطالي|إيطاليا|ital|إسبان|إسبانيا|spain|برتغال|portug|هولند|netherl|بلجيك|belg|سويسر|swiss|نمسا|austria|سويد|sweden|نرويج|norway|دنمارك|denmark|فنلند|finland|بولند|poland|تشيك|czech|يونان|greece|أسترال|austral|نيوزيلند|new zealand|برازيل|brazil|أرجنتين|argentin|مكسيك|mexic|كولومبي|colombi|تشيلي|chile|بيرو|peru|جنوب أفريقي|south afric|كيني|kenya|نيجيري|nigeria|غانا|ghana|تنزاني|tanzania|أثيوبي|إثيوبي|ethiopi|أوغند|uganda|أذربيجان|azerbaijan|جورجيا|georgia|أرمين|armenia|قبرص|cyprus|مالديف|maldive|موريشيوس|mauritius|سيشل|seychelles/i;
+const FOREIGN_CITY_RE = /طوكيو|tokyo|أوساكا|osaka|كيوتو|kyoto|سيول|seoul|بوسان|busan|بكين|beijing|شنغهاي|shanghai|قوانزو|guangzhou|هونغ كونغ|هونج كونج|hong kong|تايبيه|taipei|سنغافور|singapor|بانكوك|bangkok|كوالالمبور|kuala lumpur|جاكرت|jakarta|بالي|\bbali\b|مانيلا|manila|دلهي|delhi|مومباي|mumbai|بنغالور|bangalore|كراتشي|karachi|لاهور|lahore|إسلام أباد|islamabad|كولومبو|colombo|كاتماندو|kathmandu|إسطنبول|استنبول|istanbul|أنطاليا|antalya|طرابزون|trabzon|باكو|\bbaku\b|تبليسي|tbilisi|لندن|london|مانشستر|manchester|برمنغهام|birmingham|باريس|paris|نيس|\bnice\b|ليون|\blyon\b|برلين|berlin|ميونخ|munich|فرانكفورت|frankfurt|هامبورغ|hamburg|مدريد|madrid|برشلون|barcelon|فالنسيا|valencia|ملقا|malaga|روما|\brome\b|ميلان|milan|فينيسيا|venice|فلورنس|florence|أمستردام|amsterdam|روتردام|rotterdam|بروكسل|brussel|فيينا|vienna|زيورخ|zurich|جنيف|geneva|ستوكهولم|stockholm|أوسلو|\boslo\b|كوبنهاغن|copenhagen|هلسنكي|helsinki|وارسو|warsaw|براغ|prague|بودابست|budapest|أثينا|athens|لشبونة|lisbon|دبلن|dublin|إدنبرة|edinburgh|موسكو|moscow|سان بطرسبرغ|petersburg|نيويورك|new york|لوس أنجلوس|لوس انجلوس|los angeles|شيكاغو|chicago|ميامي|miami|هيوستن|houston|بوستن|boston|سياتل|seattle|سان فرانسيسكو|san francisco|لاس فيغاس|las vegas|واشنطن|washington|تورونتو|toronto|فانكوفر|vancouver|مونتريال|montreal|سيدني|sydney|ملبورن|melbourne|بريسبان|brisbane|بيرث|\bperth\b|أوكلاند|auckland|القاهرة|cairo|الإسكندرية|alexandria|شرم الشيخ|sharm|الغردقة|hurghada|الرياض|riyadh|جدة|jeddah|الدمام|dammam|مكة|makkah|المدينة المنورة|الخبر|khobar|الدوحة|\bdoha\b|المنامة|manama|مسقط|muscat|صلالة|salalah|بيروت|beirut|عمّان|amman|بغداد|baghdad|أربيل|erbil|دمشق|damascus|الخرطوم|khartoum|نيروبي|nairobi|مومباسا|mombasa|لاغوس|lagos|أبوجا|abuja|أكرا|accra|أديس أبابا|addis|كيب تاون|cape town|جوهانسبرغ|johannesburg|الدار البيضاء|casablanca|مراكش|marrakech|ساو باولو|sao paulo|ريو دي جانيرو|rio de janeiro|بوينس آيرس|buenos aires|مكسيكو|mexico city|سانتياغو|santiago|ليما|\blima\b|بوغوتا|bogota/i;
+function isForeignAsk(text) {
+  const t = String(text || '');
+  if (!t) return false;
+  if (UAE_RE.test(t)) return false;
+  return FOREIGN_COUNTRY_RE.test(t) || FOREIGN_CITY_RE.test(t);
+}
+const GLOBAL_NOTE = '\n\n[سؤال عن مكان خارج الإمارات — إلزاميّ في هذا الردّ]:\n'
+  + '١) استدعِ web_search أوّلًا. لا تجب من ذاكرتك عن أسعار أو أنظمة أو جهات.\n'
+  + '٢) ممنوع عرض أي موقع إماراتيّ أو خليجيّ (بايوت · بروبرتي فايندر · دوبيزل · إكس بليت · السوق المفتوح) ما لم يذكره المستخدم بنفسه.\n'
+  + '٣) اعرض مصادر تلك الدولة نفسها بروابطها كما رجعت من البحث حرفيًّا، ولا تخترع رابطًا ولا تُصلح رابطًا ناقصًا.\n'
+  + '٤) إن رجع البحث فارغًا فقل ذلك صراحةً — لا تعتذر بردّ عامّ ولا تخترع بديلًا.\n'
+  + '٥) أنهِ الردّ بسطر واحد: «راجِع المصدر الرسميّ قبل أي قرار — الأسعار والأنظمة تتغيّر.»';
 
 const WIZARD_RE = /كتالوج|كتالوق|منيو|قائمة طعام|قائمة الطعام|بروفايل شرك/;
 
@@ -267,10 +289,113 @@ function countryNote(code) {
   return '\n[الدولة]: المستخدم يتصفّح من ' + (ar || c) + ' — أجب بمعلومات هذه الدولة (عملتها، جهاتها الرسمية) ما لم يذكر غيرها.';
 }
 
+// 🛰️ v566 — سلسلة الصمود: محرّك معرفة واحد = نقطة فشل واحدة. Tavily سقطت
+// (١٠٠٥/١٠٠٠) فكان الردّ يرتدّ إلى ذاكرة النموذج، وهذا سبب ضعف آسيا وأوروبا
+// المقيس. الترتيب: Perplexity sonar (بحث حيّ بمراجع) → Google CSE → Tavily.
+// أوّل مزوّد يعطي نتيجة يفوز، ومن يسقط يُسجَّل في اللوج ولا يُبتلع صامتًا.
+async function timedFetch(url, opts, ms) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms || 15000);
+  try {
+    const r = await fetch(url, Object.assign({ signal: ctrl.signal }, opts || {}));
+    return { ok: r.ok, status: r.status, body: await r.text() };
+  } finally { clearTimeout(t); }
+}
+function asJSON(txt) { try { return JSON.parse(txt); } catch (e) { return null; } }
+
+async function pplxSearch(query) {
+  const key = (process.env.PERPLEXITY_API_KEY || '').trim();
+  if (!key) return null;
+  const r = await timedFetch('https://api.perplexity.ai/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+    body: JSON.stringify({
+      model: 'sonar', max_tokens: 900, temperature: 0.2,
+      messages: [
+        { role: 'system', content: 'أنت محرّك بحث حيّ. أعطِ وقائع محدّثة عن البلد أو المدينة المذكورة في السؤال: أرقامًا وأسماء جهات ومواقع محلّيّة معروفة هناك، بإيجاز. لا تعتذر ولا تُحِل إلى مواقع دولة أخرى.' },
+        { role: 'user', content: String(query || '').slice(0, 600) },
+      ],
+    }),
+  }, 20000);
+  if (!r.ok) { console.warn('[live] perplexity HTTP ' + r.status); return null; }
+  const d = asJSON(r.body) || {};
+  const txt = String((((d.choices || [])[0] || {}).message || {}).content || '').trim();
+  if (!txt) return null;
+  const srcs = [];
+  for (const x of (Array.isArray(d.search_results) ? d.search_results : [])) {
+    if (x && x.url) srcs.push(String(x.title || x.url) + '\n' + x.url);
+  }
+  if (!srcs.length) for (const u of (Array.isArray(d.citations) ? d.citations : [])) {
+    if (typeof u === 'string') srcs.push(u);
+  }
+  return txt
+    + (srcs.length ? ('\n\nالمصادر:\n' + srcs.slice(0, 6).map((x, i) => (i + 1) + '. ' + x).join('\n')) : '')
+    + '\n\nالمصدر: بحث حيّ (Perplexity sonar).';
+}
+
+async function gcseSearch(query) {
+  const k = (process.env.GOOGLE_SEARCH_API_KEY || '').trim();
+  const cx = (process.env.GOOGLE_SEARCH_CX || '').trim();
+  if (!k || !cx) return null;
+  const url = 'https://www.googleapis.com/customsearch/v1?key=' + encodeURIComponent(k)
+    + '&cx=' + encodeURIComponent(cx) + '&num=6&q=' + encodeURIComponent(String(query || '').slice(0, 300));
+  const r = await timedFetch(url, {}, 12000);
+  if (!r.ok) { console.warn('[live] google HTTP ' + r.status); return null; }
+  const d = asJSON(r.body);
+  const items = ((d && d.items) || []).map((x, i) => (i + 1) + '. ' + String(x.title || '')
+    + '\n' + String(x.link || '') + '\n' + String(x.snippet || '').replace(/\s+/g, ' ').slice(0, 300));
+  return items.length ? (items.join('\n\n') + '\n\nالمصدر: Google Search.') : null;
+}
+
+async function tavilyRaw(query, foreign) {
+  const key = (process.env.TAVILY_API_KEY || '').trim();
+  if (!key) return null;
+  const r = await timedFetch('https://api.tavily.com/search', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(Object.assign(
+      { api_key: key, query: String(query || '').slice(0, 380), max_results: 6, search_depth: 'basic', include_answer: true },
+      foreign ? {} : { country: 'united arab emirates' })),
+  }, 15000);
+  if (!r.ok) { console.warn('[live] tavily HTTP ' + r.status); return null; }
+  const d = asJSON(r.body);
+  const items = ((d && d.results) || []).map((x, i) => (i + 1) + '. ' + String(x.title || '')
+    + '\n' + String(x.url || '') + '\n' + String(x.content || '').replace(/\s+/g, ' ').slice(0, 300));
+  return items.length ? items.join('\n\n') : null;
+}
+
+const LIVE_DOWN = 'تعذّر البحث الحيّ الآن';
+async function liveSearch(query, foreign) {
+  const chain = [
+    ['perplexity', function () { return pplxSearch(query); }],
+    ['google', function () { return gcseSearch(query); }],
+    ['tavily', function () { return tavilyRaw(query, foreign); }],
+  ];
+  const failed = [];
+  for (const pair of chain) {
+    let out = null;
+    try { out = await pair[1](); } catch (e) { console.warn('[live] ' + pair[0] + ' ' + (e && e.message)); }
+    if (out) return out;
+    failed.push(pair[0]);
+  }
+  return LIVE_DOWN + ' (سقط: ' + failed.join(' · ') + '). قل للمستخدم صراحةً إنّك لم تتمكّن من البحث، ولا تجب من ذاكرتك عن أسعار أو أنظمة.';
+}
+
+function placeCards(places) {
+  return places.map((p, i) => [
+    (i + 1) + '. ' + p.name,
+    p.rating != null ? ('التقييم: ' + p.rating + '/5 من ' + p.reviews + ' مراجعة') : '',
+    p.address ? ('العنوان: ' + p.address) : '',
+    p.site ? ('الموقع: ' + p.site) : '',
+    p.url ? ('الرابط: ' + p.url) : '',
+    'المصدر: Google Maps',
+  ].filter(Boolean).join('\n')).join('\n\n');
+}
+
 async function tavilySearch(query, reC, plateAsk) {
+  const foreign = isForeignAsk(query);
   // 🔢 v558 — الأرقام واللوحات للبيع: الموقعان المتخصّصان وحدهما. مسار الدردشة كان
   // يمرّ على Google Places أوّلًا فيرجع مكاتب على الخريطة بدل سوقَي الأرقام.
-  if (plateAsk || NUM_ASK_RE.test(query)) {
+  if (!foreign && (plateAsk || NUM_ASK_RE.test(query))) {
     return '1. إكس بليت (XPlate) — سوق لوحات وأرقام مميّزة للبيع في الإمارات\nhttps://www.xplate.com/\n\n'
       + '2. إس بليت (S-Plate) — لوحات وأرقام مميّزة للبيع في الإمارات\nhttps://s-plate.com/ar\n\n'
       + '3. سوق محروم — أرقام سيارات للبيع\nhttps://souq.ma7room.com/%D8%A3%D8%B1%D9%82%D8%A7%D9%85-%D8%B3%D9%8A%D8%A7%D8%B1%D8%A7%D8%AA/\n\n'
@@ -281,32 +406,20 @@ async function tavilySearch(query, reC, plateAsk) {
       + 'المصدر: مواقع الأرقام المتخصّصة. اعرض هذه الروابط السبعة كلّها بالترتيب، ولا تذكر أي موقع آخر ولا سطر خرائط. التنسيق إلزاميّ: اكتب سطر العنوان «🔗 روابط تصفح الإعلانات:» مرّة واحدة فقط فوق القائمة، ثمّ سطرًا واحدًا لكلّ موقع يبدأ باسمه العربيّ ثمّ رابطه. لا تكرّر جملة «رابط تصفح الإعلانات» داخل الأسطر، ولا تبدأ أي سطر بحرف لاتينيّ.';
   }
   // 🏠 v561 — عقار للبيع أو الشراء: طبقة واحدة في المرّة، لا خرائط ولا دوبيزل.
-  const rc = reC || (isRealEstateAsk(query) ? { layer: 0, src: query } : null);
+  const rc = foreign ? null : (reC || (isRealEstateAsk(query) ? { layer: 0, src: query } : null));
   if (rc) return reResult(rc);
-  const places = await fetchPlaces(process.env.GOOGLE_PLACES_API_KEY, query, 'ar');
-  if (places.length) {
-    return places.map((p, i) => [
-      `${i + 1}. ${p.name}`,
-      p.rating != null ? `التقييم: ${p.rating}/5 من ${p.reviews} مراجعة` : '',
-      p.address ? `العنوان: ${p.address}` : '',
-      p.site ? `الموقع: ${p.site}` : '',
-      p.url ? `الرابط: ${p.url}` : '',
-      'المصدر: Google Maps',
-    ].filter(Boolean).join('\n')).join('\n\n');
-  }
+  // 🗺️ الخرائط ليست معرفة: كانت تسبق البحث فتخنقه — سؤال عن طوكيو يرجع بطاقات
+  // مطاعم. الآن لا تُستدعى لسؤال أجنبيّ إلّا آخر الصفّ، إن سقطت السلسلة كلّها.
+  const places = foreign ? [] : await fetchPlaces(process.env.GOOGLE_PLACES_API_KEY, query, 'ar');
+  if (places.length) return placeCards(places);
 
-  const key = process.env.TAVILY_API_KEY;
-  if (!key) return 'أداة البحث غير متاحة حاليًا — قل للمستخدم إنك لم تتمكّن من البحث.';
-  try {
-    const r = await fetch('https://api.tavily.com/search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ api_key: key, query, max_results: 6, search_depth: 'basic', include_answer: true }),
-    });
-    const d = await r.json();
-    const items = (d.results || []).map((x, i) => `${i + 1}. ${x.title}\n${x.url}\n${(x.content || '').slice(0, 300)}`);
-    return items.length ? items.join('\n\n') : 'لا توجد نتائج.';
-  } catch (e) { return 'فشل البحث: ' + e.message; }
+  const live = await liveSearch(query, foreign);
+  if (foreign && live.indexOf(LIVE_DOWN) === 0) {
+    let back = [];
+    try { back = await fetchPlaces(process.env.GOOGLE_PLACES_API_KEY, query, 'ar'); } catch (e) { console.warn('[live] places ' + (e && e.message)); }
+    if (back.length) return placeCards(back);
+  }
+  return live;
 }
 
 async function fetchPage(url) {
@@ -411,8 +524,9 @@ module.exports = async (req, res) => {
   const casualCheckInTurn = isCasualCheckIn(lastUser && lastUser.content);
   const quietSocialTurn = pureGreetingTurn || casualCheckInTurn;
   const wizardTurn = messages.some((m) => m && typeof m.content === 'string' && WIZARD_RE.test(m.content));
-  const reC = wizardTurn ? null : reCtx(messages);
-  const askCapNote = ((lastUser && NUM_ASK_RE.test(lastUser.content)) ? NUM_NOTE : (reC ? (RE_NOTE + (reC.layer > 0 ? RE_MORE_NOTE : '')) : '')) + ((!wizardTurn && askStreak(messages) >= 2) ? ASK_CAP_NOTE : '');
+  const foreignTurn = !!(lastUser && isForeignAsk(lastUser.content));
+  const reC = (wizardTurn || foreignTurn) ? null : reCtx(messages);
+  const askCapNote = (foreignTurn ? GLOBAL_NOTE : ((lastUser && NUM_ASK_RE.test(lastUser.content)) ? NUM_NOTE : (reC ? (RE_NOTE + (reC.layer > 0 ? RE_MORE_NOTE : '')) : ''))) + ((!wizardTurn && askStreak(messages) >= 2) ? ASK_CAP_NOTE : '');
   const socialReply = deterministicSocialReply(lastUser && lastUser.content);
   if (socialReply) {
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
@@ -534,7 +648,7 @@ module.exports = async (req, res) => {
         let input = {};
         try { input = JSON.parse(cb.inputJson || '{}'); } catch (e) { logError('chat/tool-input-parse', e); }
         let result = 'أداة غير معروفة';
-        if (cb.name === 'web_search') result = await tavilySearch(input.query || '', reC, !!(lastUser && NUM_ASK_RE.test(lastUser.content)));
+        if (cb.name === 'web_search') result = await tavilySearch(input.query || '', reC, !foreignTurn && !!(lastUser && NUM_ASK_RE.test(lastUser.content)));
         else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
         else if (cb.name === 'run_js') result = await runInClient(send, 'run_js', input);
         else if (cb.name === 'generate_image') result = await runInClient(send, 'generate_image', input, 75000);
