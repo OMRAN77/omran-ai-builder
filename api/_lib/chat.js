@@ -149,6 +149,8 @@ const RE_NOTE = '\n\n[طلب عقار — إلزاميّ في هذا الردّ]
   'المستخدم يسأل عن عقار للبيع أو الشراء. ممنوع أن تسأله أي سؤال (ميزانيّة، منطقة، عدد الغرف) وممنوع بطاقات الخيارات.\n' +
   'استعمل web_search فورًا واعرض في هذا الردّ نفسه الروابط التي ترجعها الأداة كما هي بلا تغيير ولا إضافة.\n' +
   'ممنوع ذكر دوبيزل. أي تفصيل ناقص افترض فيه الأوسع ولا تسأل عنه.';
+const RE_MORE_NOTE = '\n[المستخدم طلب «المزيد» — طبقة جديدة]: ممنوع تمامًا تكرار أي رابط أو أي سطر ظهر في ردّك السابق. '
+  + 'نادِ web_search فورًا واعرض الموقعين الجديدين اللذين ترجعهما الأداة وحدهما.';
 // 🏠 v561 — الكشف التدريجيّ: الردّ الأوّل موقعان، وكلّ «المزيد» يفتح موقعين
 // جديدين حتّى تنتهي القائمة. كلّ رابط أدناه مُتحقَّق HTTP 200 في ١١ أغسطس ٢٠٢٦.
 const MORE_RE = /(المزيد|مزيد|زدني|زد(?![\u0621-\u064A])|زيد(?![\u0621-\u064A])|كمّل|كمل|أكثر|اكثر|باقي|غيرها|غيرهم|تابع|واصل|مواقع\s*(أخرى|اخرى|ثاني)|\bmore\b|\bnext\b)/i;
@@ -181,10 +183,31 @@ const RE_EXTRA = [
    ['مورتجيج فايندر — مقارنة عروض التمويل العقاريّ', 'https://www.mortgagefinder.ae/']],
 ];
 
+// 🧵 v562 — المتصفّح لا يرسل المحادثة كرسائل: يرسل تاريخها نصًّا داخل رسالة نظام
+// تبدأ بـ«📜 المحادثة السابقة» ثمّ رسالة مستخدم واحدة فقط. بدون فكّ هذه الكتلة
+// يرى الخادم «اكمل» وحدها، فلا يعرف أنّنا في العقارات ولا يتقدّم السلّم، فيقلّد
+// النموذجُ ردَّه السابق حرفيًّا. مقيس على الإنتاج ١١ أغسطس ٢٠٢٦.
+function unrollHistory(messages) {
+  const out = [];
+  for (const m of (messages || [])) {
+    if (m && m.role === 'system' && typeof m.content === 'string' && m.content.indexOf('📜 المحادثة السابقة') === 0) {
+      const body = m.content.split('\n\n✅')[0].split('\n').slice(1);
+      for (const ln of body) {
+        const hit = /^(المستخدم|المساعد):\s?/.exec(ln);
+        if (hit) out.push({ role: hit[1] === 'المستخدم' ? 'user' : 'assistant', content: ln.slice(hit[0].length) });
+        else if (out.length) out[out.length - 1].content += '\n' + ln;
+      }
+      continue;
+    }
+    out.push(m);
+  }
+  return out;
+}
+
 // ذاكرة «آخر مجال»: بدونها كلمة «المزيد» وحدها لا تعرف أنّنا في العقارات.
 function reCtx(messages) {
   let on = false, layer = 0, src = '';
-  for (const m of (messages || [])) {
+  for (const m of unrollHistory(messages)) {
     if (!m || m.role !== 'user' || typeof m.content !== 'string') continue;
     if (isRealEstateAsk(m.content)) { on = true; layer = 0; src = m.content; }
     else if (on && m.content.trim().length <= 40 && MORE_RE.test(m.content)) layer += 1;
@@ -384,7 +407,7 @@ module.exports = async (req, res) => {
   const quietSocialTurn = pureGreetingTurn || casualCheckInTurn;
   const wizardTurn = messages.some((m) => m && typeof m.content === 'string' && WIZARD_RE.test(m.content));
   const reC = wizardTurn ? null : reCtx(messages);
-  const askCapNote = ((lastUser && NUM_ASK_RE.test(lastUser.content)) ? NUM_NOTE : (reC ? RE_NOTE : '')) + ((!wizardTurn && askStreak(messages) >= 2) ? ASK_CAP_NOTE : '');
+  const askCapNote = ((lastUser && NUM_ASK_RE.test(lastUser.content)) ? NUM_NOTE : (reC ? (RE_NOTE + (reC.layer > 0 ? RE_MORE_NOTE : '')) : '')) + ((!wizardTurn && askStreak(messages) >= 2) ? ASK_CAP_NOTE : '');
   const socialReply = deterministicSocialReply(lastUser && lastUser.content);
   if (socialReply) {
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
