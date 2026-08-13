@@ -207,14 +207,26 @@ window.__omranImgTools = function(wrap, dataUrl){
     setTimeout(() => { b.innerHTML = prev; }, 1400);
   };
   // يسار: أيقونة الحفظ/المشاركة — بلا كلمة (أمر عمران v582)
+  // ⚠️ v592 — سياسة connect-src لا تسمح بـ data: ⇒ fetch(dataUrl) كان يرمي صامتًا
+  //    فتموت الأيقونة بلا أثر. التحويل يجري محليًّا بـ atob (صفر شبكة).
+  //    غير data: يبقى على fetch كما كان تمامًا.
   mk('ico', svg('share'), ar ? 'حفظ' : 'Save', async (b) => {
+    const nm = 'image-' + Date.now() + '.png';
+    const toBlob = (du) => { const s = String(du), i = s.indexOf(','), m = (s.slice(0, i).match(/:([^;,]+)/) || [])[1] || 'image/png', bin = atob(s.slice(i + 1)), u8 = new Uint8Array(bin.length); for(let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k); return new Blob([u8], { type: m }); };
+    const save = (bl) => { const u = URL.createObjectURL(bl), a = document.createElement('a'); a.href = u; a.download = nm; a.click(); setTimeout(() => URL.revokeObjectURL(u), 4000); flash(b, svg('done')); };
     try{
-      const bl = await (await fetch(dataUrl)).blob(), nm = 'image-' + Date.now() + '.png';
+      const bl = /^data:/i.test(String(dataUrl)) ? toBlob(dataUrl) : await (await fetch(dataUrl)).blob();
       const f = new File([bl], nm, { type: bl.type || 'image/png' });
-      if(navigator.canShare && navigator.canShare({ files: [f] })){ await navigator.share({ files: [f] }); return; }
-      const u = URL.createObjectURL(bl), a = document.createElement('a'); a.href = u; a.download = nm; a.click(); setTimeout(() => URL.revokeObjectURL(u), 4000);
-      flash(b, svg('done'));
-    }catch(e){ __swallow(e, "upload:app-09-attach#v582"); }
+      if(navigator.canShare && navigator.canShare({ files: [f] })){
+        try{ await navigator.share({ files: [f] }); flash(b, svg('done')); return; }
+        catch(err){ if(err && err.name === 'AbortError') return; }
+      }
+      save(bl);
+    }catch(e){
+      __swallow(e, "save:app-09-attach#v592");
+      try{ const a = document.createElement('a'); a.href = dataUrl; a.download = nm; a.click(); flash(b, svg('done')); }
+      catch(_){ flash(b, '<span>⚠</span>'); }
+    }
   });
   // يمين: «تعديل» نصّ فقط
   mk('txt', '<span>' + (ar ? 'تعديل' : 'Edit') + '</span>', ar ? 'تعديل' : 'Edit', (b) => {

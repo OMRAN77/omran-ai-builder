@@ -334,19 +334,23 @@
   const shareBtn2 = $('#portraitShareBtn');
   if(shareBtn2){
     shareBtn2.onclick = async () => {
+      // ⚠️ v592 — نفس عطب أيقونة الحفظ: السياسة تحجب fetch على data: ⇒ التحويل محليّ.
+      const dataUrl = (resultEl && resultEl.src) || '';
+      const isData = /^data:/i.test(String(dataUrl));
+      const toBlob = (du) => { const s = String(du), i = s.indexOf(','), m = (s.slice(0, i).match(/:([^;,]+)/) || [])[1] || 'image/png', bin = atob(s.slice(i + 1)), u8 = new Uint8Array(bin.length); for(let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k); return new Blob([u8], { type: m }); };
+      const nm = 'omran-portrait-style.png';
       try{
-        const dataUrl = resultEl.src;
-        const resp = await fetch(dataUrl);
-        const blob = await resp.blob();
-        const file = new File([blob], 'omran-portrait-style.png', { type: blob.type || 'image/png' });
+        const blob = isData ? toBlob(dataUrl) : await (await fetch(dataUrl)).blob();
+        const file = new File([blob], nm, { type: blob.type || 'image/png' });
         if(navigator.canShare && navigator.canShare({ files: [file] })){
-          await navigator.share({ files: [file], title: 'Omran AI', text: 'Omran AI ✨' });
-        } else if(navigator.share){
-          await navigator.share({ title: 'Omran AI', url: dataUrl });
-        } else {
-          downloadEl.click();
+          try{ await navigator.share({ files: [file], title: 'Omran AI', text: 'Omran AI ✨' }); return; }
+          catch(err){ if(err && err.name === 'AbortError') return; }
+        } else if(navigator.share && !isData){
+          try{ await navigator.share({ title: 'Omran AI', url: dataUrl }); return; }
+          catch(err){ if(err && err.name === 'AbortError') return; }
         }
-      } catch(e){ /* user cancelled or unsupported, ignore */ }
+        const u = URL.createObjectURL(blob), el = document.createElement('a'); el.href = u; el.download = nm; el.click(); setTimeout(() => URL.revokeObjectURL(u), 4000);
+      } catch(e){ try{ if(downloadEl) downloadEl.click(); }catch(_){ } }
     };
   }
   function updateCompareSlider(){
