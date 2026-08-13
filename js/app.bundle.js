@@ -1733,6 +1733,19 @@ const emptyState = $('#emptyState');
 const historyEl = $('#history');
 const I18N = {
   ar: {
+    /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
+    sidePanelTitle: 'القائمة الجانبية', lightModeTitle: 'الوضع الفاتح', provSearchPh: 'ابحث عن نموذج...', jumpLatestTitle: 'أحدث رسالة', editMsgNotice: 'تعديل الرسالة', modesTitle: 'الأوضاع',
+    attachFileTitle: 'إرفاق ملف', chipExam: 'حل امتحان', chipBook: 'تلخيص كتاب', chipArticle: 'كتابة مقال احترافي', chipIdeas: 'أفكار لمشروع', tryItTitle: 'جرّبه لي', closeTitle: 'إغلاق',
+    docAssistTitle: '📄 مساعد المستندات', govServicesTitle: '🧾 المعاملات الحكومية', cvGenTitle: '💼 مولّد السيرة الذاتية', dsNotesLabel: '✍️ اكتب تفاصيلك بكلماتك (اختياري)',
+    dsNotesPh: 'مثال: مطعم إيطالي ٤٠ كرسي، سقف عالي، طابع صناعي', rmWhatLabel: 'ماذا تريد إزالته من الصورة؟', rmWhatPh: 'مثال: الشخص الذي خلفي · السيارة · العمود', pickOutfitLabel: 'اختر الملابس',
+    pickProfessionLabel: 'اختر المهنة', emailConnectHint: 'اربط حساب Gmail الخاص بك ليقرأ الذكاء الاصطناعي إيميلاتك ويقترح ردودًا جاهزة تعتمدها قبل الإرسال.', voiceSummaryBtn: 'ملخص صوتي',
+    refreshBtn: 'تحديث', worldMarketsTitle: 'الأسواق العالمية', pickStockTitle: 'اختيار سهم', cnProjectData: '📋 بيانات المشروع', cnLandArea: 'مساحة الأرض (م²) — اختياري', cnLandAreaPh: 'مثال: 500',
+    cnEmirateOpt: 'الإمارة — اختياري', cnDetailsAnnexes: '🏠 التفاصيل والملاحق', cnExElevator: 'مصعد داخلي', cnExStore: 'مخزن خارجي', cnExWaterTank: 'خزان مياه', cnExSolar: 'ألواح شمسية',
+    cnExPlayground: 'ملعب خارجي', cnExCarport: 'مظلة سيارات إضافية', cnBudgetOutputs: '💰 الميزانية والمخرجات', cnDownloadBoq: '📊 تنزيل جدول الكميات', cnPdfReport: '📄 تقرير PDF',
+    keyHowToTitle: '📝 كيف تحصل على مفتاح لكل مزوّد:', showAllPlansCur: 'عرض كل الباقات والأسعار بعملتك', currencyLabel: 'العملة', plFreeMsgs: '20 رسالة يوميًا',
+    plFreeVoice: 'دقيقة واحدة محادثة صوتية', plFreeImgs: '3 صور بالذكاء الاصطناعي', plFreeNoVideo: 'بلا فيديو', plStMsgs: '300 رسالة شهريًا', plStVoice: '30 دقيقة محادثة صوتية', plStImgs: '15 صورة',
+    plStVideos: '5 مقاطع فيديو', plProMsgs: 'رسائل بلا حدود', plProVoice: '80 دقيقة محادثة صوتية', plProMedia: '40 صورة · 13 فيديو · 2 سينمائي', plProAgent: 'الوكيل الذكي',
+    plProPriority: 'أولوية في السرعة · شارة ذهبية', plMaxAllPro: 'كل مزايا Pro', plMaxVoice: '500 دقيقة محادثة صوتية', plMaxMedia: '250 صورة · 83 فيديو · 12 سينمائي', plMaxSupport: 'دعم مخصّص',
     /* v599: ترجمة خيارات القوائم المنسدلة (٨٧ عنصرًا) */
     portraitStylePassport: '🫎 صورة جواز/هوية رسمية', portraitStyleRestore: '🔧 ترميم صورة قديمة', portraitStyleColorize: '🎨 تلوين أبيض وأسود', portraitStyleUpscale: '🔍 رفع الدقة والوضوح', portraitStyleObjectremove: '🧹 إزالة شخص أو عنصر', portraitStyleOutfit: '👕 تبديل الملابس', portraitStyleProductshot: '📦 تصوير منتج احترافي', portraitStyleHajj: '🕋 تهنئة حج وعمرة', portraitStyleBirthday: '🎂 إطار عيد ميلاد', portraitStyleNewborn: '👶 تهنئة مولود جديد', portraitStyleFigurine: '🧸 مجسّم أكشن في علبة', portraitStyleGhibli: '🍃 ستايل جيبلي', portraitStyleLego: '🧱 شخصية ليغو', portraitStyleStickerpack: '💬 ملصقات واتساب (٦ تعبيرات)', portraitStyleChibi: '🐣 شيبي لطيف', portraitStyleStatue: '🗿 تمثال رخامي', portraitStylePolaroid: '📸 بولارويد قديمة', portraitStyleCelebtoon: '🦸 شخصية كرتونية مفضلة', portraitStyleProfession: '👩‍⚕️ مهنة (طبيب · طيار · شرطي...)', portraitStyleSuperhero: '🦸‍♂️ بطل خارق بزي كامل', portraitStyleAstronaut: '🚀 رائد فضاء', portraitOutfitKandura: '👔 كندورة إماراتية + غترة', portraitOutfitAbaya: '🧕 عباية + شيلة', portraitOutfitThobe: '🧣 ثوب خليجي + شماغ', portraitOutfitSuit: '🧵 بدلة رسمية', portraitOutfitDress: '👗 فستان سهرة', portraitOutfitCasual: '🧥 كاجوال أنيق', portraitOutfitSport: '🎽️ ملابس رياضية', portraitOutfitWinter: '🧤 معطف شتوي', portraitProfDoctor: '👩‍⚕️ طبيب', portraitProfPilot: '🧑‍✈️ طيار', portraitProfPolice: '👮 شرطي', portraitProfChef: '🧑‍🍳 طبّاخ', portraitProfEngineer: '👷 مهندس موقع', portraitProfTeacher: '🧑‍🏫 معلم', portraitProfFirefighter: '🧑‍🚒 إطفائي', portraitProfScientist: '🧑‍🔬 عالم مختبر', portraitGrpTools: '🛠️ أدوات عملية', portraitGrpOccasions: '🎉 مناسبات', portraitGrpTrending: '🔥 رائجة', portraitGrpDressup: '🎭 تلبيس',
     designAiPlaceFromPhoto: '📷 من صورتي', designAiPlaceRestaurant: '🍽️ مطعم', designAiPlaceCafe: '☕ كافيه', designAiPlaceBedroom: '🛏️ غرفة نوم', designAiPlaceMajlis: '🪑 مجلس', designAiPlaceLiving: '🛋️ صالة', designAiPlaceKitchen: '🍳 مطبخ', designAiPlaceOffice: '💼 مكتب', designAiPlaceShop: '🛍️ محل', designAiPlaceBath: '🛁 حمام', designAiPlaceKids: '🧸 غرفة أطفال', designAiPlaceEntrance: '🚪 مدخل', designAiPlaceGarden: '🌳 حديقة', designAiStyleNajdi: '🏜️ نجدي', designAiStyleIslamic: '✳️ إسلامي معاصر', designAiStyleAndalusi: '🏛️ أندلسي', fashionAiOccasionGraduation: '🎓 تخرج', fashionAiOccasionReligious: '🕌 مناسبة دينية', fashionAiSeasonAutumn: '🍂 خريفي', fashionAiSeasonSpring: '🌸 ربيعي',
@@ -2600,6 +2613,21 @@ const I18N = {
     shareCopied: 'تم نسخ الرابط! ✅',
   },
   en: {
+    /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
+    sidePanelTitle: 'Side menu', lightModeTitle: 'Light mode', provSearchPh: 'Search for a model...', jumpLatestTitle: 'Latest message', editMsgNotice: 'Editing message', modesTitle: 'Modes',
+    attachFileTitle: 'Attach a file', chipExam: 'Solve an exam', chipBook: 'Summarize a book', chipArticle: 'Write a professional article', chipIdeas: 'Project ideas', tryItTitle: 'Try it for me',
+    closeTitle: 'Close', docAssistTitle: '📄 Document assistant', govServicesTitle: '🧾 Government services', cvGenTitle: '💼 CV generator',
+    dsNotesLabel: '✍️ Write your details in your own words (optional)', dsNotesPh: 'e.g. Italian restaurant, 40 seats, high ceiling, industrial look',
+    rmWhatLabel: 'What do you want removed from the picture?', rmWhatPh: 'e.g. the person behind me · the car · the pole', pickOutfitLabel: 'Choose the outfit',
+    pickProfessionLabel: 'Choose the profession', emailConnectHint: 'Connect your Gmail account so the AI can read your emails and suggest ready replies for you to approve before sending.',
+    voiceSummaryBtn: 'Voice summary', refreshBtn: 'Refresh', worldMarketsTitle: 'World markets', pickStockTitle: 'Pick a stock', cnProjectData: '📋 Project data',
+    cnLandArea: 'Land area (m²) — optional', cnLandAreaPh: 'e.g. 500', cnEmirateOpt: 'Emirate — optional', cnDetailsAnnexes: '🏠 Details and annexes', cnExElevator: 'Indoor elevator',
+    cnExStore: 'Outdoor storeroom', cnExWaterTank: 'Water tank', cnExSolar: 'Solar panels', cnExPlayground: 'Outdoor playground', cnExCarport: 'Extra car canopy',
+    cnBudgetOutputs: '💰 Budget and outputs', cnDownloadBoq: '📊 Download bill of quantities', cnPdfReport: '📄 PDF report', keyHowToTitle: '📝 How to get a key for each provider:',
+    showAllPlansCur: 'Show all plans and prices in your currency', currencyLabel: 'Currency', plFreeMsgs: '20 messages a day', plFreeVoice: 'One minute of voice chat', plFreeImgs: '3 AI images',
+    plFreeNoVideo: 'No video', plStMsgs: '300 messages a month', plStVoice: '30 minutes of voice chat', plStImgs: '15 images', plStVideos: '5 videos', plProMsgs: 'Unlimited messages',
+    plProVoice: '80 minutes of voice chat', plProMedia: '40 images · 13 videos · 2 cinematic', plProAgent: 'The smart agent', plProPriority: 'Priority speed · gold badge',
+    plMaxAllPro: 'Everything in Pro', plMaxVoice: '500 minutes of voice chat', plMaxMedia: '250 images · 83 videos · 12 cinematic', plMaxSupport: 'Dedicated support',
     /* v599: ترجمة خيارات القوائم المنسدلة (٨٧ عنصرًا) */
     portraitStylePassport: '🫎 Passport/ID photo', portraitStyleRestore: '🔧 Restore old photo', portraitStyleColorize: '🎨 Colorize B&W', portraitStyleUpscale: '🔍 Upscale', portraitStyleObjectremove: '🧹 Remove person or object', portraitStyleOutfit: '👕 Change outfit', portraitStyleProductshot: '📦 Pro product shot', portraitStyleHajj: '🕋 Hajj & Umrah greeting', portraitStyleBirthday: '🎂 Birthday frame', portraitStyleNewborn: '👶 Newborn greeting', portraitStyleFigurine: '🧸 Boxed action figure', portraitStyleGhibli: '🍃 Ghibli style', portraitStyleLego: '🧱 LEGO character', portraitStyleStickerpack: '💬 WhatsApp stickers (6 emotions)', portraitStyleChibi: '🐣 Cute Chibi', portraitStyleStatue: '🗿 Marble statue', portraitStylePolaroid: '📸 Vintage Polaroid', portraitStyleCelebtoon: '🦸 Favorite cartoon character', portraitStyleProfession: '👩‍⚕️ Profession (doctor, pilot, police...)', portraitStyleSuperhero: '🦸‍♂️ Superhero full costume', portraitStyleAstronaut: '🚀 Astronaut', portraitOutfitKandura: '👔 Emirati Kandura + Ghutra', portraitOutfitAbaya: '🧕 Abaya + Shayla', portraitOutfitThobe: '🧣 Gulf Thobe + Shemagh', portraitOutfitSuit: '🧵 Formal suit', portraitOutfitDress: '👗 Evening dress', portraitOutfitCasual: '🧥 Smart casual', portraitOutfitSport: '🎽️ Sportswear', portraitOutfitWinter: '🧤 Winter coat', portraitProfDoctor: '👩‍⚕️ Doctor', portraitProfPilot: '🧑‍✈️ Pilot', portraitProfPolice: '👮 Police officer', portraitProfChef: '🧑‍🍳 Chef', portraitProfEngineer: '👷 Site engineer', portraitProfTeacher: '🧑‍🏫 Teacher', portraitProfFirefighter: '🧑‍🚒 Firefighter', portraitProfScientist: '🧑‍🔬 Lab scientist', portraitGrpTools: '🛠️ Practical tools', portraitGrpOccasions: '🎉 Occasions', portraitGrpTrending: '🔥 Trending', portraitGrpDressup: '🎭 Dress up',
     designAiPlaceFromPhoto: '📷 From my photo', designAiPlaceRestaurant: '🍽️ Restaurant', designAiPlaceCafe: '☕ Cafe', designAiPlaceBedroom: '🛏️ Bedroom', designAiPlaceMajlis: '🪑 Majlis', designAiPlaceLiving: '🛋️ Living room', designAiPlaceKitchen: '🍳 Kitchen', designAiPlaceOffice: '💼 Office', designAiPlaceShop: '🛍️ Shop', designAiPlaceBath: '🛁 Bathroom', designAiPlaceKids: '🧸 Kids room', designAiPlaceEntrance: '🚪 Entrance', designAiPlaceGarden: '🌳 Garden', designAiStyleNajdi: '🏜️ Najdi', designAiStyleIslamic: '✳️ Contemporary Islamic', designAiStyleAndalusi: '🏛️ Andalusian', fashionAiOccasionGraduation: '🎓 Graduation', fashionAiOccasionReligious: '🕌 Religious occasion', fashionAiSeasonAutumn: '🍂 Autumn', fashionAiSeasonSpring: '🌸 Spring',
@@ -3486,7 +3514,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=599';
+    sc.src = 'i18n/' + lg + '.js?v=600';
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -7045,6 +7073,7 @@ async function settingsCmdMicToggle(){
       const audioBase64 = await blobToBase64(blob);
       const res = await fetch('/api/stt', {
         method:'POST', headers:{'Content-Type':'application/json'},
+        signal: AbortSignal.timeout(45000), // v600: صفر مهلة = تعليق أبديّ
         body: JSON.stringify({ audioBase64, mimeType: blob.type, lang, token: authGet('aiapp_auth_token'), guestId: window.getGuestId ? window.getGuestId() : undefined })
       });
       const data = await res.json();
@@ -9177,6 +9206,7 @@ async function stopMicRecordingAndTranscribe(autoRoute){
     const res = await fetch('/api/stt', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(45000), // v600: صفر مهلة = تعليق أبديّ
       body: JSON.stringify({ audioBase64, mimeType, lang, langHint: (autoRoute ? undefined : lang), token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
     });
     const data = await res.json();
@@ -9285,6 +9315,7 @@ async function miniMicStop(btn, targetId){
     const res = await fetch('/api/stt', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(45000), // v600: صفر مهلة = تعليق أبديّ
       body: JSON.stringify({ audioBase64, mimeType: st.mimeType, lang, langHint: lang, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
     });
     const data = await res.json();
@@ -11002,6 +11033,7 @@ async function mahaCallLoop(){
       const res = await fetch('/api/stt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(45000), // v600: صفر مهلة = تعليق أبديّ
         body: JSON.stringify({ audioBase64, mimeType: blob.type, lang: (typeof lang !== 'undefined' ? lang : 'ar'), token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
       });
       const data = await res.json();
@@ -11208,8 +11240,12 @@ async function mahaMicPreflight(){
   try{ perm = (await navigator.permissions.query({ name: "microphone" })).state; }catch(_){ /* guard-ok: unsupported Permissions API falls through to getUserMedia. */ }
   if(perm === "denied") return mahaMicMsg({ name: "NotAllowedError" });
   try{
+    // If the permission prompt is answered AFTER the 15s race rejected, the
+    // stream still arrives with nobody left to stop it - the mic stays hot.
+    var __gum = navigator.mediaDevices.getUserMedia({ audio: true });
+    __gum.then(function(st){ try{ st.getTracks().forEach(function(tr){ tr.stop(); }); }catch(_){ /* guard-ok */ } });
     var s = await Promise.race([
-      navigator.mediaDevices.getUserMedia({ audio: true }),
+      __gum,
       new Promise(function(_res, rej){ setTimeout(function(){ rej({ name: "__timeout__" }); }, 15000); })
     ]);
     s.getTracks().forEach(function(tr){ try{ tr.stop(); }catch(_){ /* guard-ok: an already-ended track needs no cleanup. */ } });
@@ -11217,7 +11253,7 @@ async function mahaMicPreflight(){
   }catch(e){ console.error("[maha] mic preflight failed:", e); return mahaMicMsg(e); }
 }
 
-async function mahaStartCall(mode){
+async function mahaStartCallInner(mode){
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
     alert(t('micNotSupported'));
     return;
@@ -11286,6 +11322,17 @@ async function mahaStartCall(mode){
   // Skip the spoken greeting - jump straight to listening so Maha replies
   // to whatever the user says first, without any intro audio.
   if(mahaCallActive) mahaCallLoop();
+}
+
+// Two quick taps (or two different entry points) used to open two live calls at
+// once: two microphones and double metering. Thin wrapper only - the original
+// body is untouched, now mahaStartCallInner().
+let mahaCallStarting = false;
+async function mahaStartCall(mode){
+  if(mahaCallActive || mahaCallStarting) return;
+  mahaCallStarting = true;
+  try{ return await mahaStartCallInner(mode); }
+  finally{ mahaCallStarting = false; }
 }
 
 if(btnMahaEl) btnMahaEl.onclick = () => { mahaUnlockAudio(); mahaStartCall(); };

@@ -233,6 +233,7 @@ async function stopMicRecordingAndTranscribe(autoRoute){
     const res = await fetch('/api/stt', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(45000), // v600: صفر مهلة = تعليق أبديّ
       body: JSON.stringify({ audioBase64, mimeType, lang, langHint: (autoRoute ? undefined : lang), token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
     });
     const data = await res.json();
@@ -341,6 +342,7 @@ async function miniMicStop(btn, targetId){
     const res = await fetch('/api/stt', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(45000), // v600: صفر مهلة = تعليق أبديّ
       body: JSON.stringify({ audioBase64, mimeType: st.mimeType, lang, langHint: lang, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
     });
     const data = await res.json();

@@ -328,8 +328,8 @@
     </div>
 
     <div style="margin-top:12px;">
-      <label id="designAiNotesLbl" style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">✍️ اكتب تفاصيلك بكلماتك (اختياري)</label>
-      <textarea id="designAiNotes" rows="3" maxlength="400" style="width:100%; resize:vertical; font-family:inherit;" placeholder="مثال: مطعم إيطالي ٤٠ كرسي، سقف عالي، طابع صناعي"></textarea>
+      <label id="designAiNotesLbl" style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="dsNotesLabel">✍️ اكتب تفاصيلك بكلماتك (اختياري)</label>
+      <textarea id="designAiNotes" rows="3" maxlength="400" style="width:100%; resize:vertical; font-family:inherit;" placeholder="مثال: مطعم إيطالي ٤٠ كرسي، سقف عالي، طابع صناعي" data-i18n-placeholder="dsNotesPh"></textarea>
     </div>
 
     <button type="button" class="btn primary" id="designAiGenerateBtn" style="width:100%; margin-top:14px;" data-i18n="designAiGenerateBtn">✨ صمم الغرفة</button>
@@ -502,11 +502,11 @@
       </label>
     </div>
     <div id="portraitRemoveWrap" style="margin-top:10px; display:none;">
-      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">ماذا تريد إزالته من الصورة؟</label>
-      <input type="text" id="portraitRemoveInput" maxlength="80" style="width:100%; padding:8px; border-radius:var(--r-2);" placeholder="مثال: الشخص الذي خلفي · السيارة · العمود">
+      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="rmWhatLabel">ماذا تريد إزالته من الصورة؟</label>
+      <input type="text" id="portraitRemoveInput" maxlength="80" style="width:100%; padding:8px; border-radius:var(--r-2);" placeholder="مثال: الشخص الذي خلفي · السيارة · العمود" data-i18n-placeholder="rmWhatPh">
     </div>
     <div id="portraitOutfitWrap" style="margin-top:10px; display:none;">
-      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">اختر الملابس</label>
+      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="pickOutfitLabel">اختر الملابس</label>
       <select id="portraitOutfitSelect" style="width:100%;">
         <option value="kandura" data-i18n="portraitOutfitKandura">👔 كندورة إماراتية + غترة</option>
         <option value="abaya" data-i18n="portraitOutfitAbaya">🧕 عباية + شيلة</option>
@@ -519,7 +519,7 @@
       </select>
     </div>
     <div id="portraitProfWrap" style="margin-top:10px; display:none;">
-      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">اختر المهنة</label>
+      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="pickProfessionLabel">اختر المهنة</label>
       <select id="portraitProfSelect" style="width:100%;">
         <option value="doctor" data-i18n="portraitProfDoctor">👩‍⚕️ طبيب</option>
         <option value="pilot" data-i18n="portraitProfPilot">🧑‍✈️ طيار</option>
@@ -851,20 +851,20 @@
 <div id="emailAssistModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
   <div style="max-width:560px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-      <h3 style="margin:0;" id="emailAssistHeaderTitle">📧 مساعد البريد الذكي</h3>
+      <h3 style="margin:0;" id="emailAssistHeaderTitle" data-i18n="emailAssistTitle">📧 مساعد البريد الذكي</h3>
       <button type="button" class="btn iconBtn" id="emailAssistCloseBtn" style="padding:4px 10px;">✕</button>
     </div>
 
     <div id="emailAssistConnectBox" style="margin-top:16px; text-align:center;">
-      <p id="emailAssistConnectText" style="font-size: var(--fs-3); color:var(--muted);">اربط حساب Gmail الخاص بك ليقرأ الذكاء الاصطناعي إيميلاتك ويقترح ردودًا جاهزة تعتمدها قبل الإرسال.</p>
+      <p id="emailAssistConnectText" style="font-size: var(--fs-3); color:var(--muted);" data-i18n="emailConnectHint">اربط حساب Gmail الخاص بك ليقرأ الذكاء الاصطناعي إيميلاتك ويقترح ردودًا جاهزة تعتمدها قبل الإرسال.</p>
       <button type="button" class="btn primary" id="emailAssistConnectBtn" data-i18n="eaConnectBtn" style="width:100%; margin-top:10px;">🔗 ربط Gmail</button>
     </div>
 
     <div id="emailAssistConnectedBox" style="display:none; margin-top:10px;">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
         <span id="emailAssistGmailLabel" style="font-size:12.5px; color:var(--muted);"></span>
-        <button type="button" class="btn" id="emailAssistVoiceBtn" data-i18n="eaVoiceBtn" style="padding:6px 12px; font-size:12.5px;">🔊 <span id="emailAssistVoiceLabel">ملخص صوتي</span></button>
-        <button type="button" class="btn" id="emailAssistRefreshBtn" data-i18n="eaRefreshBtn" style="padding:6px 12px; font-size:12.5px;">🔄 <span id="emailAssistRefreshLabel">تحديث</span></button>
+        <button type="button" class="btn" id="emailAssistVoiceBtn" data-i18n="eaVoiceBtn" style="padding:6px 12px; font-size:12.5px;">🔊 <span id="emailAssistVoiceLabel" data-i18n="voiceSummaryBtn">ملخص صوتي</span></button>
+        <button type="button" class="btn" id="emailAssistRefreshBtn" data-i18n="eaRefreshBtn" style="padding:6px 12px; font-size:12.5px;">🔄 <span id="emailAssistRefreshLabel" data-i18n="refreshBtn">تحديث</span></button>
       </div>
       <div id="emailAssistStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
       <div id="emailAssistList" style="margin-top:14px; display:flex; flex-direction:column; gap:14px;"></div>
@@ -878,8 +878,8 @@
     <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px;">
       <h3 style="margin:0; font-size:15px; line-height:1.3;" data-i18n="stocksTitle">📈 سوق الأسهم العالمي</h3>
       <div style="display:flex; gap:6px;">
-        <button type="button" class="btn iconBtn" id="stocksGlobalBtn" title="الأسواق العالمية" style="padding:4px 8px;">🌍</button>
-        <button type="button" class="btn iconBtn" id="stocksSearchBtn" title="اختيار سهم" style="padding:4px 8px;">🔍</button>
+        <button type="button" class="btn iconBtn" id="stocksGlobalBtn" title="الأسواق العالمية" data-i18n-title="worldMarketsTitle" style="padding:4px 8px;">🌍</button>
+        <button type="button" class="btn iconBtn" id="stocksSearchBtn" title="اختيار سهم" data-i18n-title="pickStockTitle" style="padding:4px 8px;">🔍</button>
         <button type="button" class="btn iconBtn" id="stocksLearnBtn" data-i18n-title="stocksLearnTitle" title="تعلم التداول" style="padding:4px 8px;">🎓</button>
         <button type="button" class="btn iconBtn" id="stocksFullBtn" data-i18n-title="stocksFullTitle" title="وضع شاشة البورصة" style="padding:4px 8px;">🖥️</button>
         <button type="button" class="btn iconBtn" id="stocksCloseBtn" style="padding:4px 8px;">✕</button>
@@ -1012,7 +1012,7 @@
     <p style="font-size:12.5px; color:var(--muted); margin-top:2px;" data-i18n="constructionDesc">صف مشروع البناء، وسيولّد الذكاء الاصطناعي تصورًا معماريًا أوليًا + قائمة مواد + تقدير تكلفة تقريبي. تصور أولي فقط، لا يغني عن مهندس مرخّص.</p>
 
     <div class="cx-sec">
-      <h4 class="cx-h">📋 بيانات المشروع</h4>
+      <h4 class="cx-h" data-i18n="cnProjectData">📋 بيانات المشروع</h4>
     <div style="margin-top:12px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="constructionTypeLabel">نوع المبنى</label>
       <select id="constructionType" style="width:100%;">
@@ -1050,11 +1050,11 @@
 
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;">
       <div>
-        <label style="font-size: var(--fs-5); color:var(--muted); display:block; margin-bottom:3px;">مساحة الأرض (م²) — اختياري</label>
-        <input type="number" id="constructionPlot" style="width:100%;" min="50" max="200000" placeholder="مثال: 500">
+        <label style="font-size: var(--fs-5); color:var(--muted); display:block; margin-bottom:3px;" data-i18n="cnLandArea">مساحة الأرض (م²) — اختياري</label>
+        <input type="number" id="constructionPlot" style="width:100%;" min="50" max="200000" placeholder="مثال: 500" data-i18n-placeholder="cnLandAreaPh">
       </div>
       <div>
-        <label style="font-size: var(--fs-5); color:var(--muted); display:block; margin-bottom:3px;">الإمارة — اختياري</label>
+        <label style="font-size: var(--fs-5); color:var(--muted); display:block; margin-bottom:3px;" data-i18n="cnEmirateOpt">الإمارة — اختياري</label>
         <select id="constructionEmirate" style="width:100%;">
           <option value="" data-i18n="constructionEmirateNone">— بدون —</option>
           <option value="dubai" data-i18n="constructionEmirateDubai">دبي</option>
@@ -1086,7 +1086,7 @@
     </div>
 
     <div class="cx-sec">
-      <h4 class="cx-h">🏠 التفاصيل والملاحق</h4>
+      <h4 class="cx-h" data-i18n="cnDetailsAnnexes">🏠 التفاصيل والملاحق</h4>
     <div style="margin-top:12px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="constructionNotesLabel">ملاحظات إضافية (اختياري)</label>
       <div class="mini-mic-field-row">
@@ -1104,18 +1104,18 @@
         <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="carport"><span data-i18n="constructionAnnexCarport">مواقف سيارات مغطاة</span></label>
         <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="garden"><span data-i18n="constructionAnnexGarden">حديقة/برجولة</span></label>
         <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="laundry"><span data-i18n="constructionAnnexLaundry">غرفة غسيل/تخزين</span></label>
-        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="elevator"><span>مصعد داخلي</span></label>
-        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="storage"><span>مخزن خارجي</span></label>
-        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="tank"><span>خزان مياه</span></label>
-        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="solar"><span>ألواح شمسية</span></label>
-        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="playground"><span>ملعب خارجي</span></label>
-        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="carport2"><span>مظلة سيارات إضافية</span></label>
+        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="elevator"><span data-i18n="cnExElevator">مصعد داخلي</span></label>
+        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="storage"><span data-i18n="cnExStore">مخزن خارجي</span></label>
+        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="tank"><span data-i18n="cnExWaterTank">خزان مياه</span></label>
+        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="solar"><span data-i18n="cnExSolar">ألواح شمسية</span></label>
+        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="playground"><span data-i18n="cnExPlayground">ملعب خارجي</span></label>
+        <label class="cx-pill"><input type="checkbox" class="constructionAnnex" value="carport2"><span data-i18n="cnExCarport">مظلة سيارات إضافية</span></label>
       </div>
     </div>
     </div>
 
     <div class="cx-sec">
-      <h4 class="cx-h">💰 الميزانية والمخرجات</h4>
+      <h4 class="cx-h" data-i18n="cnBudgetOutputs">💰 الميزانية والمخرجات</h4>
     <label class="cx-pill" style="margin-top:2px;">
       <input type="checkbox" id="constructionIncludeInterior">
       <span data-i18n="constructionIncludeInteriorLabel">🛋️ ولّد أيضًا صورة تصميم داخلي</span>
@@ -1171,8 +1171,8 @@
     </div>
     <div id="constructionBoqWrap" style="display:none; margin-top:12px; overflow-x:auto;"></div>
     <div id="constructionExportRow" style="display:none; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;">
-      <button type="button" class="btn" id="constructionBoqBtn">📊 تنزيل جدول الكميات</button>
-      <button type="button" class="btn" id="constructionPdfBtn">📄 تقرير PDF</button>
+      <button type="button" class="btn" id="constructionBoqBtn" data-i18n="cnDownloadBoq">📊 تنزيل جدول الكميات</button>
+      <button type="button" class="btn" id="constructionPdfBtn" data-i18n="cnPdfReport">📄 تقرير PDF</button>
     </div>
     <div id="constructionPlanText" style="display:none; margin-top:14px; white-space:pre-wrap; line-height:1.9; font-size: var(--fs-3); background:var(--panel2,#111); border:1px solid var(--border,#333); border-radius:var(--r-2); padding:14px;"></div>
 

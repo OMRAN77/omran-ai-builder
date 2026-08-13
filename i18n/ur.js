@@ -1,4 +1,18 @@
 I18N['ur'] = {
+    /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
+    sidePanelTitle: 'سائیڈ مینو', lightModeTitle: 'لائٹ موڈ', provSearchPh: 'ماڈل تلاش کریں...', jumpLatestTitle: 'تازہ ترین پیغام', editMsgNotice: 'پیغام میں ترمیم', modesTitle: 'موڈز',
+    attachFileTitle: 'فائل منسلک کریں', chipExam: 'امتحان حل کریں', chipBook: 'کتاب کا خلاصہ', chipArticle: 'پیشہ ورانہ مضمون لکھیں', chipIdeas: 'پروجیکٹ کے آئیڈیاز', tryItTitle: 'میرے لیے آزمائیں',
+    closeTitle: 'بند کریں', docAssistTitle: '📄 دستاویز اسسٹنٹ', govServicesTitle: '🧾 سرکاری خدمات', cvGenTitle: '💼 سی وی جنریٹر', dsNotesLabel: '✍️ اپنی تفصیلات اپنے الفاظ میں لکھیں (اختیاری)',
+    dsNotesPh: 'مثلاً: اطالوی ریستوران، 40 نشستیں، اونچی چھت، صنعتی انداز', rmWhatLabel: 'آپ تصویر سے کیا ہٹانا چاہتے ہیں؟', rmWhatPh: 'مثلاً: میرے پیچھے موجود شخص · گاڑی · کھمبا',
+    pickOutfitLabel: 'لباس منتخب کریں', pickProfessionLabel: 'پیشہ منتخب کریں',
+    emailConnectHint: 'اپنا Gmail اکاؤنٹ منسلک کریں تاکہ AI آپ کی ای میلز پڑھ سکے اور بھیجنے سے پہلے آپ کی منظوری کے لیے تیار جوابات تجویز کرے۔', voiceSummaryBtn: 'صوتی خلاصہ',
+    refreshBtn: 'ریفریش کریں', worldMarketsTitle: 'عالمی منڈیاں', pickStockTitle: 'اسٹاک منتخب کریں', cnProjectData: '📋 پروجیکٹ کا ڈیٹا', cnLandArea: 'زمین کا رقبہ (m²) — اختیاری',
+    cnLandAreaPh: 'مثلاً: 500', cnEmirateOpt: 'امارات — اختیاری', cnDetailsAnnexes: '🏠 تفصیلات اور ضمیمے', cnExElevator: 'اندرونی لفٹ', cnExStore: 'بیرونی اسٹور', cnExWaterTank: 'پانی کی ٹینکی',
+    cnExSolar: 'سولر پینلز', cnExPlayground: 'بیرونی کھیل کا میدان', cnExCarport: 'اضافی کار شیڈ', cnBudgetOutputs: '💰 بجٹ اور نتائج', cnDownloadBoq: '📊 مقدار جدول ڈاؤن لوڈ کریں',
+    cnPdfReport: '📄 PDF رپورٹ', keyHowToTitle: '📝 ہر فراہم کنندہ کے لیے کلید کیسے حاصل کریں:', showAllPlansCur: 'اپنی کرنسی میں تمام پلانز اور قیمتیں دیکھیں', currencyLabel: 'کرنسی',
+    plFreeMsgs: 'روزانہ 20 پیغامات', plFreeVoice: 'ایک منٹ صوتی چیٹ', plFreeImgs: '3 AI تصاویر', plFreeNoVideo: 'کوئی ویڈیو نہیں', plStMsgs: 'ماہانہ 300 پیغامات', plStVoice: '30 منٹ صوتی چیٹ',
+    plStImgs: '15 تصاویر', plStVideos: '5 ویڈیوز', plProMsgs: 'لامحدود پیغامات', plProVoice: '80 منٹ صوتی چیٹ', plProMedia: '40 تصاویر · 13 ویڈیوز · 2 سنیمائی', plProAgent: 'سمارٹ ایجنٹ',
+    plProPriority: 'ترجیحی رفتار · گولڈ بیج', plMaxAllPro: 'Pro کی تمام خصوصیات', plMaxVoice: '500 منٹ صوتی چیٹ', plMaxMedia: '250 تصاویر · 83 ویڈیوز · 12 سنیمائی', plMaxSupport: 'خصوصی سپورٹ',
     adStudioTitle: 'اشتہار اسٹوڈیو', adStudioHint: 'اشتہار اسٹوڈیو — بات چیت کر کے اپنا اشتہار بنائیں', chatToPdfEmpty: 'ابھی تبدیل کرنے کے لیے کوئی جواب نہیں ہے۔', mahaConnectionLost: 'دوبارہ رابطہ نہیں ہو سکا', voiceTabAssistantName: 'اسسٹنٹ',
     buildNoCode: '⚠️ فراہم کنندہ سے کوئی کوڈ موصول نہیں ہوا — پیش منظر خالی ہے۔ درخواست دوبارہ بھیجیں یا کوئی اور فراہم کنندہ آزمائیں۔',
     convertToImage: 'تصویر میں تبدیل کریں',

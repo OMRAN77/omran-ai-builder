@@ -3,6 +3,11 @@
 // Actions: quote (latest price) | series (time series for chart) | search (symbol lookup)
 const { kvGetJSON, kvPutJSON } = require('./kv.js');
 const { logError } = require('./log-error.js');
+// modes 'learn' and 'analyze' call Claude (and Tavily) on the owner's keys.
+// They shipped with no identity check at all, so a loop against this one
+// endpoint could spend the owner's balance. Metered per account, else per IP.
+const { checkAndConsumeCustom, clientIp } = require('./_usage.js');
+const STOCKS_AI_DAILY_LIMIT = 30;
 
 const BASE = 'https://api.twelvedata.com';
 const tickerCache = new Map();
@@ -208,6 +213,8 @@ module.exports = async (req, res) => {
 
     if (mode === 'learn') {
       const lang = body.lang || 'ar';
+      const aiGate = await checkAndConsumeCustom(body.token, body.guestId, clientIp(req), 'stocks-ai', STOCKS_AI_DAILY_LIMIT);
+      if (!aiGate.allowed) { res.status(aiGate.reason === 'auth' ? 401 : 402).json({ error: aiGate.reason === 'auth' ? 'auth_required' : 'daily_limit_reached' }); return; }
       const topic = String(body.topic || '').slice(0, 300);
       const userQ = String(body.question || '').slice(0, 500);
       if (!topic && !userQ) { res.status(400).json({ error: 'topic or question required' }); return; }
@@ -298,6 +305,8 @@ module.exports = async (req, res) => {
 
     if (mode === 'analyze') {
       const lang = body.lang || 'ar';
+      const aiGate = await checkAndConsumeCustom(body.token, body.guestId, clientIp(req), 'stocks-ai', STOCKS_AI_DAILY_LIMIT);
+      if (!aiGate.allowed) { res.status(aiGate.reason === 'auth' ? 401 : 402).json({ error: aiGate.reason === 'auth' ? 'auth_required' : 'daily_limit_reached' }); return; }
       // 1) live data: quote + daily series only (2 credits); RSI/MACD computed locally
       let [quote, series] = await Promise.all([
         fhQuote(symbol).then(fq => fq ? { symbol, name: symbol, close: fq.price, change: fq.change, percent_change: fq.changePct, high: fq.high, low: fq.low, previous_close: fq.prevClose, volume: 0, currency: 'USD', is_market_open: true } : td('quote', { symbol }, apiKey)).catch(() => null),

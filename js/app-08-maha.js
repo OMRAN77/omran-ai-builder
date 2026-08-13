@@ -1459,6 +1459,7 @@ async function mahaCallLoop(){
       const res = await fetch('/api/stt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(45000), // v600: صفر مهلة = تعليق أبديّ
         body: JSON.stringify({ audioBase64, mimeType: blob.type, lang: (typeof lang !== 'undefined' ? lang : 'ar'), token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
       });
       const data = await res.json();
@@ -1665,8 +1666,12 @@ async function mahaMicPreflight(){
   try{ perm = (await navigator.permissions.query({ name: "microphone" })).state; }catch(_){ /* guard-ok: unsupported Permissions API falls through to getUserMedia. */ }
   if(perm === "denied") return mahaMicMsg({ name: "NotAllowedError" });
   try{
+    // If the permission prompt is answered AFTER the 15s race rejected, the
+    // stream still arrives with nobody left to stop it - the mic stays hot.
+    var __gum = navigator.mediaDevices.getUserMedia({ audio: true });
+    __gum.then(function(st){ try{ st.getTracks().forEach(function(tr){ tr.stop(); }); }catch(_){ /* guard-ok */ } });
     var s = await Promise.race([
-      navigator.mediaDevices.getUserMedia({ audio: true }),
+      __gum,
       new Promise(function(_res, rej){ setTimeout(function(){ rej({ name: "__timeout__" }); }, 15000); })
     ]);
     s.getTracks().forEach(function(tr){ try{ tr.stop(); }catch(_){ /* guard-ok: an already-ended track needs no cleanup. */ } });
@@ -1674,7 +1679,7 @@ async function mahaMicPreflight(){
   }catch(e){ console.error("[maha] mic preflight failed:", e); return mahaMicMsg(e); }
 }
 
-async function mahaStartCall(mode){
+async function mahaStartCallInner(mode){
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
     alert(t('micNotSupported'));
     return;
@@ -1743,6 +1748,17 @@ async function mahaStartCall(mode){
   // Skip the spoken greeting - jump straight to listening so Maha replies
   // to whatever the user says first, without any intro audio.
   if(mahaCallActive) mahaCallLoop();
+}
+
+// Two quick taps (or two different entry points) used to open two live calls at
+// once: two microphones and double metering. Thin wrapper only - the original
+// body is untouched, now mahaStartCallInner().
+let mahaCallStarting = false;
+async function mahaStartCall(mode){
+  if(mahaCallActive || mahaCallStarting) return;
+  mahaCallStarting = true;
+  try{ return await mahaStartCallInner(mode); }
+  finally{ mahaCallStarting = false; }
 }
 
 if(btnMahaEl) btnMahaEl.onclick = () => { mahaUnlockAudio(); mahaStartCall(); };

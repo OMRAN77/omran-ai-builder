@@ -1,4 +1,14 @@
 I18N['zh'] = {
+    /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
+    sidePanelTitle: '侧边栏', lightModeTitle: '浅色模式', provSearchPh: '搜索模型...', jumpLatestTitle: '最新消息', editMsgNotice: '正在编辑消息', modesTitle: '模式', attachFileTitle: '添加文件', chipExam: '解答考试题',
+    chipBook: '总结一本书', chipArticle: '撰写专业文章', chipIdeas: '项目创意', tryItTitle: '帮我试试', closeTitle: '关闭', docAssistTitle: '📄 文档助手', govServicesTitle: '🧾 政府服务', cvGenTitle: '💼 简历生成器',
+    dsNotesLabel: '✍️ 用你自己的话写下细节（可选）', dsNotesPh: '例如：意大利餐厅，40个座位，高天花板，工业风格', rmWhatLabel: '你想从图片中去除什么？', rmWhatPh: '例如：我身后的人 · 汽车 · 电线杆', pickOutfitLabel: '选择服装', pickProfessionLabel: '选择职业',
+    emailConnectHint: '连接你的 Gmail 账户，让 AI 阅读你的邮件，并在发送前提供供你审核的回复建议。', voiceSummaryBtn: '语音摘要', refreshBtn: '刷新', worldMarketsTitle: '全球市场', pickStockTitle: '选择股票', cnProjectData: '📋 项目数据',
+    cnLandArea: '土地面积（m²）— 可选', cnLandAreaPh: '例如：500', cnEmirateOpt: '酋长国 — 可选', cnDetailsAnnexes: '🏠 详情与附属设施', cnExElevator: '室内电梯', cnExStore: '室外储藏室', cnExWaterTank: '水箱', cnExSolar: '太阳能板',
+    cnExPlayground: '室外游乐场', cnExCarport: '额外车棚', cnBudgetOutputs: '💰 预算与输出', cnDownloadBoq: '📊 下载工程量清单', cnPdfReport: '📄 PDF 报告', keyHowToTitle: '📝 如何获取每个提供商的密钥：', showAllPlansCur: '以你的货币显示所有套餐和价格',
+    currencyLabel: '货币', plFreeMsgs: '每天20条消息', plFreeVoice: '1分钟语音聊天', plFreeImgs: '3张AI图片', plFreeNoVideo: '无视频', plStMsgs: '每月300条消息', plStVoice: '30分钟语音聊天', plStImgs: '15张图片', plStVideos: '5个视频',
+    plProMsgs: '无限消息', plProVoice: '80分钟语音聊天', plProMedia: '40张图片 · 13个视频 · 2个电影级视频', plProAgent: '智能代理', plProPriority: '优先速度 · 金色徽章', plMaxAllPro: '包含Pro的所有功能', plMaxVoice: '500分钟语音聊天',
+    plMaxMedia: '250张图片 · 83个视频 · 12个电影级视频', plMaxSupport: '专属支持',
     adStudioTitle: '广告工作室', adStudioHint: '广告工作室 — 通过对话制作你的广告', chatToPdfEmpty: '暂无可转换的回复。', mahaConnectionLost: '无法重新连接', voiceTabAssistantName: '助手',
     acctCleanupConfirm: '所有聊天和项目将被永久删除。确定要继续吗？',
     buildNoCode: '⚠️ 未收到提供方返回的代码——预览为空。请重新发送请求或尝试其他提供方。',

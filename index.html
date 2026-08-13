@@ -123,7 +123,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧أ: مودالات الأساس نُقلت إلى js/partials-core.js -->
-<script src="/js/partials-core.js?v=599"></script>
+<script src="/js/partials-core.js?v=600"></script>
 
 <!-- v416 · ديكور AI: منطقة رفع + شبكات بطاقات + رقاقات بدل القوائم المنسدلة. العقد مع app.bundle.js لم يتغيّر: القوائم ومربّعات الاختيار باقية في الصفحة مخفيّة وتُحدَّث برمجيًا. -->
 <script src="/js/design-sels.js?v=553"></script>
@@ -132,14 +132,14 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 
 
 <header>
-  <button type="button" class="omIconBtn" id="omranHamburger" title="القائمة الجانبية"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
+  <button type="button" class="omIconBtn" id="omranHamburger" title="القائمة الجانبية" data-i18n-title="sidePanelTitle"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
   <h1>
     <span class="titles">
       <span id="brandTitle" class="brandTitle brand-ar"><img src="icons/brand-ar.png" alt="عمران Ai" class="brandImg"></span>
     </span>
   </h1>
   <div id="headerActions" style="display:flex; gap:8px; flex-wrap:nowrap; justify-content:flex-end; align-items:center; flex-shrink:0;">
-    <button class="btn iconBtn" id="btnMode" onclick="omToggleMode()" title="الوضع الفاتح" style="background:none; border:none; box-shadow:none; padding:7px; color:var(--muted);"></button>
+    <button class="btn iconBtn" id="btnMode" onclick="omToggleMode()" title="الوضع الفاتح" data-i18n-title="lightModeTitle" style="background:none; border:none; box-shadow:none; padding:7px; color:var(--muted);"></button>
     <div id="codeHintTip" style="display:none;"><span class="hintCloseBtn" id="codeHintCloseBtn">✕</span><span data-i18n="codeHintText">اضغط هنا لعرض الكود والمعاينة المباشرة لتطبيقك 👈</span></div>
     <button class="btn" id="btnClock" title="التقويم والوقت" data-i18n-title="clockBtnTitle" style="display:none; font-variant-numeric:tabular-nums; background:none; border:none;">🕐 <span id="headerClockTime" style="direction:ltr; font-weight:700;">--:--:--</span></button>
     <button class="btn" id="btnInstallHeader" title="تثبيت التطبيق" data-i18n-title="install" style="display:none;">📲 <span class="btnLabel" data-i18n="install">تثبيت التطبيق</span></button>
@@ -200,7 +200,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
     <div id="providerGridSidebar">
       <button id="provDropdownBtn" type="button"><span id="provDDLogo"></span><span class="provDDName" id="provDDName"></span><svg class="provDDChev" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
       <div id="provDropdownPanel">
-        <input type="text" id="provSearchInput" placeholder="ابحث عن نموذج...">
+        <input type="text" id="provSearchInput" placeholder="ابحث عن نموذج..." data-i18n-placeholder="provSearchPh">
         <div id="providerGridCells"></div>
       </div>
       <div id="premiumToggleWrap" style="margin-top:8px; position:relative;">
@@ -223,8 +223,8 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
     </div>
     <div id="history"></div>
     <div id="omranSidebarFoot">
-      <button type="button" class="omIconBtn" id="omranFootDelete" title="حذف الكل"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
-      <button type="button" class="omIconBtn" id="omranFootSettings" title="الإعدادات"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6 1.65 1.65 0 0 0 10 3.09V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
+      <button type="button" class="omIconBtn" id="omranFootDelete" title="حذف الكل" data-i18n-title="sbDeleteAll"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+      <button type="button" class="omIconBtn" id="omranFootSettings" title="الإعدادات" data-i18n-title="settings"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6 1.65 1.65 0 0 0 10 3.09V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></button>
       <button type="button" class="omNavBtn omDeskNav active" data-omnav="home"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg><span data-i18n="omNavHome">الرئيسية</span></button>
       <button type="button" class="omNavBtn omDeskNav" data-omnav="chats"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><span data-i18n="omNavChats">المحادثات</span></button>
       <button type="button" class="omNavBtn omDeskNav" data-omnav="tools"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg><span data-i18n="omNavTools">الأدوات</span></button>
@@ -245,7 +245,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
       </div>
     </div>
     <div id="messages"></div>
-    <button type="button" id="chatJumpBottom" title="أحدث رسالة" aria-label="الانتقال إلى أحدث رسالة">↓</button>
+    <button type="button" id="chatJumpBottom" title="أحدث رسالة" data-i18n-title="jumpLatestTitle" aria-label="الانتقال إلى أحدث رسالة">↓</button>
     
     <div id="chatQuickChipsWrap" style="display:none; position:absolute; bottom:64px; inset-inline-end:14px; z-index:2100; background:var(--panel); backdrop-filter:blur(14px); border:1px solid var(--border); border-radius:14px; box-shadow:0 12px 34px rgba(0,0,0,.55); color:var(--text); padding:8px; max-height:60vh; overflow-y:auto;">
       <div id="quickChips" style="display:flex; flex-direction:column; gap:2px; align-items:stretch;"></div>
@@ -254,7 +254,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
       <input type="file" id="attachInput" accept="image/*,.txt,.md,.js,.jsx,.ts,.tsx,.py,.json,.csv,.html,.css,.log,.zip,.docx,.xlsx,.pptx,.jar,.pdf,.xml,.yml,.yaml,.sh,.php,.java,.c,.cpp,.go,.rs,.rb,.sql,.env,*" multiple style="display:none;">
       <div id="emojiPicker"></div>
       <div id="composerBox">
-      <div id="chatEditNotice" hidden><span>تعديل الرسالة</span><button type="button" aria-label="إلغاء التعديل">إلغاء</button></div>
+      <div id="chatEditNotice" hidden><span data-i18n="editMsgNotice">تعديل الرسالة</span><button type="button" aria-label="إلغاء التعديل" data-i18n="cancel">إلغاء</button></div>
       <!-- v587 — المرفقات داخل صندوق الكتابة نفسه -->
       <div id="attachStrip"></div>
       <textarea id="prompt" rows="1" data-i18n-placeholder="promptPlaceholder" placeholder="اكتب رسالتك هنا ..."></textarea>
@@ -284,9 +284,9 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
               <div id="sectionsToolsPopup"><button type="button" class="stpClose" id="stpCloseBtn" aria-label="close"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div>
             </div>
           </div>
-          <button type="button" id="omModeBtn" title="الأوضاع" aria-label="modes">@</button>
-          <button type="button" id="omranBtnWeb" title="بحث في الإنترنت"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><line x1="3" y1="12" x2="21" y2="12"></line><path d="M12 3a15 15 0 0 1 4 9 15 15 0 0 1-4 9 15 15 0 0 1-4-9 15 15 0 0 1 4-9z"></path></svg></button>
-          <button type="button" id="omranBtnClip" title="إرفاق ملف" style="display:none !important;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg></button>
+          <button type="button" id="omModeBtn" title="الأوضاع" data-i18n-title="modesTitle" aria-label="modes">@</button>
+          <button type="button" id="omranBtnWeb" title="بحث في الإنترنت" data-i18n-title="qtWebSearch"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><line x1="3" y1="12" x2="21" y2="12"></line><path d="M12 3a15 15 0 0 1 4 9 15 15 0 0 1-4 9 15 15 0 0 1-4-9 15 15 0 0 1 4-9z"></path></svg></button>
+          <button type="button" id="omranBtnClip" title="إرفاق ملف" data-i18n-title="attachFileTitle" style="display:none !important;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg></button>
           <button class="btn" id="btnMic" type="button" title="تحدث بدل الكتابة" data-i18n-title="micTitle"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg></button>
           <button class="btn" id="btnAskAllToggle" type="button" style="display:none !important;" title="اسأل الكل — 4 نماذج AI تبني تطبيقك معًا" data-i18n-title="askAllBtnTitle">🧠</button>
         </div>
@@ -296,10 +296,10 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
       </div>
       <div id="omranBelowComposer">
         <div id="omranChips">
-          <button type="button" class="omChip" data-omchip="ساعدني في حل امتحان: ">حل امتحان</button>
-          <button type="button" class="omChip" data-omchip="لخّص لي كتاب: ">تلخيص كتاب</button>
-          <button type="button" class="omChip" data-omchip="اكتب مقالاً احترافياً عن: ">كتابة مقال احترافي</button>
-          <button type="button" class="omChip" data-omchip="اقترح لي أفكاراً لمشروع: ">أفكار لمشروع</button>
+          <button type="button" class="omChip" data-omchip="ساعدني في حل امتحان: " data-i18n="chipExam">حل امتحان</button>
+          <button type="button" class="omChip" data-omchip="لخّص لي كتاب: " data-i18n="chipBook">تلخيص كتاب</button>
+          <button type="button" class="omChip" data-omchip="اكتب مقالاً احترافياً عن: " data-i18n="chipArticle">كتابة مقال احترافي</button>
+          <button type="button" class="omChip" data-omchip="اقترح لي أفكاراً لمشروع: " data-i18n="chipIdeas">أفكار لمشروع</button>
         </div>
         <div id="omranDisclaimer" data-i18n="omranDisclaimerTxt">قد تكون المعلومات غير دقيقة، تحقق من المعلومات المهمة.</div>
       </div>
@@ -333,8 +333,8 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
         <!-- 🧪 اختبار تفاعلي — لا يعمل تلقائيًا أبدًا: نقر أعمى على تطبيق قد
              يحتوي زر حذف ليس مهمة خلفية، ويستهلك نقاطًا، ويُبقي المستخدم منتظرًا. -->
         <div id="omranTestBar" style="display:none; align-items:center; gap:6px;">
-          <button type="button" id="btnTestApp" class="btn iconBtn" title="جرّبه لي"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6v5a1 1 0 01-1 1h-4a1 1 0 01-1-1V3z"/><path d="M7 8l-2 13h14L17 8"/><circle cx="12" cy="15" r="2"/></svg> 🧪</button>
-          <button type="button" id="btnTestStop" class="btn iconBtn" title="إيقاف" style="display:none;">■</button>
+          <button type="button" id="btnTestApp" class="btn iconBtn" title="جرّبه لي" data-i18n-title="tryItTitle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6v5a1 1 0 01-1 1h-4a1 1 0 01-1-1V3z"/><path d="M7 8l-2 13h14L17 8"/><circle cx="12" cy="15" r="2"/></svg> 🧪</button>
+          <button type="button" id="btnTestStop" class="btn iconBtn" title="إيقاف" data-i18n-title="stopTitle" style="display:none;">■</button>
         </div>
         <div id="pyConsole" style="display:none;">
           <div id="pyConsoleToolbar">
@@ -381,21 +381,21 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧ب: الإعدادات + الساعة + القوالب نُقلت إلى js/partials-settings.js -->
-<script src="/js/partials-settings.js?v=589"></script>
+<script src="/js/partials-settings.js?v=600"></script>
 
 <script src="/js/selfdiag.js?v=421"></script>
 <script src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script src="/js/app.bundle.js?v=20ed75c9"></script>
+    <script src="/js/app.bundle.js?v=70d13ce4"></script>
     <script src="/js/modes.js?v=b23329c6"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
   <div class="eduWrap">
     <div class="eduHead">
-      <button class="eduIconBtn" id="eduBackBtn" style="display:none;" title="رجوع"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+      <button class="eduIconBtn" id="eduBackBtn" style="display:none;" title="رجوع" data-i18n-title="back"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
       <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10L12 5 2 10l10 5 10-5z"></path><path d="M6 12.5V17c3 2.6 9 2.6 12 0v-4.5"></path><path d="M22 10v6"></path></svg><span id="eduTitleTxt">التعليم</span></h2>
       <span class="eduStreak" id="eduStreakBadge" style="display:none;">🔥 0</span>
-      <button class="eduIconBtn" id="eduCloseBtn" title="إغلاق"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+      <button class="eduIconBtn" id="eduCloseBtn" title="إغلاق" data-i18n-title="closeTitle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
     </div>
     <div class="eduBody" id="eduBody"></div>
   </div>
@@ -429,9 +429,9 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 
 <!-- ================= 📄🧾💼 مساعد المستندات + المعاملات الحكومية + السيرة الذاتية ================= -->
 
-<div class="xm" id="docModal" dir="rtl"><div class="xmWrap"><div class="xmHead"><h2 id="docTitleH">📄 مساعد المستندات</h2><button class="xmX" id="docX">✕</button></div><div class="xmBody" id="docBody"></div></div></div>
-<div class="xm" id="govModal" dir="rtl"><div class="xmWrap"><div class="xmHead"><h2 id="govTitleH">🧾 المعاملات الحكومية</h2><button class="xmX" id="govX">✕</button></div><div class="xmBody" id="govBody"></div></div></div>
-<div class="xm" id="cvModal" dir="rtl"><div class="xmWrap"><div class="xmHead"><h2 id="cvTitleH">💼 مولّد السيرة الذاتية</h2><button class="xmX" id="cvX">✕</button></div><div class="xmBody" id="cvBody"></div></div></div>
+<div class="xm" id="docModal" dir="rtl"><div class="xmWrap"><div class="xmHead"><h2 id="docTitleH" data-i18n="docAssistTitle">📄 مساعد المستندات</h2><button class="xmX" id="docX">✕</button></div><div class="xmBody" id="docBody"></div></div></div>
+<div class="xm" id="govModal" dir="rtl"><div class="xmWrap"><div class="xmHead"><h2 id="govTitleH" data-i18n="govServicesTitle">🧾 المعاملات الحكومية</h2><button class="xmX" id="govX">✕</button></div><div class="xmBody" id="govBody"></div></div></div>
+<div class="xm" id="cvModal" dir="rtl"><div class="xmWrap"><div class="xmHead"><h2 id="cvTitleH" data-i18n="cvGenTitle">💼 مولّد السيرة الذاتية</h2><button class="xmX" id="cvX">✕</button></div><div class="xmBody" id="cvBody"></div></div></div>
 
 <script src="/js/ui-docs.js?v=472"></script>
 <nav id="omranBottomNav" aria-label="التنقل">

@@ -238,7 +238,7 @@
     </div>
   <small class="hint" data-i18n="settingsHint" style="display:block; margin-top:10px;">
     🔒 يُحفظ مفتاحك محليًا في متصفحك فقط (localStorage) ولا يُرسل إلى أي خادم تابع لنا. كل طلب توليد يُرسَل مباشرة من متصفحك إلى مزوّد الذكاء الاصطناعي الذي اخترته باستخدام مفتاحك الخاص.<br><br>
-    <b>📝 كيف تحصل على مفتاح لكل مزوّد:</b><br><br>
+    <b data-i18n="keyHowToTitle">📝 كيف تحصل على مفتاح لكل مزوّد:</b><br><br>
     🔹 <b>OpenAI</b>: احصل على مفتاح من platform.openai.com/api-keys<br>
     🔹 <b>Gemini</b>: احصل على مفتاح مجاني من aistudio.google.com/app/apikey<br>
     🔹 <b>Groq</b>: احصل على مفتاح مجاني من console.groq.com/keys<br>
@@ -301,7 +301,7 @@
 
   <div id="pricingSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('pricingSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="pricingSectionTitle">💳 خطط الأسعار</h3><span class="settingsSectionArrow" id="pricingSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="pricingSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
-  <a href="/pricing.html" target="_blank" rel="noopener" id="openFullPricing" style="display:flex; align-items:center; justify-content:center; gap:8px; margin:2px 0 14px; padding:12px 14px; border:1px solid var(--line,rgba(128,128,128,.22)); border-radius:14px; background:var(--panel2); color:inherit; text-decoration:none; font-size:13px; font-weight:600;"><span>عرض كل الباقات والأسعار بعملتك</span><span style="font-size:12px;">↗</span></a>
+  <a href="/pricing.html" target="_blank" rel="noopener" id="openFullPricing" style="display:flex; align-items:center; justify-content:center; gap:8px; margin:2px 0 14px; padding:12px 14px; border:1px solid var(--line,rgba(128,128,128,.22)); border-radius:14px; background:var(--panel2); color:inherit; text-decoration:none; font-size:13px; font-weight:600;"><span data-i18n="showAllPlansCur">عرض كل الباقات والأسعار بعملتك</span><span style="font-size:12px;">↗</span></a>
   <div id="pricingWalletRow" style="display:none; align-items:center; gap:8px; padding:10px 4px; font-size: var(--fs-3);">
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
     <span data-i18n="pricingWalletLabel">رصيدك من النقاط</span>
@@ -331,13 +331,13 @@
   .pcard .pbtn.primary{background:#c9a227; border-color:#c9a227; color:#0a0a0a;}
   .pcard .pbtn.ghost{opacity:.45; cursor:default;}
   </style>
-  <div id="setCurBox" style="display:flex; align-items:center; gap:8px; margin:0 0 12px;"><span style="font-size:12.5px; color:var(--muted); flex:0 0 auto;">العملة</span><select id="setCurSel" aria-label="اختر الدولة" style="flex:1 1 auto; min-width:0; padding:8px 10px; border-radius:10px; border:1px solid var(--line,rgba(128,128,128,.22)); background:var(--panel2); color:var(--text); font-family:inherit; font-size:13px;"></select></div><div class="planGrid">
+  <div id="setCurBox" style="display:flex; align-items:center; gap:8px; margin:0 0 12px;"><span style="font-size:12.5px; color:var(--muted); flex:0 0 auto;" data-i18n="currencyLabel">العملة</span><select id="setCurSel" aria-label="اختر الدولة" style="flex:1 1 auto; min-width:0; padding:8px 10px; border-radius:10px; border:1px solid var(--line,rgba(128,128,128,.22)); background:var(--panel2); color:var(--text); font-family:inherit; font-size:13px;"></select></div><div class="planGrid">
     <div class="pcard">
       <div class="pname" data-i18n="pricingFreeTitle">مجاني</div>
       <div class="pprice"><span class="pnum" data-usd="0">0</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planFreePer">للتجربة</div>
       <div class="ppts"><b>70</b><span data-i18n="planPtsFree">نقطة ترحيب — مرّة واحدة</span></div>
-      <ul data-i18n="planFreeFeats"><li>20 رسالة يوميًا</li><li>دقيقة واحدة محادثة صوتية</li><li>3 صور بالذكاء الاصطناعي</li><li class="off">بلا فيديو</li></ul>
+      <ul data-i18n="planFreeFeats"><li data-i18n="plFreeMsgs">20 رسالة يوميًا</li><li data-i18n="plFreeVoice">دقيقة واحدة محادثة صوتية</li><li data-i18n="plFreeImgs">3 صور بالذكاء الاصطناعي</li><li class="off" data-i18n="plFreeNoVideo">بلا فيديو</li></ul>
       <button type="button" class="pbtn ghost" disabled data-i18n="planCurrentBtn">باقتك الحالية</button>
     </div>
     <div class="pcard">
@@ -345,7 +345,7 @@
       <div class="pprice"><span class="pnum" data-usd="10">10</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
       <div class="ppts"><b>300</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
-      <ul data-i18n="planPlusFeats"><li>300 رسالة شهريًا</li><li>30 دقيقة محادثة صوتية</li><li>15 صورة</li><li>5 مقاطع فيديو</li></ul>
+      <ul data-i18n="planPlusFeats"><li data-i18n="plStMsgs">300 رسالة شهريًا</li><li data-i18n="plStVoice">30 دقيقة محادثة صوتية</li><li data-i18n="plStImgs">15 صورة</li><li data-i18n="plStVideos">5 مقاطع فيديو</li></ul>
       <button type="button" class="pbtn" onclick="openCheckout('basic')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
     <div class="pcard feat"><span class="ptag" data-i18n="planTag">الأكثر اختيارًا</span>
@@ -353,7 +353,7 @@
       <div class="pprice"><span class="pnum" data-usd="20">20</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
       <div class="ppts"><b>800</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
-      <ul data-i18n="planProFeats"><li>رسائل بلا حدود</li><li>80 دقيقة محادثة صوتية</li><li>40 صورة · 13 فيديو · 2 سينمائي</li><li>الوكيل الذكي</li><li>أولوية في السرعة · شارة ذهبية</li></ul>
+      <ul data-i18n="planProFeats"><li data-i18n="plProMsgs">رسائل بلا حدود</li><li data-i18n="plProVoice">80 دقيقة محادثة صوتية</li><li data-i18n="plProMedia">40 صورة · 13 فيديو · 2 سينمائي</li><li data-i18n="plProAgent">الوكيل الذكي</li><li data-i18n="plProPriority">أولوية في السرعة · شارة ذهبية</li></ul>
       <button type="button" class="pbtn primary" onclick="openCheckout('pro')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
     <div class="pcard">
@@ -361,7 +361,7 @@
       <div class="pprice"><span class="pnum" data-usd="100">100</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
       <div class="ppts"><b>5,000</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
-      <ul data-i18n="planMaxFeats"><li>كل مزايا Pro</li><li>500 دقيقة محادثة صوتية</li><li>250 صورة · 83 فيديو · 12 سينمائي</li><li>دعم مخصّص</li></ul>
+      <ul data-i18n="planMaxFeats"><li data-i18n="plMaxAllPro">كل مزايا Pro</li><li data-i18n="plMaxVoice">500 دقيقة محادثة صوتية</li><li data-i18n="plMaxMedia">250 صورة · 83 فيديو · 12 سينمائي</li><li data-i18n="plMaxSupport">دعم مخصّص</li></ul>
       <button type="button" class="pbtn" onclick="openCheckout('max')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
   </div>

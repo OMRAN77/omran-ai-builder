@@ -99,8 +99,14 @@ module.exports = async (req, res) => {
       mahaBudget = { unlimited: false, points: pts, trial };
     } else {
       const { kvGetJSON, kvPutJSON } = require('./kv.js');
-      const gk = 'db/points/guest-maha/' + encodeURIComponent(String(guestId || ''));
-      const used = guestId ? await kvGetJSON(gk) : { blocked: true };
+      // The free guest minute was keyed on an id the browser itself generates, so
+      // clearing localStorage minted a fresh free minute forever. Key it on the
+      // network address first, exactly like every other guest allowance here.
+      const rtIp = clientIp(req);
+      const gk = rtIp
+        ? 'db/points/guest-maha/ip-' + encodeURIComponent(String(rtIp).slice(0, 64))
+        : (guestId ? 'db/points/guest-maha/' + encodeURIComponent(String(guestId)) : null);
+      const used = gk ? await kvGetJSON(gk) : { blocked: true };
       if (used) { res.status(402).json({ error: 'guest_trial_used' }); return; }
       await kvPutJSON(gk, { at: Date.now() });
       mahaBudget = { unlimited: false, points: 0, trial: true, guest: true };

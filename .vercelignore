@@ -58,3 +58,9 @@ scripts/
 # فحوص ما قبل الدمج. تعيش في المستودع لا على الـCDN.
 tests/
 .github/
+
+# The knowledge/ folder is the agent's own working notes (state, pitfalls, plans,
+# owner name). Useful in the repo, but it was being served publicly at
+# /knowledge/*.md - anyone could read the project's state and its list of
+# unfixed weaknesses. Keep it in git, never ship it to the CDN.
+knowledge/

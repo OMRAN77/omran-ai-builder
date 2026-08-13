@@ -1924,6 +1924,7 @@ async function settingsCmdMicToggle(){
       const audioBase64 = await blobToBase64(blob);
       const res = await fetch('/api/stt', {
         method:'POST', headers:{'Content-Type':'application/json'},
+        signal: AbortSignal.timeout(45000), // v600: صفر مهلة = تعليق أبديّ
         body: JSON.stringify({ audioBase64, mimeType: blob.type, lang, token: authGet('aiapp_auth_token'), guestId: window.getGuestId ? window.getGuestId() : undefined })
       });
       const data = await res.json();
