@@ -130,18 +130,30 @@
     }
   }
 
+  // v598: تسميات الذهب تُبنى من القاموس، فتُحفظ البيانات الخام ويُعاد الوسم عند تبديل اللغة
+  let tickerRaw = null;
+  function tickerItems(){
+    if(!tickerRaw) return [];
+    const items = (tickerRaw.syms || []).slice();
+    const g = tickerRaw.gold;
+    if(g && g.ozUsd){
+      const kt = t('goldKt') || 'Gold {k}K', aed = t('aedUnit') || 'AED';
+      [['24',g.gram24],['22',g.gram22],['21',g.gram21],['18',g.gram18]].forEach(function(p){ if(p[1]) items.push({ symbol: kt.replace('{k}', p[0]), price:p[1], change:g.change, changePct:g.changePct, unit:aed, gold:1, noPct:1 }); });
+      const ozA = g.ozAed || (g.ozUsd * 3.6725);
+      items.push({ symbol: (t('goldOunce')||'Gold Ounce'), price:ozA, change:g.change, changePct:g.changePct, unit:aed, gold:1 });
+    }
+    return items;
+  }
   async function refreshTicker(){
     try{
       const j = await api({ mode:'ticker', symbols: TICKER_SYMS.join(',') });
-      try{ const g = await api({ mode:'gold' }); if(g && g.ozUsd && j && j.items){
-        const kt = t('goldKt') || 'Gold {k}K', aed = t('aedUnit') || 'AED';
-        [['24',g.gram24],['22',g.gram22],['21',g.gram21],['18',g.gram18]].forEach(function(p){ if(p[1]) j.items.push({ symbol: kt.replace('{k}', p[0]), price:p[1], change:g.change, changePct:g.changePct, unit:aed, gold:1, noPct:1 }); });
-        const ozA = g.ozAed || (g.ozUsd * 3.6725);
-        j.items.push({ symbol: (t('goldOunce')||'Gold Ounce'), price:ozA, change:g.change, changePct:g.changePct, unit:aed, gold:1 });
-      } }catch(e){ __swallow(e, "misc:app-13-stocks-init#2"); }
-      renderTicker(j.items);
+      let g = null;
+      try{ g = await api({ mode:'gold' }); }catch(e){ __swallow(e, "misc:app-13-stocks-init#2"); }
+      tickerRaw = { syms: (j && j.items) ? j.items : [], gold: g };
+      renderTicker(tickerItems());
     }catch(e){ /* keep old ticker on error */ }
   }
+  window.__tickerRelabel = function(){ try{ if(tickerRaw) renderTicker(tickerItems()); }catch(e){ __swallow(e, "misc:app-13-stocks-init#relabel"); } };
 
   function tickerIsCollapsed(){ return localStorage.getItem('tickerCollapsed') === '1'; }
   function applyTickerCollapse(){

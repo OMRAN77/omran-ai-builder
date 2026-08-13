@@ -1805,7 +1805,15 @@ const I18N = {
 
     fileChooseBtn: '📁 اختيار ملف',
     fileNoneChosen: 'لم يتم اختيار ملف',
-    pageTitle: ' ',
+    pageTitle: 'عمران AI — منصّة الذكاء',
+    chatToPdfEmpty: 'لا يوجد ردّ لتحويله بعد.',
+    mahaConnectionLost: 'تعذّر إعادة الاتصال',
+    voiceTabAssistantName: 'المساعد',
+    copyCode: 'نسخ',
+    copiedMsg: 'تم النسخ ✅',
+    copyMsgTitle: 'نسخ الردّ',
+    adStudioTitle: 'استوديو الإعلانات',
+    adStudioHint: 'استوديو الإعلانات — اصنع إعلانك بالمحادثة',
     appTitle: 'مُنشئ التطبيقات بالذكاء الاصطناعي',
     offlineBanner: '⚠️ أنت غير متصل بالإنترنت — تقدر تتصفح المحادثات المحفوظة، لكن الذكاء الاصطناعي يحتاج اتصالًا',
     backOnlineBanner: '✅ عاد الاتصال بالإنترنت',
@@ -2652,7 +2660,12 @@ const I18N = {
 
     fileChooseBtn: '📁 Choose file',
     fileNoneChosen: 'No file chosen',
-    pageTitle: ' ',
+    pageTitle: 'Omran AI — Intelligence Platform',
+    chatToPdfEmpty: 'No reply to convert yet.',
+    mahaConnectionLost: 'Could not reconnect',
+    voiceTabAssistantName: 'Assistant',
+    adStudioTitle: 'Ad Studio',
+    adStudioHint: 'Ad Studio — build your ad by chatting',
     appTitle: 'AI App Builder',
     offlineBanner: "⚠️ You're offline — you can browse saved chats, but AI replies need an internet connection",
     freezeBannerMsg: '⚠️ The app is responding slowly… your work was auto-saved. Reload now?',
@@ -3465,7 +3478,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=442';
+    sc.src = 'i18n/' + lg + '.js?v=598';
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -3545,6 +3558,7 @@ function applyLanguage(){
   }
   const dict = window.__i18nDict ? window.__i18nDict(lang) : (I18N[lang] || I18N.en || I18N.ar);
   try{ if(window.__syncBrandTitle) window.__syncBrandTitle(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#5"); }
+  try{ if(window.__tickerRelabel) window.__tickerRelabel(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#tick"); }
   document.documentElement.lang = lang;
   document.documentElement.dir = dict.dir;
   if (dict.pageTitle && dict.pageTitle.trim()) document.title = dict.pageTitle;
@@ -18213,18 +18227,30 @@ function openShareModal(project){
     }
   }
 
+  // v598: تسميات الذهب تُبنى من القاموس، فتُحفظ البيانات الخام ويُعاد الوسم عند تبديل اللغة
+  let tickerRaw = null;
+  function tickerItems(){
+    if(!tickerRaw) return [];
+    const items = (tickerRaw.syms || []).slice();
+    const g = tickerRaw.gold;
+    if(g && g.ozUsd){
+      const kt = t('goldKt') || 'Gold {k}K', aed = t('aedUnit') || 'AED';
+      [['24',g.gram24],['22',g.gram22],['21',g.gram21],['18',g.gram18]].forEach(function(p){ if(p[1]) items.push({ symbol: kt.replace('{k}', p[0]), price:p[1], change:g.change, changePct:g.changePct, unit:aed, gold:1, noPct:1 }); });
+      const ozA = g.ozAed || (g.ozUsd * 3.6725);
+      items.push({ symbol: (t('goldOunce')||'Gold Ounce'), price:ozA, change:g.change, changePct:g.changePct, unit:aed, gold:1 });
+    }
+    return items;
+  }
   async function refreshTicker(){
     try{
       const j = await api({ mode:'ticker', symbols: TICKER_SYMS.join(',') });
-      try{ const g = await api({ mode:'gold' }); if(g && g.ozUsd && j && j.items){
-        const kt = t('goldKt') || 'Gold {k}K', aed = t('aedUnit') || 'AED';
-        [['24',g.gram24],['22',g.gram22],['21',g.gram21],['18',g.gram18]].forEach(function(p){ if(p[1]) j.items.push({ symbol: kt.replace('{k}', p[0]), price:p[1], change:g.change, changePct:g.changePct, unit:aed, gold:1, noPct:1 }); });
-        const ozA = g.ozAed || (g.ozUsd * 3.6725);
-        j.items.push({ symbol: (t('goldOunce')||'Gold Ounce'), price:ozA, change:g.change, changePct:g.changePct, unit:aed, gold:1 });
-      } }catch(e){ __swallow(e, "misc:app-13-stocks-init#2"); }
-      renderTicker(j.items);
+      let g = null;
+      try{ g = await api({ mode:'gold' }); }catch(e){ __swallow(e, "misc:app-13-stocks-init#2"); }
+      tickerRaw = { syms: (j && j.items) ? j.items : [], gold: g };
+      renderTicker(tickerItems());
     }catch(e){ /* keep old ticker on error */ }
   }
+  window.__tickerRelabel = function(){ try{ if(tickerRaw) renderTicker(tickerItems()); }catch(e){ __swallow(e, "misc:app-13-stocks-init#relabel"); } };
 
   function tickerIsCollapsed(){ return localStorage.getItem('tickerCollapsed') === '1'; }
   function applyTickerCollapse(){

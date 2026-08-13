@@ -1,4 +1,4 @@
-const CACHE_NAME = 'omran-ai-builder-4171fe70';
+const CACHE_NAME = 'omran-ai-builder-764d2333';
 const STATIC_ASSETS = [
   './',
   './index.html',
