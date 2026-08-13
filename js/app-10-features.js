@@ -313,9 +313,9 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   if(!dd) return;
   const groups = [
     { title: null, ids: ['btnSettings','btnAuthToggle','btnToggleHistory'] },
-    { title: 'grpCreate', ids: ['btnQuickTemplates','btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnAdStudio'] },
+    { title: 'grpCreate', ids: ['btnPortraitStyle','btnQuickTemplates','btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnAdStudio'] },
     { title: 'grpSections', ids: ['btnStocks','btnConstruction','btnOmranEdu','btnExpense','btnDocs','btnGov','btnCV','btnReligion','btnEmailAssist'] },
-    { title: 'grpTools', ids: ['btnPortraitStyle','btnTemplates','btnAgentMode','btnInstall','btnShareApp'] }
+    { title: 'grpTools', ids: ['btnTemplates','btnAgentMode','btnInstall','btnShareApp'] }
   ];
   // v433: مجموعات الإبداع/الأقسام/الأدوات في مربع الأدوات المنفصل (تبويب الأدوات)
   const ptPopup = document.getElementById('sectionsToolsPopup');
