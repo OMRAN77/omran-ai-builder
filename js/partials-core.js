@@ -195,19 +195,19 @@
     <div style="margin-top:12px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="designAiPlaceLabel">نوع المكان</label>
       <select id="designAiPlace" style="width:100%;">
-        <option value="" data-en="📷 From my photo">📷 من صورتي</option>
-        <option value="restaurant" data-en="🍽️ Restaurant">🍽️ مطعم</option>
-        <option value="cafe" data-en="☕ Cafe">☕ كافيه</option>
-        <option value="bedroom" data-en="🛏️ Bedroom">🛏️ غرفة نوم</option>
-        <option value="majlis" data-en="🪑 Majlis">🪑 مجلس</option>
-        <option value="living" data-en="🛋️ Living room">🛋️ صالة</option>
-        <option value="kitchen" data-en="🍳 Kitchen">🍳 مطبخ</option>
-        <option value="office" data-en="💼 Office">💼 مكتب</option>
-        <option value="shop" data-en="🛍️ Shop">🛍️ محل</option>
-        <option value="bath" data-en="🛁 Bathroom">🛁 حمام</option>
-        <option value="kids" data-en="🧸 Kids room">🧸 غرفة أطفال</option>
-        <option value="entrance" data-en="🚪 Entrance">🚪 مدخل</option>
-        <option value="garden" data-en="🌳 Garden">🌳 حديقة</option>
+        <option value="" data-en="📷 From my photo" data-i18n="designAiPlaceFromPhoto">📷 من صورتي</option>
+        <option value="restaurant" data-en="🍽️ Restaurant" data-i18n="designAiPlaceRestaurant">🍽️ مطعم</option>
+        <option value="cafe" data-en="☕ Cafe" data-i18n="designAiPlaceCafe">☕ كافيه</option>
+        <option value="bedroom" data-en="🛏️ Bedroom" data-i18n="designAiPlaceBedroom">🛏️ غرفة نوم</option>
+        <option value="majlis" data-en="🪑 Majlis" data-i18n="designAiPlaceMajlis">🪑 مجلس</option>
+        <option value="living" data-en="🛋️ Living room" data-i18n="designAiPlaceLiving">🛋️ صالة</option>
+        <option value="kitchen" data-en="🍳 Kitchen" data-i18n="designAiPlaceKitchen">🍳 مطبخ</option>
+        <option value="office" data-en="💼 Office" data-i18n="designAiPlaceOffice">💼 مكتب</option>
+        <option value="shop" data-en="🛍️ Shop" data-i18n="designAiPlaceShop">🛍️ محل</option>
+        <option value="bath" data-en="🛁 Bathroom" data-i18n="designAiPlaceBath">🛁 حمام</option>
+        <option value="kids" data-en="🧸 Kids room" data-i18n="designAiPlaceKids">🧸 غرفة أطفال</option>
+        <option value="entrance" data-en="🚪 Entrance" data-i18n="designAiPlaceEntrance">🚪 مدخل</option>
+        <option value="garden" data-en="🌳 Garden" data-i18n="designAiPlaceGarden">🌳 حديقة</option>
       </select>
     </div>
 
@@ -227,9 +227,9 @@
         <option value="luxury" data-i18n="designAiStyleLuxury">💎 فخم</option>
         <option value="arabic" data-i18n="designAiStyleArabic">🕌 مجلس عربي</option>
         <option value="classic" data-i18n="designAiStyleClassic">🪵 كلاسيكي</option>
-        <option value="najdi" data-en="🏜️ Najdi">🏜️ نجدي</option>
-        <option value="islamic" data-en="✳️ Modern Islamic">✳️ إسلامي معاصر</option>
-        <option value="andalusi" data-en="🏛️ Andalusian">🏛️ أندلسي</option>
+        <option value="najdi" data-en="🏜️ Najdi" data-i18n="designAiStyleNajdi">🏜️ نجدي</option>
+        <option value="islamic" data-en="✳️ Modern Islamic" data-i18n="designAiStyleIslamic">✳️ إسلامي معاصر</option>
+        <option value="andalusi" data-en="🏛️ Andalusian" data-i18n="designAiStyleAndalusi">🏛️ أندلسي</option>
       </select>
     </div>
 
@@ -362,7 +362,7 @@
         <button type="button" id="portraitFavStarBtn" title="⭐" style="background:none; border:none; cursor:pointer; font-size: var(--fs-2); padding:2px 4px; line-height:1;">☆</button>
       </div>
       <select id="portraitStyleSelect" style="width:100%;">
-        <optgroup id="portraitFavGroup" label="⭐ المفضلة" data-i18n-label="portraitFavGroupLabel" style="display:none;"></optgroup>
+        <optgroup id="portraitFavGroup" label="⭐ المفضلة" data-i18n="[label]portraitFavGroupLabel" style="display:none;"></optgroup>
         <option value="anime" data-i18n="portraitStyleAnime">🎬 أنيمي ياباني</option>
         <option value="cartoon" data-i18n="portraitStyleCartoon">🖼️ كارتون واقعي</option>
         <option value="oil" data-i18n="portraitStyleOil">🎨 لوحة زيتية</option>
@@ -403,34 +403,34 @@
         <option value="familystyle" data-i18n="portraitStyleFamily">👨‍👩‍👧‍👦 ستايل عائلي موحّد</option>
         <option value="merge2" data-i18n="portraitStyleMerge2">🧑‍🤝‍🧑 دمج شخصين بصورة واحدة</option>
         <option value="avatargif" data-i18n="portraitStyleAvatarGif">🎞️ أفاتار متحرك بسيط (GIF)</option>
-        <optgroup label="🛠️ أدوات عملية">
-        <option value="passport">🫎 صورة جواز/هوية رسمية</option>
-        <option value="restore">🔧 ترميم صورة قديمة</option>
-        <option value="colorize">🎨 تلوين أبيض وأسود</option>
-        <option value="upscale">🔍 رفع الدقة والوضوح</option>
-        <option value="objectremove">🧹 إزالة شخص أو عنصر</option>
-        <option value="outfit">👕 تبديل الملابس</option>
-        <option value="productshot">📦 تصوير منتج احترافي</option>
+        <optgroup label="🛠️ أدوات عملية" data-i18n="[label]portraitGrpTools">
+        <option value="passport" data-i18n="portraitStylePassport">🫎 صورة جواز/هوية رسمية</option>
+        <option value="restore" data-i18n="portraitStyleRestore">🔧 ترميم صورة قديمة</option>
+        <option value="colorize" data-i18n="portraitStyleColorize">🎨 تلوين أبيض وأسود</option>
+        <option value="upscale" data-i18n="portraitStyleUpscale">🔍 رفع الدقة والوضوح</option>
+        <option value="objectremove" data-i18n="portraitStyleObjectremove">🧹 إزالة شخص أو عنصر</option>
+        <option value="outfit" data-i18n="portraitStyleOutfit">👕 تبديل الملابس</option>
+        <option value="productshot" data-i18n="portraitStyleProductshot">📦 تصوير منتج احترافي</option>
         </optgroup>
-        <optgroup label="🎉 مناسبات">
-        <option value="hajj">🕋 تهنئة حج وعمرة</option>
-        <option value="birthday">🎂 إطار عيد ميلاد</option>
-        <option value="newborn">👶 تهنئة مولود جديد</option>
+        <optgroup label="🎉 مناسبات" data-i18n="[label]portraitGrpOccasions">
+        <option value="hajj" data-i18n="portraitStyleHajj">🕋 تهنئة حج وعمرة</option>
+        <option value="birthday" data-i18n="portraitStyleBirthday">🎂 إطار عيد ميلاد</option>
+        <option value="newborn" data-i18n="portraitStyleNewborn">👶 تهنئة مولود جديد</option>
         </optgroup>
-        <optgroup label="🔥 رائجة">
-        <option value="figurine">🧸 مجسّم أكشن في علبة</option>
-        <option value="ghibli">🍃 ستايل جيبلي</option>
-        <option value="lego">🧱 شخصية ليغو</option>
-        <option value="stickerpack">💬 ملصقات واتساب (٦ تعبيرات)</option>
-        <option value="chibi">🐣 شيبي لطيف</option>
-        <option value="statue">🗿 تمثال رخامي</option>
-        <option value="polaroid">📸 بولارويد قديمة</option>
-        <option value="celebtoon">🦸 شخصية كرتونية مفضلة</option>
+        <optgroup label="🔥 رائجة" data-i18n="[label]portraitGrpTrending">
+        <option value="figurine" data-i18n="portraitStyleFigurine">🧸 مجسّم أكشن في علبة</option>
+        <option value="ghibli" data-i18n="portraitStyleGhibli">🍃 ستايل جيبلي</option>
+        <option value="lego" data-i18n="portraitStyleLego">🧱 شخصية ليغو</option>
+        <option value="stickerpack" data-i18n="portraitStyleStickerpack">💬 ملصقات واتساب (٦ تعبيرات)</option>
+        <option value="chibi" data-i18n="portraitStyleChibi">🐣 شيبي لطيف</option>
+        <option value="statue" data-i18n="portraitStyleStatue">🗿 تمثال رخامي</option>
+        <option value="polaroid" data-i18n="portraitStylePolaroid">📸 بولارويد قديمة</option>
+        <option value="celebtoon" data-i18n="portraitStyleCelebtoon">🦸 شخصية كرتونية مفضلة</option>
         </optgroup>
-        <optgroup label="🎭 تلبيس">
-        <option value="profession">👩‍⚕️ مهنة (طبيب · طيار · شرطي...)</option>
-        <option value="superhero">🦸‍♂️ بطل خارق بزي كامل</option>
-        <option value="astronaut">🚀 رائد فضاء</option>
+        <optgroup label="🎭 تلبيس" data-i18n="[label]portraitGrpDressup">
+        <option value="profession" data-i18n="portraitStyleProfession">👩‍⚕️ مهنة (طبيب · طيار · شرطي...)</option>
+        <option value="superhero" data-i18n="portraitStyleSuperhero">🦸‍♂️ بطل خارق بزي كامل</option>
+        <option value="astronaut" data-i18n="portraitStyleAstronaut">🚀 رائد فضاء</option>
         </optgroup>
       </select>
     </div>
@@ -508,27 +508,27 @@
     <div id="portraitOutfitWrap" style="margin-top:10px; display:none;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">اختر الملابس</label>
       <select id="portraitOutfitSelect" style="width:100%;">
-        <option value="kandura">👔 كندورة إماراتية + غترة</option>
-        <option value="abaya">🧕 عباية + شيلة</option>
-        <option value="thobe">🧣 ثوب خليجي + شماغ</option>
-        <option value="suit">🧵 بدلة رسمية</option>
-        <option value="dress">👗 فستان سهرة</option>
-        <option value="casual">🧥 كاجوال أنيق</option>
-        <option value="sport">🎽️ ملابس رياضية</option>
-        <option value="winter">🧤 معطف شتوي</option>
+        <option value="kandura" data-i18n="portraitOutfitKandura">👔 كندورة إماراتية + غترة</option>
+        <option value="abaya" data-i18n="portraitOutfitAbaya">🧕 عباية + شيلة</option>
+        <option value="thobe" data-i18n="portraitOutfitThobe">🧣 ثوب خليجي + شماغ</option>
+        <option value="suit" data-i18n="portraitOutfitSuit">🧵 بدلة رسمية</option>
+        <option value="dress" data-i18n="portraitOutfitDress">👗 فستان سهرة</option>
+        <option value="casual" data-i18n="portraitOutfitCasual">🧥 كاجوال أنيق</option>
+        <option value="sport" data-i18n="portraitOutfitSport">🎽️ ملابس رياضية</option>
+        <option value="winter" data-i18n="portraitOutfitWinter">🧤 معطف شتوي</option>
       </select>
     </div>
     <div id="portraitProfWrap" style="margin-top:10px; display:none;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">اختر المهنة</label>
       <select id="portraitProfSelect" style="width:100%;">
-        <option value="doctor">👩‍⚕️ طبيب</option>
-        <option value="pilot">🧑‍✈️ طيار</option>
-        <option value="police">👮 شرطي</option>
-        <option value="chef">🧑‍🍳 طبّاخ</option>
-        <option value="engineer">👷 مهندس موقع</option>
-        <option value="teacher">🧑‍🏫 معلم</option>
-        <option value="firefighter">🧑‍🚒 إطفائي</option>
-        <option value="scientist">🧑‍🔬 عالم مختبر</option>
+        <option value="doctor" data-i18n="portraitProfDoctor">👩‍⚕️ طبيب</option>
+        <option value="pilot" data-i18n="portraitProfPilot">🧑‍✈️ طيار</option>
+        <option value="police" data-i18n="portraitProfPolice">👮 شرطي</option>
+        <option value="chef" data-i18n="portraitProfChef">🧑‍🍳 طبّاخ</option>
+        <option value="engineer" data-i18n="portraitProfEngineer">👷 مهندس موقع</option>
+        <option value="teacher" data-i18n="portraitProfTeacher">🧑‍🏫 معلم</option>
+        <option value="firefighter" data-i18n="portraitProfFirefighter">🧑‍🚒 إطفائي</option>
+        <option value="scientist" data-i18n="portraitProfScientist">🧑‍🔬 عالم مختبر</option>
       </select>
     </div>
     <div id="portraitBackdropWrap" style="margin-top:10px; display:none;">
@@ -628,17 +628,17 @@
           <option value="sport" data-i18n="fashionOccasionSport">🏃 رياضة</option>
           <option value="travel" data-i18n="fashionOccasionTravel">✈️ سفر</option>
           <option value="formal" data-i18n="fashionOccasionFormal">🎩 رسمية</option>
-          <option value="graduation" data-en="🎓 Graduation">🎓 تخرج</option>
-          <option value="religious" data-en="🕌 Religious">🕌 مناسبة دينية</option>
+          <option value="graduation" data-en="🎓 Graduation" data-i18n="fashionAiOccasionGraduation">🎓 تخرج</option>
+          <option value="religious" data-en="🕌 Religious" data-i18n="fashionAiOccasionReligious">🕌 مناسبة دينية</option>
         </select>
       </div>
       <div>
         <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="fashionSeasonLabel">🌦️ الموسم</label>
         <select id="fashionAiSeason" style="width:100%;">
           <option value="summer" data-i18n="fashionSeasonSummer">☀️ صيفي</option>
-          <option value="autumn" data-en="🍂 Autumn">🍂 خريفي</option>
+          <option value="autumn" data-en="🍂 Autumn" data-i18n="fashionAiSeasonAutumn">🍂 خريفي</option>
           <option value="winter" data-i18n="fashionSeasonWinter">❄️ شتوي</option>
-          <option value="spring" data-en="🌸 Spring">🌸 ربيعي</option>
+          <option value="spring" data-en="🌸 Spring" data-i18n="fashionAiSeasonSpring">🌸 ربيعي</option>
         </select>
       </div>
     </div>
@@ -1016,23 +1016,23 @@
     <div style="margin-top:12px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="constructionTypeLabel">نوع المبنى</label>
       <select id="constructionType" style="width:100%;">
-        <optgroup label="🏠 سكني">
+        <optgroup label="🏠 سكني" data-i18n="[label]constructionGrpResidential">
         <option value="villa" data-i18n="constructionTypeVilla">🏡 فيلا سكنية</option>
         <option value="apartment" data-i18n="constructionTypeApartment">🏢 عمارة سكنية</option>
-        <option value="rest">🌴 استراحة</option>
-        <option value="farm">🌾 مزرعة</option>
-        <option value="annexhome">🏘️ ملحق سكني</option>
+        <option value="rest" data-i18n="constructionTypeRest">🌴 استراحة</option>
+        <option value="farm" data-i18n="constructionTypeFarm">🌾 مزرعة</option>
+        <option value="annexhome" data-i18n="constructionTypeAnnexhome">🏘️ ملحق سكني</option>
         </optgroup>
-        <optgroup label="🏢 تجاري وإداري">
+        <optgroup label="🏢 تجاري وإداري" data-i18n="[label]constructionGrpCommercial">
         <option value="office" data-i18n="constructionTypeOffice">🏬 مبنى مكاتب</option>
         <option value="shop" data-i18n="constructionTypeShop">🏪 محل تجاري</option>
-        <option value="mall">🛍️ مجمّع تجاري</option>
+        <option value="mall" data-i18n="constructionTypeMall">🛍️ مجمّع تجاري</option>
         <option value="warehouse" data-i18n="constructionTypeWarehouse">🏭 مستودع</option>
         </optgroup>
-        <optgroup label="🕌 عام وخدمي">
+        <optgroup label="🕌 عام وخدمي" data-i18n="[label]constructionGrpPublic">
         <option value="mosque" data-i18n="constructionTypeMosque">🕌 مسجد</option>
-        <option value="school">🏫 مدرسة</option>
-        <option value="hall">💒 صالة أفراح</option>
+        <option value="school" data-i18n="constructionTypeSchool">🏫 مدرسة</option>
+        <option value="hall" data-i18n="constructionTypeHall">💒 صالة أفراح</option>
         </optgroup>
       </select>
     </div>
@@ -1056,14 +1056,14 @@
       <div>
         <label style="font-size: var(--fs-5); color:var(--muted); display:block; margin-bottom:3px;">الإمارة — اختياري</label>
         <select id="constructionEmirate" style="width:100%;">
-          <option value="">— بدون —</option>
-          <option value="dubai">دبي</option>
-          <option value="abudhabi">أبوظبي</option>
-          <option value="sharjah">الشارقة</option>
-          <option value="ajman">عجمان</option>
-          <option value="ummalquwain">أم القيوين</option>
-          <option value="rasalkhaimah">رأس الخيمة</option>
-          <option value="fujairah">الفجيرة</option>
+          <option value="" data-i18n="constructionEmirateNone">— بدون —</option>
+          <option value="dubai" data-i18n="constructionEmirateDubai">دبي</option>
+          <option value="abudhabi" data-i18n="constructionEmirateAbudhabi">أبوظبي</option>
+          <option value="sharjah" data-i18n="constructionEmirateSharjah">الشارقة</option>
+          <option value="ajman" data-i18n="constructionEmirateAjman">عجمان</option>
+          <option value="ummalquwain" data-i18n="constructionEmirateUmmalquwain">أم القيوين</option>
+          <option value="rasalkhaimah" data-i18n="constructionEmirateRasalkhaimah">رأس الخيمة</option>
+          <option value="fujairah" data-i18n="constructionEmirateFujairah">الفجيرة</option>
         </select>
       </div>
     </div>
@@ -1076,11 +1076,11 @@
         <option value="gulf" data-i18n="constructionStyleGulf">🕌 خليجي تراثي</option>
         <option value="luxury" data-i18n="constructionStyleLuxury">💎 فخم</option>
         <option value="industrial" data-i18n="constructionStyleIndustrial">🏭 صناعي</option>
-        <option value="andalusi">🕌 أندلسي</option>
-        <option value="islamic">🌙 إسلامي معاصر</option>
-        <option value="mediterranean">🏖️ متوسطي</option>
-        <option value="najdi">🏜️ نجدي</option>
-        <option value="neoclassic">🏛️ نيو كلاسيك</option>
+        <option value="andalusi" data-i18n="constructionStyleAndalusi">🕌 أندلسي</option>
+        <option value="islamic" data-i18n="constructionStyleIslamic">🌙 إسلامي معاصر</option>
+        <option value="mediterranean" data-i18n="constructionStyleMediterranean">🏖️ متوسطي</option>
+        <option value="najdi" data-i18n="constructionStyleNajdi">🏜️ نجدي</option>
+        <option value="neoclassic" data-i18n="constructionStyleNeoclassic">🏛️ نيو كلاسيك</option>
       </select>
     </div>
     </div>
@@ -1199,10 +1199,10 @@
           <option value="kitchen" data-i18n="constructionRoomKitchen">🍽️ المطبخ</option>
           <option value="bathroom" data-i18n="constructionRoomBathroom">🚿 الحمام</option>
           <option value="dining" data-i18n="constructionRoomDining">🍽️ غرفة الطعام</option>
-          <option value="office">🧑‍💻 مكتب منزلي</option>
-          <option value="kids">🧸 غرفة أطفال</option>
-          <option value="stairs">🪜 الدرج والمدخل</option>
-          <option value="roof">🌇 السطح</option>
+          <option value="office" data-i18n="constructionRoomOffice">🧑‍💻 مكتب منزلي</option>
+          <option value="kids" data-i18n="constructionRoomKids">🧸 غرفة أطفال</option>
+          <option value="stairs" data-i18n="constructionRoomStairs">🪜 الدرج والمدخل</option>
+          <option value="roof" data-i18n="constructionRoomRoof">🌇 السطح</option>
         </select>
         <input type="text" id="constructionRoomColor" data-i18n-placeholder="constructionRoomColorPh" placeholder="لون الديكور (مثال: بيج وذهبي)">
       </div>
