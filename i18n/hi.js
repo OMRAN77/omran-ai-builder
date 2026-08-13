@@ -1,4 +1,7 @@
 I18N['hi'] = {
+    /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
+    fxCatLbl: 'श्रेणी', fxGenWomen: 'महिला', fxGenMen: 'पुरुष', fxGenKids: 'बच्चे', fxColorsLbl: 'पसंदीदा रंग', fxColBlack: 'काला', fxColWhite: 'सफ़ेद', fxColNavy: 'नेवी ब्लू', fxColRed: 'लाल', fxColGold: 'सुनहरा',
+    fxColGreen: 'हरा', fxColBeige: 'बेज', fxColMulti: 'बहुरंगी', fxAccLbl: 'एक्सेसरीज़', fxAccGlasses: 'चश्मा', fxAccWatch: 'घड़ी', fxAccHandbag: 'हैंडबैग', fxAccShoes: 'जूते', fxAccScarf: 'स्कार्फ़', fxAccMakeup: 'मेकअप',
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
     sidePanelTitle: 'साइड मेनू', lightModeTitle: 'लाइट मोड', provSearchPh: 'मॉडल खोजें...', jumpLatestTitle: 'नवीनतम संदेश', editMsgNotice: 'संदेश संपादित हो रहा है', modesTitle: 'मोड',
     attachFileTitle: 'फ़ाइल जोड़ें', chipExam: 'परीक्षा हल करें', chipBook: 'किताब का सारांश', chipArticle: 'पेशेवर लेख लिखें', chipIdeas: 'प्रोजेक्ट के विचार', tryItTitle: 'मेरे लिए आज़माएं',

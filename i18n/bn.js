@@ -1,4 +1,7 @@
 I18N['bn'] = {
+    /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
+    fxCatLbl: 'বিভাগ', fxGenWomen: 'মহিলা', fxGenMen: 'পুরুষ', fxGenKids: 'শিশু', fxColorsLbl: 'পছন্দের রং', fxColBlack: 'কালো', fxColWhite: 'সাদা', fxColNavy: 'নেভি ব্লু', fxColRed: 'লাল', fxColGold: 'সোনালি',
+    fxColGreen: 'সবুজ', fxColBeige: 'বেইজ', fxColMulti: 'বহুরঙা', fxAccLbl: 'অ্যাকসেসরিজ', fxAccGlasses: 'চশমা', fxAccWatch: 'ঘড়ি', fxAccHandbag: 'হ্যান্ডব্যাগ', fxAccShoes: 'জুতা', fxAccScarf: 'স্কার্ফ', fxAccMakeup: 'মেকআপ',
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
     sidePanelTitle: 'সাইড মেনু', lightModeTitle: 'লাইট মোড', provSearchPh: 'মডেল খুঁজুন...', jumpLatestTitle: 'সর্বশেষ বার্তা', editMsgNotice: 'বার্তা সম্পাদনা করা হচ্ছে', modesTitle: 'মোড',
     attachFileTitle: 'ফাইল সংযুক্ত করুন', chipExam: 'পরীক্ষা সমাধান করুন', chipBook: 'বইয়ের সারসংক্ষেপ', chipArticle: 'পেশাদার প্রবন্ধ লিখুন', chipIdeas: 'প্রকল্পের আইডিয়া',

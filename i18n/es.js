@@ -1,4 +1,7 @@
 I18N['es'] = {
+    /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
+    fxCatLbl: 'Categoría', fxGenWomen: 'Mujer', fxGenMen: 'Hombre', fxGenKids: 'Niños', fxColorsLbl: 'Colores preferidos', fxColBlack: 'Negro', fxColWhite: 'Blanco', fxColNavy: 'Azul marino', fxColRed: 'Rojo', fxColGold: 'Dorado',
+    fxColGreen: 'Verde', fxColBeige: 'Beige', fxColMulti: 'Multicolor', fxAccLbl: 'Accesorios', fxAccGlasses: 'Gafas', fxAccWatch: 'Reloj', fxAccHandbag: 'Bolso', fxAccShoes: 'Zapatos', fxAccScarf: 'Bufanda', fxAccMakeup: 'Maquillaje',
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
     sidePanelTitle: 'Menú lateral', lightModeTitle: 'Modo claro', provSearchPh: 'Buscar un modelo...', jumpLatestTitle: 'Último mensaje', editMsgNotice: 'Editando mensaje', modesTitle: 'Modos',
     attachFileTitle: 'Adjuntar archivo', chipExam: 'Resolver un examen', chipBook: 'Resumir un libro', chipArticle: 'Escribir un artículo profesional', chipIdeas: 'Ideas para un proyecto',

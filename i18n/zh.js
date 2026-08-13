@@ -1,4 +1,7 @@
 I18N['zh'] = {
+    /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
+    fxCatLbl: '类别', fxGenWomen: '女装', fxGenMen: '男装', fxGenKids: '童装', fxColorsLbl: '偏好颜色', fxColBlack: '黑色', fxColWhite: '白色', fxColNavy: '藏青色', fxColRed: '红色', fxColGold: '金色',
+    fxColGreen: '绿色', fxColBeige: '米色', fxColMulti: '多色', fxAccLbl: '配饰', fxAccGlasses: '眼镜', fxAccWatch: '手表', fxAccHandbag: '手提包', fxAccShoes: '鞋子', fxAccScarf: '围巾', fxAccMakeup: '妆容',
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
     sidePanelTitle: '侧边栏', lightModeTitle: '浅色模式', provSearchPh: '搜索模型...', jumpLatestTitle: '最新消息', editMsgNotice: '正在编辑消息', modesTitle: '模式', attachFileTitle: '添加文件', chipExam: '解答考试题',
     chipBook: '总结一本书', chipArticle: '撰写专业文章', chipIdeas: '项目创意', tryItTitle: '帮我试试', closeTitle: '关闭', docAssistTitle: '📄 文档助手', govServicesTitle: '🧾 政府服务', cvGenTitle: '💼 简历生成器',

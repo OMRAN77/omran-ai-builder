@@ -1,4 +1,7 @@
 I18N['id'] = {
+    /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
+    fxCatLbl: 'Kategori', fxGenWomen: 'Wanita', fxGenMen: 'Pria', fxGenKids: 'Anak', fxColorsLbl: 'Warna favorit', fxColBlack: 'Hitam', fxColWhite: 'Putih', fxColNavy: 'Biru dongker', fxColRed: 'Merah', fxColGold: 'Emas',
+    fxColGreen: 'Hijau', fxColBeige: 'Krem', fxColMulti: 'Multiwarna', fxAccLbl: 'Aksesori', fxAccGlasses: 'Kacamata', fxAccWatch: 'Jam tangan', fxAccHandbag: 'Tas tangan', fxAccShoes: 'Sepatu', fxAccScarf: 'Syal', fxAccMakeup: 'Makeup',
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
     sidePanelTitle: 'Menu samping', lightModeTitle: 'Mode terang', provSearchPh: 'Cari model...', jumpLatestTitle: 'Pesan terbaru', editMsgNotice: 'Mengedit pesan', modesTitle: 'Mode',
     attachFileTitle: 'Lampirkan file', chipExam: 'Selesaikan ujian', chipBook: 'Ringkas buku', chipArticle: 'Tulis artikel profesional', chipIdeas: 'Ide proyek', tryItTitle: 'Coba untuk saya',
