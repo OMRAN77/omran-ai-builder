@@ -150,6 +150,27 @@ function explicitlyRequestsStyleChange(value){
   return affirmative.test(text) || styleFirst.test(text);
 }
 
+// 🌟 v605 — ترقية مشهد كامل (لا تعديل موضعيّ). buildEditPrompt يأمر
+// بإرجاع الصورة كما هي عند الطلب المبهم، وهو الصحيح لصور الأشخاص؛ أمّا
+// «أعطني الأفضل» لغرفة أو مكان فيلزمه أمر صريح بتنفيذ الترقية كلّها مع
+// تثبيت الهندسة والزاوية. حفظ الأشخاص وبقاء الصورة فوتوغرافيّة يبقيان.
+function buildSceneUpgradePrompt(userPrompt){
+  const prompt = cleanImagePrompt(userPrompt);
+  return [
+    'TASK: "' + prompt + '"',
+    '',
+    'This is an APPROVED FULL SCENE UPGRADE of the attached source photograph: the same real place, restaged and restyled into its best possible version. Rules:',
+    '1. Same place, same camera: identical viewpoint, framing, focal length, perspective lines, room geometry, wall/window/door positions, ceiling height and layout. The result must be instantly recognizable as the same place shot from the same spot.',
+    '2. Apply a complete, coherent upgrade to everything that can legitimately be styled: lighting design and colour temperature, wall and ceiling finish, flooring and rugs, furniture quality and arrangement, textiles, greenery, artwork, accessories, decluttering and staging. A full visible improvement is expected here — do NOT return the image essentially unchanged.',
+    '3. ' + sourceStylePreservationRule(),
+    '4. The result must stay a real, believable photograph of a real place: natural light falloff, real materials, physically correct shadows and reflections, no CGI or 3D-render look, no over-saturation, no HDR halos, no fake bloom.',
+    '5. Preserve every person exactly as in the source: same faces, features, skin tone, body and clothing, recognizable and untouched. Do not add or remove people.',
+    '6. Do not render words, letters, numbers, logos, captions, signatures or watermarks; keep any existing text character-for-character.',
+    '7. Follow any specific direction named in the USER REQUEST (style, palette, budget, function). If none is named, choose ONE coherent premium direction that suits this particular place and execute it fully and tastefully.',
+    'Return only one finished photograph of the upgraded place.'
+  ].join('\n');
+}
+
 function buildEditPrompt(userPrompt){
   const prompt = cleanImagePrompt(userPrompt);
   return [
@@ -167,4 +188,4 @@ function buildEditPrompt(userPrompt){
   ].join('\n');
 }
 
-module.exports = { cleanImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };
+module.exports = { cleanImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildSceneUpgradePrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };

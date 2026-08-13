@@ -14,7 +14,12 @@ function assessEditVerdict(verdict, options) {
   if (opts.allowStyleChange !== true && (verdict.sameVisualMedium !== true || (verdict.sourceIsPhotograph === true && verdict.resultIsPhotograph !== true))) {
     return { ok: false, reason: 'style_mismatch' };
   }
-  if (verdict.identityPreserved !== true || verdict.onlyRequestedChange !== true) {
+  if (verdict.identityPreserved !== true) {
+    return { ok: false, reason: 'identity_or_scope_mismatch' };
+  }
+  // v605: ترقية مشهد معتمدة = تغيير واسع مقصود، فشرط «التغيير المطلوب فقط»
+  // يُسقط وحده. حفظ الهويّة وبقاء الصورة فوتوغرافيّة يبقيان مفروضين أعلاه.
+  if (opts.allowBroadChange !== true && verdict.onlyRequestedChange !== true) {
     return { ok: false, reason: 'identity_or_scope_mismatch' };
   }
   return { ok: true, reason: opts.allowStyleChange === true ? 'accepted_explicit_style_change' : 'accepted' };
@@ -38,7 +43,9 @@ async function verifyLocalizedImageEdit(options) {
         ? 'sameVisualMedium: report whether the medium stayed the same; the requested style transformation itself is allowed.'
         : 'sameVisualMedium: RESULT preserves SOURCE visual medium exactly.',
       'identityPreserved: every person remains recognizably the same person, including when a style transformation was requested.',
-      'onlyRequestedChange: changes are limited to what USER REQUEST asks; requested clothing, hair, age, background or framing changes are allowed.',
+      opts.allowBroadChange === true
+        ? 'onlyRequestedChange: this is an approved full scene upgrade, so restyling the whole space is expected; report true when the place is still the same place from the same viewpoint.'
+        : 'onlyRequestedChange: changes are limited to what USER REQUEST asks; requested clothing, hair, age, background or framing changes are allowed.',
       'Be strict. If uncertain, use false.'
     ].join('\n');
     const response = await fetch(endpoint, {
@@ -60,7 +67,7 @@ async function verifyLocalizedImageEdit(options) {
     const data = await response.json();
     const parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
     const verdict = extractJsonObject(parts.map((part) => part.text || '').join('\n'));
-    return assessEditVerdict(verdict, { allowStyleChange: opts.allowStyleChange === true });
+    return assessEditVerdict(verdict, { allowStyleChange: opts.allowStyleChange === true, allowBroadChange: opts.allowBroadChange === true });
   } catch (_) {
     return { ok: false, reason: 'validation_unavailable' };
   } finally {

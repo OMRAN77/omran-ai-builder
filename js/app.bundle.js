@@ -13227,6 +13227,14 @@ async function sendPrompt(){
       cur.adMode = null; // صورة جديدة = وضع إعلان جديد
     }
     const __followUp = !__srcImg && cur.lastEditedImage && cur.lastMsgWasImageEdit && __IMG_FOLLOW;
+    // 🌟 v605 — ترقية المشهد. «أعطني الأفضل» و«طبّق التوصيات» كانت تسقط
+    // للدردشة (اعطني داخل __IMGF_NOT_RE) فيرجع كلام بلا صورة؛ ولو وصلت لمسار
+    // التعديل فالبند ٧ في buildEditPrompt يأمر بإرجاع الصورة كما هي. هذا مسار
+    // منفصل: نفس المكان ونفس الزاوية + ترقية كاملة، وبلا إعادة رفع الصورة.
+    const __IMG_UPGRADE_RE = /(?:^|[\s،,])(?:أعطني|اعطني|عطني|أعطيني|اعطيني|أبي|ابي|أبغى|ابغى|أبغي|ابغي|أريد|اريد|ودّي|ودي|هات)\s*(?:لي\s*)?(?:نسخ[ةه]\s*)?(?:ال)?(?:أفضل|افضل|أحسن|احسن|أرقى|ارقى|أجمل|اجمل)(?=$|[\s،,.!?؟])|(?:^|[\s،,])(?:طبّق|طبق|نفّذ|نفذ|سوّي|سوي)\s*(?:لي\s*)?(?:كل\s*)?(?:ال)?(?:توصيات|اقتراحات|تحسينات|ترقي[ةه]|خطوات)(?=$|[\s،,.!?؟])|(?:^|[\s،,])(?:حسّن|حسن|طوّر|طور|جدّد|جدد|جمّل|جمل|رقّي)(?:ها|ه|\s*(?:ال)?(?:صور[ةه]|غرف[ةه]|مكان|مشهد|ديكور|تصميم|جلس[ةه]|صال[ةه]))(?=$|[\s،,.!?؟])|(?:^|[\s،,])(?:خلّها|خلها|خلّه|خله|اجعلها|اجعله|صيّرها|سوّها)\s*(?:ال)?(?:أفضل|افضل|أحسن|احسن|فخم[ةه]|فخم|أرقى|ارقى|أجمل|اجمل|راقي[ةه])(?=$|[\s،,.!?؟])|(?:apply\s+(?:the\s+)?(?:recommendations|suggestions|upgrades)|(?:make|upgrade|improve|enhance)\s+(?:it|the\s+(?:room|space|place|scene|photo|image))|give\s+me\s+(?:the\s+)?best|best\s+version)/i;
+    const __IMG_UPGRADE_SRC = (!__srcImg && !(cur.lastEditedImage && cur.lastEditedImage.b64)) ? latestOriginalUserImage(cur) : null;
+    const __IMG_UPGRADE_NOT_RE = /(?:^|[\s،,])(?:ابحث|دور|بحث|معلومات|سعر|أسعار|اسعار|أخبار|اخبار|طقس|فندق|مطعم|طيران|وظيف[ةه]|search|find|news|weather|price|hotel|flight)(?=$|[\s،,.!?؟])|[؟?]\s*$/i;
+    const __IMG_UPGRADE = !!(text && text.length <= 140 && __IMG_UPGRADE_RE.test(text) && !__IMG_UPGRADE_NOT_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text) && (__srcImg || (cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC));
     // v311: رسالة تفاصيل إضافية أثناء تصميم إعلان قائم → تكمل التصميم نفسه.
     if(text && cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && text.indexOf('ملاحظة للنظام') === -1){
       text += '\n(ملاحظة للنظام: هذه تفاصيل إضافية للإعلان قيد التصميم — أكمل/حدّث تصميم الإعلان الكامل بهذه التفاصيل حسب قالب ' + (cur.adMode === 'inside' ? 'INSIDE فوق صورة المستخدم background-image:url(\'__USER_IMAGE__\')' : 'OUTSIDE مع src="__USER_IMAGE__"') + ' وأعد الملف كاملًا. ممنوع البحث في الإنترنت وممنوع عرض إعلانات مواقع أخرى وممنوع الرد بنص فقط)';
@@ -13569,10 +13577,11 @@ async function sendPrompt(){
     // v579: صورة مرفقة + طلب قصير (مثلًا بعد زرّ «تعديل») = تعديل عليها افتراضيًّا — إلّا سؤال/بحث/فيديو/شكر/صورة جديدة/قراءة-ترجمة-وصف.
     const __ATT_VISION_RE = /(ترجم|translate|اقرأ|اقري|إقرأ|قراءة|\bread\b|وصف|اوصف|صف\s|describe|حلل|حلّل|analyz|قارن|compare)/i;
     const __ATT_EDIT = !!(__srcImg && !__srcImg._fromMemory && text && text.length <= 220 && !__IMGF_NOT_RE.test(text) && !__IMGF_NEW_RE.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text));
-    if(text && !cur.adMode && (__IMG_FOLLOW || __ATT_EDIT || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && (__srcImg || __followUp || __IMG_FOLLOW)){
-      chatPhase('🖼️', lang === 'ar' ? 'جاري تعديل الصورة…' : 'Editing image…', thinkingDiv);
-      const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : cur.lastEditedImage.b64;
-      const __mime = __srcImg ? (__srcImg.mime || 'image/png') : (cur.lastEditedImage.mime || 'image/png');
+    if(text && !cur.adMode && (__IMG_UPGRADE || __IMG_FOLLOW || __ATT_EDIT || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || (__IMG_UPGRADE && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
+      chatPhase('🖼️', __IMG_UPGRADE ? (lang === 'ar' ? 'جاري ترقية المشهد…' : 'Upgrading the scene…') : (lang === 'ar' ? 'جاري تعديل الصورة…' : 'Editing image…'), thinkingDiv);
+      const __upgSrc = (!__srcImg && __IMG_UPGRADE && !(cur.lastEditedImage && cur.lastEditedImage.b64)) ? __IMG_UPGRADE_SRC : null;
+      const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : (__upgSrc ? ((__upgSrc.dataUrl || '').split(',')[1] || '') : ((cur.lastEditedImage && cur.lastEditedImage.b64) || ''));
+      const __mime = __srcImg ? (__srcImg.mime || 'image/png') : (__upgSrc ? (__upgSrc.mime || 'image/png') : ((cur.lastEditedImage && cur.lastEditedImage.mime) || 'image/png'));
       const __isNewImageSource = !!(__srcImg && !__srcImg._fromMemory);
       // ✍️ إذا الطلب كتابة نص/اسم على الصورة → نرسمه محليًا بخط سليم (بدون Gemini)
       const __writeIntentRe = /(اكتب|أكتب|حط\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|(?:ضيف|أضف|اضف)\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|write|put\s+(?:my\s+)?name|add\s+(?:the\s+)?text)/i;
@@ -13649,7 +13658,7 @@ async function sendPrompt(){
       const __res = await fetch('/api/maha-image', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         signal: genAbortController.signal,
-        body: JSON.stringify({ prompt: __editPrompt, editImageBase64: __editB64, editMimeType: __editMime, extraImages: imageAttachments.length > 1 ? imageAttachments.slice(0, -1).map(a => ({ data: (a.dataUrl || '').split(',')[1] || '', mime: a.mime || 'image/png' })) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+        body: JSON.stringify({ prompt: __editPrompt, editImageBase64: __editB64, editMimeType: __editMime, sceneUpgrade: __IMG_UPGRADE || undefined, extraImages: imageAttachments.length > 1 ? imageAttachments.slice(0, -1).map(a => ({ data: (a.dataUrl || '').split(',')[1] || '', mime: a.mime || 'image/png' })) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
       });
       const __data = await __res.json().catch(() => ({}));
       const __ok = __res.ok && !!__data.imageBase64;

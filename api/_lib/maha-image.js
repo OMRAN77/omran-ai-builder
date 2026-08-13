@@ -4,7 +4,7 @@
 // model (server-side owner key, GEMINI_API_KEY) - the only one of the 9
 // providers that can actually output images.
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
-const { cleanImagePrompt, buildGenerationPrompt, buildEditPrompt, explicitlyRequestsStyleChange } = require('./image-prompt');
+const { cleanImagePrompt, buildGenerationPrompt, buildEditPrompt, buildSceneUpgradePrompt, explicitlyRequestsStyleChange } = require('./image-prompt');
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 const { authorPrayerPlan } = require('./prayer-plan');
 const { fetchImageWithRetry, isImageTimeoutError } = require('./image-fetch');
@@ -121,6 +121,8 @@ module.exports = async (req, res) => {
     // يحمل عدد الطوابق وسعة الكراج والطراز والمواد — وهو ما يجعل الواجهة
     // تطابق المخطط. الوصف الهندسي يُسمح له بمساحة أوسع.
     const isArchitectural = !!(body && body.architectural);
+    // v605: ترقية مشهد كاملة يطلبها المستخدم صراحةً («أعطني الأفضل»).
+    const isSceneUpgrade = !!(body && body.sceneUpgrade === true && editImageBase64);
     const promptLimit = isArchitectural ? 2400 : (editImageBase64 ? 8000 : 1800);
     const cleanPrompt = cleanImagePrompt(prayerPlan ? prayerPlan.visualBrief : prompt).slice(0, promptLimit);
     const extras = Array.isArray(extraImages) ? extraImages.filter((x) => x && x.data).slice(0, 5) : [];
@@ -130,7 +132,7 @@ module.exports = async (req, res) => {
       parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
       for (const x of extras) parts.push({ inlineData: { mimeType: x.mime || 'image/png', data: x.data } });
     } else if (editImageBase64) {
-      parts.push({ text: buildEditPrompt(cleanPrompt) });
+      parts.push({ text: isSceneUpgrade ? buildSceneUpgradePrompt(cleanPrompt) : buildEditPrompt(cleanPrompt) });
       parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
     } else {
       parts.push({ text: buildGenerationPrompt(cleanPrompt, {
@@ -142,7 +144,7 @@ module.exports = async (req, res) => {
     }
 
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
-    const reqBody = JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: editImageBase64 ? 0.15 : 0.85, imageConfig: { imageSize: '2K' } } });
+    const reqBody = JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: editImageBase64 ? (isSceneUpgrade ? 0.5 : 0.15) : 0.85, imageConfig: { imageSize: '2K' } } });
 
     // Image generation normally takes 35–50 seconds, so it must bypass the
     // shared 30-second fetch guard. Retry transient failures inside this one
@@ -190,6 +192,7 @@ module.exports = async (req, res) => {
         resultMime: imgPart.inlineData.mimeType || 'image/png',
         userPrompt: cleanPrompt,
         allowStyleChange: explicitlyRequestsStyleChange(cleanPrompt),
+        allowBroadChange: isSceneUpgrade,
       });
       if (!guard.ok) {
         await refundImageCharge();
