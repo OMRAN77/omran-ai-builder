@@ -99,6 +99,13 @@
   /* ---------- 8) أزرار الصندوق الجديدة ---------- */
   var bw = $('#omranBtnWeb'); if(bw) bw.addEventListener('click', function(){ tap('#btnPreviewToggle'); });
   var bc = $('#omranBtnClip'); if(bc) bc.addEventListener('click', function(){ tap('#btnAttach'); });
+  /* v594: بند «الأدوات» داخل + يفتح مربّع الأدوات ويقفل القائمة */
+  var btb = $('#btnToolsBox');
+  if(btb) btb.addEventListener('click', function(e){
+    e.stopPropagation();
+    var p = document.getElementById('plusToolsPopup'); if(p) p.classList.remove('show');
+    var o = document.getElementById('sectionsToolsOverlay'); if(o) o.classList.add('show');
+  });
 
   /* ---------- 9) chips الاقتراحات ---------- */
   document.querySelectorAll('.omChip').forEach(function(c){

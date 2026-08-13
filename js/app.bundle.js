@@ -2088,7 +2088,7 @@ const I18N = {
     portraitDone: '✅ تم الانتهاء!',
     portraitBtnTitle: 'أنماط الصور',
     quickTemplatesTitle: 'اقتراحات',
-    imgToPdfTitle: 'صور → PDF',
+    imgToPdfTitle: 'PDF',
     previewToggleLabel: 'المتصفح',
     portraitStyleAnime: '🎬 أنيمي ياباني',
     portraitStyleCartoon: '🖼️ كارتون واقعي',
@@ -3122,7 +3122,7 @@ const I18N = {
     portraitDone: '✅ Done!',
     portraitBtnTitle: 'Portrait styles',
     quickTemplatesTitle: 'Suggestions',
-    imgToPdfTitle: 'Images → PDF',
+    imgToPdfTitle: 'PDF',
     previewToggleLabel: 'Browser',
     portraitStyleAnime: '🎬 Japanese Anime',
     portraitStyleCartoon: '🖼️ Semi-realistic Cartoon',
@@ -15154,7 +15154,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
     { title: null, ids: ['btnSettings','btnAuthToggle','btnToggleHistory'] },
     { title: 'grpCreate', ids: ['btnQuickTemplates','btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnAdStudio'] },
     { title: 'grpSections', ids: ['btnStocks','btnConstruction','btnOmranEdu','btnExpense','btnDocs','btnGov','btnCV','btnReligion','btnEmailAssist'] },
-    { title: 'grpTools', ids: ['btnTemplates','btnAgentMode','btnInstall','btnShareApp'] }
+    { title: 'grpTools', ids: ['btnPortraitStyle','btnTemplates','btnAgentMode','btnInstall','btnShareApp'] }
   ];
   // v433: مجموعات الإبداع/الأقسام/الأدوات في مربع الأدوات المنفصل (تبويب الأدوات)
   const ptPopup = document.getElementById('sectionsToolsPopup');
@@ -15178,6 +15178,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
     btnExpense:     'Money%20bag/3D/money_bag_3d.png',
     btnReligion:    'Mosque/3D/mosque_3d.png',
     btnEmailAssist: 'E-mail/3D/e-mail_3d.png',
+    btnPortraitStyle:'Framed%20picture/3D/framed_picture_3d.png',
     btnTemplates:   'Light%20bulb/3D/light_bulb_3d.png',
     btnAgentMode:   'Robot/3D/robot_3d.png',
     btnInstall:     'Mobile%20phone/3D/mobile_phone_3d.png',

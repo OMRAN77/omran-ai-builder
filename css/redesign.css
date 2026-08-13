@@ -221,13 +221,14 @@ html[data-mode="light"] #omModeBtn:hover{background:rgba(0,0,0,.05);}
 /* v549 — hide from plus-menu + bot chips (owner order 2026-08-11) */
 #btnSnapBuild, #btnEmoji, #btnVoiceChat{display:none !important;}
 #omranChips{display:none !important;}
-/* v550 — plus-menu owner order (2026-08-11): image · portrait · img→pdf · chat→pdf · learn · feedback · delete */
+/* v594 — plus-menu owner order (2026-08-13): attach · image · tools-box · pdf · feedback · delete */
 #plusToolsPopup .omModeItem[data-mode="web"], #plusToolsPopup .omModeItem[data-mode="think"]{display:none !important;}
 #plusToolsPopup .omModeItem[data-mode="image"]{order:10;}
-#plusToolsPopup #btnPortraitStyle{order:20;}
+#plusToolsPopup #btnToolsBox{order:15;}
+#plusToolsPopup #btnToolsBox .omChev{margin-inline-start:auto;opacity:.5;display:inline-flex;align-items:center;}
+html[dir="ltr"] #plusToolsPopup #btnToolsBox .omChev{transform:rotate(180deg);}
 #plusToolsPopup #btnImgToPdf{order:30;}
 #plusToolsPopup #btnChatToPdf{order:40;}
-#plusToolsPopup .omModeItem[data-mode="learn"]{order:50;}
 #plusToolsPopup #btnFeedback{order:60;}
 #plusToolsPopup .omModeSep{order:65;}
 #plusToolsPopup #btnDeleteChat{order:70;}
