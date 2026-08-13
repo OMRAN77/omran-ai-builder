@@ -223,7 +223,7 @@ html[data-mode="light"] #omModeBtn:hover{background:rgba(0,0,0,.05);}
 #omranChips{display:none !important;}
 /* v594 — plus-menu owner order (2026-08-13): attach · image · tools-box · pdf · feedback · delete */
 #plusToolsPopup .omModeItem[data-mode="web"], #plusToolsPopup .omModeItem[data-mode="think"]{display:none !important;}
-#plusToolsPopup .omModeItem[data-mode="image"]{order:10;}
+#plusToolsPopup .omModeItem[data-mode="image"]{order:40;} /* v597: فوق «الأدوات» مباشرةً */
 #plusToolsPopup #btnAttach{order:20;}
 #plusToolsPopup #btnToolsBox{order:50;}
 #plusToolsPopup #btnToolsBox .omChev{margin-inline-start:auto;opacity:.5;display:inline-flex;align-items:center;}

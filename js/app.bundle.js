@@ -15153,8 +15153,8 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   const groups = [
     { title: null, ids: ['btnSettings','btnAuthToggle','btnToggleHistory'] },
     { title: 'grpCreate', ids: ['btnPortraitStyle','btnQuickTemplates','btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnAdStudio'] },
-    { title: 'grpSections', ids: ['btnStocks','btnConstruction','btnOmranEdu','btnExpense','btnDocs','btnGov','btnCV','btnReligion','btnEmailAssist'] },
-    { title: 'grpTools', ids: ['btnFeedback','btnTemplates','btnAgentMode','btnInstall','btnShareApp'] }
+    // v597: «رأيك يهمنا» جنب «مساعد البريد» بأمر عمران · مجموعة grpTools أُزيلت (أزرارها الأربعة مخفيّة بسطر ١٠٦ في index.html)
+    { title: 'grpSections', ids: ['btnStocks','btnConstruction','btnOmranEdu','btnExpense','btnDocs','btnGov','btnCV','btnReligion','btnEmailAssist','btnFeedback'] }
   ];
   // v433: مجموعات الإبداع/الأقسام/الأدوات في مربع الأدوات المنفصل (تبويب الأدوات)
   const ptPopup = document.getElementById('sectionsToolsPopup');
