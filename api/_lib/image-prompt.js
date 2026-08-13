@@ -34,6 +34,57 @@ const BG_FAMILY = [
 const BG_NOT_ENV = /طعام|قهوة|حلوى|طبق|وجبة|food|coffee|dessert|dish|منتج|عطر|ساعة|هاتف|product|perfume|watch|phone|شخص|رجل|امرأة|طفل|بورتريه|person|portrait/i;
 const bgPick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
+/* ===== v591 — تعميم التنويع: طعام · منتج · بورتريه · عامّ =====
+ * نفس مبدأ v590: محاور تُركَّب لحظيًّا بدل جملة إنجليزيّة واحدة ثابتة.
+ * كلّ محور يُطبَّق فقط حيث يسكت طلب المستخدم، ولا يلغي شيئًا سمّاه. */
+const FD_SURFACE = ['on dark slate','on aged wood','on white ceramic','on brushed marble','on woven linen','on matte stoneware','on a rustic board','on polished steel','on textured paper','on a glass surface','on terracotta','on a concrete slab'];
+const FD_STATE = ['with rising steam','with fresh garnish','with a glistening surface','with a light dusting','with a delicate drizzle','with condensation beads','with a partial serving','with crumbs nearby','with soft shadows beneath','with natural imperfection'];
+const FD_COMP = ['overhead flat-lay','a 45-degree editorial angle','tight macro detail','a low three-quarter view','an off-center plated arrangement','a layered table scene','a straight-on side profile','a diagonal leading arrangement'];
+const FD_LIGHT = ['soft window light','directional side light with gentle falloff','bright airy diffusion','warm low-key illumination','crisp backlight through the dish','even overhead softbox light','dappled natural light','moody single-source light'];
+const FD_PAL = ['warm amber and cream','cool white and gray','deep green and walnut','muted terracotta and sand','soft pastel neutrals','rich burgundy and gold','fresh white and herb green','charcoal with warm highlights'];
+const FD_LENS = ['shallow depth with a soft background','deep focus across the plate','macro texture emphasis','natural standard perspective','a slight wide-angle table view','compressed telephoto framing','centered symmetrical framing','loose negative-space framing'];
+const PR_SETTING = ['on a seamless studio backdrop','on a stone pedestal','on brushed metal','on rippled fabric','on a reflective black surface','among soft geometric blocks','on a sunlit plaster ledge','within a floating acrylic frame','on wet polished concrete','against a gradient wall','among drifting mist','on a raw travertine slab'];
+const PR_ATM = ['with a clean airy feel','with a dramatic moody feel','with soft drifting haze','with crisp graphic clarity','with subtle floating particles','with gentle reflections','with a tactile organic feel','with a polished premium feel'];
+const PR_COMP = ['a hero centered presentation','an off-center editorial arrangement','a tight cropped detail','a low heroic angle','a floating suspended layout','a three-quarter turned view','a straight-on symmetrical layout','a diagonal dynamic placement'];
+const PR_LIGHT = ['crisp specular highlights','soft gradient studio light','dramatic single-source light','bright even diffusion','rim light separating the edges','a warm directional glow','cool controlled reflections','high-contrast sculpted light'];
+const PR_PAL = ['monochrome graphite and silver','warm sand and bronze','deep navy and chrome','clean white and pale gray','black with amber accents','muted sage and ivory','burgundy and brushed gold','cool slate and glass tones'];
+const PR_LENS = ['macro material detail','shallow focus with soft falloff','deep focus full clarity','compressed telephoto rendering','a slight wide-angle presence','flat catalog perspective','a tilted dynamic perspective','a tight crop on the key feature'];
+const PT_SETTING = ['in an open sunlit space','against a plain textured wall','in a doorway with soft spill','among tall grasses','on a quiet street at low light','in a room with window light','against layered city depth','under an arched passage','beside a reflective surface','in shaded greenery','in a wide open landscape','against a simple studio backdrop'];
+const PT_MOOD = ['with a calm natural presence','with quiet confidence','with an unforced candid feel','with gentle warmth','with a thoughtful stillness','with relaxed ease','with subtle dignity','with an open approachable feel'];
+const PT_COMP = ['a close intimate framing','a relaxed medium framing','a wide environmental framing','an off-center placement with breathing room','a slightly low respectful angle','an over-the-shoulder framing','a candid unposed arrangement','a centered direct composition'];
+const PT_LIGHT = ['soft directional window light','warm late-day light','even overcast diffusion','gentle rim separation','soft frontal light','shaded open light','dappled light through foliage','low-contrast ambient light'];
+const PT_PAL = ['warm neutral tones with muted surroundings','cool gray and soft blue','earthy brown and olive','clean white and pale neutrals','deep shadow with warm highlights','muted teal and sand','soft rose and cream','charcoal with gentle warmth'];
+const PT_LENS = ['shallow focus with soft background separation','natural standard perspective','compressed telephoto rendering','a wider contextual perspective','a tight crop on expression','full-length framing','waist-up framing','three-quarter framing'];
+const GN_COMP = ['a balanced deliberate arrangement','an off-center editorial layout','a tight detailed crop','a wide contextual view','a layered foreground and background','a centered symmetrical layout','a diagonal dynamic arrangement','a minimal spacious composition'];
+const GN_LIGHT = ['soft directional light','even diffused light','dramatic single-source light','a warm ambient glow','cool controlled light','gentle rim separation','bright open light','low-contrast shading'];
+const GN_PAL = ['muted neutral tones','warm earthy tones','cool blue and gray','clean white and light gray','deep tones with bright accents','a soft pastel range','rich saturated contrast','monochrome with one accent'];
+const GN_LENS = ['shallow focus rendering','deep focus clarity','macro detail emphasis','natural standard perspective','compressed telephoto framing','slight wide-angle framing','a tight crop','loose negative-space framing'];
+const bgWords = (p) => String(p || '').trim().split(/\s+/).filter(Boolean).length;
+function variedDirection(lead, concrete, comp, light, pal, lens){
+  return lead + ' Vary the execution so repeated requests never look alike.'
+    + (concrete ? ' Where the USER REQUEST leaves this open, realize it concretely as: ' + concrete + ' (adapt it if it does not suit the named subject).' : '')
+    + ' Composition: ' + comp + '. Lighting: ' + light + '. Palette: ' + pal + '. Framing: ' + lens + '.'
+    + ' These execution choices apply only where the USER REQUEST is silent; never override any subject, object, count, color, time, mood or style it names.';
+}
+function foodDirection(prompt){
+  return variedDirection('Use appetizing editorial food composition and lighting appropriate to the named item.',
+    bgWords(prompt) <= 6 ? bgPick(FD_SURFACE) + ' ' + bgPick(FD_STATE) : '',
+    bgPick(FD_COMP), bgPick(FD_LIGHT), bgPick(FD_PAL), bgPick(FD_LENS));
+}
+function productDirection(prompt){
+  return variedDirection('Use a distinctive product composition appropriate to the item, not a generic portrait setup.',
+    bgWords(prompt) <= 6 ? bgPick(PR_SETTING) + ' ' + bgPick(PR_ATM) : '',
+    bgPick(PR_COMP), bgPick(PR_LIGHT), bgPick(PR_PAL), bgPick(PR_LENS));
+}
+function portraitDirection(prompt){
+  return variedDirection('Use a natural environmental portrait treatment suited to the named person, action, place and mood.',
+    bgWords(prompt) <= 6 ? bgPick(PT_SETTING) + ' ' + bgPick(PT_MOOD) : '',
+    bgPick(PT_COMP), bgPick(PT_LIGHT), bgPick(PT_PAL), bgPick(PT_LENS));
+}
+function genericDirection(lead){
+  return variedDirection(lead, '', bgPick(GN_COMP), bgPick(GN_LIGHT), bgPick(GN_PAL), bgPick(GN_LENS));
+}
+
 function environmentDirection(prompt){
   let fam = '';
   for(const pair of BG_FAMILY){ if(pair[1].test(prompt)){ fam = pair[0]; break; } }
@@ -50,14 +101,14 @@ function subjectDirection(prompt, reserveTextArea){
   if(!BG_NOT_ENV.test(prompt) && (BG_FAMILY.some(function(p){ return p[1].test(prompt); }) || /شمس|شروق|غروب|سماء|سحاب|أفق|افق|طقس|sun|sunrise|sunset|sky|cloud|horizon|weather/i.test(prompt)))
     return environmentDirection(prompt);
   if(/طعام|قهوة|حلوى|طبق|وجبة|food|coffee|dessert|dish/i.test(prompt))
-    return 'Use appetizing editorial food composition and lighting appropriate to the named item.';
+    return foodDirection(prompt);
   if(/منتج|عطر|ساعة|هاتف|product|perfume|watch|phone/i.test(prompt))
-    return 'Use a distinctive product composition appropriate to the item, not a generic portrait setup.';
+    return productDirection(prompt);
   if(/شخص|رجل|امرأة|طفل|بورتريه|person|man|woman|child|portrait/i.test(prompt))
-    return 'Use a natural environmental portrait treatment suited to the named person, action, place and mood.';
+    return portraitDirection(prompt);
   if(reserveTextArea)
-    return 'Use a calm editorial composition whose imagery supports the requested subject while leaving intentional breathing room.';
-  return 'Choose composition, viewpoint, lens character, lighting and palette specifically for this request; do not reuse a default visual recipe.';
+    return genericDirection('Use a calm editorial composition whose imagery supports the requested subject while leaving intentional breathing room.');
+  return genericDirection('Choose composition, viewpoint, lens character, lighting and palette specifically for this request; do not reuse a default visual recipe.');
 }
 
 function buildGenerationPrompt(userPrompt, options){
