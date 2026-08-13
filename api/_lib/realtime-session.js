@@ -147,7 +147,7 @@ module.exports = async (req, res) => {
     const { token, guestId } = body;
     const mode = body.mode === 'builder' ? 'builder' : 'assistant';
     const voiceGender = body.voiceGender === 'male' ? 'male' : 'female';
-    const isDesktop = body.desktop === true; // v283: كمبيوتر = مايك قريب + حساسية أخف
+    const isDesktop = body.desktop === true; // v607: يبقى مُستقبَلًا من العميل؛ لم يبقَ فرق في إعدادات الصوت (الجوّال والكمبيوتر سواء)
 
     const usage = await checkAndConsume(token, guestId, 'maha-realtime', clientIp(req));
     if (!usage.allowed) {
@@ -270,12 +270,16 @@ module.exports = async (req, res) => {
             ? { voice: 'echo' }
             : { voice: 'marin' },
           input: {
-            noise_reduction: { type: (mode === 'builder' || isDesktop) ? 'near_field' : 'far_field' },
+            // v607: الوثائق الرسميّة تنصّ أنّ near_field للمايكات القريبة "headphones, headsets,
+            // and mobile phones"، وfar_field للابتوب/غرف الاجتماعات. كان الشرط معكوسًا فأخذ
+            // الجوّال far_field ⇒ كبت عدوانيّ يبتر أوّل جملة، خاصّة في الضوضاء.
+            // كلّ أجهزتنا مايك قريب (الهاتف باليد · لابتوب المستخدم قريب منه) ⇒ near_field للجميع.
+            noise_reduction: { type: 'near_field' },
+            // v607: الجوّال كان semantic_vad — يقرّر بالمعنى، وينتظر مهلة إن ظنّ الجملة ناقصة
+            // ⇒ لا يردّ حتّى تتكلّم ثانية. server_vad يقطع بالصمت وهو المُثبت على الكمبيوتر.
             turn_detection: mode === 'builder'
               ? { type: 'server_vad', threshold: 0.88, prefix_padding_ms: 300, silence_duration_ms: 800 }
-              : (isDesktop
-                ? { type: 'server_vad', threshold: 0.4, prefix_padding_ms: 300, silence_duration_ms: 700 }
-                : { type: 'semantic_vad', eagerness: 'medium' }),
+              : { type: 'server_vad', threshold: 0.4, prefix_padding_ms: 300, silence_duration_ms: 700 },
           },
         },
         tools: [
