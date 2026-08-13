@@ -35,45 +35,7 @@ function deterministicSocialReply(text) {
   return 'هلا وغلا';
 }
 
-// ═══════════════ v609 — حوار قبل البحث ═══════════════
-// كلمة واحدة غامضة كانت ترجع قائمة أماكن وروابط خام فورًا. البوّابة أدناه توقف
-// البحث وتسأل سؤالًا واحدًا قصيرًا عن المعنى ثمّ النوع ثمّ الموقع، مرّة واحدة فقط.
-const PLACE_ASK_RE = /(?:مطعم|مطاعم|مقهى|مقاهي|كافيه|كوفي|كراج|كراجات|ورشة|ورش|مخاور|مخاوير|مخوار|خياط|خياطة|مشغل|صالون|حلاق|عيادة|عيادات|مستشفى|مستوصف|طبيب|دكتور|صيدلية|صيدليّة|فندق|فنادق|شقة|شقق|محل|محلات|متجر|متاجر|سوق|أسواق|بقالة|جيم|نادي|مدرسة|حضانة|مغسلة|سباك|كهربائي|نجار|بوتيك|مكتب|مكاتب|restaurant|restaurants|cafe|garage|clinic|hotel|salon|shop|store)/i;
-const FILLER_RE = /^(?:وين|فين|أين|اين|وينه|ابغى|أبغى|أبغي|ابغي|اريد|أريد|بدي|أبحث|ابحث|دور|دوّر|دورلي|ألقى|القى|لقى|عن|في|من|لي|هل|فيه|شو|أفضل|افضل|احسن|أحسن|ايش|إيش|زين|please|find|need|want|the|a|an|for|in|at|me|my|best|good|nice|i|search|show)$/i;
-const LOC_HINT_RE = /عجمان|دبي|أبوظبي|أبو ظبي|ابوظبي|الشارقة|شارقة|رأس الخيمة|راس الخيمة|أم القيوين|ام القيوين|الفجيرة|فجيرة|العين|خورفكان|كلباء|الرياض|جدة|الدمام|الدوحة|الكويت|مسقط|المنامة|القاهرة|قريب|قريبة|جنبي|حولي|عندي|موقعي|منطقتي|حيّي|حيي|near ?me|nearby|dubai|abu ?dhabi|sharjah|ajman/i;
-
-function effWords(text) {
-  return String(text || '').replace(/[^\u0600-\u06FFA-Za-z0-9\s]/g, ' ')
-    .split(/\s+/).filter(function (w) { return w && !FILLER_RE.test(w); });
-}
-
-// آخر ردّ للوكيل كان سؤالًا قصيرًا؟ إذًا سألنا في الدور السابق — لا نسأل مرّتين.
-function alreadyAsked(messages) {
-  const a = (messages || []).slice().reverse().find(function (m) {
-    return m && m.role === 'assistant' && typeof m.content === 'string' && m.content.trim();
-  });
-  if (!a) return false;
-  const t = a.content.trim();
-  return t.length < 500 && /[?؟]/.test(t);
-}
-
-function needsClarify(text, messages) {
-  const t = String(text || '').trim();
-  if (!t || t.length > 120) return false;
-  if (!PLACE_ASK_RE.test(t)) return false;
-  if (alreadyAsked(messages)) return false;
-  const w = effWords(t);
-  const hasLoc = LOC_HINT_RE.test(t);
-  if (w.length <= 2) return true;             // «مخاوير» · «مطاعم عجمان» — النوع ناقص
-  if (w.length <= 4 && !hasLoc) return true;  // «مطعم هندي رخيص» — الموقع ناقص
-  return false;
-}
-
-const CLARIFY_NOTE = '\n\n[دور توضيح — ممنوع البحث]: طلب المستخدم قصير وناقص. لا تعطِ أسماء أماكن ولا أرقامًا ولا روابط ولا نتائج، ولا تستخدم أيّ أداة.\n'
-  + 'اسأل سؤالًا واحدًا فقط، سطرًا أو سطرين، بنفس لهجة المستخدم وبنبرة ودودة قصيرة، عن أهمّ ناقص بهذا الترتيب: المعنى المقصود إن حملت الكلمة أكثر من معنى، ثمّ النوع أو الغرض، ثمّ الموقع.\n'
-  + 'اعرض من خيارين إلى أربعة خيارات قصيرة مفصولة بـ«·» ليختار بضغطة. لا إيموجي، ولا مقدّمة، ولا اعتذار، ولا إعادة صياغة لكلام المستخدم.';
-
-const LINK_RULE = '\n\n[الروابط]: رابط واحد قصير لكلّ مكان، عاريًا في سطر مستقلّ بلا صيغة Markdown وبلا أقواس، وبلا معرّفات إضافيّة أو سلاسل حروف مبهمة.';
+const LINK_RULE = '\n\n[الروابط]: رابط واحد قصير لكلّ مكان بصيغة [نصّ](رابط) كما في (ص٢) — بلا أيّ مسافة داخل الرابط، وبلا معامل g_mp أو ved أو entry، وبلا سلسلة حروف مبهمة طويلة. إن لم تكن الصيغة مضمونة فاكتب الرابط عاريًا في سطر مستقلّ.';
 
 // Google Places يرجع رابطًا محشوًّا بـg_mp ومعرّفات بروتوبف طويلة، وكان النموذج
 // يلصقها حرفيًّا في الردّ. نقصّها من ناتج الأداة قبل أن يراها.
@@ -621,8 +583,6 @@ module.exports = async (req, res) => {
   const quietSocialTurn = pureGreetingTurn || casualCheckInTurn;
   const wizardTurn = messages.some((m) => m && typeof m.content === 'string' && WIZARD_RE.test(m.content));
   const foreignTurn = !!(lastUser && isForeignAsk(lastUser.content));
-  // v609 — التوضيح يسبق البحث. المجاملة والمعالج لهما مساراهما، فلا نتدخّل فيهما.
-  const clarifyTurn = !quietSocialTurn && !wizardTurn && needsClarify(lastUser && lastUser.content, messages);
   const reC = (wizardTurn || foreignTurn) ? null : reCtx(messages);
   const askCapNote = (foreignTurn ? GLOBAL_NOTE : ((lastUser && NUM_ASK_RE.test(lastUser.content)) ? NUM_NOTE : (reC ? (RE_NOTE + (reC.layer > 0 ? RE_MORE_NOTE : '')) : ''))) + ((!wizardTurn && askStreak(messages) >= 2) ? ASK_CAP_NOTE : '');
   const socialReply = deterministicSocialReply(lastUser && lastUser.content);
@@ -649,14 +609,12 @@ module.exports = async (req, res) => {
   const country = (req.headers && (req.headers['x-vercel-ip-country'] || req.headers['x-country'])) || '';
   // المجاملة القصيرة لا تحتاج تاريخًا أو دولة أو أدوات أو ملف المالك؛ حقن هذه
   // السياقات في «كيف الحال» هو ما حوّلها إلى قائمة فنادق ومواضيع قديمة.
-  const system = clarifyTurn
-    ? sysParts.join('\n\n') + BIDI_RULE + CLARIFY_NOTE
-    : quietSocialTurn
+  const system = quietSocialTurn
     ? sysParts.join('\n\n') + (casualCheckInTurn ? '\n\n[هذا دور اجتماعي قصير]: أجب عن سؤال الحال مباشرةً في جملة طبيعية واحدة. المحادثة مستمرة، فلا تبدأ بتحية جديدة، ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق.' : '')
     : sysParts.join('\n\n') + nowNote() + countryNote(country) + TOOLS_NOTE + BIDI_RULE + LINK_RULE + WIZARD_NOTE + askCapNote
       + require('./_knowledge.js').ownerKnowledge(req, token); // معرفة عمران — للمالك وحده
 
-  const convoSource = quietSocialTurn ? [lastUser] : (clarifyTurn ? messages.slice(-6) : messages);
+  const convoSource = quietSocialTurn ? [lastUser] : messages;
   const convo = convoSource
     .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && m.content)
     .map((m) => ({ role: m.role, content: typeof m.content === 'string' ? m.content.slice(0, 30000) : m.content }));
@@ -686,7 +644,7 @@ module.exports = async (req, res) => {
       const upstream = await fetch(CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: CHAT_MODEL, max_tokens: quietSocialTurn ? 120 : (clarifyTurn ? 300 : 16000), system, messages: convo, tools: (quietSocialTurn || clarifyTurn) ? undefined : TOOLS, stream: true }),
+        body: JSON.stringify({ model: CHAT_MODEL, max_tokens: quietSocialTurn ? 120 : 16000, system, messages: convo, tools: quietSocialTurn ? undefined : TOOLS, stream: true }),
       });
 
       if (!upstream.ok) {
@@ -778,4 +736,4 @@ module.exports = async (req, res) => {
 };
 
 module.exports.__v608 = { normNums, unsourcedRatings, ratingWarning }; // v608 — للاختبار
-module.exports.__v609 = { needsClarify, effWords, alreadyAsked, cleanLink }; // v609 — للاختبار
+module.exports.__v610 = { cleanLink }; // v610 — للاختبار

@@ -572,7 +572,21 @@ module.exports = async (req, res) => {
       results = [...placeCards, ...results].slice(0, 24);
     }
 
-    const images = wantImages && Array.isArray(data.images) ? data.images.slice(0, 4) : [];
+    let images = wantImages && Array.isArray(data.images) ? data.images.slice(0, 4) : [];
+    // v610 — صور الشريط كانت من Tavily وحده، وهو ساقط حيًّا، فيخرج الشريط فارغًا.
+    // احتياطيّ: صور Google Custom Search بالمفتاح الموجود نفسه (بلا شراء جديد).
+    if (wantImages && !images.length && gKey && gCx) {
+      try {
+        const giRes = await fetch(`https://www.googleapis.com/customsearch/v1?key=${gKey}&cx=${gCx}&q=${encodeURIComponent(query)}&searchType=image&num=4&safe=active`);
+        if (giRes && giRes.ok) {
+          const gi = await giRes.json();
+          images = (Array.isArray(gi.items) ? gi.items : [])
+            .map((it) => it && it.link)
+            .filter((u) => typeof u === 'string' && /^https:\/\//.test(u))
+            .slice(0, 4);
+        }
+      } catch (e) { /* شريط الصور غير حرج — يُترك فارغًا عند الفشل */ }
+    }
 
     let googleItems = [];
     try {

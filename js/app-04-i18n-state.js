@@ -1215,9 +1215,9 @@ function renderMessages(keepScroll){
     }
     // 🖼️ Feature ② — image strip ABOVE the reply text: up to 4 live images
     // returned by the search backend, ChatGPT-style horizontal scroller.
-    // 🚫 v547 — شريط صور البحث مُطفأ: الصور كانت تُجلب من بحث صور عامّ على
-    // الويب المفتوح بلا تدقيق مصدر ولا موضوع. لإعادته: SEARCH_IMG_ON = true.
-    const SEARCH_IMG_ON = false;
+    // 🖼️ v610 — أُعيد فتحه بأمر عمران: شريط الصور فوق الردّ مثل ChatGPT.
+    // الصور تأتي من مزوّد البحث نفسه (Tavily، ومعه احتياطيّ Google CSE بـsafe=active).
+    const SEARCH_IMG_ON = true;
     if(SEARCH_IMG_ON && m.role !== 'user' && Array.isArray(m.searchImages) && m.searchImages.length){
       const imgStrip = document.createElement('div');
       imgStrip.className = 'msgSearchImgStrip';
