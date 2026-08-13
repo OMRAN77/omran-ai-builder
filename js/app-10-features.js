@@ -313,7 +313,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   if(!dd) return;
   const groups = [
     { title: null, ids: ['btnSettings','btnAuthToggle','btnToggleHistory'] },
-    { title: 'grpCreate', ids: ['btnQuickTemplates','btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnAdStudio','btnExplore'] },
+    { title: 'grpCreate', ids: ['btnQuickTemplates','btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnAdStudio'] },
     { title: 'grpSections', ids: ['btnStocks','btnConstruction','btnOmranEdu','btnExpense','btnDocs','btnGov','btnCV','btnReligion','btnEmailAssist'] },
     { title: 'grpTools', ids: ['btnTemplates','btnAgentMode','btnInstall','btnShareApp'] }
   ];
@@ -333,7 +333,6 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
     btnFashionAI:   'Dress/3D/dress_3d.png',
     btnStudioAI:    'Magic%20wand/3D/magic_wand_3d.png',
     btnAdStudio:    'Megaphone/3D/megaphone_3d.png',
-    btnExplore:     'Magnifying%20glass%20tilted%20left/3D/magnifying_glass_tilted_left_3d.png',
     btnStocks:      'Chart%20increasing/3D/chart_increasing_3d.png',
     btnConstruction:'Building%20construction/3D/building_construction_3d.png',
     btnOmranEdu:    'Graduation%20cap/3D/graduation_cap_3d.png',
@@ -812,17 +811,6 @@ $('#history').addEventListener('click', () => {
   function closeModal(){ modal.style.display = 'none'; }
   if(closeBtn) closeBtn.addEventListener('click', closeModal);
   modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(); });
-})();
-
-/* ---------- 🔍 Explore public projects ---------- */
-(function(){
-  const btn = $('#btnExplore');
-  if(!btn) return;
-  btn.addEventListener('click', () => {
-    window.open('/explore.html', '_blank');
-    const dd = $('#headerMenuDropdown');
-    if(dd) dd.classList.remove('show');
-  });
 })();
 
 /* ---------- 🔗 Share project (public/private link) ---------- */
