@@ -95,6 +95,7 @@ const TOOLS_NOTE = '\n\n[أدواتك الحقيقية — خمس، وهي تع�
   '(ص٣) ممنوع أن تختم بقائمة مصادر أو بسطر «المصادر:» — واجهة التطبيق تعرض المصادر تلقائيًّا أسفل ردّك كبطاقات قابلة للنقر، فكتابتها نصًّا تكرار وحشو.\n' +
   '(ص٤) أضف خطوة تنفيذيّة واحدة فقط إذا كان الطلب عمليًّا متعدد الخطوات، أو بقي على المستخدم فعل لازم، أو تعذّر إكمال المطلوب. إن كانت كلامًا يقوله لجهة أو لطبيب أو لموظّف، اكتب له الجملة جاهزة بين علامتَي اقتباس. وإلّا اختم بعد المعلومة بلا اقتراح آلي.\n' +
   '(ص٥) رقم بلا مصدر ممنوع. وإن لم يجد البحث المعلومة، قل ذلك صراحةً ولا تملأ الفراغ.\n' +
+  '(ص٥-ب) أرقام التقييم والمراجعات: ممنوع منعًا باتًا أن تكتب رقم تقييم (٤٫٥ · 4.5/5 · نجوم) أو عدد مراجعات أو ترتيبًا «الأفضل حسب التقييمات» إلّا إذا ظهر الرقم نفسه حرفيًّا في ناتج أداة في هذا الردّ. وممنوع نسبته إلى خرائط جوجل أو تريب أدفايزر أو أيّ جهة لم يأتِ منها الرقم فعلًا. إن لم تُعطِك الأداة أرقامًا: اذكر الأماكن بأسمائها بلا أيّ رقم، وقل صراحةً إنّ التقييمات غير متوفّرة لديك، واترك سطر الخرائط ليتحقّق المستخدم بنفسه. الرقم المخترَع أسوأ من غيابه.\n' +
   '(ص٦) اسأل سؤالًا واحدًا فقط عندما تنقص معلومة تؤثّر فعليًّا في دقة الجواب أو تمنع التنفيذ؛ لا تُلحق سؤالًا عامًا بكل رد. وتابع ما قاله المستخدم قبل قليل — ممنوع أن تعيد سؤاله عن شيء ذكره في هذه المحادثة.\n' +
   '(ص٧) قواعد (ص١–ص٦) تخصّ ردًّا استعمل البحث. أمّا سؤال المفهوم الثابت البسيط الذي تجيبه بلا أداة: تجاهل هذه المجموعة وأجب في ١–٣ جمل بلا عناوين أو تعداد أو خطوة تالية أو سؤال.';
 
@@ -488,6 +489,45 @@ async function runInClient(send, name, input, waitMs) {
   return 'لم يستجب متصفح المستخدم — لم يُنفَّذ الكود. قل إنك لم تتحقّق بدل أن تدّعي نتيجة.';
 }
 
+// 🛡️ v608 — حارس التقييمات. قِيس حيًّا أنّ الردّ يعطي «4.5 من 4200 مراجعة»
+// وينسبها إلى «التقييمات الفعليّة على خرائط جوجل»، وناتج الأداة قد لا يحويها.
+// الرقم المخترَع يهدم الثقة أكثر من غيابه، فيُقارَن كلّ رقم تقييم بناتج
+// الأدوات الحقيقيّ في هذا الدور، وما لا سند له يُسجَّل ويُعلَن للمستخدم.
+const AR_IND = '٠١٢٣٤٥٦٧٨٩';
+const FA_IND = '۰۱۲۳۴۵۶۷۸۹';
+function normNums(v) {
+  return String(v == null ? '' : v).replace(/[\u0660-\u0669\u06F0-\u06F9]/g, function (d) {
+    const i = AR_IND.indexOf(d);
+    return String(i >= 0 ? i : FA_IND.indexOf(d));
+  }).replace(/[\u066B\u060C]/g, '.');
+}
+const RATING_RE = new RegExp(
+  '(\\d{1,2}(?:\\.\\d{1,2})?)\\s*(?:\\/\\s*5|\\u0645\\u0646\\s*5|\\u2605|\\u2b50|\\u0646\\u062c\\u0648\\u0645|stars?\\b)'
+  + '|(?:\\u062a\\u0642\\u064a\\u064a\\u0645(?:\\u0647|\\u0647\\u0627)?|rating)\\s*:?\\s*(\\d{1,2}(?:\\.\\d{1,2})?)'
+  + '|(?:\\u0645\\u0646|based on)\\s*([\\d,]{2,9})\\s*(?:\\u0645\\u0631\\u0627\\u062c\\u0639\\u0629|\\u0645\\u0631\\u0627\\u062c\\u0639\\u0627\\u062a|\\u062a\\u0642\\u064a\\u064a\\u0645|reviews?)',
+  'gi');
+function unsourcedRatings(answer, corpus) {
+  const a = normNums(answer);
+  const c = normNums(corpus).replace(/,/g, '');
+  const bad = [];
+  let m;
+  RATING_RE.lastIndex = 0;
+  while ((m = RATING_RE.exec(a)) !== null) {
+    const raw = String(m[1] || m[2] || m[3] || '').replace(/,/g, '');
+    if (!raw || raw === '0') continue;
+    // «فندق ٥ نجوم» تصنيف لا تقييم: عدد صحيح مع كلمة نجوم يُستثنى.
+    if (raw.indexOf('.') === -1 && /\u0646\u062c\u0648\u0645|stars?/i.test(m[0])) continue;
+    if (c.indexOf(raw) === -1 && bad.indexOf(raw) === -1) bad.push(raw);
+    if (bad.length >= 6) break;
+  }
+  return bad;
+}
+function ratingWarning(answer) {
+  return /[\u0600-\u06FF]/.test(String(answer || ''))
+    ? '\n\n⚠️ أرقام التقييم أعلاه لم تظهر في نتائج البحث — تحقّق منها في الخرائط قبل الاعتماد عليها.'
+    : '\n\n⚠️ The rating figures above did not appear in the search results — verify them on Maps before relying on them.';
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -578,6 +618,8 @@ module.exports = async (req, res) => {
     const t0 = Date.now();
     let steps = 0;
     let anyText = false;
+    let fullText = '';   // v608 — نصّ الردّ المتراكم
+    let toolCorpus = ''; // v608 — ناتج الأدوات الحقيقيّ في هذا الدور
 
     while (steps < MAX_STEPS) {
       if (Date.now() - t0 > MAX_MS) { send({ status: '⏱️ انتهت مهلة الردّ.' }); break; }
@@ -624,7 +666,7 @@ module.exports = async (req, res) => {
           } else if (ev.type === 'content_block_delta') {
             const cb = blocks[ev.index];
             if (!cb) continue;
-            if (ev.delta && ev.delta.type === 'text_delta') { cb.text += ev.delta.text; anyText = true; send({ delta: ev.delta.text }); }
+            if (ev.delta && ev.delta.type === 'text_delta') { cb.text += ev.delta.text; fullText += ev.delta.text; anyText = true; send({ delta: ev.delta.text }); }
             else if (ev.delta && ev.delta.type === 'input_json_delta') cb.inputJson += ev.delta.partial_json;
           } else if (ev.type === 'message_delta') {
             if (ev.delta && ev.delta.stop_reason) stopReason = ev.delta.stop_reason;
@@ -632,7 +674,14 @@ module.exports = async (req, res) => {
         }
       }
 
-      if (stopReason !== 'tool_use') { send({ done: true }); res.end(); return; }
+      if (stopReason !== 'tool_use') {
+        const badRatings = unsourcedRatings(fullText, toolCorpus); // v608
+        if (badRatings.length) {
+          logError('chat/unsourced-rating', new Error('ratings absent from tool output: ' + badRatings.join(', ')));
+          send({ delta: ratingWarning(fullText) });
+        }
+        send({ done: true }); res.end(); return;
+      }
 
       const assistantContent = blocks.filter(Boolean).map((cb) => {
         if (cb.type === 'tool_use') {
@@ -656,6 +705,7 @@ module.exports = async (req, res) => {
         else if (cb.name === 'generate_image') result = await runInClient(send, 'generate_image', input, 75000);
         else if (cb.name === 'test_html') result = await runInClient(send, 'test_html', input, 30000);
         toolResults.push({ type: 'tool_result', tool_use_id: cb.id, content: String(result).slice(0, 8000) });
+        if (toolCorpus.length < 200000) toolCorpus += ' ' + String(result).slice(0, 8000); // v608
         send({ status: '↳ ' + trailLine(cb.name, input, result) });
       }
       convo.push({ role: 'user', content: toolResults });
@@ -668,3 +718,5 @@ module.exports = async (req, res) => {
     try { res.end(); } catch (e2) { /* المجرى مُغلق أصلًا */ }
   }
 };
+
+module.exports.__v608 = { normNums, unsourcedRatings, ratingWarning }; // v608 — للاختبار
