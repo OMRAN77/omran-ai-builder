@@ -571,7 +571,7 @@
     var g = document.querySelector('script[data-omran-geo]');
     if (!g) {
       g = document.createElement('script');
-      g.src = '/js/geo.js?v=1';
+      g.src = '/js/geo.js?v=589';
       g.charset = 'utf-8';
       g.setAttribute('data-omran-geo', '1');
       g.addEventListener('load', loadCur);
