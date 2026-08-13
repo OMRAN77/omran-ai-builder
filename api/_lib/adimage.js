@@ -7,6 +7,9 @@
 const { checkAndConsumeCustom } = require('./_usage.js');
 const { verifyPointsToken } = require('./points.js');
 
+const LANGN = { ar:'العربيّة', en:'English', fr:'French', hi:'Hindi', ur:'Urdu', bn:'Bengali', ml:'Malayalam', ne:'Nepali', fil:'Filipino', id:'Indonesian', zh:'Chinese (Simplified)', ru:'Russian', tr:'Turkish', es:'Spanish' };
+const pickLang = (b) => { const l = String((b && b.lang) || 'ar').slice(0, 3); return LANGN[l] ? l : 'ar'; };
+
 const DAILY = 8; // صورة/يوم للمستخدم المسجَّل (المالك وVIP معفيان داخل الدالّة)
 
 const LOOKS = {
@@ -30,9 +33,11 @@ module.exports = async (req, res) => {
     b = b || {};
 
     // ① الهويّة قبل المفتاح.
+    const lg = pickLang(b);
     const username = verifyPointsToken(typeof b.token === 'string' ? b.token : '');
     if (!username) {
-      res.status(401).end(JSON.stringify({ error: 'auth', message_ar: 'سجّل الدخول أوّلًا لتوليد الإعلان صورةً.' }));
+      res.status(401).end(JSON.stringify({ error: 'auth', message_ar: 'سجّل الدخول أوّلًا لتوليد الإعلان صورةً.',
+        message: lg === 'ar' ? undefined : 'Sign in first to generate the ad as an image.' }));
       return;
     }
     // ② سقف يوميّ مستقلّ — الصورة أغلى من الرسالة.
@@ -59,9 +64,15 @@ module.exports = async (req, res) => {
       p += 'Use the subject in the provided photo as the hero of the poster: cut it out cleanly and place it inside a NEW scene. '
          + 'Keep the face, body and clothing recognisable and unchanged — do not restyle the person.\n';
     }
+    // العيب: كان يأمر المولّد برسم «نصّ عربيّ من اليمين لليسار» حتّى لو كان النصّ صينيًّا.
+    const SCRIPTN = { ar: 'ARABIC', en: 'ENGLISH', fr: 'FRENCH', hi: 'HINDI (Devanagari script)', ur: 'URDU (Nastaliq script)',
+      bn: 'BENGALI script', ml: 'MALAYALAM script', ne: 'NEPALI (Devanagari script)', fil: 'FILIPINO', id: 'INDONESIAN',
+      zh: 'SIMPLIFIED CHINESE', ru: 'RUSSIAN (Cyrillic script)', tr: 'TURKISH', es: 'SPANISH' };
+    const rtl = (lg === 'ar' || lg === 'ur');
     p += 'Scene and mood: ' + look + '. Accent/glow colour: ' + accent + '.\n'
-       + 'Render the following ARABIC text INSIDE the poster, spelled EXACTLY as written, right-to-left, '
-       + 'with correct Arabic letter joining and diacritic-free modern bold Arabic typography:\n';
+       + 'Render the following ' + (SCRIPTN[lg] || 'ENGLISH') + ' text INSIDE the poster, spelled EXACTLY as written, '
+       + (rtl ? 'right-to-left, with correct letter joining and diacritic-free modern bold typography'
+              : 'left-to-right, with clean modern bold typography') + ':\n';
     if (kick)  p += '- Small badge near the top: "' + kick + '"\n';
     if (title) p += '- Main headline, very large, with a soft glow around the letters: "' + title + '"\n';
     if (spec)  p += '- One thin sub-line under the headline: "' + spec + '"\n';

@@ -5,6 +5,9 @@
 const { checkAndConsumeCustom } = require('./_usage.js');
 const { verifyPointsToken } = require('./points.js');
 
+const LANGN = { ar:'العربيّة', en:'English', fr:'French', hi:'Hindi', ur:'Urdu', bn:'Bengali', ml:'Malayalam', ne:'Nepali', fil:'Filipino', id:'Indonesian', zh:'Chinese (Simplified)', ru:'Russian', tr:'Turkish', es:'Spanish' };
+const pickLang = (b) => { const l = String((b && b.lang) || 'ar').slice(0, 3); return LANGN[l] ? l : 'ar'; };
+
 const DAILY = 30; // رسالة/يوم للمستخدم المسجَّل (المالك وVIP بلا حدّ)
 
 const SYS = `أنت خبير إعلانات إماراتيّ محترف داخل «استوديو الإعلانات». تتكلّم عربيّة فصيحة قصيرة بنكهة خليجيّة مهذّبة.
@@ -32,6 +35,17 @@ const SYS = `أنت خبير إعلانات إماراتيّ محترف داخل
 - note: سطر تنبيه واحد إن طلبه المستخدم (مثال: «أرجو عدم اتصال أصحاب المعارض»)، وإلّا ""
 اكتب @@AD مرّة واحدة فقط في المحادثة كلّها، ولا تكتبه قبل أن تعرف نوع الإعلان وعنوانه على الأقلّ.`;
 
+/* قاعدة اللغة تُلحق بالنهاية لتعلو على «تتكلّم عربيّة فصيحة» في أوّل SYS. */
+function sysFor(lg) {
+  if (lg === 'ar') return SYS;
+  return SYS + `
+
+=== قاعدة اللغة — تعلو على كلّ ما سبق ===
+اكتب كلّ ردودك المرئيّة بلغة ${LANGN[lg]} وحدها. لا تكتب حرفًا عربيًّا في الردّ المرئيّ.
+وداخل سطر @@AD: قيم title و spec و unit و kick و chips و facts و place و note كلّها بلغة ${LANGN[lg]}،
+و price بأرقام لاتينيّة مع فاصل الآلاف (مثال: 49,000)، و cat تبقى بالإنجليزيّة من القائمة كما هي.`;
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   if (req.method !== 'POST') { res.status(405).end('{"error":"POST only"}'); return; }
@@ -41,16 +55,19 @@ module.exports = async (req, res) => {
     b = b || {};
 
     // ① الهويّة قبل المفتاح — لا استدعاء مجهول من أيّ IP.
+    const lg = pickLang(b);
     const token = typeof b.token === 'string' ? b.token : '';
     const username = verifyPointsToken(token);
     if (!username) {
-      res.status(401).end(JSON.stringify({ error: 'auth', message_ar: 'سجّل الدخول أوّلًا لاستخدام استوديو الإعلانات.' }));
+      res.status(401).end(JSON.stringify({ error: 'auth', message_ar: 'سجّل الدخول أوّلًا لاستخدام استوديو الإعلانات.',
+        message: lg === 'ar' ? undefined : 'Sign in first to use Ad Studio.' }));
       return;
     }
     // ② سقف يوميّ لكل مستخدم (المالك وVIP معفيان داخل الدالّة).
     const gate = await checkAndConsumeCustom(token, null, null, 'adchat', DAILY);
     if (!gate.allowed) {
-      res.status(429).end(JSON.stringify({ error: 'limit', message_ar: 'بلغتَ حدّ اليوم (' + DAILY + ' رسالة) في استوديو الإعلانات. جرّب غدًا.' }));
+      res.status(429).end(JSON.stringify({ error: 'limit', message_ar: 'بلغتَ حدّ اليوم (' + DAILY + ' رسالة) في استوديو الإعلانات. جرّب غدًا.',
+        message: lg === 'ar' ? undefined : 'You have reached today\'s limit (' + DAILY + ' messages) in Ad Studio. Try again tomorrow.' }));
       return;
     }
 
@@ -67,7 +84,7 @@ module.exports = async (req, res) => {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 700, system: SYS, messages: msgs }),
+      body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 700, system: sysFor(lg), messages: msgs }),
     });
     const j = await r.json();
     if (!r.ok) { res.status(502).end(JSON.stringify({ error: (j && j.error && j.error.message) || 'upstream' })); return; }

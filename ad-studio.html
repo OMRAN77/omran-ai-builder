@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>استوديو الإعلانات — عمران AI</title>
+<script src="/i18n/ad-studio.js?v=602"></script>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -242,71 +243,88 @@ body.inkb .canvas :is(.pr,.p,.dpr,.fpr,.hnum,.hk,.hbar b,.mono,.stamp b,.top b,h
 .canvas .gl{position:absolute;display:none;background:#43e8ff;z-index:80;pointer-events:none;box-shadow:0 0 6px #43e8ff}
 .canvas .gl.v{top:0;bottom:0;width:1px}
 .canvas .gl.h{left:0;right:0;height:1px}
+html:not([lang=ar]):not([lang=ur]) :is(body,button,input,.chip,.canvas,.canvas *){font-family:system-ui,'Segoe UI',Roboto,'Noto Sans',sans-serif}
+html:not([lang=ar]):not([lang=ur]) .J .jgrid span{flex-direction:row;justify-content:flex-start}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>استوديو الإعلانات — تحدّث، ثمّ اختر تصميمك</h1>
-  <div class="sub">تكتب ما تريد الإعلان عنه بكلامك، تُجيب عن سؤالين، ترفع صورتك — فتخرج تسعة تصاميم جاهزة تختار منها.</div>
-  <a class="back" href="/">← رجوع إلى التطبيق</a>
+  <h1 data-i18n="h1">استوديو الإعلانات — تحدّث، ثمّ اختر تصميمك</h1>
+  <div class="sub" data-i18n="sub">تكتب ما تريد الإعلان عنه بكلامك، تُجيب عن سؤالين، ترفع صورتك — فتخرج تسعة تصاميم جاهزة تختار منها.</div>
+  <a class="back" href="/" data-i18n="back">← رجوع إلى التطبيق</a>
 
   <div class="chat">
-    <div class="chead"><b>مساعد الإعلانات</b><span id="stepLbl">ابدأ</span></div>
+    <div class="chead"><b data-i18n="asstName">مساعد الإعلانات</b><span id="stepLbl" data-i18n="stepStart">ابدأ</span></div>
     <div class="cbody" id="cbody"></div>
     <div class="chips" id="chips"></div>
     <div class="comp">
-      <input id="inp" placeholder="اكتب هنا…" autocomplete="off">
+      <input id="inp" placeholder="اكتب هنا…" data-i18n="[placeholder]inpPh" autocomplete="off">
       <button class="snd" id="snd">↑</button>
     </div>
   </div>
   <input type="file" id="file" accept="image/*" style="display:none">
 
   <div class="gwrap" id="gwrap">
-    <div class="gtitle">تسعة تصاميم — اختر واحدًا</div>
-    <div class="dragbar">اسحب أيّ نصّ — والمسه ثمّ كبّره أو صغّره<span class="szb"><button id="szM">−</button><button id="szP">+</button></span><span class="swat" id="sw"></span><span class="rtb" id="rt" title="نسبة الصورة المولَّدة"><button data-r="square">◻ مربّع</button><button data-r="tall" class="on">▯ طولي</button><button data-r="wide">▭ عرضي</button></span><button class="genB" id="genB">🎨 ولّد الإعلان صورةً</button><button class="rstAll" id="inkT">خلفيّة فاتحة</button><button class="rstAll">أعِد الكلّ لأصله</button></div>
+    <div class="gtitle" data-i18n="gTitle">عشرة تصاميم — اختر واحدًا</div>
+    <div class="dragbar"><span data-i18n="dragHint">اسحب أيّ نصّ — والمسه ثمّ كبّره أو صغّره</span><span class="szb"><button id="szM">−</button><button id="szP">+</button></span><span class="swat" id="sw"></span><span class="rtb" id="rt" data-i18n="[title]ratioTitle"><button data-r="square" data-i18n="rSquare">◻ مربّع</button><button data-r="tall" class="on" data-i18n="rTall">▯ طولي</button><button data-r="wide" data-i18n="rWide">▭ عرضي</button></span><button class="genB" id="genB"></button><button class="rstAll" id="inkT"></button><button class="rstAll" data-i18n="resetAll">أعِد الكلّ لأصله</button></div>
     <div id="genOut"></div>
     <div class="grid" id="grid"></div>
   </div>
 
-  <div class="zoomWrap" id="zoomWrap"><div class="zhint">اضغط في أي مكان للإغلاق</div></div>
+  <div class="zoomWrap" id="zoomWrap"><div class="zhint" data-i18n="zoomHint">اضغط في أي مكان للإغلاق</div></div>
 </div>
 
 <script>
 const TOKEN=(()=>{try{return localStorage.getItem('aiapp_auth_token')||''}catch(e){return''}})();
+/* ============ i18n — قاموس مستقلّ لهذه الصفحة: /i18n/ad-studio.js ============ */
+const AL=(()=>{try{return localStorage.getItem('aiapp_lang')||'ar'}catch(e){return'ar'}})();
+const ADX=window.ADI18N||{}, ADD=ADX[AL]||ADX.en||{}, ADE=ADX.en||{};
+const ARN=(AL==='ar'||AL==='ur');                      // الأرقام العربيّة-الهنديّة لهاتين فقط
+function T(k,v){ let x=ADD[k]!==undefined?ADD[k]:(ADE[k]!==undefined?ADE[k]:k);
+  if(v) for(const p in v) x=String(x).split('{'+p+'}').join(v[p]);
+  return x; }
+function NU(n){ return ARN?String(n).replace(/\d/g,d=>'٠١٢٣٤٥٦٧٨٩'[d]):String(n); }
+function step(n,m){ return n?T('stepOf',{n:NU(n),m:NU(m||4)}):T('stepReady'); }
+document.documentElement.lang=AL; document.documentElement.dir=T('dir')||'ltr';
+document.title=T('pageTitle');
+document.querySelectorAll('[data-i18n]').forEach(el=>{
+  const r=el.getAttribute('data-i18n'), m=r.match(/^\[(.+)\]([\s\S]+)$/);
+  if(m) el.setAttribute(m[1],T(m[2])); else el.textContent=T(r); });
 /* ================= الفئات ================= */
+const CH = k => [1,2,3].map(i => T('chip_'+k+'_'+i));
 const CATS = {
-  car:{n:'سيّارة',ic:'🚗',ac:'#e0a94a',grad:'linear-gradient(165deg,#5b452c 0%,#1a1410 62%,#0b0908 100%)',kick:'للبيع · دبي',unit:'درهم',demo:'/assets/ad/car.webp',
-    spec:'موديل ٢٠٠٩ · خليجي · ٢١٠٬٠٠٠ كم · مالك واحد',chips:['فحص كامل','مالك واحد','صبغ وكالة'],title:'لاندكروزر GXR',price:'٤٩٬٠٠٠',
-    intro:'بيع السيّارة يعتمد على ثلاثة أشياء فقط: صورة واحدة نظيفة بضوء النهار، سعر مكتوب بوضوح، ورقم يردّ. الإعلان الذي يُخفي السعر يفقد أكثر من نصف الاتّصالات.',
-    q1:'ما السيّارة والموديل والممشى؟',q2:'كم السعر ورقم التواصل؟'},
-  flat:{n:'عقار',ic:'🏠',ac:'#c9a97a',grad:'linear-gradient(165deg,#6a5c49 0%,#221d18 62%,#0e0c0a 100%)',kick:'للإيجار · الخليج التجاري',unit:'درهم سنويًّا',demo:'/assets/ad/flat.webp',
-    spec:'غرفتان · ١٬٢٤٠ قدم · تشطيب فاخر · مواقف مجّانيّة',chips:['غرفتان','١٬٢٤٠ قدم','تشطيب فاخر'],title:'شقّة بإطلالة برج',price:'١٤٥٬٠٠٠',
-    intro:'في العقار الصورة الأولى تحسم كلّ شيء: إطلالة أو صالة واسعة بضوء طبيعيّ. وذكر المساحة وعدد الغرف في السطر الأوّل يقلّل الأسئلة الفارغة إلى الثلث.',
-    q1:'ما نوع العقار والمساحة وعدد الغرف؟',q2:'كم الإيجار أو السعر ورقم التواصل؟'},
-  food:{n:'مطعم',ic:'🍽️',ac:'#e2703a',grad:'linear-gradient(165deg,#5c3320 0%,#1d1310 62%,#0b0806 100%)',kick:'جديد · اليوم',unit:'درهم',demo:'/assets/ad/food.webp',
-    spec:'يوميًّا من ١٢ ظهرًا حتّى منتصف الليل · توصيل مجّانيّ',chips:['طازج يوميًّا','توصيل مجّانيّ','من ١٢ ظهرًا'],title:'الطبق المميّز',price:'٣٩',
-    intro:'إعلان المطعم ينجح بصورة قريبة جدًّا من الطبق وبعرض واحد واضح لا عرضين. الزبون لا يقرأ قائمة في إعلان — يقرأ سطرًا واحدًا وسعرًا.',
-    q1:'ما اسم الطبق أو العرض؟',q2:'كم السعر ورقم الطلب؟'},
-  shop:{n:'متجر / أزياء',ic:'👗',ac:'#d76a9a',grad:'linear-gradient(165deg,#5a2f43 0%,#1e1218 62%,#0c0709 100%)',kick:'تشكيلة جديدة',unit:'درهم',demo:null,
-    spec:'مقاسات كاملة · شحن خلال ٢٤ ساعة · استبدال مجّانيّ',chips:['كلّ المقاسات','شحن ٢٤ ساعة','استبدال مجّانيّ'],title:'تشكيلة الموسم',price:'١٩٩',
-    intro:'المتجر يبيع بالصورة والعرض معًا: قطعة واحدة بارزة، وسبب واضح للشراء اليوم — خصم أو شحن مجّانيّ أو كمّيّة محدودة.',
-    q1:'ما المنتج أو التشكيلة؟',q2:'كم السعر ورقم التواصل أو الحساب؟'},
-  clinic:{n:'عيادة / خدمة طبّيّة',ic:'🩺',ac:'#4aa8d8',grad:'linear-gradient(165deg,#20415a 0%,#101a22 62%,#080c0f 100%)',kick:'حجز اليوم',unit:'درهم',demo:null,
-    spec:'أطبّاء مرخّصون · حجز فوري · تأمين معتمد',chips:['حجز فوري','تأمين معتمد','أطبّاء مرخّصون'],title:'استشارة متخصّصة',price:'٢٥٠',
-    intro:'الإعلان الطبّيّ يكسب بالثقة لا بالضجيج: تخصّص واضح، سعر استشارة معلن، وطريقة حجز واحدة بلا تعقيد.',
-    q1:'ما التخصّص أو الخدمة؟',q2:'كم سعر الاستشارة ورقم الحجز؟'},
-  salon:{n:'صالون / تجميل',ic:'💇',ac:'#c69adf',grad:'linear-gradient(165deg,#4a3358 0%,#1a1220 62%,#0a070c 100%)',kick:'عرض هذا الأسبوع',unit:'درهم',demo:null,
-    spec:'حجز مسبق · مواقف مجّانيّة · فريق نسائيّ',chips:['حجز مسبق','مواقف مجّانيّة','عرض الأسبوع'],title:'باقة العناية',price:'١٤٩',
-    intro:'الصالون يبيع النتيجة لا الخدمة: صورة «بعد» واحدة قويّة، وباقة بسعر واحد أفضل من قائمة أسعار طويلة.',
-    q1:'ما الباقة أو الخدمة؟',q2:'كم سعرها ورقم الحجز؟'},
-  service:{n:'خدمة / مهنة',ic:'🛠️',ac:'#5fb98a',grad:'linear-gradient(165deg,#25493a 0%,#111c17 62%,#070c09 100%)',kick:'خدمة سريعة',unit:'درهم',demo:null,
-    spec:'خدمة في نفس اليوم · ضمان على العمل · تسعيرة واضحة',chips:['نفس اليوم','ضمان','تسعيرة واضحة'],title:'خدمة احترافيّة',price:'١٢٠',
-    intro:'إعلان الخدمة يُحسم بثلاثة: كم تستغرق، كم تكلّف، وهل فيها ضمان. اكتبها في الإعلان نفسه ولا تتركها للاتّصال.',
-    q1:'ما الخدمة التي تقدّمها؟',q2:'كم سعرها ورقم التواصل؟'},
-  other:{n:'شيء آخر',ic:'✨',ac:'#7fb2f0',grad:'linear-gradient(165deg,#2b3a54 0%,#141a24 62%,#080a0e 100%)',kick:'إعلان',unit:'درهم',demo:null,
-    spec:'تفاصيل واضحة · تواصل مباشر',chips:['عرض محدود','تواصل مباشر','جودة مضمونة'],title:'عنوان إعلانك',price:'٠',
-    intro:'أيّ إعلان ناجح يقوم على ثلاثة: صورة واحدة قويّة، جملة واحدة تُفهم في ثانيتين، وسعر ورقم ظاهران.',
-    q1:'ما الذي تريد الإعلان عنه بالضبط؟',q2:'كم السعر ورقم التواصل؟'}
+  car:{n:T('cat_car'),ic:'🚗',ac:'#e0a94a',grad:'linear-gradient(165deg,#5b452c 0%,#1a1410 62%,#0b0908 100%)',kick:T('kick_car'),unit:T('unitAed'),demo:'/assets/ad/car.webp',
+    spec:T('spec_car'),chips:CH('car'),title:T('title_car'),price:'49000',
+    intro:T('intro_car'),
+    q1:T('q1_car'),q2:T('q2_car')},
+  flat:{n:T('cat_flat'),ic:'🏠',ac:'#c9a97a',grad:'linear-gradient(165deg,#6a5c49 0%,#221d18 62%,#0e0c0a 100%)',kick:T('kick_flat'),unit:T('unitAedYear'),demo:'/assets/ad/flat.webp',
+    spec:T('spec_flat'),chips:CH('flat'),title:T('title_flat'),price:'145000',
+    intro:T('intro_flat'),
+    q1:T('q1_flat'),q2:T('q2_flat')},
+  food:{n:T('cat_food'),ic:'🍽️',ac:'#e2703a',grad:'linear-gradient(165deg,#5c3320 0%,#1d1310 62%,#0b0806 100%)',kick:T('kick_food'),unit:T('unitAed'),demo:'/assets/ad/food.webp',
+    spec:T('spec_food'),chips:CH('food'),title:T('title_food'),price:'39',
+    intro:T('intro_food'),
+    q1:T('q1_food'),q2:T('q2_food')},
+  shop:{n:T('cat_shop'),ic:'👗',ac:'#d76a9a',grad:'linear-gradient(165deg,#5a2f43 0%,#1e1218 62%,#0c0709 100%)',kick:T('kick_shop'),unit:T('unitAed'),demo:null,
+    spec:T('spec_shop'),chips:CH('shop'),title:T('title_shop'),price:'199',
+    intro:T('intro_shop'),
+    q1:T('q1_shop'),q2:T('q2_shop')},
+  clinic:{n:T('cat_clinic'),ic:'🩺',ac:'#4aa8d8',grad:'linear-gradient(165deg,#20415a 0%,#101a22 62%,#080c0f 100%)',kick:T('kick_clinic'),unit:T('unitAed'),demo:null,
+    spec:T('spec_clinic'),chips:CH('clinic'),title:T('title_clinic'),price:'250',
+    intro:T('intro_clinic'),
+    q1:T('q1_clinic'),q2:T('q2_clinic')},
+  salon:{n:T('cat_salon'),ic:'💇',ac:'#c69adf',grad:'linear-gradient(165deg,#4a3358 0%,#1a1220 62%,#0a070c 100%)',kick:T('kick_salon'),unit:T('unitAed'),demo:null,
+    spec:T('spec_salon'),chips:CH('salon'),title:T('title_salon'),price:'149',
+    intro:T('intro_salon'),
+    q1:T('q1_salon'),q2:T('q2_salon')},
+  service:{n:T('cat_service'),ic:'🛠️',ac:'#5fb98a',grad:'linear-gradient(165deg,#25493a 0%,#111c17 62%,#070c09 100%)',kick:T('kick_service'),unit:T('unitAed'),demo:null,
+    spec:T('spec_service'),chips:CH('service'),title:T('title_service'),price:'120',
+    intro:T('intro_service'),
+    q1:T('q1_service'),q2:T('q2_service')},
+  other:{n:T('cat_other'),ic:'✨',ac:'#7fb2f0',grad:'linear-gradient(165deg,#2b3a54 0%,#141a24 62%,#080a0e 100%)',kick:T('kick_other'),unit:T('unitAed'),demo:null,
+    spec:T('spec_other'),chips:CH('other'),title:T('title_other'),price:'0',
+    intro:T('intro_other'),
+    q1:T('q1_other'),q2:T('q2_other')}
 };
 const KW = {car:['سيار','سيّار','مرسيدس','تويوتا','لكزس','نيسان','لاندكروز','باترول','هوندا','مركبة','موتر','كامري','بي ام'],
  flat:['شقّ','شقه','شقة','فيلا','عقار','أرض','ارض','بيت','استوديو','مكتب','محل','ايجار','إيجار','سكن'],
@@ -315,6 +333,14 @@ const KW = {car:['سيار','سيّار','مرسيدس','تويوتا','لكزس
  clinic:['عياد','طبيب','أسنان','اسنان','علاج','مستشفى','جلد','تجميل طبي','فحص','استشار'],
  salon:['صالون','شعر','مكياج','بشرة','مساج','سبا','أظافر','اظافر','حلاق','حنّ','حنا'],
  service:['خدم','صيان','تنظيف','نقل','عفش','سباك','كهرب','تكييف','نجار','دهان','برمج','تصميم','محاسب']};
+/* كلمات لاتينيّة — الكشف كان عربيًّا فقط فيسقط كلّ مستخدم أجنبيّ إلى «شيء آخر». */
+const KWE = {car:['car','vehicle','toyota','nissan','lexus','mercedes','bmw','honda','patrol','cruiser','suv','sedan','mileage','automatic'],
+ flat:['apartment','flat','villa','property','studio','office','land','plot','rent','bedroom','sqft','estate','tenant','freehold'],
+ food:['restaurant','food','dish','burger','pizza','cafe','coffee','menu','meal','delivery','bakery','grill','sushi','shawarma'],
+ shop:['shop','store','fashion','clothes','dress','abaya','perfume','bag','watch','shoes','collection','boutique','product','sale'],
+ clinic:['clinic','dental','dentist','doctor','medical','hospital','skin','treatment','consultation','therapy','checkup','implant'],
+ salon:['salon','hair','makeup','spa','massage','nails','beauty','barber','facial','henna','lashes'],
+ service:['service','repair','cleaning','moving','plumber','electrician','carpenter','painting','handyman','accounting','maintenance','plumbing','ac unit']};
 
 /* ================= الحالة ================= */
 const S = {cat:null, title:'', spec:'', price:'', unit:'', tel:'', kick:'', chips:null, facts:null, place:'', note:'', img:null, step:0, chosen:null, ratio:'tall'};
@@ -339,13 +365,14 @@ function setChips(list){
     b.onclick=c.f; chipsEl.appendChild(b); });
 }
 function detect(t){
-  for(const k in KW) if(KW[k].some(w=>t.includes(w))) return k;
+  const lo=String(t).toLowerCase();
+  for(const k in KW) if(KW[k].some(w=>t.includes(w))||(KWE[k]||[]).some(w=>lo.includes(w))) return k;
   return null;
 }
 function fmtNum(x){
   const d=String(x).replace(/\D/g,''); if(!d) return x;
-  const g=d.replace(/\B(?=(\d{3})+(?!\d))/g,'٬');
-  return g.replace(/\d/g,n=>'٠١٢٣٤٥٦٧٨٩'[n]);
+  const g=d.replace(/\B(?=(\d{3})+(?!\d))/g,ARN?'٬':',');
+  return ARN?g.replace(/\d/g,n=>'٠١٢٣٤٥٦٧٨٩'[n]):g;
 }
 function nums(t){
   const ar='٠١٢٣٤٥٦٧٨٩';
@@ -355,42 +382,42 @@ function nums(t){
 
 /* ================= خطوات المحادثة ================= */
 function start(){
-  say('مرحبًا 👋 أنا أصنع لك إعلانًا كاملًا — صورة ونصّ داخلها.\n\nقل لي بكلامك: <b>ما الذي تريد الإعلان عنه؟</b>', ()=>{
-    setChips(Object.keys(CATS).map(k=>({t:CATS[k].ic+' '+CATS[k].n, f:()=>{ const m='أريد إعلانًا عن '+CATS[k].n; push('u',CATS[k].n); S.cat=k; S.unit=CATS[k].unit; turn(m); }})));
+  say(T('greet'), ()=>{
+    setChips(Object.keys(CATS).map(k=>({t:CATS[k].ic+' '+CATS[k].n, f:()=>{ const m=T('wantAd',{cat:CATS[k].n}); push('u',CATS[k].n); S.cat=k; S.unit=CATS[k].unit; turn(m); }})));
   });
-  S.step=0; stepLbl.textContent='١ من ٤';
+  S.step=0; stepLbl.textContent=step(1);
 }
 function pickCat(k){
   S.cat=k; const c=CATS[k]; S.unit=c.unit; setChips([]);
-  stepLbl.textContent='٢ من ٤';
-  say(c.intro+'\n\n<b>أحتاج فقط معرفة نقطتين:</b>\n١. '+c.q1+'\n٢. '+c.q2, ()=>{
+  stepLbl.textContent=step(2);
+  say(c.intro+'\n\n'+T('needTwo')+'\n'+NU(1)+'. '+c.q1+'\n'+NU(2)+'. '+c.q2, ()=>{
     S.step=1; inp.placeholder=c.q1;
-    setChips([{t:'استخدم مثالًا جاهزًا', f:()=>{ push('u','مثال جاهز'); S.title=c.title; S.spec=c.spec; S.price=c.price; S.tel='050 504 0108'; askPhoto(); }}]);
+    setChips([{t:T('useExample'), f:()=>{ push('u',T('exampleUsed')); S.title=c.title; S.spec=c.spec; S.price=fmtNum(c.price); S.tel='050 504 0108'; askPhoto(); }}]);
   });
 }
 function step1(t){
   S.title = t.split(/[،,\n]/)[0].slice(0,34).trim() || CATS[S.cat].title;
   S.spec  = t.length>S.title.length ? t.slice(0,120) : CATS[S.cat].spec;
-  S.step=2; stepLbl.textContent='٣ من ٤'; setChips([]);
-  say('ممتاز. الآن النقطة الثانية:\n<b>'+CATS[S.cat].q2+'</b>\n\nاكتبهما في سطر واحد — مثال: «٤٩٠٠٠ درهم · 0505040108».', ()=>{
-    inp.placeholder='السعر ورقم التواصل';
+  S.step=2; stepLbl.textContent=step(3); setChips([]);
+  say(T('great')+'\n<b>'+CATS[S.cat].q2+'</b>\n\n'+T('oneLine'), ()=>{
+    inp.placeholder=T('priceTelPh');
   });
 }
 function step2(t){
   const n=nums(t);
   const tel = n.find(x=>x.replace(/\D/g,'').length>=9);
   const pr  = n.find(x=>x!==tel);
-  S.price = pr ? fmtNum(pr) : CATS[S.cat].price;
+  S.price = fmtNum(pr || CATS[S.cat].price);
   S.tel   = tel ? tel.replace(/(\d{3})(\d{3})(\d+)/,'$1 $2 $3') : '050 504 0108';
   askPhoto();
 }
 function askPhoto(){
-  S.step=3; stepLbl.textContent='٤ من ٤';
-  say('بقيت خطوة واحدة: <b>صورتك</b>.\nصورة واحدة واضحة تكفي — سأضع النصّ داخلها.', ()=>{
-    inp.placeholder='أو اكتب «تخطّى»';
-    const c=CATS[S.cat], list=[{t:'📷 ارفع صورة', f:()=>fileEl.click()}];
-    if(c.demo) list.push({t:'استخدم صورة تجريبيّة', f:()=>{ push('u','صورة تجريبيّة'); S.img=c.demo; done(); }});
-    list.push({t:'بلا صورة', f:()=>{ push('u','بلا صورة'); S.img=null; done(); }});
+  S.step=3; stepLbl.textContent=step(4);
+  say(T('photoStep'), ()=>{
+    inp.placeholder=T('skipPh');
+    const c=CATS[S.cat], list=[{t:T('upload'), f:()=>fileEl.click()}];
+    if(c.demo) list.push({t:T('useDemo'), f:()=>{ push('u',T('demoUsed')); S.img=c.demo; done(); }});
+    list.push({t:T('noPhoto'), f:()=>{ push('u',T('noPhoto')); S.img=null; done(); }});
     setChips(list);
   });
 }
@@ -400,9 +427,9 @@ fileEl.onchange=e=>{
   const r=new FileReader(); r.onload=()=>{ S.img=r.result; done(); }; r.readAsDataURL(f);
 };
 function done(){
-  S.step=4; setChips([]); stepLbl.textContent='جاهز';
-  say('تمّ. صنعت لك <b>ثمانية تصاميم</b> بنفس بياناتك — انزل واختر واحدًا.\nكلّ نصّ داخلها يُسحب بإصبعك إلى أيّ مكان.', ()=>{
-    setChips([{t:'ابدأ من جديد', f:()=>location.reload()}]);
+  S.step=4; setChips([]); stepLbl.textContent=step(0);
+  say(T('doneMsg'), ()=>{
+    setChips([{t:T('restart'), f:()=>location.reload()}]);
     render(); document.getElementById('gwrap').classList.add('on');
     document.getElementById('gwrap').scrollIntoView({behavior:'smooth'});
   });
@@ -411,7 +438,7 @@ function legacy(t){
   if(S.step===0){ const k=detect(t)||'other'; pickCat(k); return; }
   if(S.step===1){ step1(t); return; }
   if(S.step===2){ step2(t); return; }
-  say('اضغط «ابدأ من جديد» لإعلان آخر.');
+  say(T('restartHint'));
 }
 
 /* ============ العقل الحقيقيّ ============ */
@@ -444,16 +471,16 @@ async function turn(text){
   try{
     const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),28000);
     const r=await fetch('/api/adchat',{method:'POST',headers:{'content-type':'application/json'},
-      body:JSON.stringify({messages:HIST,token:TOKEN}),signal:ctl.signal});
+      body:JSON.stringify({messages:HIST,token:TOKEN,lang:AL}),signal:ctl.signal});
     clearTimeout(to);
     const j=await r.json();
     if(r.ok && j && j.text) out=j.text;
-    else if(j && j.message_ar) gate=j.message_ar;
+    else if(j && (j.message||j.message_ar)) gate=j.message||j.message_ar;
   }catch(e){}
   d.remove(); busy=false;
 
   if(out===null){                                   // سقوط آمن — لا تتوقّف المحادثة أبدًا
-    if(AI){ AI=false; push('a','<i style="opacity:.8">'+(gate||'تعذّر الاتّصال بالعقل — أكملت معك بالطريقة المباشرة.')+'</i>'); }
+    if(AI){ AI=false; push('a','<i style="opacity:.8">'+(gate||T('aiDown'))+'</i>'); }
     if(S.step===0 && S.cat){ pickCat(S.cat); } else { legacy(text); }
     return;
   }
@@ -469,14 +496,16 @@ async function turn(text){
     askPhoto(); return;
   }
   push('a',fmtA(visible||'…'));
-  if(S.step===0){ S.step=1; stepLbl.textContent='٢ من ٤'; }
-  inp.placeholder='اكتب جوابك…';
+  if(S.step===0){ S.step=1; stepLbl.textContent=step(2); }
+  inp.placeholder=T('answerPh');
 }
 
+const SKIPW=(T('skipWords')+','+(ADE.skipWords||'')+',تخط,بدون,بلا').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
+const isSkip=t=>{ const lo=String(t).toLowerCase(); return SKIPW.some(w=>lo.indexOf(w)>=0); };
 function send(){
   const t=inp.value.trim(); if(!t||busy) return; inp.value=''; push('u',t);
-  if(S.step===3){ if(/تخط|بدون|بلا/.test(t)){ S.img=null; done(); } else say('اضغط <b>📷 ارفع صورة</b> بالأعلى، أو اكتب «تخطّى».'); return; }
-  if(S.step>=4){ say('اضغط «ابدأ من جديد» لإعلان آخر.'); return; }
+  if(S.step===3){ if(isSkip(t)){ S.img=null; done(); } else say(T('uploadHint')); return; }
+  if(S.step>=4){ say(T('restartHint')); return; }
   if(!S.cat){ const k=detect(t); if(k){ S.cat=k; S.unit=CATS[k].unit; } }
   if(AI) turn(t); else legacy(t);
 }
@@ -484,14 +513,14 @@ snd.onclick=send;
 inp.addEventListener('keydown',e=>{ if(e.key==='Enter') send(); });
 
 /* ================= المعرض ================= */
-const NAMES=['سينمائيّ','طبقات','ملصق حرّ','أنيق','جريء','فخم','بسيط','مجلّة','نيون','بطاقة مواصفات'];
-const CAPS=['الصورة كاملة والنصّ منسوج في قاعها.','الصورة تطفو داخل قوس والكلمة العملاقة خلفها.','نصّ مائل وختم دائريّ — طابع ملصق شارع.','إطار رفيع ومسافات واسعة — هدوء وثقة.','شريط مائل وعنوان ضخم — يوقف الإصبع.','إطار مزدوج وحرف مفرد — طابع فاخر.','صورة تتنفّس وسطر واحد فقط.','صورة فوق ولوحة نصّ تحت — طابع مجلّة.','ستوري عموديّ متوهّج — جاهز لواتساب وإنستغرام.','كلّ التفاصيل في جدول مرتّب — أسلوب إعلانات البيع.'];
+const NAMES=Array.from({length:10},(_,i)=>T('nm'+i));
+const CAPS=Array.from({length:10},(_,i)=>T('cp'+i));
 
 function esc(s){ return String(s).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
 function render(){
   const c=CATS[S.cat], ac=S.ac||c.ac, grad=c.grad, nc=S.ac||'#a855f7';
   const img=S.img, title=esc(S.title||c.title), spec=esc(S.spec||c.spec),
-        price=esc(S.price||c.price), unit=esc(S.unit||c.unit), tel=esc(S.tel||'050 504 0108'),
+        price=esc(S.price||fmtNum(c.price)), unit=esc(S.unit||c.unit), tel=esc(S.tel||'050 504 0108'),
         kick=esc(S.kick||c.kick), chips=(S.chips&&S.chips.length?S.chips:c.chips), ghost=(S.title||c.title).split(' ')[0].slice(0,9),
         mono=(S.title||c.title).trim().charAt(0);
   const bg = img? '<img class="bg" src="'+img+'">' : '';
@@ -502,8 +531,8 @@ function render(){
   const A='<div class="canvas A'+ni+'" style="--ac:'+ac+';--grad:'+grad+'">'+bg+
     '<div class="ovl veil"></div><div class="kick">'+kick+'</div><div class="rule"></div>'+
     '<div class="body"><h2>'+title+'</h2><div class="spec">'+spec+'</div>'+
-    '<div class="foot"><div class="pr"><em>السعر / '+unit+'</em>'+price+'</div>'+
-    '<div class="tel"><em>للتواصل</em><bdi dir="ltr">'+tel+'</bdi></div></div></div></div>';
+    '<div class="foot"><div class="pr"><em>'+T('lblPrice',{unit:unit})+'</em>'+price+'</div>'+
+    '<div class="tel"><em>'+T('lblContact')+'</em><bdi dir="ltr">'+tel+'</bdi></div></div></div></div>';
 
   const arch = img? '<div class="arch"><img src="'+img+'"></div>' : '';
   const B='<div class="canvas B" style="--ac:'+ac+';--grad:'+grad+'">'+
@@ -516,7 +545,7 @@ function render(){
     '<div class="ovl tint"></div><div class="stamp"><b>'+price+'</b><i>'+unit+'</i></div>'+
     '<div class="slash"></div><h2>'+title+'</h2>'+
     '<div class="scat">'+chips.map(x=>'<span>'+x+'</span>').join('')+'</div>'+
-    '<div class="telc"><i>للتواصل</i><b><bdi dir="ltr">'+tel+'</bdi></b></div></div>';
+    '<div class="telc"><i>'+T('lblContact')+'</i><b><bdi dir="ltr">'+tel+'</bdi></b></div></div>';
 
   const D='<div class="canvas D'+ni+'" style="--ac:'+ac+';--grad:'+grad+'">'+bg+
     '<div class="ovl soft"></div><div class="ovl frm"></div><div class="dk">'+kick+'</div>'+
@@ -527,7 +556,7 @@ function render(){
     '<div class="ovl tint"></div><div class="band">'+kick+'</div><h2>'+title+'</h2>'+
     '<div class="ech">'+chips.map(x=>'<span>'+x+'</span>').join('')+'</div>'+
     '<div class="epr"><em>'+unit+'</em>'+price+'</div>'+
-    '<div class="etl"><em>للتواصل</em><bdi dir="ltr">'+tel+'</bdi></div></div>';
+    '<div class="etl"><em>'+T('lblContact')+'</em><bdi dir="ltr">'+tel+'</bdi></div></div>';
 
   const F='<div class="canvas F'+ni+'" style="--ac:'+ac+';--grad:'+grad+'">'+bg+
     '<div class="ovl vig"></div><div class="ovl frm"></div><div class="ovl frm2"></div>'+
@@ -541,7 +570,7 @@ function render(){
 
   const hph = img? '<div class="ovl hph"><img src="'+img+'"></div>' : '<div class="ovl hph" style="background:'+grad+'"></div>';
   const H='<div class="canvas H" style="--ac:'+ac+';--grad:'+grad+'">'+hph+
-    '<div class="ovl hpan"></div><div class="hnum">'+price.split('٬')[0]+'</div><div class="hk">'+kick+'</div>'+
+    '<div class="ovl hpan"></div><div class="hnum">'+String(price).split(/[٬,]/)[0]+'</div><div class="hk">'+kick+'</div>'+
     '<h2>'+title+'</h2><div class="hsp">'+spec+'</div>'+
     '<div class="hbar"><b><em>'+unit+'</em>'+price+'</b><span><bdi dir="ltr">'+tel+'</bdi></span></div></div>';
 
@@ -566,15 +595,15 @@ function render(){
     '<div class="ovl jv"></div><div class="jbd">'+kick.split('\u00b7')[0].trim()+'</div>'+
     '<h2>'+tw+'</h2>'+(jsub?'<div class="jsub">'+jsub+'</div>':'')+
     '<div class="jgrid">'+facts.map((f,k)=>'<span><i>'+ICO[k%8]+'</i>'+esc(f)+'</span>').join('')+'</div>'+
-    '<div class="jrow"><div><em>\u0627\u0644\u0633\u0639\u0631 / '+unit+'</em><b>'+price+'</b></div>'+
-    '<div><em>\u0644\u0644\u062a\u0648\u0627\u0635\u0644</em><b><bdi dir="ltr">'+tel+'</bdi></b></div></div>'+
-    (place?'<div class="jloc"><b>\ud83d\udccd \u0627\u0644\u0645\u0639\u0627\u064a\u0646\u0629:</b> '+place+'</div>':'')+
+    '<div class="jrow"><div><em>'+T('lblPrice',{unit:unit})+'</em><b>'+price+'</b></div>'+
+    '<div><em>'+T('lblContact')+'</em><b><bdi dir="ltr">'+tel+'</bdi></b></div></div>'+
+    (place?'<div class="jloc"><b>\ud83d\udccd '+T('lblView')+'</b> '+place+'</div>':'')+
     (note?'<div class="jnote"><b>\u26a0\ufe0f</b> '+note+'</div>':'')+'</div>';
 
   document.getElementById('grid').innerHTML=[A,B,C,D,E,F,G,H,I,J].map((h,i)=>
     '<div class="col" data-ci="'+i+'" style="--ac:'+ac+'"><h3><i></i>'+NAMES[i]+'</h3>'+h+
-    '<div class="cap">'+CAPS[i]+'</div><button class="pick">اختر هذا التصميم</button>'+
-    '<button class="dlB">\u2b07\ufe0e نزّل PNG</button></div>').join('');
+    '<div class="cap">'+CAPS[i]+'</div><button class="pick">'+T('pickBtn')+'</button>'+
+    '<button class="dlB">\u2b07\ufe0e '+T('dlBtn')+'</button></div>').join('');
   if(S.chosen!=null){const cc=document.querySelector('#grid .col[data-ci="'+S.chosen+'"]'); if(cc)cc.classList.add('chosen');}
   initDrag();
 }
@@ -606,7 +635,7 @@ function initDrag(){
   document.querySelectorAll('#grid .col').forEach((col,i)=>{
     if(col.querySelector('.rst')) return;
     const b=document.createElement('button');
-    b.className='rst'; b.textContent='أعِد الترتيب'; b.dataset.si=i;
+    b.className='rst'; b.textContent=T('resetOne'); b.dataset.si=i;
     col.querySelector('h3').appendChild(b);
   });
   applyAll();
@@ -669,7 +698,7 @@ document.getElementById('grid').addEventListener('click', e=>{
     const col=p.closest('.col');
     document.querySelectorAll('#grid .col').forEach(c=>c.classList.remove('chosen'));
     col.classList.add('chosen'); S.chosen=+col.dataset.ci;
-    push('a','اخترت تصميم <b>'+NAMES[S.chosen]+'</b> ✅\nاسحب أيّ نصّ داخله إلى المكان الذي تريده.');
+    push('a',T('chosenMsg',{name:'<b>'+NAMES[S.chosen]+'</b>'}));
     cb.scrollTop=cb.scrollHeight; return; }
   if(e.target.closest('.drg')){ e.stopPropagation(); return; }
   const c=e.target.closest('.canvas');
@@ -688,7 +717,7 @@ function setSel(el){
   SEL=el||null; if(SEL) SEL.classList.add('sel');
 }
 function bump(d){
-  if(!SEL||!SEL.isConnected){ push('a','المس أيّ نصّ داخل الإعلان أوّلًا، ثمّ اضغط ＋ أو －.'); cb.scrollTop=cb.scrollHeight; return; }
+  if(!SEL||!SEL.isConnected){ push('a',T('touchFirst')); cb.scrollTop=cb.scrollHeight; return; }
   const cv=SEL.closest('.canvas'); if(!cv) return;
   const k=kOf(cv,SEL), q=POS[k]||[0,0,1];
   POS[k]=[q[0]||0,q[1]||0,Math.min(2.8,Math.max(.4,+((q[2]||1)+d).toFixed(3)))];
@@ -699,10 +728,10 @@ document.getElementById('szM').onclick=()=>bump(-.08);
 addEventListener('wheel',e=>{ const el=e.target.closest('.drg'); if(!el) return;
   e.preventDefault(); setSel(el); bump(e.deltaY<0?.06:-.06); },{passive:false});
 
-const SWA=[['','تلقائيّ'],['#a855f7','بنفسجيّ'],['#3b82f6','أزرق'],['#e0a94a','ذهبيّ'],['#ef4444','أحمر'],['#22c55e','أخضر'],['#22d3ee','فيروزيّ']];
+const SWA=[['','swAuto'],['#a855f7','swPurple'],['#3b82f6','swBlue'],['#e0a94a','swGold'],['#ef4444','swRed'],['#22c55e','swGreen'],['#22d3ee','swCyan']].map(([c,k])=>[c,T(k)]);
 const swEl=document.getElementById('sw');
 swEl.innerHTML=SWA.map(([c,n],i)=>'<b class="'+(c?'':'auto ')+(i===0?'on':'')+'" data-c="'+c+'" title="'+n+'"'+(c?' style="background:'+c+'"':'')+'></b>').join('');
-swEl.insertAdjacentHTML('beforeend','<b class="w" data-ink="w" title="كتابة بيضاء"></b><b class="k" data-ink="k" title="كتابة سوداء"></b>');
+swEl.insertAdjacentHTML('beforeend','<b class="w" data-ink="w" title="'+T('inkWhite')+'"></b><b class="k" data-ink="k" title="'+T('inkBlack')+'"></b>');
 swEl.onclick=e=>{ const b=e.target.closest('b[data-c]'); if(!b) return;
   S.ac=b.dataset.c||''; [...swEl.querySelectorAll('b[data-c]')].forEach(n=>n.classList.toggle('on',n===b));
   if(S.cat) render(); };
@@ -713,8 +742,9 @@ swEl.addEventListener('click',e=>{ const b=e.target.closest('b[data-ink]'); if(!
   if(want){ document.body.classList.add(want==='w'?'inkw':'inkb'); b.classList.add('on'); } });
 
 const inkT=document.getElementById('inkT');
+inkT.textContent=T('bgLight');
 inkT.onclick=()=>{ const on=document.body.classList.toggle('ink');
-  inkT.textContent=on?'خلفيّة داكنة':'خلفيّة فاتحة'; };
+  inkT.textContent=T(on?'bgDark':'bgLight'); };
 
 const rtEl=document.getElementById('rt');
 rtEl.onclick=e=>{ const b=e.target.closest('button[data-r]'); if(!b) return;
@@ -724,22 +754,23 @@ rtEl.onclick=e=>{ const b=e.target.closest('button[data-r]'); if(!b) return;
 /* ============ توليد الإعلان صورةً كاملة (OpenAI gpt-image-1) ============ */
 const LOOKMAP=['cinema','layers','poster','elegant','bold','luxe','minimal','magazine','neon'];
 const genB=document.getElementById('genB'), genOut=document.getElementById('genOut');
+genB.textContent='🎨 '+T('genBtn');
 genB.onclick=async()=>{
-  if(!S.cat){ push('a','أكمل بيانات الإعلان أوّلًا، ثمّ اضغط «ولّد الإعلان صورةً».'); cb.scrollTop=cb.scrollHeight; return; }
+  if(!S.cat){ push('a',T('genNeedData')); cb.scrollTop=cb.scrollHeight; return; }
   const c=CATS[S.cat], m=(S.img||'').match(/^data:(image\/[a-z]+);base64,(.+)$/);
-  const old=genB.textContent; genB.disabled=true; genB.textContent='يُولَّد…';
-  genOut.className='on'; genOut.innerHTML='<div class="gwait">🎨 يرسم إعلانك… قد يستغرق دقيقة. لا تغلق الصفحة.</div>';
+  const old=genB.textContent; genB.disabled=true; genB.textContent=T('genBusy');
+  genOut.className='on'; genOut.innerHTML='<div class="gwait">🎨 '+T('genDraw')+'</div>';
   genOut.scrollIntoView({behavior:'smooth',block:'nearest'});
   try{
     const r=await fetch('/api/adimage',{method:'POST',headers:{'content-type':'application/json'},
-      body:JSON.stringify({token:TOKEN,ratio:S.ratio||'tall',look:LOOKMAP[S.chosen||0]||'neon',ac:S.ac||'',
-        title:S.title||c.title,spec:S.spec||c.spec,price:S.price||c.price,unit:S.unit||c.unit,
+      body:JSON.stringify({token:TOKEN,lang:AL,ratio:S.ratio||'tall',look:LOOKMAP[S.chosen||0]||'neon',ac:S.ac||'',
+        title:S.title||c.title,spec:S.spec||c.spec,price:S.price||fmtNum(c.price),unit:S.unit||c.unit,
         tel:S.tel||'',kick:S.kick||c.kick,imageBase64:m?m[2]:'',mimeType:m?m[1]:''})});
     const j=await r.json().catch(()=>({}));
-    if(!r.ok||!j.imageBase64){ genOut.innerHTML='<div class="gwait">⚠️ '+esc(j.message_ar||j.error||('خطأ '+r.status))+'</div>'; }
+    if(!r.ok||!j.imageBase64){ genOut.innerHTML='<div class="gwait">⚠️ '+esc(j.message||j.message_ar||j.error||T('genErrCode',{code:r.status}))+'</div>'; }
     else{ const mt=j.mimeType||'image/webp', src='data:'+mt+';base64,'+j.imageBase64, ext=(mt.split('/')[1]||'webp');
-      genOut.innerHTML='<h3>إعلانك المولَّد</h3><img src="'+src+'"><a download="ad.'+ext+'" href="'+src+'">⬇︎ نزّل الصورة</a>'; }
-  }catch(e){ genOut.innerHTML='<div class="gwait">⚠️ '+esc(e.message||'تعذّر الاتصال')+'</div>'; }
+      genOut.innerHTML='<h3>'+T('genOutTitle')+'</h3><img src="'+src+'"><a download="ad.'+ext+'" href="'+src+'">⬇︎ '+T('genDl')+'</a>'; }
+  }catch(e){ genOut.innerHTML='<div class="gwait">⚠️ '+esc(e.message||T('genErrConn'))+'</div>'; }
   genB.disabled=false; genB.textContent=old;
 };
 
@@ -754,12 +785,12 @@ async function cardPng(cv){ const L=await h2iLib();
 document.getElementById('grid').addEventListener('click',async e=>{
   const b=e.target.closest('.dlB'); if(!b) return;
   const col=b.closest('.col'), cv=col&&col.querySelector('.canvas'); if(!cv) return;
-  const old=b.textContent; b.disabled=true; b.textContent='يُجهَّز…';
+  const old=b.textContent; b.disabled=true; b.textContent=T('dlPrep');
   try{ const url=await cardPng(cv);
     const a=document.createElement('a'); a.href=url;
     a.download='ad-'+(NAMES[col.dataset.ci]||'design')+'.png'; document.body.appendChild(a); a.click(); a.remove();
-    b.textContent='✅ نُزّل';
-  }catch(err){ b.textContent='⚠️ تعذّر'; }
+    b.textContent='✅ '+T('dlDone');
+  }catch(err){ b.textContent='⚠️ '+T('dlFail'); }
   setTimeout(()=>{ b.textContent=old; b.disabled=false; },1600);
 });
 window.__cardPng=cardPng;
