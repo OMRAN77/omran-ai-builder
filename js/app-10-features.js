@@ -315,7 +315,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
     { title: null, ids: ['btnSettings','btnAuthToggle','btnToggleHistory'] },
     { title: 'grpCreate', ids: ['btnPortraitStyle','btnQuickTemplates','btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnAdStudio'] },
     { title: 'grpSections', ids: ['btnStocks','btnConstruction','btnOmranEdu','btnExpense','btnDocs','btnGov','btnCV','btnReligion','btnEmailAssist'] },
-    { title: 'grpTools', ids: ['btnTemplates','btnAgentMode','btnInstall','btnShareApp'] }
+    { title: 'grpTools', ids: ['btnFeedback','btnTemplates','btnAgentMode','btnInstall','btnShareApp'] }
   ];
   // v433: مجموعات الإبداع/الأقسام/الأدوات في مربع الأدوات المنفصل (تبويب الأدوات)
   const ptPopup = document.getElementById('sectionsToolsPopup');
@@ -343,7 +343,8 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
     btnTemplates:   'Light%20bulb/3D/light_bulb_3d.png',
     btnAgentMode:   'Robot/3D/robot_3d.png',
     btnInstall:     'Mobile%20phone/3D/mobile_phone_3d.png',
-    btnShareApp:    'Outbox%20tray/3D/outbox_tray_3d.png'
+    btnShareApp:    'Outbox%20tray/3D/outbox_tray_3d.png',
+    btnFeedback:    'Speech%20balloon/3D/speech_balloon_3d.png'
   };
   function stpApply3d(b, id){
     const path = STP_ICONS[id];
