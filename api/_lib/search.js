@@ -438,18 +438,7 @@ module.exports = async (req, res) => {
       try { body = JSON.parse(body || '{}'); } catch (e) { body = {}; }
     }
     const query = (body && body.query || '').toString().trim();
-    if (body && body.debugSocial2 && query) {
-      try {
-        const gKey = process.env.GOOGLE_SEARCH_API_KEY; const gCx = process.env.GOOGLE_SEARCH_CX;
-        const q = socialQuery(query) + ' site:instagram.com OR site:tiktok.com';
-        if (!gKey || !gCx) { res.status(200).json({ debug2: true, noKeys: true, gKey: !!gKey, gCx: !!gCx }); return; }
-        const gr = await fetch('https://www.googleapis.com/customsearch/v1?key=' + gKey + '&cx=' + gCx + '&q=' + encodeURIComponent(q) + '&num=8');
-        const gj = await gr.json().catch(() => null);
-        const items = ((gj && gj.items) || []).map(it => ({ url: it.link, title: String(it.title||'').slice(0,50) }));
-        res.status(200).json({ debug2: true, q, status: gr.status, err: gj && gj.error && gj.error.message, items, picked: pickSocial(items.map(x=>({url:x.url,title:x.title,score:null})), true) });
-        return;
-      } catch (e) { res.status(200).json({ debug2: true, err: String(e && e.message) }); return; }
-    }
+  
   
     if (!query) {
       res.status(400).json({ error: 'Missing query' });
