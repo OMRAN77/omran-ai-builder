@@ -173,6 +173,10 @@ window.__omranImgTools = function(wrap, dataUrl){
     st.textContent = '.oImgBox{position:relative;display:block;width:-moz-fit-content;width:fit-content;min-width:0;max-width:min(460px,100%)}'
       + '.oImgBox>img{display:block;width:auto;max-width:100%;height:auto;max-height:62vh;object-fit:contain}'
       + '.oImgBar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:9px;pointer-events:auto}'
+      // 🖼️ v641 — أمر عمران «حط كلمت التعديل داخل الصوره»: الصفّ يسكن داخل
+      //    إطار الصورة (زاوية البداية السفلى) بدل ما يكون تحتها.
+      + '.oImgBar.inImg{position:absolute;bottom:10px;inset-inline-start:10px;margin:0;z-index:3;max-width:calc(100% - 20px)}'
+      + '.oImgBar.inImg .oImgBtn{box-shadow:0 2px 10px rgba(0,0,0,.28)}'
       + '.oImgBtn{pointer-events:auto;display:inline-flex;align-items:center;justify-content:center;height:40px;border:0;border-radius:999px;font-family:inherit;font-size:15px;font-weight:600;line-height:1;color:#fff;background:rgba(0,0,0,.38);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);cursor:pointer;transition:background .16s ease,transform .12s ease}'
       + '.oImgBtn.txt{padding:0 20px}'
       + '.oImgBtn.ico{width:40px;padding:0}'
@@ -544,6 +548,7 @@ window.__omranImgTools = function(wrap, dataUrl){
     //    تحمل border-radius من CSS ⇒ لا حاجة لقصّ الحاوية.
     if(r && r !== '0px'){ wrap.style.borderRadius = r; }
   }catch(e){}
+  bar.classList.add('inImg');
   wrap.appendChild(bar);
 };
 
