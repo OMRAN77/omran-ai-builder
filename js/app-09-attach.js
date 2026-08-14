@@ -305,6 +305,32 @@ window.__omranImgTools = function(wrap, dataUrl){
     img: '<rect x="3.4" y="4.6" width="17.2" height="14.8" rx="2.6"/><path d="m5.4 16.6 4.2-4.2 3.1 3.1 2.6-2.6 3.3 3.3"/><circle cx="9" cy="9.2" r="1.2"/>'
   };
   const gsvg = (k) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (GL[k] || ICON[k] || '') + '</svg>';
+  // 🖼️ v640 — أمر عمران «صورة خاليّة»: واتساب لا يُظهر أيّ رابط صورةً نقيّة —
+  //    يبني بطاقة معاينة + سطر دومين من عنده (لا يُخفى). الطريق الوحيد لصورة
+  //    نقيّة: إرسال الملفّ نفسه (Web Share Level 2). كروم أندرويد يدعمه، فإن
+  //    رفض المتصفّح (canShare=false) نرجع للرابط كما كان تمامًا — صفر خسارة.
+  const fileOf = () => {
+    const bl = toBlob(dataUrl);
+    const ty = bl.type || 'image/png';
+    const ext = ty === 'image/jpeg' ? '.jpg' : (ty === 'image/webp' ? '.webp' : '.png');
+    return new File([bl], 'image-' + Date.now() + ext, { type: ty });
+  };
+  const shareFile = (onFail) => {
+    try{
+      const nv = navigator;
+      if(typeof File !== 'function' || typeof nv.share !== 'function' || typeof nv.canShare !== 'function') return false;
+      const f = fileOf();
+      if(!nv.canShare({ files: [f] })) return false;
+      const pr = nv.share({ files: [f] });
+      if(pr && pr.catch) pr.catch((e) => {
+        if(e && e.name === 'AbortError') return;
+        __swallow(e, 'shareFile:app-09-attach#v640');
+        if(typeof onFail === 'function') onFail();
+      });
+      return true;
+    }catch(e){ __swallow(e, 'shareFile:app-09-attach#v640'); }
+    return false;
+  };
   let shUrl = '', shBusy = null;
   const cpTxt = (t) => {
     try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(t); return true; } }catch(e){ __swallow(e, 'cpTxt:app-09-attach#v627'); }
@@ -402,6 +428,8 @@ window.__omranImgTools = function(wrap, dataUrl){
         if(!w) location.href = link;
         close();
       };
+      // v640 — الملفّ أوّلًا: صورة نقيّة بلا رابط ولا بطاقة. الرابط ملاذ الفشل.
+      if(shareFile(() => { if(shUrl && cpTxt(shUrl)) note(ar ? 'نُسخ الرابط — الصقه في التطبيق' : 'Link copied'); })){ close(); return; }
       if(shUrl) run(shUrl); else upload().then(run);
     };
     APPS.forEach((t) => {
@@ -422,6 +450,8 @@ window.__omranImgTools = function(wrap, dataUrl){
     act(ar ? 'مشاركة عبر تطبيقات الجهاز' : 'Share via device apps', 'share', () => {
       const nv = navigator;
       const l = shUrl;
+      // v640 — الملفّ أوّلًا هنا كذلك.
+      if(shareFile(() => { if(l && cpTxt(l)) note(ar ? 'نُسخ الرابط' : 'Link copied'); })){ close(); return; }
       if(typeof nv.share === 'function'){
         try{
           const pr = nv.share(l ? { url: l, title: ar ? 'صورة' : 'Image' } : { text: ar ? 'صورة' : 'Image' });
@@ -451,7 +481,7 @@ window.__omranImgTools = function(wrap, dataUrl){
     document.body.appendChild(ov);
     upload().then((l) => {
       stx.textContent = l
-        ? (ar ? 'الرابط جاهز — اختر تطبيقًا' : 'Link ready — pick an app')
+        ? (ar ? 'اختر تطبيقًا — تُرسَل الصورة نفسها' : 'Pick an app — the image itself is sent')
         : (ar ? 'تعذّر تحضير الرابط — «تنزيل الصورة» يعمل دائمًا' : 'Link failed — Download still works');
     });
   };
