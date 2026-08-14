@@ -423,6 +423,23 @@ module.exports = async (req, res) => {
       try { body = JSON.parse(body || '{}'); } catch (e) { body = {}; }
     }
     const query = (body && body.query || '').toString().trim();
+    // 🔬 مخرج تشخيص مؤقت لبحث السوشال
+    if (body && body.debugSocial && query) {
+      try {
+        const dq = socialQuery(query);
+        const dr = await fetch('https://api.tavily.com/search', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ api_key: apiKey, query: dq, include_domains: ['instagram.com','tiktok.com','snapchat.com','youtube.com','x.com','twitter.com'], search_depth: 'basic', include_answer: false, max_results: 12 })
+        });
+        const dj = await dr.json().catch(() => null);
+        res.status(200).json({
+          debug: true, socialQuery: dq, tavilyStatus: dr.status,
+          raw: ((dj && dj.results) || []).map(x => ({ url: x.url, score: x.score, title: String(x.title||'').slice(0,60) })),
+          picked: pickSocial((dj && dj.results) || [], true)
+        });
+        return;
+      } catch (e) { res.status(200).json({ debug: true, err: String(e && e.message) }); return; }
+    }
     if (!query) {
       res.status(400).json({ error: 'Missing query' });
       return;
