@@ -11799,6 +11799,12 @@ window.__omranImgTools = function(wrap, dataUrl){
       + '.oImgBtn svg{width:21px;height:21px;flex:none}'
       + '.msg.assistant.oImgMsg{background:rgba(255,255,255,.07) !important;border:1px solid rgba(255,255,255,.08) !important;border-radius:var(--r-3,18px) !important;padding:10px 13px 12px !important;width:-moz-fit-content;width:fit-content;max-width:min(486px,100%);box-sizing:border-box;overflow:hidden}'
       + 'html[data-mode="light"] .msg.assistant.oImgMsg{background:rgba(0,0,0,.05) !important;border-color:rgba(0,0,0,.09) !important}'
+      // 📱 v622 — على الشاشات الضيّقة كان الشريط العائم يغطّي أسفل الصورة نفسها
+      //    (مقيس من لقطة عمران: «تعديل» و«حفظ» فوق سطور الدعاء). الحلّ: ينزل تحتها.
+      + '@media (max-width:640px){'
+      +   '.oImgBar{position:static;left:auto;right:auto;bottom:auto;margin-top:9px;justify-content:flex-start;gap:10px;pointer-events:auto}'
+      +   '.oImgBox>img{max-height:70vh}'
+      + '}'
       + '.msg.assistant.oImgMsg .msg-text{margin:0 0 9px;padding:0;min-width:0;overflow-wrap:break-word}'
       + '.msg.assistant.oImgMsg .msg-attachments{margin:0;min-width:0;max-width:100%}'
       + '.msg.assistant.oImgMsg .oImgBox{max-width:100%}'
