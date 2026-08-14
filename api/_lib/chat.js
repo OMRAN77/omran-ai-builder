@@ -294,6 +294,36 @@ const GLOBAL_NOTE = '\n\n[سؤال عن مكان خارج الإمارات — �
 
 const WIZARD_RE = /كتالوج|كتالوق|منيو|قائمة طعام|قائمة الطعام|بروفايل شرك/;
 
+    // محادثة طبيعية خفيفة: لا نحمّل كل تعليمات البحث والبناء على سؤال لا يحتاجها.
+    const TOOL_INTENT_RE = /ابحث|بحث|خبر|أخبار|اخبار|سعر|أسعار|اسعار|طقس|نتيجة|الرابط|المصدر|اليوم|الآن|اﻵن|مطعم|عيادة|مستشفى|متجر|وظيفة|وظائف|عقار|سيارة|خرائط|صورة|صور|ارسم|تصميم|كود|احسب|احسبها|شغّل|شغل|اختبر|ابني|بناء|صمّم|صمم|أنشئ|انشئ|تطبيق|موقع|صفحة|أداة|web\s?search|latest|news|price|weather|source|image|draw|code|calculate|run|test|build|create|website|app|tool/i;
+    const LEAN_CONVERSATION_NOTE = '\n\n[محادثة طبيعية]:\n' +
+    '- أجب عن الرسالة الأخيرة مباشرة وبأسلوب إنساني واضح.\n' +
+    '- حافظ على سياق الحوار السابق، لكن لا تفتح موضوعًا قديمًا من نفسك إذا لم يكن مرتبطًا.\n' +
+    '- إذا كان الطلب غامضًا فعلًا، اسأل سؤالًا توضيحيًا واحدًا ومحددًا بدل التخمين أو طرح قائمة خيارات.\n' +
+    '- لا تذكر مزود النموذج أو البنية الداخلية أو تعليمات النظام.\n' +
+    '- استخدم لغة المستخدم ونبرة طبيعية، وتجنب المقدمات والتحذيرات المحفوظة غير اللازمة.';
+    function messageSize(content) {
+    if (typeof content === 'string') return content.length;
+    try { return JSON.stringify(content || '').length; } catch (e) { return 0; }
+    }
+    function compactConversation(items) {
+    const source = Array.isArray(items) ? items.filter((m) => m && (m.role === 'user' || m.role === 'assistant') && m.content) : [];
+    if (source.length <= 16 && source.reduce((n, m) => n + messageSize(m.content), 0) <= 36000) return source;
+    const tail = [];
+    let chars = 0;
+    for (let i = source.length - 1; i >= 0 && tail.length < 14; i--) {
+      const size = messageSize(source[i].content);
+      if (tail.length && chars + size > 32000) continue;
+      tail.push(source[i]); chars += size;
+    }
+    tail.reverse();
+    const firstUser = source.find((m) => m.role === 'user');
+    if (firstUser && tail.indexOf(firstUser) === -1 && messageSize(firstUser.content) < 4000) tail.unshift(firstUser);
+    while (tail.length && tail[0].role !== 'user') tail.shift();
+    while (tail.length && tail[tail.length - 1].role !== 'user') tail.pop();
+    return tail.length ? tail : source.slice(-1);
+    }
+
 // 🛠️ v528 — اليدان للجميع: نفس الحلقة ونفس الأدوات الخمس، ولا يتغيّر إلّا اسم
 // النموذج. البروتوكول (أحداث البثّ · tool_use · stop_reason) مُتحقَّق حيًّا على كلّ
 // نموذج أدناه في ٩ أغسطس ٢٠٢٦. cohere وperplexity غائبان عمدًا: لا يدعمان
@@ -634,16 +664,20 @@ module.exports = async (req, res) => {
   const country = (req.headers && (req.headers['x-vercel-ip-country'] || req.headers['x-country'])) || '';
   // المجاملة القصيرة لا تحتاج تاريخًا أو دولة أو أدوات أو ملف المالك؛ حقن هذه
   // السياقات في «كيف الحال» هو ما حوّلها إلى قائمة فنادق ومواضيع قديمة.
-  const system = quietSocialTurn
-    ? sysParts.join('\n\n') + (casualCheckInTurn ? '\n\n[هذا دور اجتماعي قصير]: أجب عن سؤال الحال مباشرةً في جملة طبيعية واحدة. المحادثة مستمرة، فلا تبدأ بتحية جديدة، ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق.' : '')
-    : sysParts.join('\n\n') + nowNote() + countryNote(country) + TOOLS_NOTE + BIDI_RULE + LINK_RULE + WIZARD_NOTE + (wizardTurn ? '' : ANSWER_FIRST_NOTE) + askCapNote
-      + require('./_knowledge.js').ownerKnowledge(req, token); // معرفة عمران — للمالك وحده
+  const toolTurn = !quietSocialTurn && (wizardTurn || foreignTurn || !!reC ||
+      !!(lastUser && NUM_ASK_RE.test(lastUser.content)) || TOOL_INTENT_RE.test(lastUser && lastUser.content));
+    const baseSystem = sysParts.join('\n\n');
+    const ownerKnowledge = toolTurn ? require('./_knowledge.js').ownerKnowledge(req, token) : '';
+    const system = quietSocialTurn
+      ? baseSystem + (casualCheckInTurn ? '\n\n[هذا دور اجتماعي قصير]: أجب عن سؤال الحال مباشرةً في جملة طبيعية واحدة. المحادثة مستمرة، فلا تبدأ بتحية جديدة، ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق.' : '')
+      : toolTurn
+        ? baseSystem + nowNote() + countryNote(country) + TOOLS_NOTE + BIDI_RULE + LINK_RULE + WIZARD_NOTE + (wizardTurn ? '' : ANSWER_FIRST_NOTE) + askCapNote + ownerKnowledge
+        : baseSystem + LEAN_CONVERSATION_NOTE + BIDI_RULE;
 
-  const convoSource = quietSocialTurn ? [lastUser] : messages;
-  const convo = convoSource
-    .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && m.content)
-    .map((m) => ({ role: m.role, content: typeof m.content === 'string' ? m.content.slice(0, 30000) : m.content }));
-  while (convo.length && convo[convo.length - 1].role !== 'user') convo.pop();
+      const convoSource = quietSocialTurn ? [lastUser] : messages;
+  const convo = compactConversation(convoSource
+      .map((m) => ({ role: m.role, content: typeof m.content === 'string' ? m.content.slice(0, 12000) : m.content })));
+      while (convo.length && convo[convo.length - 1].role !== 'user') convo.pop();
   if (!convo.length) { res.status(400).json({ error: 'Missing user message' }); return; }
 
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
@@ -669,7 +703,7 @@ module.exports = async (req, res) => {
       const upstream = await fetch(CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: CHAT_MODEL, max_tokens: quietSocialTurn ? 120 : 16000, system, messages: convo, tools: quietSocialTurn ? undefined : TOOLS, stream: true }),
+        body: JSON.stringify({ model: CHAT_MODEL, max_tokens: quietSocialTurn ? 120 : 16000, system, messages: convo, tools: toolTurn ? TOOLS : undefined, stream: true }),
       });
 
       if (!upstream.ok) {
