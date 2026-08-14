@@ -41,9 +41,9 @@ module.exports = async (req, res) => {
     const abs = (host ? 'https://' + host : '') + '/i/' + id + '.' + ext;
     const html = '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">'
       + '<meta name="viewport" content="width=device-width,initial-scale=1">'
-      + '<title>صورة</title><meta name="robots" content="noindex">'
+      + '<title>عمران AI</title><meta name="robots" content="noindex">'
       + '<meta property="og:type" content="website">'
-      + '<meta property="og:title" content="صورة">'
+      + '<meta property="og:title" content="عمران AI">'
       + '<meta property="og:image" content="' + abs + '">'
       + '<meta property="og:image:secure_url" content="' + abs + '">'
       + '<meta property="og:image:type" content="' + mime + '">'

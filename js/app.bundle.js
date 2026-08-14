@@ -11850,7 +11850,7 @@ window.__omranImgTools = function(wrap, dataUrl){
     const st = document.createElement('style'); st.id = 'oImgToolsCss';
     st.textContent = '.oImgBox{position:relative;display:block;width:-moz-fit-content;width:fit-content;min-width:0;max-width:min(460px,100%)}'
       + '.oImgBox>img{display:block;width:auto;max-width:100%;height:auto;max-height:62vh;object-fit:contain}'
-      + '.oImgBar{position:absolute;left:12px;right:12px;bottom:12px;display:flex;align-items:center;justify-content:space-between;direction:ltr;pointer-events:none;z-index:2}'
+      + '.oImgBar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:9px;pointer-events:auto}'
       + '.oImgBtn{pointer-events:auto;display:inline-flex;align-items:center;justify-content:center;height:40px;border:0;border-radius:999px;font-family:inherit;font-size:15px;font-weight:600;line-height:1;color:#fff;background:rgba(0,0,0,.38);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);cursor:pointer;transition:background .16s ease,transform .12s ease}'
       + '.oImgBtn.txt{padding:0 20px}'
       + '.oImgBtn.ico{width:40px;padding:0}'
@@ -11864,10 +11864,7 @@ window.__omranImgTools = function(wrap, dataUrl){
       + '.msg.assistant.oImgMsg .oImgBox{max-width:100%}'
       + '.msg.assistant.oImgMsg .oImgBox>img{max-width:100%;border-radius:12px}'
       + '.oImgGrp{display:flex;align-items:center;gap:10px}'
-      + '.oSendOut svg{width:17px;height:17px}'
-      + '.oSendBar{display:flex;align-items:center;gap:6px;margin-top:7px}'
       + '@media (max-width:640px){'
-      +   '.oImgBar{position:static;left:auto;right:auto;bottom:auto;margin-top:9px;justify-content:flex-start;gap:10px;pointer-events:auto}'
       +   '.oImgBox>img{max-height:70vh}'
       + '}';
     document.head.appendChild(st);
@@ -12134,26 +12131,6 @@ window.__omranImgTools = function(wrap, dataUrl){
         : (ar ? 'تعذّر تحضير الرابط — «تنزيل الصورة» يعمل دائمًا' : 'Link failed — Download still works');
     });
   };
-  // 🔗 v632 — أمر عمران «انقلها برع»: زرّ الإرسال يعيش في شريط أزرار الرسالة
-  // (خارج الصورة) ويحمل لوحة الإرسال كاملة؛ لا زرّ داخل الصورة. زرّ واحد لكلّ رسالة.
-  const mountSend = () => {
-    const mb = wrap.closest && wrap.closest('.msg.assistant');
-    if(!mb || mb.__oSendMounted) return;
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = 'oSendOut';
-    b.title = ar ? 'إرسال الصورة' : 'Send image';
-    b.setAttribute('aria-label', b.title);
-    b.innerHTML = svg('share');
-    b.onclick = (e) => { if(e && e.stopPropagation) e.stopPropagation(); openSheet(); };
-    const abar = mb.querySelector('.msgActionBar');
-    if(abar) abar.insertBefore(b, abar.firstChild);
-    else {
-      const nb = document.createElement('div'); nb.className = 'msgActionBar oSendBar';
-      nb.appendChild(b); mb.appendChild(nb);
-    }
-    mb.__oSendMounted = 1;
-  };
-  mountSend(); setTimeout(mountSend, 0); setTimeout(mountSend, 350);
   // يمين: «تعديل» نصّ فقط
   mk('txt', '<span>' + (ar ? 'تعديل' : 'Edit') + '</span>', ar ? 'تعديل' : 'Edit', (b) => {
     pendingAttachments.push({ name: 'edit-' + Date.now() + '.png', isImage: true, mime: dataUrl.slice(5).split(';')[0] || 'image/png', dataUrl: dataUrl });
@@ -12161,6 +12138,9 @@ window.__omranImgTools = function(wrap, dataUrl){
     flash(b, '<span>' + (ar ? 'جاهزة' : 'Ready') + '</span>');
     const p = $('#prompt'); if(p){ p.focus(); p.placeholder = ar ? 'اكتب التعديل المطلوب على هذي الصورة…' : 'Describe the edit you want…'; }
   });
+  // 📤 v634 — أمر عمران «شي نظيف»: «تعديل» و«إرسال» زرّان متماثلان في صفّ واحد
+  // تحت الصورة (خارجها) على الكمبيوتر والجوّال معًا. لا زرّ سابح ولا شريط منفصل.
+  mk('txt', '<span>' + (ar ? 'إرسال' : 'Send') + '</span>', ar ? 'إرسال الصورة' : 'Send image', () => { openSheet(); });
   wrap.classList.add('oImgBox');
   // 🧊 v583 — الصورة تعيش داخل صندوق المحادثة، لا سابحة خارجه (أمر عمران).
   // وقت الاستدعاء يكون العنصر خارج شجرة الصفحة ⇒ closest = null، فيلزم وسم مؤجَّل.
