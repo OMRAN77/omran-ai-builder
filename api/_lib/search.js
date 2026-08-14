@@ -236,6 +236,7 @@ async function fetchSocial(apiKey, query) {
       body: JSON.stringify({
         api_key: apiKey,
         query: socialQuery(query),
+        include_domains: ['instagram.com', 'tiktok.com', 'snapchat.com', 'youtube.com', 'x.com', 'twitter.com'],
         search_depth: 'basic',
         include_answer: false,
         max_results: 12,
