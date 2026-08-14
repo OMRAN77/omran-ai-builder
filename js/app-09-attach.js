@@ -286,14 +286,14 @@ window.__omranImgTools = function(wrap, dataUrl){
   //    فتصبح قابلة للإرسال كرابط — وهذا مدعوم في كلّ متصفّح. الرفع يبدأ لحظة فتح
   //    الورقة لا لحظة النقر، لأنّ await قبل window.open/navigator.share يُبطل الإيماء.
   const APPS = [
-    { n: ar ? 'واتساب' : 'WhatsApp', g: 'wa', u: (l) => 'https://wa.me/?text=' + encodeURIComponent(l) },
-    { n: ar ? 'تيليجرام' : 'Telegram', g: 'tg', u: (l) => 'https://t.me/share/url?url=' + encodeURIComponent(l) },
-    { n: ar ? 'انستغرام' : 'Instagram', g: 'ig', copy: ar ? 'نُسخ الرابط — الصقه في انستغرام' : 'Link copied — paste it in Instagram' },
-    { n: ar ? 'سناب شات' : 'Snapchat', g: 'sn', copy: ar ? 'نُسخ الرابط — الصقه في سناب شات' : 'Link copied — paste it in Snapchat' },
-    { n: ar ? 'فيسبوك' : 'Facebook', g: 'fb', u: (l) => 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(l) },
-    { n: 'X', g: 'x', u: (l) => 'https://twitter.com/intent/tweet?url=' + encodeURIComponent(l) },
-    { n: ar ? 'الرسائل' : 'Messages', g: 'sms', u: (l) => 'sms:?body=' + encodeURIComponent(l) },
-    { n: ar ? 'البريد' : 'Email', g: 'ml', u: (l) => 'mailto:?subject=' + encodeURIComponent(ar ? 'صورة' : 'Image') + '&body=' + encodeURIComponent(l) }
+    { n: ar ? 'واتساب' : 'WhatsApp', g: 'wa', c: '#25D366', u: (l) => 'https://wa.me/?text=' + encodeURIComponent(l) },
+    { n: ar ? 'تيليجرام' : 'Telegram', g: 'tg', c: '#229ED9', u: (l) => 'https://t.me/share/url?url=' + encodeURIComponent(l) },
+    { n: ar ? 'انستغرام' : 'Instagram', g: 'ig', c: 'radial-gradient(circle at 30% 110%, #fdf497 0%, #fd5949 45%, #d6249f 60%, #285AEB 90%)', copy: ar ? 'نُسخ الرابط — الصقه في انستغرام' : 'Link copied — paste it in Instagram' },
+    { n: ar ? 'سناب شات' : 'Snapchat', g: 'sn', c: '#FFFC00', fg: '#16161a', copy: ar ? 'نُسخ الرابط — الصقه في سناب شات' : 'Link copied — paste it in Snapchat' },
+    { n: ar ? 'فيسبوك' : 'Facebook', g: 'fb', c: '#1877F2', u: (l) => 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(l) },
+    { n: 'X', g: 'x', c: '#111114', u: (l) => 'https://twitter.com/intent/tweet?url=' + encodeURIComponent(l) },
+    { n: ar ? 'الرسائل' : 'Messages', g: 'sms', c: '#34C759', u: (l) => 'sms:?body=' + encodeURIComponent(l) },
+    { n: ar ? 'البريد' : 'Email', g: 'ml', c: '#EA4335', u: (l) => 'mailto:?subject=' + encodeURIComponent(ar ? 'صورة' : 'Image') + '&body=' + encodeURIComponent(l) }
   ];
   const GL = {
     wa: '<path d="M21 11.6a8.6 8.6 0 0 1-12.8 7.5L3.6 20.4l1.4-4.5A8.6 8.6 0 1 1 21 11.6z"/><path d="M9.2 9.1c.5 1.9 2.1 3.6 4.1 4.2"/>',
@@ -487,6 +487,8 @@ window.__omranImgTools = function(wrap, dataUrl){
     APPS.forEach((t) => {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'oShT';
       b.innerHTML = '<i>' + gsvg(t.g) + '</i><span>' + t.n + '</span>';
+      // v644 — ألوان التطبيقات الرسميّة (واتساب أخضر، انستغرام متدرّج...)
+      if(t.c){ const ic = b.querySelector('i'); ic.style.background = t.c; ic.style.borderColor = 'transparent'; ic.style.color = t.fg || '#fff'; }
       b.setAttribute('aria-label', t.n);
       b.onclick = () => go(t);
       gr.appendChild(b);
