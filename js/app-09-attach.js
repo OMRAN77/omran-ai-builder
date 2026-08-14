@@ -465,24 +465,42 @@ window.__omranImgTools = function(wrap, dataUrl){
   // 📤 v635 — أمر عمران «زرّ الإرسال حطه هني جنبهم»: الإرسال يسكن شريط أزرار
   // الرسالة نفسه (بعد النسخ/الإعجاب) بنفس شكلهم وحجمهم؛ «تعديل» يبقى تحت الصورة.
   // رسالة الصورة بلا نصّ لا تبني شريطًا ⇒ أُنشئ شريطًا بنفس الصنف.
-  const mountSend = () => {
-    const mb = wrap.closest && wrap.closest('.msg.assistant');
+  // 🩹 v636 — تصحيح v635: شريط أزرار الرسالة **أخٌ** للفقاعة لا ابنٌ لها
+  //    (app-04-i18n-state: bubbleCol ← [الفقاعة, msgActionBar]) ⇒ البحث داخل
+  //    الفقاعة يعيد null فيُبنى صفٌّ وحيد فوق الشريط. الآن أبحث في الأب أوّلًا،
+  //    ولا أبني صفًّا بديلًا إلّا إن لم يوجد شريط أصلًا (صورة بلا نصّ).
+  const findBar = (mb) => {
+    const p = mb.parentNode;
+    if(p && p.children){
+      for(let i = 0; i < p.children.length; i++){
+        const c = p.children[i];
+        if(c !== mb && c.classList && c.classList.contains('msgActionBar')) return c;
+      }
+    }
+    return mb.querySelector ? mb.querySelector('.msgActionBar') : null;
+  };
+  const mountSend = (last) => {
+    const mb = wrap.closest && wrap.closest('.msg');
     if(!mb || mb.__oSendMounted) return;
+    const abar = findBar(mb);
+    if(!abar && !last) return;
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'oSendOut';
     b.title = ar ? 'إرسال الصورة' : 'Send image';
     b.setAttribute('aria-label', b.title);
     b.innerHTML = svg('share');
     b.onclick = (e) => { if(e && e.stopPropagation) e.stopPropagation(); openSheet(); };
-    const abar = mb.querySelector('.msgActionBar');
     if(abar) abar.appendChild(b);
     else {
       const nb = document.createElement('div'); nb.className = 'msgActionBar oSendBar';
-      nb.appendChild(b); mb.appendChild(nb);
+      nb.appendChild(b);
+      if(mb.parentNode) mb.parentNode.appendChild(nb); else mb.appendChild(nb);
     }
     mb.__oSendMounted = 1;
   };
-  mountSend(); setTimeout(mountSend, 0); setTimeout(mountSend, 350);
+  setTimeout(() => mountSend(false), 0);
+  setTimeout(() => mountSend(false), 200);
+  setTimeout(() => mountSend(true), 800);
   wrap.classList.add('oImgBox');
   // 🧊 v583 — الصورة تعيش داخل صندوق المحادثة، لا سابحة خارجه (أمر عمران).
   // وقت الاستدعاء يكون العنصر خارج شجرة الصفحة ⇒ closest = null، فيلزم وسم مؤجَّل.
