@@ -647,7 +647,16 @@ async function smartMaybeSearch(text, ctxMsgs){
   const __wantDeep = __deepRe.test(text) || (text.length > 120 && mahaNeedsSearch(text));
 
   // v628 عيب [ب]: نيّة صور صريحة = بحث حيّ إجباري (سؤال «هل يوجد صور» كان يمرّ بلا بحث فلا صور).
-  if(__wantsImageStrip(text)) return await fetchSearchNote(__imgTopicQuery(searchQuery) || searchQuery, __wantDeep, text);
+  if(__wantsImageStrip(text)){
+    let __iq = __imgTopicQuery(searchQuery);
+    // «هل يوجد صور لها» بلا موضوع خاصّ بها = طلب مرجعيّ بحت: الموضوع من أوّل جملة في الردّ السابق.
+    if(!__iq && ctxMsgs){
+      const __ai3 = ctxMsgs.filter(m => m.role !== 'user' && m.content && String(m.content).length > 20);
+      const __prev3 = __ai3.length ? String(__ai3[__ai3.length - 1].content) : '';
+      __iq = (__prev3.split(/\n|\.\s|\u061F|!/)[0] || '').slice(0, 150).trim();
+    }
+    return await fetchSearchNote(__iq || searchQuery, __wantDeep, text);
+  }
   // 🔗 طلب روابط/مواقع حقيقية = بحث حي إجباري (منع هلوسة الروابط الوهمية).
   if(/رابط|روابط|لينك|لنك|لينكات|لنكات/i.test(text)
     || /(رابط|لينك|\blink\b|\burl\b)[^\n]{0,25}(موقع|مواقع|منصة|منصات|صفحة|site|website)/i.test(text)
