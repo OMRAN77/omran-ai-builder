@@ -12,19 +12,58 @@ const KEY = (id) => 'db/img/' + id;
 
 module.exports = async (req, res) => {
   if (req.method === 'GET') {
-    const id = String((req.query && req.query.id) || '').replace(/[^a-f0-9]/g, '').slice(0, 24);
+    // v632 — أمر عمران: الرابط المُرسَل يفتح الصورة، لا يبقى نصًّا.
+    // /i/<id>        → صفحة تعرض الصورة + وسوم معاينة (واتساب/تلغرام/تويتر).
+    // /i/<id>.jpg    → البايتات الخام (وهي مصدر og:image ورابط التنزيل).
+    const rawId = String((req.query && req.query.id) || '');
+    const wantRaw = /\.(jpe?g|jpg|png|webp)$/i.test(rawId)
+      || String((req.query && req.query.raw) || '') === '1';
+    const id = rawId.replace(/[^a-f0-9]/g, '').slice(0, 24);
     if (!id) { res.status(400).json({ error: 'Missing id' }); return; }
     const raw = await kvGetRaw(KEY(id));
     if (!raw) { res.status(404).json({ error: 'not_found' }); return; }
     const s = String(raw);
     const i = s.indexOf(':');
     const mime = i > 0 ? s.slice(0, i) : 'image/jpeg';
-    const buf = Buffer.from(s.slice(i + 1), 'base64');
-    res.setHeader('Content-Type', mime);
-    res.setHeader('Content-Length', String(buf.length));
-    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    res.setHeader('Content-Disposition', 'inline; filename="omran-' + id + '.jpg"');
-    res.status(200).send(buf);
+
+    if (wantRaw) {
+      const buf = Buffer.from(s.slice(i + 1), 'base64');
+      res.setHeader('Content-Type', mime);
+      res.setHeader('Content-Length', String(buf.length));
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      res.setHeader('Content-Disposition', 'inline; filename="image-' + id + '.jpg"');
+      res.status(200).send(buf);
+      return;
+    }
+
+    const ext = mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : 'jpg');
+    const host = String(req.headers['x-forwarded-host'] || req.headers.host || '');
+    const abs = (host ? 'https://' + host : '') + '/i/' + id + '.' + ext;
+    const html = '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">'
+      + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+      + '<title>صورة</title><meta name="robots" content="noindex">'
+      + '<meta property="og:type" content="website">'
+      + '<meta property="og:title" content="صورة">'
+      + '<meta property="og:image" content="' + abs + '">'
+      + '<meta property="og:image:secure_url" content="' + abs + '">'
+      + '<meta property="og:image:type" content="' + mime + '">'
+      + '<meta name="twitter:card" content="summary_large_image">'
+      + '<meta name="twitter:image" content="' + abs + '">'
+      + '<link rel="preload" as="image" href="' + abs + '">'
+      + '<style>*{box-sizing:border-box}html,body{margin:0;height:100%}'
+      + 'body{background:#0c0e11;color:#e9edf2;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;'
+      + 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:18px}'
+      + 'img{max-width:100%;max-height:78vh;width:auto;height:auto;border-radius:14px;display:block;'
+      + 'box-shadow:0 18px 50px rgba(0,0,0,.5)}'
+      + 'a{display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:#0c0e11;background:#e9edf2;'
+      + 'font-weight:600;font-size:15px;padding:11px 22px;border-radius:999px}a:active{transform:scale(.98)}</style>'
+      + '</head><body>'
+      + '<img src="' + abs + '" alt="صورة">'
+      + '<a href="' + abs + '" download="image-' + id + '.' + ext + '">تنزيل الصورة</a>'
+      + '</body></html>';
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=600, stale-while-revalidate=86400');
+    res.status(200).send(html);
     return;
   }
 
