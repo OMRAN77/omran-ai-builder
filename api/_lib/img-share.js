@@ -80,7 +80,10 @@ module.exports = async (req, res) => {
     const id = crypto.randomBytes(6).toString('hex');
     const ok = await kvSetIfAbsent(KEY(id), mime + ':' + data, TTL_SEC);
     if (!ok) { res.status(500).json({ error: 'store_failed' }); return; }
-    res.status(200).json({ id, url: '/i/' + id, ttlDays: 30 });
+    // v637 — أمر عمران: «صورة خاليه أريد». الرابط المُشارَك يفتح البايتات الخام
+    // مباشرةً (صورة وحدها بلا صفحة ولا زرّ)؛ صفحة /i/<id> تبقى للروابط القديمة.
+    const outExt = mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : 'jpg');
+    res.status(200).json({ id, url: '/i/' + id + '.' + outExt, ttlDays: 30 });
     return;
   }
 
