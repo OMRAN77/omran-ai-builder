@@ -13084,10 +13084,6 @@ async function sendPrompt(){
     if(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && text && __memRefRe.test(text)){
       imageAttachments.push({ isImage: true, name: 'memory.png', mime: cur.lastEditedImage.mime || 'image/png', dataUrl: 'data:' + (cur.lastEditedImage.mime || 'image/png') + ';base64,' + cur.lastEditedImage.b64, _fromMemory: true });
     }
-    // v473c: بعد «وصلتني الصورة» أي رسالة تالية قصيرة تُرفق الصورة المحفوظة تلقائياً
-    if(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && cur.lastMsgWasImageEdit && text && text.length <= 220){
-      imageAttachments.push({ isImage: true, name: 'memory.png', mime: cur.lastEditedImage.mime || 'image/png', dataUrl: 'data:' + (cur.lastEditedImage.mime || 'image/png') + ';base64,' + cur.lastEditedImage.b64, _fromMemory: true });
-    }
   }catch(e){ __swallow(e, "upload:app-09-attach#12"); }
   const __nextUserMessage = {role: 'user', content: (__gateApprovedText || text) || (t('imagesAttachedNote')), attachments: attachmentsForMsg.length ? attachmentsForMsg : undefined, apiText, apiImages: imageAttachments.length ? imageAttachments : undefined};
   if(__editIndex >= 0){
@@ -13306,7 +13302,7 @@ async function sendPrompt(){
     if(__srcImg && !(text || '').trim()){
       cur.lastEditedImage = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' };
       cur.lastMsgWasImageEdit = true;
-      cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'وصلتني الصورة 👍 شو تبي أسوي فيها؟' : 'Got the image 👍 What would you like to do with it?') });
+      cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'وصلتني الصورة 👍 شو تبي أسوي فيها؟ مثلًا: عدّلها، حوّلها ديكور جديد، اكتب عليها، سوّ منها فيديو، أو اسألني أي سؤال عنها.' : 'Got the image 👍 What would you like me to do with it? For example: edit it, redesign the decor, write on it, turn it into a video, or ask me anything about it.') });
       renderAll(); saveState();
       return;
     }
@@ -13588,8 +13584,8 @@ async function sendPrompt(){
     }
     // v579: صورة مرفقة + طلب قصير (مثلًا بعد زرّ «تعديل») = تعديل عليها افتراضيًّا — إلّا سؤال/بحث/فيديو/شكر/صورة جديدة/قراءة-ترجمة-وصف.
     const __ATT_VISION_RE = /(ترجم|translate|اقرأ|اقري|إقرأ|قراءة|\bread\b|وصف|اوصف|صف\s|describe|حلل|حلّل|analyz|قارن|compare)/i;
-    const __ATT_EDIT = !!(__srcImg && !__srcImg._fromMemory && text && text.length <= 220 && __imgEditRe.test(text) && !__IMGF_NOT_RE.test(text) && !__IMGF_NEW_RE.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text));
-    if(text && !cur.adMode && (__IMG_UPGRADE || __IMG_FOLLOW || __ATT_EDIT || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || (__IMG_UPGRADE && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
+    const __ATT_EDIT = !!(__srcImg && !__srcImg._fromMemory && text && text.length <= 220 && !__IMGF_NOT_RE.test(text) && !__IMGF_NEW_RE.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text));
+    if(text && !cur.adMode && (__IMG_UPGRADE || __IMG_FOLLOW || __ATT_EDIT || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || (__IMG_UPGRADE && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
       chatPhase('🖼️', __IMG_UPGRADE ? (lang === 'ar' ? 'جاري ترقية المشهد…' : 'Upgrading the scene…') : (lang === 'ar' ? 'جاري تعديل الصورة…' : 'Editing image…'), thinkingDiv);
       const __upgSrc = (!__srcImg && __IMG_UPGRADE && !(cur.lastEditedImage && cur.lastEditedImage.b64)) ? __IMG_UPGRADE_SRC : null;
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : (__upgSrc ? ((__upgSrc.dataUrl || '').split(',')[1] || '') : ((cur.lastEditedImage && cur.lastEditedImage.b64) || ''));

@@ -181,6 +181,12 @@ window.__omranImgTools = function(wrap, dataUrl){
       + '.oImgBtn svg{width:21px;height:21px;flex:none}'
       + '.msg.assistant.oImgMsg{background:rgba(255,255,255,.07) !important;border:1px solid rgba(255,255,255,.08) !important;border-radius:var(--r-3,18px) !important;padding:10px 13px 12px !important;width:-moz-fit-content;width:fit-content;max-width:min(486px,100%);box-sizing:border-box;overflow:hidden}'
       + 'html[data-mode="light"] .msg.assistant.oImgMsg{background:rgba(0,0,0,.05) !important;border-color:rgba(0,0,0,.09) !important}'
+      // 📱 v622 — على الشاشات الضيّقة كان الشريط العائم يغطّي أسفل الصورة نفسها
+      //    (مقيس من لقطة عمران: «تعديل» و«حفظ» فوق سطور الدعاء). الحلّ: ينزل تحتها.
+      + '@media (max-width:640px){'
+      +   '.oImgBar{position:static;left:auto;right:auto;bottom:auto;margin-top:9px;justify-content:flex-start;gap:10px;pointer-events:auto}'
+      +   '.oImgBox>img{max-height:70vh}'
+      + '}'
       + '.msg.assistant.oImgMsg .msg-text{margin:0 0 9px;padding:0;min-width:0;overflow-wrap:break-word}'
       + '.msg.assistant.oImgMsg .msg-attachments{margin:0;min-width:0;max-width:100%}'
       + '.msg.assistant.oImgMsg .oImgBox{max-width:100%}'
@@ -1466,10 +1472,6 @@ async function sendPrompt(){
     if(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && text && __memRefRe.test(text)){
       imageAttachments.push({ isImage: true, name: 'memory.png', mime: cur.lastEditedImage.mime || 'image/png', dataUrl: 'data:' + (cur.lastEditedImage.mime || 'image/png') + ';base64,' + cur.lastEditedImage.b64, _fromMemory: true });
     }
-    // v473c: بعد «وصلتني الصورة» أي رسالة تالية قصيرة تُرفق الصورة المحفوظة تلقائياً
-    if(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && cur.lastMsgWasImageEdit && text && text.length <= 220){
-      imageAttachments.push({ isImage: true, name: 'memory.png', mime: cur.lastEditedImage.mime || 'image/png', dataUrl: 'data:' + (cur.lastEditedImage.mime || 'image/png') + ';base64,' + cur.lastEditedImage.b64, _fromMemory: true });
-    }
   }catch(e){ __swallow(e, "upload:app-09-attach#12"); }
   const __nextUserMessage = {role: 'user', content: (__gateApprovedText || text) || (t('imagesAttachedNote')), attachments: attachmentsForMsg.length ? attachmentsForMsg : undefined, apiText, apiImages: imageAttachments.length ? imageAttachments : undefined};
   if(__editIndex >= 0){
@@ -1971,7 +1973,7 @@ async function sendPrompt(){
     // v579: صورة مرفقة + طلب قصير (مثلًا بعد زرّ «تعديل») = تعديل عليها افتراضيًّا — إلّا سؤال/بحث/فيديو/شكر/صورة جديدة/قراءة-ترجمة-وصف.
     const __ATT_VISION_RE = /(ترجم|translate|اقرأ|اقري|إقرأ|قراءة|\bread\b|وصف|اوصف|صف\s|describe|حلل|حلّل|analyz|قارن|compare)/i;
     const __ATT_EDIT = !!(__srcImg && !__srcImg._fromMemory && text && text.length <= 220 && __imgEditRe.test(text) && !__IMGF_NOT_RE.test(text) && !__IMGF_NEW_RE.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text));
-    if(text && !cur.adMode && (__IMG_UPGRADE || __IMG_FOLLOW || __ATT_EDIT || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || (__IMG_UPGRADE && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
+    if(text && !cur.adMode && (__IMG_UPGRADE || __IMG_FOLLOW || __ATT_EDIT || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || (__IMG_UPGRADE && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
       chatPhase('🖼️', __IMG_UPGRADE ? (lang === 'ar' ? 'جاري ترقية المشهد…' : 'Upgrading the scene…') : (lang === 'ar' ? 'جاري تعديل الصورة…' : 'Editing image…'), thinkingDiv);
       const __upgSrc = (!__srcImg && __IMG_UPGRADE && !(cur.lastEditedImage && cur.lastEditedImage.b64)) ? __IMG_UPGRADE_SRC : null;
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : (__upgSrc ? ((__upgSrc.dataUrl || '').split(',')[1] || '') : ((cur.lastEditedImage && cur.lastEditedImage.b64) || ''));
