@@ -472,25 +472,74 @@ async function tavilyRaw(query, foreign) {
 const LIVE_DOWN = 'تعذّر البحث الحيّ الآن';
 async function liveSearch(query, foreign, countryCode, cityName) {
     const dealsRe = /عرو|تخفيض|خصم|سيل|أوفر|تنزيل|deal|offer|discount|sale|promo/i;
+    const isDeals = dealsRe.test(query);
+
+    // للعروض: نبني query يتضمن البلد والمدينة بشكل صريح
     let searchQuery = query;
-    if (dealsRe.test(query) && countryCode && countryCode.length === 2) {
-      let cName = ''; try { cName = new Intl.DisplayNames(['en'], { type: 'region' }).of(countryCode.toUpperCase()) || ''; } catch(e) {}
-      if (cName && !query.toLowerCase().includes(cName.toLowerCase())) { searchQuery = query + ' ' + cName + ' site:instagram.com OR site:snapchat.com OR site:tiktok.com'; }
+    if (isDeals) {
+      let cName = '';
+      if (countryCode && countryCode.length === 2) {
+        try { cName = new Intl.DisplayNames(['en'], { type: 'region' }).of(countryCode.toUpperCase()) || ''; } catch(e) {}
+      }
+      if (!cName) cName = 'United Arab Emirates'; // افتراضي إمارات
+      const loc = [cityName, cName].filter(Boolean).join(' ');
+      if (!query.toLowerCase().includes(cName.toLowerCase())) {
+        searchQuery = 'deals discounts offers ' + loc + ' ' + query.replace(/عروض?ات?|عرض|خصم|تخفيض/g, '').trim();
+      }
     }
-  const chain = [
-    ['perplexity', function () { return pplxSearch(searchQuery || query); }],
-    ['google', function () { return gcseSearch(searchQuery || query); }],
-    ['tavily', function () { return tavilyRaw(searchQuery || query, foreign); }],
-  ];
-  const failed = [];
-  for (const pair of chain) {
-    let out = null;
-    try { out = await pair[1](); } catch (e) { console.warn('[live] ' + pair[0] + ' ' + (e && e.message)); }
-    if (out) return out;
-    failed.push(pair[0]);
-  }
-  return LIVE_DOWN + ' (سقط: ' + failed.join(' · ') + '). قل للمستخدم صراحةً إنّك لم تتمكّن من البحث، ولا تجب من ذاكرتك عن أسعار أو أنظمة.';
-}
+
+    // للعروض: Tavily أولاً لأنه يدعم فلتر البلد
+    if (isDeals) {
+      const dealsCountry = (() => {
+        if (!countryCode || countryCode.length !== 2) return 'united arab emirates';
+        const map = { AE:'united arab emirates', SA:'saudi arabia', US:'united states', GB:'united kingdom', FR:'france', DE:'germany', IN:'india', PK:'pakistan', EG:'egypt', JO:'jordan', KW:'kuwait', QA:'qatar', BH:'bahrain', OM:'oman' };
+        return map[countryCode.toUpperCase()] || 'united arab emirates';
+      })();
+      const chain = [
+        ['tavily-deals', async function() {
+          const key = (process.env.TAVILY_API_KEY || '').trim();
+          if (!key) return null;
+          const r = await timedFetch('https://api.tavily.com/search', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ api_key:key, query: searchQuery, max_results:6, search_depth:'basic', include_answer:true, country: dealsCountry })
+          }, 15000);
+          if (!r.ok) return null;
+          const d = asJSON(r.body);
+          const items = ((d && d.results)||[]).map((x,i)=>(i+1)+'. '+String(x.title||'')+'
+'+String(x.url||'')+'
+'+String(x.content||'').replace(/s+/g,' ').slice(0,300));
+          return items.length ? items.join('
+
+') : null;
+        }],
+        ['perplexity', function(){ return pplxSearch(searchQuery); }],
+        ['google', function(){ return gcseSearch(searchQuery); }],
+      ];
+      const failed = [];
+      for (const pair of chain) {
+        let out = null;
+        try { out = await pair[1](); } catch(e) { console.warn('[live-deals] '+pair[0]+' '+(e&&e.message)); }
+        if (out) return out;
+        failed.push(pair[0]);
+      }
+      return LIVE_DOWN + ' (سقط: '+failed.join(' · ')+')';
+    }
+
+    // غير عروض: الترتيب المعتاد
+    const chain = [
+      ['perplexity', function(){ return pplxSearch(query); }],
+      ['google', function(){ return gcseSearch(query); }],
+      ['tavily', function(){ return tavilyRaw(query, foreign); }],
+    ];
+    const failed = [];
+    for (const pair of chain) {
+      let out = null;
+      try { out = await pair[1](); } catch(e) { console.warn('[live] '+pair[0]+' '+(e&&e.message)); }
+      if (out) return out;
+      failed.push(pair[0]);
+    }
+    return LIVE_DOWN + ' (سقط: '+failed.join(' · ')+')';
+    }
 
 const PRICE_AR = { free: 'مجّانيّ', inexpensive: 'اقتصاديّ', moderate: 'متوسّط', expensive: 'مرتفع', very_expensive: 'فاخر' };
 function placeCards(places) {
