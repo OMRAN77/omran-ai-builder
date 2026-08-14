@@ -472,6 +472,8 @@ module.exports = async (req, res) => {
     }
     // v360 — 🌍 كشف دولة المستخدم من الشبكة لتوجيه البحث الحي عالميًا.
     const geoCode = (req.headers && (req.headers['x-vercel-ip-country'] || req.headers['x-country']) || '').toString().trim().toUpperCase();
+    let geoCity = '';
+    try { geoCity = decodeURIComponent((req.headers && req.headers['x-vercel-ip-city'] || '').toString()).trim(); } catch (e) { geoCity = ''; }
     let geoNameEn = '', geoNameAr = '';
     if (/^[A-Z]{2}$/.test(geoCode)) {
       try { geoNameEn = new Intl.DisplayNames(['en'], { type: 'region' }).of(geoCode) || ''; } catch (e) { /* Intl لا يعرف رمز الدولة — يبقى الاسم فارغًا وهذا مقبول */ }
@@ -487,7 +489,7 @@ module.exports = async (req, res) => {
     // عبر Groq ثم يبحث بالتوازي ويدمج النتائج المكررة.
     if (wantDeep) {
       // v467b: لا نضيف geo suffix إذا الاستعلام طويل (مُثرى بالسياق) — فيه سياق كافي
-      const geoSuffix = (query.length > 120 || !wantsLocalGeo(query)) ? '' : ((geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE'));
+      const geoSuffix = (query.length > 120 || !wantsLocalGeo(query)) ? '' : ((geoCity ? geoCity + ' ' : '') + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE'));
       // 1) توليد استعلامات فرعية بـ Groq
       let subQueries = [query];
       try {
@@ -656,7 +658,7 @@ module.exports = async (req, res) => {
         body: JSON.stringify({
           api_key: apiKey,
           // v467b: geo-suffix فقط للاستعلامات القصيرة بدون سياق. الاستعلامات المُثراة (طويلة) عندها سياق كافي.
-          query: ((query.length > 120 || !wantsLocalGeo(query)) ? query : (query + ' ' + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE'))),
+          query: ((query.length > 120 || !wantsLocalGeo(query)) ? query : (query + ' ' + (geoCity ? geoCity + ' ' : '') + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE'))),
           ...(wantsLocalGeo(query) ? { country: (geoNameEn ? geoNameEn.toLowerCase() : 'united arab emirates') } : {}),
           search_depth: isListing ? 'advanced' : 'basic',
           include_answer: true,
@@ -666,7 +668,7 @@ module.exports = async (req, res) => {
         }),
       }),
       googleUrl ? fetch(googleUrl).catch(() => null) : Promise.resolve(null),
-      fetchSocial(apiKey, (wantsLocalGeo(query) ? (query + ' ' + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE')) : query)),
+      fetchSocial(apiKey, (wantsLocalGeo(query) ? (query + ' ' + (geoCity ? geoCity + ' ' : '') + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE')) : query)),
       isPlaces ? fetchPlaces(placesKey, query, lang, (regionOf(query) || geoCode)) : Promise.resolve([]),
     ]);
 
@@ -749,7 +751,7 @@ module.exports = async (req, res) => {
 
     // v612 — استعلام الصور وحده يحمل الدولة؛ النصّ والمصادر لا تُمسّ.
     const imgQuery = (query.length > 120 || !wantsLocalGeo(query))
-      ? query : (query + ' ' + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE'));
+      ? query : (query + ' ' + (geoCity ? geoCity + ' ' : '') + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE'));
     let images = wantImages && Array.isArray(data.images) ? data.images.slice(0, 4) : [];
     // v610 — صور الشريط كانت من Tavily وحده، وهو ساقط حيًّا، فيخرج الشريط فارغًا.
     // احتياطيّ: صور Google Custom Search بالمفتاح الموجود نفسه (بلا شراء جديد).
