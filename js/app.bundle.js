@@ -13183,7 +13183,8 @@ function deterministicSocialReply(raw){
   if(/صباح الخير/i.test(s)) return 'صباح النور';
   if(/مساء الخير/i.test(s)) return 'مساء النور';
   if(english) return 'Hello!';
-  return 'هلا وغلا';
+  if(/هلا\s+هلا|هلا\s+وهلا|هلا\s+والله|هلا\s+يا|هلا\s+غلا/i.test(s)) return 'هلا بك والله! 😊 كيف أقدر أساعدك؟';
+  return 'هلا وغلا! كيف أقدر أساعدك اليوم؟';
 }
 
 function latestOriginalUserImage(cur){
