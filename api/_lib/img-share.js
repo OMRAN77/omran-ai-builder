@@ -24,7 +24,9 @@ module.exports = async (req, res) => {
     const isCrawler = /facebookexternalhit|WhatsApp|Twitterbot|TelegramBot|Discordbot|Slackbot|LinkedInBot|SkypeUriPreview|Pinterest|vkShare|redditbot|Iframely|embedly|Applebot|Viber|Line\/|Googlebot|bingbot|Snapchat|Instagram/i.test(ua);
     const forceRaw = /\.raw\./i.test(rawId) || String((req.query && req.query.raw) || '') === '1';
     const wantRaw = (forceRaw || /\.(jpe?g|png|webp)$/i.test(rawId)) && !(isCrawler && !forceRaw);
-    const id = rawId.replace(/[^a-f0-9]/g, '').slice(0, 24);
+    // v639 — عيب مقيس: النزع الأعمى للأحرف يخلط لاحقة المسار بالمعرّف
+    // (`<id>.raw.jpg` → المعرّف + `a` من «raw» ⇒ 404). نأخذ أوّل مقطع ستّ عشريّ فقط.
+    const id = String((rawId.match(/^[a-f0-9]{6,24}/i) || [''])[0]).toLowerCase();
     if (!id) { res.status(400).json({ error: 'Missing id' }); return; }
     const raw = await kvGetRaw(KEY(id));
     if (!raw) { res.status(404).json({ error: 'not_found' }); return; }
@@ -32,6 +34,8 @@ module.exports = async (req, res) => {
     const i = s.indexOf(':');
     const mime = i > 0 ? s.slice(0, i) : 'image/jpeg';
 
+    // v639 — عيب مقيس حيًّا: بلا Vary خزّن CDN صفحة الزاحف وقدّمها للبشر.
+    res.setHeader('Vary', 'User-Agent');
     if (wantRaw) {
       const buf = Buffer.from(s.slice(i + 1), 'base64');
       res.setHeader('Content-Type', mime);
@@ -68,7 +72,7 @@ module.exports = async (req, res) => {
       + '<a href="' + abs + '" download="image-' + id + '.' + ext + '">تنزيل الصورة</a>'
       + '</body></html>';
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=600, stale-while-revalidate=86400');
+    res.setHeader('Cache-Control', 'public, max-age=300');
     res.status(200).send(html);
     return;
   }
