@@ -229,24 +229,39 @@ function socialQuery(query) {
 }
 
 async function fetchSocial(apiKey, query) {
-  try {
-    const r = await fetch('https://api.tavily.com/search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        api_key: apiKey,
-        query: socialQuery(query),
-        include_domains: ['instagram.com', 'tiktok.com', 'snapchat.com', 'youtube.com', 'x.com', 'twitter.com'],
-        search_depth: 'basic',
-        include_answer: false,
-        max_results: 12,
-      }),
-    });
-    if (!r.ok) return [];
-    const j = await r.json();
-    return pickSocial(j.results, true);
-  } catch (e) { return []; }
-}
+    // ⚠️ Tavily قد يرفض بـ 432 (حصة الخطة). بديل: Google CSE مقيّد على منصات التواصل.
+    try {
+      const r = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: apiKey,
+          query: socialQuery(query),
+          include_domains: ['instagram.com', 'tiktok.com', 'snapchat.com', 'youtube.com', 'x.com', 'twitter.com'],
+          search_depth: 'basic',
+          include_answer: false,
+          max_results: 12,
+        }),
+      });
+      if (r.ok) {
+        const j = await r.json();
+        const picked = pickSocial(j.results, true);
+        if (picked.length) return picked;
+      }
+    } catch (e) { /* نكمل للبديل */ }
+    // بديل Google CSE
+    try {
+      const gKey = process.env.GOOGLE_SEARCH_API_KEY;
+      const gCx = process.env.GOOGLE_SEARCH_CX;
+      if (!gKey || !gCx) return [];
+      const q = socialQuery(query) + ' site:instagram.com OR site:tiktok.com';
+      const gr = await fetch('https://www.googleapis.com/customsearch/v1?key=' + gKey + '&cx=' + gCx + '&q=' + encodeURIComponent(q) + '&num=8');
+      if (!gr.ok) return [];
+      const gj = await gr.json();
+      const items = ((gj && gj.items) || []).map(it => ({ url: it.link, title: it.title, score: null }));
+      return pickSocial(items, true);
+    } catch (e) { return []; }
+    }
 
 // يدمج مصدرين للسوشال، يزيل التكرار، ويقدّم صفحات الحسابات على المنشورات.
 function mergeSocial(a, b) {
@@ -423,26 +438,7 @@ module.exports = async (req, res) => {
       try { body = JSON.parse(body || '{}'); } catch (e) { body = {}; }
     }
     const query = (body && body.query || '').toString().trim();
-    // 🔬 مخرج تشخيص مؤقت لبحث السوشال
-    if (body && body.debugSocial && query) {
-      try {
-        const dq = socialQuery(query);
-        const variants = [
-          ['with-domains', { api_key: apiKey, query: dq, include_domains: ['instagram.com','tiktok.com'], search_depth: 'basic', include_answer: false, max_results: 12 }],
-          ['no-domains',   { api_key: apiKey, query: dq, search_depth: 'basic', include_answer: false, max_results: 12 }],
-          ['site-query',   { api_key: apiKey, query: 'site:instagram.com ' + dq, search_depth: 'basic', include_answer: false, max_results: 12 }],
-        ];
-        const outAll = [];
-        for (const pair of variants) {
-          const dr = await fetch('https://api.tavily.com/search', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(pair[1]) });
-          let dj = null, errText = '';
-          try { dj = await dr.json(); } catch(e2) { errText = 'parse'; }
-          outAll.push({ name: pair[0], status: dr.status, err: (dj && (dj.detail || dj.error)) || errText, n: ((dj && dj.results)||[]).length, urls: ((dj && dj.results)||[]).slice(0,4).map(x=>x.url) });
-        }
-        res.status(200).json({ debug: true, socialQuery: dq, variants: outAll });
-        return;
-      } catch (e) { res.status(200).json({ debug: true, err: String(e && e.message) }); return; }
-    }
+  
     if (!query) {
       res.status(400).json({ error: 'Missing query' });
       return;
