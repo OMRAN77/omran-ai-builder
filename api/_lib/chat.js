@@ -470,11 +470,17 @@ async function tavilyRaw(query, foreign) {
 }
 
 const LIVE_DOWN = 'تعذّر البحث الحيّ الآن';
-async function liveSearch(query, foreign) {
+async function liveSearch(query, foreign, countryCode) {
+    const dealsRe = /عرو|تخفيض|خصم|سيل|أوفر|تنزيل|deal|offer|discount|sale|promo/i;
+    let searchQuery = query;
+    if (dealsRe.test(query) && countryCode && countryCode.length === 2) {
+      let cName = ''; try { cName = new Intl.DisplayNames(['en'], { type: 'region' }).of(countryCode.toUpperCase()) || ''; } catch(e) {}
+      if (cName && !query.toLowerCase().includes(cName.toLowerCase())) { searchQuery = query + ' ' + cName + ' site:instagram.com OR site:snapchat.com OR site:tiktok.com'; }
+    }
   const chain = [
-    ['perplexity', function () { return pplxSearch(query); }],
-    ['google', function () { return gcseSearch(query); }],
-    ['tavily', function () { return tavilyRaw(query, foreign); }],
+    ['perplexity', function () { return pplxSearch(searchQuery || query); }],
+    ['google', function () { return gcseSearch(searchQuery || query); }],
+    ['tavily', function () { return tavilyRaw(searchQuery || query, foreign); }],
   ];
   const failed = [];
   for (const pair of chain) {
@@ -530,7 +536,7 @@ async function tavilySearch(query, reC, plateAsk) {
   const places = (foreign && !isPlacesAsk(query)) ? [] : await fetchPlaces(process.env.GOOGLE_PLACES_API_KEY, query, 'ar', foreign ? regionOf(query) : '');
   if (places.length) return placeCards(places);
 
-  const live = await liveSearch(query, foreign);
+  const live = await liveSearch(query, foreign, country);
   if (foreign && live.indexOf(LIVE_DOWN) === 0) {
     let back = [];
     try { back = await fetchPlaces(process.env.GOOGLE_PLACES_API_KEY, query, 'ar', regionOf(query)); } catch (e) { console.warn('[live] places ' + (e && e.message)); }
