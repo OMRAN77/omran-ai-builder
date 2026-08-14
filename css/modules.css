@@ -379,3 +379,12 @@ html[data-mode="light"] #videoMakerModal .vmk-main label[data-i18n],
 html[data-mode="light"] #videoMakerModal details.vmk-adv>summary,
 html[data-mode="light"] #eduHubModal .eduHintTxt,
 html[data-mode="light"] #eduHubModal .eduNote{color:var(--muted) !important;}
+
+
+    /* ═══ إخفاء قسم الأدوات من الشاشة ═══ */
+    [data-omnav="tools"]   { display: none !important; }
+    #omranToolsGrid        { display: none !important; }
+    #omranQuickMobileWrap  { display: none !important; }
+    #sectionsToolsOverlay  { display: none !important; }
+    #btnToolsBox           { display: none !important; }
+    
