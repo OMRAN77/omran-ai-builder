@@ -4825,7 +4825,7 @@ function renderMessages(keepScroll){
           };
           if(m.role !== 'user' && !a._fromMemory && window.__omranImgTools){
             const ibox = document.createElement('div');
-            ibox.style.cssText = 'position:relative;display:block;min-width:0;width:fit-content;max-width:min(460px,100%);max-height:62vh';
+            ibox.style.cssText = 'position:relative;display:block;min-width:0;width:fit-content;max-width:min(460px,100%)';
             ibox.appendChild(img); window.__omranImgTools(ibox, a.dataUrl); wrap.appendChild(ibox);
           } else wrap.appendChild(img);
         } else {
@@ -11864,6 +11864,8 @@ window.__omranImgTools = function(wrap, dataUrl){
       + '.msg.assistant.oImgMsg .oImgBox{max-width:100%}'
       + '.msg.assistant.oImgMsg .oImgBox>img{max-width:100%;border-radius:12px}'
       + '.oImgGrp{display:flex;align-items:center;gap:10px}'
+      + '.oSendOut svg{width:17px;height:17px}'
+      + '.oSendBar{display:flex;align-items:center;gap:12px;margin-top:8px}'
       + '@media (max-width:640px){'
       +   '.oImgBox>img{max-height:70vh}'
       + '}';
@@ -12138,9 +12140,27 @@ window.__omranImgTools = function(wrap, dataUrl){
     flash(b, '<span>' + (ar ? 'جاهزة' : 'Ready') + '</span>');
     const p = $('#prompt'); if(p){ p.focus(); p.placeholder = ar ? 'اكتب التعديل المطلوب على هذي الصورة…' : 'Describe the edit you want…'; }
   });
-  // 📤 v634 — أمر عمران «شي نظيف»: «تعديل» و«إرسال» زرّان متماثلان في صفّ واحد
-  // تحت الصورة (خارجها) على الكمبيوتر والجوّال معًا. لا زرّ سابح ولا شريط منفصل.
-  mk('txt', '<span>' + (ar ? 'إرسال' : 'Send') + '</span>', ar ? 'إرسال الصورة' : 'Send image', () => { openSheet(); });
+  // 📤 v635 — أمر عمران «زرّ الإرسال حطه هني جنبهم»: الإرسال يسكن شريط أزرار
+  // الرسالة نفسه (بعد النسخ/الإعجاب) بنفس شكلهم وحجمهم؛ «تعديل» يبقى تحت الصورة.
+  // رسالة الصورة بلا نصّ لا تبني شريطًا ⇒ أُنشئ شريطًا بنفس الصنف.
+  const mountSend = () => {
+    const mb = wrap.closest && wrap.closest('.msg.assistant');
+    if(!mb || mb.__oSendMounted) return;
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'oSendOut';
+    b.title = ar ? 'إرسال الصورة' : 'Send image';
+    b.setAttribute('aria-label', b.title);
+    b.innerHTML = svg('share');
+    b.onclick = (e) => { if(e && e.stopPropagation) e.stopPropagation(); openSheet(); };
+    const abar = mb.querySelector('.msgActionBar');
+    if(abar) abar.appendChild(b);
+    else {
+      const nb = document.createElement('div'); nb.className = 'msgActionBar oSendBar';
+      nb.appendChild(b); mb.appendChild(nb);
+    }
+    mb.__oSendMounted = 1;
+  };
+  mountSend(); setTimeout(mountSend, 0); setTimeout(mountSend, 350);
   wrap.classList.add('oImgBox');
   // 🧊 v583 — الصورة تعيش داخل صندوق المحادثة، لا سابحة خارجه (أمر عمران).
   // وقت الاستدعاء يكون العنصر خارج شجرة الصفحة ⇒ closest = null، فيلزم وسم مؤجَّل.
@@ -12150,7 +12170,9 @@ window.__omranImgTools = function(wrap, dataUrl){
   try{
     const im = wrap.querySelector('img');
     const r = im ? getComputedStyle(im).borderRadius : '';
-    if(r && r !== '0px'){ wrap.style.borderRadius = r; wrap.style.overflow = 'hidden'; }
+    // 🔓 v635 — overflow:hidden كان يقصّ صفّ «تعديل» تحت الصورة. الصورة نفسها
+    //    تحمل border-radius من CSS ⇒ لا حاجة لقصّ الحاوية.
+    if(r && r !== '0px'){ wrap.style.borderRadius = r; }
   }catch(e){}
   wrap.appendChild(bar);
 };
