@@ -4722,9 +4722,9 @@ function renderMessages(keepScroll){
     }
     // 🖼️ Feature ② — image strip ABOVE the reply text: up to 4 live images
     // returned by the search backend, ChatGPT-style horizontal scroller.
-    // 🚫 v547 — شريط صور البحث مُطفأ: الصور كانت تُجلب من بحث صور عامّ على
-    // الويب المفتوح بلا تدقيق مصدر ولا موضوع. لإعادته: SEARCH_IMG_ON = true.
-    const SEARCH_IMG_ON = false;
+    // 🖼️ v610 — أُعيد فتحه بأمر عمران: شريط الصور فوق الردّ مثل ChatGPT.
+    // الصور تأتي من مزوّد البحث نفسه (Tavily، ومعه احتياطيّ Google CSE بـsafe=active).
+    const SEARCH_IMG_ON = true;
     if(SEARCH_IMG_ON && m.role !== 'user' && Array.isArray(m.searchImages) && m.searchImages.length){
       const imgStrip = document.createElement('div');
       imgStrip.className = 'msgSearchImgStrip';
@@ -14174,6 +14174,11 @@ async function sendPrompt(){
               msg.content = st.target;
               const el = messagesEl.querySelector('[data-askuid="' + msg._uid + '"]');
               if(el) el.textContent = st.target.slice(0, st.shown);
+              // v610 — الحركة تكتب النصّ خامًّا بـtextContent، فروابط الماركداون
+              // تبقى عارية حتّى الرسم النهائيّ. ولو بُتر الردّ أو تعطّل الإنهاء
+              // لم يأتِ ذلك الرسم أبدًا فبقيت خامًا (عيب رآه عمران). عند لحاق
+              // الحركة نعيد الرسم المصيَّر مرّة واحدة، ونعيده متى زاد النصّ.
+              if(st.shown >= st.target.length && !st._flushed){ st._flushed = 1; renderMessages(true); }
             } else if(st.done){
               clearInterval(st.timer);
               st.timer = null;
@@ -14211,6 +14216,7 @@ async function sendPrompt(){
         const st = revealStates.get(msg._uid);
         if(st){
           st.target = msg.content;
+          st._flushed = 0; // v610 — نصّ جديد يستحقّ رسمًا مصيَّرًا جديدًا
           st.done = true;
           ensureRevealTimer(msg);
           // v310: حفظ فوري للرد الكامل — لا ننتظر نهاية حركة الكتابة.
@@ -14244,6 +14250,7 @@ async function sendPrompt(){
           const stripped = liveStripCode(partial);
           if(st.target && stripped.length < st.target.length) st.shown = Math.min(st.shown, Math.max(0, stripped.length - 1));
           st.target = stripped;
+          st._flushed = 0; // v610 — نصّ جديد يستحقّ رسمًا مصيَّرًا جديدًا
         };
         try{
           const reply = await callWithWatchdog(p.key, apiMessages, onDelta, 75000, 180000);
