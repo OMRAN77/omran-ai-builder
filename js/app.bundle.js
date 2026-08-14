@@ -12132,7 +12132,7 @@ window.__omranImgTools = function(wrap, dataUrl){
         : (ar ? 'تعذّر تحضير الرابط — «تنزيل الصورة» يعمل دائمًا' : 'Link failed — Download still works');
     });
   };
-  // 🔗 v631 — أمر عمران: زرّ المشاركة على الصورة محذوف (كان يرسل رابطًا لا صورة).
+  mk('ico', svg('share'), ar ? 'مشاركة' : 'Share', () => openSheet(), grp);
   // يمين: «تعديل» نصّ فقط
   mk('txt', '<span>' + (ar ? 'تعديل' : 'Edit') + '</span>', ar ? 'تعديل' : 'Edit', (b) => {
     pendingAttachments.push({ name: 'edit-' + Date.now() + '.png', isImage: true, mime: dataUrl.slice(5).split(';')[0] || 'image/png', dataUrl: dataUrl });
