@@ -11794,22 +11794,20 @@ window.__omranImgTools = function(wrap, dataUrl){
       + '.oImgBtn{pointer-events:auto;display:inline-flex;align-items:center;justify-content:center;height:40px;border:0;border-radius:999px;font-family:inherit;font-size:15px;font-weight:600;line-height:1;color:#fff;background:rgba(0,0,0,.38);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);cursor:pointer;transition:background .16s ease,transform .12s ease}'
       + '.oImgBtn.txt{padding:0 20px}'
       + '.oImgBtn.ico{width:40px;padding:0}'
-      + '.oImgGrp{display:flex;align-items:center;gap:10px}'
       + '.oImgBtn:hover{background:rgba(0,0,0,.55)}'
       + '.oImgBtn:active{transform:scale(.94)}'
       + '.oImgBtn svg{width:21px;height:21px;flex:none}'
       + '.msg.assistant.oImgMsg{background:rgba(255,255,255,.07) !important;border:1px solid rgba(255,255,255,.08) !important;border-radius:var(--r-3,18px) !important;padding:10px 13px 12px !important;width:-moz-fit-content;width:fit-content;max-width:min(486px,100%);box-sizing:border-box;overflow:hidden}'
       + 'html[data-mode="light"] .msg.assistant.oImgMsg{background:rgba(0,0,0,.05) !important;border-color:rgba(0,0,0,.09) !important}'
-      // 📱 v622 — على الشاشات الضيّقة كان الشريط العائم يغطّي أسفل الصورة نفسها
-      //    (مقيس من لقطة عمران: «تعديل» و«حفظ» فوق سطور الدعاء). الحلّ: ينزل تحتها.
-      + '@media (max-width:640px){'
-      +   '.oImgBar{position:static;left:auto;right:auto;bottom:auto;margin-top:9px;justify-content:flex-start;gap:10px;pointer-events:auto}'
-      +   '.oImgBox>img{max-height:70vh}'
-      + '}'
       + '.msg.assistant.oImgMsg .msg-text{margin:0 0 9px;padding:0;min-width:0;overflow-wrap:break-word}'
       + '.msg.assistant.oImgMsg .msg-attachments{margin:0;min-width:0;max-width:100%}'
       + '.msg.assistant.oImgMsg .oImgBox{max-width:100%}'
-      + '.msg.assistant.oImgMsg .oImgBox>img{max-width:100%;border-radius:12px}';
+      + '.msg.assistant.oImgMsg .oImgBox>img{max-width:100%;border-radius:12px}'
+      + '.oImgGrp{display:flex;align-items:center;gap:10px}'
+      + '@media (max-width:640px){'
+      +   '.oImgBar{position:static;left:auto;right:auto;bottom:auto;margin-top:9px;justify-content:flex-start;gap:10px;pointer-events:auto}'
+      +   '.oImgBox>img{max-height:70vh}'
+      + '}';
     document.head.appendChild(st);
   }
   const ICON = {
@@ -11831,42 +11829,56 @@ window.__omranImgTools = function(wrap, dataUrl){
     b.innerHTML = html;
     setTimeout(() => { b.innerHTML = prev; }, 1400);
   };
-  // 🔗 v624 — أمر عمران: «زرّ التنزيل احذفه نهائيًّا · زرّ المشاركة لا يعمل».
-  //    السبب المقيس: الشرط كان يطلب navigator.canShare وهي غائبة في متصفّحات
-  //    غير Chrome ⇒ المشاركة ما تُحاوَل وتسقط صامتة. الآن: ورقة النظام أوّلًا ·
-  //    ثمّ الحافظة · وكل فشل يُنبَّه مرئيًّا (صفر صمت). زرّ التنزيل مُزال.
+  // 🔗 v625 — أمر عمران: «زرّ التنزيل احذفه نهائيًّا · زرّ المشاركة لا يعمل».
+  //    مقيس على جهاز عمران: مشاركة الملفّات ونسخ الصور مسدودان في متصفّحه ⇒
+  //    الزرّ كان ينتهي بتنبيه بلا فعل. الآن أربع مراحل بلا صمت:
+  //    ١ ورقة النظام — بلا شرط canShare (ترجع false خطأً في متصفّحات غير Chrome)
+  //    ٢ الحافظة · ٣ فتح الصورة في صفحة مستقلّة (blob) حيث الضغط المطوّل يعطي
+  //    «مشاركة» أصليّة · ٤ تنبيه أخير. زرّ التنزيل مُزال نهائيًّا (أمر عمران).
   // ⚠️ v592 — connect-src لا يسمح بـ data: ⇒ التحويل محلّيّ بـ atob (صفر شبكة).
   const grp = document.createElement('div'); grp.className = 'oImgGrp'; bar.appendChild(grp);
   const nmOf = () => 'image-' + Date.now() + '.png';
   const toBlob = (du) => { const s = String(du), i = s.indexOf(','), m = (s.slice(0, i).match(/:([^;,]+)/) || [])[1] || 'image/png', bin = atob(s.slice(i + 1)), u8 = new Uint8Array(bin.length); for(let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k); return new Blob([u8], { type: m }); };
-  const note = (m) => { try{ if(typeof settingsToast === 'function'){ settingsToast(m); return true; } }catch(e){ __swallow(e, 'note:app-09-attach#v624'); } return false; };
-  const hint = () => note(ar ? 'اضغط مطوّلًا على الصورة لمشاركتها' : 'Long-press the image to share it');
+  const note = (m) => { try{ if(typeof settingsToast === 'function'){ settingsToast(m); return true; } }catch(e){ __swallow(e, 'note:app-09-attach#v625'); } return false; };
+  const openFull = (bl) => {
+    try{
+      if(!bl) return false;
+      const u = URL.createObjectURL(bl);
+      const w = window.open(u, '_blank');
+      if(w){
+        setTimeout(() => { try{ URL.revokeObjectURL(u); }catch(e){} }, 60000);
+        note(ar ? 'فتحت الصورة في صفحة مستقلّة — اضغط عليها مطوّلًا ثمّ «مشاركة»' : 'Image opened in a new tab — long-press it, then Share');
+        return true;
+      }
+      try{ URL.revokeObjectURL(u); }catch(e){}
+    }catch(e){ __swallow(e, 'openFull:app-09-attach#v625'); }
+    return false;
+  };
+  const hint = (bl) => { if(openFull(bl)) return; note(ar ? 'اضغط مطوّلًا على الصورة ثمّ «مشاركة»' : 'Long-press the image, then Share'); };
   const copyImg = (b, bl) => {
     try{
       if(bl && navigator.clipboard && window.ClipboardItem && navigator.clipboard.write){
         navigator.clipboard.write([new ClipboardItem({ [bl.type || 'image/png']: bl })])
           .then(() => { flash(b, svg('done')); note(ar ? 'نُسخت الصورة — الصقها في أيّ محادثة' : 'Image copied — paste it anywhere'); })
-          .catch((e) => { __swallow(e, 'copy:app-09-attach#v624'); hint(); });
+          .catch((e) => { __swallow(e, 'copy:app-09-attach#v625'); hint(bl); });
         return;
       }
-    }catch(e){ __swallow(e, 'copy:app-09-attach#v624'); }
-    hint();
+    }catch(e){ __swallow(e, 'copy:app-09-attach#v625'); }
+    hint(bl);
   };
   mk('ico', svg('share'), ar ? 'مشاركة' : 'Share', (b) => {
     let bl = null, f = null;
     try{ bl = toBlob(dataUrl); f = new File([bl], nmOf(), { type: bl.type || 'image/png' }); }
-    catch(e){ __swallow(e, 'share:app-09-attach#v624'); }
+    catch(e){ __swallow(e, 'share:app-09-attach#v625'); }
     const nv = navigator;
     // بلا await قبل share — الإيماء يضيع فتبطل المشاركة
-    // canShare غائبة في متصفّحات غير Chrome ⇒ غيابها لا يمنع المحاولة
-    const okFiles = !!f && (typeof nv.canShare !== 'function' || nv.canShare({ files: [f] }));
-    if(f && typeof nv.share === 'function' && okFiles){
+    if(f && typeof nv.share === 'function'){
       try{
         const pr = nv.share({ files: [f] });
-        if(pr && pr.then){ pr.then(() => flash(b, svg('done'))).catch((err) => { if(err && err.name === 'AbortError') return; __swallow(err, 'share:app-09-attach#v624'); copyImg(b, bl); }); }
+        if(pr && pr.then){ pr.then(() => flash(b, svg('done'))).catch((err) => { if(err && err.name === 'AbortError') return; __swallow(err, 'share:app-09-attach#v625'); copyImg(b, bl); }); }
         else flash(b, svg('done'));
         return;
-      }catch(e){ __swallow(e, 'share:app-09-attach#v624'); }
+      }catch(e){ __swallow(e, 'share:app-09-attach#v625'); }
     }
     copyImg(b, bl);
   }, grp);
@@ -13108,6 +13120,10 @@ async function sendPrompt(){
     if(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && text && __memRefRe.test(text)){
       imageAttachments.push({ isImage: true, name: 'memory.png', mime: cur.lastEditedImage.mime || 'image/png', dataUrl: 'data:' + (cur.lastEditedImage.mime || 'image/png') + ';base64,' + cur.lastEditedImage.b64, _fromMemory: true });
     }
+    // v473c: بعد «وصلتني الصورة» أي رسالة تالية قصيرة تُرفق الصورة المحفوظة تلقائياً
+    if(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && cur.lastMsgWasImageEdit && text && text.length <= 220){
+      imageAttachments.push({ isImage: true, name: 'memory.png', mime: cur.lastEditedImage.mime || 'image/png', dataUrl: 'data:' + (cur.lastEditedImage.mime || 'image/png') + ';base64,' + cur.lastEditedImage.b64, _fromMemory: true });
+    }
   }catch(e){ __swallow(e, "upload:app-09-attach#12"); }
   const __nextUserMessage = {role: 'user', content: (__gateApprovedText || text) || (t('imagesAttachedNote')), attachments: attachmentsForMsg.length ? attachmentsForMsg : undefined, apiText, apiImages: imageAttachments.length ? imageAttachments : undefined};
   if(__editIndex >= 0){
@@ -13609,7 +13625,7 @@ async function sendPrompt(){
     // v579: صورة مرفقة + طلب قصير (مثلًا بعد زرّ «تعديل») = تعديل عليها افتراضيًّا — إلّا سؤال/بحث/فيديو/شكر/صورة جديدة/قراءة-ترجمة-وصف.
     const __ATT_VISION_RE = /(ترجم|translate|اقرأ|اقري|إقرأ|قراءة|\bread\b|وصف|اوصف|صف\s|describe|حلل|حلّل|analyz|قارن|compare)/i;
     const __ATT_EDIT = !!(__srcImg && !__srcImg._fromMemory && text && text.length <= 220 && __imgEditRe.test(text) && !__IMGF_NOT_RE.test(text) && !__IMGF_NEW_RE.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text));
-    if(text && !cur.adMode && (__IMG_UPGRADE || __IMG_FOLLOW || __ATT_EDIT || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || (__IMG_UPGRADE && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
+    if(text && !cur.adMode && (__IMG_UPGRADE || __IMG_FOLLOW || __ATT_EDIT || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || (__IMG_UPGRADE && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
       chatPhase('🖼️', __IMG_UPGRADE ? (lang === 'ar' ? 'جاري ترقية المشهد…' : 'Upgrading the scene…') : (lang === 'ar' ? 'جاري تعديل الصورة…' : 'Editing image…'), thinkingDiv);
       const __upgSrc = (!__srcImg && __IMG_UPGRADE && !(cur.lastEditedImage && cur.lastEditedImage.b64)) ? __IMG_UPGRADE_SRC : null;
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : (__upgSrc ? ((__upgSrc.dataUrl || '').split(',')[1] || '') : ((cur.lastEditedImage && cur.lastEditedImage.b64) || ''));
