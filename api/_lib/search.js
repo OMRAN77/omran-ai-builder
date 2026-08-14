@@ -98,6 +98,42 @@ const SOCIAL_PLATFORMS = [
 ];
 
 // يلتقط روابط المنصّات من أي قائمة نتائج ويسمّيها بالعربي.
+// v611 — مغذٍّ حيّ بديل. قياس حيّ ١٤ أغسطس ٢٠٢٦: Tavily ردّ 432 «تجاوز حصّة
+// الخطّة» وGoogle CSE ردّ 403 «Custom Search JSON API غير مفعّل للمشروع»، فبقي
+// البحث كلّه بلا مصدر وشريط الصور فارغًا. Perplexity (مفتاح المشروع نفسه،
+// مدفوع مسبقًا) يعيد الجواب والنتائج والصور في نداء واحد.
+async function pplxLive(query, wantImages) {
+  const key = (process.env.PERPLEXITY_API_KEY || '').trim();
+  if (!key) return null;
+  try {
+    const r = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+      body: JSON.stringify({
+        model: 'sonar',
+        messages: [{ role: 'user', content: String(query || '').slice(0, 500) }],
+        return_images: !!wantImages,
+        max_tokens: 400,
+      }),
+      signal: AbortSignal.timeout(25000),
+    });
+    if (!r.ok) { console.warn('[search] perplexity HTTP ' + r.status); return null; }
+    const d = await r.json();
+    const answer = ((d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content) || '').trim();
+    const raw = Array.isArray(d.search_results) ? d.search_results : [];
+    const results = withoutRemovedSearchSources(raw.map(s => ({
+      title: withoutRemovedSourceMentions((s && s.title) || ''),
+      url: (s && s.url) || '',
+      content: withoutRemovedSourceMentions(String((s && s.snippet) || '').slice(0, 350)),
+    })).filter(x => /^https?:\/\//.test(x.url)));
+    const images = wantImages && Array.isArray(d.images)
+      ? d.images.map(im => (im && (im.image_url || im.url)) || '')
+          .filter(u => typeof u === 'string' && /^https:\/\//.test(u)).slice(0, 4)
+      : [];
+    return { answer: withoutRemovedSourceMentions(answer), results, images };
+  } catch (e) { console.warn('[search] perplexity ' + (e && e.message)); return null; }
+}
+
 function pickSocial(items) {
     const out = [];
     const seen = new Set();
@@ -411,6 +447,24 @@ module.exports = async (req, res) => {
         deepSources.push({ title: r.title || host, url: r.url });
       });
 
+      // v611 — البحث العميق كان على Tavily وحده؛ عند سقوطه يخرج فارغًا.
+      if (!mergedResults.length) {
+        const dp = await pplxLive(query, wantImages);
+        if (dp) {
+          if (dp.results.length) mergedResults = dp.results;
+          if (dp.answer) answers.push(dp.answer);
+          if (wantImages && dp.images.length) allImages.push(...dp.images);
+          dp.results.forEach(r => {
+            if (deepSources.length >= 10 || !r.url) return;
+            let h = '';
+            try { h = new URL(r.url).hostname.replace(/^www\./, ''); } catch (e) { return; }
+            if (!h || seenHosts.has(h)) return;
+            seenHosts.add(h);
+            deepSources.push({ title: r.title || h, url: r.url });
+          });
+        }
+      }
+
       const deepSocial = mergeSocial(await deepSocialP, pickSocial(mergedResults));
       deepSocial.forEach(sc => { if (deepSources.length < 14) deepSources.push({ title: sc.title, url: sc.url }); });
       res.status(200).json({
@@ -599,6 +653,24 @@ module.exports = async (req, res) => {
         })) : []);
       }
     } catch (e) { /* ignore Google Search parse errors, non-critical */ }
+
+    // v611 — نداء واحد للمغذّي البديل يسدّ ثلاث فجوات معًا: نتائج عند سقوط
+    // Tavily، وصور عند خلوّ الشريط، وجوابًا عند غياب جواب Tavily.
+    if (tavilyDown || (wantImages && !images.length)) {
+      const pplx = await pplxLive(query, wantImages);
+      if (pplx) {
+        if (!images.length && pplx.images.length) images = pplx.images;
+        if (!data.answer && pplx.answer) data.answer = pplx.answer;
+        // القوائم (عقار/سيارات/وظائف) لها بوّابات مجالها أدناه — لا تُخلط.
+        if (!isListing && pplx.results.length) {
+          const seenPplx = new Set(results.map(r => r && r.url));
+          for (const r of pplx.results) {
+            if (results.length >= 8) break;
+            if (r.url && !seenPplx.has(r.url)) { seenPplx.add(r.url); results.push(r); }
+          }
+        }
+      }
+    }
 
     // chat.js يقرأ results وحدها، فلو بقيت فارغة لما رأى المحرّك شيئًا مهما
     // جمع Google Custom Search. عند سقوط Tavily تصير حصيلته هي النتائج؛
