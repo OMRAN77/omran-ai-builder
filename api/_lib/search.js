@@ -660,7 +660,9 @@ module.exports = async (req, res) => {
     // سيارات · وظائف · فنادق · طيران) وما قُيّد بنطاقات، فلا تتغيّر نتيجة قائمة.
     // 🏨 v555: الفنادق تُخدَم بخرائط جوجل أيضًا (أسماء وتقييمات فنادق حقيقيّة)
     // لا بمواقع الحجز وحدها. تبقى في محرّك القوائم كما هي.
-    const isPlaces = !domains && (PLACES_RE.test(query) || HOTEL_RE.test(query)) && (!isListing || HOTEL_RE.test(query));
+    // 🛍️ العروض تفعّل خرائط جوجل تلقائياً: نعرض المتاجر الحقيقية القريبة (أسواق الإمارات، جيفت وي...) مع العروض
+      const DEALS_PLACES_RE = /عروض|تخفيض|خصم|خصومات|تنزيلات|أرخص|ارخص|deals?|offers?|discounts?|sale/i;
+      const isPlaces = !domains && (PLACES_RE.test(query) || HOTEL_RE.test(query) || DEALS_PLACES_RE.test(query)) && (!isListing || HOTEL_RE.test(query) || DEALS_PLACES_RE.test(query));
     const placesKey = (process.env.GOOGLE_PLACES_API_KEY || '').trim();
 
     const gKey = process.env.GOOGLE_SEARCH_API_KEY;
