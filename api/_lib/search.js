@@ -860,6 +860,10 @@ module.exports = async (req, res) => {
           const host = new URL(x.url).hostname.replace(/^www\./, '');
           if (socialHosts.has(host)) return false;
           if (localQ && foreignCcOf(host)) return false;
+          if (localQ) {
+            const mPath = String(new URL(x.url).pathname||'').toLowerCase().match(/^\/([a-z]{2})(?:\/|$)/);
+            if (mPath && CC_LIST.includes(mPath[1]) && mPath[1] !== userCc) return false; // tsawq.net/sa
+          }
           return true;
         } catch (e) { return true; }
       }).slice(0, 8);
