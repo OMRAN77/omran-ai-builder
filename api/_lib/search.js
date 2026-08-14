@@ -175,7 +175,7 @@ async function pplxLive(query, wantImages) {
   } catch (e) { console.warn('[search] perplexity ' + (e && e.message)); return null; }
 }
 
-function pickSocial(items) {
+function pickSocial(items, trusted) {
     const out = [];
     const seen = new Set();
     (Array.isArray(items) ? items : []).forEach(it => {
@@ -189,7 +189,7 @@ function pickSocial(items) {
       // مُقاس على الإنتاج: درجة Tavily تفصل بدقّة بين الصلة والضجيج
       // (مطعم برجر «جدة» = 0.45 · حساب رسمي @AlWaslSC = 0.40). لذلك عتبتان.
       const sc = (typeof it.score === 'number') ? it.score : null;
-      if (sc !== null && sc < (handle ? 0.38 : 0.50)) return;
+      if (!trusted && sc !== null && sc < (handle ? 0.38 : 0.50)) return;
       // منشور لا حساب: الميزة اسمها «حسابات التواصل»، وبطاقة منشور تظهر بعنوان
       // مبتور بلا معنى («#viral #fyp…»). بلا معرّف يُرفض المنشور، ومع معرّف
       // يُقصّ الرابط إلى صفحة الحساب نفسها — وهذا يسقط ?hl=en ويوحّد الروابط.
@@ -243,7 +243,7 @@ async function fetchSocial(apiKey, query) {
     });
     if (!r.ok) return [];
     const j = await r.json();
-    return pickSocial(j.results);
+    return pickSocial(j.results, true);
   } catch (e) { return []; }
 }
 
