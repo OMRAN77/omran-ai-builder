@@ -417,19 +417,19 @@
         <option value="birthday" data-i18n="portraitStyleBirthday">🎂 إطار عيد ميلاد</option>
         <option value="newborn" data-i18n="portraitStyleNewborn">👶 تهنئة مولود جديد</option>
         </optgroup>
-        <optgroup label="🆕 ستايلات جديدة">
-        <option value="claymation">🏺 صلصال متحرك (كلاي)</option>
-        <option value="lowpoly">🔷 ثلاثي الأبعاد هندسي (Low Poly)</option>
-        <option value="graffiti">🎨 جرافيتي شوارع</option>
-        <option value="mosaic">🧩 فسيفساء</option>
-        <option value="stainedglass">🪟 زجاج معشّق</option>
-        <option value="papercraft">📄 فن الورق الطبقي</option>
-        <option value="crochet">🧶 دمية كروشيه</option>
-        <option value="inflatable">🎈 مجسّم بالون لامع</option>
-        <option value="ukiyoe">🌊 طباعة يابانية قديمة</option>
-        <option value="sandart">🏜️ رسم بالرمل الخليجي</option>
-        <option value="neonsign">💡 نيون مضيء</option>
-        <option value="doubleexposure">🌆 تعريض مزدوج فني</option>
+        <optgroup label="🆕 ستايلات جديدة" data-i18n="[label]portraitGrpNew">
+        <option value="claymation" data-i18n="portraitStyleClaymation">🏺 صلصال متحرك (كلاي)</option>
+        <option value="lowpoly" data-i18n="portraitStyleLowpoly">🔷 ثلاثي الأبعاد هندسي (Low Poly)</option>
+        <option value="graffiti" data-i18n="portraitStyleGraffiti">🎨 جرافيتي شوارع</option>
+        <option value="mosaic" data-i18n="portraitStyleMosaic">🧩 فسيفساء</option>
+        <option value="stainedglass" data-i18n="portraitStyleStainedglass">🪟 زجاج معشّق</option>
+        <option value="papercraft" data-i18n="portraitStylePapercraft">📄 فن الورق الطبقي</option>
+        <option value="crochet" data-i18n="portraitStyleCrochet">🧶 دمية كروشيه</option>
+        <option value="inflatable" data-i18n="portraitStyleInflatable">🎈 مجسّم بالون لامع</option>
+        <option value="ukiyoe" data-i18n="portraitStyleUkiyoe">🌊 طباعة يابانية قديمة</option>
+        <option value="sandart" data-i18n="portraitStyleSandart">🏜️ رسم بالرمل الخليجي</option>
+        <option value="neonsign" data-i18n="portraitStyleNeonsign">💡 نيون مضيء</option>
+        <option value="doubleexposure" data-i18n="portraitStyleDoubleexposure">🌆 تعريض مزدوج فني</option>
         </optgroup>
         <optgroup label="🔥 رائجة" data-i18n="[label]portraitGrpTrending">
         <option value="figurine" data-i18n="portraitStyleFigurine">🧸 مجسّم أكشن في علبة</option>
