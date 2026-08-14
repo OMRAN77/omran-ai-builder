@@ -224,6 +224,84 @@ function mergeSocial(a, b) {
   return out.slice(0, 4);
 }
 
+// 📍 v617 — كاشف أسئلة الأماكن ورمز الدولة: رُفِعا إلى مستوى الوحدة لتستعملهما
+// الدردشة أيضًا. قبلها كان سؤال أماكن خارج الإمارات لا يستدعي الخرائط أصلًا.
+const PLACES_RE = /مطعم|مطاعم|مطاعمه|مقهى|مقاهي|كافيه|كافيهات|كوفي|بوفيه|مخبز|مخابز|حلويات|صيدلي(ة|ات)|مستشفى|مستشفيات|عياد(ة|ات)|طبيب|أطباء|دكتور|أسنان|صالون|حلاق|مشغل|سبا|جيم|نادي رياضي|صالة رياضية|مول|مولات|أسواق|متجر|بقالة|سوبرماركت|هايبر|محطة وقود|بنزين|حديق(ة|ات)|متحف|متاحف|شاطئ|شواطئ|ملاهي|معلم سياحي|معالم|أماكن سياحية|وين أروح|وين اروح|أماكن|مسجد|مساجد|كنيسة|مدرسة|مدارس|حضانة|مغسلة|كراج|ورشة|restaurant|cafe|coffee shop|bakery|pharmacy|hospital|clinic|dentist|salon|barber|spa|gym|mall|supermarket|grocery|gas station|park|museum|beach|attraction|things to do|near me|قريب مني|قريبة مني|بالقرب/i;
+const HOTEL_RE = /فندق|فنادق|منتجع|منتجعات|شاليه|شاليهات|hotel|resort/i;
+function isPlacesAsk(q) { const t = String(q || ''); return !!t && (PLACES_RE.test(t) || HOTEL_RE.test(t)); }
+
+// 🌍 v617 — رمز الدولة من نصّ السؤال لا من موقع المستخدم. «مطاعم باريس» من جهاز
+// إماراتيّ كان يُبحث بـregionCode=AE فتنحاز النتيجة. الدولة المذكورة تغلب دائمًا.
+const REGION_RE = {
+  AE: /الإمارات|الامارات|\buae\b|دبي|dubai|أبوظبي|ابوظبي|أبو ظبي|ابو ظبي|abu ?dhabi|الشارقة|sharjah|عجمان|ajman|رأس الخيمة|راس الخيمة|ras al ?khaim|أم القيوين|ام القيوين|umm al ?quwain|الفجيرة|fujairah|العين|al ?ain|خورفكان/i,
+  SA: /السعود|سعودي|saudi|الرياض|riyadh|جدة|jeddah|الدمام|dammam|الخبر|khobar|مكة|makkah|mecca|المدينة المنورة|أبها|abha|الطائف|taif|تبوك|tabuk|العلا|alula/i,
+  QA: /قطر|qatar|الدوحة|\bdoha\b/i,
+  KW: /الكويت|كويت|kuwait/i,
+  BH: /البحرين|بحرين|bahrain|المنامة|manama/i,
+  JO: /الأردن|أردن|jordan|عمّان|amman|العقبة|aqaba|البترا|petra/i,
+  OM: /سلطنة عمان|\boman\b|مسقط|muscat|صلالة|salalah|نزوى|nizwa/i,
+  EG: /مصر|egypt|القاهرة|cairo|الإسكندرية|alexandria|شرم الشيخ|sharm|الغردقة|hurghada|الأقصر|luxor|أسوان|aswan/i,
+  LB: /لبنان|lebanon|بيروت|beirut/i,
+  IQ: /العراق|iraq|بغداد|baghdad|أربيل|erbil|البصرة|basra/i,
+  MA: /المغرب|morocco|الدار البيضاء|casablanca|مراكش|marrakech|طنجة|tangier|الرباط|rabat/i,
+  TN: /تونس|tunis/i,
+  TR: /تركي|تركيا|turk|إسطنبول|اسطنبول|استنبول|istanbul|أنطاليا|antalya|طرابزون|trabzon|بودروم|bodrum|أنقرة|ankara|إزمير|izmir/i,
+  FR: /فرنس|franc|باريس|paris|ليون|\blyon\b|مارسيل|marseille|نيس،|نيس |بوردو|bordeaux|كان الفرنس|cannes|ستراسبورغ|strasbourg/i,
+  GB: /بريطان|إنجلترا|انجلترا|إنكلترا|\buk\b|england|scotland|اسكتلندا|لندن|london|مانشستر|manchester|برمنغهام|birmingham|إدنبرة|edinburgh|ليفربول|liverpool/i,
+  DE: /ألمان|المان|german|برلين|berlin|ميونخ|munich|فرانكفورت|frankfurt|هامبورغ|hamburg|كولونيا|cologne|دوسلدورف|dusseldorf/i,
+  IT: /إيطال|ايطال|\bital|روما|\brome\b|ميلان|milan|فينيسيا|البندقية|venice|فلورنس|florence|نابولي|naples|أمالفي|amalfi/i,
+  ES: /إسبان|اسبان|spain|spanish|مدريد|madrid|برشلون|barcelon|فالنسيا|valencia|ملقا|malaga|إشبيل|seville/i,
+  PT: /البرتغال|برتغال|portug|لشبونة|lisbon|بورتو|\bporto\b/i,
+  NL: /هولند|netherl|holland|أمستردام|amsterdam|روتردام|rotterdam/i,
+  BE: /بلجيك|belgi|بروكسل|brussel/i,
+  CH: /سويسر|swiss|switzerland|زيورخ|zurich|جنيف|geneva|انترلاكن|interlaken/i,
+  AT: /النمسا|austria|فيينا|vienna|سالزبورغ|salzburg/i,
+  GR: /اليونان|يونان|greece|أثينا|athens|سانتوريني|santorini|ميكونوس|mykonos/i,
+  CZ: /تشيك|czech|براغ|prague/i,
+  PL: /بولند|poland|وارسو|warsaw/i,
+  HU: /المجر|hungar|بودابست|budapest/i,
+  SE: /السويد|sweden|ستوكهولم|stockholm/i,
+  NO: /النرويج|norway|أوسلو|\boslo\b/i,
+  DK: /الدنمارك|denmark|كوبنهاغن|copenhagen/i,
+  IE: /أيرلند|ايرلند|ireland|دبلن|dublin/i,
+  RU: /روسي|russia|موسكو|moscow|سان بطرسبرغ|petersburg/i,
+  US: /أمريك|امريك|americ|\busa\b|نيويورك|new york|لوس أنجل|لوس انجل|los angeles|شيكاغو|chicago|ميامي|miami|لاس فيغاس|las vegas|سان فرانسيسكو|san francisco|واشنطن|washington|بوسطن|بوستن|boston|سياتل|seattle|هيوستن|houston|أورلاندو|orlando/i,
+  CA: /كندا|كندي|canad|تورونتو|toronto|فانكوفر|vancouver|مونتريال|montreal/i,
+  JP: /اليابان|ياباني|japan|طوكيو|tokyo|أوساكا|osaka|كيوتو|kyoto/i,
+  KR: /كوريا الجنوب|كوري|korea|سيول|seoul|بوسان|busan/i,
+  CN: /الصين|صيني|china|بكين|beijing|شنغهاي|shanghai|قوانزو|guangzhou/i,
+  HK: /هونغ كونغ|هونج كونج|hong kong/i,
+  SG: /سنغافور|سنجافور|singapor/i,
+  TH: /تايلاند|thai|بانكوك|bangkok|بوكيت|phuket|شيانغ ماي|chiang mai/i,
+  MY: /ماليزي|malays|كوالالمبور|kuala lumpur|لنكاوي|langkawi/i,
+  ID: /إندونيس|اندونيس|indonesia|جاكرت|jakarta|بالي|\bbali\b/i,
+  PH: /الفلبين|فلبين|فليبين|philippin|مانيلا|manila/i,
+  VN: /فيتنام|vietnam|هانوي|hanoi/i,
+  IN: /الهند\b|هندية|india|دلهي|delhi|مومباي|mumbai|بنغالور|bangalore|غوا|\bgoa\b|كشمير|kashmir/i,
+  PK: /باكستان|pakistan|كراتشي|karachi|لاهور|lahore|إسلام أباد|islamabad/i,
+  LK: /سريلانك|sri lanka|كولومبو|colombo/i,
+  MV: /المالديف|مالديف|maldive/i,
+  NP: /نيبال|nepal|كاتماندو|kathmandu/i,
+  AZ: /أذربيجان|اذربيجان|azerbaijan|باكو|\bbaku\b/i,
+  GE: /جورجيا|georgia|تبليسي|tbilisi|باتومي|batumi/i,
+  AU: /أسترال|استرال|austral|سيدني|sydney|ملبورن|melbourne/i,
+  NZ: /نيوزيلند|new zealand|أوكلاند|auckland/i,
+  ZA: /جنوب أفريق|south afric|كيب تاون|cape town|جوهانسبرغ|johannesburg/i,
+  KE: /كينيا|kenya|نيروبي|nairobi|مومباسا|mombasa/i,
+  BR: /البرازيل|brazil|ساو باولو|sao paulo|ريو دي |rio de janeiro/i,
+};
+// صفة المطبخ ليست موقعًا: «مطاعم إيطاليّة في باريس» موقعها فرنسا.
+const CUISINE_ADJ_RE = /(?:إيطالي|ايطالي|فرنسي|صيني|ياباني|هندي|تركي|لبناني|مكسيكي|تايلندي|تايلاندي|كوري|إسباني|اسباني|يوناني|مغربي|أمريكي|امريكي|إيراني|ايراني|فيتنامي|إندونيسي)(?:ّ?ة|ه|ة)?/g;
+function regionOf(text) {
+  const t = String(text || '');
+  if (!t) return '';
+  const keys = Object.keys(REGION_RE);
+  const t2 = t.replace(CUISINE_ADJ_RE, ' ');
+  for (let i = 0; i < keys.length; i++) if (REGION_RE[keys[i]].test(t2)) return keys[i];
+  for (let i = 0; i < keys.length; i++) if (REGION_RE[keys[i]].test(t)) return keys[i];
+  return '';
+}
+
 // 📍 v542: Google Places API (New) — Text Search. سؤال «وين أحسن مطعم؟» جوابه
 // اسمٌ وعنوانٌ وتقييم، لا مقالة. محرّك الويب العام لا يملك هذا؛ Places يملكه.
 // شرط الرخصة: إسناد ظاهر «Google Maps» + لا تخزين — لذلك تُمرَّر حيّة ولا تُحفظ.
@@ -524,10 +602,8 @@ module.exports = async (req, res) => {
 
     // 📍 v542: كاشف أسئلة الأماكن. يُستثنى ما يخدمه محرّك القوائم أصلًا (عقار ·
     // سيارات · وظائف · فنادق · طيران) وما قُيّد بنطاقات، فلا تتغيّر نتيجة قائمة.
-    const PLACES_RE = /مطعم|مطاعم|مطاعمه|مقهى|مقاهي|كافيه|كافيهات|كوفي|بوفيه|مخبز|مخابز|حلويات|صيدلي(ة|ات)|مستشفى|مستشفيات|عياد(ة|ات)|طبيب|أطباء|دكتور|أسنان|صالون|حلاق|مشغل|سبا|جيم|نادي رياضي|صالة رياضية|مول|مولات|أسواق|متجر|بقالة|سوبرماركت|هايبر|محطة وقود|بنزين|حديق(ة|ات)|متحف|متاحف|شاطئ|شواطئ|ملاهي|معلم سياحي|معالم|أماكن سياحية|وين أروح|وين اروح|أماكن|مسجد|مساجد|كنيسة|مدرسة|مدارس|حضانة|مغسلة|كراج|ورشة|restaurant|cafe|coffee shop|bakery|pharmacy|hospital|clinic|dentist|salon|barber|spa|gym|mall|supermarket|grocery|gas station|park|museum|beach|attraction|things to do|near me|قريب مني|قريبة مني|بالقرب/i;
     // 🏨 v555: الفنادق تُخدَم بخرائط جوجل أيضًا (أسماء وتقييمات فنادق حقيقيّة)
     // لا بمواقع الحجز وحدها. تبقى في محرّك القوائم كما هي.
-    const HOTEL_RE = /فندق|فنادق|منتجع|منتجعات|شاليه|شاليهات|hotel|resort/i;
     const isPlaces = !domains && (PLACES_RE.test(query) || HOTEL_RE.test(query)) && (!isListing || HOTEL_RE.test(query));
     const placesKey = (process.env.GOOGLE_PLACES_API_KEY || '').trim();
 
@@ -555,7 +631,7 @@ module.exports = async (req, res) => {
       }),
       googleUrl ? fetch(googleUrl).catch(() => null) : Promise.resolve(null),
       fetchSocial(apiKey, query),
-      isPlaces ? fetchPlaces(placesKey, query, lang, geoCode) : Promise.resolve([]),
+      isPlaces ? fetchPlaces(placesKey, query, lang, (regionOf(query) || geoCode)) : Promise.resolve([]),
     ]);
 
     // 🛡️ شبكة أمان: سقوط Tavily (حصّة · مفتاح · عطل مزوّد) كان يقطع البحث كلّه
@@ -748,3 +824,5 @@ module.exports = async (req, res) => {
 };
 
 module.exports.fetchPlaces = fetchPlaces;
+module.exports.isPlacesAsk = isPlacesAsk;
+module.exports.regionOf = regionOf;
