@@ -417,6 +417,20 @@
         <option value="birthday" data-i18n="portraitStyleBirthday">🎂 إطار عيد ميلاد</option>
         <option value="newborn" data-i18n="portraitStyleNewborn">👶 تهنئة مولود جديد</option>
         </optgroup>
+        <optgroup label="🆕 ستايلات جديدة">
+        <option value="claymation">🏺 صلصال متحرك (كلاي)</option>
+        <option value="lowpoly">🔷 ثلاثي الأبعاد هندسي (Low Poly)</option>
+        <option value="graffiti">🎨 جرافيتي شوارع</option>
+        <option value="mosaic">🧩 فسيفساء</option>
+        <option value="stainedglass">🪟 زجاج معشّق</option>
+        <option value="papercraft">📄 فن الورق الطبقي</option>
+        <option value="crochet">🧶 دمية كروشيه</option>
+        <option value="inflatable">🎈 مجسّم بالون لامع</option>
+        <option value="ukiyoe">🌊 طباعة يابانية قديمة</option>
+        <option value="sandart">🏜️ رسم بالرمل الخليجي</option>
+        <option value="neonsign">💡 نيون مضيء</option>
+        <option value="doubleexposure">🌆 تعريض مزدوج فني</option>
+        </optgroup>
         <optgroup label="🔥 رائجة" data-i18n="[label]portraitGrpTrending">
         <option value="figurine" data-i18n="portraitStyleFigurine">🧸 مجسّم أكشن في علبة</option>
         <option value="ghibli" data-i18n="portraitStyleGhibli">🍃 ستايل جيبلي</option>
