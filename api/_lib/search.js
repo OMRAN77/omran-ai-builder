@@ -838,7 +838,29 @@ module.exports = async (req, res) => {
     const socialAll = mergeSocial(socialItems, pickSocial(data.results));
     const socialHosts = new Set(socialAll.map(sc => { try { return new URL(sc.url).hostname.replace(/^www\./, ''); } catch (e) { return ''; } }));
     // المنصّة تُمثَّل ببطاقتها المسمّاة («إنستغرام · @handle») بدل عنوان خام مكرّر.
-    const sourcesOut = sources.filter(x => { try { return !socialHosts.has(new URL(x.url).hostname.replace(/^www\./, '')); } catch (e) { return true; } }).slice(0, 8);
+    // 🌍 فلتر بلد المصادر: للاستعلامات المحلية، أسقط النطاقات المنتمية صراحةً لبلد آخر
+      // (بادئة sa. أو لاحقة .sa عندما المستخدم في الإمارات مثلاً). النطاقات المحايدة تبقى.
+      const CC_LIST = ['ae','sa','eg','kw','qa','bh','om','jo','lb','ma','tn','dz','iq','ye','ps','sd','ly','tr','in','pk','us','uk','fr','de'];
+      const userCc = (geoCode || 'AE').toLowerCase();
+      const foreignCcOf = (host) => {
+        const parts = String(host||'').toLowerCase().split('.');
+        const first = parts[0];
+        const lastTwo = parts.slice(-2).join('.');
+        if (CC_LIST.includes(first) && first !== userCc) return first;                       // sa.arabiccoupon.com
+        const tld = parts[parts.length-1];
+        if (CC_LIST.includes(tld) && tld !== userCc && tld.length === 2) return tld;         // example.sa / example.eg
+        if (/^(co|com|net|org|gov)$/.test(parts[parts.length-2]||'') && CC_LIST.includes(tld) && tld !== userCc) return tld; // example.com.sa
+        return '';
+      };
+      const localQ = wantsLocalGeo(query);
+      const sourcesOut = sources.filter(x => {
+        try {
+          const host = new URL(x.url).hostname.replace(/^www\./, '');
+          if (socialHosts.has(host)) return false;
+          if (localQ && foreignCcOf(host)) return false;
+          return true;
+        } catch (e) { return true; }
+      }).slice(0, 8);
     socialAll.forEach(sc => {
       if (sourcesOut.length < 10) sourcesOut.push({ title: sc.title, url: sc.url });
     });
