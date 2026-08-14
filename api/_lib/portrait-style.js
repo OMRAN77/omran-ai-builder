@@ -50,6 +50,18 @@ const STYLE_PROMPTS = {
   hajj: 'a blessed Hajj and Umrah congratulation portrait, keep the person exactly the same but add an elegant decorative frame/border with a Kaaba silhouette, ornate gold Islamic geometric patterns, soft green and gold tones and a gentle sacred glow, a "Hajj Mabrour" feel',
   birthday: 'a joyful birthday portrait, keep the person exactly the same but add a festive decorative frame/border with colorful balloons, falling confetti, a birthday cake with lit candles, party streamers and a warm celebratory glow',
   newborn: 'a gentle newborn-congratulation portrait, keep the person exactly the same but add a soft decorative frame/border with pastel clouds, tiny twinkling stars, a crescent moon, small baby footprints and a delicate soft-focus glow',
+  claymation: 'a handmade claymation stop-motion style, the person sculpted from soft modeling clay with visible fingerprints and tool marks, slightly imperfect charming clay texture, warm miniature-set lighting like a stop-motion film',
+  lowpoly: 'a low-poly 3D art style, the person built from flat triangular geometric facets, modern minimal color palette, soft gradient studio background, stylish digital-art render',
+  graffiti: 'a bold urban graffiti street-art style, the person spray-painted on a textured brick wall with vibrant drips, stencil edges and dynamic paint splatter, energetic hip-hop mural feel',
+  mosaic: 'an ancient mosaic art style, the portrait assembled from small colorful ceramic and glass tiles with visible grout lines, rich Byzantine-inspired colors and a timeless handcrafted feel',
+  stainedglass: 'a stained-glass window art style, the portrait divided into luminous colored glass panels with bold dark lead outlines, light glowing through the glass like a cathedral window',
+  papercraft: 'a layered paper-cut craft style, the person built from multiple layers of colored cardstock paper with soft drop shadows between layers, clean handcrafted 3D paper-art depth',
+  crochet: 'a cute handmade crochet amigurumi doll style, the person knitted from soft colorful yarn with visible stitches, button-like eyes, cozy handcrafted plush-toy charm',
+  inflatable: 'a glossy inflatable balloon sculpture style, the person as a shiny 3D inflated vinyl balloon figure with smooth reflective surfaces and seams, playful pop-art studio lighting',
+  ukiyoe: 'a traditional Japanese ukiyo-e woodblock print style, flat elegant colors, flowing ink outlines, decorative wave and cloud patterns, aged paper texture like a classic Edo-period print',
+  sandart: 'a Gulf desert sand-art style, the portrait drawn in flowing layers of natural colored sand with warm golden desert tones, delicate grainy texture, heritage bottle-sand-art feel',
+  neonsign: 'a glowing neon sign style, the person outlined in bright neon light tubes against a dark brick wall at night, vivid electric colors with a soft neon glow and reflections',
+  doubleexposure: 'an artistic double-exposure style, the person\'s silhouette elegantly blended with a second scene inside it (city skyline, forest or desert dunes), dreamy cinematic tones',
 };
 
 const EDIT_PROMPTS = {
