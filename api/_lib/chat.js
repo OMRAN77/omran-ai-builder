@@ -470,7 +470,7 @@ async function tavilyRaw(query, foreign) {
 }
 
 const LIVE_DOWN = 'تعذّر البحث الحيّ الآن';
-async function liveSearch(query, foreign, countryCode) {
+async function liveSearch(query, foreign, countryCode, cityName) {
     const dealsRe = /عرو|تخفيض|خصم|سيل|أوفر|تنزيل|deal|offer|discount|sale|promo/i;
     let searchQuery = query;
     if (dealsRe.test(query) && countryCode && countryCode.length === 2) {
@@ -536,7 +536,7 @@ async function tavilySearch(query, reC, plateAsk) {
   const places = (foreign && !isPlacesAsk(query)) ? [] : await fetchPlaces(process.env.GOOGLE_PLACES_API_KEY, query, 'ar', foreign ? regionOf(query) : '');
   if (places.length) return placeCards(places);
 
-  const live = await liveSearch(query, foreign, country);
+  const live = await liveSearch(query, foreign, country, city);
   if (foreign && live.indexOf(LIVE_DOWN) === 0) {
     let back = [];
     try { back = await fetchPlaces(process.env.GOOGLE_PLACES_API_KEY, query, 'ar', regionOf(query)); } catch (e) { console.warn('[live] places ' + (e && e.message)); }
@@ -711,6 +711,7 @@ module.exports = async (req, res) => {
   if (typeof body.system === 'string' && body.system.trim() && !isClientMemoryNote(body.system)) sysParts.push(body.system);
   if (accountMemory) sysParts.push(accountMemory);
   const country = (req.headers && (req.headers['x-vercel-ip-country'] || req.headers['x-country'])) || '';
+    const city = (req.headers && (req.headers['x-vercel-ip-city'] || '')) || '';
   // المجاملة القصيرة لا تحتاج تاريخًا أو دولة أو أدوات أو ملف المالك؛ حقن هذه
   // السياقات في «كيف الحال» هو ما حوّلها إلى قائمة فنادق ومواضيع قديمة.
   const toolTurn = !quietSocialTurn && (wizardTurn || foreignTurn || !!reC ||
