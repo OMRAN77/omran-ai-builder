@@ -10149,6 +10149,19 @@ function isCasualCheckIn(t){
   if(s.length > 80) return false;
   return /^(?:(?:هلا|مرحبا|مرحبًا|أهلا|أهلًا|السلام عليكم|سلام|hello|hi|hey)[\s،,.!؟?~\-]*)?(?:كيف حالك|كيف الحال|شحالك|شخبارك|شو الأخبار|كيفك|how are you|how(?:'|’)s it going|how is it going)[\s،,.!؟?~\-]*$/i.test(s);
 }
+// v628 عيب [ب]: شريط الصور كان يُطلب في كلّ بحث حيّ (images: true دائمًا)، فظهرت صور
+// طائرات حديثة تحت سؤال تاريخيّ. الآن نيّة صور صريحة في نصّ المستخدم فقط.
+// (ال/بال/وال) مسموحة قبل «صور»؛ أيّ حرف عربيّ آخر قبلها يمنع المطابقة، فلا تمسك «قصور» و«عصور» و«تصوير».
+const __IMG_ASK_RE = /(?:^|[^\u0621-\u064A])(?:ال|لل|بال|وال|فال|كال)?(?:صور|صوره|صورة|لقطات|بوستر)/;
+const __IMG_SHAPE_RE = /شكلها|شكله|شكلهم|كيف تبدو|كيف يبدو|كيف كان شكل|وش شكل|شو شكل|شنو شكل/;
+const __IMG_EN_RE = /\b(photos?|pictures?|images?|pics|thumbnails?)\b|\blooks? like\b/i;
+// توليد/تعديل صورة أو الإشارة إلى صورة مرفقة = ليس شريط بحث.
+const __IMG_MAKE_RE = /ارسم|أرسم|ارسمي|صمم|صمّم|اصمم|اصنع|اعمل لي|سوي لي|سوّي لي|ولّد|ولد لي|حوّل|عدّل|اقتطع|ازل الخلفية|أزل الخلفية|generate|create an image|draw|design|edit it|remove background|هذه الصورة|هالصورة|الصورة المرفقة|في الصورة|بالصورة/i;
+function __wantsImageStrip(t){
+  const s = String(t || '');
+  if(!s || __IMG_MAKE_RE.test(s)) return false;
+  return __IMG_ASK_RE.test(s) || __IMG_SHAPE_RE.test(s) || __IMG_EN_RE.test(s);
+}
 async function smartMaybeSearch(text, ctxMsgs){
   if(!text) return null;
   if(isPureGreeting(text) || isCasualCheckIn(text)) return null;
@@ -10190,10 +10203,31 @@ async function smartMaybeSearch(text, ctxMsgs){
     }
   }
 
+  // v628 عيب [ج]: سؤال قصير يبدأ باستفهام ويشير إلى موضوع الردّ السابق («كم عدد الأشخاص التي نقلتهم
+  // الطائرة») لا يمسكه __followUpRe، فيُبحث بلا سياق وتأتي مصادر عن موضوع آخر. الشرط: استفهام +
+  // اشتراك لفظيّ حقيقيّ مع آخر ردّ + بلا مجال مختلف. الحقن = أوّل جملة من الردّ السابق فقط.
+  if(ctxMsgs && searchQuery === text && text.length < 90 && /^(?:و?(?:ايش|إيش|وش|شو|شنو)|كم|متى|وين|أين|ليش|لماذا|كيف|هل|من هو|من هي|من صنع|ما هو|ما هي|who|what|when|where|why|how)/i.test(text.trim())){
+    const __ai2 = ctxMsgs.filter(m => m.role !== 'user' && m.content && String(m.content).length > 20);
+    const __last2 = __ai2.length ? String(__ai2[__ai2.length - 1].content) : '';
+    if(__last2){
+      const __norm2 = w => w.replace(/[\u0623\u0625\u0622]/g, '\u0627').replace(/\u0649/g, '\u064a').replace(/\u0629/g, '\u0647').replace(/^(?:و|ف)?(?:ب|ل|ك)?(?:ال)?/, '');
+      const __toks2 = str => (String(str).match(/[\u0621-\u064A]{4,}|[A-Za-z]{4,}/g) || []).map(w => __norm2(w.toLowerCase()));
+      const __ctx2 = __toks2(__last2);
+      const __shared2 = __toks2(text).filter(w => w.length >= 4 && __ctx2.some(c => c.startsWith(w) || w.startsWith(c)));
+      const __dn2 = __domOf(text), __dc2 = __domOf(__last2);
+      if(__shared2.length && !(__dn2 && __dc2 && __dn2 !== __dc2)){
+        const __sent2 = (__last2.split(/\n|\.\s|\u061F|!/)[0] || '').slice(0, 180).trim();
+        if(__sent2) searchQuery = (__sent2 + ' ' + text).slice(0, 400);
+      }
+    }
+  }
+
   // v384: 🔬 Deep Research — استعلامات معقدة أو صريحة تحتاج بحث عميق بعدة زوايا.
   const __deepRe = /بحث عميق|بحث شامل|تقرير مفصل|تحليل شامل|قارن بين|مقارنة.*بين|أفضل\s*(خيارات|بدائل|مواقع|شركات|تطبيقات)|deep research|comprehensive|detailed report|compare.*between/i;
   const __wantDeep = __deepRe.test(text) || (text.length > 120 && mahaNeedsSearch(text));
 
+  // v628 عيب [ب]: نيّة صور صريحة = بحث حيّ إجباري (سؤال «هل يوجد صور» كان يمرّ بلا بحث فلا صور).
+  if(__wantsImageStrip(text)) return await fetchSearchNote(searchQuery, __wantDeep, text);
   // 🔗 طلب روابط/مواقع حقيقية = بحث حي إجباري (منع هلوسة الروابط الوهمية).
   if(/رابط|روابط|لينك|لنك|لينكات|لنكات/i.test(text)
     || /(رابط|لينك|\blink\b|\burl\b)[^\n]{0,25}(موقع|مواقع|منصة|منصات|صفحة|site|website)/i.test(text)
@@ -10244,6 +10278,35 @@ function withoutRemovedSearchSourceMentions(value){
   return String(value || '').replace(REMOVED_SEARCH_SOURCE_TEXT_RE, '').replace(/\s{2,}/g, ' ').trim();
 }
 
+// v628 عيب [ج]: بطاقات مصادر من منصّات اجتماعيّة لا تُسند سؤالًا معلوماتيًّا (ظهر انستغرام
+// ويوتيوب تحت سؤال تاريخيّ). تُحذف إلّا إذا ذكر المستخدم المنصّة بنفسه، ولا تُفرَّغ القائمة أبدًا.
+const __WEAK_SOURCE_HOSTS = {
+  'instagram.com': /انستغرام|انستقرام|إنستغرام|انستا|instagram/i,
+  'tiktok.com': /تيك ?توك|تيكتوك|tiktok/i,
+  'pinterest.com': /بنترست|بينتريست|pinterest/i,
+  'facebook.com': /فيسبوك|فيس ?بوك|facebook/i,
+  'x.com': /تويتر|توتير|twitter|x\.com/i,
+  'twitter.com': /تويتر|توتير|twitter/i,
+  'quora.com': /كورا|quora/i,
+  'threads.net': /ثريدز|threads/i,
+  'snapchat.com': /سناب|سنابشات|snapchat/i,
+};
+const __VIDEO_WANT_RE = /فيديو|فيديوهات|مقطع|مقاطع|يوتيوب|شرح مصور|youtube|\bvideo\b|\bwatch\b/i;
+function __dropWeakSources(list, rawText){
+  if(!Array.isArray(list) || list.length < 2) return list;
+  const t = String(rawText || '');
+  const wantsVideo = __VIDEO_WANT_RE.test(t);
+  const kept = list.filter(it => {
+    let h = '';
+    try{ h = new URL(it && it.url || '').hostname.toLowerCase().replace(/^www\.|^m\./, ''); }catch(e){ return true; }
+    if(!h) return true;
+    if(h === 'youtube.com' || h === 'youtu.be') return wantsVideo;
+    const re = __WEAK_SOURCE_HOSTS[h];
+    return !re || re.test(t);
+  });
+  return kept.length ? kept : list;
+}
+
 async function fetchSearchNoteOnce(transcript, deep, q0){
   // Live search is the longest silent gap in ordinary chat — up to 45s.
   const __st = (window.__chatStatus && !window.__chatStatus.__released)
@@ -10258,7 +10321,7 @@ async function fetchSearchNoteOnce(transcript, deep, q0){
       // 🖼️ Feature ②: also ask for images so informational/live-search
       // replies can show a ChatGPT-style image strip + source badges above
       // and below the answer text (data.sources/data.images below).
-      body: JSON.stringify({ query: transcript, q0: q0 || '', images: true, deep: !!deep, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+      body: JSON.stringify({ query: transcript, q0: q0 || '', images: __wantsImageStrip(q0 || transcript), deep: !!deep, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
       signal: controller.signal,
     });
     clearTimeout(timeout);
@@ -10318,6 +10381,7 @@ async function fetchSearchNoteOnce(transcript, deep, q0){
         sources.push({ title: r.title || host, url: r.url });
       });
     }
+    sources = __dropWeakSources(sources, q0 || transcript);
     const images = Array.isArray(data.images) ? data.images.slice(0, 4) : [];
     if(__st) __st.done();
     return { note, sources, images };

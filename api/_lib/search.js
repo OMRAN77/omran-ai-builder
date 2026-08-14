@@ -691,8 +691,12 @@ module.exports = async (req, res) => {
       // 🔢 v543c: سؤال الأرقام مقفول على الموقعين دون عتبة — لا تسرّب نتائج غريبة.
       if (isNumbers || onPortal.length >= 3) data.results = onPortal;
     }
-    const isFlight = /طيران|تذكرة|تذاكر|رحلة إلى|رحله الى|رحلات|flight|air ticket|airfare/i.test(query);
-    if (isFlight && Array.isArray(data.results)) {
+    // v628 عيب [أ]: بطاقة الرحلات لنيّة سفر/حجز فعليّة فقط — كانت «رحلات» أو «طيران» وحدها
+    // تكفي، فظهرت في سؤال تاريخيّ («أوّل طائرة ركاب») ولا علاقة لها بالجواب.
+    const isFlight = /تذكرة|تذاكر|احجز|حجز\s*(طيران|رحل|تذكر)|طيران\s*(رخيص|ارخص|أرخص)|(اسعار|أسعار)\s*(الطيران|التذاكر|الرحلات)|(ارخص|أرخص)\s*(رحلة|رحله|تذكرة|طيران)|(رحلة|رحله|طيران|سفر)\s*(من|إلى|الى)\s*\S|flights?\s*(from|to|price|deal|book)|air ticket|airfare|book\s*(a\s*)?flight/i.test(query);
+    // سؤال معلوماتيّ/تاريخيّ عن الطائرات = لا بطاقة رحلات مهما ورد فيه من ألفاظ السفر.
+    const isPlaneInfo = /من\s*(صنع|اخترع|ابتكر|بنى)|(اول|أوّل|أول)\s*(طائرة|طائره|رحلة|رحله)|تاريخ\s*(الطيران|الطائر)|كيف\s*(تطير|يطير|تعمل)|كم\s*(عدد|تحمل|يحمل|راكب)|حوادث|تحطم|(انواع|أنواع)\s*(الطائرات|الطياره)|who\s*(invented|made|built)|first\s*(airplane|plane|flight|passenger)|history\s*of\s*(aviation|flight)/i.test(query);
+    if (isFlight && !isPlaneInfo && Array.isArray(data.results)) {
       // Google Flights has no public API, but its ?q= deep link parses natural
       // language and opens directly on live prices for the requested route.
       data.results.unshift({
