@@ -172,7 +172,6 @@
   }
 
   var BTN = 'flex:1; min-width:120px; border:none; border-radius:12px; padding:12px 16px; font-size:14px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:7px;';
-  var CHECKER = 'background-image:linear-gradient(45deg,rgba(255,255,255,.07) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.07) 75%),linear-gradient(45deg,rgba(255,255,255,.07) 25%,transparent 25%,transparent 75%,rgba(255,255,255,.07) 75%); background-size:18px 18px; background-position:0 0,9px 9px;';
 
   function open(){
     var ar = isAr();
@@ -181,13 +180,13 @@
     var ov = document.createElement('div');
     ov.id = 'sigOverlay';
     ov.dir = ar ? 'rtl' : 'ltr';
-    ov.style.cssText = 'position:fixed; inset:0; z-index:960; background:rgba(0,0,0,.62); backdrop-filter:blur(4px); display:flex; align-items:flex-start; justify-content:center; padding:6vh 14px 20px; overflow:auto;';
+    ov.style.cssText = 'position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.62); backdrop-filter:blur(4px); display:flex; align-items:flex-start; justify-content:center; padding:6vh 14px 20px; overflow:auto;';
     var card = document.createElement('div');
-    card.style.cssText = 'width:100%; max-width:620px; background:var(--panel,#0b0b0f); border:1px solid rgba(255,255,255,.12); border-radius:18px; box-shadow:0 22px 64px rgba(0,0,0,.55); overflow:hidden;';
+    card.style.cssText = 'width:100%; max-width:620px; background:var(--panel,#0b0b0f); border:1px solid rgba(128,128,128,.26); border-radius:18px; box-shadow:0 22px 64px rgba(0,0,0,.55); overflow:hidden;';
     var head = document.createElement('div');
-    head.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 16px; border-bottom:1px solid rgba(255,255,255,.08);';
+    head.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 16px; border-bottom:1px solid rgba(128,128,128,.22);';
     var ttl = document.createElement('div');
-    ttl.style.cssText = 'font-size:15.5px; font-weight:800; color:var(--accent-ink,#fff);';
+    ttl.style.cssText = 'font-size:15.5px; font-weight:800; color:var(--text,#fff);';
     ttl.textContent = T('توقيعي', 'My Signature');
     var xb = document.createElement('button');
     xb.type = 'button';
@@ -206,13 +205,13 @@
     input.autocomplete = 'off';
     input.value = state.name;
     input.placeholder = T('اكتب اسمك…', 'Type your name…');
-    input.style.cssText = 'width:100%; box-sizing:border-box; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); border-radius:12px; color:#fff; font-size:16px; padding:12px 14px; outline:none;';
+    input.style.cssText = 'width:100%; box-sizing:border-box; background:rgba(128,128,128,.12); border:1px solid rgba(128,128,128,.3); border-radius:12px; color:var(--text,#fff); font-size:16px; padding:12px 14px; outline:none;';
 
     var grid = document.createElement('div');
     grid.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fit,minmax(96px,1fr)); gap:8px; margin-top:12px;';
 
     var stage = document.createElement('div');
-    stage.style.cssText = 'margin-top:14px; border:1px solid rgba(255,255,255,.1); border-radius:14px; padding:12px; display:flex; align-items:center; justify-content:center; min-height:130px; overflow:auto; ' + CHECKER;
+    stage.style.cssText = 'margin-top:14px; border:1px solid rgba(128,128,128,.24); border-radius:14px; padding:12px; display:flex; align-items:center; justify-content:center; min-height:130px; overflow:auto;';
     var canvas = document.createElement('canvas');
     canvas.style.cssText = 'max-width:100%; height:auto;';
     stage.appendChild(canvas);
@@ -246,11 +245,11 @@
       b.type = 'button';
       b.setAttribute('data-sig-ink', k.id);
       b.title = ar ? k.ar : k.en;
-      b.style.cssText = 'width:26px; height:26px; border-radius:50%; cursor:pointer; background:' + k.v + '; border:2px solid ' + (state.ink === k.id ? 'var(--accent,#c8a24a)' : 'rgba(255,255,255,.25)') + ';';
+      b.style.cssText = 'width:26px; height:26px; border-radius:50%; cursor:pointer; background:' + k.v + '; border:2px solid ' + (state.ink === k.id ? '#c8a24a' : 'rgba(128,128,128,.4)') + ';';
       b.onclick = function(){
         state.ink = k.id;
         inkRow.querySelectorAll('[data-sig-ink]').forEach(function(o){
-          o.style.borderColor = (o.getAttribute('data-sig-ink') === k.id) ? 'var(--accent,#c8a24a)' : 'rgba(255,255,255,.25)';
+          o.style.borderColor = (o.getAttribute('data-sig-ink') === k.id) ? '#c8a24a' : 'rgba(128,128,128,.4)';
         });
         render();
       };
@@ -276,7 +275,7 @@
     acts.style.cssText = 'display:flex; gap:9px; margin-top:14px; flex-wrap:wrap;';
     var shareBtn = document.createElement('button');
     shareBtn.type = 'button';
-    shareBtn.style.cssText = BTN + 'background:var(--accent,#c8a24a); color:#0b0b0f;';
+    shareBtn.style.cssText = BTN + 'background:linear-gradient(135deg,#d8b45c,#b8912f); color:#14161a; box-shadow:0 6px 18px rgba(184,145,47,.28);';
     shareBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg><span>' + T('مشاركة', 'Share') + '</span>';
     shareBtn.onclick = function(){
       shareBtn.disabled = true;
@@ -284,7 +283,7 @@
     };
     var dlBtn = document.createElement('button');
     dlBtn.type = 'button';
-    dlBtn.style.cssText = BTN + 'flex:0 0 auto; min-width:0; background:rgba(255,255,255,.08); color:#cfcfe0;';
+    dlBtn.style.cssText = BTN + 'flex:0 0 auto; min-width:0; background:rgba(128,128,128,.16); color:var(--text,#cfcfe0);';
     dlBtn.title = T('تنزيل PNG شفّاف', 'Download transparent PNG');
     dlBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>';
     dlBtn.onclick = function(){ blobOf(canvas).then(function(b){ if(b) grab(b); }); };
@@ -309,10 +308,10 @@
       var b = document.createElement('button');
       b.type = 'button';
       b.setAttribute('data-sig-font', f.id);
-      b.style.cssText = 'display:grid; gap:2px; padding:8px 6px; border-radius:11px; cursor:pointer; background:rgba(255,255,255,.05); border:1.5px solid ' + (state.font === f.id ? 'var(--accent,#c8a24a)' : 'rgba(255,255,255,.1)') + ';';
+      b.style.cssText = 'display:grid; gap:2px; padding:8px 6px; border-radius:11px; cursor:pointer; background:rgba(128,128,128,.1); border:1.5px solid ' + (state.font === f.id ? '#c8a24a' : 'rgba(128,128,128,.24)') + ';';
       var pv = document.createElement('span');
       pv.className = 'sigCardPv';
-      pv.style.cssText = 'font-family:' + f.family + ", 'Tajawal', sans-serif; font-size:19px; color:#fff; line-height:1.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;";
+      pv.style.cssText = 'font-family:' + f.family + ", 'Tajawal', sans-serif; font-size:19px; color:var(--text,#fff); line-height:1.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;";
       pv.textContent = state.name || T('اسمك', 'Name');
       var nm = document.createElement('span');
       nm.style.cssText = 'font-size:11px; color:#8b8ba7;';
@@ -321,7 +320,7 @@
       b.onclick = function(){
         state.font = f.id;
         grid.querySelectorAll('[data-sig-font]').forEach(function(o){
-          o.style.borderColor = (o.getAttribute('data-sig-font') === f.id) ? 'var(--accent,#c8a24a)' : 'rgba(255,255,255,.1)';
+          o.style.borderColor = (o.getAttribute('data-sig-font') === f.id) ? '#c8a24a' : 'rgba(128,128,128,.24)';
         });
         render();
       };
@@ -333,6 +332,7 @@
     function render(){
       state.name = input.value.slice(0, 40);
       grid.querySelectorAll('.sigCardPv').forEach(function(p){ p.textContent = state.name || T('اسمك', 'Name'); });
+      stage.style.background = (state.ink === 'ink' ? '#f2f2f4' : '#17171c');
       var mine = ++pending;
       var f = fontById(state.font);
       paint(canvas, state.name, 3);
