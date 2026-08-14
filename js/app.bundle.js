@@ -11893,22 +11893,186 @@ window.__omranImgTools = function(wrap, dataUrl){
     }
     copyImg(b, bl);
   };
-  mk('ico', svg('share'), ar ? 'مشاركة' : 'Share', (b) => {
-    let bl = null, f = null;
-    try{ bl = toBlob(dataUrl); f = new File([bl], nmOf(), { type: bl.type || 'image/png' }); }
-    catch(e){ __swallow(e, 'share:app-09-attach#v625'); }
-    const nv = navigator;
-    // بلا await قبل share — الإيماء يضيع فتبطل المشاركة
-    if(f && typeof nv.share === 'function'){
+  // 📨 v627 — أمر عمران «نفّذ»: ورقة إرسال من صنعنا (كالتي في فيديو عمران) بدل
+  //    التعويل على ورقة المتصفّح — مشاركة الملفّات ناقصة في متصفّحه فالورقة لا تظهر.
+  //    المفتاح: الصورة ترتفع لرابط عامّ (Upstash؛ Vercel Blob موقوف = لا مزوّد ثانٍ)
+  //    فتصبح قابلة للإرسال كرابط — وهذا مدعوم في كلّ متصفّح. الرفع يبدأ لحظة فتح
+  //    الورقة لا لحظة النقر، لأنّ await قبل window.open/navigator.share يُبطل الإيماء.
+  const APPS = [
+    { n: ar ? 'واتساب' : 'WhatsApp', g: 'wa', u: (l) => 'https://wa.me/?text=' + encodeURIComponent(l) },
+    { n: ar ? 'تيليجرام' : 'Telegram', g: 'tg', u: (l) => 'https://t.me/share/url?url=' + encodeURIComponent(l) },
+    { n: ar ? 'انستغرام' : 'Instagram', g: 'ig', copy: ar ? 'نُسخ الرابط — الصقه في انستغرام' : 'Link copied — paste it in Instagram' },
+    { n: ar ? 'سناب شات' : 'Snapchat', g: 'sn', copy: ar ? 'نُسخ الرابط — الصقه في سناب شات' : 'Link copied — paste it in Snapchat' },
+    { n: ar ? 'فيسبوك' : 'Facebook', g: 'fb', u: (l) => 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(l) },
+    { n: 'X', g: 'x', u: (l) => 'https://twitter.com/intent/tweet?url=' + encodeURIComponent(l) },
+    { n: ar ? 'الرسائل' : 'Messages', g: 'sms', u: (l) => 'sms:?body=' + encodeURIComponent(l) },
+    { n: ar ? 'البريد' : 'Email', g: 'ml', u: (l) => 'mailto:?subject=' + encodeURIComponent(ar ? 'صورة' : 'Image') + '&body=' + encodeURIComponent(l) }
+  ];
+  const GL = {
+    wa: '<path d="M21 11.6a8.6 8.6 0 0 1-12.8 7.5L3.6 20.4l1.4-4.5A8.6 8.6 0 1 1 21 11.6z"/><path d="M9.2 9.1c.5 1.9 2.1 3.6 4.1 4.2"/>',
+    tg: '<path d="M21.4 4.7 2.9 11.5l5.3 1.8 1.8 5.4 3-3.9 4.2 3.1z"/><path d="m8.2 13.3 12.2-8.2"/>',
+    ig: '<rect x="3.6" y="3.6" width="16.8" height="16.8" rx="5"/><circle cx="12" cy="12" r="3.9"/><circle cx="17" cy="7" r=".9"/>',
+    sn: '<path d="M12 3.6c2.5 0 4 1.8 4 4.2v3l2.3 1.1-1.7 1.4c.6 1.7 2 2.9 3.6 3.3-2 1-2.2 1.6-2.4 2.3-1.1-.3-2.3-.2-3.3.4-.8.5-1.6.8-2.5.8s-1.7-.3-2.5-.8c-1-.6-2.2-.7-3.3-.4-.2-.7-.4-1.3-2.4-2.3 1.6-.4 3-1.6 3.6-3.3l-1.7-1.4L8 10.8v-3c0-2.4 1.5-4.2 4-4.2z"/>',
+    fb: '<circle cx="12" cy="12" r="8.6"/><path d="M14.6 8.4h-1.4a1.9 1.9 0 0 0-1.9 1.9v10.2"/><path d="M9.4 13.4h4.9"/>',
+    x: '<path d="M5.2 5.2 18.8 18.8"/><path d="M18.8 5.2 5.2 18.8"/>',
+    sms: '<rect x="3.4" y="5" width="17.2" height="11.2" rx="3"/><path d="M8.2 16.2v3.4l4.1-3.4"/>',
+    ml: '<rect x="3" y="5.4" width="18" height="13.2" rx="2.6"/><path d="m3.7 7 8.3 5.9L20.3 7"/>',
+    dl: '<path d="M12 4v11"/><path d="m7.6 10.9 4.4 4.4 4.4-4.4"/><path d="M4.6 19.4h14.8"/>',
+    lnk: '<path d="M9.4 14.6a3.6 3.6 0 0 1 0-5.1l2.6-2.6a3.6 3.6 0 0 1 5.1 5.1l-1.3 1.3"/><path d="M14.6 9.4a3.6 3.6 0 0 1 0 5.1L12 17.1a3.6 3.6 0 0 1-5.1-5.1l1.3-1.3"/>',
+    img: '<rect x="3.4" y="4.6" width="17.2" height="14.8" rx="2.6"/><path d="m5.4 16.6 4.2-4.2 3.1 3.1 2.6-2.6 3.3 3.3"/><circle cx="9" cy="9.2" r="1.2"/>'
+  };
+  const gsvg = (k) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (GL[k] || ICON[k] || '') + '</svg>';
+  let shUrl = '', shBusy = null;
+  const cpTxt = (t) => {
+    try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(t); return true; } }catch(e){ __swallow(e, 'cpTxt:app-09-attach#v627'); }
+    try{
+      const ta = document.createElement('textarea'); ta.value = t;
+      ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+      return true;
+    }catch(e){ __swallow(e, 'cpTxt:app-09-attach#v627'); }
+    return false;
+  };
+  const shrink = (du) => new Promise((res) => {
+    try{
+      const im = new Image();
+      im.onload = () => {
+        try{
+          const M = 1600, w0 = im.naturalWidth || im.width, h0 = im.naturalHeight || im.height;
+          const k = Math.min(1, M / Math.max(w0 || 1, h0 || 1));
+          const c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round((w0 || 1) * k)); c.height = Math.max(1, Math.round((h0 || 1) * k));
+          c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+          res(c.toDataURL('image/jpeg', 0.9));
+        }catch(e){ __swallow(e, 'shrink:app-09-attach#v627'); res(du); }
+      };
+      im.onerror = () => res(du);
+      im.src = du;
+    }catch(e){ __swallow(e, 'shrink:app-09-attach#v627'); res(du); }
+  });
+  const upload = () => {
+    if(shUrl) return Promise.resolve(shUrl);
+    if(shBusy) return shBusy;
+    shBusy = (async () => {
       try{
-        const pr = nv.share({ files: [f] });
-        if(pr && pr.then){ pr.then(() => flash(b, svg('done'))).catch((err) => { if(err && err.name === 'AbortError') return; __swallow(err, 'share:app-09-attach#v625'); saveThen(b, bl); }); }
-        else flash(b, svg('done'));
-        return;
-      }catch(e){ __swallow(e, 'share:app-09-attach#v625'); }
-    }
-    saveThen(b, bl);
-  }, grp);
+        const du = await shrink(dataUrl);
+        const i = du.indexOf(',');
+        const r = await fetch('/api/media?action=img', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: du.slice(i + 1), mime: (du.slice(5).split(';')[0] || 'image/jpeg') })
+        });
+        const j = await r.json();
+        if(j && j.url) shUrl = location.origin + j.url;
+      }catch(e){ __swallow(e, 'upload:app-09-attach#v627'); }
+      shBusy = null;
+      return shUrl;
+    })();
+    return shBusy;
+  };
+  const sheetCss = () => {
+    if(document.getElementById('oShCss')) return;
+    const st = document.createElement('style'); st.id = 'oShCss';
+    st.textContent = '.oShOv{position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,.58);display:flex;align-items:flex-end;justify-content:center}'
+      + '.oShSh{width:100%;max-width:520px;background:#15171b;color:#f1f2f4;border:1px solid rgba(255,255,255,.09);border-bottom:0;border-radius:20px 20px 0 0;padding:16px 16px 20px;box-shadow:0 -20px 60px rgba(0,0,0,.55);animation:oShUp .2s ease}'
+      + '@keyframes oShUp{from{transform:translateY(24px);opacity:.3}to{transform:none;opacity:1}}'
+      + '.oShHd{display:flex;align-items:center;justify-content:space-between;font-size:16px;font-weight:600;margin:0 2px 4px}'
+      + '.oShX{background:0;border:0;color:inherit;opacity:.65;font-size:15px;cursor:pointer;padding:4px 6px;font-family:inherit}'
+      + '.oShS{font-size:12px;opacity:.55;margin:0 2px 13px}'
+      + '.oShGr{display:grid;grid-template-columns:repeat(4,1fr);gap:15px 4px;margin-bottom:15px}'
+      + '.oShT{display:flex;flex-direction:column;align-items:center;gap:7px;background:0;border:0;padding:0;color:inherit;font-family:inherit;font-size:11.5px;cursor:pointer}'
+      + '.oShT i{display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:999px;background:rgba(255,255,255,.085);border:1px solid rgba(255,255,255,.07);transition:transform .12s}'
+      + '.oShT i svg{width:24px;height:24px}'
+      + '.oShT:active i{transform:scale(.92)}'
+      + '.oShAc{display:grid;gap:8px;border-top:1px solid rgba(255,255,255,.08);padding-top:13px}'
+      + '.oShA{display:flex;align-items:center;gap:11px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);border-radius:13px;color:inherit;font-family:inherit;font-size:14.5px;padding:12px 14px;cursor:pointer;text-align:start}'
+      + '.oShA svg{width:20px;height:20px;flex:none;opacity:.85}'
+      + '.oShA:active{transform:scale(.99)}'
+      + 'html[data-mode="light"] .oShSh{background:#fff;color:#14161a;border-color:rgba(0,0,0,.1)}'
+      + 'html[data-mode="light"] .oShT i,html[data-mode="light"] .oShA{background:rgba(0,0,0,.045);border-color:rgba(0,0,0,.085)}';
+    document.head.appendChild(st);
+  };
+  const openSheet = () => {
+    sheetCss();
+    const ov = document.createElement('div'); ov.className = 'oShOv';
+    const sh = document.createElement('div'); sh.className = 'oShSh';
+    ov.appendChild(sh);
+    const esc = (e) => { if(e.key === 'Escape') close(); };
+    const close = () => { try{ ov.remove(); }catch(e){} document.removeEventListener('keydown', esc); };
+    ov.onclick = (e) => { if(e.target === ov) close(); };
+    document.addEventListener('keydown', esc);
+    const hd = document.createElement('div'); hd.className = 'oShHd';
+    hd.innerHTML = '<span>' + (ar ? 'إرسال الصورة' : 'Send image') + '</span>';
+    const xb = document.createElement('button'); xb.type = 'button'; xb.className = 'oShX';
+    xb.textContent = ar ? 'إغلاق' : 'Close'; xb.onclick = close; hd.appendChild(xb);
+    sh.appendChild(hd);
+    const stx = document.createElement('p'); stx.className = 'oShS';
+    stx.textContent = ar ? 'جارِ تحضير الرابط…' : 'Preparing link…';
+    sh.appendChild(stx);
+    const gr = document.createElement('div'); gr.className = 'oShGr'; sh.appendChild(gr);
+    const go = (t) => {
+      const run = (l) => {
+        if(!l){ note(ar ? 'تعذّر تحضير الرابط — استخدم «تنزيل الصورة»' : 'Link failed — use Download'); return; }
+        if(t.copy){ cpTxt(l); note(t.copy); return; }
+        const link = t.u(l);
+        let w = null;
+        try{ w = window.open(link, '_blank'); }catch(e){ __swallow(e, 'go:app-09-attach#v627'); }
+        if(!w) location.href = link;
+        close();
+      };
+      if(shUrl) run(shUrl); else upload().then(run);
+    };
+    APPS.forEach((t) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'oShT';
+      b.innerHTML = '<i>' + gsvg(t.g) + '</i><span>' + t.n + '</span>';
+      b.setAttribute('aria-label', t.n);
+      b.onclick = () => go(t);
+      gr.appendChild(b);
+    });
+    const ac = document.createElement('div'); ac.className = 'oShAc'; sh.appendChild(ac);
+    const act = (label, ic, fn) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'oShA';
+      b.innerHTML = gsvg(ic) + '<span>' + label + '</span>';
+      b.onclick = () => fn(b);
+      ac.appendChild(b);
+      return b;
+    };
+    act(ar ? 'مشاركة عبر تطبيقات الجهاز' : 'Share via device apps', 'share', () => {
+      const nv = navigator;
+      const l = shUrl;
+      if(typeof nv.share === 'function'){
+        try{
+          const pr = nv.share(l ? { url: l, title: ar ? 'صورة' : 'Image' } : { text: ar ? 'صورة' : 'Image' });
+          if(pr && pr.catch) pr.catch((e) => { if(e && e.name === 'AbortError') return; __swallow(e, 'sys:app-09-attach#v627'); if(l){ cpTxt(l); note(ar ? 'نُسخ الرابط' : 'Link copied'); } });
+          close();
+          return;
+        }catch(e){ __swallow(e, 'sys:app-09-attach#v627'); }
+      }
+      if(l && cpTxt(l)) note(ar ? 'نُسخ الرابط — الصقه في أيّ تطبيق' : 'Link copied — paste it in any app');
+      else note(ar ? 'جارِ تحضير الرابط… أعد المحاولة بعد لحظة' : 'Preparing link… try again in a moment');
+    });
+    act(ar ? 'نسخ رابط الصورة' : 'Copy image link', 'lnk', () => {
+      const run = (l) => { if(l && cpTxt(l)) note(ar ? 'نُسخ الرابط' : 'Link copied'); else note(ar ? 'تعذّر تحضير الرابط' : 'Link failed'); };
+      if(shUrl) run(shUrl); else upload().then(run);
+    });
+    act(ar ? 'تنزيل الصورة' : 'Download image', 'dl', () => {
+      let bl = null;
+      try{ bl = toBlob(dataUrl); }catch(e){ __swallow(e, 'dl:app-09-attach#v627'); }
+      if(saveDl(bl)){ note(ar ? 'حُفظت الصورة في «التنزيلات»' : 'Saved to Downloads'); close(); return; }
+      hint(bl);
+    });
+    act(ar ? 'نسخ الصورة' : 'Copy image', 'img', (b) => {
+      let bl = null;
+      try{ bl = toBlob(dataUrl); }catch(e){ __swallow(e, 'cpimg:app-09-attach#v627'); }
+      copyImg(b, bl);
+    });
+    document.body.appendChild(ov);
+    upload().then((l) => {
+      stx.textContent = l
+        ? (ar ? 'الرابط جاهز — اختر تطبيقًا' : 'Link ready — pick an app')
+        : (ar ? 'تعذّر تحضير الرابط — «تنزيل الصورة» يعمل دائمًا' : 'Link failed — Download still works');
+    });
+  };
+  mk('ico', svg('share'), ar ? 'مشاركة' : 'Share', () => openSheet(), grp);
   // يمين: «تعديل» نصّ فقط
   mk('txt', '<span>' + (ar ? 'تعديل' : 'Edit') + '</span>', ar ? 'تعديل' : 'Edit', (b) => {
     pendingAttachments.push({ name: 'edit-' + Date.now() + '.png', isImage: true, mime: dataUrl.slice(5).split(';')[0] || 'image/png', dataUrl: dataUrl });

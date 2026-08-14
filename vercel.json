@@ -37,6 +37,7 @@
     "api/*.js": { "regions": ["bom1"], "maxDuration": 300 }
   },
   "rewrites": [
+    { "source": "/i/:id", "destination": "/api/media?action=img&id=:id" },
     { "source": "/api/openai", "destination": "/api/ai?action=openai" },
     { "source": "/api/gemini", "destination": "/api/ai?action=gemini" },
     { "source": "/api/groq", "destination": "/api/ai?action=groq" },

@@ -11,6 +11,7 @@ function load(action) {
     case 'translate': return require('./_lib/translate.js');
     case 'maha-image': return require('./_lib/maha-image.js');
     case 'blob-client-upload': return require('./_lib/blob-client-upload.js');
+    case 'img': return require('./_lib/img-share.js'); // v627 — رابط الصورة العامّ
     default: return null;
   }
 }
