@@ -16,8 +16,14 @@ module.exports = async (req, res) => {
     // /i/<id>        → صفحة تعرض الصورة + وسوم معاينة (واتساب/تلغرام/تويتر).
     // /i/<id>.jpg    → البايتات الخام (وهي مصدر og:image ورابط التنزيل).
     const rawId = String((req.query && req.query.id) || '');
-    const wantRaw = /\.(jpe?g|jpg|png|webp)$/i.test(rawId)
-      || String((req.query && req.query.raw) || '') === '1';
+    // v638 — أمر عمران «الحينه رابط فقط»: زاحف المعاينة (واتساب/تلغرام/فيسبوك) لا
+    // يقرأ وسوم og من بايتات صورة، فظهر الرابط نصًّا بلا صورة. الحلّ: نفس الرابط
+    // يخدم البايتات للبشر (صورة خاليه كما أمر) ووسوم og للزاحف وحده، وog:image
+    // يشير إلى /i/<id>.raw.jpg الي يعيد البايتات لأيّ طالب بلا استثناء.
+    const ua = String(req.headers['user-agent'] || '');
+    const isCrawler = /facebookexternalhit|WhatsApp|Twitterbot|TelegramBot|Discordbot|Slackbot|LinkedInBot|SkypeUriPreview|Pinterest|vkShare|redditbot|Iframely|embedly|Applebot|Viber|Line\/|Googlebot|bingbot|Snapchat|Instagram/i.test(ua);
+    const forceRaw = /\.raw\./i.test(rawId) || String((req.query && req.query.raw) || '') === '1';
+    const wantRaw = (forceRaw || /\.(jpe?g|png|webp)$/i.test(rawId)) && !(isCrawler && !forceRaw);
     const id = rawId.replace(/[^a-f0-9]/g, '').slice(0, 24);
     if (!id) { res.status(400).json({ error: 'Missing id' }); return; }
     const raw = await kvGetRaw(KEY(id));
@@ -38,7 +44,7 @@ module.exports = async (req, res) => {
 
     const ext = mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : 'jpg');
     const host = String(req.headers['x-forwarded-host'] || req.headers.host || '');
-    const abs = (host ? 'https://' + host : '') + '/i/' + id + '.' + ext;
+    const abs = (host ? 'https://' + host : '') + '/i/' + id + '.raw.' + ext;
     const html = '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">'
       + '<meta name="viewport" content="width=device-width,initial-scale=1">'
       + '<title>عمران AI</title><meta name="robots" content="noindex">'
