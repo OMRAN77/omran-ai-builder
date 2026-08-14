@@ -510,7 +510,7 @@ module.exports = async (req, res) => {
       } catch (e) { /* fallback: just original query */ }
 
       // 2) بحث بالتوازي
-      const deepSocialP = fetchSocial(apiKey, query);
+      const deepSocialP = fetchSocial(apiKey, geoSuffix ? (query + ' ' + geoSuffix) : query);
       const deepResults = await Promise.all(subQueries.map(q =>
         fetch('https://api.tavily.com/search', {
           method: 'POST',
@@ -666,7 +666,7 @@ module.exports = async (req, res) => {
         }),
       }),
       googleUrl ? fetch(googleUrl).catch(() => null) : Promise.resolve(null),
-      fetchSocial(apiKey, query),
+      fetchSocial(apiKey, (wantsLocalGeo(query) ? (query + ' ' + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE')) : query)),
       isPlaces ? fetchPlaces(placesKey, query, lang, (regionOf(query) || geoCode)) : Promise.resolve([]),
     ]);
 
