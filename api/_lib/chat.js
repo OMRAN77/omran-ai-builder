@@ -140,6 +140,13 @@ const IMAGE_TOPICS_NOTE = '\n\n[توليد الصور — نشط لهذه الم
   '• أفكار الأطفال: قصص مصورة, حرف يدوية.\n' +
   'prompt الصورة بالإنجليزي دائماً — دقيق وواصف وذو جودة عالية.';
 
+
+    const DEALS_NOTE = '\n\n[العروض والتخفيضات — قاعدة البحث]:\n' +
+    'عند أي سؤال عن عروض أو تخفيضات أو أسعار أو متاجر: ابحث فوراً بـ web_search.\n' +
+    'صغ query البحث بالإنجليزية مع اسم البلد وكلمة offers/deals/sale: مثال "Carrefour UAE offers this week site:instagram.com OR site:snapchat.com OR site:tiktok.com".\n' +
+    'إذا لم تجد على السوشيال ميديا ابحث على الموقع الرسمي للمتجر في البلد المحدد.\n' +
+    'لا تعطِ عروض دولة أخرى ولو كانت نفس المتجر — الأسعار والعروض تختلف بين البلدان.';
+    
 const WIZARD_NOTE = '\n\n[بطاقات الخيارات — تُوضع تحت جواب مكتمل، لا بدلًا منه]:\n' +
   'اكتب السؤال في سطر، ثمّ ضع الخيارات حرفيًّا هكذا:\n' +
   '[[OPT]]خيار١|خيار٢|خيار٣[[/OPT]] ← اختيار واحد.\n' +
@@ -707,7 +714,7 @@ module.exports = async (req, res) => {
     const system = quietSocialTurn
       ? baseSystem + (casualCheckInTurn ? '\n\n[هذا دور اجتماعي قصير]: أجب عن سؤال الحال مباشرةً في جملة طبيعية واحدة. المحادثة مستمرة، فلا تبدأ بتحية جديدة، ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق.' : '')
       : toolTurn
-        ? baseSystem + nowNote() + countryNote(country) + TOOLS_NOTE + BIDI_RULE + LINK_RULE + WIZARD_NOTE + IMAGE_TOPICS_NOTE + (wizardTurn ? '' : ANSWER_FIRST_NOTE) + askCapNote + ownerKnowledge
+        ? baseSystem + nowNote() + countryNote(country) + TOOLS_NOTE + BIDI_RULE + LINK_RULE + WIZARD_NOTE + IMAGE_TOPICS_NOTE + DEALS_NOTE + (wizardTurn ? '' : ANSWER_FIRST_NOTE) + askCapNote + ownerKnowledge
         : baseSystem + LEAN_CONVERSATION_NOTE + IMAGE_TOPICS_NOTE + BIDI_RULE;
 
       const convoSource = quietSocialTurn ? [lastUser] : messages;
