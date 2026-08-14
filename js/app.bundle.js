@@ -13184,6 +13184,7 @@ function deterministicSocialReply(raw){
   if(/مساء الخير/i.test(s)) return 'مساء النور';
   if(english) return 'Hello!';
   if(/هلا\s+هلا|هلا\s+وهلا|هلا\s+والله|هلا\s+يا|هلا\s+غلا/i.test(s)) return 'هلا بك والله! 😊 كيف أقدر أساعدك؟';
+  if(/^كفو+|كفوك|ماشاء|أحسنت|زين|شاطر/i.test(s)) return 'كفوك الطيب 😊';
   return 'هلا وغلا! كيف أقدر أساعدك اليوم؟';
 }
 
