@@ -1371,21 +1371,7 @@ function renderMessages(keepScroll){
         moreBtn.onclick = (e) => { e.stopPropagation(); openMsgMoreMenu(moreBtn, m.content); };
         actionBar.appendChild(moreBtn);
 
-        // share
-        const shareBtn = document.createElement('button');
-        shareBtn.type = 'button';
-        shareBtn.title = t('shareMsgTitle') || 'مشاركة';
-        shareBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.6" y1="10.5" x2="15.4" y2="6.5"></line><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"></line></svg>';
-        shareBtn.onclick = async () => {
-          try{
-            if(navigator.share){ await navigator.share({ text: m.content }); return; }
-            throw new Error('no-share-api');
-          }catch(e){
-            try{ await navigator.clipboard.writeText(m.content); }catch(e2){ /* ignore */ }
-            if(typeof settingsToast === 'function') settingsToast(t('copiedToast') || 'تم النسخ');
-          }
-        };
-        actionBar.appendChild(shareBtn);
+        // 🔗 v631 — أمر عمران: زرّ مشاركة الرسالة محذوف (الإرسال كان رابطًا لا محتوى).
 
         // 🔊 listen — exact existing speakSmart logic, icon-based
         const speakIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.5 8.5a5 5 0 0 1 0 7"></path><path d="M18.5 5.5a9 9 0 0 1 0 13"></path></svg>';
@@ -1454,14 +1440,7 @@ function renderMessages(keepScroll){
         };
         actionBar.appendChild(reportBtn);
 
-        // ✨ v363: قدرات التطبيق — أيقونة سريعة توديك لأي ميزة (سيرة/مستندات/معاملات/تفسير/شخصية تتكلم)
-        const capIconSVG = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.6 4.6L18 9l-4.4 1.4L12 15l-1.6-4.6L6 9l4.4-1.4z"></path><path d="M19 14l.7 2 .3 2 .3-.7L21 16l2-.7L21 15z"></path><path d="M5 15l.6 1.6L7 17l-1.4.4L5 19l-.6-1.6L3 17l1.4-.4z"></path></svg>';
-        const capBtn = document.createElement('button');
-        capBtn.type = 'button';
-        capBtn.title = (typeof lang!=='undefined'&&lang==='en') ? 'What can I do' : 'شنو أقدر أسوي';
-        capBtn.innerHTML = capIconSVG;
-        capBtn.onclick = (e) => { e.stopPropagation(); openCapabilitiesMenu(capBtn); };
-        actionBar.appendChild(capBtn);
+        // ✨ v631 — أمر عمران: أيقونة «شنو أقدر أسوي» محذوفة من شريط الرسالة.
       } else if(!document.documentElement.classList.contains('mobile-ui')){
         const editBtn = document.createElement('button');
         editBtn.type = 'button';
