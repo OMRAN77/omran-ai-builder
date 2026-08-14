@@ -71,7 +71,7 @@ check(styleRule.includes('السؤال البسيط جواب قصير من ١–
 check(attach.includes("APP_IDENTITY_NOTE + CONVERSATION_QUALITY_RULE") && attach.includes("'أنت مساعد ذكي في تطبيق Omran AI من فريق عمران AI.' + CONVERSATION_QUALITY_RULE"), 'القواعد المركزية مستخدمة في البناء والمحادثة العادية');
 check(!checkout.includes('then ONE concrete next-step suggestion or question') && !checkout.includes('then 2-3 concrete suggestions'), 'أزيل فرض الاقتراح والسؤال من كل رد');
 check(chatServer.includes('أجب عن الرسالة الأخيرة مباشرة وبأسلوب إنساني واضح') && chatServer.includes('لا تفتح موضوعًا قديمًا من نفسك'), 'المحادثة العادية مباشرة ولا تخلط المواضيع');
-check(chatServer.includes('اسأل سؤالًا واحدًا فقط عندما تنقص معلومة تؤثّر فعليًّا') && chatServer.includes('لا تُلحق سؤالًا عامًا بكل رد'), 'سؤال الخادم مشروط بنقص مؤثر');
+check(chatServer.includes('إن نقصت معلومة تؤثّر فعليًّا في الدقّة') && chatServer.includes('لا تُلحق سؤالًا عامًا بكل رد'), 'سؤال الخادم مشروط بنقص مؤثر');
 check(!chatServer.includes('بعد المعلومة أعطِ خطوة تنفيذيّة واحدة يقدر عليها اليوم'), 'أزيل التعارض القديم من تعليمات أدوات الخادم');
 check(chatServer.includes('أمّا سؤال المفهوم الثابت البسيط الذي تجيبه بلا أداة') && chatServer.includes('بلا عناوين أو تعداد أو خطوة تالية أو سؤال'), 'قواعد نتائج البحث لا تتسرّب إلى السؤال الثابت البسيط');
 
