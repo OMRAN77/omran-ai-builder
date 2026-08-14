@@ -11997,20 +11997,56 @@ window.__omranImgTools = function(wrap, dataUrl){
     const ext = ty === 'image/jpeg' ? '.jpg' : (ty === 'image/webp' ? '.webp' : '.png');
     return new File([bl], 'image-' + Date.now() + ext, { type: ty });
   };
-  const shareFile = (onFail) => {
+  // 🩹 v642 — أمر عمران: الرابط ما زال يُرسَل. العيب في كودي: كنت أشترط
+  //    canShare قبل الإرسال، ومقيس سابقًا (v625) أنّها ترجع false كذبًا في
+  //    متصفّحات تدعم share بالملفّات فعلًا ⇒ يسقط الكود للرابط. الآن:
+  //    أُرسل الملفّ بلا شرط، وألتقط الرفض، ولا أرسل رابطًا أبدًا — بدله
+  //    تُحفظ الصورة في «التنزيلات» لتُرفَق يدويًّا. وسبب الرفض يُعلَن لا يُبلَع.
+  let __shF = null;
+  const fileOnce = () => {
+    if(!__shF){ try{ __shF = fileOf(); }catch(e){ __swallow(e, 'fileOnce:app-09-attach#v642'); __shF = null; } }
+    return __shF;
+  };
+  const filePossible = () => {
     try{
       const nv = navigator;
-      if(typeof File !== 'function' || typeof nv.share !== 'function' || typeof nv.canShare !== 'function') return false;
-      const f = fileOf();
-      if(!nv.canShare({ files: [f] })) return false;
+      if(typeof File !== 'function' || typeof nv.share !== 'function') return false;
+      const f = fileOnce();
+      if(!f) return false;
+      if(typeof nv.canShare === 'function'){ try{ if(nv.canShare({ files: [f] })) return true; }catch(e){} }
+      return true;
+    }catch(e){ __swallow(e, 'filePossible:app-09-attach#v642'); }
+    return false;
+  };
+  const saveOpen = (t) => {
+    let bl = null;
+    try{ bl = toBlob(dataUrl); }catch(e){ __swallow(e, 'saveOpen:app-09-attach#v642'); }
+    const nm = (t && t.n) ? t.n : (ar ? 'التطبيق' : 'the app');
+    if(saveDl(bl)){
+      note(ar ? ('حُفظت الصورة في «التنزيلات» — أرفقها في ' + nm) : ('Saved to Downloads — attach it in ' + nm));
+      return true;
+    }
+    hint(bl);
+    return false;
+  };
+  const shareFile = (onFail) => {
+    const nv = navigator;
+    if(typeof File !== 'function' || typeof nv.share !== 'function') return false;
+    const f = fileOnce();
+    if(!f) return false;
+    try{
       const pr = nv.share({ files: [f] });
       if(pr && pr.catch) pr.catch((e) => {
         if(e && e.name === 'AbortError') return;
-        __swallow(e, 'shareFile:app-09-attach#v640');
+        __swallow(e, 'shareFile:app-09-attach#v642');
+        note((ar ? 'رفض المتصفّح إرسال الملفّ' : 'Browser refused the file') + ' — ' + ((e && (e.name || e.message)) || '?'));
         if(typeof onFail === 'function') onFail();
       });
       return true;
-    }catch(e){ __swallow(e, 'shareFile:app-09-attach#v640'); }
+    }catch(e){
+      __swallow(e, 'shareFile:app-09-attach#v642');
+      try{ note((ar ? 'رفض المتصفّح إرسال الملفّ' : 'Browser refused the file') + ' — ' + ((e && (e.name || e.message)) || '?')); }catch(_){}
+    }
     return false;
   };
   let shUrl = '', shBusy = null;
@@ -12097,22 +12133,16 @@ window.__omranImgTools = function(wrap, dataUrl){
     xb.textContent = ar ? 'إغلاق' : 'Close'; xb.onclick = close; hd.appendChild(xb);
     sh.appendChild(hd);
     const stx = document.createElement('p'); stx.className = 'oShS';
-    stx.textContent = ar ? 'جارِ تحضير الرابط…' : 'Preparing link…';
+    stx.textContent = filePossible()
+      ? (ar ? 'تُرسَل الصورة ملفًّا — بلا رابط ولا بطاقة' : 'Sent as a file — no link, no card')
+      : (ar ? 'متصفّحك لا يدعم إرسال الملفّات — ستُحفظ الصورة لترفقها' : 'Your browser cannot send files — the image will be saved');
     sh.appendChild(stx);
     const gr = document.createElement('div'); gr.className = 'oShGr'; sh.appendChild(gr);
     const go = (t) => {
-      const run = (l) => {
-        if(!l){ note(ar ? 'تعذّر تحضير الرابط — استخدم «تنزيل الصورة»' : 'Link failed — use Download'); return; }
-        if(t.copy){ cpTxt(l); note(t.copy); return; }
-        const link = t.u(l);
-        let w = null;
-        try{ w = window.open(link, '_blank'); }catch(e){ __swallow(e, 'go:app-09-attach#v627'); }
-        if(!w) location.href = link;
-        close();
-      };
-      // v640 — الملفّ أوّلًا: صورة نقيّة بلا رابط ولا بطاقة. الرابط ملاذ الفشل.
-      if(shareFile(() => { if(shUrl && cpTxt(shUrl)) note(ar ? 'نُسخ الرابط — الصقه في التطبيق' : 'Link copied'); })){ close(); return; }
-      if(shUrl) run(shUrl); else upload().then(run);
+      // v642 — صفر روابط تلقائيّة: الملفّ نفسه، وإلّا حفظٌ في «التنزيلات».
+      //    «نسخ رابط الصورة» بقي فعلًا صريحًا أسفل الورقة لمن يريده.
+      if(shareFile(() => saveOpen(t))){ close(); return; }
+      saveOpen(t);
     };
     APPS.forEach((t) => {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'oShT';
@@ -12130,20 +12160,9 @@ window.__omranImgTools = function(wrap, dataUrl){
       return b;
     };
     act(ar ? 'مشاركة عبر تطبيقات الجهاز' : 'Share via device apps', 'share', () => {
-      const nv = navigator;
-      const l = shUrl;
-      // v640 — الملفّ أوّلًا هنا كذلك.
-      if(shareFile(() => { if(l && cpTxt(l)) note(ar ? 'نُسخ الرابط' : 'Link copied'); })){ close(); return; }
-      if(typeof nv.share === 'function'){
-        try{
-          const pr = nv.share(l ? { url: l, title: ar ? 'صورة' : 'Image' } : { text: ar ? 'صورة' : 'Image' });
-          if(pr && pr.catch) pr.catch((e) => { if(e && e.name === 'AbortError') return; __swallow(e, 'sys:app-09-attach#v627'); if(l){ cpTxt(l); note(ar ? 'نُسخ الرابط' : 'Link copied'); } });
-          close();
-          return;
-        }catch(e){ __swallow(e, 'sys:app-09-attach#v627'); }
-      }
-      if(l && cpTxt(l)) note(ar ? 'نُسخ الرابط — الصقه في أيّ تطبيق' : 'Link copied — paste it in any app');
-      else note(ar ? 'جارِ تحضير الرابط… أعد المحاولة بعد لحظة' : 'Preparing link… try again in a moment');
+      // v642 — الملفّ فقط. إن رفضه المتصفّح تُحفظ الصورة — لا يُشارَك رابط.
+      if(shareFile(() => saveOpen(null))){ close(); return; }
+      saveOpen(null);
     });
     act(ar ? 'نسخ رابط الصورة' : 'Copy image link', 'lnk', () => {
       const run = (l) => { if(l && cpTxt(l)) note(ar ? 'نُسخ الرابط' : 'Link copied'); else note(ar ? 'تعذّر تحضير الرابط' : 'Link failed'); };
@@ -12161,11 +12180,6 @@ window.__omranImgTools = function(wrap, dataUrl){
       copyImg(b, bl);
     });
     document.body.appendChild(ov);
-    upload().then((l) => {
-      stx.textContent = l
-        ? (ar ? 'اختر تطبيقًا — تُرسَل الصورة نفسها' : 'Pick an app — the image itself is sent')
-        : (ar ? 'تعذّر تحضير الرابط — «تنزيل الصورة» يعمل دائمًا' : 'Link failed — Download still works');
-    });
   };
   // يمين: «تعديل» نصّ فقط
   mk('txt', '<span>' + (ar ? 'تعديل' : 'Edit') + '</span>', ar ? 'تعديل' : 'Edit', (b) => {
