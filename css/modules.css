@@ -381,10 +381,7 @@ html[data-mode="light"] #eduHubModal .eduHintTxt,
 html[data-mode="light"] #eduHubModal .eduNote{color:var(--muted) !important;}
 
 
-    /* ═══ إخفاء قسم الأدوات من الشاشة ═══ */
-    [data-omnav="tools"]   { display: none !important; }
+    /* ═══ إخفاء الأدوات من الشاشة الرئيسية فقط ═══ */
     #omranToolsGrid        { display: none !important; }
     #omranQuickMobileWrap  { display: none !important; }
-    #sectionsToolsOverlay  { display: none !important; }
-    #btnToolsBox           { display: none !important; }
     
