@@ -107,6 +107,42 @@ const SOCIAL_PLATFORMS = [
 // نفس التعبير يُرفع هنا ليُشارَك مع استعلام الصور — بلا تغيير في سلوك Tavily.
 const GEO_IN_QUERY_RE = /سعود|إمارات|الامارات|دبي|أبوظبي|ابوظبي|الشارقة|عجمان|مصر|قطر|كويت|عمان|بحرين|أردن|saudi|uae|dubai|abu dhabi|sharjah|egypt|qatar|kuwait|oman|bahrain|jordan|usa|america|uk|india|pakistan|فلبين|فليبين|philippin|هند|india|صين|china|يابان|japan|كور|korea|ترك|turk|ألمان|german|فرنس|franc|بريطان|british|إندونيس|indonesia|ماليز|malays|تايلا|thai|روس|russ|أمريك|americ|كند|canad|أسترال|austral/i;
 
+/* v621 — بوّابة النيّة المحلّيّة.
+   العيب المُقاس: كلّ استعلام قصير بلا كلمة جغرافيّة كان يُحقن بـ«الإمارات UAE»،
+   فسؤال «صورة أوّل هاتف» صار «أوّل هاتف الإمارات UAE» → خرائط وأعلام بدل الهاتف.
+   العلاج: الدولة تُضاف عند النيّة المحلّيّة وحدها؛ الافتراض عالميّ.
+   كلّ الأنماط أدناه مكتوبة بصيغة مُطبَّعة (بلا همزات ولا تاء مربوطة ولا تشكيل). */
+function normAr(t){
+  return String(t || '')
+    .replace(/[\u064B-\u0652\u0670\u0640]/g, '')   // تشكيل + تطويل
+    .replace(/[\u0623\u0625\u0622\u0671]/g, '\u0627') // أإآٱ → ا
+    .replace(/\u0649/g, '\u064A')                  // ى → ي
+    .replace(/\u0626/g, '\u064A')                  // ئ → ي
+    .replace(/\u0624/g, '\u0648')                  // ؤ → و
+    .replace(/\u0629/g, '\u0647')                  // ة → ه
+    .replace(/\s+/g, ' ');
+}
+const LOCAL_INTENT_RE = /مطعم|مطاعم|مقهي|مقاهي|كافي|كوفي|فندق|فنادق|قرب|قريب|قريبه|حولي|وين|فين|اقرب|عنوان|موقع|فرع|فروع|دوام|اوقات العمل|يفتح|يسكر|سعر|اسعار|تكلفه|كلفه|رسوم|ايجار|للبيع|للايجار|اشتري|عقار|عقارات|شقه|فيلا|توصيل|حجز|احجز|مكتب|مكاتب|عياده|عيادات|مستشفي|مستشفيات|صيدليه|محل|محلات|سوق|اسواق|مول|صالون|ورشه|جراج|بنزين|جامعه|جامعات|معهد|مدرسه|مدارس|حضانه|وظيفه|وظايف|راتب|رواتب|طقس|الجو|درجه الحراره|امطار|مواصلات|مترو|تاكسي|طيران|رحلات|تاشيره|فيزا|اقامه|بلديه|هييه|دايره|وزاره|خدمه|خدمات|رخصه|مخالفه|مخالفات|شرطه|محامي|محاسب|طبيب|حلاق|near me|nearby|around me|restaurant|cafe|hotel|price|cost|rent|for sale|clinic|hospital|pharmacy|salary|jobs?|weather|visa|licen[cs]e|delivery|booking|open now/i;
+const GLOBAL_KNOWLEDGE_RE = /من اخترع|من ابتكر|من اكتشف|من اسس|من صنع|من بني|من الف|اول من|اول هاتف|اول جهاز|تاريخ|تاريخي|تاريخيه|قديم|قديمه|قرن|حضاره|عصر|حرب|معركه|سنه [\u0660-\u06690-9]{3,4}|عام [\u0660-\u06690-9]{3,4}|1[5-9][0-9][0-9]|كيف يعمل|كيف تعمل|كيف صنع|كيف كان|ما هو|ما هي|شنو هو|من هو|من هي|مين هو|شرح|اشرح|تعريف|معني|فرق بين|مقارنه بين|فوايد|اضرار|اعراض|علاج|كوكب|فضاء|نجم|مجره|نظريه|فيزياء|كيمياء|احياء|رياضيات|who invented|who discovered|who founded|first (telephone|phone|car|computer)|history of|how does|how do|how was|what is|what are|definition|explain|difference between|symptoms|treatment/i;
+/* مدن العالم: «فنادق في اسطنبول» لا تُحقن بالإمارات. */
+const GEO_CITY_RE = /دبي|ابوظبي|الشارقه|عجمان|راس الخيمه|الفجيره|ام القيوين|العين|الرياض|جده|مكه|المدينه|الدمام|الخبر|الطايف|ابها|الدوحه|الكويت|المنامه|مسقط|صلاله|القاهره|الاسكندريه|بيروت|عمان|دمشق|بغداد|اربيل|الخرطوم|طهران|اسطنبول|استانبول|انطاليا|انقره|باريس|لندن|مانشستر|نيويورك|لوس انجلوس|شيكاغو|واشنطن|ميامي|تورنتو|فانكوفر|طوكيو|اوساكا|سيول|بكين|شنغهاي|هونغ كونغ|سنغافوره|بانكوك|كوالالمبور|جاكرتا|بالي|مانيلا|مومباي|دلهي|بنغالور|كراتشي|لاهور|اسلام اباد|روما|ميلان|البندقيه|برشلونه|مدريد|لشبونه|اثينا|برلين|ميونخ|فرانكفورت|فيينا|زيورخ|جنيف|امستردام|بروكسل|براغ|بودابست|وارسو|موسكو|كييف|ستوكهولم|اوسلو|كوبنهاغن|هلسنكي|دبلن|سيدني|ملبورن|اوكلاند|مراكش|الدار البيضاء|تونس|الجزاير|طرابلس|نيروبي|كيب تاون|ساو باولو|ريو|مكسيكو|paris|london|new ?york|tokyo|seoul|bangkok|singapore|istanbul|rome|barcelona|madrid|berlin|vienna|amsterdam|moscow|sydney|toronto/i;
+/* صفات النسبة = مطبخ أو جنسيّة لا مكان: «مطعم هندي» في مدينة المستخدم. */
+const NAT_ADJ_RE = /هندي|هنديه|صيني|صينيه|ياباني|يابانيه|ايطالي|ايطاليه|تركي|تركيه|كوري|كوريه|تايلاندي|تايلندي|فيتنامي|امريكي|امريكيه|فرنسي|فرنسيه|مكسيكي|لبناني|لبنانيه|سوري|سوريه|مصري|مصريه|يمني|يمنيه|سعودي|سعوديه|اماراتي|خليجي|فلبيني|باكستاني|اثيوبي|مغربي|ايراني|افغاني|indian|chinese|japanese|italian|turkish|korean|thai|american|french|mexican|lebanese|syrian|egyptian|filipino|pakistani|persian/i;
+function wantsLocalGeo(q){
+  const raw = String(q || '');
+  const s = normAr(raw);
+  const local = LOCAL_INTENT_RE.test(s);
+  const geo   = GEO_IN_QUERY_RE.test(raw) || GEO_IN_QUERY_RE.test(s) || GEO_CITY_RE.test(s);
+  // نيّة محلّيّة + صفة نسبة بلا مدينة ولا «في <دولة>» = مطبخ محلّيّ، فتُضاف الدولة
+  if (local && geo && NAT_ADJ_RE.test(s) && !GEO_CITY_RE.test(s)
+      && !/(في|من|الي|ب) ?(ال)?(هند|صين|يابان|ترك|امريك|فرنس|ايطال|كور|تايلا|فيتنام|مكسيك|مصر|سعود|قطر|كويت|بحرين|اردن|لبنان|سوري|مغرب|ايران)/i.test(s)
+      && !/in (india|china|japan|turkey|usa|france|italy|korea|thailand)/i.test(s)) return true;
+  if (geo)   return false;                        // جغرافيا صريحة — لا حقن
+  if (local) return true;                         // نيّة محلّيّة فعليّة
+  if (GLOBAL_KNOWLEDGE_RE.test(s)) return false;  // سؤال معرفيّ/تاريخيّ — عالميّ
+  return false;                                   // الافتراض: عالميّ
+}
+
 async function pplxLive(query, wantImages) {
   const key = (process.env.PERPLEXITY_API_KEY || '').trim();
   if (!key) return null;
@@ -451,7 +487,7 @@ module.exports = async (req, res) => {
     // عبر Groq ثم يبحث بالتوازي ويدمج النتائج المكررة.
     if (wantDeep) {
       // v467b: لا نضيف geo suffix إذا الاستعلام طويل (مُثرى بالسياق) — فيه سياق كافي
-      const geoSuffix = query.length > 120 ? '' : ((geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE'));
+      const geoSuffix = (query.length > 120 || !wantsLocalGeo(query)) ? '' : ((geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE'));
       // 1) توليد استعلامات فرعية بـ Groq
       let subQueries = [query];
       try {
@@ -620,8 +656,8 @@ module.exports = async (req, res) => {
         body: JSON.stringify({
           api_key: apiKey,
           // v467b: geo-suffix فقط للاستعلامات القصيرة بدون سياق. الاستعلامات المُثراة (طويلة) عندها سياق كافي.
-          query: (GEO_IN_QUERY_RE.test(query) ? query : (query.length > 120 ? query : query + ' ' + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE'))),
-          country: (geoNameEn ? geoNameEn.toLowerCase() : 'united arab emirates'),
+          query: ((query.length > 120 || !wantsLocalGeo(query)) ? query : (query + ' ' + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE'))),
+          ...(wantsLocalGeo(query) ? { country: (geoNameEn ? geoNameEn.toLowerCase() : 'united arab emirates') } : {}),
           search_depth: isListing ? 'advanced' : 'basic',
           include_answer: true,
           include_images: wantImages,
@@ -708,7 +744,7 @@ module.exports = async (req, res) => {
     }
 
     // v612 — استعلام الصور وحده يحمل الدولة؛ النصّ والمصادر لا تُمسّ.
-    const imgQuery = (GEO_IN_QUERY_RE.test(query) || query.length > 120)
+    const imgQuery = (query.length > 120 || !wantsLocalGeo(query))
       ? query : (query + ' ' + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE'));
     let images = wantImages && Array.isArray(data.images) ? data.images.slice(0, 4) : [];
     // v610 — صور الشريط كانت من Tavily وحده، وهو ساقط حيًّا، فيخرج الشريط فارغًا.
