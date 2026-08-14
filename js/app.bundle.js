@@ -10157,6 +10157,14 @@ const __IMG_SHAPE_RE = /شكلها|شكله|شكلهم|كيف تبدو|كيف ي
 const __IMG_EN_RE = /\b(photos?|pictures?|images?|pics|thumbnails?)\b|\blooks? like\b/i;
 // توليد/تعديل صورة أو الإشارة إلى صورة مرفقة = ليس شريط بحث.
 const __IMG_MAKE_RE = /ارسم|أرسم|ارسمي|صمم|صمّم|اصمم|اصنع|اعمل لي|سوي لي|سوّي لي|ولّد|ولد لي|حوّل|عدّل|اقتطع|ازل الخلفية|أزل الخلفية|generate|create an image|draw|design|edit it|remove background|هذه الصورة|هالصورة|الصورة المرفقة|في الصورة|بالصورة/i;
+// v628 عيب [د] (قياس حيّ): «هل يوجد صور لها» يجرف Tavily وGoogle إلى مواقع صور المخزون
+// (unsplash · shutterstock) وصورًا بلا علاقة. نبحث بالموضوع وحده ونُخرج ألفاظ الطلب من الاستعلام.
+const __IMG_STRIP_RE = /(?:^|[^\u0621-\u064A])(?:ال|لل|بال|وال|فال|كال)?(?:صور|صوره|صورة|لقطات|بوستر)[\u0621-\u064A]*/g;
+const __IMG_REQ_WORDS_RE = /(?:^|\s)(?:هل|يوجد|توجد|فيه|في|أعطني|اعطني|عطني|وريني|أرني|ارني|ابغى|أبغى|ابي|أبي|أريد|اريد|ممكن|لها|له|لهم|لهذا|لهذه|من فضلك|please|show|me|photos?|pictures?|images?|pics|thumbnails?|are|is|there|do|you|have|of|for|it)(?=\s|$)/gi;
+function __imgTopicQuery(q){
+  const t = String(q || '').replace(__IMG_STRIP_RE, ' ').replace(__IMG_REQ_WORDS_RE, ' ').replace(/\s{2,}/g, ' ').trim();
+  return t.length >= 3 ? t.slice(0, 160) : '';
+}
 function __wantsImageStrip(t){
   const s = String(t || '');
   if(!s || __IMG_MAKE_RE.test(s)) return false;
@@ -10227,7 +10235,7 @@ async function smartMaybeSearch(text, ctxMsgs){
   const __wantDeep = __deepRe.test(text) || (text.length > 120 && mahaNeedsSearch(text));
 
   // v628 عيب [ب]: نيّة صور صريحة = بحث حيّ إجباري (سؤال «هل يوجد صور» كان يمرّ بلا بحث فلا صور).
-  if(__wantsImageStrip(text)) return await fetchSearchNote(searchQuery, __wantDeep, text);
+  if(__wantsImageStrip(text)) return await fetchSearchNote(__imgTopicQuery(searchQuery) || searchQuery, __wantDeep, text);
   // 🔗 طلب روابط/مواقع حقيقية = بحث حي إجباري (منع هلوسة الروابط الوهمية).
   if(/رابط|روابط|لينك|لنك|لينكات|لنكات/i.test(text)
     || /(رابط|لينك|\blink\b|\burl\b)[^\n]{0,25}(موقع|مواقع|منصة|منصات|صفحة|site|website)/i.test(text)
