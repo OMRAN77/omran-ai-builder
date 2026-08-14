@@ -11814,7 +11814,6 @@ window.__omranImgTools = function(wrap, dataUrl){
   }
   const ICON = {
     share: '<circle cx="18" cy="5.2" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="18.8" r="2.6"/><path d="M8.35 10.8l7.3-4.3"/><path d="M8.35 13.2l7.3 4.3"/>',
-    dl: '<path d="M12 3.7v10.9"/><path d="M7.5 10.2L12 14.7l4.5-4.5"/><path d="M4.7 19.3h14.6"/>',
     done: '<path d="M4.9 12.7l4.5 4.5L19.1 7.5"/>'
   };
   const svg = (k) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON[k] + '</svg>';
@@ -11832,24 +11831,42 @@ window.__omranImgTools = function(wrap, dataUrl){
     b.innerHTML = html;
     setTimeout(() => { b.innerHTML = prev; }, 1400);
   };
-  // 🔗 v623 — أمر عمران: «ما فيها مشاركة، تنزيل فقط». كان زرًّا واحدًا يحاول
-  //    navigator.share ثمّ يسقط للتنزيل صامتًا ⇒ صار زرَّين صريحين: تنزيل دائمًا،
-  //    ومشاركة أصليّة تنسخ الصورة للحافظة حين لا يدعم الجهاز مشاركة الملفّات.
+  // 🔗 v624 — أمر عمران: «زرّ التنزيل احذفه نهائيًّا · زرّ المشاركة لا يعمل».
+  //    السبب المقيس: الشرط كان يطلب navigator.canShare وهي غائبة في متصفّحات
+  //    غير Chrome ⇒ المشاركة ما تُحاوَل وتسقط صامتة. الآن: ورقة النظام أوّلًا ·
+  //    ثمّ الحافظة · وكل فشل يُنبَّه مرئيًّا (صفر صمت). زرّ التنزيل مُزال.
   // ⚠️ v592 — connect-src لا يسمح بـ data: ⇒ التحويل محلّيّ بـ atob (صفر شبكة).
   const grp = document.createElement('div'); grp.className = 'oImgGrp'; bar.appendChild(grp);
   const nmOf = () => 'image-' + Date.now() + '.png';
   const toBlob = (du) => { const s = String(du), i = s.indexOf(','), m = (s.slice(0, i).match(/:([^;,]+)/) || [])[1] || 'image/png', bin = atob(s.slice(i + 1)), u8 = new Uint8Array(bin.length); for(let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k); return new Blob([u8], { type: m }); };
-  const dlBlob = (b, bl) => { const u = URL.createObjectURL(bl), a = document.createElement('a'); a.href = u; a.download = nmOf(); a.click(); setTimeout(() => URL.revokeObjectURL(u), 4000); flash(b, svg('done')); };
-  const saveNow = (b) => { try{ dlBlob(b, toBlob(dataUrl)); }catch(e){ __swallow(e, 'save:app-09-attach#v623'); try{ const a = document.createElement('a'); a.href = dataUrl; a.download = nmOf(); a.click(); flash(b, svg('done')); }catch(_){ flash(b, '<span>&#9888;</span>'); } } };
-  const copyImg = (b, bl) => { try{ if(bl && navigator.clipboard && window.ClipboardItem && navigator.clipboard.write){ navigator.clipboard.write([new ClipboardItem({ [bl.type || 'image/png']: bl })]).then(() => flash(b, svg('done'))).catch((e) => { __swallow(e, 'copy:app-09-attach#v623'); saveNow(b); }); return; } }catch(e){ __swallow(e, 'copy:app-09-attach#v623'); } saveNow(b); };
-  mk('ico', svg('dl'), ar ? 'تنزيل' : 'Download', (b) => saveNow(b), grp);
+  const note = (m) => { try{ if(typeof settingsToast === 'function'){ settingsToast(m); return true; } }catch(e){ __swallow(e, 'note:app-09-attach#v624'); } return false; };
+  const hint = () => note(ar ? 'اضغط مطوّلًا على الصورة لمشاركتها' : 'Long-press the image to share it');
+  const copyImg = (b, bl) => {
+    try{
+      if(bl && navigator.clipboard && window.ClipboardItem && navigator.clipboard.write){
+        navigator.clipboard.write([new ClipboardItem({ [bl.type || 'image/png']: bl })])
+          .then(() => { flash(b, svg('done')); note(ar ? 'نُسخت الصورة — الصقها في أيّ محادثة' : 'Image copied — paste it anywhere'); })
+          .catch((e) => { __swallow(e, 'copy:app-09-attach#v624'); hint(); });
+        return;
+      }
+    }catch(e){ __swallow(e, 'copy:app-09-attach#v624'); }
+    hint();
+  };
   mk('ico', svg('share'), ar ? 'مشاركة' : 'Share', (b) => {
     let bl = null, f = null;
-    try{ bl = toBlob(dataUrl); f = new File([bl], nmOf(), { type: bl.type || 'image/png' }); }catch(e){ __swallow(e, 'share:app-09-attach#v623'); }
-    // بلا await قبل navigator.share — إيماء المستخدم يضيع فتبطل المشاركة
-    if(f && navigator.canShare && navigator.canShare({ files: [f] })){
-      try{ navigator.share({ files: [f] }).then(() => flash(b, svg('done'))).catch((err) => { if(!err || err.name !== 'AbortError') copyImg(b, bl); }); return; }
-      catch(e){ __swallow(e, 'share:app-09-attach#v623'); }
+    try{ bl = toBlob(dataUrl); f = new File([bl], nmOf(), { type: bl.type || 'image/png' }); }
+    catch(e){ __swallow(e, 'share:app-09-attach#v624'); }
+    const nv = navigator;
+    // بلا await قبل share — الإيماء يضيع فتبطل المشاركة
+    // canShare غائبة في متصفّحات غير Chrome ⇒ غيابها لا يمنع المحاولة
+    const okFiles = !!f && (typeof nv.canShare !== 'function' || nv.canShare({ files: [f] }));
+    if(f && typeof nv.share === 'function' && okFiles){
+      try{
+        const pr = nv.share({ files: [f] });
+        if(pr && pr.then){ pr.then(() => flash(b, svg('done'))).catch((err) => { if(err && err.name === 'AbortError') return; __swallow(err, 'share:app-09-attach#v624'); copyImg(b, bl); }); }
+        else flash(b, svg('done'));
+        return;
+      }catch(e){ __swallow(e, 'share:app-09-attach#v624'); }
     }
     copyImg(b, bl);
   }, grp);
