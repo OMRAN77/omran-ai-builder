@@ -13829,7 +13829,7 @@ async function sendPrompt(){
           ? 'The character stands still in place, only the head and mouth move naturally while talking (minimal body motion)'
           : 'The character is lively and animated: gentle body movement, waving hand gestures and expressive motion while talking';
         const __talkPrompt = 'A cute chibi 3D cartoon character standing and talking directly to the camera, with natural mouth movement and accurate lip-sync, lively friendly facial expression. ' + __motionDesc + '. The character speaks out loud in ' + __voiceLang + (__dialogue ? (', clearly saying: "' + __dialogue.slice(0,300) + '"') : '') + '. Clear spoken voice audio, no background music. Keep the character exactly as in the provided image.';
-        const __vp = { promptText: __talkPrompt.slice(0,1400), ratio: '720:1280', quality: 'high', durationSeconds: __tcDur, token: authGet('aiapp_auth_token'), imageBase64: __cartoonB64, imageMime: __cartoonMime };
+        const __vp = { promptText: __talkPrompt.slice(0,1400), ratio: '720:1280', quality: 'fast', durationSeconds: __tcDur, token: authGet('aiapp_auth_token'), imageBase64: __cartoonB64, imageMime: __cartoonMime };
         let __op = null, __verr = '';
         for(let __a = 0; __a < 2 && !__op; __a++){
           const __r = await fetch('/api/video?action=veo-create', { method:'POST', headers:{'Content-Type':'application/json'}, signal: genAbortController.signal, body: JSON.stringify(__vp) });
