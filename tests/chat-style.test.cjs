@@ -161,8 +161,8 @@ check(!bundle.includes('فردّ حرفيًا: «أهلًا بك.» فقط'), '�
     
     // ===== اختبار قاعدة الصورة/الفيديو التوضيحي =====
     check(chatServer.includes('فيديو|فديو|مقطع|توضيح|توضيحي|توضيحية'), 'فيديو وتوضيح يُفعّلان مسار الأدوات');
-    check(chatServer.includes('قاعدة الصورة التوضيحية'), 'القاعدة الصريحة موجودة في تعليمات الأدوات');
-    check(chatServer.includes('ممنوع استخدام web_search للحصول على صور توضيحية'), 'يمنع web_search صراحةً عند الطلب التوضيحي');
-    check(chatServer.includes('generate_image مع وصف بصري دقيق مستخرَج من موضوع المحادثة'), 'يُوجّه النموذج لاستخدام generate_image بوصف من سياق المحادثة');
+    check(chatServer.includes('قاعدة الصورة/الفيديو التوضيحي'), 'القاعدة الصريحة موجودة في تعليمات الأدوات');
+    check(chatServer.includes('ممنوع web_search للطلبات التوضيحية'), 'يمنع web_search صراحةً عند الطلب التوضيحي');
+    check(chatServer.includes('استدعِ generate_image بـ prompt إنجليزي وصفي'), 'يُوجّه النموذج لاستخدام generate_image بوصف من سياق المحادثة');
     
 console.log('\n✅ فصل التحية عن المحادثة واستمرار السياق — نجح');
