@@ -70,7 +70,7 @@ check(styleRule.includes('بلا تقليد لعباراته أو مزاجه'), 
 check(styleRule.includes('السؤال البسيط جواب قصير من ١–٣ جمل بلا عناوين أو تعداد'), 'السؤال البسيط له حد سلوكي قابل للقياس');
 check(attach.includes("APP_IDENTITY_NOTE + CONVERSATION_QUALITY_RULE") && attach.includes("'أنت مساعد ذكي في تطبيق Omran AI من فريق عمران AI.' + CONVERSATION_QUALITY_RULE"), 'القواعد المركزية مستخدمة في البناء والمحادثة العادية');
 check(!checkout.includes('then ONE concrete next-step suggestion or question') && !checkout.includes('then 2-3 concrete suggestions'), 'أزيل فرض الاقتراح والسؤال من كل رد');
-check(chatServer.includes('أجب عن الرسالة الأخيرة مباشرة وبأسلوب إنساني واضح') && chatServer.includes('لا تفتح موضوعًا قديمًا من نفسك'), 'المحادثة العادية مباشرة ولا تخلط المواضيع');
+check(chatServer.includes('اكشف نبرة المستخدم وطابقها فورًا') && chatServer.includes('لا تبدأ من الصفر في كل ردّ'), 'المحادثة العادية تكشف النبرة وتحافظ على السياق');
 check(chatServer.includes('إن نقصت معلومة تؤثّر فعليًّا في الدقّة') && chatServer.includes('لا تُلحق سؤالًا عامًا بكل رد'), 'سؤال الخادم مشروط بنقص مؤثر');
 check(!chatServer.includes('بعد المعلومة أعطِ خطوة تنفيذيّة واحدة يقدر عليها اليوم'), 'أزيل التعارض القديم من تعليمات أدوات الخادم');
 check(chatServer.includes('أمّا سؤال المفهوم الثابت البسيط الذي تجيبه بلا أداة') && chatServer.includes('بلا عناوين أو تعداد أو خطوة تالية أو سؤال'), 'قواعد نتائج البحث لا تتسرّب إلى السؤال الثابت البسيط');
@@ -164,5 +164,17 @@ check(!bundle.includes('فردّ حرفيًا: «أهلًا بك.» فقط'), '�
     check(chatServer.includes('قاعدة الصورة/الفيديو التوضيحي'), 'القاعدة الصريحة موجودة في تعليمات الأدوات');
     check(chatServer.includes('ممنوع web_search للطلبات التوضيحية'), 'يمنع web_search صراحةً عند الطلب التوضيحي');
     check(chatServer.includes('استدعِ generate_image بـ prompt إنجليزي وصفي'), 'يُوجّه النموذج لاستخدام generate_image بوصف من سياق المحادثة');
+    
+    // ===== فحوصات أسلوب المحادثة الجديد =====
+    check(chatServer.includes('ملابس|تسوق|بوتيك|فستان|عباية|موضة|متاجر|عروض|تخفيض'), 'ملابس وتسوق تُفعّلان مسار الأدوات');
+    check(chatServer.includes('سيارات'), 'سيارات (جمع) مضافة لمسار الأدوات');
+    check(chatServer.includes('هلا بك والله'), 'التحية المضاعفة تعطي ترحيباً دافئاً');
+    check(chatServer.includes('كيف أقدر أساعدك اليوم'), 'التحية العادية تدعو للمساعدة');
+    check(chatServer.includes('خليجي دافئ (هلا / يا غالي / والله'), 'كشف النبرة الخليجية موثّق في التعليمات');
+    check(chatServer.includes('استثناء — النوع الجوهري فقط'), 'سؤال النوع الجوهري مسموح بعد إجابة أولية');
+    check(chatServer.includes('معالج التسوق والتصفح'), 'معالج التسوق موجود في WIZARD_NOTE');
+    check(chatServer.includes('مواقع سيارات'), 'مثال مواقع السيارات موجود في معالج التسوق');
+    check(chatServer.includes('للكبار|للأطفال'), 'بطاقات فئة العمر موجودة في معالج التسوق');
+    check(!chatServer.includes('بالطبع!') || chatServer.includes('لا تبدأ ردك بـ«بالطبع!»'), 'يمنع البدء بعبارات مكررة كبالطبع');
     
 console.log('\n✅ فصل التحية عن المحادثة واستمرار السياق — نجح');
