@@ -10178,7 +10178,15 @@ async function smartMaybeSearch(text, ctxMsgs){
     if(__topic){
       // v556: مجال جديد صريح يختلف عن مجال السياق => سؤال مستقل، صفر حقن.
       const __dNew = __domOf(text), __dCtx = __domOf(__topic);
-      searchQuery = (__dNew && __dCtx && __dNew !== __dCtx) ? text : (__topic + ' ' + text).slice(0, 500);
+      // v618: «اريد/عطني/ممكن» بداية طبيعية لسؤال جديد كامل، لا متابعة. المتابعة الحقيقيّة إمّا
+      // بلا موضوع خاص بها («المزيد» · «كمل» · «عطني الروابط») أو فيها إشارة مرجعيّة («عن هذا»).
+      const __refRe = /(هذا|هذه|هذي|هالشي|هالموضوع|ذاك|ذلك|تلك|عنه|عنها|عنهم|نفسه|نفسها|السابق|السابقة|المذكور|اللي فوق|اللي قلت|اللي ذكرت|\bthis\b|\bthat\b|\bthose\b|\bthem\b|\bit\b|above)/i;
+      const __stopRe = /^(عطني|أعطني|اعطني|هات|هاتلي|وريني|أرني|ارني|ابغي|أبغي|أبي|ابي|أريد|اريد|بغيت|ودي|ممكن|لو سمحت|من|عن|في|على|إلى|الى|لي|ل|ب|المزيد|مزيد|زيادة|أكثر|اكثر|كمل|أكمل|اكمل|واصل|كامل|تفاصيل|التفاصيل|معلومات|المعلومات|معلومة|شرح|اشرح|إشرح|وضح|وضّح|قول|قل|زودني|الروابط|روابط|رابط|المواقع|مواقع|موقع|اللنكات|لنكات|لينكات|الخيارات|خيارات|البدائل|بدائل|وش|شو|ايش|إيش|صار|و|أو|او|ال|كل|شي|شيء|الحين|الآن|بعد|now|give|me|show|more|details|detail|info|information|links|link|sites|site|about|the|a|an|of|for|please|plz|pls|and|or|some)$/i;
+      const __content = text.replace(/[^\u0600-\u06FF\u0750-\u077FA-Za-z0-9\s]/g, ' ').split(/\s+/).filter(w => w && !__stopRe.test(w));
+      const __pureFollow = __content.length === 0 || __refRe.test(text);
+      // حقن السياق: متابعة بحتة · إشارة صريحة · أو نفس المجال. غير ذلك = سؤال مستقل، صفر حقن.
+      const __inject = __pureFollow || (__dNew && __dCtx && __dNew === __dCtx);
+      searchQuery = __inject ? (__topic + ' ' + text).slice(0, 500) : text;
     }
   }
 
