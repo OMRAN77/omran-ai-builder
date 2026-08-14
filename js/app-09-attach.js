@@ -442,6 +442,7 @@ window.__omranImgTools = function(wrap, dataUrl){
   };
   const openSheet = () => {
     sheetCss();
+    try{ if(!filePossible()) upload(); }catch(e){ __swallow(e, 'preupload:app-09-attach#v643'); }
     const ov = document.createElement('div'); ov.className = 'oShOv';
     const sh = document.createElement('div'); sh.className = 'oShSh';
     ov.appendChild(sh);
@@ -457,13 +458,30 @@ window.__omranImgTools = function(wrap, dataUrl){
     const stx = document.createElement('p'); stx.className = 'oShS';
     stx.textContent = filePossible()
       ? (ar ? 'تُرسَل الصورة ملفًّا — بلا رابط ولا بطاقة' : 'Sent as a file — no link, no card')
-      : (ar ? 'متصفّحك لا يدعم إرسال الملفّات — ستُحفظ الصورة لترفقها' : 'Your browser cannot send files — the image will be saved');
+      : (ar ? 'سيُرسَل رابط الصورة مباشرةً للتطبيق الذي تختاره' : 'A direct image link will be sent to the app you pick');
     sh.appendChild(stx);
     const gr = document.createElement('div'); gr.className = 'oShGr'; sh.appendChild(gr);
     const go = (t) => {
-      // v642 — صفر روابط تلقائيّة: الملفّ نفسه، وإلّا حفظٌ في «التنزيلات».
-      //    «نسخ رابط الصورة» بقي فعلًا صريحًا أسفل الورقة لمن يريده.
-      if(shareFile(() => saveOpen(t))){ close(); return; }
+      // v643 — الملفّ أوّلًا إن أمكن؛ وإلّا نرسل رابط الصورة مباشرةً لتطبيق
+      //    الوجهة (wa.me / mailto...) بدل حفظها كتنزيل — التنزيل صار آخر حلّ.
+      if(filePossible()){ if(shareFile(() => saveOpen(t))){ close(); return; } saveOpen(t); return; }
+      if(t.copy){
+        if(shUrl){ if(cpTxt(shUrl)) note(t.copy); else saveOpen(t); close(); return; }
+        upload().then((u) => { if(u && cpTxt(u)) note(t.copy); else saveOpen(t); });
+        close(); return;
+      }
+      if(t.u){
+        if(shUrl){ try{ window.open(t.u(shUrl), '_blank'); close(); return; }catch(e){ __swallow(e, 'go:app-09-attach#v643'); } }
+        else {
+          let w = null; try{ w = window.open('', '_blank'); }catch(e){ __swallow(e, 'go:app-09-attach#v643'); }
+          upload().then((u) => {
+            if(u){ if(w){ try{ w.location = t.u(u); return; }catch(e){ __swallow(e, 'go:app-09-attach#v643'); } } try{ window.open(t.u(u), '_blank'); return; }catch(e){ __swallow(e, 'go:app-09-attach#v643'); } }
+            try{ if(w) w.close(); }catch(_){ }
+            saveOpen(t);
+          });
+          close(); return;
+        }
+      }
       saveOpen(t);
     };
     APPS.forEach((t) => {
