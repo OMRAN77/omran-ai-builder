@@ -11840,6 +11840,25 @@ window.__omranImgTools = function(wrap, dataUrl){
   const nmOf = () => 'image-' + Date.now() + '.png';
   const toBlob = (du) => { const s = String(du), i = s.indexOf(','), m = (s.slice(0, i).match(/:([^;,]+)/) || [])[1] || 'image/png', bin = atob(s.slice(i + 1)), u8 = new Uint8Array(bin.length); for(let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k); return new Blob([u8], { type: m }); };
   const note = (m) => { try{ if(typeof settingsToast === 'function'){ settingsToast(m); return true; } }catch(e){ __swallow(e, 'note:app-09-attach#v625'); } return false; };
+  // 💾 v626 — أمر عمران: «الحفظ بضغطة واحدة — إرسال لمواقع التواصل أو أيّ إرسال».
+  //    مسار حفظ صامت داخل زرّ المشاركة نفسه (لا زرّ ثالث ظاهر): إن رفض المتصفّح
+  //    ورقة النظام، تُحفظ الصورة فورًا في «التنزيلات» بالنقرة نفسها ⇒ تُرسَل من
+  //    هناك لأيّ تطبيق. الضغط المطوّل لم يبقَ إلّا ملاذًا أخيرًا.
+  const saveDl = (bl) => {
+    try{
+      if(!bl) return false;
+      const a = document.createElement('a');
+      if(!('download' in a)) return false;
+      const u = URL.createObjectURL(bl);
+      a.href = u; a.download = nmOf(); a.rel = 'noopener';
+      a.style.cssText = 'position:fixed;left:-9999px;top:0';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { try{ a.remove(); URL.revokeObjectURL(u); }catch(e){} }, 60000);
+      return true;
+    }catch(e){ __swallow(e, 'saveDl:app-09-attach#v626'); }
+    return false;
+  };
   const openFull = (bl) => {
     try{
       if(!bl) return false;
@@ -11866,6 +11885,14 @@ window.__omranImgTools = function(wrap, dataUrl){
     }catch(e){ __swallow(e, 'copy:app-09-attach#v625'); }
     hint(bl);
   };
+  const saveThen = (b, bl) => {
+    if(saveDl(bl)){
+      flash(b, svg('done'));
+      note(ar ? 'حُفظت الصورة في «التنزيلات» — أرسلها من هناك لأيّ تطبيق' : 'Saved to Downloads — send it from there to any app');
+      return;
+    }
+    copyImg(b, bl);
+  };
   mk('ico', svg('share'), ar ? 'مشاركة' : 'Share', (b) => {
     let bl = null, f = null;
     try{ bl = toBlob(dataUrl); f = new File([bl], nmOf(), { type: bl.type || 'image/png' }); }
@@ -11875,12 +11902,12 @@ window.__omranImgTools = function(wrap, dataUrl){
     if(f && typeof nv.share === 'function'){
       try{
         const pr = nv.share({ files: [f] });
-        if(pr && pr.then){ pr.then(() => flash(b, svg('done'))).catch((err) => { if(err && err.name === 'AbortError') return; __swallow(err, 'share:app-09-attach#v625'); copyImg(b, bl); }); }
+        if(pr && pr.then){ pr.then(() => flash(b, svg('done'))).catch((err) => { if(err && err.name === 'AbortError') return; __swallow(err, 'share:app-09-attach#v625'); saveThen(b, bl); }); }
         else flash(b, svg('done'));
         return;
       }catch(e){ __swallow(e, 'share:app-09-attach#v625'); }
     }
-    copyImg(b, bl);
+    saveThen(b, bl);
   }, grp);
   // يمين: «تعديل» نصّ فقط
   mk('txt', '<span>' + (ar ? 'تعديل' : 'Edit') + '</span>', ar ? 'تعديل' : 'Edit', (b) => {
