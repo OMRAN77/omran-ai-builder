@@ -21237,7 +21237,11 @@ window.updateVersionLabel();
           full += ev.delta;
           if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:delta'); } }
         }
-        if (ev.error) serverErr = ev.error;
+        if (ev.patch !== undefined) {
+            full = ev.patch;
+            if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:patch'); } }
+          }
+          if (ev.error) serverErr = ev.error;
       }
     }
     noteEnd();
