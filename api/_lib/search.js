@@ -102,6 +102,11 @@ const SOCIAL_PLATFORMS = [
 // الخطّة» وGoogle CSE ردّ 403 «Custom Search JSON API غير مفعّل للمشروع»، فبقي
 // البحث كلّه بلا مصدر وشريط الصور فارغًا. Perplexity (مفتاح المشروع نفسه،
 // مدفوع مسبقًا) يعيد الجواب والنتائج والصور في نداء واحد.
+// v612 — لاحقة الدولة كانت محبوسة داخل استعلام Tavily وحده، فشريط الصور
+// يُطلب بالاستعلام الخام («أرقام سيارات» → لوحات اليمن وعُمان وكاليفورنيا).
+// نفس التعبير يُرفع هنا ليُشارَك مع استعلام الصور — بلا تغيير في سلوك Tavily.
+const GEO_IN_QUERY_RE = /سعود|إمارات|الامارات|دبي|أبوظبي|ابوظبي|الشارقة|عجمان|مصر|قطر|كويت|عمان|بحرين|أردن|saudi|uae|dubai|abu dhabi|sharjah|egypt|qatar|kuwait|oman|bahrain|jordan|usa|america|uk|india|pakistan|فلبين|فليبين|philippin|هند|india|صين|china|يابان|japan|كور|korea|ترك|turk|ألمان|german|فرنس|franc|بريطان|british|إندونيس|indonesia|ماليز|malays|تايلا|thai|روس|russ|أمريك|americ|كند|canad|أسترال|austral/i;
+
 async function pplxLive(query, wantImages) {
   const key = (process.env.PERPLEXITY_API_KEY || '').trim();
   if (!key) return null;
@@ -539,7 +544,7 @@ module.exports = async (req, res) => {
         body: JSON.stringify({
           api_key: apiKey,
           // v467b: geo-suffix فقط للاستعلامات القصيرة بدون سياق. الاستعلامات المُثراة (طويلة) عندها سياق كافي.
-          query: (/سعود|إمارات|الامارات|دبي|أبوظبي|ابوظبي|الشارقة|عجمان|مصر|قطر|كويت|عمان|بحرين|أردن|saudi|uae|dubai|abu dhabi|sharjah|egypt|qatar|kuwait|oman|bahrain|jordan|usa|america|uk|india|pakistan|فلبين|فليبين|philippin|هند|india|صين|china|يابان|japan|كور|korea|ترك|turk|ألمان|german|فرنس|franc|بريطان|british|إندونيس|indonesia|ماليز|malays|تايلا|thai|روس|russ|أمريك|americ|كند|canad|أسترال|austral/i.test(query) ? query : (query.length > 120 ? query : query + ' ' + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE'))),
+          query: (GEO_IN_QUERY_RE.test(query) ? query : (query.length > 120 ? query : query + ' ' + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE'))),
           country: (geoNameEn ? geoNameEn.toLowerCase() : 'united arab emirates'),
           search_depth: isListing ? 'advanced' : 'basic',
           include_answer: true,
@@ -626,12 +631,15 @@ module.exports = async (req, res) => {
       results = [...placeCards, ...results].slice(0, 24);
     }
 
+    // v612 — استعلام الصور وحده يحمل الدولة؛ النصّ والمصادر لا تُمسّ.
+    const imgQuery = (GEO_IN_QUERY_RE.test(query) || query.length > 120)
+      ? query : (query + ' ' + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE'));
     let images = wantImages && Array.isArray(data.images) ? data.images.slice(0, 4) : [];
     // v610 — صور الشريط كانت من Tavily وحده، وهو ساقط حيًّا، فيخرج الشريط فارغًا.
     // احتياطيّ: صور Google Custom Search بالمفتاح الموجود نفسه (بلا شراء جديد).
     if (wantImages && !images.length && gKey && gCx) {
       try {
-        const giRes = await fetch(`https://www.googleapis.com/customsearch/v1?key=${gKey}&cx=${gCx}&q=${encodeURIComponent(query)}&searchType=image&num=4&safe=active`);
+        const giRes = await fetch(`https://www.googleapis.com/customsearch/v1?key=${gKey}&cx=${gCx}&q=${encodeURIComponent(imgQuery)}&searchType=image&num=4&safe=active`);
         if (giRes && giRes.ok) {
           const gi = await giRes.json();
           images = (Array.isArray(gi.items) ? gi.items : [])
@@ -657,7 +665,7 @@ module.exports = async (req, res) => {
     // v611 — نداء واحد للمغذّي البديل يسدّ ثلاث فجوات معًا: نتائج عند سقوط
     // Tavily، وصور عند خلوّ الشريط، وجوابًا عند غياب جواب Tavily.
     if (tavilyDown || (wantImages && !images.length)) {
-      const pplx = await pplxLive(query, wantImages);
+      const pplx = await pplxLive(wantImages ? imgQuery : query, wantImages);
       if (pplx) {
         if (!images.length && pplx.images.length) images = pplx.images;
         if (!data.answer && pplx.answer) data.answer = pplx.answer;
