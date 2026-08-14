@@ -124,4 +124,39 @@ check(!prompts.includes('لهجتك الافتراضيّة إماراتيّة ب
 check(bundle.includes('تحية لفظية فقط وليست سؤالًا') && bundle.includes('isCasualCheckIn'), 'الحزمة المباشرة مطابقة للمصادر');
 check(!bundle.includes('فردّ حرفيًا: «أهلًا بك.» فقط'), 'الحزمة المباشرة بلا الرد المحفوظ');
 
+    // ===== اختبار إزالة التكرار بين استدعاءات البحث =====
+    const chatServerFull = fs.readFileSync('api/_lib/chat.js', 'utf8');
+    check(chatServerFull.includes('const seenHostnames = new Set()'), 'يُنشئ مجموعة المواقع المرئية قبل حلقة الأدوات');
+    check(chatServerFull.includes('function filterDuplicateUrls('), 'دالة فرز التكرار موجودة في مسار الخادم');
+    check(chatServerFull.includes('filterDuplicateUrls(await tavilySearch('), 'نتيجة البحث تمرّ عبر فرز التكرار قبل إرسالها للنموذج');
+    check(chatServerFull.includes("seenHostnames.has(host)"), 'يتحقق من الـ hostname قبل تمرير الموقع');
+    check(chatServerFull.includes("seenHostnames.add(host)"), 'يسجّل الـ hostname بعد أول ظهور');
+
+    // اختبار وظيفي: نفس الموقع لا يظهر مرتين
+    const filterDuplicateUrls = (() => {
+    const seenHostnames = new Set();
+    return function(text) {
+      if (!text || typeof text !== 'string') return text;
+      const blocks = text.split(/\n{2,}/);
+      const kept = [];
+      for (const block of blocks) {
+        const urlMatch = block.match(/https?:\/\/([^/\s)[\]]+)/i);
+        if (!urlMatch) { kept.push(block); continue; }
+        const host = urlMatch[1].replace(/^www\./, '').toLowerCase();
+        if (seenHostnames.has(host)) continue;
+        seenHostnames.add(host);
+        kept.push(block);
+      }
+      return kept.length ? kept.join('\n\n') : text;
+    };
+    })();
+
+    const firstSearch = '1. بوكينج\nhttps://www.booking.com/\n\n2. تريفاجو\nhttps://www.trivago.ae/';
+    const secondSearch = '1. أجودا\nhttps://www.agoda.com/\n\n2. بوكينج مرة ثانية\nhttps://booking.com/hotels';
+    const r1 = filterDuplicateUrls(firstSearch);
+    const r2 = filterDuplicateUrls(secondSearch);
+    check(r1.includes('booking.com') && r1.includes('trivago.ae'), 'البحث الأول يعرض مواقعه كاملة');
+    check(r2.includes('agoda.com'), 'البحث الثاني يعرض الموقع الجديد');
+    check(!r2.includes('booking.com'), 'بوكينج لا يظهر مرة ثانية في نفس الدور');
+    
 console.log('\n✅ فصل التحية عن المحادثة واستمرار السياق — نجح');
