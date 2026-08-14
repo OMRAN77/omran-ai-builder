@@ -696,7 +696,23 @@ module.exports = async (req, res) => {
     let fullText = '';   // v608 — نصّ الردّ المتراكم
     let toolCorpus = ''; // v608 — ناتج الأدوات الحقيقيّ في هذا الدور
 
-    while (steps < MAX_STEPS) {
+    // إزالة تكرار المواقع عبر استدعاءات البحث في نفس الدور
+      const seenHostnames = new Set();
+      function filterDuplicateUrls(text) {
+        if (!text || typeof text !== 'string') return text;
+        const blocks = text.split(/\n{2,}/);
+        const kept = [];
+        for (const block of blocks) {
+          const urlMatch = block.match(/https?:\/\/([^/\s)\]]+)/i);
+          if (!urlMatch) { kept.push(block); continue; }
+          const host = urlMatch[1].replace(/^www\./, '').toLowerCase();
+          if (seenHostnames.has(host)) continue;
+          seenHostnames.add(host);
+          kept.push(block);
+        }
+        return kept.length ? kept.join('\n\n') : text;
+      }
+          while (steps < MAX_STEPS) {
       if (Date.now() - t0 > MAX_MS) { send({ status: '⏱️ انتهت مهلة الردّ.' }); break; }
       steps++;
 
@@ -774,7 +790,7 @@ module.exports = async (req, res) => {
         let input = {};
         try { input = JSON.parse(cb.inputJson || '{}'); } catch (e) { logError('chat/tool-input-parse', e); }
         let result = 'أداة غير معروفة';
-        if (cb.name === 'web_search') result = await tavilySearch(input.query || '', reC, !foreignTurn && !!(lastUser && NUM_ASK_RE.test(lastUser.content)));
+        if (cb.name === 'web_search') result = filterDuplicateUrls(await tavilySearch(input.query || '', reC, !foreignTurn && !!(lastUser && NUM_ASK_RE.test(lastUser.content))));
         else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
         else if (cb.name === 'run_js') result = await runInClient(send, 'run_js', input);
         else if (cb.name === 'generate_image') result = await runInClient(send, 'generate_image', input, 75000);
