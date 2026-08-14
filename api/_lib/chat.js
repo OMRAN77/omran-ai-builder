@@ -733,6 +733,22 @@ module.exports = async (req, res) => {
 
     // إزالة تكرار المواقع عبر استدعاءات البحث في نفس الدور
       const seenHostnames = new Set();
+      
+        function stripMemoryUrls(text, corpus) {
+          if (!text) return text;
+          const allowed = new Set();
+          const urlRe = /https?:\/\/([^/\s)\]"]+)/g;
+          let m;
+          while ((m = urlRe.exec(corpus || '')) !== null) {
+            try { allowed.add(m[1].replace(/^www\./, '').toLowerCase().split('/')[0]); } catch(e) {}
+          }
+          const ok = (url) => { try { return allowed.has(new URL(url).hostname.replace(/^www\./, '').toLowerCase()); } catch(e) { return false; } };
+          return text
+            .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, (full, txt, url) => ok(url) ? full : txt)
+            .replace(/https?:\/\/[^\s)\]"<]+/g, url => ok(url) ? url : '')
+            .replace(/\n{3,}/g, '\n\n');
+        }
+    
       function filterDuplicateUrls(text) {
         if (!text || typeof text !== 'string') return text;
         const blocks = text.split(/\n{2,}/);
@@ -806,7 +822,9 @@ module.exports = async (req, res) => {
           logError('chat/unsourced-rating', new Error('ratings absent from tool output: ' + badRatings.join(', ')));
           send({ delta: ratingWarning(fullText) });
         }
-        send({ done: true }); res.end(); return;
+        const _cleaned = stripMemoryUrls(fullText, toolCorpus);
+          if (_cleaned !== fullText) { send({ patch: _cleaned }); }
+          send({ done: true }); res.end(); return;
       }
 
       const assistantContent = blocks.filter(Boolean).map((cb) => {
