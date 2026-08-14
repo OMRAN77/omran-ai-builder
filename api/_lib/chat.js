@@ -15,7 +15,7 @@ const { readMemory, memoryPromptBlock } = require('./memory.js');
 const { BIDI_RULE } = require('./_bidi.js'); // v568
 
 function isPureGreeting(text) {
-  return /^(?:هلا+|هلا والله|مرحبا+|مرحبًا|السلام عليكم(?: ورحمة الله(?: وبركاته)?)?|سلام|صباح الخير|مساء الخير|hello|hi|hey)[!؟?.،\s]*$/i.test(String(text || '').trim());
+  return /^(?:هلا+|هلا والله|مرحبا+|مرحبًا|السلام عليكم(?: ورحمة الله(?: وبركاته)?)?|سلام|صباح الخير|مساء الخير|hello|hi|hey|كفو+|كفوك|ممتاز|زين|شاطر|ما شاء الله|ماشاء الله|أحسنت)[!؟?.،\s]*$/i.test(String(text || '').trim());
 }
 
 function isCasualCheckIn(text) {
