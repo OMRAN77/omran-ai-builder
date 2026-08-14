@@ -446,5 +446,52 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 <script src="/js/video.js?v=421"></script>
 
 <!-- v413 ديكور: إطار البطاقات · ذوبان حرفَي الشريط · مقبض اللوحة · زرّ المحادثة · الفواصل — كمبيوتر وجوّال -->
-</body>
+
+    <!-- 🎨 تمييز الأرقام والروابط في ردود الذكاء بلون مختلف -->
+    <style>
+    .msg.assistant a{color:#2eb886 !important;font-weight:600;text-decoration:underline;text-underline-offset:2px;}
+    body.dark .msg.assistant a, html.dark .msg.assistant a{color:#4dd0a5 !important;}
+    .numHL{color:#e8a020;font-weight:700;}
+    body.dark .numHL, html.dark .numHL{color:#f5c451;}
+    </style>
+    <script>
+    (function(){
+    var SKIP = {A:1,CODE:1,PRE:1,SCRIPT:1,STYLE:1,TEXTAREA:1,INPUT:1,BUTTON:1};
+    var NUM_RE = /(\d[\d.,،:%\u066B\u066C]*\d%?|\d%?|[\u0660-\u0669][\u0660-\u0669.,،:%\u066B\u066C]*%?)/g;
+    function hl(root){
+      try{
+        var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+          acceptNode: function(n){
+            var p = n.parentNode;
+            for (var e = p; e && e !== root; e = e.parentNode) {
+              if (SKIP[e.nodeName] || (e.classList && e.classList.contains('numHL'))) return NodeFilter.FILTER_REJECT;
+            }
+            return /\d|[\u0660-\u0669]/.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+          }
+        });
+        var nodes = []; while (w.nextNode()) nodes.push(w.currentNode);
+        nodes.forEach(function(n){
+          var frag = document.createDocumentFragment(), s = n.nodeValue, last = 0, m;
+          NUM_RE.lastIndex = 0;
+          while ((m = NUM_RE.exec(s))) {
+            if (m.index > last) frag.appendChild(document.createTextNode(s.slice(last, m.index)));
+            var sp = document.createElement('span'); sp.className = 'numHL'; sp.textContent = m[0];
+            frag.appendChild(sp); last = m.index + m[0].length;
+          }
+          if (last === 0) return;
+          if (last < s.length) frag.appendChild(document.createTextNode(s.slice(last)));
+          n.parentNode.replaceChild(frag, n);
+        });
+      }catch(e){}
+    }
+    var t = null;
+    new MutationObserver(function(){
+      clearTimeout(t);
+      t = setTimeout(function(){
+        document.querySelectorAll('.msg.assistant:not(.msg-streaming)').forEach(hl);
+      }, 600);
+    }).observe(document.body, {childList:true, subtree:true, characterData:true});
+    })();
+    </script>
+    </body>
 </html>
