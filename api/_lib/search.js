@@ -427,16 +427,19 @@ module.exports = async (req, res) => {
     if (body && body.debugSocial && query) {
       try {
         const dq = socialQuery(query);
-        const dr = await fetch('https://api.tavily.com/search', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ api_key: apiKey, query: dq, include_domains: ['instagram.com','tiktok.com','snapchat.com','youtube.com','x.com','twitter.com'], search_depth: 'basic', include_answer: false, max_results: 12 })
-        });
-        const dj = await dr.json().catch(() => null);
-        res.status(200).json({
-          debug: true, socialQuery: dq, tavilyStatus: dr.status,
-          raw: ((dj && dj.results) || []).map(x => ({ url: x.url, score: x.score, title: String(x.title||'').slice(0,60) })),
-          picked: pickSocial((dj && dj.results) || [], true)
-        });
+        const variants = [
+          ['with-domains', { api_key: apiKey, query: dq, include_domains: ['instagram.com','tiktok.com'], search_depth: 'basic', include_answer: false, max_results: 12 }],
+          ['no-domains',   { api_key: apiKey, query: dq, search_depth: 'basic', include_answer: false, max_results: 12 }],
+          ['site-query',   { api_key: apiKey, query: 'site:instagram.com ' + dq, search_depth: 'basic', include_answer: false, max_results: 12 }],
+        ];
+        const outAll = [];
+        for (const pair of variants) {
+          const dr = await fetch('https://api.tavily.com/search', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(pair[1]) });
+          let dj = null, errText = '';
+          try { dj = await dr.json(); } catch(e2) { errText = 'parse'; }
+          outAll.push({ name: pair[0], status: dr.status, err: (dj && (dj.detail || dj.error)) || errText, n: ((dj && dj.results)||[]).length, urls: ((dj && dj.results)||[]).slice(0,4).map(x=>x.url) });
+        }
+        res.status(200).json({ debug: true, socialQuery: dq, variants: outAll });
         return;
       } catch (e) { res.status(200).json({ debug: true, err: String(e && e.message) }); return; }
     }
