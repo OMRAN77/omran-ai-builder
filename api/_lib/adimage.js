@@ -71,7 +71,8 @@ module.exports = async (req, res) => {
       p += 'The FIRST provided image is the APPROVED LAYOUT TEMPLATE. Copy its composition EXACTLY: same positions of every element, same card shapes with text INSIDE the cards, same typography style, same colour mood, same price plaque shape, same contact button style. Only replace the subject and the text values with the ones listed below. Every word must sit INSIDE its card or plaque exactly like the template. Omit any template element whose text is not listed below.\n';
     }
     if (hasImg) {
-      p += 'The ' + (tplB64 ? 'SECOND' : 'FIRST') + ' provided image is the customer\'s REAL product photo. STRICT RULE: the subject (building/vehicle/item) must stay EXACTLY as photographed — same architecture and geometry, same materials, same colours, same windows and doors, same landscaping. Do NOT redesign, rebuild, restyle or replace it. You may only adjust overall lighting/sky mood and place the text elements around it.\n';
+      p += 'The ' + (tplB64 ? 'SECOND' : 'FIRST') + ' provided image is the customer\'s REAL product photo. STRICT RULE: the subject (building/vehicle/item) must stay EXACTLY as photographed — same architecture and geometry, same materials, same colours, same windows and doors, same landscaping. Do NOT redesign, rebuild, restyle or replace it. '
+         + 'ALSO preserve the photo\'s original TIME OF DAY and natural lighting: a daylight photo stays a bright daylight poster, a night photo stays night. Never convert day to night or night to day. Place the text elements around the subject.\n';
     } else if (tplB64) {
       p += 'IMPORTANT: do NOT copy the subject (vehicle/property) shown in the template. Render the exact subject named in the headline below, faithful to its real-world make, model and year — no mixing with the template\'s subject.\n';
     }
@@ -80,7 +81,8 @@ module.exports = async (req, res) => {
       bn: 'BENGALI script', ml: 'MALAYALAM script', ne: 'NEPALI (Devanagari script)', fil: 'FILIPINO', id: 'INDONESIAN',
       zh: 'SIMPLIFIED CHINESE', ru: 'RUSSIAN (Cyrillic script)', tr: 'TURKISH', es: 'SPANISH' };
     const rtl = (lg === 'ar' || lg === 'ur');
-    p += 'Scene and mood: ' + look + '. Accent/glow colour: ' + accent + '.\n'
+    p += (hasImg ? 'Scene and mood: follow the customer\'s photo (its lighting and setting rule over any other style). Accent/glow colour: ' + accent + '.\n'
+                 : 'Scene and mood: ' + look + '. Accent/glow colour: ' + accent + '.\n')
        + 'Render the following ' + (SCRIPTN[lg] || 'ENGLISH') + ' text INSIDE the poster, spelled EXACTLY as written, '
        + (rtl ? 'right-to-left, with correct letter joining and diacritic-free modern bold typography'
               : 'left-to-right, with clean modern bold typography') + ':\n'
