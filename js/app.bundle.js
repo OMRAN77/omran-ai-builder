@@ -13852,6 +13852,34 @@ async function sendPrompt(){
       // v685: لا سؤال — دائماً "داخل" مباشرة
       cur.adMode = 'inside'; cur.awaitingAdMode = false; cur.lastMsgWasImageEdit = true;
       text += '\n(ملاحظة للنظام: المستخدم أرفق صورة لهذا الإعلان — اجعلها خلفية البوستر الكاملة باستخدام background-image:url(\'__USER_IMAGE__\') بالضبط، وصمم الإعلان الكامل حسب قالب INSIDE: كل التفاصيل والسعر وأي أرقام أعطاها المستخدم على بطاقات زجاجية أنيقة فوق الصورة — ممنوع الاكتفاء بلافتة أو كلمة وحدة)';
+    } else if(text && !__srcImg && !__followUp && __adIntentRe.test(text) && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text)){
+      // v688: إعلان بدون صورة مرفقة → ولّد خلفية احترافية تلقائياً بناءً على نوع المنتج
+      const __adTypes = [
+        [/(سيارة|سياره|لاند|باترول|يوربارد|يوربرد|كامري|هايلكس|لاندكروز|كروزر|فورد|تويوتا|نيسان|لكزس|جيب|مشلب|شاحنة|بيك\s*أب|bmw|benz|mercedes|lexus|car|truck|pickup|suv)/i,
+         'cinematic luxury SUV on wet road at night, golden street lights reflecting on the polished hood, dramatic dark sky, no text no watermark, photorealistic automotive advertising photography'],
+        [/(شقة|شقه|فيلا|فله|فيلة|بيت|بيوت|عمارة|أرض|ارض|عقار|مبنى|مبنى|apartment|villa|house|real estate|property|land|plot)/i,
+         'luxury apartment interior with floor-to-ceiling panoramic windows showing Dubai skyline at golden hour, crystal lagoon reflection, no text no watermark, photorealistic architectural photography'],
+        [/(جوال|جوالات|ايفون|آيفون|سامسونج|هاتف|موبايل|phone|iphone|samsung|mobile)/i,
+         'premium smartphone floating in dark studio, dramatic directional lighting, chrome surface reflection, no text no watermark, photorealistic product shot'],
+        [/(لابتوب|لاب\s*توب|كمبيوتر|laptop|computer|mac|dell|hp)/i,
+         'premium laptop on black marble surface, dramatic studio spot lighting, tech advertisement, no text no watermark, photorealistic'],
+        [/(ذهب|مجوهرات|خاتم|سلسله|سلسلة|gold|jewelry|ring|necklace)/i,
+         'luxury gold jewelry on dark velvet, macro photography, sparkling diamonds, dramatic lighting, no text no watermark, photorealistic'],
+        [/(اثاث|كنبة|كنبه|طاولة|غرفة\s*نوم|furniture|sofa|bed|table)/i,
+         'luxury modern interior with designer furniture, warm ambient lighting, no text no watermark, photorealistic'],
+      ];
+      let __bgPrompt = 'professional dark studio product advertisement background, dramatic cinematic lighting, luxury feel, no text no watermark, photorealistic';
+      for(const [__re2,__pr2] of __adTypes){ if(__re2.test(text)){ __bgPrompt=__pr2; break; } }
+      chatPhase('🎨', lang==='ar' ? 'جاري توليد خلفية احترافية للإعلان…' : 'Generating professional ad background…', thinkingDiv);
+      try{
+        const __bgRes = await fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal: genAbortController.signal, body: JSON.stringify({ prompt: __bgPrompt, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }) });
+        const __bgData = await __bgRes.json().catch(()=>({}));
+        if(__bgRes.ok && __bgData.imageBase64){
+          cur.lastEditedImage = { b64: __bgData.imageBase64, mime: __bgData.mimeType || 'image/jpeg' };
+          cur.adMode = 'inside'; cur.awaitingAdMode = false; cur.lastMsgWasImageEdit = true;
+          text += '\n(ملاحظة للنظام: تم توليد صورة خلفية احترافية للإعلان تلقائياً — اجعلها خلفية البوستر الكاملة باستخدام background-image:url(\'__USER_IMAGE__\') بالضبط، وصمم الإعلان الكامل حسب قالب INSIDE: كل التفاصيل والسعر وأي أرقام أعطاها المستخدم على بطاقات زجاجية أنيقة فوق الصورة — ممنوع الاكتفاء بلافتة أو كلمة وحدة)';
+        }
+      }catch(e){ if(e && e.name==='AbortError') return; __swallow(e,'ad:autobg'); }
     } else if(text && (__srcImg || __followUp) && /(لوجو|شعار|logo|أيقون|ايقون|صمم|صمّم|تصميم|بطاقة|دعوة|بوستر|غلاف|بنر|نفس هذ|design)/i.test(text) && !cur.adMode && !cur.awaitingAdMode && text.indexOf('ملاحظة للنظام') === -1){
       // 🎨 v328: صورة/شعار مرفق + طلب تصميم → صورة المستخدم تُضمَّن كما هي — ممنوع إعادة رسمها
       text += '\n(ملاحظة للنظام: المستخدم أرفق صورة/شعارًا — إذا كان ردك تصميمًا أو كودًا يجب استخدام صورته نفسها كما هي عبر src="__USER_IMAGE__" أو background-image:url(\'__USER_IMAGE__\') بالضبط، والتطبيق يستبدلها بالصورة الحقيقية تلقائيًا. ممنوع منعًا باتًا استبدال صورة المستخدم بلوجو أو صورة من تصميمك أو من الإنترنت — صورة المستخدم هي الأصل الرسمي وتظهر بدون أي تشويه أو قلب أو قص)';
