@@ -915,8 +915,10 @@ function histRenameProject(p){
 }
 function histDeleteProject(p, provKey){
   if(!confirm(t('confirmDeleteProject').replace('{name}', p.title))) return;
-  state.projects = state.projects.filter(x => x.id !== p.id);
-  if(state.currentId === p.id){
+  const __delId = p.id;
+  try{ if(window.chatsMarkDeleted) chatsMarkDeleted(__delId); }catch(e){ __swallow(e, 'hist:delete#tombstone'); }
+  state.projects = state.projects.filter(x => x.id !== __delId);
+  if(state.currentId === __delId){
     const sameProv = state.projects.filter(x => (x.provider || provKey) === provKey);
     state.currentId = sameProv.length ? sameProv[sameProv.length - 1].id : null;
     mahaClearImageRef();
@@ -928,6 +930,16 @@ function histDeleteProject(p, provKey){
     mahaClearImageRef();
   }
   saveState();
+  // v715: أخبر السيرفر بالحذف (tombstone) — بدونه تجيب المزامنة المحادثة راجعة
+  try{
+    const tok = (typeof chatsAuthToken === 'function') ? chatsAuthToken() : '';
+    if(tok){
+      fetch('/api/account?action=chats_delete', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: tok, ids: [__delId] }),
+      }).catch(() => {});
+    }
+  }catch(e){ __swallow(e, 'hist:delete#server'); }
   renderAll();
 }
 function openHistItemMenu(anchorBtn, p, provKey){
