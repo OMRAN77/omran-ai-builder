@@ -2537,9 +2537,26 @@ function __showImgLoading(el, ar, en){
           }
           const __outB64 = await overlayTextOnImage(__wb64, __wmime, __resolvedText, __textSpec.fontKey, __textSpec.color, __pos);
           cur.imageTextLayer = { baseB64:__wb64, baseMime:__wmime, text:__resolvedText, fontKey:__textSpec.fontKey, color:__textSpec.color, position:__pos };
-          cur.messages.push({ role: 'assistant', content: '' /* v671: بلا جملة فوق الصورة */, attachments: [{ name: 'edited.png', isImage: true, mime: 'image/png', dataUrl: 'data:image/png;base64,' + __outB64 }] });
+          cur.messages.push({ role: 'assistant', content: (lang==='ar'?'النسخة ١ — الخط المضمون':'Version 1 — guaranteed font'), attachments: [{ name: 'edited.png', isImage: true, mime: 'image/png', dataUrl: 'data:image/png;base64,' + __outB64 }] });
           cur.lastEditedImage = { b64: __outB64, mime: 'image/png' };
           cur.lastMsgWasImageEdit = true;
+          renderAll(); saveState();
+          // 🖌️ v677: نسخة ثانية يرسمها نموذج الصور نفسه — خط مندمج مع المشهد، للمقارنة
+          try{
+            chatPhase('🖌️', lang === 'ar' ? 'جاري رسم نسخة ثانية بريشة الذكاء…' : 'Drawing an AI-rendered version…', thinkingDiv);
+            const __aiPrompt = 'Write this EXACT Arabic text, letter-for-letter with perfect spelling, onto the image: \u00AB' + __resolvedText + '\u00BB. Render it as beautiful elegant Arabic calligraphy that harmonizes with the scene palette and lighting, placed ONLY in a clean empty area (sky, wall, ground, margins), NEVER covering the main subject or faces. Do not change, redraw or restyle anything else in the image.';
+            const __aiRes = await fetch('/api/maha-image', {
+              method:'POST', headers:{ 'Content-Type':'application/json' },
+              signal: genAbortController.signal,
+              body: JSON.stringify({ prompt: __aiPrompt, editImageBase64: __wb64, editMimeType: __wmime, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
+            });
+            const __aiData = await __aiRes.json().catch(() => ({}));
+            if(__aiRes.ok && __aiData.imageBase64){
+              const __aiMime = __aiData.mimeType || 'image/png';
+              cur.messages.push({ role: 'assistant', content: (lang==='ar'?'النسخة ٢ — بريشة الذكاء':'Version 2 — AI-drawn'), attachments: [{ name: 'edited-ai.png', isImage: true, mime: __aiMime, dataUrl: 'data:' + __aiMime + ';base64,' + __aiData.imageBase64 }] });
+              cur.lastEditedImage = { b64: __aiData.imageBase64, mime: __aiMime };
+            }
+          }catch(e){ if(e && e.name === 'AbortError') return; __swallow(e, 'img:aiTextVersion-v677'); }
           renderAll(); saveState();
           return;
         }catch(e){
