@@ -71,7 +71,7 @@ module.exports = async (req, res) => {
       p += 'The FIRST provided image is the APPROVED LAYOUT TEMPLATE. Copy its composition EXACTLY: same positions of every element, same card shapes with text INSIDE the cards, same typography style, same colour mood, same price plaque shape, same contact button style. Only replace the subject and the text values with the ones listed below. Every word must sit INSIDE its card or plaque exactly like the template. Omit any template element whose text is not listed below.\n';
     }
     if (hasImg) {
-      p += 'The ' + (tplB64 ? 'SECOND' : 'FIRST') + ' provided image is the customer\'s real product photo: use its subject as the hero of the poster, cut out cleanly. Keep it recognisable and unchanged.\n';
+      p += 'The ' + (tplB64 ? 'SECOND' : 'FIRST') + ' provided image is the customer\'s REAL product photo. STRICT RULE: the subject (building/vehicle/item) must stay EXACTLY as photographed — same architecture and geometry, same materials, same colours, same windows and doors, same landscaping. Do NOT redesign, rebuild, restyle or replace it. You may only adjust overall lighting/sky mood and place the text elements around it.\n';
     } else if (tplB64) {
       p += 'IMPORTANT: do NOT copy the subject (vehicle/property) shown in the template. Render the exact subject named in the headline below, faithful to its real-world make, model and year — no mixing with the template\'s subject.\n';
     }
