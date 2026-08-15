@@ -13858,7 +13858,7 @@ async function sendPrompt(){
       const __adTitle = __clnTitle || (lang==='ar'?'للبيع':'For Sale');
       const __adPrice = __wM ? __wM[1].trim() : '';
       const __adPhone = __phM ? __phM[0].replace(/[\s\-]/g,'') : '';
-      const __adChips = [__yrM?('الموديل '+__yrM[1]):'', __mmM?('المسافة المقطوعة '+__mmM[1].trim()+' كم'):''].filter(Boolean);
+      const __adChips = [__yrM?('الموديل '+__yrM[1]):'', __mmM?('المسافة المقطوعة '+__mmM[1].trim()+' كم'):'', /خليجي/.test(text)?'المواصفات خليجي':'', /نظيف/.test(text)?'المكينة نظيفة':''].filter(Boolean);
       const __adSpecs = '';
       const __adKick  = /(إيجار|للإيجار)/i.test(text)?'للإيجار': /(مطلوب)/i.test(text)?'مطلوب':'للبيع';
       const __adLook  = /(شقة|شقه|فيلا|عقار|بيت)/i.test(text)?'elegant': /(جوال|ايفون|سامسونج)/i.test(text)?'minimal':'neon';
