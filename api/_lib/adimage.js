@@ -55,7 +55,7 @@ module.exports = async (req, res) => {
     const look = LOOKS[b.look] || LOOKS.neon;
     const title = cut(b.title, 60), spec = cut(b.spec, 120), kick = cut(b.kick, 40);
     const price = cut(b.price, 30), unit = cut(b.unit, 20), tel = cut(b.tel, 30);
-    const note = cut(b.note, 40), foot = cut(b.foot, 50);
+    const note = cut(b.note, 40), foot = cut(b.foot, 50), bg = cut(b.bg, 80);
     const chips = Array.isArray(b.chips) ? b.chips.slice(0, 4).map(c => cut(c, 40)).filter(Boolean) : [];
     const accent = /^#[0-9a-fA-F]{6}$/.test(String(b.ac || '')) ? String(b.ac) : '#a855f7';
     const hasImg = typeof b.imageBase64 === 'string' && b.imageBase64.length > 100;
@@ -81,7 +81,10 @@ module.exports = async (req, res) => {
       bn: 'BENGALI script', ml: 'MALAYALAM script', ne: 'NEPALI (Devanagari script)', fil: 'FILIPINO', id: 'INDONESIAN',
       zh: 'SIMPLIFIED CHINESE', ru: 'RUSSIAN (Cyrillic script)', tr: 'TURKISH', es: 'SPANISH' };
     const rtl = (lg === 'ar' || lg === 'ur');
-    p += (hasImg ? 'Scene and mood: follow the customer\'s photo (its lighting and setting rule over any other style). Accent/glow colour: ' + accent + '.\n'
+    if (bg) {
+      p += 'CUSTOMER BACKGROUND REQUEST (overrides the template\'s background and colour mood, but NOT its layout): restyle the background scene and colour palette to match exactly: "' + bg + '". Keep every card, plaque and text position identical to the layout.' + (hasImg ? ' The customer\'s photographed subject itself still stays exactly as photographed.' : '') + '\n';
+    }
+    p += (bg ? '' : hasImg ? 'Scene and mood: follow the customer\'s photo (its lighting and setting rule over any other style). Accent/glow colour: ' + accent + '.\n'
                  : 'Scene and mood: ' + look + '. Accent/glow colour: ' + accent + '.\n')
        + 'Render the following ' + (SCRIPTN[lg] || 'ENGLISH') + ' text INSIDE the poster, spelled EXACTLY as written, '
        + (rtl ? 'right-to-left, with correct letter joining and diacritic-free modern bold typography'
