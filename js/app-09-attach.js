@@ -366,6 +366,7 @@ window.__omranImgTools = function(wrap, dataUrl){
       const pr = nv.share({ files: [f] });
       if(pr && pr.catch) pr.catch((e) => {
         if(e && e.name === 'AbortError') return;
+        __why = 'file:' + ((e && (e.name || e.message)) || '?');
         __swallow(e, 'shareFile:app-09-attach#v642');
         note((ar ? 'رفض المتصفّح إرسال الملفّ' : 'Browser refused the file') + ' — ' + ((e && (e.name || e.message)) || '?'));
         if(typeof onFail === 'function') onFail();
@@ -377,7 +378,7 @@ window.__omranImgTools = function(wrap, dataUrl){
     }
     return false;
   };
-  let shUrl = '', shBusy = null, __shW = 0, __shH = 0;
+  let shUrl = '', shBusy = null, __shW = 0, __shH = 0, __why = '';
   const cpTxt = (t) => {
     try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(t); return true; } }catch(e){ __swallow(e, 'cpTxt:app-09-attach#v627'); }
     try{
@@ -468,6 +469,16 @@ window.__omranImgTools = function(wrap, dataUrl){
       ? (ar ? 'تُرسَل الصورة ملفًّا — بلا رابط ولا بطاقة' : 'Sent as a file — no link, no card')
       : (ar ? 'سيُرسَل رابط الصورة مباشرةً للتطبيق الذي تختاره' : 'A direct image link will be sent to the app you pick');
     sh.appendChild(stx);
+    // v652 — سطر تشخيص: لماذا ظهرت هذه القائمة بدل قائمة النظام + اسم المتصفح
+    try{
+      const ua = navigator.userAgent || '';
+      const bn = /HuaweiBrowser/i.test(ua) ? 'Huawei Browser' : /SamsungBrowser/i.test(ua) ? 'Samsung Internet' : /EdgA?\//.test(ua) ? 'Edge' : /OPR\//.test(ua) ? 'Opera' : /MiuiBrowser/i.test(ua) ? 'Mi Browser' : /FxiOS/.test(ua) ? 'Firefox iOS' : /Firefox/i.test(ua) ? 'Firefox' : /CriOS/.test(ua) ? 'Chrome iOS' : /Chrome\//.test(ua) ? 'Chrome' : /Safari/.test(ua) ? 'Safari' : '?';
+      const hasShare = (typeof navigator.share === 'function');
+      const dg = document.createElement('p'); dg.className = 'oShS';
+      dg.style.cssText = 'opacity:.9;color:#e8b84b;direction:ltr;text-align:start';
+      dg.textContent = '\u2699 ' + (__why || (hasShare ? 'fallback:?' : 'no-share-api')) + ' \u2022 ' + bn + ' \u2022 share-api:' + (hasShare ? 'yes' : 'no') + ' \u2022 v652';
+      sh.appendChild(dg);
+    }catch(_){ }
     const gr = document.createElement('div'); gr.className = 'oShGr'; sh.appendChild(gr);
     const go = (t) => {
       // v643 — الملفّ أوّلًا إن أمكن؛ وإلّا نرسل رابط الصورة مباشرةً لتطبيق
@@ -579,6 +590,7 @@ window.__omranImgTools = function(wrap, dataUrl){
             const pr0 = navigator.share({ title: 'عمران AI', url: shUrl });
             if(pr0 && pr0.catch) pr0.catch((err) => {
               if(err && err.name === 'AbortError') return;
+              __why = 'url:' + ((err && (err.name || err.message)) || '?');
               __swallow(err, 'nativeShare:app-09-attach#v648');
               openSheet();
             });
@@ -586,15 +598,16 @@ window.__omranImgTools = function(wrap, dataUrl){
           }catch(err){ __swallow(err, 'nativeShare:app-09-attach#v648'); }
         }
         upload().then((u) => {
-          if(!u){ openSheet(); return; }
+          if(!u){ __why = 'upload-failed'; openSheet(); return; }
           try{
             const pr = navigator.share({ title: 'عمران AI', url: u });
             if(pr && pr.catch) pr.catch((err) => {
               if(err && err.name === 'AbortError') return;
+              __why = 'url:' + ((err && (err.name || err.message)) || '?');
               __swallow(err, 'nativeShare:app-09-attach#v646');
               openSheet();
             });
-          }catch(err){ __swallow(err, 'nativeShare:app-09-attach#v646'); openSheet(); }
+          }catch(err){ __why = 'url-sync:' + ((err && (err.name || err.message)) || '?'); __swallow(err, 'nativeShare:app-09-attach#v646'); openSheet(); }
         });
         return;
       }
@@ -609,6 +622,7 @@ window.__omranImgTools = function(wrap, dataUrl){
         }catch(err){ __swallow(err, 'intentShare:app-09-attach#v647'); }
         return false;
       };
+      __why = 'no-share-api';
       if(shUrl){ if(tryIntent(shUrl)) return; openSheet(); return; }
       upload().then((u) => { if(u && tryIntent(u)) return; openSheet(); });
     };
