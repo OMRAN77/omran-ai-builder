@@ -119,7 +119,9 @@ function buildGenerationPrompt(userPrompt, options){
     'USER REQUEST: ' + prompt,
     'The USER REQUEST is authoritative: preserve its subject, count, objects, setting, colors, time, mood and named style. Do not substitute them. Do not add objects, people, words, scenery or stylistic elements the user did not request.',
     subjectDirection(prompt, !!opts.reserveTextArea),
-    'Do not impose a fixed portrait lens, photorealistic look or repeated composition. If the user names a style, medium, framing or aspect, follow it exactly; otherwise choose what naturally fits this particular subject. Treat this as a brand-new image, never as an instruction to alter or continue a previous image.'
+    'Do not impose a fixed portrait lens, photorealistic look or repeated composition. If the user names a style, medium, framing or aspect, follow it exactly; otherwise choose what naturally fits this particular subject. Treat this as a brand-new image, never as an instruction to alter or continue a previous image.',
+    // v656: مستوى «انبهار» إلزامي — كانت النتائج تُوصف بأنها مثل لعب الأطفال.
+    'QUALITY BAR (mandatory): produce a breathtaking, award-winning, magazine-cover-grade image — masterful composition, rich micro-detail, crisp tack-sharp focus on the subject, professional cinematic lighting with true-to-life color grading, flawless anatomy and geometry, no blur, no smudges, no toy-like or amateur rendering, no artifacts. The viewer should be stunned by the quality.'
   ];
   if(opts.prayerArt){
     rules.push('This is a topic-specific supplication artwork based on an approved visual plan. Follow the concrete scene in USER REQUEST; do not replace it with generic religious imagery. Unless the USER REQUEST itself explicitly calls for one, exclude boats, ships, coastlines, sunsets, mosque silhouettes and posed people praying. Make the scene visually distinct through its subject, viewpoint, composition and palette.');
