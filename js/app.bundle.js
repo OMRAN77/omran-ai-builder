@@ -14099,21 +14099,10 @@ async function sendPrompt(){
 // v660: مؤشر تحميل الصور — خلفية نجوم + شريط تقدم + مراحل نصية
 function __showImgLoading(el, ar, en){
   const _st = window.__chatStatus;
-  if(_st && !_st.isReleased()){ try{ _st.release(); }catch(e){} } // v661: نحرر شريط الحالة النصي حتى لا يخطف مكان مؤشر النجوم
+  if(_st && !_st.isReleased()){ try{ _st.release(); }catch(e){} }
   if(!el) return;
-  if(el.__imgLoadIntervals){ el.__imgLoadIntervals.forEach(clearInterval); el.__imgLoadIntervals=null; }
-  const _isAr = typeof lang !== 'undefined' && lang === 'ar';
-  const _phases = _isAr ? ['أفهم طلبك…','أرسم التفاصيل…','أضبط الإضاءة…','أضيف اللمسات…'] : ['Understanding…','Drawing details…','Adjusting lighting…','Final touches…'];
-  let _ph=0, _prog=8;
-  // بناء نجوم عشوائية باستخدام seed ثابت لتفادي إعادة الحساب
-  const _rng=(n)=>{let x=Math.sin(n+1)*10000;return x-Math.floor(x);};
-  const _stars=Array.from({length:40},(_,i)=>`<circle cx="${Math.round(_rng(i)*100)}%" cy="${Math.round(_rng(i+40)*100)}%" r="${_rng(i+80)<0.25?2:1.2}" fill="white" style="opacity:.15;animation:__stwk ${(2.5+_rng(i+120)*2).toFixed(1)}s ${(_rng(i+160)*3).toFixed(1)}s ease-in-out infinite"/>`).join('');
-  el.innerHTML = `<style>@keyframes __stwk{0%,100%{opacity:.1}50%{opacity:.55}}@keyframes __flt{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-7px) rotate(4deg)}}@keyframes __ppb{0%,100%{opacity:.5}50%{opacity:1}}</style><div style="background:#111113;border-radius:14px;overflow:hidden;aspect-ratio:3/4;max-width:260px;position:relative;margin:4px 0 0"><svg style="position:absolute;inset:0;width:100%;height:100%" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="__dg${Date.now()%9999}" x="0" y="0" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="rgba(255,255,255,.07)"/></pattern></defs><rect x="0" y="0" width="100%" height="100%" fill="url(#__dg${Date.now()%9999})"/>${_stars}</svg><div style="position:absolute;inset:0;background:radial-gradient(ellipse 55% 45% at 50%52%,rgba(180,120,0,.12) 0%,transparent 70%)"></div><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px"><span style="font-size:26px;animation:__flt 2.8s ease-in-out infinite;display:block">✨</span><span id="__igl_t_${el.__igid=Date.now()}" style="font-size:12px;color:rgba(251,191,36,.85);font-family:system-ui,sans-serif;animation:__ppb 2.2s ease-in-out infinite">${_phases[0]}</span></div></div><div style="margin:5px 2px 0"><div style="height:3px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden"><div id="__igl_p_${el.__igid}" style="height:100%;border-radius:3px;background:linear-gradient(to left,#fbbf24,#d97706);width:8%;transition:width .12s"></div></div><div style="font-size:11px;color:rgba(255,255,255,.38);text-align:center;margin-top:4px;font-family:system-ui,sans-serif">${_isAr?'جاري إنشاء صورتك… ✨':'Generating your image… ✨'}</div></div>`;
-  const _pEl=el.querySelector('#__igl_p_'+el.__igid);
-  const _tEl=el.querySelector('#__igl_t_'+el.__igid);
-  const _pi=setInterval(()=>{ _prog=_prog>=92?15:_prog+1.3; if(_pEl)_pEl.style.width=_prog+'%'; },120);
-  const _ti=setInterval(()=>{ _ph=(_ph+1)%_phases.length; if(_tEl)_tEl.textContent=_phases[_ph]; },2200);
-  el.__imgLoadIntervals=[_pi,_ti];
+  // v662: مطابق لنموذج المستخدم حرفيًا — خلفية داكنة بنقاط خفيفة فقط، بلا أيقونات أو نصوص أو شريط تقدم
+  el.innerHTML = `<div style="background:#232326;border-radius:14px;aspect-ratio:3/4;max-width:260px;margin:4px 0;background-image:radial-gradient(rgba(255,255,255,.06) 1px,transparent 1px);background-size:22px 22px"></div>`;
 }
 
     // v579: صورة مرفقة + طلب قصير (مثلًا بعد زرّ «تعديل») = تعديل عليها افتراضيًّا — إلّا سؤال/بحث/فيديو/شكر/صورة جديدة/قراءة-ترجمة-وصف.
