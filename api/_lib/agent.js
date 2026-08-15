@@ -5,6 +5,7 @@
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
 const { logError } = require('./log-error.js');
 const { safeParse } = require('./safe-parse.js');
+const { fetchPublicUrl } = require('./safe-url.js');
 
 const TOOLS = [
   {
@@ -238,12 +239,10 @@ async function tavilySearch(query) {
 
 async function fetchPage(url) {
   try {
-    if (!/^https?:\/\//i.test(url)) return 'رابط غير صالح.';
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 12000);
-    const r = await fetch(url, {
+    const r = await fetchPublicUrl(url, {
       signal: ctrl.signal,
-      redirect: 'follow',
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; OmranAgent/1.0)' },
     });
     clearTimeout(t);

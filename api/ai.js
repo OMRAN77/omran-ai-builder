@@ -7,6 +7,7 @@
 require('./_lib/_fetch-timeout.js');
 // Nothing thrown in this router escapes unrecorded (see _lib/_errors.js).
 const { withErrorCapture } = require('./_lib/_errors.js');
+const { installCors } = require('./_lib/cors.js');
 const { logError } = require('./_lib/log-error.js');
 const { BIDI_RULE } = require('./_lib/_bidi.js'); // v568
 
@@ -374,6 +375,7 @@ function sanitizeGeminiContents(list) {
 const PROVIDERS = ['openai', 'gemini', 'groq', 'claude', 'cohere', 'deepseek', 'mistral', 'openrouter', 'perplexity'];
 
 module.exports = withErrorCapture('ai', async (req, res) => {
+  installCors(req, res);
   const action = (req.query && req.query.action) || '';
   const handler = load(action);
   if (!handler) {
