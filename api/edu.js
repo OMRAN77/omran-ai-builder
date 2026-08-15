@@ -7,6 +7,7 @@
 require('./_lib/_fetch-timeout.js');
 // Nothing thrown in this router escapes unrecorded (see _lib/_errors.js).
 const { withErrorCapture } = require('./_lib/_errors.js');
+const { installCors } = require('./_lib/cors.js');
 // حارس الميزات المتقاعدة — يُفحص قبل أي تحميل وحدة أو استخدام مفتاح.
 const { isRetired, retiredResponse } = require('./_lib/_retired.js');
 
@@ -240,6 +241,7 @@ async function callClaudeExpense(apiKey, contentBlocks, lang) {
 }
 
 module.exports = withErrorCapture('edu', async (req, res) => {
+  installCors(req, res);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
