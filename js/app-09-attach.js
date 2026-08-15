@@ -2773,7 +2773,9 @@ async function sendPrompt(){
       // ✅ v323: آخر 5 رسائل تبقى كاملة في الذاكرة حتى لو فيها كلمات بناء —
       // حذفها كان يقطع سياق الموضوع الجاري (طلب تصميم ثم متابعة قصيرة).
       const __keepFrom = __historyMsgs.length - 5;
-      __historyMsgs = __historyMsgs.filter((m, __i) => __i >= __keepFrom || !(m.role === 'user' && __historyBuildRe.test(m.apiText !== undefined ? m.apiText : (m.content || ''))));
+      // v654 — الحذف فقط لأوامر البناء الفعلية (كلمة بناء + أمر صريح): مجرد ذكر
+      //    «موقع/تطبيق» في رسالة قديمة كان يمسحها من الذاكرة فينسى النموذج المحادثة.
+      __historyMsgs = __historyMsgs.filter((m, __i) => { if(__i >= __keepFrom || m.role !== 'user') return true; const __t = (m.apiText !== undefined ? m.apiText : (m.content || '')); return !(__historyBuildRe.test(__t) && __buildCmdRe.test(__t)); });
     }
     // 🔒 الصور تُرسل فقط مع الرسالة الحالية (الأخيرة) — صور الرسائل القديمة
     // لا تُعاد إرسالها أبدًا حتى لا يظل المزود يحلل صورة قديمة بدل السؤال الجديد.
@@ -2796,7 +2798,7 @@ async function sendPrompt(){
         const __ctx = __prev.map(m => {
           let __txt = String(__stripCodeForHistory(m.role, (m.apiText !== undefined ? m.apiText : m.content)) || '');
           __txt = __txt.replace(/\b\S+\.(jpg|jpeg|png|webp|gif)\b/gi, '(صورة قديمة)');
-          if(__txt.length > 2500) __txt = __txt.slice(0, 1600) + ' … ' + __txt.slice(-800); // ✅ v325: الرسائل تروح شبه كاملة — القص فقط للردود الطويلة جدًا
+          if(__txt.length > 6000) __txt = __txt.slice(0, 4200) + ' … ' + __txt.slice(-1600); // ✅ v654: حدّ أعلى — القص عند 2500 كان يُضيع تفاصيل المنتصف
           return (m.role === 'user' ? 'المستخدم: ' : 'المساعد: ') + __txt;
         }).join('\n');
         apiMessages.push({role: 'system', content: '📜 المحادثة السابقة بينك وبين المستخدم:\n' + __ctx + '\n\n✅ هذه ذاكرتك: استخدمها لفهم سؤال المستخدم الأخير والاستمرار معه في نفس الموضوع بشكل طبيعي (الأسئلة المتصلة تكمل الموضوع الجاري). إذا سألك «عن شو كنا نتكلم؟» أجبه بدقة من المحادثة أعلاه.\n⛔ الممنوع الوحيد: لا تفتح موضوعًا قديمًا من نفسك إذا كان سؤاله الجديد غير متعلق به، ولا تقترح متابعته («تبي نكمل…؟»). أجب عن رسالته الأخيرة وحدها. ممنوع بدء ردك بأي تحية (السلام عليكم/صباح الخير/مرحبا) — المحادثة مستمرة؛ ادخل في الجواب مباشرة.'});
