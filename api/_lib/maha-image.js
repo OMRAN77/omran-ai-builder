@@ -123,6 +123,8 @@ module.exports = async (req, res) => {
     const isArchitectural = !!(body && body.architectural);
     // v605: ترقية مشهد كاملة يطلبها المستخدم صراحةً («أعطني الأفضل»).
     const isSceneUpgrade = !!(body && body.sceneUpgrade === true && editImageBase64);
+    // v656: «فكرة ثانية/مختلفة» على صورة موجودة = إعادة تصور كاملة لا تعديل حرفي.
+    const isReimagine = !!editImageBase64 && !isSceneUpgrade && /فكرة\s*(ثانية|ثانيه|مختلفة|مختلفه|جديدة|جديده|غير)|فكره\s*(ثانية|ثانيه|مختلفة|مختلفه|جديدة|جديده|غير)|غيّ?ر\s*الفكرة|بشكل\s*مختلف\s*تمام|مختلف\s*تمام|تصميم\s*ثاني|ستايل\s*ثاني|بدّ?ل\s*(الفكرة|التصميم|الستايل)|different\s*(idea|concept|style)|new\s*concept|another\s*(idea|take|concept)|reimagine/i.test(String(prompt || ''));
     const promptLimit = isArchitectural ? 2400 : (editImageBase64 ? 8000 : 1800);
     const cleanPrompt = cleanImagePrompt(prayerPlan ? prayerPlan.visualBrief : prompt).slice(0, promptLimit);
     const extras = Array.isArray(extraImages) ? extraImages.filter((x) => x && x.data).slice(0, 5) : [];
@@ -132,7 +134,10 @@ module.exports = async (req, res) => {
       parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
       for (const x of extras) parts.push({ inlineData: { mimeType: x.mime || 'image/png', data: x.data } });
     } else if (editImageBase64) {
-      parts.push({ text: isSceneUpgrade ? buildSceneUpgradePrompt(cleanPrompt) : buildEditPrompt(cleanPrompt) });
+      parts.push({ text: isSceneUpgrade ? buildSceneUpgradePrompt(cleanPrompt)
+        : (isReimagine
+          ? ('TASK: "' + cleanPrompt + '"\n\nThe attached image is ONLY inspiration for the SUBJECT. Create a COMPLETELY NEW image of the same subject with a clearly DIFFERENT concept: new composition, new viewpoint, new background, new lighting and a fresh creative idea — the result must NOT look like a copy or minor edit of the source. Keep any real faces, logos or brand marks faithful if they are the subject. Quality bar: breathtaking, award-winning, magazine-cover grade, tack-sharp, professional cinematic lighting, no toy-like or amateur rendering.')
+          : buildEditPrompt(cleanPrompt)) });
       parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
     } else {
       parts.push({ text: buildGenerationPrompt(cleanPrompt, {
@@ -144,7 +149,18 @@ module.exports = async (req, res) => {
     }
 
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
-    const reqBody = JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: editImageBase64 ? (isSceneUpgrade ? 0.5 : 0.15) : 0.85, imageConfig: { imageSize: '2K' } } });
+    // v656: نسبة أبعاد ذكية — الافتراضي طولي (3:4) لأن المستخدمين على الجوال،
+    // مع احترام أي طلب صريح (عرضي/مربع/ستوري...). التعديل يحافظ على أبعاد المصدر.
+    const pickAspect = function (p) {
+      const s2 = String(p || '');
+      if (/عرضي|عرضيه|عرضية|بانر|بنر|غلاف\s*(يوتيوب|قناة|فيس)|لاندسكيب|landscape|banner|widescreen|16\s*[:x]\s*9|thumbnail|ثمبنيل/i.test(s2)) return '16:9';
+      if (/مربع|مربعه|مربعة|square|1\s*[:x]\s*1|لوجو|شعار|\blogo\b|بوست\s*انستقرام|instagram\s*post|بروفايل|profile\s*(pic|photo)/i.test(s2)) return '1:1';
+      if (/ستوري|استوري|خلفية\s*(جوال|هاتف|موبايل)|خلفيه\s*(جوال|هاتف|موبايل)|story|wallpaper|9\s*[:x]\s*16|ريلز|reels|تيك\s*توك|tiktok|شورتس|shorts/i.test(s2)) return '9:16';
+      return '3:4';
+    };
+    const imageConfig = { imageSize: '2K' };
+    if (!editImageBase64) imageConfig.aspectRatio = isArchitectural ? '16:9' : pickAspect(cleanPrompt);
+    const reqBody = JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: editImageBase64 ? (isSceneUpgrade ? 0.5 : (isReimagine ? 0.9 : 0.15)) : 0.85, imageConfig } });
 
     // Image generation normally takes 35–50 seconds, so it must bypass the
     // shared 30-second fetch guard. Retry transient failures inside this one
