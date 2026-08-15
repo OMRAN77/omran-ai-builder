@@ -2428,9 +2428,14 @@ function __showImgLoading(el, ar, en){
     st.textContent = '@keyframes omranDotsBreathe{0%,100%{opacity:.35}50%{opacity:.9}}';
     document.head.appendChild(st);
   }
-  el.innerHTML = `<div style="display:block;width:min(340px,85vw);height:min(340px,85vw);background:#3a3a3d;border-radius:24px;margin:6px 0;position:relative;overflow:hidden">
-    <div style="position:absolute;top:18px;right:20px;color:rgba(255,255,255,.85);font-size:15px" dir="rtl">جارٍ إنشاء الصورة</div>
-    <div style="position:absolute;inset:0;margin:auto;width:62%;height:52%;background-image:radial-gradient(rgba(255,255,255,.35) 1.2px,transparent 1.2px);background-size:16px 16px;-webkit-mask-image:radial-gradient(closest-side,#000 55%,transparent);mask-image:radial-gradient(closest-side,#000 55%,transparent);animation:omranDotsBreathe 2.4s ease-in-out infinite"></div>
+  // v672: بالوضع الفاتح تنعكس الألوان — بطاقة فاتحة ونقاط وكتابة غامقة (نفس الشكل)
+  const __light = document.documentElement.getAttribute('data-mode') === 'light';
+  const __cardBg = __light ? '#e9e9ec' : '#3a3a3d';
+  const __txtCol = __light ? 'rgba(0,0,0,.75)' : 'rgba(255,255,255,.85)';
+  const __dotCol = __light ? 'rgba(0,0,0,.30)' : 'rgba(255,255,255,.35)';
+  el.innerHTML = `<div style="display:block;width:min(340px,85vw);height:min(340px,85vw);background:${__cardBg};border-radius:24px;margin:6px 0;position:relative;overflow:hidden">
+    <div style="position:absolute;top:18px;right:20px;color:${__txtCol};font-size:15px" dir="rtl">جارٍ إنشاء الصورة</div>
+    <div style="position:absolute;inset:0;margin:auto;width:62%;height:52%;background-image:radial-gradient(${__dotCol} 1.2px,transparent 1.2px);background-size:16px 16px;-webkit-mask-image:radial-gradient(closest-side,#000 55%,transparent);mask-image:radial-gradient(closest-side,#000 55%,transparent);animation:omranDotsBreathe 2.4s ease-in-out infinite"></div>
   </div>`;
 }
 
