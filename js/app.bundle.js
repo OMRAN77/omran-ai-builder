@@ -13854,13 +13854,13 @@ async function sendPrompt(){
       const __mmM = text.match(/(?:الممشى|ممشى)\s*([\d,،\s]+(?:الف|ألف|k)?)/i);
       const __yrM = text.match(/(?:موديل|سنة|عام|model|year)\s*(\d{4})/i);
       const __phM = text.match(/((?:\+971|\+966|\+965|\+973|\+968|\+974|05|00966|00971)\d[\d\s\-]{6,})/);
-      const __clnTitle = text.replace(/\n[\s\S]*/,'').replace(/(إعلان|اعلان|للبيع|للإيجار|مطلوب[\s\d,،الفk]+|الممشى[\s\d,،الفk]+|ممشى[\s\d,،الفk]+|موديل\s*\d+|سنة\s*\d+|عام\s*\d+)\s*/gi,'').trim().slice(0,60);
+      const __clnTitle = text.replace(/\n[\s\S]*/,'').replace(/(إعلان|اعلان|للبيع|للإيجار|مطلوب[\s\d,،الفk]*|السعر[\s\d,،الفk]*|الممشى[\s\d,،الفk]*(?:كم)?|ممشى[\s\d,،الفk]*(?:كم)?|موديل\s*\d+|سنة\s*\d+|عام\s*\d+|رقم\s*(?:ال)?تواصل|للتواصل|اتصل\s*(?:على)?|جوال|هاتف|واتساب|(?:\+?\d[\d\s\-]{6,})|المعاين[ةه][^\n]{0,40}|قابل\s*لل?تفاوض|خليجي|المكينة\s*نظيفة|نظيفة?)\s*/gi,' ').replace(/[.،,:]+/g,' ').replace(/\s{2,}/g,' ').trim().slice(0,60);
       const __adTitle = __clnTitle || (lang==='ar'?'للبيع':'For Sale');
       const __adPrice = __wM ? __wM[1].trim() : '';
       const __adPhone = __phM ? __phM[0].replace(/[\s\-]/g,'') : '';
       const __adChips = [__yrM?('الموديل '+__yrM[1]):'', __mmM?('المسافة المقطوعة '+__mmM[1].trim()+' كم'):'', /خليجي/.test(text)?'المواصفات خليجي':'', /نظيف/.test(text)?'المكينة نظيفة':''].filter(Boolean);
       const __adSpecs = '';
-      const __adKick  = /(إيجار|للإيجار)/i.test(text)?'للإيجار': /(مطلوب)/i.test(text)?'مطلوب':'للبيع';
+      const __adKick  = /(إيجار|للإيجار)/i.test(text)?'للإيجار': (/مطلوب/i.test(text) && !/مطلوب\s*[\d٠-٩]/.test(text))?'مطلوب':'للبيع';
       const __adLook  = /(شقة|شقه|فيلا|عقار|بيت)/i.test(text)?'elegant': /(جوال|ايفون|سامسونج)/i.test(text)?'minimal':'neon';
       // صورة المستخدم إذا أرفق واحدة
       const __adUserB64 = (__srcImg && cur.lastEditedImage && cur.lastEditedImage.b64) ? cur.lastEditedImage.b64 : null;
