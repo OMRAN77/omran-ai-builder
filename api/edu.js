@@ -318,6 +318,52 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       return;
     }
 
+    // ---------------- 📚 explain: درس من المنهج (بلد/مرحلة/صف/مادة/درس) — v655 ----------------
+    if (action === 'explain') {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        const max = username ? USER_PROCESS_PER_DAY : GUEST_PROCESS_PER_DAY;
+        if (await overDailyLimit(subject, 'proc', max)) {
+          res.status(402).json({
+            error: username
+              ? 'وصلت للحد اليومي (' + max + ' درسًا). عد غدًا 🌙'
+              : 'وصلت للحد اليومي المجاني (' + max + ' دروس). سجّل الدخول أو عد غدًا 🌙',
+          });
+          return;
+        }
+      }
+      const country = String(body.country || '').slice(0, 60).trim();
+      const stageTxt = String(body.stage || '').slice(0, 60).trim();
+      const grade = String(body.grade || '').slice(0, 60).trim();
+      const subjName = String(body.subject || '').slice(0, 80).trim();
+      const lessonName = String(body.lesson || '').slice(0, 200).trim();
+      if (!subjName || !lessonName) { res.status(400).json({ error: 'اكتب المادة واسم الدرس على الأقل.' }); return; }
+      const blocks = [{ type: 'text', text: 'لا توجد محاضرة مرفوعة هذه المرة. أنت مدرّس خبير بالمناهج الدراسية، والمطلوب أن تؤلّف درسًا تعليميًا كاملًا وفق المواصفات التالية:\n'
+        + (country ? '- البلد/المنهج: ' + country + ' (التزم بمصطلحات المنهج الرسمي لهذا البلد قدر معرفتك، ولا تختلق أرقام وحدات أو صفحات إن لم تتأكد).\n' : '')
+        + (stageTxt ? '- المرحلة: ' + stageTxt + '\n' : '')
+        + (grade ? '- الصف/السنة: ' + grade + '\n' : '')
+        + '- المادة: ' + subjName + '\n- عنوان الدرس: ' + lessonName + '\n'
+        + 'في حقل "summary" اكتب شرح الدرس كاملًا كأنه فصل من كتاب مدرسي: تمهيد يربط الدرس بما قبله، شرح كل فكرة بالتفصيل مع أمثلة محلولة خطوة بخطوة، القوانين والقواعد بارزة بخط غامق، ثم خلاصة — بمستوى يناسب الصف المحدد بالضبط. واجعل حقل "subject" هو: ' + subjName + '. ثم ولّد البطاقات والاختبار والأسئلة المقالية من هذا الشرح نفسه.' }];
+      let result = null;
+      try {
+        result = await callClaude(apiKey, blocks, body.lang, body.nativeLang, body.examLang, (stageTxt && /جامع|كلي|university|college/i.test(stageTxt)) ? 'university' : ((stageTxt + ' ' + grade).trim() || 'school'));
+      } catch (e) {
+        res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذر توليد الدرس: ' + (e.message || 'خطأ في الخادم') + ' — حاول مرة أخرى.' });
+        return;
+      }
+      if (!result || !result.summary || !Array.isArray(result.flashcards) || !Array.isArray(result.quiz)) {
+        res.status(502).json({ error: 'تعذر فهم رد الذكاء الاصطناعي — حاول مرة أخرى.' });
+        return;
+      }
+      result.quiz = result.quiz.filter((q) => q && q.q && Array.isArray(q.options) && q.options.length === 4 && q.correct >= 0 && q.correct <= 3);
+      result.flashcards = result.flashcards.filter((c) => c && c.q && c.a);
+      if (!result.subject) result.subject = subjName;
+      res.status(200).json({ ok: true, lesson: result, guest: !username });
+      return;
+    }
+
     // ---------------- 📊 expense analyzer ----------------
     if (action === 'expense') {
       const apiKey = process.env.ANTHROPIC_API_KEY;
