@@ -2192,7 +2192,10 @@ async function sendPrompt(){
       window.__adProgressTimer = null;
       __showImgLoading(thinkingDiv, 'جارٍ إنشاء الصورة', 'Generating image');
       try{
-        const __adCat = /(شقة|شقه|فيلا|عقار|بيت|منزل|أرض|ارض)/i.test(text)?'estate': /(سيارة|سياره|لاندكروزر|تويوتا|نيسان|جيب|باترول|لكزس|مرسيدس|بي ام|موتر)/i.test(text)?'car':'other';
+        const __adCat = /(سكن\s*عمال|غرف\s*عمال|معسكر\s*(?:عمال|سكن)|worker\s*housing|labou?r\s*camp)/i.test(text)?'worker'
+          : /(صيدل|دواء|أدوية|توصيل\s*(?:دواء|صيدل)|pharmacy|medicine\s*delivery)/i.test(text)?'pharmacy'
+          : /(شقة|شقه|فيلا|عقار|بيت|منزل|أرض|ارض)/i.test(text)?'estate'
+          : /(سيارة|سياره|لاندكروزر|تويوتا|نيسان|جيب|باترول|لكزس|مرسيدس|بي ام|موتر)/i.test(text)?'car':'other';
         const __adNote = /(تفاوض|قابل للتفاوض)/i.test(text)?'قابل للتفاوض':'';
         const __ftM = text.match(/(المعاين[ةه][^\n.،,]{0,30})/);
         const __adFoot = __ftM ? __ftM[1].trim() : '';
