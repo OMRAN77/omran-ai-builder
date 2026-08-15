@@ -13936,9 +13936,16 @@ body{width:1080px;height:1080px;overflow:hidden;font-family:'Segoe UI',Tahoma,Ar
 </div>
 </body></html>`;
       thinkingDiv.remove();
-      cur.messages.push({role:'assistant',content:lang==='ar'?'تفضّل إعلانك 👇':'Here is your ad 👇',code:__adHTML});
-      cur.adMode=null; cur.lastMsgWasImageEdit=true;
-      if(__adB64) cur.lastEditedImage={b64:__adB64,mime:__adMime};
+      // v692: نفس مسار توليد الصور — الصورة تظهر في الشات والإعلان في المعاينة
+      cur.code = __adHTML;
+      cur.codeType = 'html';
+      cur.adMode = null; cur.lastMsgWasImageEdit = true;
+      if(__adB64){
+        cur.lastEditedImage = {b64:__adB64, mime:__adMime};
+        cur.messages.push({role:'assistant', content:lang==='ar'?'تفضّل إعلانك 👇 (افتح تبويب المعاينة)':'Here is your ad 👇 (open Preview tab)', attachments:[{name:'ad-bg.jpg', isImage:true, mime:__adMime, dataUrl:'data:'+__adMime+';base64,'+__adB64}]});
+      } else {
+        cur.messages.push({role:'assistant', content:lang==='ar'?'تفضّل إعلانك 👇 (افتح تبويب المعاينة)':'Here is your ad 👇 (open Preview tab)'});
+      }
       renderAll(); saveState();
       return;
     } else if(text && (__srcImg || __followUp) && /(لوجو|شعار|logo|أيقون|ايقون|صمم|صمّم|تصميم|بطاقة|دعوة|بوستر|غلاف|بنر|نفس هذ|design)/i.test(text) && !cur.adMode && !cur.awaitingAdMode && text.indexOf('ملاحظة للنظام') === -1){
