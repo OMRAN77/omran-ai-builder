@@ -13858,7 +13858,8 @@ async function sendPrompt(){
       const __adTitle = __clnTitle || (lang==='ar'?'للبيع':'For Sale');
       const __adPrice = __wM ? __wM[1].trim() : '';
       const __adPhone = __phM ? __phM[0].replace(/[\s\-]/g,'') : '';
-      const __adSpecs = [__yrM?('موديل '+__yrM[1]):'', __mmM?('الممشى '+__mmM[1].trim()+' كم'):''].filter(Boolean).join(' • ');
+      const __adChips = [__yrM?('الموديل '+__yrM[1]):'', __mmM?('المسافة المقطوعة '+__mmM[1].trim()+' كم'):''].filter(Boolean);
+      const __adSpecs = '';
       const __adKick  = /(إيجار|للإيجار)/i.test(text)?'للإيجار': /(مطلوب)/i.test(text)?'مطلوب':'للبيع';
       const __adLook  = /(شقة|شقه|فيلا|عقار|بيت)/i.test(text)?'elegant': /(جوال|ايفون|سامسونج)/i.test(text)?'minimal':'neon';
       // صورة المستخدم إذا أرفق واحدة
@@ -13866,7 +13867,7 @@ async function sendPrompt(){
       const __adUserMime= (__srcImg && cur.lastEditedImage && cur.lastEditedImage.mime) ? cur.lastEditedImage.mime : 'image/jpeg';
       chatPhase('🎨', lang==='ar'?'جاري تصميم الإعلان الاحترافي…':'Designing your ad…', thinkingDiv);
       try{
-        const __adBody = { title:__adTitle, spec:__adSpecs, kick:__adKick, price:__adPrice, unit:'درهم', tel:__adPhone, look:__adLook, ac:'#FFD700', ratio:'square', lang:'ar', token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
+        const __adBody = { title:__adTitle, spec:__adSpecs, kick:__adKick, price:__adPrice, unit:'درهم', tel:__adPhone, look:__adLook, ac:'#FFD700', ratio:'square', lang:'ar', chips:__adChips, note:'قابل للتفاوض', foot:'المعاينة في أي وقت', token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
         if(__adUserB64){ __adBody.imageBase64=__adUserB64; __adBody.mimeType=__adUserMime; }
         const __adRes = await fetch('/api/tools?action=adimage',{method:'POST',headers:{'Content-Type':'application/json'},signal:genAbortController.signal,body:JSON.stringify(__adBody)});
         const __adData = await __adRes.json().catch(()=>({}));
