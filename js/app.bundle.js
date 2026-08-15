@@ -13848,14 +13848,99 @@ async function sendPrompt(){
           text += '\n(ملاحظة للنظام: المستخدم أرفق صورة لهذا الإعلان — اجعلها صورة البطل باستخدام src="__USER_IMAGE__" بالضبط، والتفاصيل خارج الصورة حسب قالب OUTSIDE)';
         }
       }
-    } else if(text && __srcImg && __adIntentRe.test(text) && !__codeWordRe.test(text) && !/(داخل|خارج|فوق الصور|تحت الصور)/i.test(text)){
-      // v685: لا سؤال — دائماً "داخل" مباشرة
-      cur.adMode = 'inside'; cur.awaitingAdMode = false; cur.lastMsgWasImageEdit = true;
-      text += '\n(ملاحظة للنظام: المستخدم أرفق صورة لهذا الإعلان — اجعلها خلفية البوستر الكاملة باستخدام background-image:url(\'__USER_IMAGE__\') بالضبط، وصمم الإعلان الكامل حسب قالب INSIDE: كل التفاصيل والسعر وأي أرقام أعطاها المستخدم على بطاقات زجاجية أنيقة فوق الصورة — ممنوع الاكتفاء بلافتة أو كلمة وحدة)';
-    } else if(text && !__srcImg && !__followUp && __adIntentRe.test(text) && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text)){
-      // v690: إعلان بدون صورة → Claude يبني HTML احترافي بخلفية CSS سينمائية مباشرة
-      cur.adMode = 'inside'; cur.awaitingAdMode = false;
-      text += '\n(ملاحظة: لا توجد صورة — استخدم خلفية CSS سينمائية فاخرة بدلاً من __USER_IMAGE__)';
+    } else if(text && __adIntentRe.test(text) && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !/(داخل|خارج)/i.test(text)){
+      // v691: إعلان — مسار نظيف واحد: صورة المستخدم أو maha-image → HTML مباشرة، بدون Claude
+      let __adB64  = (__srcImg && cur.lastEditedImage && cur.lastEditedImage.b64) ? cur.lastEditedImage.b64 : null;
+      let __adMime = (__srcImg && cur.lastEditedImage && cur.lastEditedImage.mime) ? cur.lastEditedImage.mime : 'image/jpeg';
+      if(!__adB64){
+        // لا توجد صورة مرفقة → ولّد خلفية احترافية
+        const __at = [
+          [/(سيارة|سياره|لاند|باترول|يوربارد|كامري|هايلكس|كروزر|فورد|تويوتا|نيسان|لكزس|جيب|مشلب|bmw|benz|mercedes|lexus)/i,
+           'cinematic luxury SUV night city wet asphalt road golden street light reflection polished hood dark dramatic sky ultra realistic automotive advertising photography'],
+          [/(شقة|شقه|فيلا|فله|فيلة|بيت|بيوت|عمارة|أرض|ارض|عقار|apartment|villa|house|property|land)/i,
+           'luxury Dubai apartment interior panoramic windows skyline sunset crystal lagoon reflection ultra realistic architectural photography'],
+          [/(جوال|ايفون|آيفون|سامسونج|هاتف|موبايل|phone|iphone|samsung|mobile)/i,
+           'premium smartphone floating dark studio dramatic directional light chrome reflection ultra realistic product photography'],
+          [/(ذهب|مجوهرات|خاتم|سلسلة|الماس|gold|jewelry|ring|diamond)/i,
+           'luxury gold jewelry dark velvet macro photography sparkling diamonds dramatic spot lighting ultra realistic'],
+        ];
+        let __ap = 'luxury product cinematic dark studio dramatic light premium advertisement background ultra realistic';
+        for(const [__ar,__pr] of __at){ if(__ar.test(text)){ __ap=__pr; break; } }
+        chatPhase('🎨', lang==='ar'?'جاري توليد الصورة الاحترافية…':'Generating professional image…', thinkingDiv);
+        try{
+          const __aRes = await fetch('/api/maha-image',{method:'POST',headers:{'Content-Type':'application/json'},signal:genAbortController.signal,body:JSON.stringify({prompt:__ap,token:authGet('aiapp_auth_token'),guestId:window.getGuestId()})});
+          const __aData = await __aRes.json().catch(()=>({}));
+          if(__aRes.ok && __aData.imageBase64){ __adB64=__aData.imageBase64; __adMime=__aData.mimeType||'image/jpeg'; }
+        }catch(e){ if(e&&e.name==='AbortError') return; __swallow(e,'ad:img'); }
+      }
+      // استخرج تفاصيل الإعلان من النص
+      const __wM  = text.match(/(?:مطلوب|السعر|ب\s*(?:فقط)?)\s*([\d,،\s]+(?:الف|ألف|k)?)/i);
+      const __mmM = text.match(/(?:الممشى|ممشى)\s*([\d,،\s]+(?:الف|ألف|k)?)/i);
+      const __yrM = text.match(/(?:موديل|سنة|عام|model|year)\s*(\d{4})/i);
+      const __phM = text.match(/((?:\+971|\+966|\+965|\+973|\+968|\+974|05|00966|00971)\d[\d\s\-]{6,})/);
+      const __clnTitle = text.replace(/\n[\s\S]*/,'').replace(/(إعلان|اعلان|للبيع|للإيجار|مطلوب[\s\d,،الف]+|الممشى[\s\d,،الف]+|موديل\s*\d+|سنة\s*\d+)\s*/gi,'').trim().slice(0,80);
+      const __title = __clnTitle || (lang==='ar'?'للبيع':'For Sale');
+      const __cards = [];
+      if(__yrM) __cards.push(['الموديل',__yrM[1]]);
+      if(__mmM) __cards.push(['الممشى',__mmM[1].trim()]);
+      if(!__cards.length && __yrM) __cards.push(['السنة',__yrM[1]]);
+      const __price = __wM ? __wM[1].trim() : '';
+      const __phone = __phM ? __phM[0].replace(/[\s\-]/g,'') : '';
+      const __bgUrl = __adB64 ? ('data:'+__adMime+';base64,'+__adB64) : '';
+      const __bgCss = __bgUrl ? "url('"+__bgUrl+"') center/cover no-repeat" : 'linear-gradient(135deg,#0d1117 0%,#1a2332 40%,#0a1628 100%)';
+      const __colCount = Math.min(Math.max(__cards.length,1),3);
+      const __adHTML = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1080px;height:1080px;overflow:hidden;font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:#0d1117;position:relative}
+.bg{position:absolute;inset:0;background:${__bgCss};filter:brightness(.68) saturate(1.15)}
+.grad{position:absolute;inset:0;background:linear-gradient(172deg,rgba(0,0,0,.04) 0%,rgba(0,0,0,.22) 45%,rgba(0,0,0,.82) 100%)}
+.wrap{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;padding:56px 60px;justify-content:space-between}
+.topbar{display:flex;justify-content:space-between;align-items:center}
+.brand{color:rgba(255,255,255,.55);font-size:16px;letter-spacing:2px;font-weight:300}
+.badge{background:linear-gradient(120deg,#b8860b,#ffd700,#b8860b);color:#000;font-size:13px;font-weight:900;padding:8px 22px;border-radius:50px;letter-spacing:.6px;box-shadow:0 4px 16px rgba(255,215,0,.35)}
+.mid{margin-top:auto;padding-bottom:32px}
+.title{font-size:54px;font-weight:900;color:#fff;line-height:1.12;text-shadow:0 4px 28px rgba(0,0,0,.9);margin-bottom:12px}
+.sub{font-size:19px;color:rgba(255,255,255,.65);font-weight:400}
+.cards{display:grid;grid-template-columns:repeat(${__colCount},1fr);gap:16px;margin-bottom:16px}
+.card{background:rgba(255,255,255,.1);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1px solid rgba(255,255,255,.18);border-radius:20px;padding:20px 18px;text-align:center}
+.cl{font-size:13px;color:rgba(255,255,255,.6);font-weight:500;margin-bottom:6px;letter-spacing:.3px}
+.cv{font-size:28px;font-weight:900;color:#ffd700;line-height:1}
+.bottom{display:flex;gap:16px;align-items:stretch}
+.price-box{flex:1;background:rgba(184,134,11,.22);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border:1.5px solid rgba(255,215,0,.35);border-radius:20px;padding:22px 28px;display:flex;justify-content:space-between;align-items:center}
+.pl{font-size:15px;color:rgba(255,255,255,.7);font-weight:600}
+.pv{font-size:48px;font-weight:900;color:#ffd700;text-shadow:0 0 24px rgba(255,215,0,.45);line-height:1}
+.wa{display:flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(135deg,#25d366,#128c7e);border-radius:20px;padding:0 32px;color:#fff;font-size:17px;font-weight:800;text-decoration:none;box-shadow:0 8px 28px rgba(37,211,102,.4);min-width:190px}
+</style>
+</head>
+<body>
+<div class="bg"></div><div class="grad"></div>
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand">عمران AI</div>
+    <div class="badge">🔑 للبيع</div>
+  </div>
+  <div class="mid">
+    <div class="title">${__title}</div>
+    <div class="sub">تواصل معنا للمزيد من التفاصيل</div>
+  </div>
+  ${__cards.length?`<div class="cards">${__cards.map(([l,v])=>`<div class="card"><div class="cl">${l}</div><div class="cv">${v}</div></div>`).join('')}</div>`:''}
+  <div class="bottom">
+    ${__price?`<div class="price-box"><span class="pl">السعر المطلوب</span><span class="pv">${__price}</span></div>`:''}
+    ${__phone?`<a class="wa" href="https://wa.me/${__phone.replace(/\D/g,'')}">📲 واتساب</a>`:''}
+  </div>
+</div>
+</body></html>`;
+      thinkingDiv.remove();
+      cur.messages.push({role:'assistant',content:lang==='ar'?'تفضّل إعلانك 👇':'Here is your ad 👇',code:__adHTML});
+      cur.adMode=null; cur.lastMsgWasImageEdit=true;
+      if(__adB64) cur.lastEditedImage={b64:__adB64,mime:__adMime};
+      renderAll(); saveState();
+      return;
     } else if(text && (__srcImg || __followUp) && /(لوجو|شعار|logo|أيقون|ايقون|صمم|صمّم|تصميم|بطاقة|دعوة|بوستر|غلاف|بنر|نفس هذ|design)/i.test(text) && !cur.adMode && !cur.awaitingAdMode && text.indexOf('ملاحظة للنظام') === -1){
       // 🎨 v328: صورة/شعار مرفق + طلب تصميم → صورة المستخدم تُضمَّن كما هي — ممنوع إعادة رسمها
       text += '\n(ملاحظة للنظام: المستخدم أرفق صورة/شعارًا — إذا كان ردك تصميمًا أو كودًا يجب استخدام صورته نفسها كما هي عبر src="__USER_IMAGE__" أو background-image:url(\'__USER_IMAGE__\') بالضبط، والتطبيق يستبدلها بالصورة الحقيقية تلقائيًا. ممنوع منعًا باتًا استبدال صورة المستخدم بلوجو أو صورة من تصميمك أو من الإنترنت — صورة المستخدم هي الأصل الرسمي وتظهر بدون أي تشويه أو قلب أو قص)';
