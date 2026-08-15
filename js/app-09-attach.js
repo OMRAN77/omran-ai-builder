@@ -2421,8 +2421,16 @@ function __showImgLoading(el, ar, en){
   const _st = window.__chatStatus;
   if(_st && !_st.isReleased()){ try{ _st.release(); }catch(e){} }
   if(!el) return;
-  // v662: مطابق لنموذج المستخدم حرفيًا — خلفية داكنة بنقاط خفيفة فقط، بلا أيقونات أو نصوص أو شريط تقدم
-  el.innerHTML = `<div style="display:block;width:min(260px,75vw);height:min(347px,100vw);background:#232326;border:1px solid rgba(255,255,255,.06);border-radius:14px;margin:4px 0;background-image:radial-gradient(rgba(255,255,255,.07) 1px,transparent 1px);background-size:22px 22px"></div>`; // v663: عرض وارتفاع صريحان — aspect-ratio كان ينهار للصفر داخل فقاعة الرسالة
+  // v664: مطابق لبطاقة ChatGPT — بطاقة رمادية كبيرة بزوايا دائرية، نص «جارٍ إنشاء الصورة» أعلى اليمين، نقاط خفيفة تتنفس في الوسط
+  if(!document.getElementById('omran-imgload-css')){
+    const st = document.createElement('style'); st.id = 'omran-imgload-css';
+    st.textContent = '@keyframes omranDotsBreathe{0%,100%{opacity:.35}50%{opacity:.9}}';
+    document.head.appendChild(st);
+  }
+  el.innerHTML = `<div style="display:block;width:min(340px,85vw);height:min(340px,85vw);background:#3a3a3d;border-radius:24px;margin:6px 0;position:relative;overflow:hidden">
+    <div style="position:absolute;top:18px;right:20px;color:rgba(255,255,255,.85);font-size:15px" dir="rtl">جارٍ إنشاء الصورة</div>
+    <div style="position:absolute;inset:0;margin:auto;width:62%;height:52%;background-image:radial-gradient(rgba(255,255,255,.35) 1.2px,transparent 1.2px);background-size:16px 16px;-webkit-mask-image:radial-gradient(closest-side,#000 55%,transparent);mask-image:radial-gradient(closest-side,#000 55%,transparent);animation:omranDotsBreathe 2.4s ease-in-out infinite"></div>
+  </div>`;
 }
 
     // v579: صورة مرفقة + طلب قصير (مثلًا بعد زرّ «تعديل») = تعديل عليها افتراضيًّا — إلّا سؤال/بحث/فيديو/شكر/صورة جديدة/قراءة-ترجمة-وصف.
