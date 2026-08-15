@@ -13878,7 +13878,7 @@ async function sendPrompt(){
       const __mmM = text.match(/(?:الممشى|ممشى)\s*([\d,،\s]+(?:الف|ألف|k)?)/i);
       const __yrM = text.match(/(?:موديل|سنة|عام|model|year)\s*(\d{4})/i);
       const __phM = text.match(/((?:\+971|\+966|\+965|\+973|\+968|\+974|05|00966|00971)\d[\d\s\-]{6,})/);
-      const __clnTitle = text.replace(/\n[\s\S]*/,'').replace(/(إعلان|اعلان|للبيع|للإيجار|مطلوب[\s\d,،الف]+|الممشى[\s\d,،الف]+|موديل\s*\d+|سنة\s*\d+)\s*/gi,'').trim().slice(0,80);
+      const __clnTitle = text.replace(/\n[\s\S]*/,'').replace(/(إعلان|اعلان|للبيع|للإيجار|مطلوب[\s\d,،الفk]+|الممشى[\s\d,،الفk]+|ممشى[\s\d,،الفk]+|موديل\s*\d+|سنة\s*\d+|عام\s*\d+)\s*/gi,'').trim().slice(0,80);
       const __title = __clnTitle || (lang==='ar'?'للبيع':'For Sale');
       const __cards = [];
       if(__yrM) __cards.push(['الموديل',__yrM[1]]);
@@ -13935,33 +13935,110 @@ body{width:1080px;height:1080px;overflow:hidden;font-family:'Segoe UI',Tahoma,Ar
   </div>
 </div>
 </body></html>`;
-      // v693: الإعلان يطلع صورة في الشات — overlayTextOnImage فوق خلفية maha-image
+      // v694: Canvas Renderer — بوستر احترافي مثل النماذج (بطاقات + ذهبي + زر)
       if(__adB64){
-        chatPhase('✍️', lang==='ar'?'جاري كتابة تفاصيل الإعلان على الصورة…':'Writing ad details on image…', thinkingDiv);
-        const __adLines = [];
-        if(__title) __adLines.push(__title);
-        if(__yrM)   __adLines.push('موديل ' + __yrM[1]);
-        if(__mmM)   __adLines.push('الممشى: ' + __mmM[1].trim() + ' كم');
-        if(__price) __adLines.push('السعر: ' + __price);
-        if(__phone) __adLines.push('📲 ' + __phone);
-        const __adOverlayText = __adLines.join('\n');
+        chatPhase('🎨', lang==='ar'?'جاري تصميم البوستر…':'Designing poster…', thinkingDiv);
         try{
-          const __finalB64 = await overlayTextOnImage(__adB64, __adMime, __adOverlayText, 'modern', '#ffffff', 'bottom');
-          const __finalMime = 'image/png';
+          const __adJpeg = await new Promise((__res,__rej)=>{
+            function __rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.quadraticCurveTo(x+w,y,x+w,y+r);c.lineTo(x+w,y+h-r);c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);c.lineTo(x+r,y+h);c.quadraticCurveTo(x,y+h,x,y+h-r);c.lineTo(x,y+r);c.quadraticCurveTo(x,y,x+r,y);c.closePath();}
+            const __cv=document.createElement('canvas'); __cv.width=1080; __cv.height=1080;
+            const __cx=__cv.getContext('2d'); __cx.direction='rtl';
+            const __im=new Image();
+            __im.onload=()=>{
+              // خلفية
+              __cx.drawImage(__im,0,0,1080,1080);
+              // تعتيم الصورة قليلاً
+              __cx.fillStyle='rgba(0,0,0,0.35)'; __cx.fillRect(0,0,1080,1080);
+              // Panel علوي داكن (360px)
+              const __tg=__cx.createLinearGradient(0,0,0,370);
+              __tg.addColorStop(0,'rgba(0,0,0,0.97)');
+              __tg.addColorStop(0.75,'rgba(0,0,0,0.82)');
+              __tg.addColorStop(1,'rgba(0,0,0,0)');
+              __cx.fillStyle=__tg; __cx.fillRect(0,0,1080,370);
+              // Panel سفلي داكن (340px)
+              const __bg2=__cx.createLinearGradient(0,720,0,1080);
+              __bg2.addColorStop(0,'rgba(0,0,0,0)');
+              __bg2.addColorStop(0.25,'rgba(0,0,0,0.88)');
+              __bg2.addColorStop(1,'rgba(0,0,0,0.97)');
+              __cx.fillStyle=__bg2; __cx.fillRect(0,720,1080,360);
+              // ── Badge للبيع ──
+              const __bg=__cx.createLinearGradient(380,22,700,82);
+              __bg.addColorStop(0,'#7a5206'); __bg.addColorStop(0.5,'#FFD700'); __bg.addColorStop(1,'#7a5206');
+              __cx.fillStyle=__bg; __rr(__cx,390,22,300,66,33); __cx.fill();
+              __cx.font='bold 30px Arial'; __cx.fillStyle='#000'; __cx.textAlign='center';
+              __cx.fillText('للبيع',540,66);
+              // ── العنوان الرئيسي ──
+              __cx.shadowColor='rgba(0,0,0,0.95)'; __cx.shadowBlur=18;
+              __cx.font='bold 72px Arial'; __cx.fillStyle='#fff'; __cx.textAlign='center';
+              const __t1=__title.slice(0,22); const __t2=__title.length>22?__title.slice(22,42):'';
+              __cx.fillText(__t1,540,162);
+              if(__t2){__cx.font='bold 54px Arial';__cx.fillText(__t2,540,228);}
+              // خليجي / subtitle إذا موجود
+              __cx.shadowBlur=0; __cx.font='32px Arial'; __cx.fillStyle='rgba(255,215,0,0.8)';
+              if(__yrM) __cx.fillText('موديل '+__yrM[1], 540, __t2?278:240);
+              // ── بطاقات المواصفات ──
+              const __sp=[];
+              if(__yrM) __sp.push(['الموديل',__yrM[1],'📅']);
+              if(__mmM) __sp.push(['الممشى',__mmM[1].trim()+' كم','🔵']);
+              if(!__sp.length) __sp.push(['الحالة','ممتازة','✅']);
+              __sp.push(['المواصفات','خليجي','🌐']);
+              const __nc=Math.min(__sp.length,4);
+              const __cW=230,__cH=105,__cGp=14;
+              const __cTW=__nc*__cW+(__nc-1)*__cGp;
+              const __cSX=(1080-__cTW)/2; const __cSY=300;
+              for(let __ci=0;__ci<__nc;__ci++){
+                const [__cl,__cv]=__sp[__ci];
+                const __cx2=__cSX+__ci*(__cW+__cGp);
+                __cx.fillStyle='rgba(0,0,0,0.55)'; __rr(__cx,__cx2,__cSY,__cW,__cH,14); __cx.fill();
+                __cx.strokeStyle='rgba(255,215,0,0.55)'; __cx.lineWidth=1.5;
+                __rr(__cx,__cx2,__cSY,__cW,__cH,14); __cx.stroke();
+                __cx.font='bold 28px Arial'; __cx.fillStyle='#FFD700'; __cx.textAlign='center';
+                __cx.fillText(__cv,__cx2+__cW/2,__cSY+50);
+                __cx.font='20px Arial'; __cx.fillStyle='rgba(255,255,255,0.65)';
+                __cx.fillText(__cl,__cx2+__cW/2,__cSY+80);
+              }
+              // ── السعر ──
+              if(__price){
+                __cx.fillStyle='rgba(0,0,0,0.6)'; __rr(__cx,160,730,760,120,20); __cx.fill();
+                __cx.strokeStyle='rgba(255,215,0,0.6)'; __cx.lineWidth=2;
+                __rr(__cx,160,730,760,120,20); __cx.stroke();
+                __cx.font='bold 90px Arial'; __cx.fillStyle='#FFD700';
+                __cx.shadowColor='rgba(255,215,0,0.35)'; __cx.shadowBlur=14;
+                __cx.textAlign='center'; __cx.fillText(__price,540,822);
+                __cx.shadowBlur=0; __cx.font='26px Arial'; __cx.fillStyle='rgba(255,255,255,0.6)';
+                __cx.fillText('قابل للتفاوض',540,860);
+              }
+              // ── زر الهاتف ──
+              if(__phone){
+                const __wg=__cx.createLinearGradient(190,890,890,960);
+                __wg.addColorStop(0,'#1a9e50'); __wg.addColorStop(1,'#0e7038');
+                __cx.fillStyle=__wg; __rr(__cx,190,882,700,88,44); __cx.fill();
+                __cx.shadowColor='rgba(25,158,80,0.45)'; __cx.shadowBlur=16;
+                __cx.font='bold 36px Arial'; __cx.fillStyle='#fff'; __cx.textAlign='center';
+                __cx.fillText('📞  '+__phone,540,937);
+                __cx.shadowBlur=0;
+                __cx.font='24px Arial'; __cx.fillStyle='rgba(255,255,255,0.5)';
+                __cx.fillText('المعاينة في أي وقت',540,1000);
+              }
+              // ── watermark ──
+              __cx.font='16px Arial'; __cx.fillStyle='rgba(255,255,255,0.3)';
+              __cx.textAlign='right'; __cx.fillText('عمران AI',1055,1065);
+              __res(__cv.toDataURL('image/jpeg',0.92).split(',')[1]);
+            };
+            __im.onerror=()=>__rej(new Error('img_load'));
+            __im.src='data:'+__adMime+';base64,'+__adB64;
+          });
           thinkingDiv.remove();
-          cur.lastEditedImage = {b64:__finalB64, mime:__finalMime};
-          cur.lastMsgWasImageEdit = true; cur.adMode = null;
-          cur.messages.push({role:'assistant', content:'', attachments:[{name:'ad.png', isImage:true, mime:__finalMime, dataUrl:'data:image/png;base64,'+__finalB64}]});
-        }catch(e){
-          thinkingDiv.remove();
-          cur.lastEditedImage = {b64:__adB64, mime:__adMime};
-          cur.lastMsgWasImageEdit = true; cur.adMode = null;
-          cur.messages.push({role:'assistant', content:'', attachments:[{name:'ad.jpg', isImage:true, mime:__adMime, dataUrl:'data:'+__adMime+';base64,'+__adB64}]});
+          cur.lastEditedImage={b64:__adJpeg,mime:'image/jpeg'};
+          cur.lastMsgWasImageEdit=true; cur.adMode=null;
+          cur.messages.push({role:'assistant',content:'',attachments:[{name:'ad.jpg',isImage:true,mime:'image/jpeg',dataUrl:'data:image/jpeg;base64,'+__adJpeg}]});
+        }catch(__e){
+          thinkingDiv.remove(); cur.adMode=null;
+          cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر تصميم الإعلان، حاول مجدداً.':'Ad design failed, please try again.'});
         }
       } else {
-        thinkingDiv.remove();
-        cur.adMode = null;
-        cur.messages.push({role:'assistant', content:lang==='ar'?'تعذّر توليد صورة الإعلان، حاول مجدداً.':'Could not generate ad image, please try again.'});
+        thinkingDiv.remove(); cur.adMode=null;
+        cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر توليد صورة الإعلان، حاول مجدداً.':'Could not generate ad image.'});
       }
       renderAll(); saveState();
       return;
