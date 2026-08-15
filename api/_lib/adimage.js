@@ -25,6 +25,38 @@ const LOOKS = {
   royal:    'prestigious real-estate branding, deep navy-blue and metallic gold palette, bright daylight, luxury interior with floor-to-ceiling windows overlooking a city skyline or waterfront',
 };
 
+// v708: تنويعات مشاهد لكل فئة — التخطيط ثابت من القالب، المشهد يتغيّر عشوائياً كل طلب
+const SCENES = {
+  car: [
+    'bright golden desert dunes at sunset, warm amber light, sand haze',
+    'modern city marina at blue hour, glass towers, calm water reflections',
+    'sleek dark showroom with dramatic white spotlights and polished floor',
+    'mountain highway at sunrise, cool crisp air, soft morning light',
+    'luxury villa driveway in bright daylight, palm trees, warm stone tones',
+    'rain-soaked night street with glowing neon signs and light streaks',
+    'coastal corniche road at golden hour, sea sparkle, long shadows',
+    'minimalist light-grey studio with a soft gradient and floor reflection',
+  ],
+  estate: [
+    'bright daylight with clear blue sky, lush green landscaping, crisp shadows',
+    'golden-hour warm sunlight washing over the facade, long soft shadows',
+    'deep navy-blue evening sky with warm interior lights glowing, metallic gold accents',
+    'fresh morning light, dewy garden, airy and optimistic mood',
+    'elegant dusk scene, purple-blue sky, landscape lighting along the path',
+    'white-and-gold premium branding, soft daylight, marble textures',
+    'waterfront view mood, turquoise water accents, resort-style daylight',
+    'modern minimal branding, light beige palette, clean architectural daylight',
+  ],
+  other: [
+    'clean bright studio backdrop with a soft colour gradient',
+    'bold vibrant colour-block background with dynamic diagonal light',
+    'elegant dark backdrop with a warm golden spotlight',
+    'fresh daylight lifestyle scene with soft natural shadows',
+    'premium magazine-editorial styling with refined soft light',
+    'playful colourful gradient with subtle floating shapes',
+  ],
+};
+
 module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   if (req.method !== 'POST') { res.status(405).end('{"error":"POST only"}'); return; }
@@ -68,7 +100,7 @@ module.exports = async (req, res) => {
     const tplB64 = cat === 'car' ? TEMPLATE_B64 : cat === 'estate' ? ESTATE_B64 : null;
     let p = 'Create ONE high-end ' + ORI[RK] + ' advertising poster, photorealistic, professionally art-directed.\n';
     if (tplB64) {
-      p += 'The FIRST provided image is the APPROVED LAYOUT TEMPLATE. Copy its composition EXACTLY: same positions of every element, same card shapes with text INSIDE the cards, same typography style, same colour mood, same price plaque shape, same contact button style. Only replace the subject and the text values with the ones listed below. Every word must sit INSIDE its card or plaque exactly like the template. Omit any template element whose text is not listed below.\n';
+      p += 'The FIRST provided image is the APPROVED LAYOUT TEMPLATE. Copy its LAYOUT exactly: same positions of every element, same card shapes with text INSIDE the cards, same typography style, same price plaque shape, same contact button style. Only replace the subject and the text values with the ones listed below. Every word must sit INSIDE its card or plaque exactly like the template. Omit any template element whose text is not listed below. However, do NOT copy the template\'s background scene or colour mood — the scene is defined separately below, so every poster looks fresh and different.\n';
     }
     if (hasImg) {
       p += 'The ' + (tplB64 ? 'SECOND' : 'FIRST') + ' provided image is the customer\'s REAL product photo. STRICT RULE: the subject (building/vehicle/item) must stay EXACTLY as photographed — same architecture and geometry, same materials, same colours, same windows and doors, same landscaping. Do NOT redesign, rebuild, restyle or replace it. '
@@ -84,8 +116,10 @@ module.exports = async (req, res) => {
     if (bg) {
       p += 'CUSTOMER BACKGROUND REQUEST (overrides the template\'s background and colour mood, but NOT its layout): restyle the background scene and colour palette to match exactly: "' + bg + '". Keep every card, plaque and text position identical to the layout.' + (hasImg ? ' The customer\'s photographed subject itself still stays exactly as photographed.' : '') + '\n';
     }
+    const pool = SCENES[cat] || SCENES.other;
+    const scene = pool[Math.floor(Math.random() * pool.length)];
     p += (bg ? '' : hasImg ? 'Scene and mood: follow the customer\'s photo (its lighting and setting rule over any other style). Accent/glow colour: ' + accent + '.\n'
-                 : 'Scene and mood: ' + look + '. Accent/glow colour: ' + accent + '.\n')
+                 : 'Scene and mood for THIS poster (unique per request): ' + scene + '. Accent/glow colour: ' + accent + '.\n')
        + 'Render the following ' + (SCRIPTN[lg] || 'ENGLISH') + ' text INSIDE the poster, spelled EXACTLY as written, '
        + (rtl ? 'right-to-left, with correct letter joining and diacritic-free modern bold typography'
               : 'left-to-right, with clean modern bold typography') + ':\n'
