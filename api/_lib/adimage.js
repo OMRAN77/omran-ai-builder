@@ -97,10 +97,15 @@ module.exports = async (req, res) => {
       p += '- A single horizontal row of ' + chips.length + ' small rounded rectangular info cards under the headline, each with a thin gold border on dark glass background, a tiny gold line icon on one side, gold label on top and white value below. The cards read exactly: '
          + chips.map(c => '"' + c + '"').join(', ') + '\n';
     }
-    if (price) p += '- Near the bottom: a wide elongated-hexagon price plaque (pointed left and right ends) with a thin glowing gold outline on dark background, very large glowing gold numerals: "' + price + (unit ? ' ' + unit : '') + '"' + (note ? ' and a small white line under the number inside the plaque: "' + note + '"' : '') + '\n';
+    const priceFmt = /^\d+$/.test(price) ? price.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : price;
+    if (price) p += '- Near the bottom: a wide elongated-hexagon price plaque (pointed left and right ends) with a thin glowing gold outline on dark background, very large glowing gold numerals: "' + priceFmt + (unit ? ' ' + unit : '') + '"' + (note ? ' and a small white line under the number inside the plaque: "' + note + '"' : '') + '\n'
+      + 'CRITICAL NUMBER ACCURACY: the price and phone number must be reproduced digit-for-digit EXACTLY as written above — same digits, same count of zeros, same separators. Never round, shorten or drop a digit.\n';
     if (tel)   p += '- Below the price: a dark pill-shaped contact button with thin gold border, a small phone handset icon, and the number in bright teal digits: "' + tel + '"\n';
     if (foot)  p += '- Very small white footer line at the very bottom: "' + foot + '"\n';
-    p += 'The hero subject sits in the middle of the poster between the info cards and the price plaque, photorealistic, lit by warm golden street light, on wet reflective ground at night. '
+    p += 'The hero subject sits in the middle of the poster between the info cards and the price plaque, photorealistic'
+      + (hasImg ? ', keeping the customer photo\'s own lighting and time of day. '
+                : (bg ? ', lit to match the requested background scene. '
+                      : ', lit by warm golden street light, on wet reflective ground at night. '));
        + 'Do not add any other text, no watermark, no logo, no invented or misspelled letters. '
        + 'Composition must be clean, balanced, symmetric and ready to publish — premium classifieds-ad style, black and gold.';
 
