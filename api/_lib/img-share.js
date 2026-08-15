@@ -31,8 +31,14 @@ module.exports = async (req, res) => {
     const raw = await kvGetRaw(KEY(id));
     if (!raw) { res.status(404).json({ error: 'not_found' }); return; }
     const s = String(raw);
-    const i = s.indexOf(':');
-    const mime = i > 0 ? s.slice(0, i) : 'image/jpeg';
+    // v649 — الصيغة الجديدة mime:w:h:base64 (الأبعاد تصنع بطاقة صورة كبيرة في
+    // واتساب)؛ القديمة mime:base64 تبقى مقروءة.
+    const seg = s.split(':');
+    const isNew = seg.length >= 4 && /^\d+$/.test(seg[1]) && /^\d+$/.test(seg[2]);
+    const mime = seg.length > 1 ? seg[0] : 'image/jpeg';
+    const imgW = isNew ? parseInt(seg[1], 10) : 0;
+    const imgH = isNew ? parseInt(seg[2], 10) : 0;
+    const i = isNew ? s.indexOf(':', s.indexOf(':', s.indexOf(':') + 1) + 1) : s.indexOf(':');
 
     // v639 — عيب مقيس حيًّا: بلا Vary خزّن CDN صفحة الزاحف وقدّمها للبشر.
     res.setHeader('Vary', 'User-Agent');
@@ -57,6 +63,7 @@ module.exports = async (req, res) => {
       + '<meta property="og:image" content="' + abs + '">'
       + '<meta property="og:image:secure_url" content="' + abs + '">'
       + '<meta property="og:image:type" content="' + mime + '">'
+      + (imgW && imgH ? '<meta property="og:image:width" content="' + imgW + '"><meta property="og:image:height" content="' + imgH + '">' : '')
       + '<meta name="twitter:card" content="summary_large_image">'
       + '<meta name="twitter:image" content="' + abs + '">'
       + '<link rel="preload" as="image" href="' + abs + '">'
@@ -88,7 +95,9 @@ module.exports = async (req, res) => {
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(data)) { res.status(400).json({ error: 'bad_data' }); return; }
     const mime = /^image\/(png|jpeg|webp)$/.test(String(body.mime || '')) ? String(body.mime) : 'image/jpeg';
     const id = crypto.randomBytes(6).toString('hex');
-    const ok = await kvSetIfAbsent(KEY(id), mime + ':' + data, TTL_SEC);
+    const w = Math.max(0, parseInt(body.w, 10) || 0), h = Math.max(0, parseInt(body.h, 10) || 0);
+    const stored = (w && h) ? (mime + ':' + w + ':' + h + ':' + data) : (mime + ':' + data);
+    const ok = await kvSetIfAbsent(KEY(id), stored, TTL_SEC);
     if (!ok) { res.status(500).json({ error: 'store_failed' }); return; }
     // v637 — أمر عمران: «صورة خاليه أريد». الرابط المُشارَك يفتح البايتات الخام
     // مباشرةً (صورة وحدها بلا صفحة ولا زرّ)؛ صفحة /i/<id> تبقى للروابط القديمة.
