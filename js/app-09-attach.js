@@ -1263,7 +1263,7 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
             });
             if(best) position = best.name;
             // لو أهدأ نطاق لا يزال فيه تفاصيل كثيرة (sd عالية) → امدد الكانفس
-            if(best && best.sd > 28){
+            if(best && best.sd > 18){
               __stripAtTop = (position === 'top'); // اختر جهة أهدأ طرف
               // قياس أكثر لون تكراراً في حافة الصورة
               const __ey = __stripAtTop ? 0 : c.height - 4;
@@ -2541,14 +2541,28 @@ function __showImgLoading(el, ar, en){
           cur.lastEditedImage = { b64: __outB64, mime: 'image/png' };
           cur.lastMsgWasImageEdit = true;
           renderAll(); saveState();
-          // 🖌️ v677: نسخة ثانية يرسمها نموذج الصور نفسه — خط مندمج مع المشهد، للمقارنة
+          // 🖌️ v678: نسخة ثانية يرسمها نموذج الصور — نضغط الصورة أولاً لتجنب 413
           try{
             chatPhase('🖌️', lang === 'ar' ? 'جاري رسم نسخة ثانية بريشة الذكاء…' : 'Drawing an AI-rendered version…', thinkingDiv);
+            // ضغط: نقلّص لأقصى 900px قبل الإرسال
+            const __aiB64 = await new Promise(function(res2){
+              const __ci = new Image();
+              __ci.onload = function(){
+                const __mxd = 900, __sc = Math.min(1, __mxd / Math.max(__ci.naturalWidth, __ci.naturalHeight));
+                const __cc = document.createElement('canvas');
+                __cc.width = Math.round(__ci.naturalWidth * __sc);
+                __cc.height = Math.round(__ci.naturalHeight * __sc);
+                __cc.getContext('2d').drawImage(__ci, 0, 0, __cc.width, __cc.height);
+                res2(__cc.toDataURL('image/jpeg', 0.82).split(',')[1]);
+              };
+              __ci.onerror = function(){ res2(__wb64); };
+              __ci.src = 'data:' + __wmime + ';base64,' + __wb64;
+            });
             const __aiPrompt = 'Write this EXACT Arabic text, letter-for-letter with perfect spelling, onto the image: \u00AB' + __resolvedText + '\u00BB. Render it as beautiful elegant Arabic calligraphy that harmonizes with the scene palette and lighting, placed ONLY in a clean empty area (sky, wall, ground, margins), NEVER covering the main subject or faces. Do not change, redraw or restyle anything else in the image.';
             const __aiRes = await fetch('/api/maha-image', {
               method:'POST', headers:{ 'Content-Type':'application/json' },
               signal: genAbortController.signal,
-              body: JSON.stringify({ prompt: __aiPrompt, editImageBase64: __wb64, editMimeType: __wmime, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
+              body: JSON.stringify({ prompt: __aiPrompt, editImageBase64: __aiB64, editMimeType: 'image/jpeg', token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
             });
             const __aiData = await __aiRes.json().catch(() => ({}));
             if(__aiRes.ok && __aiData.imageBase64){
