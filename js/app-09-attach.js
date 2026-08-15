@@ -2208,7 +2208,9 @@ async function sendPrompt(){
         const __adNote = /(تفاوض|قابل للتفاوض)/i.test(text)?'قابل للتفاوض':'';
         const __ftM = text.match(/(المعاين[ةه][^\n.،,]{0,30})/);
         const __adFoot = __ftM ? __ftM[1].trim() : '';
-        const __adBody = { title:__adTitle, spec:__adSpecs, kick:__adKick, price:__adPrice, unit:'درهم', tel:__adPhone, look:__adLook, ac:'#FFD700', ratio:'square', lang:'ar', chips:__adChips, note:__adNote, foot:__adFoot, cat:__adCat, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
+        const __bgM = text.match(/(?:غير|غيّر|بدل|بدّل|اجعل|خل|خلي|خلّي|مع|ب)?\s*(?:ال)?خلفي[ةه]\s*[:\-]?\s*([^\n.،,؟!]{2,60})/);
+        const __adBg = __bgM ? __bgM[1].trim() : '';
+        const __adBody = { title:__adTitle, spec:__adSpecs, kick:__adKick, price:__adPrice, unit:'درهم', tel:__adPhone, look:__adLook, ac:'#FFD700', ratio:'square', lang:'ar', chips:__adChips, note:__adNote, foot:__adFoot, cat:__adCat, bg:__adBg, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
         if(__adUserB64){ __adBody.imageBase64=__adUserB64; __adBody.mimeType=__adUserMime; }
         const __adRes = await fetch('/api/tools?action=adimage',{method:'POST',headers:{'Content-Type':'application/json'},signal:genAbortController.signal,body:JSON.stringify(__adBody)});
         const __adData = await __adRes.json().catch(()=>({}));
