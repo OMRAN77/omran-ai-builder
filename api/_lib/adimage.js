@@ -89,26 +89,12 @@ module.exports = async (req, res) => {
       bn: 'BENGALI script', ml: 'MALAYALAM script', ne: 'NEPALI (Devanagari script)', fil: 'FILIPINO', id: 'INDONESIAN',
       zh: 'SIMPLIFIED CHINESE', ru: 'RUSSIAN (Cyrillic script)', tr: 'TURKISH', es: 'SPANISH' };
     const rtl = (lg === 'ar' || lg === 'ur');
-    p += (hasImg ? 'Scene and mood: follow the customer\'s photo (its lighting and setting rule over any other style). Accent/glow colour: ' + accent + '.\n'
-                 : 'Scene and mood: ' + look + '. Accent/glow colour: ' + accent + '.\n')
+    p += (hasImg ? 'Scene and mood: follow the customer\'s photo (its lighting and setting rule over any other style).\n'
+                 : 'Act as an autonomous senior art director. Choose the most suitable colour palette, lighting, composition, and visual hierarchy for this specific advertisement; do not follow a fixed human-selected colour scheme.\n')
        + (CATEGORY_ART_DIRECTION[cat] ? CATEGORY_ART_DIRECTION[cat] + '\n' : '')
-       + 'Render the following ' + (SCRIPTN[lg] || 'ENGLISH') + ' text INSIDE the poster, spelled EXACTLY as written, '
-       + (rtl ? 'right-to-left, with correct letter joining and diacritic-free modern bold typography'
-              : 'left-to-right, with clean modern bold typography') + ':\n'
-       + 'CRITICAL: all text must be typeset like a professional print advertisement in a premium geometric font — perfectly straight baselines, consistent letter weights, crisp edges. Absolutely NOT handwritten, NOT brush-style, NOT childlike, NOT distorted.\n';
-    if (kick)  p += '- At the very top: "' + kick + '" written in large luxurious 3D beveled metallic-gold calligraphic letters with a soft golden glow — NOT a flat ribbon, NOT a yellow strip, the letters themselves are gold metal\n';
-    if (title) p += '- Main headline below it, very large bold white letters with a subtle glow: "' + title + '"\n';
-    if (spec)  p += '- One elegant gold sub-line under the headline: "' + spec + '"\n';
-    if (chips.length) {
-      p += '- A single horizontal row of ' + chips.length + ' small rounded rectangular info cards under the headline, each with a thin gold border on dark glass background, a tiny gold line icon on one side, gold label on top and white value below. The cards read exactly: '
-         + chips.map(c => '"' + c + '"').join(', ') + '\n';
-    }
-    if (price) p += '- Near the bottom: a wide elongated-hexagon price plaque (pointed left and right ends) with a thin glowing gold outline on dark background, very large glowing gold numerals: "' + price + (unit ? ' ' + unit : '') + '"' + (note ? ' and a small white line under the number inside the plaque: "' + note + '"' : '') + '\n';
-    if (tel)   p += '- Below the price: a dark pill-shaped contact button with thin gold border, a small phone handset icon, and the number in bright teal digits: "' + tel + '"\n';
-    if (foot)  p += '- Very small white footer line at the very bottom: "' + foot + '"\n';
-    p += 'The hero subject sits in the middle of the poster between the info cards and the price plaque, photorealistic, lit by warm golden street light, on wet reflective ground at night. '
-       + 'Do not add any other text, no watermark, no logo, no invented or misspelled letters. '
-       + 'Composition must be clean, balanced, symmetric and ready to publish — premium classifieds-ad style, black and gold.';
+       + 'Create a text-free poster background only. Reserve clean, high-contrast empty zones for an application to place exact ' + (SCRIPTN[lg] || 'ENGLISH') + ' text later: a compact top label, a large headline zone, an optional information-card row, a bottom price plaque, and a contact strip. '
+       + 'The hero subject must remain visually unobstructed in the middle. Do not render letters, numbers, logos, watermarks, pseudo-text, or signage. '
+       + 'Composition must be polished, balanced, and ready for a multilingual professional ad overlay.';
 
     const SIZES = { square: '1024x1024', tall: '1024x1536', wide: '1536x1024' };
     // ⚠️ فخّان مقيسان حيًّا (٩ أغسطس ٢٠٢٦):
