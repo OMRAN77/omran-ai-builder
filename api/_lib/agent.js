@@ -364,7 +364,7 @@ module.exports = async (req, res) => {
     // الدفتر كان لصاحبه لا لمشروعه: يعرف أن عملًا اكتمل، ولا يعرف أين يُوضع بعد
     // إعادة التحميل. معرّف المشروع يجعل الاستئناف ممكنًا بلا تخمين.
     projId: String(projId || '').slice(0, 64) };
-  send({ runId: run.runId });
+  send({ runId: run.runId, phase: 'planning', status: '🗺️ الوكيل يخطط للمهمة…' });
   await journal(runUser, run);
 
   let lastTested = ''; // آخر HTML اختبره الوكيل في هذا الطلب — مصدر نشر احتياطي
@@ -434,7 +434,7 @@ module.exports = async (req, res) => {
       }
       steps++;
       // يرى المستخدم أين وصل بدل انتظار صامت طويل
-      if (steps > 1) send({ status: '🔄 الخطوة ' + steps + ' من ' + MAX_STEPS });
+      if (steps > 1) send({ phase: 'executing', status: '🔄 الخطوة ' + steps + ' من ' + MAX_STEPS });
       const doCall = (m) => fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
@@ -496,7 +496,7 @@ module.exports = async (req, res) => {
                 try {
                   const fe = JSON.parse(fl.slice(6));
                   const d = fe.choices && fe.choices[0] && fe.choices[0].delta && fe.choices[0].delta.content;
-                  if (d) { send({ delta: d }); run.text += d; }
+                  if (d) { send({ phase: 'reporting', delta: d }); run.text += d; }
                 } catch (e) { logError('agent/stream-frame', e); }
               }
             }
@@ -533,15 +533,15 @@ module.exports = async (req, res) => {
             curIdx = ev.index;
             const cb = ev.content_block || {};
             contentBlocks[curIdx] = { type: cb.type, text: '', name: cb.name, id: cb.id, inputJson: '' };
-            if (cb.type === 'tool_use' && cb.name === 'web_search') send({ status: '🔍 الوكيل يبحث في الإنترنت…' });
-            else if (cb.type === 'tool_use' && cb.name === 'fetch_page') send({ status: '🌐 الوكيل يقرأ صفحة ويب…' });
-            else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ status: '⚙️ الوكيل يشغّل كودًا للتحقق…' });
-            else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ status: '🧪 الوكيل يختبر ما بناه…' });
-            else if (cb.type === 'tool_use' && cb.name === 'publish') send({ status: '🔗 الوكيل ينشر التطبيق…' });
+            if (cb.type === 'tool_use' && cb.name === 'web_search') send({ phase: 'executing', status: '🔍 الوكيل يبحث في الإنترنت…' });
+            else if (cb.type === 'tool_use' && cb.name === 'fetch_page') send({ phase: 'executing', status: '🌐 الوكيل يقرأ صفحة ويب…' });
+            else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ phase: 'verifying', status: '⚙️ الوكيل يشغّل كودًا للتحقق…' });
+            else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ phase: 'verifying', status: '🧪 الوكيل يختبر ما بناه…' });
+            else if (cb.type === 'tool_use' && cb.name === 'publish') send({ phase: 'executing', status: '🔗 الوكيل ينشر التطبيق…' });
           } else if (ev.type === 'content_block_delta') {
             const cb = contentBlocks[ev.index];
             if (!cb) continue;
-            if (ev.delta && ev.delta.type === 'text_delta') { cb.text += ev.delta.text; send({ delta: ev.delta.text }); }
+            if (ev.delta && ev.delta.type === 'text_delta') { cb.text += ev.delta.text; send({ phase: 'reporting', delta: ev.delta.text }); }
             else if (ev.delta && ev.delta.type === 'input_json_delta') cb.inputJson += ev.delta.partial_json;
           } else if (ev.type === 'message_delta') {
             if (ev.delta && ev.delta.stop_reason) stopReason = ev.delta.stop_reason;
@@ -598,7 +598,7 @@ module.exports = async (req, res) => {
           // سطر واحد صادق لكل أداة: ماذا فعلتُ وماذا حصلتُ. يُبثّ حالًا ويُقيَّد
           // في الدفتر — فالأثر يبقى وإن سقط الاتصال أو أُغلق التبويب.
           const did = trailDid(cb.name, input), got = trailGot(cb.name, result);
-          send({ status: '↳ ' + did + ' — ' + got });
+          send({ phase: cb.name === 'run_js' || cb.name === 'test_html' ? 'verifying' : 'executing', status: '↳ ' + did + ' — ' + got });
           if (!Array.isArray(run.trail)) run.trail = [];
           run.trail.push({ n: run.trail.length + 1, did: did, got: got, at: Date.now() });
           if (run.trail.length > 24) run.trail.splice(0, run.trail.length - 24);
@@ -606,7 +606,7 @@ module.exports = async (req, res) => {
         run.updatedAt = Date.now();
         await journal(runUser, run);
         convo.push({ role: 'user', content: toolResults });
-        send({ status: '🧠 الوكيل يكمل العمل…' });
+        send({ phase: 'planning', status: '🧠 الوكيل يراجع النتائج ويكمل العمل…' });
         continue;
       }
 
@@ -621,7 +621,7 @@ module.exports = async (req, res) => {
 
       // Finished normally.
       run.status = 'done'; await journal(runUser, run);
-      send({ done: true });
+      send({ phase: 'reporting', done: true });
       res.end();
       return;
     }
