@@ -13,6 +13,7 @@ const { safeParse } = require('./safe-parse.js');
 const { fetchPlaces, isPlacesAsk, regionOf } = require('./search.js');
 const { readMemory, memoryPromptBlock } = require('./memory.js');
 const { BIDI_RULE } = require('./_bidi.js'); // v568
+const { fetchPublicUrl } = require('./safe-url.js');
 
 function isPureGreeting(text) {
   return /^(?:هلا+|هلا والله|مرحبا+|مرحبًا|السلام عليكم(?: ورحمة الله(?: وبركاته)?)?|سلام|صباح الخير|مساء الخير|hello|hi|hey|كفو+|كفوك|ممتاز|زين|شاطر|ما شاء الله|ماشاء الله|أحسنت)[!؟?.،\s]*$/i.test(String(text || '').trim());
@@ -599,10 +600,9 @@ async function tavilySearch(query, reC, plateAsk) {
 
 async function fetchPage(url) {
   try {
-    if (!/^https?:\/\//i.test(url)) return 'رابط غير صالح.';
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 12000);
-    const r = await fetch(url, { signal: ctrl.signal, redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (compatible; OmranChat/1.0)' } });
+    const r = await fetchPublicUrl(url, { signal: ctrl.signal, headers: { 'User-Agent': 'Mozilla/5.0 (compatible; OmranChat/1.0)' } });
     clearTimeout(t);
     if (!r.ok) return 'فشل فتح الصفحة: HTTP ' + r.status;
     const text = (await r.text())
