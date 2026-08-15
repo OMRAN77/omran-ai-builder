@@ -14215,15 +14215,45 @@ function __showImgLoading(el, ar, en){
             }catch(e){ if(e && e.name === 'AbortError') return; __swallow(e, "img:visualEdit-v576"); }
             chatPhase('✍️', lang === 'ar' ? 'جاري كتابة النص…' : 'Writing text…', thinkingDiv);
           }
-          const __outB64 = await overlayTextOnImage(__wb64, __wmime, __resolvedText, __textSpec.fontKey, __textSpec.color, __pos);
+          // 🖌️ v681: الذكاء يرسم الخط أولاً (ضغط لـ800px يمنع 413) → كانفس كبديل احتياطي فقط
+          const __compressB64 = (b64, mime) => new Promise(function(res3){
+            const __ci2 = new Image();
+            __ci2.onload = function(){
+              const __mxd2 = 800, __sc2 = Math.min(1, __mxd2 / Math.max(__ci2.naturalWidth||1, __ci2.naturalHeight||1));
+              const __cc2 = document.createElement('canvas');
+              __cc2.width = Math.round((__ci2.naturalWidth||__mxd2) * __sc2);
+              __cc2.height = Math.round((__ci2.naturalHeight||__mxd2) * __sc2);
+              __cc2.getContext('2d').drawImage(__ci2, 0, 0, __cc2.width, __cc2.height);
+              res3({ b64: __cc2.toDataURL('image/jpeg', 0.80).split(',')[1], mime: 'image/jpeg' });
+            };
+            __ci2.onerror = function(){ res3({ b64, mime }); };
+            __ci2.src = 'data:' + mime + ';base64,' + b64;
+          });
+          let __finalB64 = null, __finalMime = 'image/png';
+          try{
+            const __cmp = await __compressB64(__wb64, __wmime);
+            const __aiTxtPrompt = 'Write this EXACT Arabic text verbatim onto the image — do NOT change, add, or remove any word or letter: \u00AB' + __resolvedText + '\u00BB. Use beautiful Arabic calligraphy with full diacritics (tashkeel) harmonizing with the scene palette and lighting. Place it ONLY in a clean empty area (sky, wall, margins) — NEVER over faces or the main subject. Do not alter anything else.';
+            const __aiTRes = await fetch('/api/maha-image', {
+              method:'POST', headers:{ 'Content-Type':'application/json' },
+              signal: genAbortController.signal,
+              body: JSON.stringify({ prompt: __aiTxtPrompt, editImageBase64: __cmp.b64, editMimeType: __cmp.mime, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
+            });
+            const __aiTData = await __aiTRes.json().catch(() => ({}));
+            if(__aiTRes.ok && __aiTData.imageBase64){ __finalB64 = __aiTData.imageBase64; __finalMime = __aiTData.mimeType || 'image/jpeg'; }
+          }catch(e){ if(e && e.name === 'AbortError') return; __swallow(e, 'img:aiText-v681'); }
+          // احتياطي: كانفس إذا فشل الذكاء
+          if(!__finalB64){
+            try{ __finalB64 = await overlayTextOnImage(__wb64, __wmime, __resolvedText, __textSpec.fontKey, __textSpec.color, __pos); __finalMime = 'image/png'; }
+            catch(e2){ cur.messages.push({ role:'assistant', content:lang==='ar'?'تعذّرت كتابة النص على الصورة.':'Could not add text to image.' }); renderAll(); saveState(); return; }
+          }
           cur.imageTextLayer = { baseB64:__wb64, baseMime:__wmime, text:__resolvedText, fontKey:__textSpec.fontKey, color:__textSpec.color, position:__pos };
-          cur.messages.push({ role: 'assistant', content: '', attachments: [{ name: 'edited.png', isImage: true, mime: 'image/png', dataUrl: 'data:image/png;base64,' + __outB64 }] });
-          cur.lastEditedImage = { b64: __outB64, mime: 'image/png' };
+          cur.messages.push({ role: 'assistant', content: '', attachments: [{ name: 'edited.png', isImage: true, mime: __finalMime, dataUrl: 'data:' + __finalMime + ';base64,' + __finalB64 }] });
+          cur.lastEditedImage = { b64: __finalB64, mime: __finalMime };
           cur.lastMsgWasImageEdit = true;
           renderAll(); saveState();
           return;
         }catch(e){
-          cur.messages.push({ role:'assistant', content:lang==='ar'?'تعذّرت كتابة النص على الصورة دون تغييرها.':'Could not add the text without altering the image.' });
+          cur.messages.push({ role:'assistant', content:lang==='ar'?'تعذّرت كتابة النص على الصورة.':'Could not add text to image.' });
           renderAll(); saveState();
           return;
         }
