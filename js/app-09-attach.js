@@ -2173,31 +2173,91 @@ async function sendPrompt(){
       cur.adMode = 'inside'; cur.awaitingAdMode = false; cur.lastMsgWasImageEdit = true;
       text += '\n(ملاحظة للنظام: المستخدم أرفق صورة لهذا الإعلان — اجعلها خلفية البوستر الكاملة باستخدام background-image:url(\'__USER_IMAGE__\') بالضبط، وصمم الإعلان الكامل حسب قالب INSIDE: كل التفاصيل والسعر وأي أرقام أعطاها المستخدم على بطاقات زجاجية أنيقة فوق الصورة — ممنوع الاكتفاء بلافتة أو كلمة وحدة)';
     } else if(text && !__srcImg && !__followUp && __adIntentRe.test(text) && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text)){
-      // v688: إعلان بدون صورة مرفقة → ولّد خلفية احترافية تلقائياً بناءً على نوع المنتج
-      const __adTypes = [
-        [/(سيارة|سياره|لاند|باترول|يوربارد|يوربرد|كامري|هايلكس|لاندكروز|كروزر|فورد|تويوتا|نيسان|لكزس|جيب|مشلب|شاحنة|بيك\s*أب|bmw|benz|mercedes|lexus|car|truck|pickup|suv)/i,
-         'cinematic luxury SUV on wet road at night, golden street lights reflecting on the polished hood, dramatic dark sky, no text no watermark, photorealistic automotive advertising photography'],
-        [/(شقة|شقه|فيلا|فله|فيلة|بيت|بيوت|عمارة|أرض|ارض|عقار|مبنى|مبنى|apartment|villa|house|real estate|property|land|plot)/i,
-         'luxury apartment interior with floor-to-ceiling panoramic windows showing Dubai skyline at golden hour, crystal lagoon reflection, no text no watermark, photorealistic architectural photography'],
+      // v689: إعلان بدون صورة → ولّد خلفية احترافية ثم ابنِ HTML مباشرة (بدون Claude)
+      const __adTypes689 = [
+        [/(سيارة|سياره|لاند|باترول|يوربارد|يوربرد|كامري|هايلكس|لاندكروز|كروزر|فورد|تويوتا|نيسان|لكزس|جيب|مشلب|شاحنة|بيك.أب|bmw|benz|mercedes|lexus|car|truck|pickup|suv)/i,
+         'cinematic luxury SUV on wet asphalt road at night, golden street lights reflecting on polished hood, dramatic dark sky, no text no watermark, photorealistic automotive advertising photography'],
+        [/(شقة|شقه|فيلا|فله|فيلة|بيت|بيوت|عمارة|أرض|ارض|عقار|مبنى|apartment|villa|house|property|land|plot)/i,
+         'luxury apartment interior floor-to-ceiling panoramic windows Dubai skyline golden hour crystal lagoon reflection, no text no watermark, photorealistic architectural photography'],
         [/(جوال|جوالات|ايفون|آيفون|سامسونج|هاتف|موبايل|phone|iphone|samsung|mobile)/i,
-         'premium smartphone floating in dark studio, dramatic directional lighting, chrome surface reflection, no text no watermark, photorealistic product shot'],
-        [/(لابتوب|لاب\s*توب|كمبيوتر|laptop|computer|mac|dell|hp)/i,
-         'premium laptop on black marble surface, dramatic studio spot lighting, tech advertisement, no text no watermark, photorealistic'],
-        [/(ذهب|مجوهرات|خاتم|سلسله|سلسلة|gold|jewelry|ring|necklace)/i,
-         'luxury gold jewelry on dark velvet, macro photography, sparkling diamonds, dramatic lighting, no text no watermark, photorealistic'],
-        [/(اثاث|كنبة|كنبه|طاولة|غرفة\s*نوم|furniture|sofa|bed|table)/i,
-         'luxury modern interior with designer furniture, warm ambient lighting, no text no watermark, photorealistic'],
+         'premium smartphone floating dark studio dramatic directional lighting chrome surface reflection, no text no watermark, photorealistic product photography'],
+        [/(لابتوب|كمبيوتر|laptop|computer|mac|dell|hp)/i,
+         'premium laptop black marble surface dramatic studio spot lighting tech advertisement, no text no watermark, photorealistic'],
+        [/(ذهب|مجوهرات|خاتم|سلسلة|gold|jewelry|ring|necklace)/i,
+         'luxury gold jewelry dark velvet macro photography sparkling diamonds dramatic lighting, no text no watermark, photorealistic'],
       ];
-      let __bgPrompt = 'professional dark studio product advertisement background, dramatic cinematic lighting, luxury feel, no text no watermark, photorealistic';
-      for(const [__re2,__pr2] of __adTypes){ if(__re2.test(text)){ __bgPrompt=__pr2; break; } }
+      let __bgPrompt689 = 'professional dark studio product advertisement background dramatic cinematic lighting luxury feel, no text no watermark, photorealistic';
+      for(const [__re2,__pr2] of __adTypes689){ if(__re2.test(text)){ __bgPrompt689=__pr2; break; } }
       chatPhase('🎨', lang==='ar' ? 'جاري توليد خلفية احترافية للإعلان…' : 'Generating professional ad background…', thinkingDiv);
       try{
-        const __bgRes = await fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal: genAbortController.signal, body: JSON.stringify({ prompt: __bgPrompt, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }) });
+        const __bgRes = await fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal: genAbortController.signal, body: JSON.stringify({ prompt: __bgPrompt689, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }) });
         const __bgData = await __bgRes.json().catch(()=>({}));
         if(__bgRes.ok && __bgData.imageBase64){
-          cur.lastEditedImage = { b64: __bgData.imageBase64, mime: __bgData.mimeType || 'image/jpeg' };
-          cur.adMode = 'inside'; cur.awaitingAdMode = false; cur.lastMsgWasImageEdit = true;
-          text += '\n(ملاحظة للنظام: تم توليد صورة خلفية احترافية للإعلان تلقائياً — اجعلها خلفية البوستر الكاملة باستخدام background-image:url(\'__USER_IMAGE__\') بالضبط، وصمم الإعلان الكامل حسب قالب INSIDE: كل التفاصيل والسعر وأي أرقام أعطاها المستخدم على بطاقات زجاجية أنيقة فوق الصورة — ممنوع الاكتفاء بلافتة أو كلمة وحدة)';
+          const __bgMime = __bgData.mimeType || 'image/jpeg';
+          const __bgUri  = 'data:' + __bgMime + ';base64,' + __bgData.imageBase64;
+          cur.lastEditedImage = { b64: __bgData.imageBase64, mime: __bgMime };
+          cur.lastMsgWasImageEdit = true;
+          // استخرج تفاصيل الإعلان من النص
+          const __priceM  = text.match(/(\d[\d,،\s]*(?:الف|ألف|k|K)?)\s*(?:درهم|ريال|دينار|جنيه|$)?(?:\s*(?:مطلوب|السعر|للبيع|ب|بـ))?/i);
+          const __wantedM = text.match(/(?:مطلوب|طالب|السعر|ب\s*(?:فقط)?)\s*([\d,،\s]+(?:الف|ألف|k|K)?)/i);
+          const __mmM     = text.match(/(?:الممشى|ممشى|كيلو|مسافة)\s*([\d,،\s]+(?:الف|ألف|k|K)?)/i);
+          const __yrM     = text.match(/(?:موديل|سنة|عام|model|year)\s*(\d{4})/i);
+          const __phM     = text.match(/(?:0|\+971|\+966|\+973|\+965|\+968|\+974)\d[\d\s\-]{6,}/);
+          const __rawText = text.replace(/\n[\s\S]*/,'').replace(/(إعلان|اعلان|للبيع|للإيجار|مطلوب|الممشى|موديل|سنة|عام)\s*/gi,'').trim();
+          const __titleTxt = __rawText.slice(0,60) || (lang==='ar' ? 'للبيع' : 'For Sale');
+          const __priceTxt = __wantedM ? __wantedM[1].trim() : (__priceM ? __priceM[1].trim() : '');
+          const __mmTxt    = __mmM ? __mmM[1].trim() : '';
+          const __yrTxt    = __yrM ? __yrM[1] : '';
+          const __phTxt    = __phM ? __phM[0].replace(/\s/g,'') : '';
+          const __cards = [];
+          if(__yrTxt)    __cards.push({ label: lang==='ar'?'الموديل':'Model',    val: __yrTxt });
+          if(__priceTxt) __cards.push({ label: lang==='ar'?'السعر المطلوب':'Asking Price', val: __priceTxt });
+          if(__mmTxt)    __cards.push({ label: lang==='ar'?'الممشى':'Mileage',   val: __mmTxt });
+          if(!__cards.length) __cards.push({ label: lang==='ar'?'للتواصل':'Contact', val: __phTxt || '—' });
+          const __cardsHtml = __cards.map(c=>`
+            <div class="card">
+              <div class="card-label">${c.label}</div>
+              <div class="card-val">${c.val}</div>
+            </div>`).join('');
+          const __phoneBtn = __phTxt ? `<a class="cta" href="https://wa.me/${__phTxt.replace(/\D/g,'')}" target="_blank">📲 تواصل عبر واتساب</a>` : '';
+          const __adHtml = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{width:800px;height:800px;overflow:hidden;font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:#000}
+  .bg{position:absolute;inset:0;background:url('${__bgUri}') center/cover no-repeat;filter:brightness(.75)}
+  .overlay{position:absolute;inset:0;background:linear-gradient(160deg,rgba(0,0,0,.05) 0%,rgba(0,0,0,.55) 100%)}
+  .wrap{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;justify-content:space-between;padding:40px 44px}
+  .badge{background:rgba(255,255,255,.12);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.25);border-radius:50px;padding:6px 18px;color:#ffd700;font-size:13px;font-weight:700;letter-spacing:1px;align-self:flex-start}
+  .title{font-size:clamp(26px,5vw,42px);font-weight:900;color:#fff;text-shadow:0 2px 20px rgba(0,0,0,.7);line-height:1.2;margin-top:12px}
+  .cards{display:grid;grid-template-columns:repeat(${min(len(__cards),2)},1fr);gap:12px;margin-top:auto}
+  .card{background:rgba(255,255,255,.12);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:16px 18px;text-align:center}
+  .card-label{font-size:12px;color:rgba(255,255,255,.75);letter-spacing:.5px;margin-bottom:4px}
+  .card-val{font-size:22px;font-weight:800;color:#ffd700}
+  .cta{display:block;margin-top:14px;background:linear-gradient(135deg,#25d366,#128c7e);color:#fff;text-decoration:none;border-radius:50px;padding:14px;font-size:15px;font-weight:700;text-align:center}
+  .brand{font-size:11px;color:rgba(255,255,255,.5);text-align:center;margin-top:8px;letter-spacing:1px}
+</style></head>
+<body>
+  <div class="bg"></div><div class="overlay"></div>
+  <div class="wrap">
+    <div>
+      <div class="badge">🔑 للبيع</div>
+      <div class="title">${__titleTxt}</div>
+    </div>
+    <div>
+      <div class="cards">${__cardsHtml}</div>
+      ${__phoneBtn}
+      <div class="brand">Powered by عمران AI</div>
+    </div>
+  </div>
+</body></html>`.replace('repeat(${min(len(__cards),2)},1fr)', 'repeat(' + Math.min(__cards.length,2) + ',1fr)');
+          // احذف رسالة Loading واعرض الإعلان مباشرة
+          thinkingDiv.remove();
+          cur.messages.push({ role:'assistant', content: lang==='ar'?'تفضّل إعلانك 👇':'Here is your ad 👇', code: __adHtml });
+          cur.adMode = null; cur.lastMsgWasImageEdit = true;
+          renderAll(); saveState();
+          return;
         }
       }catch(e){ if(e && e.name==='AbortError') return; __swallow(e,'ad:autobg'); }
     } else if(text && (__srcImg || __followUp) && /(لوجو|شعار|logo|أيقون|ايقون|صمم|صمّم|تصميم|بطاقة|دعوة|بوستر|غلاف|بنر|نفس هذ|design)/i.test(text) && !cur.adMode && !cur.awaitingAdMode && text.indexOf('ملاحظة للنظام') === -1){
