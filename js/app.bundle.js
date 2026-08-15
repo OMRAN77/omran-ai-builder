@@ -12245,6 +12245,19 @@ window.__omranImgTools = function(wrap, dataUrl){
       //    مباشرةً — الملفّ إن أمكن، وإلّا الرابط. ورقتنا تبقى حلًّا أخيرًا فقط.
       if(filePossible() && shareFile(() => openSheet())) return;
       if(navigator.share){
+        // v648 — الرابط يُجهَّز مسبقًا فتُطلب ورقة النظام داخل نقرة المستخدم نفسها؛
+        //    الانتظار بعد النقرة كان يُفقد إذن الإيماءة فترتدّ ورقتنا كأن شيئًا لم يتغيّر.
+        if(shUrl){
+          try{
+            const pr0 = navigator.share({ title: 'عمران AI', url: shUrl });
+            if(pr0 && pr0.catch) pr0.catch((err) => {
+              if(err && err.name === 'AbortError') return;
+              __swallow(err, 'nativeShare:app-09-attach#v648');
+              openSheet();
+            });
+            return;
+          }catch(err){ __swallow(err, 'nativeShare:app-09-attach#v648'); }
+        }
         upload().then((u) => {
           if(!u){ openSheet(); return; }
           try{
@@ -12279,6 +12292,8 @@ window.__omranImgTools = function(wrap, dataUrl){
       if(mb.parentNode) mb.parentNode.appendChild(nb); else mb.appendChild(nb);
     }
     mb.__oSendMounted = 1;
+    // v648 — تجهيز رابط المشاركة فور ظهور الزرّ حتى تكون النقرة فوريّة
+    try{ if(navigator.share && !filePossible()) upload(); }catch(err){ __swallow(err, 'prewarm:app-09-attach#v648'); }
   };
   setTimeout(() => mountSend(false), 0);
   setTimeout(() => mountSend(false), 200);
