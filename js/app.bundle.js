@@ -12920,32 +12920,37 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
         c.width = img.naturalWidth; c.height = img.naturalHeight;
         const ctx = c.getContext('2d');
         ctx.drawImage(img, 0, 0);
-        const __side=/^(right|left)-/.exec(position||''), maxWidth=c.width*(__side?.[1]?0.20:0.72), maxHeight=c.height*0.26; if(__side){ctx.translate((__side[1]==='right'?1:-1)*c.width*.375,0);position=position.slice(__side[0].length);}
-        // 🎯 v673: بلا موضع مذكور → نقيس ٥ نطاقات ونكتب في أهدأ منطقة بعيداً عن الموضوع.
-        // الخط أصغر لئلا يطغى على الصورة، والنطاق الأوسط يُجنَّب بعقوبة أكبر.
+        // 🎯 v675: بلا موضع مذكور → نقيس ٥ نطاقات أفقية + الجانبين (يمين/يسار)
+        // ونكتب في أهدأ منطقة حسب شكل الصورة نفسها — مو بس فوق أو تحت.
         if(!position || position === 'auto'){
           position = 'bottom';
           try{
             let best = null;
-            const __bands = [['top',0.02],['upper',0.22],['center',0.40],['lower',0.60],['bottom',0.74]];
-            __bands.forEach(function(band){
-              const y = Math.floor(c.height * band[1]);
-              const h = Math.min(Math.max(1, Math.floor(c.height * 0.22)), c.height - y);
-              const d = ctx.getImageData(0, y, c.width, h).data;
+            const __zones = [
+              ['top',0,0.02,1,0.22],['upper',0,0.22,1,0.22],['center',0,0.40,1,0.22],
+              ['lower',0,0.60,1,0.22],['bottom',0,0.74,1,0.22],
+              ['left-center',0,0.30,0.30,0.40],['right-center',0.70,0.30,0.30,0.40]
+            ];
+            __zones.forEach(function(z){
+              const zx = Math.floor(c.width * z[1]), zy = Math.floor(c.height * z[2]);
+              const zw = Math.max(1, Math.min(c.width - zx, Math.floor(c.width * z[3])));
+              const zh = Math.max(1, Math.min(c.height - zy, Math.floor(c.height * z[4])));
+              const d = ctx.getImageData(zx, zy, zw, zh).data;
               let sum = 0, sq = 0, n = 0;
               for(let i = 0; i < d.length; i += 52){
                 const lum = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
                 sum += lum; sq += lum * lum; n++;
               }
               const mean = sum / n, sd = Math.sqrt(Math.max(0, sq / n - mean * mean));
-              /* v673: الوسط والنطاقات المجاورة له غالباً فوق الموضوع الرئيسي */
-              const __pen = band[0]==='center'?42:(band[0]==='upper'||band[0]==='lower')?14:0;
+              const nm = z[0];
+              const __pen = nm==='center'?42:(nm==='upper'||nm==='lower')?14:(nm==='left-center'||nm==='right-center')?6:0;
               const __score = sd + __pen;
-              if(!best || __score < best.sd - 1) best = { name: (band[0]==='upper'?'top':band[0]==='lower'?'bottom':band[0]), sd: __score };
+              if(!best || __score < best.sd - 1) best = { name: (nm==='upper'?'top':nm==='lower'?'bottom':nm), sd: __score };
             });
             if(best) position = best.name;
           }catch(e){ position = 'bottom'; }
         }
+        const __side=/^(right|left)-/.exec(position||''), maxWidth=c.width*(__side?.[1]?0.30:0.72), maxHeight=c.height*(__side?0.44:0.26); if(__side){ctx.translate((__side[1]==='right'?1:-1)*c.width*.34,0);position=position.slice(__side[0].length);}
         let fs = Math.floor(Math.min(c.width / 12, c.height / 11));
         let lines = [];
         const setF = () => { ctx.font = '700 ' + fs + 'px "' + fontCss + '", "Segoe UI", Tahoma, Arial, sans-serif'; };
