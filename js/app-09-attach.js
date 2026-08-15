@@ -2533,13 +2533,54 @@ function __showImgLoading(el, ar, en){
               const __dMime = __dData.mimeType || 'image/jpeg';
               cur.messages.push({ role:'assistant', content: (lang==='ar' ? ('نمط ' + __ds.ar) : (__ds.en + ' Style')), attachments:[{ name:'decor-'+__ds.en.toLowerCase()+'.jpg', isImage:true, mime:__dMime, dataUrl:'data:'+__dMime+';base64,'+__dData.imageBase64 }] });
               cur.lastEditedImage = { b64: __dData.imageBase64, mime: __dMime };
+              // v683: احفظ كل أسلوب حتى يقدر المستخدم يعدّل على أي واحد منها لاحقاً
+              if(!cur.decorHistory) cur.decorHistory = {};
+              cur.decorHistory[__ds.ar] = { b64: __dData.imageBase64, mime: __dMime };
               renderAll(); saveState();
             }
           }catch(e){ if(e && e.name === 'AbortError') return; __swallow(e, 'decor:'+__ds.en); }
         }
         cur.lastMsgWasImageEdit = true;
+        // تلميح للمستخدم بعد الانتهاء
+        cur.messages.push({ role:'assistant', content: lang==='ar'
+          ? 'اختر النمط الي أعجبك واكتب مثلاً: «عدّل النمط الفاخر وخلّ الأرضية بيج» — وسأطبّق تعديلك عليه فوراً.'
+          : 'Pick a style and say e.g. "refine the luxury style with beige floors" — I will apply your changes to that exact result.' });
         renderAll(); saveState();
         return;
+      }
+      // 🏠 v683: تعديل على أسلوب ديكور محدد من النتائج السابقة
+      if(cur.decorHistory && text){
+        const __styleNames = { 'عصري':'عصري','عصرى':'عصري','فاخر':'فاخر','بسيط':'بسيط','عربي':'عربي كلاسيك','عربي كلاسيك':'عربي كلاسيك','classic':'عربي كلاسيك','modern':'عصري','luxury':'فاخر','minimalist':'بسيط' };
+        const __refineRe = /(?:عدّل|عدل|غيّر|غير|حسّن|حسن|طوّر|طور|خذ|اشتغل\s+على|استخدم)\s+(?:ال)?نمط\s+(\S+)|(?:النمط|الأسلوب|الستايل)\s+ال?(\S+)\s+(?:عدّل|غيّر|حسّن)/i;
+        const __rm = __refineRe.exec(text);
+        const __rawStyle = __rm ? (__rm[1]||__rm[2]||'').replace(/[،,.؟?!]/g,'').trim().toLowerCase() : '';
+        const __mappedStyle = __rawStyle ? (__styleNames[__rawStyle] || Object.keys(cur.decorHistory).find(k => k.includes(__rawStyle) || __rawStyle.includes(k.replace(' كلاسيك',''))) || '') : '';
+        const __refSrc = __mappedStyle ? cur.decorHistory[__mappedStyle] : null;
+        if(__refSrc){
+          chatPhase('🏠', lang==='ar' ? ('جاري تعديل النمط '+__mappedStyle+'…') : 'Refining decor style…', thinkingDiv);
+          const __refCmp = await new Promise(function(r5){
+            const __ri = new Image();
+            __ri.onload = function(){
+              const __ms5=800,__sc5=Math.min(1,__ms5/Math.max(__ri.naturalWidth||1,__ri.naturalHeight||1));
+              const __rc=document.createElement('canvas');__rc.width=Math.round((__ri.naturalWidth||__ms5)*__sc5);__rc.height=Math.round((__ri.naturalHeight||__ms5)*__sc5);
+              __rc.getContext('2d').drawImage(__ri,0,0,__rc.width,__rc.height);r5({b64:__rc.toDataURL('image/jpeg',0.82).split(',')[1],mime:'image/jpeg'});
+            };__ri.onerror=function(){r5(__refSrc);}; __ri.src='data:'+__refSrc.mime+';base64,'+__refSrc.b64;
+          });
+          try{
+            const __refEdit = text.replace(__refineRe,'').trim() || text;
+            const __refRes = await fetch('/api/maha-image',{method:'POST',headers:{'Content-Type':'application/json'},signal:genAbortController.signal,
+              body:JSON.stringify({prompt:'Apply this change to the room decor: '+__refEdit+'. Keep the same overall style and room layout, only apply the specific requested change.',editImageBase64:__refCmp.b64,editMimeType:__refCmp.mime,token:authGet('aiapp_auth_token'),guestId:window.getGuestId()})});
+            const __refData=await __refRes.json().catch(()=>({}));
+            if(__refRes.ok&&__refData.imageBase64){
+              const __refMime=__refData.mimeType||'image/jpeg';
+              cur.decorHistory[__mappedStyle]={b64:__refData.imageBase64,mime:__refMime};
+              cur.lastEditedImage={b64:__refData.imageBase64,mime:__refMime};
+              cur.lastMsgWasImageEdit=true;
+              cur.messages.push({role:'assistant',content:(lang==='ar'?'نمط '+__mappedStyle+' — بعد التعديل':'After edit — '+__mappedStyle),attachments:[{name:'decor-refined.jpg',isImage:true,mime:__refMime,dataUrl:'data:'+__refMime+';base64,'+__refData.imageBase64}]});
+              renderAll();saveState();return;
+            }
+          }catch(e){if(e&&e.name==='AbortError')return;__swallow(e,'decor:refine');}
+        }
       }
       // ✍️ إذا الطلب كتابة نص/اسم على الصورة → نرسمه محليًا بخط سليم (بدون Gemini)
       const __writeIntentRe = /(اكتب|أكتب|حط\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|(?:ضيف|أضف|اضف)\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|write|put\s+(?:my\s+)?name|add\s+(?:the\s+)?text)/i;
