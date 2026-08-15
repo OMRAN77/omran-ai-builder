@@ -22,6 +22,7 @@ const LOOKS = {
   minimal:  'minimal clean studio backdrop, soft gradient, gentle floor reflection',
   magazine: 'editorial magazine cover styling, refined layout, premium fashion lighting',
   neon:     'dramatic night scene, glowing neon rim light, wet reflective asphalt, volumetric haze, light streaks',
+  royal:    'prestigious real-estate branding, deep navy-blue and metallic gold palette, bright daylight, luxury interior with floor-to-ceiling windows overlooking a city skyline or waterfront',
 };
 
 module.exports = async (req, res) => {
@@ -74,15 +75,16 @@ module.exports = async (req, res) => {
     p += 'Scene and mood: ' + look + '. Accent/glow colour: ' + accent + '.\n'
        + 'Render the following ' + (SCRIPTN[lg] || 'ENGLISH') + ' text INSIDE the poster, spelled EXACTLY as written, '
        + (rtl ? 'right-to-left, with correct letter joining and diacritic-free modern bold typography'
-              : 'left-to-right, with clean modern bold typography') + ':\n';
-    if (kick)  p += '- At the very top: "' + kick + '" written in large luxurious 3D metallic-gold calligraphy with a soft golden glow\n';
+              : 'left-to-right, with clean modern bold typography') + ':\n'
+       + 'CRITICAL: all text must be typeset like a professional print advertisement in a premium geometric font — perfectly straight baselines, consistent letter weights, crisp edges. Absolutely NOT handwritten, NOT brush-style, NOT childlike, NOT distorted.\n';
+    if (kick)  p += '- At the very top: "' + kick + '" written in large luxurious 3D beveled metallic-gold calligraphic letters with a soft golden glow — NOT a flat ribbon, NOT a yellow strip, the letters themselves are gold metal\n';
     if (title) p += '- Main headline below it, very large bold white letters with a subtle glow: "' + title + '"\n';
     if (spec)  p += '- One elegant gold sub-line under the headline: "' + spec + '"\n';
     if (chips.length) {
       p += '- A single horizontal row of ' + chips.length + ' small rounded rectangular info cards under the headline, each with a thin gold border on dark glass background, a tiny gold line icon on one side, gold label on top and white value below. The cards read exactly: '
          + chips.map(c => '"' + c + '"').join(', ') + '\n';
     }
-    if (price) p += '- Near the bottom: a wide hexagonal gold-outlined price plaque with very large glowing gold numerals: "' + price + (unit ? ' ' + unit : '') + '"' + (note ? ' and a small white line under the number inside the plaque: "' + note + '"' : '') + '\n';
+    if (price) p += '- Near the bottom: a wide elongated-hexagon price plaque (pointed left and right ends) with a thin glowing gold outline on dark background, very large glowing gold numerals: "' + price + (unit ? ' ' + unit : '') + '"' + (note ? ' and a small white line under the number inside the plaque: "' + note + '"' : '') + '\n';
     if (tel)   p += '- Below the price: a dark pill-shaped contact button with thin gold border, a small phone handset icon, and the number in bright teal digits: "' + tel + '"\n';
     if (foot)  p += '- Very small white footer line at the very bottom: "' + foot + '"\n';
     p += 'The hero subject sits in the middle of the poster between the info cards and the price plaque, photorealistic, lit by warm golden street light, on wet reflective ground at night. '
