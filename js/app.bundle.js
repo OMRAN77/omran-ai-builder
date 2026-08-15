@@ -11861,8 +11861,9 @@ window.__omranImgTools = function(wrap, dataUrl){
       + '.oImgBtn:hover{background:rgba(0,0,0,.55)}'
       + '.oImgBtn:active{transform:scale(.94)}'
       + '.oImgBtn svg{width:21px;height:21px;flex:none}'
-      + '.msg.assistant.oImgMsg{background:rgba(255,255,255,.07) !important;border:1px solid rgba(255,255,255,.08) !important;border-radius:var(--r-3,18px) !important;padding:10px 13px 12px !important;width:-moz-fit-content;width:fit-content;max-width:min(486px,100%);box-sizing:border-box;overflow:hidden}'
-      + 'html[data-mode="light"] .msg.assistant.oImgMsg{background:rgba(0,0,0,.05) !important;border-color:rgba(0,0,0,.09) !important}'
+      + '.msg.assistant.oImgMsg{background:transparent !important;border:0 !important;border-radius:0 !important;padding:0 !important;width:-moz-fit-content;width:fit-content;max-width:min(486px,100%);box-sizing:border-box;overflow:hidden}'
+      + 'html[data-mode="light"] .msg.assistant.oImgMsg{background:transparent !important;border:0 !important}'
+      + '.msg.assistant.oImgMsg .msg-text:empty{display:none}'
       + '.msg.assistant.oImgMsg .msg-text{margin:0 0 9px;padding:0;min-width:0;overflow-wrap:break-word}'
       + '.msg.assistant.oImgMsg .msg-attachments{margin:0;min-width:0;max-width:100%}'
       + '.msg.assistant.oImgMsg .oImgBox{max-width:100%}'
@@ -14101,14 +14102,15 @@ function __showImgLoading(el, ar, en){
   const _st = window.__chatStatus;
   if(_st && !_st.isReleased()){ try{ _st.release(); }catch(e){} }
   if(!el) return;
-  // v665: صورة فقط — بلا كتابة وبلا حواف: مستطيل داكن تملؤه نقاط خفيفة تتنفس
+  // v666: رجوع لبطاقة v664 — بطاقة رمادية بزوايا دائرية، نص «جارٍ إنشاء الصورة»، نقاط تتنفس
   if(!document.getElementById('omran-imgload-css')){
     const st = document.createElement('style'); st.id = 'omran-imgload-css';
     st.textContent = '@keyframes omranDotsBreathe{0%,100%{opacity:.35}50%{opacity:.9}}';
     document.head.appendChild(st);
   }
-  el.innerHTML = `<div style="display:block;width:min(340px,85vw);height:min(340px,85vw);background:#232326;margin:6px 0;position:relative;overflow:hidden">
-    <div style="position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.28) 1.2px,transparent 1.2px);background-size:18px 18px;animation:omranDotsBreathe 2.4s ease-in-out infinite"></div>
+  el.innerHTML = `<div style="display:block;width:min(340px,85vw);height:min(340px,85vw);background:#3a3a3d;border-radius:24px;margin:6px 0;position:relative;overflow:hidden">
+    <div style="position:absolute;top:18px;right:20px;color:rgba(255,255,255,.85);font-size:15px" dir="rtl">جارٍ إنشاء الصورة</div>
+    <div style="position:absolute;inset:0;margin:auto;width:62%;height:52%;background-image:radial-gradient(rgba(255,255,255,.35) 1.2px,transparent 1.2px);background-size:16px 16px;-webkit-mask-image:radial-gradient(closest-side,#000 55%,transparent);mask-image:radial-gradient(closest-side,#000 55%,transparent);animation:omranDotsBreathe 2.4s ease-in-out infinite"></div>
   </div>`;
 }
 
@@ -14373,7 +14375,7 @@ function __showImgLoading(el, ar, en){
       }
       if(__gOk){
         const __gm = __gData.mimeType || 'image/png';
-        cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'هذي الصورة اللي طلبتها ✅ اضغط عليها للتكبير، وتقدر تطلب تعديلات عليها مباشرة.' : 'Here is your image ✅ Tap to enlarge — you can request edits directly.'), attachments: [{ name: 'generated.png', isImage: true, mime: __gm, dataUrl: 'data:' + __gm + ';base64,' + __gData.imageBase64 }] });
+        cur.messages.push({ role: 'assistant', content: '' /* v666: بلا جملة فوق الصورة — طلب عمران */, attachments: [{ name: 'generated.png', isImage: true, mime: __gm, dataUrl: 'data:' + __gm + ';base64,' + __gData.imageBase64 }] });
         cur.lastEditedImage = { b64: __gData.imageBase64, mime: __gm };
         cur.lastMsgWasImageEdit = true;
       } else {
