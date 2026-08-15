@@ -1296,9 +1296,27 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
         if(position === 'center') firstY = c.height / 2 - totalHeight / 2 + lineHeight / 2;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.direction = /[\u0600-\u06FF]/.test(exact) ? 'rtl' : 'ltr';
-        const fill = colorStr || '#ffffff';
+        // v674: بلا لون محدد → نستخرج لوناً منسجماً من ألوان الصورة نفسها بدل الأبيض دائماً
+        let fill = colorStr || '';
         let dark = false;
-        if(/^#[0-9a-f]{6}$/i.test(fill)){
+        if(!fill){
+          try{
+            const ry = Math.max(0, Math.floor(firstY - lineHeight / 2));
+            const rh = Math.max(1, Math.min(c.height - ry, Math.ceil(totalHeight)));
+            const rd = ctx.getImageData(0, ry, c.width, rh).data;
+            let r = 0, g = 0, b = 0, n = 0;
+            for(let i = 0; i < rd.length; i += 48){ r += rd[i]; g += rd[i+1]; b += rd[i+2]; n++; }
+            r /= n; g /= n; b /= n;
+            const bgLum = r*0.299 + g*0.587 + b*0.114;
+            const mx = Math.max(r,g,b), mn = Math.min(r,g,b);
+            let hue = 0;
+            if(mx !== mn){ const df = mx - mn; hue = (mx===r ? ((g-b)/df + (g<b?6:0)) : mx===g ? ((b-r)/df + 2) : ((r-g)/df + 4)) * 60; }
+            const sat = mx === 0 ? 0 : (mx - mn) / mx;
+            dark = bgLum >= 150; /* خلفية فاتحة → كتابة غامقة والعكس */
+            const s = Math.round(Math.min(78, sat*100 + 26));
+            fill = 'hsl(' + Math.round(hue) + ',' + s + '%,' + (dark ? '20%' : '90%') + ')';
+          }catch(e){ fill = '#ffffff'; dark = false; }
+        } else if(/^#[0-9a-f]{6}$/i.test(fill)){
           const lum = parseInt(fill.slice(1,3),16)*0.299 + parseInt(fill.slice(3,5),16)*0.587 + parseInt(fill.slice(5,7),16)*0.114;
           dark = lum < 128;
         }
