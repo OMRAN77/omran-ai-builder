@@ -62,10 +62,10 @@ module.exports = async (req, res) => {
 
     const RK = ['square','tall','wide'].includes(b.ratio) ? b.ratio : 'tall';
     const ORI = { square: 'square 1:1', tall: 'vertical 2:3 story', wide: 'horizontal 3:2 landscape' };
-    let p = 'Create ONE high-end ' + ORI[RK] + ' advertising poster, photorealistic, professionally art-directed.\n';
+    let p = 'Create ONE high-end ' + ORI[RK] + ' advertising poster, photorealistic, professionally art-directed.\n'
+      + 'The FIRST provided image is the APPROVED LAYOUT TEMPLATE. Copy its composition EXACTLY: same positions of every element, same card shapes with text INSIDE the cards, same typography style, same black-and-gold night mood, same price plaque shape, same teal phone pill. Only replace the subject and the text values with the ones listed below. Every word must sit INSIDE its card or plaque exactly like the template.\n';
     if (hasImg) {
-      p += 'Use the subject in the provided photo as the hero of the poster: cut it out cleanly and place it inside a NEW scene. '
-         + 'Keep the face, body and clothing recognisable and unchanged — do not restyle the person.\n';
+      p += 'The SECOND provided image is the customer\'s real product photo: use its subject as the hero of the poster, cut out cleanly and placed where the template\'s subject is. Keep it recognisable and unchanged.\n';
     }
     // العيب: كان يأمر المولّد برسم «نصّ عربيّ من اليمين لليسار» حتّى لو كان النصّ صينيًّا.
     const SCRIPTN = { ar: 'ARABIC', en: 'ENGLISH', fr: 'FRENCH', hi: 'HINDI (Devanagari script)', ur: 'URDU (Nastaliq script)',
@@ -107,18 +107,17 @@ module.exports = async (req, res) => {
       output_compression: 82,
     };
 
-    let url, init;
+    // v698: النموذج المعتمد يُرسل دائمًا كصورة مرجعيّة أولى — تقليد التكوين حرفيًّا بدل وصفه كلامًا.
+    const { TEMPLATE_B64 } = require('./adtemplate.js');
+    const form = new FormData();
+    for (const k of Object.keys(body)) form.append(k, String(body[k]));
+    form.append('image[]', new Blob([Buffer.from(TEMPLATE_B64, 'base64')], { type: 'image/jpeg' }), 'template.jpg');
     if (hasImg) {
       const mime = /^image\/(png|jpeg|webp)$/.test(String(b.mimeType || '')) ? b.mimeType : 'image/jpeg';
-      const form = new FormData();
-      for (const k of Object.keys(body)) form.append(k, String(body[k]));
-      form.append('image', new Blob([Buffer.from(b.imageBase64, 'base64')], { type: mime }), 'photo.' + mime.split('/')[1]);
-      url = 'https://api.openai.com/v1/images/edits';
-      init = { method: 'POST', headers: { Authorization: 'Bearer ' + key }, body: form };
-    } else {
-      url = 'https://api.openai.com/v1/images/generations';
-      init = { method: 'POST', headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
+      form.append('image[]', new Blob([Buffer.from(b.imageBase64, 'base64')], { type: mime }), 'photo.' + mime.split('/')[1]);
     }
+    const url = 'https://api.openai.com/v1/images/edits';
+    const init = { method: 'POST', headers: { Authorization: 'Bearer ' + key }, body: form };
     init.signal = AbortSignal.timeout(240000); // يتخطّى حارس الـ٣٠ ثانية عمدًا
     const upstream = await fetch(url, init);
 
