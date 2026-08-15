@@ -14177,12 +14177,63 @@ function __showImgLoading(el, ar, en){
       // 🏠 v682: مسار الديكور — صوّر غرفتك والذكاء يولّد ٤ أساليب مختلفة
       const __decorRe = /(?:ديكور|ديكو|décor|decor|تصميم\s*داخلي|interior\s*design|غير\s*(?:شكل|الشكل|الغرفة|البيت|المكان|الطابع)|حسّن\s*(?:الغرفة|البيت|المكان|الديكور)|رتّب\s*الغرفة|تزيين|أثاث\s*جديد|اقتراح\s*(?:ديكور|أثاث)|غرفتي\s*(?:غير|حسّن|بدّل)|بيتي\s*(?:غير|حسّن))/i;
       if(__decorRe.test(text) && __b64){
-        const __decorStyles = [
-          { ar:'عصري',   en:'Modern',   prompt:'Redesign the interior decor of this exact room in a sleek MODERN style: clean lines, neutral palette (whites/grays/beige), contemporary furniture, soft ambient LED lighting, minimal clutter. Keep the room layout and size identical. High-quality architectural render.' },
-          { ar:'فاخر',   en:'Luxury',   prompt:'Redesign the interior decor of this exact room in a LUXURY style: rich marble surfaces, warm gold/brass accents, velvet upholstery, crystal chandelier, statement art pieces, deep jewel-tone colors. Keep the room layout and size identical. High-quality architectural render.' },
-          { ar:'بسيط',   en:'Minimalist', prompt:'Redesign the interior decor of this exact room in a MINIMALIST style: pure white walls, essential furniture only, natural light, light wood tones, zero clutter, calm serene atmosphere. Keep the room layout and size identical. High-quality architectural render.' },
-          { ar:'عربي كلاسيك', en:'Classic Arabic', prompt:'Redesign the interior decor of this exact room in a CLASSIC ARABIC style: geometric mashrabiya patterns, warm wooden panels, hand-painted mosaic tiles, rich jewel colors (teal/burgundy/gold), ornate lanterns, arabesque details. Keep the room layout and size identical. High-quality architectural render.' },
+        // v684: أساليب ذكية تتغير حسب نوع المكان — مطعم، كوفي، محل، غرفة، مكتب، إلخ
+        const __spaceStyles = {
+          restaurant: [
+            { ar:'عصري راقي',    en:'Modern Fine Dining', prompt:'Redesign this restaurant interior in a sleek MODERN FINE DINING style: dark moody palette, statement lighting pendants, marble tables, upholstered chairs, dramatic wall art. Keep layout identical. Photorealistic architectural render.' },
+            { ar:'شعبي أصيل',   en:'Traditional Folk',   prompt:'Redesign this restaurant interior in a warm TRADITIONAL FOLK style: exposed brick walls, wooden beams, lanterns, arabesque tiles, rich rugs, authentic regional crafts. Keep layout identical. Photorealistic architectural render.' },
+            { ar:'مفهومي فني',  en:'Artistic Concept',   prompt:'Redesign this restaurant as an ARTISTIC CONCEPT space: bold accent wall mural, eclectic art pieces, industrial metal + reclaimed wood, Edison-bulb pendants, vibrant color pops. Keep layout identical. Photorealistic architectural render.' },
+            { ar:'فاخر رسمي',   en:'Luxury Formal',      prompt:'Redesign this restaurant in a LUXURY FORMAL style: gold-framed panels, crystal chandeliers, velvet booth seating, marble floors, fresh flowers, white-tablecloth ambiance. Keep layout identical. Photorealistic architectural render.' },
+          ],
+          cafe: [
+            { ar:'صناعي دافئ',   en:'Industrial Warm',    prompt:'Redesign this cafe in an INDUSTRIAL WARM style: exposed brick, steel pipes, Edison bulbs, reclaimed wood bar, chalkboard menu, leather stools, earthy tones. Keep layout identical. Photorealistic architectural render.' },
+            { ar:'بوهيمي نباتي', en:'Boho Botanical',     prompt:'Redesign this cafe in a BOHEMIAN BOTANICAL style: lush hanging plants, rattan furniture, macramé wall art, terracotta pots, warm earth palette, cozy nooks with cushions. Keep layout identical. Photorealistic architectural render.' },
+            { ar:'اسكندنافي',    en:'Scandinavian',       prompt:'Redesign this cafe in a SCANDINAVIAN style: white walls, light birch wood, minimalist furniture, hygge warmth, simple pendant lights, functional beauty. Keep layout identical. Photorealistic architectural render.' },
+            { ar:'كلاسيك فرنسي','en':'French Classic',    prompt:'Redesign this cafe in a FRENCH CLASSIC style: marble bistro tables, bentwood chairs, brass fixtures, mint-green accents, vintage posters, parisian charm. Keep layout identical. Photorealistic architectural render.' },
+          ],
+          clothing: [
+            { ar:'بوتيك فاخر',   en:'Luxury Boutique',   prompt:'Redesign this clothing store as a LUXURY BOUTIQUE: ivory walls with gold trim, crystal display fixtures, velvet hangers, dramatic accent lighting, marble floors, elegant minimalism. Keep layout identical. Photorealistic architectural render.' },
+            { ar:'عصري شبابي',  en:'Modern Youth',       prompt:'Redesign this clothing store in a MODERN YOUTH style: bold graphic murals, industrial pipe racks, neon accents, poured concrete floors, street-art vibes, social-media-worthy displays. Keep layout identical. Photorealistic architectural render.' },
+            { ar:'بسيط أنيق',   en:'Clean Chic',         prompt:'Redesign this clothing store in a CLEAN CHIC style: all-white display walls, floating racks, spotlighting, neutral warm wood floors, glass display cases, uncluttered premium feel. Keep layout identical. Photorealistic architectural render.' },
+            { ar:'تراثي حرفي',  en:'Heritage Artisan',   prompt:'Redesign this clothing store in a HERITAGE ARTISAN style: warm aged wood shelving, brass fixtures, embroidered display fabrics, traditional patterns as wall art, warm amber lighting. Keep layout identical. Photorealistic architectural render.' },
+          ],
+          bedroom: [
+            { ar:'رومانسي',     en:'Romantic',           prompt:'Redesign this bedroom in a ROMANTIC style: soft pink/blush tones, draped canopy bed, plush pillows, warm fairy lights, floral wallpaper accent wall, velvet textures. Keep layout identical. Photorealistic architectural render.' },
+            { ar:'فاخر',        en:'Luxury',             prompt:'Redesign this bedroom in a LUXURY style: upholstered headboard, silk bedding, crystal chandelier, mirrored wardrobe, thick carpet, rich cream and gold palette. Keep layout identical. Photorealistic architectural render.' },
+            { ar:'اسكندنافي',   en:'Scandinavian',       prompt:'Redesign this bedroom in a SCANDINAVIAN style: white and light wood, linen bedding, simple pendant lights, plants, hygge warmth, clean uncluttered surfaces. Keep layout identical. Photorealistic architectural render.' },
+            { ar:'صناعي عصري', en:'Industrial Modern',   prompt:'Redesign this bedroom in an INDUSTRIAL MODERN style: exposed concrete, steel frame bed, dark palette with warm wood accents, Edison bulbs, bold abstract art. Keep layout identical. Photorealistic architectural render.' },
+          ],
+          office: [
+            { ar:'إبداعي ملوّن', en:'Creative Colorful',  prompt:'Redesign this office in a CREATIVE COLORFUL style: accent walls in bold colors, collaborative open zones, art-filled walls, mix of seating types, energizing vibrant palette. Keep layout identical. Photorealistic architectural render.' },
+            { ar:'تنفيذي فاخر', en:'Executive Luxury',    prompt:'Redesign this office in an EXECUTIVE LUXURY style: dark wood paneling, leather furniture, statement desk, brass fixtures, library shelves, commanding authoritative feel. Keep layout identical. Photorealistic architectural render.' },
+            { ar:'بيوفيليك',    en:'Biophilic',           prompt:'Redesign this office in a BIOPHILIC style: abundant indoor plants, natural wood, green living wall, natural light maximized, calming earth tones, nature-inspired textures. Keep layout identical. Photorealistic architectural render.' },
+            { ar:'بسيط مركّز', en:'Minimalist Focus',    prompt:'Redesign this office in a MINIMALIST FOCUS style: white walls, sleek standing desks, hidden cables, acoustic panels, distraction-free environment, monochrome with one accent color. Keep layout identical. Photorealistic architectural render.' },
+          ],
+          living: [
+            { ar:'عصري',        en:'Modern',             prompt:'Redesign this living room in a MODERN style: sectional sofa, geometric rug, statement pendant light, clean lines, neutral palette with one bold accent, gallery wall. Keep layout identical. Photorealistic architectural render.' },
+            { ar:'فاخر',        en:'Luxury',             prompt:'Redesign this living room in a LUXURY style: velvet sofa, crystal chandelier, marble coffee table, gold accents, large artwork, layered textures, sophisticated palette. Keep layout identical. Photorealistic architectural render.' },
+            { ar:'عربي خليجي', en:'Gulf Arabic',         prompt:'Redesign this living room in a GULF ARABIC style: ornate carved plasterwork, majlis floor seating with cushions, Persian rug, brass lanterns, warm jewel tones, arabesque patterns. Keep layout identical. Photorealistic architectural render.' },
+            { ar:'اسكندنافي',   en:'Scandinavian',       prompt:'Redesign this living room in a SCANDINAVIAN style: white walls, light oak flooring, hygge cozy textiles, simple sofa, floor lamp, plants, calm natural palette. Keep layout identical. Photorealistic architectural render.' },
+          ],
+        };
+        // كشف نوع المكان من النص
+        const __spaceMap = [
+          [/مطعم|restaurant|dining|مأكل|أكل/i, 'restaurant'],
+          [/كوفي|قهوه|قهوة|كافيه|café|cafe|coffee/i, 'cafe'],
+          [/محل\s*ملابس|بوتيك|ملابس|boutique|cloth|fashion|store/i, 'clothing'],
+          [/غرفة\s*نوم|نوم|bedroom|sleeping/i, 'bedroom'],
+          [/مكتب|office|عمل|work/i, 'office'],
+          [/غرفة\s*(?:جلوس|معيشة|استقبال)|صالة|living|salon/i, 'living'],
         ];
+        let __spaceKey = null;
+        for(const __sm of __spaceMap){ if(__sm[0].test(text)){ __spaceKey = __sm[1]; break; } }
+        const __decorStyles = __spaceKey ? __spaceStyles[__spaceKey] : [
+          { ar:'عصري',        en:'Modern',         prompt:'Redesign this space with MODERN interior design: clean lines, neutral palette, contemporary furniture, ambient lighting. Keep layout identical. Photorealistic architectural render.' },
+          { ar:'فاخر',        en:'Luxury',         prompt:'Redesign this space with LUXURY interior design: rich marble, gold accents, velvet, crystal lighting, jewel tones. Keep layout identical. Photorealistic architectural render.' },
+          { ar:'بسيط',        en:'Minimalist',     prompt:'Redesign this space with MINIMALIST interior design: white walls, essential furniture, natural light, wood tones, zero clutter. Keep layout identical. Photorealistic architectural render.' },
+          { ar:'عربي كلاسيك','en':'Classic Arabic', prompt:'Redesign this space with CLASSIC ARABIC interior design: mashrabiya patterns, mosaic tiles, lanterns, arabesque details, warm jewel colors. Keep layout identical. Photorealistic architectural render.' },
+        ];
+        const __spaceName = __spaceKey ? ({restaurant:'المطعم',cafe:'الكوفي',clothing:'المحل',bedroom:'غرفة النوم',office:'المكتب',living:'الصالة'}[__spaceKey]||'المكان') : 'المكان';
         // ضغط الصورة لـ 800px مرة واحدة
         const __decCmp = await new Promise(function(r4){
           const __di = new Image();
@@ -14197,7 +14248,7 @@ function __showImgLoading(el, ar, en){
           __di.onerror = function(){ r4({ b64:__b64, mime:__mime }); };
           __di.src = 'data:' + __mime + ';base64,' + __b64;
         });
-        const __decorLabel = lang==='ar' ? '🏠 أنا أولّد لك ٤ أساليب ديكور مختلفة — انتظر لحظة…' : '🏠 Generating 4 decor styles — please wait…';
+        const __decorLabel = lang==='ar' ? ('🏠 أولّد لك ٤ أساليب لـ'+__spaceName+' — انتظر لحظة…') : '🏠 Generating 4 tailored decor styles — please wait…';
         if(thinkingDiv) thinkingDiv.querySelector && (thinkingDiv.querySelector('[data-phase]') || thinkingDiv).textContent !== undefined && chatPhase('🏠', lang==='ar' ? __decorLabel : __decorLabel, thinkingDiv);
         for(let __di2 = 0; __di2 < __decorStyles.length; __di2++){
           const __ds = __decorStyles[__di2];
