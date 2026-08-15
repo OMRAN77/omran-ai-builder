@@ -11805,6 +11805,28 @@ const MAX_ATTACH_FILE_BYTES = 25 * 1024 * 1024; // 25MB hard cap per file
 const ARCHIVE_EXT_RE = /\.(zip|docx|xlsx|pptx|jar)$/i;
 const IMAGE_TYPES = /^image\//;
 
+function attachmentIntentOptions(){
+  const ar = typeof lang === 'undefined' || lang === 'ar';
+  const image = pendingAttachments.some(a => a.isImage);
+  const code = pendingAttachments.some(a => /\.(?:js|jsx|ts|tsx|py|html|css|json)$/i.test(a.name || ''));
+  if(image) return [
+    [ar ? '🔎 وصف الصورة' : '🔎 Describe image', ar ? 'وصف هذه الصورة بالتفصيل، واذكر أهم الأشياء الظاهرة.' : 'Describe this image in detail.'],
+    [ar ? '📝 اقرأ النص' : '📝 Read text', ar ? 'اقرأ كل النص الظاهر في هذه الصورة بدقة.' : 'Read all visible text in this image accurately.'],
+    [ar ? '🌐 ترجم' : '🌐 Translate', ar ? 'اقرأ النص في هذه الصورة ثم ترجمه.' : 'Read and translate the text in this image.'],
+    [ar ? '🎨 عدّل الصورة' : '🎨 Edit image', ar ? 'عدّل هذه الصورة: ' : 'Edit this image: '],
+  ];
+  if(code) return [
+    [ar ? '🔍 راجع الكود' : '🔍 Review code', ar ? 'راجع هذا الكود، واشرح الأخطاء والتحسينات المهمة.' : 'Review this code and explain important errors and improvements.'],
+    [ar ? '📖 اشرح' : '📖 Explain', ar ? 'اشرح هذا الملف بوضوح.' : 'Explain this file clearly.'],
+    [ar ? '🛠️ أصلح' : '🛠️ Fix', ar ? 'حدّد أخطاء هذا الملف واقترح الإصلاح.' : 'Identify issues in this file and propose a fix.'],
+  ];
+  return [
+    [ar ? '📋 لخّص' : '📋 Summarize', ar ? 'لخّص هذا الملف بوضوح.' : 'Summarize this file clearly.'],
+    [ar ? '📝 استخرج النص' : '📝 Extract text', ar ? 'استخرج أهم النص من هذا الملف.' : 'Extract the important text from this file.'],
+    [ar ? '❓ اسأل الملف' : '❓ Ask file', ar ? 'حلّل هذا الملف ثم اسألني ما الذي أريد معرفته تحديدًا.' : 'Analyze this file, then ask what I want to know specifically.'],
+  ];
+}
+
 function renderAttachStrip(){
   const strip = $('#attachStrip');
   strip.innerHTML = '';
@@ -11839,6 +11861,19 @@ function renderAttachStrip(){
     chip.appendChild(rm);
     strip.appendChild(chip);
   });
+  if(pendingAttachments.length && !pendingAttachments.some(a => a.pending) && !pendingAttachments.every(a => a._intent)){
+    const bar = document.createElement('div');
+    bar.className = 'attach-intent';
+    bar.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;width:100%;padding:7px 2px;font-size:12px';
+    const q = document.createElement('span'); q.textContent = (typeof lang === 'undefined' || lang === 'ar') ? 'وش تبي أسوي بالمرفق؟' : 'What should I do with the attachment?'; bar.appendChild(q);
+    attachmentIntentOptions().forEach(([label, prompt]) => {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = label;
+      b.style.cssText = 'border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(255,255,255,.08);color:inherit;padding:5px 9px;font:inherit;cursor:pointer';
+      b.onclick = () => { pendingAttachments.forEach(a => { a._intent = true; }); $('#prompt').value = prompt; renderAttachStrip(); sendPrompt(); };
+      bar.appendChild(b);
+    });
+    strip.appendChild(bar);
+  }
 }
 
 // 🖼️ v579 — أزرار فوق الصورة نفسها: «تعديل» يرجّع الصورة إلى صندوق الكتابة
@@ -13464,6 +13499,10 @@ async function sendPrompt(){
   if(!text && pendingAttachments.length === 0) return;
   if(pendingAttachments.some(a => a.pending)){
     alert(lang === 'ar' ? 'الرجاء الانتظار حتى ينتهي تحليل الأرشيف' : 'Please wait until archive analysis finishes');
+    return;
+  }
+  if(!text && pendingAttachments.length && !pendingAttachments.every(a => a._intent)){
+    renderAttachStrip();
     return;
   }
 
