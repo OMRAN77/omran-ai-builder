@@ -3,6 +3,7 @@
 require('./_lib/_fetch-timeout.js');
 // Nothing thrown in this router escapes unrecorded (see _lib/_errors.js).
 const { withErrorCapture } = require('./_lib/_errors.js');
+const { installCors } = require('./_lib/cors.js');
 // حارس الميزات المتقاعدة — يُفحص قبل أي تحميل وحدة أو استخدام مفتاح.
 const { isRetired, retiredResponse } = require('./_lib/_retired.js');
 
@@ -29,6 +30,7 @@ function load(action) {
 }
 
 module.exports = withErrorCapture('tools', async (req, res) => {
+  installCors(req, res);
   const action = (req.query && req.query.action) || '';
   if (isRetired(action)) { retiredResponse(res, action); return; }
   const handler = load(action);
