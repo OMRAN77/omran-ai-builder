@@ -12057,6 +12057,33 @@ window.__omranImgTools = function(wrap, dataUrl){
     return false;
   };
   let shUrl = '', shBusy = null, __shW = 0, __shH = 0, __why = '';
+  // v653 — نسخ الصورة تلقائيًّا للحافظة على متصفّحات بلا Web Share (هواوي):
+  //    المستخدم يلصقها في واتساب فتصل صورةً لا رابطًا. الحافظة تضمن PNG فقط.
+  const pngBlob = () => new Promise((res, rej) => {
+    try{
+      const bl = toBlob(dataUrl);
+      if((bl.type || '') === 'image/png'){ res(bl); return; }
+      const im = new Image();
+      im.onload = () => {
+        try{
+          const c = document.createElement('canvas');
+          c.width = im.naturalWidth || im.width; c.height = im.naturalHeight || im.height;
+          c.getContext('2d').drawImage(im, 0, 0);
+          c.toBlob((o) => { if(o) res(o); else rej(new Error('toBlob')); }, 'image/png');
+        }catch(e){ rej(e); }
+      };
+      im.onerror = () => rej(new Error('img-load'));
+      im.src = dataUrl;
+    }catch(e){ rej(e); }
+  });
+  const autoCopy = () => {
+    try{
+      if(!(navigator.clipboard && navigator.clipboard.write && window.ClipboardItem)) return Promise.resolve(false);
+      // Safari: الـ Promise يُمرّر داخل ClipboardItem لا قبله — وإلّا ضاع إذن النقرة
+      return navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob() })])
+        .then(() => true).catch((e) => { __swallow(e, 'autoCopy:app-09-attach#v653'); return false; });
+    }catch(e){ __swallow(e, 'autoCopy:app-09-attach#v653'); return Promise.resolve(false); }
+  };
   const cpTxt = (t) => {
     try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(t); return true; } }catch(e){ __swallow(e, 'cpTxt:app-09-attach#v627'); }
     try{
@@ -12154,7 +12181,7 @@ window.__omranImgTools = function(wrap, dataUrl){
       const hasShare = (typeof navigator.share === 'function');
       const dg = document.createElement('p'); dg.className = 'oShS';
       dg.style.cssText = 'opacity:.9;color:#e8b84b;direction:ltr;text-align:start';
-      dg.textContent = '\u2699 ' + (__why || (hasShare ? 'fallback:?' : 'no-share-api')) + ' \u2022 ' + bn + ' \u2022 share-api:' + (hasShare ? 'yes' : 'no') + ' \u2022 v652';
+      dg.textContent = '\u2699 ' + (__why || (hasShare ? 'fallback:?' : 'no-share-api')) + ' \u2022 ' + bn + ' \u2022 share-api:' + (hasShare ? 'yes' : 'no') + ' \u2022 clip:' + ((navigator.clipboard && navigator.clipboard.write && window.ClipboardItem) ? 'yes' : 'no') + ' \u2022 v653';
       sh.appendChild(dg);
     }catch(_){ }
     const gr = document.createElement('div'); gr.className = 'oShGr'; sh.appendChild(gr);
@@ -12219,6 +12246,16 @@ window.__omranImgTools = function(wrap, dataUrl){
       try{ bl = toBlob(dataUrl); }catch(e){ __swallow(e, 'cpimg:app-09-attach#v627'); }
       copyImg(b, bl);
     });
+    // v653 — أندرويد بمتصفّح بلا Web Share: زرّ يفتح الصفحة في كروم حيث
+    //    قائمة النظام الحقيقية تعمل كاملة (نشاط كروم يعلن BROWSABLE).
+    try{
+      if(/android/i.test(navigator.userAgent || '') && typeof navigator.share !== 'function'){
+        act(ar ? 'فتح الموقع في متصفّح كروم' : 'Open in Chrome', 'share', () => {
+          const tg = location.href.replace(/^https?:\/\//, '');
+          location.href = 'intent://' + tg + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(location.href) + ';end';
+        });
+      }
+    }catch(_){ }
     document.body.appendChild(ov);
   };
   // يمين: «تعديل» نصّ فقط
@@ -12301,6 +12338,8 @@ window.__omranImgTools = function(wrap, dataUrl){
         return false;
       };
       __why = 'no-share-api';
+      // v653 — قبل فتح ورقتنا: انسخ الصورة نفسها للحافظة ليلصقها المستخدم صورةً
+      try{ autoCopy().then((ok) => { if(ok) note(ar ? 'نُسخت الصورة تلقائيًّا — الصقها داخل المحادثة بعد فتح التطبيق' : 'Image copied — paste it after opening the app'); }); }catch(_){ }
       if(shUrl){ if(tryIntent(shUrl)) return; openSheet(); return; }
       upload().then((u) => { if(u && tryIntent(u)) return; openSheet(); });
     };
