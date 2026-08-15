@@ -561,7 +561,27 @@ window.__omranImgTools = function(wrap, dataUrl){
     b.title = ar ? 'إرسال الصورة' : 'Send image';
     b.setAttribute('aria-label', b.title);
     b.innerHTML = svg('share');
-    b.onclick = (e) => { if(e && e.stopPropagation) e.stopPropagation(); openSheet(); };
+    b.onclick = (e) => {
+      if(e && e.stopPropagation) e.stopPropagation();
+      // v646 — أمر عمران: زرّ الإرسال يفتح ورقة النظام (تطبيقات الجهاز الحقيقية)
+      //    مباشرةً — الملفّ إن أمكن، وإلّا الرابط. ورقتنا تبقى حلًّا أخيرًا فقط.
+      if(filePossible() && shareFile(() => openSheet())) return;
+      if(navigator.share){
+        upload().then((u) => {
+          if(!u){ openSheet(); return; }
+          try{
+            const pr = navigator.share({ title: 'عمران AI', url: u });
+            if(pr && pr.catch) pr.catch((err) => {
+              if(err && err.name === 'AbortError') return;
+              __swallow(err, 'nativeShare:app-09-attach#v646');
+              openSheet();
+            });
+          }catch(err){ __swallow(err, 'nativeShare:app-09-attach#v646'); openSheet(); }
+        });
+        return;
+      }
+      openSheet();
+    };
     if(abar) abar.appendChild(b);
     else {
       const nb = document.createElement('div'); nb.className = 'msgActionBar oSendBar';
