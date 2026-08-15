@@ -13864,7 +13864,7 @@ async function sendPrompt(){
       const __adChips = [__yrM?('الموديل '+__yrM[1]):'', __mmM?('المسافة المقطوعة '+__mmM[1].trim()+' كم'):'', /خليجي/.test(text)?'المواصفات خليجي':'', /نظيف/.test(text)?'المكينة نظيفة':'', __rmM?('الغرف '+(__rmM[1]||__rmM[2])):'', __wcM?('دورات المياه'+((__wcM[1]||__wcM[2])?(' '+(__wcM[1]||__wcM[2])):'')):'', /مجلس/.test(text)?'مجلس':'', /مسبح/.test(text)?'مسبح':''].filter(Boolean).slice(0,5);
       const __adSpecs = '';
       const __adKick  = /(إيجار|للإيجار)/i.test(text)?'للإيجار': (/مطلوب/i.test(text) && !/مطلوب\s*[\d٠-٩]/.test(text))?'مطلوب':'للبيع';
-      const __adLook  = /(شقة|شقه|فيلا|عقار|بيت)/i.test(text)?'elegant': /(جوال|ايفون|سامسونج)/i.test(text)?'minimal':'neon';
+      const __adLook  = /(شقة|شقه|فيلا|عقار|بيت|منزل|أرض|ارض)/i.test(text)?'royal': /(جوال|ايفون|سامسونج)/i.test(text)?'minimal':'neon';
       // صورة المستخدم إذا أرفق واحدة
       const __adUserB64 = (__srcImg && cur.lastEditedImage && cur.lastEditedImage.b64) ? cur.lastEditedImage.b64 : null;
       const __adUserMime= (__srcImg && cur.lastEditedImage && cur.lastEditedImage.mime) ? cur.lastEditedImage.mime : 'image/jpeg';
