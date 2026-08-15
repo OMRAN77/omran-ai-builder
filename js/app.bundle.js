@@ -13849,11 +13849,9 @@ async function sendPrompt(){
         }
       }
     } else if(text && __srcImg && __adIntentRe.test(text) && !__codeWordRe.test(text) && !/(داخل|خارج|فوق الصور|تحت الصور)/i.test(text)){
-      cur.awaitingAdMode = true; cur.pendingAdText = text; cur.adMode = null;
-      cur.lastMsgWasImageEdit = true;
-      cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? '📢 قبل أصمم الإعلان — تبي كتابة التفاصيل **داخل الصورة نفسها**، ولا **الصورة بروحها والتفاصيل خارجها**؟ رد بكلمة: داخل / خارج' : '📢 Before I design the ad — do you want the details **inside the photo itself**, or **the photo alone with the details outside it**? Reply: inside / outside') });
-      renderAll(); saveState();
-      return;
+      // v685: لا سؤال — دائماً "داخل" مباشرة
+      cur.adMode = 'inside'; cur.awaitingAdMode = false; cur.lastMsgWasImageEdit = true;
+      text += '\n(ملاحظة للنظام: المستخدم أرفق صورة لهذا الإعلان — اجعلها خلفية البوستر الكاملة باستخدام background-image:url(\'__USER_IMAGE__\') بالضبط، وصمم الإعلان الكامل حسب قالب INSIDE: كل التفاصيل والسعر وأي أرقام أعطاها المستخدم على بطاقات زجاجية أنيقة فوق الصورة — ممنوع الاكتفاء بلافتة أو كلمة وحدة)';
     } else if(text && (__srcImg || __followUp) && /(لوجو|شعار|logo|أيقون|ايقون|صمم|صمّم|تصميم|بطاقة|دعوة|بوستر|غلاف|بنر|نفس هذ|design)/i.test(text) && !cur.adMode && !cur.awaitingAdMode && text.indexOf('ملاحظة للنظام') === -1){
       // 🎨 v328: صورة/شعار مرفق + طلب تصميم → صورة المستخدم تُضمَّن كما هي — ممنوع إعادة رسمها
       text += '\n(ملاحظة للنظام: المستخدم أرفق صورة/شعارًا — إذا كان ردك تصميمًا أو كودًا يجب استخدام صورته نفسها كما هي عبر src="__USER_IMAGE__" أو background-image:url(\'__USER_IMAGE__\') بالضبط، والتطبيق يستبدلها بالصورة الحقيقية تلقائيًا. ممنوع منعًا باتًا استبدال صورة المستخدم بلوجو أو صورة من تصميمك أو من الإنترنت — صورة المستخدم هي الأصل الرسمي وتظهر بدون أي تشويه أو قلب أو قص)';
