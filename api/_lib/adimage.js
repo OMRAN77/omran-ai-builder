@@ -54,6 +54,8 @@ module.exports = async (req, res) => {
     const look = LOOKS[b.look] || LOOKS.neon;
     const title = cut(b.title, 60), spec = cut(b.spec, 120), kick = cut(b.kick, 40);
     const price = cut(b.price, 30), unit = cut(b.unit, 20), tel = cut(b.tel, 30);
+    const note = cut(b.note, 40), foot = cut(b.foot, 50);
+    const chips = Array.isArray(b.chips) ? b.chips.slice(0, 4).map(c => cut(c, 40)).filter(Boolean) : [];
     const accent = /^#[0-9a-fA-F]{6}$/.test(String(b.ac || '')) ? String(b.ac) : '#a855f7';
     const hasImg = typeof b.imageBase64 === 'string' && b.imageBase64.length > 100;
 
@@ -73,13 +75,19 @@ module.exports = async (req, res) => {
        + 'Render the following ' + (SCRIPTN[lg] || 'ENGLISH') + ' text INSIDE the poster, spelled EXACTLY as written, '
        + (rtl ? 'right-to-left, with correct letter joining and diacritic-free modern bold typography'
               : 'left-to-right, with clean modern bold typography') + ':\n';
-    if (kick)  p += '- Small badge near the top: "' + kick + '"\n';
-    if (title) p += '- Main headline, very large, with a soft glow around the letters: "' + title + '"\n';
-    if (spec)  p += '- One thin sub-line under the headline: "' + spec + '"\n';
-    if (price) p += '- A price card with a glowing outlined border: "' + price + ' ' + unit + '"\n';
-    if (tel)   p += '- A contact strip along the bottom: "' + tel + '"\n';
-    p += 'Do not add any other text, no watermark, no logo, no invented or misspelled letters. '
-       + 'Composition must be clean, balanced and ready to publish.';
+    if (kick)  p += '- At the very top: "' + kick + '" written in large luxurious 3D metallic-gold calligraphy with a soft golden glow\n';
+    if (title) p += '- Main headline below it, very large bold white letters with a subtle glow: "' + title + '"\n';
+    if (spec)  p += '- One elegant gold sub-line under the headline: "' + spec + '"\n';
+    if (chips.length) {
+      p += '- A single horizontal row of ' + chips.length + ' small rounded rectangular info cards under the headline, each with a thin gold border on dark glass background, a tiny gold line icon on one side, gold label on top and white value below. The cards read exactly: '
+         + chips.map(c => '"' + c + '"').join(', ') + '\n';
+    }
+    if (price) p += '- Near the bottom: a wide hexagonal gold-outlined price plaque with very large glowing gold numerals: "' + price + (unit ? ' ' + unit : '') + '"' + (note ? ' and a small white line under the number inside the plaque: "' + note + '"' : '') + '\n';
+    if (tel)   p += '- Below the price: a dark pill-shaped contact button with thin gold border, a small phone handset icon, and the number in bright teal digits: "' + tel + '"\n';
+    if (foot)  p += '- Very small white footer line at the very bottom: "' + foot + '"\n';
+    p += 'The hero subject sits in the middle of the poster between the info cards and the price plaque, photorealistic, lit by warm golden street light, on wet reflective ground at night. '
+       + 'Do not add any other text, no watermark, no logo, no invented or misspelled letters. '
+       + 'Composition must be clean, balanced, symmetric and ready to publish — premium classifieds-ad style, black and gold.';
 
     const SIZES = { square: '1024x1024', tall: '1024x1536', wide: '1536x1024' };
     // ⚠️ فخّان مقيسان حيًّا (٩ أغسطس ٢٠٢٦):
