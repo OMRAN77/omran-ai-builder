@@ -13935,16 +13935,33 @@ body{width:1080px;height:1080px;overflow:hidden;font-family:'Segoe UI',Tahoma,Ar
   </div>
 </div>
 </body></html>`;
-      thinkingDiv.remove();
-      // v692: نفس مسار توليد الصور — الصورة تظهر في الشات والإعلان في المعاينة
-      cur.code = __adHTML;
-      cur.codeType = 'html';
-      cur.adMode = null; cur.lastMsgWasImageEdit = true;
+      // v693: الإعلان يطلع صورة في الشات — overlayTextOnImage فوق خلفية maha-image
       if(__adB64){
-        cur.lastEditedImage = {b64:__adB64, mime:__adMime};
-        cur.messages.push({role:'assistant', content:lang==='ar'?'تفضّل إعلانك 👇 (افتح تبويب المعاينة)':'Here is your ad 👇 (open Preview tab)', attachments:[{name:'ad-bg.jpg', isImage:true, mime:__adMime, dataUrl:'data:'+__adMime+';base64,'+__adB64}]});
+        chatPhase('✍️', lang==='ar'?'جاري كتابة تفاصيل الإعلان على الصورة…':'Writing ad details on image…', thinkingDiv);
+        const __adLines = [];
+        if(__title) __adLines.push(__title);
+        if(__yrM)   __adLines.push('موديل ' + __yrM[1]);
+        if(__mmM)   __adLines.push('الممشى: ' + __mmM[1].trim() + ' كم');
+        if(__price) __adLines.push('السعر: ' + __price);
+        if(__phone) __adLines.push('📲 ' + __phone);
+        const __adOverlayText = __adLines.join('\n');
+        try{
+          const __finalB64 = await overlayTextOnImage(__adB64, __adMime, __adOverlayText, 'modern', '#ffffff', 'bottom');
+          const __finalMime = 'image/png';
+          thinkingDiv.remove();
+          cur.lastEditedImage = {b64:__finalB64, mime:__finalMime};
+          cur.lastMsgWasImageEdit = true; cur.adMode = null;
+          cur.messages.push({role:'assistant', content:'', attachments:[{name:'ad.png', isImage:true, mime:__finalMime, dataUrl:'data:image/png;base64,'+__finalB64}]});
+        }catch(e){
+          thinkingDiv.remove();
+          cur.lastEditedImage = {b64:__adB64, mime:__adMime};
+          cur.lastMsgWasImageEdit = true; cur.adMode = null;
+          cur.messages.push({role:'assistant', content:'', attachments:[{name:'ad.jpg', isImage:true, mime:__adMime, dataUrl:'data:'+__adMime+';base64,'+__adB64}]});
+        }
       } else {
-        cur.messages.push({role:'assistant', content:lang==='ar'?'تفضّل إعلانك 👇 (افتح تبويب المعاينة)':'Here is your ad 👇 (open Preview tab)'});
+        thinkingDiv.remove();
+        cur.adMode = null;
+        cur.messages.push({role:'assistant', content:lang==='ar'?'تعذّر توليد صورة الإعلان، حاول مجدداً.':'Could not generate ad image, please try again.'});
       }
       renderAll(); saveState();
       return;
