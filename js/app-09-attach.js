@@ -2185,7 +2185,21 @@ async function sendPrompt(){
       // صورة المستخدم إذا أرفق واحدة
       const __adUserB64 = (__srcImg && cur.lastEditedImage && cur.lastEditedImage.b64) ? cur.lastEditedImage.b64 : null;
       const __adUserMime= (__srcImg && cur.lastEditedImage && cur.lastEditedImage.mime) ? cur.lastEditedImage.mime : 'image/jpeg';
-      chatPhase('🎨', lang==='ar'?'جاري تصميم الإعلان الاحترافي…':'Designing your ad…', thinkingDiv);
+      // مؤشر تقدّم نابض — يُحدَّث كل ثانية حتّى يصل الردّ (١–٢ دقيقة)
+      (function(){
+        const __adMsgs = lang==='ar'
+          ? ['🎨 جاري تصميم الإعلان…','🎨 جاري توليد الإعلان…','🎨 نرسم التفاصيل…','🎨 تجهيز الصورة الاحترافية…','🎨 لمسات أخيرة على التصميم…']
+          : ['🎨 Designing your ad…','🎨 Generating your poster…','🎨 Adding details…','🎨 Almost ready…'];
+        let __adSec=0, __adIdx=0;
+        chatPhase('🎨', __adMsgs[0], thinkingDiv);
+        window.__adProgressTimer = setInterval(function(){
+          __adSec++;
+          __adIdx = Math.min(Math.floor(__adSec/18), __adMsgs.length-1);
+          const __dots = '.'.repeat((__adSec%3)+1);
+          const __secTxt = __adSec < 60 ? (' ('+__adSec+'ث)') : (' ('+ Math.floor(__adSec/60)+'د '+((__adSec%60)||'')+'ث)');
+          chatPhase('🎨', __adMsgs[__adIdx]+__dots+(lang==='ar'?__secTxt:''), thinkingDiv);
+        }, 1000);
+      })();
       try{
         const __adCat = /(شقة|شقه|فيلا|عقار|بيت|منزل|أرض|ارض)/i.test(text)?'estate': /(سيارة|سياره|لاندكروزر|تويوتا|نيسان|جيب|باترول|لكزس|مرسيدس|بي ام|موتر)/i.test(text)?'car':'other';
         const __adNote = /(تفاوض|قابل للتفاوض)/i.test(text)?'قابل للتفاوض':'';
@@ -2195,6 +2209,7 @@ async function sendPrompt(){
         if(__adUserB64){ __adBody.imageBase64=__adUserB64; __adBody.mimeType=__adUserMime; }
         const __adRes = await fetch('/api/tools?action=adimage',{method:'POST',headers:{'Content-Type':'application/json'},signal:genAbortController.signal,body:JSON.stringify(__adBody)});
         const __adData = await __adRes.json().catch(()=>({}));
+        clearInterval(window.__adProgressTimer);
         if(!__adRes.ok || !__adData.imageBase64){
           const __errMsg = __adData.message_ar || __adData.error || 'خطأ غير معروف';
           thinkingDiv.remove(); cur.adMode=null;
@@ -2207,6 +2222,7 @@ async function sendPrompt(){
           cur.messages.push({role:'assistant',content:'',attachments:[{name:'ad.webp',isImage:true,mime:__adMime2,dataUrl:'data:'+__adMime2+';base64,'+__adData.imageBase64}]});
         }
       }catch(__e){
+        clearInterval(window.__adProgressTimer);
         if(__e&&__e.name==='AbortError') return;
         thinkingDiv.remove(); cur.adMode=null;
         cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر تصميم الإعلان، حاول مجدداً.':'Ad design failed.'});
