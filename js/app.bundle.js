@@ -13214,7 +13214,8 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
         // Each server step closes the previous one and opens its own line, so
         // the whole trail stays visible instead of being overwritten.
         if(__agentStep) __agentStep.done();
-        __agentStep = agentStatus.step('•', String(ev.status).replace(/^[^\p{L}\p{N}]+/u, '').trim() || ev.status);
+        const __phaseIcon = {planning:'🗺️',executing:'⚙️',verifying:'🧪',reporting:'💬'}[ev.phase] || '•';
+        __agentStep = agentStatus.step(__phaseIcon, String(ev.status).replace(/^[^\p{L}\p{N}]+/u, '').trim() || ev.status);
       }
       if(ev.clientTool && window.omranAgentTools){
         // v411: الوكيل طلب تشغيل كود. ننفّذه في إطار معزول هنا ونعيد الناتج عبر
