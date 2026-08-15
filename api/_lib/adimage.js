@@ -72,6 +72,8 @@ module.exports = async (req, res) => {
     }
     if (hasImg) {
       p += 'The ' + (tplB64 ? 'SECOND' : 'FIRST') + ' provided image is the customer\'s real product photo: use its subject as the hero of the poster, cut out cleanly. Keep it recognisable and unchanged.\n';
+    } else if (tplB64) {
+      p += 'IMPORTANT: do NOT copy the subject (vehicle/property) shown in the template. Render the exact subject named in the headline below, faithful to its real-world make, model and year — no mixing with the template\'s subject.\n';
     }
     // العيب: كان يأمر المولّد برسم «نصّ عربيّ من اليمين لليسار» حتّى لو كان النصّ صينيًّا.
     const SCRIPTN = { ar: 'ARABIC', en: 'ENGLISH', fr: 'FRENCH', hi: 'HINDI (Devanagari script)', ur: 'URDU (Nastaliq script)',
