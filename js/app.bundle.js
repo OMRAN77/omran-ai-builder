@@ -12920,37 +12920,56 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
         c.width = img.naturalWidth; c.height = img.naturalHeight;
         const ctx = c.getContext('2d');
         ctx.drawImage(img, 0, 0);
-        // 🎯 v675: بلا موضع مذكور → نقيس ٥ نطاقات أفقية + الجانبين (يمين/يسار)
-        // ونكتب في أهدأ منطقة حسب شكل الصورة نفسها — مو بس فوق أو تحت.
+        // 🎯 v676: نقيس أهدأ نطاق أفقي في الصورة.
+        // لو ما فيه مساحة فاضية كافية (كل الصورة فيها موضوع)، نمدد الكانفس
+        // ونضيف شريطاً ملوّناً بلون حافة الصورة ونكتب فيه — الموضوع لا يُمسّ.
+        let __stripAdded = false, __stripHeight = 0, __stripAtTop = false;
         if(!position || position === 'auto'){
           position = 'bottom';
           try{
             let best = null;
-            const __zones = [
-              ['top',0,0.02,1,0.22],['upper',0,0.22,1,0.22],['center',0,0.40,1,0.22],
-              ['lower',0,0.60,1,0.22],['bottom',0,0.74,1,0.22],
-              ['left-center',0,0.30,0.30,0.40],['right-center',0.70,0.30,0.30,0.40]
-            ];
-            __zones.forEach(function(z){
-              const zx = Math.floor(c.width * z[1]), zy = Math.floor(c.height * z[2]);
-              const zw = Math.max(1, Math.min(c.width - zx, Math.floor(c.width * z[3])));
-              const zh = Math.max(1, Math.min(c.height - zy, Math.floor(c.height * z[4])));
-              const d = ctx.getImageData(zx, zy, zw, zh).data;
+            const __bands = [['top',0.0,0.22],['upper',0.22,0.22],['center',0.40,0.22],['lower',0.60,0.22],['bottom',0.74,0.22]];
+            const __bandPen = { top:0, upper:12, center:42, lower:12, bottom:0 };
+            __bands.forEach(function(b){
+              const zy = Math.floor(c.height * b[1]), zh = Math.max(1, Math.min(c.height - zy, Math.floor(c.height * b[2])));
+              const d = ctx.getImageData(0, zy, c.width, zh).data;
               let sum = 0, sq = 0, n = 0;
-              for(let i = 0; i < d.length; i += 52){
-                const lum = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
-                sum += lum; sq += lum * lum; n++;
-              }
-              const mean = sum / n, sd = Math.sqrt(Math.max(0, sq / n - mean * mean));
-              const nm = z[0];
-              const __pen = nm==='center'?42:(nm==='upper'||nm==='lower')?14:(nm==='left-center'||nm==='right-center')?6:0;
-              const __score = sd + __pen;
-              if(!best || __score < best.sd - 1) best = { name: (nm==='upper'?'top':nm==='lower'?'bottom':nm), sd: __score };
+              for(let i = 0; i < d.length; i += 52){ const lum = d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114; sum+=lum; sq+=lum*lum; n++; }
+              const mn = sum/n, sd = Math.sqrt(Math.max(0, sq/n - mn*mn));
+              const sc = sd + __bandPen[b[0]];
+              if(!best || sc < best.sc) best = { name: b[0]==='upper'?'top':b[0]==='lower'?'bottom':b[0], sc, sd };
             });
             if(best) position = best.name;
+            // لو أهدأ نطاق لا يزال فيه تفاصيل كثيرة (sd عالية) → امدد الكانفس
+            if(best && best.sd > 28){
+              __stripAtTop = (position === 'top'); // اختر جهة أهدأ طرف
+              // قياس أكثر لون تكراراً في حافة الصورة
+              const __ey = __stripAtTop ? 0 : c.height - 4;
+              const __ed = ctx.getImageData(0, __ey, c.width, 4).data;
+              let __er=0,__eg=0,__eb=0,__en=0;
+              for(let i=0;i<__ed.length;i+=16){__er+=__ed[i];__eg+=__ed[i+1];__eb+=__ed[i+2];__en++;}
+              const __ec = 'rgb('+Math.round(__er/__en)+','+Math.round(__eg/__en)+','+Math.round(__eb/__en)+')';
+              const __orgH = c.height;
+              __stripHeight = Math.max(Math.floor(c.height * 0.28), 160);
+              c.height = c.height + __stripHeight;
+              // أعد رسم الصورة في مكانها (الكانفس يُفرغ عند تغيير height)
+              if(__stripAtTop){
+                ctx.drawImage(img, 0, __stripHeight);
+                const __grad = ctx.createLinearGradient(0,0,0,__stripHeight);
+                __grad.addColorStop(0, __ec); __grad.addColorStop(1, __ec);
+                ctx.fillStyle = __grad; ctx.fillRect(0, 0, c.width, __stripHeight);
+              } else {
+                ctx.drawImage(img, 0, 0);
+                const __grad = ctx.createLinearGradient(0,__orgH,0,c.height);
+                __grad.addColorStop(0, __ec); __grad.addColorStop(1, __ec);
+                ctx.fillStyle = __grad; ctx.fillRect(0, __orgH, c.width, __stripHeight);
+              }
+              __stripAdded = true;
+              position = __stripAtTop ? 'top' : 'bottom';
+            }
           }catch(e){ position = 'bottom'; }
         }
-        const __side=/^(right|left)-/.exec(position||''), maxWidth=c.width*(__side?.[1]?0.30:0.72), maxHeight=c.height*(__side?0.44:0.26); if(__side){ctx.translate((__side[1]==='right'?1:-1)*c.width*.34,0);position=position.slice(__side[0].length);}
+        const __side=/^(right|left)-/.exec(position||''), maxWidth=c.width*(__side?.[1]?0.30:(__stripAdded?0.84:0.72)), maxHeight=__stripAdded?(__stripHeight*0.80):(c.height*(__side?0.44:0.26)); if(__side){ctx.translate((__side[1]==='right'?1:-1)*c.width*.34,0);position=position.slice(__side[0].length);}
         let fs = Math.floor(Math.min(c.width / 12, c.height / 11));
         let lines = [];
         const setF = () => { ctx.font = '700 ' + fs + 'px "' + fontCss + '", "Segoe UI", Tahoma, Arial, sans-serif'; };
@@ -12974,7 +12993,7 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
         }while(fs > Math.max(16, Math.floor(c.width / 82)));
         setF();
         const lineHeight = fs * 1.38, totalHeight = lines.length * lineHeight;
-        let firstY = c.height - c.height * 0.07 - totalHeight + lineHeight / 2;
+        const __textAreaOffset = __stripAdded ? (__stripAtTop ? 0 : (c.height - __stripHeight)) : 0; let firstY = __stripAdded ? __textAreaOffset + (__stripHeight - totalHeight) / 2 + lineHeight / 2 : c.height - c.height * 0.07 - totalHeight + lineHeight / 2;
         if(position === 'top') firstY = c.height * 0.08 + lineHeight / 2;
         if(position === 'center') firstY = c.height / 2 - totalHeight / 2 + lineHeight / 2;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
