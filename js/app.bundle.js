@@ -3951,6 +3951,13 @@ function __saveFlush(){
   __saveTimer = null;
   if(!__idbBroken && window.indexedDB){
     try{
+      // v714: حارس حجم صريح — المنظّف القديم كان لا يعمل إلا عند امتلاء localStorage،
+      // ومع IndexedDB لا يمتلئ أبدًا، فتتكدّس صور base64 (بوسترات الإعلانات خاصة)
+      // حتى يصير الحفظ الدوري كل 1.5 ثانية يجمّد الصفحة كلها. الآن: إذا تجاوز
+      // الحجم ~12MB نمسح بيانات الصور القديمة (تبقى آخر 6 رسائل في المشروع المفتوح).
+      try{
+        if(__projectsToJson().length > 12000000){ purgeOldImages(6); __projJsonCache = new WeakMap(); }
+      }catch(e){ __swallow(e, 'save:sizeGuard#v714'); }
       idbSet('aiapp_projects', state.projects).catch(err => {
         console.error('IDB save failed → fallback to localStorage', err);
         __idbBroken = true;
