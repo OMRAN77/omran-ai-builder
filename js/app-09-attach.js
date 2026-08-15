@@ -1292,7 +1292,7 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
           }catch(e){ position = 'bottom'; }
         }
         const __side=/^(right|left)-/.exec(position||''), maxWidth=c.width*(__side?.[1]?0.30:(__stripAdded?0.84:0.72)), maxHeight=__stripAdded?(__stripHeight*0.80):(c.height*(__side?0.44:0.26)); if(__side){ctx.translate((__side[1]==='right'?1:-1)*c.width*.34,0);position=position.slice(__side[0].length);}
-        let fs = Math.floor(Math.min(c.width / 12, c.height / 11));
+        let fs = Math.floor(Math.min(c.width / 9.5, c.height / 9));
         let lines = [];
         const setF = () => { ctx.font = '700 ' + fs + 'px "' + fontCss + '", "Segoe UI", Tahoma, Arial, sans-serif'; };
         const wrap = (line) => {
@@ -1312,7 +1312,7 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
           lines = exact.split('\n').flatMap(wrap);
           if(lines.length * fs * 1.38 <= maxHeight && lines.every((line) => ctx.measureText(line).width <= maxWidth)) break;
           fs -= 2;
-        }while(fs > Math.max(16, Math.floor(c.width / 82)));
+        }while(fs > Math.max(22, Math.floor(c.width / 68)));
         setF();
         const lineHeight = fs * 1.38, totalHeight = lines.length * lineHeight;
         const __textAreaOffset = __stripAdded ? (__stripAtTop ? 0 : (c.height - __stripHeight)) : 0; let firstY = __stripAdded ? __textAreaOffset + (__stripHeight - totalHeight) / 2 + lineHeight / 2 : c.height - c.height * 0.07 - totalHeight + lineHeight / 2;
