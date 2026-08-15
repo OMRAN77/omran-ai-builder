@@ -2419,7 +2419,7 @@ async function sendPrompt(){
 // v660: مؤشر تحميل الصور — خلفية نجوم + شريط تقدم + مراحل نصية
 function __showImgLoading(el, ar, en){
   const _st = window.__chatStatus;
-  if(_st && !_st.isReleased()){ _st.phase('🖼️', typeof lang !== 'undefined' && lang === 'ar' ? ar : en); return; }
+  if(_st && !_st.isReleased()){ try{ _st.release(); }catch(e){} } // v661: نحرر شريط الحالة النصي حتى لا يخطف مكان مؤشر النجوم
   if(!el) return;
   if(el.__imgLoadIntervals){ el.__imgLoadIntervals.forEach(clearInterval); el.__imgLoadIntervals=null; }
   const _isAr = typeof lang !== 'undefined' && lang === 'ar';
