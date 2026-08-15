@@ -47,6 +47,16 @@ const SCENES = {
     'waterfront view mood, turquoise water accents, resort-style daylight',
     'modern minimal branding, light beige palette, clean architectural daylight',
   ],
+  worker: [
+    'clean modern workforce accommodation exterior in bright daylight, tidy landscaping, trustworthy corporate mood',
+    'well-lit communal facilities mood, fresh white-and-blue palette, professional and welcoming',
+    'golden-hour view of neat residential blocks, calm organised atmosphere',
+  ],
+  pharmacy: [
+    'bright clean clinical white-and-green palette, soft daylight, trustworthy healthcare mood',
+    'friendly delivery scene mood, fresh teal accents, crisp modern lighting',
+    'calm pharmacy counter ambience, soft glass reflections, professional and caring',
+  ],
   other: [
     'clean bright studio backdrop with a soft colour gradient',
     'bold vibrant colour-block background with dynamic diagonal light',
