@@ -375,7 +375,7 @@ window.__omranImgTools = function(wrap, dataUrl){
     }
     return false;
   };
-  let shUrl = '', shBusy = null;
+  let shUrl = '', shBusy = null, __shW = 0, __shH = 0;
   const cpTxt = (t) => {
     try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(t); return true; } }catch(e){ __swallow(e, 'cpTxt:app-09-attach#v627'); }
     try{
@@ -396,6 +396,7 @@ window.__omranImgTools = function(wrap, dataUrl){
           const c = document.createElement('canvas');
           c.width = Math.max(1, Math.round((w0 || 1) * k)); c.height = Math.max(1, Math.round((h0 || 1) * k));
           c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+          __shW = c.width; __shH = c.height; // v649 — أبعاد للمعاينة الكبيرة
           res(c.toDataURL('image/jpeg', 0.9));
         }catch(e){ __swallow(e, 'shrink:app-09-attach#v627'); res(du); }
       };
@@ -412,7 +413,7 @@ window.__omranImgTools = function(wrap, dataUrl){
         const i = du.indexOf(',');
         const r = await fetch('/api/media?action=img', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data: du.slice(i + 1), mime: (du.slice(5).split(';')[0] || 'image/jpeg') })
+          body: JSON.stringify({ data: du.slice(i + 1), mime: (du.slice(5).split(';')[0] || 'image/jpeg'), w: __shW || undefined, h: __shH || undefined })
         });
         const j = await r.json();
         if(j && j.url) shUrl = location.origin + j.url;
