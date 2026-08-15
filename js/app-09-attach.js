@@ -1242,16 +1242,17 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
         c.width = img.naturalWidth; c.height = img.naturalHeight;
         const ctx = c.getContext('2d');
         ctx.drawImage(img, 0, 0);
-        const __side=/^(right|left)-/.exec(position||''), maxWidth=c.width*(__side?.[1]?0.20:0.82), maxHeight=c.height*0.34; if(__side){ctx.translate((__side[1]==='right'?1:-1)*c.width*.375,0);position=position.slice(__side[0].length);}
-        // 🎯 v574: بلا موضع مذكور → نقيس تفاصيل ٣ مناطق ونكتب في أهدأ واحدة،
-        // فلا تنزل الكتابة فوق الوجه أو الجزء المرسوم، وتبقى منظّمة لا عشوائيّة.
+        const __side=/^(right|left)-/.exec(position||''), maxWidth=c.width*(__side?.[1]?0.20:0.72), maxHeight=c.height*0.26; if(__side){ctx.translate((__side[1]==='right'?1:-1)*c.width*.375,0);position=position.slice(__side[0].length);}
+        // 🎯 v673: بلا موضع مذكور → نقيس ٥ نطاقات ونكتب في أهدأ منطقة بعيداً عن الموضوع.
+        // الخط أصغر لئلا يطغى على الصورة، والنطاق الأوسط يُجنَّب بعقوبة أكبر.
         if(!position || position === 'auto'){
           position = 'bottom';
           try{
             let best = null;
-            [['top', 0.04], ['center', 0.36], ['bottom', 0.66]].forEach(function(band){
+            const __bands = [['top',0.02],['upper',0.22],['center',0.40],['lower',0.60],['bottom',0.74]];
+            __bands.forEach(function(band){
               const y = Math.floor(c.height * band[1]);
-              const h = Math.min(Math.max(1, Math.floor(c.height * 0.30)), c.height - y);
+              const h = Math.min(Math.max(1, Math.floor(c.height * 0.22)), c.height - y);
               const d = ctx.getImageData(0, y, c.width, h).data;
               let sum = 0, sq = 0, n = 0;
               for(let i = 0; i < d.length; i += 52){
@@ -1259,12 +1260,15 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
                 sum += lum; sq += lum * lum; n++;
               }
               const mean = sum / n, sd = Math.sqrt(Math.max(0, sq / n - mean * mean));
-              const __score = sd + (band[0] === 'center' ? 26 : 0); /* v671: الوسط غالبًا فوق الموضوع — نرجّح الأعلى/الأسفل */ if(!best || __score < best.sd - 1) best = { name: band[0], sd: __score };
+              /* v673: الوسط والنطاقات المجاورة له غالباً فوق الموضوع الرئيسي */
+              const __pen = band[0]==='center'?42:(band[0]==='upper'||band[0]==='lower')?14:0;
+              const __score = sd + __pen;
+              if(!best || __score < best.sd - 1) best = { name: (band[0]==='upper'?'top':band[0]==='lower'?'bottom':band[0]), sd: __score };
             });
             if(best) position = best.name;
           }catch(e){ position = 'bottom'; }
         }
-        let fs = Math.floor(Math.min(c.width / 9, c.height / 8));
+        let fs = Math.floor(Math.min(c.width / 12, c.height / 11));
         let lines = [];
         const setF = () => { ctx.font = '700 ' + fs + 'px "' + fontCss + '", "Segoe UI", Tahoma, Arial, sans-serif'; };
         const wrap = (line) => {
@@ -1284,7 +1288,7 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
           lines = exact.split('\n').flatMap(wrap);
           if(lines.length * fs * 1.38 <= maxHeight && lines.every((line) => ctx.measureText(line).width <= maxWidth)) break;
           fs -= 2;
-        }while(fs > Math.max(22, Math.floor(c.width / 65)));
+        }while(fs > Math.max(16, Math.floor(c.width / 82)));
         setF();
         const lineHeight = fs * 1.38, totalHeight = lines.length * lineHeight;
         let firstY = c.height - c.height * 0.07 - totalHeight + lineHeight / 2;
