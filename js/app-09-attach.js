@@ -580,7 +580,19 @@ window.__omranImgTools = function(wrap, dataUrl){
         });
         return;
       }
-      openSheet();
+      // v647 — متصفّحات بلا navigator.share (متصفّح هواوي مثلًا): نفتح ورقة
+      //    النظام عبر intent أندرويد؛ إن حُجب الانتقال تنفتح ورقتنا بعد ثانية.
+      const tryIntent = (u) => {
+        try{
+          if(!/android/i.test(navigator.userAgent || '')) return false;
+          setTimeout(() => { try{ if(!document.hidden) openSheet(); }catch(_){ } }, 1200);
+          location.href = 'intent:#Intent;action=android.intent.action.SEND;type=text/plain;S.android.intent.extra.TEXT=' + encodeURIComponent(u) + ';end';
+          return true;
+        }catch(err){ __swallow(err, 'intentShare:app-09-attach#v647'); }
+        return false;
+      };
+      if(shUrl){ if(tryIntent(shUrl)) return; openSheet(); return; }
+      upload().then((u) => { if(u && tryIntent(u)) return; openSheet(); });
     };
     if(abar) abar.appendChild(b);
     else {
