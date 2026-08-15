@@ -350,7 +350,7 @@
           catch(err){ if(err && err.name === 'AbortError') return; }
         }
         const u = URL.createObjectURL(blob), el = document.createElement('a'); el.href = u; el.download = nm; el.click(); setTimeout(() => URL.revokeObjectURL(u), 4000);
-      } catch(e){ try{ if(downloadEl) downloadEl.click(); }catch(_){ } }
+      } catch(e){ try{ if(downloadEl) downloadEl.click(); }catch(_){ /* guard-ok: download fallback is optional after a share failure. */ } }
     };
   }
   function updateCompareSlider(){

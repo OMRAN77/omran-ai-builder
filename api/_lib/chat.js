@@ -807,7 +807,7 @@ module.exports = async (req, res) => {
           const urlRe = /https?:\/\/([^/\s)\]"]+)/g;
           let m;
           while ((m = urlRe.exec(corpus || '')) !== null) {
-            try { allowed.add(m[1].replace(/^www\./, '').toLowerCase().split('/')[0]); } catch(e) {}
+            try { allowed.add(m[1].replace(/^www\./, '').toLowerCase().split('/')[0]); } catch(e) { /* guard-ok: a malformed URL fragment is simply not an allowed source. */ }
           }
           const ok = (url) => { try { return allowed.has(new URL(url).hostname.replace(/^www\./, '').toLowerCase()); } catch(e) { return false; } };
           return text

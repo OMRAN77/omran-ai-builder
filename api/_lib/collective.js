@@ -38,7 +38,7 @@ function norm(s) {
 
 // لا نخزّن اسم المستخدم أبدًا — بصمة قصيرة غير عكوسة فقط.
 function whoHash(username) {
-  const salt = process.env.AUTH_SECRET || 'k';
+  const { AUTH_SECRET: salt } = require('./_secrets.js');
   return crypto.createHmac('sha256', salt).update('vouch:' + String(username || '')).digest('hex').slice(0, 8);
 }
 

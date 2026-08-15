@@ -242,7 +242,7 @@ window.__omranImgTools = function(wrap, dataUrl){
       a.style.cssText = 'position:fixed;left:-9999px;top:0';
       document.body.appendChild(a);
       a.click();
-      setTimeout(() => { try{ a.remove(); URL.revokeObjectURL(u); }catch(e){} }, 60000);
+      setTimeout(() => { try{ a.remove(); URL.revokeObjectURL(u); }catch(e){ /* guard-ok: delayed temporary URL cleanup is best effort. */ } }, 60000);
       return true;
     }catch(e){ __swallow(e, 'saveDl:app-09-attach#v626'); }
     return false;
@@ -253,11 +253,11 @@ window.__omranImgTools = function(wrap, dataUrl){
       const u = URL.createObjectURL(bl);
       const w = window.open(u, '_blank');
       if(w){
-        setTimeout(() => { try{ URL.revokeObjectURL(u); }catch(e){} }, 60000);
+        setTimeout(() => { try{ URL.revokeObjectURL(u); }catch(e){ /* guard-ok: delayed temporary URL cleanup is best effort. */ } }, 60000);
         note(ar ? 'فتحت الصورة في صفحة مستقلّة — اضغط عليها مطوّلًا ثمّ «مشاركة»' : 'Image opened in a new tab — long-press it, then Share');
         return true;
       }
-      try{ URL.revokeObjectURL(u); }catch(e){}
+      try{ URL.revokeObjectURL(u); }catch(e){ /* guard-ok: the temporary URL may already be revoked. */ }
     }catch(e){ __swallow(e, 'openFull:app-09-attach#v625'); }
     return false;
   };
@@ -342,7 +342,7 @@ window.__omranImgTools = function(wrap, dataUrl){
       if(typeof File !== 'function' || typeof nv.share !== 'function') return false;
       const f = fileOnce();
       if(!f) return false;
-      if(typeof nv.canShare === 'function'){ try{ if(nv.canShare({ files: [f] })) return true; }catch(e){} }
+      if(typeof nv.canShare === 'function'){ try{ if(nv.canShare({ files: [f] })) return true; }catch(e){ /* guard-ok: canShare is advisory; share() is still attempted. */ } }
       return true;
     }catch(e){ __swallow(e, 'filePossible:app-09-attach#v642'); }
     return false;
@@ -375,7 +375,7 @@ window.__omranImgTools = function(wrap, dataUrl){
       return true;
     }catch(e){
       __swallow(e, 'shareFile:app-09-attach#v642');
-      try{ note((ar ? 'رفض المتصفّح إرسال الملفّ' : 'Browser refused the file') + ' — ' + ((e && (e.name || e.message)) || '?')); }catch(_){}
+      try{ note((ar ? 'رفض المتصفّح إرسال الملفّ' : 'Browser refused the file') + ' — ' + ((e && (e.name || e.message)) || '?')); }catch(_){ /* guard-ok: notification failure must not interrupt the fallback. */ }
     }
     return false;
   };
@@ -484,7 +484,7 @@ window.__omranImgTools = function(wrap, dataUrl){
     const sh = document.createElement('div'); sh.className = 'oShSh';
     ov.appendChild(sh);
     const esc = (e) => { if(e.key === 'Escape') close(); };
-    const close = () => { try{ ov.remove(); }catch(e){} document.removeEventListener('keydown', esc); };
+    const close = () => { try{ ov.remove(); }catch(e){ /* guard-ok: the share sheet may already be removed. */ } document.removeEventListener('keydown', esc); };
     ov.onclick = (e) => { if(e.target === ov) close(); };
     document.addEventListener('keydown', esc);
     const hd = document.createElement('div'); hd.className = 'oShHd';
@@ -506,7 +506,7 @@ window.__omranImgTools = function(wrap, dataUrl){
       dg.style.cssText = 'opacity:.9;color:#e8b84b;direction:ltr;text-align:start';
       dg.textContent = '\u2699 ' + (__why || (hasShare ? 'fallback:?' : 'no-share-api')) + ' \u2022 ' + bn + ' \u2022 share-api:' + (hasShare ? 'yes' : 'no') + ' \u2022 clip:' + ((navigator.clipboard && navigator.clipboard.write && window.ClipboardItem) ? 'yes' : 'no') + ' \u2022 v653';
       sh.appendChild(dg);
-    }catch(_){ }
+    }catch(_){ /* guard-ok: diagnostic text is optional and must not block sharing. */ }
     const gr = document.createElement('div'); gr.className = 'oShGr'; sh.appendChild(gr);
     const go = (t) => {
       // v643 — الملفّ أوّلًا إن أمكن؛ وإلّا نرسل رابط الصورة مباشرةً لتطبيق
@@ -523,7 +523,7 @@ window.__omranImgTools = function(wrap, dataUrl){
           let w = null; try{ w = window.open('', '_blank'); }catch(e){ __swallow(e, 'go:app-09-attach#v643'); }
           upload().then((u) => {
             if(u){ if(w){ try{ w.location = t.u(u); return; }catch(e){ __swallow(e, 'go:app-09-attach#v643'); } } try{ window.open(t.u(u), '_blank'); return; }catch(e){ __swallow(e, 'go:app-09-attach#v643'); } }
-            try{ if(w) w.close(); }catch(_){ }
+            try{ if(w) w.close(); }catch(_){ /* guard-ok: popup cleanup is best effort. */ }
             saveOpen(t);
           });
           close(); return;
@@ -579,7 +579,7 @@ window.__omranImgTools = function(wrap, dataUrl){
           location.href = 'intent://' + tg + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(u.href) + ';end';
         });
       }
-    }catch(_){ }
+    }catch(_){ /* guard-ok: Android intent availability is optional. */ }
     document.body.appendChild(ov);
   };
   // يمين: «تعديل» نصّ فقط
@@ -655,7 +655,7 @@ window.__omranImgTools = function(wrap, dataUrl){
       const tryIntent = (u) => {
         try{
           if(!/android/i.test(navigator.userAgent || '')) return false;
-          setTimeout(() => { try{ if(!document.hidden) openSheet(); }catch(_){ } }, 1200);
+          setTimeout(() => { try{ if(!document.hidden) openSheet(); }catch(_){ /* guard-ok: deferred fallback must not throw after teardown. */ } }, 1200);
           location.href = 'intent:#Intent;action=android.intent.action.SEND;type=text/plain;S.android.intent.extra.TEXT=' + encodeURIComponent(u) + ';end';
           return true;
         }catch(err){ __swallow(err, 'intentShare:app-09-attach#v647'); }
@@ -663,7 +663,7 @@ window.__omranImgTools = function(wrap, dataUrl){
       };
       __why = 'no-share-api';
       // v653 — قبل فتح ورقتنا: انسخ الصورة نفسها للحافظة ليلصقها المستخدم صورةً
-      try{ autoCopy().then((ok) => { if(ok) note(ar ? 'نُسخت الصورة تلقائيًّا — الصقها داخل المحادثة بعد فتح التطبيق' : 'Image copied — paste it after opening the app'); }); }catch(_){ }
+      try{ autoCopy().then((ok) => { if(ok) note(ar ? 'نُسخت الصورة تلقائيًّا — الصقها داخل المحادثة بعد فتح التطبيق' : 'Image copied — paste it after opening the app'); }); }catch(_){ /* guard-ok: clipboard prefill is an optional convenience. */ }
       if(shUrl){ if(tryIntent(shUrl)) return; openSheet(); return; }
       upload().then((u) => { if(u && tryIntent(u)) return; openSheet(); });
     };
@@ -683,7 +683,7 @@ window.__omranImgTools = function(wrap, dataUrl){
   wrap.classList.add('oImgBox');
   // 🧊 v583 — الصورة تعيش داخل صندوق المحادثة، لا سابحة خارجه (أمر عمران).
   // وقت الاستدعاء يكون العنصر خارج شجرة الصفحة ⇒ closest = null، فيلزم وسم مؤجَّل.
-  const __markBox = () => { try{ const __mb = wrap.closest && wrap.closest('.msg.assistant'); if(__mb) __mb.classList.add('oImgMsg'); }catch(e){} };
+  const __markBox = () => { try{ const __mb = wrap.closest && wrap.closest('.msg.assistant'); if(__mb) __mb.classList.add('oImgMsg'); }catch(e){ /* guard-ok: cosmetic message marking must not affect the image controls. */ } };
   __markBox(); setTimeout(__markBox, 0);
   wrap.style.position = 'relative'; wrap.__imgTools = 1;
   try{
@@ -692,7 +692,7 @@ window.__omranImgTools = function(wrap, dataUrl){
     // 🔓 v635 — overflow:hidden كان يقصّ صفّ «تعديل» تحت الصورة. الصورة نفسها
     //    تحمل border-radius من CSS ⇒ لا حاجة لقصّ الحاوية.
     if(r && r !== '0px'){ wrap.style.borderRadius = r; }
-  }catch(e){}
+  }catch(e){ /* guard-ok: missing computed styles only affect cosmetic rounding. */ }
   bar.classList.add('inImg'); // v668: رجوع زر «تعديل» داخل الصورة مثل v641 — شكوى عمران كانت عن نص الصورة المولّدة نفسها
   wrap.appendChild(bar);
 };
