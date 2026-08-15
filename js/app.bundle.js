@@ -14174,6 +14174,53 @@ function __showImgLoading(el, ar, en){
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : (__upgSrc ? ((__upgSrc.dataUrl || '').split(',')[1] || '') : ((cur.lastEditedImage && cur.lastEditedImage.b64) || ''));
       const __mime = __srcImg ? (__srcImg.mime || 'image/png') : (__upgSrc ? (__upgSrc.mime || 'image/png') : ((cur.lastEditedImage && cur.lastEditedImage.mime) || 'image/png'));
       const __isNewImageSource = !!(__srcImg && !__srcImg._fromMemory);
+      // 🏠 v682: مسار الديكور — صوّر غرفتك والذكاء يولّد ٤ أساليب مختلفة
+      const __decorRe = /(?:ديكور|ديكو|décor|decor|تصميم\s*داخلي|interior\s*design|غير\s*(?:شكل|الشكل|الغرفة|البيت|المكان|الطابع)|حسّن\s*(?:الغرفة|البيت|المكان|الديكور)|رتّب\s*الغرفة|تزيين|أثاث\s*جديد|اقتراح\s*(?:ديكور|أثاث)|غرفتي\s*(?:غير|حسّن|بدّل)|بيتي\s*(?:غير|حسّن))/i;
+      if(__decorRe.test(text) && __b64){
+        const __decorStyles = [
+          { ar:'عصري',   en:'Modern',   prompt:'Redesign the interior decor of this exact room in a sleek MODERN style: clean lines, neutral palette (whites/grays/beige), contemporary furniture, soft ambient LED lighting, minimal clutter. Keep the room layout and size identical. High-quality architectural render.' },
+          { ar:'فاخر',   en:'Luxury',   prompt:'Redesign the interior decor of this exact room in a LUXURY style: rich marble surfaces, warm gold/brass accents, velvet upholstery, crystal chandelier, statement art pieces, deep jewel-tone colors. Keep the room layout and size identical. High-quality architectural render.' },
+          { ar:'بسيط',   en:'Minimalist', prompt:'Redesign the interior decor of this exact room in a MINIMALIST style: pure white walls, essential furniture only, natural light, light wood tones, zero clutter, calm serene atmosphere. Keep the room layout and size identical. High-quality architectural render.' },
+          { ar:'عربي كلاسيك', en:'Classic Arabic', prompt:'Redesign the interior decor of this exact room in a CLASSIC ARABIC style: geometric mashrabiya patterns, warm wooden panels, hand-painted mosaic tiles, rich jewel colors (teal/burgundy/gold), ornate lanterns, arabesque details. Keep the room layout and size identical. High-quality architectural render.' },
+        ];
+        // ضغط الصورة لـ 800px مرة واحدة
+        const __decCmp = await new Promise(function(r4){
+          const __di = new Image();
+          __di.onload = function(){
+            const __ms = 800, __sc = Math.min(1, __ms / Math.max(__di.naturalWidth||1, __di.naturalHeight||1));
+            const __dc = document.createElement('canvas');
+            __dc.width = Math.round((__di.naturalWidth||__ms)*__sc);
+            __dc.height = Math.round((__di.naturalHeight||__ms)*__sc);
+            __dc.getContext('2d').drawImage(__di,0,0,__dc.width,__dc.height);
+            r4({ b64: __dc.toDataURL('image/jpeg',0.82).split(',')[1], mime:'image/jpeg' });
+          };
+          __di.onerror = function(){ r4({ b64:__b64, mime:__mime }); };
+          __di.src = 'data:' + __mime + ';base64,' + __b64;
+        });
+        const __decorLabel = lang==='ar' ? '🏠 أنا أولّد لك ٤ أساليب ديكور مختلفة — انتظر لحظة…' : '🏠 Generating 4 decor styles — please wait…';
+        if(thinkingDiv) thinkingDiv.querySelector && (thinkingDiv.querySelector('[data-phase]') || thinkingDiv).textContent !== undefined && chatPhase('🏠', lang==='ar' ? __decorLabel : __decorLabel, thinkingDiv);
+        for(let __di2 = 0; __di2 < __decorStyles.length; __di2++){
+          const __ds = __decorStyles[__di2];
+          chatPhase('🏠', (lang==='ar' ? ('جاري توليد النمط ' + __ds.ar + ' (' + (__di2+1) + '/4)…') : ('Generating ' + __ds.en + ' style (' + (__di2+1) + '/4)…')), thinkingDiv);
+          try{
+            const __dRes = await fetch('/api/maha-image', {
+              method:'POST', headers:{'Content-Type':'application/json'},
+              signal: genAbortController.signal,
+              body: JSON.stringify({ prompt: __ds.prompt, editImageBase64: __decCmp.b64, editMimeType: __decCmp.mime, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
+            });
+            const __dData = await __dRes.json().catch(()=>({}));
+            if(__dRes.ok && __dData.imageBase64){
+              const __dMime = __dData.mimeType || 'image/jpeg';
+              cur.messages.push({ role:'assistant', content: (lang==='ar' ? ('نمط ' + __ds.ar) : (__ds.en + ' Style')), attachments:[{ name:'decor-'+__ds.en.toLowerCase()+'.jpg', isImage:true, mime:__dMime, dataUrl:'data:'+__dMime+';base64,'+__dData.imageBase64 }] });
+              cur.lastEditedImage = { b64: __dData.imageBase64, mime: __dMime };
+              renderAll(); saveState();
+            }
+          }catch(e){ if(e && e.name === 'AbortError') return; __swallow(e, 'decor:'+__ds.en); }
+        }
+        cur.lastMsgWasImageEdit = true;
+        renderAll(); saveState();
+        return;
+      }
       // ✍️ إذا الطلب كتابة نص/اسم على الصورة → نرسمه محليًا بخط سليم (بدون Gemini)
       const __writeIntentRe = /(اكتب|أكتب|حط\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|(?:ضيف|أضف|اضف)\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|write|put\s+(?:my\s+)?name|add\s+(?:the\s+)?text)/i;
       const __textSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(text) : { wantsText:__writeIntentRe.test(text), exactText:extractOverlayText(text), fontKey:'modern', color:'#ffffff', position:'bottom' };
