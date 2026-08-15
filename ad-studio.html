@@ -765,7 +765,9 @@ genB.onclick=async()=>{
     const r=await fetch('/api/adimage',{method:'POST',headers:{'content-type':'application/json'},
       body:JSON.stringify({token:TOKEN,lang:AL,ratio:S.ratio||'tall',look:LOOKMAP[S.chosen||0]||'neon',ac:S.ac||'',
         title:S.title||c.title,spec:S.spec||c.spec,price:S.price||fmtNum(c.price),unit:S.unit||c.unit,
-        tel:S.tel||'',kick:S.kick||c.kick,imageBase64:m?m[2]:'',mimeType:m?m[1]:''})});
+        tel:S.tel||'',kick:S.kick||c.kick,chips:(S.chips||c.chips||[]).slice(0,4),
+        facts:(S.facts||[]).slice(0,8),place:S.place||'',note:S.note||'',cat:S.cat==='flat'?'estate':S.cat,
+        imageBase64:m?m[2]:'',mimeType:m?m[1]:''})});
     const j=await r.json().catch(()=>({}));
     if(!r.ok||!j.imageBase64){ genOut.innerHTML='<div class="gwait">⚠️ '+esc(j.message||j.message_ar||j.error||T('genErrCode',{code:r.status}))+'</div>'; }
     else{ const mt=j.mimeType||'image/webp', src='data:'+mt+';base64,'+j.imageBase64, ext=(mt.split('/')[1]||'webp');

@@ -25,6 +25,13 @@ const LOOKS = {
   royal:    'prestigious real-estate branding, deep navy-blue and metallic gold palette, bright daylight, luxury interior with floor-to-ceiling windows overlooking a city skyline or waterfront',
 };
 
+const CATEGORY_ART_DIRECTION = {
+  car: 'Use a premium automotive-classified layout: the vehicle is the hero, with a clean specification-card row, a bold price plaque, and a highly visible contact strip.',
+  estate: 'Use a premium real-estate layout: show the actual property or interior in bright natural light, reserve a structured navy-and-gold information panel, and prioritize rooms, area, location, and price.',
+  worker: 'Use a trustworthy workforce-housing layout: show the real accommodation or a clean architectural aerial view, use a clear navy-and-gold information panel, and prioritize capacity, furnished rooms, services, and location.',
+  pharmacy: 'Use a modern pharmacy-delivery layout: clean medical green and white palette, a hero product or delivery scene, clear benefit icons, and a prominent WhatsApp/order call to action.',
+};
+
 module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   if (req.method !== 'POST') { res.status(405).end('{"error":"POST only"}'); return; }
@@ -64,7 +71,8 @@ module.exports = async (req, res) => {
     const ORI = { square: 'square 1:1', tall: 'vertical 2:3 story', wide: 'horizontal 3:2 landscape' };
     // v699: قالب مرجعيّ لكلّ فئة — سيّارة/عقار لهما نموذج معتمد، والباقي توليد حرّ.
     const { TEMPLATE_B64, ESTATE_B64 } = require('./adtemplate.js');
-    const cat = String(b.cat || '');
+    const rawCat = String(b.cat || '').toLowerCase();
+    const cat = rawCat === 'flat' ? 'estate' : rawCat === 'delivery' ? 'pharmacy' : rawCat;
     const tplB64 = cat === 'car' ? TEMPLATE_B64 : cat === 'estate' ? ESTATE_B64 : null;
     let p = 'Create ONE high-end ' + ORI[RK] + ' advertising poster, photorealistic, professionally art-directed.\n';
     if (tplB64) {
@@ -83,6 +91,7 @@ module.exports = async (req, res) => {
     const rtl = (lg === 'ar' || lg === 'ur');
     p += (hasImg ? 'Scene and mood: follow the customer\'s photo (its lighting and setting rule over any other style). Accent/glow colour: ' + accent + '.\n'
                  : 'Scene and mood: ' + look + '. Accent/glow colour: ' + accent + '.\n')
+       + (CATEGORY_ART_DIRECTION[cat] ? CATEGORY_ART_DIRECTION[cat] + '\n' : '')
        + 'Render the following ' + (SCRIPTN[lg] || 'ENGLISH') + ' text INSIDE the poster, spelled EXACTLY as written, '
        + (rtl ? 'right-to-left, with correct letter joining and diacritic-free modern bold typography'
               : 'left-to-right, with clean modern bold typography') + ':\n'
