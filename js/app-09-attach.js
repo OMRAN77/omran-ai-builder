@@ -2422,7 +2422,7 @@ function __showImgLoading(el, ar, en){
   if(_st && !_st.isReleased()){ try{ _st.release(); }catch(e){} }
   if(!el) return;
   // v662: مطابق لنموذج المستخدم حرفيًا — خلفية داكنة بنقاط خفيفة فقط، بلا أيقونات أو نصوص أو شريط تقدم
-  el.innerHTML = `<div style="background:#232326;border-radius:14px;aspect-ratio:3/4;max-width:260px;margin:4px 0;background-image:radial-gradient(rgba(255,255,255,.06) 1px,transparent 1px);background-size:22px 22px"></div>`;
+  el.innerHTML = `<div style="display:block;width:min(260px,75vw);height:min(347px,100vw);background:#232326;border:1px solid rgba(255,255,255,.06);border-radius:14px;margin:4px 0;background-image:radial-gradient(rgba(255,255,255,.07) 1px,transparent 1px);background-size:22px 22px"></div>`; // v663: عرض وارتفاع صريحان — aspect-ratio كان ينهار للصفر داخل فقاعة الرسالة
 }
 
     // v579: صورة مرفقة + طلب قصير (مثلًا بعد زرّ «تعديل») = تعديل عليها افتراضيًّا — إلّا سؤال/بحث/فيديو/شكر/صورة جديدة/قراءة-ترجمة-وصف.
