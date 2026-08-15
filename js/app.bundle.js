@@ -12251,8 +12251,9 @@ window.__omranImgTools = function(wrap, dataUrl){
     try{
       if(/android/i.test(navigator.userAgent || '') && typeof navigator.share !== 'function'){
         act(ar ? 'فتح الموقع في متصفّح كروم' : 'Open in Chrome', 'share', () => {
-          const tg = location.href.replace(/^https?:\/\//, '');
-          location.href = 'intent://' + tg + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(location.href) + ';end';
+          const u = new URL(location.href); u.hash = '';
+          const tg = u.host + u.pathname + u.search;
+          location.href = 'intent://' + tg + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(u.href) + ';end';
         });
       }
     }catch(_){ }
