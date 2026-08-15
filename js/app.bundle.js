@@ -14649,6 +14649,10 @@ function __showImgLoading(el, ar, en){
     if(imageAttachments.length){
       apiMessages.push({role: 'system', content: 'The user has ATTACHED an image with this message. You MUST look at the attached image carefully and answer based on its actual visual content in detail (identify objects, brands, models, text, measurements — whatever is relevant to the question). Never say you cannot see images, never give a generic answer that ignores the image, and never reply with empty or evasive text.'});
     }
+    // v686: وضع الإعلان — فرض توليد HTML إعلان فوراً بدون نص
+    if(cur.adMode === 'inside' || cur.adMode === 'outside'){
+      apiMessages.push({role:'system', content:'ADVERTISEMENT DESIGN MODE (highest priority). Build a complete professional Arabic ad poster as a self-contained ```html file NOW. Use background-image:url("__USER_IMAGE__") for the user photo as full background. Show all details (price, phone, model, specs) in elegant glass-morphism cards layered over the image. Rich color palette, bold Arabic typography, premium look. Output ONLY the ```html code block — zero text before or after it. No explanations, no questions, no analysis. BUILD IT NOW immediately.'});
+    }
     // 🧠 الذاكرة طويلة المدى لا تدخل التحية أو سؤال الحال؛ كلاهما لا يحتاج
     // مشاريع المستخدم واهتماماته، وكانت هي مصدر فتح المواضيع القديمة.
     const __memMsg = __quietSocialTurn ? null : memorySystemMsg();
@@ -15448,7 +15452,7 @@ function __showImgLoading(el, ar, en){
       // v405: التحويل يُعلَن بدل الصمت — المستخدم يرى مزودًا غير الذي اختاره فيظن الاختيار معطّلًا.
       try{
         var __selLabel = (typeof functionalLabel === 'function') ? functionalLabel(__selProv) : __selProv;
-        if(__effProv !== __selProv && window.__chatStatus && !window.__chatStatus.isReleased()){
+        if(__effProv !== __selProv && window.__chatStatus && !window.__chatStatus.isReleased() && !cur.adMode){
           var __why = (__gateNoBuild || __routeFix) ? 'البناء وتعديل الكود'
                     : (__visionOverride ? 'قراءة الصور' : 'هذا النوع من الطلبات');
           window.__chatStatus.note('↪️', (__provUiHidden() ? 'محادثتك على ' : 'اخترتَ ') + __selLabel + ' — و' + __why + ' يُنفَّذ بـ ' +
@@ -15458,7 +15462,7 @@ function __showImgLoading(el, ar, en){
       }catch(e){ __swallow(e, 'ui:switchnote'); }
       const __teamOrder = [__effProv, ...(__routeFix ? ['claude', 'openai', 'gemini'] : ['claude', 'openai', 'gemini']).filter(p => p !== __effProv)];
       window.__claudeModelOverride = null;
-      window.__claudeThinking = !__routeFix && __selProv === 'claude'; // 🧠 تفكير داخلي قبل الرد في النقاش العادي (Claude فقط)
+      window.__claudeThinking = !__routeFix && __selProv === 'claude' && !cur.adMode; // 🧠 تفكير داخلي — مُعطَّل في وضع الإعلان
       // 🛠️ v468: البوّابة تعلو على اليد — في دور الاستئذان لا تُمرَّر الأدوات
       // إطلاقًا، وإلّا غلبت تعليمة «ابنِ ولا تستأذن» داخل chat.js. بعد الموافقة
       // يسقط __gateNoBuild فتعمل اليد كاملة (صور + كود + تجربة).
