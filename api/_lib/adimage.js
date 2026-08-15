@@ -106,8 +106,15 @@ module.exports = async (req, res) => {
     const ORI = { square: 'square 1:1', tall: 'vertical 2:3 story', wide: 'horizontal 3:2 landscape' };
     // v699: قالب مرجعيّ لكلّ فئة — سيّارة/عقار لهما نموذج معتمد، والباقي توليد حرّ.
     const { TEMPLATE_B64, ESTATE_B64 } = require('./adtemplate.js');
-    const cat = String(b.cat || '');
+    const rawCat = String(b.cat || '').toLowerCase();
+    const cat = rawCat === 'flat' ? 'estate' : rawCat === 'delivery' ? 'pharmacy' : rawCat;
     const tplB64 = cat === 'car' ? TEMPLATE_B64 : cat === 'estate' ? ESTATE_B64 : null;
+    // v712 (من PR #7): توجيه تخطيطي للفئات بلا قالب معتمد
+    const CAT_AD = {
+      worker: 'Use a trustworthy workforce-housing layout: show the real accommodation or a clean architectural view, a clear navy-and-gold information panel, and prioritise capacity, furnished rooms, services, and location.',
+      pharmacy: 'Use a modern pharmacy-delivery layout: clean medical green and white palette, a hero product or delivery scene, clear benefit icons, and a prominent WhatsApp/order call to action.',
+    };
+    const p0hint = (!tplB64 && CAT_AD[cat]) ? CAT_AD[cat] + '\n' : '';
     let p = 'Create ONE high-end ' + ORI[RK] + ' advertising poster, photorealistic, professionally art-directed.\n';
     if (tplB64) {
       p += 'The FIRST provided image is the APPROVED LAYOUT TEMPLATE. Copy its LAYOUT exactly: same positions of every element, same card shapes with text INSIDE the cards, same typography style, same price plaque shape, same contact button style. Only replace the subject and the text values with the ones listed below. Every word must sit INSIDE its card or plaque exactly like the template. Omit any template element whose text is not listed below. However, do NOT copy the template\'s background scene or colour mood — the scene is defined separately below, so every poster looks fresh and different.\n';
@@ -128,7 +135,8 @@ module.exports = async (req, res) => {
     }
     const pool = SCENES[cat] || SCENES.other;
     const scene = pool[Math.floor(Math.random() * pool.length)];
-    p += (bg ? '' : hasImg ? 'Scene and mood: follow the customer\'s photo (its lighting and setting rule over any other style). Accent/glow colour: ' + accent + '.\n'
+    p += p0hint
+       + (bg ? '' : hasImg ? 'Scene and mood: follow the customer\'s photo (its lighting and setting rule over any other style). Accent/glow colour: ' + accent + '.\n'
                  : 'Scene and mood for THIS poster (unique per request): ' + scene + '. Accent/glow colour: ' + accent + '.\n')
        + 'Render the following ' + (SCRIPTN[lg] || 'ENGLISH') + ' text INSIDE the poster, spelled EXACTLY as written, '
        + (rtl ? 'right-to-left, with correct letter joining and diacritic-free modern bold typography'
