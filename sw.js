@@ -1,4 +1,4 @@
-const CACHE_NAME = 'omran-ai-builder-2cbd704f';
+const CACHE_NAME = 'omran-ai-builder-share669';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -125,8 +125,10 @@ self.addEventListener('fetch', (event) => {
 
   // App shell / navigation: network-first so updates land immediately,
   // falling back to the cached shell whenever there's no connection.
+  // v669: الجوال كان يعلق على نسخة قديمة — القشرة (index/البندل) تُجلب دائماً
+  // من الشبكة متجاوزةً كاش المتصفح، والكاش يبقى فقط احتياط انقطاع النت.
   event.respondWith(
-    fetch(req)
+    fetch(req, { cache: 'no-store' })
       .then((res) => {
         const resClone = res.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone)).catch(() => {});
