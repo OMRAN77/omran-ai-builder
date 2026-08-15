@@ -119,7 +119,7 @@ module.exports = async (req, res) => {
       model: 'gpt-image-2',
       prompt: p,
       size: SIZES[RK],
-      quality: 'high',
+      quality: 'medium', // v707: high كان يأخذ 3-4 دقائق — medium أسرع بكثير؛ رجّعها high إذا نزلت الجودة
       n: 1,
       output_format: 'webp',
       output_compression: 82,
