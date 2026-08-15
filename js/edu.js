@@ -147,6 +147,7 @@ function showHome(){
    +'<div class="eduPasteArea" id="eduPasteArea">'
    +'<textarea id="eduPasteTxt" placeholder="'+esc(T('pastePh'))+'"></textarea>'
    +'<button class="eduPrimary" id="eduAnalyzeTxtBtn">'+esc(T('analyze'))+'</button></div>'
+   +'<button class="eduUploadBtn" id="eduCurricBtn" style="margin-top:10px;"><span style="font-size:20px;">📚</span><span>'+esc((typeof AL==='function'&&AL()==='en')?'Lesson from curriculum — pick country, grade & subject':'درس من المنهج — اختر البلد والصف والمادة')+'</span></button>'
    +(getToken()?'':'<div class="eduNote">'+esc(T('guestNote'))+'</div>')
    +eduExamLangControl()
    +'<div class="eduSecTitle">'+esc(T('mySubjects'))+'</div>'
@@ -164,6 +165,7 @@ function showHome(){
     if(!txt) return;
     processContent({text:txt,lang:appLang()});
   };
+  var __cb=document.getElementById('eduCurricBtn'); if(__cb) __cb.onclick=showCurriculum;
   var oldRow=document.getElementById('eduOldEduRow');
   if(oldRow) oldRow.onclick=function(){ closeModal(); if(typeof window.openOmranEduModal==='function') window.openOmranEduModal(); };
   listLessons().then(function(r){ renderSubjects(r.lessons||[]); }).catch(function(){ renderSubjects([]); });
@@ -507,9 +509,37 @@ function eduNativeLang(){ try{ return AL()||'ar'; }catch(e){ return 'ar'; } }
 function eduExamLang(){ try{ return localStorage.getItem('edu_exam_lang')||''; }catch(e){ return ''; } }
 function setEduExamLang(v){ try{ if(v) localStorage.setItem('edu_exam_lang',v); else localStorage.removeItem('edu_exam_lang'); }catch(e){ __swallow(e, "save:index#10"); } }
 
-function processContent(payload){
+/* v655: درس من المنهج — الطالب يختار البلد والمرحلة والصف والمادة واسم الدرس،
+   والذكاء الاصطناعي يؤلف شرحًا كاملًا + بطاقات + اختبار عبر action:'explain'. */
+var EDU_COUNTRIES=['الإمارات','السعودية','مصر','الأردن','الكويت','قطر','البحرين','عُمان','العراق','سوريا','لبنان','فلسطين','اليمن','المغرب','الجزائر','تونس','ليبيا','السودان','منهج بريطاني IGCSE','منهج أمريكي','بكالوريا دولية IB'];
+function showCurriculum(){
+  setBack(true); navStack=[showHome];
+  var isEn=(typeof AL==='function'&&AL()==='en');
+  function W(a,e){ return isEn?e:a; }
+  var fld='width:100%;box-sizing:border-box;padding:11px;border-radius:var(--r-2);border:1px solid rgba(127,127,127,.35);background:transparent;color:inherit;font:inherit;font-size:var(--fs-3);';
+  var lab='display:block;margin:12px 0 5px;font-size:var(--fs-3);opacity:.85;';
+  var stages=[W('ابتدائي','Primary'),W('إعدادي / متوسط','Middle school'),W('ثانوي','High school'),W('جامعة','University'),W('كلية / معهد','College / institute')];
+  var h='<div style="font-size:var(--fs-3);line-height:1.8;opacity:.8;margin-bottom:4px;">'+esc(W('اختر منهجك وبيانات الدرس، وبيتألف لك شرح كامل + بطاقات مراجعة + اختبار.','Pick your curriculum and lesson details — you get a full explanation, flashcards and a quiz.'))+'</div>'
+   +'<label style="'+lab+'">'+esc(W('البلد / المنهج','Country / curriculum'))+'</label>'
+   +'<input id="eduCurCountry" list="eduCountryList" placeholder="'+esc(W('مثال: الإمارات','e.g. UAE'))+'" style="'+fld+'"><datalist id="eduCountryList">'+EDU_COUNTRIES.map(function(c){return '<option value="'+esc(c)+'">';}).join('')+'</datalist>'
+   +'<label style="'+lab+'">'+esc(W('المرحلة','Stage'))+'</label><select id="eduCurStage" style="'+fld+'">'+stages.map(function(st){return '<option value="'+esc(st)+'">'+esc(st)+'</option>';}).join('')+'</select>'
+   +'<label style="'+lab+'">'+esc(W('الصف / السنة','Grade / year'))+'</label><input id="eduCurGrade" placeholder="'+esc(W('مثال: الصف التاسع أو السنة الثانية','e.g. Grade 9 or 2nd year'))+'" style="'+fld+'">'
+   +'<label style="'+lab+'">'+esc(W('المادة','Subject'))+'</label><input id="eduCurSubject" placeholder="'+esc(W('مثال: رياضيات، فيزياء، أحياء…','e.g. Math, Physics, Biology…'))+'" style="'+fld+'">'
+   +'<label style="'+lab+'">'+esc(W('اسم الدرس أو موضوعه','Lesson name or topic'))+'</label><input id="eduCurLesson" placeholder="'+esc(W('مثال: المعادلات التربيعية','e.g. Quadratic equations'))+'" style="'+fld+'">'
+   +'<div id="eduCurErr" style="color:#f87171;font-size:var(--fs-4);margin-top:8px;display:none;"></div>'
+   +'<button class="eduPrimary" id="eduCurGo" style="margin-top:14px;width:100%;">'+esc(W('✨ ألّف لي الدرس','✨ Generate my lesson'))+'</button>';
+  body.innerHTML=h;
+  document.getElementById('eduCurGo').onclick=function(){
+    var v=function(id){ var el=document.getElementById(id); return el?String(el.value||'').trim():''; };
+    var subj=v('eduCurSubject'), les=v('eduCurLesson');
+    var err=document.getElementById('eduCurErr');
+    if(!subj||!les){ err.textContent=W('اكتب المادة واسم الدرس على الأقل.','Enter at least the subject and lesson name.'); err.style.display='block'; return; }
+    processContent({country:v('eduCurCountry'),stage:v('eduCurStage'),grade:v('eduCurGrade'),subject:subj,lesson:les,lang:appLang()},'explain');
+  };
+}
+function processContent(payload,__act){
   showBusy();
-  api(Object.assign({action:'process',nativeLang:eduNativeLang(),examLang:eduExamLang()},payload)).then(function(j){
+  api(Object.assign({action:__act||'process',nativeLang:eduNativeLang(),examLang:eduExamLang()},payload)).then(function(j){
     var L=j.lesson||{};
     return listLessons().then(function(r){
       var subs=[]; (r.lessons||[]).forEach(function(x){ if(subs.indexOf(x.subject||'—')<0) subs.push(x.subject||'—'); });
