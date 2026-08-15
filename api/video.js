@@ -3,6 +3,7 @@
 require('./_lib/_fetch-timeout.js');
 // Nothing thrown in this router escapes unrecorded (see _lib/_errors.js).
 const { withErrorCapture } = require('./_lib/_errors.js');
+const { installCors } = require('./_lib/cors.js');
 
 function load(action) {
   switch (action) {
@@ -19,6 +20,7 @@ function load(action) {
 }
 
 module.exports = withErrorCapture('video', async (req, res) => {
+  installCors(req, res);
   const action = (req.query && req.query.action) || '';
   const handler = load(action);
   if (!handler) {
