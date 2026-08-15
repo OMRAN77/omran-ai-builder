@@ -69,7 +69,7 @@ function stripXmlTags(xml) {
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
   try {
-    const { url, filename, fileBase64 } = req.body || {};
+    const { filename, fileBase64 } = req.body || {};
 
     // مسار الرفع المباشر (fileBase64) هو الأساسي الآن.
     //
@@ -78,7 +78,7 @@ module.exports = async function handler(req, res) {
     // صار يرجع 503 عمدًا — فانقطعت الخطوة الأولى وتوقّفت ميزة الأرشيف
     // بالكامل. الطريق الوحيد الباقي هو أن يصل الملف مع الطلب نفسه.
     //
-    // مسار url يبقى مدعومًا لو أُعيد تفعيل تخزين خارجي لاحقًا.
+    // لا نقبل روابط تنزيل من العميل: جلبها من الخادم يفتح مسار SSRF.
     let buf;
     if (fileBase64) {
       try {
@@ -95,10 +95,6 @@ module.exports = async function handler(req, res) {
         });
         return;
       }
-    } else if (url) {
-      const fileResp = await fetch(url, { signal: AbortSignal.timeout(20000) });
-      if (!fileResp.ok) { res.status(400).json({ error: 'تعذّر تنزيل الملف من الرابط.' }); return; }
-      buf = Buffer.from(await fileResp.arrayBuffer());
     } else {
       res.status(400).json({ error: 'لم يصل الملف. حاول اختياره مجددًا.' });
       return;
