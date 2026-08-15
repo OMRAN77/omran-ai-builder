@@ -693,7 +693,7 @@ window.__omranImgTools = function(wrap, dataUrl){
     //    تحمل border-radius من CSS ⇒ لا حاجة لقصّ الحاوية.
     if(r && r !== '0px'){ wrap.style.borderRadius = r; }
   }catch(e){}
-  // v667: طلب عمران — أزرار الصورة تحتها في مكانها الطبيعي، مو فوق الصورة نفسها
+  bar.classList.add('inImg'); // v668: رجوع زر «تعديل» داخل الصورة مثل v641 — شكوى عمران كانت عن نص الصورة المولّدة نفسها
   wrap.appendChild(bar);
 };
 
