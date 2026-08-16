@@ -11,15 +11,18 @@ function extractJsonObject(value) {
 function assessEditVerdict(verdict, options) {
   const opts = options || {};
   if (!verdict || typeof verdict !== 'object') return { ok: false, reason: 'validation_unavailable' };
-  if (opts.allowStyleChange !== true && (verdict.sameVisualMedium !== true || (verdict.sourceIsPhotograph === true && verdict.resultIsPhotograph !== true))) {
+  // v717: الحارس كان يرفض عند أي شك (!== true) فكثير من التعديلات السليمة كانت
+  // تُرفض وتعود الصورة الأصلية كما هي — «ينسخ نفس الصورة». القاعدة الآن:
+  // الرفض فقط عند فشلٍ صريح (=== false)؛ الشك أو غياب الحقل = تمرير النتيجة.
+  if (opts.allowStyleChange !== true && (verdict.sameVisualMedium === false || (verdict.sourceIsPhotograph === true && verdict.resultIsPhotograph === false))) {
     return { ok: false, reason: 'style_mismatch' };
   }
-  if (verdict.identityPreserved !== true) {
+  if (verdict.identityPreserved === false) {
     return { ok: false, reason: 'identity_or_scope_mismatch' };
   }
   // v605: ترقية مشهد معتمدة = تغيير واسع مقصود، فشرط «التغيير المطلوب فقط»
   // يُسقط وحده. حفظ الهويّة وبقاء الصورة فوتوغرافيّة يبقيان مفروضين أعلاه.
-  if (opts.allowBroadChange !== true && verdict.onlyRequestedChange !== true) {
+  if (opts.allowBroadChange !== true && verdict.onlyRequestedChange === false) {
     return { ok: false, reason: 'identity_or_scope_mismatch' };
   }
   return { ok: true, reason: opts.allowStyleChange === true ? 'accepted_explicit_style_change' : 'accepted' };
@@ -46,7 +49,7 @@ async function verifyLocalizedImageEdit(options) {
       opts.allowBroadChange === true
         ? 'onlyRequestedChange: this is an approved full scene upgrade, so restyling the whole space is expected; report true when the place is still the same place from the same viewpoint.'
         : 'onlyRequestedChange: changes are limited to what USER REQUEST asks; requested clothing, hair, age, background or framing changes are allowed.',
-      'Be strict. If uncertain, use false.'
+      'Reject only clear violations. When uncertain about any boolean, use true — a borderline edit should pass rather than be discarded.'
     ].join('\n');
     const response = await fetch(endpoint, {
       method: 'POST',
