@@ -19,12 +19,6 @@ module.exports = async (req, res) => {
       res.status(401).end(JSON.stringify({ error: 'auth', message_ar: 'سجّل الدخول أوّلًا لتوليد الطوابع.' }));
       return;
     }
-    const gate = await checkAndConsumeCustom(b.token, null, null, 'adimage', DAILY);
-    if (!gate.allowed) {
-      res.status(429).end(JSON.stringify({ error: 'limit', message_ar: 'بلغتَ حدّ اليوم (' + DAILY + ' صور). جرّب غدًا.' }));
-      return;
-    }
-
     const key = process.env.OPENAI_API_KEY;
     if (!key) { res.status(500).end(JSON.stringify({ error: 'no key' })); return; }
 
@@ -33,6 +27,13 @@ module.exports = async (req, res) => {
     const hasImg = typeof b.imageBase64 === 'string' && b.imageBase64.length > 100;
     if (!hasImg) {
       res.status(400).end(JSON.stringify({ error: 'no image', message_ar: 'أرفق صورة الطفل أولاً عشان أسوي الطوابع.' }));
+      return;
+    }
+
+    // الخصم من الحد اليومي بعد اكتمال كل التحققات — طلب ناقص ما يحرق محاولة
+    const gate = await checkAndConsumeCustom(b.token, null, null, 'adimage', DAILY);
+    if (!gate.allowed) {
+      res.status(429).end(JSON.stringify({ error: 'limit', message_ar: 'بلغتَ حدّ اليوم (' + DAILY + ' صور). جرّب غدًا.' }));
       return;
     }
 
