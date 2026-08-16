@@ -5,6 +5,6 @@
   "description": "Standalone approval-gated operations agent",
   "engines": { "node": "24.x" },
   "scripts": {
-    "check": "node --check api/health.js && node --check api/tasks.js && node --check api/config.js && node --check api/notion-search.js"
+    "check": "node --check api/health.js && node --check api/tasks.js && node --check api/config.js && node --check api/notion-search.js && node --check api/github-status.js"
   }
 }
