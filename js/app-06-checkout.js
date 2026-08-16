@@ -49,7 +49,12 @@ function openCheckout(plan){
   const statusMsg = document.getElementById('checkoutStatusMsg');
   if (label) label.textContent = t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
   if (statusMsg) statusMsg.textContent = '';
-  if (overlay) overlay.style.display = 'flex';
+  if (overlay) {
+    // The overlay is defined inside the settings <dialog>, which is usually
+    // display:none — move it to <body> so it is always visible when opened.
+    if (overlay.parentElement !== document.body) document.body.appendChild(overlay);
+    overlay.style.display = 'flex';
+  }
   loadPaypalButtons();
 }
 window.openCheckout = openCheckout;
