@@ -2,14 +2,14 @@
 <html lang="ar" dir="rtl">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>وكيل عمران الخارجي</title>
+<title>منى — الوكيل الخارجي</title>
 <style>
 body{margin:0;background:#090b12;color:#eef2ff;font:16px system-ui;min-height:100vh;display:grid;place-items:center}.app{width:min(760px,92vw);padding:32px;border:1px solid #27304a;border-radius:22px;background:#101522;box-shadow:0 25px 70px #0008}h1{margin:0 0 8px}p{color:#aeb9d4;line-height:1.7}textarea,select,button{box-sizing:border-box;width:100%;font:inherit;border-radius:12px}textarea,select{margin:10px 0;padding:13px;background:#080b13;color:#fff;border:1px solid #35405d}button{padding:13px;border:0;background:#46d6a1;color:#062017;font-weight:800;cursor:pointer}.status{margin-top:18px;padding:13px;border-radius:12px;background:#171e2e;white-space:pre-wrap}.note{font-size:13px;color:#95a3c5}
 </style>
 <main class="app">
-  <h1>وكيل عمران الخارجي</h1>
-  <p>حلّل المهمة، ضع خطة، نفّذ في بيئة معزولة، تحقّق، ثم أبلغ بالنتيجة. النشر الإنتاجي والدفع يحتاجان موافقة المالك.</p>
-  <select id="action"><option value="analyze">تحليل مشروع</option><option value="plan">وضع خطة</option><option value="fix">إصلاح مشكلة</option><option value="test">تشغيل اختبارات</option><option value="pull_request">إنشاء Pull Request</option><option value="preview_deploy">نشر معاينة</option><option value="production_deploy">نشر إنتاجي — يحتاج موافقة</option></select>
+  <h1>منى</h1>
+  <p>وكيلك الخارجي للبحث والتحليل والتنفيذ. تخطط، تتحقق، ثم تعرض ما فعلته بوضوح. النشر الإنتاجي والدفع يحتاجان موافقة المالك.</p>
+  <select id="action"><option value="research">بحث عام بمصادر</option><option value="analyze">تحليل مشروع</option><option value="plan">وضع خطة</option><option value="fix">إصلاح مشكلة</option><option value="test">تشغيل اختبارات</option><option value="pull_request">إنشاء Pull Request</option><option value="preview_deploy">نشر معاينة</option><option value="production_deploy">نشر إنتاجي — يحتاج موافقة</option></select>
   <textarea id="task" rows="6" placeholder="اكتب المهمة بالتفصيل…"></textarea>
   <button id="submit">إرسال المهمة</button>
   <div class="status" id="status">جاري فحص الاتصالات…</div>

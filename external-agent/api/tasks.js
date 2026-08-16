@@ -1,5 +1,5 @@
 const MAX_TASK_CHARS = 4000;
-const SAFE_ACTIONS = new Set(['analyze', 'plan', 'fix', 'test', 'pull_request', 'preview_deploy']);
+const SAFE_ACTIONS = new Set(['research', 'analyze', 'plan', 'fix', 'test', 'pull_request', 'preview_deploy']);
 const APPROVAL_ACTIONS = new Set(['production_deploy', 'payment']);
 
 module.exports = async (req, res) => {
