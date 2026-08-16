@@ -23,8 +23,11 @@ function baseUrl() {
 }
 
 async function getAccessToken() {
-  const clientId = process.env.PAYPAL_CLIENT_ID;
-  const secret = process.env.PAYPAL_SECRET;
+  // Values pasted into dashboards often arrive with stray whitespace, line
+  // breaks, or wrapping quotes — clean them instead of failing auth silently.
+  const clean = (v) => String(v || '').trim().replace(/^["']|["']$/g, '').replace(/\s+/g, '');
+  const clientId = clean(process.env.PAYPAL_CLIENT_ID);
+  const secret = clean(process.env.PAYPAL_SECRET);
   if (!clientId || !secret) return null;
   const auth = Buffer.from(`${clientId}:${secret}`).toString('base64');
   const r = await fetch(`${baseUrl()}/v1/oauth2/token`, {
