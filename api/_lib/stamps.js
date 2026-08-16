@@ -24,6 +24,8 @@ module.exports = async (req, res) => {
 
     const cut = (x, n) => String(x == null ? '' : x).slice(0, n).replace(/["\n\r]/g, ' ').trim();
     const name = cut(b.name, 30);
+    const school = cut(b.school, 40);
+    const subject = cut(b.subject, 30);
     const hasImg = typeof b.imageBase64 === 'string' && b.imageBase64.length > 100;
     if (!hasImg) {
       res.status(400).end(JSON.stringify({ error: 'no image', message_ar: 'أرفق صورة الطفل أولاً عشان أسوي الطوابع.' }));
@@ -42,9 +44,14 @@ module.exports = async (req, res) => {
       + 'Layout: a tidy grid of 12 small stickers (4 rows x 3 columns), evenly spaced with generous white gaps and a thin light-grey dashed cut line around every sticker.\n'
       + 'Every sticker features the child\'s photo inside a different cute frame shape: circle, heart, star, cloud, hexagon, flower, shield/badge, rounded square, oval, ribbon rosette, pencil-shaped frame, open-book-shaped frame.\n'
       + 'Frames use cheerful kid-friendly pastel colours (soft blue, mint, peach, lilac, sunny yellow) with tiny playful doodles (stars, sparkles, pencils, books) around the frames — never covering the face.\n'
-      + (name
-        ? 'Under the photo inside EVERY sticker: a small neat label with the name "' + name + '" in clear bold Arabic-friendly lettering. CRITICAL TEXT ACCURACY: reproduce the name letter-for-letter EXACTLY as written — never misspell, never invent extra words.\n'
-        : 'Do NOT write any name or any text inside the stickers — photo and frame only.\n')
+      + (function(){
+        var lines = [];
+        if (name) lines.push('the name "' + name + '" in clear bold lettering');
+        if (school) lines.push('below it, in smaller lettering, the school name "' + school + '"');
+        if (subject) lines.push('and the subject "' + subject + '"');
+        if (!lines.length) return 'Do NOT write any name or any text inside the stickers — photo and frame only.\n';
+        return 'Under the photo inside EVERY sticker: a small neat label showing ' + lines.join(', ') + '. CRITICAL TEXT ACCURACY: reproduce every word letter-for-letter EXACTLY as written in Arabic-friendly lettering — never misspell, never invent or add extra words. Keep the label compact so it fits neatly inside the sticker.\n';
+      })()
       + 'No other text anywhere, no watermark, no logo, no invented letters. Clean, bright, printable, joyful school-stickers style.';
 
     const body = {
