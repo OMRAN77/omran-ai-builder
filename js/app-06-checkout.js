@@ -53,6 +53,10 @@ function openCheckout(plan){
     // The overlay is defined inside the settings <dialog>, which is usually
     // display:none — move it to <body> so it is always visible when opened.
     if (overlay.parentElement !== document.body) document.body.appendChild(overlay);
+    // If the settings dialog is open via showModal(), it sits in the browser
+    // top layer and makes the rest of the page inert — close it first.
+    const sd = document.getElementById('settingsDialog');
+    if (sd && sd.open && typeof sd.close === 'function') { try { sd.close(); } catch (e) {} }
     overlay.style.display = 'flex';
   }
   loadPaypalButtons();
