@@ -1,0 +1,6 @@
+/* Hide the Agent/Premium toggle from the main screen only. */
+#premiumToggleWrap,
+#btnPremiumToggle,
+#premiumPointsChip {
+  display: none !important;
+}
