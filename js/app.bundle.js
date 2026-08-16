@@ -13910,7 +13910,7 @@ async function sendPrompt(){
       __stSubject = __stSubject.replace(/\s*(?:و\s*)?(?:مدرسته|مدرستها|مدرسة|مدرسه|المدرسة|المدرسه)(?=\s|$)[\s\S]*$/,'').trim();
       __showImgLoading(thinkingDiv, 'جارٍ تصميم الطوابع', 'Designing stamps');
       try{
-        const __stBody = { name:__stName, school:__stSchool, subject:__stSubject, imageBase64:__stSrcB64, mimeType:__stSrcMime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
+        const __stBody = { name:__stName, school:__stSchool, subject:__stSubject, hint:text, imageBase64:__stSrcB64, mimeType:__stSrcMime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
         const __stRes = await fetch('/api/tools?action=stamps',{method:'POST',headers:{'Content-Type':'application/json'},signal:genAbortController.signal,body:JSON.stringify(__stBody)});
         const __stData = await __stRes.json().catch(()=>({}));
         if(!__stRes.ok || !__stData.imageBase64){
