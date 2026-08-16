@@ -375,7 +375,7 @@
       <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(900)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">900</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);"><span class="pn" data-usd="34.99">34.99</span> <span class="cursym">$</span></span></button>
     </div>
   </div>
-  <small class="hint" style="display:block; margin-top:10px;" data-i18n="pricingTestNote">🧪 وضع تجريبي حاليًا — سيتم التفعيل الكامل عند الحصول على الرخصة التجارية</small>
+  
   <div style="margin-top:10px; display:flex; gap:14px; font-size:12px;">
     <a href="/terms.html" target="_blank" style="color:var(--accent,#3b82f6); text-decoration:none;" data-i18n="termsLink">📜 الشروط والأحكام</a>
     <a href="/privacy.html" target="_blank" style="color:var(--accent,#3b82f6); text-decoration:none;" data-i18n="privacyLink">🔒 سياسة الخصوصية</a>
@@ -475,7 +475,7 @@
       <button type="button" onclick="closeCheckout()" style="position:absolute; inset-inline-end:12px; top:12px; background:none; border:none; font-size:20px; cursor:pointer; color:var(--text);">✕</button>
       <h3 style="margin:0 0 4px;" data-i18n="checkoutTitle">إتمام الاشتراك</h3>
       <div id="checkoutPlanLabel" style="font-size: var(--fs-3); color:var(--muted); margin-bottom:14px;"></div>
-      <span style="display:inline-block; background:#eab308; color:#000; font-size:11px; font-weight:700; padding:2px 8px; border-radius:var(--r-1); margin-bottom:12px;" data-i18n="checkoutTestBadge">🧪 وضع تجريبي (Test Mode)</span>
+      
 
       <div style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">
         <button type="button" onclick="startStripeCheckout()" style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--panel2); cursor:pointer; font-size: var(--fs-3); color:var(--text);">
