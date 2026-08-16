@@ -150,8 +150,9 @@ module.exports = async (req, res) => {
          + chips.map(c => '"' + c + '"').join(', ') + '\n';
     }
     const priceFmt = /^\d+$/.test(price) ? price.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : price;
-    if (price) p += '- Near the bottom: a wide elongated-hexagon price plaque (pointed left and right ends) with a thin glowing gold outline on dark background, very large glowing gold numerals: "' + priceFmt + (unit ? ' ' + unit : '') + '"' + (note ? ' and a small white line under the number inside the plaque: "' + note + '"' : '') + '\n'
+    if (price) p += '- Near the bottom: a compact elongated-hexagon price plaque (pointed left and right ends) with a thin glowing gold outline on dark background, medium-sized glowing gold numerals — the plaque stays modest in size, clearly smaller than the info cards row and never dominating the poster: "' + priceFmt + (unit ? ' ' + unit : '') + '"' + (note ? ' and a small white line under the number inside the plaque: "' + note + '"' : '') + '\n'
       + 'CRITICAL NUMBER ACCURACY: the price and phone number must be reproduced digit-for-digit EXACTLY as written above — same digits, same count of zeros, same separators. Never round, shorten or drop a digit.\n';
+    else p += 'NO PRICE was provided by the customer. STRICT RULE: do NOT include any price plaque, price number, currency amount or "درهم" value anywhere on the poster — omit the template\'s price plaque entirely and NEVER invent a number.\n';
     if (tel)   p += '- Below the price: a dark pill-shaped contact button with thin gold border, a small phone handset icon, and the number in bright teal digits: "' + tel + '"\n';
     if (foot)  p += '- Very small white footer line at the very bottom: "' + foot + '"\n';
     p += 'The hero subject sits in the middle of the poster between the info cards and the price plaque, photorealistic'
