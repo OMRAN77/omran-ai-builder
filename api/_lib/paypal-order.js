@@ -17,7 +17,7 @@ const PLANS = {
 };
 
 function baseUrl() {
-  return (process.env.PAYPAL_MODE === 'live')
+  return (process.env.PAYPAL_MODE !== 'sandbox')
     ? 'https://api-m.paypal.com'
     : 'https://api-m.sandbox.paypal.com';
 }
