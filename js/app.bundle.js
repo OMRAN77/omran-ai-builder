@@ -13510,6 +13510,8 @@ async function sendPrompt(){
   // v577: قائمة سوداء للمتابعة — هذه وحدها تخرج من «تعديل نفس الصورة».
   const __IMGF_NEW_RE = /(?:صورة|صوره|بطاق[ةه]|بوستر|ملصق|شهاد[ةه]|غلاف|بنر|لوجو|شعار|image|picture|card|poster)\s*(?:جديد[ةه]|ثاني[ةه]|أخرى|اخرى|new|another)(?=$|[\s،,.!?؟])|(?:^|[\s،,])(?:ارسم|أرسم|اصنع|انشئ|أنشئ|صمم|صمّم|ولّد|ولد|draw|create|generate|design)\s*(?:لي\s*)?(?:صورة|صوره|بطاق[ةه]|بوستر|ملصق|شهاد[ةه]|غلاف|بنر|لوجو|شعار|image|picture|card|poster|logo|banner)(?=$|[\s،,.!?؟])|(?:^|[\s،,])(?:صوّر|صور|صوره|صورة|تصور)\s?لي\s+\S/i; // v659: «صوّر لي X» = صورة جديدة، لا تعديل على السابقة
   const __IMGF_NOT_RE = /^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|لماذا|ماذا|ما|من|why|how|what|where|when|who)(?=$|[\s،,.!?؟])|[؟?]\s*$|(?:^|[\s،,])(?:ابحث|دور|اعطني|أعطني|معلومات|سعر|أسعار|اسعار|فندق|فنادق|مطعم|مطاعم|طيران|تذاكر|وظيف[ةه]|وظائف|عقار|شق[ةه]|سيار[ةه]|سيارات|أخبار|اخبار|طقس|أسهم|اسهم|ذهب|search|find|price|hotel|restaurant|flight|news|weather)(?=$|[\s،,.!?؟])|^(?:شكرا|شكرًا|مشكور|تسلم|تمام|اوك|أوك|زين|طيب|ايه|أيه|نعم|لا|يب|ok|okay|thanks|yes|no)[\s!.،,]*$|(?:^|[\s،,])(?:فيديو|حركها|حركه|حرك|صوت|video|animate|audio)(?=$|[\s،,.!?؟])/i;
+  // v725: أمر تعديل صريح يتغلّب على فلتر «سؤال معلومات» — «غيّر السيارة» و«شيل السعر» تعديلان لا بحث
+  const __IMG_EDIT_VERB_RE = /(عدل|عدّل|تعديل|غير|غيّر|بدل|بدّل|امسح|احذف|ازل|أزل|شيل|صغر|صغّر|كبر|كبّر|اجعل|\bedit\b|\bchange\b|\bremove\b|\bdelete\b)/i;
   const __IMG_FOLLOW = (function(){
     try{
       const c = getCurrent();
@@ -13520,7 +13522,7 @@ async function sendPrompt(){
       if(typeof window.__isExplicitImageEdit === 'function' && window.__isExplicitImageEdit(text)) return true;
       // v577: «سوي التسريحه ذيل حصان» كانت تسقط للدردشة فترسم شخصًا جديدًا.
       // الافتراضيّ الآن: تعديل على نفس الصورة، إلّا إذا طلبت صورة جديدة أو سألت.
-      if(__IMGF_NEW_RE.test(text) || __IMGF_NOT_RE.test(text)) return false;
+      if(__IMGF_NEW_RE.test(text) || (__IMGF_NOT_RE.test(text) && !__IMG_EDIT_VERB_RE.test(text))) return false;
       const __wc = String(text).trim().split(/\s+/).filter(Boolean);
       if(__wc.length < 2 && String(text).trim().length < 12) return false;
       if(typeof window.__isExplicitImageEdit === 'function') return true;
@@ -13877,7 +13879,7 @@ async function sendPrompt(){
           text += '\n(ملاحظة للنظام: المستخدم أرفق صورة لهذا الإعلان — اجعلها صورة البطل باستخدام src="__USER_IMAGE__" بالضبط، والتفاصيل خارج الصورة حسب قالب OUTSIDE)';
         }
       }
-    } else if(text && /(?:^|[\s،,.])(طوابع|ملصقات|ستيكرات|استيكرات)/i.test(text) && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text)){
+    } else if(text && /(?:^|[\s،,.])(طوابع|ملصقات|ستيكرات|استيكرات)/i.test(text) && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !__IMG_EDIT_VERB_RE.test(text)){
       // 🏷️ v724: طوابع المدرسة — صورة الطفل + اسمه → ورقة طوابع جاهزة للطباعة والقص
       if(!(cur.lastEditedImage && cur.lastEditedImage.b64)){
         cur.messages.push({role:'assistant',content: lang==='ar' ? 'أرفق صورة الطفل أولاً (زر +) ثم اكتب: طوابع باسم فلان 🏷️' : 'Attach the child\'s photo first (+ button), then write: stamps with the name ...'});
@@ -14292,7 +14294,7 @@ function __showImgLoading(el, ar, en){
 
     // v579: صورة مرفقة + طلب قصير (مثلًا بعد زرّ «تعديل») = تعديل عليها افتراضيًّا — إلّا سؤال/بحث/فيديو/شكر/صورة جديدة/قراءة-ترجمة-وصف.
     const __ATT_VISION_RE = /(ترجم|translate|اقرأ|اقري|إقرأ|قراءة|\bread\b|وصف|اوصف|صف\s|describe|حلل|حلّل|analyz|قارن|compare|(?:^|[\s،,])(?:وين|فين|شلون|ليش|متى|هل)(?=[\s؟?]|$)|حساب|باي\s*بال|بايبال|paypal|بنك|تجاري|اشتراك|تفعيل|تسجيل|إعدادات|اعدادات|رصيد|فلوس|أموال|اموال|جوجل\s*بلاي|قوقل|google\s*play|app\s*store|\baccount\b|\bsettings\b|sign\s*up|log\s*in)/i; // v719: أسئلة الحسابات والخدمات مع صورة = سؤال محادثة، ليست تعديل صورة
-    const __ATT_EDIT = !!(__srcImg && !__srcImg._fromMemory && text && text.length <= 220 && __imgEditRe.test(text) && !__IMGF_NOT_RE.test(text) && !__IMGF_NEW_RE.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text));
+    const __ATT_EDIT = !!(__srcImg && !__srcImg._fromMemory && text && text.length <= 220 && __imgEditRe.test(text) && (!__IMGF_NOT_RE.test(text) || __IMG_EDIT_VERB_RE.test(text)) && !__IMGF_NEW_RE.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text));
     if(text && !cur.adMode && (__IMG_UPGRADE || __IMG_FOLLOW || __ATT_EDIT || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || (__IMG_UPGRADE && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
       __showImgLoading(thinkingDiv, __IMG_UPGRADE ? 'جاري ترقية المشهد…' : 'جاري تعديل الصورة…', __IMG_UPGRADE ? 'Upgrading the scene…' : 'Editing image…');
       const __upgSrc = (!__srcImg && __IMG_UPGRADE && !(cur.lastEditedImage && cur.lastEditedImage.b64)) ? __IMG_UPGRADE_SRC : null;
