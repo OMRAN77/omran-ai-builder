@@ -1,117 +1,389 @@
 {
-  "regions": ["bom1"],
+  "regions": [
+    "bom1"
+  ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy", "value": "microphone=(self), camera=(self), geolocation=(self), payment=(self)" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https: wss:; frame-src 'self' data: blob: https:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; upgrade-insecure-requests" }
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains; preload"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "microphone=(self), camera=(self), geolocation=(self), payment=(self)"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https: wss:; frame-src 'self' data: blob: https:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; upgrade-insecure-requests"
+        }
+      ]
+    },
+    {
+      "source": "/",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, must-revalidate"
+        }
       ]
     },
     {
       "source": "/ffmpeg/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
     },
     {
       "source": "/js/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=300, stale-while-revalidate=86400" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, stale-while-revalidate=86400"
+        }
+      ]
     },
     {
       "source": "/css/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=300, stale-while-revalidate=86400" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, stale-while-revalidate=86400"
+        }
+      ]
     },
     {
       "source": "/icons/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
+        }
+      ]
     },
     {
       "source": "/assets/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
+        }
+      ]
     }
   ],
   "functions": {
-    "api/*.js": { "regions": ["bom1"], "maxDuration": 300 }
+    "api/*.js": {
+      "regions": [
+        "bom1"
+      ],
+      "maxDuration": 300
+    }
   },
   "rewrites": [
-    { "source": "/i/:id", "destination": "/api/media?action=img&id=:id" },
-    { "source": "/api/openai", "destination": "/api/ai?action=openai" },
-    { "source": "/api/gemini", "destination": "/api/ai?action=gemini" },
-    { "source": "/api/groq", "destination": "/api/ai?action=groq" },
-    { "source": "/api/claude", "destination": "/api/ai?action=claude" },
-    { "source": "/api/cohere", "destination": "/api/ai?action=cohere" },
-    { "source": "/api/deepseek", "destination": "/api/ai?action=deepseek" },
-    { "source": "/api/mistral", "destination": "/api/ai?action=mistral" },
-    { "source": "/api/openrouter", "destination": "/api/ai?action=openrouter" },
-    { "source": "/api/perplexity", "destination": "/api/ai?action=perplexity" },
-
-    { "source": "/api/design-create", "destination": "/api/tools?action=design-create" },
-    { "source": "/api/construction-create", "destination": "/api/tools?action=construction-create" },
-    { "source": "/api/construction-view", "destination": "/api/tools?action=construction-view" },
-    { "source": "/api/construction-library", "destination": "/api/tools?action=construction-library" },
-    { "source": "/api/design-suggest", "destination": "/api/tools?action=design-suggest" },
-    { "source": "/api/fashion-create", "destination": "/api/tools?action=fashion-create" },
-    { "source": "/api/fashion-suggest", "destination": "/api/tools?action=fashion-suggest" },
-    { "source": "/api/studio-create", "destination": "/api/tools?action=studio-create" },
-    { "source": "/api/studio-suggest", "destination": "/api/tools?action=studio-suggest" },
-    { "source": "/api/portrait-style", "destination": "/api/tools?action=portrait-style" },
-    { "source": "/api/analyze-zip", "destination": "/api/tools?action=analyze-zip" },
-    { "source": "/api/adchat", "destination": "/api/tools?action=adchat" },
-    { "source": "/api/adimage", "destination": "/api/tools?action=adimage" },
-
-    { "source": "/api/video-create", "destination": "/api/video?action=video-create" },
-    { "source": "/api/video-script", "destination": "/api/video?action=video-script" },
-    { "source": "/api/video-status", "destination": "/api/video?action=video-status" },
-    { "source": "/api/video-upscale-create", "destination": "/api/video?action=video-upscale-create" },
-
-    { "source": "/api/auth", "destination": "/api/account?action=auth" },
-    { "source": "/api/auth-google-callback", "destination": "/api/account?action=auth-google-callback" },
-    { "source": "/api/admin-actions", "destination": "/api/account?action=admin-actions" },
-    { "source": "/api/admin-stats", "destination": "/api/account?action=admin-stats" },
-    { "source": "/api/vip", "destination": "/api/account?action=vip" },
-    { "source": "/api/usage-status", "destination": "/api/account?action=usage-status" },
-    { "source": "/api/points", "destination": "/api/account?action=points" },
-    { "source": "/api/create-checkout-session", "destination": "/api/account?action=create-checkout-session" },
-    { "source": "/api/paypal-client-id", "destination": "/api/account?action=paypal-client-id" },
-    { "source": "/api/paypal-order", "destination": "/api/account?action=paypal-order" },
-    { "source": "/api/share", "destination": "/api/account?action=share" },
-    { "source": "/api/feedback", "destination": "/api/account?action=feedback" },
-
-    { "source": "/api/tts", "destination": "/api/media?action=tts" },
-    { "source": "/api/stt", "destination": "/api/media?action=stt" },
-    { "source": "/api/translate", "destination": "/api/media?action=translate" },
-    { "source": "/api/maha-image", "destination": "/api/media?action=maha-image" },
-    { "source": "/api/blob-client-upload", "destination": "/api/media?action=blob-client-upload" },
-
-    { "source": "/api/check-reminders", "destination": "/api/system?action=check-reminders" },
-    { "source": "/api/push-subscribe", "destination": "/api/system?action=push-subscribe" },
-    { "source": "/api/reminders", "destination": "/api/system?action=reminders" },
-    { "source": "/api/vapid-public-key", "destination": "/api/system?action=vapid-public-key" },
-    { "source": "/api/agent-tool-result", "destination": "/api/system?action=agent-tool-result" },
-    { "source": "/api/search", "destination": "/api/system?action=search" },
-    { "source": "/api/realtime-session", "destination": "/api/system?action=realtime-session" },
-    { "source": "/api/email-callback", "destination": "/api/system?action=email-callback" },
-    { "source": "/api/email-list", "destination": "/api/system?action=email-list" },
-    { "source": "/api/email-send", "destination": "/api/system?action=email-send" },
-    { "source": "/api/email-ignore", "destination": "/api/system?action=email-ignore" },
-    { "source": "/api/email-calendar", "destination": "/api/system?action=email-calendar" },
-
-    { "source": "/ar", "destination": "/index.html" },
-    { "source": "/en", "destination": "/index.html" },
-    { "source": "/fr", "destination": "/index.html" },
-    { "source": "/hi", "destination": "/index.html" },
-    { "source": "/ur", "destination": "/index.html" },
-    { "source": "/bn", "destination": "/index.html" },
-    { "source": "/ne", "destination": "/index.html" },
-    { "source": "/id", "destination": "/index.html" },
-    { "source": "/fil", "destination": "/index.html" },
-    { "source": "/tr", "destination": "/index.html" },
-    { "source": "/zh", "destination": "/index.html" },
-    { "source": "/ru", "destination": "/index.html" },
-    { "source": "/es", "destination": "/index.html" },
-    { "source": "/ml", "destination": "/index.html" }
+    {
+      "source": "/i/:id",
+      "destination": "/api/media?action=img&id=:id"
+    },
+    {
+      "source": "/api/openai",
+      "destination": "/api/ai?action=openai"
+    },
+    {
+      "source": "/api/gemini",
+      "destination": "/api/ai?action=gemini"
+    },
+    {
+      "source": "/api/groq",
+      "destination": "/api/ai?action=groq"
+    },
+    {
+      "source": "/api/claude",
+      "destination": "/api/ai?action=claude"
+    },
+    {
+      "source": "/api/cohere",
+      "destination": "/api/ai?action=cohere"
+    },
+    {
+      "source": "/api/deepseek",
+      "destination": "/api/ai?action=deepseek"
+    },
+    {
+      "source": "/api/mistral",
+      "destination": "/api/ai?action=mistral"
+    },
+    {
+      "source": "/api/openrouter",
+      "destination": "/api/ai?action=openrouter"
+    },
+    {
+      "source": "/api/perplexity",
+      "destination": "/api/ai?action=perplexity"
+    },
+    {
+      "source": "/api/design-create",
+      "destination": "/api/tools?action=design-create"
+    },
+    {
+      "source": "/api/construction-create",
+      "destination": "/api/tools?action=construction-create"
+    },
+    {
+      "source": "/api/construction-view",
+      "destination": "/api/tools?action=construction-view"
+    },
+    {
+      "source": "/api/construction-library",
+      "destination": "/api/tools?action=construction-library"
+    },
+    {
+      "source": "/api/design-suggest",
+      "destination": "/api/tools?action=design-suggest"
+    },
+    {
+      "source": "/api/fashion-create",
+      "destination": "/api/tools?action=fashion-create"
+    },
+    {
+      "source": "/api/fashion-suggest",
+      "destination": "/api/tools?action=fashion-suggest"
+    },
+    {
+      "source": "/api/studio-create",
+      "destination": "/api/tools?action=studio-create"
+    },
+    {
+      "source": "/api/studio-suggest",
+      "destination": "/api/tools?action=studio-suggest"
+    },
+    {
+      "source": "/api/portrait-style",
+      "destination": "/api/tools?action=portrait-style"
+    },
+    {
+      "source": "/api/analyze-zip",
+      "destination": "/api/tools?action=analyze-zip"
+    },
+    {
+      "source": "/api/adchat",
+      "destination": "/api/tools?action=adchat"
+    },
+    {
+      "source": "/api/adimage",
+      "destination": "/api/tools?action=adimage"
+    },
+    {
+      "source": "/api/video-create",
+      "destination": "/api/video?action=video-create"
+    },
+    {
+      "source": "/api/video-script",
+      "destination": "/api/video?action=video-script"
+    },
+    {
+      "source": "/api/video-status",
+      "destination": "/api/video?action=video-status"
+    },
+    {
+      "source": "/api/video-upscale-create",
+      "destination": "/api/video?action=video-upscale-create"
+    },
+    {
+      "source": "/api/auth",
+      "destination": "/api/account?action=auth"
+    },
+    {
+      "source": "/api/auth-google-callback",
+      "destination": "/api/account?action=auth-google-callback"
+    },
+    {
+      "source": "/api/admin-actions",
+      "destination": "/api/account?action=admin-actions"
+    },
+    {
+      "source": "/api/admin-stats",
+      "destination": "/api/account?action=admin-stats"
+    },
+    {
+      "source": "/api/vip",
+      "destination": "/api/account?action=vip"
+    },
+    {
+      "source": "/api/usage-status",
+      "destination": "/api/account?action=usage-status"
+    },
+    {
+      "source": "/api/points",
+      "destination": "/api/account?action=points"
+    },
+    {
+      "source": "/api/create-checkout-session",
+      "destination": "/api/account?action=create-checkout-session"
+    },
+    {
+      "source": "/api/paypal-client-id",
+      "destination": "/api/account?action=paypal-client-id"
+    },
+    {
+      "source": "/api/paypal-order",
+      "destination": "/api/account?action=paypal-order"
+    },
+    {
+      "source": "/api/share",
+      "destination": "/api/account?action=share"
+    },
+    {
+      "source": "/api/feedback",
+      "destination": "/api/account?action=feedback"
+    },
+    {
+      "source": "/api/tts",
+      "destination": "/api/media?action=tts"
+    },
+    {
+      "source": "/api/stt",
+      "destination": "/api/media?action=stt"
+    },
+    {
+      "source": "/api/translate",
+      "destination": "/api/media?action=translate"
+    },
+    {
+      "source": "/api/maha-image",
+      "destination": "/api/media?action=maha-image"
+    },
+    {
+      "source": "/api/blob-client-upload",
+      "destination": "/api/media?action=blob-client-upload"
+    },
+    {
+      "source": "/api/check-reminders",
+      "destination": "/api/system?action=check-reminders"
+    },
+    {
+      "source": "/api/push-subscribe",
+      "destination": "/api/system?action=push-subscribe"
+    },
+    {
+      "source": "/api/reminders",
+      "destination": "/api/system?action=reminders"
+    },
+    {
+      "source": "/api/vapid-public-key",
+      "destination": "/api/system?action=vapid-public-key"
+    },
+    {
+      "source": "/api/agent-tool-result",
+      "destination": "/api/system?action=agent-tool-result"
+    },
+    {
+      "source": "/api/search",
+      "destination": "/api/system?action=search"
+    },
+    {
+      "source": "/api/realtime-session",
+      "destination": "/api/system?action=realtime-session"
+    },
+    {
+      "source": "/api/email-callback",
+      "destination": "/api/system?action=email-callback"
+    },
+    {
+      "source": "/api/email-list",
+      "destination": "/api/system?action=email-list"
+    },
+    {
+      "source": "/api/email-send",
+      "destination": "/api/system?action=email-send"
+    },
+    {
+      "source": "/api/email-ignore",
+      "destination": "/api/system?action=email-ignore"
+    },
+    {
+      "source": "/api/email-calendar",
+      "destination": "/api/system?action=email-calendar"
+    },
+    {
+      "source": "/ar",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/en",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/fr",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/hi",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ur",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/bn",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ne",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/id",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/fil",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/tr",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/zh",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ru",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/es",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ml",
+      "destination": "/index.html"
+    }
   ]
 }
