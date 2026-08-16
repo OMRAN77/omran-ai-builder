@@ -26,6 +26,27 @@ module.exports = async (req, res) => {
     const name = cut(b.name, 30);
     const school = cut(b.school, 40);
     const subject = cut(b.subject, 30);
+    const hint = String(b.hint || '').slice(0, 300);
+
+    // 🎨 v731: ثيمات متنوعة — كل توليد شكل مختلف؛ وإذا ذكر المستخدم ثيمًا التُزم به
+    const THEMES = [
+      { k: /فضاء|كواكب|نجوم|صاروخ|رائد/i, d: 'OUTER SPACE theme: rocket-shaped, planet-ring, star, crescent-moon, astronaut-helmet, UFO, comet, telescope, saturn, alien-face, meteor-badge and galaxy-swirl frames; deep navy, purple, teal and silver palette with tiny stars, rockets and planets doodles' },
+      { k: /ديناصور|دايناصور/i, d: 'DINOSAUR theme: dino-egg, T-rex-head, footprint, volcano, palm-leaf, triceratops-badge, dino-spine-arch, cracked-egg, bone, cartoon-claw, jungle-leaf and roar-bubble frames; green, orange, brown and lime palette with tiny dino footprints and leaves doodles' },
+      { k: /أميرة|اميرة|برنسيس|تاج|ملكة/i, d: 'PRINCESS theme: crown, castle, magic-mirror, diamond, tiara-arch, carriage, magic-wand-star, rose, butterfly, heart-locket, glass-slipper and ribbon-bow frames; pink, gold, lilac and rose palette with tiny crowns, sparkles and hearts doodles' },
+      { k: /كرة|كوره|فوتبول|رياض/i, d: 'SPORTS theme: soccer-ball, trophy, medal, jersey, whistle, goal-net-arch, champion-shield, star-burst, stopwatch, victory-ribbon, stadium-badge and flame frames; green, white, gold and red palette with tiny balls, trophies and stars doodles' },
+      { k: /بحر|سمك|قرش|محيط|شاطئ/i, d: 'OCEAN theme: fish, shell, starfish, wave-circle, submarine-porthole, octopus, sailboat, anchor-badge, treasure-chest, bubble-cluster, dolphin-arch and lighthouse frames; aqua, coral, sandy-yellow and deep-blue palette with tiny bubbles, fish and shells doodles' },
+      { k: /سيارات|سيارة|سباق|شاحن/i, d: 'RACE CARS theme: race-car, steering-wheel, traffic-light, checkered-flag-badge, tire, speedometer, road-sign, helmet, trophy-cup, turbo-star, finish-line-arch and license-plate frames; red, yellow, black-checker and blue palette with tiny cars and flags doodles' },
+      { k: /يونيكورن|وحيد القرن|قوس قزح/i, d: 'UNICORN & RAINBOW theme: unicorn-head, rainbow-arch, cloud, shooting-star, ice-cream, candy, magic-horn-badge, heart-wings, lollipop, cupcake, sparkle-burst and moon-star frames; pastel rainbow palette with tiny rainbows, stars and clouds doodles' },
+      { k: /حيوانات|غابة|أسد|اسد|قط|باندا/i, d: 'CUTE ANIMALS theme: panda-face, lion-mane, cat-ears, bear-hug, bunny-ears, fox-face, paw-print, koala, owl, elephant, penguin-badge and monkey-swing frames; warm orange, brown, cream and green palette with tiny paws and leaves doodles' },
+      { k: /ورد|زهور|زهر|فراش/i, d: 'FLOWERS & GARDEN theme: sunflower, daisy, tulip-arch, butterfly, ladybug-badge, leaf-wreath, watering-can, bee, mushroom-house, petal-circle, vine-frame and rainbow-flower frames; spring pastel palette with tiny petals, bees and butterflies doodles' },
+      { k: null, d: 'CLASSIC SCHOOL theme: circle, heart, star, cloud, hexagon, flower, shield-badge, rounded-square, oval, ribbon-rosette, pencil-shaped and open-book frames; cheerful pastel palette (soft blue, mint, peach, lilac, sunny yellow) with tiny stars, pencils and books doodles' },
+    ];
+    let theme = null;
+    for (const t of THEMES) { if (t.k && t.k.test(hint)) { theme = t; break; } }
+    if (!theme) theme = THEMES[Math.floor(Math.random() * THEMES.length)];
+    // تنويع إضافي: تخطيطات مختلفة كل مرة
+    const LAYOUTS = ['a tidy grid of 12 small stickers (4 rows x 3 columns)', 'a tidy grid of 12 small stickers (3 rows x 4 columns, landscape-ish cells)', 'a playful staggered arrangement of 12 small stickers (rows slightly offset like a honeycomb)'];
+    const layout = LAYOUTS[Math.floor(Math.random() * LAYOUTS.length)];
     const hasImg = typeof b.imageBase64 === 'string' && b.imageBase64.length > 100;
     if (!hasImg) {
       res.status(400).end(JSON.stringify({ error: 'no image', message_ar: 'أرفق صورة الطفل أولاً عشان أسوي الطوابع.' }));
@@ -41,9 +62,8 @@ module.exports = async (req, res) => {
 
     let p = 'A printable sticker/stamp sheet for a school kid, vertical portrait page on a clean WHITE background, designed for home printing and scissor cutting.\n'
       + 'The provided image is the child\'s REAL photo. STRICT RULE: the face must stay EXACTLY as photographed — same face, same features, same skin tone, same hair. Do NOT beautify, restyle, cartoonize or replace the face. You may neatly crop it into each sticker frame.\n'
-      + 'Layout: a tidy grid of 12 small stickers (4 rows x 3 columns), evenly spaced with generous white gaps and a thin light-grey dashed cut line around every sticker.\n'
-      + 'Every sticker features the child\'s photo inside a different cute frame shape: circle, heart, star, cloud, hexagon, flower, shield/badge, rounded square, oval, ribbon rosette, pencil-shaped frame, open-book-shaped frame.\n'
-      + 'Frames use cheerful kid-friendly pastel colours (soft blue, mint, peach, lilac, sunny yellow) with tiny playful doodles (stars, sparkles, pencils, books) around the frames — never covering the face.\n'
+      + 'Layout: ' + layout + ', evenly spaced with generous white gaps and a thin light-grey dashed cut line around every sticker.\n'
+      + 'Every sticker features the child\'s photo inside a DIFFERENT frame — all 12 frames must be visibly different from each other. ' + theme.d + '. Doodles never cover the face.\n'
       + (function(){
         var lines = [];
         if (name) lines.push('the name "' + name + '" in clear bold lettering');
