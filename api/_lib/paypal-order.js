@@ -12,8 +12,9 @@
 const { verifyToken, getUser, putUser } = require('./auth.js');
 
 const PLANS = {
-  basic: { amount: '5.00', name: 'خطة 5$ - 300 رسالة شهريًا / Basic Plan' },
-  pro: { amount: '15.00', name: 'خطة 15$ - رسائل غير محدودة / Pro Plan' },
+  basic: { amount: '10.00', name: 'خطة 10$ - 300 رسالة شهريًا / Basic Plan' },
+  pro: { amount: '20.00', name: 'خطة 20$ - رسائل غير محدودة / Pro Plan' },
+  max: { amount: '100.00', name: 'خطة Max 100$ - 5000 نقطة / Max Plan' },
 };
 
 function baseUrl() {
