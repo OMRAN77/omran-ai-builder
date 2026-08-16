@@ -1,0 +1,10 @@
+{
+  "name": "omran-external-agent",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Standalone approval-gated operations agent",
+  "engines": { "node": "24.x" },
+  "scripts": {
+    "check": "node --check api/health.js && node --check api/tasks.js"
+  }
+}
