@@ -25,6 +25,7 @@ function load(action) {
     case 'stocks': return require('./_lib/stocks.js');
     case 'adchat': return require('./_lib/adchat.js');
     case 'adimage': return require('./_lib/adimage.js');
+    case 'stamps': return require('./_lib/stamps.js');
     default: return null;
   }
 }
