@@ -13929,13 +13929,27 @@ async function sendPrompt(){
       // 🎨 v328: صورة/شعار مرفق + طلب تصميم → صورة المستخدم تُضمَّن كما هي — ممنوع إعادة رسمها
       text += '\n(ملاحظة للنظام: المستخدم أرفق صورة/شعارًا — إذا كان ردك تصميمًا أو كودًا يجب استخدام صورته نفسها كما هي عبر src="__USER_IMAGE__" أو background-image:url(\'__USER_IMAGE__\') بالضبط، والتطبيق يستبدلها بالصورة الحقيقية تلقائيًا. ممنوع منعًا باتًا استبدال صورة المستخدم بلوجو أو صورة من تصميمك أو من الإنترنت — صورة المستخدم هي الأصل الرسمي وتظهر بدون أي تشويه أو قلب أو قص)';
     }
-    // 🖼️ صورة مرفقة بدون أي نص → نسأل المستخدم محليًا شو يبي (بدون أي استهلاك API)
+    // 🖼️ صورة مرفقة بدون أي نص → v716: إذا للمحادثة سياق واضح نحلّلها مباشرة، وإلا نسأل محليًا
     if(__srcImg && !(text || '').trim()){
       cur.lastEditedImage = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' };
       cur.lastMsgWasImageEdit = true;
-      cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'وصلتني الصورة 👍 شو تبي أسوي فيها؟' : 'Got the image 👍 What would you like to do with it?') });
-      renderAll(); saveState();
-      return;
+      // v716: «وصلتني الصورة 👍 شو تبي أسوي فيها؟» كانت تُقال حتى لو المستخدم أرسل الصورة
+      // استجابةً لطلب صريح في المحادثة (مثال: «أرسل لقطة شاشة لأحدد السبب»). الآن:
+      // إذا في المحادثة رسائل نصية حديثة ذات معنى → نمرّر الصورة للنموذج مع تعليمة
+      // أن يحلّلها في ضوء السياق مباشرة. السؤال المحلي يبقى فقط للمحادثة بلا سياق.
+      var __imgCtx = (cur.messages || []).slice(-6).filter(function(m){
+        return m && typeof m.content === 'string' && m.content.trim().length >= 12
+          && m.content.indexOf('وصلتني الصورة') === -1 && m.content.indexOf('Got the image') === -1;
+      });
+      if(__imgCtx.length){
+        text = (lang === 'ar')
+          ? '(ملاحظة للنظام: المستخدم أرفق صورة استكمالًا لسياق المحادثة أعلاه — حلّل الصورة مباشرة واربطها بآخر موضوع في المحادثة ورُدّ بجواب عملي، ولا تسأل المستخدم ماذا يريد أن يفعل بها)'
+          : '(System note: the user attached an image continuing the conversation above — analyze it directly in that context and give a practical answer; do not ask what they want to do with it)';
+      } else {
+        cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'وصلتني الصورة 👍 شو تبي أسوي فيها؟' : 'Got the image 👍 What would you like to do with it?') });
+        renderAll(); saveState();
+        return;
+      }
     }
     // 🎬 v363: شخصية كرتونية تتكلم من الدردشة مباشرة — صورة → كرتون (Gemini) → فيديو ناطق (Runway)
     let __charImg = __srcImg
