@@ -18,6 +18,19 @@ body{margin:0;background:#090b12;color:#eef2ff;font:16px system-ui;min-height:10
 <script>
 const status=document.querySelector('#status');
 fetch('/api/health').then(r=>r.json()).then(x=>status.textContent='الحالة: '+(x.ok?'جاهز':'غير جاهز')+'\nالاتصالات: '+JSON.stringify(x.integrations)).catch(()=>status.textContent='تعذر الاتصال بالخدمة.');
-document.querySelector('#submit').onclick=async()=>{const task=document.querySelector('#task').value.trim();if(!task)return;status.textContent='جاري إدخال المهمة…';const r=await fetch('/api/tasks',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:document.querySelector('#action').value,task})});status.textContent=JSON.stringify(await r.json(),null,2);};
+document.querySelector('#submit').onclick=async()=>{
+  const task=document.querySelector('#task').value.trim(),action=document.querySelector('#action').value;
+  if(!task)return;
+  try{
+    status.textContent='منى تحلل المهمة وتبني الخطة…';
+    const planResponse=await fetch('/api/plan',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({task})});
+    const plan=await planResponse.json();
+    if(!planResponse.ok){status.textContent=JSON.stringify(plan,null,2);return;}
+    status.textContent='الخطة:\n'+JSON.stringify(plan.plan,null,2)+'\n\nجاري إدخال المهمة…';
+    const response=await fetch('/api/tasks',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action,task})});
+    const result=await response.json();
+    status.textContent+=' \n\nالحالة:\n'+JSON.stringify(result,null,2);
+  }catch(error){status.textContent='تعذر تنفيذ المهمة: '+error.message;}
+};
 </script>
 </html>
