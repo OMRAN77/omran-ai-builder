@@ -2178,6 +2178,34 @@ async function sendPrompt(){
           text += '\n(ملاحظة للنظام: المستخدم أرفق صورة لهذا الإعلان — اجعلها صورة البطل باستخدام src="__USER_IMAGE__" بالضبط، والتفاصيل خارج الصورة حسب قالب OUTSIDE)';
         }
       }
+    } else if(text && cur.__stPending && (/^\s*([1-9]|1[0-4])\s*$/.test(text) || /فضاء|كواكب|صاروخ|ديناصور|دايناصور|أميرة|اميرة|برنسيس|ملكة|كرة|كوره|رياض|بحر|سمك|قرش|شاطئ|سيار|سباق|يونيكورن|قوس قزح|حيوان|غابة|باندا|ورد|زهور|فراش|تراث|صقر|روبوت|حلوى|حلويات|كيك|دونات|كلاسيكي|مدرسي كلاسيكي|فاجئني|عشوائي/i.test(text)) && text.length < 60){
+      // 🏷️ v732: المستخدم اختار ثيم الطوابع من قائمة الاقتراحات
+      const __sp = cur.__stPending; cur.__stPending = null;
+      const __numMap = {1:'فضاء',2:'ديناصور',3:'أميرة',4:'كرة',5:'بحر',6:'سيارة سباق',7:'يونيكورن',8:'حيوانات',9:'ورد',10:'مدرسي كلاسيكي',11:'تراث صقر',12:'روبوت',13:'حلويات',14:'فراشة'};
+      const __nm = text.match(/^\s*([1-9]|1[0-4])\s*$/);
+      const __stHint = __nm ? __numMap[Number(__nm[1])] : text;
+      __showImgLoading(thinkingDiv, 'جارٍ تصميم الطوابع', 'Designing stamps');
+      try{
+        const __stBody = { name:__sp.name, school:__sp.school, subject:__sp.subject, hint:__stHint, imageBase64:__sp.b64, mimeType:__sp.mime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
+        const __stRes = await fetch('/api/tools?action=stamps',{method:'POST',headers:{'Content-Type':'application/json'},signal:genAbortController.signal,body:JSON.stringify(__stBody)});
+        const __stData = await __stRes.json().catch(()=>({}));
+        if(!__stRes.ok || !__stData.imageBase64){
+          thinkingDiv.remove();
+          cur.messages.push({role:'assistant',content:(__stData&&__stData.message_ar)||(lang==='ar'?'تعذّر تصميم الطوابع، حاول مجدداً.':'Stamps design failed.')});
+        } else {
+          thinkingDiv.remove();
+          const __stMime = __stData.mimeType||'image/webp';
+          cur.lastEditedImage={b64:__stData.imageBase64,mime:__stMime};
+          cur.lastMsgWasImageEdit=true;
+          cur.messages.push({role:'assistant',content:'',attachments:[{name:'stamps.webp',isImage:true,mime:__stMime,dataUrl:'data:'+__stMime+';base64,'+__stData.imageBase64}]});
+        }
+      }catch(__e){
+        if(__e&&__e.name==='AbortError') return;
+        thinkingDiv.remove();
+        cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر تصميم الطوابع، حاول مجدداً.':'Stamps design failed.'});
+      }
+      renderAll(); saveState();
+      return;
     } else if(text && /(?:^|[\s،,.])(طوابع|ملصقات|ستيكرات|استيكرات)/i.test(text) && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !__IMG_EDIT_VERB_RE.test(text) && !__IMGF_NOT_RE.test(text) && !__adIntentRe.test(text)){
       // 🏷️ v725: طوابع المدرسة — صورة الطفل + اسمه → ورقة طوابع جاهزة للطباعة والقص
       // الصورة: إما مرفقة حالاً (__srcImg) أو آخر صورة معدّلة (cur.lastEditedImage)
@@ -2200,6 +2228,14 @@ async function sendPrompt(){
       __stName = __stName.replace(__stCutRe,'').trim();
       __stSchool = __stSchool.replace(/\s*(?:و\s*)?(?:مادته|مادتها|مادة|ماده|المادة|الماده)(?=\s|$)[\s\S]*$/,'').trim();
       __stSubject = __stSubject.replace(/\s*(?:و\s*)?(?:مدرسته|مدرستها|مدرسة|مدرسه|المدرسة|المدرسه)(?=\s|$)[\s\S]*$/,'').trim();
+      if(!/فضاء|كواكب|صاروخ|ديناصور|دايناصور|أميرة|اميرة|برنسيس|ملكة|كرة|كوره|رياض|بحر|سمك|قرش|شاطئ|سيار|سباق|يونيكورن|قوس قزح|حيوان|غابة|باندا|ورد|زهور|فراش|تراث|صقر|روبوت|حلوى|حلويات|كيك|دونات|كلاسيكي|مدرسي كلاسيكي|فاجئني|عشوائي/i.test(text)){
+        // 🎨 v732: اقتراحات قبل التوليد — يختار المستخدم الثيم أولاً
+        cur.__stPending = { b64:__stSrcB64, mime:__stSrcMime, name:__stName, school:__stSchool, subject:__stSubject };
+        thinkingDiv.remove();
+        cur.messages.push({role:'assistant',content:'اختر شكل الطوابع قبل ما أبدأ 🏷️ اكتب الرقم أو الاسم:\n1️⃣ فضاء 🚀\n2️⃣ ديناصورات 🦖\n3️⃣ أميرات 👑\n4️⃣ رياضة ⚽\n5️⃣ بحر 🌊\n6️⃣ سيارات سباق 🏎️\n7️⃣ يونيكورن 🦄\n8️⃣ حيوانات 🐼\n9️⃣ ورود 🌸\n🔟 مدرسي كلاسيكي 📚\n11- تراث وصقور 🦅\n12- روبوتات 🤖\n13- حلويات 🍩\n14- فراشات 🦋\n\nأو اكتب «فاجئني» وأختار لك ✨'});
+        renderAll(); saveState();
+        return;
+      }
       __showImgLoading(thinkingDiv, 'جارٍ تصميم الطوابع', 'Designing stamps');
       try{
         const __stBody = { name:__stName, school:__stSchool, subject:__stSubject, hint:text, imageBase64:__stSrcB64, mimeType:__stSrcMime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
