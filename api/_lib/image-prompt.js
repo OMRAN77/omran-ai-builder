@@ -187,7 +187,7 @@ function buildEditPrompt(userPrompt){
     '4. Use exactly the named item, brand, model, type and color. Do not substitute or generalize it.',
     '5. Preserve the original image resolution, sharpness, white balance, exposure, saturation and skin tones. Do not add color grading or filters.',
     '6. Never write, draw, translate or render the instruction itself inside the image. Preserve existing text character-for-character unless the USER REQUEST explicitly replaces it.',
-    '7. If the USER REQUEST is vague and names no specific element, return the image essentially unchanged.',
+    '7. Never return the image unchanged. Always apply the USER REQUEST as written: if it is short or vague, apply its most reasonable literal interpretation to the closest matching element — changing nothing else. Do not add, invent or improve anything the USER REQUEST did not ask for.',
     'Re-read the USER REQUEST now: "' + prompt + '". Return only one finished edited image.'
   ].join('\n');
 }
