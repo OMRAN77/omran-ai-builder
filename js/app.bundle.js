@@ -13897,10 +13897,20 @@ async function sendPrompt(){
         return;
       }
       const __stNameM = text.match(/(?:باسم|بأسم|اسمه|اسمها|اسم|إسم|بي\s*اسم)\s*([^\n.،,؟!]{2,25})/);
-      const __stName = __stNameM ? __stNameM[1].trim() : '';
+      let __stName = __stNameM ? __stNameM[1].trim() : '';
+      // 🏫 v729: المدرسة والمادة اختياريتان — «مدرسة كذا» و«مادة كذا»
+      const __stSchM = text.match(/(?:مدرسته|مدرستها|مدرسة|مدرسه|المدرسة|المدرسه)\s*[:：]?\s*([^\n.،,؟!]{2,35})/);
+      const __stSubM = text.match(/(?:مادته|مادتها|مادة|ماده|المادة|الماده)\s*[:：]?\s*([^\n.،,؟!]{2,25})/);
+      let __stSchool = __stSchM ? __stSchM[1].trim() : '';
+      let __stSubject = __stSubM ? __stSubM[1].trim() : '';
+      // نظّف تداخل الحقول: الاسم قد يبتلع «مدرسة...» أو «مادة...» لأنه يلتقط حتى نهاية الجملة
+      const __stCutRe = /\s*(?:و\s*)?(?:مدرسته|مدرستها|مدرسة|مدرسه|المدرسة|المدرسه|مادته|مادتها|مادة|ماده|المادة|الماده)(?=\s|$)[\s\S]*$/;
+      __stName = __stName.replace(__stCutRe,'').trim();
+      __stSchool = __stSchool.replace(/\s*(?:و\s*)?(?:مادته|مادتها|مادة|ماده|المادة|الماده)(?=\s|$)[\s\S]*$/,'').trim();
+      __stSubject = __stSubject.replace(/\s*(?:و\s*)?(?:مدرسته|مدرستها|مدرسة|مدرسه|المدرسة|المدرسه)(?=\s|$)[\s\S]*$/,'').trim();
       __showImgLoading(thinkingDiv, 'جارٍ تصميم الطوابع', 'Designing stamps');
       try{
-        const __stBody = { name:__stName, imageBase64:__stSrcB64, mimeType:__stSrcMime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
+        const __stBody = { name:__stName, school:__stSchool, subject:__stSubject, imageBase64:__stSrcB64, mimeType:__stSrcMime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
         const __stRes = await fetch('/api/tools?action=stamps',{method:'POST',headers:{'Content-Type':'application/json'},signal:genAbortController.signal,body:JSON.stringify(__stBody)});
         const __stData = await __stRes.json().catch(()=>({}));
         if(!__stRes.ok || !__stData.imageBase64){
