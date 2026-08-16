@@ -13877,6 +13877,37 @@ async function sendPrompt(){
           text += '\n(ملاحظة للنظام: المستخدم أرفق صورة لهذا الإعلان — اجعلها صورة البطل باستخدام src="__USER_IMAGE__" بالضبط، والتفاصيل خارج الصورة حسب قالب OUTSIDE)';
         }
       }
+    } else if(text && /(?:^|[\s،,.])(طوابع|ملصقات|ستيكرات|استيكرات)/i.test(text) && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text)){
+      // 🏷️ v724: طوابع المدرسة — صورة الطفل + اسمه → ورقة طوابع جاهزة للطباعة والقص
+      if(!(cur.lastEditedImage && cur.lastEditedImage.b64)){
+        cur.messages.push({role:'assistant',content: lang==='ar' ? 'أرفق صورة الطفل أولاً (زر +) ثم اكتب: طوابع باسم فلان 🏷️' : 'Attach the child\'s photo first (+ button), then write: stamps with the name ...'});
+        renderAll(); saveState();
+        return;
+      }
+      const __stNameM = text.match(/(?:باسم|بأسم|اسمه|اسمها|اسم|إسم)\s+([^\n.،,؟!]{2,25})/);
+      const __stName = __stNameM ? __stNameM[1].trim() : '';
+      __showImgLoading(thinkingDiv, 'جارٍ تصميم الطوابع', 'Designing stamps');
+      try{
+        const __stBody = { name:__stName, imageBase64:cur.lastEditedImage.b64, mimeType:cur.lastEditedImage.mime||'image/jpeg', token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
+        const __stRes = await fetch('/api/tools?action=stamps',{method:'POST',headers:{'Content-Type':'application/json'},signal:genAbortController.signal,body:JSON.stringify(__stBody)});
+        const __stData = await __stRes.json().catch(()=>({}));
+        if(!__stRes.ok || !__stData.imageBase64){
+          thinkingDiv.remove();
+          cur.messages.push({role:'assistant',content:(__stData&&__stData.message_ar)||(lang==='ar'?'تعذّر تصميم الطوابع، حاول مجدداً.':'Stamps design failed.')});
+        } else {
+          thinkingDiv.remove();
+          const __stMime = __stData.mimeType||'image/webp';
+          cur.lastEditedImage={b64:__stData.imageBase64,mime:__stMime};
+          cur.lastMsgWasImageEdit=true;
+          cur.messages.push({role:'assistant',content:'',attachments:[{name:'stamps.webp',isImage:true,mime:__stMime,dataUrl:'data:'+__stMime+';base64,'+__stData.imageBase64}]});
+        }
+      }catch(__e){
+        if(__e&&__e.name==='AbortError') return;
+        thinkingDiv.remove();
+        cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر تصميم الطوابع، حاول مجدداً.':'Stamps design failed.'});
+      }
+      renderAll(); saveState();
+      return;
     } else if(text && __adIntentRe.test(text) && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !/(داخل|خارج)/i.test(text)){
       // v695: إعلان → /api/tools?action=adimage (gpt-image-2) بجودة احترافية حقيقية
       const __wM  = text.match(/(?:مطلوب|السعر|ب\s*(?:فقط)?)\s*([\d,،\s]+(?:الف|ألف|k)?)/i);
