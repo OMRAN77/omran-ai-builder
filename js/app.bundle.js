@@ -13886,7 +13886,7 @@ async function sendPrompt(){
           text += '\n(ملاحظة للنظام: المستخدم أرفق صورة لهذا الإعلان — اجعلها صورة البطل باستخدام src="__USER_IMAGE__" بالضبط، والتفاصيل خارج الصورة حسب قالب OUTSIDE)';
         }
       }
-    } else if(text && /(?:^|[\s،,.])(طوابع|ملصقات|ستيكرات|استيكرات)/i.test(text) && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !__IMG_EDIT_VERB_RE.test(text)){
+    } else if(text && /(?:^|[\s،,.])(طوابع|ملصقات|ستيكرات|استيكرات)/i.test(text) && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !__IMG_EDIT_VERB_RE.test(text) && !__IMGF_NOT_RE.test(text) && !__adIntentRe.test(text)){
       // 🏷️ v725: طوابع المدرسة — صورة الطفل + اسمه → ورقة طوابع جاهزة للطباعة والقص
       // الصورة: إما مرفقة حالاً (__srcImg) أو آخر صورة معدّلة (cur.lastEditedImage)
       const __stSrcB64   = (__srcImg && __srcImg.dataUrl) ? __srcImg.dataUrl.split(',')[1] : (cur.lastEditedImage && cur.lastEditedImage.b64 ? cur.lastEditedImage.b64 : '');
