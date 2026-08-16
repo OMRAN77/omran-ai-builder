@@ -14251,7 +14251,7 @@ function __showImgLoading(el, ar, en){
 }
 
     // v579: صورة مرفقة + طلب قصير (مثلًا بعد زرّ «تعديل») = تعديل عليها افتراضيًّا — إلّا سؤال/بحث/فيديو/شكر/صورة جديدة/قراءة-ترجمة-وصف.
-    const __ATT_VISION_RE = /(ترجم|translate|اقرأ|اقري|إقرأ|قراءة|\bread\b|وصف|اوصف|صف\s|describe|حلل|حلّل|analyz|قارن|compare)/i;
+    const __ATT_VISION_RE = /(ترجم|translate|اقرأ|اقري|إقرأ|قراءة|\bread\b|وصف|اوصف|صف\s|describe|حلل|حلّل|analyz|قارن|compare|حساب|باي\s*بال|بايبال|paypal|بنك|تجاري|اشتراك|تفعيل|تسجيل|إعدادات|اعدادات|رصيد|فلوس|أموال|اموال|جوجل\s*بلاي|قوقل|google\s*play|app\s*store|\baccount\b|\bsettings\b|sign\s*up|log\s*in)/i; // v719: أسئلة الحسابات والخدمات مع صورة = سؤال محادثة، ليست تعديل صورة
     const __ATT_EDIT = !!(__srcImg && !__srcImg._fromMemory && text && text.length <= 220 && __imgEditRe.test(text) && !__IMGF_NOT_RE.test(text) && !__IMGF_NEW_RE.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text));
     if(text && !cur.adMode && (__IMG_UPGRADE || __IMG_FOLLOW || __ATT_EDIT || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || (__IMG_UPGRADE && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
       __showImgLoading(thinkingDiv, __IMG_UPGRADE ? 'جاري ترقية المشهد…' : 'جاري تعديل الصورة…', __IMG_UPGRADE ? 'Upgrading the scene…' : 'Editing image…');
