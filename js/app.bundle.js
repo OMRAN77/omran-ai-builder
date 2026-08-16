@@ -13880,17 +13880,20 @@ async function sendPrompt(){
         }
       }
     } else if(text && /(?:^|[\s،,.])(طوابع|ملصقات|ستيكرات|استيكرات)/i.test(text) && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !__IMG_EDIT_VERB_RE.test(text)){
-      // 🏷️ v724: طوابع المدرسة — صورة الطفل + اسمه → ورقة طوابع جاهزة للطباعة والقص
-      if(!(cur.lastEditedImage && cur.lastEditedImage.b64)){
+      // 🏷️ v725: طوابع المدرسة — صورة الطفل + اسمه → ورقة طوابع جاهزة للطباعة والقص
+      // الصورة: إما مرفقة حالاً (__srcImg) أو آخر صورة معدّلة (cur.lastEditedImage)
+      const __stSrcB64   = (__srcImg && __srcImg.dataUrl) ? __srcImg.dataUrl.split(',')[1] : (cur.lastEditedImage && cur.lastEditedImage.b64 ? cur.lastEditedImage.b64 : '');
+      const __stSrcMime  = (__srcImg && __srcImg.mime) ? __srcImg.mime : (cur.lastEditedImage && cur.lastEditedImage.mime ? cur.lastEditedImage.mime : 'image/jpeg');
+      if(!__stSrcB64){
         cur.messages.push({role:'assistant',content: lang==='ar' ? 'أرفق صورة الطفل أولاً (زر +) ثم اكتب: طوابع باسم فلان 🏷️' : 'Attach the child\'s photo first (+ button), then write: stamps with the name ...'});
         renderAll(); saveState();
         return;
       }
-      const __stNameM = text.match(/(?:باسم|بأسم|اسمه|اسمها|اسم|إسم)\s+([^\n.،,؟!]{2,25})/);
+      const __stNameM = text.match(/(?:باسم|بأسم|اسمه|اسمها|اسم|إسم|بي\s*اسم)\s*([^\n.،,؟!]{2,25})/);
       const __stName = __stNameM ? __stNameM[1].trim() : '';
       __showImgLoading(thinkingDiv, 'جارٍ تصميم الطوابع', 'Designing stamps');
       try{
-        const __stBody = { name:__stName, imageBase64:cur.lastEditedImage.b64, mimeType:cur.lastEditedImage.mime||'image/jpeg', token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
+        const __stBody = { name:__stName, imageBase64:__stSrcB64, mimeType:__stSrcMime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
         const __stRes = await fetch('/api/tools?action=stamps',{method:'POST',headers:{'Content-Type':'application/json'},signal:genAbortController.signal,body:JSON.stringify(__stBody)});
         const __stData = await __stRes.json().catch(()=>({}));
         if(!__stRes.ok || !__stData.imageBase64){
