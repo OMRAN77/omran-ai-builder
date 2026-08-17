@@ -1204,7 +1204,11 @@ function renderMessages(keepScroll){
     if(m.role !== 'user' && typeof __mc === 'string' && __mc.indexOf('__IMG_') !== -1){
       __genShown = [];
       __mc = __mc.replace(/!?\[[^\]]*\]\(\s*(__IMG_\d+__)\s*\)|`?(__IMG_\d+__)`?/g, (whole, a, b) => {
-        const url = (window.__genImages || {})[a || b];
+        const tok = a || b;
+        // v735 — احتفظ بالصورة داخل الرسالة نفسها حتى بعد إعادة تعيين __genImages
+        m._imgCache = m._imgCache || {};
+        const url = m._imgCache[tok] || (window.__genImages || {})[tok];
+        if(url) m._imgCache[tok] = url;
         if(!url) return '';
         if(__genShown.indexOf(url) === -1) __genShown.push(url);
         return '';
