@@ -13886,10 +13886,10 @@ async function sendPrompt(){
           text += '\n(ملاحظة للنظام: المستخدم أرفق صورة لهذا الإعلان — اجعلها صورة البطل باستخدام src="__USER_IMAGE__" بالضبط، والتفاصيل خارج الصورة حسب قالب OUTSIDE)';
         }
       }
-    } else if(text && cur.__stPending && (/^\s*([1-9]|1[0-4])\s*$/.test(text) || /فضاء|كواكب|صاروخ|ديناصور|دايناصور|أميرة|اميرة|برنسيس|ملكة|كرة|كوره|رياضة|رياضه|بحر|سمك|قرش|شاطئ|سيار|سباق|يونيكورن|قوس قزح|حيوان|غابة|باندا|ورد|زهور|فراش|تراث|صقر|روبوت|حلوى|حلويات|كيك|دونات|كلاسيكي|مدرسي كلاسيكي|فاجئني|عشوائي/i.test(text)) && text.length < 60){
+    } else if(text && cur.__stPending && (/^\s*([1-9]|1[0-9])\s*$/.test(text) || /فضاء|كواكب|صاروخ|ديناصور|دايناصور|أميرة|اميرة|برنسيس|ملكة|كرة|كوره|رياضة|رياضه|بحر|سمك|قرش|شاطئ|سيار|سباق|يونيكورن|قوس قزح|حيوان|غابة|باندا|ورد|زهور|فراش|تراث|صقر|روبوت|حلوى|حلويات|كيك|دونات|كلاسيكي|مدرسي كلاسيكي|كرومي|ماي ملدي|ميلودي|هالو كاتي|هيلو كيتي|كيتي|الدبب|دببة|فاجئني|عشوائي/i.test(text)) && text.length < 60){
       // 🏷️ v732: المستخدم اختار ثيم الطوابع من قائمة الاقتراحات
       const __sp = cur.__stPending; cur.__stPending = null;
-      const __numMap = {1:'فضاء',2:'ديناصور',3:'أميرة',4:'كرة',5:'بحر',6:'سيارة سباق',7:'يونيكورن',8:'حيوانات',9:'ورد',10:'مدرسي كلاسيكي',11:'تراث صقر',12:'روبوت',13:'حلويات',14:'فراشة'};
+      const __numMap = {1:'فضاء',2:'ديناصور',3:'أميرة',4:'كرة',5:'بحر',6:'سيارة سباق',7:'يونيكورن',8:'حيوانات',9:'ورد',10:'مدرسي كلاسيكي',11:'تراث صقر',12:'روبوت',13:'حلويات',14:'فراشة',15:'كرومي',16:'ماي ملدي',17:'هالو كاتي',18:'الدببة الثلاثة'};
       const __nm = text.match(/^\s*([1-9]|1[0-4])\s*$/);
       const __stHint = __nm ? __numMap[Number(__nm[1])] : text;
       __showImgLoading(thinkingDiv, 'جارٍ تصميم الطوابع', 'Designing stamps');
@@ -13936,11 +13936,66 @@ async function sendPrompt(){
       __stName = __stName.replace(__stCutRe,'').trim();
       __stSchool = __stSchool.replace(/\s*(?:و\s*)?(?:مادته|مادتها|مادة|ماده|المادة|الماده)(?=\s|$)[\s\S]*$/,'').trim();
       __stSubject = __stSubject.replace(/\s*(?:و\s*)?(?:مدرسته|مدرستها|مدرسة|مدرسه|المدرسة|المدرسه)(?=\s|$)[\s\S]*$/,'').trim();
-      if(!/فضاء|كواكب|صاروخ|ديناصور|دايناصور|أميرة|اميرة|برنسيس|ملكة|كرة|كوره|رياضة|رياضه|بحر|سمك|قرش|شاطئ|سيار|سباق|يونيكورن|قوس قزح|حيوان|غابة|باندا|ورد|زهور|فراش|تراث|صقر|روبوت|حلوى|حلويات|كيك|دونات|كلاسيكي|مدرسي كلاسيكي|فاجئني|عشوائي/i.test(text)){
-        // 🎨 v732: اقتراحات قبل التوليد — يختار المستخدم الثيم أولاً
-        cur.__stPending = { b64:__stSrcB64, mime:__stSrcMime, name:__stName, school:__stSchool, subject:__stSubject };
-        thinkingDiv.remove();
-        cur.messages.push({role:'assistant',content:'اختر شكل الطوابع قبل ما أبدأ 🏷️ اكتب الرقم أو الاسم:\n1️⃣ فضاء 🚀\n2️⃣ ديناصورات 🦖\n3️⃣ أميرات 👑\n4️⃣ رياضة ⚽\n5️⃣ بحر 🌊\n6️⃣ سيارات سباق 🏎️\n7️⃣ يونيكورن 🦄\n8️⃣ حيوانات 🐼\n9️⃣ ورود 🌸\n🔟 مدرسي كلاسيكي 📚\n11- تراث وصقور 🦅\n12- روبوتات 🤖\n13- حلويات 🍩\n14- فراشات 🦋\n\nأو اكتب «فاجئني» وأختار لك ✨'});
+      if(!/فضاء|كواكب|صاروخ|ديناصور|دايناصور|أميرة|اميرة|برنسيس|ملكة|كرة|كوره|رياضة|رياضه|بحر|سمك|قرش|شاطئ|سيار|سباق|يونيكورن|قوس قزح|حيوان|غابة|باندا|ورد|زهور|فراش|تراث|صقر|روبوت|حلوى|حلويات|كيك|دونات|كلاسيكي|مدرسي كلاسيكي|كرومي|ماي ملدي|ميلودي|هالو كاتي|هيلو كيتي|كيتي|الدبب|دببة|فاجئني|عشوائي/i.test(text)){
+        // 🎨 v734: ورقة ثيمات كاملة — overlay picker بدل نص مرقّم
+        window.__stPickTheme = window.__stPickTheme || function(){
+          return new Promise(function(rs){
+            var __themes=[
+              {k:'فضاء',e:'🚀'},{k:'ديناصور',e:'🦖'},{k:'أميرة',e:'👑'},
+              {k:'رياضة',e:'⚽'},{k:'بحر',e:'🌊'},{k:'سيارة سباق',e:'🏎️'},
+              {k:'يونيكورن',e:'🦄'},{k:'حيوانات',e:'🐼'},{k:'ورود',e:'🌸'},
+              {k:'تراث صقر',e:'🦅'},{k:'روبوتات',e:'🤖'},{k:'حلويات',e:'🍩'},
+              {k:'فراشات',e:'🦋'},{k:'مدرسي كلاسيكي',e:'📚'},
+              {k:'كرومي',e:'🎨'},{k:'ماي ملدي',e:'🐰'},{k:'هالو كاتي',e:'🎀'},{k:'الدببة الثلاثة',e:'🐻'}
+            ];
+            var ov=document.createElement('div');
+            ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.76);backdrop-filter:blur(7px);display:flex;align-items:center;justify-content:center;padding:12px;';
+            var cards='';
+            __themes.forEach(function(t){
+              cards+='<button class="__stCard" data-k="'+t.k+'" style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);border-radius:16px;padding:13px 6px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:7px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">'
+                +'<span style="font-size:34px;line-height:1.1">'+t.e+'</span>'
+                +'<span style="font-size:11px;color:#ddd;font-weight:600;text-align:center;line-height:1.3">'+t.k+'</span>'
+                +'</button>';
+            });
+            ov.innerHTML='<div dir="rtl" style="width:100%;max-width:430px;max-height:87vh;overflow-y:auto;background:#18181f;border:1px solid rgba(255,255,255,.12);border-radius:22px;padding:18px;color:#fff;font-family:inherit;box-shadow:0 24px 70px rgba(0,0,0,.7);">'
+              +'<div style="font-size:17px;font-weight:700;margin-bottom:3px;text-align:center;">🏷️ اختر ثيم الطوابع</div>'
+              +'<div style="font-size:12px;opacity:.55;margin-bottom:14px;text-align:center;">اضغط وأبدأ التصميم مباشرة</div>'
+              +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:13px;">'+cards+'</div>'
+              +'<button id="__stSurp" style="width:100%;padding:13px;border-radius:14px;border:1px solid rgba(168,130,255,.4);background:rgba(168,130,255,.1);color:#c9b3ff;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:9px;touch-action:manipulation;">✨ فاجئني — اختر لي</button>'
+              +'<button id="__stCnc" style="width:100%;padding:10px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:transparent;color:#777;font-size:13px;cursor:pointer;touch-action:manipulation;">إلغاء</button>'
+              +'</div>';
+            document.body.appendChild(ov);
+            function done(v){try{document.body.removeChild(ov);}catch(_){}rs(v);}
+            ov.querySelectorAll('.__stCard').forEach(function(b){b.onclick=function(){done(b.getAttribute('data-k'));};});
+            ov.querySelector('#__stSurp').onclick=function(){done('فاجئني');};
+            ov.querySelector('#__stCnc').onclick=function(){done(null);};
+            ov.addEventListener('click',function(e){if(e.target===ov)done(null);});
+          });
+        };
+        var __stHint = await window.__stPickTheme();
+        if(!__stHint){ thinkingDiv.remove(); renderAll(); saveState(); return; }
+        // فاجئني → أرسل hint فارغ عشان السيرفر يختار عشوائياً
+        var __stFinalHint = __stHint === 'فاجئني' ? '' : __stHint;
+        __showImgLoading(thinkingDiv, 'جارٍ تصميم الطوابع', 'Designing stamps');
+        try{
+          var __stBodyOv = { name:__stName, school:__stSchool, subject:__stSubject, hint:__stFinalHint, imageBase64:__stSrcB64, mimeType:__stSrcMime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
+          var __stResOv = await fetch('/api/tools?action=stamps',{method:'POST',headers:{'Content-Type':'application/json'},signal:genAbortController.signal,body:JSON.stringify(__stBodyOv)});
+          var __stDataOv = await __stResOv.json().catch(()=>({}));
+          if(!__stResOv.ok || !__stDataOv.imageBase64){
+            thinkingDiv.remove();
+            cur.messages.push({role:'assistant',content:(__stDataOv&&__stDataOv.message_ar)||(lang==='ar'?'تعذّر تصميم الطوابع، حاول مجدداً.':'Stamps design failed.')});
+          } else {
+            thinkingDiv.remove();
+            var __stMimeOv = __stDataOv.mimeType||'image/webp';
+            cur.lastEditedImage={b64:__stDataOv.imageBase64,mime:__stMimeOv};
+            cur.lastMsgWasImageEdit=true;
+            cur.messages.push({role:'assistant',content:'',attachments:[{name:'stamps.webp',isImage:true,mime:__stMimeOv,dataUrl:'data:'+__stMimeOv+';base64,'+__stDataOv.imageBase64}]});
+          }
+        }catch(__eOv){
+          if(__eOv&&__eOv.name==='AbortError') return;
+          thinkingDiv.remove();
+          cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر تصميم الطوابع، حاول مجدداً.':'Stamps design failed.'});
+        }
         renderAll(); saveState();
         return;
       }
