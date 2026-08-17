@@ -56,7 +56,7 @@ function openCheckout(plan){
     // If the settings dialog is open via showModal(), it sits in the browser
     // top layer and makes the rest of the page inert — close it first.
     const sd = document.getElementById('settingsDialog');
-    if (sd && sd.open && typeof sd.close === 'function') { try { sd.close(); } catch (e) {} }
+    if (sd && sd.open && typeof sd.close === 'function') { try { sd.close(); } catch (e) { /* guard-ok — cleanup: close() may throw on some browsers */ } }
     overlay.style.display = 'flex';
   }
   loadPaypalButtons();
