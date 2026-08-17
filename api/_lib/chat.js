@@ -487,7 +487,7 @@ async function liveSearch(query, foreign, countryCode, cityName) {
     if (isDeals) {
       let cName = '';
       if (countryCode && countryCode.length === 2) {
-        try { cName = new Intl.DisplayNames(['en'], { type: 'region' }).of(countryCode.toUpperCase()) || ''; } catch(e) {}
+        try { cName = new Intl.DisplayNames(['en'], { type: 'region' }).of(countryCode.toUpperCase()) || ''; } catch(e){ /* guard-ok — cleanup, intentional */ }
       }
       if (!cName) cName = 'United Arab Emirates'; // افتراضي إمارات
       const loc = [cityName, cName].filter(Boolean).join(' ');
@@ -807,7 +807,7 @@ module.exports = async (req, res) => {
           const urlRe = /https?:\/\/([^/\s)\]"]+)/g;
           let m;
           while ((m = urlRe.exec(corpus || '')) !== null) {
-            try { allowed.add(m[1].replace(/^www\./, '').toLowerCase().split('/')[0]); } catch(e) {}
+            try { allowed.add(m[1].replace(/^www\./, '').toLowerCase().split('/')[0]); } catch(e) { /* guard-ok — URL parsing for domain allow-list; any error means the match is malformed, skip silently */ }
           }
           const ok = (url) => { try { return allowed.has(new URL(url).hostname.replace(/^www\./, '').toLowerCase()); } catch(e) { return false; } };
           return text
