@@ -28,6 +28,9 @@ module.exports = async (req, res) => {
     const cl = upstream.headers.get('content-length');
     res.setHeader('Content-Type', ct);
     res.setHeader('Cache-Control', 'no-store');
+    // Content-Disposition: attachment يجبر المتصفح على التحميل بدل الفتح
+    // ضروري على هواوي وأندرويد حيث blob URL لا يُحمَّل بضغطة واحدة
+    res.setHeader('Content-Disposition', 'attachment; filename="omran-ai-video.mp4"');
     if (cl) res.setHeader('Content-Length', cl);
 
     // Stream chunk-by-chunk — لا نضع الفيديو كله في الذاكرة دفعة واحدة
