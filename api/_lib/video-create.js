@@ -90,9 +90,11 @@ module.exports = async (req, res) => {
     // Runway only accepts 5 or 10 seconds — snap anything else
     finalDuration = finalDuration <= 7 ? 5 : 10;
 
+    // الأنيمي: نصّ واضح بأنه رسوم متحركة ثنائية الأبعاد لا يُشبه الواقع أبداً
+    // الواقعي: نرفض صراحةً كل أشكال الرسوم والديجيتال آرت حتى يلتزم Runway
     const styleSuffix = (style === 'anime')
-      ? ', anime and cartoon animation style, 2D animated, vibrant colors'
-      : ', cinematic realistic footage, photorealistic, high detail';
+      ? ', 2D anime cartoon animation, illustrated characters, bold outlines, cel-shaded, Studio Ghibli style, NOT realistic, NOT photographic'
+      : ', ultra-realistic live-action footage, real camera recording, natural lighting, photographic quality, shot on 4K camera, cinematic depth of field — absolutely no cartoon, no animation, no illustration, no digital art, no anime, no CGI characters';
     // Runway hard limit: promptText <= 1000 chars TOTAL (base + suffix)
     let finalPrompt = String(promptText).trim().slice(0, 1000 - styleSuffix.length) + styleSuffix;
 
