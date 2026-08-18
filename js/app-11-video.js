@@ -151,10 +151,23 @@
     }
   };
 
-  // v522: فتح صانع الفيديو من المحادثة — يُستدعى عند اكتشاف __ACTION_VIDEO: في رد الذكاء الاصطناعي
-  window.omranOpenVideoMaker = function(prompt){
+  // v524: فتح صانع الفيديو من المحادثة — يقبل prompt اختياري + صورة hero اختيارية
+  window.omranOpenVideoMaker = function(prompt, heroDataUrl, heroMimeType){
     try{
       if(promptEl && prompt) promptEl.value = String(prompt).trim();
+      // صورة hero — تُعرض في المعاينة وتُستخدم في الفيلم
+      if(heroDataUrl){
+        try{
+          const prev = document.getElementById('videoMakerHeroPreview');
+          const clr  = document.getElementById('videoMakerHeroClear');
+          const heroRowEl = document.getElementById('videoMakerHeroRow');
+          filmHeroBase64 = heroDataUrl.indexOf(',') !== -1 ? heroDataUrl.split(',')[1] : heroDataUrl;
+          filmHeroMime   = heroMimeType || 'image/jpeg';
+          if(prev){ prev.src = heroDataUrl; prev.style.display = 'inline-block'; }
+          if(clr)  { clr.style.display = 'inline-block'; }
+          if(heroRowEl){ heroRowEl.style.display = ''; }
+        }catch(he){ try{ __swallow(he,'video:open-hero'); }catch(_){ /* guard-ok */ } }
+      }
       modal.style.display = 'flex';
       try{ closeHeaderMenu(); }catch(e){ /* guard-ok — closeHeaderMenu اختيارية */ }
       const owner = isOwnerAccount();
