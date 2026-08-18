@@ -455,7 +455,7 @@ module.exports = async (req, res) => {
     // On any error: {search:false} so behavior degrades to the old keyword
     // heuristic handled client-side. Free: doesn't consume the daily limit.
     if (body && body.classify) {
-      if (/عمران|omran/i.test(query)) { res.status(200).json({ search: false }); return; }
+      if (/عمران|omran|التطبيق هذا|هذا التطبيق|موقعك|تطبيقك|مين سواك|من صنعك|وش تسوي|ايش تقدر|إيش تقدر|قدراتك|النقاط|الاشتراك|كيف استخدم|how to use|what is this|who made/i.test(query)) { res.status(200).json({ search: false }); return; }
       const clsPrompt = 'You are a web-search router. Decide if answering the user message requires a LIVE internet search for real-world/current facts.\nAnswer YES if it asks about: a person, company, shop, brand, product, app (other than this one), social media account/profile, phone number or contact info, an ad/listing (car, house, item for sale), place, event, price, news, weather, sports, or anything the answer could be wrong without checking the web.\nAnswer NO if it is: greetings/chit-chat, opinions, coding/building apps, writing/translation/summarization, math/logic, general timeless knowledge (science, history, definitions), or questions about this app itself.\nReply with exactly one word: YES or NO.\nUser message: ' + query.slice(0, 500);
       const callCls = async (url, key, model) => {
         const r = await fetch(url, {

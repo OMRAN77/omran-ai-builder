@@ -941,7 +941,14 @@ module.exports = async (req, res) => {
         let input = {};
         try { input = JSON.parse(cb.inputJson || '{}'); } catch (e) { logError('chat/tool-input-parse', e); }
         let result = 'أداة غير معروفة';
-        if (cb.name === 'web_search') result = filterDuplicateUrls(await tavilySearch(input.query || '', reC, !foreignTurn && !!(lastUser && NUM_ASK_RE.test(lastUser.content))));
+        if (cb.name === 'web_search') {
+          const _q = input.query || '';
+          if (/عمران|omran|التطبيق هذا|هذا التطبيق|موقعك|تطبيقك|مين سواك|من صنعك|وش تسوي|ايش تقدر|إيش تقدر|قدراتك|النقاط|الاشتراك|كيف استخدم|how to use|what is this|who made/i.test(_q)) {
+            result = 'هذا سؤال عن التطبيق نفسه — أجب من معلوماتك المحلية بدون بحث.';
+          } else {
+            result = filterDuplicateUrls(await tavilySearch(_q, reC, !foreignTurn && !!(lastUser && NUM_ASK_RE.test(lastUser.content))));
+          }
+        }
         else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
         else if (cb.name === 'run_js') result = await runInClient(send, 'run_js', input);
         else if (cb.name === 'generate_image') result = await runInClient(send, 'generate_image', input, 75000);

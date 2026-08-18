@@ -310,6 +310,11 @@ function injectNote(action, body, country) {
   const intent = quickIntent(userText) || 'general';
   const intentNote = INTENT_NOTES[intent] || '';
 
+  // v--- حارس أسئلة التطبيق: لا بحث، جاوب من المعلومات المحلية
+  const ABOUT_APP_RE = /(عمران|omran|التطبيق هذا|هذا التطبيق|موقعك|تطبيقك|مين سواك|من صنعك|وش تسوي|ايش تقدر|إيش تقدر|قدراتك|النقاط|الاشتراك|كيف استخدم|how to use|what is this|who made)/i;
+  const aboutApp = userText && ABOUT_APP_RE.test(userText);
+  const APP_FACTS_NOTE = aboutApp ? '\n# معلومات التطبيق (أجب منها مباشرة — لا تبحث)\nأنت مساعد داخل تطبيق "عمران AI" من فريق عمران AI.\nالتطبيق يقدم: محادثة ذكية بالعربية، إنشاء تطبيقات ومواقع وألعاب من وصف نصي مع معاينة وتعديل، توليد صور وفيديو وصوت، قسم القرآن، نظام نقاط.\nقواعد: أجب من هذه المعلومات. لا تستخدم أدوات ولا تبحث لتعرف عن نفسك. إذا سُئلت عن شيء غير مذكور، قل إنك غير متأكد ووجّه لصفحة الإعدادات.\n' : '';
+
   // v--- مطابقة الأسلوب: نستخرج كل رسائل المستخدم + التفضيل الصريح
   const userMsgs = extractUserMessages(action, body);
   const tonePref = (body && typeof body.tone === 'string') ? body.tone : 'auto';
@@ -317,7 +322,7 @@ function injectNote(action, body, country) {
 
   const HIVE = require('./_lib/collective.js').block(); // v545 — معرفة جماعيّة
   if (mode === 'balanced') {
-    applyNote(action, body, balancedNote(action, country) + toneNote + intentNote + HIVE);
+    applyNote(action, body, balancedNote(action, country) + toneNote + intentNote + APP_FACTS_NOTE + HIVE);
     return;
   }
 
@@ -344,6 +349,7 @@ function injectNote(action, body, country) {
   }
   note += toneNote;   // v--- مطابقة الأسلوب
   note += intentNote; // v--- ملاحظة النيّة
+  note += APP_FACTS_NOTE; // v--- حارس أسئلة التطبيق
   note += HIVE; // v545
   tagLastUserMessage(action, body);
   applyNote(action, body, note);
