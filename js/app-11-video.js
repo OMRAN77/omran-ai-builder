@@ -166,6 +166,8 @@
           if(prev){ prev.src = heroDataUrl; prev.style.display = 'inline-block'; }
           if(clr)  { clr.style.display = 'inline-block'; }
           if(heroRowEl){ heroRowEl.style.display = ''; }
+          // v525: عند وجود صورة → واقعي تلقائياً لأن الأنيمي يُضيّع تفاصيل الصورة الأصلية
+          if(styleEl && styleEl.value !== 'realistic') styleEl.value = 'realistic';
         }catch(he){ try{ __swallow(he,'video:open-hero'); }catch(_){ /* guard-ok */ } }
       }
       modal.style.display = 'flex';
