@@ -104,9 +104,10 @@ module.exports = async (req, res) => {
 
     // 🎬 صورة مرفقة → image_to_video (تحريك الصورة نفسها)، بدونها → text_to_video
     const useImage = !!(imageBase64 && String(imageBase64).length > 50);
+    // v527: endpoint الإنتاج (بدون .dev.) — api.dev.runwayml.com أصبح يخدم API مختلف
     const endpoint = useImage
-      ? 'https://api.dev.runwayml.com/v1/image_to_video'
-      : 'https://api.dev.runwayml.com/v1/text_to_video';
+      ? 'https://api.runwayml.com/v1/image_to_video'
+      : 'https://api.runwayml.com/v1/text_to_video';
     // عندما تُرفق صورة نُضيف تعليمة الحفاظ على هوية الشخص في مقدمة الـ prompt
     // بدونها يتجاهل Runway الصورة ويولّد شخصية عشوائية مختلفة تمامًا
     if (useImage) {
