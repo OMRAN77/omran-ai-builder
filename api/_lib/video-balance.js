@@ -10,7 +10,7 @@ module.exports = async (req, res) => {
     let best = 0;
     for (const key of keys) {
       try {
-        const r = await fetch('https://api.dev.runwayml.com/v1/organization', {
+        const r = await fetch('https://api.runwayml.com/v1/organization', {
           headers: {
             Authorization: 'Bearer ' + key,
             'X-Runway-Version': '2024-11-06',
