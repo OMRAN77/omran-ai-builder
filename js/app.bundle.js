@@ -16986,11 +16986,18 @@ function openShareModal(project){
   const resultEl = $('#videoMakerResult');
   const downloadEl = $('#videoMakerDownloadLink');
   // v291: تنزيل تلقائي للفيديو أول ما يجهز
+  // v525: proxyVideoUrl — يمرّر رابط الفيديو عبر سيرفر عمران بدل جلبه مباشرة من المتصفح
+  // يحل مشكلة CORS على الجوال وهواوي التي تمنع fetch() من مصادر خارجية
+  function proxyVideoUrl(url){
+    if(!url || /^blob:/.test(url)) return url;
+    return '/api/video-download?url=' + encodeURIComponent(url);
+  }
+
   async function autoSaveVideo(url, name){
     try{
       let href = url;
       if(!/^blob:/.test(String(url))){
-        const b = await fetch(url).then(r => r.blob());
+        const b = await fetch(proxyVideoUrl(url)).then(r => r.blob());
         href = URL.createObjectURL(b);
       }
       const a = document.createElement('a');
@@ -17876,7 +17883,7 @@ function openShareModal(project){
           }, 8000);
         });
         setStatus(isEn() ? '⬇️ Downloading the video...' : '⬇️ جاري تحميل الفيديو...');
-        const vres = await fetch(videoUrl);
+        const vres = await fetch(proxyVideoUrl(videoUrl));
         if(!vres.ok) throw new Error('download failed ' + vres.status);
         const vblob = await vres.blob();
         const vurl = URL.createObjectURL(vblob);
@@ -18074,17 +18081,19 @@ function openShareModal(project){
         }
       }
 
-      // v523: always serve a blob URL — cross-origin URLs break <download> on mobile and Huawei browsers
+      // v525: always serve a blob URL via server proxy — direct cross-origin fetch fails on mobile/Huawei
       let finalUrl;
       if(finalIsBlob){
         finalUrl = URL.createObjectURL(finalSrc);
       } else {
         try{
           setStatus(isEn() ? '⬇️ Downloading video...' : '⬇️ جاري تحميل الفيديو...');
-          const vres = await fetch(finalSrc);
+          const vres = await fetch(proxyVideoUrl(finalSrc));
+          if(!vres.ok) throw new Error('proxy ' + vres.status);
           finalUrl = URL.createObjectURL(await vres.blob());
         } catch(e){
-          finalUrl = finalSrc; // fallback to direct URL if fetch fails
+          // آخر ملاذ: رابط مباشر (قد لا يعمل زر التحميل لكن الفيديو يُشغَّل)
+          finalUrl = finalSrc;
         }
       }
       setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
