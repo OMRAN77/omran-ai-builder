@@ -8,16 +8,11 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
 
-  const raw = req.query && (req.query.url || '');
-  let url;
-  try {
-    url = decodeURIComponent(String(raw));
-  } catch (e) {
-    res.status(400).json({ error: 'bad url encoding' });
-    return;
-  }
+  // Express يحلل query string بشكل تلقائي — لا نستدعي decodeURIComponent مرة ثانية
+  // لأن روابط GCS/S3 الموقّعة تحتوي على %XX في الـ signature، وإعادة فكّها يكسرها
+  const url = String((req.query && req.query.url) || '');
   if (!url || !url.startsWith('https://')) {
-    res.status(400).json({ error: 'invalid url' });
+    res.status(400).json({ error: 'invalid url: ' + url.slice(0, 80) });
     return;
   }
 
