@@ -17804,38 +17804,33 @@ function openShareModal(project){
         const oldLinks = document.getElementById('filmSceneLinks');
         if(oldLinks) oldLinks.innerHTML = '';
         resultEl.onended = null;
-        const isPhone = /Android|iPhone|iPad|iPod|Mobile|Huawei|HarmonyOS/i.test(navigator.userAgent) && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
-        if(isPhone && builtScenes.length > 2){
-          // Skip the heavy in-browser merge entirely on phones — it crashes the tab.
-          showScenesPlaylist();
-        } else {
-          setStatus(isEn() ? '🔗 Merging all scenes into your final film...' : '🔗 جاري دمج كل المشاهد بالفيلم النهائي...');
-          let finalUrl = null;
+        // دائماً ندمج — حتى على هواوي (الدمج يعمل بالجهاز لا بالسيرفر)
+        setStatus(isEn() ? '🔗 Merging all scenes into your final film...' : '🔗 جاري دمج كل المشاهد بالفيلم النهائي...');
+        let finalUrl = null;
+        try{
+          const finalBlob = await buildLongVideo(builtScenes, (i, total) => {
+            setStatus((isEn() ? '🔗 Merging scene ' : '🔗 جاري دمج المشهد ') + (i + 1) + '/' + total + '...');
+          });
+          finalUrl = URL.createObjectURL(finalBlob);
+        } catch(e){
           try{
-            const finalBlob = await buildLongVideo(builtScenes, (i, total) => {
-              setStatus((isEn() ? '🔗 Merging scene ' : '🔗 جاري دمج المشهد ') + (i + 1) + '/' + total + '...');
-            });
-            finalUrl = URL.createObjectURL(finalBlob);
-          } catch(e){
-            try{
-              const blob = await concatScenes(builtScenes.map(s => s.videoUrl));
-              finalUrl = URL.createObjectURL(blob);
-              setStatus(isEn() ? '⚠️ Narration merge failed; film merged without narration.' : '⚠️ تعذّر دمج السرد؛ تم دمج الفيلم بدون السرد.');
-            } catch(e2){
-              finalUrl = null;
-            }
+            const blob = await concatScenes(builtScenes.map(s => s.videoUrl));
+            finalUrl = URL.createObjectURL(blob);
+            setStatus(isEn() ? '⚠️ Narration merge failed; film merged without narration.' : '⚠️ تعذّر دمج السرد؛ تم دمج الفيلم بدون السرد.');
+          } catch(e2){
+            finalUrl = null;
           }
-          if(finalUrl){
-            setStatus(isEn() ? '✅ Your film is ready!' : '✅ فيلمك جاهز!');
-            resultEl.src = finalUrl;
-            resultEl.style.display = 'block';
-            downloadEl.href = finalUrl;
-            downloadEl.style.display = 'block';
-            autoSaveVideo(finalUrl);
-          } else {
-            // Merge failed — never lose the scenes: play them back-to-back instead.
-            showScenesPlaylist();
-          }
+        }
+        if(finalUrl){
+          setStatus(isEn() ? '✅ Your film is ready!' : '✅ فيلمك جاهز!');
+          resultEl.src = finalUrl;
+          resultEl.style.display = 'block';
+          downloadEl.href = finalUrl;
+          downloadEl.download = 'omran-film.mp4'; // يجبر المتصفح على التحميل لا الفتح
+          downloadEl.style.display = 'block';
+        } else {
+          // آخر ملاذ: عرض المشاهد ورا بعض مع روابط تحميل منفصلة
+          showScenesPlaylist();
         }
       } catch(e){
         setStatus(friendlyError(e));
