@@ -17165,6 +17165,50 @@ function openShareModal(project){
     if(noteEl) noteEl.style.display = (modeVal === 'veo') ? 'block' : 'none';
     if(!heroSupported && window.__clearFilmHero) window.__clearFilmHero();
   }
+  // 📋 معاينة وتعديل السيناريو قبل التوليد
+  function showScriptPreview(title, scenes){
+    return new Promise(resolve => {
+      const modal = document.getElementById('videoMakerModal');
+      const wrap = modal ? modal.querySelector('div') : null;
+      if(!wrap){ resolve(scenes); return; }
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:absolute;inset:0;z-index:20;background:var(--bg,#111);overflow-y:auto;padding:16px;border-radius:inherit;';
+      let html = `<h4 style="margin:0 0 10px;text-align:center;">📋 ${isEn() ? 'Review Scenes' : 'راجع مشاهد الفيلم'}</h4>`;
+      html += `<p style="font-size:12px;color:var(--muted);margin-bottom:10px;">${isEn() ? 'Edit or delete scenes before generating. Each scene = 1 video credit.' : 'عدّل أو احذف أي مشهد قبل البدء — كل مشهد = كريدت واحد.'}</p>`;
+      scenes.forEach((sc, i) => {
+        html += `<div class="sp-scene" data-idx="${i}" style="margin-bottom:10px;border:1px solid rgba(139,92,246,.35);border-radius:8px;padding:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <b style="font-size:12px;">${isEn() ? 'Scene' : 'مشهد'} ${i+1}</b>
+            <button type="button" class="sp-del" style="background:rgba(239,68,68,.15);border:none;color:#ef4444;border-radius:6px;padding:2px 10px;cursor:pointer;font-size:12px;">${isEn() ? 'Remove' : 'حذف'}</button>
+          </div>
+          <textarea rows="2" class="sp-txt" style="width:100%;font-size:12px;resize:none;box-sizing:border-box;">${(sc.visual||'').replace(/</g,'&lt;')}</textarea>
+        </div>`;
+      });
+      html += `<div style="display:flex;gap:10px;justify-content:center;margin-top:12px;">
+        <button type="button" id="spCancel" style="padding:8px 20px;border-radius:10px;background:rgba(239,68,68,.15);color:#ef4444;border:none;cursor:pointer;">${isEn() ? '❌ Cancel' : '❌ إلغاء'}</button>
+        <button type="button" id="spGo" style="padding:8px 20px;border-radius:10px;background:rgba(139,92,246,.8);color:#fff;border:none;cursor:pointer;font-weight:bold;">${isEn() ? '✨ Generate' : '✨ ابدأ التوليد'}</button>
+      </div>`;
+      overlay.innerHTML = html;
+      wrap.style.position = 'relative';
+      wrap.appendChild(overlay);
+      overlay.addEventListener('click', e => {
+        const del = e.target.closest('.sp-del');
+        if(del){ const row = del.closest('.sp-scene'); if(row){ row.style.opacity='.3'; row.style.pointerEvents='none'; row.dataset.deleted='1'; } }
+      });
+      overlay.querySelector('#spCancel').onclick = () => { overlay.remove(); resolve(null); };
+      overlay.querySelector('#spGo').onclick = () => {
+        const out = [];
+        overlay.querySelectorAll('.sp-scene').forEach((row, i) => {
+          if(row.dataset.deleted) return;
+          const txt = row.querySelector('.sp-txt');
+          out.push({ ...scenes[i], visual: (txt ? txt.value.trim() : '') || scenes[i].visual });
+        });
+        overlay.remove();
+        resolve(out.length ? out : null);
+      };
+    });
+  }
+
   function updateModeUI(){
     const m = modeEl.value;
     signatureRow.style.display = (m === 'canvas' || m === 'hybrid') ? 'flex' : 'none';
@@ -17179,11 +17223,32 @@ function openShareModal(project){
     narrationText.style.display = narrationToggle.checked ? 'block' : 'none';
     const narrationRowEl0 = document.getElementById('videoMakerNarrationRow');
     if(narrationRowEl0) narrationRowEl0.style.display = narrationToggle.checked ? 'flex' : 'none';
+    const genderRowEl = document.getElementById('videoMakerVoiceGenderRow');
+    if(genderRowEl) genderRowEl.style.display = narrationToggle.checked ? 'flex' : 'none';
   };
   durationEl.onchange = () => {
-    const isLong = durationEl.value === 'long20';
-    const isLongMinutes = durationEl.value === 'longMinutes';
-    const isFilm = durationEl.value === 'film';
+    const dv = durationEl.value;
+    const isLong = dv === 'long20';
+    const isLongMinutes = dv === 'longMinutes';
+    const isFilm = dv === 'film';
+    const isAd    = dv === 'adspot';
+    const isReels = dv === 'reels';
+
+    // وضع الإعلان السريع: 9:16 + سرد + واقعي
+    if(isAd || isReels){
+      const ratioEl = document.getElementById('videoMakerRatio');
+      if(ratioEl) ratioEl.value = '720:1280'; // طولي
+      const styleEl = document.getElementById('videoMakerStyle');
+      if(isAd && styleEl) styleEl.value = 'realistic';
+      narrationToggle.checked = true;
+      narrationToggle.disabled = false;
+      narrationText.style.display = 'block';
+      const narRow = document.getElementById('videoMakerNarrationRow');
+      if(narRow) narRow.style.display = 'flex';
+      const gRow = document.getElementById('videoMakerVoiceGenderRow');
+      if(gRow) gRow.style.display = 'flex';
+    }
+
     if(isLong || isLongMinutes || isFilm){
       qualityToggle.checked = false;
       qualityToggle.disabled = true;
@@ -17198,7 +17263,7 @@ function openShareModal(project){
       narrationToggle.checked = false;
       narrationToggle.disabled = true;
       narrationText.style.display = 'none';
-    } else {
+    } else if(!isAd && !isReels){
       narrationToggle.disabled = false;
     }
   };
@@ -17440,7 +17505,7 @@ function openShareModal(project){
         const narrationInput = narrationVal || text;
         const ttsRes = await fetch('/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: isEn() ? 'en' : 'ar' }),
+          body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: isEn() ? 'en' : 'ar', gender: getNarrationGender() }),
         });
         if(ttsRes.ok){
           const audioBlob = await ttsRes.blob();
@@ -17513,7 +17578,7 @@ function openShareModal(project){
         const narrationInput = narrationVal || text;
         const ttsRes = await fetch('/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: isEn() ? 'en' : 'ar' }),
+          body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: isEn() ? 'en' : 'ar', gender: getNarrationGender() }),
         });
         if(ttsRes.ok){
           const audioBlob = await ttsRes.blob();
@@ -17577,18 +17642,38 @@ function openShareModal(project){
 
   /* 📸 صورتك بطل الفيلم — hero photo state */
   let filmHeroBase64 = null, filmHeroMime = 'image/jpeg';
+
+  // 🔊 جنس صوت السرد
+  function getNarrationGender(){
+    const el = document.querySelector('input[name="videoVoiceGender"]:checked');
+    return el ? el.value : 'female';
+  }
+
   (function(){
     const btn = document.getElementById('videoMakerHeroBtn');
     const inp = document.getElementById('videoMakerHeroInput');
     const prev = document.getElementById('videoMakerHeroPreview');
     const clr = document.getElementById('videoMakerHeroClear');
     if(!btn || !inp) return;
+
+    // تحميل البطل المحفوظ من localStorage (أفاتار ثابت)
+    try {
+      const savedB64 = localStorage.getItem('omran_hero_b64');
+      const savedMime = localStorage.getItem('omran_hero_mime') || 'image/jpeg';
+      if(savedB64 && savedB64.length > 100){
+        filmHeroBase64 = savedB64; filmHeroMime = savedMime;
+        if(prev){ prev.src = 'data:' + savedMime + ';base64,' + savedB64; prev.style.display = 'inline-block'; }
+        if(clr) clr.style.display = 'inline-block';
+      }
+    } catch(_){}
+
     btn.onclick = () => inp.click();
     clr.onclick = window.__clearFilmHero = () => {
       filmHeroBase64 = null;
       inp.value = '';
       prev.style.display = 'none';
       clr.style.display = 'none';
+      try { localStorage.removeItem('omran_hero_b64'); localStorage.removeItem('omran_hero_mime'); } catch(_){}
     };
     inp.onchange = () => {
       const f = inp.files && inp.files[0];
@@ -17615,6 +17700,8 @@ function openShareModal(project){
         prev.style.display = 'inline-block';
         clr.style.display = 'inline-block';
         URL.revokeObjectURL(img.src);
+        // حفظ البطل في localStorage (أفاتار ثابت عبر الجلسات)
+        try { localStorage.setItem('omran_hero_b64', filmHeroBase64); localStorage.setItem('omran_hero_mime', filmHeroMime); } catch(_){}
       };
       img.src = URL.createObjectURL(f);
     };
@@ -17634,6 +17721,10 @@ function openShareModal(project){
 
     const style = styleEl.value;
     const ratio = ratioEl.value;
+    // adspot=5ث، reels=10ث — ضبط مدة فعلية لـ Runway
+    const _dv = durationEl.value;
+    if(_dv === 'adspot') durationEl.value = '5';
+    else if(_dv === 'reels') durationEl.value = '10';
     const isLong = durationEl.value === 'long20';
     const wantNarration = narrationToggle.checked;
     const wantQuality = qualityToggle.checked && !isLong;
@@ -17712,7 +17803,15 @@ function openShareModal(project){
         if(!scriptRes.ok || scriptData.error || !Array.isArray(scriptData.scenes) || !scriptData.scenes.length){
           throw new Error(scriptData.error || (isEn() ? 'Could not generate the film script.' : 'تعذّر إنشاء سيناريو الفيلم.'));
         }
-        const scenes = scriptData.scenes.slice(0, filmScenes);
+        let scenes = scriptData.scenes.slice(0, filmScenes);
+        // 📋 معاينة السيناريو — يراجع المستخدم المشاهد ويعدّلها قبل التوليد
+        setStatus(isEn() ? '📋 Review the script...' : '📋 راجع السيناريو...');
+        const approvedScenes = await showScriptPreview(scriptData.title || text, scenes);
+        if(!approvedScenes || !approvedScenes.length){
+          setStatus(isEn() ? '❌ Cancelled.' : '❌ تم الإلغاء.');
+          btnGenerate.disabled = false; return;
+        }
+        scenes = approvedScenes;
         if(!filmUseVeo){
           setStatus(isEn() ? '💳 Checking video credits...' : '💳 جاري التأكد من رصيد الفيديو...');
           const ok = await ensureRunwayCredits(scenes.length * 50);
@@ -17720,14 +17819,6 @@ function openShareModal(project){
         }
         if(filmUseVeo && filmHeroBase64){
           setStatus(isEn() ? 'ℹ️ Hero photo is supported with Runway only; continuing without it...' : 'ℹ️ صورة البطل مدعومة مع Runway فقط؛ سيتم المتابعة بدونها...');
-        }
-        const confirmMsg = isEn()
-          ? `🎬 "${scriptData.title || text}" — ${scenes.length} scenes (~${scenes.length * SCENE_SECONDS_CONST}s) with narration will be generated and merged. This uses ${scenes.length} of your daily video allowance. Continue?`
-          : `🎬 «${scriptData.title || text}» — راح نولّد ${scenes.length} مشاهد (~${scenes.length * SCENE_SECONDS_CONST} ثانية) مع سرد صوتي وندمجها بفيلم واحد. هذا يستهلك ${scenes.length} من حصتك اليومية للفيديو. تكمل؟`;
-        if(!window.confirm(confirmMsg)){
-          setStatus(isEn() ? '❌ Cancelled.' : '❌ تم الإلغاء.');
-          btnGenerate.disabled = false;
-          return;
         }
         const builtScenes = [];
         for(let i = 0; i < scenes.length; i++){
@@ -17754,7 +17845,7 @@ function openShareModal(project){
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: sc.narration || text, voice: 'maha', lang: isEn() ? 'en' : 'ar' }),
+              body: JSON.stringify({ text: sc.narration || text, voice: 'maha', lang: isEn() ? 'en' : 'ar', gender: getNarrationGender() }),
               signal: ttsCtl.signal,
             });
             clearTimeout(ttsTimer);
@@ -17971,7 +18062,7 @@ function openShareModal(project){
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: sc.narration || text, voice: 'maha', lang: isEn() ? 'en' : 'ar' }),
+              body: JSON.stringify({ text: sc.narration || text, voice: 'maha', lang: isEn() ? 'en' : 'ar', gender: getNarrationGender() }),
               signal: ttsCtl2.signal,
             });
             clearTimeout(ttsTimer2);
@@ -18065,7 +18156,7 @@ function openShareModal(project){
           const ttsRes = await fetch('/api/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: isEn() ? 'en' : 'ar' }),
+            body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: isEn() ? 'en' : 'ar', gender: getNarrationGender() }),
           });
           if(ttsRes.ok){
             const audioBlob = await ttsRes.blob();
