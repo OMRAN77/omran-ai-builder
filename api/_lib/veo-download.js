@@ -23,6 +23,7 @@ module.exports = async (req, res) => {
     res.setHeader('Content-Type', 'video/mp4');
     res.setHeader('Content-Length', String(buf.length));
     res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Content-Disposition', 'attachment; filename="omran-ai-video.mp4"');
     res.status(200).end(buf);
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
