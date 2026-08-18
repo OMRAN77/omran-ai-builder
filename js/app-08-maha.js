@@ -569,6 +569,9 @@ const __IMG_SHAPE_RE = /شكلها|شكله|شكلهم|كيف تبدو|كيف ي
 const __IMG_EN_RE = /\b(photos?|pictures?|images?|pics|thumbnails?)\b|\blooks? like\b/i;
 // توليد/تعديل صورة أو الإشارة إلى صورة مرفقة = ليس شريط بحث.
 const __IMG_MAKE_RE = /^\s*صور[هة]\s+\S|صوّر لي|صور لي|صوره لي|صورة لي|صورلي|صوّرلي|تصور لي|ارسم|أرسم|ارسمي|صمم|صمّم|اصمم|اصنع|اعمل لي|سوي لي|سوّي لي|ولّد|ولد لي|حوّل|عدّل|اقتطع|ازل الخلفية|أزل الخلفية|generate|create an image|draw|design|edit it|remove background|هذه الصورة|هالصورة|الصورة المرفقة|في الصورة|بالصورة|(?:عطني|أعطني|اعطني|هات|ابا|أبا|ابي|أبي|ابغي|أبغي|ابغى|أبغى|اريد|أريد|سو|سوي|سوّي|اعمل|أعمل|give me|make me|i want)\s+(?:لي\s+)?[^\n]{0,20}?(?:تصميم|تصور|صور[هة]|رسم[هة]|design|image|picture)/i; // v656 (مضيّق: «صور» الجمع تبقى بحثًا عن صور حقيقية): «أريد صورة…» = توليد بالذكاء الاصطناعي، لا شريط صور جوجل
+// v529: وصفة / طريقة طبخ / مكونات → صورة الطبق تلقائيًّا فوق الردّ
+const __RECIPE_IMG_RE = /(?:^|[\s،,])(?:طريقة(?:\s+(?:طبخ|تحضير|عمل|صنع|الطبخ|التحضير))?|وصف[هة](?=[\s،]|$)|مكونات(?=[\s،]|$)|تحضير(?=\s)|المقادير(?=[\s،]|$))|(?:كيف\s+[أا]?(?:طبخ|عمل|صنع|حضّر|حضر|سوّ?[يى]|أعمل|اعمل|أطبخ|اطبخ))\s|(?:how to\s+(?:cook|make|prepare|bake))\s|(?:recipe\s+(?:for|of))\s/i;
+const __RECIPE_STRIP_RE2 = /(?:طريقة(?:\s+(?:طبخ|تحضير|عمل|صنع|الطبخ|التحضير|العمل|الصنع))?|وصف[هة]|مكونات|المقادير|كيف\s+[أا]?(?:طبخ|عمل|صنع|حضّر|حضر|سوّ?[يى]|أعمل|اعمل|أطبخ|اطبخ)|تحضير|how to\s+(?:cook|make|prepare|bake)|recipe\s*(?:for|of)?|ingredients?\s*(?:for|of)?)/gi;
 // v628 عيب [د] (قياس حيّ): «هل يوجد صور لها» يجرف Tavily وGoogle إلى مواقع صور المخزون
 // (unsplash · shutterstock) وصورًا بلا علاقة. نبحث بالموضوع وحده ونُخرج ألفاظ الطلب من الاستعلام.
 const __IMG_STRIP_RE = /(?:^|[^\u0621-\u064A])(?:ال|لل|بال|وال|فال|كال)?(?:صور|صوره|صورة|لقطات|بوستر)[\u0621-\u064A]*/g;
@@ -577,10 +580,17 @@ function __imgTopicQuery(q){
   const t = String(q || '').replace(__IMG_STRIP_RE, ' ').replace(__IMG_REQ_WORDS_RE, ' ').replace(/\s{2,}/g, ' ').trim();
   return t.length >= 3 ? t.slice(0, 160) : '';
 }
+// v529: يستخرج اسم الطبق من استعلام الوصفة (يحذف كلمات الطبخ، يبقي اسم الأكلة)
+function __recipeTopicQuery(q){
+  const t = String(q || '').replace(__RECIPE_STRIP_RE2, ' ').replace(/\s{2,}/g, ' ').trim();
+  if(t.length < 2) return String(q || '').slice(0, 100); // fallback
+  // نضيف "food" للتمييز في محرّك الصور
+  return (t + (/[\u0600-\u06FF]/.test(t) ? ' food' : '')).slice(0, 130);
+}
 function __wantsImageStrip(t){
   const s = String(t || '');
   if(!s || __IMG_MAKE_RE.test(s)) return false;
-  return __IMG_ASK_RE.test(s) || __IMG_SHAPE_RE.test(s) || __IMG_EN_RE.test(s);
+  return __IMG_ASK_RE.test(s) || __IMG_SHAPE_RE.test(s) || __IMG_EN_RE.test(s) || __RECIPE_IMG_RE.test(s);
 }
 async function smartMaybeSearch(text, ctxMsgs){
   if(!text) return null;
@@ -648,7 +658,8 @@ async function smartMaybeSearch(text, ctxMsgs){
 
   // v628 عيب [ب]: نيّة صور صريحة = بحث حيّ إجباري (سؤال «هل يوجد صور» كان يمرّ بلا بحث فلا صور).
   if(__wantsImageStrip(text)){
-    let __iq = __imgTopicQuery(searchQuery);
+    // v529: وصفة/طبخ → نستخرج اسم الطبق فقط كاستعلام صورة (بدل الجملة كلّها)
+    let __iq = __RECIPE_IMG_RE.test(text) ? __recipeTopicQuery(searchQuery) : __imgTopicQuery(searchQuery);
     // «هل يوجد صور لها» بلا موضوع خاصّ بها = طلب مرجعيّ بحت: الموضوع من أوّل جملة في الردّ السابق.
     if(!__iq && ctxMsgs){
       const __ai3 = ctxMsgs.filter(m => m.role !== 'user' && m.content && String(m.content).length > 20);
