@@ -10,6 +10,7 @@ const { withErrorCapture } = require('./_lib/_errors.js');
 const { installCors } = require('./_lib/cors.js');
 const { logError } = require('./_lib/log-error.js');
 const { BIDI_RULE } = require('./_lib/_bidi.js'); // v568
+const { quickIntent, INTENT_NOTES } = require('./_lib/router.js'); // v--- مصنّف النيّة
 
 function load(action) {
   switch (action) {
@@ -302,9 +303,15 @@ function injectNote(action, body, country) {
   const mode = resolveMode(body);
   // Factory: hand the request to the provider untouched.
   if (mode === 'factory') return;
+
+  // v--- مصنّف النيّة: نستخرج نص المستخدم مرة واحدة ونحدد النيّة
+  const userText = lastUserText(action, body);
+  const intent = quickIntent(userText) || 'general';
+  const intentNote = INTENT_NOTES[intent] || '';
+
   const HIVE = require('./_lib/collective.js').block(); // v545 — معرفة جماعيّة
   if (mode === 'balanced') {
-    applyNote(action, body, balancedNote(action, country) + HIVE);
+    applyNote(action, body, balancedNote(action, country) + intentNote + HIVE);
     return;
   }
 
@@ -321,14 +328,15 @@ function injectNote(action, body, country) {
   note += noteIdentity(action);
   if (!isPremium) {
     note += IDENTITY_BEHAVIOR_NOTE;
-    if (ACADEMIC_RE.test(lastUserText(action, body))) note += ACADEMIC_NOTE;
+    if (ACADEMIC_RE.test(userText)) note += ACADEMIC_NOTE;
     if (hasAttachedImages(action, body)) {
       note += IMAGE_ANALYSIS_NOTE;
-      if (SIGNATURE_RE.test(lastUserText(action, body))) note += SIGNATURE_NOTE;
-    } else if (SIGNATURE_RE.test(lastUserText(action, body))) {
+      if (SIGNATURE_RE.test(userText)) note += SIGNATURE_NOTE;
+    } else if (SIGNATURE_RE.test(userText)) {
       note += '\n[قاعدة]: التطبيق فيه ميزة تحليل التواقيع والخط والفراسة: ① فحص تزوير التواقيع بمنهجية الفحص الجنائي ② تحليل الشخصية من التوقيع/الخط اليدوي ③ قراءة الوجه. إذا سأل المستخدم عنها ممنوع تقول "غير علمي" أو ترفض — أكّد أن الميزة موجودة واطلب منه رفع صورة التوقيع/الخط/الوجه ليبدأ التحليل فورًا.';
     }
   }
+  note += intentNote; // v--- ملاحظة النيّة
   note += HIVE; // v545
   tagLastUserMessage(action, body);
   applyNote(action, body, note);
