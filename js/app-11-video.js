@@ -150,6 +150,21 @@
       durationEl.onchange();
     }
   };
+
+  // v522: فتح صانع الفيديو من المحادثة — يُستدعى عند اكتشاف __ACTION_VIDEO: في رد الذكاء الاصطناعي
+  window.omranOpenVideoMaker = function(prompt){
+    try{
+      if(promptEl && prompt) promptEl.value = String(prompt).trim();
+      modal.style.display = 'flex';
+      try{ closeHeaderMenu(); }catch(e){ /* guard-ok — closeHeaderMenu اختيارية */ }
+      const owner = isOwnerAccount();
+      ensureLongMinutesOption(owner);
+      if(!owner && durationEl.value === 'longMinutes'){
+        durationEl.value = '5';
+        if(typeof durationEl.onchange === 'function') durationEl.onchange();
+      }
+    }catch(e){ try{ __swallow(e,'video:open-from-chat'); }catch(_){ /* guard-ok */ } }
+  };
   btnClose.onclick = () => { modal.style.display = 'none'; };
   modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
 
