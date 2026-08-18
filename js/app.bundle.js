@@ -17732,9 +17732,15 @@ function openShareModal(project){
         for(let i = 0; i < scenes.length; i++){
           const sc = scenes[i];
           setStatus((isEn() ? '🎥 Generating scene ' : '🎥 جاري توليد المشهد ') + (i + 1) + '/' + scenes.length + (filmUseVeo ? ' (Veo 3)' : '') + '...');
+          // إذا كان هناك بطل: نثبّت موضعه في كل prompt حتى يبدو بنفس المكان عبر المشاهد
+          const baseScenePrompt = sc.visual || text;
+          const heroAnchor = filmHeroBase64
+            ? 'Hero centered in frame, medium shot, consistent camera angle. '
+            : '';
+          const scenePromptWithHero = heroAnchor + baseScenePrompt;
           const videoUrl = filmUseVeo
-            ? await createVeoScene(sc.visual || text, ratio, token, wantQuality)
-            : await createSceneWithRetry(sc.visual || text, style, SCENE_SECONDS_CONST, ratio, token, false, (attempt, max) => {
+            ? await createVeoScene(scenePromptWithHero, ratio, token, wantQuality)
+            : await createSceneWithRetry(scenePromptWithHero, style, SCENE_SECONDS_CONST, ratio, token, false, (attempt, max) => {
                 setStatus(isEn()
                   ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
                   : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
