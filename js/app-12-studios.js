@@ -1,3 +1,29 @@
+// v530: مساعد ضغط الصور — يُقلّص الصورة إلى حدّ MAX px ويُصدّرها JPEG 0.85
+// يمنع خطأ «Request Entity Too Large» (413) في كل مودالات الاستوديو.
+function __compressImg(file, onDone, MAX){
+  MAX = MAX || 1024;
+  const reader = new FileReader();
+  reader.onload = function(){
+    const img = new Image();
+    img.onload = function(){
+      let w = img.width, h = img.height;
+      if(Math.max(w,h) > MAX){ const k = MAX/Math.max(w,h); w=Math.round(w*k); h=Math.round(h*k); }
+      const c = document.createElement('canvas');
+      c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      onDone(c.toDataURL('image/jpeg',0.85));
+    };
+    img.src = String(reader.result||'');
+  };
+  reader.readAsDataURL(file);
+}
+// v530: آمن res.json() — يُرجع كائن خطأ بدل رمي استثناء JSON حين يردّ السيرفر نصًّا (مثل 413)
+async function __safeJson(res){
+  const txt = await res.text().catch(()=>'');
+  try{ return JSON.parse(txt); }
+  catch(e){ return { error: txt.slice(0,200) || ('HTTP '+res.status) }; }
+}
+
 /* ---------- 🏠 AI Interior Design (Gemini image, server-side owner key) ---------- */
 (function(){
   const modal = $('#designAiModal');
@@ -64,16 +90,13 @@
     const file = fileInput.files && fileInput.files[0];
     if(!file) return;
     selectedFile = file;
-    selectedMime = file.type || 'image/jpeg';
+    selectedMime = 'image/jpeg';
     if(fileNameEl) fileNameEl.textContent = file.name;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result || '');
+    __compressImg(file, function(dataUrl){
       selectedBase64 = dataUrl.split(',')[1] || '';
       sourcePreview.src = dataUrl;
       sourcePreview.style.display = 'block';
-    };
-    reader.readAsDataURL(file);
+    });
   };
 
   let extraImagesB64 = [];
@@ -155,7 +178,7 @@
       });
       variantSrc = null;
       variantSrc = null;
-      const data = await res.json();
+      const data = await __safeJson(res);
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('designAiNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('designAiLimitReached')); return; }
@@ -220,7 +243,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64: selectedBase64, mimeType: selectedMime, lang: isEn() ? 'en' : (localStorage.getItem('aiapp_lang') || 'ar'), token }),
       });
-      const data = await res.json();
+      const data = await __safeJson(res);
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('designAiNeedLogin')); return; }
         throw new Error(data.error || 'unknown');
@@ -393,16 +416,13 @@
   fileInput.onchange = () => {
     const file = fileInput.files && fileInput.files[0];
     if(!file) return;
-    selectedMime = file.type || 'image/jpeg';
+    selectedMime = 'image/jpeg';
     if(fileNameEl) fileNameEl.textContent = file.name;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result || '');
+    __compressImg(file, function(dataUrl){
       selectedBase64 = dataUrl.split(',')[1] || '';
       sourcePreview.src = dataUrl;
       sourcePreview.style.display = 'block';
-    };
-    reader.readAsDataURL(file);
+    });
   };
 
   btnGenerate.onclick = async () => {
@@ -430,7 +450,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64: selectedBase64, mimeType: selectedMime, style: styleEl.value, backdrop: (backdropEl ? backdropEl.value : ''), beautify: (styleEl.value === 'beautify') ? { skin: !!(beautifySkinEl && beautifySkinEl.checked), light: !!(beautifyLightEl && beautifyLightEl.checked), teeth: !!(beautifyTeethEl && beautifyTeethEl.checked) } : null, ageTarget: (styleEl.value === 'ageshift' && $('#portraitAgeSelect')) ? $('#portraitAgeSelect').value : '', hairStyle: (styleEl.value === 'hairstyle' && $('#portraitHairSelect')) ? $('#portraitHairSelect').value : '', adText: (styleEl.value === 'adposter' && $('#portraitAdTextInput')) ? $('#portraitAdTextInput').value : '', charName: (styleEl.value === 'celebtoon' && $('#portraitCelebInput')) ? $('#portraitCelebInput').value : '', removeText: (styleEl.value === 'objectremove' && $('#portraitRemoveInput')) ? $('#portraitRemoveInput').value : '', outfit: (styleEl.value === 'outfit' && $('#portraitOutfitSelect')) ? $('#portraitOutfitSelect').value : '', profession: (styleEl.value === 'profession' && $('#portraitProfSelect')) ? $('#portraitProfSelect').value : '', era: (styleEl.value === 'timeshift' && $('#portraitEraSelect')) ? $('#portraitEraSelect').value : '', extraImages: (styleEl.value === 'familystyle' || styleEl.value === 'merge2') ? extraImagesB64.map(function(x){ return x.base64; }) : [], token }),
       });
-      const data = await res.json();
+      const data = await __safeJson(res);
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('portraitNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('portraitLimitReached')); return; }
@@ -676,16 +696,13 @@
   fileInput.onchange = () => {
     const file = fileInput.files && fileInput.files[0];
     if(!file) return;
-    selectedMime = file.type || 'image/jpeg';
+    selectedMime = 'image/jpeg';
     if(fileNameEl) fileNameEl.textContent = file.name;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result || '');
+    __compressImg(file, function(dataUrl){
       selectedBase64 = dataUrl.split(',')[1] || '';
       sourcePreview.src = dataUrl;
       sourcePreview.style.display = 'block';
-    };
-    reader.readAsDataURL(file);
+    });
   };
 
   btnGenerate.onclick = async () => {
@@ -725,7 +742,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
+      const data = await __safeJson(res);
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('fashionAiNeedLogin')); return; }
         if(data.error === 'daily_limit_reached'){ setStatus(t('fashionAiLimitReached')); return; }
@@ -780,7 +797,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
+      const data = await __safeJson(res);
       if(!res.ok || data.error){
         if(data.error === 'auth_required'){ setStatus(t('fashionAiNeedLogin')); return; }
         throw new Error(data.error || 'unknown');
@@ -852,7 +869,7 @@
           const res = await fetch('/api/fashion-create', {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
           });
-          const data = await res.json();
+          const data = await __safeJson(res);
           if(!res.ok || data.error) return { styleVal, error: data.error || 'unknown' };
           return { styleVal, dataUrl: 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64 };
         } catch(e){
