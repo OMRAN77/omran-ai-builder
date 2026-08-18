@@ -132,6 +132,8 @@
           <option value="10">10</option>
           <option value="long20" data-i18n="videoMakerDurationLong">20 (⛓️ مشهدين)</option>
           <option value="film" data-i18n="videoMakerDurationFilm">🎬 فيلم متكامل (سيناريو + مشاهد + سرد)</option>
+          <option value="adspot">📢 إعلان سريع (5ث طولي + سرد)</option>
+          <option value="reels">📱 ريلز ذكي (10ث طولي + سرد)</option>
 
         </select>
       </div>
@@ -166,6 +168,15 @@
       <input type="checkbox" id="videoMakerNarrationToggle">
       <span data-i18n="videoMakerNarrationToggleLabel">🎙️ إضافة تعليق صوتي (صوت مُولّد)</span>
     </label>
+    <!-- اختيار الصوت: ذكر/أنثى -->
+    <div id="videoMakerVoiceGenderRow" style="display:none; margin-top:8px; margin-bottom:2px; gap:16px; flex-wrap:wrap;" class="mini-mic-field-row">
+      <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px;">
+        <input type="radio" name="videoVoiceGender" id="videoVoiceFemale" value="female" checked> 👩 فاطمة (أنثى)
+      </label>
+      <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px;">
+        <input type="radio" name="videoVoiceGender" id="videoVoiceMale" value="male"> 👨 حمدان (ذكر)
+      </label>
+    </div>
     <div class="mini-mic-field-row" id="videoMakerNarrationRow" style="margin-top:6px; display:none;">
     <textarea id="videoMakerNarrationText" rows="2" style="width:100%; resize:vertical;" data-i18n-placeholder="videoMakerNarrationPlaceholder" placeholder="اكتب نص التعليق الصوتي الذي سيُقرأ فوق الفيديو (اختياري - إن تُرك فارغًا يُستخدم وصف الفيديو)"></textarea>
     <button type="button" class="mini-mic-btn" data-target="videoMakerNarrationText" title="🎤" data-i18n-title="micTitle">🎤</button>
