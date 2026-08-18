@@ -1203,6 +1203,19 @@ function renderMessages(keepScroll){
     // 🎨 رمز الصورة (__IMG_n__) عقدٌ بين النموذج والعميل لبناء المواقع — لا نصّ
     // يُقرأ. كان يُطبع خامًّا في الدردشة؛ الآن يصير صورةً ويُنزع من الكلام.
     let __mc = m.content, __genShown = null;
+    // 🎬 v522: __ACTION_VIDEO: — رمز يُطلقه الذكاء الاصطناعي ليفتح صانع الفيديو تلقائياً
+    if(m.role !== 'user' && typeof __mc === 'string' && __mc.indexOf('__ACTION_VIDEO:') !== -1){
+      const __vidMatch = __mc.match(/__ACTION_VIDEO:\s*([^\n]+)/);
+      if(__vidMatch){
+        const __vidPrompt = (__vidMatch[1] || '').trim();
+        __mc = __mc.replace(/__ACTION_VIDEO:\s*[^\n]*/g, '').replace(/\n{3,}/g, '\n\n').trim();
+        if(__vidPrompt && mIdx === cur.messages.length - 1){
+          setTimeout(function(){
+            try{ if(typeof window.omranOpenVideoMaker === 'function') window.omranOpenVideoMaker(__vidPrompt); }catch(e){ try{ __swallow(e,'chat:video-open'); }catch(_){ /* guard-ok */ } }
+          }, 800);
+        }
+      }
+    }
     if(m.role !== 'user' && typeof __mc === 'string' && __mc.indexOf('__IMG_') !== -1){
       __genShown = [];
       __mc = __mc.replace(/!?\[[^\]]*\]\(\s*(__IMG_\d+__)\s*\)|`?(__IMG_\d+__)`?/g, (whole, a, b) => {
