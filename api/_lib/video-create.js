@@ -114,7 +114,7 @@ module.exports = async (req, res) => {
           duration: finalDuration,
         }
       : {
-          model: 'gen4.5',
+          model: 'gen4_turbo',
           promptText: finalPrompt,
           ratio: finalRatio,
           duration: finalDuration,
