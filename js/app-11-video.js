@@ -18,7 +18,8 @@
   // v525: proxyVideoUrl — يمرّر رابط الفيديو عبر سيرفر عمران بدل جلبه مباشرة من المتصفح
   // يحل مشكلة CORS على الجوال وهواوي التي تمنع fetch() من مصادر خارجية
   function proxyVideoUrl(url){
-    if(!url || /^blob:/.test(url)) return url;
+    // روابط blob وروابط same-origin (تبدأ بـ /) لا تحتاج بروكسي
+    if(!url || /^blob:/.test(url) || /^\//.test(url)) return url;
     return '/api/video-download?url=' + encodeURIComponent(url);
   }
 
