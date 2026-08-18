@@ -187,11 +187,12 @@
   function syncFilmHeroRow(){
     const heroRowEl = document.getElementById('videoMakerHeroRow');
     const noteEl = document.getElementById('videoMakerHeroVeoNote');
-    const isFilm = durationEl.value === 'film';
-    const isVeo = modeEl.value === 'veo';
-    if(heroRowEl) heroRowEl.style.display = (isFilm && !isVeo) ? 'block' : 'none';
-    if(noteEl) noteEl.style.display = (isFilm && isVeo) ? 'block' : 'none';
-    if(isVeo && window.__clearFilmHero) window.__clearFilmHero();
+    const modeVal = modeEl.value;
+    // البطل مدعوم في كل الأوضاع ما عدا: veo (لا يقبل صور)، actor (veo-based)، canvas (مبني على التوقيع)
+    const heroSupported = (modeVal !== 'veo' && modeVal !== 'actor' && modeVal !== 'canvas');
+    if(heroRowEl) heroRowEl.style.display = heroSupported ? 'block' : 'none';
+    if(noteEl) noteEl.style.display = (modeVal === 'veo') ? 'block' : 'none';
+    if(!heroSupported && window.__clearFilmHero) window.__clearFilmHero();
   }
   function updateModeUI(){
     const m = modeEl.value;
@@ -990,11 +991,12 @@
         for(let i = 0; i < scenes.length; i++){
           const sc = scenes[i];
           setStatus((isEn() ? '🚀 Sending scene ' : '🚀 جاري إرسال المشهد ') + (i + 1) + '/' + scenes.length + '...');
-          const videoUrl = await createSceneWithRetry(sc.visual || text, style, SCENE_SECONDS_CONST, ratio, token, true, (attempt, max) => {
+          const lmHeroAnchor = filmHeroBase64 ? 'Hero centered in frame, medium shot, consistent camera angle. ' : '';
+          const videoUrl = await createSceneWithRetry(lmHeroAnchor + (sc.visual || text), style, SCENE_SECONDS_CONST, ratio, token, true, (attempt, max) => {
             setStatus(isEn()
               ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
               : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
-          });
+          }, filmHeroBase64, filmHeroMime);
           setStatus((isEn() ? '🎙️ Narrating scene ' : '🎙️ جاري تسجيل صوت المشهد ') + (i + 1) + '/' + scenes.length + '...');
           let audioBlob = null;
           try{
@@ -1034,10 +1036,11 @@
       let sceneUrls = [];
       const okBal2 = await ensureRunwayCredits(isLong ? 100 : 50);
       if(!okBal2){ btnGenerate.disabled = false; return; }
+      const singleHeroAnchor = filmHeroBase64 ? 'Hero centered in frame, medium shot, consistent camera angle. ' : '';
       if(isLong){
         const scenePrompts = [
-          text + (isEn() ? ' (opening moment of the scene)' : ' (اللحظة الافتتاحية للمشهد)'),
-          text + (isEn() ? ' (continuing the same scene, next moment)' : ' (استكمال نفس المشهد، اللحظة التالية)'),
+          singleHeroAnchor + text + (isEn() ? ' (opening moment of the scene)' : ' (اللحظة الافتتاحية للمشهد)'),
+          singleHeroAnchor + text + (isEn() ? ' (continuing the same scene, next moment)' : ' (استكمال نفس المشهد، اللحظة التالية)'),
         ];
         for(let i = 0; i < scenePrompts.length; i++){
           setStatus((isEn() ? '🚀 Sending scene ' : '🚀 جاري إرسال المشهد ') + (i + 1) + '/' + scenePrompts.length + '...');
@@ -1045,16 +1048,16 @@
             setStatus(isEn()
               ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
               : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
-          });
+          }, filmHeroBase64, filmHeroMime);
           sceneUrls.push(url);
         }
       } else {
         setStatus(isEn() ? '🚀 Sending request...' : '🚀 جاري إرسال الطلب...');
-        const url = await createSceneWithRetry(text, style, durationEl.value, ratio, token, false, (attempt, max) => {
+        const url = await createSceneWithRetry(singleHeroAnchor + text, style, durationEl.value, ratio, token, false, (attempt, max) => {
           setStatus(isEn()
             ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
             : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
-        });
+        }, filmHeroBase64, filmHeroMime);
         sceneUrls.push(url);
       }
 
