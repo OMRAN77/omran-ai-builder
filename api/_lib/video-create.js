@@ -110,7 +110,7 @@ module.exports = async (req, res) => {
     // عندما تُرفق صورة نُضيف تعليمة الحفاظ على هوية الشخص في مقدمة الـ prompt
     // بدونها يتجاهل Runway الصورة ويولّد شخصية عشوائية مختلفة تمامًا
     if (useImage) {
-      const preservePrefix = 'IMPORTANT: Keep the EXACT same person, face, identity, clothing, and appearance from the reference image throughout the entire video. Do not change the character in any way. ';
+      const preservePrefix = 'CRITICAL: The person in the reference image is the HERO of this video. Keep their EXACT face, identity, clothing, hair, and body UNCHANGED. Place them in the CENTER of the frame at medium shot distance — same framing and camera angle in every scene. Never change, replace, or obscure the hero. ';
       finalPrompt = (preservePrefix + finalPrompt).slice(0, 1000);
     }
 
