@@ -1230,6 +1230,16 @@
   </div>
 </div>
 
+<!-- v525: نافذة التحذيرات الطارئة — تظهر تلقائياً عند اكتشاف خبر طارئ أو تحذير أمني -->
+<div id="omranEmergencyModal" style="position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.75); display:none; align-items:center; justify-content:center; padding:20px;">
+  <div style="background:#fff; color:#111; border-radius:16px; padding:28px 24px; max-width:480px; width:100%; text-align:center; direction:rtl; box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+    <h2 id="omranEmAlertTitle" style="margin:0 0 16px; font-size:22px; color:#c0392b;">🚨 تحذير طارئ</h2>
+    <p id="omranEmAlertBody" style="font-size:15px; line-height:1.7; white-space:pre-wrap; margin:0 0 12px; color:#222;"></p>
+    <p id="omranEmAlertSource" style="font-size:11px; color:#888; word-break:break-all; margin:0 0 20px;"></p>
+    <button id="omranEmAlertOk" type="button" style="background:none; border:none; color:#2980b9; font-size:17px; font-weight:700; cursor:pointer; padding:6px 24px;">حسنًا</button>
+  </div>
+</div>
+
 <div id="shareModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
   <div style="max-width:440px; width:100%; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
