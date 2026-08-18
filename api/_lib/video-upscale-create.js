@@ -63,7 +63,7 @@ module.exports = async (req, res) => {
     const allowedRes = ['720p', '1k', '2k', '4k'];
     const finalRes = allowedRes.includes(resolution) ? resolution : '2k';
 
-    const upstream = await fetch('https://api.dev.runwayml.com/v1/video_upscale', {
+    const upstream = await fetch('https://api.runwayml.com/v1/video_upscale', {
       method: 'POST',
       headers: {
         'Authorization': 'Bearer ' + apiKey,
