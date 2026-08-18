@@ -1088,12 +1088,26 @@
         }
       }
 
-      const finalUrl = finalIsBlob ? URL.createObjectURL(finalSrc) : finalSrc;
+      // v523: always serve a blob URL — cross-origin URLs break <download> on mobile and Huawei browsers
+      let finalUrl;
+      if(finalIsBlob){
+        finalUrl = URL.createObjectURL(finalSrc);
+      } else {
+        try{
+          setStatus(isEn() ? '⬇️ Downloading video...' : '⬇️ جاري تحميل الفيديو...');
+          const vres = await fetch(finalSrc);
+          finalUrl = URL.createObjectURL(await vres.blob());
+        } catch(e){
+          finalUrl = finalSrc; // fallback to direct URL if fetch fails
+        }
+      }
       setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
       resultEl.src = finalUrl;
       resultEl.style.display = 'block';
+      resultEl.play().catch(function(){ /* autoplay may be blocked — user can tap to play */ });
       downloadEl.href = finalUrl;
       downloadEl.style.display = 'block';
+      autoSaveVideo(finalUrl);
     } catch(e){
       setStatus(friendlyError(e));
     } finally {
