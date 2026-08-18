@@ -105,6 +105,13 @@ module.exports = async (req, res) => {
     const endpoint = useImage
       ? 'https://api.dev.runwayml.com/v1/image_to_video'
       : 'https://api.dev.runwayml.com/v1/text_to_video';
+    // عندما تُرفق صورة نُضيف تعليمة الحفاظ على هوية الشخص في مقدمة الـ prompt
+    // بدونها يتجاهل Runway الصورة ويولّد شخصية عشوائية مختلفة تمامًا
+    if (useImage) {
+      const preservePrefix = 'IMPORTANT: Keep the EXACT same person, face, identity, clothing, and appearance from the reference image throughout the entire video. Do not change the character in any way. ';
+      finalPrompt = (preservePrefix + finalPrompt).slice(0, 1000);
+    }
+
     const upstreamBody = useImage
       ? {
           model: 'gen4_turbo',
