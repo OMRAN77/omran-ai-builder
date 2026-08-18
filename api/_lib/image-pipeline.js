@@ -339,6 +339,34 @@ function claudeClient(apiKey, model) {
 }
 
 // ============================================================
+// 6) أغلفة مبسّطة — تقرأ المفاتيح من env مباشرة
+// ============================================================
+
+/**
+ * rewritePrompt(arabicText)
+ * → { prompt, negative, aspect, constraints[], isLogo, textContent }
+ * يحتاج ANTHROPIC_API_KEY في env.
+ */
+async function rewritePrompt(arabicText) {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) throw new Error("ANTHROPIC_API_KEY missing");
+  const llm = claudeClient(key);
+  return rewrite(arabicText, llm);
+}
+
+/**
+ * verifyImage(base64, mime, constraints[])
+ * → { pass, issues[], fix }
+ * يحتاج ANTHROPIC_API_KEY في env.
+ */
+async function verifyImage(base64, _mime, constraints) {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) return { pass: true, issues: [], fix: "" };
+  const llm = claudeClient(key);
+  return verify(base64, constraints, llm);
+}
+
+// ============================================================
 // التصدير
 // ============================================================
 
@@ -350,4 +378,7 @@ module.exports = {
   claudeClient,
   openaiProvider,
   geminiProvider,
+  // أغلفة مبسّطة
+  rewritePrompt,
+  verifyImage,
 };

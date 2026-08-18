@@ -8,6 +8,7 @@ const { cleanImagePrompt, buildGenerationPrompt, buildEditPrompt, buildSceneUpgr
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 const { authorPrayerPlan } = require('./prayer-plan');
 const { fetchImageWithRetry, isImageTimeoutError } = require('./image-fetch');
+const pipeline = require('./image-pipeline');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -128,6 +129,25 @@ module.exports = async (req, res) => {
     const promptLimit = isArchitectural ? 2400 : (editImageBase64 ? 8000 : 1800);
     const cleanPrompt = cleanImagePrompt(prayerPlan ? prayerPlan.visualBrief : prompt).slice(0, promptLimit);
     const extras = Array.isArray(extraImages) ? extraImages.filter((x) => x && x.data).slice(0, 5) : [];
+
+    // 🧪 خط أنابيب الصور الجديد: يعمل فقط لتوليد جديد (لا تعديل، لا دعاء،
+    // لا إعادة تصور، لا ترقية مشهد)، ومحمي خلف علم بيئة صريح كي لا يمسّ أي
+    // مسار قائم قبل التحقّق منه.
+    let pipelineActive = process.env.IMAGE_PIPELINE === '1' && !editImageBase64 && !prayerPlan;
+    let pipelineRewrite = null;
+    if (pipelineActive) {
+      try {
+        pipelineRewrite = await pipeline.rewritePrompt(cleanPrompt);
+        if (!pipelineRewrite || !pipelineRewrite.prompt) {
+          pipelineActive = false;
+        }
+      } catch (error) {
+        console.error('[maha-image] pipeline rewrite failed: ' + (error && error.stack ? error.stack : error));
+        pipelineActive = false;
+        pipelineRewrite = null;
+      }
+    }
+
     if (editImageBase64 && extras.length) {
       // 🧩 دمج عدة صور في تصميم واحد
       parts.push({ text: 'TASK: "' + cleanPrompt + '"\n\nYou are given ' + (extras.length + 1) + ' input images. COMPOSE them together into ONE single high-quality design exactly as the instruction asks. Rules:\n1. Every input image MUST appear in the final result - do not drop any of them.\n2. Keep each image\'s content recognizable and faithful (logos, faces, text stay pixel-faithful; do not redraw or distort them).\n3. Arrange them beautifully per the instruction (e.g. logo behind/above text, side by side, layered) with a premium, professional layout.\n4. Any Arabic text must remain correct and readable.\nOutput a single composed image.' });
@@ -139,6 +159,12 @@ module.exports = async (req, res) => {
           ? ('TASK: "' + cleanPrompt + '"\n\nThe attached image is ONLY inspiration for the SUBJECT. Create a COMPLETELY NEW image of the same subject with a clearly DIFFERENT concept: new composition, new viewpoint, new background, new lighting and a fresh creative idea — the result must NOT look like a copy or minor edit of the source. Keep any real faces, logos or brand marks faithful if they are the subject. Quality bar: breathtaking, award-winning, magazine-cover grade, tack-sharp, professional cinematic lighting, no toy-like or amateur rendering.')
           : buildEditPrompt(cleanPrompt)) });
       parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
+    } else if (pipelineActive && pipelineRewrite) {
+      // Pipeline prompt includes negative in separate field — combine for Gemini
+      const pipePrompt = pipelineRewrite.negative
+        ? pipelineRewrite.prompt + '\n\nDo not include: ' + pipelineRewrite.negative
+        : pipelineRewrite.prompt;
+      parts.push({ text: pipePrompt });
     } else {
       parts.push({ text: buildGenerationPrompt(cleanPrompt, {
         architectural: isArchitectural,
@@ -159,7 +185,7 @@ module.exports = async (req, res) => {
       return '3:4';
     };
     const imageConfig = { imageSize: '2K' };
-    if (!editImageBase64) imageConfig.aspectRatio = isArchitectural ? '16:9' : pickAspect(cleanPrompt);
+    if (!editImageBase64) imageConfig.aspectRatio = (pipelineActive && pipelineRewrite && pipelineRewrite.aspect) ? pipelineRewrite.aspect : (isArchitectural ? '16:9' : pickAspect(cleanPrompt));
     const reqBody = JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: editImageBase64 ? (isSceneUpgrade ? 0.5 : (isReimagine ? 0.9 : 0.15)) : 0.85, imageConfig } });
 
     // Image generation normally takes 35–50 seconds, so it must bypass the
@@ -190,8 +216,8 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const respParts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
-    const imgPart = respParts.find((p) => p.inlineData && p.inlineData.data);
+    let respParts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
+    let imgPart = respParts.find((p) => p.inlineData && p.inlineData.data);
     if (!imgPart) {
       await refundImageCharge();
       console.error('[maha-image] no image part in response: ' + JSON.stringify(data).slice(0, 2000));
@@ -216,6 +242,59 @@ module.exports = async (req, res) => {
         console.error('[maha-image] rejected edited image: ' + guard.reason);
         res.status(unavailable ? 502 : 422).json({ error: publicGuardError(guard), retryable: unavailable });
         return;
+      }
+    }
+
+    // 🔁 تحقّق + إعادة محاولة واحدة: فقط عندما خط الأنابيب فعّال ولديه قيود
+    // قابلة للفحص. فشل التحقّق لا يمنع الإرجاع — نستخدم نتيجة إعادة المحاولة
+    // كما هي حتى لو فشلت أيضًا، حتى لا نعطّل المستخدم.
+    if (pipelineActive && pipelineRewrite) {
+      try {
+        const check = await pipeline.verifyImage(
+          imgPart.inlineData.data,
+          imgPart.inlineData.mimeType || 'image/png',
+          pipelineRewrite.constraints
+        );
+        if (check && check.pass === false) {
+          console.error('[maha-image] pipeline verification failed, retrying once: ' + (check.fix || '') + ' issues: ' + JSON.stringify(check.issues || []));
+          const retryPrompt = (check.fix ? check.fix + ' ' : '') + (pipelineRewrite.negative
+            ? pipelineRewrite.prompt + '\n\nDo not include: ' + pipelineRewrite.negative
+            : pipelineRewrite.prompt);
+          const retryParts = [{ text: retryPrompt }];
+          const retryReqBody = JSON.stringify({ contents: [{ parts: retryParts }], generationConfig: { temperature: 0.85, imageConfig } });
+          try {
+            const retryResult = await fetchImageWithRetry({
+              url: endpoint,
+              init: {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: retryReqBody,
+              },
+              onRetry: ({ attempt, response, error }) => {
+                const detail = response ? ('status=' + response.status) : ('error=' + String(error && error.name || 'fetch'));
+                console.error('[maha-image] pipeline retry: retrying upstream image request after attempt ' + attempt + ' ' + detail);
+              },
+            });
+            const retryUpstream = retryResult.response;
+            const retryData = retryResult.data || {};
+            if (retryUpstream && retryUpstream.ok) {
+              const retryRespParts = (((retryData.candidates || [])[0] || {}).content || {}).parts || [];
+              const retryImgPart = retryRespParts.find((p) => p.inlineData && p.inlineData.data);
+              if (retryImgPart) {
+                imgPart = retryImgPart;
+                respParts = retryRespParts;
+              } else {
+                console.error('[maha-image] pipeline retry: no image part in retry response, keeping original');
+              }
+            } else {
+              console.error('[maha-image] pipeline retry: upstream request failed, keeping original image');
+            }
+          } catch (retryError) {
+            console.error('[maha-image] pipeline retry failed: ' + (retryError && retryError.stack ? retryError.stack : retryError));
+          }
+        }
+      } catch (verifyError) {
+        console.error('[maha-image] pipeline verify failed: ' + (verifyError && verifyError.stack ? verifyError.stack : verifyError));
       }
     }
 
