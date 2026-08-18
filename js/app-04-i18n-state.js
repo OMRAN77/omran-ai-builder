@@ -355,6 +355,8 @@ let state = {
   projects: safeParseLS('aiapp_projects', []),
   currentId: null,
 };
+// v522: نكشف state على window حتى يقدر app-22-session-new.js يصل إليه من داخل IIFE
+window.__omrS = state;
 
 // 💾 IndexedDB storage — سعة بالجيجات بدل حد 5MB في localStorage.
 // المشاريع/المحادثات/الصور تنحفظ هنا؛ localStorage يبقى للإعدادات الصغيرة فقط.
