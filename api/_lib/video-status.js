@@ -31,7 +31,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const upstream = await fetch('https://api.dev.runwayml.com/v1/tasks/' + encodeURIComponent(rawId), {
+    const upstream = await fetch('https://api.runwayml.com/v1/tasks/' + encodeURIComponent(rawId), {
       method: 'GET',
       headers: {
         'Authorization': 'Bearer ' + apiKey,
