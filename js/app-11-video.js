@@ -783,7 +783,7 @@
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: sc.narration || text, voice: 'onyx' }),
+              body: JSON.stringify({ text: sc.narration || text, voice: 'maha', lang: isEn() ? 'en' : 'ar' }),
               signal: ttsCtl.signal,
             });
             clearTimeout(ttsTimer);
@@ -1004,7 +1004,7 @@
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: sc.narration || text, voice: 'onyx' }),
+              body: JSON.stringify({ text: sc.narration || text, voice: 'maha', lang: isEn() ? 'en' : 'ar' }),
               signal: ttsCtl2.signal,
             });
             clearTimeout(ttsTimer2);
@@ -1097,7 +1097,7 @@
           const ttsRes = await fetch('/api/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: narrationInput, voice: 'onyx' }),
+            body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: isEn() ? 'en' : 'ar' }),
           });
           if(ttsRes.ok){
             const audioBlob = await ttsRes.blob();
