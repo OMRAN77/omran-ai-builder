@@ -17235,7 +17235,7 @@ function openShareModal(project){
     let listTxt = '';
     for(let i = 0; i < urls.length; i++){
       const name = 'scene' + i + '.mp4';
-      ffmpeg.writeFile(name, await fetchFile(urls[i]));
+      ffmpeg.writeFile(name, await fetchFile(proxyVideoUrl(urls[i])));
       listTxt += "file '" + name + "'\n";
     }
     ffmpeg.writeFile('list.txt', listTxt);
@@ -17269,7 +17269,7 @@ function openShareModal(project){
     let listTxt = '';
     for(let i = 0; i < scenes.length; i++){
       if(onProgress) onProgress(i, scenes.length);
-      ffmpeg.writeFile('v' + i + '.mp4', await fetchFile(scenes[i].videoUrl));
+      ffmpeg.writeFile('v' + i + '.mp4', await fetchFile(proxyVideoUrl(scenes[i].videoUrl)));
       const hasAudio = scenes[i].audioBlob && scenes[i].audioBlob.size > 0;
       if(hasAudio){
         ffmpeg.writeFile('a' + i + '.mp3', await fetchFile(scenes[i].audioBlob));
@@ -17790,7 +17790,7 @@ function openShareModal(project){
           linksEl.innerHTML = '';
           builtScenes.forEach((sc, i) => {
             const a = document.createElement('a');
-            a.href = sc.videoUrl;
+            a.href = proxyVideoUrl(sc.videoUrl);
             a.download = 'scene-' + (i + 1) + '.mp4';
             a.textContent = (isEn() ? '⬇️ Scene ' : '⬇️ مشهد ') + (i + 1);
             a.style.cssText = 'padding:6px 12px;border-radius:10px;background:rgba(139,92,246,.18);color:inherit;text-decoration:none;font-size:13px;';
