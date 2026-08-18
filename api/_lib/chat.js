@@ -756,6 +756,24 @@ module.exports = async (req, res) => {
     const cur = await readMemory(usage.username);
     accountMemory = memoryPromptBlock(cur.memory);
   }
+
+  // ─── live-answers: بحث استباقي ذكي خلف LIVE_ANSWERS=1 ───
+  let liveTurn = null;
+  if (process.env.LIVE_ANSWERS === '1' && !quietSocialTurn && lastUser && lastUser.content) {
+    try {
+      const { prepareTurn } = require('./live-answers.js');
+      const { makeDeps } = require('./live-deps.js');
+      const deps = makeDeps();
+      const memFacts = accountMemory
+        ? accountMemory.split('\n').filter(function (l) { return l.startsWith('- '); }).map(function (l) { return l.slice(2); }).slice(0, 5)
+        : [];
+      liveTurn = await prepareTurn(lastUser.content, deps, { memoryFacts: memFacts, now: new Date() });
+    } catch (e) { console.warn('[live-answers]', e && e.message); }
+  }
+  const liveNote = (liveTurn && liveTurn.searched && liveTurn.sources.length)
+    ? '\n\n[مصادر حيّة محقونة في رسالة المستخدم]: الرسالة الأخيرة تحتوي <مصادر> من بحث حيّ استباقي. اعتمد عليها في الحقائق المتغيّرة وأشر إليها بالأرقام [1] [2]. ما لم تذكره المصادر لا تخترعه. لا تزال أدواتك (web_search) متاحة إن احتجت تفصيلًا إضافيًا.'
+    : '';
+
   // نستبعد نسخة الذاكرة التي أرسلها عميل قديم كي لا تتكرر أو تتعارض مع الحساب.
   const sysParts = messages
     .filter((m) => m && m.role === 'system' && typeof m.content === 'string' && !isClientMemoryNote(m.content))
@@ -773,8 +791,8 @@ module.exports = async (req, res) => {
     const system = quietSocialTurn
       ? baseSystem + (casualCheckInTurn ? '\n\n[هذا دور اجتماعي قصير]: أجب عن سؤال الحال مباشرةً في جملة طبيعية واحدة. المحادثة مستمرة، فلا تبدأ بتحية جديدة، ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق.' : '')
       : toolTurn
-        ? baseSystem + nowNote() + countryNote(country) + TOOLS_NOTE + BIDI_RULE + LINK_RULE + WIZARD_NOTE + IMAGE_TOPICS_NOTE + DEALS_NOTE + (wizardTurn ? '' : ANSWER_FIRST_NOTE) + askCapNote + ownerKnowledge
-        : baseSystem + LEAN_CONVERSATION_NOTE + IMAGE_TOPICS_NOTE + BIDI_RULE;
+        ? baseSystem + nowNote() + countryNote(country) + TOOLS_NOTE + BIDI_RULE + LINK_RULE + WIZARD_NOTE + IMAGE_TOPICS_NOTE + DEALS_NOTE + (wizardTurn ? '' : ANSWER_FIRST_NOTE) + askCapNote + ownerKnowledge + liveNote
+        : baseSystem + LEAN_CONVERSATION_NOTE + IMAGE_TOPICS_NOTE + BIDI_RULE + liveNote;
 
       const convoSource = quietSocialTurn ? [lastUser] : messages;
   const convo = compactConversation(convoSource
@@ -782,10 +800,23 @@ module.exports = async (req, res) => {
       while (convo.length && convo[convo.length - 1].role !== 'user') convo.pop();
   if (!convo.length) { res.status(400).json({ error: 'Missing user message' }); return; }
 
+  // ─── live-answers: استبدل رسالة المستخدم الأخيرة بالنسخة المسنودة بالمصادر ───
+  if (liveTurn && liveTurn.searched && liveTurn.sources.length && convo.length) {
+    var lastIdx = convo.length - 1;
+    if (convo[lastIdx].role === 'user' && typeof convo[lastIdx].content === 'string') {
+      convo[lastIdx] = { role: 'user', content: liveTurn.userMessage };
+    }
+  }
+
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
   const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); } catch (e) { /* العميل أغلق المجرى */ } };
+
+  // ─── live-answers: أبلغ العميل بالمصادر المكتشفة ───
+  if (liveTurn && liveTurn.searched && liveTurn.sources.length) {
+    send({ status: '🔍 بحثتُ مسبقًا في ' + liveTurn.sources.length + ' مصادر…' });
+  }
 
   try {
     // ثمان خطوات لا خمس وعشرين: المحادثة ليست بناءً طويلًا، وكلّ خطوة استدعاء
