@@ -83,14 +83,14 @@ async function clearStuckTask(index, apiKey) {
   const prevId = await getLastTask(index);
   if (!prevId) return;
   try {
-    const r = await fetch('https://api.dev.runwayml.com/v1/tasks/' + prevId, {
+    const r = await fetch('https://api.runwayml.com/v1/tasks/' + prevId, {
       headers: { Authorization: 'Bearer ' + apiKey, 'X-Runway-Version': RUNWAY_VERSION },
     });
     if (!r.ok) return; // already gone/expired
     const data = await r.json().catch(() => ({}));
     if (data.status === 'SUCCEEDED' || data.status === 'FAILED') return;
     // Still pending/running/throttled: cancel it to free the concurrency slot.
-    await fetch('https://api.dev.runwayml.com/v1/tasks/' + prevId, {
+    await fetch('https://api.runwayml.com/v1/tasks/' + prevId, {
       method: 'DELETE',
       headers: { Authorization: 'Bearer ' + apiKey, 'X-Runway-Version': RUNWAY_VERSION },
     }).catch(() => {});
