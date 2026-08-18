@@ -13548,6 +13548,22 @@ async function sendPrompt(){
     return;
   }
 
+  // 🎬 v524: اكتشاف طلب إنشاء فيديو من المحادثة → فتح صانع الفيديو مباشرة بدل إرساله للـ AI
+  // المنطق: كلمة (فيديو/فيلم/مقطع) + نية إنشاء واضحة — بشرط عدم كونه سؤالاً
+  const __VID_MAKE_RE = /(?:اعمل|اصنع|سوّي|سوي|سولي|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|بغيت|أريد|اريد|حاب|أحتاج|احتاج|طلعلي|طلع\s+لي|صنعلي|create|make|generate|produce)\s*(?:لي\s*)?(?:فيديو|فيديوهات|فيلم|مقطع|مقاطع|كليب|أنيميشن|انيميشن|animation|video|clip|film|reel|short)|\b(?:فيلم|فيديو|مقطع)\s+(?:نفس|مثل|شبه|يوضح|يبيّن|يشرح|سينمائي|قصير|احترافي|عن\s|عمراني|فيه)|^(?:فيلم|فيديو|مقطع)\s+.{4,}/i;
+  const __VID_Q_RE    = /^(?:كيف|ما|وش|ايش|أيش|هل|لماذا|why|how|what|can\s+i|where)\s|[؟?]\s*$/;
+  if(text && __VID_MAKE_RE.test(text) && !__VID_Q_RE.test(text) && typeof window.omranOpenVideoMaker === 'function'){
+    // إذا فيه صورة مرفقة خذها كـ hero image للفيديو
+    const __heroAtt = pendingAttachments.find(a => a.isImage && a.dataUrl);
+    window.omranOpenVideoMaker(text, __heroAtt ? __heroAtt.dataUrl : null, __heroAtt ? (__heroAtt.mime || 'image/jpeg') : null);
+    promptEl.value = '';
+    // مسح المرفق الصوري بعد تمريره للمودال
+    if(__heroAtt){
+      try{ window.__clearAttachments && window.__clearAttachments(); }catch(e){ /* guard-ok */ }
+    }
+    return;
+  }
+
   // 🔒 بوابة البناء الطبيعية: أول طلب بناء → المزود يناقش الفكرة ويختم رده
   // بسؤال «تبيني أبدأ البناء؟». البناء الفعلي لا يبدأ إلا بعد موافقة صريحة
   // (نعم/ابدأ/سو...) في الرسالة التالية — بدون أي أزرار أو شرائط.
@@ -17082,10 +17098,23 @@ function openShareModal(project){
     }
   };
 
-  // v522: فتح صانع الفيديو من المحادثة — يُستدعى عند اكتشاف __ACTION_VIDEO: في رد الذكاء الاصطناعي
-  window.omranOpenVideoMaker = function(prompt){
+  // v524: فتح صانع الفيديو من المحادثة — يقبل prompt اختياري + صورة hero اختيارية
+  window.omranOpenVideoMaker = function(prompt, heroDataUrl, heroMimeType){
     try{
       if(promptEl && prompt) promptEl.value = String(prompt).trim();
+      // صورة hero — تُعرض في المعاينة وتُستخدم في الفيلم
+      if(heroDataUrl){
+        try{
+          const prev = document.getElementById('videoMakerHeroPreview');
+          const clr  = document.getElementById('videoMakerHeroClear');
+          const heroRowEl = document.getElementById('videoMakerHeroRow');
+          filmHeroBase64 = heroDataUrl.indexOf(',') !== -1 ? heroDataUrl.split(',')[1] : heroDataUrl;
+          filmHeroMime   = heroMimeType || 'image/jpeg';
+          if(prev){ prev.src = heroDataUrl; prev.style.display = 'inline-block'; }
+          if(clr)  { clr.style.display = 'inline-block'; }
+          if(heroRowEl){ heroRowEl.style.display = ''; }
+        }catch(he){ try{ __swallow(he,'video:open-hero'); }catch(_){ /* guard-ok */ } }
+      }
       modal.style.display = 'flex';
       try{ closeHeaderMenu(); }catch(e){ /* guard-ok — closeHeaderMenu اختيارية */ }
       const owner = isOwnerAccount();
