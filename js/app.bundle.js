@@ -16994,17 +16994,10 @@ function openShareModal(project){
     return '/api/video-download?url=' + encodeURIComponent(url);
   }
 
-  async function autoSaveVideo(url, name){
-    try{
-      let href = url;
-      if(!/^blob:/.test(String(url))){
-        const b = await fetch(proxyVideoUrl(url)).then(r => r.blob());
-        href = URL.createObjectURL(b);
-      }
-      const a = document.createElement('a');
-      a.href = href; a.download = name || 'omran-ai-video.mp4';
-      document.body.appendChild(a); a.click(); a.remove();
-    }catch(_){ /* فشل صامت — زر التحميل اليدوي موجود */ }
+  // v526: autoSaveVideo — النقر البرمجي محظور على هواوي/أندرويد
+  // الزر يظهر للمستخدم ليضغط عليه بنفسه (رابط البروكسي مع Content-Disposition: attachment)
+  function autoSaveVideo(url, name){
+    // لا نفعل شيئاً — زر التحميل يُضبَط خارجياً قبل هذه الدالة
   }
   window.autoSaveVideo = autoSaveVideo;
   const narrationToggle = $('#videoMakerNarrationToggle');
@@ -17891,9 +17884,9 @@ function openShareModal(project){
         setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
         resultEl.src = vurl;
         resultEl.style.display = 'block';
-        downloadEl.href = vurl;
+        // رابط التحميل = المسار المباشر للسيرفر (Content-Disposition: attachment)، يشتغل على هواوي
+        downloadEl.href = proxyVideoUrl(videoUrl);
         downloadEl.style.display = 'block';
-        autoSaveVideo(vurl);
       } catch(e){
         setStatus(friendlyError(e));
       } finally {
@@ -18083,27 +18076,29 @@ function openShareModal(project){
       }
 
       // v525: always serve a blob URL via server proxy — direct cross-origin fetch fails on mobile/Huawei
-      let finalUrl;
+      let playerUrl; // رابط المشغّل (blob للتشغيل السلس)
+      let dlUrl;     // رابط التحميل (proxy URL مع Content-Disposition: attachment)
       if(finalIsBlob){
-        finalUrl = URL.createObjectURL(finalSrc);
+        playerUrl = URL.createObjectURL(finalSrc);
+        dlUrl = playerUrl;
       } else {
+        // رابط التحميل = proxy URL (same-origin + Content-Disposition: attachment = يشتغل على هواوي)
+        dlUrl = proxyVideoUrl(finalSrc);
         try{
           setStatus(isEn() ? '⬇️ Downloading video...' : '⬇️ جاري تحميل الفيديو...');
-          const vres = await fetch(proxyVideoUrl(finalSrc));
+          const vres = await fetch(dlUrl);
           if(!vres.ok) throw new Error('proxy ' + vres.status);
-          finalUrl = URL.createObjectURL(await vres.blob());
+          playerUrl = URL.createObjectURL(await vres.blob());
         } catch(e){
-          // آخر ملاذ: رابط مباشر (قد لا يعمل زر التحميل لكن الفيديو يُشغَّل)
-          finalUrl = finalSrc;
+          playerUrl = finalSrc; // آخر ملاذ للمشغّل فقط
         }
       }
       setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
-      resultEl.src = finalUrl;
+      resultEl.src = playerUrl;
       resultEl.style.display = 'block';
-      resultEl.play().catch(function(){ /* autoplay may be blocked — user can tap to play */ });
-      downloadEl.href = finalUrl;
+      resultEl.play().catch(function(){ /* autoplay may be blocked */ });
+      downloadEl.href = dlUrl;
       downloadEl.style.display = 'block';
-      autoSaveVideo(finalUrl);
     } catch(e){
       setStatus(friendlyError(e));
     } finally {
