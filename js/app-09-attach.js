@@ -1790,19 +1790,43 @@ async function sendPrompt(){
     return;
   }
 
-  // 🎬 v524: اكتشاف طلب إنشاء فيديو من المحادثة → فتح صانع الفيديو مباشرة بدل إرساله للـ AI
-  // المنطق: كلمة (فيديو/فيلم/مقطع) + نية إنشاء واضحة — بشرط عدم كونه سؤالاً
+  // 🎬 v525: اكتشاف طلب إنشاء فيديو → فتح صانع الفيديو مباشرة
+  // إذا فيه صورة: نحلّلها بـ AI ليطلع prompt إنجليزي دقيق بدل نص المستخدم الخام
   const __VID_MAKE_RE = /(?:اعمل|اصنع|سوّي|سوي|سولي|أنشئ|انشئ|ولّد|ولد|أبغى|ابغى|أبغي|ابغي|بغيت|أريد|اريد|حاب|أحتاج|احتاج|طلعلي|طلع\s+لي|صنعلي|create|make|generate|produce)\s*(?:لي\s*)?(?:فيديو|فيديوهات|فيلم|مقطع|مقاطع|كليب|أنيميشن|انيميشن|animation|video|clip|film|reel|short)|\b(?:فيلم|فيديو|مقطع)\s+(?:نفس|مثل|شبه|يوضح|يبيّن|يشرح|سينمائي|قصير|احترافي|عن\s|عمراني|فيه)|^(?:فيلم|فيديو|مقطع)\s+.{4,}/i;
   const __VID_Q_RE    = /^(?:كيف|ما|وش|ايش|أيش|هل|لماذا|why|how|what|can\s+i|where)\s|[؟?]\s*$/;
   if(text && __VID_MAKE_RE.test(text) && !__VID_Q_RE.test(text) && typeof window.omranOpenVideoMaker === 'function'){
-    // إذا فيه صورة مرفقة خذها كـ hero image للفيديو
-    const __heroAtt = pendingAttachments.find(a => a.isImage && a.dataUrl);
-    window.omranOpenVideoMaker(text, __heroAtt ? __heroAtt.dataUrl : null, __heroAtt ? (__heroAtt.mime || 'image/jpeg') : null);
+    const __heroAtt = pendingAttachments.find(function(a){ return a.isImage && a.dataUrl; });
     promptEl.value = '';
-    // مسح المرفق الصوري بعد تمريره للمودال
-    if(__heroAtt){
-      try{ window.__clearAttachments && window.__clearAttachments(); }catch(e){ /* guard-ok */ }
+    if(__heroAtt && __heroAtt.dataUrl){
+      // صورة مرفقة — نولّد prompt إنجليزي دقيق منها أولاً
+      (async function(){
+        try{
+          const __statusEl = document.getElementById('videoMakerStatus');
+          // افتح المودال فوراً بنص مؤقت
+          window.omranOpenVideoMaker('', __heroAtt.dataUrl, __heroAtt.mime || 'image/jpeg');
+          // اعرض رسالة تحميل
+          if(__statusEl){ __statusEl.textContent = (typeof lang !== 'undefined' && lang === 'en') ? '🔍 Analyzing image...' : '🔍 جاري تحليل الصورة...'; __statusEl.style.display = 'block'; }
+          const b64 = __heroAtt.dataUrl.indexOf(',') !== -1 ? __heroAtt.dataUrl.split(',')[1] : __heroAtt.dataUrl;
+          const res = await fetch('/api/video-prompt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageBase64: b64, mime: __heroAtt.mime || 'image/jpeg' }),
+          });
+          if(res.ok){
+            const d = await res.json();
+            if(d.prompt){
+              const vpEl = document.getElementById('videoMakerPrompt');
+              if(vpEl) vpEl.value = d.prompt;
+            }
+          }
+          if(__statusEl){ __statusEl.textContent = ''; __statusEl.style.display = 'none'; }
+        }catch(e){ /* guard-ok — يفتح المودال على أي حال */ }
+      })();
+    } else {
+      // بدون صورة — افتح مباشرة بنص المستخدم
+      window.omranOpenVideoMaker(text, null, null);
     }
+    try{ if(typeof window.__clearAttachments === 'function') window.__clearAttachments(); }catch(e){ /* guard-ok */ }
     return;
   }
 
