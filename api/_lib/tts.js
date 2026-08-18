@@ -65,8 +65,10 @@ module.exports = async (req, res) => {
       // use Microsoft's higher-quality multilingual neural voices, which
       // natively support Arabic and many other languages with one voice
       // name (no need for a per-language voice list).
+      // ar → ar-AE (إماراتي خليجي) بأصوات Azure الإماراتية الأصيلة
+      // FatimaNeural (أنثى) و HamdanNeural (ذكر) — أصوات إماراتية حقيقية
       const MAHA_VOICE_MAP = {
-        ar: ['ar-SA', 'en-US-JennyMultilingualNeural', 'en-US-AndrewMultilingualNeural'],
+        ar: ['ar-AE', 'ar-AE-FatimaNeural', 'ar-AE-HamdanNeural'],
         en: ['en-US', 'en-US-JennyMultilingualNeural', 'en-US-AndrewMultilingualNeural'],
         fr: ['fr-FR', 'en-US-JennyMultilingualNeural', 'en-US-AndrewMultilingualNeural'],
         hi: ['hi-IN', 'en-US-JennyMultilingualNeural', 'en-US-AndrewMultilingualNeural'],
