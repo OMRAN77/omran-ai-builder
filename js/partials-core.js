@@ -179,7 +179,7 @@
     <button type="button" class="btn primary" id="videoMakerGenerateBtn" style="width:100%; margin-top:14px;" data-i18n="videoMakerGenerateBtn">✨ إنشاء الفيديو</button>
 
     <div id="videoMakerStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
-    <video id="videoMakerResult" controls style="display:none; width:100%; margin-top:14px; border-radius:var(--r-2); background:#000;"></video>
+    <video id="videoMakerResult" controls autoplay playsinline style="display:none; width:100%; margin-top:14px; border-radius:var(--r-2); background:#000;"></video>
     <a id="videoMakerDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-ai-video.mp4" data-i18n="videoMakerDownloadBtn">⬇️ تحميل الفيديو</a>
   </div>
 </div>
