@@ -3631,7 +3631,8 @@ DESIGN RULES (non-negotiable):
               // الحركة ينحفظ الرد مقطوعًا للأبد (سبب الردود الناقصة بالآيفون).
               msg.content = st.target;
               const el = messagesEl.querySelector('[data-askuid="' + msg._uid + '"]');
-              if(el) el.textContent = st.target.slice(0, st.shown);
+              // strip ** أثناء الحركة حتى لا يظهر الماركداون خامًا للمستخدم
+              if(el) el.textContent = st.target.slice(0, st.shown).replace(/\*\*/g, '');
               // v610 — الحركة تكتب النصّ خامًّا بـtextContent، فروابط الماركداون
               // تبقى عارية حتّى الرسم النهائيّ. ولو بُتر الردّ أو تعطّل الإنهاء
               // لم يأتِ ذلك الرسم أبدًا فبقيت خامًا (عيب رآه عمران). عند لحاق
