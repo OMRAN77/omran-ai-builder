@@ -13804,6 +13804,73 @@ async function sendPrompt(){
 
   // Let the ⏹️ button cancel this in-flight request; it lights up while
   // generating so the user knows they can stop it and edit their message.
+  // 🔭 مرشد بصري: صورة مرفقة + سؤال توجيهي (أو رسالة قصيرة/فارغة) → screen-guide
+  // يُفعَّل هنا بعد حفظ رسالة المستخدم وقبل أي مسار AI عادي.
+  {
+    const __sgReal = imageAttachments.filter(function(a){ return !a._fromMemory; });
+    const __SG_GUIDE_RE = /(?:شو|وش|ايش|أيش|ماذا|ما)\s+(?:أسوي|اسوي|أعمل|اعمل|بعد|التالي?|الجاي|عليّ|علي)\b|(?:وين|فين|أين|اين)\s+(?:أضغط|اضغط|أروح|اروح|أكمل|اكمل)|(?:كيف\s+(?:أكمل|اكمل|أوصل|اوصل|أتابع|اتابع|أفعل|افعل|أتقدم|اتقدم))|(?:الخطوة|خطوة)\s*التالي|ساعدني\s+(?:في|ع|على)|دلني|ارشدني|وجهني|guide\s*me|next\s*step|what\s*(?:do\s+i|should\s+i)|where\s*do\s*i\s*(?:go|click|tap|press)|how\s*do\s*i|what\s*now/i;
+    const __SG_NOT_RE = /(?:^|\s)(?:عدل|عدّل|غير|غيّر|امسح|احذف|شيل|ارسم|صمم|صمّم|ولّد|ولد)\s|اعمل\s+(?:بوستر|بطاقة|إعلان|تصميم|صورة)|(?:create|design|edit|remove|delete|generate)\s+(?:image|poster|design|logo)|(?:^|\s)(?:ابني|بناء|انشئ|اصنع)\s/i;
+    const __sgMatch = __sgReal.length >= 1 && !cur.adMode && !__SG_NOT_RE.test(text) &&
+      (text === '' || __SG_GUIDE_RE.test(text) || (text.length < 80 && !/^(?:اعمل|ابني|صمم|سوي|بناء|build|create|make|design)\b/i.test(text.trim())));
+    if(__sgMatch){
+      const __sgImg = __sgReal[0];
+      const __sgB64 = (__sgImg.dataUrl || '').indexOf(',') !== -1 ? __sgImg.dataUrl.split(',')[1] : (__sgImg.dataUrl || '');
+      const __sgGoal = text || (lang === 'ar' ? 'ماذا أفعل في هذه الشاشة؟' : 'What should I do on this screen?');
+      const __sgToken = (typeof authGet === 'function' ? authGet('aiapp_token') : null);
+      const __sgGuest = (typeof authGet === 'function' ? authGet('aiapp_guest') : null);
+      const __sgLoadMsg = { role: 'assistant', content: lang === 'ar' ? '🔭 يحلل الشاشة…' : '🔭 Analyzing screen…', _loading: true };
+      cur.messages.push(__sgLoadMsg);
+      renderMessages(true);
+      genAbortController = new AbortController();
+      btnStop.classList.add('live');
+      (async function(){
+        try{
+          const __sgHist = cur.messages.slice(-8).filter(function(m){ return m._sgStep; }).map(function(m){ return { screen: m._sgScreen || '', instruction: m.content || '', _imgHash: m._sgHash || '' }; });
+          const __sgRes = await fetch('/api/ai?action=screen-guide', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: genAbortController ? genAbortController.signal : undefined,
+            body: JSON.stringify({ goal: __sgGoal, imageB64: __sgB64, mime: __sgImg.mime || 'image/jpeg', lang: lang || 'ar', token: __sgToken, guestId: __sgGuest, sessionId: (cur._sgSessionId = cur._sgSessionId || ('sg_' + cur.id.slice(-8))), history: __sgHist }),
+          });
+          const __sgData = await __sgRes.json().catch(function(){ return {}; });
+          let __sgText = '';
+          const __ar2 = lang !== 'en';
+          if(__sgData.kind === 'step'){
+            var __ls = [];
+            if(__sgData.screen) __ls.push((__ar2 ? '**الشاشة:** ' : '**Screen:** ') + __sgData.screen);
+            if(__sgData.stepNumber && __sgData.totalSteps) __ls.push((__ar2 ? '**الخطوة ' : '**Step ') + __sgData.stepNumber + (__ar2 ? ' من ' : ' / ') + __sgData.totalSteps + '**');
+            __ls.push('');
+            __ls.push(__sgData.instruction || '');
+            if(__sgData.label && __sgData.label.exact) __ls.push((__ar2 ? '> اضغط على: **' : '> Tap: **') + __sgData.label.exact + '**');
+            if(__sgData.stuck){ __ls.push(''); __ls.push(__ar2 ? '*(شاشة متكررة — جرّبتُ مسارًا مختلفًا)*' : '*(same screen — trying a different path)*'); }
+            __ls.push(''); __ls.push(__ar2 ? '📷 أرسل لقطة الشاشة التالية لأكمل إرشادك.' : '📷 Send the next screenshot to continue.');
+            __sgText = __ls.join('\n');
+            __sgLoadMsg._sgStep = true; __sgLoadMsg._sgScreen = __sgData.screen || ''; __sgLoadMsg._sgHash = __sgData._imgHash || '';
+            // رسم الإطار إذا توفّر
+            if(__sgData.box && __sgData.confidence > 0 && window.__screenGuide && window.__sgLastShot){
+              try{ var __hi = window.__screenGuide.drawHighlight(window.__sgLastShot, __sgData.box); if(__hi) __sgLoadMsg.attachments = [{ name: 'guide.jpg', isImage: true, mime: 'image/jpeg', dataUrl: __hi }]; }catch(e2){ /* صامت */ }
+            }
+          } else if(__sgData.kind === 'ask'){ __sgText = '🔍 ' + (__sgData.message || '');
+          } else if(__sgData.kind === 'blocked'){ __sgText = '🔒 ' + (__sgData.message || '');
+          } else if(__sgData.kind === 'done'){ __sgText = '✅ ' + (__sgData.message || (__ar2 ? 'وصلتَ للهدف.' : 'Done!')); cur._sgSessionId = null;
+          } else if(__sgData.error === 'auth_required'){ __sgText = __ar2 ? 'سجّل دخولك أولاً لاستخدام المرشد البصري.' : 'Please sign in to use the visual guide.';
+          } else if(__sgData.error === 'no_points'){ __sgText = __ar2 ? 'نقاطك غير كافية — أضف رصيدًا لمتابعة المرشد البصري.' : 'Not enough points for the visual guide.'; cur._sgSessionId = null;
+          } else { __sgText = __ar2 ? 'تعذّر تحليل الصورة — تأكد من اتصالك وحاول مرة أخرى.' : 'Could not analyze screenshot. Check your connection and retry.'; }
+          __sgLoadMsg.content = __sgText; __sgLoadMsg._loading = false;
+          renderMessages(true); saveState();
+        } catch(err){
+          if(err && err.name === 'AbortError') return;
+          __sgLoadMsg.content = lang === 'ar' ? '⚠️ تعذّر الاتصال بالمرشد البصري.' : '⚠️ Could not reach the visual guide.';
+          __sgLoadMsg._loading = false; renderMessages(true);
+        } finally {
+          try{ __omranRestoreSendBtn(); btnStop.classList.remove('live'); genAbortController = null; }catch(e){ /* guard-ok */ }
+        }
+      })();
+      return;
+    }
+  }
+  // نهاية مرشد بصري
+
   genAbortController = new AbortController();
   btnStop.classList.add('live');
   __omranArmWatchdog();  // v586
@@ -23232,300 +23299,35 @@ else setTimeout(mountLogoBtn, 1000);
   };
 
 })();
-/* js/app-22-screen-guide-ui.js — واجهة المرشد البصري في عمران AI
+/* js/app-22-screen-guide-ui.js — المرشد البصري: مشاركة مباشرة من الهاتف فقط
  *
- * يحمل زر «المرشد البصري» في القائمة، يفتح منتقي الصورة، يعرض مربع الهدف،
- * يستدعي window.__screenGuide.guide()، ويدمج النتيجة في المحادثة الحالية.
+ * الربط الأساسي صار في مسار الإرسال العادي (app-09-attach.js):
+ *   ترفق صورة + تسأل = يرشدك بدون أي زر إضافي.
  *
- * يستخدم نفس أنماط app-16-snapbuild.js:
- *  - يصل لـ state وrenderMessages وsaveState مباشرة (globals من app-09-attach.js)
- *  - يُغلق plusToolsPopup بعد الضغط
- *  - يعرض حالة التقدم في العنصر نفسه (رسالة مؤقتة ثم رسالة نهائية)
+ * هنا فقط: Share Target — المستخدم يضغط "مشاركة" على لقطة شاشة من هاتفه
+ * فتُستقبَل في عمران AI مباشرة عبر sw.js وتُحقن في المحادثة.
  */
 (function () {
   'use strict';
 
-  // -------- أدوات مساعدة --------
+  window.addEventListener('sg:shared-screenshot', function (ev) {
+    var file = ev.detail && ev.detail.file;
+    if (!file) return;
 
-  function currentProject() {
-    if (typeof state === 'undefined' || !state) return null;
-    if (!state.currentId) return null;
-    return (state.projects || []).find(function (p) { return p.id === state.currentId; }) || null;
-  }
-
-  function ensureProject() {
-    var p = currentProject();
-    if (p) return p;
-    // أنشئ محادثة جديدة إن لم تكن هناك واحدة
-    if (typeof newProject === 'function') { newProject(); return currentProject(); }
-    return null;
-  }
-
-  function addMsg(role, content, extra) {
-    var p = ensureProject();
-    if (!p) return null;
-    if (!Array.isArray(p.messages)) p.messages = [];
-    var msg = Object.assign({ role: role, content: content }, extra || {});
-    p.messages.push(msg);
-    if (typeof renderMessages === 'function') renderMessages(true);
-    if (typeof saveState === 'function') saveState();
-    return msg;
-  }
-
-  function updateMsg(msg, patch) {
-    if (!msg) return;
-    Object.assign(msg, patch);
-    if (typeof renderMessages === 'function') renderMessages(true);
-    if (typeof saveState === 'function') saveState();
-  }
-
-  function closePlusPopup() {
-    try {
-      var ptp = document.getElementById('plusToolsPopup');
-      if (ptp) { ptp.classList.remove('show'); ptp.classList.remove('open'); }
-    } catch (e) { /* صامت */ }
-  }
-
-  function isAr() {
-    return !(typeof AL === 'function' && AL() === 'en');
-  }
-
-  // -------- مربع الهدف (overlay بسيط) --------
-
-  function showGoalDialog(onConfirm) {
-    var ar = isAr();
-    var ov = document.createElement('div');
-    ov.id = 'sgGoalOverlay';
-    ov.style.cssText = [
-      'position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9999;',
-      'display:flex;align-items:center;justify-content:center;',
-      'padding:20px;box-sizing:border-box;'
-    ].join('');
-
-    var box = document.createElement('div');
-    box.style.cssText = [
-      'background:var(--bg-card,#1a1a2e);border-radius:16px;padding:24px 20px 20px;',
-      'max-width:480px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.6);',
-      'display:flex;flex-direction:column;gap:14px;',
-      'border:1px solid rgba(255,255,255,.08);'
-    ].join('');
-
-    var title = document.createElement('p');
-    title.style.cssText = 'margin:0;font-size:15px;font-weight:600;color:var(--text,#f0f0f0);' + (ar ? 'direction:rtl;text-align:right;' : '');
-    title.textContent = ar ? 'ماذا تريد أن تفعل في هذا التطبيق؟' : 'What do you want to do in this app?';
-
-    var sub = document.createElement('p');
-    sub.style.cssText = 'margin:0;font-size:12px;color:var(--text-dim,#888);' + (ar ? 'direction:rtl;text-align:right;' : '');
-    sub.textContent = ar
-      ? 'مثال: "أبي أجدد رخصة قيادتي" أو "كيف أرجّع طلب من تطبيق نون"'
-      : 'Example: "I want to renew my driving license" or "how to return an order on noon"';
-
-    var inp = document.createElement('textarea');
-    inp.rows = 3;
-    inp.style.cssText = [
-      'width:100%;box-sizing:border-box;background:var(--bg-input,#111);',
-      'border:1px solid rgba(255,255,255,.15);border-radius:10px;',
-      'padding:10px 12px;font-size:14px;color:var(--text,#f0f0f0);',
-      'resize:none;outline:none;font-family:inherit;',
-      (ar ? 'direction:rtl;text-align:right;' : '')
-    ].join('');
-    inp.placeholder = ar ? 'اكتب هنا…' : 'Type here…';
-
-    var row = document.createElement('div');
-    row.style.cssText = 'display:flex;gap:10px;justify-content:flex-end;';
-
-    var btnCancel = document.createElement('button');
-    btnCancel.type = 'button';
-    btnCancel.textContent = ar ? 'إلغاء' : 'Cancel';
-    btnCancel.style.cssText = 'padding:9px 18px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--text-dim,#888);cursor:pointer;font-size:13px;';
-
-    var btnOk = document.createElement('button');
-    btnOk.type = 'button';
-    btnOk.textContent = ar ? 'ابدأ' : 'Start';
-    btnOk.style.cssText = 'padding:9px 22px;border-radius:8px;border:none;background:var(--accent,#e3b341);color:#111;font-weight:700;cursor:pointer;font-size:13px;';
-
-    function close() { try { document.body.removeChild(ov); } catch (e) { /* صامت */ } }
-
-    btnCancel.onclick = close;
-    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
-
-    btnOk.onclick = function () {
-      var goal = inp.value.trim();
-      if (!goal) { inp.focus(); return; }
-      close();
-      onConfirm(goal);
+    // حقن الصورة في pendingAttachments تمامًا كما لو رفعها المستخدم بنفسه
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      var dataUrl = e.target.result;
+      if (!dataUrl) return;
+      if (typeof pendingAttachments !== 'undefined' && typeof renderAttachStrip === 'function') {
+        pendingAttachments.push({ name: 'shared-screenshot.jpg', isImage: true, mime: file.type || 'image/jpeg', dataUrl: dataUrl });
+        renderAttachStrip();
+        // ركّز على خانة الكتابة ليكتب هدفه مباشرة
+        try { document.getElementById('prompt').focus(); } catch (_) {}
+      }
     };
-
-    inp.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); btnOk.click(); }
-      if (e.key === 'Escape') close();
-    });
-
-    row.appendChild(btnCancel);
-    row.appendChild(btnOk);
-    box.appendChild(title);
-    box.appendChild(sub);
-    box.appendChild(inp);
-    box.appendChild(row);
-    ov.appendChild(box);
-    document.body.appendChild(ov);
-    setTimeout(function () { inp.focus(); }, 80);
-  }
-
-  // -------- عرض نتيجة الخطوة في المحادثة --------
-
-  function stepToMarkdown(data, goal) {
-    var ar = isAr();
-    if (data.kind === 'ask') return (ar ? '🔍 ' : '🔍 ') + (data.message || '');
-    if (data.kind === 'blocked') return '🔒 ' + (data.message || '');
-    if (data.kind === 'done') return '✅ ' + (data.message || (ar ? 'تم! وصلت للهدف.' : 'Done!'));
-    if (data.kind === 'error') return '⚠️ ' + (data.message || 'error');
-
-    // kind === 'step'
-    var lines = [];
-    if (data.screen) lines.push((ar ? '**الشاشة الحالية:** ' : '**Screen:** ') + data.screen);
-    if (data.stepNumber && data.totalSteps) {
-      lines.push((ar ? '**الخطوة ' : '**Step ') + data.stepNumber + (ar ? ' من ' : ' of ') + data.totalSteps + '**');
-    }
-    lines.push('');
-    lines.push(data.instruction || '');
-    if (data.label && data.label.exact) {
-      lines.push('');
-      lines.push((ar ? '> اضغط على: **' : '> Tap: **') + data.label.exact + '**');
-    }
-    if (data.stuck) {
-      lines.push('');
-      lines.push(ar ? '*لاحظتُ أنك أرسلت نفس الشاشة — جرّبتُ مسارًا مختلفًا.*' : '*Noticed same screen — trying a different path.*');
-    }
-    if (data.usedFallback) {
-      lines.push('');
-      lines.push(ar ? '*استخدمتُ نموذجًا أدق للتحقق.*' : '*Used higher-precision model.*');
-    }
-    return lines.join('\n');
-  }
-
-  // -------- تشغيل المرشد --------
-
-  function runGuide(file, goal) {
-    var ar = isAr();
-    var sg = window.__screenGuide;
-    if (!sg) { alert(ar ? 'المرشد البصري غير محمّل — حدّث الصفحة.' : 'Screen guide not loaded — please refresh.'); return; }
-
-    var loadingMsg = addMsg('assistant', ar ? '🔭 يحلل الشاشة…' : '🔭 Analyzing screen…', { _loading: true });
-
-    // حفظ shot للرسم لاحقًا
-    sg.prepareShot(file).then(function (shot) {
-      window.__sgLastShot = shot;
-    }).catch(function () { /* صامت */ });
-
-    sg.guide(file, goal, {
-      lang: ar ? 'ar' : 'en',
-      onLoading: function (v) {
-        if (!v && loadingMsg) updateMsg(loadingMsg, { _loading: false });
-      },
-      onStep: function (data) {
-        var text = stepToMarkdown(data, goal);
-
-        // إذا الخطوة فيها صورة مظللة
-        var highlighted = null;
-        if (data.kind === 'step' && data.box && window.__sgLastShot) {
-          try { highlighted = sg.drawHighlight(window.__sgLastShot, data.box); } catch (e) { /* صامت */ }
-        }
-
-        if (loadingMsg) {
-          updateMsg(loadingMsg, {
-            content: text,
-            _loading: false,
-            _sgHighlight: highlighted || undefined,
-          });
-          loadingMsg = null;
-        } else {
-          addMsg('assistant', text, { _sgHighlight: highlighted || undefined });
-        }
-
-        // إذا الهدف تحقق أو نقاط ناقصة → أنهِ الجلسة
-        if (data.kind === 'done' || data.error === 'no_points') {
-          sg.resetSession();
-        }
-
-        // إذا طُلب خطوة تالية (المستخدم يصل إلى الهدف) → اقترح المتابعة
-        if (data.kind === 'step' && !data.done) {
-          var hint = addMsg('assistant',
-            ar ? '📷 أرسل لقطة الشاشة التالية وسأعطيك الخطوة التالية.' : '📷 Send the next screenshot and I\'ll guide you further.',
-            { _sgContinueHint: true }
-          );
-          // أزل التلميح عند أي رسالة قادمة
-          var cleanup = function () {
-            window.removeEventListener('sg:step-sent', cleanup);
-            var p = currentProject();
-            if (p && hint) {
-              p.messages = p.messages.filter(function (m) { return m !== hint; });
-              if (typeof renderMessages === 'function') renderMessages(true);
-            }
-          };
-          window.addEventListener('sg:step-sent', cleanup, { once: true });
-        }
-      },
-      onError: function (err) {
-        var msg = ar ? '⚠️ تعذّر تحليل الصورة — تأكد من اتصالك وحاول ثانية.' : '⚠️ Could not analyze the screenshot — check your connection and try again.';
-        if (loadingMsg) { updateMsg(loadingMsg, { content: msg, _loading: false }); loadingMsg = null; }
-        else addMsg('assistant', msg);
-      },
-    });
-  }
-
-  // -------- تسجيل الزر ومنتقي الملف --------
-
-  function boot() {
-    // منتقي الصور الخاص بالمرشد (منفصل عن attachInput الرئيسي)
-    var sgInput = document.createElement('input');
-    sgInput.type = 'file';
-    sgInput.accept = 'image/jpeg,image/png,image/webp';
-    sgInput.style.display = 'none';
-    sgInput.id = 'sgFileInput';
-    document.body.appendChild(sgInput);
-
-    var pendingGoal = null;
-
-    sgInput.addEventListener('change', function (e) {
-      var file = e.target.files && e.target.files[0];
-      sgInput.value = '';
-      if (!file) return;
-      var goal = pendingGoal;
-      pendingGoal = null;
-      if (!goal) { showGoalDialog(function (g) { runGuide(file, g); }); return; }
-      runGuide(file, goal);
-    });
-
-    var btn = document.getElementById('btnScreenGuide');
-    if (btn) {
-      btn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        closePlusPopup();
-        pendingGoal = null;
-        // اسأل عن الهدف أولاً، ثم افتح المنتقي
-        showGoalDialog(function (goal) {
-          pendingGoal = goal;
-          sgInput.click();
-        });
-      });
-    }
-
-    // -------- مشاركة مباشرة من هاتف (Share Target) --------
-    window.addEventListener('sg:shared-screenshot', function (ev) {
-      var file = ev.detail && ev.detail.file;
-      if (!file) return;
-      closePlusPopup();
-      // الهدف غير معروف من المشاركة المباشرة → اسأل
-      showGoalDialog(function (goal) {
-        window.__sgLastShot = null;
-        runGuide(file, goal);
-      });
-    });
-  }
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
-  else boot();
+    reader.readAsDataURL(file);
+  });
 
 })();
 // app-22-session-new.js — v2
