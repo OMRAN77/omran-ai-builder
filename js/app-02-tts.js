@@ -111,6 +111,10 @@ function setActiveWord(wordEls, idx){
 // "**bold**" spans get their asterisks stripped + a bold class. This never
 // changes which token maps to which span, only how that span looks.
 function buildSpokenWordSpans(container, text){
+  // بعض الردود تفصل عنوان المصدر عن رابطه بسطر جديد:
+  // [عنوان المصدر]\nhttps://example.com — نعيده إلى ماركداون صالح
+  // قبل التقسيم كي يصير رابطًا نظيفًا ويُجمع تحت زر «المصادر».
+  text = String(text || '').replace(/\[([^\]\n]{1,240})\]\s*\n+\s*\(?\s*(https?:\/\/[^\s)]+)\s*\)?/g, '[$1]($2)');
   container.innerHTML = '';
   const wordEls = [];
   // v467: capture markdown links [text](url) — even with spaces — as a single token
