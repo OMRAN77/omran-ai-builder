@@ -10297,8 +10297,8 @@ const __IMG_SHAPE_RE = /شكلها|شكله|شكلهم|كيف تبدو|كيف ي
 const __IMG_EN_RE = /\b(photos?|pictures?|images?|pics|thumbnails?)\b|\blooks? like\b/i;
 // توليد/تعديل صورة أو الإشارة إلى صورة مرفقة = ليس شريط بحث.
 const __IMG_MAKE_RE = /^\s*صور[هة]\s+\S|صوّر لي|صور لي|صوره لي|صورة لي|صورلي|صوّرلي|تصور لي|ارسم|أرسم|ارسمي|صمم|صمّم|اصمم|اصنع|اعمل لي|سوي لي|سوّي لي|ولّد|ولد لي|حوّل|عدّل|اقتطع|ازل الخلفية|أزل الخلفية|generate|create an image|draw|design|edit it|remove background|هذه الصورة|هالصورة|الصورة المرفقة|في الصورة|بالصورة|(?:عطني|أعطني|اعطني|هات|ابا|أبا|ابي|أبي|ابغي|أبغي|ابغى|أبغى|اريد|أريد|سو|سوي|سوّي|اعمل|أعمل|give me|make me|i want)\s+(?:لي\s+)?[^\n]{0,20}?(?:تصميم|تصور|صور[هة]|رسم[هة]|design|image|picture)/i; // v656 (مضيّق: «صور» الجمع تبقى بحثًا عن صور حقيقية): «أريد صورة…» = توليد بالذكاء الاصطناعي، لا شريط صور جوجل
-// v529: وصفة / طريقة طبخ / مكونات → صورة الطبق تلقائيًّا فوق الردّ
-// v529b: يشمل «طرقة» (بدون ياء) + «اطبخ/اعمل» + «سوّي» + صور طبق
+// يلتقط سؤال الوصفة لتوجيه البحث النصّي فقط، لا لطلب شريط صور تلقائي.
+// الصور لا تُجلب إلا عند طلبها بكلمات صريحة.
 const __RECIPE_IMG_RE = /(?:^|[\s،,])(?:ط(?:ريق|رق)[هة](?:\s+(?:طبخ|تحضير|عمل|صنع|الطبخ|التحضير))?|وصف[هة](?=[\s،]|$)|مكونات(?=[\s،]|$)|تحضير(?=\s)|المقادير(?=[\s،]|$)|[أا]طبخ\s|[أا]عمل\s(?!لي)|[أا]صنع\s|سوّ?[يى]\s)|(?:كيف\s+[أا]?(?:طبخ|عمل|صنع|حضّر|حضر|سوّ?[يى]|أعمل|اعمل|أطبخ|اطبخ))\s|(?:طبخة|أكلة|وجبة)\s+\S|(?:how to\s+(?:cook|make|prepare|bake))\s|(?:recipe\s+(?:for|of))\s/i;
 const __RECIPE_STRIP_RE2 = /(?:ط(?:ريق|رق)[هة](?:\s+(?:طبخ|تحضير|عمل|صنع|الطبخ|التحضير|العمل|الصنع))?|وصف[هة]|مكونات|المقادير|كيف\s+[أا]?(?:طبخ|عمل|صنع|حضّر|حضر|سوّ?[يى]|أعمل|اعمل|أطبخ|اطبخ)|تحضير|[أا]طبخ|[أا]عمل|[أا]صنع|طبخة|أكلة|وجبة|how to\s+(?:cook|make|prepare|bake)|recipe\s*(?:for|of)?|ingredients?\s*(?:for|of)?)/gi;
 // v628 عيب [د] (قياس حيّ): «هل يوجد صور لها» يجرف Tavily وGoogle إلى مواقع صور المخزون
@@ -10322,7 +10322,7 @@ function __recipeTopicQuery(q){
 function __wantsImageStrip(t){
   const s = String(t || '');
   if(!s || __IMG_MAKE_RE.test(s)) return false;
-  return __IMG_ASK_RE.test(s) || __IMG_SHAPE_RE.test(s) || __IMG_EN_RE.test(s) || __RECIPE_IMG_RE.test(s);
+  return __IMG_ASK_RE.test(s) || __IMG_SHAPE_RE.test(s) || __IMG_EN_RE.test(s);
 }
 async function smartMaybeSearch(text, ctxMsgs){
   if(!text) return null;
@@ -10409,10 +10409,11 @@ async function smartMaybeSearch(text, ctxMsgs){
   }
   // مسار سريع: الكلمات المفتاحية القديمة => بحث مباشر بدون تصنيف.
   if(mahaNeedsSearch(text)) return await fetchSearchNote(searchQuery, __wantDeep, text);
-  // غير ذلك: مصنّف Groq سريع بالسيرفر يقرر بالمعنى (يفشل بصمت => لا بحث).
+  // غير ذلك: فحص دلالي قصير فقط. لا نؤخر سؤالًا عاديًا عدة ثوانٍ من أجل
+  // احتمال بحث؛ الكلمات الواضحة أعلاه ما زالت تفتح البحث مباشرة.
   try{
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), 1500);
     const res = await fetch('/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -10430,11 +10431,9 @@ async function smartMaybeSearch(text, ctxMsgs){
 }
 
 async function fetchSearchNote(transcript, deep, q0){
-  // 🔁 محاولة ثانية تلقائية: فشل البحث الأول (timeout/خطأ عابر) لا يعني رد
-  // "ما عندي معلومات" — نعيد المحاولة مرة وحدة قبل الاستسلام.
-  const first = await fetchSearchNoteOnce(transcript, deep, q0);
-  if(first) return first;
-  return await fetchSearchNoteOnce(transcript, false, q0);
+  // لا تعيد المحاولة تلقائيًا في نفس رسالة المستخدم: هذا كان يضاعف زمن
+  // الانتظار عند تعثّر مصدر البحث. إن لم يصل المصدر سريعًا يجيب الذكاء مباشرة.
+  return await fetchSearchNoteOnce(transcript, deep, q0);
 }
 
 // دفاع واجهة مستقل: المصدر المحذوف لا يظهر حتى لو وصل من استجابة قديمة.
@@ -10486,7 +10485,7 @@ async function fetchSearchNoteOnce(transcript, deep, q0){
     : null;
   try{
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), deep ? 45000 : 25000);
+    const timeout = setTimeout(() => controller.abort(), deep ? 25000 : 12000);
     const res = await fetch('/api/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
