@@ -1276,11 +1276,29 @@ function renderMessages(keepScroll){
       stoppedNote.textContent = lang === 'ar' ? 'تم إيقاف الرد' : 'Response stopped';
       div.appendChild(stoppedNote);
     }
-    // 📚 Feature ② — source badges AFTER the reply text: small pills with a
-    // favicon + domain, opening the real source url in a new tab. Never
-    // invented — only what the search backend actually returned.
-    if(m.role !== 'user' && Array.isArray(m.sources) && m.sources.length){
-      const validSrcs = m.sources.filter(s => s && s.url).slice(0, 10);
+    // 📚 اجمع الروابط المضمّنة في نص الرد + روابط المصادر في قائمة واحدة
+    {
+      // استخرج الروابط الخارجية من markdown المُعرَض واستبدلها بنص عادي
+      const __inlineLinks = [];
+      if(m.role !== 'user'){
+        textDiv.querySelectorAll('a[href^="http"]').forEach(a => {
+          const url = a.href || '';
+          const title = a.textContent.trim() || url;
+          if(url && title.length > 2 && !__inlineLinks.some(l => l.url === url)){
+            __inlineLinks.push({ url, title });
+          }
+          // حوّل الرابط إلى نص بلا href حتى لا يتفرّق
+          const span = document.createElement('span');
+          span.className = 'msgInlineRef';
+          span.textContent = a.textContent;
+          a.parentNode.replaceChild(span, a);
+        });
+      }
+      // ادمج الروابط: المصادر أولاً ثم الروابط المضمّنة (بلا تكرار)
+      const __srcBase = Array.isArray(m.sources) ? m.sources.filter(s => s && s.url) : [];
+      const __srcExtra = __inlineLinks.filter(l => !__srcBase.some(s => s.url === l.url));
+      const validSrcs = [...__srcBase, ...__srcExtra].slice(0, 15);
+
       if(validSrcs.length){
         // زر «المصادر» المدمج — يجمع كل الروابط في مكان واحد
         const btn = document.createElement('button');
