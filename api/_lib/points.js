@@ -16,6 +16,7 @@ const COSTS = {
   runway_video: 60,  // فيديو Runway ‏10 ثواني
   veo_video: 400,    // فيديو Veo 3 ‏8 ثواني (بالصوت)
   image: 10,         // توليد/تعديل صورة
+  screen_guide: 5,   // جلسة إرشاد بصريّ — تُخصم مرة واحدة للجلسة كاملة
   premium_claude: 20,  // رد احترافي 👑 Claude Opus 5
   premium_openai: 15,  // رد احترافي 👑 GPT-5.6
   premium_gemini: 12,  // رد احترافي 👑 Gemini 3.1 Pro
