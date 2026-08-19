@@ -13627,7 +13627,8 @@ async function sendPrompt(){
       if(__IMGF_NEW_RE.test(text) || (__IMGF_NOT_RE.test(text) && !__IMG_EDIT_VERB_RE.test(text))) return false;
       const __wc = String(text).trim().split(/\s+/).filter(Boolean);
       if(__wc.length < 2 && String(text).trim().length < 12) return false;
-      if(typeof window.__isExplicitImageEdit === 'function') return true;
+      // السطر المحذوف كان: if(typeof window.__isExplicitImageEdit === 'function') return true;
+      // كان يُعيد true لأي رسالة بمجرد وجود الدالة، متجاوزاً فلتر __editVerb+__priorRef.
       const __editVerb = /(عدل|عدّل|غير|غيّر|بدل|بدّل|امسح|احذف|ازل|أزل|شيل|أضف|اضف|ضيف|حط|اكتب|أكتب|خل|اجعل|كبر|كبّر|صغر|صغّر|\bedit\b|\bchange\b|\bremove\b|\badd\b|\bput\b|\bwrite\b)/i;
       const __priorRef = /(الصورة\s+السابقة|الصوره\s+السابقه|هذه\s+الصورة|هذي\s+الصورة|هالصورة|عليها|فيها|منها|\bit\b|this\s+(?:image|picture)|previous\s+(?:image|picture))/i;
       return __editVerb.test(text) && __priorRef.test(text);
