@@ -1,4 +1,4 @@
-const CACHE_NAME = 'omran-ai-builder-b00edc61';
+const CACHE_NAME = 'omran-ai-builder-gold-icons-20260819';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -9,10 +9,10 @@ const STATIC_ASSETS = [
   './js/app.bundle.js',
   './templates-data.js',
   './manifest.json',
-  './icons/icon-192-v2.png',
-  './icons/icon-512-v2.png',
-  './icons/apple-touch-icon-v2.png',
-  './icons/favicon-32-v2.png',
+  './icons/icon-192-v2.png?icon=gold-20260819',
+  './icons/icon-512-v2.png?icon=gold-20260819',
+  './icons/apple-touch-icon-v2.png?icon=gold-20260819',
+  './icons/favicon-32-v2.png?icon=gold-20260819',
 ];
 
 self.addEventListener('install', (event) => {
@@ -40,8 +40,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title || 'مها', {
       body: data.body || 'تذكير',
-      icon: './icons/icon-192-v2.png',
-      badge: './icons/icon-192-v2.png',
+      icon: './icons/icon-192-v2.png?icon=gold-20260819',
+      badge: './icons/icon-192-v2.png?icon=gold-20260819',
       tag: 'maha-reminder-' + Date.now(),
       silent: false,
       vibrate: [300, 150, 300, 150, 300],
