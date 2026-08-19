@@ -5115,8 +5115,9 @@ function renderMessages(keepScroll){
         }catch(e2){ /* never let a copy failure affect the rest of the UI */ }
       };
       actionBar.appendChild(copyBtnEl);
-      // على الموبايل رسائل المستخدم ليس لها شريط إجراءات ظاهر (تجنّب الأيقونة الطافحة)
-      copyMsgBtn = (m.role !== 'user' || !document.documentElement.classList.contains('mobile-ui')) ? actionBar : null;
+      // زر النسخ يبقى تحت رسالة المستخدم على الجوال؛ بقية الإجراءات لا تظهر
+      // للمستخدم هناك، لذلك لا يعود الشريط طافيًا أو مزدحمًا.
+      copyMsgBtn = actionBar;
     }
     if(m.code && m.providerLabel){
       const isActive = cur.code === m.code;
