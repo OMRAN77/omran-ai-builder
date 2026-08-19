@@ -149,16 +149,19 @@ function wantsLocalGeo(q){
   return false;                                   // الافتراض: عالميّ
 }
 
-async function pplxLive(query, wantImages) {
+async function pplxLive(query, wantImages, latestNews) {
   const key = (process.env.PERPLEXITY_API_KEY || '').trim();
   if (!key) return null;
   try {
+    const liveQuery = latestNews
+      ? ('Give only verified breaking news published in the last 24 hours. If none is available, say so clearly. Include each story publication time when available. User request: ' + String(query || '').slice(0, 500))
+      : String(query || '').slice(0, 500);
     const r = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
       body: JSON.stringify({
         model: 'sonar',
-        messages: [{ role: 'user', content: String(query || '').slice(0, 500) }],
+        messages: [{ role: 'user', content: liveQuery }],
         return_images: !!wantImages,
         max_tokens: 400,
       }),
@@ -815,8 +818,8 @@ module.exports = async (req, res) => {
 
     // v611 — نداء واحد للمغذّي البديل يسدّ ثلاث فجوات معًا: نتائج عند سقوط
     // Tavily، وصور عند خلوّ الشريط، وجوابًا عند غياب جواب Tavily.
-    if (!latestNews && (tavilyDown || (wantImages && !images.length))) {
-      const pplx = await pplxLive(wantImages ? imgQuery : query, wantImages);
+    if (tavilyDown || (wantImages && !images.length)) {
+      const pplx = await pplxLive(wantImages ? imgQuery : query, wantImages, latestNews);
       if (pplx) {
         if (!images.length && pplx.images.length) images = pplx.images;
         if (!data.answer && pplx.answer) data.answer = pplx.answer;
