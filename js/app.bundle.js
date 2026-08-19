@@ -1275,6 +1275,10 @@ function setActiveWord(wordEls, idx){
 // "**bold**" spans get their asterisks stripped + a bold class. This never
 // changes which token maps to which span, only how that span looks.
 function buildSpokenWordSpans(container, text){
+  // بعض الردود تفصل عنوان المصدر عن رابطه بسطر جديد:
+  // [عنوان المصدر]\nhttps://example.com — نعيده إلى ماركداون صالح
+  // قبل التقسيم كي يصير رابطًا نظيفًا ويُجمع تحت زر «المصادر».
+  text = String(text || '').replace(/\[([^\]\n]{1,240})\]\s*\n+\s*\(?\s*(https?:\/\/[^\s)]+)\s*\)?/g, '[$1]($2)');
   container.innerHTML = '';
   const wordEls = [];
   // v467: capture markdown links [text](url) — even with spaces — as a single token
@@ -4748,7 +4752,9 @@ function renderMessages(keepScroll){
         if(!url) return '';
         if(__genShown.indexOf(url) === -1) __genShown.push(url);
         return '';
-      }).replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+      // مزوّد الصورة قد يرسل رمزًا ناقصًا أو داخل أقواس بدل __IMG_n__ الصحيح.
+      // هذا رمز داخلي فقط؛ أخفه حتى إن لم تكن الصورة نفسها متاحة.
+      }).replace(/`?\[?__IMG_\d+_*\]?`?/g, '').replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
       if(!__mc && !__genShown.length) __mc = m.content;
     }
     let msgWordEls = null;
