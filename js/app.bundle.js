@@ -10294,7 +10294,8 @@ function __recipeTopicQuery(q){
   if(t.length < 2) return String(q || '').slice(0, 100); // fallback
   // عربي: نضيف «طبخ وصفة» أمام اسم الطبق ← نتائج مواقع طبخ عربية لا قواميس إنجليزية
   // إنجليزي: نضيف «recipe» بعده
-  if(/[\u0600-\u06FF]/.test(t)) return ('طبخ وصفة ' + t).slice(0, 130);
+  // اسم الطبق + وصفة + recipe ← يجيب خليط عربي وإنجليزي بدل إنجليزي فقط
+  if(/[\u0600-\u06FF]/.test(t)) return (t + ' وصفة recipe').slice(0, 130);
   return (t + ' recipe').slice(0, 130);
 }
 function __wantsImageStrip(t){
@@ -13692,7 +13693,8 @@ async function sendPrompt(){
       // السطر المحذوف كان: if(typeof window.__isExplicitImageEdit === 'function') return true;
       // كان يُعيد true لأي رسالة بمجرد وجود الدالة، متجاوزاً فلتر __editVerb+__priorRef.
       const __editVerb = /(عدل|عدّل|غير|غيّر|بدل|بدّل|امسح|احذف|ازل|أزل|شيل|أضف|اضف|ضيف|حط|اكتب|أكتب|خل|اجعل|كبر|كبّر|صغر|صغّر|\bedit\b|\bchange\b|\bremove\b|\badd\b|\bput\b|\bwrite\b)/i;
-      const __priorRef = /(الصورة\s+السابقة|الصوره\s+السابقه|هذه\s+الصورة|هذي\s+الصورة|هالصورة|عليها|فيها|منها|\bit\b|this\s+(?:image|picture)|previous\s+(?:image|picture))/i;
+      // «عليها|فيها|منها» + لواحق فعلية شائعة («اجعلها/كبّرها/غيّرها...»)
+      const __priorRef = /(الصورة\s+السابقة|الصوره\s+السابقه|هذه\s+الصورة|هذي\s+الصورة|هالصورة|عليها|فيها|منها|اجعلها|كبّرها|كبرها|صغّرها|صغرها|غيّرها|غيرها|عدّلها|عدلها|احذفها|امسحها|بدّلها|بدلها|شيلها|حطّها|حطها|خذها|ازلها|أزلها|\bit\b|this\s+(?:image|picture)|previous\s+(?:image|picture))/i;
       return __editVerb.test(text) && __priorRef.test(text);
     }catch(e){ return false; }
   })();
