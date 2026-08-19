@@ -1241,9 +1241,7 @@ function renderMessages(keepScroll){
         if(!url) return '';
         if(__genShown.indexOf(url) === -1) __genShown.push(url);
         return '';
-      // مزوّد الصورة قد يرسل رمزًا ناقصًا أو داخل أقواس بدل __IMG_n__ الصحيح.
-      // هذا رمز داخلي فقط؛ أخفه حتى إن لم تكن الصورة نفسها متاحة.
-      }).replace(/`?\[?__IMG_\d+_*\]?`?/g, '').replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+      }).replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
       if(!__mc && !__genShown.length) __mc = m.content;
     }
     let msgWordEls = null;
