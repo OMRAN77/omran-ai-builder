@@ -1093,15 +1093,29 @@ function omranOptCss(){
   document.head.appendChild(st);
 }
 function omranExtractOptions(txt){
-  if(!txt || txt.indexOf('[[') < 0) return null;
-  const blocks = [];
-  const clean = String(txt).replace(/\[\[(OPT|MULTI)\]\]([\s\S]*?)\[\[\/(?:OPT|MULTI)\]\]/g, function(m, kind, body){
-    const items = body.split('|').map(function(x){ return x.trim(); }).filter(Boolean);
-    if(items.length) blocks.push({ multi: kind === 'MULTI', items: items.slice(0, 28) });
-    return '';
-  }).replace(/\n{3,}/g, '\n\n').trim();
-  return blocks.length ? { text: clean, blocks: blocks } : null;
-}
+    if(!txt || txt.indexOf('[[') < 0) return null;
+    const blocks = [];
+    const source = String(txt);
+    let clean = source.replace(/\[\[(OPT|MULTI)\]\]([\s\S]*?)\[\[\/(?:OPT|MULTI)\]\]/g, function(m, kind, body){
+      const items = body.split('|').map(function(x){ return x.trim(); }).filter(Boolean);
+      if(items.length) blocks.push({ multi: kind === 'MULTI', items: items.slice(0, 28) });
+      return '';
+    });
+    // Accept the occasional malformed form: [[OPT:]] [one| [[OPT:]] [two]].
+    // A reply must show usable buttons rather than raw model markup.
+    if(!blocks.length){
+      clean = source.replace(/\[\[(OPT|MULTI):\]\]\s*\[?([\s\S]*?)\]\](?=\s*$)/g, function(m, kind, body){
+        const repeat = new RegExp('\\|\\s*\\[\\[' + kind + ':\\]\\]\\s*\\[?', 'g');
+        const items = body.replace(repeat, '|').split('|').map(function(x){
+          return x.replace(/^\s*\[|\]\s*$/g, '').trim();
+        }).filter(Boolean);
+        if(items.length) blocks.push({ multi: kind === 'MULTI', items: items.slice(0, 28) });
+        return '';
+      });
+    }
+    clean = clean.replace(/\n{3,}/g, '\n\n').trim();
+    return blocks.length ? { text: clean, blocks: blocks } : null;
+    }
 function omranSendOption(val){
   const el = document.getElementById('prompt');
   if(!el || typeof sendPrompt !== 'function') return;
