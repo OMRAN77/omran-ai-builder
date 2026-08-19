@@ -497,6 +497,11 @@ function mahaNeedsSearch(text){
   const lower = text.toLowerCase();
   return MAHA_SEARCH_KEYWORDS.some(kw => lower.includes(kw.toLowerCase()));
 }
+function __wantsLatestNews(text){
+  const s = String(text || '');
+  return /(?:اخبار|أخبار|خبر|news)/i.test(s)
+    && /(?:مباشر|مباشرة|عاجل|عاجلة|اليوم|الآن|الحين|آخر|اخر|latest|breaking|today|now|live)/i.test(s);
+}
 
 // If the user's turn looks like it needs real-time info, hit our Tavily-backed
 // /api/search endpoint and turn the results into a system message Maha can use.
@@ -658,7 +663,7 @@ async function smartMaybeSearch(text, ctxMsgs){
 
   // v384: 🔬 Deep Research — استعلامات معقدة أو صريحة تحتاج بحث عميق بعدة زوايا.
   const __deepRe = /بحث عميق|بحث شامل|تقرير مفصل|تحليل شامل|قارن بين|مقارنة.*بين|أفضل\s*(خيارات|بدائل|مواقع|شركات|تطبيقات)|deep research|comprehensive|detailed report|compare.*between/i;
-  const __wantDeep = __deepRe.test(text) || (text.length > 120 && mahaNeedsSearch(text));
+  const __wantDeep = !__wantsLatestNews(text) && (__deepRe.test(text) || (text.length > 120 && mahaNeedsSearch(text)));
 
   // v628 عيب [ب]: نيّة صور صريحة = بحث حيّ إجباري (سؤال «هل يوجد صور» كان يمرّ بلا بحث فلا صور).
   if(__wantsImageStrip(text)){
@@ -751,6 +756,7 @@ function __dropWeakSources(list, rawText){
 }
 
 async function fetchSearchNoteOnce(transcript, deep, q0){
+  const latestNews = __wantsLatestNews(q0 || transcript);
   // Live search is the longest silent gap in ordinary chat — up to 45s.
   const __st = (window.__chatStatus && !window.__chatStatus.__released)
     ? window.__chatStatus.step('🔍', deep ? 'يبحث في الإنترنت (بحث موسّع)…' : 'يبحث في الإنترنت…')
@@ -764,7 +770,7 @@ async function fetchSearchNoteOnce(transcript, deep, q0){
       // 🖼️ Feature ②: also ask for images so informational/live-search
       // replies can show a ChatGPT-style image strip + source badges above
       // and below the answer text (data.sources/data.images below).
-      body: JSON.stringify({ query: transcript, q0: q0 || '', images: __wantsImageStrip(q0 || transcript), deep: !!deep, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+      body: JSON.stringify({ query: transcript, q0: q0 || '', images: __wantsImageStrip(q0 || transcript), deep: latestNews ? false : !!deep, latestNews, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
       signal: controller.signal,
     });
     clearTimeout(timeout);
@@ -790,7 +796,7 @@ async function fetchSearchNoteOnce(transcript, deep, q0){
     const __maxRes = data.deep ? 15 : 8;
     if(searchResults.length){
       searchResults.slice(0, __maxRes).forEach(r => {
-        if(r && r.content) parts.push(`- ${r.title || ''} [${r.url || ''}]: ${r.content}`);
+        if(r && r.content) parts.push(`- ${r.title || ''}${r.published_date ? ` [Published: ${r.published_date}]` : ''} [${r.url || ''}]: ${r.content}`);
       });
     }
     // Google Custom Search results are included in the grounding alongside Tavily.
@@ -805,8 +811,11 @@ async function fetchSearchNoteOnce(transcript, deep, q0){
       parts.push('- [Social media accounts about this exact topic — if any is clearly relevant, mention it in your answer with its @handle and link]: '
         + data.social.map(sc => `${sc.title} [${sc.url}]`).join(' | '));
     }
-    if(!parts.length) return null;
-    const note = `Live internet search results for the user's question (use these to give an accurate, up-to-date answer; do not mention "search" or "internet" explicitly, just answer naturally as if you know this):\n${parts.join('\n')}\nIf the results are classified ads/listings (real estate, cars, jobs...): results marked "📌 إعلان مباشر" are individual ad pages — label their link "رابط الإعلان". Results marked "🔍 صفحة بحث" are generic category/search pages — group them ALL under ONE Arabic heading line written exactly once on its own line above them: "🔗 روابط تصفح الإعلانات:" then one line per site containing the site name followed by its link. NEVER repeat the phrase "رابط تصفح الإعلانات" inside the individual lines and NEVER call them "رابط الإعلان". LAYOUT RULE: every list line MUST start with an Arabic word (keep the Latin brand name but put the Arabic name before it) so all lines stay on one straight right-to-left column. Prefer showing 📌 results first. ONLY IF your answer actually lists classified ads/listings with links, end it with this short tip in Arabic: "📞 افتح رابط الإعلان وبتلقى داخل الصفحة زر اتصال/واتساب." — if the answer contains no listings at all, DO NOT add this tip or mention it. Never claim you can provide owners' personal phone numbers as open lists. FLIGHTS: if the question is about flight tickets, list the cheapest options found (price + airline if available + booking link) and add one short Arabic note that prices change constantly and the final price is on the booking site. FRESHNESS RULE: base your answer ONLY on the search results above — STRICTLY FORBIDDEN to add programs, platforms, initiatives or facts from your own memory/training data (they may be outdated); if the search results don't mention something, don't mention it either. RELEVANCE RULE (ABSOLUTE): before using ANY search result, check it is DIRECTLY about the user's exact topic. If a result is about a different topic (e.g., motorcycles when the user asked about cars, or an unrelated product/article), you MUST completely ignore it — never mention it, never cite its link, never weave its details into your answer. It is better to use fewer results than to include one off-topic result.`;
+    if(!parts.length && !latestNews) return null;
+    const latestNewsRule = latestNews
+      ? '\nLATEST NEWS MODE: use ONLY stories published within the last 24 hours. Prefer the published date shown with each result, mention the date/time briefly, and never use your memory or older stories. If no verified fresh story is provided, say clearly that no verified breaking news was found in the last 24 hours.'
+      : '';
+    const note = `Live internet search results for the user's question (use these to give an accurate, up-to-date answer; do not mention "search" or "internet" explicitly, just answer naturally as if you know this):\n${parts.join('\n')}\n${latestNewsRule}\nIf the results are classified ads/listings (real estate, cars, jobs...): results marked "📌 إعلان مباشر" are individual ad pages — label their link "رابط الإعلان". Results marked "🔍 صفحة بحث" are generic category/search pages — group them ALL under ONE Arabic heading line written exactly once on its own line above them: "🔗 روابط تصفح الإعلانات:" then one line per site containing the site name followed by its link. NEVER repeat the phrase "رابط تصفح الإعلانات" inside the individual lines and NEVER call them "رابط الإعلان". LAYOUT RULE: every list line MUST start with an Arabic word (keep the Latin brand name but put the Arabic name before it) so all lines stay on one straight right-to-left column. Prefer showing 📌 results first. ONLY IF your answer actually lists classified ads/listings with links, end it with this short tip in Arabic: "📞 افتح رابط الإعلان وبتلقى داخل الصفحة زر اتصال/واتساب." — if the answer contains no listings at all, DO NOT add this tip or mention it. Never claim you can provide owners' personal phone numbers as open lists. FLIGHTS: if the question is about flight tickets, list the cheapest options found (price + airline if available + booking link) and add one short Arabic note that prices change constantly and the final price is on the booking site. FRESHNESS RULE: base your answer ONLY on the search results above — STRICTLY FORBIDDEN to add programs, platforms, initiatives or facts from your own memory/training data (they may be outdated); if the search results don't mention something, don't mention it either. RELEVANCE RULE (ABSOLUTE): before using ANY search result, check it is DIRECTLY about the user's exact topic. If a result is about a different topic (e.g., motorcycles when the user asked about cars, or an unrelated product/article), you MUST completely ignore it — never mention it, never cite its link, never weave its details into your answer. It is better to use fewer results than to include one off-topic result.`;
     // 📚🖼️ Feature ② — structured data for the ChatGPT-style UI: source
     // badges (favicon+domain, from the backend's deduped `sources` field,
     // with a client-side fallback in case an older cached response lacks
