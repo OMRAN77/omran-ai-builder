@@ -2034,6 +2034,73 @@ async function sendPrompt(){
 
   // Let the ⏹️ button cancel this in-flight request; it lights up while
   // generating so the user knows they can stop it and edit their message.
+  // 🔭 مرشد بصري: صورة مرفقة + سؤال توجيهي (أو رسالة قصيرة/فارغة) → screen-guide
+  // يُفعَّل هنا بعد حفظ رسالة المستخدم وقبل أي مسار AI عادي.
+  {
+    const __sgReal = imageAttachments.filter(function(a){ return !a._fromMemory; });
+    const __SG_GUIDE_RE = /(?:شو|وش|ايش|أيش|ماذا|ما)\s+(?:أسوي|اسوي|أعمل|اعمل|بعد|التالي?|الجاي|عليّ|علي)\b|(?:وين|فين|أين|اين)\s+(?:أضغط|اضغط|أروح|اروح|أكمل|اكمل)|(?:كيف\s+(?:أكمل|اكمل|أوصل|اوصل|أتابع|اتابع|أفعل|افعل|أتقدم|اتقدم))|(?:الخطوة|خطوة)\s*التالي|ساعدني\s+(?:في|ع|على)|دلني|ارشدني|وجهني|guide\s*me|next\s*step|what\s*(?:do\s+i|should\s+i)|where\s*do\s*i\s*(?:go|click|tap|press)|how\s*do\s*i|what\s*now/i;
+    const __SG_NOT_RE = /(?:^|\s)(?:عدل|عدّل|غير|غيّر|امسح|احذف|شيل|ارسم|صمم|صمّم|ولّد|ولد)\s|اعمل\s+(?:بوستر|بطاقة|إعلان|تصميم|صورة)|(?:create|design|edit|remove|delete|generate)\s+(?:image|poster|design|logo)|(?:^|\s)(?:ابني|بناء|انشئ|اصنع)\s/i;
+    const __sgMatch = __sgReal.length >= 1 && !cur.adMode && !__SG_NOT_RE.test(text) &&
+      (text === '' || __SG_GUIDE_RE.test(text) || (text.length < 80 && !/^(?:اعمل|ابني|صمم|سوي|بناء|build|create|make|design)\b/i.test(text.trim())));
+    if(__sgMatch){
+      const __sgImg = __sgReal[0];
+      const __sgB64 = (__sgImg.dataUrl || '').indexOf(',') !== -1 ? __sgImg.dataUrl.split(',')[1] : (__sgImg.dataUrl || '');
+      const __sgGoal = text || (lang === 'ar' ? 'ماذا أفعل في هذه الشاشة؟' : 'What should I do on this screen?');
+      const __sgToken = (typeof authGet === 'function' ? authGet('aiapp_token') : null);
+      const __sgGuest = (typeof authGet === 'function' ? authGet('aiapp_guest') : null);
+      const __sgLoadMsg = { role: 'assistant', content: lang === 'ar' ? '🔭 يحلل الشاشة…' : '🔭 Analyzing screen…', _loading: true };
+      cur.messages.push(__sgLoadMsg);
+      renderMessages(true);
+      genAbortController = new AbortController();
+      btnStop.classList.add('live');
+      (async function(){
+        try{
+          const __sgHist = cur.messages.slice(-8).filter(function(m){ return m._sgStep; }).map(function(m){ return { screen: m._sgScreen || '', instruction: m.content || '', _imgHash: m._sgHash || '' }; });
+          const __sgRes = await fetch('/api/ai?action=screen-guide', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: genAbortController ? genAbortController.signal : undefined,
+            body: JSON.stringify({ goal: __sgGoal, imageB64: __sgB64, mime: __sgImg.mime || 'image/jpeg', lang: lang || 'ar', token: __sgToken, guestId: __sgGuest, sessionId: (cur._sgSessionId = cur._sgSessionId || ('sg_' + cur.id.slice(-8))), history: __sgHist }),
+          });
+          const __sgData = await __sgRes.json().catch(function(){ return {}; });
+          let __sgText = '';
+          const __ar2 = lang !== 'en';
+          if(__sgData.kind === 'step'){
+            var __ls = [];
+            if(__sgData.screen) __ls.push((__ar2 ? '**الشاشة:** ' : '**Screen:** ') + __sgData.screen);
+            if(__sgData.stepNumber && __sgData.totalSteps) __ls.push((__ar2 ? '**الخطوة ' : '**Step ') + __sgData.stepNumber + (__ar2 ? ' من ' : ' / ') + __sgData.totalSteps + '**');
+            __ls.push('');
+            __ls.push(__sgData.instruction || '');
+            if(__sgData.label && __sgData.label.exact) __ls.push((__ar2 ? '> اضغط على: **' : '> Tap: **') + __sgData.label.exact + '**');
+            if(__sgData.stuck){ __ls.push(''); __ls.push(__ar2 ? '*(شاشة متكررة — جرّبتُ مسارًا مختلفًا)*' : '*(same screen — trying a different path)*'); }
+            __ls.push(''); __ls.push(__ar2 ? '📷 أرسل لقطة الشاشة التالية لأكمل إرشادك.' : '📷 Send the next screenshot to continue.');
+            __sgText = __ls.join('\n');
+            __sgLoadMsg._sgStep = true; __sgLoadMsg._sgScreen = __sgData.screen || ''; __sgLoadMsg._sgHash = __sgData._imgHash || '';
+            // رسم الإطار إذا توفّر
+            if(__sgData.box && __sgData.confidence > 0 && window.__screenGuide && window.__sgLastShot){
+              try{ var __hi = window.__screenGuide.drawHighlight(window.__sgLastShot, __sgData.box); if(__hi) __sgLoadMsg.attachments = [{ name: 'guide.jpg', isImage: true, mime: 'image/jpeg', dataUrl: __hi }]; }catch(e2){ /* صامت */ }
+            }
+          } else if(__sgData.kind === 'ask'){ __sgText = '🔍 ' + (__sgData.message || '');
+          } else if(__sgData.kind === 'blocked'){ __sgText = '🔒 ' + (__sgData.message || '');
+          } else if(__sgData.kind === 'done'){ __sgText = '✅ ' + (__sgData.message || (__ar2 ? 'وصلتَ للهدف.' : 'Done!')); cur._sgSessionId = null;
+          } else if(__sgData.error === 'auth_required'){ __sgText = __ar2 ? 'سجّل دخولك أولاً لاستخدام المرشد البصري.' : 'Please sign in to use the visual guide.';
+          } else if(__sgData.error === 'no_points'){ __sgText = __ar2 ? 'نقاطك غير كافية — أضف رصيدًا لمتابعة المرشد البصري.' : 'Not enough points for the visual guide.'; cur._sgSessionId = null;
+          } else { __sgText = __ar2 ? 'تعذّر تحليل الصورة — تأكد من اتصالك وحاول مرة أخرى.' : 'Could not analyze screenshot. Check your connection and retry.'; }
+          __sgLoadMsg.content = __sgText; __sgLoadMsg._loading = false;
+          renderMessages(true); saveState();
+        } catch(err){
+          if(err && err.name === 'AbortError') return;
+          __sgLoadMsg.content = lang === 'ar' ? '⚠️ تعذّر الاتصال بالمرشد البصري.' : '⚠️ Could not reach the visual guide.';
+          __sgLoadMsg._loading = false; renderMessages(true);
+        } finally {
+          try{ __omranRestoreSendBtn(); btnStop.classList.remove('live'); genAbortController = null; }catch(e){ /* guard-ok */ }
+        }
+      })();
+      return;
+    }
+  }
+  // نهاية مرشد بصري
+
   genAbortController = new AbortController();
   btnStop.classList.add('live');
   __omranArmWatchdog();  // v586
