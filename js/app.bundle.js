@@ -4787,32 +4787,74 @@ function renderMessages(keepScroll){
     // favicon + domain, opening the real source url in a new tab. Never
     // invented — only what the search backend actually returned.
     if(m.role !== 'user' && Array.isArray(m.sources) && m.sources.length){
-      const srcWrap = document.createElement('div');
-      srcWrap.className = 'msgSourceBadges';
-      m.sources.slice(0, 10).forEach(s => {
-        if(!s || !s.url) return;
-        let host = '';
-        try{ host = new URL(s.url).hostname.replace(/^www\./, ''); }catch(e){ return; }
-        const badge = document.createElement('a');
-        badge.className = 'msgSourceBadge';
-        badge.href = s.url;
-        badge.target = '_blank';
-        badge.rel = 'noopener noreferrer';
-        badge.title = s.title || host;
-        const fav = document.createElement('img');
-        fav.src = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(host) + '&sz=32';
-        fav.alt = '';
-        fav.loading = 'lazy';
-        fav.onerror = () => { fav.remove(); };
-        const label = document.createElement('span');
-        // v536: بطاقة حساب تواصل تُعرَض باسم المنصّة والمعرّف («إنستغرام · @x»)
-        // بدل المضيف الخام. المصادر العاديّة تبقى بالمضيف كما هي.
-        label.textContent = (s.title && /^(إنستغرام|تيك توك|إكس|يوتيوب|فيسبوك|سناب شات) · /.test(s.title)) ? s.title : host;
-        badge.appendChild(fav);
-        badge.appendChild(label);
-        srcWrap.appendChild(badge);
-      });
-      if(srcWrap.childElementCount) div.appendChild(srcWrap);
+      const validSrcs = m.sources.filter(s => s && s.url).slice(0, 10);
+      if(validSrcs.length){
+        // زر «المصادر» المدمج — يجمع كل الروابط في مكان واحد
+        const btn = document.createElement('button');
+        btn.className = 'msgSrcBtn';
+        btn.type = 'button';
+        // معاينة أيقونات (أول 3)
+        const favStack = document.createElement('span');
+        favStack.className = 'msgSrcFavs';
+        validSrcs.slice(0, 3).forEach(s => {
+          let host = ''; try{ host = new URL(s.url).hostname.replace(/^www\./, ''); }catch(_){ return; }
+          const img = document.createElement('img');
+          img.src = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(host) + '&sz=32';
+          img.alt = ''; img.loading = 'lazy'; img.onerror = () => img.remove();
+          favStack.appendChild(img);
+        });
+        btn.appendChild(favStack);
+        const lbl = document.createElement('span');
+        lbl.className = 'msgSrcLabel';
+        lbl.textContent = (lang === 'ar' ? 'المصادر' : 'Sources');
+        btn.appendChild(lbl);
+        const cnt = document.createElement('span');
+        cnt.className = 'msgSrcCount';
+        cnt.textContent = validSrcs.length;
+        btn.appendChild(cnt);
+
+        // قائمة منسدلة بكل الروابط
+        const drop = document.createElement('div');
+        drop.className = 'msgSrcDrop';
+        drop.hidden = true;
+        validSrcs.forEach(s => {
+          let host = ''; try{ host = new URL(s.url).hostname.replace(/^www\./, ''); }catch(_){ return; }
+          const row = document.createElement('a');
+          row.className = 'msgSrcItem';
+          row.href = s.url; row.target = '_blank'; row.rel = 'noopener noreferrer';
+          const fav = document.createElement('img');
+          fav.src = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(host) + '&sz=32';
+          fav.alt = ''; fav.onerror = () => fav.remove();
+          const info = document.createElement('span');
+          info.className = 'msgSrcItemInfo';
+          const title = document.createElement('span');
+          title.className = 'msgSrcItemTitle';
+          title.textContent = (s.title && /^(إنستغرام|تيك توك|إكس|يوتيوب|فيسبوك|سناب شات) · /.test(s.title)) ? s.title : (s.title || host);
+          const domain = document.createElement('span');
+          domain.className = 'msgSrcItemDomain';
+          domain.textContent = host;
+          info.appendChild(title); info.appendChild(domain);
+          row.appendChild(fav); row.appendChild(info);
+          drop.appendChild(row);
+        });
+
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          const open = !drop.hidden;
+          drop.hidden = open;
+          btn.classList.toggle('msgSrcBtnOpen', !open);
+          if(!open){
+            const close = (ev) => { if(!drop.contains(ev.target) && ev.target !== btn){ drop.hidden = true; btn.classList.remove('msgSrcBtnOpen'); document.removeEventListener('click', close); } };
+            setTimeout(() => document.addEventListener('click', close), 10);
+          }
+        };
+
+        const wrap = document.createElement('div');
+        wrap.className = 'msgSrcWrap';
+        wrap.appendChild(btn);
+        wrap.appendChild(drop);
+        div.appendChild(wrap);
+      }
     }
     if(m.attachments && m.attachments.length){
       const wrap = document.createElement('div');
