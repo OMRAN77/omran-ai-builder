@@ -1244,6 +1244,12 @@ function renderMessages(keepScroll){
       }).replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
       if(!__mc && !__genShown.length) __mc = m.content;
     }
+    // روابط خرائط Google لا تُعرض في المحادثة: الأماكن تظهر بأسمائها فقط.
+    // يزيل ذلك أيضًا روابط محفوظة في ردود قديمة.
+    if(m.role !== 'user' && typeof __mc === 'string'){
+      const __mapUrlRe = /https?:\/\/(?:www\.)?(?:maps\.google\.[^\s)]+|google\.[^/\s)]+\/maps(?:[/?][^\s)]*)?)[^\s)]*/i;
+      __mc = __mc.split('\n').filter(line => !__mapUrlRe.test(line)).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    }
     let msgWordEls = null;
     if(m.role !== 'user' && __mc){
       const __oOpt = omranExtractOptions(__mc);
@@ -1309,8 +1315,9 @@ function renderMessages(keepScroll){
         });
       }
       // ادمج الروابط: المصادر أولاً ثم الروابط المضمّنة (بلا تكرار)
-      const __srcBase = Array.isArray(m.sources) ? m.sources.filter(s => s && s.url) : [];
-      const __srcExtra = __inlineLinks.filter(l => !__srcBase.some(s => s.url === l.url));
+       const __isMapUrl = (url) => /https?:\/\/(?:www\.)?(?:maps\.google\.[^\s)]+|google\.[^/\s)]+\/maps(?:[/?][^\s)]*)?)[^\s)]*/i.test(String(url || ''));
+       const __srcBase = Array.isArray(m.sources) ? m.sources.filter(s => s && s.url && !__isMapUrl(s.url)) : [];
+       const __srcExtra = __inlineLinks.filter(l => !__isMapUrl(l.url) && !__srcBase.some(s => s.url === l.url));
       const validSrcs = [...__srcBase, ...__srcExtra].slice(0, 15);
 
       if(validSrcs.length){
