@@ -26,6 +26,7 @@ function load(action) {
     case 'perplexity': return require('./_lib/perplexity.js');
     case 'agent': return require('./_lib/agent.js');
     case 'chat': return require('./_lib/chat.js');
+    case 'screen-guide': return require('./_lib/screen-guide.js');
     default: return null;
   }
 }
