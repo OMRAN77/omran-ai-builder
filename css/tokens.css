@@ -691,11 +691,26 @@
   /* Feature ② — ChatGPT-style search results: image strip + source badges */
   .msgSearchImgStrip{ display:flex; gap:8px; overflow-x:auto; margin-bottom:8px; max-width:100%; scrollbar-width:thin; }
   .msgSearchImgStrip img{ height:140px; width:auto; max-width:220px; object-fit:cover; border-radius:var(--r-3); flex:0 0 auto; background:var(--panel,#1c2230); }
-  .msgSourceBadges{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
-  .msgSourceBadge{ display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:var(--r-pill); background:var(--panel,#1c2230); border:1px solid var(--border,rgba(255,255,255,.12)); color:var(--muted); text-decoration:none; font-size:12px; max-width:180px; }
-  .msgSourceBadge:hover{ color:var(--text); border-color:var(--accent2,#9ca3af); }
-  .msgSourceBadge img{ width:14px; height:14px; border-radius:var(--r-1); flex:0 0 auto; }
-  .msgSourceBadge span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* ── زر المصادر المدمج (بديل الشارات المنتشرة) ── */
+  .msgSrcWrap{ position:relative; display:inline-block; margin-top:10px; }
+  .msgSrcBtn{ display:inline-flex; align-items:center; gap:6px; padding:5px 10px 5px 8px; border-radius:var(--r-pill); background:var(--panel,#1c2230); border:1px solid var(--border,rgba(255,255,255,.12)); color:var(--muted); font-size:12px; cursor:pointer; white-space:nowrap; transition:border-color .15s,color .15s; }
+  .msgSrcBtn:hover,.msgSrcBtnOpen{ color:var(--text); border-color:var(--accent2,#9ca3af); }
+  .msgSrcFavs{ display:flex; align-items:center; }
+  .msgSrcFavs img{ width:14px; height:14px; border-radius:3px; margin-inline-end:-4px; border:1px solid var(--bg,#0d1117); flex:0 0 auto; }
+  .msgSrcFavs img:first-child{ margin-inline-end:-4px; }
+  .msgSrcFavs img:last-child{ margin-inline-end:0; }
+  .msgSrcLabel{ font-size:12px; padding-inline-start:8px; }
+  .msgSrcCount{ font-size:11px; background:rgba(255,255,255,.08); border-radius:20px; padding:1px 6px; margin-inline-start:2px; }
+  .msgSrcDrop{ position:absolute; inset-inline-start:0; top:calc(100% + 6px); min-width:260px; max-width:320px; background:var(--panel2,#161c2a); border:1px solid var(--border,rgba(255,255,255,.12)); border-radius:12px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,.4); z-index:200; }
+  .msgSrcItem{ display:flex; align-items:flex-start; gap:10px; padding:10px 14px; text-decoration:none; color:var(--text); border-bottom:1px solid var(--border,rgba(255,255,255,.08)); transition:background .12s; }
+  .msgSrcItem:last-child{ border-bottom:none; }
+  .msgSrcItem:hover{ background:rgba(255,255,255,.06); }
+  .msgSrcItem img{ width:16px; height:16px; border-radius:3px; flex:0 0 auto; margin-top:2px; }
+  .msgSrcItemInfo{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .msgSrcItemTitle{ font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .msgSrcItemDomain{ font-size:11px; color:var(--muted); }
+  html[data-mode="light"] .msgSrcBtn{ background:var(--panel2); }
+  html[data-mode="light"] .msgSrcDrop{ background:#fff; }
   .msgActionBar{ display:flex; align-items:center; gap:12px; margin-top:8px; flex-wrap:nowrap; white-space:nowrap; }
   .msgActionBar button{ background:none; border:none; box-shadow:none; padding:2px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; color:var(--muted); line-height:1; }
   .msgActionBar button:hover{ color:var(--accent-ink); }
