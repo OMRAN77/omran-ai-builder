@@ -10232,8 +10232,10 @@ function __imgTopicQuery(q){
 function __recipeTopicQuery(q){
   const t = String(q || '').replace(__RECIPE_STRIP_RE2, ' ').replace(/\s{2,}/g, ' ').trim();
   if(t.length < 2) return String(q || '').slice(0, 100); // fallback
-  // نضيف "food" للتمييز في محرّك الصور
-  return (t + (/[\u0600-\u06FF]/.test(t) ? ' food' : '')).slice(0, 130);
+  // عربي: نضيف «طبخ وصفة» أمام اسم الطبق ← نتائج مواقع طبخ عربية لا قواميس إنجليزية
+  // إنجليزي: نضيف «recipe» بعده
+  if(/[\u0600-\u06FF]/.test(t)) return ('طبخ وصفة ' + t).slice(0, 130);
+  return (t + ' recipe').slice(0, 130);
 }
 function __wantsImageStrip(t){
   const s = String(t || '');
