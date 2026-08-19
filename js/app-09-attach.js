@@ -2040,8 +2040,8 @@ async function sendPrompt(){
     const __sgReal = imageAttachments.filter(function(a){ return !a._fromMemory; });
     const __SG_GUIDE_RE = /(?:شو|وش|ايش|أيش|ماذا|ما)\s+(?:أسوي|اسوي|أعمل|اعمل|بعد|التالي?|الجاي|عليّ|علي)\b|(?:وين|فين|أين|اين)\s+(?:أضغط|اضغط|أروح|اروح|أكمل|اكمل)|(?:كيف\s+(?:أكمل|اكمل|أوصل|اوصل|أتابع|اتابع|أفعل|افعل|أتقدم|اتقدم))|(?:الخطوة|خطوة)\s*التالي|ساعدني\s+(?:في|ع|على)|دلني|ارشدني|وجهني|guide\s*me|next\s*step|what\s*(?:do\s+i|should\s+i)|where\s*do\s*i\s*(?:go|click|tap|press)|how\s*do\s*i|what\s*now/i;
     const __SG_NOT_RE = /(?:^|\s)(?:عدل|عدّل|غير|غيّر|امسح|احذف|شيل|ارسم|صمم|صمّم|ولّد|ولد)\s|اعمل\s+(?:بوستر|بطاقة|إعلان|تصميم|صورة)|(?:create|design|edit|remove|delete|generate)\s+(?:image|poster|design|logo)|(?:^|\s)(?:ابني|بناء|انشئ|اصنع)\s/i;
-    const __sgMatch = __sgReal.length >= 1 && !cur.adMode && !__SG_NOT_RE.test(text) &&
-      (text === '' || __SG_GUIDE_RE.test(text) || (text.length < 80 && !/^(?:اعمل|ابني|صمم|سوي|بناء|build|create|make|design)\b/i.test(text.trim())));
+    // يُفعَّل فقط إذا طلب المستخدم التوجيه صراحةً — لا يلمس الصور العادية أبدًا
+    const __sgMatch = __sgReal.length >= 1 && !cur.adMode && !__SG_NOT_RE.test(text) && __SG_GUIDE_RE.test(text);
     if(__sgMatch){
       const __sgImg = __sgReal[0];
       const __sgB64 = (__sgImg.dataUrl || '').indexOf(',') !== -1 ? __sgImg.dataUrl.split(',')[1] : (__sgImg.dataUrl || '');
