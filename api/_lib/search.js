@@ -28,6 +28,12 @@ const REMOVED_SOURCE_TEXT_RE = /(?:https?:\/\/)?(?:www\.)?news\.google\.com(?:\/
 function withoutRemovedSourceMentions(value) {
   return String(value || '').replace(REMOVED_SOURCE_TEXT_RE, '').replace(/\s{2,}/g, ' ').trim();
 }
+function isFreshNewsResult(item) {
+  const raw = item && (item.published_date || item.publishedDate || item.date || item.published_at);
+  if (!raw) return true; // Tavily time_range is still the primary freshness gate.
+  const ts = Date.parse(String(raw));
+  return !Number.isFinite(ts) || (Date.now() - ts) <= (36 * 60 * 60 * 1000);
+}
 
 /**
  * Reorders merged search results by actual relevance to the question.
@@ -499,6 +505,7 @@ module.exports = async (req, res) => {
     }
     const wantImages = !!(body && body.images);
     const wantDeep = !!(body && body.deep);
+    const latestNews = !!(body && body.latestNews);
     const domains = Array.isArray(body && body.domains)
       ? body.domains.filter(d => typeof d === 'string' && /^[a-z0-9.-]+$/i.test(d)).slice(0, 5)
       : null;
@@ -668,7 +675,7 @@ module.exports = async (req, res) => {
     const gKey = process.env.GOOGLE_SEARCH_API_KEY;
     const gCx = process.env.GOOGLE_SEARCH_CX;
     const googleUrl = (gKey && gCx)
-      ? `https://www.googleapis.com/customsearch/v1?key=${gKey}&cx=${gCx}&q=${encodeURIComponent(query)}&num=3`
+      ? `https://www.googleapis.com/customsearch/v1?key=${gKey}&cx=${gCx}&q=${encodeURIComponent(query)}&num=3${latestNews ? '&dateRestrict=d1&sort=date' : ''}`
       : null;
 
     const [tavilyResp, googleResp, socialItems, placeItems] = await Promise.all([
@@ -680,6 +687,7 @@ module.exports = async (req, res) => {
           // v467b: geo-suffix فقط للاستعلامات القصيرة بدون سياق. الاستعلامات المُثراة (طويلة) عندها سياق كافي.
           query: ((query.length > 120 || !wantsLocalGeo(query)) ? query : (query + ' ' + (geoCity ? geoCity + ' ' : '') + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE'))),
           ...(wantsLocalGeo(query) ? { country: (geoNameEn ? geoNameEn.toLowerCase() : 'united arab emirates') } : {}),
+          ...(latestNews ? { topic: 'news', time_range: 'day' } : {}),
           search_depth: isListing ? 'advanced' : 'basic',
           include_answer: true,
           include_images: wantImages,
@@ -688,8 +696,8 @@ module.exports = async (req, res) => {
         }),
       }),
       googleUrl ? fetch(googleUrl).catch(() => null) : Promise.resolve(null),
-      fetchSocial(apiKey, (wantsLocalGeo(query) ? (query + ' ' + (geoCity ? geoCity + ' ' : '') + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE')) : query)),
-      isPlaces ? fetchPlaces(placesKey, query, lang, (regionOf(query) || geoCode)) : Promise.resolve([]),
+      latestNews ? Promise.resolve([]) : fetchSocial(apiKey, (wantsLocalGeo(query) ? (query + ' ' + (geoCity ? geoCity + ' ' : '') + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE')) : query)),
+      latestNews ? Promise.resolve([]) : (isPlaces ? fetchPlaces(placesKey, query, lang, (regionOf(query) || geoCode)) : Promise.resolve([])),
     ]);
 
     // 🛡️ شبكة أمان: سقوط Tavily (حصّة · مفتاح · عطل مزوّد) كان يقطع البحث كلّه
@@ -704,6 +712,10 @@ module.exports = async (req, res) => {
       tavilyDown = true;
     }
     data.results = withoutRemovedSearchSources(data.results);
+    if (latestNews) {
+      data.results = data.results.filter(isFreshNewsResult);
+      if (!data.results.length) data.answer = '';
+    }
     // dep61: distinguish individual ad/detail pages from generic category/search pages
     // so the AI never labels a category page as "رابط الإعلان".
     const isDetailUrl = (u) => /bayut\.com\/(ar\/)?property\/|details-\d+\.html|propertyfinder\.ae\/(ar\/|en\/)?plp\/|dubizzle\.com\/.+\/\d{4}\/\d{1,2}\/\d{1,2}\/|---[a-zA-Z0-9]+\/?$|\/ad\/|dubizzle\.com\/.+\/j\/|dubicars\.com\/.+-\d+|yallamotor\.com\/.+\/\d{4,}|cars24\.ae\/.+-\d{4,}|bayt\.com\/.+\/jobs?\/.+\d|indeed\.(ae|com)\/.*(viewjob|jk=)|naukrigulf\.com\/.+-\d|gulftalent\.com\/.+\/\d/i.test(u || '');
@@ -731,6 +743,7 @@ module.exports = async (req, res) => {
       title: withoutRemovedSourceMentions((isListing && !/^📌|^🔍/.test(r.title || '') ? (isDetailUrl(r.url) ? '📌 إعلان مباشر: ' : '🔍 صفحة بحث: ') : '') + (r.title || '')),
       url: r.url,
       content: withoutRemovedSourceMentions((r.content || '').slice(0, isListing ? 1200 : 350)),
+      ...(r.published_date ? { published_date: r.published_date } : {}),
     })) : [];
     if (isListing) results.sort((a, b) => (b.title.startsWith('📌') ? 1 : 0) - (a.title.startsWith('📌') ? 1 : 0));
     // 🔢 v543b: سؤال الأرقام لا يخرج فارغًا أبدًا — بوّابتا xplate وSHub تُضمّنان.
@@ -802,7 +815,7 @@ module.exports = async (req, res) => {
 
     // v611 — نداء واحد للمغذّي البديل يسدّ ثلاث فجوات معًا: نتائج عند سقوط
     // Tavily، وصور عند خلوّ الشريط، وجوابًا عند غياب جواب Tavily.
-    if (tavilyDown || (wantImages && !images.length)) {
+    if (!latestNews && (tavilyDown || (wantImages && !images.length))) {
       const pplx = await pplxLive(wantImages ? imgQuery : query, wantImages);
       if (pplx) {
         if (!images.length && pplx.images.length) images = pplx.images;
