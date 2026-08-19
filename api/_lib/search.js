@@ -163,6 +163,7 @@ async function pplxLive(query, wantImages, latestNews) {
         model: 'sonar',
         messages: [{ role: 'user', content: liveQuery }],
         return_images: !!wantImages,
+        ...(latestNews ? { search_recency_filter: 'day' } : {}),
         max_tokens: 400,
       }),
       signal: AbortSignal.timeout(25000),
@@ -175,6 +176,7 @@ async function pplxLive(query, wantImages, latestNews) {
       title: withoutRemovedSourceMentions((s && s.title) || ''),
       url: (s && s.url) || '',
       content: withoutRemovedSourceMentions(String((s && s.snippet) || '').slice(0, 350)),
+      published_date: (s && (s.published_date || s.publishedDate || s.date || s.published_at)) || '',
     })).filter(x => /^https?:\/\//.test(x.url)));
     const images = wantImages && Array.isArray(d.images)
       ? d.images.map(im => (im && (im.image_url || im.url)) || '')
@@ -828,6 +830,7 @@ module.exports = async (req, res) => {
           const seenPplx = new Set(results.map(r => r && r.url));
           for (const r of pplx.results) {
             if (results.length >= 8) break;
+            if (latestNews && !isFreshNewsResult(r)) continue;
             if (r.url && !seenPplx.has(r.url)) { seenPplx.add(r.url); results.push(r); }
           }
         }
