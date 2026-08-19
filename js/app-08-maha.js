@@ -784,7 +784,9 @@ async function fetchSearchNoteOnce(transcript, deep, q0){
     const searchResults = Array.isArray(data.results) ? data.results.filter(isAllowedSearchSource).map(cleanResult) : [];
     const googleResults = Array.isArray(data.google) ? data.google.filter(isAllowedSearchSource).map(cleanResult) : [];
     const parts = [];
-    const cleanAnswer = withoutRemovedSearchSourceMentions(data.answer);
+    // في الأخبار المباشرة نمرّر العناوين المؤرخة فقط. ملخّص المزوّد قد يضيف
+    // تحفّظًا عامًا «لا توجد أخبار عاجلة» رغم وجود نتائج منشورة اليوم.
+    const cleanAnswer = latestNews ? '' : withoutRemovedSearchSourceMentions(data.answer);
     if(cleanAnswer) parts.push(cleanAnswer);
     // v384: Deep Research — عدة ملخصات من زوايا مختلفة
     if(Array.isArray(data.deepAnswers) && data.deepAnswers.length > 1){
