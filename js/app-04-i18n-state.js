@@ -1280,7 +1280,7 @@ function renderMessages(keepScroll){
     {
       // استخرج الروابط الخارجية من markdown المُعرَض واستبدلها بنص عادي
       const __inlineLinks = [];
-      if(m.role !== 'user'){
+      if(m.role !== 'user' && !m._loading){
         textDiv.querySelectorAll('a[href^="http"]').forEach(a => {
           const url = a.href || '';
           const title = a.textContent.trim() || url;
@@ -1588,7 +1588,8 @@ function renderMessages(keepScroll){
         }catch(e2){ /* never let a copy failure affect the rest of the UI */ }
       };
       actionBar.appendChild(copyBtnEl);
-      copyMsgBtn = actionBar;
+      // على الموبايل رسائل المستخدم ليس لها شريط إجراءات ظاهر (تجنّب الأيقونة الطافحة)
+      copyMsgBtn = (m.role !== 'user' || !document.documentElement.classList.contains('mobile-ui')) ? actionBar : null;
     }
     if(m.code && m.providerLabel){
       const isActive = cur.code === m.code;
