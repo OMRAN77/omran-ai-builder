@@ -282,9 +282,9 @@ module.exports = async (req, res) => {
               : {
                   type: 'server_vad',
                   // Preserve quiet opening words and natural pauses in a first turn.
-                  threshold: 0.16,
-                  prefix_padding_ms: 700,
-                  silence_duration_ms: 650,
+                  threshold: 0.08,
+                  prefix_padding_ms: 1000,
+                  silence_duration_ms: 450,
                   // Be explicit so every detected user turn creates a reply.
                   create_response: true,
                 },

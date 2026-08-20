@@ -1082,17 +1082,17 @@ let mahaRtPc = null, mahaRtDc = null, mahaRtStream = null, mahaRtAudioEl = null,
     function mahaClearRtResponseWatchdog(){
     if(mahaRtResponseWatchdog){ clearTimeout(mahaRtResponseWatchdog); mahaRtResponseWatchdog = null; }
     }
-    function mahaArmRtResponseWatchdog(){
+    function mahaArmRtResponseWatchdog(delayMs = 600){
     mahaClearRtResponseWatchdog();
     const dc = mahaRtDc;
     mahaRtResponseWatchdog = setTimeout(() => {
       mahaRtResponseWatchdog = null;
       if(!mahaRtReady || !mahaCallActive || mahaRtDc !== dc || !dc || dc.readyState !== 'open') return;
       try{
-        // Reached only after speech_stopped with no response.created event.
+        // Only a fallback: response.created clears this before it can duplicate.
         dc.send(JSON.stringify({ type: 'response.create' }));
       }catch(e){ __swallow(e, "misc:app-08-maha#rt-response-watchdog"); }
-    }, 1600);
+    }, delayMs);
     }
     
 /* v283: مؤشر صوت المايك داخل مكالمة مها — يبين هل صوت المستخدم واصل */
@@ -1209,9 +1209,17 @@ async function mahaStartRealtimeCall(){
         rtSessionReadySeen = true;
         resolveRtSessionReady();
         return;
+      }    if(ev.type === 'input_audio_buffer.speech_started'){
+        mahaClearRtResponseWatchdog();
+        // A detected first utterance must never wait forever for speech_stopped.
+        // A normal stop replaces this with the fast completion guard below.
+        mahaArmRtResponseWatchdog(3000);
+        mahaSetState('listening');
       }
-        if(ev.type === 'input_audio_buffer.speech_started'){ mahaClearRtResponseWatchdog(); mahaSetState('listening'); }
-      else if(ev.type === 'input_audio_buffer.speech_stopped'){ mahaSetState('thinking'); mahaArmRtResponseWatchdog(); }
+      else if(ev.type === 'input_audio_buffer.speech_stopped'){
+        mahaSetState('thinking');
+        mahaArmRtResponseWatchdog(350);
+      }
       else if(ev.type === 'response.created'){ mahaClearRtResponseWatchdog(); mahaSetState('thinking'); }
       else if(ev.type === 'output_audio_buffer.started' || ev.type === 'response.audio.delta'){ mahaClearRtResponseWatchdog(); mahaSetState('speaking'); }
     else if(ev.type === 'output_audio_buffer.stopped' || ev.type === 'response.done'){ mahaSetState('listening'); }
