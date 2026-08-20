@@ -385,7 +385,9 @@ async function mahaRecordUntilSilence(){
   const dataArr = new Uint8Array(mahaAnalyser.fftSize);
 
   const finished = new Promise((resolve) => { mahaMediaRecorder.onstop = resolve; });
-  mahaMediaRecorder.start(); // single chunk on stop, same reliable pattern as the manual mic button
+  // Collect progressively: some Android/Chrome builds truncate a single final
+    // chunk on stop(), making the fallback hear only part of the first turn.
+    mahaMediaRecorder.start(1000);
 
   const startTime = Date.now();
   const SILENCE_THRESHOLD = 0.022; // RMS amplitude below this = silence (raised so ambient/background noise isn't mistaken for speech)
@@ -1071,8 +1073,28 @@ async function mahaGenerateOrEditImage(promptText, editMode, textToWrite, fontSt
  * first and only falls back to the classic pipeline if it fails for any
  * reason (e.g. browser without WebRTC support, network blocking WebRTC,
  * server missing the key, etc.) so the feature never just stops working. */
-let mahaRtPc = null, mahaRtDc = null, mahaRtStream = null, mahaRtAudioEl = null, mahaRtActive = false, mahaRtReconnecting = false;
+let mahaRtPc = null, mahaRtDc = null, mahaRtStream = null, mahaRtAudioEl = null, mahaRtActive = false, mahaRtReconnecting = false, mahaRtReady = false;
+    let mahaRtResponseWatchdog = null;
 
+    // Realtime normally starts a reply after server VAD detects the end of speech.
+    // This one-shot guard prevents a silent first turn from making a caller speak
+    // twice just to wake the session.
+    function mahaClearRtResponseWatchdog(){
+    if(mahaRtResponseWatchdog){ clearTimeout(mahaRtResponseWatchdog); mahaRtResponseWatchdog = null; }
+    }
+    function mahaArmRtResponseWatchdog(){
+    mahaClearRtResponseWatchdog();
+    const dc = mahaRtDc;
+    mahaRtResponseWatchdog = setTimeout(() => {
+      mahaRtResponseWatchdog = null;
+      if(!mahaRtReady || !mahaCallActive || mahaRtDc !== dc || !dc || dc.readyState !== 'open') return;
+      try{
+        // Reached only after speech_stopped with no response.created event.
+        dc.send(JSON.stringify({ type: 'response.create' }));
+      }catch(e){ __swallow(e, "misc:app-08-maha#rt-response-watchdog"); }
+    }, 1600);
+    }
+    
 /* v283: مؤشر صوت المايك داخل مكالمة مها — يبين هل صوت المستخدم واصل */
 let mahaMicMeterCtx = null, mahaMicMeterRaf = 0, mahaMicSilenceStart = 0, mahaMicWarned = false;
 function mahaStartMicMeter(stream){
@@ -1117,7 +1139,9 @@ function mahaStopMicMeter(){
 
 let mahaRtCancelled = false;
 async function mahaStartRealtimeCall(){
-  mahaRtCancelled = false;
+    mahaRtReady = false;
+    mahaClearRtResponseWatchdog();
+      mahaRtCancelled = false;
   const tokenRes = await fetch('/api/realtime-session', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1147,7 +1171,11 @@ async function mahaStartRealtimeCall(){
   });
   if(mahaRtCancelled){ mahaRtStream.getTracks().forEach(tr => tr.stop()); mahaRtStream = null; throw new Error('cancelled'); }
   mahaStartMicMeter(mahaRtStream);
-
+    // The call window opens while connecting; do not transmit its first words
+    // before both the WebRTC connection and event channel are truly ready.
+    const inputTrack = mahaRtStream.getAudioTracks()[0];
+    if(inputTrack) inputTrack.enabled = false;
+    
   const pc = new RTCPeerConnection();
   mahaRtPc = pc;
   mahaRtAudioEl = new Audio();
@@ -1169,9 +1197,10 @@ async function mahaStartRealtimeCall(){
   dc.addEventListener('message', (e) => {
     let ev;
     try{ ev = JSON.parse(e.data); }catch(err){ return; }
-    if(ev.type === 'input_audio_buffer.speech_started'){ mahaSetState('listening'); }
-    else if(ev.type === 'response.created'){ mahaSetState('thinking'); }
-    else if(ev.type === 'output_audio_buffer.started' || ev.type === 'response.audio.delta'){ mahaSetState('speaking'); }
+    if(ev.type === 'input_audio_buffer.speech_started'){ mahaClearRtResponseWatchdog(); mahaSetState('listening'); }
+      else if(ev.type === 'input_audio_buffer.speech_stopped'){ mahaSetState('thinking'); mahaArmRtResponseWatchdog(); }
+      else if(ev.type === 'response.created'){ mahaClearRtResponseWatchdog(); mahaSetState('thinking'); }
+      else if(ev.type === 'output_audio_buffer.started' || ev.type === 'response.audio.delta'){ mahaClearRtResponseWatchdog(); mahaSetState('speaking'); }
     else if(ev.type === 'output_audio_buffer.stopped' || ev.type === 'response.done'){ mahaSetState('listening'); }
     else if(ev.type === 'response.function_call_arguments.done'){ mahaHandleRtFunctionCall(ev); }
     else if(ev.type === 'error'){ console.error('[maha-realtime] server error:', ev); }
@@ -1196,16 +1225,25 @@ async function mahaStartRealtimeCall(){
   if(mahaRtCancelled) throw new Error('cancelled');
   await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
 
-  await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error('Realtime connection timeout')), 10000);
-    pc.addEventListener('connectionstatechange', () => {
-      if(pc.connectionState === 'connected'){ clearTimeout(timeout); resolve(); }
-      else if(pc.connectionState === 'failed' || pc.connectionState === 'closed'){ clearTimeout(timeout); reject(new Error('Realtime connection ' + pc.connectionState)); }
+  const connectionReady = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Realtime connection timeout')), 10000);
+      pc.addEventListener('connectionstatechange', () => {
+        if(pc.connectionState === 'connected'){ clearTimeout(timeout); resolve(); }
+        else if(pc.connectionState === 'failed' || pc.connectionState === 'closed'){ clearTimeout(timeout); reject(new Error('Realtime connection ' + pc.connectionState)); }
+      });
     });
-  });
+    const channelReady = new Promise((resolve, reject) => {
+      if(dc.readyState === 'open'){ resolve(); return; }
+      const timeout = setTimeout(() => reject(new Error('Realtime event channel timeout')), 10000);
+      dc.addEventListener('open', () => { clearTimeout(timeout); resolve(); }, { once:true });
+      dc.addEventListener('close', () => { clearTimeout(timeout); reject(new Error('Realtime event channel closed')); }, { once:true });
+    });
+    await Promise.all([connectionReady, channelReady]);
 
-  mahaRtActive = true;
-  mahaSetState('listening');
+    mahaRtActive = true;
+    mahaRtReady = true;
+    if(inputTrack) inputTrack.enabled = true;
+    mahaSetState('listening');
 
   // If the connection drops mid-call (e.g. brief network hiccup) after we
   // were already connected, try to silently reconnect once instead of
@@ -1531,9 +1569,11 @@ function urlBase64ToUint8Array(base64String){
 }
 
 function mahaEndRealtimeCall(){
-  mahaRtCancelled = true;
-  mahaRtActive = false;
-  if(mahaRtDc){ try{ mahaRtDc.close(); }catch(e){ __swallow(e, "misc:app-08-maha#17"); } mahaRtDc = null; }
+    mahaRtCancelled = true;
+    mahaRtActive = false;
+    mahaRtReady = false;
+    mahaClearRtResponseWatchdog();
+      if(mahaRtDc){ try{ mahaRtDc.close(); }catch(e){ __swallow(e, "misc:app-08-maha#17"); } mahaRtDc = null; }
   if(mahaRtPc){ try{ mahaRtPc.close(); }catch(e){ __swallow(e, "misc:app-08-maha#18"); } mahaRtPc = null; }
   mahaStopMicMeter();
   if(mahaRtStream){ mahaRtStream.getTracks().forEach(tr => tr.stop()); mahaRtStream = null; }

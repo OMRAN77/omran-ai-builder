@@ -279,7 +279,15 @@ module.exports = async (req, res) => {
             // ⇒ لا يردّ حتّى تتكلّم ثانية. server_vad يقطع بالصمت وهو المُثبت على الكمبيوتر.
             turn_detection: mode === 'builder'
               ? { type: 'server_vad', threshold: 0.88, prefix_padding_ms: 300, silence_duration_ms: 800 }
-              : { type: 'server_vad', threshold: 0.4, prefix_padding_ms: 300, silence_duration_ms: 700 },
+              : {
+                  type: 'server_vad',
+                  // Preserve quiet opening words and natural pauses in a first turn.
+                  threshold: 0.32,
+                  prefix_padding_ms: 500,
+                  silence_duration_ms: 900,
+                  // Be explicit so every detected user turn creates a reply.
+                  create_response: true,
+                },
           },
         },
         tools: [
