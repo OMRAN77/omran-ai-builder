@@ -1174,9 +1174,11 @@ async function mahaStartRealtimeCall(){
     // The call window opens while connecting; do not transmit its first words
     // before both the WebRTC connection and event channel are truly ready.
     const inputTrack = mahaRtStream.getAudioTracks()[0];
-    if(inputTrack) inputTrack.enabled = false;
-    
-  const pc = new RTCPeerConnection();
+      // Keep the first words private until the Realtime session confirms it has
+      // finished initializing; then give the audio path a moment to warm up.
+      if(inputTrack) inputTrack.enabled = false;
+
+    const pc = new RTCPeerConnection();
   mahaRtPc = pc;
   mahaRtAudioEl = new Audio();
   mahaRtAudioEl.autoplay = true;
@@ -1193,11 +1195,22 @@ async function mahaStartRealtimeCall(){
   pc.addTrack(mahaRtStream.getTracks()[0], mahaRtStream);
 
   const dc = pc.createDataChannel('oai-events');
-  mahaRtDc = dc;
-  dc.addEventListener('message', (e) => {
-    let ev;
-    try{ ev = JSON.parse(e.data); }catch(err){ return; }
-    if(ev.type === 'input_audio_buffer.speech_started'){ mahaClearRtResponseWatchdog(); mahaSetState('listening'); }
+    mahaRtDc = dc;
+    // Opening the data channel alone is not enough: the server can still be
+    // applying its session settings. Wait for its session event before inviting
+    // the user to speak, otherwise the first utterance can vanish.
+    let resolveRtSessionReady;
+    let rtSessionReadySeen = false;
+    const rtSessionReady = new Promise(resolve => { resolveRtSessionReady = resolve; });
+    dc.addEventListener('message', (e) => {
+      let ev;
+      try{ ev = JSON.parse(e.data); }catch(err){ return; }
+      if(ev.type === 'session.created' || ev.type === 'session.updated'){
+        rtSessionReadySeen = true;
+        resolveRtSessionReady();
+        return;
+      }
+        if(ev.type === 'input_audio_buffer.speech_started'){ mahaClearRtResponseWatchdog(); mahaSetState('listening'); }
       else if(ev.type === 'input_audio_buffer.speech_stopped'){ mahaSetState('thinking'); mahaArmRtResponseWatchdog(); }
       else if(ev.type === 'response.created'){ mahaClearRtResponseWatchdog(); mahaSetState('thinking'); }
       else if(ev.type === 'output_audio_buffer.started' || ev.type === 'response.audio.delta'){ mahaClearRtResponseWatchdog(); mahaSetState('speaking'); }
@@ -1238,12 +1251,20 @@ async function mahaStartRealtimeCall(){
       dc.addEventListener('open', () => { clearTimeout(timeout); resolve(); }, { once:true });
       dc.addEventListener('close', () => { clearTimeout(timeout); reject(new Error('Realtime event channel closed')); }, { once:true });
     });
-    await Promise.all([connectionReady, channelReady]);
+    // A server session event confirms VAD and instructions are active. The
+      // timeout is only a compatibility escape hatch for older Realtime events.
+      const sessionHandshake = Promise.race([
+        rtSessionReady,
+        new Promise(resolve => setTimeout(resolve, 2500)),
+      ]);
+      await Promise.all([connectionReady, channelReady, sessionHandshake]);
 
-    mahaRtActive = true;
-    mahaRtReady = true;
-    if(inputTrack) inputTrack.enabled = true;
-    mahaSetState('listening');
+      mahaRtActive = true;
+      if(inputTrack) inputTrack.enabled = true;
+      // Let the browser resume the WebRTC audio encoder before saying "listening".
+      await new Promise(resolve => setTimeout(resolve, 250));
+      mahaRtReady = true;
+      mahaSetState('listening');
 
   // If the connection drops mid-call (e.g. brief network hiccup) after we
   // were already connected, try to silently reconnect once instead of
