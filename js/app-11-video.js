@@ -324,10 +324,10 @@
     let listTxt = '';
     for(let i = 0; i < urls.length; i++){
       const name = 'scene' + i + '.mp4';
-      ffmpeg.writeFile(name, await fetchFile(proxyVideoUrl(urls[i])));
+      await ffmpeg.writeFile(name, await fetchFile(proxyVideoUrl(urls[i])));
       listTxt += "file '" + name + "'\n";
     }
-    ffmpeg.writeFile('list.txt', listTxt);
+    await ffmpeg.writeFile('list.txt', listTxt);
     await ffmpeg.exec(['-f', 'concat', '-safe', '0', '-i', 'list.txt', '-c', 'copy', 'out.mp4']);
     for(let i = 0; i < urls.length; i++) await rm('scene' + i + '.mp4');
     await rm('list.txt');
@@ -339,8 +339,8 @@
   async function muxNarration(videoSrc, audioBlob){
     const ffmpeg = await getFFmpeg();
     const { fetchFile } = await import('/ffmpeg/util/index.js');
-    ffmpeg.writeFile('v.mp4', await fetchFile(videoSrc));
-    ffmpeg.writeFile('a.mp3', await fetchFile(audioBlob));
+    await ffmpeg.writeFile('v.mp4', await fetchFile(videoSrc));
+    await ffmpeg.writeFile('a.mp3', await fetchFile(audioBlob));
     await ffmpeg.exec(['-i', 'v.mp4', '-i', 'a.mp3', '-c:v', 'copy', '-map', '0:v:0', '-map', '1:a:0', 'out2.mp4']);
     const data = await ffmpeg.readFile('out2.mp4');
     return new Blob([data.buffer], { type: 'video/mp4' });
@@ -358,10 +358,10 @@
     let listTxt = '';
     for(let i = 0; i < scenes.length; i++){
       if(onProgress) onProgress(i, scenes.length);
-      ffmpeg.writeFile('v' + i + '.mp4', await fetchFile(proxyVideoUrl(scenes[i].videoUrl)));
+      await ffmpeg.writeFile('v' + i + '.mp4', await fetchFile(proxyVideoUrl(scenes[i].videoUrl)));
       const hasAudio = scenes[i].audioBlob && scenes[i].audioBlob.size > 0;
       if(hasAudio){
-        ffmpeg.writeFile('a' + i + '.mp3', await fetchFile(scenes[i].audioBlob));
+        await ffmpeg.writeFile('a' + i + '.mp3', await fetchFile(scenes[i].audioBlob));
         await ffmpeg.exec(['-i', 'v' + i + '.mp4', '-i', 'a' + i + '.mp3', '-c:v', 'copy', '-map', '0:v:0', '-map', '1:a:0', 'm' + i + '.mp4']);
         await rm('a' + i + '.mp3');
       } else {
@@ -371,7 +371,7 @@
       await rm('v' + i + '.mp4');
       listTxt += "file 'm" + i + ".mp4'\n";
     }
-    ffmpeg.writeFile('list.txt', listTxt);
+    await ffmpeg.writeFile('list.txt', listTxt);
     await ffmpeg.exec(['-f', 'concat', '-safe', '0', '-i', 'list.txt', '-c', 'copy', 'outlong.mp4']);
     for(let i = 0; i < scenes.length; i++) await rm('m' + i + '.mp4');
     await rm('list.txt');
@@ -516,8 +516,8 @@
     const ffmpeg = await getFFmpeg();
     const { fetchFile } = await import('/ffmpeg/util/index.js');
     const inName = isWebmSource ? 'vin.webm' : 'vin.mp4';
-    ffmpeg.writeFile(inName, await fetchFile(videoSrc));
-    ffmpeg.writeFile('ain.mp3', await fetchFile(audioBlob));
+    await ffmpeg.writeFile(inName, await fetchFile(videoSrc));
+    await ffmpeg.writeFile('ain.mp3', await fetchFile(audioBlob));
     const vcodec = isWebmSource ? ['-c:v', 'libx264', '-pix_fmt', 'yuv420p'] : ['-c:v', 'copy'];
     await ffmpeg.exec(['-i', inName, '-i', 'ain.mp3', ...vcodec, '-map', '0:v:0', '-map', '1:a:0', '-shortest', 'muxout.mp4']);
     const data = await ffmpeg.readFile('muxout.mp4');
@@ -574,15 +574,15 @@
     const ffmpeg = await getFFmpeg();
     const { fetchFile } = await import('/ffmpeg/util/index.js');
 
-    ffmpeg.writeFile('intro.webm', await fetchFile(introBlob));
-    ffmpeg.writeFile('outro.webm', await fetchFile(outroBlob));
-    ffmpeg.writeFile('main.mp4', await fetchFile(mainUrl));
+    await ffmpeg.writeFile('intro.webm', await fetchFile(introBlob));
+    await ffmpeg.writeFile('outro.webm', await fetchFile(outroBlob));
+    await ffmpeg.writeFile('main.mp4', await fetchFile(mainUrl));
 
     let mainForConcat = 'main.mp4';
     if(signature){
       setStatus(isEn() ? '✍️ Adding your signature watermark...' : '✍️ جاري إضافة توقيعك على الفيديو...');
       const wmBlob = await makeWatermarkPng(signature, ratio);
-      ffmpeg.writeFile('wm.png', await fetchFile(wmBlob));
+      await ffmpeg.writeFile('wm.png', await fetchFile(wmBlob));
       await ffmpeg.exec(['-i', 'main.mp4', '-i', 'wm.png', '-filter_complex', 'overlay=0:H-h:shortest=1', '-c:a', 'copy', 'main_wm.mp4']);
       mainForConcat = 'main_wm.mp4';
     }
