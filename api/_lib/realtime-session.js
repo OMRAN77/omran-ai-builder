@@ -286,7 +286,9 @@ module.exports = async (req, res) => {
                   prefix_padding_ms: 1000,
                   silence_duration_ms: 450,
                   // Be explicit so every detected user turn creates a reply.
-                  create_response: true,
+                  // The client sends one explicit response.create after speech_stopped.
+                // Avoid racing the server's automatic response on mobile.
+                create_response: false,
                 },
           },
         },
