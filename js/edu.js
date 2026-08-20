@@ -158,7 +158,15 @@ function showHome(){
    +'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7;'+(isRTL()?'transform:scaleX(-1);':'')+'"><polyline points="9 18 15 12 9 6"></polyline></svg></div>';
   bindEduExamLang();
   document.getElementById('eduUploadBtn').onclick=function(){ document.getElementById('eduFileInput').click(); };
-  document.getElementById('eduFileInput').onchange=function(){ handleFiles(this.files); this.value=''; };
+  document.getElementById('eduFileInput').onchange=function(){
+    // احتفظ بالملفات قبل تفريغ الحقل (خصوصًا في Safari)، واستدعِ النسخة
+    // المعلنة صراحةً كي لا تنكسر صفحات/كاش قديمة كانت تستدعي handleFiles عالميًا.
+    var selected=this.files;
+    this.value='';
+    if(typeof window.handleFiles==='function') window.handleFiles(selected);
+    else if(typeof handleFiles==='function') handleFiles(selected);
+    else { alert(T('err')); }
+  };
   document.getElementById('eduPasteToggle').onclick=function(){ var a=document.getElementById('eduPasteArea'); a.style.display=a.style.display==='block'?'none':'block'; };
   document.getElementById('eduAnalyzeTxtBtn').onclick=function(){
     var txt=(document.getElementById('eduPasteTxt').value||'').trim();
@@ -597,6 +605,9 @@ function handleFiles(files){
     .then(function(arr){ processContent({images:arr,lang:appLang()}); })
     .catch(function(e){ alert(e.message||T('err')); showHome(); });
 }
+// بعض نسخ الواجهة القديمة كانت تستدعي الدالة من معالج HTML عام. إبقاء هذا
+// الاسم متاحًا يمنع ReferenceError عند تداخل كاش الـPWA أثناء التحديث.
+window.handleFiles=handleFiles;
 /* v412: فكّ الأرشيف داخل المتصفح واستخراج نصّه للتحليل التعليمي */
 function handleArchive(file){
   showBusy();
