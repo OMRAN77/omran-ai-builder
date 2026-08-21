@@ -126,10 +126,10 @@ module.exports = async (req, res) => {
 
     // ٣. الفوترة — مرة واحدة للجلسة
     let charged = false;
-    const { kvGet, kvSet } = require('./kv.js');
+    const { kvGetRaw, kvSetRaw } = require('./kv.js');
     const sessKey = SESSION_PREFIX + String(sessionId || '').slice(0, 80);
     if (sessionId) {
-      const alreadyCharged = await kvGet(sessKey).catch(() => null);
+      const alreadyCharged = await kvGetRaw(sessKey).catch(() => null);
       if (!alreadyCharged) {
         const usage = await checkAndConsume(token, guestId, 'screen_guide', clientIp(req));
         if (!usage.allowed) {
@@ -137,7 +137,7 @@ module.exports = async (req, res) => {
           const code   = usage.reason === 'auth' ? 'auth_required' : 'no_points';
           res.status(status).json({ error: code }); return;
         }
-        await kvSet(sessKey, '1', 60 * 60 * 6).catch(() => {}); // TTL 6 ساعات
+        await kvSetRaw(sessKey, '1', 60 * 60 * 6).catch(() => {}); // TTL 6 ساعات
         charged = true;
       }
     } else {

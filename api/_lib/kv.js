@@ -120,4 +120,12 @@ async function kvGetRaw(key) {
   return await command(['GET', key]);
 }
 
-module.exports = { kvGetJSON, kvPutJSON, kvDel, kvList, kvIncr, kvExpire, kvIncrBy, kvDecrBy, kvSetIfAbsent, kvGetRaw };
+// SET a plain value, optionally with an expiry. Session markers must have a
+// TTL in the same atomic command or a failed expiry call can leave them forever.
+async function kvSetRaw(key, value, ttlSec) {
+  const cmd = ['SET', key, String(value)];
+  if (ttlSec) cmd.push('EX', String(Math.max(1, Math.trunc(ttlSec))));
+  await command(cmd);
+}
+
+module.exports = { kvGetJSON, kvPutJSON, kvDel, kvList, kvIncr, kvExpire, kvIncrBy, kvDecrBy, kvSetIfAbsent, kvGetRaw, kvSetRaw };
