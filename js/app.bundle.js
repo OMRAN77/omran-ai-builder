@@ -24084,6 +24084,9 @@ if(document.readyState === 'loading'){
 
   async function setMode(mode) {
     if (!MODE_LABEL[mode]) return;
+    var modeEpoch = ++S.epoch;
+    cancelPending();
+    stopListening();
     S.mode = mode;
     S.history = [];
     S.stepNo = 0;
@@ -24108,6 +24111,7 @@ if(document.readyState === 'loading'){
 
     if (shell) shell.classList.remove('vg-tour');
     var ok = await camOn();
+    if (modeEpoch !== S.epoch || !S.open) { camOff(); return; }
     if (!ok) return;
 
     setResult('');
@@ -24182,7 +24186,7 @@ if(document.readyState === 'loading'){
     var shell = $id('vgShell');
     if (shell) shell.classList.remove('vg-tour');
     setStatus('');
-    announce(t('انتهت الجولة.', 'Tour finished.'), true);
+    setMode('describe');
   }
 
   /* ---------------- سؤال بالصوت ---------------- */
