@@ -27,6 +27,7 @@ function load(action) {
     case 'agent': return require('./_lib/agent.js');
     case 'chat': return require('./_lib/chat.js');
     case 'screen-guide': return require('./_lib/screen-guide.js');
+    case 'visual-guide': return require('./_lib/visual-guide.js');
     default: return null;
   }
 }
