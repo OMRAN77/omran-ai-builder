@@ -13981,22 +13981,14 @@ async function sendPrompt(){
     const __sgReal = imageAttachments.filter(function(a){ return !a._fromMemory; });
     const __SG_GUIDE_RE = /(?:شو|وش|ايش|أيش|ماذا|ما)\s+(?:أسوي|اسوي|أعمل|اعمل|بعد|التالي?|الجاي|عليّ|علي)\b|(?:وين|فين|أين|اين)\s+(?:أضغط|اضغط|أروح|اروح|أكمل|اكمل|أدخل|ادخل|أراجع|اراجع)|(?:كيف\s+(?:أكمل|اكمل|أوصل|اوصل|أتابع|اتابع|أفعل|افعل|أتقدم|اتقدم))|(?:بعد|عقب)\s+(?:هذي|هذه|الخطوة)|(?:الخطوة|خطوة)\s*التالي|ساعدني\s+(?:في|ع|على)|دلني|ارشدني|وجهني|guide\s*me|next\s*step|what\s*(?:do\s+i|should\s+i)|where\s*do\s*i\s*(?:go|click|tap|press|enter)|how\s*do\s*i|what\s*now|كم\s+(?:السعر|الرسوم|يكلف|تكلفة)|هل\s+(?:فيها|يوجد)\s+(?:رسوم|سعر|تكلفة)|price|cost|fee|سبب\s+(?:الرفض|رفض)|(?:ليش|ليه|لماذا)\s+(?:انرفض|رُفض|تم\s+رفض|الرفض)|رفض\s+(?:الحساب|الاستعلام|الطلب)|الاستعلام\s+عن\s+الحساب|account\s+rejected|rejection\s+reason|why\s+(?:was|is)\s+.*rejected/i;
     const __SG_NOT_RE = /(?:^|\s)(?:عدل|عدّل|غير|غيّر|امسح|احذف|شيل|ارسم|صمم|صمّم|ولّد|ولد)\s|اعمل\s+(?:بوستر|بطاقة|إعلان|تصميم|صورة)|(?:create|design|edit|remove|delete|generate)\s+(?:image|poster|design|logo)|(?:^|\s)(?:ابني|بناء|انشئ|اصنع)\s/i;
-    // صورة بلا سؤال لا تكشف هدف المستخدم. لا نخمن الإجراء أو الزر؛ نطلب الهدف أولًا.
+    // صورة بلا سؤال: نحلل ما يظهر، لكن لا نفترض معاملة أو زرًا؛ نطلب من المستخدم اختيار هدفه بعد الوصف.
     // طلبات التعديل والتصميم تبقى في مسار الصور العادي ولا تدخل هنا.
     const __sgImplicit = __sgReal.length >= 1 && !String(text || '').trim();
-    const __sgMatch = __sgReal.length >= 1 && !cur.adMode && !__SG_NOT_RE.test(text) && !__sgImplicit && __SG_GUIDE_RE.test(text);
-    if (__sgImplicit && !cur.adMode) {
-      cur.messages.push({ role: 'assistant', content: lang === 'ar'
-        ? 'استلمت الصورة. لا أريد أن أفترض هدفك أو أوجّهك إلى زر من دون أن أعرف ما تريد إنجازه. اكتب لي المعاملة التي تريدها أو سؤالك، مثل: «أريد تقديم طلب» أو «ماذا أفعل في هذه الصفحة؟»، وسأحدد لك الخطوة التالية بدقة.'
-        : 'I received the image. I will not assume your goal or point you to a button without knowing what you want to do. Tell me the task or ask a question, such as “I want to submit an application” or “What do I do on this page?”, and I will guide you to the exact next step.' });
-      renderMessages(true); saveState();
-      try { __omranRestoreSendBtn(); btnStop.classList.remove('live'); genAbortController = null; } catch (e) { /* cleanup guard */ }
-      return;
-    }
+    const __sgMatch = __sgReal.length >= 1 && !cur.adMode && !__SG_NOT_RE.test(text) && (__sgImplicit || __SG_GUIDE_RE.test(text));
     if(__sgMatch){
       const __sgImg = __sgReal[0];
       const __sgB64 = (__sgImg.dataUrl || '').indexOf(',') !== -1 ? __sgImg.dataUrl.split(',')[1] : (__sgImg.dataUrl || '');
-      const __sgGoal = String(text || '').trim() || (lang === 'ar' ? 'حلل هذه الشاشة: أين أنا في الإجراء الآن، وما الخطوة التالية بالضبط؟ قل لي أين أضغط أو أي قسم أراجع.' : 'Analyze this screen: where am I in the process, and what exact next step should I take? Tell me what to tap or which section to visit.');
+      const __sgGoal = __sgImplicit ? (lang === 'ar' ? '[DESCRIBE_ONLY] صف ما يظهر في هذه الصفحة فقط. اذكر اسم الصفحة أو الجهة إن كان ظاهرًا، والحقول أو الأزرار أو الرسائل المهمة الظاهرة. لا تفترض أن لدى المستخدم معاملة أو هدفًا، ثم اسأله ماذا يريد المساعدة فيه مع خيارات مناسبة لما يظهر.' : '[DESCRIBE_ONLY] Describe only what is visible on this page: identify the page or service if visible and list important fields, buttons, or messages. Do not assume a task for the user; then ask what they want help with and offer relevant choices.') : (String(text || '').trim() || (lang === 'ar' ? 'حلل هذه الشاشة: أين أنا في الإجراء الآن، وما الخطوة التالية بالضبط؟ قل لي أين أضغط أو أي قسم أراجع.' : 'Analyze this screen: where am I in the process, and what exact next step should I take? Tell me what to tap or which section to visit.'));
       const __sgToken = (typeof authGet === 'function' ? authGet('aiapp_auth_token') : null);
       const __sgGuest = (typeof window.getGuestId === 'function' ? window.getGuestId() : (typeof authGet === 'function' ? authGet('aiapp_guest') : null));
       const __sgLoadMsg = { role: 'assistant', content: lang === 'ar' ? '🔭 يحلل الشاشة…' : '🔭 Analyzing screen…', _loading: true };
