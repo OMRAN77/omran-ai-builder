@@ -2040,16 +2040,18 @@ async function sendPrompt(){
   // يُفعَّل هنا بعد حفظ رسالة المستخدم وقبل أي مسار AI عادي.
   {
     const __sgReal = imageAttachments.filter(function(a){ return !a._fromMemory; });
-    const __SG_GUIDE_RE = /(?:شو|وش|ايش|أيش|ماذا|ما)\s+(?:أسوي|اسوي|أعمل|اعمل|بعد|التالي?|الجاي|عليّ|علي)\b|(?:وين|فين|أين|اين)\s+(?:أضغط|اضغط|أروح|اروح|أكمل|اكمل)|(?:كيف\s+(?:أكمل|اكمل|أوصل|اوصل|أتابع|اتابع|أفعل|افعل|أتقدم|اتقدم))|(?:الخطوة|خطوة)\s*التالي|ساعدني\s+(?:في|ع|على)|دلني|ارشدني|وجهني|guide\s*me|next\s*step|what\s*(?:do\s+i|should\s+i)|where\s*do\s*i\s*(?:go|click|tap|press)|how\s*do\s*i|what\s*now/i;
+    const __SG_GUIDE_RE = /(?:شو|وش|ايش|أيش|ماذا|ما)\s+(?:أسوي|اسوي|أعمل|اعمل|بعد|التالي?|الجاي|عليّ|علي)\b|(?:وين|فين|أين|اين)\s+(?:أضغط|اضغط|أروح|اروح|أكمل|اكمل|أدخل|ادخل|أراجع|اراجع)|(?:كيف\s+(?:أكمل|اكمل|أوصل|اوصل|أتابع|اتابع|أفعل|افعل|أتقدم|اتقدم))|(?:بعد|عقب)\s+(?:هذي|هذه|الخطوة)|(?:الخطوة|خطوة)\s*التالي|ساعدني\s+(?:في|ع|على)|دلني|ارشدني|وجهني|guide\s*me|next\s*step|what\s*(?:do\s+i|should\s+i)|where\s*do\s*i\s*(?:go|click|tap|press|enter)|how\s*do\s*i|what\s*now/i;
     const __SG_NOT_RE = /(?:^|\s)(?:عدل|عدّل|غير|غيّر|امسح|احذف|شيل|ارسم|صمم|صمّم|ولّد|ولد)\s|اعمل\s+(?:بوستر|بطاقة|إعلان|تصميم|صورة)|(?:create|design|edit|remove|delete|generate)\s+(?:image|poster|design|logo)|(?:^|\s)(?:ابني|بناء|انشئ|اصنع)\s/i;
-    // يُفعَّل فقط إذا طلب المستخدم التوجيه صراحةً — لا يلمس الصور العادية أبدًا
-    const __sgMatch = __sgReal.length >= 1 && !cur.adMode && !__SG_NOT_RE.test(text) && __SG_GUIDE_RE.test(text);
+    // صورة تُرسل وحدها = طلب إرشاد تلقائي؛ النص المرفق يصبح هدف المستخدم إن وُجد.
+    // طلبات التعديل والتصميم تبقى في مسار الصور العادي ولا تدخل هنا.
+    const __sgImplicit = __sgReal.length >= 1 && !String(text || '').trim();
+    const __sgMatch = __sgReal.length >= 1 && !cur.adMode && !__SG_NOT_RE.test(text) && (__sgImplicit || __SG_GUIDE_RE.test(text));
     if(__sgMatch){
       const __sgImg = __sgReal[0];
       const __sgB64 = (__sgImg.dataUrl || '').indexOf(',') !== -1 ? __sgImg.dataUrl.split(',')[1] : (__sgImg.dataUrl || '');
-      const __sgGoal = text || (lang === 'ar' ? 'ماذا أفعل في هذه الشاشة؟' : 'What should I do on this screen?');
-      const __sgToken = (typeof authGet === 'function' ? authGet('aiapp_token') : null);
-      const __sgGuest = (typeof authGet === 'function' ? authGet('aiapp_guest') : null);
+      const __sgGoal = String(text || '').trim() || (lang === 'ar' ? 'حلل هذه الشاشة: أين أنا في الإجراء الآن، وما الخطوة التالية بالضبط؟ قل لي أين أضغط أو أي قسم أراجع.' : 'Analyze this screen: where am I in the process, and what exact next step should I take? Tell me what to tap or which section to visit.');
+      const __sgToken = (typeof authGet === 'function' ? authGet('aiapp_auth_token') : null);
+      const __sgGuest = (typeof window.getGuestId === 'function' ? window.getGuestId() : (typeof authGet === 'function' ? authGet('aiapp_guest') : null));
       const __sgLoadMsg = { role: 'assistant', content: lang === 'ar' ? '🔭 يحلل الشاشة…' : '🔭 Analyzing screen…', _loading: true };
       cur.messages.push(__sgLoadMsg);
       renderMessages(true);
