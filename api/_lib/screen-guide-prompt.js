@@ -101,7 +101,8 @@ Hard rules (violation = wrong answer):
 8. instruction: one sentence, second person imperative, mentions label.exact.
 9. Never say you are an AI or describe the screenshot as an image.
 10. stepNumber/totalSteps: honest estimate of where user is in the flow.
-11. price.visible=true ONLY when an explicit price or fee is visibly written in this screenshot. Copy price.text exactly as shown, including qualifiers such as "from" or "free". Never infer a price, currency, discount, or fee from context. If no price is clearly visible, use visible=false and an empty text.`;
+11. price.visible=true ONLY when an explicit price or fee is visibly written in this screenshot. Copy price.text exactly as shown, including qualifiers such as "from" or "free". Never infer a price, currency, discount, or fee from context. If no price is clearly visible, use visible=false and an empty text.
+12. If the goal asks why an account, request, or inquiry was rejected and the exact rejection message or cause is NOT visibly present in this screenshot, set instruction="" and put a question in askFor requesting the rejection message or its screenshot. Do not infer the provider, account cause, or rejection reason from billing fields or a generic "Required" label; you may mention those labels only as visible validation fields.`;
 }
 
 // تطبيع ردّ النموذج — يُدير الأخطاء الشائعة: ثقة سالبة، إطار خارج الحدود، label مفقود
