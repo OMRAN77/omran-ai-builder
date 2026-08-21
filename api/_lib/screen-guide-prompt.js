@@ -84,6 +84,7 @@ Required fields:
   "sensitive": <true|false>,
   "stepNumber": 1,
   "totalSteps": 3,
+  "price": { "visible": false, "text": "", "amount": null, "currency": "" },
   "askFor": "<if target not visible: short ${replyLang} question asking for the right screen — else null>"
 }
 
@@ -99,7 +100,8 @@ Hard rules (violation = wrong answer):
 7. onTrack=false when user drifted; instruction must bring them back.
 8. instruction: one sentence, second person imperative, mentions label.exact.
 9. Never say you are an AI or describe the screenshot as an image.
-10. stepNumber/totalSteps: honest estimate of where user is in the flow.`;
+10. stepNumber/totalSteps: honest estimate of where user is in the flow.
+11. price.visible=true ONLY when an explicit price or fee is visibly written in this screenshot. Copy price.text exactly as shown, including qualifiers such as "from" or "free". Never infer a price, currency, discount, or fee from context. If no price is clearly visible, use visible=false and an empty text.`;
 }
 
 // تطبيع ردّ النموذج — يُدير الأخطاء الشائعة: ثقة سالبة، إطار خارج الحدود، label مفقود
@@ -121,13 +123,28 @@ function normalizeGuideStep(raw) {
     stepNumber: Math.max(1, parseInt(raw.stepNumber, 10) || 1),
     totalSteps: Math.max(1, parseInt(raw.totalSteps, 10) || 3),
     askFor: raw.askFor ? String(raw.askFor).slice(0, 200) : null,
+    price: null,
   };
+
+  const rawPrice = raw.price;
+  const rawPriceText = typeof rawPrice === 'string' ? rawPrice : (rawPrice && rawPrice.text);
+  if (rawPrice && (rawPrice.visible === true || typeof rawPrice === 'string') && rawPriceText) {
+    const parsedAmount = typeof rawPrice === 'object' && rawPrice.amount !== null && rawPrice.amount !== undefined
+      ? Number(rawPrice.amount) : null;
+    step.price = {
+      visible: true,
+      text: String(rawPriceText).slice(0, 120),
+      amount: Number.isFinite(parsedAmount) ? parsedAmount : null,
+      currency: typeof rawPrice === 'object' ? String(rawPrice.currency || '').slice(0, 20) : '',
+    };
+  }
 
   // حساسة → لا توجيه
   if (step.sensitive) {
     step.instruction = '';
     step.askFor = null;
     step.box = null;
+    step.price = null;
     return step;
   }
 

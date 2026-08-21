@@ -13979,7 +13979,7 @@ async function sendPrompt(){
   // يُفعَّل هنا بعد حفظ رسالة المستخدم وقبل أي مسار AI عادي.
   {
     const __sgReal = imageAttachments.filter(function(a){ return !a._fromMemory; });
-    const __SG_GUIDE_RE = /(?:شو|وش|ايش|أيش|ماذا|ما)\s+(?:أسوي|اسوي|أعمل|اعمل|بعد|التالي?|الجاي|عليّ|علي)\b|(?:وين|فين|أين|اين)\s+(?:أضغط|اضغط|أروح|اروح|أكمل|اكمل|أدخل|ادخل|أراجع|اراجع)|(?:كيف\s+(?:أكمل|اكمل|أوصل|اوصل|أتابع|اتابع|أفعل|افعل|أتقدم|اتقدم))|(?:بعد|عقب)\s+(?:هذي|هذه|الخطوة)|(?:الخطوة|خطوة)\s*التالي|ساعدني\s+(?:في|ع|على)|دلني|ارشدني|وجهني|guide\s*me|next\s*step|what\s*(?:do\s+i|should\s+i)|where\s*do\s*i\s*(?:go|click|tap|press|enter)|how\s*do\s*i|what\s*now/i;
+    const __SG_GUIDE_RE = /(?:شو|وش|ايش|أيش|ماذا|ما)\s+(?:أسوي|اسوي|أعمل|اعمل|بعد|التالي?|الجاي|عليّ|علي)\b|(?:وين|فين|أين|اين)\s+(?:أضغط|اضغط|أروح|اروح|أكمل|اكمل|أدخل|ادخل|أراجع|اراجع)|(?:كيف\s+(?:أكمل|اكمل|أوصل|اوصل|أتابع|اتابع|أفعل|افعل|أتقدم|اتقدم))|(?:بعد|عقب)\s+(?:هذي|هذه|الخطوة)|(?:الخطوة|خطوة)\s*التالي|ساعدني\s+(?:في|ع|على)|دلني|ارشدني|وجهني|guide\s*me|next\s*step|what\s*(?:do\s+i|should\s+i)|where\s*do\s*i\s*(?:go|click|tap|press|enter)|how\s*do\s*i|what\s*now|كم\s+(?:السعر|الرسوم|يكلف|تكلفة)|هل\s+(?:فيها|يوجد)\s+(?:رسوم|سعر|تكلفة)|price|cost|fee/i;
     const __SG_NOT_RE = /(?:^|\s)(?:عدل|عدّل|غير|غيّر|امسح|احذف|شيل|ارسم|صمم|صمّم|ولّد|ولد)\s|اعمل\s+(?:بوستر|بطاقة|إعلان|تصميم|صورة)|(?:create|design|edit|remove|delete|generate)\s+(?:image|poster|design|logo)|(?:^|\s)(?:ابني|بناء|انشئ|اصنع)\s/i;
     // صورة بلا سؤال لا تكشف هدف المستخدم. لا نخمن الإجراء أو الزر؛ نطلب الهدف أولًا.
     // طلبات التعديل والتصميم تبقى في مسار الصور العادي ولا تدخل هنا.
@@ -14023,6 +14023,7 @@ async function sendPrompt(){
             __ls.push('');
             __ls.push(__sgData.instruction || '');
             if(__sgData.label && __sgData.label.exact) __ls.push((__ar2 ? '> اضغط على: **' : '> Tap: **') + __sgData.label.exact + '**');
+            if(__sgData.price && __sgData.price.visible && __sgData.price.text) __ls.push((__ar2 ? '💰 **السعر/الرسوم:** ' : '💰 **Price/Fee:** ') + __sgData.price.text + (__sgData.price.currency ? ' (' + __sgData.price.currency + ')' : ''));
             if(__sgData.stuck){ __ls.push(''); __ls.push(__ar2 ? '*(شاشة متكررة — جرّبتُ مسارًا مختلفًا)*' : '*(same screen — trying a different path)*'); }
             __ls.push(''); __ls.push(__ar2 ? '📷 أرسل لقطة الشاشة التالية لأكمل إرشادك.' : '📷 Send the next screenshot to continue.');
             __sgText = __ls.join('\n');

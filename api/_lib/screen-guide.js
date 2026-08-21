@@ -219,6 +219,7 @@ module.exports = async (req, res) => {
       screen: step.screen,
       instruction: step.instruction,
       label: step.label,
+      price: step.price,
       box: step.box,
       confidence: step.confidence,
       stepNumber: step.stepNumber,
