@@ -170,13 +170,14 @@ module.exports = async (req, res) => {
     }
 
     let step = raw ? normalizeGuideStep(raw) : null;
+    const describeOnly = String(goal || "").trim().startsWith("[DESCRIBE_ONLY]");
 
     // ٨. سلسلة النماذج: إذا ثقة منخفضة وعندنا GPT-4o → أعد المحاولة
-    if (oaiKey && (!step || (!step.sensitive && !step.askFor && !step.done && (step.confidence || 0) < CHAIN_THRESHOLD))) {
+    if (oaiKey && (describeOnly || !step || (!step.sensitive && !step.askFor && !step.done && (step.confidence || 0) < CHAIN_THRESHOLD))) {
       try {
         const raw2 = await callGPT4o(oaiKey, prompt, img);
         const step2 = raw2 ? normalizeGuideStep(raw2) : null;
-        if (step2 && (step2.confidence || 0) > (step ? (step.confidence || 0) : -1)) {
+        if (step2 && (describeOnly ? !!step2.askFor : (step2.confidence || 0) > (step ? (step.confidence || 0) : -1))) {
           step = step2;
           usedFallback = true;
         }
@@ -198,6 +199,15 @@ module.exports = async (req, res) => {
         message: String(lang || 'ar').startsWith('en') ? SENSITIVE_EN : SENSITIVE_AR,
         stored: false,
       });
+      return;
+    }
+
+    // وضع الوصف المحايد لا يعني أن هدفًا تحقق؛ أعِد وصفًا وسؤالًا دائمًا.
+    if (describeOnly) {
+      const fallbackDescription = String(lang || 'ar').startsWith('en')
+        ? ('This page shows ' + (step.screen || 'an app form') + '. I will not assume what you want to do. What would you like help with?')
+        : ('تظهر صفحة ' + (step.screen || 'نموذج في تطبيق') + '. لن أفترض ما تريد إنجازه. ما الذي تريد المساعدة فيه؟');
+      res.status(200).json({ kind: 'ask', message: step.askFor || fallbackDescription, stored: false });
       return;
     }
 

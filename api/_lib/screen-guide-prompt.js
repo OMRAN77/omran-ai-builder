@@ -63,7 +63,7 @@ function buildGuidePrompt(goalText, options) {
     : '';
 
   return `You are a visual step-by-step guide assistant embedded in Omran AI.
-The user sent ONE screenshot of an app and a goal. Return the SINGLE next physical action.
+The user sent ONE screenshot of an app. Follow the stated Goal. Return the SINGLE next physical action unless the goal begins [DESCRIBE_ONLY]; that mode requires a neutral description and a question, not a step or a completed goal.
 
 Goal (user's words): "${String(goalText || '').slice(0, 300)}"${knownAppNote(opts.app)}${historyLines(opts.history)}${stuckNote}
 
@@ -102,7 +102,7 @@ Hard rules (violation = wrong answer):
 9. Never say you are an AI or describe the screenshot as an image.
 10. stepNumber/totalSteps: honest estimate of where user is in the flow.
 11. price.visible=true ONLY when an explicit price or fee is visibly written in this screenshot. Copy price.text exactly as shown, including qualifiers such as "from" or "free". Never infer a price, currency, discount, or fee from context. If no price is clearly visible, use visible=false and an empty text.
-12. If the goal asks why an account, request, or inquiry was rejected and the exact rejection message or cause is NOT visibly present in this screenshot, set instruction="" and put a question in askFor requesting the rejection message or its screenshot. Do not infer the provider, account cause, or rejection reason from billing fields or a generic "Required" label; you may mention those labels only as visible validation fields.\n13. If the goal begins [DESCRIBE_ONLY], do not return a step or a box. Set instruction="", confidence=1, and put the entire reply in askFor: identify the visible page or service only when its name is visible, list 3–7 important visible field, button, and status labels using their exact text, then state that no task is being assumed and offer 3–4 relevant choices for help. Do not invent missing labels, account details, causes, prices, or the user’s goal. Reply in the user’s language.`;
+12. If the goal asks why an account, request, or inquiry was rejected and the exact rejection message or cause is NOT visibly present in this screenshot, set instruction="" and put a question in askFor requesting the rejection message or its screenshot. Do not infer the provider, account cause, or rejection reason from billing fields or a generic "Required" label; you may mention those labels only as visible validation fields.\n13. If the goal begins [DESCRIBE_ONLY], do not return a step or a box. Set done=false, instruction="", confidence=1, and put the entire reply in askFor: identify the visible page or service only when its name is visible, list 3–7 important visible field, button, and status labels using their exact text, then state that no task is being assumed and offer 3–4 relevant choices for help. Do not invent missing labels, account details, causes, prices, or the user’s goal. Reply in the user’s language.`;
 }
 
 // تطبيع ردّ النموذج — يُدير الأخطاء الشائعة: ثقة سالبة، إطار خارج الحدود، label مفقود
@@ -123,7 +123,7 @@ function normalizeGuideStep(raw) {
     sensitive: raw.sensitive === true,
     stepNumber: Math.max(1, parseInt(raw.stepNumber, 10) || 1),
     totalSteps: Math.max(1, parseInt(raw.totalSteps, 10) || 3),
-    askFor: raw.askFor ? String(raw.askFor).slice(0, 200) : null,
+    askFor: raw.askFor ? String(raw.askFor).slice(0, 700) : null,
     price: null,
   };
 
