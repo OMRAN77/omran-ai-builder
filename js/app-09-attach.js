@@ -2095,7 +2095,7 @@ async function sendPrompt(){
             }
           } else if(__sgData.kind === 'ask'){ __sgText = '🔍 ' + (__sgData.message || '');
           } else if(__sgData.kind === 'blocked'){ __sgText = '🔒 ' + (__sgData.message || '');
-          } else if(__sgData.kind === 'done'){ __sgText = '✅ ' + (__sgData.message || (__ar2 ? 'وصلتَ للهدف.' : 'Done!')); cur._sgSessionId = null;
+          } else if(__sgData.kind === 'done'){ __sgText = '✅ ' + (__sgData.message || (__ar2 ? 'وصلتَ للهدف.' : 'Done!')); if(__sgData.price && __sgData.price.visible && __sgData.price.text) __sgText += '\n\n' + (__ar2 ? '💰 **السعر/الرسوم:** ' : '💰 **Price/Fee:** ') + __sgData.price.text + (__sgData.price.currency ? ' (' + __sgData.price.currency + ')' : ''); cur._sgSessionId = null;
           } else if(__sgData.error === 'auth_required'){ __sgText = __ar2 ? 'سجّل دخولك أولاً لاستخدام المرشد البصري.' : 'Please sign in to use the visual guide.';
           } else if(__sgData.error === 'no_points'){ __sgText = __ar2 ? 'نقاطك غير كافية — أضف رصيدًا لمتابعة المرشد البصري.' : 'Not enough points for the visual guide.'; cur._sgSessionId = null;
           } else { __sgText = __ar2 ? 'تعذّر تحليل الصورة — تأكد من اتصالك وحاول مرة أخرى.' : 'Could not analyze screenshot. Check your connection and retry.'; }

@@ -203,7 +203,7 @@ module.exports = async (req, res) => {
 
     // ١١. الهدف تحقق
     if (step.done) {
-      res.status(200).json({ kind: 'done', screen: step.screen, message: step.instruction || (lang.startsWith('en') ? 'Done! Your goal has been achieved.' : 'تم! وصلت للهدف.'), stored: false });
+      res.status(200).json({ kind: 'done', screen: step.screen, message: step.instruction || (lang.startsWith('en') ? 'Done! Your goal has been achieved.' : 'تم! وصلت للهدف.'), price: step.price, stored: false });
       return;
     }
 
