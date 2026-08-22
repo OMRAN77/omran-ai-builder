@@ -12,11 +12,12 @@
 // API to confirm payment_status === 'paid' for the given session_id before
 // ever touching the user's stored `plan`.
 const { verifyToken, getUser, putUser } = require('./auth.js');
+const { kvIncrBy, kvGetRaw, kvSetIfAbsent } = require('./kv.js');
 
 const PLANS = {
-  basic: { amount: 1000, name: 'خطة 10$ - 300 رسالة شهريًا / Basic Plan - 300 msgs/mo' },
-  pro: { amount: 2000, name: 'خطة 20$ - رسائل غير محدودة / Pro Plan - Unlimited msgs' },
-  max: { amount: 10000, name: 'خطة 100$ - Max / Max Plan - 5000 pts/mo' },
+  basic: { amount: 1000, points: 500, name: 'عادية — 500 نقطة / Basic — 500 pts' },
+  pro: { amount: 2000, points: 1000, name: 'متوسطة — 1,000 نقطة / Pro — 1,000 pts' },
+  max: { amount: 10000, points: 5000, name: 'كبيرة — 5,000 نقطة / Premium — 5,000 pts' },
 };
 
 async function createCheckoutSession(req, res) {
@@ -33,11 +34,6 @@ async function createCheckoutSession(req, res) {
     const planInfo = PLANS[plan];
     if (!planInfo) { res.status(400).json({ error: 'Invalid plan' }); return; }
 
-    // Optional: if the caller is logged in and sends their session token, we
-    // tag the Stripe session with the username so verify-checkout can
-    // double-check the session belongs to the account claiming it. Not
-    // required today (current frontend doesn't send a token here yet), so
-    // this is purely additive and never blocks session creation.
     const username = verifyToken(token);
 
     const base = origin || 'https://omran-ai-builder.vercel.app';
@@ -75,12 +71,6 @@ async function createCheckoutSession(req, res) {
   }
 }
 
-// Server-side payment verification. Input: { session_id, token }. Requires a
-// valid logged-in session token (a plan can only be granted to a real
-// account — it cannot be applied anonymously). Confirms with Stripe directly
-// that the session was actually paid, reads the plan from the session's own
-// metadata (set above at creation time, so the client cannot lie about which
-// plan was purchased), and only then updates the user record.
 async function verifyCheckout(req, res) {
   try {
     const secretKey = process.env.STRIPE_SECRET_KEY;
@@ -114,8 +104,6 @@ async function verifyCheckout(req, res) {
       return;
     }
 
-    // If the session was tagged with a username at creation time, the
-    // caller redeeming it must be that same account.
     if (data.metadata && data.metadata.username && data.metadata.username !== username) {
       res.status(403).json({ error: 'هذه الجلسة لا تخص هذا الحساب / This session does not belong to this account' });
       return;
@@ -135,9 +123,20 @@ async function verifyCheckout(req, res) {
     user.plan = plan;
     user.planUpdatedAt = Date.now();
     user.lastStripeSessionId = session_id;
+
+    // إضافة النقاط للرصيد — نفس مفتاح الرصيد الحيّ المستخدم في points.js
+    // (اسم المستخدم بأحرف صغيرة ومقصوص لضمان مطابقة نفس المفتاح دائمًا).
+    const balanceKey = 'points:' + encodeURIComponent(String(username).trim().toLowerCase());
+    const raw = await kvGetRaw(balanceKey);
+    if (raw === null || raw === undefined || String(raw) === '') {
+      await kvSetIfAbsent(balanceKey, 0);
+    }
+    const newBalance = await kvIncrBy(balanceKey, PLANS[plan].points);
+    user.points = Number(newBalance);
+
     await putUser(username, user);
 
-    res.status(200).json({ ok: true, plan });
+    res.status(200).json({ ok: true, plan, pointsAdded: PLANS[plan].points, balance: Number(newBalance) });
   } catch (e) {
     res.status(500).json({ error: e.message || 'Server error' });
   }

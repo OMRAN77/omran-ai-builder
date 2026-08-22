@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>الاشتراكات | خطط النقاط</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --black: #000;
+      --surface: #0b0b0b;
+      --surface-2: #111;
+      --gold: #d4af37;
+      --gold-light: #f1d878;
+      --muted: #a0a0a0;
+      --white: #f8f8f8;
+      --line: rgba(212,175,55,.28);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--black); color: var(--white); }
+    body { font-family: "Plus Jakarta Sans", sans-serif; }
+    button { font: inherit; }
+    .page { max-width: 1320px; margin: 0 auto; padding: 52px 24px 64px; }
+    .hero { text-align: center; margin-bottom: 32px; }
+    .eyebrow { color: var(--gold); font-size: 12px; font-weight: 700; text-transform: uppercase; margin: 0 0 14px; }
+    h1 { margin: 0; font-size: clamp(28px, 4vw, 46px); line-height: 1.2; font-weight: 800; }
+    .intro { max-width: 620px; margin: 14px auto 0; color: var(--muted); font-size: 14px; line-height: 1.9; }
+    .account-summary { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin: 26px auto 0; }
+    .summary-item { min-width: 172px; padding: 14px 20px; border: 1px solid var(--line); border-radius: 14px; background: rgba(212,175,55,.06); }
+    .summary-label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 5px; }
+    .summary-value { color: var(--gold-light); font-size: 16px; font-weight: 700; }
+    .notice { display: none; max-width: 600px; margin: 22px auto 0; border-radius: 10px; padding: 12px 16px; text-align: center; font-size: 13px; }
+    .notice.show { display: block; }
+    .notice.info { color: var(--gold-light); border: 1px solid var(--line); background: rgba(212,175,55,.09); }
+    .notice.error { color: #ffb0b0; border: 1px solid rgba(255,90,90,.35); background: rgba(255,55,55,.1); }
+    .notice.success { color: #9be5b6; border: 1px solid rgba(85,210,125,.35); background: rgba(85,210,125,.1); }
+    .plans { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; align-items: stretch; margin-top: 34px; }
+    .plan-card { position: relative; display: flex; flex-direction: column; min-width: 0; padding: 28px 21px 22px; border: 1px solid var(--line); border-radius: 20px; background: linear-gradient(145deg, rgba(25,25,25,.94), rgba(5,5,5,.98)); box-shadow: inset 0 1px rgba(255,255,255,.03); transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease; }
+    .plan-card:hover { transform: translateY(-6px); border-color: var(--gold); box-shadow: 0 16px 42px rgba(212,175,55,.16); }
+    .plan-card.current { border-color: var(--gold); box-shadow: 0 0 0 1px rgba(212,175,55,.2), 0 14px 38px rgba(212,175,55,.12); }
+    .popular { position: absolute; top: -13px; right: 20px; padding: 5px 13px; border-radius: 999px; color: #111; background: linear-gradient(90deg, var(--gold-light), var(--gold)); font-size: 11px; font-weight: 800; }
+    .plan-top { min-height: 118px; }
+    .plan-kicker { color: var(--gold); font-size: 12px; font-weight: 700; margin: 0 0 8px; }
+    h2 { margin: 0 0 9px; font-size: 21px; font-weight: 800; }
+    .price { color: var(--gold-light); font-size: 31px; line-height: 1.1; font-weight: 800; direction: ltr; text-align: right; }
+    .price small { color: var(--muted); font-size: 12px; font-weight: 500; }
+    .details { display: grid; gap: 10px; padding: 18px 0 22px; border-top: 1px solid rgba(255,255,255,.08); border-bottom: 1px solid rgba(255,255,255,.08); color: var(--muted); font-size: 13px; }
+    .detail { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .detail strong { color: var(--white); font-size: 14px; }
+    .payment-area { margin-top: auto; padding-top: 20px; }
+    .payment-label { color: var(--muted); font-size: 11px; margin: 0 0 10px; }
+    .payment-buttons { display: grid; gap: 9px; }
+    .pay-btn { display: flex; align-items: center; justify-content: center; gap: 9px; width: 100%; min-height: 43px; padding: 10px 12px; border: 1px solid transparent; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 700; transition: transform .18s ease, filter .18s ease, background .18s ease; }
+    .pay-btn:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.12); }
+    .pay-btn:active:not(:disabled) { transform: translateY(0); }
+    .pay-btn:disabled { cursor: wait; opacity: .6; }
+    .pay-btn svg { width: 24px; height: 19px; flex: 0 0 auto; }
+    .apple { color: #fff; background: #050505; border-color: #2c2c2c; }
+    .google { color: #202124; background: #fff; border-color: #fff; }
+    .card-pay { color: var(--gold-light); background: transparent; border-color: var(--gold); }
+    .paypal { color: #fff; background: #0070ba; border-color: #0070ba; }
+    .free-note { margin-top: auto; padding-top: 20px; color: var(--muted); font-size: 12px; text-align: center; }
+    .footer { margin: 34px 0 0; text-align: center; color: #777; font-size: 12px; }
+    .spinner { width: 16px; height: 16px; border: 2px solid currentColor; border-left-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 1050px) { .plans { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 600px) { .page { padding: 36px 16px 48px; } .plans { grid-template-columns: 1fr; gap: 18px; } .plan-card { padding: 25px 20px 20px; } .plan-top { min-height: auto; } .account-summary { gap: 8px; } .summary-item { flex: 1 1 140px; min-width: 0; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <p class="eyebrow">خطط مرنة · قيمة أكبر</p>
+      <h1>اختر خطتك المناسبة</h1>
+      <p class="intro">اشترك الآن واحصل على نقاطك فور تأكيد الدفع، مع تجربة دفع آمنة وسلسة.</p>
+      <div class="account-summary" aria-live="polite">
+        <div class="summary-item"><span class="summary-label">الخطة الحالية</span><strong class="summary-value" id="currentPlan">مجانية</strong></div>
+        <div class="summary-item"><span class="summary-label">رصيد النقاط</span><strong class="summary-value" id="pointsBalance">0 نقطة</strong></div>
+      </div>
+      <div class="notice" id="notice" role="status"></div>
+    </header>
+
+    <section class="plans" id="plans" aria-label="خطط الاشتراك"></section>
+    <p class="footer">جميع المدفوعات مشفّرة وآمنة عبر Stripe وPayPal.</p>
+  </main>
+
+  <script>
+    (async () => {
+      'use strict';
+      const plans = [
+        { key: 'free', name: 'مجانية', price: '$0', points: '0 نقاط', messages: '20 رسالة' },
+        { key: 'basic', name: 'عادية', price: '$10', unit: '/شهر', points: '500 نقطة', messages: '∞ رسائل' },
+        { key: 'medium', name: 'متوسطة', price: '$20', unit: '/شهر', points: '1,000 نقطة', messages: '∞ رسائل', popular: true },
+        { key: 'large', name: 'كبيرة', price: '$100', unit: '/شهر', points: '5,000 نقطة', messages: '∞ رسائل' }
+      ];
+      const icons = {
+        apple: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.09.8 1.2-.24 2.35-.93 3.63-.84 1.54.12 2.7.73 3.46 1.85-3.18 1.9-2.43 6.07.49 7.24-.58 1.51-1.34 3-2.67 3.92ZM12.04 7.25C11.89 5.01 13.71 3.16 15.75 3c.28 2.58-2.34 4.51-3.71 4.25Z"/></svg>',
+        google: '<svg viewBox="0 0 30 20" aria-hidden="true"><path fill="#4285F4" d="M28 10.2c0-.7-.06-1.4-.18-2H15v3.8h7.3a6.3 6.3 0 0 1-2.7 4.1v3.4h4.4c2.6-2.4 4-5.6 4-9.3Z"/><path fill="#34A853" d="M15 20c3.7 0 6.8-1.2 9-3.2l-4.4-3.4c-1.2.8-2.7 1.3-4.6 1.3-3.5 0-6.5-2.4-7.6-5.7H2.9v3.5A13.6 13.6 0 0 0 15 20Z"/><path fill="#FBBC05" d="M7.4 9a8 8 0 0 1 0-5.1V.4H2.9a13.6 13.6 0 0 0 0 12.2L7.4 9Z"/><path fill="#EA4335" d="M15 4.2c2 0 3.8.7 5.2 2l3.9-3.8C21.8.9 18.7 0 15 0A13.6 13.6 0 0 0 2.9 7.4L7.4 11C8.5 6.7 11.5 4.2 15 4.2Z"/></svg>',
+        card: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4" stroke-linecap="round"/></svg>',
+        paypal: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M6.2 3h8.1c3.2 0 5.4 2.1 4.9 5.1-.6 3.6-3.1 5.7-6.7 5.7H9.8l-1.2 6H4.9L6.2 3Zm4.3 3-1 4.8h2.2c1.8 0 3-1 3.3-2.7.2-1.4-.5-2.1-1.9-2.1h-2.6Z"/><path d="M8.8 15.1h2.7c3.4 0 5.9-1.7 6.9-4.5.8.5 1.2 1.4.9 2.7-.5 3-2.8 4.7-5.9 4.7h-3.1l-.7 3H6.8l2-5.9Z" opacity=".72"/></svg>'
+      };
+      const state = { plan: 'free', points: 0, username: '' };
+      const $ = id => document.getElementById(id);
+      function showNotice(text, type) { const el = $('notice'); el.textContent = text; el.className = 'notice show ' + type; }
+      function username() { try { return localStorage.getItem('username') || localStorage.getItem('user') || ''; } catch (_) { return ''; } }
+      function cardMarkup(plan) {
+        const current = state.plan === plan.key;
+        const buttons = plan.key === 'free' ? '<p class="free-note">الخطة الأساسية بدون تكلفة</p>' : `<div class="payment-area"><p class="payment-label">اختر طريقة الدفع</p><div class="payment-buttons">
+          <button class="pay-btn apple" data-method="stripe" data-plan="${plan.key}">${icons.apple}<span>Apple Pay</span></button>
+          <button class="pay-btn google" data-method="stripe" data-plan="${plan.key}">${icons.google}<span>Google Pay</span></button>
+          <button class="pay-btn card-pay" data-method="stripe" data-plan="${plan.key}">${icons.card}<span>بطاقة</span></button>
+          <button class="pay-btn paypal" data-method="paypal" data-plan="${plan.key}">${icons.paypal}<span>PayPal</span></button>
+        </div></div>`;
+        return `<article class="plan-card${current ? ' current' : ''}">${plan.popular ? '<span class="popular">الأكثر شعبية</span>' : ''}<div class="plan-top"><p class="plan-kicker">${current ? 'خطتك الحالية' : 'اشتراك مميز'}</p><h2>${plan.name}</h2><div class="price">${plan.price} ${plan.unit ? `<small>${plan.unit}</small>` : ''}</div></div><div class="details"><div class="detail"><span>النقاط</span><strong>${plan.points}</strong></div><div class="detail"><span>الرسائل</span><strong>${plan.messages}</strong></div></div>${buttons}</article>`;
+      }
+      function render() { $('plans').innerHTML = plans.map(cardMarkup).join(''); $('currentPlan').textContent = plans.find(p => p.key === state.plan)?.name || 'مجانية'; $('pointsBalance').textContent = state.points.toLocaleString('en-US') + ' نقطة'; }
+      async function pay(method, plan, button) {
+        const endpoint = method === 'paypal' ? '/api/account/paypal-order' : '/api/account/create-checkout-session';
+        button.disabled = true; const original = button.innerHTML; button.innerHTML = '<span class="spinner"></span><span>جارٍ التحويل...</span>'; showNotice('جارٍ تجهيز عملية الدفع الآمنة...', 'info');
+        try {
+          const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan, username: state.username }) });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(data.error || 'تعذّر بدء عملية الدفع');
+          const url = data.url || data.checkoutUrl || data.approvalUrl;
+          if (url) window.location.assign(url);
+          else if (data.id || data.orderID) showNotice('تم إنشاء طلب PayPal، أكمل الدفع من نافذة PayPal.', 'success');
+          else throw new Error('لم يُرجع الخادم رابط الدفع');
+        } catch (error) { showNotice(error.message || 'حدث خطأ أثناء الدفع', 'error'); button.disabled = false; button.innerHTML = original; }
+      }
+      document.addEventListener('click', event => { const button = event.target.closest('.pay-btn'); if (button) pay(button.dataset.method, button.dataset.plan, button); });
+      state.username = username(); render();
+      try {
+        const response = await fetch('/api/account/points', { headers: { 'Content-Type': 'application/json' } });
+        if (response.ok) { const data = await response.json(); state.plan = data.plan || state.plan; state.points = Number(data.points || data.balance || 0); render(); }
+      } catch (_) { /* الحساب غير متاح قبل تسجيل الدخول */ }
+    })();
+  </script>
+</body>
+</html>

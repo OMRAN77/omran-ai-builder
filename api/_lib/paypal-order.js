@@ -10,11 +10,12 @@
 // the account-update section below for the backward-compatible behavior
 // when it's missing).
 const { verifyToken, getUser, putUser } = require('./auth.js');
+const { kvIncrBy, kvGetRaw, kvSetIfAbsent } = require('./kv.js');
 
 const PLANS = {
-  basic: { amount: '10.00', name: 'خطة 10$ - 300 رسالة شهريًا / Basic Plan' },
-  pro: { amount: '20.00', name: 'خطة 20$ - رسائل غير محدودة / Pro Plan' },
-  max: { amount: '100.00', name: 'خطة Max 100$ - 5000 نقطة / Max Plan' },
+  basic: { amount: '10.00', points: 500, name: 'عادية — 500 نقطة / Basic — 500 pts' },
+  pro: { amount: '20.00', points: 1000, name: 'متوسطة — 1,000 نقطة / Pro — 1,000 pts' },
+  max: { amount: '100.00', points: 5000, name: 'كبيرة — 5,000 نقطة / Premium — 5,000 pts' },
 };
 
 function baseUrl() {
@@ -104,6 +105,8 @@ module.exports = async (req, res) => {
       // (matched against PLANS) rather than trusting a client-supplied plan
       // name, so a tampered request can't claim a cheaper/free plan.
       let planGranted = null;
+      let pointsAdded = null;
+      let balance = null;
       if (data.status === 'COMPLETED') {
         try {
           const capture = data.purchase_units
@@ -120,8 +123,21 @@ module.exports = async (req, res) => {
               user.plan = matchedPlan;
               user.planUpdatedAt = Date.now();
               user.lastPaypalOrderId = data.id;
+
+              // إضافة النقاط للرصيد — نفس مفتاح الرصيد الحيّ المستخدم في
+              // points.js (اسم المستخدم بأحرف صغيرة ومقصوص).
+              const balanceKey = 'points:' + encodeURIComponent(String(username).trim().toLowerCase());
+              const raw = await kvGetRaw(balanceKey);
+              if (raw === null || raw === undefined || String(raw) === '') {
+                await kvSetIfAbsent(balanceKey, 0);
+              }
+              const newBalance = await kvIncrBy(balanceKey, PLANS[matchedPlan].points);
+              user.points = Number(newBalance);
+
               await putUser(username, user);
               planGranted = matchedPlan;
+              pointsAdded = PLANS[matchedPlan].points;
+              balance = Number(newBalance);
             }
           }
           // If no token was sent (current frontend) or it didn't verify, the
@@ -131,7 +147,7 @@ module.exports = async (req, res) => {
         } catch (e) { /* best-effort account update; capture itself already succeeded with PayPal */ }
       }
 
-      res.status(200).json({ status: data.status, id: data.id, planGranted });
+      res.status(200).json({ status: data.status, id: data.id, planGranted, pointsAdded, balance });
       return;
     }
 
