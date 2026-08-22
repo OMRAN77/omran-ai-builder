@@ -490,10 +490,7 @@
 
 
       <div style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">
-        <button type="button" onclick="clickApplePay()" style="display:flex; align-items:center; justify-content:center; gap:8px; padding:12px 14px; border-radius:10px; border:none; background:#000; color:#fff; cursor:pointer; font-size: var(--fs-3); font-weight:600;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M16.365 1.43c0 1.14-.462 2.088-1.03 2.788-.61.75-1.635 1.322-2.545 1.25-.12-1.09.43-2.24 1.03-2.94.63-.75 1.72-1.32 2.545-1.098zM20.9 17.44c-.31.72-.68 1.4-1.11 2.03-.6.87-1.09 1.47-1.47 1.8-.6.55-1.24.83-1.93.85-.5.01-1.1-.14-1.8-.44-.7-.3-1.34-.44-1.94-.44-.62 0-1.28.14-1.99.44-.71.3-1.28.46-1.72.47-.66.03-1.31-.26-1.94-.87-.41-.36-.93-.99-1.56-1.9-.68-.98-1.24-2.12-1.68-3.42-.47-1.4-.7-2.75-.7-4.06 0-1.5.32-2.79.97-3.88.51-.87 1.19-1.56 2.04-2.06.85-.5 1.77-.76 2.76-.78.53 0 1.22.16 2.08.48.85.32 1.4.48 1.65.48.19 0 .81-.19 1.86-.56 1-.35 1.84-.5 2.53-.44 1.87.15 3.27.89 4.2 2.22-1.67 1.01-2.5 2.43-2.49 4.24.01 1.41.51 2.58 1.51 3.52.45.43.95.77 1.51 1-.12.35-.25.7-.4 1.04z"/></svg>
-          <span data-i18n="checkoutApplePay">Apple Pay</span>
-        </button>
+        
 
         <button type="button" onclick="clickGooglePay()" style="display:flex; align-items:center; justify-content:center; gap:8px; padding:12px 14px; border-radius:10px; border:1px solid #dadce0; background:#fff; color:#3c4043; cursor:pointer; font-size: var(--fs-3); font-weight:600;">
           <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
