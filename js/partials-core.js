@@ -53,6 +53,26 @@
       <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/></svg>
       <span data-i18n="authGoogleBtn">المتابعة بجوجل</span>
     </button>
+    <button type="button" id="authEmailOtpBtn" style="width:100%; height:44px; border-radius:var(--r-2); border:1px solid var(--border,#333); background:transparent; display:flex; align-items:center; justify-content:center; gap:10px; cursor:pointer; font-size: var(--fs-3); font-weight: var(--w-bold); color:var(--text); margin-top:8px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+      <span data-i18n="authEmailOtpBtn">الدخول بالإيميل</span>
+    </button>
+    
+    <div id="authEmailOtpSection" style="display:none; margin-top:14px;">
+      <label id="authOtpEmailRow" style="display:flex; flex-direction:column; gap:4px; margin-bottom:10px;">
+        <span data-i18n="authOtpEmailLabel">البريد الإلكتروني</span>
+        <input type="email" id="authOtpEmailInput" autocomplete="email" placeholder="you@example.com" style="height:40px; padding:0 10px; border-radius:var(--r-2); direction:ltr;">
+      </label>
+      <label id="authOtpCodeRow" style="display:none; flex-direction:column; gap:4px; margin-bottom:10px;">
+        <span data-i18n="authOtpCodeLabel">رمز التحقق</span>
+        <input type="text" id="authOtpCodeInput" autocomplete="one-time-code" inputmode="numeric" maxlength="6" placeholder="000000" style="height:44px; padding:0 10px; border-radius:var(--r-2); direction:ltr; text-align:center; font-size:20px; letter-spacing:8px; font-weight:bold;">
+      </label>
+      <div id="authOtpError" style="color:#ef4444; font-size: var(--fs-3); min-height:18px; margin-bottom:6px;"></div>
+      <div id="authOtpInfo" style="display:none; font-size:12px; color:var(--accent,#6b7280); margin-bottom:6px; text-align:center;"></div>
+      <button type="button" class="btn primary" id="authOtpSubmitBtn" style="width:100%; height:44px; font-weight:bold;" data-i18n="authOtpSendBtn">إرسال رمز التحقق</button>
+      <a href="#" id="authOtpBackLink" style="display:block; text-align:center; margin-top:10px; font-size:12px; color:var(--accent,#6b7280); text-decoration:none;" data-i18n="authOtpBack">رجوع</a>
+    </div>
+
   </div>
 </div>
 

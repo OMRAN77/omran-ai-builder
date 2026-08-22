@@ -155,6 +155,46 @@ async function sendResetEmail(toEmail, username, resetToken, isEn) {
   }
 }
 
+function genNumericOtp() {
+  // crypto.randomInt is rejection-free and avoids modulo bias.
+  return String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+}
+
+// ---------------------------------------------------------------------------
+// Helper: send the OTP code by email via Resend.
+// Add near sendResetEmail() — same fetch pattern, same failure handling
+// (returns false instead of throwing so the caller can report a clean error).
+// ---------------------------------------------------------------------------
+async function sendOtpEmail(toEmail, otp, isEn) {
+  if (!RESEND_API_KEY) return false;
+  const subject = isEn ? 'Verification Code — Omran AI Builder' : 'رمز التحقق — Omran AI Builder';
+  const html = isEn
+    ? `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;text-align:center">
+        <h2 style="margin-bottom:4px">Your verification code</h2>
+        <p style="color:#888;font-size:13px;margin-top:0">Enter this code to sign in. It expires in 5 minutes.</p>
+        <div style="font-size:36px;font-weight:bold;letter-spacing:10px;background:#f4f4f5;color:#111;padding:18px 10px;border-radius:12px;margin:20px 0">${otp}</div>
+        <p style="color:#888;font-size:13px">If you didn't request this, ignore this email.</p>
+       </div>`
+    : `<div dir="rtl" style="font-family:sans-serif;max-width:480px;margin:0 auto;text-align:center">
+        <h2 style="margin-bottom:4px">رمز التحقق الخاص بك</h2>
+        <p style="color:#888;font-size:13px;margin-top:0">أدخل هذا الرمز لتسجيل الدخول. صالح لمدة 5 دقائق.</p>
+        <div style="font-size:36px;font-weight:bold;letter-spacing:10px;background:#f4f4f5;color:#111;padding:18px 10px;border-radius:12px;margin:20px 0">${otp}</div>
+        <p style="color:#888;font-size:13px">إذا لم تطلب هذا، تجاهل هذا الإيميل.</p>
+       </div>`;
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + RESEND_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: 'Omran AI Builder <onboarding@resend.dev>', to: [toEmail], subject, html }),
+    });
+    return r.ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -512,6 +552,133 @@ module.exports = async (req, res) => {
         } catch (e) { /* best-effort; ignore */ }
       }
       res.status(200).json({ ok: true, username: user ? user.username : u, avatar: user ? (user.avatar || null) : null, adminMessage });
+      return;
+    }
+
+    if (action === 'email-otp-request') {
+      if (!email || !isValidEmail(email)) {
+        res.status(400).json({ error: m('صيغة الإيميل غير صحيحة', 'Invalid email format') });
+        return;
+      }
+      const key = String(email).trim().toLowerCase();
+
+      // Rate limit: max 3 OTP requests per email per 5 minutes.
+      const RATE_LIMIT = 3;
+      const RATE_WINDOW_MS = 5 * 60 * 1000;
+      const rateKey = 'db/otp-rate/' + key;
+      const now = Date.now();
+      let rate = null;
+      try { rate = await kvGetJSON(rateKey); } catch (e) { rate = null; }
+      if (rate && rate.windowStart && (now - rate.windowStart) < RATE_WINDOW_MS) {
+        if ((rate.count || 0) >= RATE_LIMIT) {
+          const mins = Math.ceil((rate.windowStart + RATE_WINDOW_MS - now) / 60000);
+          res.status(429).json({ error: m('محاولات كثيرة، حاول بعد ' + mins + ' دقيقة', 'Too many attempts, try again in ' + mins + ' min') });
+          return;
+        }
+        rate = { windowStart: rate.windowStart, count: (rate.count || 0) + 1 };
+      } else {
+        rate = { windowStart: now, count: 1 };
+      }
+      await kvPutJSON(rateKey, rate);
+
+      const otpCode = genNumericOtp();
+      await kvPutJSON('db/otp/' + key, { otp: otpCode, exp: now + 300000 });
+
+      const sent = await sendOtpEmail(key, otpCode, isEn);
+      if (!sent) {
+        res.status(500).json({ error: m('تعذر إرسال الإيميل، حاول لاحقًا', 'Could not send the email, try again later') });
+        return;
+      }
+      res.status(200).json({ ok: true, message: m('تم إرسال رمز التحقق', 'Verification code sent') });
+      return;
+    }
+
+    if (action === 'email-otp-verify') {
+      if (!email || !isValidEmail(email) || !otp) {
+        res.status(400).json({ error: m('رمز غير صحيح أو منتهي', 'Invalid or expired code') });
+        return;
+      }
+      const key = String(email).trim().toLowerCase();
+      let record = null;
+      try { record = await kvGetJSON('db/otp/' + key); } catch (e) { record = null; }
+      const submitted = String(otp).trim();
+      if (!record || typeof record.otp !== 'string' || !record.exp || record.exp < Date.now()) {
+        res.status(401).json({ error: m('رمز غير صحيح أو منتهي', 'Invalid or expired code') });
+        return;
+      }
+      // 6 numeric digits — a plain, constant-length string compare is fine here;
+      // timingSafeEqual is used elsewhere only because those secrets vary in
+      // encoded length. Both sides here are always padded to 6 bytes.
+      const known = Buffer.from(record.otp);
+      const given = Buffer.from(submitted.padEnd(known.length, '\0'));
+      const matches = submitted.length === record.otp.length && given.length === known.length && crypto.timingSafeEqual(given, known);
+      if (!matches) {
+        res.status(401).json({ error: m('رمز غير صحيح أو منتهي', 'Invalid or expired code') });
+        return;
+      }
+      // Invalidate immediately so the same code can't be replayed — there's no
+      // del() in kv.js, so overwrite with an already-expired record.
+      try { await kvPutJSON('db/otp/' + key, { otp: null, exp: 0 }); } catch (e) { /* best-effort */ }
+
+      // Find an existing account linked to this email via the email index.
+      let userKey = null;
+      let user = null;
+      try {
+        const idx = await kvGetJSON('db/email-index/' + key);
+        if (idx && idx.username) {
+          const candidate = await getUser(idx.username);
+          if (candidate && !candidate.deleted && candidate.email === key) {
+            userKey = idx.username;
+            user = candidate;
+          }
+        }
+      } catch (e) { /* fall through to auto-create */ }
+
+      let isNew = false;
+      if (!user) {
+        // Auto-create an account: random username derived from the email
+        // prefix, an unusable random password (this account only ever logs in
+        // via OTP), the email set, and the standard welcome gift.
+        const prefix = key.split('@')[0].replace(/[^a-z0-9]/gi, '').slice(0, 12).toLowerCase() || 'user';
+        let candidateKey = '';
+        for (let i = 0; i < 8; i++) {
+          const suffix = crypto.randomBytes(3).toString('hex');
+          candidateKey = (prefix + '_' + suffix).slice(0, 40);
+          const clash = await getUser(candidateKey);
+          if (!clash || clash.deleted) break;
+          candidateKey = '';
+        }
+        if (!candidateKey) candidateKey = 'user_' + crypto.randomBytes(6).toString('hex');
+        const { salt, hash } = hashPassword(crypto.randomBytes(32).toString('hex'));
+        const recCode = genRecoveryCode();
+        const rec = hashPassword(recCode);
+        user = {
+          username: candidateKey, salt, hash,
+          recoverySalt: rec.salt, recoveryHash: rec.hash,
+          email: key,
+          avatar: null,
+          createdAt: Date.now(),
+          points: 70,
+          welcomeGift: true,
+          otpOnly: true,
+        };
+        userKey = candidateKey;
+        await putUser(userKey, user);
+        try {
+          const existingIdx = await kvGetJSON('db/email-index/' + key);
+          if (!existingIdx || !existingIdx.username) {
+            await kvPutJSON('db/email-index/' + key, { username: userKey, at: Date.now() });
+          }
+        } catch (e) { console.warn('[auth] email index write skipped:', e && e.message); }
+        isNew = true;
+      }
+
+      if (user.banned) {
+        res.status(403).json({ error: m('تم إيقاف هذا الحساب من قبل الإدارة', 'This account has been suspended by admin'), banned: true });
+        return;
+      }
+
+      res.status(200).json({ ok: true, token: makeToken(userKey), username: user.username, avatar: user.avatar || null, isNew });
       return;
     }
 

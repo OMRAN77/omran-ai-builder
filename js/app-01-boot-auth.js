@@ -279,6 +279,8 @@ const $ = s => document.querySelector(s);
   // لوحات المالك تنادي النقاط الرقابية برمز جلستها، لا بسرٍّ مكتوبٍ في الحزمة.
   window.ownerToken = function ownerToken(){ try{ return encodeURIComponent(authGet('aiapp_auth_token') || ''); }catch(e){ return ''; } };
   window.authSet = authSet;
+  window.onAuthed = onAuthed;
+  window.curT = curT;
   window.authRemove = authRemove;
   // sendMessage (outside this IIFE) needs the memory helpers too.
   window.memorySystemMsg = memorySystemMsg;
@@ -1087,3 +1089,143 @@ const $ = s => document.querySelector(s);
     }
   });
 })();
+
+// ===== Email OTP Login =====
+(function emailOtpSystem(){
+  const otpBtn = $('#authEmailOtpBtn');
+  const otpSection = $('#authEmailOtpSection');
+  const otpEmailInput = $('#authOtpEmailInput');
+  const otpCodeInput = $('#authOtpCodeInput');
+  const otpEmailRow = $('#authOtpEmailRow');
+  const otpCodeRow = $('#authOtpCodeRow');
+  const otpError = $('#authOtpError');
+  const otpInfo = $('#authOtpInfo');
+  const otpSubmitBtn = $('#authOtpSubmitBtn');
+  const otpBackLink = $('#authOtpBackLink');
+  if(!otpBtn || !otpSection) return;
+
+  let otpStep = 'email'; // 'email' | 'code'
+  let otpEmail = '';
+
+  function showOtpSection(){
+    // Hide the main auth form and Google button, show the OTP section.
+    const form = $('#authForm');
+    const googleBtn = $('#authGoogleBtn');
+    const tabsRow = $('#authTabLogin')?.parentElement;
+    const orDivider = googleBtn?.previousElementSibling;
+    const t = (window.curT ? window.curT() : {});
+    if(form) form.style.display = 'none';
+    if(googleBtn) googleBtn.style.display = 'none';
+    if(otpBtn) otpBtn.style.display = 'none';
+    if(tabsRow) tabsRow.style.display = 'none';
+    if(orDivider) orDivider.style.display = 'none';
+    otpSection.style.display = 'block';
+    otpStep = 'email';
+    otpEmailRow.style.display = 'flex';
+    otpCodeRow.style.display = 'none';
+    otpError.textContent = '';
+    otpInfo.style.display = 'none';
+    otpSubmitBtn.textContent = t.authOtpSendBtn || 'إرسال رمز التحقق';
+    otpEmailInput.focus();
+  }
+
+  function hideOtpSection(){
+    const form = $('#authForm');
+    const googleBtn = $('#authGoogleBtn');
+    const tabsRow = $('#authTabLogin')?.parentElement;
+    const orDivider = googleBtn?.previousElementSibling;
+    if(form) form.style.display = '';
+    if(googleBtn) googleBtn.style.display = 'flex';
+    if(otpBtn) otpBtn.style.display = 'flex';
+    if(tabsRow) tabsRow.style.display = 'flex';
+    if(orDivider) orDivider.style.display = 'flex';
+    otpSection.style.display = 'none';
+    otpEmailInput.value = '';
+    otpCodeInput.value = '';
+    otpError.textContent = '';
+    otpInfo.style.display = 'none';
+  }
+
+  otpBtn.onclick = showOtpSection;
+  otpBackLink.onclick = (e) => { e.preventDefault(); hideOtpSection(); };
+
+  otpSubmitBtn.onclick = async () => {
+    otpError.textContent = '';
+    const lang = document.documentElement.lang || localStorage.getItem('aiapp_lang') || 'ar';
+    const isEn = lang === 'en';
+
+    if(otpStep === 'email'){
+      const email = (otpEmailInput.value || '').trim();
+      if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+        otpError.textContent = isEn ? 'Enter a valid email' : 'أدخل بريد إلكتروني صحيح';
+        return;
+      }
+      otpSubmitBtn.disabled = true;
+      otpSubmitBtn.textContent = isEn ? 'Sending...' : 'جاري الإرسال...';
+      try {
+        const r = await fetch('/api/account?action=email-otp-request', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ action: 'email-otp-request', email, lang })
+        });
+        const d = await r.json();
+        if(d.ok){
+          otpEmail = email;
+          otpStep = 'code';
+          otpEmailRow.style.display = 'none';
+          otpCodeRow.style.display = 'flex';
+          otpInfo.style.display = 'block';
+          const masked = email.replace(/^(.{2}).*(@.*)$/, '$1***$2');
+          otpInfo.textContent = (isEn ? 'Code sent to ' : 'تم إرسال الرمز إلى ') + masked;
+          const t = (window.curT ? window.curT() : {});
+          otpSubmitBtn.textContent = isEn ? 'Verify' : (t.authOtpVerifyBtn || 'تحقق');
+          otpCodeInput.focus();
+        } else {
+          otpError.textContent = d.error || (isEn ? 'Failed to send code' : 'فشل إرسال الرمز');
+        }
+      } catch(e){
+        otpError.textContent = isEn ? 'Connection error' : 'خطأ في الاتصال';
+      }
+      otpSubmitBtn.disabled = false;
+    } else {
+      // Step: verify OTP
+      const code = (otpCodeInput.value || '').trim();
+      if(!code || code.length < 4){
+        otpError.textContent = isEn ? 'Enter the verification code' : 'أدخل رمز التحقق';
+        return;
+      }
+      otpSubmitBtn.disabled = true;
+      otpSubmitBtn.textContent = isEn ? 'Verifying...' : 'جاري التحقق...';
+      try {
+        const r = await fetch('/api/account?action=email-otp-verify', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ action: 'email-otp-verify', email: otpEmail, otp: code, lang })
+        });
+        const d = await r.json();
+        if(d.ok){
+          // Login successful — apply session the same way the password
+          // flow does, then run the shared post-login pipeline.
+          window.authSet('aiapp_auth_token', d.token);
+          otpEmailInput.value = '';
+          otpCodeInput.value = '';
+          window.onAuthed(d.username, d.avatar || null);
+        } else {
+          otpError.textContent = d.error || (isEn ? 'Invalid code' : 'رمز غير صحيح');
+        }
+      } catch(e){
+        otpError.textContent = isEn ? 'Connection error' : 'خطأ في الاتصال';
+      }
+      otpSubmitBtn.disabled = false;
+      if(otpStep === 'code'){
+        const t = (window.curT ? window.curT() : {});
+        otpSubmitBtn.textContent = isEn ? 'Verify' : (t.authOtpVerifyBtn || 'تحقق');
+      }
+    }
+  };
+
+  // Enter key in either field triggers submit.
+  if(otpCodeInput) otpCodeInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') otpSubmitBtn.onclick(); });
+  if(otpEmailInput) otpEmailInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') otpSubmitBtn.onclick(); });
+})();
+

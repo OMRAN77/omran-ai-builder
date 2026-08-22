@@ -8,6 +8,8 @@ const { installCors } = require('./_lib/cors.js');
 function load(action) {
   switch (action) {
     case 'auth': return require('./_lib/auth.js');
+    case 'email-otp-request': return require('./_lib/auth.js');
+    case 'email-otp-verify': return require('./_lib/auth.js');
     case 'auth-google-callback': return require('./_lib/auth-google-callback.js');
     case 'admin-actions': return require('./_lib/admin-actions.js');
     case 'admin-stats': return require('./_lib/admin-stats.js');
