@@ -73,7 +73,7 @@ async function startStripeCheckout(){
   const statusMsg = document.getElementById('checkoutStatusMsg');
   if (statusMsg) statusMsg.textContent = t('checkoutRedirecting');
   try {
-    const r = await fetch('/api/create-checkout-session', {
+    const r = await fetch('/api/account?action=create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ plan: checkoutCurrentPlan, origin: window.location.origin }),
@@ -96,7 +96,7 @@ async function loadPaypalButtons(){
   if (!container) return;
   container.innerHTML = '';
   try {
-    const r = await fetch('/api/paypal-client-id');
+    const r = await fetch('/api/account?action=paypal-client-id');
     const data = await r.json();
     if (!data.configured) {
       if (fallbackBtn) fallbackBtn.style.display = 'flex';
@@ -116,7 +116,7 @@ async function loadPaypalButtons(){
     if (window.paypal) {
       window.paypal.Buttons({
         createOrder: async () => {
-          const cr = await fetch('/api/paypal-order', {
+          const cr = await fetch('/api/account?action=paypal-order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'create', plan: checkoutCurrentPlan }),
@@ -127,7 +127,7 @@ async function loadPaypalButtons(){
         },
         onApprove: async (data) => {
           const statusMsg = document.getElementById('checkoutStatusMsg');
-          const cap = await fetch('/api/paypal-order', {
+          const cap = await fetch('/api/account?action=paypal-order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'capture', orderId: data.orderID, token: authGet('aiapp_auth_token') }),
