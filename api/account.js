@@ -16,6 +16,11 @@ function load(action) {
     case 'points': return require('./_lib/points.js');
     case 'create-checkout-session': return require('./_lib/create-checkout-session.js');
     case 'verify-checkout': return require('./_lib/create-checkout-session.js');
+    // Apple Pay / Google Pay (Stripe Payment Request Button API) — added in
+    // the payment audit fix. Same file handles all Stripe actions; it reads
+    // req.query.action internally to pick the right function.
+    case 'create-payment-intent': return require('./_lib/create-checkout-session.js');
+    case 'verify-payment-intent': return require('./_lib/create-checkout-session.js');
     case 'paypal-client-id': return require('./_lib/paypal-client-id.js');
     case 'paypal-order': return require('./_lib/paypal-order.js');
     case 'share': return require('./_lib/share.js');

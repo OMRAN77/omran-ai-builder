@@ -487,24 +487,33 @@
       <button type="button" onclick="closeCheckout()" style="position:absolute; inset-inline-end:12px; top:12px; background:none; border:none; font-size:20px; cursor:pointer; color:var(--text);">✕</button>
       <h3 style="margin:0 0 4px;" data-i18n="checkoutTitle">إتمام الاشتراك</h3>
       <div id="checkoutPlanLabel" style="font-size: var(--fs-3); color:var(--muted); margin-bottom:14px;"></div>
-      
+
 
       <div style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">
-        <button type="button" onclick="startStripeCheckout()" style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--panel2); cursor:pointer; font-size: var(--fs-3); color:var(--text);">
+        <button type="button" onclick="clickApplePay()" style="display:flex; align-items:center; justify-content:center; gap:8px; padding:12px 14px; border-radius:10px; border:none; background:#000; color:#fff; cursor:pointer; font-size: var(--fs-3); font-weight:600;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M16.365 1.43c0 1.14-.462 2.088-1.03 2.788-.61.75-1.635 1.322-2.545 1.25-.12-1.09.43-2.24 1.03-2.94.63-.75 1.72-1.32 2.545-1.098zM20.9 17.44c-.31.72-.68 1.4-1.11 2.03-.6.87-1.09 1.47-1.47 1.8-.6.55-1.24.83-1.93.85-.5.01-1.1-.14-1.8-.44-.7-.3-1.34-.44-1.94-.44-.62 0-1.28.14-1.99.44-.71.3-1.28.46-1.72.47-.66.03-1.31-.26-1.94-.87-.41-.36-.93-.99-1.56-1.9-.68-.98-1.24-2.12-1.68-3.42-.47-1.4-.7-2.75-.7-4.06 0-1.5.32-2.79.97-3.88.51-.87 1.19-1.56 2.04-2.06.85-.5 1.77-.76 2.76-.78.53 0 1.22.16 2.08.48.85.32 1.4.48 1.65.48.19 0 .81-.19 1.86-.56 1-.35 1.84-.5 2.53-.44 1.87.15 3.27.89 4.2 2.22-1.67 1.01-2.5 2.43-2.49 4.24.01 1.41.51 2.58 1.51 3.52.45.43.95.77 1.51 1-.12.35-.25.7-.4 1.04z"/></svg>
+          <span data-i18n="checkoutApplePay">Apple Pay</span>
+        </button>
+
+        <button type="button" onclick="clickGooglePay()" style="display:flex; align-items:center; justify-content:center; gap:8px; padding:12px 14px; border-radius:10px; border:1px solid #dadce0; background:#fff; color:#3c4043; cursor:pointer; font-size: var(--fs-3); font-weight:600;">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#4285F4" d="M23.52 12.27c0-.85-.08-1.66-.22-2.44H12v4.62h6.47c-.28 1.5-1.13 2.77-2.4 3.63v3.02h3.89c2.27-2.09 3.56-5.17 3.56-8.83z"/>
+            <path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.95-2.9l-3.89-3.02c-1.08.72-2.46 1.15-4.06 1.15-3.12 0-5.76-2.11-6.7-4.94H1.28v3.11C3.26 21.3 7.31 24 12 24z"/>
+            <path fill="#FBBC05" d="M5.3 14.29A7.2 7.2 0 0 1 4.91 12c0-.79.14-1.56.39-2.29V6.6H1.28A11.98 11.98 0 0 0 0 12c0 1.94.46 3.77 1.28 5.4l4.02-3.11z"/>
+            <path fill="#EA4335" d="M12 4.77c1.76 0 3.34.6 4.59 1.79l3.44-3.44C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.28 6.6l4.02 3.11c.94-2.83 3.58-4.94 6.7-4.94z"/>
+          </svg>
+          <span data-i18n="checkoutGooglePay">Google Pay</span>
+        </button>
+
+        <button type="button" onclick="startStripeCheckout()" style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:10px; border:2px solid #c9a227; background:var(--panel2); cursor:pointer; font-size: var(--fs-3); color:var(--text); font-weight:600;">
           <span style="font-size:20px;">💳</span>
-          <span data-i18n="checkoutCardOption">فيزا / ماستركارد</span>
+          <span data-i18n="checkoutCardOption">بطاقة</span>
         </button>
 
         <div id="paypalButtonContainer" style="min-height:45px;"></div>
-        <button type="button" id="paypalFallbackBtn" onclick="startPaypalCheckout()" style="display:none; align-items:center; gap:10px; padding:12px 14px; border-radius:10px; border:1px solid var(--border); background:var(--panel2); cursor:pointer; font-size: var(--fs-3); color:var(--text);">
+        <button type="button" id="paypalFallbackBtn" onclick="startPaypalCheckout()" style="display:none; align-items:center; justify-content:center; gap:8px; padding:12px 14px; border-radius:10px; border:none; background:#0070ba; color:#fff; cursor:pointer; font-size: var(--fs-3); font-weight:600;">
           <span style="font-size:20px;">🅿️</span>
           <span>PayPal</span>
-        </button>
-
-        <button type="button" disabled style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); opacity:.5; cursor:not-allowed; font-size: var(--fs-3); color:var(--text);">
-          <span style="font-size:20px;">📶</span>
-          <span data-i18n="checkoutTelecomOption">فاتورة الاتصالات (اتصالات/du)</span>
-          <span style="margin-inline-start:auto; font-size: var(--fs-5);" data-i18n="checkoutComingSoon">قريبًا</span>
         </button>
       </div>
       <div id="checkoutStatusMsg" style="margin-top:12px; font-size: var(--fs-3); text-align:center;"></div>
