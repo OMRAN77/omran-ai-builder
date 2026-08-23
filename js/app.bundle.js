@@ -690,7 +690,7 @@ const $ = s => document.querySelector(s);
   const googleBtnEl = $('#authGoogleBtn');
   if(googleBtnEl){
     googleBtnEl.onclick = () => {
-      const clientId = '533765051685-2334rjfvu738sd2i50p7rb8gck1d00i2.apps.googleusercontent.com';
+      const clientId = '160401972567-c6nici4k3slh36ei7p9posotihmjiqdc.apps.googleusercontent.com';
       const redirectUri = window.location.origin + '/api/auth-google-callback';
       // state: قيمة عشوائية تُحفظ محليًا ويعيدها جوجل كما هي. بدونها يستطيع
       // مهاجم أن يدفع متصفح الضحية لإكمال تسجيل دخول بـ code يخصّه هو (CSRF)،
