@@ -1,4 +1,4 @@
-const router = require('./account.js');
+const router = require('./_lib/account.js');
 
 module.exports = (req, res) => {
   req.query = Object.assign({}, req.query || {}, { action: 'auth-google-callback' });
