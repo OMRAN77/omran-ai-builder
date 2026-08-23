@@ -7,6 +7,7 @@
 // tokens (HMAC-SHA256) — no plaintext secrets ever reach the client.
 const crypto = require('crypto');
 const { kvGetJSON, kvPutJSON } = require('./kv.js');
+const { logError } = require('./log-error.js');
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 
@@ -14,6 +15,30 @@ function userPath(key) {
   // key must already be the normalized (lowercased, trimmed) username.
   return 'db/users/' + encodeURIComponent(key) + '.json';
 }
+
+// ---------------------------------------------------------------------------
+// أسماء محجوزة.
+//
+// _owner.js يمنح صلاحية المالك بمطابقة اسم المستخدم بـOWNER_USERNAME. ولم يكن
+// الاسم محجوزًا هنا: الحماية الوحيدة كانت أنّ السجل موجود. ومسار تغيير الاسم
+// أدناه يترك المفتاح القديم {deleted:true}، وsignup يقبل المحذوف — فلحظة تغيير
+// المالك لاسمه يصير الاسم قابلًا للتسجيل، وأوّل من يأخذه يرث اللوحة.
+//
+// أمتن من هذا (لاحقًا): ownerId ثابت في السجلّ بدل اسم قابل للتغيير.
+const RESERVED_USERNAMES = new Set([
+  String(process.env.OWNER_USERNAME || 'omran').trim().toLowerCase(),
+  'omran', 'admin', 'administrator', 'root', 'owner', 'support', 'system', 'api',
+]);
+
+// الحدّ الأدنى لكلمة المرور. كان 4 — رقم منخفض بلا مبرّر حتّى مع قفل المحاولات.
+// ثابت واحد بدل ثلاثة أرقام متفرّقة في الرسائل والشروط.
+const MIN_PASSWORD = 8;
+
+// مرسِل البريد. onboarding@resend.dev هو مرسِل Resend التجريبيّ ولا يصل إلّا
+// لصاحب الحساب نفسه — أي أنّ رسائل الاسترجاع والرموز لا تصل مستخدميك، ويرجع
+// الكود ok:true لأنّ Resend قبلت الطلب. فشل صامت تامّ.
+// وثّق نطاقك في Resend واضبط MAIL_FROM.
+const MAIL_FROM = process.env.MAIL_FROM || 'Omran AI Builder <onboarding@resend.dev>';
 
 // ---------------------------------------------------------------------------
 // At-rest encryption for user records.
@@ -53,7 +78,12 @@ function hashPassword(password, salt) {
 
 function verifyPassword(password, salt, hash) {
   const check = crypto.scryptSync(password, salt, 64).toString('hex');
-  return crypto.timingSafeEqual(Buffer.from(check), Buffer.from(hash));
+  // نفس الطول دائمًا (64 بايت hex)، لكن نحرس على أيّ سجلّ تالف حتّى لا يرمي
+  // timingSafeEqual فيتحوّل فشل تحقّق عاديّ إلى خطأ 500.
+  const a = Buffer.from(check);
+  const b = Buffer.from(String(hash || ''));
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
 }
 
 function genRecoveryCode() {
@@ -71,7 +101,10 @@ function verifyToken(token) {
   try {
     const [payload, sig] = String(token).split('.');
     const expected = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+    const a = Buffer.from(String(sig || ''));
+    const b = Buffer.from(expected);
+    if (a.length !== b.length) return null;
+    if (!crypto.timingSafeEqual(a, b)) return null;
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
     if (data.exp < Date.now()) return null;
     return data.u;
@@ -90,6 +123,7 @@ async function getUserOnce(key) {
       try {
         return decryptUserBlob(parsed);
       } catch (e) {
+        logError('auth:decrypt', e, { key: String(key).slice(0, 40) });
         return null; // corrupt/undecryptable record - treat as missing
       }
     }
@@ -98,6 +132,7 @@ async function getUserOnce(key) {
     // transparently re-encrypt it the next time it's saved.
     return parsed;
   } catch (e) {
+    logError('auth:get-user', e);
     return null;
   }
 }
@@ -120,39 +155,54 @@ async function putUser(key, user) {
 }
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const SITE_URL = process.env.SITE_URL || 'https://omran-ai-builder.vercel.app';
+const SITE_URL = (process.env.SITE_URL || 'https://omran-ai-builder.vercel.app').replace(/\/+$/, '');
 
 function isValidEmail(email) {
   return typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
-async function sendResetEmail(toEmail, username, resetToken, isEn) {
+// يمنع حقن HTML عبر اسم المستخدم في جسم الرسالة.
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+async function sendMail(toEmail, subject, html) {
   if (!RESEND_API_KEY) return false;
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + RESEND_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: MAIL_FROM, to: [toEmail], subject, html }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!r.ok) logError('auth:mail', new Error('resend_' + r.status), { status: r.status });
+    return r.ok;
+  } catch (e) {
+    logError('auth:mail', e);
+    return false;
+  }
+}
+
+async function sendResetEmail(toEmail, username, resetToken, isEn) {
   const link = SITE_URL + '/?resetToken=' + encodeURIComponent(resetToken) + '&ru=' + encodeURIComponent(username);
+  const name = escapeHtml(username);
   const subject = isEn ? 'Reset your password — Omran AI Builder' : 'إعادة تعيين كلمة المرور — Omran AI Builder';
   const html = isEn
     ? `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
         <h2>Reset your password</h2>
-        <p>Hi ${username}, click the button below to set a new password. This link expires in 30 minutes.</p>
+        <p>Hi ${name}, click the button below to set a new password. This link expires in 30 minutes.</p>
         <p><a href="${link}" style="background:#00c896;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block">Reset Password</a></p>
         <p style="color:#888;font-size:13px">If you didn't request this, ignore this email.</p>
        </div>`
     : `<div dir="rtl" style="font-family:sans-serif;max-width:480px;margin:0 auto">
         <h2>إعادة تعيين كلمة المرور</h2>
-        <p>مرحبًا ${username}، اضغط الزر بالأسفل لتعيين كلمة مرور جديدة. الرابط صالح لمدة 30 دقيقة.</p>
+        <p>مرحبًا ${name}، اضغط الزر بالأسفل لتعيين كلمة مرور جديدة. الرابط صالح لمدة 30 دقيقة.</p>
         <p><a href="${link}" style="background:#00c896;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block">إعادة تعيين كلمة المرور</a></p>
         <p style="color:#888;font-size:13px">إذا لم تطلب هذا، تجاهل هذا الإيميل.</p>
        </div>`;
-  try {
-    const r = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + RESEND_API_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: 'Omran AI Builder <onboarding@resend.dev>', to: [toEmail], subject, html }),
-    });
-    return r.ok;
-  } catch (e) {
-    return false;
-  }
+  return sendMail(toEmail, subject, html);
 }
 
 function genNumericOtp() {
@@ -160,46 +210,31 @@ function genNumericOtp() {
   return String(crypto.randomInt(0, 1000000)).padStart(6, '0');
 }
 
-// ---------------------------------------------------------------------------
-// Helper: send the OTP code by email via Resend.
-// Add near sendResetEmail() — same fetch pattern, same failure handling
-// (returns false instead of throwing so the caller can report a clean error).
-// ---------------------------------------------------------------------------
-async function sendOtpEmail(toEmail, otp, isEn) {
-  if (!RESEND_API_KEY) return false;
+async function sendOtpEmail(toEmail, otpCode, isEn) {
   const subject = isEn ? 'Verification Code — Omran AI Builder' : 'رمز التحقق — Omran AI Builder';
   const html = isEn
     ? `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;text-align:center">
         <h2 style="margin-bottom:4px">Your verification code</h2>
         <p style="color:#888;font-size:13px;margin-top:0">Enter this code to sign in. It expires in 5 minutes.</p>
-        <div style="font-size:36px;font-weight:bold;letter-spacing:10px;background:#f4f4f5;color:#111;padding:18px 10px;border-radius:12px;margin:20px 0">${otp}</div>
+        <div style="font-size:36px;font-weight:bold;letter-spacing:10px;background:#f4f4f5;color:#111;padding:18px 10px;border-radius:12px;margin:20px 0">${otpCode}</div>
         <p style="color:#888;font-size:13px">If you didn't request this, ignore this email.</p>
        </div>`
     : `<div dir="rtl" style="font-family:sans-serif;max-width:480px;margin:0 auto;text-align:center">
         <h2 style="margin-bottom:4px">رمز التحقق الخاص بك</h2>
         <p style="color:#888;font-size:13px;margin-top:0">أدخل هذا الرمز لتسجيل الدخول. صالح لمدة 5 دقائق.</p>
-        <div style="font-size:36px;font-weight:bold;letter-spacing:10px;background:#f4f4f5;color:#111;padding:18px 10px;border-radius:12px;margin:20px 0">${otp}</div>
+        <div style="font-size:36px;font-weight:bold;letter-spacing:10px;background:#f4f4f5;color:#111;padding:18px 10px;border-radius:12px;margin:20px 0">${otpCode}</div>
         <p style="color:#888;font-size:13px">إذا لم تطلب هذا، تجاهل هذا الإيميل.</p>
        </div>`;
-  try {
-    const r = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + RESEND_API_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: 'Omran AI Builder <onboarding@resend.dev>', to: [toEmail], subject, html }),
-    });
-    return r.ok;
-  } catch (e) {
-    return false;
-  }
+  return sendMail(toEmail, subject, html);
 }
 
 // ---------------------------------------------------------------------------
 
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
+  // CORS يُركّبه الموجّه account.js عبر installCors — ولا يُكتب هنا يدويًّا.
+  // كتابة Access-Control-Allow-Origin:* هنا كانت تلتفّ على _lib/cors.js، وهو
+  // الحارس الذي يعترض setHeader تحديدًا لمنع هذا. على نقطة المصادقة بالذات،
+  // wildcard يعني أنّ أيّ موقع يستطيع نداء تسجيل الدخول والتسجيل.
   if (req.method === 'OPTIONS') {
     res.status(204).end();
     return;
@@ -216,7 +251,14 @@ module.exports = async (req, res) => {
   try {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
-    const { action, username, password, token, recoveryCode, newPassword, newUsername, currentPassword, avatarDataUrl, lang, ref, email, resetToken } = body;
+    // ⚠️ otp كان ناقصًا من هذا التفكيك بينما يُقرأ في email-otp-verify.
+    // قراءة متغيّر غير معرَّف ترمي ReferenceError، فكان كلّ تحقّق برمز ينتهي
+    // بخطأ 500 — الميزة كانت معطّلة بالكامل.
+    const {
+      action, username, password, token, recoveryCode, newPassword,
+      newUsername, currentPassword, avatarDataUrl, lang,
+      email, resetToken, otp,
+    } = body;
 
     const isEn = lang === 'en';
     // Small helper to return the message matching the caller's UI language
@@ -226,6 +268,8 @@ module.exports = async (req, res) => {
     // Hardening: cap input lengths to block scrypt CPU-exhaustion and junk-data attacks.
     const tooLong = [username, newUsername].some(v => v && String(v).length > 64) ||
       [password, newPassword, currentPassword, recoveryCode].some(v => v && String(v).length > 128) ||
+      (otp && String(otp).length > 16) ||
+      (resetToken && String(resetToken).length > 256) ||
       (email && String(email).length > 254);
     if (tooLong) {
       res.status(400).json({ error: m('المدخلات طويلة جدًا', 'Input too long') });
@@ -233,11 +277,15 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'signup') {
-      if (!username || !password || String(username).length < 3 || String(password).length < 4) {
-        res.status(400).json({ error: m('اسم المستخدم يجب أن يكون 3 أحرف على الأقل وكلمة المرور 4 أحرف على الأقل', 'Username must be at least 3 characters and password at least 4 characters') });
+      if (!username || !password || String(username).length < 3 || String(password).length < MIN_PASSWORD) {
+        res.status(400).json({ error: m('اسم المستخدم 3 أحرف على الأقل وكلمة المرور ' + MIN_PASSWORD + ' أحرف على الأقل', 'Username must be at least 3 characters and password at least ' + MIN_PASSWORD + ' characters') });
         return;
       }
       const key = String(username).trim().toLowerCase();
+      if (RESERVED_USERNAMES.has(key)) {
+        res.status(409).json({ error: m('اسم المستخدم محجوز', 'Username is reserved') });
+        return;
+      }
       const existing = await getUser(key);
       if (existing && !existing.deleted) {
         res.status(409).json({ error: m('اسم المستخدم مستخدم من قبل', 'Username already taken') });
@@ -267,12 +315,11 @@ module.exports = async (req, res) => {
       // هي الخطوة التي تسمح بانتحال بريد شخص آخر.
       if (user.email) {
         try {
-          const { kvGetJSON, kvPutJSON } = require('./kv.js');
-          const existing = await kvGetJSON('db/email-index/' + user.email);
-          if (!existing || !existing.username) {
+          const existingIdx = await kvGetJSON('db/email-index/' + user.email);
+          if (!existingIdx || !existingIdx.username) {
             await kvPutJSON('db/email-index/' + user.email, { username: key, at: Date.now() });
           }
-        } catch (e) { console.warn('[auth] email index write skipped:', e && e.message); }
+        } catch (e) { logError('auth:email-index', e); }
       }
       res.status(200).json({ ok: true, token: makeToken(key), username: user.username, recoveryCode: recCode, avatar: null });
       return;
@@ -291,7 +338,12 @@ module.exports = async (req, res) => {
       const oldKey = u;
       const newKey = String(newUsername).trim().toLowerCase();
       if (newKey === oldKey) {
-        res.status(200).json({ ok: true, token, username: newUsername.trim() });
+        res.status(200).json({ ok: true, token, username: String(newUsername).trim() });
+        return;
+      }
+      // نفس الحجز المطبَّق في signup: بدونه يُلتفّ عليه من هنا.
+      if (RESERVED_USERNAMES.has(newKey) && newKey !== oldKey) {
+        res.status(409).json({ error: m('اسم المستخدم محجوز', 'Username is reserved') });
         return;
       }
       const clash = await getUser(newKey);
@@ -318,8 +370,8 @@ module.exports = async (req, res) => {
         res.status(401).json({ error: m('الجلسة منتهية، سجل الدخول من جديد', 'Session expired, please log in again') });
         return;
       }
-      if (!currentPassword || !newPassword || String(newPassword).length < 4) {
-        res.status(400).json({ error: m('أدخل كلمة المرور الحالية وكلمة مرور جديدة (4 أحرف على الأقل)', 'Enter your current password and a new password (at least 4 characters)') });
+      if (!currentPassword || !newPassword || String(newPassword).length < MIN_PASSWORD) {
+        res.status(400).json({ error: m('أدخل كلمة المرور الحالية وكلمة مرور جديدة (' + MIN_PASSWORD + ' أحرف على الأقل)', 'Enter your current password and a new password (at least ' + MIN_PASSWORD + ' characters)') });
         return;
       }
       const user = await getUser(u);
@@ -357,8 +409,8 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'reset') {
-      if (!username || !recoveryCode || !newPassword || String(newPassword).length < 4) {
-        res.status(400).json({ error: m('أدخل اسم المستخدم ورمز الاسترجاع وكلمة مرور جديدة (4 أحرف على الأقل)', 'Enter your username, recovery code, and a new password (at least 4 characters)') });
+      if (!username || !recoveryCode || !newPassword || String(newPassword).length < MIN_PASSWORD) {
+        res.status(400).json({ error: m('أدخل اسم المستخدم ورمز الاسترجاع وكلمة مرور جديدة (' + MIN_PASSWORD + ' أحرف على الأقل)', 'Enter your username, recovery code, and a new password (at least ' + MIN_PASSWORD + ' characters)') });
         return;
       }
       const key = String(username).trim().toLowerCase();
@@ -413,7 +465,6 @@ module.exports = async (req, res) => {
       // بريد مرتبط بحساب آخر لا يُدّعى. هذا هو الباب الذي كان يسمح بالاستيلاء
       // على مدخل الفهرس ثم توجيه دخول جوجل الخاص بالضحية.
       try {
-        const { kvGetJSON } = require('./kv.js');
         const claimed = await kvGetJSON('db/email-index/' + nextEmail);
         if (claimed && claimed.username && String(claimed.username) !== u) {
           res.status(409).json({
@@ -421,14 +472,13 @@ module.exports = async (req, res) => {
           });
           return;
         }
-      } catch (e) { console.warn('[auth] email claim check failed:', e && e.message); }
+      } catch (e) { logError('auth:email-claim', e); }
       user.email = nextEmail;
       await putUser(u, user);
       try {
-        const { kvGetJSON, kvPutJSON } = require('./kv.js');
-        const existing = await kvGetJSON('db/email-index/' + nextEmail);
-        if (!existing || !existing.username) await kvPutJSON('db/email-index/' + nextEmail, { username: u, at: Date.now() });
-      } catch (e) { console.warn('[auth] email index write skipped:', e && e.message); }
+        const existingIdx = await kvGetJSON('db/email-index/' + nextEmail);
+        if (!existingIdx || !existingIdx.username) await kvPutJSON('db/email-index/' + nextEmail, { username: u, at: Date.now() });
+      } catch (e) { logError('auth:email-index', e); }
       res.status(200).json({ ok: true, email: user.email });
       return;
     }
@@ -464,8 +514,8 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'resetWithToken') {
-      if (!username || !resetToken || !newPassword || String(newPassword).length < 4) {
-        res.status(400).json({ error: m('رابط غير صالح أو كلمة مرور قصيرة (4 أحرف على الأقل)', 'Invalid link or password too short (at least 4 characters)') });
+      if (!username || !resetToken || !newPassword || String(newPassword).length < MIN_PASSWORD) {
+        res.status(400).json({ error: m('رابط غير صالح أو كلمة مرور قصيرة (' + MIN_PASSWORD + ' أحرف على الأقل)', 'Invalid link or password too short (at least ' + MIN_PASSWORD + ' characters)') });
         return;
       }
       const key = String(username).trim().toLowerCase();
@@ -508,7 +558,7 @@ module.exports = async (req, res) => {
             failedLoginCount: fails,
             lockUntil: fails >= LOCK_AFTER ? Date.now() + LOCK_MS : (user.lockUntil || null),
           });
-          try { await putUser(key, updated); } catch (e) { /* best-effort */ }
+          try { await putUser(key, updated); } catch (e) { logError('auth:lock-write', e); }
         }
         res.status(401).json({ error: m('اسم المستخدم أو كلمة المرور غير صحيحة', 'Incorrect username or password') });
         return;
@@ -518,7 +568,7 @@ module.exports = async (req, res) => {
         return;
       }
       if (user.failedLoginCount || user.lockUntil) {
-        try { await putUser(key, Object.assign({}, user, { failedLoginCount: 0, lockUntil: null })); } catch (e) { /* best-effort */ }
+        try { await putUser(key, Object.assign({}, user, { failedLoginCount: 0, lockUntil: null })); } catch (e) { logError('auth:lock-clear', e); }
       }
       res.status(200).json({ ok: true, token: makeToken(key), username: user.username, avatar: user.avatar || null });
       return;
@@ -549,7 +599,7 @@ module.exports = async (req, res) => {
         try {
           const updated = Object.assign({}, user, { pendingMessage: null });
           await putUser(u, updated);
-        } catch (e) { /* best-effort; ignore */ }
+        } catch (e) { logError('auth:clear-msg', e); }
       }
       res.status(200).json({ ok: true, username: user ? user.username : u, avatar: user ? (user.avatar || null) : null, adminMessage });
       return;
@@ -568,7 +618,7 @@ module.exports = async (req, res) => {
       const rateKey = 'db/otp-rate/' + key;
       const now = Date.now();
       let rate = null;
-      try { rate = await kvGetJSON(rateKey); } catch (e) { rate = null; }
+      try { rate = await kvGetJSON(rateKey); } catch (e) { logError('auth:otp-rate-read', e); rate = null; }
       if (rate && rate.windowStart && (now - rate.windowStart) < RATE_WINDOW_MS) {
         if ((rate.count || 0) >= RATE_LIMIT) {
           const mins = Math.ceil((rate.windowStart + RATE_WINDOW_MS - now) / 60000);
@@ -600,7 +650,7 @@ module.exports = async (req, res) => {
       }
       const key = String(email).trim().toLowerCase();
       let record = null;
-      try { record = await kvGetJSON('db/otp/' + key); } catch (e) { record = null; }
+      try { record = await kvGetJSON('db/otp/' + key); } catch (e) { logError('auth:otp-read', e); record = null; }
       const submitted = String(otp).trim();
       if (!record || typeof record.otp !== 'string' || !record.exp || record.exp < Date.now()) {
         res.status(401).json({ error: m('رمز غير صحيح أو منتهي', 'Invalid or expired code') });
@@ -618,7 +668,7 @@ module.exports = async (req, res) => {
       }
       // Invalidate immediately so the same code can't be replayed — there's no
       // del() in kv.js, so overwrite with an already-expired record.
-      try { await kvPutJSON('db/otp/' + key, { otp: null, exp: 0 }); } catch (e) { /* best-effort */ }
+      try { await kvPutJSON('db/otp/' + key, { otp: null, exp: 0 }); } catch (e) { logError('auth:otp-invalidate', e); }
 
       // Find an existing account linked to this email via the email index.
       let userKey = null;
@@ -632,18 +682,23 @@ module.exports = async (req, res) => {
             user = candidate;
           }
         }
-      } catch (e) { /* fall through to auto-create */ }
+      } catch (e) { logError('auth:otp-index', e); }
 
       let isNew = false;
       if (!user) {
         // Auto-create an account: random username derived from the email
         // prefix, an unusable random password (this account only ever logs in
         // via OTP), the email set, and the standard welcome gift.
+        //
+        // ⚠️ مزرعة نقاط: كلّ بريد جديد = 70 نقطة. التحديد ثلاث محاولات لكلّ
+        // بريد، لكنّ عدد العناوين لا نهائيّ. راجع OTP_SIGNUP_GIFT قبل التسويق.
+        const OTP_SIGNUP_GIFT = Math.max(0, Number(process.env.OTP_SIGNUP_GIFT || 70));
         const prefix = key.split('@')[0].replace(/[^a-z0-9]/gi, '').slice(0, 12).toLowerCase() || 'user';
         let candidateKey = '';
         for (let i = 0; i < 8; i++) {
           const suffix = crypto.randomBytes(3).toString('hex');
           candidateKey = (prefix + '_' + suffix).slice(0, 40);
+          if (RESERVED_USERNAMES.has(candidateKey)) { candidateKey = ''; continue; }
           const clash = await getUser(candidateKey);
           if (!clash || clash.deleted) break;
           candidateKey = '';
@@ -658,8 +713,8 @@ module.exports = async (req, res) => {
           email: key,
           avatar: null,
           createdAt: Date.now(),
-          points: 70,
-          welcomeGift: true,
+          points: OTP_SIGNUP_GIFT,
+          welcomeGift: OTP_SIGNUP_GIFT > 0,
           otpOnly: true,
         };
         userKey = candidateKey;
@@ -669,7 +724,7 @@ module.exports = async (req, res) => {
           if (!existingIdx || !existingIdx.username) {
             await kvPutJSON('db/email-index/' + key, { username: userKey, at: Date.now() });
           }
-        } catch (e) { console.warn('[auth] email index write skipped:', e && e.message); }
+        } catch (e) { logError('auth:email-index', e); }
         isNew = true;
       }
 
@@ -684,7 +739,10 @@ module.exports = async (req, res) => {
 
     res.status(400).json({ error: 'Unknown action' });
   } catch (e) {
-    res.status(500).json({ error: 'Auth error: ' + (e && e.message ? e.message : String(e)) });
+    // رسالة الاستثناء لا تصل العميل: كانت تكشف داخل الخادم لأيّ أحد
+    // (وهي التي كانت تعرض "otp is not defined" للمستخدم).
+    logError('auth:handler', e);
+    res.status(500).json({ error: 'Auth error' });
   }
 };
 
@@ -697,6 +755,7 @@ module.exports.makeToken = makeToken;
 module.exports.verifyToken = verifyToken;
 module.exports.encryptUserBlob = encryptUserBlob;
 module.exports.decryptUserBlob = decryptUserBlob;
+module.exports.RESERVED_USERNAMES = RESERVED_USERNAMES;
 
 // A ban set from the admin panel only ever guarded the *login* endpoint.
 // Any session token minted before the ban stayed valid for its full 30 days,
