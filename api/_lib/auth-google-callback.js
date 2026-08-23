@@ -1,10 +1,9 @@
 const crypto = require('crypto');
-const { getUser, putUser, makeToken } = require('./auth.js');
+const { getUser, putUser, makeToken } = require('./auth.js'); // داخل _lib
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
-// تنظيف الشرطة المائلة لمنع الخطأ في redirect_uri
 const rawSiteUrl = process.env.SITE_URL || 'https://omran-ai-builder.vercel.app';
 const SITE_URL = rawSiteUrl.replace(/\/+$/, '');
 const REDIRECT_URI = `${SITE_URL}/api/auth-google-callback`;
@@ -41,7 +40,6 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // 1) تبادل Authorization Code مع Google (إضافة مهلة 10 ثوانٍ)
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -56,13 +54,11 @@ module.exports = async (req, res) => {
     });
     const tokenData = await tokenRes.json();
     if (!tokenRes.ok || !tokenData.access_token) {
-      // طباعة تفاصيل الخطأ بأمان دون تسريب الـ Tokens
       console.error('[Google OAuth]', tokenData && tokenData.error, tokenData && tokenData.error_description);
       failRedirect('token_exchange_failed');
       return;
     }
 
-    // 2) جلب معلومات البريد والملف الشخصي (إضافة مهلة 10 ثوانٍ)
     const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
       headers: { Authorization: 'Bearer ' + tokenData.access_token },
       signal: AbortSignal.timeout(10000),
@@ -73,7 +69,6 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // 3) سد الثغرة: الاشتراط الصارم لتأكيد البريد من Google
     if (profile.email_verified !== true) {
       failRedirect('email_not_verified');
       return;
@@ -83,7 +78,7 @@ module.exports = async (req, res) => {
     let key = 'g_' + email;
 
     try {
-      const { kvGetJSON } = require('./kv.js');
+      const { kvGetJSON } = require('./kv.js'); // داخل _lib
       const alias = await kvGetJSON('db/alias/' + key);
       if (alias && alias.primary) {
         key = String(alias.primary);
