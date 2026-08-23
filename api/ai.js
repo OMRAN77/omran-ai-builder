@@ -160,7 +160,7 @@ function lastUserText(action, body) {
 
 // Appended to the LAST user message itself — models weight this far more
 // heavily than system text, which is what actually stops topic bleeding.
-const LAST_MSG_NOTE = '';
+const LAST_MSG_NOTE = '\n[قاعدة الموضوع: أجب على الرسالة الأخيرة فقط وفصل السياق].';
 const LAST_MSG_PREFIX = '';
 
 function tagLastUserMessage(action, body) {
