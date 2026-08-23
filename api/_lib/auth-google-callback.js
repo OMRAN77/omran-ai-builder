@@ -1,22 +1,15 @@
-// Vercel Serverless Function: handles the redirect Google sends back after a
-// user approves "Continue with Google". Exchanges the one-time code for an
-// access token, fetches the user's Google profile, then finds/creates a
-// local account for that email (reusing the same blob-backed user store and
-// session-token scheme as the regular username/password auth.js). Finally
-// redirects the browser back to the app with a short-lived session token in
-// the URL, which the frontend picks up once and cleans from the address bar.
 const crypto = require('crypto');
 const { getUser, putUser, makeToken } = require('./auth.js');
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const SITE_URL = process.env.SITE_URL || 'https://omran-ai-builder.vercel.app';
-const REDIRECT_URI = SITE_URL + '/api/auth-google-callback';
+
+// تنظيف رابط الموقع تلقائياً لمنع وجود شرطة مائلة زائدة //
+const rawSiteUrl = process.env.SITE_URL || 'https://omran-ai-builder.vercel.app';
+const SITE_URL = rawSiteUrl.replace(/\/+$/, '');
+const REDIRECT_URI = `${SITE_URL}/api/auth-google-callback`;
 
 function randomPasswordHash() {
-  // Google-authenticated accounts have no password of their own; store a
-  // random, unusable hash so the account still fits the existing user shape
-  // (and so a stolen blob file can't be used to log in via the password form).
   const salt = crypto.randomBytes(16).toString('hex');
   const hash = crypto.scryptSync(crypto.randomBytes(32).toString('hex'), salt, 64).toString('hex');
   return { salt, hash };
@@ -62,6 +55,7 @@ module.exports = async (req, res) => {
     });
     const tokenData = await tokenRes.json();
     if (!tokenRes.ok || !tokenData.access_token) {
+      console.error('[Google OAuth Exchange Error]:', JSON.stringify(tokenData));
       failRedirect('token_exchange_failed');
       return;
     }
@@ -77,29 +71,14 @@ module.exports = async (req, res) => {
     }
 
     const email = String(profile.email).trim().toLowerCase();
-    let key = 'g_' + email; // namespaced so it never collides with a manually chosen username
+    let key = 'g_' + email;
 
-    // v380: توحيد الحسابات — لو فيه ربط يدوي (alias) أو حساب عادي بنفس الإيميل،
-    // الدخول بجوجل يفتح الحساب الأساسي نفسه بدل إنشاء حساب منفصل.
-    // ── توحيد الحسابات ─────────────────────────────────────────────────
-    // `db/email-index/<email>` is written from a plain signup or setEmail with
-    // NO proof that the address belongs to the account. Trusting it here meant:
-    // an attacker sets their own email to victim@gmail.com, takes the index
-    // entry, and the victim's "Continue with Google" then opens the ATTACKER's
-    // account — the victim uploads files and buys points inside an account
-    // someone else has the password to.
-    //
-    // Google-side aliases (db/alias/) are different: they are only written by a
-    // deliberate link action from inside an authenticated session, so both
-    // sides are proven. Those still resolve.
     try {
       const { kvGetJSON } = require('./kv.js');
       const alias = await kvGetJSON('db/alias/' + key);
       if (alias && alias.primary) {
         key = String(alias.primary);
       } else if ((process.env.ALLOW_EMAIL_AUTOLINK || '').trim() === '1') {
-        // Opt-in only, and even then the target must still claim this exact
-        // address — a later setEmail must not leave a stale pointer behind.
         const idx = await kvGetJSON('db/email-index/' + email);
         if (idx && idx.username) {
           const candidate = await getUser(String(idx.username));
@@ -133,9 +112,6 @@ module.exports = async (req, res) => {
     }
 
     const token = makeToken(key);
-    // The state is echoed back untouched so the browser that started the flow
-    // can prove it was the one that started it. The server has no session to
-    // check it against — only the originating tab holds the value.
     const params = new URLSearchParams({
       gtoken: token,
       guser: user.username,
