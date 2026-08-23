@@ -4,7 +4,7 @@ const { getUser, putUser, makeToken } = require('./auth.js');
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
-// تنظيف رابط الموقع تلقائياً لمنع وجود شرطة مائلة زائدة //
+// تنظيف الشرطة المائلة لمنع الخطأ في redirect_uri
 const rawSiteUrl = process.env.SITE_URL || 'https://omran-ai-builder.vercel.app';
 const SITE_URL = rawSiteUrl.replace(/\/+$/, '');
 const REDIRECT_URI = `${SITE_URL}/api/auth-google-callback`;
@@ -41,7 +41,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // 1) Exchange the authorization code for tokens.
+    // 1) تبادل Authorization Code مع Google (إضافة مهلة 10 ثوانٍ)
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -52,21 +52,30 @@ module.exports = async (req, res) => {
         redirect_uri: REDIRECT_URI,
         grant_type: 'authorization_code',
       }),
+      signal: AbortSignal.timeout(10000),
     });
     const tokenData = await tokenRes.json();
     if (!tokenRes.ok || !tokenData.access_token) {
-      console.error('[Google OAuth Exchange Error]:', JSON.stringify(tokenData));
+      // طباعة تفاصيل الخطأ بأمان دون تسريب الـ Tokens
+      console.error('[Google OAuth]', tokenData && tokenData.error, tokenData && tokenData.error_description);
       failRedirect('token_exchange_failed');
       return;
     }
 
-    // 2) Fetch the user's Google profile (email, name, picture).
+    // 2) جلب معلومات البريد والملف الشخصي (إضافة مهلة 10 ثوانٍ)
     const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
       headers: { Authorization: 'Bearer ' + tokenData.access_token },
+      signal: AbortSignal.timeout(10000),
     });
     const profile = await profileRes.json();
     if (!profileRes.ok || !profile.email) {
       failRedirect('profile_fetch_failed');
+      return;
+    }
+
+    // 3) سد الثغرة: الاشتراط الصارم لتأكيد البريد من Google
+    if (profile.email_verified !== true) {
+      failRedirect('email_not_verified');
       return;
     }
 
