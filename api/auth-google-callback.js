@@ -1,6 +1,6 @@
-const router = require('./system.js');
+const router = require('./account.js');
 
 module.exports = (req, res) => {
-  req.query = Object.assign({}, req.query || {}, { action: 'email-callback' });
+  req.query = Object.assign({}, req.query || {}, { action: 'auth-google-callback' });
   return router(req, res);
 };
