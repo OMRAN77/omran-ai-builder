@@ -22,7 +22,7 @@
         pendingAttachments.push({ name: 'shared-screenshot.jpg', isImage: true, mime: file.type || 'image/jpeg', dataUrl: dataUrl });
         renderAttachStrip();
         // ركّز على خانة الكتابة ليكتب هدفه مباشرة
-        try { document.getElementById('prompt').focus(); } catch (_) {}
+        try { document.getElementById('prompt').focus(); } catch (_) { /* guard-ok: التركيز على خانة الكتابة تحسين اختياري */ }
       }
     };
     reader.readAsDataURL(file);
