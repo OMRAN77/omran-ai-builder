@@ -1304,7 +1304,6 @@ const $ = s => document.querySelector(s);
   if(otpEmailInput) otpEmailInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') otpSubmitBtn.onclick(); });
 })();
 
-
 // 🎁 v343: رسائل ودّية بدل أكواد الأخطاء عند توليد/تعديل الصور — مع فتح
 // نافذة إنشاء حساب تلقائيًا للضيف الذي استهلك صوره المجانية.
 function imgErrFriendly(err, isAr){
@@ -2719,7 +2718,10 @@ const I18N = {
     pricingSubscribeBtn: 'اشترك الآن',
     checkoutTitle: 'إتمام الاشتراك',
     checkoutTestBadge: '🧪 وضع تجريبي (Test Mode)',
-    checkoutCardOption: 'فيزا / ماستركارد',
+    checkoutCardOption: 'بطاقة',
+    checkoutApplePay: 'Apple Pay',
+    checkoutGooglePay: 'Google Pay',
+    checkoutWalletUnavailable: 'غير متوفر على هذا الجهاز',
     checkoutTelecomOption: 'فاتورة الاتصالات (اتصالات/du)',
     checkoutComingSoon: 'قريبًا',
     checkoutPlanLabelBasic: 'الخطة الأساسية 10$ شهريًا — 300 رسالة',
@@ -2936,7 +2938,10 @@ const I18N = {
     socialTitle: '📱 Follow us on social media',
     checkoutTitle: 'Complete Subscription',
     checkoutTestBadge: '🧪 Test Mode',
-    checkoutCardOption: 'Visa / Mastercard',
+    checkoutCardOption: 'Card',
+    checkoutApplePay: 'Apple Pay',
+    checkoutGooglePay: 'Google Pay',
+    checkoutWalletUnavailable: 'Not available on this device',
     checkoutTelecomOption: 'Carrier Billing (Etisalat/du)',
     checkoutComingSoon: 'Coming soon',
     checkoutPlanLabelBasic: 'Basic Plan $10/mo — 300 messages',
@@ -7435,9 +7440,21 @@ function sanitizeGeminiContents(list){
   return out;
 }
 
-// ===== Checkout / Payments (Stripe + PayPal, test mode) =====
+// ===== Checkout / Payments (Stripe Checkout + Apple Pay/Google Pay via
+// Stripe Payment Request Button API + PayPal) =====
 let checkoutCurrentPlan = null;
 let paypalSdkLoaded = false;
+let stripeJsLoaded = false;
+let stripeInstance = null;
+let currentPaymentRequest = null;
+let currentWalletAvailability = null; // { applePay, googlePay } | null while unknown/unsupported
+
+// Must match api/_lib/create-checkout-session.js PLANS[plan].amount (cents).
+const CHECKOUT_PLAN_AMOUNTS = { basic: 1000, pro: 2000, max: 10000 };
+// pk_live key is public by design (Stripe publishable keys are meant to ship
+// in frontend code) — it only lets the browser start a payment, never move
+// money on its own.
+const STRIPE_PUBLISHABLE_KEY = 'pk_live_51TqBIu2ftH7NE4SGWV6z94pri9bau6c01UwTIXcUyM38XCUmIQJHe8IJzoYgTM0ab1zav7BWsh69KmgtuwS5H5J1002423FVlB';
 
 // 💰 نظام النقاط — شراء باقة نقاط (يفعّل مع Stripe لاحقًا)
 function buyPointsPack(amount){
@@ -7470,7 +7487,7 @@ function openCheckout(plan){
   const label = document.getElementById('checkoutPlanLabel');
   const statusMsg = document.getElementById('checkoutStatusMsg');
   if (label) label.textContent = t(plan === 'pro' ? 'checkoutPlanLabelPro' : plan === 'max' ? 'checkoutPlanLabelMax' : 'checkoutPlanLabelBasic');
-  if (statusMsg) statusMsg.textContent = '';
+  if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = ''; }
   if (overlay) {
     // The overlay is defined inside the settings <dialog>, which is usually
     // display:none — move it to <body> so it is always visible when opened.
@@ -7482,6 +7499,7 @@ function openCheckout(plan){
     overlay.style.display = 'flex';
   }
   loadPaypalButtons();
+  setupWalletPaymentRequest(plan);
 }
 window.openCheckout = openCheckout;
 
@@ -7491,14 +7509,17 @@ function closeCheckout(){
 }
 window.closeCheckout = closeCheckout;
 
+// "بطاقة" — opens the Stripe-hosted Checkout page (redirect). Creates a real
+// recurring Stripe subscription; see the KNOWN LIMITATION note in
+// api/_lib/create-checkout-session.js about renewal re-crediting.
 async function startStripeCheckout(){
   const statusMsg = document.getElementById('checkoutStatusMsg');
-  if (statusMsg) statusMsg.textContent = t('checkoutRedirecting');
+  if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = t('checkoutRedirecting'); }
   try {
     const r = await fetch('/api/account?action=create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan: checkoutCurrentPlan, origin: window.location.origin }),
+      body: JSON.stringify({ plan: checkoutCurrentPlan, origin: window.location.origin, token: authGet('aiapp_auth_token') }),
     });
     const data = await r.json();
     if (!r.ok || !data.url) {
@@ -7512,6 +7533,134 @@ async function startStripeCheckout(){
 }
 window.startStripeCheckout = startStripeCheckout;
 
+// ===== Apple Pay / Google Pay (Stripe Payment Request Button API) =====
+// Loads Stripe.js on demand (once) and reuses the same instance afterwards.
+async function ensureStripeJs(){
+  if (stripeInstance) return stripeInstance;
+  try {
+    if (!stripeJsLoaded) {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://js.stripe.com/v3/';
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+      stripeJsLoaded = true;
+    }
+    if (window.Stripe) stripeInstance = window.Stripe(STRIPE_PUBLISHABLE_KEY);
+  } catch (e) { /* Stripe.js failed to load — wallet buttons will just report unavailable */ }
+  return stripeInstance;
+}
+
+// Builds a fresh PaymentRequest for the plan currently open in the modal and
+// checks Apple Pay / Google Pay availability on this device/browser. Buttons
+// remain visible either way — clicking an unavailable one just shows a
+// "not available on this device" message (per design).
+async function setupWalletPaymentRequest(plan){
+  currentWalletAvailability = null;
+  currentPaymentRequest = null;
+  const amount = CHECKOUT_PLAN_AMOUNTS[plan];
+  if (!amount) return;
+  try {
+    const stripe = await ensureStripeJs();
+    if (!stripe) return;
+    const pr = stripe.paymentRequest({
+      country: 'AE',
+      currency: 'usd',
+      total: { label: 'Omran AI Builder', amount },
+      requestPayerName: true,
+      requestPayerEmail: true,
+    });
+    const availability = await pr.canMakePayment();
+    currentWalletAvailability = availability || null;
+    pr.on('paymentmethod', (ev) => { handleWalletPaymentMethod(ev, plan); });
+    currentPaymentRequest = pr;
+  } catch (e) { currentWalletAvailability = null; currentPaymentRequest = null; }
+}
+
+async function handleWalletPaymentMethod(ev, plan){
+  const statusMsg = document.getElementById('checkoutStatusMsg');
+  try {
+    const stripe = await ensureStripeJs();
+    const cr = await fetch('/api/account?action=create-payment-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan, token: authGet('aiapp_auth_token') }),
+    });
+    const cd = await cr.json();
+    if (!cr.ok || !cd.clientSecret) {
+      ev.complete('fail');
+      if (statusMsg) statusMsg.textContent = cd.error || t('checkoutNotConfigured');
+      return;
+    }
+
+    const { paymentIntent, error } = await stripe.confirmCardPayment(
+      cd.clientSecret,
+      { payment_method: ev.paymentMethod.id },
+      { handleActions: false }
+    );
+    if (error) {
+      ev.complete('fail');
+      if (statusMsg) statusMsg.textContent = t('checkoutError');
+      return;
+    }
+    ev.complete('success');
+
+    let finalIntent = paymentIntent;
+    if (finalIntent && finalIntent.status === 'requires_action') {
+      const confirmResult = await stripe.confirmCardPayment(cd.clientSecret);
+      if (confirmResult.error) {
+        if (statusMsg) statusMsg.textContent = t('checkoutError');
+        return;
+      }
+      finalIntent = confirmResult.paymentIntent;
+    }
+
+    const vr = await fetch('/api/account?action=verify-payment-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ payment_intent_id: cd.id, token: authGet('aiapp_auth_token') }),
+    });
+    const vd = await vr.json();
+    if (vr.ok && vd.ok) {
+      if (statusMsg) { statusMsg.style.color = '#22c55e'; statusMsg.textContent = t('checkoutSuccessMsg'); }
+      if (typeof refreshPointsWallet === 'function') refreshPointsWallet();
+      setTimeout(closeCheckout, 2500);
+    } else if (statusMsg) {
+      statusMsg.style.color = '';
+      statusMsg.textContent = vd.error || t('checkoutError');
+    }
+  } catch (e) {
+    try { ev.complete('fail'); } catch (e2) { /* guard-ok */ }
+    if (statusMsg) statusMsg.textContent = t('checkoutError');
+  }
+}
+
+function showWalletUnavailableMsg(){
+  const statusMsg = document.getElementById('checkoutStatusMsg');
+  if (statusMsg) { statusMsg.style.color = ''; statusMsg.textContent = t('checkoutWalletUnavailable'); }
+}
+
+function clickApplePay(){
+  if (currentPaymentRequest && currentWalletAvailability && currentWalletAvailability.applePay) {
+    currentPaymentRequest.show();
+  } else {
+    showWalletUnavailableMsg();
+  }
+}
+window.clickApplePay = clickApplePay;
+
+function clickGooglePay(){
+  if (currentPaymentRequest && currentWalletAvailability && currentWalletAvailability.googlePay) {
+    currentPaymentRequest.show();
+  } else {
+    showWalletUnavailableMsg();
+  }
+}
+window.clickGooglePay = clickGooglePay;
+
+// ===== PayPal =====
 async function loadPaypalButtons(){
   const container = document.getElementById('paypalButtonContainer');
   const fallbackBtn = document.getElementById('paypalFallbackBtn');
@@ -7537,6 +7686,7 @@ async function loadPaypalButtons(){
     }
     if (window.paypal) {
       window.paypal.Buttons({
+        style: { color: 'blue', shape: 'rect', label: 'paypal', height: 45 },
         createOrder: async () => {
           const cr = await fetch('/api/account?action=paypal-order', {
             method: 'POST',
@@ -7557,8 +7707,10 @@ async function loadPaypalButtons(){
           const capData = await cap.json();
           if (cap.ok && (capData.status === 'COMPLETED' || capData.status === 'APPROVED')) {
             if (statusMsg) { statusMsg.style.color = '#22c55e'; statusMsg.textContent = t('checkoutSuccessMsg'); }
+            if (typeof refreshPointsWallet === 'function') refreshPointsWallet();
             setTimeout(closeCheckout, 2500);
           } else if (statusMsg) {
+            statusMsg.style.color = '';
             statusMsg.textContent = t('checkoutError');
           }
         },
@@ -7579,7 +7731,8 @@ async function startPaypalCheckout(){
 }
 window.startPaypalCheckout = startPaypalCheckout;
 
-// Handle Stripe redirect back (success/cancel)
+// Handle Stripe redirect back (success/cancel) from the "بطاقة" hosted
+// Checkout Page.
 (function handleCheckoutRedirectResult(){
   try {
     const params = new URLSearchParams(window.location.search);
@@ -7597,6 +7750,7 @@ window.startPaypalCheckout = startPaypalCheckout;
               });
               const vd = await vr.json();
               alert(vr.ok && vd.ok ? t('checkoutSuccessMsg') : t('checkoutError'));
+              if (vr.ok && vd.ok && typeof refreshPointsWallet === 'function') refreshPointsWallet();
             } catch (e) { alert(t('checkoutError')); }
           } else {
             alert(checkoutResult === 'success' ? t('checkoutSuccessMsg') : t('checkoutCancelMsg'));
