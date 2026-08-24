@@ -15621,43 +15621,59 @@ DESIGN RULES (non-negotiable):
     // 🔒 الصور تُرسل فقط مع الرسالة الحالية (الأخيرة) — صور الرسائل القديمة
     // لا تُعاد إرسالها أبدًا حتى لا يظل المزود يحلل صورة قديمة بدل السؤال الجديد.
     {
-      // 🔒 منع تداخل المواضيع نهائيًا: الرسائل القديمة تُضغط في رسالة سياق
-      // واحدة مقفلة (للمرجعية فقط)، والسؤال الأخير يُرسل وحده كرسالة مستخدم
-      // وحيدة — فلا يستطيع أي مزود "اختيار" موضوع قديم والرد عليه.
-      const __h = __historyMsgs.slice(-30); // ✅ v730: ذاكرة أوسع — آخر 30 رسالة
-      // 📌 v730: مرساة الموضوع — أول رسائل المحادثة تحدد موضوعها الأصلي.
-      // بدونها، بعد 30+ رسالة أو عند الرجوع لمحادثة قديمة، يضيع الموضوع كاملاً.
-      let __anchor = '';
-      if(__historyMsgs.length > 30){
-        const __openers = __historyMsgs.slice(0, __historyMsgs.length - 30).filter(m => m.role === 'user').slice(0, 3);
+      const MAX_TURNS = 24;        // عدد أدوار المحادثة المرسلة كاملة
+      const MAX_CHARS = 90000;     // سقف حجم السياق الكلي
+      const MAX_PER_MSG = 7000;    // سقف الرسالة الواحدة (بلا قص من المنتصف)
+
+      // ① مرساة الموضوع: أوائل رسائل المحادثة تبقى كتعليمة نظام قصيرة
+      //    حتى لا يضيع موضوع المحادثة الأصلي بعد عشرات الرسائل.
+      if(__historyMsgs.length > MAX_TURNS){
+        const __openers = __historyMsgs.slice(0, __historyMsgs.length - MAX_TURNS).filter(m => m.role === 'user').slice(0, 3);
         if(__openers.length){
-          __anchor = '📌 بداية هذه المحادثة (موضوعها الأصلي — التزم به عند الأسئلة المتصلة):\n' + __openers.map(m => {
-            let __t = String(__stripCodeForHistory('user', (m.apiText !== undefined ? m.apiText : m.content)) || '').replace(/\b\S+\.(jpg|jpeg|png|webp|gif)\b/gi, '(صورة قديمة)');
-            if(__t.length > 350) __t = __t.slice(0, 350) + '…';
-            return 'المستخدم: ' + __t;
-          }).join('\n') + '\n\n';
+          const __anchorTxt = __openers.map(m => {
+            let s = String(__stripCodeForHistory('user', (m.apiText !== undefined ? m.apiText : m.content)) || '').replace(/\b\S+\.(jpg|jpeg|png|webp|gif)\b/gi, '(صورة)');
+            return '- ' + (s.length > 300 ? s.slice(0, 300) + '…' : s);
+          }).join('\n');
+          apiMessages.push({role: 'system', content: '📌 موضوع هذه المحادثة الأصلي (للرجوع إليه عند الأسئلة المتصلة فقط):\n' + __anchorTxt + '\n⛔ لا تفتح موضوعًا قديمًا من نفسك إذا كان سؤال المستخدم الجديد غير متعلق به.'});
         }
       }
-      // ✅ v301: الرسالة الأخيرة المرسلة للمزود يجب أن تكون رسالة المستخدم —
-      // بعد المسار المعماري تكون آخر رسالة في المحادثة رسالة صور (مساعد)،
-      // وإرسالها كآخر رسالة يسبّب خطأ 400 من Claude (messages فارغة بعد التصفية).
-      let __lastUi = __h.length - 1;
-      while(__lastUi > 0 && __h[__lastUi].role !== 'user') __lastUi--;
-      if(!__h[__lastUi] || __h[__lastUi].role !== 'user') __lastUi = __h.length - 1;
-      const __lastM = __h[__lastUi];
-      // سؤال الحال لا يحتاج سجل المواضيع كي يُفهم؛ إبقاؤه هنا كان يسمح بتسرب
-      // آخر الفنادق أو السيارات إلى جواب اجتماعي بسيط.
-      const __prev = __quietSocialTurn ? [] : __h.filter((m, __pi) => __pi !== __lastUi);
-      if(__prev.length){
-        const __ctx = __prev.map(m => {
-          let __txt = String(__stripCodeForHistory(m.role, (m.apiText !== undefined ? m.apiText : m.content)) || '');
-          __txt = __txt.replace(/\b\S+\.(jpg|jpeg|png|webp|gif)\b/gi, '(صورة قديمة)');
-          if(__txt.length > 6000) __txt = __txt.slice(0, 4200) + ' … ' + __txt.slice(-1600); // ✅ v654: حدّ أعلى — القص عند 2500 كان يُضيع تفاصيل المنتصف
-          return (m.role === 'user' ? 'المستخدم: ' : 'المساعد: ') + __txt;
-        }).join('\n');
-        apiMessages.push({role: 'system', content: __anchor + '📜 المحادثة السابقة بينك وبين المستخدم:\n' + __ctx + '\n\n✅ هذه ذاكرتك: استخدمها لفهم سؤال المستخدم الأخير والاستمرار معه في نفس الموضوع بشكل طبيعي (الأسئلة المتصلة تكمل الموضوع الجاري). إذا سألك «عن شو كنا نتكلم؟» أجبه بدقة من المحادثة أعلاه.\n⛔ الممنوع الوحيد: لا تفتح موضوعًا قديمًا من نفسك إذا كان سؤاله الجديد غير متعلق به، ولا تقترح متابعته («تبي نكمل…؟»). أجب عن رسالته الأخيرة وحدها. ممنوع بدء ردك بأي تحية (السلام عليكم/صباح الخير/مرحبا) — المحادثة مستمرة؛ ادخل في الجواب مباشرة.'});
+
+      // ② أدوار محادثة حقيقية بدل ضغط السجل في رسالة system واحدة.
+      //    هذا هو الإصلاح الأساسي: النموذج يرى محادثة، لا تعليمات.
+      let __turns = [];
+      if(!__quietSocialTurn){
+        __historyMsgs.slice(-MAX_TURNS).forEach(m => {
+          if(!m || m._loading || m._failed) return;
+          const role = (m.role === 'user') ? 'user' : 'assistant';
+          let txt = String(__stripCodeForHistory(role, (m.apiText !== undefined ? m.apiText : m.content)) || '').trim();
+          if(!txt) return;
+          txt = txt.replace(/\b\S+\.(jpg|jpeg|png|webp|gif)\b/gi, '(صورة سابقة)');
+          if(txt.length > MAX_PER_MSG) txt = txt.slice(0, MAX_PER_MSG) + '…'; // قص من الآخر فقط
+          const prev = __turns[__turns.length - 1];
+          if(prev && prev.role === role) prev.content += '\n\n' + txt; // دمج بدل الرفض
+          else __turns.push({role, content: txt});
+        });
       }
-      if(__lastM) apiMessages.push({role: __lastM.role, content: (__lastM.apiText !== undefined ? __lastM.apiText : __lastM.content), images: (__lastM.role === 'user' && !cur.adMode) ? __lastM.apiImages : undefined}); // v687: في وضع الإعلان لا ترسل الصورة — __USER_IMAGE__ تكفي
+
+      // ③ الرسالة الحالية دائمًا آخر دور
+      const __lastM = __historyMsgs[__historyMsgs.length - 1];
+      if(__lastM){
+        const __curText = String((__lastM.apiText !== undefined ? __lastM.apiText : __lastM.content) || '');
+        if(__turns.length && __turns[__turns.length - 1].role === __lastM.role) __turns.pop();
+        __turns.push({role: __lastM.role, content: __curText});
+      }
+
+      // ④ تنظيف: يبدأ بـ user، ويبقى ضمن سقف الحجم
+      while(__turns.length && __turns[0].role !== 'user') __turns.shift();
+      const __size = () => __turns.reduce((n, m) => n + m.content.length, 0);
+      while(__turns.length > 2 && __size() > MAX_CHARS) __turns.splice(0, 2); // زوجًا للحفاظ على التناوب
+      while(__turns.length && __turns[0].role !== 'user') __turns.shift();
+
+      // ⑤ الصور على الرسالة الأخيرة فقط (v687: في وضع الإعلان لا ترسل الصورة)
+      const __lastTurn = __turns[__turns.length - 1];
+      if(__lastTurn && __lastTurn.role === 'user' && !cur.adMode && __lastM && __lastM.apiImages) __lastTurn.images = __lastM.apiImages;
+
+      __turns.forEach(m => apiMessages.push(m));
     }
 
     // 🔍 قراءة وتحليل قوي للصور المرفقة: تعليمة رؤية شاملة تُحقن فقط عند وجود صورة
