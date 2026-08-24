@@ -18232,7 +18232,8 @@ function openShareModal(project){
         if(prev){ prev.src = 'data:' + savedMime + ';base64,' + savedB64; prev.style.display = 'inline-block'; }
         if(clr) clr.style.display = 'inline-block';
       }
-    } catch(_){}
+    } catch(_){ /* استعادة صورة البطل المحفوظة ترفٌ: تخزين محجوب أو قيمة تالفة
+         يعني بلا معاينة سابقة فقط — لا يمنع اختيار صورة جديدة. */ }
 
     btn.onclick = () => inp.click();
     clr.onclick = window.__clearFilmHero = () => {
@@ -18240,7 +18241,8 @@ function openShareModal(project){
       inp.value = '';
       prev.style.display = 'none';
       clr.style.display = 'none';
-      try { localStorage.removeItem('omran_hero_b64'); localStorage.removeItem('omran_hero_mime'); } catch(_){}
+      try { localStorage.removeItem('omran_hero_b64'); localStorage.removeItem('omran_hero_mime'); }
+      catch(_){ /* المسح من التخزين ترفٌ — الصورة أُزيلت من الواجهة أصلًا فوقها. */ }
     };
     inp.onchange = () => {
       const f = inp.files && inp.files[0];
@@ -18268,7 +18270,9 @@ function openShareModal(project){
         clr.style.display = 'inline-block';
         URL.revokeObjectURL(img.src);
         // حفظ البطل في localStorage (أفاتار ثابت عبر الجلسات)
-        try { localStorage.setItem('omran_hero_b64', filmHeroBase64); localStorage.setItem('omran_hero_mime', filmHeroMime); } catch(_){}
+        try { localStorage.setItem('omran_hero_b64', filmHeroBase64); localStorage.setItem('omran_hero_mime', filmHeroMime); }
+        catch(_){ /* الحصّة ممتلئة أو التخزين محجوب: البطل يبقى في الذاكرة لهذه
+             الجلسة ولا يُحفظ عبرها — والفيديو يُبنى منه كما هو. */ }
       };
       img.src = URL.createObjectURL(f);
     };
@@ -23722,7 +23726,9 @@ else setTimeout(mountLogoBtn, 1000);
           var highlighted = null;
           if (data.box && data.confidence > 0) {
             // نعيد تحضير الصورة للرسم (من الملف الأصلي عبر الـshot المحفوظ)
-            try { highlighted = drawHighlight(window.__sgLastShot, data.box); } catch (_) {}
+            try { highlighted = drawHighlight(window.__sgLastShot, data.box); }
+            catch (_) { /* الإطار زينة: لقطة مفقودة أو إحداثيات شاذّة تعني إرشادًا
+                 بلا تحديد بصريّ — ونصّ الخطوة وحده يكفي المستخدم. */ }
           }
           // حفظ في السجل
           _session.active = true;
@@ -23767,7 +23773,8 @@ else setTimeout(mountLogoBtn, 1000);
         // إطلاق حدث ليلتقطه app-09-attach.js
         window.dispatchEvent(new CustomEvent('sg:shared-screenshot', { detail: { file: file } }));
       });
-    }).catch(function () {});
+    }).catch(function () { /* المستخدم ألغى اختيار اللقطة أو رفضها المتصفّح:
+         لا حدث مشاركة يُطلَق، والمسار العاديّ (زرّ المشبك) يبقى متاحًا. */ });
   }
 
   if (document.readyState === 'loading') {
@@ -23811,7 +23818,9 @@ else setTimeout(mountLogoBtn, 1000);
         pendingAttachments.push({ name: 'shared-screenshot.jpg', isImage: true, mime: file.type || 'image/jpeg', dataUrl: dataUrl });
         renderAttachStrip();
         // ركّز على خانة الكتابة ليكتب هدفه مباشرة
-        try { document.getElementById('prompt').focus(); } catch (_) {}
+        try { document.getElementById('prompt').focus(); }
+        catch (_) { /* التركيز تسهيل لا شرط: خانة غائبة أو تركيز يرفضه المتصفّح
+             يعني نقرة إضافية على المستخدم — والمرفق وصل فعلًا. */ }
       }
     };
     reader.readAsDataURL(file);
@@ -23988,7 +23997,9 @@ if(document.readyState === 'loading'){
     }
     banner.insertBefore(document.createTextNode('📢 ' + item.title), banner.firstChild);
     // يختفي تلقائياً بعد 30 ثانية
-    setTimeout(function(){ try{ banner.remove(); }catch(e){} }, 30000);
+    setTimeout(function(){ try{ banner.remove(); }
+      catch(e){ /* الشريط أُزيل قبلنا (تنبيه جديد حلّ محلّه أو أُعيد الرسم):
+           لا شيء نفعله، والهدف — ألّا يبقى ظاهرًا — تحقّق أصلًا. */ } }, 30000);
   }
 
   /* ===== نافذة طوارئ (مستوى emergency) ===== */

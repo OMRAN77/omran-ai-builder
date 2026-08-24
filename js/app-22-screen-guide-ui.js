@@ -22,7 +22,9 @@
         pendingAttachments.push({ name: 'shared-screenshot.jpg', isImage: true, mime: file.type || 'image/jpeg', dataUrl: dataUrl });
         renderAttachStrip();
         // ركّز على خانة الكتابة ليكتب هدفه مباشرة
-        try { document.getElementById('prompt').focus(); } catch (_) {}
+        try { document.getElementById('prompt').focus(); }
+        catch (_) { /* التركيز تسهيل لا شرط: خانة غائبة أو تركيز يرفضه المتصفّح
+             يعني نقرة إضافية على المستخدم — والمرفق وصل فعلًا. */ }
       }
     };
     reader.readAsDataURL(file);

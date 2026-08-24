@@ -47,7 +47,9 @@
     }
     banner.insertBefore(document.createTextNode('📢 ' + item.title), banner.firstChild);
     // يختفي تلقائياً بعد 30 ثانية
-    setTimeout(function(){ try{ banner.remove(); }catch(e){} }, 30000);
+    setTimeout(function(){ try{ banner.remove(); }
+      catch(e){ /* الشريط أُزيل قبلنا (تنبيه جديد حلّ محلّه أو أُعيد الرسم):
+           لا شيء نفعله، والهدف — ألّا يبقى ظاهرًا — تحقّق أصلًا. */ } }, 30000);
   }
 
   /* ===== نافذة طوارئ (مستوى emergency) ===== */
