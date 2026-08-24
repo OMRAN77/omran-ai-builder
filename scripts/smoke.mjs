@@ -116,10 +116,48 @@ async function health() {
   if (e) (e.healthy ? ok : no)(`env healthy=${e.healthy} ${e.setCount ?? '?'}/${e.total ?? '?'}`);
 }
 
+// ⑥ مسارات يفتحها المتصفّح بتصفُّح كامل — انهيارها يُري الزائر صفحة Vercel
+// نفسها لا رسالة من التطبيق، ولم تكن مغطّاة. ومعها نداء بهويّة جوّال، لأنّ
+// بلاغ المالك كان «فقط في الهواتف» ومسار الجوّال يختار مزوّده بنفسه.
+const IPHONE_UA =
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 ' +
+  '(KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+
+async function navRoutes() {
+  console.log('⑥ مسارات التصفُّح الكامل + هويّة جوّال');
+  // ٥٠٠ هنا = انهيار الدالّة. أيّ رمز آخر (302 · 400 · 403 · 405) سلوك سليم.
+  const routes = [
+    ['/api/auth-google-callback', 'GET', null, {}],
+    ['/api/auth-google-callback?error=access_denied', 'GET', null, {}],
+    ['/api/media?action=img&id=smoke-probe', 'GET', null, {}],
+    ['/api/raw', 'GET', null, {}],
+    ['/api/ai?action=chat', 'POST', '{}', { 'user-agent': IPHONE_UA }],
+    ['/api/ai?action=claude', 'POST', '{}', { 'user-agent': IPHONE_UA }],
+  ];
+  for (const [p, method, body, extra] of routes) {
+    const r = await get(p, {
+      method,
+      headers: { 'content-type': 'application/json', ...extra },
+      redirect: 'manual',
+      ...(body ? { body } : {}),
+    });
+    const label = p + (extra['user-agent'] ? ' [جوّال]' : '');
+    if (r.status === 0) { no(`${label} → لا استجابة (${r.err || 'شبكة'})`); continue; }
+    const t = await r.text();
+    if (/FUNCTION_INVOCATION_FAILED/.test(t)) no(`${label} → انهارت الدالّة`);
+    else if (r.status >= 500) {
+      /not configured|غير مفعّل|missing [A-Z_]+_API_KEY/.test(t)
+        ? console.log(`  ⚠ ${label} → ${r.status} «مفتاح غائب» — إعداد لا انهيار`)
+        : no(`${label} → ${r.status} (خطأ خادم)`);
+    } else ok(`${label} → ${r.status}`);
+  }
+}
+
 const vHash = await page();
 await sw(vHash);
 await login();
 await gates();
 await health();
+await navRoutes();
 console.log(`\n${fail === 0 ? '✓ الدخان أخضر' : '✗ الدخان أحمر'} — نجح ${pass} · فشل ${fail} · ${BASE}`);
 process.exit(fail === 0 ? 0 : 1);
