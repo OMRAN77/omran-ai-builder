@@ -1,3 +1,4 @@
+
 // Router: consolidates the 9 AI provider proxy functions into a single
 // Vercel Serverless Function to stay under the Hobby plan's function limit.
 // Old public paths (e.g. /api/openai) are preserved via vercel.json rewrites
