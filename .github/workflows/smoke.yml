@@ -1,0 +1,43 @@
+name: Smoke after deploy
+
+# لماذا هذا الملفّ موجود:
+# ٢٣ أغسطس ٢٠٢٦ — نزل api/ai.js بخطأ صياغة (سطر 302، قوس متدلٍّ). الملفّ لا
+# يُترجَم، فماتت دالّة الخادم عند الإقلاع: كلّ طلب ذكاء يرجع
+# FUNCTION_INVOCATION_FAILED. أمسكته CI قبل النشر بدقائق ونُشر رغمًا عنها،
+# وبقي حيًّا حتّى بلّغ عنه مستخدم بعد يوم كامل.
+#
+# CI تفحص ما في المستودع. هذا يفحص ما وصل المستخدم فعلًا — وهما ليسا الشيء
+# نفسه: نشرة فاشلة، أو متغيّر بيئة ناقص، أو دالّة تنهار عند الإقلاع، كلّها
+# تمرّ من CI خضراء وتسقط في الإنتاج. الفارق هنا دقيقة بدل يوم.
+#
+# لا يمنع النشر (الحدث يقع بعده) — بل يُشعل الإنذار فورًا.
+
+on:
+  deployment_status:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    # نشرات المعاينة لا تعنينا: الإنتاج وحده، وبعد نجاحه وحده.
+    if: >-
+      github.event.deployment_status.state == 'success' &&
+      contains(github.event.deployment_status.environment, 'roduction')
+    runs-on: ubuntu-latest
+    steps:
+      # الشيفرة عند نفس الالتزام المنشور: smoke تقارن بصمة الحزمة الحيّة
+      # بالمحلّية، فلا تصحّ المقارنة إلّا من شجرة النشرة نفسها.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.deployment.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # scripts/smoke.mjs بلا تابع واحد عمدًا — فلا npm ci هنا.
+      - name: Smoke the live deployment
+        env:
+          MONITOR_KEY: ${{ secrets.MONITOR_KEY }}
+        run: node scripts/smoke.mjs "${{ github.event.deployment_status.environment_url }}"
