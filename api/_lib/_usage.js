@@ -9,7 +9,10 @@ const { getUser, putUser, isBanned } = require('./auth.js');
 const { kvIncr, kvExpire, kvGetJSON } = require('./kv.js');
 const { isVip } = require('./_vip.js');
 
-const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
+// ⏳ مؤجَّلة: قراءة السرّ في نطاق الوحدة تحوّل متغيّرًا مفقودًا إلى انهيار
+// عند الإقلاع البارد بلا سجلّ (حدث في /api/edu). انظر api/_lib/auth.js.
+const __secrets = require('./_secrets.js');
+const authSecret = () => __secrets.AUTH_SECRET;
 
 // Combined daily limit shared across all three free server-proxied providers
 // (Groq + OpenAI + Claude), per logged-in account.
@@ -33,7 +36,7 @@ function isOwnerUsername(username) {
 function verifyToken(token) {
   try {
     const [payload, sig] = String(token).split('.');
-    const expected = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
+    const expected = crypto.createHmac('sha256', authSecret()).update(payload).digest('base64url');
     if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
     if (data.exp < Date.now()) return null;
