@@ -784,7 +784,11 @@ function readFileAsText(file){
   });
 }
 
-$('#btnAttach').onclick = () => $('#attachInput').click();
+// 🛡️ حارس التحميل: هذه أسطر تعمل لحظة تحميل الحزمة، لا داخل دالّة. لو غاب
+// أيّ من هذه العناصر من index.html (تعديل أو ترتيب مختلف) يرمي السطر
+// TypeError فيتوقّف تنفيذ بقيّة الحزمة كلّها — ويبقى المستخدم عالقًا على
+// شاشة التسجيل لأنّ ما بعده (وفيه إخفاء الطبقة والرسم) لا يُنفَّذ أبدًا.
+{ const __ba = $('#btnAttach'); if(__ba) __ba.onclick = () => { const __ai = $('#attachInput'); if(__ai) __ai.click(); }; }
 
 // ---- Emoji picker ----
 const EMOJI_LIST = [
@@ -801,6 +805,7 @@ const EMOJI_LIST = [
   '🍟','🍰','🎂','☕','🍺','⚽','🏀','🎮','📱','💻','📸','🎵','🎶','✅','❌','⚠️'
 ];
 const emojiPickerEl = $('#emojiPicker');
+if(emojiPickerEl){
 emojiPickerEl.innerHTML = EMOJI_LIST.map(e => `<span class="em">${e}</span>`).join('');
 emojiPickerEl.addEventListener('click', e => {
   const t = e.target.closest('.em');
@@ -814,7 +819,8 @@ emojiPickerEl.addEventListener('click', e => {
   promptEl.setSelectionRange(newPos, newPos);
   promptEl.dispatchEvent(new Event('input', {bubbles:true}));
 });
-$('#btnEmoji').onclick = (e) => {
+const __btnEmoji = $('#btnEmoji');
+if(__btnEmoji) __btnEmoji.onclick = (e) => {
   e.stopPropagation();
   // v207: أغلق قائمة ⋮ أولًا حتى لا تتداخل لوحة الإيموجي فوقها
   const ptp = document.getElementById('plusToolsPopup');
@@ -826,6 +832,7 @@ document.addEventListener('click', (e) => {
     emojiPickerEl.classList.remove('open');
   }
 });
+} // نهاية حارس لوحة الإيموجي
 // Uploads a file directly to Vercel Blob storage from the browser (bypassing
 // our serverless function body-size limits) using a short-lived client token
 // minted by /api/blob-client-upload, then returns the public blob URL.
@@ -994,7 +1001,8 @@ function summarizeCsvText(text){
   }catch(_e){ return ''; }
 }
 
-$('#attachInput').addEventListener('change', async (e) => {
+{ const __attachInput = $('#attachInput');
+if(__attachInput) __attachInput.addEventListener('change', async (e) => {
   const files = Array.from(e.target.files || []);
   for(const file of files){
     try{
@@ -1060,6 +1068,7 @@ $('#attachInput').addEventListener('change', async (e) => {
   renderAttachStrip();
   e.target.value = '';
 });
+} // نهاية حارس حقل الإرفاق
 
 // "المدرب" (smart router): reads the user's message and picks the 2-3
 // providers best suited to it out of the eligible pool, so every message
@@ -2106,6 +2115,13 @@ async function sendPrompt(){
   }
   // نهاية مرشد بصري
 
+  // ⛔ إلغاء أيّ طلب سابق ما زال جاريًا قبل فتح واحد جديد. بدونه يضيع مرجع
+  // المتحكّم القديم فلا يُلغى أبدًا، ويكتب بثّان في الشاشة نفسها معًا —
+  // وهذا سبب اختلاط ردّ بردّ آخر.
+  if(genAbortController){
+    try{ genAbortController.abort(); }
+    catch(e){ __swallow(e, 'chat:abort-prev'); }
+  }
   genAbortController = new AbortController();
   btnStop.classList.add('live');
   __omranArmWatchdog();  // v586
@@ -4310,9 +4326,10 @@ DESIGN RULES (non-negotiable):
   }
 }
 
-localStorage.removeItem('autoSpeakReplies');
-applyLanguage();
-renderAll();
+// سطور الإقلاع محروسة كذلك: فشل أحدها كان يوقف كلّ ما بعده في الحزمة.
+try{ localStorage.removeItem('autoSpeakReplies'); }catch(e){ __swallow(e, 'boot:autospeak'); }
+try{ applyLanguage(); }catch(e){ __swallow(e, 'boot:applyLanguage'); }
+try{ renderAll(); }catch(e){ __swallow(e, 'boot:renderAll'); }
 try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
 // 💾 تحميل/ترحيل المشاريع من IndexedDB (سعة كبيرة، تحل مشكلة "مساحة التخزين ممتلئة").
 (async () => {
