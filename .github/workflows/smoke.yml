@@ -37,7 +37,17 @@ jobs:
           node-version: 24
 
       # scripts/smoke.mjs بلا تابع واحد عمدًا — فلا npm ci هنا.
-      - name: Smoke the live deployment
+      # ① النشرة نفسها: هل البناء سليم؟
+      - name: Smoke the deployment build
         env:
           MONITOR_KEY: ${{ secrets.MONITOR_KEY }}
         run: node scripts/smoke.mjs "${{ github.event.deployment_status.environment_url }}"
+
+      # ② النطاق الأساسيّ: هل ما يصل الزائر هو هذا البناء؟
+      #    الخطوتان ليستا تكرارًا. environment_url عنوان النشرة وحدها؛ والزائر
+      #    يفتح النطاق الأساسيّ. إن لم يُرقَّ النطاق إلى النشرة الجديدة نجحت ①
+      #    وفشلت ② — وهذا بالضبط ما يفسّر «الدخان أخضر والتطبيق معطوب».
+      - name: Smoke the production domain
+        env:
+          MONITOR_KEY: ${{ secrets.MONITOR_KEY }}
+        run: node scripts/smoke.mjs https://omran-ai-builder.vercel.app
