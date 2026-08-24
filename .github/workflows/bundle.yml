@@ -1,0 +1,50 @@
+name: Rebuild bundle
+
+# يبني js/app.bundle.js تلقائيًا كلما تغيّرت إحدى شرائح المصدر،
+# ويدفع الناتج إلى نفس الفرع. بهذا لا تحتاج تشغيل npm run bundle يدويًا.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'js/app-*.js'
+      - 'js/partials-*.js'
+      - 'scripts/build.mjs'
+  workflow_dispatch:        # يسمح بتشغيله يدويًا من تبويب Actions
+
+permissions:
+  contents: write           # مطلوب لدفع الحزمة المبنيّة
+
+concurrency:
+  group: rebuild-bundle-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build bundle
+        run: npm run bundle
+
+      - name: Verify bundle
+        run: npm run verify
+
+      - name: Commit and push if changed
+        run: |
+          if git diff --quiet -- js/app.bundle.js; then
+            echo "الحزمة لم تتغيّر — لا شيء لدفعه."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add js/app.bundle.js
+          git commit -m "build: rebuild app.bundle.js [skip ci]"
+          git push
