@@ -48,20 +48,29 @@ function resolveTaskId(id) {
 // previous task from this key is left RUNNING/THROTTLED (e.g. the caller
 // never polled it to completion, or a request failed client-side after
 // Runway already accepted it), every new request on that same key gets
-// stuck in THROTTLED forever. We remember the last task id we started per
-// key (in Redis) and, before starting a new one, check + cancel it
-// if it is not already finished.
+// stuck in THROTTLED forever.
+//
+// IMPORTANT: keys are shared between users, so a task that is still running
+// most likely belongs to SOMEONE ELSE who is currently waiting for their
+// video — cancelling it blindly kills a paying subscriber's generation.
+// We therefore only cancel a task that is genuinely stale: older than
+// STALE_AFTER_MS. A healthy Runway generation finishes well inside that
+// window, so anything still pending past it is abandoned, not active.
 const { kvGetJSON, kvPutJSON } = require('./kv.js');
 const RUNWAY_VERSION = '2024-11-06';
+const STALE_AFTER_MS = 10 * 60 * 1000; // 10 دقائق
 
 function lastTaskPath(index) {
   return 'db/runway-last-task-' + index + '.json';
 }
 
+// Returns { id, startedAt } — startAt may be null for legacy records
+// written before timestamps were stored.
 async function getLastTask(index) {
   try {
     const data = await kvGetJSON(lastTaskPath(index));
-    return data && data.id ? data.id : null;
+    if (!data || !data.id) return null;
+    return { id: data.id, startedAt: data.startedAt || null };
   } catch (e) {
     return null;
   }
@@ -70,27 +79,47 @@ async function getLastTask(index) {
 async function saveLastTask(index, taskId) {
   if (!process.env.UPSTASH_REDIS_REST_URL) return;
   try {
-    await kvPutJSON(lastTaskPath(index), { id: taskId });
+    await kvPutJSON(lastTaskPath(index), { id: taskId, startedAt: Date.now() });
   } catch (e) {
     // best-effort only
   }
 }
 
-// Checks the previously-remembered task for this key; if it exists and is
-// not yet finished (SUCCEEDED/FAILED), cancels it on Runway so the account's
-// single concurrency slot is freed up for the new request about to start.
+// Parses Runway's own createdAt so legacy records (no local timestamp)
+// can still be judged. Returns ms since epoch, or null.
+function remoteAge(data) {
+  const raw = data && (data.createdAt || data.created_at);
+  if (!raw) return null;
+  const t = Date.parse(raw);
+  return Number.isFinite(t) ? t : null;
+}
+
+// Checks the previously-remembered task for this key. Cancels it ONLY if it
+// is both unfinished AND stale — a task still within its normal runtime is
+// left alone because another user is probably waiting on it.
 async function clearStuckTask(index, apiKey) {
-  const prevId = await getLastTask(index);
-  if (!prevId) return;
+  const prev = await getLastTask(index);
+  if (!prev) return;
+
   try {
-    const r = await fetch('https://api.runwayml.com/v1/tasks/' + prevId, {
+    const r = await fetch('https://api.runwayml.com/v1/tasks/' + prev.id, {
       headers: { Authorization: 'Bearer ' + apiKey, 'X-Runway-Version': RUNWAY_VERSION },
     });
     if (!r.ok) return; // already gone/expired
     const data = await r.json().catch(() => ({}));
-    if (data.status === 'SUCCEEDED' || data.status === 'FAILED') return;
-    // Still pending/running/throttled: cancel it to free the concurrency slot.
-    await fetch('https://api.runwayml.com/v1/tasks/' + prevId, {
+    if (data.status === 'SUCCEEDED' || data.status === 'FAILED' || data.status === 'CANCELLED') return;
+
+    // Work out how long this task has been alive. Prefer our own timestamp,
+    // fall back to Runway's createdAt for records saved before this change.
+    const startedAt = prev.startedAt || remoteAge(data);
+
+    // No timestamp available at all: assume it is active and leave it.
+    // Worst case the new request queues; that beats killing a live job.
+    if (!startedAt) return;
+
+    if (Date.now() - startedAt < STALE_AFTER_MS) return; // still legitimately running
+
+    await fetch('https://api.runwayml.com/v1/tasks/' + prev.id, {
       method: 'DELETE',
       headers: { Authorization: 'Bearer ' + apiKey, 'X-Runway-Version': RUNWAY_VERSION },
     }).catch(() => {});
@@ -99,4 +128,4 @@ async function clearStuckTask(index, apiKey) {
   }
 }
 
-module.exports = { getKeys, pickKey, encodeTaskId, resolveTaskId, getLastTask, saveLastTask, clearStuckTask };
+module.exports = { getKeys, pickKey, encodeTaskId, resolveTaskId, getLastTask, saveLastTask, clearStuckTask, STALE_AFTER_MS };
