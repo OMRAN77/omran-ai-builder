@@ -19,6 +19,16 @@
 //     `I18N` مُصرَّح بـ const في app-03، فقراءته العارية في app-01 ترمي
 //     ReferenceError وتقتل الإقلاع — حادثتان. القاعدة: نداء متأخّر أو window.
 //
+// (هـ) اسمٌ عُلويّ مكرَّر بين سكربتين تحمّلهما الصفحة نفسها. السكربتات
+//     الكلاسيكيّة تتشارك نطاقًا معجميًّا عامًّا واحدًا، فإعادة تعريف let/const/
+//     class فيه خطأ صياغة يقتل السكربت **الثاني** كاملًا قبل تنفيذ حرف منه.
+//     كلفته الحقيقية: رقعة الدفع في partials-settings.js كرّرت ستّة أسماء من
+//     app-06-checkout.js (داخل الحزمة) — 22 أغسطس 2026 — فمات app.bundle.js
+//     كلّه: لا محادثة ولا تسجيل دخول، والمستخدم عالق على شاشة التسجيل يومين.
+//     ولم يُنذر شيء: node --check يفحص كلّ ملفّ وحده، والتصادم لا يظهر إلّا
+//     حين تجتمع الملفّات في صفحة واحدة. لذلك يُقرأ هنا وسم <script> من كلّ
+//     صفحة HTML، وتُقارَن تعريفاتها العليا بعضها ببعض.
+//
 // يُشغَّل: node scripts/guard.mjs   ·   يخرج ١ عند أول اكتشاف.
 // للاستثناء المتعمَّد: اكتب guard-ok في نفس السطر واشرح لماذا.
 
@@ -159,10 +169,79 @@ for (let i = 0; i < appFiles.length; i++) {
   });
 }
 
+// ⑤ اسمٌ عُلويّ مكرَّر بين سكربتَي صفحة واحدة (العطب «هـ»).
+// تُجمع تعريفات let/const/class في المستوى الأعلى فقط: ما كان داخل قوس معقوف
+// أو هلاليّ أو مربّع فهو محليّ ولا يتصادم. (حدّ معروف: `const a = 1, b = 2;`
+// يُلتقط منه الأوّل فقط — والنمط نادر هنا، والأهمّ أنّ ما يُلتقط صحيح دائمًا.)
+function topLevelLexical(src) {
+  const s = strip(src);
+  const out = new Map();
+  let brace = 0, paren = 0, brack = 0;
+  const put = (n, i) => { if (!out.has(n)) out.set(n, s.slice(0, i).split('\n').length); };
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (c === '{') { brace++; continue; }
+    if (c === '}') { brace--; continue; }
+    if (c === '(') { paren++; continue; }
+    if (c === ')') { paren--; continue; }
+    if (c === '[') { brack++; continue; }
+    if (c === ']') { brack--; continue; }
+    if (brace > 0 || paren > 0 || brack > 0) continue;
+    if (c !== 'l' && c !== 'c') continue;              // let · const · class
+    if (i > 0 && /[\w$.]/.test(s[i - 1])) continue;    // جزء من اسم أطول
+    const kw = (/^(let|const|class)\b/.exec(s.slice(i, i + 6)) || [])[1];
+    if (!kw) continue;
+    let j = i + kw.length;
+    if (kw === 'class') {
+      const nm = /^\s+([A-Za-z_$][\w$]*)/.exec(s.slice(j, j + 80));
+      if (nm) put(nm[1], i);
+      i = j;
+      continue;
+    }
+    let k = j, d = 0;                                  // رأس التصريح حتى = أو ; أو سطر جديد
+    while (k < s.length) {
+      const ch = s[k];
+      if (ch === '{' || ch === '[' || ch === '(') d++;
+      else if (ch === '}' || ch === ']' || ch === ')') d--;
+      else if (d === 0 && (ch === '=' || ch === ';' || ch === '\n')) break;
+      k++;
+    }
+    for (const nm of (s.slice(j, k).match(/[A-Za-z_$][\w$]*/g) || [])) put(nm, i);
+    i = k - 1;
+  }
+  return out;
+}
+
+const pages = (await readdir(ROOT)).filter((f) => f.endsWith('.html'));
+const lexCache = new Map();
+for (const page of pages) {
+  let html = '';
+  try { html = await readFile(ROOT + page, 'utf8'); } catch { continue; }
+  const srcs = [...html.matchAll(/<script[^>]+src=["']([^"']+)["']/g)]
+    .map((m) => m[1].split('?')[0])
+    .filter((u) => u.startsWith('/') || u.startsWith('./') || !/^[a-z]+:/i.test(u))
+    .map((u) => u.replace(/^\.?\//, ''));
+  const owner = new Map();                             // اسم → أوّل ملفّ عرّفه
+  for (const rel of srcs) {
+    if (!lexCache.has(rel)) {
+      let src = null;
+      try { src = await readFile(ROOT + rel, 'utf8'); } catch { /* ملفّ خارجيّ أو غائب */ }
+      lexCache.set(rel, src === null ? null : topLevelLexical(src));
+    }
+    const names = lexCache.get(rel);
+    if (!names) continue;
+    for (const [n, ln] of names) {
+      const prev = owner.get(n);
+      if (prev) found.push(`${rel}:${ln}  اسمٌ عُلويّ مكرَّر → ${n} مُعرَّف أيضًا في ${prev.rel}:${prev.ln}؛ ${page} تحمّل الاثنين فيموت الثاني`);
+      else owner.set(n, { rel, ln });
+    }
+  }
+}
+
 if (found.length) {
   console.error(`\n✗ الحارس: ${found.length} اكتشافًا — لا نشر.\n`);
   for (const f of found) console.error(`  ${f}`);
   console.error('\nإن كان مقصودًا: اكتب guard-ok في السطر واشرح السبب.\n');
   process.exit(1);
 }
-console.log(`✓ الحارس: ${seen.size} ملفًا نظيفًا — لا سرّ في العميل، لا بديل منشور، لا كتمة صامتة، ولا اسمٌ قبل تعريفه.`);
+console.log(`✓ الحارس: ${seen.size} ملفًا نظيفًا — لا سرّ في العميل، لا بديل منشور، لا كتمة صامتة، ولا اسمٌ قبل تعريفه، ولا تصادم أسماء بين سكربتَي صفحة.`);
