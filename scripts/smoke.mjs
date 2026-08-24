@@ -123,6 +123,24 @@ const IPHONE_UA =
   'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 ' +
   '(KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
 
+// ⓘ بطاقة هويّة النشرة خلف هذا العنوان. غرضها واحد: حين ينجح فحصٌ على
+// عنوان النشرة ويفشل على النطاق بنفس الالتزام، فالسؤال ليس «ما العطب؟»
+// بل «هل هما النشرة نفسها؟». رؤوس Vercel تجيب بلا تخمين.
+async function identity() {
+  console.log('\u24D8 هويّة النشرة خلف هذا العنوان');
+  const r = await get('/');
+  if (r.status === 0) { no('تعذّر الوصول — ' + (r.err || 'شبكة')); return; }
+  for (const k of ['x-vercel-id', 'x-vercel-cache', 'x-matched-path', 'age', 'server']) {
+    const v = head(r, k);
+    if (v) console.log(`  · ${k}: ${String(v).slice(0, 90)}`);
+  }
+  const b = await get('/js/app.bundle.js');
+  for (const k of ['x-vercel-id', 'x-vercel-cache', 'age']) {
+    const v = head(b, k);
+    if (v) console.log(`  · bundle ${k}: ${String(v).slice(0, 90)}`);
+  }
+}
+
 async function navRoutes() {
   console.log('⑥ مسارات التصفُّح الكامل + هويّة جوّال');
   // ٥٠٠ هنا = انهيار الدالّة. أيّ رمز آخر (302 · 400 · 403 · 405) سلوك سليم.
@@ -159,5 +177,6 @@ await login();
 await gates();
 await health();
 await navRoutes();
+await identity();
 console.log(`\n${fail === 0 ? '✓ الدخان أخضر' : '✗ الدخان أحمر'} — نجح ${pass} · فشل ${fail} · ${BASE}`);
 process.exit(fail === 0 ? 0 : 1);
