@@ -14,6 +14,14 @@ name: Smoke after deploy
 
 on:
   deployment_status:
+  # تشغيل عند الطلب: النشرة والنطاق قد يفترقان (ترقية لم تقع، فرع منتج خاطئ)،
+  # وحينها لا ينفع انتظار نشرة جديدة — نحتاج قياس النطاق الآن.
+  workflow_dispatch:
+    inputs:
+      url:
+        description: العنوان المراد فحصه
+        required: false
+        default: https://omran-ai-builder.vercel.app
 
 permissions:
   contents: read
@@ -22,15 +30,16 @@ jobs:
   smoke:
     # نشرات المعاينة لا تعنينا: الإنتاج وحده، وبعد نجاحه وحده.
     if: >-
-      github.event.deployment_status.state == 'success' &&
-      contains(github.event.deployment_status.environment, 'roduction')
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.deployment_status.state == 'success' &&
+       contains(github.event.deployment_status.environment, 'roduction'))
     runs-on: ubuntu-latest
     steps:
       # الشيفرة عند نفس الالتزام المنشور: smoke تقارن بصمة الحزمة الحيّة
       # بالمحلّية، فلا تصحّ المقارنة إلّا من شجرة النشرة نفسها.
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.deployment.sha }}
+          ref: ${{ github.event.deployment.sha || github.sha }}
 
       - uses: actions/setup-node@v4
         with:
@@ -39,6 +48,7 @@ jobs:
       # scripts/smoke.mjs بلا تابع واحد عمدًا — فلا npm ci هنا.
       # ① النشرة نفسها: هل البناء سليم؟
       - name: Smoke the deployment build
+        if: github.event_name == 'deployment_status'
         env:
           MONITOR_KEY: ${{ secrets.MONITOR_KEY }}
         run: node scripts/smoke.mjs "${{ github.event.deployment_status.environment_url }}"
@@ -50,4 +60,4 @@ jobs:
       - name: Smoke the production domain
         env:
           MONITOR_KEY: ${{ secrets.MONITOR_KEY }}
-        run: node scripts/smoke.mjs https://omran-ai-builder.vercel.app
+        run: node scripts/smoke.mjs "${{ inputs.url || 'https://omran-ai-builder.vercel.app' }}"
