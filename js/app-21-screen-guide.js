@@ -146,7 +146,7 @@
           var highlighted = null;
           if (data.box && data.confidence > 0) {
             // نعيد تحضير الصورة للرسم (من الملف الأصلي عبر الـshot المحفوظ)
-            try { highlighted = drawHighlight(window.__sgLastShot, data.box); } catch (_) {}
+            try { highlighted = drawHighlight(window.__sgLastShot, data.box); } catch (_) { /* guard-ok: رسم الإطار تحسين بصري — الرد يظهر بدونه */ }
           }
           // حفظ في السجل
           _session.active = true;
@@ -191,7 +191,7 @@
         // إطلاق حدث ليلتقطه app-09-attach.js
         window.dispatchEvent(new CustomEvent('sg:shared-screenshot', { detail: { file: file } }));
       });
-    }).catch(function () {});
+    }).catch(function () { /* guard-ok: لا لقطة مشاركة في هذه الجلسة — مسار اختياري */ });
   }
 
   if (document.readyState === 'loading') {
