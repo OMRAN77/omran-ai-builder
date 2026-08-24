@@ -694,7 +694,7 @@
         if(prev){ prev.src = 'data:' + savedMime + ';base64,' + savedB64; prev.style.display = 'inline-block'; }
         if(clr) clr.style.display = 'inline-block';
       }
-    } catch(_){}
+    } catch(_){ /* guard-ok: لا صورة بطل محفوظة أو localStorage محجوب */ }
 
     btn.onclick = () => inp.click();
     clr.onclick = window.__clearFilmHero = () => {
@@ -702,7 +702,7 @@
       inp.value = '';
       prev.style.display = 'none';
       clr.style.display = 'none';
-      try { localStorage.removeItem('omran_hero_b64'); localStorage.removeItem('omran_hero_mime'); } catch(_){}
+      try { localStorage.removeItem('omran_hero_b64'); localStorage.removeItem('omran_hero_mime'); } catch(_){ /* guard-ok: المسح من التخزين اختياري */ }
     };
     inp.onchange = () => {
       const f = inp.files && inp.files[0];
@@ -730,7 +730,7 @@
         clr.style.display = 'inline-block';
         URL.revokeObjectURL(img.src);
         // حفظ البطل في localStorage (أفاتار ثابت عبر الجلسات)
-        try { localStorage.setItem('omran_hero_b64', filmHeroBase64); localStorage.setItem('omran_hero_mime', filmHeroMime); } catch(_){}
+        try { localStorage.setItem('omran_hero_b64', filmHeroBase64); localStorage.setItem('omran_hero_mime', filmHeroMime); } catch(_){ /* guard-ok: التخزين قد يكون ممتلئًا — الصورة تعمل في الجلسة الحالية */ }
       };
       img.src = URL.createObjectURL(f);
     };
