@@ -126,6 +126,23 @@ const IPHONE_UA =
 // ⓘ بطاقة هويّة النشرة خلف هذا العنوان. غرضها واحد: حين ينجح فحصٌ على
 // عنوان النشرة ويفشل على النطاق بنفس الالتزام، فالسؤال ليس «ما العطب؟»
 // بل «هل هما النشرة نفسها؟». رؤوس Vercel تجيب بلا تخمين.
+// \u2461 مِجسّ النشرة: ملفّ بمسار لم يوجد قبل هذه النشرة. المسار الجديد لا
+// يمكن أن يكون مخزَّنًا في كاش — فإن غاب عن عنوان بينما هو موجود في الشجرة
+// المنشورة، فذلك العنوان لا يخدم هذه النشرة أصلًا. لا تأويل آخر.
+async function probe() {
+  console.log('\u2461 مِجسّ النشرة');
+  const local = existsSync('deploy-probe.txt') ? readFileSync('deploy-probe.txt', 'utf8').trim() : '';
+  if (!local) { console.log('  · لا مِجسّ محلّيّ — تُخطّى'); return; }
+  const want = (local.match(/commit=(\w+)/) || [])[1] || '';
+  const r = await get('/deploy-probe.txt');
+  if (r.status === 404) { no('المِجسّ غائب (404) → هذا العنوان لا يخدم النشرة الحاليّة'); return; }
+  if (r.status !== 200) { no(`المِجسّ → ${r.status}`); return; }
+  const live = (await r.text()).trim();
+  const got = (live.match(/commit=(\w+)/) || [])[1] || '؟';
+  got === want ? ok(`المِجسّ يطابق: commit=${got}`)
+               : no(`المِجسّ من نشرة أخرى: حيّ=${got} ≠ محلّيّ=${want}`);
+}
+
 async function identity() {
   console.log('\u24D8 هويّة النشرة خلف هذا العنوان');
   const r = await get('/');
@@ -177,6 +194,7 @@ await login();
 await gates();
 await health();
 await navRoutes();
+await probe();
 await identity();
 console.log(`\n${fail === 0 ? '✓ الدخان أخضر' : '✗ الدخان أحمر'} — نجح ${pass} · فشل ${fail} · ${BASE}`);
 process.exit(fail === 0 ? 0 : 1);
