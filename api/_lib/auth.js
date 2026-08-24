@@ -9,7 +9,15 @@ const crypto = require('crypto');
 const { kvGetJSON, kvPutJSON } = require('./kv.js');
 const { logError } = require('./log-error.js');
 
-const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
+// ⏳ القراءة مؤجَّلة عمدًا. _secrets.AUTH_SECRET رامٍ (getter)، وقراءته هنا —
+// في نطاق الوحدة — تحوّل متغيّرًا مفقودًا إلى انهيار عند الإقلاع البارد:
+// FUNCTION_INVOCATION_FAILED، صفحة Vercel بيضاء، ولا قيد في سجلّ التطبيق،
+// لأنّ withErrorCapture يلفّ المعالِج لا تحميل الوحدة. وهذا يناقض ما ينصّ
+// عليه _secrets.js نفسه: «500 بسطر سجلّ واضح يُصلَح في دقائق».
+// حدث فعلًا: /api/auth-google-callback و /api/edu كانا ينهاران عند الإقلاع.
+// بالتأجيل يقع الرمي داخل المعالِج، فيُمسَك ويُسجَّل ويعود 500 مفهومًا.
+const __secrets = require('./_secrets.js');
+const authSecret = () => __secrets.AUTH_SECRET;
 
 function userPath(key) {
   // key must already be the normalized (lowercased, trimmed) username.
@@ -50,11 +58,13 @@ const MAIL_FROM = process.env.MAIL_FROM || 'Omran AI Builder <onboarding@resend.
 // records (written before this change) are still readable for backward
 // compatibility and get transparently re-encrypted the next time
 // putUser() is called on them.
-const ENC_KEY = crypto.createHash('sha256').update(AUTH_SECRET).digest(); // 32 bytes -> aes-256-gcm
+// مؤجَّل للسبب نفسه أعلاه: حسابه هنا يقرأ السرّ وقت التحميل.
+let __encKey = null;
+const encKey = () => (__encKey ||= crypto.createHash('sha256').update(authSecret()).digest()); // 32 bytes -> aes-256-gcm
 
 function encryptUserBlob(obj) {
   const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', ENC_KEY, iv);
+  const cipher = crypto.createCipheriv('aes-256-gcm', encKey(), iv);
   const data = Buffer.concat([cipher.update(JSON.stringify(obj), 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
   return { enc: 1, iv: iv.toString('base64'), tag: tag.toString('base64'), data: data.toString('base64') };
@@ -64,7 +74,7 @@ function decryptUserBlob(encObj) {
   const iv = Buffer.from(encObj.iv, 'base64');
   const tag = Buffer.from(encObj.tag, 'base64');
   const data = Buffer.from(encObj.data, 'base64');
-  const decipher = crypto.createDecipheriv('aes-256-gcm', ENC_KEY, iv);
+  const decipher = crypto.createDecipheriv('aes-256-gcm', encKey(), iv);
   decipher.setAuthTag(tag);
   const dec = Buffer.concat([decipher.update(data), decipher.final()]);
   return JSON.parse(dec.toString('utf8'));
@@ -93,14 +103,14 @@ function genRecoveryCode() {
 
 function makeToken(username) {
   const payload = Buffer.from(JSON.stringify({ u: username, exp: Date.now() + 1000 * 60 * 60 * 24 * 30 })).toString('base64url');
-  const sig = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
+  const sig = crypto.createHmac('sha256', authSecret()).update(payload).digest('base64url');
   return payload + '.' + sig;
 }
 
 function verifyToken(token) {
   try {
     const [payload, sig] = String(token).split('.');
-    const expected = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('base64url');
+    const expected = crypto.createHmac('sha256', authSecret()).update(payload).digest('base64url');
     const a = Buffer.from(String(sig || ''));
     const b = Buffer.from(expected);
     if (a.length !== b.length) return null;
