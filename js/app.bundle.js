@@ -14455,15 +14455,15 @@ async function sendPrompt(){
     // 🖼️ تعديل الصور بالأوامر النصية: صورة مرفقة + طلب تعديل → Gemini يرجع الصورة معدّلة
     // Follow-up edits on the same image work too ("زين، الحين كبّر الخط").
     const __imgEditRe = /(?:^|[\s،,.!؟?()"'«»])(?:تعديل|عدل|عدّل|شيل|ابعد|أبعد|غير|غيّر|ضيف|أضف|اضف|حط|امسح|احذف|ازل|أزل|اجعل|خل|لون|لوّن|كبر|كبّر|صغر|صغّر|زخرف|اكتب|ارسم|حسن|حسّن|حول|حوّل|صمم|صمّم|نسق|نسّق|رتب|رتّب|ديكور|سوي|سوّي|سولي|دمج|ادمج|أدمج)|سو لي|\b(?:edit|change|add|put|remove|erase|make|recolor|write|draw|enhance|convert|transform|redesign|restyle|decor|merge|combine)\b/i; // v720: مطابقة على بداية كلمة فقط — «ادخل» ليست «خل» و«احوله» تبقى تمر عبر استثناء المواضيع
+    const __srcImg = imageAttachments.length ? imageAttachments[imageAttachments.length - 1] : null;
     // 🖊️ v727: «تعديل» أو «عدل» لوحدها بعد صورة → نسأل محليًا وش التعديل بدل رد دردشة عشوائي
-    if(/^\s*(?:تعديل|عدل|عدّل|edit)\s*[.!؟?]*\s*$/i.test(text || '') && ((cur.lastEditedImage && cur.lastEditedImage.b64) || pendingAttachments.some(a => a.isImage) || (typeof __srcImg !== 'undefined' && __srcImg))){
+    if(/^\s*(?:تعديل|عدل|عدّل|edit)\s*[.!؟?]*\s*$/i.test(text || '') && ((cur.lastEditedImage && cur.lastEditedImage.b64) || pendingAttachments.some(a => a.isImage) || __srcImg)){
       try{ thinkingDiv && thinkingDiv.remove(); }catch(_){ /* guard-ok — cleanup, intentional */ }
       cur.messages.push({role:'assistant',content: lang==='ar' ? 'تمام — اكتب وش التعديل اللي تبيه على الصورة (مثال: شيل الخلفية، غيّر اللون، اكتب اسم…) ✏️' : 'Sure — describe the edit you want on the image ✏️'});
       renderAll(); saveState();
       return;
     }
     const __codeWordRe = /(كود|تطبيق|موقع|صفحة|زر\s|لعبة|سكربت|code|app|website|page|button|game|script)/i;
-    const __srcImg = imageAttachments.length ? imageAttachments[imageAttachments.length - 1] : null;
     // 🧠 v293: أي صورة مرفقة جديدة تنحفظ كآخر صورة في المحادثة
     if(__srcImg && !__srcImg._fromMemory){
       cur.lastEditedImage = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' };
@@ -15193,7 +15193,7 @@ function __showImgLoading(el, ar, en){
       }
       // ✍️ إذا الطلب كتابة نص/اسم على الصورة → نرسمه محليًا بخط سليم (بدون Gemini)
       const __writeIntentRe = /(اكتب|أكتب|حط\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|(?:ضيف|أضف|اضف)\s+(?:لي\s+)?(?:اسمي|اسم|كلمة|نص)|write|put\s+(?:my\s+)?name|add\s+(?:the\s+)?text)/i;
-      const __textSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(text) : { wantsText:__writeIntentRe.test(text), exactText:extractOverlayText(text), fontKey:'modern', color:'#ffffff', position:'bottom' };
+      let __textSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(text) : { wantsText:__writeIntentRe.test(text), exactText:extractOverlayText(text), fontKey:'modern', color:'#ffffff', position:'bottom' };
       const __styleOnly = __textSpec.styleEdit || (cur.imageTextLayer ? __textSpec.styleEditLoose : null);
       if(__styleOnly && cur.imageTextLayer){ __textSpec = Object.assign({}, __textSpec, { styleEdit: __styleOnly }); }
       if(__textSpec.styleEdit && cur.imageTextLayer){ const __l=Object.assign({},cur.imageTextLayer); Object.keys(__textSpec.styleEdit).forEach(k=>{if(__textSpec.styleEdit[k])__l[k]=__textSpec.styleEdit[k]}); try{const __outB64=await overlayTextOnImage(__l.baseB64,__l.baseMime,__l.text,__l.fontKey,__l.color,__l.position);cur.imageTextLayer=__l;cur.lastEditedImage={b64:__outB64,mime:'image/png'};cur.lastMsgWasImageEdit=true;cur.messages.push({role:'assistant',content:'' /* v671: بلا جملة فوق الصورة */,attachments:[{name:'edited.png',isImage:true,mime:'image/png',dataUrl:'data:image/png;base64,'+__outB64}]})}catch(e){cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر تعديل تنسيق الكتابة.':'Could not update the text styling.'})} renderAll();saveState();return; }
@@ -18232,7 +18232,8 @@ function openShareModal(project){
         if(prev){ prev.src = 'data:' + savedMime + ';base64,' + savedB64; prev.style.display = 'inline-block'; }
         if(clr) clr.style.display = 'inline-block';
       }
-    } catch(_){}
+    } catch(_){ /* استعادة صورة البطل المحفوظة ترفٌ: تخزين محجوب أو قيمة تالفة
+         يعني بلا معاينة سابقة فقط — لا يمنع اختيار صورة جديدة. */ }
 
     btn.onclick = () => inp.click();
     clr.onclick = window.__clearFilmHero = () => {
@@ -18240,7 +18241,8 @@ function openShareModal(project){
       inp.value = '';
       prev.style.display = 'none';
       clr.style.display = 'none';
-      try { localStorage.removeItem('omran_hero_b64'); localStorage.removeItem('omran_hero_mime'); } catch(_){}
+      try { localStorage.removeItem('omran_hero_b64'); localStorage.removeItem('omran_hero_mime'); }
+      catch(_){ /* المسح من التخزين ترفٌ — الصورة أُزيلت من الواجهة أصلًا فوقها. */ }
     };
     inp.onchange = () => {
       const f = inp.files && inp.files[0];
@@ -18268,7 +18270,9 @@ function openShareModal(project){
         clr.style.display = 'inline-block';
         URL.revokeObjectURL(img.src);
         // حفظ البطل في localStorage (أفاتار ثابت عبر الجلسات)
-        try { localStorage.setItem('omran_hero_b64', filmHeroBase64); localStorage.setItem('omran_hero_mime', filmHeroMime); } catch(_){}
+        try { localStorage.setItem('omran_hero_b64', filmHeroBase64); localStorage.setItem('omran_hero_mime', filmHeroMime); }
+        catch(_){ /* الحصّة ممتلئة أو التخزين محجوب: البطل يبقى في الذاكرة لهذه
+             الجلسة ولا يُحفظ عبرها — والفيديو يُبنى منه كما هو. */ }
       };
       img.src = URL.createObjectURL(f);
     };
@@ -23722,7 +23726,9 @@ else setTimeout(mountLogoBtn, 1000);
           var highlighted = null;
           if (data.box && data.confidence > 0) {
             // نعيد تحضير الصورة للرسم (من الملف الأصلي عبر الـshot المحفوظ)
-            try { highlighted = drawHighlight(window.__sgLastShot, data.box); } catch (_) {}
+            try { highlighted = drawHighlight(window.__sgLastShot, data.box); }
+            catch (_) { /* الإطار زينة: لقطة مفقودة أو إحداثيات شاذّة تعني إرشادًا
+                 بلا تحديد بصريّ — ونصّ الخطوة وحده يكفي المستخدم. */ }
           }
           // حفظ في السجل
           _session.active = true;
@@ -23767,7 +23773,8 @@ else setTimeout(mountLogoBtn, 1000);
         // إطلاق حدث ليلتقطه app-09-attach.js
         window.dispatchEvent(new CustomEvent('sg:shared-screenshot', { detail: { file: file } }));
       });
-    }).catch(function () {});
+    }).catch(function () { /* المستخدم ألغى اختيار اللقطة أو رفضها المتصفّح:
+         لا حدث مشاركة يُطلَق، والمسار العاديّ (زرّ المشبك) يبقى متاحًا. */ });
   }
 
   if (document.readyState === 'loading') {
@@ -23811,7 +23818,9 @@ else setTimeout(mountLogoBtn, 1000);
         pendingAttachments.push({ name: 'shared-screenshot.jpg', isImage: true, mime: file.type || 'image/jpeg', dataUrl: dataUrl });
         renderAttachStrip();
         // ركّز على خانة الكتابة ليكتب هدفه مباشرة
-        try { document.getElementById('prompt').focus(); } catch (_) {}
+        try { document.getElementById('prompt').focus(); }
+        catch (_) { /* التركيز تسهيل لا شرط: خانة غائبة أو تركيز يرفضه المتصفّح
+             يعني نقرة إضافية على المستخدم — والمرفق وصل فعلًا. */ }
       }
     };
     reader.readAsDataURL(file);
@@ -23988,7 +23997,9 @@ if(document.readyState === 'loading'){
     }
     banner.insertBefore(document.createTextNode('📢 ' + item.title), banner.firstChild);
     // يختفي تلقائياً بعد 30 ثانية
-    setTimeout(function(){ try{ banner.remove(); }catch(e){} }, 30000);
+    setTimeout(function(){ try{ banner.remove(); }
+      catch(e){ /* الشريط أُزيل قبلنا (تنبيه جديد حلّ محلّه أو أُعيد الرسم):
+           لا شيء نفعله، والهدف — ألّا يبقى ظاهرًا — تحقّق أصلًا. */ } }, 30000);
   }
 
   /* ===== نافذة طوارئ (مستوى emergency) ===== */

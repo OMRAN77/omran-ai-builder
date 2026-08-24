@@ -146,7 +146,9 @@
           var highlighted = null;
           if (data.box && data.confidence > 0) {
             // نعيد تحضير الصورة للرسم (من الملف الأصلي عبر الـshot المحفوظ)
-            try { highlighted = drawHighlight(window.__sgLastShot, data.box); } catch (_) {}
+            try { highlighted = drawHighlight(window.__sgLastShot, data.box); }
+            catch (_) { /* الإطار زينة: لقطة مفقودة أو إحداثيات شاذّة تعني إرشادًا
+                 بلا تحديد بصريّ — ونصّ الخطوة وحده يكفي المستخدم. */ }
           }
           // حفظ في السجل
           _session.active = true;
@@ -191,7 +193,8 @@
         // إطلاق حدث ليلتقطه app-09-attach.js
         window.dispatchEvent(new CustomEvent('sg:shared-screenshot', { detail: { file: file } }));
       });
-    }).catch(function () {});
+    }).catch(function () { /* المستخدم ألغى اختيار اللقطة أو رفضها المتصفّح:
+         لا حدث مشاركة يُطلَق، والمسار العاديّ (زرّ المشبك) يبقى متاحًا. */ });
   }
 
   if (document.readyState === 'loading') {
