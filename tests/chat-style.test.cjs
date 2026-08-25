@@ -121,6 +121,16 @@ check(chatServer.includes('ممنوع الموافقة الآلية والتمل
 check(chatServer.includes('function arWikiLookup') && chatServer.includes('ar.wikipedia.org'), 'ويكيبيديا العربية مصدر مرفق في سلسلة البحث');
 check(chatServer.includes('ممنوع أن تبدأ الردّ باستدعاء generate_image'), 'النص يُقرأ أولًا والصورة التوضيحية آخر الردّ');
 check(chatServer.includes('LIVE_EAGER_RE.test(lastUser.content)'), 'البحث الاستباقي خلف إشارة حية صريحة لا على كل رسالة');
+// v-num-plain: «اريد ارقام للبيع» رسمت صورة ووُعظ صاحبها «بيانات غير قانونية».
+{
+  const numRe = chatServer.match(/const NUM_ASK_RE = (\/.*\/i);/);
+  check(!!numRe, 'NUM_ASK_RE موجود');
+  const re = eval(numRe[1]); // guard-ok — نمط من ملفنا نفسه لاختباره
+  check(re.test('اريد ارقام للبيع') && re.test('ابي ارقام'), '«اريد/ابي أرقام» تدخل مسار الأرقام المتخصص');
+  check(!re.test('كم رقم الطوارئ') && !re.test('ارقام الصفحة'), 'الأسئلة العادية عن الأرقام لا تدخل المسار خطأً');
+  check(chatServer.includes('ممنوع استدعاء generate_image — لا صورة في هذا الردّ'), 'مسار الأرقام يمنع الصورة — روابط الأسواق فقط');
+  check(chatServer.includes('تجارة مشروعة مألوفة في الإمارات'), 'مسار الأرقام يمنع الوعظ القانوني');
+}
 check(chatServer.indexOf('v-fast-headers') > 0 && chatServer.indexOf('v-fast-headers') < chatServer.indexOf('prepareTurn('), 'البثّ يُفتح قبل الذاكرة والبحث الاستباقي فيرى المستخدم حركة فورًا');
 check(chatServer.includes('function compactConversation'), 'السياق الطويل يُضغط قبل إرساله للنموذج');
 check(chatServer.includes('const convoSource = quietSocialTurn ? [lastUser] : messages'), 'الخادم لا يرسل تاريخ المواضيع في سؤال الحال');
