@@ -7,12 +7,14 @@ const { encrypt } = require('./_emailCrypto.js');
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const SITE_URL = process.env.SITE_URL || 'https://omran-ai-builder.vercel.app';
-const REDIRECT_URI = SITE_URL + '/api/email-callback';
+// عبر _site.js لا من البيئة مباشرة — للسبب نفسه المشروح في _site.js:
+// قيمة غير صالحة كانت تُبنى منها عناوين تحويل تُبثّ إلى المتصفّح.
+const { siteUrl } = require('./_site.js');
+const emailRedirectUri = () => siteUrl() + '/api/email-callback';
 
 module.exports = async (req, res) => {
   const fail = (reason) => {
-    res.writeHead(302, { Location: SITE_URL + '/?emailerror=' + encodeURIComponent(reason) });
+    res.writeHead(302, { Location: siteUrl() + '/?emailerror=' + encodeURIComponent(reason) });
     res.end();
   };
   try {
@@ -30,7 +32,7 @@ module.exports = async (req, res) => {
         code: String(code),
         client_id: GOOGLE_CLIENT_ID,
         client_secret: GOOGLE_CLIENT_SECRET,
-        redirect_uri: REDIRECT_URI,
+        redirect_uri: emailRedirectUri(),
         grant_type: 'authorization_code',
       }),
     });
@@ -53,7 +55,7 @@ module.exports = async (req, res) => {
       connectedAt: Date.now(),
     };
     await putUser(username, user);
-    res.writeHead(302, { Location: SITE_URL + '/?emailconnected=1' });
+    res.writeHead(302, { Location: siteUrl() + '/?emailconnected=1' });
     res.end();
   } catch (e) {
     fail('server_error');
