@@ -85,6 +85,11 @@ const TOOLS = [
     description: 'شغّل صفحة HTML كاملة في بيئة معزولة وأعد أخطاء التشغيل. استدعها مرّة واحدة على الصفحة النهائية قبل تسليمها.',
     input_schema: { type: 'object', properties: { html: { type: 'string', description: 'مستند HTML كامل.' } }, required: ['html'] },
   },
+  {
+    name: 'get_location',
+    description: 'حدّد موقع المستخدم الحالي بدقّة عبر GPS متصفّحه (يطلب المتصفّح إذنه أوّلًا). استعملها فقط حين يسأل عن موقعه هو («وين أنا» · «موقعي» · «أين أنا الآن») أو حين يحتاج الجواب موقعه الدقيق لا مدينته التقريبية. تعيد المنطقة والمدينة والإمارة، أو سبب التعذّر بوضوح.',
+    input_schema: { type: 'object', properties: {} },
+  },
 ];
 
 const TOOLS_NOTE = '\n\n[أدواتك الحقيقية — خمس، وهي تعمل فعلًا الآن]:\n' +
@@ -92,6 +97,7 @@ const TOOLS_NOTE = '\n\n[أدواتك الحقيقية — خمس، وهي تع�
   '• fetch_page — أي رابط ذكره المستخدم أو ظهر في البحث وتحتاج محتواه: افتحه واقرأه.\n' +
   '• run_js — أي حساب رقمي أو فرق تواريخ أو منطق: شغّله وخذ الناتج منه.\n' +
   '• generate_image — ترسم صورة حقيقية وتعيد رمزًا مثل __IMG_1__ تضعه حرفيًّا في src.\n' +
+  '• get_location — حين يسأل المستخدم عن موقعه الحالي: استدعها ولا تخمّن من عنوان الشبكة. إن رجعت برفض الإذن فاشرح له بلطف كيف يفعّل الموقع من متصفّحه ولا تكرّر المحاولة في نفس الردّ.\n' +
   '• [قاعدة الصورة/الفيديو التوضيحي]: إذا طلب المستخدم صورة أو فيديو توضيحيًا عن موضوع في المحادثة:\n' +
   '  ١. حدّد الموضوع الدقيق من آخر سؤال أو ردّ في المحادثة (مثل: "مكيف كاريير" لا مجرد "مكيف").\n' +
   '  ٢. استدعِ generate_image بـ prompt إنجليزي وصفي: "technical diagram of [الموضوع الدقيق], labeled educational illustration, white background, clear Arabic labels showing [التفصيل المطلوب]".\n' +
@@ -634,6 +640,7 @@ function trailLine(name, input, result) {
     return 'شغّلتُ كودًا — ' + (bad ? 'ظهر خطأ' : ('عاد ناتج ' + r.length + ' حرفًا'));
   }
   if (name === 'generate_image') return /__IMG_/.test(r) ? 'رسمتُ صورة ✅' : ('تعذّرت الصورة — ' + s(r, 60));
+  if (name === 'get_location') return /رفض|تعذّر|انتهت|لا يدعم|لم يستجب/.test(r) ? ('حاولتُ تحديد موقعك — ' + s(r, 70)) : 'حدّدتُ موقعك ✅';
   if (name === 'test_html') return /^✅/.test(r) ? 'جرّبتُ الصفحة — بلا أخطاء ✅' : 'جرّبتُ الصفحة — ظهرت أخطاء';
   return 'استخدمتُ ' + name;
 }
@@ -909,6 +916,7 @@ module.exports = async (req, res) => {
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ status: '⚙️ يشغّل كودًا للتحقّق…' });
             else if (cb.type === 'tool_use' && cb.name === 'generate_image') send({ status: '🎨 يرسم صورة…' });
             else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ status: '🧪 يجرّب الصفحة…' });
+            else if (cb.type === 'tool_use' && cb.name === 'get_location') send({ status: '📍 يحدّد موقعك (سيطلب المتصفّح إذنك)…' });
           } else if (ev.type === 'content_block_delta') {
             const cb = blocks[ev.index];
             if (!cb) continue;
@@ -959,6 +967,8 @@ module.exports = async (req, res) => {
         else if (cb.name === 'run_js') result = await runInClient(send, 'run_js', input);
         else if (cb.name === 'generate_image') result = await runInClient(send, 'generate_image', input, 75000);
         else if (cb.name === 'test_html') result = await runInClient(send, 'test_html', input, 30000);
+        // إذن الموقع قد يستغرق وقتًا — مهلة أطول من بقية أدوات المتصفّح.
+        else if (cb.name === 'get_location') result = await runInClient(send, 'get_location', input, 35000);
         toolResults.push({ type: 'tool_result', tool_use_id: cb.id, content: String(result).slice(0, 8000) });
         if (toolCorpus.length < 200000) toolCorpus += ' ' + String(result).slice(0, 8000); // v608
         send({ status: '↳ ' + trailLine(cb.name, input, result) });

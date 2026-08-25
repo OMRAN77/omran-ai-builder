@@ -24,6 +24,7 @@ function load(action) {
     case 'client-errors': return require('./_lib/client-errors.js');
     case 'health': return require('./_lib/health.js');
     case 'feedback': return require('./_lib/feedback.js');
+    case 'revgeo': return require('./_lib/revgeo.js');
     default: return null;
   }
 }

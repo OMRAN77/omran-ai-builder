@@ -22827,6 +22827,36 @@ window.updateVersionLabel();
           window.__genImages[tok] = 'data:' + (j.mimeType || 'image/png') + ';base64,' + j.imageBase64;
           return '✅ رُسمت الصورة. ضع هذا الرمز حرفيًّا في src بلا أي إضافة: ' + tok;
         }
+        // 📍 موقع المستخدم الحالي — يُطلب إذن المتصفح هنا فقط، عند استدعاء
+        // الأداة فعلًا، لا عند فتح الصفحة. الإحداثيات تُستهلك في نداء التحويل
+        // وتُنسى: لا تُكتب في localStorage ولا في أي سجلّ دائم.
+        if (name === 'get_location') {
+          if (!navigator.geolocation) return 'تعذّر: هذا المتصفّح لا يدعم تحديد الموقع.';
+          var pos;
+          try {
+            pos = await new Promise(function (res, rej) {
+              navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 });
+            });
+          } catch (ge) {
+            if (ge && ge.code === 1) return 'رفض المستخدم إذن الموقع في المتصفّح. اشرح له أنه يستطيع تفعيله من أيقونة القفل بجانب العنوان ثم إعادة السؤال، ولا تكرّر المحاولة الآن.';
+            if (ge && ge.code === 3) return 'انتهت مهلة تحديد الموقع دون إشارة GPS كافية. اقترح عليه المحاولة في مكان مكشوف أو تفعيل GPS.';
+            return 'تعذّر تحديد الموقع: ' + String((ge && ge.message) || 'خطأ غير معروف').slice(0, 120);
+          }
+          var glat = pos.coords.latitude, glon = pos.coords.longitude;
+          var rg = null;
+          try {
+            var rr = await fetch('/api/system?action=revgeo', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ lat: glat, lon: glon }),
+            });
+            if (rr.ok) rg = await rr.json();
+          } catch (e2) { rg = null; }
+          if (rg && rg.label) {
+            return 'موقع المستخدم الحالي (دقّة نحو ' + Math.round(pos.coords.accuracy || 0) + ' مترًا): ' + rg.label;
+          }
+          return 'حُدّدت الإحداثيات لكن تعذّر تحويلها إلى عنوان الآن. قل للمستخدم إن التحديد نجح تقريبًا حول خطّ عرض ' + glat.toFixed(2) + ' وخطّ طول ' + glon.toFixed(2) + ' وإن اسم المنطقة غير متاح مؤقتًا.';
+        }
         return 'أداة غير معروفة: ' + name;
       } catch (e) {
         return 'تعذّر التنفيذ: ' + String(e && e.message || e);
