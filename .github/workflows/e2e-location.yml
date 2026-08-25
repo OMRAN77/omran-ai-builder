@@ -1,0 +1,33 @@
+# «وين أنا؟» كما يعيشها مستخدم حقيقيّ: متصفّح حقيقيّ بإذن موقع ممنوح
+# وإحداثيات عجمان، يسأل في المحادثة الفعليّة ويلتقط المسار كاملًا.
+name: E2E location on production
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: العنوان المراد قياسه
+        required: false
+        default: https://omran-ai-builder.vercel.app
+
+jobs:
+  e2e-location:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install Playwright Chromium
+        run: |
+          npm i --no-save playwright >/dev/null 2>&1
+          npx playwright install --with-deps chromium
+      - name: Ask «وين انا» as a real user with granted GPS
+        run: node scripts/e2e-location.mjs "${{ inputs.url }}"
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-location-screenshots
+          path: e2e-loc-*.png
