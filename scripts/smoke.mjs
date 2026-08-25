@@ -158,6 +158,46 @@ async function identity() {
   }
 }
 
+// ⑦ اتّفاق عنوان العودة بين الخطوتين.
+//
+// redirect_uri_mismatch عاش لأنّ العنوان كان يُبنى مرّتين: المتصفّح من
+// window.location.origin والخادم من SITE_URL. الفحص يسأل الخادم عمّا سيرسله
+// فعلًا، ويقارن ما يضعه في رابط جوجل بما يعلنه — فإن افترقا مرّة أخرى ظهر
+// هنا بالاسم بدل أن يظهر عند المستخدم كصفحة رفض من جوجل.
+//
+// ويطبع القيمتين في كلّ تشغيل: هما ما يجب أن يكون في Google Cloud Console،
+// وقد ضاع علينا وقت طويل ونحن نخمّنهما.
+async function oauthOrigin() {
+  console.log('\u2466 اتّفاق عنوان العودة');
+  const r = await get('/api/system?action=google-start&show=1');
+  if (r.status !== 200) { no(`google-start&show=1 \u2192 ${r.status}`); return; }
+  let j = null;
+  try { j = JSON.parse(await r.text()); } catch (e) { no('show=1 \u2192 ردّ ليس JSON'); return; }
+  if (!j.redirect_uri || !j.client_id) { no('show=1 \u2192 ينقصه redirect_uri أو client_id'); return; }
+  console.log(`  \u00b7 redirect_uri: ${j.redirect_uri}`);
+  console.log(`  \u00b7 client_id: ${j.client_id}`);
+  console.log(`  \u00b7 client_id \u0645\u0646 \u0627\u0644\u0628\u064a\u0626\u0629: ${j.client_id_from_env ? '\u0646\u0639\u0645' : '\u0644\u0627 \u2014 \u0627\u062d\u062a\u064a\u0627\u0637 \u0645\u0643\u062a\u0648\u0628'}`);
+  j.redirect_uri.endsWith('/api/auth-google-callback')
+    ? ok('redirect_uri ينتهي بمسار العودة الصحيح')
+    : no(`redirect_uri لا ينتهي بمسار العودة: ${j.redirect_uri}`);
+
+  const g = await get('/api/system?action=google-start&state=smoke', { redirect: 'manual' });
+  if (g.status !== 302) { no(`google-start \u2192 ${g.status} (يُنتظر 302)`); return; }
+  const loc = head(g, 'location');
+  if (!/^https:\/\/accounts\.google\.com\//.test(loc)) { no('التحويل ليس إلى جوجل'); return; }
+  ok('يحوّل إلى accounts.google.com بـ302');
+  const u = new URL(loc);
+  u.searchParams.get('redirect_uri') === j.redirect_uri
+    ? ok('العنوان في رابط جوجل يطابق ما يعلنه الخادم')
+    : no(`افتراق: الرابط ${u.searchParams.get('redirect_uri')} \u2260 المعلَن ${j.redirect_uri}`);
+  u.searchParams.get('client_id') === j.client_id
+    ? ok('client_id في رابط جوجل يطابق ما يعلنه الخادم')
+    : no('افتراق في client_id بين الرابط والمعلَن');
+  u.searchParams.get('state') === 'smoke'
+    ? ok('state يُمرَّر كما هو')
+    : no('state لا يُمرَّر — حماية CSRF مكسورة');
+}
+
 async function navRoutes() {
   console.log('⑥ مسارات التصفُّح الكامل + هويّة جوّال');
   // ٥٠٠ هنا = انهيار الدالّة. أيّ رمز آخر (302 · 400 · 403 · 405) سلوك سليم.
@@ -194,6 +234,7 @@ await login();
 await gates();
 await health();
 await navRoutes();
+await oauthOrigin();
 await probe();
 await identity();
 console.log(`\n${fail === 0 ? '✓ الدخان أخضر' : '✗ الدخان أحمر'} — نجح ${pass} · فشل ${fail} · ${BASE}`);
