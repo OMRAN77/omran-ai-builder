@@ -83,6 +83,9 @@ function stubFetch(impl) { global.fetch = impl; }
   assert.ok(agent.includes('رفض المستخدم إذن الموقع'), 'رسالة واضحة عند رفض الإذن');
   assert.ok(agent.includes('تقريبيّ فقط') && agent.includes('gacc > 3000'), 'الدقة الخشنة تُعلَن تقريبية لا يقينًا زائفًا');
   assert.ok(agent.includes('gacc > 200') && agent.includes('عبر الشبكة لا عبر GPS'), 'تحديد الشبكة (كمبيوتر بلا GPS) يُعلَن كذلك ولو ادّعى دقة جيدة');
+  assert.ok(agent.includes('function geoTrail') && agent.includes("geoTrail('رفض-الإذن')"), 'كل استدعاء موقع يترك أثرًا في سلسلة التشخيص');
+  assert.ok(!/geoTrail\([^)]*(glat|glon|latitude|longitude)/.test(agent), 'أثر التشخيص لا يحمل إحداثيات أبدًا');
+  assert.ok(chat.includes('اذكر التعارض صراحةً'), 'تناقض موقع الأداة مع دولة الشبكة يُعلَن (VPN) لا يُجزَم به');
   const chatSrc = chat;
   assert.ok(chatSrc.includes('فممنوع الجواب منها؛ استدعِ get_location'), 'سؤال «وين أنا» لا يُجاب من مدينة الشبكة أبدًا');
   const geoBlock = agent.slice(agent.indexOf("if (name === 'get_location')"), agent.indexOf('أداة غير معروفة'));
