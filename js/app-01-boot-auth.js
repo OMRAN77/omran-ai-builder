@@ -1157,9 +1157,9 @@ const $ = s => document.querySelector(s);
   function build(){
     const tokL = get('aiapp_auth_token'), tokS = sget('aiapp_auth_token');
     let tokC = '';
-    try { const m = document.cookie.match(/(?:^|; )aiapp_auth_token=([^;]*)/); tokC = m ? m[1] : ''; } catch(e){}
+    try { const m = document.cookie.match(/(?:^|; )aiapp_auth_token=([^;]*)/); tokC = m ? m[1] : ''; } catch(e){ /* الكوكي محجوب في بعض السياقات — اللوحة تعرضه «غائبًا» وهذا صادق */ }
     let note = null;
-    try { note = JSON.parse(get('aiapp_session_note') || 'null'); } catch(e){}
+    try { note = JSON.parse(get('aiapp_session_note') || 'null'); } catch(e){ /* قيد قديم بصيغة تالفة — تعرض اللوحة «لم يُسجَّل بعد» بدل الانهيار */ }
     const bundle = (document.querySelector('script[src*="app.bundle"]') || {}).src || '—';
     const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
 
