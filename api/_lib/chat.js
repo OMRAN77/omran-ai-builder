@@ -562,7 +562,10 @@ function placeCards(places) {
   return cards + '\n\n[إلزاميّ في عرض هذه الأماكن]: اختر من ثلاثة إلى خمسة أسماء هي الأقرب لطلب المستخدم بالذّات ورتّبها بالأنسب أوّلًا. اكتب الأسماء فقط، كل اسم في سطر مستقلّ، من دون رابط أو عنوان أو تقييم أو وصف أو ذكر لخرائط جوجل.';
 }
 
-async function tavilySearch(query, reC, plateAsk) {
+// v-chat-ref: كان يقرأ country/city كمتغيّرين حرّين معرّفين داخل المعالج فقط —
+// ReferenceError يقتل البثّ كلّه («chat error: country is not defined») في كلّ
+// بحث لا تختصره بطاقات الأماكن. علّة كامنة قديمة كشفها فتح الأدوات لكلّ دور.
+async function tavilySearch(query, reC, plateAsk, country, city) {
   const foreign = isForeignAsk(query);
   // 🔢 v558 — الأرقام واللوحات للبيع: الموقعان المتخصّصان وحدهما. مسار الدردشة كان
   // يمرّ على Google Places أوّلًا فيرجع مكاتب على الخريطة بدل سوقَي الأرقام.
@@ -949,7 +952,7 @@ module.exports = async (req, res) => {
           if (/عمران|omran|التطبيق هذا|هذا التطبيق|موقعك|تطبيقك|مين سواك|من صنعك|وش تسوي|ايش تقدر|إيش تقدر|قدراتك|النقاط|الاشتراك|كيف استخدم|how to use|what is this|who made/i.test(_q)) {
             result = 'هذا سؤال عن التطبيق نفسه — أجب من معلوماتك المحلية بدون بحث.';
           } else {
-            result = filterDuplicateUrls(await tavilySearch(_q, reC, !foreignTurn && !!(lastUser && NUM_ASK_RE.test(lastUser.content))));
+            result = filterDuplicateUrls(await tavilySearch(_q, reC, !foreignTurn && !!(lastUser && NUM_ASK_RE.test(lastUser.content)), country, city));
           }
         }
         else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
@@ -973,3 +976,4 @@ module.exports = async (req, res) => {
 
 module.exports.__v608 = { normNums, unsourcedRatings, ratingWarning }; // v608 — للاختبار
 module.exports.__v610 = { cleanLink }; // v610 — للاختبار
+module.exports.__vsearch = { tavilySearch }; // v-chat-ref — للاختبار
