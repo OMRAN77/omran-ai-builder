@@ -120,6 +120,8 @@ check(chatServer.includes('محاور قويّ') && chatServer.includes('كن ن
 check(chatServer.includes('ممنوع الموافقة الآلية والتملّق'), 'التملق والموافقة الآلية ممنوعان صراحةً');
 check(chatServer.includes('function arWikiLookup') && chatServer.includes('ar.wikipedia.org'), 'ويكيبيديا العربية مصدر مرفق في سلسلة البحث');
 check(chatServer.includes('ممنوع أن تبدأ الردّ باستدعاء generate_image'), 'النص يُقرأ أولًا والصورة التوضيحية آخر الردّ');
+check(chatServer.includes('LIVE_EAGER_RE.test(lastUser.content)'), 'البحث الاستباقي خلف إشارة حية صريحة لا على كل رسالة');
+check(chatServer.indexOf('v-fast-headers') > 0 && chatServer.indexOf('v-fast-headers') < chatServer.indexOf('prepareTurn('), 'البثّ يُفتح قبل الذاكرة والبحث الاستباقي فيرى المستخدم حركة فورًا');
 check(chatServer.includes('function compactConversation'), 'السياق الطويل يُضغط قبل إرساله للنموذج');
 check(chatServer.includes('const convoSource = quietSocialTurn ? [lastUser] : messages'), 'الخادم لا يرسل تاريخ المواضيع في سؤال الحال');
 check(chatServer.includes('slice(0, 12000)'), 'كل رسالة لها سقف حجم يحمي جودة السياق');

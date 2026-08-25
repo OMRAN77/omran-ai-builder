@@ -800,6 +800,14 @@ module.exports = async (req, res) => {
     res.end();
     return;
   }
+  // v-fast-headers: البثّ يُفتح فورًا — قبل قراءة الذاكرة وقبل أي بحث استباقي —
+  // فيرى المستخدم حركة خلال ثانية بدل صمت ٥-٩ ثوانٍ قِيس بالمِجسّ.
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); } catch (e) { /* العميل أغلق المجرى */ } };
+  send({ status: '💭 يقرأ سؤالك…' });
+
   let accountMemory = '';
   if (usage.username && !quietSocialTurn) {
     const cur = await readMemory(usage.username);
@@ -807,8 +815,13 @@ module.exports = async (req, res) => {
   }
 
   // ─── live-answers: بحث استباقي ذكي خلف LIVE_ANSWERS=1 ───
+  // v-live-gate: كان يعمل على كل رسالة (مرشّحه «غير محسوم → ابحث») فيحجز ٤
+  // ثوانٍ حتى من «اشرح لي كذا» — والنموذج يملك web_search أصلًا. الآن يعمل
+  // فقط عند إشارة حيّة صريحة؛ البقية تتكفّل بها أدوات النموذج نفسه.
+  const LIVE_EAGER_RE = /سعر|أسعار|اسعار|بكم|طقس|الجو\b|خبر|أخبار|اخبار|عاجل|نتيجة|مباراة|اليوم|الليلة|الآن|حالي|أحدث|آخر\s|مواقيت|صلاة|أذان|دوام|عروض|تخفيض|سهم|دولار|ذهب|بيتكوين|price|news|weather|today|now|latest|score/i;
   let liveTurn = null;
-  if (process.env.LIVE_ANSWERS === '1' && !quietSocialTurn && lastUser && lastUser.content) {
+  if (process.env.LIVE_ANSWERS === '1' && !quietSocialTurn && lastUser && lastUser.content
+      && LIVE_EAGER_RE.test(lastUser.content)) {
     try {
       const { prepareTurn } = require('./live-answers.js');
       const { makeDeps } = require('./live-deps.js');
@@ -852,7 +865,8 @@ module.exports = async (req, res) => {
   const convo = compactConversation(convoSource
       .map((m) => ({ role: m.role, content: typeof m.content === 'string' ? m.content.slice(0, 12000) : m.content })));
       while (convo.length && convo[convo.length - 1].role !== 'user') convo.pop();
-  if (!convo.length) { res.status(400).json({ error: 'Missing user message' }); return; }
+  // الترويسات فُتحت أعلاه فلا status(400) هنا — حدث خطأ في المجرى نفسه.
+  if (!convo.length) { send({ error: 'Missing user message' }); res.end(); return; }
 
   // ─── live-answers: استبدل رسالة المستخدم الأخيرة بالنسخة المسنودة بالمصادر ───
   if (liveTurn && liveTurn.searched && liveTurn.sources.length && convo.length) {
@@ -862,11 +876,7 @@ module.exports = async (req, res) => {
     }
   }
 
-  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-cache, no-transform');
-  res.setHeader('Connection', 'keep-alive');
-  const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); } catch (e) { /* العميل أغلق المجرى */ } };
-
+  // (الترويسات وsend فُتحا مبكرًا أعلاه — v-fast-headers)
   // ─── live-answers: أبلغ العميل بالمصادر المكتشفة ───
   if (liveTurn && liveTurn.searched && liveTurn.sources.length) {
     send({ status: '🔍 بحثتُ مسبقًا في ' + liveTurn.sources.length + ' مصادر…' });
