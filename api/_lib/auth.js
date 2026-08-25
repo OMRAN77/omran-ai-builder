@@ -614,7 +614,9 @@ module.exports = async (req, res) => {
           await putUser(u, updated);
         } catch (e) { logError('auth:clear-msg', e); }
       }
-      res.status(200).json({ ok: true, username: user ? user.username : u, avatar: user ? (user.avatar || null) : null, adminMessage });
+      // 🔄 جلسة منزلقة: توكن جديد بعمر كامل مع كل تحقق ناجح — المستخدم
+      // النشط لا يُطرد أبدًا بانتهاء صلاحية الثلاثين يومًا الثابتة.
+      res.status(200).json({ ok: true, token: makeToken(u), username: user ? user.username : u, avatar: user ? (user.avatar || null) : null, adminMessage });
       return;
     }
 
