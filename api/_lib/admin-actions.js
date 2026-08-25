@@ -2,7 +2,8 @@
 // Requires a valid session token belonging to OWNER_USERNAME. Regular users
 // get 403 no matter what they send. Actions: ban, unban, delete, message.
 const crypto = require('crypto');
-const { getUser, putUser } = require('./auth.js');
+const { getUser, putUser, userPath } = require('./auth.js');
+const { kvDel } = require('./kv.js');
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').trim().toLowerCase();
@@ -52,7 +53,26 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const user = await getUser(key);
+    // سجلّ لا يفكّه أيّ مفتاح (كُتب بسرّ ضاع) يرمي الآن بدل أن يتنكّر في هيئة
+    // «غير موجود». هنا بالذات يُفتح المخرج الوحيد منه: المالك يحذفه حذفًا
+    // مباشرًا من المخزن — بلا قراءة — فيتحرّر الاسم ويُنشأ من جديد. حدث فعلًا:
+    // حساب المالك القديم وحساب جوجل المرتبط به بقيا مقفلين بلا أيّ سبيل،
+    // لأنّ delete القديم كان يقرأ السجلّ أوّلًا ليكتب فيه deleted:true.
+    let user = null, sealed = false;
+    try { user = await getUser(key); }
+    catch (e) {
+      if (e && e.code === 'USER_RECORD_UNDECRYPTABLE') sealed = true;
+      else throw e;
+    }
+    if (sealed) {
+      if (action === 'delete') {
+        await kvDel(userPath(key));
+        res.status(200).json({ ok: true, purged: true, note: 'سجلّ مقفل بسرّ قديم — حُذف نهائيًّا وتحرّر الاسم' });
+        return;
+      }
+      res.status(409).json({ error: 'sealed_record', message: 'السجلّ مقفل بسرّ قديم ولا يُقرأ — لا يصحّ عليه إلا الحذف (أو استرجاعه بـ AUTH_SECRET_PREVIOUS)' });
+      return;
+    }
     if (!user) {
       res.status(404).json({ error: 'user not found' });
       return;

@@ -97,7 +97,18 @@ module.exports = async (req, res) => {
       console.warn('[auth] account unification lookup failed:', e && e.message);
     }
 
-    let user = await getUser(key);
+    let user = null;
+    try { user = await getUser(key); }
+    catch (e) {
+      if (e && e.code === 'USER_RECORD_UNDECRYPTABLE') {
+        // السجلّ القديم مقفل بسرّ ضاع — وجوجل أثبتت للتوّ ملكيّة البريد نفسه.
+        // فالاسترداد هنا مشروع: يُنشأ السجلّ من جديد فوق المقفل، ويعود صاحب
+        // البريد إلى حسابه بدل server_error أبديّة. (بخلاف signup بالاسم وحده،
+        // حيث يبقى الرمي قائمًا: لا إثبات ملكيّة هناك، والكتابة فوقه استيلاء.)
+        console.warn('[auth] sealed record reclaimed via verified Google email: ' + key);
+        user = null;
+      } else { throw e; }
+    }
 
     if (!user || user.deleted) {
       const { salt, hash } = randomPasswordHash();

@@ -821,6 +821,7 @@ module.exports.verifyToken = verifyToken;
 module.exports.encryptUserBlob = encryptUserBlob;
 module.exports.decryptUserBlob = decryptUserBlob;
 module.exports.UndecryptableUserRecord = UndecryptableUserRecord;
+module.exports.userPath = userPath;
 module.exports.RESERVED_USERNAMES = RESERVED_USERNAMES;
 
 // A ban set from the admin panel only ever guarded the *login* endpoint.
