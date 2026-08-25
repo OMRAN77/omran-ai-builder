@@ -181,6 +181,11 @@ async function oauthOrigin() {
   if (!origin) { no('redirect_uri ليس عنوان https صالحًا \u2014 راجع SITE_URL في Vercel (لا يُطبع هنا)'); return; }
   console.log(`  \u00b7 redirect_uri: ${origin}/api/auth-google-callback`);
   console.log(`  \u00b7 client_id: ${j.client_id}`);
+  // نصف إعداد جوجل — معرّف بلا سرّ — يعني أنّ كلّ دخول سيبلغ شاشة جوجل ثمّ
+  // يفشل عند المبادلة بـ google_not_configured. حدث اليوم: السرّ لُصق في
+  // خانة SITE_URL بدل GOOGLE_CLIENT_SECRET.
+  if (j.client_secret_set === false) no('GOOGLE_CLIENT_SECRET غائب — الدخول بجوجل سيفشل عند المبادلة حتمًا');
+  else if (j.client_secret_set === true) console.log('  \u00b7 GOOGLE_CLIENT_SECRET: \u2705 \u0645\u0636\u0628\u0648\u0637');
   if (j.site_url_set && j.site_url_valid === false) no('SITE_URL مضبوط بقيمة ليست عنوانًا \u2014 يُتجاهَل');
   console.log(`  \u00b7 client_id \u0645\u0646 \u0627\u0644\u0628\u064a\u0626\u0629: ${j.client_id_from_env ? '\u0646\u0639\u0645' : '\u0644\u0627 \u2014 \u0627\u062d\u062a\u064a\u0627\u0637 \u0645\u0643\u062a\u0648\u0628'}`);
   j.redirect_uri.endsWith('/api/auth-google-callback')

@@ -32,6 +32,9 @@ module.exports = async (req, res) => {
       redirect_uri: redirectUri,
       client_id: id,
       client_id_from_env: Boolean(process.env.GOOGLE_CLIENT_ID),
+      // حضور السرّ فقط — لا قيمته. غيابه يعني أنّ المبادلة ستفشل حتمًا
+      // بـ google_not_configured، وقد لُصق السرّ فعلًا في خانة SITE_URL يومًا.
+      client_secret_set: Boolean((process.env.GOOGLE_CLIENT_SECRET || '').trim()),
       site_url_set: siteUrlConfigured(),
       site_url_valid: siteUrlIsValid(),
       ...(siteUrlConfigured() && !siteUrlIsValid()
