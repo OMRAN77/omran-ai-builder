@@ -223,7 +223,17 @@ const $ = s => document.querySelector(s);
   let sessionNoted = false; // سُجّل سبب في هذا التحميل؟ يمنع «لا-توكن» العامّة من طمس سبب أدقّ
   function noteSession(reason){
     sessionNoted = true;
-    try { localStorage.setItem('aiapp_session_note', JSON.stringify({ reason, at: new Date().toISOString() })); }
+    try {
+      const entry = { reason, at: new Date().toISOString() };
+      localStorage.setItem('aiapp_session_note', JSON.stringify(entry));
+      // قيمة واحدة طمست القياس فعلًا: فتحُ صفحة اللوحة نفسها كتب «لا-توكن»
+      // فوق أثر محاولة جوجل التي سبقتها، فضاع الدليل لحظة النظر إليه.
+      // السلسلة تحفظ آخر خمسة أحداث فيبقى الشريط كاملًا: بدأ ← وماذا حدث.
+      let trail = [];
+      try { trail = JSON.parse(localStorage.getItem('aiapp_session_notes') || '[]'); } catch(e2){ trail = []; }
+      trail.unshift(entry);
+      localStorage.setItem('aiapp_session_notes', JSON.stringify(trail.slice(0, 5)));
+    }
     catch(e){ __swallow(e, "auth:app-01-boot-auth#note"); }
   }
 
@@ -684,6 +694,7 @@ const $ = s => document.querySelector(s);
       // حرفًا بحرف، فمن أيّ عنوان غير SITE_URL كان الدخول يفشل بـ
       // redirect_uri_mismatch. الخادم يبنيه الآن بالقيم التي سيستعملها هو
       // نفسه، فيستحيل الافتراق. (api/_lib/auth-google-start.js)
+      noteSession('جوجل-بدأ'); // إن ظهرت في الشريط بلا «جوجل-…» بعدها، فالعودة لم تهبط على موقعنا إطلاقًا
       window.location.href = '/api/system?action=google-start&state=' + encodeURIComponent(oauthState);
     };
   }
@@ -1205,6 +1216,13 @@ const $ = s => document.querySelector(s);
       ['اسم المستخدم المحفوظ', get('aiapp_username') || sget('aiapp_username') || '—'],
       ['«تذكّرني» وقت الحفظ', tokL ? 'مفعّل (حُفظ في localStorage)' : (tokS ? 'مطفأ (حُفظ في الجلسة فقط)' : '—')],
       ['سبب آخر خروج', note ? (note.reason + '  ·  ' + note.at) : '— لم يُسجَّل بعد'],
+      ['سلسلة آخر الأحداث', (() => {
+        try {
+          const t = JSON.parse(get('aiapp_session_notes') || '[]');
+          if(!t.length) return '—';
+          return t.map((e, i) => (i + 1) + '. ' + e.reason + '  ·  ' + String(e.at).slice(11, 19)).join('\n');
+        } catch(e){ return '—'; }
+      })()],
       ['الحزمة التي يشغّلها متصفّحك', (bundle.split('/').pop() || '—')],
       ['عامل الخدمة', sw ? '✅ يتحكّم' : '❌ لا يتحكّم'],
       ['المتصفّح', navigator.userAgent.slice(0, 80)],
