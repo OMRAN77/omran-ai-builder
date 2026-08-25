@@ -333,6 +333,8 @@ function mahaStopInterruptListener(){
 // own detection of what the caller actually spoke. Defaults to the site's
 // current UI language until we have a real detection.
 let mahaReplyLang = (typeof lang !== 'undefined' ? lang : 'ar');
+// تثبيت لغة الرد (المسار الاحتياطي): يمنع تقلب اللغة من كشف خاطئ واحد.
+let mahaLangLocked = false, mahaLangCandidate = null;
 
 async function mahaSpeak(text){
   return new Promise(async (resolve) => {
@@ -357,6 +359,9 @@ async function mahaSpeak(text){
       };
       audio.onended = finish;
       audio.onerror = finish;
+      // إنهاء المكالمة أثناء كلام مها كان يوقف الصوت بلا ended فيبقى وعد
+      // النطق معلقًا للأبد (تسريب متراكم) — الإيقاف بعد نهاية المكالمة يحسمه.
+      audio.onpause = () => { if(!mahaCallActive) finish(); };
       audio.src = url;
       await audio.play();
       mahaStartInterruptListener(audio, finish);
@@ -367,7 +372,11 @@ async function mahaSpeak(text){
 // Records the mic and uses volume-based silence detection to know when the
 // user finished talking (hands-free - no button press needed per turn).
 async function mahaRecordUntilSilence(){
-  mahaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  // نفس تحسينات المايك التي يطلبها الوضع الحديث: كانت الغائبة هنا، فصوت
+  // المستخدم الهادئ يصل ضعيفًا وينرمى كأنه ضجيج — «أول مرة ما ترد».
+  mahaStream = await navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+  });
   let mimeType = '';
   for(const cand of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']){
     if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(cand)){ mimeType = cand; break; }
@@ -390,16 +399,19 @@ async function mahaRecordUntilSilence(){
     mahaMediaRecorder.start(1000);
 
   const startTime = Date.now();
-  const SILENCE_THRESHOLD = 0.022; // RMS amplitude below this = silence (raised so ambient/background noise isn't mistaken for speech)
-  const SILENCE_HOLD_MS = 900;     // how long silence must last to end the turn (raised from 550ms - 550ms was cutting people off mid-sentence during natural pauses, causing garbled/incomplete transcripts)
-  const MIN_TALK_MS = 1000;        // ignore silence before user has said anything (real speech needs to sustain longer than noise blips)
+  // العتبات كانت ثابتة وعالية (0.022 صمت / ثانية كلام كاملة) — بغرفة هادئة
+  // ومايك جوال متوسط، أول جملة هادئة كانت تُهمل بالكامل فيضطر المستخدم
+  // يعيدها بصوت أعلى. الآن: معايرة ضجيج المحيط بأول 350م.ث ثم عتبة ديناميكية.
+  const CALIBRATE_MS = 350;        // نافذة قياس ضجيج الخلفية
+  const CLEAR_SPEECH = 0.03;       // كلام واضح يُحتسب فورًا حتى أثناء المعايرة
+  let noiseFloor = 0;
+  let silenceThreshold = 0.015;    // يعاد حسابها بعد المعايرة
+  const SILENCE_HOLD_MS = 1200;    // كانت 900م.ث — توقف طبيعي وسط الجملة كان يقصها
+  const MIN_TALK_MS = 600;         // كانت 1000م.ث — «نعم» و«هلا» القصيرة كانت تضيع
   const MAX_TURN_MS = 20000;       // hard safety cap per turn
   let lastLoudAt = Date.now();
   let everLoud = false;
   let peakRms = 0;
-  const floatBuf = new Float32Array(mahaAnalyser.fftSize);
-  const pitchSamples = [];
-  let pitchTickCounter = 0;
 
   await new Promise((resolve) => {
     const tick = () => {
@@ -415,18 +427,16 @@ async function mahaRecordUntilSilence(){
         mahaOrbEl.style.transform = 'scale(' + scale.toFixed(3) + ')';
       }
       const now = Date.now();
-      if(rms > SILENCE_THRESHOLD){
-        lastLoudAt = now; everLoud = true;
-        // Sample the fundamental pitch every few frames while the user is
-        // actually talking, to later guess whether they sound male or female.
-        pitchTickCounter++;
-        if(pitchTickCounter % 4 === 0){
-          mahaAnalyser.getFloatTimeDomainData(floatBuf);
-          const freq = mahaAutoCorrelate(floatBuf, mahaAudioCtx.sampleRate);
-          if(freq > 70 && freq < 400) pitchSamples.push(freq);
-        }
-      }
       const elapsed = now - startTime;
+      if(elapsed < CALIBRATE_MS && rms < CLEAR_SPEECH){
+        // معايرة: هذا مستوى الغرفة نفسها قبل ما يتكلم أحد.
+        noiseFloor = Math.max(noiseFloor, rms);
+      }else if(elapsed >= CALIBRATE_MS && silenceThreshold === 0.015 && noiseFloor > 0){
+        silenceThreshold = Math.min(0.028, Math.max(0.013, noiseFloor * 2.2 + 0.004));
+      }
+      if(rms > (elapsed < CALIBRATE_MS ? CLEAR_SPEECH : silenceThreshold)){
+        lastLoudAt = now; everLoud = true;
+      }
       const silentFor = now - lastLoudAt;
       if(elapsed > MAX_TURN_MS || (everLoud && elapsed > MIN_TALK_MS && silentFor > SILENCE_HOLD_MS)){
         resolve();
@@ -438,30 +448,8 @@ async function mahaRecordUntilSilence(){
   });
   if(mahaOrbEl) mahaOrbEl.style.transform = '';
   mahaLastPeakRms = peakRms;
-
-  // Estimate the caller's gender from the median pitch across the WHOLE call
-  // so far (not just this turn). Typical adult male fundamental frequency is
-  // roughly 85-165Hz, adult female roughly 165-255Hz, so ~165Hz is a
-  // reasonable split point. Combining every turn's samples smooths out any
-  // single noisy/echoey turn that would otherwise flip the voice mid-call.
-  if(pitchSamples.length >= 5){
-    // Drop this turn's own outliers first (keep the middle 70%) so one bad
-    // moment within the turn doesn't skew the pooled history either.
-    const turnSorted = pitchSamples.slice().sort((a, b) => a - b);
-    const lo = Math.floor(turnSorted.length * 0.15);
-    const hi = Math.ceil(turnSorted.length * 0.85);
-    const trimmed = turnSorted.slice(lo, hi).length ? turnSorted.slice(lo, hi) : turnSorted;
-    mahaAllPitchSamples.push(...trimmed);
-    // Cap history so very long calls don't grow unbounded.
-    if(mahaAllPitchSamples.length > 400) mahaAllPitchSamples = mahaAllPitchSamples.slice(-400);
-    // Only start classifying once we have a solid pool of samples; before
-    // that, keep the default so we don't flip on a single early turn.
-    if(mahaAllPitchSamples.length >= 12){
-      const sorted = mahaAllPitchSamples.slice().sort((a, b) => a - b);
-      const median = sorted[Math.floor(sorted.length / 2)];
-      void median; // v493: pitch no longer picks the voice — the user does.
-    }
-  }
+  // (أُزيل هنا كاشف الجنس من نبرة الصوت: كان يحسب ارتباطًا ذاتيًا ثقيلًا جدًا
+  //  على الجوال طوال المكالمة ونتيجته مهملة منذ v493 — المستخدم يختار الصوت.)
 
   mahaStopVad();
   if(mahaMediaRecorder.state === 'recording') mahaMediaRecorder.stop();
@@ -830,8 +818,9 @@ async function fetchSearchNoteOnce(transcript, deep, q0){
       [...searchResults, ...googleResults].forEach(r => {
         if(!r || !r.url || sources.length >= 6) return;
         let host = '';
-        try{ host = new URL(r.url).hostname.replace(/^www\./, ''); }catch(e){
-    if(__st) __st.fail('تعذّر'); return; }
+        // رابط واحد مشوه كان يعلّم مؤشر الحالة «تعذّر» رغم نجاح البحث كله —
+        // نتجاهل هذا العنصر وحده ونكمل.
+        try{ host = new URL(r.url).hostname.replace(/^www\./, ''); }catch(e){ return; }
         if(!host || seenHosts.has(host)) return;
         seenHosts.add(host);
         sources.push({ title: r.title || host, url: r.url });
@@ -1261,9 +1250,11 @@ async function mahaStartRealtimeCall(){
     });
     // A server session event confirms VAD and instructions are active. The
       // timeout is only a compatibility escape hatch for older Realtime events.
+      // كانت 2.5 ثانية — على شبكة بطيئة كانت تفلت قبل جاهزية الجلسة فعلًا،
+      // فيفتح المايك والخادم لسه يضبط إعداداته وتضيع أول جملة.
       const sessionHandshake = Promise.race([
         rtSessionReady,
-        new Promise(resolve => setTimeout(resolve, 2500)),
+        new Promise(resolve => setTimeout(resolve, 5000)),
       ]);
       await Promise.all([connectionReady, channelReady, sessionHandshake]);
 
@@ -1273,6 +1264,9 @@ async function mahaStartRealtimeCall(){
       await new Promise(resolve => setTimeout(resolve, 250));
       mahaRtReady = true;
       mahaSetState('listening');
+      // إشارة «تكلم الآن» صريحة: قبلها أي كلام يروح بالهوا لأن المايك مقفول
+      // عمدًا حتى تجهز الجلسة — المستخدم كان يتكلم بدري ويظن مها ما ترد.
+      if(mahaStateLabelEl && mahaStateLabelEl.textContent) mahaStateLabelEl.textContent = '🟢 ' + mahaStateLabelEl.textContent;
 
   // If the connection drops mid-call (e.g. brief network hiccup) after we
   // were already connected, try to silently reconnect once instead of
@@ -1616,6 +1610,11 @@ async function mahaCallLoop(){
     try{
       blob = await mahaRecordUntilSilence();
     }catch(e){
+      // إن فشل شيء بعد فتح المايك (مثلاً MediaRecorder غير مدعوم) كان المايك
+      // يظل «حيًّا» والمؤشر شغالًا حتى إعادة تحميل الصفحة — نطفيه هنا دائمًا.
+      mahaStopVad();
+      mahaStopStream();
+      if(mahaMediaRecorder && mahaMediaRecorder.state === 'recording'){ try{ mahaMediaRecorder.stop(); }catch(_e){ __swallow(_e, "misc:app-08-maha#recstop"); } }
       var __m = mahaMicMsg(e);
       mahaSetState('error', __m);
       mahaCallActive = false;
@@ -1623,7 +1622,7 @@ async function mahaCallLoop(){
       break;
     }
     if(!mahaCallActive) break;
-    if(!blob || blob.size < 800 || mahaLastPeakRms < 0.03){
+    if(!blob || blob.size < 800 || mahaLastPeakRms < 0.018){
       // Essentially silent/noise-only turn - the mic didn't pick up real speech,
       // just background noise. Don't send it to speech-to-text at all (avoids
       // the model hallucinating words from silence, and avoids replying unprompted).
@@ -1667,7 +1666,14 @@ async function mahaCallLoop(){
       // uses a matching native voice - this is what makes her work correctly
       // for a caller speaking Nepali/Hindi/Urdu/Bengali/French/English even
       // if the app's UI is still set to Arabic.
-      if(data && data.language) mahaReplyLang = data.language;
+      // تثبيت اللغة: أول كشف يُعتمد فورًا، وبعدها لا تتبدل لغة الرد إلا
+      // بكشفين متتاليين متطابقين — كشف خاطئ واحد كان يقلب لغة مها فجأة.
+      if(data && data.language){
+        if(!mahaLangLocked){ mahaReplyLang = data.language; mahaLangLocked = true; mahaLangCandidate = null; }
+        else if(data.language === mahaReplyLang){ mahaLangCandidate = null; }
+        else if(mahaLangCandidate === data.language){ mahaReplyLang = data.language; mahaLangCandidate = null; }
+        else { mahaLangCandidate = data.language; }
+      }
 
       // Same approach real voice assistants (Siri, Google Assistant) use: if the
       // speech-to-text engine itself flags low confidence in what it heard, don't
@@ -1680,7 +1686,7 @@ async function mahaCallLoop(){
       }
 
       mahaHistory.push({ role: 'user', content: transcript });
-      if(mahaHistory.length > 12) mahaHistory = mahaHistory.slice(-12);
+      if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);
 
       // Classic pipeline has no real function-calling like the Realtime mode.
       // A previous image is sent back only when this turn explicitly refers to
@@ -1696,7 +1702,7 @@ async function mahaCallLoop(){
           imgReply = t('mahaImageFailedReply');
         }
         mahaHistory.push({ role: 'assistant', content: imgReply });
-        if(mahaHistory.length > 12) mahaHistory = mahaHistory.slice(-12);
+        if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);
         mahaSetState('speaking');
         await mahaSpeak(imgReply);
         continue;
@@ -1715,6 +1721,12 @@ async function mahaCallLoop(){
         .replace(/\{\{NAME\}\}/g, mahaPersonaName)
         .replace(/\{\{GENDER_DESC\}\}/g, mahaPersonaGenderDesc);
       const mahaSystemMsgs = [{ role: 'system', content: mahaSystemPrompt }, { role: 'system', content: mahaDateSystemMsg }];
+      // 🧠 ذاكرة المستخدم (اسمه، مشاريعه، أسلوبه) كانت تصل المحادثة الكتابية
+      // والوضع الحديث فقط — المسار الاحتياطي كان يدخل المكالمة بلا أي معرفة.
+      try{
+        const mahaMemMsg = (typeof window.memorySystemMsg === 'function') ? window.memorySystemMsg() : null;
+        if(mahaMemMsg) mahaSystemMsgs.push(mahaMemMsg);
+      }catch(e){ __swallow(e, "misc:app-08-maha#mem"); }
       if(!mahaIntroduced){
         mahaSystemMsgs.push({ role: 'system', content: `This is the very first reply of the call. Before answering the user's message, briefly introduce yourself by saying your name is "${mahaPersonaName}" (in the same language/dialect you are replying in), then answer their message naturally in the same short reply - e.g. like "I'm ${mahaPersonaName}, ..." followed by your actual answer. Do this ONLY this one time.` });
         mahaIntroduced = true;
@@ -1739,7 +1751,7 @@ async function mahaCallLoop(){
       console.log('[maha] reply:', reply);
 
       mahaHistory.push({ role: 'assistant', content: reply });
-      if(mahaHistory.length > 12) mahaHistory = mahaHistory.slice(-12);
+      if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);
 
       mahaSetState('speaking');
       await mahaSpeak(reply);
@@ -1887,6 +1899,8 @@ async function mahaStartCallInner(mode){
   stopAllSpeaking();
   mahaHistory = [];
   mahaAllPitchSamples = [];
+  mahaLangLocked = false;
+  mahaLangCandidate = null;
   mahaDetectedGender = mahaReadVoiceGender();
   mahaIntroduced = false;
   // ملاحظة: لا نمسح مرجع الصورة الأخيرة هنا — يبقى ثابت حتى يبدأ المستخدم "+ مشروع جديد" فعليًا
@@ -1908,10 +1922,15 @@ async function mahaStartCallInner(mode){
   // Whisper -> LLM -> TTS pipeline, so the call feature itself never breaks.
   mahaSetState('thinking');
   try{
+    // نمسك رفض المحاولة حتى لو خسرت سباق المهلة: رفضها اليتيم كان يتسجل
+    // في سجل أخطاء المستخدمين كخطأ إذن مايك بلا معالج.
+    const rtAttempt = mahaStartRealtimeCall();
+    rtAttempt.catch(() => {});
     await Promise.race([
-      mahaStartRealtimeCall(),
+      rtAttempt,
       new Promise((_, reject) => setTimeout(() => reject(new Error('Realtime setup timed out')), 12000)),
     ]);
+    mahaShowModeTag('hd');
     return;
   }catch(e){
     if(e && e.message === '__points__'){
@@ -1930,7 +1949,17 @@ async function mahaStartCallInner(mode){
   }
   // Skip the spoken greeting - jump straight to listening so Maha replies
   // to whatever the user says first, without any intro audio.
+  mahaShowModeTag('basic');
   if(mahaCallActive) mahaCallLoop();
+}
+
+// وسم تشخيصي صغير جنب الاسم يبين أي نظام صوت يشتغل فعليًا في هذي المكالمة:
+// HD = صوت-لصوت مباشر (نمط ChatGPT) · أساسي = المسار الاحتياطي القديم.
+function mahaShowModeTag(mode){
+  const nameEl = document.getElementById('mahaCallNameLabel');
+  if(!nameEl) return;
+  const base = nameEl.textContent.replace(/ · (HD|أساسي)$/, '');
+  nameEl.textContent = base + (mode === 'hd' ? ' · HD' : ' · أساسي');
 }
 
 // Two quick taps (or two different entry points) used to open two live calls at
@@ -2015,7 +2044,12 @@ if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
     const { ov, ring, bubble } = buildOverlay();
     document.body.appendChild(ov);
     requestAnimationFrame(() => { ov.style.opacity = '1'; });
-    pointAt(ring, bubble, mahaBtn, txt[0]);
+    // على الجوال مها راسية داخل شريط الكتابة — عبارة «تقدر تحركها» صارت غلط،
+    // نعرض الجزء الأول فقط (كل اللغات تفصل بشرطة —).
+    const mahaHint = document.documentElement.classList.contains('mobile-ui')
+      ? String(txt[0]).split('—')[0].trim()
+      : txt[0];
+    pointAt(ring, bubble, mahaBtn, mahaHint);
     let t2 = null, t3 = null;
     function dismiss(){
       markDone();
