@@ -1,0 +1,22 @@
+# هل يثبت ما يُكتب في قاعدة البيانات؟ يُشغَّل عند الطلب لا مع كلّ نشرة:
+# كلّ تشغيل يترك سجلّ مشاركة صغيرًا واحدًا (حذفه يتطلّب توكن صاحبه).
+name: Storage check
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: العنوان المراد قياسه
+        required: false
+        default: https://omran-ai-builder.vercel.app
+
+jobs:
+  storage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Write then read back
+        run: node scripts/storage-check.mjs "${{ inputs.url }}"
