@@ -284,7 +284,10 @@ module.exports = async (req, res) => {
                   // Preserve quiet opening words and natural pauses in a first turn.
                   threshold: 0.08,
                   prefix_padding_ms: 1000,
-                  silence_duration_ms: 450,
+                  // كانت 450م.ث — أي توقّف طبيعيّ وسط الجملة كان يقطعها فيصل
+                  // نصف الكلام ويأتي الردّ «مش مضبوط». 700م.ث توازن مجرَّب:
+                  // تسمع الجملة كاملة بزيادة كمون شبه محسوسة فقط.
+                  silence_duration_ms: 700,
                   // Be explicit so every detected user turn creates a reply.
                   // The client sends one explicit response.create after speech_stopped.
                 // Avoid racing the server's automatic response on mobile.
