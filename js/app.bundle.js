@@ -16930,7 +16930,7 @@ window.postWithConfirm = postWithConfirm;
 // --- PWA: service worker + install prompt ---
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then((reg) => {
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((reg) => {
       // Check for a newer service worker on every load, and whenever the tab regains focus.
       reg.update().catch(() => {});
       document.addEventListener('visibilitychange', () => {
