@@ -1,0 +1,33 @@
+# التجربة التي يعيشها المستخدم — متصفّح حقيقيّ على النطاق الحقيقيّ:
+# تسجيل ← إعادة تحميل ← تبويب جديد ← لوحة التشخيص. اللقطات تُرفع كملفّات
+# يراها المالك بعينه. عند الطلب: كلّ تشغيل يترك حساب zzcheck واحدًا.
+name: E2E on production
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: العنوان المراد قياسه
+        required: false
+        default: https://omran-ai-builder.vercel.app
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install Playwright Chromium
+        run: |
+          npm i --no-save playwright >/dev/null 2>&1
+          npx playwright install --with-deps chromium
+      - name: Signup, reload, new tab, diag — as a real user
+        run: node scripts/e2e-prod.mjs "${{ inputs.url }}"
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: e2e-*.png
