@@ -11,6 +11,7 @@
 //       tunable = له بديل آمن في الكود · money = باب مقفل، حضورٌ فقط
 const SPEC = {
   AUTH_SECRET:            ['core',    'الجلسات وبوّابة المالك'],
+  AUTH_SECRET_PREVIOUS:   ['tunable', 'مناوبة السرّ: يُقرأ به السجلّ القديم ثمّ يُعاد تعميته بالجديد'],
   OWNER_USERNAME:         ['core',    'بوّابة المالك'],
   MONITOR_KEY:            ['core',    'المراقبة الخارجية'],
   UPSTASH_REDIS_REST_URL: ['core',    'قاعدة البيانات'],
