@@ -9,6 +9,10 @@ on:
         description: العنوان المراد قياسه
         required: false
         default: https://omran-ai-builder.vercel.app
+      account:
+        description: أنشئ حسابًا مؤقّتًا لاختبار ثبات سجلّ المستخدم (يكتب في جدول المستخدمين)
+        required: false
+        default: 'false'
 
 jobs:
   storage:
@@ -20,3 +24,9 @@ jobs:
           node-version: 24
       - name: Write then read back
         run: node scripts/storage-check.mjs "${{ inputs.url }}"
+
+      # يُنشئ حسابًا واحدًا باسم zzcheck… — لا يعمل إلا بطلب صريح، لأنّه يكتب
+      # في جدول المستخدمين. للمالك حذفه من لوحة الإدارة.
+      - name: Account round-trip (creates one throwaway account)
+        if: inputs.account == 'true'
+        run: node scripts/account-roundtrip.mjs "${{ inputs.url }}"
