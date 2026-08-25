@@ -220,7 +220,9 @@ const $ = s => document.querySelector(s);
   // العطب للمستخدم بوصفه «التسجيل ما يثبت» أيًّا كان سببه الحقيقيّ. هنا يُسجَّل
   // السبب ووقته في localStorage — لا توكن ولا قيمة سرّ، كلمة واحدة ووقت —
   // وتقرؤه لوحة ?diag=1. لا يُرسَل إلى أيّ خادم.
+  let sessionNoted = false; // سُجّل سبب في هذا التحميل؟ يمنع «لا-توكن» العامّة من طمس سبب أدقّ
   function noteSession(reason){
+    sessionNoted = true;
     try { localStorage.setItem('aiapp_session_note', JSON.stringify({ reason, at: new Date().toISOString() })); }
     catch(e){ __swallow(e, "auth:app-01-boot-auth#note"); }
   }
@@ -627,12 +629,33 @@ const $ = s => document.querySelector(s);
         window.history.replaceState({}, document.title, cleanUrl);
         setTimeout(() => onAuthed(guser, gavatar || null), 0);
       } else if(gerror){
+        // الخادم يسمّي سبب الفشل في gerror — ستّة أسباب مختلفة العلاج — وكان
+        // العميل يرميه ويعرض «حاول مرة أخرى» الواحدة للجميع. ضاعت ساعات اليوم
+        // في تخمين ما كان مكتوبًا في الرابط. الآن يُسجَّل في ملاحظة الجلسة
+        // (تعرضه لوحة ?diag=1) ويُعرض للمستخدم نصًّا يخصّ سببه هو.
+        noteSession('جوجل-' + gerror);
         window.history.replaceState({}, document.title, cleanUrl);
         setTimeout(() => {
           const isEn = (localStorage.getItem('aiapp_lang') === 'en');
           const box = $('#authError');
-          if(box) box.textContent = isEn ? 'Google sign-in failed, please try again' : 'تعذر تسجيل الدخول بجوجل، حاول مرة أخرى';
-        }, 0);
+          const M = {
+            google_not_configured: ['إعداد جوجل ناقص في الخادم — GOOGLE_CLIENT_ID أو GOOGLE_CLIENT_SECRET غير مضبوط', 'Google is not configured on the server (missing client id/secret)'],
+            token_exchange_failed: ['رفضت جوجل إتمام الدخول — غالبًا سرّ العميل في الخادم لا يطابق ما في Google Console', 'Google rejected the sign-in — the server\'s client secret likely does not match Google Console'],
+            missing_code:          ['عاد المتصفّح من جوجل بلا رمز — أعد المحاولة', 'Returned from Google without a code — try again'],
+            profile_fetch_failed:  ['تعذّر جلب ملفّك من جوجل — أعد المحاولة', 'Could not fetch your Google profile — try again'],
+            email_not_verified:    ['بريد حساب جوجل غير مفعَّل — فعِّله ثمّ أعد المحاولة', 'Your Google email is not verified'],
+            access_denied:         ['ألغيتَ الدخول من شاشة جوجل', 'You cancelled the Google sign-in'],
+            server_error:          ['خطأ في الخادم أثناء إتمام الدخول — أعد المحاولة', 'Server error while completing sign-in'],
+          };
+          const pair = M[gerror];
+          const text = pair ? (isEn ? pair[1] : pair[0])
+            : (isEn ? 'Google sign-in failed (' + gerror + ')' : 'تعذر تسجيل الدخول بجوجل (' + gerror + ')');
+          try { const hb = $('#headerLoginBtn'); if(hb) hb.click(); } catch(e){ /* فتح الشاشة تيسير؛ الرسالة محفوظة في الملاحظة على كلّ حال */ }
+          if(box) box.textContent = text;
+          // setMode('login') عند الإقلاع يمسح errBox — نعيد الكتابة بعده،
+          // فالرسالة أهمّ من نظافة الصندوق: بدونها يعود «حاول مرة أخرى» الأعمى.
+          setTimeout(() => { if(box && !box.textContent) box.textContent = text; }, 1500);
+        }, 700);
       }
     } catch(e){ /* ignore */ }
   })();
@@ -1091,7 +1114,12 @@ const $ = s => document.querySelector(s);
       }
     }
     const token = authGet('aiapp_auth_token');
-    if(!token){ noteSession('لا-توكن'); hideOverlay(); return; }
+    if(!token){
+      // «لا-توكن» وصف عامّ — إن سبقه سبب أدقّ في هذا التحميل (عودة جوجل
+      // الفاشلة تُسجّل «جوجل-…» قبل هذا السطر) فلا نطمسه به.
+      if(!sessionNoted) noteSession('لا-توكن');
+      hideOverlay(); return;
+    }
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
