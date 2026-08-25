@@ -61,3 +61,16 @@ if (!searched && /مواقيت|صلاة|سعر|طقس/.test(q)) {
   console.log('\n⚠️ سؤال حيّ أُجيب بلا بحث — هذا هو الخلل المبلَّغ.');
   process.exitCode = 2;
 }
+
+// 📍 فحص الترميز الجغرافي العكسي على الإنتاج (إحداثيات عجمان الثابتة —
+// ليست موقع أحد، فلا خصوصية تُمسّ).
+try {
+  const rg = await fetch(base + '/api/system?action=revgeo', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lat: 25.4052, lon: 55.5136 }),
+  });
+  const j = rg.ok ? await rg.json() : null;
+  if (j && j.label) console.log('\n📍 revgeo: ✅ ' + j.label + ' (' + j.src + ')');
+  else { console.log('\n📍 revgeo: ✗ HTTP ' + rg.status); process.exitCode = process.exitCode || 3; }
+} catch (e) { console.log('\n📍 revgeo: ✗ ' + e.message); process.exitCode = process.exitCode || 3; }
