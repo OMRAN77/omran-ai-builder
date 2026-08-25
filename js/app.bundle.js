@@ -291,6 +291,15 @@ const $ = s => document.querySelector(s);
   function cookieRemove(key){
     try{ document.cookie = key + '=; path=/; max-age=0'; }catch(e){ __swallow(e, "auth:app-01-boot-auth#ck2"); }
   }
+  // 📋 سبب آخر خروج. التطبيق كان يعرض شاشة الدخول دون أن يقول لماذا، فيبدو
+  // العطب للمستخدم بوصفه «التسجيل ما يثبت» أيًّا كان سببه الحقيقيّ. هنا يُسجَّل
+  // السبب ووقته في localStorage — لا توكن ولا قيمة سرّ، كلمة واحدة ووقت —
+  // وتقرؤه لوحة ?diag=1. لا يُرسَل إلى أيّ خادم.
+  function noteSession(reason){
+    try { localStorage.setItem('aiapp_session_note', JSON.stringify({ reason, at: new Date().toISOString() })); }
+    catch(e){ __swallow(e, "auth:app-01-boot-auth#note"); }
+  }
+
   function authSet(key, value){
     const mirror = (key === 'aiapp_auth_token' || key === 'aiapp_username');
     if(authRemembered()){ localStorage.setItem(key, value); sessionStorage.removeItem(key); if(mirror) cookieSet(key, value); }
@@ -1153,10 +1162,11 @@ const $ = s => document.querySelector(s);
         localStorage.setItem('aiapp_auth_token', ct);
         const cu = cookieGet('aiapp_username');
         if(cu && !authGet('aiapp_username')) localStorage.setItem('aiapp_username', cu);
+        noteSession('استُعيد-من-الكوكي');
       }
     }
     const token = authGet('aiapp_auth_token');
-    if(!token){ hideOverlay(); return; }
+    if(!token){ noteSession('لا-توكن'); hideOverlay(); return; }
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
@@ -1168,30 +1178,105 @@ const $ = s => document.querySelector(s);
         // 🔄 جلسة منزلقة: الخادم يعيد توكن جديدًا مع كل تحقق ناجح، فلا
         // ينقطع المستخدم النشط أبدًا بانتهاء صلاحية الثلاثين يومًا.
         if(data.token) authSet('aiapp_auth_token', data.token);
+        noteSession('تحقّق-ناجح');
         onAuthed(data.username, data.avatar);
         if(data.adminMessage && data.adminMessage.text){
           setTimeout(() => { alert('📩 رسالة من الإدارة:\n\n' + data.adminMessage.text); }, 600);
         }
       } else if(data && data.banned){
+        noteSession('حساب-موقوف');
         authRemove('aiapp_auth_token');
         alert('🚫 ' + (data.error || 'تم إيقاف هذا الحساب من قبل الإدارة'));
         showOverlay();
       } else if(res.status === 401 || res.status === 403){
         // رفض صريح من الخادم: التوكن فعلًا غير صالح.
+        noteSession('رُفض-' + res.status);
         authRemove('aiapp_auth_token');
         showOverlay();
       } else {
         // خلل مؤقت (500/429/إقلاع بارد): لا نحذف جلسة صالحة بسببه — كنا
         // نطرد المستخدم لشاشة الدخول عند أي عطل عابر في الخادم.
+        noteSession('خلل-خادم-' + res.status);
         const cachedUser = authGet('aiapp_username');
         if(cachedUser) onAuthed(cachedUser); else showOverlay();
       }
     } catch(e){
       // Offline: allow cached session to proceed without blocking, since this is a PWA.
+      noteSession('تعذّر-الاتّصال');
       const cachedUser = authGet('aiapp_username');
       if(cachedUser) onAuthed(cachedUser); else showOverlay();
     }
   });
+})();
+
+// ===== لوحة تشخيص الجلسة: /?diag=1 =====
+//
+// قضينا ساعة والمالك يقلّب في DevTools ولا يصل: مرّةً حدّد مجلّد «Local storage»
+// بدل العنوان الذي تحته فرأى الحالة الفارغة، ومرّةً فحص التخزين وهو على صفحة
+// accounts.google.com — أي تخزين جوجل لا تخزينه. والمخزن مربوط بالعنوان
+// المفتوح، فلا يمكن أن يُظهر شيئًا من التطبيق.
+//
+// فبدل تعليمه أدوات المتصفّح، يقول التطبيق حالته بنفسه: صفحة واحدة تُفتح
+// بعنوان، تعرض ما يحتاجه التشخيص وحده.
+//
+// ولا سرّ يخرج منها: التوكن يُقال «موجود/غائب» وطوله، ولا يُطبع قطّ.
+(function sessionDiagnostics(){
+  try {
+    if(!/[?&]diag=1\b/.test(location.search)) return;
+  } catch(e){ return; }
+
+  const has = (v) => v ? '✅ موجود' : '❌ غائب';
+  const get = (k) => { try { return localStorage.getItem(k); } catch(e){ return null; } };
+  const sget = (k) => { try { return sessionStorage.getItem(k); } catch(e){ return null; } };
+
+  function build(){
+    const tokL = get('aiapp_auth_token'), tokS = sget('aiapp_auth_token');
+    let tokC = '';
+    try { const m = document.cookie.match(/(?:^|; )aiapp_auth_token=([^;]*)/); tokC = m ? m[1] : ''; } catch(e){ /* الكوكي محجوب في بعض السياقات — اللوحة تعرضه «غائبًا» وهذا صادق */ }
+    let note = null;
+    try { note = JSON.parse(get('aiapp_session_note') || 'null'); } catch(e){ /* قيد قديم بصيغة تالفة — تعرض اللوحة «لم يُسجَّل بعد» بدل الانهيار */ }
+    const bundle = (document.querySelector('script[src*="app.bundle"]') || {}).src || '—';
+    const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
+
+    const rows = [
+      ['العنوان الذي أنت عليه', location.origin],
+      ['التوكن في localStorage', has(tokL) + (tokL ? ' (' + tokL.length + ' حرفًا)' : '')],
+      ['التوكن في sessionStorage', has(tokS)],
+      ['التوكن في الكوكي', has(tokC)],
+      ['اسم المستخدم المحفوظ', get('aiapp_username') || sget('aiapp_username') || '—'],
+      ['«تذكّرني» وقت الحفظ', tokL ? 'مفعّل (حُفظ في localStorage)' : (tokS ? 'مطفأ (حُفظ في الجلسة فقط)' : '—')],
+      ['سبب آخر خروج', note ? (note.reason + '  ·  ' + note.at) : '— لم يُسجَّل بعد'],
+      ['الحزمة التي يشغّلها متصفّحك', (bundle.split('/').pop() || '—')],
+      ['عامل الخدمة', sw ? '✅ يتحكّم' : '❌ لا يتحكّم'],
+      ['المتصفّح', navigator.userAgent.slice(0, 80)],
+    ];
+
+    const box = document.createElement('div');
+    box.id = 'sessionDiagBox';
+    box.setAttribute('dir', 'rtl');
+    box.style.cssText = 'position:fixed; inset:0; z-index:2147483647; background:#0b0b0f; color:#e8e8ef; overflow:auto; padding:18px; font:14px/1.9 system-ui,-apple-system,Segoe UI,Tahoma,sans-serif;';
+    const esc = (t) => String(t).replace(/[&<>]/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[c]));
+    box.innerHTML =
+      '<div style="max-width:720px; margin:0 auto;">' +
+      '<h2 style="margin:0 0 4px; font-size:19px;">🩺 تشخيص الجلسة</h2>' +
+      '<p style="margin:0 0 14px; color:#9a9aab; font-size:13px;">لا يُعرض هنا أيّ سرّ. صوِّر هذه الشاشة وأرسلها.</p>' +
+      '<table style="width:100%; border-collapse:collapse;">' +
+      rows.map(([k, v]) =>
+        '<tr>' +
+        '<td style="padding:8px 10px; border-bottom:1px solid #23232e; color:#9a9aab; white-space:nowrap; vertical-align:top;">' + esc(k) + '</td>' +
+        '<td style="padding:8px 10px; border-bottom:1px solid #23232e; word-break:break-all;">' + esc(v) + '</td>' +
+        '</tr>').join('') +
+      '</table>' +
+      '<button id="sessionDiagClose" style="margin-top:16px; padding:9px 18px; border-radius:9px; border:1px solid #33334a; background:#1a1a24; color:#e8e8ef; cursor:pointer; font:inherit;">إغلاق</button>' +
+      '</div>';
+    document.body.appendChild(box);
+    const btn = document.getElementById('sessionDiagClose');
+    if(btn) btn.onclick = () => box.remove();
+  }
+
+  // بعد أن يفرغ الإقلاع من قراره، كي يظهر سبب هذه المرّة لا سبب المرّة السابقة.
+  if(document.readyState === 'loading') window.addEventListener('DOMContentLoaded', () => setTimeout(build, 1200));
+  else setTimeout(build, 1200);
 })();
 
 // ===== Email OTP Login =====
