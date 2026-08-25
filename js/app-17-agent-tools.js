@@ -50,6 +50,18 @@
     });
   }
 
+  // 📋 أثر تشخيصي لأداة الموقع في «سلسلة آخر الأحداث» (?diag=1): ما أعاده
+  // المتصفّح فعلًا — منطقة ودقّة أو سبب فشل. لا إحداثيات أبدًا، ولا إرسال لخادم.
+  function geoTrail(txt) {
+    try {
+      var entry = { reason: ('موقع: ' + txt).slice(0, 90), at: new Date().toISOString() };
+      var trail = [];
+      try { trail = JSON.parse(localStorage.getItem('aiapp_session_notes') || '[]'); } catch (e) { trail = []; }
+      trail.unshift(entry);
+      localStorage.setItem('aiapp_session_notes', JSON.stringify(trail.slice(0, 5)));
+    } catch (e) { /* التشخيص ترف لا يُسقط أداة */ }
+  }
+
   /** ينفّذ أداة واحدة ويعيد نصًّا يفهمه النموذج. */
   window.omranAgentTools = {
     run: async function (name, args) {
@@ -110,8 +122,9 @@
               navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 });
             });
           } catch (ge) {
-            if (ge && ge.code === 1) return 'رفض المستخدم إذن الموقع في المتصفّح. اشرح له أنه يستطيع تفعيله من أيقونة القفل بجانب العنوان ثم إعادة السؤال، ولا تكرّر المحاولة الآن.';
-            if (ge && ge.code === 3) return 'انتهت مهلة تحديد الموقع دون إشارة GPS كافية. اقترح عليه المحاولة في مكان مكشوف أو تفعيل GPS.';
+            if (ge && ge.code === 1) { geoTrail('رفض-الإذن'); return 'رفض المستخدم إذن الموقع في المتصفّح. اشرح له أنه يستطيع تفعيله من أيقونة القفل بجانب العنوان ثم إعادة السؤال، ولا تكرّر المحاولة الآن.'; }
+            if (ge && ge.code === 3) { geoTrail('مهلة'); return 'انتهت مهلة تحديد الموقع دون إشارة GPS كافية. اقترح عليه المحاولة في مكان مكشوف أو تفعيل GPS.'; }
+            geoTrail('خطأ');
             return 'تعذّر تحديد الموقع: ' + String((ge && ge.message) || 'خطأ غير معروف').slice(0, 120);
           }
           var glat = pos.coords.latitude, glon = pos.coords.longitude;
@@ -125,6 +138,7 @@
             if (rr.ok) rg = await rr.json();
           } catch (e2) { rg = null; }
           var gacc = Math.round(pos.coords.accuracy || 0);
+          geoTrail((rg && rg.label ? String(rg.label).split('،').slice(0, 2).join('،') : 'بلا-عنوان') + ' · دقة ' + (gacc > 999 ? (gacc / 1000).toFixed(1) + 'كم' : gacc + 'م'));
           if (rg && rg.label) {
             // دقة خشنة (كمبيوتر بلا GPS — تحديد من الشبكة) قد تخطئ كيلومترات:
             // نصارح النموذج بذلك ليصارح المستخدم بدل يقين زائف.
