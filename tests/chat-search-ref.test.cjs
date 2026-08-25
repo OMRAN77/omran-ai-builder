@@ -54,5 +54,15 @@ assert.ok(__vsearch && typeof __vsearch.tavilySearch === 'function', 'tavilySear
   console.log('  ✓ فشل ويكيبيديا صامت لا يعطّل السلسلة');
   global.fetch = realFetch;
 
+  // 🏨 مسار الفنادق: «فندق رخيص في دبي» تعيد مواقع الحجز الخمسة كلّها
+  // بروابط مفصّلة على دبي — لا بوكينج وحدها (الشكوى المقيسة).
+  const hotels = await __vsearch.tavilySearch('اريد فندق رخيص في دبي', null, false, 'AE', 'Dubai');
+  for (const site of ['booking.com', 'agoda.com', 'almosafer.com', 'wego.ae', 'airbnb.ae']) {
+    assert.ok(hotels.includes(site), 'موقع الحجز موجود: ' + site);
+  }
+  assert.ok(hotels.includes('ss=Dubai') && hotels.includes('ممنوع الاكتفاء بموقع واحد'), 'روابط مفصّلة على دبي والاكتفاء بموقع واحد ممنوع');
+  assert.ok(!hotels.includes('dubizzle'), 'لا دوبيزل في الفنادق');
+  console.log('  ✓ مسار الفنادق يعيد مواقع الحجز الخمسة كلّها مفصّلة على المدينة');
+
   console.log('chat search ref tests passed');
 })();

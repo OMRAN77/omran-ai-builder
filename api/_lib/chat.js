@@ -636,6 +636,8 @@ async function tavilySearch(query, reC, plateAsk, country, city) {
   // 🏠 v561 — عقار للبيع أو الشراء: طبقة واحدة في المرّة، لا خرائط ولا دوبيزل.
   const rc = foreign ? null : (reC || (isRealEstateAsk(query) ? { layer: 0, src: query } : null));
   if (rc) return reResult(rc);
+  // 🏨 v-hotels — فندق/منتجع/شاليه: أسماء + مواقع الحجز الخمسة كلّها.
+  if (HOTEL_ASK_RE.test(query)) return hotelAnswer(query);
   // 🗺️ الخرائط ليست معرفة: كانت تسبق البحث فتخنقه — سؤال عن طوكيو يرجع بطاقات
   // مطاعم. الآن لا تُستدعى لسؤال أجنبيّ إلّا آخر الصفّ، إن سقطت السلسلة كلّها.
   // 📍 v617 — سؤال الأماكن يستحقّ الخرائط في أيّ دولة. كان foreign يقتل الاستدعاء
@@ -651,6 +653,30 @@ async function tavilySearch(query, reC, plateAsk, country, city) {
     if (back.length) return placeCards(back);
   }
   return live;
+}
+
+// 🏨 v-hotels — مقيس من المالك: «فندق رخيص» أعطته بوكينج وحدها. مسار مخصّص
+// كمسار الأرقام: أسماء فنادق من الخرائط + مواقع الحجز الخمسة كلّها بروابط
+// مفصّلة على المدينة إن ذُكرت. قاعدة «قائمة الأماكن بلا روابط» تُستثنى هنا
+// صراحةً لسطر روابط الحجز وحده.
+const HOTEL_ASK_RE = /فندق|فنادق|منتجع|منتجعات|شاليه|شاليهات|hotel|resort/i;
+async function hotelAnswer(query) {
+  let names = [];
+  try {
+    names = (await fetchPlaces(process.env.GOOGLE_PLACES_API_KEY, query, 'ar', regionOf(query) || ''))
+      .slice(0, 6).map((p) => p.name);
+  } catch (e) { names = []; }
+  const em = RE_EMIRATE.find((e) => e[0].test(query));
+  const cityEn = em ? em[1].replace(/-/g, ' ').replace(/\b[a-z]/g, (c) => c.toUpperCase()) : '';
+  const enc = encodeURIComponent(cityEn || 'United Arab Emirates');
+  const inCity = em ? ' في ' + em[2] : '';
+  return (names.length ? ('فنادق مقترحة' + inCity + ':\n' + names.map((n, i) => (i + 1) + '. ' + n).join('\n') + '\n\n') : '')
+    + '1. بوكينج — أوسع اختيار' + inCity + ' مع فلترة بالسعر والتقييم\nhttps://www.booking.com/searchresults.ar.html?ss=' + enc + '\n\n'
+    + '2. أجودا — أسعار منافسة وعروض قوية\nhttps://www.agoda.com/ar-ae/\n\n'
+    + '3. المسافر — موقع خليجي بالعربية ودفع محلي\nhttps://www.almosafer.com/ar/hotels\n\n'
+    + '4. ويجو — يقارن الأسعار بين مواقع الحجز\nhttps://www.wego.ae/ar/hotels\n\n'
+    + '5. إير بي إن بي — شقق وبيوت بديلة عن الفنادق\nhttps://www.airbnb.ae/s/' + enc + '/homes\n\n'
+    + 'المصدر: مواقع حجز الفنادق المعتمدة. اعرض أسماء الفنادق المقترحة أوّلًا (إن وُجدت) بأسمائها فقط بلا روابط ولا تقييمات، ثمّ سطر عنوان «🔗 روابط الحجز والمقارنة:» مرّة واحدة وتحته المواقع الخمسة كلّها بالترتيب — هذا السطر استثناء صريح من قاعدة «قائمة الأماكن بلا روابط». التنسيق إلزاميّ: لكلّ موقع سطران — الأوّل اسمه العربيّ ثمّ شرطة ثمّ وصف قصير بلا أيّ رابط، والثاني رابطه وحده بصيغة [اسم قصير](الرابط). ممنوع دوبيزل وأيّ موقع إعلانات، وممنوع الاكتفاء بموقع واحد.';
 }
 
 async function fetchPage(url) {
