@@ -12111,6 +12111,8 @@ if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
 (function mahaBtnDraggableSetup(){
   const btn = btnMahaEl;
   if(!btn) return;
+  // على الجوال مها راسية داخل شريط الكتابة (نمط ChatGPT) — لا سحب ولا موضع محفوظ.
+  if(document.documentElement.classList.contains('mobile-ui')) return;
   const STORAGE_KEY = 'mahaBtnPos';
   let dragging = false, moved = false, startX = 0, startY = 0, startLeft = 0, startTop = 0, activePointerId = null;
 
@@ -12262,6 +12264,37 @@ if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
     lightbox.style.display = 'flex';
   });
   lightbox.addEventListener('click', () => { lightbox.style.display = 'none'; });
+})();
+
+// ---- مها داخل شريط الكتابة على الجوال (نمط ChatGPT) ----
+// بدل الزر العائم القابل للسحب: على الجوال يرسو زر مها داخل صف أدوات
+// الكتابة بجانب المايك، ويتحوّل الشريط لصف واحد صغير يتمدد مع الكتابة.
+(function mahaDockMobile(){
+  if(!document.documentElement.classList.contains('mobile-ui')) return;
+  const btn = btnMahaEl;
+  const tools = document.querySelector('#composerBox .inputbar-tools');
+  if(!btn || !tools) return;
+  btn.removeAttribute('style'); // امسح position:fixed المكتوب inline في الـHTML
+  btn.classList.add('maha-docked');
+  tools.appendChild(btn);
+  try{ localStorage.removeItem('mahaBtnPos'); }catch(e){ __swallow(e, "ui:app-08-maha#dock"); }
+})();
+
+// تمدد حقل الكتابة مع المحتوى (سطر واحد افتراضيًا، حتى 110px) — جوال فقط.
+(function promptAutoGrowMobile(){
+  if(!document.documentElement.classList.contains('mobile-ui')) return;
+  const ta = document.getElementById('prompt');
+  if(!ta) return;
+  const grow = () => {
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 110) + 'px';
+  };
+  ta.addEventListener('input', grow);
+  // الإرسال يفرغ الحقل برمجيًا (بدون حدث input) — نرجعه لسطر واحد بعده.
+  const sendBtn = document.getElementById('btnSend');
+  if(sendBtn) sendBtn.addEventListener('click', () => setTimeout(grow, 0));
+  ta.addEventListener('keydown', (e) => { if(e.key === 'Enter') setTimeout(grow, 0); });
+  grow();
 })();
 /* Global shim so the dozen per-feature status writes scattered through the
    send flow can feed the same bar instead of wiping it with textContent=.
