@@ -615,8 +615,6 @@ const $ = s => document.querySelector(s);
   const googleBtnEl = $('#authGoogleBtn');
   if(googleBtnEl){
     googleBtnEl.onclick = () => {
-      const clientId = '533765051685-2334rjfvu738sd2i50p7rb8gck1d00i2.apps.googleusercontent.com';
-      const redirectUri = window.location.origin + '/api/auth-google-callback';
       // state: قيمة عشوائية تُحفظ محليًا ويعيدها جوجل كما هي. بدونها يستطيع
       // مهاجم أن يدفع متصفح الضحية لإكمال تسجيل دخول بـ code يخصّه هو (CSRF)،
       // فتنتهي الضحية داخل حسابه دون أن تدري.
@@ -627,15 +625,12 @@ const $ = s => document.querySelector(s);
         oauthState = Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('');
         sessionStorage.setItem('aiapp_oauth_state', oauthState);
       } catch(e){ console.warn('[oauth] could not generate state', e); }
-      const params = new URLSearchParams({
-        client_id: clientId,
-        redirect_uri: redirectUri,
-        response_type: 'code',
-        scope: 'openid email profile',
-        prompt: 'select_account',
-        state: oauthState,
-      });
-      window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+      // لا نبني رابط جوجل هنا. كنّا نبنيه من window.location.origin، والخادم
+      // يبني عنوان العودة من SITE_URL عند المبادلة — وجوجل تشترط تطابقهما
+      // حرفًا بحرف، فمن أيّ عنوان غير SITE_URL كان الدخول يفشل بـ
+      // redirect_uri_mismatch. الخادم يبنيه الآن بالقيم التي سيستعملها هو
+      // نفسه، فيستحيل الافتراق. (api/_lib/auth-google-start.js)
+      window.location.href = '/api/system?action=google-start&state=' + encodeURIComponent(oauthState);
     };
   }
 
