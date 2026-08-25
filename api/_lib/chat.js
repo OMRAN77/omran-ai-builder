@@ -339,8 +339,11 @@ const GLOBAL_NOTE = '\n\n[سؤال عن مكان خارج الإمارات — �
 
 const WIZARD_RE = /كتالوج|كتالوق|منيو|قائمة طعام|قائمة الطعام|بروفايل شرك/;
 
-    // محادثة طبيعية خفيفة: لا نحمّل كل تعليمات البحث والبناء على سؤال لا يحتاجها.
-    const TOOL_INTENT_RE = /ابحث|بحث|خبر|أخبار|اخبار|سعر|أسعار|اسعار|طقس|نتيجة|الرابط|المصدر|اليوم|الآن|اﻵن|مطعم|عيادة|مستشفى|متجر|ملابس|تسوق|بوتيك|فستان|عباية|موضة|متاجر|عروض|تخفيض|وظيفة|وظائف|عقار|سيارة|سيارات|خرائط|صورة|صور|فيديو|فديو|مقطع|توضيح|توضيحي|توضيحية|شرح مرئي|ارسم|تصميم|كود|احسب|احسبها|شغّل|شغل|اختبر|ابني|بناء|صمّم|صمم|أنشئ|انشئ|تطبيق|موقع|صفحة|أداة|web\s?search|latest|news|price|weather|source|image|video|draw|code|calculate|run|test|build|create|website|app|tool/i;
+    // v-chat-tools: كانت الأدوات خلف قائمة كلمات (TOOL_INTENT_RE) — «توقيت
+    // الصلاة في عجمان» ليست فيها، فقِيس بالمِجسّ ردٌّ بلا بحث وبلا تاريخ وبلا
+    // دولة يطلب من المستخدم «حدّد تاريخ اليوم». القائمة البيضاء لعبة أرنب
+    // ومطرقة لا تنتهي؛ القرار الآن للنموذج نفسه: كلّ دور غير اجتماعيّ يحمل
+    // الأدوات والتاريخ والدولة، وقاعدة (٣) تمنع استعمالها فيما لا يحتاجها.
     const LEAN_CONVERSATION_NOTE = '\n\n[أسلوب المحادثة — التزم به دائمًا]:\n' +
     '• اكشف نبرة المستخدم وطابقها فورًا:\n' +
     '  - خليجي دافئ (هلا / يا غالي / والله / شكلك / وين / ليش / شو / كيف الحال) → رد بنفس الدفء والعفوية بكلمات خليجية مناسبة.\n' +
@@ -394,12 +397,18 @@ function nowNote() {
   return ar ? ('\n[التاريخ الحقيقي الآن — توقيت الإمارات]: ' + ar + '. تجاهل أي تاريخ من بيانات تدريبك.') : '';
 }
 
-function countryNote(code) {
+function countryNote(code, cityRaw) {
+  // v-chat-geo: «مايحدد المكان الي انا فيه» — المدينة تأتي في x-vercel-ip-city
+  // مرمّزة URL وكانت تُهمَل، فسؤال «توقيت الصلاة» بلا مدينة لم يكن يُوطَّن.
+  let city = '';
+  try { city = decodeURIComponent(String(cityRaw || '')).trim(); } catch (e) { city = String(cityRaw || '').trim(); }
   const c = (typeof code === 'string' ? code.trim().toUpperCase() : '');
   if (!/^[A-Z]{2}$/.test(c)) return '\n[الدولة]: افترض أن المستخدم في الإمارات ما لم يذكر غير ذلك.';
   let ar = '';
   try { ar = new Intl.DisplayNames(['ar'], { type: 'region' }).of(c) || ''; } catch (e) { /* رمز لا يعرفه Intl */ }
-  return '\n[الدولة]: المستخدم يتصفّح من ' + (ar || c) + ' — أجب بمعلومات هذه الدولة (عملتها، جهاتها الرسمية) ما لم يذكر غيرها.';
+  return '\n[الموقع]: المستخدم يتصفّح من ' + (city ? city + '، ' : '') + (ar || c)
+    + ' — أجب بمعلومات هذه الدولة (عملتها، جهاتها الرسمية) ما لم يذكر غيرها.'
+    + (city ? ' وأي سؤال يعتمد على المكان (مواقيت الصلاة، الطقس، أقرب مكان) اعتمد فيه مدينته ' + city + ' تلقائيًّا بلا أن تسأله عنها.' : '');
 }
 
 // 🛰️ v566 — سلسلة الصمود: محرّك معرفة واحد = نقطة فشل واحدة. Tavily سقطت
@@ -756,7 +765,13 @@ module.exports = async (req, res) => {
       const memFacts = accountMemory
         ? accountMemory.split('\n').filter(function (l) { return l.startsWith('- '); }).map(function (l) { return l.slice(2); }).slice(0, 5)
         : [];
-      liveTurn = await prepareTurn(lastUser.content, deps, { memoryFacts: memFacts, now: new Date() });
+      // v-chat-fast: قِيس بالمِجسّ أنّ هذا البحث الاستباقي يحجز أوّل كلمة ١٧
+      // ثانية حين يتعثّر مزوّدوه ثم يعود صفر مصادر. سقف صارم: إن لم يُنجز خلال
+      // ٤ ثوانٍ يُترك والنموذج يبحث بأدواته — البثّ لا ينتظر بحثًا متعثّرًا.
+      liveTurn = await Promise.race([
+        prepareTurn(lastUser.content, deps, { memoryFacts: memFacts, now: new Date() }),
+        new Promise(function (resolve) { setTimeout(function () { resolve(null); }, 4000); }),
+      ]);
     } catch (e) { console.warn('[live-answers]', e && e.message); }
   }
   const liveNote = (liveTurn && liveTurn.searched && liveTurn.sources.length)
@@ -773,14 +788,13 @@ module.exports = async (req, res) => {
     const city = (req.headers && (req.headers['x-vercel-ip-city'] || '')) || '';
   // المجاملة القصيرة لا تحتاج تاريخًا أو دولة أو أدوات أو ملف المالك؛ حقن هذه
   // السياقات في «كيف الحال» هو ما حوّلها إلى قائمة فنادق ومواضيع قديمة.
-  const toolTurn = !quietSocialTurn && (wizardTurn || foreignTurn || !!reC ||
-      !!(lastUser && NUM_ASK_RE.test(lastUser.content)) || TOOL_INTENT_RE.test(lastUser && lastUser.content));
+  const toolTurn = !quietSocialTurn;
     const baseSystem = sysParts.join('\n\n');
     const ownerKnowledge = toolTurn ? require('./_knowledge.js').ownerKnowledge(req, token) : '';
     const system = quietSocialTurn
       ? baseSystem + (casualCheckInTurn ? '\n\n[هذا دور اجتماعي قصير]: أجب عن سؤال الحال مباشرةً في جملة طبيعية واحدة. المحادثة مستمرة، فلا تبدأ بتحية جديدة، ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق.' : '')
       : toolTurn
-        ? baseSystem + nowNote() + countryNote(country) + TOOLS_NOTE + BIDI_RULE + LINK_RULE + WIZARD_NOTE + IMAGE_TOPICS_NOTE + DEALS_NOTE + (wizardTurn ? '' : ANSWER_FIRST_NOTE) + askCapNote + ownerKnowledge + liveNote
+        ? baseSystem + nowNote() + countryNote(country, city) + TOOLS_NOTE + BIDI_RULE + LINK_RULE + WIZARD_NOTE + IMAGE_TOPICS_NOTE + DEALS_NOTE + (wizardTurn ? '' : ANSWER_FIRST_NOTE) + askCapNote + ownerKnowledge + liveNote + LEAN_CONVERSATION_NOTE
         : baseSystem + LEAN_CONVERSATION_NOTE + IMAGE_TOPICS_NOTE + BIDI_RULE + liveNote;
 
       const convoSource = quietSocialTurn ? [lastUser] : messages;
