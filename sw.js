@@ -1,4 +1,4 @@
-const CACHE_NAME = 'omran-ai-builder-gold-icons-85f39aba';
+const CACHE_NAME = 'omran-ai-builder-gold-icons-90edf99e';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -15,7 +15,10 @@ const STATIC_ASSETS = [
   './icons/favicon-32-v2.png?icon=gold-20260819',
 ];
 
+// هل هذا تنصيب أول أم تحديث فوق عامل قديم؟ التحديث وحده يعيد تحميل الصفحات.
+let __swIsUpdate = false;
 self.addEventListener('install', (event) => {
+  __swIsUpdate = !!self.registration.active;
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) =>
       // Added one by one on purpose: a single 404 must degrade the offline
@@ -62,12 +65,18 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
-  );
-  self.clients.claim();
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)));
+    await self.clients.claim();
+    // جوهر «التحديث يوصل كل الأجهزة»: الصفحات العالقة على نسخة قديمة لا
+    // تملك كود إعادة التحميل، فالعامل الجديد يعيد تحميلها بنفسه لحظة
+    // توليه — بلا أي خطوة من المستخدم. التنصيب الأول لا يعيد تحميل شيء.
+    if (__swIsUpdate) {
+      const clients = await self.clients.matchAll({ type: 'window' });
+      for (const c of clients) { try { await c.navigate(c.url); } catch (e) { /* نافذة لا تقبل التنقل */ } }
+    }
+  })());
 });
 
 function isApiRequest(url) {
