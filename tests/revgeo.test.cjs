@@ -80,6 +80,9 @@ function stubFetch(impl) { global.fetch = impl; }
   assert.ok(agent.includes("if (name === 'get_location')"), 'العميل ينفّذ get_location');
   assert.ok(agent.includes('getCurrentPosition'), 'التحديد عبر geolocation المتصفّح لا الخادم');
   assert.ok(agent.includes('رفض المستخدم إذن الموقع'), 'رسالة واضحة عند رفض الإذن');
+  assert.ok(agent.includes('تقريبيّ فقط') && agent.includes('gacc > 3000'), 'الدقة الخشنة تُعلَن تقريبية لا يقينًا زائفًا');
+  const chatSrc = chat;
+  assert.ok(chatSrc.includes('فممنوع الجواب منها؛ استدعِ get_location'), 'سؤال «وين أنا» لا يُجاب من مدينة الشبكة أبدًا');
   const geoBlock = agent.slice(agent.indexOf("if (name === 'get_location')"), agent.indexOf('أداة غير معروفة'));
   assert.ok(!/localStorage|sessionStorage/.test(geoBlock), 'لا حفظ للإحداثيات في أي مخزن دائم');
   console.log('  ✓ الأسلاك موصولة: خادم + نموذج + متصفّح، بلا تخزين');
