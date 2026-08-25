@@ -4,9 +4,9 @@ const { getUser, putUser, makeToken } = require('./auth.js'); // داخل _lib
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
-const rawSiteUrl = process.env.SITE_URL || 'https://omran-ai-builder.vercel.app';
-const SITE_URL = rawSiteUrl.replace(/\/+$/, '');
-const REDIRECT_URI = `${SITE_URL}/api/auth-google-callback`;
+// موضع واحد للعنوان القانونيّ يتشاركه هذا المعالِج ومعالِج البدء، فلا يمكن
+// أن يفترق ما يرسله المتصفّح عمّا يرسله الخادم. (انظر _site.js)
+const { siteUrl, googleRedirectUri } = require('./_site.js');
 
 function randomPasswordHash() {
   const salt = crypto.randomBytes(16).toString('hex');
@@ -21,7 +21,7 @@ function genRecoveryCode() {
 
 module.exports = async (req, res) => {
   const failRedirect = (reason) => {
-    res.writeHead(302, { Location: SITE_URL + '/?gerror=' + encodeURIComponent(reason) });
+    res.writeHead(302, { Location: siteUrl() + '/?gerror=' + encodeURIComponent(reason) });
     res.end();
   };
 
@@ -47,7 +47,7 @@ module.exports = async (req, res) => {
         code: String(code),
         client_id: GOOGLE_CLIENT_ID,
         client_secret: GOOGLE_CLIENT_SECRET,
-        redirect_uri: REDIRECT_URI,
+        redirect_uri: googleRedirectUri(),
         grant_type: 'authorization_code',
       }),
       signal: AbortSignal.timeout(10000),
@@ -122,7 +122,7 @@ module.exports = async (req, res) => {
       gavatar: user.avatar || '',
       state: typeof state === 'string' ? state : '',
     });
-    res.writeHead(302, { Location: SITE_URL + '/?' + params.toString() });
+    res.writeHead(302, { Location: siteUrl() + '/?' + params.toString() });
     res.end();
   } catch (e) {
     failRedirect('server_error');
