@@ -36,5 +36,23 @@ assert.ok(__vsearch && typeof __vsearch.tavilySearch === 'function', 'tavilySear
     assert.fail('الاستدعاء بلا country/city رمى: ' + (e && e.message));
   }
   console.log('  ✓ الاستدعاء بلا country/city آمن');
+
+  // 📚 ويكيبيديا العربية: نجاحها يعيد خلاصة بعنوان ورابط، وفشلها null صامت.
+  const realFetch = global.fetch;
+  global.fetch = async () => ({
+    ok: true,
+    text: async () => JSON.stringify({ query: { pages: { 123: {
+      title: 'عجمان', extract: 'عجمان إحدى إمارات دولة الإمارات العربية المتحدة السبع.',
+      fullurl: 'https://ar.wikipedia.org/wiki/عجمان',
+    } } } }),
+  });
+  const wiki = await __vsearch.arWikiLookup('عجمان');
+  assert.ok(wiki && wiki.includes('من ويكيبيديا العربية — عجمان') && wiki.includes('ar.wikipedia.org'), 'خلاصة ويكيبيديا بعنوانها ورابطها');
+  console.log('  ✓ ويكيبيديا العربية تُجلب: ' + wiki.split('\n')[0]);
+  global.fetch = async () => { throw new Error('down'); };
+  assert.equal(await __vsearch.arWikiLookup('أي شيء'), null, 'فشل ويكيبيديا صامت null');
+  console.log('  ✓ فشل ويكيبيديا صامت لا يعطّل السلسلة');
+  global.fetch = realFetch;
+
   console.log('chat search ref tests passed');
 })();
