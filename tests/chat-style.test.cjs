@@ -107,11 +107,16 @@ check(attach.includes('هذا سؤال حال ضمن محادثة مستمرة،
 check(attach.includes('!(isPureGreeting(text) || isCasualCheckIn(text))'), 'الدور الاجتماعي العابر لا يلوث الذاكرة طويلة المدى');
 check(chatServer.includes('function isCasualCheckIn(text)') && chatServer.includes('if (usage.username && !quietSocialTurn)'), 'الخادم لا يقرأ ذاكرة الحساب لسؤال الحال');
 check(chatServer.includes('const system = quietSocialTurn') && chatServer.includes('ولا تذكر أي مشروع أو اهتمام أو موضوع سابق'), 'الخادم يعزل الدور الاجتماعي عن التاريخ ومعرفة المالك');
-check(chatServer.includes('tools: toolTurn ? TOOLS : undefined'), 'الخادم يتيح الأدوات فقط عند الحاجة');
-check(chatServer.includes('const TOOL_INTENT_RE'), 'الخادم يكتشف طلبات الأدوات قبل تفعيلها');
+check(chatServer.includes('tools: toolTurn ? TOOLS : undefined'), 'الأدوات تُمرَّر خلف toolTurn لا دائمًا');
+// v-chat-tools: قائمة الكلمات (TOOL_INTENT_RE) حجبت البحث عن «توقيت الصلاة في عجمان»
+// — قِيس بالمِجسّ ردٌّ بلا بحث يطلب التاريخ. القرار الآن للنموذج في كل دور غير اجتماعي.
+check(chatServer.includes('const toolTurn = !quietSocialTurn;'), 'كل دور غير اجتماعي يحمل الأدوات والتاريخ والموقع');
+check(!chatServer.includes('TOOL_INTENT_RE.test('), 'قائمة الكلمات البيضاء التي حجبت البحث أزيلت');
+check(chatServer.includes('countryNote(country, city)'), 'مدينة المستخدم تدخل توجيه الموقع');
+check(chatServer.includes('اعتمد فيه مدينته'), 'الأسئلة المكانية تعتمد مدينة المستخدم تلقائيًا');
+check(chatServer.includes('setTimeout(function () { resolve(null); }, 4000)'), 'البحث الاستباقي مسقوف بأربع ثوانٍ فلا يحجز أول كلمة');
 check(chatServer.includes('const LEAN_CONVERSATION_NOTE'), 'المحادثة العادية تستخدم تعليمات خفيفة');
 check(chatServer.includes('function compactConversation'), 'السياق الطويل يُضغط قبل إرساله للنموذج');
-check(!chatServer.includes('tools: quietSocialTurn ? undefined : TOOLS'), 'السلوك القديم الذي يفتح الأدوات دائمًا أزيل');
 check(chatServer.includes('const convoSource = quietSocialTurn ? [lastUser] : messages'), 'الخادم لا يرسل تاريخ المواضيع في سؤال الحال');
 check(chatServer.includes('slice(0, 12000)'), 'كل رسالة لها سقف حجم يحمي جودة السياق');
 check(prompts.includes('لا تطرح أي سؤال ولا تعرض المساعدة'), 'التحية تبقى قصيرة بلا سؤال أو عرض خدمة');
@@ -160,14 +165,15 @@ check(!bundle.includes('فردّ حرفيًا: «أهلًا بك.» فقط'), '�
     check(!r2.includes('booking.com'), 'بوكينج لا يظهر مرة ثانية في نفس الدور');
     
     // ===== اختبار قاعدة الصورة/الفيديو التوضيحي =====
-    check(chatServer.includes('فيديو|فديو|مقطع|توضيح|توضيحي|توضيحية'), 'فيديو وتوضيح يُفعّلان مسار الأدوات');
+    // v-chat-tools: فحص «فيديو وتوضيح يفعّلان مسار الأدوات» كان يثبّت قائمة
+    // الكلمات المحذوفة — الأدوات الآن في كل دور غير اجتماعي فلا حاجة لتفعيل بكلمة.
     check(chatServer.includes('قاعدة الصورة/الفيديو التوضيحي'), 'القاعدة الصريحة موجودة في تعليمات الأدوات');
     check(chatServer.includes('ممنوع web_search للطلبات التوضيحية'), 'يمنع web_search صراحةً عند الطلب التوضيحي');
     check(chatServer.includes('استدعِ generate_image بـ prompt إنجليزي وصفي'), 'يُوجّه النموذج لاستخدام generate_image بوصف من سياق المحادثة');
     
     // ===== فحوصات أسلوب المحادثة الجديد =====
-    check(chatServer.includes('ملابس|تسوق|بوتيك|فستان|عباية|موضة|متاجر|عروض|تخفيض'), 'ملابس وتسوق تُفعّلان مسار الأدوات');
-    check(chatServer.includes('سيارات'), 'سيارات (جمع) مضافة لمسار الأدوات');
+    // v-chat-tools: فحصا «ملابس/سيارات تفعّلان مسار الأدوات» ثبّتا القائمة
+    // المحذوفة — يغنيهما فحص «كل دور غير اجتماعي يحمل الأدوات» أعلاه.
     check(chatServer.includes('هلا بك والله'), 'التحية المضاعفة تعطي ترحيباً دافئاً');
     check(chatServer.includes('كيف أقدر أساعدك اليوم'), 'التحية العادية تدعو للمساعدة');
     check(chatServer.includes('خليجي دافئ (هلا / يا غالي / والله'), 'كشف النبرة الخليجية موثّق في التعليمات');
