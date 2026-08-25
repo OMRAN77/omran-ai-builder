@@ -19,6 +19,26 @@ const { logError } = require('./log-error.js');
 const __secrets = require('./_secrets.js');
 const authSecret = () => __secrets.AUTH_SECRET;
 
+// 🔑 السرّ السابق — اختياريّ، ووجوده يحوّل مناوبة AUTH_SECRET من كارثة إلى
+// عمليّة عاديّة. سجلّات المستخدمين معمّاة بمفتاح مشتقّ من السرّ، فتغييره كان
+// يجعل كلّ حساب سابق غير مقروء دفعةً واحدة — وهو ما حدث فعلًا، وظهر للمستخدم
+// بوصفه «التسجيل ما يثبت» لأنّ سجلًّا لا يُفكّ كان يُعامَل معاملة الغائب.
+// بضبط AUTH_SECRET_PREVIOUS بالقيمة القديمة: يُقرأ السجلّ بها، ثمّ يُعاد
+// تعميته بالمفتاح الحاليّ فورًا، فلا يبقى شيء معتمدًا على القديم.
+const prevSecret = () => (process.env.AUTH_SECRET_PREVIOUS || '').trim() || null;
+
+// سجلّ لا يُفكّ بأيّ مفتاح ليس «حسابًا غير موجود». الخلط بينهما كلّف يومًا
+// كاملًا من التشخيص، وكان يفتح بابًا أسوأ: signup يقرأ null فيظنّ الاسم حرًّا
+// فيكتب فوق السجلّ القديم — أي أنّ ضياع السرّ كان يتيح الاستيلاء على الأسماء.
+class UndecryptableUserRecord extends Error {
+  constructor(userKey) {
+    super('user_record_undecryptable');
+    this.name = 'UndecryptableUserRecord';
+    this.code = 'USER_RECORD_UNDECRYPTABLE';
+    this.userKey = userKey;
+  }
+}
+
 function userPath(key) {
   // key must already be the normalized (lowercased, trimmed) username.
   return 'db/users/' + encodeURIComponent(key) + '.json';
@@ -59,8 +79,20 @@ const MAIL_FROM = process.env.MAIL_FROM || 'Omran AI Builder <onboarding@resend.
 // compatibility and get transparently re-encrypted the next time
 // putUser() is called on them.
 // مؤجَّل للسبب نفسه أعلاه: حسابه هنا يقرأ السرّ وقت التحميل.
-let __encKey = null;
-const encKey = () => (__encKey ||= crypto.createHash('sha256').update(authSecret()).digest()); // 32 bytes -> aes-256-gcm
+const keyOf = (secret) => crypto.createHash('sha256').update(secret).digest(); // 32 bytes -> aes-256-gcm
+let __encKey = null, __encKeyFor = null;
+const encKey = () => {
+  const s = authSecret();
+  if (__encKeyFor !== s) { __encKeyFor = s; __encKey = keyOf(s); }
+  return __encKey;
+};
+let __prevKey = null, __prevKeyFor = null;
+const prevKey = () => {
+  const s = prevSecret();
+  if (!s) return null;
+  if (__prevKeyFor !== s) { __prevKeyFor = s; __prevKey = keyOf(s); }
+  return __prevKey;
+};
 
 function encryptUserBlob(obj) {
   const iv = crypto.randomBytes(12);
@@ -70,11 +102,13 @@ function encryptUserBlob(obj) {
   return { enc: 1, iv: iv.toString('base64'), tag: tag.toString('base64'), data: data.toString('base64') };
 }
 
-function decryptUserBlob(encObj) {
+// المفتاح صريح لا ضمنيّ: القراءة تجرّب الحاليّ ثمّ السابق، وGCM يرفض المفتاح
+// الخطأ برمي عند التحقّق من الوسم — فلا يعود نصًّا مشوَّهًا بصمت.
+function decryptUserBlob(encObj, key) {
   const iv = Buffer.from(encObj.iv, 'base64');
   const tag = Buffer.from(encObj.tag, 'base64');
   const data = Buffer.from(encObj.data, 'base64');
-  const decipher = crypto.createDecipheriv('aes-256-gcm', encKey(), iv);
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key || encKey(), iv);
   decipher.setAuthTag(tag);
   const dec = Buffer.concat([decipher.update(data), decipher.final()]);
   return JSON.parse(dec.toString('utf8'));
@@ -131,10 +165,24 @@ async function getUserOnce(key) {
     if (!parsed) return null;
     if (parsed && parsed.enc === 1) {
       try {
-        return decryptUserBlob(parsed);
+        return decryptUserBlob(parsed, encKey());
       } catch (e) {
-        logError('auth:decrypt', e, { key: String(key).slice(0, 40) });
-        return null; // corrupt/undecryptable record - treat as missing
+        // بالمفتاح الحاليّ فشل. نجرّب السابق إن كان مضبوطًا — وهذا هو مسار
+        // المناوبة الآمنة: نقرأ بالقديم ثمّ نعيد الكتابة بالجديد فورًا.
+        const pk = prevKey();
+        if (pk) {
+          let migrated = null;
+          try { migrated = decryptUserBlob(parsed, pk); } catch (e2) { migrated = null; }
+          if (migrated) {
+            try { await putUser(key, migrated); }
+            catch (e3) { logError('auth:rekey', e3, { key: String(key).slice(0, 40) }); }
+            return migrated;
+          }
+        }
+        // لا مفتاح يفكّه. هذا ليس «حسابًا غير موجود» — وإعادته null كانت تخفي
+        // السبب خلف «كلمة المرور خاطئة»، وتتيح لـsignup الكتابة فوق السجلّ.
+        logError('auth:decrypt', e, { key: String(key).slice(0, 40), hasPrev: Boolean(pk) });
+        throw new UndecryptableUserRecord(key);
       }
     }
     // Legacy plaintext record (written before at-rest encryption was added).
@@ -142,6 +190,8 @@ async function getUserOnce(key) {
     // transparently re-encrypt it the next time it's saved.
     return parsed;
   } catch (e) {
+    // الرمي المقصود يمرّ: خلطه بأعطال القراءة يعيده إلى الصمت الذي أُزيل.
+    if (e && e.code === 'USER_RECORD_UNDECRYPTABLE') throw e;
     logError('auth:get-user', e);
     return null;
   }
@@ -770,6 +820,7 @@ module.exports.makeToken = makeToken;
 module.exports.verifyToken = verifyToken;
 module.exports.encryptUserBlob = encryptUserBlob;
 module.exports.decryptUserBlob = decryptUserBlob;
+module.exports.UndecryptableUserRecord = UndecryptableUserRecord;
 module.exports.RESERVED_USERNAMES = RESERVED_USERNAMES;
 
 // A ban set from the admin panel only ever guarded the *login* endpoint.
