@@ -1,155 +1,94 @@
-// Vercel Serverless Function: "🏠 AI Interior Design". Takes a photo of a
-// real room plus a chosen style, and asks Gemini's image-generation model
-// (server-side owner API key, GEMINI_API_KEY) to redesign the room in that
-// style while keeping the room's basic layout/structure. Returns a base64
-// PNG/JPEG the client can preview and download.
+// Vercel Serverless Function: "🏠 ديكور AI" — النسخة المحسّنة.
+// نفس عقد الطلب القديم حرفيًا (الواجهة الحالية تشتغل بلا أي تعديل)،
+// مع قدرات الحزمة الجديدة مدموجة:
+//   · مكتبة ٢٤ نمطًا و١٥ مكانًا (omran-decor-prompts.js) بدل ٩ أنماط.
+//   · GEOMETRY_LOCK: قفل هندسة الغرفة — أهم سطر في الحزمة كلها.
+//   · CONSISTENCY_LOCK + حقل referenceBase64 الاختياري: زوايا متعددة
+//     لنفس الغرفة بنفس الأثاث والألوان (الزاوية الأولى تصير مرجعًا).
+//   · temperature 0.4: التزام أعلى بهندسة الغرفة.
+//   · كاش أسبوع: نفس الغرفة + نفس النمط + نفس الخيارات = نفس النتيجة
+//     فورًا وبلا استهلاك حصة.
+// أبقينا الأفضل من نسختنا القديمة: نموذج gemini-3-pro-image بدقة 2K
+// (أقوى من gemini-2.5-flash-image المقترح)، واستهلاك الحصة بعد النجاح
+// فقط (أنظف من خصمٍ ثم استرجاع)، ووضع «بلا صورة» بأربع لقطات gpt-image-2.
 const { checkDesignQuota, consumeDesign, DESIGN_DAILY_LIMIT } = require('./_designUsage');
+const { kvGetJSON, kvPutJSON, kvExpire } = require('./kv.js');
+const P = require('./omran-decor-prompts.js');
+const crypto = require('crypto');
 
-const STYLE_PROMPTS = {
-  modern: 'a clean modern minimalist interior design style, neutral colors, sleek furniture',
-  bohemian: 'a bohemian (boho) interior design style, warm earthy colors, woven textures, plants',
-  luxury: 'a luxurious high-end interior design style, marble, gold accents, elegant furniture',
-  simple: 'a simple minimalist interior design style, light colors, uncluttered, functional furniture',
-  arabic: 'a traditional Arabic/Majlis interior design style, ornate patterns, rich fabrics, low seating',
-  classic: 'a classic elegant interior design style, warm wood tones, traditional furniture',
-  najdi: 'a traditional Najdi Saudi interior design style, carved gypsum wall panels with geometric triangular motifs, earthy clay and sand tones, exposed wooden ceiling beams, floor seating with patterned cushions',
-  islamic: 'a contemporary Islamic interior design style, mashrabiya screens, arched niches, subtle geometric patterns, warm neutral palette with brass and walnut accents',
-  andalusi: 'an Andalusian Moorish interior design style, horseshoe arches, zellige mosaic tilework, carved stucco details, deep blue and terracotta palette, lush courtyard feel',
-};
+const CACHE_TTL_S = 60 * 60 * 24 * 7;
+const sig = (s) => crypto.createHash('sha1').update(String(s).slice(0, 4096)).digest('hex');
 
-const LIGHTING_PROMPTS = {
-  warm: 'warm, cozy ambient lighting (soft yellow tones)',
-  cool: 'cool, crisp lighting (white/blue tones)',
-  bright: 'bright, well-lit daylight-style lighting',
-  dim: 'dim, relaxing night-time mood lighting',
-};
-
-const FURNITURE_PROMPTS = {
-  modern: 'modern furniture pieces',
-  classic: 'classic traditional furniture pieces',
-  simple: 'simple, minimal furniture pieces',
-  luxury: 'luxurious, high-end furniture pieces',
-  bohemian: 'bohemian-style furniture pieces',
-};
-
-const FLOORING_PROMPTS = {
-  parquet: 'wooden parquet flooring',
-  marble: 'polished marble flooring',
-  ceramic: 'ceramic tile flooring',
-  carpet: 'soft carpet flooring',
-};
-
-const FABRIC_PROMPTS = {
-  light: 'light-colored fabrics for sofas/cushions/curtains',
-  dark: 'dark-colored fabrics for sofas/cushions/curtains',
-  neutral: 'neutral-toned fabrics for sofas/cushions/curtains',
-  bold: 'bold, vibrant-colored fabrics for sofas/cushions/curtains',
-};
-
-const WALLCOLOR_PROMPTS = {
-  white: 'white wall paint',
-  beige: 'beige wall paint',
-  gray: 'gray wall paint',
-  bold: 'a bold accent wall color',
-};
-
-const CURTAIN_PROMPTS = {
-  simple: 'simple curtains',
-  luxury: 'luxurious, elegant curtains',
-  remove: 'no curtains at all (remove existing curtains)',
-};
-
-// أنواع الأماكن — مسار «بلا صورة»: يبني المشهد من الصفر بدل تعديل صورة.
-const PLACE_PROMPTS = {
-  restaurant: 'a restaurant dining hall interior',
-  cafe: 'a coffee shop / cafe interior',
-  bedroom: 'a bedroom interior',
-  majlis: 'a traditional Arabic majlis sitting room interior',
-  living: 'a living room interior',
-  kitchen: 'a kitchen interior',
-  office: 'an office workspace interior',
-  shop: 'a retail shop interior',
-  bath: 'a bathroom interior',
-  kids: "a children's bedroom interior",
-  entrance: 'a home entrance / foyer interior',
-  garden: 'an outdoor garden terrace seating area',
-};
-
-const DECOR_PROMPTS = {
-  plants: 'add decorative indoor plants',
-  art: 'add wall art/paintings',
-  accessories: 'add luxury decorative accessories',
-};
+// حقول الواجهة القديمة → خيارات مكتبة البرومبتات.
+function legacyOptions({ lighting, furniture, flooring, fabric, wallColor, curtains, rearrange, decor }) {
+  const options = {};
+  if (lighting) options.light = lighting;
+  if (furniture) options.furn = furniture;
+  if (flooring) options.floor = flooring;
+  if (fabric) options.fabric = fabric;
+  if (wallColor) options.wall = wallColor;
+  if (curtains) options.curt = curtains;
+  const extras = [];
+  if (rearrange) extras.push('rearrange');
+  if (Array.isArray(decor)) decor.forEach((d) => { if (P.OPTIONS.extra[d]) extras.push(d); });
+  return { options, extras };
+}
+function extrasText(extras) {
+  return extras.map((e) => P.OPTIONS.extra[e]).filter(Boolean);
+}
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') {
-    res.status(204).end();
-    return;
-  }
-  if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method not allowed' });
-    return;
-  }
+  if (req.method === 'OPTIONS') { res.status(204).end(); return; }
+  if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
   try {
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      res.status(500).json({ error: 'Server is missing GEMINI_API_KEY' });
-      return;
-    }
+    if (!apiKey) { res.status(500).json({ error: 'Server is missing GEMINI_API_KEY' }); return; }
 
     let body = req.body;
-    if (!body || typeof body === 'string') {
-      body = JSON.parse(body || '{}');
-    }
-    const { imageBase64, mimeType, style, lighting, furniture, flooring, fabric, wallColor, curtains, rearrange, decor, token, place, count, notes, variantOf } = body;
+    if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
+    const {
+      imageBase64, mimeType, style, token, place, count, notes, variantOf,
+      // جديدة (اختيارية كلها — الواجهة القديمة لا ترسلها فيبقى سلوكها كما هو):
+      referenceBase64, referenceMime, description,
+    } = body;
     const notesText = String(notes || '').replace(/[\r\n]+/g, ' ').replace(/["`\\]/g, '').trim().slice(0, 400);
-    const notesPart = notesText ? (' User request (highest priority, follow it closely): ' + notesText + '.') : '';
-    if (!imageBase64 && !place) {
+    if (!imageBase64 && !place && !description) {
       res.status(400).json({ error: 'Missing imageBase64 or place' });
       return;
     }
 
     const quota = await checkDesignQuota(token);
     if (!quota.allowed) {
-      if (quota.reason === 'auth') {
-        res.status(401).json({ error: 'auth_required' });
-      } else {
-        res.status(402).json({ error: 'daily_limit_reached' });
-      }
+      res.status(quota.reason === 'auth' ? 401 : 402).json({ error: quota.reason === 'auth' ? 'auth_required' : 'daily_limit_reached' });
       return;
     }
 
-    const styleDesc = STYLE_PROMPTS[style] || STYLE_PROMPTS.modern;
-    const extras = [];
-    if (LIGHTING_PROMPTS[lighting]) extras.push(LIGHTING_PROMPTS[lighting]);
-    if (FURNITURE_PROMPTS[furniture]) extras.push(FURNITURE_PROMPTS[furniture]);
-    if (FLOORING_PROMPTS[flooring]) extras.push(FLOORING_PROMPTS[flooring]);
-    if (FABRIC_PROMPTS[fabric]) extras.push(FABRIC_PROMPTS[fabric]);
-    if (WALLCOLOR_PROMPTS[wallColor]) extras.push(WALLCOLOR_PROMPTS[wallColor]);
-    if (CURTAIN_PROMPTS[curtains]) extras.push(CURTAIN_PROMPTS[curtains]);
-    if (rearrange) extras.push('rearrange the furniture layout for better flow while keeping the room structure');
-    if (Array.isArray(decor)) {
-      decor.forEach((d) => { if (DECOR_PROMPTS[d]) extras.push(DECOR_PROMPTS[d]); });
-    }
-    const extrasText = extras.length ? (' Additionally apply these specific changes: ' + extras.join('; ') + '.') : '';
+    const { options, extras } = legacyOptions(body);
 
-    // ── مسار «بلا صورة»: أشكال جاهزة من نوع المكان. يعمل على OpenAI لا على نموذج جوجل. ──
+    // ── كاش أسبوع: نفس المدخلات = نفس النتيجة فورًا بلا استهلاك حصة ──
+    const cacheKey = 'decor/img/' + crypto.createHash('sha256').update([
+      imageBase64 ? 'photo' : 'text', style || '', place || '', String(description || '').slice(0, 300),
+      JSON.stringify(options), extras.join(','), notesText,
+      imageBase64 ? sig(imageBase64) : '', referenceBase64 ? sig(referenceBase64) : '', String(count || ''),
+    ].join('|')).digest('hex').slice(0, 40);
+    if (!variantOf) {
+      const hit = await kvGetJSON(cacheKey);
+      if (hit && (hit.imageBase64 || hit.images)) {
+        res.status(200).json({ ...hit, cached: true, dailyLimit: DESIGN_DAILY_LIMIT });
+        return;
+      }
+    }
+
+    // ── مسار «بلا صورة»: أشكال جاهزة. يعمل على OpenAI لا على نموذج جوجل. ──
     if (!imageBase64) {
       const oaKey = process.env.OPENAI_API_KEY;
-      if (!oaKey) {
-        res.status(500).json({ error: 'Server is missing OPENAI_API_KEY' });
-        return;
-      }
-      const placeDesc = PLACE_PROMPTS[place];
-      if (!placeDesc) {
-        res.status(400).json({ error: 'Unknown place' });
-        return;
-      }
+      if (!oaKey) { res.status(500).json({ error: 'Server is missing OPENAI_API_KEY' }); return; }
+      if (place && !P.placeOf(place)) { res.status(400).json({ error: 'Unknown place' }); return; }
       const n = Math.min(Math.max(parseInt(count, 10) || 4, 1), 4);
       const VIEWS = [
         'wide establishing shot taken from the doorway',
@@ -157,15 +96,14 @@ module.exports = async (req, res) => {
         'closer shot focused on the main seating or feature area',
         'elevated three-quarter angle showing the whole layout',
       ];
-      const base = 'Photorealistic interior design photograph of ' + placeDesc + ', decorated in ' + styleDesc + '.' + extrasText +
-        ' Professional architectural photography, realistic materials and lighting, balanced composition, high detail.' +
-        ' No people, no text, no watermark, no logo.' + notesPart;
+      const base = P.buildFromText({ styleId: style, placeId: place, description, options, note: notesText })
+        + (extras.length ? ' Also: ' + extrasText(extras).join(', ') + '.' : '');
       const vSrc = String(variantOf || '');
       if (vSrc && vSrc.length > 64) {
         try {
           const fd = new FormData();
           fd.append('model', 'gpt-image-2');
-          fd.append('prompt', 'Create a new variation of this interior photograph. Keep the same overall design style, color palette, materials and camera angle, but vary the furniture arrangement and the decorative details.' + notesPart + ' Photorealistic architectural photography. No people, no text, no watermark, no logo.');
+          fd.append('prompt', 'Create a new variation of this interior photograph. Keep the same overall design style, colour palette, materials and camera angle, but vary the furniture arrangement and the decorative details.' + (notesText ? ' Client note: ' + notesText + '.' : '') + ' Photorealistic architectural photography. No people, no text, no watermark, no logo.');
           fd.append('size', '1536x1024');
           fd.append('quality', 'medium');
           fd.append('n', String(n));
@@ -208,26 +146,29 @@ module.exports = async (req, res) => {
         return;
       }
       const rem = await consumeDesign(quota.username);
-      res.status(200).json({ images, remaining: rem, dailyLimit: DESIGN_DAILY_LIMIT });
+      const payload = { images, remaining: rem };
+      await kvPutJSON(cacheKey, { images });
+      try { await kvExpire(cacheKey, CACHE_TTL_S); } catch (e) { /* best-effort */ }
+      res.status(200).json({ ...payload, dailyLimit: DESIGN_DAILY_LIMIT });
       return;
     }
 
-    const promptText =
-      'Redesign this room photo into ' + styleDesc + '.' + extrasText + ' ' +
-      'Keep the same room layout, walls, windows and camera angle, but replace the furniture, ' +
-      'colors, decor and finishes to match the requested style. Output a single photorealistic image of the redesigned room.' + notesPart;
+    // ── مسار الصورة: إعادة تصميم غرفة المستخدم الحقيقية ──
+    const hasReference = !!(referenceBase64 && String(referenceBase64).length > 64);
+    const promptText = P.buildFromPhoto({
+      styleId: style, placeId: place, options, isReference: hasReference, note: notesText,
+    }) + (extras.length ? ' Also: ' + extrasText(extras).join(', ') + '.' : '');
+
+    // الترتيب مهم: صورة الغرفة أولًا، ثم المرجع (إن وجد)، ثم النص.
+    const parts = [{ inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } }];
+    if (hasReference) parts.push({ inlineData: { mimeType: referenceMime || 'image/jpeg', data: referenceBase64 } });
+    parts.push({ text: promptText });
 
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
     const reqBody = {
-      contents: [
-        {
-          parts: [
-            { text: promptText },
-            { inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } },
-          ],
-        },
-      ],
-      generationConfig: { imageConfig: { imageSize: '2K' } },
+      contents: [{ parts }],
+      // temperature منخفضة عمدًا: الالتزام بهندسة الغرفة أهم من الإبداع هنا.
+      generationConfig: { temperature: 0.4, imageConfig: { imageSize: '2K' } },
     };
 
     const upstream = await fetch(endpoint, {
@@ -242,20 +183,21 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
-    const imgPart = parts.find((p) => p.inlineData && p.inlineData.data);
+    const outParts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
+    const imgPart = outParts.find((p) => p.inlineData && p.inlineData.data);
     if (!imgPart) {
       res.status(500).json({ error: 'لم يرجع الموديل صورة. حاول بصورة أو ستايل آخر.' });
       return;
     }
 
     const remaining = await consumeDesign(quota.username);
-    res.status(200).json({
+    const result = {
       imageBase64: imgPart.inlineData.data,
       mimeType: imgPart.inlineData.mimeType || 'image/png',
-      remaining,
-      dailyLimit: DESIGN_DAILY_LIMIT,
-    });
+    };
+    await kvPutJSON(cacheKey, result);
+    try { await kvExpire(cacheKey, CACHE_TTL_S); } catch (e) { /* best-effort */ }
+    res.status(200).json({ ...result, remaining, dailyLimit: DESIGN_DAILY_LIMIT });
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
   }
