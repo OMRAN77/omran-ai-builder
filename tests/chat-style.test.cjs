@@ -133,6 +133,8 @@ check(chatServer.includes('LIVE_EAGER_RE.test(lastUser.content)'), 'البحث �
 }
 // v-cat-match: «فندق» أعطى دوبيزل و«مندي» أعطى عقارًا — الموقع يطابق فئة الطلب.
 check(chatServer.includes('(ص٨) تطابق الفئة إلزاميّ') && chatServer.includes('ممنوع منعًا باتًا دوبيزل أو أي موقع إعلانات عامّ في طلبات الفنادق والأكل'), 'قاعدة تطابق الفئة: لا موقع من فئة أخرى ولو ظهر في البحث');
+// v-clean-links: الرابط العاري كان يُعرض بنصّه المرمّز %D8… فيملأ الشاشة.
+check(bundle.includes('v-clean-links') && bundle.includes(".hostname.replace(/^www\\./, '')"), 'الرابط العاري يُعرض باسم نطاقه فقط ويبقى قابلًا للضغط');
 check(chatServer.indexOf('v-fast-headers') > 0 && chatServer.indexOf('v-fast-headers') < chatServer.indexOf('prepareTurn('), 'البثّ يُفتح قبل الذاكرة والبحث الاستباقي فيرى المستخدم حركة فورًا');
 check(chatServer.includes('function compactConversation'), 'السياق الطويل يُضغط قبل إرساله للنموذج');
 check(chatServer.includes('const convoSource = quietSocialTurn ? [lastUser] : messages'), 'الخادم لا يرسل تاريخ المواضيع في سؤال الحال');
