@@ -36,8 +36,9 @@ async function viaBigDataCloud(lat, lon) {
 }
 
 async function viaNominatim(lat, lon) {
+  // zoom=16: مستوى الحيّ لا المدينة — «النعيمية» لا «عجمان» وحدها.
   const d = await timed('https://nominatim.openstreetmap.org/reverse?lat=' + lat + '&lon=' + lon
-    + '&format=jsonv2&accept-language=ar&zoom=14', {
+    + '&format=jsonv2&accept-language=ar&zoom=16', {
     headers: { 'User-Agent': 'omran-ai-builder/1.0 (reverse-geocode)' },
   }, 6000);
   const a = d && d.address;
@@ -57,7 +58,9 @@ module.exports = async (req, res) => {
     res.status(400).json({ error: 'bad_coordinates' });
     return;
   }
-  const out = (await viaBigDataCloud(lat, lon)) || (await viaNominatim(lat, lon));
+  // v-geo-osm-first: مقيس — BigDataCloud «يلصق» النقطة بأقرب مدينة في بياناته
+  // فأعطى «أم القيوين» لمن هو قربها في عجمان. OSM أدق حدودًا فصار أولًا.
+  const out = (await viaNominatim(lat, lon)) || (await viaBigDataCloud(lat, lon));
   if (!out) { res.status(502).json({ error: 'revgeo_unavailable' }); return; }
   res.status(200).json(out);
 };

@@ -19,29 +19,30 @@ const realFetch = global.fetch;
 function stubFetch(impl) { global.fetch = impl; }
 
 (async () => {
-  // ① المزوّد الأول (BigDataCloud) ينجح — التسمية عربية مرتّبة بلا تكرار.
+  // ① v-geo-osm-first: حين ينجح الاثنان يفوز Nominatim (أدقّ حدودًا — قِيس أن
+  //   BigDataCloud لصق نقطة قرب الحدود بأم القيوين وصاحبها في عجمان).
   stubFetch(async (url) => ({
     ok: true,
     json: async () => (String(url).includes('bigdatacloud')
-      ? { locality: 'النعيمية', city: 'عجمان', principalSubdivision: 'عجمان', countryName: 'الإمارات العربية المتحدة' }
-      : {}),
+      ? { locality: 'أم القيوين', city: 'أم القيوين', principalSubdivision: 'أم القيوين', countryName: 'الإمارات' }
+      : { address: { suburb: 'الراشدية', city: 'عجمان', state: 'عجمان', country: 'الإمارات' } }),
   }));
   let res = mockRes();
   await handler(req({ lat: 25.4052, lon: 55.5136 }), res);
   assert.equal(res.code, 200);
-  assert.equal(res.body.label, 'النعيمية، عجمان، الإمارات العربية المتحدة');
-  console.log('  ✓ نجاح المزوّد الأول: ' + res.body.label);
+  assert.ok(res.body.src === 'nominatim' && res.body.label.includes('الراشدية'), 'OSM يفوز عند نجاح الاثنين');
+  console.log('  ✓ OSM أولًا (الأدق حدودًا): ' + res.body.label);
 
-  // ② الأول يسقط ← Nominatim يجيب.
+  // ② سقوط Nominatim ← BigDataCloud احتياطًا.
   stubFetch(async (url) => {
-    if (String(url).includes('bigdatacloud')) return { ok: false };
-    return { ok: true, json: async () => ({ address: { suburb: 'الراشدية', city: 'عجمان', state: 'عجمان', country: 'الإمارات' } }) };
+    if (String(url).includes('nominatim')) return { ok: false };
+    return { ok: true, json: async () => ({ locality: 'النعيمية', city: 'عجمان', principalSubdivision: 'عجمان', countryName: 'الإمارات العربية المتحدة' }) };
   });
   res = mockRes();
   await handler(req({ lat: 25.4, lon: 55.5 }), res);
   assert.equal(res.code, 200);
-  assert.ok(res.body.label.includes('الراشدية') && res.body.src === 'nominatim');
-  console.log('  ✓ السقوط إلى المزوّد الثاني يعمل');
+  assert.ok(res.body.label.includes('النعيمية') && res.body.src === 'bigdatacloud');
+  console.log('  ✓ السقوط إلى الاحتياط يعمل');
 
   // ③ الاثنان يسقطان ← 502 واضحة لا رمية ولا صمت.
   stubFetch(async () => { throw new Error('network down'); });
@@ -81,6 +82,7 @@ function stubFetch(impl) { global.fetch = impl; }
   assert.ok(agent.includes('getCurrentPosition'), 'التحديد عبر geolocation المتصفّح لا الخادم');
   assert.ok(agent.includes('رفض المستخدم إذن الموقع'), 'رسالة واضحة عند رفض الإذن');
   assert.ok(agent.includes('تقريبيّ فقط') && agent.includes('gacc > 3000'), 'الدقة الخشنة تُعلَن تقريبية لا يقينًا زائفًا');
+  assert.ok(agent.includes('gacc > 200') && agent.includes('عبر الشبكة لا عبر GPS'), 'تحديد الشبكة (كمبيوتر بلا GPS) يُعلَن كذلك ولو ادّعى دقة جيدة');
   const chatSrc = chat;
   assert.ok(chatSrc.includes('فممنوع الجواب منها؛ استدعِ get_location'), 'سؤال «وين أنا» لا يُجاب من مدينة الشبكة أبدًا');
   const geoBlock = agent.slice(agent.indexOf("if (name === 'get_location')"), agent.indexOf('أداة غير معروفة'));
