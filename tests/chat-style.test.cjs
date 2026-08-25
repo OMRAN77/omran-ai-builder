@@ -119,6 +119,7 @@ check(chatServer.includes('const LEAN_CONVERSATION_NOTE'), 'المحادثة ا�
 check(chatServer.includes('محاور قويّ') && chatServer.includes('كن ندًّا في الحوار'), 'طبقة المحاور القوي: ندّية ومطابقة نمط المستخدم');
 check(chatServer.includes('ممنوع الموافقة الآلية والتملّق'), 'التملق والموافقة الآلية ممنوعان صراحةً');
 check(chatServer.includes('function arWikiLookup') && chatServer.includes('ar.wikipedia.org'), 'ويكيبيديا العربية مصدر مرفق في سلسلة البحث');
+check(chatServer.includes('ممنوع أن تبدأ الردّ باستدعاء generate_image'), 'النص يُقرأ أولًا والصورة التوضيحية آخر الردّ');
 check(chatServer.includes('function compactConversation'), 'السياق الطويل يُضغط قبل إرساله للنموذج');
 check(chatServer.includes('const convoSource = quietSocialTurn ? [lastUser] : messages'), 'الخادم لا يرسل تاريخ المواضيع في سؤال الحال');
 check(chatServer.includes('slice(0, 12000)'), 'كل رسالة لها سقف حجم يحمي جودة السياق');
