@@ -94,6 +94,12 @@
           full += ev.delta;
           if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:delta'); } }
         }
+        // patch: الخادم نقّى الردّ كاملًا (روابط مخترعة من الذاكرة تُحذف قبل
+        // العرض النهائي). كان يُهمَل هنا فتبقى الروابط المحذوفة ظاهرة للمستخدم.
+        if (typeof ev.patch === 'string' && ev.patch.trim()) {
+          full = ev.patch;
+          if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:patch'); } }
+        }
         if (ev.error) serverErr = ev.error;
       }
     }
