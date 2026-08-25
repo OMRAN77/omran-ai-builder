@@ -618,6 +618,7 @@ const $ = s => document.querySelector(s);
         if(expected && returned !== expected){
           console.error('[oauth] state mismatch — login refused');
           try { sessionStorage.removeItem('aiapp_oauth_state'); } catch(e){ __swallow(e, "auth:app-01-boot-auth#10"); }
+          noteSession('جوجل-تحقّق-أمني'); // اللوحة كانت عمياء عن هذا الخروج بالذات
           window.history.replaceState({}, document.title, cleanUrl);
           alert('تعذّر إكمال تسجيل الدخول (تحقّق أمني). حاول من جديد.');
           return;
@@ -626,6 +627,11 @@ const $ = s => document.querySelector(s);
         authSet('aiapp_auth_token', gtoken);
         authSet('aiapp_username', guser);
         if(gavatar){ localStorage.setItem('aiapp_avatar', gavatar); }
+        // «جوجل-دخل» لا «تحقّق-ناجح»: يميّز في اللوحة أنّ هذا التبويب هو الذي
+        // استقبل العودة من جوجل فعلًا. فإن قالت لوحة جهازٍ «لا-توكن» بعد دخول
+        // ناجح، عرفنا أنّ العودة هبطت في سياق آخر (نافذة التطبيق المثبَّت
+        // مقابل ورقة المتصفّح الداخليّ) — وهو تشخيص لا يعطيه أيّ شيء آخر.
+        noteSession('جوجل-دخل');
         window.history.replaceState({}, document.title, cleanUrl);
         setTimeout(() => onAuthed(guser, gavatar || null), 0);
       } else if(gerror){
