@@ -165,7 +165,10 @@ async function putUser(key, user) {
 }
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const SITE_URL = (process.env.SITE_URL || 'https://omran-ai-builder.vercel.app').replace(/\/+$/, '');
+// عبر _site.js لا من البيئة مباشرة: وُجد في الإنتاج أنّ SITE_URL كان سرّ
+// عميل جوجل، ورابط استرجاع كلمة المرور يُرسَل بالبريد — فكان السرّ يخرج إلى
+// صندوق كلّ من يطلب الاسترجاع. _site.js لا يقبل إلا عنوان https صالح.
+const { siteUrl } = require('./_site.js');
 
 function isValidEmail(email) {
   return typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
@@ -196,7 +199,7 @@ async function sendMail(toEmail, subject, html) {
 }
 
 async function sendResetEmail(toEmail, username, resetToken, isEn) {
-  const link = SITE_URL + '/?resetToken=' + encodeURIComponent(resetToken) + '&ru=' + encodeURIComponent(username);
+  const link = siteUrl() + '/?resetToken=' + encodeURIComponent(resetToken) + '&ru=' + encodeURIComponent(username);
   const name = escapeHtml(username);
   const subject = isEn ? 'Reset your password — Omran AI Builder' : 'إعادة تعيين كلمة المرور — Omran AI Builder';
   const html = isEn
