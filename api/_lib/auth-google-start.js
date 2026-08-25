@@ -12,7 +12,7 @@
 //
 // و ?show=1 يطبع القيمتين كما يراهما الخادم — وهما بالضبط ما يجب أن يكون
 // مسجَّلًا في Google Cloud Console. تشخيص بلا أسرار: كلتاهما عامّة أصلًا.
-const { googleRedirectUri } = require('./_site.js');
+const { googleRedirectUri, siteUrlIsValid, siteUrlConfigured } = require('./_site.js');
 
 // الاحتياط هو المعرّف الذي كان مكتوبًا في العميل، كي لا يتغيّر السلوك إن كان
 // المتغيّر غير مضبوط.
@@ -25,10 +25,18 @@ module.exports = async (req, res) => {
   const q = req.query || {};
 
   if (q.show) {
+    // لا تُعاد قيمة SITE_URL الخام أبدًا: وُجد في الإنتاج أنّها كانت سرّ عميل
+    // جوجل ملصوقًا في الخانة الخطأ، وطباعتها كانت تبثّه. يُقال «صالح أو لا»
+    // فقط — وهو كلّ ما يحتاجه التشخيص.
     res.status(200).json({
       redirect_uri: redirectUri,
       client_id: id,
       client_id_from_env: Boolean(process.env.GOOGLE_CLIENT_ID),
+      site_url_set: siteUrlConfigured(),
+      site_url_valid: siteUrlIsValid(),
+      ...(siteUrlConfigured() && !siteUrlIsValid()
+        ? { warning: 'SITE_URL مضبوط بقيمة ليست عنوان https صالحًا — يُتجاهَل. صحّحه في Vercel.' }
+        : {}),
       note: 'سجّل redirect_uri هذا حرفيًّا في Google Cloud Console → Authorized redirect URIs',
     });
     return;

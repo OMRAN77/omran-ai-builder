@@ -174,8 +174,14 @@ async function oauthOrigin() {
   let j = null;
   try { j = JSON.parse(await r.text()); } catch (e) { no('show=1 \u2192 ردّ ليس JSON'); return; }
   if (!j.redirect_uri || !j.client_id) { no('show=1 \u2192 ينقصه redirect_uri أو client_id'); return; }
-  console.log(`  \u00b7 redirect_uri: ${j.redirect_uri}`);
+  // لا يُطبع redirect_uri خامًا قبل التحقّق أنّه عنوان: وُجد في الإنتاج أنّه
+  // كان سرّ عميل جوجل ملصوقًا في SITE_URL، فطبعه السجلّ العلنيّ.
+  let origin = null;
+  try { const u = new URL(j.redirect_uri); if (u.protocol === 'https:') origin = u.origin; } catch (e) { origin = null; }
+  if (!origin) { no('redirect_uri ليس عنوان https صالحًا \u2014 راجع SITE_URL في Vercel (لا يُطبع هنا)'); return; }
+  console.log(`  \u00b7 redirect_uri: ${origin}/api/auth-google-callback`);
   console.log(`  \u00b7 client_id: ${j.client_id}`);
+  if (j.site_url_set && j.site_url_valid === false) no('SITE_URL مضبوط بقيمة ليست عنوانًا \u2014 يُتجاهَل');
   console.log(`  \u00b7 client_id \u0645\u0646 \u0627\u0644\u0628\u064a\u0626\u0629: ${j.client_id_from_env ? '\u0646\u0639\u0645' : '\u0644\u0627 \u2014 \u0627\u062d\u062a\u064a\u0627\u0637 \u0645\u0643\u062a\u0648\u0628'}`);
   j.redirect_uri.endsWith('/api/auth-google-callback')
     ? ok('redirect_uri ينتهي بمسار العودة الصحيح')
