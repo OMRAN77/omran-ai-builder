@@ -30,6 +30,7 @@
 
 /* ── من index.html سطر 1636 ── */
 /* v-owner: الوميض النابض حول زر مها أُطفئ بطلب المالك — الزر ثابت بلا هالة متحركة. */
+#btnMaha{animation:none !important; box-shadow:none !important;}
 
 /* ── من index.html سطر 1660 ── */
 @keyframes mahaBreathe{0%{transform:scale(1) translateY(0);box-shadow:0 0 20px rgba(123,92,255,.45);}50%{transform:scale(1.13) translateY(-7px);box-shadow:0 0 46px rgba(255,95,162,.8);}100%{transform:scale(1) translateY(0);box-shadow:0 0 20px rgba(123,92,255,.45);}}
