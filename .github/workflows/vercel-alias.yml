@@ -1,0 +1,40 @@
+name: Vercel alias
+
+# لماذا: قضينا ساعتين نستدلّ من الخارج على أنّ النطاق عالق على نشرة ٢٣ أغسطس
+# (بصمة حزمة · رؤوس كاش · مِجسّ بمسار جديد). كلّها أثبتت الحقيقة ولم تقل
+# لماذا — لأنّ الجواب داخل Vercel لا في الشبكة. هذا يسأله مباشرة.
+#
+# بلا سرّ VERCEL_TOKEN لا يفعل شيئًا ولا يفشل.
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: أعِد ربط الاسم بأحدث نشرة إنتاج (لا تشخيصًا فقط)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  alias:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Diagnose (and optionally re-alias)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT: omran-ai-builder
+          VERCEL_DOMAIN: omran-ai-builder.vercel.app
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+        run: node scripts/vercel-alias.mjs ${{ inputs.apply && '--apply' || '' }}
+
+      # بعد إعادة الربط: هل وصل فعلًا؟ المِجسّ يحكم.
+      - name: Verify with the probe
+        if: ${{ inputs.apply }}
+        run: node scripts/smoke.mjs https://omran-ai-builder.vercel.app
