@@ -1,0 +1,19 @@
+# يصحّح SITE_URL و OWNER_USERNAME في Vercel ويطلق نشرة إنتاج لتسريا.
+# لا يطبع قيمة أيّ متغيّر قائم. يحتاج سرّ VERCEL_TOKEN في المستودع.
+name: Vercel env fix
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Correct SITE_URL and OWNER_USERNAME, then redeploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: node scripts/vercel-env-fix.mjs
