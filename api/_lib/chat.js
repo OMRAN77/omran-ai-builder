@@ -423,9 +423,11 @@ async function pplxSearch(query) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
     body: JSON.stringify({
-      model: 'sonar', max_tokens: 900, temperature: 0.2,
+      // v-chat-acc: sonar → sonar-pro. الشكوى المقيسة «المعلومات ضعيفة»: sonar
+      // يعيد مقتطفات سطحية؛ sonar-pro يقرأ أعمق ويعيد مصادر أدقّ بنفس النداء.
+      model: 'sonar-pro', max_tokens: 1000, temperature: 0.2,
       messages: [
-        { role: 'system', content: 'أنت محرّك بحث حيّ. أعطِ وقائع محدّثة عن البلد أو المدينة المذكورة في السؤال: أرقامًا وأسماء جهات ومواقع محلّيّة معروفة هناك، بإيجاز. لا تعتذر ولا تُحِل إلى مواقع دولة أخرى.' },
+        { role: 'system', content: 'أنت محرّك بحث حيّ. أجب بدقّة ووقائع محدّثة: أرقامًا وأسماء جهات ومواقع، بإيجاز وبلا اعتذار. إن ذكر السؤال بلدًا أو مدينة فالتزم بهما ولا تُحِل إلى دولة أخرى.' },
         { role: 'user', content: String(query || '').slice(0, 600) },
       ],
     }),
@@ -442,7 +444,7 @@ async function pplxSearch(query) {
     if (typeof u === 'string') srcs.push(u);
   }
   return txt
-    + (srcs.length ? ('\n\nالمصادر:\n' + srcs.slice(0, 6).map((x, i) => (i + 1) + '. ' + x).join('\n')) : '')
+    + (srcs.length ? ('\n\nالمصادر:\n' + srcs.slice(0, 8).map((x, i) => (i + 1) + '. ' + x).join('\n')) : '')
     + '\n\nالمصدر: بحث حيّ (Perplexity sonar).';
 }
 
@@ -466,13 +468,14 @@ async function tavilyRaw(query, foreign) {
   const r = await timedFetch('https://api.tavily.com/search', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(Object.assign(
-      { api_key: key, query: String(query || '').slice(0, 380), max_results: 6, search_depth: 'basic', include_answer: true },
+      // v-chat-acc: عمق advanced ونتائج ومقتطفات أطول — 300 حرفًا كانت تُجوّع النموذج.
+      { api_key: key, query: String(query || '').slice(0, 380), max_results: 8, search_depth: 'advanced', include_answer: true },
       foreign ? {} : { country: 'united arab emirates' })),
   }, 15000);
   if (!r.ok) { console.warn('[live] tavily HTTP ' + r.status); return null; }
   const d = asJSON(r.body);
   const items = ((d && d.results) || []).map((x, i) => (i + 1) + '. ' + String(x.title || '')
-    + '\n' + String(x.url || '') + '\n' + String(x.content || '').replace(/\s+/g, ' ').slice(0, 300));
+    + '\n' + String(x.url || '') + '\n' + String(x.content || '').replace(/\s+/g, ' ').slice(0, 500));
   return items.length ? items.join('\n\n') : null;
 }
 

@@ -2027,6 +2027,10 @@ if(chatJumpBottomBtn){
 // الرابط يعود نصّه نفسه كرابط قابل للنقر بدل القفزة من نص خام إلى تنسيق نهائي.
 function streamingMarkdownDisplayText(text){
   return String(text || '')
+    // رموز داخلية تُستبدل في العرض النهائي فقط — أثناء البث كانت تظهر خامًا
+    // (زحمة تظهر ثم «ترجع عادي» عند الاكتمال). تُخفى من أول قطعة.
+    .replace(/!?\[[^\]]*\]\(\s*__IMG_\d+__\s*\)|`?__IMG_\d+__`?/g, '')
+    .replace(/__ACTION_VIDEO:[^\n]*/g, '')
     .replace(/\*{0,2}\[([^\]\n]+)\]\((?:https?:\/\/)?[^\s)\n]*$/g, '$1')
     .replace(/\*{0,2}\[([^\]\n]+)\]$/g, '$1')
     .replace(/\*{0,2}\[([^\]\n]*)$/g, '$1');
@@ -16558,8 +16562,14 @@ DESIGN RULES (non-negotiable):
             renderStreamingAssistant(thinkingDiv, liveStripCode(onDelta._p));
             smartScrollBottom(__followReply);
           } else {
-            // سلوك الجوال السابق كما هو؛ هذه المرحلة لسطح المكتب فقط.
-            thinkingDiv.textContent = liveStripCode(onDelta._p);
+            // الجوال كان يعرض النص خامًا (نجمتا Markdown ورموز __IMG__ وبطاقات
+            // [[OPT]] ظاهرة كزحمة ثم «ترجع عادي» عند الاكتمال). الآن ينسّق حيًّا
+            // كسطح المكتب، مع كبح لإعادة البناء كل ١٥٠مل حفاظًا على أداء الجوال.
+            const __now = Date.now();
+            if(!onDelta._mLast || __now - onDelta._mLast >= 150){
+              onDelta._mLast = __now;
+              renderStreamingAssistant(thinkingDiv, liveStripCode(onDelta._p));
+            }
             try{
               const __mobileGap = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight;
               if(__mobileGap < 140) messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -22919,6 +22929,12 @@ window.updateVersionLabel();
           noteEnd();
           full += ev.delta;
           if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:delta'); } }
+        }
+        // patch: الخادم نقّى الردّ كاملًا (روابط مخترعة من الذاكرة تُحذف قبل
+        // العرض النهائي). كان يُهمَل هنا فتبقى الروابط المحذوفة ظاهرة للمستخدم.
+        if (typeof ev.patch === 'string' && ev.patch.trim()) {
+          full = ev.patch;
+          if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:patch'); } }
         }
         if (ev.error) serverErr = ev.error;
       }

@@ -4127,8 +4127,14 @@ DESIGN RULES (non-negotiable):
             renderStreamingAssistant(thinkingDiv, liveStripCode(onDelta._p));
             smartScrollBottom(__followReply);
           } else {
-            // سلوك الجوال السابق كما هو؛ هذه المرحلة لسطح المكتب فقط.
-            thinkingDiv.textContent = liveStripCode(onDelta._p);
+            // الجوال كان يعرض النص خامًا (نجمتا Markdown ورموز __IMG__ وبطاقات
+            // [[OPT]] ظاهرة كزحمة ثم «ترجع عادي» عند الاكتمال). الآن ينسّق حيًّا
+            // كسطح المكتب، مع كبح لإعادة البناء كل ١٥٠مل حفاظًا على أداء الجوال.
+            const __now = Date.now();
+            if(!onDelta._mLast || __now - onDelta._mLast >= 150){
+              onDelta._mLast = __now;
+              renderStreamingAssistant(thinkingDiv, liveStripCode(onDelta._p));
+            }
             try{
               const __mobileGap = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight;
               if(__mobileGap < 140) messagesEl.scrollTop = messagesEl.scrollHeight;

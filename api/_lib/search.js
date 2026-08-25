@@ -160,11 +160,12 @@ async function pplxLive(query, wantImages, latestNews) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
       body: JSON.stringify({
-        model: 'sonar',
+        // v-chat-acc: sonar → sonar-pro + سقف أعلى — جودة الإجابة والمصادر أولى من التوفير.
+        model: 'sonar-pro',
         messages: [{ role: 'user', content: liveQuery }],
         return_images: !!wantImages,
         ...(latestNews ? { search_recency_filter: 'day' } : {}),
-        max_tokens: 400,
+        max_tokens: 700,
       }),
       signal: AbortSignal.timeout(25000),
     });
