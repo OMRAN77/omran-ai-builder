@@ -210,7 +210,16 @@ function buildSpokenWordSpans(container, text){
         const href = rawUrl.indexOf('www.') === 0 ? 'https://' + rawUrl : rawUrl;
         const a = document.createElement('a');
         a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
-        a.textContent = linkM ? linkM[1] : rawUrl;
+        // v-clean-links: الرابط العاري كان يُعرض بنصّه الكامل المرمّز
+        // (%D8%A3…) فيملأ الشاشة — يُعرض باسم نطاقه فقط ويبقى الضغط
+        // على الرابط الكامل. ونصّ ماركداون هو نفسه رابط يُعامل كذلك.
+        let __disp = linkM ? linkM[1] : rawUrl;
+        if(/^(https?:\/\/|www\.)/i.test(__disp)){
+          try { __disp = new URL(__disp.indexOf('www.') === 0 ? 'https://' + __disp : __disp).hostname.replace(/^www\./, ''); }
+          catch(e){ try { __disp = decodeURIComponent(__disp).slice(0, 50); } catch(e2){ __disp = __disp.slice(0, 50); } }
+        }
+        a.textContent = __disp;
+        a.title = href;
         a.setAttribute('dir', 'auto'); // v476 bidi
         a.style.cssText = 'color:var(--accent2); text-decoration:underline; word-break:break-all; unicode-bidi:isolate;';
         span.appendChild(a);
