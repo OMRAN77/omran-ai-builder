@@ -169,8 +169,12 @@ module.exports = async (req, res) => {
 
     const data = await upstream.json();
     if (!upstream.ok) {
-      console.error('[fashion-create] upstream failed status=' + upstream.status + ' detail=' + ((data && data.error && data.error.message) || 'unknown'));
-      res.status(502).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
+      // v-fashion-diag: سبب رفض Gemini يظهر في الردّ منقّحًا (بلا مفتاح) —
+      // بدونه يبقى العطل «تعذّر إنشاء الصورة» بلا اسم، ولا سبيل لسجلّات الخادم.
+      const detail = String((data && data.error && data.error.message) || 'unknown')
+        .replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
+      console.error('[fashion-create] upstream failed status=' + upstream.status + ' detail=' + detail);
+      res.status(502).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.', upstream: upstream.status, detail });
       return;
     }
 
