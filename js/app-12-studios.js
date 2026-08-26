@@ -365,9 +365,10 @@ async function __safeJson(res){
         (active ? ' border:2px solid #d4af37; box-shadow:0 0 14px rgba(212,175,55,.3);' : ' border:1px solid var(--border,#2a2a30);');
       const imgWrap = document.createElement('div');
       imgWrap.style.cssText = 'position:relative; aspect-ratio:3/4; background:linear-gradient(160deg,#23232a,#101014); display:flex; align-items:center; justify-content:center;';
+      // بلا صورة: شارة صغيرة بحلقة ذهبية — لا إيموجي عملاق يوحي بالألعاب.
       const emoji = document.createElement('div');
       emoji.textContent = (title.match(/^\S+/) || [''])[0];
-      emoji.style.cssText = 'font-size:34px;';
+      emoji.style.cssText = 'width:54px; height:54px; border-radius:50%; border:1px solid rgba(212,175,55,.4); background:rgba(212,175,55,.06); display:flex; align-items:center; justify-content:center; font-size:22px;';
       const img = document.createElement('img');
       img.src = 'assets/portrait/styles/' + v + '.webp';
       img.alt = title; img.loading = 'lazy';
