@@ -1,0 +1,40 @@
+# بطاقات الديكور: معاينة كل نمط وكل نوع مكان عبر خطّ الإنتاج النصّي،
+# تصغير webp، ودفع لفرع بوت لتُراجع وتُلتزم.
+name: Design thumbs
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'styles | places | all'
+        required: false
+        default: 'all'
+
+permissions:
+  contents: write
+
+jobs:
+  thumbs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Generate style and place previews on production
+        run: node scripts/design-thumbs.mjs "https://omran-ai-builder.vercel.app" "${{ github.event.inputs.mode }}"
+      - name: Resize to webp cards
+        run: npm i --no-save sharp && node scripts/fashion-thumbs-resize.mjs
+      # تنزيل الـartifact محجوب من بيئة الوكيل — الدفع لفرع بوت هو قناة التسليم.
+      - name: Push cards to bot branch
+        run: |
+          mkdir -p assets/design/styles assets/design/opts
+          [ -d thumbs/dstyle ] && cp -r thumbs/dstyle/. assets/design/styles/ || true
+          if [ -d thumbs/dplace ]; then for f in thumbs/dplace/*.webp; do cp "$f" "assets/design/opts/place-$(basename "$f")"; done; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B bot/design-thumbs
+          git add assets/design
+          git commit -m "أصول: بطاقات الديكور (أنماط وأماكن)"
+          git push -f origin bot/design-thumbs

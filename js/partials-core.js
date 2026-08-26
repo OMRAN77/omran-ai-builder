@@ -411,9 +411,31 @@
     <button type="button" class="btn primary" id="designAiGenerateBtn" style="width:100%; margin-top:14px;" data-i18n="designAiGenerateBtn">✨ صمم الغرفة</button>
 
     <div id="designAiStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
+    <!-- v-decor-ba: سحّاب قبل/بعد — غرفتك الأصلية تتحول للتصميم بسحبة إصبع. -->
+    <div id="designBAWrap" style="display:none; position:relative; margin-top:14px; border-radius:var(--r-2); overflow:hidden; background:#000;">
+      <img id="designBAAfter" style="width:100%; display:block;">
+      <div id="designBABeforeClip" style="position:absolute; inset:0; overflow:hidden; width:50%;">
+        <img id="designBABefore" style="position:absolute; top:0; left:0; height:100%; object-fit:cover;">
+      </div>
+      <div id="designBALine" style="position:absolute; top:0; bottom:0; left:50%; width:2px; background:#d4af37; box-shadow:0 0 8px rgba(212,175,55,.8);"></div>
+      <span style="position:absolute; top:8px; left:8px; font-size:10.5px; font-weight:700; background:rgba(0,0,0,.55); color:#fff; padding:2px 8px; border-radius:99px;" data-i18n="designBABefore">قبل</span>
+      <span style="position:absolute; top:8px; right:8px; font-size:10.5px; font-weight:700; background:rgba(212,175,55,.85); color:#141414; padding:2px 8px; border-radius:99px;" data-i18n="designBAAfter">بعد</span>
+    </div>
+    <input type="range" id="designBARange" min="0" max="100" value="50" style="display:none; width:100%; margin-top:8px; accent-color:#d4af37;">
     <img id="designAiResult" style="display:none; width:100%; margin-top:14px; border-radius:var(--r-2); background:#000;">
     <div id="designAiGrid" style="display:none; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px;"></div>
     <a id="designAiDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-design-ai.png" data-i18n="designAiDownloadBtn">⬇️ تحميل الصورة</a>
+
+    <!-- v-decor-compare: «غرفتي بكل الأنماط» — ارفع صورة غرفتك واختر حتى ٣ أنماط
+         فتُولَّد جنبًا إلى جنب وتختار الأجمل (نفس مقارنة الأزياء). -->
+    <div style="margin-top:18px; border-top:1px solid rgba(212,175,55,.25); padding-top:12px;">
+      <div style="font-weight:800; font-size:14px;" data-i18n="designCompareTitle">🆚 غرفتي بكل الأنماط</div>
+      <div style="font-size:11.5px; color:var(--muted); margin-top:2px;" data-i18n="designCompareHint">ارفع صورة غرفتك واختر ٢-٣ أنماط — نولّدها جنبًا إلى جنب وتختار الأجمل</div>
+      <div id="designCompareChecks" style="display:flex; gap:8px; overflow-x:auto; padding:8px 0; scroll-snap-type:x mandatory;"></div>
+      <button type="button" class="btn" id="designCompareBtn" style="width:100%;" data-i18n="designCompareBtn">🆚 صمّمها بالأنماط المختارة</button>
+      <div id="designCompareStatus" style="display:none; margin-top:8px; font-size:12px; color:var(--muted); text-align:center;"></div>
+      <div id="designCompareResults" style="display:none; gap:10px; overflow-x:auto; margin-top:10px; scroll-snap-type:x mandatory;"></div>
+    </div>
   </div>
 </div>
 
