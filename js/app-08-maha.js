@@ -214,60 +214,27 @@ else setTimeout(() => { try{ mahaUpdatePersonaUI(); }catch(e){ __swallow(e, 'mah
 /* v-persona-pick: مها وعبدالله شخصيتان صريحتان — مبدّل ظاهر على شاشة
    المكالمة، والأيقونة (الزر العائم والكرة) تتبدل مع المختار: مها بحرفها
    الذهبي «م» وعبدالله بحرفه «ع» بنفس الهوية. */
-const MAHA_ICON = '/icons/maha-icon.png';
+const MAHA_ICON = '/icons/maha-icon-v3.svg'; // v-maha-solo: أيقونة مها الجديدة
 const ABDULLAH_ICON = '/icons/abdullah-icon.svg';
 function mahaUpdatePersonaUI(){
-  mahaDetectedGender = mahaReadVoiceGender();
-  const male = mahaDetectedGender === 'male';
-  const icon = male ? ABDULLAH_ICON : MAHA_ICON;
+  // v-maha-solo: مها وحدها الآن — عبدالله يُرتَّب لاحقًا بطلب المالك.
+  // الشخصية مثبتة أنثوية أيًّا كان الإعداد القديم المحفوظ.
+  mahaDetectedGender = 'female';
+  try{ if(localStorage.getItem('aiapp_voice_gender') !== 'female') localStorage.setItem('aiapp_voice_gender', 'female'); }catch(e){ __swallow(e, 'maha:solo'); }
+  const old = document.getElementById('mahaPersonaSwitch');
+  if(old) old.remove();
   const nameEl = document.getElementById('mahaCallNameLabel');
-  if(nameEl) nameEl.textContent = male ? 'عبدالله' : 'مها';
+  if(nameEl) nameEl.textContent = 'مها';
   const orb = document.getElementById('mahaOrb');
   if(orb){
     orb.textContent = '';
-    orb.style.background = "url('" + icon + "') center/cover no-repeat, #0a0908";
+    orb.style.background = "url('" + MAHA_ICON + "') center/cover no-repeat, #0a0908";
     orb.style.boxShadow = '0 0 35px rgba(212,175,55,.55)';
     orb.style.border = '1px solid rgba(212,175,55,.35)';
   }
   const fabImg = btnMahaEl && btnMahaEl.querySelector('img');
-  if(fabImg && fabImg.getAttribute('src') !== icon){ fabImg.src = icon; fabImg.alt = male ? 'عبدالله' : 'مها'; }
-  if(btnMahaEl) btnMahaEl.title = male ? 'عبدالله' : 'مها';
-  mahaEnsurePersonaSwitch(male);
-}
-// مبدّل الشخصية على شاشة المكالمة: مها | عبدالله — يحفظ الاختيار، وفي
-// مكالمة HD قائمة يتفعّل الصوت الجديد من المكالمة التالية (نُعلمها بلطف).
-function mahaEnsurePersonaSwitch(male){
-  const handle = document.getElementById('mahaDragHandle');
-  if(!handle) return;
-  let row = document.getElementById('mahaPersonaSwitch');
-  if(!row){
-    row = document.createElement('div');
-    row.id = 'mahaPersonaSwitch';
-    row.style.cssText = 'display:flex; gap:6px; justify-content:center; margin-top:5px;';
-    [['female', 'مها'], ['male', 'عبدالله']].forEach(([g, label]) => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.setAttribute('data-persona', g);
-      b.textContent = label;
-      b.style.cssText = 'border-radius:99px; padding:3px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit;';
-      b.onclick = (e) => {
-        e.stopPropagation();
-        try{ localStorage.setItem('aiapp_voice_gender', g); }catch(err){ __swallow(err, 'maha:persona-save'); }
-        mahaUpdatePersonaUI();
-        if(typeof mahaRtActive !== 'undefined' && mahaRtActive){
-          mahaSetState(mahaState, 'الصوت الجديد يبدأ من المكالمة الجاية 🎙️');
-        }
-      };
-      row.appendChild(b);
-    });
-    handle.appendChild(row);
-  }
-  Array.from(row.children).forEach((b) => {
-    const on = (b.getAttribute('data-persona') === 'male') === male;
-    b.style.background = on ? '#d4af37' : 'rgba(0,0,0,.45)';
-    b.style.color = on ? '#141414' : '#eee';
-    b.style.border = on ? '1px solid #d4af37' : '1px solid rgba(255,255,255,.25)';
-  });
+  if(fabImg && fabImg.getAttribute('src') !== MAHA_ICON){ fabImg.src = MAHA_ICON; fabImg.alt = 'مها'; }
+  if(btnMahaEl) btnMahaEl.title = 'مها';
 }
 // First-run voice picker: shown once, before the very first call, then stored.
 // Changeable any time from ⚙️ الإعدادات › الصوت.
@@ -275,7 +242,10 @@ function mahaEnsureVoiceChosen(){
   return new Promise(resolve => {
     let already = null;
     try{ already = localStorage.getItem('aiapp_voice_gender'); }catch(e){ /* guard-ok: unavailable storage shows the safe first-run picker. */ }
-    if(already === 'male' || already === 'female') return resolve(already);
+    // v-maha-solo: مها وحدها — لا سؤال في أول تشغيل.
+    try{ localStorage.setItem('aiapp_voice_gender', 'female'); }catch(e){ __swallow(e, 'maha:solo-first'); }
+    return resolve('female');
+    /* eslint-disable no-unreachable */
     const wrap = document.createElement('div');
     wrap.id = 'voicePickFirstRun';
     wrap.style.cssText = 'position:fixed; inset:0; z-index:100000; display:flex; align-items:center; justify-content:center; background:rgba(8,7,14,.82); backdrop-filter:blur(6px);';
@@ -1988,10 +1958,10 @@ async function mahaStartCallInner(mode){
     return;
   }catch(e){
     if(e && e.message === '__points__'){
-      // الرصيد خلص — رسالة لطيفة وإنهاء بدون fallback
-      mahaSetState('error', t('mahaNoPoints'));
-      setTimeout(() => { mahaEndCall(); }, 2600);
-      return;
+      // v-maha-open: كان يقفل المكالمة كليًا («مها مش مفتوحة») — الآن يهبط
+      // للوضع الأساسي: الصوت الفائق وحده ما يحتاج نقاطًا/رصيدًا.
+      console.warn('[maha] HD needs points/credit — continuing in basic mode');
+      mahaSetState('thinking', 'الصوت الفائق يحتاج نقاطًا — أكمل معك بالوضع الأساسي 🎙️');
     }
     console.error('[maha] realtime mode failed, falling back to classic pipeline:', e);
     mahaEndRealtimeCall();
