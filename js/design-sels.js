@@ -121,6 +121,100 @@
       'linear-gradient(155deg,'+c[0]+' 0%,'+c[1]+' 55%,'+c[2]+' 120%)';
   }
   window.__decorPal=palBg;
+  /* v-decor-subs: وصف عربي قصير تحت كل اسم — تعرفين الكلاسيكي من العصري من
+     أول نظرة، نفس فكرة أنماط الصور بالضبط. */
+  var SUBS={
+    designAiStyle:{
+      modern:'خطوط نظيفة وألوان محايدة', simple:'هدوء وبساطة بلا زحمة',
+      bohemian:'ألوان دافئة ونسيج وخوص', luxury:'فخامة سوداء بلمسات ذهبية',
+      arabic:'مجلس عربي أصيل بنقوش تراثية', classic:'أثاث خشبي فخم وتفاصيل كلاسيكية',
+      najdi:'جبس منحوت وألوان الصحراء', islamic:'زخارف هندسية بروح معاصرة',
+      andalusi:'أقواس وزليج أندلسي', emirati:'رمل وكريم بلمسة إماراتية',
+      scandinavian:'أبيض وخشب فاتح ودفء شمالي', japandi:'ياباني وسكندنافي — دفء وبساطة',
+      industrial:'طوب وحديد وأسقف مكشوفة', midcentury:'خردل وأزرق بطابع الستينات',
+      artdeco:'هندسة ذهبية وفخامة العشرينات', neoclassic:'أعمدة وتيجان بروح حديثة',
+      victorian:'فخامة إنجليزية عتيقة', baroque:'ذهب وزخارف ملكية',
+      gothic:'دراما داكنة وأقواس عالية', rustic:'خشب طبيعي وريف دافئ',
+      farmhouse:'بياض المزرعة وخشبها', coastal:'أزرق البحر ورمال الشاطئ',
+      mediterranean:'شمس المتوسط وألوانه', moroccan:'زليج وفوانيس مغربية',
+      turkish:'عثماني فاخر بنقوش تركية', persian:'سجاد فارسي وألوان ملكية',
+      indian:'ألوان هندية غنية وتطريز', japanese:'تاتامي وخشب وسكينة يابانية',
+      zen:'هدوء تام وتوازن', wabisabi:'جمال البساطة غير المكتملة',
+      tropical:'نخيل وخضرة استوائية', desert:'رمال ودفء صحراوي',
+      loft:'مساحات مفتوحة بروح المدينة', futuristic:'انحناءات وإضاءة المستقبل',
+      cyberpunk:'نيون بنفسجي وأجواء ليلية', gamer:'إضاءة RGB وأجواء اللعب',
+      darkacademia:'مكتبات وخشب داكن وكتب', chalet:'دفء جبلي وخشب ومدفأة',
+      provence:'لافندر وريف فرنسي', hollywood:'بريق ومخمل هوليوودي',
+      monochrome:'أبيض وأسود صارم', earthy:'طين وتراب وفخار',
+      pastel:'ألوان حالمة ناعمة', smart:'تقنية مدمجة وإضاءة ذكية',
+      eco:'مواد طبيعية ونباتات', retro70s:'برتقالي السبعينات وموجاتها',
+      popart:'ألوان صاخبة وفن البوب', minimalwhite:'أبيض متحفي نقي'
+    },
+    designAiPlace:{
+      '':'صمّم على صورتك المرفوعة', restaurant:'قاعة طعام وطاولات أنيقة',
+      cafe:'ركن قهوة دافئ', bedroom:'راحة وهدوء النوم', majlis:'ضيافة عربية أصيلة',
+      living:'قلب البيت وجلسته', kitchen:'عملية وأنيقة', office:'تركيز وإنتاجية',
+      shop:'واجهة تجارية جذابة', bath:'رخام ونقاء', kids:'مرح آمن وألوان',
+      entrance:'أول انطباع لضيوفك', garden:'جلسة خارجية خضراء'
+    },
+    designAiLighting:{ warm:'أصفر دافئ مريح', cool:'أبيض بارد منعش', bright:'نهاري ساطع', dim:'خافتة هادئة للمساء' },
+    designAiFurniture:{ modern:'قطع عصرية أنيقة', classic:'خشب فخم تقليدي', simple:'عملي بلا تكلّف', luxury:'فخامة في كل قطعة', bohemian:'قطع حرة متنوعة' },
+    designAiFlooring:{ parquet:'خشب دافئ تحت قدميك', marble:'رخام لامع فاخر', ceramic:'عملي سهل التنظيف', carpet:'سجاد وثير مريح' },
+    designAiFabric:{ light:'أقمشة فاتحة مشرقة', dark:'أقمشة داكنة فخمة', neutral:'درجات هادئة محايدة', bold:'ألوان جريئة لافتة' },
+    designAiWallColor:{ white:'نقاء يوسّع المكان', beige:'دفء هادئ', gray:'حياد عصري', bold:'جدار مميز جريء' },
+    designAiCurtains:{ simple:'ستائر خفيفة أنيقة', luxury:'ستائر فخمة ثقيلة', remove:'نوافذ مكشوفة مضيئة' }
+  };
+  function palSub(id,v){
+    if((document.documentElement.lang||'ar')==='en') return '';
+    return (SUBS[id]||{})[v]||'';
+  }
+  /* v-decor-toggles: النباتات واللوحات والإكسسوارات وإعادة الترتيب بطاقات
+     احترافية بلوحات ألوانها — نفس فكرة الأنماط والستايل، والصح ✓ ذهبي. */
+  var CBPAL={
+    designAiRearrange:['#3a3f47','#6e737d','#a5abb5'],
+    designAiDecorPlants:['#2e5f2e','#6ea54a','#d7e8b0'],
+    designAiDecorArt:['#4a2f5f','#8a5f9e','#d4af37'],
+    designAiDecorAccessories:['#1a1a1f','#d4af37','#8a6d2f']
+  };
+  var CBSUB={
+    designAiRearrange:'توزيع أذكى للمساحة',
+    designAiDecorPlants:'خضرة حيّة تنعش المكان',
+    designAiDecorArt:'جدارية تكمل الحكاية',
+    designAiDecorAccessories:'تفاصيل ذهبية تصنع الفرق'
+  };
+  function proToggle(cb){
+    var lab=cb.parentElement, sp=lab?lab.querySelector('span'):null;
+    var txt=(sp?(sp.textContent||''):cb.id).trim().replace(EMO,'');
+    var c=CBPAL[cb.id]||['#2a2a30','#3d3d45','#55555f'];
+    var d=document.createElement('div');
+    d.setAttribute('data-dtoggle',cb.id);
+    d.style.cssText='position:relative;border-radius:12px;overflow:hidden;cursor:pointer;min-height:76px;display:flex;flex-direction:column;justify-content:flex-end;'+
+      'background:linear-gradient(90deg,'+c[0]+' 0 33.4%,'+c[1]+' 33.4% 66.7%,'+c[2]+' 66.7% 100%) top/100% 30% no-repeat,'+
+      'linear-gradient(155deg,'+c[0]+' 0%,'+c[1]+' 55%,'+c[2]+' 120%);';
+    var sh=document.createElement('div');
+    sh.style.cssText='position:absolute;left:0;right:0;bottom:0;height:70%;background:linear-gradient(transparent,rgba(0,0,0,.78));';
+    var info=document.createElement('div');
+    info.style.cssText='position:relative;padding:8px 10px 9px;';
+    var nm=document.createElement('div');
+    nm.textContent=txt;
+    nm.style.cssText='font-size:12.5px;font-weight:800;color:#fff;';
+    info.appendChild(nm);
+    var subT=((document.documentElement.lang||'ar')!=='en')&&CBSUB[cb.id];
+    if(subT){ var sb=document.createElement('div'); sb.textContent=subT; sb.style.cssText='font-size:10.5px;color:rgba(255,255,255,.75);margin-top:2px;'; info.appendChild(sb); }
+    var tk=document.createElement('div'); tk.textContent='✓';
+    tk.style.cssText='position:absolute;top:7px;inset-inline-start:8px;width:22px;height:22px;border-radius:50%;background:#d4af37;color:#141414;font-weight:800;font-size:14px;display:none;align-items:center;justify-content:center;';
+    function paint(){
+      d.style.outline=cb.checked?'2px solid #d4af37':'1px solid rgba(255,255,255,.14)';
+      d.style.outlineOffset='-2px';
+      d.style.boxShadow=cb.checked?'0 0 12px rgba(212,175,55,.35)':'none';
+      tk.style.display=cb.checked?'flex':'none';
+      nm.style.color=cb.checked?'#d4af37':'#fff';
+    }
+    paint();
+    d.appendChild(sh); d.appendChild(tk); d.appendChild(info);
+    d.onclick=function(){ cb.checked=!cb.checked; cb.dispatchEvent(new Event('change',{bubbles:true})); paint(); };
+    return d;
+  }
   /* v-decor-full-page: كل قوائم الديكور الثماني بطاقة مصغّرة «عرض الكل ›» تفتح
      معرضًا ملء الشاشة — نفس نظام أنماط الصور (طلب المالك: كلهم مرة وحدة). */
   function selImg(id,v){
@@ -137,14 +231,14 @@
     var tr=window.omranPicker.trigger(function(){
       var o=cur();
       return o && { name:optTxt(o), img:selImg(s.id,o.value), bg:palBg(s.id,o.value),
-        sub:s.options.length+(ien?' options':' خيارًا') };
+        sub:palSub(s.id,o.value)||s.options.length+(ien?' options':' خيارًا') };
     }, function(){
       return {
         title: labTxt,
         count: s.options.length+(ien?' options — pick yours':' خيارًا — اختر ما يناسبك'),
         items: Array.prototype.map.call(s.options,function(o){
           return { v:o.value, title:optTxt(o)||(ien?'None':'بدون'), active:o.value===s.value,
-            img:selImg(s.id,o.value), bg:palBg(s.id,o.value) };
+            img:selImg(s.id,o.value), bg:palBg(s.id,o.value), sub:palSub(s.id,o.value) };
         }),
         onPick: function(v){ s.value=v; s.dispatchEvent(new Event('change',{bubbles:true})); tr.refresh(); }
       };
@@ -172,7 +266,8 @@
       var wrap=anchor.parentElement.parentElement, host=wrap.parentElement;
       var oldc=host.querySelector('.chipGrid'); if(oldc) oldc.remove();
       var cg=document.createElement('div'); cg.className='chipGrid';
-      CBS.forEach(function(id){ var cb=document.getElementById(id); if(!cb) return; if(cb.parentElement) cb.parentElement.style.display='none'; cg.appendChild(buildChip(cb)); });
+      cg.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;';
+      CBS.forEach(function(id){ var cb=document.getElementById(id); if(!cb) return; if(cb.parentElement) cb.parentElement.style.display='none'; cg.appendChild(proToggle(cb)); });
       wrap.style.display='none'; host.appendChild(cg);
     }
   }

@@ -60,6 +60,8 @@ const designSels = fs.readFileSync(path.join(__dirname, '../js/design-sels.js'),
 assert.ok(designSels.includes('v-decor-full-page') && designSels.includes('omranPicker.trigger') && designSels.includes('assets/design/styles/'), 'قوائم الديكور كلها معرض ملء الشاشة');
 // لوحات ألوان بدل الإيموجي: بطاقات احترافية إلى أن تحلّ الصور المولّدة محلّها.
 assert.ok(designSels.includes('v-decor-swatch') && designSels.includes("najdi:['#b7854f'") && designSels.includes('__decorPal'), 'لوحة ألوان لكل نمط ومكان — لا شارات إيموجي');
+assert.ok(designSels.includes('v-decor-subs') && designSels.includes('أقواس وزليج أندلسي'), 'وصف عربي تحت كل نمط — تعرفين الكلاسيكي من العصري');
+assert.ok(designSels.includes('v-decor-toggles') && designSels.includes('data-dtoggle'), 'النباتات واللوحات والإكسسوارات بطاقات لا مربعات صح');
 assert.ok(studios.includes("__decorPal('designAiStyle', v)"), 'صفّ المقارنة بلوحات الألوان أيضًا');
 const app05 = fs.readFileSync(path.join(__dirname, '../js/app-05-ui.js'), 'utf8');
 assert.ok(app05.includes('it.bg') && app05.includes('s.bg'), 'المعرض والبطاقة المصغّرة يقبلان لوحة ألوان');
