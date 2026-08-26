@@ -48,7 +48,7 @@ assert.ok(designGen.includes('[occ,sea].forEach') && !designGen.includes('[occ,s
 //    والمبدّل يبثّ الحدث. العباية تبقى نسائية فقط.
 assert.ok(create.includes('STYLE_PROMPTS_MEN') && create.includes('styleDescFor(style, gender)'), 'الخادم يصف كل فئة بلغتها');
 assert.ok(!create.includes("STYLE_PROMPTS_MEN = {") || !/STYLE_PROMPTS_MEN[\s\S]{0,400}abaya/.test(create), 'لا عباية في أوصاف الرجال');
-assert.ok(studios.includes('GENDER_STYLES') && studios.includes("men: ['evening', 'formal', 'casual', 'wedding', 'traditional']"), 'قوائم الأنماط لكل فئة');
+assert.ok(studios.includes('v-fashion-78') && studios.includes("'rockstar', 'moroccan'") && studios.includes("'eidkids', 'princess'"), 'كتالوج 36/24/18 لكل فئة');
 assert.ok(studios.includes('v-fashion-compare-cards') && studios.includes('data-compare-card') && studios.includes("scroll-snap-type:x mandatory"), 'صفّ مقارنة بطاقات يُسحب');
 assert.ok(studios.includes("fashion-gender-change"), 'تبديل الفئة يعيد رسم البطاقات');
 assert.ok(designGen.includes("fashion-gender-change"), 'المبدّل يبثّ حدث الفئة');

@@ -683,10 +683,11 @@ async function __safeJson(res){
   const styleCardsEl = $('#fashionStyleCards');
   // v-fashion-genders: لكل فئة أنماطها وصورها — العباية نسائية فقط، والصور من
   // looks/<الفئة>/، وما لم يُولَّد بعد يسقط لصور النساء ثم للتدرّج الأنيق.
+  // v-fashion-78: نسائي 36 · رجالي 24 · أطفال 18 — «٣٠-٥٠ كلام آخر».
   const GENDER_STYLES = {
-    women: ['evening', 'formal', 'casual', 'abaya', 'wedding', 'traditional'],
-    men: ['evening', 'formal', 'casual', 'wedding', 'traditional'],
-    kids: ['evening', 'formal', 'casual', 'wedding', 'traditional'],
+    women: ['evening', 'formal', 'casual', 'abaya', 'wedding', 'traditional', 'kaftan', 'jalabiya', 'hijabchic', 'oldmoney', 'streetwear', 'sporty', 'winterlux', 'summer', 'office', 'cocktail', 'ballgown', 'boho', 'vintage', 'y2k', 'minimal', 'glam', 'leather', 'denim', 'pastel', 'monochrome', 'floral', 'velvet', 'silk', 'suitf', 'turkish', 'indian', 'princess', 'safari', 'preppy', 'artgown'],
+    men: ['evening', 'formal', 'casual', 'wedding', 'traditional', 'bisht', 'oldmoney', 'streetwear', 'sporty', 'winterlux', 'summer', 'office', 'leather', 'denim', 'minimal', 'monochrome', 'vintage', 'smartcasual', 'threepiece', 'safari', 'preppy', 'athleisure', 'rockstar', 'moroccan'],
+    kids: ['evening', 'formal', 'casual', 'wedding', 'traditional', 'sporty', 'winterlux', 'summer', 'school', 'denim', 'pastel', 'floral', 'streetwear', 'minimal', 'vintage', 'preppy', 'eidkids', 'princess'],
   };
   function currentGender(){
     try{ return (window.omranFashionExtras && window.omranFashionExtras().gender) || 'women'; }
