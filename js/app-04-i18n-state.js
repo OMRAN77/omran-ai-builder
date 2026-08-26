@@ -1290,6 +1290,14 @@ function renderMessages(keepScroll){
       div.appendChild(imgStrip);
     }
     div.appendChild(textDiv);
+    // AppGallery: وسم صريح للمحتوى المولّد بالذكاء الاصطناعي على كل ردّ مساعد.
+    if(m.role !== 'user' && __mc){
+      const aiTag = document.createElement('div');
+      aiTag.className = 'aiGenTag';
+      aiTag.textContent = lang === 'ar' ? '✨ محتوى مولّد بالذكاء الاصطناعي' : '✨ AI-generated content';
+      aiTag.style.cssText = 'font-size:10px;opacity:.5;margin-top:6px;user-select:none;';
+      div.appendChild(aiTag);
+    }
     if(m.role !== 'user' && m._stopped && !document.documentElement.classList.contains('mobile-ui')){
       const stoppedNote = document.createElement('div');
       stoppedNote.className = 'msgStoppedNote';

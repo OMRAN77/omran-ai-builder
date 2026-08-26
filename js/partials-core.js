@@ -73,6 +73,12 @@
       <a href="#" id="authOtpBackLink" style="display:block; text-align:center; margin-top:10px; font-size:12px; color:var(--accent,#6b7280); text-decoration:none;" data-i18n="authOtpBack">رجوع</a>
     </div>
 
+    <!-- AppGallery 7.5: سياسة الخصوصية ظاهرة بوضوح في صفحة الدخول/التسجيل -->
+    <p style="margin:14px 0 0; text-align:center; font-size:12px; color:var(--muted,#8a8a8a);" data-i18n-skip>
+      بتسجيلك أو دخولك فأنت توافق على
+      <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa); text-decoration:underline;">سياسة الخصوصية</a>
+      و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa); text-decoration:underline;">شروط الاستخدام</a>
+    </p>
   </div>
 </div>
 

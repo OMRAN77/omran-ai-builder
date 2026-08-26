@@ -396,6 +396,12 @@
 
   <div id="aboutSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('aboutSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="aboutSectionTitle">ℹ️ عن البرنامج والفيديوهات التعريفية</h3><span class="settingsSectionArrow" id="aboutSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="aboutSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+      <!-- AppGallery 6.4: معلومات خدمة العملاء ظاهرة داخل التطبيق -->
+      <div id="supportContactBox" style="background:var(--panel2,#181818); border:1px solid var(--border,#333); border-radius:var(--r-2,10px); padding:12px 14px; margin-bottom:12px; font-size:13px; line-height:2;">
+        <div style="font-weight:bold;">📞 خدمة العملاء والدعم</div>
+        <div>البريد: <a href="mailto:ommntr77@gmail.com" style="color:var(--accent2,#a78bfa); direction:ltr; unicode-bidi:isolate;">ommntr77@gmail.com</a> — نرد خلال ٢٤-٤٨ ساعة.</div>
+        <div><a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);">سياسة الخصوصية</a> · <a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);">شروط الاستخدام</a></div>
+      </div>
   <div style="font-size: var(--fs-3); line-height:1.9; color:var(--text); background:var(--panel2); border-radius:var(--r-2); padding:12px 14px;" data-i18n="aboutText">
     <b>عمران AI Builder</b> هو منصة عربية بالكامل لبناء التطبيقات بالذكاء الاصطناعي، طوّرها فريق عمران AI. يتيح لك التحدث مع الذكاء الاصطناعي بالعربية أو الإنجليزية للحصول فورًا على كود تطبيق كامل، مع محرر كود ومعاينة حيّة جنبًا إلى جنب.<br><br>
     يدعم البرنامج 4 مزوّدين للذكاء الاصطناعي (Claude، Gemini، OpenAI، Groq)، ويمكنك اختيار أكثر من مزوّد في نفس الوقت لطرح سؤال واحد والحصول على إجابات من الجميع للمقارنة بينها.<br><br>
