@@ -774,8 +774,46 @@
         <option value="formal" data-i18n="fashionAiStyleFormal">👔 رسمي</option>
         <option value="casual" data-i18n="fashionAiStyleCasual">👕 كاجوال</option>
         <option value="abaya" data-i18n="fashionAiStyleAbaya">🖤 عباية</option>
-        <option value="wedding" data-i18n="fashionAiStyleWedding">💍 فستان زفاف</option>
+        <option value="wedding" data-i18n="fashionAiStyleWedding">💍 زفاف</option>
         <option value="traditional" data-i18n="fashionAiStyleTraditional">🌴 خليجي تقليدي</option>
+        <option value="kaftan" data-en="👘 Kaftan">👘 قفطان مغربي</option>
+        <option value="jalabiya" data-en="🌙 Jalabiya">🌙 جلابية</option>
+        <option value="hijabchic" data-en="🧕 Hijab chic">🧕 محجبة عصرية</option>
+        <option value="oldmoney" data-en="🎩 Old money">🎩 أولد موني</option>
+        <option value="streetwear" data-en="🛹 Streetwear">🛹 ستريت وير</option>
+        <option value="sporty" data-en="🏃 Sporty">🏃 رياضي</option>
+        <option value="winterlux" data-en="🧥 Winter luxury">🧥 شتوي فاخر</option>
+        <option value="summer" data-en="☀️ Summer linen">☀️ صيفي كتان</option>
+        <option value="office" data-en="💼 Office chic">💼 دوام أنيق</option>
+        <option value="cocktail" data-en="🥂 Cocktail">🥂 كوكتيل</option>
+        <option value="ballgown" data-en="👑 Ballgown">👑 فستان ملكي</option>
+        <option value="boho" data-en="🌾 Boho">🌾 بوهيمي</option>
+        <option value="vintage" data-en="📻 Vintage 50s">📻 فينتاج</option>
+        <option value="y2k" data-en="💿 Y2K">💿 واي تو كي</option>
+        <option value="minimal" data-en="⬜ Minimal">⬜ مينيمال</option>
+        <option value="glam" data-en="💎 Glam">💎 قلام لامع</option>
+        <option value="leather" data-en="🖤 Leather">🖤 جلد عصري</option>
+        <option value="denim" data-en="👖 Denim">👖 دنيم</option>
+        <option value="pastel" data-en="🌸 Pastel">🌸 باستيل</option>
+        <option value="monochrome" data-en="⬛ Monochrome">⬛ لون واحد</option>
+        <option value="floral" data-en="🌺 Floral">🌺 مورّد</option>
+        <option value="velvet" data-en="🍷 Velvet">🍷 مخمل</option>
+        <option value="silk" data-en="🎀 Silk">🎀 حرير</option>
+        <option value="suitf" data-en="🕴️ Power suit">🕴️ بدلة قوة</option>
+        <option value="turkish" data-en="🧿 Turkish">🧿 تركي</option>
+        <option value="indian" data-en="🐘 Indian">🐘 هندي</option>
+        <option value="princess" data-en="🏰 Princess">🏰 أميرات</option>
+        <option value="safari" data-en="🦁 Safari">🦁 سفاري</option>
+        <option value="preppy" data-en="🎓 Preppy">🎓 بريبي</option>
+        <option value="artgown" data-en="🎭 Avant-garde">🎭 فني جريء</option>
+        <option value="bisht" data-en="🧥 Bisht">🧥 بشت</option>
+        <option value="smartcasual" data-en="👞 Smart casual">👞 سمارت كاجوال</option>
+        <option value="threepiece" data-en="🤵 Three-piece">🤵 بدلة ثلاث قطع</option>
+        <option value="athleisure" data-en="⚡ Athleisure">⚡ أثليجر</option>
+        <option value="rockstar" data-en="🎸 Rockstar">🎸 روك ستار</option>
+        <option value="moroccan" data-en="🕌 Djellaba">🕌 جلباب مغربي</option>
+        <option value="school" data-en="🏫 School">🏫 مدرسي أنيق</option>
+        <option value="eidkids" data-en="🌙 Eid kids">🌙 عيد الأطفال</option>
       </select>
     </div>
 
