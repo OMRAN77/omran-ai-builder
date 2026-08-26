@@ -344,7 +344,16 @@ async function mahaSpeak(text){
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang })
       });
-      if(!resp.ok){ resolve(); return; }
+      if(!resp.ok){
+        // v-maha-mute: فشل النطق كان صمتًا تامًا فتبدو مها «خربانة» وهي
+        // أجابت فعلًا — نعرض نص ردها على الشاشة مدة تكفي لقراءته ثم نكمل.
+        try{
+          const shown = String(text).slice(0, 180);
+          mahaSetState('speaking', '📝 ' + shown + (text.length > 180 ? '…' : ''));
+          setTimeout(resolve, Math.min(9000, 1800 + shown.length * 55));
+        }catch(e){ resolve(); }
+        return;
+      }
       const blob = await resp.blob();
       const url = URL.createObjectURL(blob);
       const audio = mahaAudioEl;
@@ -1941,6 +1950,9 @@ async function mahaStartCallInner(mode){
     }
     console.error('[maha] realtime mode failed, falling back to classic pipeline:', e);
     mahaEndRealtimeCall();
+    // v-maha-mute: السقوط للوضع الأساسي كان صامتًا (وسم صغير فقط) — نبّه
+    // المتصل لحظةً حتى لا يظن المكالمة معلّقة.
+    try{ mahaSetState('thinking', 'الصوت الفائق غير متاح الآن — أكمل معك بالوضع الأساسي 🎙️'); }catch(e2){ __swallow(e2, 'maha:fallback-note'); }
   }
   if(!mahaCallActive) return;
   if(!window.MediaRecorder){
