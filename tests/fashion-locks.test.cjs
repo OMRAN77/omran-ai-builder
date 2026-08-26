@@ -72,7 +72,7 @@ assert.ok(studios.includes('renderPortraitStyleCards()') && studios.includes('fa
 const portrait = fs.readFileSync(path.join(__dirname, '../api/_lib/portrait-style.js'), 'utf8');
 assert.ok(portrait.includes('v-portrait-rescue') && portrait.includes('openaiPortraitEdit(promptText'), 'البورتريه له خطّ إنقاذ gpt-image-1 أيضًا');
 const pThumbs = fs.readFileSync(path.join(__dirname, '../scripts/portrait-thumbs.mjs'), 'utf8');
-assert.ok(pThumbs.includes('category/men.webp') && pThumbs.includes('/api/portrait-style'), 'مولّد أنماط الصور يحوّل وجهًا مصدرًا واحدًا');
+assert.ok(pThumbs.includes('STYLE_SOURCE') && pThumbs.includes("wedding: 'w1'") && pThumbs.includes('/api/portrait-style'), 'المعاينات بوجوه متنوعة موزّعة لا وجه واحد');
 assert.ok(studios.includes(".fashionCompareCheck:checked"), 'قارئ المقارنة القديم كما هو');
 console.log('  ✓ الأسلاك: خادم + عميل + مبدّل المحرك');
 
