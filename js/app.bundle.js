@@ -2536,6 +2536,11 @@ const I18N = {
     portraitBackdropMarble: '🏛️ رخام فاخر',
     designAiGenerateBtn: '✨ صمم الغرفة',
     designAiDownloadBtn: '⬇️ تحميل الصورة',
+    designCompareTitle: '🆚 غرفتي بكل الأنماط',
+    designCompareHint: 'ارفعي صورة غرفتك واختاري ٢-٣ أنماط — نولّدها جنبًا إلى جنب وتختارين الأجمل',
+    designCompareBtn: '🆚 صمّمها بالأنماط المختارة',
+    designBABefore: 'قبل',
+    designBAAfter: 'بعد',
     designAiNeedImage: '⚠️ الرجاء رفع صورة الغرفة أولًا.',
     designAiNeedLogin: '🔑 يجب تسجيل الدخول أولًا لاستخدام ديكور AI.',
     designAiLimitReached: '⏳ لقد استهلكت حد التصاميم المجانية لليوم. حاول مرة أخرى غدًا.',
@@ -3611,6 +3616,11 @@ const I18N = {
     portraitBackdropMarble: '🏛️ Luxury Marble',
     designAiGenerateBtn: '✨ Design the room',
     designAiDownloadBtn: '⬇️ Download image',
+    designCompareTitle: '🆚 My room in every style',
+    designCompareHint: 'Upload your room photo, pick 2-3 styles — we design them side by side',
+    designCompareBtn: '🆚 Design with picked styles',
+    designBABefore: 'Before',
+    designBAAfter: 'After',
     designAiNeedImage: '⚠️ Please upload a room photo first.',
     designAiNeedLogin: '🔑 Please log in first to use Design AI.',
     designAiLimitReached: "⏳ You have reached today's free design limit. Try again tomorrow.",
@@ -19279,6 +19289,7 @@ async function __safeJson(res){
     btnGenerate.disabled = true;
     resultEl.style.display = 'none';
     downloadEl.style.display = 'none';
+    baHide();
     if(gridEl){ gridEl.style.display = 'none'; gridEl.innerHTML = ''; }
     setStatus(t('designAiGenerating'));
 
@@ -19345,8 +19356,13 @@ async function __safeJson(res){
         return;
       }
       const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
-      resultEl.src = dataUrl;
-      resultEl.style.display = 'block';
+      // v-decor-ba: مع صورة مرفوعة السحّاب يعرض قبل/بعد؛ وبدونها صورة عادية.
+      if(selectedBase64 && !placeVal && showBeforeAfter('data:' + selectedMime + ';base64,' + selectedBase64, dataUrl)){
+        resultEl.style.display = 'none';
+      } else {
+        resultEl.src = dataUrl;
+        resultEl.style.display = 'block';
+      }
       downloadEl.href = dataUrl;
       downloadEl.style.display = 'block';
       setStatus(t('designAiDone'));
@@ -19389,6 +19405,151 @@ async function __safeJson(res){
       setStatus(t('designAiSuggestError'));
     } finally {
       btnSuggest.disabled = false;
+    }
+  };
+
+  /* ---- v-decor-ba: سحّاب قبل/بعد — الأصل يتحوّل للتصميم بسحبة إصبع ---- */
+  const baWrap = $('#designBAWrap');
+  const baAfter = $('#designBAAfter');
+  const baBeforeClip = $('#designBABeforeClip');
+  const baBefore = $('#designBABefore');
+  const baLine = $('#designBALine');
+  const baRange = $('#designBARange');
+  function baHide(){ if(baWrap) baWrap.style.display = 'none'; if(baRange) baRange.style.display = 'none'; }
+  function baSize(){ if(baWrap && baBefore) baBefore.style.width = baWrap.getBoundingClientRect().width + 'px'; }
+  function baSet(p){
+    if(baBeforeClip) baBeforeClip.style.width = p + '%';
+    if(baLine) baLine.style.left = p + '%';
+    baSize();
+  }
+  if(baRange) baRange.oninput = function(){ baSet(baRange.value); };
+  window.addEventListener('resize', function(){ if(baWrap && baWrap.style.display !== 'none') baSize(); });
+  function showBeforeAfter(beforeUrl, afterUrl){
+    if(!baWrap || !baAfter || !baBefore) return false;
+    baAfter.src = afterUrl;
+    baBefore.src = beforeUrl;
+    baAfter.onload = baSize;
+    baWrap.style.display = 'block';
+    baRange.style.display = 'block';
+    baRange.value = 50;
+    baSet(50);
+    return true;
+  }
+  window.__designShowBA = showBeforeAfter;
+  window.__designBAHide = baHide;
+  window.__designSourceUrl = function(){ return selectedBase64 ? ('data:' + selectedMime + ';base64,' + selectedBase64) : ''; };
+
+  /* ---- v-decor-compare: «غرفتي بكل الأنماط» — حتى ٣ أنماط جنبًا إلى جنب ---- */
+  const cmpChecksEl = $('#designCompareChecks');
+  const cmpBtn = $('#designCompareBtn');
+  const cmpStatusEl = $('#designCompareStatus');
+  const cmpResultsEl = $('#designCompareResults');
+  const cmpPicks = [];
+  function cmpStatus(txt){
+    if(!cmpStatusEl) return;
+    cmpStatusEl.style.display = txt ? 'block' : 'none';
+    cmpStatusEl.textContent = txt || '';
+  }
+  function styleTitle(v){
+    const o = styleEl && Array.prototype.find.call(styleEl.options, function(x){ return x.value === v; });
+    if(!o) return v;
+    const den = isEn() && o.getAttribute('data-en');
+    return ((den || o.textContent) || '').trim();
+  }
+  function buildCompareStyleRow(){
+    if(!cmpChecksEl || !styleEl) return;
+    cmpChecksEl.innerHTML = '';
+    Array.prototype.forEach.call(styleEl.options, function(o){
+      const v = o.value;
+      const on = cmpPicks.indexOf(v) >= 0;
+      const card = document.createElement('div');
+      card.setAttribute('data-dcompare-card', v);
+      card.style.cssText = 'position:relative; flex:0 0 96px; aspect-ratio:3/4; border-radius:12px; overflow:hidden; cursor:pointer; scroll-snap-align:start;' +
+        ' background:linear-gradient(160deg,#23232a,#101014); display:flex; align-items:center; justify-content:center;' +
+        (on ? ' border:2px solid #d4af37; box-shadow:0 0 12px rgba(212,175,55,.35);' : ' border:1px solid var(--border,#333);');
+      const badge = document.createElement('div');
+      badge.textContent = (styleTitle(v).match(/^\S+/) || [''])[0];
+      badge.style.cssText = 'width:40px; height:40px; border-radius:50%; border:1px solid rgba(212,175,55,.4); background:rgba(212,175,55,.06); display:flex; align-items:center; justify-content:center; font-size:17px; margin-bottom:14px;';
+      const img = document.createElement('img');
+      img.src = 'assets/design/styles/' + v + '.webp';
+      img.alt = ''; img.loading = 'lazy';
+      img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;';
+      img.onerror = function(){ img.remove(); };
+      const label = document.createElement('div');
+      label.textContent = styleTitle(v);
+      label.style.cssText = 'position:absolute; left:0; right:0; bottom:0; padding:12px 3px 4px; font-size:10px; font-weight:700; text-align:center; z-index:1;' +
+        ' color:' + (on ? '#d4af37' : '#eef0f6') + '; background:linear-gradient(transparent,rgba(0,0,0,.85));';
+      if(on){
+        const tick = document.createElement('div'); tick.textContent = '✓';
+        tick.style.cssText = 'position:absolute; top:5px; inset-inline-start:6px; z-index:2; width:20px; height:20px; border-radius:50%; background:#d4af37; color:#141414; font-weight:800; font-size:12px; display:flex; align-items:center; justify-content:center;';
+        card.appendChild(tick);
+      }
+      card.appendChild(badge); card.appendChild(img); card.appendChild(label);
+      card.onclick = function(){
+        const i = cmpPicks.indexOf(v);
+        if(i >= 0) cmpPicks.splice(i, 1);
+        else { if(cmpPicks.length >= 3){ cmpStatus(isEn() ? 'Max 3 styles' : 'الحد ٣ أنماط'); return; } cmpPicks.push(v); }
+        cmpStatus('');
+        buildCompareStyleRow();
+      };
+      cmpChecksEl.appendChild(card);
+    });
+  }
+  buildCompareStyleRow();
+  if(cmpBtn) cmpBtn.onclick = async () => {
+    if(!selectedBase64){ cmpStatus(isEn() ? 'Upload your room photo first' : 'ارفعي صورة غرفتك أولًا'); return; }
+    if(cmpPicks.length < 2){ cmpStatus(isEn() ? 'Pick 2-3 styles' : 'اختاري نمطين أو ثلاثة'); return; }
+    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+    if(!token){ cmpStatus(t('designAiNeedLogin')); return; }
+    cmpBtn.disabled = true;
+    cmpResultsEl.style.display = 'none';
+    cmpResultsEl.innerHTML = '';
+    const picks = cmpPicks.slice();
+    try{
+      for(let i = 0; i < picks.length; i++){
+        const v = picks[i];
+        cmpStatus((isEn() ? 'Designing ' : 'نصمّم ') + styleTitle(v) + ' — ' + (i + 1) + '/' + picks.length + '…');
+        const res = await fetch('/api/design-create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64: selectedBase64, mimeType: selectedMime, style: v, token }),
+        });
+        const data = await __safeJson(res);
+        if(!res.ok || data.error){
+          if(data.error === 'daily_limit_reached'){ cmpStatus(t('designAiLimitReached')); break; }
+          if(data.error === 'auth_required'){ cmpStatus(t('designAiNeedLogin')); break; }
+          cmpStatus((isEn() ? '❌ Failed at ' : '❌ تعثّر عند ') + styleTitle(v));
+          continue;
+        }
+        const u = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
+        const cell = document.createElement('div');
+        cell.style.cssText = 'flex:0 0 78%; max-width:340px; scroll-snap-align:start;';
+        const im = document.createElement('img');
+        im.src = u;
+        im.style.cssText = 'width:100%; border-radius:12px; display:block; background:#000;';
+        const cap = document.createElement('div');
+        cap.textContent = styleTitle(v);
+        cap.style.cssText = 'font-size:12px; font-weight:700; text-align:center; margin-top:4px;';
+        const pick = document.createElement('button');
+        pick.type = 'button'; pick.className = 'btn';
+        pick.textContent = isEn() ? '👍 Pick this' : '👍 اعتمدي هذا';
+        pick.style.cssText = 'width:100%; margin-top:4px; font-size:11.5px; padding:5px 4px;';
+        pick.onclick = function(){
+          styleEl.value = v;
+          styleEl.dispatchEvent(new Event('change', { bubbles: true }));
+          showBeforeAfter('data:' + selectedMime + ';base64,' + selectedBase64, u);
+          downloadEl.href = u; downloadEl.style.display = 'block';
+          baWrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        };
+        cell.appendChild(im); cell.appendChild(cap); cell.appendChild(pick);
+        cmpResultsEl.appendChild(cell);
+        cmpResultsEl.style.display = 'flex';
+        if(i === picks.length - 1) cmpStatus(isEn() ? '✓ Done — swipe and pick' : '✓ تم — اسحبي وقارني واختاري');
+      }
+    } catch(e){
+      cmpStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+    } finally {
+      cmpBtn.disabled = false;
     }
   };
 })();
