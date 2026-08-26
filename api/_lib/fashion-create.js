@@ -35,6 +35,24 @@ async function openaiRedress(promptText, imageBase64, mimeType) {
   } catch (e) { console.warn('[fashion-create] openai ' + (e && e.message)); return null; }
 }
 
+// 🎨 الوضع النصّي عبر gpt-image-1 (توليد من الصفر بلا صورة مصدر). يُستعمل
+// عند engine=openai أو كخطّ إنقاذ تلقائي حين يرفض Gemini (مثلًا نفاد الرصيد).
+async function openaiGenerate(promptText) {
+  const key = (process.env.OPENAI_API_KEY || '').trim();
+  if (!key) return null;
+  try {
+    const r = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'gpt-image-1', prompt: promptText.slice(0, 3900), size: '1024x1536', quality: 'medium' }),
+    });
+    const d = await r.json();
+    if (!r.ok) { console.warn('[fashion-create] openai gen HTTP ' + r.status + ' ' + String((d.error && d.error.message) || '').slice(0, 120)); return null; }
+    const b64 = d && d.data && d.data[0] && d.data[0].b64_json;
+    return b64 ? { imageBase64: b64, mimeType: 'image/png' } : null;
+  } catch (e) { console.warn('[fashion-create] openai gen ' + (e && e.message)); return null; }
+}
+
 const STYLE_PROMPTS = {
   evening: 'an elegant evening gown style, flowing fabric, refined and glamorous',
   formal: 'a formal professional outfit style, tailored and modern',
@@ -130,8 +148,9 @@ module.exports = async (req, res) => {
     // v-fashion-locks: قفل الهوية بدل السطر الضعيف القديم، وقفل العدالة عند
     // المقارنة (نفس الاستوديو في كل الخيارات)، وقفل الاحتشام حيث يلزم.
     const locks = locksFor({ fairness: !!fairness, modest: !!modest, style, occasion });
+    let promptText = '';
     if (mode === 'image') {
-      const promptText =
+      promptText =
         'Redress the person in this photo into a new outfit in ' + styleDesc + '.' +
         locks + ' ' +
         (fairness ? '' : 'Keep the same pose and background as the source photo. ') +
@@ -149,12 +168,21 @@ module.exports = async (req, res) => {
       parts.push({ text: promptText });
       parts.push({ inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } });
     } else {
-      const promptText =
+      promptText =
         'Generate a photorealistic fashion design image of ' + subject + ' wearing ' + styleDesc + '. ' +
         'Specific description: ' + String(description).slice(0, 500) + '. ' +
         'Full-body studio fashion photography, elegant pose, clean background.' +
         (fairness ? require('./fashion-locks').FAIRNESS_LOCK + ' Use the same model appearance across this comparison set.' : '') +
         detailClause + multiAngleClause;
+      // 🎨 المحرك الاختياري في الوضع النصّي أيضًا: gpt-image-1 من الصفر.
+      if (engine === 'openai') {
+        const oa = await openaiGenerate(promptText);
+        if (oa) {
+          const remOa = await consumeFashion(quota.username);
+          res.status(200).json({ imageBase64: oa.imageBase64, mimeType: oa.mimeType, engine: 'openai', remaining: remOa, dailyLimit: FASHION_DAILY_LIMIT });
+          return;
+        }
+      }
       parts.push({ text: promptText });
     }
 
@@ -174,6 +202,16 @@ module.exports = async (req, res) => {
       const detail = String((data && data.error && data.error.message) || 'unknown')
         .replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
       console.error('[fashion-create] upstream failed status=' + upstream.status + ' detail=' + detail);
+      // v-fashion-rescue: رفضُ Gemini (نفاد رصيد/تعطّل) لا يعني تعطّل الميزة —
+      // إن وُجد مفتاح OpenAI فجرّب gpt-image-1 قبل إبلاغ المستخدم بالفشل.
+      const rescue = mode === 'image'
+        ? await openaiRedress(promptText, imageBase64, mimeType)
+        : await openaiGenerate(promptText);
+      if (rescue) {
+        const remR = await consumeFashion(quota.username);
+        res.status(200).json({ imageBase64: rescue.imageBase64, mimeType: rescue.mimeType, engine: 'openai', remaining: remR, dailyLimit: FASHION_DAILY_LIMIT });
+        return;
+      }
       res.status(502).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.', upstream: upstream.status, detail });
       return;
     }

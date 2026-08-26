@@ -29,6 +29,8 @@ assert.ok(create.includes("require('./fashion-locks')") && create.includes('lock
 assert.ok(!create.includes('Keep the same person, pose, face and background, but change only'), 'السطر الضعيف القديم أزيل');
 assert.ok(create.includes("engine === 'openai'") && create.includes('gpt-image-1'), 'محرك gpt-image-1 اختياري');
 assert.ok(create.includes('images/edits') && create.includes('OPENAI_API_KEY'), 'مفتاح OpenAI من الخادم لا من العميل');
+assert.ok(create.includes('images/generations') && create.includes('openaiGenerate(promptText)'), 'الوضع النصّي له مسار gpt-image-1 أيضًا');
+assert.ok(create.includes('v-fashion-rescue'), 'رفض Gemini يهبط تلقائيًا إلى OpenAI قبل إبلاغ الفشل');
 assert.ok(studios.includes('fairness: true'), 'مقارنة العميل تفعّل قفل العدالة');
 assert.ok(studios.includes('v-fashion-cards') && studios.includes('اضغطي للاختيار'), 'بطاقات المقارنة بشكل التصميم المعتمد مع اختيار ذهبي');
 assert.ok(partials.includes('fashionAiEngine'), 'مبدّل المحرك موجود في الواجهة');
