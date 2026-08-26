@@ -214,7 +214,7 @@ else setTimeout(() => { try{ mahaUpdatePersonaUI(); }catch(e){ __swallow(e, 'mah
 /* v-persona-pick: مها وعبدالله شخصيتان صريحتان — مبدّل ظاهر على شاشة
    المكالمة، والأيقونة (الزر العائم والكرة) تتبدل مع المختار: مها بحرفها
    الذهبي «م» وعبدالله بحرفه «ع» بنفس الهوية. */
-const MAHA_ICON = '/icons/maha-m2.svg'; // v-maha-solo: أيقونة مها الجديدة
+const MAHA_ICON = '/icons/maha-m3.svg'; // v-maha-solo: أيقونة مها الجديدة
 const ABDULLAH_ICON = '/icons/abdullah-icon.svg';
 function mahaUpdatePersonaUI(){
   // v-maha-solo: مها وحدها الآن — عبدالله يُرتَّب لاحقًا بطلب المالك.
