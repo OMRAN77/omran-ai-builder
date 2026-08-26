@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="70%">
+      <stop offset="0" stop-color="#2c2514"/>
+      <stop offset=".65" stop-color="#151310"/>
+      <stop offset="1" stop-color="#0a0908"/>
+    </radialGradient>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fbe89b"/>
+      <stop offset=".45" stop-color="#d4af37"/>
+      <stop offset="1" stop-color="#a37c1c"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f0d574"/>
+      <stop offset="1" stop-color="#8a6a1a"/>
+    </linearGradient>
+  </defs>
+  <circle cx="64" cy="64" r="62" fill="url(#bg)"/>
+  <circle cx="64" cy="64" r="61" fill="none" stroke="url(#ring)" stroke-opacity=".55" stroke-width="2.4"/>
+  <circle cx="64" cy="64" r="55" fill="none" stroke="#d4af37" stroke-opacity=".16" stroke-width="1"/>
+  <text x="64" y="80" font-family="'Tajawal','Amiri','Geeza Pro',serif" font-size="46" font-weight="700" text-anchor="middle" fill="url(#g)">مها</text>
+  <path d="M64 22 l2.2 5 5 2.2 -5 2.2 -2.2 5 -2.2 -5 -5 -2.2 5 -2.2 z" fill="#fbe89b"/>
+  <circle cx="94" cy="36" r="2.2" fill="#f7e08a" opacity=".9"/>
+  <circle cx="33" cy="93" r="1.8" fill="#f7e08a" opacity=".6"/>
+  <circle cx="100" cy="86" r="1.4" fill="#f7e08a" opacity=".5"/>
+</svg>
