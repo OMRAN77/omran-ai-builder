@@ -36,5 +36,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B bot/design-thumbs
           git add assets/design
-          git commit -m "أصول: بطاقات الديكور شبه الحقيقية (مولّد مجاني)"
+          git commit -m "أصول: بطاقات الديكور شبه الحقيقية (مولّد مجاني)" || echo "لا جديد — الصور مطابقة لما هو ملتزم"
           git push -f origin bot/design-thumbs

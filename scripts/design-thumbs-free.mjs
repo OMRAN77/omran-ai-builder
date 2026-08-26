@@ -19,7 +19,7 @@ const LOOK = ' Professional architectural photography, photorealistic, warm eleg
 const JOBS = [];
 if (MODE === 'styles' || MODE === 'all') {
   Object.entries(STYLE_PROMPTS).forEach(([v, desc], i) => JOBS.push({
-    kind: 'dstyle', name: v, seed: 100 + i,
+    kind: 'dstyle', name: v, seed: v === 'minimalwhite' ? 777 : 100 + i,
     prompt: 'Photorealistic interior design photograph of a living room decorated in ' + desc + '.' + LOOK,
   }));
 }
