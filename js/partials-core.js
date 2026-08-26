@@ -267,6 +267,45 @@
         <option value="najdi" data-en="🏜️ Najdi" data-i18n="designAiStyleNajdi">🏜️ نجدي</option>
         <option value="islamic" data-en="✳️ Modern Islamic" data-i18n="designAiStyleIslamic">✳️ إسلامي معاصر</option>
         <option value="andalusi" data-en="🏛️ Andalusian" data-i18n="designAiStyleAndalusi">🏛️ أندلسي</option>
+        <option value="emirati" data-en="🌴 Emirati modern">🌴 إماراتي معاصر</option>
+        <option value="scandinavian" data-en="🌿 Scandinavian">🌿 سكندنافي</option>
+        <option value="japandi" data-en="🎋 Japandi">🎋 جابندي</option>
+        <option value="industrial" data-en="🏭 Industrial">🏭 صناعي</option>
+        <option value="midcentury" data-en="🪑 Mid-century">🪑 ميدسنشري</option>
+        <option value="artdeco" data-en="💎 Art Deco">💎 آرت ديكو</option>
+        <option value="neoclassic" data-en="🏛️ Neoclassic">🏛️ نيوكلاسيك</option>
+        <option value="victorian" data-en="🕯️ Victorian">🕯️ فيكتوري</option>
+        <option value="baroque" data-en="👑 Baroque">👑 باروك</option>
+        <option value="gothic" data-en="🦇 Gothic">🦇 قوطي</option>
+        <option value="rustic" data-en="🪵 Rustic">🪵 ريفي خشبي</option>
+        <option value="farmhouse" data-en="🏡 Farmhouse">🏡 مزرعة عصرية</option>
+        <option value="coastal" data-en="🌊 Coastal">🌊 ساحلي</option>
+        <option value="mediterranean" data-en="🏖️ Mediterranean">🏖️ متوسطي</option>
+        <option value="moroccan" data-en="🕌 Moroccan">🕌 مغربي</option>
+        <option value="turkish" data-en="🧿 Ottoman Turkish">🧿 تركي عثماني</option>
+        <option value="persian" data-en="🪔 Persian">🪔 فارسي</option>
+        <option value="indian" data-en="🐘 Indian">🐘 هندي</option>
+        <option value="japanese" data-en="⛩️ Japanese">⛩️ ياباني تقليدي</option>
+        <option value="zen" data-en="🧘 Zen">🧘 زن هادئ</option>
+        <option value="wabisabi" data-en="🍵 Wabi-sabi">🍵 وابي سابي</option>
+        <option value="tropical" data-en="🌴 Tropical">🌴 استوائي</option>
+        <option value="desert" data-en="🏜️ Desert">🏜️ صحراوي</option>
+        <option value="loft" data-en="🏙️ Urban loft">🏙️ لوفت حضري</option>
+        <option value="futuristic" data-en="🚀 Futuristic">🚀 مستقبلي</option>
+        <option value="cyberpunk" data-en="🌃 Cyberpunk">🌃 سايبربانك</option>
+        <option value="gamer" data-en="🎮 Gamer room">🎮 غرفة قيمر</option>
+        <option value="darkacademia" data-en="📚 Dark academia">📚 مكتبة كلاسيكية</option>
+        <option value="chalet" data-en="🏔️ Alpine chalet">🏔️ شاليه جبلي</option>
+        <option value="provence" data-en="💜 Provence">💜 بروفنس فرنسي</option>
+        <option value="hollywood" data-en="🎬 Hollywood glam">🎬 فخامة هوليوود</option>
+        <option value="monochrome" data-en="⬛ Monochrome">⬛ أبيض وأسود</option>
+        <option value="earthy" data-en="🏺 Earthy organic">🏺 ترابي طيني</option>
+        <option value="pastel" data-en="🌸 Pastel">🌸 باستيل ناعم</option>
+        <option value="smart" data-en="🤖 Smart home">🤖 منزل ذكي</option>
+        <option value="eco" data-en="♻️ Eco green">♻️ صديق للبيئة</option>
+        <option value="retro70s" data-en="🕺 Retro 70s">🕺 ريترو السبعينات</option>
+        <option value="popart" data-en="🌈 Pop art">🌈 بوب آرت</option>
+        <option value="minimalwhite" data-en="⬜ Gallery white">⬜ أبيض متحفي</option>
       </select>
     </div>
 
