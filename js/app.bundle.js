@@ -7620,6 +7620,63 @@ async function postWithConfirm(url, payload){
   if(!okToSpend) return res;
   return await send(Object.assign({}, payload, { confirmed: true }));
 }
+
+
+/* v-omran-picker: فاتح المعرض الموحّد — بطاقات صورة+اسم(+وصف)، اختيار ذهبي ✓،
+   وبلا صورة شارة أنيقة. الاستدعاء: window.omranPicker.open({title,count,items,onPick}). */
+(function(){
+  function el(id){ return document.getElementById(id); }
+  window.omranPicker = { open: function(cfg){
+    var sheet = el('pickerSheet'), grid = el('pickerSheetGrid');
+    if(!sheet || !grid) return;
+    el('pickerSheetTitle').textContent = cfg.title || '';
+    el('pickerSheetCount').textContent = cfg.count || '';
+    grid.innerHTML = '';
+    (cfg.items || []).forEach(function(it){
+      var card = document.createElement('div');
+      card.style.cssText = 'border-radius:14px;overflow:hidden;cursor:pointer;background:#17171b;' +
+        (it.active ? 'border:2px solid #d4af37;box-shadow:0 0 14px rgba(212,175,55,.3);' : 'border:1px solid #2a2a30;');
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'position:relative;aspect-ratio:3/4;background:linear-gradient(160deg,#23232a,#101014);display:flex;align-items:center;justify-content:center;';
+      var badge = document.createElement('div');
+      badge.textContent = (String(it.title || '').trim().match(/^\S+/) || [''])[0];
+      badge.style.cssText = 'width:54px;height:54px;border-radius:50%;border:1px solid rgba(212,175,55,.4);background:rgba(212,175,55,.06);display:flex;align-items:center;justify-content:center;font-size:22px;';
+      wrap.appendChild(badge);
+      if(it.img){
+        var im = document.createElement('img');
+        im.src = it.img; im.alt = it.title || ''; im.loading = 'lazy';
+        im.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
+        im.onerror = function(){
+          if(it.img2 && !im.__flat){ im.__flat = 1; im.src = it.img2; }
+          else im.remove();
+        };
+        wrap.appendChild(im);
+      }
+      if(it.active){
+        var tk = document.createElement('div'); tk.textContent = '✓';
+        tk.style.cssText = 'position:absolute;top:6px;inset-inline-start:7px;width:22px;height:22px;border-radius:50%;background:#d4af37;color:#141414;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;';
+        wrap.appendChild(tk);
+      }
+      var info = document.createElement('div');
+      info.style.cssText = 'padding:9px 10px 11px;text-align:center;';
+      var nm = document.createElement('div');
+      nm.textContent = it.title || '';
+      nm.style.cssText = 'font-size:12.5px;font-weight:700;color:' + (it.active ? '#d4af37' : '#eef0f6') + ';';
+      info.appendChild(nm);
+      if(it.sub){
+        var sb = document.createElement('div'); sb.textContent = it.sub;
+        sb.style.cssText = 'font-size:10.5px;color:#9a9a9e;margin-top:3px;';
+        info.appendChild(sb);
+      }
+      card.appendChild(wrap); card.appendChild(info);
+      card.onclick = function(){ sheet.style.display = 'none'; if(cfg.onPick) cfg.onPick(it.v); };
+      grid.appendChild(card);
+    });
+    sheet.style.display = 'flex';
+    var c = el('pickerSheetClose');
+    if(c) c.onclick = function(){ sheet.style.display = 'none'; };
+  } };
+})();
 window.postWithConfirm = postWithConfirm;
 /* يضبط شكل المحادثة كما يشترطه Gemini — يُستدعى قبل كل طلب. */
 function sanitizeGeminiContents(list){
@@ -19751,29 +19808,57 @@ async function __safeJson(res){
     };
     return img;
   }
+  function fashionOptFor(v){
+    return Array.prototype.find.call(styleEl.options, function(o){ return o.value === v; });
+  }
+  function openFashionPicker(){
+    const g = currentGender();
+    const list = GENDER_STYLES[g] || GENDER_STYLES.women;
+    if(!window.omranPicker) return;
+    window.omranPicker.open({
+      title: isEn() ? '👗 Fashion styles' : '👗 أنماط الأزياء',
+      count: list.length + (isEn() ? ' styles — pick yours' : ' نمطًا — اختر ما يناسبك'),
+      items: list.map(function(v){
+        const opt = fashionOptFor(v);
+        return opt && {
+          v: v, title: opt.textContent.trim(), active: v === styleEl.value,
+          img: 'assets/fashion/looks/' + g + '/' + v + '.webp',
+          img2: 'assets/fashion/looks/' + v + '.webp',
+        };
+      }).filter(Boolean),
+      onPick: function(v){ styleEl.value = v; renderStyleCards(); },
+    });
+  }
   function renderStyleCards(){
     if(!styleCardsEl || !styleEl) return;
     const g = currentGender();
     const list = GENDER_STYLES[g] || GENDER_STYLES.women;
     if(list.indexOf(styleEl.value) < 0) styleEl.value = list[0];
+    // v-fashion-full-page: بطاقة مصغّرة «عرض الكل ›» تفتح معرضًا ملء الشاشة —
+    // نفس نظام أنماط الصور بالضبط (طلب المالك: كل المنتقيات بحجم صفحة كاملة).
+    styleCardsEl.style.display = 'block';
     styleCardsEl.innerHTML = '';
-    list.forEach(function(v){
-      const opt = Array.prototype.find.call(styleEl.options, function(o){ return o.value === v; });
-      if(!opt) return;
-      const active = v === styleEl.value;
-      const card = document.createElement('div');
-      card.setAttribute('data-style-card', v);
-      card.style.cssText = 'position:relative; aspect-ratio:2/3; border-radius:12px; overflow:hidden; cursor:pointer;' +
-        ' background:linear-gradient(160deg,#23232a,#101014);' +
-        (active ? ' border:2px solid #d4af37; box-shadow:0 0 12px rgba(212,175,55,.35);' : ' border:1px solid var(--border,#333);');
-      const label = document.createElement('div');
-      label.textContent = opt.textContent;
-      label.style.cssText = 'position:absolute; left:0; right:0; bottom:0; padding:14px 6px 6px; font-size:11.5px; font-weight:700; text-align:center;' +
-        ' color:' + (active ? '#d4af37' : '#eef0f6') + '; background:linear-gradient(transparent,rgba(0,0,0,.82));';
-      card.appendChild(lookImg(g, v, opt.textContent)); card.appendChild(label);
-      card.onclick = function(){ styleEl.value = v; renderStyleCards(); };
-      styleCardsEl.appendChild(card);
-    });
+    const opt = fashionOptFor(styleEl.value);
+    const trig = document.createElement('div');
+    trig.id = 'fashionStyleTrigger';
+    trig.style.cssText = 'display:flex; align-items:center; gap:10px; border:1px solid var(--border,#333); border-radius:12px; padding:8px 10px; cursor:pointer; background:var(--panel2,#101014);';
+    const img = lookImg(g, styleEl.value, opt ? opt.textContent : '');
+    img.style.cssText = 'width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
+    const info = document.createElement('div');
+    info.style.cssText = 'flex:1; min-width:0;';
+    const nm = document.createElement('div');
+    nm.textContent = opt ? opt.textContent : '';
+    nm.style.cssText = 'font-size:13.5px; font-weight:700;';
+    const sub = document.createElement('div');
+    sub.textContent = list.length + (isEn() ? ' styles for this category' : ' نمطًا لهذه الفئة');
+    sub.style.cssText = 'font-size:11px; color:var(--muted,#999);';
+    info.appendChild(nm); info.appendChild(sub);
+    const all = document.createElement('span');
+    all.textContent = isEn() ? 'Browse all ›' : 'عرض الكل ›';
+    all.style.cssText = 'color:#d4af37; font-size:12.5px; font-weight:700; flex:none;';
+    trig.appendChild(img); trig.appendChild(info); trig.appendChild(all);
+    trig.onclick = openFashionPicker;
+    styleCardsEl.appendChild(trig);
   }
   renderStyleCards();
   // تبديل الفئة (نسائي/رجالي/أطفال) يعيد رسم البطاقات وصفّ المقارنة بصور الفئة.
@@ -21599,34 +21684,54 @@ async function __safeJson(res){
      <الميزة>-<القيمة>.webp، وبلا صورة شارة أنيقة بحلقة ذهبية. السلكت مخفيّ
      ومتزامن فقارئا التوليد والمقارنة عليه بلا تغيير. */
   const studioCardsEl = $('#studioStyleCards');
+  function featureTitle(){
+    const b = tabsWrap.querySelector('.studioAiTabBtn[data-feature="' + feature + '"]');
+    return b ? b.textContent.trim() : '';
+  }
+  function openStudioPicker(){
+    if(!window.omranPicker || !styleEl) return;
+    const opts = Array.from(styleEl.options);
+    window.omranPicker.open({
+      title: featureTitle() || (isEn() ? '✨ AI style' : '✨ ستايل الذكاء الاصطناعي'),
+      count: opts.length + (isEn() ? ' options — pick yours' : ' خيارًا — اختر ما يناسبك'),
+      items: opts.map((opt) => ({
+        v: opt.value, title: opt.textContent.trim(), active: opt.value === styleEl.value,
+        img: 'assets/studio/options/' + feature + '-' + opt.value + '.webp',
+      })),
+      onPick: function(v){ styleEl.value = v; renderStudioStyleCards(); },
+    });
+  }
   function renderStudioStyleCards(){
     if(!studioCardsEl || !styleEl) return;
+    // v-studio-full-page: بطاقة مصغّرة «عرض الكل ›» تفتح معرضًا ملء الشاشة —
+    // نفس نظام أنماط الصور بالضبط (طلب المالك: كل المنتقيات بحجم صفحة كاملة).
+    studioCardsEl.style.display = 'block';
     studioCardsEl.innerHTML = '';
-    Array.from(styleEl.options).forEach((opt) => {
-      const v = opt.value;
-      const active = v === styleEl.value;
-      const title = opt.textContent.trim();
-      const card = document.createElement('div');
-      card.setAttribute('data-sstyle-card', v);
-      card.style.cssText = 'position:relative; aspect-ratio:3/4; border-radius:12px; overflow:hidden; cursor:pointer;' +
-        ' background:linear-gradient(160deg,#23232a,#101014); display:flex; align-items:center; justify-content:center;' +
-        (active ? ' border:2px solid #d4af37; box-shadow:0 0 12px rgba(212,175,55,.35);' : ' border:1px solid var(--border,#333);');
-      const badge = document.createElement('div');
-      badge.textContent = (title.match(/^\S+/) || [''])[0];
-      badge.style.cssText = 'width:46px; height:46px; border-radius:50%; border:1px solid rgba(212,175,55,.4); background:rgba(212,175,55,.06); display:flex; align-items:center; justify-content:center; font-size:19px; margin-bottom:14px;';
-      const img = document.createElement('img');
-      img.src = 'assets/studio/options/' + feature + '-' + v + '.webp';
-      img.alt = title; img.loading = 'lazy';
-      img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;';
-      img.onerror = function(){ img.remove(); };
-      const label = document.createElement('div');
-      label.textContent = title;
-      label.style.cssText = 'position:absolute; left:0; right:0; bottom:0; padding:14px 4px 5px; font-size:11px; font-weight:700; text-align:center; z-index:1;' +
-        ' color:' + (active ? '#d4af37' : '#eef0f6') + '; background:linear-gradient(transparent,rgba(0,0,0,.85));';
-      card.appendChild(badge); card.appendChild(img); card.appendChild(label);
-      card.onclick = function(){ styleEl.value = v; renderStudioStyleCards(); };
-      studioCardsEl.appendChild(card);
-    });
+    const cur = Array.from(styleEl.options).find((o) => o.value === styleEl.value) || styleEl.options[0];
+    if(!cur) return;
+    const trig = document.createElement('div');
+    trig.id = 'studioStyleTrigger';
+    trig.style.cssText = 'display:flex; align-items:center; gap:10px; border:1px solid var(--border,#333); border-radius:12px; padding:8px 10px; cursor:pointer; background:var(--panel2,#101014);';
+    const img = document.createElement('img');
+    img.src = 'assets/studio/options/' + feature + '-' + cur.value + '.webp';
+    img.alt = cur.textContent.trim(); img.loading = 'eager';
+    img.style.cssText = 'width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
+    img.onerror = function(){ img.style.visibility = 'hidden'; };
+    const info = document.createElement('div');
+    info.style.cssText = 'flex:1; min-width:0;';
+    const nm = document.createElement('div');
+    nm.textContent = cur.textContent.trim();
+    nm.style.cssText = 'font-size:13.5px; font-weight:700;';
+    const sub = document.createElement('div');
+    sub.textContent = styleEl.options.length + (isEn() ? ' options for this feature' : ' خيارًا لهذه الميزة');
+    sub.style.cssText = 'font-size:11px; color:var(--muted,#999);';
+    info.appendChild(nm); info.appendChild(sub);
+    const all = document.createElement('span');
+    all.textContent = isEn() ? 'Browse all ›' : 'عرض الكل ›';
+    all.style.cssText = 'color:#d4af37; font-size:12.5px; font-weight:700; flex:none;';
+    trig.appendChild(img); trig.appendChild(info); trig.appendChild(all);
+    trig.onclick = openStudioPicker;
+    studioCardsEl.appendChild(trig);
   }
   /* v-studio-tabs: تبويبات الميزات بطاقات مصوّرة من assets/studio/features/. */
   function photoizeStudioTabs(){

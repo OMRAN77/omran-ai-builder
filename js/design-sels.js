@@ -62,6 +62,40 @@
       try{ if(e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files.length){ fi.files=e.dataTransfer.files; fi.dispatchEvent(new Event('change',{bubbles:true})); } }catch(_){ fi.click(); }
     });
   }
+  /* v-decor-full-page: نمط الديكور بطاقة مصغّرة «عرض الكل ›» تفتح معرضًا ملء
+     الشاشة — نفس نظام أنماط الصور (طلب المالك: كل المنتقيات صفحة كاملة). */
+  function styleTrigger(s){
+    var ien=(document.documentElement.lang||'ar')==='en';
+    function optTxt(o){ var den=ien&&o.getAttribute('data-en'); return ((den||o.textContent)||'').trim(); }
+    function cur(){ var os=s.options; for(var i=0;i<os.length;i++) if(os[i].value===s.value) return os[i]; return os[0]; }
+    var g=document.createElement('div'); g.className='optGrid';
+    g.style.cssText='display:flex;align-items:center;gap:10px;border:1px solid var(--border,#333);border-radius:12px;padding:8px 10px;cursor:pointer;background:var(--panel2,#101014);';
+    var im=document.createElement('img');
+    im.style.cssText='width:44px;height:58px;object-fit:cover;border-radius:8px;background:linear-gradient(160deg,#23232a,#101014);flex:none;';
+    im.onerror=function(){ im.style.visibility='hidden'; };
+    var info=document.createElement('div'); info.style.cssText='flex:1;min-width:0;';
+    var nm=document.createElement('div'); nm.style.cssText='font-size:13.5px;font-weight:700;';
+    var sb=document.createElement('div'); sb.style.cssText='font-size:11px;color:var(--muted,#999);';
+    sb.textContent=s.options.length+(ien?' styles for your space':' نمطًا لمساحتك');
+    info.appendChild(nm); info.appendChild(sb);
+    var all=document.createElement('span'); all.textContent=ien?'Browse all ›':'عرض الكل ›';
+    all.style.cssText='color:#d4af37;font-size:12.5px;font-weight:700;flex:none;';
+    function refresh(){ var o=cur(); if(!o) return; nm.textContent=optTxt(o); im.style.visibility='visible'; im.src='assets/design/styles/'+o.value+'.webp'; im.alt=nm.textContent; }
+    refresh();
+    g.appendChild(im); g.appendChild(info); g.appendChild(all);
+    g.onclick=function(){
+      if(!window.omranPicker) return;
+      window.omranPicker.open({
+        title: ien?'\u{1F6CB}️ Decor styles':'\u{1F6CB}️ أنماط الديكور',
+        count: s.options.length+(ien?' styles — pick yours':' نمطًا — اختر ما يناسبك'),
+        items: Array.prototype.map.call(s.options,function(o){
+          return { v:o.value, title:optTxt(o), active:o.value===s.value, img:'assets/design/styles/'+o.value+'.webp' };
+        }),
+        onPick: function(v){ s.value=v; s.dispatchEvent(new Event('change',{bubbles:true})); refresh(); }
+      });
+    };
+    return g;
+  }
   function build(){
     if(!document.getElementById('designAiModal')) return;
     dropZone('designAiModal','designAi');
@@ -69,7 +103,7 @@
       var s=document.getElementById(id); if(!s||!s.parentElement) return;
       var old=s.parentElement.querySelector('.optGrid'); if(old) old.remove();
       s.style.display='none';
-      var g=buildGrid(s); s.parentElement.appendChild(g);
+      var g=(id==='designAiStyle')?styleTrigger(s):buildGrid(s); s.parentElement.appendChild(g);
       if(!s.getAttribute('data-gridhook')){ s.setAttribute('data-gridhook','1'); s.addEventListener('change',function(){ var gg=s.parentElement.querySelector('.optGrid'); if(gg) mark(gg,s); }); }
     });
     var nt=document.getElementById('designAiNotes');
