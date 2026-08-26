@@ -67,5 +67,13 @@ for (const s of styles) {
   else { console.log(el(), '  ✗ ' + s + ' — HTTP ' + r.status + ' → ' + String(r.text).slice(0, 160)); process.exitCode = 2; }
 }
 
+// بطاقات الأنماط المصوّرة أصول ثابتة — غيابها يعيد الواجهة للتدرّج الصامت.
+console.log('④ أصول بطاقات الأنماط');
+for (const s of ['evening', 'abaya', 'wedding']) {
+  const h = await fetch(BASE + '/assets/fashion/looks/' + s + '.webp', { method: 'HEAD' });
+  if (h.ok) console.log(el(), '  ✓ ' + s + '.webp تُخدَم');
+  else { console.log(el(), '  ✗ ' + s + '.webp — HTTP ' + h.status); process.exitCode = 2; }
+}
+
 console.log('\n· احذف حساب الفحص ' + user + ' من لوحة الإدارة متى شئت.');
 console.log(process.exitCode === 2 ? '✗ أداة الأزياء تنكسر — والسطور أعلاه تسمّي أين' : '✓ أداة الأزياء تعمل على الإنتاج كاملةً');
