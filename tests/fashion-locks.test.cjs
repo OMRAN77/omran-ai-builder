@@ -58,6 +58,11 @@ assert.ok(designGen.includes('v-fashion-photo-all') && designGen.includes("LOOKS
 assert.ok(designGen.includes('v-fashion-full-page') && designGen.includes('omranPicker.trigger'), 'المناسبة والموسم معرض ملء الشاشة');
 const designSels = fs.readFileSync(path.join(__dirname, '../js/design-sels.js'), 'utf8');
 assert.ok(designSels.includes('v-decor-full-page') && designSels.includes('omranPicker.trigger') && designSels.includes('assets/design/styles/'), 'قوائم الديكور كلها معرض ملء الشاشة');
+// لوحات ألوان بدل الإيموجي: بطاقات احترافية إلى أن تحلّ الصور المولّدة محلّها.
+assert.ok(designSels.includes('v-decor-swatch') && designSels.includes("najdi:['#b7854f'") && designSels.includes('__decorPal'), 'لوحة ألوان لكل نمط ومكان — لا شارات إيموجي');
+assert.ok(studios.includes("__decorPal('designAiStyle', v)"), 'صفّ المقارنة بلوحات الألوان أيضًا');
+const app05 = fs.readFileSync(path.join(__dirname, '../js/app-05-ui.js'), 'utf8');
+assert.ok(app05.includes('it.bg') && app05.includes('s.bg'), 'المعرض والبطاقة المصغّرة يقبلان لوحة ألوان');
 // ⑩ أفكار الديكور ١+٢+٣: مقارنة «غرفتي بكل الأنماط» (حتى ٣ أنماط جنبًا إلى جنب)،
 //    سحّاب قبل/بعد على النتيجة، ومولّد بطاقات الأنماط والأماكن.
 assert.ok(partials.includes('designCompareChecks') && partials.includes('v-decor-compare'), 'قسم المقارنة في واجهة الديكور');

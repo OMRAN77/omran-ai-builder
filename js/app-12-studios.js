@@ -324,9 +324,9 @@ async function __safeJson(res){
       card.style.cssText = 'position:relative; flex:0 0 96px; aspect-ratio:3/4; border-radius:12px; overflow:hidden; cursor:pointer; scroll-snap-align:start;' +
         ' background:linear-gradient(160deg,#23232a,#101014); display:flex; align-items:center; justify-content:center;' +
         (on ? ' border:2px solid #d4af37; box-shadow:0 0 12px rgba(212,175,55,.35);' : ' border:1px solid var(--border,#333);');
-      const badge = document.createElement('div');
-      badge.textContent = (styleTitle(v).match(/^\S+/) || [''])[0];
-      badge.style.cssText = 'width:40px; height:40px; border-radius:50%; border:1px solid rgba(212,175,55,.4); background:rgba(212,175,55,.06); display:flex; align-items:center; justify-content:center; font-size:17px; margin-bottom:14px;';
+      // v-decor-swatch: لوحة ألوان النمط بدل شارة الإيموجي — شكل رسمي.
+      const pal = (typeof window.__decorPal === 'function') ? window.__decorPal('designAiStyle', v) : '';
+      if(pal) card.style.background = pal;
       const img = document.createElement('img');
       img.src = 'assets/design/styles/' + v + '.webp';
       img.alt = ''; img.loading = 'lazy';
@@ -341,7 +341,7 @@ async function __safeJson(res){
         tick.style.cssText = 'position:absolute; top:5px; inset-inline-start:6px; z-index:2; width:20px; height:20px; border-radius:50%; background:#d4af37; color:#141414; font-weight:800; font-size:12px; display:flex; align-items:center; justify-content:center;';
         card.appendChild(tick);
       }
-      card.appendChild(badge); card.appendChild(img); card.appendChild(label);
+      card.appendChild(img); card.appendChild(label);
       card.onclick = function(){
         const i = cmpPicks.indexOf(v);
         if(i >= 0) cmpPicks.splice(i, 1);
