@@ -2105,3 +2105,4 @@ async function postWithConfirm(url, payload){
     return { el: d, refresh: refresh };
   };
 })();
+/* v-mob-compact: بصمة جديدة لأن CSS الجوال تغيّر — يكسر كاش الـSW */
