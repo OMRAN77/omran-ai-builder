@@ -7725,6 +7725,7 @@ async function postWithConfirm(url, payload){
     return { el: d, refresh: refresh };
   };
 })();
+/* v-mob-compact: بصمة جديدة لأن CSS الجوال تغيّر — يكسر كاش الـSW */
 window.postWithConfirm = postWithConfirm;
 /* يضبط شكل المحادثة كما يشترطه Gemini — يُستدعى قبل كل طلب. */
 function sanitizeGeminiContents(list){
