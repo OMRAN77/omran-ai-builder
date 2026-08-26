@@ -249,11 +249,11 @@ html[dir="ltr"] #plusToolsPopup #btnToolsBox .omChev{transform:rotate(180deg);}
   #inputbar .inputbar-tools .btn, #inputbar .inputbar-tools-left .btn{padding:5px;}
   #btnSend, #btnStop{width:30px; height:30px; flex:0 0 30px;}
   #btnSend svg, #btnStop svg{width:15px; height:15px;}
-  #omranBottomNav{padding:3px 2px calc(1px + env(safe-area-inset-bottom,0px));}
+  #omranBottomNav{padding:3px 2px max(2px, calc(env(safe-area-inset-bottom,0px) - 15px));}
   main{padding-bottom:calc(48px + env(safe-area-inset-bottom,0px));}
 }
 html.mobile-ui header{padding-top:calc(3px + env(safe-area-inset-top,0px)) !important; padding-bottom:6px;}
-html.mobile-ui #omranBottomNav{padding:3px 2px calc(1px + env(safe-area-inset-bottom,0px));}
+html.mobile-ui #omranBottomNav{padding:3px 2px max(2px, calc(env(safe-area-inset-bottom,0px) - 15px));}
 html.mobile-ui main{padding-bottom:calc(48px + env(safe-area-inset-bottom,0px));}
 html.mobile-ui #inputbar{padding:2px 10px 5px;}
 html.mobile-ui #composerBox{padding:4px 8px 3px !important; border-radius:16px !important;}
