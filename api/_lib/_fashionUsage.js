@@ -8,6 +8,17 @@ const { isBanned } = require('./auth.js');
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 
+// v-owner-open: المالك (بأي من أسمائه في OWNER_USERNAMES أو OWNER_USERNAME)
+// وقائمة VIP بلا حدود — كان المالك نفسه محدودًا هنا.
+const { isVip } = require('./_vip.js');
+const __OWNERS = String(process.env.OWNER_USERNAMES || process.env.OWNER_USERNAME || 'omran')
+  .toLowerCase().split(',').map((s) => s.trim()).filter(Boolean);
+async function __unlimitedUser(username) {
+  if (!username) return false;
+  if (__OWNERS.includes(String(username).toLowerCase())) return true;
+  try { return await isVip(username); } catch (e) { return false; }
+}
+
 const FASHION_DAILY_LIMIT = 3;
 
 function verifyToken(token) {
@@ -51,6 +62,9 @@ async function checkFashionQuota(token) {
   // Suspended accounts hold a valid token for up to 30 days; the ban
   // has to bite on the paths that actually spend money, not just login.
   if (await isBanned(username)) return { allowed: false, reason: 'auth', banned: true, username };
+  if (await __unlimitedUser(username)) {
+    return { allowed: true, username, remaining: Infinity, unlimited: true };
+  }
   const today = todayStr();
   let usage = await getUsage(username);
   if (!usage || usage.date !== today) {
@@ -63,6 +77,7 @@ async function checkFashionQuota(token) {
 }
 
 async function consumeFashion(username) {
+  if (await __unlimitedUser(username)) return Infinity;
   const today = todayStr();
   let usage = await getUsage(username);
   if (!usage || usage.date !== today) {

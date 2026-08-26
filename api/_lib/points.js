@@ -8,7 +8,8 @@ const { getUser, putUser, isBanned } = require('./auth.js');
 const { isVip } = require('./_vip.js');
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
-const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').trim().toLowerCase();
+const OWNER_LIST = String(process.env.OWNER_USERNAMES || process.env.OWNER_USERNAME || 'omran')
+  .toLowerCase().split(',').map((s) => s.trim()).filter(Boolean); // v-owner-open
 
 // أسعار الخدمات بالنقاط — المرجع الوحيد في كل الخادم.
 const COSTS = {
@@ -38,7 +39,7 @@ const PREMIUM_COST = {
 const WELCOME_POINTS = 70;
 
 function isOwner(username) {
-  return !!username && String(username).trim().toLowerCase() === OWNER_USERNAME;
+  return !!username && OWNER_LIST.includes(String(username).trim().toLowerCase());
 }
 
 // VIP = نفس معاملة المالك في النقاط بالضبط: لا خصم، لا رصيد، لا حدّ
