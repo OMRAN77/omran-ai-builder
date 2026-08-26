@@ -2544,6 +2544,8 @@ const I18N = {
     fashionAiTitle: 'أزياء AI',
     fashionAiModalTitle: '👗 استوديو الأزياء',
     fashionAiDesc: 'صورتك + ذوقك — ونعرض عليك خيارات جنب بعض. ميزة قيد التجربة بحد يومي قليل لكل حساب.',
+    portraitStyleBrowseAll: 'عرض الكل ›',
+    portraitStyleSheetTitle: '🎨 أنماط الصور',
     fashionDropTitle: 'ارفعي صورتك كاملة',
     fashionDropHint: 'من الرأس إلى القدم · إضاءة واضحة',
     fashionAiTabImage: '📷 من صورة',
@@ -3617,6 +3619,8 @@ const I18N = {
     fashionAiTitle: 'Fashion AI',
     fashionAiModalTitle: '👗 Fashion Studio',
     fashionAiDesc: 'Your photo + your taste — options side by side. Trial feature with a small daily limit per account.',
+    portraitStyleBrowseAll: 'Browse all ›',
+    portraitStyleSheetTitle: '🎨 Photo styles',
     fashionDropTitle: 'Upload a full-body photo',
     fashionDropHint: 'Head to toe · clear lighting',
     fashionAiTabImage: '📷 From photo',
@@ -19339,52 +19343,115 @@ async function __safeJson(res){
       }
     });
   }
-  /* v-portrait-style-cards: صفّ بطاقات يُسحب لأنماط الصور — نفس الوجه بكل
-     ستايل. المفضلة أولًا بشارة ⭐، بلا صورة تبقى بطاقة إيموجي أنيقة. */
-  const styleCardsRow = $('#portraitStyleCards');
-  function renderPortraitStyleCards(){
-    if(!styleCardsRow || !styleEl) return;
+  /* v-portrait-style-page: معرض أنماط الصور ملء الشاشة — شبكة عمودية متجاوبة
+     (كمبيوتر وهواتف عبر auto-fill)، بطاقة احترافية: صورة نفس الوجه بالستايل +
+     عنوان ووصف، المفضلة ⭐ أولًا، وبلا صورة يبقى الإيموجي بأناقة. */
+  const styleSheet = $('#portraitStyleSheet');
+  const styleCardsGrid = $('#portraitStyleCards');
+  const styleTrigger = $('#portraitStyleTrigger');
+  const styleSheetClose = $('#portraitStyleSheetClose');
+  const styleSheetCount = $('#portraitStyleSheetCount');
+  const PSTYLE_SUBS = {
+    anime: 'ستايل الأنمي والمانجا', cartoon: 'كرتون رقمي ناعم', oil: 'لوحة زيتية كلاسيكية',
+    sketch: 'رسم يدوي بالرصاص', pixel: 'بيكسل آرت ريترو', comic: 'كوميكس بخطوط جريئة',
+    pop: 'بوب آرت ملوّن وحيوي', gulf: 'أسلوب إماراتي تراثي فاخر', caricature: 'كاريكاتير مرح',
+    cinematic: 'إضاءة سينمائية درامية', disney: 'شخصيات ثلاثية الأبعاد لطيفة', flat: 'فيكتور مسطح أنيق',
+    fantasy: 'عالم خيالي بتفاصيل ملحمية', western: 'طابع وسترن قديم', cyberpunk: 'أجواء مستقبلية بإضاءة نيون',
+    abstract: 'فن تجريدي معبّر', watercolor: 'لوحة مائية بألوان زاهية', ottoman: 'منمنمات إسلامية مذهّبة',
+    gameposter: 'بوستر شخصية لعبة', newspaper: 'كاريكاتير صحفي قديم', horror: 'أجواء رعب هالوين',
+    shonen: 'أنمي حركة ياباني', royal: 'لوحة ملكية كلاسيكية', calligraphy: 'زخرفة بالخط العربي',
+    removebg: 'إزالة الخلفية بخلفية جاهزة', linkedin: 'صورة احترافية للعمل والسيرة', beautify: 'تحسينات خفيفة طبيعية',
+    eid: 'إطار احتفالي للعيد', national: 'إطار اليوم الوطني الإماراتي', ramadan: 'أجواء رمضانية روحانية',
+    ageshift: 'شكلك أصغر أو أكبر عمرًا', sportshero: 'بوستر بطل رياضي', hairstyle: 'تسريحة ولون شعر جديد',
+    wedding: 'إطلالة زفاف أنيقة', graduation: 'ثوب وقبعة التخرج', adposter: 'بوستر إعلاني باسمك',
+    timeshift: 'صورتك في زمن آخر', familystyle: 'ستايل موحّد للعائلة', merge2: 'دمج صورتين في مشهد',
+    avatargif: 'أفاتار متحرك (٦ إطارات)', passport: 'صورة رسمية للجواز', restore: 'ترميم الصور القديمة',
+    colorize: 'تلوين الصور القديمة', upscale: 'رفع الدقة والوضوح', objectremove: 'إزالة عناصر من الصورة',
+    outfit: 'تبديل الملابس في الصورة', productshot: 'لقطة منتج احترافية', hajj: 'أجواء الحج والعمرة',
+    birthday: 'احتفال عيد ميلاد', newborn: 'تذكار مولود جديد', claymation: 'شخصية صلصال لطيفة',
+    lowpoly: 'تصميم هندسي حديث', graffiti: 'جرافيتي شارع جريء', mosaic: 'فسيفساء فنية',
+    stainedglass: 'زجاج معشّق ملوّن', papercraft: 'فن الورق المقصوص', crochet: 'شخصية كروشيه محبوكة',
+    inflatable: 'مجسم منفوخ لامع', ukiyoe: 'فن ياباني كلاسيكي', sandart: 'رسم رملي إماراتي',
+    neonsign: 'لوحة نيون مضيئة', doubleexposure: 'تعريض مزدوج فني', figurine: 'مجسم أكشن في علبة',
+    ghibli: 'ستايل جيبلي ساحر', lego: 'شخصية ليغو', stickerpack: 'ملصقات واتساب (٦ تعبيرات)',
+    chibi: 'تشيبي ياباني لطيف', statue: 'تمثال رخامي كلاسيكي', polaroid: 'بولارويد قديمة',
+    celebtoon: 'كرتون مع شخصيتك المفضلة', profession: 'مهنة: طبيب، طيار، شرطي…', superhero: 'بطل خارق بزي كامل',
+    astronaut: 'رائد فضاء',
+  };
+  function pstyleLang(){ try{ return localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ return 'ar'; } }
+  function pstyleSub(v){ return pstyleLang().startsWith('en') ? '' : (PSTYLE_SUBS[v] || ''); }
+  function pstyleOpts(){
     const favs = getFavs();
-    // كل الخيارات — المباشرة وداخل المجموعات — عدا نسخ «المفضلة» (مكررات).
     const opts = Array.from(styleEl.querySelectorAll('option'))
       .filter((o) => !(o.parentElement && o.parentElement.id === 'portraitFavGroup'));
     opts.sort((a, b) => (favs.includes(b.value) ? 1 : 0) - (favs.includes(a.value) ? 1 : 0));
-    styleCardsRow.innerHTML = '';
+    return opts;
+  }
+  function refreshStyleTrigger(){
+    if(!styleTrigger || !styleEl) return;
+    const opt = styleEl.querySelector('option[value="' + styleEl.value + '"]');
+    const img = $('#portraitStyleTriggerImg');
+    if(img){ img.src = 'assets/portrait/styles/' + styleEl.value + '.webp'; img.onerror = function(){ img.style.visibility = 'hidden'; }; img.style.visibility = 'visible'; }
+    const nameEl = $('#portraitStyleTriggerName'); if(nameEl) nameEl.textContent = opt ? opt.textContent : '';
+    const subEl = $('#portraitStyleTriggerSub'); if(subEl) subEl.textContent = pstyleSub(styleEl.value);
+  }
+  function renderPortraitStyleCards(){
+    if(!styleCardsGrid || !styleEl) return;
+    const favs = getFavs();
+    const opts = pstyleOpts();
+    if(styleSheetCount) styleSheetCount.textContent = opts.length + (pstyleLang().startsWith('en') ? ' styles — same face, every style' : ' ستايلًا — نفس وجهك بكل ستايل');
+    styleCardsGrid.innerHTML = '';
     opts.forEach((opt) => {
       const v = opt.value;
       const active = v === styleEl.value;
+      const title = opt.textContent.trim();
       const card = document.createElement('div');
       card.setAttribute('data-pstyle-card', v);
-      card.style.cssText = 'position:relative; flex:0 0 27%; min-width:96px; aspect-ratio:3/4; border-radius:12px; overflow:hidden; cursor:pointer; scroll-snap-align:start;' +
-        ' background:linear-gradient(160deg,#23232a,#101014); display:flex; align-items:center; justify-content:center;' +
-        (active ? ' border:2px solid #d4af37; box-shadow:0 0 12px rgba(212,175,55,.35);' : ' border:1px solid var(--border,#333);');
+      card.style.cssText = 'border-radius:14px; overflow:hidden; cursor:pointer; background:#17171b;' +
+        (active ? ' border:2px solid #d4af37; box-shadow:0 0 14px rgba(212,175,55,.3);' : ' border:1px solid var(--border,#2a2a30);');
+      const imgWrap = document.createElement('div');
+      imgWrap.style.cssText = 'position:relative; aspect-ratio:3/4; background:linear-gradient(160deg,#23232a,#101014); display:flex; align-items:center; justify-content:center;';
       const emoji = document.createElement('div');
-      emoji.textContent = (opt.textContent.trim().match(/^\S+/) || [''])[0];
-      emoji.style.cssText = 'font-size:30px; margin-bottom:14px;';
+      emoji.textContent = (title.match(/^\S+/) || [''])[0];
+      emoji.style.cssText = 'font-size:34px;';
       const img = document.createElement('img');
       img.src = 'assets/portrait/styles/' + v + '.webp';
-      img.alt = opt.textContent; img.loading = 'lazy';
+      img.alt = title; img.loading = 'lazy';
       img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;';
       img.onerror = function(){ img.remove(); };
-      const label = document.createElement('div');
-      label.textContent = opt.textContent.replace(/^\S+\s*/, '');
-      label.style.cssText = 'position:absolute; left:0; right:0; bottom:0; padding:14px 4px 5px; font-size:10.5px; font-weight:700; text-align:center;' +
-        ' color:' + (active ? '#d4af37' : '#eef0f6') + '; background:linear-gradient(transparent,rgba(0,0,0,.85)); z-index:1;';
-      card.appendChild(emoji); card.appendChild(img); card.appendChild(label);
+      imgWrap.appendChild(emoji); imgWrap.appendChild(img);
       if(favs.includes(v)){
-        const star = document.createElement('div');
-        star.textContent = '⭐';
-        star.style.cssText = 'position:absolute; top:5px; inset-inline-end:6px; font-size:13px; z-index:2;';
-        card.appendChild(star);
+        const star = document.createElement('div'); star.textContent = '⭐';
+        star.style.cssText = 'position:absolute; top:6px; inset-inline-end:7px; font-size:14px;';
+        imgWrap.appendChild(star);
       }
+      if(active){
+        const tick = document.createElement('div'); tick.textContent = '✓';
+        tick.style.cssText = 'position:absolute; top:6px; inset-inline-start:7px; width:22px; height:22px; border-radius:50%; background:#d4af37; color:#141414; font-weight:800; font-size:14px; display:flex; align-items:center; justify-content:center;';
+        imgWrap.appendChild(tick);
+      }
+      const info = document.createElement('div');
+      info.style.cssText = 'padding:9px 10px 11px; text-align:center;';
+      const nameEl = document.createElement('div');
+      nameEl.textContent = title;
+      nameEl.style.cssText = 'font-size:12.5px; font-weight:700; color:' + (active ? '#d4af37' : '#eef0f6') + ';';
+      const subEl = document.createElement('div');
+      subEl.textContent = pstyleSub(v);
+      subEl.style.cssText = 'font-size:10.5px; color:#9a9a9e; margin-top:3px; min-height:13px;';
+      info.appendChild(nameEl); info.appendChild(subEl);
+      card.appendChild(imgWrap); card.appendChild(info);
       card.onclick = function(){
         styleEl.value = v;
         styleEl.dispatchEvent(new Event('change', { bubbles: true }));
-        renderPortraitStyleCards();
+        refreshStyleTrigger();
+        if(styleSheet) styleSheet.style.display = 'none';
       };
-      styleCardsRow.appendChild(card);
+      styleCardsGrid.appendChild(card);
     });
   }
+  if(styleTrigger) styleTrigger.onclick = function(){ renderPortraitStyleCards(); if(styleSheet) styleSheet.style.display = 'flex'; };
+  if(styleSheetClose) styleSheetClose.onclick = function(){ styleSheet.style.display = 'none'; };
+  refreshStyleTrigger();
   function refreshStarIcon(){
     if(!favStarBtn || !styleEl) return;
     const favs = getFavs();
@@ -19404,9 +19471,10 @@ async function __safeJson(res){
   }
   if(styleEl){
     styleEl.addEventListener('change', refreshStarIcon);
+    styleEl.addEventListener('change', refreshStyleTrigger);
     refreshFavGroup();
     refreshStarIcon();
-    renderPortraitStyleCards();
+    refreshStyleTrigger();
   }
   if(styleEl && backdropWrap){
     styleEl.addEventListener('change', () => {

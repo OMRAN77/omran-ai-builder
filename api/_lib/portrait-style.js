@@ -7,6 +7,30 @@ const { checkPortraitQuota, consumePortrait, PORTRAIT_DAILY_LIMIT } = require('.
 const { sourceStylePreservationRule } = require('./image-prompt');
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 
+// v-portrait-rescue: تعديل الصورة عبر gpt-image-1 عند رفض Gemini (نفس نمط
+// خطّ إنقاذ الأزياء). يرجع base64 أو null — لا يرمي أبدًا.
+async function openaiPortraitEdit(promptText, imageBase64, mimeType) {
+  const key = (process.env.OPENAI_API_KEY || '').trim();
+  if (!key) return null;
+  try {
+    const bytes = Buffer.from(imageBase64, 'base64');
+    const form = new FormData();
+    form.append('model', 'gpt-image-1');
+    form.append('prompt', String(promptText).slice(0, 3900));
+    form.append('size', '1024x1536');
+    form.append('quality', 'medium');
+    form.append('image', new Blob([bytes], { type: mimeType || 'image/jpeg' }), 'photo.jpg');
+    const r = await fetch('https://api.openai.com/v1/images/edits', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + key },
+      body: form,
+    });
+    const d = await r.json();
+    if (!r.ok) { console.warn('[portrait-style] openai HTTP ' + r.status + ' ' + String((d.error && d.error.message) || '').slice(0, 120)); return null; }
+    return (d && d.data && d.data[0] && d.data[0].b64_json) || null;
+  } catch (e) { console.warn('[portrait-style] openai ' + (e && e.message)); return null; }
+}
+
 const STYLE_PROMPTS = {
   anime: 'a Japanese anime illustration style, clean cel-shaded colors, expressive anime eyes',
   cartoon: 'a semi-realistic digital cartoon illustration style, soft shading, clean lines',
@@ -368,8 +392,19 @@ module.exports = async (req, res) => {
 
     const data = await upstream.json();
     if (!upstream.ok) {
-      console.error('[portrait-style] upstream failed status=' + upstream.status + ' detail=' + ((data && data.error && data.error.message) || 'unknown'));
-      res.status(502).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
+      const detail = String((data && data.error && data.error.message) || 'unknown')
+        .replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
+      console.error('[portrait-style] upstream failed status=' + upstream.status + ' detail=' + detail);
+      // v-portrait-rescue: رفضُ Gemini (نفاد رصيد/تعطّل) لا يعطّل الميزة — جرّب
+      // gpt-image-1 (تعديل صورة) بمفتاح OPENAI_API_KEY. حارس التحقق نفسه على
+      // Gemini فيُتجاوز في مسار الإنقاذ — سيرفض بدوره لو حاولناه.
+      const rescue = await openaiPortraitEdit(promptText, imageBase64, mimeType);
+      if (rescue) {
+        const remR = await consumePortrait(quota.username);
+        res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: PORTRAIT_DAILY_LIMIT });
+        return;
+      }
+      res.status(502).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.', upstream: upstream.status, detail });
       return;
     }
 
