@@ -695,9 +695,61 @@ const $ = s => document.querySelector(s);
       // redirect_uri_mismatch. الخادم يبنيه الآن بالقيم التي سيستعملها هو
       // نفسه، فيستحيل الافتراق. (api/_lib/auth-google-start.js)
       noteSession('جوجل-بدأ'); // إن ظهرت في الشريط بلا «جوجل-…» بعدها، فالعودة لم تهبط على موقعنا إطلاقًا
+      // v-ios-bridge: على آيفون المثبَّت تكمل جوجل في ورقة منفصلة — نحفظ
+      // الرمز في localStorage (يبقى بعد تعليق التطبيق) لاستلام الجلسة عند العودة.
+      try { localStorage.setItem('aiapp_oauth_pending', oauthState + ':' + Date.now()); } catch(e){ __swallow(e, 'auth:oauth-pending'); }
       window.location.href = '/api/system?action=google-start&state=' + encodeURIComponent(oauthState);
     };
   }
+
+  /* v-ios-bridge: استلام دخول جوجل الذي اكتمل في ورقة المتصفح المنفصلة
+     (آيفون المثبَّت). عند العودة للتطبيق نسأل الخادم عن الجلسة المودعة تحت
+     رمزنا العشوائي — مرة عند كل عودة/تركيز ونبضة كل ٣ ثوانٍ لعشر دقائق. */
+  (function oauthClaimBridge(){
+    function pending(){
+      try {
+        const raw = localStorage.getItem('aiapp_oauth_pending');
+        if(!raw) return null;
+        const [st, ts] = raw.split(':');
+        if(!st || (Date.now() - Number(ts || 0)) > 10 * 60 * 1000){
+          localStorage.removeItem('aiapp_oauth_pending');
+          return null;
+        }
+        return st;
+      } catch(e){ return null; }
+    }
+    let busy = false;
+    async function claim(){
+      const st = pending();
+      if(!st || busy) return;
+      if(authGet('aiapp_auth_token')){ try { localStorage.removeItem('aiapp_oauth_pending'); } catch(e){ __swallow(e, 'auth:claim-clear'); } return; }
+      busy = true;
+      try {
+        const r = await fetch('/api/account?action=oauth-claim', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ state: st }),
+        });
+        if(r.ok){
+          const d = await r.json();
+          if(d && d.token && d.user){
+            localStorage.removeItem('aiapp_oauth_pending');
+            try { sessionStorage.removeItem('aiapp_oauth_state'); } catch(e){ __swallow(e, 'auth:claim-ss'); }
+            authSet('aiapp_auth_token', d.token);
+            authSet('aiapp_username', d.user);
+            if(d.avatar) localStorage.setItem('aiapp_avatar', d.avatar);
+            noteSession('جوجل-جسر-آيفون');
+            onAuthed(d.user, d.avatar || null);
+          }
+        }
+      } catch(e){ __swallow(e, 'auth:oauth-claim'); }
+      busy = false;
+    }
+    window.addEventListener('focus', claim);
+    document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') claim(); });
+    const iv = setInterval(() => { if(!pending()){ clearInterval(iv); return; } claim(); }, 3000);
+    claim();
+  })();
 
   function updateAvatarUI(){
     const avatar = localStorage.getItem('aiapp_avatar') || '';

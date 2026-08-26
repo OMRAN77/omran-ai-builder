@@ -770,9 +770,61 @@ const $ = s => document.querySelector(s);
       // redirect_uri_mismatch. الخادم يبنيه الآن بالقيم التي سيستعملها هو
       // نفسه، فيستحيل الافتراق. (api/_lib/auth-google-start.js)
       noteSession('جوجل-بدأ'); // إن ظهرت في الشريط بلا «جوجل-…» بعدها، فالعودة لم تهبط على موقعنا إطلاقًا
+      // v-ios-bridge: على آيفون المثبَّت تكمل جوجل في ورقة منفصلة — نحفظ
+      // الرمز في localStorage (يبقى بعد تعليق التطبيق) لاستلام الجلسة عند العودة.
+      try { localStorage.setItem('aiapp_oauth_pending', oauthState + ':' + Date.now()); } catch(e){ __swallow(e, 'auth:oauth-pending'); }
       window.location.href = '/api/system?action=google-start&state=' + encodeURIComponent(oauthState);
     };
   }
+
+  /* v-ios-bridge: استلام دخول جوجل الذي اكتمل في ورقة المتصفح المنفصلة
+     (آيفون المثبَّت). عند العودة للتطبيق نسأل الخادم عن الجلسة المودعة تحت
+     رمزنا العشوائي — مرة عند كل عودة/تركيز ونبضة كل ٣ ثوانٍ لعشر دقائق. */
+  (function oauthClaimBridge(){
+    function pending(){
+      try {
+        const raw = localStorage.getItem('aiapp_oauth_pending');
+        if(!raw) return null;
+        const [st, ts] = raw.split(':');
+        if(!st || (Date.now() - Number(ts || 0)) > 10 * 60 * 1000){
+          localStorage.removeItem('aiapp_oauth_pending');
+          return null;
+        }
+        return st;
+      } catch(e){ return null; }
+    }
+    let busy = false;
+    async function claim(){
+      const st = pending();
+      if(!st || busy) return;
+      if(authGet('aiapp_auth_token')){ try { localStorage.removeItem('aiapp_oauth_pending'); } catch(e){ __swallow(e, 'auth:claim-clear'); } return; }
+      busy = true;
+      try {
+        const r = await fetch('/api/account?action=oauth-claim', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ state: st }),
+        });
+        if(r.ok){
+          const d = await r.json();
+          if(d && d.token && d.user){
+            localStorage.removeItem('aiapp_oauth_pending');
+            try { sessionStorage.removeItem('aiapp_oauth_state'); } catch(e){ __swallow(e, 'auth:claim-ss'); }
+            authSet('aiapp_auth_token', d.token);
+            authSet('aiapp_username', d.user);
+            if(d.avatar) localStorage.setItem('aiapp_avatar', d.avatar);
+            noteSession('جوجل-جسر-آيفون');
+            onAuthed(d.user, d.avatar || null);
+          }
+        }
+      } catch(e){ __swallow(e, 'auth:oauth-claim'); }
+      busy = false;
+    }
+    window.addEventListener('focus', claim);
+    document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') claim(); });
+    const iv = setInterval(() => { if(!pending()){ clearInterval(iv); return; } claim(); }, 3000);
+    claim();
+  })();
 
   function updateAvatarUI(){
     const avatar = localStorage.getItem('aiapp_avatar') || '';
@@ -7829,6 +7881,10 @@ async function startStripeCheckout(){
       if (statusMsg) statusMsg.textContent = data.error || t('checkoutNotConfigured');
       return;
     }
+    // v-ios-bridge: على آيفون المثبَّت يهبط نجاح الدفع في ورقة متصفح منفصلة
+    // بلا توكن فلا تُضاف النقاط. نحفظ رقم الجلسة، وعند العودة للتطبيق يتحقق
+    // بنفسه (verify-checkout آمنة التكرار — لا تضيف النقاط مرتين).
+    if (data.id) { try { localStorage.setItem('aiapp_ck_pending', data.id + ':' + Date.now()); } catch(e){ __swallow(e, 'checkout:pending'); } }
     window.location.href = data.url;
   } catch (e) {
     if (statusMsg) statusMsg.textContent = t('checkoutError');
@@ -8065,8 +8121,55 @@ window.startPaypalCheckout = startPaypalCheckout;
       params.delete('session_id');
       const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
       window.history.replaceState({}, '', newUrl);
+      // نفس السياق أكمل بنفسه — لا حاجة لجسر الآيفون.
+      try { localStorage.removeItem('aiapp_ck_pending'); } catch(e){ __swallow(e, 'checkout:clear'); }
     }
   } catch(e){ __swallow(e, "auth:app-06-checkout#1"); }
+})();
+
+/* v-ios-bridge: العودة من دفع اكتمل في ورقة المتصفح المنفصلة (آيفون المثبَّت):
+   نتحقق من الجلسة المحفوظة بتوكن التطبيق نفسه — عند كل عودة/تركيز ونبضة كل
+   ٥ ثوانٍ لنصف ساعة. غير مدفوعة بعد؟ نبقيها. مدفوعة؟ نقاطك تُضاف وتُبشَّر. */
+(function checkoutClaimBridge(){
+  function pending(){
+    try {
+      const raw = localStorage.getItem('aiapp_ck_pending');
+      if(!raw) return null;
+      const i = raw.lastIndexOf(':');
+      const id = raw.slice(0, i), ts = Number(raw.slice(i + 1) || 0);
+      if(!id || (Date.now() - ts) > 30 * 60 * 1000){ localStorage.removeItem('aiapp_ck_pending'); return null; }
+      return id;
+    } catch(e){ return null; }
+  }
+  let busy = false;
+  async function claim(){
+    const id = pending();
+    if(!id || busy) return;
+    const token = authGet('aiapp_auth_token');
+    if(!token) return;
+    busy = true;
+    try {
+      const r = await fetch('/api/account?action=verify-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'verify-checkout', session_id: id, token }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if(r.ok && d.ok){
+        localStorage.removeItem('aiapp_ck_pending');
+        alert(t('checkoutSuccessMsg'));
+        if(typeof refreshPointsWallet === 'function') refreshPointsWallet();
+      } else if(r.status === 400 || r.status === 403){
+        localStorage.removeItem('aiapp_ck_pending'); // جلسة لا تخصنا/فاسدة — لا نلحّ
+      }
+      // 402 = لم يُدفع بعد — تبقى معلّقة للنبضة التالية.
+    } catch(e){ __swallow(e, 'checkout:claim'); }
+    busy = false;
+  }
+  window.addEventListener('focus', claim);
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') claim(); });
+  const iv = setInterval(() => { if(!pending()){ clearInterval(iv); return; } claim(); }, 5000);
+  claim();
 })();
 const btnExportProjectsEl = $('#btnExportProjects');
 if(btnExportProjectsEl) btnExportProjectsEl.onclick = exportProjects;

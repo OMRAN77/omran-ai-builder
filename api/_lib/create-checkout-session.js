@@ -43,6 +43,12 @@ async function grantPlanToUser(username, plan, sourceField, sourceId) {
   const user = await getUser(username);
   if (!user || user.deleted) return { error: 'تعذر العثور على الحساب / Could not find the account', status: 404 };
 
+  // أمان التكرار: نفس الجلسة/العملية لا تضيف النقاط مرتين — كان الحقل يُخزَّن
+  // بلا فحص، فتكرار التحقق (تحديث صفحة النجاح، أو جسر الآيفون) كان يضاعفها.
+  if (sourceField && sourceId && user[sourceField] === sourceId) {
+    return { ok: true, plan, pointsAdded: 0, alreadyGranted: true, balance: Number(user.points || 0) };
+  }
+
   user.plan = plan;
   user.planUpdatedAt = Date.now();
   if (sourceField) user[sourceField] = sourceId;
@@ -106,7 +112,9 @@ async function createCheckoutSession(req, res) {
       return;
     }
 
-    res.status(200).json({ url: data.url });
+    // id يُحفظ في العميل قبل التحويل — فعلى آيفون المثبَّت (حيث يهبط نجاح
+    // الدفع في ورقة متصفح منفصلة بلا توكن) يتحقّق التطبيق بنفسه عند العودة.
+    res.status(200).json({ url: data.url, id: data.id });
   } catch (e) {
     res.status(500).json({ error: e.message || 'Server error' });
   }
