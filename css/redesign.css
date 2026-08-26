@@ -317,3 +317,15 @@ html.mobile-ui dialog[open]{
   overscroll-behavior:contain; touch-action:pan-y;
   padding-bottom:max(22px, env(safe-area-inset-bottom, 0px));
 }
+
+/* ===== v-ios-nav-tap — آيفون فقط: رفع التبويبات فوق منطقة إيماءات النظام =====
+   بعد إنزال الشريط لقاع الشاشة (#126) صارت اللمسات في آخر شريحة تذهب لنظام
+   iOS (شريط الهوم/شريط سفاري) بدل الأزرار — فتبدو التبويبات كلها ميتة.
+   @supports (-webkit-touch-callout) يصيب سفاري iOS وحده: الآيفون يرتفع
+   لمسافة لمس آمنة، وهواوي وأندرويد يبقيان بالقاع كما طلب عمران. */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width:860px){
+    #omranBottomNav{ padding-bottom:max(12px, calc(env(safe-area-inset-bottom,0px) - 4px)) !important; }
+  }
+  html.mobile-ui #omranBottomNav{ padding-bottom:max(12px, calc(env(safe-area-inset-bottom,0px) - 4px)) !important; }
+}
