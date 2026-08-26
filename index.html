@@ -288,6 +288,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
           <button type="button" id="omModeBtn" title="الأوضاع" data-i18n-title="modesTitle" aria-label="modes">@</button>
           <button type="button" id="omranBtnWeb" title="بحث في الإنترنت" data-i18n-title="qtWebSearch"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><line x1="3" y1="12" x2="21" y2="12"></line><path d="M12 3a15 15 0 0 1 4 9 15 15 0 0 1-4 9 15 15 0 0 1-4-9 15 15 0 0 1 4-9z"></path></svg></button>
           <button type="button" id="omranBtnClip" title="إرفاق ملف" data-i18n-title="attachFileTitle" style="display:none !important;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg></button>
+          <button class="btn" id="btnMahaDock" type="button" title="مها — مكالمة صوتية" data-i18n-title="mahaTitle" style="padding:4px;"><img src="/icons/maha-icon-v3.svg" alt="مها" style="width:27px; height:27px; border-radius:50%; display:block; pointer-events:none;"></button>
           <button class="btn" id="btnMic" type="button" title="تحدث بدل الكتابة" data-i18n-title="micTitle"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg></button>
           <button class="btn" id="btnAskAllToggle" type="button" style="display:none !important;" title="اسأل الكل — 4 نماذج AI تبني تطبيقك معًا" data-i18n-title="askAllBtnTitle">🧠</button>
         </div>
@@ -356,7 +357,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
   </div>
 </main>
 
-<button type="button" id="btnMaha" title="مها" data-i18n-title="mahaTitle" style="position:fixed; top:calc(50% - 23px); inset-inline-end:16px; z-index:9998; width:45px; height:45px; border-radius:50%; border:none; background:none; overflow:hidden; padding:0; box-shadow:none; animation:none; cursor:grab; display:flex; align-items:center; justify-content:center; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;"><img src="/icons/maha-icon-v3.svg" alt="مها" draggable="false" style="width:100%; height:100%; object-fit:cover; border-radius:50%; pointer-events:none; -webkit-user-drag:none;"></button>
+<button type="button" id="btnMaha" title="مها" data-i18n-title="mahaTitle" style="position:fixed; top:calc(50% - 23px); inset-inline-end:16px; z-index:9998; width:45px; height:45px; border-radius:50%; border:none; background:none; overflow:hidden; padding:0; box-shadow:none; animation:none; cursor:grab; display:none; align-items:center; justify-content:center; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;"><img src="/icons/maha-icon-v3.svg" alt="مها" draggable="false" style="width:100%; height:100%; object-fit:cover; border-radius:50%; pointer-events:none; -webkit-user-drag:none;"></button>
 
 <div id="mahaCallScreen" style="display:none; position:fixed; z-index:99999; background:none; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:0; width:auto; height:auto; border-radius:0; box-shadow:none; border:none; touch-action:none;">
   <div id="mahaDragHandle" style="text-align:center; width:100%; cursor:grab; padding-bottom:4px;">
@@ -387,7 +388,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 <script src="/js/selfdiag.js?v=421"></script>
 <script src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script src="/js/app.bundle.js?v=868f8575"></script>
+    <script src="/js/app.bundle.js?v=dc60fb77"></script>
     <script src="/js/modes.js?v=b23329c6"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">

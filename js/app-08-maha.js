@@ -1856,7 +1856,7 @@ function mahaEndCall(){
   if(mahaCurrentAudio){ try{ mahaCurrentAudio.pause(); }catch(e){ __swallow(e, "misc:app-08-maha#28"); } mahaCurrentAudio = null; }
   stopAllSpeaking();
   if(mahaCallScreenEl) mahaCallScreenEl.style.display = 'none';
-  if(btnMahaEl) btnMahaEl.style.display = 'flex';
+  /* v-maha-dock: مها راسية بجانب المايك — العائمة لا تعود للظهور. */
   mahaSetState('idle');
   mahaCallMode = 'assistant';
 }
@@ -2001,6 +2001,8 @@ async function mahaStartCall(mode){
 }
 
 if(btnMahaEl) btnMahaEl.onclick = () => { mahaUnlockAudio(); mahaStartCall(); };
+const btnMahaDockEl = document.getElementById('btnMahaDock');
+if(btnMahaDockEl) btnMahaDockEl.onclick = () => { mahaUnlockAudio(); mahaStartCall(); }; // v-maha-dock
 if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
 
 // v273: One-time intro tour for brand-new users — points at مها button
