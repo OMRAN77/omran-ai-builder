@@ -299,3 +299,21 @@ html.mobile-ui main, html.mobile-ui #messages{overscroll-behavior-y:contain;}
 
 /* ===== v-plus-tools-desktop — أمر عمران: زر «الأدوات» داخل قائمة ➕ للجوال فقط، يُخفى في الكمبيوتر ===== */
 html:not(.mobile-ui) #plusToolsPopup #btnToolsBox{ display:none !important; }
+
+/* ===== v-ios-settings-scroll — آيفون: نافذة الإعدادات (وكل النوافذ) تتمرر حتى آخرها =====
+   سفاري iOS يبتلع سحب التمرير داخل <dialog> عندما تكون الصفحة خلفه مقفلة
+   (v-mob-lock): بلا overscroll-behavior:contain تتسلسل الحركة إلى body المثبّت
+   فتموت، وبعض النسخ تحتاج touch-action:pan-y صريحة على النافذة نفسها.
+   وحاشية أمان سفلية حتى لا يختبئ آخر صف تحت شريط الهوم في الآيفون. */
+@media (max-width:860px){
+  dialog[open]{
+    overflow-y:auto !important; -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain; touch-action:pan-y;
+    padding-bottom:max(22px, env(safe-area-inset-bottom, 0px));
+  }
+}
+html.mobile-ui dialog[open]{
+  overflow-y:auto !important; -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain; touch-action:pan-y;
+  padding-bottom:max(22px, env(safe-area-inset-bottom, 0px));
+}
