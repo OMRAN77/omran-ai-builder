@@ -812,6 +812,16 @@ module.exports = async (req, res) => {
   const prov = Object.prototype.hasOwnProperty.call(OR_MODELS, reqProv) ? reqProv : 'claude';
   const CHAT_MODEL = viaOR ? OR_MODELS[prov] : 'claude-sonnet-5';
 
+  // v-chat-speed: قراءة الذاكرة كانت تنتظر فحص الحصة ثم تنتظر هي — رحلتا
+  // شبكة متتاليتان قبل أول كلمة. verifyToken فوريّ (توقيع محلي)، فنطلق
+  // القراءة الآن بالتوازي مع فحص الحصة ونستلمها لاحقًا جاهزة.
+  let earlyMemoryP = null;
+  try {
+    const { verifyToken } = require('./auth.js');
+    const earlyUser = token ? verifyToken(token) : null;
+    if (earlyUser) earlyMemoryP = readMemory(earlyUser).catch(() => ({ memory: null }));
+  } catch (e) { /* guard-ok: الذاكرة تحسين لا شرط — مسارها القديم يبقى احتياطًا */ }
+
   const usage = await checkAndConsume(token, guestId, prov, clientIp(req));
   if (!usage.allowed) {
     if (usage.reason === 'auth') res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
@@ -849,7 +859,7 @@ module.exports = async (req, res) => {
 
   let accountMemory = '';
   if (usage.username && !quietSocialTurn) {
-    const cur = await readMemory(usage.username);
+    const cur = earlyMemoryP ? await earlyMemoryP : await readMemory(usage.username);
     accountMemory = memoryPromptBlock(cur.memory);
   }
 
@@ -857,7 +867,10 @@ module.exports = async (req, res) => {
   // v-live-gate: كان يعمل على كل رسالة (مرشّحه «غير محسوم → ابحث») فيحجز ٤
   // ثوانٍ حتى من «اشرح لي كذا» — والنموذج يملك web_search أصلًا. الآن يعمل
   // فقط عند إشارة حيّة صريحة؛ البقية تتكفّل بها أدوات النموذج نفسه.
-  const LIVE_EAGER_RE = /سعر|أسعار|اسعار|بكم|طقس|الجو\b|خبر|أخبار|اخبار|عاجل|نتيجة|مباراة|اليوم|الليلة|الآن|حالي|أحدث|آخر\s|مواقيت|صلاة|أذان|دوام|عروض|تخفيض|سهم|دولار|ذهب|بيتكوين|price|news|weather|today|now|latest|score/i;
+  // v-chat-speed: «اليوم/الآن/حالي/أحدث/آخر» كانت تشعل البحث الاستباقي في
+  // رسائل عادية كثيرة فتحجز حتى ٤ ثوانٍ بلا داعٍ — بقيت النوايا الحيّة الصريحة
+  // فقط، والنموذج يملك web_search لكل ما سواها.
+  const LIVE_EAGER_RE = /سعر|أسعار|اسعار|بكم|طقس|الجو\b|خبر|أخبار|اخبار|عاجل|نتيجة|مباراة|مواقيت|صلاة|أذان|دوام|عروض|تخفيض|سهم|دولار|ذهب|بيتكوين|price|news|weather|score/i;
   let liveTurn = null;
   if (process.env.LIVE_ANSWERS === '1' && !quietSocialTurn && lastUser && lastUser.content
       && LIVE_EAGER_RE.test(lastUser.content)) {
@@ -871,9 +884,11 @@ module.exports = async (req, res) => {
       // v-chat-fast: قِيس بالمِجسّ أنّ هذا البحث الاستباقي يحجز أوّل كلمة ١٧
       // ثانية حين يتعثّر مزوّدوه ثم يعود صفر مصادر. سقف صارم: إن لم يُنجز خلال
       // ٤ ثوانٍ يُترك والنموذج يبحث بأدواته — البثّ لا ينتظر بحثًا متعثّرًا.
+      // v-chat-speed: السقف ٤٠٠٠→١٨٠٠ms — بحث لا يلحق خلال ثانيتين يُترك
+      // للنموذج وأدواته؛ أول كلمة أهم من مصادر متأخرة.
       liveTurn = await Promise.race([
         prepareTurn(lastUser.content, deps, { memoryFacts: memFacts, now: new Date() }),
-        new Promise(function (resolve) { setTimeout(function () { resolve(null); }, 4000); }),
+        new Promise(function (resolve) { setTimeout(function () { resolve(null); }, 1800); }),
       ]);
     } catch (e) { console.warn('[live-answers]', e && e.message); }
   }
