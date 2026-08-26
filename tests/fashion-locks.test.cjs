@@ -31,6 +31,9 @@ assert.ok(create.includes("engine === 'openai'") && create.includes('gpt-image-1
 assert.ok(create.includes('images/edits') && create.includes('OPENAI_API_KEY'), 'مفتاح OpenAI من الخادم لا من العميل');
 assert.ok(create.includes('images/generations') && create.includes('openaiGenerate(promptText)'), 'الوضع النصّي له مسار gpt-image-1 أيضًا');
 assert.ok(create.includes('v-fashion-rescue'), 'رفض Gemini يهبط تلقائيًا إلى OpenAI قبل إبلاغ الفشل');
+const suggest = fs.readFileSync(path.join(__dirname, '../api/_lib/fashion-suggest.js'), 'utf8');
+assert.ok(suggest.includes('v-fashion-rescue') && suggest.includes('openaiSuggest(promptText'), 'الاقتراحات لها خطّ إنقاذ أيضًا');
+assert.ok(suggest.includes("engine = 'openai'"), 'ردّ الاقتراحات يسمّي المحرك المستعمل');
 assert.ok(studios.includes('fairness: true'), 'مقارنة العميل تفعّل قفل العدالة');
 assert.ok(studios.includes('v-fashion-cards') && studios.includes('اضغطي للاختيار'), 'بطاقات المقارنة بشكل التصميم المعتمد مع اختيار ذهبي');
 assert.ok(partials.includes('fashionAiEngine'), 'مبدّل المحرك موجود في الواجهة');
