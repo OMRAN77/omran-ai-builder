@@ -25,7 +25,7 @@ async function openaiStudioEdit(promptText, images) {
     form.append('size', '1024x1536');
     form.append('quality', 'medium');
     images.forEach(([b64, mime], i) => {
-      form.append('image[]', new Blob([Buffer.from(b64, 'base64')], { type: mime || 'image/jpeg' }), 'photo' + i + '.jpg');
+      form.append('image', new Blob([Buffer.from(b64, 'base64')], { type: mime || 'image/jpeg' }), 'photo' + i + '.jpg');
     });
     const r = await fetch('https://api.openai.com/v1/images/edits', {
       method: 'POST',
