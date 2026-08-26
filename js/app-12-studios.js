@@ -297,6 +297,52 @@ async function __safeJson(res){
       }
     });
   }
+  /* v-portrait-style-cards: صفّ بطاقات يُسحب لأنماط الصور — نفس الوجه بكل
+     ستايل. المفضلة أولًا بشارة ⭐، بلا صورة تبقى بطاقة إيموجي أنيقة. */
+  const styleCardsRow = $('#portraitStyleCards');
+  function renderPortraitStyleCards(){
+    if(!styleCardsRow || !styleEl) return;
+    const favs = getFavs();
+    // كل الخيارات — المباشرة وداخل المجموعات — عدا نسخ «المفضلة» (مكررات).
+    const opts = Array.from(styleEl.querySelectorAll('option'))
+      .filter((o) => !(o.parentElement && o.parentElement.id === 'portraitFavGroup'));
+    opts.sort((a, b) => (favs.includes(b.value) ? 1 : 0) - (favs.includes(a.value) ? 1 : 0));
+    styleCardsRow.innerHTML = '';
+    opts.forEach((opt) => {
+      const v = opt.value;
+      const active = v === styleEl.value;
+      const card = document.createElement('div');
+      card.setAttribute('data-pstyle-card', v);
+      card.style.cssText = 'position:relative; flex:0 0 27%; min-width:96px; aspect-ratio:3/4; border-radius:12px; overflow:hidden; cursor:pointer; scroll-snap-align:start;' +
+        ' background:linear-gradient(160deg,#23232a,#101014); display:flex; align-items:center; justify-content:center;' +
+        (active ? ' border:2px solid #d4af37; box-shadow:0 0 12px rgba(212,175,55,.35);' : ' border:1px solid var(--border,#333);');
+      const emoji = document.createElement('div');
+      emoji.textContent = (opt.textContent.trim().match(/^\S+/) || [''])[0];
+      emoji.style.cssText = 'font-size:30px; margin-bottom:14px;';
+      const img = document.createElement('img');
+      img.src = 'assets/portrait/styles/' + v + '.webp';
+      img.alt = opt.textContent; img.loading = 'lazy';
+      img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;';
+      img.onerror = function(){ img.remove(); };
+      const label = document.createElement('div');
+      label.textContent = opt.textContent.replace(/^\S+\s*/, '');
+      label.style.cssText = 'position:absolute; left:0; right:0; bottom:0; padding:14px 4px 5px; font-size:10.5px; font-weight:700; text-align:center;' +
+        ' color:' + (active ? '#d4af37' : '#eef0f6') + '; background:linear-gradient(transparent,rgba(0,0,0,.85)); z-index:1;';
+      card.appendChild(emoji); card.appendChild(img); card.appendChild(label);
+      if(favs.includes(v)){
+        const star = document.createElement('div');
+        star.textContent = '⭐';
+        star.style.cssText = 'position:absolute; top:5px; inset-inline-end:6px; font-size:13px; z-index:2;';
+        card.appendChild(star);
+      }
+      card.onclick = function(){
+        styleEl.value = v;
+        styleEl.dispatchEvent(new Event('change', { bubbles: true }));
+        renderPortraitStyleCards();
+      };
+      styleCardsRow.appendChild(card);
+    });
+  }
   function refreshStarIcon(){
     if(!favStarBtn || !styleEl) return;
     const favs = getFavs();
@@ -311,12 +357,14 @@ async function __safeJson(res){
       setFavs(favs);
       refreshFavGroup();
       refreshStarIcon();
+      renderPortraitStyleCards(); // شارة ⭐ وترتيب المفضلة أولًا
     };
   }
   if(styleEl){
     styleEl.addEventListener('change', refreshStarIcon);
     refreshFavGroup();
     refreshStarIcon();
+    renderPortraitStyleCards();
   }
   if(styleEl && backdropWrap){
     styleEl.addEventListener('change', () => {

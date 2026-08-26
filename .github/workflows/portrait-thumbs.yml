@@ -1,0 +1,44 @@
+# بطاقات أنماط الصور: نفس الوجه المصدر عبر كل ستايل على خطّ الإنتاج، تصغير
+# webp، ودفعها لفرع بوت لتُراجع وتُلتزم في assets/portrait/styles/.
+name: Portrait thumbs
+
+on:
+  workflow_dispatch:
+    inputs:
+      styles:
+        description: 'الستايلات (all أو قائمة بفواصل)'
+        required: false
+        default: 'all'
+
+permissions:
+  contents: write
+
+jobs:
+  thumbs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Transform source face through each style on production
+        run: node scripts/portrait-thumbs.mjs "https://omran-ai-builder.vercel.app" "${{ github.event.inputs.styles }}"
+      - name: Resize to webp cards
+        run: npm i --no-save sharp && node scripts/fashion-thumbs-resize.mjs
+      # تنزيل الـartifact محجوب من بيئة الوكيل — الدفع لفرع بوت هو قناة التسليم.
+      - name: Push cards to bot branch
+        run: |
+          mkdir -p assets/portrait/styles
+          cp -r thumbs/portrait/. assets/portrait/styles/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B bot/portrait-thumbs
+          git add assets/portrait/styles
+          git commit -m "أصول: بطاقات أنماط الصور (نفس الوجه بكل ستايل)"
+          git push -f origin bot/portrait-thumbs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: portrait-thumbs
+          path: thumbs/portrait/
+          retention-days: 3
