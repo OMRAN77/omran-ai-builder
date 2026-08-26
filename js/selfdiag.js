@@ -46,4 +46,77 @@
     var r = e.reason;
     report((r && r.message) || String(r), '', 0, 0, r && r.stack);
   });
+
+  // v-diag-nav: وضع تشخيص حي للتبويبات — يعمل فقط عند فتح الرابط بـ ?diag=1
+  // يعرض: البنية، بيئة التشغيل، ماذا يغطي كل تبويب، وعدّادًا حيًّا للمسات
+  // واصلة فعلًا لكل زر. لقطة شاشة واحدة تحسم مكان العطل.
+  function diagPanel(){
+    try{
+      var lines = [];
+      var bsrc = ''; try{ bsrc = (document.querySelector('script[src*="app.bundle.js"]') || {}).src || ''; }catch(e){ /* guard-ok: زينة */ }
+      lines.push('بنية: ' + ((bsrc.match(/v=([0-9a-f]+)/) || [])[1] || '؟')
+        + ' · مثبّت: ' + (navigator.standalone === true ? 'نعم' : 'لا')
+        + ' · شاشة: ' + window.innerWidth + 'x' + window.innerHeight
+        + (window.visualViewport ? ' · مرئي: ' + Math.round(window.visualViewport.height) + '+' + Math.round(window.visualViewport.offsetTop) : ''));
+      var ua = navigator.userAgent || '';
+      var m = ua.match(/iPhone OS [\d_]+|Android [\d.]+/);
+      lines.push('نظام: ' + (m ? m[0] : ua.slice(0, 50)) + (/(Safari)/.test(ua) && !/(CriOS|FxiOS|EdgiOS)/.test(ua) ? ' سفاري' : ' متصفح آخر/غلاف'));
+      var nav = document.getElementById('omranBottomNav');
+      if(!nav){ lines.push('⚠️ شريط التبويبات غير موجود في الصفحة!'); }
+      else{
+        var nr = nav.getBoundingClientRect();
+        lines.push('الشريط: قاعه عند ' + Math.round(nr.bottom) + ' / نافذة ' + window.innerHeight + ' · طبقة ' + getComputedStyle(nav).zIndex);
+        var tabs = nav.querySelectorAll('.omNavBtn');
+        for(var i = 0; i < tabs.length; i++){
+          var b = tabs[i], r = b.getBoundingClientRect();
+          var el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+          var name = el ? (el.id || String(el.className && el.className.baseVal !== undefined ? el.className.baseVal : (el.className || '')).slice(0, 22) || el.tagName) : 'لا شيء';
+          var ok = el && (b === el || b.contains(el));
+          lines.push((ok ? '✓ ' : '✗ غطاء! ') + b.textContent.trim() + ' ← ' + name);
+        }
+      }
+      var d = document.createElement('div');
+      d.id = 'omranDiagPanel';
+      d.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#0b2a4a;color:#fff;font:12px/1.8 -apple-system,Tahoma,sans-serif;padding:calc(8px + env(safe-area-inset-top,0px)) 12px 10px;direction:rtl;text-align:right;white-space:pre-wrap;word-break:break-word;';
+      var counts = document.createElement('div');
+      counts.style.cssText = 'margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.3);font-weight:bold;';
+      counts.textContent = '👇 الحين اضغط كل تبويب تحت مرة وحدة ثم صوّر الشاشة';
+      d.textContent = lines.join('\n');
+      d.appendChild(counts);
+      (document.body || document.documentElement).appendChild(d);
+      // عدّاد حي: أي لمسة/نقرة تصل فعلًا لأي تبويب تُطبع هنا فورًا
+      var got = {};
+      function bump(kind, label){
+        got[label] = got[label] || {};
+        got[label][kind] = (got[label][kind] || 0) + 1;
+        var out = [];
+        for(var k in got){ out.push(k + '(' + Object.keys(got[k]).map(function(x){ return x + got[k][x]; }).join(' ') + ')'); }
+        counts.textContent = '✋ وصل: ' + out.join(' · ') + ' — صوّر الشاشة الآن';
+      }
+      document.querySelectorAll('#omranBottomNav .omNavBtn').forEach(function(b){
+        var label = b.textContent.trim().slice(0, 10);
+        ['touchstart', 'click'].forEach(function(t){
+          b.addEventListener(t, function(){ bump(t === 'touchstart' ? 'لمس' : 'نقر', label); }, true);
+        });
+      });
+      // ولو لمس مكان الشريط بلا وصول للزر — نلتقطه من الوثيقة ونبيّن أين ذهب
+      document.addEventListener('touchstart', function(e){
+        try{
+          var t = e.touches[0]; if(!t) return;
+          var nav2 = document.getElementById('omranBottomNav'); if(!nav2) return;
+          var rr = nav2.getBoundingClientRect();
+          if(t.clientY < rr.top) return;
+          var el = document.elementFromPoint(t.clientX, t.clientY);
+          if(el && el.closest && el.closest('.omNavBtn')) return;
+          counts.textContent = '⚠️ لمسة على منطقة الشريط ذهبت إلى: ' + (el ? (el.id || String(el.className).slice(0, 25) || el.tagName) : 'خارج الصفحة') + ' — صوّر الشاشة';
+        }catch(err){ /* guard-ok: التشخيص لا يعطّل */ }
+      }, true);
+    }catch(e){ /* guard-ok: لوحة التشخيص ترف — لا تُسقط الصفحة */ }
+  }
+  try{
+    if(/[?&#]diag=2/.test(location.search + location.hash)){
+      if(document.readyState === 'complete') setTimeout(diagPanel, 1500);
+      else window.addEventListener('load', function(){ setTimeout(diagPanel, 1500); });
+    }
+  }catch(e){ /* guard-ok: قراءة الرابط آمنة */ }
 })();
