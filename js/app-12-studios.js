@@ -705,29 +705,57 @@ async function __safeJson(res){
     };
     return img;
   }
+  function fashionOptFor(v){
+    return Array.prototype.find.call(styleEl.options, function(o){ return o.value === v; });
+  }
+  function openFashionPicker(){
+    const g = currentGender();
+    const list = GENDER_STYLES[g] || GENDER_STYLES.women;
+    if(!window.omranPicker) return;
+    window.omranPicker.open({
+      title: isEn() ? '👗 Fashion styles' : '👗 أنماط الأزياء',
+      count: list.length + (isEn() ? ' styles — pick yours' : ' نمطًا — اختر ما يناسبك'),
+      items: list.map(function(v){
+        const opt = fashionOptFor(v);
+        return opt && {
+          v: v, title: opt.textContent.trim(), active: v === styleEl.value,
+          img: 'assets/fashion/looks/' + g + '/' + v + '.webp',
+          img2: 'assets/fashion/looks/' + v + '.webp',
+        };
+      }).filter(Boolean),
+      onPick: function(v){ styleEl.value = v; renderStyleCards(); },
+    });
+  }
   function renderStyleCards(){
     if(!styleCardsEl || !styleEl) return;
     const g = currentGender();
     const list = GENDER_STYLES[g] || GENDER_STYLES.women;
     if(list.indexOf(styleEl.value) < 0) styleEl.value = list[0];
+    // v-fashion-full-page: بطاقة مصغّرة «عرض الكل ›» تفتح معرضًا ملء الشاشة —
+    // نفس نظام أنماط الصور بالضبط (طلب المالك: كل المنتقيات بحجم صفحة كاملة).
+    styleCardsEl.style.display = 'block';
     styleCardsEl.innerHTML = '';
-    list.forEach(function(v){
-      const opt = Array.prototype.find.call(styleEl.options, function(o){ return o.value === v; });
-      if(!opt) return;
-      const active = v === styleEl.value;
-      const card = document.createElement('div');
-      card.setAttribute('data-style-card', v);
-      card.style.cssText = 'position:relative; aspect-ratio:2/3; border-radius:12px; overflow:hidden; cursor:pointer;' +
-        ' background:linear-gradient(160deg,#23232a,#101014);' +
-        (active ? ' border:2px solid #d4af37; box-shadow:0 0 12px rgba(212,175,55,.35);' : ' border:1px solid var(--border,#333);');
-      const label = document.createElement('div');
-      label.textContent = opt.textContent;
-      label.style.cssText = 'position:absolute; left:0; right:0; bottom:0; padding:14px 6px 6px; font-size:11.5px; font-weight:700; text-align:center;' +
-        ' color:' + (active ? '#d4af37' : '#eef0f6') + '; background:linear-gradient(transparent,rgba(0,0,0,.82));';
-      card.appendChild(lookImg(g, v, opt.textContent)); card.appendChild(label);
-      card.onclick = function(){ styleEl.value = v; renderStyleCards(); };
-      styleCardsEl.appendChild(card);
-    });
+    const opt = fashionOptFor(styleEl.value);
+    const trig = document.createElement('div');
+    trig.id = 'fashionStyleTrigger';
+    trig.style.cssText = 'display:flex; align-items:center; gap:10px; border:1px solid var(--border,#333); border-radius:12px; padding:8px 10px; cursor:pointer; background:var(--panel2,#101014);';
+    const img = lookImg(g, styleEl.value, opt ? opt.textContent : '');
+    img.style.cssText = 'width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
+    const info = document.createElement('div');
+    info.style.cssText = 'flex:1; min-width:0;';
+    const nm = document.createElement('div');
+    nm.textContent = opt ? opt.textContent : '';
+    nm.style.cssText = 'font-size:13.5px; font-weight:700;';
+    const sub = document.createElement('div');
+    sub.textContent = list.length + (isEn() ? ' styles for this category' : ' نمطًا لهذه الفئة');
+    sub.style.cssText = 'font-size:11px; color:var(--muted,#999);';
+    info.appendChild(nm); info.appendChild(sub);
+    const all = document.createElement('span');
+    all.textContent = isEn() ? 'Browse all ›' : 'عرض الكل ›';
+    all.style.cssText = 'color:#d4af37; font-size:12.5px; font-weight:700; flex:none;';
+    trig.appendChild(img); trig.appendChild(info); trig.appendChild(all);
+    trig.onclick = openFashionPicker;
+    styleCardsEl.appendChild(trig);
   }
   renderStyleCards();
   // تبديل الفئة (نسائي/رجالي/أطفال) يعيد رسم البطاقات وصفّ المقارنة بصور الفئة.

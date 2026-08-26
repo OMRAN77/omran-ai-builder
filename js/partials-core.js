@@ -859,6 +859,21 @@
   </div>
 </div>
 
+<!-- v-omran-picker: معرض اختيار موحّد ملء الشاشة — نفس نمط «أنماط الصور»
+     لكل القوائم الكبيرة (أزياء، ديكور، ستايل). -->
+<div id="pickerSheet" style="display:none; position:fixed; inset:0; z-index:10070; background:#0b0b0d; flex-direction:column;">
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid rgba(212,175,55,.25); flex:none;">
+    <div>
+      <div id="pickerSheetTitle" style="font-size:18px; font-weight:800; color:#eef0f6;"></div>
+      <div id="pickerSheetCount" style="font-size:11.5px; color:#9a9a9e;"></div>
+    </div>
+    <button type="button" class="btn iconBtn" id="pickerSheetClose" style="padding:6px 12px;">✕</button>
+  </div>
+  <div style="flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;">
+    <div id="pickerSheetGrid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; padding:14px; max-width:1080px; margin:0 auto;"></div>
+  </div>
+</div>
+
 <div id="studioAiModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
   <div style="max-width:460px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">

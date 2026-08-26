@@ -2010,3 +2010,60 @@ async function postWithConfirm(url, payload){
   if(!okToSpend) return res;
   return await send(Object.assign({}, payload, { confirmed: true }));
 }
+
+
+/* v-omran-picker: فاتح المعرض الموحّد — بطاقات صورة+اسم(+وصف)، اختيار ذهبي ✓،
+   وبلا صورة شارة أنيقة. الاستدعاء: window.omranPicker.open({title,count,items,onPick}). */
+(function(){
+  function el(id){ return document.getElementById(id); }
+  window.omranPicker = { open: function(cfg){
+    var sheet = el('pickerSheet'), grid = el('pickerSheetGrid');
+    if(!sheet || !grid) return;
+    el('pickerSheetTitle').textContent = cfg.title || '';
+    el('pickerSheetCount').textContent = cfg.count || '';
+    grid.innerHTML = '';
+    (cfg.items || []).forEach(function(it){
+      var card = document.createElement('div');
+      card.style.cssText = 'border-radius:14px;overflow:hidden;cursor:pointer;background:#17171b;' +
+        (it.active ? 'border:2px solid #d4af37;box-shadow:0 0 14px rgba(212,175,55,.3);' : 'border:1px solid #2a2a30;');
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'position:relative;aspect-ratio:3/4;background:linear-gradient(160deg,#23232a,#101014);display:flex;align-items:center;justify-content:center;';
+      var badge = document.createElement('div');
+      badge.textContent = (String(it.title || '').trim().match(/^\S+/) || [''])[0];
+      badge.style.cssText = 'width:54px;height:54px;border-radius:50%;border:1px solid rgba(212,175,55,.4);background:rgba(212,175,55,.06);display:flex;align-items:center;justify-content:center;font-size:22px;';
+      wrap.appendChild(badge);
+      if(it.img){
+        var im = document.createElement('img');
+        im.src = it.img; im.alt = it.title || ''; im.loading = 'lazy';
+        im.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
+        im.onerror = function(){
+          if(it.img2 && !im.__flat){ im.__flat = 1; im.src = it.img2; }
+          else im.remove();
+        };
+        wrap.appendChild(im);
+      }
+      if(it.active){
+        var tk = document.createElement('div'); tk.textContent = '✓';
+        tk.style.cssText = 'position:absolute;top:6px;inset-inline-start:7px;width:22px;height:22px;border-radius:50%;background:#d4af37;color:#141414;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;';
+        wrap.appendChild(tk);
+      }
+      var info = document.createElement('div');
+      info.style.cssText = 'padding:9px 10px 11px;text-align:center;';
+      var nm = document.createElement('div');
+      nm.textContent = it.title || '';
+      nm.style.cssText = 'font-size:12.5px;font-weight:700;color:' + (it.active ? '#d4af37' : '#eef0f6') + ';';
+      info.appendChild(nm);
+      if(it.sub){
+        var sb = document.createElement('div'); sb.textContent = it.sub;
+        sb.style.cssText = 'font-size:10.5px;color:#9a9a9e;margin-top:3px;';
+        info.appendChild(sb);
+      }
+      card.appendChild(wrap); card.appendChild(info);
+      card.onclick = function(){ sheet.style.display = 'none'; if(cfg.onPick) cfg.onPick(it.v); };
+      grid.appendChild(card);
+    });
+    sheet.style.display = 'flex';
+    var c = el('pickerSheetClose');
+    if(c) c.onclick = function(){ sheet.style.display = 'none'; };
+  } };
+})();
