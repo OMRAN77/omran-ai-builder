@@ -1,0 +1,41 @@
+name: client-errors-report
+# تقرير أخطاء المتصفحات المُبلَّغة ذاتيًا (selfdiag) — يُشغَّل يدويًا عند الحاجة.
+# الإخراج منقّح: لا مفاتيح ولا رموز جلسات — السجلات عامة في مستودع عام.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch and sanitize client errors
+        env:
+          MONITOR_KEY: ${{ secrets.MONITOR_KEY }}
+        run: |
+          curl -sS "https://omran-ai-builder.vercel.app/api/system?action=client-errors&key=${MONITOR_KEY}" -o /tmp/errs.json
+          python3 - <<'EOF'
+          import json, re
+          def scrub(s):
+              s = str(s or '')
+              s = re.sub(r'(key|token|sig|state|secret)=[^&\s"\']+', r'\1=***', s, flags=re.I)
+              return s
+          try:
+              d = json.load(open('/tmp/errs.json'))
+          except Exception as e:
+              print('parse failed:', e, open('/tmp/errs.json').read()[:120]); raise SystemExit(1)
+          items = d.get('errors') or []
+          print('total error entries:', len(items))
+          for it in items[:40]:
+              ua = scrub(it.get('ua'))
+              m = re.search(r'(iPhone OS [\d_]+|Android [\d.]+|Windows NT [\d.]+|Macintosh|HarmonyOS)', ua)
+              plat = m.group(1) if m else ua[:40]
+              src = scrub(it.get('source')).split('/')[-1][:60]
+              print('-'*70)
+              print('when :', it.get('firstSeen'), '->', it.get('lastSeen'), 'x', it.get('count', 1))
+              print('plat :', plat)
+              print('src  :', src, 'line', it.get('line'), 'col', it.get('col'))
+              print('msg  :', scrub(it.get('message'))[:220])
+              st = scrub(it.get('stack'))[:300]
+              if st: print('stack:', st)
+          EOF
