@@ -798,8 +798,11 @@ module.exports = async (req, res) => {
     }
 
     // v612 — استعلام الصور وحده يحمل الدولة؛ النصّ والمصادر لا تُمسّ.
-    const imgQuery = (query.length > 120 || !wantsLocalGeo(query))
-      ? query : (query + ' ' + (geoCity ? geoCity + ' ' : '') + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE'));
+    // v-photo-clean: كلمات «صور/لي» في الاستعلام تخرّب بحث الصور نفسه —
+    // تُنزع من استعلام الصور وحده فيُبحث عن الشيء لا عن كلمة «صور».
+    const __imgBase = (query.replace(/(^|\s)(صور|صورة|صوره|photos?|images?|pictures?|لي|لى)(?=\s|$)/gi, ' ').replace(/\s+/g, ' ').trim()) || query;
+    const imgQuery = (__imgBase.length > 120 || !wantsLocalGeo(__imgBase))
+      ? __imgBase : (__imgBase + ' ' + (geoCity ? geoCity + ' ' : '') + (geoNameAr || 'الإمارات') + ' ' + (geoNameEn || 'UAE'));
     let images = wantImages && Array.isArray(data.images) ? data.images.slice(0, 4) : [];
     // v610 — صور الشريط كانت من Tavily وحده، وهو ساقط حيًّا، فيخرج الشريط فارغًا.
     // احتياطيّ: صور Google Custom Search بالمفتاح الموجود نفسه (بلا شراء جديد).
