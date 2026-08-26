@@ -31,6 +31,16 @@ const token = su.json && su.json.token;
 if (!token) { console.log('✗ التسجيل فشل: HTTP ' + su.status + ' ' + String(su.text).slice(0, 150)); process.exit(1); }
 console.log(el(), '✓ توكن جاهز');
 
+// عزل: fashion-suggest يستعمل نفس المفتاح لكن موديل flash النصّي — نجاحه مع
+// فشل fashion-create يعني العطل في نداء موديل الصور لا في المفتاح.
+console.log('②أ اقتراحات (flash نصّي — عزل المفتاح)');
+const fs = await post('/api/fashion-suggest', { occasion: 'formal', season: 'summer', lang: 'ar', description: 'عباية رسمية', token });
+if (fs.status === 200 && fs.json && Array.isArray(fs.json.suggestions) && fs.json.suggestions.length) {
+  console.log(el(), '✓ flash يعمل — ' + fs.json.suggestions.length + ' اقتراحات → المفتاح سليم');
+} else {
+  console.log(el(), '✗ flash نفسه يفشل: HTTP ' + fs.status + ' → ' + String(fs.text).slice(0, 200));
+}
+
 console.log('② توليد أزياء نصّي (engine=' + (ENGINE || 'gemini') + ')');
 const fc = await post('/api/fashion-create', {
   mode: 'text', style: 'abaya', gender: 'women', occasion: 'formal',
