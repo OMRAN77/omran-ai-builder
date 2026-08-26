@@ -1033,6 +1033,7 @@
   photoizeStudioTabs();
   function setFeature(next){
     feature = next;
+    photoizeStudioTabs(); // ترجمة i18n تمسح حقن الصور — أعد حقن ما نقص
     Array.from(tabsWrap.querySelectorAll('.studioAiTabBtn')).forEach((b) => {
       b.classList.toggle('active', b.dataset.feature === next);
       b.classList.toggle('primary', b.dataset.feature === next);
