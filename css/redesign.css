@@ -273,3 +273,20 @@ html.mobile-ui #btnSend, html.mobile-ui #btnStop{width:30px; height:30px; flex:0
 html.mobile-ui{overflow:hidden; overscroll-behavior:none; height:100%;}
 html.mobile-ui body{overscroll-behavior:none; position:fixed; inset:0; width:100%;}
 html.mobile-ui main, html.mobile-ui #messages{overscroll-behavior-y:contain;}
+
+/* v-morph-btn: خانة واحدة آخر الصف تتبدل — الخانة فاضية: مايك 🎤، تكتب: زر
+   الإرسال الذهبي ➤ مكانه، والذكاء يرد: زر الإيقاف. (نمط واتساب — بطلب المالك) */
+#composerBox > .inputbar-tools{flex:1 1 auto;}
+#composerBox .inputbar-tools-left{flex:1 1 auto; display:flex;}
+#composerBox #btnMic{
+  margin-inline-start:auto;
+  width:30px; height:30px; flex:0 0 30px; padding:0;
+  display:inline-flex; align-items:center; justify-content:center;
+  border-radius:50%; border:1px solid var(--border,#3a3a42);
+  transition:opacity .15s ease, transform .15s ease;
+}
+#composerBox:not(.typing) > #btnSend{ display:none !important; }
+#composerBox.typing #btnMic{ display:none; }
+#composerBox:has(#btnStop.live) #btnMic{ display:none; }
+#composerBox.typing > #btnSend{ animation:morphIn .16s ease; }
+@keyframes morphIn{ from{ transform:scale(.6); opacity:0; } to{ transform:scale(1); opacity:1; } }
