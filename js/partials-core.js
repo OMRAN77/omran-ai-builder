@@ -699,7 +699,10 @@
 
     <div style="margin-top:12px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="fashionAiStyleLabel">النمط/المناسبة</label>
-      <select id="fashionAiStyle" style="width:100%;">
+      <!-- v-fashion-thumb-cards: بطاقات مصوّرة بنماذج من محرّكنا (أصول ثابتة في
+           assets/fashion/looks/) تتزامن مع السلكت المخفي فلا يتغير أي سلك خلفي. -->
+      <div id="fashionStyleCards" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;"></div>
+      <select id="fashionAiStyle" style="display:none;">
         <option value="evening" data-i18n="fashionAiStyleEvening">✨ سهرة</option>
         <option value="formal" data-i18n="fashionAiStyleFormal">👔 رسمي</option>
         <option value="casual" data-i18n="fashionAiStyleCasual">👕 كاجوال</option>

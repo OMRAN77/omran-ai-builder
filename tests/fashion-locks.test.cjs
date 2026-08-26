@@ -37,6 +37,13 @@ assert.ok(suggest.includes("engine = 'openai'"), 'ردّ الاقتراحات ي
 assert.ok(studios.includes('fairness: true'), 'مقارنة العميل تفعّل قفل العدالة');
 assert.ok(studios.includes('v-fashion-cards') && studios.includes('اضغطي للاختيار'), 'بطاقات المقارنة بشكل التصميم المعتمد مع اختيار ذهبي');
 assert.ok(partials.includes('fashionAiEngine'), 'مبدّل المحرك موجود في الواجهة');
+// ⑤ بطاقات الأنماط المصوّرة: الشبكة في الواجهة، السلكت مخفٍ لكنه باقٍ (الأسلاك
+//    الخلفية تقرأ قيمته)، والرسّام يتزامن معه ويسقط بأناقة عند غياب الصورة.
+assert.ok(partials.includes('fashionStyleCards') && partials.includes('id="fashionAiStyle" style="display:none;"'), 'بطاقات مصوّرة والسلكت مخفٍ لا محذوف');
+assert.ok(studios.includes('v-fashion-thumb-cards') && studios.includes("assets/fashion/looks/'"), 'الرسّام يستعمل أصول looks الثابتة');
+assert.ok(studios.includes('img.onerror') && studios.includes('renderStyleCards()'), 'سقوط أنيق بلا صورة + إعادة رسم عند الفتح');
+const designGen = fs.readFileSync(path.join(__dirname, '../js/design-gen.js'), 'utf8');
+assert.ok(designGen.includes('[occ,sea].forEach') && !designGen.includes('[occ,sea,sty].forEach'), 'محوّل v417 لا يرسم النمط — لا شبكتين للنمط');
 console.log('  ✓ الأسلاك: خادم + عميل + مبدّل المحرك');
 
 console.log('fashion locks tests passed');

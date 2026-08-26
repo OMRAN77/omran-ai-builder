@@ -1,0 +1,25 @@
+# توليد صور نماذج بطاقات استوديو الأزياء عبر خطّ الإنتاج، وتصغيرها webp،
+# ورفعها artifact لتُنزَّل وتُلتزم في assets/fashion/looks/.
+name: Fashion thumbs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  thumbs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Generate 6 style model images on production
+        run: node scripts/fashion-thumbs.mjs "https://omran-ai-builder.vercel.app"
+      - name: Resize to webp cards
+        run: npm i --no-save sharp && node scripts/fashion-thumbs-resize.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fashion-thumbs
+          path: thumbs/
+          retention-days: 3
