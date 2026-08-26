@@ -259,3 +259,17 @@ html.mobile-ui #inputbar{padding:2px 10px 5px;}
 html.mobile-ui #composerBox{padding:4px 8px 3px !important; border-radius:16px !important;}
 html.mobile-ui #prompt{min-height:20px; max-height:84px; font-size:13px;}
 html.mobile-ui #btnSend, html.mobile-ui #btnStop{width:30px; height:30px; flex:0 0 30px;}
+
+/* v-mob-lock: طلب المالك (آيفون) — الشاشة لا تتحرك كاملة فوق/تحت (قفل ارتداد
+   iOS وتمرير الوثيقة)، والتمرير داخل المحتوى فقط، وبلا شريط سحب ظاهر. */
+@media (max-width:860px){
+  html{overflow:hidden; overscroll-behavior:none; height:100%;}
+  /* iOS القديم يتجاهل overscroll-behavior — تثبيت body يقتل سحب الوثيقة نهائيًا */
+  body{overscroll-behavior:none; position:fixed; inset:0; width:100%;}
+  main, #messages, #omranHero{overscroll-behavior-y:contain;}
+  *{scrollbar-width:none;}
+  *::-webkit-scrollbar{width:0 !important; height:0 !important; display:none;}
+}
+html.mobile-ui{overflow:hidden; overscroll-behavior:none; height:100%;}
+html.mobile-ui body{overscroll-behavior:none; position:fixed; inset:0; width:100%;}
+html.mobile-ui main, html.mobile-ui #messages{overscroll-behavior-y:contain;}

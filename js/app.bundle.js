@@ -7726,6 +7726,8 @@ async function postWithConfirm(url, payload){
   };
 })();
 /* v-mob-compact: بصمة جديدة لأن CSS الجوال تغيّر — يكسر كاش الـSW */
+/* v-mob-lock: بصمة جديدة — قفل تمرير الجوال */
+/* v-mob-lock2 */
 window.postWithConfirm = postWithConfirm;
 /* يضبط شكل المحادثة كما يشترطه Gemini — يُستدعى قبل كل طلب. */
 function sanitizeGeminiContents(list){
