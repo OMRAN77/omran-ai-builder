@@ -1,0 +1,22 @@
+# قياس أداة الأزياء على الإنتاج: حساب فحص ← توليد فعلي ← النتيجة والأزمنة.
+name: Fashion probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      engine:
+        description: 'محرك الصور (فارغ=Gemini أو openai)'
+        required: false
+        default: ''
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Probe fashion tool end-to-end
+        run: node scripts/fashion-probe.mjs "https://omran-ai-builder.vercel.app" "${{ github.event.inputs.engine }}"
