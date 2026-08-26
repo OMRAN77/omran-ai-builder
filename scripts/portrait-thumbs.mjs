@@ -19,9 +19,29 @@ const ART_STYLES = [
   'neonsign', 'doubleexposure', 'figurine', 'ghibli', 'lego', 'chibi', 'statue',
   'polaroid', 'superhero', 'astronaut',
 ];
-const STYLES = (process.argv[3] && process.argv[3] !== 'all')
+// الأدوات أيضًا لها معاينات حقيقية (بمعاملات خاصة): إزالة الخلفية على أبيض،
+// الجواز صورة رسمية، المهنة طبيب، الدمج والعائلي بصورة إضافية… إلخ.
+const UTILITY_PAYLOADS = {
+  removebg: { backdrop: 'studio_white' },
+  passport: {},
+  beautify: { beautify: { skin: true, light: true, teeth: true } },
+  ageshift: { ageTarget: 'older' },
+  hairstyle: { hairStyle: 'a modern short textured haircut' },
+  adposter: { adText: 'Omran AI' },
+  timeshift: { era: '1950s' },
+  profession: { profession: 'doctor' },
+  outfit: { outfit: 'an elegant navy suit' },
+  merge2: { extraImages: ['SRC'] },
+  familystyle: { extraImages: ['SRC'] },
+  stickerpack: {},
+  celebtoon: { charName: 'a friendly cartoon robot' },
+  restore: {}, colorize: {}, upscale: {}, objectremove: { removeText: 'background clutter' },
+  productshot: {}, newborn: {}, avatargif: {},
+};
+const UTILITY_STYLES = Object.keys(UTILITY_PAYLOADS);
+const STYLES = (process.argv[3] && process.argv[3] !== 'all' && process.argv[3] !== 'utility')
   ? process.argv[3].split(',').map((x) => x.trim()).filter(Boolean)
-  : ART_STYLES;
+  : (process.argv[3] === 'utility' ? UTILITY_STYLES : ART_STYLES);
 
 const SOURCE = readFileSync('assets/fashion/looks/category/men.webp').toString('base64');
 const t0 = Date.now();
@@ -53,9 +73,17 @@ let token = await signup();
 for (let i = 0; i < STYLES.length; i++) {
   if (i > 0 && i % 3 === 0) token = await signup(); // الحدّ اليومي ٣ لكل حساب
   const v = STYLES[i];
+  const extra = {};
+  for (const [k, val] of Object.entries(UTILITY_PAYLOADS[v] || {})) {
+    extra[k] = Array.isArray(val) ? val.map((x) => (x === 'SRC' ? SOURCE : x)) : val;
+  }
   const r = await post('/api/portrait-style', {
-    imageBase64: SOURCE, mimeType: 'image/webp', style: v, token,
+    imageBase64: SOURCE, mimeType: 'image/webp', style: v, token, ...extra,
   });
+  // avatargif يرجع إطارات — خذ الأول كمعاينة.
+  if (r.status === 200 && r.json && !r.json.imageBase64 && Array.isArray(r.json.frames) && r.json.frames[0]) {
+    r.json.imageBase64 = r.json.frames[0];
+  }
   if (r.status === 200 && r.json && r.json.imageBase64) {
     writeFileSync('thumbs-raw/portrait-' + v + '.png', Buffer.from(r.json.imageBase64, 'base64'));
     console.log(el(), '✓ ' + v + ' — ' + Math.round(r.json.imageBase64.length * 3 / 4 / 1024) + 'KB');
