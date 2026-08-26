@@ -12,6 +12,27 @@ const pickLang = (b) => { const l = String((b && b.lang) || 'ar').slice(0, 3); r
 
 const DAILY = 8; // صورة/يوم للمستخدم المسجَّل (المالك وVIP معفيان داخل الدالّة)
 
+// v-ad-rescue: توليد الإعلان عبر Gemini عند رفض OpenAI — يرجع {data,mime} أو null، لا يرمي أبدًا.
+async function geminiAdImage(promptText, images) {
+  const gkey = (process.env.GEMINI_API_KEY || '').trim();
+  if (!gkey) return null;
+  try {
+    const parts = [{ text: String(promptText).slice(0, 7000) }];
+    for (const [b64, mime] of images || []) parts.push({ inlineData: { mimeType: mime, data: b64 } });
+    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + gkey, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts }], generationConfig: { imageConfig: { imageSize: '2K' } } }),
+      signal: AbortSignal.timeout(240000),
+    });
+    const d = await r.json().catch(() => null);
+    if (!r.ok) { console.warn('[adimage] gemini HTTP ' + r.status + ' ' + String((d && d.error && d.error.message) || '').slice(0, 120)); return null; }
+    const ps = ((((d && d.candidates) || [])[0] || {}).content || {}).parts || [];
+    const ip = ps.find((x) => x.inlineData && x.inlineData.data);
+    return ip ? { data: ip.inlineData.data, mime: ip.inlineData.mimeType || 'image/png' } : null;
+  } catch (e) { console.warn('[adimage] gemini ' + (e && e.message)); return null; }
+}
+
 const LOOKS = {
   cinema:   'cinematic dusk scene, dramatic side light, shallow depth of field, subtle film grain',
   layers:   'modern layered collage composition, bold geometric shapes behind the subject',
@@ -197,17 +218,23 @@ module.exports = async (req, res) => {
     const upstream = await fetch(url, init);
 
     const data = await upstream.json().catch(() => null);
-    if (!upstream.ok) {
-      const m = (data && data.error && data.error.message) || ('HTTP ' + upstream.status);
-      res.status(upstream.status).end(JSON.stringify({ error: 'upstream', message_ar: 'تعذّر توليد الإعلان: ' + m }));
+    const oaOut = upstream.ok ? (((data && data.data) || [])[0] || {}).b64_json : null;
+    if (!oaOut) {
+      // v-ad-rescue: رفض OpenAI (رصيد/حصة/غيره) يهبط تلقائيًا إلى Gemini —
+      // نفس خطوط إنقاذ بقية الاستوديوهات: أي مفتاح مشحون يكفي.
+      const gImgs = [];
+      if (tplB64) gImgs.push([tplB64, 'image/jpeg']);
+      if (hasImg) gImgs.push([b.imageBase64, /^image\/(png|jpeg|webp)$/.test(String(b.mimeType || '')) ? b.mimeType : 'image/jpeg']);
+      const g = await geminiAdImage(p, gImgs);
+      if (g) {
+        res.status(200).end(JSON.stringify({ imageBase64: g.data, mimeType: g.mime, dailyLimit: DAILY, engine: 'gemini' }));
+        return;
+      }
+      const m = String((data && data.error && data.error.message) || ('HTTP ' + upstream.status)).replace(/key=[^&\s"']+/g, 'key=***');
+      res.status(upstream.ok ? 502 : upstream.status).end(JSON.stringify({ error: 'upstream', message_ar: 'تعذّر توليد الإعلان: ' + m }));
       return;
     }
-    const out = ((data && data.data) || [])[0];
-    if (!out || !out.b64_json) {
-      res.status(502).end(JSON.stringify({ error: 'empty', message_ar: 'لم يرجع النموذج صورة. جرّب مرّة أخرى.' }));
-      return;
-    }
-    res.status(200).end(JSON.stringify({ imageBase64: out.b64_json, mimeType: 'image/webp', dailyLimit: DAILY }));
+    res.status(200).end(JSON.stringify({ imageBase64: oaOut, mimeType: 'image/webp', dailyLimit: DAILY }));
   } catch (e) {
     const msg = e && e.name === 'TimeoutError' ? 'استغرق التوليد وقتًا أطول من المسموح. جرّب مرّة أخرى.' : (e && e.message ? e.message : String(e));
     res.status(500).end(JSON.stringify({ error: 'proxy', message_ar: msg }));
