@@ -8,6 +8,32 @@
 const { checkFashionQuota, consumeFashion, FASHION_DAILY_LIMIT } = require('./_fashionUsage');
 const { sourceStylePreservationRule } = require('./image-prompt');
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
+const { locksFor } = require('./fashion-locks');
+
+// 🎨 محرك بديل اختياري: gpt-image-1 (نفس محرك صور ChatGPT) بمفتاح OPENAI_API_KEY.
+// وضع الصورة فقط (تعديل صورة المستخدمة). فشله يهبط صامتًا إلى Gemini.
+async function openaiRedress(promptText, imageBase64, mimeType) {
+  const key = (process.env.OPENAI_API_KEY || '').trim();
+  if (!key) return null;
+  try {
+    const bytes = Buffer.from(imageBase64, 'base64');
+    const form = new FormData();
+    form.append('model', 'gpt-image-1');
+    form.append('prompt', promptText.slice(0, 3900));
+    form.append('size', '1024x1536');
+    form.append('quality', 'medium');
+    form.append('image', new Blob([bytes], { type: mimeType || 'image/jpeg' }), 'photo.jpg');
+    const r = await fetch('https://api.openai.com/v1/images/edits', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + key },
+      body: form,
+    });
+    const d = await r.json();
+    if (!r.ok) { console.warn('[fashion-create] openai HTTP ' + r.status + ' ' + String((d.error && d.error.message) || '').slice(0, 120)); return null; }
+    const b64 = d && d.data && d.data[0] && d.data[0].b64_json;
+    return b64 ? { imageBase64: b64, mimeType: 'image/png' } : null;
+  } catch (e) { console.warn('[fashion-create] openai ' + (e && e.message)); return null; }
+}
 
 const STYLE_PROMPTS = {
   evening: 'an elegant evening gown style, flowing fabric, refined and glamorous',
@@ -65,7 +91,7 @@ module.exports = async (req, res) => {
       body = JSON.parse(body || '{}');
     }
     const { mode, imageBase64, mimeType, style, description, token, multiAngle,
-      gender, colors, extras, season, occasion } = body;
+      gender, colors, extras, season, occasion, fairness, modest, engine } = body;
 
     if (mode === 'image' && !imageBase64) {
       res.status(400).json({ error: 'Missing imageBase64' });
@@ -101,11 +127,25 @@ module.exports = async (req, res) => {
       ? ' Output a single image laid out as a clean 3-panel collage side by side showing the SAME outfit and person from three angles: front view, side view, and back view.'
       : ' Output a single photorealistic image.';
 
+    // v-fashion-locks: قفل الهوية بدل السطر الضعيف القديم، وقفل العدالة عند
+    // المقارنة (نفس الاستوديو في كل الخيارات)، وقفل الاحتشام حيث يلزم.
+    const locks = locksFor({ fairness: !!fairness, modest: !!modest, style, occasion });
     if (mode === 'image') {
       const promptText =
-        'Redress the person in this photo into a new outfit in ' + styleDesc + '. ' +
-        'Keep the same person, pose, face and background, but change only the clothing/outfit to match the requested style. ' +
+        'Redress the person in this photo into a new outfit in ' + styleDesc + '.' +
+        locks + ' ' +
+        (fairness ? '' : 'Keep the same pose and background as the source photo. ') +
         sourceStylePreservationRule() + detailClause + multiAngleClause;
+      // 🎨 المحرك الاختياري: engine=openai مع مفتاح مضبوط → gpt-image-1؛
+      // فشله أو غيابه → Gemini كما كان، بلا أي تغيير للمستخدم.
+      if (engine === 'openai') {
+        const oa = await openaiRedress(promptText, imageBase64, mimeType);
+        if (oa) {
+          const remOa = await consumeFashion(quota.username);
+          res.status(200).json({ imageBase64: oa.imageBase64, mimeType: oa.mimeType, engine: 'openai', remaining: remOa, dailyLimit: FASHION_DAILY_LIMIT });
+          return;
+        }
+      }
       parts.push({ text: promptText });
       parts.push({ inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } });
     } else {
@@ -113,6 +153,7 @@ module.exports = async (req, res) => {
         'Generate a photorealistic fashion design image of ' + subject + ' wearing ' + styleDesc + '. ' +
         'Specific description: ' + String(description).slice(0, 500) + '. ' +
         'Full-body studio fashion photography, elegant pose, clean background.' +
+        (fairness ? require('./fashion-locks').FAIRNESS_LOCK + ' Use the same model appearance across this comparison set.' : '') +
         detailClause + multiAngleClause;
       parts.push({ text: promptText });
     }
