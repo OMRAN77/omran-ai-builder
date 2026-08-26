@@ -600,8 +600,7 @@ const $ = s => document.querySelector(s);
       // للإحصائيات وحدها، وVIP قائمة قصيرة نداؤها رخيص.
       if(isAdminUI && window.loadVipList) window.loadVipList();
     }
-    const btnMahaOwnerEl = $('#btnMaha');
-    if(btnMahaOwnerEl){ btnMahaOwnerEl.style.display = 'flex'; }
+    // v-maha-dock: مها راسية بجانب المايك — الزر العائم لا يُظهر بعد الآن.
   }
   // Deferred (not called synchronously): I18N is declared further down in
   // this same script (after this IIFE), so calling setAuthToggleUI() here
