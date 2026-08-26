@@ -1139,6 +1139,9 @@
     closeHeaderMenu();
     setFeature(feature);
   };
+  // بطاقة الخيارات جاهزة من الإقلاع — لا تنتظر أول فتح (أي مسار فتح يجدها).
+  populateStyleSelect();
+  renderStudioStyleCards();
   btnClose.onclick = () => { modal.style.display = 'none'; };
   modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
 

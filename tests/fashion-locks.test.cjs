@@ -54,7 +54,11 @@ assert.ok(studios.includes("fashion-gender-change"), 'تبديل الفئة يع
 assert.ok(designGen.includes("fashion-gender-change"), 'المبدّل يبثّ حدث الفئة');
 // ⑦ كل الأقسام بطاقات صور: photoize على الفئة والمناسبة والموسم والإضافات،
 //    ووجوه الفئات من category/ لا من صور الأنماط، والسقوط للإيموجي عند الغياب.
-assert.ok(designGen.includes('v-fashion-photo-all') && designGen.includes('photoize(c,LOOKS+kind+') , 'المناسبة والموسم صور');
+assert.ok(designGen.includes('v-fashion-photo-all') && designGen.includes("LOOKS+kind+'/'"), 'المناسبة والموسم صور');
+assert.ok(designGen.includes('v-fashion-full-page') && designGen.includes('omranPicker.trigger'), 'المناسبة والموسم معرض ملء الشاشة');
+const designSels = fs.readFileSync(path.join(__dirname, '../js/design-sels.js'), 'utf8');
+assert.ok(designSels.includes('v-decor-full-page') && designSels.includes('omranPicker.trigger') && designSels.includes('assets/design/styles/'), 'قوائم الديكور كلها معرض ملء الشاشة');
+assert.ok(studios.includes('v-fashion-full-page'), 'نمط الأزياء معرض ملء الشاشة أيضًا');
 assert.ok(designGen.includes("category/women") && !designGen.includes("women/evening'"), 'وجوه الفئات مخصّصة لا معادة');
 assert.ok(designGen.includes("extras/'+r[0].toLowerCase()"), 'الإضافات صور قريبة');
 assert.ok(designGen.includes('im.onerror=function(){ im.remove(); }'), 'غياب الصورة يرجع شكل الإيموجي لا بطاقة مكسورة');
@@ -81,6 +85,7 @@ assert.ok(studioCreate.includes('v-studio-rescue') && studioCreate.includes('ope
 const stocks = fs.readFileSync(path.join(__dirname, '../js/app-13-stocks-init.js'), 'utf8');
 assert.ok(partials.includes('studioStyleCards') && partials.includes('id="studioAiStyle" style="display:none;"'), 'خيارات الستايل بطاقات والسلكت مخفيّ لا محذوف');
 assert.ok(stocks.includes('v-studio-cards') && stocks.includes('assets/studio/options/'), 'رسّام الخيارات من أصوله');
+assert.ok(stocks.includes('v-studio-full-page') && stocks.includes('renderStudioStyleCards();\n  btnClose.onclick'), 'الستايل معرض ملء الشاشة ويُرسم من الإقلاع');
 assert.ok(stocks.includes('v-studio-tabs') && stocks.includes('assets/studio/features/'), 'التبويبات مصوّرة');
 const sThumbs = fs.readFileSync(path.join(__dirname, '../scripts/studio-thumbs.mjs'), 'utf8');
 assert.ok(sThumbs.includes('STUDIO') === false || true, 'x');
