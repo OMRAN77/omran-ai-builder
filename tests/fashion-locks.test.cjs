@@ -127,4 +127,15 @@ console.log('  ✓ v-agent-settings: الوكيل في الإعدادات ومف
 const redesignCss = fs.readFileSync(path.join(__dirname, '../css/redesign.css'), 'utf8');
 assert.ok(redesignCss.includes('html:not(.mobile-ui) #plusToolsPopup #btnToolsBox{ display:none !important; }'), 'زر الأدوات من ➕ مخفي في الكمبيوتر فقط');
 
+// ⑫ v-edu-lab: «الدرس الحي» — تبويب 🧪 يحوّل الدرس لتجربة تفاعلية معزولة.
+const eduJs = fs.readFileSync(path.join(__dirname, '../js/edu.js'), 'utf8');
+assert.ok(eduJs.includes('data-tab="lab"') && eduJs.includes('function renderLab'), 'تبويب التجربة الحية في عارض الدرس');
+assert.ok(eduJs.includes("'sandbox','allow-scripts'") && eduJs.includes('fr.srcdoc'), 'التجربة داخل iframe معزول بلا صلاحيات');
+assert.ok(eduJs.includes("action:'lab'"), 'العميل يطلب التجربة من الخادم');
+const eduApi = fs.readFileSync(path.join(__dirname, '../api/edu.js'), 'utf8');
+assert.ok(eduApi.includes("action === 'lab'") && eduApi.includes('db/edu/labs/'), 'الخادم يولد ويخزن المختبر بمفتاح منفصل لكل درس');
+assert.ok(eduApi.includes('```html') && eduApi.includes('max_tokens: 16000'), 'استخراج كتلة HTML وحجم كافٍ');
+assert.ok(eduApi.includes("kvDel('db/edu/labs/"), 'حذف الدرس ينظف مختبره');
+console.log('  ✓ v-edu-lab: الدرس الحي مبني ومقفول');
+
 console.log('fashion locks tests passed');

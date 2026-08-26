@@ -7859,6 +7859,7 @@ async function postWithConfirm(url, payload){
 /* v-ios-tap-fallback */
 /* v-diag-nav */
 /* v-ios-nav-restore */
+/* v-edu-lab */
 window.postWithConfirm = postWithConfirm;
 /* يضبط شكل المحادثة كما يشترطه Gemini — يُستدعى قبل كل طلب. */
 function sanitizeGeminiContents(list){
