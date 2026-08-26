@@ -2028,10 +2028,14 @@ async function postWithConfirm(url, payload){
         (it.active ? 'border:2px solid #d4af37;box-shadow:0 0 14px rgba(212,175,55,.3);' : 'border:1px solid #2a2a30;');
       var wrap = document.createElement('div');
       wrap.style.cssText = 'position:relative;aspect-ratio:3/4;background:linear-gradient(160deg,#23232a,#101014);display:flex;align-items:center;justify-content:center;';
-      var badge = document.createElement('div');
-      badge.textContent = (String(it.title || '').trim().match(/^\S+/) || [''])[0];
-      badge.style.cssText = 'width:54px;height:54px;border-radius:50%;border:1px solid rgba(212,175,55,.4);background:rgba(212,175,55,.06);display:flex;align-items:center;justify-content:center;font-size:22px;';
-      wrap.appendChild(badge);
+      // it.bg (لوحة ألوان النمط) تعطي بطاقة احترافية بلا شارة إيموجي إطلاقًا.
+      if(it.bg){ wrap.style.background = it.bg; }
+      else {
+        var badge = document.createElement('div');
+        badge.textContent = (String(it.title || '').trim().match(/^\S+/) || [''])[0];
+        badge.style.cssText = 'width:54px;height:54px;border-radius:50%;border:1px solid rgba(212,175,55,.4);background:rgba(212,175,55,.06);display:flex;align-items:center;justify-content:center;font-size:22px;';
+        wrap.appendChild(badge);
+      }
       if(it.img){
         var im = document.createElement('img');
         im.src = it.img; im.alt = it.title || ''; im.loading = 'lazy';
@@ -2071,9 +2075,12 @@ async function postWithConfirm(url, payload){
   window.omranPicker.trigger = function(get, openCfg){
     var d = document.createElement('div');
     d.style.cssText = 'display:flex;align-items:center;gap:10px;border:1px solid var(--border,#333);border-radius:12px;padding:8px 10px;cursor:pointer;background:var(--panel2,#101014);';
+    var th = document.createElement('div');
+    th.style.cssText = 'position:relative;width:44px;height:58px;border-radius:8px;overflow:hidden;flex:none;background:linear-gradient(160deg,#23232a,#101014);';
     var im = document.createElement('img');
-    im.style.cssText = 'width:44px;height:58px;object-fit:cover;border-radius:8px;background:linear-gradient(160deg,#23232a,#101014);flex:none;';
+    im.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
     im.onerror = function(){ im.style.visibility = 'hidden'; };
+    th.appendChild(im);
     var info = document.createElement('div');
     info.style.cssText = 'flex:1;min-width:0;';
     var nm = document.createElement('div');
@@ -2084,11 +2091,12 @@ async function postWithConfirm(url, payload){
     var all = document.createElement('span');
     all.textContent = (localStorage.getItem('aiapp_lang') === 'en') ? 'Browse all ›' : 'عرض الكل ›';
     all.style.cssText = 'color:#d4af37;font-size:12.5px;font-weight:700;flex:none;';
-    d.appendChild(im); d.appendChild(info); d.appendChild(all);
+    d.appendChild(th); d.appendChild(info); d.appendChild(all);
     function refresh(){
       var s = get() || {};
       nm.textContent = s.name || '';
       sb.textContent = s.sub || '';
+      if(s.bg) th.style.background = s.bg;
       if(s.img){ im.style.visibility = 'visible'; im.src = s.img; }
       else im.style.visibility = 'hidden';
     }
