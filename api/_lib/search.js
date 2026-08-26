@@ -649,10 +649,16 @@ module.exports = async (req, res) => {
     const __q0 = (body && body.q0 || '').toString().trim();
     const __DOM_RE = /لوح(ة|ات|تين)|رقم\s*مميز|[\u0623\u0627]رقام\s*مميزة|بليت|بلايت|plate|عقار|شق(ة|ق|تين)|فيلا|فلل|[\u0623\u0627]رض|اراضي|apartment|villa|property|سيار|سيرات|سياير|مركب|\bcars?\b|وظيف|وظائف|توظيف|\bjobs?\b|فندق|فنادق|منتجع|شاليه|hotel|resort|طيران|تذكرة|تذاكر|flight/i;
     const qb = (__q0 && __DOM_RE.test(__q0)) ? __q0 : query;
+    // v-intent-tech: «تحديث نظام شاشة السيارة» أعادت دوبيزل ودوبي كارز — كلمة
+    // «سيارة» وحدها كانت تقفل البحث على مواقع البيع. السؤال التقني/الإرشادي
+    // (تحديث، عطل، كيف، إعدادات…) ليس طلب شراء: يخرج من محرّك القوائم كليًّا
+    // ويُبحث بحثًا عامًّا، فلا تظهر مصادر إعلانات لا صلة لها بالجواب.
+    const TECH_INTENT_RE = /تحديث|سوفت\s*وير|سوفتوير|software|فيرموير|firmware|برمجة|تثبيت|تنزيل\s*(نظام|تحديث|برنامج)|فورمات|إعدادات|اعدادات|ضبط\s|كيف\s|كيفية|طريقة|شرح|خطوات|مشكلة|مشكله|عطل|خلل|لا\s*يعمل|ما\s*يشتغل|صيانة|إصلاح|اصلاح|كاربلاي|carplay|android\s*auto|بلوتوث|bluetooth|نافيجيشن|navigation|how\s*to|\bfix\b|update|install|troubleshoot|settings|دليل\s*(الاستخدام|المالك)/i;
+    const __techAsk = TECH_INTENT_RE.test(qb) && !/للبيع|للايجار|للإيجار|اشتري|أشتري|شراء\s|بكم\s|مستعمل(ة|ه)?\s*للبيع/i.test(qb);
     // 🔢 v543: أسئلة اللوحات/الأرقام المميزة → موقعان فقط: xplate + SHub (s-plate).
     const NUMBERS_RE = /لوح(ة|ات|تين)\s*([أا]رقام|سيار|مركب|مرور|مميز|رقم|للبيع|دبي|أبوظبي|ابوظبي|الشارقة|عجمان|رأس الخيمة|راس الخيمة|أم القيوين|ام القيوين|الفجيرة)|[أا]?رقام(\s+\S+)?\s*مميزة|رقم(\s+\S+)?\s*مميز|[أا]رقام\s*(سيارات|سيارة|سيارتي|مركبات|مركبة|لوحات|لوحة|هواتف|هاتف|جوالات|جوال|موبايل|شرائح|شريحة|للبيع|مميز)|رقم\s*(سيارة|مركبة)\s*(للبيع|لي البيع)|رقم\s*(هاتف|جوال|موبايل)?\s*(vip|في اي بي)|بلايت|بليت|number plate|license plate|special number|vip number|plate for sale/i;
-    const isNumbers = !domains && !__wantsOfficialSource && !__hasForeignCountry && NUMBERS_RE.test(qb);
-    const isListing = isNumbers || (!domains && !__wantsOfficialSource && !__hasForeignCountry && (/عقار|شق(ة|ق|تين)|فيلا|فلل|أرض للبيع|ارض للبيع|للبيع|للايجار|للإيجار|إيجار|ايجار|محل تجاري|مكتب للـ|سياره|سيارة|سيارات|سيرات|سياير|اجار|آجار|تأجير|تاجير|استئجار|rent a car|car rental|وظيفة|وظائف|توظيف|apartment|villa|property|for sale|for rent|listing|car for|job vacanc|تذكرة|تذاكر|رحلة إلى|رحله الى|رحلات|air ticket|فندق|فنادق|منتجع|منتجعات|شاليه|شاليهات|hotel|resort/i.test(qb) || __flightListing));
+    const isNumbers = !__techAsk && !domains && !__wantsOfficialSource && !__hasForeignCountry && NUMBERS_RE.test(qb);
+    const isListing = isNumbers || (!__techAsk && !domains && !__wantsOfficialSource && !__hasForeignCountry && (/عقار|شق(ة|ق|تين)|فيلا|فلل|أرض للبيع|ارض للبيع|للبيع|للايجار|للإيجار|إيجار|ايجار|محل تجاري|مكتب للـ|سياره|سيارة|سيارات|سيرات|سياير|اجار|آجار|تأجير|تاجير|استئجار|rent a car|car rental|وظيفة|وظائف|توظيف|apartment|villa|property|for sale|for rent|listing|car for|job vacanc|تذكرة|تذاكر|رحلة إلى|رحله الى|رحلات|air ticket|فندق|فنادق|منتجع|منتجعات|شاليه|شاليهات|hotel|resort/i.test(qb) || __flightListing));
     const listingDomains = isNumbers
       ? ['xplate.com', 's-plate.com', 'souq.ma7room.com', 'uaedir.ae', 'ae.opensooq.com', 'barbahar.com', 'mourjan.com']
       : /طيران|تذكرة|تذاكر|رحلة|رحله|رحلات|flight|air ticket|airfare/i.test(qb)
@@ -699,6 +705,9 @@ module.exports = async (req, res) => {
           include_images: wantImages,
           max_results: isListing ? 10 : (domains ? 5 : 3),
           ...(isListing ? { include_domains: listingDomains } : (domains ? { include_domains: domains } : {})),
+          // v-intent-tech: السؤال التقني يستبعد مواقع الإعلانات المبوبة صراحةً —
+          // صفحاتها تتصدّر نتائج أي استعلام فيه «سيارة» ولا تجيب عن السؤال.
+          ...(__techAsk ? { exclude_domains: ['dubizzle.com', 'dubicars.com', 'yallamotor.com', 'cars24.ae', 'ae.opensooq.com', 'opensooq.com', 'mourjan.com', 'barbahar.com'] } : {}),
         }),
       }),
       googleUrl ? fetch(googleUrl).catch(() => null) : Promise.resolve(null),
