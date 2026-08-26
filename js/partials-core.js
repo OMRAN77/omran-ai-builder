@@ -398,9 +398,29 @@
         <label style="font-size:12px; color:var(--muted); display:block;" data-i18n="portraitStyleLabel">ستايل الرسم</label>
         <button type="button" id="portraitFavStarBtn" title="⭐" style="background:none; border:none; cursor:pointer; font-size: var(--fs-2); padding:2px 4px; line-height:1;">☆</button>
       </div>
-      <!-- v-portrait-style-cards: أنماط الصور بطاقات صور تُسحب — نفس الوجه بكل
-           ستايل (قبل/بعد). السلكت مخفيّ والأسلاك الخلفية عليه كما هي. -->
-      <div id="portraitStyleCards" style="display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;"></div>
+      <!-- v-portrait-style-page: أنماط الصور صفحة كاملة — بطاقة مصغّرة هنا
+           تفتح معرضًا ملء الشاشة (شبكة عمودية متجاوبة، عنوان ووصف لكل ستايل).
+           السلكت مخفيّ والأسلاك الخلفية عليه كما هي. -->
+      <div id="portraitStyleTrigger" style="display:flex; align-items:center; gap:10px; border:1px solid var(--border,#333); border-radius:12px; padding:8px 10px; cursor:pointer; background:var(--panel2,#101014);">
+        <img id="portraitStyleTriggerImg" alt="" style="width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;">
+        <div style="flex:1; min-width:0;">
+          <div id="portraitStyleTriggerName" style="font-size:13.5px; font-weight:700;"></div>
+          <div id="portraitStyleTriggerSub" style="font-size:11px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
+        </div>
+        <span style="color:#d4af37; font-size:12.5px; font-weight:700; flex:none;" data-i18n="portraitStyleBrowseAll">عرض الكل ›</span>
+      </div>
+      <div id="portraitStyleSheet" style="display:none; position:fixed; inset:0; z-index:10060; background:#0b0b0d; flex-direction:column;">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid rgba(212,175,55,.25); flex:none;">
+          <div>
+            <div style="font-size:18px; font-weight:800;" data-i18n="portraitStyleSheetTitle">🎨 أنماط الصور</div>
+            <div id="portraitStyleSheetCount" style="font-size:11.5px; color:var(--muted);"></div>
+          </div>
+          <button type="button" class="btn iconBtn" id="portraitStyleSheetClose" style="padding:6px 12px;">✕</button>
+        </div>
+        <div style="flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;">
+          <div id="portraitStyleCards" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; padding:14px; max-width:1080px; margin:0 auto;"></div>
+        </div>
+      </div>
       <select id="portraitStyleSelect" style="display:none;">
         <optgroup id="portraitFavGroup" label="⭐ المفضلة" data-i18n="[label]portraitFavGroupLabel" style="display:none;"></optgroup>
         <option value="anime" data-i18n="portraitStyleAnime">🎬 أنيمي ياباني</option>

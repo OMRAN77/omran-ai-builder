@@ -60,12 +60,17 @@ assert.ok(designGen.includes("extras/'+r[0].toLowerCase()"), 'الإضافات �
 assert.ok(designGen.includes('im.onerror=function(){ im.remove(); }'), 'غياب الصورة يرجع شكل الإيموجي لا بطاقة مكسورة');
 const thumbsGen = fs.readFileSync(path.join(__dirname, '../scripts/fashion-thumbs.mjs'), 'utf8');
 assert.ok(thumbsGen.includes('CARD_SETS') && thumbsGen.includes("occasion:") && thumbsGen.includes("'graduation'"), 'المولّد يعرف مجموعات كل الأقسام');
-// ⑧ أنماط الصور بطاقات تُسحب: الصف في الواجهة والسلكت مخفيّ باقٍ، والرسّام
-//    يبثّ change ليتفاعل ما يعتمد على السلكت (خلفيات/تجميل)، والمفضلة أولًا.
-assert.ok(partials.includes('portraitStyleCards') && partials.includes('id="portraitStyleSelect" style="display:none;"'), 'أنماط الصور بطاقات والسلكت مخفيّ لا محذوف');
-assert.ok(studios.includes('v-portrait-style-cards') && studios.includes('assets/portrait/styles/'), 'رسّام أنماط الصور من أصوله');
+// ⑧ أنماط الصور صفحة كاملة: بطاقة مصغّرة تفتح معرضًا ملء الشاشة بشبكة عمودية
+//    متجاوبة (auto-fill)، عنوان ووصف لكل ستايل، والسلكت مخفيّ باقٍ والرسّام
+//    يبثّ change ليتفاعل ما يعتمد عليه (خلفيات/تجميل)، والمفضلة أولًا.
+assert.ok(partials.includes('portraitStyleSheet') && partials.includes('portraitStyleTrigger') && partials.includes('id="portraitStyleSelect" style="display:none;"'), 'معرض ملء الشاشة + بطاقة مصغّرة والسلكت مخفيّ لا محذوف');
+assert.ok(partials.includes('repeat(auto-fill,minmax(150px,1fr))'), 'الشبكة عمودية متجاوبة للكمبيوتر والهواتف');
+assert.ok(studios.includes('v-portrait-style-page') && studios.includes('assets/portrait/styles/'), 'رسّام أنماط الصور من أصوله');
+assert.ok(studios.includes('PSTYLE_SUBS') && studios.includes('رسم يدوي بالرصاص'), 'وصف عربي قصير لكل ستايل');
 assert.ok(studios.includes("styleEl.dispatchEvent(new Event('change'"), 'نقر البطاقة يبثّ change للأسلاك التابعة');
 assert.ok(studios.includes('renderPortraitStyleCards()') && studios.includes('favs.includes(v)'), 'المفضلة أولًا بشارة ⭐');
+const portrait = fs.readFileSync(path.join(__dirname, '../api/_lib/portrait-style.js'), 'utf8');
+assert.ok(portrait.includes('v-portrait-rescue') && portrait.includes('openaiPortraitEdit(promptText'), 'البورتريه له خطّ إنقاذ gpt-image-1 أيضًا');
 const pThumbs = fs.readFileSync(path.join(__dirname, '../scripts/portrait-thumbs.mjs'), 'utf8');
 assert.ok(pThumbs.includes('category/men.webp') && pThumbs.includes('/api/portrait-style'), 'مولّد أنماط الصور يحوّل وجهًا مصدرًا واحدًا');
 assert.ok(studios.includes(".fashionCompareCheck:checked"), 'قارئ المقارنة القديم كما هو');
