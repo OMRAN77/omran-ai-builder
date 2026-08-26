@@ -122,11 +122,23 @@
   };
   document.querySelectorAll('.omNavBtn').forEach(function(b){
     b.addEventListener('click', function(){
+      b.__omLastClick = Date.now(); /* v-ios-tap-fallback */
       var k = b.getAttribute('data-omnav');
       document.querySelectorAll('.omNavBtn').forEach(function(x){ x.classList.remove('active'); });
       b.classList.add('active');
       var f = NAV[k]; if(f) f();
     });
+    /* v-ios-tap-fallback: بعض حالات سفاري iOS لا تولّد نقرة click بعد اللمس
+       (خصوصًا قرب حافة الشاشة السفلية) فتبدو التبويبات ميتة. إن لم تصل click
+       خلال 450ms من نهاية اللمس نطلقها نحن — b.click() يشغّل كل المعالجات
+       المربوطة (بما فيها معالج «المرشد» الخاص) بلا ازدواج بفضل ختم الوقت. */
+    b.addEventListener('touchend', function(){
+      setTimeout(function(){
+        if(Date.now() - (b.__omLastClick || 0) < 600) return;
+        b.__omLastClick = Date.now();
+        try{ b.click(); }catch(e){ __swallow(e, "wiring:ios-tap-fallback"); }
+      }, 450);
+    }, {passive:true});
   });
 
   /* ---------- 11) إعادة ربط المقابض (الجهة تُحسب تلقائيًا من موضع المقبض) ---------- */
