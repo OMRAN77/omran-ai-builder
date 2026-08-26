@@ -5128,6 +5128,14 @@ function renderMessages(keepScroll){
       div.appendChild(imgStrip);
     }
     div.appendChild(textDiv);
+    // AppGallery: وسم صريح للمحتوى المولّد بالذكاء الاصطناعي على كل ردّ مساعد.
+    if(m.role !== 'user' && __mc){
+      const aiTag = document.createElement('div');
+      aiTag.className = 'aiGenTag';
+      aiTag.textContent = lang === 'ar' ? '✨ محتوى مولّد بالذكاء الاصطناعي' : '✨ AI-generated content';
+      aiTag.style.cssText = 'font-size:10px;opacity:.5;margin-top:6px;user-select:none;';
+      div.appendChild(aiTag);
+    }
     if(m.role !== 'user' && m._stopped && !document.documentElement.classList.contains('mobile-ui')){
       const stoppedNote = document.createElement('div');
       stoppedNote.className = 'msgStoppedNote';
@@ -16934,6 +16942,32 @@ window.postWithConfirm = postWithConfirm;
     }
   };
   window.addEventListener('beforeunload', () => { try{ worker.terminate(); }catch(e){ __swallow(e, "save:app-10-features#2"); } });
+})();
+
+// --- AppGallery 7.5: طلب قراءة سياسة الخصوصية صراحةً عند أول إطلاق ---
+// نافذة سفلية مرة واحدة في العمر: رابط السياسة + زر موافقة. الموافقة تُحفظ
+// محليًا فلا تُعرض ثانية. لا تحجب شيئًا سواها ولا تجمع أي بيانات.
+(function privacyFirstLaunch(){
+  var KEY = 'aiapp_privacy_ack';
+  try { if (localStorage.getItem(KEY) === '1') return; } catch(e){ return; }
+  var wrap = document.createElement('div');
+  wrap.id = 'privacyConsent';
+  wrap.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.72);display:flex;align-items:flex-end;justify-content:center;';
+  var card = document.createElement('div');
+  card.style.cssText = 'width:min(100%,560px);background:var(--panel,#161616);border-radius:18px 18px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -8px 40px rgba(0,0,0,.5);direction:rtl;text-align:right;';
+  card.innerHTML = '<h3 style="margin:0 0 8px;font-size:16px;">🔒 خصوصيتك أولًا</h3>'
+    + '<p style="margin:0 0 14px;font-size:13px;line-height:1.8;color:var(--muted,#9a9a9a);">قبل استخدام Omran AI، يرجى قراءة <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">سياسة الخصوصية</a> و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">شروط الاستخدام</a>. نوضح فيهما ما نجمعه وكيف نحميه وحقك في حذف بياناتك.</p>'
+    + '<div style="display:flex;gap:10px;"><a href="/privacy.html" target="_blank" rel="noopener" class="btn" style="flex:1;text-align:center;line-height:42px;height:42px;text-decoration:none;border:1px solid var(--border,#333);border-radius:10px;color:var(--text,#eee);">قراءة السياسة</a>'
+    + '<button type="button" id="privacyAgreeBtn" class="btn primary" style="flex:1;height:42px;border-radius:10px;font-weight:bold;">أوافق وأتابع</button></div>';
+  wrap.appendChild(card);
+  function mount(){ try { document.body.appendChild(wrap); } catch(e){ __swallow(e, 'ui:privacy-consent'); } }
+  if (document.body) mount(); else window.addEventListener('DOMContentLoaded', mount);
+  wrap.addEventListener('click', function(ev){
+    if (ev.target && ev.target.id === 'privacyAgreeBtn') {
+      try { localStorage.setItem(KEY, '1'); } catch(e){ __swallow(e, 'ui:privacy-ack'); }
+      wrap.remove();
+    }
+  });
 })();
 
 // --- PWA: service worker + install prompt ---
