@@ -573,11 +573,36 @@ $('#btnDeleteAll').onclick = () => {
     if(chev) chev.style.transform = open ? 'rotate(180deg)' : '';
     if(!open && searchInput){ searchInput.style.display = 'none'; searchInput.value = ''; filterProjects(''); }
   };
+  /* v-chat-search: البحث داخل محتوى المحادثات كلها لا العناوين فقط —
+     «الكود اللي طلبته قبل أسبوعين» يطلع بكلمة واحدة. يفتش العنوان ونصوص
+     الرسائل (المستخدم والمساعد) والكود المولّد، محليًا وبلا أي نداء شبكة. */
   function filterProjects(q){
     const norm = String(q || '').trim().toLowerCase();
+    let matchIds = null;
+    if(norm){
+      try{
+        const projs = (typeof state !== 'undefined' && Array.isArray(state.projects)) ? state.projects : [];
+        matchIds = new Set();
+        projs.forEach(p => {
+          let hay = String(p.title || '');
+          if(Array.isArray(p.messages)){
+            for(const m of p.messages){
+              if(typeof m.content === 'string') hay += '\n' + m.content;
+              else if(m && m.content && Array.isArray(m.content)){
+                for(const c of m.content){ if(c && typeof c.text === 'string') hay += '\n' + c.text; }
+              }
+            }
+          }
+          if(typeof p.code === 'string') hay += '\n' + p.code;
+          if(hay.toLowerCase().includes(norm)) matchIds.add(String(p.id));
+        });
+      }catch(e){ matchIds = null; __swallow(e, 'search:projects-content'); }
+    }
     document.querySelectorAll('#history .hist-item').forEach(item => {
+      if(!norm){ item.style.display = ''; return; }
+      if(matchIds && item.dataset.pid){ item.style.display = matchIds.has(item.dataset.pid) ? '' : 'none'; return; }
       const title = (item.querySelector('.hist-title') || {}).textContent || '';
-      item.style.display = (!norm || title.toLowerCase().includes(norm)) ? '' : 'none';
+      item.style.display = title.toLowerCase().includes(norm) ? '' : 'none';
     });
   }
   if(searchBtn && searchInput){

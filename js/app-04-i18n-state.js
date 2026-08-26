@@ -834,6 +834,7 @@ function renderHistory(){
   [...state.projects].reverse().forEach(p => {
     const div = document.createElement('div');
     div.className = 'hist-item' + (p.id === state.currentId ? ' active' : '');
+    div.dataset.pid = String(p.id); // v-chat-search: يربط العنصر بمشروعه للبحث داخل المحتوى
 
     const thumb = document.createElement('div');
     thumb.className = 'hist-thumb';
