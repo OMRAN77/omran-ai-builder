@@ -111,4 +111,16 @@ assert.ok(sThumbs.includes('STUDIO') === false || true, 'x');
 assert.ok(sThumbs.includes("heritage") && sThumbs.includes("abaya: 'w1'"), 'مولّد الاستوديو بوجوه متنوعة');
 console.log('  ✓ الأسلاك: خادم + عميل + مبدّل المحرك');
 
+// ⑩ v-agent-settings: زر «الوكيل» انتقل من الشاشة الرئيسية إلى قسم خاص في
+//    الإعدادات، وصار المفتاح الحقيقي لوضع الوكيل المستقل (أمر عمران ٢٦ أغسطس).
+const pset = fs.readFileSync(path.join(__dirname, '../js/partials-settings.js'), 'utf8');
+assert.ok(pset.includes('id="agentSection"') && pset.includes('agentSettingsHost'), 'قسم الوكيل موجود في الإعدادات');
+const prem = fs.readFileSync(path.join(__dirname, '../js/premium.js'), 'utf8');
+assert.ok(prem.includes('relocateAgentToggle') && prem.includes("getElementById('agentSettingsHost')"), 'الزر يُنقل بعقدته فيبقى كل سلكه');
+assert.ok(prem.includes('window.__agentModeOn = (window.__premiumOn === true)'), 'تشغيل الزر يشغّل وضع الوكيل المستقل لا الرد الاحترافي فقط');
+const agentSrv = fs.readFileSync(path.join(__dirname, '../api/_lib/agent.js'), 'utf8');
+assert.ok(agentSrv.includes('القوة القصوى') && agentSrv.includes('أنجز حتى النهاية'), 'طبقة القوة في عقل الوكيل');
+assert.ok(agentSrv.includes("search_depth: 'advanced'"), 'بحث الوكيل بعمق متقدّم');
+console.log('  ✓ v-agent-settings: الوكيل في الإعدادات ومفتاحه حقيقي وقوته مرفوعة');
+
 console.log('fashion locks tests passed');
