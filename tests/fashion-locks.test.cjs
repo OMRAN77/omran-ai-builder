@@ -123,4 +123,8 @@ assert.ok(agentSrv.includes('القوة القصوى') && agentSrv.includes('أ�
 assert.ok(agentSrv.includes("search_depth: 'advanced'"), 'بحث الوكيل بعمق متقدّم');
 console.log('  ✓ v-agent-settings: الوكيل في الإعدادات ومفتاحه حقيقي وقوته مرفوعة');
 
+// ⑪ v-plus-tools-desktop: زر «الأدوات» في قائمة ➕ للجوال فقط — مخفي في الكمبيوتر.
+const redesignCss = fs.readFileSync(path.join(__dirname, '../css/redesign.css'), 'utf8');
+assert.ok(redesignCss.includes('html:not(.mobile-ui) #plusToolsPopup #btnToolsBox{ display:none !important; }'), 'زر الأدوات من ➕ مخفي في الكمبيوتر فقط');
+
 console.log('fashion locks tests passed');
