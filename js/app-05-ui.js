@@ -2134,3 +2134,19 @@ async function postWithConfirm(url, payload){
 /* v-mob-lock: بصمة جديدة — قفل تمرير الجوال */
 /* v-mob-lock2 */
 /* v-ios-textsize */
+/* v-morph-btn */
+
+/* v-morph-btn: الخانة فاضية = مايك، تكتب = زر الإرسال مكانه (نمط واتساب).
+   المزامنة على input + بعد الإرسال (المسح البرمجي لا يطلق input). */
+(function(){
+  const p = document.getElementById('prompt'), box = document.getElementById('composerBox');
+  if(!p || !box) return;
+  const sync = () => box.classList.toggle('typing', !!p.value.trim());
+  p.addEventListener('input', sync);
+  p.addEventListener('change', sync);
+  p.addEventListener('keyup', sync);
+  const bs = document.getElementById('btnSend');
+  if(bs) bs.addEventListener('click', () => setTimeout(sync, 80));
+  setInterval(sync, 700); // شبكة أمان للمسح البرمجي
+  sync();
+})();
