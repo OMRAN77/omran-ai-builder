@@ -1,11 +1,11 @@
-/* v412 — يحوّل نافذة الفيديو إلى استوديو بعمودين. كمبيوتر فقط، بدون أي تغيير في المنطق. */
+/* v412 — يحوّل نافذة الفيديو إلى استوديو غني. الكمبيوتر عمودان والهاتف عمود واحد (v-vmk-mobile). */
 (function(){
   var M=document.getElementById('videoMakerModal'); if(!M) return;
   var G=[['videoMakerMode','card'],['videoMakerStyle','pill'],['videoMakerDuration','pill'],['videoMakerRatio','pill']];
   var PTS={canvas:0,runway:60,hybrid:60,veo:400,actor:400};
   var ICO=/^([\u200d\ufe0f\u2190-\u21ff\u2300-\u27bf\ud800-\udfff]+)\s*/;
   function ar(){var h=document.documentElement;return (h.lang||'ar').indexOf('ar')===0||h.dir==='rtl';}
-  function on(){return window.matchMedia('(min-width:861px)').matches && !document.documentElement.classList.contains('mobile-ui');}
+  function on(){return true;} /* v-vmk-mobile: نفس استوديو الكمبيوتر على الهاتف */
   function id(x){return document.getElementById(x);}
   function short(t){return t.replace(/\s*\([^)]*\)\s*$/,'').trim();}
   function build(){
