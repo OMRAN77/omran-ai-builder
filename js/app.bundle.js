@@ -7845,6 +7845,7 @@ async function postWithConfirm(url, payload){
   setInterval(sync, 700); // شبكة أمان للمسح البرمجي
   sync();
 })();
+/* v-nav-lower */
 window.postWithConfirm = postWithConfirm;
 /* يضبط شكل المحادثة كما يشترطه Gemini — يُستدعى قبل كل طلب. */
 function sanitizeGeminiContents(list){

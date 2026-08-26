@@ -2150,3 +2150,4 @@ async function postWithConfirm(url, payload){
   setInterval(sync, 700); // شبكة أمان للمسح البرمجي
   sync();
 })();
+/* v-nav-lower */
