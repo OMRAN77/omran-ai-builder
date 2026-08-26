@@ -127,6 +127,19 @@ module.exports = async (req, res) => {
     }
 
     const token = makeToken(key);
+    // v-ios-bridge: على آيفون المثبَّت تهبط هذه العودة في ورقة متصفّح منفصلة
+    // عن التطبيق (تخزينهما منفصل) فيضيع الدخول. نودع الجلسة تحت state
+    // (عشوائي ولّده التطبيق نفسه) عشر دقائق، والتطبيق يستلمها عند العودة
+    // إليه عبر oauth-claim — استلام واحد ثم تُحذف.
+    if (typeof state === 'string' && /^[0-9a-f]{16,64}$/i.test(state)) {
+      try {
+        const { kvPutJSON, kvExpire } = require('./kv.js');
+        await kvPutJSON('db/oauth-claim/' + state.toLowerCase(), {
+          token, user: user.username, avatar: user.avatar || '', ts: Date.now(),
+        });
+        await kvExpire('db/oauth-claim/' + state.toLowerCase(), 600);
+      } catch (e) { console.warn('[oauth] claim store failed:', e && e.message); }
+    }
     const params = new URLSearchParams({
       gtoken: token,
       guser: user.username,
