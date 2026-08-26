@@ -62,6 +62,19 @@ if (!searched && /مواقيت|صلاة|سعر|طقس/.test(q)) {
   process.exitCode = 2;
 }
 
+// 🖼️ فحص بحث الصور على الإنتاج — الشكوى المقيسة: «صور هواتف هواوي» صفر صور.
+try {
+  const si = await fetch(base + '/api/search', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query: 'هواتف هواوي', images: true, lang: 'ar', guestId: 'probe-img-' + Math.random().toString(36).slice(2, 8) }),
+  });
+  const sj = si.ok ? await si.json() : null;
+  const n = sj && Array.isArray(sj.images) ? sj.images.length : -1;
+  console.log('\n🖼️ بحث الصور («هواتف هواوي»): ' + (n > 0 ? ('✅ ' + n + ' صور') : ('✗ ' + (n === 0 ? 'صفر صور' : 'HTTP ' + si.status))));
+  if (n === 0) process.exitCode = process.exitCode || 4;
+} catch (e) { console.log('\n🖼️ بحث الصور: ✗ ' + e.message); }
+
 // 📍 فحص الترميز الجغرافي العكسي على الإنتاج (إحداثيات عجمان الثابتة —
 // ليست موقع أحد، فلا خصوصية تُمسّ).
 try {
