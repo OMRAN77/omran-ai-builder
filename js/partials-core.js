@@ -714,6 +714,14 @@
       <span data-i18n="fashionMultiAngleLabel">🕶️ عرض من زوايا متعددة (أمام / جانب / خلف)</span>
     </label>
 
+    <div style="margin-top:10px;">
+      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">🎨 محرك الصور</label>
+      <select id="fashionAiEngine" style="width:100%;">
+        <option value="">Gemini — الأدق في الحفاظ على الوجه (الافتراضي)</option>
+        <option value="openai">ChatGPT (gpt-image-1) — نفس محرك صور ChatGPT</option>
+      </select>
+    </div>
+
     <button type="button" class="btn primary" id="fashionAiGenerateBtn" style="width:100%; margin-top:14px;" data-i18n="fashionAiGenerateBtn">✨ صمم التصميم</button>
 
     <div id="fashionAiStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>

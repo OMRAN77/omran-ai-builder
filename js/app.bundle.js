@@ -19767,7 +19767,9 @@ async function __safeJson(res){
     setStatus(t('fashionAiGenerating'));
 
     try{
-      const payload = { mode, style: styleEl.value, token, multiAngle: !!multiAngleEl.checked };
+      const __engineEl = $('#fashionAiEngine');
+      window.__fashionEngine = (__engineEl && __engineEl.value) || '';
+      const payload = { mode, style: styleEl.value, token, multiAngle: !!multiAngleEl.checked, engine: window.__fashionEngine };
       try{ if(window.omranFashionExtras) Object.assign(payload, window.omranFashionExtras()); }catch(err){ console.warn('[fashion] extras merge failed:', err); }
       if(mode === 'image'){
         payload.imageBase64 = selectedBase64;
@@ -19899,7 +19901,9 @@ async function __safeJson(res){
 
     try{
       const results = await Promise.all(stylesToRun.map(async (styleVal) => {
-        const payload = { mode, style: styleVal, token, multiAngle: false };
+        // v-fashion-locks: fairness يفعّل قفل عدالة المقارنة في الخادم —
+        // نفس الاستوديو والإضاءة والوقفة في كل الخيارات، فتُقارن الملابس لا الإضاءة.
+        const payload = { mode, style: styleVal, token, multiAngle: false, fairness: true, engine: (($('#fashionAiEngine') || {}).value) || '' };
         try{ if(window.omranFashionExtras) Object.assign(payload, window.omranFashionExtras()); }catch(err){ console.warn('[fashion] extras merge failed:', err); }
         if(mode === 'image'){ payload.imageBase64 = selectedBase64; payload.mimeType = selectedMime; }
         else { payload.description = descriptionEl.value.trim(); }
@@ -19914,12 +19918,27 @@ async function __safeJson(res){
           return { styleVal, error: e.message };
         }
       }));
-      results.forEach(r => {
+      // v-fashion-cards: بطاقات المقارنة بشكل التصميم المعتمد — تسمية أ/ب/ج،
+      // اختيار بإطار ذهبي، والمختارة تصير النتيجة الرئيسية القابلة للتحميل.
+      const AR_LABELS = ['أ', 'ب', 'ج'];
+      results.forEach((r, ri) => {
         const cell = document.createElement('div');
-        cell.style.cssText = 'border:1px solid var(--border,#333); border-radius:8px; padding:6px; text-align:center;';
+        cell.style.cssText = 'position:relative; border:1.5px solid var(--border,#333); border-radius:14px; padding:6px; text-align:center; cursor:pointer; transition:border-color .15s, box-shadow .15s;';
         if(r.dataUrl){
           const label = (styleEl.querySelector('option[value="' + r.styleVal + '"]') || {}).textContent || r.styleVal;
-          cell.innerHTML = '<img src="' + r.dataUrl + '" style="width:100%; border-radius:6px; background:#000;"><p style="font-size:11.5px; color:var(--muted,#999); margin:4px 0 0;">' + label + '</p>';
+          cell.innerHTML = '<span style="position:absolute; top:12px; inset-inline-end:12px; z-index:2; background:rgba(0,0,0,.65); color:#eef0f6; font-weight:700; font-size:12.5px; border-radius:6px; padding:2px 8px;">' + AR_LABELS[ri] + '</span>'
+            + '<img src="' + r.dataUrl + '" style="width:100%; border-radius:10px; background:#000;">'
+            + '<p style="font-size:11.5px; color:var(--muted,#999); margin:6px 0 2px;">' + label + '</p>'
+            + '<p class="fashionPickHint" style="font-size:11.5px; color:#d4af37; margin:0 0 4px;">اضغطي للاختيار ✓</p>';
+          cell.onclick = () => {
+            compareResultsEl.querySelectorAll(':scope > div').forEach(c => { c.style.borderColor = 'var(--border,#333)'; c.style.boxShadow = 'none'; const h = c.querySelector('.fashionPickHint'); if(h) h.textContent = 'اضغطي للاختيار ✓'; });
+            cell.style.borderColor = '#d4af37';
+            cell.style.boxShadow = '0 8px 22px -12px rgba(212,175,55,.55)';
+            const h = cell.querySelector('.fashionPickHint'); if(h) h.textContent = '✓ اختيارك';
+            resultEl.src = r.dataUrl; resultEl.style.display = 'block';
+            downloadEl.href = r.dataUrl; downloadEl.style.display = 'block';
+            favSaveBtn.style.display = 'block';
+          };
         } else {
           cell.innerHTML = '<p style="font-size:11.5px; color:#f87171;">❌ ' + (r.error || '') + '</p>';
         }
