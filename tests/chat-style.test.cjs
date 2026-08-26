@@ -135,6 +135,17 @@ check(chatServer.includes('LIVE_EAGER_RE.test(lastUser.content)'), 'البحث �
 check(chatServer.includes('(ص٨) تطابق الفئة إلزاميّ') && chatServer.includes('ممنوع منعًا باتًا دوبيزل أو أي موقع إعلانات عامّ في طلبات الفنادق والأكل'), 'قاعدة تطابق الفئة: لا موقع من فئة أخرى ولو ظهر في البحث');
 // v-clean-links: الرابط العاري كان يُعرض بنصّه المرمّز %D8… فيملأ الشاشة.
 check(bundle.includes('v-clean-links') && bundle.includes(".hostname.replace(/^www\\./, '')"), 'الرابط العاري يُعرض باسم نطاقه فقط ويبقى قابلًا للضغط');
+// v-intent-tech: «تحديث نظام شاشة السيارة» أعادت مواقع بيع سيارات لا صلة لها.
+{
+  const searchSrc = fs.readFileSync('api/_lib/search.js', 'utf8');
+  const m = searchSrc.match(/const TECH_INTENT_RE = (\/.*\/i);/);
+  check(!!m, 'حارس النية التقنية موجود في البحث');
+  const tre = eval(m[1]); // guard-ok — نمط من ملفنا نفسه لاختباره
+  check(tre.test('تحديث نظام شاشة السيارة') && tre.test('كيف اصلح مشكلة البلوتوث في سيارتي'), 'السؤال التقني عن السيارة يُكشف');
+  check(!tre.test('اريد سيارة للبيع') && !tre.test('سيارات مستعملة رخيصة'), 'طلب الشراء لا يُحسب تقنيًا');
+  check(searchSrc.includes('const isNumbers = !__techAsk &&') && searchSrc.includes('const isListing = isNumbers || (!__techAsk &&'), 'النية التقنية تفكّ قفل محرّك القوائم');
+  check(searchSrc.includes('exclude_domains') && searchSrc.includes("__techAsk ? { exclude_domains"), 'السؤال التقني يستبعد مواقع الإعلانات المبوبة صراحةً');
+}
 check(chatServer.indexOf('v-fast-headers') > 0 && chatServer.indexOf('v-fast-headers') < chatServer.indexOf('prepareTurn('), 'البثّ يُفتح قبل الذاكرة والبحث الاستباقي فيرى المستخدم حركة فورًا');
 check(chatServer.includes('function compactConversation'), 'السياق الطويل يُضغط قبل إرساله للنموذج');
 check(chatServer.includes('const convoSource = quietSocialTurn ? [lastUser] : messages'), 'الخادم لا يرسل تاريخ المواضيع في سؤال الحال');
