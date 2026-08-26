@@ -2158,3 +2158,4 @@ async function postWithConfirm(url, payload){
 /* v-ios-tap-fallback */
 /* v-diag-nav */
 /* v-ios-nav-restore */
+/* v-edu-lab */

@@ -6,8 +6,8 @@ var PALETTE=['#6b7280','#0ea5e9','#10b981','#f59e0b','#ef4444','#ec4899','#14b8a
 var RTL_LANGS=['ar','ur'];
 function appLang(){ try{ return localStorage.getItem('aiapp_lang')||'ar'; }catch(e){ return 'ar'; } }
 var I18N={
-ar:{title:'التعليم',oldEdu:'📚 دورات وشروحات',upload:'ارفع محاضرة جديدة',uploadSub:'PDF أو صور أو DOCX',orPaste:'أو الصق نصًا',pastePh:'الصق نص المحاضرة هنا...',analyze:'حلّل المحاضرة',analyzing:'⏳ نحلل المحاضرة… قد يستغرق الأمر دقيقة',mySubjects:'📚 موادي',empty:'لا توجد دروس بعد — ارفع أول محاضرة وابدأ المذاكرة!',lessonsWord:'درس',summaryTab:'📄 الملخص',cardsTab:'🎴 بطاقات',quizTab:'✍️ اختبار',know:'أعرفه ✅',review:'أراجعه 🔄',tapFlip:'اضغط على البطاقة لقلبها',retry:'أعد الاختبار',yourScore:'نتيجتك',great:'ممتاز! أنت جاهز للامتحان 🌟',good:'جيد جدًا! راجع الأخطاء وستتقنها 💪',keepGoing:'بداية طيبة — راجع الملخص والبطاقات ثم أعد المحاولة 📖',del:'حذف',confirmDel:'حذف هذا الدرس نهائيًا؟',err:'حدث خطأ، حاول مرة أخرى.',guestNote:'أنت غير مسجّل — تُحفظ دروسك على هذا الجهاز فقط.',intro:'جديد: 🎓 التعليم — ارفع محاضرتك واحصل على ملخص وبطاقات واختبار',introBtn:'جرّبه الآن',hint:'💡 جرّب قسم «التعليم»: ارفع محاضرتك واحصل على ملخص وبطاقات واختبار تلقائيًا',docxFail:'تعذر قراءة ملف DOCX — جرّب حفظه كـ PDF ورفعه.',tooBig:'الملف كبير جدًا (الحد حوالي 10 ميغابايت).',cardsDone:'أنهيت كل البطاقات! 🎉',finish:'إنهاء',next:'التالي',streakWord:'يوم'},
-en:{title:'Education',oldEdu:'📚 Courses & Lessons',upload:'Upload a new lecture',uploadSub:'PDF, images or DOCX',orPaste:'or paste text',pastePh:'Paste your lecture text here...',analyze:'Analyze lecture',analyzing:'⏳ Analyzing your lecture… this may take a minute',mySubjects:'📚 My subjects',empty:'No lessons yet — upload your first lecture to start studying!',lessonsWord:'lesson(s)',summaryTab:'📄 Summary',cardsTab:'🎴 Flashcards',quizTab:'✍️ Quiz',know:'I know it ✅',review:'Review 🔄',tapFlip:'Tap the card to flip it',retry:'Retake quiz',yourScore:'Your score',great:'Excellent! You are exam-ready 🌟',good:'Very good! Review your mistakes and you will master it 💪',keepGoing:'Good start — review the summary and cards, then try again 📖',del:'Delete',confirmDel:'Delete this lesson permanently?',err:'Something went wrong, please try again.',guestNote:'You are not signed in — lessons are saved on this device only.',intro:'New: 🎓 Education — upload a lecture and get a summary, flashcards and a quiz',introBtn:'Try it now',hint:'💡 Try "Education": upload your lecture and get a summary, flashcards and a quiz automatically',docxFail:'Could not read the DOCX file — try saving it as PDF.',tooBig:'File too large (limit is about 10 MB).',cardsDone:'You finished all the cards! 🎉',finish:'Finish',next:'Next',streakWord:'day(s)'},
+ar:{title:'التعليم',oldEdu:'📚 دورات وشروحات',upload:'ارفع محاضرة جديدة',uploadSub:'PDF أو صور أو DOCX',orPaste:'أو الصق نصًا',pastePh:'الصق نص المحاضرة هنا...',analyze:'حلّل المحاضرة',analyzing:'⏳ نحلل المحاضرة… قد يستغرق الأمر دقيقة',mySubjects:'📚 موادي',empty:'لا توجد دروس بعد — ارفع أول محاضرة وابدأ المذاكرة!',lessonsWord:'درس',summaryTab:'📄 الملخص',cardsTab:'🎴 بطاقات',quizTab:'✍️ اختبار',labTab:'🧪 تجربة حية',know:'أعرفه ✅',review:'أراجعه 🔄',tapFlip:'اضغط على البطاقة لقلبها',retry:'أعد الاختبار',yourScore:'نتيجتك',great:'ممتاز! أنت جاهز للامتحان 🌟',good:'جيد جدًا! راجع الأخطاء وستتقنها 💪',keepGoing:'بداية طيبة — راجع الملخص والبطاقات ثم أعد المحاولة 📖',del:'حذف',confirmDel:'حذف هذا الدرس نهائيًا؟',err:'حدث خطأ، حاول مرة أخرى.',guestNote:'أنت غير مسجّل — تُحفظ دروسك على هذا الجهاز فقط.',intro:'جديد: 🎓 التعليم — ارفع محاضرتك واحصل على ملخص وبطاقات واختبار',introBtn:'جرّبه الآن',hint:'💡 جرّب قسم «التعليم»: ارفع محاضرتك واحصل على ملخص وبطاقات واختبار تلقائيًا',docxFail:'تعذر قراءة ملف DOCX — جرّب حفظه كـ PDF ورفعه.',tooBig:'الملف كبير جدًا (الحد حوالي 10 ميغابايت).',cardsDone:'أنهيت كل البطاقات! 🎉',finish:'إنهاء',next:'التالي',streakWord:'يوم'},
+en:{title:'Education',oldEdu:'📚 Courses & Lessons',upload:'Upload a new lecture',uploadSub:'PDF, images or DOCX',orPaste:'or paste text',pastePh:'Paste your lecture text here...',analyze:'Analyze lecture',analyzing:'⏳ Analyzing your lecture… this may take a minute',mySubjects:'📚 My subjects',empty:'No lessons yet — upload your first lecture to start studying!',lessonsWord:'lesson(s)',summaryTab:'📄 Summary',cardsTab:'🎴 Flashcards',quizTab:'✍️ Quiz',labTab:'🧪 Live Lab',know:'I know it ✅',review:'Review 🔄',tapFlip:'Tap the card to flip it',retry:'Retake quiz',yourScore:'Your score',great:'Excellent! You are exam-ready 🌟',good:'Very good! Review your mistakes and you will master it 💪',keepGoing:'Good start — review the summary and cards, then try again 📖',del:'Delete',confirmDel:'Delete this lesson permanently?',err:'Something went wrong, please try again.',guestNote:'You are not signed in — lessons are saved on this device only.',intro:'New: 🎓 Education — upload a lecture and get a summary, flashcards and a quiz',introBtn:'Try it now',hint:'💡 Try "Education": upload your lecture and get a summary, flashcards and a quiz automatically',docxFail:'Could not read the DOCX file — try saving it as PDF.',tooBig:'File too large (limit is about 10 MB).',cardsDone:'You finished all the cards! 🎉',finish:'Finish',next:'Next',streakWord:'day(s)'},
 fr:{title:'Mes cours',oldEdu:'📚 Cours et tutoriels',upload:'Téléverser un nouveau cours',orPaste:'ou coller du texte',analyze:'Analyser le cours',analyzing:'⏳ Analyse du cours en cours…',mySubjects:'📚 Mes matières',empty:'Aucune leçon — téléversez votre premier cours !',summaryTab:'📄 Résumé',cardsTab:'🎴 Cartes',quizTab:'✍️ Quiz',know:'Je sais ✅',review:'À revoir 🔄',tapFlip:'Touchez la carte pour la retourner',retry:'Refaire le quiz',yourScore:'Votre score',great:'Excellent ! Vous êtes prêt 🌟',good:'Très bien ! Revoyez vos erreurs 💪',keepGoing:'Bon début — relisez le résumé puis réessayez 📖',del:'Supprimer',confirmDel:'Supprimer cette leçon ?',err:'Une erreur est survenue.',guestNote:'Non connecté — leçons enregistrées sur cet appareil.',intro:'Nouveau : 🎓 Mes cours — résumé, cartes et quiz automatiques',introBtn:'Essayer',hint:'💡 Essayez « Mes cours » : résumé, cartes et quiz automatiques',next:'Suivant',finish:'Terminer'},
 hi:{title:'मेरे पाठ',oldEdu:'📚 कोर्स और पाठ',upload:'नया लेक्चर अपलोड करें',orPaste:'या टेक्स्ट पेस्ट करें',analyze:'लेक्चर का विश्लेषण करें',analyzing:'⏳ लेक्चर का विश्लेषण हो रहा है…',mySubjects:'📚 मेरे विषय',empty:'अभी कोई पाठ नहीं — पहला लेक्चर अपलोड करें!',summaryTab:'📄 सारांश',cardsTab:'🎴 कार्ड',quizTab:'✍️ क्विज़',know:'आता है ✅',review:'दोहराना 🔄',tapFlip:'पलटने के लिए कार्ड पर टैप करें',retry:'क्विज़ दोबारा दें',yourScore:'आपका स्कोर',great:'शानदार! आप तैयार हैं 🌟',good:'बहुत अच्छा! गलतियाँ दोहराएँ 💪',keepGoing:'अच्छी शुरुआत — सारांश पढ़कर फिर कोशिश करें 📖',del:'हटाएँ',confirmDel:'यह पाठ हटाएँ?',err:'कुछ गलत हुआ, फिर कोशिश करें।',guestNote:'लॉगिन नहीं — पाठ इसी डिवाइस पर सहेजे जाते हैं।',intro:'नया: 🎓 मेरे पाठ — सारांश, कार्ड और क्विज़ अपने आप',introBtn:'आज़माएँ',hint:'💡 «मेरे पाठ» आज़माएँ: लेक्चर से सारांश, कार्ड और क्विज़',next:'आगे',finish:'समाप्त'},
 ur:{title:'میرے اسباق',oldEdu:'📚 کورسز اور اسباق',upload:'نیا لیکچر اپ لوڈ کریں',orPaste:'یا متن پیسٹ کریں',analyze:'لیکچر کا تجزیہ کریں',analyzing:'⏳ لیکچر کا تجزیہ ہو رہا ہے…',mySubjects:'📚 میرے مضامین',empty:'ابھی کوئی سبق نہیں — پہلا لیکچر اپ لوڈ کریں!',summaryTab:'📄 خلاصہ',cardsTab:'🎴 کارڈز',quizTab:'✍️ کوئز',know:'آتا ہے ✅',review:'دہرانا 🔄',tapFlip:'پلٹنے کے لیے کارڈ پر ٹیپ کریں',retry:'کوئز دوبارہ دیں',yourScore:'آپ کا اسکور',great:'زبردست! آپ تیار ہیں 🌟',good:'بہت خوب! غلطیاں دہرائیں 💪',keepGoing:'اچھی شروعات — خلاصہ پڑھ کر دوبارہ کوشش کریں 📖',del:'حذف کریں',confirmDel:'یہ سبق حذف کریں؟',err:'کچھ غلط ہوا، دوبارہ کوشش کریں۔',guestNote:'لاگ اِن نہیں — اسباق صرف اسی ڈیوائس پر محفوظ ہوتے ہیں۔',intro:'نیا: 🎓 میرے اسباق — خلاصہ، کارڈز اور کوئز خودکار',introBtn:'آزمائیں',hint:'💡 «میرے اسباق» آزمائیں: لیکچر سے خلاصہ، کارڈز اور کوئز',next:'اگلا',finish:'ختم'},
@@ -241,6 +241,7 @@ function showLesson(lesson,backFn){
     +'<button class="eduTab on" data-tab="sum">'+esc(T('summaryTab'))+'</button>'
     +'<button class="eduTab" data-tab="cards">'+esc(T('cardsTab'))+' ('+(lesson.flashcards||[]).length+')</button>'
     +'<button class="eduTab" data-tab="quiz">'+esc(T('quizTab'))+' ('+(lesson.quiz||[]).length+')</button>'
+    +'<button class="eduTab" data-tab="lab">'+esc(T('labTab'))+'</button>'
     +'</div><div id="eduTabPane"></div>';
   body.innerHTML=html;
   var pane=document.getElementById('eduTabPane');
@@ -248,6 +249,7 @@ function showLesson(lesson,backFn){
     body.querySelectorAll('.eduTab').forEach(function(b){ b.classList.toggle('on',b.getAttribute('data-tab')===tab); });
     if(tab==='sum') pane.innerHTML='<div class="eduSummary">'+md(lesson.summary)+'</div>';
     else if(tab==='cards') renderCards(pane,lesson);
+    else if(tab==='lab') renderLab(pane,lesson);
     else renderQuiz(pane,lesson);
   }
   body.querySelectorAll('.eduTab').forEach(function(b){ b.onclick=function(){ activate(b.getAttribute('data-tab')); }; });
@@ -413,6 +415,46 @@ function renderQuiz(pane,lesson){
   }
 
   if(nextRound()) draw();
+}
+
+/* ---------- 🧪 v-edu-lab: الدرس الحي — تجربة تفاعلية مولّدة من الدرس ---------- */
+function renderLab(pane,lesson){
+  function TL(ar,en){ return (typeof AL==='function'&&AL()==='en')?en:ar; }
+  function showFrame(html){
+    pane.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap;">'
+      +'<span style="font-size:12.5px;opacity:.75;">'+esc(TL('العب بالمفهوم بيدك — كل الأزرار داخل التجربة تعمل','Play with the concept — everything inside is interactive'))+'</span>'
+      +'<button class="eduPrimary" id="eduLabRedo" style="padding:7px 12px;font-size:12px;background:transparent;border:1px solid currentColor;">'+esc(TL('🔄 توليد تجربة جديدة','🔄 Regenerate'))+'</button></div>';
+    var fr=document.createElement('iframe');
+    fr.setAttribute('sandbox','allow-scripts');
+    fr.style.cssText='width:100%;height:min(70vh,620px);border:1px solid rgba(212,175,55,.35);border-radius:14px;background:#0b0b0f;display:block;';
+    fr.srcdoc=html;
+    pane.appendChild(fr);
+    var rb=document.getElementById('eduLabRedo');
+    if(rb) rb.onclick=function(){ build(true); };
+  }
+  function build(force){
+    pane.innerHTML='<div class="eduBusyBox"><div class="eduSpin"></div><div style="font-size: var(--fs-3);">'+esc(TL('🧪 نبني تجربتك الحية… قد يستغرق الأمر دقيقة','🧪 Building your live lab… this may take a minute'))+'</div></div>';
+    api({action:'lab',id:lesson.id,title:lesson.title,subject:lesson.subject,summary:lesson.summary,lang:appLang(),nativeLang:eduNativeLang(),force:force||undefined})
+      .then(function(j){
+        if(!j||!j.html) throw new Error(TL('وصلت تجربة فارغة — أعد المحاولة.','Empty lab returned — try again.'));
+        lesson.__labHtml=j.html;
+        showFrame(j.html);
+      })
+      .catch(function(e){
+        pane.innerHTML='<div class="eduCenter"><p style="color:#f87171;font-size: var(--fs-3);line-height:1.8;">'+esc(e.message||T('err'))+'</p>'
+          +'<button class="eduPrimary" id="eduLabRetry">'+esc(T('retry'))+'</button></div>';
+        var b=document.getElementById('eduLabRetry'); if(b) b.onclick=function(){ build(force); };
+      });
+  }
+  if(lesson.__labHtml){ showFrame(lesson.__labHtml); return; }
+  pane.innerHTML='<div class="eduCenter" style="padding:18px 6px;">'
+    +'<div style="font-size:40px;margin-bottom:10px;">🧪</div>'
+    +'<p style="font-size: var(--fs-2);font-weight: var(--w-bold);margin:0 0 8px;">'+esc(T('labTab'))+'</p>'
+    +'<p style="font-size: var(--fs-3);line-height:1.9;max-width:380px;margin:0 auto 16px;opacity:.85;">'
+    +esc(TL('نحوّل هذا الدرس إلى تجربة تفاعلية تلعب فيها بالمفهوم بيدك: منزلقات وأزرار ترى نتيجتها فورًا، ثم وضع تحدٍّ بنقاط. الدرس الذي تلعبه لا تنساه.',
+            'We turn this lesson into an interactive lab: sliders and buttons with instant results, then a challenge mode with points. A lesson you play, you never forget.'))+'</p>'
+    +'<button class="eduPrimary" id="eduLabBuild">'+esc(TL('✨ ابنِ تجربتي الحية','✨ Build my live lab'))+'</button></div>';
+  var bb=document.getElementById('eduLabBuild'); if(bb) bb.onclick=function(){ build(false); };
 }
 
 /* ---------- written questions graded by the model against a rubric ---------- */

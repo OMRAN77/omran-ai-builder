@@ -366,6 +366,74 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       return;
     }
 
+    // ---------------- 🧪 lab: الدرس الحي — تجربة تفاعلية مولّدة من الدرس (v-edu-lab) ----------------
+    if (action === 'lab') {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      const lessonId = String(body.id || '').slice(0, 64).replace(/[^A-Za-z0-9_-]/g, '');
+      const labKey = (username && lessonId) ? ('db/edu/labs/' + encodeURIComponent(username) + '/' + lessonId + '.json') : null;
+      // المختبر المحفوظ يُعاد بلا استهلاك حصة ولا نداء نموذج
+      if (labKey && !body.force) {
+        try {
+          const cached = await kvGetJSON(labKey);
+          if (cached && cached.html) { res.status(200).json({ ok: true, html: cached.html, cached: true }); return; }
+        } catch (e) { /* best-effort: الكاش رفاهية — التوليد يغطي */ }
+      }
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        const max = username ? USER_PROCESS_PER_DAY : GUEST_PROCESS_PER_DAY;
+        if (await overDailyLimit(subject, 'proc', max)) {
+          res.status(402).json({ error: 'وصلت للحد اليومي. عد غدًا 🌙' });
+          return;
+        }
+      }
+      const title = String(body.title || '').slice(0, 160).trim();
+      const subjName = String(body.subject || '').slice(0, 80).trim();
+      const summary = String(body.summary || '').slice(0, 14000).trim();
+      if (!title || !summary) { res.status(400).json({ error: 'الدرس غير مكتمل — حلّل المحاضرة أولًا.' }); return; }
+      const nat = String(body.nativeLang || body.lang || 'ar').slice(0, 8);
+      const sys = 'أنت مطوّر ألعاب تعليمية عبقري. يُعطى إليك ملخص درس، ومطلوب منك بناء «تجربة حية»: '
+        + 'صفحة HTML واحدة كاملة تفاعلية تجعل الطالب يلعب بجوهر الدرس بيديه ويرى النتيجة فورًا.\n'
+        + 'قواعد إلزامية:\n'
+        + '1. ملف HTML واحد كامل (doctype + head + body) يعمل فورًا بلا إنترنت: لا مكتبات خارجية، لا صور خارجية، لا خطوط خارجية — CSS وJS مدمجان.\n'
+        + '2. ممنوع script type=module. السكربت عادي في نهاية body. أي دالة أحداث معرفة globally أو مربوطة بـaddEventListener في نهاية السكربت. كل زر يعمل فعلًا.\n'
+        + '3. تفاعل حقيقي بجوهر الدرس: منزلقات/سحب/أزرار تغيّر معاملات المفهوم الأساسي (قانون، معادلة، دورة، عملية) ورسم أو محاكاة تتحدث فورًا مع كل تغيير — ليست عرض شرائح ولا نصًا يُقرأ.\n'
+        + '4. وضع تحدٍّ صغير: بعد اللعب الحر، زر «تحدّي» يطرح 3 مهام قصيرة داخل التجربة نفسها (اضبط القيمة لتحقق كذا…) مع نقاط وتشجيع.\n'
+        + '5. تصميم عصري جميل: خلفية داكنة أنيقة، ألوان ذهبية مميزة، أرقام كبيرة واضحة، متجاوب للجوال (أزرار كبيرة للمس، لا سكرول أفقي).\n'
+        + '6. لغة الواجهة: ' + nat + (/^ar/i.test(nat) ? ' مع اتجاه rtl.' : '.') + '\n'
+        + '7. أعد فقط كتلة ```html واحدة فيها الملف كاملًا — لا شرح قبلها ولا بعدها.';
+      const user = 'المادة: ' + (subjName || 'عام') + '\nعنوان الدرس: ' + title + '\n\nملخص الدرس:\n' + summary
+        + '\n\nابنِ التجربة الحية الآن — اختر أهم مفهوم قابل للمحاكاة في هذا الدرس بالذات واجعله ملموسًا.';
+      const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        signal: AbortSignal.timeout(120000),
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: m, max_tokens: 16000, system: sys, messages: [{ role: 'user', content: user }] }),
+      });
+      let r2 = await doRequest(RESOLVED_MODEL || MODEL);
+      let d2 = await r2.json().catch(() => null);
+      if (!r2.ok && r2.status === 404 && d2 && d2.error && /model/i.test(JSON.stringify(d2.error))) {
+        RESOLVED_MODEL = null; const m = await resolveModel(apiKey); r2 = await doRequest(m); d2 = await r2.json().catch(() => null);
+      }
+      if (!r2.ok) {
+        const msg = (d2 && d2.error && d2.error.message) || ('HTTP ' + r2.status);
+        res.status(r2.status === 429 ? 429 : 502).json({ error: 'تعذر بناء التجربة: ' + msg + ' — حاول مرة أخرى.' });
+        return;
+      }
+      const raw = (d2 && d2.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+      let html = '';
+      const fence = raw.match(/```html\s*([\s\S]*?)```/i);
+      if (fence) html = fence[1].trim();
+      else if (/^\s*<!doctype|^\s*<html/i.test(raw)) html = raw.trim();
+      if (!html || html.length < 500 || html.length > 200000 || !/<\/html>\s*$/i.test(html)) {
+        res.status(502).json({ error: 'وصلت تجربة غير مكتملة من النموذج — أعد المحاولة.' });
+        return;
+      }
+      if (labKey) { try { await kvPutJSON(labKey, { html, at: Date.now() }); } catch (e) { /* best-effort: يبقى الرد للعميل */ } }
+      res.status(200).json({ ok: true, html });
+      return;
+    }
+
     // ---------------- 📊 expense analyzer ----------------
     if (action === 'expense') {
       const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -542,6 +610,11 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       if (action === 'delete') {
         const next = lessons.filter((x) => x.id !== body.id);
         await kvPutJSON(key, next);
+        // v-edu-lab: مختبر الدرس المحذوف يُنظف معه
+        try {
+          const lid = String(body.id || '').slice(0, 64).replace(/[^A-Za-z0-9_-]/g, '');
+          if (lid) await require('./_lib/kv.js').kvDel('db/edu/labs/' + encodeURIComponent(username) + '/' + lid + '.json');
+        } catch (e) { /* best-effort: بقايا مختبر يتيمة لا تضر */ }
         res.status(200).json({ ok: true });
         return;
       }
