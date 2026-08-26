@@ -114,7 +114,11 @@ check(chatServer.includes('const toolTurn = !quietSocialTurn;'), 'كل دور غ
 check(!chatServer.includes('TOOL_INTENT_RE.test('), 'قائمة الكلمات البيضاء التي حجبت البحث أزيلت');
 check(chatServer.includes('countryNote(country, city)'), 'مدينة المستخدم تدخل توجيه الموقع');
 check(chatServer.includes('اعتمد فيه مدينته'), 'الأسئلة المكانية تعتمد مدينة المستخدم تلقائيًا');
-check(chatServer.includes('setTimeout(function () { resolve(null); }, 4000)'), 'البحث الاستباقي مسقوف بأربع ثوانٍ فلا يحجز أول كلمة');
+check(chatServer.includes('setTimeout(function () { resolve(null); }, 1800)'), 'البحث الاستباقي مسقوف بأقل من ثانيتين فلا يحجز أول كلمة');
+// v-chat-speed: الذاكرة تُقرأ بالتوازي مع فحص الحصة، والمحفزات العامة
+// (اليوم/الآن/حالي) خارج البحث الاستباقي.
+check(chatServer.includes('earlyMemoryP'), 'قراءة الذاكرة بالتوازي مع فحص الحصة');
+check(!/LIVE_EAGER_RE = [^\n]*اليوم/.test(chatServer), 'كلمة «اليوم» لا تشعل البحث الاستباقي');
 check(chatServer.includes('const LEAN_CONVERSATION_NOTE'), 'المحادثة العادية تستخدم تعليمات خفيفة');
 check(chatServer.includes('محاور قويّ') && chatServer.includes('كن ندًّا في الحوار'), 'طبقة المحاور القوي: ندّية ومطابقة نمط المستخدم');
 check(chatServer.includes('ممنوع الموافقة الآلية والتملّق'), 'التملق والموافقة الآلية ممنوعان صراحةً');
