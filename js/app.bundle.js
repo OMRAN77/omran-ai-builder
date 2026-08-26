@@ -14645,10 +14645,21 @@ async function sendPrompt(){
       const __logoMsg = { role: 'assistant', content: lang === 'ar' ? (__isLogoFetch ? '🔍 أجيب لك الشعار الأصلي من البحث…' : '🔍 أجيب لك صور حقيقية من البحث…') : '🔍 Fetching real images from live search…', _loading: true };
       cur.messages.push(__logoMsg);
       renderMessages(true);
+      // v-photo-ctx: «عطني صور السيارة» بعد نقاش عن ليوبارد 8 كانت تجيب سيارات
+      // عشوائية — البحث كان بالكلمات الحرفية. الطلب القصير المُشير (السيارة ·
+      // الفندق · هذي…) يُثرى بموضوع آخر رسالة مستخدم سابقة فتُطلب صور
+      // الموضوع نفسه لا الكلمة العامة.
+      let __photoQ = text.replace(/عطني|أعطني|اعطني|هات|جيب|ابغي|أبي|اريد|أريد|وريني|أرني|ارني|اعرض/g, '').trim();
+      try{
+        if(!__isLogoFetch && __photoQ.length < 45 && /(السيار|الفندق|المطعم|المكان|الجهاز|المنتج|الهاتف|الجوال|الشق|الفيلا|الطائر|هذي|هذه|هذا|نفسه|نفسها)/.test(text)){
+          const __prevU = [...cur.messages].reverse().find(m => m && m.role === 'user' && typeof m.content === 'string' && m.content.trim() !== text.trim() && m.content.trim().length > 4);
+          if(__prevU) __photoQ = __prevU.content.replace(/\s+/g, ' ').trim().slice(0, 70) + ' ' + __photoQ;
+        }
+      }catch(e){ __swallow(e, 'photo:ctx'); }
       try{
         const __lr = await fetch('/api/search', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: text.replace(/عطني|أعطني|اعطني|هات|جيب|ابغي|أبي|اريد|أريد|وريني|أرني|ارني|اعرض/g, '').trim() + (__isLogoFetch ? ' logo png' : ''), images: true, lang, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
+          body: JSON.stringify({ query: __photoQ + (__isLogoFetch ? ' logo png' : ''), images: true, lang, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
         });
         const __ld = await __lr.json();
         const __imgs = (Array.isArray(__ld.images) ? __ld.images : []).slice(0, 4);
