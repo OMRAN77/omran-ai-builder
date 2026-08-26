@@ -5,6 +5,31 @@
 // PNG/JPEG the client can preview and download.
 const { checkDesignQuota, consumeDesign, DESIGN_DAILY_LIMIT } = require('./_designUsage');
 
+// v-design-rescue: إعادة تصميم الغرفة عبر gpt-image-1 عند رفض Gemini (نفس نمط
+// خطّ إنقاذ الأزياء والبورتريه). يرجع base64 أو null — لا يرمي أبدًا.
+async function openaiDesignEdit(promptText, imageBase64, mimeType) {
+  const key = (process.env.OPENAI_API_KEY || '').trim();
+  if (!key) return null;
+  try {
+    const bytes = Buffer.from(imageBase64, 'base64');
+    const form = new FormData();
+    form.append('model', 'gpt-image-1');
+    form.append('prompt', String(promptText).slice(0, 3900));
+    form.append('size', '1536x1024');
+    form.append('quality', 'medium');
+    form.append('output_format', 'webp');
+    form.append('image', new Blob([bytes], { type: mimeType || 'image/jpeg' }), 'room.jpg');
+    const r = await fetch('https://api.openai.com/v1/images/edits', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + key },
+      body: form,
+    });
+    const d = await r.json();
+    if (!r.ok) { console.warn('[design-create] openai HTTP ' + r.status + ' ' + String((d.error && d.error.message) || '').slice(0, 120)); return null; }
+    return (d && d.data && d.data[0] && d.data[0].b64_json) || null;
+  } catch (e) { console.warn('[design-create] openai ' + (e && e.message)); return null; }
+}
+
 const STYLE_PROMPTS = {
   modern: 'a clean modern minimalist interior design style, neutral colors, sleek furniture',
   bohemian: 'a bohemian (boho) interior design style, warm earthy colors, woven textures, plants',
@@ -289,7 +314,16 @@ module.exports = async (req, res) => {
 
     const data = await upstream.json();
     if (!upstream.ok) {
-      res.status(upstream.status).json({ error: (data && data.error && data.error.message) || 'Upstream error' });
+      // v-design-rescue: رفض Gemini (رصيد/حصة/غيره) يهبط تلقائيًا إلى gpt-image-1
+      // بمفتاح الخادم — نفس خط إنقاذ الأزياء والبورتريه والستايل.
+      const rescued = await openaiDesignEdit(promptText, imageBase64, mimeType);
+      if (rescued) {
+        const rrem = await consumeDesign(quota.username);
+        res.status(200).json({ imageBase64: rescued, mimeType: 'image/webp', remaining: rrem, dailyLimit: DESIGN_DAILY_LIMIT, engine: 'openai' });
+        return;
+      }
+      const gmsg = String((data && data.error && data.error.message) || 'Upstream error');
+      res.status(upstream.status).json({ error: gmsg.replace(/key=[^&\s"']+/g, 'key=***') });
       return;
     }
 
