@@ -71,14 +71,33 @@
     // v-fashion-look: منطقة الرفع الذهبية في partials — لا dzArea هنا.
     Array.prototype.forEach.call(document.querySelectorAll('#fashionAiModal .f417'),function(x){ x.remove(); });
     // v-fashion-thumb-cards: النمط له بطاقات مصوّرة خاصة في app-12 — لا يُحوَّل هنا.
+    // v-fashion-full-page: المناسبة والموسم بطاقة مصغّرة «عرض الكل ›» تفتح
+    // معرضًا ملء الشاشة بصور occasion/ وseason/ — نفس نظام أنماط الصور.
     [occ,sea].forEach(function(sel){
       var host=sel.parentElement; if(!host) return;
       var old=host.querySelector('.optGrid'); if(old) old.remove();
       sel.style.display='none';
-      var g=U.buildGrid(sel); g.classList.add('f417'); host.appendChild(g);
       var kind=(sel===occ)?'occasion':'season';
-      Array.prototype.forEach.call(g.querySelectorAll('.optCard'),function(c){ photoize(c,LOOKS+kind+'/'+c.getAttribute('data-v')+'.webp',true); });
-      if(!sel.getAttribute('data-gridhook')){ sel.setAttribute('data-gridhook','1'); sel.addEventListener('change',function(){ var gg=host.querySelector('.optGrid'); if(gg) U.mark(gg,sel); }); }
+      var lab=host.querySelector('label'), labTxt=(lab?lab.textContent:'').trim();
+      function optTxt(o){ var den=(document.documentElement.lang||'ar')==='en'&&o.getAttribute('data-en'); return ((den||o.textContent)||'').trim(); }
+      function cur(){ var os=sel.options; for(var i=0;i<os.length;i++) if(os[i].value===sel.value) return os[i]; return os[0]; }
+      var tr=window.omranPicker.trigger(function(){
+        var o=cur();
+        return o && { name:optTxt(o), img:o.value?LOOKS+kind+'/'+o.value+'.webp':'',
+          sub:sel.options.length+(((document.documentElement.lang||'ar')==='en')?' options':' خيارًا') };
+      }, function(){
+        return {
+          title: labTxt,
+          count: sel.options.length+(((document.documentElement.lang||'ar')==='en')?' options — pick yours':' خيارًا — اختر ما يناسبك'),
+          items: Array.prototype.map.call(sel.options,function(o){
+            return { v:o.value, title:optTxt(o), active:o.value===sel.value, img:o.value?LOOKS+kind+'/'+o.value+'.webp':'' };
+          }),
+          onPick: function(v){ sel.value=v; sel.dispatchEvent(new Event('change',{bubbles:true})); tr.refresh(); }
+        };
+      });
+      tr.el.classList.add('optGrid','f417');
+      host.appendChild(tr.el);
+      if(!sel.getAttribute('data-gridhook')){ sel.setAttribute('data-gridhook','1'); sel.addEventListener('change',function(){ tr.refresh(); }); }
     });
     var row=occ.parentElement.parentElement;
     row.style.gridTemplateColumns='1fr';

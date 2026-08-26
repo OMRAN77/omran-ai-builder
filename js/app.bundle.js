@@ -7676,6 +7676,36 @@ async function postWithConfirm(url, payload){
     var c = el('pickerSheetClose');
     if(c) c.onclick = function(){ sheet.style.display = 'none'; };
   } };
+  /* بطاقة مصغّرة موحّدة «عرض الكل ›» — get() ترجع {img,name,sub}،
+     وopenCfg() ترجع إعدادات open. ترجع {el,refresh}. */
+  window.omranPicker.trigger = function(get, openCfg){
+    var d = document.createElement('div');
+    d.style.cssText = 'display:flex;align-items:center;gap:10px;border:1px solid var(--border,#333);border-radius:12px;padding:8px 10px;cursor:pointer;background:var(--panel2,#101014);';
+    var im = document.createElement('img');
+    im.style.cssText = 'width:44px;height:58px;object-fit:cover;border-radius:8px;background:linear-gradient(160deg,#23232a,#101014);flex:none;';
+    im.onerror = function(){ im.style.visibility = 'hidden'; };
+    var info = document.createElement('div');
+    info.style.cssText = 'flex:1;min-width:0;';
+    var nm = document.createElement('div');
+    nm.style.cssText = 'font-size:13.5px;font-weight:700;';
+    var sb = document.createElement('div');
+    sb.style.cssText = 'font-size:11px;color:var(--muted,#999);';
+    info.appendChild(nm); info.appendChild(sb);
+    var all = document.createElement('span');
+    all.textContent = (localStorage.getItem('aiapp_lang') === 'en') ? 'Browse all ›' : 'عرض الكل ›';
+    all.style.cssText = 'color:#d4af37;font-size:12.5px;font-weight:700;flex:none;';
+    d.appendChild(im); d.appendChild(info); d.appendChild(all);
+    function refresh(){
+      var s = get() || {};
+      nm.textContent = s.name || '';
+      sb.textContent = s.sub || '';
+      if(s.img){ im.style.visibility = 'visible'; im.src = s.img; }
+      else im.style.visibility = 'hidden';
+    }
+    d.onclick = function(){ window.omranPicker.open(openCfg()); };
+    refresh();
+    return { el: d, refresh: refresh };
+  };
 })();
 window.postWithConfirm = postWithConfirm;
 /* يضبط شكل المحادثة كما يشترطه Gemini — يُستدعى قبل كل طلب. */
@@ -21791,6 +21821,9 @@ async function __safeJson(res){
     closeHeaderMenu();
     setFeature(feature);
   };
+  // بطاقة الخيارات جاهزة من الإقلاع — لا تنتظر أول فتح (أي مسار فتح يجدها).
+  populateStyleSelect();
+  renderStudioStyleCards();
   btnClose.onclick = () => { modal.style.display = 'none'; };
   modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
 
