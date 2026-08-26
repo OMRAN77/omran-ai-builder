@@ -7,6 +7,27 @@
 // the daily image-generation quota — only requires a logged-in session.
 const { checkFashionQuota } = require('./_fashionUsage');
 
+// v-fashion-rescue: رفضُ Gemini (نفاد رصيد/تعطّل) لا يُسقط الاقتراحات —
+// gpt-4o-mini بمفتاح OPENAI_API_KEY يجيب بنفس المطلوب (مع رؤية الصورة إن وُجدت).
+async function openaiSuggest(promptText, imageBase64, mimeType) {
+  const key = (process.env.OPENAI_API_KEY || '').trim();
+  if (!key) return '';
+  try {
+    const content = imageBase64
+      ? [{ type: 'text', text: promptText },
+         { type: 'image_url', image_url: { url: 'data:' + (mimeType || 'image/jpeg') + ';base64,' + imageBase64 } }]
+      : promptText;
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'user', content }], max_tokens: 900, temperature: 0.8 }),
+    });
+    const d = await r.json();
+    if (!r.ok) { console.warn('[fashion-suggest] openai HTTP ' + r.status + ' ' + String((d.error && d.error.message) || '').slice(0, 120)); return ''; }
+    return String((((d.choices || [])[0] || {}).message || {}).content || '');
+  } catch (e) { console.warn('[fashion-suggest] openai ' + (e && e.message)); return ''; }
+}
+
 const OCCASION_NAMES = {
   wedding: 'a wedding', work: 'work/office', casual: 'a casual day out',
   sport: 'sport/exercise', travel: 'travel', formal: 'a formal event',
@@ -96,16 +117,24 @@ module.exports = async (req, res) => {
     });
 
     const data = await upstream.json();
-    if (!upstream.ok) {
-      res.status(upstream.status).json({ error: (data && data.error && data.error.message) || 'Upstream error' });
-      return;
+    let rawText = '';
+    let engine = 'gemini';
+    if (upstream.ok) {
+      const respParts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
+      const textPart = respParts.find((p) => typeof p.text === 'string');
+      if (textPart) rawText = textPart.text;
+    } else {
+      rawText = await openaiSuggest(promptText, imageBase64, mimeType);
+      if (!rawText) {
+        res.status(upstream.status).json({ error: (data && data.error && data.error.message) || 'Upstream error' });
+        return;
+      }
+      engine = 'openai';
     }
 
-    const respParts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
-    const textPart = respParts.find((p) => typeof p.text === 'string');
     let suggestions = [];
-    if (textPart) {
-      let raw = textPart.text.trim();
+    if (rawText) {
+      let raw = rawText.trim();
       raw = raw.replace(/^```(json)?/i, '').replace(/```$/, '').trim();
       try {
         const parsed = JSON.parse(raw);
@@ -123,7 +152,7 @@ module.exports = async (req, res) => {
       }
     }
 
-    res.status(200).json({ suggestions });
+    res.status(200).json({ suggestions, engine });
   } catch (e) {
     res.status(500).json({ error: 'Proxy error: ' + (e && e.message ? e.message : String(e)) });
   }

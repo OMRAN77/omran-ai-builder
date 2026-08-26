@@ -36,9 +36,10 @@ console.log(el(), '✓ توكن جاهز');
 console.log('②أ اقتراحات (flash نصّي — عزل المفتاح)');
 const fs = await post('/api/fashion-suggest', { occasion: 'formal', season: 'summer', lang: 'ar', description: 'عباية رسمية', token });
 if (fs.status === 200 && fs.json && Array.isArray(fs.json.suggestions) && fs.json.suggestions.length) {
-  console.log(el(), '✓ flash يعمل — ' + fs.json.suggestions.length + ' اقتراحات → المفتاح سليم');
+  console.log(el(), '✓ الاقتراحات ترجع — ' + fs.json.suggestions.length + ' اقتراحات عبر ' + (fs.json.engine || 'gemini'));
 } else {
-  console.log(el(), '✗ flash نفسه يفشل: HTTP ' + fs.status + ' → ' + String(fs.text).slice(0, 200));
+  console.log(el(), '✗ الاقتراحات تفشل: HTTP ' + fs.status + ' → ' + String(fs.text).slice(0, 200));
+  process.exitCode = 2;
 }
 
 console.log('② توليد أزياء نصّي (engine=' + (ENGINE || 'gemini') + ')');
