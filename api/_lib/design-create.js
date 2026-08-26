@@ -228,6 +228,10 @@ module.exports = async (req, res) => {
           }
         } catch (e) { /* fallback to normal generation below */ }
       }
+      // v-decor-detail: لا نبتلع خطأ المزوّد — نكشفه منظّفًا في detail ليُشخَّص
+      // (رصيد؟ اسم نموذج؟) بدل 502 صامتة. المفاتيح تُشطب دائمًا.
+      let upstreamErr = '';
+      const noteErr = (m) => { if (!upstreamErr && m) upstreamErr = String(m).slice(0, 300); };
       const shots = await Promise.all(Array.from({ length: n }, (_, i) => fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + oaKey, 'Content-Type': 'application/json' },
@@ -241,10 +245,17 @@ module.exports = async (req, res) => {
           output_compression: 82,
         }),
         signal: AbortSignal.timeout(240000),
-      }).then((r) => r.json()).then((d) => (((d && d.data) || [])[0] || {}).b64_json || null).catch(() => null)));
+      }).then((r) => r.json()).then((d) => {
+        const b = (((d && d.data) || [])[0] || {}).b64_json || null;
+        if (!b) noteErr(d && d.error && d.error.message);
+        return b;
+      }).catch((e) => { noteErr((e && e.message) || e); return null; })));
       const images = shots.filter(Boolean).map((b64) => ({ imageBase64: b64, mimeType: 'image/webp' }));
       if (!images.length) {
-        res.status(502).json({ error: 'لم يرجع النموذج أي شكل. جرّب نمطًا أو نوع مكان آخر.' });
+        res.status(502).json({
+          error: 'لم يرجع النموذج أي شكل. جرّب نمطًا أو نوع مكان آخر.',
+          detail: upstreamErr.replace(/key=[^&\s"']+/g, 'key=***'),
+        });
         return;
       }
       const rem = await consumeDesign(quota.username);
