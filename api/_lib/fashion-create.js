@@ -61,6 +61,26 @@ const STYLE_PROMPTS = {
   wedding: 'a wedding/bridal dress style, luxurious fabric, intricate detail',
   traditional: 'a traditional Gulf/Khaleeji women\'s fashion style, elegant and modest',
 };
+// v-fashion-genders: الأوصاف كانت نسائية الصياغة حتى لرجل أو طفل («فستان سهرة»
+// لرجل!). لكل فئة أوصافها؛ وما غاب يسقط لوصف النساء كما كان.
+const STYLE_PROMPTS_MEN = {
+  evening: 'an elegant evening menswear look — tailored tuxedo or refined dark suit',
+  formal: 'a formal professional menswear outfit, tailored and modern',
+  casual: 'a casual everyday menswear outfit, comfortable and stylish',
+  wedding: 'an elegant groom wedding outfit, refined tailoring and detail',
+  traditional: "a traditional Gulf/Khaleeji men's kandura attire, elegant and dignified",
+};
+const STYLE_PROMPTS_KIDS = {
+  evening: "an elegant children's party outfit, festive and charming",
+  formal: "a smart formal children's outfit, neat and modern",
+  casual: "a comfortable casual children's outfit, playful and stylish",
+  wedding: "a festive children's wedding-guest outfit, elegant detail",
+  traditional: "a traditional Gulf/Khaleeji children's attire, elegant",
+};
+function styleDescFor(style, gender) {
+  const byGender = gender === 'men' ? STYLE_PROMPTS_MEN : gender === 'kids' ? STYLE_PROMPTS_KIDS : null;
+  return (byGender && byGender[style]) || STYLE_PROMPTS[style] || STYLE_PROMPTS.evening;
+}
 
 // v417 — تفاصيل اختيارية. إن غابت كلها فالنصّ النهائي مطابق تمامًا لما قبلها.
 const SUBJECTS = { men: 'a man', women: 'a woman', kids: 'a child' };
@@ -130,7 +150,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const styleDesc = STYLE_PROMPTS[style] || STYLE_PROMPTS.evening;
+    const styleDesc = styleDescFor(style, gender);
     const subject = SUBJECTS[gender] || 'a woman';
     const colorList = joinList(colors);
     const extraList = joinList(extras);

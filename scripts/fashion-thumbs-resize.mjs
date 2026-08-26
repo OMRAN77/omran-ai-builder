@@ -5,9 +5,11 @@
 import { readdirSync, mkdirSync, statSync } from 'node:fs';
 import sharp from 'sharp';
 
-mkdirSync('thumbs', { recursive: true });
 for (const f of readdirSync('thumbs-raw').filter((x) => x.endsWith('.png'))) {
-  const out = 'thumbs/' + f.replace(/\.png$/, '.webp');
+  // «فئة-نمط.png» → thumbs/<فئة>/<نمط>.webp؛ وبلا فئة يبقى مسطّحًا كما كان.
+  const m = f.match(/^(women|men|kids)-(.+)\.png$/);
+  const out = m ? 'thumbs/' + m[1] + '/' + m[2] + '.webp' : 'thumbs/' + f.replace(/\.png$/, '.webp');
+  mkdirSync(out.slice(0, out.lastIndexOf('/')), { recursive: true });
   await sharp('thumbs-raw/' + f).resize({ width: 360 }).webp({ quality: 78 }).toFile(out);
   console.log('✓ ' + out + ' — ' + Math.round(statSync(out).size / 1024) + 'KB');
 }

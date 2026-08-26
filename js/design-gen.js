@@ -12,7 +12,7 @@
       var c=document.createElement('div'); c.className='optCard'+(st.gender===r[0]?' sel':'');
       c.innerHTML='<span class="oi"></span><span class="ol"></span>';
       c.querySelector('.oi').textContent=r[1]; c.querySelector('.ol').textContent=T(r[2]);
-      c.onclick=function(){ st.gender=r[0]; Array.prototype.forEach.call(g.children,function(x,i){ x.classList.toggle('sel',GEN[i][0]===st.gender); }); };
+      c.onclick=function(){ st.gender=r[0]; Array.prototype.forEach.call(g.children,function(x,i){ x.classList.toggle('sel',GEN[i][0]===st.gender); }); try{ window.dispatchEvent(new CustomEvent('fashion-gender-change',{detail:{gender:st.gender}})); }catch(e){ /* guard-ok: بثّ تجميلي — فشله لا يمسّ اختيار الفئة نفسه */ } };
       g.appendChild(c);
     });
     return g;
