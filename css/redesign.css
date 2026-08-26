@@ -264,11 +264,12 @@ html.mobile-ui #btnSend, html.mobile-ui #btnStop{width:30px; height:30px; flex:0
    iOS وتمرير الوثيقة)، والتمرير داخل المحتوى فقط، وبلا شريط سحب ظاهر. */
 @media (max-width:860px){
   html{overflow:hidden; overscroll-behavior:none; height:100%;}
-  body{overscroll-behavior:none;}
+  /* iOS القديم يتجاهل overscroll-behavior — تثبيت body يقتل سحب الوثيقة نهائيًا */
+  body{overscroll-behavior:none; position:fixed; inset:0; width:100%;}
   main, #messages, #omranHero{overscroll-behavior-y:contain;}
   *{scrollbar-width:none;}
   *::-webkit-scrollbar{width:0 !important; height:0 !important; display:none;}
 }
 html.mobile-ui{overflow:hidden; overscroll-behavior:none; height:100%;}
-html.mobile-ui body{overscroll-behavior:none;}
+html.mobile-ui body{overscroll-behavior:none; position:fixed; inset:0; width:100%;}
 html.mobile-ui main, html.mobile-ui #messages{overscroll-behavior-y:contain;}
