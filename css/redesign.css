@@ -278,8 +278,9 @@ html.mobile-ui main, html.mobile-ui #messages{overscroll-behavior-y:contain;}
    الإرسال الذهبي ➤ مكانه، والذكاء يرد: زر الإيقاف. (نمط واتساب — بطلب المالك) */
 #composerBox > .inputbar-tools{flex:1 1 auto;}
 #composerBox .inputbar-tools-left{flex:1 1 auto; display:flex;}
+/* مها بجانب خانة الإرسال/المايك في نهاية الصف — لا مع + (طلب المالك) */
+#composerBox #btnMahaDock{margin-inline-start:auto;}
 #composerBox #btnMic{
-  margin-inline-start:auto;
   width:30px; height:30px; flex:0 0 30px; padding:0;
   display:inline-flex; align-items:center; justify-content:center;
   border-radius:50%; border:1px solid var(--border,#3a3a42);
