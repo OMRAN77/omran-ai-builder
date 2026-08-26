@@ -858,7 +858,10 @@
 
     <div id="studioAiStyleWrap" style="margin-top:14px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="studioAiStyleLabel">اختر الخيار</label>
-      <select id="studioAiStyle" style="width:100%;"></select>
+      <!-- v-studio-cards: خيارات كل ميزة بطاقات مصوّرة (نفس نمط بقية الاستوديوهات)؛
+           السلكت مخفيّ والأسلاك الخلفية عليه كما هي. -->
+      <div id="studioStyleCards" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;"></div>
+      <select id="studioAiStyle" style="display:none;"></select>
     </div>
 
     <div style="margin-top:12px;">

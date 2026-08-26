@@ -978,6 +978,59 @@
     });
   }
 
+  /* v-studio-cards: بطاقات الخيارات المصوّرة — صورة من assets/studio/options/
+     <الميزة>-<القيمة>.webp، وبلا صورة شارة أنيقة بحلقة ذهبية. السلكت مخفيّ
+     ومتزامن فقارئا التوليد والمقارنة عليه بلا تغيير. */
+  const studioCardsEl = $('#studioStyleCards');
+  function renderStudioStyleCards(){
+    if(!studioCardsEl || !styleEl) return;
+    studioCardsEl.innerHTML = '';
+    Array.from(styleEl.options).forEach((opt) => {
+      const v = opt.value;
+      const active = v === styleEl.value;
+      const title = opt.textContent.trim();
+      const card = document.createElement('div');
+      card.setAttribute('data-sstyle-card', v);
+      card.style.cssText = 'position:relative; aspect-ratio:3/4; border-radius:12px; overflow:hidden; cursor:pointer;' +
+        ' background:linear-gradient(160deg,#23232a,#101014); display:flex; align-items:center; justify-content:center;' +
+        (active ? ' border:2px solid #d4af37; box-shadow:0 0 12px rgba(212,175,55,.35);' : ' border:1px solid var(--border,#333);');
+      const badge = document.createElement('div');
+      badge.textContent = (title.match(/^\S+/) || [''])[0];
+      badge.style.cssText = 'width:46px; height:46px; border-radius:50%; border:1px solid rgba(212,175,55,.4); background:rgba(212,175,55,.06); display:flex; align-items:center; justify-content:center; font-size:19px; margin-bottom:14px;';
+      const img = document.createElement('img');
+      img.src = 'assets/studio/options/' + feature + '-' + v + '.webp';
+      img.alt = title; img.loading = 'lazy';
+      img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;';
+      img.onerror = function(){ img.remove(); };
+      const label = document.createElement('div');
+      label.textContent = title;
+      label.style.cssText = 'position:absolute; left:0; right:0; bottom:0; padding:14px 4px 5px; font-size:11px; font-weight:700; text-align:center; z-index:1;' +
+        ' color:' + (active ? '#d4af37' : '#eef0f6') + '; background:linear-gradient(transparent,rgba(0,0,0,.85));';
+      card.appendChild(badge); card.appendChild(img); card.appendChild(label);
+      card.onclick = function(){ styleEl.value = v; renderStudioStyleCards(); };
+      studioCardsEl.appendChild(card);
+    });
+  }
+  /* v-studio-tabs: تبويبات الميزات بطاقات مصوّرة من assets/studio/features/. */
+  function photoizeStudioTabs(){
+    Array.from(tabsWrap.querySelectorAll('.studioAiTabBtn')).forEach((b) => {
+      if(b.querySelector('img')) return;
+      const f = b.dataset.feature;
+      b.style.cssText += ';position:relative; overflow:hidden; min-width:86px; height:104px; border-radius:12px; display:flex; align-items:flex-end; justify-content:center; padding:0 4px 5px; font-size:11px; font-weight:700;';
+      const img = document.createElement('img');
+      img.src = 'assets/studio/features/' + f + '.webp';
+      img.alt = ''; img.loading = 'lazy';
+      img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;';
+      img.onerror = function(){ img.remove(); };
+      const shade = document.createElement('div');
+      shade.style.cssText = 'position:absolute; left:0; right:0; bottom:0; height:44%; background:linear-gradient(transparent,rgba(0,0,0,.88)); z-index:1;';
+      b.insertBefore(shade, b.firstChild);
+      b.insertBefore(img, b.firstChild);
+      const txt = Array.from(b.childNodes).find((n) => n.nodeType === 3);
+      if(txt){ const sp = document.createElement('span'); sp.textContent = txt.textContent; sp.style.cssText = 'position:relative; z-index:2;'; b.replaceChild(sp, txt); }
+    });
+  }
+  photoizeStudioTabs();
   function setFeature(next){
     feature = next;
     Array.from(tabsWrap.querySelectorAll('.studioAiTabBtn')).forEach((b) => {
@@ -994,6 +1047,7 @@
       if(imageALabelEl) imageALabelEl.textContent = t('studioAiImageALabel');
     }
     populateStyleSelect();
+    renderStudioStyleCards();
     buildCompareChecks();
     heritageCompareWrap.style.display = (feature === 'heritage') ? 'block' : 'none';
     resultWrap.style.display = 'none';

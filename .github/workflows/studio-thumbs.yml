@@ -1,0 +1,40 @@
+# بطاقات «ستايل الذكاء الاصطناعي»: معاينات الميزات والخيارات عبر خطّ الإنتاج
+# بوجوه متنوعة، تصغير webp، ودفع لفرع بوت لتُراجع وتُلتزم.
+name: Studio thumbs
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'features | options | all'
+        required: false
+        default: 'all'
+
+permissions:
+  contents: write
+
+jobs:
+  thumbs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Generate feature and option previews on production
+        run: node scripts/studio-thumbs.mjs "https://omran-ai-builder.vercel.app" "${{ github.event.inputs.mode }}"
+      - name: Resize to webp cards
+        run: npm i --no-save sharp && node scripts/fashion-thumbs-resize.mjs
+      # تنزيل الـartifact محجوب من بيئة الوكيل — الدفع لفرع بوت هو قناة التسليم.
+      - name: Push cards to bot branch
+        run: |
+          mkdir -p assets/studio/features assets/studio/options
+          [ -d thumbs/studiofeat ] && cp -r thumbs/studiofeat/. assets/studio/features/ || true
+          [ -d thumbs/studioopt ] && cp -r thumbs/studioopt/. assets/studio/options/ || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B bot/studio-thumbs
+          git add assets/studio
+          git commit -m "أصول: بطاقات ستايل الذكاء الاصطناعي (ميزات وخيارات)"
+          git push -f origin bot/studio-thumbs
