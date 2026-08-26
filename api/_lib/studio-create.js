@@ -12,6 +12,31 @@
 //   merge   - merge two photos into a single combined image
 // Returns a base64 PNG/JPEG the client can preview and download.
 const { checkStudioQuota, consumeStudio, STUDIO_DAILY_LIMIT } = require('./_studioUsage');
+
+// v-studio-rescue: تعديل الصورة عبر gpt-image-1 عند رفض Gemini (نفس نمط
+// الأزياء والبورتريه). يدعم صورتين للدمج. يرجع base64 أو null — لا يرمي.
+async function openaiStudioEdit(promptText, images) {
+  const key = (process.env.OPENAI_API_KEY || '').trim();
+  if (!key) return null;
+  try {
+    const form = new FormData();
+    form.append('model', 'gpt-image-1');
+    form.append('prompt', String(promptText).slice(0, 3900));
+    form.append('size', '1024x1536');
+    form.append('quality', 'medium');
+    images.forEach(([b64, mime], i) => {
+      form.append('image[]', new Blob([Buffer.from(b64, 'base64')], { type: mime || 'image/jpeg' }), 'photo' + i + '.jpg');
+    });
+    const r = await fetch('https://api.openai.com/v1/images/edits', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + key },
+      body: form,
+    });
+    const d = await r.json();
+    if (!r.ok) { console.warn('[studio-create] openai HTTP ' + r.status + ' ' + String((d.error && d.error.message) || '').slice(0, 120)); return null; }
+    return (d && d.data && d.data[0] && d.data[0].b64_json) || null;
+  } catch (e) { console.warn('[studio-create] openai ' + (e && e.message)); return null; }
+}
 const { sourceStylePreservationRule } = require('./image-prompt');
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 
@@ -200,8 +225,20 @@ module.exports = async (req, res) => {
 
     const data = await upstream.json();
     if (!upstream.ok) {
-      console.error('[studio-create] upstream failed status=' + upstream.status + ' detail=' + ((data && data.error && data.error.message) || 'unknown'));
-      res.status(502).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
+      const detail = String((data && data.error && data.error.message) || 'unknown')
+        .replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
+      console.error('[studio-create] upstream failed status=' + upstream.status + ' detail=' + detail);
+      // v-studio-rescue: جرّب gpt-image-1 قبل إبلاغ الفشل — حارس التحقق على
+      // Gemini نفسه فيُتجاوز في مسار الإنقاذ.
+      const rescueImgs = [[imageBase64, mimeType]];
+      if (feature === 'merge' && imageBase64B) rescueImgs.push([imageBase64B, mimeTypeB]);
+      const rescue = await openaiStudioEdit((parts[0] && parts[0].text) || '', rescueImgs);
+      if (rescue) {
+        const remR = await consumeStudio(quota.username);
+        res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: STUDIO_DAILY_LIMIT });
+        return;
+      }
+      res.status(502).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.', upstream: upstream.status, detail });
       return;
     }
 

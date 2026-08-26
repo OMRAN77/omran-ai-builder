@@ -392,3 +392,4 @@ html[data-mode="light"] #eduHubModal .eduNote{color:var(--muted) !important;}
 #fashionAiModal .optChip.sel .ck{background:#d4af37;border-color:#d4af37;color:#141414}
 #fashionAiModal .optCard.sel{border-color:#d4af37;color:#d4af37;box-shadow:0 0 10px rgba(212,175,55,.25)}
 #fashionAiModal .optCard.sel .oi{filter:none}
+#studioAiTabs .studioAiTabBtn.active{border:2px solid #d4af37;box-shadow:0 0 10px rgba(212,175,55,.3);color:#d4af37}

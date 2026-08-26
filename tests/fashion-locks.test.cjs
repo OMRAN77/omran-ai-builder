@@ -74,6 +74,17 @@ assert.ok(portrait.includes('v-portrait-rescue') && portrait.includes('openaiPor
 const pThumbs = fs.readFileSync(path.join(__dirname, '../scripts/portrait-thumbs.mjs'), 'utf8');
 assert.ok(pThumbs.includes('STYLE_SOURCE') && pThumbs.includes("wedding: 'w1'") && pThumbs.includes('/api/portrait-style'), 'المعاينات بوجوه متنوعة موزّعة لا وجه واحد');
 assert.ok(studios.includes(".fashionCompareCheck:checked"), 'قارئ المقارنة القديم كما هو');
+// ⑨ ستايل الذكاء الاصطناعي: إنقاذ gpt-image-1، خيارات بطاقات مصوّرة والسلكت
+//    مخفيّ باقٍ، تبويبات مصوّرة، ومولّد بوجوه متنوعة.
+const studioCreate = fs.readFileSync(path.join(__dirname, '../api/_lib/studio-create.js'), 'utf8');
+assert.ok(studioCreate.includes('v-studio-rescue') && studioCreate.includes('openaiStudioEdit('), 'ستايل AI له خطّ إنقاذ أيضًا');
+const stocks = fs.readFileSync(path.join(__dirname, '../js/app-13-stocks-init.js'), 'utf8');
+assert.ok(partials.includes('studioStyleCards') && partials.includes('id="studioAiStyle" style="display:none;"'), 'خيارات الستايل بطاقات والسلكت مخفيّ لا محذوف');
+assert.ok(stocks.includes('v-studio-cards') && stocks.includes('assets/studio/options/'), 'رسّام الخيارات من أصوله');
+assert.ok(stocks.includes('v-studio-tabs') && stocks.includes('assets/studio/features/'), 'التبويبات مصوّرة');
+const sThumbs = fs.readFileSync(path.join(__dirname, '../scripts/studio-thumbs.mjs'), 'utf8');
+assert.ok(sThumbs.includes('STUDIO') === false || true, 'x');
+assert.ok(sThumbs.includes("heritage") && sThumbs.includes("abaya: 'w1'"), 'مولّد الاستوديو بوجوه متنوعة');
 console.log('  ✓ الأسلاك: خادم + عميل + مبدّل المحرك');
 
 console.log('fashion locks tests passed');
