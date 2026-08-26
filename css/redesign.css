@@ -288,3 +288,11 @@ html.mobile-ui main, html.mobile-ui #messages{overscroll-behavior-y:contain;}
 #composerBox:not(.typing) > #btnSend{ display:none !important; }
 #composerBox.typing > #btnSend{ animation:morphIn .16s ease; }
 @keyframes morphIn{ from{ transform:scale(.6); opacity:0; } to{ transform:scale(1); opacity:1; } }
+
+/* ===== v-agent-settings — بطاقة زر «الوكيل» داخل قسم الإعدادات ===== */
+#agentSettingsHost #premiumToggleWrap.pt-visible{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 12px; border:1px solid var(--border, rgba(128,128,128,.28)); border-radius:14px; background:var(--panel2, rgba(128,128,128,.06)); }
+#agentSettingsHost #premiumToggleWrap:not(.pt-visible){ display:none; }
+#agentSettingsHost #btnPremiumToggle{ flex:1; display:inline-flex; align-items:center; gap:9px; background:none; border:0; box-shadow:none; color:var(--text); cursor:pointer; font-size:13.5px; font-weight:600; padding:4px 2px; }
+#agentSettingsHost #btnPremiumToggle.premium-on{ border:0; box-shadow:none; background:none; }
+#agentSettingsHost #premiumToggleWrap:has(#btnPremiumToggle.premium-on){ border-color:var(--accent); box-shadow:0 0 0 1.5px var(--accent); }
+#agentSettingsHost #premiumPointsChip.pp-visible{ display:inline-flex; align-items:center; gap:3px; }

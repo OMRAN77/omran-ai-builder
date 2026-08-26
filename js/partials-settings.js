@@ -106,6 +106,15 @@
     </div>
   </div></div>
 
+  <!-- v-agent-settings: قسم «الوكيل» — زر التشغيل انتقل هنا من الشاشة الرئيسية (أمر عمران ٢٦ أغسطس ٢٠٢٦) -->
+  <div id="agentSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('agentSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="agentSectionTitle">🤖 الوكيل</h3><span class="settingsSectionArrow" id="agentSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="agentSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+      <p style="margin:0 0 12px; font-size:12.5px; color:var(--muted); line-height:1.7;" data-i18n="agentSectionDesc">وضع الوكيل: يخطّط وينفّذ بنفسه — يبني ويعدّل ويختبر الكود قبل تسليمه، يبحث في الإنترنت، ويكمل عمله حتى لو أُغلقت الصفحة. شغّله من الزر ثم اكتب طلبك في المحادثة.</p>
+      <div id="agentSettingsHost"></div>
+      <p id="agentOnNote" style="display:none; margin:10px 0 0; font-size:12px; color:var(--accent-ink, var(--accent)); font-weight:600;" data-i18n="agentOnNote">الوكيل شغّال الآن — ارجع للمحادثة واكتب طلبك.</p>
+    </div>
+  </div>
+
   <div id="apiKeysSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('apiKeysSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="apiKeysSectionTitle">🔑 مفاتيح API لمزوّدي الخدمة</h3><span class="settingsSectionArrow" id="apiKeysSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="apiKeysSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
   <label data-i18n="provider">مزوّد الخدمة الافتراضي</label>
