@@ -2156,3 +2156,4 @@ async function postWithConfirm(url, payload){
 /* v-ios-settings-scroll */
 /* v-ios-nav-tap */
 /* v-ios-tap-fallback */
+/* v-diag-nav */
