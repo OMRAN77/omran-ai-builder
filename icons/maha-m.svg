@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fbe89b"/>
+      <stop offset=".45" stop-color="#d4af37"/>
+      <stop offset="1" stop-color="#a37c1c"/>
+    </linearGradient>
+  </defs>
+  <!-- خلفية شفافة تمامًا — الحرف يذوب مع لون الصفحة داكنةً كانت أو بيضاء -->
+  <text x="64" y="96" font-family="'Tajawal','Amiri','Geeza Pro',serif" font-size="92" font-weight="700" text-anchor="middle" fill="url(#g)">م</text>
+  <path d="M97 22 l2 4.4 4.4 2 -4.4 2 -2 4.4 -2 -4.4 -4.4 -2 4.4 -2 z" fill="#d4af37"/>
+</svg>
