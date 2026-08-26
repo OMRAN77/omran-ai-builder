@@ -46,7 +46,8 @@
     if(!U||!occ||!sea||!sty) return;
     U.dropZone('fashionAiModal','fashionAi');
     Array.prototype.forEach.call(document.querySelectorAll('#fashionAiModal .f417'),function(x){ x.remove(); });
-    [occ,sea,sty].forEach(function(sel){
+    // v-fashion-thumb-cards: النمط له بطاقات مصوّرة خاصة في app-12 — لا يُحوَّل هنا.
+    [occ,sea].forEach(function(sel){
       var host=sel.parentElement; if(!host) return;
       var old=host.querySelector('.optGrid'); if(old) old.remove();
       sel.style.display='none';

@@ -19601,6 +19601,38 @@ async function __safeJson(res){
     statusEl.textContent = text || '';
   }
 
+  /* ---- v-fashion-thumb-cards: بطاقات الأنماط المصوّرة ----
+     نماذج مولّدة بمحرّكنا (أصول ثابتة assets/fashion/looks/<style>.webp) بدل
+     سلكت نصّي. تتزامن مع #fashionAiStyle المخفي فكل الأسلاك الخلفية كما هي،
+     وإن غابت صورة يبقى تدرّج أنيق مع الاسم — لا بطاقة مكسورة. */
+  const styleCardsEl = $('#fashionStyleCards');
+  function renderStyleCards(){
+    if(!styleCardsEl || !styleEl) return;
+    styleCardsEl.innerHTML = '';
+    Array.prototype.forEach.call(styleEl.options, function(opt){
+      const active = opt.value === styleEl.value;
+      const card = document.createElement('div');
+      card.setAttribute('data-style-card', opt.value);
+      card.style.cssText = 'position:relative; aspect-ratio:2/3; border-radius:12px; overflow:hidden; cursor:pointer;' +
+        ' background:linear-gradient(160deg,#23232a,#101014);' +
+        (active ? ' border:2px solid #d4af37; box-shadow:0 0 12px rgba(212,175,55,.35);' : ' border:1px solid var(--border,#333);');
+      const img = document.createElement('img');
+      img.src = 'assets/fashion/looks/' + opt.value + '.webp';
+      img.alt = opt.textContent;
+      img.loading = 'lazy';
+      img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;';
+      img.onerror = function(){ img.remove(); };
+      const label = document.createElement('div');
+      label.textContent = opt.textContent;
+      label.style.cssText = 'position:absolute; left:0; right:0; bottom:0; padding:14px 6px 6px; font-size:11.5px; font-weight:700; text-align:center;' +
+        ' color:' + (active ? '#d4af37' : '#eef0f6') + '; background:linear-gradient(transparent,rgba(0,0,0,.82));';
+      card.appendChild(img); card.appendChild(label);
+      card.onclick = function(){ styleEl.value = opt.value; renderStyleCards(); };
+      styleCardsEl.appendChild(card);
+    });
+  }
+  renderStyleCards();
+
   /* ---- 👤 saved measurements profile ---- */
   const PROFILE_KEY = 'aiapp_fashion_profile';
   function loadProfile(){
@@ -19724,6 +19756,7 @@ async function __safeJson(res){
 
   btnOpen.onclick = () => {
     modal.style.display = 'flex';
+    renderStyleCards(); // تسميات الترجمة قد تكون تغيّرت بعد التهيئة
     closeHeaderMenu();
   };
   btnClose.onclick = () => { modal.style.display = 'none'; };
