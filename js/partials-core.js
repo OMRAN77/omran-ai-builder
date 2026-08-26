@@ -398,7 +398,10 @@
         <label style="font-size:12px; color:var(--muted); display:block;" data-i18n="portraitStyleLabel">ستايل الرسم</label>
         <button type="button" id="portraitFavStarBtn" title="⭐" style="background:none; border:none; cursor:pointer; font-size: var(--fs-2); padding:2px 4px; line-height:1;">☆</button>
       </div>
-      <select id="portraitStyleSelect" style="width:100%;">
+      <!-- v-portrait-style-cards: أنماط الصور بطاقات صور تُسحب — نفس الوجه بكل
+           ستايل (قبل/بعد). السلكت مخفيّ والأسلاك الخلفية عليه كما هي. -->
+      <div id="portraitStyleCards" style="display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;"></div>
+      <select id="portraitStyleSelect" style="display:none;">
         <optgroup id="portraitFavGroup" label="⭐ المفضلة" data-i18n="[label]portraitFavGroupLabel" style="display:none;"></optgroup>
         <option value="anime" data-i18n="portraitStyleAnime">🎬 أنيمي ياباني</option>
         <option value="cartoon" data-i18n="portraitStyleCartoon">🖼️ كارتون واقعي</option>
