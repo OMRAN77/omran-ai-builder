@@ -1,0 +1,40 @@
+# بطاقات الديكور بصور شبه حقيقية عبر مولّد مجاني (Flux) — لا يحتاج أي رصيد.
+# تصغير webp ودفع لفرع بوت لتُراجع وتُلتزم.
+name: Design thumbs free
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'styles | places | all'
+        required: false
+        default: 'all'
+
+permissions:
+  contents: write
+
+jobs:
+  thumbs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Generate near-real previews (free engine)
+        run: node scripts/design-thumbs-free.mjs "${{ github.event.inputs.mode }}"
+      - name: Resize to webp cards
+        run: npm i --no-save sharp && node scripts/fashion-thumbs-resize.mjs
+      # تنزيل الـartifact محجوب من بيئة الوكيل — الدفع لفرع بوت هو قناة التسليم.
+      - name: Push cards to bot branch
+        run: |
+          mkdir -p assets/design/styles assets/design/opts
+          [ -d thumbs/dstyle ] && cp -r thumbs/dstyle/. assets/design/styles/ || true
+          if [ -d thumbs/dplace ]; then for f in thumbs/dplace/*.webp; do cp "$f" "assets/design/opts/place-$(basename "$f")"; done; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B bot/design-thumbs
+          git add assets/design
+          git commit -m "أصول: بطاقات الديكور شبه الحقيقية (مولّد مجاني)"
+          git push -f origin bot/design-thumbs
