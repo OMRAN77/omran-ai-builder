@@ -10695,21 +10695,66 @@ function mahaReadVoiceGender(){
   catch(e){ return 'female'; }
 }
 let mahaDetectedGender = mahaReadVoiceGender();
-// Syncs the on-screen call card name with the chosen voice. The orb artwork is
-// intentionally identical for both voices — only the name changes.
+// v-persona-pick: الأيقونة تعكس الشخصية المحفوظة من الإقلاع لا من أول مكالمة.
+if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { try{ mahaUpdatePersonaUI(); }catch(e){ __swallow(e, 'maha:boot-persona'); } });
+else setTimeout(() => { try{ mahaUpdatePersonaUI(); }catch(e){ __swallow(e, 'maha:boot-persona'); } }, 0);
+/* v-persona-pick: مها وعبدالله شخصيتان صريحتان — مبدّل ظاهر على شاشة
+   المكالمة، والأيقونة (الزر العائم والكرة) تتبدل مع المختار: مها بحرفها
+   الذهبي «م» وعبدالله بحرفه «ع» بنفس الهوية. */
+const MAHA_ICON = '/icons/maha-icon.png';
+const ABDULLAH_ICON = '/icons/abdullah-icon.svg';
 function mahaUpdatePersonaUI(){
   mahaDetectedGender = mahaReadVoiceGender();
   const male = mahaDetectedGender === 'male';
+  const icon = male ? ABDULLAH_ICON : MAHA_ICON;
   const nameEl = document.getElementById('mahaCallNameLabel');
   if(nameEl) nameEl.textContent = male ? 'عبدالله' : 'مها';
   const orb = document.getElementById('mahaOrb');
   if(orb){
-    orb.textContent = male ? '🧔' : '💁‍♀️';
-    orb.style.background = male ? 'linear-gradient(135deg,#ffd77a,#b8860b)' : 'linear-gradient(135deg,#ff5fa2,#7b5cff)';
-    orb.style.boxShadow = male ? '0 0 35px rgba(184,134,11,.6)' : '0 0 28px rgba(123,92,255,.5)';
-    orb.style.border = 'none';
-    orb.style.fontSize = '39px';
+    orb.textContent = '';
+    orb.style.background = "url('" + icon + "') center/cover no-repeat, #0a0908";
+    orb.style.boxShadow = '0 0 35px rgba(212,175,55,.55)';
+    orb.style.border = '1px solid rgba(212,175,55,.35)';
   }
+  const fabImg = btnMahaEl && btnMahaEl.querySelector('img');
+  if(fabImg && fabImg.getAttribute('src') !== icon){ fabImg.src = icon; fabImg.alt = male ? 'عبدالله' : 'مها'; }
+  if(btnMahaEl) btnMahaEl.title = male ? 'عبدالله' : 'مها';
+  mahaEnsurePersonaSwitch(male);
+}
+// مبدّل الشخصية على شاشة المكالمة: مها | عبدالله — يحفظ الاختيار، وفي
+// مكالمة HD قائمة يتفعّل الصوت الجديد من المكالمة التالية (نُعلمها بلطف).
+function mahaEnsurePersonaSwitch(male){
+  const handle = document.getElementById('mahaDragHandle');
+  if(!handle) return;
+  let row = document.getElementById('mahaPersonaSwitch');
+  if(!row){
+    row = document.createElement('div');
+    row.id = 'mahaPersonaSwitch';
+    row.style.cssText = 'display:flex; gap:6px; justify-content:center; margin-top:5px;';
+    [['female', 'مها'], ['male', 'عبدالله']].forEach(([g, label]) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('data-persona', g);
+      b.textContent = label;
+      b.style.cssText = 'border-radius:99px; padding:3px 12px; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit;';
+      b.onclick = (e) => {
+        e.stopPropagation();
+        try{ localStorage.setItem('aiapp_voice_gender', g); }catch(err){ __swallow(err, 'maha:persona-save'); }
+        mahaUpdatePersonaUI();
+        if(typeof mahaRtActive !== 'undefined' && mahaRtActive){
+          mahaSetState(mahaState, 'الصوت الجديد يبدأ من المكالمة الجاية 🎙️');
+        }
+      };
+      row.appendChild(b);
+    });
+    handle.appendChild(row);
+  }
+  Array.from(row.children).forEach((b) => {
+    const on = (b.getAttribute('data-persona') === 'male') === male;
+    b.style.background = on ? '#d4af37' : 'rgba(0,0,0,.45)';
+    b.style.color = on ? '#141414' : '#eee';
+    b.style.border = on ? '1px solid #d4af37' : '1px solid rgba(255,255,255,.25)';
+  });
 }
 // First-run voice picker: shown once, before the very first call, then stored.
 // Changeable any time from ⚙️ الإعدادات › الصوت.
