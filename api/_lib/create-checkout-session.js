@@ -94,6 +94,10 @@ async function createCheckoutSession(req, res) {
     params.append('line_items[0][price_data][product_data][name]', planInfo.name);
     params.append('metadata[plan]', plan);
     if (username) params.append('metadata[username]', username);
+    // v-webhook: نفس البيانات على الاشتراك نفسه — فتحملها فواتير التجديد
+    // الشهري ويعرف الويب هوك لمن يضيف نقاط كل شهر (كان التجديد بلا شحن).
+    params.append('subscription_data[metadata][plan]', plan);
+    if (username) params.append('subscription_data[metadata][username]', username);
     params.append('success_url', `${base}/?checkout=success&plan=${plan}&session_id={CHECKOUT_SESSION_ID}`);
     params.append('cancel_url', `${base}/?checkout=cancel`);
 
@@ -288,3 +292,8 @@ module.exports = async (req, res) => {
   if (routedAction === 'verify-payment-intent') return verifyPaymentIntent(req, res);
   return createCheckoutSession(req, res);
 };
+
+// v-webhook: يستعملهما ويب هوك سترايب (api/webhook.js) — نفس منطق المنح
+// وأمان التكرار، فلا ازدواج بين مسار العودة والويب هوك.
+module.exports.grantPlanToUser = grantPlanToUser;
+module.exports.PLANS = PLANS;
