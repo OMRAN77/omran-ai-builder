@@ -325,7 +325,7 @@ html.mobile-ui dialog[open]{
    لمسافة لمس آمنة، وهواوي وأندرويد يبقيان بالقاع كما طلب عمران. */
 @supports (-webkit-touch-callout: none) {
   @media (max-width:860px){
-    #omranBottomNav{ padding-bottom:max(12px, calc(env(safe-area-inset-bottom,0px) - 4px)) !important; }
+    #omranBottomNav{ padding-bottom:calc(6px + env(safe-area-inset-bottom,0px)) !important; }
   }
-  html.mobile-ui #omranBottomNav{ padding-bottom:max(12px, calc(env(safe-area-inset-bottom,0px) - 4px)) !important; }
+  html.mobile-ui #omranBottomNav{ padding-bottom:calc(6px + env(safe-area-inset-bottom,0px)) !important; }
 }
