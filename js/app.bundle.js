@@ -7853,6 +7853,7 @@ async function postWithConfirm(url, payload){
   sync();
 })();
 /* v-nav-lower */
+/* v-plus-tools-desktop */
 window.postWithConfirm = postWithConfirm;
 /* يضبط شكل المحادثة كما يشترطه Gemini — يُستدعى قبل كل طلب. */
 function sanitizeGeminiContents(list){

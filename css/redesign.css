@@ -296,3 +296,6 @@ html.mobile-ui main, html.mobile-ui #messages{overscroll-behavior-y:contain;}
 #agentSettingsHost #btnPremiumToggle.premium-on{ border:0; box-shadow:none; background:none; }
 #agentSettingsHost #premiumToggleWrap:has(#btnPremiumToggle.premium-on){ border-color:var(--accent); box-shadow:0 0 0 1.5px var(--accent); }
 #agentSettingsHost #premiumPointsChip.pp-visible{ display:inline-flex; align-items:center; gap:3px; }
+
+/* ===== v-plus-tools-desktop — أمر عمران: زر «الأدوات» داخل قائمة ➕ للجوال فقط، يُخفى في الكمبيوتر ===== */
+html:not(.mobile-ui) #plusToolsPopup #btnToolsBox{ display:none !important; }
