@@ -2,17 +2,24 @@
 // الأزياء عبر خطّ الإنتاج نفسه (حسابا فحص zzcheck… × ٣ توليدات لكل حساب بسبب
 // الحدّ اليومي). المخرجات PNG خام في thumbs-raw/ ليصغّرها fashion-thumbs-resize.
 //
-//   node scripts/fashion-thumbs.mjs [BASE_URL]
+//   node scripts/fashion-thumbs.mjs [BASE_URL] [genders=women]  ← مثال: men,kids
 import { randomBytes } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
 const BASE = (process.argv[2] || 'https://omran-ai-builder.vercel.app').replace(/\/$/, '');
+const GENDERS = (process.argv[3] || 'women').split(',').map((x) => x.trim()).filter(Boolean);
 const t0 = Date.now();
 const el = () => String(Date.now() - t0).padStart(6, ' ') + 'ms';
 
 // وصف موحّد يضمن نفس الاستوديو والإضاءة في كل البطاقات.
 const LOOK = 'consistent dark charcoal studio backdrop, soft golden rim lighting, editorial fashion catalog look, elegant confident pose';
-const STYLES = ['evening', 'formal', 'casual', 'abaya', 'wedding', 'traditional'];
+// نفس قوائم الواجهة (GENDER_STYLES): العباية نسائية فقط.
+const STYLES_BY_GENDER = {
+  women: ['evening', 'formal', 'casual', 'abaya', 'wedding', 'traditional'],
+  men: ['evening', 'formal', 'casual', 'wedding', 'traditional'],
+  kids: ['evening', 'formal', 'casual', 'wedding', 'traditional'],
+};
+const JOBS = GENDERS.flatMap((g) => (STYLES_BY_GENDER[g] || []).map((s) => ({ gender: g, style: s })));
 
 const post = async (path, payload) => {
   const r = await fetch(BASE + path, {
@@ -38,21 +45,22 @@ const signup = async () => {
 mkdirSync('thumbs-raw', { recursive: true });
 let failed = 0;
 let token = await signup();
-for (let i = 0; i < STYLES.length; i++) {
-  if (i === 3) token = await signup(); // الحدّ اليومي ٣ لكل حساب
-  const s = STYLES[i];
+for (let i = 0; i < JOBS.length; i++) {
+  if (i > 0 && i % 3 === 0) token = await signup(); // الحدّ اليومي ٣ لكل حساب
+  const j = JOBS[i];
   const r = await post('/api/fashion-create', {
-    mode: 'text', style: s, gender: 'women',
+    mode: 'text', style: j.style, gender: j.gender,
     description: LOOK, token, multiAngle: false, engine: '',
   });
+  const name = j.gender + '-' + j.style;
   if (r.status === 200 && r.json && r.json.imageBase64) {
-    writeFileSync('thumbs-raw/' + s + '.png', Buffer.from(r.json.imageBase64, 'base64'));
-    console.log(el(), '✓ ' + s + ' — ' + Math.round(r.json.imageBase64.length * 3 / 4 / 1024) + 'KB · محرك=' + (r.json.engine || 'gemini'));
+    writeFileSync('thumbs-raw/' + name + '.png', Buffer.from(r.json.imageBase64, 'base64'));
+    console.log(el(), '✓ ' + name + ' — ' + Math.round(r.json.imageBase64.length * 3 / 4 / 1024) + 'KB · محرك=' + (r.json.engine || 'gemini'));
   } else {
-    console.log(el(), '✗ ' + s + ' — HTTP ' + r.status + ' → ' + String(r.text).slice(0, 160));
+    console.log(el(), '✗ ' + name + ' — HTTP ' + r.status + ' → ' + String(r.text).slice(0, 160));
     failed++;
   }
 }
-console.log('\n· احذف حسابَي الفحص zzcheck… من لوحة الإدارة متى شئت.');
-if (failed) { console.log('✗ ' + failed + ' من ' + STYLES.length + ' فشلت'); process.exit(2); }
-console.log('✓ الصور الست جاهزة في thumbs-raw/');
+console.log('\n· احذف حسابات الفحص zzcheck… من لوحة الإدارة متى شئت.');
+if (failed) { console.log('✗ ' + failed + ' من ' + JOBS.length + ' فشلت'); process.exit(2); }
+console.log('✓ ' + JOBS.length + ' صورة جاهزة في thumbs-raw/');

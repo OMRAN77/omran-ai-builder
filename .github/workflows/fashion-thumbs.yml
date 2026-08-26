@@ -4,6 +4,11 @@ name: Fashion thumbs
 
 on:
   workflow_dispatch:
+    inputs:
+      genders:
+        description: 'الفئات المولّدة (women,men,kids)'
+        required: false
+        default: 'women'
 
 permissions:
   contents: write
@@ -17,15 +22,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Generate 6 style model images on production
-        run: node scripts/fashion-thumbs.mjs "https://omran-ai-builder.vercel.app"
+      - name: Generate style model images on production
+        run: node scripts/fashion-thumbs.mjs "https://omran-ai-builder.vercel.app" "${{ github.event.inputs.genders }}"
       - name: Resize to webp cards
         run: npm i --no-save sharp && node scripts/fashion-thumbs-resize.mjs
       # تنزيل الـartifact محجوب من بيئة الوكيل — الدفع لفرع بوت هو قناة التسليم.
       - name: Push cards to bot branch
         run: |
           mkdir -p assets/fashion/looks
-          cp thumbs/*.webp assets/fashion/looks/
+          cp -r thumbs/. assets/fashion/looks/
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B bot/fashion-thumbs

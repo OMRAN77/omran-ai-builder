@@ -568,32 +568,56 @@ async function __safeJson(res){
      سلكت نصّي. تتزامن مع #fashionAiStyle المخفي فكل الأسلاك الخلفية كما هي،
      وإن غابت صورة يبقى تدرّج أنيق مع الاسم — لا بطاقة مكسورة. */
   const styleCardsEl = $('#fashionStyleCards');
+  // v-fashion-genders: لكل فئة أنماطها وصورها — العباية نسائية فقط، والصور من
+  // looks/<الفئة>/، وما لم يُولَّد بعد يسقط لصور النساء ثم للتدرّج الأنيق.
+  const GENDER_STYLES = {
+    women: ['evening', 'formal', 'casual', 'abaya', 'wedding', 'traditional'],
+    men: ['evening', 'formal', 'casual', 'wedding', 'traditional'],
+    kids: ['evening', 'formal', 'casual', 'wedding', 'traditional'],
+  };
+  function currentGender(){
+    try{ return (window.omranFashionExtras && window.omranFashionExtras().gender) || 'women'; }
+    catch(e){ return 'women'; }
+  }
+  function lookImg(gender, value, alt){
+    const img = document.createElement('img');
+    img.src = 'assets/fashion/looks/' + gender + '/' + value + '.webp';
+    img.alt = alt;
+    img.loading = 'eager'; // البطاقات ≈40KB كلها — الكسل يؤخّر ظهورها بلا مكسب
+    img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;';
+    img.onerror = function(){
+      if(!img.__flat){ img.__flat = 1; img.src = 'assets/fashion/looks/' + value + '.webp'; }
+      else img.remove();
+    };
+    return img;
+  }
   function renderStyleCards(){
     if(!styleCardsEl || !styleEl) return;
+    const g = currentGender();
+    const list = GENDER_STYLES[g] || GENDER_STYLES.women;
+    if(list.indexOf(styleEl.value) < 0) styleEl.value = list[0];
     styleCardsEl.innerHTML = '';
-    Array.prototype.forEach.call(styleEl.options, function(opt){
-      const active = opt.value === styleEl.value;
+    list.forEach(function(v){
+      const opt = Array.prototype.find.call(styleEl.options, function(o){ return o.value === v; });
+      if(!opt) return;
+      const active = v === styleEl.value;
       const card = document.createElement('div');
-      card.setAttribute('data-style-card', opt.value);
+      card.setAttribute('data-style-card', v);
       card.style.cssText = 'position:relative; aspect-ratio:2/3; border-radius:12px; overflow:hidden; cursor:pointer;' +
         ' background:linear-gradient(160deg,#23232a,#101014);' +
         (active ? ' border:2px solid #d4af37; box-shadow:0 0 12px rgba(212,175,55,.35);' : ' border:1px solid var(--border,#333);');
-      const img = document.createElement('img');
-      img.src = 'assets/fashion/looks/' + opt.value + '.webp';
-      img.alt = opt.textContent;
-      img.loading = 'eager'; // الست بطاقات ≈36KB كلها — الكسل يؤخّر ظهورها بلا مكسب
-      img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;';
-      img.onerror = function(){ img.remove(); };
       const label = document.createElement('div');
       label.textContent = opt.textContent;
       label.style.cssText = 'position:absolute; left:0; right:0; bottom:0; padding:14px 6px 6px; font-size:11.5px; font-weight:700; text-align:center;' +
         ' color:' + (active ? '#d4af37' : '#eef0f6') + '; background:linear-gradient(transparent,rgba(0,0,0,.82));';
-      card.appendChild(img); card.appendChild(label);
-      card.onclick = function(){ styleEl.value = opt.value; renderStyleCards(); };
+      card.appendChild(lookImg(g, v, opt.textContent)); card.appendChild(label);
+      card.onclick = function(){ styleEl.value = v; renderStyleCards(); };
       styleCardsEl.appendChild(card);
     });
   }
   renderStyleCards();
+  // تبديل الفئة (نسائي/رجالي/أطفال) يعيد رسم البطاقات وصفّ المقارنة بصور الفئة.
+  window.addEventListener('fashion-gender-change', function(){ renderStyleCards(); buildCompareChecks(); });
 
   /* ---- 👤 saved measurements profile ---- */
   const PROFILE_KEY = 'aiapp_fashion_profile';
@@ -683,14 +707,44 @@ async function __safeJson(res){
   }
   if(sliderRange) sliderRange.oninput = () => updateSliderClip(sliderRange.value);
 
-  /* ---- 📊 compare checkboxes (built from style options) ---- */
+  /* ---- 📊 v-fashion-compare-cards: صفّ مقارنة يُسحب باليد — بطاقات صور بلا
+     كتابة، اختيار حتى ٣ بعلامة ✓ ذهبية. مربّعات الاختيار باقية مخفيّة فقارئ
+     زرّ المقارنة (.fashionCompareCheck:checked) كما هو بلا أي تغيير. ---- */
   function buildCompareChecks(){
+    if(!compareChecksEl) return;
+    const g = currentGender();
     compareChecksEl.innerHTML = '';
-    Array.from(styleEl.options).forEach(opt => {
-      const label = document.createElement('label');
-      label.style.cssText = 'display:flex; align-items:center; gap:4px; font-size:11.5px; color:var(--muted,#999); border:1px solid var(--border,#333); border-radius:6px; padding:4px 8px; cursor:pointer;';
-      label.innerHTML = '<input type="checkbox" class="fashionCompareCheck" value="' + opt.value + '"> ' + opt.textContent;
-      compareChecksEl.appendChild(label);
+    compareChecksEl.style.cssText = 'display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;';
+    (GENDER_STYLES[g] || GENDER_STYLES.women).forEach(function(v){
+      const opt = Array.prototype.find.call(styleEl.options, function(o){ return o.value === v; });
+      if(!opt) return;
+      const wrap = document.createElement('div');
+      wrap.setAttribute('data-compare-card', v);
+      wrap.style.cssText = 'position:relative; flex:0 0 31%; min-width:104px; aspect-ratio:2/3; border-radius:12px; overflow:hidden; cursor:pointer; scroll-snap-align:start;' +
+        ' background:linear-gradient(160deg,#23232a,#101014); border:1px solid var(--border,#333);';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.className = 'fashionCompareCheck'; cb.value = v;
+      cb.style.display = 'none';
+      const tick = document.createElement('div');
+      tick.textContent = '✓';
+      tick.style.cssText = 'position:absolute; top:6px; inset-inline-end:6px; width:22px; height:22px; border-radius:50%; background:#d4af37; color:#141414;' +
+        ' font-weight:800; font-size:14px; display:none; align-items:center; justify-content:center; z-index:2;';
+      const label = document.createElement('div');
+      label.textContent = opt.textContent;
+      label.style.cssText = 'position:absolute; left:0; right:0; bottom:0; padding:14px 6px 6px; font-size:11px; font-weight:700; text-align:center; color:#eef0f6;' +
+        ' background:linear-gradient(transparent,rgba(0,0,0,.82));';
+      function paint(){
+        tick.style.display = cb.checked ? 'flex' : 'none';
+        wrap.style.border = cb.checked ? '2px solid #d4af37' : '1px solid var(--border,#333)';
+        wrap.style.boxShadow = cb.checked ? '0 0 12px rgba(212,175,55,.35)' : 'none';
+      }
+      wrap.onclick = function(){
+        if(!cb.checked && compareChecksEl.querySelectorAll('.fashionCompareCheck:checked').length >= 3) return; // الحد ٣
+        cb.checked = !cb.checked; paint();
+      };
+      wrap.appendChild(lookImg(g, v, opt.textContent));
+      wrap.appendChild(tick); wrap.appendChild(label); wrap.appendChild(cb);
+      compareChecksEl.appendChild(wrap);
     });
   }
   buildCompareChecks();

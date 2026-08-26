@@ -44,6 +44,15 @@ assert.ok(studios.includes('v-fashion-thumb-cards') && studios.includes("assets/
 assert.ok(studios.includes('img.onerror') && studios.includes('renderStyleCards()'), 'سقوط أنيق بلا صورة + إعادة رسم عند الفتح');
 const designGen = fs.readFileSync(path.join(__dirname, '../js/design-gen.js'), 'utf8');
 assert.ok(designGen.includes('[occ,sea].forEach') && !designGen.includes('[occ,sea,sty].forEach'), 'محوّل v417 لا يرسم النمط — لا شبكتين للنمط');
+// ⑥ الفئات: أوصاف رجالية/أطفال في الخادم، بطاقات وصفّ مقارنة يتبعان الفئة،
+//    والمبدّل يبثّ الحدث. العباية تبقى نسائية فقط.
+assert.ok(create.includes('STYLE_PROMPTS_MEN') && create.includes('styleDescFor(style, gender)'), 'الخادم يصف كل فئة بلغتها');
+assert.ok(!create.includes("STYLE_PROMPTS_MEN = {") || !/STYLE_PROMPTS_MEN[\s\S]{0,400}abaya/.test(create), 'لا عباية في أوصاف الرجال');
+assert.ok(studios.includes('GENDER_STYLES') && studios.includes("men: ['evening', 'formal', 'casual', 'wedding', 'traditional']"), 'قوائم الأنماط لكل فئة');
+assert.ok(studios.includes('v-fashion-compare-cards') && studios.includes('data-compare-card') && studios.includes("scroll-snap-type:x mandatory"), 'صفّ مقارنة بطاقات يُسحب');
+assert.ok(studios.includes("fashion-gender-change"), 'تبديل الفئة يعيد رسم البطاقات');
+assert.ok(designGen.includes("fashion-gender-change"), 'المبدّل يبثّ حدث الفئة');
+assert.ok(studios.includes(".fashionCompareCheck:checked"), 'قارئ المقارنة القديم كما هو');
 console.log('  ✓ الأسلاك: خادم + عميل + مبدّل المحرك');
 
 console.log('fashion locks tests passed');
