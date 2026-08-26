@@ -94,6 +94,7 @@ const TOOLS = [
 
 const TOOLS_NOTE = '\n\n[أدواتك الحقيقية — خمس، وهي تعمل فعلًا الآن]:\n' +
   '• web_search — أي سعر أو خبر أو طقس أو نتيجة أو رسوم رسمية أو معلومة قد تكون تغيّرت: ابحث أولًا.\n' +
+  '• [حداثة الأخبار — إلزامي]: في سؤال عن خبر أو حدث أو «الجديد»، تحقق من تاريخ نشر كل نتيجة قبل الاستشهاد بها: اعتمد الأحدث واذكر تاريخ الخبر بجانبه صراحةً، ولا تقدّم مقالًا عمره شهور كأنه جديد — قارن تاريخ النشر بتاريخ اليوم المذكور لك. إن لم تجد إلا نتائج قديمة فقلها صراحة («أحدث ما وجدته بتاريخ كذا») ولا توهم بحداثتها.\n' +
   '• fetch_page — أي رابط ذكره المستخدم أو ظهر في البحث وتحتاج محتواه: افتحه واقرأه.\n' +
   '• run_js — أي حساب رقمي أو فرق تواريخ أو منطق: شغّله وخذ الناتج منه.\n' +
   '• generate_image — ترسم صورة حقيقية وتعيد رمزًا مثل __IMG_1__ تضعه حرفيًّا في src.\n' +
@@ -455,21 +456,26 @@ async function timedFetch(url, opts, ms) {
 }
 function asJSON(txt) { try { return JSON.parse(txt); } catch (e) { return null; } }
 
+// v-fresh-news: سؤال الأخبار يقيّد محركات البحث بالحديث — الشكوى المقيسة:
+// «الرابط صحيح الموضوع لكن الخبر قبل سنة أو شهر». كل محرك يأخذ قيده بلغته.
+const FRESH_RE = /خبر|أخبار|اخبار|عاجل|أحدث|آخر\s|اخر\s|جديد|اليوم|الليلة|الآن|هذا الأسبوع|news|latest|breaking|today|recent/i;
+
 async function pplxSearch(query) {
   const key = (process.env.PERPLEXITY_API_KEY || '').trim();
   if (!key) return null;
+  const fresh = FRESH_RE.test(String(query || ''));
   const r = await timedFetch('https://api.perplexity.ai/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
-    body: JSON.stringify({
+    body: JSON.stringify(Object.assign({
       // v-chat-acc: sonar → sonar-pro. الشكوى المقيسة «المعلومات ضعيفة»: sonar
       // يعيد مقتطفات سطحية؛ sonar-pro يقرأ أعمق ويعيد مصادر أدقّ بنفس النداء.
       model: 'sonar-pro', max_tokens: 1000, temperature: 0.2,
       messages: [
-        { role: 'system', content: 'أنت محرّك بحث حيّ. أجب بدقّة ووقائع محدّثة: أرقامًا وأسماء جهات ومواقع، بإيجاز وبلا اعتذار. إن ذكر السؤال بلدًا أو مدينة فالتزم بهما ولا تُحِل إلى دولة أخرى.' },
+        { role: 'system', content: 'أنت محرّك بحث حيّ. أجب بدقّة ووقائع محدّثة: أرقامًا وأسماء جهات ومواقع، بإيجاز وبلا اعتذار. إن ذكر السؤال بلدًا أو مدينة فالتزم بهما ولا تُحِل إلى دولة أخرى. اذكر تاريخ نشر كل خبر تستشهد به.' },
         { role: 'user', content: String(query || '').slice(0, 600) },
       ],
-    }),
+    }, fresh ? { search_recency_filter: 'week' } : {})),
   }, 20000);
   if (!r.ok) { console.warn('[live] perplexity HTTP ' + r.status); return null; }
   const d = asJSON(r.body) || {};
@@ -492,7 +498,9 @@ async function gcseSearch(query) {
   const cx = (process.env.GOOGLE_SEARCH_CX || '').trim();
   if (!k || !cx) return null;
   const url = 'https://www.googleapis.com/customsearch/v1?key=' + encodeURIComponent(k)
-    + '&cx=' + encodeURIComponent(cx) + '&num=6&q=' + encodeURIComponent(String(query || '').slice(0, 300));
+    + '&cx=' + encodeURIComponent(cx) + '&num=6&q=' + encodeURIComponent(String(query || '').slice(0, 300))
+    // v-fresh-news: سؤال الأخبار → نتائج آخر شهر مرتبة بالأحدث.
+    + (FRESH_RE.test(String(query || '')) ? '&dateRestrict=m1&sort=date' : '');
   const r = await timedFetch(url, {}, 12000);
   if (!r.ok) { console.warn('[live] google HTTP ' + r.status); return null; }
   const d = asJSON(r.body);
@@ -504,16 +512,21 @@ async function gcseSearch(query) {
 async function tavilyRaw(query, foreign) {
   const key = (process.env.TAVILY_API_KEY || '').trim();
   if (!key) return null;
+  const fresh = FRESH_RE.test(String(query || ''));
   const r = await timedFetch('https://api.tavily.com/search', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(Object.assign(
       // v-chat-acc: عمق advanced ونتائج ومقتطفات أطول — 300 حرفًا كانت تُجوّع النموذج.
       { api_key: key, query: String(query || '').slice(0, 380), max_results: 8, search_depth: 'advanced', include_answer: true },
-      foreign ? {} : { country: 'united arab emirates' })),
+      // v-fresh-news: الأخبار من آخر أسبوع فقط، ومع تاريخ نشر كل نتيجة.
+      // country لا يُقبل مع topic:news عند المزود — لا يُرسلان معًا.
+      fresh ? { topic: 'news', days: 7 } : {},
+      (foreign || fresh) ? {} : { country: 'united arab emirates' })),
   }, 15000);
   if (!r.ok) { console.warn('[live] tavily HTTP ' + r.status); return null; }
   const d = asJSON(r.body);
   const items = ((d && d.results) || []).map((x, i) => (i + 1) + '. ' + String(x.title || '')
+    + (x.published_date ? ' (نُشر: ' + String(x.published_date).slice(0, 16) + ')' : '')
     + '\n' + String(x.url || '') + '\n' + String(x.content || '').replace(/\s+/g, ' ').slice(0, 500));
   return items.length ? items.join('\n\n') : null;
 }

@@ -119,6 +119,11 @@ check(chatServer.includes('setTimeout(function () { resolve(null); }, 1800)'), '
 // (اليوم/الآن/حالي) خارج البحث الاستباقي.
 check(chatServer.includes('earlyMemoryP'), 'قراءة الذاكرة بالتوازي مع فحص الحصة');
 check(!/LIVE_EAGER_RE = [^\n]*اليوم/.test(chatServer), 'كلمة «اليوم» لا تشعل البحث الاستباقي');
+// v-fresh-news: سؤال الأخبار يقيّد المحركات بالحديث ويذكر تاريخ النشر.
+check(chatServer.includes("topic: 'news', days: 7"), 'تافيلي: أخبار آخر أسبوع فقط');
+check(chatServer.includes("search_recency_filter: 'week'"), 'بيربلكسيتي: حداثة أسبوع للأخبار');
+check(chatServer.includes('dateRestrict=m1&sort=date'), 'جوجل: آخر شهر مرتب بالأحدث');
+check(chatServer.includes('حداثة الأخبار — إلزامي'), 'النموذج ملزم بذكر تاريخ الخبر ورفض القديم');
 check(chatServer.includes('const LEAN_CONVERSATION_NOTE'), 'المحادثة العادية تستخدم تعليمات خفيفة');
 check(chatServer.includes('محاور قويّ') && chatServer.includes('كن ندًّا في الحوار'), 'طبقة المحاور القوي: ندّية ومطابقة نمط المستخدم');
 check(chatServer.includes('ممنوع الموافقة الآلية والتملّق'), 'التملق والموافقة الآلية ممنوعان صراحةً');
