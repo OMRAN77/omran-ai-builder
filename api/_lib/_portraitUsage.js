@@ -11,7 +11,15 @@ const { isBanned } = require('./auth.js');
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 
 const PORTRAIT_DAILY_LIMIT = 3;
-const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').toLowerCase();
+// v-owner-open: عدة أسماء للمالك (OWNER_USERNAMES بفواصل) + قائمة VIP بلا حدود.
+const { isVip } = require('./_vip.js');
+const __OWNERS = String(process.env.OWNER_USERNAMES || process.env.OWNER_USERNAME || 'omran')
+  .toLowerCase().split(',').map((s) => s.trim()).filter(Boolean);
+async function __unlimitedUser(username) {
+  if (!username) return false;
+  if (__OWNERS.includes(String(username).toLowerCase())) return true;
+  try { return await isVip(username); } catch (e) { return false; }
+}
 
 function verifyToken(token) {
   try {
@@ -55,8 +63,8 @@ async function checkPortraitQuota(token) {
   // Suspended accounts hold a valid token for up to 30 days; the ban
   // has to bite on the paths that actually spend money, not just login.
   if (await isBanned(username)) return { allowed: false, reason: 'auth', banned: true, username };
-  if (String(username).toLowerCase() === OWNER_USERNAME) {
-    return { allowed: true, username, remaining: Infinity };
+  if (await __unlimitedUser(username)) {
+    return { allowed: true, username, remaining: Infinity, unlimited: true };
   }
   const today = todayStr();
   let usage = await getUsage(username);
@@ -73,7 +81,7 @@ async function checkPortraitQuota(token) {
 // this AFTER Gemini has actually returned a successful image — a failed
 // request must never burn a user's daily quota.
 async function consumePortrait(username) {
-  if (String(username).toLowerCase() === OWNER_USERNAME) {
+  if (await __unlimitedUser(username)) {
     return Infinity;
   }
   const today = todayStr();
