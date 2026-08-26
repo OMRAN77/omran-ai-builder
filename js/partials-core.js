@@ -616,13 +616,15 @@
   </div>
 </div>
 
+<!-- v-fashion-look: شكل الاستوديو المعتمد من الكانفا — ذهبي على داكن،
+     منطقة رفع منقّطة، رقاقات وبطاقات ذهبية. كل المعرّفات كما هي. -->
 <div id="fashionAiModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-      <h3 style="margin:0;" data-i18n="fashionAiModalTitle">👗 تصميم أزياء بالذكاء الاصطناعي</h3>
+  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3); border-top:3px solid #d4af37;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+      <h3 style="margin:0; font-size:20px;" data-i18n="fashionAiModalTitle">👗 استوديو الأزياء</h3>
       <button type="button" class="btn iconBtn" id="fashionAiCloseBtn" style="padding:4px 10px;">✕</button>
     </div>
-    <p style="font-size:12.5px; color:var(--muted); margin-top:2px;" data-i18n="fashionAiDesc">اختر: ارفع صورة وغيّر الزي، أو اكتب وصف تصميم واتركه يبتكر صورة من الصفر. ميزة قيد التجربة بحد أقصى قليل يوميًا لكل حساب.</p>
+    <p style="font-size:12.5px; color:var(--muted); margin-top:2px;" data-i18n="fashionAiDesc">صورتك + ذوقك — ونعرض عليك خيارات جنب بعض. ميزة قيد التجربة بحد يومي قليل لكل حساب.</p>
 
     <div style="display:flex; gap:8px; margin-top:12px;">
       <button type="button" class="btn primary" id="fashionAiTabImage" style="flex:1;" data-i18n="fashionAiTabImage">📷 من صورة</button>
@@ -631,9 +633,12 @@
 
     <div id="fashionAiImagePane">
       <input type="file" id="fashionAiFileInput" accept="image/*" style="display:none;">
-      <div style="display:flex; align-items:center; gap:10px; margin-top:12px;">
-        <button type="button" class="btn" id="fashionAiFileBtn" style="width:auto; white-space:nowrap;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
-        <span id="fashionAiFileName" style="font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" data-i18n="fileNoneChosen">لم يتم اختيار ملف</span>
+      <div id="fashionAiDropZone" style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; min-height:150px; margin-top:12px; border:1.5px dashed rgba(212,175,55,.45); border-radius:14px; background:rgba(212,175,55,.04); cursor:pointer; text-align:center; padding:14px;">
+        <div style="font-size:26px;">📸</div>
+        <div style="font-size:14px; font-weight:600;" data-i18n="fashionDropTitle">ارفعي صورتك كاملة</div>
+        <div style="font-size:11.5px; color:var(--muted);" data-i18n="fashionDropHint">من الرأس إلى القدم · إضاءة واضحة</div>
+        <button type="button" class="btn" id="fashionAiFileBtn" style="width:auto; white-space:nowrap; border-color:rgba(212,175,55,.5);" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
+        <span id="fashionAiFileName" style="font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%;" data-i18n="fileNoneChosen">لم يتم اختيار ملف</span>
       </div>
       <img id="fashionAiSourcePreview" style="display:none; width:100%; margin-top:10px; border-radius:var(--r-2); max-height:220px; object-fit:contain; background:#000;">
     </div>
@@ -725,7 +730,7 @@
       </select>
     </div>
 
-    <button type="button" class="btn primary" id="fashionAiGenerateBtn" style="width:100%; margin-top:14px;" data-i18n="fashionAiGenerateBtn">✨ صمم التصميم</button>
+    <button type="button" class="btn" id="fashionAiGenerateBtn" style="width:100%; margin-top:14px; background:linear-gradient(135deg,#d4af37,#e9cf7a); color:#141414; font-weight:800; border:none; box-shadow:0 2px 14px rgba(212,175,55,.35);" data-i18n="fashionAiGenerateBtn">✨ صمم التصميم</button>
 
     <div id="fashionAiStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
 

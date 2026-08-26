@@ -386,3 +386,9 @@ html[data-mode="light"] #eduHubModal .eduNote{color:var(--muted) !important;}
     #omranToolsGrid        { display: none !important; }
     #omranQuickMobileWrap  { display: none !important; }
     
+/* v-fashion-look: رقاقات استوديو الأزياء ذهبية على داكن — شكل الكانفا المعتمد. */
+#fashionAiModal .optChip{border-radius:999px}
+#fashionAiModal .optChip.sel{border-color:#d4af37;color:#d4af37;background:rgba(212,175,55,.08)}
+#fashionAiModal .optChip.sel .ck{background:#d4af37;border-color:#d4af37;color:#141414}
+#fashionAiModal .optCard.sel{border-color:#d4af37;color:#d4af37;box-shadow:0 0 10px rgba(212,175,55,.25)}
+#fashionAiModal .optCard.sel .oi{filter:none}

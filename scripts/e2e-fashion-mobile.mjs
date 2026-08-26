@@ -44,6 +44,21 @@ const s = await page.evaluate(() => {
     bundle: (Array.from(document.scripts).find((x) => /app\.bundle\.js/.test(x.src)) || { src: '' }).src.split('v=')[1] || '?',
   };
 });
+// أول نظرة (أعلى الشاشة، قبل أي تمرير): الشكل الذهبي المعتمد ظاهر فورًا.
+const top = await page.evaluate(() => {
+  const dz = document.querySelector('#fashionAiDropZone');
+  const title = document.querySelector('[data-i18n="fashionAiModalTitle"]');
+  const sel = document.querySelector('#fashionAiModal .optCard.sel');
+  return {
+    dropZone: !!dz && getComputedStyle(dz).borderStyle.includes('dashed'),
+    studioTitle: !!title && /استوديو|Studio/.test(title.textContent),
+    goldSel: !!sel && getComputedStyle(sel).borderColor.includes('212, 175, 55'),
+  };
+});
+check(top.studioTitle, 'عنوان «استوديو الأزياء» الجديد');
+check(top.dropZone, 'منطقة الرفع الذهبية المنقّطة أول الشاشة');
+check(top.goldSel, 'الاختيار الذهبي في بطاقات الفئة/المناسبة');
+
 console.log(el(), 'الحزمة على الإنتاج: v=' + s.bundle);
 check(s.modal, 'مودال الأزياء موجود');
 check(s.grid, 'شبكة البطاقات المصوّرة موجودة (#fashionStyleCards)');

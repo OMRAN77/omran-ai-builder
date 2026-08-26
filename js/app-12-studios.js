@@ -724,7 +724,17 @@ async function __safeJson(res){
   btnClose.onclick = () => { modal.style.display = 'none'; };
   modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
 
-  if(fileBtn) fileBtn.onclick = () => fileInput.click();
+  if(fileBtn) fileBtn.onclick = (e) => { e.stopPropagation(); fileInput.click(); };
+  const dropZone = $('#fashionAiDropZone');
+  if(dropZone){
+    dropZone.onclick = () => fileInput.click();
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.background = 'rgba(212,175,55,.1)'; });
+    dropZone.addEventListener('dragleave', () => { dropZone.style.background = 'rgba(212,175,55,.04)'; });
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault(); dropZone.style.background = 'rgba(212,175,55,.04)';
+      try{ if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length){ fileInput.files = e.dataTransfer.files; fileInput.dispatchEvent(new Event('change', { bubbles: true })); } }catch(_){ fileInput.click(); }
+    });
+  }
 
   fileInput.onchange = () => {
     const file = fileInput.files && fileInput.files[0];
