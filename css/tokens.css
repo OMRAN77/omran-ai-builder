@@ -37,6 +37,10 @@
   /* v-ios-textsize: سفاري iOS يضخّم النص تلقائيًا في الكتل العريضة (شريط
      الأسهم طلع «وايد كبير») — 100% يقفل التضخيم فيطابق هواوي والكمبيوتر. */
   html{-webkit-text-size-adjust:100%; text-size-adjust:100%;}
+  /* v-ios-backdrop: مناطق الأمان (تحت مؤشر الهوم وفوق) كانت تكشف خلفية سوداء
+     في الثيم الفاتح على الآيفون — الخلفية تتبع الثيم فتختفي الأشرطة الغريبة. */
+  html{background:#0b0b0d;}
+  html[data-mode="light"]{background:#f2f2f4;}
   /* v308: قفل أفقي كامل للصفحة — ثابتة مثل واتساب (iOS Safari) */
   html,body{overflow-x:hidden; max-width:100%; overscroll-behavior-x:none;}
   #messages{touch-action:pan-y; overscroll-behavior-x:none;}

@@ -2117,10 +2117,24 @@ if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
     return bottom + 8;
   }
 
+  // v-maha-fab-clamp: على الآيفون كان الزر يغرق فوق شريط التبويبات (المنطقة
+  // الآمنة ترفع الشريط ولا يعرفها القصّ) — الحد الأسفل صار فوق الشريط دائمًا.
+  function bottomBarTop(){
+    let t = window.innerHeight;
+    const nav = document.getElementById('omranBottomNav');
+    if(nav){
+      const cs = window.getComputedStyle(nav);
+      if(cs.display !== 'none'){
+        const r = nav.getBoundingClientRect();
+        if(r.height > 0) t = Math.min(t, r.top);
+      }
+    }
+    return t;
+  }
   function applyPos(left, top){
     const w = btn.offsetWidth || 45, h = btn.offsetHeight || 45;
     const maxLeft = Math.max(4, window.innerWidth - w - 4);
-    const maxTop = Math.max(4, window.innerHeight - h - 4);
+    const maxTop = Math.max(4, bottomBarTop() - h - 4);
     // v205: full drag freedom — allowed anywhere on screen, even over the header.
     left = clamp(left, 4, maxLeft);
     top = clamp(top, 4, maxTop);
