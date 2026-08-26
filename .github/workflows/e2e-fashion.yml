@@ -1,0 +1,33 @@
+# استوديو الأزياء كما يراه هاتف حقيقيّ نظيف على الإنتاج: بطاقات الأنماط
+# المصوّرة موجودة، صورها محمّلة، والنقر يبدّل الاختيار الذهبي.
+name: E2E fashion on mobile
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: العنوان المراد قياسه
+        required: false
+        default: https://omran-ai-builder.vercel.app
+
+jobs:
+  e2e-fashion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install Playwright Chromium
+        run: |
+          npm i --no-save playwright >/dev/null 2>&1
+          npx playwright install --with-deps chromium
+      - name: Open fashion studio as a clean mobile user
+        run: node scripts/e2e-fashion-mobile.mjs "${{ inputs.url }}"
+      - name: Upload screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-fashion-cards
+          path: e2e-fashion-cards.png
