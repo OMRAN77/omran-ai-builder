@@ -44,7 +44,7 @@
   function build(){
     var U=window.__optUI, occ=document.getElementById('fashionAiOccasion'), sea=document.getElementById('fashionAiSeason'), sty=document.getElementById('fashionAiStyle');
     if(!U||!occ||!sea||!sty) return;
-    U.dropZone('fashionAiModal','fashionAi');
+    // v-fashion-look: منطقة الرفع الذهبية في partials — لا dzArea هنا.
     Array.prototype.forEach.call(document.querySelectorAll('#fashionAiModal .f417'),function(x){ x.remove(); });
     // v-fashion-thumb-cards: النمط له بطاقات مصوّرة خاصة في app-12 — لا يُحوَّل هنا.
     [occ,sea].forEach(function(sel){

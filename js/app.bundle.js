@@ -2542,8 +2542,10 @@ const I18N = {
     designAiGenerating: '🎨 جاري تصميم الغرفة...',
     designAiDone: '✅ تم التصميم!',
     fashionAiTitle: 'أزياء AI',
-    fashionAiModalTitle: '👗 تصميم أزياء بالذكاء الاصطناعي',
-    fashionAiDesc: 'اختر: ارفع صورة وغيّر الزي، أو اكتب وصف تصميم واتركه يبتكر صورة من الصفر. ميزة قيد التجربة بحد أقصى قليل يوميًا لكل حساب.',
+    fashionAiModalTitle: '👗 استوديو الأزياء',
+    fashionAiDesc: 'صورتك + ذوقك — ونعرض عليك خيارات جنب بعض. ميزة قيد التجربة بحد يومي قليل لكل حساب.',
+    fashionDropTitle: 'ارفعي صورتك كاملة',
+    fashionDropHint: 'من الرأس إلى القدم · إضاءة واضحة',
     fashionAiTabImage: '📷 من صورة',
     fashionAiTabText: '✍️ من وصف نصي',
     fashionAiDescLabel: 'وصف التصميم',
@@ -3613,8 +3615,10 @@ const I18N = {
     designAiGenerating: '🎨 Designing the room...',
     designAiDone: '✅ Design ready!',
     fashionAiTitle: 'Fashion AI',
-    fashionAiModalTitle: '👗 AI Fashion Design',
-    fashionAiDesc: 'Choose: upload a photo and change the outfit, or write a design description and let AI create an image from scratch. Trial feature with a small daily limit per account.',
+    fashionAiModalTitle: '👗 Fashion Studio',
+    fashionAiDesc: 'Your photo + your taste — options side by side. Trial feature with a small daily limit per account.',
+    fashionDropTitle: 'Upload a full-body photo',
+    fashionDropHint: 'Head to toe · clear lighting',
     fashionAiTabImage: '📷 From photo',
     fashionAiTabText: '✍️ From description',
     fashionAiDescLabel: 'Design description',
@@ -19762,7 +19766,17 @@ async function __safeJson(res){
   btnClose.onclick = () => { modal.style.display = 'none'; };
   modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
 
-  if(fileBtn) fileBtn.onclick = () => fileInput.click();
+  if(fileBtn) fileBtn.onclick = (e) => { e.stopPropagation(); fileInput.click(); };
+  const dropZone = $('#fashionAiDropZone');
+  if(dropZone){
+    dropZone.onclick = () => fileInput.click();
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.background = 'rgba(212,175,55,.1)'; });
+    dropZone.addEventListener('dragleave', () => { dropZone.style.background = 'rgba(212,175,55,.04)'; });
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault(); dropZone.style.background = 'rgba(212,175,55,.04)';
+      try{ if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length){ fileInput.files = e.dataTransfer.files; fileInput.dispatchEvent(new Event('change', { bubbles: true })); } }catch(_){ fileInput.click(); }
+    });
+  }
 
   fileInput.onchange = () => {
     const file = fileInput.files && fileInput.files[0];
