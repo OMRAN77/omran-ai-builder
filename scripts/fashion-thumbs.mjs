@@ -19,7 +19,43 @@ const STYLES_BY_GENDER = {
   men: ['evening', 'formal', 'casual', 'wedding', 'traditional'],
   kids: ['evening', 'formal', 'casual', 'wedding', 'traditional'],
 };
-const JOBS = GENDERS.flatMap((g) => (STYLES_BY_GENDER[g] || []).map((s) => ({ gender: g, style: s })));
+// مجموعات بطاقات بقية الأقسام — كل بطاقة توليد جديد خاص بها (لا إعادة لصور
+// الأنماط): وجوه الفئات بورتريه، والمناسبات إطلالات بسياقها، والإضافات لقطات
+// قريبة على القطعة نفسها.
+const CARD_SETS = {
+  category: [
+    { name: 'women', p: { style: 'evening', gender: 'women', description: 'elegant confident woman, upper-body fashion portrait, looking at camera' } },
+    { name: 'men', p: { style: 'formal', gender: 'men', description: 'confident stylish man, upper-body fashion portrait, looking at camera' } },
+    { name: 'kids', p: { style: 'formal', gender: 'kids', description: 'cheerful well-dressed child, upper-body portrait, looking at camera' } },
+  ],
+  occasion: [
+    { name: 'wedding', p: { style: 'wedding', gender: 'women', occasion: 'wedding', description: 'celebratory wedding look' } },
+    { name: 'work', p: { style: 'formal', gender: 'women', occasion: 'work', description: 'smart modern office workwear' } },
+    { name: 'casual', p: { style: 'casual', gender: 'women', occasion: 'casual', description: 'relaxed everyday street style' } },
+    { name: 'sport', p: { style: 'casual', gender: 'women', occasion: 'sport', description: 'modest sporty athletic activewear, dynamic pose' } },
+    { name: 'travel', p: { style: 'casual', gender: 'women', occasion: 'travel', description: 'comfortable stylish travel outfit with an elegant small suitcase' } },
+    { name: 'formal', p: { style: 'formal', gender: 'women', occasion: 'formal', description: 'refined formal event look' } },
+    { name: 'graduation', p: { style: 'formal', gender: 'women', occasion: 'graduation', description: 'graduation gown and cap, proud pose' } },
+    { name: 'religious', p: { style: 'abaya', gender: 'women', occasion: 'religious', description: 'dignified modest look for a religious occasion' } },
+  ],
+  season: [
+    { name: 'summer', p: { style: 'casual', gender: 'women', season: 'summer', description: 'breezy elegant summer outfit' } },
+    { name: 'autumn', p: { style: 'casual', gender: 'women', season: 'autumn', description: 'layered stylish autumn outfit, warm tones' } },
+    { name: 'winter', p: { style: 'casual', gender: 'women', season: 'winter', description: 'cozy elegant winter coat outfit' } },
+    { name: 'spring', p: { style: 'casual', gender: 'women', season: 'spring', description: 'fresh light spring outfit, floral hints' } },
+  ],
+  extras: [
+    { name: 'glasses', p: { style: 'casual', gender: 'women', description: 'close-up on elegant designer sunglasses worn by a model' } },
+    { name: 'watch', p: { style: 'formal', gender: 'women', description: 'close-up on an elegant luxury wristwatch on a model wrist' } },
+    { name: 'handbag', p: { style: 'evening', gender: 'women', description: 'close-up on an elegant designer handbag held by a model' } },
+    { name: 'shoes', p: { style: 'evening', gender: 'women', description: 'close-up on elegant designer heels worn by a model' } },
+    { name: 'scarf', p: { style: 'casual', gender: 'women', description: 'close-up on an elegant silk scarf styled on a model' } },
+    { name: 'makeup', p: { style: 'evening', gender: 'women', description: 'close-up beauty portrait with elegant evening makeup' } },
+  ],
+};
+const JOBS = GENDERS.flatMap((g) => CARD_SETS[g]
+  ? CARD_SETS[g].map((c) => ({ folder: g, name: c.name, payload: c.p }))
+  : (STYLES_BY_GENDER[g] || []).map((s) => ({ folder: g, name: s, payload: { style: s, gender: g } })));
 
 const post = async (path, payload) => {
   const r = await fetch(BASE + path, {
@@ -49,10 +85,11 @@ for (let i = 0; i < JOBS.length; i++) {
   if (i > 0 && i % 3 === 0) token = await signup(); // الحدّ اليومي ٣ لكل حساب
   const j = JOBS[i];
   const r = await post('/api/fashion-create', {
-    mode: 'text', style: j.style, gender: j.gender,
-    description: LOOK, token, multiAngle: false, engine: '',
+    mode: 'text', ...j.payload,
+    description: ((j.payload.description ? j.payload.description + '. ' : '') + LOOK),
+    token, multiAngle: false, engine: '',
   });
-  const name = j.gender + '-' + j.style;
+  const name = j.folder + '-' + j.name;
   if (r.status === 200 && r.json && r.json.imageBase64) {
     writeFileSync('thumbs-raw/' + name + '.png', Buffer.from(r.json.imageBase64, 'base64'));
     console.log(el(), '✓ ' + name + ' — ' + Math.round(r.json.imageBase64.length * 3 / 4 / 1024) + 'KB · محرك=' + (r.json.engine || 'gemini'));
