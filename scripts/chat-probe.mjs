@@ -75,6 +75,17 @@ try {
   if (n === 0) process.exitCode = process.exitCode || 4;
 } catch (e) { console.log('\n🖼️ بحث الصور: ✗ ' + e.message); }
 
+// 🎬 فحص صانع الفيديو: رصيد Runway وعدد المفاتيح المضبوطة في الإنتاج.
+try {
+  const vb = await fetch(base + '/api/video?action=video-balance');
+  const vj = vb.ok ? await vb.json() : null;
+  if (vj) {
+    console.log('\n🎬 صانع الفيديو: مفاتيح=' + (vj.keys ?? '?') + ' · رصيد=' + (vj.credits ?? '?')
+      + ((!vj.keys) ? ' — ✗ لا مفتاح RUNWAY_API_KEY مضبوط' : (vj.credits <= 0 ? ' — ✗ الرصيد صفر (انتهت الاعتمادات)' : ' ✅')));
+    if (!vj.keys || vj.credits <= 0) process.exitCode = process.exitCode || 5;
+  } else console.log('\n🎬 صانع الفيديو: ✗ HTTP ' + vb.status);
+} catch (e) { console.log('\n🎬 صانع الفيديو: ✗ ' + e.message); }
+
 // 📍 فحص الترميز الجغرافي العكسي على الإنتاج (إحداثيات عجمان الثابتة —
 // ليست موقع أحد، فلا خصوصية تُمسّ).
 try {
