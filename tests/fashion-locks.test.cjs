@@ -61,6 +61,7 @@ assert.ok(designSels.includes('v-decor-full-page') && designSels.includes('omran
 // لوحات ألوان بدل الإيموجي: بطاقات احترافية إلى أن تحلّ الصور المولّدة محلّها.
 assert.ok(designSels.includes('v-decor-swatch') && designSels.includes("najdi:['#b7854f'") && designSels.includes('__decorPal'), 'لوحة ألوان لكل نمط ومكان — لا شارات إيموجي');
 assert.ok(designSels.includes('v-decor-subs') && designSels.includes('أقواس وزليج أندلسي'), 'وصف عربي تحت كل نمط — تعرفين الكلاسيكي من العصري');
+assert.ok(designSels.includes('v-decor-rooms') && designSels.includes('function roomSvg') && designSels.includes('__decorPal=roomBg'), 'غرفة مرسومة داخل كل بطاقة — تصاميم لا ألوان');
 assert.ok(designSels.includes('v-decor-toggles') && designSels.includes('data-dtoggle'), 'النباتات واللوحات والإكسسوارات بطاقات لا مربعات صح');
 assert.ok(studios.includes("__decorPal('designAiStyle', v)"), 'صفّ المقارنة بلوحات الألوان أيضًا');
 const app05 = fs.readFileSync(path.join(__dirname, '../js/app-05-ui.js'), 'utf8');

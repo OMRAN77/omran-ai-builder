@@ -120,7 +120,62 @@
     return 'linear-gradient(90deg,'+c[0]+' 0 33.4%,'+c[1]+' 33.4% 66.7%,'+c[2]+' 66.7% 100%) bottom/100% 26% no-repeat,'+
       'linear-gradient(155deg,'+c[0]+' 0%,'+c[1]+' 55%,'+c[2]+' 120%)';
   }
-  window.__decorPal=palBg;
+  window.__decorPal=roomBg;
+  /* v-decor-rooms: غرفة مرسومة فعلًا داخل كل بطاقة — جدار ونافذة وكنبة وسجادة
+     ولوحة ونبتة وإضاءة بألوان النمط، والأقواس للعربي والثريا للفخم والنيون
+     للسايبربانك. تصاميم لا ألوان، والصور المولّدة تركب فوقها لاحقًا. */
+  function shade(hex,f){
+    var n=parseInt(hex.slice(1),16), r=Math.min(255,Math.round(((n>>16)&255)*f)), g=Math.min(255,Math.round(((n>>8)&255)*f)), b=Math.min(255,Math.round((n&255)*f));
+    return '#'+((1<<24)|(r<<16)|(g<<8)|b).toString(16).slice(1);
+  }
+  var ROOM_KIND={
+    arabic:'arch', moroccan:'arch', andalusi:'arch', islamic:'arch', turkish:'arch',
+    persian:'arch', najdi:'arch', emirati:'arch', indian:'arch', majlis:'arch',
+    gothic:'gothic', darkacademia:'gothic',
+    industrial:'grid', loft:'grid',
+    cyberpunk:'neon', gamer:'neon', futuristic:'neon', smart:'neon',
+    luxury:'lux', baroque:'lux', hollywood:'lux', artdeco:'lux', victorian:'lux', classic:'lux', neoclassic:'lux'
+  };
+  function roomSvg(c,kind){
+    var wallA=c[1], wallB=shade(c[1],.72), floor=shade(c[0],.55), floor2=shade(c[0],.42);
+    var sofa=c[0], sofaBack=shade(c[0],.8), cush=c[2], rug=c[2], art=c[2], curt=shade(c[2],.85);
+    var win;
+    if(kind==='arch') win='<path d="M36 212 v-82 a42 52 0 0 1 84 0 v82 z" fill="#f5e6c8" stroke="'+shade(c[0],.5)+'" stroke-width="6"/><path d="M78 212 v-118 M52 160 h52" stroke="'+shade(c[0],.5)+'" stroke-width="4" fill="none"/>';
+    else if(kind==='gothic') win='<path d="M36 212 v-88 q42 -58 84 0 v88 z" fill="#efe2c4" stroke="'+shade(c[0],.5)+'" stroke-width="6"/><path d="M78 212 v-128" stroke="'+shade(c[0],.5)+'" stroke-width="4"/>';
+    else if(kind==='grid') win='<rect x="34" y="104" width="90" height="108" fill="#e8e4d6" stroke="'+shade(c[0],.45)+'" stroke-width="6"/><path d="M64 104 v108 M94 104 v108 M34 140 h90 M34 176 h90" stroke="'+shade(c[0],.45)+'" stroke-width="4"/>';
+    else win='<rect x="36" y="106" width="86" height="106" rx="4" fill="#f5e8cc" stroke="'+shade(c[0],.5)+'" stroke-width="6"/><path d="M79 106 v106 M36 159 h86" stroke="'+shade(c[0],.5)+'" stroke-width="4"/>';
+    var light;
+    if(kind==='neon'){
+      light='<rect x="150" y="66" width="118" height="7" rx="3.5" fill="'+c[2]+'"/><rect x="150" y="60" width="118" height="19" rx="9" fill="'+c[2]+'" opacity=".28"/><rect x="30" y="230" width="240" height="4" fill="'+c[2]+'" opacity=".5"/>';
+    } else if(kind==='lux'){
+      light='<path d="M150 0 v34" stroke="#d4af37" stroke-width="3"/><path d="M118 52 q32 -26 64 0" fill="none" stroke="#d4af37" stroke-width="4"/><circle cx="118" cy="56" r="7" fill="#f3d98b"/><circle cx="150" cy="44" r="7" fill="#f3d98b"/><circle cx="182" cy="56" r="7" fill="#f3d98b"/><circle cx="150" cy="66" r="30" fill="#f3d98b" opacity=".16"/>';
+    } else {
+      light='<path d="M150 0 v40" stroke="'+shade(c[0],.5)+'" stroke-width="3"/><path d="M132 40 h36 l-6 16 h-24 z" fill="#d4af37"/><circle cx="150" cy="72" r="26" fill="#f3d98b" opacity=".2"/>';
+    }
+    var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400">'+
+      '<defs><linearGradient id="w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+wallA+'"/><stop offset="1" stop-color="'+wallB+'"/></linearGradient>'+
+      '<linearGradient id="f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+floor+'"/><stop offset="1" stop-color="'+floor2+'"/></linearGradient></defs>'+
+      '<rect width="300" height="286" fill="url(#w)"/>'+
+      '<rect y="278" width="300" height="8" fill="'+shade(c[1],.55)+'"/>'+
+      '<rect y="286" width="300" height="114" fill="url(#f)"/>'+
+      light+ win+
+      '<rect x="28" y="120" width="9" height="96" rx="4" fill="'+curt+'"/><rect x="122" y="120" width="9" height="96" rx="4" fill="'+curt+'"/>'+
+      '<rect x="188" y="108" width="76" height="92" fill="'+shade(art,.92)+'" stroke="#d4af37" stroke-width="5"/>'+
+      '<path d="M196 184 l22 -34 14 18 12 -22 20 38 z" fill="'+shade(c[0],.7)+'"/><circle cx="212" cy="130" r="8" fill="#d4af37" opacity=".85"/>'+
+      '<ellipse cx="150" cy="352" rx="104" ry="26" fill="'+rug+'" opacity=".85"/><ellipse cx="150" cy="352" rx="76" ry="17" fill="none" stroke="'+shade(rug,.7)+'" stroke-width="3"/>'+
+      '<rect x="84" y="238" width="132" height="46" rx="14" fill="'+sofaBack+'"/>'+
+      '<rect x="72" y="272" width="156" height="44" rx="14" fill="'+sofa+'"/>'+
+      '<rect x="94" y="252" width="42" height="34" rx="9" fill="'+cush+'"/><rect x="164" y="252" width="42" height="34" rx="9" fill="'+shade(cush,.8)+'"/>'+
+      '<rect x="84" y="314" width="10" height="14" fill="'+shade(c[0],.4)+'"/><rect x="206" y="314" width="10" height="14" fill="'+shade(c[0],.4)+'"/>'+
+      '<path d="M262 262 q-14 -34 6 -52 q4 26 10 34 q2 -30 16 -38 q6 30 -2 50 z" fill="#57895a"/>'+
+      '<path d="M252 262 h44 l-7 40 h-30 z" fill="'+shade(c[2],.75)+'"/>'+
+      '</svg>';
+    return 'url("data:image/svg+xml,'+encodeURIComponent(svg)+'") center/cover no-repeat';
+  }
+  function roomBg(id,v){
+    var c=(PALS[id]||{})[v]; if(!c) return '';
+    return roomSvg(c, ROOM_KIND[v]||'');
+  }
   /* v-decor-subs: وصف عربي قصير تحت كل اسم — تعرفين الكلاسيكي من العصري من
      أول نظرة، نفس فكرة أنماط الصور بالضبط. */
   var SUBS={
@@ -230,7 +285,7 @@
     var labTxt=(lab?lab.textContent:'').trim();
     var tr=window.omranPicker.trigger(function(){
       var o=cur();
-      return o && { name:optTxt(o), img:selImg(s.id,o.value), bg:palBg(s.id,o.value),
+      return o && { name:optTxt(o), img:selImg(s.id,o.value), bg:roomBg(s.id,o.value),
         sub:palSub(s.id,o.value)||s.options.length+(ien?' options':' خيارًا') };
     }, function(){
       return {
@@ -238,7 +293,7 @@
         count: s.options.length+(ien?' options — pick yours':' خيارًا — اختر ما يناسبك'),
         items: Array.prototype.map.call(s.options,function(o){
           return { v:o.value, title:optTxt(o)||(ien?'None':'بدون'), active:o.value===s.value,
-            img:selImg(s.id,o.value), bg:palBg(s.id,o.value), sub:palSub(s.id,o.value) };
+            img:selImg(s.id,o.value), bg:roomBg(s.id,o.value), sub:palSub(s.id,o.value) };
         }),
         onPick: function(v){ s.value=v; s.dispatchEvent(new Event('change',{bubbles:true})); tr.refresh(); }
       };
