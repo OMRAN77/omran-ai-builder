@@ -581,7 +581,7 @@ async function __safeJson(res){
       const img = document.createElement('img');
       img.src = 'assets/fashion/looks/' + opt.value + '.webp';
       img.alt = opt.textContent;
-      img.loading = 'lazy';
+      img.loading = 'eager'; // الست بطاقات ≈36KB كلها — الكسل يؤخّر ظهورها بلا مكسب
       img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;';
       img.onerror = function(){ img.remove(); };
       const label = document.createElement('div');

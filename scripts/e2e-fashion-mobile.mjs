@@ -27,6 +27,10 @@ await page.evaluate(() => {
   if (m) m.style.display = 'flex';
 });
 
+// البطاقات تحت الطية داخل المودال — مرّر إليها وأمهل الصور لحظة.
+await page.evaluate(() => { const g = document.querySelector('#fashionStyleCards'); if (g) g.scrollIntoView(); });
+await page.waitForTimeout(2500);
+
 const s = await page.evaluate(() => {
   const grid = document.querySelector('#fashionStyleCards');
   const cards = grid ? grid.querySelectorAll('[data-style-card]') : [];
