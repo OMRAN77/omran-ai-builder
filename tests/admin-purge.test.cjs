@@ -72,5 +72,16 @@ const mkRes = () => { const r = { code: 0, body: null }; r.status = (c) => { r.c
   check(soft.code === 200 && soft.body.deleted === true && store.has('db/users/normal.json'),
     'السجلّ السليم يُحذف حذفًا ناعمًا (deleted:true) لا تطهيرًا');
 
+  // v-purge-checks: زر واحد يمسح حسابات الفحص zzcheck ونقاطها — ولا يمسّ غيرها.
+  await auth.putUser('zzcheckab12cd34', { username: 'zzcheckab12cd34', hash: 'h', salt: 's' });
+  await auth.putUser('zzcheckff00ff00', { username: 'zzcheckff00ff00', hash: 'h', salt: 's' });
+  store.set('points:zzcheckab12cd34', '3');
+  const purge = await call({ token: ownerToken, action: 'purge-checks' });
+  check(purge.code === 200 && purge.body.ok === true && purge.body.removed === 2, 'purge-checks تحذف حسابي الفحص معًا');
+  check(!store.has('db/users/zzcheckab12cd34.json') && !store.has('points:zzcheckab12cd34'), 'السجل والنقاط زالا نهائيًّا');
+  check(store.has('db/users/normal.json') && store.has('db/users/ghost2.json'), 'الحسابات الأخرى لم تُمسّ');
+  const purgeNotOwner = await call({ token: auth.makeToken('someone'), action: 'purge-checks' });
+  check(purgeNotOwner.code === 403, 'purge-checks للمالك وحده');
+
   console.log('admin purge tests passed');
 })().catch((e) => { console.error(e); process.exit(1); });

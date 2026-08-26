@@ -394,7 +394,15 @@ const $ = s => document.querySelector(s);
     if(!wrap) return;
     const users = window.__adminUsersCache || [];
     if(!users.length){ wrap.innerHTML = '<div style="opacity:.6;padding:8px">لا يوجد مستخدمون لإدارتهم.</div>'; return; }
-    wrap.innerHTML = users.map(u => {
+    // v-purge-checks: زر واحد يمسح كل حسابات الفحص الآلية بدل حذفها واحدًا واحدًا.
+    const checksCount = users.filter(u => /^zzcheck/i.test(String(u.username || ''))).length;
+    const purgeBar = checksCount
+      ? '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid rgba(212,175,55,.3)">'
+        + '<span style="flex:1;font-size:12px;opacity:.75">حسابات فحص آلية (zzcheck…): ' + checksCount + '</span>'
+        + '<button type="button" onclick="adminPurgeChecks()" style="background:none;border:1px solid #d4af37;color:#d4af37;border-radius:6px;padding:4px 10px;cursor:pointer">🧹 حذفها كلها</button>'
+        + '</div>'
+      : '';
+    wrap.innerHTML = purgeBar + users.map(u => {
       const safeName = String(u.username).replace(/'/g,"\\'");
       return '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333);flex-wrap:wrap">'
         + '<span style="flex:1;min-width:110px;font-weight:500">' + (u.banned ? '🚫 ' : '') + u.username + '</span>'
@@ -431,6 +439,21 @@ const $ = s => document.querySelector(s);
       const data = await res.json();
       if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
       window.__adminUsersCache = (window.__adminUsersCache||[]).filter(x=>x.username!==username);
+      renderAdminUserTable();
+    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+  };
+  window.adminPurgeChecks = async function(){
+    if(!confirm('🧹 حذف كل حسابات الفحص الآلية (zzcheck…) ونقاطها نهائيًّا؟ لا تطال أي حساب حقيقي.')) return;
+    try{
+      const token = authGet('aiapp_auth_token');
+      const res = await fetch('/api/admin-actions', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ token, action: 'purge-checks' }),
+      });
+      const data = await res.json();
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
+      alert('✅ حُذف ' + data.removed + ' حساب فحص.');
+      window.__adminUsersCache = (window.__adminUsersCache||[]).filter(x => !/^zzcheck/i.test(String(x.username||'')));
       renderAdminUserTable();
     }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
   };
