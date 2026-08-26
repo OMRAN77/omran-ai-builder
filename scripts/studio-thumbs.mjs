@@ -23,24 +23,34 @@ const FEATURES = [
   { f: 'nails', style: 'french', src: 'w1' },
   { f: 'makeup', style: 'glam', src: 'w3' },
   { f: 'beard', style: 'full', src: 'm2' },
-  { f: 'skin', style: 'glow', src: 'w1' },
+  { f: 'skin', style: 'glow', src: 'm4' },
   { f: 'glasses', style: 'aviator', src: 'm1' },
   { f: 'tattoo', style: 'sleeve', src: 'm2' },
-  { f: 'anime', style: 'classic', src: 'm2' },
+  { f: 'anime', style: 'classic', src: 'k1' },
   { f: 'heritage', style: 'kandora', src: 'm3' },
   { f: 'merge', style: '', src: 'm1', srcB: 'w1' },
 ];
-// كل خيارات كل ميزة — المصدر يتنوع (نساء/رجال/أطفال) حسب طبيعة الخيار.
+// v-variety: كل بطاقة شخصها — حتى داخل الميزة الواحدة الأشخاص يتبدلون
+// (نساء ورجال وأطفال حسب طبيعة الخيار)، لا شخص واحد مكرر في الصف.
 const OPTIONS = {
-  hair: { src: 'w2', vals: ['black', 'brown', 'blonde', 'red', 'silver', 'colorful'] },
-  nails: { src: 'w1', vals: ['red', 'nude', 'black', 'french', 'pink', 'gold'] },
-  makeup: { src: 'w3', vals: ['natural', 'glam', 'smokey', 'redlips', 'bridal'] },
-  beard: { src: 'm2', vals: ['full', 'stubble', 'mustache', 'goatee', 'clean'] },
-  skin: { src: 'w1', vals: ['subtle', 'glow', 'circles'] },
-  glasses: { src: 'm1', vals: ['sunglasses', 'round', 'catseye', 'aviator', 'rimless'] },
-  tattoo: { src: 'm2', vals: ['sleeve', 'wrist', 'back', 'tribal', 'custom'] },
-  anime: { src: 'm2', vals: ['classic', 'chibi', 'ghibli', 'cyberpunk', 'manga'], per: { chibi: 'k2', ghibli: 'w2' } },
-  heritage: { src: 'm1', vals: ['kandora', 'bisht', 'abaya', 'embroidered', 'saudi', 'emirati'], per: { bisht: 'm4', abaya: 'w1', embroidered: 'w3', saudi: 'm2', emirati: 'm3' } },
+  hair: { src: 'w2', vals: ['black', 'brown', 'blonde', 'red', 'silver', 'colorful'],
+    per: { black: 'm4', brown: 'w2', blonde: 'w3', red: 'w1', silver: 'm1', colorful: 'm2' } },
+  nails: { src: 'w1', vals: ['red', 'nude', 'black', 'french', 'pink', 'gold'],
+    per: { red: 'w1', nude: 'w2', black: 'w3', french: 'w2', pink: 'w1', gold: 'w3' } },
+  makeup: { src: 'w3', vals: ['natural', 'glam', 'smokey', 'redlips', 'bridal'],
+    per: { natural: 'w2', glam: 'w3', smokey: 'w1', redlips: 'w2', bridal: 'w3' } },
+  beard: { src: 'm2', vals: ['full', 'stubble', 'mustache', 'goatee', 'clean'],
+    per: { full: 'm1', stubble: 'm2', mustache: 'm3', goatee: 'm4', clean: 'm2' } },
+  skin: { src: 'w1', vals: ['subtle', 'glow', 'circles'],
+    per: { subtle: 'w1', glow: 'w2', circles: 'w3' } },
+  glasses: { src: 'm1', vals: ['sunglasses', 'round', 'catseye', 'aviator', 'rimless'],
+    per: { sunglasses: 'm4', round: 'w2', catseye: 'w1', aviator: 'm2', rimless: 'm1' } },
+  tattoo: { src: 'm2', vals: ['sleeve', 'wrist', 'back', 'tribal', 'custom'],
+    per: { sleeve: 'm2', wrist: 'w2', back: 'm1', tribal: 'm4', custom: 'm2' } },
+  anime: { src: 'm2', vals: ['classic', 'chibi', 'ghibli', 'cyberpunk', 'manga'],
+    per: { classic: 'm2', chibi: 'k2', ghibli: 'w2', cyberpunk: 'm4', manga: 'w1' } },
+  heritage: { src: 'm1', vals: ['kandora', 'bisht', 'abaya', 'embroidered', 'saudi', 'emirati'],
+    per: { kandora: 'm1', bisht: 'm4', abaya: 'w1', embroidered: 'w3', saudi: 'm2', emirati: 'm3' } },
 };
 const JOBS = [];
 if (MODE === 'features' || MODE === 'all') {
