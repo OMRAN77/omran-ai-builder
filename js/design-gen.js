@@ -6,12 +6,34 @@
   /* v603: النصوص من نطاق t() — ١٤ لغةً (كان ثنائيًا: إنجليزيٌ وإلّا عربيّ). القيم المُرسلة تبقى إنجليزيّة. */
   function T(k){ try{ return (typeof t==='function') ? t(k) : k; }catch(e){ return k; } }
   function lbl(icon,k){ var d=document.createElement('div'); d.className='optLbl f417'; d.textContent=icon+' '+T(k); return d; }
+  /* v-fashion-photo-all: كل بطاقات الاستوديو صور حقيقية — الصورة تغطي
+     البطاقة والاسم شريط سفلي، وعند غيابها يبقى شكل الإيموجي كما هو. */
+  function photoize(card,url,tall){
+    card.style.position='relative'; card.style.overflow='hidden'; card.style.borderRadius='12px';
+    if(tall) card.style.aspectRatio='3/4';
+    var im=document.createElement('img');
+    im.src=url; im.loading='eager'; im.alt='';
+    im.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;';
+    im.onerror=function(){ im.remove(); };
+    im.onload=function(){
+      var oi=card.querySelector('.oi'); if(oi) oi.style.display='none';
+      var ol=card.querySelector('.ol')||card.querySelector('.ct');
+      if(ol) ol.style.cssText='position:absolute;left:0;right:0;bottom:0;z-index:1;padding:14px 4px 5px;font-size:11px;font-weight:700;text-align:center;color:#eef0f6;background:linear-gradient(transparent,rgba(0,0,0,.85));';
+      var ck=card.querySelector('.ck');
+      if(ck) ck.style.cssText='position:absolute;top:6px;inset-inline-end:6px;z-index:2;width:20px;height:20px;border-radius:50%;border:1.5px solid rgba(212,175,55,.6);display:flex;align-items:center;justify-content:center;font-size:11px;background:rgba(0,0,0,.45);';
+    };
+    card.insertBefore(im,card.firstChild);
+  }
+  var LOOKS='assets/fashion/looks/';
+  // صور مخصّصة للفئات (بورتريه) — لا تعيد صور بطاقات الأنماط.
+  var GENDER_FACE={women:'category/women',men:'category/men',kids:'category/kids'};
   function genderGrid(){
     var g=document.createElement('div'); g.className='optGrid f417'; g.style.gridTemplateColumns='repeat(3,1fr)';
     GEN.forEach(function(r){
       var c=document.createElement('div'); c.className='optCard'+(st.gender===r[0]?' sel':'');
       c.innerHTML='<span class="oi"></span><span class="ol"></span>';
       c.querySelector('.oi').textContent=r[1]; c.querySelector('.ol').textContent=T(r[2]);
+      photoize(c,LOOKS+GENDER_FACE[r[0]]+'.webp',true);
       c.onclick=function(){ st.gender=r[0]; Array.prototype.forEach.call(g.children,function(x,i){ x.classList.toggle('sel',GEN[i][0]===st.gender); }); try{ window.dispatchEvent(new CustomEvent('fashion-gender-change',{detail:{gender:st.gender}})); }catch(e){ /* guard-ok: بثّ تجميلي — فشله لا يمسّ اختيار الفئة نفسه */ } };
       g.appendChild(c);
     });
@@ -36,6 +58,8 @@
       d.innerHTML='<span class="ck"></span><span class="ct"></span>';
       d.querySelector('.ck').textContent='\u2713';
       d.querySelector('.ct').textContent=r[1]+' '+T(r[2]);
+      photoize(d,LOOKS+'extras/'+r[0].toLowerCase()+'.webp',false);
+      d.style.aspectRatio='1'; d.style.minWidth='0';
       d.onclick=function(){ var i=st.extras.indexOf(r[0]); if(i>=0) st.extras.splice(i,1); else st.extras.push(r[0]); d.classList.toggle('sel',i<0); };
       w.appendChild(d);
     });
@@ -52,6 +76,8 @@
       var old=host.querySelector('.optGrid'); if(old) old.remove();
       sel.style.display='none';
       var g=U.buildGrid(sel); g.classList.add('f417'); host.appendChild(g);
+      var kind=(sel===occ)?'occasion':'season';
+      Array.prototype.forEach.call(g.querySelectorAll('.optCard'),function(c){ photoize(c,LOOKS+kind+'/'+c.getAttribute('data-v')+'.webp',true); });
       if(!sel.getAttribute('data-gridhook')){ sel.setAttribute('data-gridhook','1'); sel.addEventListener('change',function(){ var gg=host.querySelector('.optGrid'); if(gg) U.mark(gg,sel); }); }
     });
     var row=occ.parentElement.parentElement;

@@ -52,6 +52,14 @@ assert.ok(studios.includes('GENDER_STYLES') && studios.includes("men: ['evening'
 assert.ok(studios.includes('v-fashion-compare-cards') && studios.includes('data-compare-card') && studios.includes("scroll-snap-type:x mandatory"), 'صفّ مقارنة بطاقات يُسحب');
 assert.ok(studios.includes("fashion-gender-change"), 'تبديل الفئة يعيد رسم البطاقات');
 assert.ok(designGen.includes("fashion-gender-change"), 'المبدّل يبثّ حدث الفئة');
+// ⑦ كل الأقسام بطاقات صور: photoize على الفئة والمناسبة والموسم والإضافات،
+//    ووجوه الفئات من category/ لا من صور الأنماط، والسقوط للإيموجي عند الغياب.
+assert.ok(designGen.includes('v-fashion-photo-all') && designGen.includes('photoize(c,LOOKS+kind+') , 'المناسبة والموسم صور');
+assert.ok(designGen.includes("category/women") && !designGen.includes("women/evening'"), 'وجوه الفئات مخصّصة لا معادة');
+assert.ok(designGen.includes("extras/'+r[0].toLowerCase()"), 'الإضافات صور قريبة');
+assert.ok(designGen.includes('im.onerror=function(){ im.remove(); }'), 'غياب الصورة يرجع شكل الإيموجي لا بطاقة مكسورة');
+const thumbsGen = fs.readFileSync(path.join(__dirname, '../scripts/fashion-thumbs.mjs'), 'utf8');
+assert.ok(thumbsGen.includes('CARD_SETS') && thumbsGen.includes("occasion:") && thumbsGen.includes("'graduation'"), 'المولّد يعرف مجموعات كل الأقسام');
 assert.ok(studios.includes(".fashionCompareCheck:checked"), 'قارئ المقارنة القديم كما هو');
 console.log('  ✓ الأسلاك: خادم + عميل + مبدّل المحرك');
 
