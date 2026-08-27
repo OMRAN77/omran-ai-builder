@@ -423,7 +423,7 @@ const WIZARD_RE = /كتالوج|كتالوق|منيو|قائمة طعام|قائ
 // نموذج أدناه في ٩ أغسطس ٢٠٢٦. cohere وperplexity غائبان عمدًا: لا يدعمان
 // الأدوات على هذا الطريق، فيبقيان على مسارهما القديم بلا كذب.
 const OR_MODELS = {
-  claude: 'anthropic/claude-opus-5',
+  claude: 'anthropic/claude-sonnet-5', // v-chat-fast: نفس فئة الخط المباشر
   openai: 'openai/gpt-5.6-terra',
   gemini: 'google/gemini-3.5-flash',
   deepseek: 'deepseek/deepseek-v3.2',
@@ -839,9 +839,12 @@ module.exports = async (req, res) => {
   const apiKey = viaOR ? process.env.OPENROUTER_API_KEY : process.env.ANTHROPIC_API_KEY;
   if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY' }); return; }
   const CHAT_URL = viaOR ? 'https://openrouter.ai/api/v1/messages' : 'https://api.anthropic.com/v1/messages';
-  // مباشرةً نفس فئة النموذج التي كانت عبر الوسيط (anthropic/claude-opus-5)
-  // كي لا تنخفض الجودة — وCHAT_CLAUDE_MODEL يبدّلها من البيئة بلا نشر.
-  const CHAT_MODEL = viaOR ? OR_MODELS[prov] : (process.env.CHAT_CLAUDE_MODEL || 'claude-opus-5');
+  // v-chat-fast: شكوى «المحادثة ٣٠ ثانية»: بعد التوازي وسقف البحث بقي أثقل
+  // عامل — النموذج نفسه. Opus أدق قليلًا لكنه أبطأ أضعافًا في أول حرف وفي
+  // التدفق، وSonnet 5 من نفس الجيل ويكفي المحادثة اليومية بفارق سرعة كبير.
+  // Opus يبقى حصريًّا للرد الاحترافي 👑 المدفوع (مساره في claude.js)،
+  // وCHAT_CLAUDE_MODEL يرجّع Opus للمحادثة كلها من البيئة بلا نشر.
+  const CHAT_MODEL = viaOR ? OR_MODELS[prov] : (process.env.CHAT_CLAUDE_MODEL || 'claude-sonnet-5');
 
   // v-chat-speed: قراءة الذاكرة كانت تنتظر فحص الحصة ثم تنتظر هي — رحلتا
   // شبكة متتاليتان قبل أول كلمة. verifyToken فوريّ (توقيع محلي)، فنطلق

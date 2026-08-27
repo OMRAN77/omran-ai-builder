@@ -189,7 +189,7 @@ console.log('  ✓ v-maha-captions: الترجمة الحية للمكالمة �
 const chatSrv = fs.readFileSync(path.join(__dirname, '../api/_lib/chat.js'), 'utf8');
 assert.ok(chatSrv.includes('v-chat-direct'), 'تعليل الوصلة المباشرة موثق');
 assert.ok(chatSrv.includes("prov === 'claude'\n    ? (!process.env.ANTHROPIC_API_KEY && !!process.env.OPENROUTER_API_KEY)"), 'كلود مباشر ما دام مفتاحه موجودًا');
-assert.ok(chatSrv.includes("process.env.CHAT_CLAUDE_MODEL || 'claude-opus-5'"), 'نفس فئة النموذج القوية مباشرة + قابلة للتبديل من البيئة');
+assert.ok(chatSrv.includes("process.env.CHAT_CLAUDE_MODEL || 'claude-sonnet-5'"), 'v-chat-fast: سونيت 5 السريع للمحادثة + قابل للتبديل من البيئة');
 console.log('  ✓ v-chat-direct: المحادثة على الخط المباشر');
 
 // ⑱ v-chat-vision: الصور المرفقة تمر بمسار الأدوات القوي نفسه لا لمسار قديم أضعف.
