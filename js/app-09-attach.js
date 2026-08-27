@@ -3482,7 +3482,17 @@ DESIGN RULES (non-negotiable):
         cur.messages.push(__searchIndicator);
         renderMessages(true);
       }
-      __searchData = await smartMaybeSearch(text, cur.messages.filter(m => m !== __searchIndicator));
+      /* v-search-race: البحث الاستباقي كان يُنتظر كاملًا قبل نداء النموذج —
+         بمهلة 12-25 ثانية (تعليق الكود نفسه: «أطول فجوة صامتة — حتى 45ث»)،
+         وهو سبب «المحادثة 30 ثانية» الرئيسي. الآن سباق: 3.5 ثوانٍ فرصته
+         (تكفي Tavily غالبًا فتبقى بطاقات المصادر)، وبعدها ينطلق النموذج —
+         وأداته web_search تغطي ما فاته. البحث العميق الصريح وطلبات شريط
+         الصور تحتاج نتائجها فعلًا فتحتفظ بمهلتها الأوسع. */
+      const __raceCap = (__deepRe384.test(text) || (typeof __wantsImageStrip === 'function' && __wantsImageStrip(text))) ? 26000 : 3500;
+      __searchData = await Promise.race([
+        smartMaybeSearch(text, cur.messages.filter(m => m !== __searchIndicator)),
+        new Promise(res => setTimeout(() => res(null), __raceCap)),
+      ]);
       if(__searchIndicator){
         cur.messages = cur.messages.filter(m => m !== __searchIndicator);
         renderMessages(true);
@@ -3639,8 +3649,13 @@ DESIGN RULES (non-negotiable):
       // doesn't all pop in at once - a light typewriter feel rather than a
       // raw network-speed dump.
       const revealStates = new Map();
-      const REVEAL_CHARS_PER_TICK = 2;
-      const REVEAL_TICK_MS = 35;
+      /* v-reveal-fast: كانت 2 حرف/35مث = ~57 حرفًا بالثانية — رد 1500 حرف
+         يقضي 26 ثانية «يتكتب» على الشاشة بعدما خلّص النموذج فعلًا. هذا جزء
+         كبير من إحساس «المحادثة 30 ثانية». الآن الوتيرة تكيفية: تسارع مع
+         تراكم النص المنتظر فلا تتأخر عن البث أكثر من نحو نصف ثانية، وتبقى
+         ناعمة في البدايات القصيرة. */
+      const REVEAL_TICK_MS = 16;
+      const __revealStep = (st) => Math.max(4, Math.ceil((st.target.length - st.shown) / 25));
       const ensureRevealTimer = (msg) => {
         let st = revealStates.get(msg._uid);
         if(!st){
@@ -3650,7 +3665,7 @@ DESIGN RULES (non-negotiable):
         if(!st.timer){
           st.timer = setInterval(() => {
             if(st.shown < st.target.length){
-              st.shown = Math.min(st.target.length, st.shown + REVEAL_CHARS_PER_TICK);
+              st.shown = Math.min(st.target.length, st.shown + __revealStep(st));
               // v310: msg.content يحمل النص الكامل دائمًا — الحركة عرض فقط.
               // قبل: كان يُحفظ المقطع الجزئي، ولو سُكِّر التطبيق قبل نهاية
               // الحركة ينحفظ الرد مقطوعًا للأبد (سبب الردود الناقصة بالآيفون).
