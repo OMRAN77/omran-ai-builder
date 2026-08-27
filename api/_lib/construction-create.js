@@ -12,6 +12,41 @@ const { kvSetIfAbsent, kvDel } = require('./kv');
 const AUTH_SECRET = require('./_secrets').AUTH_SECRET;
 
 const TEXT_TIMEOUT_MS = 60000;
+
+// v-construction-rescue: خط الإنقاذ السابع — رفض/سقوط Gemini يهبط تلقائيًا إلى
+// OpenAI (صور gpt-image-1 ونص gpt-4o-mini) مثل بقية الاستوديوهات الستة، فأي
+// مفتاح مشحون واحد يبقي المقاولات حية.
+async function openaiRescueImage(promptText, landscape) {
+  const key = (process.env.OPENAI_API_KEY || '').trim();
+  if (!key) return null;
+  try {
+    const r = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'gpt-image-1', prompt: String(promptText).slice(0, 3900), size: landscape ? '1536x1024' : '1024x1024', quality: 'medium' }),
+    });
+    const d = await r.json();
+    if (!r.ok) { console.warn('[construction] openai img HTTP ' + r.status + ' ' + String((d.error && d.error.message) || '').slice(0, 120)); return null; }
+    const b64 = d && d.data && d.data[0] && d.data[0].b64_json;
+    return b64 || null;
+  } catch (e) { console.warn('[construction] openai img ' + (e && e.message)); return null; }
+}
+
+async function openaiRescueText(promptText) {
+  const key = (process.env.OPENAI_API_KEY || '').trim();
+  if (!key) return '';
+  try {
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'gpt-4o-mini', max_tokens: 3000, messages: [{ role: 'user', content: String(promptText).slice(0, 12000) }] }),
+      signal: AbortSignal.timeout(TEXT_TIMEOUT_MS),
+    });
+    const d = await r.json();
+    if (!r.ok) return '';
+    return String(((d.choices || [])[0] || {}).message && d.choices[0].message.content || '').trim();
+  } catch (e) { return ''; }
+}
 const JOB_TTL_MS = 15 * 60 * 1000;
 const GENERATION_ERROR = 'construction_generation_failed';
 const OUTPUT_PARTS = ['plan', 'photo', 'interior'];
@@ -400,15 +435,16 @@ module.exports = async (req, res) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(textReqBody),
         signal: AbortSignal.timeout(TEXT_TIMEOUT_MS),
-      }) : Promise.resolve(null),
+      }).catch(() => null) /* v-construction-rescue: سقوط النص لا يُسقط الصور — الإنقاذ يعوضه */ : Promise.resolve(null),
       generatePhoto ? queueImage(photoReqBody) : Promise.resolve(null),
     ];
 
+    // v-construction-rescue: الوصف يُبنى دائمًا (يلزم خط الإنقاذ)، والطلب فقط عند الاختيار
+    const interiorPrompt =
+      'A photorealistic interior design render of a ' + styleDesc + ' main living room / majlis inside ' +
+      floorsText + buildingDesc + notesText + annexEnText +
+      ' Warm lighting, tasteful furniture, high-end interior design magazine quality, no people, no text overlays.';
     if (generateInterior) {
-      const interiorPrompt =
-        'A photorealistic interior design render of a ' + styleDesc + ' main living room / majlis inside ' +
-        floorsText + buildingDesc + notesText + annexEnText +
-        ' Warm lighting, tasteful furniture, high-end interior design magazine quality, no people, no text overlays.';
       const interiorReqBody = { contents: [{ parts: [{ text: interiorPrompt }] }], generationConfig: { imageConfig: { imageSize } } };
       fetchTasks.push(queueImage(interiorReqBody));
     }
@@ -416,19 +452,17 @@ module.exports = async (req, res) => {
     const results = await Promise.all(fetchTasks);
     const [planResult, textUpstream, photoResult, interiorResult] = results;
     const imageResults = [planResult, photoResult, interiorResult].filter(Boolean);
+    // v-construction-rescue: خطأ الشبكة أو رفض Gemini لم يعودا نهاية الطريق —
+    // نكمل باستخراج ما نجح، وخط الإنقاذ يملأ الناقص، والفشل يُعلن في النهاية فقط.
     const imageError = imageResults.find((result) => result.error);
-    if (imageError) throw imageError.error;
     const rejectedImage = imageResults.find((result) => result.response && !result.response.ok);
-    if (rejectedImage) {
-      await releaseClaim();
-      res.status(rejectedImage.response.status).json({ error: GENERATION_ERROR });
-      return;
-    }
 
-    const planData = planResult ? planResult.data : null;
-    const textData = textUpstream ? await textUpstream.json() : {};
-    const photoData = photoResult ? photoResult.data : null;
-    const interiorData = interiorResult ? interiorResult.data : null;
+    const okData = (result) => (result && !result.error && result.response && result.response.ok) ? result.data : null;
+    const planData = okData(planResult);
+    let textData = {};
+    try { textData = textUpstream ? await textUpstream.json() : {}; } catch (e) { textData = {}; }
+    const photoData = okData(photoResult);
+    const interiorData = okData(interiorResult);
 
     let planImageBase64 = null;
     let planMimeType = null;
@@ -463,9 +497,23 @@ module.exports = async (req, res) => {
       }
     }
 
+    // v-construction-rescue: كل صورة ناقصة تُنقذ عبر gpt-image-1 قبل إعلان الفشل
+    if (generatePlan && !planImageBase64) {
+      const b = await openaiRescueImage(planPrompt, true);
+      if (b) { planImageBase64 = b; planMimeType = 'image/png'; }
+    }
+    if (generatePhoto && !photoImageBase64) {
+      const b = await openaiRescueImage(photoPrompt, true);
+      if (b) { photoImageBase64 = b; photoMimeType = 'image/png'; }
+    }
+    if (generateInterior && !interiorImageBase64) {
+      const b = await openaiRescueImage(interiorPrompt, true);
+      if (b) { interiorImageBase64 = b; interiorMimeType = 'image/png'; }
+    }
     if ((generatePlan && !planImageBase64) || (generatePhoto && !photoImageBase64) || (generateInterior && !interiorImageBase64)) {
       await releaseClaim();
-      res.status(500).json({ error: GENERATION_ERROR });
+      if (imageError) throw imageError.error;
+      res.status(rejectedImage ? rejectedImage.response.status : 500).json({ error: GENERATION_ERROR });
       return;
     }
 
@@ -475,6 +523,16 @@ module.exports = async (req, res) => {
       planText = tParts.map((p) => p.text || '').join('\n').trim();
     } catch (e) {
       planText = '';
+    }
+    // v-construction-rescue: الخطة النصية أيضًا لها بديل عند صمت Gemini —
+    // وإن فشل البديل نفسه فالفشل كامل وصامت كما كان (لا نصف نتيجة ولا تسريب).
+    if (generateText && !planText) {
+      planText = await openaiRescueText(textPrompt);
+      if (!planText) {
+        await releaseClaim();
+        res.status(500).json({ error: GENERATION_ERROR });
+        return;
+      }
     }
     let boq = null;
     try {
