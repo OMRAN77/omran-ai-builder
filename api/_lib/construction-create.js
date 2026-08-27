@@ -524,9 +524,15 @@ module.exports = async (req, res) => {
     } catch (e) {
       planText = '';
     }
-    // v-construction-rescue: الخطة النصية أيضًا لها بديل عند صمت Gemini
+    // v-construction-rescue: الخطة النصية أيضًا لها بديل عند صمت Gemini —
+    // وإن فشل البديل نفسه فالفشل كامل وصامت كما كان (لا نصف نتيجة ولا تسريب).
     if (generateText && !planText) {
       planText = await openaiRescueText(textPrompt);
+      if (!planText) {
+        await releaseClaim();
+        res.status(500).json({ error: GENERATION_ERROR });
+        return;
+      }
     }
     let boq = null;
     try {
