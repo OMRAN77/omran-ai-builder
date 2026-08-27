@@ -312,4 +312,15 @@ console.log('  ✓ v-sweep: الفحص الشامل — أسلاك حية وتر
 }
 console.log('  ✓ v-or-models: قوائم OpenRouter حية ومهاجرة');
 
+// ㉗ v-chat-visible-speed: قاتلا البطء المرئيان — بحث استباقي يحجز النموذج
+// 12-25 ثانية، وكاتب وهمي 57 حرفًا/ثانية يضيف 26 ثانية لرد عادي.
+{
+  const at = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
+  assert.ok(at.includes('v-search-race') && at.includes('Promise.race'), 'البحث الاستباقي في سباق لا انتظار مفتوح');
+  assert.ok(at.includes('__raceCap') && at.includes('3500'), 'سقف السباق 3.5 ثانية للمحادثة العادية');
+  assert.ok(at.includes('v-reveal-fast') && at.includes('__revealStep'), 'الكشف التدريجي تكيفي يلحق البث');
+  assert.ok(!at.includes('REVEAL_CHARS_PER_TICK = 2'), 'وتيرة 57 حرفًا/ثانية القديمة لا تعود');
+}
+console.log('  \u2713 v-chat-visible-speed: لا حجز قبل النموذج ولا كاتب بطيء بعده');
+
 console.log('fashion locks tests passed');
