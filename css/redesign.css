@@ -334,3 +334,21 @@ html.mobile-ui dialog[open]{
 #stocksPage > *{ max-width:940px; margin-left:auto; margin-right:auto; }
 #stocksPage .stkHead{ max-width:940px; }
 #stocksCloseBtn{ font-size:15px; padding:6px 12px !important; border:1px solid var(--border, rgba(128,128,128,.35)); border-radius:10px; }
+
+/* v-ios-slider — شكوى عمران ٢٧ أغسطس (فيديو الأنمي): السحّاب لا يتحرك على
+   الآيفون والشاشة «تطفو». العلاج الثلاثي:
+   ① السحّابات pan-x: سحبها الأفقي مسموح ولا يبدأ تمرير الصفحة من فوقها.
+   ② نافذة أنماط الصور: التمرير محتواه داخلها لا يتسلسل لجسم الصفحة المثبت.
+   ③ خلفية النافذة صمّاء للمس — لا اهتزاز من لمس المعتم. */
+@media (max-width:860px){
+  input[type=range]{ touch-action:pan-x; }
+}
+html.mobile-ui input[type=range]{ touch-action:pan-x; }
+html.mobile-ui #portraitStyleModal{ touch-action:none; }
+html.mobile-ui #portraitStyleModal > div{
+  overscroll-behavior:contain; touch-action:pan-y; -webkit-overflow-scrolling:touch;
+}
+@media (max-width:860px){
+  #portraitStyleModal{ touch-action:none; }
+  #portraitStyleModal > div{ overscroll-behavior:contain; touch-action:pan-y; -webkit-overflow-scrolling:touch; }
+}

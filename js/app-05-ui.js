@@ -2165,3 +2165,4 @@ async function postWithConfirm(url, payload){
 /* v-intro-videos */
 /* v-chat-direct */
 /* v-boot-watchdog */
+/* v-ios-slider */
