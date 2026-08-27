@@ -259,4 +259,18 @@ for (const f of ['points.js', '_usage.js', '_fashionUsage.js', '_designUsage.js'
 }
 console.log('  ✓ v-owner-core: المالك مفتوح في كل شي مهما كانت البيئة');
 
+// ㉔ v-runway-host: مفاتيح Runway العامة تخدمها api.dev.runwayml.com حصرًا —
+// النداء على api.runwayml.com أرجع «Incorrect hostname for API key» في الإنتاج.
+{
+  delete require.cache[require.resolve('../api/_lib/runway-keys.js')];
+  const rk = require('../api/_lib/runway-keys.js');
+  assert.strictEqual(rk.RUNWAY_API_BASE, 'https://api.dev.runwayml.com', 'الأساس الافتراضي هو مضيف الـAPI العامة');
+  for (const f of ['runway-keys.js', 'video-create.js', 'video-status.js', 'video-balance.js', 'video-upscale-create.js']) {
+    const src = fs.readFileSync(path.join(__dirname, '../api/_lib/', f), 'utf8');
+    assert.ok(!/['"]https:\/\/api\.runwayml\.com/.test(src), f + ' بلا مضيف الإنتاج القديم');
+    assert.ok(src.includes('RUNWAY_API_BASE'), f + ' يستعمل الأساس الموحد');
+  }
+}
+console.log('  ✓ v-runway-host: فيديو Runway على المضيف الصحيح');
+
 console.log('fashion locks tests passed');

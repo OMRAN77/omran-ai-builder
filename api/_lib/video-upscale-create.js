@@ -7,7 +7,7 @@ const crypto = require('crypto');
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 const RUNWAY_VERSION = '2024-11-06';
-const { pickKey, encodeTaskId } = require('./runway-keys');
+const { pickKey, encodeTaskId, RUNWAY_API_BASE } = require('./runway-keys');
 
 function verifyToken(token) {
   try {
@@ -63,7 +63,7 @@ module.exports = async (req, res) => {
     const allowedRes = ['720p', '1k', '2k', '4k'];
     const finalRes = allowedRes.includes(resolution) ? resolution : '2k';
 
-    const upstream = await fetch('https://api.runwayml.com/v1/video_upscale', {
+    const upstream = await fetch(RUNWAY_API_BASE + '/v1/video_upscale', {
       method: 'POST',
       headers: {
         'Authorization': 'Bearer ' + apiKey,

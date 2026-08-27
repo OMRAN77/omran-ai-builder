@@ -1,7 +1,7 @@
 // Returns the Runway credit balance (max across configured keys) so the
 // frontend can verify there is enough credit BEFORE starting any generation.
 // This prevents charging the owner for partial films that fail midway.
-const { getKeys } = require('./runway-keys.js');
+const { getKeys, RUNWAY_API_BASE } = require('./runway-keys.js');
 
 module.exports = async (req, res) => {
   try {
@@ -10,7 +10,7 @@ module.exports = async (req, res) => {
     let best = 0;
     for (const key of keys) {
       try {
-        const r = await fetch('https://api.runwayml.com/v1/organization', {
+        const r = await fetch(RUNWAY_API_BASE + '/v1/organization', {
           headers: {
             Authorization: 'Bearer ' + key,
             'X-Runway-Version': '2024-11-06',
