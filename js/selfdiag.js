@@ -128,7 +128,24 @@
         setTimeout(function(){
           try{
             // شرطان معًا: الحزمة (آخر شريحة فيها) والأسلاك — فشل أيهما = إقلاع ناقص
-            if(window.__omranBootOk === true && window.__omranBundleOk === true) return;
+            var bootDone = window.__omranBootOk === true && window.__omranBundleOk === true;
+            // المرحلة الثانية (لقطة عمران ٢٧ أغسطس): الإقلاع «مكتمل» لكن منطقة
+            // المحادثة سوداء فاضية رغم وجود رسائل محفوظة — نحاول إعادة الرسم
+            // أولًا (أرخص من الريلود)، وإن بقيت فارغة نعاملها كإقلاع معطوب.
+            var blackHome = false;
+            if(bootDone){
+              try{
+                var me = document.getElementById('messages');
+                var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+                var want = cur && cur.messages && cur.messages.length;
+                if(me && want && !me.childNodes.length){
+                  try{ if(typeof renderAll === 'function') renderAll(); }catch(e){ /* guard-ok: الرسم قد يفشل بنفس العلة */ }
+                  blackHome = !me.childNodes.length;
+                  report('v-black-home: msgs=' + want + ' — إعادة الرسم ' + (blackHome ? 'فشلت، ريلود' : 'نجحت'), 'selfdiag.js', 0, 0, '');
+                }
+              }catch(e){ /* guard-ok: فحص المحتوى ترف — لا يعطّل */ }
+            }
+            if(bootDone && !blackHome) return;
             sessionStorage.setItem('omranBootRetry', '1');
             location.replace(location.pathname + location.search);
           }catch(e){ /* guard-ok: فشل الرقيب لا يزيد العطل */ }
