@@ -109,7 +109,7 @@ html.vg-open body { overflow: hidden; }
 }
 
 @media (min-width: 560px) {
-  #vgModes { grid-template-columns: repeat(4, 1fr); }
+  #vgModes { grid-template-columns: repeat(3, 1fr); } /* عين عمران: ٦ أوضاع = صفّان أنيقان */
 }
 
 .vgModeBtn {

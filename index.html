@@ -108,7 +108,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
 .msg-text a{ color:#2dd4bf !important; }
 html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 </style>
-  <link rel="stylesheet" href="/css/visual-guide.css?v=701">
+  <link rel="stylesheet" href="/css/visual-guide.css?v=702">
 </head>
 <body>
 
@@ -388,7 +388,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 <script src="/js/selfdiag.js?v=631"></script>
 <script src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script src="/js/app.bundle.js?v=106e5d1a"></script>
+    <script src="/js/app.bundle.js?v=4baae4b7"></script>
     <script src="/js/modes.js?v=b23329c6"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
@@ -521,6 +521,12 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
     </button>
     <button type="button" class="vgModeBtn" data-vgmode="steps" role="tab" aria-selected="false">
       <span data-i18n="vgModeSteps">خطوة بخطوة</span>
+    </button>
+    <button type="button" class="vgModeBtn" data-vgmode="translate" role="tab" aria-selected="false">
+      <span data-i18n="vgModeTranslate">ترجمة فورية</span>
+    </button>
+    <button type="button" class="vgModeBtn" data-vgmode="ask" role="tab" aria-selected="false">
+      <span data-i18n="vgModeAsk">اسأل عمّا تراه</span>
     </button>
     <button type="button" class="vgModeBtn" data-vgmode="tour" role="tab" aria-selected="false">
       <span data-i18n="vgModeTour">جولة التطبيق</span>

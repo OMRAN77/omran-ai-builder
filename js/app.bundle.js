@@ -2812,6 +2812,8 @@ const I18N = {
     agentSectionTitle: "🤖 الوكيل",
     agentSectionDesc: "وضع الوكيل: يخطّط وينفّذ بنفسه — يبني ويعدّل ويختبر الكود قبل تسليمه، يبحث في الإنترنت، ويكمل عمله حتى لو أُغلقت الصفحة. شغّله من الزر ثم اكتب طلبك في المحادثة.",
     agentOnNote: "الوكيل شغّال الآن — ارجع للمحادثة واكتب طلبك.",
+    vgModeTranslate: "ترجمة فورية",
+    vgModeAsk: "اسأل عمّا تراه",
     premiumNeedLogin: "سجّل الدخول لتشغيل الوكيل",
     premiumNoPoints: "نقاطك خلصت — اشترِ نقاط لمواصلة الوكيل",
     chatToPdfLabel: "تحويل إلى PDF",
@@ -3269,6 +3271,8 @@ const I18N = {
     agentSectionTitle: "🤖 Agent",
     agentSectionDesc: "Agent mode: it plans and executes on its own — builds, edits and tests the code before delivery, searches the web, and keeps working even if the page closes. Turn it on, then type your request in the chat.",
     agentOnNote: "Agent is ON — go back to the chat and type your request.",
+    vgModeTranslate: "Live translate",
+    vgModeAsk: "Ask about it",
     premiumNeedLogin: "Sign in to use Agent",
     premiumNoPoints: "Out of points — buy points to keep using Agent",
     chatToPdfLabel: "Convert to PDF",
@@ -25538,11 +25542,13 @@ if(document.readyState === 'loading'){
    شريحة حزمة مستقلة: js/app-24-visual-guide.js
    تُدمج تلقائيًا عبر `npm run bundle` (تطابق النمط app-NN-*.js).
 
-   أربعة أوضاع:
-     describe — وصف مستمر للمحيط (التقاط ذكي حسب تغيّر المشهد)
-     read     — قراءة النصوص واللافتات حرفيًا
-     steps    — إرشاد خطوة بخطوة مع ذاكرة الخطوات السابقة
-     tour     — جولة داخل التطبيق (بلا كاميرا)
+   ستة أوضاع («عين عمران»):
+     describe  — وصف مستمر للمحيط (التقاط ذكي حسب تغيّر المشهد)
+     read      — قراءة النصوص واللافتات حرفيًا
+     steps     — إرشاد خطوة بخطوة مع ذاكرة الخطوات السابقة
+     translate — ترجمة أي نص تراه الكاميرا للغة المستخدم (لمسة = التقاط)
+     ask       — اسأل عمّا تراه: خبير فوري لأي شيء أمام الكاميرا
+     tour      — جولة داخل التطبيق (بلا كاميرا)
 
    الالتزامات المعمارية:
    · لا تحرير لأي ملف قائم — كل شيء هنا وفي css/visual-guide.css
@@ -25783,6 +25789,8 @@ if(document.readyState === 'loading'){
   function userFor(mode, question) {
     if (question) return question;
     if (mode === 'read') return 'اقرأ لي كل ما هو مكتوب هنا.';
+    if (mode === 'translate') return 'ترجم لي كل النص الظاهر هنا.';
+    if (mode === 'ask') return 'ما هذا الذي أمامي؟ أجب باختصار مفيد.';
     if (mode === 'steps') {
       S.stepNo++;
       var tail = S.history.length
@@ -25875,6 +25883,8 @@ if(document.readyState === 'loading'){
     describe: ['وصف المحيط', 'Describe'],
     read: ['قراءة نص', 'Read text'],
     steps: ['خطوة بخطوة', 'Step by step'],
+    translate: ['ترجمة فورية', 'Live translate'],
+    ask: ['اسأل عمّا تراه', 'Ask about it'],
     tour: ['جولة التطبيق', 'App tour']
   };
 
@@ -25922,6 +25932,18 @@ if(document.readyState === 'loading'){
       announce(t(
         'وضع القراءة. وجّه الكاميرا إلى النص ثم اضغط على الشاشة.',
         'Read mode. Point at the text, then tap the screen.'
+      ), true);
+    } else if (mode === 'translate') {
+      stopLoop();
+      announce(t(
+        'وضع الترجمة. وجّه الكاميرا إلى أي نص — لافتة أو قائمة أو عبوة — ثم اضغط على الشاشة وسأترجمه لك.',
+        'Translate mode. Point at any text — a sign, menu or package — then tap the screen and I will translate it.'
+      ), true);
+    } else if (mode === 'ask') {
+      stopLoop();
+      announce(t(
+        'وضع السؤال. وجّه الكاميرا إلى أي شيء ثم اضغط على الشاشة، أو اضغط زر الميكروفون واسأل بصوتك.',
+        'Ask mode. Point at anything then tap the screen, or press the microphone button and ask by voice.'
       ), true);
     } else if (mode === 'steps') {
       startLoop();
