@@ -808,14 +808,6 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
-  // كلود عبر OpenRouter: البروتوكول مطابق حرفيًّا (تحقّق حيّ ٩ أغسطس ٢٠٢٦) — نفس
-  // أحداث البثّ ونفس ترويسة x-api-key، فلا يتغيّر شيء تحت هذه السطور.
-  const viaOR = !!process.env.OPENROUTER_API_KEY;
-  const apiKey = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) { res.status(500).json({ error: 'Server is missing OPENROUTER_API_KEY' }); return; }
-  const CHAT_URL = viaOR ? 'https://openrouter.ai/api/v1/messages' : 'https://api.anthropic.com/v1/messages';
-  // النموذج يُحسم بعد قراءة الجسم — المزوّد يأتي منه.
-
   let body = req.body;
   if (!body || typeof body === 'string') body = safeParse(body, {}, 'chat:body');
   const { messages, token, guestId } = body;
@@ -823,7 +815,21 @@ module.exports = async (req, res) => {
 
   const reqProv = String((body && body.provider) || '').toLowerCase();
   const prov = Object.prototype.hasOwnProperty.call(OR_MODELS, reqProv) ? reqProv : 'claude';
-  const CHAT_MODEL = viaOR ? OR_MODELS[prov] : 'claude-sonnet-5';
+  // v-chat-direct — شكوى المالك ٢٧ أغسطس: «مافيها دقة وبطيئة جدًا». السبب:
+  // كل المحادثات كانت تمر عبر OpenRouter حتى لكلود — قفزة وسيطة إضافية،
+  // ورصيدُ وسيطٍ إن نفد أو تعثّر سقطت الرسالة لسلسلة الاحتياط المجانية
+  // الضعيفة. كلود الآن يتصل مباشرة بمفتاح Anthropic (أسرع، أرخص، بلا وسيط)
+  // — وOpenRouter يبقى للمزوّدات الأخرى ولكلود احتياطًا عند غياب مفتاحه.
+  // البروتوكولان مطابقان حرفيًّا (نفس البثّ ونفس ترويسة x-api-key).
+  const viaOR = prov === 'claude'
+    ? (!process.env.ANTHROPIC_API_KEY && !!process.env.OPENROUTER_API_KEY)
+    : !!process.env.OPENROUTER_API_KEY;
+  const apiKey = viaOR ? process.env.OPENROUTER_API_KEY : process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY' }); return; }
+  const CHAT_URL = viaOR ? 'https://openrouter.ai/api/v1/messages' : 'https://api.anthropic.com/v1/messages';
+  // مباشرةً نفس فئة النموذج التي كانت عبر الوسيط (anthropic/claude-opus-5)
+  // كي لا تنخفض الجودة — وCHAT_CLAUDE_MODEL يبدّلها من البيئة بلا نشر.
+  const CHAT_MODEL = viaOR ? OR_MODELS[prov] : (process.env.CHAT_CLAUDE_MODEL || 'claude-opus-5');
 
   // v-chat-speed: قراءة الذاكرة كانت تنتظر فحص الحصة ثم تنتظر هي — رحلتا
   // شبكة متتاليتان قبل أول كلمة. verifyToken فوريّ (توقيع محلي)، فنطلق
