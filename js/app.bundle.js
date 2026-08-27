@@ -117,6 +117,10 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
   }, {passive:true});
   document.addEventListener('touchmove', e=>{
     if(e.touches.length!==1) return;
+    // v-ios-slider (شكوى عمران ٢٧ أغسطس): هذا المنع كان يقتل سحب كل
+    // سحّابات المقارنة قبل/بعد (input[type=range]) على iOS — سحبها حركة
+    // أفقية «مشروعة» لعنصر غير قابل للتمرير فكانت تُمنع ويهتز المشهد.
+    if(e.target && e.target.closest && e.target.closest('input[type=range]')) return;
     const dx=Math.abs(e.touches[0].clientX-sx), dy=Math.abs(e.touches[0].clientY-sy);
     if(dx<=dy) return; // حركة عمودية — طبيعي
     // اسمح بالسحب الأفقي فقط داخل عناصر قابلة للتمرير الأفقي
@@ -7872,6 +7876,7 @@ async function postWithConfirm(url, payload){
 /* v-intro-videos */
 /* v-chat-direct */
 /* v-boot-watchdog */
+/* v-ios-slider */
 window.postWithConfirm = postWithConfirm;
 /* يضبط شكل المحادثة كما يشترطه Gemini — يُستدعى قبل كل طلب. */
 function sanitizeGeminiContents(list){
