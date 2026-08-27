@@ -149,4 +149,15 @@ assert.ok(fp15.includes('function omranTour3d') && fp15.includes('omranTour3d.to
 assert.ok(fp15.includes('t3dBtn') && fp15.includes('rotateX(90deg)') && fp15.includes('فصل الطوابق'), 'زر الجولة والجدران المرفوعة وفصل الطوابق');
 console.log('  ✓ المقاولات: إنقاذ + جولة 3D');
 
+// ⑭ v-stocks-paper: المحفظة التعليمية — تداول تجريبي بأسعار حية وأموال افتراضية.
+const stocksSrv = fs.readFileSync(path.join(__dirname, '../api/_lib/stocks.js'), 'utf8');
+assert.ok(stocksSrv.includes('v-stocks-paper') && stocksSrv.includes("mode === 'pf-trade'"), 'أوضاع المحفظة في الخادم');
+assert.ok(stocksSrv.includes('db/stocks/pf/') && stocksSrv.includes('db/stocks/pf-board.json'), 'محفظة لكل مستخدم + لوحة ترتيب');
+assert.ok(stocksSrv.includes('pos.avgCost = (pos.avgCost * pos.qty + cost) / (pos.qty + qty)'), 'متوسط التكلفة يحسب بالكود لا بالنموذج');
+assert.ok(stocksSrv.includes("checkAndConsumeCustom(body.token, body.guestId, clientIp(req), 'stocks-pf', 40)"), 'حد يومي للصفقات');
+const stocksCli = fs.readFileSync(path.join(__dirname, '../js/app-13-stocks-init.js'), 'utf8');
+assert.ok(stocksCli.includes('v-stocks-paper') && stocksCli.includes('stocksPfBtn') && stocksCli.includes('function pfTrade'), 'تبويب المحفظة وتنفيذ الصفقات في الواجهة');
+assert.ok(stocksCli.includes('وضع تعليمي — أموال افتراضية') && stocksCli.includes("mode:'learn', symbol: sym"), 'الطابع التعليمي: شارة + زر علّمني يستدعي المعلم بالأرقام الحية');
+console.log('  ✓ v-stocks-paper: المحفظة التعليمية مقفولة');
+
 console.log('fashion locks tests passed');

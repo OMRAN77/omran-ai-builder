@@ -301,6 +301,93 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // ---------- 💼 v-stocks-paper: المحفظة التعليمية — تداول تجريبي بأموال افتراضية ----------
+    // 100 ألف درهم افتراضي، شراء وبيع بالأسعار الحية، وترتيب بين المستخدمين.
+    // تعليمي بحت: لا أموال حقيقية ولا نصائح — تعلم بالممارسة بلا مخاطرة.
+    if (mode === 'pf-get' || mode === 'pf-trade' || mode === 'pf-reset') {
+      const PF_START_CASH = 100000;
+      const { verifyToken } = require('./auth.js');
+      const user = body.token ? verifyToken(body.token) : null;
+      if (!user) { res.status(401).json({ error: 'auth_required' }); return; }
+      const pfKey = 'db/stocks/pf/' + encodeURIComponent(user) + '.json';
+      const boardKey = 'db/stocks/pf-board.json';
+      const freshPf = () => ({ cash: PF_START_CASH, positions: {}, trades: [], startedAt: Date.now() });
+      const livePrice = async (sym) => {
+        const fq = await fhQuote(sym).catch(() => null);
+        if (fq && fq.price) return fq.price;
+        const j = await td('quote', { symbol: sym }, apiKey);
+        const p = +j.close;
+        if (!p || !isFinite(p)) throw new Error('لا يوجد سعر حي لهذا الرمز');
+        return p;
+      };
+
+      if (mode === 'pf-reset') await kvPutJSON(pfKey, freshPf());
+
+      let pf = (await kvGetJSON(pfKey)) || freshPf();
+      if (!pf.positions || typeof pf.positions !== 'object') pf.positions = {};
+
+      if (mode === 'pf-trade') {
+        const gate = await checkAndConsumeCustom(body.token, body.guestId, clientIp(req), 'stocks-pf', 40);
+        if (!gate.allowed) { res.status(402).json({ error: 'وصلت لحد الصفقات اليومي (40) — عد غدًا 🌙' }); return; }
+        const sym = String(body.tradeSymbol || '').trim().toUpperCase().slice(0, 12).replace(/[^A-Z0-9.\-]/g, '');
+        const qty = Math.floor(Number(body.qty));
+        const side = body.side === 'sell' ? 'sell' : 'buy';
+        if (!sym || !isFinite(qty) || qty <= 0 || qty > 1000000) { res.status(400).json({ error: 'اكتب رمز السهم وكمية صحيحة' }); return; }
+        const price = await livePrice(sym);
+        const cost = price * qty;
+        if (side === 'buy') {
+          if (cost > pf.cash + 0.01) { res.status(400).json({ error: 'رصيدك الافتراضي لا يكفي: عندك ' + Math.floor(pf.cash).toLocaleString('en-US') + '$ والصفقة تحتاج ' + Math.ceil(cost).toLocaleString('en-US') + '$' }); return; }
+          const pos = pf.positions[sym] || { qty: 0, avgCost: 0 };
+          pos.avgCost = (pos.avgCost * pos.qty + cost) / (pos.qty + qty);
+          pos.qty += qty;
+          pf.positions[sym] = pos;
+          pf.cash -= cost;
+        } else {
+          const pos = pf.positions[sym];
+          if (!pos || pos.qty < qty) { res.status(400).json({ error: 'ما تملك هذه الكمية — عندك ' + ((pos && pos.qty) || 0) + ' سهم من ' + sym }); return; }
+          pos.qty -= qty;
+          pf.cash += cost;
+          if (pos.qty <= 0) delete pf.positions[sym];
+        }
+        pf.trades = (pf.trades || []).slice(-199);
+        pf.trades.push({ t: Date.now(), sym, side, qty, price: +price.toFixed(2) });
+        await kvPutJSON(pfKey, pf);
+      }
+
+      // التقييم الحي: سعر كل مركز الآن (سقوط السعر → متوسط الشراء بلا انهيار)
+      const syms = Object.keys(pf.positions);
+      let marketValue = 0;
+      const positions = [];
+      for (const s of syms) {
+        const p = pf.positions[s];
+        let cur = p.avgCost;
+        try { cur = await livePrice(s); } catch (e) { /* سعر قديم خير من انهيار المحفظة */ }
+        const val = cur * p.qty;
+        marketValue += val;
+        positions.push({ symbol: s, qty: p.qty, avgCost: +p.avgCost.toFixed(2), price: +cur.toFixed(2), value: +val.toFixed(2), pl: +((cur - p.avgCost) * p.qty).toFixed(2), plPct: p.avgCost ? +((cur / p.avgCost - 1) * 100).toFixed(2) : 0 });
+      }
+      const equity = +(pf.cash + marketValue).toFixed(2);
+      const view = {
+        cash: +pf.cash.toFixed(2), equity,
+        pl: +(equity - PF_START_CASH).toFixed(2),
+        plPct: +((equity / PF_START_CASH - 1) * 100).toFixed(2),
+        positions, trades: (pf.trades || []).slice(-12).reverse(), startedAt: pf.startedAt,
+      };
+      // 🏆 الترتيب: أرقام فقط (لا مراكز ولا صفقات) — أعلى نسبة ربح أولًا
+      let bd = { top: [], rank: null, total: 0 };
+      try {
+        let b = (await kvGetJSON(boardKey)) || {};
+        b[user] = { plPct: view.plPct, equity: view.equity, t: Date.now() };
+        const ks = Object.keys(b);
+        if (ks.length > 400) ks.sort((a, c) => (b[a].t || 0) - (b[c].t || 0)).slice(0, ks.length - 400).forEach((k) => delete b[k]);
+        await kvPutJSON(boardKey, b);
+        const rows = Object.keys(b).map((k) => ({ user: k, plPct: b[k].plPct })).sort((x, y) => y.plPct - x.plPct);
+        bd = { top: rows.slice(0, 10).map((r, i) => ({ rank: i + 1, user: r.user, plPct: r.plPct })), rank: rows.findIndex((r) => r.user === user) + 1 || null, total: rows.length };
+      } catch (e) { logError('stocks/pf-board', e); }
+      res.status(200).json({ ok: true, portfolio: view, board: bd, startCash: PF_START_CASH });
+      return;
+    }
+
     if (!symbol) { res.status(400).json({ error: 'symbol required' }); return; }
 
     if (mode === 'analyze') {
