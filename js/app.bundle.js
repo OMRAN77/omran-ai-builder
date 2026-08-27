@@ -7877,6 +7877,7 @@ async function postWithConfirm(url, payload){
 /* v-chat-direct */
 /* v-boot-watchdog */
 /* v-ios-slider */
+/* v-boot-watchdog3 */
 window.postWithConfirm = postWithConfirm;
 /* يضبط شكل المحادثة كما يشترطه Gemini — يُستدعى قبل كل طلب. */
 function sanitizeGeminiContents(list){
