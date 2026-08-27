@@ -74,13 +74,17 @@ if (MODE === 'studio' || MODE === 'all') {
 }
 
 console.log('المطلوب توليده: ' + JOBS.length + ' صورة (الناقص فقط)');
+// ميزانية وقت داخلية: نتوقف بأمان قبل مهلة الووركفلو فيُدفع ما أُنجز بدل ضياعه.
+const BUDGET_MS = (Number(process.env.THUMBS_BUDGET_MIN) || 300) * 60000;
 const t0 = Date.now();
 const el = () => String(Date.now() - t0).padStart(7, ' ') + 'ms';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 mkdirSync('thumbs-raw', { recursive: true });
 let failed = 0;
+let stopped = 0;
 for (let i = 0; i < JOBS.length; i++) {
+  if (Date.now() - t0 > BUDGET_MS) { stopped = JOBS.length - i; console.log('⏱️ الميزانية انتهت — تبقّى ' + stopped + ' للتشغيلة القادمة'); break; }
   const j = JOBS[i];
   const url = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(j.prompt) +
     '?width=768&height=1024&model=flux&nologo=true&seed=' + j.seed;
@@ -105,7 +109,7 @@ for (let i = 0; i < JOBS.length; i++) {
     }
   }
   if (!ok) failed++;
-  await sleep(5000); // احترام حدّ الخدمة المجانية
+  await sleep(2500); // احترام حدّ الخدمة المجانية
 }
 if (failed) { console.log('✗ ' + failed + ' من ' + JOBS.length + ' فشلت'); process.exitCode = failed === JOBS.length && JOBS.length ? 2 : 0; }
 console.log('✓ ' + (JOBS.length - failed) + '/' + JOBS.length + ' صورة جاهزة');

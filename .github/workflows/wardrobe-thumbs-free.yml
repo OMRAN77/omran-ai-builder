@@ -16,13 +16,15 @@ permissions:
 jobs:
   thumbs:
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 330
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
       - name: Generate missing previews (free engine)
+        env:
+          THUMBS_BUDGET_MIN: 300
         run: node scripts/wardrobe-thumbs-free.mjs "${{ github.event.inputs.mode }}"
       - name: Resize to webp cards
         run: npm i --no-save sharp && node scripts/fashion-thumbs-resize.mjs
