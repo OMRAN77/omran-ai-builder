@@ -1080,9 +1080,10 @@
 </div>
 
 
-<div id="stocksModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:560px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
-    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px;">
+<!-- v-stocks-fullpage: سوق الأسهم صفحة كاملة (أمر عمران) — المحتوى يتوسّط بعرض مريح وX ثابتة أعلى -->
+<div id="stocksModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:stretch; justify-content:center; padding:0;">
+  <div id="stocksPage" style="width:100%; height:100%; max-width:none; max-height:none; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:0; padding:calc(10px + env(safe-area-inset-top,0px)) 16px calc(24px + env(safe-area-inset-bottom,0px)); box-shadow:none;">
+    <div class="stkHead" style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px; position:sticky; top:calc(-10px - env(safe-area-inset-top,0px)); z-index:6; background:var(--panel,#1a1a1a); padding:8px 0;">
       <h3 style="margin:0; font-size:15px; line-height:1.3;" data-i18n="stocksTitle">📈 سوق الأسهم العالمي</h3>
       <div style="display:flex; gap:6px;">
         <button type="button" class="btn iconBtn" id="stocksGlobalBtn" title="الأسواق العالمية" data-i18n-title="worldMarketsTitle" style="padding:4px 8px;">🌍</button>

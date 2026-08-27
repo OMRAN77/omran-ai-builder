@@ -2159,3 +2159,4 @@ async function postWithConfirm(url, payload){
 /* v-diag-nav */
 /* v-ios-nav-restore */
 /* v-edu-lab */
+/* v-stocks-fullpage */
