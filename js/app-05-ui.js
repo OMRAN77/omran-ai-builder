@@ -2163,3 +2163,4 @@ async function postWithConfirm(url, payload){
 /* v-err-banner-quiet */
 /* v-about-lux */
 /* v-intro-videos */
+/* v-chat-direct */
