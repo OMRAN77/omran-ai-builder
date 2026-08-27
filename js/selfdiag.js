@@ -116,9 +116,43 @@
       }, true);
     }catch(e){ /* guard-ok: لوحة التشخيص ترف — لا تُسقط الصفحة */ }
   }
+  // v-boot-watchdog3: التحديث اليومي كان يترك أول فتحة على الآيفون نصف نسخة
+  // قديمة عالقة — وأمر إعادة التحميل من عامل الخدمة (client.navigate) لا يدعمه
+  // سفاري iOS أصلًا. القناة البديلة: العامل الجديد يرسل رسالة، وهذا الملف
+  // (يُحمَّل مبكرًا حتى في صفحة معطوبة) يعيد التحميل فورًا عند استلامها.
+  try{
+    if(navigator.serviceWorker){
+      var __swReloadedAt = 0;
+      navigator.serviceWorker.addEventListener('message', function(ev){
+        try{
+          if(!ev.data || ev.data.type !== 'omran-reload') return;
+          if(Date.now() - __swReloadedAt < 3000) return;
+          __swReloadedAt = Date.now();
+          sessionStorage.setItem('omranHealed', '1');
+          location.reload();
+        }catch(e){ /* guard-ok: قناة الإنقاذ لا تكسر شيئًا */ }
+      });
+    }
+  }catch(e){ /* guard-ok: بلا عامل خدمة لا حاجة للقناة */ }
+  // توست «تم التحديث تلقائيًا» بعد أي إنقاذ — يشوف عمران أن الرقيب اشتغل.
+  try{
+    if(sessionStorage.getItem('omranHealed') === '1'){
+      sessionStorage.removeItem('omranHealed');
+      var __showHeal = function(){
+        try{
+          var h = document.createElement('div');
+          h.style.cssText = 'position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:2147483646;background:rgba(10,20,10,.92);border:1.5px solid #4ade80;color:#d9ffe3;font:13px/1.6 -apple-system,Tahoma,sans-serif;padding:8px 16px;border-radius:999px;direction:rtl;box-shadow:0 8px 26px rgba(0,0,0,.5);';
+          h.textContent = '✓ تم تحديث التطبيق تلقائيًا';
+          (document.body || document.documentElement).appendChild(h);
+          setTimeout(function(){ try{ h.remove(); }catch(e){ /* guard-ok */ } }, 2800);
+        }catch(e){ /* guard-ok: التوست زينة */ }
+      };
+      if(document.body) __showHeal(); else window.addEventListener('DOMContentLoaded', __showHeal);
+    }
+  }catch(e){ /* guard-ok */ }
   // v-boot-watchdog: شكوى عمران ٢٧ أغسطس — آيفون أول ما يفتح «يعلق» ويصلحه
   // الضغط على اسم عمران (وهو إعادة تحميل كاملة). الرقيب يسوي نفس العلاج
-  // تلقائيًا: إن لم يكتمل الإقلاع (__omranBootOk من ui-wiring) خلال ٨ ثوانٍ
+  // تلقائيًا: إن لم يكتمل الإقلاع (__omranBootOk من ui-wiring) خلال ٥ ثوانٍ
   // يعيد التحميل مرة واحدة فقط في الجلسة — حارس sessionStorage يمنع الدوران.
   try{
     if(/iPad|iPhone|iPod/.test(navigator.userAgent)){
@@ -129,27 +163,32 @@
           try{
             // شرطان معًا: الحزمة (آخر شريحة فيها) والأسلاك — فشل أيهما = إقلاع ناقص
             var bootDone = window.__omranBootOk === true && window.__omranBundleOk === true;
-            // المرحلة الثانية (لقطة عمران ٢٧ أغسطس): الإقلاع «مكتمل» لكن منطقة
-            // المحادثة سوداء فاضية رغم وجود رسائل محفوظة — نحاول إعادة الرسم
-            // أولًا (أرخص من الريلود)، وإن بقيت فارغة نعاملها كإقلاع معطوب.
+            // المرحلة الثانية (لقطة عمران ٢٧ أغسطس): الإقلاع «مكتمل» لكن الشاشة
+            // «بيت أسود» — لا رسائل مرسومة ولا شاشة ترحيب ظاهرة. نحاول إعادة
+            // الرسم أولًا (أرخص من الريلود)، وإن بقيت سوداء نعاملها كإقلاع معطوب.
             var blackHome = false;
             if(bootDone){
               try{
                 var me = document.getElementById('messages');
+                var hero = document.getElementById('omranHero');
+                var heroVis = !!(hero && hero.offsetParent !== null);
                 var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
-                var want = cur && cur.messages && cur.messages.length;
-                if(me && want && !me.childNodes.length){
+                var want = (cur && cur.messages && cur.messages.length) || 0;
+                if(me && !me.childNodes.length && !heroVis){
                   try{ if(typeof renderAll === 'function') renderAll(); }catch(e){ /* guard-ok: الرسم قد يفشل بنفس العلة */ }
-                  blackHome = !me.childNodes.length;
-                  report('v-black-home: msgs=' + want + ' — إعادة الرسم ' + (blackHome ? 'فشلت، ريلود' : 'نجحت'), 'selfdiag.js', 0, 0, '');
+                  heroVis = !!(hero && hero.offsetParent !== null);
+                  blackHome = !me.childNodes.length && !heroVis;
+                  report('v-boot-heal: msgs=' + want + ' hero=' + heroVis + ' — إعادة الرسم ' + (blackHome ? 'فشلت، ريلود' : 'نجحت'), 'selfdiag.js', 0, 0, '');
                 }
               }catch(e){ /* guard-ok: فحص المحتوى ترف — لا يعطّل */ }
             }
             if(bootDone && !blackHome) return;
+            if(!bootDone) report('v-boot-heal: إقلاع ناقص bundle=' + (window.__omranBundleOk === true) + ' wiring=' + (window.__omranBootOk === true) + ' — ريلود', 'selfdiag.js', 0, 0, '');
             sessionStorage.setItem('omranBootRetry', '1');
+            sessionStorage.setItem('omranHealed', '1');
             location.replace(location.pathname + location.search);
           }catch(e){ /* guard-ok: فشل الرقيب لا يزيد العطل */ }
-        }, 8000);
+        }, 5000);
       }
     }
   }catch(e){ /* guard-ok: الرقيب ترف أمان */ }
