@@ -414,7 +414,7 @@ $('#btnSettings').onclick = () => {
   $('#groqApiKey').value = localStorage.getItem('aiapp_groq_apikey') || '';
   $('#groqModel').value = localStorage.getItem('aiapp_groq_model') || 'llama-3.3-70b-versatile';
   $('#claudeApiKey').value = localStorage.getItem('aiapp_claude_apikey') || '';
-  $('#claudeModel').value = localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-4-20250514';
+  $('#claudeModel').value = localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-5';
   $('#openrouterApiKey').value = localStorage.getItem('aiapp_openrouter_apikey') || '';
   $('#openrouterModel').value = localStorage.getItem('aiapp_openrouter_model') || 'openai/gpt-4o-mini';
   $('#perplexityApiKey').value = localStorage.getItem('aiapp_perplexity_apikey') || '';
@@ -647,7 +647,7 @@ $('#btnSaveSettings').onclick = () => {
   localStorage.setItem('aiapp_groq_apikey', $('#groqApiKey').value.trim());
   localStorage.setItem('aiapp_groq_model', $('#groqModel').value.trim() || 'llama-3.3-70b-versatile');
   localStorage.setItem('aiapp_claude_apikey', $('#claudeApiKey').value.trim());
-  localStorage.setItem('aiapp_claude_model', $('#claudeModel').value.trim() || 'claude-sonnet-4-20250514');
+  localStorage.setItem('aiapp_claude_model', $('#claudeModel').value.trim() || 'claude-sonnet-5');
   localStorage.setItem('aiapp_openrouter_apikey', $('#openrouterApiKey').value.trim());
   (() => {
     const sel = $('#openrouterModelSelect');
@@ -1780,7 +1780,7 @@ async function claudeProxyRequest(model, systemMsg, rest, stream){
 
 async function callClaude(messages, onDelta){
   const apiKey = localStorage.getItem('aiapp_claude_apikey');
-  let model = window.__claudeModelOverride || localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-4-20250514';
+  let model = window.__claudeModelOverride || localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-5';
   const systemMsgsC = messages.filter(m => m.role === 'system');
   const systemMsg = systemMsgsC.length ? { content: systemMsgsC.map(m => m.content).join('\n\n') } : null;
   const rest = messages.filter(m => m.role !== 'system').map(m => {

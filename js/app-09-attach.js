@@ -4202,7 +4202,11 @@ DESIGN RULES (non-negotiable):
       // 🛠️ v468: البوّابة تعلو على اليد — في دور الاستئذان لا تُمرَّر الأدوات
       // إطلاقًا، وإلّا غلبت تعليمة «ابنِ ولا تستأذن» داخل chat.js. بعد الموافقة
       // يسقط __gateNoBuild فتعمل اليد كاملة (صور + كود + تجربة).
-      const __toolsWillRun = (window.__chatToolsOn !== false && !__routeFix && (!__gateNoBuild || !!__gateApprovedText) && !imageAttachments.length
+      // v-chat-vision: الصور مع كلود تمر بمسار الأدوات المباشر القوي نفسه —
+      // كانت تُقصى منه كلها فتسقط لمسار قديم أضعف (سبب تحليل الصور السطحي).
+      // بقية المزوّدات تبقى مُقصاة: كتل الرؤية بصيغة Anthropic لا تناسبها.
+      const __toolsWillRun = (window.__chatToolsOn !== false && !__routeFix && (!__gateNoBuild || !!__gateApprovedText)
+        && (!imageAttachments.length || __effProv === 'claude')
         && TOOL_PROVIDERS.indexOf(__effProv) !== -1
         && typeof window.callChatWithTools === 'function');
       if(__gateApprovedText && __toolsWillRun){
