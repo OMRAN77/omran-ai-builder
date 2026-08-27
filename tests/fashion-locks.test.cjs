@@ -207,4 +207,15 @@ assert.ok(chatSrv19.includes('+ IMAGE_TOPICS_NOTE + PHYSICAL_DESIGN_NOTE + DEALS
 assert.ok(chatSrv19.includes('ممنوع منعًا باتًا جدار المواصفات الطويل'), 'جدار المواصفات ممنوع إلا بطلب صريح');
 console.log('  ✓ v-physical-design: التصميم يُرى قبل أن يُقرأ');
 
+// ⑳ v-maha-image-rescue: مولد صور المحادثة بخط إنقاذ تاسع + لا خطف لطلبات صورة التصميم.
+const mahaImgSrv = fs.readFileSync(path.join(__dirname, '../api/_lib/maha-image.js'), 'utf8');
+assert.ok(mahaImgSrv.includes('v-maha-image-rescue') && mahaImgSrv.includes('openaiRescueImage'), 'إنقاذ gpt-image-1 موجود');
+assert.ok(mahaImgSrv.includes("engine: 'openai' }); return; }"), 'الإنقاذ يرد صورة بنفس العقد');
+const attachCli20 = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
+assert.ok(attachCli20.includes('__designCtxRe') && attachCli20.includes('!__designCtxRe.test(text)'), 'طلب صورة التصميم لا يُخطف للبحث');
+const agentTools20 = fs.readFileSync(path.join(__dirname, '../js/app-17-agent-tools.js'), 'utf8');
+assert.ok(agentTools20.includes('j.retryable') && agentTools20.includes('__att === 2'), 'أداة الرسم تعيد المحاولة عند الزحام');
+assert.ok(fs.readFileSync(path.join(__dirname, '../api/_lib/chat.js'), 'utf8').includes('ممنوع منعًا باتًا البحث عن صور حقيقية لتصميمٍ غير موجود'), 'قاعدة متابعة الصورة للنموذج');
+console.log('  ✓ v-maha-image-rescue: صور المحادثة لا تموت بالزحام ولا تُخطف للبحث');
+
 console.log('fashion locks tests passed');
