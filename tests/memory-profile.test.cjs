@@ -124,12 +124,13 @@ async function chatRequest(chatHandler, userText, clientMemory, captured) {
   assert.match(requestBody.system, /مراجعة الميزانية/);
   assert.doesNotMatch(requestBody.system, /الحالة تصميم، والخطوة التالية اعتماد المخطط/);
 
-  // التحية الصافية تُحسم محليًا بلا ذاكرة ولا طلب للمزوّد.
+  // v-social-alive: التحية تمر للنموذج الحقيقي ببصمة الشخصية (الرد المخزّن
+  // «هلا وغلا» حُذف بطلب المالك) — لكنها تبقى معزولة عن الذاكرة والمواضيع.
   const upstreamBeforeGreeting = captured.length;
   requestBody = await chatRequest(chatHandler, 'هلا', profileA, captured);
-  assert.equal(captured.length, upstreamBeforeGreeting);
-  assert.match(requestBody.localEvents, /هلا وغلا/);
-  assert.doesNotMatch(requestBody.localEvents, /مشروع النخلة/);
+  assert.equal(captured.length, upstreamBeforeGreeting + 1);
+  assert.match(requestBody.system, /ميثاق أسلوب عمران/);
+  assert.doesNotMatch(requestBody.system, /مشروع النخلة/);
 
   // الحذف يمسح أيضًا طابور التحديث كي لا تعود الذاكرة المحذوفة لاحقًا.
   const key = 'db/memory/sync-user.json';

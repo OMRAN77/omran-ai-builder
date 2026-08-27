@@ -26,11 +26,7 @@ const greetingFns = vm.runInNewContext(`(() => {
   ${sliceBetween(maha, 'function isPureGreeting', 'async function smartMaybeSearch')}
   return { isPureGreeting, isCasualCheckIn };
 })()`);
-const deterministicSocial = vm.runInNewContext(`(() => {
-  ${sliceBetween(maha, 'function isPureGreeting', 'async function smartMaybeSearch')}
-  ${sliceBetween(attach, 'function deterministicSocialReply', 'async function sendPrompt')}
-  return deterministicSocialReply;
-})()`);
+// v-social-alive: الرد الاجتماعي المخزّن حُذف — التحية تمر للنموذج ببصمته.
 
 for (const text of ['هلا', 'أهلًا', 'السلام عليكم', 'صباح الخير', 'hello']) {
   check(greetingFns.isPureGreeting(text), `تُعرف التحية اللفظية: ${text}`);
@@ -41,20 +37,7 @@ for (const text of ['كيف الحال', 'كيف حالك؟', 'هلا كيف ا�
 for (const text of ['كيف الحال', 'كيف حالك؟', 'هلا كيف الحال', 'how are you?']) {
   check(greetingFns.isCasualCheckIn(text), `تُعرف المجاملة لتجاوز البحث فقط: ${text}`);
 }
-for (const [text, expected] of [
-  ['هلا', 'هلا وغلا'],
-  ['السلام عليكم', 'وعليكم السلام'],
-  ['صباح الخير', 'صباح النور'],
-  ['مساء الخير', 'مساء النور'],
-  ['كيف الحال', 'بخير، كيف أنت؟'],
-  ['hello', 'Hello!'],
-  ['how are you?', "I'm good, how are you?"],
-]) {
-  assert.equal(deterministicSocial(text), expected);
-  check(true, `الرد الاجتماعي ثابت وكامل: ${text} ← ${expected}`);
-}
-assert.equal(deterministicSocial('أريد فنادق في دبي'), null);
-check(true, 'الطلبات الفعلية لا تدخل مسار الرد الاجتماعي المحلي');
+check(!attach.includes('هلا وغلا') && !chatServer.includes("'هلا وغلا! كيف أقدر أساعدك اليوم؟'"), 'v-social-alive: لا ردود تحية مخزنة في العميل أو الخادم');
 
 const styleRule = vm.runInNewContext(`(() => {
   ${sliceBetween(checkout, 'const CONVERSATION_QUALITY_RULE', '// قاعدة الاكتمال')}
@@ -70,7 +53,7 @@ check(styleRule.includes('بلا تقليد لعباراته أو مزاجه'), 
 check(styleRule.includes('السؤال البسيط جواب قصير من ١–٣ جمل بلا عناوين أو تعداد'), 'السؤال البسيط له حد سلوكي قابل للقياس');
 check(attach.includes("APP_IDENTITY_NOTE + CONVERSATION_QUALITY_RULE") && attach.includes("'أنت مساعد ذكي في تطبيق Omran AI من فريق عمران AI.' + CONVERSATION_QUALITY_RULE"), 'القواعد المركزية مستخدمة في البناء والمحادثة العادية');
 check(!checkout.includes('then ONE concrete next-step suggestion or question') && !checkout.includes('then 2-3 concrete suggestions'), 'أزيل فرض الاقتراح والسؤال من كل رد');
-check(chatServer.includes('اكشف نبرة المستخدم وطابقها فورًا') && chatServer.includes('لا تبدأ من الصفر في كل ردّ'), 'المحادثة العادية تكشف النبرة وتحافظ على السياق');
+check(chatServer.includes('جارِ المستخدم في مجلسه') && chatServer.includes('لا تبدأ من الصفر في كل رد'), 'المحادثة العادية تكشف النبرة وتحافظ على السياق');
 check(chatServer.includes('إن نقصت معلومة تؤثّر فعليًّا في الدقّة') && chatServer.includes('لا تُلحق سؤالًا عامًا بكل رد'), 'سؤال الخادم مشروط بنقص مؤثر');
 check(!chatServer.includes('بعد المعلومة أعطِ خطوة تنفيذيّة واحدة يقدر عليها اليوم'), 'أزيل التعارض القديم من تعليمات أدوات الخادم');
 check(chatServer.includes('أمّا سؤال المفهوم الثابت البسيط الذي تجيبه بلا أداة') && chatServer.includes('بلا عناوين أو تعداد أو خطوة تالية أو سؤال'), 'قواعد نتائج البحث لا تتسرّب إلى السؤال الثابت البسيط');
@@ -96,10 +79,10 @@ assert.equal(lock(conv, 'groq', false, false, true), 'claude');
 check(conv.aiProvider === 'claude', 'المجاملة اللاحقة تحافظ على مزود الخيط وسياقه');
 
 check(prompts.includes('تحية لفظية فقط وليست سؤالًا'), 'التحية وحدها لها توجيه قصير طبيعي');
-check(prompts.includes('أجب بتحية عربية قصيرة فقط من كلمة إلى ثلاث كلمات'), 'التحية لها توجيه مباشر لا يضيع وسط القواعد العامة');
-check(prompts.includes('ولا تستخدم علامة استفهام'), 'توجيه التحية يمنع أي سؤال صراحةً');
-check(attach.includes('const __socialReply = attachmentsForMsg.length ? null : deterministicSocialReply(text)') && attach.includes('_localSocial: true'), 'التحية وسؤال الحال يُحسمان محليًا قبل أي مزود أو بحث');
-check(chatServer.includes('const socialReply = deterministicSocialReply') && chatServer.includes("JSON.stringify({ delta: socialReply })"), 'الخادم يعيد الرد الاجتماعي الثابت أيضًا للعملاء القديمة');
+check(prompts.includes('رحّب به ترحيبًا حارًّا راقيًا بروح المجلس'), 'v-style-rebirth: توجيه التحية المباشر حارّ لا جاف');
+check(prompts.includes('واسأله سؤالًا واحدًا طبيعيًّا عن حاله أو يومه'), 'v-style-rebirth: التحية تفتح الحديث بسؤال واحد');
+check(attach.includes('v-social-alive') && !attach.includes('_localSocial: true'), 'العميل لا يعترض التحية — تمر للنموذج');
+check(chatServer.includes('v-social-alive') && !chatServer.includes('JSON.stringify({ delta: socialReply })'), 'الخادم لا يعيد ردًا مخزنًا — النموذج يجيب التحية');
 check(prompts.includes('«كيف الحال؟» أجب عنه بدفء كحديث مستمر'), 'سؤال المجاملة يُعامل كمحادثة مستمرة');
 check(attach.includes('const __quietSocialTurn = isPureGreeting(text) || isCasualCheckIn(text)') && attach.includes('const __memMsg = __quietSocialTurn ? null : memorySystemMsg()'), 'سؤال الحال لا يحقن ذاكرة الحساب في العميل');
 check(attach.includes('let __turns = [];') && attach.includes('if(!__quietSocialTurn){'), 'سؤال الحال لا يرسل المواضيع السابقة إلى المزود');
@@ -226,9 +209,9 @@ check(!bundle.includes('فردّ حرفيًا: «أهلًا بك.» فقط'), '�
     // ===== فحوصات أسلوب المحادثة الجديد =====
     // v-chat-tools: فحصا «ملابس/سيارات تفعّلان مسار الأدوات» ثبّتا القائمة
     // المحذوفة — يغنيهما فحص «كل دور غير اجتماعي يحمل الأدوات» أعلاه.
-    check(chatServer.includes('هلا بك والله'), 'التحية المضاعفة تعطي ترحيباً دافئاً');
-    check(chatServer.includes('كيف أقدر أساعدك اليوم'), 'التحية العادية تدعو للمساعدة');
-    check(chatServer.includes('خليجي دافئ (هلا / يا غالي / والله'), 'كشف النبرة الخليجية موثّق في التعليمات');
+    check(chatServer.includes('التحية والمجاملة: ردّ حارّ راقٍ بروح المجلس'), 'v-style-rebirth: التحية الحارة في الميثاق');
+    check(chatServer.includes('ولا «كيف أقدر أساعدك؟» الرسمية'), 'v-style-rebirth: عرض الخدمات الرسمي ممنوع بالميثاق');
+    check(chatServer.includes('خليجي دافئ يُجارى بنفس الدفء'), 'كشف النبرة الخليجية موثّق في الميثاق');
     check(chatServer.includes('استثناء — النوع الجوهري فقط'), 'سؤال النوع الجوهري مسموح بعد إجابة أولية');
     check(chatServer.includes('معالج التسوق والتصفح'), 'معالج التسوق موجود في WIZARD_NOTE');
     check(chatServer.includes('مواقع سيارات'), 'مثال مواقع السيارات موجود في معالج التسوق');

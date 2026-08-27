@@ -11434,7 +11434,7 @@ async function fetchSearchNoteOnce(transcript, deep, q0){
   const latestNews = __wantsLatestNews(q0 || transcript);
   // Live search is the longest silent gap in ordinary chat — up to 45s.
   const __st = (window.__chatStatus && !window.__chatStatus.__released)
-    ? window.__chatStatus.step('🔍', deep ? 'يبحث في الإنترنت (بحث موسّع)…' : 'يبحث في الإنترنت…')
+    ? window.__chatStatus.step('🔍', deep ? 'أتحقق لك من المصادر الحية (بحث موسّع)…' : 'أتحقق لك من المصادر الحية…')
     : null;
   try{
     const controller = new AbortController();
@@ -14619,19 +14619,7 @@ window.chatRegenerateMessage = function(index){
   sendPrompt();
 };
 
-// الردود الاجتماعية القصيرة لا تحتاج نموذجًا أو بحثًا. إبقاؤها محلية يمنع
-// البتر والتغيّر وتسرب الذاكرة حتى لو تعطّل أي مزود أو انتقل التطبيق للاحتياط.
-function deterministicSocialReply(raw){
-  const s = String(raw || '').trim();
-  const english = !/[\u0600-\u06FF]/.test(s);
-  if(isCasualCheckIn(s)) return english ? "I'm good, how are you?" : 'بخير، كيف أنت؟';
-  if(!isPureGreeting(s)) return null;
-  if(/السلام عليكم/i.test(s)) return 'وعليكم السلام';
-  if(/صباح الخير/i.test(s)) return 'صباح النور';
-  if(/مساء الخير/i.test(s)) return 'مساء النور';
-  if(english) return 'Hello!';
-  return 'هلا وغلا';
-}
+// v-social-alive: deterministicSocialReply حُذفت — التحية للنموذج دائمًا.
 
 function latestOriginalUserImage(cur){
   try{
@@ -15100,13 +15088,9 @@ async function sendPrompt(){
   let __lastStreamPartial = '';
 
   try{
-    // تحية/سؤال حال بلا مرفقات: جواب محلي حاسم، قبل أي وضع أو مزود أو بحث.
-    const __socialReply = attachmentsForMsg.length ? null : deterministicSocialReply(text);
-    if(__socialReply){
-      try{ if(window.__chatStatus) window.__chatStatus.release(); }catch(e){ __swallow(e, 'ui:social-reply'); }
-      cur.messages.push({ role: 'assistant', content: __socialReply, askAllReply: false, _localSocial: true });
-      return;
-    }
+    // v-social-alive: الردود المخزنة الحرفية حُذفت نهائيًا بطلب
+    // المالك — «انا اكلم الذكاء الاصطناعي مش قوالب». كل تحية تمر للنموذج
+    // ببصمة الشخصية، والخادم يعزلها عن الذاكرة والمواضيع القديمة بنفسه.
     // 🤖 وكيل عمران: وضع الوكيل المستقل (Claude Sonnet 4 + أدوات) — يخطط ويبحث ويبني.
     if(window.__agentModeOn && !imageAttachments.length){
       await runOmranAgent(cur, apiText, thinkingDiv);
@@ -16241,10 +16225,12 @@ function __showImgLoading(el, ar, en){
     // الدور الاجتماعي القصير يُعزل عن الذاكرة والمواضيع السابقة، لكن سؤال الحال
     // يبقى استمرارًا للمحادثة لا تحية جديدة.
     const __quietSocialTurn = isPureGreeting(text) || isCasualCheckIn(text);
+    /* v-style-rebirth: التوجيه القديم كان يفرض «كلمة إلى ثلاث بلا سؤال» فخرجت
+       التحية جافة حتى من النموذج — المالك رفضها. الآن بروح المجلس. */
     if(isPureGreeting(text)){
-      __sys = 'المستخدم أرسل تحية لفظية خالصة. أجب بتحية عربية قصيرة فقط من كلمة إلى ثلاث كلمات. لا تسأل أي سؤال، ولا تستخدم علامة استفهام، ولا تقل «كيف حالك» أو «كيف أساعدك»، ولا تعرض أي خدمة. لا تضف شيئًا بعد التحية.';
+      __sys = 'المستخدم أرسل تحية لفظية خالصة. رحّب به ترحيبًا حارًّا راقيًا بروح المجلس فيه حضور وشخصية — جملة أو جملتان بلا صيغة محفوظة — واسأله سؤالًا واحدًا طبيعيًّا عن حاله أو يومه. ممنوع «كيف أقدر أساعدك؟» الرسمية وعرض الخدمات، وممنوع فتح مواضيع قديمة أو استخدام الذاكرة.';
     } else if(isCasualCheckIn(text)){
-      __sys = 'هذا سؤال حال ضمن محادثة مستمرة، وليس تحية جديدة. أجب عن حالك مباشرةً بجملة عربية قصيرة وطبيعية واحدة، ويمكنك أن تسأله عن حاله باختصار. لا تبدأ بتحية، ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق، ولا تلتزم صيغة محفوظة.';
+      __sys = 'هذا سؤال حال ضمن محادثة مستمرة، وليس تحية جديدة. أجب عن حالك بدفء وحضور — جملتان أو ثلاث فيها روح — واسأله عن حاله أو يومه بسؤال واحد طبيعي. لا تبدأ بتحية جديدة، ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق، ولا تلتزم صيغة محفوظة.';
     }
     const apiMessages = [{role: 'system', content: __sys}];
     // 🤝 v345: المستخدم وافق على عرض بناء قدّمه المزود في رده السابق — يبنيه الآن كاملًا.
@@ -16429,7 +16415,7 @@ DESIGN RULES (non-negotiable):
     // 👋 التحية اللفظية وحدها: رد قصير طبيعي بلا صيغة محفوظة.
     // سؤال المجاملة («كيف الحال؟») يبقى محادثة متصلة ولا يدخل هذا المسار.
     if(isPureGreeting(text)){
-      apiMessages.push({role: 'system', content: 'رسالة المستخدم الأخيرة تحية لفظية فقط وليست سؤالًا. اكتفِ بتحية قصيرة وطبيعية بلغة المستخدم، من دون صيغة ثابتة؛ لا تطرح أي سؤال ولا تعرض خدمات أو أمثلة، ولا تفتح موضوعًا سابقًا أو تستخدم الذاكرة، ولا تنادِ المستخدم باسم.'});
+      apiMessages.push({role: 'system', content: 'رسالة المستخدم الأخيرة تحية لفظية فقط وليست سؤالًا. رحّب به ترحيبًا حارًّا راقيًا بروح المجلس فيه حضور وشخصية بلغة المستخدم — جملة أو جملتان بلا صيغة ثابتة — واسأله سؤالًا واحدًا طبيعيًّا عن حاله أو يومه. ممنوع عرض الخدمات أو الأمثلة، وممنوع فتح موضوع سابق أو استخدام الذاكرة.'});
     }
     // v311: أثناء تصميم إعلان (adMode مفعّل) ممنوع البحث الحي نهائيًا —
     // تفاصيل «بيت للبيع...» تكمل التصميم ولا تتحول لبحث دوبيزل.

@@ -813,7 +813,7 @@ async function fetchSearchNoteOnce(transcript, deep, q0){
   const latestNews = __wantsLatestNews(q0 || transcript);
   // Live search is the longest silent gap in ordinary chat — up to 45s.
   const __st = (window.__chatStatus && !window.__chatStatus.__released)
-    ? window.__chatStatus.step('🔍', deep ? 'يبحث في الإنترنت (بحث موسّع)…' : 'يبحث في الإنترنت…')
+    ? window.__chatStatus.step('🔍', deep ? 'أتحقق لك من المصادر الحية (بحث موسّع)…' : 'أتحقق لك من المصادر الحية…')
     : null;
   try{
     const controller = new AbortController();
