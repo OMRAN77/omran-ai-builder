@@ -2161,3 +2161,4 @@ async function postWithConfirm(url, payload){
 /* v-edu-lab */
 /* v-stocks-fullpage */
 /* v-err-banner-quiet */
+/* v-about-lux */
