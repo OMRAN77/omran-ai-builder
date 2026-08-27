@@ -13,8 +13,8 @@ const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 const PORTRAIT_DAILY_LIMIT = 3;
 // v-owner-open: عدة أسماء للمالك (OWNER_USERNAMES بفواصل) + قائمة VIP بلا حدود.
 const { isVip } = require('./_vip.js');
-const __OWNERS = String(process.env.OWNER_USERNAMES || process.env.OWNER_USERNAME || 'omran')
-  .toLowerCase().split(',').map((s) => s.trim()).filter(Boolean);
+// v-owner-core: قائمة موحّدة — ‹omran› مدمج دائمًا والبيئة تضيف لا تستبدل.
+const __OWNERS = require('./_owner.js').ownerList();
 async function __unlimitedUser(username) {
   if (!username) return false;
   if (__OWNERS.includes(String(username).toLowerCase())) return true;

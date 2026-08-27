@@ -236,4 +236,27 @@ assert.ok(chat22.includes('فشل تنفيذ الأداة:'), 'فشل أداة �
 assert.ok(chat22.includes('سرعة الردّ أولوية عليا'), 'قاعدة السرعة في التوجيهات');
 console.log('  ✓ v-chat-parallel-tools: الرد أسرع — توازٍ وسقف بحث');
 
+// ㉓ v-owner-core: ‹omran› مالك دائم مدمج — البيئة تضيف أسماء ولا تستبدله أبدًا.
+// (قيمة OWNER_USERNAME مغلوطة في Vercel كانت تقفل كل بوابات الملكية على المالك.)
+{
+  const prevN = process.env.OWNER_USERNAMES, prev1 = process.env.OWNER_USERNAME;
+  process.env.OWNER_USERNAMES = ''; process.env.OWNER_USERNAME = 'wrongname';
+  delete require.cache[require.resolve('../api/_lib/_owner.js')];
+  const own = require('../api/_lib/_owner.js');
+  assert.ok(own.isOwnerName('omran'), '‹omran› مالك حتى مع بيئة مغلوطة');
+  assert.ok(own.isOwnerName('wrongname'), 'اسم البيئة يُضاف لا يُهمل');
+  assert.ok(!own.isOwnerName('bob'), 'الغريب مرفوض');
+  assert.ok(own.ownerList().includes('omran'), 'القائمة تشمل المدمج دائمًا');
+  delete require.cache[require.resolve('../api/_lib/_owner.js')];
+  if (prevN === undefined) delete process.env.OWNER_USERNAMES; else process.env.OWNER_USERNAMES = prevN;
+  if (prev1 === undefined) delete process.env.OWNER_USERNAME; else process.env.OWNER_USERNAME = prev1;
+}
+// كل البوابات تستقي من _owner.js لا من نمطها المحلي القديم.
+for (const f of ['points.js', '_usage.js', '_fashionUsage.js', '_designUsage.js', '_portraitUsage.js', '_carUsage.js', '_videoUsage.js', 'admin-stats.js', 'admin-actions.js']) {
+  const src = fs.readFileSync(path.join(__dirname, '../api/_lib/', f), 'utf8');
+  assert.ok(src.includes("require('./_owner.js')"), f + ' يستعمل قائمة المالك الموحدة');
+  assert.ok(!src.includes("process.env.OWNER_USERNAMES || process.env.OWNER_USERNAME || 'omran'"), f + ' بلا نمط الاستبدال القديم');
+}
+console.log('  ✓ v-owner-core: المالك مفتوح في كل شي مهما كانت البيئة');
+
 console.log('fashion locks tests passed');

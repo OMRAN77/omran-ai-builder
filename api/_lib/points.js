@@ -8,8 +8,9 @@ const { getUser, putUser, isBanned } = require('./auth.js');
 const { isVip } = require('./_vip.js');
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
-const OWNER_LIST = String(process.env.OWNER_USERNAMES || process.env.OWNER_USERNAME || 'omran')
-  .toLowerCase().split(',').map((s) => s.trim()).filter(Boolean); // v-owner-open
+// v-owner-core: قائمة المالك الموحّدة من _owner.js — ‹omran› مدمج دائمًا
+// والبيئة تضيف أسماء ولا تستبدله (قيمة بيئة مغلوطة كانت تُسقط إعفاء المالك).
+const OWNER_LIST = require('./_owner.js').ownerList();
 
 // أسعار الخدمات بالنقاط — المرجع الوحيد في كل الخادم.
 const COSTS = {
