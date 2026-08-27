@@ -1088,6 +1088,7 @@
         <button type="button" class="btn iconBtn" id="stocksGlobalBtn" title="الأسواق العالمية" data-i18n-title="worldMarketsTitle" style="padding:4px 8px;">🌍</button>
         <button type="button" class="btn iconBtn" id="stocksSearchBtn" title="اختيار سهم" data-i18n-title="pickStockTitle" style="padding:4px 8px;">🔍</button>
         <button type="button" class="btn iconBtn" id="stocksLearnBtn" data-i18n-title="stocksLearnTitle" title="تعلم التداول" style="padding:4px 8px;">🎓</button>
+        <button type="button" class="btn iconBtn" id="stocksPfBtn" title="محفظتي التعليمية" style="padding:4px 8px;">💼</button>
         <button type="button" class="btn iconBtn" id="stocksFullBtn" data-i18n-title="stocksFullTitle" title="وضع شاشة البورصة" style="padding:4px 8px;">🖥️</button>
         <button type="button" class="btn iconBtn" id="stocksCloseBtn" style="padding:4px 8px;">✕</button>
       </div>
@@ -1169,6 +1170,9 @@
       <div id="stockAnalysis" style="display:none; margin-top:12px; font-size: var(--fs-3); line-height:1.8; white-space:pre-wrap; border-radius:var(--r-2); background:rgba(0,0,0,0.25); padding:14px;"></div>
     </div>
     </div>
+
+    <!-- v-stocks-paper: 💼 المحفظة التعليمية — تُرسم بالكامل من app-13 -->
+    <div id="stockPfWrap" style="display:none; margin-top:14px;"></div>
 
     <div id="stockLearnWrap" style="display:none; margin-top:14px;">
       <div style="font-size:14px; font-weight:500; margin-bottom:8px;" data-i18n="stocksLearnTitle">🎓 تعلم التداول — دروس على السوق الحي</div>

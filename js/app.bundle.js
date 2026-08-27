@@ -21411,17 +21411,140 @@ async function __safeJson(res){
   };
 
   const searchWrap = $('#stockSearchWrap');
-  const stkTabBtns = { global: $('#stocksGlobalBtn'), search: $('#stocksSearchBtn'), learn: learnBtn };
+  const pfWrap = $('#stockPfWrap'); /* v-stocks-paper */
+  const stkTabBtns = { global: $('#stocksGlobalBtn'), search: $('#stocksSearchBtn'), learn: learnBtn, pf: $('#stocksPfBtn') };
   function stkShowTab(t){
     searchWrap.style.display = t==='search' ? 'block' : 'none';
     learnWrap.style.display = t==='learn' ? 'block' : 'none';
     globalWrap.style.display = t==='global' ? 'block' : 'none';
+    if(pfWrap) pfWrap.style.display = t==='pf' ? 'block' : 'none';
     Object.keys(stkTabBtns).forEach(function(k){ var b = stkTabBtns[k]; if(b) b.style.background = (k===t) ? 'rgba(107,114,128,0.45)' : ''; });
     if(t==='global') showGlobal();
+    if(t==='pf') pfLoad();
   }
   window.__stkShowTab = stkShowTab;
   $('#stocksGlobalBtn').addEventListener('click', function(){ stkShowTab('global'); });
   $('#stocksSearchBtn').addEventListener('click', function(){ stkShowTab('search'); });
+  var pfBtnEl = $('#stocksPfBtn');
+  if(pfBtnEl) pfBtnEl.addEventListener('click', function(){ stkShowTab('pf'); });
+
+  /* ============ 💼 v-stocks-paper: المحفظة التعليمية ============ */
+  function pfTok(){ try{ return (window.authGet && authGet('aiapp_auth_token')) || ''; }catch(e){ return ''; } }
+  function pfEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function pfCol(v){ return v > 0 ? '#2E9E6B' : (v < 0 ? '#e05252' : 'var(--muted)'); }
+  function pfMoney(n){ return (typeof n === 'number' && isFinite(n)) ? n.toLocaleString('en-US', {maximumFractionDigits: 0}) : '—'; }
+  var pfBusy = false;
+
+  function pfRender(d){
+    if(!pfWrap) return;
+    var p = d.portfolio, bd = d.board || { top: [], rank: null, total: 0 };
+    var h = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">'
+      + '<span style="font-size:11.5px;background:rgba(212,175,55,.14);border:1px solid rgba(212,175,55,.4);color:#d4af37;border-radius:999px;padding:4px 11px;">🎓 وضع تعليمي — أموال افتراضية 100٪</span></div>'
+      // البطاقة العلوية: القيمة الكلية والربح/الخسارة
+      + '<div style="border:1px solid var(--border,#333);border-radius:14px;padding:14px;background:rgba(255,255,255,.02);margin-bottom:12px;">'
+      + '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">'
+      + '<div><div style="font-size:11px;color:var(--muted);">قيمة المحفظة</div><div style="font-size:22px;font-weight:700;">$' + pfMoney(p.equity) + '</div></div>'
+      + '<div><div style="font-size:11px;color:var(--muted);">الكاش المتاح</div><div style="font-size:16px;font-weight:600;">$' + pfMoney(p.cash) + '</div></div>'
+      + '<div><div style="font-size:11px;color:var(--muted);">الربح/الخسارة</div><div style="font-size:16px;font-weight:700;color:' + pfCol(p.pl) + ';">' + (p.pl >= 0 ? '+' : '') + pfMoney(p.pl) + ' (' + p.plPct + '%)</div></div>'
+      + '</div></div>'
+      // نموذج الصفقة
+      + '<div style="border:1px solid var(--border,#333);border-radius:14px;padding:12px;margin-bottom:12px;">'
+      + '<div style="font-size:12.5px;margin-bottom:8px;font-weight:600;">صفقة جديدة (بالسعر الحي الحقيقي)</div>'
+      + '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+      + '<input id="pfSym" placeholder="الرمز مثل AAPL" style="flex:2;min-width:110px;padding:9px;border-radius:9px;border:1px solid var(--border,#444);background:transparent;color:inherit;font:inherit;text-transform:uppercase;">'
+      + '<input id="pfQty" type="number" min="1" placeholder="الكمية" style="flex:1;min-width:70px;padding:9px;border-radius:9px;border:1px solid var(--border,#444);background:transparent;color:inherit;font:inherit;">'
+      + '<button class="btn" id="pfBuy" style="background:#2E9E6B;color:#fff;border:none;">شراء</button>'
+      + '<button class="btn" id="pfSell" style="background:#e05252;color:#fff;border:none;">بيع</button>'
+      + '</div><div id="pfMsg" style="font-size:12px;margin-top:8px;line-height:1.7;"></div></div>';
+    // المراكز
+    h += '<div style="font-size:12.5px;font-weight:600;margin:0 0 6px;">مراكزك (' + p.positions.length + ')</div>';
+    if(!p.positions.length){
+      h += '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">ما عندك أسهم بعد — جرّب أول صفقة تعليمية! اكتب رمزًا مثل AAPL وكمية واضغط شراء.</div>';
+    } else {
+      p.positions.forEach(function(pos){
+        h += '<div style="display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(128,128,128,.15);padding:8px 2px;font-size:12.5px;flex-wrap:wrap;">'
+          + '<b style="min-width:56px;">' + pfEsc(pos.symbol) + '</b>'
+          + '<span style="color:var(--muted);">' + pos.qty + ' سهم × $' + pos.price + '</span>'
+          + '<span style="margin-inline-start:auto;font-weight:700;color:' + pfCol(pos.pl) + ';">' + (pos.pl >= 0 ? '+' : '') + pfMoney(pos.pl) + ' (' + pos.plPct + '%)</span>'
+          + '<button class="btn" data-pfsell="' + pfEsc(pos.symbol) + '" data-pfqty="' + pos.qty + '" style="padding:4px 10px;font-size:11px;">بيع الكل</button>'
+          + '<button class="btn" data-pfwhy="' + pfEsc(pos.symbol) + '" style="padding:4px 10px;font-size:11px;">🎓 علّمني</button>'
+          + '</div>';
+      });
+    }
+    // الترتيب
+    h += '<div style="font-size:12.5px;font-weight:600;margin:14px 0 6px;">🏆 ترتيب المتداولين'
+      + (bd.rank ? ' — مركزك: ' + bd.rank + ' من ' + bd.total : '') + '</div>';
+    (bd.top || []).forEach(function(r){
+      h += '<div style="display:flex;gap:8px;font-size:12px;padding:4px 2px;' + '">'
+        + '<span style="min-width:26px;">' + (r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : r.rank + '.') + '</span>'
+        + '<span style="flex:1;">' + pfEsc(r.user) + '</span>'
+        + '<b style="color:' + pfCol(r.plPct) + ';">' + (r.plPct >= 0 ? '+' : '') + r.plPct + '%</b></div>';
+    });
+    // آخر الصفقات + إعادة الضبط
+    if((p.trades || []).length){
+      h += '<div style="font-size:12.5px;font-weight:600;margin:14px 0 6px;">آخر صفقاتك</div>';
+      p.trades.forEach(function(t){
+        h += '<div style="font-size:11.5px;color:var(--muted);padding:2px 2px;">' + (t.side === 'buy' ? '🟢 شراء' : '🔴 بيع') + ' ' + t.qty + ' × ' + pfEsc(t.sym) + ' @ $' + t.price + '</div>';
+      });
+    }
+    h += '<div id="pfLesson" style="display:none;margin-top:12px;border:1px solid rgba(212,175,55,.35);border-radius:12px;padding:12px;font-size:12.5px;line-height:1.9;white-space:pre-wrap;"></div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:8px;flex-wrap:wrap;">'
+      + '<span style="font-size:10.5px;color:var(--muted);">تداول تجريبي تعليمي — أسعار حقيقية وأموال افتراضية، ليست نصيحة استثمارية.</span>'
+      + '<button class="btn" id="pfReset" style="font-size:11px;padding:5px 11px;">🔄 ابدأ من جديد (100 ألف)</button></div>';
+    pfWrap.innerHTML = h;
+    pfWire();
+  }
+
+  function pfMsgShow(txt, ok){ var m = $('#pfMsg'); if(m){ m.textContent = txt; m.style.color = ok ? '#2E9E6B' : '#e05252'; } }
+
+  function pfTrade(side, sym, qty){
+    if(pfBusy) return;
+    sym = String(sym || ($('#pfSym') && $('#pfSym').value) || '').trim().toUpperCase();
+    qty = Math.floor(Number(qty != null ? qty : ($('#pfQty') && $('#pfQty').value)));
+    if(!sym || !qty || qty <= 0){ pfMsgShow('اكتب رمز السهم والكمية أولًا', false); return; }
+    pfBusy = true; pfMsgShow('⏳ ننفذ الصفقة بالسعر الحي…', true);
+    api({ mode:'pf-trade', side: side, tradeSymbol: sym, qty: qty, token: pfTok(), guestId: (window.getGuestId ? getGuestId() : '') })
+      .then(function(d){
+        pfBusy = false; pfRender(d);
+        var last = d.portfolio.trades && d.portfolio.trades[0];
+        pfMsgShow(last ? ('✅ تمت: ' + (last.side === 'buy' ? 'شراء' : 'بيع') + ' ' + last.qty + ' × ' + last.sym + ' بسعر $' + last.price + (last.side === 'buy' ? ' — 🎓 درس: لا تضع كل كاشك في سهم واحد، التنويع يحميك.' : ' — 🎓 درس: البيع يثبّت الربح أو يوقف الخسارة، والقرار الجيد يُتخذ بخطة لا بعاطفة.')) : '✅ تمت الصفقة', true);
+      })
+      .catch(function(e){ pfBusy = false; pfMsgShow('⚠️ ' + (e.message || 'تعذرت الصفقة'), false); });
+  }
+
+  function pfWire(){
+    var b1 = $('#pfBuy'), b2 = $('#pfSell'), rs = $('#pfReset');
+    if(b1) b1.onclick = function(){ pfTrade('buy'); };
+    if(b2) b2.onclick = function(){ pfTrade('sell'); };
+    if(rs) rs.onclick = function(){
+      if(!confirm('تبدأ من جديد بـ 100 ألف افتراضية؟ محفظتك الحالية وصفقاتك ستُمسح.')) return;
+      api({ mode:'pf-reset', token: pfTok() }).then(pfRender).catch(function(e){ pfMsgShow('⚠️ ' + e.message, false); });
+    };
+    pfWrap.querySelectorAll('[data-pfsell]').forEach(function(b){
+      b.onclick = function(){ pfTrade('sell', b.getAttribute('data-pfsell'), b.getAttribute('data-pfqty')); };
+    });
+    pfWrap.querySelectorAll('[data-pfwhy]').forEach(function(b){
+      b.onclick = function(){
+        var sym = b.getAttribute('data-pfwhy');
+        var box = $('#pfLesson');
+        box.style.display = 'block'; box.textContent = '🎓 معلمك يجهز درسًا على ' + sym + ' بالأرقام الحية…';
+        api({ mode:'learn', symbol: sym, question: 'أنا مبتدئ وأملك هذا السهم في محفظتي التعليمية. علمني ماذا أراقب فيه الآن (الاتجاه، الدعم والمقاومة، متى أفكر بالبيع) بالأرقام الحية.', lang: (typeof lang !== 'undefined' ? lang : 'ar'), token: pfTok(), guestId: (window.getGuestId ? getGuestId() : '') })
+          .then(function(d){ box.textContent = d.lesson || 'تعذر الدرس الآن — حاول بعد قليل.'; })
+          .catch(function(e){ box.textContent = '⚠️ ' + (e.message || 'تعذر الدرس'); });
+      };
+    });
+  }
+
+  function pfLoad(){
+    if(!pfWrap) return;
+    if(!pfTok()){
+      pfWrap.innerHTML = '<div style="text-align:center;padding:26px 10px;font-size:13px;line-height:2;">💼 <b>المحفظة التعليمية</b><br>100 ألف افتراضية تتداول بها بأسعار السوق الحقيقية وتنافس بقية المستخدمين 🏆<br><span style="color:var(--muted);font-size:12px;">سجّل الدخول لبدء محفظتك — تقدمك يُحفظ في حسابك.</span></div>';
+      return;
+    }
+    pfWrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">⏳ نجهز محفظتك…</div>';
+    api({ mode:'pf-get', token: pfTok() }).then(pfRender)
+      .catch(function(e){ pfWrap.innerHTML = '<div style="text-align:center;padding:20px;color:#e05252;font-size:13px;">⚠️ ' + pfEsc(e.message || 'تعذر تحميل المحفظة') + '</div>'; });
+  }
   btnOpen.addEventListener('click', function(){ modal.style.display = 'flex'; stkShowTab('global'); });
   btnClose.addEventListener('click', function(){
     modal.style.display = 'none';
