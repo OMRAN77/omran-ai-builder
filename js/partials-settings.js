@@ -405,66 +405,93 @@
 
   <div id="aboutSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('aboutSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="aboutSectionTitle">ℹ️ عن البرنامج والفيديوهات التعريفية</h3><span class="settingsSectionArrow" id="aboutSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="aboutSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
-      <!-- AppGallery 6.4: معلومات خدمة العملاء ظاهرة داخل التطبيق -->
-      <div id="supportContactBox" style="background:var(--panel2,#181818); border:1px solid var(--border,#333); border-radius:var(--r-2,10px); padding:12px 14px; margin-bottom:12px; font-size:13px; line-height:2;">
-        <div style="font-weight:bold;">📞 خدمة العملاء والدعم</div>
-        <div>البريد: <a href="mailto:ommntr77@gmail.com" style="color:var(--accent2,#a78bfa); direction:ltr; unicode-bidi:isolate;">ommntr77@gmail.com</a> — نرد خلال ٢٤-٤٨ ساعة.</div>
-        <div><a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);">سياسة الخصوصية</a> · <a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);">شروط الاستخدام</a></div>
+      <!-- v-about-lux: بطاقة الهوية -->
+      <div style="position:relative; overflow:hidden; border:1px solid rgba(212,175,55,.4); border-radius:20px; padding:24px 16px 20px; text-align:center; background:radial-gradient(130% 100% at 50% 0%, rgba(212,175,55,.16), transparent 55%), var(--panel2,#161616); margin-bottom:14px;">
+        <img src="/icons/omran-mark-64.png" alt="عمران AI" width="66" height="66" style="border-radius:17px; box-shadow:0 8px 28px rgba(212,175,55,.3);">
+        <div style="font-size:20px; font-weight:800; margin-top:10px; letter-spacing:.3px;">عمران <span style="color:#d4af37;">AI</span></div>
+        <div style="font-size:12.5px; color:var(--muted); margin-top:5px;" data-i18n="aboutTagline">منصة عربية لبناء التطبيقات بالذكاء الاصطناعي</div>
+        <div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin-top:13px;">
+          <span style="font-size:11px; padding:4px 11px; border-radius:999px; border:1px solid rgba(212,175,55,.4); color:#d4af37;">صُنع في الإمارات 🇦🇪</span>
+          <span style="font-size:11px; padding:4px 11px; border-radius:999px; border:1px solid var(--border,#3a3a3a); color:var(--muted);">تطبيق PWA</span>
+          <span style="font-size:11px; padding:4px 11px; border-radius:999px; border:1px solid var(--border,#3a3a3a); color:var(--muted);">٧ لغات</span>
+        </div>
       </div>
-  <div style="font-size: var(--fs-3); line-height:1.9; color:var(--text); background:var(--panel2); border-radius:var(--r-2); padding:12px 14px;" data-i18n="aboutText">
+
+      <!-- v-about-lux: شبكة المزايا -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin-bottom:14px;">
+        <div style="border:1px solid var(--border,#333); border-radius:14px; padding:12px 10px; text-align:center; background:var(--panel2,rgba(255,255,255,.02));"><div style="font-size:22px;">💬</div><div style="font-size:11.5px; margin-top:6px; line-height:1.5;">بناء تطبيقات كاملة بالمحادثة</div></div>
+        <div style="border:1px solid var(--border,#333); border-radius:14px; padding:12px 10px; text-align:center; background:var(--panel2,rgba(255,255,255,.02));"><div style="font-size:22px;">🧠</div><div style="font-size:11.5px; margin-top:6px; line-height:1.5;">٩ مزودي ذكاء + «اسأل الكل»</div></div>
+        <div style="border:1px solid var(--border,#333); border-radius:14px; padding:12px 10px; text-align:center; background:var(--panel2,rgba(255,255,255,.02));"><div style="font-size:22px;">🎙️</div><div style="font-size:11.5px; margin-top:6px; line-height:1.5;">مها — مساعدتك الصوتية الحية</div></div>
+        <div style="border:1px solid var(--border,#333); border-radius:14px; padding:12px 10px; text-align:center; background:var(--panel2,rgba(255,255,255,.02));"><div style="font-size:22px;">🎨</div><div style="font-size:11.5px; margin-top:6px; line-height:1.5;">٧ استوديوهات إبداعية للصور</div></div>
+        <div style="border:1px solid var(--border,#333); border-radius:14px; padding:12px 10px; text-align:center; background:var(--panel2,rgba(255,255,255,.02));"><div style="font-size:22px;">📈</div><div style="font-size:11.5px; margin-top:6px; line-height:1.5;">سوق الأسهم ومحفظة تعليمية</div></div>
+        <div style="border:1px solid var(--border,#333); border-radius:14px; padding:12px 10px; text-align:center; background:var(--panel2,rgba(255,255,255,.02));"><div style="font-size:22px;">🔒</div><div style="font-size:11.5px; margin-top:6px; line-height:1.5;">خصوصيتك أولوية — مفاتيحك عندك</div></div>
+      </div>
+
+      <!-- v-about-lux: نبذة قابلة للطي -->
+      <details style="border:1px solid var(--border,#333); border-radius:14px; padding:12px 14px; margin-bottom:16px; background:var(--panel2,rgba(255,255,255,.02));">
+        <summary style="cursor:pointer; font-size:13px; font-weight:700; user-select:none;">📖 المزيد عن المنصة</summary>
+        <div style="font-size: var(--fs-3); line-height:1.9; color:var(--text); margin-top:10px;" data-i18n="aboutText">
     <b>عمران AI Builder</b> هو منصة عربية بالكامل لبناء التطبيقات بالذكاء الاصطناعي، طوّرها فريق عمران AI. يتيح لك التحدث مع الذكاء الاصطناعي بالعربية أو الإنجليزية للحصول فورًا على كود تطبيق كامل، مع محرر كود ومعاينة حيّة جنبًا إلى جنب.<br><br>
     يدعم البرنامج 4 مزوّدين للذكاء الاصطناعي (Claude، Gemini، OpenAI، Groq)، ويمكنك اختيار أكثر من مزوّد في نفس الوقت لطرح سؤال واحد والحصول على إجابات من الجميع للمقارنة بينها.<br><br>
     يعمل البرنامج كتطبيق PWA قابل للتثبيت على أندرويد وآيفون مثل أي تطبيق عادي، ويدعم المحادثة الصوتية (تحويل الكلام إلى نص والاستماع للردود)، مع نظام حسابات كامل (تسجيل دخول/تسجيل حساب/استرجاع كلمة المرور)، ووضع ضيف يتيح تجربة 20 رسالة مجانية دون تسجيل.<br><br>
     كل إعدادات المظهر والألوان قابلة للتخصيص بالكامل، ومفاتيح API الخاصة بك تُحفظ في متصفحك فقط ولا تُرسل لأي خادم خارجي — خصوصيتك أولوية.
-  </div>
+        </div>
+      </details>
 
-  <div style="margin-top:14px; display:flex; flex-direction:column; gap:14px;">
-    <div class="lang-videos-ar">
-      <div style="font-weight:700; font-size:13px; margin-bottom:6px;" data-i18n="videoArShortTitle">🎬 فيديو تعريفي عربي (قصير)</div>
-      <video controls preload="none" playsinline style="width:100%; border-radius:var(--r-2); background:#000;" poster="">
-        <source src="https://6tfgxvttzyoiavtu.public.blob.vercel-storage.com/omran_ai_builder_ar_short.mp4" type="video/mp4">
-      </video>
-    </div>
-    <div class="lang-videos-ar">
-      <div style="font-weight:700; font-size:13px; margin-bottom:6px;" data-i18n="videoArLongTitle">🎬 فيديو تعريفي عربي (كامل)</div>
-      <video controls preload="none" playsinline style="width:100%; border-radius:var(--r-2); background:#000;" poster="">
-        <source src="https://6tfgxvttzyoiavtu.public.blob.vercel-storage.com/omran_ai_builder_ar_long.mp4" type="video/mp4">
-      </video>
-    </div>
-    <div class="lang-videos-en">
-      <div style="font-weight:700; font-size:13px; margin-bottom:6px;" data-i18n="videoEnShortTitle">🎬 English intro video (short)</div>
-      <video controls preload="none" playsinline style="width:100%; border-radius:var(--r-2); background:#000;" poster="">
-        <source src="https://6tfgxvttzyoiavtu.public.blob.vercel-storage.com/omran_ai_builder_en_short.mp4" type="video/mp4">
-      </video>
-    </div>
-    <div class="lang-videos-en">
-      <div style="font-weight:700; font-size:13px; margin-bottom:6px;" data-i18n="videoEnLongTitle">🎬 English intro video (full)</div>
-      <video controls preload="none" playsinline style="width:100%; border-radius:var(--r-2); background:#000;" poster="">
-        <source src="https://6tfgxvttzyoiavtu.public.blob.vercel-storage.com/omran_ai_builder_en_long.mp4" type="video/mp4">
-      </video>
-    </div>
-  </div>
+      <!-- v-about-lux: الفيديوهات التعريفية -->
+      <div style="display:flex; align-items:center; gap:8px; font-weight:800; font-size:13.5px; margin:0 0 10px;"><span style="width:4px; height:16px; border-radius:2px; background:#d4af37; display:inline-block;"></span><span data-i18n="videosGroupTitle">🎬 الفيديوهات التعريفية</span></div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px;">
+        <div class="lang-videos-ar" style="border:1px solid rgba(212,175,55,.28); border-radius:16px; overflow:hidden; background:var(--panel2,rgba(255,255,255,.02));">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 12px;"><span style="font-weight:700; font-size:12.5px;" data-i18n="videoArShortTitle">جولة سريعة بالعربي</span><span style="font-size:10.5px; padding:2px 9px; border-radius:999px; background:rgba(212,175,55,.15); color:#d4af37;">قصير</span></div>
+          <video controls preload="none" playsinline style="width:100%; display:block; background:#000; aspect-ratio:16/9; object-fit:cover;"><source src="https://6tfgxvttzyoiavtu.public.blob.vercel-storage.com/omran_ai_builder_ar_short.mp4" type="video/mp4"></video>
+        </div>
+        <div class="lang-videos-ar" style="border:1px solid rgba(212,175,55,.28); border-radius:16px; overflow:hidden; background:var(--panel2,rgba(255,255,255,.02));">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 12px;"><span style="font-weight:700; font-size:12.5px;" data-i18n="videoArLongTitle">الشرح الكامل بالعربي</span><span style="font-size:10.5px; padding:2px 9px; border-radius:999px; background:rgba(212,175,55,.15); color:#d4af37;">كامل</span></div>
+          <video controls preload="none" playsinline style="width:100%; display:block; background:#000; aspect-ratio:16/9; object-fit:cover;"><source src="https://6tfgxvttzyoiavtu.public.blob.vercel-storage.com/omran_ai_builder_ar_long.mp4" type="video/mp4"></video>
+        </div>
+        <div class="lang-videos-en" style="border:1px solid rgba(212,175,55,.28); border-radius:16px; overflow:hidden; background:var(--panel2,rgba(255,255,255,.02));">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 12px;"><span style="font-weight:700; font-size:12.5px;" data-i18n="videoEnShortTitle">Quick English tour</span><span style="font-size:10.5px; padding:2px 9px; border-radius:999px; background:rgba(212,175,55,.15); color:#d4af37;">Short</span></div>
+          <video controls preload="none" playsinline style="width:100%; display:block; background:#000; aspect-ratio:16/9; object-fit:cover;"><source src="https://6tfgxvttzyoiavtu.public.blob.vercel-storage.com/omran_ai_builder_en_short.mp4" type="video/mp4"></video>
+        </div>
+        <div class="lang-videos-en" style="border:1px solid rgba(212,175,55,.28); border-radius:16px; overflow:hidden; background:var(--panel2,rgba(255,255,255,.02));">
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 12px;"><span style="font-weight:700; font-size:12.5px;" data-i18n="videoEnLongTitle">Full English walkthrough</span><span style="font-size:10.5px; padding:2px 9px; border-radius:999px; background:rgba(212,175,55,.15); color:#d4af37;">Full</span></div>
+          <video controls preload="none" playsinline style="width:100%; display:block; background:#000; aspect-ratio:16/9; object-fit:cover;"><source src="https://6tfgxvttzyoiavtu.public.blob.vercel-storage.com/omran_ai_builder_en_long.mp4" type="video/mp4"></video>
+        </div>
+      </div>
 
-  <div style="margin-top:16px;">
-    <div style="font-weight:700; font-size:13px; margin-bottom:8px;" data-i18n="socialTitle">📱 تابعنا على منصات التواصل</div>
-    <div style="display:flex; gap:16px;">
-      <a href="#" title="Instagram" style="text-decoration:none; display:flex; width:38px; height:38px; align-items:center; justify-content:center; border-radius:var(--r-2); background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);">
+      <!-- AppGallery 6.4: معلومات خدمة العملاء ظاهرة داخل التطبيق (v-about-lux) -->
+      <div id="supportContactBox" style="border:1px solid var(--border,#333); border-radius:16px; padding:14px; margin-top:16px; background:var(--panel2,rgba(255,255,255,.02));">
+        <div style="display:flex; align-items:center; gap:8px; font-weight:800; font-size:13.5px; margin-bottom:8px;"><span style="width:4px; height:16px; border-radius:2px; background:#d4af37; display:inline-block;"></span>📞 خدمة العملاء والدعم</div>
+        <div style="font-size:12.5px; color:var(--muted); line-height:1.9;">نرد على استفساراتك خلال ٢٤-٤٨ ساعة.</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+          <a href="mailto:ommntr77@gmail.com" style="text-decoration:none; font-size:12px; padding:8px 14px; border-radius:999px; border:1px solid rgba(212,175,55,.45); color:#d4af37; direction:ltr; unicode-bidi:isolate;">✉️ ommntr77@gmail.com</a>
+          <a href="/privacy.html" target="_blank" rel="noopener" style="text-decoration:none; font-size:12px; padding:8px 14px; border-radius:999px; border:1px solid var(--border,#3a3a3a); color:var(--text);">🔒 سياسة الخصوصية</a>
+          <a href="/terms.html" target="_blank" rel="noopener" style="text-decoration:none; font-size:12px; padding:8px 14px; border-radius:999px; border:1px solid var(--border,#3a3a3a); color:var(--text);">📄 شروط الاستخدام</a>
+        </div>
+      </div>
+
+      <!-- v-about-lux: التواصل -->
+      <div style="margin-top:16px; text-align:center;">
+        <div style="font-weight:700; font-size:12.5px; margin-bottom:10px; color:var(--muted);" data-i18n="socialTitle">تابعنا على منصات التواصل</div>
+        <div style="display:flex; gap:14px; justify-content:center;">
+      <a href="#" title="Instagram" style="text-decoration:none; display:flex; width:38px; height:38px; align-items:center; justify-content:center; border-radius:12px; background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12 2.2c3.2 0 3.6 0 4.9.07 1.2.06 2 .25 2.6.5.7.28 1.2.6 1.7 1.1.5.5.9 1 1.1 1.7.25.6.44 1.4.5 2.6.06 1.3.07 1.7.07 4.9s0 3.6-.07 4.9c-.06 1.2-.25 2-.5 2.6-.28.7-.6 1.2-1.1 1.7-.5.5-1 .9-1.7 1.1-.6.25-1.4.44-2.6.5-1.3.06-1.7.07-4.9.07s-3.6 0-4.9-.07c-1.2-.06-2-.25-2.6-.5-.7-.28-1.2-.6-1.7-1.1-.5-.5-.9-1-1.1-1.7-.25-.6-.44-1.4-.5-2.6C2.2 15.6 2.2 15.2 2.2 12s0-3.6.07-4.9c.06-1.2.25-2 .5-2.6.28-.7.6-1.2 1.1-1.7.5-.5 1-.9 1.7-1.1.6-.25 1.4-.44 2.6-.5C8.4 2.2 8.8 2.2 12 2.2zm0 1.8c-3.14 0-3.5 0-4.75.07-1 .05-1.6.2-1.98.35-.5.2-.85.42-1.22.8-.38.37-.6.72-.8 1.22-.15.38-.3.98-.35 1.98C2.8 8.5 2.8 8.86 2.8 12s0 3.5.07 4.75c.05 1 .2 1.6.35 1.98.2.5.42.85.8 1.22.37.38.72.6 1.22.8.38.15.98.3 1.98.35 1.25.07 1.61.07 4.75.07s3.5 0 4.75-.07c1-.05 1.6-.2 1.98-.35.5-.2.85-.42 1.22-.8.38-.37.6-.72.8-1.22.15-.38.3-.98.35-1.98.07-1.25.07-1.61.07-4.75s0-3.5-.07-4.75c-.05-1-.2-1.6-.35-1.98-.2-.5-.42-.85-.8-1.22-.37-.38-.72-.6-1.22-.8-.38-.15-.98-.3-1.98-.35C15.5 4 15.14 4 12 4zm0 3.4a4.6 4.6 0 110 9.2 4.6 4.6 0 010-9.2zm0 1.8a2.8 2.8 0 100 5.6 2.8 2.8 0 000-5.6zm4.8-2.2a1.08 1.08 0 110 2.16 1.08 1.08 0 010-2.16z"/></svg>
       </a>
-      <a href="#" title="X / Twitter" style="text-decoration:none; display:flex; width:38px; height:38px; align-items:center; justify-content:center; border-radius:var(--r-2); background:#000;">
+      <a href="#" title="X / Twitter" style="text-decoration:none; display:flex; width:38px; height:38px; align-items:center; justify-content:center; border-radius:12px; background:#000;">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M18.9 2H22l-7.6 8.7L23.3 22h-6.9l-5.4-6.9L4.7 22H1.6l8.2-9.3L1 2h7.1l4.9 6.4L18.9 2zm-1.2 18h1.9L7.4 4H5.4l12.3 16z"/></svg>
       </a>
-      <a href="#" title="TikTok" style="text-decoration:none; display:flex; width:38px; height:38px; align-items:center; justify-content:center; border-radius:var(--r-2); background:#000;">
+      <a href="#" title="TikTok" style="text-decoration:none; display:flex; width:38px; height:38px; align-items:center; justify-content:center; border-radius:12px; background:#000;">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M16.6 2h-3.3v13.5a3 3 0 11-2.1-2.9V9.2a6.1 6.1 0 104.4 5.9V8.5a7.8 7.8 0 004.6 1.5V6.8a4.6 4.6 0 01-3.6-4.8z"/></svg>
       </a>
-      <a href="#" title="YouTube" style="text-decoration:none; display:flex; width:38px; height:38px; align-items:center; justify-content:center; border-radius:var(--r-2); background:#FF0000;">
+      <a href="#" title="YouTube" style="text-decoration:none; display:flex; width:38px; height:38px; align-items:center; justify-content:center; border-radius:12px; background:#FF0000;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M23.5 6.2a3 3 0 00-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 00.5 6.2 31 31 0 000 12a31 31 0 00.5 5.8 3 3 0 002.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 002.1-2.1A31 31 0 0024 12a31 31 0 00-.5-5.8zM9.6 15.5v-7l6.3 3.5-6.3 3.5z"/></svg>
       </a>
-      <a href="#" title="WhatsApp" style="text-decoration:none; display:flex; width:38px; height:38px; align-items:center; justify-content:center; border-radius:var(--r-2); background:#25D366;">
+      <a href="#" title="WhatsApp" style="text-decoration:none; display:flex; width:38px; height:38px; align-items:center; justify-content:center; border-radius:12px; background:#25D366;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M17.5 14.4c-.3-.1-1.7-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6.1-.3-.1-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.6-2.1-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.1.2-.3.3-.5.1-.2 0-.4 0-.5C10 9 9.4 7.6 9.2 7c-.2-.5-.4-.5-.6-.5h-.5c-.2 0-.5.1-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3 4.8 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.7-.7 2-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.5-.3zM12 2a10 10 0 00-8.6 15L2 22l5.1-1.3A10 10 0 1012 2zm0 18.3c-1.6 0-3.2-.4-4.5-1.2l-.3-.2-3 .8.8-3-.2-.3A8.3 8.3 0 1120.3 12 8.3 8.3 0 0112 20.3z"/></svg>
       </a>
-    </div>
-  </div>
+        </div>
+        <div style="font-size:11px; color:var(--muted); opacity:.75; margin-top:16px;">© فريق عمران AI — صُنع بحب في الإمارات 🇦🇪</div>
+      </div>
   </div></div>
 
 
