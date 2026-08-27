@@ -443,19 +443,19 @@
       <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px;">
         <div class="lang-videos-ar" style="border:1px solid rgba(212,175,55,.28); border-radius:16px; overflow:hidden; background:var(--panel2,rgba(255,255,255,.02));">
           <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 12px;"><span style="font-weight:700; font-size:12.5px;" data-i18n="videoArShortTitle">جولة سريعة بالعربي</span><span style="font-size:10.5px; padding:2px 9px; border-radius:999px; background:rgba(212,175,55,.15); color:#d4af37;">قصير</span></div>
-          <video controls preload="none" playsinline style="width:100%; display:block; background:#000; aspect-ratio:16/9; object-fit:cover;"><source src="https://6tfgxvttzyoiavtu.public.blob.vercel-storage.com/omran_ai_builder_ar_short.mp4" type="video/mp4"></video>
+          <video controls preload="none" playsinline style="width:100%; display:block; background:#000; aspect-ratio:16/9; object-fit:cover;"><source src="/assets/videos/intro-ar-short.mp4" type="video/mp4"></video>
         </div>
         <div class="lang-videos-ar" style="border:1px solid rgba(212,175,55,.28); border-radius:16px; overflow:hidden; background:var(--panel2,rgba(255,255,255,.02));">
           <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 12px;"><span style="font-weight:700; font-size:12.5px;" data-i18n="videoArLongTitle">الشرح الكامل بالعربي</span><span style="font-size:10.5px; padding:2px 9px; border-radius:999px; background:rgba(212,175,55,.15); color:#d4af37;">كامل</span></div>
-          <video controls preload="none" playsinline style="width:100%; display:block; background:#000; aspect-ratio:16/9; object-fit:cover;"><source src="https://6tfgxvttzyoiavtu.public.blob.vercel-storage.com/omran_ai_builder_ar_long.mp4" type="video/mp4"></video>
+          <video controls preload="none" playsinline style="width:100%; display:block; background:#000; aspect-ratio:16/9; object-fit:cover;"><source src="/assets/videos/intro-ar-long.mp4" type="video/mp4"></video>
         </div>
         <div class="lang-videos-en" style="border:1px solid rgba(212,175,55,.28); border-radius:16px; overflow:hidden; background:var(--panel2,rgba(255,255,255,.02));">
           <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 12px;"><span style="font-weight:700; font-size:12.5px;" data-i18n="videoEnShortTitle">Quick English tour</span><span style="font-size:10.5px; padding:2px 9px; border-radius:999px; background:rgba(212,175,55,.15); color:#d4af37;">Short</span></div>
-          <video controls preload="none" playsinline style="width:100%; display:block; background:#000; aspect-ratio:16/9; object-fit:cover;"><source src="https://6tfgxvttzyoiavtu.public.blob.vercel-storage.com/omran_ai_builder_en_short.mp4" type="video/mp4"></video>
+          <video controls preload="none" playsinline style="width:100%; display:block; background:#000; aspect-ratio:16/9; object-fit:cover;"><source src="/assets/videos/intro-en-short.mp4" type="video/mp4"></video>
         </div>
         <div class="lang-videos-en" style="border:1px solid rgba(212,175,55,.28); border-radius:16px; overflow:hidden; background:var(--panel2,rgba(255,255,255,.02));">
           <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 12px;"><span style="font-weight:700; font-size:12.5px;" data-i18n="videoEnLongTitle">Full English walkthrough</span><span style="font-size:10.5px; padding:2px 9px; border-radius:999px; background:rgba(212,175,55,.15); color:#d4af37;">Full</span></div>
-          <video controls preload="none" playsinline style="width:100%; display:block; background:#000; aspect-ratio:16/9; object-fit:cover;"><source src="https://6tfgxvttzyoiavtu.public.blob.vercel-storage.com/omran_ai_builder_en_long.mp4" type="video/mp4"></video>
+          <video controls preload="none" playsinline style="width:100%; display:block; background:#000; aspect-ratio:16/9; object-fit:cover;"><source src="/assets/videos/intro-en-long.mp4" type="video/mp4"></video>
         </div>
       </div>
 

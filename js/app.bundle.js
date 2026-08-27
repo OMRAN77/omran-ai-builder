@@ -7863,6 +7863,7 @@ async function postWithConfirm(url, payload){
 /* v-stocks-fullpage */
 /* v-err-banner-quiet */
 /* v-about-lux */
+/* v-intro-videos */
 window.postWithConfirm = postWithConfirm;
 /* يضبط شكل المحادثة كما يشترطه Gemini — يُستدعى قبل كل طلب. */
 function sanitizeGeminiContents(list){
