@@ -4,7 +4,7 @@
 // small daily quota per account (see api/_videoUsage.js) because each
 // generated video costs the owner real money.
 const { checkVideoQuota, consumeVideo, checkOwnerBypass } = require('./_videoUsage');
-const { pickKey, encodeTaskId, clearStuckTask, saveLastTask } = require('./runway-keys');
+const { pickKey, encodeTaskId, clearStuckTask, saveLastTask, RUNWAY_API_BASE } = require('./runway-keys');
 
 const RUNWAY_VERSION = '2024-11-06';
 
@@ -104,10 +104,11 @@ module.exports = async (req, res) => {
 
     // 🎬 صورة مرفقة → image_to_video (تحريك الصورة نفسها)، بدونها → text_to_video
     const useImage = !!(imageBase64 && String(imageBase64).length > 50);
-    // v527: endpoint الإنتاج (بدون .dev.) — api.dev.runwayml.com أصبح يخدم API مختلف
+    // v-runway-host: مفاتيح الـAPI العامة تخدمها api.dev.runwayml.com حصرًا —
+    // النداء على api.runwayml.com يرجع «Incorrect hostname for API key».
     const endpoint = useImage
-      ? 'https://api.runwayml.com/v1/image_to_video'
-      : 'https://api.runwayml.com/v1/text_to_video';
+      ? RUNWAY_API_BASE + '/v1/image_to_video'
+      : RUNWAY_API_BASE + '/v1/text_to_video';
     // عندما تُرفق صورة نُضيف تعليمة الحفاظ على هوية الشخص في مقدمة الـ prompt
     // بدونها يتجاهل Runway الصورة ويولّد شخصية عشوائية مختلفة تمامًا
     if (useImage) {
