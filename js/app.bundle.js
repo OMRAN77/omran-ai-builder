@@ -8287,7 +8287,7 @@ $('#btnSettings').onclick = () => {
   $('#groqApiKey').value = localStorage.getItem('aiapp_groq_apikey') || '';
   $('#groqModel').value = localStorage.getItem('aiapp_groq_model') || 'llama-3.3-70b-versatile';
   $('#claudeApiKey').value = localStorage.getItem('aiapp_claude_apikey') || '';
-  $('#claudeModel').value = localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-4-20250514';
+  $('#claudeModel').value = localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-5';
   $('#openrouterApiKey').value = localStorage.getItem('aiapp_openrouter_apikey') || '';
   $('#openrouterModel').value = localStorage.getItem('aiapp_openrouter_model') || 'openai/gpt-4o-mini';
   $('#perplexityApiKey').value = localStorage.getItem('aiapp_perplexity_apikey') || '';
@@ -8520,7 +8520,7 @@ $('#btnSaveSettings').onclick = () => {
   localStorage.setItem('aiapp_groq_apikey', $('#groqApiKey').value.trim());
   localStorage.setItem('aiapp_groq_model', $('#groqModel').value.trim() || 'llama-3.3-70b-versatile');
   localStorage.setItem('aiapp_claude_apikey', $('#claudeApiKey').value.trim());
-  localStorage.setItem('aiapp_claude_model', $('#claudeModel').value.trim() || 'claude-sonnet-4-20250514');
+  localStorage.setItem('aiapp_claude_model', $('#claudeModel').value.trim() || 'claude-sonnet-5');
   localStorage.setItem('aiapp_openrouter_apikey', $('#openrouterApiKey').value.trim());
   (() => {
     const sel = $('#openrouterModelSelect');
@@ -9653,7 +9653,7 @@ async function claudeProxyRequest(model, systemMsg, rest, stream){
 
 async function callClaude(messages, onDelta){
   const apiKey = localStorage.getItem('aiapp_claude_apikey');
-  let model = window.__claudeModelOverride || localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-4-20250514';
+  let model = window.__claudeModelOverride || localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-5';
   const systemMsgsC = messages.filter(m => m.role === 'system');
   const systemMsg = systemMsgsC.length ? { content: systemMsgsC.map(m => m.content).join('\n\n') } : null;
   const rest = messages.filter(m => m.role !== 'system').map(m => {
@@ -17056,7 +17056,11 @@ DESIGN RULES (non-negotiable):
       // 🛠️ v468: البوّابة تعلو على اليد — في دور الاستئذان لا تُمرَّر الأدوات
       // إطلاقًا، وإلّا غلبت تعليمة «ابنِ ولا تستأذن» داخل chat.js. بعد الموافقة
       // يسقط __gateNoBuild فتعمل اليد كاملة (صور + كود + تجربة).
-      const __toolsWillRun = (window.__chatToolsOn !== false && !__routeFix && (!__gateNoBuild || !!__gateApprovedText) && !imageAttachments.length
+      // v-chat-vision: الصور مع كلود تمر بمسار الأدوات المباشر القوي نفسه —
+      // كانت تُقصى منه كلها فتسقط لمسار قديم أضعف (سبب تحليل الصور السطحي).
+      // بقية المزوّدات تبقى مُقصاة: كتل الرؤية بصيغة Anthropic لا تناسبها.
+      const __toolsWillRun = (window.__chatToolsOn !== false && !__routeFix && (!__gateNoBuild || !!__gateApprovedText)
+        && (!imageAttachments.length || __effProv === 'claude')
         && TOOL_PROVIDERS.indexOf(__effProv) !== -1
         && typeof window.callChatWithTools === 'function');
       if(__gateApprovedText && __toolsWillRun){
@@ -24205,6 +24209,18 @@ window.updateVersionLabel();
     // الذاكرة، وحدّ الأربع يبقى حدَّ ردٍّ لا حدَّ جلسة. الكود المبنيّ يُستبدل فيه
     // الرمز فور وصوله، فلا يضرّه المسح لاحقًا.
     window.__genImages = {};
+    // v-chat-vision: الصور المرفقة كانت تُقصى من هذا المسار فتسقط لمسار قديم
+    // أضعف — الآن تُحوَّل لكتل رؤية بصيغة Anthropic وتمر بنفس الخط المباشر
+    // القوي (نفس النموذج ونفس قواعد العمق والأدوات).
+    messages = messages.map(function (m) {
+      if (!m || !m.images || !m.images.length) return m;
+      var content = [{ type: 'text', text: String(m.content || 'حلّل هذه الصورة بالتفصيل.') }];
+      m.images.forEach(function (img) {
+        var b64 = String((img && img.dataUrl) || '').split(',')[1];
+        if (b64) content.push({ type: 'image', source: { type: 'base64', media_type: (img && img.mime) || 'image/jpeg', data: b64 } });
+      });
+      return { role: m.role, content: content };
+    });
     var res = await fetch('/api/ai?action=chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

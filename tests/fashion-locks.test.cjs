@@ -192,4 +192,12 @@ assert.ok(chatSrv.includes("prov === 'claude'\n    ? (!process.env.ANTHROPIC_API
 assert.ok(chatSrv.includes("process.env.CHAT_CLAUDE_MODEL || 'claude-opus-5'"), 'نفس فئة النموذج القوية مباشرة + قابلة للتبديل من البيئة');
 console.log('  ✓ v-chat-direct: المحادثة على الخط المباشر');
 
+// ⑱ v-chat-vision: الصور المرفقة تمر بمسار الأدوات القوي نفسه لا لمسار قديم أضعف.
+const chatToolsCli = fs.readFileSync(path.join(__dirname, '../js/app-18-chat-tools.js'), 'utf8');
+assert.ok(chatToolsCli.includes('v-chat-vision') && chatToolsCli.includes("type: 'image', source: { type: 'base64'"), 'الصور تُحوَّل لكتل رؤية في مسار الأدوات');
+const attachCli = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
+assert.ok(attachCli.includes("(!imageAttachments.length || __effProv === 'claude')"), 'بوابة الأدوات تسمح بالصور مع كلود');
+assert.ok(!fs.readFileSync(path.join(__dirname, '../js/app-06-checkout.js'), 'utf8').includes('claude-sonnet-4-20250514'), 'لا نموذج قديم في مسار الاحتياط');
+console.log('  ✓ v-chat-vision: تحليل الصور على نفس العقل القوي');
+
 console.log('fashion locks tests passed');

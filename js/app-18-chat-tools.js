@@ -55,6 +55,18 @@
     // الذاكرة، وحدّ الأربع يبقى حدَّ ردٍّ لا حدَّ جلسة. الكود المبنيّ يُستبدل فيه
     // الرمز فور وصوله، فلا يضرّه المسح لاحقًا.
     window.__genImages = {};
+    // v-chat-vision: الصور المرفقة كانت تُقصى من هذا المسار فتسقط لمسار قديم
+    // أضعف — الآن تُحوَّل لكتل رؤية بصيغة Anthropic وتمر بنفس الخط المباشر
+    // القوي (نفس النموذج ونفس قواعد العمق والأدوات).
+    messages = messages.map(function (m) {
+      if (!m || !m.images || !m.images.length) return m;
+      var content = [{ type: 'text', text: String(m.content || 'حلّل هذه الصورة بالتفصيل.') }];
+      m.images.forEach(function (img) {
+        var b64 = String((img && img.dataUrl) || '').split(',')[1];
+        if (b64) content.push({ type: 'image', source: { type: 'base64', media_type: (img && img.mime) || 'image/jpeg', data: b64 } });
+      });
+      return { role: m.role, content: content };
+    });
     var res = await fetch('/api/ai?action=chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
