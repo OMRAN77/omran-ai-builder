@@ -15,8 +15,19 @@
 // وحده. لا بيانات مستخدمين تُلمس.
 const crypto = require('crypto');
 
-function ownerUsername() {
-  return (process.env.OWNER_USERNAME || 'omran').trim().toLowerCase();
+// v-owner-core: ‹omran› مالك دائم مدمج في الكود مهما كانت البيئة — متغيّرات
+// البيئة (OWNER_USERNAMES بفواصل و/أو OWNER_USERNAME) «تضيف» أسماء مالكين ولا
+// «تستبدل» الاسم المدمج أبدًا. قبل اليوم كانت قيمة البيئة تحلّ محلّ ‹omran›،
+// فقيمة مغلوطة واحدة في Vercel أقفلت كلّ بوّابات الملكية على المالك نفسه
+// (لوحة VIP «غير مصرح»، خصم نقاط من حسابه…). هذه القائمة هي المرجع الوحيد.
+function ownerList() {
+  const env = (String(process.env.OWNER_USERNAMES || '') + ',' + String(process.env.OWNER_USERNAME || ''))
+    .toLowerCase().split(',').map((s) => s.trim()).filter(Boolean);
+  return [...new Set(env.concat(['omran']))];
+}
+
+function isOwnerName(username) {
+  return !!username && ownerList().includes(String(username).trim().toLowerCase());
 }
 
 // مقارنة ثابتة الزمن: لا تُفشي طول السرّ ولا أوّل حرفٍ يختلف.
@@ -43,7 +54,7 @@ function sessionIsOwner(token) {
     if (!sameSecret(sig, expected)) return false;
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
     if (!data || !(data.exp > Date.now())) return false;
-    return String(data.u || '').trim().toLowerCase() === ownerUsername();
+    return isOwnerName(data.u);
   } catch (e) {
     return false;
   }
@@ -56,4 +67,4 @@ function isOwner(req) {
   return keyIsValid(q.key || b.key) || sessionIsOwner(q.token || b.token);
 }
 
-module.exports = { isOwner };
+module.exports = { isOwner, isOwnerName, ownerList };

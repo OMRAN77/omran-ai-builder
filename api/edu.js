@@ -15,7 +15,8 @@ const { verifyToken } = require('./_lib/auth.js');
 const { kvGetJSON, kvPutJSON, kvIncr, kvExpire } = require('./_lib/kv.js');
 const { clientIp } = require('./_lib/_usage.js');
 
-const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').trim().toLowerCase();
+// v-owner-core: قائمة المالك الموحّدة — ‹omran› مدمج دائمًا والبيئة تضيف لا تستبدل.
+const { isOwnerName } = require('./_lib/_owner.js');
 const MODEL = 'claude-sonnet-5'; // keep in sync with api/_lib/claude.js
 const MAX_BASE64_CHARS = 14 * 1024 * 1024; // ~14MB of base64 payload
 const GUEST_PROCESS_PER_DAY = 3;
@@ -255,7 +256,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     // حارس الميزات المتقاعدة — 410 قبل أي استخدام مفتاح (docqa/docask/gov/cv).
     if (isRetired(action)) { retiredResponse(res, action); return; }
     const username = body.token ? verifyToken(body.token) : null;
-    const isOwner = !!username && String(username).trim().toLowerCase() === OWNER_USERNAME;
+    const isOwner = isOwnerName(username);
 
     // ---------------- process ----------------
     if (action === 'process') {

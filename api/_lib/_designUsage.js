@@ -12,8 +12,8 @@ const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 // v-owner-open: المالك (بأي من أسمائه في OWNER_USERNAMES أو OWNER_USERNAME)
 // وقائمة VIP بلا حدود — كان المالك نفسه محدودًا هنا.
 const { isVip } = require('./_vip.js');
-const __OWNERS = String(process.env.OWNER_USERNAMES || process.env.OWNER_USERNAME || 'omran')
-  .toLowerCase().split(',').map((s) => s.trim()).filter(Boolean);
+// v-owner-core: قائمة موحّدة — ‹omran› مدمج دائمًا والبيئة تضيف لا تستبدل.
+const __OWNERS = require('./_owner.js').ownerList();
 async function __unlimitedUser(username) {
   if (!username) return false;
   if (__OWNERS.includes(String(username).toLowerCase())) return true;
