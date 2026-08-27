@@ -4349,11 +4349,31 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
   // v378: شبكة أمان — لو علّق التحميل المحلي لأي سبب، نفتح المزامنة بعد 10 ثواني.
   setTimeout(() => { window.__localChatsLoaded = true; }, 10000);
   if(!window.indexedDB){ window.__localChatsLoaded = true; return; }
+  // v-idb-timeout: على iOS PWA قد يتجمد idbGet للأبد عند الإقلاع البارد —
+  // مهلة ٣ ثوانٍ ثم محاولة إنعاش واحدة (٥ ثوانٍ)؛ الفشل النهائي يُبلَّغ
+  // ويُترك للمرآة (v-idb-mirror) التي رسمت المحادثات أصلًا من أول لحظة.
+  const idbGetGuarded = async (key) => {
+    const withTimeout = (ms) => Promise.race([
+      idbGet(key),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('idb-timeout')), ms)),
+    ]);
+    try{ return await withTimeout(3000); }
+    catch(e1){
+      try{ return await withTimeout(5000); }
+      catch(e2){
+        try{
+          fetch('/api/system?action=client-errors', { method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ message: 'v-idb-hang: تجمّد تحميل المحادثات من IndexedDB — المرآة هي المعروضة', source: 'app-09', line: 0, col: 0, stack: '', url: location.pathname, ua: navigator.userAgent }) }).catch(function(){ /* guard-ok */ });
+        }catch(e3){ /* guard-ok: الإبلاغ ترف */ }
+        throw e2;
+      }
+    }
+  };
   try{
     const migrated = localStorage.getItem('aiapp_idb_on') === '1';
     if(!migrated){
       // أول تشغيل: بيانات localStorage هي المصدر → ننسخها إلى IndexedDB ثم نحرر المساحة.
-      const idbOld = await idbGet('aiapp_projects');
+      const idbOld = await idbGetGuarded('aiapp_projects');
       const merged = Array.isArray(idbOld) && idbOld.length
         ? idbOld.filter(p => !state.projects.some(q => q.id === p.id)).concat(state.projects)
         : state.projects;
@@ -4363,13 +4383,20 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
       try{ localStorage.removeItem('aiapp_projects'); }catch(e){ __swallow(e, "save:app-09-attach#33"); }
       renderAll();
     } else {
-      const idbProjects = await idbGet('aiapp_projects');
+      const idbProjects = await idbGetGuarded('aiapp_projects');
       if(Array.isArray(idbProjects) && idbProjects.length){
-        // دمج أي مشاريع أنشئت قبل اكتمال التحميل (نادر) بدون فقدان.
+        // دمج أي مشاريع أنشئت قبل اكتمال التحميل (نادر) بدون فقدان — وإن كان
+        // المعروض مرآةً وكتب المستخدم فيها رسالة قبل وصول الكاملة، تُحفظ نسخته
+        // الأغنى بدل سحقها (v-idb-mirror).
         const extra = state.projects.filter(p => !idbProjects.some(q => q.id === p.id));
-        state.projects = idbProjects.concat(extra);
+        state.projects = idbProjects.map(ip => {
+          const sp = state.projects.find(q => q.id === ip.id);
+          return (sp && (sp.messages || []).length > (ip.messages || []).length) ? sp : ip;
+        }).concat(extra);
+        window.__usingSlimProjects = false;
         renderAll();
       }
+      try{ if(window.__writeChatsMirror) window.__writeChatsMirror(); }catch(e){ __swallow(e, 'mirror:app-09#fresh'); }
     }
     // 🧹 v308: تنظيف لمرة واحدة — لقطات آلة الزمن القديمة المنتفخة بوسائط base64
     // (كانت تنسخ الصور المضمنة 12 مرة وتفجّر تخزين iOS فتختفي المحادثات).

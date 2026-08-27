@@ -218,4 +218,14 @@ assert.ok(agentTools20.includes('j.retryable') && agentTools20.includes('__att =
 assert.ok(fs.readFileSync(path.join(__dirname, '../api/_lib/chat.js'), 'utf8').includes('ممنوع منعًا باتًا البحث عن صور حقيقية لتصميمٍ غير موجود'), 'قاعدة متابعة الصورة للنموذج');
 console.log('  ✓ v-maha-image-rescue: صور المحادثة لا تموت بالزحام ولا تُخطف للبحث');
 
+// ㉑ v-idb-mirror: المحادثات تُرسم فورًا من مرآة localStorage — لا انتظار IndexedDB.
+const st21 = fs.readFileSync(path.join(__dirname, '../js/app-04-i18n-state.js'), 'utf8');
+assert.ok(st21.includes('aiapp_projects_slim') && st21.includes('__usingSlimProjects'), 'المرآة تُقرأ عند الإقلاع');
+assert.ok(st21.includes('function __writeChatsMirror') && st21.includes("addEventListener('pagehide', __writeChatsMirror)"), 'المرآة تُكتب مع الحفظ وعند المغادرة');
+assert.ok(st21.includes("boot:app-04#cur-early"), 'استرجاع المحادثة الحالية خرج من أسر كتلة IndexedDB');
+const at21 = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
+assert.ok(at21.includes('idbGetGuarded') && at21.includes('v-idb-hang'), 'تحميل IndexedDB بمهلة وإنعاش وتبليغ');
+assert.ok(at21.includes('(sp.messages || []).length > (ip.messages || []).length'), 'دمج لا يسحق رسالة كُتبت على المرآة');
+console.log('  ✓ v-idb-mirror: المحادثات من أول لحظة مهما تجمد IndexedDB');
+
 console.log('fashion locks tests passed');
