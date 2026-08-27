@@ -2814,6 +2814,7 @@ const I18N = {
     agentOnNote: "الوكيل شغّال الآن — ارجع للمحادثة واكتب طلبك.",
     vgModeTranslate: "ترجمة فورية",
     vgModeAsk: "اسأل عمّا تراه",
+    mahaCcTitle: "الترجمة النصية للمكالمة",
     premiumNeedLogin: "سجّل الدخول لتشغيل الوكيل",
     premiumNoPoints: "نقاطك خلصت — اشترِ نقاط لمواصلة الوكيل",
     chatToPdfLabel: "تحويل إلى PDF",
@@ -3273,6 +3274,7 @@ const I18N = {
     agentOnNote: "Agent is ON — go back to the chat and type your request.",
     vgModeTranslate: "Live translate",
     vgModeAsk: "Ask about it",
+    mahaCcTitle: "Live call captions",
     premiumNeedLogin: "Sign in to use Agent",
     premiumNoPoints: "Out of points — buy points to keep using Agent",
     chatToPdfLabel: "Convert to PDF",
@@ -10563,6 +10565,46 @@ const mahaCallScreenEl = document.getElementById('mahaCallScreen');
 const mahaOrbEl = document.getElementById('mahaOrb');
 const mahaWaveEl = document.getElementById('mahaWave');
 const mahaStateLabelEl = document.getElementById('mahaStateLabel');
+
+/* v-maha-captions: ترجمة نصية حية للمكالمة — نفس ميزة صوت GPT المتقدم.
+   في المكالمة اللحظية تصل كلمات مها تدفقًا (transcript.delta) وكلام المستخدم
+   من تفريغ الإدخال؛ وفي الوضع الأساسي النصوص جاهزة أصلًا. زر 💬 يخفيها لمن
+   يريد مكالمة صافية، والاختيار محفوظ. ولذوي ضعف السمع هي باب وصولٍ كامل. */
+const mahaCapEl = document.getElementById('mahaCaptions');
+let mahaCcOn = true; try{ mahaCcOn = localStorage.getItem('aiapp_maha_cc') !== '0'; }catch(e){ /* guard-ok: تخزين معطّل = الافتراض ظاهر */ }
+let mahaCapLive = null; // سطر مها الجاري بثّه
+function mahaCapSync(){ if(mahaCapEl) mahaCapEl.style.display = (mahaCcOn && mahaCallActive && mahaCapEl.childNodes.length) ? 'block' : 'none'; }
+function mahaCapClear(){ if(mahaCapEl) mahaCapEl.innerHTML = ''; mahaCapLive = null; mahaCapSync(); }
+function mahaCapLine(who, text){
+  if(!mahaCapEl || !text) return null;
+  const d = document.createElement('div');
+  if(who === 'user'){ d.style.cssText = 'color:#bdb4d8; font-size:11px;'; d.textContent = '👤 ' + text; }
+  else{ d.style.cssText = 'color:#f3efff;'; d.textContent = text; }
+  mahaCapEl.appendChild(d);
+  while(mahaCapEl.childNodes.length > 14) mahaCapEl.removeChild(mahaCapEl.firstChild);
+  mahaCapSync();
+  mahaCapEl.scrollTop = mahaCapEl.scrollHeight;
+  return d;
+}
+function mahaCapUser(text){ mahaCapLive = null; mahaCapLine('user', String(text || '').trim()); }
+function mahaCapDelta(delta){
+  if(!mahaCapEl || !delta) return;
+  if(!mahaCapLive){ mahaCapLive = mahaCapLine('maha', String(delta)); return; }
+  mahaCapLive.textContent += String(delta);
+  mahaCapEl.scrollTop = mahaCapEl.scrollHeight;
+}
+function mahaCapDone(){ mahaCapLive = null; }
+(function(){
+  const b = document.getElementById('btnMahaCc');
+  if(!b) return;
+  const paint = () => { b.style.background = mahaCcOn ? 'rgba(123,92,255,.45)' : 'rgba(255,255,255,.14)'; };
+  paint();
+  b.onclick = () => {
+    mahaCcOn = !mahaCcOn;
+    try{ localStorage.setItem('aiapp_maha_cc', mahaCcOn ? '1' : '0'); }catch(e){ /* guard-ok: بلا تخزين يبقى الاختيار لهذه المكالمة */ }
+    paint(); mahaCapSync();
+  };
+})();
 const btnMahaEndCallEl = document.getElementById('btnMahaEndCall');
 
 /* ---------- مها floating draggable window ---------- */
@@ -11760,8 +11802,13 @@ async function mahaStartRealtimeCall(){
       }
       else if(ev.type === 'response.created'){ mahaClearRtResponseWatchdog(); mahaSetState('thinking'); }
       else if(ev.type === 'output_audio_buffer.started' || ev.type === 'response.audio.delta'){ mahaClearRtResponseWatchdog(); mahaSetState('speaking'); }
-    else if(ev.type === 'output_audio_buffer.stopped' || ev.type === 'response.done'){ mahaSetState('listening'); }
+    else if(ev.type === 'output_audio_buffer.stopped' || ev.type === 'response.done'){ mahaSetState('listening'); mahaCapDone(); }
     else if(ev.type === 'response.function_call_arguments.done'){ mahaHandleRtFunctionCall(ev); }
+    // v-maha-captions: كلمات مها تدفقًا + كلام المستخدم من تفريغ الإدخال
+    // (اسمان للحدث: صيغة GA وصيغة المعاينة الأقدم — نلتقط كليهما).
+    else if(ev.type === 'response.output_audio_transcript.delta' || ev.type === 'response.audio_transcript.delta'){ mahaCapDelta(ev.delta); }
+    else if(ev.type === 'response.output_audio_transcript.done' || ev.type === 'response.audio_transcript.done'){ mahaCapDone(); }
+    else if(ev.type === 'conversation.item.input_audio_transcription.completed'){ mahaCapUser(ev.transcript); }
     else if(ev.type === 'error'){ console.error('[maha-realtime] server error:', ev); }
   });
 
@@ -12235,6 +12282,7 @@ async function mahaCallLoop(){
       }
 
       mahaHistory.push({ role: 'user', content: transcript });
+      mahaCapUser(transcript); /* v-maha-captions */
       if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);
 
       // Classic pipeline has no real function-calling like the Realtime mode.
@@ -12253,6 +12301,7 @@ async function mahaCallLoop(){
         mahaHistory.push({ role: 'assistant', content: imgReply });
         if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);
         mahaSetState('speaking');
+        mahaCapLine('maha', imgReply); /* v-maha-captions */
         await mahaSpeak(imgReply);
         continue;
       }
@@ -12303,6 +12352,7 @@ async function mahaCallLoop(){
       if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);
 
       mahaSetState('speaking');
+      mahaCapLine('maha', reply); /* v-maha-captions */
       await mahaSpeak(reply);
     }catch(e){ console.error('[maha] turn error', e); }
   }
@@ -12380,6 +12430,7 @@ function mahaEndCall(){
   if(mahaMediaRecorder && mahaMediaRecorder.state === 'recording'){ try{ mahaMediaRecorder.stop(); }catch(e){ __swallow(e, "ui:app-08-maha#27"); } }
   if(mahaCurrentAudio){ try{ mahaCurrentAudio.pause(); }catch(e){ __swallow(e, "misc:app-08-maha#28"); } mahaCurrentAudio = null; }
   stopAllSpeaking();
+  mahaCapClear(); /* v-maha-captions: مكالمة جديدة تبدأ بسجل نظيف */
   if(mahaCallScreenEl) mahaCallScreenEl.style.display = 'none';
   /* v-maha-dock: مها راسية بجانب المايك — العائمة لا تعود للظهور. */
   mahaSetState('idle');

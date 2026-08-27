@@ -282,6 +282,9 @@ module.exports = async (req, res) => {
             // الجوّال far_field ⇒ كبت عدوانيّ يبتر أوّل جملة، خاصّة في الضوضاء.
             // كلّ أجهزتنا مايك قريب (الهاتف باليد · لابتوب المستخدم قريب منه) ⇒ near_field للجميع.
             noise_reduction: { type: 'near_field' },
+            // v-maha-captions: تفريغ كلام المستخدم نصًّا ليصل حدث
+            // input_audio_transcription.completed فتظهر الترجمة الحية على الشاشة.
+            transcription: { model: 'gpt-4o-mini-transcribe' },
             // v607: الجوّال كان semantic_vad — يقرّر بالمعنى، وينتظر مهلة إن ظنّ الجملة ناقصة
             // ⇒ لا يردّ حتّى تتكلّم ثانية. server_vad يقطع بالصمت وهو المُثبت على الكمبيوتر.
             turn_detection: mode === 'builder'
@@ -467,6 +470,13 @@ module.exports = async (req, res) => {
     // بعض إصدارات واجهة realtime لا تقبل حقل السرعة — أعِد المحاولة بدونه
     if (!upstream.ok && sessionConfig.session.audio.output.speed != null) {
       delete sessionConfig.session.audio.output.speed;
+      upstream = await postSession();
+      rawText = await upstream.text();
+    }
+    // وكذلك حقل التفريغ النصي (v-maha-captions): رفضُه لا يُسقط المكالمة —
+    // تكمل بلا ترجمة حية لكلام المستخدم (كلمات مها تصل من مسار آخر أصلًا).
+    if (!upstream.ok && sessionConfig.session.audio.input.transcription) {
+      delete sessionConfig.session.audio.input.transcription;
       upstream = await postSession();
       rawText = await upstream.text();
     }

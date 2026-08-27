@@ -373,7 +373,10 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
     <div id="mahaWave" class="maha-wave-idle" style="display:none; width:77px; height:77px; border-radius:50%;"></div>
   </div>
   <video id="mahaCamPreview" autoplay playsinline muted style="display:none; position:absolute; top:auto; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%); width:59px; height:78px; object-fit:cover; border-radius:var(--r-3); border:2px solid rgba(255,255,255,.35); box-shadow:0 4px 14px rgba(0,0,0,.45); z-index:2;"></video>
+  <!-- v-maha-captions: ترجمة نصية حية للمكالمة — مثل صوت GPT المتقدم، ولذوي ضعف السمع -->
+  <div id="mahaCaptions" dir="rtl" style="display:none; width:min(258px, 78vw); max-height:118px; overflow-y:auto; background:rgba(10,10,20,.78); border:1px solid rgba(255,255,255,.16); border-radius:13px; padding:7px 11px; font-size:12px; line-height:1.75; color:#f3efff; text-align:right; box-shadow:0 4px 16px rgba(0,0,0,.45); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px);"></div>
   <div style="display:flex; align-items:center; gap:13px;">
+    <button type="button" id="btnMahaCc" data-i18n-title="mahaCcTitle" title="الترجمة النصية" style="width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,.14); color:#fff; font-size:14px; cursor:pointer;">💬</button>
     <button type="button" id="btnMahaCamera" data-i18n-title="mahaCameraTitle" title="الكاميرا — عين مها" style="width:36px; height:36px; border-radius:50%; border:none; background:rgba(255,255,255,.14); color:#fff; font-size:15px; cursor:pointer;">📷</button>
     <button type="button" id="btnMahaEndCall" style="width:45px; height:45px; border-radius:50%; border:none; background:#ff4d4d; color:#fff; font-size:18px; box-shadow:0 4px 11px rgba(255,77,77,.5); cursor:pointer;">✕</button>
   </div>
@@ -388,7 +391,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 <script src="/js/selfdiag.js?v=631"></script>
 <script src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script src="/js/app.bundle.js?v=4baae4b7"></script>
+    <script src="/js/app.bundle.js?v=50939d47"></script>
     <script src="/js/modes.js?v=b23329c6"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">

@@ -173,4 +173,16 @@ const idx = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
 assert.ok(idx.includes('data-vgmode="translate"') && idx.includes('data-vgmode="ask"'), 'زرّا الوضعين في الواجهة');
 console.log('  ✓ عين عمران: إنقاذ + ترجمة + سؤال');
 
+// ⑯ v-maha-captions: ترجمة نصية حية للمكالمة — لحظية وأساسية، وتفريغ الإدخال بالخادم.
+const mahaCli = fs.readFileSync(path.join(__dirname, '../js/app-08-maha.js'), 'utf8');
+assert.ok(mahaCli.includes('v-maha-captions') && mahaCli.includes('function mahaCapDelta'), 'وحدة الترجمة النصية موجودة');
+assert.ok(mahaCli.includes("'response.output_audio_transcript.delta'") && mahaCli.includes("'conversation.item.input_audio_transcription.completed'"), 'أحداث المكالمة اللحظية موصولة');
+assert.ok(mahaCli.includes('mahaCapUser(transcript)') && mahaCli.includes("mahaCapLine('maha', reply)"), 'الوضع الأساسي يعرض الطرفين');
+const rtSess = fs.readFileSync(path.join(__dirname, '../api/_lib/realtime-session.js'), 'utf8');
+assert.ok(rtSess.includes("transcription: { model: 'gpt-4o-mini-transcribe' }"), 'تفريغ كلام المستخدم مفعّل بالخادم');
+assert.ok(rtSess.includes('sessionConfig.session.audio.input.transcription) {'), 'رفض حقل التفريغ لا يُسقط المكالمة');
+const idx16 = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
+assert.ok(idx16.includes('id="mahaCaptions"') && idx16.includes('id="btnMahaCc"'), 'لوحة الترجمة وزرها في الواجهة');
+console.log('  ✓ v-maha-captions: الترجمة الحية للمكالمة مقفولة');
+
 console.log('fashion locks tests passed');
