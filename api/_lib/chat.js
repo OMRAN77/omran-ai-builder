@@ -116,6 +116,7 @@ const TOOLS_NOTE = '\n\n[أدواتك الحقيقية — خمس، وهي تع�
   '(١) ممنوع منعًا باتًا أن تقول «لا أستطيع الوصول للإنترنت» أو «راجع الموقع الرسمي» أو «الأسعار تتغيّر فتحقّق بنفسك» قبل أن تستدعي الأداة. أنت تصل، فاستخدمها.\n' +
   '(٢) ممنوع أن تدّعي أنك بحثتَ أو فتحتَ صفحة أو شغّلتَ كودًا إن لم تستدعِ الأداة فعلًا في هذا الردّ.\n' +
   '(٣) السؤال الذي لا يحتاج أداة (تحية، رأي، شرح مفهوم ثابت، صياغة نصّ) أجب عنه مباشرة بلا أداة ولا مقدّمات.\n' +
+  '(٣ب) سرعة الردّ أولوية عليا: ادمج كل ما تحتاجه في بحث واحد شامل — بحثان كحد أقصى في الردّ الواحد والثالث سيُرفض تلقائيًا. وrun_js للحساب الجوهري الذي ستعرضه للمستخدم فقط، لا للتحقق الروتيني من تحويلات بسيطة تجيدها.\n' +
   '(٤) بعد الأدوات: أجب بإيجاز، ولا تلصق نتائج البحث خامًا.\n' +
   '(٥) إن فشلت أداة أو لم تعطِ ما يكفي، قل ذلك صراحةً بدل تعبئة الفراغ من ذاكرتك.' +
   '\n\n[شكل الردّ بعد البحث — إلزاميّ]:\n' +
@@ -973,6 +974,7 @@ module.exports = async (req, res) => {
     const MAX_MS = Math.max(20000, Number(process.env.CHAT_MAX_MS) || 240000);
     const t0 = Date.now();
     let steps = 0;
+    let searchesUsed = 0; // v-chat-parallel-tools: سقف بحثين لكل ردّ
     let anyText = false;
     let fullText = '';   // v608 — نصّ الردّ المتراكم
     let toolCorpus = ''; // v608 — ناتج الأدوات الحقيقيّ في هذا الدور
@@ -1084,29 +1086,44 @@ module.exports = async (req, res) => {
       }).filter((c) => c.type === 'tool_use' || (c.text && c.text.trim()));
       convo.push({ role: 'assistant', content: assistantContent });
 
-      const toolResults = [];
-      for (const cb of blocks.filter(Boolean)) {
-        if (cb.type !== 'tool_use') continue;
+      // v-chat-parallel-tools (لقطات عمران ٢٧ أغسطس — «المحادثة ٣٠ ثانية وأكثر»):
+      // أدوات الدور الواحد كانت تُنفَّذ بالتتابع — ٤ صور = دقائق، والبث واقف.
+      // الآن تنطلق كلها معًا؛ و«سقف البحثين»: النموذج كان يبحث ٤ مرات للسؤال
+      // الواحد وكل بحث رحلة نموذج كاملة — الثالث فما فوق يُرَدّ فورًا بلا شبكة.
+      const toolBlocks = blocks.filter(Boolean).filter((cb) => cb.type === 'tool_use');
+      const settledTools = await Promise.all(toolBlocks.map(async (cb) => {
         let input = {};
         try { input = JSON.parse(cb.inputJson || '{}'); } catch (e) { logError('chat/tool-input-parse', e); }
         let result = 'أداة غير معروفة';
-        if (cb.name === 'web_search') {
-          const _q = input.query || '';
-          if (/عمران|omran|التطبيق هذا|هذا التطبيق|موقعك|تطبيقك|مين سواك|من صنعك|وش تسوي|ايش تقدر|إيش تقدر|قدراتك|النقاط|الاشتراك|كيف استخدم|how to use|what is this|who made/i.test(_q)) {
-            result = 'هذا سؤال عن التطبيق نفسه — أجب من معلوماتك المحلية بدون بحث.';
-          } else {
-            result = filterDuplicateUrls(await tavilySearch(_q, reC, !foreignTurn && !!(lastUser && NUM_ASK_RE.test(lastUser.content)), country, city));
+        try {
+          if (cb.name === 'web_search') {
+            const _q = input.query || '';
+            const mySearchNo = ++searchesUsed; // يزداد قبل أول await فالعدّ آمن مع التوازي
+            if (/عمران|omran|التطبيق هذا|هذا التطبيق|موقعك|تطبيقك|مين سواك|من صنعك|وش تسوي|ايش تقدر|إيش تقدر|قدراتك|النقاط|الاشتراك|كيف استخدم|how to use|what is this|who made/i.test(_q)) {
+              result = 'هذا سؤال عن التطبيق نفسه — أجب من معلوماتك المحلية بدون بحث.';
+            } else if (mySearchNo > 2) {
+              result = 'بلغتَ سقف البحث لهذا الردّ (بحثان). لديك نتائج كافية — أجب الآن مما جمعت ولا تطلب بحثًا إضافيًا.';
+            } else {
+              result = filterDuplicateUrls(await tavilySearch(_q, reC, !foreignTurn && !!(lastUser && NUM_ASK_RE.test(lastUser.content)), country, city));
+            }
           }
+          else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
+          else if (cb.name === 'run_js') result = await runInClient(send, 'run_js', input);
+          else if (cb.name === 'generate_image') result = await runInClient(send, 'generate_image', input, 75000);
+          else if (cb.name === 'test_html') result = await runInClient(send, 'test_html', input, 30000);
+          // إذن الموقع قد يستغرق وقتًا — مهلة أطول من بقية أدوات المتصفّح.
+          else if (cb.name === 'get_location') result = await runInClient(send, 'get_location', input, 35000);
+        } catch (toolErr) {
+          // مع التوازي، فشل أداة واحدة لا يُسقط الردّ كله — يُبلَّغ النموذج ويكمل.
+          result = 'فشل تنفيذ الأداة: ' + String((toolErr && toolErr.message) || toolErr).slice(0, 150);
         }
-        else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
-        else if (cb.name === 'run_js') result = await runInClient(send, 'run_js', input);
-        else if (cb.name === 'generate_image') result = await runInClient(send, 'generate_image', input, 75000);
-        else if (cb.name === 'test_html') result = await runInClient(send, 'test_html', input, 30000);
-        // إذن الموقع قد يستغرق وقتًا — مهلة أطول من بقية أدوات المتصفّح.
-        else if (cb.name === 'get_location') result = await runInClient(send, 'get_location', input, 35000);
-        toolResults.push({ type: 'tool_result', tool_use_id: cb.id, content: String(result).slice(0, 8000) });
-        if (toolCorpus.length < 200000) toolCorpus += ' ' + String(result).slice(0, 8000); // v608
         send({ status: '↳ ' + trailLine(cb.name, input, result) });
+        return { cb, result };
+      }));
+      const toolResults = [];
+      for (const st of settledTools) {
+        toolResults.push({ type: 'tool_result', tool_use_id: st.cb.id, content: String(st.result).slice(0, 8000) });
+        if (toolCorpus.length < 200000) toolCorpus += ' ' + String(st.result).slice(0, 8000); // v608
       }
       convo.push({ role: 'user', content: toolResults });
     }

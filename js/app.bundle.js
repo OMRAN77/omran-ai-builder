@@ -4301,6 +4301,28 @@ let state = {
   projects: safeParseLS('aiapp_projects', []),
   currentId: null,
 };
+// v-idb-mirror (جذر «البيت الأسود» و«المحادثات الفاضية» — ٢٧ أغسطس): المشاريع
+// صارت في IndexedDB وحده، والإقلاع يبدأ فاضيًا بانتظار تحميله — وعلى iOS PWA
+// هذا التحميل قد يتجمد للأبد (علة WebKit موثقة). المرآة المنحّفة في
+// localStorage تُقرأ فورًا فتظهر المحادثات من أول لحظة، والنسخة الكاملة
+// من IndexedDB تحل محلها عند وصولها.
+if(!state.projects.length){
+  const __slimBoot = safeParseLS('aiapp_projects_slim', []);
+  if(Array.isArray(__slimBoot) && __slimBoot.length){
+    state.projects = __slimBoot;
+    window.__usingSlimProjects = true;
+  }
+}
+// v-idb-mirror: استرجاع المحادثة الحالية كان حبيس كتلة تحميل IndexedDB —
+// إن علّق التحميل لا يُسترجع أبدًا فتبقى الشاشة سوداء رغم وجود المشاريع.
+// يُسترجع هنا من أول لحظة؛ وكتلة التحميل اللاحقة تظل تعمل (شرطها !currentId).
+if(!state.currentId && state.projects.length){
+  try{
+    const __savedCur = localStorage.getItem('aiapp_current_id');
+    const __curP = state.projects.find(q => q.id === __savedCur) || state.projects[state.projects.length - 1];
+    if(__curP) state.currentId = __curP.id;
+  }catch(e){ __swallow(e, 'boot:app-04#cur-early'); }
+}
 // v522: نكشف state على window حتى يقدر app-22-session-new.js يصل إليه من داخل IIFE
 window.__omrS = state;
 
@@ -4385,6 +4407,14 @@ function pushCodeSnapshot(){
    ونكتب مرة كل 1.5 ثانية كحد أقصى، مع حفظة فورية مضمونة عند إخفاء/إغلاق الصفحة. */
 let __saveTimer = null;
 let __saveDirty = false;
+// v-idb-mirror: كتابة المرآة المنحّفة — chatsSlimForServer تُعرَّف لاحقًا في هذا
+// الملف والاستدعاء يحدث بعد اكتمال التحميل، فالمرجع آمن وقت التنفيذ.
+let __mirrorAt = 0;
+function __writeChatsMirror(){
+  try{ localStorage.setItem('aiapp_projects_slim', JSON.stringify(chatsSlimForServer())); }
+  catch(e){ /* guard-ok: المرآة رفاهية إقلاع — امتلاء التخزين لا يكسر الحفظ الأصلي */ }
+}
+window.__writeChatsMirror = __writeChatsMirror;
 function __saveFlush(){
   if(!__saveDirty) return;
   __saveDirty = false;
@@ -4404,6 +4434,9 @@ function __saveFlush(){
         __idbBroken = true;
         saveStateLocal();
       });
+      // v-idb-mirror: تحديث المرآة المنحّفة (سقف 2MB) كل ١٠ ثوانٍ كحد أقصى —
+      // هي اللي تجعل الإقلاع القادم يعرض المحادثات فورًا دون انتظار IndexedDB.
+      if(Date.now() - __mirrorAt > 10000){ __mirrorAt = Date.now(); __writeChatsMirror(); }
       return;
     }catch(err){
       // كائن غير قابل للاستنساخ البنيوي → نسخة JSON نظيفة مرة واحدة.
@@ -4416,6 +4449,7 @@ function __saveFlush(){
   saveStateLocal();
 }
 window.addEventListener('pagehide', __saveFlush);
+window.addEventListener('pagehide', __writeChatsMirror); /* v-idb-mirror: مرآة طازجة عند كل مغادرة */
 document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') __saveFlush(); });
 function saveState(){
   pushCodeSnapshot();
@@ -17210,11 +17244,31 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
   // v378: شبكة أمان — لو علّق التحميل المحلي لأي سبب، نفتح المزامنة بعد 10 ثواني.
   setTimeout(() => { window.__localChatsLoaded = true; }, 10000);
   if(!window.indexedDB){ window.__localChatsLoaded = true; return; }
+  // v-idb-timeout: على iOS PWA قد يتجمد idbGet للأبد عند الإقلاع البارد —
+  // مهلة ٣ ثوانٍ ثم محاولة إنعاش واحدة (٥ ثوانٍ)؛ الفشل النهائي يُبلَّغ
+  // ويُترك للمرآة (v-idb-mirror) التي رسمت المحادثات أصلًا من أول لحظة.
+  const idbGetGuarded = async (key) => {
+    const withTimeout = (ms) => Promise.race([
+      idbGet(key),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('idb-timeout')), ms)),
+    ]);
+    try{ return await withTimeout(3000); }
+    catch(e1){
+      try{ return await withTimeout(5000); }
+      catch(e2){
+        try{
+          fetch('/api/system?action=client-errors', { method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ message: 'v-idb-hang: تجمّد تحميل المحادثات من IndexedDB — المرآة هي المعروضة', source: 'app-09', line: 0, col: 0, stack: '', url: location.pathname, ua: navigator.userAgent }) }).catch(function(){ /* guard-ok */ });
+        }catch(e3){ /* guard-ok: الإبلاغ ترف */ }
+        throw e2;
+      }
+    }
+  };
   try{
     const migrated = localStorage.getItem('aiapp_idb_on') === '1';
     if(!migrated){
       // أول تشغيل: بيانات localStorage هي المصدر → ننسخها إلى IndexedDB ثم نحرر المساحة.
-      const idbOld = await idbGet('aiapp_projects');
+      const idbOld = await idbGetGuarded('aiapp_projects');
       const merged = Array.isArray(idbOld) && idbOld.length
         ? idbOld.filter(p => !state.projects.some(q => q.id === p.id)).concat(state.projects)
         : state.projects;
@@ -17224,13 +17278,20 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
       try{ localStorage.removeItem('aiapp_projects'); }catch(e){ __swallow(e, "save:app-09-attach#33"); }
       renderAll();
     } else {
-      const idbProjects = await idbGet('aiapp_projects');
+      const idbProjects = await idbGetGuarded('aiapp_projects');
       if(Array.isArray(idbProjects) && idbProjects.length){
-        // دمج أي مشاريع أنشئت قبل اكتمال التحميل (نادر) بدون فقدان.
+        // دمج أي مشاريع أنشئت قبل اكتمال التحميل (نادر) بدون فقدان — وإن كان
+        // المعروض مرآةً وكتب المستخدم فيها رسالة قبل وصول الكاملة، تُحفظ نسخته
+        // الأغنى بدل سحقها (v-idb-mirror).
         const extra = state.projects.filter(p => !idbProjects.some(q => q.id === p.id));
-        state.projects = idbProjects.concat(extra);
+        state.projects = idbProjects.map(ip => {
+          const sp = state.projects.find(q => q.id === ip.id);
+          return (sp && (sp.messages || []).length > (ip.messages || []).length) ? sp : ip;
+        }).concat(extra);
+        window.__usingSlimProjects = false;
         renderAll();
       }
+      try{ if(window.__writeChatsMirror) window.__writeChatsMirror(); }catch(e){ __swallow(e, 'mirror:app-09#fresh'); }
     }
     // 🧹 v308: تنظيف لمرة واحدة — لقطات آلة الزمن القديمة المنتفخة بوسائط base64
     // (كانت تنسخ الصور المضمنة 12 مرة وتفجّر تخزين iOS فتختفي المحادثات).
