@@ -116,6 +116,26 @@
       }, true);
     }catch(e){ /* guard-ok: لوحة التشخيص ترف — لا تُسقط الصفحة */ }
   }
+  // v-boot-watchdog: شكوى عمران ٢٧ أغسطس — آيفون أول ما يفتح «يعلق» ويصلحه
+  // الضغط على اسم عمران (وهو إعادة تحميل كاملة). الرقيب يسوي نفس العلاج
+  // تلقائيًا: إن لم يكتمل الإقلاع (__omranBootOk من ui-wiring) خلال ٨ ثوانٍ
+  // يعيد التحميل مرة واحدة فقط في الجلسة — حارس sessionStorage يمنع الدوران.
+  try{
+    if(/iPad|iPhone|iPod/.test(navigator.userAgent)){
+      var __bootRetried = false;
+      try{ __bootRetried = sessionStorage.getItem('omranBootRetry') === '1'; }catch(e){ /* guard-ok: بلا تخزين لا إعادة — أأمن */ __bootRetried = true; }
+      if(!__bootRetried){
+        setTimeout(function(){
+          try{
+            // شرطان معًا: الحزمة (آخر شريحة فيها) والأسلاك — فشل أيهما = إقلاع ناقص
+            if(window.__omranBootOk === true && window.__omranBundleOk === true) return;
+            sessionStorage.setItem('omranBootRetry', '1');
+            location.replace(location.pathname + location.search);
+          }catch(e){ /* guard-ok: فشل الرقيب لا يزيد العطل */ }
+        }, 8000);
+      }
+    }
+  }catch(e){ /* guard-ok: الرقيب ترف أمان */ }
   try{
     if(/[?&#]diag=2/.test(location.search + location.hash)){
       if(document.readyState === 'complete') setTimeout(diagPanel, 1500);

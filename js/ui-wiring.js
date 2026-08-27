@@ -182,3 +182,8 @@
   rebindResizer('resizer1', '#sidebar', 180, 420, 'panelWidthSidebar');
   rebindResizer('resizer2', '#workarea', 240, 700, 'panelWidthWork');
 })();
+
+// v-boot-watchdog: إشارة اكتمال الإقلاع — وصول التنفيذ هنا يعني الحزمة
+// والأسلاك اشتغلت، فيسكت رقيب selfdiag ويُمحى حارس إعادة المحاولة.
+window.__omranBootOk = true;
+try{ sessionStorage.removeItem('omranBootRetry'); }catch(e){ /* guard-ok: بلا تخزين لا حارس أصلًا */ }
