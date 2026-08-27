@@ -329,3 +329,8 @@ html.mobile-ui dialog[open]{
   }
   html.mobile-ui #omranBottomNav{ padding-bottom:calc(6px + env(safe-area-inset-bottom,0px)) !important; }
 }
+
+/* ===== v-stocks-fullpage — سوق الأسهم صفحة كاملة: محتوى متوسّط وX واضحة ===== */
+#stocksPage > *{ max-width:940px; margin-left:auto; margin-right:auto; }
+#stocksPage .stkHead{ max-width:940px; }
+#stocksCloseBtn{ font-size:15px; padding:6px 12px !important; border:1px solid var(--border, rgba(128,128,128,.35)); border-radius:10px; }
