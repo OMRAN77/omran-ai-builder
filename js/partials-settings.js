@@ -147,15 +147,17 @@
     <label data-i18n="openrouterModelLabel">اختر النموذج</label>
     <select id="openrouterModelSelect">
       <optgroup label="🆓 Free" data-i18n="[label]orFreeGroup">
+        <!-- v-or-models: الأسماء متحقَّق منها حيًّا ضد openrouter.ai/api/v1/models
+             (ورشة model-probe) — أربعة خيارات قديمة كانت ميتة فتفشل رسائل من اختارها. -->
         <option value="nvidia/nemotron-3-super-120b-a12b:free">Nemotron 3 Super 120B (free)</option>
-        <option value="google/gemini-flash-1.5:free">Google Gemini Flash 1.5 (free)</option>
-        <option value="mistralai/mistral-7b-instruct:free">Mistral 7B (free)</option>
+        <option value="google/gemma-4-31b-it:free">Google Gemma 4 31B (free)</option>
+        <option value="z-ai/glm-5.2:free">GLM 5.2 (free)</option>
       </optgroup>
       <optgroup label="💰 Paid" data-i18n="[label]orPaidGroup">
         <option value="openai/gpt-4o-mini">OpenAI GPT-4o mini</option>
         <option value="openai/gpt-4o">OpenAI GPT-4o</option>
-        <option value="anthropic/claude-3.5-sonnet">Anthropic Claude 3.5 Sonnet</option>
-        <option value="google/gemini-pro-1.5">Google Gemini Pro 1.5</option>
+        <option value="anthropic/claude-sonnet-4.5">Anthropic Claude Sonnet 4.5</option>
+        <option value="google/gemini-2.5-pro">Google Gemini 2.5 Pro</option>
         <option value="meta-llama/llama-3.1-70b-instruct">Meta Llama 3.1 70B</option>
         <option value="deepseek/deepseek-chat">DeepSeek Chat</option>
       </optgroup>
