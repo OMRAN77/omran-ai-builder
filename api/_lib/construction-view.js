@@ -124,25 +124,46 @@ module.exports = async (req, res) => {
     }
     const imgReqBody = { contents: [{ parts: promptParts }], generationConfig: { imageConfig: { imageSize: '2K' } } };
 
-    const upstream = await fetch(imgEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(imgReqBody) });
-    const data = await upstream.json();
+    let upstream = null, data = null;
+    try {
+      upstream = await fetch(imgEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(imgReqBody) });
+      data = await upstream.json();
+    } catch (e) { upstream = null; data = null; }
 
-    if (!upstream.ok) {
-      res.status(upstream.status).json({ error: (data && data.error && data.error.message) || 'Upstream image error' });
-      return;
+    let outB64 = null, outMime = 'image/png';
+    if (upstream && upstream.ok) {
+      const parts = (((data && data.candidates || [])[0] || {}).content || {}).parts || [];
+      const imgPart = parts.find((p) => p.inlineData && p.inlineData.data);
+      if (imgPart) { outB64 = imgPart.inlineData.data; outMime = imgPart.inlineData.mimeType || 'image/png'; }
     }
-
-    const parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
-    const imgPart = parts.find((p) => p.inlineData && p.inlineData.data);
-    if (!imgPart) {
-      res.status(500).json({ error: 'لم يرجع الموديل صورة. حاول مرة أخرى.' });
+    // v-construction-rescue: رفض/سقوط Gemini يهبط تلقائيًا إلى gpt-image-1
+    if (!outB64) {
+      const key = (process.env.OPENAI_API_KEY || '').trim();
+      if (key) {
+        try {
+          const r = await fetch('https://api.openai.com/v1/images/generations', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: 'gpt-image-1', prompt: prompt.slice(0, 3900), size: '1536x1024', quality: 'medium' }),
+          });
+          const d = await r.json();
+          if (r.ok && d && d.data && d.data[0] && d.data[0].b64_json) { outB64 = d.data[0].b64_json; outMime = 'image/png'; }
+        } catch (e) { /* الإنقاذ فشل — يمضي لإعلان الخطأ الأصلي */ }
+      }
+    }
+    if (!outB64) {
+      if (upstream && !upstream.ok) {
+        res.status(upstream.status).json({ error: (data && data.error && data.error.message) || 'Upstream image error' });
+      } else {
+        res.status(500).json({ error: 'لم يرجع الموديل صورة. حاول مرة أخرى.' });
+      }
       return;
     }
 
     const remaining = await consumeConstruction(quota.username);
     res.status(200).json({
-      imageBase64: imgPart.inlineData.data,
-      mimeType: imgPart.inlineData.mimeType || 'image/png',
+      imageBase64: outB64,
+      mimeType: outMime,
       remaining,
       dailyLimit: CONSTRUCTION_DAILY_LIMIT,
     });

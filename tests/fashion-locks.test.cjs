@@ -138,4 +138,15 @@ assert.ok(eduApi.includes('```html') && eduApi.includes('max_tokens: 16000'), '�
 assert.ok(eduApi.includes("kvDel('db/edu/labs/"), 'حذف الدرس ينظف مختبره');
 console.log('  ✓ v-edu-lab: الدرس الحي مبني ومقفول');
 
+// ⑬ المقاولات: خط الإنقاذ السابع + الجولة ثلاثية الأبعاد من هندسة المخطط.
+const conCreate = fs.readFileSync(path.join(__dirname, '../api/_lib/construction-create.js'), 'utf8');
+assert.ok(conCreate.includes('v-construction-rescue') && conCreate.includes('openaiRescueImage') && conCreate.includes('openaiRescueText'), 'رفض Gemini يهبط لصور gpt-image-1 ونص gpt-4o-mini');
+assert.ok(conCreate.includes(".catch(() => null) /* v-construction-rescue"), 'سقوط النص لا يُسقط الصور');
+const conView = fs.readFileSync(path.join(__dirname, '../api/_lib/construction-view.js'), 'utf8');
+assert.ok(conView.includes('v-construction-rescue') && conView.includes('gpt-image-1'), 'الزوايا والغرف لها إنقاذ أيضًا');
+const fp15 = fs.readFileSync(path.join(__dirname, '../js/app-15-floorplan.js'), 'utf8');
+assert.ok(fp15.includes('function omranTour3d') && fp15.includes('omranTour3d.toString()'), 'مشغّل الجولة يُحقن كدالة في صفحة المخطط');
+assert.ok(fp15.includes('t3dBtn') && fp15.includes('rotateX(90deg)') && fp15.includes('فصل الطوابق'), 'زر الجولة والجدران المرفوعة وفصل الطوابق');
+console.log('  ✓ المقاولات: إنقاذ + جولة 3D');
+
 console.log('fashion locks tests passed');

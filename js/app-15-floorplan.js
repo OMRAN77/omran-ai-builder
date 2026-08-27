@@ -174,6 +174,140 @@
 
   var EDITOR_CLIENT = '/* عميل المحرّر — يعمل داخل صفحة المعاينة (iframe).\n *\n * لماذا محرّر لا رسم ثابت:\n * الترتيب الآلي يرصّ الغرف في صفوف — نِسَب صحيحة ومساحات صحيحة، لكنه ليس\n * توزيعًا معماريًا. والمستخدم يعرف بيته أكثر من أي نموذج: أين يريد المجلس،\n * وأي غرفة على الشارع. فالنموذج يعطي البداية، وهو يضبط.\n *\n * والمساحة تبقى محسوبة في كل لحظة — تُعاد من العرض×الطول بعد كل سحب أو\n * تغيير مقاس. لا يمكن أن يظهر رقم لا يطابق الشكل.\n *\n * pointer events لا mouse: أغلب المستخدمين على الجوال.\n */\n(function () {\n  \'use strict\';\n\n  var SNAP = 0.25;                       // متر\n  var spec = window.__omranSpec || { floors: [] };\n  var M = 30;                            // بكسل لكل متر (يُعاد حسابه للجوال)\n  var active = 0;                        // الطابق المعروض\n  var selected = null;\n\n  var PALETTE = {\n    مجلس: \'#F6E4D7\', صالة: \'#FAF3DC\', نوم: \'#FCE6D2\', حمام: \'#DCE9F5\',\n    مطبخ: \'#F5DDEE\', كراج: \'#E6E6E6\', خدامة: \'#EDE7DA\', مسبح: \'#BFE4F2\',\n    مكتب: \'#E4EEDC\', مخزن: \'#EAEAEA\', سلم: \'#E0DCE8\',\n  };\n  function colorFor(n) {\n    n = String(n || \'\');\n    for (var k in PALETTE) if (n.indexOf(k) !== -1) return PALETTE[k];\n    return \'#F0EFEA\';\n  }\n  function snap(v) { return Math.max(SNAP, Math.round(v / SNAP) * SNAP); }\n  function fmt(v) { return String(Math.round(v * 100) / 100); }\n\n  /* أول تحميل: نوزّع الغرف صفوفًا كبداية، ثم يعدّل المستخدم. */\n  function seedPositions() {\n    var pw = Number(spec.plotWidth) || 15;\n    (spec.floors || []).forEach(function (f) {\n      var x = 0, y = 0, rowH = 0;\n      (f.rooms || []).forEach(function (r) {\n        r.w = Number(r.w) || 3; r.h = Number(r.h) || 3;\n        if (typeof r.x === \'number\' && typeof r.y === \'number\') return;\n        if (x + r.w > pw + 0.01) { x = 0; y += rowH; rowH = 0; }\n        r.x = x; r.y = y; x += r.w; rowH = Math.max(rowH, r.h);\n      });\n    });\n  }\n\n  function floorDepth(f) {\n    return (f.rooms || []).reduce(function (m, r) { return Math.max(m, (r.y || 0) + r.h); }, 0);\n  }\n  function floorArea(f) {\n    return (f.rooms || []).reduce(function (s, r) { return s + r.w * r.h; }, 0);\n  }\n\n  /* تداخل الغرف — لا نمنعه (قد يريد المستخدم غرفة داخل أخرى مؤقتًا) لكن نُظهره. */\n  function overlaps(f, room) {\n    return (f.rooms || []).some(function (o) {\n      if (o === room) return false;\n      return room.x < o.x + o.w - 0.01 && o.x < room.x + room.w - 0.01 &&\n             room.y < o.y + o.h - 0.01 && o.y < room.y + room.h - 0.01;\n    });\n  }\n\n  var $ = function (id) { return document.getElementById(id); };\n\n  function render() {\n    var f = spec.floors[active];\n    if (!f) return;\n    var pw = Number(spec.plotWidth) || 15;\n    var avail = Math.min(document.body.clientWidth - 28, 900);\n    M = Math.max(14, Math.floor(avail / pw));\n    var depth = Math.max(floorDepth(f), 4);\n\n    var stage = $(\'stage\');\n    stage.style.width = (pw * M) + \'px\';\n    stage.style.height = (depth * M) + \'px\';\n    stage.innerHTML = \'\';\n\n    (f.rooms || []).forEach(function (r, i) {\n      var el = document.createElement(\'div\');\n      el.className = \'room\' + (selected === r ? \' sel\' : \'\') + (overlaps(f, r) ? \' clash\' : \'\');\n      el.style.cssText = \'left:\' + (r.x * M) + \'px;top:\' + (r.y * M) + \'px;width:\' + (r.w * M) +\n        \'px;height:\' + (r.h * M) + \'px;background:\' + colorFor(r.name);\n      el.dataset.i = i;\n      el.innerHTML =\n        \'<div class="rn">\' + String(r.name).replace(/</g, \'&lt;\') + \'</div>\' +\n        \'<div class="ra">\' + fmt(r.w * r.h) + \' م²</div>\' +\n        \'<div class="rd">\' + fmt(r.w) + \'×\' + fmt(r.h) + \'</div>\' +\n        \'<div class="grip" data-grip="1"></div>\';\n      stage.appendChild(el);\n    });\n\n    $(\'total\').textContent = fmt(floorArea(f)) + \' م²\';\n    $(\'depth\').textContent = fmt(depth) + \' م\';\n    $(\'pw\').textContent = fmt(pw) + \' م\';\n    var grand = (spec.floors || []).reduce(function (s, x) { return s + floorArea(x); }, 0);\n    $(\'grand\').textContent = fmt(grand) + \' م²\';\n    renderTabs();\n    renderPanel();\n  }\n\n  function renderTabs() {\n    var t = $(\'tabs\');\n    t.innerHTML = (spec.floors || []).map(function (f, i) {\n      return \'<button class="tab\' + (i === active ? \' on\' : \'\') + \'" data-f="\' + i + \'">\' +\n        String(f.name || (\'طابق \' + (i + 1))).replace(/</g, \'&lt;\') + \'</button>\';\n    }).join(\'\');\n  }\n\n  function renderPanel() {\n    var p = $(\'panel\');\n    if (!selected) { p.innerHTML = \'<div class="hint">اضغط على أي غرفة لتغيير اسمها أو مقاسها · اسحبها لتحريكها · اسحب الزاوية لتكبيرها</div>\'; return; }\n    p.innerHTML =\n      \'<div class="row"><label>الاسم</label><input id="fName" value="\' + String(selected.name).replace(/"/g, \'&quot;\') + \'"></div>\' +\n      \'<div class="row"><label>العرض (م)</label><input id="fW" type="number" step="0.25" min="0.5" value="\' + fmt(selected.w) + \'"></div>\' +\n      \'<div class="row"><label>الطول (م)</label><input id="fH" type="number" step="0.25" min="0.5" value="\' + fmt(selected.h) + \'"></div>\' +\n      \'<div class="row"><span class="area">المساحة: <b>\' + fmt(selected.w * selected.h) + \' م²</b></span>\' +\n      \'<button id="fDel" class="danger">حذف</button></div>\';\n\n    [\'fName\', \'fW\', \'fH\'].forEach(function (id) {\n      var el = $(id);\n      el.oninput = function () {\n        if (!selected) return;\n        if (id === \'fName\') selected.name = el.value || \'غرفة\';\n        else {\n          var v = parseFloat(el.value);\n          if (!isFinite(v) || v <= 0) return;\n          if (id === \'fW\') selected.w = v; else selected.h = v;\n        }\n        var keep = selected;\n        render();\n        selected = keep;\n        try { $(id).focus(); } catch (e) { /* أُعيد الرسم */ }\n      };\n    });\n    $(\'fDel\').onclick = function () {\n      var f = spec.floors[active];\n      f.rooms = f.rooms.filter(function (r) { return r !== selected; });\n      selected = null; render();\n    };\n  }\n\n  /* ───────── السحب وتغيير المقاس ───────── */\n  var drag = null;\n\n  function onDown(e) {\n    var el = e.target.closest ? e.target.closest(\'.room\') : null;\n    if (!el) { selected = null; render(); return; }\n    var f = spec.floors[active];\n    var r = f.rooms[+el.dataset.i];\n    selected = r;\n    var isGrip = e.target.dataset && e.target.dataset.grip;\n    drag = {\n      room: r, mode: isGrip ? \'size\' : \'move\',\n      px: e.clientX, py: e.clientY,\n      ox: r.x, oy: r.y, ow: r.w, oh: r.h,\n    };\n    el.setPointerCapture && el.setPointerCapture(e.pointerId);\n    render();\n    e.preventDefault();\n  }\n\n  function onMove(e) {\n    if (!drag) return;\n    var dx = (e.clientX - drag.px) / M, dy = (e.clientY - drag.py) / M;\n    // الواجهة RTL: السحب يمينًا يعني نقصان x\n    if (document.dir === \'rtl\' || document.documentElement.dir === \'rtl\') dx = -dx;\n    var pw = Number(spec.plotWidth) || 15;\n    if (drag.mode === \'move\') {\n      drag.room.x = Math.max(0, Math.min(pw - drag.room.w, snap(drag.ox + dx)));\n      drag.room.y = Math.max(0, snap(drag.oy + dy));\n    } else {\n      drag.room.w = Math.max(0.5, Math.min(pw - drag.room.x, snap(drag.ow + dx)));\n      drag.room.h = Math.max(0.5, snap(drag.oh + dy));\n    }\n    render();\n    e.preventDefault();\n  }\n\n  function onUp() { drag = null; }\n\n  function addRoom() {\n    var f = spec.floors[active];\n    f.rooms = f.rooms || [];\n    var r = { name: \'غرفة\', w: 4, h: 3.5, x: 0, y: floorDepth(f) };\n    f.rooms.push(r); selected = r; render();\n  }\n\n  function addFloor() {\n    spec.floors.push({ name: \'طابق \' + (spec.floors.length + 1), rooms: [] });\n    active = spec.floors.length - 1; selected = null; render();\n  }\n\n  /* ───────── توليد الواجهة من المخطط المُعدَّل ───────── */\n  function requestView(view, btn) {\n    var label = btn.textContent;\n    btn.disabled = true; btn.textContent = \'… جارٍ التوليد\';\n    var id = Date.now();\n    function onMsg(e) {\n      var d = e.data;\n      if (!d || d.__omranViewOut !== 1 || d.id !== id) return;\n      window.removeEventListener(\'message\', onMsg);\n      btn.disabled = false; btn.textContent = label;\n      var out = $(\'views\');\n      if (d.ok) {\n        var fig = document.createElement(\'figure\');\n        fig.style.cssText = \'margin:12px 0\';\n        fig.innerHTML = \'<img src="\' + d.dataUrl + \'" style="width:100%;border-radius:12px;display:block">\' +\n          \'<figcaption style="font-size:12px;color:#777;margin-top:6px;text-align:center">\' +\n          label + \' — مولّد من المخطط كما عدّلته</figcaption>\';\n        out.appendChild(fig);\n      } else {\n        var p = document.createElement(\'p\');\n        p.style.cssText = \'color:#a33;font-size:13px\';\n        p.textContent = \'⚠️ \' + (d.error || \'تعذّر التوليد\');\n        out.appendChild(p);\n      }\n    }\n    window.addEventListener(\'message\', onMsg);\n    // نرسل المواصفات الحالية — أي بعد تعديلات المستخدم، لا الأصلية\n    parent.postMessage({ __omranView: 1, id: id, view: view, spec: spec }, \'*\');\n  }\n\n  function boot() {\n    seedPositions();\n    render();\n    var stage = $(\'stage\');\n    stage.addEventListener(\'pointerdown\', onDown);\n    window.addEventListener(\'pointermove\', onMove);\n    window.addEventListener(\'pointerup\', onUp);\n    window.addEventListener(\'pointercancel\', onUp);\n    $(\'tabs\').addEventListener(\'click\', function (e) {\n      var b = e.target.closest(\'.tab\'); if (!b) return;\n      active = +b.dataset.f; selected = null; render();\n    });\n    $(\'addRoom\').onclick = addRoom;\n    $(\'addFloor\').onclick = addFloor;\n    document.querySelectorAll(\'.ov-btn\').forEach(function (b) {\n      b.onclick = function () { requestView(b.dataset.view, b); };\n    });\n    window.addEventListener(\'resize\', function () { render(); });\n  }\n\n  if (document.readyState === \'loading\') document.addEventListener(\'DOMContentLoaded\', boot);\n  else boot();\n})();\n';
 
+  /* v-construction-3d: 🧊 «امشِ داخل بيتك قبل أن يُبنى» — جولة ثلاثية الأبعاد
+   * مبنية من نفس مواصفات المخطط (أبعاد الغرف الحقيقية بالمتر، بعد تعديلات
+   * المستخدم). CSS 3D خالص بلا مكتبات ولا ذكاء اصطناعي ولا رصيد: الهندسة
+   * موجودة أصلًا، نرفع منها جدرانًا ونعطي دورانًا وإمالة وتكبيرًا وفصل طوابق. */
+  function omranTour3d() {
+    'use strict';
+    var M = 24, WH = 3 * M;
+    var yaw = -32, tilt = 62, scale = 1, exploded = false;
+    var SHADE = { 0: 1, 90: 0.82, 180: 0.66, 270: 0.82 };
+    var PAL = {
+      مجلس: '#F6E4D7', صالة: '#FAF3DC', نوم: '#FCE6D2', حمام: '#DCE9F5',
+      مطبخ: '#F5DDEE', كراج: '#E6E6E6', خدامة: '#EDE7DA', مسبح: '#BFE4F2',
+      مكتب: '#E4EEDC', مخزن: '#EAEAEA', سلم: '#E0DCE8',
+    };
+    function colorFor(n) {
+      n = String(n || '');
+      for (var k in PAL) if (n.indexOf(k) !== -1) return PAL[k];
+      return '#F0EFEA';
+    }
+    function shade(hex, f) {
+      var r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+      return 'rgba(' + Math.round(r * f) + ',' + Math.round(g * f) + ',' + Math.round(b * f) + ',.94)';
+    }
+    function specDepth(f) {
+      return (f.rooms || []).reduce(function (m, r) { return Math.max(m, (Number(r.y) || 0) + (Number(r.h) || 0)); }, 0);
+    }
+    var world = null, floorsEls = [];
+    function apply() {
+      if (!world) return;
+      world.style.transform = 'scale(' + scale + ') rotateX(' + tilt + 'deg) rotateZ(' + yaw + 'deg)';
+      floorsEls.forEach(function (el, i) {
+        el.style.transform = 'translateZ(' + (i * (WH + (exploded ? WH * 0.9 : 0))) + 'px)';
+      });
+      world.querySelectorAll('.t3lbl').forEach(function (l) { l.style.transform = 'rotateZ(' + (-yaw) + 'deg)'; });
+    }
+    function build() {
+      var spec = window.__omranSpec || { floors: [] };
+      var pw = Number(spec.plotWidth) || 15;
+      var dep = Math.max(4, (spec.floors || []).reduce(function (m, f) { return Math.max(m, specDepth(f)); }, 0));
+      var ov = document.createElement('div');
+      ov.id = 't3dOverlay';
+      ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 30%,#1c1c26,#0b0b0f);touch-action:none;overflow:hidden;font-family:inherit;';
+      var bar = document.createElement('div');
+      bar.style.cssText = 'position:absolute;top:0;left:0;right:0;z-index:5;display:flex;align-items:center;gap:8px;padding:12px 14px;color:#eee;';
+      bar.innerHTML = '<b style="font-size:14px;">🧊 ' + String((spec.title || 'جولة المبنى')).replace(/</g, '&lt;') + '</b>'
+        + '<span style="font-size:11px;opacity:.6;">اسحب للدوران · قرّب بإصبعين</span>'
+        + '<span style="flex:1"></span>'
+        + ((spec.floors || []).length > 1 ? '<button id="t3x" class="t3b">🧨 فصل الطوابق</button>' : '')
+        + '<button id="t3zi" class="t3b">＋</button><button id="t3zo" class="t3b">－</button>'
+        + '<button id="t3c" class="t3b" style="background:#7f1d1d;">✕</button>';
+      var st = document.createElement('style');
+      st.textContent = '.t3b{background:#26262f;border:1px solid #3a3a46;color:#eee;border-radius:9px;padding:7px 11px;font:inherit;font-size:12px;cursor:pointer;}';
+      ov.appendChild(st); ov.appendChild(bar);
+      var view = document.createElement('div');
+      view.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;perspective:1700px;';
+      world = document.createElement('div');
+      world.style.cssText = 'position:relative;width:' + (pw * M) + 'px;height:' + (dep * M) + 'px;transform-style:preserve-3d;transition:transform .08s linear;';
+      // الأرض
+      var ground = document.createElement('div');
+      ground.style.cssText = 'position:absolute;left:' + (-M) + 'px;top:' + (-M) + 'px;width:' + ((pw + 2) * M) + 'px;height:' + ((dep + 2) * M) + 'px;background:#20241f;border:2px solid #3a4038;border-radius:8px;transform:translateZ(-3px);';
+      world.appendChild(ground);
+      floorsEls = [];
+      (spec.floors || []).forEach(function (f) {
+        var fl = document.createElement('div');
+        fl.style.cssText = 'position:absolute;inset:0;transform-style:preserve-3d;';
+        (f.rooms || []).forEach(function (r) {
+          var x = (Number(r.x) || 0) * M, y = (Number(r.y) || 0) * M, w = (Number(r.w) || 3) * M, h = (Number(r.h) || 3) * M;
+          var col = colorFor(r.name);
+          var face = document.createElement('div');
+          face.style.cssText = 'position:absolute;left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;background:' + col + ';border:1px solid #55545e;display:flex;align-items:center;justify-content:center;';
+          var lbl = document.createElement('div');
+          lbl.className = 't3lbl';
+          lbl.style.cssText = 'font-size:11px;font-weight:700;color:#333;text-align:center;line-height:1.3;pointer-events:none;';
+          lbl.innerHTML = String(r.name || '').replace(/</g, '&lt;') + '<br><span style="font-weight:400;font-size:10px;">' + (Math.round((Number(r.w) || 0) * (Number(r.h) || 0) * 10) / 10) + ' م²</span>';
+          face.appendChild(lbl);
+          fl.appendChild(face);
+          // أربعة جدران زجاجية — ترى الداخل من كل زاوية
+          [[x, y, w, 0], [x + w, y, h, 90], [x + w, y + h, w, 180], [x, y + h, h, 270]].forEach(function (e2) {
+            var wall = document.createElement('div');
+            wall.style.cssText = 'position:absolute;left:0;top:0;width:' + e2[2] + 'px;height:' + WH + 'px;transform-origin:0 0;'
+              + 'transform:translate3d(' + e2[0] + 'px,' + e2[1] + 'px,0) rotateZ(' + e2[3] + 'deg) rotateX(90deg);'
+              + 'background:' + shade(col, SHADE[e2[3]] * 0.9) + ';border:1px solid rgba(60,58,70,.8);opacity:.62;';
+            fl.appendChild(wall);
+          });
+        });
+        world.appendChild(fl);
+        floorsEls.push(fl);
+      });
+      view.appendChild(world);
+      ov.appendChild(view);
+      document.body.appendChild(ov);
+      apply();
+      // التحكم: سحب = دوران/إمالة · إصبعان = تكبير
+      var ptrs = {}, lastDist = 0;
+      view.addEventListener('pointerdown', function (e) { ptrs[e.pointerId] = e; view.setPointerCapture(e.pointerId); });
+      view.addEventListener('pointermove', function (e) {
+        if (!ptrs[e.pointerId]) return;
+        var ks = Object.keys(ptrs);
+        if (ks.length === 2) {
+          ptrs[e.pointerId] = e;
+          var a = ptrs[ks[0]], b = ptrs[ks[1]];
+          var d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+          if (lastDist) scale = Math.max(0.35, Math.min(3, scale * (d / lastDist)));
+          lastDist = d; apply(); return;
+        }
+        var p = ptrs[e.pointerId];
+        yaw += (e.clientX - p.clientX) * 0.45;
+        tilt = Math.max(12, Math.min(88, tilt - (e.clientY - p.clientY) * 0.3));
+        ptrs[e.pointerId] = e; apply();
+      });
+      function up(e) { delete ptrs[e.pointerId]; lastDist = 0; }
+      view.addEventListener('pointerup', up); view.addEventListener('pointercancel', up);
+      view.addEventListener('wheel', function (e) { scale = Math.max(0.35, Math.min(3, scale * (e.deltaY < 0 ? 1.12 : 0.89))); apply(); e.preventDefault(); }, { passive: false });
+      var g = function (id) { return document.getElementById(id); };
+      if (g('t3x')) g('t3x').onclick = function () { exploded = !exploded; apply(); };
+      g('t3zi').onclick = function () { scale = Math.min(3, scale * 1.2); apply(); };
+      g('t3zo').onclick = function () { scale = Math.max(0.35, scale / 1.2); apply(); };
+      g('t3c').onclick = function () { ov.remove(); world = null; };
+    }
+    function mount() {
+      var row = document.querySelector('.views');
+      if (!row || document.getElementById('t3dBtn')) return;
+      var b = document.createElement('button');
+      b.id = 't3dBtn';
+      b.className = 'ov-btn';
+      b.textContent = '🧊 جولة 3D';
+      b.style.cssText = 'background:linear-gradient(135deg,#b8860b,#8a6a1a);color:#fff;border-color:#d4af37;';
+      b.onclick = function (e) { e.stopPropagation(); build(); };
+      row.insertBefore(b, row.firstChild);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
+    else mount();
+  }
+
   /** يبني صفحة المحرّر التفاعلي من مواصفات المبنى. */
   function renderPlan(spec) {
     var title = esc((spec && spec.title) || 'مخطط');
@@ -205,6 +339,8 @@
       '<p class="note">المساحات تُحسب من المقاسات لحظيًا. مخطط تصوّري — التنفيذ يتطلب مكتبًا هندسيًا معتمدًا وموافقة البلدية.</p>' +
       '<script>window.__omranSpec=' + specJson + ';<' + '/script>' +
       '<script>' + EDITOR_CLIENT + '<' + '/script>' +
+      /* v-construction-3d: مشغّل الجولة يُحقن كدالة — بلا هروب نصي هش */
+      '<script>(' + omranTour3d.toString() + ')();<' + '/script>' +
       '</body></html>';
   }
 
