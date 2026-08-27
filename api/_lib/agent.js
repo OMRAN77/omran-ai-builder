@@ -400,22 +400,22 @@ module.exports = async (req, res) => {
     .map((m) => ({ role: m.role, content: String(m.content || '').slice(0, 30000) }));
 
   // Resolve the best available Claude model on this key (mirrors claude.js
-  // fallback): prefer sonnet-4, then 3.7, then 3.5.
+  // fallback): prefer sonnet-5, then sonnet-4, then 3.5.
   async function resolveModel() {
     try {
       const r = await fetch('https://api.anthropic.com/v1/models?limit=1000', {
         headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
       });
-      if (!r.ok) return 'claude-3-5-sonnet-latest';
+      if (!r.ok) return 'claude-sonnet-5';
       const ids = ((await r.json()).data || []).map((m) => m.id);
       return (
         ids.find((id) => /sonnet-5/.test(id)) ||
         ids.find((id) => /sonnet-4/.test(id)) ||
         ids.find((id) => /3-5-sonnet/.test(id)) ||
-        ids[0] || 'claude-3-5-sonnet-latest'
+        ids[0] || 'claude-sonnet-5'
       );
     } catch (e) {
-      return 'claude-3-5-sonnet-latest';
+      return 'claude-sonnet-5';
     }
   }
 

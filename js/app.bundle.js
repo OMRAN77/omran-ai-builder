@@ -2818,6 +2818,32 @@ const I18N = {
     agentOnNote: "الوكيل شغّال الآن — ارجع للمحادثة واكتب طلبك.",
     vgModeTranslate: "ترجمة فورية",
     vgModeAsk: "اسأل عمّا تراه",
+    // v-i18n-sweep: مفاتيح كانت في الواجهة بلا ترجمة — تظهر عربية للمستخدم الإنجليزي.
+    vgTitle: "المرشد البصري",
+    vgModeDescribe: "وصف المحيط",
+    vgModeRead: "قراءة نص",
+    vgModeSteps: "خطوة بخطوة",
+    vgModeTour: "جولة التطبيق",
+    vgAsk: "اسأل",
+    vgAuto: "تلقائي",
+    vgRepeat: "أعِد",
+    vgSound: "الصوت",
+    vgTorch: "إضاءة",
+    vgHint: "اضغط في أي مكان لأصف لك الآن",
+    omNavGuide: "المرشد",
+    authEmailOtpBtn: "الدخول بالإيميل",
+    authOtpBack: "رجوع",
+    authOtpCodeLabel: "رمز التحقق",
+    authOtpEmailLabel: "البريد الإلكتروني",
+    authOtpSendBtn: "إرسال رمز التحقق",
+    aboutTagline: "منصة عربية لبناء التطبيقات بالذكاء الاصطناعي",
+    videosGroupTitle: "🎬 الفيديوهات التعريفية",
+    toneSectionLabel: "النبرة",
+    toneAuto: "على راحتك",
+    toneWarm: "ودود",
+    toneDirect: "مباشر",
+    toneFormal: "رسمي",
+    toneHint: "اختر أسلوب الرد المفضّل — أو خلّ الذكاء الاصطناعي يتأقلم معك تلقائيًا.",
     mahaCcTitle: "الترجمة النصية للمكالمة",
     premiumNeedLogin: "سجّل الدخول لتشغيل الوكيل",
     premiumNoPoints: "نقاطك خلصت — اشترِ نقاط لمواصلة الوكيل",
@@ -3278,6 +3304,32 @@ const I18N = {
     agentOnNote: "Agent is ON — go back to the chat and type your request.",
     vgModeTranslate: "Live translate",
     vgModeAsk: "Ask about it",
+    // v-i18n-sweep: keys that were in the UI with no dictionary entry.
+    vgTitle: "Visual Guide",
+    vgModeDescribe: "Describe surroundings",
+    vgModeRead: "Read text",
+    vgModeSteps: "Step by step",
+    vgModeTour: "App tour",
+    vgAsk: "Ask",
+    vgAuto: "Auto",
+    vgRepeat: "Repeat",
+    vgSound: "Sound",
+    vgTorch: "Torch",
+    vgHint: "Tap anywhere and I'll describe it now",
+    omNavGuide: "Guide",
+    authEmailOtpBtn: "Sign in with email",
+    authOtpBack: "Back",
+    authOtpCodeLabel: "Verification code",
+    authOtpEmailLabel: "Email address",
+    authOtpSendBtn: "Send verification code",
+    aboutTagline: "An Arabic platform for building apps with AI",
+    videosGroupTitle: "🎬 Intro videos",
+    toneSectionLabel: "Tone",
+    toneAuto: "Your call",
+    toneWarm: "Friendly",
+    toneDirect: "Direct",
+    toneFormal: "Formal",
+    toneHint: "Pick your preferred reply style — or let the AI adapt to you automatically.",
     mahaCcTitle: "Live call captions",
     premiumNeedLogin: "Sign in to use Agent",
     premiumNoPoints: "Out of points — buy points to keep using Agent",
@@ -25166,9 +25218,13 @@ window.__logoPickerOpen = openPicker;
 
 // ── زر في شريط الأدوات (يُربط بعد DOMContentLoaded) ─────────────────────────
 function mountLogoBtn(){
-  // زر داخل مربع الأدوات
+  // زر داخل مربع الأدوات.
+  // v-wiring-sweep: toolsBox/toolsBoxInner لم يعودا موجودَين بعد إعادة تصميم
+  // الواجهة، وكان الحارس القديم يخرج مبكرًا فلا يظهر زر «شعارات العالم» أبدًا.
+  // نقطة الإدراج الحقيقية هي جوار زر استوديو الإعلانات، وتكفي وحدها.
   const toolsBox = document.getElementById('toolsBox') || document.getElementById('toolsBoxInner');
-  if(!toolsBox || document.getElementById('btnLogoLib')) return;
+  const adBtnAnchor = document.getElementById('btnAdStudio') || document.getElementById('btnStudioAI');
+  if((!toolsBox && !adBtnAnchor) || document.getElementById('btnLogoLib')) return;
 
   const btn = document.createElement('button');
   btn.id = 'btnLogoLib';
@@ -26128,6 +26184,15 @@ if(document.readyState === 'loading'){
     tourIdx = i;
     var step = TOUR[i];
     var el = document.querySelector(step.sel);
+    /* v-wiring-sweep: بعض المحدّدات ([data-omnav]) لها نسختان — شريط الجوال
+       وشريط الكمبيوتر المخفي. querySelector يرجع الأولى في الـDOM وهي المخفية
+       على الجوال (حجمها صفر) فتضيع حلقة الجولة. نلتقط الظاهرة فعلًا. */
+    if (el && !el.offsetParent) {
+      var cands = document.querySelectorAll(step.sel);
+      for (var ci = 0; ci < cands.length; ci++) {
+        if (cands[ci].offsetParent) { el = cands[ci]; break; }
+      }
+    }
     var text = isAr() ? step.ar : step.en;
 
     if (el) {

@@ -52,7 +52,9 @@
 
   /* ---------- 2) أدوات سريعة ---------- */
   var QUICK = [
-    { icon:'globe',  k:'qtWebSearch', name:'بحث في الإنترنت', run:function(){ tap('#btnPreviewToggle'); } },
+    /* v-wiring-sweep: كان ينقر #btnPreviewToggle — زر غير موجود منذ زمن، فالأداة
+       كانت ميتة بصمت. #omranBtnWeb هو زر «المتصفح» الحقيقي (app-10 v361). */
+    { icon:'globe',  k:'qtWebSearch', name:'بحث في الإنترنت', run:function(){ tap('#omranBtnWeb'); } },
     { icon:'trans',  k:'qtTranslate', name:'ترجمة نص',        run:function(){ fillPrompt('ترجم النص التالي:\n'); } },
     { icon:'list',  k:'qtSummarize', name:'تلخيص نص',        run:function(){ fillPrompt('لخّص النص التالي:\n'); } },
     { icon:'upload',  k:'qtAnalyzeFile', name:'تحليل ملف',       run:function(){ tap('#btnAttach'); } }
@@ -97,7 +99,8 @@
   var fs = $('#omranFootSettings'); if(fs) fs.addEventListener('click', function(){ tap('#btnSettings'); });
 
   /* ---------- 8) أزرار الصندوق الجديدة ---------- */
-  var bw = $('#omranBtnWeb'); if(bw) bw.addEventListener('click', function(){ tap('#btnPreviewToggle'); });
+  /* v-wiring-sweep: كان يعيد توجيه النقرة إلى #btnPreviewToggle غير الموجود —
+     لا-شيء صامت. المعالج الحقيقي لـ#omranBtnWeb في app-10 (المتصفح v361). */
   var bc = $('#omranBtnClip'); if(bc) bc.addEventListener('click', function(){ tap('#btnAttach'); });
   /* v594: بند «الأدوات» داخل + يفتح مربّع الأدوات ويقفل القائمة */
   var btb = $('#btnToolsBox');
