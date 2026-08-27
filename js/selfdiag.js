@@ -25,6 +25,9 @@
     try{
       if(document.getElementById('omranErrBanner')) return;
       if(!document.documentElement.classList.contains('mobile-ui')) return;
+      // ضجيج لا يستحق شريطًا: أخطاء سكربتات خارجية مبهمة (Script error) وأعطال
+      // الشبكة والإضافات — نفس فلتر الخادم، فلا إنذارات كاذبة على شاشة المستخدم.
+      if(/Script error\.?$|Failed to fetch|NetworkError|Load failed|ResizeObserver|extension/i.test(String(msg || ''))) return;
       var bsrc = ''; try{ bsrc = (document.querySelector('script[src*="app.bundle.js"]') || {}).src || ''; }catch(e){ /* guard-ok: رقم البنية زينة تشخيصية */ }
       var build = (bsrc.match(/v=([0-9a-f]+)/) || [])[1] || '؟';
       var d = document.createElement('div');
