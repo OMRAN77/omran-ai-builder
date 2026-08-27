@@ -120,6 +120,15 @@ const btnInstall = $('#btnInstall');
     if (__orOld === 'meta-llama/llama-3.1-8b-instruct:free' || __orOld === 'meta-llama/llama-3.3-70b-instruct:free') {
       localStorage.setItem('aiapp_openrouter_model', 'nvidia/nemotron-3-super-120b-a12b:free');
     }
+    /* v-or-models: أسماء أخرى ماتت من كتالوج OpenRouter — من حفظها قديمًا
+       كانت رسائله تفشل. تهاجر لأقرب بديل حي (متحقَّق في ورشة model-probe). */
+    const __orRemap = {
+      'google/gemini-flash-1.5:free': 'google/gemma-4-31b-it:free',
+      'mistralai/mistral-7b-instruct:free': 'z-ai/glm-5.2:free',
+      'anthropic/claude-3.5-sonnet': 'anthropic/claude-sonnet-4.5',
+      'google/gemini-pro-1.5': 'google/gemini-2.5-pro',
+    };
+    if (__orRemap[__orOld]) localStorage.setItem('aiapp_openrouter_model', __orRemap[__orOld]);
   } catch(e){ __swallow(e, "save:app-10-features#3"); }
 })();
 const btnRefreshPage = $('#btnRefreshPage');
