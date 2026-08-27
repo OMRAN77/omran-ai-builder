@@ -7871,6 +7871,7 @@ async function postWithConfirm(url, payload){
 /* v-about-lux */
 /* v-intro-videos */
 /* v-chat-direct */
+/* v-boot-watchdog */
 window.postWithConfirm = postWithConfirm;
 /* يضبط شكل المحادثة كما يشترطه Gemini — يُستدعى قبل كل طلب. */
 function sanitizeGeminiContents(list){
@@ -26234,3 +26235,6 @@ if(document.readyState === 'loading'){
     }
   };
 })();
+
+/* v-boot-watchdog: آخر شريحة في الحزمة — وصول التنفيذ هنا يعني الحزمة كلها اشتغلت. */
+window.__omranBundleOk = true;
