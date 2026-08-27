@@ -100,13 +100,13 @@ check(prompts.includes('أجب بتحية عربية قصيرة فقط من كل
 check(prompts.includes('ولا تستخدم علامة استفهام'), 'توجيه التحية يمنع أي سؤال صراحةً');
 check(attach.includes('const __socialReply = attachmentsForMsg.length ? null : deterministicSocialReply(text)') && attach.includes('_localSocial: true'), 'التحية وسؤال الحال يُحسمان محليًا قبل أي مزود أو بحث');
 check(chatServer.includes('const socialReply = deterministicSocialReply') && chatServer.includes("JSON.stringify({ delta: socialReply })"), 'الخادم يعيد الرد الاجتماعي الثابت أيضًا للعملاء القديمة');
-check(prompts.includes('«كيف الحال؟» أجب عنه كحديث مستمر'), 'سؤال المجاملة يُعامل كمحادثة مستمرة');
+check(prompts.includes('«كيف الحال؟» أجب عنه بدفء كحديث مستمر'), 'سؤال المجاملة يُعامل كمحادثة مستمرة');
 check(attach.includes('const __quietSocialTurn = isPureGreeting(text) || isCasualCheckIn(text)') && attach.includes('const __memMsg = __quietSocialTurn ? null : memorySystemMsg()'), 'سؤال الحال لا يحقن ذاكرة الحساب في العميل');
 check(attach.includes('let __turns = [];') && attach.includes('if(!__quietSocialTurn){'), 'سؤال الحال لا يرسل المواضيع السابقة إلى المزود');
 check(attach.includes('هذا سؤال حال ضمن محادثة مستمرة، وليس تحية جديدة') && attach.includes('ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق'), 'سؤال الحال له توجيه مباشر يمنع عرض الخدمة والمواضيع القديمة');
 check(attach.includes('!(isPureGreeting(text) || isCasualCheckIn(text))'), 'الدور الاجتماعي العابر لا يلوث الذاكرة طويلة المدى');
 check(chatServer.includes('function isCasualCheckIn(text)') && chatServer.includes('if (usage.username && !quietSocialTurn)'), 'الخادم لا يقرأ ذاكرة الحساب لسؤال الحال');
-check(chatServer.includes('const system = quietSocialTurn') && chatServer.includes('ولا تذكر أي مشروع أو اهتمام أو موضوع سابق'), 'الخادم يعزل الدور الاجتماعي عن التاريخ ومعرفة المالك');
+check(chatServer.includes('const system = quietSocialTurn') && chatServer.includes('وممنوع سرد مشاريع أو مواضيع قديمة'), 'الخادم يعزل الدور الاجتماعي عن التاريخ ومعرفة المالك');
 check(chatServer.includes('tools: toolTurn ? TOOLS : undefined'), 'الأدوات تُمرَّر خلف toolTurn لا دائمًا');
 // v-chat-tools: قائمة الكلمات (TOOL_INTENT_RE) حجبت البحث عن «توقيت الصلاة في عجمان»
 // — قِيس بالمِجسّ ردٌّ بلا بحث يطلب التاريخ. القرار الآن للنموذج في كل دور غير اجتماعي.
@@ -166,8 +166,10 @@ check(chatServer.indexOf('v-fast-headers') > 0 && chatServer.indexOf('v-fast-hea
 check(chatServer.includes('function compactConversation'), 'السياق الطويل يُضغط قبل إرساله للنموذج');
 check(chatServer.includes('const convoSource = quietSocialTurn ? [lastUser] : messages'), 'الخادم لا يرسل تاريخ المواضيع في سؤال الحال');
 check(chatServer.includes('slice(0, 12000)'), 'كل رسالة لها سقف حجم يحمي جودة السياق');
-check(prompts.includes('لا تطرح أي سؤال ولا تعرض المساعدة'), 'التحية تبقى قصيرة بلا سؤال أو عرض خدمة');
-check(prompts.includes('لا تعرض المساعدة بدل الجواب'), 'سؤال الحال يُجاب عنه ولا يتحول إلى عرض خدمة');
+// v-warm-social: «هلا وغلا» الجافة وحدها رفضها المالك — التحية حارة راقية
+// بسؤال واحد يفتح الحديث، والممنوع الوحيد عرض الخدمات وسرد القديم.
+check(prompts.includes('ترحيبًا حارًّا راقيًا بروح المجلس'), 'التحية حارة راقية لا جافة');
+check(prompts.includes('كيف أقدر أساعدك؟') && prompts.includes('سرد المواضيع القديمة'), 'الممنوع الوحيد: عرض الخدمات وسرد القديم');
 check(prompts.includes('لا تبدأ بتحية من نفسك'), 'بداية المحادثة صامتة');
 // v-persona-front: «العربية البيضاء الهادئة» كانت تناقض بصمة المالك وتطمسها —
 // أسلوب العميل صار هو البصمة نفسها (دفء واحتفال وزبدة أولًا ومجاراة اللهجة).

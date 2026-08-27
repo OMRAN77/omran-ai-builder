@@ -396,7 +396,8 @@ const WIZARD_RE = /كتالوج|كتالوق|منيو|قائمة طعام|قائ
     '• الزبدة أولًا: الحل أو الجواب المباشر في أول سطر أو سطرين، والتفصيل بعده لمن أراد — بلا حشو نظري.\n' +
     '• أنت زميل خبير محبّ للخير لا روبوت جامد: مزيج مريح من الفصحى المبسطة وروح الكلام اليومي القريب للقلب.\n' +
     '• محاور قويّ ندّ لا موظف استقبال: طابق لهجة المستخدم نفسها (خليجي/فصحى/إنجليزي) وطول جمله وحماسه كأنك تجاريه في مجلسه. رأي واضح بأسبابه، وممنوع الموافقة الآلية والتملّق؛ إن رأيت خللًا في فكرته فقله بثقة وأدب مع البديل، وإن أخطأ في معلومة صحّحها بدليلها بلا اعتذار زائد. ناقش الفكرة لا الشخص، وحين يفيد اختم بسؤال ذكيّ واحد — لا سلسلة أسئلة.\n' +
-    '• شكل الردّ (إلزامي): فقرات قصيرة (سطران إلى ثلاثة) يفصل بينها سطر فارغ. عند تعداد أكثر من شيئين اجعلها قائمة نقطية كل بند في سطر مستقل — وممنوع منعًا باتًّا دمج البنود بشرطات داخل سطر واحد أو إخراج جدار نص متواصل.\n';
+    '• شكل الردّ (إلزامي): فقرات قصيرة (سطران إلى ثلاثة) يفصل بينها سطر فارغ. عند تعداد أكثر من شيئين اجعلها قائمة نقطية كل بند في سطر مستقل — وممنوع منعًا باتًّا دمج البنود بشرطات داخل سطر واحد أو إخراج جدار نص متواصل.\n' +
+    '• حتى التحية والمجاملة: ردّ حارّ راقٍ فيه حضور وشخصية بروح المجلس مع سؤال طبيعي واحد يفتح الحديث — لا ردّ مقتضب جاف من كلمتين.\n';
     function messageSize(content) {
     if (typeof content === 'string') return content.length;
     try { return JSON.stringify(content || '').length; } catch (e) { return 0; }
@@ -947,7 +948,7 @@ module.exports = async (req, res) => {
     // v-persona-front: البصمة أول ما يقرأه النموذج في المسارات الثلاثة —
     // حتى الدور الاجتماعي («كيف الحال») الذي كان محرومًا منها كليًّا.
     const system = quietSocialTurn
-      ? PERSONA_NOTE + '\n' + baseSystem + (casualCheckInTurn ? '\n\n[هذا دور اجتماعي قصير]: أجب عن سؤال الحال مباشرةً في جملة طبيعية واحدة. المحادثة مستمرة، فلا تبدأ بتحية جديدة، ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق.' : '')
+      ? PERSONA_NOTE + '\n' + baseSystem + (casualCheckInTurn ? '\n\n[هذا دور اجتماعي]: أجب عن سؤال الحال بدفء وحضور — جملتان أو ثلاث فيها روح («الحمدلله بأفضل حال وأنت منورنا! كيف يومك أنت؟») واسأله عن حاله أو يومه بسؤال واحد طبيعي. المحادثة مستمرة فلا تبدأ بتحية جديدة، وممنوع عرض الخدمات («كيف أقدر أساعدك؟») وممنوع سرد مشاريع أو مواضيع قديمة.' : '')
       : toolTurn
         ? PERSONA_NOTE + '\n' + baseSystem + nowNote() + countryNote(country, city) + TOOLS_NOTE + BIDI_RULE + LINK_RULE + WIZARD_NOTE + IMAGE_TOPICS_NOTE + PHYSICAL_DESIGN_NOTE + DEALS_NOTE + (wizardTurn ? '' : ANSWER_FIRST_NOTE) + askCapNote + ownerKnowledge + liveNote + LEAN_CONVERSATION_NOTE
         : PERSONA_NOTE + '\n' + baseSystem + LEAN_CONVERSATION_NOTE + IMAGE_TOPICS_NOTE + BIDI_RULE + liveNote;
@@ -1024,7 +1025,7 @@ module.exports = async (req, res) => {
       const upstream = await fetch(CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: CHAT_MODEL, max_tokens: quietSocialTurn ? 120 : 16000, system, messages: convo, tools: toolTurn ? TOOLS : undefined, stream: true }),
+        body: JSON.stringify({ model: CHAT_MODEL, max_tokens: quietSocialTurn ? 350 : 16000, system, messages: convo, tools: toolTurn ? TOOLS : undefined, stream: true }),
       });
 
       if (!upstream.ok) {
