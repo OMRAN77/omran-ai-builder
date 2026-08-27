@@ -125,7 +125,11 @@ check(chatServer.includes("search_recency_filter: 'week'"), 'بيربلكسيت�
 check(chatServer.includes('dateRestrict=m1&sort=date'), 'جوجل: آخر شهر مرتب بالأحدث');
 check(chatServer.includes('حداثة الأخبار — إلزامي'), 'النموذج ملزم بذكر تاريخ الخبر ورفض القديم');
 check(chatServer.includes('const LEAN_CONVERSATION_NOTE'), 'المحادثة العادية تستخدم تعليمات خفيفة');
-check(chatServer.includes('محاور قويّ') && chatServer.includes('كن ندًّا في الحوار'), 'طبقة المحاور القوي: ندّية ومطابقة نمط المستخدم');
+// v-persona-front: المحاور القوي اندمج في بصمة الشخصية المتصدّرة.
+check(chatServer.includes('محاور قويّ') && chatServer.includes('ندّ لا موظف استقبال'), 'طبقة المحاور القوي: ندّية ومطابقة نمط المستخدم');
+check(chatServer.includes('أعلى أولوية في هذا النظام كله'), 'بصمة الشخصية معلنة أعلى أولوية');
+check(/PERSONA_NOTE \+ '\\n' \+ baseSystem/.test(chatServer), 'البصمة تتصدر النظام في كل المسارات');
+check(chatServer.includes('ممنوع منعًا باتًّا دمج البنود بشرطات داخل سطر واحد'), 'قاعدة التنسيق: لا جدار نص ولا شرطات ملزوقة');
 check(chatServer.includes('ممنوع الموافقة الآلية والتملّق'), 'التملق والموافقة الآلية ممنوعان صراحةً');
 check(chatServer.includes('function arWikiLookup') && chatServer.includes('ar.wikipedia.org'), 'ويكيبيديا العربية مصدر مرفق في سلسلة البحث');
 check(chatServer.includes('ممنوع أن تبدأ الردّ باستدعاء generate_image'), 'النص يُقرأ أولًا والصورة التوضيحية آخر الردّ');
@@ -165,7 +169,10 @@ check(chatServer.includes('slice(0, 12000)'), 'كل رسالة لها سقف ح�
 check(prompts.includes('لا تطرح أي سؤال ولا تعرض المساعدة'), 'التحية تبقى قصيرة بلا سؤال أو عرض خدمة');
 check(prompts.includes('لا تعرض المساعدة بدل الجواب'), 'سؤال الحال يُجاب عنه ولا يتحول إلى عرض خدمة');
 check(prompts.includes('لا تبدأ بتحية من نفسك'), 'بداية المحادثة صامتة');
-check(prompts.includes('بيضاء واضحة ومهذّبة'), 'الأسلوب العربي واضح ومهذّب');
+// v-persona-front: «العربية البيضاء الهادئة» كانت تناقض بصمة المالك وتطمسها —
+// أسلوب العميل صار هو البصمة نفسها (دفء واحتفال وزبدة أولًا ومجاراة اللهجة).
+check(prompts.includes('بصمة المالك') && prompts.includes('احتفل بإنجاز المستخدم'), 'أسلوب العميل هو بصمة المالك');
+check(!prompts.includes('لا تقلّد شخصية المستخدم'), 'أزيل التناقض: مجاراة لهجة المستخدم مطلوبة لا ممنوعة');
 check(!prompts.includes('فردّ حرفيًا: «أهلًا بك.» فقط'), 'أزيل الرد الحرفي «أهلًا بك.»');
 check(!prompts.includes('يحيّه ويسأله وش يحتاج'), 'أزيلت صيغة «وش يحتاج» المفروضة');
 check(!prompts.includes('لهجتك الافتراضيّة إماراتيّة بيضاء'), 'أزيل فرض اللهجة المصطنعة');
@@ -227,7 +234,8 @@ check(!bundle.includes('فردّ حرفيًا: «أهلًا بك.» فقط'), '�
     check(!chatServer.includes('بالطبع!') || chatServer.includes('لا تبدأ ردك بـ«بالطبع!»'), 'يمنع البدء بعبارات مكررة كبالطبع');
     // بصمة الشخصية — بطلب المالك: تحفيز واحتفال، تعاطف قبل الحل، تفكيك
     // المعقد لخطوات، الزبدة أولًا، زميل خبير لا روبوت.
-    check(chatServer.includes('بصمة الشخصية — بطلب المالك'), 'بصمة الشخصية مثبتة في أسلوب المحادثة');
+    // v-persona-front: العنوان صار «بصمة الشخصية وأسلوب الكلام» متصدّرًا النظام.
+    check(chatServer.includes('بصمة الشخصية وأسلوب الكلام'), 'بصمة الشخصية مثبتة في أسلوب المحادثة');
     check(chatServer.includes('اطمّن، المشكلة واضحة ونحلها بدقيقتين'), 'تعاطف قبل الحل عند الأخطاء');
     check(chatServer.includes('خطوات مرقّمة قصيرة'), 'تفكيك المعقد إلى خطوات');
     check(chatServer.includes('الزبدة أولًا'), 'الحل المباشر في المقدمة');
