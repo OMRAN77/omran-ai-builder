@@ -153,6 +153,16 @@ const IMAGE_TOPICS_NOTE = '\n\n[توليد الصور — نشط لهذه الم
   // النصَّ ٩٠ ثانية خلف رسمة لم يطلبها. النصّ يُقرأ فورًا والصورة تلحق.
   'قاعدة السرعة (إلزامية): ممنوع أن تبدأ الردّ باستدعاء generate_image. اكتب جوابك النصيّ كاملًا أوّلًا ليقرأه المستخدم فورًا، ثم استدعِ الصورة التوضيحية آخر الردّ وضع رمزها في نهايته.';
 
+// v-physical-design — شكوى عمران ٢٧ أغسطس: طلب «تصميم مسبح ٥ أمتار مع شلالات»
+// ردّ عليه النموذج بمحاضرة مواصفات دقيقتين بلا صورة واحدة. تصميم الأشياء
+// المادية يُرى قبل أن يُقرأ — الصورة هي المنتج والنص خادمها.
+const PHYSICAL_DESIGN_NOTE = '\n\n[تصميم الأشياء المادية — إلزامي أعلى من كل قاعدة إسهاب]:\n' +
+  'إذا طلب المستخدم تصميم أو تصوّر شيء مادي أو مكاني — مسبح، حديقة، مجلس، واجهة منزل، غرفة، مطبخ، شلال، لاندسكيب، محل، كوفي، مزرعة، ملعب، استراحة… — فهذا طلب بصري لا مقالي:\n' +
+  '١) ردّك النصي «الزبدة» فقط: ٤ إلى ٦ أسطر — الفكرة، المقاس، أبرز العناصر، وتقدير تكلفة تقريبي إن أمكن.\n' +
+  '٢) ثم استدعِ generate_image (آخر الردّ كقاعدة السرعة) بوصف إنجليزي احترافي يشمل كل ما ذكره حرفيًا: المقاس، العناصر (شلالات، إضاءة…)، الطراز — photorealistic architectural visualization, golden hour lighting.\n' +
+  '٣) ممنوع منعًا باتًا جدار المواصفات الطويل (أنظمة، سماكات، مضخات، جداول) إلا إذا طلبه صراحةً — «أعطني التفاصيل الفنية/المواصفات الكاملة» — حينها فصّل بلا حدود.\n' +
+  '٤) اختم بسطر واحد: يقدر يطلب التفاصيل الفنية أو أي تعديل على التصميم.';
+
 
     const DEALS_NOTE = '\n\n[العروض والتخفيضات — قاعدة البحث]:\n' +
     'عند أي سؤال عن عروض أو تخفيضات أو أسعار أو متاجر: ابحث فوراً بـ web_search.\n' +
@@ -931,7 +941,7 @@ module.exports = async (req, res) => {
     const system = quietSocialTurn
       ? baseSystem + (casualCheckInTurn ? '\n\n[هذا دور اجتماعي قصير]: أجب عن سؤال الحال مباشرةً في جملة طبيعية واحدة. المحادثة مستمرة، فلا تبدأ بتحية جديدة، ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق.' : '')
       : toolTurn
-        ? baseSystem + nowNote() + countryNote(country, city) + TOOLS_NOTE + BIDI_RULE + LINK_RULE + WIZARD_NOTE + IMAGE_TOPICS_NOTE + DEALS_NOTE + (wizardTurn ? '' : ANSWER_FIRST_NOTE) + askCapNote + ownerKnowledge + liveNote + LEAN_CONVERSATION_NOTE
+        ? baseSystem + nowNote() + countryNote(country, city) + TOOLS_NOTE + BIDI_RULE + LINK_RULE + WIZARD_NOTE + IMAGE_TOPICS_NOTE + PHYSICAL_DESIGN_NOTE + DEALS_NOTE + (wizardTurn ? '' : ANSWER_FIRST_NOTE) + askCapNote + ownerKnowledge + liveNote + LEAN_CONVERSATION_NOTE
         : baseSystem + LEAN_CONVERSATION_NOTE + IMAGE_TOPICS_NOTE + BIDI_RULE + liveNote;
 
       const convoSource = quietSocialTurn ? [lastUser] : messages;

@@ -200,4 +200,11 @@ assert.ok(attachCli.includes("(!imageAttachments.length || __effProv === 'claude
 assert.ok(!fs.readFileSync(path.join(__dirname, '../js/app-06-checkout.js'), 'utf8').includes('claude-sonnet-4-20250514'), 'لا نموذج قديم في مسار الاحتياط');
 console.log('  ✓ v-chat-vision: تحليل الصور على نفس العقل القوي');
 
+// ⑲ v-physical-design: تصميم الأشياء المادية = صورة + زبدة، لا جدار مواصفات.
+const chatSrv19 = fs.readFileSync(path.join(__dirname, '../api/_lib/chat.js'), 'utf8');
+assert.ok(chatSrv19.includes('v-physical-design') && chatSrv19.includes('PHYSICAL_DESIGN_NOTE'), 'قاعدة التصميم المادي موجودة');
+assert.ok(chatSrv19.includes('+ IMAGE_TOPICS_NOTE + PHYSICAL_DESIGN_NOTE + DEALS_NOTE'), 'القاعدة موصولة في نظام أدوار الأدوات');
+assert.ok(chatSrv19.includes('ممنوع منعًا باتًا جدار المواصفات الطويل'), 'جدار المواصفات ممنوع إلا بطلب صريح');
+console.log('  ✓ v-physical-design: التصميم يُرى قبل أن يُقرأ');
+
 console.log('fashion locks tests passed');
