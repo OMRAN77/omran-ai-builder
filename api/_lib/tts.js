@@ -152,10 +152,14 @@ module.exports = async (req, res) => {
         'Authorization': 'Bearer ' + apiKey,
         'Content-Type': 'application/json',
       },
+      // v-tts-promo: نبرة موجَّهة اختياريًا — gpt-4o-mini-tts يقبل «تعليمات أداء»
+      // (حماسي، إعلاني، هادئ…) فيصلح للتعليق التسويقي. الافتراضات كما هي حرفيًا.
       body: JSON.stringify({
-        model: 'tts-1',
+        model: body.model === 'gpt-4o-mini-tts' ? 'gpt-4o-mini-tts' : 'tts-1',
         voice: voice || 'onyx',
         input: String(text).slice(0, 4000),
+        ...(body.model === 'gpt-4o-mini-tts' && body.instructions
+          ? { instructions: String(body.instructions).slice(0, 600) } : {}),
       }),
     });
 
