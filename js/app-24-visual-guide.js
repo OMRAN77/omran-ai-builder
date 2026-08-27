@@ -442,6 +442,15 @@
     tourIdx = i;
     var step = TOUR[i];
     var el = document.querySelector(step.sel);
+    /* v-wiring-sweep: بعض المحدّدات ([data-omnav]) لها نسختان — شريط الجوال
+       وشريط الكمبيوتر المخفي. querySelector يرجع الأولى في الـDOM وهي المخفية
+       على الجوال (حجمها صفر) فتضيع حلقة الجولة. نلتقط الظاهرة فعلًا. */
+    if (el && !el.offsetParent) {
+      var cands = document.querySelectorAll(step.sel);
+      for (var ci = 0; ci < cands.length; ci++) {
+        if (cands[ci].offsetParent) { el = cands[ci]; break; }
+      }
+    }
     var text = isAr() ? step.ar : step.en;
 
     if (el) {

@@ -273,4 +273,30 @@ console.log('  ✓ v-owner-core: المالك مفتوح في كل شي مهما
 }
 console.log('  ✓ v-runway-host: فيديو Runway على المضيف الصحيح');
 
+// ㉕ v-sweep: الفحص الشامل — أعطاب صامتة انكشفت بمسح آلي للتطبيق كله.
+{
+  // موديل Claude المتقاعد لا يعود سقوطًا للوكيل.
+  const ag = fs.readFileSync(path.join(__dirname, '../api/_lib/agent.js'), 'utf8');
+  assert.ok(!ag.includes('claude-3-5-sonnet-latest'), 'agent.js بلا موديل متقاعد');
+  // أداة «بحث في الإنترنت» السريعة تنقر الزر الحي لا الميت.
+  const uw = fs.readFileSync(path.join(__dirname, '../js/ui-wiring.js'), 'utf8');
+  assert.ok(uw.includes("tap('#omranBtnWeb')") && !uw.includes("tap('#btnPreviewToggle')"), 'الأداة السريعة على الزر الحقيقي');
+  // زر «شعارات العالم» لا يموت بغياب toolsBox القديم.
+  const lg = fs.readFileSync(path.join(__dirname, '../js/app-21-logos.js'), 'utf8');
+  assert.ok(lg.includes('adBtnAnchor') && lg.includes('(!toolsBox && !adBtnAnchor)'), 'زر الشعارات له مرساة حية');
+  // جولة التطبيق تلتقط العنصر الظاهر لا نسخة الكمبيوتر المخفية.
+  const vg = fs.readFileSync(path.join(__dirname, '../js/app-24-visual-guide.js'), 'utf8');
+  assert.ok(vg.includes('cands[ci].offsetParent'), 'الجولة على العنصر الظاهر');
+  // كل مفتاح data-i18n في الواجهة له ترجمة في القاموس.
+  const dict = fs.readFileSync(path.join(__dirname, '../js/app-03-i18n-data.js'), 'utf8');
+  const usedKeys = new Set();
+  for (const f of ['../index.html', '../js/partials-core.js', '../js/partials-settings.js']) {
+    const src = fs.readFileSync(path.join(__dirname, f), 'utf8');
+    for (const m of src.matchAll(/data-i18n(?:-title|-ph)?="(?:\[[^\]]+\])?([A-Za-z0-9_]+)"/g)) usedKeys.add(m[1]);
+  }
+  const missing = [...usedKeys].filter((k) => !new RegExp('[\\s{,\'"]' + k + '["\']?\\s*:').test(dict));
+  assert.deepStrictEqual(missing, [], 'مفاتيح ترجمة ناقصة: ' + missing.join(','));
+}
+console.log('  ✓ v-sweep: الفحص الشامل — أسلاك حية وترجمة كاملة وموديلات حاضرة');
+
 console.log('fashion locks tests passed');
