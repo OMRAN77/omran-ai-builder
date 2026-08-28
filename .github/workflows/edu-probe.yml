@@ -1,0 +1,18 @@
+# مجس صفحة التعليم على الإنتاج — توقيت فتح الصفحة والحفظ والجلب.
+name: edu-probe
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Probe production education
+        run: node scripts/edu-probe.mjs
