@@ -54,6 +54,8 @@
 (function diagPill(){
   try{
     if(!/iPad|iPhone|iPod/.test(navigator.userAgent || '')) return;
+    /* v646: بوابة صريحة — لا تظهر إلا بطلب (…/?diag=1). العيب مُصلح، فلا تُفرض على الزوار. */
+    if(!/[?&#]diag=1(?:[&#]|$)/.test(location.search + location.hash)) return;
     if(Date.now() > 1788566400000 /* 2026-09-05 UTC */) return;
     var start = function(){
       try{
