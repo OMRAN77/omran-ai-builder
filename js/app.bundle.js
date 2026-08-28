@@ -15115,7 +15115,10 @@ async function sendPrompt(){
     // بعد نقاش تصميم كان يُخطف لبحث صور حقيقية فيرجع صور أجنبية لا علاقة لها —
     // الإشارة لتصميمٍ من المحادثة نفسها ليست بحثًا: تمر للنموذج فيرسمها.
     const __designCtxRe = /التصميم|التصور|التصوّر|الفكر[ةه]|المخطط|تصميم(ك|ي|نا)|فكرت(ك|ي)|اللي (رسمت|صممت|فوق)|الي (رسمت|صممت|فوق)|نفس (التصميم|الفكر)/;
-    const __isPhotoFetch = !__isLogoFetch && __photoFetchRe.test(text) && !__genDrawRe.test(text) && !__designCtxRe.test(text) && !cur.adMode && !cur.awaitingAdMode;
+    // v-photo-make (لقطة عمران: «صورة جميلة عليها دعاء الجمعة» رُدّت بفشل جلب):
+    // «صورة عليها/مكتوب عليها…» طلب صناعة لا جلب — يمر للنموذج فيرسمها.
+    const __photoMakeRe = /عليها|عليه\s|مكتوب|اكتب|دعاء|أدعي[ةه]|تهنئ|بطاق[ةه]|معايد|قالب|بوستر|منشور/i;
+    const __isPhotoFetch = !__isLogoFetch && __photoFetchRe.test(text) && !__genDrawRe.test(text) && !__designCtxRe.test(text) && !__photoMakeRe.test(text) && !cur.adMode && !cur.awaitingAdMode;
     if(!imageAttachments.length && !__editIntent && (__isLogoFetch || __isPhotoFetch)){
       const __logoMsg = { role: 'assistant', content: lang === 'ar' ? (__isLogoFetch ? '🔍 أجيب لك الشعار الأصلي من البحث…' : '🔍 أجيب لك صور حقيقية من البحث…') : '🔍 Fetching real images from live search…', _loading: true };
       cur.messages.push(__logoMsg);
@@ -15147,17 +15150,34 @@ async function sendPrompt(){
           __logoMsg._loading = false;
           __logoMsg.content = lang === 'ar' ? (__isLogoFetch ? 'هذا الشعار الأصلي من البحث المباشر 👇 اضغط على الصورة لعرضها كبيرة، أو حمّلها مباشرة.' : 'هذي صور حقيقية من البحث المباشر 👇 اضغط على أي صورة لعرضها كبيرة، أو حمّلها مباشرة.') : 'Here are real images from live search 👇';
           __logoMsg.attachments = __imgs.map((u, i) => ({ isImage: true, dataUrl: (typeof u === 'string' ? u : (u && u.url) || ''), name: (__isLogoFetch ? 'logo-' : 'photo-') + (i + 1) + '.png' })).filter(a => a.dataUrl);
-        } else {
+        } else if(__isLogoFetch){
           __logoMsg._loading = false;
-          __logoMsg.content = lang === 'ar' ? (__isLogoFetch ? 'ما حصلت الشعار في البحث المباشر 😕 جرب تكتب اسم الجهة بشكل أوضح (مثال: "شعار شرطة دبي").' : 'ما حصلت صور في البحث المباشر 😕 جرب توضح طلبك أكثر.') : 'Could not find images via live search. Try a clearer request.';
+          __logoMsg.content = lang === 'ar' ? 'ما حصلت الشعار في البحث المباشر 😕 جرب تكتب اسم الجهة بشكل أوضح (مثال: "شعار شرطة دبي").' : 'Could not find the logo via live search. Try a clearer name.';
+        } else {
+          /* v-photo-fallthrough (عقل واحد): فشل جلب الصور لا يعود رسالة فشل
+             مخزنة — الطلب يمرّ للنموذج فيرسم المطلوب أو يتصرف بذكائه. */
+          cur.messages = cur.messages.filter(m => m !== __logoMsg);
+          renderMessages(true);
+          throw { __fallthrough: true };
         }
       }catch(e){
-        __logoMsg._loading = false;
-        __logoMsg.content = lang === 'ar' ? 'تعذر جلب الشعار الآن — جرب مرة ثانية.' : 'Could not fetch the logo right now — try again.';
+        if(e && e.__fallthrough){
+          /* يكمل المسار الطبيعي للنموذج تحت */
+        } else if(__isLogoFetch){
+          __logoMsg._loading = false;
+          __logoMsg.content = lang === 'ar' ? 'تعذر جلب الشعار الآن — جرب مرة ثانية.' : 'Could not fetch the logo right now — try again.';
+        } else {
+          cur.messages = cur.messages.filter(m => m !== __logoMsg);
+          renderMessages(true);
+        }
       }
-      renderAll(); saveState();
-      thinkingDiv && thinkingDiv.remove();
-      return;
+      const __photoHandled = cur.messages.includes(__logoMsg);
+      if(__photoHandled){
+        renderAll(); saveState();
+        thinkingDiv && thinkingDiv.remove();
+        return;
+      }
+      /* لم يُعالج — يسقط للنموذج (عقل واحد) */
     }
     // 🖼️ تعديل الصور بالأوامر النصية: صورة مرفقة + طلب تعديل → Gemini يرجع الصورة معدّلة
     // Follow-up edits on the same image work too ("زين، الحين كبّر الخط").
