@@ -47,7 +47,7 @@
   window.addEventListener('orientationchange', function(){ setTimeout(apply, 250); });
 })();
 /* v-diag-pill (مؤقت — يطفئ نفسه بعد 2026-09-05): حبة تشخيص صغيرة على آيفون
-   فقط تعرض أرقام المنفذ حيّة لمدة ٩٠ ثانية من الإقلاع (تُقفل باللمس).
+   فقط تعرض أرقام المنفذ حيّة سبع دقائق من الإقلاع (v643: تكفي لدخول المحادثة) (تُقفل باللمس).
    لقطة شاشة واحدة معها تحسم مصدر الفراغ فوق الهيدر: تمرير؟ حاشية env؟
    أم إزاحة أصلية من الغلاف لا تراها JS أصلًا (كل الأرقام سليمة والفراغ
    ظاهر بالصورة = إزاحة contentInset أصلية، وعلاجها في الغلاف لا الويب). */
@@ -67,6 +67,8 @@
         document.body.appendChild(probe);
         var bsrc = ''; try{ bsrc = (document.querySelector('script[src*="app.bundle.js"]') || {}).src || ''; }catch(e){ /* guard-ok: زينة تشخيصية */ }
         var build = (bsrc.match(/v=([0-9a-f]+)/) || [])[1] || '?';
+        var mxEnv = 0, mxHd = 0;
+        var cssv = function(n){ try{ return ((document.querySelector('link[href*="' + n + '.css"]') || {}).href || '').replace(/^.*v=/, '') || '?'; }catch(e){ return '?'; } };
         var upd = function(){
           try{
             var h = document.querySelector('header');
@@ -74,23 +76,31 @@
             var vv = window.visualViewport;
             var sat = '';
             try{ sat = getComputedStyle(document.documentElement).getPropertyValue('--omran-sat').trim(); }catch(e){ /* guard-ok: زينة تشخيصية */ }
+            var envNow = Math.round(parseFloat(getComputedStyle(probe).paddingTop) || 0);
+            if(envNow > mxEnv) mxEnv = envNow;
+            if(hr && Math.round(hr.top) > mxHd) mxHd = Math.round(hr.top);
+            var pwa = false;
+            try{ pwa = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches); }catch(e){ /* guard-ok: زينة تشخيصية */ }
+            var bd = '—';
+            try{ bd = Math.round(document.body.getBoundingClientRect().top) + (getComputedStyle(document.body).position || '?').charAt(0); }catch(e){ /* guard-ok: زينة تشخيصية */ }
             d.textContent = '🩺 صوّر الشاشة كاملة مع هذا الصندوق\n'
-              + 'b:' + build
-              + ' st:' + (navigator.standalone === true ? 1 : 0)
-              + ' ua:' + (/Safari/.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS/.test(navigator.userAgent) ? 'saf' : 'wrap')
-              + ' env:' + Math.round(parseFloat(getComputedStyle(probe).paddingTop) || 0)
-              + ' sat:' + (sat || '—') + '\n'
-              + 'ih:' + window.innerHeight + ' sc:' + screen.height
+              + 'b:' + build + ' css:' + cssv('tokens') + '/' + cssv('redesign')
+              + ' sw:' + ((navigator.serviceWorker && navigator.serviceWorker.controller) ? 1 : 0)
+              + ' ' + (pwa ? 'pwa' : 'br')
+              + ' ua:' + (/Safari/.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS/.test(navigator.userAgent) ? 'saf' : 'wrap') + '\n'
+              + 'env:' + envNow + '/' + mxEnv + ' sat:' + (sat || '—')
+              + ' ih:' + window.innerHeight + ' sc:' + screen.height
               + ' vv:' + (vv ? Math.round(vv.height) + '/' + Math.round(vv.offsetTop) + '/' + Math.round(vv.pageTop) : '—') + '\n'
               + 'sy:' + Math.round(window.scrollY) + ' de:' + Math.round(document.documentElement.scrollTop)
-              + ' hd:' + (hr ? Math.round(hr.top) + '/' + Math.round(hr.height) : '—')
+              + ' bd:' + bd
+              + ' hd:' + (hr ? Math.round(hr.top) + '/' + Math.round(hr.height) : '—') + ' mx:' + mxHd
               + ' hp:' + (h ? Math.round(parseFloat(getComputedStyle(h).paddingTop) || 0) : '—');
           }catch(e){ /* guard-ok */ }
         };
         var t = setInterval(upd, 1000);
         upd();
         (document.body || document.documentElement).appendChild(d);
-        setTimeout(function(){ try{ d.remove(); probe.remove(); clearInterval(t); }catch(e){ /* guard-ok: تنظيف الحبة ترف */ } }, 90000);
+        setTimeout(function(){ try{ d.remove(); probe.remove(); clearInterval(t); }catch(e){ /* guard-ok: تنظيف الحبة ترف */ } }, 420000);
       }catch(e){ /* guard-ok: الحبة ترف تشخيصي */ }
     };
     if(document.body) setTimeout(start, 2500);
