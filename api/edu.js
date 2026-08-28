@@ -467,27 +467,45 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         + '8. أعد فقط كتلة ```html واحدة فيها الملف كاملًا — لا شرح قبلها ولا بعدها.';
       const user = 'المادة: ' + (subjName || 'عام') + '\nعنوان الدرس: ' + title + '\n\nملخص الدرس:\n' + summary
         + '\n\nابنِ التجربة الحية الآن — اختر أهم مفهوم قابل للمحاكاة في هذا الدرس بالذات واجعله ملموسًا.';
-      const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
+      /* v-lab-haiku: البتر استمر حتى بميزانية 14 ألفًا — سونيت أبطأ من أن
+         يكتب صفحة غنية كاملة ضمن المهلة. هايكو 4.5 أسرع ~3 أضعاف في
+         التوليد فتكتمل الصفحة في ~دقيقة ونصف، ولو انقطع عند السقف يُكمل
+         تلقائيًا بجولة إتمام واحدة (prefill) — لا «تجربة غير مكتملة». */
+      const LAB_MODEL = process.env.EDU_LAB_MODEL || 'claude-haiku-4-5-20251001';
+      const doRequest = (m, msgs, budget) => fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         signal: AbortSignal.timeout(280000),
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: m, max_tokens: 14000, system: sys, messages: [{ role: 'user', content: user }] }),
+        body: JSON.stringify({ model: m, max_tokens: budget, system: sys, messages: msgs }),
       });
-      let r2 = await doRequest(RESOLVED_MODEL || MODEL);
+      const baseMsgs = [{ role: 'user', content: user }];
+      let labModel = LAB_MODEL;
+      let r2 = await doRequest(labModel, baseMsgs, 14000);
       let d2 = await r2.json().catch(() => null);
       if (!r2.ok && r2.status === 404 && d2 && d2.error && /model/i.test(JSON.stringify(d2.error))) {
-        RESOLVED_MODEL = null; const m = await resolveModel(apiKey); r2 = await doRequest(m); d2 = await r2.json().catch(() => null);
+        labModel = RESOLVED_MODEL || (await resolveModel(apiKey));
+        r2 = await doRequest(labModel, baseMsgs, 14000); d2 = await r2.json().catch(() => null);
       }
       if (!r2.ok) {
         const msg = (d2 && d2.error && d2.error.message) || ('HTTP ' + r2.status);
         res.status(r2.status === 429 ? 429 : 502).json({ error: 'تعذر بناء التجربة: ' + msg + ' — حاول مرة أخرى.' });
         return;
       }
-      const raw = (d2 && d2.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+      let raw = (d2 && d2.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+      // جولة إتمام واحدة: الرد انقطع عند السقف → نكمله من حيث توقف حرفيًا.
+      if (d2 && d2.stop_reason === 'max_tokens') {
+        try {
+          const rc = await doRequest(labModel, [{ role: 'user', content: user }, { role: 'assistant', content: raw }], 8000);
+          const dc = await rc.json().catch(() => null);
+          if (rc.ok && dc) raw += (dc.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+        } catch (e) { console.warn('[edu] lab-continue ' + (e && e.message)); }
+      }
       let html = '';
       const fence = raw.match(/```html\s*([\s\S]*?)```/i);
       if (fence) html = fence[1].trim();
       else if (/^\s*<!doctype|^\s*<html/i.test(raw)) html = raw.trim();
+      // فتحة سور بلا إغلاق (انقطاع) لكن الصفحة نفسها مكتملة — خذها.
+      if (!html) { const open = raw.match(/```html\s*([\s\S]*)$/i); if (open) html = open[1].trim(); }
       if (!html || html.length < 500 || html.length > 200000 || !/<\/html>\s*$/i.test(html)) {
         res.status(502).json({ error: 'وصلت تجربة غير مكتملة من النموذج — أعد المحاولة.' });
         return;
