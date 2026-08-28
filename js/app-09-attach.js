@@ -2128,8 +2128,13 @@ async function sendPrompt(){
   const __questionStartRe = /^(شو|وش|ايش|إيش|كيف|ليش|ليه|هل|متى|وين|كم|ما هو|ماهو|من هو|what|how|why|when|where|who)\b/i;
   // مشروع مفتوح + فعل تعديل → مسار التعديل الحقيقي حتى لو العنصر مو في القائمة
   // (كان "شيل المستطيل الأصفر" يروح للنقاش فيرد "شلت" بدون أي كود — خطأ 26/7).
-  const __editIntent = !!cur.code && __editVerbRe.test(text) && (__editObjRe.test(text) || (!__questionStartRe.test(text.trim()) && text.trim().length <= 90));
-  const __routeFix = (__routeFixRe.test(text) || __editIntent) && !!cur.code;
+  /* v-img-write-first (لقطة عمران: أرفق صورته وطلب الكتابة عليها فرسم
+     التطبيق طفلًا آخر): وجود كود سابق بالمحادثة كان يخطف «اكتب عليها…»
+     لمسار تعديل الكود. صورة مرفقة + نية كتابة = الكتابة على صورته هو،
+     ولها الأسبقية المطلقة على أي مسار كود. */
+  const __imgWriteAsk = !!(pendingAttachments.some(a => a.isImage)) && /(اكتب|أكتب|حط\s|ضيف|أضف|اضف|write|put|add)/i.test(text || '');
+  const __editIntent = !__imgWriteAsk && !!cur.code && __editVerbRe.test(text) && (__editObjRe.test(text) || (!__questionStartRe.test(text.trim()) && text.trim().length <= 90));
+  const __routeFix = (__routeFixRe.test(text) || __editIntent) && !!cur.code && !__imgWriteAsk;
   // البناء لا يبدأ إلا بفعل أمر صريح (ابني/بناء/سوي/اعمل...) + كلمة تطبيق/موقع/بوت.
   const __routeCmdRe = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|اضف|أضف|عدل|عدّل|طور|طوّر|حدث|حدّث|كمل|أكمل|اكمل|ممكن|ابغي|أبغي|ابغى|أبغى|ابي|أبي|بغيت|اريد|أريد|عطني|أعطني|اعطني|هات|سولي|سوّلي|(?:^|\s)سو\s|build|create|make|design|develop|add|update|improve|\bwant\b|\bgive\b|\bcan you\b)/i;
   // 🚫 قرار نهائي (26/7): "اسأل الكل" ملغي بالكامل — لا زر ولا كتابة.
@@ -3046,7 +3051,13 @@ function __showImgLoading(el, ar, en){
             __ci2.src = 'data:' + mime + ';base64,' + b64;
           });
           let __finalB64 = null, __finalMime = 'image/png';
+          /* v-named-font: المستخدم سمّى خطًا (رقعة/ديواني/ثلث…) = يريد ميزة
+             الخطوط المحلية بعينها — الكانفس يكتب بخطه المطلوب على صورته
+             نفسها بلا أي توليد (رسّام الذكاء يتجاهل اختيار الخط ويعيد رسم
+             المشهد أحيانًا — لقطة الطفل المستبدل). */
+          const __wantsNamedFont = /(ديواني|رقع[ةه]|كوفي|عثماني|نسخ|ثلث|فارسي|نستعليق|مصحف|قرآني|diwani|ruqaa|kufi|othmani|naskh|thuluth|farsi|nastaliq|quran)/i.test(text || '');
           try{
+            if(__wantsNamedFont) throw { __localFont: true }; /* مباشرة للكانفس */
             const __cmp = await __compressB64(__wb64, __wmime);
             const __aiTxtPrompt = 'Write this EXACT Arabic text verbatim onto the image — do NOT change, add, or remove any word or letter: \u00AB' + __resolvedText + '\u00BB. Use beautiful Arabic calligraphy with full diacritics (tashkeel) harmonizing with the scene palette and lighting. Place it ONLY in a clean empty area (sky, wall, margins) — NEVER over faces or the main subject. Do not alter anything else.';
             const __aiTRes = await fetch('/api/maha-image', {
