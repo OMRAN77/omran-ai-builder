@@ -119,6 +119,10 @@
       "destination": "/api/media?action=img&id=:id"
     },
     {
+      "source": "/p/:id",
+      "destination": "/api/media?action=pdf&id=:id"
+    },
+    {
       "source": "/api/openai",
       "destination": "/api/ai?action=openai"
     },
