@@ -311,6 +311,9 @@
   .tts-word.md-h3,.tts-word.md-h4{font-weight:700; font-size:1.08em;}
   .tts-word.md-h5,.tts-word.md-h6{font-weight:700;}
   .msg-text{white-space:pre-wrap; unicode-bidi:plaintext;}
+  /* v-stream-tidy: أثناء البث النص يُبنى داخل .msg مباشرة لا داخل .msg-text —
+     بلا pre-wrap كانت الأسطر تنضغط كتلة واحدة («زحمة وبعدين تترتب»). */
+  .msg.msg-streaming{white-space:pre-wrap; unicode-bidi:plaintext;}
   .msg-text p, .msg-text li, .msg-text div{unicode-bidi:plaintext;}
   /* صناديق الكود داخل المحادثة — بنمط Tasklet/GitHub */
   .chat-codeblock{background:#0d1117;border:1px solid #21262d;border-radius:var(--r-2);margin:10px 0;direction:ltr;text-align:left;overflow:hidden;}
