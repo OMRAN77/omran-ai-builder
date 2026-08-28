@@ -366,6 +366,8 @@ console.log('  ✓ v-tap-fast: الضغطة الأولى تدخل — لا تج�
 {
   const ch = fs.readFileSync(path.join(__dirname, '../api/_lib/chat.js'), 'utf8');
   assert.ok(ch.includes('v-recipe-card') && ch.includes('سؤال طبخ أو وصفة'), 'قاعدة الوصفات في الميثاق المتصدر');
+  // v-recipe-ideas: كل وصفة تختم بتنويعات كأزرار تُضغط (فكرة عمران بدل قسم كامل).
+  assert.ok(ch.includes('v-recipe-ideas') && ch.includes('[[OPT]]نسخة بالباستا'), 'الوصفة تختم باقتراحات أزرار');
   assert.ok(ch.includes('روابط موقعين للطبخ أو أكثر'), 'موقعا طبخ على الأقل في الرد');
   // العميل يعرض الصور المولّدة فوق نص الرد لا تحته.
   const st4 = fs.readFileSync(path.join(__dirname, '../js/app-04-i18n-state.js'), 'utf8');
