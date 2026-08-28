@@ -1,20 +1,18 @@
-name: Chat probe
+# مجسّ المحادثة: يقيس معمارية «العقل الواحد» على الإنتاج بالأرقام.
+name: chat-probe
 on:
   workflow_dispatch:
-    inputs:
-      question:
-        description: 'السؤال الذي يُرسل للمحادثة'
-        required: false
-        default: 'توقيت الصلاة في عجمان'
+
+permissions: {}
 
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - name: Probe the production chat
-        run: node scripts/chat-probe.mjs "https://omran-ai-builder.vercel.app" "${{ github.event.inputs.question }}"
+          node-version: 22
+      - name: Probe production chat
+        run: node scripts/chat-probe.mjs
