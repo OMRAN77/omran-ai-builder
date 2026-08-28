@@ -23,6 +23,15 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
 // causing the `@media (max-width:860px)` mobile layout to never trigger even on a phone.
 // Detect real touch/mobile devices via user-agent + touch support as a reliable fallback,
 // and force the mobile UI class regardless of the reported viewport width.
+/* v-pdf-link: بصمة غلاف TWA تُلتقط مبكرًا (referrer يوجد في أول فتحة فقط)
+   وتبقى محفوظة — يقرأها مسار حفظ PDF ليعرف أنه داخل تطبيق مغلّف. */
+(function markTwa(){
+  try{
+    if(document.referrer && document.referrer.indexOf('android-app://') === 0){
+      localStorage.setItem('aiapp_twa', '1');
+    }
+  }catch(e){ __swallow(e, 'boot:twa-mark'); }
+})();
 (function applyMobileUiClass(){
   const ua = navigator.userAgent || '';
   const isMobileUA = /Android|iPhone|iPad|iPod|Mobile|Huawei|HarmonyOS/i.test(ua);

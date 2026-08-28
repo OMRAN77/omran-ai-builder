@@ -98,6 +98,15 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
 // causing the `@media (max-width:860px)` mobile layout to never trigger even on a phone.
 // Detect real touch/mobile devices via user-agent + touch support as a reliable fallback,
 // and force the mobile UI class regardless of the reported viewport width.
+/* v-pdf-link: بصمة غلاف TWA تُلتقط مبكرًا (referrer يوجد في أول فتحة فقط)
+   وتبقى محفوظة — يقرأها مسار حفظ PDF ليعرف أنه داخل تطبيق مغلّف. */
+(function markTwa(){
+  try{
+    if(document.referrer && document.referrer.indexOf('android-app://') === 0){
+      localStorage.setItem('aiapp_twa', '1');
+    }
+  }catch(e){ __swallow(e, 'boot:twa-mark'); }
+})();
 (function applyMobileUiClass(){
   const ua = navigator.userAgent || '';
   const isMobileUA = /Android|iPhone|iPad|iPod|Mobile|Huawei|HarmonyOS/i.test(ua);
@@ -5950,6 +5959,35 @@ function omranNativeBridge(name){
 /* v-pdf-universal: حفظ PDF يعمل في كل البيئات — جسر تطبيق الآيفون، ثم ورقة
    مشاركة النظام (أندرويد/هواوي/TWA)، ثم التنزيل العادي (الكمبيوتر).
    AbortError = المستخدم أغلق ورقة المشاركة بنفسه — ليس فشلًا فلا ننزّل نسخة ثانية. */
+/* v-pdf-link: هل نعمل داخل غلاف تطبيق (TWA/متجر/PWA مثبّت)؟ الأغلفة لا
+   تنفّذ تنزيل blob المحلي — نرفع الملف للسيرفر ونفتح رابط تنزيل حقيقي
+   يمرّ عبر منزّل النظام نفسه فيعمل في كل غلاف. */
+function omranLikelyApp(){
+  try{
+    if(document.referrer && document.referrer.indexOf('android-app://') === 0) localStorage.setItem('aiapp_twa', '1');
+    if(localStorage.getItem('aiapp_twa') === '1') return true;
+    if(localStorage.getItem('aiapp_store')) return true;
+    if(window.matchMedia && matchMedia('(display-mode: standalone)').matches) return true;
+    if(navigator.standalone === true) return true;
+  }catch(e){ __swallow(e, 'share:app-detect'); }
+  return false;
+}
+async function omranBlobToServerLink(blob, filename){
+  const b64 = await new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result || '').split(',')[1] || '');
+    fr.onerror = reject;
+    fr.readAsDataURL(blob);
+  });
+  if(!b64 || b64.length > 4 * 1024 * 1024) throw new Error('too-large');
+  const r = await fetch('/api/media?action=pdf', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data: b64, name: filename }),
+  });
+  const d = await r.json();
+  if(!r.ok || !d || !d.url) throw new Error('upload-failed');
+  return d.url;
+}
 async function omranSaveBlob(blob, filename){
   if(omranNativeBridge('omranShare')){ msgDownloadBlob(blob, filename); return; }
   try{
@@ -5957,10 +5995,19 @@ async function omranSaveBlob(blob, filename){
       const f = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
       if(navigator.canShare({ files: [f] })){
         try{ await navigator.share({ files: [f], title: filename }); return; }
-        catch(e){ if(e && e.name === 'AbortError') return; /* غيره: ننزل للتنزيل العادي */ }
+        catch(e){ if(e && e.name === 'AbortError') return; /* غيره: ننزل للمسار التالي */ }
       }
     }
   }catch(e){ __swallow(e, 'share:universal'); }
+  /* داخل الأغلفة: رابط سيرفر حقيقي (PDF فقط — النقطة تفحص التوقيع) */
+  if(omranLikelyApp() && (blob.type === 'application/pdf' || /\.pdf$/i.test(filename || ''))){
+    try{
+      const url = await omranBlobToServerLink(blob, filename);
+      const w = window.open(url, '_blank');
+      if(!w) location.href = url;
+      return;
+    }catch(e){ __swallow(e, 'share:server-link'); }
+  }
   msgDownloadBlob(blob, filename);
 }
 function msgDownloadBlob(blob, filename){
