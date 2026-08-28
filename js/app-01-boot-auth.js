@@ -165,6 +165,22 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
   window.addEventListener('orientationchange', () => chase(1200));
   window.addEventListener('pageshow', schedule);
   schedule();
+  /* v647-sweep (شكوى «نفس الشي» بعد #211): سفاري/الغلاف قد يوصل لحالة
+     عالقة بلا أي حدث إطلاقًا — لا focusout ولا resize ولا scroll — فتفوت
+     كل نوافذ الملاحقة مهما طالت. كنس دوري خفيف (قراءتان كل 800ms، لا
+     قياس تخطيط): ما دام الكيبورد مقفولًا يمسح التثبيت العالق ويصفّر أي
+     تمرير وثيقة متبقٍّ. يختلف عن حارس v644 المحذوف: ذاك كان scrollTo
+     أعمى؛ هذا يمسح متغيّري التثبيت أيضًا — وهما اللذان يدفعان الجسم. */
+  setInterval(() => {
+    const kb = Math.round(window.innerHeight - vv.height);
+    if(kb >= 40) return; // كيبورد مفتوح — التثبيت شرعي، لا نلمسه
+    apply();
+    if(window.scrollY || document.documentElement.scrollTop || document.body.scrollTop){
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+  }, 800);
 })();
 
 const $ = s => document.querySelector(s);
