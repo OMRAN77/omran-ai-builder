@@ -1,0 +1,18 @@
+# مجس صور المحادثة على الإنتاج — توليد عادي + مسار الدعاء.
+name: img-probe
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Probe production images
+        run: node scripts/img-probe.mjs
