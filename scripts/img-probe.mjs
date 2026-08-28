@@ -30,3 +30,19 @@ async function probe(label, body) {
 
 await probe('PLAIN (بلا نص)', { prompt: 'A serene desert landscape at dawn, soft golden light over sand dunes, wide calm sky, photorealistic, no text' });
 await probe('PRAYER (دعاء الجمعة)', { prompt: 'beautiful background', prayerRequest: 'دعاء يوم الجمعة', reserveTextArea: true, textPosition: 'bottom' });
+
+// v-eye-probe: المرشد البصري («عين عمران») — صورة اختبار صغيرة، المهم 200 + نص + اسم المحرك.
+{
+  const px = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+  const t0 = Date.now();
+  try {
+    const r = await fetch(BASE + '/api/ai?action=visual-guide', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: px, token: sj.token, lang: 'ar', mode: 'describe', question: 'صف لي ما أمامي الآن.' }),
+    });
+    const j = await r.json().catch(() => ({}));
+    console.log('== VISUAL-GUIDE == status=' + r.status + ' ' + (Date.now() - t0) + 'ms');
+    if (j.text) console.log('  GUIDE OK ✓ engine=' + (j.engine || '؟') + ' | ' + String(j.text).slice(0, 80));
+    else console.log('  GUIDE FAIL ✗ error=' + scrub(j.error || ''));
+  } catch (e) { console.log('== VISUAL-GUIDE == FETCH FAIL ' + scrub(e.message)); }
+}

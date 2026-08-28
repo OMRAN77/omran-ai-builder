@@ -88,9 +88,11 @@ module.exports = async function visualGuide(req, res) {
         logError('visual-guide:gemini', new Error('gemini_' + upstream.status), { status: upstream.status });
       }
     }
-    if (!text) text = (await openaiRescue(image, prompt)) || '';
+    let engine = text ? 'gemini' : '';
+    if (!text) { text = (await openaiRescue(image, prompt)) || ''; if (text) engine = 'openai'; }
     if (!text) { res.status(key ? 502 : 503).json({ error: key ? 'vision_unavailable' : 'visual_guide_unavailable' }); return; }
-    res.status(200).json({ text });
+    // v-eye-probe: اسم المحرك في الرد — العميل يتجاهله والمجس يشخّص به.
+    res.status(200).json({ text, engine });
   } catch (error) {
     logError('visual-guide:handler', error, {});
     res.status(500).json({ error: 'visual_guide_failed' });
