@@ -388,4 +388,14 @@ console.log('  ✓ v-recipe-card: صورة الطبق فوق ومصادر الط
 }
 console.log('  ✓ v-stream-tidy: لا زحمة أثناء الكتابة — مرتب من البداية');
 
+// ㉝ v-src-unclip: content-visibility (v-tap-fast) كانت تقصّ قائمة المصادر
+// المتدلية خارج حدود الرسالة — «المصدر آخر المحادثة ما يفتح». عند الفتح
+// يُرفع القصّ عن الرسالة ويرجع عند الإغلاق (الأداء محفوظ).
+{
+  const st4b = fs.readFileSync(path.join(__dirname, '../js/app-04-i18n-state.js'), 'utf8');
+  assert.ok(st4b.includes('v-src-unclip') && st4b.includes("msgEl.style.contentVisibility = open ? '' : 'visible'"), 'فتح المصادر يرفع القصّ');
+  assert.ok(st4b.includes("if(msgEl) msgEl.style.contentVisibility = '';"), 'إغلاق المصادر يعيد القصّ');
+}
+console.log('  ✓ v-src-unclip: قائمة المصادر تفتح مرئية رغم قصّ الأداء');
+
 console.log('fashion locks tests passed');
