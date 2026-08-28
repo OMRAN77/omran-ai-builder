@@ -362,3 +362,10 @@ html.mobile-ui #portraitStyleModal > div{
   #portraitStyleModal{ touch-action:none; }
   #portraitStyleModal > div{ overscroll-behavior:contain; touch-action:pan-y; -webkit-overflow-scrolling:touch; }
 }
+
+/* ===== v-uniform-black (أمر عمران ٢٩ أغسطس): الصفحة كلها بدرجة سواد واحدة =====
+   الهيدر والشريط السفلي وشريط الكتابة بنفس خلفية منطقة الدردشة (--bg = أسود
+   نقي في الداكن). الوضع الفاتح محكوم بقواعده الخاصة (أبيض) فلا يتأثر. */
+header{background:var(--bg); backdrop-filter:none;}
+#omranBottomNav{background:var(--bg); backdrop-filter:none;}
+#inputbar{background:var(--bg);}
