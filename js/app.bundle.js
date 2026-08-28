@@ -173,10 +173,52 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
   document.addEventListener('focusout', () => setTimeout(reset, 120));
   window.addEventListener('orientationchange', () => setTimeout(reset, 250));
   window.addEventListener('pageshow', () => setTimeout(reset, 60));
-  /* v-ios-header-drop: دخول المحادثة قد يزيح الصفحة بلا أي حدث scroll/focus
-     (إعادة رسم + قفزة WebKit صامتة) — حارس دوري رخيص (قراءة scrollY فقط،
-     لا قياس تخطيط) يعيدها خلال أقل من ثانية مهما كان مصدر الانزياح. */
-  setInterval(reset, 600);
+  /* v644: حُذف الحارس الدوري (600ms). القياس على الجهاز الحقيقي أثبت أنه كان
+     يعمل بلا أثر: الوثيقة غير قابلة للتمرير فـscrollTo لا يُصفّر شيئًا —
+     مؤقّت دائم يستهلك البطارية فقط. بديله الملاءمة أدناه. */
+  document.addEventListener('focusin', () => setTimeout(reset, 60));
+})();
+
+/* v644 — ملاءمة الجسم للمنفذ المرئي (علّة الفراغ أعلى شاشة iOS):
+   مقيس حيًّا أثناء الكتابة: visualViewport.offsetTop=264 وscrollTop=264
+   بينما جسم الصفحة مثبّت بمنفذ التخطيط (rect.top=-264) — فالهيدر يُسحب
+   خارج الشاشة ويبقى أعلاها فارغًا. scrollTo لا يعالجها (لا مجال تمرير).
+   نكتب انزياح المنفذ المرئي وارتفاعه في متغيّرين يقرأهما redesign.css،
+   فيلتصق الهيدر بأعلى المرئي وشريط الإدخال بأسفله فوق الكيبورد. */
+(function pinVisualViewport(){
+  const vv = window.visualViewport;
+  if(!vv) return;
+  const root = document.documentElement;
+  let pending = false, lastT = -1, lastH = -1;
+  const apply = () => {
+    const t  = Math.max(0, Math.round(vv.offsetTop));
+    const h  = Math.max(220, Math.round(vv.height));
+    const kb = Math.round(window.innerHeight - vv.height);
+    const on = (t > 0 || kb >= 40);   // كيبورد مفتوح أو منفذ منزاح فعلًا
+    const nt = on ? t : 0, nh = on ? h : 0;
+    if(nt !== lastT){
+      lastT = nt;
+      if(on) root.style.setProperty('--vv-top', nt + 'px');
+      else   root.style.removeProperty('--vv-top');
+    }
+    if(nh !== lastH){
+      lastH = nh;
+      if(on) root.style.setProperty('--vv-h', nh + 'px');
+      else   root.style.removeProperty('--vv-h');
+    }
+  };
+  const schedule = () => {
+    if(pending) return;
+    pending = true;
+    requestAnimationFrame(() => { pending = false; apply(); });
+  };
+  vv.addEventListener('resize', schedule);
+  vv.addEventListener('scroll', schedule);
+  document.addEventListener('focusin', schedule);
+  document.addEventListener('focusout', () => setTimeout(schedule, 140));
+  window.addEventListener('orientationchange', () => setTimeout(schedule, 260));
+  window.addEventListener('pageshow', schedule);
+  schedule();
 })();
 
 const $ = s => document.querySelector(s);

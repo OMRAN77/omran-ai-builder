@@ -272,16 +272,18 @@ html.mobile-ui #btnSend, html.mobile-ui #btnStop{width:30px; height:30px; flex:0
 @media (max-width:860px){
   html{overflow:hidden; overscroll-behavior:none; height:100%;}
   /* iOS القديم يتجاهل overscroll-behavior — تثبيت body يقتل سحب الوثيقة نهائيًا.
-     v-ios-header-drop: أُعيد position:fixed (أُزيل ظهر ٢٨ أغسطس فبقيت الشكوى):
-     معه أي تمرير للوثيقة — حتى القفزات الأصلية من WebKit التي لا تراها JS —
-     لا يحرّك التطبيق بصريًا: الهيدر ملتصق بأعلى الشاشة دائمًا. */
-  body{overscroll-behavior:none; position:fixed; inset:0; width:100%; height:auto;}
+     v644 (مقيس على جهاز حقيقي أثناء الكتابة): inset:0 وحده لا يكفي — WebKit
+     يمرّر منفذ التخطيط قسرًا عند فتح الكيبورد (offsetTop=264) فينزاح الجسم
+     المثبّت خارج الشاشة ويظهر فراغ أعلاها. الآن نلصق الجسم بالمنفذ المرئي:
+     --vv-top و--vv-h يكتبهما pinVisualViewport في app-01-boot-auth.js،
+     وبلا JS يرجع السلوك لـtop:0/height:100% أي حال ما قبل الرقعة. */
+  body{overscroll-behavior:none; position:fixed; left:0; right:0; width:100%; top:var(--vv-top,0px); height:var(--vv-h,100%);}
   main, #messages, #omranHero{overscroll-behavior-y:contain;}
   *{scrollbar-width:none;}
   *::-webkit-scrollbar{width:0 !important; height:0 !important; display:none;}
 }
 html.mobile-ui{overflow:hidden; overscroll-behavior:none; height:100%;}
-html.mobile-ui body{overscroll-behavior:none; position:fixed; inset:0; width:100%; height:auto;}
+html.mobile-ui body{overscroll-behavior:none; position:fixed; left:0; right:0; width:100%; top:var(--vv-top,0px); height:var(--vv-h,100%);}
 html.mobile-ui main, html.mobile-ui #messages{overscroll-behavior-y:contain;}
 
 /* v-morph-btn: الخانة الأخيرة تتحول بين مها والإرسال (طلب المالك):
