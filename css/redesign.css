@@ -3,6 +3,9 @@
 :root{ --omGold:#6b7280; --omGoldSoft:rgba(var(--accent-tint-rgb),.32); --omLine:rgba(255,255,255,.09); }
 
 /* ---------------- Header ---------------- */
+/* v-brand-stable: زر الإضاءة بمقاس ثابت — أيقونته تُحقن بعد الإقلاع وكان
+   اتساعها اللاحق يزحزح الشعار المجاور لحظة التحديث. */
+#btnMode{width:34px; height:34px; min-width:34px; display:inline-flex; align-items:center; justify-content:center;}
 .omIconBtn{display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:var(--r-2); background:none; border:1px solid transparent; color:var(--muted); cursor:pointer; padding:0; flex:0 0 auto;}
 .omIconBtn:hover{color:var(--accent-ink); background:rgba(var(--accent-tint-rgb),.10);}
 #omranUserBlock{display:flex; align-items:center; gap:9px; flex:0 0 auto;}
