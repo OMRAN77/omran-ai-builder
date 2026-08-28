@@ -65,7 +65,7 @@ const TOOLS = [
 
 // 🪞 الأثر المرئي — «فعلتُ س فحصلت ص». كل سطر يُشتقّ من مُدخل الأداة الحقيقي
 // ومن ناتجها الحقيقي، لا من ادّعاء النموذج. فما يقرأه المستخدم هو ما جرى فعلًا.
-// كان الوكيل يقول «🔍 يبحث في الإنترنت…» ولا يقول عن ماذا بحث ولا ماذا وجد،
+// كان الوكيل يقول «🔍 يتحقق من المصادر…» ولا يقول عن ماذا بحث ولا ماذا وجد،
 // فيبقى العمل كلّه على الثقة العارية.
 // 🔗 مصدر النشر: آخر كتلة كود مكتملة كتبها الوكيل في هذا التشغيل. المكتملة فقط
 // (مُسوَّرة بإغلاقها أو منتهية بـ</html>) — فنصف ملف يُنشر أسوأ من لا نشر.
@@ -541,7 +541,7 @@ module.exports = async (req, res) => {
             curIdx = ev.index;
             const cb = ev.content_block || {};
             contentBlocks[curIdx] = { type: cb.type, text: '', name: cb.name, id: cb.id, inputJson: '' };
-            if (cb.type === 'tool_use' && cb.name === 'web_search') send({ phase: 'executing', status: '🔍 الوكيل يبحث في الإنترنت…' });
+            if (cb.type === 'tool_use' && cb.name === 'web_search') send({ phase: 'executing', status: '🔍 الوكيل يتحقق من المصادر الحية…' });
             else if (cb.type === 'tool_use' && cb.name === 'fetch_page') send({ phase: 'executing', status: '🌐 الوكيل يقرأ صفحة ويب…' });
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ phase: 'verifying', status: '⚙️ الوكيل يشغّل كودًا للتحقق…' });
             else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ phase: 'verifying', status: '🧪 الوكيل يختبر ما بناه…' });
