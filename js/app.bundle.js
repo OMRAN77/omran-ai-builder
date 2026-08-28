@@ -189,7 +189,7 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
   const vv = window.visualViewport;
   if(!vv) return;
   const root = document.documentElement;
-  let pending = false, lastT = -1, lastH = -1;
+  let lastT = -1, lastH = -1;
   const apply = () => {
     const t  = Math.max(0, Math.round(vv.offsetTop));
     const h  = Math.max(220, Math.round(vv.height));
@@ -207,16 +207,30 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
       else   root.style.removeProperty('--vv-h');
     }
   };
-  const schedule = () => {
-    if(pending) return;
-    pending = true;
-    requestAnimationFrame(() => { pending = false; apply(); });
+  // v645 (مقيس على جهاز فاطمة): iOS لا يُطلق حدث المنفذ المرئيّ كلّ إطار أثناء
+  //   حركة الكيبورد (≈0.25ث)، فتصحيحٌ واحد يتأخّر إطارات ويُرى الهيدر يزحف تحت
+  //   شريط الحالة (bd:-10/-23/-43 مقيسة). الآن نُلاحق القيمة إطارًا بإطار لمدّة
+  //   محدودة بعد كلّ حدث ثمّ نتوقّف — لا مؤقّت دائم.
+  let until = 0, running = false;
+  const now = () => (window.performance && performance.now ? performance.now() : Date.now());
+  const chase = (ms) => {
+    until = Math.max(until, now() + (ms || 520));
+    if(running) return;
+    running = true;
+    const step = () => {
+      apply();
+      if(now() < until) requestAnimationFrame(step);
+      else running = false;
+    };
+    requestAnimationFrame(step);
   };
+  const schedule = () => chase(520);
   vv.addEventListener('resize', schedule);
   vv.addEventListener('scroll', schedule);
-  document.addEventListener('focusin', schedule);
-  document.addEventListener('focusout', () => setTimeout(schedule, 140));
-  window.addEventListener('orientationchange', () => setTimeout(schedule, 260));
+  window.addEventListener('scroll', schedule, { passive:true });
+  document.addEventListener('focusin', () => chase(900));
+  document.addEventListener('focusout', () => chase(900));
+  window.addEventListener('orientationchange', () => chase(1200));
   window.addEventListener('pageshow', schedule);
   schedule();
 })();
