@@ -255,10 +255,33 @@ function showLesson(lesson,backFn){
   body.querySelectorAll('.eduTab').forEach(function(b){ b.onclick=function(){ activate(b.getAttribute('data-tab')); }; });
   activate('sum');
 }
+/* v-edu-questions: درس وصل ببطاقات (0) واختبار (0) — شقّ الأسئلة تعثر وقتها.
+   بدل شرطة ميتة: زر يولّد الأسئلة وحدها من الملخص الموجود ويحفظها. */
+function eduRegenQuestions(pane,lesson,tab){
+  function TL(ar,en){ return (typeof AL==='function'&&AL()==='en')?en:ar; }
+  pane.innerHTML='<div class="eduCenter" style="padding:16px 6px;"><p style="font-size: var(--fs-3);line-height:1.8;">'+esc(TL('لم تصل أسئلة هذا الدرس — ولّدها الآن من الملخص خلال نحو دقيقة.','Questions did not arrive — generate them from the summary in about a minute.'))+'</p>'
+    +'<button class="eduPrimary" id="eduRegenQsBtn">'+esc(TL('✨ ولّد الأسئلة الآن','✨ Generate questions'))+'</button></div>';
+  var b=document.getElementById('eduRegenQsBtn');
+  if(b) b.onclick=function(){
+    pane.innerHTML='<div class="eduBusyBox"><div class="eduSpin"></div><div style="font-size: var(--fs-3);">'+esc(TL('⏳ نولّد البطاقات والاختبار…','⏳ Generating cards and quiz…'))+'</div></div>';
+    api({action:'questions',summary:lesson.summary,lang:appLang(),nativeLang:eduNativeLang(),examLang:eduExamLang()})
+      .then(function(j){
+        if(!j||!Array.isArray(j.quiz)||!j.quiz.length) throw new Error(TL('تعذر التوليد — أعد المحاولة.','Generation failed — try again.'));
+        lesson.flashcards=j.flashcards||[]; lesson.quiz=j.quiz||[]; lesson.written=j.written||[];
+        persistLesson(lesson);
+        showLesson(lesson);
+      })
+      .catch(function(e){
+        pane.innerHTML='<div class="eduCenter"><p style="color:#f87171;font-size: var(--fs-3);line-height:1.8;">'+esc(e.message||T('err'))+'</p>'
+          +'<button class="eduPrimary" id="eduRegenQsRetry">'+esc(T('retry'))+'</button></div>';
+        var r=document.getElementById('eduRegenQsRetry'); if(r) r.onclick=function(){ eduRegenQuestions(pane,lesson,tab); };
+      });
+  };
+}
 /* ---------- flashcards ---------- */
 function renderCards(pane,lesson){
   var cards=lesson.flashcards||[]; var i=0,known=0,flipped=false;
-  if(!cards.length){ pane.innerHTML='<div class="eduEmpty">—</div>'; return; }
+  if(!cards.length){ eduRegenQuestions(pane,lesson,'cards'); return; }
   function draw(){
     if(i>=cards.length){
       pane.innerHTML='<div class="eduCenter"><div class="eduScoreBig">'+known+'/'+cards.length+'</div><p>'+esc(T('cardsDone'))+'</p>'
@@ -285,7 +308,7 @@ function renderCards(pane,lesson){
 function renderQuiz(pane,lesson){
   var all=(lesson.quiz||[]).slice();
   var written=(lesson.written||[]).slice();
-  if(!all.length){ pane.innerHTML='<div class="eduEmpty">—</div>'; return; }
+  if(!all.length){ eduRegenQuestions(pane,lesson,'quiz'); return; }
 
   var LEVELS=['basic','mid','advanced'];
   var LABEL={basic:T2('أساسي','Basic'),mid:T2('متوسط','Intermediate'),advanced:T2('متقدّم','Advanced')};

@@ -134,8 +134,8 @@ assert.ok(eduJs.includes("'sandbox','allow-scripts'") && eduJs.includes('fr.srcd
 assert.ok(eduJs.includes("action:'lab'"), 'العميل يطلب التجربة من الخادم');
 const eduApi = fs.readFileSync(path.join(__dirname, '../api/edu.js'), 'utf8');
 assert.ok(eduApi.includes("action === 'lab'") && eduApi.includes('db/edu/labs/'), 'الخادم يولد ويخزن المختبر بمفتاح منفصل لكل درس');
-// v-edu-timeouts: كان 16000 (~3-4 دقائق) والمهلة دقيقتان — فشل مضمون؛ صار 9000 ضمن المهلة.
-assert.ok(eduApi.includes('```html') && eduApi.includes('max_tokens: 9000'), 'استخراج كتلة HTML وحجم ضمن حدود المهلة');
+// v-edu-budget: التوازن النهائي — مهلة 280ث تتسع لـ14000 (9000 كانت تبتر الصفحة).
+assert.ok(eduApi.includes('```html') && eduApi.includes('max_tokens: 14000'), 'استخراج كتلة HTML وحجم ضمن حدود المهلة');
 assert.ok(eduApi.includes("kvDel('db/edu/labs/"), 'حذف الدرس ينظف مختبره');
 console.log('  ✓ v-edu-lab: الدرس الحي مبني ومقفول');
 
@@ -439,7 +439,8 @@ console.log('  ✓ v-edu-split: تحليل المحاضرة بنصف الزمن 
   const eduT = fs.readFileSync(path.join(__dirname, '../api/edu.js'), 'utf8');
   assert.ok(!eduT.includes('AbortSignal.timeout(120000)'), 'لا مهلة 120ث أقصر من التوليد المسموح');
   assert.ok(eduT.split('AbortSignal.timeout(280000)').length >= 5, 'كل نداءات أنثروبيك على مهلة 280ث');
-  assert.ok(eduT.includes('max_tokens: 9000') && !eduT.includes('max_tokens: 16000'), 'مخرجات التجربة الحية ضمن حدود المهلة');
+  // v-edu-budget: 9000 كانت تبتر الصفحة («تجربة غير مكتملة») — 14000 تحت مهلة 280ث.
+  assert.ok(eduT.includes('max_tokens: 14000') && !eduT.includes('max_tokens: 16000'), 'مخرجات التجربة الحية ضمن حدود المهلة');
   assert.ok(eduT.includes('v-edu-timeouts') && eduT.includes('التوليد أخذ وقتًا أطول من المتوقع'), 'المهلة تُشرح بالعربي المطمئن');
   const eduC = fs.readFileSync(path.join(__dirname, '../js/edu.js'), 'utf8');
   assert.ok(eduC.includes('دقيقة إلى دقيقتين'), 'رسالة انتظار صادقة في العميل');
@@ -455,5 +456,18 @@ console.log('  ✓ v-edu-timeouts: التجربة الحية لا تموت بم�
   assert.ok(st12.includes("resultEl.scrollIntoView"), 'التمرير للنتيجة بعد التوليد');
 }
 console.log('  ✓ v-fashion-show: صورة الأزياء تظهر فعلًا بعد «تم التصميم»');
+
+// ㊳ v-edu-budget + v-edu-questions: الميزانيات الضيقة كانت تبتر التوليد
+// («تجربة غير مكتملة» وبطاقات 0) — عادت رحبة تحت مهلة 280ث، ودرس وصل
+// بلا أسئلة يُنقذ بزر يولّدها من الملخص.
+{
+  const eduB = fs.readFileSync(path.join(__dirname, '../api/edu.js'), 'utf8');
+  assert.ok(eduB.includes('max_tokens: 14000') && !eduB.includes('max_tokens: 16000'), 'ميزانية التجربة الحية رحبة ضمن المهلة');
+  assert.ok(eduB.includes("anthropicJSON(apiKey, sysQuestions, contentBlocks, 9000)"), 'شقّ الأسئلة 9 آلاف لا يُبتر');
+  assert.ok(eduB.includes("action === 'questions'") && eduB.includes('buildQuestionsSys'), 'عملية إنقاذ الأسئلة موجودة');
+  const eduC2 = fs.readFileSync(path.join(__dirname, '../js/edu.js'), 'utf8');
+  assert.ok(eduC2.includes('eduRegenQuestions') && eduC2.includes("action:'questions'"), 'زر توليد الأسئلة بدل الشرطة الميتة');
+}
+console.log('  ✓ v-edu-questions: لا بتر ولا درس بلا أسئلة — إنقاذ من الملخص');
 
 console.log('fashion locks tests passed');
