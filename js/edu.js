@@ -433,7 +433,7 @@ function renderLab(pane,lesson){
     if(rb) rb.onclick=function(){ build(true); };
   }
   function build(force){
-    pane.innerHTML='<div class="eduBusyBox"><div class="eduSpin"></div><div style="font-size: var(--fs-3);">'+esc(TL('🧪 نبني تجربتك الحية… قد يستغرق الأمر دقيقة','🧪 Building your live lab… this may take a minute'))+'</div></div>';
+    pane.innerHTML='<div class="eduBusyBox"><div class="eduSpin"></div><div style="font-size: var(--fs-3);">'+esc(TL('🧪 نبني تجربتك الحية… تحتاج دقيقة إلى دقيقتين — تستاهل الانتظار','🧪 Building your live lab… takes one to two minutes'))+'</div></div>';
     api({action:'lab',id:lesson.id,title:lesson.title,subject:lesson.subject,summary:lesson.summary,lang:appLang(),nativeLang:eduNativeLang(),force:force||undefined})
       .then(function(j){
         if(!j||!j.html) throw new Error(TL('وصلت تجربة فارغة — أعد المحاولة.','Empty lab returned — try again.'));

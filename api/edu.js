@@ -119,7 +119,7 @@ async function anthropicJSON(apiKey, sys, contentBlocks, maxTokens) {
   const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     // v407: مهلة خاصة 120ث — التحليل التعليمي الثقيل يتجاوز مهلة الـ30ث العامة
-    signal: AbortSignal.timeout(120000),
+    signal: AbortSignal.timeout(280000),
     headers: {
       'Content-Type': 'application/json',
       'x-api-key': apiKey,
@@ -211,7 +211,7 @@ async function callClaudeGrade(apiKey, payload, lang, nativeLang) {
   const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     // v407: مهلة خاصة 120ث — التحليل التعليمي الثقيل يتجاوز مهلة الـ30ث العامة
-    signal: AbortSignal.timeout(120000),
+    signal: AbortSignal.timeout(280000),
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify({ model: m, max_tokens: 2000, system: sys, messages: [{ role: 'user', content: user }] }),
   });
@@ -244,7 +244,7 @@ async function callClaudeExpense(apiKey, contentBlocks, lang) {
   const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     // v407: مهلة خاصة 120ث — التحليل التعليمي الثقيل يتجاوز مهلة الـ30ث العامة
-    signal: AbortSignal.timeout(120000),
+    signal: AbortSignal.timeout(280000),
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify({ model: m, max_tokens: 8000, system: sys, messages: [{ role: 'user', content: contentBlocks }] }),
   });
@@ -425,14 +425,15 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         + '4. وضع تحدٍّ صغير: بعد اللعب الحر، زر «تحدّي» يطرح 3 مهام قصيرة داخل التجربة نفسها (اضبط القيمة لتحقق كذا…) مع نقاط وتشجيع.\n'
         + '5. تصميم عصري جميل: خلفية داكنة أنيقة، ألوان ذهبية مميزة، أرقام كبيرة واضحة، متجاوب للجوال (أزرار كبيرة للمس، لا سكرول أفقي).\n'
         + '6. لغة الواجهة: ' + nat + (/^ar/i.test(nat) ? ' مع اتجاه rtl.' : '.') + '\n'
-        + '7. أعد فقط كتلة ```html واحدة فيها الملف كاملًا — لا شرح قبلها ولا بعدها.';
+        + '7. الكود مركّز وأنيق بحد أقصى نحو 500 سطر — تجربة واحدة متقنة خير من صفحة متخمة.\n'
+        + '8. أعد فقط كتلة ```html واحدة فيها الملف كاملًا — لا شرح قبلها ولا بعدها.';
       const user = 'المادة: ' + (subjName || 'عام') + '\nعنوان الدرس: ' + title + '\n\nملخص الدرس:\n' + summary
         + '\n\nابنِ التجربة الحية الآن — اختر أهم مفهوم قابل للمحاكاة في هذا الدرس بالذات واجعله ملموسًا.';
       const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        signal: AbortSignal.timeout(120000),
+        signal: AbortSignal.timeout(280000),
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: m, max_tokens: 16000, system: sys, messages: [{ role: 'user', content: user }] }),
+        body: JSON.stringify({ model: m, max_tokens: 9000, system: sys, messages: [{ role: 'user', content: user }] }),
       });
       let r2 = await doRequest(RESOLVED_MODEL || MODEL);
       let d2 = await r2.json().catch(() => null);
@@ -685,6 +686,9 @@ module.exports = withErrorCapture('edu', async (req, res) => {
 
     res.status(400).json({ error: 'unknown action: ' + action });
   } catch (e) {
-    res.status(500).json({ error: 'Edu error: ' + (e && e.message ? e.message : String(e)) });
+    const __m = (e && e.message ? e.message : String(e));
+    // v-edu-timeouts: مهلة التوليد تُشرح بالعربي لا بخطأ إنجليزي خام.
+    if (/timeout|abort/i.test(__m)) { res.status(504).json({ error: 'التوليد أخذ وقتًا أطول من المتوقع — أعد المحاولة الآن، غالبًا تنجح فورًا.' }); return; }
+    res.status(500).json({ error: 'Edu error: ' + __m });
   }
 });
