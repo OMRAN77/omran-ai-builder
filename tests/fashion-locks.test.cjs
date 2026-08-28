@@ -446,4 +446,14 @@ console.log('  ✓ v-edu-split: تحليل المحاضرة بنصف الزمن 
 }
 console.log('  ✓ v-edu-timeouts: التجربة الحية لا تموت بمهلة أقصر من توليدها');
 
+// ㊲ v-fashion-show: «تم التصميم» تظهر والصورة لا — الحاوية fashionAiResultWrap
+// كانت تبقى display:none والكود يُظهر الصورة الداخلية فقط.
+{
+  const st12 = fs.readFileSync(path.join(__dirname, '../js/app-12-studios.js'), 'utf8');
+  assert.ok(st12.includes('v-fashion-show'), 'تعليق الإصلاح موجود');
+  assert.ok(st12.split("resultWrap.style.display = 'block'").length >= 3, 'الحاوية تُفتح مع الصورة في المسارين (توليد + مفضلة)');
+  assert.ok(st12.includes("resultEl.scrollIntoView"), 'التمرير للنتيجة بعد التوليد');
+}
+console.log('  ✓ v-fashion-show: صورة الأزياء تظهر فعلًا بعد «تم التصميم»');
+
 console.log('fashion locks tests passed');
