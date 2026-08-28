@@ -15052,6 +15052,17 @@ async function sendPrompt(){
   genAbortController = new AbortController();
   btnStop.classList.add('live');
   __omranArmWatchdog();  // v586
+/* v-err-human: أخطاء الشبكة العابرة كانت تنزل خامًا في المحادثة
+   («⚠️ Load failed» عند مستخدمة حقيقية) — تُترجم لعربي واضح مع إرشاد. */
+function __friendlyErr(e){
+  var m = (e && e.message) ? String(e.message) : String(e || '');
+  if(/Load failed|Failed to fetch|NetworkError|network error|The Internet connection|cancelled|ERR_NETWORK|ERR_INTERNET/i.test(m)){
+    var ar = (localStorage.getItem('aiapp_lang') || 'ar') === 'ar';
+    return ar ? 'انقطع الاتصال لحظة أثناء الرد 📡 — أعد إرسال سؤالك وسيصلك الجواب.'
+              : 'Connection dropped for a moment 📡 — resend your question.';
+  }
+  return m;
+}
 
   const thinkingDiv = document.createElement('div');
   thinkingDiv.className = 'msg assistant';
@@ -15670,7 +15681,7 @@ async function sendPrompt(){
         cur.messages.push({ role:'assistant', content:(lang==='ar'?'🎬 شخصيتك الكرتونية تتكلم بصوت جاهزة ✅ (الرابط صالح ٢٤ ساعة — نزّله عشان يظل عندك)':'🎬 Your talking cartoon character (with voice) is ready ✅ (link valid 24h — download it to keep it)'), attachments:[{ name:'talking-character.mp4', isVideo:true, url:__vurl }] });
         if(window.autoSaveVideo) window.autoSaveVideo(__vurl);
       }catch(e){
-        if(!(e && e.name === 'AbortError')){ cur.messages.push({ role:'assistant', content:'⚠️ ' + (e && e.message ? e.message : String(e)) }); }
+        if(!(e && e.name === 'AbortError')){ cur.messages.push({ role:'assistant', content:'⚠️ ' + __friendlyErr(e) }); }
       }
       cur.lastMsgWasImageEdit = false;
       renderAll(); saveState();
@@ -15772,7 +15783,7 @@ async function sendPrompt(){
         if(window.autoSaveVideo) window.autoSaveVideo(__vurl);
       }catch(e){
         if(!(e && e.name === 'AbortError')){
-          cur.messages.push({ role: 'assistant', content: '⚠️ ' + (e && e.message ? e.message : String(e)) });
+          cur.messages.push({ role: 'assistant', content: '⚠️ ' + __friendlyErr(e) });
         }
       }
       cur.lastMsgWasImageEdit = false;
@@ -16808,7 +16819,7 @@ DESIGN RULES (non-negotiable):
             }
           }
           msg._failed = true;
-          msg.content = '⚠️ ' + msg.providerLabel + ': ' + err.message;
+          msg.content = '⚠️ ' + msg.providerLabel + ': ' + __friendlyErr(err);
           finalizeOne(msg);
         }
       };
@@ -17277,7 +17288,7 @@ DESIGN RULES (non-negotiable):
       try{ settingsToast(t('premiumNoPoints')); }catch(_){ __swallow(_, "points:app-09-attach#29"); }
       try{ if(typeof openPremiumBuyPoints === 'function') openPremiumBuyPoints(); }catch(_){ __swallow(_, "points:app-09-attach#30"); }
     } else {
-      cur.messages.push({role: 'assistant', content: '⚠️ ' + err.message});
+      cur.messages.push({role: 'assistant', content: '⚠️ ' + __friendlyErr(err)});
     }
   }finally{
     __omranDisarmWatchdog();  // v586

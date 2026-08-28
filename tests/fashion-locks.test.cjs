@@ -470,4 +470,16 @@ console.log('  ✓ v-fashion-show: صورة الأزياء تظهر فعلًا �
 }
 console.log('  ✓ v-edu-questions: لا بتر ولا درس بلا أسئلة — إنقاذ من الملخص');
 
+// ㊴ v-err-human: «⚠️ Load failed» الخام وصل مستخدمة حقيقية — أخطاء الشبكة
+// العابرة تُترجم لعربي واضح مع إرشاد لإعادة الإرسال، في كل مسارات المحادثة.
+{
+  const at9 = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
+  assert.ok(at9.includes('function __friendlyErr'), 'مترجم الأخطاء موجود');
+  assert.ok(at9.includes('Load failed|Failed to fetch'), 'يلتقط صيغ سفاري وكروم معًا');
+  assert.ok(at9.includes('انقطع الاتصال لحظة أثناء الرد'), 'الرسالة العربية الواضحة');
+  assert.ok(!at9.includes("content: '⚠️ ' + err.message}"), 'لا خطأ خام في فقاعة المحادثة');
+  assert.ok(at9.split('__friendlyErr(').length >= 5, 'مطبق على مسارات المحادثة الأربعة');
+}
+console.log('  ✓ v-err-human: لا Load failed خام — عربي واضح وإرشاد');
+
 console.log('fashion locks tests passed');
