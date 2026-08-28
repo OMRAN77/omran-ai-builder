@@ -210,7 +210,7 @@ console.log('  ✓ v-physical-design: التصميم يُرى قبل أن يُق
 // ⑳ v-maha-image-rescue: مولد صور المحادثة بخط إنقاذ تاسع + لا خطف لطلبات صورة التصميم.
 const mahaImgSrv = fs.readFileSync(path.join(__dirname, '../api/_lib/maha-image.js'), 'utf8');
 assert.ok(mahaImgSrv.includes('v-maha-image-rescue') && mahaImgSrv.includes('openaiRescueImage'), 'إنقاذ gpt-image-1 موجود');
-assert.ok(mahaImgSrv.includes("engine: 'openai' }); return; }"), 'الإنقاذ يرد صورة بنفس العقد');
+assert.ok(mahaImgSrv.includes("engine: 'openai'") && mahaImgSrv.includes('v-prayer-carry'), 'الإنقاذ يرد صورة بنفس العقد ومعها الدعاء المؤلف');
 const attachCli20 = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
 assert.ok(attachCli20.includes('__designCtxRe') && attachCli20.includes('!__designCtxRe.test(text)'), 'طلب صورة التصميم لا يُخطف للبحث');
 const agentTools20 = fs.readFileSync(path.join(__dirname, '../js/app-17-agent-tools.js'), 'utf8');
@@ -342,6 +342,7 @@ console.log('  \u2713 v-dream-tafsir: تفسير حقيقي + أداة ديني�
   const pp = fs.readFileSync(path.join(__dirname, '../api/_lib/prayer-plan.js'), 'utf8');
   assert.ok(pp.includes('v-prayer-rescue') && pp.includes("'gpt-4o-mini'") && pp.includes('validatePrayerPlan(JSON.parse'), 'مخطط الدعاء له خط إنقاذ بنفس التدقيق');
 }
-console.log('  \u2713 v-prayer-rescue: الدعاء لا يموت بمزود واحد');
+assert.ok(fs.readFileSync(path.join(__dirname, '../api/_lib/maha-image.js'), 'utf8').split('v-prayer-carry').length >= 2, 'الإنقاذ يمرر الدعاء المؤلف مع الصورة');
+console.log('  \u2713 v-prayer-rescue: الدعاء لا يموت بمزود واحد ولا يضيع في الإنقاذ');
 
 console.log('fashion locks tests passed');
