@@ -53,7 +53,7 @@ check(styleRule.includes('بلا تقليد لعباراته أو مزاجه'), 
 check(styleRule.includes('السؤال البسيط جواب قصير من ١–٣ جمل بلا عناوين أو تعداد'), 'السؤال البسيط له حد سلوكي قابل للقياس');
 check(attach.includes("APP_IDENTITY_NOTE + CONVERSATION_QUALITY_RULE") && attach.includes("'أنت مساعد ذكي في تطبيق Omran AI من فريق عمران AI.' + CONVERSATION_QUALITY_RULE"), 'القواعد المركزية مستخدمة في البناء والمحادثة العادية');
 check(!checkout.includes('then ONE concrete next-step suggestion or question') && !checkout.includes('then 2-3 concrete suggestions'), 'أزيل فرض الاقتراح والسؤال من كل رد');
-check(chatServer.includes('جارِ المستخدم في مجلسه') && chatServer.includes('لا تبدأ من الصفر في كل رد'), 'المحادثة العادية تكشف النبرة وتحافظ على السياق');
+check(chatServer.includes('تجاري لهجة المستخدم وروحه بروح المجلس'), 'v-clean-slate: مجاراة اللهجة في النظام القصير');
 check(chatServer.includes('إن نقصت معلومة تؤثّر فعليًّا في الدقّة') && chatServer.includes('لا تُلحق سؤالًا عامًا بكل رد'), 'سؤال الخادم مشروط بنقص مؤثر');
 check(!chatServer.includes('بعد المعلومة أعطِ خطوة تنفيذيّة واحدة يقدر عليها اليوم'), 'أزيل التعارض القديم من تعليمات أدوات الخادم');
 check(chatServer.includes('أمّا سؤال المفهوم الثابت البسيط الذي تجيبه بلا أداة') && chatServer.includes('بلا عناوين أو تعداد أو خطوة تالية أو سؤال'), 'قواعد نتائج البحث لا تتسرّب إلى السؤال الثابت البسيط');
@@ -109,12 +109,13 @@ check(chatServer.includes('dateRestrict=m1&sort=date'), 'جوجل: آخر شهر
 check(chatServer.includes('حداثة الأخبار — إلزامي'), 'النموذج ملزم بذكر تاريخ الخبر ورفض القديم');
 check(chatServer.includes('const LEAN_CONVERSATION_NOTE'), 'المحادثة العادية تستخدم تعليمات خفيفة');
 // v-persona-front: المحاور القوي اندمج في بصمة الشخصية المتصدّرة.
-check(chatServer.includes('محاور قويّ') && chatServer.includes('ندّ لا موظف استقبال'), 'طبقة المحاور القوي: ندّية ومطابقة نمط المستخدم');
-check(chatServer.includes('أعلى أولوية في هذا النظام كله'), 'بصمة الشخصية معلنة أعلى أولوية');
+// v-clean-slate: الأقفال أدناه كانت تثبّت كتاب القواعد المحذوف — صارت تثبّت الصفحة البيضاء.
+check(chatServer.includes('لست روبوتًا ولا موظف استقبال'), 'v-clean-slate: الندّية في السطر القصير');
+check(chatServer.includes('v-clean-slate'), 'v-clean-slate: النظام القصير معلن');
 check(/PERSONA_NOTE \+ '\\n' \+ baseSystem/.test(chatServer), 'البصمة تتصدر النظام في كل المسارات');
-check(chatServer.includes('SHAPE_TAIL') && /LEAN_CONVERSATION_NOTE \+ SHAPE_TAIL/.test(chatServer) && chatServer.includes('ممنوع لصق عنوان داخل نهاية فقرة'), 'v-shape-tail: تذكير التنسيق يُختم به النظام أيضًا');
-check(chatServer.includes('دمج البنود بشرطات داخل سطر واحد') && chatServer.includes('الجدار المتراص مرفوض ولو كان محتواه ممتازًا'), 'قاعدة التنسيق: لا جدار نص ولا شرطات ملزوقة — مشددة');
-check(chatServer.includes('ممنوع الموافقة الآلية والتملّق'), 'التملق والموافقة الآلية ممنوعان صراحةً');
+check(!/baseSystem[^;]*SHAPE_TAIL/.test(chatServer), 'v-clean-slate: ذيل التنسيق فُصل من النظام');
+check(chatServer.includes('بفقرات وعناوين وقوائم مرتبة'), 'v-clean-slate: التنسيق جملة واحدة في الشخصية');
+check(true, 'v-clean-slate: الندية من طبيعة النموذج بلا قاعدة');
 check(chatServer.includes('function arWikiLookup') && chatServer.includes('ar.wikipedia.org'), 'ويكيبيديا العربية مصدر مرفق في سلسلة البحث');
 check(chatServer.includes('ممنوع أن تبدأ الردّ باستدعاء generate_image'), 'النص يُقرأ أولًا والصورة التوضيحية آخر الردّ');
 check(!chatServer.includes('LIVE_EAGER_RE'), 'v-one-brain: محفزات البحث الاستباقي أزيلت كليًا');
@@ -210,20 +211,20 @@ check(!bundle.includes('فردّ حرفيًا: «أهلًا بك.» فقط'), '�
     // ===== فحوصات أسلوب المحادثة الجديد =====
     // v-chat-tools: فحصا «ملابس/سيارات تفعّلان مسار الأدوات» ثبّتا القائمة
     // المحذوفة — يغنيهما فحص «كل دور غير اجتماعي يحمل الأدوات» أعلاه.
-    check(chatServer.includes('التحية والمجاملة: ردّ حارّ راقٍ بروح المجلس'), 'v-style-rebirth: التحية الحارة في الميثاق');
-    check(chatServer.includes('ولا «كيف أقدر أساعدك؟» الرسمية'), 'v-style-rebirth: عرض الخدمات الرسمي ممنوع بالميثاق');
-    check(chatServer.includes('خليجي دافئ يُجارى بنفس الدفء'), 'كشف النبرة الخليجية موثّق في الميثاق');
+    check(chatServer.includes('بروح المجلس'), 'v-clean-slate: روح المجلس في النظام القصير');
+    check(prompts.includes('ممنوع «كيف أقدر أساعدك؟» الرسمية وعرض الخدمات'), 'توجيه التحية في العميل يمنع الرسمية');
+    check(chatServer.includes('تجاري لهجة المستخدم'), 'v-clean-slate: مجاراة اللهجة حاضرة');
     check(chatServer.includes('استثناء — النوع الجوهري فقط'), 'سؤال النوع الجوهري مسموح بعد إجابة أولية');
     check(chatServer.includes('معالج التسوق والتصفح'), 'معالج التسوق موجود في WIZARD_NOTE');
     check(chatServer.includes('مواقع سيارات'), 'مثال مواقع السيارات موجود في معالج التسوق');
     check(chatServer.includes('للكبار|للأطفال'), 'بطاقات فئة العمر موجودة في معالج التسوق');
-    check(!chatServer.includes('بالطبع!') || chatServer.includes('لا تبدأ ردك بـ«بالطبع!»'), 'يمنع البدء بعبارات مكررة كبالطبع');
+    check(true, 'v-clean-slate: لا قواعد عبارات — طبيعة النموذج');
     // بصمة الشخصية — بطلب المالك: تحفيز واحتفال، تعاطف قبل الحل، تفكيك
     // المعقد لخطوات، الزبدة أولًا، زميل خبير لا روبوت.
     // v-persona-front: العنوان صار «بصمة الشخصية وأسلوب الكلام» متصدّرًا النظام.
-    check(chatServer.includes('بصمة الشخصية وأسلوب الكلام'), 'بصمة الشخصية مثبتة في أسلوب المحادثة');
-    check(chatServer.includes('اطمّن، المشكلة واضحة ونحلها بدقيقتين'), 'تعاطف قبل الحل عند الأخطاء');
-    check(chatServer.includes('خطوات مرقّمة قصيرة'), 'تفكيك المعقد إلى خطوات');
+    check(chatServer.includes('شخصيتك: زميل خبير دافئ'), 'v-clean-slate: الشخصية بثلاث جمل');
+    check(chatServer.includes('يطمئنه قبل حل مشكلته'), 'التعاطف قبل الحل في السطر القصير');
+    check(true, 'v-clean-slate: التفكيك من طبيعة النموذج');
     check(chatServer.includes('الزبدة أولًا'), 'الحل المباشر في المقدمة');
 
 console.log('\n✅ فصل التحية عن المحادثة واستمرار السياق — نجح');

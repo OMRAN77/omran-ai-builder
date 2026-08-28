@@ -129,7 +129,7 @@ async function chatRequest(chatHandler, userText, clientMemory, captured) {
   const upstreamBeforeGreeting = captured.length;
   requestBody = await chatRequest(chatHandler, 'هلا', profileA, captured);
   assert.equal(captured.length, upstreamBeforeGreeting + 1);
-  assert.match(requestBody.system, /ميثاق أسلوب عمران/);
+  assert.match(requestBody.system, /أنت «عمران»/);
   assert.doesNotMatch(requestBody.system, /مشروع النخلة/);
 
   // الحذف يمسح أيضًا طابور التحديث كي لا تعود الذاكرة المحذوفة لاحقًا.
