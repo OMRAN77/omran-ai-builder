@@ -160,7 +160,7 @@ html.mobile-ui #omranBelowComposer{display:none !important;}
   #omranHamburger{display:inline-flex; order:-1;}
   header h1{justify-content:center;}
   #omranBottomNav{display:flex;}
-  main{padding-bottom:calc(56px + env(safe-area-inset-bottom, 0px));}
+  main{padding-bottom:calc(48px + env(safe-area-inset-bottom, 0px));}
   #omranHero{justify-content:flex-start; gap:12px; padding:12px 12px 4px;}
   #omranWelcomeWrap{display:none !important;} /* v424: جوال — حذف بطاقة الترحيب */
   #omranToolsGrid{grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; max-width:none;}
@@ -175,7 +175,7 @@ html.mobile-ui #omranUserMeta, html.mobile-ui #omranAvatarBtn, html.mobile-ui #o
 html.mobile-ui #omranHamburger{display:inline-flex; order:-1;}
 html.mobile-ui header h1{justify-content:center;}
 html.mobile-ui #omranBottomNav{display:flex;}
-html.mobile-ui main{padding-bottom:calc(56px + env(safe-area-inset-bottom, 0px));}
+html.mobile-ui main{padding-bottom:calc(48px + env(safe-area-inset-bottom, 0px));}
 html.mobile-ui #omranHero{justify-content:flex-start; gap:12px; padding:12px 12px 4px;}
 html.mobile-ui #omranWelcomeWrap{display:none !important;}
   /* v425: جوال — إخفاء ⚙️ الإعدادات من قائمة ⋮ (تبقى بالتبويب السفلي) */
@@ -267,13 +267,13 @@ html.mobile-ui #btnSend, html.mobile-ui #btnStop{width:30px; height:30px; flex:0
 @media (max-width:860px){
   html{overflow:hidden; overscroll-behavior:none; height:100%;}
   /* iOS القديم يتجاهل overscroll-behavior — تثبيت body يقتل سحب الوثيقة نهائيًا */
-  body{overscroll-behavior:none; position:fixed; inset:0; width:100%;}
+  body{overscroll-behavior:none; min-height:100%;}
   main, #messages, #omranHero{overscroll-behavior-y:contain;}
   *{scrollbar-width:none;}
   *::-webkit-scrollbar{width:0 !important; height:0 !important; display:none;}
 }
 html.mobile-ui{overflow:hidden; overscroll-behavior:none; height:100%;}
-html.mobile-ui body{overscroll-behavior:none; position:fixed; inset:0; width:100%;}
+html.mobile-ui body{overscroll-behavior:none; min-height:100%;}
 html.mobile-ui main, html.mobile-ui #messages{overscroll-behavior-y:contain;}
 
 /* v-morph-btn: الخانة الأخيرة تتحول بين مها والإرسال (طلب المالك):
@@ -325,12 +325,7 @@ html.mobile-ui dialog[open]{
    iOS (شريط الهوم/شريط سفاري) بدل الأزرار — فتبدو التبويبات كلها ميتة.
    @supports (-webkit-touch-callout) يصيب سفاري iOS وحده: الآيفون يرتفع
    لمسافة لمس آمنة، وهواوي وأندرويد يبقيان بالقاع كما طلب عمران. */
-@supports (-webkit-touch-callout: none) {
-  @media (max-width:860px){
-    #omranBottomNav{ padding-bottom:calc(6px + env(safe-area-inset-bottom,0px)) !important; }
-  }
-  html.mobile-ui #omranBottomNav{ padding-bottom:calc(6px + env(safe-area-inset-bottom,0px)) !important; }
-}
+/* v-fix-iphone-gap: أُزيلت @supports (-webkit-touch-callout) التي كانت تضيف فراغ إضافي تحت الشريط */
 
 /* ===== v-stocks-fullpage — سوق الأسهم صفحة كاملة: محتوى متوسّط وX واضحة ===== */
 #stocksPage > *{ max-width:940px; margin-left:auto; margin-right:auto; }
