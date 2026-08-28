@@ -327,7 +327,7 @@ console.log('  \u2713 v-chat-visible-speed: لا حجز قبل النموذج و
 // التفسير الديني لا تموت بموت مزوّد واحد.
 {
   const ch = fs.readFileSync(path.join(__dirname, '../api/_lib/chat.js'), 'utf8');
-  assert.ok(ch.includes('DREAM_RE') && ch.includes('منهج المفسرين (ابن سيرين والنابلسي)'), 'قاعدة تفسير الأحلام موجودة');
+  assert.ok(ch.includes('DREAM_RE') && ch.includes('التفسير عند ابن سيرين والنابلسي'), 'قاعدة تفسير الأحلام موجودة');
   assert.ok(ch.includes('DREAM_RE.test(String(lastUser.content'), 'القاعدة تُحقن عند سؤال الحلم');
   const st = fs.readFileSync(path.join(__dirname, '../js/app-12-studios.js'), 'utf8');
   assert.ok(st.includes('v-religion-rescue') && st.includes('callAIWithFallback(messages, onDelta)'), 'التفسير الديني على سلسلة الاحتياط الكاملة');
