@@ -362,4 +362,17 @@ console.log('  \u2713 v-prayer-rescue: الدعاء لا يموت بمزود و�
 }
 console.log('  ✓ v-tap-fast: الضغطة الأولى تدخل — لا تجمّد ولا شريط مدفون');
 
+// ㉛ v-recipe-card: سؤال الطبخ = صورة الطبق فوق الرد + موقعا طبخ فأكثر.
+{
+  const ch = fs.readFileSync(path.join(__dirname, '../api/_lib/chat.js'), 'utf8');
+  assert.ok(ch.includes('v-recipe-card') && ch.includes('سؤال طبخ أو وصفة'), 'قاعدة الوصفات في الميثاق المتصدر');
+  assert.ok(ch.includes('روابط موقعين للطبخ أو أكثر'), 'موقعا طبخ على الأقل في الرد');
+  // العميل يعرض الصور المولّدة فوق نص الرد لا تحته.
+  const st4 = fs.readFileSync(path.join(__dirname, '../js/app-04-i18n-state.js'), 'utf8');
+  const iGen = st4.indexOf('div.appendChild(genStrip)');
+  const iTxt = st4.indexOf('div.appendChild(textDiv)');
+  assert.ok(iGen > -1 && iTxt > -1 && iGen < iTxt, 'شريط الصور المولّدة يُركَّب قبل نص الرد (فوقه)');
+}
+console.log('  ✓ v-recipe-card: صورة الطبق فوق ومصادر الطبخ معها');
+
 console.log('fashion locks tests passed');
