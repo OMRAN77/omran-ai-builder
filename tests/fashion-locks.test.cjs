@@ -399,4 +399,14 @@ console.log('  ✓ v-stream-tidy: لا زحمة أثناء الكتابة — م
 }
 console.log('  ✓ v-src-unclip: قائمة المصادر تفتح مرئية رغم قصّ الأداء');
 
+// ㉞ v-eye-hint: تعليمات أوضاع المرشد كانت صوتية فقط (#vgLive مقصوص لقارئات
+// الشاشة) — جوال صامت = «القراءة وما بعدها لا يعمل». التعليمة تظهر مكتوبة.
+{
+  const vg24 = fs.readFileSync(path.join(__dirname, '../js/app-24-visual-guide.js'), 'utf8');
+  assert.ok(vg24.includes('v-eye-hint'), 'تعليق الإصلاح موجود');
+  assert.ok(vg24.includes('المس الشاشة لألتقط وأقرأ'), 'تلميح القراءة مكتوب على الشاشة');
+  assert.ok(vg24.split('setStatus(t(').length >= 6, 'تلميح مكتوب لكل الأوضاع الخمسة');
+}
+console.log('  ✓ v-eye-hint: تعليمات المرشد مكتوبة لا صوتية فقط');
+
 console.log('fashion locks tests passed');
