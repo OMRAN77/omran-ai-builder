@@ -1,0 +1,351 @@
+/* ================== Omran AI Builder — redesign (visual only, v400) ==================
+   حدود مستقيمة 1px solid فقط — لا أي تأثير رسم يد أو حدود متعرجة. */
+:root{ --omGold:#6b7280; --omGoldSoft:rgba(var(--accent-tint-rgb),.32); --omLine:rgba(255,255,255,.09); }
+
+/* ---------------- Header ---------------- */
+.omIconBtn{display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:var(--r-2); background:none; border:1px solid transparent; color:var(--muted); cursor:pointer; padding:0; flex:0 0 auto;}
+.omIconBtn:hover{color:var(--accent-ink); background:rgba(var(--accent-tint-rgb),.10);}
+#omranUserBlock{display:flex; align-items:center; gap:9px; flex:0 0 auto;}
+html[dir="rtl"] #omranUserBlock{flex-direction:row-reverse;}
+#omranUserMeta{display:flex; flex-direction:column; line-height:1.25; align-items:flex-end;}
+#omranUserNameRow{display:inline-flex; align-items:center; gap:4px; font-size: var(--fs-3); font-weight: var(--w-bold); color:var(--text); cursor:pointer; background:none; border:none; padding:0; font-family:inherit;}
+#omranUserNameRow:hover{color:var(--accent-ink);}
+#omranUserPoints{font-size: var(--fs-5); color:var(--muted); white-space:nowrap;}
+#omranAvatarBtn{width:34px; height:34px; border-radius:50%; border:1px solid var(--omGold); background:linear-gradient(135deg,var(--accent-surface),var(--accent-surface)); color:var(--accent-on-surface); font-weight:700; font-size:14px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; flex:0 0 auto; padding:0; font-family:inherit;}
+#omranHamburger{display:none;}
+
+/* ---------------- Sidebar (المحادثات) ---------------- */
+#omranNewChatBtn{order:-2; display:flex; align-items:center; justify-content:center; gap:7px; margin:12px 12px 8px; padding:10px 12px; background:rgba(var(--accent-tint-rgb),.06); border:1px solid var(--omGold); border-radius:var(--r-3); color:var(--accent-ink); font-family:inherit; font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer; flex:0 0 auto;}
+#omranNewChatBtn:hover{background:rgba(var(--accent-tint-rgb),.14);}
+body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #omranNewChatBtn{margin-top:26px;} /* حجز فراغ لسهم طيّ شريط الأسهم كي لا يغطّي الزر */
+#omranNewChatBtn{position:relative; margin-bottom:18px;} /* مساحة تنفّس للفاصل */
+#omranNewChatBtn::after{content:""; position:absolute; left:0; right:0; bottom:-9px; height:1px; background:linear-gradient(90deg,rgba(var(--accent-tint-rgb),0),rgba(var(--accent-tint-rgb),.55) 50%,rgba(var(--accent-tint-rgb),0)); pointer-events:none;} /* خطّ ذهبيّ فاصل تحت زرّ المحادثة الجديدة */
+#stockTicker::after{content:""; position:absolute; left:0; right:0; bottom:0; height:1px; background:linear-gradient(90deg,rgba(var(--accent-tint-rgb),0),rgba(var(--accent-tint-rgb),.65) 18%,rgba(var(--accent-tint-rgb),.65) 82%,rgba(var(--accent-tint-rgb),0)); pointer-events:none;} /* خطّ ذهبيّ فاصل تحت شريط الأسهم */
+#omranHistTitle{order:3; display:flex; direction:ltr; flex-direction:row-reverse; justify-content:space-between; align-items:center; gap:7px; margin:4px 14px 2px; font-size:12.5px; color:var(--muted); flex:0 0 auto;}
+#omranHistTitle svg{opacity:.6;}
+#omranSidebarFoot{order:9; display:flex; align-items:center; gap:4px; padding:8px 12px calc(10px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--omLine); flex:0 0 auto;}
+/* v396: تنقّل الحاسوب أسفل الشريط الجانبي — نفس تبويبات الجوال (5) بدل السلة والترس */
+#omranFootDelete,#omranFootSettings{display:none !important;}
+#omranSidebarFoot{container-type:inline-size; gap:2px; padding-top:6px;}
+#omranSidebarFoot .omNavBtn{padding:6px 0;}
+@container (max-width:210px){#omranSidebarFoot .omNavBtn span{display:none;}}
+@media (max-width:860px){#omranSidebarFoot .omNavBtn{display:none !important;}}
+html:not(.mobile-ui) #sidebar{justify-content:flex-start;}
+html:not(.mobile-ui) #history{order:4;}
+html:not(.mobile-ui) #providerGridSidebar{order:1;}
+html:not(.mobile-ui) #projMenuWrap{order:2;}
+.hist-item{border:1px solid transparent !important;}
+.hist-item.active{background:rgba(var(--accent-tint-rgb),.07) !important; border:1px solid var(--omGoldSoft) !important; border-radius:var(--r-3) !important;}
+
+/* ---------------- Welcome hero (بطاقات الأدوات) ---------------- */
+#omranHero{display:none; flex:1 1 auto; min-height:0; overflow-y:auto; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:22px 16px 6px; text-align:center;}
+body.omranWelcome #omranHero{display:flex;}
+body.omranWelcome #messages{display:none;}
+#omranToolsGrid{direction:ltr; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; width:100%; max-width:640px;}
+.omToolCard{direction:rtl; display:flex; flex-direction:column; align-items:center; gap:7px; padding:14px 8px; background:rgba(255,255,255,.015); border:1px solid var(--omGoldSoft); border-radius:var(--r-3); cursor:pointer; font-family:inherit; text-align:center; transition:border-color .15s ease, background .15s ease, transform .15s ease;}
+.omToolCard:hover{border-color:var(--omGold); background:rgba(var(--accent-tint-rgb),.07); transform:translateY(-2px);}
+.omToolCard .omToolIcon{display:flex; align-items:center; justify-content:center; height:30px;}
+.omToolCard .omToolName{font-size:12px; font-weight: var(--w-bold); color:var(--text); line-height:1.4;}
+.omToolCard .omToolDesc{font-size: var(--fs-5); color:var(--muted); line-height:1.45;}
+#omranQuickMobileWrap{display:none;}
+
+/* ---------------- Below composer (chips + disclaimer) ---------------- */
+#omranBelowComposer{display:none; flex-direction:column; align-items:center; gap:7px; padding:6px 4px 0;}
+body.omranWelcome #omranBelowComposer{display:flex;}
+#omranChips{display:flex; flex-wrap:wrap; gap:7px; justify-content:center;}
+.omChip{background:rgba(255,255,255,.02); border:1px solid var(--omLine); border-radius:var(--r-2); padding:5px 12px; font-size: var(--fs-5); color:var(--muted); cursor:pointer; font-family:inherit;}
+.omChip:hover{border-color:var(--omGold); color:var(--text);}
+#omranDisclaimer{font-size: var(--fs-5); color:var(--muted); opacity:.55;}
+
+/* ---------------- Composer: أيقونات يسار + إرسال يمين ---------------- */
+#composerBox{border:1px solid var(--omGoldSoft) !important; border-radius:var(--r-4) !important;}
+#composerBox:focus-within{border-color:var(--omGold) !important;}
+/* v428: عربي/أردو → الأدوات يمين والإرسال أقصى اليسار؛ إنجليزي وباقي اللغات معكوس */
+html[dir="rtl"] #composerBox > .inputbar-tools{order:2; margin-inline-start:0;}
+html[dir="rtl"] #composerBox > #btnSend, html[dir="rtl"] #composerBox > #btnStop{order:3; margin-inline-start:auto;}
+#inputbar .inputbar-tools-left{direction:ltr;}
+/* v430: زر + أول أيقونة بالعربي (أقصى يمين مجموعة الأدوات) */
+html[dir="rtl"] #inputbar .inputbar-tools-left{direction:rtl;}
+#plusToolsPopup{direction:rtl;}
+html[dir="ltr"] #plusToolsPopup{direction:ltr;}
+#btnSend{display:inline-flex !important; background:rgba(var(--accent-tint-rgb),.10) !important; border:1px solid var(--omGold) !important; box-shadow:0 0 12px rgba(var(--accent-glow-rgb),.30) !important; color:var(--accent-ink) !important;}
+#btnSend:active{background:rgba(var(--accent-tint-rgb),.22) !important;}
+#btnStop.live + #btnSend{display:none !important;}
+/* v423: جوال — إخفاء الرقائق والتنويه تحت الصندوق حتى ينزل الصندوق فوق شريط التبويبات مباشرة */
+@media (max-width:860px){ #omranBelowComposer{display:none !important;} #omranBellWrap{display:none !important;} #headerMenuWrap{display:none !important;} }
+html.mobile-ui #omranBelowComposer{display:none !important;}
+#omranBtnWeb, #omranBtnClip{background:none; border:none; box-shadow:none; padding:8px; color:var(--text); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; border-radius:var(--r-2);}
+#omranBtnWeb:hover, #omranBtnClip:hover{background:rgba(var(--accent-tint-rgb),.12);}
+
+.omPanelTitle{margin:2px 2px 6px; font-size:12.5px; color:var(--muted);}
+.omQuickList{display:flex; flex-direction:column; gap:8px;}
+.omQuickRow{display:flex; align-items:center; gap:10px; width:100%; padding:11px 12px; background:rgba(255,255,255,.015); border:1px solid var(--omLine); border-radius:var(--r-3); font-family:inherit; font-size:12.5px; color:var(--text); cursor:pointer; text-align:start;}
+.omQuickRow:hover{border-color:var(--omGold); background:rgba(var(--accent-tint-rgb),.06);}
+.omQuickRow .omQIcon{margin-inline-start:auto; display:inline-flex; color:var(--muted);}
+.omQuickRow:hover .omQIcon{color:var(--accent-ink);}
+
+/* ------- Desktop layout: ينعكس تلقائيًا مع اتجاه اللغة (عربي: الشريط يمين) ------- */
+@media (min-width:861px){
+  html:not(.mobile-ui) #chatcol{width:auto !important; flex:1 1 0; min-width:300px;}
+  html:not(.mobile-ui) #workarea{flex:0 1 auto; width:560px; min-width:240px;}
+  html:not(.mobile-ui) body.omranWelcome #workarea{width:380px;}
+  /* v399: (كمبيوتر فقط) رفع بطاقتي التعليم فوق صندوق الكتابة كي لا تحجبا زر الإرسال */
+  html:not(.mobile-ui) #eduIntroCard{bottom:170px;}
+  html:not(.mobile-ui) #eduChatHint{bottom:275px;}
+  /* v400: (كمبيوتر فقط) تنظيف الهيدر والشريط السفلي + خطّان ذهبيّان */
+  html:not(.mobile-ui) #btnHeaderMenu{display:none !important;} /* ⋮ — محتواه المرئي (المشاريع/الإعدادات) موجود بالشريط الجانبي */
+  html:not(.mobile-ui) #stockTicker::before{content:""; position:absolute; left:0; right:0; top:0; height:1px; background:linear-gradient(90deg,rgba(var(--accent-tint-rgb),0),rgba(var(--accent-tint-rgb),.65) 18%,rgba(var(--accent-tint-rgb),.65) 82%,rgba(var(--accent-tint-rgb),0)); pointer-events:none;}
+  html:not(.mobile-ui) #omranSidebarFoot{border-top:1px solid rgba(var(--accent-tint-rgb),.65);}
+  html:not(.mobile-ui) .omDeskNav[data-omnav="chats"]{display:none !important;}
+  html:not(.mobile-ui) #omranHistTitle{display:none !important;} /* v401: عنوان «المحادثات» في الشريط الجانبي */
+  /* v404: (كمبيوتر فقط) حذف الإطارات — نستخدم transparent كي لا يتزحزح التخطيط */
+  html:not(.mobile-ui) #omranNewChatBtn{border-color:transparent !important;}
+  html:not(.mobile-ui) #provDropdownBtn{border-color:transparent !important;}
+  html:not(.mobile-ui) .omToolCard{border-color:transparent !important;}
+  html:not(.mobile-ui) #eduIntroCard{border-color:transparent !important;}
+  /* v405: (كمبيوتر فقط) توحيد الخلفيات — كل الصناديق بنفس لون الخلفية */
+  html:not(.mobile-ui) #omranNewChatBtn, html:not(.mobile-ui) #provDropdownBtn, html:not(.mobile-ui) #premiumPointsChip{background:transparent !important; background-image:none !important; border-color:transparent !important; box-shadow:none !important;}
+  html:not(.mobile-ui) .hist-item, html:not(.mobile-ui) .hist-item.active{background:transparent !important; border-color:transparent !important; box-shadow:none !important;}
+  html:not(.mobile-ui) .omToolCard, html:not(.mobile-ui) .omQuickRow, html:not(.mobile-ui) #eduIntroCard{background:transparent !important; background-image:none !important; box-shadow:none !important;}
+  /* v406: (كمبيوتر فقط) إسقاط بطاقتي التعليم تحت النوافذ (z=10000) — كانتا تحجبان زرّ «إنشاء الفيديو» */
+  html:not(.mobile-ui) #eduIntroCard, html:not(.mobile-ui) #eduChatHint{z-index:9990 !important;}
+  /* v410: (كمبيوتر فقط) الشكل — إحياء البطاقات + هالة تملأ الفراغ + تلطيف زرّ إغلاق إعلان التعليم */
+  html:not(.mobile-ui) body.omranWelcome #omranHero{position:relative;}
+  html:not(.mobile-ui) body.omranWelcome #omranHero::before{content:""; position:absolute; inset:0; pointer-events:none; z-index:0; background:radial-gradient(closest-side at 50% 46%, rgba(var(--accent-tint-rgb),.075), rgba(var(--accent-tint-rgb),.026) 55%, transparent 78%);}
+  html:not(.mobile-ui) #omranToolsGrid{position:relative; z-index:1;}
+  /* v411: (كمبيوتر فقط) تقليص الفراغ فوق البطاقات — كان ٢٠٩px من التمركز الرأسيّ */
+  html:not(.mobile-ui) body.omranWelcome #omranHero{justify-content:flex-start; padding-top:48px;}
+  html:not(.mobile-ui) .omToolCard{transition:transform .18s ease, box-shadow .22s ease, background .22s ease;}
+  html:not(.mobile-ui) .omToolCard .omToolIcon{transition:transform .18s ease;}
+  html:not(.mobile-ui) .omToolCard .omToolName{transition:color .18s ease;}
+  html:not(.mobile-ui) .omToolCard:hover{transform:translateY(-3px); background:radial-gradient(closest-side at 50% 38%, rgba(var(--accent-tint-rgb),.11), rgba(var(--accent-tint-rgb),.03) 60%, transparent 85%) !important; box-shadow:0 10px 26px rgba(0,0,0,.42), inset 0 0 0 1px rgba(var(--accent-glow-rgb),.26) !important;}
+  html:not(.mobile-ui) .omToolCard:hover .omToolIcon{transform:scale(1.12);}
+  html:not(.mobile-ui) .omToolCard:hover .omToolName{color:var(--accent-ink);}
+  html:not(.mobile-ui) .omToolCard:active{transform:translateY(-1px);}
+  html:not(.mobile-ui) #eduIntroClose{width:34px; height:34px; padding:0 !important; border-radius:50% !important; border-color:transparent !important; opacity:.5; transition:opacity .18s ease, background .18s ease;}
+  html:not(.mobile-ui) #eduIntroClose:hover{opacity:1; background:rgba(255,255,255,.07) !important;}
+  html:not(.mobile-ui) #eduIntroOpen{box-shadow:0 6px 18px rgba(var(--accent-glow-rgb),.20);}
+  /* v411: (كمبيوتر فقط) داخل نافذة صانع الفيديو — حقول زجاجية ذهبية بدل عناصر النظام الخام */
+  html:not(.mobile-ui) #videoMakerModal{background:rgba(0,0,0,.78) !important; backdrop-filter:blur(7px);}
+  html:not(.mobile-ui) #videoMakerModal > div{background:linear-gradient(180deg,#17171d 0%,#101014 100%) !important; border:1px solid rgba(var(--accent-tint-rgb),.22) !important; box-shadow:0 24px 70px rgba(0,0,0,.66), inset 0 1px 0 rgba(255,255,255,.05) !important;}
+  html:not(.mobile-ui) #videoMakerModal h3{color:var(--accent-ink); font-size: var(--fs-2);}
+  html:not(.mobile-ui) #videoMakerModal :is(select,textarea,input[type=text],input[type=number]){-webkit-appearance:none; appearance:none; box-sizing:border-box; background-color:rgba(255,255,255,.045); color:var(--text); font-family:inherit; font-size: var(--fs-3); border:1px solid rgba(255,255,255,.10); border-radius:var(--r-2); padding:10px 12px; outline:none; transition:border-color .16s ease, box-shadow .16s ease, background .16s ease;}
+  html:not(.mobile-ui) #videoMakerModal :is(select,textarea,input[type=text],input[type=number]):hover{border-color:rgba(var(--accent-tint-rgb),.34);}
+  html:not(.mobile-ui) #videoMakerModal :is(select,textarea,input[type=text],input[type=number]):focus{border-color:var(--accent); background-color:rgba(var(--accent-tint-rgb),.055); box-shadow:0 0 0 3px rgba(var(--accent-tint-rgb),.13);}
+  html:not(.mobile-ui) #videoMakerModal select{cursor:pointer; padding-left:34px; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1.6 6 6.4 11 1.6' fill='none' stroke='%23888f9c' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/></svg>"); background-repeat:no-repeat; background-position:left 12px center;}
+  html:not(.mobile-ui) #videoMakerModal select option{background:#15151b; color:var(--text);}
+  html:not(.mobile-ui) #videoMakerModal textarea{line-height:1.6; resize:vertical;}
+  html:not(.mobile-ui) #videoMakerModal ::placeholder{color:rgba(152,160,179,.6);}
+  html:not(.mobile-ui) #videoMakerModal .mini-mic-btn{width:38px; height:38px; border-radius:50%; margin-top:0; background:rgba(255,255,255,.045); border-color:rgba(255,255,255,.10); transition:background .16s ease, border-color .16s ease, transform .16s ease;}
+  html:not(.mobile-ui) #videoMakerModal .mini-mic-btn:hover{background:rgba(var(--accent-tint-rgb),.14); border-color:var(--accent); transform:scale(1.07);}
+  html:not(.mobile-ui) #videoMakerModal input[type=checkbox]{-webkit-appearance:none; appearance:none; position:relative; width:18px; height:18px; border:1px solid rgba(255,255,255,.22); border-radius:var(--r-1); background:rgba(255,255,255,.045); cursor:pointer; flex-shrink:0; transition:background .16s ease, border-color .16s ease;}
+  html:not(.mobile-ui) #videoMakerModal input[type=checkbox]:hover{border-color:rgba(var(--accent-tint-rgb),.55);}
+  html:not(.mobile-ui) #videoMakerModal input[type=checkbox]:checked{background:var(--grad); border-color:transparent;}
+  html:not(.mobile-ui) #videoMakerModal input[type=checkbox]:checked::after{content:"\2713"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900; color:#14140f;}
+  html:not(.mobile-ui) #videoMakerModal #videoMakerHeroBtn{background:rgba(255,255,255,.045); color:var(--text); border:1px solid rgba(255,255,255,.10); font-family:inherit; font-size:12.5px; transition:border-color .16s ease, background .16s ease;}
+  html:not(.mobile-ui) #videoMakerModal #videoMakerHeroBtn:hover{border-color:var(--accent); background:rgba(var(--accent-tint-rgb),.12);}
+  html:not(.mobile-ui) #videoMakerModal #videoMakerHeroPreview{border:1px solid rgba(var(--accent-tint-rgb),.30);}
+  html:not(.mobile-ui) #videoMakerModal #videoMakerGenerateBtn{padding:13px; font-size: var(--fs-3); border-radius:var(--r-3); letter-spacing:.3px;}
+}
+
+/* ---------------- Mobile ---------------- */
+/* v-nav-top: الأدراج z:60 والخلفية z:55 كانتا تدفنان الشريط (z:50) — أي ضغطة
+   على التبويبات والدُّرج مفتوح كانت تضيع، فيضطر عمران يضغط مرتين وثلاث. */
+#omranBottomNav{display:none; position:fixed; bottom:0; left:0; right:0; z-index:70; background:rgba(14,14,14,.97); backdrop-filter:blur(14px); border-top:1px solid var(--omLine); padding:5px 2px calc(4px + env(safe-area-inset-bottom,0px));}
+.omNavBtn{flex:1 1 0; display:flex; flex-direction:column; align-items:center; gap:2px; background:none; border:none; padding:5px 0; color:var(--muted); font-family:inherit; font-size:9.5px; cursor:pointer;}
+.omNavBtn.active{color:var(--accent-ink);}
+@media (max-width:860px){
+  #omranSearchWrap{display:none;}
+  #omranUserMeta, #omranAvatarBtn, #omranThemeBtn{display:none;}
+  #omranHamburger{display:inline-flex; order:-1;}
+  header h1{justify-content:center;}
+  #omranBottomNav{display:flex;}
+  main{padding-bottom:calc(48px + env(safe-area-inset-bottom, 0px));}
+  #omranHero{justify-content:flex-start; gap:12px; padding:12px 12px 4px;}
+  #omranWelcomeWrap{display:none !important;} /* v424: جوال — حذف بطاقة الترحيب */
+  #omranToolsGrid{grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; max-width:none;}
+  .omToolCard{padding:12px 6px;}
+  .omToolCard .omToolName{font-size:11.5px;}
+  .omToolCard .omToolDesc{display:none;}
+  #omranQuickMobileWrap{display:block; width:100%; text-align:start; border-top:1px solid var(--omLine); padding-top:10px;}
+  #omranNewChatBtn{margin:12px 12px 6px;}
+}
+html.mobile-ui #omranSearchWrap{display:none;}
+html.mobile-ui #omranUserMeta, html.mobile-ui #omranAvatarBtn, html.mobile-ui #omranThemeBtn{display:none;}
+html.mobile-ui #omranHamburger{display:inline-flex; order:-1;}
+html.mobile-ui header h1{justify-content:center;}
+html.mobile-ui #omranBottomNav{display:flex;}
+html.mobile-ui main{padding-bottom:calc(48px + env(safe-area-inset-bottom, 0px));}
+html.mobile-ui #omranHero{justify-content:flex-start; gap:12px; padding:12px 12px 4px;}
+html.mobile-ui #omranWelcomeWrap{display:none !important;}
+  /* v425: جوال — إخفاء ⚙️ الإعدادات من قائمة ⋮ (تبقى بالتبويب السفلي) */
+  html.mobile-ui #headerMenuDropdown #btnSettings{display:none !important;}
+  /* v440: جوال — إخفاء سلة المهملات والإعدادات من أسفل قائمة المحادثات */
+  html.mobile-ui #omranSidebarFoot{display:none !important;}
+  /* v426: جوال — إخفاء ☰ من الهيدر (المحادثات من التبويب السفلي) */
+  html.mobile-ui #omranHamburger{display:none !important;}
+  /* v427: جوال — الشعار «عمران AI» بطرف اليسار مكان ☰ المحذوفة */
+  html.mobile-ui header h1{flex-direction:row-reverse; justify-content:flex-start; padding-left:2px;} /* v424: جوال — حذف بطاقة الترحيب */
+html.mobile-ui #omranToolsGrid{grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; max-width:none;}
+html.mobile-ui .omToolCard{padding:12px 6px;}
+html.mobile-ui .omToolCard .omToolName{font-size:11.5px;}
+html.mobile-ui .omToolCard .omToolDesc{display:none;}
+html.mobile-ui #omranQuickMobileWrap{display:block; width:100%; text-align:start; border-top:1px solid var(--omLine); padding-top:10px;}
+/* v444: أمر عمران ٧ أغسطس ٢٠٢٦ — إخفاء بطاقات الاقتراحات وإشعار التعليم (كمبيوتر + جوّال) */
+#omranToolsGrid{display:none !important;}
+#eduIntroCard, #eduIntroCard.show{display:none !important;}
+/* v445: أمر عمران ٧ أغسطس ٢٠٢٦ — إخفاء «أدوات سريعة» فوق صندوق المحادثة */
+#omranQuickMobileWrap, html.mobile-ui #omranQuickMobileWrap{display:none !important;}
+
+/* 🎯 v526 — الأوضاع الصريحة */
+#omModeBtn{background:none;border:none;padding:6px;cursor:pointer;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;font:600 17px/1 inherit;border-radius:var(--r-2);}
+#omModeBtn:hover{color:var(--omGold);background:rgba(255,255,255,.05);}
+#omModeBtn.on{color:var(--omGold);}
+#omModeChip{flex:0 0 100%;order:-1;display:flex;align-items:center;gap:6px;padding:2px 2px 6px;}
+.omModePill{display:inline-flex;align-items:center;gap:6px;background:rgba(212,175,55,.12);border:1px solid var(--omGoldSoft,rgba(212,175,55,.4));color:var(--text);border-radius:999px;padding:3px 10px;font-size:var(--fs-5,13px);line-height:1.6;}
+.omModeX{background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;line-height:1;padding:0 0 0 2px;}
+.omModeX:hover{color:#ff6b6b;}
+#omModeMenu{position:fixed;z-index:10000;display:none;flex-direction:column;min-width:210px;padding:6px;background:var(--panel2,#1b1b22);border:1px solid var(--border,#333);border-radius:var(--r-3,12px);box-shadow:0 12px 34px rgba(0,0,0,.4);}
+#omModeMenu.open{display:flex;}
+.omModeItem{display:flex;align-items:center;gap:10px;width:100%;background:none;border:none;color:var(--text,#eee);cursor:pointer;padding:9px 11px;border-radius:var(--r-2,8px);font:inherit;font-size:var(--fs-5,13.5px);text-align:start;}
+.omModeItem:hover{background:rgba(212,175,55,.14);}
+.omModeIc{font-size:15px;line-height:1;}
+html[data-mode="light"] #omModeMenu{background:#fff;border-color:#d8d8d8;box-shadow:0 12px 34px rgba(0,0,0,.14);}
+html[data-mode="light"] .omModeItem{color:#1a1a1a;}
+html[data-mode="light"] #omModeBtn:hover{background:rgba(0,0,0,.05);}
+#plusToolsPopup .omModeItem .omModeIc{display:inline-block;width:20px;text-align:center;font-size:15px;line-height:1;}
+#plusToolsPopup .omModeSep{height:1px;background:rgba(0,0,0,.10);margin:6px 6px;}
+
+/* v534: إزالة تكرار — سطح المكتب والجوّال. العنصران يبقيان في DOM (تناديهما modes.js و ui-wiring.js) */
+#omranBtnWeb{display:none !important;}
+#btnNew{display:none !important;}
+
+/* v549 — hide from plus-menu + bot chips (owner order 2026-08-11) */
+#btnSnapBuild, #btnEmoji, #btnVoiceChat{display:none !important;}
+#omranChips{display:none !important;}
+/* v594 — plus-menu owner order (2026-08-13): attach · image · tools-box · pdf · feedback · delete */
+#plusToolsPopup .omModeItem[data-mode="web"], #plusToolsPopup .omModeItem[data-mode="think"]{display:none !important;}
+#plusToolsPopup .omModeItem[data-mode="image"]{order:40;} /* v597: فوق «الأدوات» مباشرةً */
+#plusToolsPopup #btnAttach{order:20;}
+#plusToolsPopup #btnToolsBox{order:50;}
+#plusToolsPopup #btnToolsBox .omChev{margin-inline-start:auto;opacity:.5;display:inline-flex;align-items:center;}
+html[dir="ltr"] #plusToolsPopup #btnToolsBox .omChev{transform:rotate(180deg);}
+#plusToolsPopup #btnImgToPdf{order:30;}
+#plusToolsPopup #btnChatToPdf{order:40;}
+#plusToolsPopup .omModeSep{order:65;}
+#plusToolsPopup #btnDeleteChat{order:70;}
+
+/* v551 — أيقونات خطّيّة للأوضاع (إنشاء صورة · تعلّم) بدل الإيموجي */
+#plusToolsPopup .omModeItem .omModeIc{display:inline-flex;align-items:center;justify-content:center;}
+.omModeIc svg{display:block;width:20px;height:20px;}
+.omModePill .omModeIc svg{width:15px;height:15px;}
+
+/* v-mob-compact: طلب المالك (آيفون) — شريط التبويبات ملتصق بقاع الشاشة تمامًا،
+   مستطيل المحادثة أصغر وأخف، والفراغ فوق الهيدر أقل (الباقي هو المنطقة
+   الآمنة للساعة والبطارية — لا يجوز البناء فوقها). */
+@media (max-width:860px){
+  header{padding-top:env(safe-area-inset-top,0px) !important; padding-bottom:6px;}
+  #inputbar{padding:2px 10px 5px;}
+  #composerBox{padding:4px 8px 3px !important; border-radius:16px !important; gap:1px;}
+  #prompt{min-height:20px; max-height:84px; font-size:13px; padding:4px 8px 2px;}
+  #inputbar .inputbar-tools .btn, #inputbar .inputbar-tools-left .btn{padding:5px;}
+  #btnSend, #btnStop{width:30px; height:30px; flex:0 0 30px;}
+  #btnSend svg, #btnStop svg{width:15px; height:15px;}
+  #omranBottomNav{padding:3px 2px max(2px, calc(env(safe-area-inset-bottom,0px) - 15px));}
+  main{padding-bottom:calc(48px + env(safe-area-inset-bottom,0px));}
+}
+html.mobile-ui header{padding-top:env(safe-area-inset-top,0px) !important; padding-bottom:6px;}
+html.mobile-ui #omranBottomNav{padding:3px 2px max(2px, calc(env(safe-area-inset-bottom,0px) - 15px));}
+html.mobile-ui main{padding-bottom:calc(48px + env(safe-area-inset-bottom,0px));}
+html.mobile-ui #inputbar{padding:2px 10px 5px;}
+html.mobile-ui #composerBox{padding:4px 8px 3px !important; border-radius:16px !important;}
+html.mobile-ui #prompt{min-height:20px; max-height:84px; font-size:13px;}
+html.mobile-ui #btnSend, html.mobile-ui #btnStop{width:30px; height:30px; flex:0 0 30px;}
+
+/* v-mob-lock: طلب المالك (آيفون) — الشاشة لا تتحرك كاملة فوق/تحت (قفل ارتداد
+   iOS وتمرير الوثيقة)، والتمرير داخل المحتوى فقط، وبلا شريط سحب ظاهر. */
+@media (max-width:860px){
+  html{overflow:hidden; overscroll-behavior:none; height:100%;}
+  /* iOS القديم يتجاهل overscroll-behavior — تثبيت body يقتل سحب الوثيقة نهائيًا */
+  body{overscroll-behavior:none; min-height:100%;}
+  main, #messages, #omranHero{overscroll-behavior-y:contain;}
+  *{scrollbar-width:none;}
+  *::-webkit-scrollbar{width:0 !important; height:0 !important; display:none;}
+}
+html.mobile-ui{overflow:hidden; overscroll-behavior:none; height:100%;}
+html.mobile-ui body{overscroll-behavior:none; min-height:100%;}
+html.mobile-ui main, html.mobile-ui #messages{overscroll-behavior-y:contain;}
+
+/* v-morph-btn: الخانة الأخيرة تتحول بين مها والإرسال (طلب المالك):
+   فاضية = «م» الذهبية (مكالمة مها) · تكتب = سهم الإرسال ➤ مكانها.
+   المايك بمكانه الأصلي دائمًا — لا دمج له. */
+#composerBox > .inputbar-tools{flex:1 1 auto;}
+#composerBox .inputbar-tools-left{flex:1 1 auto; display:flex;}
+#composerBox #btnMahaDock{
+  margin-inline-start:auto;
+  transition:opacity .15s ease, transform .15s ease;
+}
+#composerBox.typing #btnMahaDock{ display:none; }
+#composerBox:has(#btnStop.live) #btnMahaDock{ display:none; }
+#composerBox:not(.typing) > #btnSend{ display:none !important; }
+#composerBox.typing > #btnSend{ animation:morphIn .16s ease; }
+@keyframes morphIn{ from{ transform:scale(.6); opacity:0; } to{ transform:scale(1); opacity:1; } }
+
+/* ===== v-agent-settings — بطاقة زر «الوكيل» داخل قسم الإعدادات ===== */
+#agentSettingsHost #premiumToggleWrap.pt-visible{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 12px; border:1px solid var(--border, rgba(128,128,128,.28)); border-radius:14px; background:var(--panel2, rgba(128,128,128,.06)); }
+#agentSettingsHost #premiumToggleWrap:not(.pt-visible){ display:none; }
+#agentSettingsHost #btnPremiumToggle{ flex:1; display:inline-flex; align-items:center; gap:9px; background:none; border:0; box-shadow:none; color:var(--text); cursor:pointer; font-size:13.5px; font-weight:600; padding:4px 2px; }
+#agentSettingsHost #btnPremiumToggle.premium-on{ border:0; box-shadow:none; background:none; }
+#agentSettingsHost #premiumToggleWrap:has(#btnPremiumToggle.premium-on){ border-color:var(--accent); box-shadow:0 0 0 1.5px var(--accent); }
+#agentSettingsHost #premiumPointsChip.pp-visible{ display:inline-flex; align-items:center; gap:3px; }
+
+/* ===== v-plus-tools-desktop — أمر عمران: زر «الأدوات» داخل قائمة ➕ للجوال فقط، يُخفى في الكمبيوتر ===== */
+html:not(.mobile-ui) #plusToolsPopup #btnToolsBox{ display:none !important; }
+
+/* ===== v-ios-settings-scroll — آيفون: نافذة الإعدادات (وكل النوافذ) تتمرر حتى آخرها =====
+   سفاري iOS يبتلع سحب التمرير داخل <dialog> عندما تكون الصفحة خلفه مقفلة
+   (v-mob-lock): بلا overscroll-behavior:contain تتسلسل الحركة إلى body المثبّت
+   فتموت، وبعض النسخ تحتاج touch-action:pan-y صريحة على النافذة نفسها.
+   وحاشية أمان سفلية حتى لا يختبئ آخر صف تحت شريط الهوم في الآيفون. */
+@media (max-width:860px){
+  dialog[open]{
+    overflow-y:auto !important; -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain; touch-action:pan-y;
+    padding-bottom:max(22px, env(safe-area-inset-bottom, 0px));
+  }
+}
+html.mobile-ui dialog[open]{
+  overflow-y:auto !important; -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain; touch-action:pan-y;
+  padding-bottom:max(22px, env(safe-area-inset-bottom, 0px));
+}
+
+/* ===== v-ios-nav-tap — آيفون فقط: رفع التبويبات فوق منطقة إيماءات النظام =====
+   بعد إنزال الشريط لقاع الشاشة (#126) صارت اللمسات في آخر شريحة تذهب لنظام
+   iOS (شريط الهوم/شريط سفاري) بدل الأزرار — فتبدو التبويبات كلها ميتة.
+   @supports (-webkit-touch-callout) يصيب سفاري iOS وحده: الآيفون يرتفع
+   لمسافة لمس آمنة، وهواوي وأندرويد يبقيان بالقاع كما طلب عمران. */
+/* v-fix-iphone-gap: أُزيلت @supports (-webkit-touch-callout) التي كانت تضيف فراغ إضافي تحت الشريط */
+
+/* ===== v-stocks-fullpage — سوق الأسهم صفحة كاملة: محتوى متوسّط وX واضحة ===== */
+#stocksPage > *{ max-width:940px; margin-left:auto; margin-right:auto; }
+#stocksPage .stkHead{ max-width:940px; }
+#stocksCloseBtn{ font-size:15px; padding:6px 12px !important; border:1px solid var(--border, rgba(128,128,128,.35)); border-radius:10px; }
+
+/* v-ios-slider — شكوى عمران ٢٧ أغسطس (فيديو الأنمي): السحّاب لا يتحرك على
+   الآيفون والشاشة «تطفو». العلاج الثلاثي:
+   ① السحّابات pan-x: سحبها الأفقي مسموح ولا يبدأ تمرير الصفحة من فوقها.
+   ② نافذة أنماط الصور: التمرير محتواه داخلها لا يتسلسل لجسم الصفحة المثبت.
+   ③ خلفية النافذة صمّاء للمس — لا اهتزاز من لمس المعتم. */
+@media (max-width:860px){
+  input[type=range]{ touch-action:pan-x; }
+}
+html.mobile-ui input[type=range]{ touch-action:pan-x; }
+html.mobile-ui #portraitStyleModal{ touch-action:none; }
+html.mobile-ui #portraitStyleModal > div{
+  overscroll-behavior:contain; touch-action:pan-y; -webkit-overflow-scrolling:touch;
+}
+@media (max-width:860px){
+  #portraitStyleModal{ touch-action:none; }
+  #portraitStyleModal > div{ overscroll-behavior:contain; touch-action:pan-y; -webkit-overflow-scrolling:touch; }
+}
