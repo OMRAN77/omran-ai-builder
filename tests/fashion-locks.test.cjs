@@ -337,4 +337,11 @@ console.log('  \u2713 v-chat-visible-speed: لا حجز قبل النموذج و
 }
 console.log('  \u2713 v-dream-tafsir: تفسير حقيقي + أداة دينية لا تموت');
 
+// ㉙ v-prayer-rescue: بطاقات الدعاء لا تموت بزحام Gemini — إنقاذ OpenAI.
+{
+  const pp = fs.readFileSync(path.join(__dirname, '../api/_lib/prayer-plan.js'), 'utf8');
+  assert.ok(pp.includes('v-prayer-rescue') && pp.includes("'gpt-4o-mini'") && pp.includes('validatePrayerPlan(JSON.parse'), 'مخطط الدعاء له خط إنقاذ بنفس التدقيق');
+}
+console.log('  \u2713 v-prayer-rescue: الدعاء لا يموت بمزود واحد');
+
 console.log('fashion locks tests passed');

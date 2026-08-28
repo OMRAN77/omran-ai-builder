@@ -119,6 +119,38 @@ async function authorPrayerPlan(apiKey, request, options = {}) {
       lastError = error;
     }
   }
+  // v-prayer-rescue: زحام/فشل Gemini كان يميت بطاقات الدعاء برسالة «تعذّر
+  // التأليف» (لقطة المالك). أي مفتاح OpenAI مشحون يبقيها حية — نفس المخطط
+  // ونفس التدقيق، عبر gpt-4o-mini بوضع JSON.
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (openaiKey) {
+    try {
+      const prompt = buildPlannerPrompt(request, {
+        textPosition: options.textPosition,
+        kind: options.kind,
+        direction: options.direction,
+        directionIndex: options.directionIndex,
+      });
+      const upstream = await (options.fetchImpl || fetch)('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + openaiKey },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          temperature: 0.9,
+          response_format: { type: 'json_object' },
+          messages: [{ role: 'user', content: prompt + '\nReturn ONLY the JSON object.' }],
+        }),
+      });
+      const data = await upstream.json().catch(() => ({}));
+      if (upstream.ok) {
+        const text = String((((data.choices || [])[0] || {}).message || {}).content || '').trim();
+        return validatePrayerPlan(JSON.parse(text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')), request);
+      }
+      lastError = new Error('rescue_upstream_' + upstream.status);
+    } catch (error) {
+      lastError = error;
+    }
+  }
   throw lastError || new Error('prayer_planner_failed');
 }
 
