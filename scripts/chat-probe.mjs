@@ -10,7 +10,7 @@ async function signup() {
   const r = await fetch(BASE + '/api/account?action=auth', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mode: 'signup', username: USER, password: 'Pp1!' + rnd + rnd }),
+    body: JSON.stringify({ action: 'signup', username: USER, password: 'Pp1!' + rnd + rnd, lang: 'ar' }),
   });
   const j = await r.json().catch(() => ({}));
   if (!j.token) throw new Error('signup failed: ' + r.status + ' ' + JSON.stringify(j).slice(0, 120));
