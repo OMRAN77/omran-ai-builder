@@ -219,7 +219,9 @@ function renderCodeAndPreview(){
     }
     return;
   }
-  codeEl.value = cur.code;
+  /* v-tap-fast: إسناد نص ضخم (مئات الكيلوبايت) لخانة الكود مع كل إعادة رسم
+     كان يكلّف تخطيطًا كاملًا — نسنده فقط عند تغيّره فعلًا. */
+  if(codeEl.value !== cur.code) codeEl.value = cur.code;
   emptyState.style.display = 'none';
   if(cur.codeType === 'python'){
     previewFrame.style.display = 'none';

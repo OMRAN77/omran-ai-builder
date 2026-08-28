@@ -345,4 +345,21 @@ console.log('  \u2713 v-dream-tafsir: تفسير حقيقي + أداة ديني�
 assert.ok(fs.readFileSync(path.join(__dirname, '../api/_lib/maha-image.js'), 'utf8').split('v-prayer-carry').length >= 2, 'الإنقاذ يمرر الدعاء المؤلف مع الصورة');
 console.log('  \u2713 v-prayer-rescue: الدعاء لا يموت بمزود واحد ولا يضيع في الإنقاذ');
 
+// ㉚ v-tap-fast + v-nav-top: «اضغط مرتين أو ثلاث بعدين يدخل» — سببان مقيسان:
+// (أ) المحادثات الضخمة تجمّد الجوال مع كل تفاعل (تخطيط كامل للرسائل كلها)،
+// (ب) شريط التنقل z:50 مدفون تحت الأدراج z:60 فالضغطات تضيع في الخلفية.
+{
+  const tk = fs.readFileSync(path.join(__dirname, '../css/tokens.css'), 'utf8');
+  assert.ok(/\.msg\{content-visibility:auto/.test(tk), 'الرسائل خارج الشاشة خارج التخطيط والرسم');
+  const rd = fs.readFileSync(path.join(__dirname, '../css/redesign.css'), 'utf8');
+  assert.ok(/#omranBottomNav\{[^}]*z-index:70/.test(rd), 'شريط التنقل فوق الأدراج (70>60) دائمًا');
+  const uw = fs.readFileSync(path.join(__dirname, '../js/ui-wiring.js'), 'utf8');
+  assert.ok(uw.includes('v-nav-top') && uw.includes('closeDrawers()'), 'تبويب غير درجيّ يغلق الدُّرج المفتوح قبل فعله');
+  const co = fs.readFileSync(path.join(__dirname, '../js/app-06-checkout.js'), 'utf8');
+  assert.ok(co.includes('__omMinH') && co.includes("v.indexOf('\\n') === -1"), 'autoGrow لا يعيد تخطيط الصفحة مع كل حرف قصير');
+  const ui5 = fs.readFileSync(path.join(__dirname, '../js/app-05-ui.js'), 'utf8');
+  assert.ok(ui5.includes('if(codeEl.value !== cur.code)'), 'خانة الكود لا تُسند إلا عند تغيّر فعلي');
+}
+console.log('  ✓ v-tap-fast: الضغطة الأولى تدخل — لا تجمّد ولا شريط مدفون');
+
 console.log('fashion locks tests passed');
