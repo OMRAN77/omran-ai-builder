@@ -134,8 +134,8 @@ assert.ok(eduJs.includes("'sandbox','allow-scripts'") && eduJs.includes('fr.srcd
 assert.ok(eduJs.includes("action:'lab'"), 'العميل يطلب التجربة من الخادم');
 const eduApi = fs.readFileSync(path.join(__dirname, '../api/edu.js'), 'utf8');
 assert.ok(eduApi.includes("action === 'lab'") && eduApi.includes('db/edu/labs/'), 'الخادم يولد ويخزن المختبر بمفتاح منفصل لكل درس');
-// v-edu-budget: التوازن النهائي — مهلة 280ث تتسع لـ14000 (9000 كانت تبتر الصفحة).
-assert.ok(eduApi.includes('```html') && eduApi.includes('max_tokens: 14000'), 'استخراج كتلة HTML وحجم ضمن حدود المهلة');
+// v-lab-haiku: الميزانية صارت وسيطًا (baseMsgs, 14000) مع نموذج سريع وجولة إتمام.
+assert.ok(eduApi.includes('```html') && eduApi.includes('baseMsgs, 14000'), 'استخراج كتلة HTML وحجم ضمن حدود المهلة');
 assert.ok(eduApi.includes("kvDel('db/edu/labs/"), 'حذف الدرس ينظف مختبره');
 console.log('  ✓ v-edu-lab: الدرس الحي مبني ومقفول');
 
@@ -440,7 +440,7 @@ console.log('  ✓ v-edu-split: تحليل المحاضرة بنصف الزمن 
   assert.ok(!eduT.includes('AbortSignal.timeout(120000)'), 'لا مهلة 120ث أقصر من التوليد المسموح');
   assert.ok(eduT.split('AbortSignal.timeout(280000)').length >= 5, 'كل نداءات أنثروبيك على مهلة 280ث');
   // v-edu-budget: 9000 كانت تبتر الصفحة («تجربة غير مكتملة») — 14000 تحت مهلة 280ث.
-  assert.ok(eduT.includes('max_tokens: 14000') && !eduT.includes('max_tokens: 16000'), 'مخرجات التجربة الحية ضمن حدود المهلة');
+  assert.ok(eduT.includes('baseMsgs, 14000') && !eduT.includes('max_tokens: 16000'), 'مخرجات التجربة الحية ضمن حدود المهلة');
   assert.ok(eduT.includes('v-edu-timeouts') && eduT.includes('التوليد أخذ وقتًا أطول من المتوقع'), 'المهلة تُشرح بالعربي المطمئن');
   const eduC = fs.readFileSync(path.join(__dirname, '../js/edu.js'), 'utf8');
   assert.ok(eduC.includes('دقيقة إلى دقيقتين'), 'رسالة انتظار صادقة في العميل');
@@ -462,7 +462,7 @@ console.log('  ✓ v-fashion-show: صورة الأزياء تظهر فعلًا �
 // بلا أسئلة يُنقذ بزر يولّدها من الملخص.
 {
   const eduB = fs.readFileSync(path.join(__dirname, '../api/edu.js'), 'utf8');
-  assert.ok(eduB.includes('max_tokens: 14000') && !eduB.includes('max_tokens: 16000'), 'ميزانية التجربة الحية رحبة ضمن المهلة');
+  assert.ok(eduB.includes('baseMsgs, 14000') && !eduB.includes('max_tokens: 16000'), 'ميزانية التجربة الحية رحبة ضمن المهلة');
   assert.ok(eduB.includes("anthropicJSON(apiKey, sysQuestions, contentBlocks, 9000)"), 'شقّ الأسئلة 9 آلاف لا يُبتر');
   assert.ok(eduB.includes("action === 'questions'") && eduB.includes('buildQuestionsSys'), 'عملية إنقاذ الأسئلة موجودة');
   const eduC2 = fs.readFileSync(path.join(__dirname, '../js/edu.js'), 'utf8');
@@ -495,5 +495,15 @@ console.log('  ✓ v-err-human: لا Load failed خام — عربي واضح و
   assert.ok(st13.includes("contains('store-safe')) return;"), 'محرك الأسهم لا يعمل إطلاقًا — صفر نداءات أسعار');
 }
 console.log('  ✓ v-store-safe: حزمة هواوي بلا أي محتوى مالي — قاعدة 11.4');
+
+// ㊶ v-lab-haiku: «تجربة غير مكتملة» استمرت — سونيت أبطأ من إكمال صفحة غنية
+// ضمن المهلة. هايكو 4.5 (أسرع ~3×) يبنيها + جولة إتمام تلقائية عند الانقطاع.
+{
+  const eduL = fs.readFileSync(path.join(__dirname, '../api/edu.js'), 'utf8');
+  assert.ok(eduL.includes('v-lab-haiku') && eduL.includes("EDU_LAB_MODEL || 'claude-haiku-4-5"), 'التجربة الحية على النموذج السريع');
+  assert.ok(eduL.includes("stop_reason === 'max_tokens'") && eduL.includes("{ role: 'assistant', content: raw }"), 'جولة إتمام prefill عند الانقطاع');
+  assert.ok(eduL.includes('const open = raw.match'), 'سور مفتوح بلا إغلاق لا يضيع الصفحة المكتملة');
+}
+console.log('  ✓ v-lab-haiku: التجربة الحية تكتمل — نموذج سريع + إتمام تلقائي');
 
 console.log('fashion locks tests passed');
