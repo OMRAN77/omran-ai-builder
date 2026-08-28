@@ -367,6 +367,9 @@ console.log('  ✓ v-tap-fast: الضغطة الأولى تدخل — لا تج�
 {
   const ch = fs.readFileSync(path.join(__dirname, '../api/_lib/chat.js'), 'utf8');
   assert.ok(ch.includes('v-recipe-card') && ch.includes('سؤال طبخ أو وصفة'), 'قاعدة الوصفات في الميثاق المتصدر');
+  // v-plan-labels: «غرفة نوم» داخل المخطط المولّد طلعت حروفًا مكسورة —
+  // تسميات المخططات والرسوم إنجليزية حصرًا والشرح العربي في النص.
+  assert.ok(ch.includes('v-plan-labels') && ch.includes('ممنوع أي حرف عربي داخل الصورة'), 'تسميات المخططات إنجليزية حصرًا');
   // v-recipe-ideas: كل وصفة تختم بتنويعات كأزرار تُضغط (فكرة عمران بدل قسم كامل).
   assert.ok(ch.includes('v-recipe-ideas') && ch.includes('[[OPT]]نسخة بالباستا'), 'الوصفة تختم باقتراحات أزرار');
   assert.ok(ch.includes('روابط موقعين للطبخ أو أكثر'), 'موقعا طبخ على الأقل في الرد');
