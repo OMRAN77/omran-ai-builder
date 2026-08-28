@@ -144,6 +144,9 @@ async function __safeJson(res){
     }
 
     btnGenerate.disabled = true;
+    /* v-fashion-show: الحاوية fashionAiResultWrap كانت تبقى display:none —
+       الصورة تتولد وتختفي داخلها («الصور ما تطلع»). تُدار مع الصورة معًا. */
+    if(resultWrap) resultWrap.style.display = 'none';
     resultEl.style.display = 'none';
     downloadEl.style.display = 'none';
     baHide();
@@ -1111,6 +1114,9 @@ async function __safeJson(res){
     }
 
     btnGenerate.disabled = true;
+    /* v-fashion-show: الحاوية fashionAiResultWrap كانت تبقى display:none —
+       الصورة تتولد وتختفي داخلها («الصور ما تطلع»). تُدار مع الصورة معًا. */
+    if(resultWrap) resultWrap.style.display = 'none';
     resultEl.style.display = 'none';
     downloadEl.style.display = 'none';
     favSaveBtn.style.display = 'none';
@@ -1142,7 +1148,9 @@ async function __safeJson(res){
       }
       const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
       resultEl.src = dataUrl;
+      if(resultWrap) resultWrap.style.display = 'block'; /* v-fashion-show */
       resultEl.style.display = 'block';
+      try{ resultEl.scrollIntoView({ behavior:'smooth', block:'center' }); }catch(err){ __swallow(err, 'fashion:scroll'); }
       downloadEl.href = dataUrl;
       downloadEl.style.display = 'block';
       favSaveBtn.style.display = 'block';
@@ -1287,7 +1295,7 @@ async function __safeJson(res){
             cell.style.borderColor = '#d4af37';
             cell.style.boxShadow = '0 8px 22px -12px rgba(212,175,55,.55)';
             const h = cell.querySelector('.fashionPickHint'); if(h) h.textContent = '✓ اختيارك';
-            resultEl.src = r.dataUrl; resultEl.style.display = 'block';
+            resultEl.src = r.dataUrl; if(resultWrap) resultWrap.style.display = 'block'; resultEl.style.display = 'block'; /* v-fashion-show */
             downloadEl.href = r.dataUrl; downloadEl.style.display = 'block';
             favSaveBtn.style.display = 'block';
           };
