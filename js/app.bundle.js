@@ -26168,32 +26168,40 @@ if(document.readyState === 'loading'){
     if (!ok) return;
 
     setResult('');
+    /* v-eye-hint: التعليمة كانت صوتية فقط (#vgLive مقصوص لقارئات الشاشة) —
+       جوال صامت = مستخدم يبدّل الوضع ولا يرى شيئًا فيظنه معطوبًا (شكوى
+       عمران: «القراءة وما بعدها لا يعمل»). الآن تظهر مكتوبة في شريط الحالة. */
     if (mode === 'describe') {
       startLoop();
+      setStatus(t('أراقب وأصف تلقائيًا — والمس الشاشة لسؤال فوري.', 'Watching and describing — tap the screen to ask now.'));
       announce(t(
         'وضع وصف المحيط. حرّك الهاتف ببطء وسأصف لك ما يتغيّر. اضغط على الشاشة لسؤال فوري.',
         'Describe mode. Move slowly and I will describe what changes. Tap the screen to ask now.'
       ), true);
     } else if (mode === 'read') {
       stopLoop();
+      setStatus(t('👆 وجّه الكاميرا إلى النص ثم المس الشاشة لألتقط وأقرأ.', '👆 Point at the text, then tap the screen to capture.'));
       announce(t(
         'وضع القراءة. وجّه الكاميرا إلى النص ثم اضغط على الشاشة.',
         'Read mode. Point at the text, then tap the screen.'
       ), true);
     } else if (mode === 'translate') {
       stopLoop();
+      setStatus(t('👆 وجّه الكاميرا إلى أي نص ثم المس الشاشة وسأترجمه.', '👆 Point at any text, then tap the screen to translate.'));
       announce(t(
         'وضع الترجمة. وجّه الكاميرا إلى أي نص — لافتة أو قائمة أو عبوة — ثم اضغط على الشاشة وسأترجمه لك.',
         'Translate mode. Point at any text — a sign, menu or package — then tap the screen and I will translate it.'
       ), true);
     } else if (mode === 'ask') {
       stopLoop();
+      setStatus(t('👆 المس الشاشة، أو اضغط زر الميكروفون واسأل بصوتك.', '👆 Tap the screen, or press the mic button and ask by voice.'));
       announce(t(
         'وضع السؤال. وجّه الكاميرا إلى أي شيء ثم اضغط على الشاشة، أو اضغط زر الميكروفون واسأل بصوتك.',
         'Ask mode. Point at anything then tap the screen, or press the microphone button and ask by voice.'
       ), true);
     } else if (mode === 'steps') {
       startLoop();
+      setStatus(t('أرشدك تلقائيًا خطوة بخطوة — أرني ما بين يديك.', 'Guiding you step by step — show me your hands.'));
       announce(t(
         'وضع الإرشاد خطوة بخطوة. أرني ما بين يديك وسأرشدك.',
         'Step by step mode. Show me your hands and I will guide you.'
