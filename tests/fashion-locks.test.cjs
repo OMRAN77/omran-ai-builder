@@ -316,8 +316,11 @@ console.log('  ✓ v-or-models: قوائم OpenRouter حية ومهاجرة');
 // 12-25 ثانية، وكاتب وهمي 57 حرفًا/ثانية يضيف 26 ثانية لرد عادي.
 {
   const at = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
-  assert.ok(at.includes('v-search-race') && at.includes('Promise.race'), 'البحث الاستباقي في سباق لا انتظار مفتوح');
-  assert.ok(at.includes('__raceCap') && at.includes('3500'), 'سقف السباق 3.5 ثانية للمحادثة العادية');
+  assert.ok(at.includes('v-one-brain') && !at.includes('smartMaybeSearch(text'), 'v-one-brain: لا اعتراض بحث في العميل — النموذج يقرر');
+  const ct18 = fs.readFileSync(path.join(__dirname, '../js/app-18-chat-tools.js'), 'utf8');
+  assert.ok(ct18.includes('Array.isArray(ev.sources)') && ct18.includes('sources: __srcAcc'), 'بطاقات المصادر من بحث النموذج عبر البث');
+  const chOB = fs.readFileSync(path.join(__dirname, '../api/_lib/chat.js'), 'utf8');
+  assert.ok(chOB.includes("send({ sources: __srcs })") && !chOB.includes('prepareTurn('), 'الخادم يبث المصادر ولا يبحث استباقيًا');
   assert.ok(at.includes('v-reveal-fast') && at.includes('__revealStep'), 'الكشف التدريجي تكيفي يلحق البث');
   assert.ok(!at.includes('REVEAL_CHARS_PER_TICK = 2'), 'وتيرة 57 حرفًا/ثانية القديمة لا تعود');
 }

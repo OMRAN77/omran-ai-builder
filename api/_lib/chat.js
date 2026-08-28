@@ -895,34 +895,10 @@ module.exports = async (req, res) => {
   // v-live-gate: كان يعمل على كل رسالة (مرشّحه «غير محسوم → ابحث») فيحجز ٤
   // ثوانٍ حتى من «اشرح لي كذا» — والنموذج يملك web_search أصلًا. الآن يعمل
   // فقط عند إشارة حيّة صريحة؛ البقية تتكفّل بها أدوات النموذج نفسه.
-  // v-chat-speed: «اليوم/الآن/حالي/أحدث/آخر» كانت تشعل البحث الاستباقي في
-  // رسائل عادية كثيرة فتحجز حتى ٤ ثوانٍ بلا داعٍ — بقيت النوايا الحيّة الصريحة
-  // فقط، والنموذج يملك web_search لكل ما سواها.
-  const LIVE_EAGER_RE = /سعر|أسعار|اسعار|بكم|طقس|الجو\b|خبر|أخبار|اخبار|عاجل|نتيجة|مباراة|مواقيت|صلاة|أذان|دوام|عروض|تخفيض|سهم|دولار|ذهب|بيتكوين|price|news|weather|score/i;
-  let liveTurn = null;
-  if (process.env.LIVE_ANSWERS === '1' && !quietSocialTurn && lastUser && lastUser.content
-      && LIVE_EAGER_RE.test(lastUser.content)) {
-    try {
-      const { prepareTurn } = require('./live-answers.js');
-      const { makeDeps } = require('./live-deps.js');
-      const deps = makeDeps();
-      const memFacts = accountMemory
-        ? accountMemory.split('\n').filter(function (l) { return l.startsWith('- '); }).map(function (l) { return l.slice(2); }).slice(0, 5)
-        : [];
-      // v-chat-fast: قِيس بالمِجسّ أنّ هذا البحث الاستباقي يحجز أوّل كلمة ١٧
-      // ثانية حين يتعثّر مزوّدوه ثم يعود صفر مصادر. سقف صارم: إن لم يُنجز خلال
-      // ٤ ثوانٍ يُترك والنموذج يبحث بأدواته — البثّ لا ينتظر بحثًا متعثّرًا.
-      // v-chat-speed: السقف ٤٠٠٠→١٨٠٠ms — بحث لا يلحق خلال ثانيتين يُترك
-      // للنموذج وأدواته؛ أول كلمة أهم من مصادر متأخرة.
-      liveTurn = await Promise.race([
-        prepareTurn(lastUser.content, deps, { memoryFacts: memFacts, now: new Date() }),
-        new Promise(function (resolve) { setTimeout(function () { resolve(null); }, 1800); }),
-      ]);
-    } catch (e) { console.warn('[live-answers]', e && e.message); }
-  }
-  const liveNote = (liveTurn && liveTurn.searched && liveTurn.sources.length)
-    ? '\n\n[مصادر حيّة محقونة في رسالة المستخدم]: الرسالة الأخيرة تحتوي <مصادر> من بحث حيّ استباقي. اعتمد عليها في الحقائق المتغيّرة وأشر إليها بالأرقام [1] [2]. ما لم تذكره المصادر لا تخترعه. لا تزال أدواتك (web_search) متاحة إن احتجت تفصيلًا إضافيًا. ومع ذلك: أجب بشخصيتك وبصمتك لا كنشرة نتائج — جملة افتتاحية حيّة فيها حضور، ثم المعلومات مرتّبة.'
-    : '';
+  // v-one-brain: طبقة البحث الاستباقي في الخادم حُذفت كليًا بقرار المالك —
+  // عقل واحد: النموذج نفسه يقرر متى يبحث بأداته web_search. لا حقن مسبق،
+  // لا سباق مهلات، لا بحث مزدوج.
+  const liveNote = '';
 
   // نستبعد نسخة الذاكرة التي أرسلها عميل قديم كي لا تتكرر أو تتعارض مع الحساب.
   const sysParts = messages
@@ -953,18 +929,9 @@ module.exports = async (req, res) => {
   if (!convo.length) { send({ error: 'Missing user message' }); res.end(); return; }
 
   // ─── live-answers: استبدل رسالة المستخدم الأخيرة بالنسخة المسنودة بالمصادر ───
-  if (liveTurn && liveTurn.searched && liveTurn.sources.length && convo.length) {
-    var lastIdx = convo.length - 1;
-    if (convo[lastIdx].role === 'user' && typeof convo[lastIdx].content === 'string') {
-      convo[lastIdx] = { role: 'user', content: liveTurn.userMessage };
-    }
-  }
 
   // (الترويسات وsend فُتحا مبكرًا أعلاه — v-fast-headers)
   // ─── live-answers: أبلغ العميل بالمصادر المكتشفة ───
-  if (liveTurn && liveTurn.searched && liveTurn.sources.length) {
-    send({ status: '🔍 بحثتُ مسبقًا في ' + liveTurn.sources.length + ' مصادر…' });
-  }
 
   try {
     // ثمان خطوات لا خمس وعشرين: المحادثة ليست بناءً طويلًا، وكلّ خطوة استدعاء
@@ -1117,6 +1084,23 @@ module.exports = async (req, res) => {
           result = 'فشل تنفيذ الأداة: ' + String((toolErr && toolErr.message) || toolErr).slice(0, 150);
         }
         send({ status: '↳ ' + trailLine(cb.name, input, result) });
+        // v-one-brain: بطاقات «المصادر» كانت تأتي من طبقة البحث المحذوفة —
+        // الآن تُستخرج من نتيجة أداة البحث نفسها وتُبثّ للعميل ليرسمها.
+        if (cb.name === 'web_search') {
+          const __srcs = [];
+          const __seen = new Set();
+          const __uRe = /https?:\/\/[^\s)\]»"'<>]+/g;
+          let __um;
+          while ((__um = __uRe.exec(String(result || ''))) && __srcs.length < 8) {
+            try {
+              const __host = new URL(__um[0]).hostname.replace(/^www\./, '');
+              if (__seen.has(__host)) continue;
+              __seen.add(__host);
+              __srcs.push({ url: __um[0], title: __host });
+            } catch (e) { /* رابط مشوّه في النص — يُتجاهل */ }
+          }
+          if (__srcs.length) send({ sources: __srcs });
+        }
         return { cb, result };
       }));
       const toolResults = [];
