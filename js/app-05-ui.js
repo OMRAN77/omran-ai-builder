@@ -50,6 +50,70 @@ function msgDownloadBlob(blob, filename){
 function msgEscapeHtml(str){
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+/* v-pdf-file (شكوى ٢٩ أغسطس: «PDF ما يشتغل في الهاتف والكمبيوتر»):
+   مسارا «تحويل الرد/المحادثة إلى PDF» كانا يفتحان نافذة طباعة — المستخدم
+   يتوقع ملفًا ينزل مباشرة، والطباعة أصلًا ميتة داخل الأغلفة. المسار الموحد:
+   نرسم المحتوى بخط الصفحة نفسه (عربي مشكَّل صحيح عبر canvas) ثم نبنيه
+   PDF بصفحات A4 وننزله بمسار الحفظ الموحد. الطباعة تبقى احتياطًا أخيرًا. */
+let __omranJsPdfLoading = null;
+function omranLoadJsPdf(){
+  if(window.jspdf && window.jspdf.jsPDF) return Promise.resolve();
+  if(__omranJsPdfLoading) return __omranJsPdfLoading;
+  const load = (src) => new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = resolve; s.onerror = () => reject(new Error('load-failed'));
+    document.head.appendChild(s);
+  });
+  __omranJsPdfLoading = load('/js/vendor/jspdf.umd.min.js?v=1')
+    .catch(() => load('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'))
+    .catch((e) => { __omranJsPdfLoading = null; throw e; });
+  return __omranJsPdfLoading;
+}
+let __omranH2iLoading = null;
+function omranLoadHtmlToImage(){
+  if(window.htmlToImage && window.htmlToImage.toCanvas) return Promise.resolve();
+  if(__omranH2iLoading) return __omranH2iLoading;
+  __omranH2iLoading = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = '/js/vendor/html-to-image.js?v=1';
+    s.onload = resolve; s.onerror = () => { __omranH2iLoading = null; reject(new Error('load-failed')); };
+    document.head.appendChild(s);
+  });
+  return __omranH2iLoading;
+}
+async function omranExportHtmlAsPdfFile(bodyHtml, opts){
+  opts = opts || {};
+  const holder = document.createElement('div');
+  holder.dir = opts.rtl === false ? 'ltr' : 'rtl';
+  holder.style.cssText = 'position:fixed; left:-12000px; top:0; width:794px; background:#ffffff; color:#111; padding:40px 44px; box-sizing:border-box; line-height:1.9; font-size:15px;';
+  holder.style.fontFamily = opts.fontFamily || "'Tajawal', Tahoma, Arial, sans-serif";
+  holder.innerHTML = bodyHtml;
+  document.body.appendChild(holder);
+  try{
+    await Promise.all([omranLoadJsPdf(), omranLoadHtmlToImage()]);
+    try{ if(document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]); }catch(e){ __swallow(e, 'pdf:fonts-wait'); }
+    const canvas = await window.htmlToImage.toCanvas(holder, { backgroundColor: '#ffffff', pixelRatio: 2 });
+    if(!canvas.width || !canvas.height) throw new Error('empty-canvas');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+    const pw = pdf.internal.pageSize.getWidth();
+    const ph = pdf.internal.pageSize.getHeight();
+    const pageHpx = Math.floor(canvas.width * (ph / pw));
+    let y = 0, first = true;
+    while(y < canvas.height){
+      const sliceH = Math.min(pageHpx, canvas.height - y);
+      const slice = document.createElement('canvas');
+      slice.width = canvas.width; slice.height = sliceH;
+      slice.getContext('2d').drawImage(canvas, 0, y, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+      if(!first) pdf.addPage();
+      pdf.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pw, (sliceH / canvas.width) * pw);
+      first = false; y += sliceH;
+    }
+    await omranSaveBlob(pdf.output('blob'), opts.fileName || 'omran-ai.pdf');
+  } finally {
+    holder.remove();
+  }
+}
 function msgPdfFontSpec(){
   const fallback = {family:"'Tajawal'", google:'', line:1.7};
   try{
@@ -98,10 +162,15 @@ function exportReplyAsPdf(text){
   if(pdfBridge){
     try{ pdfBridge.postMessage({ html, name: 'omran-ai.pdf' }); return; }catch(e){ __swallow(e, 'ui:app-05-ui#1-app'); }
   }
-  const w = window.open('', '_blank');
-  if(!w) return;
-  w.document.open(); w.document.write(html); w.document.close();
-  msgPrintAfterFont(w, pdfFont.family, 'ui:app-05-ui#1');
+  /* v-pdf-file: ملف PDF ينزل مباشرة بدل نافذة الطباعة — الطباعة احتياط أخير */
+  const inner = '<div style="white-space:pre-wrap; word-break:break-word; line-height:' + font.line + ';">' + msgEscapeHtml(text) + '</div>';
+  omranExportHtmlAsPdfFile(inner, { fontFamily: pdfFont.family, fileName: 'omran-ai.pdf' }).catch((e) => {
+    __swallow(e, 'ui:app-05-ui#1-file');
+    const w = window.open('', '_blank');
+    if(!w) return;
+    w.document.open(); w.document.write(html); w.document.close();
+    msgPrintAfterFont(w, pdfFont.family, 'ui:app-05-ui#1');
+  });
 }
 function exportReplyAsWord(text){
   const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>عمران AI</title></head><body dir="rtl" style="font-family:Tahoma,Arial,sans-serif; line-height:2; white-space:pre-wrap;">' + msgEscapeHtml(text) + '</body></html>';
