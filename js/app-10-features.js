@@ -646,7 +646,11 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
     if(bt){
       const imgSrc = isAr ? 'icons/brand-ar.png' : 'icons/brand-en.png';
       const imgAlt = isAr ? 'عمران Ai' : 'Omran Ai';
-      bt.innerHTML = '<img src="' + imgSrc + '" alt="' + imgAlt + '" class="brandImg">';
+      /* v-brand-stable (شكوى ٢٩ أغسطس: الشعار يتحرك عند التحديث): أبعاد
+         الصورة تُعلن مسبقًا فيحجز المتصفح مكانها قبل تحميلها — لا قفزة.
+         النِّسب من ملفات PNG الفعلية: عربي 1203×400، إنجليزي 1534×400. */
+      const imgW = isAr ? 126 : 161;
+      bt.innerHTML = '<img src="' + imgSrc + '" alt="' + imgAlt + '" class="brandImg" width="' + imgW + '" height="42">';
     }
   };
   syncBrand();
