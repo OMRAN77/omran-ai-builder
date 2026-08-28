@@ -202,8 +202,8 @@ console.log('  ✓ v-chat-vision: تحليل الصور على نفس العقل
 
 // ⑲ v-physical-design: تصميم الأشياء المادية = صورة + زبدة، لا جدار مواصفات.
 const chatSrv19 = fs.readFileSync(path.join(__dirname, '../api/_lib/chat.js'), 'utf8');
-assert.ok(chatSrv19.includes('v-physical-design') && chatSrv19.includes('PHYSICAL_DESIGN_NOTE'), 'قاعدة التصميم المادي موجودة');
-assert.ok(chatSrv19.includes('+ IMAGE_TOPICS_NOTE + PHYSICAL_DESIGN_NOTE + DEALS_NOTE'), 'القاعدة موصولة في نظام أدوار الأدوات');
+// v-clean-slate: قاعدة التصميم المادي فُصلت — النموذج يقرر الرسم بطبيعته وأداته.
+assert.ok(!/baseSystem[^;]*PHYSICAL_DESIGN_NOTE/.test(chatSrv19), 'v-clean-slate: لا حقن قاعدة تصميم في النظام');
 assert.ok(chatSrv19.includes('ممنوع منعًا باتًا جدار المواصفات الطويل'), 'جدار المواصفات ممنوع إلا بطلب صريح');
 console.log('  ✓ v-physical-design: التصميم يُرى قبل أن يُقرأ');
 
@@ -330,8 +330,8 @@ console.log('  \u2713 v-chat-visible-speed: لا حجز قبل النموذج و
 // التفسير الديني لا تموت بموت مزوّد واحد.
 {
   const ch = fs.readFileSync(path.join(__dirname, '../api/_lib/chat.js'), 'utf8');
-  assert.ok(ch.includes('DREAM_RE') && ch.includes('التفسير عند ابن سيرين والنابلسي'), 'قاعدة تفسير الأحلام موجودة');
-  assert.ok(ch.includes('DREAM_RE.test(String(lastUser.content'), 'القاعدة تُحقن عند سؤال الحلم');
+  // v-clean-slate: قاعدة الأحلام فُصلت — النموذج يفسر بطبيعته المدربة.
+  assert.ok(!/baseSystem[^;]*DREAM_NOTE/.test(ch), 'v-clean-slate: لا حقن قاعدة أحلام في النظام');
   const st = fs.readFileSync(path.join(__dirname, '../js/app-12-studios.js'), 'utf8');
   assert.ok(st.includes('v-religion-rescue') && st.includes('callAIWithFallback(messages, onDelta)'), 'التفسير الديني على سلسلة الاحتياط الكاملة');
 }

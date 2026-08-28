@@ -3285,7 +3285,10 @@ function __showImgLoading(el, ar, en){
     } else if(isCasualCheckIn(text)){
       __sys = 'هذا سؤال حال ضمن محادثة مستمرة، وليس تحية جديدة. أجب عن حالك بدفء وحضور — جملتان أو ثلاث فيها روح — واسأله عن حاله أو يومه بسؤال واحد طبيعي. لا تبدأ بتحية جديدة، ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق، ولا تلتزم صيغة محفوظة.';
     }
-    const apiMessages = [{role: 'system', content: __sys}];
+    /* v-clean-slate: __sys (كتاب قواعد العميل الثابت) يُوسم static — مسار العقل
+       الواحد يرشّحه (هوية النظام هناك من الخادم القصير)، والمسار الاحتياطي
+       القديم يبقى عليه. التوجيهات السياقية لكل دور (تحية، بناء، صورة) تمر. */
+    const apiMessages = [{role: 'system', content: __sys, __static: true}];
     // 🤝 v345: المستخدم وافق على عرض بناء قدّمه المزود في رده السابق — يبنيه الآن كاملًا.
     if(window.__buildOfferApproved){
       apiMessages.push({role: 'system', content: 'BUILD-OFFER APPROVAL (highest priority): In your PREVIOUS assistant message you offered to build a specific tool/app for the user and asked permission to start. The user has just approved. Build EXACTLY the tool/app you offered in that previous message NOW — completely, as ONE working single-file ```html app in this reply. Do NOT re-explain, do NOT repeat your earlier advice, do NOT ask again, and NEVER return to any earlier request that was rejected. Just build the offered tool fully.'});
@@ -4203,7 +4206,7 @@ DESIGN RULES (non-negotiable):
       try{
         let __ct = null;
         if(__toolsWillRun){
-          try{ __ct = await window.callChatWithTools(apiMessages, onDelta, __effProv); }
+          try{ __ct = await window.callChatWithTools(apiMessages.filter(m => !m.__static), onDelta, __effProv); }
           catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; __swallow(e, 'chat:tools'); }
         }
         if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; }
