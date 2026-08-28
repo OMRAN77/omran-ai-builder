@@ -21324,6 +21324,9 @@ async function __safeJson(res){
 })();
 /* ---------- 📈 Stocks (Twelve Data, server-side owner key) ---------- */
 (function(){
+  /* v-store-safe: حزمة AppGallery لا تلمس أي بيانات مالية إطلاقًا —
+     لا شريط ولا صفحة ولا نداء أسعار واحد (قاعدة هواوي 11.4). */
+  if(document.documentElement.classList.contains('store-safe')) return;
   const modal = $('#stocksModal');
   const btnOpen = $('#btnStocks');
   if(!modal || !btnOpen) return;

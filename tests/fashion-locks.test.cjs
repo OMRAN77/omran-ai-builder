@@ -482,4 +482,18 @@ console.log('  ✓ v-edu-questions: لا بتر ولا درس بلا أسئلة 
 }
 console.log('  ✓ v-err-human: لا Load failed خام — عربي واضح وإرشاد');
 
+// ㊵ v-store-safe: رفض AppGallery 11.4 (عملات/كريبتو = خدمة مالية منظمة) —
+// حزمة هواوي تدخل بـ?store=huawei فتختفي كل المالية ولا يُطلق نداء أسعار
+// واحد؛ العلامة تُحفظ، والويب/أبل كاملان بلا تغيير.
+{
+  const sd2 = fs.readFileSync(path.join(__dirname, '../js/selfdiag.js'), 'utf8');
+  assert.ok(sd2.includes('v-store-safe') && sd2.includes("classList.add('store-safe')"), 'بوابة العلامة في selfdiag المبكر');
+  assert.ok(sd2.includes("localStorage.setItem('aiapp_store'"), 'العلامة تبقى بعد أول فتحة');
+  const tk3 = fs.readFileSync(path.join(__dirname, '../css/tokens.css'), 'utf8');
+  assert.ok(tk3.includes('html.store-safe #stockTicker') && tk3.includes('html.store-safe #stocksModal'), 'كل الواجهات المالية مخفية');
+  const st13 = fs.readFileSync(path.join(__dirname, '../js/app-13-stocks-init.js'), 'utf8');
+  assert.ok(st13.includes("contains('store-safe')) return;"), 'محرك الأسهم لا يعمل إطلاقًا — صفر نداءات أسعار');
+}
+console.log('  ✓ v-store-safe: حزمة هواوي بلا أي محتوى مالي — قاعدة 11.4');
+
 console.log('fashion locks tests passed');
