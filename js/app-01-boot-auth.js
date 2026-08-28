@@ -666,10 +666,27 @@ const $ = s => document.querySelector(s);
         showOverlay();
       };
     }
+    /* v-auth-optional-3 (أمر عمران ٢٩ أغسطس): الاسم أيضًا يُحذف من الهيدر —
+       هويّة الحساب والخروج صارا في الإعدادات → حسابي، وزر الإضاءة يأخذ
+       مكان الاسم في زاوية الهيدر تلقائيًا. */
+    const acctNameWrap = $('#acctSignedInAs');
+    const acctNameEl = $('#acctSignedInAsName');
+    if(acctNameWrap){
+      acctNameWrap.style.display = loggedIn ? 'flex' : 'none';
+      if(acctNameEl) acctNameEl.textContent = loggedIn ? (authGet('aiapp_username') || '') : '';
+    }
+    const acctLogoutBtn = $('#acctLogoutBtn');
+    if(acctLogoutBtn){
+      acctLogoutBtn.style.display = loggedIn ? 'block' : 'none';
+      acctLogoutBtn.onclick = () => {
+        try{ const sd = document.getElementById('settingsDialog'); if(sd && sd.close) sd.close(); }catch(e){ __swallow(e, 'auth:acct-logout#close-settings'); }
+        doLogout();
+      };
+    }
     const headerUserBtn = $('#btnHeaderUser');
     const headerUserDD = $('#headerUserDropdown');
     if(headerUserBtn){
-      headerUserBtn.style.display = loggedIn ? 'inline-flex' : 'none';
+      headerUserBtn.style.display = 'none';
       const nm = $('#headerUserName');
       if(nm) nm.textContent = (authGet('aiapp_username') || '');
       // v444: صورة المستخدم الحقيقية في زر الهيدر
