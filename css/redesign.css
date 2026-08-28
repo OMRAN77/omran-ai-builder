@@ -149,7 +149,9 @@ html.mobile-ui #omranBelowComposer{display:none !important;}
 }
 
 /* ---------------- Mobile ---------------- */
-#omranBottomNav{display:none; position:fixed; bottom:0; left:0; right:0; z-index:50; background:rgba(14,14,14,.97); backdrop-filter:blur(14px); border-top:1px solid var(--omLine); padding:5px 2px calc(4px + env(safe-area-inset-bottom,0px));}
+/* v-nav-top: الأدراج z:60 والخلفية z:55 كانتا تدفنان الشريط (z:50) — أي ضغطة
+   على التبويبات والدُّرج مفتوح كانت تضيع، فيضطر عمران يضغط مرتين وثلاث. */
+#omranBottomNav{display:none; position:fixed; bottom:0; left:0; right:0; z-index:70; background:rgba(14,14,14,.97); backdrop-filter:blur(14px); border-top:1px solid var(--omLine); padding:5px 2px calc(4px + env(safe-area-inset-bottom,0px));}
 .omNavBtn{flex:1 1 0; display:flex; flex-direction:column; align-items:center; gap:2px; background:none; border:none; padding:5px 0; color:var(--muted); font-family:inherit; font-size:9.5px; cursor:pointer;}
 .omNavBtn.active{color:var(--accent-ink);}
 @media (max-width:860px){

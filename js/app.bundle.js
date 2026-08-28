@@ -6016,7 +6016,9 @@ function renderCodeAndPreview(){
     }
     return;
   }
-  codeEl.value = cur.code;
+  /* v-tap-fast: إسناد نص ضخم (مئات الكيلوبايت) لخانة الكود مع كل إعادة رسم
+     كان يكلّف تخطيطًا كاملًا — نسنده فقط عند تغيّره فعلًا. */
+  if(codeEl.value !== cur.code) codeEl.value = cur.code;
   emptyState.style.display = 'none';
   if(cur.codeType === 'python'){
     previewFrame.style.display = 'none';
@@ -9976,8 +9978,17 @@ $('#prompt').addEventListener('input', window.__updateSendReady);
 (function(){
   const p = $('#prompt');
   function autoGrow(){
+    /* v-tap-fast: قياس scrollHeight يعيد تخطيط الصفحة كلها مع كل حرف —
+       سطر واحد قصير والارتفاع أصلًا على الأدنى → لا قياس إطلاقًا. */
+    var v = p.value;
+    if(p.__omMinH && v.indexOf('\n') === -1 && v.length < 20){
+      if(p.style.height !== p.__omMinH) p.style.height = p.__omMinH;
+      return;
+    }
     p.style.height = 'auto';
-    p.style.height = Math.min(p.scrollHeight, 110) + 'px';
+    var h = Math.min(p.scrollHeight, 110) + 'px';
+    p.style.height = h;
+    if(v === '') p.__omMinH = h;
   }
   p.addEventListener('input', autoGrow);
   window.__promptAutoGrow = autoGrow;

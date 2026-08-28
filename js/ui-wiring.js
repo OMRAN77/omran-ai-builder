@@ -129,6 +129,11 @@
       var k = b.getAttribute('data-omnav');
       document.querySelectorAll('.omNavBtn').forEach(function(x){ x.classList.remove('active'); });
       b.classList.add('active');
+      /* v-nav-top: الشريط صار فوق الأدراج — تبويب غير درجيّ يغلق أي درج مفتوح
+         أولًا حتى لا ينفّذ فعله خلف الدُّرج. (chats/files تبديلهما يتكفّل بذلك) */
+      if(k !== 'chats' && k !== 'files'){
+        try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(e){ __swallow(e, "wiring:nav-top"); }
+      }
       var f = NAV[k]; if(f) f();
     });
     /* v-ios-tap-fallback: بعض حالات سفاري iOS لا تولّد نقرة click بعد اللمس
