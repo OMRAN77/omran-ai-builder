@@ -111,24 +111,11 @@ function languageRules(lang, nativeLang, examLang) {
     + (lang ? ' (وإن كان المحتوى نصًا قصيرًا غامض اللغة فاستخدم اللغة: ' + lang + ')' : '') + '.';
 }
 
-async function callClaude(apiKey, contentBlocks, lang, nativeLang, examLang, stage) {
-  const level = (stage || 'university') === 'university' ? 'جامعي' : 'مدرسي مناسب لمرحلة: ' + stage;
-  const sys = 'أنت مساعد تعليمي خبير. يُرسل إليك محتوى محاضرة (نص أو PDF أو صور). '
-    + 'حلل المحتوى وأعد فقط JSON صالحًا بلا أي نص خارجه وبلا أسوار كود، بهذا الشكل بالضبط:\n'
-    + '{"title":"عنوان قصير للدرس","subject":"اسم المادة المقترح (كلمة أو كلمتان)","summary":"ملخص منظم بصيغة ماركداون (عناوين، نقاط، **غامق**) يغطي كل الأفكار المهمة","flashcards":[{"q":"سؤال","a":"جواب"}],"quiz":[{"q":"سؤال","options":["أ","ب","ج","د"],"correct":0,"explain":"شرح قصير","level":"basic","section":"عنوان القسم في الملخص"}],"written":[{"q":"سؤال مقالي قصير","rubric":["نقطة يجب أن ترد في الإجابة الكاملة"],"level":"mid","section":"عنوان القسم في الملخص"}]}\n'
-    + 'القواعد:\n'
-    + '- flashcards بين 8 و14 بطاقة.\n'
-    + '- quiz = 15 سؤالًا بالضبط: 5 بمستوى "basic" و5 بمستوى "mid" و5 بمستوى "advanced". لكل سؤال 4 خيارات بالضبط و"correct" رقم من 0 إلى 3.\n'
-    + '- معنى المستويات (مهم جدًا — الفرق في نوع التفكير المطلوب لا في التعقيد اللغوي):\n'
-    + '  basic = استدعاء وتذكّر: تعريف، مصطلح، صيغة، حقيقة وردت نصًا في المحاضرة.\n'
-    + '  mid = تطبيق: يطبّق الطالب قاعدة أو خطوة على حالة مشابهة لما ورد في المحاضرة.\n'
-    + '  advanced = فهم وتحليل: لماذا؟ ماذا يحدث لو تغيّر شرط؟ مقارنة، استنتاج، أو حالة لم ترد حرفيًا في المحاضرة لكنها تُشتق منها.\n'
-    + '- ممنوع أن يكون سؤال advanced مجرد سؤال basic بصياغة أطول أو بأرقام أكبر. إن لم تجد مادة كافية لخمسة أسئلة advanced حقيقية فأعطِ ما تجده واملأ الباقي من mid.\n'
-    + '- written = 3 أسئلة مقالية قصيرة (واحد لكل مستوى)، لكل سؤال "rubric" فيه 2 إلى 4 نقاط محدّدة يجب أن ترد في الإجابة الكاملة. النقاط ملموسة وقابلة للتحقق، لا عبارات عامة.\n'
-    + '- "section" في كل سؤال = عنوان القسم في الملخص الذي يغطي هذا السؤال، منسوخ حرفيًا من عناوين الملخص، ليُوجَّه الطالب لمراجعته عند الخطأ.\n'
-    + '- مستوى الصياغة والعمق: ' + level + '.\n'
-    + languageRules(lang, nativeLang, examLang)
-    + ' لا تكتب أي شيء خارج كائن JSON.';
+/* v-edu-split: شكوى المستخدمين «صفحة التعليم بطيئة جدًا» — التحليل كان نداءً
+   واحدًا ضخمًا (ملخص + بطاقات + اختبار + مقالي معًا) يستغرق دقيقة وأكثر.
+   الآن نداءان متوازيان على نفس المحتوى: الملخص | الأسئلة كلها — الزمن الكلي
+   يصير زمن الأطول فقط (~النصف) بنفس المحتوى حرفيًا. */
+async function anthropicJSON(apiKey, sys, contentBlocks, maxTokens) {
   const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     // v407: مهلة خاصة 120ث — التحليل التعليمي الثقيل يتجاوز مهلة الـ30ث العامة
@@ -140,7 +127,7 @@ async function callClaude(apiKey, contentBlocks, lang, nativeLang, examLang, sta
     },
     body: JSON.stringify({
       model: m,
-      max_tokens: 12000,
+      max_tokens: maxTokens,
       system: sys,
       messages: [{ role: 'user', content: contentBlocks }],
     }),
@@ -161,6 +148,42 @@ async function callClaude(apiKey, contentBlocks, lang, nativeLang, examLang, sta
   }
   const text = (data && data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
   return extractJSON(text);
+}
+async function callClaude(apiKey, contentBlocks, lang, nativeLang, examLang, stage) {
+  const level = (stage || 'university') === 'university' ? 'جامعي' : 'مدرسي مناسب لمرحلة: ' + stage;
+  const langTail = '- مستوى الصياغة والعمق: ' + level + '.\n'
+    + languageRules(lang, nativeLang, examLang)
+    + ' لا تكتب أي شيء خارج كائن JSON.';
+  const sysSummary = 'أنت مساعد تعليمي خبير. يُرسل إليك محتوى محاضرة (نص أو PDF أو صور). '
+    + 'حلل المحتوى وأعد فقط JSON صالحًا بلا أي نص خارجه وبلا أسوار كود، بهذا الشكل بالضبط:\n'
+    + '{"title":"عنوان قصير للدرس","subject":"اسم المادة المقترح (كلمة أو كلمتان)","summary":"ملخص منظم بصيغة ماركداون (عناوين، نقاط، **غامق**) يغطي كل الأفكار المهمة"}\n'
+    + langTail;
+  const sysQuestions = 'أنت مساعد تعليمي خبير. يُرسل إليك محتوى محاضرة (نص أو PDF أو صور). '
+    + 'ابنِ منه أسئلة وأعد فقط JSON صالحًا بلا أي نص خارجه وبلا أسوار كود، بهذا الشكل بالضبط:\n'
+    + '{"flashcards":[{"q":"سؤال","a":"جواب"}],"quiz":[{"q":"سؤال","options":["أ","ب","ج","د"],"correct":0,"explain":"شرح قصير","level":"basic","section":"عنوان الجزء من المحاضرة"}],"written":[{"q":"سؤال مقالي قصير","rubric":["نقطة يجب أن ترد في الإجابة الكاملة"],"level":"mid","section":"عنوان الجزء من المحاضرة"}]}\n'
+    + 'القواعد:\n'
+    + '- flashcards بين 8 و14 بطاقة.\n'
+    + '- quiz = 15 سؤالًا بالضبط: 5 بمستوى "basic" و5 بمستوى "mid" و5 بمستوى "advanced". لكل سؤال 4 خيارات بالضبط و"correct" رقم من 0 إلى 3.\n'
+    + '- معنى المستويات (مهم جدًا — الفرق في نوع التفكير المطلوب لا في التعقيد اللغوي):\n'
+    + '  basic = استدعاء وتذكّر: تعريف، مصطلح، صيغة، حقيقة وردت نصًا في المحاضرة.\n'
+    + '  mid = تطبيق: يطبّق الطالب قاعدة أو خطوة على حالة مشابهة لما ورد في المحاضرة.\n'
+    + '  advanced = فهم وتحليل: لماذا؟ ماذا يحدث لو تغيّر شرط؟ مقارنة، استنتاج، أو حالة لم ترد حرفيًا في المحاضرة لكنها تُشتق منها.\n'
+    + '- ممنوع أن يكون سؤال advanced مجرد سؤال basic بصياغة أطول أو بأرقام أكبر. إن لم تجد مادة كافية لخمسة أسئلة advanced حقيقية فأعطِ ما تجده واملأ الباقي من mid.\n'
+    + '- written = 3 أسئلة مقالية قصيرة (واحد لكل مستوى)، لكل سؤال "rubric" فيه 2 إلى 4 نقاط محدّدة يجب أن ترد في الإجابة الكاملة. النقاط ملموسة وقابلة للتحقق، لا عبارات عامة.\n'
+    + '- "section" في كل سؤال = عنوان قصير للجزء من المحاضرة الذي يغطيه السؤال، ليُوجَّه الطالب لمراجعته عند الخطأ.\n'
+    + langTail;
+  const [sum, qs] = await Promise.all([
+    anthropicJSON(apiKey, sysSummary, contentBlocks, 8000),
+    // فشل شقّ الأسئلة وحده لا يُسقط الدرس — الملخص يصل والأسئلة تُستولد لاحقًا.
+    anthropicJSON(apiKey, sysQuestions, contentBlocks, 6000).catch(() => null),
+  ]);
+  if (!sum || !sum.summary) return null;
+  return {
+    title: sum.title, subject: sum.subject, summary: sum.summary,
+    flashcards: (qs && Array.isArray(qs.flashcards)) ? qs.flashcards : [],
+    quiz: (qs && Array.isArray(qs.quiz)) ? qs.quiz : [],
+    written: (qs && Array.isArray(qs.written)) ? qs.written : [],
+  };
 }
 // ---------- ✍️ تصحيح إجابة مقالية مقابل معيار (نص فقط — رخيص) ----------
 // Deliberately NOT a pass/fail verdict. A student learns from "you covered X,
