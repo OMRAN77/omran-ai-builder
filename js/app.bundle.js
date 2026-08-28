@@ -9882,19 +9882,11 @@ function __convLockProvider(conv, decided, oneOff, respectExplicit, deferLock){
   return decided;
 }
 // ٦ قواعد التوجيه — الثلاث الأولى كانت موجودة، والثلاث التالية جديدة.
-const ROUTE_NEWS_RE = /آخر\s*(?:الأخبار|أخبار|المستجدات)|أخبار|اخبار|ما\s*الجديد|سعر\s|أسعار|اسعار|الدولار|الذهب|بيتكوين|البتكوين|سهم\s|الطقس|طقس\s|نتيجة\s*مباراة|من\s*فاز|latest\s*news|current\s*price|stock\s*price|weather|who\s*won/i;
-const ROUTE_TRANSLATE_RE = /ترجم|ترجملي|ترجمة|لخّص|لخص(?=\s|$|[.،!؟])|تلخيص|اختصر|translate|translation|summarize|summary|tl;dr/i;
-const ROUTE_ANALYSIS_RE = /حلّل|حلل(?=\s|$|[.،!؟])|تحليل|قارن|قارِن|مقارنة|أيهما أفضل|ايهما افضل|دراسة جدوى|اكتب تقرير|تقرير عن|analyz|analyse|compare|comparison|pros and cons/i;
-function pickSpecialtyProvider(txt){
-  const s = String(txt || '');
-  if(isCasualTurn(s)) return 'groq';
-  if(/رياضيات|معادل[ةه]|تكامل|تفاضل|مصفوف|لوغاريتم|جبر خطي|مثلثات|احتمالات|إحصاء|احصاء|مسأل[ةه] رياض|حل هذه المسأل|equation|integral|derivative|matrix|logarithm|trigonometry|probability|math problem/i.test(s)) return 'openai';   // كان deepseek — وهو مُهجَّر أصلًا في هذا الملف
-  if(/قصيد[ةه]|شعر[اً]?(?=\s|$|[.،!؟])|أبيات|ابيات|خاطر[ةه]|قص[ةه] قصير[ةه]|اكتب(?:\s+لي)?\s+قص[ةه]|رواي[ةه]|نص أدبي|رسال[ةه] عاطفي[ةه]|write (?:me )?a (?:story|poem)|poetry|short story/i.test(s)) return 'openai';
-  if(ROUTE_NEWS_RE.test(s)) return 'perplexity';        // ④ خبر/سعر/طقس → الباحث الحيّ
-  if(ROUTE_TRANSLATE_RE.test(s)) return 'gemini';       // ⑤ ترجمة/تلخيص → السريع الواسع
-  if(ROUTE_ANALYSIS_RE.test(s)) return 'openai';        // ⑥ تحليل/مقارنة/تقرير → العميق
-  return null;
-}
+/* v-one-brain: موجّه التخصصات حُذف بقرار المالك — كان يوزّع الأسئلة على
+   أربعة عقول مختلفة (سعر/خبر → perplexity بلا أدوات، ترجمة → gemini،
+   تحليل → openai) فيتجاوز العقل الواحد وميثاقه وبطاقات مصادره. كل شيء
+   الآن للعقل الواحد وأدواته. */
+function pickSpecialtyProvider(){ return null; }
 async function callAIWithFallback(messages, onDelta, preferredList){
   // 🧹 v308: تعقيم نهائي — أي base64 عملاق داخل نص أي رسالة يُستبدل بعلامة
   // قصيرة قبل الإرسال (الصور المرفقة الحقيقية تبقى في حقل images المنفصل).
@@ -16417,40 +16409,10 @@ DESIGN RULES (non-negotiable):
     if(isPureGreeting(text)){
       apiMessages.push({role: 'system', content: 'رسالة المستخدم الأخيرة تحية لفظية فقط وليست سؤالًا. رحّب به ترحيبًا حارًّا راقيًا بروح المجلس فيه حضور وشخصية بلغة المستخدم — جملة أو جملتان بلا صيغة ثابتة — واسأله سؤالًا واحدًا طبيعيًّا عن حاله أو يومه. ممنوع عرض الخدمات أو الأمثلة، وممنوع فتح موضوع سابق أو استخدام الذاكرة.'});
     }
-    // v311: أثناء تصميم إعلان (adMode مفعّل) ممنوع البحث الحي نهائيًا —
-    // تفاصيل «بيت للبيع...» تكمل التصميم ولا تتحول لبحث دوبيزل.
-    // v327: صورة مرفقة = تحليل/تصميم — ممنوع البحث الحي (كان يجيب صور بحث بلا علاقة).
-    if(!__curIsBuildTask && !cur.adMode && !cur.awaitingAdMode && !imageAttachments.length){
-      // v384: مؤشر بحث عميق — يظهر للمستخدم أن البحث جاري
-      const __deepRe384 = /بحث عميق|بحث شامل|تقرير مفصل|تحليل شامل|قارن بين|مقارنة.*بين|أفضل\s*(خيارات|بدائل|مواقع|شركات|تطبيقات)|deep research|comprehensive|detailed report|compare.*between/i;
-      let __searchIndicator = null;
-      if(__deepRe384.test(text)){
-        __searchIndicator = { role: 'assistant', content: lang === 'ar' ? '🔍 يبحث بعمق…' : '🔍 Deep searching…', _loading: true };
-        cur.messages.push(__searchIndicator);
-        renderMessages(true);
-      }
-      /* v-search-race: البحث الاستباقي كان يُنتظر كاملًا قبل نداء النموذج —
-         بمهلة 12-25 ثانية (تعليق الكود نفسه: «أطول فجوة صامتة — حتى 45ث»)،
-         وهو سبب «المحادثة 30 ثانية» الرئيسي. الآن سباق: 3.5 ثوانٍ فرصته
-         (تكفي Tavily غالبًا فتبقى بطاقات المصادر)، وبعدها ينطلق النموذج —
-         وأداته web_search تغطي ما فاته. البحث العميق الصريح وطلبات شريط
-         الصور تحتاج نتائجها فعلًا فتحتفظ بمهلتها الأوسع. */
-      const __raceCap = (__deepRe384.test(text) || (typeof __wantsImageStrip === 'function' && __wantsImageStrip(text))) ? 26000 : 3500;
-      __searchData = await Promise.race([
-        smartMaybeSearch(text, cur.messages.filter(m => m !== __searchIndicator)),
-        new Promise(res => setTimeout(() => res(null), __raceCap)),
-      ]);
-      if(__searchIndicator){
-        cur.messages = cur.messages.filter(m => m !== __searchIndicator);
-        renderMessages(true);
-      }
-      if(__searchData){
-        apiMessages.push({role: 'system', content: __searchData.note});
-        // 🔒 سؤال معلوماتي (تذكرة/سيارة/وظيفة/سعر...) = جواب نصي فقط —
-        // ممنوع منعًا باتًا بناء تطبيق/موقع/صفحة HTML أو إرجاع أي كود.
-        apiMessages.push({role: 'system', content: 'This is an INFORMATION question, NOT a build request. Reply in plain conversational text only. STRICTLY FORBIDDEN: building any app/site/booking page/HTML page or returning any code block. Just answer with the real information and links from the search results.'});
-      }
-    }
+    /* v-one-brain: طبقة البحث الاستباقي في العميل حُذفت كليًا بقرار المالك.
+       كانت تخمّن «هل هذا بحث؟» بمئات الأنماط وتحجز النموذج وتبحث مرتين —
+       الآن عقل واحد: النموذج يقرر بنفسه ويبحث بأداته، وبطاقات «المصادر»
+       تأتي من نتائج بحثه عبر حدث sources في البث. */
 
     // 📋 تقسيم المهام: للطلبات الكبيرة، نضع خطة خطوات ونتابعها حتى النهاية
     let __taskPlan = null, __planMsg = null;
@@ -17171,6 +17133,7 @@ DESIGN RULES (non-negotiable):
       // v469: Q&A system prompt مدمج في __sys — لا حاجة لـ unshift إضافي.
       let reply, providerKey, switched, requestedKey;
       let __ctUsed = false;
+      let __ctSources = null; /* v-one-brain: مصادر بحث النموذج — نطاق يبلغ موضع اللصق */
       // 💬 عقل واحد: Claude وحده يرد في النقاش العادي — الاحتياط (GPT ثم Gemini)
       // صامت ويشتغل فقط إذا Claude تعطل أو خلص حده.
       // 🛠️ ومعه يداه: النقاش العادي على Claude يمرّ بحلقة الأدوات (بحث · قراءة
@@ -17182,7 +17145,7 @@ DESIGN RULES (non-negotiable):
           try{ __ct = await window.callChatWithTools(apiMessages, onDelta, __effProv); }
           catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; __swallow(e, 'chat:tools'); }
         }
-        if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); }
+        if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; }
         else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, onDelta, __teamOrder));
       }finally{
         window.__claudeModelOverride = null;
@@ -17216,8 +17179,8 @@ DESIGN RULES (non-negotiable):
       const __ansTxt = String((code ? stripCodeFromChat(explanation) : explanation) || '').trim();
       const __clarifyQ = __ansTxt.length < 140 && /[?？؟]\s*$/.test(__ansTxt);
       cur.messages.push({role: 'assistant', content: (code ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: code || null, providerLabel, providerKey, askAllReply: false,
-        // ✅ v535: عادت المصادر والصور إلى المحادثة (إلغاء إطفاء v368).
-        sources: (!__clarifyQ && __searchData && __searchData.sources) || undefined,
+        // v-one-brain: بطاقات المصادر من بحث النموذج نفسه (حدث sources في البث).
+        sources: (!__clarifyQ && (__ctSources || (__searchData && __searchData.sources))) || undefined,
         searchImages: (__searchData && __searchData.images) || undefined});
       // 👑 الرد الاحترافي اكتمل: حدّث رصيد النقاط وأظهر خصمًا متحركًا صغيرًا.
       try{
@@ -24386,6 +24349,7 @@ window.updateVersionLabel();
     var reader = res.body.getReader();
     var dec = new TextDecoder();
     var buf = '', full = '', serverErr = null;
+    var __srcAcc = []; /* v-one-brain: مصادر بحث النموذج نفسه — لبطاقات «المصادر» */
 
     while (true) {
       var chunk = await reader.read();
@@ -24411,6 +24375,11 @@ window.updateVersionLabel();
           full = ev.patch;
           if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:patch'); } }
         }
+        if (Array.isArray(ev.sources)) {
+          ev.sources.forEach(function (s) {
+            if (s && s.url && !__srcAcc.some(function (x) { return x.url === s.url; })) __srcAcc.push(s);
+          });
+        }
         if (ev.error) serverErr = ev.error;
       }
     }
@@ -24419,7 +24388,7 @@ window.updateVersionLabel();
     // لا نصّ = لم يحدث شيء يُعرض؛ نرمي ليهبط المستدعي إلى مساره القديم.
     if (!full.trim()) throw new Error(serverErr || 'chat: empty reply');
     var __p = provider || 'claude';
-    return { reply: full, providerKey: __p, switched: false, requestedKey: __p };
+    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined };
   };
 })();
 

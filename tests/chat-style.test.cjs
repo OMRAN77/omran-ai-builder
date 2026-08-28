@@ -97,7 +97,7 @@ check(chatServer.includes('const toolTurn = !quietSocialTurn;'), 'كل دور غ
 check(!chatServer.includes('TOOL_INTENT_RE.test('), 'قائمة الكلمات البيضاء التي حجبت البحث أزيلت');
 check(chatServer.includes('countryNote(country, city)'), 'مدينة المستخدم تدخل توجيه الموقع');
 check(chatServer.includes('اعتمد فيه مدينته'), 'الأسئلة المكانية تعتمد مدينة المستخدم تلقائيًا');
-check(chatServer.includes('setTimeout(function () { resolve(null); }, 1800)'), 'البحث الاستباقي مسقوف بأقل من ثانيتين فلا يحجز أول كلمة');
+check(!chatServer.includes('prepareTurn(') && chatServer.includes('v-one-brain'), 'v-one-brain: لا بحث استباقي في الخادم — النموذج يقرر بنفسه');
 // v-chat-speed: الذاكرة تُقرأ بالتوازي مع فحص الحصة، والمحفزات العامة
 // (اليوم/الآن/حالي) خارج البحث الاستباقي.
 check(chatServer.includes('earlyMemoryP'), 'قراءة الذاكرة بالتوازي مع فحص الحصة');
@@ -117,7 +117,7 @@ check(chatServer.includes('دمج البنود بشرطات داخل سطر وا
 check(chatServer.includes('ممنوع الموافقة الآلية والتملّق'), 'التملق والموافقة الآلية ممنوعان صراحةً');
 check(chatServer.includes('function arWikiLookup') && chatServer.includes('ar.wikipedia.org'), 'ويكيبيديا العربية مصدر مرفق في سلسلة البحث');
 check(chatServer.includes('ممنوع أن تبدأ الردّ باستدعاء generate_image'), 'النص يُقرأ أولًا والصورة التوضيحية آخر الردّ');
-check(chatServer.includes('LIVE_EAGER_RE.test(lastUser.content)'), 'البحث الاستباقي خلف إشارة حية صريحة لا على كل رسالة');
+check(!chatServer.includes('LIVE_EAGER_RE'), 'v-one-brain: محفزات البحث الاستباقي أزيلت كليًا');
 // v-num-plain: «اريد ارقام للبيع» رسمت صورة ووُعظ صاحبها «بيانات غير قانونية».
 {
   const numRe = chatServer.match(/const NUM_ASK_RE = (\/.*\/i);/);
@@ -146,7 +146,7 @@ check(bundle.includes('v-clean-links') && bundle.includes(".hostname.replace(/^w
   check(searchSrc.includes('const isNumbers = !__techAsk &&') && searchSrc.includes('const isListing = isNumbers || (!__techAsk &&'), 'النية التقنية تفكّ قفل محرّك القوائم');
   check(searchSrc.includes('exclude_domains') && searchSrc.includes("__techAsk ? { exclude_domains"), 'السؤال التقني يستبعد مواقع الإعلانات المبوبة صراحةً');
 }
-check(chatServer.indexOf('v-fast-headers') > 0 && chatServer.indexOf('v-fast-headers') < chatServer.indexOf('prepareTurn('), 'البثّ يُفتح قبل الذاكرة والبحث الاستباقي فيرى المستخدم حركة فورًا');
+check(chatServer.indexOf('v-fast-headers') > 0, 'البثّ يُفتح قبل الذاكرة فيرى المستخدم حركة فورًا');
 check(chatServer.includes('function compactConversation'), 'السياق الطويل يُضغط قبل إرساله للنموذج');
 check(chatServer.includes('const convoSource = quietSocialTurn ? [lastUser] : messages'), 'الخادم لا يرسل تاريخ المواضيع في سؤال الحال');
 check(chatServer.includes('slice(0, 12000)'), 'كل رسالة لها سقف حجم يحمي جودة السياق');

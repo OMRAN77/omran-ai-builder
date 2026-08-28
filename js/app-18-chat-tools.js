@@ -87,6 +87,7 @@
     var reader = res.body.getReader();
     var dec = new TextDecoder();
     var buf = '', full = '', serverErr = null;
+    var __srcAcc = []; /* v-one-brain: مصادر بحث النموذج نفسه — لبطاقات «المصادر» */
 
     while (true) {
       var chunk = await reader.read();
@@ -112,6 +113,11 @@
           full = ev.patch;
           if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:patch'); } }
         }
+        if (Array.isArray(ev.sources)) {
+          ev.sources.forEach(function (s) {
+            if (s && s.url && !__srcAcc.some(function (x) { return x.url === s.url; })) __srcAcc.push(s);
+          });
+        }
         if (ev.error) serverErr = ev.error;
       }
     }
@@ -120,7 +126,7 @@
     // لا نصّ = لم يحدث شيء يُعرض؛ نرمي ليهبط المستدعي إلى مساره القديم.
     if (!full.trim()) throw new Error(serverErr || 'chat: empty reply');
     var __p = provider || 'claude';
-    return { reply: full, providerKey: __p, switched: false, requestedKey: __p };
+    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined };
   };
 })();
 
