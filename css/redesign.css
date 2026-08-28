@@ -244,7 +244,10 @@ html[dir="ltr"] #plusToolsPopup #btnToolsBox .omChev{transform:rotate(180deg);}
    مستطيل المحادثة أصغر وأخف، والفراغ فوق الهيدر أقل (الباقي هو المنطقة
    الآمنة للساعة والبطارية — لا يجوز البناء فوقها). */
 @media (max-width:860px){
-  header{padding-top:env(safe-area-inset-top,0px) !important; padding-bottom:6px;}
+  /* v-ios-header-drop: سقف 62px للمنطقة الآمنة — أقصى قيمة حقيقية في كل
+     الآيفونات 59px، وسفاري/WKWebView أحيانًا يضاعف env() بعد الكيبورد أو
+     الدوران فينزل الهيدر لنص الشاشة. السقف يمنع المضاعفة مهما بلغت. */
+  header{padding-top:min(env(safe-area-inset-top,0px), 62px) !important; padding-bottom:6px;}
   #inputbar{padding:2px 10px 5px;}
   #composerBox{padding:4px 8px 3px !important; border-radius:16px !important; gap:1px;}
   #prompt{min-height:20px; max-height:84px; font-size:13px; padding:4px 8px 2px;}
@@ -254,7 +257,7 @@ html[dir="ltr"] #plusToolsPopup #btnToolsBox .omChev{transform:rotate(180deg);}
   #omranBottomNav{padding:3px 2px max(2px, calc(env(safe-area-inset-bottom,0px) - 15px));}
   main{padding-bottom:calc(48px + env(safe-area-inset-bottom,0px));}
 }
-html.mobile-ui header{padding-top:env(safe-area-inset-top,0px) !important; padding-bottom:6px;}
+html.mobile-ui header{padding-top:min(env(safe-area-inset-top,0px), 62px) !important; padding-bottom:6px;}
 html.mobile-ui #omranBottomNav{padding:3px 2px max(2px, calc(env(safe-area-inset-bottom,0px) - 15px));}
 html.mobile-ui main{padding-bottom:calc(48px + env(safe-area-inset-bottom,0px));}
 html.mobile-ui #inputbar{padding:2px 10px 5px;}
@@ -266,14 +269,17 @@ html.mobile-ui #btnSend, html.mobile-ui #btnStop{width:30px; height:30px; flex:0
    iOS وتمرير الوثيقة)، والتمرير داخل المحتوى فقط، وبلا شريط سحب ظاهر. */
 @media (max-width:860px){
   html{overflow:hidden; overscroll-behavior:none; height:100%;}
-  /* iOS القديم يتجاهل overscroll-behavior — تثبيت body يقتل سحب الوثيقة نهائيًا */
-  body{overscroll-behavior:none; min-height:100%;}
+  /* iOS القديم يتجاهل overscroll-behavior — تثبيت body يقتل سحب الوثيقة نهائيًا.
+     v-ios-header-drop: أُعيد position:fixed (أُزيل ظهر ٢٨ أغسطس فبقيت الشكوى):
+     معه أي تمرير للوثيقة — حتى القفزات الأصلية من WebKit التي لا تراها JS —
+     لا يحرّك التطبيق بصريًا: الهيدر ملتصق بأعلى الشاشة دائمًا. */
+  body{overscroll-behavior:none; position:fixed; inset:0; width:100%; height:auto;}
   main, #messages, #omranHero{overscroll-behavior-y:contain;}
   *{scrollbar-width:none;}
   *::-webkit-scrollbar{width:0 !important; height:0 !important; display:none;}
 }
 html.mobile-ui{overflow:hidden; overscroll-behavior:none; height:100%;}
-html.mobile-ui body{overscroll-behavior:none; min-height:100%;}
+html.mobile-ui body{overscroll-behavior:none; position:fixed; inset:0; width:100%; height:auto;}
 html.mobile-ui main, html.mobile-ui #messages{overscroll-behavior-y:contain;}
 
 /* v-morph-btn: الخانة الأخيرة تتحول بين مها والإرسال (طلب المالك):

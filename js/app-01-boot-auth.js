@@ -70,8 +70,19 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
     const ae = document.activeElement;
     return !!(ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT' || ae.isContentEditable));
   };
+  /* v-ios-header-drop (شكوى ٢٨ أغسطس: الهيدر «ينزل» عند دخول المحادثة):
+     التخطي القديم كان يعتمد على التركيز وحده، وسفاري iOS كثيرًا ما يقفل
+     الكيبورد ويُبقي التركيز في الحقل (إملاء/سحب الكيبورد للأسفل/تسجيل صوتي)
+     — فكان الانزياح يبقى للأبد لأن المُصحِّح لا يعمل أبدًا. الآن نتخطى فقط
+     عندما يكون الكيبورد مفتوحًا فعلًا: المنفذ المرئي أقصر من النافذة بوضوح. */
+  const keyboardOpen = () => {
+    if(!inputFocused()) return false;
+    const vv = window.visualViewport;
+    if(!vv) return true; // بلا visualViewport لا نعرف حال الكيبورد — نتصرف كالسابق
+    return (window.innerHeight - vv.height) > 60;
+  };
   const reset = () => {
-    if(inputFocused()) return;
+    if(keyboardOpen()) return;
     if(window.scrollY || document.documentElement.scrollTop || document.body.scrollTop){
       window.scrollTo(0, 0);
       document.documentElement.scrollTop = 0;
@@ -79,8 +90,18 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
     }
   };
   window.addEventListener('scroll', reset, {passive:true});
-  if(window.visualViewport) window.visualViewport.addEventListener('resize', () => setTimeout(reset, 60));
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', () => setTimeout(reset, 60));
+    /* v-ios-header-drop: انزلاق المنفذ المرئي (pan) بلا resize — نصحّح بعده */
+    window.visualViewport.addEventListener('scroll', () => setTimeout(reset, 60));
+  }
   document.addEventListener('focusout', () => setTimeout(reset, 120));
+  window.addEventListener('orientationchange', () => setTimeout(reset, 250));
+  window.addEventListener('pageshow', () => setTimeout(reset, 60));
+  /* v-ios-header-drop: دخول المحادثة قد يزيح الصفحة بلا أي حدث scroll/focus
+     (إعادة رسم + قفزة WebKit صامتة) — حارس دوري رخيص (قراءة scrollY فقط،
+     لا قياس تخطيط) يعيدها خلال أقل من ثانية مهما كان مصدر الانزياح. */
+  setInterval(reset, 600);
 })();
 
 const $ = s => document.querySelector(s);
