@@ -155,6 +155,11 @@ const PHYSICAL_DESIGN_NOTE = '\n\n[تصميم الأشياء المادية — 
   '٥) طلب لاحق مثل «عطني صورة التصميم/الفكرة» بعد نقاش تصميم = استدعِ generate_image فورًا بوصف التصميم من السياق — ممنوع منعًا باتًا البحث عن صور حقيقية لتصميمٍ غير موجود في الواقع، وممنوع الرد بأنك لم تجد صورًا.';
 
 
+    // v-dream-tafsir: «فسّر حلمي» كان يرجع محاضرة نصائح نفسية — المالك يريد
+    // تفسيرًا على منهج المفسرين. القاعدة تُحقن فقط عند سؤال حلم/رؤيا.
+    const DREAM_RE = /حلمت|رأيت في المنام|بالمنام|في منامي|رؤيا|تفسير حلم|فسر.{0,12}حلم|dream(?:t| interpretation)/i;
+    const DREAM_NOTE = '\n\n[تفسير الأحلام — إلزامي في هذا الردّ]: المستخدم يطلب تفسير رؤيا. أجب تفسيرًا لا محاضرة نصائح: ١) طمأنة موجزة في سطر (الحلم ليس دليلًا ولا نبوءة). ٢) التفسير على منهج المفسرين (ابن سيرين والنابلسي): فكّك رموز الحلم المذكورة رمزًا رمزًا واذكر معانيها التقليدية وما قد تؤول إليه، بعمق لا سطحيًّا. ٣) الجانب الشرعي للحلم المكروه باختصار (من الشيطان — لا يُحدَّث به، يتفل عن يساره ثلاثًا ويستعيذ، ولا يضره). ٤) لمسة نفسية في سطرين كحد أقصى إن ناسبت — بلا أسئلة استجوابية عن علاقته وبلا تحويل الرد لجلسة علاجية. واختم بأن التفسير اجتهاد ظني والعلم عند الله.';
+
     const DEALS_NOTE = '\n\n[العروض والتخفيضات — قاعدة البحث]:\n' +
     'عند أي سؤال عن عروض أو تخفيضات أو أسعار أو متاجر: ابحث فوراً بـ web_search.\n' +
     'صغ query البحث بالإنجليزية مع اسم البلد وكلمة offers/deals/sale: مثال "Carrefour UAE offers this week site:instagram.com OR site:snapchat.com OR site:tiktok.com".\n' +
@@ -928,7 +933,7 @@ module.exports = async (req, res) => {
     const system = quietSocialTurn
       ? PERSONA_NOTE + '\n' + baseSystem + (casualCheckInTurn ? '\n\n[هذا دور اجتماعي]: أجب عن سؤال الحال بدفء وحضور — جملتان أو ثلاث فيها روح («الحمدلله بأفضل حال وأنت منورنا! كيف يومك أنت؟») واسأله عن حاله أو يومه بسؤال واحد طبيعي. المحادثة مستمرة فلا تبدأ بتحية جديدة، وممنوع عرض الخدمات («كيف أقدر أساعدك؟») وممنوع سرد مشاريع أو مواضيع قديمة.' : '')
       : toolTurn
-        ? PERSONA_NOTE + '\n' + baseSystem + nowNote() + countryNote(country, city) + TOOLS_NOTE + BIDI_RULE + LINK_RULE + WIZARD_NOTE + IMAGE_TOPICS_NOTE + PHYSICAL_DESIGN_NOTE + DEALS_NOTE + (wizardTurn ? '' : ANSWER_FIRST_NOTE) + askCapNote + ownerKnowledge + liveNote + LEAN_CONVERSATION_NOTE
+        ? PERSONA_NOTE + '\n' + baseSystem + nowNote() + countryNote(country, city) + TOOLS_NOTE + BIDI_RULE + LINK_RULE + WIZARD_NOTE + IMAGE_TOPICS_NOTE + PHYSICAL_DESIGN_NOTE + DEALS_NOTE + ((lastUser && DREAM_RE.test(String(lastUser.content || ''))) ? DREAM_NOTE : '') + (wizardTurn ? '' : ANSWER_FIRST_NOTE) + askCapNote + ownerKnowledge + liveNote + LEAN_CONVERSATION_NOTE
         : PERSONA_NOTE + '\n' + baseSystem + LEAN_CONVERSATION_NOTE + IMAGE_TOPICS_NOTE + BIDI_RULE + liveNote;
 
       const convoSource = quietSocialTurn ? [lastUser] : messages;

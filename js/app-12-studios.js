@@ -1371,8 +1371,11 @@ async function __safeJson(res){
         { role: 'user', content: query },
       ];
       const onDelta = (partial) => { resultEl.textContent = partial; };
-      const reply = await callGemini(messages, onDelta);
-      resultEl.textContent = reply;
+      /* v-religion-rescue: كانت مربوطة بمزوّد واحد (Gemini) — أول 429 يميت
+         الأداة كلها (لقطة المالك). الآن سلسلة الاحتياط الكاملة: أي مزوّد
+         مشحون واحد يبقيها حيّة. */
+      const res = await callAIWithFallback(messages, onDelta);
+      resultEl.textContent = (res && res.reply) || '';
       setStatus(t('religionDone'));
     }catch(e){
       setStatus(t('religionError') + (e && e.message ? (': ' + e.message) : ''));
