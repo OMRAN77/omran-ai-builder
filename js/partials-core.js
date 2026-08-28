@@ -3,8 +3,9 @@
    sha256(المحتوى) = 3439992f8071f21b0a80db2183148b0b */
 (function(){
   var S = document.currentScript;
-  var H = String.raw`<div id="authOverlay" style="position:fixed; inset:0; z-index:9999; background:var(--bg,#111); display:flex; align-items:center; justify-content:center; padding:20px;">
+  var H = String.raw`<div id="authOverlay" style="position:fixed; inset:0; z-index:9999; background:var(--bg,#111); display:none; align-items:center; justify-content:center; padding:20px;">
   <div style="max-width:380px; width:100%; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3); position:relative;">
+    <button type="button" id="authCloseBtn" aria-label="إغلاق" style="position:absolute; top:calc(10px + env(safe-area-inset-top,0px)); inset-inline-start:12px; width:34px; height:34px; border-radius:50%; background:rgba(128,128,128,.14); border:none; color:var(--muted); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
     <h2 style="margin-top:0; text-align:center;" data-i18n="authTitle">🔐 مرحبًا بك</h2>
     <p style="text-align:center; font-size: var(--fs-3); color:var(--muted); margin-top:-8px;" data-i18n="authSubtitle">سجّل الدخول أو أنشئ حسابًا جديدًا للمتابعة</p>
     <div style="display:flex; gap:8px; margin:14px 0;">

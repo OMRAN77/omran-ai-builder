@@ -44,6 +44,7 @@
 
   <div id="accountSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('accountSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="acctSectionTitle">👤 حسابي</h3><span class="settingsSectionArrow" id="accountSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="accountSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;"><div style="display:flex; flex-direction:column; width:100%;">
+    <button type="button" id="acctLoginBtn" style="display:none; width:100%; padding:12px; margin-bottom:14px; border-radius:var(--r-2); border:1px solid var(--accent-surface,#d4af37); background:rgba(212,175,55,.10); color:var(--text); font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer;" data-i18n="acctLoginBtnLabel">🔐 تسجيل الدخول / حساب جديد</button>
     <div style="display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:14px;">
       <div style="position:relative;">
         <img id="acctAvatarPreview" src="" alt="" style="width:72px; height:72px; border-radius:50%; object-fit:cover; background:var(--bg); border:1px solid var(--border); display:none;">
