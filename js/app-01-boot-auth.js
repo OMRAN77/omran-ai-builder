@@ -296,6 +296,10 @@ const $ = s => document.querySelector(s);
 
   function showOverlay(){ overlay.style.display = 'flex'; }
   function hideOverlay(){ overlay.style.display = 'none'; }
+  /* v-auth-optional: الدخول اختياري — الشاشة صارت تُغلق بـ✕ ويتابع كضيف.
+     (كانت تُفرض عند الإقلاع وتظهر وميضًا مزعجًا مع كل ريلود — شكوى ٢٨ أغسطس) */
+  const authCloseBtn = $('#authCloseBtn');
+  if(authCloseBtn) authCloseBtn.onclick = hideOverlay;
 
   // "Remember me": when checked (default), the session survives browser
   // restarts (localStorage). When unchecked, the session only lasts for the
@@ -647,6 +651,17 @@ const $ = s => document.querySelector(s);
     if(headerLoginBtn){
       headerLoginBtn.style.display = loggedIn ? 'none' : 'inline-flex';
       headerLoginBtn.onclick = () => { setMode('login'); showOverlay(); };
+    }
+    /* v-auth-optional (طلب عمران ٢٨ أغسطس): الدخول صار اختياريًا — زر دائم
+       في الإعدادات (قسم «حسابي») يظهر للضيف ويفتح نفس الشاشة. */
+    const acctLoginBtn = $('#acctLoginBtn');
+    if(acctLoginBtn){
+      acctLoginBtn.style.display = loggedIn ? 'none' : 'block';
+      acctLoginBtn.onclick = () => {
+        try{ const sd = document.getElementById('settingsDialog'); if(sd && sd.close) sd.close(); }catch(e){ __swallow(e, 'auth:acct-login#close-settings'); }
+        setMode('login');
+        showOverlay();
+      };
     }
     const headerUserBtn = $('#btnHeaderUser');
     const headerUserDD = $('#headerUserDropdown');

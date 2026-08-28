@@ -1,5 +1,30 @@
 // ===== v199: reply action bar helpers (⋮ convert menu) =====
+/* v-app-share (شكوى ٢٨ أغسطس: «تحميل PDF ما يشتغل» في تطبيق المتجر):
+   WKWebView لا يدعم روابط التنزيل <a download> ولا window.print() إطلاقًا —
+   فكل التصديرات كانت تموت بصمت داخل تطبيق الآيفون. الغلاف (Capacitor) صار
+   يوفر جسرين: omranShare (ملف جاهز → ورقة مشاركة iOS) و omranPdf
+   (HTML → يُحوَّل PDF أصليًا → ورقة مشاركة). في المتصفح العادي لا يتغير شيء. */
+function omranNativeBridge(name){
+  try{
+    const h = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers[name];
+    return (h && h.postMessage) ? h : null;
+  }catch(e){ return null; }
+}
 function msgDownloadBlob(blob, filename){
+  const share = omranNativeBridge('omranShare');
+  if(share){
+    try{
+      const fr = new FileReader();
+      fr.onload = () => {
+        try{
+          const b64 = String(fr.result || '').split(',')[1] || '';
+          share.postMessage({ b64, name: filename || 'omran-file', mime: blob.type || 'application/octet-stream' });
+        }catch(e){ __swallow(e, 'share:app#post'); }
+      };
+      fr.readAsDataURL(blob);
+      return;
+    }catch(e){ __swallow(e, 'share:app#reader'); }
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = filename;
@@ -23,6 +48,15 @@ function msgPdfFontHead(font){
   return {family, link:'<link rel="stylesheet" data-pdf-font href="https://fonts.googleapis.com/css2?' + query + '&display=swap">'};
 }
 function msgPrintAfterFont(view, family, ctx){
+  /* v-app-share: داخل تطبيق المتجر window.print() لا يعمل — نرسل مستند
+     المعاينة كاملًا لجسر الغلاف ليحوّله PDF أصليًا ويفتح ورقة المشاركة. */
+  const pdfBridge = omranNativeBridge('omranPdf');
+  if(pdfBridge){
+    try{
+      pdfBridge.postMessage({ html: view.document.documentElement.outerHTML, name: 'omran-ai.pdf' });
+      return;
+    }catch(e){ __swallow(e, ctx + ':app-pdf'); }
+  }
   let done = false;
   const print = () => { if(done) return; done = true; try{ view.focus(); view.print(); }catch(e){ __swallow(e, ctx); } };
   const timer = setTimeout(print, 3000);
@@ -40,11 +74,16 @@ function msgPrintAfterFont(view, family, ctx){
   }catch(e){ __swallow(e, ctx + ':font-link'); wait(); }
 }
 function exportReplyAsPdf(text){
-  const w = window.open('', '_blank');
-  if(!w) return;
   const font = msgPdfFontSpec();
   const pdfFont = msgPdfFontHead(font);
   const html = '<html><head><meta charset="utf-8"><title>عمران AI</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';direction:rtl;padding:28px;line-height:' + font.line + ';color:#111;white-space:pre-wrap;word-break:break-word;}</style></head><body>' + msgEscapeHtml(text) + '</body></html>';
+  /* v-app-share: window.open داخل تطبيق المتجر يرجع null — نرسل للجسر مباشرة */
+  const pdfBridge = omranNativeBridge('omranPdf');
+  if(pdfBridge){
+    try{ pdfBridge.postMessage({ html, name: 'omran-ai.pdf' }); return; }catch(e){ __swallow(e, 'ui:app-05-ui#1-app'); }
+  }
+  const w = window.open('', '_blank');
+  if(!w) return;
   w.document.open(); w.document.write(html); w.document.close();
   msgPrintAfterFont(w, pdfFont.family, 'ui:app-05-ui#1');
 }
