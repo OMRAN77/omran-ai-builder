@@ -565,23 +565,8 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   const btn = document.getElementById('btnImgToPdf');
   const input = document.getElementById('imgToPdfInput');
   if(!btn || !input) return;
-  let jsPdfLoading = null;
-  function loadJsPdf(){
-    if(window.jspdf && window.jspdf.jsPDF) return Promise.resolve();
-    if(jsPdfLoading) return jsPdfLoading;
-    /* v-pdf-universal: النسخة الموطّنة أولًا — CDN خارجي كان يفشل على بعض
-       الأجهزة (شبكات تحجب cloudflare) فيطلع «تعذر إنشاء ملف PDF». */
-    const load = (src) => new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = src;
-      s.onload = resolve; s.onerror = () => reject(new Error('load-failed'));
-      document.head.appendChild(s);
-    });
-    jsPdfLoading = load('/js/vendor/jspdf.umd.min.js?v=1')
-      .catch(() => load('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'))
-      .catch((e) => { jsPdfLoading = null; throw e; });
-    return jsPdfLoading;
-  }
+  /* v-pdf-file: محمّل مشترك واحد في app-05 (النسخة الموطّنة أولًا ثم CDN) */
+  function loadJsPdf(){ return omranLoadJsPdf(); }
   function readImage(file){
     return new Promise((resolve, reject) => {
       const fr = new FileReader();
