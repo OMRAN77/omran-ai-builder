@@ -1047,7 +1047,7 @@ module.exports = async (req, res) => {
           if (ev.type === 'content_block_start') {
             const cb = ev.content_block || {};
             blocks[ev.index] = { type: cb.type, text: '', name: cb.name, id: cb.id, inputJson: '' };
-            if (cb.type === 'tool_use' && cb.name === 'web_search') send({ status: '🔍 يبحث في الإنترنت…' });
+            if (cb.type === 'tool_use' && cb.name === 'web_search') send({ status: '🔍 أتحقق لك من المصادر الحية…' });
             else if (cb.type === 'tool_use' && cb.name === 'fetch_page') send({ status: '🌐 يقرأ صفحة…' });
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ status: '⚙️ يشغّل كودًا للتحقّق…' });
             else if (cb.type === 'tool_use' && cb.name === 'generate_image') send({ status: '🎨 يرسم صورة…' });
