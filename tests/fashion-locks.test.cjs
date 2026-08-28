@@ -375,4 +375,15 @@ console.log('  ✓ v-tap-fast: الضغطة الأولى تدخل — لا تج�
 }
 console.log('  ✓ v-recipe-card: صورة الطبق فوق ومصادر الطبخ معها');
 
+// ㉜ v-stream-tidy: أثناء البث كانت الأسطر تنضغط كتلة واحدة ثم «تترتب» بعد
+// الاكتمال (شكوى عمران بالصورة) — البث يُبنى داخل .msg مباشرة بلا pre-wrap.
+// مقيس: بلا القاعدة 28px (سطر مكدس)، معها 266px (11 سطرًا مرتبة).
+{
+  const tk2 = fs.readFileSync(path.join(__dirname, '../css/tokens.css'), 'utf8');
+  assert.ok(/\.msg\.msg-streaming\{white-space:pre-wrap/.test(tk2), 'أسطر البث مرتبة من أول قطرة');
+  const tts = fs.readFileSync(path.join(__dirname, '../js/app-02-tts.js'), 'utf8');
+  assert.ok(tts.includes("el.classList.add('msg-streaming')"), 'مصيّر البث يضع صنف msg-streaming');
+}
+console.log('  ✓ v-stream-tidy: لا زحمة أثناء الكتابة — مرتب من البداية');
+
 console.log('fashion locks tests passed');
