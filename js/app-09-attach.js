@@ -2244,6 +2244,17 @@ async function sendPrompt(){
     // Follow-up edits on the same image work too ("زين، الحين كبّر الخط").
     const __imgEditRe = /(?:^|[\s،,.!؟?()"'«»])(?:تعديل|عدل|عدّل|شيل|ابعد|أبعد|غير|غيّر|ضيف|أضف|اضف|حط|امسح|احذف|ازل|أزل|اجعل|خل|لون|لوّن|كبر|كبّر|صغر|صغّر|زخرف|اكتب|ارسم|حسن|حسّن|حول|حوّل|صمم|صمّم|نسق|نسّق|رتب|رتّب|ديكور|سوي|سوّي|سولي|دمج|ادمج|أدمج)|سو لي|\b(?:edit|change|add|put|remove|erase|make|recolor|write|draw|enhance|convert|transform|redesign|restyle|decor|merge|combine)\b/i; // v720: مطابقة على بداية كلمة فقط — «ادخل» ليست «خل» و«احوله» تبقى تمر عبر استثناء المواضيع
     const __srcImg = imageAttachments.length ? imageAttachments[imageAttachments.length - 1] : null;
+    /* v-font-ask (لقطة عمران: «عدل الخط» وحدها راحت لمحرر الصور فطلعت
+       «مشغولة»): أمر الخط الناقص يسأل محليًا عن الخط واللون والمكان —
+       ويعرض الخطوط العشرة — بدل مغامرة توليد. */
+    if(/^\s*(?:عدل|عدّل|غير|غيّر|تعديل)\s*(?:الخط|النص|الكتاب[ةه])\s*[.!؟?]*\s*$/i.test(text || '') && cur.imageTextLayer && cur.imageTextLayer.baseB64){
+      try{ thinkingDiv && thinkingDiv.remove(); }catch(_){ /* guard-ok — cleanup, intentional */ }
+      cur.messages.push({role:'assistant',content: lang==='ar'
+        ? 'أبشر! قل لي وش تبي بالضبط وأعدّله فورًا على نفس الصورة ✍️\n\n• الخط: ديواني · ثلث · كوفي · نسخ · رقعة · فارسي · قرآني · عثماني\n• اللون: ذهبي · أبيض · أسود · أخضر · أزرق · أحمر · بيج\n• المكان: الأعلى · الوسط · الأسفل\n\nمثال: «غيّر الخط إلى ديواني ولونه ذهبي في الوسط»'
+        : 'Sure! Tell me exactly what to change ✍️ Font: diwani · thuluth · kufi · naskh · ruqaa · farsi · quran — Color: gold · white · black · green · blue · red — Position: top · middle · bottom'});
+      renderAll(); saveState();
+      return;
+    }
     // 🖊️ v727: «تعديل» أو «عدل» لوحدها بعد صورة → نسأل محليًا وش التعديل بدل رد دردشة عشوائي
     if(/^\s*(?:تعديل|عدل|عدّل|edit)\s*[.!؟?]*\s*$/i.test(text || '') && ((cur.lastEditedImage && cur.lastEditedImage.b64) || pendingAttachments.some(a => a.isImage) || __srcImg)){
       try{ thinkingDiv && thinkingDiv.remove(); }catch(_){ /* guard-ok — cleanup, intentional */ }
