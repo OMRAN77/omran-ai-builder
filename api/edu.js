@@ -149,16 +149,16 @@ async function anthropicJSON(apiKey, sys, contentBlocks, maxTokens) {
   const text = (data && data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
   return extractJSON(text);
 }
-async function callClaude(apiKey, contentBlocks, lang, nativeLang, examLang, stage) {
+function eduLangTail(lang, nativeLang, examLang, stage) {
   const level = (stage || 'university') === 'university' ? 'جامعي' : 'مدرسي مناسب لمرحلة: ' + stage;
-  const langTail = '- مستوى الصياغة والعمق: ' + level + '.\n'
+  return '- مستوى الصياغة والعمق: ' + level + '.\n'
     + languageRules(lang, nativeLang, examLang)
     + ' لا تكتب أي شيء خارج كائن JSON.';
-  const sysSummary = 'أنت مساعد تعليمي خبير. يُرسل إليك محتوى محاضرة (نص أو PDF أو صور). '
-    + 'حلل المحتوى وأعد فقط JSON صالحًا بلا أي نص خارجه وبلا أسوار كود، بهذا الشكل بالضبط:\n'
-    + '{"title":"عنوان قصير للدرس","subject":"اسم المادة المقترح (كلمة أو كلمتان)","summary":"ملخص منظم بصيغة ماركداون (عناوين، نقاط، **غامق**) يغطي كل الأفكار المهمة"}\n'
-    + langTail;
-  const sysQuestions = 'أنت مساعد تعليمي خبير. يُرسل إليك محتوى محاضرة (نص أو PDF أو صور). '
+}
+// v-edu-questions: نظام شقّ الأسئلة مستقل — يخدم التحليل الكامل وإنقاذ
+// الدروس التي وصلت ببطاقات (0) واختبار (0) حين تعثّر شقّها الأول.
+function buildQuestionsSys(langTail) {
+  return 'أنت مساعد تعليمي خبير. يُرسل إليك محتوى محاضرة (نص أو PDF أو صور). '
     + 'ابنِ منه أسئلة وأعد فقط JSON صالحًا بلا أي نص خارجه وبلا أسوار كود، بهذا الشكل بالضبط:\n'
     + '{"flashcards":[{"q":"سؤال","a":"جواب"}],"quiz":[{"q":"سؤال","options":["أ","ب","ج","د"],"correct":0,"explain":"شرح قصير","level":"basic","section":"عنوان الجزء من المحاضرة"}],"written":[{"q":"سؤال مقالي قصير","rubric":["نقطة يجب أن ترد في الإجابة الكاملة"],"level":"mid","section":"عنوان الجزء من المحاضرة"}]}\n'
     + 'القواعد:\n'
@@ -172,10 +172,18 @@ async function callClaude(apiKey, contentBlocks, lang, nativeLang, examLang, sta
     + '- written = 3 أسئلة مقالية قصيرة (واحد لكل مستوى)، لكل سؤال "rubric" فيه 2 إلى 4 نقاط محدّدة يجب أن ترد في الإجابة الكاملة. النقاط ملموسة وقابلة للتحقق، لا عبارات عامة.\n'
     + '- "section" في كل سؤال = عنوان قصير للجزء من المحاضرة الذي يغطيه السؤال، ليُوجَّه الطالب لمراجعته عند الخطأ.\n'
     + langTail;
+}
+async function callClaude(apiKey, contentBlocks, lang, nativeLang, examLang, stage) {
+  const langTail = eduLangTail(lang, nativeLang, examLang, stage);
+  const sysSummary = 'أنت مساعد تعليمي خبير. يُرسل إليك محتوى محاضرة (نص أو PDF أو صور). '
+    + 'حلل المحتوى وأعد فقط JSON صالحًا بلا أي نص خارجه وبلا أسوار كود، بهذا الشكل بالضبط:\n'
+    + '{"title":"عنوان قصير للدرس","subject":"اسم المادة المقترح (كلمة أو كلمتان)","summary":"ملخص منظم بصيغة ماركداون (عناوين، نقاط، **غامق**) يغطي كل الأفكار المهمة"}\n'
+    + langTail;
+  const sysQuestions = buildQuestionsSys(langTail);
   const [sum, qs] = await Promise.all([
     anthropicJSON(apiKey, sysSummary, contentBlocks, 8000),
     // فشل شقّ الأسئلة وحده لا يُسقط الدرس — الملخص يصل والأسئلة تُستولد لاحقًا.
-    anthropicJSON(apiKey, sysQuestions, contentBlocks, 6000).catch(() => null),
+    anthropicJSON(apiKey, sysQuestions, contentBlocks, 9000).catch(() => null),
   ]);
   if (!sum || !sum.summary) return null;
   return {
@@ -390,6 +398,36 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       return;
     }
 
+    // ---------------- 🩹 questions: إنقاذ درس ببطاقات (0) — توليد الأسئلة وحدها من الملخص ----------------
+    if (action === 'questions') {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      const qSummary = String(body.summary || '').slice(0, 60000).trim();
+      if (!qSummary) { res.status(400).json({ error: 'لا يوجد ملخص لتوليد الأسئلة منه.' }); return; }
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        const max = username ? USER_PROCESS_PER_DAY : GUEST_PROCESS_PER_DAY;
+        if (await overDailyLimit(subject, 'proc', max)) { res.status(402).json({ error: 'وصلت للحد اليومي. عد غدًا 🌙' }); return; }
+      }
+      const qTail = eduLangTail(body.lang, body.nativeLang, body.examLang, body.stage || 'university');
+      let qResult = null;
+      try {
+        qResult = await anthropicJSON(apiKey, buildQuestionsSys(qTail),
+          [{ type: 'text', text: 'محتوى المحاضرة (ملخص الدرس):\n\n' + qSummary }], 9000);
+      } catch (e) {
+        res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذر توليد الأسئلة: ' + (e.message || 'خطأ') + ' — حاول مرة أخرى.' });
+        return;
+      }
+      if (!qResult || !Array.isArray(qResult.quiz) || !qResult.quiz.length) {
+        res.status(502).json({ error: 'تعذر توليد الأسئلة — أعد المحاولة.' });
+        return;
+      }
+      qResult.quiz = qResult.quiz.filter((q) => q && q.q && Array.isArray(q.options) && q.options.length === 4 && q.correct >= 0 && q.correct <= 3);
+      qResult.flashcards = (qResult.flashcards || []).filter((c) => c && c.q && c.a);
+      res.status(200).json({ ok: true, flashcards: qResult.flashcards, quiz: qResult.quiz, written: Array.isArray(qResult.written) ? qResult.written : [] });
+      return;
+    }
+
     // ---------------- 🧪 lab: الدرس الحي — تجربة تفاعلية مولّدة من الدرس (v-edu-lab) ----------------
     if (action === 'lab') {
       const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -433,7 +471,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         method: 'POST',
         signal: AbortSignal.timeout(280000),
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: m, max_tokens: 9000, system: sys, messages: [{ role: 'user', content: user }] }),
+        body: JSON.stringify({ model: m, max_tokens: 14000, system: sys, messages: [{ role: 'user', content: user }] }),
       });
       let r2 = await doRequest(RESOLVED_MODEL || MODEL);
       let d2 = await r2.json().catch(() => null);
