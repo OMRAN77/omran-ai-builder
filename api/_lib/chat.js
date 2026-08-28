@@ -164,6 +164,11 @@ const PHYSICAL_DESIGN_NOTE = '\n\n[تصميم الأشياء المادية — 
     '🕌 الجانب الشرعي: سطران (الحلم المكروه من الشيطان — لا يُحدَّث به، يتفل عن يساره ثلاثًا ويستعيذ، ولا يضره).\n' +
     '💭 لمسة أخيرة: سطران كحد أقصى إن ناسبت — بلا أسئلة استجوابية وبلا جلسة علاجية. واختم بأن التفسير اجتهاد ظني والعلم عند الله.';
 
+    // v-shape-tail: قاعدة التنسيق في الصدارة لم تكفِ وحدها (لقطة رحلة كيرلا:
+    // عناوين الأيام غامقة لكن ملزوقة داخل الفقرة) — النماذج تطيع آخر ما تقرأ
+    // أكثر، فالتذكير يُختم به النظام أيضًا: أول وآخر ما يراه النموذج.
+    const SHAPE_TAIL = '\n\n[تذكير أخير — شكل الردّ إلزامي ويتقدم على كل ما سبق]: قسّم ردّك فقرات قصيرة يفصل بينها سطر فارغ. أي عنوان أو محور (اليوم الأول، القسم، الخطوة…) يبدأ في سطر جديد مستقل ويليه سطر فارغ ثم تفاصيله — ممنوع لصق عنوان داخل نهاية فقرة. التعداد قائمة نقطية كل بند في سطر. ردّ يتجاوز خمسة أسطر بلا سطر فارغ واحد = مرفوض مهما كان محتواه.';
+
     const DEALS_NOTE = '\n\n[العروض والتخفيضات — قاعدة البحث]:\n' +
     'عند أي سؤال عن عروض أو تخفيضات أو أسعار أو متاجر: ابحث فوراً بـ web_search.\n' +
     'صغ query البحث بالإنجليزية مع اسم البلد وكلمة offers/deals/sale: مثال "Carrefour UAE offers this week site:instagram.com OR site:snapchat.com OR site:tiktok.com".\n' +
@@ -937,8 +942,8 @@ module.exports = async (req, res) => {
     const system = quietSocialTurn
       ? PERSONA_NOTE + '\n' + baseSystem + (casualCheckInTurn ? '\n\n[هذا دور اجتماعي]: أجب عن سؤال الحال بدفء وحضور — جملتان أو ثلاث فيها روح («الحمدلله بأفضل حال وأنت منورنا! كيف يومك أنت؟») واسأله عن حاله أو يومه بسؤال واحد طبيعي. المحادثة مستمرة فلا تبدأ بتحية جديدة، وممنوع عرض الخدمات («كيف أقدر أساعدك؟») وممنوع سرد مشاريع أو مواضيع قديمة.' : '')
       : toolTurn
-        ? PERSONA_NOTE + '\n' + baseSystem + nowNote() + countryNote(country, city) + TOOLS_NOTE + BIDI_RULE + LINK_RULE + WIZARD_NOTE + IMAGE_TOPICS_NOTE + PHYSICAL_DESIGN_NOTE + DEALS_NOTE + ((lastUser && DREAM_RE.test(String(lastUser.content || ''))) ? DREAM_NOTE : '') + (wizardTurn ? '' : ANSWER_FIRST_NOTE) + askCapNote + ownerKnowledge + liveNote + LEAN_CONVERSATION_NOTE
-        : PERSONA_NOTE + '\n' + baseSystem + LEAN_CONVERSATION_NOTE + IMAGE_TOPICS_NOTE + BIDI_RULE + liveNote;
+        ? PERSONA_NOTE + '\n' + baseSystem + nowNote() + countryNote(country, city) + TOOLS_NOTE + BIDI_RULE + LINK_RULE + WIZARD_NOTE + IMAGE_TOPICS_NOTE + PHYSICAL_DESIGN_NOTE + DEALS_NOTE + ((lastUser && DREAM_RE.test(String(lastUser.content || ''))) ? DREAM_NOTE : '') + (wizardTurn ? '' : ANSWER_FIRST_NOTE) + askCapNote + ownerKnowledge + liveNote + LEAN_CONVERSATION_NOTE + SHAPE_TAIL
+        : PERSONA_NOTE + '\n' + baseSystem + LEAN_CONVERSATION_NOTE + IMAGE_TOPICS_NOTE + BIDI_RULE + liveNote + SHAPE_TAIL;
 
       const convoSource = quietSocialTurn ? [lastUser] : messages;
   const convo = compactConversation(convoSource
