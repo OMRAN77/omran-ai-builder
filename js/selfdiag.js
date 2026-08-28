@@ -43,9 +43,14 @@
 (function diagPill(){
   try{
     if(!/iPad|iPhone|iPod/.test(navigator.userAgent || '')) return;
-    /* v646: بوابة صريحة — لا تظهر إلا بطلب (…/?diag=1). العيب مُصلح، فلا تُفرض على الزوار. */
-    if(!/[?&#]diag=1(?:[&#]|$)/.test(location.search + location.hash)) return;
     if(Date.now() > 1788566400000 /* 2026-09-05 UTC */) return;
+    /* v646: بوابة صريحة — لا تظهر إلا بطلب (…/?diag=1).
+       v647: غلاف المتجر لا يستطيع كتابة رابط أصلًا — بوابة ثانية من داخل
+       التطبيق: ٥ نقرات متتالية (خلال ٢.٥ ثانية) على خلفية الهيدر (وليس
+       الشعار — نقرته ريلود) تفتح الحبة فورًا وتثبتها لبقية الجلسة. */
+    var tapAllowed = false;
+    try{ tapAllowed = sessionStorage.getItem('omranDiagTap') === '1'; }catch(e){ /* guard-ok: بلا تخزين تكفي النقرات مجددًا */ }
+    var urlAllowed = /[?&#]diag=1(?:[&#]|$)/.test(location.search + location.hash);
     var start = function(){
       try{
         if(document.getElementById('omranDiagPill')) return;
@@ -80,6 +85,7 @@
               + ' ' + (pwa ? 'pwa' : 'br')
               + ' ua:' + (/Safari/.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS/.test(navigator.userAgent) ? 'saf' : 'wrap') + '\n'
               + 'env:' + envNow + '/' + mxEnv + ' sat:' + (sat || '—')
+              + ' vt:' + (document.documentElement.style.getPropertyValue('--vv-top') || '—')
               + ' ih:' + window.innerHeight + ' sc:' + screen.height
               + ' vv:' + (vv ? Math.round(vv.height) + '/' + Math.round(vv.offsetTop) + '/' + Math.round(vv.pageTop) : '—') + '\n'
               + 'sy:' + Math.round(window.scrollY) + ' de:' + Math.round(document.documentElement.scrollTop)
@@ -94,8 +100,28 @@
         setTimeout(function(){ try{ d.remove(); probe.remove(); clearInterval(t); }catch(e){ /* guard-ok: تنظيف الحبة ترف */ } }, 420000);
       }catch(e){ /* guard-ok: الحبة ترف تشخيصي */ }
     };
-    if(document.body) setTimeout(start, 2500);
-    else window.addEventListener('DOMContentLoaded', function(){ setTimeout(start, 2500); });
+    if(urlAllowed || tapAllowed){
+      if(document.body) setTimeout(start, 2500);
+      else window.addEventListener('DOMContentLoaded', function(){ setTimeout(start, 2500); });
+    }
+    /* v647: عدّاد النقرات الخمس على خلفية الهيدر — يتجاهل الشعار (ريلود)
+       والأزرار، ويعمل حتى في الحالة المنزاحة لأنه لا يعتمد على موضع مرئي. */
+    var taps = [];
+    document.addEventListener('click', function(e){
+      try{
+        if(!e.target || !e.target.closest) return;
+        if(!e.target.closest('header')) return;
+        if(e.target.closest('h1, button, a, input, select, textarea')) return;
+        var now = Date.now();
+        taps.push(now);
+        while(taps.length && now - taps[0] > 2500) taps.shift();
+        if(taps.length >= 5){
+          taps = [];
+          try{ sessionStorage.setItem('omranDiagTap', '1'); }catch(err){ /* guard-ok: بلا تخزين تعمل هذه الجلسة فقط */ }
+          start();
+        }
+      }catch(err){ /* guard-ok: العدّاد ترف تشخيصي */ }
+    }, true);
   }catch(e){ /* guard-ok */ }
 })();
 (function(){
