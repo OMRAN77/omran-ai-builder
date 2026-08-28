@@ -134,7 +134,8 @@ assert.ok(eduJs.includes("'sandbox','allow-scripts'") && eduJs.includes('fr.srcd
 assert.ok(eduJs.includes("action:'lab'"), 'العميل يطلب التجربة من الخادم');
 const eduApi = fs.readFileSync(path.join(__dirname, '../api/edu.js'), 'utf8');
 assert.ok(eduApi.includes("action === 'lab'") && eduApi.includes('db/edu/labs/'), 'الخادم يولد ويخزن المختبر بمفتاح منفصل لكل درس');
-assert.ok(eduApi.includes('```html') && eduApi.includes('max_tokens: 16000'), 'استخراج كتلة HTML وحجم كافٍ');
+// v-edu-timeouts: كان 16000 (~3-4 دقائق) والمهلة دقيقتان — فشل مضمون؛ صار 9000 ضمن المهلة.
+assert.ok(eduApi.includes('```html') && eduApi.includes('max_tokens: 9000'), 'استخراج كتلة HTML وحجم ضمن حدود المهلة');
 assert.ok(eduApi.includes("kvDel('db/edu/labs/"), 'حذف الدرس ينظف مختبره');
 console.log('  ✓ v-edu-lab: الدرس الحي مبني ومقفول');
 
@@ -430,5 +431,19 @@ console.log('  ✓ v-eye-hint: تعليمات المرشد مكتوبة لا ص�
   assert.ok(eduSrv.includes('quiz = 15 سؤالًا بالضبط'), 'قواعد الأسئلة كاملة في شقّها');
 }
 console.log('  ✓ v-edu-split: تحليل المحاضرة بنصف الزمن — نداءان متوازيان');
+
+// ㊱ v-edu-timeouts: التجربة الحية كانت فشلًا مضمونًا — مسموح لها 16 ألف توكن
+// (~3-4 دقائق توليدًا) والمهلة دقيقتان تقطعها. المهل 280ث (سقف Vercel 300)
+// والمخرجات 9 آلاف، والمهلة تُشرح بالعربي.
+{
+  const eduT = fs.readFileSync(path.join(__dirname, '../api/edu.js'), 'utf8');
+  assert.ok(!eduT.includes('AbortSignal.timeout(120000)'), 'لا مهلة 120ث أقصر من التوليد المسموح');
+  assert.ok(eduT.split('AbortSignal.timeout(280000)').length >= 5, 'كل نداءات أنثروبيك على مهلة 280ث');
+  assert.ok(eduT.includes('max_tokens: 9000') && !eduT.includes('max_tokens: 16000'), 'مخرجات التجربة الحية ضمن حدود المهلة');
+  assert.ok(eduT.includes('v-edu-timeouts') && eduT.includes('التوليد أخذ وقتًا أطول من المتوقع'), 'المهلة تُشرح بالعربي المطمئن');
+  const eduC = fs.readFileSync(path.join(__dirname, '../js/edu.js'), 'utf8');
+  assert.ok(eduC.includes('دقيقة إلى دقيقتين'), 'رسالة انتظار صادقة في العميل');
+}
+console.log('  ✓ v-edu-timeouts: التجربة الحية لا تموت بمهلة أقصر من توليدها');
 
 console.log('fashion locks tests passed');
