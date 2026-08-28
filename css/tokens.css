@@ -880,3 +880,9 @@ html[data-mode="light"] #composerBox{background:#E5E5E5 !important;}
 
 /* v569: الروابط لا تتقطّع في منتصف الكلمة — الكسر عند المسافة، والكلمة الأطول من السطر وحدها تُكسر */
 .msg a, .msg-text a{overflow-wrap:break-word; word-break:normal; hyphens:none;}
+
+/* v-store-safe: حزمة AppGallery — كل الواجهات المالية مخفية (قاعدة 11.4). */
+html.store-safe #stockTicker,
+html.store-safe #btnStocks,
+html.store-safe #stocksModal,
+html.store-safe #aboutStocksCard{display:none !important;}

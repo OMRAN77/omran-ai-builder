@@ -12,6 +12,19 @@
     }
   }catch(e){ /* guard-ok: بلا الصنف يبقى الرسم التقليدي — آمن دائمًا */ }
 })();
+/* v-store-safe: رفض AppGallery (قاعدة 11.4 — عملات أجنبية وكريبتو تتطلب
+   حساب شركة وتراخيص). حزمة متجر هواوي تدخل برابط ?store=huawei فتُخفى
+   كل الواجهات المالية (شريط الأسهم، سوق الأسهم، المحفظة) — العلامة تُحفظ
+   فتبقى بعد أول فتحة، والويب ومتاجر أخرى بلا أي تغيير. */
+(function(){
+  try{
+    var sp = new URLSearchParams(location.search).get('store');
+    if(sp) localStorage.setItem('aiapp_store', String(sp).slice(0, 20));
+    if((localStorage.getItem('aiapp_store') || '') === 'huawei'){
+      document.documentElement.classList.add('store-safe');
+    }
+  }catch(e){ /* guard-ok: بلا العلامة تبقى النسخة الكاملة */ }
+})();
 (function(){
   var reported = {};
   function report(msg, src, line, col, stack){
