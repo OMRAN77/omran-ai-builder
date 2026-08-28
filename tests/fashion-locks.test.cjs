@@ -351,7 +351,12 @@ console.log('  \u2713 v-prayer-rescue: الدعاء لا يموت بمزود و�
 // (ب) شريط التنقل z:50 مدفون تحت الأدراج z:60 فالضغطات تضيع في الخلفية.
 {
   const tk = fs.readFileSync(path.join(__dirname, '../css/tokens.css'), 'utf8');
-  assert.ok(/\.msg\{content-visibility:auto/.test(tk), 'الرسائل خارج الشاشة خارج التخطيط والرسم');
+  // v-cv-webkit: سفاري لا يرسم المؤجّل أبدًا (شاشة سوداء ٣ هواتف) —
+  // القاعدة مقيّدة بصنف cv-ok الذي يوضع على كروميوم/فايرفوكس فقط.
+  assert.ok(/html\.cv-ok \.msg\{content-visibility:auto/.test(tk), 'قصّ الأداء على المحركات السليمة فقط');
+  assert.ok(!/^\s*\.msg\{content-visibility/m.test(tk), 'لا قاعدة content-visibility عارية تصيب سفاري');
+  const sd = fs.readFileSync(path.join(__dirname, '../js/selfdiag.js'), 'utf8');
+  assert.ok(sd.includes('v-cv-webkit') && sd.includes("classList.add('cv-ok')") && sd.includes('Chrome\\/\\d+'), 'بوابة cv-ok في selfdiag');
   const rd = fs.readFileSync(path.join(__dirname, '../css/redesign.css'), 'utf8');
   assert.ok(/#omranBottomNav\{[^}]*z-index:70/.test(rd), 'شريط التنقل فوق الأدراج (70>60) دائمًا');
   const uw = fs.readFileSync(path.join(__dirname, '../js/ui-wiring.js'), 'utf8');

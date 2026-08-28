@@ -1,5 +1,17 @@
 // 🩺 Self-diagnosis: the app reports its own JS errors to the server so the
 // health monitor can detect and fix them automatically.
+/* v-cv-webkit: بوابة content-visibility — سفاري وكل متصفحات iOS (محرك WebKit)
+   لا يرسم العناصر المؤجّلة أبدًا فتسوّد المحادثة (حريق ٢٨ أغسطس، ٣ هواتف).
+   الصنف cv-ok يوضع فقط على كروميوم/فايرفوكس الحقيقيين؛ بدونه قاعدة
+   html.cv-ok .msg في tokens.css لا تنطبق ويرجع الرسم التقليدي الآمن. */
+(function(){
+  try{
+    var ua = navigator.userAgent || '';
+    if(/Chrome\/\d+/.test(ua) || /Firefox\/\d+/.test(ua)){
+      document.documentElement.classList.add('cv-ok');
+    }
+  }catch(e){ /* guard-ok: بلا الصنف يبقى الرسم التقليدي — آمن دائمًا */ }
+})();
 (function(){
   var reported = {};
   function report(msg, src, line, col, stack){

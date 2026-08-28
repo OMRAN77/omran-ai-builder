@@ -266,8 +266,11 @@
   .msg table{display:block; max-width:100%; overflow-x:auto;}
   .msg{padding:2px 2px; border-radius:0; font-size: var(--fs-3); line-height:1.7; max-width:92%; background:transparent !important; border:none !important; box-shadow:none !important; backdrop-filter:none !important;}
   /* v-tap-fast: الرسائل خارج الشاشة تُستثنى من التخطيط والرسم — المحادثات
-     الضخمة كانت تجمّد الجوال مع كل تفاعل (كتابة/تنقّل) فتضيع الضغطات. */
-  .msg{content-visibility:auto; contain-intrinsic-size:auto 160px;}
+     الضخمة كانت تجمّد الجوال مع كل تفاعل (كتابة/تنقّل) فتضيع الضغطات.
+     v-cv-webkit: حريق ٢٨ أغسطس — سفاري/آيفون لا يرسم العناصر المؤجّلة أبدًا
+     (شاشة سوداء على ٣ هواتف) فالقاعدة مقيّدة بصنف cv-ok الذي لا يوضع إلا
+     على المحركات السليمة (كروميوم/فايرفوكس) — انظر selfdiag.js. */
+  html.cv-ok .msg{content-visibility:auto; contain-intrinsic-size:auto 160px;}
   /* v338: حجم خط المحادثة */
   html.fs-small .msg{font-size:12px;}
   html.fs-large .msg{font-size:15.5px;}
