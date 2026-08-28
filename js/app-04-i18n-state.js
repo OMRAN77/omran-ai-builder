@@ -1418,8 +1418,13 @@ function renderMessages(keepScroll){
           const open = !drop.hidden;
           drop.hidden = open;
           btn.classList.toggle('msgSrcBtnOpen', !open);
+          /* v-src-unclip: content-visibility (v-tap-fast) تقصّ ما يتدلى خارج
+             حدود الرسالة — القائمة كانت تفتح مقصوصة غير مرئية. نرفع القصّ
+             عن هذه الرسالة ما دامت القائمة مفتوحة. */
+          const msgEl = btn.closest('.msg');
+          if(msgEl) msgEl.style.contentVisibility = open ? '' : 'visible';
           if(!open){
-            const close = (ev) => { if(!drop.contains(ev.target) && ev.target !== btn){ drop.hidden = true; btn.classList.remove('msgSrcBtnOpen'); document.removeEventListener('click', close); } };
+            const close = (ev) => { if(!drop.contains(ev.target) && ev.target !== btn){ drop.hidden = true; btn.classList.remove('msgSrcBtnOpen'); if(msgEl) msgEl.style.contentVisibility = ''; document.removeEventListener('click', close); } };
             setTimeout(() => document.addEventListener('click', close), 10);
           }
         };
