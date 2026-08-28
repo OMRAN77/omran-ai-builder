@@ -10,6 +10,22 @@ function omranNativeBridge(name){
     return (h && h.postMessage) ? h : null;
   }catch(e){ return null; }
 }
+/* v-pdf-universal: حفظ PDF يعمل في كل البيئات — جسر تطبيق الآيفون، ثم ورقة
+   مشاركة النظام (أندرويد/هواوي/TWA)، ثم التنزيل العادي (الكمبيوتر).
+   AbortError = المستخدم أغلق ورقة المشاركة بنفسه — ليس فشلًا فلا ننزّل نسخة ثانية. */
+async function omranSaveBlob(blob, filename){
+  if(omranNativeBridge('omranShare')){ msgDownloadBlob(blob, filename); return; }
+  try{
+    if(navigator.canShare && typeof File === 'function'){
+      const f = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
+      if(navigator.canShare({ files: [f] })){
+        try{ await navigator.share({ files: [f], title: filename }); return; }
+        catch(e){ if(e && e.name === 'AbortError') return; /* غيره: ننزل للتنزيل العادي */ }
+      }
+    }
+  }catch(e){ __swallow(e, 'share:universal'); }
+  msgDownloadBlob(blob, filename);
+}
 function msgDownloadBlob(blob, filename){
   const share = omranNativeBridge('omranShare');
   if(share){

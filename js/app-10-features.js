@@ -569,12 +569,17 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   function loadJsPdf(){
     if(window.jspdf && window.jspdf.jsPDF) return Promise.resolve();
     if(jsPdfLoading) return jsPdfLoading;
-    jsPdfLoading = new Promise((resolve, reject) => {
+    /* v-pdf-universal: النسخة الموطّنة أولًا — CDN خارجي كان يفشل على بعض
+       الأجهزة (شبكات تحجب cloudflare) فيطلع «تعذر إنشاء ملف PDF». */
+    const load = (src) => new Promise((resolve, reject) => {
       const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-      s.onload = resolve; s.onerror = () => { jsPdfLoading = null; reject(new Error('load-failed')); };
+      s.src = src;
+      s.onload = resolve; s.onerror = () => reject(new Error('load-failed'));
       document.head.appendChild(s);
     });
+    jsPdfLoading = load('/js/vendor/jspdf.umd.min.js?v=1')
+      .catch(() => load('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'))
+      .catch((e) => { jsPdfLoading = null; throw e; });
     return jsPdfLoading;
   }
   function readImage(file){
@@ -620,7 +625,9 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
         if(i > 0) pdf.addPage();
         pdf.addImage(jpg, 'JPEG', (pw - w) / 2, (ph - h) / 2, w, h);
       }
-      pdf.save('omran-images.pdf');
+      /* v-pdf-universal: pdf.save() = رابط تنزيل لا يعمل داخل الأغلفة —
+         المسار الموحد: جسر الآيفون ← ورقة مشاركة النظام ← تنزيل عادي. */
+      await omranSaveBlob(pdf.output('blob'), 'omran-images.pdf');
     }catch(err){
       alert(isAr ? 'تعذر إنشاء ملف PDF — حاول مرة ثانية' : 'Could not create the PDF — please try again');
     }
