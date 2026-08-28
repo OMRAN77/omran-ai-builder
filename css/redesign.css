@@ -247,7 +247,9 @@ html[dir="ltr"] #plusToolsPopup #btnToolsBox .omChev{transform:rotate(180deg);}
   /* v-ios-header-drop: سقف 62px للمنطقة الآمنة — أقصى قيمة حقيقية في كل
      الآيفونات 59px، وسفاري/WKWebView أحيانًا يضاعف env() بعد الكيبورد أو
      الدوران فينزل الهيدر لنص الشاشة. السقف يمنع المضاعفة مهما بلغت. */
-  header{padding-top:min(env(safe-area-inset-top,0px), 62px) !important; padding-bottom:6px;}
+  /* v-sat-measure: ‎--omran-sat تُقاس في selfdiag.js — env() فقط إذا كانت
+     النافذة ممتدة فعلًا تحت شريط الساعة، وإلا صفر (غلاف نازل أساسًا). */
+  header{padding-top:min(var(--omran-sat, env(safe-area-inset-top,0px)), 62px) !important; padding-bottom:6px;}
   #inputbar{padding:2px 10px 5px;}
   #composerBox{padding:4px 8px 3px !important; border-radius:16px !important; gap:1px;}
   #prompt{min-height:20px; max-height:84px; font-size:13px; padding:4px 8px 2px;}
@@ -257,7 +259,7 @@ html[dir="ltr"] #plusToolsPopup #btnToolsBox .omChev{transform:rotate(180deg);}
   #omranBottomNav{padding:3px 2px max(2px, calc(env(safe-area-inset-bottom,0px) - 15px));}
   main{padding-bottom:calc(48px + env(safe-area-inset-bottom,0px));}
 }
-html.mobile-ui header{padding-top:min(env(safe-area-inset-top,0px), 62px) !important; padding-bottom:6px;}
+html.mobile-ui header{padding-top:min(var(--omran-sat, env(safe-area-inset-top,0px)), 62px) !important; padding-bottom:6px;}
 html.mobile-ui #omranBottomNav{padding:3px 2px max(2px, calc(env(safe-area-inset-bottom,0px) - 15px));}
 html.mobile-ui main{padding-bottom:calc(48px + env(safe-area-inset-bottom,0px));}
 html.mobile-ui #inputbar{padding:2px 10px 5px;}

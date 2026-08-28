@@ -25,6 +25,78 @@
     }
   }catch(e){ /* guard-ok: بلا العلامة تبقى النسخة الكاملة */ }
 })();
+/* v-sat-measure (حريق الهيدر النازل — ٥ آيفونات): حاشية المنطقة الآمنة تُقاس
+   بدل ما تُفترض. إذا كانت نافذة التطبيق ممتدة فعلًا تحت شريط الساعة
+   (innerHeight ≈ ارتفاع الشاشة) فنحتاج env()؛ وإن كان الإطار الأصلي
+   (WKWebView غلاف متجر) نازلًا تحت الشريط أساسًا فإضافة env() فوقه تضاعف
+   الفراغ — نصفّرها. القيمة في ‎--omran-sat ويستهلكها هيدر الجوال في CSS. */
+(function measureSafeTop(){
+  var apply = function(){
+    try{
+      var ih = Math.max(window.innerHeight || 0, window.innerWidth || 0);
+      var sh = Math.max(screen.height || 0, screen.width || 0);
+      // أثناء الكيبورد بعض الأغلفة تقلّص innerHeight مؤقتًا — لا نقيس وقتها
+      var vv = window.visualViewport;
+      if(vv && (window.innerHeight - vv.height) > 60) return;
+      var fullBleed = (sh - ih) < 8;
+      document.documentElement.style.setProperty('--omran-sat', fullBleed ? 'env(safe-area-inset-top, 0px)' : '0px');
+    }catch(e){ /* guard-ok: بلا القياس يبقى env() كما كان */ }
+  };
+  apply();
+  window.addEventListener('resize', apply);
+  window.addEventListener('orientationchange', function(){ setTimeout(apply, 250); });
+})();
+/* v-diag-pill (مؤقت — يطفئ نفسه بعد 2026-09-05): حبة تشخيص صغيرة على آيفون
+   فقط تعرض أرقام المنفذ حيّة لمدة ٩٠ ثانية من الإقلاع (تُقفل باللمس).
+   لقطة شاشة واحدة معها تحسم مصدر الفراغ فوق الهيدر: تمرير؟ حاشية env؟
+   أم إزاحة أصلية من الغلاف لا تراها JS أصلًا (كل الأرقام سليمة والفراغ
+   ظاهر بالصورة = إزاحة contentInset أصلية، وعلاجها في الغلاف لا الويب). */
+(function diagPill(){
+  try{
+    if(!/iPad|iPhone|iPod/.test(navigator.userAgent || '')) return;
+    if(Date.now() > 1788566400000 /* 2026-09-05 UTC */) return;
+    var start = function(){
+      try{
+        if(document.getElementById('omranDiagPill')) return;
+        var d = document.createElement('div');
+        d.id = 'omranDiagPill';
+        d.style.cssText = 'position:fixed;left:8px;right:8px;bottom:calc(150px + env(safe-area-inset-bottom,0px));z-index:2147483645;background:rgba(8,14,28,.88);border:1px solid rgba(212,175,55,.5);color:#ffe9a8;font:10.5px/1.6 -apple-system,Menlo,monospace;padding:7px 10px;border-radius:12px;direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-all;pointer-events:auto;';
+        d.addEventListener('click', function(){ try{ d.remove(); clearInterval(t); }catch(e){ /* guard-ok: إغلاق الحبة لا يفشل بصوت */ } });
+        var probe = document.createElement('div');
+        probe.style.cssText = 'position:fixed;top:0;left:-9999px;padding-top:env(safe-area-inset-top,0px);visibility:hidden;';
+        document.body.appendChild(probe);
+        var bsrc = ''; try{ bsrc = (document.querySelector('script[src*="app.bundle.js"]') || {}).src || ''; }catch(e){ /* guard-ok: زينة تشخيصية */ }
+        var build = (bsrc.match(/v=([0-9a-f]+)/) || [])[1] || '?';
+        var upd = function(){
+          try{
+            var h = document.querySelector('header');
+            var hr = h ? h.getBoundingClientRect() : null;
+            var vv = window.visualViewport;
+            var sat = '';
+            try{ sat = getComputedStyle(document.documentElement).getPropertyValue('--omran-sat').trim(); }catch(e){ /* guard-ok: زينة تشخيصية */ }
+            d.textContent = '🩺 صوّر الشاشة كاملة مع هذا الصندوق\n'
+              + 'b:' + build
+              + ' st:' + (navigator.standalone === true ? 1 : 0)
+              + ' ua:' + (/Safari/.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS/.test(navigator.userAgent) ? 'saf' : 'wrap')
+              + ' env:' + Math.round(parseFloat(getComputedStyle(probe).paddingTop) || 0)
+              + ' sat:' + (sat || '—') + '\n'
+              + 'ih:' + window.innerHeight + ' sc:' + screen.height
+              + ' vv:' + (vv ? Math.round(vv.height) + '/' + Math.round(vv.offsetTop) + '/' + Math.round(vv.pageTop) : '—') + '\n'
+              + 'sy:' + Math.round(window.scrollY) + ' de:' + Math.round(document.documentElement.scrollTop)
+              + ' hd:' + (hr ? Math.round(hr.top) + '/' + Math.round(hr.height) : '—')
+              + ' hp:' + (h ? Math.round(parseFloat(getComputedStyle(h).paddingTop) || 0) : '—');
+          }catch(e){ /* guard-ok */ }
+        };
+        var t = setInterval(upd, 1000);
+        upd();
+        (document.body || document.documentElement).appendChild(d);
+        setTimeout(function(){ try{ d.remove(); probe.remove(); clearInterval(t); }catch(e){ /* guard-ok: تنظيف الحبة ترف */ } }, 90000);
+      }catch(e){ /* guard-ok: الحبة ترف تشخيصي */ }
+    };
+    if(document.body) setTimeout(start, 2500);
+    else window.addEventListener('DOMContentLoaded', function(){ setTimeout(start, 2500); });
+  }catch(e){ /* guard-ok */ }
+})();
 (function(){
   var reported = {};
   function report(msg, src, line, col, stack){
