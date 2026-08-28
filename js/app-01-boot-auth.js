@@ -649,7 +649,10 @@ const $ = s => document.querySelector(s);
     if(authToggleBtn) authToggleBtn.style.display = 'none';
     const headerLoginBtn = $('#btnHeaderLogin');
     if(headerLoginBtn){
-      headerLoginBtn.style.display = loggedIn ? 'none' : 'inline-flex';
+      /* v-auth-optional-2 (أمر عمران ٢٩ أغسطس): زر «دخول» يُحذف من الهيدر
+         نهائيًا — جوال وكمبيوتر. الدخول من الإعدادات → حسابي فقط، أو
+         تلقائيًا عند ميزة تتطلب حسابًا (requireLogin). */
+      headerLoginBtn.style.display = 'none';
       headerLoginBtn.onclick = () => { setMode('login'); showOverlay(); };
     }
     /* v-auth-optional (طلب عمران ٢٨ أغسطس): الدخول صار اختياريًا — زر دائم
