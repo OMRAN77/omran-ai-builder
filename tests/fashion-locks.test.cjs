@@ -417,4 +417,16 @@ console.log('  ✓ v-src-unclip: قائمة المصادر تفتح مرئية �
 }
 console.log('  ✓ v-eye-hint: تعليمات المرشد مكتوبة لا صوتية فقط');
 
+// ㉟ v-edu-split: تحليل المحاضرة كان نداءً واحدًا ضخمًا (دقيقة+) — شُقّ إلى
+// نداءين متوازيين (الملخص | الأسئلة) فالزمن زمن الأطول فقط. مقاس بالمجس:
+// فتح الصفحة نفسه سريع أصلًا (238ms) — البطء كله كان في التحليل.
+{
+  const eduSrv = fs.readFileSync(path.join(__dirname, '../api/edu.js'), 'utf8');
+  assert.ok(eduSrv.includes('v-edu-split') && eduSrv.includes('await Promise.all(['), 'الملخص والأسئلة بالتوازي');
+  assert.ok(eduSrv.includes('anthropicJSON(apiKey, sysSummary') && eduSrv.includes('anthropicJSON(apiKey, sysQuestions'), 'شقّان منفصلان بنفس المحتوى');
+  assert.ok(eduSrv.includes(".catch(() => null)"), 'فشل شقّ الأسئلة لا يُسقط الدرس');
+  assert.ok(eduSrv.includes('quiz = 15 سؤالًا بالضبط'), 'قواعد الأسئلة كاملة في شقّها');
+}
+console.log('  ✓ v-edu-split: تحليل المحاضرة بنصف الزمن — نداءان متوازيان');
+
 console.log('fashion locks tests passed');
