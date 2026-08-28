@@ -232,7 +232,9 @@ module.exports = async (req, res) => {
 
     if (!upstream || !upstream.ok) {
       const rescuedB64 = await openaiRescueImage();
-      if (rescuedB64) { res.status(200).json({ imageBase64: rescuedB64, mimeType: 'image/png', engine: 'openai' }); return; }
+      /* v-prayer-carry: الإنقاذ كان يفقد الدعاء المؤلَّف فيرفضه العميل
+         (missing_authored_prayer — لقطة المالك). يُمرَّر مع الصورة المنقذة. */
+      if (rescuedB64) { res.status(200).json({ imageBase64: rescuedB64, mimeType: 'image/png', engine: 'openai', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
       await refundImageCharge();
       const timedOut = isImageTimeoutError(imageResult.error);
       const retryable = timedOut || !!(upstream && (upstream.status === 429 || upstream.status >= 500));
@@ -246,7 +248,7 @@ module.exports = async (req, res) => {
     let imgPart = respParts.find((p) => p.inlineData && p.inlineData.data);
     if (!imgPart) {
       const rescuedB64b = await openaiRescueImage();
-      if (rescuedB64b) { res.status(200).json({ imageBase64: rescuedB64b, mimeType: 'image/png', engine: 'openai' }); return; }
+      if (rescuedB64b) { res.status(200).json({ imageBase64: rescuedB64b, mimeType: 'image/png', engine: 'openai', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
       await refundImageCharge();
       console.error('[maha-image] no image part in response: ' + JSON.stringify(data).slice(0, 2000));
       res.status(500).json({ error: 'لم يرجع الموديل صورة، حاول توصيف مختلف.' });
