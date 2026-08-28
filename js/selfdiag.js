@@ -25,26 +25,15 @@
     }
   }catch(e){ /* guard-ok: بلا العلامة تبقى النسخة الكاملة */ }
 })();
-/* v-sat-measure (حريق الهيدر النازل — ٥ آيفونات): حاشية المنطقة الآمنة تُقاس
-   بدل ما تُفترض. إذا كانت نافذة التطبيق ممتدة فعلًا تحت شريط الساعة
-   (innerHeight ≈ ارتفاع الشاشة) فنحتاج env()؛ وإن كان الإطار الأصلي
-   (WKWebView غلاف متجر) نازلًا تحت الشريط أساسًا فإضافة env() فوقه تضاعف
-   الفراغ — نصفّرها. القيمة في ‎--omran-sat ويستهلكها هيدر الجوال في CSS. */
-(function measureSafeTop(){
-  var apply = function(){
-    try{
-      var ih = Math.max(window.innerHeight || 0, window.innerWidth || 0);
-      var sh = Math.max(screen.height || 0, screen.width || 0);
-      // أثناء الكيبورد بعض الأغلفة تقلّص innerHeight مؤقتًا — لا نقيس وقتها
-      var vv = window.visualViewport;
-      if(vv && (window.innerHeight - vv.height) > 60) return;
-      var fullBleed = (sh - ih) < 8;
-      document.documentElement.style.setProperty('--omran-sat', fullBleed ? 'env(safe-area-inset-top, 0px)' : '0px');
-    }catch(e){ /* guard-ok: بلا القياس يبقى env() كما كان */ }
-  };
-  apply();
-  window.addEventListener('resize', apply);
-  window.addEventListener('orientationchange', function(){ setTimeout(apply, 250); });
+/* v-sat-revert (لقطة Asma ٢٨ أغسطس): افتراض v-sat-measure كان خاطئًا —
+   innerHeight أقل من ارتفاع الشاشة بسبب حاشية «القاع» (شريط الهوم)، فصفّرنا
+   حاشية «القمة» غلطًا وطلع الشعار تحت الساعة (بلا كيبورد إطلاقًا — حالة
+   ساكنة لا تصلها ملاءمة v644/v645 لأنها تعمل فقط والمنفذ منزاح/الكيبورد
+   مفتوح). لا يوجد API يميّز إزاحة القمة عن القاع، فالحاشية ترجع env()
+   دائمًا (بسقف 62px في CSS) كما كانت طوال عمر التطبيق قبل اليوم. */
+(function(){
+  try{ document.documentElement.style.setProperty('--omran-sat', 'env(safe-area-inset-top, 0px)'); }
+  catch(e){ /* guard-ok: CSS يملك نفس القيمة احتياطيًا في var() */ }
 })();
 /* v-diag-pill (مؤقت — يطفئ نفسه بعد 2026-09-05): حبة تشخيص صغيرة على آيفون
    فقط تعرض أرقام المنفذ حيّة سبع دقائق من الإقلاع (v643: تكفي لدخول المحادثة) (تُقفل باللمس).
