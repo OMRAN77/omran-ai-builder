@@ -164,7 +164,8 @@ console.log('  ✓ v-stocks-paper: المحفظة التعليمية مقفول�
 const vgSrv = fs.readFileSync(path.join(__dirname, '../api/_lib/visual-guide.js'), 'utf8');
 assert.ok(vgSrv.includes("new Set(['describe', 'read', 'steps', 'translate', 'ask'])"), 'الخادم يقبل وضعي الترجمة والسؤال');
 assert.ok(vgSrv.includes('v-eye-rescue') && vgSrv.includes('async function openaiRescue'), 'خط الإنقاذ الثامن موجود');
-assert.ok(vgSrv.includes("if (!text) text = (await openaiRescue(image, prompt)) || ''"), 'سقوط Gemini أو فراغه يهبط للإنقاذ لا للفشل');
+assert.ok(vgSrv.includes("text = (await openaiRescue(image, prompt)) || ''"), 'سقوط Gemini أو فراغه يهبط للإنقاذ لا للفشل');
+assert.ok(vgSrv.includes('v-eye-probe') && vgSrv.includes('text, engine'), 'الرد يسمّي المحرك — المجس يشخّص به');
 assert.ok(vgSrv.includes("res.status(key ? 502 : 503)"), 'الفشل الكامل يحافظ على عقد الأخطاء القديم');
 const vgCli = fs.readFileSync(path.join(__dirname, '../js/app-24-visual-guide.js'), 'utf8');
 assert.ok(vgCli.includes("translate: ['ترجمة فورية'") && vgCli.includes("ask: ['اسأل عمّا تراه'"), 'الوضعان في قاموس الواجهة');
