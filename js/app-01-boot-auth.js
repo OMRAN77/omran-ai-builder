@@ -119,7 +119,12 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
     const t  = Math.max(0, Math.round(vv.offsetTop));
     const h  = Math.max(220, Math.round(vv.height));
     const kb = Math.round(window.innerHeight - vv.height);
-    const on = (t > 0 || kb >= 40);   // كيبورد مفتوح أو منفذ منزاح فعلًا
+    /* v646-fix (لقطتا فاطمة 6:37 — بعد الكتابة يعلق الهيدر نازلًا والريلود
+       يصلحه): كان الشرط (t>0 || kb>=40) — وسفاري iOS أحيانًا يترك offsetTop
+       عالقًا > 0 بعد إغلاق الكيبورد بلا أي حدث لاحق، فيبقى الجسم مدفوعًا
+       للأسفل للأبد. التكبير معطّل (user-scalable=no) فلا يوجد وضع شرعي يكون
+       فيه المنفذ منزاحًا والكيبورد مقفولًا — الكيبورد وحده هو المعيار. */
+    const on = kb >= 40;
     const nt = on ? t : 0, nh = on ? h : 0;
     if(nt !== lastT){
       lastT = nt;
@@ -154,7 +159,9 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
   vv.addEventListener('scroll', schedule);
   window.addEventListener('scroll', schedule, { passive:true });
   document.addEventListener('focusin', () => chase(900));
-  document.addEventListener('focusout', () => chase(900));
+  /* v646-fix: نافذة أطول بعد الخروج من الحقل — إغلاق الكيبورد قد يكتمل
+     متأخرًا فتفوت لحظة التصفير على نافذة 900ms وتبقى القيم العالقة. */
+  document.addEventListener('focusout', () => chase(2500));
   window.addEventListener('orientationchange', () => chase(1200));
   window.addEventListener('pageshow', schedule);
   schedule();
