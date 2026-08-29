@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  function AL(){ try{ return (typeof appLang==='function'?appLang():(localStorage.getItem('aiapp_lang')||'ar')); }catch(e){ return 'ar'; } }
+  function AL(){ try{ if(typeof lang!=='undefined' && lang) return String(lang); return (typeof appLang==='function'?appLang():(localStorage.getItem('aiapp_lang')||'ar')); }catch(e){ return 'ar'; } }
   function TK(){ try{ return (typeof getToken==='function'?getToken():'')||''; }catch(e){ return ''; } }
   function isAr(){ return /^ar/i.test(AL()); }
   function E(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
@@ -28,7 +28,12 @@
     if(!r.ok) throw new Error(d.error||('HTTP '+r.status));
     return d;
   }
-  function T(ar,en){ return isAr()?ar:en; }
+  /* v-tools-i18n: كل أداة بلغة مستخدمها — عربي/أردو ← عربي، وغيرهما ← إنجليزي */
+  function docL(ar, en){
+    var l = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
+    return (l === 'ar' || l === 'ur') ? ar : en;
+  }
+  function T(ar,en){ return docL(ar,en); }
 
   /* ===================== 📄 مساعد المستندات ===================== */
   (function(){
@@ -258,9 +263,10 @@
   function pick(r){
     var L = 'ar';
     try{
-      L = (document.documentElement.getAttribute('lang') || 'ar').slice(0,2).toLowerCase();
+      L = ((typeof lang !== 'undefined' && lang) ? String(lang) : (document.documentElement.getAttribute('lang') || 'ar')).slice(0,2).toLowerCase();
     }catch(e){ /* صمت مقصود: تعذّر قراءة سمة اللغة ⇒ العربيّة هي الافتراض أصلًا */ }
-    return r[L] || r.ar;
+    /* v-tools-i18n: عربي/أردو ← عربي، وغيرهما ← إنجليزي */
+    return (L === 'ar' || L === 'ur') ? r.ar : (r.en || r.ar);
   }
 
   function toChat(txt){

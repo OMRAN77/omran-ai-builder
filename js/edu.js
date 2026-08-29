@@ -24,6 +24,11 @@ ml:{title:'എന്റെ പാഠങ്ങൾ',oldEdu:'📚 കോഴ്സ�
 function T(k){ var L=appLang(); var d=I18N[L]||I18N.en; return d[k]||I18N.en[k]||I18N.ar[k]||k; }
 function isRTL(){ return RTL_LANGS.indexOf(appLang())>=0; }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+/* v-tools-i18n: كل أداة بلغة مستخدمها — عربي/أردو ← عربي، وغيرهما ← إنجليزي */
+function eduL(ar, en){
+  var l = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
+  return (l === 'ar' || l === 'ur') ? ar : en;
+}
 function getToken(){ try{ return (typeof authGet==='function'?authGet('aiapp_auth_token'):null)||localStorage.getItem('aiapp_auth_token')||sessionStorage.getItem('aiapp_auth_token')||''; }catch(e){ return ''; } }
 function api(payload){
   payload=payload||{}; payload.token=getToken()||undefined;
@@ -147,7 +152,7 @@ function showHome(){
    +'<div class="eduPasteArea" id="eduPasteArea">'
    +'<textarea id="eduPasteTxt" placeholder="'+esc(T('pastePh'))+'"></textarea>'
    +'<button class="eduPrimary" id="eduAnalyzeTxtBtn">'+esc(T('analyze'))+'</button></div>'
-   +'<button class="eduUploadBtn" id="eduCurricBtn" style="margin-top:10px;"><span style="font-size:20px;">📚</span><span>'+esc((typeof AL==='function'&&AL()==='en')?'Lesson from curriculum — pick country, grade & subject':'درس من المنهج — اختر البلد والصف والمادة')+'</span></button>'
+   +'<button class="eduUploadBtn" id="eduCurricBtn" style="margin-top:10px;"><span style="font-size:20px;">📚</span><span>'+esc(eduL('درس من المنهج — اختر البلد والصف والمادة','Lesson from curriculum — pick country, grade & subject'))+'</span></button>'
    +(getToken()?'':'<div class="eduNote">'+esc(T('guestNote'))+'</div>')
    +eduExamLangControl()
    +'<div class="eduSecTitle">'+esc(T('mySubjects'))+'</div>'
@@ -258,7 +263,7 @@ function showLesson(lesson,backFn){
 /* v-edu-questions: درس وصل ببطاقات (0) واختبار (0) — شقّ الأسئلة تعثر وقتها.
    بدل شرطة ميتة: زر يولّد الأسئلة وحدها من الملخص الموجود ويحفظها. */
 function eduRegenQuestions(pane,lesson,tab){
-  function TL(ar,en){ return (typeof AL==='function'&&AL()==='en')?en:ar; }
+  function TL(ar,en){ return eduL(ar,en); }
   pane.innerHTML='<div class="eduCenter" style="padding:16px 6px;"><p style="font-size: var(--fs-3);line-height:1.8;">'+esc(TL('لم تصل أسئلة هذا الدرس — ولّدها الآن من الملخص خلال نحو دقيقة.','Questions did not arrive — generate them from the summary in about a minute.'))+'</p>'
     +'<button class="eduPrimary" id="eduRegenQsBtn">'+esc(TL('✨ ولّد الأسئلة الآن','✨ Generate questions'))+'</button></div>';
   var b=document.getElementById('eduRegenQsBtn');
@@ -312,7 +317,7 @@ function renderQuiz(pane,lesson){
 
   var LEVELS=['basic','mid','advanced'];
   var LABEL={basic:T2('أساسي','Basic'),mid:T2('متوسط','Intermediate'),advanced:T2('متقدّم','Advanced')};
-  function T2(ar,en){ return (typeof AL==='function'&&AL()==='en')?en:ar; }
+  function T2(ar,en){ return eduL(ar,en); }
 
   /* Legacy lessons saved before levels existed carry no `level` — treat the
      whole set as one "mid" pool so old lessons still work unchanged. */
@@ -442,7 +447,7 @@ function renderQuiz(pane,lesson){
 
 /* ---------- 🧪 v-edu-lab: الدرس الحي — تجربة تفاعلية مولّدة من الدرس ---------- */
 function renderLab(pane,lesson){
-  function TL(ar,en){ return (typeof AL==='function'&&AL()==='en')?en:ar; }
+  function TL(ar,en){ return eduL(ar,en); }
   function showFrame(html){
     pane.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap;">'
       +'<span style="font-size:12.5px;opacity:.75;">'+esc(TL('العب بالمفهوم بيدك — كل الأزرار داخل التجربة تعمل','Play with the concept — everything inside is interactive'))+'</span>'
@@ -501,7 +506,7 @@ function renderWritten(pane,lesson,written){
     document.getElementById('eduGrade').onclick=function(){ grade(w,document.getElementById('eduAns').value,null); };
   }
 
-  function TW(ar,en){ return (typeof AL==='function'&&AL()==='en')?en:ar; }
+  function TW(ar,en){ return eduL(ar,en); }
 
   function grade(w,answer,dispute){
     var out=document.getElementById('eduGradeOut');
@@ -561,9 +566,8 @@ function showBusy(){ setBack(false); body.innerHTML='<div class="eduBusyBox"><di
 var EDU_EXAM_LANGS=[['','—'],['ar','العربية'],['en','English'],['fr','Français'],['hi','हिन्दी'],['ur','اردو'],['ml','മലയാളം'],['bn','বাংলা'],['id','Bahasa'],['tr','Türkçe'],['es','Español'],['zh','中文'],['ru','Русский']];
 function eduExamLangControl(){
   var cur=eduExamLang();
-  var isEn=(typeof AL==='function'&&AL()==='en');
-  var label=isEn?'My exam language':'لغة امتحاني';
-  var hint=isEn?'Explanations stay in your language; terms follow the exam.':'الشرح بلغتك، والمصطلحات بلغة الامتحان.';
+  var label=eduL('لغة امتحاني','My exam language');
+  var hint=eduL('الشرح بلغتك، والمصطلحات بلغة الامتحان.','Explanations stay in your language; terms follow the exam.');
   var h='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0 2px;font-size: var(--fs-3);">'
     +'<span style="opacity:.85;">'+esc(label)+'</span>'
     +'<select id="eduExamLangSel" style="padding:7px 10px;border-radius:var(--r-2);border:1px solid rgba(127,127,127,.35);background:transparent;color:inherit;font:inherit;font-size: var(--fs-3);">';
@@ -584,17 +588,16 @@ function setEduExamLang(v){ try{ if(v) localStorage.setItem('edu_exam_lang',v); 
 
 /* v655: درس من المنهج — الطالب يختار البلد والمرحلة والصف والمادة واسم الدرس،
    والذكاء الاصطناعي يؤلف شرحًا كاملًا + بطاقات + اختبار عبر action:'explain'. */
-var EDU_COUNTRIES=['الإمارات','السعودية','مصر','الأردن','الكويت','قطر','البحرين','عُمان','العراق','سوريا','لبنان','فلسطين','اليمن','المغرب','الجزائر','تونس','ليبيا','السودان','منهج بريطاني IGCSE','منهج أمريكي','بكالوريا دولية IB'];
+function EDU_COUNTRIES(){ return [eduL('الإمارات','UAE'),eduL('السعودية','Saudi Arabia'),eduL('مصر','Egypt'),eduL('الأردن','Jordan'),eduL('الكويت','Kuwait'),eduL('قطر','Qatar'),eduL('البحرين','Bahrain'),eduL('عُمان','Oman'),eduL('العراق','Iraq'),eduL('سوريا','Syria'),eduL('لبنان','Lebanon'),eduL('فلسطين','Palestine'),eduL('اليمن','Yemen'),eduL('المغرب','Morocco'),eduL('الجزائر','Algeria'),eduL('تونس','Tunisia'),eduL('ليبيا','Libya'),eduL('السودان','Sudan'),eduL('منهج بريطاني IGCSE','British curriculum IGCSE'),eduL('منهج أمريكي','American curriculum'),eduL('بكالوريا دولية IB','International Baccalaureate IB')]; }
 function showCurriculum(){
   setBack(true); navStack=[showHome];
-  var isEn=(typeof AL==='function'&&AL()==='en');
-  function W(a,e){ return isEn?e:a; }
+  function W(a,e){ return eduL(a,e); }
   var fld='width:100%;box-sizing:border-box;padding:11px;border-radius:var(--r-2);border:1px solid rgba(127,127,127,.35);background:transparent;color:inherit;font:inherit;font-size:var(--fs-3);';
   var lab='display:block;margin:12px 0 5px;font-size:var(--fs-3);opacity:.85;';
   var stages=[W('ابتدائي','Primary'),W('إعدادي / متوسط','Middle school'),W('ثانوي','High school'),W('جامعة','University'),W('كلية / معهد','College / institute')];
   var h='<div style="font-size:var(--fs-3);line-height:1.8;opacity:.8;margin-bottom:4px;">'+esc(W('اختر منهجك وبيانات الدرس، وبيتألف لك شرح كامل + بطاقات مراجعة + اختبار.','Pick your curriculum and lesson details — you get a full explanation, flashcards and a quiz.'))+'</div>'
    +'<label style="'+lab+'">'+esc(W('البلد / المنهج','Country / curriculum'))+'</label>'
-   +'<input id="eduCurCountry" list="eduCountryList" placeholder="'+esc(W('مثال: الإمارات','e.g. UAE'))+'" style="'+fld+'"><datalist id="eduCountryList">'+EDU_COUNTRIES.map(function(c){return '<option value="'+esc(c)+'">';}).join('')+'</datalist>'
+   +'<input id="eduCurCountry" list="eduCountryList" placeholder="'+esc(W('مثال: الإمارات','e.g. UAE'))+'" style="'+fld+'"><datalist id="eduCountryList">'+EDU_COUNTRIES().map(function(c){return '<option value="'+esc(c)+'">';}).join('')+'</datalist>'
    +'<label style="'+lab+'">'+esc(W('المرحلة','Stage'))+'</label><select id="eduCurStage" style="'+fld+'">'+stages.map(function(st){return '<option value="'+esc(st)+'">'+esc(st)+'</option>';}).join('')+'</select>'
    +'<label style="'+lab+'">'+esc(W('الصف / السنة','Grade / year'))+'</label><input id="eduCurGrade" placeholder="'+esc(W('مثال: الصف التاسع أو السنة الثانية','e.g. Grade 9 or 2nd year'))+'" style="'+fld+'">'
    +'<label style="'+lab+'">'+esc(W('المادة','Subject'))+'</label><input id="eduCurSubject" placeholder="'+esc(W('مثال: رياضيات، فيزياء، أحياء…','e.g. Math, Physics, Biology…'))+'" style="'+fld+'">'
@@ -616,7 +619,7 @@ function processContent(payload,__act){
     var L=j.lesson||{};
     return listLessons().then(function(r){
       var subs=[]; (r.lessons||[]).forEach(function(x){ if(subs.indexOf(x.subject||'—')<0) subs.push(x.subject||'—'); });
-      var subj=L.subject||'عام';
+      var subj=L.subject||eduL('عام','General');
       var lesson={
         id:'l'+Date.now().toString(36)+Math.random().toString(36).slice(2,7),
         subject:subj,
@@ -661,8 +664,10 @@ function handleFiles(files){
   var imgs=files.filter(function(f){ return /^image\//.test(f.type); }).slice(0,10);
   if(!imgs.length){
     // v412: الرسالة العامة «حدث خطأ» كانت تترك المستخدم يظن أن ملفه تالف.
-    alert('نوع الملف غير مدعوم هنا. رفع المحاضرة يقبل: PDF أو DOCX أو ZIP أو صور.\n\n' +
-      'أما ملفات الكود والمشاريع فتُرفع من زر 📎 إرفاق داخل المحادثة.');
+    alert(eduL('نوع الملف غير مدعوم هنا. رفع المحاضرة يقبل: PDF أو DOCX أو ZIP أو صور.\n\n' +
+      'أما ملفات الكود والمشاريع فتُرفع من زر 📎 إرفاق داخل المحادثة.',
+      'This file type is not supported here. Lecture upload accepts: PDF, DOCX, ZIP or images.\n\n' +
+      'Code and project files should be attached with the 📎 attach button inside the chat.'));
     return;
   }
   showBusy();
@@ -678,7 +683,7 @@ function handleArchive(file){
   showBusy();
   function fail(msg){
     body.innerHTML='<div class="eduCenter"><p style="font-size: var(--fs-3);line-height:1.9">'+esc(msg)+'</p>'+
-      '<button class="eduPrimary" id="eduErrBack">حسنًا</button></div>';
+      '<button class="eduPrimary" id="eduErrBack">'+esc(eduL('حسنًا','OK'))+'</button></div>';
     document.getElementById('eduErrBack').onclick=showHome; setBack(true); navStack=[showHome];
   }
   function run(){
@@ -688,22 +693,22 @@ function handleArchive(file){
         var names=Object.keys(zip.files).filter(function(n){
           return !zip.files[n].dir && TEXT.test(n) && !/(^|\/)(__MACOSX|node_modules)\//.test(n);
         }).slice(0,25);
-        if(!names.length) throw new Error('لا يوجد نص قابل للقراءة داخل الأرشيف. ارفع PDF أو صورًا للمحاضرة.');
+        if(!names.length) throw new Error(eduL('لا يوجد نص قابل للقراءة داخل الأرشيف. ارفع PDF أو صورًا للمحاضرة.','No readable text found inside the archive. Upload a PDF or images of the lecture.'));
         return Promise.all(names.map(function(n){
           return zip.files[n].async('string').then(function(t){ return '— '+n+' —\n'+t; });
         })).then(function(parts){ return parts.join('\n\n').slice(0,60000); });
       })
       .then(function(txt){
-        if(!txt.trim()) throw new Error('الأرشيف فارغ من النصوص.');
+        if(!txt.trim()) throw new Error(eduL('الأرشيف فارغ من النصوص.','The archive contains no text.'));
         processContent({text:txt,lang:appLang()});
       })
-      .catch(function(e){ fail(e.message||'تعذّر فتح الأرشيف.'); });
+      .catch(function(e){ fail(e.message||eduL('تعذّر فتح الأرشيف.','Could not open the archive.')); });
   }
   if(window.JSZip) run();
   else{
     var sc=document.createElement('script');
     sc.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
-    sc.onload=run; sc.onerror=function(){ fail('تعذّر تحميل أداة فكّ الضغط. تحقّق من الاتصال.'); };
+    sc.onload=run; sc.onerror=function(){ fail(eduL('تعذّر تحميل أداة فكّ الضغط. تحقّق من الاتصال.','Could not load the unzip tool. Check your connection.')); };
     document.head.appendChild(sc);
   }
 }
