@@ -697,6 +697,13 @@ module.exports = async (req, res) => {
       }
       await kvPutJSON(rateKey, rate);
 
+      // تشخيص واضح: غياب مفتاح Resend كان يظهر كـ«تعذر الإرسال» العامة،
+      // فيضيع أصل العطل (إعدادات Vercel) خلف رسالة توحي بخلل عابر.
+      if (!RESEND_API_KEY) {
+        res.status(500).json({ error: m('خدمة البريد غير مهيأة — أبلغ مسؤول التطبيق', 'Mail service is not configured — contact the app admin') });
+        return;
+      }
+
       const otpCode = genNumericOtp();
       await kvPutJSON('db/otp/' + key, { otp: otpCode, exp: now + 300000 });
 
