@@ -34,6 +34,13 @@
   }
   *{box-sizing:border-box;}
   html,body{height:100%;margin:0;}
+  /* v-ios-textsize: سفاري iOS يضخّم النص تلقائيًا في الكتل العريضة (شريط
+     الأسهم طلع «وايد كبير») — 100% يقفل التضخيم فيطابق هواوي والكمبيوتر. */
+  html{-webkit-text-size-adjust:100%; text-size-adjust:100%;}
+  /* v-ios-backdrop: مناطق الأمان (تحت مؤشر الهوم وفوق) كانت تكشف خلفية سوداء
+     في الثيم الفاتح على الآيفون — الخلفية تتبع الثيم فتختفي الأشرطة الغريبة. */
+  html{background:#0b0b0d;}
+  html[data-mode="light"]{background:#f2f2f4;}
   /* v308: قفل أفقي كامل للصفحة — ثابتة مثل واتساب (iOS Safari) */
   html,body{overflow-x:hidden; max-width:100%; overscroll-behavior-x:none;}
   #messages{touch-action:pan-y; overscroll-behavior-x:none;}
@@ -258,6 +265,12 @@
   .msg img, .msg video, .msg iframe{max-width:100%;}
   .msg table{display:block; max-width:100%; overflow-x:auto;}
   .msg{padding:2px 2px; border-radius:0; font-size: var(--fs-3); line-height:1.7; max-width:92%; background:transparent !important; border:none !important; box-shadow:none !important; backdrop-filter:none !important;}
+  /* v-tap-fast: الرسائل خارج الشاشة تُستثنى من التخطيط والرسم — المحادثات
+     الضخمة كانت تجمّد الجوال مع كل تفاعل (كتابة/تنقّل) فتضيع الضغطات.
+     v-cv-webkit: حريق ٢٨ أغسطس — سفاري/آيفون لا يرسم العناصر المؤجّلة أبدًا
+     (شاشة سوداء على ٣ هواتف) فالقاعدة مقيّدة بصنف cv-ok الذي لا يوضع إلا
+     على المحركات السليمة (كروميوم/فايرفوكس) — انظر selfdiag.js. */
+  html.cv-ok .msg{content-visibility:auto; contain-intrinsic-size:auto 160px;}
   /* v338: حجم خط المحادثة */
   html.fs-small .msg{font-size:12px;}
   html.fs-large .msg{font-size:15.5px;}
@@ -301,6 +314,9 @@
   .tts-word.md-h3,.tts-word.md-h4{font-weight:700; font-size:1.08em;}
   .tts-word.md-h5,.tts-word.md-h6{font-weight:700;}
   .msg-text{white-space:pre-wrap; unicode-bidi:plaintext;}
+  /* v-stream-tidy: أثناء البث النص يُبنى داخل .msg مباشرة لا داخل .msg-text —
+     بلا pre-wrap كانت الأسطر تنضغط كتلة واحدة («زحمة وبعدين تترتب»). */
+  .msg.msg-streaming{white-space:pre-wrap; unicode-bidi:plaintext;}
   .msg-text p, .msg-text li, .msg-text div{unicode-bidi:plaintext;}
   /* صناديق الكود داخل المحادثة — بنمط Tasklet/GitHub */
   .chat-codeblock{background:#0d1117;border:1px solid #21262d;border-radius:var(--r-2);margin:10px 0;direction:ltr;text-align:left;overflow:hidden;}
@@ -550,7 +566,7 @@
      On mobile the CHAT is the main/default screen. ☰ opens the CODE drawer,
      💬 opens the PREVIEW drawer, and 📂 opens the projects-history drawer. */
   @media (max-width:860px){
-    header{padding:8px 10px 8px; padding-top:calc(8px + env(safe-area-inset-top, 0px)) !important; gap:6px; flex-direction:row; align-items:center; justify-content:space-between; flex-wrap:nowrap;}
+    header{padding:8px 10px 8px; padding-top:min(var(--omran-sat, env(safe-area-inset-top, 0px)), 62px) !important; gap:6px; flex-direction:row; align-items:center; justify-content:space-between; flex-wrap:nowrap;}
     header h1{font-size:14px; min-width:0; flex:1 1 auto; overflow:hidden;}
     header h1 .brand{width:28px; height:28px; border-radius:9px; font-size:14px; flex-shrink:0;}
     header h1 .titles{min-width:0; overflow:hidden;}
@@ -655,7 +671,7 @@
     padding-top:env(safe-area-inset-top, 0px);
   }
   html.mobile-ui #settingsDialog{ resize:none; }
-  html.mobile-ui dialog > div:first-child{ padding-top:calc(env(safe-area-inset-top, 0px) + 4px); }
+  html.mobile-ui dialog > div:first-child{ padding-top:4px; } /* v-fix: safe-area already on dialog */
   body.vantaActive{background:transparent !important; animation:none !important;}
   #vantaBg{position:fixed; inset:0; z-index:-1; pointer-events:none;}
   .bg3dGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:8px; margin-top:10px;}
@@ -864,3 +880,9 @@ html[data-mode="light"] #composerBox{background:#E5E5E5 !important;}
 
 /* v569: الروابط لا تتقطّع في منتصف الكلمة — الكسر عند المسافة، والكلمة الأطول من السطر وحدها تُكسر */
 .msg a, .msg-text a{overflow-wrap:break-word; word-break:normal; hyphens:none;}
+
+/* v-store-safe: حزمة AppGallery — كل الواجهات المالية مخفية (قاعدة 11.4). */
+html.store-safe #stockTicker,
+html.store-safe #btnStocks,
+html.store-safe #stocksModal,
+html.store-safe #aboutStocksCard{display:none !important;}

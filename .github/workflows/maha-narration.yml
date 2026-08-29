@@ -1,0 +1,29 @@
+# توليد تعليق مها الصوتي للفيديوهات التعريفية من /api/tts على الإنتاج.
+name: Maha narration
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  narrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Generate narration via production TTS
+        run: node scripts/maha-narration.mjs "https://omran-ai-builder.vercel.app"
+      # تنزيل الـartifact محجوب من بيئة الوكيل — الدفع لفرع بوت هو قناة التسليم.
+      - name: Push narration to bot branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B bot/maha-narration
+          git add -f narration
+          git commit -m "صوت مها: تعليق الفيديوهات التعريفية الأربعة" || echo "لا جديد"
+          git push -f origin bot/maha-narration

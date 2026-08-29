@@ -3,8 +3,9 @@
    sha256(المحتوى) = 3439992f8071f21b0a80db2183148b0b */
 (function(){
   var S = document.currentScript;
-  var H = String.raw`<div id="authOverlay" style="position:fixed; inset:0; z-index:9999; background:var(--bg,#111); display:flex; align-items:center; justify-content:center; padding:20px;">
+  var H = String.raw`<div id="authOverlay" style="position:fixed; inset:0; z-index:9999; background:var(--bg,#111); display:none; align-items:center; justify-content:center; padding:20px;">
   <div style="max-width:380px; width:100%; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3); position:relative;">
+    <button type="button" id="authCloseBtn" aria-label="إغلاق" style="position:absolute; top:calc(10px + env(safe-area-inset-top,0px)); inset-inline-start:12px; width:34px; height:34px; border-radius:50%; background:rgba(128,128,128,.14); border:none; color:var(--muted); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>
     <h2 style="margin-top:0; text-align:center;" data-i18n="authTitle">🔐 مرحبًا بك</h2>
     <p style="text-align:center; font-size: var(--fs-3); color:var(--muted); margin-top:-8px;" data-i18n="authSubtitle">سجّل الدخول أو أنشئ حسابًا جديدًا للمتابعة</p>
     <div style="display:flex; gap:8px; margin:14px 0;">
@@ -267,6 +268,45 @@
         <option value="najdi" data-en="🏜️ Najdi" data-i18n="designAiStyleNajdi">🏜️ نجدي</option>
         <option value="islamic" data-en="✳️ Modern Islamic" data-i18n="designAiStyleIslamic">✳️ إسلامي معاصر</option>
         <option value="andalusi" data-en="🏛️ Andalusian" data-i18n="designAiStyleAndalusi">🏛️ أندلسي</option>
+        <option value="emirati" data-en="🌴 Emirati modern">🌴 إماراتي معاصر</option>
+        <option value="scandinavian" data-en="🌿 Scandinavian">🌿 سكندنافي</option>
+        <option value="japandi" data-en="🎋 Japandi">🎋 جابندي</option>
+        <option value="industrial" data-en="🏭 Industrial">🏭 صناعي</option>
+        <option value="midcentury" data-en="🪑 Mid-century">🪑 ميدسنشري</option>
+        <option value="artdeco" data-en="💎 Art Deco">💎 آرت ديكو</option>
+        <option value="neoclassic" data-en="🏛️ Neoclassic">🏛️ نيوكلاسيك</option>
+        <option value="victorian" data-en="🕯️ Victorian">🕯️ فيكتوري</option>
+        <option value="baroque" data-en="👑 Baroque">👑 باروك</option>
+        <option value="gothic" data-en="🦇 Gothic">🦇 قوطي</option>
+        <option value="rustic" data-en="🪵 Rustic">🪵 ريفي خشبي</option>
+        <option value="farmhouse" data-en="🏡 Farmhouse">🏡 مزرعة عصرية</option>
+        <option value="coastal" data-en="🌊 Coastal">🌊 ساحلي</option>
+        <option value="mediterranean" data-en="🏖️ Mediterranean">🏖️ متوسطي</option>
+        <option value="moroccan" data-en="🕌 Moroccan">🕌 مغربي</option>
+        <option value="turkish" data-en="🧿 Ottoman Turkish">🧿 تركي عثماني</option>
+        <option value="persian" data-en="🪔 Persian">🪔 فارسي</option>
+        <option value="indian" data-en="🐘 Indian">🐘 هندي</option>
+        <option value="japanese" data-en="⛩️ Japanese">⛩️ ياباني تقليدي</option>
+        <option value="zen" data-en="🧘 Zen">🧘 زن هادئ</option>
+        <option value="wabisabi" data-en="🍵 Wabi-sabi">🍵 وابي سابي</option>
+        <option value="tropical" data-en="🌴 Tropical">🌴 استوائي</option>
+        <option value="desert" data-en="🏜️ Desert">🏜️ صحراوي</option>
+        <option value="loft" data-en="🏙️ Urban loft">🏙️ لوفت حضري</option>
+        <option value="futuristic" data-en="🚀 Futuristic">🚀 مستقبلي</option>
+        <option value="cyberpunk" data-en="🌃 Cyberpunk">🌃 سايبربانك</option>
+        <option value="gamer" data-en="🎮 Gamer room">🎮 غرفة قيمر</option>
+        <option value="darkacademia" data-en="📚 Dark academia">📚 مكتبة كلاسيكية</option>
+        <option value="chalet" data-en="🏔️ Alpine chalet">🏔️ شاليه جبلي</option>
+        <option value="provence" data-en="💜 Provence">💜 بروفنس فرنسي</option>
+        <option value="hollywood" data-en="🎬 Hollywood glam">🎬 فخامة هوليوود</option>
+        <option value="monochrome" data-en="⬛ Monochrome">⬛ أبيض وأسود</option>
+        <option value="earthy" data-en="🏺 Earthy organic">🏺 ترابي طيني</option>
+        <option value="pastel" data-en="🌸 Pastel">🌸 باستيل ناعم</option>
+        <option value="smart" data-en="🤖 Smart home">🤖 منزل ذكي</option>
+        <option value="eco" data-en="♻️ Eco green">♻️ صديق للبيئة</option>
+        <option value="retro70s" data-en="🕺 Retro 70s">🕺 ريترو السبعينات</option>
+        <option value="popart" data-en="🌈 Pop art">🌈 بوب آرت</option>
+        <option value="minimalwhite" data-en="⬜ Gallery white">⬜ أبيض متحفي</option>
       </select>
     </div>
 
@@ -372,9 +412,31 @@
     <button type="button" class="btn primary" id="designAiGenerateBtn" style="width:100%; margin-top:14px;" data-i18n="designAiGenerateBtn">✨ صمم الغرفة</button>
 
     <div id="designAiStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
+    <!-- v-decor-ba: سحّاب قبل/بعد — غرفتك الأصلية تتحول للتصميم بسحبة إصبع. -->
+    <div id="designBAWrap" style="display:none; position:relative; margin-top:14px; border-radius:var(--r-2); overflow:hidden; background:#000;">
+      <img id="designBAAfter" style="width:100%; display:block;">
+      <div id="designBABeforeClip" style="position:absolute; inset:0; overflow:hidden; width:50%;">
+        <img id="designBABefore" style="position:absolute; top:0; left:0; height:100%; object-fit:cover;">
+      </div>
+      <div id="designBALine" style="position:absolute; top:0; bottom:0; left:50%; width:2px; background:#d4af37; box-shadow:0 0 8px rgba(212,175,55,.8);"></div>
+      <span style="position:absolute; top:8px; left:8px; font-size:10.5px; font-weight:700; background:rgba(0,0,0,.55); color:#fff; padding:2px 8px; border-radius:99px;" data-i18n="designBABefore">قبل</span>
+      <span style="position:absolute; top:8px; right:8px; font-size:10.5px; font-weight:700; background:rgba(212,175,55,.85); color:#141414; padding:2px 8px; border-radius:99px;" data-i18n="designBAAfter">بعد</span>
+    </div>
+    <input type="range" id="designBARange" min="0" max="100" value="50" style="display:none; width:100%; margin-top:8px; accent-color:#d4af37;">
     <img id="designAiResult" style="display:none; width:100%; margin-top:14px; border-radius:var(--r-2); background:#000;">
     <div id="designAiGrid" style="display:none; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px;"></div>
     <a id="designAiDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-design-ai.png" data-i18n="designAiDownloadBtn">⬇️ تحميل الصورة</a>
+
+    <!-- v-decor-compare: «غرفتي بكل الأنماط» — ارفع صورة غرفتك واختر حتى ٣ أنماط
+         فتُولَّد جنبًا إلى جنب وتختار الأجمل (نفس مقارنة الأزياء). -->
+    <div style="margin-top:18px; border-top:1px solid rgba(212,175,55,.25); padding-top:12px;">
+      <div style="font-weight:800; font-size:14px;" data-i18n="designCompareTitle">🆚 غرفتي بكل الأنماط</div>
+      <div style="font-size:11.5px; color:var(--muted); margin-top:2px;" data-i18n="designCompareHint">ارفع صورة غرفتك واختر ٢-٣ أنماط — نولّدها جنبًا إلى جنب وتختار الأجمل</div>
+      <div id="designCompareChecks" style="display:flex; gap:8px; overflow-x:auto; padding:8px 0; scroll-snap-type:x mandatory;"></div>
+      <button type="button" class="btn" id="designCompareBtn" style="width:100%;" data-i18n="designCompareBtn">🆚 صمّمها بالأنماط المختارة</button>
+      <div id="designCompareStatus" style="display:none; margin-top:8px; font-size:12px; color:var(--muted); text-align:center;"></div>
+      <div id="designCompareResults" style="display:none; gap:10px; overflow-x:auto; margin-top:10px; scroll-snap-type:x mandatory;"></div>
+    </div>
   </div>
 </div>
 
@@ -735,8 +797,46 @@
         <option value="formal" data-i18n="fashionAiStyleFormal">👔 رسمي</option>
         <option value="casual" data-i18n="fashionAiStyleCasual">👕 كاجوال</option>
         <option value="abaya" data-i18n="fashionAiStyleAbaya">🖤 عباية</option>
-        <option value="wedding" data-i18n="fashionAiStyleWedding">💍 فستان زفاف</option>
+        <option value="wedding" data-i18n="fashionAiStyleWedding">💍 زفاف</option>
         <option value="traditional" data-i18n="fashionAiStyleTraditional">🌴 خليجي تقليدي</option>
+        <option value="kaftan" data-en="👘 Kaftan">👘 قفطان مغربي</option>
+        <option value="jalabiya" data-en="🌙 Jalabiya">🌙 جلابية</option>
+        <option value="hijabchic" data-en="🧕 Hijab chic">🧕 محجبة عصرية</option>
+        <option value="oldmoney" data-en="🎩 Old money">🎩 أولد موني</option>
+        <option value="streetwear" data-en="🛹 Streetwear">🛹 ستريت وير</option>
+        <option value="sporty" data-en="🏃 Sporty">🏃 رياضي</option>
+        <option value="winterlux" data-en="🧥 Winter luxury">🧥 شتوي فاخر</option>
+        <option value="summer" data-en="☀️ Summer linen">☀️ صيفي كتان</option>
+        <option value="office" data-en="💼 Office chic">💼 دوام أنيق</option>
+        <option value="cocktail" data-en="🥂 Cocktail">🥂 كوكتيل</option>
+        <option value="ballgown" data-en="👑 Ballgown">👑 فستان ملكي</option>
+        <option value="boho" data-en="🌾 Boho">🌾 بوهيمي</option>
+        <option value="vintage" data-en="📻 Vintage 50s">📻 فينتاج</option>
+        <option value="y2k" data-en="💿 Y2K">💿 واي تو كي</option>
+        <option value="minimal" data-en="⬜ Minimal">⬜ مينيمال</option>
+        <option value="glam" data-en="💎 Glam">💎 قلام لامع</option>
+        <option value="leather" data-en="🖤 Leather">🖤 جلد عصري</option>
+        <option value="denim" data-en="👖 Denim">👖 دنيم</option>
+        <option value="pastel" data-en="🌸 Pastel">🌸 باستيل</option>
+        <option value="monochrome" data-en="⬛ Monochrome">⬛ لون واحد</option>
+        <option value="floral" data-en="🌺 Floral">🌺 مورّد</option>
+        <option value="velvet" data-en="🍷 Velvet">🍷 مخمل</option>
+        <option value="silk" data-en="🎀 Silk">🎀 حرير</option>
+        <option value="suitf" data-en="🕴️ Power suit">🕴️ بدلة قوة</option>
+        <option value="turkish" data-en="🧿 Turkish">🧿 تركي</option>
+        <option value="indian" data-en="🐘 Indian">🐘 هندي</option>
+        <option value="princess" data-en="🏰 Princess">🏰 أميرات</option>
+        <option value="safari" data-en="🦁 Safari">🦁 سفاري</option>
+        <option value="preppy" data-en="🎓 Preppy">🎓 بريبي</option>
+        <option value="artgown" data-en="🎭 Avant-garde">🎭 فني جريء</option>
+        <option value="bisht" data-en="🧥 Bisht">🧥 بشت</option>
+        <option value="smartcasual" data-en="👞 Smart casual">👞 سمارت كاجوال</option>
+        <option value="threepiece" data-en="🤵 Three-piece">🤵 بدلة ثلاث قطع</option>
+        <option value="athleisure" data-en="⚡ Athleisure">⚡ أثليجر</option>
+        <option value="rockstar" data-en="🎸 Rockstar">🎸 روك ستار</option>
+        <option value="moroccan" data-en="🕌 Djellaba">🕌 جلباب مغربي</option>
+        <option value="school" data-en="🏫 School">🏫 مدرسي أنيق</option>
+        <option value="eidkids" data-en="🌙 Eid kids">🌙 عيد الأطفال</option>
       </select>
     </div>
 
@@ -779,6 +879,21 @@
     <div id="fashionAiCompareResults" style="display:none; margin-top:10px; display:grid; grid-template-columns:1fr 1fr; gap:8px;"></div>
 
     <div id="fashionAiFavoritesPanel" style="display:none; margin-top:10px; flex-direction:column; gap:8px;"></div>
+  </div>
+</div>
+
+<!-- v-omran-picker: معرض اختيار موحّد ملء الشاشة — نفس نمط «أنماط الصور»
+     لكل القوائم الكبيرة (أزياء، ديكور، ستايل). -->
+<div id="pickerSheet" style="display:none; position:fixed; inset:0; z-index:10070; background:#0b0b0d; flex-direction:column;">
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid rgba(212,175,55,.25); flex:none;">
+    <div>
+      <div id="pickerSheetTitle" style="font-size:18px; font-weight:800; color:#eef0f6;"></div>
+      <div id="pickerSheetCount" style="font-size:11.5px; color:#9a9a9e;"></div>
+    </div>
+    <button type="button" class="btn iconBtn" id="pickerSheetClose" style="padding:6px 12px;">✕</button>
+  </div>
+  <div style="flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;">
+    <div id="pickerSheetGrid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(175px,1fr)); gap:14px; padding:16px; max-width:1500px; margin:0 auto;"></div>
   </div>
 </div>
 
@@ -858,7 +973,10 @@
 
     <div id="studioAiStyleWrap" style="margin-top:14px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="studioAiStyleLabel">اختر الخيار</label>
-      <select id="studioAiStyle" style="width:100%;"></select>
+      <!-- v-studio-cards: خيارات كل ميزة بطاقات مصوّرة (نفس نمط بقية الاستوديوهات)؛
+           السلكت مخفيّ والأسلاك الخلفية عليه كما هي. -->
+      <div id="studioStyleCards" style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;"></div>
+      <select id="studioAiStyle" style="display:none;"></select>
     </div>
 
     <div style="margin-top:12px;">
@@ -963,14 +1081,16 @@
 </div>
 
 
-<div id="stocksModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:560px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
-    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px;">
+<!-- v-stocks-fullpage: سوق الأسهم صفحة كاملة (أمر عمران) — المحتوى يتوسّط بعرض مريح وX ثابتة أعلى -->
+<div id="stocksModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:stretch; justify-content:center; padding:0;">
+  <div id="stocksPage" style="width:100%; height:100%; max-width:none; max-height:none; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:0; padding:calc(10px + env(safe-area-inset-top,0px)) 16px calc(24px + env(safe-area-inset-bottom,0px)); box-shadow:none;">
+    <div class="stkHead" style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px; position:sticky; top:calc(-10px - env(safe-area-inset-top,0px)); z-index:6; background:var(--panel,#1a1a1a); padding:8px 0;">
       <h3 style="margin:0; font-size:15px; line-height:1.3;" data-i18n="stocksTitle">📈 سوق الأسهم العالمي</h3>
       <div style="display:flex; gap:6px;">
         <button type="button" class="btn iconBtn" id="stocksGlobalBtn" title="الأسواق العالمية" data-i18n-title="worldMarketsTitle" style="padding:4px 8px;">🌍</button>
         <button type="button" class="btn iconBtn" id="stocksSearchBtn" title="اختيار سهم" data-i18n-title="pickStockTitle" style="padding:4px 8px;">🔍</button>
         <button type="button" class="btn iconBtn" id="stocksLearnBtn" data-i18n-title="stocksLearnTitle" title="تعلم التداول" style="padding:4px 8px;">🎓</button>
+        <button type="button" class="btn iconBtn" id="stocksPfBtn" title="محفظتي التعليمية" style="padding:4px 8px;">💼</button>
         <button type="button" class="btn iconBtn" id="stocksFullBtn" data-i18n-title="stocksFullTitle" title="وضع شاشة البورصة" style="padding:4px 8px;">🖥️</button>
         <button type="button" class="btn iconBtn" id="stocksCloseBtn" style="padding:4px 8px;">✕</button>
       </div>
@@ -1052,6 +1172,9 @@
       <div id="stockAnalysis" style="display:none; margin-top:12px; font-size: var(--fs-3); line-height:1.8; white-space:pre-wrap; border-radius:var(--r-2); background:rgba(0,0,0,0.25); padding:14px;"></div>
     </div>
     </div>
+
+    <!-- v-stocks-paper: 💼 المحفظة التعليمية — تُرسم بالكامل من app-13 -->
+    <div id="stockPfWrap" style="display:none; margin-top:14px;"></div>
 
     <div id="stockLearnWrap" style="display:none; margin-top:14px;">
       <div style="font-size:14px; font-weight:500; margin-bottom:8px;" data-i18n="stocksLearnTitle">🎓 تعلم التداول — دروس على السوق الحي</div>

@@ -3,10 +3,11 @@
 // get 403 no matter what they send. Actions: ban, unban, delete, message.
 const crypto = require('crypto');
 const { getUser, putUser, userPath } = require('./auth.js');
-const { kvDel } = require('./kv.js');
+const { kvDel, kvList } = require('./kv.js');
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
-const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').trim().toLowerCase();
+// v-owner-core: قائمة المالك الموحّدة — ‹omran› مدمج دائمًا والبيئة تضيف لا تستبدل.
+const { isOwnerName } = require('./_owner.js');
 
 function verifyToken(token) {
   try {
@@ -38,8 +39,26 @@ module.exports = async (req, res) => {
     const { token, action, targetUsername, text } = body;
 
     const requester = verifyToken(token);
-    if (!requester || String(requester).trim().toLowerCase() !== OWNER_USERNAME) {
+    if (!isOwnerName(requester)) {
       res.status(403).json({ error: 'forbidden' });
+      return;
+    }
+
+    // v-purge-checks: تنظيف حسابات الفحص الآلية (zzcheck…) دفعة واحدة — كانت
+    // تُحذف يدويًّا واحدًا واحدًا وتراكم منها ٧٠+. للمالك فقط، والبادئة
+    // مثبّتة في الكود فلا تطال أي حساب حقيقي، وتُحذف نقاطها معها.
+    if (action === 'purge-checks') {
+      const PREFIX = 'db/users/zzcheck';
+      const keys = await kvList(PREFIX);
+      let removed = 0;
+      for (const k of keys) {
+        const uname = decodeURIComponent(String(k).slice('db/users/'.length).replace(/\.json$/, ''));
+        if (!/^zzcheck[0-9a-f]{4,}$/i.test(uname)) continue; // صيغة المولّدات حصرًا
+        await kvDel(k);
+        await kvDel('points:' + encodeURIComponent(uname));
+        removed++;
+      }
+      res.status(200).json({ ok: true, removed, note: 'حُذفت حسابات الفحص zzcheck ونقاطها نهائيًّا' });
       return;
     }
 
@@ -48,7 +67,7 @@ module.exports = async (req, res) => {
       return;
     }
     const key = targetUsername.trim().toLowerCase();
-    if (key === OWNER_USERNAME) {
+    if (isOwnerName(key)) {
       res.status(400).json({ error: 'cannot act on the owner account' });
       return;
     }

@@ -99,6 +99,10 @@ async function startStripeCheckout(){
       if (statusMsg) statusMsg.textContent = data.error || t('checkoutNotConfigured');
       return;
     }
+    // v-ios-bridge: على آيفون المثبَّت يهبط نجاح الدفع في ورقة متصفح منفصلة
+    // بلا توكن فلا تُضاف النقاط. نحفظ رقم الجلسة، وعند العودة للتطبيق يتحقق
+    // بنفسه (verify-checkout آمنة التكرار — لا تضيف النقاط مرتين).
+    if (data.id) { try { localStorage.setItem('aiapp_ck_pending', data.id + ':' + Date.now()); } catch(e){ __swallow(e, 'checkout:pending'); } }
     window.location.href = data.url;
   } catch (e) {
     if (statusMsg) statusMsg.textContent = t('checkoutError');
@@ -335,8 +339,55 @@ window.startPaypalCheckout = startPaypalCheckout;
       params.delete('session_id');
       const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
       window.history.replaceState({}, '', newUrl);
+      // نفس السياق أكمل بنفسه — لا حاجة لجسر الآيفون.
+      try { localStorage.removeItem('aiapp_ck_pending'); } catch(e){ __swallow(e, 'checkout:clear'); }
     }
   } catch(e){ __swallow(e, "auth:app-06-checkout#1"); }
+})();
+
+/* v-ios-bridge: العودة من دفع اكتمل في ورقة المتصفح المنفصلة (آيفون المثبَّت):
+   نتحقق من الجلسة المحفوظة بتوكن التطبيق نفسه — عند كل عودة/تركيز ونبضة كل
+   ٥ ثوانٍ لنصف ساعة. غير مدفوعة بعد؟ نبقيها. مدفوعة؟ نقاطك تُضاف وتُبشَّر. */
+(function checkoutClaimBridge(){
+  function pending(){
+    try {
+      const raw = localStorage.getItem('aiapp_ck_pending');
+      if(!raw) return null;
+      const i = raw.lastIndexOf(':');
+      const id = raw.slice(0, i), ts = Number(raw.slice(i + 1) || 0);
+      if(!id || (Date.now() - ts) > 30 * 60 * 1000){ localStorage.removeItem('aiapp_ck_pending'); return null; }
+      return id;
+    } catch(e){ return null; }
+  }
+  let busy = false;
+  async function claim(){
+    const id = pending();
+    if(!id || busy) return;
+    const token = authGet('aiapp_auth_token');
+    if(!token) return;
+    busy = true;
+    try {
+      const r = await fetch('/api/account?action=verify-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'verify-checkout', session_id: id, token }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if(r.ok && d.ok){
+        localStorage.removeItem('aiapp_ck_pending');
+        alert(t('checkoutSuccessMsg'));
+        if(typeof refreshPointsWallet === 'function') refreshPointsWallet();
+      } else if(r.status === 400 || r.status === 403){
+        localStorage.removeItem('aiapp_ck_pending'); // جلسة لا تخصنا/فاسدة — لا نلحّ
+      }
+      // 402 = لم يُدفع بعد — تبقى معلّقة للنبضة التالية.
+    } catch(e){ __swallow(e, 'checkout:claim'); }
+    busy = false;
+  }
+  window.addEventListener('focus', claim);
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') claim(); });
+  const iv = setInterval(() => { if(!pending()){ clearInterval(iv); return; } claim(); }, 5000);
+  claim();
 })();
 const btnExportProjectsEl = $('#btnExportProjects');
 if(btnExportProjectsEl) btnExportProjectsEl.onclick = exportProjects;
@@ -363,7 +414,7 @@ $('#btnSettings').onclick = () => {
   $('#groqApiKey').value = localStorage.getItem('aiapp_groq_apikey') || '';
   $('#groqModel').value = localStorage.getItem('aiapp_groq_model') || 'llama-3.3-70b-versatile';
   $('#claudeApiKey').value = localStorage.getItem('aiapp_claude_apikey') || '';
-  $('#claudeModel').value = localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-4-20250514';
+  $('#claudeModel').value = localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-5';
   $('#openrouterApiKey').value = localStorage.getItem('aiapp_openrouter_apikey') || '';
   $('#openrouterModel').value = localStorage.getItem('aiapp_openrouter_model') || 'openai/gpt-4o-mini';
   $('#perplexityApiKey').value = localStorage.getItem('aiapp_perplexity_apikey') || '';
@@ -596,7 +647,7 @@ $('#btnSaveSettings').onclick = () => {
   localStorage.setItem('aiapp_groq_apikey', $('#groqApiKey').value.trim());
   localStorage.setItem('aiapp_groq_model', $('#groqModel').value.trim() || 'llama-3.3-70b-versatile');
   localStorage.setItem('aiapp_claude_apikey', $('#claudeApiKey').value.trim());
-  localStorage.setItem('aiapp_claude_model', $('#claudeModel').value.trim() || 'claude-sonnet-4-20250514');
+  localStorage.setItem('aiapp_claude_model', $('#claudeModel').value.trim() || 'claude-sonnet-5');
   localStorage.setItem('aiapp_openrouter_apikey', $('#openrouterApiKey').value.trim());
   (() => {
     const sel = $('#openrouterModelSelect');
@@ -1729,7 +1780,7 @@ async function claudeProxyRequest(model, systemMsg, rest, stream){
 
 async function callClaude(messages, onDelta){
   const apiKey = localStorage.getItem('aiapp_claude_apikey');
-  let model = window.__claudeModelOverride || localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-4-20250514';
+  let model = window.__claudeModelOverride || localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-5';
   const systemMsgsC = messages.filter(m => m.role === 'system');
   const systemMsg = systemMsgsC.length ? { content: systemMsgsC.map(m => m.content).join('\n\n') } : null;
   const rest = messages.filter(m => m.role !== 'system').map(m => {
@@ -1865,19 +1916,11 @@ function __convLockProvider(conv, decided, oneOff, respectExplicit, deferLock){
   return decided;
 }
 // ٦ قواعد التوجيه — الثلاث الأولى كانت موجودة، والثلاث التالية جديدة.
-const ROUTE_NEWS_RE = /آخر\s*(?:الأخبار|أخبار|المستجدات)|أخبار|اخبار|ما\s*الجديد|سعر\s|أسعار|اسعار|الدولار|الذهب|بيتكوين|البتكوين|سهم\s|الطقس|طقس\s|نتيجة\s*مباراة|من\s*فاز|latest\s*news|current\s*price|stock\s*price|weather|who\s*won/i;
-const ROUTE_TRANSLATE_RE = /ترجم|ترجملي|ترجمة|لخّص|لخص(?=\s|$|[.،!؟])|تلخيص|اختصر|translate|translation|summarize|summary|tl;dr/i;
-const ROUTE_ANALYSIS_RE = /حلّل|حلل(?=\s|$|[.،!؟])|تحليل|قارن|قارِن|مقارنة|أيهما أفضل|ايهما افضل|دراسة جدوى|اكتب تقرير|تقرير عن|analyz|analyse|compare|comparison|pros and cons/i;
-function pickSpecialtyProvider(txt){
-  const s = String(txt || '');
-  if(isCasualTurn(s)) return 'groq';
-  if(/رياضيات|معادل[ةه]|تكامل|تفاضل|مصفوف|لوغاريتم|جبر خطي|مثلثات|احتمالات|إحصاء|احصاء|مسأل[ةه] رياض|حل هذه المسأل|equation|integral|derivative|matrix|logarithm|trigonometry|probability|math problem/i.test(s)) return 'openai';   // كان deepseek — وهو مُهجَّر أصلًا في هذا الملف
-  if(/قصيد[ةه]|شعر[اً]?(?=\s|$|[.،!؟])|أبيات|ابيات|خاطر[ةه]|قص[ةه] قصير[ةه]|اكتب(?:\s+لي)?\s+قص[ةه]|رواي[ةه]|نص أدبي|رسال[ةه] عاطفي[ةه]|write (?:me )?a (?:story|poem)|poetry|short story/i.test(s)) return 'openai';
-  if(ROUTE_NEWS_RE.test(s)) return 'perplexity';        // ④ خبر/سعر/طقس → الباحث الحيّ
-  if(ROUTE_TRANSLATE_RE.test(s)) return 'gemini';       // ⑤ ترجمة/تلخيص → السريع الواسع
-  if(ROUTE_ANALYSIS_RE.test(s)) return 'openai';        // ⑥ تحليل/مقارنة/تقرير → العميق
-  return null;
-}
+/* v-one-brain: موجّه التخصصات حُذف بقرار المالك — كان يوزّع الأسئلة على
+   أربعة عقول مختلفة (سعر/خبر → perplexity بلا أدوات، ترجمة → gemini،
+   تحليل → openai) فيتجاوز العقل الواحد وميثاقه وبطاقات مصادره. كل شيء
+   الآن للعقل الواحد وأدواته. */
+function pickSpecialtyProvider(){ return null; }
 async function callAIWithFallback(messages, onDelta, preferredList){
   // 🧹 v308: تعقيم نهائي — أي base64 عملاق داخل نص أي رسالة يُستبدل بعلامة
   // قصيرة قبل الإرسال (الصور المرفقة الحقيقية تبقى في حقل images المنفصل).
@@ -1967,8 +2010,17 @@ $('#prompt').addEventListener('input', window.__updateSendReady);
 (function(){
   const p = $('#prompt');
   function autoGrow(){
+    /* v-tap-fast: قياس scrollHeight يعيد تخطيط الصفحة كلها مع كل حرف —
+       سطر واحد قصير والارتفاع أصلًا على الأدنى → لا قياس إطلاقًا. */
+    var v = p.value;
+    if(p.__omMinH && v.indexOf('\n') === -1 && v.length < 20){
+      if(p.style.height !== p.__omMinH) p.style.height = p.__omMinH;
+      return;
+    }
     p.style.height = 'auto';
-    p.style.height = Math.min(p.scrollHeight, 110) + 'px';
+    var h = Math.min(p.scrollHeight, 110) + 'px';
+    p.style.height = h;
+    if(v === '') p.__omMinH = h;
   }
   p.addEventListener('input', autoGrow);
   window.__promptAutoGrow = autoGrow;

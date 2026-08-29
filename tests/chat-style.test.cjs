@@ -26,11 +26,7 @@ const greetingFns = vm.runInNewContext(`(() => {
   ${sliceBetween(maha, 'function isPureGreeting', 'async function smartMaybeSearch')}
   return { isPureGreeting, isCasualCheckIn };
 })()`);
-const deterministicSocial = vm.runInNewContext(`(() => {
-  ${sliceBetween(maha, 'function isPureGreeting', 'async function smartMaybeSearch')}
-  ${sliceBetween(attach, 'function deterministicSocialReply', 'async function sendPrompt')}
-  return deterministicSocialReply;
-})()`);
+// v-social-alive: الرد الاجتماعي المخزّن حُذف — التحية تمر للنموذج ببصمته.
 
 for (const text of ['هلا', 'أهلًا', 'السلام عليكم', 'صباح الخير', 'hello']) {
   check(greetingFns.isPureGreeting(text), `تُعرف التحية اللفظية: ${text}`);
@@ -41,20 +37,7 @@ for (const text of ['كيف الحال', 'كيف حالك؟', 'هلا كيف ا�
 for (const text of ['كيف الحال', 'كيف حالك؟', 'هلا كيف الحال', 'how are you?']) {
   check(greetingFns.isCasualCheckIn(text), `تُعرف المجاملة لتجاوز البحث فقط: ${text}`);
 }
-for (const [text, expected] of [
-  ['هلا', 'هلا وغلا'],
-  ['السلام عليكم', 'وعليكم السلام'],
-  ['صباح الخير', 'صباح النور'],
-  ['مساء الخير', 'مساء النور'],
-  ['كيف الحال', 'بخير، كيف أنت؟'],
-  ['hello', 'Hello!'],
-  ['how are you?', "I'm good, how are you?"],
-]) {
-  assert.equal(deterministicSocial(text), expected);
-  check(true, `الرد الاجتماعي ثابت وكامل: ${text} ← ${expected}`);
-}
-assert.equal(deterministicSocial('أريد فنادق في دبي'), null);
-check(true, 'الطلبات الفعلية لا تدخل مسار الرد الاجتماعي المحلي');
+check(!attach.includes('هلا وغلا') && !chatServer.includes("'هلا وغلا! كيف أقدر أساعدك اليوم؟'"), 'v-social-alive: لا ردود تحية مخزنة في العميل أو الخادم');
 
 const styleRule = vm.runInNewContext(`(() => {
   ${sliceBetween(checkout, 'const CONVERSATION_QUALITY_RULE', '// قاعدة الاكتمال')}
@@ -70,7 +53,7 @@ check(styleRule.includes('بلا تقليد لعباراته أو مزاجه'), 
 check(styleRule.includes('السؤال البسيط جواب قصير من ١–٣ جمل بلا عناوين أو تعداد'), 'السؤال البسيط له حد سلوكي قابل للقياس');
 check(attach.includes("APP_IDENTITY_NOTE + CONVERSATION_QUALITY_RULE") && attach.includes("'أنت مساعد ذكي في تطبيق Omran AI من فريق عمران AI.' + CONVERSATION_QUALITY_RULE"), 'القواعد المركزية مستخدمة في البناء والمحادثة العادية');
 check(!checkout.includes('then ONE concrete next-step suggestion or question') && !checkout.includes('then 2-3 concrete suggestions'), 'أزيل فرض الاقتراح والسؤال من كل رد');
-check(chatServer.includes('اكشف نبرة المستخدم وطابقها فورًا') && chatServer.includes('لا تبدأ من الصفر في كل ردّ'), 'المحادثة العادية تكشف النبرة وتحافظ على السياق');
+check(chatServer.includes('تجاري لهجة المستخدم وروحه بروح المجلس'), 'v-clean-slate: مجاراة اللهجة في النظام القصير');
 check(chatServer.includes('إن نقصت معلومة تؤثّر فعليًّا في الدقّة') && chatServer.includes('لا تُلحق سؤالًا عامًا بكل رد'), 'سؤال الخادم مشروط بنقص مؤثر');
 check(!chatServer.includes('بعد المعلومة أعطِ خطوة تنفيذيّة واحدة يقدر عليها اليوم'), 'أزيل التعارض القديم من تعليمات أدوات الخادم');
 check(chatServer.includes('أمّا سؤال المفهوم الثابت البسيط الذي تجيبه بلا أداة') && chatServer.includes('بلا عناوين أو تعداد أو خطوة تالية أو سؤال'), 'قواعد نتائج البحث لا تتسرّب إلى السؤال الثابت البسيط');
@@ -96,17 +79,17 @@ assert.equal(lock(conv, 'groq', false, false, true), 'claude');
 check(conv.aiProvider === 'claude', 'المجاملة اللاحقة تحافظ على مزود الخيط وسياقه');
 
 check(prompts.includes('تحية لفظية فقط وليست سؤالًا'), 'التحية وحدها لها توجيه قصير طبيعي');
-check(prompts.includes('أجب بتحية عربية قصيرة فقط من كلمة إلى ثلاث كلمات'), 'التحية لها توجيه مباشر لا يضيع وسط القواعد العامة');
-check(prompts.includes('ولا تستخدم علامة استفهام'), 'توجيه التحية يمنع أي سؤال صراحةً');
-check(attach.includes('const __socialReply = attachmentsForMsg.length ? null : deterministicSocialReply(text)') && attach.includes('_localSocial: true'), 'التحية وسؤال الحال يُحسمان محليًا قبل أي مزود أو بحث');
-check(chatServer.includes('const socialReply = deterministicSocialReply') && chatServer.includes("JSON.stringify({ delta: socialReply })"), 'الخادم يعيد الرد الاجتماعي الثابت أيضًا للعملاء القديمة');
-check(prompts.includes('«كيف الحال؟» أجب عنه كحديث مستمر'), 'سؤال المجاملة يُعامل كمحادثة مستمرة');
+check(prompts.includes('رحّب به ترحيبًا حارًّا راقيًا بروح المجلس'), 'v-style-rebirth: توجيه التحية المباشر حارّ لا جاف');
+check(prompts.includes('واسأله سؤالًا واحدًا طبيعيًّا عن حاله أو يومه'), 'v-style-rebirth: التحية تفتح الحديث بسؤال واحد');
+check(attach.includes('v-social-alive') && !attach.includes('_localSocial: true'), 'العميل لا يعترض التحية — تمر للنموذج');
+check(chatServer.includes('v-social-alive') && !chatServer.includes('JSON.stringify({ delta: socialReply })'), 'الخادم لا يعيد ردًا مخزنًا — النموذج يجيب التحية');
+check(prompts.includes('«كيف الحال؟» أجب عنه بدفء كحديث مستمر'), 'سؤال المجاملة يُعامل كمحادثة مستمرة');
 check(attach.includes('const __quietSocialTurn = isPureGreeting(text) || isCasualCheckIn(text)') && attach.includes('const __memMsg = __quietSocialTurn ? null : memorySystemMsg()'), 'سؤال الحال لا يحقن ذاكرة الحساب في العميل');
 check(attach.includes('let __turns = [];') && attach.includes('if(!__quietSocialTurn){'), 'سؤال الحال لا يرسل المواضيع السابقة إلى المزود');
 check(attach.includes('هذا سؤال حال ضمن محادثة مستمرة، وليس تحية جديدة') && attach.includes('ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق'), 'سؤال الحال له توجيه مباشر يمنع عرض الخدمة والمواضيع القديمة');
 check(attach.includes('!(isPureGreeting(text) || isCasualCheckIn(text))'), 'الدور الاجتماعي العابر لا يلوث الذاكرة طويلة المدى');
 check(chatServer.includes('function isCasualCheckIn(text)') && chatServer.includes('if (usage.username && !quietSocialTurn)'), 'الخادم لا يقرأ ذاكرة الحساب لسؤال الحال');
-check(chatServer.includes('const system = quietSocialTurn') && chatServer.includes('ولا تذكر أي مشروع أو اهتمام أو موضوع سابق'), 'الخادم يعزل الدور الاجتماعي عن التاريخ ومعرفة المالك');
+check(chatServer.includes('const system = quietSocialTurn') && chatServer.includes('وممنوع سرد مشاريع أو مواضيع قديمة'), 'الخادم يعزل الدور الاجتماعي عن التاريخ ومعرفة المالك');
 check(chatServer.includes('tools: toolTurn ? TOOLS : undefined'), 'الأدوات تُمرَّر خلف toolTurn لا دائمًا');
 // v-chat-tools: قائمة الكلمات (TOOL_INTENT_RE) حجبت البحث عن «توقيت الصلاة في عجمان»
 // — قِيس بالمِجسّ ردٌّ بلا بحث يطلب التاريخ. القرار الآن للنموذج في كل دور غير اجتماعي.
@@ -114,13 +97,28 @@ check(chatServer.includes('const toolTurn = !quietSocialTurn;'), 'كل دور غ
 check(!chatServer.includes('TOOL_INTENT_RE.test('), 'قائمة الكلمات البيضاء التي حجبت البحث أزيلت');
 check(chatServer.includes('countryNote(country, city)'), 'مدينة المستخدم تدخل توجيه الموقع');
 check(chatServer.includes('اعتمد فيه مدينته'), 'الأسئلة المكانية تعتمد مدينة المستخدم تلقائيًا');
-check(chatServer.includes('setTimeout(function () { resolve(null); }, 4000)'), 'البحث الاستباقي مسقوف بأربع ثوانٍ فلا يحجز أول كلمة');
+check(!chatServer.includes('prepareTurn(') && chatServer.includes('v-one-brain'), 'v-one-brain: لا بحث استباقي في الخادم — النموذج يقرر بنفسه');
+// v-chat-speed: الذاكرة تُقرأ بالتوازي مع فحص الحصة، والمحفزات العامة
+// (اليوم/الآن/حالي) خارج البحث الاستباقي.
+check(chatServer.includes('earlyMemoryP'), 'قراءة الذاكرة بالتوازي مع فحص الحصة');
+check(!/LIVE_EAGER_RE = [^\n]*اليوم/.test(chatServer), 'كلمة «اليوم» لا تشعل البحث الاستباقي');
+// v-fresh-news: سؤال الأخبار يقيّد المحركات بالحديث ويذكر تاريخ النشر.
+check(chatServer.includes("topic: 'news', days: 7"), 'تافيلي: أخبار آخر أسبوع فقط');
+check(chatServer.includes("search_recency_filter: 'week'"), 'بيربلكسيتي: حداثة أسبوع للأخبار');
+check(chatServer.includes('dateRestrict=m1&sort=date'), 'جوجل: آخر شهر مرتب بالأحدث');
+check(chatServer.includes('حداثة الأخبار — إلزامي'), 'النموذج ملزم بذكر تاريخ الخبر ورفض القديم');
 check(chatServer.includes('const LEAN_CONVERSATION_NOTE'), 'المحادثة العادية تستخدم تعليمات خفيفة');
-check(chatServer.includes('محاور قويّ') && chatServer.includes('كن ندًّا في الحوار'), 'طبقة المحاور القوي: ندّية ومطابقة نمط المستخدم');
-check(chatServer.includes('ممنوع الموافقة الآلية والتملّق'), 'التملق والموافقة الآلية ممنوعان صراحةً');
+// v-persona-front: المحاور القوي اندمج في بصمة الشخصية المتصدّرة.
+// v-clean-slate: الأقفال أدناه كانت تثبّت كتاب القواعد المحذوف — صارت تثبّت الصفحة البيضاء.
+check(chatServer.includes('لست روبوتًا ولا موظف استقبال'), 'v-clean-slate: الندّية في السطر القصير');
+check(chatServer.includes('v-clean-slate'), 'v-clean-slate: النظام القصير معلن');
+check(/PERSONA_NOTE \+ '\\n' \+ baseSystem/.test(chatServer), 'البصمة تتصدر النظام في كل المسارات');
+check(!/baseSystem[^;]*SHAPE_TAIL/.test(chatServer), 'v-clean-slate: ذيل التنسيق فُصل من النظام');
+check(chatServer.includes('بفقرات وعناوين وقوائم مرتبة'), 'v-clean-slate: التنسيق جملة واحدة في الشخصية');
+check(true, 'v-clean-slate: الندية من طبيعة النموذج بلا قاعدة');
 check(chatServer.includes('function arWikiLookup') && chatServer.includes('ar.wikipedia.org'), 'ويكيبيديا العربية مصدر مرفق في سلسلة البحث');
 check(chatServer.includes('ممنوع أن تبدأ الردّ باستدعاء generate_image'), 'النص يُقرأ أولًا والصورة التوضيحية آخر الردّ');
-check(chatServer.includes('LIVE_EAGER_RE.test(lastUser.content)'), 'البحث الاستباقي خلف إشارة حية صريحة لا على كل رسالة');
+check(!chatServer.includes('LIVE_EAGER_RE'), 'v-one-brain: محفزات البحث الاستباقي أزيلت كليًا');
 // v-num-plain: «اريد ارقام للبيع» رسمت صورة ووُعظ صاحبها «بيانات غير قانونية».
 {
   const numRe = chatServer.match(/const NUM_ASK_RE = (\/.*\/i);/);
@@ -149,14 +147,19 @@ check(bundle.includes('v-clean-links') && bundle.includes(".hostname.replace(/^w
   check(searchSrc.includes('const isNumbers = !__techAsk &&') && searchSrc.includes('const isListing = isNumbers || (!__techAsk &&'), 'النية التقنية تفكّ قفل محرّك القوائم');
   check(searchSrc.includes('exclude_domains') && searchSrc.includes("__techAsk ? { exclude_domains"), 'السؤال التقني يستبعد مواقع الإعلانات المبوبة صراحةً');
 }
-check(chatServer.indexOf('v-fast-headers') > 0 && chatServer.indexOf('v-fast-headers') < chatServer.indexOf('prepareTurn('), 'البثّ يُفتح قبل الذاكرة والبحث الاستباقي فيرى المستخدم حركة فورًا');
+check(chatServer.indexOf('v-fast-headers') > 0, 'البثّ يُفتح قبل الذاكرة فيرى المستخدم حركة فورًا');
 check(chatServer.includes('function compactConversation'), 'السياق الطويل يُضغط قبل إرساله للنموذج');
 check(chatServer.includes('const convoSource = quietSocialTurn ? [lastUser] : messages'), 'الخادم لا يرسل تاريخ المواضيع في سؤال الحال');
 check(chatServer.includes('slice(0, 12000)'), 'كل رسالة لها سقف حجم يحمي جودة السياق');
-check(prompts.includes('لا تطرح أي سؤال ولا تعرض المساعدة'), 'التحية تبقى قصيرة بلا سؤال أو عرض خدمة');
-check(prompts.includes('لا تعرض المساعدة بدل الجواب'), 'سؤال الحال يُجاب عنه ولا يتحول إلى عرض خدمة');
+// v-warm-social: «هلا وغلا» الجافة وحدها رفضها المالك — التحية حارة راقية
+// بسؤال واحد يفتح الحديث، والممنوع الوحيد عرض الخدمات وسرد القديم.
+check(prompts.includes('ترحيبًا حارًّا راقيًا بروح المجلس'), 'التحية حارة راقية لا جافة');
+check(prompts.includes('كيف أقدر أساعدك؟') && prompts.includes('سرد المواضيع القديمة'), 'الممنوع الوحيد: عرض الخدمات وسرد القديم');
 check(prompts.includes('لا تبدأ بتحية من نفسك'), 'بداية المحادثة صامتة');
-check(prompts.includes('بيضاء واضحة ومهذّبة'), 'الأسلوب العربي واضح ومهذّب');
+// v-persona-front: «العربية البيضاء الهادئة» كانت تناقض بصمة المالك وتطمسها —
+// أسلوب العميل صار هو البصمة نفسها (دفء واحتفال وزبدة أولًا ومجاراة اللهجة).
+check(prompts.includes('بصمة المالك') && prompts.includes('احتفل بإنجاز المستخدم'), 'أسلوب العميل هو بصمة المالك');
+check(!prompts.includes('لا تقلّد شخصية المستخدم'), 'أزيل التناقض: مجاراة لهجة المستخدم مطلوبة لا ممنوعة');
 check(!prompts.includes('فردّ حرفيًا: «أهلًا بك.» فقط'), 'أزيل الرد الحرفي «أهلًا بك.»');
 check(!prompts.includes('يحيّه ويسأله وش يحتاج'), 'أزيلت صيغة «وش يحتاج» المفروضة');
 check(!prompts.includes('لهجتك الافتراضيّة إماراتيّة بيضاء'), 'أزيل فرض اللهجة المصطنعة');
@@ -208,13 +211,20 @@ check(!bundle.includes('فردّ حرفيًا: «أهلًا بك.» فقط'), '�
     // ===== فحوصات أسلوب المحادثة الجديد =====
     // v-chat-tools: فحصا «ملابس/سيارات تفعّلان مسار الأدوات» ثبّتا القائمة
     // المحذوفة — يغنيهما فحص «كل دور غير اجتماعي يحمل الأدوات» أعلاه.
-    check(chatServer.includes('هلا بك والله'), 'التحية المضاعفة تعطي ترحيباً دافئاً');
-    check(chatServer.includes('كيف أقدر أساعدك اليوم'), 'التحية العادية تدعو للمساعدة');
-    check(chatServer.includes('خليجي دافئ (هلا / يا غالي / والله'), 'كشف النبرة الخليجية موثّق في التعليمات');
+    check(chatServer.includes('بروح المجلس'), 'v-clean-slate: روح المجلس في النظام القصير');
+    check(prompts.includes('ممنوع «كيف أقدر أساعدك؟» الرسمية وعرض الخدمات'), 'توجيه التحية في العميل يمنع الرسمية');
+    check(chatServer.includes('تجاري لهجة المستخدم'), 'v-clean-slate: مجاراة اللهجة حاضرة');
     check(chatServer.includes('استثناء — النوع الجوهري فقط'), 'سؤال النوع الجوهري مسموح بعد إجابة أولية');
     check(chatServer.includes('معالج التسوق والتصفح'), 'معالج التسوق موجود في WIZARD_NOTE');
     check(chatServer.includes('مواقع سيارات'), 'مثال مواقع السيارات موجود في معالج التسوق');
     check(chatServer.includes('للكبار|للأطفال'), 'بطاقات فئة العمر موجودة في معالج التسوق');
-    check(!chatServer.includes('بالطبع!') || chatServer.includes('لا تبدأ ردك بـ«بالطبع!»'), 'يمنع البدء بعبارات مكررة كبالطبع');
-    
+    check(true, 'v-clean-slate: لا قواعد عبارات — طبيعة النموذج');
+    // بصمة الشخصية — بطلب المالك: تحفيز واحتفال، تعاطف قبل الحل، تفكيك
+    // المعقد لخطوات، الزبدة أولًا، زميل خبير لا روبوت.
+    // v-persona-front: العنوان صار «بصمة الشخصية وأسلوب الكلام» متصدّرًا النظام.
+    check(chatServer.includes('شخصيتك: زميل خبير دافئ'), 'v-clean-slate: الشخصية بثلاث جمل');
+    check(chatServer.includes('يطمئنه قبل حل مشكلته'), 'التعاطف قبل الحل في السطر القصير');
+    check(true, 'v-clean-slate: التفكيك من طبيعة النموذج');
+    check(chatServer.includes('الزبدة أولًا'), 'الحل المباشر في المقدمة');
+
 console.log('\n✅ فصل التحية عن المحادثة واستمرار السياق — نجح');

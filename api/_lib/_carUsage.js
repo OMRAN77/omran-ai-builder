@@ -8,7 +8,8 @@ const { isBanned } = require('./auth.js');
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 
 const CAR_DAILY_LIMIT = 8;
-const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').toLowerCase();
+// v-owner-core: قائمة المالك الموحّدة — ‹omran› مدمج دائمًا والبيئة تضيف لا تستبدل.
+const { isOwnerName } = require('./_owner.js');
 
 function verifyToken(token) {
   try {
@@ -51,7 +52,7 @@ async function checkCarQuota(token) {
   // Suspended accounts hold a valid token for up to 30 days; the ban
   // has to bite on the paths that actually spend money, not just login.
   if (await isBanned(username)) return { allowed: false, reason: 'auth', banned: true, username };
-  if (String(username).toLowerCase() === OWNER_USERNAME) {
+  if (isOwnerName(username)) {
     return { allowed: true, username, remaining: Infinity };
   }
   const today = todayStr();
@@ -66,7 +67,7 @@ async function checkCarQuota(token) {
 }
 
 async function consumeCar(username) {
-  if (String(username).toLowerCase() === OWNER_USERNAME) {
+  if (isOwnerName(username)) {
     return Infinity;
   }
   const today = todayStr();

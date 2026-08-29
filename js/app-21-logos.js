@@ -225,9 +225,13 @@ window.__logoPickerOpen = openPicker;
 
 // ── زر في شريط الأدوات (يُربط بعد DOMContentLoaded) ─────────────────────────
 function mountLogoBtn(){
-  // زر داخل مربع الأدوات
+  // زر داخل مربع الأدوات.
+  // v-wiring-sweep: toolsBox/toolsBoxInner لم يعودا موجودَين بعد إعادة تصميم
+  // الواجهة، وكان الحارس القديم يخرج مبكرًا فلا يظهر زر «شعارات العالم» أبدًا.
+  // نقطة الإدراج الحقيقية هي جوار زر استوديو الإعلانات، وتكفي وحدها.
   const toolsBox = document.getElementById('toolsBox') || document.getElementById('toolsBoxInner');
-  if(!toolsBox || document.getElementById('btnLogoLib')) return;
+  const adBtnAnchor = document.getElementById('btnAdStudio') || document.getElementById('btnStudioAI');
+  if((!toolsBox && !adBtnAnchor) || document.getElementById('btnLogoLib')) return;
 
   const btn = document.createElement('button');
   btn.id = 'btnLogoLib';

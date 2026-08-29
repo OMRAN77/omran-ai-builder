@@ -8,7 +8,8 @@ const { getUserOnce } = require('./auth.js');
 const { kvList, kvGetJSON } = require('./kv.js');
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
-const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').trim().toLowerCase();
+// v-owner-core: قائمة المالك الموحّدة — ‹omran› مدمج دائمًا والبيئة تضيف لا تستبدل.
+const { isOwnerName, ownerList } = require('./_owner.js');
 
 // User records are stored encrypted at rest (see auth.js). Always go through
 // auth.js's getUserOnce() (which transparently decrypts) instead of reading
@@ -48,7 +49,7 @@ module.exports = async (req, res) => {
   try {
     const token = (req.query && req.query.token) || (req.body && req.body.token) || '';
     const username = verifyToken(token);
-    if (!username || String(username).trim().toLowerCase() !== OWNER_USERNAME) {
+    if (!isOwnerName(username)) {
       res.statusCode = 403;
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify({ error: 'forbidden' }));
@@ -126,7 +127,7 @@ module.exports = async (req, res) => {
     // banned/email status from the already-fetched record — needed to
     // render ban/unban/delete/message controls in the owner's panel.
     const manageableUsers = realUsers
-      .filter((u) => u.username !== OWNER_USERNAME)
+      .filter((u) => !ownerList().includes(u.username))
       .sort((a, b) => new Date(b.lastWrite || 0) - new Date(a.lastWrite || 0))
       .slice(0, 60)
       .map((u) => ({

@@ -20,6 +20,24 @@
     btn.classList.toggle('premium-on', window.__premiumOn === true);
   }
 
+  // v-agent-settings — زر «الوكيل» انتقل من الشريط الجانبي إلى قسم الوكيل في
+  // الإعدادات (أمر عمران ٢٦ أغسطس ٢٠٢٦). النقل بالعقدة نفسها فتبقى كل
+  // المعرّفات والأسلاك (النقاط، الخصم المتحرك، الإظهار/الإخفاء) كما هي.
+  function relocateAgentToggle(){
+    try{
+      const wrap = document.getElementById('premiumToggleWrap');
+      const host = document.getElementById('agentSettingsHost');
+      if(wrap && host && wrap.parentElement !== host){ host.appendChild(wrap); wrap.style.marginTop = '0'; }
+    }catch(_){ __swallow(_, "misc:premium#1"); }
+  }
+
+  function syncAgentNote(){
+    try{
+      const n = document.getElementById('agentOnNote');
+      if(n) n.style.display = (window.__premiumOn === true) ? 'block' : 'none';
+    }catch(_){ __swallow(_, "misc:premium#2"); }
+  }
+
   function updatePremiumToggleVisibility(){
     const wrap = document.getElementById('premiumToggleWrap');
     const chip = document.getElementById('premiumPointsChip');
@@ -39,6 +57,8 @@
     } else {
       // Not premium-capable: force OFF + hide toggle AND the points counter (normal usage feels free).
       window.__premiumOn = false;
+      window.__agentModeOn = false; // v-agent-settings: مفتاح واحد — انطفأ الوكيل ينطفئ وضعه
+      syncAgentNote();
       applyToggleStyle();
       wrap.classList.remove('pt-visible');
       if(chip) chip.classList.remove('pp-visible');
@@ -100,6 +120,11 @@
         return;
       }
       window.__premiumOn = !window.__premiumOn;
+      // v-agent-settings: هذا الزر هو مفتاح الوكيل الحقيقي — تشغيله يفعّل وضع
+      // الوكيل المستقل (تخطيط + بناء + اختبار ذاتي + بحث)، لا الرد الاحترافي فقط.
+      window.__agentModeOn = (window.__premiumOn === true);
+      try{ if(typeof updateAgentModeUI === 'function') updateAgentModeUI(); }catch(_){ __swallow(_, "misc:premium#3"); }
+      syncAgentNote();
       applyToggleStyle();
       if(window.__premiumOn){
         try{ settingsToast(t('premiumOn')); }catch(_){ __swallow(_, "auth:index#24"); }
@@ -108,6 +133,7 @@
   }
 
   function initPremium(){
+    relocateAgentToggle(); // v-agent-settings
     wireToggle();
     updatePremiumToggleVisibility();
     refreshPremiumPoints();

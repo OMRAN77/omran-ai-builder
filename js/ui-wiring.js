@@ -52,7 +52,9 @@
 
   /* ---------- 2) أدوات سريعة ---------- */
   var QUICK = [
-    { icon:'globe',  k:'qtWebSearch', name:'بحث في الإنترنت', run:function(){ tap('#btnPreviewToggle'); } },
+    /* v-wiring-sweep: كان ينقر #btnPreviewToggle — زر غير موجود منذ زمن، فالأداة
+       كانت ميتة بصمت. #omranBtnWeb هو زر «المتصفح» الحقيقي (app-10 v361). */
+    { icon:'globe',  k:'qtWebSearch', name:'بحث في الإنترنت', run:function(){ tap('#omranBtnWeb'); } },
     { icon:'trans',  k:'qtTranslate', name:'ترجمة نص',        run:function(){ fillPrompt('ترجم النص التالي:\n'); } },
     { icon:'list',  k:'qtSummarize', name:'تلخيص نص',        run:function(){ fillPrompt('لخّص النص التالي:\n'); } },
     { icon:'upload',  k:'qtAnalyzeFile', name:'تحليل ملف',       run:function(){ tap('#btnAttach'); } }
@@ -97,7 +99,8 @@
   var fs = $('#omranFootSettings'); if(fs) fs.addEventListener('click', function(){ tap('#btnSettings'); });
 
   /* ---------- 8) أزرار الصندوق الجديدة ---------- */
-  var bw = $('#omranBtnWeb'); if(bw) bw.addEventListener('click', function(){ tap('#btnPreviewToggle'); });
+  /* v-wiring-sweep: كان يعيد توجيه النقرة إلى #btnPreviewToggle غير الموجود —
+     لا-شيء صامت. المعالج الحقيقي لـ#omranBtnWeb في app-10 (المتصفح v361). */
   var bc = $('#omranBtnClip'); if(bc) bc.addEventListener('click', function(){ tap('#btnAttach'); });
   /* v594: بند «الأدوات» داخل + يفتح مربّع الأدوات ويقفل القائمة */
   var btb = $('#btnToolsBox');
@@ -122,11 +125,28 @@
   };
   document.querySelectorAll('.omNavBtn').forEach(function(b){
     b.addEventListener('click', function(){
+      b.__omLastClick = Date.now(); /* v-ios-tap-fallback */
       var k = b.getAttribute('data-omnav');
       document.querySelectorAll('.omNavBtn').forEach(function(x){ x.classList.remove('active'); });
       b.classList.add('active');
+      /* v-nav-top: الشريط صار فوق الأدراج — تبويب غير درجيّ يغلق أي درج مفتوح
+         أولًا حتى لا ينفّذ فعله خلف الدُّرج. (chats/files تبديلهما يتكفّل بذلك) */
+      if(k !== 'chats' && k !== 'files'){
+        try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(e){ __swallow(e, "wiring:nav-top"); }
+      }
       var f = NAV[k]; if(f) f();
     });
+    /* v-ios-tap-fallback: بعض حالات سفاري iOS لا تولّد نقرة click بعد اللمس
+       (خصوصًا قرب حافة الشاشة السفلية) فتبدو التبويبات ميتة. إن لم تصل click
+       خلال 450ms من نهاية اللمس نطلقها نحن — b.click() يشغّل كل المعالجات
+       المربوطة (بما فيها معالج «المرشد» الخاص) بلا ازدواج بفضل ختم الوقت. */
+    b.addEventListener('touchend', function(){
+      setTimeout(function(){
+        if(Date.now() - (b.__omLastClick || 0) < 600) return;
+        b.__omLastClick = Date.now();
+        try{ b.click(); }catch(e){ __swallow(e, "wiring:ios-tap-fallback"); }
+      }, 450);
+    }, {passive:true});
   });
 
   /* ---------- 11) إعادة ربط المقابض (الجهة تُحسب تلقائيًا من موضع المقبض) ---------- */
@@ -170,3 +190,8 @@
   rebindResizer('resizer1', '#sidebar', 180, 420, 'panelWidthSidebar');
   rebindResizer('resizer2', '#workarea', 240, 700, 'panelWidthWork');
 })();
+
+// v-boot-watchdog: إشارة اكتمال الإقلاع — وصول التنفيذ هنا يعني الحزمة
+// والأسلاك اشتغلت، فيسكت رقيب selfdiag ويُمحى حارس إعادة المحاولة.
+window.__omranBootOk = true;
+try{ sessionStorage.removeItem('omranBootRetry'); }catch(e){ /* guard-ok: بلا تخزين لا حارس أصلًا */ }

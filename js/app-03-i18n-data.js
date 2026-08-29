@@ -482,6 +482,11 @@ const I18N = {
     portraitBackdropMarble: '🏛️ رخام فاخر',
     designAiGenerateBtn: '✨ صمم الغرفة',
     designAiDownloadBtn: '⬇️ تحميل الصورة',
+    designCompareTitle: '🆚 غرفتي بكل الأنماط',
+    designCompareHint: 'ارفعي صورة غرفتك واختاري ٢-٣ أنماط — نولّدها جنبًا إلى جنب وتختارين الأجمل',
+    designCompareBtn: '🆚 صمّمها بالأنماط المختارة',
+    designBABefore: 'قبل',
+    designBAAfter: 'بعد',
     designAiNeedImage: '⚠️ الرجاء رفع صورة الغرفة أولًا.',
     designAiNeedLogin: '🔑 يجب تسجيل الدخول أولًا لاستخدام ديكور AI.',
     designAiLimitReached: '⏳ لقد استهلكت حد التصاميم المجانية لليوم. حاول مرة أخرى غدًا.',
@@ -675,7 +680,39 @@ const I18N = {
     confirmDeleteAll: '⚠️ سيتم حذف كل المشاريع والمحادثات والصور نهائيًا. متأكد؟',
     deleteChatLabel: "حذف المحادثة",
     premiumToggleLabel: "الوكيل",
-    premiumOn: "الوكيل شغّال ⚡ — رد مباشر بلا طبقات أسلوب",
+    premiumOn: "الوكيل شغّال ⚡ — يخطّط وينفّذ ويختبر بنفسه",
+    agentSectionTitle: "🤖 الوكيل",
+    agentSectionDesc: "وضع الوكيل: يخطّط وينفّذ بنفسه — يبني ويعدّل ويختبر الكود قبل تسليمه، يتحقق من المصادر الحية، ويكمل عمله حتى لو أُغلقت الصفحة. شغّله من الزر ثم اكتب طلبك في المحادثة.",
+    agentOnNote: "الوكيل شغّال الآن — ارجع للمحادثة واكتب طلبك.",
+    vgModeTranslate: "ترجمة فورية",
+    vgModeAsk: "اسأل عمّا تراه",
+    // v-i18n-sweep: مفاتيح كانت في الواجهة بلا ترجمة — تظهر عربية للمستخدم الإنجليزي.
+    vgTitle: "المرشد البصري",
+    vgModeDescribe: "وصف المحيط",
+    vgModeRead: "قراءة نص",
+    vgModeSteps: "خطوة بخطوة",
+    vgModeTour: "جولة التطبيق",
+    vgAsk: "اسأل",
+    vgAuto: "تلقائي",
+    vgRepeat: "أعِد",
+    vgSound: "الصوت",
+    vgTorch: "إضاءة",
+    vgHint: "اضغط في أي مكان لأصف لك الآن",
+    omNavGuide: "المرشد",
+    authEmailOtpBtn: "الدخول بالإيميل",
+    authOtpBack: "رجوع",
+    authOtpCodeLabel: "رمز التحقق",
+    authOtpEmailLabel: "البريد الإلكتروني",
+    authOtpSendBtn: "إرسال رمز التحقق",
+    aboutTagline: "منصة عربية لبناء التطبيقات بالذكاء الاصطناعي",
+    videosGroupTitle: "🎬 الفيديوهات التعريفية",
+    toneSectionLabel: "النبرة",
+    toneAuto: "على راحتك",
+    toneWarm: "ودود",
+    toneDirect: "مباشر",
+    toneFormal: "رسمي",
+    toneHint: "اختر أسلوب الرد المفضّل — أو خلّ الذكاء الاصطناعي يتأقلم معك تلقائيًا.",
+    mahaCcTitle: "الترجمة النصية للمكالمة",
     premiumNeedLogin: "سجّل الدخول لتشغيل الوكيل",
     premiumNoPoints: "نقاطك خلصت — اشترِ نقاط لمواصلة الوكيل",
     chatToPdfLabel: "تحويل إلى PDF",
@@ -814,10 +851,10 @@ const I18N = {
     refreshBtnTitle: 'تحديث الصفحة',
     langBtn: 'EN',
     systemPrompt: `أنت ذكاء اصطناعي واسع المعرفة داخل تطبيق «Omran AI Builder» من فريق عمران AI.
-أسلوبك: راقٍ وهادئ وطبيعي — مثل خبير ودود يفهم المقصود ويتكلم بوضوح وعمق. نوّع تعبيراتك ولا تكرر العبارات الجاهزة. رتّب إجاباتك بشكل مريح للقراءة.
-- العربية الافتراضيّة بيضاء واضحة ومهذّبة، بلا لهجة مصطنعة أو مبالغة أو عبارات محفوظة. لا تبدأ بتحية من نفسك. إذا كانت رسالة المستخدم تحية لفظية فقط، فاكتفِ بتحية قصيرة وطبيعية من دون صيغة ثابتة؛ لا تطرح أي سؤال ولا تعرض المساعدة. سؤال المجاملة أو المتابعة مثل «كيف الحال؟» أجب عنه كحديث مستمر: أجب عن حالك مباشرة واسأل المستخدم عن حاله عند الملاءمة؛ لا تكرر التحية ولا تعرض المساعدة بدل الجواب.
-- افهم لهجة المستخدم وردّ بلغة مألوفة له من دون تقليد عباراته أو فقدان صوتك. قابل الفصحى بفصحى مبسّطة، واللهجات بعربية بيضاء طبيعية.
-- كيّف طول الرد وتنظيمه: مختصر = اختصر · يمزح = خفّة محسوبة · رسمي = كن رسميًّا · مرتبك = اصبر وبسّط. حافظ دائمًا على شخصية المساعد الراقية والودودة وهويته؛ لا تقلّد شخصية المستخدم.
+أسلوبك (بصمة المالك — التزم بها في كل رد): زميل خبير محبّ للخير، دافئ وحماسي بصدق — لا روبوت جامد ولا موظف استقبال. احتفل بإنجاز المستخدم مهما صغُر (كفو عليك! / يا سلام! / ولا يهمك)، وعند أي مشكلة امتصّ إحباطه بطمأنة صادقة («اطمّن، واضحة ونحلها») قبل الحل مباشرة. الزبدة أولًا: الجواب في أول سطر أو سطرين ثم التفصيل لمن أراد.
+- جارِ المستخدم في مجلسه: لهجته نفسها (خليجي/فصحى/إنجليزي) وطول جمله ومستوى حماسه — مزيج مريح من الفصحى المبسطة وروح الكلام اليومي القريب للقلب، مع بقاء شخصيتك الدافئة ورأيك الواضح.
+- لا تبدأ بتحية من نفسك. إذا حيّاك المستخدم فرحّب به ترحيبًا حارًّا راقيًا بروح المجلس — جملة أو جملتان فيهما حضور وشخصية (لا «هلا» جافة وحدها) — واسأله سؤالًا واحدًا طبيعيًّا عن حاله أو يومه. سؤال «كيف الحال؟» أجب عنه بدفء كحديث مستمر واسأله عن حاله. الممنوع الوحيد: عرض الخدمات الرسمي («كيف أقدر أساعدك؟») وسرد المواضيع القديمة.
+- كيّف طول الرد وتنظيمه: مختصر = اختصر · يمزح = خفّة محسوبة · رسمي = كن رسميًّا · مرتبك = اصبر وبسّط وفكّك المعقد خطوات مرقّمة قصيرة بلا مصطلحات جافة.
 - المصطلحات التقنيّة والأسماء والأرقام تبقى كما هي.
 - سؤال عادي أو دردشة = رد محادثي غني بالمعلومات. بدون أي كود.
 - طلب بناء/تعديل تطبيق أو موقع أو لعبة = اشرح باختصار (سطرين) ثم أعد ملف HTML+CSS+JS كامل يعمل مباشرة في كتلة \`\`\`html واحدة. يمكنك استخدام CDN. الألعاب 3D = Three.js عبر CDN.
@@ -1129,7 +1166,39 @@ const I18N = {
     confirmDeleteAll: '⚠️ All projects, chats and images will be permanently deleted. Are you sure?',
     deleteChatLabel: "Delete chat",
     premiumToggleLabel: "Agent",
-    premiumOn: "Agent is ON ⚡ — direct answer, no style layers",
+    premiumOn: "Agent is ON ⚡ — it plans, executes and self-tests",
+    agentSectionTitle: "🤖 Agent",
+    agentSectionDesc: "Agent mode: it plans and executes on its own — builds, edits and tests the code before delivery, checks live sources, and keeps working even if the page closes. Turn it on, then type your request in the chat.",
+    agentOnNote: "Agent is ON — go back to the chat and type your request.",
+    vgModeTranslate: "Live translate",
+    vgModeAsk: "Ask about it",
+    // v-i18n-sweep: keys that were in the UI with no dictionary entry.
+    vgTitle: "Visual Guide",
+    vgModeDescribe: "Describe surroundings",
+    vgModeRead: "Read text",
+    vgModeSteps: "Step by step",
+    vgModeTour: "App tour",
+    vgAsk: "Ask",
+    vgAuto: "Auto",
+    vgRepeat: "Repeat",
+    vgSound: "Sound",
+    vgTorch: "Torch",
+    vgHint: "Tap anywhere and I'll describe it now",
+    omNavGuide: "Guide",
+    authEmailOtpBtn: "Sign in with email",
+    authOtpBack: "Back",
+    authOtpCodeLabel: "Verification code",
+    authOtpEmailLabel: "Email address",
+    authOtpSendBtn: "Send verification code",
+    aboutTagline: "An Arabic platform for building apps with AI",
+    videosGroupTitle: "🎬 Intro videos",
+    toneSectionLabel: "Tone",
+    toneAuto: "Your call",
+    toneWarm: "Friendly",
+    toneDirect: "Direct",
+    toneFormal: "Formal",
+    toneHint: "Pick your preferred reply style — or let the AI adapt to you automatically.",
+    mahaCcTitle: "Live call captions",
     premiumNeedLogin: "Sign in to use Agent",
     premiumNoPoints: "Out of points — buy points to keep using Agent",
     chatToPdfLabel: "Convert to PDF",
@@ -1557,6 +1626,11 @@ const I18N = {
     portraitBackdropMarble: '🏛️ Luxury Marble',
     designAiGenerateBtn: '✨ Design the room',
     designAiDownloadBtn: '⬇️ Download image',
+    designCompareTitle: '🆚 My room in every style',
+    designCompareHint: 'Upload your room photo, pick 2-3 styles — we design them side by side',
+    designCompareBtn: '🆚 Design with picked styles',
+    designBABefore: 'Before',
+    designBAAfter: 'After',
     designAiNeedImage: '⚠️ Please upload a room photo first.',
     designAiNeedLogin: '🔑 Please log in first to use Design AI.',
     designAiLimitReached: "⏳ You have reached today's free design limit. Try again tomorrow.",
@@ -1776,7 +1850,7 @@ const I18N = {
     refreshBtnTitle: 'Refresh Page',
     langBtn: 'ع',
     systemPrompt: `You are a deeply knowledgeable AI inside 'Omran AI Builder', developed by the Omran AI Team (فريق عمران AI).
-Style: refined and natural — like a warm, articulate expert. Vary your language; never repeat stock phrases. Structure answers for easy reading.
+Style (the owner's fingerprint — every reply): a warm, genuinely enthusiastic expert friend — never a stiff robot or a front-desk clerk. Celebrate the user's wins however small ("Nice one!" / "There you go!"), and when something breaks, absorb their frustration with honest reassurance ("Don't worry — it's clear, we'll fix it") before diving straight into the fix. Bottom line first: the direct answer in the first line or two, details after for those who want them. Mirror the user's own register — their dialect, sentence length and energy — while keeping your warm personality and clear opinions. Break complex problems into short numbered steps with no dry jargon. Even greetings get warmth: a refined welcoming line with presence plus one natural question back — never a bare clipped "hi"; the only things banned are corporate service offers ("How can I help you?") and dredging up old topics.
 - General questions or chat = rich, informative conversational reply. NO code.
 - Build/modify an app, site, or game = brief explanation (2 lines) then one complete working HTML+CSS+JS file in a \`\`\`html block. CDN allowed. 3D games = Three.js via CDN.
 - Edits = change only what was requested, return the full file.

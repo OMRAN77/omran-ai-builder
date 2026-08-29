@@ -12,6 +12,31 @@
 //   merge   - merge two photos into a single combined image
 // Returns a base64 PNG/JPEG the client can preview and download.
 const { checkStudioQuota, consumeStudio, STUDIO_DAILY_LIMIT } = require('./_studioUsage');
+
+// v-studio-rescue: تعديل الصورة عبر gpt-image-1 عند رفض Gemini (نفس نمط
+// الأزياء والبورتريه). يدعم صورتين للدمج. يرجع base64 أو null — لا يرمي.
+async function openaiStudioEdit(promptText, images) {
+  const key = (process.env.OPENAI_API_KEY || '').trim();
+  if (!key) return null;
+  try {
+    const form = new FormData();
+    form.append('model', 'gpt-image-1');
+    form.append('prompt', String(promptText).slice(0, 3900));
+    form.append('size', '1024x1536');
+    form.append('quality', 'medium');
+    images.forEach(([b64, mime], i) => {
+      form.append('image', new Blob([Buffer.from(b64, 'base64')], { type: mime || 'image/jpeg' }), 'photo' + i + '.jpg');
+    });
+    const r = await fetch('https://api.openai.com/v1/images/edits', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + key },
+      body: form,
+    });
+    const d = await r.json();
+    if (!r.ok) { console.warn('[studio-create] openai HTTP ' + r.status + ' ' + String((d.error && d.error.message) || '').slice(0, 120)); return null; }
+    return (d && d.data && d.data[0] && d.data[0].b64_json) || null;
+  } catch (e) { console.warn('[studio-create] openai ' + (e && e.message)); return null; }
+}
 const { sourceStylePreservationRule } = require('./image-prompt');
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 
@@ -23,6 +48,18 @@ const STYLE_TEXT = {
     red: 'vivid auburn red hair color',
     silver: 'silver/gray hair color',
     colorful: 'vivid multicolor fantasy hair color (pink/blue/purple highlights)',
+    ombre: 'a stylish ombre hair color fading dark roots to light ends',
+    highlights: 'natural sun-kissed highlights through the hair',
+    platinum: 'icy platinum blonde hair color',
+    burgundy: 'deep burgundy wine hair color',
+    blue: 'bold electric blue hair color',
+    rose: 'soft rose-gold pink hair color',
+    curly: 'a voluminous curly hairstyle, defined bouncy curls',
+    straight: 'a sleek straight glossy hairstyle',
+    waves: 'soft glamorous hollywood waves hairstyle',
+    bob: 'a chic short bob haircut',
+    pixie: 'a modern pixie cut hairstyle',
+    longlayers: 'long layered flowing hairstyle',
   },
   nails: {
     red: 'classic glossy red nail polish',
@@ -31,6 +68,12 @@ const STYLE_TEXT = {
     french: 'classic French manicure (white tips)',
     pink: 'soft pink nail polish',
     gold: 'metallic gold glitter nail polish',
+    ombrenails: 'elegant ombre gradient nails',
+    glitter: 'sparkling glitter party nails',
+    mattegray: 'matte greige minimal nails',
+    chrome: 'mirror chrome metallic nails',
+    marble: 'white marble-effect nail art',
+    artnails: 'delicate hand-painted floral nail art',
   },
   makeup: {
     natural: 'light natural everyday makeup look',
@@ -38,6 +81,11 @@ const STYLE_TEXT = {
     smokey: 'smokey eye makeup look',
     redlips: 'bold red lipstick makeup look',
     bridal: 'elegant bridal makeup look',
+    softglam: 'a soft-glam makeup look, luminous skin, neutral shimmer',
+    kohl: 'a striking Arabic kohl-lined eyes makeup look',
+    dewy: 'a dewy fresh-skin makeup look, glowing highlight',
+    matte: 'a full matte velvet-finish makeup look',
+    editorial: 'a bold colorful editorial makeup look, artistic liner',
   },
   beard: {
     full: 'a full thick well-groomed beard',
@@ -45,11 +93,19 @@ const STYLE_TEXT = {
     mustache: 'a mustache only, clean shaved cheeks',
     goatee: 'a neat goatee beard style',
     clean: 'a completely clean-shaven face',
+    boxed: 'a short boxed beard, sharply groomed edges',
+    vandyke: 'a Van Dyke beard style, pointed goatee with detached mustache',
+    faded: 'a skin-faded beard blending into the haircut',
+    longbeard: 'a thick long well-groomed beard',
+    anchor: 'an anchor-shaped chin beard with mustache',
   },
   skin: {
     subtle: 'subtle natural skin smoothing, keep realistic skin texture and pores',
     glow: 'a healthy natural glow and even skin tone',
     circles: 'reduced dark circles under the eyes, refreshed look',
+    tan: 'a healthy sun-kissed golden tan skin tone',
+    matteskin: 'shine-free matte refined skin finish',
+    freckles: 'charming natural light freckles',
   },
   glasses: {
     sunglasses: 'classic black sunglasses',
@@ -57,12 +113,23 @@ const STYLE_TEXT = {
     catseye: 'cat-eye shaped glasses',
     aviator: 'aviator style glasses',
     rimless: 'thin rimless glasses',
+    wayfarer: 'classic wayfarer frame glasses',
+    oversized: 'fashionable oversized frame glasses',
+    sportglasses: 'sleek wraparound sport sunglasses',
+    goldframe: 'luxury thin gold-frame glasses',
+    retroglasses: 'retro 70s tinted glasses',
+    hexagon: 'modern hexagonal frame glasses',
+    clearframe: 'trendy clear transparent frame glasses',
   },
   tattoo: {
     sleeve: 'a detailed full arm sleeve tattoo design',
     wrist: 'a small delicate wrist tattoo',
     back: 'a large detailed back piece tattoo',
     tribal: 'a bold black tribal-style tattoo',
+    geometric: 'a fine-line geometric pattern tattoo',
+    minimalline: 'a tiny minimalist single-line tattoo',
+    arabictattoo: 'an elegant Arabic calligraphy tattoo',
+    floraltattoo: 'a detailed floral botanical tattoo',
     custom: 'a custom tattoo design as described',
   },
   anime: {
@@ -71,6 +138,10 @@ const STYLE_TEXT = {
     ghibli: 'a Studio Ghibli-inspired hand-painted anime style illustration',
     cyberpunk: 'a cyberpunk anime art style illustration with neon accents',
     manga: 'a black and white manga ink illustration style',
+    shonenstudio: 'a dynamic shonen action anime style with speed lines and energy',
+    kawaii: 'a cute kawaii pastel anime style',
+    webtoon: 'a clean modern webtoon comic style',
+    retro90s: 'a nostalgic 1990s cel anime style',
   },
   heritage: {
     kandora: 'a traditional Gulf men\'s kandora (dishdasha) with a matching ghutra headscarf and agal',
@@ -79,6 +150,10 @@ const STYLE_TEXT = {
     embroidered: 'a richly embroidered traditional Gulf women\'s dress (thobe nashal) with gold detailing',
     saudi: 'a traditional Saudi men\'s thobe with a red-and-white shemagh headscarf',
     emirati: 'a traditional Emirati women\'s kaftan with delicate hand embroidery',
+    omani: "a traditional Omani men's dishdasha with an embroidered kummah cap",
+    saudimen2: "a Saudi winter bisht over thobe with red shemagh, stately look",
+    moroccanher: 'a Moroccan djellaba with hood, fine stitching',
+    palestinian: 'a Palestinian embroidered thobe with traditional tatreez patterns',
   },
 };
 
@@ -200,8 +275,20 @@ module.exports = async (req, res) => {
 
     const data = await upstream.json();
     if (!upstream.ok) {
-      console.error('[studio-create] upstream failed status=' + upstream.status + ' detail=' + ((data && data.error && data.error.message) || 'unknown'));
-      res.status(502).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
+      const detail = String((data && data.error && data.error.message) || 'unknown')
+        .replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
+      console.error('[studio-create] upstream failed status=' + upstream.status + ' detail=' + detail);
+      // v-studio-rescue: جرّب gpt-image-1 قبل إبلاغ الفشل — حارس التحقق على
+      // Gemini نفسه فيُتجاوز في مسار الإنقاذ.
+      const rescueImgs = [[imageBase64, mimeType]];
+      if (feature === 'merge' && imageBase64B) rescueImgs.push([imageBase64B, mimeTypeB]);
+      const rescue = await openaiStudioEdit((parts[0] && parts[0].text) || '', rescueImgs);
+      if (rescue) {
+        const remR = await consumeStudio(quota.username);
+        res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: STUDIO_DAILY_LIMIT });
+        return;
+      }
+      res.status(502).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.', upstream: upstream.status, detail });
       return;
     }
 

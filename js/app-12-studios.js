@@ -144,8 +144,12 @@ async function __safeJson(res){
     }
 
     btnGenerate.disabled = true;
+    /* v-fashion-show: الحاوية fashionAiResultWrap كانت تبقى display:none —
+       الصورة تتولد وتختفي داخلها («الصور ما تطلع»). تُدار مع الصورة معًا. */
+    if(resultWrap) resultWrap.style.display = 'none';
     resultEl.style.display = 'none';
     downloadEl.style.display = 'none';
+    baHide();
     if(gridEl){ gridEl.style.display = 'none'; gridEl.innerHTML = ''; }
     setStatus(t('designAiGenerating'));
 
@@ -212,8 +216,13 @@ async function __safeJson(res){
         return;
       }
       const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
-      resultEl.src = dataUrl;
-      resultEl.style.display = 'block';
+      // v-decor-ba: مع صورة مرفوعة السحّاب يعرض قبل/بعد؛ وبدونها صورة عادية.
+      if(selectedBase64 && !placeVal && showBeforeAfter('data:' + selectedMime + ';base64,' + selectedBase64, dataUrl)){
+        resultEl.style.display = 'none';
+      } else {
+        resultEl.src = dataUrl;
+        resultEl.style.display = 'block';
+      }
       downloadEl.href = dataUrl;
       downloadEl.style.display = 'block';
       setStatus(t('designAiDone'));
@@ -256,6 +265,151 @@ async function __safeJson(res){
       setStatus(t('designAiSuggestError'));
     } finally {
       btnSuggest.disabled = false;
+    }
+  };
+
+  /* ---- v-decor-ba: سحّاب قبل/بعد — الأصل يتحوّل للتصميم بسحبة إصبع ---- */
+  const baWrap = $('#designBAWrap');
+  const baAfter = $('#designBAAfter');
+  const baBeforeClip = $('#designBABeforeClip');
+  const baBefore = $('#designBABefore');
+  const baLine = $('#designBALine');
+  const baRange = $('#designBARange');
+  function baHide(){ if(baWrap) baWrap.style.display = 'none'; if(baRange) baRange.style.display = 'none'; }
+  function baSize(){ if(baWrap && baBefore) baBefore.style.width = baWrap.getBoundingClientRect().width + 'px'; }
+  function baSet(p){
+    if(baBeforeClip) baBeforeClip.style.width = p + '%';
+    if(baLine) baLine.style.left = p + '%';
+    baSize();
+  }
+  if(baRange) baRange.oninput = function(){ baSet(baRange.value); };
+  window.addEventListener('resize', function(){ if(baWrap && baWrap.style.display !== 'none') baSize(); });
+  function showBeforeAfter(beforeUrl, afterUrl){
+    if(!baWrap || !baAfter || !baBefore) return false;
+    baAfter.src = afterUrl;
+    baBefore.src = beforeUrl;
+    baAfter.onload = baSize;
+    baWrap.style.display = 'block';
+    baRange.style.display = 'block';
+    baRange.value = 50;
+    baSet(50);
+    return true;
+  }
+  window.__designShowBA = showBeforeAfter;
+  window.__designBAHide = baHide;
+  window.__designSourceUrl = function(){ return selectedBase64 ? ('data:' + selectedMime + ';base64,' + selectedBase64) : ''; };
+
+  /* ---- v-decor-compare: «غرفتي بكل الأنماط» — حتى ٣ أنماط جنبًا إلى جنب ---- */
+  const cmpChecksEl = $('#designCompareChecks');
+  const cmpBtn = $('#designCompareBtn');
+  const cmpStatusEl = $('#designCompareStatus');
+  const cmpResultsEl = $('#designCompareResults');
+  const cmpPicks = [];
+  function cmpStatus(txt){
+    if(!cmpStatusEl) return;
+    cmpStatusEl.style.display = txt ? 'block' : 'none';
+    cmpStatusEl.textContent = txt || '';
+  }
+  function styleTitle(v){
+    const o = styleEl && Array.prototype.find.call(styleEl.options, function(x){ return x.value === v; });
+    if(!o) return v;
+    const den = isEn() && o.getAttribute('data-en');
+    return ((den || o.textContent) || '').trim();
+  }
+  function buildCompareStyleRow(){
+    if(!cmpChecksEl || !styleEl) return;
+    cmpChecksEl.innerHTML = '';
+    Array.prototype.forEach.call(styleEl.options, function(o){
+      const v = o.value;
+      const on = cmpPicks.indexOf(v) >= 0;
+      const card = document.createElement('div');
+      card.setAttribute('data-dcompare-card', v);
+      card.style.cssText = 'position:relative; flex:0 0 96px; aspect-ratio:3/4; border-radius:12px; overflow:hidden; cursor:pointer; scroll-snap-align:start;' +
+        ' background:linear-gradient(160deg,#23232a,#101014); display:flex; align-items:center; justify-content:center;' +
+        (on ? ' border:2px solid #d4af37; box-shadow:0 0 12px rgba(212,175,55,.35);' : ' border:1px solid var(--border,#333);');
+      // v-decor-swatch: لوحة ألوان النمط بدل شارة الإيموجي — شكل رسمي.
+      const pal = (typeof window.__decorPal === 'function') ? window.__decorPal('designAiStyle', v) : '';
+      if(pal) card.style.background = pal;
+      const img = document.createElement('img');
+      img.src = 'assets/design/styles/' + v + '.webp';
+      img.alt = ''; img.loading = 'lazy';
+      img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;';
+      img.onerror = function(){ img.remove(); };
+      const label = document.createElement('div');
+      label.textContent = styleTitle(v);
+      label.style.cssText = 'position:absolute; left:0; right:0; bottom:0; padding:12px 3px 4px; font-size:10px; font-weight:700; text-align:center; z-index:1;' +
+        ' color:' + (on ? '#d4af37' : '#eef0f6') + '; background:linear-gradient(transparent,rgba(0,0,0,.85));';
+      if(on){
+        const tick = document.createElement('div'); tick.textContent = '✓';
+        tick.style.cssText = 'position:absolute; top:5px; inset-inline-start:6px; z-index:2; width:20px; height:20px; border-radius:50%; background:#d4af37; color:#141414; font-weight:800; font-size:12px; display:flex; align-items:center; justify-content:center;';
+        card.appendChild(tick);
+      }
+      card.appendChild(img); card.appendChild(label);
+      card.onclick = function(){
+        const i = cmpPicks.indexOf(v);
+        if(i >= 0) cmpPicks.splice(i, 1);
+        else { if(cmpPicks.length >= 3){ cmpStatus(isEn() ? 'Max 3 styles' : 'الحد ٣ أنماط'); return; } cmpPicks.push(v); }
+        cmpStatus('');
+        buildCompareStyleRow();
+      };
+      cmpChecksEl.appendChild(card);
+    });
+  }
+  buildCompareStyleRow();
+  if(cmpBtn) cmpBtn.onclick = async () => {
+    if(!selectedBase64){ cmpStatus(isEn() ? 'Upload your room photo first' : 'ارفعي صورة غرفتك أولًا'); return; }
+    if(cmpPicks.length < 2){ cmpStatus(isEn() ? 'Pick 2-3 styles' : 'اختاري نمطين أو ثلاثة'); return; }
+    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+    if(!token){ cmpStatus(t('designAiNeedLogin')); return; }
+    cmpBtn.disabled = true;
+    cmpResultsEl.style.display = 'none';
+    cmpResultsEl.innerHTML = '';
+    const picks = cmpPicks.slice();
+    try{
+      for(let i = 0; i < picks.length; i++){
+        const v = picks[i];
+        cmpStatus((isEn() ? 'Designing ' : 'نصمّم ') + styleTitle(v) + ' — ' + (i + 1) + '/' + picks.length + '…');
+        const res = await fetch('/api/design-create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64: selectedBase64, mimeType: selectedMime, style: v, token }),
+        });
+        const data = await __safeJson(res);
+        if(!res.ok || data.error){
+          if(data.error === 'daily_limit_reached'){ cmpStatus(t('designAiLimitReached')); break; }
+          if(data.error === 'auth_required'){ cmpStatus(t('designAiNeedLogin')); break; }
+          cmpStatus((isEn() ? '❌ Failed at ' : '❌ تعثّر عند ') + styleTitle(v));
+          continue;
+        }
+        const u = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
+        const cell = document.createElement('div');
+        cell.style.cssText = 'flex:0 0 78%; max-width:340px; scroll-snap-align:start;';
+        const im = document.createElement('img');
+        im.src = u;
+        im.style.cssText = 'width:100%; border-radius:12px; display:block; background:#000;';
+        const cap = document.createElement('div');
+        cap.textContent = styleTitle(v);
+        cap.style.cssText = 'font-size:12px; font-weight:700; text-align:center; margin-top:4px;';
+        const pick = document.createElement('button');
+        pick.type = 'button'; pick.className = 'btn';
+        pick.textContent = isEn() ? '👍 Pick this' : '👍 اعتمدي هذا';
+        pick.style.cssText = 'width:100%; margin-top:4px; font-size:11.5px; padding:5px 4px;';
+        pick.onclick = function(){
+          styleEl.value = v;
+          styleEl.dispatchEvent(new Event('change', { bubbles: true }));
+          showBeforeAfter('data:' + selectedMime + ';base64,' + selectedBase64, u);
+          downloadEl.href = u; downloadEl.style.display = 'block';
+          baWrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        };
+        cell.appendChild(im); cell.appendChild(cap); cell.appendChild(pick);
+        cmpResultsEl.appendChild(cell);
+        cmpResultsEl.style.display = 'flex';
+        if(i === picks.length - 1) cmpStatus(isEn() ? '✓ Done — swipe and pick' : '✓ تم — اسحبي وقارني واختاري');
+      }
+    } catch(e){
+      cmpStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+    } finally {
+      cmpBtn.disabled = false;
     }
   };
 })();
@@ -683,10 +837,11 @@ async function __safeJson(res){
   const styleCardsEl = $('#fashionStyleCards');
   // v-fashion-genders: لكل فئة أنماطها وصورها — العباية نسائية فقط، والصور من
   // looks/<الفئة>/، وما لم يُولَّد بعد يسقط لصور النساء ثم للتدرّج الأنيق.
+  // v-fashion-78: نسائي 36 · رجالي 24 · أطفال 18 — «٣٠-٥٠ كلام آخر».
   const GENDER_STYLES = {
-    women: ['evening', 'formal', 'casual', 'abaya', 'wedding', 'traditional'],
-    men: ['evening', 'formal', 'casual', 'wedding', 'traditional'],
-    kids: ['evening', 'formal', 'casual', 'wedding', 'traditional'],
+    women: ['evening', 'formal', 'casual', 'abaya', 'wedding', 'traditional', 'kaftan', 'jalabiya', 'hijabchic', 'oldmoney', 'streetwear', 'sporty', 'winterlux', 'summer', 'office', 'cocktail', 'ballgown', 'boho', 'vintage', 'y2k', 'minimal', 'glam', 'leather', 'denim', 'pastel', 'monochrome', 'floral', 'velvet', 'silk', 'suitf', 'turkish', 'indian', 'princess', 'safari', 'preppy', 'artgown'],
+    men: ['evening', 'formal', 'casual', 'wedding', 'traditional', 'bisht', 'oldmoney', 'streetwear', 'sporty', 'winterlux', 'summer', 'office', 'leather', 'denim', 'minimal', 'monochrome', 'vintage', 'smartcasual', 'threepiece', 'safari', 'preppy', 'athleisure', 'rockstar', 'moroccan'],
+    kids: ['evening', 'formal', 'casual', 'wedding', 'traditional', 'sporty', 'winterlux', 'summer', 'school', 'denim', 'pastel', 'floral', 'streetwear', 'minimal', 'vintage', 'preppy', 'eidkids', 'princess'],
   };
   function currentGender(){
     try{ return (window.omranFashionExtras && window.omranFashionExtras().gender) || 'women'; }
@@ -704,29 +859,57 @@ async function __safeJson(res){
     };
     return img;
   }
+  function fashionOptFor(v){
+    return Array.prototype.find.call(styleEl.options, function(o){ return o.value === v; });
+  }
+  function openFashionPicker(){
+    const g = currentGender();
+    const list = GENDER_STYLES[g] || GENDER_STYLES.women;
+    if(!window.omranPicker) return;
+    window.omranPicker.open({
+      title: isEn() ? '👗 Fashion styles' : '👗 أنماط الأزياء',
+      count: list.length + (isEn() ? ' styles — pick yours' : ' نمطًا — اختر ما يناسبك'),
+      items: list.map(function(v){
+        const opt = fashionOptFor(v);
+        return opt && {
+          v: v, title: opt.textContent.trim(), active: v === styleEl.value,
+          img: 'assets/fashion/looks/' + g + '/' + v + '.webp',
+          img2: 'assets/fashion/looks/' + v + '.webp',
+        };
+      }).filter(Boolean),
+      onPick: function(v){ styleEl.value = v; renderStyleCards(); },
+    });
+  }
   function renderStyleCards(){
     if(!styleCardsEl || !styleEl) return;
     const g = currentGender();
     const list = GENDER_STYLES[g] || GENDER_STYLES.women;
     if(list.indexOf(styleEl.value) < 0) styleEl.value = list[0];
+    // v-fashion-full-page: بطاقة مصغّرة «عرض الكل ›» تفتح معرضًا ملء الشاشة —
+    // نفس نظام أنماط الصور بالضبط (طلب المالك: كل المنتقيات بحجم صفحة كاملة).
+    styleCardsEl.style.display = 'block';
     styleCardsEl.innerHTML = '';
-    list.forEach(function(v){
-      const opt = Array.prototype.find.call(styleEl.options, function(o){ return o.value === v; });
-      if(!opt) return;
-      const active = v === styleEl.value;
-      const card = document.createElement('div');
-      card.setAttribute('data-style-card', v);
-      card.style.cssText = 'position:relative; aspect-ratio:2/3; border-radius:12px; overflow:hidden; cursor:pointer;' +
-        ' background:linear-gradient(160deg,#23232a,#101014);' +
-        (active ? ' border:2px solid #d4af37; box-shadow:0 0 12px rgba(212,175,55,.35);' : ' border:1px solid var(--border,#333);');
-      const label = document.createElement('div');
-      label.textContent = opt.textContent;
-      label.style.cssText = 'position:absolute; left:0; right:0; bottom:0; padding:14px 6px 6px; font-size:11.5px; font-weight:700; text-align:center;' +
-        ' color:' + (active ? '#d4af37' : '#eef0f6') + '; background:linear-gradient(transparent,rgba(0,0,0,.82));';
-      card.appendChild(lookImg(g, v, opt.textContent)); card.appendChild(label);
-      card.onclick = function(){ styleEl.value = v; renderStyleCards(); };
-      styleCardsEl.appendChild(card);
-    });
+    const opt = fashionOptFor(styleEl.value);
+    const trig = document.createElement('div');
+    trig.id = 'fashionStyleTrigger';
+    trig.style.cssText = 'display:flex; align-items:center; gap:10px; border:1px solid var(--border,#333); border-radius:12px; padding:8px 10px; cursor:pointer; background:var(--panel2,#101014);';
+    const img = lookImg(g, styleEl.value, opt ? opt.textContent : '');
+    img.style.cssText = 'width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
+    const info = document.createElement('div');
+    info.style.cssText = 'flex:1; min-width:0;';
+    const nm = document.createElement('div');
+    nm.textContent = opt ? opt.textContent : '';
+    nm.style.cssText = 'font-size:13.5px; font-weight:700;';
+    const sub = document.createElement('div');
+    sub.textContent = list.length + (isEn() ? ' styles for this category' : ' نمطًا لهذه الفئة');
+    sub.style.cssText = 'font-size:11px; color:var(--muted,#999);';
+    info.appendChild(nm); info.appendChild(sub);
+    const all = document.createElement('span');
+    all.textContent = isEn() ? 'Browse all ›' : 'عرض الكل ›';
+    all.style.cssText = 'color:#d4af37; font-size:12.5px; font-weight:700; flex:none;';
+    trig.appendChild(img); trig.appendChild(info); trig.appendChild(all);
+    trig.onclick = openFashionPicker;
+    styleCardsEl.appendChild(trig);
   }
   renderStyleCards();
   // تبديل الفئة (نسائي/رجالي/أطفال) يعيد رسم البطاقات وصفّ المقارنة بصور الفئة.
@@ -931,6 +1114,9 @@ async function __safeJson(res){
     }
 
     btnGenerate.disabled = true;
+    /* v-fashion-show: الحاوية fashionAiResultWrap كانت تبقى display:none —
+       الصورة تتولد وتختفي داخلها («الصور ما تطلع»). تُدار مع الصورة معًا. */
+    if(resultWrap) resultWrap.style.display = 'none';
     resultEl.style.display = 'none';
     downloadEl.style.display = 'none';
     favSaveBtn.style.display = 'none';
@@ -962,7 +1148,9 @@ async function __safeJson(res){
       }
       const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
       resultEl.src = dataUrl;
+      if(resultWrap) resultWrap.style.display = 'block'; /* v-fashion-show */
       resultEl.style.display = 'block';
+      try{ resultEl.scrollIntoView({ behavior:'smooth', block:'center' }); }catch(err){ __swallow(err, 'fashion:scroll'); }
       downloadEl.href = dataUrl;
       downloadEl.style.display = 'block';
       favSaveBtn.style.display = 'block';
@@ -1107,7 +1295,7 @@ async function __safeJson(res){
             cell.style.borderColor = '#d4af37';
             cell.style.boxShadow = '0 8px 22px -12px rgba(212,175,55,.55)';
             const h = cell.querySelector('.fashionPickHint'); if(h) h.textContent = '✓ اختيارك';
-            resultEl.src = r.dataUrl; resultEl.style.display = 'block';
+            resultEl.src = r.dataUrl; if(resultWrap) resultWrap.style.display = 'block'; resultEl.style.display = 'block'; /* v-fashion-show */
             downloadEl.href = r.dataUrl; downloadEl.style.display = 'block';
             favSaveBtn.style.display = 'block';
           };
@@ -1191,8 +1379,11 @@ async function __safeJson(res){
         { role: 'user', content: query },
       ];
       const onDelta = (partial) => { resultEl.textContent = partial; };
-      const reply = await callGemini(messages, onDelta);
-      resultEl.textContent = reply;
+      /* v-religion-rescue: كانت مربوطة بمزوّد واحد (Gemini) — أول 429 يميت
+         الأداة كلها (لقطة المالك). الآن سلسلة الاحتياط الكاملة: أي مزوّد
+         مشحون واحد يبقيها حيّة. */
+      const res = await callAIWithFallback(messages, onDelta);
+      resultEl.textContent = (res && res.reply) || '';
       setStatus(t('religionDone'));
     }catch(e){
       setStatus(t('religionError') + (e && e.message ? (': ' + e.message) : ''));

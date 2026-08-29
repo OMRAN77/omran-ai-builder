@@ -43,6 +43,12 @@ async function grantPlanToUser(username, plan, sourceField, sourceId) {
   const user = await getUser(username);
   if (!user || user.deleted) return { error: 'تعذر العثور على الحساب / Could not find the account', status: 404 };
 
+  // أمان التكرار: نفس الجلسة/العملية لا تضيف النقاط مرتين — كان الحقل يُخزَّن
+  // بلا فحص، فتكرار التحقق (تحديث صفحة النجاح، أو جسر الآيفون) كان يضاعفها.
+  if (sourceField && sourceId && user[sourceField] === sourceId) {
+    return { ok: true, plan, pointsAdded: 0, alreadyGranted: true, balance: Number(user.points || 0) };
+  }
+
   user.plan = plan;
   user.planUpdatedAt = Date.now();
   if (sourceField) user[sourceField] = sourceId;
@@ -88,6 +94,10 @@ async function createCheckoutSession(req, res) {
     params.append('line_items[0][price_data][product_data][name]', planInfo.name);
     params.append('metadata[plan]', plan);
     if (username) params.append('metadata[username]', username);
+    // v-webhook: نفس البيانات على الاشتراك نفسه — فتحملها فواتير التجديد
+    // الشهري ويعرف الويب هوك لمن يضيف نقاط كل شهر (كان التجديد بلا شحن).
+    params.append('subscription_data[metadata][plan]', plan);
+    if (username) params.append('subscription_data[metadata][username]', username);
     params.append('success_url', `${base}/?checkout=success&plan=${plan}&session_id={CHECKOUT_SESSION_ID}`);
     params.append('cancel_url', `${base}/?checkout=cancel`);
 
@@ -106,7 +116,9 @@ async function createCheckoutSession(req, res) {
       return;
     }
 
-    res.status(200).json({ url: data.url });
+    // id يُحفظ في العميل قبل التحويل — فعلى آيفون المثبَّت (حيث يهبط نجاح
+    // الدفع في ورقة متصفح منفصلة بلا توكن) يتحقّق التطبيق بنفسه عند العودة.
+    res.status(200).json({ url: data.url, id: data.id });
   } catch (e) {
     res.status(500).json({ error: e.message || 'Server error' });
   }
@@ -280,3 +292,8 @@ module.exports = async (req, res) => {
   if (routedAction === 'verify-payment-intent') return verifyPaymentIntent(req, res);
   return createCheckoutSession(req, res);
 };
+
+// v-webhook: يستعملهما ويب هوك سترايب (api/webhook.js) — نفس منطق المنح
+// وأمان التكرار، فلا ازدواج بين مسار العودة والويب هوك.
+module.exports.grantPlanToUser = grantPlanToUser;
+module.exports.PLANS = PLANS;

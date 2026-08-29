@@ -23,6 +23,15 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
 // causing the `@media (max-width:860px)` mobile layout to never trigger even on a phone.
 // Detect real touch/mobile devices via user-agent + touch support as a reliable fallback,
 // and force the mobile UI class regardless of the reported viewport width.
+/* v-pdf-link: بصمة غلاف TWA تُلتقط مبكرًا (referrer يوجد في أول فتحة فقط)
+   وتبقى محفوظة — يقرأها مسار حفظ PDF ليعرف أنه داخل تطبيق مغلّف. */
+(function markTwa(){
+  try{
+    if(document.referrer && document.referrer.indexOf('android-app://') === 0){
+      localStorage.setItem('aiapp_twa', '1');
+    }
+  }catch(e){ __swallow(e, 'boot:twa-mark'); }
+})();
 (function applyMobileUiClass(){
   const ua = navigator.userAgent || '';
   const isMobileUA = /Android|iPhone|iPad|iPod|Mobile|Huawei|HarmonyOS/i.test(ua);
@@ -42,6 +51,10 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
   }, {passive:true});
   document.addEventListener('touchmove', e=>{
     if(e.touches.length!==1) return;
+    // v-ios-slider (شكوى عمران ٢٧ أغسطس): هذا المنع كان يقتل سحب كل
+    // سحّابات المقارنة قبل/بعد (input[type=range]) على iOS — سحبها حركة
+    // أفقية «مشروعة» لعنصر غير قابل للتمرير فكانت تُمنع ويهتز المشهد.
+    if(e.target && e.target.closest && e.target.closest('input[type=range]')) return;
     const dx=Math.abs(e.touches[0].clientX-sx), dy=Math.abs(e.touches[0].clientY-sy);
     if(dx<=dy) return; // حركة عمودية — طبيعي
     // اسمح بالسحب الأفقي فقط داخل عناصر قابلة للتمرير الأفقي
@@ -66,8 +79,19 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
     const ae = document.activeElement;
     return !!(ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT' || ae.isContentEditable));
   };
+  /* v-ios-header-drop (شكوى ٢٨ أغسطس: الهيدر «ينزل» عند دخول المحادثة):
+     التخطي القديم كان يعتمد على التركيز وحده، وسفاري iOS كثيرًا ما يقفل
+     الكيبورد ويُبقي التركيز في الحقل (إملاء/سحب الكيبورد للأسفل/تسجيل صوتي)
+     — فكان الانزياح يبقى للأبد لأن المُصحِّح لا يعمل أبدًا. الآن نتخطى فقط
+     عندما يكون الكيبورد مفتوحًا فعلًا: المنفذ المرئي أقصر من النافذة بوضوح. */
+  const keyboardOpen = () => {
+    if(!inputFocused()) return false;
+    const vv = window.visualViewport;
+    if(!vv) return true; // بلا visualViewport لا نعرف حال الكيبورد — نتصرف كالسابق
+    return (window.innerHeight - vv.height) > 60;
+  };
   const reset = () => {
-    if(inputFocused()) return;
+    if(keyboardOpen()) return;
     if(window.scrollY || document.documentElement.scrollTop || document.body.scrollTop){
       window.scrollTo(0, 0);
       document.documentElement.scrollTop = 0;
@@ -75,8 +99,97 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
     }
   };
   window.addEventListener('scroll', reset, {passive:true});
-  if(window.visualViewport) window.visualViewport.addEventListener('resize', () => setTimeout(reset, 60));
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', () => setTimeout(reset, 60));
+    /* v-ios-header-drop: انزلاق المنفذ المرئي (pan) بلا resize — نصحّح بعده */
+    window.visualViewport.addEventListener('scroll', () => setTimeout(reset, 60));
+  }
   document.addEventListener('focusout', () => setTimeout(reset, 120));
+  window.addEventListener('orientationchange', () => setTimeout(reset, 250));
+  window.addEventListener('pageshow', () => setTimeout(reset, 60));
+  /* v644: حُذف الحارس الدوري (600ms). القياس على الجهاز الحقيقي أثبت أنه كان
+     يعمل بلا أثر: الوثيقة غير قابلة للتمرير فـscrollTo لا يُصفّر شيئًا —
+     مؤقّت دائم يستهلك البطارية فقط. بديله الملاءمة أدناه. */
+  document.addEventListener('focusin', () => setTimeout(reset, 60));
+})();
+
+/* v644 — ملاءمة الجسم للمنفذ المرئي (علّة الفراغ أعلى شاشة iOS):
+   مقيس حيًّا أثناء الكتابة: visualViewport.offsetTop=264 وscrollTop=264
+   بينما جسم الصفحة مثبّت بمنفذ التخطيط (rect.top=-264) — فالهيدر يُسحب
+   خارج الشاشة ويبقى أعلاها فارغًا. scrollTo لا يعالجها (لا مجال تمرير).
+   نكتب انزياح المنفذ المرئي وارتفاعه في متغيّرين يقرأهما redesign.css،
+   فيلتصق الهيدر بأعلى المرئي وشريط الإدخال بأسفله فوق الكيبورد. */
+(function pinVisualViewport(){
+  const vv = window.visualViewport;
+  if(!vv) return;
+  const root = document.documentElement;
+  let lastT = -1, lastH = -1;
+  const apply = () => {
+    const t  = Math.max(0, Math.round(vv.offsetTop));
+    const h  = Math.max(220, Math.round(vv.height));
+    const kb = Math.round(window.innerHeight - vv.height);
+    /* v646-fix (لقطتا فاطمة 6:37 — بعد الكتابة يعلق الهيدر نازلًا والريلود
+       يصلحه): كان الشرط (t>0 || kb>=40) — وسفاري iOS أحيانًا يترك offsetTop
+       عالقًا > 0 بعد إغلاق الكيبورد بلا أي حدث لاحق، فيبقى الجسم مدفوعًا
+       للأسفل للأبد. التكبير معطّل (user-scalable=no) فلا يوجد وضع شرعي يكون
+       فيه المنفذ منزاحًا والكيبورد مقفولًا — الكيبورد وحده هو المعيار. */
+    const on = kb >= 40;
+    const nt = on ? t : 0, nh = on ? h : 0;
+    if(nt !== lastT){
+      lastT = nt;
+      if(on) root.style.setProperty('--vv-top', nt + 'px');
+      else   root.style.removeProperty('--vv-top');
+    }
+    if(nh !== lastH){
+      lastH = nh;
+      if(on) root.style.setProperty('--vv-h', nh + 'px');
+      else   root.style.removeProperty('--vv-h');
+    }
+  };
+  // v645 (مقيس على جهاز فاطمة): iOS لا يُطلق حدث المنفذ المرئيّ كلّ إطار أثناء
+  //   حركة الكيبورد (≈0.25ث)، فتصحيحٌ واحد يتأخّر إطارات ويُرى الهيدر يزحف تحت
+  //   شريط الحالة (bd:-10/-23/-43 مقيسة). الآن نُلاحق القيمة إطارًا بإطار لمدّة
+  //   محدودة بعد كلّ حدث ثمّ نتوقّف — لا مؤقّت دائم.
+  let until = 0, running = false;
+  const now = () => (window.performance && performance.now ? performance.now() : Date.now());
+  const chase = (ms) => {
+    until = Math.max(until, now() + (ms || 520));
+    if(running) return;
+    running = true;
+    const step = () => {
+      apply();
+      if(now() < until) requestAnimationFrame(step);
+      else running = false;
+    };
+    requestAnimationFrame(step);
+  };
+  const schedule = () => chase(520);
+  vv.addEventListener('resize', schedule);
+  vv.addEventListener('scroll', schedule);
+  window.addEventListener('scroll', schedule, { passive:true });
+  document.addEventListener('focusin', () => chase(900));
+  /* v646-fix: نافذة أطول بعد الخروج من الحقل — إغلاق الكيبورد قد يكتمل
+     متأخرًا فتفوت لحظة التصفير على نافذة 900ms وتبقى القيم العالقة. */
+  document.addEventListener('focusout', () => chase(2500));
+  window.addEventListener('orientationchange', () => chase(1200));
+  window.addEventListener('pageshow', schedule);
+  schedule();
+  /* v647-sweep (شكوى «نفس الشي» بعد #211): سفاري/الغلاف قد يوصل لحالة
+     عالقة بلا أي حدث إطلاقًا — لا focusout ولا resize ولا scroll — فتفوت
+     كل نوافذ الملاحقة مهما طالت. كنس دوري خفيف (قراءتان كل 800ms، لا
+     قياس تخطيط): ما دام الكيبورد مقفولًا يمسح التثبيت العالق ويصفّر أي
+     تمرير وثيقة متبقٍّ. يختلف عن حارس v644 المحذوف: ذاك كان scrollTo
+     أعمى؛ هذا يمسح متغيّري التثبيت أيضًا — وهما اللذان يدفعان الجسم. */
+  setInterval(() => {
+    const kb = Math.round(window.innerHeight - vv.height);
+    if(kb >= 40) return; // كيبورد مفتوح — التثبيت شرعي، لا نلمسه
+    apply();
+    if(window.scrollY || document.documentElement.scrollTop || document.body.scrollTop){
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+  }, 800);
 })();
 
 const $ = s => document.querySelector(s);
@@ -192,6 +305,10 @@ const $ = s => document.querySelector(s);
 
   function showOverlay(){ overlay.style.display = 'flex'; }
   function hideOverlay(){ overlay.style.display = 'none'; }
+  /* v-auth-optional: الدخول اختياري — الشاشة صارت تُغلق بـ✕ ويتابع كضيف.
+     (كانت تُفرض عند الإقلاع وتظهر وميضًا مزعجًا مع كل ريلود — شكوى ٢٨ أغسطس) */
+  const authCloseBtn = $('#authCloseBtn');
+  if(authCloseBtn) authCloseBtn.onclick = hideOverlay;
 
   // "Remember me": when checked (default), the session survives browser
   // restarts (localStorage). When unchecked, the session only lasts for the
@@ -394,7 +511,15 @@ const $ = s => document.querySelector(s);
     if(!wrap) return;
     const users = window.__adminUsersCache || [];
     if(!users.length){ wrap.innerHTML = '<div style="opacity:.6;padding:8px">لا يوجد مستخدمون لإدارتهم.</div>'; return; }
-    wrap.innerHTML = users.map(u => {
+    // v-purge-checks: زر واحد يمسح كل حسابات الفحص الآلية بدل حذفها واحدًا واحدًا.
+    const checksCount = users.filter(u => /^zzcheck/i.test(String(u.username || ''))).length;
+    const purgeBar = checksCount
+      ? '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid rgba(212,175,55,.3)">'
+        + '<span style="flex:1;font-size:12px;opacity:.75">حسابات فحص آلية (zzcheck…): ' + checksCount + '</span>'
+        + '<button type="button" onclick="adminPurgeChecks()" style="background:none;border:1px solid #d4af37;color:#d4af37;border-radius:6px;padding:4px 10px;cursor:pointer">🧹 حذفها كلها</button>'
+        + '</div>'
+      : '';
+    wrap.innerHTML = purgeBar + users.map(u => {
       const safeName = String(u.username).replace(/'/g,"\\'");
       return '<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border,#333);flex-wrap:wrap">'
         + '<span style="flex:1;min-width:110px;font-weight:500">' + (u.banned ? '🚫 ' : '') + u.username + '</span>'
@@ -431,6 +556,21 @@ const $ = s => document.querySelector(s);
       const data = await res.json();
       if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
       window.__adminUsersCache = (window.__adminUsersCache||[]).filter(x=>x.username!==username);
+      renderAdminUserTable();
+    }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
+  };
+  window.adminPurgeChecks = async function(){
+    if(!confirm('🧹 حذف كل حسابات الفحص الآلية (zzcheck…) ونقاطها نهائيًّا؟ لا تطال أي حساب حقيقي.')) return;
+    try{
+      const token = authGet('aiapp_auth_token');
+      const res = await fetch('/api/admin-actions', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ token, action: 'purge-checks' }),
+      });
+      const data = await res.json();
+      if(!res.ok || !data.ok){ alert('❌ ' + (data.error || 'فشل')); return; }
+      alert('✅ حُذف ' + data.removed + ' حساب فحص.');
+      window.__adminUsersCache = (window.__adminUsersCache||[]).filter(x => !/^zzcheck/i.test(String(x.username||'')));
       renderAdminUserTable();
     }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
   };
@@ -518,13 +658,44 @@ const $ = s => document.querySelector(s);
     if(authToggleBtn) authToggleBtn.style.display = 'none';
     const headerLoginBtn = $('#btnHeaderLogin');
     if(headerLoginBtn){
-      headerLoginBtn.style.display = loggedIn ? 'none' : 'inline-flex';
+      /* v-auth-optional-2 (أمر عمران ٢٩ أغسطس): زر «دخول» يُحذف من الهيدر
+         نهائيًا — جوال وكمبيوتر. الدخول من الإعدادات → حسابي فقط، أو
+         تلقائيًا عند ميزة تتطلب حسابًا (requireLogin). */
+      headerLoginBtn.style.display = 'none';
       headerLoginBtn.onclick = () => { setMode('login'); showOverlay(); };
+    }
+    /* v-auth-optional (طلب عمران ٢٨ أغسطس): الدخول صار اختياريًا — زر دائم
+       في الإعدادات (قسم «حسابي») يظهر للضيف ويفتح نفس الشاشة. */
+    const acctLoginBtn = $('#acctLoginBtn');
+    if(acctLoginBtn){
+      acctLoginBtn.style.display = loggedIn ? 'none' : 'block';
+      acctLoginBtn.onclick = () => {
+        try{ const sd = document.getElementById('settingsDialog'); if(sd && sd.close) sd.close(); }catch(e){ __swallow(e, 'auth:acct-login#close-settings'); }
+        setMode('login');
+        showOverlay();
+      };
+    }
+    /* v-auth-optional-3 (أمر عمران ٢٩ أغسطس): الاسم أيضًا يُحذف من الهيدر —
+       هويّة الحساب والخروج صارا في الإعدادات → حسابي، وزر الإضاءة يأخذ
+       مكان الاسم في زاوية الهيدر تلقائيًا. */
+    const acctNameWrap = $('#acctSignedInAs');
+    const acctNameEl = $('#acctSignedInAsName');
+    if(acctNameWrap){
+      acctNameWrap.style.display = loggedIn ? 'flex' : 'none';
+      if(acctNameEl) acctNameEl.textContent = loggedIn ? (authGet('aiapp_username') || '') : '';
+    }
+    const acctLogoutBtn = $('#acctLogoutBtn');
+    if(acctLogoutBtn){
+      acctLogoutBtn.style.display = loggedIn ? 'block' : 'none';
+      acctLogoutBtn.onclick = () => {
+        try{ const sd = document.getElementById('settingsDialog'); if(sd && sd.close) sd.close(); }catch(e){ __swallow(e, 'auth:acct-logout#close-settings'); }
+        doLogout();
+      };
     }
     const headerUserBtn = $('#btnHeaderUser');
     const headerUserDD = $('#headerUserDropdown');
     if(headerUserBtn){
-      headerUserBtn.style.display = loggedIn ? 'inline-flex' : 'none';
+      headerUserBtn.style.display = 'none';
       const nm = $('#headerUserName');
       if(nm) nm.textContent = (authGet('aiapp_username') || '');
       // v444: صورة المستخدم الحقيقية في زر الهيدر
@@ -577,8 +748,7 @@ const $ = s => document.querySelector(s);
       // للإحصائيات وحدها، وVIP قائمة قصيرة نداؤها رخيص.
       if(isAdminUI && window.loadVipList) window.loadVipList();
     }
-    const btnMahaOwnerEl = $('#btnMaha');
-    if(btnMahaOwnerEl){ btnMahaOwnerEl.style.display = 'flex'; }
+    // v-maha-dock: مها راسية بجانب المايك — الزر العائم لا يُظهر بعد الآن.
   }
   // Deferred (not called synchronously): I18N is declared further down in
   // this same script (after this IIFE), so calling setAuthToggleUI() here
@@ -695,9 +865,61 @@ const $ = s => document.querySelector(s);
       // redirect_uri_mismatch. الخادم يبنيه الآن بالقيم التي سيستعملها هو
       // نفسه، فيستحيل الافتراق. (api/_lib/auth-google-start.js)
       noteSession('جوجل-بدأ'); // إن ظهرت في الشريط بلا «جوجل-…» بعدها، فالعودة لم تهبط على موقعنا إطلاقًا
+      // v-ios-bridge: على آيفون المثبَّت تكمل جوجل في ورقة منفصلة — نحفظ
+      // الرمز في localStorage (يبقى بعد تعليق التطبيق) لاستلام الجلسة عند العودة.
+      try { localStorage.setItem('aiapp_oauth_pending', oauthState + ':' + Date.now()); } catch(e){ __swallow(e, 'auth:oauth-pending'); }
       window.location.href = '/api/system?action=google-start&state=' + encodeURIComponent(oauthState);
     };
   }
+
+  /* v-ios-bridge: استلام دخول جوجل الذي اكتمل في ورقة المتصفح المنفصلة
+     (آيفون المثبَّت). عند العودة للتطبيق نسأل الخادم عن الجلسة المودعة تحت
+     رمزنا العشوائي — مرة عند كل عودة/تركيز ونبضة كل ٣ ثوانٍ لعشر دقائق. */
+  (function oauthClaimBridge(){
+    function pending(){
+      try {
+        const raw = localStorage.getItem('aiapp_oauth_pending');
+        if(!raw) return null;
+        const [st, ts] = raw.split(':');
+        if(!st || (Date.now() - Number(ts || 0)) > 10 * 60 * 1000){
+          localStorage.removeItem('aiapp_oauth_pending');
+          return null;
+        }
+        return st;
+      } catch(e){ return null; }
+    }
+    let busy = false;
+    async function claim(){
+      const st = pending();
+      if(!st || busy) return;
+      if(authGet('aiapp_auth_token')){ try { localStorage.removeItem('aiapp_oauth_pending'); } catch(e){ __swallow(e, 'auth:claim-clear'); } return; }
+      busy = true;
+      try {
+        const r = await fetch('/api/account?action=oauth-claim', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ state: st }),
+        });
+        if(r.ok){
+          const d = await r.json();
+          if(d && d.token && d.user){
+            localStorage.removeItem('aiapp_oauth_pending');
+            try { sessionStorage.removeItem('aiapp_oauth_state'); } catch(e){ __swallow(e, 'auth:claim-ss'); }
+            authSet('aiapp_auth_token', d.token);
+            authSet('aiapp_username', d.user);
+            if(d.avatar) localStorage.setItem('aiapp_avatar', d.avatar);
+            noteSession('جوجل-جسر-آيفون');
+            onAuthed(d.user, d.avatar || null);
+          }
+        }
+      } catch(e){ __swallow(e, 'auth:oauth-claim'); }
+      busy = false;
+    }
+    window.addEventListener('focus', claim);
+    document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') claim(); });
+    const iv = setInterval(() => { if(!pending()){ clearInterval(iv); return; } claim(); }, 3000);
+    claim();
+  })();
 
   function updateAvatarUI(){
     const avatar = localStorage.getItem('aiapp_avatar') || '';

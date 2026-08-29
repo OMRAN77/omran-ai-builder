@@ -23,9 +23,11 @@ const DAILY_LIMIT = 20;
 // getting silently blocked mid-testing (e.g. inside the مها voice loop) was
 // indistinguishable from a real bug. Case-insensitive match against the
 // account username.
-const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').trim().toLowerCase();
+// v-owner-open: المالك قد يملك أكثر من حساب — OWNER_USERNAMES بفواصل تغطيها كلها.
+// v-owner-core: القائمة الموحّدة من _owner.js — ‹omran› مدمج دائمًا والبيئة تضيف لا تستبدل.
+const OWNER_LIST = require('./_owner.js').ownerList();
 function isOwnerUsername(username) {
-  return !!username && String(username).trim().toLowerCase() === OWNER_USERNAME;
+  return !!username && OWNER_LIST.includes(String(username).trim().toLowerCase());
 }
 
 // قائمة VIP (see _vip.js): أسماء يمنحها المالك نفس الإعفاء من الحدّ اليوميّ.

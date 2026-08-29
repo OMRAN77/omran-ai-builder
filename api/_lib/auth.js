@@ -53,8 +53,9 @@ function userPath(key) {
 // المالك لاسمه يصير الاسم قابلًا للتسجيل، وأوّل من يأخذه يرث اللوحة.
 //
 // أمتن من هذا (لاحقًا): ownerId ثابت في السجلّ بدل اسم قابل للتغيير.
+// v-owner-core: تُحجز كل أسماء المالك (البيئة + ‹omran› المدمج) لا اسمًا واحدًا.
 const RESERVED_USERNAMES = new Set([
-  String(process.env.OWNER_USERNAME || 'omran').trim().toLowerCase(),
+  ...require('./_owner.js').ownerList(),
   'omran', 'admin', 'administrator', 'root', 'owner', 'support', 'system', 'api',
 ]);
 

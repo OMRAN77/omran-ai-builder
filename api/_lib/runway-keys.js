@@ -53,6 +53,11 @@ function resolveTaskId(id) {
 // if it is not already finished.
 const { kvGetJSON, kvPutJSON } = require('./kv.js');
 const RUNWAY_VERSION = '2024-11-06';
+// v-runway-host: المرجع الوحيد لعنوان Runway. مفاتيح الـAPI العامة تخدمها
+// api.dev.runwayml.com حصرًا — النداء على api.runwayml.com يرجع
+// «Incorrect hostname for API key» (حدث فعلًا في الإنتاج). قابل للتغيير
+// من البيئة احتياطًا لو بدّلت Runway العنوان مجددًا.
+const RUNWAY_API_BASE = (process.env.RUNWAY_API_BASE || 'https://api.dev.runwayml.com').replace(/\/+$/, '');
 
 function lastTaskPath(index) {
   return 'db/runway-last-task-' + index + '.json';
@@ -83,14 +88,14 @@ async function clearStuckTask(index, apiKey) {
   const prevId = await getLastTask(index);
   if (!prevId) return;
   try {
-    const r = await fetch('https://api.runwayml.com/v1/tasks/' + prevId, {
+    const r = await fetch(RUNWAY_API_BASE + '/v1/tasks/' + prevId, {
       headers: { Authorization: 'Bearer ' + apiKey, 'X-Runway-Version': RUNWAY_VERSION },
     });
     if (!r.ok) return; // already gone/expired
     const data = await r.json().catch(() => ({}));
     if (data.status === 'SUCCEEDED' || data.status === 'FAILED') return;
     // Still pending/running/throttled: cancel it to free the concurrency slot.
-    await fetch('https://api.runwayml.com/v1/tasks/' + prevId, {
+    await fetch(RUNWAY_API_BASE + '/v1/tasks/' + prevId, {
       method: 'DELETE',
       headers: { Authorization: 'Bearer ' + apiKey, 'X-Runway-Version': RUNWAY_VERSION },
     }).catch(() => {});
@@ -99,4 +104,4 @@ async function clearStuckTask(index, apiKey) {
   }
 }
 
-module.exports = { getKeys, pickKey, encodeTaskId, resolveTaskId, getLastTask, saveLastTask, clearStuckTask };
+module.exports = { getKeys, pickKey, encodeTaskId, resolveTaskId, getLastTask, saveLastTask, clearStuckTask, RUNWAY_API_BASE };

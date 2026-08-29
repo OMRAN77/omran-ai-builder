@@ -3,6 +3,9 @@
 :root{ --omGold:#6b7280; --omGoldSoft:rgba(var(--accent-tint-rgb),.32); --omLine:rgba(255,255,255,.09); }
 
 /* ---------------- Header ---------------- */
+/* v-brand-stable: زر الإضاءة بمقاس ثابت — أيقونته تُحقن بعد الإقلاع وكان
+   اتساعها اللاحق يزحزح الشعار المجاور لحظة التحديث. */
+#btnMode{width:34px; height:34px; min-width:34px; display:inline-flex; align-items:center; justify-content:center;}
 .omIconBtn{display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:var(--r-2); background:none; border:1px solid transparent; color:var(--muted); cursor:pointer; padding:0; flex:0 0 auto;}
 .omIconBtn:hover{color:var(--accent-ink); background:rgba(var(--accent-tint-rgb),.10);}
 #omranUserBlock{display:flex; align-items:center; gap:9px; flex:0 0 auto;}
@@ -149,7 +152,9 @@ html.mobile-ui #omranBelowComposer{display:none !important;}
 }
 
 /* ---------------- Mobile ---------------- */
-#omranBottomNav{display:none; position:fixed; bottom:0; left:0; right:0; z-index:50; background:rgba(14,14,14,.97); backdrop-filter:blur(14px); border-top:1px solid var(--omLine); padding:5px 2px calc(4px + env(safe-area-inset-bottom,0px));}
+/* v-nav-top: الأدراج z:60 والخلفية z:55 كانتا تدفنان الشريط (z:50) — أي ضغطة
+   على التبويبات والدُّرج مفتوح كانت تضيع، فيضطر عمران يضغط مرتين وثلاث. */
+#omranBottomNav{display:none; position:fixed; bottom:0; left:0; right:0; z-index:70; background:rgba(14,14,14,.97); backdrop-filter:blur(14px); border-top:1px solid var(--omLine); padding:5px 2px calc(4px + env(safe-area-inset-bottom,0px));}
 .omNavBtn{flex:1 1 0; display:flex; flex-direction:column; align-items:center; gap:2px; background:none; border:none; padding:5px 0; color:var(--muted); font-family:inherit; font-size:9.5px; cursor:pointer;}
 .omNavBtn.active{color:var(--accent-ink);}
 @media (max-width:860px){
@@ -158,7 +163,7 @@ html.mobile-ui #omranBelowComposer{display:none !important;}
   #omranHamburger{display:inline-flex; order:-1;}
   header h1{justify-content:center;}
   #omranBottomNav{display:flex;}
-  main{padding-bottom:calc(56px + env(safe-area-inset-bottom, 0px));}
+  main{padding-bottom:calc(48px + env(safe-area-inset-bottom, 0px));}
   #omranHero{justify-content:flex-start; gap:12px; padding:12px 12px 4px;}
   #omranWelcomeWrap{display:none !important;} /* v424: جوال — حذف بطاقة الترحيب */
   #omranToolsGrid{grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; max-width:none;}
@@ -173,7 +178,7 @@ html.mobile-ui #omranUserMeta, html.mobile-ui #omranAvatarBtn, html.mobile-ui #o
 html.mobile-ui #omranHamburger{display:inline-flex; order:-1;}
 html.mobile-ui header h1{justify-content:center;}
 html.mobile-ui #omranBottomNav{display:flex;}
-html.mobile-ui main{padding-bottom:calc(56px + env(safe-area-inset-bottom, 0px));}
+html.mobile-ui main{padding-bottom:calc(48px + env(safe-area-inset-bottom, 0px));}
 html.mobile-ui #omranHero{justify-content:flex-start; gap:12px; padding:12px 12px 4px;}
 html.mobile-ui #omranWelcomeWrap{display:none !important;}
   /* v425: جوال — إخفاء ⚙️ الإعدادات من قائمة ⋮ (تبقى بالتبويب السفلي) */
@@ -237,3 +242,130 @@ html[dir="ltr"] #plusToolsPopup #btnToolsBox .omChev{transform:rotate(180deg);}
 #plusToolsPopup .omModeItem .omModeIc{display:inline-flex;align-items:center;justify-content:center;}
 .omModeIc svg{display:block;width:20px;height:20px;}
 .omModePill .omModeIc svg{width:15px;height:15px;}
+
+/* v-mob-compact: طلب المالك (آيفون) — شريط التبويبات ملتصق بقاع الشاشة تمامًا،
+   مستطيل المحادثة أصغر وأخف، والفراغ فوق الهيدر أقل (الباقي هو المنطقة
+   الآمنة للساعة والبطارية — لا يجوز البناء فوقها). */
+@media (max-width:860px){
+  /* v-ios-header-drop: سقف 62px للمنطقة الآمنة — أقصى قيمة حقيقية في كل
+     الآيفونات 59px، وسفاري/WKWebView أحيانًا يضاعف env() بعد الكيبورد أو
+     الدوران فينزل الهيدر لنص الشاشة. السقف يمنع المضاعفة مهما بلغت. */
+  /* v-sat-measure: ‎--omran-sat تُقاس في selfdiag.js — env() فقط إذا كانت
+     النافذة ممتدة فعلًا تحت شريط الساعة، وإلا صفر (غلاف نازل أساسًا). */
+  header{padding-top:min(var(--omran-sat, env(safe-area-inset-top,0px)), 62px) !important; padding-bottom:6px;}
+  #inputbar{padding:2px 10px 5px;}
+  #composerBox{padding:4px 8px 3px !important; border-radius:16px !important; gap:1px;}
+  #prompt{min-height:20px; max-height:84px; font-size:13px; padding:4px 8px 2px;}
+  #inputbar .inputbar-tools .btn, #inputbar .inputbar-tools-left .btn{padding:5px;}
+  #btnSend, #btnStop{width:30px; height:30px; flex:0 0 30px;}
+  #btnSend svg, #btnStop svg{width:15px; height:15px;}
+  #omranBottomNav{padding:3px 2px max(2px, calc(env(safe-area-inset-bottom,0px) - 15px));}
+  main{padding-bottom:calc(48px + env(safe-area-inset-bottom,0px));}
+}
+html.mobile-ui header{padding-top:min(var(--omran-sat, env(safe-area-inset-top,0px)), 62px) !important; padding-bottom:6px;}
+html.mobile-ui #omranBottomNav{padding:3px 2px max(2px, calc(env(safe-area-inset-bottom,0px) - 15px));}
+html.mobile-ui main{padding-bottom:calc(48px + env(safe-area-inset-bottom,0px));}
+html.mobile-ui #inputbar{padding:2px 10px 5px;}
+html.mobile-ui #composerBox{padding:4px 8px 3px !important; border-radius:16px !important;}
+html.mobile-ui #prompt{min-height:20px; max-height:84px; font-size:13px;}
+html.mobile-ui #btnSend, html.mobile-ui #btnStop{width:30px; height:30px; flex:0 0 30px;}
+
+/* v-mob-lock: طلب المالك (آيفون) — الشاشة لا تتحرك كاملة فوق/تحت (قفل ارتداد
+   iOS وتمرير الوثيقة)، والتمرير داخل المحتوى فقط، وبلا شريط سحب ظاهر. */
+@media (max-width:860px){
+  html{overflow:hidden; overscroll-behavior:none; height:100%;}
+  /* iOS القديم يتجاهل overscroll-behavior — تثبيت body يقتل سحب الوثيقة نهائيًا.
+     v644 (مقيس على جهاز حقيقي أثناء الكتابة): inset:0 وحده لا يكفي — WebKit
+     يمرّر منفذ التخطيط قسرًا عند فتح الكيبورد (offsetTop=264) فينزاح الجسم
+     المثبّت خارج الشاشة ويظهر فراغ أعلاها. الآن نلصق الجسم بالمنفذ المرئي:
+     --vv-top و--vv-h يكتبهما pinVisualViewport في app-01-boot-auth.js،
+     وبلا JS يرجع السلوك لـtop:0/height:100% أي حال ما قبل الرقعة. */
+  body{overscroll-behavior:none; position:fixed; left:0; right:0; width:100%; top:var(--vv-top,0px); height:var(--vv-h,100%);}
+  main, #messages, #omranHero{overscroll-behavior-y:contain;}
+  *{scrollbar-width:none;}
+  *::-webkit-scrollbar{width:0 !important; height:0 !important; display:none;}
+}
+html.mobile-ui{overflow:hidden; overscroll-behavior:none; height:100%;}
+html.mobile-ui body{overscroll-behavior:none; position:fixed; left:0; right:0; width:100%; top:var(--vv-top,0px); height:var(--vv-h,100%);}
+html.mobile-ui main, html.mobile-ui #messages{overscroll-behavior-y:contain;}
+
+/* v-morph-btn: الخانة الأخيرة تتحول بين مها والإرسال (طلب المالك):
+   فاضية = «م» الذهبية (مكالمة مها) · تكتب = سهم الإرسال ➤ مكانها.
+   المايك بمكانه الأصلي دائمًا — لا دمج له. */
+#composerBox > .inputbar-tools{flex:1 1 auto;}
+#composerBox .inputbar-tools-left{flex:1 1 auto; display:flex;}
+#composerBox #btnMahaDock{
+  margin-inline-start:auto;
+  transition:opacity .15s ease, transform .15s ease;
+}
+#composerBox.typing #btnMahaDock{ display:none; }
+#composerBox:has(#btnStop.live) #btnMahaDock{ display:none; }
+#composerBox:not(.typing) > #btnSend{ display:none !important; }
+#composerBox.typing > #btnSend{ animation:morphIn .16s ease; }
+@keyframes morphIn{ from{ transform:scale(.6); opacity:0; } to{ transform:scale(1); opacity:1; } }
+
+/* ===== v-agent-settings — بطاقة زر «الوكيل» داخل قسم الإعدادات ===== */
+#agentSettingsHost #premiumToggleWrap.pt-visible{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:10px 12px; border:1px solid var(--border, rgba(128,128,128,.28)); border-radius:14px; background:var(--panel2, rgba(128,128,128,.06)); }
+#agentSettingsHost #premiumToggleWrap:not(.pt-visible){ display:none; }
+#agentSettingsHost #btnPremiumToggle{ flex:1; display:inline-flex; align-items:center; gap:9px; background:none; border:0; box-shadow:none; color:var(--text); cursor:pointer; font-size:13.5px; font-weight:600; padding:4px 2px; }
+#agentSettingsHost #btnPremiumToggle.premium-on{ border:0; box-shadow:none; background:none; }
+#agentSettingsHost #premiumToggleWrap:has(#btnPremiumToggle.premium-on){ border-color:var(--accent); box-shadow:0 0 0 1.5px var(--accent); }
+#agentSettingsHost #premiumPointsChip.pp-visible{ display:inline-flex; align-items:center; gap:3px; }
+
+/* ===== v-plus-tools-desktop — أمر عمران: زر «الأدوات» داخل قائمة ➕ للجوال فقط، يُخفى في الكمبيوتر ===== */
+html:not(.mobile-ui) #plusToolsPopup #btnToolsBox{ display:none !important; }
+
+/* ===== v-ios-settings-scroll — آيفون: نافذة الإعدادات (وكل النوافذ) تتمرر حتى آخرها =====
+   سفاري iOS يبتلع سحب التمرير داخل <dialog> عندما تكون الصفحة خلفه مقفلة
+   (v-mob-lock): بلا overscroll-behavior:contain تتسلسل الحركة إلى body المثبّت
+   فتموت، وبعض النسخ تحتاج touch-action:pan-y صريحة على النافذة نفسها.
+   وحاشية أمان سفلية حتى لا يختبئ آخر صف تحت شريط الهوم في الآيفون. */
+@media (max-width:860px){
+  dialog[open]{
+    overflow-y:auto !important; -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain; touch-action:pan-y;
+    padding-bottom:max(22px, env(safe-area-inset-bottom, 0px));
+  }
+}
+html.mobile-ui dialog[open]{
+  overflow-y:auto !important; -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain; touch-action:pan-y;
+  padding-bottom:max(22px, env(safe-area-inset-bottom, 0px));
+}
+
+/* ===== v-ios-nav-tap — آيفون فقط: رفع التبويبات فوق منطقة إيماءات النظام =====
+   بعد إنزال الشريط لقاع الشاشة (#126) صارت اللمسات في آخر شريحة تذهب لنظام
+   iOS (شريط الهوم/شريط سفاري) بدل الأزرار — فتبدو التبويبات كلها ميتة.
+   @supports (-webkit-touch-callout) يصيب سفاري iOS وحده: الآيفون يرتفع
+   لمسافة لمس آمنة، وهواوي وأندرويد يبقيان بالقاع كما طلب عمران. */
+/* v-fix-iphone-gap: أُزيلت @supports (-webkit-touch-callout) التي كانت تضيف فراغ إضافي تحت الشريط */
+
+/* ===== v-stocks-fullpage — سوق الأسهم صفحة كاملة: محتوى متوسّط وX واضحة ===== */
+#stocksPage > *{ max-width:940px; margin-left:auto; margin-right:auto; }
+#stocksPage .stkHead{ max-width:940px; }
+#stocksCloseBtn{ font-size:15px; padding:6px 12px !important; border:1px solid var(--border, rgba(128,128,128,.35)); border-radius:10px; }
+
+/* v-ios-slider — شكوى عمران ٢٧ أغسطس (فيديو الأنمي): السحّاب لا يتحرك على
+   الآيفون والشاشة «تطفو». العلاج الثلاثي:
+   ① السحّابات pan-x: سحبها الأفقي مسموح ولا يبدأ تمرير الصفحة من فوقها.
+   ② نافذة أنماط الصور: التمرير محتواه داخلها لا يتسلسل لجسم الصفحة المثبت.
+   ③ خلفية النافذة صمّاء للمس — لا اهتزاز من لمس المعتم. */
+@media (max-width:860px){
+  input[type=range]{ touch-action:pan-x; }
+}
+html.mobile-ui input[type=range]{ touch-action:pan-x; }
+html.mobile-ui #portraitStyleModal{ touch-action:none; }
+html.mobile-ui #portraitStyleModal > div{
+  overscroll-behavior:contain; touch-action:pan-y; -webkit-overflow-scrolling:touch;
+}
+@media (max-width:860px){
+  #portraitStyleModal{ touch-action:none; }
+  #portraitStyleModal > div{ overscroll-behavior:contain; touch-action:pan-y; -webkit-overflow-scrolling:touch; }
+}
+
+/* ===== v-uniform-black (أمر عمران ٢٩ أغسطس): الصفحة كلها بدرجة سواد واحدة =====
+   الهيدر والشريط السفلي وشريط الكتابة بنفس خلفية منطقة الدردشة (--bg = أسود
+   نقي في الداكن). الوضع الفاتح محكوم بقواعده الخاصة (أبيض) فلا يتأثر. */
+header{background:var(--bg); backdrop-filter:none;}
+#omranBottomNav{background:var(--bg); backdrop-filter:none;}
+#inputbar{background:var(--bg);}

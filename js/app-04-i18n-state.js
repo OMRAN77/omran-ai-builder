@@ -355,6 +355,28 @@ let state = {
   projects: safeParseLS('aiapp_projects', []),
   currentId: null,
 };
+// v-idb-mirror (جذر «البيت الأسود» و«المحادثات الفاضية» — ٢٧ أغسطس): المشاريع
+// صارت في IndexedDB وحده، والإقلاع يبدأ فاضيًا بانتظار تحميله — وعلى iOS PWA
+// هذا التحميل قد يتجمد للأبد (علة WebKit موثقة). المرآة المنحّفة في
+// localStorage تُقرأ فورًا فتظهر المحادثات من أول لحظة، والنسخة الكاملة
+// من IndexedDB تحل محلها عند وصولها.
+if(!state.projects.length){
+  const __slimBoot = safeParseLS('aiapp_projects_slim', []);
+  if(Array.isArray(__slimBoot) && __slimBoot.length){
+    state.projects = __slimBoot;
+    window.__usingSlimProjects = true;
+  }
+}
+// v-idb-mirror: استرجاع المحادثة الحالية كان حبيس كتلة تحميل IndexedDB —
+// إن علّق التحميل لا يُسترجع أبدًا فتبقى الشاشة سوداء رغم وجود المشاريع.
+// يُسترجع هنا من أول لحظة؛ وكتلة التحميل اللاحقة تظل تعمل (شرطها !currentId).
+if(!state.currentId && state.projects.length){
+  try{
+    const __savedCur = localStorage.getItem('aiapp_current_id');
+    const __curP = state.projects.find(q => q.id === __savedCur) || state.projects[state.projects.length - 1];
+    if(__curP) state.currentId = __curP.id;
+  }catch(e){ __swallow(e, 'boot:app-04#cur-early'); }
+}
 // v522: نكشف state على window حتى يقدر app-22-session-new.js يصل إليه من داخل IIFE
 window.__omrS = state;
 
@@ -439,6 +461,14 @@ function pushCodeSnapshot(){
    ونكتب مرة كل 1.5 ثانية كحد أقصى، مع حفظة فورية مضمونة عند إخفاء/إغلاق الصفحة. */
 let __saveTimer = null;
 let __saveDirty = false;
+// v-idb-mirror: كتابة المرآة المنحّفة — chatsSlimForServer تُعرَّف لاحقًا في هذا
+// الملف والاستدعاء يحدث بعد اكتمال التحميل، فالمرجع آمن وقت التنفيذ.
+let __mirrorAt = 0;
+function __writeChatsMirror(){
+  try{ localStorage.setItem('aiapp_projects_slim', JSON.stringify(chatsSlimForServer())); }
+  catch(e){ /* guard-ok: المرآة رفاهية إقلاع — امتلاء التخزين لا يكسر الحفظ الأصلي */ }
+}
+window.__writeChatsMirror = __writeChatsMirror;
 function __saveFlush(){
   if(!__saveDirty) return;
   __saveDirty = false;
@@ -458,6 +488,9 @@ function __saveFlush(){
         __idbBroken = true;
         saveStateLocal();
       });
+      // v-idb-mirror: تحديث المرآة المنحّفة (سقف 2MB) كل ١٠ ثوانٍ كحد أقصى —
+      // هي اللي تجعل الإقلاع القادم يعرض المحادثات فورًا دون انتظار IndexedDB.
+      if(Date.now() - __mirrorAt > 10000){ __mirrorAt = Date.now(); __writeChatsMirror(); }
       return;
     }catch(err){
       // كائن غير قابل للاستنساخ البنيوي → نسخة JSON نظيفة مرة واحدة.
@@ -470,6 +503,7 @@ function __saveFlush(){
   saveStateLocal();
 }
 window.addEventListener('pagehide', __saveFlush);
+window.addEventListener('pagehide', __writeChatsMirror); /* v-idb-mirror: مرآة طازجة عند كل مغادرة */
 document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') __saveFlush(); });
 function saveState(){
   pushCodeSnapshot();
@@ -834,6 +868,7 @@ function renderHistory(){
   [...state.projects].reverse().forEach(p => {
     const div = document.createElement('div');
     div.className = 'hist-item' + (p.id === state.currentId ? ' active' : '');
+    div.dataset.pid = String(p.id); // v-chat-search: يربط العنصر بمشروعه للبحث داخل المحتوى
 
     const thumb = document.createElement('div');
     thumb.className = 'hist-thumb';
@@ -1383,8 +1418,13 @@ function renderMessages(keepScroll){
           const open = !drop.hidden;
           drop.hidden = open;
           btn.classList.toggle('msgSrcBtnOpen', !open);
+          /* v-src-unclip: content-visibility (v-tap-fast) تقصّ ما يتدلى خارج
+             حدود الرسالة — القائمة كانت تفتح مقصوصة غير مرئية. نرفع القصّ
+             عن هذه الرسالة ما دامت القائمة مفتوحة. */
+          const msgEl = btn.closest('.msg');
+          if(msgEl) msgEl.style.contentVisibility = open ? '' : 'visible';
           if(!open){
-            const close = (ev) => { if(!drop.contains(ev.target) && ev.target !== btn){ drop.hidden = true; btn.classList.remove('msgSrcBtnOpen'); document.removeEventListener('click', close); } };
+            const close = (ev) => { if(!drop.contains(ev.target) && ev.target !== btn){ drop.hidden = true; btn.classList.remove('msgSrcBtnOpen'); if(msgEl) msgEl.style.contentVisibility = ''; document.removeEventListener('click', close); } };
             setTimeout(() => document.addEventListener('click', close), 10);
           }
         };

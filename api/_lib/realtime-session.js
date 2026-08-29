@@ -32,6 +32,13 @@ const MAHA_REALTIME_INSTRUCTIONS = [
   "# Personality & Tone",
   "Be lively, warm, lightly humorous - never stiff.",
   "STYLE: spoken voice only - no markdown, symbols, or emojis.",
+  "OWNER PERSONA (always on): celebrate the user's wins sincerely however small ('كفو عليك', 'يا سلام') - never fake.",
+  "When the user hits a problem or sounds frustrated: absorb it FIRST with one calm reassurance ('اطمّن، واضحة وبنحلها') THEN solve - empathy before solution.",
+  "Complex topics: break into short numbered spoken steps, no dry jargon - explain any technical term in one everyday word.",
+  "Gist first: the direct answer in your first sentence, detail after for those who want it.",
+  "You are an expert friend who cares, not a call-center robot: have real opinions with reasons, respectfully disagree when the user is wrong (with the correct info), and never flatter emptily.",
+  "If USER MEMORY has their name, greet them by name naturally mid-call sometimes (not every sentence).",
+  "Sound human on the phone: brief natural acknowledgements while listening-turns change ('اممم', 'أيوه', 'تمام') where fitting, vary your sentence openings, and never read like a script.",
   "",
   "# Language",
   "LANGUAGE: always reply in the exact language the user just spoke.",
@@ -267,7 +274,7 @@ module.exports = async (req, res) => {
           + timeContext + memoryContext,
         audio: {
           output: (mode !== 'builder' && voiceGender === 'male')
-            ? { voice: 'echo' }
+            ? { voice: 'cedar' } /* v-maha-power: صوت رجالي أحدث وأطبع من echo */
             : { voice: 'marin' },
           input: {
             // v607: الوثائق الرسميّة تنصّ أنّ near_field للمايكات القريبة "headphones, headsets,
@@ -275,6 +282,9 @@ module.exports = async (req, res) => {
             // الجوّال far_field ⇒ كبت عدوانيّ يبتر أوّل جملة، خاصّة في الضوضاء.
             // كلّ أجهزتنا مايك قريب (الهاتف باليد · لابتوب المستخدم قريب منه) ⇒ near_field للجميع.
             noise_reduction: { type: 'near_field' },
+            // v-maha-captions: تفريغ كلام المستخدم نصًّا ليصل حدث
+            // input_audio_transcription.completed فتظهر الترجمة الحية على الشاشة.
+            transcription: { model: 'gpt-4o-mini-transcribe' },
             // v607: الجوّال كان semantic_vad — يقرّر بالمعنى، وينتظر مهلة إن ظنّ الجملة ناقصة
             // ⇒ لا يردّ حتّى تتكلّم ثانية. server_vad يقطع بالصمت وهو المُثبت على الكمبيوتر.
             turn_detection: mode === 'builder'
@@ -460,6 +470,13 @@ module.exports = async (req, res) => {
     // بعض إصدارات واجهة realtime لا تقبل حقل السرعة — أعِد المحاولة بدونه
     if (!upstream.ok && sessionConfig.session.audio.output.speed != null) {
       delete sessionConfig.session.audio.output.speed;
+      upstream = await postSession();
+      rawText = await upstream.text();
+    }
+    // وكذلك حقل التفريغ النصي (v-maha-captions): رفضُه لا يُسقط المكالمة —
+    // تكمل بلا ترجمة حية لكلام المستخدم (كلمات مها تصل من مسار آخر أصلًا).
+    if (!upstream.ok && sessionConfig.session.audio.input.transcription) {
+      delete sessionConfig.session.audio.input.transcription;
       upstream = await postSession();
       rawText = await upstream.text();
     }

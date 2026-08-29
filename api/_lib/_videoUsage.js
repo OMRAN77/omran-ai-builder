@@ -95,10 +95,9 @@ async function consumeVideo(username) {
 // number of scenes in a single run. Everyone else still goes through the
 // normal small daily limit above. Set via Vercel env var; falls back to the
 // owner's own username so this works even before the env var is configured.
-const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').trim().toLowerCase();
-
+// v-owner-core: قائمة المالك الموحّدة — ‹omran› مدمج دائمًا والبيئة تضيف لا تستبدل.
 function isOwner(username) {
-  return !!username && String(username).trim().toLowerCase() === OWNER_USERNAME;
+  return require('./_owner.js').isOwnerName(username);
 }
 
 // Verifies the session token and confirms the account is the designated

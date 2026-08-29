@@ -206,7 +206,35 @@ module.exports = async (req, res) => {
     const upstream = imageResult.response;
     const data = imageResult.data || {};
 
+    // v-maha-image-rescue (خط الإنقاذ التاسع — لقطات عمران ٢٧ أغسطس «الخدمة
+    // مشغولة»): زحام أو رفض Gemini في التوليد النصي يهبط لـgpt-image-1 بنفس
+    // الوصف بدل الفشل. التحرير بصورة مصدر يبقى على Gemini (مساره مختلف).
+    const rescuePromptText = (parts.find(function (p) { return p && p.text; }) || {}).text || cleanPrompt;
+    const rescueAspect = imageConfig.aspectRatio || '3:4';
+    async function openaiRescueImage() {
+      if (editImageBase64) return null;
+      const okey = process.env.OPENAI_API_KEY;
+      if (!okey) return null;
+      try {
+        const size = rescueAspect === '16:9' ? '1536x1024' : (rescueAspect === '1:1' ? '1024x1024' : '1024x1536');
+        const r = await fetch('https://api.openai.com/v1/images/generations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + okey },
+          signal: AbortSignal.timeout(90000),
+          body: JSON.stringify({ model: 'gpt-image-1', prompt: String(rescuePromptText).slice(0, 3800), size, quality: 'medium', n: 1 }),
+        });
+        if (!r.ok) { console.error('[maha-image] rescue failed status=' + r.status); return null; }
+        const d = await r.json().catch(function () { return null; });
+        const b64 = d && d.data && d.data[0] && d.data[0].b64_json;
+        return b64 || null;
+      } catch (e) { console.error('[maha-image] rescue error: ' + (e && e.message)); return null; }
+    }
+
     if (!upstream || !upstream.ok) {
+      const rescuedB64 = await openaiRescueImage();
+      /* v-prayer-carry: الإنقاذ كان يفقد الدعاء المؤلَّف فيرفضه العميل
+         (missing_authored_prayer — لقطة المالك). يُمرَّر مع الصورة المنقذة. */
+      if (rescuedB64) { res.status(200).json({ imageBase64: rescuedB64, mimeType: 'image/png', engine: 'openai', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
       await refundImageCharge();
       const timedOut = isImageTimeoutError(imageResult.error);
       const retryable = timedOut || !!(upstream && (upstream.status === 429 || upstream.status >= 500));
@@ -219,6 +247,8 @@ module.exports = async (req, res) => {
     let respParts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
     let imgPart = respParts.find((p) => p.inlineData && p.inlineData.data);
     if (!imgPart) {
+      const rescuedB64b = await openaiRescueImage();
+      if (rescuedB64b) { res.status(200).json({ imageBase64: rescuedB64b, mimeType: 'image/png', engine: 'openai', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
       await refundImageCharge();
       console.error('[maha-image] no image part in response: ' + JSON.stringify(data).slice(0, 2000));
       res.status(500).json({ error: 'لم يرجع الموديل صورة، حاول توصيف مختلف.' });

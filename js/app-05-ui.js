@@ -1,5 +1,84 @@
 // ===== v199: reply action bar helpers (⋮ convert menu) =====
+/* v-app-share (شكوى ٢٨ أغسطس: «تحميل PDF ما يشتغل» في تطبيق المتجر):
+   WKWebView لا يدعم روابط التنزيل <a download> ولا window.print() إطلاقًا —
+   فكل التصديرات كانت تموت بصمت داخل تطبيق الآيفون. الغلاف (Capacitor) صار
+   يوفر جسرين: omranShare (ملف جاهز → ورقة مشاركة iOS) و omranPdf
+   (HTML → يُحوَّل PDF أصليًا → ورقة مشاركة). في المتصفح العادي لا يتغير شيء. */
+function omranNativeBridge(name){
+  try{
+    const h = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers[name];
+    return (h && h.postMessage) ? h : null;
+  }catch(e){ return null; }
+}
+/* v-pdf-universal: حفظ PDF يعمل في كل البيئات — جسر تطبيق الآيفون، ثم ورقة
+   مشاركة النظام (أندرويد/هواوي/TWA)، ثم التنزيل العادي (الكمبيوتر).
+   AbortError = المستخدم أغلق ورقة المشاركة بنفسه — ليس فشلًا فلا ننزّل نسخة ثانية. */
+/* v-pdf-link: هل نعمل داخل غلاف تطبيق (TWA/متجر/PWA مثبّت)؟ الأغلفة لا
+   تنفّذ تنزيل blob المحلي — نرفع الملف للسيرفر ونفتح رابط تنزيل حقيقي
+   يمرّ عبر منزّل النظام نفسه فيعمل في كل غلاف. */
+function omranLikelyApp(){
+  try{
+    if(document.referrer && document.referrer.indexOf('android-app://') === 0) localStorage.setItem('aiapp_twa', '1');
+    if(localStorage.getItem('aiapp_twa') === '1') return true;
+    if(localStorage.getItem('aiapp_store')) return true;
+    if(window.matchMedia && matchMedia('(display-mode: standalone)').matches) return true;
+    if(navigator.standalone === true) return true;
+  }catch(e){ __swallow(e, 'share:app-detect'); }
+  return false;
+}
+async function omranBlobToServerLink(blob, filename){
+  const b64 = await new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result || '').split(',')[1] || '');
+    fr.onerror = reject;
+    fr.readAsDataURL(blob);
+  });
+  if(!b64 || b64.length > 4 * 1024 * 1024) throw new Error('too-large');
+  const r = await fetch('/api/media?action=pdf', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data: b64, name: filename }),
+  });
+  const d = await r.json();
+  if(!r.ok || !d || !d.url) throw new Error('upload-failed');
+  return d.url;
+}
+async function omranSaveBlob(blob, filename){
+  if(omranNativeBridge('omranShare')){ msgDownloadBlob(blob, filename); return; }
+  try{
+    if(navigator.canShare && typeof File === 'function'){
+      const f = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
+      if(navigator.canShare({ files: [f] })){
+        try{ await navigator.share({ files: [f], title: filename }); return; }
+        catch(e){ if(e && e.name === 'AbortError') return; /* غيره: ننزل للمسار التالي */ }
+      }
+    }
+  }catch(e){ __swallow(e, 'share:universal'); }
+  /* داخل الأغلفة: رابط سيرفر حقيقي (PDF فقط — النقطة تفحص التوقيع) */
+  if(omranLikelyApp() && (blob.type === 'application/pdf' || /\.pdf$/i.test(filename || ''))){
+    try{
+      const url = await omranBlobToServerLink(blob, filename);
+      const w = window.open(url, '_blank');
+      if(!w) location.href = url;
+      return;
+    }catch(e){ __swallow(e, 'share:server-link'); }
+  }
+  msgDownloadBlob(blob, filename);
+}
 function msgDownloadBlob(blob, filename){
+  const share = omranNativeBridge('omranShare');
+  if(share){
+    try{
+      const fr = new FileReader();
+      fr.onload = () => {
+        try{
+          const b64 = String(fr.result || '').split(',')[1] || '';
+          share.postMessage({ b64, name: filename || 'omran-file', mime: blob.type || 'application/octet-stream' });
+        }catch(e){ __swallow(e, 'share:app#post'); }
+      };
+      fr.readAsDataURL(blob);
+      return;
+    }catch(e){ __swallow(e, 'share:app#reader'); }
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = filename;
@@ -8,6 +87,70 @@ function msgDownloadBlob(blob, filename){
 }
 function msgEscapeHtml(str){
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+/* v-pdf-file (شكوى ٢٩ أغسطس: «PDF ما يشتغل في الهاتف والكمبيوتر»):
+   مسارا «تحويل الرد/المحادثة إلى PDF» كانا يفتحان نافذة طباعة — المستخدم
+   يتوقع ملفًا ينزل مباشرة، والطباعة أصلًا ميتة داخل الأغلفة. المسار الموحد:
+   نرسم المحتوى بخط الصفحة نفسه (عربي مشكَّل صحيح عبر canvas) ثم نبنيه
+   PDF بصفحات A4 وننزله بمسار الحفظ الموحد. الطباعة تبقى احتياطًا أخيرًا. */
+let __omranJsPdfLoading = null;
+function omranLoadJsPdf(){
+  if(window.jspdf && window.jspdf.jsPDF) return Promise.resolve();
+  if(__omranJsPdfLoading) return __omranJsPdfLoading;
+  const load = (src) => new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = resolve; s.onerror = () => reject(new Error('load-failed'));
+    document.head.appendChild(s);
+  });
+  __omranJsPdfLoading = load('/js/vendor/jspdf.umd.min.js?v=1')
+    .catch(() => load('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'))
+    .catch((e) => { __omranJsPdfLoading = null; throw e; });
+  return __omranJsPdfLoading;
+}
+let __omranH2iLoading = null;
+function omranLoadHtmlToImage(){
+  if(window.htmlToImage && window.htmlToImage.toCanvas) return Promise.resolve();
+  if(__omranH2iLoading) return __omranH2iLoading;
+  __omranH2iLoading = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = '/js/vendor/html-to-image.js?v=1';
+    s.onload = resolve; s.onerror = () => { __omranH2iLoading = null; reject(new Error('load-failed')); };
+    document.head.appendChild(s);
+  });
+  return __omranH2iLoading;
+}
+async function omranExportHtmlAsPdfFile(bodyHtml, opts){
+  opts = opts || {};
+  const holder = document.createElement('div');
+  holder.dir = opts.rtl === false ? 'ltr' : 'rtl';
+  holder.style.cssText = 'position:fixed; left:-12000px; top:0; width:794px; background:#ffffff; color:#111; padding:40px 44px; box-sizing:border-box; line-height:1.9; font-size:15px;';
+  holder.style.fontFamily = opts.fontFamily || "'Tajawal', Tahoma, Arial, sans-serif";
+  holder.innerHTML = bodyHtml;
+  document.body.appendChild(holder);
+  try{
+    await Promise.all([omranLoadJsPdf(), omranLoadHtmlToImage()]);
+    try{ if(document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]); }catch(e){ __swallow(e, 'pdf:fonts-wait'); }
+    const canvas = await window.htmlToImage.toCanvas(holder, { backgroundColor: '#ffffff', pixelRatio: 2 });
+    if(!canvas.width || !canvas.height) throw new Error('empty-canvas');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+    const pw = pdf.internal.pageSize.getWidth();
+    const ph = pdf.internal.pageSize.getHeight();
+    const pageHpx = Math.floor(canvas.width * (ph / pw));
+    let y = 0, first = true;
+    while(y < canvas.height){
+      const sliceH = Math.min(pageHpx, canvas.height - y);
+      const slice = document.createElement('canvas');
+      slice.width = canvas.width; slice.height = sliceH;
+      slice.getContext('2d').drawImage(canvas, 0, y, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+      if(!first) pdf.addPage();
+      pdf.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pw, (sliceH / canvas.width) * pw);
+      first = false; y += sliceH;
+    }
+    await omranSaveBlob(pdf.output('blob'), opts.fileName || 'omran-ai.pdf');
+  } finally {
+    holder.remove();
+  }
 }
 function msgPdfFontSpec(){
   const fallback = {family:"'Tajawal'", google:'', line:1.7};
@@ -23,6 +166,15 @@ function msgPdfFontHead(font){
   return {family, link:'<link rel="stylesheet" data-pdf-font href="https://fonts.googleapis.com/css2?' + query + '&display=swap">'};
 }
 function msgPrintAfterFont(view, family, ctx){
+  /* v-app-share: داخل تطبيق المتجر window.print() لا يعمل — نرسل مستند
+     المعاينة كاملًا لجسر الغلاف ليحوّله PDF أصليًا ويفتح ورقة المشاركة. */
+  const pdfBridge = omranNativeBridge('omranPdf');
+  if(pdfBridge){
+    try{
+      pdfBridge.postMessage({ html: view.document.documentElement.outerHTML, name: 'omran-ai.pdf' });
+      return;
+    }catch(e){ __swallow(e, ctx + ':app-pdf'); }
+  }
   let done = false;
   const print = () => { if(done) return; done = true; try{ view.focus(); view.print(); }catch(e){ __swallow(e, ctx); } };
   const timer = setTimeout(print, 3000);
@@ -39,89 +191,24 @@ function msgPrintAfterFont(view, family, ctx){
     else wait();
   }catch(e){ __swallow(e, ctx + ':font-link'); wait(); }
 }
-/* v670: الجوال — نافذة الطباعة لا تعمل داخل التطبيق المثبّت (PWA) فتفشل بصمت،
-   فنولّد هناك ملف PDF حقيقيًا وننزّله مباشرة (jsPDF + html2canvas).
-   الكمبيوتر يبقى على نافذة الطباعة لأنها تعمل هناك وتُبقي خيار الطابعة الورقية. */
-function msgIsMobilePdf(){
-  try{
-    return document.documentElement.classList.contains('mobile-ui')
-      || (window.matchMedia && window.matchMedia('(max-width:860px)').matches);
-  }catch(e){ __swallow(e, 'pdf:is-mobile'); return false; }
-}
-let __pdfLibsLoading = null;
-function msgLoadPdfLibs(){
-  if(window.jspdf && window.jspdf.jsPDF && window.html2canvas) return Promise.resolve();
-  if(__pdfLibsLoading) return __pdfLibsLoading;
-  const add = (src) => new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = src; s.onload = resolve; s.onerror = () => reject(new Error('load-failed: ' + src));
-    document.head.appendChild(s);
-  });
-  __pdfLibsLoading = Promise.all([
-    (window.jspdf && window.jspdf.jsPDF) ? null : add('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
-    window.html2canvas ? null : add('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
-  ]).catch((e) => { __pdfLibsLoading = null; throw e; });
-  return __pdfLibsLoading;
-}
-async function msgHtmlToPdfDownload(doc, family, ctx){
-  // iframe مرسوم فعليًا خارج الشاشة (لا display:none) حتى يلتقطه html2canvas.
-  const fr = document.createElement('iframe');
-  fr.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0;';
-  document.body.appendChild(fr);
-  try{
-    await msgLoadPdfLibs();
-    // مهلة أمان: ورقة خطوط Google بطيئة/محجوبة لا تعلّق التوليد — نمضي بالخط البديل.
-    await Promise.race([
-      new Promise((resolve) => { fr.onload = resolve; fr.srcdoc = doc; }),
-      new Promise((resolve) => setTimeout(resolve, 4000)),
-    ]);
-    const view = fr.contentWindow;
-    try{
-      const fonts = view.document.fonts;
-      if(fonts && fonts.load) await Promise.race([
-        fonts.load('16px ' + family).then(() => fonts.ready),
-        new Promise((resolve) => setTimeout(resolve, 3000)),
-      ]);
-    }catch(e){ __swallow(e, ctx + ':font-load'); }
-    await new Promise((resolve) => setTimeout(resolve, 150)); // فرصة إعادة الرسم بالخط المحمَّل
-    const canvas = await window.html2canvas(view.document.body, { scale: 2, backgroundColor: '#ffffff', useCORS: true, windowWidth: 794 });
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
-    const pw = pdf.internal.pageSize.getWidth();
-    const ph = pdf.internal.pageSize.getHeight();
-    const pageH = Math.max(1, Math.floor(canvas.width * ph / pw));
-    for(let y = 0, page = 0; y < canvas.height; y += pageH, page++){
-      const slice = document.createElement('canvas');
-      slice.width = canvas.width;
-      slice.height = Math.min(pageH, canvas.height - y);
-      slice.getContext('2d').drawImage(canvas, 0, y, canvas.width, slice.height, 0, 0, canvas.width, slice.height);
-      if(page > 0) pdf.addPage();
-      pdf.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pw, slice.height * pw / canvas.width);
-    }
-    pdf.save('omran-ai.pdf');
-    return true;
-  }catch(e){
-    __swallow(e, ctx + ':pdf-download');
-    return false;
-  }finally{
-    try{ fr.remove(); }catch(e){ __swallow(e, ctx + ':pdf-frame'); }
-  }
-}
-function msgPdfDownloadFailAlert(){
-  try{ alert('تعذر إنشاء ملف PDF — حاول مرة ثانية'); }catch(e){ __swallow(e, 'pdf:fail-alert'); }
-}
 function exportReplyAsPdf(text){
   const font = msgPdfFontSpec();
   const pdfFont = msgPdfFontHead(font);
   const html = '<html><head><meta charset="utf-8"><title>عمران AI</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';direction:rtl;padding:28px;line-height:' + font.line + ';color:#111;white-space:pre-wrap;word-break:break-word;}</style></head><body>' + msgEscapeHtml(text) + '</body></html>';
-  if(msgIsMobilePdf()){
-    msgHtmlToPdfDownload(html, pdfFont.family, 'ui:app-05-ui#1').then((ok) => { if(!ok) msgPdfDownloadFailAlert(); });
-    return;
+  /* v-app-share: window.open داخل تطبيق المتجر يرجع null — نرسل للجسر مباشرة */
+  const pdfBridge = omranNativeBridge('omranPdf');
+  if(pdfBridge){
+    try{ pdfBridge.postMessage({ html, name: 'omran-ai.pdf' }); return; }catch(e){ __swallow(e, 'ui:app-05-ui#1-app'); }
   }
-  const w = window.open('', '_blank');
-  if(!w) return;
-  w.document.open(); w.document.write(html); w.document.close();
-  msgPrintAfterFont(w, pdfFont.family, 'ui:app-05-ui#1');
+  /* v-pdf-file: ملف PDF ينزل مباشرة بدل نافذة الطباعة — الطباعة احتياط أخير */
+  const inner = '<div style="white-space:pre-wrap; word-break:break-word; line-height:' + font.line + ';">' + msgEscapeHtml(text) + '</div>';
+  omranExportHtmlAsPdfFile(inner, { fontFamily: pdfFont.family, fileName: 'omran-ai.pdf' }).catch((e) => {
+    __swallow(e, 'ui:app-05-ui#1-file');
+    const w = window.open('', '_blank');
+    if(!w) return;
+    w.document.open(); w.document.write(html); w.document.close();
+    msgPrintAfterFont(w, pdfFont.family, 'ui:app-05-ui#1');
+  });
 }
 function exportReplyAsWord(text){
   const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>عمران AI</title></head><body dir="rtl" style="font-family:Tahoma,Arial,sans-serif; line-height:2; white-space:pre-wrap;">' + msgEscapeHtml(text) + '</body></html>';
@@ -294,7 +381,9 @@ function renderCodeAndPreview(){
     }
     return;
   }
-  codeEl.value = cur.code;
+  /* v-tap-fast: إسناد نص ضخم (مئات الكيلوبايت) لخانة الكود مع كل إعادة رسم
+     كان يكلّف تخطيطًا كاملًا — نسنده فقط عند تغيّره فعلًا. */
+  if(codeEl.value !== cur.code) codeEl.value = cur.code;
   emptyState.style.display = 'none';
   if(cur.codeType === 'python'){
     previewFrame.style.display = 'none';
@@ -648,11 +737,36 @@ $('#btnDeleteAll').onclick = () => {
     if(chev) chev.style.transform = open ? 'rotate(180deg)' : '';
     if(!open && searchInput){ searchInput.style.display = 'none'; searchInput.value = ''; filterProjects(''); }
   };
+  /* v-chat-search: البحث داخل محتوى المحادثات كلها لا العناوين فقط —
+     «الكود اللي طلبته قبل أسبوعين» يطلع بكلمة واحدة. يفتش العنوان ونصوص
+     الرسائل (المستخدم والمساعد) والكود المولّد، محليًا وبلا أي نداء شبكة. */
   function filterProjects(q){
     const norm = String(q || '').trim().toLowerCase();
+    let matchIds = null;
+    if(norm){
+      try{
+        const projs = (typeof state !== 'undefined' && Array.isArray(state.projects)) ? state.projects : [];
+        matchIds = new Set();
+        projs.forEach(p => {
+          let hay = String(p.title || '');
+          if(Array.isArray(p.messages)){
+            for(const m of p.messages){
+              if(typeof m.content === 'string') hay += '\n' + m.content;
+              else if(m && m.content && Array.isArray(m.content)){
+                for(const c of m.content){ if(c && typeof c.text === 'string') hay += '\n' + c.text; }
+              }
+            }
+          }
+          if(typeof p.code === 'string') hay += '\n' + p.code;
+          if(hay.toLowerCase().includes(norm)) matchIds.add(String(p.id));
+        });
+      }catch(e){ matchIds = null; __swallow(e, 'search:projects-content'); }
+    }
     document.querySelectorAll('#history .hist-item').forEach(item => {
+      if(!norm){ item.style.display = ''; return; }
+      if(matchIds && item.dataset.pid){ item.style.display = matchIds.has(item.dataset.pid) ? '' : 'none'; return; }
       const title = (item.querySelector('.hist-title') || {}).textContent || '';
-      item.style.display = (!norm || title.toLowerCase().includes(norm)) ? '' : 'none';
+      item.style.display = title.toLowerCase().includes(norm) ? '' : 'none';
     });
   }
   if(searchBtn && searchInput){
@@ -1605,7 +1719,7 @@ function closeDialogSafe(dlg){
   dlg.removeAttribute('open');
   dlg.style.display = '';
 }
-const SETTINGS_SECTION_IDS = ['langSection','accountSection','statsSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection','adminSection'];
+const SETTINGS_SECTION_IDS = ['langSection','accountSection','statsSection','agentSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection','adminSection'];
 function renderStats(){
   const projects = state.projects || [];
   let messagesCount = 0;
@@ -1740,11 +1854,12 @@ function collapseAllSettingsSections(){
 }
 
 // ===== v199 Settings redesign: two-level nav (ChatGPT style) =====
-const SETTINGS_NAV_IDS = ['langSection','accountSection','statsSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection'];
+const SETTINGS_NAV_IDS = ['langSection','accountSection','statsSection','agentSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection'];
 const SETTINGS_NAV_ICONS = {
   langSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`,
   accountSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`,
   statsSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>`,
+  agentSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"></rect><path d="M12 4v4"></path><circle cx="12" cy="3" r="1"></circle><circle cx="9" cy="13" r="1"></circle><circle cx="15" cy="13" r="1"></circle><path d="M9 17h6"></path></svg>`,
   apiKeysSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"></circle><path d="M21 2l-9.6 9.6"></path><path d="M15.5 7.5l3 3L22 7l-3-3"></path></svg>`,
   themeSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>`,
   fontFamilySection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14"></path><path d="M12 5v14"></path><path d="M8 19h8"></path></svg>`,
@@ -2085,3 +2200,134 @@ async function postWithConfirm(url, payload){
   if(!okToSpend) return res;
   return await send(Object.assign({}, payload, { confirmed: true }));
 }
+
+
+/* v-omran-picker: فاتح المعرض الموحّد — بطاقات صورة+اسم(+وصف)، اختيار ذهبي ✓،
+   وبلا صورة شارة أنيقة. الاستدعاء: window.omranPicker.open({title,count,items,onPick}). */
+(function(){
+  function el(id){ return document.getElementById(id); }
+  window.omranPicker = { open: function(cfg){
+    var sheet = el('pickerSheet'), grid = el('pickerSheetGrid');
+    if(!sheet || !grid) return;
+    el('pickerSheetTitle').textContent = cfg.title || '';
+    el('pickerSheetCount').textContent = cfg.count || '';
+    grid.innerHTML = '';
+    (cfg.items || []).forEach(function(it){
+      var card = document.createElement('div');
+      card.style.cssText = 'border-radius:14px;overflow:hidden;cursor:pointer;background:#17171b;' +
+        (it.active ? 'border:2px solid #d4af37;box-shadow:0 0 14px rgba(212,175,55,.3);' : 'border:1px solid #2a2a30;');
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'position:relative;aspect-ratio:3/4;background:linear-gradient(160deg,#23232a,#101014);display:flex;align-items:center;justify-content:center;';
+      // it.bg (لوحة ألوان النمط) تعطي بطاقة احترافية بلا شارة إيموجي إطلاقًا.
+      if(it.bg){ wrap.style.background = it.bg; }
+      else {
+        var badge = document.createElement('div');
+        badge.textContent = (String(it.title || '').trim().match(/^\S+/) || [''])[0];
+        badge.style.cssText = 'width:54px;height:54px;border-radius:50%;border:1px solid rgba(212,175,55,.4);background:rgba(212,175,55,.06);display:flex;align-items:center;justify-content:center;font-size:22px;';
+        wrap.appendChild(badge);
+      }
+      if(it.img){
+        var im = document.createElement('img');
+        im.src = it.img; im.alt = it.title || ''; im.loading = 'lazy';
+        im.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
+        im.onerror = function(){
+          if(it.img2 && !im.__flat){ im.__flat = 1; im.src = it.img2; }
+          else im.remove();
+        };
+        wrap.appendChild(im);
+      }
+      if(it.active){
+        var tk = document.createElement('div'); tk.textContent = '✓';
+        tk.style.cssText = 'position:absolute;top:6px;inset-inline-start:7px;width:22px;height:22px;border-radius:50%;background:#d4af37;color:#141414;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;';
+        wrap.appendChild(tk);
+      }
+      var info = document.createElement('div');
+      info.style.cssText = 'padding:9px 10px 11px;text-align:center;';
+      var nm = document.createElement('div');
+      nm.textContent = it.title || '';
+      nm.style.cssText = 'font-size:12.5px;font-weight:700;color:' + (it.active ? '#d4af37' : '#eef0f6') + ';';
+      info.appendChild(nm);
+      if(it.sub){
+        var sb = document.createElement('div'); sb.textContent = it.sub;
+        sb.style.cssText = 'font-size:10.5px;color:#9a9a9e;margin-top:3px;';
+        info.appendChild(sb);
+      }
+      card.appendChild(wrap); card.appendChild(info);
+      card.onclick = function(){ sheet.style.display = 'none'; if(cfg.onPick) cfg.onPick(it.v); };
+      grid.appendChild(card);
+    });
+    sheet.style.display = 'flex';
+    var c = el('pickerSheetClose');
+    if(c) c.onclick = function(){ sheet.style.display = 'none'; };
+  } };
+  /* بطاقة مصغّرة موحّدة «عرض الكل ›» — get() ترجع {img,name,sub}،
+     وopenCfg() ترجع إعدادات open. ترجع {el,refresh}. */
+  window.omranPicker.trigger = function(get, openCfg){
+    var d = document.createElement('div');
+    d.style.cssText = 'display:flex;align-items:center;gap:10px;border:1px solid var(--border,#333);border-radius:12px;padding:8px 10px;cursor:pointer;background:var(--panel2,#101014);';
+    var th = document.createElement('div');
+    th.style.cssText = 'position:relative;width:44px;height:58px;border-radius:8px;overflow:hidden;flex:none;background:linear-gradient(160deg,#23232a,#101014);';
+    var im = document.createElement('img');
+    im.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
+    im.onerror = function(){ im.style.visibility = 'hidden'; };
+    th.appendChild(im);
+    var info = document.createElement('div');
+    info.style.cssText = 'flex:1;min-width:0;';
+    var nm = document.createElement('div');
+    nm.style.cssText = 'font-size:13.5px;font-weight:700;';
+    var sb = document.createElement('div');
+    sb.style.cssText = 'font-size:11px;color:var(--muted,#999);';
+    info.appendChild(nm); info.appendChild(sb);
+    var all = document.createElement('span');
+    all.textContent = (localStorage.getItem('aiapp_lang') === 'en') ? 'Browse all ›' : 'عرض الكل ›';
+    all.style.cssText = 'color:#d4af37;font-size:12.5px;font-weight:700;flex:none;';
+    d.appendChild(th); d.appendChild(info); d.appendChild(all);
+    function refresh(){
+      var s = get() || {};
+      nm.textContent = s.name || '';
+      sb.textContent = s.sub || '';
+      if(s.bg) th.style.background = s.bg;
+      if(s.img){ im.style.visibility = 'visible'; im.src = s.img; }
+      else im.style.visibility = 'hidden';
+    }
+    d.onclick = function(){ window.omranPicker.open(openCfg()); };
+    refresh();
+    return { el: d, refresh: refresh };
+  };
+})();
+/* v-mob-compact: بصمة جديدة لأن CSS الجوال تغيّر — يكسر كاش الـSW */
+/* v-mob-lock: بصمة جديدة — قفل تمرير الجوال */
+/* v-mob-lock2 */
+/* v-ios-textsize */
+/* v-morph-btn */
+
+/* v-morph-btn: الخانة فاضية = مايك، تكتب = زر الإرسال مكانه (نمط واتساب).
+   المزامنة على input + بعد الإرسال (المسح البرمجي لا يطلق input). */
+(function(){
+  const p = document.getElementById('prompt'), box = document.getElementById('composerBox');
+  if(!p || !box) return;
+  const sync = () => box.classList.toggle('typing', !!p.value.trim());
+  p.addEventListener('input', sync);
+  p.addEventListener('change', sync);
+  p.addEventListener('keyup', sync);
+  const bs = document.getElementById('btnSend');
+  if(bs) bs.addEventListener('click', () => setTimeout(sync, 80));
+  setInterval(sync, 700); // شبكة أمان للمسح البرمجي
+  sync();
+})();
+/* v-nav-lower */
+/* v-plus-tools-desktop */
+/* v-ios-settings-scroll */
+/* v-ios-nav-tap */
+/* v-ios-tap-fallback */
+/* v-diag-nav */
+/* v-ios-nav-restore */
+/* v-edu-lab */
+/* v-stocks-fullpage */
+/* v-err-banner-quiet */
+/* v-about-lux */
+/* v-intro-videos */
+/* v-chat-direct */
+/* v-boot-watchdog */
+/* v-ios-slider */
+/* v-boot-watchdog3 */

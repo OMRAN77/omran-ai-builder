@@ -5,6 +5,31 @@
 // PNG/JPEG the client can preview and download.
 const { checkDesignQuota, consumeDesign, DESIGN_DAILY_LIMIT } = require('./_designUsage');
 
+// v-design-rescue: إعادة تصميم الغرفة عبر gpt-image-1 عند رفض Gemini (نفس نمط
+// خطّ إنقاذ الأزياء والبورتريه). يرجع base64 أو null — لا يرمي أبدًا.
+async function openaiDesignEdit(promptText, imageBase64, mimeType) {
+  const key = (process.env.OPENAI_API_KEY || '').trim();
+  if (!key) return null;
+  try {
+    const bytes = Buffer.from(imageBase64, 'base64');
+    const form = new FormData();
+    form.append('model', 'gpt-image-1');
+    form.append('prompt', String(promptText).slice(0, 3900));
+    form.append('size', '1536x1024');
+    form.append('quality', 'medium');
+    form.append('output_format', 'webp');
+    form.append('image', new Blob([bytes], { type: mimeType || 'image/jpeg' }), 'room.jpg');
+    const r = await fetch('https://api.openai.com/v1/images/edits', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + key },
+      body: form,
+    });
+    const d = await r.json();
+    if (!r.ok) { console.warn('[design-create] openai HTTP ' + r.status + ' ' + String((d.error && d.error.message) || '').slice(0, 120)); return null; }
+    return (d && d.data && d.data[0] && d.data[0].b64_json) || null;
+  } catch (e) { console.warn('[design-create] openai ' + (e && e.message)); return null; }
+}
+
 const STYLE_PROMPTS = {
   modern: 'a clean modern minimalist interior design style, neutral colors, sleek furniture',
   bohemian: 'a bohemian (boho) interior design style, warm earthy colors, woven textures, plants',
@@ -15,6 +40,46 @@ const STYLE_PROMPTS = {
   najdi: 'a traditional Najdi Saudi interior design style, carved gypsum wall panels with geometric triangular motifs, earthy clay and sand tones, exposed wooden ceiling beams, floor seating with patterned cushions',
   islamic: 'a contemporary Islamic interior design style, mashrabiya screens, arched niches, subtle geometric patterns, warm neutral palette with brass and walnut accents',
   andalusi: 'an Andalusian Moorish interior design style, horseshoe arches, zellige mosaic tilework, carved stucco details, deep blue and terracotta palette, lush courtyard feel',
+  // v-decor-45: كتالوج موسّع — ٤٥ نمطًا حتى لا يملّ المستخدم من ٩.
+  emirati: 'a contemporary Emirati/Khaleeji interior style, sand and cream palette, brass lanterns, palm motifs, modern majlis seating with heritage accents',
+  scandinavian: 'a Scandinavian interior design style, white walls, light oak wood, cozy hygge textiles, functional clean-lined furniture',
+  japandi: 'a Japandi interior style blending Japanese minimalism and Scandinavian warmth, low wooden furniture, neutral tones, paper lanterns',
+  industrial: 'an industrial loft interior style, exposed brick and concrete, black steel frames, Edison bulbs, leather sofa',
+  midcentury: 'a mid-century modern interior style, walnut furniture with tapered legs, mustard and teal accents, geometric patterns',
+  artdeco: 'an Art Deco interior style, bold geometric patterns, brass and velvet, fan motifs, glamorous 1920s luxury',
+  neoclassic: 'a neoclassical interior style, wall moldings and wainscoting, marble, muted palette, elegant symmetry',
+  victorian: 'a Victorian interior style, ornate carved furniture, rich wallpaper, chandeliers, deep jewel tones',
+  baroque: 'an opulent Baroque interior style, gilded ornament, dramatic ceiling details, rich burgundy and gold',
+  gothic: 'a refined gothic interior style, pointed arches, dark wood, stained-glass accents, moody elegance',
+  rustic: 'a rustic interior style, reclaimed wood beams, stone fireplace, warm earthy textures',
+  farmhouse: 'a modern farmhouse interior style, shiplap walls, white and wood palette, cozy family feel',
+  coastal: 'a coastal beach-house interior style, white and sea-blue palette, rattan, linen, airy light',
+  mediterranean: 'a Mediterranean interior style, whitewashed walls, terracotta floors, arched doorways, olive greens and sea blues',
+  moroccan: 'a Moroccan interior style, colorful zellige tiles, carved wood, lanterns, layered rugs and poufs',
+  turkish: 'an Ottoman Turkish interior style, iznik tile patterns, rich carpets, carved wood, warm reds and blues',
+  persian: 'a Persian-inspired interior style, ornate rugs, arched mirrors-work niches, turquoise and gold accents',
+  indian: 'an Indian-inspired interior style, carved dark wood, vibrant silk textiles, brass decor, jewel tones',
+  japanese: 'a traditional Japanese interior style, tatami mats, shoji screens, low table, serene natural wood',
+  zen: 'a zen minimalist interior style, natural stone and wood, indoor plants, soft diffused light, calm empty space',
+  wabisabi: 'a wabi-sabi interior style, imperfect natural textures, handmade ceramics, muted earthy calm',
+  tropical: 'a tropical interior style, lush green plants, rattan and bamboo, botanical prints, bright natural light',
+  desert: 'a desert-inspired interior style, sand tones, cactus and dried pampas, terracotta pots, warm sunset palette',
+  loft: 'an open urban loft interior style, high ceilings, large windows, mixed concrete and warm wood',
+  futuristic: 'a futuristic interior style, curved white surfaces, hidden LED lighting, smart minimal furniture',
+  cyberpunk: 'a cyberpunk interior style, neon accent lighting, dark walls, high-tech gaming aesthetics',
+  gamer: 'a gamer room interior style, RGB LED strips, dual monitor desk setup, acoustic panels, dark theme',
+  darkacademia: 'a dark academia interior style, floor-to-ceiling bookshelves, dark wood, leather chesterfield, brass lamps',
+  chalet: 'an alpine chalet interior style, warm timber walls, fur throws, fireplace, cozy mountain cabin feel',
+  provence: 'a French Provence interior style, lavender and cream palette, distressed furniture, floral linen',
+  hollywood: 'a Hollywood Regency glam interior style, mirrored furniture, velvet, bold black-white-gold contrast',
+  monochrome: 'a monochrome interior style, black white and gray palette, strong contrast, graphic minimalism',
+  earthy: 'an earthy organic interior style, terracotta clay tones, curved plaster walls, natural fibers',
+  pastel: 'a soft pastel interior style, blush pink mint and baby blue accents, playful modern furniture',
+  smart: 'a smart-home tech interior style, integrated screens, voice-controlled ambient lighting, sleek surfaces',
+  eco: 'a sustainable eco interior style, recycled materials, living plant wall, natural light, green tones',
+  retro70s: 'a retro 1970s interior style, orange and brown palette, shag rug, curved sofa, vinyl corner',
+  popart: 'a pop-art interior style, bold primary colors, comic prints, playful statement furniture',
+  minimalwhite: 'an all-white gallery-like minimalist interior, seamless white surfaces, single statement artwork',
 };
 
 const LIGHTING_PROMPTS = {
@@ -188,6 +253,10 @@ module.exports = async (req, res) => {
           }
         } catch (e) { /* fallback to normal generation below */ }
       }
+      // v-decor-detail: لا نبتلع خطأ المزوّد — نكشفه منظّفًا في detail ليُشخَّص
+      // (رصيد؟ اسم نموذج؟) بدل 502 صامتة. المفاتيح تُشطب دائمًا.
+      let upstreamErr = '';
+      const noteErr = (m) => { if (!upstreamErr && m) upstreamErr = String(m).slice(0, 300); };
       const shots = await Promise.all(Array.from({ length: n }, (_, i) => fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + oaKey, 'Content-Type': 'application/json' },
@@ -201,10 +270,17 @@ module.exports = async (req, res) => {
           output_compression: 82,
         }),
         signal: AbortSignal.timeout(240000),
-      }).then((r) => r.json()).then((d) => (((d && d.data) || [])[0] || {}).b64_json || null).catch(() => null)));
+      }).then((r) => r.json()).then((d) => {
+        const b = (((d && d.data) || [])[0] || {}).b64_json || null;
+        if (!b) noteErr(d && d.error && d.error.message);
+        return b;
+      }).catch((e) => { noteErr((e && e.message) || e); return null; })));
       const images = shots.filter(Boolean).map((b64) => ({ imageBase64: b64, mimeType: 'image/webp' }));
       if (!images.length) {
-        res.status(502).json({ error: 'لم يرجع النموذج أي شكل. جرّب نمطًا أو نوع مكان آخر.' });
+        res.status(502).json({
+          error: 'لم يرجع النموذج أي شكل. جرّب نمطًا أو نوع مكان آخر.',
+          detail: upstreamErr.replace(/key=[^&\s"']+/g, 'key=***'),
+        });
         return;
       }
       const rem = await consumeDesign(quota.username);
@@ -238,7 +314,16 @@ module.exports = async (req, res) => {
 
     const data = await upstream.json();
     if (!upstream.ok) {
-      res.status(upstream.status).json({ error: (data && data.error && data.error.message) || 'Upstream error' });
+      // v-design-rescue: رفض Gemini (رصيد/حصة/غيره) يهبط تلقائيًا إلى gpt-image-1
+      // بمفتاح الخادم — نفس خط إنقاذ الأزياء والبورتريه والستايل.
+      const rescued = await openaiDesignEdit(promptText, imageBase64, mimeType);
+      if (rescued) {
+        const rrem = await consumeDesign(quota.username);
+        res.status(200).json({ imageBase64: rescued, mimeType: 'image/webp', remaining: rrem, dailyLimit: DESIGN_DAILY_LIMIT, engine: 'openai' });
+        return;
+      }
+      const gmsg = String((data && data.error && data.error.message) || 'Upstream error');
+      res.status(upstream.status).json({ error: gmsg.replace(/key=[^&\s"']+/g, 'key=***') });
       return;
     }
 

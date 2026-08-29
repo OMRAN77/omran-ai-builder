@@ -1,5 +1,8 @@
 /* ---------- 📈 Stocks (Twelve Data, server-side owner key) ---------- */
 (function(){
+  /* v-store-safe: حزمة AppGallery لا تلمس أي بيانات مالية إطلاقًا —
+     لا شريط ولا صفحة ولا نداء أسعار واحد (قاعدة هواوي 11.4). */
+  if(document.documentElement.classList.contains('store-safe')) return;
   const modal = $('#stocksModal');
   const btnOpen = $('#btnStocks');
   if(!modal || !btnOpen) return;
@@ -331,17 +334,140 @@
   };
 
   const searchWrap = $('#stockSearchWrap');
-  const stkTabBtns = { global: $('#stocksGlobalBtn'), search: $('#stocksSearchBtn'), learn: learnBtn };
+  const pfWrap = $('#stockPfWrap'); /* v-stocks-paper */
+  const stkTabBtns = { global: $('#stocksGlobalBtn'), search: $('#stocksSearchBtn'), learn: learnBtn, pf: $('#stocksPfBtn') };
   function stkShowTab(t){
     searchWrap.style.display = t==='search' ? 'block' : 'none';
     learnWrap.style.display = t==='learn' ? 'block' : 'none';
     globalWrap.style.display = t==='global' ? 'block' : 'none';
+    if(pfWrap) pfWrap.style.display = t==='pf' ? 'block' : 'none';
     Object.keys(stkTabBtns).forEach(function(k){ var b = stkTabBtns[k]; if(b) b.style.background = (k===t) ? 'rgba(107,114,128,0.45)' : ''; });
     if(t==='global') showGlobal();
+    if(t==='pf') pfLoad();
   }
   window.__stkShowTab = stkShowTab;
   $('#stocksGlobalBtn').addEventListener('click', function(){ stkShowTab('global'); });
   $('#stocksSearchBtn').addEventListener('click', function(){ stkShowTab('search'); });
+  var pfBtnEl = $('#stocksPfBtn');
+  if(pfBtnEl) pfBtnEl.addEventListener('click', function(){ stkShowTab('pf'); });
+
+  /* ============ 💼 v-stocks-paper: المحفظة التعليمية ============ */
+  function pfTok(){ try{ return (window.authGet && authGet('aiapp_auth_token')) || ''; }catch(e){ return ''; } }
+  function pfEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function pfCol(v){ return v > 0 ? '#2E9E6B' : (v < 0 ? '#e05252' : 'var(--muted)'); }
+  function pfMoney(n){ return (typeof n === 'number' && isFinite(n)) ? n.toLocaleString('en-US', {maximumFractionDigits: 0}) : '—'; }
+  var pfBusy = false;
+
+  function pfRender(d){
+    if(!pfWrap) return;
+    var p = d.portfolio, bd = d.board || { top: [], rank: null, total: 0 };
+    var h = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">'
+      + '<span style="font-size:11.5px;background:rgba(212,175,55,.14);border:1px solid rgba(212,175,55,.4);color:#d4af37;border-radius:999px;padding:4px 11px;">🎓 وضع تعليمي — أموال افتراضية 100٪</span></div>'
+      // البطاقة العلوية: القيمة الكلية والربح/الخسارة
+      + '<div style="border:1px solid var(--border,#333);border-radius:14px;padding:14px;background:rgba(255,255,255,.02);margin-bottom:12px;">'
+      + '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">'
+      + '<div><div style="font-size:11px;color:var(--muted);">قيمة المحفظة</div><div style="font-size:22px;font-weight:700;">$' + pfMoney(p.equity) + '</div></div>'
+      + '<div><div style="font-size:11px;color:var(--muted);">الكاش المتاح</div><div style="font-size:16px;font-weight:600;">$' + pfMoney(p.cash) + '</div></div>'
+      + '<div><div style="font-size:11px;color:var(--muted);">الربح/الخسارة</div><div style="font-size:16px;font-weight:700;color:' + pfCol(p.pl) + ';">' + (p.pl >= 0 ? '+' : '') + pfMoney(p.pl) + ' (' + p.plPct + '%)</div></div>'
+      + '</div></div>'
+      // نموذج الصفقة
+      + '<div style="border:1px solid var(--border,#333);border-radius:14px;padding:12px;margin-bottom:12px;">'
+      + '<div style="font-size:12.5px;margin-bottom:8px;font-weight:600;">صفقة جديدة (بالسعر الحي الحقيقي)</div>'
+      + '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+      + '<input id="pfSym" placeholder="الرمز مثل AAPL" style="flex:2;min-width:110px;padding:9px;border-radius:9px;border:1px solid var(--border,#444);background:transparent;color:inherit;font:inherit;text-transform:uppercase;">'
+      + '<input id="pfQty" type="number" min="1" placeholder="الكمية" style="flex:1;min-width:70px;padding:9px;border-radius:9px;border:1px solid var(--border,#444);background:transparent;color:inherit;font:inherit;">'
+      + '<button class="btn" id="pfBuy" style="background:#2E9E6B;color:#fff;border:none;">شراء</button>'
+      + '<button class="btn" id="pfSell" style="background:#e05252;color:#fff;border:none;">بيع</button>'
+      + '</div><div id="pfMsg" style="font-size:12px;margin-top:8px;line-height:1.7;"></div></div>';
+    // المراكز
+    h += '<div style="font-size:12.5px;font-weight:600;margin:0 0 6px;">مراكزك (' + p.positions.length + ')</div>';
+    if(!p.positions.length){
+      h += '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">ما عندك أسهم بعد — جرّب أول صفقة تعليمية! اكتب رمزًا مثل AAPL وكمية واضغط شراء.</div>';
+    } else {
+      p.positions.forEach(function(pos){
+        h += '<div style="display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(128,128,128,.15);padding:8px 2px;font-size:12.5px;flex-wrap:wrap;">'
+          + '<b style="min-width:56px;">' + pfEsc(pos.symbol) + '</b>'
+          + '<span style="color:var(--muted);">' + pos.qty + ' سهم × $' + pos.price + '</span>'
+          + '<span style="margin-inline-start:auto;font-weight:700;color:' + pfCol(pos.pl) + ';">' + (pos.pl >= 0 ? '+' : '') + pfMoney(pos.pl) + ' (' + pos.plPct + '%)</span>'
+          + '<button class="btn" data-pfsell="' + pfEsc(pos.symbol) + '" data-pfqty="' + pos.qty + '" style="padding:4px 10px;font-size:11px;">بيع الكل</button>'
+          + '<button class="btn" data-pfwhy="' + pfEsc(pos.symbol) + '" style="padding:4px 10px;font-size:11px;">🎓 علّمني</button>'
+          + '</div>';
+      });
+    }
+    // الترتيب
+    h += '<div style="font-size:12.5px;font-weight:600;margin:14px 0 6px;">🏆 ترتيب المتداولين'
+      + (bd.rank ? ' — مركزك: ' + bd.rank + ' من ' + bd.total : '') + '</div>';
+    (bd.top || []).forEach(function(r){
+      h += '<div style="display:flex;gap:8px;font-size:12px;padding:4px 2px;' + '">'
+        + '<span style="min-width:26px;">' + (r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : r.rank + '.') + '</span>'
+        + '<span style="flex:1;">' + pfEsc(r.user) + '</span>'
+        + '<b style="color:' + pfCol(r.plPct) + ';">' + (r.plPct >= 0 ? '+' : '') + r.plPct + '%</b></div>';
+    });
+    // آخر الصفقات + إعادة الضبط
+    if((p.trades || []).length){
+      h += '<div style="font-size:12.5px;font-weight:600;margin:14px 0 6px;">آخر صفقاتك</div>';
+      p.trades.forEach(function(t){
+        h += '<div style="font-size:11.5px;color:var(--muted);padding:2px 2px;">' + (t.side === 'buy' ? '🟢 شراء' : '🔴 بيع') + ' ' + t.qty + ' × ' + pfEsc(t.sym) + ' @ $' + t.price + '</div>';
+      });
+    }
+    h += '<div id="pfLesson" style="display:none;margin-top:12px;border:1px solid rgba(212,175,55,.35);border-radius:12px;padding:12px;font-size:12.5px;line-height:1.9;white-space:pre-wrap;"></div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:8px;flex-wrap:wrap;">'
+      + '<span style="font-size:10.5px;color:var(--muted);">تداول تجريبي تعليمي — أسعار حقيقية وأموال افتراضية، ليست نصيحة استثمارية.</span>'
+      + '<button class="btn" id="pfReset" style="font-size:11px;padding:5px 11px;">🔄 ابدأ من جديد (100 ألف)</button></div>';
+    pfWrap.innerHTML = h;
+    pfWire();
+  }
+
+  function pfMsgShow(txt, ok){ var m = $('#pfMsg'); if(m){ m.textContent = txt; m.style.color = ok ? '#2E9E6B' : '#e05252'; } }
+
+  function pfTrade(side, sym, qty){
+    if(pfBusy) return;
+    sym = String(sym || ($('#pfSym') && $('#pfSym').value) || '').trim().toUpperCase();
+    qty = Math.floor(Number(qty != null ? qty : ($('#pfQty') && $('#pfQty').value)));
+    if(!sym || !qty || qty <= 0){ pfMsgShow('اكتب رمز السهم والكمية أولًا', false); return; }
+    pfBusy = true; pfMsgShow('⏳ ننفذ الصفقة بالسعر الحي…', true);
+    api({ mode:'pf-trade', side: side, tradeSymbol: sym, qty: qty, token: pfTok(), guestId: (window.getGuestId ? getGuestId() : '') })
+      .then(function(d){
+        pfBusy = false; pfRender(d);
+        var last = d.portfolio.trades && d.portfolio.trades[0];
+        pfMsgShow(last ? ('✅ تمت: ' + (last.side === 'buy' ? 'شراء' : 'بيع') + ' ' + last.qty + ' × ' + last.sym + ' بسعر $' + last.price + (last.side === 'buy' ? ' — 🎓 درس: لا تضع كل كاشك في سهم واحد، التنويع يحميك.' : ' — 🎓 درس: البيع يثبّت الربح أو يوقف الخسارة، والقرار الجيد يُتخذ بخطة لا بعاطفة.')) : '✅ تمت الصفقة', true);
+      })
+      .catch(function(e){ pfBusy = false; pfMsgShow('⚠️ ' + (e.message || 'تعذرت الصفقة'), false); });
+  }
+
+  function pfWire(){
+    var b1 = $('#pfBuy'), b2 = $('#pfSell'), rs = $('#pfReset');
+    if(b1) b1.onclick = function(){ pfTrade('buy'); };
+    if(b2) b2.onclick = function(){ pfTrade('sell'); };
+    if(rs) rs.onclick = function(){
+      if(!confirm('تبدأ من جديد بـ 100 ألف افتراضية؟ محفظتك الحالية وصفقاتك ستُمسح.')) return;
+      api({ mode:'pf-reset', token: pfTok() }).then(pfRender).catch(function(e){ pfMsgShow('⚠️ ' + e.message, false); });
+    };
+    pfWrap.querySelectorAll('[data-pfsell]').forEach(function(b){
+      b.onclick = function(){ pfTrade('sell', b.getAttribute('data-pfsell'), b.getAttribute('data-pfqty')); };
+    });
+    pfWrap.querySelectorAll('[data-pfwhy]').forEach(function(b){
+      b.onclick = function(){
+        var sym = b.getAttribute('data-pfwhy');
+        var box = $('#pfLesson');
+        box.style.display = 'block'; box.textContent = '🎓 معلمك يجهز درسًا على ' + sym + ' بالأرقام الحية…';
+        api({ mode:'learn', symbol: sym, question: 'أنا مبتدئ وأملك هذا السهم في محفظتي التعليمية. علمني ماذا أراقب فيه الآن (الاتجاه، الدعم والمقاومة، متى أفكر بالبيع) بالأرقام الحية.', lang: (typeof lang !== 'undefined' ? lang : 'ar'), token: pfTok(), guestId: (window.getGuestId ? getGuestId() : '') })
+          .then(function(d){ box.textContent = d.lesson || 'تعذر الدرس الآن — حاول بعد قليل.'; })
+          .catch(function(e){ box.textContent = '⚠️ ' + (e.message || 'تعذر الدرس'); });
+      };
+    });
+  }
+
+  function pfLoad(){
+    if(!pfWrap) return;
+    if(!pfTok()){
+      pfWrap.innerHTML = '<div style="text-align:center;padding:26px 10px;font-size:13px;line-height:2;">💼 <b>المحفظة التعليمية</b><br>100 ألف افتراضية تتداول بها بأسعار السوق الحقيقية وتنافس بقية المستخدمين 🏆<br><span style="color:var(--muted);font-size:12px;">سجّل الدخول لبدء محفظتك — تقدمك يُحفظ في حسابك.</span></div>';
+      return;
+    }
+    pfWrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">⏳ نجهز محفظتك…</div>';
+    api({ mode:'pf-get', token: pfTok() }).then(pfRender)
+      .catch(function(e){ pfWrap.innerHTML = '<div style="text-align:center;padding:20px;color:#e05252;font-size:13px;">⚠️ ' + pfEsc(e.message || 'تعذر تحميل المحفظة') + '</div>'; });
+  }
   btnOpen.addEventListener('click', function(){ modal.style.display = 'flex'; stkShowTab('global'); });
   btnClose.addEventListener('click', function(){
     modal.style.display = 'none';
@@ -805,6 +931,18 @@
       { value:'red', ar:'🔴 أحمر', en:'🔴 Red', fr:'🔴 Rouge', hi:'🔴 लाल', ur:'🔴 سرخ', bn:'🔴 লাল', ne:'🔴 रातो' },
       { value:'silver', ar:'⚪ فضي/رمادي', en:'⚪ Silver/Gray', fr:'⚪ Argenté/Gris', hi:'⚪ चांदी/स्लेटी', ur:'⚪ چاندی/سرمئی', bn:'⚪ রূপালি/ধূসর', ne:'⚪ चाँदी/खरानी' },
       { value:'colorful', ar:'🌈 ملوّن', en:'🌈 Colorful', fr:'🌈 Coloré', hi:'🌈 रंगीन', ur:'🌈 رنگین', bn:'🌈 রঙিন', ne:'🌈 रंगीन' },
+      { value:'ombre', ar:'🎨 أومبري', en:'🎨 Ombre' },
+      { value:'highlights', ar:'✨ هايلايت', en:'✨ Highlights' },
+      { value:'platinum', ar:'❄️ بلاتيني', en:'❄️ Platinum' },
+      { value:'burgundy', ar:'🍷 عنابي', en:'🍷 Burgundy' },
+      { value:'blue', ar:'💙 أزرق جريء', en:'💙 Electric blue' },
+      { value:'rose', ar:'🌹 وردي ذهبي', en:'🌹 Rose gold' },
+      { value:'curly', ar:'🌀 كيرلي', en:'🌀 Curly' },
+      { value:'straight', ar:'📏 مفرود ناعم', en:'📏 Sleek straight' },
+      { value:'waves', ar:'🌊 ويفي هوليودي', en:'🌊 Hollywood waves' },
+      { value:'bob', ar:'💇 بوب قصير', en:'💇 Bob cut' },
+      { value:'pixie', ar:'🧚 بيكسي', en:'🧚 Pixie cut' },
+      { value:'longlayers', ar:'👩‍🦱 طبقات طويلة', en:'👩‍🦱 Long layers' },
     ],
     nails: [
       { value:'red', ar:'🔴 أحمر', en:'🔴 Red', fr:'🔴 Rouge', hi:'🔴 लाल', ur:'🔴 سرخ', bn:'🔴 লাল', ne:'🔴 रातो' },
@@ -813,6 +951,12 @@
       { value:'french', ar:'⚪ فرنشي', en:'⚪ French', fr:'⚪ Française', hi:'⚪ फ्रेंच', ur:'⚪ فرانسیسی', bn:'⚪ ফরাসি', ne:'⚪ फ्रेन्च' },
       { value:'pink', ar:'🌸 وردي', en:'🌸 Pink', fr:'🌸 Rose', hi:'🌸 गुलाबी', ur:'🌸 گلابی', bn:'🌸 গোলাপি', ne:'🌸 गुलाबी' },
       { value:'gold', ar:'🟡 ذهبي', en:'🟡 Gold', fr:'🟡 Doré', hi:'🟡 सुनहरा', ur:'🟡 سنہری', bn:'🟡 সোনালি', ne:'🟡 सुनौलो' },
+      { value:'ombrenails', ar:'🎨 أومبري متدرج', en:'🎨 Ombre' },
+      { value:'glitter', ar:'✨ جليتر', en:'✨ Glitter' },
+      { value:'mattegray', ar:'🩶 مطفي أنيق', en:'🩶 Matte greige' },
+      { value:'chrome', ar:'🪞 كروم مرايا', en:'🪞 Chrome' },
+      { value:'marble', ar:'🏛️ رخامي', en:'🏛️ Marble art' },
+      { value:'artnails', ar:'🌸 رسم زهري', en:'🌸 Floral art' },
     ],
     makeup: [
       { value:'natural', ar:'🌿 طبيعي خفيف', en:'🌿 Natural', fr:'🌿 Naturel', hi:'🌿 प्राकृतिक', ur:'🌿 قدرتی', bn:'🌿 প্রাকৃতিক', ne:'🌿 प्राकृतिक' },
@@ -820,6 +964,11 @@
       { value:'smokey', ar:'⚫ سموكي', en:'⚫ Smokey Eyes', fr:'⚫ Yeux smoky', hi:'⚫ स्मोकी आइज़', ur:'⚫ اسموکی آئیز', bn:'⚫ স্মোকি আইজ', ne:'⚫ स्मोकी आँखा' },
       { value:'redlips', ar:'💋 أحمر شفاه جريء', en:'💋 Bold Red Lips', fr:'💋 Lèvres rouges audacieuses', hi:'💋 बोल्ड रेड लिप्स', ur:'💋 بولڈ ریڈ لپس', bn:'💋 বোল্ড রেড লিপস', ne:'💋 बोल्ड रातो ओठ' },
       { value:'bridal', ar:'👰 عروس', en:'👰 Bridal', fr:'👰 Mariée', hi:'👰 दुल्हन', ur:'👰 دلہن', bn:'👰 কনে', ne:'👰 दुलही' },
+      { value:'softglam', ar:'🌟 سوفت قلام', en:'🌟 Soft glam' },
+      { value:'kohl', ar:'🖤 كحل عربي', en:'🖤 Arabic kohl' },
+      { value:'dewy', ar:'💧 ديوي مشرق', en:'💧 Dewy glow' },
+      { value:'matte', ar:'🤎 مطفي كامل', en:'🤎 Full matte' },
+      { value:'editorial', ar:'🎨 جريء ملوّن', en:'🎨 Editorial' },
     ],
     beard: [
       { value:'full', ar:'🧔 لحية كاملة', en:'🧔 Full Beard', fr:'🧔 Barbe complète', hi:'🧔 पूरी दाढ़ी', ur:'🧔 مکمل داڑھی', bn:'🧔 পূর্ণ দাড়ি', ne:'🧔 पूरा दाह्री' },
@@ -827,11 +976,19 @@
       { value:'mustache', ar:'👨 شنب فقط', en:'👨 Mustache Only', fr:'👨 Moustache seulement', hi:'👨 सिर्फ मूंछ', ur:'👨 صرف مونچھیں', bn:'👨 শুধু গোঁফ', ne:'👨 जुँगा मात्र' },
       { value:'goatee', ar:'🐐 لحية عنزة', en:'🐐 Goatee', fr:'🐐 Bouc', hi:'🐐 गोटी दाढ़ी', ur:'🐐 بکری داڑھی', bn:'🐐 ছাগল দাড়ি', ne:'🐐 गोटी दाह्री' },
       { value:'clean', ar:'✨ حليق نظيف', en:'✨ Clean Shave', fr:'✨ Rasé de près', hi:'✨ क्लीन शेव', ur:'✨ صاف شیو', bn:'✨ ক্লিন শেভ', ne:'✨ सफा सेभ' },
+      { value:'boxed', ar:'◼️ مربعة قصيرة', en:'◼️ Short boxed' },
+      { value:'vandyke', ar:'🎩 فان دايك', en:'🎩 Van Dyke' },
+      { value:'faded', ar:'💈 متدرجة فيد', en:'💈 Faded' },
+      { value:'longbeard', ar:'🧔‍♂️ طويلة كثة', en:'🧔‍♂️ Long thick' },
+      { value:'anchor', ar:'⚓ أنكور', en:'⚓ Anchor' },
     ],
     skin: [
       { value:'subtle', ar:'✨ تنعيم خفيف', en:'✨ Subtle Smoothing', fr:'✨ Lissage subtil', hi:'✨ हल्का स्मूदिंग', ur:'✨ ہلکی ہمواری', bn:'✨ হালকা মসৃণতা', ne:'✨ हल्का चिल्लो' },
       { value:'glow', ar:'🌟 توهج طبيعي', en:'🌟 Natural Glow', fr:'🌟 Éclat naturel', hi:'🌟 प्राकृतिक चमक', ur:'🌟 قدرتی چمک', bn:'🌟 প্রাকৃতিক উজ্জ্বলতা', ne:'🌟 प्राकृतिक चमक' },
       { value:'circles', ar:'👁️ تقليل الهالات', en:'👁️ Reduce Dark Circles', fr:'👁️ Réduire les cernes', hi:'👁️ डार्क सर्कल कम करें', ur:'👁️ ڈارک سرکلز کم کریں', bn:'👁️ ডার্ক সার্কেল কমান', ne:'👁️ अँध्यारो घेरा घटाउनुहोस्' },
+      { value:'tan', ar:'🌞 تان ذهبي', en:'🌞 Golden tan' },
+      { value:'matteskin', ar:'🧴 مطفي بلا لمعة', en:'🧴 Matte finish' },
+      { value:'freckles', ar:'✨ نمش طبيعي', en:'✨ Freckles' },
     ],
     glasses: [
       { value:'sunglasses', ar:'🕶️ شمسية كلاسيكية', en:'🕶️ Classic Sunglasses', fr:'🕶️ Lunettes de soleil classiques', hi:'🕶️ क्लासिक सनग्लासेज़', ur:'🕶️ کلاسک دھوپ کے چشمے', bn:'🕶️ ক্লাসিক সানগ্লাস', ne:'🕶️ क्लासिक घाम चश्मा' },
@@ -839,6 +996,13 @@
       { value:'catseye', ar:'🐱 عين القطة', en:'🐱 Cat-Eye', fr:'🐱 Œil de chat', hi:'🐱 कैट-आई', ur:'🐱 کیٹ آئی', bn:'🐱 ক্যাট-আই', ne:'🐱 क्याट-आई' },
       { value:'aviator', ar:'✈️ طيار', en:'✈️ Aviator', fr:'✈️ Aviateur', hi:'✈️ एविएटर', ur:'✈️ ایویٹر', bn:'✈️ এভিয়েটর', ne:'✈️ एभिएटर' },
       { value:'rimless', ar:'🔲 بدون إطار', en:'🔲 Rimless', fr:'🔲 Sans monture', hi:'🔲 रिमलेस', ur:'🔲 بغیر فریم', bn:'🔲 রিমলেস', ne:'🔲 रिमलेस' },
+      { value:'wayfarer', ar:'🕶️ وايفيرر', en:'🕶️ Wayfarer' },
+      { value:'oversized', ar:'👓 كبيرة فاشن', en:'👓 Oversized' },
+      { value:'sportglasses', ar:'🚴 رياضية', en:'🚴 Sport' },
+      { value:'goldframe', ar:'🥇 إطار ذهبي', en:'🥇 Gold frame' },
+      { value:'retroglasses', ar:'🕰️ ريترو ملوّنة', en:'🕰️ Retro tinted' },
+      { value:'hexagon', ar:'⬡ سداسية', en:'⬡ Hexagon' },
+      { value:'clearframe', ar:'🧊 إطار شفاف', en:'🧊 Clear frame' },
     ],
     tattoo: [
       { value:'sleeve', ar:'💪 كم كامل', en:'💪 Full Sleeve', fr:'💪 Manche complète', hi:'💪 फुल स्लीव', ur:'💪 فل سلیو', bn:'💪 ফুল স্লিভ', ne:'💪 पूरा स्लिभ' },
@@ -846,6 +1010,10 @@
       { value:'back', ar:'🔙 على الظهر', en:'🔙 Back Piece', fr:'🔙 Dos', hi:'🔙 पीठ पर', ur:'🔙 پیٹھ پر', bn:'🔙 পিঠে', ne:'🔙 ढाडमा' },
       { value:'tribal', ar:'⚫ قبلي', en:'⚫ Tribal', fr:'⚫ Tribal', hi:'⚫ ट्राइबल', ur:'⚫ قبائلی', bn:'⚫ ট্রাইবাল', ne:'⚫ ट्राइबल' },
       { value:'custom', ar:'📝 حسب الوصف', en:'📝 Custom (from description)', fr:'📝 Personnalisé (selon description)', hi:'📝 कस्टम (विवरण अनुसार)', ur:'📝 حسب تفصیل', bn:'📝 কাস্টম (বর্ণনা অনুযায়ী)', ne:'📝 कस्टम (विवरण अनुसार)' },
+      { value:'geometric', ar:'🔷 هندسي رفيع', en:'🔷 Geometric' },
+      { value:'minimalline', ar:'➖ خط بسيط', en:'➖ Minimal line' },
+      { value:'arabictattoo', ar:'🖋️ خط عربي', en:'🖋️ Arabic calligraphy' },
+      { value:'floraltattoo', ar:'🌿 نباتي مفصّل', en:'🌿 Floral' },
     ],
     anime: [
       { value:'classic', ar:'🎌 أنمي ياباني كلاسيكي', en:'🎌 Classic Anime', fr:'🎌 Anime classique', hi:'🎌 क्लासिक एनीमे', ur:'🎌 کلاسک اینیمے', bn:'🎌 ক্লাসিক অ্যানিমে', ne:'🎌 क्लासिक एनिमे' },
@@ -853,6 +1021,10 @@
       { value:'ghibli', ar:'🌱 ستايل غيبلي', en:'🌱 Ghibli Style', fr:'🌱 Style Ghibli', hi:'🌱 घिबली स्टाइल', ur:'🌱 غبلی اسٹائل', bn:'🌱 ঘিবলি স্টাইল', ne:'🌱 घिब्ली शैली' },
       { value:'cyberpunk', ar:'🌆 سايبربنك أنمي', en:'🌆 Cyberpunk Anime', fr:'🌆 Anime cyberpunk', hi:'🌆 साइबरपंक एनीमे', ur:'🌆 سائبرپنک اینیمے', bn:'🌆 সাইবারপাঙ্ক অ্যানিমে', ne:'🌆 साइबरपंक एनिमे' },
       { value:'manga', ar:'⬛ مانجا أبيض وأسود', en:'⬛ Manga B&W', fr:'⬛ Manga N&B', hi:'⬛ मंगा ब्लैक एंड व्हाइट', ur:'⬛ مانگا بلیک اینڈ وائٹ', bn:'⬛ মাঙ্গা সাদাকালো', ne:'⬛ मंगा कालो-सेतो' },
+      { value:'shonenstudio', ar:'⚡ شونين أكشن', en:'⚡ Shonen action' },
+      { value:'kawaii', ar:'🌸 كاواي باستيل', en:'🌸 Kawaii' },
+      { value:'webtoon', ar:'📱 ويبتون', en:'📱 Webtoon' },
+      { value:'retro90s', ar:'📼 أنمي التسعينات', en:'📼 Retro 90s' },
     ],
     heritage: [
       { value:'kandora', ar:'👳 كندورة وغترة خليجية', en:'👳 Gulf Kandora & Ghutra', fr:'👳 Kandora du Golfe', hi:'👳 खाड़ी कंदुरा', ur:'👳 خلیجی کندورہ', bn:'👳 উপসাগরীয় কান্দুরা', ne:'👳 खाडी कान्दुरा' },
@@ -861,6 +1033,10 @@
       { value:'embroidered', ar:'🧵 ثوب نشل مطرز', en:'🧵 Embroidered Thobe Nashal', fr:'🧵 Robe brodée', hi:'🧵 कढ़ाई वाला थोब', ur:'🧵 کڑھائی والا لباس', bn:'🧵 সূচিকর্ম করা পোশাক', ne:'🧵 कसीदाकारी पोशाक' },
       { value:'saudi', ar:'🇸🇦 ثوب سعودي وشماغ', en:'🇸🇦 Saudi Thobe & Shemagh', fr:'🇸🇦 Thobe saoudien', hi:'🇸🇦 सऊदी थोब', ur:'🇸🇦 سعودی لباس', bn:'🇸🇦 সৌদি পোশাক', ne:'🇸🇦 साउदी पोशाक' },
       { value:'emirati', ar:'🇦🇪 كافتان إماراتي مطرز', en:'🇦🇪 Emirati Embroidered Kaftan', fr:'🇦🇪 Caftan émirati', hi:'🇦🇪 इमिराती काफ्तान', ur:'🇦🇪 اماراتی قفطان', bn:'🇦🇪 আমিরাতি কাফতান', ne:'🇦🇪 इमिराती काफ्तान' },
+      { value:'omani', ar:'🇴🇲 عماني بكمة', en:'🇴🇲 Omani' },
+      { value:'saudimen2', ar:'🧥 بشت وشماغ', en:'🧥 Bisht & shemagh' },
+      { value:'moroccanher', ar:'🇲🇦 جلباب مغربي', en:'🇲🇦 Moroccan djellaba' },
+      { value:'palestinian', ar:'🇵🇸 ثوب مطرّز', en:'🇵🇸 Embroidered thobe' },
     ],
     merge: [],
   };
@@ -978,8 +1154,82 @@
     });
   }
 
+  /* v-studio-cards: بطاقات الخيارات المصوّرة — صورة من assets/studio/options/
+     <الميزة>-<القيمة>.webp، وبلا صورة شارة أنيقة بحلقة ذهبية. السلكت مخفيّ
+     ومتزامن فقارئا التوليد والمقارنة عليه بلا تغيير. */
+  const studioCardsEl = $('#studioStyleCards');
+  function featureTitle(){
+    const b = tabsWrap.querySelector('.studioAiTabBtn[data-feature="' + feature + '"]');
+    return b ? b.textContent.trim() : '';
+  }
+  function openStudioPicker(){
+    if(!window.omranPicker || !styleEl) return;
+    const opts = Array.from(styleEl.options);
+    window.omranPicker.open({
+      title: featureTitle() || (isEn() ? '✨ AI style' : '✨ ستايل الذكاء الاصطناعي'),
+      count: opts.length + (isEn() ? ' options — pick yours' : ' خيارًا — اختر ما يناسبك'),
+      items: opts.map((opt) => ({
+        v: opt.value, title: opt.textContent.trim(), active: opt.value === styleEl.value,
+        img: 'assets/studio/options/' + feature + '-' + opt.value + '.webp',
+      })),
+      onPick: function(v){ styleEl.value = v; renderStudioStyleCards(); },
+    });
+  }
+  function renderStudioStyleCards(){
+    if(!studioCardsEl || !styleEl) return;
+    // v-studio-full-page: بطاقة مصغّرة «عرض الكل ›» تفتح معرضًا ملء الشاشة —
+    // نفس نظام أنماط الصور بالضبط (طلب المالك: كل المنتقيات بحجم صفحة كاملة).
+    studioCardsEl.style.display = 'block';
+    studioCardsEl.innerHTML = '';
+    const cur = Array.from(styleEl.options).find((o) => o.value === styleEl.value) || styleEl.options[0];
+    if(!cur) return;
+    const trig = document.createElement('div');
+    trig.id = 'studioStyleTrigger';
+    trig.style.cssText = 'display:flex; align-items:center; gap:10px; border:1px solid var(--border,#333); border-radius:12px; padding:8px 10px; cursor:pointer; background:var(--panel2,#101014);';
+    const img = document.createElement('img');
+    img.src = 'assets/studio/options/' + feature + '-' + cur.value + '.webp';
+    img.alt = cur.textContent.trim(); img.loading = 'eager';
+    img.style.cssText = 'width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
+    img.onerror = function(){ img.style.visibility = 'hidden'; };
+    const info = document.createElement('div');
+    info.style.cssText = 'flex:1; min-width:0;';
+    const nm = document.createElement('div');
+    nm.textContent = cur.textContent.trim();
+    nm.style.cssText = 'font-size:13.5px; font-weight:700;';
+    const sub = document.createElement('div');
+    sub.textContent = styleEl.options.length + (isEn() ? ' options for this feature' : ' خيارًا لهذه الميزة');
+    sub.style.cssText = 'font-size:11px; color:var(--muted,#999);';
+    info.appendChild(nm); info.appendChild(sub);
+    const all = document.createElement('span');
+    all.textContent = isEn() ? 'Browse all ›' : 'عرض الكل ›';
+    all.style.cssText = 'color:#d4af37; font-size:12.5px; font-weight:700; flex:none;';
+    trig.appendChild(img); trig.appendChild(info); trig.appendChild(all);
+    trig.onclick = openStudioPicker;
+    studioCardsEl.appendChild(trig);
+  }
+  /* v-studio-tabs: تبويبات الميزات بطاقات مصوّرة من assets/studio/features/. */
+  function photoizeStudioTabs(){
+    Array.from(tabsWrap.querySelectorAll('.studioAiTabBtn')).forEach((b) => {
+      if(b.querySelector('img')) return;
+      const f = b.dataset.feature;
+      b.style.cssText += ';position:relative; overflow:hidden; min-width:86px; height:104px; border-radius:12px; display:flex; align-items:flex-end; justify-content:center; padding:0 4px 5px; font-size:11px; font-weight:700;';
+      const img = document.createElement('img');
+      img.src = 'assets/studio/features/' + f + '.webp';
+      img.alt = ''; img.loading = 'lazy';
+      img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;';
+      img.onerror = function(){ img.remove(); };
+      const shade = document.createElement('div');
+      shade.style.cssText = 'position:absolute; left:0; right:0; bottom:0; height:44%; background:linear-gradient(transparent,rgba(0,0,0,.88)); z-index:1;';
+      b.insertBefore(shade, b.firstChild);
+      b.insertBefore(img, b.firstChild);
+      const txt = Array.from(b.childNodes).find((n) => n.nodeType === 3);
+      if(txt){ const sp = document.createElement('span'); sp.textContent = txt.textContent; sp.style.cssText = 'position:relative; z-index:2;'; b.replaceChild(sp, txt); }
+    });
+  }
+  photoizeStudioTabs();
   function setFeature(next){
     feature = next;
+    photoizeStudioTabs(); // ترجمة i18n تمسح حقن الصور — أعد حقن ما نقص
     Array.from(tabsWrap.querySelectorAll('.studioAiTabBtn')).forEach((b) => {
       b.classList.toggle('active', b.dataset.feature === next);
       b.classList.toggle('primary', b.dataset.feature === next);
@@ -994,6 +1244,7 @@
       if(imageALabelEl) imageALabelEl.textContent = t('studioAiImageALabel');
     }
     populateStyleSelect();
+    renderStudioStyleCards();
     buildCompareChecks();
     heritageCompareWrap.style.display = (feature === 'heritage') ? 'block' : 'none';
     resultWrap.style.display = 'none';
@@ -1014,6 +1265,9 @@
     closeHeaderMenu();
     setFeature(feature);
   };
+  // بطاقة الخيارات جاهزة من الإقلاع — لا تنتظر أول فتح (أي مسار فتح يجدها).
+  populateStyleSelect();
+  renderStudioStyleCards();
   btnClose.onclick = () => { modal.style.display = 'none'; };
   modal.addEventListener('click', (e) => { if(e.target === modal) modal.style.display = 'none'; });
 

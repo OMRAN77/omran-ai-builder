@@ -2,7 +2,7 @@
 // Runway video generation task using the site owner's own server-side API
 // key (RUNWAY_API_KEY env var).
 const RUNWAY_VERSION = '2024-11-06';
-const { resolveTaskId } = require('./runway-keys');
+const { resolveTaskId, RUNWAY_API_BASE } = require('./runway-keys');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -31,7 +31,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const upstream = await fetch('https://api.runwayml.com/v1/tasks/' + encodeURIComponent(rawId), {
+    const upstream = await fetch(RUNWAY_API_BASE + '/v1/tasks/' + encodeURIComponent(rawId), {
       method: 'GET',
       headers: {
         'Authorization': 'Bearer ' + apiKey,

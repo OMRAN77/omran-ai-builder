@@ -15,7 +15,8 @@ const { verifyToken } = require('./_lib/auth.js');
 const { kvGetJSON, kvPutJSON, kvIncr, kvExpire } = require('./_lib/kv.js');
 const { clientIp } = require('./_lib/_usage.js');
 
-const OWNER_USERNAME = (process.env.OWNER_USERNAME || 'omran').trim().toLowerCase();
+// v-owner-core: قائمة المالك الموحّدة — ‹omran› مدمج دائمًا والبيئة تضيف لا تستبدل.
+const { isOwnerName } = require('./_lib/_owner.js');
 const MODEL = 'claude-sonnet-5'; // keep in sync with api/_lib/claude.js
 const MAX_BASE64_CHARS = 14 * 1024 * 1024; // ~14MB of base64 payload
 const GUEST_PROCESS_PER_DAY = 3;
@@ -110,28 +111,15 @@ function languageRules(lang, nativeLang, examLang) {
     + (lang ? ' (وإن كان المحتوى نصًا قصيرًا غامض اللغة فاستخدم اللغة: ' + lang + ')' : '') + '.';
 }
 
-async function callClaude(apiKey, contentBlocks, lang, nativeLang, examLang, stage) {
-  const level = (stage || 'university') === 'university' ? 'جامعي' : 'مدرسي مناسب لمرحلة: ' + stage;
-  const sys = 'أنت مساعد تعليمي خبير. يُرسل إليك محتوى محاضرة (نص أو PDF أو صور). '
-    + 'حلل المحتوى وأعد فقط JSON صالحًا بلا أي نص خارجه وبلا أسوار كود، بهذا الشكل بالضبط:\n'
-    + '{"title":"عنوان قصير للدرس","subject":"اسم المادة المقترح (كلمة أو كلمتان)","summary":"ملخص منظم بصيغة ماركداون (عناوين، نقاط، **غامق**) يغطي كل الأفكار المهمة","flashcards":[{"q":"سؤال","a":"جواب"}],"quiz":[{"q":"سؤال","options":["أ","ب","ج","د"],"correct":0,"explain":"شرح قصير","level":"basic","section":"عنوان القسم في الملخص"}],"written":[{"q":"سؤال مقالي قصير","rubric":["نقطة يجب أن ترد في الإجابة الكاملة"],"level":"mid","section":"عنوان القسم في الملخص"}]}\n'
-    + 'القواعد:\n'
-    + '- flashcards بين 8 و14 بطاقة.\n'
-    + '- quiz = 15 سؤالًا بالضبط: 5 بمستوى "basic" و5 بمستوى "mid" و5 بمستوى "advanced". لكل سؤال 4 خيارات بالضبط و"correct" رقم من 0 إلى 3.\n'
-    + '- معنى المستويات (مهم جدًا — الفرق في نوع التفكير المطلوب لا في التعقيد اللغوي):\n'
-    + '  basic = استدعاء وتذكّر: تعريف، مصطلح، صيغة، حقيقة وردت نصًا في المحاضرة.\n'
-    + '  mid = تطبيق: يطبّق الطالب قاعدة أو خطوة على حالة مشابهة لما ورد في المحاضرة.\n'
-    + '  advanced = فهم وتحليل: لماذا؟ ماذا يحدث لو تغيّر شرط؟ مقارنة، استنتاج، أو حالة لم ترد حرفيًا في المحاضرة لكنها تُشتق منها.\n'
-    + '- ممنوع أن يكون سؤال advanced مجرد سؤال basic بصياغة أطول أو بأرقام أكبر. إن لم تجد مادة كافية لخمسة أسئلة advanced حقيقية فأعطِ ما تجده واملأ الباقي من mid.\n'
-    + '- written = 3 أسئلة مقالية قصيرة (واحد لكل مستوى)، لكل سؤال "rubric" فيه 2 إلى 4 نقاط محدّدة يجب أن ترد في الإجابة الكاملة. النقاط ملموسة وقابلة للتحقق، لا عبارات عامة.\n'
-    + '- "section" في كل سؤال = عنوان القسم في الملخص الذي يغطي هذا السؤال، منسوخ حرفيًا من عناوين الملخص، ليُوجَّه الطالب لمراجعته عند الخطأ.\n'
-    + '- مستوى الصياغة والعمق: ' + level + '.\n'
-    + languageRules(lang, nativeLang, examLang)
-    + ' لا تكتب أي شيء خارج كائن JSON.';
+/* v-edu-split: شكوى المستخدمين «صفحة التعليم بطيئة جدًا» — التحليل كان نداءً
+   واحدًا ضخمًا (ملخص + بطاقات + اختبار + مقالي معًا) يستغرق دقيقة وأكثر.
+   الآن نداءان متوازيان على نفس المحتوى: الملخص | الأسئلة كلها — الزمن الكلي
+   يصير زمن الأطول فقط (~النصف) بنفس المحتوى حرفيًا. */
+async function anthropicJSON(apiKey, sys, contentBlocks, maxTokens) {
   const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     // v407: مهلة خاصة 120ث — التحليل التعليمي الثقيل يتجاوز مهلة الـ30ث العامة
-    signal: AbortSignal.timeout(120000),
+    signal: AbortSignal.timeout(280000),
     headers: {
       'Content-Type': 'application/json',
       'x-api-key': apiKey,
@@ -139,7 +127,7 @@ async function callClaude(apiKey, contentBlocks, lang, nativeLang, examLang, sta
     },
     body: JSON.stringify({
       model: m,
-      max_tokens: 12000,
+      max_tokens: maxTokens,
       system: sys,
       messages: [{ role: 'user', content: contentBlocks }],
     }),
@@ -160,6 +148,50 @@ async function callClaude(apiKey, contentBlocks, lang, nativeLang, examLang, sta
   }
   const text = (data && data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
   return extractJSON(text);
+}
+function eduLangTail(lang, nativeLang, examLang, stage) {
+  const level = (stage || 'university') === 'university' ? 'جامعي' : 'مدرسي مناسب لمرحلة: ' + stage;
+  return '- مستوى الصياغة والعمق: ' + level + '.\n'
+    + languageRules(lang, nativeLang, examLang)
+    + ' لا تكتب أي شيء خارج كائن JSON.';
+}
+// v-edu-questions: نظام شقّ الأسئلة مستقل — يخدم التحليل الكامل وإنقاذ
+// الدروس التي وصلت ببطاقات (0) واختبار (0) حين تعثّر شقّها الأول.
+function buildQuestionsSys(langTail) {
+  return 'أنت مساعد تعليمي خبير. يُرسل إليك محتوى محاضرة (نص أو PDF أو صور). '
+    + 'ابنِ منه أسئلة وأعد فقط JSON صالحًا بلا أي نص خارجه وبلا أسوار كود، بهذا الشكل بالضبط:\n'
+    + '{"flashcards":[{"q":"سؤال","a":"جواب"}],"quiz":[{"q":"سؤال","options":["أ","ب","ج","د"],"correct":0,"explain":"شرح قصير","level":"basic","section":"عنوان الجزء من المحاضرة"}],"written":[{"q":"سؤال مقالي قصير","rubric":["نقطة يجب أن ترد في الإجابة الكاملة"],"level":"mid","section":"عنوان الجزء من المحاضرة"}]}\n'
+    + 'القواعد:\n'
+    + '- flashcards بين 8 و14 بطاقة.\n'
+    + '- quiz = 15 سؤالًا بالضبط: 5 بمستوى "basic" و5 بمستوى "mid" و5 بمستوى "advanced". لكل سؤال 4 خيارات بالضبط و"correct" رقم من 0 إلى 3.\n'
+    + '- معنى المستويات (مهم جدًا — الفرق في نوع التفكير المطلوب لا في التعقيد اللغوي):\n'
+    + '  basic = استدعاء وتذكّر: تعريف، مصطلح، صيغة، حقيقة وردت نصًا في المحاضرة.\n'
+    + '  mid = تطبيق: يطبّق الطالب قاعدة أو خطوة على حالة مشابهة لما ورد في المحاضرة.\n'
+    + '  advanced = فهم وتحليل: لماذا؟ ماذا يحدث لو تغيّر شرط؟ مقارنة، استنتاج، أو حالة لم ترد حرفيًا في المحاضرة لكنها تُشتق منها.\n'
+    + '- ممنوع أن يكون سؤال advanced مجرد سؤال basic بصياغة أطول أو بأرقام أكبر. إن لم تجد مادة كافية لخمسة أسئلة advanced حقيقية فأعطِ ما تجده واملأ الباقي من mid.\n'
+    + '- written = 3 أسئلة مقالية قصيرة (واحد لكل مستوى)، لكل سؤال "rubric" فيه 2 إلى 4 نقاط محدّدة يجب أن ترد في الإجابة الكاملة. النقاط ملموسة وقابلة للتحقق، لا عبارات عامة.\n'
+    + '- "section" في كل سؤال = عنوان قصير للجزء من المحاضرة الذي يغطيه السؤال، ليُوجَّه الطالب لمراجعته عند الخطأ.\n'
+    + langTail;
+}
+async function callClaude(apiKey, contentBlocks, lang, nativeLang, examLang, stage) {
+  const langTail = eduLangTail(lang, nativeLang, examLang, stage);
+  const sysSummary = 'أنت مساعد تعليمي خبير. يُرسل إليك محتوى محاضرة (نص أو PDF أو صور). '
+    + 'حلل المحتوى وأعد فقط JSON صالحًا بلا أي نص خارجه وبلا أسوار كود، بهذا الشكل بالضبط:\n'
+    + '{"title":"عنوان قصير للدرس","subject":"اسم المادة المقترح (كلمة أو كلمتان)","summary":"ملخص منظم بصيغة ماركداون (عناوين، نقاط، **غامق**) يغطي كل الأفكار المهمة"}\n'
+    + langTail;
+  const sysQuestions = buildQuestionsSys(langTail);
+  const [sum, qs] = await Promise.all([
+    anthropicJSON(apiKey, sysSummary, contentBlocks, 8000),
+    // فشل شقّ الأسئلة وحده لا يُسقط الدرس — الملخص يصل والأسئلة تُستولد لاحقًا.
+    anthropicJSON(apiKey, sysQuestions, contentBlocks, 9000).catch(() => null),
+  ]);
+  if (!sum || !sum.summary) return null;
+  return {
+    title: sum.title, subject: sum.subject, summary: sum.summary,
+    flashcards: (qs && Array.isArray(qs.flashcards)) ? qs.flashcards : [],
+    quiz: (qs && Array.isArray(qs.quiz)) ? qs.quiz : [],
+    written: (qs && Array.isArray(qs.written)) ? qs.written : [],
+  };
 }
 // ---------- ✍️ تصحيح إجابة مقالية مقابل معيار (نص فقط — رخيص) ----------
 // Deliberately NOT a pass/fail verdict. A student learns from "you covered X,
@@ -187,7 +219,7 @@ async function callClaudeGrade(apiKey, payload, lang, nativeLang) {
   const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     // v407: مهلة خاصة 120ث — التحليل التعليمي الثقيل يتجاوز مهلة الـ30ث العامة
-    signal: AbortSignal.timeout(120000),
+    signal: AbortSignal.timeout(280000),
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify({ model: m, max_tokens: 2000, system: sys, messages: [{ role: 'user', content: user }] }),
   });
@@ -220,7 +252,7 @@ async function callClaudeExpense(apiKey, contentBlocks, lang) {
   const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     // v407: مهلة خاصة 120ث — التحليل التعليمي الثقيل يتجاوز مهلة الـ30ث العامة
-    signal: AbortSignal.timeout(120000),
+    signal: AbortSignal.timeout(280000),
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify({ model: m, max_tokens: 8000, system: sys, messages: [{ role: 'user', content: contentBlocks }] }),
   });
@@ -255,7 +287,7 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     // حارس الميزات المتقاعدة — 410 قبل أي استخدام مفتاح (docqa/docask/gov/cv).
     if (isRetired(action)) { retiredResponse(res, action); return; }
     const username = body.token ? verifyToken(body.token) : null;
-    const isOwner = !!username && String(username).trim().toLowerCase() === OWNER_USERNAME;
+    const isOwner = isOwnerName(username);
 
     // ---------------- process ----------------
     if (action === 'process') {
@@ -363,6 +395,123 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       result.flashcards = result.flashcards.filter((c) => c && c.q && c.a);
       if (!result.subject) result.subject = subjName;
       res.status(200).json({ ok: true, lesson: result, guest: !username });
+      return;
+    }
+
+    // ---------------- 🩹 questions: إنقاذ درس ببطاقات (0) — توليد الأسئلة وحدها من الملخص ----------------
+    if (action === 'questions') {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      const qSummary = String(body.summary || '').slice(0, 60000).trim();
+      if (!qSummary) { res.status(400).json({ error: 'لا يوجد ملخص لتوليد الأسئلة منه.' }); return; }
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        const max = username ? USER_PROCESS_PER_DAY : GUEST_PROCESS_PER_DAY;
+        if (await overDailyLimit(subject, 'proc', max)) { res.status(402).json({ error: 'وصلت للحد اليومي. عد غدًا 🌙' }); return; }
+      }
+      const qTail = eduLangTail(body.lang, body.nativeLang, body.examLang, body.stage || 'university');
+      let qResult = null;
+      try {
+        qResult = await anthropicJSON(apiKey, buildQuestionsSys(qTail),
+          [{ type: 'text', text: 'محتوى المحاضرة (ملخص الدرس):\n\n' + qSummary }], 9000);
+      } catch (e) {
+        res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذر توليد الأسئلة: ' + (e.message || 'خطأ') + ' — حاول مرة أخرى.' });
+        return;
+      }
+      if (!qResult || !Array.isArray(qResult.quiz) || !qResult.quiz.length) {
+        res.status(502).json({ error: 'تعذر توليد الأسئلة — أعد المحاولة.' });
+        return;
+      }
+      qResult.quiz = qResult.quiz.filter((q) => q && q.q && Array.isArray(q.options) && q.options.length === 4 && q.correct >= 0 && q.correct <= 3);
+      qResult.flashcards = (qResult.flashcards || []).filter((c) => c && c.q && c.a);
+      res.status(200).json({ ok: true, flashcards: qResult.flashcards, quiz: qResult.quiz, written: Array.isArray(qResult.written) ? qResult.written : [] });
+      return;
+    }
+
+    // ---------------- 🧪 lab: الدرس الحي — تجربة تفاعلية مولّدة من الدرس (v-edu-lab) ----------------
+    if (action === 'lab') {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      const lessonId = String(body.id || '').slice(0, 64).replace(/[^A-Za-z0-9_-]/g, '');
+      const labKey = (username && lessonId) ? ('db/edu/labs/' + encodeURIComponent(username) + '/' + lessonId + '.json') : null;
+      // المختبر المحفوظ يُعاد بلا استهلاك حصة ولا نداء نموذج
+      if (labKey && !body.force) {
+        try {
+          const cached = await kvGetJSON(labKey);
+          if (cached && cached.html) { res.status(200).json({ ok: true, html: cached.html, cached: true }); return; }
+        } catch (e) { /* best-effort: الكاش رفاهية — التوليد يغطي */ }
+      }
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        const max = username ? USER_PROCESS_PER_DAY : GUEST_PROCESS_PER_DAY;
+        if (await overDailyLimit(subject, 'proc', max)) {
+          res.status(402).json({ error: 'وصلت للحد اليومي. عد غدًا 🌙' });
+          return;
+        }
+      }
+      const title = String(body.title || '').slice(0, 160).trim();
+      const subjName = String(body.subject || '').slice(0, 80).trim();
+      const summary = String(body.summary || '').slice(0, 14000).trim();
+      if (!title || !summary) { res.status(400).json({ error: 'الدرس غير مكتمل — حلّل المحاضرة أولًا.' }); return; }
+      const nat = String(body.nativeLang || body.lang || 'ar').slice(0, 8);
+      const sys = 'أنت مطوّر ألعاب تعليمية عبقري. يُعطى إليك ملخص درس، ومطلوب منك بناء «تجربة حية»: '
+        + 'صفحة HTML واحدة كاملة تفاعلية تجعل الطالب يلعب بجوهر الدرس بيديه ويرى النتيجة فورًا.\n'
+        + 'قواعد إلزامية:\n'
+        + '1. ملف HTML واحد كامل (doctype + head + body) يعمل فورًا بلا إنترنت: لا مكتبات خارجية، لا صور خارجية، لا خطوط خارجية — CSS وJS مدمجان.\n'
+        + '2. ممنوع script type=module. السكربت عادي في نهاية body. أي دالة أحداث معرفة globally أو مربوطة بـaddEventListener في نهاية السكربت. كل زر يعمل فعلًا.\n'
+        + '3. تفاعل حقيقي بجوهر الدرس: منزلقات/سحب/أزرار تغيّر معاملات المفهوم الأساسي (قانون، معادلة، دورة، عملية) ورسم أو محاكاة تتحدث فورًا مع كل تغيير — ليست عرض شرائح ولا نصًا يُقرأ.\n'
+        + '4. وضع تحدٍّ صغير: بعد اللعب الحر، زر «تحدّي» يطرح 3 مهام قصيرة داخل التجربة نفسها (اضبط القيمة لتحقق كذا…) مع نقاط وتشجيع.\n'
+        + '5. تصميم عصري جميل: خلفية داكنة أنيقة، ألوان ذهبية مميزة، أرقام كبيرة واضحة، متجاوب للجوال (أزرار كبيرة للمس، لا سكرول أفقي).\n'
+        + '6. لغة الواجهة: ' + nat + (/^ar/i.test(nat) ? ' مع اتجاه rtl.' : '.') + '\n'
+        + '7. الكود مركّز وأنيق بحد أقصى نحو 500 سطر — تجربة واحدة متقنة خير من صفحة متخمة.\n'
+        + '8. أعد فقط كتلة ```html واحدة فيها الملف كاملًا — لا شرح قبلها ولا بعدها.';
+      const user = 'المادة: ' + (subjName || 'عام') + '\nعنوان الدرس: ' + title + '\n\nملخص الدرس:\n' + summary
+        + '\n\nابنِ التجربة الحية الآن — اختر أهم مفهوم قابل للمحاكاة في هذا الدرس بالذات واجعله ملموسًا.';
+      /* v-lab-haiku: البتر استمر حتى بميزانية 14 ألفًا — سونيت أبطأ من أن
+         يكتب صفحة غنية كاملة ضمن المهلة. هايكو 4.5 أسرع ~3 أضعاف في
+         التوليد فتكتمل الصفحة في ~دقيقة ونصف، ولو انقطع عند السقف يُكمل
+         تلقائيًا بجولة إتمام واحدة (prefill) — لا «تجربة غير مكتملة». */
+      const LAB_MODEL = process.env.EDU_LAB_MODEL || 'claude-haiku-4-5-20251001';
+      const doRequest = (m, msgs, budget) => fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        signal: AbortSignal.timeout(280000),
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: m, max_tokens: budget, system: sys, messages: msgs }),
+      });
+      const baseMsgs = [{ role: 'user', content: user }];
+      let labModel = LAB_MODEL;
+      let r2 = await doRequest(labModel, baseMsgs, 14000);
+      let d2 = await r2.json().catch(() => null);
+      if (!r2.ok && r2.status === 404 && d2 && d2.error && /model/i.test(JSON.stringify(d2.error))) {
+        labModel = RESOLVED_MODEL || (await resolveModel(apiKey));
+        r2 = await doRequest(labModel, baseMsgs, 14000); d2 = await r2.json().catch(() => null);
+      }
+      if (!r2.ok) {
+        const msg = (d2 && d2.error && d2.error.message) || ('HTTP ' + r2.status);
+        res.status(r2.status === 429 ? 429 : 502).json({ error: 'تعذر بناء التجربة: ' + msg + ' — حاول مرة أخرى.' });
+        return;
+      }
+      let raw = (d2 && d2.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+      // جولة إتمام واحدة: الرد انقطع عند السقف → نكمله من حيث توقف حرفيًا.
+      if (d2 && d2.stop_reason === 'max_tokens') {
+        try {
+          const rc = await doRequest(labModel, [{ role: 'user', content: user }, { role: 'assistant', content: raw }], 8000);
+          const dc = await rc.json().catch(() => null);
+          if (rc.ok && dc) raw += (dc.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+        } catch (e) { console.warn('[edu] lab-continue ' + (e && e.message)); }
+      }
+      let html = '';
+      const fence = raw.match(/```html\s*([\s\S]*?)```/i);
+      if (fence) html = fence[1].trim();
+      else if (/^\s*<!doctype|^\s*<html/i.test(raw)) html = raw.trim();
+      // فتحة سور بلا إغلاق (انقطاع) لكن الصفحة نفسها مكتملة — خذها.
+      if (!html) { const open = raw.match(/```html\s*([\s\S]*)$/i); if (open) html = open[1].trim(); }
+      if (!html || html.length < 500 || html.length > 200000 || !/<\/html>\s*$/i.test(html)) {
+        res.status(502).json({ error: 'وصلت تجربة غير مكتملة من النموذج — أعد المحاولة.' });
+        return;
+      }
+      if (labKey) { try { await kvPutJSON(labKey, { html, at: Date.now() }); } catch (e) { /* best-effort: يبقى الرد للعميل */ } }
+      res.status(200).json({ ok: true, html });
       return;
     }
 
@@ -542,6 +691,11 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       if (action === 'delete') {
         const next = lessons.filter((x) => x.id !== body.id);
         await kvPutJSON(key, next);
+        // v-edu-lab: مختبر الدرس المحذوف يُنظف معه
+        try {
+          const lid = String(body.id || '').slice(0, 64).replace(/[^A-Za-z0-9_-]/g, '');
+          if (lid) await require('./_lib/kv.js').kvDel('db/edu/labs/' + encodeURIComponent(username) + '/' + lid + '.json');
+        } catch (e) { /* best-effort: بقايا مختبر يتيمة لا تضر */ }
         res.status(200).json({ ok: true });
         return;
       }
@@ -588,6 +742,9 @@ module.exports = withErrorCapture('edu', async (req, res) => {
 
     res.status(400).json({ error: 'unknown action: ' + action });
   } catch (e) {
-    res.status(500).json({ error: 'Edu error: ' + (e && e.message ? e.message : String(e)) });
+    const __m = (e && e.message ? e.message : String(e));
+    // v-edu-timeouts: مهلة التوليد تُشرح بالعربي لا بخطأ إنجليزي خام.
+    if (/timeout|abort/i.test(__m)) { res.status(504).json({ error: 'التوليد أخذ وقتًا أطول من المتوقع — أعد المحاولة الآن، غالبًا تنجح فورًا.' }); return; }
+    res.status(500).json({ error: 'Edu error: ' + __m });
   }
 });

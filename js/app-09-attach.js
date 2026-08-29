@@ -1672,19 +1672,7 @@ window.chatRegenerateMessage = function(index){
   sendPrompt();
 };
 
-// الردود الاجتماعية القصيرة لا تحتاج نموذجًا أو بحثًا. إبقاؤها محلية يمنع
-// البتر والتغيّر وتسرب الذاكرة حتى لو تعطّل أي مزود أو انتقل التطبيق للاحتياط.
-function deterministicSocialReply(raw){
-  const s = String(raw || '').trim();
-  const english = !/[\u0600-\u06FF]/.test(s);
-  if(isCasualCheckIn(s)) return english ? "I'm good, how are you?" : 'بخير، كيف أنت؟';
-  if(!isPureGreeting(s)) return null;
-  if(/السلام عليكم/i.test(s)) return 'وعليكم السلام';
-  if(/صباح الخير/i.test(s)) return 'صباح النور';
-  if(/مساء الخير/i.test(s)) return 'مساء النور';
-  if(english) return 'Hello!';
-  return 'هلا وغلا';
-}
+// v-social-alive: deterministicSocialReply حُذفت — التحية للنموذج دائمًا.
 
 function latestOriginalUserImage(cur){
   try{
@@ -2109,6 +2097,17 @@ async function sendPrompt(){
   genAbortController = new AbortController();
   btnStop.classList.add('live');
   __omranArmWatchdog();  // v586
+/* v-err-human: أخطاء الشبكة العابرة كانت تنزل خامًا في المحادثة
+   («⚠️ Load failed» عند مستخدمة حقيقية) — تُترجم لعربي واضح مع إرشاد. */
+function __friendlyErr(e){
+  var m = (e && e.message) ? String(e.message) : String(e || '');
+  if(/Load failed|Failed to fetch|NetworkError|network error|The Internet connection|cancelled|ERR_NETWORK|ERR_INTERNET/i.test(m)){
+    var ar = (localStorage.getItem('aiapp_lang') || 'ar') === 'ar';
+    return ar ? 'انقطع الاتصال لحظة أثناء الرد 📡 — أعد إرسال سؤالك وسيصلك الجواب.'
+              : 'Connection dropped for a moment 📡 — resend your question.';
+  }
+  return m;
+}
 
   const thinkingDiv = document.createElement('div');
   thinkingDiv.className = 'msg assistant';
@@ -2140,8 +2139,13 @@ async function sendPrompt(){
   const __questionStartRe = /^(شو|وش|ايش|إيش|كيف|ليش|ليه|هل|متى|وين|كم|ما هو|ماهو|من هو|what|how|why|when|where|who)\b/i;
   // مشروع مفتوح + فعل تعديل → مسار التعديل الحقيقي حتى لو العنصر مو في القائمة
   // (كان "شيل المستطيل الأصفر" يروح للنقاش فيرد "شلت" بدون أي كود — خطأ 26/7).
-  const __editIntent = !!cur.code && __editVerbRe.test(text) && (__editObjRe.test(text) || (!__questionStartRe.test(text.trim()) && text.trim().length <= 90));
-  const __routeFix = (__routeFixRe.test(text) || __editIntent) && !!cur.code;
+  /* v-img-write-first (لقطة عمران: أرفق صورته وطلب الكتابة عليها فرسم
+     التطبيق طفلًا آخر): وجود كود سابق بالمحادثة كان يخطف «اكتب عليها…»
+     لمسار تعديل الكود. صورة مرفقة + نية كتابة = الكتابة على صورته هو،
+     ولها الأسبقية المطلقة على أي مسار كود. */
+  const __imgWriteAsk = !!(pendingAttachments.some(a => a.isImage)) && /(اكتب|أكتب|حط\s|ضيف|أضف|اضف|write|put|add)/i.test(text || '');
+  const __editIntent = !__imgWriteAsk && !!cur.code && __editVerbRe.test(text) && (__editObjRe.test(text) || (!__questionStartRe.test(text.trim()) && text.trim().length <= 90));
+  const __routeFix = (__routeFixRe.test(text) || __editIntent) && !!cur.code && !__imgWriteAsk;
   // البناء لا يبدأ إلا بفعل أمر صريح (ابني/بناء/سوي/اعمل...) + كلمة تطبيق/موقع/بوت.
   const __routeCmdRe = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|اضف|أضف|عدل|عدّل|طور|طوّر|حدث|حدّث|كمل|أكمل|اكمل|ممكن|ابغي|أبغي|ابغى|أبغى|ابي|أبي|بغيت|اريد|أريد|عطني|أعطني|اعطني|هات|سولي|سوّلي|(?:^|\s)سو\s|build|create|make|design|develop|add|update|improve|\bwant\b|\bgive\b|\bcan you\b)/i;
   // 🚫 قرار نهائي (26/7): "اسأل الكل" ملغي بالكامل — لا زر ولا كتابة.
@@ -2153,13 +2157,9 @@ async function sendPrompt(){
   let __lastStreamPartial = '';
 
   try{
-    // تحية/سؤال حال بلا مرفقات: جواب محلي حاسم، قبل أي وضع أو مزود أو بحث.
-    const __socialReply = attachmentsForMsg.length ? null : deterministicSocialReply(text);
-    if(__socialReply){
-      try{ if(window.__chatStatus) window.__chatStatus.release(); }catch(e){ __swallow(e, 'ui:social-reply'); }
-      cur.messages.push({ role: 'assistant', content: __socialReply, askAllReply: false, _localSocial: true });
-      return;
-    }
+    // v-social-alive: الردود المخزنة الحرفية حُذفت نهائيًا بطلب
+    // المالك — «انا اكلم الذكاء الاصطناعي مش قوالب». كل تحية تمر للنموذج
+    // ببصمة الشخصية، والخادم يعزلها عن الذاكرة والمواضيع القديمة بنفسه.
     // 🤖 وكيل عمران: وضع الوكيل المستقل (Claude Sonnet 4 + أدوات) — يخطط ويبحث ويبني.
     if(window.__agentModeOn && !imageAttachments.length){
       await runOmranAgent(cur, apiText, thinkingDiv);
@@ -2188,7 +2188,14 @@ async function sendPrompt(){
     // على نفس الموضوع من السياق.
     const __freshChat = cur.messages.filter(m => m.role === 'user').length <= 1;
     const __isLogoFetch = __freshChat && __logoFetchRe.test(text) && !__logoDesignRe.test(text) && !__logoNewRe.test(text) && !__logoRefRe.test(text) && !(cur && cur.code);
-    const __isPhotoFetch = !__isLogoFetch && __photoFetchRe.test(text) && !__genDrawRe.test(text) && !cur.adMode && !cur.awaitingAdMode;
+    // v-design-img-followup (لقطات عمران ٢٧ أغسطس): «عطني صورة التصميم/الفكرة»
+    // بعد نقاش تصميم كان يُخطف لبحث صور حقيقية فيرجع صور أجنبية لا علاقة لها —
+    // الإشارة لتصميمٍ من المحادثة نفسها ليست بحثًا: تمر للنموذج فيرسمها.
+    const __designCtxRe = /التصميم|التصور|التصوّر|الفكر[ةه]|المخطط|تصميم(ك|ي|نا)|فكرت(ك|ي)|اللي (رسمت|صممت|فوق)|الي (رسمت|صممت|فوق)|نفس (التصميم|الفكر)/;
+    // v-photo-make (لقطة عمران: «صورة جميلة عليها دعاء الجمعة» رُدّت بفشل جلب):
+    // «صورة عليها/مكتوب عليها…» طلب صناعة لا جلب — يمر للنموذج فيرسمها.
+    const __photoMakeRe = /عليها|عليه\s|مكتوب|اكتب|دعاء|أدعي[ةه]|تهنئ|بطاق[ةه]|معايد|قالب|بوستر|منشور/i;
+    const __isPhotoFetch = !__isLogoFetch && __photoFetchRe.test(text) && !__genDrawRe.test(text) && !__designCtxRe.test(text) && !__photoMakeRe.test(text) && !cur.adMode && !cur.awaitingAdMode;
     if(!imageAttachments.length && !__editIntent && (__isLogoFetch || __isPhotoFetch)){
       const __logoMsg = { role: 'assistant', content: lang === 'ar' ? (__isLogoFetch ? '🔍 أجيب لك الشعار الأصلي من البحث…' : '🔍 أجيب لك صور حقيقية من البحث…') : '🔍 Fetching real images from live search…', _loading: true };
       cur.messages.push(__logoMsg);
@@ -2220,22 +2227,50 @@ async function sendPrompt(){
           __logoMsg._loading = false;
           __logoMsg.content = lang === 'ar' ? (__isLogoFetch ? 'هذا الشعار الأصلي من البحث المباشر 👇 اضغط على الصورة لعرضها كبيرة، أو حمّلها مباشرة.' : 'هذي صور حقيقية من البحث المباشر 👇 اضغط على أي صورة لعرضها كبيرة، أو حمّلها مباشرة.') : 'Here are real images from live search 👇';
           __logoMsg.attachments = __imgs.map((u, i) => ({ isImage: true, dataUrl: (typeof u === 'string' ? u : (u && u.url) || ''), name: (__isLogoFetch ? 'logo-' : 'photo-') + (i + 1) + '.png' })).filter(a => a.dataUrl);
-        } else {
+        } else if(__isLogoFetch){
           __logoMsg._loading = false;
-          __logoMsg.content = lang === 'ar' ? (__isLogoFetch ? 'ما حصلت الشعار في البحث المباشر 😕 جرب تكتب اسم الجهة بشكل أوضح (مثال: "شعار شرطة دبي").' : 'ما حصلت صور في البحث المباشر 😕 جرب توضح طلبك أكثر.') : 'Could not find images via live search. Try a clearer request.';
+          __logoMsg.content = lang === 'ar' ? 'ما حصلت الشعار في البحث المباشر 😕 جرب تكتب اسم الجهة بشكل أوضح (مثال: "شعار شرطة دبي").' : 'Could not find the logo via live search. Try a clearer name.';
+        } else {
+          /* v-photo-fallthrough (عقل واحد): فشل جلب الصور لا يعود رسالة فشل
+             مخزنة — الطلب يمرّ للنموذج فيرسم المطلوب أو يتصرف بذكائه. */
+          cur.messages = cur.messages.filter(m => m !== __logoMsg);
+          renderMessages(true);
+          throw { __fallthrough: true };
         }
       }catch(e){
-        __logoMsg._loading = false;
-        __logoMsg.content = lang === 'ar' ? 'تعذر جلب الشعار الآن — جرب مرة ثانية.' : 'Could not fetch the logo right now — try again.';
+        if(e && e.__fallthrough){
+          /* يكمل المسار الطبيعي للنموذج تحت */
+        } else if(__isLogoFetch){
+          __logoMsg._loading = false;
+          __logoMsg.content = lang === 'ar' ? 'تعذر جلب الشعار الآن — جرب مرة ثانية.' : 'Could not fetch the logo right now — try again.';
+        } else {
+          cur.messages = cur.messages.filter(m => m !== __logoMsg);
+          renderMessages(true);
+        }
       }
-      renderAll(); saveState();
-      thinkingDiv && thinkingDiv.remove();
-      return;
+      const __photoHandled = cur.messages.includes(__logoMsg);
+      if(__photoHandled){
+        renderAll(); saveState();
+        thinkingDiv && thinkingDiv.remove();
+        return;
+      }
+      /* لم يُعالج — يسقط للنموذج (عقل واحد) */
     }
     // 🖼️ تعديل الصور بالأوامر النصية: صورة مرفقة + طلب تعديل → Gemini يرجع الصورة معدّلة
     // Follow-up edits on the same image work too ("زين، الحين كبّر الخط").
     const __imgEditRe = /(?:^|[\s،,.!؟?()"'«»])(?:تعديل|عدل|عدّل|شيل|ابعد|أبعد|غير|غيّر|ضيف|أضف|اضف|حط|امسح|احذف|ازل|أزل|اجعل|خل|لون|لوّن|كبر|كبّر|صغر|صغّر|زخرف|اكتب|ارسم|حسن|حسّن|حول|حوّل|صمم|صمّم|نسق|نسّق|رتب|رتّب|ديكور|سوي|سوّي|سولي|دمج|ادمج|أدمج)|سو لي|\b(?:edit|change|add|put|remove|erase|make|recolor|write|draw|enhance|convert|transform|redesign|restyle|decor|merge|combine)\b/i; // v720: مطابقة على بداية كلمة فقط — «ادخل» ليست «خل» و«احوله» تبقى تمر عبر استثناء المواضيع
     const __srcImg = imageAttachments.length ? imageAttachments[imageAttachments.length - 1] : null;
+    /* v-font-ask (لقطة عمران: «عدل الخط» وحدها راحت لمحرر الصور فطلعت
+       «مشغولة»): أمر الخط الناقص يسأل محليًا عن الخط واللون والمكان —
+       ويعرض الخطوط العشرة — بدل مغامرة توليد. */
+    if(/^\s*(?:عدل|عدّل|غير|غيّر|تعديل)\s*(?:الخط|النص|الكتاب[ةه])\s*[.!؟?]*\s*$/i.test(text || '') && cur.imageTextLayer && cur.imageTextLayer.baseB64){
+      try{ thinkingDiv && thinkingDiv.remove(); }catch(_){ /* guard-ok — cleanup, intentional */ }
+      cur.messages.push({role:'assistant',content: lang==='ar'
+        ? 'أبشر! قل لي وش تبي بالضبط وأعدّله فورًا على نفس الصورة ✍️\n\n• الخط: ديواني · ثلث · كوفي · نسخ · رقعة · فارسي · قرآني · عثماني\n• اللون: ذهبي · أبيض · أسود · أخضر · أزرق · أحمر · بيج\n• المكان: الأعلى · الوسط · الأسفل\n\nمثال: «غيّر الخط إلى ديواني ولونه ذهبي في الوسط»'
+        : 'Sure! Tell me exactly what to change ✍️ Font: diwani · thuluth · kufi · naskh · ruqaa · farsi · quran — Color: gold · white · black · green · blue · red — Position: top · middle · bottom'});
+      renderAll(); saveState();
+      return;
+    }
     // 🖊️ v727: «تعديل» أو «عدل» لوحدها بعد صورة → نسأل محليًا وش التعديل بدل رد دردشة عشوائي
     if(/^\s*(?:تعديل|عدل|عدّل|edit)\s*[.!؟?]*\s*$/i.test(text || '') && ((cur.lastEditedImage && cur.lastEditedImage.b64) || pendingAttachments.some(a => a.isImage) || __srcImg)){
       try{ thinkingDiv && thinkingDiv.remove(); }catch(_){ /* guard-ok — cleanup, intentional */ }
@@ -2691,7 +2726,7 @@ async function sendPrompt(){
         cur.messages.push({ role:'assistant', content:(lang==='ar'?'🎬 شخصيتك الكرتونية تتكلم بصوت جاهزة ✅ (الرابط صالح ٢٤ ساعة — نزّله عشان يظل عندك)':'🎬 Your talking cartoon character (with voice) is ready ✅ (link valid 24h — download it to keep it)'), attachments:[{ name:'talking-character.mp4', isVideo:true, url:__vurl }] });
         if(window.autoSaveVideo) window.autoSaveVideo(__vurl);
       }catch(e){
-        if(!(e && e.name === 'AbortError')){ cur.messages.push({ role:'assistant', content:'⚠️ ' + (e && e.message ? e.message : String(e)) }); }
+        if(!(e && e.name === 'AbortError')){ cur.messages.push({ role:'assistant', content:'⚠️ ' + __friendlyErr(e) }); }
       }
       cur.lastMsgWasImageEdit = false;
       renderAll(); saveState();
@@ -2793,7 +2828,7 @@ async function sendPrompt(){
         if(window.autoSaveVideo) window.autoSaveVideo(__vurl);
       }catch(e){
         if(!(e && e.name === 'AbortError')){
-          cur.messages.push({ role: 'assistant', content: '⚠️ ' + (e && e.message ? e.message : String(e)) });
+          cur.messages.push({ role: 'assistant', content: '⚠️ ' + __friendlyErr(e) });
         }
       }
       cur.lastMsgWasImageEdit = false;
@@ -3027,7 +3062,13 @@ function __showImgLoading(el, ar, en){
             __ci2.src = 'data:' + mime + ';base64,' + b64;
           });
           let __finalB64 = null, __finalMime = 'image/png';
+          /* v-named-font: المستخدم سمّى خطًا (رقعة/ديواني/ثلث…) = يريد ميزة
+             الخطوط المحلية بعينها — الكانفس يكتب بخطه المطلوب على صورته
+             نفسها بلا أي توليد (رسّام الذكاء يتجاهل اختيار الخط ويعيد رسم
+             المشهد أحيانًا — لقطة الطفل المستبدل). */
+          const __wantsNamedFont = /(ديواني|رقع[ةه]|كوفي|عثماني|نسخ|ثلث|فارسي|نستعليق|مصحف|قرآني|diwani|ruqaa|kufi|othmani|naskh|thuluth|farsi|nastaliq|quran)/i.test(text || '');
           try{
+            if(__wantsNamedFont) throw { __localFont: true }; /* مباشرة للكانفس */
             const __cmp = await __compressB64(__wb64, __wmime);
             const __aiTxtPrompt = 'Write this EXACT Arabic text verbatim onto the image — do NOT change, add, or remove any word or letter: \u00AB' + __resolvedText + '\u00BB. Use beautiful Arabic calligraphy with full diacritics (tashkeel) harmonizing with the scene palette and lighting. Place it ONLY in a clean empty area (sky, wall, margins) — NEVER over faces or the main subject. Do not alter anything else.';
             const __aiTRes = await fetch('/api/maha-image', {
@@ -3290,12 +3331,17 @@ function __showImgLoading(el, ar, en){
     // الدور الاجتماعي القصير يُعزل عن الذاكرة والمواضيع السابقة، لكن سؤال الحال
     // يبقى استمرارًا للمحادثة لا تحية جديدة.
     const __quietSocialTurn = isPureGreeting(text) || isCasualCheckIn(text);
+    /* v-style-rebirth: التوجيه القديم كان يفرض «كلمة إلى ثلاث بلا سؤال» فخرجت
+       التحية جافة حتى من النموذج — المالك رفضها. الآن بروح المجلس. */
     if(isPureGreeting(text)){
-      __sys = 'المستخدم أرسل تحية لفظية خالصة. أجب بتحية عربية قصيرة فقط من كلمة إلى ثلاث كلمات. لا تسأل أي سؤال، ولا تستخدم علامة استفهام، ولا تقل «كيف حالك» أو «كيف أساعدك»، ولا تعرض أي خدمة. لا تضف شيئًا بعد التحية.';
+      __sys = 'المستخدم أرسل تحية لفظية خالصة. رحّب به ترحيبًا حارًّا راقيًا بروح المجلس فيه حضور وشخصية — جملة أو جملتان بلا صيغة محفوظة — واسأله سؤالًا واحدًا طبيعيًّا عن حاله أو يومه. ممنوع «كيف أقدر أساعدك؟» الرسمية وعرض الخدمات، وممنوع فتح مواضيع قديمة أو استخدام الذاكرة.';
     } else if(isCasualCheckIn(text)){
-      __sys = 'هذا سؤال حال ضمن محادثة مستمرة، وليس تحية جديدة. أجب عن حالك مباشرةً بجملة عربية قصيرة وطبيعية واحدة، ويمكنك أن تسأله عن حاله باختصار. لا تبدأ بتحية، ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق، ولا تلتزم صيغة محفوظة.';
+      __sys = 'هذا سؤال حال ضمن محادثة مستمرة، وليس تحية جديدة. أجب عن حالك بدفء وحضور — جملتان أو ثلاث فيها روح — واسأله عن حاله أو يومه بسؤال واحد طبيعي. لا تبدأ بتحية جديدة، ولا تعرض المساعدة، ولا تذكر أي مشروع أو اهتمام أو موضوع سابق، ولا تلتزم صيغة محفوظة.';
     }
-    const apiMessages = [{role: 'system', content: __sys}];
+    /* v-clean-slate: __sys (كتاب قواعد العميل الثابت) يُوسم static — مسار العقل
+       الواحد يرشّحه (هوية النظام هناك من الخادم القصير)، والمسار الاحتياطي
+       القديم يبقى عليه. التوجيهات السياقية لكل دور (تحية، بناء، صورة) تمر. */
+    const apiMessages = [{role: 'system', content: __sys, __static: true}];
     // 🤝 v345: المستخدم وافق على عرض بناء قدّمه المزود في رده السابق — يبنيه الآن كاملًا.
     if(window.__buildOfferApproved){
       apiMessages.push({role: 'system', content: 'BUILD-OFFER APPROVAL (highest priority): In your PREVIOUS assistant message you offered to build a specific tool/app for the user and asked permission to start. The user has just approved. Build EXACTLY the tool/app you offered in that previous message NOW — completely, as ONE working single-file ```html app in this reply. Do NOT re-explain, do NOT repeat your earlier advice, do NOT ask again, and NEVER return to any earlier request that was rejected. Just build the offered tool fully.'});
@@ -3478,32 +3524,12 @@ DESIGN RULES (non-negotiable):
     // 👋 التحية اللفظية وحدها: رد قصير طبيعي بلا صيغة محفوظة.
     // سؤال المجاملة («كيف الحال؟») يبقى محادثة متصلة ولا يدخل هذا المسار.
     if(isPureGreeting(text)){
-      apiMessages.push({role: 'system', content: 'رسالة المستخدم الأخيرة تحية لفظية فقط وليست سؤالًا. اكتفِ بتحية قصيرة وطبيعية بلغة المستخدم، من دون صيغة ثابتة؛ لا تطرح أي سؤال ولا تعرض خدمات أو أمثلة، ولا تفتح موضوعًا سابقًا أو تستخدم الذاكرة، ولا تنادِ المستخدم باسم.'});
+      apiMessages.push({role: 'system', content: 'رسالة المستخدم الأخيرة تحية لفظية فقط وليست سؤالًا. رحّب به ترحيبًا حارًّا راقيًا بروح المجلس فيه حضور وشخصية بلغة المستخدم — جملة أو جملتان بلا صيغة ثابتة — واسأله سؤالًا واحدًا طبيعيًّا عن حاله أو يومه. ممنوع عرض الخدمات أو الأمثلة، وممنوع فتح موضوع سابق أو استخدام الذاكرة.'});
     }
-    // v311: أثناء تصميم إعلان (adMode مفعّل) ممنوع البحث الحي نهائيًا —
-    // تفاصيل «بيت للبيع...» تكمل التصميم ولا تتحول لبحث دوبيزل.
-    // v327: صورة مرفقة = تحليل/تصميم — ممنوع البحث الحي (كان يجيب صور بحث بلا علاقة).
-    if(!__curIsBuildTask && !cur.adMode && !cur.awaitingAdMode && !imageAttachments.length){
-      // v384: مؤشر بحث عميق — يظهر للمستخدم أن البحث جاري
-      const __deepRe384 = /بحث عميق|بحث شامل|تقرير مفصل|تحليل شامل|قارن بين|مقارنة.*بين|أفضل\s*(خيارات|بدائل|مواقع|شركات|تطبيقات)|deep research|comprehensive|detailed report|compare.*between/i;
-      let __searchIndicator = null;
-      if(__deepRe384.test(text)){
-        __searchIndicator = { role: 'assistant', content: lang === 'ar' ? '🔍 يبحث بعمق…' : '🔍 Deep searching…', _loading: true };
-        cur.messages.push(__searchIndicator);
-        renderMessages(true);
-      }
-      __searchData = await smartMaybeSearch(text, cur.messages.filter(m => m !== __searchIndicator));
-      if(__searchIndicator){
-        cur.messages = cur.messages.filter(m => m !== __searchIndicator);
-        renderMessages(true);
-      }
-      if(__searchData){
-        apiMessages.push({role: 'system', content: __searchData.note});
-        // 🔒 سؤال معلوماتي (تذكرة/سيارة/وظيفة/سعر...) = جواب نصي فقط —
-        // ممنوع منعًا باتًا بناء تطبيق/موقع/صفحة HTML أو إرجاع أي كود.
-        apiMessages.push({role: 'system', content: 'This is an INFORMATION question, NOT a build request. Reply in plain conversational text only. STRICTLY FORBIDDEN: building any app/site/booking page/HTML page or returning any code block. Just answer with the real information and links from the search results.'});
-      }
-    }
+    /* v-one-brain: طبقة البحث الاستباقي في العميل حُذفت كليًا بقرار المالك.
+       كانت تخمّن «هل هذا بحث؟» بمئات الأنماط وتحجز النموذج وتبحث مرتين —
+       الآن عقل واحد: النموذج يقرر بنفسه ويبحث بأداته، وبطاقات «المصادر»
+       تأتي من نتائج بحثه عبر حدث sources في البث. */
 
     // 📋 تقسيم المهام: للطلبات الكبيرة، نضع خطة خطوات ونتابعها حتى النهاية
     let __taskPlan = null, __planMsg = null;
@@ -3649,8 +3675,13 @@ DESIGN RULES (non-negotiable):
       // doesn't all pop in at once - a light typewriter feel rather than a
       // raw network-speed dump.
       const revealStates = new Map();
-      const REVEAL_CHARS_PER_TICK = 2;
-      const REVEAL_TICK_MS = 35;
+      /* v-reveal-fast: كانت 2 حرف/35مث = ~57 حرفًا بالثانية — رد 1500 حرف
+         يقضي 26 ثانية «يتكتب» على الشاشة بعدما خلّص النموذج فعلًا. هذا جزء
+         كبير من إحساس «المحادثة 30 ثانية». الآن الوتيرة تكيفية: تسارع مع
+         تراكم النص المنتظر فلا تتأخر عن البث أكثر من نحو نصف ثانية، وتبقى
+         ناعمة في البدايات القصيرة. */
+      const REVEAL_TICK_MS = 16;
+      const __revealStep = (st) => Math.max(4, Math.ceil((st.target.length - st.shown) / 25));
       const ensureRevealTimer = (msg) => {
         let st = revealStates.get(msg._uid);
         if(!st){
@@ -3660,7 +3691,7 @@ DESIGN RULES (non-negotiable):
         if(!st.timer){
           st.timer = setInterval(() => {
             if(st.shown < st.target.length){
-              st.shown = Math.min(st.target.length, st.shown + REVEAL_CHARS_PER_TICK);
+              st.shown = Math.min(st.target.length, st.shown + __revealStep(st));
               // v310: msg.content يحمل النص الكامل دائمًا — الحركة عرض فقط.
               // قبل: كان يُحفظ المقطع الجزئي، ولو سُكِّر التطبيق قبل نهاية
               // الحركة ينحفظ الرد مقطوعًا للأبد (سبب الردود الناقصة بالآيفون).
@@ -3833,7 +3864,7 @@ DESIGN RULES (non-negotiable):
             }
           }
           msg._failed = true;
-          msg.content = '⚠️ ' + msg.providerLabel + ': ' + err.message;
+          msg.content = '⚠️ ' + msg.providerLabel + ': ' + __friendlyErr(err);
           finalizeOne(msg);
         }
       };
@@ -4202,7 +4233,11 @@ DESIGN RULES (non-negotiable):
       // 🛠️ v468: البوّابة تعلو على اليد — في دور الاستئذان لا تُمرَّر الأدوات
       // إطلاقًا، وإلّا غلبت تعليمة «ابنِ ولا تستأذن» داخل chat.js. بعد الموافقة
       // يسقط __gateNoBuild فتعمل اليد كاملة (صور + كود + تجربة).
-      const __toolsWillRun = (window.__chatToolsOn !== false && !__routeFix && (!__gateNoBuild || !!__gateApprovedText) && !imageAttachments.length
+      // v-chat-vision: الصور مع كلود تمر بمسار الأدوات المباشر القوي نفسه —
+      // كانت تُقصى منه كلها فتسقط لمسار قديم أضعف (سبب تحليل الصور السطحي).
+      // بقية المزوّدات تبقى مُقصاة: كتل الرؤية بصيغة Anthropic لا تناسبها.
+      const __toolsWillRun = (window.__chatToolsOn !== false && !__routeFix && (!__gateNoBuild || !!__gateApprovedText)
+        && (!imageAttachments.length || __effProv === 'claude')
         && TOOL_PROVIDERS.indexOf(__effProv) !== -1
         && typeof window.callChatWithTools === 'function');
       if(__gateApprovedText && __toolsWillRun){
@@ -4215,6 +4250,7 @@ DESIGN RULES (non-negotiable):
       // v469: Q&A system prompt مدمج في __sys — لا حاجة لـ unshift إضافي.
       let reply, providerKey, switched, requestedKey;
       let __ctUsed = false;
+      let __ctSources = null; /* v-one-brain: مصادر بحث النموذج — نطاق يبلغ موضع اللصق */
       // 💬 عقل واحد: Claude وحده يرد في النقاش العادي — الاحتياط (GPT ثم Gemini)
       // صامت ويشتغل فقط إذا Claude تعطل أو خلص حده.
       // 🛠️ ومعه يداه: النقاش العادي على Claude يمرّ بحلقة الأدوات (بحث · قراءة
@@ -4223,10 +4259,10 @@ DESIGN RULES (non-negotiable):
       try{
         let __ct = null;
         if(__toolsWillRun){
-          try{ __ct = await window.callChatWithTools(apiMessages, onDelta, __effProv); }
+          try{ __ct = await window.callChatWithTools(apiMessages.filter(m => !m.__static), onDelta, __effProv); }
           catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; __swallow(e, 'chat:tools'); }
         }
-        if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); }
+        if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; }
         else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, onDelta, __teamOrder));
       }finally{
         window.__claudeModelOverride = null;
@@ -4260,8 +4296,8 @@ DESIGN RULES (non-negotiable):
       const __ansTxt = String((code ? stripCodeFromChat(explanation) : explanation) || '').trim();
       const __clarifyQ = __ansTxt.length < 140 && /[?？؟]\s*$/.test(__ansTxt);
       cur.messages.push({role: 'assistant', content: (code ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: code || null, providerLabel, providerKey, askAllReply: false,
-        // ✅ v535: عادت المصادر والصور إلى المحادثة (إلغاء إطفاء v368).
-        sources: (!__clarifyQ && __searchData && __searchData.sources) || undefined,
+        // v-one-brain: بطاقات المصادر من بحث النموذج نفسه (حدث sources في البث).
+        sources: (!__clarifyQ && (__ctSources || (__searchData && __searchData.sources))) || undefined,
         searchImages: (__searchData && __searchData.images) || undefined});
       // 👑 الرد الاحترافي اكتمل: حدّث رصيد النقاط وأظهر خصمًا متحركًا صغيرًا.
       try{
@@ -4297,7 +4333,7 @@ DESIGN RULES (non-negotiable):
       try{ settingsToast(t('premiumNoPoints')); }catch(_){ __swallow(_, "points:app-09-attach#29"); }
       try{ if(typeof openPremiumBuyPoints === 'function') openPremiumBuyPoints(); }catch(_){ __swallow(_, "points:app-09-attach#30"); }
     } else {
-      cur.messages.push({role: 'assistant', content: '⚠️ ' + err.message});
+      cur.messages.push({role: 'assistant', content: '⚠️ ' + __friendlyErr(err)});
     }
   }finally{
     __omranDisarmWatchdog();  // v586
@@ -4341,11 +4377,31 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
   // v378: شبكة أمان — لو علّق التحميل المحلي لأي سبب، نفتح المزامنة بعد 10 ثواني.
   setTimeout(() => { window.__localChatsLoaded = true; }, 10000);
   if(!window.indexedDB){ window.__localChatsLoaded = true; return; }
+  // v-idb-timeout: على iOS PWA قد يتجمد idbGet للأبد عند الإقلاع البارد —
+  // مهلة ٣ ثوانٍ ثم محاولة إنعاش واحدة (٥ ثوانٍ)؛ الفشل النهائي يُبلَّغ
+  // ويُترك للمرآة (v-idb-mirror) التي رسمت المحادثات أصلًا من أول لحظة.
+  const idbGetGuarded = async (key) => {
+    const withTimeout = (ms) => Promise.race([
+      idbGet(key),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('idb-timeout')), ms)),
+    ]);
+    try{ return await withTimeout(3000); }
+    catch(e1){
+      try{ return await withTimeout(5000); }
+      catch(e2){
+        try{
+          fetch('/api/system?action=client-errors', { method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ message: 'v-idb-hang: تجمّد تحميل المحادثات من IndexedDB — المرآة هي المعروضة', source: 'app-09', line: 0, col: 0, stack: '', url: location.pathname, ua: navigator.userAgent }) }).catch(function(){ /* guard-ok */ });
+        }catch(e3){ /* guard-ok: الإبلاغ ترف */ }
+        throw e2;
+      }
+    }
+  };
   try{
     const migrated = localStorage.getItem('aiapp_idb_on') === '1';
     if(!migrated){
       // أول تشغيل: بيانات localStorage هي المصدر → ننسخها إلى IndexedDB ثم نحرر المساحة.
-      const idbOld = await idbGet('aiapp_projects');
+      const idbOld = await idbGetGuarded('aiapp_projects');
       const merged = Array.isArray(idbOld) && idbOld.length
         ? idbOld.filter(p => !state.projects.some(q => q.id === p.id)).concat(state.projects)
         : state.projects;
@@ -4355,13 +4411,20 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
       try{ localStorage.removeItem('aiapp_projects'); }catch(e){ __swallow(e, "save:app-09-attach#33"); }
       renderAll();
     } else {
-      const idbProjects = await idbGet('aiapp_projects');
+      const idbProjects = await idbGetGuarded('aiapp_projects');
       if(Array.isArray(idbProjects) && idbProjects.length){
-        // دمج أي مشاريع أنشئت قبل اكتمال التحميل (نادر) بدون فقدان.
+        // دمج أي مشاريع أنشئت قبل اكتمال التحميل (نادر) بدون فقدان — وإن كان
+        // المعروض مرآةً وكتب المستخدم فيها رسالة قبل وصول الكاملة، تُحفظ نسخته
+        // الأغنى بدل سحقها (v-idb-mirror).
         const extra = state.projects.filter(p => !idbProjects.some(q => q.id === p.id));
-        state.projects = idbProjects.concat(extra);
+        state.projects = idbProjects.map(ip => {
+          const sp = state.projects.find(q => q.id === ip.id);
+          return (sp && (sp.messages || []).length > (ip.messages || []).length) ? sp : ip;
+        }).concat(extra);
+        window.__usingSlimProjects = false;
         renderAll();
       }
+      try{ if(window.__writeChatsMirror) window.__writeChatsMirror(); }catch(e){ __swallow(e, 'mirror:app-09#fresh'); }
     }
     // 🧹 v308: تنظيف لمرة واحدة — لقطات آلة الزمن القديمة المنتفخة بوسائط base64
     // (كانت تنسخ الصور المضمنة 12 مرة وتفجّر تخزين iOS فتختفي المحادثات).

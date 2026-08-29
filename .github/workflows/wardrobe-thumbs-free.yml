@@ -1,0 +1,42 @@
+# النماذج الناقصة للأزياء (٧٨ ستايل) وخيارات ستايل الذكاء الاصطناعي — مولّد
+# مجاني (Flux) بلا أي رصيد. تصغير webp ودفع لفرع بوت لتُراجع وتُدمج.
+name: Wardrobe thumbs free
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'fashion | studio | all'
+        required: false
+        default: 'all'
+
+permissions:
+  contents: write
+
+jobs:
+  thumbs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Generate missing previews (free engine)
+        env:
+          THUMBS_BUDGET_MIN: 300
+        run: node scripts/wardrobe-thumbs-free.mjs "${{ github.event.inputs.mode }}"
+      - name: Resize to webp cards
+        run: npm i --no-save sharp && node scripts/fashion-thumbs-resize.mjs
+      # تنزيل الـartifact محجوب من بيئة الوكيل — الدفع لفرع بوت هو قناة التسليم.
+      - name: Push cards to bot branch
+        run: |
+          mkdir -p assets/fashion/looks/women assets/fashion/looks/men assets/fashion/looks/kids assets/studio/options
+          for g in women men kids; do [ -d "thumbs/$g" ] && cp -r "thumbs/$g/." "assets/fashion/looks/$g/" || true; done
+          [ -d thumbs/studioopt ] && cp -r thumbs/studioopt/. assets/studio/options/ || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B bot/wardrobe-thumbs
+          git add assets/fashion assets/studio
+          git commit -m "أصول: النماذج الناقصة للأزياء وخيارات الستايل (مولد مجاني)" || echo "لا جديد"
+          git push -f origin bot/wardrobe-thumbs

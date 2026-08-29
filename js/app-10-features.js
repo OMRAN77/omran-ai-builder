@@ -120,6 +120,15 @@ const btnInstall = $('#btnInstall');
     if (__orOld === 'meta-llama/llama-3.1-8b-instruct:free' || __orOld === 'meta-llama/llama-3.3-70b-instruct:free') {
       localStorage.setItem('aiapp_openrouter_model', 'nvidia/nemotron-3-super-120b-a12b:free');
     }
+    /* v-or-models: أسماء أخرى ماتت من كتالوج OpenRouter — من حفظها قديمًا
+       كانت رسائله تفشل. تهاجر لأقرب بديل حي (متحقَّق في ورشة model-probe). */
+    const __orRemap = {
+      'google/gemini-flash-1.5:free': 'google/gemma-4-31b-it:free',
+      'mistralai/mistral-7b-instruct:free': 'z-ai/glm-5.2:free',
+      'anthropic/claude-3.5-sonnet': 'anthropic/claude-sonnet-4.5',
+      'google/gemini-pro-1.5': 'google/gemini-2.5-pro',
+    };
+    if (__orRemap[__orOld]) localStorage.setItem('aiapp_openrouter_model', __orRemap[__orOld]);
   } catch(e){ __swallow(e, "save:app-10-features#3"); }
 })();
 const btnRefreshPage = $('#btnRefreshPage');
@@ -556,18 +565,8 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   const btn = document.getElementById('btnImgToPdf');
   const input = document.getElementById('imgToPdfInput');
   if(!btn || !input) return;
-  let jsPdfLoading = null;
-  function loadJsPdf(){
-    if(window.jspdf && window.jspdf.jsPDF) return Promise.resolve();
-    if(jsPdfLoading) return jsPdfLoading;
-    jsPdfLoading = new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-      s.onload = resolve; s.onerror = () => { jsPdfLoading = null; reject(new Error('load-failed')); };
-      document.head.appendChild(s);
-    });
-    return jsPdfLoading;
-  }
+  /* v-pdf-file: محمّل مشترك واحد في app-05 (النسخة الموطّنة أولًا ثم CDN) */
+  function loadJsPdf(){ return omranLoadJsPdf(); }
   function readImage(file){
     return new Promise((resolve, reject) => {
       const fr = new FileReader();
@@ -611,7 +610,9 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
         if(i > 0) pdf.addPage();
         pdf.addImage(jpg, 'JPEG', (pw - w) / 2, (ph - h) / 2, w, h);
       }
-      pdf.save('omran-images.pdf');
+      /* v-pdf-universal: pdf.save() = رابط تنزيل لا يعمل داخل الأغلفة —
+         المسار الموحد: جسر الآيفون ← ورقة مشاركة النظام ← تنزيل عادي. */
+      await omranSaveBlob(pdf.output('blob'), 'omran-images.pdf');
     }catch(err){
       alert(isAr ? 'تعذر إنشاء ملف PDF — حاول مرة ثانية' : 'Could not create the PDF — please try again');
     }
@@ -630,7 +631,11 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
     if(bt){
       const imgSrc = isAr ? 'icons/brand-ar.png' : 'icons/brand-en.png';
       const imgAlt = isAr ? 'عمران Ai' : 'Omran Ai';
-      bt.innerHTML = '<img src="' + imgSrc + '" alt="' + imgAlt + '" class="brandImg">';
+      /* v-brand-stable (شكوى ٢٩ أغسطس: الشعار يتحرك عند التحديث): أبعاد
+         الصورة تُعلن مسبقًا فيحجز المتصفح مكانها قبل تحميلها — لا قفزة.
+         النِّسب من ملفات PNG الفعلية: عربي 1203×400، إنجليزي 1534×400. */
+      const imgW = isAr ? 126 : 161;
+      bt.innerHTML = '<img src="' + imgSrc + '" alt="' + imgAlt + '" class="brandImg" width="' + imgW + '" height="42">';
     }
   };
   syncBrand();

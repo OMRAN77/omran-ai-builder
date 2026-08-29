@@ -38,6 +38,46 @@ const mahaCallScreenEl = document.getElementById('mahaCallScreen');
 const mahaOrbEl = document.getElementById('mahaOrb');
 const mahaWaveEl = document.getElementById('mahaWave');
 const mahaStateLabelEl = document.getElementById('mahaStateLabel');
+
+/* v-maha-captions: ترجمة نصية حية للمكالمة — نفس ميزة صوت GPT المتقدم.
+   في المكالمة اللحظية تصل كلمات مها تدفقًا (transcript.delta) وكلام المستخدم
+   من تفريغ الإدخال؛ وفي الوضع الأساسي النصوص جاهزة أصلًا. زر 💬 يخفيها لمن
+   يريد مكالمة صافية، والاختيار محفوظ. ولذوي ضعف السمع هي باب وصولٍ كامل. */
+const mahaCapEl = document.getElementById('mahaCaptions');
+let mahaCcOn = true; try{ mahaCcOn = localStorage.getItem('aiapp_maha_cc') !== '0'; }catch(e){ /* guard-ok: تخزين معطّل = الافتراض ظاهر */ }
+let mahaCapLive = null; // سطر مها الجاري بثّه
+function mahaCapSync(){ if(mahaCapEl) mahaCapEl.style.display = (mahaCcOn && mahaCallActive && mahaCapEl.childNodes.length) ? 'block' : 'none'; }
+function mahaCapClear(){ if(mahaCapEl) mahaCapEl.innerHTML = ''; mahaCapLive = null; mahaCapSync(); }
+function mahaCapLine(who, text){
+  if(!mahaCapEl || !text) return null;
+  const d = document.createElement('div');
+  if(who === 'user'){ d.style.cssText = 'color:#bdb4d8; font-size:11px;'; d.textContent = '👤 ' + text; }
+  else{ d.style.cssText = 'color:#f3efff;'; d.textContent = text; }
+  mahaCapEl.appendChild(d);
+  while(mahaCapEl.childNodes.length > 14) mahaCapEl.removeChild(mahaCapEl.firstChild);
+  mahaCapSync();
+  mahaCapEl.scrollTop = mahaCapEl.scrollHeight;
+  return d;
+}
+function mahaCapUser(text){ mahaCapLive = null; mahaCapLine('user', String(text || '').trim()); }
+function mahaCapDelta(delta){
+  if(!mahaCapEl || !delta) return;
+  if(!mahaCapLive){ mahaCapLive = mahaCapLine('maha', String(delta)); return; }
+  mahaCapLive.textContent += String(delta);
+  mahaCapEl.scrollTop = mahaCapEl.scrollHeight;
+}
+function mahaCapDone(){ mahaCapLive = null; }
+(function(){
+  const b = document.getElementById('btnMahaCc');
+  if(!b) return;
+  const paint = () => { b.style.background = mahaCcOn ? 'rgba(123,92,255,.45)' : 'rgba(255,255,255,.14)'; };
+  paint();
+  b.onclick = () => {
+    mahaCcOn = !mahaCcOn;
+    try{ localStorage.setItem('aiapp_maha_cc', mahaCcOn ? '1' : '0'); }catch(e){ /* guard-ok: بلا تخزين يبقى الاختيار لهذه المكالمة */ }
+    paint(); mahaCapSync();
+  };
+})();
 const btnMahaEndCallEl = document.getElementById('btnMahaEndCall');
 
 /* ---------- مها floating draggable window ---------- */
@@ -208,21 +248,33 @@ function mahaReadVoiceGender(){
   catch(e){ return 'female'; }
 }
 let mahaDetectedGender = mahaReadVoiceGender();
-// Syncs the on-screen call card name with the chosen voice. The orb artwork is
-// intentionally identical for both voices — only the name changes.
+// v-persona-pick: الأيقونة تعكس الشخصية المحفوظة من الإقلاع لا من أول مكالمة.
+if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { try{ mahaUpdatePersonaUI(); }catch(e){ __swallow(e, 'maha:boot-persona'); } });
+else setTimeout(() => { try{ mahaUpdatePersonaUI(); }catch(e){ __swallow(e, 'maha:boot-persona'); } }, 0);
+/* v-persona-pick: مها وعبدالله شخصيتان صريحتان — مبدّل ظاهر على شاشة
+   المكالمة، والأيقونة (الزر العائم والكرة) تتبدل مع المختار: مها بحرفها
+   الذهبي «م» وعبدالله بحرفه «ع» بنفس الهوية. */
+const MAHA_ICON = '/icons/maha-m3.svg'; // v-maha-solo: أيقونة مها الجديدة
+const ABDULLAH_ICON = '/icons/abdullah-icon.svg';
 function mahaUpdatePersonaUI(){
-  mahaDetectedGender = mahaReadVoiceGender();
-  const male = mahaDetectedGender === 'male';
+  // v-maha-solo: مها وحدها الآن — عبدالله يُرتَّب لاحقًا بطلب المالك.
+  // الشخصية مثبتة أنثوية أيًّا كان الإعداد القديم المحفوظ.
+  mahaDetectedGender = 'female';
+  try{ if(localStorage.getItem('aiapp_voice_gender') !== 'female') localStorage.setItem('aiapp_voice_gender', 'female'); }catch(e){ __swallow(e, 'maha:solo'); }
+  const old = document.getElementById('mahaPersonaSwitch');
+  if(old) old.remove();
   const nameEl = document.getElementById('mahaCallNameLabel');
-  if(nameEl) nameEl.textContent = male ? 'عبدالله' : 'مها';
+  if(nameEl) nameEl.textContent = 'مها';
   const orb = document.getElementById('mahaOrb');
   if(orb){
-    orb.textContent = male ? '🧔' : '💁‍♀️';
-    orb.style.background = male ? 'linear-gradient(135deg,#ffd77a,#b8860b)' : 'linear-gradient(135deg,#ff5fa2,#7b5cff)';
-    orb.style.boxShadow = male ? '0 0 35px rgba(184,134,11,.6)' : '0 0 28px rgba(123,92,255,.5)';
-    orb.style.border = 'none';
-    orb.style.fontSize = '39px';
+    orb.textContent = '';
+    orb.style.background = "url('" + MAHA_ICON + "') center/cover no-repeat, #0a0908";
+    orb.style.boxShadow = '0 0 35px rgba(212,175,55,.55)';
+    orb.style.border = '1px solid rgba(212,175,55,.35)';
   }
+  const fabImg = btnMahaEl && btnMahaEl.querySelector('img');
+  if(fabImg && fabImg.getAttribute('src') !== MAHA_ICON){ fabImg.src = MAHA_ICON; fabImg.alt = 'مها'; }
+  if(btnMahaEl) btnMahaEl.title = 'مها';
 }
 // First-run voice picker: shown once, before the very first call, then stored.
 // Changeable any time from ⚙️ الإعدادات › الصوت.
@@ -230,7 +282,10 @@ function mahaEnsureVoiceChosen(){
   return new Promise(resolve => {
     let already = null;
     try{ already = localStorage.getItem('aiapp_voice_gender'); }catch(e){ /* guard-ok: unavailable storage shows the safe first-run picker. */ }
-    if(already === 'male' || already === 'female') return resolve(already);
+    // v-maha-solo: مها وحدها — لا سؤال في أول تشغيل.
+    try{ localStorage.setItem('aiapp_voice_gender', 'female'); }catch(e){ __swallow(e, 'maha:solo-first'); }
+    return resolve('female');
+    /* eslint-disable no-unreachable */
     const wrap = document.createElement('div');
     wrap.id = 'voicePickFirstRun';
     wrap.style.cssText = 'position:fixed; inset:0; z-index:100000; display:flex; align-items:center; justify-content:center; background:rgba(8,7,14,.82); backdrop-filter:blur(6px);';
@@ -344,7 +399,16 @@ async function mahaSpeak(text){
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ voice: 'maha', text: String(text).slice(0, 4000), gender: mahaDetectedGender, lang: mahaReplyLang })
       });
-      if(!resp.ok){ resolve(); return; }
+      if(!resp.ok){
+        // v-maha-mute: فشل النطق كان صمتًا تامًا فتبدو مها «خربانة» وهي
+        // أجابت فعلًا — نعرض نص ردها على الشاشة مدة تكفي لقراءته ثم نكمل.
+        try{
+          const shown = String(text).slice(0, 180);
+          mahaSetState('speaking', '📝 ' + shown + (text.length > 180 ? '…' : ''));
+          setTimeout(resolve, Math.min(9000, 1800 + shown.length * 55));
+        }catch(e){ resolve(); }
+        return;
+      }
       const blob = await resp.blob();
       const url = URL.createObjectURL(blob);
       const audio = mahaAudioEl;
@@ -526,20 +590,26 @@ function exportTextAsPdf(raw){
     const isAr = /[\u0600-\u06FF]/.test(txt);
     const font = msgPdfFontSpec();
     const pdfFont = msgPdfFontHead(font);
-    const doc = '<!DOCTYPE html><html dir="' + (isAr ? 'rtl' : 'ltr') + '"><head><meta charset="utf-8"><title>Omran AI Builder</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';color:#111;background:#fff;padding:28px 32px;line-height:' + font.line + ';font-size:14.5px}h2{font-size:17px;margin:18px 0 6px;color:#4c2a92;border-bottom:1px solid #eee;padding-bottom:4px}ul{margin:4px 0;padding-' + (isAr ? 'right' : 'left') + ':22px}p{margin:6px 0}footer{margin-top:30px;font-size:11px;color:#999;text-align:center}</style></head><body>' + html + '<footer>Omran AI Builder</footer></body></html>';
-    // v670: جوال/PWA — الطباعة تفشل بصمت هناك، فننزّل ملف PDF حقيقيًا بدلها.
-    if(msgIsMobilePdf()){
-      msgHtmlToPdfDownload(doc, pdfFont.family, 'ui:app-08-maha#7').then(function(ok){ if(!ok) msgPdfDownloadFailAlert(); });
-      return;
+    const inner = '<style>#omranPdfDoc h2{font-size:17px;margin:18px 0 6px;color:#4c2a92;border-bottom:1px solid #eee;padding-bottom:4px}#omranPdfDoc ul{margin:4px 0;padding-' + (isAr ? 'right' : 'left') + ':22px}#omranPdfDoc p{margin:6px 0}#omranPdfDoc footer{margin-top:30px;font-size:11px;color:#999;text-align:center}</style><div id="omranPdfDoc">' + html + '<footer>Omran AI Builder</footer></div>';
+    const doc = '<!DOCTYPE html><html dir="' + (isAr ? 'rtl' : 'ltr') + '"><head><meta charset="utf-8"><title>Omran AI Builder</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';color:#111;background:#fff;padding:28px 32px;line-height:' + font.line + ';font-size:14.5px}</style></head><body>' + inner + '</body></html>';
+    /* v-app-share: \u062F\u0627\u062E\u0644 \u062A\u0637\u0628\u064A\u0642 \u0627\u0644\u0622\u064A\u0641\u0648\u0646 \u2014 \u062C\u0633\u0631 PDF \u0627\u0644\u0623\u0635\u0644\u064A */
+    const pdfBridge = (typeof omranNativeBridge === 'function') ? omranNativeBridge('omranPdf') : null;
+    if(pdfBridge){
+      try{ pdfBridge.postMessage({ html: doc, name: 'omran-ai.pdf' }); return; }catch(e){ __swallow(e, 'ui:app-08-maha#7-app'); }
     }
-    const fr = document.createElement('iframe');
-    fr.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;';
-    document.body.appendChild(fr);
-    fr.srcdoc = doc;
-    fr.onload = function(){
-      msgPrintAfterFont(fr.contentWindow, pdfFont.family, 'ui:app-08-maha#7');
-      setTimeout(function(){ try{ fr.remove(); }catch(e){ __swallow(e, "ui:app-08-maha#8"); } }, 60000);
-    };
+    /* v-pdf-file (\u0634\u0643\u0648\u0649 \u0662\u0669 \u0623\u063A\u0633\u0637\u0633): \u0645\u0644\u0641 PDF \u064A\u0646\u0632\u0644 \u0645\u0628\u0627\u0634\u0631\u0629 \u0628\u062F\u0644 \u0646\u0627\u0641\u0630\u0629 \u0627\u0644\u0637\u0628\u0627\u0639\u0629 \u2014
+       \u0627\u0644\u0637\u0628\u0627\u0639\u0629 \u0627\u0644\u0642\u062F\u064A\u0645\u0629 \u062A\u0628\u0642\u0649 \u0627\u062D\u062A\u064A\u0627\u0637\u064B\u0627 \u0623\u062E\u064A\u0631\u064B\u0627 \u0625\u0646 \u0641\u0634\u0644 \u062A\u0648\u0644\u064A\u062F \u0627\u0644\u0645\u0644\u0641. */
+    omranExportHtmlAsPdfFile(inner, { rtl: isAr, fontFamily: pdfFont.family, fileName: 'omran-ai.pdf' }).catch(function(err){
+      __swallow(err, 'ui:app-08-maha#7-file');
+      const fr = document.createElement('iframe');
+      fr.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;';
+      document.body.appendChild(fr);
+      fr.srcdoc = doc;
+      fr.onload = function(){
+        msgPrintAfterFont(fr.contentWindow, pdfFont.family, 'ui:app-08-maha#7');
+        setTimeout(function(){ try{ fr.remove(); }catch(e){ __swallow(e, "ui:app-08-maha#8"); } }, 60000);
+      };
+    });
   }catch(e){ __swallow(e, "ui:app-08-maha#9"); }
 }
 function isPureGreeting(t){
@@ -754,7 +824,7 @@ async function fetchSearchNoteOnce(transcript, deep, q0){
   const latestNews = __wantsLatestNews(q0 || transcript);
   // Live search is the longest silent gap in ordinary chat — up to 45s.
   const __st = (window.__chatStatus && !window.__chatStatus.__released)
-    ? window.__chatStatus.step('🔍', deep ? 'يبحث في الإنترنت (بحث موسّع)…' : 'يبحث في الإنترنت…')
+    ? window.__chatStatus.step('🔍', deep ? 'أتحقق لك من المصادر الحية (بحث موسّع)…' : 'أتحقق لك من المصادر الحية…')
     : null;
   try{
     const controller = new AbortController();
@@ -1216,8 +1286,13 @@ async function mahaStartRealtimeCall(){
       }
       else if(ev.type === 'response.created'){ mahaClearRtResponseWatchdog(); mahaSetState('thinking'); }
       else if(ev.type === 'output_audio_buffer.started' || ev.type === 'response.audio.delta'){ mahaClearRtResponseWatchdog(); mahaSetState('speaking'); }
-    else if(ev.type === 'output_audio_buffer.stopped' || ev.type === 'response.done'){ mahaSetState('listening'); }
+    else if(ev.type === 'output_audio_buffer.stopped' || ev.type === 'response.done'){ mahaSetState('listening'); mahaCapDone(); }
     else if(ev.type === 'response.function_call_arguments.done'){ mahaHandleRtFunctionCall(ev); }
+    // v-maha-captions: كلمات مها تدفقًا + كلام المستخدم من تفريغ الإدخال
+    // (اسمان للحدث: صيغة GA وصيغة المعاينة الأقدم — نلتقط كليهما).
+    else if(ev.type === 'response.output_audio_transcript.delta' || ev.type === 'response.audio_transcript.delta'){ mahaCapDelta(ev.delta); }
+    else if(ev.type === 'response.output_audio_transcript.done' || ev.type === 'response.audio_transcript.done'){ mahaCapDone(); }
+    else if(ev.type === 'conversation.item.input_audio_transcription.completed'){ mahaCapUser(ev.transcript); }
     else if(ev.type === 'error'){ console.error('[maha-realtime] server error:', ev); }
   });
 
@@ -1691,6 +1766,7 @@ async function mahaCallLoop(){
       }
 
       mahaHistory.push({ role: 'user', content: transcript });
+      mahaCapUser(transcript); /* v-maha-captions */
       if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);
 
       // Classic pipeline has no real function-calling like the Realtime mode.
@@ -1709,6 +1785,7 @@ async function mahaCallLoop(){
         mahaHistory.push({ role: 'assistant', content: imgReply });
         if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);
         mahaSetState('speaking');
+        mahaCapLine('maha', imgReply); /* v-maha-captions */
         await mahaSpeak(imgReply);
         continue;
       }
@@ -1759,6 +1836,7 @@ async function mahaCallLoop(){
       if(mahaHistory.length > 30) mahaHistory = mahaHistory.slice(-30);
 
       mahaSetState('speaking');
+      mahaCapLine('maha', reply); /* v-maha-captions */
       await mahaSpeak(reply);
     }catch(e){ console.error('[maha] turn error', e); }
   }
@@ -1836,8 +1914,9 @@ function mahaEndCall(){
   if(mahaMediaRecorder && mahaMediaRecorder.state === 'recording'){ try{ mahaMediaRecorder.stop(); }catch(e){ __swallow(e, "ui:app-08-maha#27"); } }
   if(mahaCurrentAudio){ try{ mahaCurrentAudio.pause(); }catch(e){ __swallow(e, "misc:app-08-maha#28"); } mahaCurrentAudio = null; }
   stopAllSpeaking();
+  mahaCapClear(); /* v-maha-captions: مكالمة جديدة تبدأ بسجل نظيف */
   if(mahaCallScreenEl) mahaCallScreenEl.style.display = 'none';
-  if(btnMahaEl) btnMahaEl.style.display = 'flex';
+  /* v-maha-dock: مها راسية بجانب المايك — العائمة لا تعود للظهور. */
   mahaSetState('idle');
   mahaCallMode = 'assistant';
 }
@@ -1939,13 +2018,16 @@ async function mahaStartCallInner(mode){
     return;
   }catch(e){
     if(e && e.message === '__points__'){
-      // الرصيد خلص — رسالة لطيفة وإنهاء بدون fallback
-      mahaSetState('error', t('mahaNoPoints'));
-      setTimeout(() => { mahaEndCall(); }, 2600);
-      return;
+      // v-maha-open: كان يقفل المكالمة كليًا («مها مش مفتوحة») — الآن يهبط
+      // للوضع الأساسي: الصوت الفائق وحده ما يحتاج نقاطًا/رصيدًا.
+      console.warn('[maha] HD needs points/credit — continuing in basic mode');
+      mahaSetState('thinking', 'الصوت الفائق يحتاج نقاطًا — أكمل معك بالوضع الأساسي 🎙️');
     }
     console.error('[maha] realtime mode failed, falling back to classic pipeline:', e);
     mahaEndRealtimeCall();
+    // v-maha-mute: السقوط للوضع الأساسي كان صامتًا (وسم صغير فقط) — نبّه
+    // المتصل لحظةً حتى لا يظن المكالمة معلّقة.
+    try{ mahaSetState('thinking', 'الصوت الفائق غير متاح الآن — أكمل معك بالوضع الأساسي 🎙️'); }catch(e2){ __swallow(e2, 'maha:fallback-note'); }
   }
   if(!mahaCallActive) return;
   if(!window.MediaRecorder){
@@ -1979,6 +2061,8 @@ async function mahaStartCall(mode){
 }
 
 if(btnMahaEl) btnMahaEl.onclick = () => { mahaUnlockAudio(); mahaStartCall(); };
+const btnMahaDockEl = document.getElementById('btnMahaDock');
+if(btnMahaDockEl) btnMahaDockEl.onclick = () => { mahaUnlockAudio(); mahaStartCall(); }; // v-maha-dock
 if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
 
 // v273: One-time intro tour for brand-new users — points at مها button
@@ -2110,10 +2194,24 @@ if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
     return bottom + 8;
   }
 
+  // v-maha-fab-clamp: على الآيفون كان الزر يغرق فوق شريط التبويبات (المنطقة
+  // الآمنة ترفع الشريط ولا يعرفها القصّ) — الحد الأسفل صار فوق الشريط دائمًا.
+  function bottomBarTop(){
+    let t = window.innerHeight;
+    const nav = document.getElementById('omranBottomNav');
+    if(nav){
+      const cs = window.getComputedStyle(nav);
+      if(cs.display !== 'none'){
+        const r = nav.getBoundingClientRect();
+        if(r.height > 0) t = Math.min(t, r.top);
+      }
+    }
+    return t;
+  }
   function applyPos(left, top){
     const w = btn.offsetWidth || 45, h = btn.offsetHeight || 45;
     const maxLeft = Math.max(4, window.innerWidth - w - 4);
-    const maxTop = Math.max(4, window.innerHeight - h - 4);
+    const maxTop = Math.max(4, bottomBarTop() - h - 4);
     // v205: full drag freedom — allowed anywhere on screen, even over the header.
     left = clamp(left, 4, maxLeft);
     top = clamp(top, 4, maxTop);

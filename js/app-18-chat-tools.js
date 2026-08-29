@@ -55,6 +55,18 @@
     // الذاكرة، وحدّ الأربع يبقى حدَّ ردٍّ لا حدَّ جلسة. الكود المبنيّ يُستبدل فيه
     // الرمز فور وصوله، فلا يضرّه المسح لاحقًا.
     window.__genImages = {};
+    // v-chat-vision: الصور المرفقة كانت تُقصى من هذا المسار فتسقط لمسار قديم
+    // أضعف — الآن تُحوَّل لكتل رؤية بصيغة Anthropic وتمر بنفس الخط المباشر
+    // القوي (نفس النموذج ونفس قواعد العمق والأدوات).
+    messages = messages.map(function (m) {
+      if (!m || !m.images || !m.images.length) return m;
+      var content = [{ type: 'text', text: String(m.content || 'حلّل هذه الصورة بالتفصيل.') }];
+      m.images.forEach(function (img) {
+        var b64 = String((img && img.dataUrl) || '').split(',')[1];
+        if (b64) content.push({ type: 'image', source: { type: 'base64', media_type: (img && img.mime) || 'image/jpeg', data: b64 } });
+      });
+      return { role: m.role, content: content };
+    });
     var res = await fetch('/api/ai?action=chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -75,6 +87,7 @@
     var reader = res.body.getReader();
     var dec = new TextDecoder();
     var buf = '', full = '', serverErr = null;
+    var __srcAcc = []; /* v-one-brain: مصادر بحث النموذج نفسه — لبطاقات «المصادر» */
 
     while (true) {
       var chunk = await reader.read();
@@ -100,6 +113,11 @@
           full = ev.patch;
           if (onDelta) { try { onDelta(full); } catch (e) { if (window.__swallow) window.__swallow(e, 'chatTools:patch'); } }
         }
+        if (Array.isArray(ev.sources)) {
+          ev.sources.forEach(function (s) {
+            if (s && s.url && !__srcAcc.some(function (x) { return x.url === s.url; })) __srcAcc.push(s);
+          });
+        }
         if (ev.error) serverErr = ev.error;
       }
     }
@@ -108,7 +126,7 @@
     // لا نصّ = لم يحدث شيء يُعرض؛ نرمي ليهبط المستدعي إلى مساره القديم.
     if (!full.trim()) throw new Error(serverErr || 'chat: empty reply');
     var __p = provider || 'claude';
-    return { reply: full, providerKey: __p, switched: false, requestedKey: __p };
+    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined };
   };
 })();
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'omran-ai-builder-gold-icons-8218d2b4';
+const CACHE_NAME = 'omran-ai-builder-uniform-black-a10e0795';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -74,7 +74,12 @@ self.addEventListener('activate', (event) => {
     // توليه — بلا أي خطوة من المستخدم. التنصيب الأول لا يعيد تحميل شيء.
     if (__swIsUpdate) {
       const clients = await self.clients.matchAll({ type: 'window' });
-      for (const c of clients) { try { await c.navigate(c.url); } catch (e) { /* نافذة لا تقبل التنقل */ } }
+      for (const c of clients) {
+        try { await c.navigate(c.url); } catch (e) { /* iOS Safari لا يدعم client.navigate إطلاقًا */ }
+        // v-boot-watchdog3: قناة الرسائل تعمل على iOS — selfdiag (يُحمَّل مبكرًا
+        // حتى في صفحة نصف معطوبة) يستقبلها ويعيد التحميل فورًا.
+        try { c.postMessage({ type: 'omran-reload' }); } catch (e) { /* احتياط فقط */ }
+      }
     }
   })());
 });
