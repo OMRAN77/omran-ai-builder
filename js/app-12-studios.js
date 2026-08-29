@@ -82,6 +82,8 @@ async function __safeJson(res){
 
   btnOpen.onclick = () => {
     modal.style.display = 'flex';
+    /* v651: صفّ «غرفتي بكل الأنماط» يُبنى قبل وصول ملفّ اللغة الكسول فيتجمّد — يُعاد عند الفتح. */
+    try { buildCompareStyleRow(); } catch(_e651) { /* guard-ok: rebuilding the compare row is cosmetic — a failure must never block opening the modal. */ }
     closeHeaderMenu();
   };
   btnClose.onclick = () => { modal.style.display = 'none'; };
@@ -321,6 +323,9 @@ async function __safeJson(res){
     /* v649: القاموس الحيّ أوّلًا — البطاقة تُبنى قبل وصول ملفّ اللغة الكسول فتلتقط الإنجليزيّة وتتجمّد. */
     const k649 = o.getAttribute('data-i18n');
     if(k649 && typeof t === 'function'){ const v649 = t(k649); if(v649 && v649 !== k649) return String(v649).trim(); }
+    /* v651: 39 نمطًا بلا مفتاح i18n كانت تعرض العربيّة في الـ12 لغة — القاموس الثنائيّ __BI يترجمها. */
+    const den651 = o.getAttribute('data-en');
+    if(!k649 && den651 && typeof window.__bT === 'function') return window.__bT((o.textContent || '').trim(), String(den651).trim());
     return (o.textContent || '').trim();
   }
   function buildCompareStyleRow(){
@@ -507,8 +512,10 @@ async function __safeJson(res){
   function optLabel(o){
     if(!o) return '';
     var l = pstyleLang();
-    if(l.indexOf('ar') !== 0 && l.indexOf('ur') !== 0 && !o.hasAttribute('data-i18n')){
-      var de = o.getAttribute('data-en'); if(de) return de;
+    /* v651: كانت كلّ لغة غير ar/ur ترى الإنجليزيّة، والأردو ترث العربيّة. */
+    if(l.indexOf('ar') !== 0 && !o.hasAttribute('data-i18n')){
+      var de = o.getAttribute('data-en');
+      if(de) return (typeof window.__bT === 'function') ? window.__bT((o.textContent||'').trim(), String(de).trim()) : de;
     }
     return o.textContent;
   }
@@ -860,8 +867,10 @@ async function __safeJson(res){
   function optLabel(o){
     if(!o) return '';
     var l7 = lang7();
-    if(l7 !== 'ar' && l7 !== 'ur' && !o.hasAttribute('data-i18n')){
-      var de = o.getAttribute('data-en'); if(de) return de;
+    /* v651: كانت كلّ لغة غير ar/ur ترى الإنجليزيّة، والأردو ترث العربيّة. */
+    if(l7 !== 'ar' && !o.hasAttribute('data-i18n')){
+      var de = o.getAttribute('data-en');
+      if(de) return (typeof window.__bT === 'function') ? window.__bT((o.textContent||'').trim(), String(de).trim()) : de;
     }
     return o.textContent;
   }
@@ -1114,6 +1123,8 @@ async function __safeJson(res){
   btnOpen.onclick = () => {
     modal.style.display = 'flex';
     renderStyleCards(); // تسميات الترجمة قد تكون تغيّرت بعد التهيئة
+    /* v651: صفّ «قارن بين الإطلالات» كان يتجمّد على الإنجليزيّة لنفس السبب. */
+    try { buildCompareChecks(); } catch(_e651) { /* guard-ok: rebuilding the compare row is cosmetic — a failure must never block opening the modal. */ }
     closeHeaderMenu();
   };
   btnClose.onclick = () => { modal.style.display = 'none'; };
