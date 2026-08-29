@@ -20495,6 +20495,17 @@ async function __safeJson(res){
      العربي — القاعدة الآن واحدة: الوصف عربي للعربي فقط، ويختفي لغير ذلك
      (العناوين نفسها مترجمة لكل اللغات فتبقى البطاقة مفهومة). */
   function pstyleSub(v){ return pstyleLang().startsWith('ar') ? (PSTYLE_SUBS[v] || '') : ''; }
+  /* v-look-labels-fix: optLabel كانت معرّفة في نطاق الأزياء فقط بينما تُستدعى
+     هنا أيضًا — فتعطّل فتح ورقة الأنماط (ReferenceError). نسخة النطاق هذه:
+     خيارات البورتريه كلها data-i18n مترجمة فترجع نصّها كما هو. */
+  function optLabel(o){
+    if(!o) return '';
+    var l = pstyleLang();
+    if(l.indexOf('ar') !== 0 && l.indexOf('ur') !== 0 && !o.hasAttribute('data-i18n')){
+      var de = o.getAttribute('data-en'); if(de) return de;
+    }
+    return o.textContent;
+  }
   function pstyleOpts(){
     const favs = getFavs();
     const opts = Array.from(styleEl.querySelectorAll('option'))
