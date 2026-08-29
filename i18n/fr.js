@@ -971,3 +971,13 @@ Object.assign(I18N['fr'], {
   "adminPanelTitle": "🛠️ Panneau d'administration (propriétaire uniquement)"
 });
 Object.assign(I18N['fr'], {"videoBadgeShort":"Court","videoBadgeFull":"Complet"});
+Object.assign(I18N['fr'], {
+  "provTypingSuffix": "écrit…",
+  "provFailSwitch": "n'a pas répondu ({why}) — bascule en cours…",
+  "provUnknownReason": "raison inconnue",
+  "provWhyBuild": "la création et la modification de code",
+  "provWhyVision": "la lecture des images",
+  "provWhyGeneral": "ce type de demande",
+  "provSwitchNote": "Vous avez choisi {sel} — mais {why} est confié à {eff}, le plus précis pour cela. Votre conversation habituelle reste sur {sel}.",
+  "provSwitchNoteHidden": "Votre conversation utilise {sel} — mais {why} est confié à {eff}, le plus précis pour cela. Votre conversation habituelle reste sur {sel}."
+});

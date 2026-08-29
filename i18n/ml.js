@@ -1021,3 +1021,13 @@ Object.assign(I18N['ml'], {
   "adminPanelTitle": "🛠️ അഡ്മിൻ പാനൽ (ഉടമയ്ക്ക് മാത്രം)"
 });
 Object.assign(I18N['ml'], {"videoBadgeShort":"ചെറുത്","videoBadgeFull":"പൂർണ്ണം"});
+Object.assign(I18N['ml'], {
+  "provTypingSuffix": "ടൈപ്പ് ചെയ്യുന്നു…",
+  "provFailSwitch": "പ്രതികരിച്ചില്ല ({why}) — മാറ്റുന്നു…",
+  "provUnknownReason": "അജ്ഞാത കാരണം",
+  "provWhyBuild": "ആപ്പ് നിർമ്മാണവും കോഡ് എഡിറ്റിംഗും",
+  "provWhyVision": "ചിത്രങ്ങൾ വായിക്കൽ",
+  "provWhyGeneral": "ഇത്തരം അഭ്യർത്ഥനകൾ",
+  "provSwitchNote": "നിങ്ങൾ {sel} തിരഞ്ഞെടുത്തു — എന്നാൽ {why} ഇതിൽ ഏറ്റവും കൃത്യതയുള്ള {eff} ആണ് ചെയ്യുന്നത്. നിങ്ങളുടെ സാധാരണ ചാറ്റ് {sel}-ൽ തുടരും.",
+  "provSwitchNoteHidden": "നിങ്ങളുടെ ചാറ്റ് {sel}-ൽ ആണ് — എന്നാൽ {why} ഇതിൽ ഏറ്റവും കൃത്യതയുള്ള {eff} ആണ് ചെയ്യുന്നത്. നിങ്ങളുടെ സാധാരണ ചാറ്റ് {sel}-ൽ തുടരും."
+});

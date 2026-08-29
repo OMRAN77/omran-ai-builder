@@ -970,3 +970,13 @@ Object.assign(I18N['bn'], {
   "adminPanelTitle": "🛠️ অ্যাডমিন প্যানেল (শুধু মালিকের জন্য)"
 });
 Object.assign(I18N['bn'], {"videoBadgeShort":"সংক্ষিপ্ত","videoBadgeFull":"সম্পূর্ণ"});
+Object.assign(I18N['bn'], {
+  "provTypingSuffix": "লিখছে…",
+  "provFailSwitch": "সাড়া দেয়নি ({why}) — পরিবর্তন করা হচ্ছে…",
+  "provUnknownReason": "অজানা কারণ",
+  "provWhyBuild": "অ্যাপ তৈরি ও কোড সম্পাদনা",
+  "provWhyVision": "ছবি পড়া",
+  "provWhyGeneral": "এই ধরনের অনুরোধ",
+  "provSwitchNote": "আপনি {sel} বেছে নিয়েছেন — কিন্তু {why} সবচেয়ে দক্ষ {eff} সামলায়। আপনার সাধারণ চ্যাট {sel}-এ থাকবে।",
+  "provSwitchNoteHidden": "আপনার চ্যাট {sel}-এ চলছে — কিন্তু {why} সবচেয়ে দক্ষ {eff} সামলায়। আপনার সাধারণ চ্যাট {sel}-এ থাকবে।"
+});

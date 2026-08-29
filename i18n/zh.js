@@ -1009,3 +1009,13 @@ Object.assign(I18N['zh'], {
   "adminPanelTitle": "🛠️ 管理面板（僅限擁有者）"
 });
 Object.assign(I18N['zh'], {"videoBadgeShort":"短片","videoBadgeFull":"完整"});
+Object.assign(I18N['zh'], {
+  "provTypingSuffix": "正在輸入…",
+  "provFailSwitch": "未回應（{why}）— 正在切換…",
+  "provUnknownReason": "原因不明",
+  "provWhyBuild": "建立與修改程式碼",
+  "provWhyVision": "讀取圖片",
+  "provWhyGeneral": "這類請求",
+  "provSwitchNote": "您選擇了 {sel} — 但{why}由最擅長的 {eff} 處理。您的一般對話仍使用 {sel}。",
+  "provSwitchNoteHidden": "您的對話使用 {sel} — 但{why}由最擅長的 {eff} 處理。您的一般對話仍使用 {sel}。"
+});

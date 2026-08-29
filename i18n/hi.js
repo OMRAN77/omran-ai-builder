@@ -970,3 +970,13 @@ Object.assign(I18N['hi'], {
   "adminPanelTitle": "🛠️ एडमिन पैनल (केवल मालिक के लिए)"
 });
 Object.assign(I18N['hi'], {"videoBadgeShort":"छोटा","videoBadgeFull":"पूरा"});
+Object.assign(I18N['hi'], {
+  "provTypingSuffix": "लिख रहा है…",
+  "provFailSwitch": "ने जवाब नहीं दिया ({why}) — बदला जा रहा है…",
+  "provUnknownReason": "अज्ञात कारण",
+  "provWhyBuild": "ऐप बनाना और कोड बदलना",
+  "provWhyVision": "तस्वीरें पढ़ना",
+  "provWhyGeneral": "इस तरह के अनुरोध",
+  "provSwitchNote": "आपने {sel} चुना — लेकिन {why} इसका सबसे सटीक {eff} संभालता है। आपकी सामान्य चैट {sel} पर ही रहेगी।",
+  "provSwitchNoteHidden": "आपकी चैट {sel} पर है — लेकिन {why} इसका सबसे सटीक {eff} संभालता है। आपकी सामान्य चैट {sel} पर ही रहेगी।"
+});

@@ -969,3 +969,13 @@ Object.assign(I18N['ne'], {
   "adminPanelTitle": "🛠️ एड्मिन प्यानल (मालिकका लागि मात्र)"
 });
 Object.assign(I18N['ne'], {"videoBadgeShort":"छोटो","videoBadgeFull":"पूरा"});
+Object.assign(I18N['ne'], {
+  "provTypingSuffix": "लेख्दैछ…",
+  "provFailSwitch": "ले जवाफ दिएन ({why}) — बदल्दैछौं…",
+  "provUnknownReason": "अज्ञात कारण",
+  "provWhyBuild": "एप बनाउने र कोड सम्पादन",
+  "provWhyVision": "तस्बिर पढ्ने",
+  "provWhyGeneral": "यस्ता अनुरोधहरू",
+  "provSwitchNote": "तपाईंले {sel} रोज्नुभयो — तर {why} यसमा सबैभन्दा सटीक {eff} ले गर्छ। तपाईंको सामान्य कुराकानी {sel} मै रहन्छ।",
+  "provSwitchNoteHidden": "तपाईंको कुराकानी {sel} मा छ — तर {why} यसमा सबैभन्दा सटीक {eff} ले गर्छ। तपाईंको सामान्य कुराकानी {sel} मै रहन्छ।"
+});

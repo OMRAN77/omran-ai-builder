@@ -1020,3 +1020,13 @@ Object.assign(I18N['ru'], {
   "adminPanelTitle": "🛠️ Панель управления (только для владельца)"
 });
 Object.assign(I18N['ru'], {"videoBadgeShort":"Короткое","videoBadgeFull":"Полное"});
+Object.assign(I18N['ru'], {
+  "provTypingSuffix": "печатает…",
+  "provFailSwitch": "не ответил ({why}) — переключение…",
+  "provUnknownReason": "неизвестная причина",
+  "provWhyBuild": "создание и правка кода",
+  "provWhyVision": "чтение изображений",
+  "provWhyGeneral": "такой тип запросов",
+  "provSwitchNote": "Вы выбрали {sel} — но {why} выполняет {eff}, самый точный в этом. Обычный чат остаётся на {sel}.",
+  "provSwitchNoteHidden": "Ваш чат работает на {sel} — но {why} выполняет {eff}, самый точный в этом. Обычный чат остаётся на {sel}."
+});

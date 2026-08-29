@@ -1019,3 +1019,13 @@ Object.assign(I18N['es'], {
   "adminPanelTitle": "🛠️ Panel de administración (solo propietario)"
 });
 Object.assign(I18N['es'], {"videoBadgeShort":"Corto","videoBadgeFull":"Completo"});
+Object.assign(I18N['es'], {
+  "provTypingSuffix": "está escribiendo…",
+  "provFailSwitch": "no respondió ({why}) — cambiando…",
+  "provUnknownReason": "motivo desconocido",
+  "provWhyBuild": "la creación y edición de código",
+  "provWhyVision": "la lectura de imágenes",
+  "provWhyGeneral": "este tipo de solicitud",
+  "provSwitchNote": "Elegiste {sel} — pero {why} lo maneja {eff}, el más preciso para ello. Tu chat habitual sigue en {sel}.",
+  "provSwitchNoteHidden": "Tu chat usa {sel} — pero {why} lo maneja {eff}, el más preciso para ello. Tu chat habitual sigue en {sel}."
+});

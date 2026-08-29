@@ -1018,3 +1018,13 @@ Object.assign(I18N['id'], {
   "adminPanelTitle": "🛠️ Panel admin (khusus pemilik)"
 });
 Object.assign(I18N['id'], {"videoBadgeShort":"Singkat","videoBadgeFull":"Lengkap"});
+Object.assign(I18N['id'], {
+  "provTypingSuffix": "sedang mengetik…",
+  "provFailSwitch": "tidak merespons ({why}) — beralih…",
+  "provUnknownReason": "alasan tidak diketahui",
+  "provWhyBuild": "pembuatan aplikasi dan pengeditan kode",
+  "provWhyVision": "membaca gambar",
+  "provWhyGeneral": "jenis permintaan ini",
+  "provSwitchNote": "Anda memilih {sel} — tetapi {why} ditangani {eff}, yang paling akurat untuk itu. Obrolan biasa Anda tetap di {sel}.",
+  "provSwitchNoteHidden": "Obrolan Anda memakai {sel} — tetapi {why} ditangani {eff}, yang paling akurat untuk itu. Obrolan biasa Anda tetap di {sel}."
+});

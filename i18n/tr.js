@@ -1017,3 +1017,13 @@ Object.assign(I18N['tr'], {
   "adminPanelTitle": "🛠️ Yönetim paneli (yalnızca sahibi)"
 });
 Object.assign(I18N['tr'], {"videoBadgeShort":"Kısa","videoBadgeFull":"Tam"});
+Object.assign(I18N['tr'], {
+  "provTypingSuffix": "yazıyor…",
+  "provFailSwitch": "yanıt vermedi ({why}) — geçiliyor…",
+  "provUnknownReason": "bilinmeyen neden",
+  "provWhyBuild": "uygulama oluşturma ve kod düzenleme",
+  "provWhyVision": "görselleri okuma",
+  "provWhyGeneral": "bu tür istekler",
+  "provSwitchNote": "{sel} seçtiniz — ancak {why} bu konuda en isabetli olan {eff} tarafından yürütülür. Normal sohbetiniz {sel} üzerinde kalır.",
+  "provSwitchNoteHidden": "Sohbetiniz {sel} üzerinde — ancak {why} bu konuda en isabetli olan {eff} tarafından yürütülür. Normal sohbetiniz {sel} üzerinde kalır."
+});

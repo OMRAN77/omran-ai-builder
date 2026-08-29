@@ -968,3 +968,13 @@ Object.assign(I18N['ur'], {
   "adminPanelTitle": "🛠️ ایڈمن پینل (صرف مالک کے لیے)"
 });
 Object.assign(I18N['ur'], {"videoBadgeShort":"مختصر","videoBadgeFull":"مکمل"});
+Object.assign(I18N['ur'], {
+  "provTypingSuffix": "لکھ رہا ہے…",
+  "provFailSwitch": "نے جواب نہیں دیا ({why}) — منتقل کیا جا رہا ہے…",
+  "provUnknownReason": "نامعلوم وجہ",
+  "provWhyBuild": "ایپ بنانا اور کوڈ میں ترمیم",
+  "provWhyVision": "تصاویر پڑھنا",
+  "provWhyGeneral": "اس قسم کی درخواستیں",
+  "provSwitchNote": "آپ نے {sel} چنا — لیکن {why} اس میں سب سے ماہر {eff} انجام دیتا ہے۔ آپ کی عام گفتگو {sel} پر ہی رہے گی۔",
+  "provSwitchNoteHidden": "آپ کی گفتگو {sel} پر ہے — لیکن {why} اس میں سب سے ماہر {eff} انجام دیتا ہے۔ آپ کی عام گفتگو {sel} پر ہی رہے گی۔"
+});
