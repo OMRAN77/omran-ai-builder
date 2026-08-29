@@ -64,10 +64,11 @@ async function __safeJson(res){
   if(!modal || !btnOpen) return;
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function t(key){
     /* v-global-first: المترجم العام (الـ14 لغة) أولًا — المحلي يعرف عربي/إنجليزي فقط */
     try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ /* لم يجهز بعد */ }
-    const dict = (typeof I18N !== 'undefined') ? I18N[isEn() ? 'en' : 'ar'] : null;
+    const dict = (typeof I18N !== 'undefined') ? I18N[bT('ar','en')] : null;
     return (dict && dict[key]) || key;
   }
   function setStatus(text){
@@ -208,7 +209,7 @@ async function __safeJson(res){
           const vb = document.createElement('button');
           vb.type = 'button';
           vb.className = 'btn';
-          vb.textContent = isEn() ? '\u2728 More like this' : '\u2728 \u0632\u0648\u0651\u062F\u0646\u064A \u0645\u062B\u0644\u0647';
+          vb.textContent = bT('\u2728 \u0632\u0648\u0651\u062F\u0646\u064A \u0645\u062B\u0644\u0647','\u2728 More like this');
           vb.style.cssText = 'width:100%; margin-top:5px; font-size:11.5px; padding:5px 4px;';
           vb.onclick = (ev) => { ev.preventDefault(); variantSrc = im.imageBase64; btnGenerate.onclick(); };
           cell.appendChild(vb);
@@ -229,7 +230,7 @@ async function __safeJson(res){
       downloadEl.style.display = 'block';
       setStatus(t('designAiDone'));
     } catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       btnGenerate.disabled = false;
     }
@@ -356,7 +357,7 @@ async function __safeJson(res){
       card.onclick = function(){
         const i = cmpPicks.indexOf(v);
         if(i >= 0) cmpPicks.splice(i, 1);
-        else { if(cmpPicks.length >= 3){ cmpStatus(isEn() ? 'Max 3 styles' : 'الحد ٣ أنماط'); return; } cmpPicks.push(v); }
+        else { if(cmpPicks.length >= 3){ cmpStatus(bT('الحد ٣ أنماط','Max 3 styles')); return; } cmpPicks.push(v); }
         cmpStatus('');
         buildCompareStyleRow();
       };
@@ -365,8 +366,8 @@ async function __safeJson(res){
   }
   buildCompareStyleRow();
   if(cmpBtn) cmpBtn.onclick = async () => {
-    if(!selectedBase64){ cmpStatus(isEn() ? 'Upload your room photo first' : 'ارفعي صورة غرفتك أولًا'); return; }
-    if(cmpPicks.length < 2){ cmpStatus(isEn() ? 'Pick 2-3 styles' : 'اختاري نمطين أو ثلاثة'); return; }
+    if(!selectedBase64){ cmpStatus(bT('ارفعي صورة غرفتك أولًا','Upload your room photo first')); return; }
+    if(cmpPicks.length < 2){ cmpStatus(bT('اختاري نمطين أو ثلاثة','Pick 2-3 styles')); return; }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
     if(!token){ cmpStatus(t('designAiNeedLogin')); return; }
     cmpBtn.disabled = true;
@@ -376,7 +377,7 @@ async function __safeJson(res){
     try{
       for(let i = 0; i < picks.length; i++){
         const v = picks[i];
-        cmpStatus((isEn() ? 'Designing ' : 'نصمّم ') + styleTitle(v) + ' — ' + (i + 1) + '/' + picks.length + '…');
+        cmpStatus((bT('نصمّم ','Designing ')) + styleTitle(v) + ' — ' + (i + 1) + '/' + picks.length + '…');
         const res = await fetch('/api/design-create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -386,7 +387,7 @@ async function __safeJson(res){
         if(!res.ok || data.error){
           if(data.error === 'daily_limit_reached'){ cmpStatus(t('designAiLimitReached')); break; }
           if(data.error === 'auth_required'){ cmpStatus(t('designAiNeedLogin')); break; }
-          cmpStatus((isEn() ? '❌ Failed at ' : '❌ تعثّر عند ') + styleTitle(v));
+          cmpStatus((bT('❌ تعثّر عند ','❌ Failed at ')) + styleTitle(v));
           continue;
         }
         const u = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
@@ -400,7 +401,7 @@ async function __safeJson(res){
         cap.style.cssText = 'font-size:12px; font-weight:700; text-align:center; margin-top:4px;';
         const pick = document.createElement('button');
         pick.type = 'button'; pick.className = 'btn';
-        pick.textContent = isEn() ? '👍 Pick this' : '👍 اعتمدي هذا';
+        pick.textContent = bT('👍 اعتمدي هذا','👍 Pick this');
         pick.style.cssText = 'width:100%; margin-top:4px; font-size:11.5px; padding:5px 4px;';
         pick.onclick = function(){
           styleEl.value = v;
@@ -412,10 +413,10 @@ async function __safeJson(res){
         cell.appendChild(im); cell.appendChild(cap); cell.appendChild(pick);
         cmpResultsEl.appendChild(cell);
         cmpResultsEl.style.display = 'flex';
-        if(i === picks.length - 1) cmpStatus(isEn() ? '✓ Done — swipe and pick' : '✓ تم — اسحبي وقارني واختاري');
+        if(i === picks.length - 1) cmpStatus(bT('✓ تم — اسحبي وقارني واختاري','✓ Done — swipe and pick'));
       }
     } catch(e){
-      cmpStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      cmpStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       cmpBtn.disabled = false;
     }
@@ -689,10 +690,11 @@ async function __safeJson(res){
   if(!modal || !btnOpen) return;
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function t(key){
     /* v-global-first: المترجم العام (الـ14 لغة) أولًا — المحلي يعرف عربي/إنجليزي فقط */
     try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ /* لم يجهز بعد */ }
-    const dict = (typeof I18N !== 'undefined') ? I18N[isEn() ? 'en' : 'ar'] : null;
+    const dict = (typeof I18N !== 'undefined') ? I18N[bT('ar','en')] : null;
     return (dict && dict[key]) || key;
   }
   function setStatus(text){
@@ -802,7 +804,7 @@ async function __safeJson(res){
         setStatus(t('portraitDone'));
       }
     } catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       btnGenerate.disabled = false;
     }
@@ -852,6 +854,7 @@ async function __safeJson(res){
   if(!modal || !btnOpen) return;
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   /* v-look-labels: خيارات اللوكات القديمة نصها عربي مع data-en — غير العربي
      والأردو يأخذ الإنجليزية (خيارات data-i18n تُترجم أصلًا فلا تُمس). */
   function optLabel(o){
@@ -909,8 +912,8 @@ async function __safeJson(res){
     const list = GENDER_STYLES[g] || GENDER_STYLES.women;
     if(!window.omranPicker) return;
     window.omranPicker.open({
-      title: isEn() ? '👗 Fashion styles' : '👗 أنماط الأزياء',
-      count: list.length + ' ' + ((typeof window.t === 'function' && window.t('pickerOptsPick') !== 'pickerOptsPick') ? window.t('pickerOptsPick') : (isEn() ? 'styles — pick yours' : 'نمطًا — اختر ما يناسبك')),
+      title: bT('👗 أنماط الأزياء','👗 Fashion styles'),
+      count: list.length + ' ' + ((typeof window.t === 'function' && window.t('pickerOptsPick') !== 'pickerOptsPick') ? window.t('pickerOptsPick') : (bT('نمطًا — اختر ما يناسبك','styles — pick yours'))),
       items: list.map(function(v){
         const opt = fashionOptFor(v);
         return opt && {
@@ -943,11 +946,11 @@ async function __safeJson(res){
     nm.textContent = opt ? optLabel(opt) : '';
     nm.style.cssText = 'font-size:13.5px; font-weight:700;';
     const sub = document.createElement('div');
-    sub.textContent = list.length + ' ' + ((typeof window.t === 'function' && window.t('pickerStylesForCategory') !== 'pickerStylesForCategory') ? window.t('pickerStylesForCategory') : (isEn() ? 'styles for this category' : 'نمطًا لهذه الفئة'));
+    sub.textContent = list.length + ' ' + ((typeof window.t === 'function' && window.t('pickerStylesForCategory') !== 'pickerStylesForCategory') ? window.t('pickerStylesForCategory') : (bT('نمطًا لهذه الفئة','styles for this category')));
     sub.style.cssText = 'font-size:11px; color:var(--muted,#999);';
     info.appendChild(nm); info.appendChild(sub);
     const all = document.createElement('span');
-    all.textContent = (typeof window.t === 'function' && window.t('portraitStyleBrowseAll') !== 'portraitStyleBrowseAll') ? window.t('portraitStyleBrowseAll') : (isEn() ? 'Browse all ›' : 'عرض الكل ›');
+    all.textContent = (typeof window.t === 'function' && window.t('portraitStyleBrowseAll') !== 'portraitStyleBrowseAll') ? window.t('portraitStyleBrowseAll') : (bT('عرض الكل ›','Browse all ›'));
     all.style.cssText = 'color:#d4af37; font-size:12.5px; font-weight:700; flex:none;';
     trig.appendChild(img); trig.appendChild(info); trig.appendChild(all);
     trig.onclick = openFashionPicker;
@@ -1202,7 +1205,7 @@ async function __safeJson(res){
       __refineRemember(data.imageBase64, data.mimeType || 'image/png');
       setStatus(t('fashionAiDone'));
     } catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       btnGenerate.disabled = false;
     }
@@ -1279,7 +1282,7 @@ async function __safeJson(res){
       refineInput.value = '';
       setStatus(t('fashionAiDone'));
     }catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     }finally{
       refineBtn.disabled = false; btnGenerate.disabled = false;
     }
@@ -1347,7 +1350,7 @@ async function __safeJson(res){
       suggestionsEl.style.display = list.length ? 'flex' : 'none';
       setStatus(list.length ? '' : t('fashionSuggestNeedImage'));
     } catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       suggestBtn.disabled = false;
     }
@@ -1428,7 +1431,7 @@ async function __safeJson(res){
       compareResultsEl.style.display = 'grid';
       compareStatusEl.style.display = 'none';
     } catch(e){
-      compareStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+      compareStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
     } finally {
       compareBtn.disabled = false;
     }
