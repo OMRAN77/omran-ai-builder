@@ -2419,6 +2419,14 @@ const I18N = {
     adminPanelTitle: '🛠️ لوحة التحكم (خاص بالمالك)',
     videoBadgeShort: 'قصير',
     videoBadgeFull: 'كامل',
+    provTypingSuffix: 'يكتب…',
+    provFailSwitch: 'لم يستجب ({why}) — جارٍ التحويل…',
+    provUnknownReason: 'سبب غير معروف',
+    provWhyBuild: 'البناء وتعديل الكود',
+    provWhyVision: 'قراءة الصور',
+    provWhyGeneral: 'هذا النوع من الطلبات',
+    provSwitchNote: 'اخترتَ {sel} — و{why} يُنفَّذ بـ {eff} لأنه الأدقّ فيه. محادثتك العادية تبقى على {sel}.',
+    provSwitchNoteHidden: 'محادثتك على {sel} — و{why} يُنفَّذ بـ {eff} لأنه الأدقّ فيه. محادثتك العادية تبقى على {sel}.',
     aboutFeatChat: 'بناء تطبيقات كاملة بالمحادثة', aboutFeatProviders: '٩ مزودي ذكاء + «اسأل الكل»', aboutFeatMaha: 'مها — مساعدتك الصوتية الحية', aboutFeatStudios: '٧ استوديوهات إبداعية للصور', aboutFeatStocks: 'سوق الأسهم ومحفظة تعليمية', aboutFeatPrivacy: 'خصوصيتك أولوية — مفاتيحك عندك', aboutChipUAE: 'صُنع في الإمارات 🇦🇪', aboutChipPWA: 'تطبيق PWA', aboutChipLangs: '١٤ لغة', aboutMoreSummary: '📖 المزيد عن المنصة',
     videoNeedDesc: '⚠️ اكتب وصف الفيديو أولًا.', videoVoiceFemale: '👩 فاطمة (أنثى)', videoVoiceMale: '👨 حمدان (ذكر)',
     pickerOptsForFeature: 'خيارًا لهذه الميزة', pickerStylesForCategory: 'نمطًا لهذه الفئة', pickerOptsWord: 'خيارًا', pickerOptsPick: 'خيارًا — اختر ما يناسبك', videoOptAdspot: '📢 إعلان سريع (5ث طولي + سرد)', videoOptReels: '📱 ريلز ذكي (10ث طولي + سرد)', fashionEngineLabel: '🎨 محرك الصور', fashionEngineGemini: 'Gemini — الأدق في الحفاظ على الوجه (الافتراضي)', fashionEngineOpenai: 'ChatGPT (gpt-image-1) — نفس محرك صور ChatGPT', videoAdvanced: 'خيارات متقدمة',
@@ -3416,6 +3424,14 @@ const I18N = {
     adminPanelTitle: '🛠️ Admin panel (owner only)',
     videoBadgeShort: 'Short',
     videoBadgeFull: 'Full',
+    provTypingSuffix: 'is typing…',
+    provFailSwitch: 'did not respond ({why}) — switching…',
+    provUnknownReason: 'unknown reason',
+    provWhyBuild: 'building & code editing',
+    provWhyVision: 'reading images',
+    provWhyGeneral: 'this kind of request',
+    provSwitchNote: 'You chose {sel} — but {why} is handled by {eff}, the most accurate for it. Your regular chat stays on {sel}.',
+    provSwitchNoteHidden: 'Your chat runs on {sel} — but {why} is handled by {eff}, the most accurate for it. Your regular chat stays on {sel}.',
     aboutFeatChat: 'Build complete apps by chatting', aboutFeatProviders: '9 AI providers + "Ask All"', aboutFeatMaha: 'Maha — your live voice assistant', aboutFeatStudios: '7 creative image studios', aboutFeatStocks: 'Stock market & learning portfolio', aboutFeatPrivacy: 'Privacy first — your keys stay yours', aboutChipUAE: 'Made in the UAE 🇦🇪', aboutChipPWA: 'PWA app', aboutChipLangs: '14 languages', aboutMoreSummary: '📖 More about the platform',
     videoNeedDesc: '⚠️ Please describe the video first.', videoVoiceFemale: '👩 Fatima (female)', videoVoiceMale: '👨 Hamdan (male)',
     pickerOptsForFeature: 'options for this feature', pickerStylesForCategory: 'styles for this category', pickerOptsWord: 'options', pickerOptsPick: 'options — pick yours', videoOptAdspot: '📢 Quick ad (5s vertical + narration)', videoOptReels: '📱 Smart reels (10s vertical + narration)', fashionEngineLabel: '🎨 Image engine', fashionEngineGemini: 'Gemini — best at preserving the face (default)', fashionEngineOpenai: 'ChatGPT (gpt-image-1) — the same ChatGPT image engine', videoAdvanced: 'Advanced options',
@@ -4189,7 +4205,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=608'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
+    sc.src = 'i18n/' + lg + '.js?v=609'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -5404,7 +5420,15 @@ function renderMessages(keepScroll){
       pColor = getProviderColors()[m.providerLabel] || null;
       // v311: اسم المزود يظهر كامل داخل الشاشة بدون قص (سفاري الآيفون).
       label.style.cssText = 'font-size:11px; font-weight:700; color:' + (pColor || 'var(--accent2)') + '; margin-bottom:4px; display:block; unicode-bidi:isolate; max-width:100%; overflow-wrap:anywhere; white-space:normal;';
-      label.textContent = m.providerLabel;
+      /* v-prov-status-i18n: الاسم المحفوظ كان بلغة وقت التوليد — يُعاد حلّه بلغة
+         الواجهة الحالية من providerKey عند العرض. */
+      let __plbl = m.providerLabel;
+      try{
+        if(m.providerKey && typeof functionalLabel === 'function'){
+          __plbl = (/^🔄\s*/.test(__plbl || '') ? '🔄 ' : '') + functionalLabel(m.providerKey);
+        }
+      }catch(e){ /* الاسم المحفوظ احتياط */ }
+      label.textContent = __plbl;
       if(isAskAllReply) div.appendChild(label); // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ»)
     }
     const textDiv = document.createElement('div');
@@ -10305,7 +10329,9 @@ async function callAIWithFallback(messages, onDelta, preferredList){
       // and GPT felt "dead" next to Claude, which had its own thinking output.
       try{
         if(window.__chatStatus && !window.__chatStatus.isReleased()){
-          window.__chatStatus.phase('💭', (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey) + ' يكتب…');
+          /* v-prov-status-i18n (شكوى المالك: «يكتب…» عربية بجانب اسم مترجم): سطر
+             الحالة يتبع لغة الواجهة كبقية النصوص. */
+          window.__chatStatus.phase('💭', (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey) + ' ' + t('provTypingSuffix'));
         }
       }catch(e){ console.warn('[status] provider phase failed', e); }
       const reply = await callProviderAI(providerKey, messages, onDelta);
@@ -10336,8 +10362,9 @@ async function callAIWithFallback(messages, onDelta, preferredList){
       try{
         if(window.__chatStatus){
           const who = (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey);
-          const why = (err && (err.status ? ('HTTP ' + err.status) : String(err.message || '').slice(0, 70))) || 'سبب غير معروف';
-          window.__chatStatus.note('⚠️', who + ' لم يستجب (' + why + ') — جارٍ التحويل…');
+          const why = (err && (err.status ? ('HTTP ' + err.status) : String(err.message || '').slice(0, 70))) || t('provUnknownReason');
+          /* v-prov-status-i18n: رسالة التعثر بلغة الواجهة لا بالعربي دائمًا. */
+          window.__chatStatus.note('⚠️', who + ' ' + t('provFailSwitch').replace('{why}', why));
           console.warn('[fallback] ' + providerKey + ' failed:', err);
         }
       }catch(e){ console.warn('[status] fallback note failed', e); }
@@ -17579,11 +17606,13 @@ DESIGN RULES (non-negotiable):
       try{
         var __selLabel = (typeof functionalLabel === 'function') ? functionalLabel(__selProv) : __selProv;
         if(__effProv !== __selProv && window.__chatStatus && !window.__chatStatus.isReleased() && !cur.adMode){
-          var __why = (__gateNoBuild || __routeFix) ? 'البناء وتعديل الكود'
-                    : (__visionOverride ? 'قراءة الصور' : 'هذا النوع من الطلبات');
-          window.__chatStatus.note('↪️', (__provUiHidden() ? 'محادثتك على ' : 'اخترتَ ') + __selLabel + ' — و' + __why + ' يُنفَّذ بـ ' +
-            ((typeof functionalLabel === 'function') ? functionalLabel(__effProv) : __effProv) +
-            ' لأنه الأدقّ فيه. محادثتك العادية تبقى على ' + __selLabel + '.');
+          /* v-prov-status-i18n (شكوى المالك: جملة التحويل عربية وسط واجهة أجنبية):
+             قالب مترجم بلغة الواجهة مع خانات {sel}/{why}/{eff}. */
+          var __why = (__gateNoBuild || __routeFix) ? t('provWhyBuild')
+                    : (__visionOverride ? t('provWhyVision') : t('provWhyGeneral'));
+          var __effLabel = (typeof functionalLabel === 'function') ? functionalLabel(__effProv) : __effProv;
+          window.__chatStatus.note('↪️', t(__provUiHidden() ? 'provSwitchNoteHidden' : 'provSwitchNote')
+            .replace(/\{sel\}/g, __selLabel).replace('{why}', __why).replace('{eff}', __effLabel));
         }
       }catch(e){ __swallow(e, 'ui:switchnote'); }
       const __teamOrder = [__effProv, ...(__routeFix ? ['claude', 'openai', 'gemini'] : ['claude', 'openai', 'gemini']).filter(p => p !== __effProv)];

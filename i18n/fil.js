@@ -1021,3 +1021,13 @@ Object.assign(I18N['fil'], {
   "adminPanelTitle": "🛠️ Admin panel (para lang sa may-ari)"
 });
 Object.assign(I18N['fil'], {"videoBadgeShort":"Maikli","videoBadgeFull":"Buo"});
+Object.assign(I18N['fil'], {
+  "provTypingSuffix": "nagta-type…",
+  "provFailSwitch": "hindi tumugon ({why}) — lumilipat…",
+  "provUnknownReason": "di-kilalang dahilan",
+  "provWhyBuild": "paggawa ng app at pag-edit ng code",
+  "provWhyVision": "pagbabasa ng mga larawan",
+  "provWhyGeneral": "ganitong uri ng kahilingan",
+  "provSwitchNote": "Pinili mo ang {sel} — pero ang {why} ay hawak ng {eff}, ang pinakatumpak dito. Ang karaniwang chat mo ay mananatili sa {sel}.",
+  "provSwitchNoteHidden": "Ang chat mo ay nasa {sel} — pero ang {why} ay hawak ng {eff}, ang pinakatumpak dito. Ang karaniwang chat mo ay mananatili sa {sel}."
+});

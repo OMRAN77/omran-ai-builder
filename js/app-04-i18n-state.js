@@ -21,7 +21,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=608'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
+    sc.src = 'i18n/' + lg + '.js?v=609'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -1236,7 +1236,15 @@ function renderMessages(keepScroll){
       pColor = getProviderColors()[m.providerLabel] || null;
       // v311: اسم المزود يظهر كامل داخل الشاشة بدون قص (سفاري الآيفون).
       label.style.cssText = 'font-size:11px; font-weight:700; color:' + (pColor || 'var(--accent2)') + '; margin-bottom:4px; display:block; unicode-bidi:isolate; max-width:100%; overflow-wrap:anywhere; white-space:normal;';
-      label.textContent = m.providerLabel;
+      /* v-prov-status-i18n: الاسم المحفوظ كان بلغة وقت التوليد — يُعاد حلّه بلغة
+         الواجهة الحالية من providerKey عند العرض. */
+      let __plbl = m.providerLabel;
+      try{
+        if(m.providerKey && typeof functionalLabel === 'function'){
+          __plbl = (/^🔄\s*/.test(__plbl || '') ? '🔄 ' : '') + functionalLabel(m.providerKey);
+        }
+      }catch(e){ /* الاسم المحفوظ احتياط */ }
+      label.textContent = __plbl;
       if(isAskAllReply) div.appendChild(label); // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ»)
     }
     const textDiv = document.createElement('div');

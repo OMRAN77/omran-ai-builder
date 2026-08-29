@@ -1949,7 +1949,9 @@ async function callAIWithFallback(messages, onDelta, preferredList){
       // and GPT felt "dead" next to Claude, which had its own thinking output.
       try{
         if(window.__chatStatus && !window.__chatStatus.isReleased()){
-          window.__chatStatus.phase('💭', (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey) + ' يكتب…');
+          /* v-prov-status-i18n (شكوى المالك: «يكتب…» عربية بجانب اسم مترجم): سطر
+             الحالة يتبع لغة الواجهة كبقية النصوص. */
+          window.__chatStatus.phase('💭', (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey) + ' ' + t('provTypingSuffix'));
         }
       }catch(e){ console.warn('[status] provider phase failed', e); }
       const reply = await callProviderAI(providerKey, messages, onDelta);
@@ -1980,8 +1982,9 @@ async function callAIWithFallback(messages, onDelta, preferredList){
       try{
         if(window.__chatStatus){
           const who = (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey);
-          const why = (err && (err.status ? ('HTTP ' + err.status) : String(err.message || '').slice(0, 70))) || 'سبب غير معروف';
-          window.__chatStatus.note('⚠️', who + ' لم يستجب (' + why + ') — جارٍ التحويل…');
+          const why = (err && (err.status ? ('HTTP ' + err.status) : String(err.message || '').slice(0, 70))) || t('provUnknownReason');
+          /* v-prov-status-i18n: رسالة التعثر بلغة الواجهة لا بالعربي دائمًا. */
+          window.__chatStatus.note('⚠️', who + ' ' + t('provFailSwitch').replace('{why}', why));
           console.warn('[fallback] ' + providerKey + ' failed:', err);
         }
       }catch(e){ console.warn('[status] fallback note failed', e); }

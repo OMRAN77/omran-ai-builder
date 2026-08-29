@@ -4227,11 +4227,13 @@ DESIGN RULES (non-negotiable):
       try{
         var __selLabel = (typeof functionalLabel === 'function') ? functionalLabel(__selProv) : __selProv;
         if(__effProv !== __selProv && window.__chatStatus && !window.__chatStatus.isReleased() && !cur.adMode){
-          var __why = (__gateNoBuild || __routeFix) ? 'البناء وتعديل الكود'
-                    : (__visionOverride ? 'قراءة الصور' : 'هذا النوع من الطلبات');
-          window.__chatStatus.note('↪️', (__provUiHidden() ? 'محادثتك على ' : 'اخترتَ ') + __selLabel + ' — و' + __why + ' يُنفَّذ بـ ' +
-            ((typeof functionalLabel === 'function') ? functionalLabel(__effProv) : __effProv) +
-            ' لأنه الأدقّ فيه. محادثتك العادية تبقى على ' + __selLabel + '.');
+          /* v-prov-status-i18n (شكوى المالك: جملة التحويل عربية وسط واجهة أجنبية):
+             قالب مترجم بلغة الواجهة مع خانات {sel}/{why}/{eff}. */
+          var __why = (__gateNoBuild || __routeFix) ? t('provWhyBuild')
+                    : (__visionOverride ? t('provWhyVision') : t('provWhyGeneral'));
+          var __effLabel = (typeof functionalLabel === 'function') ? functionalLabel(__effProv) : __effProv;
+          window.__chatStatus.note('↪️', t(__provUiHidden() ? 'provSwitchNoteHidden' : 'provSwitchNote')
+            .replace(/\{sel\}/g, __selLabel).replace('{why}', __why).replace('{eff}', __effLabel));
         }
       }catch(e){ __swallow(e, 'ui:switchnote'); }
       const __teamOrder = [__effProv, ...(__routeFix ? ['claude', 'openai', 'gemini'] : ['claude', 'openai', 'gemini']).filter(p => p !== __effProv)];
