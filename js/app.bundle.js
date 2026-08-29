@@ -4299,7 +4299,10 @@ function applyLanguage(){
   try{ if(window.__syncBrandTitle) window.__syncBrandTitle(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#5"); }
   try{ if(window.__tickerRelabel) window.__tickerRelabel(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#tick"); }
   document.documentElement.lang = lang;
-  document.documentElement.dir = dict.dir;
+  /* v652 — الأردو كانت تنقلب ltr لحظة ثمّ ترجع rtl (الشعار يقفز عرض الشاشة):
+     ملفّات اللغات الكسولة بلا مفتاح dir، فحتّى وصول ur.js يأتي القاموس
+     الاحتياطيّ الإنجليزيّ ومعه ltr. الاتّجاه صفة لغة لا صفة قاموس. */
+  document.documentElement.dir = (lang === 'ar' || lang === 'ur') ? 'rtl' : (dict.dir || 'ltr');
   if (dict.pageTitle && dict.pageTitle.trim()) document.title = dict.pageTitle;
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const raw = el.getAttribute('data-i18n');

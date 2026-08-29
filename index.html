@@ -32,6 +32,20 @@ window.__swallow = window.__swallow || function (err, ctx) {
   setTimeout(function(){ d.classList.remove('l10nPending'); }, 6000);
 }catch(e){}})();</script>
 <style>html.l10nPending body{visibility:hidden}</style>
+<script>/* v652 — قفزة الهيدر عند التحديث (شكوى المالك ٢٩ أغسطس: الضغط على الاسم
+  فوق يعيد تحميل الصفحة فيقفز الشعار من الوسط إلى طرفه، ويظهر زر ☰ لحظة ثم
+  يختفي): تخطيط الهيدر كله معلّق على الفئة mobile-ui، وكانت تُضاف من الحزمة بعد
+  نحو ٢٨٠ms — أي بعد أول رسمة — فتنقلب أعمدة الهيدر أمام العين. اللغات الأخرى
+  كانت تخفيه خلف ستار l10nPending؛ العربية بلا ستار فظهرت القفزة عارية. هنا
+  تُضاف الفئة قبل أول رسمة بنفس شرط applyMobileUiClass حرفيًا، ويبقى الأصل في
+  app-01 كما هو (classList.add لا يكرّر). قياس قبل: 136←12. */
+(function(){try{
+  var ua = navigator.userAgent || '';
+  var isMobileUA = /Android|iPhone|iPad|iPod|Mobile|Huawei|HarmonyOS/i.test(ua);
+  var isTouch = (navigator.maxTouchPoints || 0) > 0;
+  var isNarrow = window.matchMedia('(max-width:860px)').matches;
+  if((isMobileUA && isTouch) || isNarrow) document.documentElement.classList.add('mobile-ui');
+}catch(e){}})();</script>
 <meta name="description" content="أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. يدعم OpenAI وGemini وClaude وGroq وMistral وDeepSeek وCohere وأكثر. تطبيق ويب تقدمي (PWA) ثنائي اللغة، مجاني بالكامل، بواسطة عمران.">
 <meta name="keywords" content="منشئ تطبيقات بالذكاء الاصطناعي, AI app builder, AI code generator, أدوات ذكاء اصطناعي, بناء تطبيقات بدون كود, no-code AI, ChatGPT builder, Gemini, Claude, Groq, DeepSeek, Mistral, Cohere, Omran AI">
 <meta name="author" content="Omran">
@@ -422,7 +436,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 <script src="/js/selfdiag.js?v=651"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=d64344e1"></script>
+    <script defer src="/js/app.bundle.js?v=5b7f992c"></script>
     <script defer src="/js/modes.js?v=b23329c6"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
