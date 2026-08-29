@@ -952,3 +952,6 @@ Object.assign(I18N['zh'], { provNickKing: "王者", provNickFast: "疾速", prov
 
 /* v-modes-i18n + v-psub */
 Object.assign(I18N['zh'], { modeCreateImage: "生成图片", modeWebSearch: "网络搜索", modeThinkDeeper: "深度思考", psheetCountSuffix: "种风格 — 同一张脸，每种风格" });
+
+/* v-fashion-refine */
+Object.assign(I18N['zh'], { fashionRefinePh: "例如：只把裙子颜色改成蓝色", fashionRefineBtn: "✏️ 修改指定细节", fashionRefineNeed: "请先输入要修改的内容", fashionRefining: "正在应用修改…" });

@@ -911,3 +911,6 @@ Object.assign(I18N['ur'], { provNickKing: "کنگ", provNickFast: "تیز", prov
 
 /* v-modes-i18n + v-psub */
 Object.assign(I18N['ur'], { modeCreateImage: "تصویر بنائیں", modeWebSearch: "ویب تلاش", modeThinkDeeper: "گہری سوچ", psheetCountSuffix: "اسٹائل — وہی چہرہ، ہر انداز" });
+
+/* v-fashion-refine */
+Object.assign(I18N['ur'], { fashionRefinePh: "مثلاً: صرف لباس کا رنگ نیلا کریں", fashionRefineBtn: "✏️ ایک مخصوص تبدیلی کریں", fashionRefineNeed: "پہلے مطلوبہ تبدیلی لکھیں", fashionRefining: "تبدیلی لاگو ہو رہی ہے…" });

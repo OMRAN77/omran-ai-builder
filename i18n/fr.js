@@ -914,3 +914,6 @@ Object.assign(I18N['fr'], { provNickKing: "Le King", provNickFast: "Le Rapide", 
 
 /* v-modes-i18n + v-psub */
 Object.assign(I18N['fr'], { modeCreateImage: "Créer une image", modeWebSearch: "Recherche web", modeThinkDeeper: "Réflexion approfondie", psheetCountSuffix: "styles — même visage, chaque style" });
+
+/* v-fashion-refine */
+Object.assign(I18N['fr'], { fashionRefinePh: "ex. : changez seulement la couleur de la robe en bleu", fashionRefineBtn: "✏️ Modifier un détail précis", fashionRefineNeed: "Écrivez d’abord la modification", fashionRefining: "Application de la modification…" });

@@ -913,3 +913,6 @@ Object.assign(I18N['hi'], { provNickKing: "किंग", provNickFast: "ते�
 
 /* v-modes-i18n + v-psub */
 Object.assign(I18N['hi'], { modeCreateImage: "चित्र बनाएँ", modeWebSearch: "वेब खोज", modeThinkDeeper: "गहराई से सोचें", psheetCountSuffix: "स्टाइल — वही चेहरा, हर स्टाइल" });
+
+/* v-fashion-refine */
+Object.assign(I18N['hi'], { fashionRefinePh: "जैसे: केवल ड्रेस का रंग नीला करें", fashionRefineBtn: "✏️ एक खास बदलाव करें", fashionRefineNeed: "पहले बदलाव लिखें", fashionRefining: "बदलाव लागू हो रहा है…" });

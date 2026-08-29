@@ -960,3 +960,6 @@ Object.assign(I18N['tr'], { provNickKing: "King", provNickFast: "Hızlı", provN
 
 /* v-modes-i18n + v-psub */
 Object.assign(I18N['tr'], { modeCreateImage: "Görsel oluştur", modeWebSearch: "Web araması", modeThinkDeeper: "Derin düşünme", psheetCountSuffix: "stil — aynı yüz, her stil" });
+
+/* v-fashion-refine */
+Object.assign(I18N['tr'], { fashionRefinePh: "örn. sadece elbisenin rengini maviye çevir", fashionRefineBtn: "✏️ Belirli bir şeyi düzenle", fashionRefineNeed: "Önce istediğiniz değişikliği yazın", fashionRefining: "Düzenleme uygulanıyor…" });
