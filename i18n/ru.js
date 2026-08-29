@@ -1031,3 +1031,4 @@ Object.assign(I18N['ru'], {
   "provSwitchNoteHidden": "Ваш чат работает на {sel} — но {why} выполняет {eff}, самый точный в этом. Обычный чат остаётся на {sel}."
 });
 Object.assign(I18N['ru'], {"pageTitle":"Omran AI — Платформа ИИ"});
+Object.assign(I18N['ru'], {"privacyConsentTitle":"🔒 Ваша конфиденциальность прежде всего","privacyConsentText":"Перед использованием Omran AI Builder прочитайте <a href=\"/privacy.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">политику конфиденциальности</a> и <a href=\"/terms.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">условия использования</a>. В них описано, что мы собираем, как защищаем и ваше право удалить свои данные.","privacyConsentRead":"Читать политику","privacyConsentAgree":"Согласен, продолжить"});

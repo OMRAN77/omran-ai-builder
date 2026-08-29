@@ -979,3 +979,4 @@ Object.assign(I18N['ur'], {
   "provSwitchNoteHidden": "آپ کی گفتگو {sel} پر ہے — لیکن {why} اس میں سب سے ماہر {eff} انجام دیتا ہے۔ آپ کی عام گفتگو {sel} پر ہی رہے گی۔"
 });
 Object.assign(I18N['ur'], {"pageTitle":"عمران AI — ذہانت کا پلیٹ فارم"});
+Object.assign(I18N['ur'], {"privacyConsentTitle":"🔒 آپ کی رازداری سب سے پہلے","privacyConsentText":"Omran AI Builder استعمال کرنے سے پہلے براہ کرم <a href=\"/privacy.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">رازداری کی پالیسی</a> اور <a href=\"/terms.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">استعمال کی شرائط</a> پڑھیں۔ ان میں بتایا گیا ہے کہ ہم کیا جمع کرتے ہیں، کیسے محفوظ رکھتے ہیں اور آپ کا ڈیٹا حذف کرنے کا حق۔","privacyConsentRead":"پالیسی پڑھیں","privacyConsentAgree":"متفق ہوں، جاری رکھیں"});

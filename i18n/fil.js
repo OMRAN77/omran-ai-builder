@@ -1032,3 +1032,4 @@ Object.assign(I18N['fil'], {
   "provSwitchNoteHidden": "Ang chat mo ay nasa {sel} — pero ang {why} ay hawak ng {eff}, ang pinakatumpak dito. Ang karaniwang chat mo ay mananatili sa {sel}."
 });
 Object.assign(I18N['fil'], {"pageTitle":"Omran AI — Plataporma ng katalinuhan"});
+Object.assign(I18N['fil'], {"privacyConsentTitle":"🔒 Privacy mo muna","privacyConsentText":"Bago gamitin ang Omran AI Builder, pakibasa ang <a href=\"/privacy.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">patakaran sa privacy</a> at ang <a href=\"/terms.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">mga tuntunin ng paggamit</a>. Ipinapaliwanag ng mga ito kung ano ang kinokolekta namin, paano ito pinoprotektahan, at ang karapatan mong burahin ang iyong data.","privacyConsentRead":"Basahin ang patakaran","privacyConsentAgree":"Sumasang-ayon, magpatuloy"});
