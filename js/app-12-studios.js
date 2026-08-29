@@ -316,7 +316,11 @@ async function __safeJson(res){
     const o = styleEl && Array.prototype.find.call(styleEl.options, function(x){ return x.value === v; });
     if(!o) return v;
     const den = isEn() && o.getAttribute('data-en');
-    return ((den || o.textContent) || '').trim();
+    if(den) return String(den).trim();
+    /* v649: القاموس الحيّ أوّلًا — البطاقة تُبنى قبل وصول ملفّ اللغة الكسول فتلتقط الإنجليزيّة وتتجمّد. */
+    const k649 = o.getAttribute('data-i18n');
+    if(k649 && typeof t === 'function'){ const v649 = t(k649); if(v649 && v649 !== k649) return String(v649).trim(); }
+    return (o.textContent || '').trim();
   }
   function buildCompareStyleRow(){
     if(!cmpChecksEl || !styleEl) return;
@@ -339,6 +343,8 @@ async function __safeJson(res){
       img.onerror = function(){ img.remove(); };
       const label = document.createElement('div');
       label.textContent = styleTitle(v);
+      /* v649: تسليم التسمية لنظام i18n كي تُترجَم عند تبديل اللغة بلا إعادة بناء الصفّ. */
+      const lk649 = o.getAttribute('data-i18n'); if(lk649) label.setAttribute('data-i18n', lk649);
       label.style.cssText = 'position:absolute; left:0; right:0; bottom:0; padding:12px 3px 4px; font-size:10px; font-weight:700; text-align:center; z-index:1;' +
         ' color:' + (on ? '#d4af37' : '#eef0f6') + '; background:linear-gradient(transparent,rgba(0,0,0,.85));';
       if(on){

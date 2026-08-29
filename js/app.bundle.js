@@ -4190,6 +4190,10 @@ Style (the owner's fingerprint — every reply): a warm, genuinely enthusiastic 
     emailAsst_addingEvent: "Adding event…", emailAsst_eventAdded: "✅ Added to your calendar", emailAsst_calReauth: "Reconnect Gmail to allow calendar access", emailAsst_voiceLoading: "🔊 Preparing voice summary…", emailAsst_voiceEmpty: "No emails to summarize.", emailAsst_urgent: "🔴 Urgent", emailAsst_normal: "🟡 Normal", emailAsst_low: "⚪ Low",
   }
 };window.I18N = I18N;
+/* v649 — لوحة المحفظة التعليميّة (كانت عربيّة ثابتة في كلّ اللغات) */
+Object.assign(I18N.ar, {"pfGuestTitle":"💼 المحفظة التعليمية","pfGuestIntro":"100 ألف افتراضية تتداول بها بأسعار السوق الحقيقية وتنافس بقية المستخدمين 🏆","pfGuestLogin":"سجّل الدخول لبدء محفظتك — تقدمك يُحفظ في حسابك.","pfLoadingBox":"⏳ نجهز محفظتك…","pfLoadFail":"تعذر تحميل المحفظة"});
+Object.assign(I18N.en, {"pfGuestTitle":"💼 Practice Portfolio","pfGuestIntro":"100k virtual — trade at real market prices and compete with everyone else 🏆","pfGuestLogin":"Sign in to start your portfolio — your progress is saved to your account.","pfLoadingBox":"⏳ Preparing your portfolio…","pfLoadFail":"Couldn't load the portfolio"});
+
 /* v424: أساس الاحتياط للّغات. سبعة ملفّات لغة ناقصة (٣٠ مفتاحًا من ٧٩٦) كانت
    تُظهر العربية لمن لا يقرأها. الإنجليزية أساسٌ أصدق، ولغة الملفّ تبقى فوقه.
    العربية والإنجليزية تُعادان كما هما — لا دمج ولا كلفة على الجمهور الأوّل. */
@@ -20377,7 +20381,11 @@ async function __safeJson(res){
     const o = styleEl && Array.prototype.find.call(styleEl.options, function(x){ return x.value === v; });
     if(!o) return v;
     const den = isEn() && o.getAttribute('data-en');
-    return ((den || o.textContent) || '').trim();
+    if(den) return String(den).trim();
+    /* v649: القاموس الحيّ أوّلًا — البطاقة تُبنى قبل وصول ملفّ اللغة الكسول فتلتقط الإنجليزيّة وتتجمّد. */
+    const k649 = o.getAttribute('data-i18n');
+    if(k649 && typeof t === 'function'){ const v649 = t(k649); if(v649 && v649 !== k649) return String(v649).trim(); }
+    return (o.textContent || '').trim();
   }
   function buildCompareStyleRow(){
     if(!cmpChecksEl || !styleEl) return;
@@ -20400,6 +20408,8 @@ async function __safeJson(res){
       img.onerror = function(){ img.remove(); };
       const label = document.createElement('div');
       label.textContent = styleTitle(v);
+      /* v649: تسليم التسمية لنظام i18n كي تُترجَم عند تبديل اللغة بلا إعادة بناء الصفّ. */
+      const lk649 = o.getAttribute('data-i18n'); if(lk649) label.setAttribute('data-i18n', lk649);
       label.style.cssText = 'position:absolute; left:0; right:0; bottom:0; padding:12px 3px 4px; font-size:10px; font-weight:700; text-align:center; z-index:1;' +
         ' color:' + (on ? '#d4af37' : '#eef0f6') + '; background:linear-gradient(transparent,rgba(0,0,0,.85));';
       if(on){
@@ -22344,15 +22354,17 @@ async function __safeJson(res){
     });
   }
 
+  /* v649: قراءة من قاموس اللغة مع سقوط آمن على العربيّة إن غاب المفتاح. */
+  function pfT(k, ar){ try{ var v = (typeof t === 'function') ? t(k) : ''; return (v && v !== k) ? v : ar; }catch(e){ return ar; } }
   function pfLoad(){
     if(!pfWrap) return;
     if(!pfTok()){
-      pfWrap.innerHTML = '<div style="text-align:center;padding:26px 10px;font-size:13px;line-height:2;">💼 <b>المحفظة التعليمية</b><br>100 ألف افتراضية تتداول بها بأسعار السوق الحقيقية وتنافس بقية المستخدمين 🏆<br><span style="color:var(--muted);font-size:12px;">سجّل الدخول لبدء محفظتك — تقدمك يُحفظ في حسابك.</span></div>';
+      pfWrap.innerHTML = '<div style="text-align:center;padding:26px 10px;font-size:13px;line-height:2;"><b>' + pfT('pfGuestTitle', '💼 المحفظة التعليمية') + '</b><br>' + pfT('pfGuestIntro', '100 ألف افتراضية تتداول بها بأسعار السوق الحقيقية وتنافس بقية المستخدمين 🏆') + '<br><span style="color:var(--muted);font-size:12px;">' + pfT('pfGuestLogin', 'سجّل الدخول لبدء محفظتك — تقدمك يُحفظ في حسابك.') + '</span></div>';
       return;
     }
-    pfWrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">⏳ نجهز محفظتك…</div>';
+    pfWrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">' + pfT('pfLoadingBox', '⏳ نجهز محفظتك…') + '</div>';
     api({ mode:'pf-get', token: pfTok() }).then(pfRender)
-      .catch(function(e){ pfWrap.innerHTML = '<div style="text-align:center;padding:20px;color:#e05252;font-size:13px;">⚠️ ' + pfEsc(e.message || 'تعذر تحميل المحفظة') + '</div>'; });
+      .catch(function(e){ pfWrap.innerHTML = '<div style="text-align:center;padding:20px;color:#e05252;font-size:13px;">⚠️ ' + pfEsc(e.message || pfT('pfLoadFail', 'تعذر تحميل المحفظة')) + '</div>'; });
   }
   btnOpen.addEventListener('click', function(){ modal.style.display = 'flex'; stkShowTab('global'); });
   btnClose.addEventListener('click', function(){

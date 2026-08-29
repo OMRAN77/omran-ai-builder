@@ -464,15 +464,17 @@
     });
   }
 
+  /* v649: قراءة من قاموس اللغة مع سقوط آمن على العربيّة إن غاب المفتاح. */
+  function pfT(k, ar){ try{ var v = (typeof t === 'function') ? t(k) : ''; return (v && v !== k) ? v : ar; }catch(e){ return ar; } }
   function pfLoad(){
     if(!pfWrap) return;
     if(!pfTok()){
-      pfWrap.innerHTML = '<div style="text-align:center;padding:26px 10px;font-size:13px;line-height:2;">💼 <b>المحفظة التعليمية</b><br>100 ألف افتراضية تتداول بها بأسعار السوق الحقيقية وتنافس بقية المستخدمين 🏆<br><span style="color:var(--muted);font-size:12px;">سجّل الدخول لبدء محفظتك — تقدمك يُحفظ في حسابك.</span></div>';
+      pfWrap.innerHTML = '<div style="text-align:center;padding:26px 10px;font-size:13px;line-height:2;"><b>' + pfT('pfGuestTitle', '💼 المحفظة التعليمية') + '</b><br>' + pfT('pfGuestIntro', '100 ألف افتراضية تتداول بها بأسعار السوق الحقيقية وتنافس بقية المستخدمين 🏆') + '<br><span style="color:var(--muted);font-size:12px;">' + pfT('pfGuestLogin', 'سجّل الدخول لبدء محفظتك — تقدمك يُحفظ في حسابك.') + '</span></div>';
       return;
     }
-    pfWrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">⏳ نجهز محفظتك…</div>';
+    pfWrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">' + pfT('pfLoadingBox', '⏳ نجهز محفظتك…') + '</div>';
     api({ mode:'pf-get', token: pfTok() }).then(pfRender)
-      .catch(function(e){ pfWrap.innerHTML = '<div style="text-align:center;padding:20px;color:#e05252;font-size:13px;">⚠️ ' + pfEsc(e.message || 'تعذر تحميل المحفظة') + '</div>'; });
+      .catch(function(e){ pfWrap.innerHTML = '<div style="text-align:center;padding:20px;color:#e05252;font-size:13px;">⚠️ ' + pfEsc(e.message || pfT('pfLoadFail', 'تعذر تحميل المحفظة')) + '</div>'; });
   }
   btnOpen.addEventListener('click', function(){ modal.style.display = 'flex'; stkShowTab('global'); });
   btnClose.addEventListener('click', function(){

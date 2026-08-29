@@ -1021,3 +1021,4 @@ Object.assign(I18N['zh'], {
 });
 Object.assign(I18N['zh'], {"pageTitle":"Omran AI — 智能平台"});
 Object.assign(I18N['zh'], {"privacyConsentTitle":"🔒 隱私優先","privacyConsentText":"使用 Omran AI Builder 前，請先閱讀<a href=\"/privacy.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">隱私政策</a>與<a href=\"/terms.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">使用條款</a>。其中說明我們收集哪些資料、如何保護，以及您刪除資料的權利。","privacyConsentRead":"閱讀政策","privacyConsentAgree":"同意並繼續"});
+Object.assign(I18N['zh'], {"pfGuestTitle":"💼 模拟投资组合","pfGuestIntro":"10 万虚拟资金 — 按真实市场价格交易，与其他用户一较高下 🏆","pfGuestLogin":"登录即可开始你的投资组合 — 进度会保存到你的账户。","pfLoadingBox":"⏳ 正在准备你的投资组合…","pfLoadFail":"无法加载投资组合"});
