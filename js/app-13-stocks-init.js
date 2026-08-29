@@ -358,45 +358,51 @@
   function pfMoney(n){ return (typeof n === 'number' && isFinite(n)) ? n.toLocaleString('en-US', {maximumFractionDigits: 0}) : '—'; }
   var pfBusy = false;
 
+  /* v-pf-i18n (شكوى المالك ٢٩ أغسطس: نافذة الأسهم عربية وسط واجهة المليالم):
+     عربي/أردو ← عربي، وغير ذلك ← إنجليزي — نفس قاعدة v-tools-i18n. */
+  function stT(arTxt, enTxt){
+    var l = (typeof lang !== 'undefined' && lang) ? String(lang) : (function(){ try{ return localStorage.getItem('aiapp_lang')||'ar'; }catch(e){ return 'ar'; } })();
+    return (l === 'ar' || l === 'ur') ? arTxt : enTxt;
+  }
   function pfRender(d){
     if(!pfWrap) return;
     var p = d.portfolio, bd = d.board || { top: [], rank: null, total: 0 };
     var h = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">'
-      + '<span style="font-size:11.5px;background:rgba(212,175,55,.14);border:1px solid rgba(212,175,55,.4);color:#d4af37;border-radius:999px;padding:4px 11px;">🎓 وضع تعليمي — أموال افتراضية 100٪</span></div>'
+      + '<span style="font-size:11.5px;background:rgba(212,175,55,.14);border:1px solid rgba(212,175,55,.4);color:#d4af37;border-radius:999px;padding:4px 11px;">' + stT('🎓 وضع تعليمي — أموال افتراضية 100٪','🎓 Learning mode — 100% virtual money') + '</span></div>'
       // البطاقة العلوية: القيمة الكلية والربح/الخسارة
       + '<div style="border:1px solid var(--border,#333);border-radius:14px;padding:14px;background:rgba(255,255,255,.02);margin-bottom:12px;">'
       + '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">'
-      + '<div><div style="font-size:11px;color:var(--muted);">قيمة المحفظة</div><div style="font-size:22px;font-weight:700;">$' + pfMoney(p.equity) + '</div></div>'
-      + '<div><div style="font-size:11px;color:var(--muted);">الكاش المتاح</div><div style="font-size:16px;font-weight:600;">$' + pfMoney(p.cash) + '</div></div>'
-      + '<div><div style="font-size:11px;color:var(--muted);">الربح/الخسارة</div><div style="font-size:16px;font-weight:700;color:' + pfCol(p.pl) + ';">' + (p.pl >= 0 ? '+' : '') + pfMoney(p.pl) + ' (' + p.plPct + '%)</div></div>'
+      + '<div><div style="font-size:11px;color:var(--muted);">' + stT('قيمة المحفظة','Portfolio value') + '</div><div style="font-size:22px;font-weight:700;">$' + pfMoney(p.equity) + '</div></div>'
+      + '<div><div style="font-size:11px;color:var(--muted);">' + stT('الكاش المتاح','Available cash') + '</div><div style="font-size:16px;font-weight:600;">$' + pfMoney(p.cash) + '</div></div>'
+      + '<div><div style="font-size:11px;color:var(--muted);">' + stT('الربح/الخسارة','Profit/Loss') + '</div><div style="font-size:16px;font-weight:700;color:' + pfCol(p.pl) + ';">' + (p.pl >= 0 ? '+' : '') + pfMoney(p.pl) + ' (' + p.plPct + '%)</div></div>'
       + '</div></div>'
       // نموذج الصفقة
       + '<div style="border:1px solid var(--border,#333);border-radius:14px;padding:12px;margin-bottom:12px;">'
-      + '<div style="font-size:12.5px;margin-bottom:8px;font-weight:600;">صفقة جديدة (بالسعر الحي الحقيقي)</div>'
+      + '<div style="font-size:12.5px;margin-bottom:8px;font-weight:600;">' + stT('صفقة جديدة (بالسعر الحي الحقيقي)','New trade (at the real live price)') + '</div>'
       + '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
-      + '<input id="pfSym" placeholder="الرمز مثل AAPL" style="flex:2;min-width:110px;padding:9px;border-radius:9px;border:1px solid var(--border,#444);background:transparent;color:inherit;font:inherit;text-transform:uppercase;">'
-      + '<input id="pfQty" type="number" min="1" placeholder="الكمية" style="flex:1;min-width:70px;padding:9px;border-radius:9px;border:1px solid var(--border,#444);background:transparent;color:inherit;font:inherit;">'
-      + '<button class="btn" id="pfBuy" style="background:#2E9E6B;color:#fff;border:none;">شراء</button>'
-      + '<button class="btn" id="pfSell" style="background:#e05252;color:#fff;border:none;">بيع</button>'
+      + '<input id="pfSym" placeholder="' + stT('الرمز مثل AAPL','Symbol e.g. AAPL') + '" style="flex:2;min-width:110px;padding:9px;border-radius:9px;border:1px solid var(--border,#444);background:transparent;color:inherit;font:inherit;text-transform:uppercase;">'
+      + '<input id="pfQty" type="number" min="1" placeholder="' + stT('الكمية','Quantity') + '" style="flex:1;min-width:70px;padding:9px;border-radius:9px;border:1px solid var(--border,#444);background:transparent;color:inherit;font:inherit;">'
+      + '<button class="btn" id="pfBuy" style="background:#2E9E6B;color:#fff;border:none;">' + stT('شراء','Buy') + '</button>'
+      + '<button class="btn" id="pfSell" style="background:#e05252;color:#fff;border:none;">' + stT('بيع','Sell') + '</button>'
       + '</div><div id="pfMsg" style="font-size:12px;margin-top:8px;line-height:1.7;"></div></div>';
     // المراكز
-    h += '<div style="font-size:12.5px;font-weight:600;margin:0 0 6px;">مراكزك (' + p.positions.length + ')</div>';
+    h += '<div style="font-size:12.5px;font-weight:600;margin:0 0 6px;">' + stT('مراكزك','Your positions') + ' (' + p.positions.length + ')</div>';
     if(!p.positions.length){
-      h += '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">ما عندك أسهم بعد — جرّب أول صفقة تعليمية! اكتب رمزًا مثل AAPL وكمية واضغط شراء.</div>';
+      h += '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">' + stT('ما عندك أسهم بعد — جرّب أول صفقة تعليمية! اكتب رمزًا مثل AAPL وكمية واضغط شراء.','No shares yet — try your first practice trade! Type a symbol like AAPL, a quantity, then press Buy.') + '</div>';
     } else {
       p.positions.forEach(function(pos){
         h += '<div style="display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(128,128,128,.15);padding:8px 2px;font-size:12.5px;flex-wrap:wrap;">'
           + '<b style="min-width:56px;">' + pfEsc(pos.symbol) + '</b>'
-          + '<span style="color:var(--muted);">' + pos.qty + ' سهم × $' + pos.price + '</span>'
+          + '<span style="color:var(--muted);">' + pos.qty + ' ' + stT('سهم','shares') + ' × $' + pos.price + '</span>'
           + '<span style="margin-inline-start:auto;font-weight:700;color:' + pfCol(pos.pl) + ';">' + (pos.pl >= 0 ? '+' : '') + pfMoney(pos.pl) + ' (' + pos.plPct + '%)</span>'
-          + '<button class="btn" data-pfsell="' + pfEsc(pos.symbol) + '" data-pfqty="' + pos.qty + '" style="padding:4px 10px;font-size:11px;">بيع الكل</button>'
-          + '<button class="btn" data-pfwhy="' + pfEsc(pos.symbol) + '" style="padding:4px 10px;font-size:11px;">🎓 علّمني</button>'
+          + '<button class="btn" data-pfsell="' + pfEsc(pos.symbol) + '" data-pfqty="' + pos.qty + '" style="padding:4px 10px;font-size:11px;">' + stT('بيع الكل','Sell all') + '</button>'
+          + '<button class="btn" data-pfwhy="' + pfEsc(pos.symbol) + '" style="padding:4px 10px;font-size:11px;">' + stT('🎓 علّمني','🎓 Teach me') + '</button>'
           + '</div>';
       });
     }
     // الترتيب
-    h += '<div style="font-size:12.5px;font-weight:600;margin:14px 0 6px;">🏆 ترتيب المتداولين'
-      + (bd.rank ? ' — مركزك: ' + bd.rank + ' من ' + bd.total : '') + '</div>';
+    h += '<div style="font-size:12.5px;font-weight:600;margin:14px 0 6px;">🏆 ' + stT('ترتيب المتداولين','Traders leaderboard') + ''
+      + (bd.rank ? stT(' — مركزك: ', ' — your rank: ') + bd.rank + stT(' من ', ' of ') + bd.total : '') + '</div>';
     (bd.top || []).forEach(function(r){
       h += '<div style="display:flex;gap:8px;font-size:12px;padding:4px 2px;' + '">'
         + '<span style="min-width:26px;">' + (r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : r.rank + '.') + '</span>'
@@ -405,15 +411,15 @@
     });
     // آخر الصفقات + إعادة الضبط
     if((p.trades || []).length){
-      h += '<div style="font-size:12.5px;font-weight:600;margin:14px 0 6px;">آخر صفقاتك</div>';
+      h += '<div style="font-size:12.5px;font-weight:600;margin:14px 0 6px;">' + stT('آخر صفقاتك','Your recent trades') + '</div>';
       p.trades.forEach(function(t){
-        h += '<div style="font-size:11.5px;color:var(--muted);padding:2px 2px;">' + (t.side === 'buy' ? '🟢 شراء' : '🔴 بيع') + ' ' + t.qty + ' × ' + pfEsc(t.sym) + ' @ $' + t.price + '</div>';
+        h += '<div style="font-size:11.5px;color:var(--muted);padding:2px 2px;">' + (t.side === 'buy' ? stT('🟢 شراء','🟢 Buy') : stT('🔴 بيع','🔴 Sell')) + ' ' + t.qty + ' × ' + pfEsc(t.sym) + ' @ $' + t.price + '</div>';
       });
     }
     h += '<div id="pfLesson" style="display:none;margin-top:12px;border:1px solid rgba(212,175,55,.35);border-radius:12px;padding:12px;font-size:12.5px;line-height:1.9;white-space:pre-wrap;"></div>'
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:8px;flex-wrap:wrap;">'
-      + '<span style="font-size:10.5px;color:var(--muted);">تداول تجريبي تعليمي — أسعار حقيقية وأموال افتراضية، ليست نصيحة استثمارية.</span>'
-      + '<button class="btn" id="pfReset" style="font-size:11px;padding:5px 11px;">🔄 ابدأ من جديد (100 ألف)</button></div>';
+      + '<span style="font-size:10.5px;color:var(--muted);">' + stT('تداول تجريبي تعليمي — أسعار حقيقية وأموال افتراضية، ليست نصيحة استثمارية.','Educational paper trading — real prices, virtual money. Not investment advice.') + '</span>'
+      + '<button class="btn" id="pfReset" style="font-size:11px;padding:5px 11px;">' + stT('🔄 ابدأ من جديد (100 ألف)','🔄 Start over (100k)') + '</button></div>';
     pfWrap.innerHTML = h;
     pfWire();
   }
@@ -424,15 +430,15 @@
     if(pfBusy) return;
     sym = String(sym || ($('#pfSym') && $('#pfSym').value) || '').trim().toUpperCase();
     qty = Math.floor(Number(qty != null ? qty : ($('#pfQty') && $('#pfQty').value)));
-    if(!sym || !qty || qty <= 0){ pfMsgShow('اكتب رمز السهم والكمية أولًا', false); return; }
-    pfBusy = true; pfMsgShow('⏳ ننفذ الصفقة بالسعر الحي…', true);
+    if(!sym || !qty || qty <= 0){ pfMsgShow(stT('اكتب رمز السهم والكمية أولًا','Enter a stock symbol and quantity first'), false); return; }
+    pfBusy = true; pfMsgShow(stT('⏳ ننفذ الصفقة بالسعر الحي…','⏳ Executing at the live price…'), true);
     api({ mode:'pf-trade', side: side, tradeSymbol: sym, qty: qty, token: pfTok(), guestId: (window.getGuestId ? getGuestId() : '') })
       .then(function(d){
         pfBusy = false; pfRender(d);
         var last = d.portfolio.trades && d.portfolio.trades[0];
         pfMsgShow(last ? ('✅ تمت: ' + (last.side === 'buy' ? 'شراء' : 'بيع') + ' ' + last.qty + ' × ' + last.sym + ' بسعر $' + last.price + (last.side === 'buy' ? ' — 🎓 درس: لا تضع كل كاشك في سهم واحد، التنويع يحميك.' : ' — 🎓 درس: البيع يثبّت الربح أو يوقف الخسارة، والقرار الجيد يُتخذ بخطة لا بعاطفة.')) : '✅ تمت الصفقة', true);
       })
-      .catch(function(e){ pfBusy = false; pfMsgShow('⚠️ ' + (e.message || 'تعذرت الصفقة'), false); });
+      .catch(function(e){ pfBusy = false; pfMsgShow('⚠️ ' + (e.message || stT('تعذرت الصفقة','Trade failed')), false); });
   }
 
   function pfWire(){
@@ -565,6 +571,8 @@
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
   function t(key){
+    /* v-global-first: المترجم العام (الـ14 لغة) أولًا — المحلي يعرف عربي/إنجليزي فقط */
+    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ /* لم يجهز بعد */ }
     const dict = (typeof I18N !== 'undefined') ? I18N[isEn() ? 'en' : 'ar'] : null;
     return (dict && dict[key]) || key;
   }
