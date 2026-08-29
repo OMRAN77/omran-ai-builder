@@ -948,3 +948,5 @@ Object.assign(I18N['fr'], {
   exp_noContent: "Choisissez un fichier ou collez du texte d'abord",
   exp_err: "Échec de l'analyse, réessayez"
 });
+
+Object.assign(I18N['fr'], { videoNeedDesc: "⚠️ Décrivez d’abord la vidéo.", videoVoiceFemale: "👩 Fatima (voix féminine)", videoVoiceMale: "👨 Hamdan (voix masculine)" }); // v-video-i18n

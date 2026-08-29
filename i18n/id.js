@@ -995,3 +995,5 @@ Object.assign(I18N['id'], {
   exp_noContent: "Pilih file atau tempel teks dulu",
   exp_err: "Analisis gagal, coba lagi"
 });
+
+Object.assign(I18N['id'], { videoNeedDesc: "⚠️ Jelaskan videonya dulu.", videoVoiceFemale: "👩 Fatima (wanita)", videoVoiceMale: "👨 Hamdan (pria)" }); // v-video-i18n

@@ -947,3 +947,5 @@ Object.assign(I18N['hi'], {
   exp_noContent: "पहले फ़ाइल चुनें या टेक्स्ट पेस्ट करें",
   exp_err: "विश्लेषण विफल, फिर कोशिश करें"
 });
+
+Object.assign(I18N['hi'], { videoNeedDesc: "⚠️ पहले वीडियो का विवरण लिखें।", videoVoiceFemale: "👩 फ़ातिमा (महिला)", videoVoiceMale: "👨 हमदान (पुरुष)" }); // v-video-i18n

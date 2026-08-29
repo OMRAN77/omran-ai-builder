@@ -997,3 +997,5 @@ Object.assign(I18N['ru'], {
   exp_noContent: "Сначала выберите файл или вставьте текст",
   exp_err: "Не удалось, попробуйте снова"
 });
+
+Object.assign(I18N['ru'], { videoNeedDesc: "⚠️ Сначала опишите видео.", videoVoiceFemale: "👩 Фатима (женский голос)", videoVoiceMale: "👨 Хамдан (мужской голос)" }); // v-video-i18n

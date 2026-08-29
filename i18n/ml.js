@@ -998,3 +998,5 @@ Object.assign(I18N['ml'], {
   exp_noContent: "ആദ്യം ഫയൽ/ടെക്സ്റ്റ് നൽകൂ",
   exp_err: "വിശകലനം പരാജയപ്പെട്ടു, വീണ്ടും ശ്രമിക്കൂ"
 });
+
+Object.assign(I18N['ml'], { videoNeedDesc: "⚠️ ആദ്യം വീഡിയോ വിവരിക്കൂ.", videoVoiceFemale: "👩 ഫാത്തിമ (സ്ത്രീ)", videoVoiceMale: "👨 ഹംദാൻ (പുരുഷൻ)" }); // v-video-i18n

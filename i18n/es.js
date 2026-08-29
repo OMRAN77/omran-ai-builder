@@ -996,3 +996,5 @@ Object.assign(I18N['es'], {
   exp_noContent: "Elige un archivo o pega texto primero",
   exp_err: "Falló el análisis, inténtalo de nuevo"
 });
+
+Object.assign(I18N['es'], { videoNeedDesc: "⚠️ Describe primero el vídeo.", videoVoiceFemale: "👩 Fatima (femenina)", videoVoiceMale: "👨 Hamdan (masculina)" }); // v-video-i18n

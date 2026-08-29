@@ -945,3 +945,5 @@ Object.assign(I18N['ur'], {
   exp_noContent: "پہلے فائل چنیں یا متن چسپاں کریں",
   exp_err: "تجزیہ ناکام، دوبارہ کوشش کریں"
 });
+
+Object.assign(I18N['ur'], { videoNeedDesc: "⚠️ پہلے ویڈیو کی تفصیل لکھیں۔", videoVoiceFemale: "👩 فاطمہ (خاتون)", videoVoiceMale: "👨 حمدان (مرد)" }); // v-video-i18n

@@ -947,3 +947,5 @@ Object.assign(I18N['bn'], {
   exp_noContent: "আগে ফাইল বাছুন বা টেক্সট দিন",
   exp_err: "বিশ্লেষণ ব্যর্থ, আবার চেষ্টা করুন"
 });
+
+Object.assign(I18N['bn'], { videoNeedDesc: "⚠️ আগে ভিডিওর বর্ণনা লিখুন।", videoVoiceFemale: "👩 ফাতিমা (নারী)", videoVoiceMale: "👨 হামদান (পুরুষ)" }); // v-video-i18n

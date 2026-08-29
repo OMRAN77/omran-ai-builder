@@ -17,7 +17,7 @@
     var g=document.createElement('div'); g.className='optGrid';
     g.style.gridTemplateColumns='repeat('+(opts.length<=4?opts.length:3)+',1fr)';
     opts.forEach(function(o){
-      var den=(document.documentElement.lang||'ar')==='en'&&o.getAttribute('data-en');
+      var l0g=(document.documentElement.lang||'ar')+''; var den=(l0g.indexOf('ar')!==0&&l0g.indexOf('ur')!==0)&&o.getAttribute('data-en'); /* v-look-labels */
       var txt=((den||o.textContent)||'').trim(), m=txt.match(EMO);
       var ic=m?m[1]:(((ICONS[sel.id]||{})[o.value])||'');
       if(m) txt=txt.replace(EMO,'');
@@ -255,7 +255,7 @@
     nm.textContent=txt;
     nm.style.cssText='font-size:12.5px;font-weight:800;color:#fff;';
     info.appendChild(nm);
-    var subT=((document.documentElement.lang||'ar')!=='en')&&CBSUB[cb.id];
+    var subT=(((document.documentElement.lang||'ar')+'').indexOf('ar')===0)&&CBSUB[cb.id]; /* v-psub-ar-only */
     if(subT){ var sb=document.createElement('div'); sb.textContent=subT; sb.style.cssText='font-size:10.5px;color:rgba(255,255,255,.75);margin-top:2px;'; info.appendChild(sb); }
     var tk=document.createElement('div'); tk.textContent='✓';
     tk.style.cssText='position:absolute;top:7px;inset-inline-start:8px;width:22px;height:22px;border-radius:50%;background:#d4af37;color:#141414;font-weight:800;font-size:14px;display:none;align-items:center;justify-content:center;';
@@ -280,7 +280,7 @@
   }
   function selTrigger(s){
     var ien=(document.documentElement.lang||'ar')==='en';
-    function optTxt(o){ var den=ien&&o.getAttribute('data-en'); return ((den||o.textContent)||'').trim(); }
+    function optTxt(o){ var l0=(document.documentElement.lang||'ar')+''; var den=(l0.indexOf('ar')!==0&&l0.indexOf('ur')!==0)&&o.getAttribute('data-en'); return ((den||o.textContent)||'').trim(); } /* v-look-labels */
     function cur(){ var os=s.options; for(var i=0;i<os.length;i++) if(os[i].value===s.value) return os[i]; return os[0]; }
     var lab=s.parentElement.querySelector('label');
     var labTxt=(lab?lab.textContent:'').trim();
@@ -313,9 +313,13 @@
       if(!s.getAttribute('data-gridhook')){ s.setAttribute('data-gridhook','1'); s.addEventListener('change',function(){ var gg=s.parentElement.querySelector('.optGrid'); if(gg) mark(gg,s); }); }
     });
     var nt=document.getElementById('designAiNotes');
+    /* v-notes-no-clobber: هذه الكتابة كانت تمحو ترجمة data-i18n (المليالم
+       ترجع عربيًا) — المترجم العام أولًا، والثنائي احتياط فقط. */
     if(nt){ var ien=(document.documentElement.lang||'ar')==='en';
-      nt.placeholder=ien?'e.g. Italian restaurant, 40 seats, high ceiling, industrial vibe':'\u0645\u062B\u0627\u0644: \u0645\u0637\u0639\u0645 \u0625\u064A\u0637\u0627\u0644\u064A \u0664\u0660 \u0643\u0631\u0633\u064A\u060C \u0633\u0642\u0641 \u0639\u0627\u0644\u064A\u060C \u0637\u0627\u0628\u0639 \u0635\u0646\u0627\u0639\u064A';
-      var nl=document.getElementById('designAiNotesLbl'); if(nl) nl.textContent=ien?'\u270D\uFE0F Describe it in your own words (optional)':'\u270D\uFE0F \u0627\u0643\u062A\u0628 \u062A\u0641\u0627\u0635\u064A\u0644\u0643 \u0628\u0643\u0644\u0645\u0627\u062A\u0643 (\u0627\u062E\u062A\u064A\u0627\u0631\u064A)';
+      var __gph=(typeof window.t==='function'&&window.t('dsNotesPh')!=='dsNotesPh')?window.t('dsNotesPh'):null;
+      var __glb=(typeof window.t==='function'&&window.t('dsNotesLabel')!=='dsNotesLabel')?window.t('dsNotesLabel'):null;
+      nt.placeholder=__gph||(ien?'e.g. Italian restaurant, 40 seats, high ceiling, industrial vibe':'\u0645\u062B\u0627\u0644: \u0645\u0637\u0639\u0645 \u0625\u064A\u0637\u0627\u0644\u064A \u0664\u0660 \u0643\u0631\u0633\u064A\u060C \u0633\u0642\u0641 \u0639\u0627\u0644\u064A\u060C \u0637\u0627\u0628\u0639 \u0635\u0646\u0627\u0639\u064A');
+      var nl=document.getElementById('designAiNotesLbl'); if(nl) nl.textContent=__glb||(ien?'\u270D\uFE0F Describe it in your own words (optional)':'\u270D\uFE0F \u0627\u0643\u062A\u0628 \u062A\u0641\u0627\u0635\u064A\u0644\u0643 \u0628\u0643\u0644\u0645\u0627\u062A\u0643 (\u0627\u062E\u062A\u064A\u0627\u0631\u064A)');
     }
     var anchor=document.getElementById('designAiDecorPlants');
     if(anchor&&anchor.parentElement&&anchor.parentElement.parentElement){

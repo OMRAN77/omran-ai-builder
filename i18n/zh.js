@@ -986,3 +986,5 @@ Object.assign(I18N['zh'], {
   exp_noContent: "请先选择文件或粘贴文本",
   exp_err: "分析失败，请重试"
 });
+
+Object.assign(I18N['zh'], { videoNeedDesc: "⚠️ 请先描述视频。", videoVoiceFemale: "👩 Fatima（女声）", videoVoiceMale: "👨 Hamdan（男声）" }); // v-video-i18n

@@ -2413,6 +2413,7 @@ const I18N = {
     logoutTitle: 'تسجيل الخروج',
     loginAction: 'دخول',
     acctSectionTitle: '👤 حسابي',
+    videoNeedDesc: '⚠️ اكتب وصف الفيديو أولًا.', videoVoiceFemale: '👩 فاطمة (أنثى)', videoVoiceMale: '👨 حمدان (ذكر)',
     pickerOptsForFeature: 'خيارًا لهذه الميزة', pickerStylesForCategory: 'نمطًا لهذه الفئة', pickerOptsWord: 'خيارًا', pickerOptsPick: 'خيارًا — اختر ما يناسبك', videoOptAdspot: '📢 إعلان سريع (5ث طولي + سرد)', videoOptReels: '📱 ريلز ذكي (10ث طولي + سرد)', fashionEngineLabel: '🎨 محرك الصور', fashionEngineGemini: 'Gemini — الأدق في الحفاظ على الوجه (الافتراضي)', fashionEngineOpenai: 'ChatGPT (gpt-image-1) — نفس محرك صور ChatGPT', videoAdvanced: 'خيارات متقدمة',
     fashionRefinePh: 'مثال: غيّري لون الفستان إلى أزرق فقط', fashionRefineBtn: '✏️ عدّلي شيئًا محددًا', fashionRefineNeed: 'اكتبي التعديل المطلوب أولًا', fashionRefining: 'جاري تطبيق التعديل…',
     modeCreateImage: 'إنشاء صورة', modeWebSearch: 'البحث على الويب', modeThinkDeeper: 'التفكير العميق', psheetCountSuffix: 'ستايلًا — نفس وجهك بكل ستايل',
@@ -3402,6 +3403,7 @@ const I18N = {
     logoutTitle: 'Log out',
     loginAction: 'Login',
     acctSectionTitle: '👤 My account',
+    videoNeedDesc: '⚠️ Please describe the video first.', videoVoiceFemale: '👩 Fatima (female)', videoVoiceMale: '👨 Hamdan (male)',
     pickerOptsForFeature: 'options for this feature', pickerStylesForCategory: 'styles for this category', pickerOptsWord: 'options', pickerOptsPick: 'options — pick yours', videoOptAdspot: '📢 Quick ad (5s vertical + narration)', videoOptReels: '📱 Smart reels (10s vertical + narration)', fashionEngineLabel: '🎨 Image engine', fashionEngineGemini: 'Gemini — best at preserving the face (default)', fashionEngineOpenai: 'ChatGPT (gpt-image-1) — the same ChatGPT image engine', videoAdvanced: 'Advanced options',
     fashionRefinePh: 'e.g. change only the dress colour to blue', fashionRefineBtn: '✏️ Edit one specific thing', fashionRefineNeed: 'Type the change you want first', fashionRefining: 'Applying your edit…',
     modeCreateImage: 'Create image', modeWebSearch: 'Web search', modeThinkDeeper: 'Think deeper', psheetCountSuffix: 'styles — same face, every style',
@@ -4173,7 +4175,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=605'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
+    sc.src = 'i18n/' + lg + '.js?v=606'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -19508,7 +19510,7 @@ function openShareModal(project){
   btnGenerate.onclick = async () => {
     const text = (promptEl.value || '').trim();
     if(!text && modeEl.value !== 'actor'){
-      setStatus(isEn() ? '⚠️ Please describe the video first.' : '⚠️ اكتب وصف الفيديو أولًا.');
+      setStatus((typeof window.t === 'function' && window.t('videoNeedDesc') !== 'videoNeedDesc') ? window.t('videoNeedDesc') : (isEn() ? '⚠️ Please describe the video first.' : '⚠️ اكتب وصف الفيديو أولًا.'));
       return;
     }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;

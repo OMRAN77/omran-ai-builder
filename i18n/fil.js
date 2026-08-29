@@ -998,3 +998,5 @@ Object.assign(I18N['fil'], {
   exp_noContent: "Pumili muna ng file o mag-paste ng teksto",
   exp_err: "Nabigo ang pagsusuri, subukan ulit"
 });
+
+Object.assign(I18N['fil'], { videoNeedDesc: "⚠️ Ilarawan muna ang video.", videoVoiceFemale: "👩 Fatima (babae)", videoVoiceMale: "👨 Hamdan (lalaki)" }); // v-video-i18n

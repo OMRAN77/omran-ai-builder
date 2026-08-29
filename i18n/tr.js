@@ -994,3 +994,5 @@ Object.assign(I18N['tr'], {
   exp_noContent: "Önce dosya seçin veya metin yapıştırın",
   exp_err: "Analiz başarısız, tekrar deneyin"
 });
+
+Object.assign(I18N['tr'], { videoNeedDesc: "⚠️ Önce videoyu tanımlayın.", videoVoiceFemale: "👩 Fatima (kadın)", videoVoiceMale: "👨 Hamdan (erkek)" }); // v-video-i18n

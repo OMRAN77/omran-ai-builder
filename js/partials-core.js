@@ -198,10 +198,10 @@
     <!-- اختيار الصوت: ذكر/أنثى -->
     <div id="videoMakerVoiceGenderRow" style="display:none; margin-top:8px; margin-bottom:2px; gap:16px; flex-wrap:wrap;" class="mini-mic-field-row">
       <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px;">
-        <input type="radio" name="videoVoiceGender" id="videoVoiceFemale" value="female" checked> 👩 فاطمة (أنثى)
+        <input type="radio" name="videoVoiceGender" id="videoVoiceFemale" value="female" checked> <span data-i18n="videoVoiceFemale">👩 فاطمة (أنثى)</span>
       </label>
       <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px;">
-        <input type="radio" name="videoVoiceGender" id="videoVoiceMale" value="male"> 👨 حمدان (ذكر)
+        <input type="radio" name="videoVoiceGender" id="videoVoiceMale" value="male"> <span data-i18n="videoVoiceMale">👨 حمدان (ذكر)</span>
       </label>
     </div>
     <div class="mini-mic-field-row" id="videoMakerNarrationRow" style="margin-top:6px; display:none;">
