@@ -65,6 +65,8 @@ async function __safeJson(res){
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
   function t(key){
+    /* v-global-first: المترجم العام (الـ14 لغة) أولًا — المحلي يعرف عربي/إنجليزي فقط */
+    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ /* لم يجهز بعد */ }
     const dict = (typeof I18N !== 'undefined') ? I18N[isEn() ? 'en' : 'ar'] : null;
     return (dict && dict[key]) || key;
   }
@@ -523,7 +525,7 @@ async function __safeJson(res){
     opts.forEach((opt) => {
       const v = opt.value;
       const active = v === styleEl.value;
-      const title = opt.textContent.trim();
+      const title = optLabel(opt).trim();
       const card = document.createElement('div');
       card.setAttribute('data-pstyle-card', v);
       card.style.cssText = 'border-radius:14px; overflow:hidden; cursor:pointer; background:#17171b;' +
@@ -671,6 +673,8 @@ async function __safeJson(res){
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
   function t(key){
+    /* v-global-first: المترجم العام (الـ14 لغة) أولًا — المحلي يعرف عربي/إنجليزي فقط */
+    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ /* لم يجهز بعد */ }
     const dict = (typeof I18N !== 'undefined') ? I18N[isEn() ? 'en' : 'ar'] : null;
     return (dict && dict[key]) || key;
   }
@@ -831,6 +835,16 @@ async function __safeJson(res){
   if(!modal || !btnOpen) return;
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  /* v-look-labels: خيارات اللوكات القديمة نصها عربي مع data-en — غير العربي
+     والأردو يأخذ الإنجليزية (خيارات data-i18n تُترجم أصلًا فلا تُمس). */
+  function optLabel(o){
+    if(!o) return '';
+    var l7 = lang7();
+    if(l7 !== 'ar' && l7 !== 'ur' && !o.hasAttribute('data-i18n')){
+      var de = o.getAttribute('data-en'); if(de) return de;
+    }
+    return o.textContent;
+  }
   function lang7(){ return (typeof currentLang === 'function') ? currentLang() : (localStorage.getItem('aiapp_lang') || 'ar'); }
   function t(key){
     const dict = (typeof window.__i18nDict === 'function') ? window.__i18nDict(lang7()) : ((typeof I18N !== 'undefined') ? I18N[lang7()] : null);
@@ -879,11 +893,11 @@ async function __safeJson(res){
     if(!window.omranPicker) return;
     window.omranPicker.open({
       title: isEn() ? '👗 Fashion styles' : '👗 أنماط الأزياء',
-      count: list.length + (isEn() ? ' styles — pick yours' : ' نمطًا — اختر ما يناسبك'),
+      count: list.length + ' ' + ((typeof window.t === 'function' && window.t('pickerOptsPick') !== 'pickerOptsPick') ? window.t('pickerOptsPick') : (isEn() ? 'styles — pick yours' : 'نمطًا — اختر ما يناسبك')),
       items: list.map(function(v){
         const opt = fashionOptFor(v);
         return opt && {
-          v: v, title: opt.textContent.trim(), active: v === styleEl.value,
+          v: v, title: optLabel(opt).trim(), active: v === styleEl.value,
           img: 'assets/fashion/looks/' + g + '/' + v + '.webp',
           img2: 'assets/fashion/looks/' + v + '.webp',
         };
@@ -904,12 +918,12 @@ async function __safeJson(res){
     const trig = document.createElement('div');
     trig.id = 'fashionStyleTrigger';
     trig.style.cssText = 'display:flex; align-items:center; gap:10px; border:1px solid var(--border,#333); border-radius:12px; padding:8px 10px; cursor:pointer; background:var(--panel2,#101014);';
-    const img = lookImg(g, styleEl.value, opt ? opt.textContent : '');
+    const img = lookImg(g, styleEl.value, opt ? optLabel(opt) : '');
     img.style.cssText = 'width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
     const info = document.createElement('div');
     info.style.cssText = 'flex:1; min-width:0;';
     const nm = document.createElement('div');
-    nm.textContent = opt ? opt.textContent : '';
+    nm.textContent = opt ? optLabel(opt) : '';
     nm.style.cssText = 'font-size:13.5px; font-weight:700;';
     const sub = document.createElement('div');
     sub.textContent = list.length + ' ' + ((typeof window.t === 'function' && window.t('pickerStylesForCategory') !== 'pickerStylesForCategory') ? window.t('pickerStylesForCategory') : (isEn() ? 'styles for this category' : 'نمطًا لهذه الفئة'));
@@ -1037,7 +1051,7 @@ async function __safeJson(res){
       tick.style.cssText = 'position:absolute; top:6px; inset-inline-end:6px; width:22px; height:22px; border-radius:50%; background:#d4af37; color:#141414;' +
         ' font-weight:800; font-size:14px; display:none; align-items:center; justify-content:center; z-index:2;';
       const label = document.createElement('div');
-      label.textContent = opt.textContent;
+      label.textContent = optLabel(opt);
       label.style.cssText = 'position:absolute; left:0; right:0; bottom:0; padding:14px 6px 6px; font-size:11px; font-weight:700; text-align:center; color:#eef0f6;' +
         ' background:linear-gradient(transparent,rgba(0,0,0,.82));';
       function paint(){

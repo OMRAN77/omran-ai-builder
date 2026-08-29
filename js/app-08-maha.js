@@ -1993,7 +1993,10 @@ async function mahaStartCallInner(mode){
   if(mahaOrbEl) mahaOrbEl.style.display = mahaCallMode === 'builder' ? 'none' : 'flex';
   if(mahaWaveEl) mahaWaveEl.style.display = mahaCallMode === 'builder' ? 'flex' : 'none';
   const mahaNameLabelEl = document.getElementById('mahaCallNameLabel');
-  if(mahaNameLabelEl) mahaNameLabelEl.textContent = mahaCallMode === 'builder' ? (t('voiceTabAssistantName') || 'المساعد') : 'مها';
+  /* v-maha-name: الاسم بالحروف اللاتينية لغير العربي/الأردو */
+  const __mahaLang = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
+  const __mahaName = (__mahaLang === 'ar' || __mahaLang === 'ur') ? 'مها' : 'Maha';
+  if(mahaNameLabelEl) mahaNameLabelEl.textContent = mahaCallMode === 'builder' ? (t('voiceTabAssistantName') || 'المساعد') : __mahaName;
   if(mahaCallMode !== 'builder') mahaUpdatePersonaUI();
   mahaCallActive = true;
   if(mahaCallScreenEl){
