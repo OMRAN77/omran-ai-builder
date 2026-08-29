@@ -527,6 +527,11 @@ function exportTextAsPdf(raw){
     const font = msgPdfFontSpec();
     const pdfFont = msgPdfFontHead(font);
     const doc = '<!DOCTYPE html><html dir="' + (isAr ? 'rtl' : 'ltr') + '"><head><meta charset="utf-8"><title>Omran AI Builder</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';color:#111;background:#fff;padding:28px 32px;line-height:' + font.line + ';font-size:14.5px}h2{font-size:17px;margin:18px 0 6px;color:#4c2a92;border-bottom:1px solid #eee;padding-bottom:4px}ul{margin:4px 0;padding-' + (isAr ? 'right' : 'left') + ':22px}p{margin:6px 0}footer{margin-top:30px;font-size:11px;color:#999;text-align:center}</style></head><body>' + html + '<footer>Omran AI Builder</footer></body></html>';
+    // v670: جوال/PWA — الطباعة تفشل بصمت هناك، فننزّل ملف PDF حقيقيًا بدلها.
+    if(msgIsMobilePdf()){
+      msgHtmlToPdfDownload(doc, pdfFont.family, 'ui:app-08-maha#7').then(function(ok){ if(!ok) msgPdfDownloadFailAlert(); });
+      return;
+    }
     const fr = document.createElement('iframe');
     fr.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;';
     document.body.appendChild(fr);

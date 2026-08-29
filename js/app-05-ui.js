@@ -39,12 +39,87 @@ function msgPrintAfterFont(view, family, ctx){
     else wait();
   }catch(e){ __swallow(e, ctx + ':font-link'); wait(); }
 }
+/* v670: الجوال — نافذة الطباعة لا تعمل داخل التطبيق المثبّت (PWA) فتفشل بصمت،
+   فنولّد هناك ملف PDF حقيقيًا وننزّله مباشرة (jsPDF + html2canvas).
+   الكمبيوتر يبقى على نافذة الطباعة لأنها تعمل هناك وتُبقي خيار الطابعة الورقية. */
+function msgIsMobilePdf(){
+  try{
+    return document.documentElement.classList.contains('mobile-ui')
+      || (window.matchMedia && window.matchMedia('(max-width:860px)').matches);
+  }catch(e){ __swallow(e, 'pdf:is-mobile'); return false; }
+}
+let __pdfLibsLoading = null;
+function msgLoadPdfLibs(){
+  if(window.jspdf && window.jspdf.jsPDF && window.html2canvas) return Promise.resolve();
+  if(__pdfLibsLoading) return __pdfLibsLoading;
+  const add = (src) => new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = resolve; s.onerror = () => reject(new Error('load-failed: ' + src));
+    document.head.appendChild(s);
+  });
+  __pdfLibsLoading = Promise.all([
+    (window.jspdf && window.jspdf.jsPDF) ? null : add('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
+    window.html2canvas ? null : add('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
+  ]).catch((e) => { __pdfLibsLoading = null; throw e; });
+  return __pdfLibsLoading;
+}
+async function msgHtmlToPdfDownload(doc, family, ctx){
+  // iframe مرسوم فعليًا خارج الشاشة (لا display:none) حتى يلتقطه html2canvas.
+  const fr = document.createElement('iframe');
+  fr.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0;';
+  document.body.appendChild(fr);
+  try{
+    await msgLoadPdfLibs();
+    // مهلة أمان: ورقة خطوط Google بطيئة/محجوبة لا تعلّق التوليد — نمضي بالخط البديل.
+    await Promise.race([
+      new Promise((resolve) => { fr.onload = resolve; fr.srcdoc = doc; }),
+      new Promise((resolve) => setTimeout(resolve, 4000)),
+    ]);
+    const view = fr.contentWindow;
+    try{
+      const fonts = view.document.fonts;
+      if(fonts && fonts.load) await Promise.race([
+        fonts.load('16px ' + family).then(() => fonts.ready),
+        new Promise((resolve) => setTimeout(resolve, 3000)),
+      ]);
+    }catch(e){ __swallow(e, ctx + ':font-load'); }
+    await new Promise((resolve) => setTimeout(resolve, 150)); // فرصة إعادة الرسم بالخط المحمَّل
+    const canvas = await window.html2canvas(view.document.body, { scale: 2, backgroundColor: '#ffffff', useCORS: true, windowWidth: 794 });
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+    const pw = pdf.internal.pageSize.getWidth();
+    const ph = pdf.internal.pageSize.getHeight();
+    const pageH = Math.max(1, Math.floor(canvas.width * ph / pw));
+    for(let y = 0, page = 0; y < canvas.height; y += pageH, page++){
+      const slice = document.createElement('canvas');
+      slice.width = canvas.width;
+      slice.height = Math.min(pageH, canvas.height - y);
+      slice.getContext('2d').drawImage(canvas, 0, y, canvas.width, slice.height, 0, 0, canvas.width, slice.height);
+      if(page > 0) pdf.addPage();
+      pdf.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pw, slice.height * pw / canvas.width);
+    }
+    pdf.save('omran-ai.pdf');
+    return true;
+  }catch(e){
+    __swallow(e, ctx + ':pdf-download');
+    return false;
+  }finally{
+    try{ fr.remove(); }catch(e){ __swallow(e, ctx + ':pdf-frame'); }
+  }
+}
+function msgPdfDownloadFailAlert(){
+  try{ alert('تعذر إنشاء ملف PDF — حاول مرة ثانية'); }catch(e){ __swallow(e, 'pdf:fail-alert'); }
+}
 function exportReplyAsPdf(text){
-  const w = window.open('', '_blank');
-  if(!w) return;
   const font = msgPdfFontSpec();
   const pdfFont = msgPdfFontHead(font);
   const html = '<html><head><meta charset="utf-8"><title>عمران AI</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';direction:rtl;padding:28px;line-height:' + font.line + ';color:#111;white-space:pre-wrap;word-break:break-word;}</style></head><body>' + msgEscapeHtml(text) + '</body></html>';
+  if(msgIsMobilePdf()){
+    msgHtmlToPdfDownload(html, pdfFont.family, 'ui:app-05-ui#1').then((ok) => { if(!ok) msgPdfDownloadFailAlert(); });
+    return;
+  }
+  const w = window.open('', '_blank');
+  if(!w) return;
   w.document.open(); w.document.write(html); w.document.close();
   msgPrintAfterFont(w, pdfFont.family, 'ui:app-05-ui#1');
 }
