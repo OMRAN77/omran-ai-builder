@@ -624,17 +624,21 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
 (function(){
   const h1 = document.querySelector('header h1');
   if(h1) h1.onclick = () => { try{ saveState(); }catch(_){ __swallow(_, "save:app-10-features#16"); } location.href = location.pathname; };
+  /* v-brand-l10n (طلب المالك ٢٩ أغسطس): شعار ذهبي مخصوص لكل لغة — العربي
+     والإنجليزي كما هما بلا أي تغيير. الأعراض عند ارتفاع 42 من ملفات PNG
+     الفعلية (الأصل 168px = ٤×). لغة بلا شعار خاص ترجع للإنجليزي. */
+  const BRAND_L10N_W = { zh:84, hi:71, es:87, fr:89, bn:75, ru:89, ur:75, id:86, fil:93, tr:75, ne:69, ml:110 };
   const syncBrand = () => {
     const bt = document.getElementById('brandTitle');
     const l = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
-    const isAr = (l === 'ar' || l === 'ur');
     if(bt){
-      const imgSrc = isAr ? 'icons/brand-ar.png' : 'icons/brand-en.png';
-      const imgAlt = isAr ? 'عمران Ai' : 'Omran Ai';
       /* v-brand-stable (شكوى ٢٩ أغسطس: الشعار يتحرك عند التحديث): أبعاد
          الصورة تُعلن مسبقًا فيحجز المتصفح مكانها قبل تحميلها — لا قفزة.
          النِّسب من ملفات PNG الفعلية: عربي 1203×400، إنجليزي 1534×400. */
-      const imgW = isAr ? 126 : 161;
+      let imgSrc, imgW, imgAlt;
+      if(l === 'ar'){ imgSrc = 'icons/brand-ar.png'; imgW = 126; imgAlt = 'عمران Ai'; }
+      else if(BRAND_L10N_W[l]){ imgSrc = 'icons/brand-' + l + '.png'; imgW = BRAND_L10N_W[l]; imgAlt = 'Omran Ai'; }
+      else { imgSrc = 'icons/brand-en.png'; imgW = 161; imgAlt = 'Omran Ai'; }
       bt.innerHTML = '<img src="' + imgSrc + '" alt="' + imgAlt + '" class="brandImg" width="' + imgW + '" height="42">';
     }
   };

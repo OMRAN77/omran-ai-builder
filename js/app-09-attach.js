@@ -3328,6 +3328,13 @@ function __showImgLoading(el, ar, en){
         '- التطبيق يوفّر توليد الصور والفيديو وPDF؛ استخدم القدرة المناسبة بدل ادعاء العجز.\n' +
         '- التحية الخالصة لها رد قصير مستقل. أمّا سؤال المجاملة أو المتابعة مثل «كيف الحال؟» فأجب عنه كحديث مستمر بلا إعادة تحية أو عرض خدمة.';
     }
+    /* v-reply-lang (طلب المالك ٢٩ أغسطس: «المحادثة بالعربي رغم تغيير اللغة»):
+       القواعد الملحقة المكتوبة بالعربي كانت تجرّ النموذج للرد بالعربي مهما
+       كانت لغة الواجهة. القاعدة هنا تفرض لغة الواجهة المختارة صراحة، مع
+       استثناء واحد: المستخدم كتب رسالته بلغة مختلفة واضحة → يُجارى بلغته. */
+    const __LANG_NAMES = { ar:'Arabic', en:'English', zh:'Chinese', hi:'Hindi', es:'Spanish', fr:'French', bn:'Bengali', ru:'Russian', ur:'Urdu', id:'Indonesian', fil:'Filipino', tr:'Turkish', ne:'Nepali', ml:'Malayalam' };
+    const __uiLangName = __LANG_NAMES[(typeof lang !== 'undefined' && lang) ? lang : 'ar'] || 'Arabic';
+    __sys += '\nREPLY LANGUAGE RULE (mandatory, highest priority): the app UI language is ' + __uiLangName + '. ALWAYS write your ENTIRE reply in ' + __uiLangName + '. The fact that the instructions above are written in Arabic or English does NOT mean you should reply in them. Single exception: if the user\'s latest message is clearly written in a language different from ' + __uiLangName + ', reply in the user\'s own language instead. Never default to Arabic unless the UI language is Arabic or the user wrote in Arabic.';
     // الدور الاجتماعي القصير يُعزل عن الذاكرة والمواضيع السابقة، لكن سؤال الحال
     // يبقى استمرارًا للمحادثة لا تحية جديدة.
     const __quietSocialTurn = isPureGreeting(text) || isCasualCheckIn(text);
