@@ -1030,3 +1030,4 @@ Object.assign(I18N['ru'], {
   "provSwitchNote": "Вы выбрали {sel} — но {why} выполняет {eff}, самый точный в этом. Обычный чат остаётся на {sel}.",
   "provSwitchNoteHidden": "Ваш чат работает на {sel} — но {why} выполняет {eff}, самый точный в этом. Обычный чат остаётся на {sel}."
 });
+Object.assign(I18N['ru'], {"pageTitle":"Omran AI — Платформа ИИ"});

@@ -981,3 +981,4 @@ Object.assign(I18N['fr'], {
   "provSwitchNote": "Vous avez choisi {sel} — mais {why} est confié à {eff}, le plus précis pour cela. Votre conversation habituelle reste sur {sel}.",
   "provSwitchNoteHidden": "Votre conversation utilise {sel} — mais {why} est confié à {eff}, le plus précis pour cela. Votre conversation habituelle reste sur {sel}."
 });
+Object.assign(I18N['fr'], {"pageTitle":"Omran AI — Plateforme d'intelligence"});

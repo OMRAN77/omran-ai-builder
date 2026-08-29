@@ -1029,3 +1029,4 @@ Object.assign(I18N['es'], {
   "provSwitchNote": "Elegiste {sel} — pero {why} lo maneja {eff}, el más preciso para ello. Tu chat habitual sigue en {sel}.",
   "provSwitchNoteHidden": "Tu chat usa {sel} — pero {why} lo maneja {eff}, el más preciso para ello. Tu chat habitual sigue en {sel}."
 });
+Object.assign(I18N['es'], {"pageTitle":"Omran AI — Plataforma de inteligencia"});

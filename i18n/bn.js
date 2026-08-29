@@ -980,3 +980,4 @@ Object.assign(I18N['bn'], {
   "provSwitchNote": "আপনি {sel} বেছে নিয়েছেন — কিন্তু {why} সবচেয়ে দক্ষ {eff} সামলায়। আপনার সাধারণ চ্যাট {sel}-এ থাকবে।",
   "provSwitchNoteHidden": "আপনার চ্যাট {sel}-এ চলছে — কিন্তু {why} সবচেয়ে দক্ষ {eff} সামলায়। আপনার সাধারণ চ্যাট {sel}-এ থাকবে।"
 });
+Object.assign(I18N['bn'], {"pageTitle":"Omran AI — ইন্টেলিজেন্স প্ল্যাটফর্ম"});

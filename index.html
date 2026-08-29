@@ -137,6 +137,18 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
   <h1>
     <span class="titles">
       <span id="brandTitle" class="brandTitle brand-ar"><img src="icons/brand-ar.png" alt="عمران Ai" class="brandImg" width="126" height="42"></span>
+      <script>/* v-brand-noflash (شكوى المالك: الضغط على الاسم فوق يُظهر «عمران» عربيًا
+        بأي لغة): الشعار العربي كان مكتوبًا في الصفحة فيظهر أول لقطة قبل الجافاسكربت.
+        هنا يُبدَّل فورًا أثناء التحليل بشعار اللغة المحفوظة — نفس جدول syncBrand. */
+      (function(){try{
+        var l = localStorage.getItem('aiapp_lang') || 'ar';
+        if(l === 'ar') return;
+        var W = { zh:84, hi:71, es:87, fr:89, bn:75, ru:89, ur:75, id:86, fil:93, tr:75, ne:69, ml:110 };
+        var s = W[l] ? ('icons/brand-' + l + '.png') : 'icons/brand-en.png';
+        var w = W[l] || 161;
+        document.getElementById('brandTitle').innerHTML = '<img src="' + s + '" alt="Omran Ai" class="brandImg" width="' + w + '" height="42">';
+        document.title = 'Omran AI';
+      }catch(e){}})();</script>
     </span>
   </h1>
   <div id="headerActions" style="display:flex; gap:8px; flex-wrap:nowrap; justify-content:flex-end; align-items:center; flex-shrink:0;">
@@ -395,7 +407,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 <script src="/js/selfdiag.js?v=651"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=34b09287"></script>
+    <script defer src="/js/app.bundle.js?v=e1b732a6"></script>
     <script defer src="/js/modes.js?v=b23329c6"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
