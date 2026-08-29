@@ -961,3 +961,10 @@ Object.assign(I18N['ur'], {
   aboutChipLangs: "14 زبانیں",
   aboutMoreSummary: "📖 پلیٹ فارم کے بارے میں"
 });
+Object.assign(I18N['ur'], {
+  "aboutSupportTitle": "📞 کسٹمر سروس اور معاونت",
+  "aboutSupportDesc": "ہم آپ کے سوالات کا جواب 24–48 گھنٹوں میں دیتے ہیں۔",
+  "aboutCopyright": "© عمران AI ٹیم — متحدہ عرب امارات میں محبت سے بنایا گیا 🇦🇪",
+  "adminPanelTitle": "🛠️ ایڈمن پینل (صرف مالک کے لیے)"
+});
+Object.assign(I18N['ur'], {"videoBadgeShort":"مختصر","videoBadgeFull":"مکمل"});

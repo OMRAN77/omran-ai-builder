@@ -1012,3 +1012,10 @@ Object.assign(I18N['es'], {
   aboutChipLangs: "14 idiomas",
   aboutMoreSummary: "📖 Más sobre la plataforma"
 });
+Object.assign(I18N['es'], {
+  "aboutSupportTitle": "📞 Atención al cliente y soporte",
+  "aboutSupportDesc": "Respondemos a tus consultas en 24–48 horas.",
+  "aboutCopyright": "© Equipo Omran AI — Hecho con amor en los EAU 🇦🇪",
+  "adminPanelTitle": "🛠️ Panel de administración (solo propietario)"
+});
+Object.assign(I18N['es'], {"videoBadgeShort":"Corto","videoBadgeFull":"Completo"});

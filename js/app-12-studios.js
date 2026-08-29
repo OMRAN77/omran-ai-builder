@@ -1789,18 +1789,11 @@ async function __safeJson(res){
       if(authBtn) authBtn.click();
       return;
     }
-    const clientId = '533765051685-2334rjfvu738sd2i50p7rb8gck1d00i2.apps.googleusercontent.com';
-    const redirectUri = window.location.origin + '/api/email-callback';
-    const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      response_type: 'code',
-      scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar.events',
-      access_type: 'offline',
-      prompt: 'consent',
-      state: token,
-    });
-    window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+    /* v-email-start-server: الرابط كان يُبنى هنا بـ window.location.origin ومعرّف
+       عميل مكتوب، بينما يبادل الخادم بـ SITE_URL ومعرّف البيئة — وجوجل تشترط
+       تطابق redirect_uri حرفًا بحرف، فكان الربط يفشل («مساعد الإيميل لا يعمل»).
+       الآن الخادم يبني الرابط بقيمه هو نفسها. (api/_lib/email-google-start.js) */
+    window.location.href = '/api/system?action=email-google-start&state=' + encodeURIComponent(token);
   });
 
   refreshBtn.addEventListener('click', loadEmails);

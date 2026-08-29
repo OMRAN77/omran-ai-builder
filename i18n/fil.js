@@ -1014,3 +1014,10 @@ Object.assign(I18N['fil'], {
   aboutChipLangs: "14 na wika",
   aboutMoreSummary: "📖 Higit pa"
 });
+Object.assign(I18N['fil'], {
+  "aboutSupportTitle": "📞 Serbisyo sa customer at suporta",
+  "aboutSupportDesc": "Sinasagot namin ang inyong mga tanong sa loob ng 24–48 oras.",
+  "aboutCopyright": "© Omran AI team — Gawa nang may pagmamahal sa UAE 🇦🇪",
+  "adminPanelTitle": "🛠️ Admin panel (para lang sa may-ari)"
+});
+Object.assign(I18N['fil'], {"videoBadgeShort":"Maikli","videoBadgeFull":"Buo"});

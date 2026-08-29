@@ -962,3 +962,10 @@ Object.assign(I18N['ne'], {
   aboutChipLangs: "१४ भाषा",
   aboutMoreSummary: "📖 थप जान्नुहोस्"
 });
+Object.assign(I18N['ne'], {
+  "aboutSupportTitle": "📞 ग्राहक सेवा र सहायता",
+  "aboutSupportDesc": "हामी तपाईंका प्रश्नहरूको जवाफ २४–४८ घण्टाभित्र दिन्छौं।",
+  "aboutCopyright": "© Omran AI टोली — UAE मा मायाले बनाइएको 🇦🇪",
+  "adminPanelTitle": "🛠️ एड्मिन प्यानल (मालिकका लागि मात्र)"
+});
+Object.assign(I18N['ne'], {"videoBadgeShort":"छोटो","videoBadgeFull":"पूरा"});

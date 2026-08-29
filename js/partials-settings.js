@@ -413,8 +413,7 @@
       <!-- v-about-lux: بطاقة الهوية -->
       <div style="position:relative; overflow:hidden; border:1px solid rgba(212,175,55,.4); border-radius:20px; padding:24px 16px 20px; text-align:center; background:radial-gradient(130% 100% at 50% 0%, rgba(212,175,55,.16), transparent 55%), var(--panel2,#161616); margin-bottom:14px;">
         <img src="/icons/omran-mark-64.png" alt="عمران AI" width="66" height="66" style="border-radius:17px; box-shadow:0 8px 28px rgba(212,175,55,.3);">
-        <div style="font-size:20px; font-weight:800; margin-top:10px; letter-spacing:.3px;">عمران <span style="color:#d4af37;">AI</span></div>
-        <div style="font-size:12.5px; color:var(--muted); margin-top:5px;" data-i18n="aboutTagline">منصة عربية لبناء التطبيقات بالذكاء الاصطناعي</div>
+        <div style="font-size:12.5px; color:var(--muted); margin-top:10px;" data-i18n="aboutTagline">منصة عربية لبناء التطبيقات بالذكاء الاصطناعي</div>
         <div style="display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin-top:13px;">
           <span style="font-size:11px; padding:4px 11px; border-radius:999px; border:1px solid rgba(212,175,55,.4); color:#d4af37;" data-i18n="aboutChipUAE">صُنع في الإمارات 🇦🇪</span>
           <span style="font-size:11px; padding:4px 11px; border-radius:999px; border:1px solid var(--border,#3a3a3a); color:var(--muted);" data-i18n="aboutChipPWA">تطبيق PWA</span>
@@ -447,11 +446,11 @@
       <div style="display:flex; align-items:center; gap:8px; font-weight:800; font-size:13.5px; margin:0 0 10px;"><span style="width:4px; height:16px; border-radius:2px; background:#d4af37; display:inline-block;"></span><span data-i18n="videosGroupTitle">🎬 الفيديوهات التعريفية</span></div>
       <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px;">
         <div class="lang-videos-ar" style="border:1px solid rgba(212,175,55,.28); border-radius:16px; overflow:hidden; background:var(--panel2,rgba(255,255,255,.02));">
-          <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 12px;"><span style="font-weight:700; font-size:12.5px;" data-i18n="videoArShortTitle">جولة سريعة بالعربي</span><span style="font-size:10.5px; padding:2px 9px; border-radius:999px; background:rgba(212,175,55,.15); color:#d4af37;">قصير</span></div>
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 12px;"><span style="font-weight:700; font-size:12.5px;" data-i18n="videoArShortTitle">جولة سريعة بالعربي</span><span style="font-size:10.5px; padding:2px 9px; border-radius:999px; background:rgba(212,175,55,.15); color:#d4af37;" data-i18n="videoBadgeShort">قصير</span></div>
           <video controls preload="none" playsinline style="width:100%; display:block; background:#000; aspect-ratio:16/9; object-fit:cover;"><source src="/assets/videos/intro-ar-short.mp4" type="video/mp4"></video>
         </div>
         <div class="lang-videos-ar" style="border:1px solid rgba(212,175,55,.28); border-radius:16px; overflow:hidden; background:var(--panel2,rgba(255,255,255,.02));">
-          <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 12px;"><span style="font-weight:700; font-size:12.5px;" data-i18n="videoArLongTitle">الشرح الكامل بالعربي</span><span style="font-size:10.5px; padding:2px 9px; border-radius:999px; background:rgba(212,175,55,.15); color:#d4af37;">كامل</span></div>
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:9px 12px;"><span style="font-weight:700; font-size:12.5px;" data-i18n="videoArLongTitle">الشرح الكامل بالعربي</span><span style="font-size:10.5px; padding:2px 9px; border-radius:999px; background:rgba(212,175,55,.15); color:#d4af37;" data-i18n="videoBadgeFull">كامل</span></div>
           <video controls preload="none" playsinline style="width:100%; display:block; background:#000; aspect-ratio:16/9; object-fit:cover;"><source src="/assets/videos/intro-ar-long.mp4" type="video/mp4"></video>
         </div>
         <div class="lang-videos-en" style="border:1px solid rgba(212,175,55,.28); border-radius:16px; overflow:hidden; background:var(--panel2,rgba(255,255,255,.02));">
@@ -466,12 +465,12 @@
 
       <!-- AppGallery 6.4: معلومات خدمة العملاء ظاهرة داخل التطبيق (v-about-lux) -->
       <div id="supportContactBox" style="border:1px solid var(--border,#333); border-radius:16px; padding:14px; margin-top:16px; background:var(--panel2,rgba(255,255,255,.02));">
-        <div style="display:flex; align-items:center; gap:8px; font-weight:800; font-size:13.5px; margin-bottom:8px;"><span style="width:4px; height:16px; border-radius:2px; background:#d4af37; display:inline-block;"></span>📞 خدمة العملاء والدعم</div>
-        <div style="font-size:12.5px; color:var(--muted); line-height:1.9;">نرد على استفساراتك خلال ٢٤-٤٨ ساعة.</div>
+        <div style="display:flex; align-items:center; gap:8px; font-weight:800; font-size:13.5px; margin-bottom:8px;"><span style="width:4px; height:16px; border-radius:2px; background:#d4af37; display:inline-block;"></span><span data-i18n="aboutSupportTitle">📞 خدمة العملاء والدعم</span></div>
+        <div style="font-size:12.5px; color:var(--muted); line-height:1.9;" data-i18n="aboutSupportDesc">نرد على استفساراتك خلال ٢٤-٤٨ ساعة.</div>
         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
           <a href="mailto:ommntr77@gmail.com" style="text-decoration:none; font-size:12px; padding:8px 14px; border-radius:999px; border:1px solid rgba(212,175,55,.45); color:#d4af37; direction:ltr; unicode-bidi:isolate;">✉️ ommntr77@gmail.com</a>
-          <a href="/privacy.html" target="_blank" rel="noopener" style="text-decoration:none; font-size:12px; padding:8px 14px; border-radius:999px; border:1px solid var(--border,#3a3a3a); color:var(--text);">🔒 سياسة الخصوصية</a>
-          <a href="/terms.html" target="_blank" rel="noopener" style="text-decoration:none; font-size:12px; padding:8px 14px; border-radius:999px; border:1px solid var(--border,#3a3a3a); color:var(--text);">📄 شروط الاستخدام</a>
+          <a href="/privacy.html" target="_blank" rel="noopener" style="text-decoration:none; font-size:12px; padding:8px 14px; border-radius:999px; border:1px solid var(--border,#3a3a3a); color:var(--text);" data-i18n="privacyLink">🔒 سياسة الخصوصية</a>
+          <a href="/terms.html" target="_blank" rel="noopener" style="text-decoration:none; font-size:12px; padding:8px 14px; border-radius:999px; border:1px solid var(--border,#3a3a3a); color:var(--text);" data-i18n="termsLink">📜 الشروط والأحكام</a>
         </div>
       </div>
 
@@ -495,13 +494,13 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M17.5 14.4c-.3-.1-1.7-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6.1-.3-.1-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.6-2.1-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.1.2-.3.3-.5.1-.2 0-.4 0-.5C10 9 9.4 7.6 9.2 7c-.2-.5-.4-.5-.6-.5h-.5c-.2 0-.5.1-.7.3-.3.3-1 1-1 2.4s1 2.8 1.2 3c.1.2 2 3 4.8 4.3.7.3 1.2.5 1.6.6.7.2 1.3.2 1.8.1.5-.1 1.7-.7 2-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.5-.3zM12 2a10 10 0 00-8.6 15L2 22l5.1-1.3A10 10 0 1012 2zm0 18.3c-1.6 0-3.2-.4-4.5-1.2l-.3-.2-3 .8.8-3-.2-.3A8.3 8.3 0 1120.3 12 8.3 8.3 0 0112 20.3z"/></svg>
       </a>
         </div>
-        <div style="font-size:11px; color:var(--muted); opacity:.75; margin-top:16px;">© فريق عمران AI — صُنع بحب في الإمارات 🇦🇪</div>
+        <div style="font-size:11px; color:var(--muted); opacity:.75; margin-top:16px;" data-i18n="aboutCopyright">© فريق عمران AI — صُنع بحب في الإمارات 🇦🇪</div>
       </div>
   </div></div>
 
 
   <div id="adminSectionWrap" style="display:none;">
-    <div class="settingsSectionHeader" onclick="toggleSettingsSection('adminSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;">🛠️ لوحة التحكم (خاص بالمالك)</h3><span class="settingsSectionArrow" id="adminSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('adminSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="adminPanelTitle">🛠️ لوحة التحكم (خاص بالمالك)</h3><span class="settingsSectionArrow" id="adminSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
     <div id="adminSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
       <button type="button" id="adminStatsRefreshBtn" onclick="loadAdminStats()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:13px; cursor:pointer; margin-bottom:10px;">🔄 تحديث الإحصائيات</button>
       <div id="adminStatsBox" style="font-size: var(--fs-3); line-height:1.9; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; white-space:pre-wrap;">اضغط "تحديث" لعرض الإحصائيات...</div>
