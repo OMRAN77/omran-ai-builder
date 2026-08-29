@@ -297,7 +297,8 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
         <button class="btn" id="btnStop" type="button" title="إيقاف" data-i18n-title="stopTitle"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button>
         <button class="tab" id="btnSend" data-i18n-title="sendTitle" title="إرسال" style="line-height:1;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
       </div>
-      <button class="btn" id="btnMahaDock" type="button" title="مها — مكالمة صوتية" data-i18n-title="mahaTitle"><img src="/icons/maha-m3.svg" alt="مها" style="width:31px; height:31px; border-radius:50%; display:block; pointer-events:none;"></button>
+      <!-- حرف نصي بخط الصفحة بدل صورة SVG: الخط داخل <img> لا يُحمَّل فيرسم الحرف بخط بديل غير متمركز -->
+      <button class="btn" id="btnMahaDock" type="button" title="مها — مكالمة صوتية" data-i18n-title="mahaTitle"><span class="mahaGlyph" aria-hidden="true">م</span></button>
       </div>
       <div id="omranBelowComposer">
         <div id="omranChips">
@@ -394,7 +395,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 <script src="/js/selfdiag.js?v=651"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=3e75d785"></script>
+    <script defer src="/js/app.bundle.js?v=80ad8f3d"></script>
     <script defer src="/js/modes.js?v=b23329c6"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">

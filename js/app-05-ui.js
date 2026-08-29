@@ -2342,3 +2342,31 @@ async function postWithConfirm(url, payload){
 /* v-boot-watchdog */
 /* v-ios-slider */
 /* v-boot-watchdog3 */
+
+/* v-maha-center: «م» في خانة الصف توسَّط بحبرها لا بصندوق سطرها — مقاييس
+   الخط تختلف بين الأجهزة فتنزل الميم عن المركز؛ نقيس حبر الحرف فعليًّا
+   (canvas TextMetrics) ونزيحه ليطابق مركز الخانة بالبكسل، ونعيد القياس
+   بعد تحميل خط الصفحة. */
+(function centerMahaGlyph(){
+  const g = document.querySelector('#composerRow #btnMahaDock .mahaGlyph');
+  if(!g) return;
+  const fix = () => {
+    try{
+      const cs = getComputedStyle(g);
+      const ctx = document.createElement('canvas').getContext('2d');
+      ctx.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+      const m = ctx.measureText('م');
+      if(m.fontBoundingBoxAscent === undefined) return; // متصفح قديم: تبقى إزاحة CSS الافتراضية
+      const spanH = g.getBoundingClientRect().height;
+      const baselineTop = (spanH - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent;
+      const inkCenter = baselineTop + (m.actualBoundingBoxDescent - m.actualBoundingBoxAscent) / 2;
+      // أفقيًّا كذلك: حبر الميم يميل عن منتصف صندوق تقدّمها فنزيحه للمنتصف.
+      // الحبر يمتد من ‎-Left إلى ‎+Right حول نقطة الأصل، ومنتصفه = (R−L)/2.
+      const inkMidX = (m.actualBoundingBoxRight - m.actualBoundingBoxLeft) / 2;
+      const shiftX = (m.width / 2) - inkMidX;
+      g.style.transform = 'translate(' + shiftX.toFixed(1) + 'px,' + (spanH / 2 - inkCenter).toFixed(1) + 'px)';
+    }catch(e){ __swallow(e, 'ui:maha-center'); }
+  };
+  fix();
+  try{ if(document.fonts && document.fonts.ready) document.fonts.ready.then(fix, () => {}); }catch(e){ __swallow(e, 'ui:maha-center#fonts'); }
+})();

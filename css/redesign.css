@@ -311,6 +311,17 @@ html.mobile-ui main, html.mobile-ui #messages{overscroll-behavior-y:contain;}
   transition:border-color .15s ease, background .15s ease;
 }
 #composerRow > #btnMahaDock:hover{border-color:var(--omGold); background:rgba(212,175,55,.10) !important;}
+/* الحرف نصّ حقيقي بخط الصفحة — يتمركز بدقة. الميم بذيلها ينزل مركز حبرها
+   قليلًا تحت مركز صندوق السطر، فنرفعها نصف الفارق البصري. */
+#composerRow > #btnMahaDock .mahaGlyph{
+  display:block; line-height:1; font-weight:700; font-size:30px;
+  font-family:'Tajawal', Tahoma, Arial, sans-serif;
+  color:var(--omGold, #d4af37);
+  text-shadow:0 0 1px rgba(233,207,107,.65);
+  transform:translateY(-4px);
+}
+@media (max-width:860px){ #composerRow > #btnMahaDock .mahaGlyph{font-size:24px; transform:translateY(-3px);} }
+html.mobile-ui #composerRow > #btnMahaDock .mahaGlyph{font-size:24px; transform:translateY(-3px);}
 @media (max-width:860px){
   #composerRow{gap:6px;}
   #composerRow > #btnMahaDock{width:48px; border-radius:16px !important;}
