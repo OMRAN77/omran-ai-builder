@@ -84,7 +84,7 @@
       var tr=window.omranPicker.trigger(function(){
         var o=cur();
         return o && { name:optTxt(o), img:o.value?LOOKS+kind+'/'+o.value+'.webp':'',
-          sub:sel.options.length+(((document.documentElement.lang||'ar')==='en')?' options':' خيارًا') };
+          sub:sel.options.length+' '+(typeof window.t==='function'&&window.t('pickerOptsWord')!=='pickerOptsWord'?window.t('pickerOptsWord'):((((document.documentElement.lang||'ar')==='en')?'options':'خيارًا'))) };
       }, function(){
         return {
           title: labTxt,

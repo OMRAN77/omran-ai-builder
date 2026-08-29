@@ -914,3 +914,34 @@ Object.assign(I18N['ur'], { modeCreateImage: "تصویر بنائیں", modeWebS
 
 /* v-fashion-refine */
 Object.assign(I18N['ur'], { fashionRefinePh: "مثلاً: صرف لباس کا رنگ نیلا کریں", fashionRefineBtn: "✏️ ایک مخصوص تبدیلی کریں", fashionRefineNeed: "پہلے مطلوبہ تبدیلی لکھیں", fashionRefining: "تبدیلی لاگو ہو رہی ہے…" });
+
+/* v-studios-i18n: بقايا نوافذ الاستوديوهات + محلل المصاريف */
+Object.assign(I18N['ur'], {
+  pickerOptsForFeature: "اختیارات اس فیچر کے لیے",
+  pickerStylesForCategory: "اسٹائل اس زمرے کے لیے",
+  pickerOptsWord: "اختیارات",
+  pickerOptsPick: "اختیارات — منتخب کریں",
+  videoOptAdspot: "📢 فوری اشتہار (5س + صدا)",
+  videoOptReels: "📱 سمارٹ ریلز (10س + صدا)",
+  fashionEngineLabel: "🎨 امیج انجن",
+  fashionEngineGemini: "Gemini — چہرہ بہترین برقرار (طے شدہ)",
+  fashionEngineOpenai: "ChatGPT (gpt-image-1) — ChatGPT امیج انجن",
+  videoAdvanced: "اعلیٰ اختیارات",
+  exp_title: "اخراجات کا تجزیہ",
+  exp_intro: "بینک اسٹیٹمنٹ (PDF یا تصویر) اپ لوڈ کریں — اخراجات درجہ بند ہوں گے",
+  exp_pick: "📄 اسٹیٹمنٹ چنیں (PDF / تصویر)",
+  exp_hint: "PDF یا صاف تصویر",
+  exp_paste: "یا اخراجات متن میں چسپاں کریں",
+  exp_pastePh: "لین دین یہاں چسپاں کریں…",
+  exp_go: "اخراجات کا تجزیہ کریں",
+  exp_busy: "تجزیہ ہو رہا ہے…",
+  exp_total: "کل اخراجات",
+  exp_tx: "لین دین",
+  exp_dist: "اخراجات کی تقسیم",
+  exp_biggest: "سب سے بڑا خرچ",
+  exp_tips: "بچت کے مشورے",
+  exp_again: "دوسری اسٹیٹمنٹ",
+  exp_disc: "تخمینی اعداد — صرف رہنمائی کے لیے، مالی مشورہ نہیں۔",
+  exp_noContent: "پہلے فائل چنیں یا متن چسپاں کریں",
+  exp_err: "تجزیہ ناکام، دوبارہ کوشش کریں"
+});

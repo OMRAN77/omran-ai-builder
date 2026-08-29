@@ -966,3 +966,34 @@ Object.assign(I18N['ru'], { modeCreateImage: "Создать изображен�
 
 /* v-fashion-refine */
 Object.assign(I18N['ru'], { fashionRefinePh: "напр.: измени только цвет платья на синий", fashionRefineBtn: "✏️ Изменить одну деталь", fashionRefineNeed: "Сначала напишите желаемое изменение", fashionRefining: "Применяю изменение…" });
+
+/* v-studios-i18n: بقايا نوافذ الاستوديوهات + محلل المصاريف */
+Object.assign(I18N['ru'], {
+  pickerOptsForFeature: "вариантов для этой функции",
+  pickerStylesForCategory: "стилей для этой категории",
+  pickerOptsWord: "вариантов",
+  pickerOptsPick: "вариантов — выберите",
+  videoOptAdspot: "📢 Быстрая реклама (5с + голос)",
+  videoOptReels: "📱 Умный Reels (10с + голос)",
+  fashionEngineLabel: "🎨 Движок изображений",
+  fashionEngineGemini: "Gemini — лучше всех сохраняет лицо (по умолчанию)",
+  fashionEngineOpenai: "ChatGPT (gpt-image-1) — движок изображений ChatGPT",
+  videoAdvanced: "Расширенные настройки",
+  exp_title: "Анализ расходов",
+  exp_intro: "Загрузите выписку из банка (PDF или фото) — расходы будут распределены по категориям",
+  exp_pick: "📄 Выбрать выписку (PDF / фото)",
+  exp_hint: "PDF или чёткое фото выписки",
+  exp_paste: "Или вставьте расходы текстом",
+  exp_pastePh: "Вставьте операции сюда…",
+  exp_go: "Проанализировать расходы",
+  exp_busy: "Анализирую…",
+  exp_total: "Всего расходов",
+  exp_tx: "операций",
+  exp_dist: "Структура расходов",
+  exp_biggest: "Крупнейший расход",
+  exp_tips: "Советы по экономии",
+  exp_again: "Другая выписка",
+  exp_disc: "Приблизительные цифры — только для ориентира, не финансовый совет.",
+  exp_noContent: "Сначала выберите файл или вставьте текст",
+  exp_err: "Не удалось, попробуйте снова"
+});

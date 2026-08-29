@@ -1197,11 +1197,11 @@
     nm.textContent = cur.textContent.trim();
     nm.style.cssText = 'font-size:13.5px; font-weight:700;';
     const sub = document.createElement('div');
-    sub.textContent = styleEl.options.length + (isEn() ? ' options for this feature' : ' خيارًا لهذه الميزة');
+    sub.textContent = styleEl.options.length + ' ' + (typeof window.t==='function'&&window.t('pickerOptsForFeature')!=='pickerOptsForFeature'?window.t('pickerOptsForFeature'):(isEn() ? 'options for this feature' : 'خيارًا لهذه الميزة'));
     sub.style.cssText = 'font-size:11px; color:var(--muted,#999);';
     info.appendChild(nm); info.appendChild(sub);
     const all = document.createElement('span');
-    all.textContent = isEn() ? 'Browse all ›' : 'عرض الكل ›';
+    all.textContent = (typeof window.t==='function'&&window.t('portraitStyleBrowseAll')!=='portraitStyleBrowseAll'?window.t('portraitStyleBrowseAll'):(isEn() ? 'Browse all ›' : 'عرض الكل ›'));
     all.style.cssText = 'color:#d4af37; font-size:12.5px; font-weight:700; flex:none;';
     trig.appendChild(img); trig.appendChild(info); trig.appendChild(all);
     trig.onclick = openStudioPicker;

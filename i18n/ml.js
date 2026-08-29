@@ -967,3 +967,34 @@ Object.assign(I18N['ml'], { modeCreateImage: "ചിത്രം സൃഷ്ട
 
 /* v-fashion-refine */
 Object.assign(I18N['ml'], { fashionRefinePh: "ഉദാ: വസ്ത്രത്തിന്റെ നിറം മാത്രം നീലയാക്കൂ", fashionRefineBtn: "✏️ ഒരു കാര്യം മാത്രം മാറ്റൂ", fashionRefineNeed: "ആദ്യം വേണ്ട മാറ്റം എഴുതൂ", fashionRefining: "മാറ്റം പ്രയോഗിക്കുന്നു…" });
+
+/* v-studios-i18n: بقايا نوافذ الاستوديوهات + محلل المصاريف */
+Object.assign(I18N['ml'], {
+  pickerOptsForFeature: "ഓപ്ഷനുകൾ ഈ ഫീച്ചറിന്",
+  pickerStylesForCategory: "ശൈലികൾ ഈ വിഭാഗത്തിന്",
+  pickerOptsWord: "ഓപ്ഷനുകൾ",
+  pickerOptsPick: "ഓപ്ഷനുകൾ — തിരഞ്ഞെടുക്കൂ",
+  videoOptAdspot: "📢 ദ്രുത പരസ്യം (5സെ + വിവരണം)",
+  videoOptReels: "📱 സ്മാർട്ട് റീൽസ് (10സെ + വിവരണം)",
+  fashionEngineLabel: "🎨 ഇമേജ് എൻജിൻ",
+  fashionEngineGemini: "Gemini — മുഖം ഏറ്റവും നന്നായി നിലനിർത്തും (സ്ഥിര)",
+  fashionEngineOpenai: "ChatGPT (gpt-image-1) — ChatGPT ഇമേജ് എൻജിൻ",
+  videoAdvanced: "വിപുലമായ ഓപ്ഷനുകൾ",
+  exp_title: "ചെലവ് അനലൈസർ",
+  exp_intro: "ബാങ്ക് സ്റ്റേറ്റ്മെന്റ് (PDF/ചിത്രം) അപ്‌ലോഡ് ചെയ്യൂ — ചെലവുകൾ തരംതിരിക്കാം",
+  exp_pick: "📄 സ്റ്റേറ്റ്മെന്റ് തിരഞ്ഞെടുക്കൂ (PDF / ചിത്രം)",
+  exp_hint: "PDF അല്ലെങ്കിൽ വ്യക്തമായ ഫോട്ടോ",
+  exp_paste: "അല്ലെങ്കിൽ ചെലവുകൾ ടെക്സ്റ്റായി ഒട്ടിക്കൂ",
+  exp_pastePh: "ഇടപാടുകൾ ഇവിടെ ഒട്ടിക്കൂ…",
+  exp_go: "ചെലവുകൾ വിശകലനം ചെയ്യൂ",
+  exp_busy: "വിശകലനം ചെയ്യുന്നു…",
+  exp_total: "ആകെ ചെലവ്",
+  exp_tx: "ഇടപാടുകൾ",
+  exp_dist: "ചെലവ് വിഭജനം",
+  exp_biggest: "ഏറ്റവും വലിയ ചെലവ്",
+  exp_tips: "സമ്പാദ്യ നുറുങ്ങുകൾ",
+  exp_again: "മറ്റൊരു സ്റ്റേറ്റ്മെന്റ്",
+  exp_disc: "ഏകദേശ കണക്കുകൾ — മാർഗനിർദേശത്തിന് മാത്രം, സാമ്പത്തിക ഉപദേശമല്ല.",
+  exp_noContent: "ആദ്യം ഫയൽ/ടെക്സ്റ്റ് നൽകൂ",
+  exp_err: "വിശകലനം പരാജയപ്പെട്ടു, വീണ്ടും ശ്രമിക്കൂ"
+});

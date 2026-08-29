@@ -2413,6 +2413,7 @@ const I18N = {
     logoutTitle: 'تسجيل الخروج',
     loginAction: 'دخول',
     acctSectionTitle: '👤 حسابي',
+    pickerOptsForFeature: 'خيارًا لهذه الميزة', pickerStylesForCategory: 'نمطًا لهذه الفئة', pickerOptsWord: 'خيارًا', pickerOptsPick: 'خيارًا — اختر ما يناسبك', videoOptAdspot: '📢 إعلان سريع (5ث طولي + سرد)', videoOptReels: '📱 ريلز ذكي (10ث طولي + سرد)', fashionEngineLabel: '🎨 محرك الصور', fashionEngineGemini: 'Gemini — الأدق في الحفاظ على الوجه (الافتراضي)', fashionEngineOpenai: 'ChatGPT (gpt-image-1) — نفس محرك صور ChatGPT', videoAdvanced: 'خيارات متقدمة',
     fashionRefinePh: 'مثال: غيّري لون الفستان إلى أزرق فقط', fashionRefineBtn: '✏️ عدّلي شيئًا محددًا', fashionRefineNeed: 'اكتبي التعديل المطلوب أولًا', fashionRefining: 'جاري تطبيق التعديل…',
     modeCreateImage: 'إنشاء صورة', modeWebSearch: 'البحث على الويب', modeThinkDeeper: 'التفكير العميق', psheetCountSuffix: 'ستايلًا — نفس وجهك بكل ستايل',
     provNickKing: 'الكينج', provNickFast: 'السريع', provNickDeep: 'العميق',
@@ -3401,6 +3402,7 @@ const I18N = {
     logoutTitle: 'Log out',
     loginAction: 'Login',
     acctSectionTitle: '👤 My account',
+    pickerOptsForFeature: 'options for this feature', pickerStylesForCategory: 'styles for this category', pickerOptsWord: 'options', pickerOptsPick: 'options — pick yours', videoOptAdspot: '📢 Quick ad (5s vertical + narration)', videoOptReels: '📱 Smart reels (10s vertical + narration)', fashionEngineLabel: '🎨 Image engine', fashionEngineGemini: 'Gemini — best at preserving the face (default)', fashionEngineOpenai: 'ChatGPT (gpt-image-1) — the same ChatGPT image engine', videoAdvanced: 'Advanced options',
     fashionRefinePh: 'e.g. change only the dress colour to blue', fashionRefineBtn: '✏️ Edit one specific thing', fashionRefineNeed: 'Type the change you want first', fashionRefining: 'Applying your edit…',
     modeCreateImage: 'Create image', modeWebSearch: 'Web search', modeThinkDeeper: 'Think deeper', psheetCountSuffix: 'styles — same face, every style',
     provNickKing: 'The King', provNickFast: 'The Fast', provNickDeep: 'The Deep',
@@ -4171,7 +4173,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=604'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
+    sc.src = 'i18n/' + lg + '.js?v=605'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -8256,7 +8258,7 @@ async function postWithConfirm(url, payload){
     sb.style.cssText = 'font-size:11px;color:var(--muted,#999);';
     info.appendChild(nm); info.appendChild(sb);
     var all = document.createElement('span');
-    all.textContent = (localStorage.getItem('aiapp_lang') === 'en') ? 'Browse all ›' : 'عرض الكل ›';
+    all.textContent = (typeof t === 'function' && t('portraitStyleBrowseAll') !== 'portraitStyleBrowseAll') ? t('portraitStyleBrowseAll') : ((localStorage.getItem('aiapp_lang') === 'en') ? 'Browse all ›' : 'عرض الكل ›');
     all.style.cssText = 'color:#d4af37;font-size:12.5px;font-weight:700;flex:none;';
     d.appendChild(th); d.appendChild(info); d.appendChild(all);
     function refresh(){
@@ -20908,11 +20910,11 @@ async function __safeJson(res){
     nm.textContent = opt ? opt.textContent : '';
     nm.style.cssText = 'font-size:13.5px; font-weight:700;';
     const sub = document.createElement('div');
-    sub.textContent = list.length + (isEn() ? ' styles for this category' : ' نمطًا لهذه الفئة');
+    sub.textContent = list.length + ' ' + ((typeof window.t === 'function' && window.t('pickerStylesForCategory') !== 'pickerStylesForCategory') ? window.t('pickerStylesForCategory') : (isEn() ? 'styles for this category' : 'نمطًا لهذه الفئة'));
     sub.style.cssText = 'font-size:11px; color:var(--muted,#999);';
     info.appendChild(nm); info.appendChild(sub);
     const all = document.createElement('span');
-    all.textContent = isEn() ? 'Browse all ›' : 'عرض الكل ›';
+    all.textContent = (typeof window.t === 'function' && window.t('portraitStyleBrowseAll') !== 'portraitStyleBrowseAll') ? window.t('portraitStyleBrowseAll') : (isEn() ? 'Browse all ›' : 'عرض الكل ›');
     all.style.cssText = 'color:#d4af37; font-size:12.5px; font-weight:700; flex:none;';
     trig.appendChild(img); trig.appendChild(info); trig.appendChild(all);
     trig.onclick = openFashionPicker;
@@ -22994,11 +22996,11 @@ async function __safeJson(res){
     nm.textContent = cur.textContent.trim();
     nm.style.cssText = 'font-size:13.5px; font-weight:700;';
     const sub = document.createElement('div');
-    sub.textContent = styleEl.options.length + (isEn() ? ' options for this feature' : ' خيارًا لهذه الميزة');
+    sub.textContent = styleEl.options.length + ' ' + (typeof window.t==='function'&&window.t('pickerOptsForFeature')!=='pickerOptsForFeature'?window.t('pickerOptsForFeature'):(isEn() ? 'options for this feature' : 'خيارًا لهذه الميزة'));
     sub.style.cssText = 'font-size:11px; color:var(--muted,#999);';
     info.appendChild(nm); info.appendChild(sub);
     const all = document.createElement('span');
-    all.textContent = isEn() ? 'Browse all ›' : 'عرض الكل ›';
+    all.textContent = (typeof window.t==='function'&&window.t('portraitStyleBrowseAll')!=='portraitStyleBrowseAll'?window.t('portraitStyleBrowseAll'):(isEn() ? 'Browse all ›' : 'عرض الكل ›'));
     all.style.cssText = 'color:#d4af37; font-size:12.5px; font-weight:700; flex:none;';
     trig.appendChild(img); trig.appendChild(info); trig.appendChild(all);
     trig.onclick = openStudioPicker;

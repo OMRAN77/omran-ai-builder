@@ -916,3 +916,34 @@ Object.assign(I18N['bn'], { modeCreateImage: "ছবি তৈরি করু�
 
 /* v-fashion-refine */
 Object.assign(I18N['bn'], { fashionRefinePh: "যেমন: শুধু পোশাকের রং নীল করুন", fashionRefineBtn: "✏️ নির্দিষ্ট কিছু বদলান", fashionRefineNeed: "আগে কাঙ্ক্ষিত পরিবর্তন লিখুন", fashionRefining: "পরিবর্তন প্রয়োগ হচ্ছে…" });
+
+/* v-studios-i18n: بقايا نوافذ الاستوديوهات + محلل المصاريف */
+Object.assign(I18N['bn'], {
+  pickerOptsForFeature: "টি অপশন এই ফিচারের জন্য",
+  pickerStylesForCategory: "টি স্টাইল এই বিভাগের জন্য",
+  pickerOptsWord: "টি অপশন",
+  pickerOptsPick: "টি অপশন — বেছে নিন",
+  videoOptAdspot: "📢 দ্রুত বিজ্ঞাপন (৫সে + ভাষ্য)",
+  videoOptReels: "📱 স্মার্ট রিলস (১০সে + ভাষ্য)",
+  fashionEngineLabel: "🎨 ইমেজ ইঞ্জিন",
+  fashionEngineGemini: "Gemini — মুখ সবচেয়ে ভালো রাখে (ডিফল্ট)",
+  fashionEngineOpenai: "ChatGPT (gpt-image-1) — ChatGPT ইমেজ ইঞ্জিন",
+  videoAdvanced: "উন্নত অপশন",
+  exp_title: "খরচ বিশ্লেষক",
+  exp_intro: "ব্যাংক স্টেটমেন্ট (PDF বা ছবি) আপলোড করুন — খরচ শ্রেণিবদ্ধ হবে",
+  exp_pick: "📄 স্টেটমেন্ট বাছুন (PDF / ছবি)",
+  exp_hint: "PDF বা পরিষ্কার ছবি",
+  exp_paste: "বা খরচ টেক্সটে পেস্ট করুন",
+  exp_pastePh: "লেনদেন এখানে পেস্ট করুন…",
+  exp_go: "খরচ বিশ্লেষণ করুন",
+  exp_busy: "বিশ্লেষণ চলছে…",
+  exp_total: "মোট খরচ",
+  exp_tx: "টি লেনদেন",
+  exp_dist: "খরচের বিভাজন",
+  exp_biggest: "সবচেয়ে বড় খরচ",
+  exp_tips: "সঞ্চয়ের টিপস",
+  exp_again: "আরেকটি স্টেটমেন্ট",
+  exp_disc: "আনুমানিক সংখ্যা — শুধু নির্দেশনার জন্য, আর্থিক পরামর্শ নয়।",
+  exp_noContent: "আগে ফাইল বাছুন বা টেক্সট দিন",
+  exp_err: "বিশ্লেষণ ব্যর্থ, আবার চেষ্টা করুন"
+});

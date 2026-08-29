@@ -220,7 +220,8 @@
     designAiCurtains:{ simple:'ستائر خفيفة أنيقة', luxury:'ستائر فخمة ثقيلة', remove:'نوافذ مكشوفة مضيئة' }
   };
   function palSub(id,v){
-    if((document.documentElement.lang||'ar')==='en') return '';
+    /* v-psub-ar-only: الوصف عربي للعربي فقط — بقية اللغات كانت تأخذ العربي. */
+    if(((document.documentElement.lang||'ar')+'').indexOf('ar')!==0) return '';
     return (SUBS[id]||{})[v]||'';
   }
   /* v-decor-toggles: النباتات واللوحات والإكسسوارات وإعادة الترتيب بطاقات
@@ -286,11 +287,11 @@
     var tr=window.omranPicker.trigger(function(){
       var o=cur();
       return o && { name:optTxt(o), img:selImg(s.id,o.value), bg:roomBg(s.id,o.value),
-        sub:palSub(s.id,o.value)||s.options.length+(ien?' options':' خيارًا') };
+        sub:palSub(s.id,o.value)||s.options.length+' '+(typeof window.t==='function'&&window.t('pickerOptsWord')!=='pickerOptsWord'?window.t('pickerOptsWord'):(ien?'options':'خيارًا')) };
     }, function(){
       return {
         title: labTxt,
-        count: s.options.length+(ien?' options — pick yours':' خيارًا — اختر ما يناسبك'),
+        count: s.options.length+' '+(typeof window.t==='function'&&window.t('pickerOptsPick')!=='pickerOptsPick'?window.t('pickerOptsPick'):(ien?'options — pick yours':'خيارًا — اختر ما يناسبك')),
         items: Array.prototype.map.call(s.options,function(o){
           return { v:o.value, title:optTxt(o)||(ien?'None':'بدون'), active:o.value===s.value,
             img:selImg(s.id,o.value), bg:roomBg(s.id,o.value), sub:palSub(s.id,o.value) };

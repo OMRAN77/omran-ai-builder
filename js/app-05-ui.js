@@ -2302,7 +2302,7 @@ async function postWithConfirm(url, payload){
     sb.style.cssText = 'font-size:11px;color:var(--muted,#999);';
     info.appendChild(nm); info.appendChild(sb);
     var all = document.createElement('span');
-    all.textContent = (localStorage.getItem('aiapp_lang') === 'en') ? 'Browse all ›' : 'عرض الكل ›';
+    all.textContent = (typeof t === 'function' && t('portraitStyleBrowseAll') !== 'portraitStyleBrowseAll') ? t('portraitStyleBrowseAll') : ((localStorage.getItem('aiapp_lang') === 'en') ? 'Browse all ›' : 'عرض الكل ›');
     all.style.cssText = 'color:#d4af37;font-size:12.5px;font-weight:700;flex:none;';
     d.appendChild(th); d.appendChild(info); d.appendChild(all);
     function refresh(){
