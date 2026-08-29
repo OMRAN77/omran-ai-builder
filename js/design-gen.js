@@ -79,7 +79,7 @@
       sel.style.display='none';
       var kind=(sel===occ)?'occasion':'season';
       var lab=host.querySelector('label'), labTxt=(lab?lab.textContent:'').trim();
-      function optTxt(o){ var den=(document.documentElement.lang||'ar')==='en'&&o.getAttribute('data-en'); return ((den||o.textContent)||'').trim(); }
+      function optTxt(o){ var l0=(document.documentElement.lang||'ar')+''; var den=(l0.indexOf('ar')!==0&&l0.indexOf('ur')!==0)&&o.getAttribute('data-en'); return ((den||o.textContent)||'').trim(); } /* v-look-labels */
       function cur(){ var os=sel.options; for(var i=0;i<os.length;i++) if(os[i].value===sel.value) return os[i]; return os[0]; }
       var tr=window.omranPicker.trigger(function(){
         var o=cur();

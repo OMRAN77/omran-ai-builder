@@ -998,3 +998,19 @@ Object.assign(I18N['fil'], {
   exp_noContent: "Pumili muna ng file o mag-paste ng teksto",
   exp_err: "Nabigo ang pagsusuri, subukan ulit"
 });
+
+Object.assign(I18N['fil'], { videoNeedDesc: "⚠️ Ilarawan muna ang video.", videoVoiceFemale: "👩 Fatima (babae)", videoVoiceMale: "👨 Hamdan (lalaki)" }); // v-video-i18n
+
+/* v-about-i18n */
+Object.assign(I18N['fil'], {
+  aboutFeatChat: "Gumawa ng buong app sa pag-chat",
+  aboutFeatProviders: "9 AI provider + «Tanungin lahat»",
+  aboutFeatMaha: "Maha — live voice assistant",
+  aboutFeatStudios: "7 creative image studios",
+  aboutFeatStocks: "Stock market at learning portfolio",
+  aboutFeatPrivacy: "Privacy muna — sa iyo ang keys",
+  aboutChipUAE: "Gawa sa UAE 🇦🇪",
+  aboutChipPWA: "PWA app",
+  aboutChipLangs: "14 na wika",
+  aboutMoreSummary: "📖 Higit pa"
+});

@@ -995,3 +995,19 @@ Object.assign(I18N['id'], {
   exp_noContent: "Pilih file atau tempel teks dulu",
   exp_err: "Analisis gagal, coba lagi"
 });
+
+Object.assign(I18N['id'], { videoNeedDesc: "⚠️ Jelaskan videonya dulu.", videoVoiceFemale: "👩 Fatima (wanita)", videoVoiceMale: "👨 Hamdan (pria)" }); // v-video-i18n
+
+/* v-about-i18n */
+Object.assign(I18N['id'], {
+  aboutFeatChat: "Bangun aplikasi lengkap lewat obrolan",
+  aboutFeatProviders: "9 penyedia AI + «Tanya semua»",
+  aboutFeatMaha: "Maha — asisten suara langsung",
+  aboutFeatStudios: "7 studio gambar kreatif",
+  aboutFeatStocks: "Bursa saham & portofolio edukatif",
+  aboutFeatPrivacy: "Privasi dulu — kunci milik Anda",
+  aboutChipUAE: "Buatan UEA 🇦🇪",
+  aboutChipPWA: "Aplikasi PWA",
+  aboutChipLangs: "14 bahasa",
+  aboutMoreSummary: "📖 Selengkapnya"
+});

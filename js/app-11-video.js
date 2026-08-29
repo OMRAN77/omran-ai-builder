@@ -743,7 +743,7 @@
   btnGenerate.onclick = async () => {
     const text = (promptEl.value || '').trim();
     if(!text && modeEl.value !== 'actor'){
-      setStatus(isEn() ? '⚠️ Please describe the video first.' : '⚠️ اكتب وصف الفيديو أولًا.');
+      setStatus((typeof window.t === 'function' && window.t('videoNeedDesc') !== 'videoNeedDesc') ? window.t('videoNeedDesc') : (isEn() ? '⚠️ Please describe the video first.' : '⚠️ اكتب وصف الفيديو أولًا.'));
       return;
     }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;

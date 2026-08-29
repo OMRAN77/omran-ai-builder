@@ -994,3 +994,19 @@ Object.assign(I18N['tr'], {
   exp_noContent: "Önce dosya seçin veya metin yapıştırın",
   exp_err: "Analiz başarısız, tekrar deneyin"
 });
+
+Object.assign(I18N['tr'], { videoNeedDesc: "⚠️ Önce videoyu tanımlayın.", videoVoiceFemale: "👩 Fatima (kadın)", videoVoiceMale: "👨 Hamdan (erkek)" }); // v-video-i18n
+
+/* v-about-i18n */
+Object.assign(I18N['tr'], {
+  aboutFeatChat: "Sohbet ederek eksiksiz uygulamalar üretin",
+  aboutFeatProviders: "9 yapay zekâ sağlayıcısı + «Hepsine sor»",
+  aboutFeatMaha: "Maha — canlı sesli asistanınız",
+  aboutFeatStudios: "7 yaratıcı görsel stüdyosu",
+  aboutFeatStocks: "Borsa ve eğitim portföyü",
+  aboutFeatPrivacy: "Önce gizlilik — anahtarlarınız sizde",
+  aboutChipUAE: "BAE yapımı 🇦🇪",
+  aboutChipPWA: "PWA uygulaması",
+  aboutChipLangs: "14 dil",
+  aboutMoreSummary: "📖 Platform hakkında"
+});

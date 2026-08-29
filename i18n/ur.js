@@ -945,3 +945,19 @@ Object.assign(I18N['ur'], {
   exp_noContent: "پہلے فائل چنیں یا متن چسپاں کریں",
   exp_err: "تجزیہ ناکام، دوبارہ کوشش کریں"
 });
+
+Object.assign(I18N['ur'], { videoNeedDesc: "⚠️ پہلے ویڈیو کی تفصیل لکھیں۔", videoVoiceFemale: "👩 فاطمہ (خاتون)", videoVoiceMale: "👨 حمدان (مرد)" }); // v-video-i18n
+
+/* v-about-i18n */
+Object.assign(I18N['ur'], {
+  aboutFeatChat: "بات چیت سے مکمل ایپس بنائیں",
+  aboutFeatProviders: "9 اے آئی فراہم کنندگان + «سب سے پوچھیں»",
+  aboutFeatMaha: "مہا — لائیو صوتی معاون",
+  aboutFeatStudios: "7 تخلیقی امیج اسٹوڈیوز",
+  aboutFeatStocks: "اسٹاک مارکیٹ اور تعلیمی پورٹ فولیو",
+  aboutFeatPrivacy: "رازداری اول — کلیدیں آپ کی",
+  aboutChipUAE: "امارات میں بنا 🇦🇪",
+  aboutChipPWA: "PWA ایپ",
+  aboutChipLangs: "14 زبانیں",
+  aboutMoreSummary: "📖 پلیٹ فارم کے بارے میں"
+});
