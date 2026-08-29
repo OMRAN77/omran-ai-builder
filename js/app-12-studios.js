@@ -912,11 +912,11 @@ async function __safeJson(res){
     nm.textContent = opt ? opt.textContent : '';
     nm.style.cssText = 'font-size:13.5px; font-weight:700;';
     const sub = document.createElement('div');
-    sub.textContent = list.length + (isEn() ? ' styles for this category' : ' نمطًا لهذه الفئة');
+    sub.textContent = list.length + ' ' + ((typeof window.t === 'function' && window.t('pickerStylesForCategory') !== 'pickerStylesForCategory') ? window.t('pickerStylesForCategory') : (isEn() ? 'styles for this category' : 'نمطًا لهذه الفئة'));
     sub.style.cssText = 'font-size:11px; color:var(--muted,#999);';
     info.appendChild(nm); info.appendChild(sub);
     const all = document.createElement('span');
-    all.textContent = isEn() ? 'Browse all ›' : 'عرض الكل ›';
+    all.textContent = (typeof window.t === 'function' && window.t('portraitStyleBrowseAll') !== 'portraitStyleBrowseAll') ? window.t('portraitStyleBrowseAll') : (isEn() ? 'Browse all ›' : 'عرض الكل ›');
     all.style.cssText = 'color:#d4af37; font-size:12.5px; font-weight:700; flex:none;';
     trig.appendChild(img); trig.appendChild(info); trig.appendChild(all);
     trig.onclick = openFashionPicker;

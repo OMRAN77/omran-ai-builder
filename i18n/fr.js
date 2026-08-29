@@ -917,3 +917,34 @@ Object.assign(I18N['fr'], { modeCreateImage: "Créer une image", modeWebSearch: 
 
 /* v-fashion-refine */
 Object.assign(I18N['fr'], { fashionRefinePh: "ex. : changez seulement la couleur de la robe en bleu", fashionRefineBtn: "✏️ Modifier un détail précis", fashionRefineNeed: "Écrivez d’abord la modification", fashionRefining: "Application de la modification…" });
+
+/* v-studios-i18n: بقايا نوافذ الاستوديوهات + محلل المصاريف */
+Object.assign(I18N['fr'], {
+  pickerOptsForFeature: "options pour cette fonction",
+  pickerStylesForCategory: "styles pour cette catégorie",
+  pickerOptsWord: "options",
+  pickerOptsPick: "options — choisissez",
+  videoOptAdspot: "📢 Pub rapide (5s vertical + voix)",
+  videoOptReels: "📱 Reels intelligent (10s + voix)",
+  fashionEngineLabel: "🎨 Moteur d'images",
+  fashionEngineGemini: "Gemini — préserve le mieux le visage (défaut)",
+  fashionEngineOpenai: "ChatGPT (gpt-image-1) — le moteur d'images de ChatGPT",
+  videoAdvanced: "Options avancées",
+  exp_title: "Analyse des dépenses",
+  exp_intro: "Téléversez votre relevé bancaire (PDF ou image) pour classer vos dépenses",
+  exp_pick: "📄 Choisir un relevé (PDF / image)",
+  exp_hint: "PDF ou photo nette du relevé",
+  exp_paste: "Ou collez vos dépenses en texte",
+  exp_pastePh: "Collez vos transactions ici…",
+  exp_go: "Analyser les dépenses",
+  exp_busy: "Analyse en cours…",
+  exp_total: "Dépenses totales",
+  exp_tx: "transactions",
+  exp_dist: "Répartition des dépenses",
+  exp_biggest: "Plus grosse dépense",
+  exp_tips: "Conseils d'économie",
+  exp_again: "Analyser un autre relevé",
+  exp_disc: "Chiffres approximatifs — à titre indicatif, pas un conseil financier.",
+  exp_noContent: "Choisissez un fichier ou collez du texte d'abord",
+  exp_err: "Échec de l'analyse, réessayez"
+});

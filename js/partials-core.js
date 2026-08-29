@@ -159,8 +159,8 @@
           <option value="10">10</option>
           <option value="long20" data-i18n="videoMakerDurationLong">20 (⛓️ مشهدين)</option>
           <option value="film" data-i18n="videoMakerDurationFilm">🎬 فيلم متكامل (سيناريو + مشاهد + سرد)</option>
-          <option value="adspot">📢 إعلان سريع (5ث طولي + سرد)</option>
-          <option value="reels">📱 ريلز ذكي (10ث طولي + سرد)</option>
+          <option value="adspot" data-i18n="videoOptAdspot">📢 إعلان سريع (5ث طولي + سرد)</option>
+          <option value="reels" data-i18n="videoOptReels">📱 ريلز ذكي (10ث طولي + سرد)</option>
 
         </select>
       </div>
@@ -846,10 +846,10 @@
     </label>
 
     <div style="margin-top:10px;">
-      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">🎨 محرك الصور</label>
+      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="fashionEngineLabel">🎨 محرك الصور</label>
       <select id="fashionAiEngine" style="width:100%;">
-        <option value="">Gemini — الأدق في الحفاظ على الوجه (الافتراضي)</option>
-        <option value="openai">ChatGPT (gpt-image-1) — نفس محرك صور ChatGPT</option>
+        <option value="" data-i18n="fashionEngineGemini">Gemini — الأدق في الحفاظ على الوجه (الافتراضي)</option>
+        <option value="openai" data-i18n="fashionEngineOpenai">ChatGPT (gpt-image-1) — نفس محرك صور ChatGPT</option>
       </select>
     </div>
 

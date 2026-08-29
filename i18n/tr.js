@@ -963,3 +963,34 @@ Object.assign(I18N['tr'], { modeCreateImage: "Görsel oluştur", modeWebSearch: 
 
 /* v-fashion-refine */
 Object.assign(I18N['tr'], { fashionRefinePh: "örn. sadece elbisenin rengini maviye çevir", fashionRefineBtn: "✏️ Belirli bir şeyi düzenle", fashionRefineNeed: "Önce istediğiniz değişikliği yazın", fashionRefining: "Düzenleme uygulanıyor…" });
+
+/* v-studios-i18n: بقايا نوافذ الاستوديوهات + محلل المصاريف */
+Object.assign(I18N['tr'], {
+  pickerOptsForFeature: "bu özellik için seçenek",
+  pickerStylesForCategory: "bu kategori için stil",
+  pickerOptsWord: "seçenek",
+  pickerOptsPick: "seçenek — seçin",
+  videoOptAdspot: "📢 Hızlı reklam (5sn dikey + anlatım)",
+  videoOptReels: "📱 Akıllı reels (10sn + anlatım)",
+  fashionEngineLabel: "🎨 Görsel motoru",
+  fashionEngineGemini: "Gemini — yüzü en iyi koruyan (varsayılan)",
+  fashionEngineOpenai: "ChatGPT (gpt-image-1) — ChatGPT görsel motoru",
+  videoAdvanced: "Gelişmiş seçenekler",
+  exp_title: "Harcama Analizi",
+  exp_intro: "Banka ekstrenizi (PDF veya görsel) yükleyin, harcamalarınız sınıflandırılsın",
+  exp_pick: "📄 Ekstre seçin (PDF / görsel)",
+  exp_hint: "PDF veya net bir fotoğraf",
+  exp_paste: "Ya da harcamaları metin olarak yapıştırın",
+  exp_pastePh: "İşlemleri buraya yapıştırın…",
+  exp_go: "Harcamaları analiz et",
+  exp_busy: "Analiz ediliyor…",
+  exp_total: "Toplam harcama",
+  exp_tx: "işlem",
+  exp_dist: "Harcama dağılımı",
+  exp_biggest: "En büyük harcama",
+  exp_tips: "Tasarruf ipuçları",
+  exp_again: "Başka ekstre analiz et",
+  exp_disc: "Yaklaşık rakamlar — yalnızca yol gösterici, mali tavsiye değildir.",
+  exp_noContent: "Önce dosya seçin veya metin yapıştırın",
+  exp_err: "Analiz başarısız, tekrar deneyin"
+});

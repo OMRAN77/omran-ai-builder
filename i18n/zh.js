@@ -955,3 +955,34 @@ Object.assign(I18N['zh'], { modeCreateImage: "生成图片", modeWebSearch: "网
 
 /* v-fashion-refine */
 Object.assign(I18N['zh'], { fashionRefinePh: "例如：只把裙子颜色改成蓝色", fashionRefineBtn: "✏️ 修改指定细节", fashionRefineNeed: "请先输入要修改的内容", fashionRefining: "正在应用修改…" });
+
+/* v-studios-i18n: بقايا نوافذ الاستوديوهات + محلل المصاريف */
+Object.assign(I18N['zh'], {
+  pickerOptsForFeature: "个选项(此功能)",
+  pickerStylesForCategory: "种风格(此类别)",
+  pickerOptsWord: "个选项",
+  pickerOptsPick: "个选项 — 任你选",
+  videoOptAdspot: "📢 快速广告（5秒竖版+旁白）",
+  videoOptReels: "📱 智能Reels（10秒+旁白）",
+  fashionEngineLabel: "🎨 图像引擎",
+  fashionEngineGemini: "Gemini — 最能保持面部（默认）",
+  fashionEngineOpenai: "ChatGPT (gpt-image-1) — ChatGPT 图像引擎",
+  videoAdvanced: "高级选项",
+  exp_title: "消费分析",
+  exp_intro: "上传银行对账单（PDF或图片），自动分类您的支出",
+  exp_pick: "📄 选择对账单（PDF / 图片）",
+  exp_hint: "PDF或清晰的照片",
+  exp_paste: "或粘贴支出文本",
+  exp_pastePh: "在此粘贴交易记录…",
+  exp_go: "分析支出",
+  exp_busy: "分析中…",
+  exp_total: "总支出",
+  exp_tx: "笔交易",
+  exp_dist: "支出分布",
+  exp_biggest: "最大支出",
+  exp_tips: "省钱建议",
+  exp_again: "分析另一份对账单",
+  exp_disc: "近似数字 — 仅供参考，非理财建议。",
+  exp_noContent: "请先选择文件或粘贴文本",
+  exp_err: "分析失败，请重试"
+});

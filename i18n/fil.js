@@ -967,3 +967,34 @@ Object.assign(I18N['fil'], { modeCreateImage: "Gumawa ng larawan", modeWebSearch
 
 /* v-fashion-refine */
 Object.assign(I18N['fil'], { fashionRefinePh: "hal.: palitan lang ang kulay ng damit sa asul", fashionRefineBtn: "✏️ I-edit ang isang detalye", fashionRefineNeed: "Isulat muna ang gustong pagbabago", fashionRefining: "Ina-apply ang pagbabago…" });
+
+/* v-studios-i18n: بقايا نوافذ الاستوديوهات + محلل المصاريف */
+Object.assign(I18N['fil'], {
+  pickerOptsForFeature: "opsyon para sa feature na ito",
+  pickerStylesForCategory: "istilo para sa kategoryang ito",
+  pickerOptsWord: "opsyon",
+  pickerOptsPick: "opsyon — pumili",
+  videoOptAdspot: "📢 Mabilis na ad (5s + narration)",
+  videoOptReels: "📱 Smart reels (10s + narration)",
+  fashionEngineLabel: "🎨 Image engine",
+  fashionEngineGemini: "Gemini — pinaka-preserve ang mukha (default)",
+  fashionEngineOpenai: "ChatGPT (gpt-image-1) — image engine ng ChatGPT",
+  videoAdvanced: "Advanced na opsyon",
+  exp_title: "Expense Analyzer",
+  exp_intro: "I-upload ang bank statement (PDF o larawan) para i-categorize ang gastos",
+  exp_pick: "📄 Pumili ng statement (PDF / larawan)",
+  exp_hint: "PDF o malinaw na larawan",
+  exp_paste: "O i-paste ang gastos bilang teksto",
+  exp_pastePh: "I-paste ang transaksyon dito…",
+  exp_go: "Suriin ang gastos",
+  exp_busy: "Sinusuri…",
+  exp_total: "Kabuuang gastos",
+  exp_tx: "transaksyon",
+  exp_dist: "Hati-hati ng gastos",
+  exp_biggest: "Pinakamalaking gastos",
+  exp_tips: "Tips sa pag-iipon",
+  exp_again: "Iba pang statement",
+  exp_disc: "Tinatayang bilang — gabay lamang, hindi financial advice.",
+  exp_noContent: "Pumili muna ng file o mag-paste ng teksto",
+  exp_err: "Nabigo ang pagsusuri, subukan ulit"
+});

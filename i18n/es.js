@@ -965,3 +965,34 @@ Object.assign(I18N['es'], { modeCreateImage: "Crear imagen", modeWebSearch: "Bú
 
 /* v-fashion-refine */
 Object.assign(I18N['es'], { fashionRefinePh: "ej.: cambia solo el color del vestido a azul", fashionRefineBtn: "✏️ Editar un detalle", fashionRefineNeed: "Escribe primero el cambio", fashionRefining: "Aplicando el cambio…" });
+
+/* v-studios-i18n: بقايا نوافذ الاستوديوهات + محلل المصاريف */
+Object.assign(I18N['es'], {
+  pickerOptsForFeature: "opciones para esta función",
+  pickerStylesForCategory: "estilos para esta categoría",
+  pickerOptsWord: "opciones",
+  pickerOptsPick: "opciones — elige",
+  videoOptAdspot: "📢 Anuncio rápido (5s vertical + narración)",
+  videoOptReels: "📱 Reels inteligente (10s + narración)",
+  fashionEngineLabel: "🎨 Motor de imágenes",
+  fashionEngineGemini: "Gemini — conserva mejor el rostro (predeterminado)",
+  fashionEngineOpenai: "ChatGPT (gpt-image-1) — el motor de imágenes de ChatGPT",
+  videoAdvanced: "Opciones avanzadas",
+  exp_title: "Analizador de gastos",
+  exp_intro: "Sube tu extracto bancario (PDF o imagen) para clasificar tus gastos",
+  exp_pick: "📄 Elegir un extracto (PDF / imagen)",
+  exp_hint: "PDF o foto clara del extracto",
+  exp_paste: "O pega tus gastos como texto",
+  exp_pastePh: "Pega tus transacciones aquí…",
+  exp_go: "Analizar gastos",
+  exp_busy: "Analizando…",
+  exp_total: "Gasto total",
+  exp_tx: "transacciones",
+  exp_dist: "Desglose de gastos",
+  exp_biggest: "Mayor gasto",
+  exp_tips: "Consejos de ahorro",
+  exp_again: "Analizar otro extracto",
+  exp_disc: "Cifras aproximadas — solo orientativas, no asesoría financiera.",
+  exp_noContent: "Elige un archivo o pega texto primero",
+  exp_err: "Falló el análisis, inténtalo de nuevo"
+});

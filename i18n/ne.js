@@ -915,3 +915,34 @@ Object.assign(I18N['ne'], { modeCreateImage: "तस्बिर बनाउन
 
 /* v-fashion-refine */
 Object.assign(I18N['ne'], { fashionRefinePh: "जस्तै: पोशाकको रङ मात्र नीलो बनाउनुहोस्", fashionRefineBtn: "✏️ एउटा खास कुरा बदल्नुहोस्", fashionRefineNeed: "पहिले चाहेको परिवर्तन लेख्नुहोस्", fashionRefining: "परिवर्तन लागू हुँदै…" });
+
+/* v-studios-i18n: بقايا نوافذ الاستوديوهات + محلل المصاريف */
+Object.assign(I18N['ne'], {
+  pickerOptsForFeature: "विकल्प यस सुविधाका लागि",
+  pickerStylesForCategory: "शैली यस श्रेणीका लागि",
+  pickerOptsWord: "विकल्प",
+  pickerOptsPick: "विकल्प — रोज्नुहोस्",
+  videoOptAdspot: "📢 छिटो विज्ञापन (5से + वाचन)",
+  videoOptReels: "📱 स्मार्ट रिल्स (10से + वाचन)",
+  fashionEngineLabel: "🎨 इमेज इन्जिन",
+  fashionEngineGemini: "Gemini — अनुहार राम्ररी जोगाउँछ (पूर्वनिर्धारित)",
+  fashionEngineOpenai: "ChatGPT (gpt-image-1) — ChatGPT इमेज इन्जिन",
+  videoAdvanced: "उन्नत विकल्प",
+  exp_title: "खर्च विश्लेषक",
+  exp_intro: "बैंक स्टेटमेन्ट (PDF वा फोटो) अपलोड गर्नुहोस् — खर्च वर्गीकृत हुन्छ",
+  exp_pick: "📄 स्टेटमेन्ट छान्नुहोस् (PDF / फोटो)",
+  exp_hint: "PDF वा सफा फोटो",
+  exp_paste: "वा खर्च टेक्स्टमा टाँस्नुहोस्",
+  exp_pastePh: "कारोबार यहाँ टाँस्नुहोस्…",
+  exp_go: "खर्च विश्लेषण गर्नुहोस्",
+  exp_busy: "विश्लेषण हुँदै…",
+  exp_total: "कुल खर्च",
+  exp_tx: "कारोबार",
+  exp_dist: "खर्चको बाँडफाँट",
+  exp_biggest: "सबैभन्दा ठूलो खर्च",
+  exp_tips: "बचत सुझाव",
+  exp_again: "अर्को स्टेटमेन्ट",
+  exp_disc: "अनुमानित अंक — मार्गदर्शनका लागि मात्र, वित्तीय सल्लाह होइन।",
+  exp_noContent: "पहिले फाइल छान्नुहोस् वा टेक्स्ट टाँस्नुहोस्",
+  exp_err: "विश्लेषण असफल, फेरि प्रयास गर्नुहोस्"
+});

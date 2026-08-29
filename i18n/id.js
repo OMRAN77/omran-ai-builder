@@ -964,3 +964,34 @@ Object.assign(I18N['id'], { modeCreateImage: "Buat gambar", modeWebSearch: "Penc
 
 /* v-fashion-refine */
 Object.assign(I18N['id'], { fashionRefinePh: "mis.: ubah hanya warna gaun menjadi biru", fashionRefineBtn: "✏️ Edit satu hal spesifik", fashionRefineNeed: "Tulis dulu perubahan yang diinginkan", fashionRefining: "Menerapkan perubahan…" });
+
+/* v-studios-i18n: بقايا نوافذ الاستوديوهات + محلل المصاريف */
+Object.assign(I18N['id'], {
+  pickerOptsForFeature: "opsi untuk fitur ini",
+  pickerStylesForCategory: "gaya untuk kategori ini",
+  pickerOptsWord: "opsi",
+  pickerOptsPick: "opsi — pilih",
+  videoOptAdspot: "📢 Iklan cepat (5dtk + narasi)",
+  videoOptReels: "📱 Reels pintar (10dtk + narasi)",
+  fashionEngineLabel: "🎨 Mesin gambar",
+  fashionEngineGemini: "Gemini — paling menjaga wajah (bawaan)",
+  fashionEngineOpenai: "ChatGPT (gpt-image-1) — mesin gambar ChatGPT",
+  videoAdvanced: "Opsi lanjutan",
+  exp_title: "Analisis Pengeluaran",
+  exp_intro: "Unggah rekening koran (PDF atau gambar) untuk mengelompokkan pengeluaran",
+  exp_pick: "📄 Pilih rekening koran (PDF / gambar)",
+  exp_hint: "PDF atau foto yang jelas",
+  exp_paste: "Atau tempel pengeluaran sebagai teks",
+  exp_pastePh: "Tempel transaksi di sini…",
+  exp_go: "Analisis pengeluaran",
+  exp_busy: "Menganalisis…",
+  exp_total: "Total pengeluaran",
+  exp_tx: "transaksi",
+  exp_dist: "Rincian pengeluaran",
+  exp_biggest: "Pengeluaran terbesar",
+  exp_tips: "Tips hemat",
+  exp_again: "Analisis rekening lain",
+  exp_disc: "Angka perkiraan — hanya panduan, bukan nasihat keuangan.",
+  exp_noContent: "Pilih file atau tempel teks dulu",
+  exp_err: "Analisis gagal, coba lagi"
+});

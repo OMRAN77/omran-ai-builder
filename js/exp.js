@@ -4,7 +4,12 @@
     en:{title:'Expense Analyzer',intro:'Upload your bank statement (PDF or image) to categorize your spending',pick:'📄 Choose a statement (PDF / image)',hint:'PDF or a clear photo of the statement',paste:'Or paste your expenses as text',pastePh:'Paste account transactions or expenses here…',go:'Analyze Expenses',busy:'Analyzing your spending…',total:'Total Spending',tx:'transactions',dist:'Spending Breakdown',biggest:'Biggest Expense',tips:'Saving Tips',again:'Analyze another statement',disc:'Approximate figures from file analysis — for guidance only, not financial advice.',noContent:'Pick a file or paste text first',err:'Analysis failed, please try again'}
   };
   function eLang(){ try{ return localStorage.getItem('aiapp_lang')||'ar'; }catch(e){ return 'ar'; } }
-  function eT(k){ var L=eLang(); return (EXP_I18N[L]&&EXP_I18N[L][k])||EXP_I18N.en[k]||EXP_I18N.ar[k]||k; }
+  /* v-exp-i18n (شكوى المالك ٢٩ أغسطس: المحلّل إنجليزي وسط واجهة المليالم):
+     القاموس المحلي ثنائي فقط — المترجم العام (exp_*) أولًا لكل الـ14 لغة. */
+  function eT(k){
+    try{ if(typeof window.t==='function'){ var g=window.t('exp_'+k); if(g && g!=='exp_'+k) return g; } }catch(e){ /* i18n لم يجهز */ }
+    var L=eLang(); return (EXP_I18N[L]&&EXP_I18N[L][k])||EXP_I18N.en[k]||EXP_I18N.ar[k]||k;
+  }
   function eRTL(){ return ['ar','ur'].indexOf(eLang())>=0; }
   function eEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function eTok(){ try{ return (typeof authGet==='function'?authGet('aiapp_auth_token'):null)||localStorage.getItem('aiapp_auth_token')||sessionStorage.getItem('aiapp_auth_token')||''; }catch(e){ return ''; } }
