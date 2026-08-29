@@ -300,25 +300,33 @@ html.mobile-ui main, html.mobile-ui #messages{overscroll-behavior-y:contain;}
 #composerRow > #composerBox{flex:1 1 auto; min-width:0;}
 /* خانة «م»: نفس ارتفاع المستطيل (stretch) وبنفس إطاره وقوسه، خلفية زجاجية
    ضبابية (backdrop-filter)، والحرف متمركز تمامًا في المنتصف. */
+/* بلا خط إطار (طلب المالك) — الضباب الزجاجي وحده يحدّ الخانة. */
 #composerRow > #btnMahaDock{
   flex:0 0 auto; width:58px; margin:0; padding:0;
   display:flex; align-items:center; justify-content:center;
   background:rgba(255,255,255,.05) !important;
   backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
-  border:1px solid var(--omGoldSoft) !important;
+  border:none !important;
   border-radius:var(--r-4) !important;
   box-shadow:none !important;
-  transition:border-color .15s ease, background .15s ease;
+  transition:background .15s ease;
 }
-#composerRow > #btnMahaDock:hover{border-color:var(--omGold); background:rgba(212,175,55,.10) !important;}
-/* الحرف نصّ حقيقي بخط الصفحة — يتمركز بدقة. الميم بذيلها ينزل مركز حبرها
-   قليلًا تحت مركز صندوق السطر، فنرفعها نصف الفارق البصري. */
+#composerRow > #btnMahaDock:hover{background:rgba(249,227,130,.10) !important;}
+/* لون الحرف مأخوذ من شعار «عمران» نفسه (icons/brand-ar.png): توهج ‎#faf0a1
+   → ذهب ‎#f9e382/#f2d164 → ظل ‎#ba842a — نفس تدرج الشعار لا ذهب الثيم الرمادي. */
 #composerRow > #btnMahaDock .mahaGlyph{
   display:block; line-height:1; font-weight:700; font-size:30px;
   font-family:'Tajawal', Tahoma, Arial, sans-serif;
-  color:var(--omGold, #d4af37);
-  text-shadow:0 0 1px rgba(233,207,107,.65);
+  color:#f2d164;
+  text-shadow:none;
   transform:translateY(-4px);
+}
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+  #composerRow > #btnMahaDock .mahaGlyph{
+    background:linear-gradient(180deg, #faf0a1 0%, #f9e382 38%, #f2d164 62%, #ba842a 100%);
+    -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent;
+  }
 }
 @media (max-width:860px){ #composerRow > #btnMahaDock .mahaGlyph{font-size:24px; transform:translateY(-3px);} }
 html.mobile-ui #composerRow > #btnMahaDock .mahaGlyph{font-size:24px; transform:translateY(-3px);}
