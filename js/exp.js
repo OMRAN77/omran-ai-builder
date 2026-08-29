@@ -3,8 +3,13 @@
     ar:{title:'محلّل مصاريفي',intro:'ارفع كشف حسابك البنكي (PDF أو صورة) ويحلّل مصاريفك ويصنّفها',pick:'📄 اختر كشف حساب (PDF / صورة)',hint:'PDF أو صورة واضحة للكشف',paste:'أو الصق قائمة المصاريف نصًا',pastePh:'الصق حركات الحساب أو المصاريف هنا…',go:'حلّل المصاريف',busy:'يحلل مصاريفك…',total:'إجمالي المصاريف',tx:'حركة',dist:'توزيع المصاريف',biggest:'أكبر مصروف',tips:'نصائح توفير',again:'تحليل كشف آخر',disc:'بيانات تقريبية مبنية على تحليل الملف — للاسترشاد فقط وليست نصيحة مالية.',noContent:'اختر ملفًا أو الصق نصًا أولًا',err:'تعذّر التحليل، حاول مرة أخرى'},
     en:{title:'Expense Analyzer',intro:'Upload your bank statement (PDF or image) to categorize your spending',pick:'📄 Choose a statement (PDF / image)',hint:'PDF or a clear photo of the statement',paste:'Or paste your expenses as text',pastePh:'Paste account transactions or expenses here…',go:'Analyze Expenses',busy:'Analyzing your spending…',total:'Total Spending',tx:'transactions',dist:'Spending Breakdown',biggest:'Biggest Expense',tips:'Saving Tips',again:'Analyze another statement',disc:'Approximate figures from file analysis — for guidance only, not financial advice.',noContent:'Pick a file or paste text first',err:'Analysis failed, please try again'}
   };
-  function eLang(){ try{ return localStorage.getItem('aiapp_lang')||'ar'; }catch(e){ return 'ar'; } }
-  function eT(k){ var L=eLang(); return (EXP_I18N[L]&&EXP_I18N[L][k])||EXP_I18N.en[k]||EXP_I18N.ar[k]||k; }
+  function eLang(){ try{ return (typeof lang!=='undefined'&&lang)?String(lang):(localStorage.getItem('aiapp_lang')||'ar'); }catch(e){ return 'ar'; } }
+  /* v-tools-i18n: كل أداة بلغة مستخدمها — عربي/أردو ← عربي، وغيرهما ← إنجليزي */
+  function expL(ar, en){
+    var l = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
+    return (l === 'ar' || l === 'ur') ? ar : en;
+  }
+  function eT(k){ return expL(EXP_I18N.ar[k]||k, EXP_I18N.en[k]||k); }
   function eRTL(){ return ['ar','ur'].indexOf(eLang())>=0; }
   function eEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function eTok(){ try{ return (typeof authGet==='function'?authGet('aiapp_auth_token'):null)||localStorage.getItem('aiapp_auth_token')||sessionStorage.getItem('aiapp_auth_token')||''; }catch(e){ return ''; } }
