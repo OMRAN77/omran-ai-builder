@@ -950,3 +950,17 @@ Object.assign(I18N['fr'], {
 });
 
 Object.assign(I18N['fr'], { videoNeedDesc: "⚠️ Décrivez d’abord la vidéo.", videoVoiceFemale: "👩 Fatima (voix féminine)", videoVoiceMale: "👨 Hamdan (voix masculine)" }); // v-video-i18n
+
+/* v-about-i18n */
+Object.assign(I18N['fr'], {
+  aboutFeatChat: "Créez des applications complètes en discutant",
+  aboutFeatProviders: "9 fournisseurs IA + « Demander à tous »",
+  aboutFeatMaha: "Maha — votre assistante vocale en direct",
+  aboutFeatStudios: "7 studios créatifs d’images",
+  aboutFeatStocks: "Bourse et portefeuille pédagogique",
+  aboutFeatPrivacy: "Confidentialité d’abord — vos clés restent à vous",
+  aboutChipUAE: "Fabriqué aux Émirats 🇦🇪",
+  aboutChipPWA: "Appli PWA",
+  aboutChipLangs: "14 langues",
+  aboutMoreSummary: "📖 En savoir plus"
+});

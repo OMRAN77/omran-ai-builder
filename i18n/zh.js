@@ -988,3 +988,17 @@ Object.assign(I18N['zh'], {
 });
 
 Object.assign(I18N['zh'], { videoNeedDesc: "⚠️ 请先描述视频。", videoVoiceFemale: "👩 Fatima（女声）", videoVoiceMale: "👨 Hamdan（男声）" }); // v-video-i18n
+
+/* v-about-i18n */
+Object.assign(I18N['zh'], {
+  aboutFeatChat: "聊天即可构建完整应用",
+  aboutFeatProviders: "9个AI提供商 + “问所有”",
+  aboutFeatMaha: "Maha — 实时语音助手",
+  aboutFeatStudios: "7个创意图像工作室",
+  aboutFeatStocks: "股市与学习投资组合",
+  aboutFeatPrivacy: "隐私优先 — 密钥归你",
+  aboutChipUAE: "阿联酋制造 🇦🇪",
+  aboutChipPWA: "PWA 应用",
+  aboutChipLangs: "14种语言",
+  aboutMoreSummary: "📖 了解更多"
+});

@@ -999,3 +999,17 @@ Object.assign(I18N['ru'], {
 });
 
 Object.assign(I18N['ru'], { videoNeedDesc: "⚠️ Сначала опишите видео.", videoVoiceFemale: "👩 Фатима (женский голос)", videoVoiceMale: "👨 Хамдан (мужской голос)" }); // v-video-i18n
+
+/* v-about-i18n */
+Object.assign(I18N['ru'], {
+  aboutFeatChat: "Создавайте приложения в чате",
+  aboutFeatProviders: "9 ИИ-провайдеров + «Спросить всех»",
+  aboutFeatMaha: "Маха — живой голосовой помощник",
+  aboutFeatStudios: "7 творческих фотостудий",
+  aboutFeatStocks: "Биржа и учебный портфель",
+  aboutFeatPrivacy: "Приватность прежде всего — ключи у вас",
+  aboutChipUAE: "Сделано в ОАЭ 🇦🇪",
+  aboutChipPWA: "PWA-приложение",
+  aboutChipLangs: "14 языков",
+  aboutMoreSummary: "📖 Подробнее о платформе"
+});

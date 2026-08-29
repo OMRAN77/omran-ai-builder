@@ -1000,3 +1000,17 @@ Object.assign(I18N['ml'], {
 });
 
 Object.assign(I18N['ml'], { videoNeedDesc: "⚠️ ആദ്യം വീഡിയോ വിവരിക്കൂ.", videoVoiceFemale: "👩 ഫാത്തിമ (സ്ത്രീ)", videoVoiceMale: "👨 ഹംദാൻ (പുരുഷൻ)" }); // v-video-i18n
+
+/* v-about-i18n */
+Object.assign(I18N['ml'], {
+  aboutFeatChat: "ചാറ്റിലൂടെ പൂർണ്ണ ആപ്പുകൾ നിർമ്മിക്കൂ",
+  aboutFeatProviders: "9 AI പ്രൊവൈഡർമാർ + «എല്ലാവരോടും ചോദിക്കൂ»",
+  aboutFeatMaha: "മഹ — ലൈവ് വോയ്സ് അസിസ്റ്റന്റ്",
+  aboutFeatStudios: "7 ക്രിയേറ്റീവ് ഇമേജ് സ്റ്റുഡിയോകൾ",
+  aboutFeatStocks: "ഓഹരി വിപണിയും പഠന പോർട്ട്ഫോളിയോയും",
+  aboutFeatPrivacy: "സ്വകാര്യത ആദ്യം — കീകൾ നിങ്ങളുടേത്",
+  aboutChipUAE: "UAE-യിൽ നിർമ്മിതം 🇦🇪",
+  aboutChipPWA: "PWA ആപ്പ്",
+  aboutChipLangs: "14 ഭാഷകൾ",
+  aboutMoreSummary: "📖 കൂടുതൽ അറിയൂ"
+});
