@@ -97,18 +97,34 @@ async function resolveModel(apiKey) {
 // another (an Arabic-speaking med student sitting an English exam, a Malayalam
 // speaker in an English-medium school). Explanations follow the native
 // language; terms and quiz wording follow the exam language.
+/* v-edu-langname (شكوى المالك ٢٩ أغسطس: «التعليم يكتب بالعربي رغم تغيير
+   اللغة»): كان يصل النموذج «اكتب بلغة الطالب: ml» — رمز حرفين داخل جملة
+   عربية لا يفهمه، فيرد بالعربي. الأسماء الكاملة + تعليمة إنجليزية صريحة. */
+const EDU_LANG_NAMES = {
+  ar: 'Arabic', en: 'English', zh: 'Chinese', hi: 'Hindi', es: 'Spanish', fr: 'French',
+  bn: 'Bengali', ru: 'Russian', ur: 'Urdu', id: 'Indonesian', fil: 'Filipino',
+  tr: 'Turkish', ne: 'Nepali', ml: 'Malayalam',
+};
+function eduLangName(code) {
+  const c = String(code || '').trim();
+  return EDU_LANG_NAMES[c.toLowerCase()] || c;
+}
 function languageRules(lang, nativeLang, examLang) {
-  const native = (nativeLang || '').trim();
-  const exam = (examLang || '').trim();
+  const native = eduLangName(nativeLang);
+  const exam = eduLangName(examLang);
   if (native && exam && native !== exam) {
     return 'جسر اللغة — إلزامي: اشرح واكتب الملخص ووجه البطاقات بلغة الطالب الأم: ' + native + '. '
       + 'أمّا المصطلحات العلمية وأسئلة الاختبار وخياراته فبلغة الامتحان: ' + exam + '. '
       + 'في كل بطاقة مراجعة اذكر المصطلح باللغتين معًا بهذا الشكل: المصطلح بلغة الامتحان (المقابل بلغة الطالب). '
       + 'الهدف أن يفهم الطالب بلغته ويتعرّف على المصطلح كما سيراه في ورقة الامتحان.';
   }
-  if (native) return 'اكتب كل شيء بلغة الطالب: ' + native + '.';
+  if (native) {
+    return 'OUTPUT LANGUAGE (mandatory, highest priority): write EVERYTHING — title, subject, summary, flashcards, quiz questions and options — in ' + native + '. '
+      + 'These instructions being written in Arabic does NOT mean you answer in Arabic. '
+      + 'اكتب كل شيء بلغة الطالب: ' + native + '.';
+  }
   return 'اكتب كل شيء (العنوان والمادة والملخص والبطاقات والاختبار) بنفس لغة محتوى المحاضرة نفسها'
-    + (lang ? ' (وإن كان المحتوى نصًا قصيرًا غامض اللغة فاستخدم اللغة: ' + lang + ')' : '') + '.';
+    + (lang ? ' (وإن كان المحتوى نصًا قصيرًا غامض اللغة فاستخدم: ' + eduLangName(lang) + ')' : '') + '.';
 }
 
 /* v-edu-split: شكوى المستخدمين «صفحة التعليم بطيئة جدًا» — التحليل كان نداءً
@@ -207,7 +223,7 @@ async function callClaudeGrade(apiKey, payload, lang, nativeLang) {
     + '- إن كانت الإجابة صحيحة وأضافت معلومة خارج المعيار فلا تخصم عليها.\n'
     + '- إن كانت الإجابة فارغة أو لا علاقة لها بالسؤال فالدرجة 0 وقل ذلك بلطف.\n'
     + '- خاطب الطالب مباشرة بصيغة مشجّعة ومحدّدة، لا عبارات عامة مثل "إجابة جيدة".\n'
-    + '- اكتب كل النصوص بلغة إجابة الطالب' + (nativeLang ? ' (لغته: ' + nativeLang + ')' : (lang ? ' (اللغة: ' + lang + ')' : '')) + '.\n'
+    + '- اكتب كل النصوص بلغة إجابة الطالب' + (nativeLang ? ' (لغته: ' + eduLangName(nativeLang) + ')' : (lang ? ' (اللغة: ' + eduLangName(lang) + ')' : '')) + '. Write ALL feedback text in that language, not in Arabic.\n'
     + 'لا تكتب أي شيء خارج كائن JSON.';
 
   const user = 'السؤال:\n' + String(payload.question || '').slice(0, 4000)
@@ -247,7 +263,7 @@ async function callClaudeExpense(apiKey, contentBlocks, lang) {
     + 'tips بين 3 و5 نصائح، كل نصيحة مبنية فعليًا على الأرقام (اذكر المبالغ/الفئات الحقيقية)، عملية وقصيرة. '
     + 'إذا كان المحتوى ليس كشف حساب أو مصاريف إطلاقًا، أعِد {"error":"هذا الملف لا يبدو كشف حساب أو قائمة مصاريف"}. '
     + 'اكتب كل النصوص (أسماء الفئات والنصائح) '
-    + (lang && /^ar/i.test(lang) ? 'بالعربية.' : ('باللغة: ' + (lang || 'ar') + '.'))
+    + (lang && /^ar/i.test(lang) ? 'بالعربية.' : ('in ' + eduLangName(lang || 'ar') + ' — not in Arabic.'))
     + ' لا تكتب أي شيء خارج كائن JSON.';
   const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
