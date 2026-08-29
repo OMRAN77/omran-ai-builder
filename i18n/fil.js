@@ -1031,3 +1031,4 @@ Object.assign(I18N['fil'], {
   "provSwitchNote": "Pinili mo ang {sel} — pero ang {why} ay hawak ng {eff}, ang pinakatumpak dito. Ang karaniwang chat mo ay mananatili sa {sel}.",
   "provSwitchNoteHidden": "Ang chat mo ay nasa {sel} — pero ang {why} ay hawak ng {eff}, ang pinakatumpak dito. Ang karaniwang chat mo ay mananatili sa {sel}."
 });
+Object.assign(I18N['fil'], {"pageTitle":"Omran AI — Plataporma ng katalinuhan"});

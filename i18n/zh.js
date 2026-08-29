@@ -1019,3 +1019,4 @@ Object.assign(I18N['zh'], {
   "provSwitchNote": "您選擇了 {sel} — 但{why}由最擅長的 {eff} 處理。您的一般對話仍使用 {sel}。",
   "provSwitchNoteHidden": "您的對話使用 {sel} — 但{why}由最擅長的 {eff} 處理。您的一般對話仍使用 {sel}。"
 });
+Object.assign(I18N['zh'], {"pageTitle":"Omran AI — 智能平台"});

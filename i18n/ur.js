@@ -978,3 +978,4 @@ Object.assign(I18N['ur'], {
   "provSwitchNote": "آپ نے {sel} چنا — لیکن {why} اس میں سب سے ماہر {eff} انجام دیتا ہے۔ آپ کی عام گفتگو {sel} پر ہی رہے گی۔",
   "provSwitchNoteHidden": "آپ کی گفتگو {sel} پر ہے — لیکن {why} اس میں سب سے ماہر {eff} انجام دیتا ہے۔ آپ کی عام گفتگو {sel} پر ہی رہے گی۔"
 });
+Object.assign(I18N['ur'], {"pageTitle":"عمران AI — ذہانت کا پلیٹ فارم"});
