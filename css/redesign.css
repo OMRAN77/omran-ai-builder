@@ -294,12 +294,16 @@ html.mobile-ui main, html.mobile-ui #messages{overscroll-behavior-y:contain;}
    المايك بمكانه الأصلي دائمًا — لا دمج له. */
 #composerBox > .inputbar-tools{flex:1 1 auto;}
 #composerBox .inputbar-tools-left{flex:1 1 auto; display:flex;}
-#composerBox #btnMahaDock{
-  margin-inline-start:auto;
+/* v-maha-outside (طلب المالك ٢٩ أغسطس): «م» خارج المستطيل جنبه من جهة اليسار،
+   والمستطيل يتمدد بكامل العرض حتى آخر المساحة. «م» تبقى ظاهرة دائمًا. */
+#composerRow{display:flex; align-items:flex-end; gap:8px; width:100%;}
+#composerRow > #composerBox{flex:1 1 auto; min-width:0;}
+#composerRow > #btnMahaDock{
+  flex:0 0 auto; padding:4px; margin-bottom:6px;
+  background:none !important; border:none !important; box-shadow:none !important;
   transition:opacity .15s ease, transform .15s ease;
 }
-#composerBox.typing #btnMahaDock{ display:none; }
-#composerBox:has(#btnStop.live) #btnMahaDock{ display:none; }
+#composerRow > #btnMahaDock:hover{transform:scale(1.08);}
 #composerBox:not(.typing) > #btnSend{ display:none !important; }
 #composerBox.typing > #btnSend{ animation:morphIn .16s ease; }
 @keyframes morphIn{ from{ transform:scale(.6); opacity:0; } to{ transform:scale(1); opacity:1; } }
