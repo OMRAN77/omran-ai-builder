@@ -6006,7 +6006,18 @@ async function omranSaveBlob(blob, filename){
     try{
       const url = await omranBlobToServerLink(blob, filename);
       const w = window.open(url, '_blank');
-      if(!w) location.href = url;
+      /* v-pdf-noleave (شكوى ٢٩ أغسطس: «تحميل PDF يرجّعني لصفحة المحادثة»):
+         داخل التطبيق المثبّت window.open يرجع null، وكان location.href
+         يُبحر بصفحة التطبيق نفسها إلى رابط التنزيل — وأي تعثّر يعيد
+         المستخدم للمحادثة بلا ملف. iframe خفي يسلّم الملف لمنزّل النظام
+         (ترويسة attachment) دون مغادرة الصفحة إطلاقًا. */
+      if(!w){
+        const dfr = document.createElement('iframe');
+        dfr.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;';
+        dfr.src = url;
+        document.body.appendChild(dfr);
+        setTimeout(() => { try{ dfr.remove(); }catch(e){ __swallow(e, 'share:dl-frame'); } }, 60000);
+      }
       return;
     }catch(e){ __swallow(e, 'share:server-link'); }
   }
