@@ -1036,10 +1036,22 @@ const PROVIDER_DISPLAY = {
   mistral: 'السريع', deepseek: 'العميق', perplexity: 'العميق',
   cohere: 'العميق', openrouter: 'العميق',
 };
+/* v-nick-i18n (شكوى المالك ٢٩ أغسطس: «الكينج» طلعت عربية وسط واجهة
+   المليالم): الألقاب الثلاثة صارت مفاتيح ترجمة تتبدل مع لغة الواجهة. */
+const PROVIDER_NICK_KEYS = {
+  claude: 'provNickKing', gemini: 'provNickFast', openai: 'provNickDeep', groq: 'provNickFast',
+  mistral: 'provNickFast', deepseek: 'provNickDeep', perplexity: 'provNickDeep',
+  cohere: 'provNickDeep', openrouter: 'provNickDeep',
+};
 function functionalLabel(key){
   // v362 — الستة المخفيون لا يظهر اسمهم أبدًا: أي مزود يرد → يُعرض باسم
   // رأس مجموعته الظاهر (Groq/Mistral→Gemini، DeepSeek/Perplexity/Cohere/OpenRouter→GPT، Claude→Claude).
   const primary = funcPrimaryOf(key);
+  const nickKey = PROVIDER_NICK_KEYS[primary];
+  if(nickKey && typeof t === 'function'){
+    const v = t(nickKey);
+    if(v && v !== nickKey) return v;
+  }
   return PROVIDER_DISPLAY[primary] || PROVIDER_KEY_LABELS[primary] || primary;
 }
 // v359 — 3 أزرار بأسمائها الحقيقية الشهيرة (الناس تعرفها) + شعاراتها الأصلية.

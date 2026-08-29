@@ -192,10 +192,17 @@ module.exports = async (req, res) => {
       body = JSON.parse(body || '{}');
     }
     const { mode, imageBase64, mimeType, style, description, token, multiAngle,
-      gender, colors, extras, season, occasion, fairness, modest, engine } = body;
+      gender, colors, extras, season, occasion, fairness, modest, engine, editRequest } = body;
 
     if (mode === 'image' && !imageBase64) {
       res.status(400).json({ error: 'Missing imageBase64' });
+      return;
+    }
+    // v-fashion-refine (شكوى المالك ٢٩ أغسطس: «أطلب تغيير شيء معيّن فيغيّر
+    // الشكل كامل»): وضع تعديل موضعي — النتيجة السابقة هي المصدر، والطلب
+    // نص حر، وقفل صارم يمنع تغيير أي شيء غير المطلوب.
+    if (mode === 'refine' && (!imageBase64 || !editRequest || !String(editRequest).trim())) {
+      res.status(400).json({ error: 'Missing imageBase64 or editRequest' });
       return;
     }
     if (mode === 'text' && !description) {
@@ -232,7 +239,26 @@ module.exports = async (req, res) => {
     // المقارنة (نفس الاستوديو في كل الخيارات)، وقفل الاحتشام حيث يلزم.
     const locks = locksFor({ fairness: !!fairness, modest: !!modest, style, occasion });
     let promptText = '';
-    if (mode === 'image') {
+    if (mode === 'refine') {
+      /* v-fashion-refine: تعديل نقطة واحدة فقط — كل ما عداها يبقى مطابقًا
+         للمصدر حرفيًا (نفس الشخص والوجه والوقفة والخلفية وبقية اللبس). */
+      const editReq = String(editRequest).trim().slice(0, 300);
+      promptText =
+        'Make ONLY this specific change to the image: "' + editReq + '". ' +
+        'STRICT EDIT LOCK (highest priority): everything else must remain EXACTLY identical to the source image — the same person with the same face and identity, the same pose, the same background and lighting, and every other part of the outfit completely unchanged. ' +
+        'Do NOT redesign, restyle, regenerate or alter anything that was not explicitly requested. This is a local edit, not a new look.' +
+        locks;
+      if (engine === 'openai') {
+        const oa = await openaiRedress(promptText, imageBase64, mimeType);
+        if (oa) {
+          const remOa = await consumeFashion(quota.username);
+          res.status(200).json({ imageBase64: oa.imageBase64, mimeType: oa.mimeType, engine: 'openai', remaining: remOa, dailyLimit: FASHION_DAILY_LIMIT });
+          return;
+        }
+      }
+      parts.push({ text: promptText });
+      parts.push({ inlineData: { mimeType: mimeType || 'image/png', data: imageBase64 } });
+    } else if (mode === 'image') {
       promptText =
         'Redress the person in this photo into a new outfit in ' + styleDesc + '.' +
         locks + ' ' +

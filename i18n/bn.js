@@ -907,3 +907,12 @@ Object.assign(I18N["bn"], {
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "এই ডিভাইসে উপলব্ধ নয়",
 });
+
+/* v-nick-i18n: ألقاب المزودين الثلاثة */
+Object.assign(I18N['bn'], { provNickKing: "কিং", provNickFast: "দ্রুত", provNickDeep: "গভীর" });
+
+/* v-modes-i18n + v-psub */
+Object.assign(I18N['bn'], { modeCreateImage: "ছবি তৈরি করুন", modeWebSearch: "ওয়েব অনুসন্ধান", modeThinkDeeper: "গভীরভাবে ভাবুন", psheetCountSuffix: "স্টাইল — একই মুখ, প্রতিটি স্টাইলে" });
+
+/* v-fashion-refine */
+Object.assign(I18N['bn'], { fashionRefinePh: "যেমন: শুধু পোশাকের রং নীল করুন", fashionRefineBtn: "✏️ নির্দিষ্ট কিছু বদলান", fashionRefineNeed: "আগে কাঙ্ক্ষিত পরিবর্তন লিখুন", fashionRefining: "পরিবর্তন প্রয়োগ হচ্ছে…" });

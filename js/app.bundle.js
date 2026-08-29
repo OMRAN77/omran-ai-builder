@@ -2413,6 +2413,9 @@ const I18N = {
     logoutTitle: 'تسجيل الخروج',
     loginAction: 'دخول',
     acctSectionTitle: '👤 حسابي',
+    fashionRefinePh: 'مثال: غيّري لون الفستان إلى أزرق فقط', fashionRefineBtn: '✏️ عدّلي شيئًا محددًا', fashionRefineNeed: 'اكتبي التعديل المطلوب أولًا', fashionRefining: 'جاري تطبيق التعديل…',
+    modeCreateImage: 'إنشاء صورة', modeWebSearch: 'البحث على الويب', modeThinkDeeper: 'التفكير العميق', psheetCountSuffix: 'ستايلًا — نفس وجهك بكل ستايل',
+    provNickKing: 'الكينج', provNickFast: 'السريع', provNickDeep: 'العميق',
     acctLoginBtnLabel: '🔐 تسجيل الدخول / حساب جديد',
     statsSectionTitle: 'إحصائياتي',
     statsProjectsLabel: 'عدد المشاريع',
@@ -3398,6 +3401,9 @@ const I18N = {
     logoutTitle: 'Log out',
     loginAction: 'Login',
     acctSectionTitle: '👤 My account',
+    fashionRefinePh: 'e.g. change only the dress colour to blue', fashionRefineBtn: '✏️ Edit one specific thing', fashionRefineNeed: 'Type the change you want first', fashionRefining: 'Applying your edit…',
+    modeCreateImage: 'Create image', modeWebSearch: 'Web search', modeThinkDeeper: 'Think deeper', psheetCountSuffix: 'styles — same face, every style',
+    provNickKing: 'The King', provNickFast: 'The Fast', provNickDeep: 'The Deep',
     acctLoginBtnLabel: '🔐 Sign in / Create account',
     statsSectionTitle: 'My stats',
     statsProjectsLabel: 'Projects count',
@@ -4165,7 +4171,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=602'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
+    sc.src = 'i18n/' + lg + '.js?v=604'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -6984,10 +6990,22 @@ const PROVIDER_DISPLAY = {
   mistral: 'السريع', deepseek: 'العميق', perplexity: 'العميق',
   cohere: 'العميق', openrouter: 'العميق',
 };
+/* v-nick-i18n (شكوى المالك ٢٩ أغسطس: «الكينج» طلعت عربية وسط واجهة
+   المليالم): الألقاب الثلاثة صارت مفاتيح ترجمة تتبدل مع لغة الواجهة. */
+const PROVIDER_NICK_KEYS = {
+  claude: 'provNickKing', gemini: 'provNickFast', openai: 'provNickDeep', groq: 'provNickFast',
+  mistral: 'provNickFast', deepseek: 'provNickDeep', perplexity: 'provNickDeep',
+  cohere: 'provNickDeep', openrouter: 'provNickDeep',
+};
 function functionalLabel(key){
   // v362 — الستة المخفيون لا يظهر اسمهم أبدًا: أي مزود يرد → يُعرض باسم
   // رأس مجموعته الظاهر (Groq/Mistral→Gemini، DeepSeek/Perplexity/Cohere/OpenRouter→GPT، Claude→Claude).
   const primary = funcPrimaryOf(key);
+  const nickKey = PROVIDER_NICK_KEYS[primary];
+  if(nickKey && typeof t === 'function'){
+    const v = t(nickKey);
+    if(v && v !== nickKey) return v;
+  }
   return PROVIDER_DISPLAY[primary] || PROVIDER_KEY_LABELS[primary] || primary;
 }
 // v359 — 3 أزرار بأسمائها الحقيقية الشهيرة (الناس تعرفها) + شعاراتها الأصلية.
@@ -20465,7 +20483,11 @@ async function __safeJson(res){
     astronaut: 'رائد فضاء',
   };
   function pstyleLang(){ try{ return localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ return 'ar'; } }
-  function pstyleSub(v){ return pstyleLang().startsWith('en') ? '' : (PSTYLE_SUBS[v] || ''); }
+  /* v-psub-ar-only (شكوى المالك ٢٩ أغسطس: الأوصاف طلعت عربية وسط واجهة
+     المليالم): الإنجليزي كان يخفي الوصف عمدًا بينما بقية اللغات تأخذ
+     العربي — القاعدة الآن واحدة: الوصف عربي للعربي فقط، ويختفي لغير ذلك
+     (العناوين نفسها مترجمة لكل اللغات فتبقى البطاقة مفهومة). */
+  function pstyleSub(v){ return pstyleLang().startsWith('ar') ? (PSTYLE_SUBS[v] || '') : ''; }
   function pstyleOpts(){
     const favs = getFavs();
     const opts = Array.from(styleEl.querySelectorAll('option'))
@@ -20485,7 +20507,14 @@ async function __safeJson(res){
     if(!styleCardsGrid || !styleEl) return;
     const favs = getFavs();
     const opts = pstyleOpts();
-    if(styleSheetCount) styleSheetCount.textContent = opts.length + (pstyleLang().startsWith('en') ? ' styles — same face, every style' : ' ستايلًا — نفس وجهك بكل ستايل');
+    /* v-psub-ar-only: سطر العدّاد صار مفتاح ترجمة لكل اللغات بدل عربي/إنجليزي فقط.
+       ملاحظة: t المحلية في هذا الملف تعرف عربي/إنجليزي فقط وتحجب المترجم
+       العام — نستدعي window.t (مترجم اللغات الـ14) صراحةً. */
+    if(styleSheetCount){
+      const __gt = (typeof window !== 'undefined' && typeof window.t === 'function') ? window.t : null;
+      const __cntSuffix = (__gt && __gt('psheetCountSuffix') !== 'psheetCountSuffix') ? __gt('psheetCountSuffix') : (pstyleLang().startsWith('en') ? 'styles — same face, every style' : 'ستايلًا — نفس وجهك بكل ستايل');
+      styleSheetCount.textContent = opts.length + ' ' + __cntSuffix;
+    }
     styleCardsGrid.innerHTML = '';
     opts.forEach((opt) => {
       const v = opt.value;
@@ -21134,6 +21163,8 @@ async function __safeJson(res){
       favSaveBtn.style.display = 'block';
       favSaveBtn.textContent = t('fashionFavoriteSaveBtn');
       setupBeforeAfter(dataUrl);
+      /* v-fashion-refine: احفظ النتيجة كمصدر للتعديل الموضعي وأظهر صفّه */
+      __refineRemember(data.imageBase64, data.mimeType || 'image/png');
       setStatus(t('fashionAiDone'));
     } catch(e){
       setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
@@ -21141,6 +21172,83 @@ async function __safeJson(res){
       btnGenerate.disabled = false;
     }
   };
+
+  /* ---- ✏️ v-fashion-refine (شكوى المالك ٢٩ أغسطس): تعديل شيء محدد على
+     النتيجة نفسها بدل إعادة توليد اللوك كاملًا — النتيجة الأخيرة تُرسل
+     كمصدر مع طلب التعديل، والسيرفر يقفل كل ما عداه. ---- */
+  let __lastFxB64 = null, __lastFxMime = 'image/png';
+  const __gt2 = (k, arFb, enFb) => {
+    try{ if(typeof window.t === 'function'){ const v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* المترجم لم يجهز */ }
+    return isEn() ? enFb : arFb;
+  };
+  let refineRow = null, refineInput = null, refineBtn = null;
+  function __buildRefineRow(){
+    if(refineRow || !resultWrap) return;
+    refineRow = document.createElement('div');
+    refineRow.id = 'fashionRefineRow';
+    refineRow.style.cssText = 'display:none; gap:8px; margin-top:10px; align-items:stretch;';
+    refineInput = document.createElement('input');
+    refineInput.id = 'fashionRefineInput';
+    refineInput.type = 'text';
+    refineInput.maxLength = 300;
+    refineInput.style.cssText = 'flex:1 1 auto; min-width:0; padding:10px 12px; border-radius:12px; border:1px solid var(--border,#333); background:var(--panel2,#1b1b22); color:var(--text,#eee); font-family:inherit; font-size:13px;';
+    refineBtn = document.createElement('button');
+    refineBtn.id = 'fashionRefineBtn';
+    refineBtn.type = 'button';
+    refineBtn.className = 'btn';
+    refineBtn.style.cssText = 'flex:0 0 auto; white-space:nowrap;';
+    refineRow.appendChild(refineInput);
+    refineRow.appendChild(refineBtn);
+    resultWrap.appendChild(refineRow);
+    refineBtn.onclick = __doRefine;
+    refineInput.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); __doRefine(); } });
+  }
+  function __refineTexts(){
+    if(!refineInput) return;
+    refineInput.placeholder = __gt2('fashionRefinePh', 'مثال: غيّري لون الفستان إلى أزرق فقط', 'e.g. change only the dress colour to blue');
+    refineBtn.textContent = __gt2('fashionRefineBtn', '✏️ عدّلي شيئًا محددًا', '✏️ Edit one specific thing');
+  }
+  function __refineRemember(b64, mime){
+    __lastFxB64 = b64; __lastFxMime = mime;
+    __buildRefineRow();
+    __refineTexts();
+    if(refineRow){ refineRow.style.display = 'flex'; refineInput.value = ''; }
+  }
+  async function __doRefine(){
+    if(!__lastFxB64) return;
+    const reqTxt = (refineInput.value || '').trim();
+    if(!reqTxt){ setStatus(__gt2('fashionRefineNeed', 'اكتبي التعديل المطلوب أولًا', 'Type the change you want first')); refineInput.focus(); return; }
+    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+    if(!token){ setStatus(t('fashionAiNeedLogin')); return; }
+    refineBtn.disabled = true; btnGenerate.disabled = true;
+    setStatus(__gt2('fashionRefining', 'جاري تطبيق التعديل…', 'Applying your edit…'));
+    try{
+      const res = await fetch('/api/fashion-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'refine', imageBase64: __lastFxB64, mimeType: __lastFxMime, editRequest: reqTxt, token, engine: window.__fashionEngine || '' }),
+      });
+      const data = await __safeJson(res);
+      if(!res.ok || data.error){
+        if(data.error === 'auth_required'){ setStatus(t('fashionAiNeedLogin')); return; }
+        if(data.error === 'daily_limit_reached'){ setStatus(t('fashionAiLimitReached')); return; }
+        throw new Error(data.error || 'unknown');
+      }
+      /* قبل/بعد: «قبل» تصير النتيجة السابقة نفسها ليتضح التعديل الموضعي */
+      const prevUrl = 'data:' + __lastFxMime + ';base64,' + __lastFxB64;
+      const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
+      if(beforeImg){ beforeImg.src = prevUrl; }
+      resultEl.src = dataUrl;
+      downloadEl.href = dataUrl;
+      __lastFxB64 = data.imageBase64; __lastFxMime = data.mimeType || 'image/png';
+      refineInput.value = '';
+      setStatus(t('fashionAiDone'));
+    }catch(e){
+      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+    }finally{
+      refineBtn.disabled = false; btnGenerate.disabled = false;
+    }
+  }
 
   /* ---- 💡 suggest a look ---- */
   if(suggestBtn) suggestBtn.onclick = async () => {
@@ -25648,6 +25756,10 @@ window.__logoPickerOpen = openPicker;
 
 // ── زر في شريط الأدوات (يُربط بعد DOMContentLoaded) ─────────────────────────
 function mountLogoBtn(){
+  /* v-logos-off (أمر المالك ٢٩ أغسطس): بطاقة «شعارات العالم» تُحذف من مربع
+     الأدوات نهائيًا — الدالة تخرج مبكرًا فلا يُنشأ الزر، وبقية المكتبة
+     تبقى خاملة كما هي (اختبار fashion-locks يفحص نصوصها أدناه). */
+  return;
   // زر داخل مربع الأدوات.
   // v-wiring-sweep: toolsBox/toolsBoxInner لم يعودا موجودَين بعد إعادة تصميم
   // الواجهة، وكان الحارس القديم يخرج مبكرًا فلا يظهر زر «شعارات العالم» أبدًا.

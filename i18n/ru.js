@@ -957,3 +957,12 @@ Object.assign(I18N["ru"], {
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "Недоступно на этом устройстве",
 });
+
+/* v-nick-i18n: ألقاب المزودين الثلاثة */
+Object.assign(I18N['ru'], { provNickKing: "Король", provNickFast: "Быстрый", provNickDeep: "Глубокий" });
+
+/* v-modes-i18n + v-psub */
+Object.assign(I18N['ru'], { modeCreateImage: "Создать изображение", modeWebSearch: "Поиск в интернете", modeThinkDeeper: "Глубокое размышление", psheetCountSuffix: "стилей — одно лицо, все стили" });
+
+/* v-fashion-refine */
+Object.assign(I18N['ru'], { fashionRefinePh: "напр.: измени только цвет платья на синий", fashionRefineBtn: "✏️ Изменить одну деталь", fashionRefineNeed: "Сначала напишите желаемое изменение", fashionRefining: "Применяю изменение…" });

@@ -958,3 +958,12 @@ Object.assign(I18N["fil"], {
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "Hindi available sa device na ito",
 });
+
+/* v-nick-i18n: ألقاب المزودين الثلاثة */
+Object.assign(I18N['fil'], { provNickKing: "Ang King", provNickFast: "Ang Mabilis", provNickDeep: "Ang Malalim" });
+
+/* v-modes-i18n + v-psub */
+Object.assign(I18N['fil'], { modeCreateImage: "Gumawa ng larawan", modeWebSearch: "Web search", modeThinkDeeper: "Malalim na pag-iisip", psheetCountSuffix: "istilo — parehong mukha, bawat istilo" });
+
+/* v-fashion-refine */
+Object.assign(I18N['fil'], { fashionRefinePh: "hal.: palitan lang ang kulay ng damit sa asul", fashionRefineBtn: "✏️ I-edit ang isang detalye", fashionRefineNeed: "Isulat muna ang gustong pagbabago", fashionRefining: "Ina-apply ang pagbabago…" });
