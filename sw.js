@@ -1,4 +1,4 @@
-const CACHE_NAME = 'omran-ai-builder-uniform-black-e30296b1';
+const CACHE_NAME = 'omran-ai-builder-uniform-black-80ad8f3d';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -128,6 +128,11 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return; // never touch POST/PUT (auth, AI calls)
 
   const url = new URL(req.url);
+
+  // v-pdf-noleave: روابط التنزيل /p/<id> (PDF) و /i/<id> (صور) لا يلمسها
+  // العامل أبدًا — كان مسار «القشرة» يرجّع index.html كاحتياط عند أي تعثّر،
+  // فيهبط المستخدم على صفحة المحادثة بدل ملفه. المتصفح يتولاها مباشرة.
+  if (/^\/(p|i)\/[A-Za-z0-9]/.test(url.pathname)) return;
 
   // API calls: always go to network. If offline, return a friendly JSON
   // error instead of letting the request fail with a generic network error.

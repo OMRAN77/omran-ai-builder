@@ -254,6 +254,8 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
     <div id="inputbar">
       <input type="file" id="attachInput" accept="image/*,.txt,.md,.js,.jsx,.ts,.tsx,.py,.json,.csv,.html,.css,.log,.zip,.docx,.xlsx,.pptx,.jar,.pdf,.xml,.yml,.yaml,.sh,.php,.java,.c,.cpp,.go,.rs,.rb,.sql,.env,*" multiple style="display:none;">
       <div id="emojiPicker"></div>
+      <!-- v-maha-outside: «م» خارج المستطيل جنبه (طلب المالك ٢٩ أغسطس) — الصف يضم الصندوق + م -->
+      <div id="composerRow">
       <div id="composerBox">
       <div id="chatEditNotice" hidden><span data-i18n="editMsgNotice">تعديل الرسالة</span><button type="button" aria-label="إلغاء التعديل" data-i18n="cancel">إلغاء</button></div>
       <!-- v587 — المرفقات داخل صندوق الكتابة نفسه -->
@@ -289,12 +291,14 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
           <button type="button" id="omranBtnWeb" title="بحث في الإنترنت" data-i18n-title="qtWebSearch"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><line x1="3" y1="12" x2="21" y2="12"></line><path d="M12 3a15 15 0 0 1 4 9 15 15 0 0 1-4 9 15 15 0 0 1-4-9 15 15 0 0 1 4-9z"></path></svg></button>
           <button type="button" id="omranBtnClip" title="إرفاق ملف" data-i18n-title="attachFileTitle" style="display:none !important;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg></button>
           <button class="btn" id="btnMic" type="button" title="تحدث بدل الكتابة" data-i18n-title="micTitle"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg></button>
-          <button class="btn" id="btnMahaDock" type="button" title="مها — مكالمة صوتية" data-i18n-title="mahaTitle" style="padding:4px;"><img src="/icons/maha-m3.svg" alt="مها" style="width:27px; height:27px; border-radius:50%; display:block; pointer-events:none;"></button>
           <button class="btn" id="btnAskAllToggle" type="button" style="display:none !important;" title="اسأل الكل — 4 نماذج AI تبني تطبيقك معًا" data-i18n-title="askAllBtnTitle">🧠</button>
         </div>
       </div>
         <button class="btn" id="btnStop" type="button" title="إيقاف" data-i18n-title="stopTitle"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button>
         <button class="tab" id="btnSend" data-i18n-title="sendTitle" title="إرسال" style="line-height:1;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
+      </div>
+      <!-- حرف نصي بخط الصفحة بدل صورة SVG: الخط داخل <img> لا يُحمَّل فيرسم الحرف بخط بديل غير متمركز -->
+      <button class="btn" id="btnMahaDock" type="button" title="مها — مكالمة صوتية" data-i18n-title="mahaTitle"><span class="mahaGlyph" aria-hidden="true">م</span></button>
       </div>
       <div id="omranBelowComposer">
         <div id="omranChips">
@@ -391,7 +395,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 <script src="/js/selfdiag.js?v=651"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=e30296b1"></script>
+    <script defer src="/js/app.bundle.js?v=80ad8f3d"></script>
     <script defer src="/js/modes.js?v=b23329c6"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
