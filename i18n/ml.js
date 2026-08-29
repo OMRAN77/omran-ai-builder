@@ -1032,3 +1032,4 @@ Object.assign(I18N['ml'], {
   "provSwitchNoteHidden": "നിങ്ങളുടെ ചാറ്റ് {sel}-ൽ ആണ് — എന്നാൽ {why} ഇതിൽ ഏറ്റവും കൃത്യതയുള്ള {eff} ആണ് ചെയ്യുന്നത്. നിങ്ങളുടെ സാധാരണ ചാറ്റ് {sel}-ൽ തുടരും."
 });
 Object.assign(I18N['ml'], {"pageTitle":"Omran AI — ഇന്റലിജൻസ് പ്ലാറ്റ്ഫോം"});
+Object.assign(I18N['ml'], {"privacyConsentTitle":"🔒 നിങ്ങളുടെ സ്വകാര്യത ആദ്യം","privacyConsentText":"Omran AI Builder ഉപയോഗിക്കുന്നതിന് മുമ്പ് ദയവായി <a href=\"/privacy.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">സ്വകാര്യതാ നയവും</a> <a href=\"/terms.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">ഉപയോഗ നിബന്ധനകളും</a> വായിക്കുക. ഞങ്ങൾ എന്ത് ശേഖരിക്കുന്നു, എങ്ങനെ സംരക്ഷിക്കുന്നു, നിങ്ങളുടെ ഡാറ്റ ഇല്ലാതാക്കാനുള്ള അവകാശം എന്നിവ അവയിൽ വിശദീകരിക്കുന്നു.","privacyConsentRead":"നയം വായിക്കുക","privacyConsentAgree":"സമ്മതം, തുടരുക"});

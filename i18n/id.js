@@ -1029,3 +1029,4 @@ Object.assign(I18N['id'], {
   "provSwitchNoteHidden": "Obrolan Anda memakai {sel} — tetapi {why} ditangani {eff}, yang paling akurat untuk itu. Obrolan biasa Anda tetap di {sel}."
 });
 Object.assign(I18N['id'], {"pageTitle":"Omran AI — Platform kecerdasan"});
+Object.assign(I18N['id'], {"privacyConsentTitle":"🔒 Privasi Anda yang utama","privacyConsentText":"Sebelum menggunakan Omran AI Builder, harap baca <a href=\"/privacy.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">kebijakan privasi</a> dan <a href=\"/terms.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">ketentuan penggunaan</a>. Keduanya menjelaskan apa yang kami kumpulkan, cara kami melindunginya, dan hak Anda menghapus data Anda.","privacyConsentRead":"Baca kebijakan","privacyConsentAgree":"Setuju & lanjutkan"});

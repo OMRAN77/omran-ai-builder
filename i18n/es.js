@@ -1030,3 +1030,4 @@ Object.assign(I18N['es'], {
   "provSwitchNoteHidden": "Tu chat usa {sel} — pero {why} lo maneja {eff}, el más preciso para ello. Tu chat habitual sigue en {sel}."
 });
 Object.assign(I18N['es'], {"pageTitle":"Omran AI — Plataforma de inteligencia"});
+Object.assign(I18N['es'], {"privacyConsentTitle":"🔒 Tu privacidad primero","privacyConsentText":"Antes de usar Omran AI Builder, lee la <a href=\"/privacy.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">política de privacidad</a> y los <a href=\"/terms.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">términos de uso</a>. Explican qué recopilamos, cómo lo protegemos y tu derecho a eliminar tus datos.","privacyConsentRead":"Leer la política","privacyConsentAgree":"Acepto y continúo"});

@@ -982,3 +982,4 @@ Object.assign(I18N['fr'], {
   "provSwitchNoteHidden": "Votre conversation utilise {sel} — mais {why} est confié à {eff}, le plus précis pour cela. Votre conversation habituelle reste sur {sel}."
 });
 Object.assign(I18N['fr'], {"pageTitle":"Omran AI — Plateforme d'intelligence"});
+Object.assign(I18N['fr'], {"privacyConsentTitle":"🔒 Votre vie privée d’abord","privacyConsentText":"Avant d’utiliser Omran AI Builder, veuillez lire la <a href=\"/privacy.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">politique de confidentialité</a> et les <a href=\"/terms.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">conditions d’utilisation</a>. Elles expliquent ce que nous collectons, comment nous le protégeons et votre droit de supprimer vos données.","privacyConsentRead":"Lire la politique","privacyConsentAgree":"J’accepte et je continue"});

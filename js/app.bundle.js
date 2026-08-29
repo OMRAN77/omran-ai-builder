@@ -2427,6 +2427,10 @@ const I18N = {
     provWhyGeneral: 'هذا النوع من الطلبات',
     provSwitchNote: 'اخترتَ {sel} — و{why} يُنفَّذ بـ {eff} لأنه الأدقّ فيه. محادثتك العادية تبقى على {sel}.',
     provSwitchNoteHidden: 'محادثتك على {sel} — و{why} يُنفَّذ بـ {eff} لأنه الأدقّ فيه. محادثتك العادية تبقى على {sel}.',
+    privacyConsentTitle: '🔒 خصوصيتك أولًا',
+    privacyConsentText: 'قبل استخدام Omran AI Builder، يرجى قراءة <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">سياسة الخصوصية</a> و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">شروط الاستخدام</a>. نوضح فيهما ما نجمعه وكيف نحميه وحقك في حذف بياناتك.',
+    privacyConsentRead: 'قراءة السياسة',
+    privacyConsentAgree: 'أوافق وأتابع',
     aboutFeatChat: 'بناء تطبيقات كاملة بالمحادثة', aboutFeatProviders: '٩ مزودي ذكاء + «اسأل الكل»', aboutFeatMaha: 'مها — مساعدتك الصوتية الحية', aboutFeatStudios: '٧ استوديوهات إبداعية للصور', aboutFeatStocks: 'سوق الأسهم ومحفظة تعليمية', aboutFeatPrivacy: 'خصوصيتك أولوية — مفاتيحك عندك', aboutChipUAE: 'صُنع في الإمارات 🇦🇪', aboutChipPWA: 'تطبيق PWA', aboutChipLangs: '١٤ لغة', aboutMoreSummary: '📖 المزيد عن المنصة',
     videoNeedDesc: '⚠️ اكتب وصف الفيديو أولًا.', videoVoiceFemale: '👩 فاطمة (أنثى)', videoVoiceMale: '👨 حمدان (ذكر)',
     pickerOptsForFeature: 'خيارًا لهذه الميزة', pickerStylesForCategory: 'نمطًا لهذه الفئة', pickerOptsWord: 'خيارًا', pickerOptsPick: 'خيارًا — اختر ما يناسبك', videoOptAdspot: '📢 إعلان سريع (5ث طولي + سرد)', videoOptReels: '📱 ريلز ذكي (10ث طولي + سرد)', fashionEngineLabel: '🎨 محرك الصور', fashionEngineGemini: 'Gemini — الأدق في الحفاظ على الوجه (الافتراضي)', fashionEngineOpenai: 'ChatGPT (gpt-image-1) — نفس محرك صور ChatGPT', videoAdvanced: 'خيارات متقدمة',
@@ -3432,6 +3436,10 @@ const I18N = {
     provWhyGeneral: 'this kind of request',
     provSwitchNote: 'You chose {sel} — but {why} is handled by {eff}, the most accurate for it. Your regular chat stays on {sel}.',
     provSwitchNoteHidden: 'Your chat runs on {sel} — but {why} is handled by {eff}, the most accurate for it. Your regular chat stays on {sel}.',
+    privacyConsentTitle: '🔒 Your privacy first',
+    privacyConsentText: 'Before using Omran AI Builder, please read the <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">Privacy Policy</a> and <a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">Terms of Use</a>. They explain what we collect, how we protect it, and your right to delete your data.',
+    privacyConsentRead: 'Read the policy',
+    privacyConsentAgree: 'Agree & continue',
     aboutFeatChat: 'Build complete apps by chatting', aboutFeatProviders: '9 AI providers + "Ask All"', aboutFeatMaha: 'Maha — your live voice assistant', aboutFeatStudios: '7 creative image studios', aboutFeatStocks: 'Stock market & learning portfolio', aboutFeatPrivacy: 'Privacy first — your keys stay yours', aboutChipUAE: 'Made in the UAE 🇦🇪', aboutChipPWA: 'PWA app', aboutChipLangs: '14 languages', aboutMoreSummary: '📖 More about the platform',
     videoNeedDesc: '⚠️ Please describe the video first.', videoVoiceFemale: '👩 Fatima (female)', videoVoiceMale: '👨 Hamdan (male)',
     pickerOptsForFeature: 'options for this feature', pickerStylesForCategory: 'styles for this category', pickerOptsWord: 'options', pickerOptsPick: 'options — pick yours', videoOptAdspot: '📢 Quick ad (5s vertical + narration)', videoOptReels: '📱 Smart reels (10s vertical + narration)', fashionEngineLabel: '🎨 Image engine', fashionEngineGemini: 'Gemini — best at preserving the face (default)', fashionEngineOpenai: 'ChatGPT (gpt-image-1) — the same ChatGPT image engine', videoAdvanced: 'Advanced options',
@@ -4205,7 +4213,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=610'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
+    sc.src = 'i18n/' + lg + '.js?v=611'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -4340,6 +4348,9 @@ function applyLanguage(){
   renderQuickChips();
   renderOmranBotChips();
   try{ if(window.__refreshProjMenuLabels) window.__refreshProjMenuLabels(); }catch(_){ __swallow(_, "save:app-04-i18n-state#7"); }
+  /* v-boot-l10n: ستار الإقلاع (index.html) يُرفع فقط بعد تطبيق قاموس اللغة
+     الحقيقي — قبل ذلك كانت الصفحة تظهر عربية كاملة ثم تنقلب أمام المستخدم. */
+  try{ if(lang === 'ar' || lang === 'en' || I18N[lang]) document.documentElement.classList.remove('l10nPending'); }catch(_){ __swallow(_, "misc:app-04-l10nveil"); }
 }
 
 const QUICK_SUGGESTIONS = [
@@ -17969,11 +17980,15 @@ window.postWithConfirm = postWithConfirm;
   wrap.id = 'privacyConsent';
   wrap.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.72);display:flex;align-items:flex-end;justify-content:center;';
   var card = document.createElement('div');
-  card.style.cssText = 'width:min(100%,560px);background:var(--panel,#161616);border-radius:18px 18px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -8px 40px rgba(0,0,0,.5);direction:rtl;text-align:right;';
-  card.innerHTML = '<h3 style="margin:0 0 8px;font-size:16px;">🔒 خصوصيتك أولًا</h3>'
-    + '<p style="margin:0 0 14px;font-size:13px;line-height:1.8;color:var(--muted,#9a9a9a);">قبل استخدام Omran AI Builder، يرجى قراءة <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">سياسة الخصوصية</a> و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">شروط الاستخدام</a>. نوضح فيهما ما نجمعه وكيف نحميه وحقك في حذف بياناتك.</p>'
-    + '<div style="display:flex;gap:10px;"><a href="/privacy.html" target="_blank" rel="noopener" class="btn" style="flex:1;text-align:center;line-height:42px;height:42px;text-decoration:none;border:1px solid var(--border,#333);border-radius:10px;color:var(--text,#eee);">قراءة السياسة</a>'
-    + '<button type="button" id="privacyAgreeBtn" class="btn primary" style="flex:1;height:42px;border-radius:10px;font-weight:bold;">أوافق وأتابع</button></div>';
+  /* v-privacy-i18n (شكوى المالك: البطاقة عربية بكل اللغات): النص من مفاتيح
+     الترجمة (t جاهزة هنا — عربي/إنجليزي فورًا)، وdata-i18n تلتقطها جولة
+     applyLanguage الثانية بعد وصول ملف اللغة الكسول. الاتجاه يتبع الصفحة. */
+  card.style.cssText = 'width:min(100%,560px);background:var(--panel,#161616);border-radius:18px 18px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -8px 40px rgba(0,0,0,.5);text-align:start;';
+  var pt = function(k, fb){ try{ if(typeof t === 'function'){ var v = t(k); if(v && v !== k) return v; } }catch(e){ __swallow(e, 'ui:privacy-t'); } return fb; };
+  card.innerHTML = '<h3 style="margin:0 0 8px;font-size:16px;" data-i18n="privacyConsentTitle">' + pt('privacyConsentTitle', '🔒 خصوصيتك أولًا') + '</h3>'
+    + '<p style="margin:0 0 14px;font-size:13px;line-height:1.8;color:var(--muted,#9a9a9a);" data-i18n="privacyConsentText">' + pt('privacyConsentText', 'قبل استخدام Omran AI Builder، يرجى قراءة <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">سياسة الخصوصية</a> و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">شروط الاستخدام</a>. نوضح فيهما ما نجمعه وكيف نحميه وحقك في حذف بياناتك.') + '</p>'
+    + '<div style="display:flex;gap:10px;"><a href="/privacy.html" target="_blank" rel="noopener" class="btn" style="flex:1;text-align:center;line-height:42px;height:42px;text-decoration:none;border:1px solid var(--border,#333);border-radius:10px;color:var(--text,#eee);" data-i18n="privacyConsentRead">' + pt('privacyConsentRead', 'قراءة السياسة') + '</a>'
+    + '<button type="button" id="privacyAgreeBtn" class="btn primary" style="flex:1;height:42px;border-radius:10px;font-weight:bold;" data-i18n="privacyConsentAgree">' + pt('privacyConsentAgree', 'أوافق وأتابع') + '</button></div>';
   wrap.appendChild(card);
   function mount(){ try { document.body.appendChild(wrap); } catch(e){ __swallow(e, 'ui:privacy-consent'); } }
   if (document.body) mount(); else window.addEventListener('DOMContentLoaded', mount);

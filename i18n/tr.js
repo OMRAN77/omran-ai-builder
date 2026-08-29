@@ -1028,3 +1028,4 @@ Object.assign(I18N['tr'], {
   "provSwitchNoteHidden": "Sohbetiniz {sel} üzerinde — ancak {why} bu konuda en isabetli olan {eff} tarafından yürütülür. Normal sohbetiniz {sel} üzerinde kalır."
 });
 Object.assign(I18N['tr'], {"pageTitle":"Omran AI — Yapay zekâ platformu"});
+Object.assign(I18N['tr'], {"privacyConsentTitle":"🔒 Önce gizliliğiniz","privacyConsentText":"Omran AI Builder’ı kullanmadan önce lütfen <a href=\"/privacy.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">gizlilik politikasını</a> ve <a href=\"/terms.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">kullanım şartlarını</a> okuyun. Neleri topladığımızı, nasıl koruduğumuzu ve verilerinizi silme hakkınızı açıklarlar.","privacyConsentRead":"Politikayı oku","privacyConsentAgree":"Kabul et ve devam et"});
