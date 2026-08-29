@@ -954,3 +954,9 @@ Object.assign(I18N["tr"], {
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "Bu cihazda kullanılamıyor",
 });
+
+/* v-nick-i18n: ألقاب المزودين الثلاثة */
+Object.assign(I18N['tr'], { provNickKing: "King", provNickFast: "Hızlı", provNickDeep: "Derin" });
+
+/* v-modes-i18n + v-psub */
+Object.assign(I18N['tr'], { modeCreateImage: "Görsel oluştur", modeWebSearch: "Web araması", modeThinkDeeper: "Derin düşünme", psheetCountSuffix: "stil — aynı yüz, her stil" });

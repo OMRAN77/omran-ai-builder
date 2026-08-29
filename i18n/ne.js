@@ -906,3 +906,9 @@ Object.assign(I18N["ne"], {
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "यो उपकरणमा उपलब्ध छैन",
 });
+
+/* v-nick-i18n: ألقاب المزودين الثلاثة */
+Object.assign(I18N['ne'], { provNickKing: "किंग", provNickFast: "छिटो", provNickDeep: "गहिरो" });
+
+/* v-modes-i18n + v-psub */
+Object.assign(I18N['ne'], { modeCreateImage: "तस्बिर बनाउनुहोस्", modeWebSearch: "वेब खोज", modeThinkDeeper: "गहिरो सोच", psheetCountSuffix: "शैली — उही अनुहार, हरेक शैली" });

@@ -946,3 +946,9 @@ Object.assign(I18N["zh"], {
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "此设备不可用",
 });
+
+/* v-nick-i18n: ألقاب المزودين الثلاثة */
+Object.assign(I18N['zh'], { provNickKing: "王者", provNickFast: "疾速", provNickDeep: "深思" });
+
+/* v-modes-i18n + v-psub */
+Object.assign(I18N['zh'], { modeCreateImage: "生成图片", modeWebSearch: "网络搜索", modeThinkDeeper: "深度思考", psheetCountSuffix: "种风格 — 同一张脸，每种风格" });

@@ -2413,6 +2413,8 @@ const I18N = {
     logoutTitle: 'تسجيل الخروج',
     loginAction: 'دخول',
     acctSectionTitle: '👤 حسابي',
+    modeCreateImage: 'إنشاء صورة', modeWebSearch: 'البحث على الويب', modeThinkDeeper: 'التفكير العميق', psheetCountSuffix: 'ستايلًا — نفس وجهك بكل ستايل',
+    provNickKing: 'الكينج', provNickFast: 'السريع', provNickDeep: 'العميق',
     acctLoginBtnLabel: '🔐 تسجيل الدخول / حساب جديد',
     statsSectionTitle: 'إحصائياتي',
     statsProjectsLabel: 'عدد المشاريع',
@@ -3398,6 +3400,8 @@ const I18N = {
     logoutTitle: 'Log out',
     loginAction: 'Login',
     acctSectionTitle: '👤 My account',
+    modeCreateImage: 'Create image', modeWebSearch: 'Web search', modeThinkDeeper: 'Think deeper', psheetCountSuffix: 'styles — same face, every style',
+    provNickKing: 'The King', provNickFast: 'The Fast', provNickDeep: 'The Deep',
     acctLoginBtnLabel: '🔐 Sign in / Create account',
     statsSectionTitle: 'My stats',
     statsProjectsLabel: 'Projects count',
@@ -4165,7 +4169,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=603'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
+    sc.src = 'i18n/' + lg + '.js?v=604'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -6984,10 +6988,22 @@ const PROVIDER_DISPLAY = {
   mistral: 'السريع', deepseek: 'العميق', perplexity: 'العميق',
   cohere: 'العميق', openrouter: 'العميق',
 };
+/* v-nick-i18n (شكوى المالك ٢٩ أغسطس: «الكينج» طلعت عربية وسط واجهة
+   المليالم): الألقاب الثلاثة صارت مفاتيح ترجمة تتبدل مع لغة الواجهة. */
+const PROVIDER_NICK_KEYS = {
+  claude: 'provNickKing', gemini: 'provNickFast', openai: 'provNickDeep', groq: 'provNickFast',
+  mistral: 'provNickFast', deepseek: 'provNickDeep', perplexity: 'provNickDeep',
+  cohere: 'provNickDeep', openrouter: 'provNickDeep',
+};
 function functionalLabel(key){
   // v362 — الستة المخفيون لا يظهر اسمهم أبدًا: أي مزود يرد → يُعرض باسم
   // رأس مجموعته الظاهر (Groq/Mistral→Gemini، DeepSeek/Perplexity/Cohere/OpenRouter→GPT، Claude→Claude).
   const primary = funcPrimaryOf(key);
+  const nickKey = PROVIDER_NICK_KEYS[primary];
+  if(nickKey && typeof t === 'function'){
+    const v = t(nickKey);
+    if(v && v !== nickKey) return v;
+  }
   return PROVIDER_DISPLAY[primary] || PROVIDER_KEY_LABELS[primary] || primary;
 }
 // v359 — 3 أزرار بأسمائها الحقيقية الشهيرة (الناس تعرفها) + شعاراتها الأصلية.
@@ -20465,7 +20481,11 @@ async function __safeJson(res){
     astronaut: 'رائد فضاء',
   };
   function pstyleLang(){ try{ return localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ return 'ar'; } }
-  function pstyleSub(v){ return pstyleLang().startsWith('en') ? '' : (PSTYLE_SUBS[v] || ''); }
+  /* v-psub-ar-only (شكوى المالك ٢٩ أغسطس: الأوصاف طلعت عربية وسط واجهة
+     المليالم): الإنجليزي كان يخفي الوصف عمدًا بينما بقية اللغات تأخذ
+     العربي — القاعدة الآن واحدة: الوصف عربي للعربي فقط، ويختفي لغير ذلك
+     (العناوين نفسها مترجمة لكل اللغات فتبقى البطاقة مفهومة). */
+  function pstyleSub(v){ return pstyleLang().startsWith('ar') ? (PSTYLE_SUBS[v] || '') : ''; }
   function pstyleOpts(){
     const favs = getFavs();
     const opts = Array.from(styleEl.querySelectorAll('option'))
@@ -20485,7 +20505,14 @@ async function __safeJson(res){
     if(!styleCardsGrid || !styleEl) return;
     const favs = getFavs();
     const opts = pstyleOpts();
-    if(styleSheetCount) styleSheetCount.textContent = opts.length + (pstyleLang().startsWith('en') ? ' styles — same face, every style' : ' ستايلًا — نفس وجهك بكل ستايل');
+    /* v-psub-ar-only: سطر العدّاد صار مفتاح ترجمة لكل اللغات بدل عربي/إنجليزي فقط.
+       ملاحظة: t المحلية في هذا الملف تعرف عربي/إنجليزي فقط وتحجب المترجم
+       العام — نستدعي window.t (مترجم اللغات الـ14) صراحةً. */
+    if(styleSheetCount){
+      const __gt = (typeof window !== 'undefined' && typeof window.t === 'function') ? window.t : null;
+      const __cntSuffix = (__gt && __gt('psheetCountSuffix') !== 'psheetCountSuffix') ? __gt('psheetCountSuffix') : (pstyleLang().startsWith('en') ? 'styles — same face, every style' : 'ستايلًا — نفس وجهك بكل ستايل');
+      styleSheetCount.textContent = opts.length + ' ' + __cntSuffix;
+    }
     styleCardsGrid.innerHTML = '';
     opts.forEach((opt) => {
       const v = opt.value;

@@ -955,3 +955,9 @@ Object.assign(I18N["id"], {
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "Tidak tersedia di perangkat ini",
 });
+
+/* v-nick-i18n: ألقاب المزودين الثلاثة */
+Object.assign(I18N['id'], { provNickKing: "Sang King", provNickFast: "Si Cepat", provNickDeep: "Si Dalam" });
+
+/* v-modes-i18n + v-psub */
+Object.assign(I18N['id'], { modeCreateImage: "Buat gambar", modeWebSearch: "Pencarian web", modeThinkDeeper: "Berpikir mendalam", psheetCountSuffix: "gaya — wajah sama, setiap gaya" });

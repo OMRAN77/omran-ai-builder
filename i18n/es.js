@@ -956,3 +956,9 @@ Object.assign(I18N["es"], {
     checkoutGooglePay: "Google Pay",
     checkoutWalletUnavailable: "No disponible en este dispositivo",
 });
+
+/* v-nick-i18n: ألقاب المزودين الثلاثة */
+Object.assign(I18N['es'], { provNickKing: "El King", provNickFast: "El Rápido", provNickDeep: "El Profundo" });
+
+/* v-modes-i18n + v-psub */
+Object.assign(I18N['es'], { modeCreateImage: "Crear imagen", modeWebSearch: "Búsqueda web", modeThinkDeeper: "Pensar a fondo", psheetCountSuffix: "estilos — misma cara, cada estilo" });

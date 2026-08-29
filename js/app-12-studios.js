@@ -487,7 +487,11 @@ async function __safeJson(res){
     astronaut: 'رائد فضاء',
   };
   function pstyleLang(){ try{ return localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ return 'ar'; } }
-  function pstyleSub(v){ return pstyleLang().startsWith('en') ? '' : (PSTYLE_SUBS[v] || ''); }
+  /* v-psub-ar-only (شكوى المالك ٢٩ أغسطس: الأوصاف طلعت عربية وسط واجهة
+     المليالم): الإنجليزي كان يخفي الوصف عمدًا بينما بقية اللغات تأخذ
+     العربي — القاعدة الآن واحدة: الوصف عربي للعربي فقط، ويختفي لغير ذلك
+     (العناوين نفسها مترجمة لكل اللغات فتبقى البطاقة مفهومة). */
+  function pstyleSub(v){ return pstyleLang().startsWith('ar') ? (PSTYLE_SUBS[v] || '') : ''; }
   function pstyleOpts(){
     const favs = getFavs();
     const opts = Array.from(styleEl.querySelectorAll('option'))
@@ -507,7 +511,14 @@ async function __safeJson(res){
     if(!styleCardsGrid || !styleEl) return;
     const favs = getFavs();
     const opts = pstyleOpts();
-    if(styleSheetCount) styleSheetCount.textContent = opts.length + (pstyleLang().startsWith('en') ? ' styles — same face, every style' : ' ستايلًا — نفس وجهك بكل ستايل');
+    /* v-psub-ar-only: سطر العدّاد صار مفتاح ترجمة لكل اللغات بدل عربي/إنجليزي فقط.
+       ملاحظة: t المحلية في هذا الملف تعرف عربي/إنجليزي فقط وتحجب المترجم
+       العام — نستدعي window.t (مترجم اللغات الـ14) صراحةً. */
+    if(styleSheetCount){
+      const __gt = (typeof window !== 'undefined' && typeof window.t === 'function') ? window.t : null;
+      const __cntSuffix = (__gt && __gt('psheetCountSuffix') !== 'psheetCountSuffix') ? __gt('psheetCountSuffix') : (pstyleLang().startsWith('en') ? 'styles — same face, every style' : 'ستايلًا — نفس وجهك بكل ستايل');
+      styleSheetCount.textContent = opts.length + ' ' + __cntSuffix;
+    }
     styleCardsGrid.innerHTML = '';
     opts.forEach((opt) => {
       const v = opt.value;
