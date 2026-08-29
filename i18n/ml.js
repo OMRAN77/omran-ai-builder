@@ -1014,3 +1014,10 @@ Object.assign(I18N['ml'], {
   aboutChipLangs: "14 ഭാഷകൾ",
   aboutMoreSummary: "📖 കൂടുതൽ അറിയൂ"
 });
+Object.assign(I18N['ml'], {
+  "aboutSupportTitle": "📞 കസ്റ്റമർ സേവനവും പിന്തുണയും",
+  "aboutSupportDesc": "നിങ്ങളുടെ ചോദ്യങ്ങൾക്ക് 24–48 മണിക്കൂറിനുള്ളിൽ ഞങ്ങൾ മറുപടി നൽകും.",
+  "aboutCopyright": "© Omran AI ടീം — UAE-യിൽ സ്നേഹത്തോടെ നിർമ്മിച്ചത് 🇦🇪",
+  "adminPanelTitle": "🛠️ അഡ്മിൻ പാനൽ (ഉടമയ്ക്ക് മാത്രം)"
+});
+Object.assign(I18N['ml'], {"videoBadgeShort":"ചെറുത്","videoBadgeFull":"പൂർണ്ണം"});

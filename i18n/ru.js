@@ -1013,3 +1013,10 @@ Object.assign(I18N['ru'], {
   aboutChipLangs: "14 языков",
   aboutMoreSummary: "📖 Подробнее о платформе"
 });
+Object.assign(I18N['ru'], {
+  "aboutSupportTitle": "📞 Служба поддержки клиентов",
+  "aboutSupportDesc": "Мы отвечаем на ваши запросы в течение 24–48 часов.",
+  "aboutCopyright": "© Команда Omran AI — сделано с любовью в ОАЭ 🇦🇪",
+  "adminPanelTitle": "🛠️ Панель управления (только для владельца)"
+});
+Object.assign(I18N['ru'], {"videoBadgeShort":"Короткое","videoBadgeFull":"Полное"});

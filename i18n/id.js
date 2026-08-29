@@ -1011,3 +1011,10 @@ Object.assign(I18N['id'], {
   aboutChipLangs: "14 bahasa",
   aboutMoreSummary: "📖 Selengkapnya"
 });
+Object.assign(I18N['id'], {
+  "aboutSupportTitle": "📞 Layanan pelanggan & dukungan",
+  "aboutSupportDesc": "Kami menjawab pertanyaan Anda dalam 24–48 jam.",
+  "aboutCopyright": "© Tim Omran AI — Dibuat dengan cinta di UEA 🇦🇪",
+  "adminPanelTitle": "🛠️ Panel admin (khusus pemilik)"
+});
+Object.assign(I18N['id'], {"videoBadgeShort":"Singkat","videoBadgeFull":"Lengkap"});

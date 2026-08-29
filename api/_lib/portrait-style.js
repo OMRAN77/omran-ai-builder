@@ -363,6 +363,12 @@ module.exports = async (req, res) => {
 
     const isLocalizedEdit = ['hairstyle', 'beautify', 'ageshift', 'objectremove', 'outfit', 'passport', 'restore', 'colorize', 'upscale'].includes(style);
     if (isLocalizedEdit) promptText += '\n' + sourceStylePreservationRule();
+    // v-keep-framing (شكوى المالك ٢٩ أغسطس: «الصورة اللي أحطها ما تطلع كاملة») —
+    // النموذج كان يرجّع مقصوصة/مربعة فتضيع أطراف صورة المستخدم. الجواز يعيد
+    // التأطير عمدًا، والدمج/العائلة مشهد جديد أصلًا — الباقي يحافظ على الإطار كاملًا.
+    if (style !== 'passport' && style !== 'familystyle' && style !== 'merge2') {
+      promptText += '\nFRAMING (mandatory): keep the exact same aspect ratio and full framing as the source photo — everything visible in the source must remain visible from edge to edge in the result. Do NOT crop, zoom in, or cut off any part of the person or scene.';
+    }
 
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
     const genParts = [

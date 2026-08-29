@@ -964,3 +964,10 @@ Object.assign(I18N['fr'], {
   aboutChipLangs: "14 langues",
   aboutMoreSummary: "📖 En savoir plus"
 });
+Object.assign(I18N['fr'], {
+  "aboutSupportTitle": "📞 Service client & support",
+  "aboutSupportDesc": "Nous répondons à vos demandes sous 24–48 h.",
+  "aboutCopyright": "© Équipe Omran AI — Fait avec amour aux Émirats 🇦🇪",
+  "adminPanelTitle": "🛠️ Panneau d'administration (propriétaire uniquement)"
+});
+Object.assign(I18N['fr'], {"videoBadgeShort":"Court","videoBadgeFull":"Complet"});

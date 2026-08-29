@@ -1002,3 +1002,10 @@ Object.assign(I18N['zh'], {
   aboutChipLangs: "14种语言",
   aboutMoreSummary: "📖 了解更多"
 });
+Object.assign(I18N['zh'], {
+  "aboutSupportTitle": "📞 客戶服務與支援",
+  "aboutSupportDesc": "我們會在 24–48 小時內回覆您的查詢。",
+  "aboutCopyright": "© Omran AI 團隊 — 於阿聯酋用心打造 🇦🇪",
+  "adminPanelTitle": "🛠️ 管理面板（僅限擁有者）"
+});
+Object.assign(I18N['zh'], {"videoBadgeShort":"短片","videoBadgeFull":"完整"});

@@ -1010,3 +1010,10 @@ Object.assign(I18N['tr'], {
   aboutChipLangs: "14 dil",
   aboutMoreSummary: "📖 Platform hakkında"
 });
+Object.assign(I18N['tr'], {
+  "aboutSupportTitle": "📞 Müşteri hizmetleri ve destek",
+  "aboutSupportDesc": "Sorularınızı 24–48 saat içinde yanıtlıyoruz.",
+  "aboutCopyright": "© Omran AI ekibi — BAE'de sevgiyle yapıldı 🇦🇪",
+  "adminPanelTitle": "🛠️ Yönetim paneli (yalnızca sahibi)"
+});
+Object.assign(I18N['tr'], {"videoBadgeShort":"Kısa","videoBadgeFull":"Tam"});

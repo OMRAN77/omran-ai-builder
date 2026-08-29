@@ -263,6 +263,8 @@ module.exports = async (req, res) => {
         'Redress the person in this photo into a new outfit in ' + styleDesc + '.' +
         locks + ' ' +
         (fairness ? '' : 'Keep the same pose and background as the source photo. ') +
+        // v-keep-framing: النتيجة كانت ترجع مقصوصة فتضيع أطراف صورة المستخدم.
+        'FRAMING (mandatory): keep the exact same aspect ratio and full framing as the source photo — everything visible in the source must remain visible from edge to edge; do NOT crop, zoom in, or cut off any part of the person. ' +
         sourceStylePreservationRule() + detailClause + multiAngleClause;
       // 🎨 المحرك الاختياري: engine=openai مع مفتاح مضبوط → gpt-image-1؛
       // فشله أو غيابه → Gemini كما كان، بلا أي تغيير للمستخدم.

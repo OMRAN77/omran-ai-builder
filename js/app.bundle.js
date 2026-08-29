@@ -2413,6 +2413,12 @@ const I18N = {
     logoutTitle: 'تسجيل الخروج',
     loginAction: 'دخول',
     acctSectionTitle: '👤 حسابي',
+    aboutSupportTitle: '📞 خدمة العملاء والدعم',
+    aboutSupportDesc: 'نرد على استفساراتك خلال ٢٤-٤٨ ساعة.',
+    aboutCopyright: '© فريق عمران AI — صُنع بحب في الإمارات 🇦🇪',
+    adminPanelTitle: '🛠️ لوحة التحكم (خاص بالمالك)',
+    videoBadgeShort: 'قصير',
+    videoBadgeFull: 'كامل',
     aboutFeatChat: 'بناء تطبيقات كاملة بالمحادثة', aboutFeatProviders: '٩ مزودي ذكاء + «اسأل الكل»', aboutFeatMaha: 'مها — مساعدتك الصوتية الحية', aboutFeatStudios: '٧ استوديوهات إبداعية للصور', aboutFeatStocks: 'سوق الأسهم ومحفظة تعليمية', aboutFeatPrivacy: 'خصوصيتك أولوية — مفاتيحك عندك', aboutChipUAE: 'صُنع في الإمارات 🇦🇪', aboutChipPWA: 'تطبيق PWA', aboutChipLangs: '١٤ لغة', aboutMoreSummary: '📖 المزيد عن المنصة',
     videoNeedDesc: '⚠️ اكتب وصف الفيديو أولًا.', videoVoiceFemale: '👩 فاطمة (أنثى)', videoVoiceMale: '👨 حمدان (ذكر)',
     pickerOptsForFeature: 'خيارًا لهذه الميزة', pickerStylesForCategory: 'نمطًا لهذه الفئة', pickerOptsWord: 'خيارًا', pickerOptsPick: 'خيارًا — اختر ما يناسبك', videoOptAdspot: '📢 إعلان سريع (5ث طولي + سرد)', videoOptReels: '📱 ريلز ذكي (10ث طولي + سرد)', fashionEngineLabel: '🎨 محرك الصور', fashionEngineGemini: 'Gemini — الأدق في الحفاظ على الوجه (الافتراضي)', fashionEngineOpenai: 'ChatGPT (gpt-image-1) — نفس محرك صور ChatGPT', videoAdvanced: 'خيارات متقدمة',
@@ -3404,6 +3410,12 @@ const I18N = {
     logoutTitle: 'Log out',
     loginAction: 'Login',
     acctSectionTitle: '👤 My account',
+    aboutSupportTitle: '📞 Customer service & support',
+    aboutSupportDesc: 'We answer your inquiries within 24–48 hours.',
+    aboutCopyright: '© Omran AI team — Made with love in the UAE 🇦🇪',
+    adminPanelTitle: '🛠️ Admin panel (owner only)',
+    videoBadgeShort: 'Short',
+    videoBadgeFull: 'Full',
     aboutFeatChat: 'Build complete apps by chatting', aboutFeatProviders: '9 AI providers + "Ask All"', aboutFeatMaha: 'Maha — your live voice assistant', aboutFeatStudios: '7 creative image studios', aboutFeatStocks: 'Stock market & learning portfolio', aboutFeatPrivacy: 'Privacy first — your keys stay yours', aboutChipUAE: 'Made in the UAE 🇦🇪', aboutChipPWA: 'PWA app', aboutChipLangs: '14 languages', aboutMoreSummary: '📖 More about the platform',
     videoNeedDesc: '⚠️ Please describe the video first.', videoVoiceFemale: '👩 Fatima (female)', videoVoiceMale: '👨 Hamdan (male)',
     pickerOptsForFeature: 'options for this feature', pickerStylesForCategory: 'styles for this category', pickerOptsWord: 'options', pickerOptsPick: 'options — pick yours', videoOptAdspot: '📢 Quick ad (5s vertical + narration)', videoOptReels: '📱 Smart reels (10s vertical + narration)', fashionEngineLabel: '🎨 Image engine', fashionEngineGemini: 'Gemini — best at preserving the face (default)', fashionEngineOpenai: 'ChatGPT (gpt-image-1) — the same ChatGPT image engine', videoAdvanced: 'Advanced options',
@@ -4177,7 +4189,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=607'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
+    sc.src = 'i18n/' + lg + '.js?v=608'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -21794,18 +21806,11 @@ async function __safeJson(res){
       if(authBtn) authBtn.click();
       return;
     }
-    const clientId = '533765051685-2334rjfvu738sd2i50p7rb8gck1d00i2.apps.googleusercontent.com';
-    const redirectUri = window.location.origin + '/api/email-callback';
-    const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      response_type: 'code',
-      scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar.events',
-      access_type: 'offline',
-      prompt: 'consent',
-      state: token,
-    });
-    window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+    /* v-email-start-server: الرابط كان يُبنى هنا بـ window.location.origin ومعرّف
+       عميل مكتوب، بينما يبادل الخادم بـ SITE_URL ومعرّف البيئة — وجوجل تشترط
+       تطابق redirect_uri حرفًا بحرف، فكان الربط يفشل («مساعد الإيميل لا يعمل»).
+       الآن الخادم يبني الرابط بقيمه هو نفسها. (api/_lib/email-google-start.js) */
+    window.location.href = '/api/system?action=email-google-start&state=' + encodeURIComponent(token);
   });
 
   refreshBtn.addEventListener('click', loadEmails);
