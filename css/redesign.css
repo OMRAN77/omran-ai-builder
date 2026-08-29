@@ -296,14 +296,27 @@ html.mobile-ui main, html.mobile-ui #messages{overscroll-behavior-y:contain;}
 #composerBox .inputbar-tools-left{flex:1 1 auto; display:flex;}
 /* v-maha-outside (طلب المالك ٢٩ أغسطس): «م» خارج المستطيل جنبه من جهة اليسار،
    والمستطيل يتمدد بكامل العرض حتى آخر المساحة. «م» تبقى ظاهرة دائمًا. */
-#composerRow{display:flex; align-items:flex-end; gap:8px; width:100%;}
+#composerRow{display:flex; align-items:stretch; gap:8px; width:100%;}
 #composerRow > #composerBox{flex:1 1 auto; min-width:0;}
+/* خانة «م»: نفس ارتفاع المستطيل (stretch) وبنفس إطاره وقوسه، خلفية زجاجية
+   ضبابية (backdrop-filter)، والحرف متمركز تمامًا في المنتصف. */
 #composerRow > #btnMahaDock{
-  flex:0 0 auto; padding:4px; margin-bottom:6px;
-  background:none !important; border:none !important; box-shadow:none !important;
-  transition:opacity .15s ease, transform .15s ease;
+  flex:0 0 auto; width:58px; margin:0; padding:0;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,.05) !important;
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  border:1px solid var(--omGoldSoft) !important;
+  border-radius:var(--r-4) !important;
+  box-shadow:none !important;
+  transition:border-color .15s ease, background .15s ease;
 }
-#composerRow > #btnMahaDock:hover{transform:scale(1.08);}
+#composerRow > #btnMahaDock:hover{border-color:var(--omGold); background:rgba(212,175,55,.10) !important;}
+@media (max-width:860px){
+  #composerRow{gap:6px;}
+  #composerRow > #btnMahaDock{width:48px; border-radius:16px !important;}
+}
+html.mobile-ui #composerRow{gap:6px;}
+html.mobile-ui #composerRow > #btnMahaDock{width:48px; border-radius:16px !important;}
 #composerBox:not(.typing) > #btnSend{ display:none !important; }
 #composerBox.typing > #btnSend{ animation:morphIn .16s ease; }
 @keyframes morphIn{ from{ transform:scale(.6); opacity:0; } to{ transform:scale(1); opacity:1; } }
