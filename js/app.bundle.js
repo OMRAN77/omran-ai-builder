@@ -16138,10 +16138,10 @@ function __friendlyErr(e){
           cur.messages.push({role:'assistant',content:(__stData&&__stData.message_ar)||(lang==='ar'?'تعذّر تصميم الطوابع، حاول مجدداً.':'Stamps design failed.')});
         } else {
           thinkingDiv.remove();
-          const __stMime = __stData.mimeType||'image/webp';
+          const __stMime = __stData.mimeType||'image/png';
           cur.lastEditedImage={b64:__stData.imageBase64,mime:__stMime};
           cur.lastMsgWasImageEdit=true;
-          cur.messages.push({role:'assistant',content:'',attachments:[{name:'stamps.webp',isImage:true,mime:__stMime,dataUrl:'data:'+__stMime+';base64,'+__stData.imageBase64}]});
+          cur.messages.push({role:'assistant',content:'',attachments:[{name:'stamps.png',isImage:true,mime:__stMime,dataUrl:'data:'+__stMime+';base64,'+__stData.imageBase64}]});
         }
       }catch(__e){
         if(__e&&__e.name==='AbortError') return;
@@ -16237,10 +16237,10 @@ function __friendlyErr(e){
             cur.messages.push({role:'assistant',content:(__stDataOv&&__stDataOv.message_ar)||(lang==='ar'?'تعذّر تصميم الطوابع، حاول مجدداً.':'Stamps design failed.')});
           } else {
             thinkingDiv.remove();
-            var __stMimeOv = __stDataOv.mimeType||'image/webp';
+            var __stMimeOv = __stDataOv.mimeType||'image/png';
             cur.lastEditedImage={b64:__stDataOv.imageBase64,mime:__stMimeOv};
             cur.lastMsgWasImageEdit=true;
-            cur.messages.push({role:'assistant',content:'',attachments:[{name:'stamps.webp',isImage:true,mime:__stMimeOv,dataUrl:'data:'+__stMimeOv+';base64,'+__stDataOv.imageBase64}]});
+            cur.messages.push({role:'assistant',content:'',attachments:[{name:'stamps.png',isImage:true,mime:__stMimeOv,dataUrl:'data:'+__stMimeOv+';base64,'+__stDataOv.imageBase64}]});
           }
         }catch(__eOv){
           if(__eOv&&__eOv.name==='AbortError') return;
@@ -16260,10 +16260,10 @@ function __friendlyErr(e){
           cur.messages.push({role:'assistant',content:(__stData&&__stData.message_ar)||(lang==='ar'?'تعذّر تصميم الطوابع، حاول مجدداً.':'Stamps design failed.')});
         } else {
           thinkingDiv.remove();
-          const __stMime = __stData.mimeType||'image/webp';
+          const __stMime = __stData.mimeType||'image/png';
           cur.lastEditedImage={b64:__stData.imageBase64,mime:__stMime};
           cur.lastMsgWasImageEdit=true;
-          cur.messages.push({role:'assistant',content:'',attachments:[{name:'stamps.webp',isImage:true,mime:__stMime,dataUrl:'data:'+__stMime+';base64,'+__stData.imageBase64}]});
+          cur.messages.push({role:'assistant',content:'',attachments:[{name:'stamps.png',isImage:true,mime:__stMime,dataUrl:'data:'+__stMime+';base64,'+__stData.imageBase64}]});
         }
       }catch(__e){
         if(__e&&__e.name==='AbortError') return;
