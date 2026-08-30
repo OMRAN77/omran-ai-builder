@@ -100,7 +100,7 @@
         if (line.indexOf('data: ') !== 0) continue;
         var ev;
         try { ev = JSON.parse(line.slice(6)); } catch (e) { continue; }
-        if (ev.status) note(ev.status);
+        if (ev.status) note((typeof tStatus === 'function') ? tStatus(ev) : ev.status);  /* v656 */
         if (ev.clientTool) serveClientTool(ev.clientTool);
         if (ev.delta) {
           noteEnd();

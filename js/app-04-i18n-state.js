@@ -95,6 +95,24 @@ function tRaw(key){
  * القفل يحوّل الاختطاف إلى لا-عمليّة صامتة بلا كسر أيّ قراءة. */
 try{ Object.defineProperty(window, "t", { writable: false }); }catch(_){ __swallow(_, "lock:app-04-t"); }
 
+/* v656 — رسائل حالة الخادم كانت نصًّا عربيًّا ثابتًا تظهر في كلّ لغة.
+ * صار الخادم يرسل مفتاحًا (k) وبارامترات (p) بجانب النصّ، والترجمة تتمّ هنا؛
+ * ولو غاب المفتاح أو الترجمة نعود إلى نصّ الخادم كما كان. */
+function tStatus(ev){
+  try{
+    if(ev && ev.k){
+      var v = t(ev.k);
+      if(v && v !== ev.k){
+        var p = ev.p || {};
+        Object.keys(p).forEach(function(key){ v = v.split('{' + key + '}').join(String(p[key])); });
+        return v;
+      }
+    }
+  }catch(e){ __swallow(e, "misc:app-04-i18n-state#tStatus"); }
+  return (ev && ev.status) || '';
+}
+try{ window.tStatus = tStatus; }catch(_){ /* guard-ok: تعريض عالميّ اختياريّ — فشله لا يمنع الترجمة المحلّيّة. */ }
+
 function applyLanguage(){
   if(!I18N[lang] && I18N_LAZY.indexOf(lang) >= 0){
     loadLangFile(lang).then(function(){ if(I18N[lang]) { applyLanguage(); try{ renderAll(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#4"); } } });
@@ -105,6 +123,15 @@ function applyLanguage(){
   /* v655 — أسماء أزرار المزوّدين تتبع اللغة (تُستدعى ثانيةً بعد وصول ملفّ
      اللغة الكسول عبر applyLanguage نفسها). */
   try{ if(typeof relabelProviders === 'function') relabelProviders(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#prov"); }
+  /* v656 — الرسائل المرسومة تحمل نصًّا مترجمًا (وسم الذكاء، «تم إيقاف الرد»)
+     فتبقى بلغة وقت الرسم. نعيد رسمها عند تبديل اللغة — إلّا أثناء انتظار ردّ
+     جارٍ، فإعادة الرسم تُتلف عقدة البثّ. */
+  try{
+    if(typeof renderMessages === 'function' && typeof getCurrent === 'function'){
+      var __c = getCurrent();
+      if(__c && __c.messages && __c.messages.length && !__c.messages.some(function(m){ return m && m._loading; })) renderMessages(true);
+    }
+  }catch(_){ __swallow(_, "misc:app-04-i18n-state#relang"); }
   document.documentElement.lang = lang;
   /* v652 — الأردو كانت تنقلب ltr لحظة ثمّ ترجع rtl (الشعار يقفز عرض الشاشة):
      ملفّات اللغات الكسولة بلا مفتاح dir، فحتّى وصول ur.js يأتي القاموس
@@ -1346,14 +1373,14 @@ function renderMessages(keepScroll){
     if(m.role !== 'user' && __mc){
       const aiTag = document.createElement('div');
       aiTag.className = 'aiGenTag';
-      aiTag.textContent = lang === 'ar' ? '✨ محتوى مولّد بالذكاء الاصطناعي' : '✨ AI-generated content';
+      aiTag.textContent = t('aiGenTag');  /* v656 — كان ar/en فقط */
       aiTag.style.cssText = 'font-size:10px;opacity:.5;margin-top:6px;user-select:none;';
       div.appendChild(aiTag);
     }
     if(m.role !== 'user' && m._stopped && !document.documentElement.classList.contains('mobile-ui')){
       const stoppedNote = document.createElement('div');
       stoppedNote.className = 'msgStoppedNote';
-      stoppedNote.textContent = lang === 'ar' ? 'تم إيقاف الرد' : 'Response stopped';
+      stoppedNote.textContent = t('msgStopped');  /* v656 — كان ar/en فقط */
       div.appendChild(stoppedNote);
     }
     // 📚 اجمع الروابط المضمّنة في نص الرد + روابط المصادر في قائمة واحدة

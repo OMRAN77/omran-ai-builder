@@ -2280,6 +2280,8 @@ const emptyState = $('#emptyState');
 const historyEl = $('#history');
 const I18N = {
   ar: {
+    /* v656 — وسم الذكاء وحالات الخادم: تصل بمفتاح فتُترجَم في كلّ لغة */
+    aiGenTag: "✨ محتوى مولّد بالذكاء الاصطناعي", msgStopped: "تم إيقاف الرد", stReading: "💭 يقرأ سؤالك…", stTimeout: "⏱️ انتهت مهلة الردّ.", stSearch: "🔍 أتحقق لك من المصادر الحية…", stFetchPage: "🌐 يقرأ صفحة…", stRunJs: "⚙️ يشغّل كودًا للتحقّق…", stGenImage: "🎨 يرسم صورة…", stTestHtml: "🧪 يجرّب الصفحة…", stGeoLoc: "📍 يحدّد موقعك (سيطلب المتصفّح إذنك)…", trSearchN: "بحثتُ عن «{q}» — حصلتُ {n} نتيجة", trSearchC: "بحثتُ عن «{q}» — حصلتُ {n} حرفًا", trFetch: "قرأتُ {h} — حصلتُ {n} حرفًا", trFetchFail: "تعذّرت قراءة {h}", trJsErr: "شغّلتُ كودًا — ظهر خطأ", trJsOk: "شغّلتُ كودًا — عاد ناتج {n} حرفًا", trImgOk: "رسمتُ صورة ✅", trImgFail: "تعذّرت الصورة", trLocOk: "حدّدتُ موقعك ✅", trLocFail: "حاولتُ تحديد موقعك — لم ينجح", trHtmlOk: "جرّبتُ الصفحة — بلا أخطاء ✅", trHtmlErr: "جرّبتُ الصفحة — ظهرت أخطاء", trTool: "استخدمتُ {name}",
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'الفئة', fxGenWomen: 'نسائي', fxGenMen: 'رجالي', fxGenKids: 'أطفال', fxColorsLbl: 'الألوان المفضّلة', fxColBlack: 'أسود', fxColWhite: 'أبيض', fxColNavy: 'كحلي', fxColRed: 'أحمر', fxColGold: 'ذهبي',
     fxColGreen: 'أخضر', fxColBeige: 'بيج', fxColMulti: 'متعدد', fxAccLbl: 'إضافات', fxAccGlasses: 'نظارات', fxAccWatch: 'ساعة', fxAccHandbag: 'حقيبة', fxAccShoes: 'أحذية', fxAccScarf: 'وشاح', fxAccMakeup: 'مكياج',
@@ -3238,6 +3240,8 @@ const I18N = {
     emailAsst_eventAdded: "✅ انضاف لتقويمك", emailAsst_calReauth: "أعد ربط Gmail للسماح بالوصول للتقويم", emailAsst_voiceLoading: "🔊 جارٍ تجهيز الملخص الصوتي…", emailAsst_voiceEmpty: "لا توجد إيميلات لتلخيصها.", emailAsst_urgent: "🔴 عاجل", emailAsst_normal: "🟡 عادي", emailAsst_low: "⚪ منخفض",
   },
   en: {
+    /* v656 — وسم الذكاء وحالات الخادم: تصل بمفتاح فتُترجَم في كلّ لغة */
+    aiGenTag: "✨ AI-generated content", msgStopped: "Response stopped", stReading: "💭 Reading your question…", stTimeout: "⏱️ The response timed out.", stSearch: "🔍 Checking live sources for you…", stFetchPage: "🌐 Reading a page…", stRunJs: "⚙️ Running code to verify…", stGenImage: "🎨 Drawing an image…", stTestHtml: "🧪 Testing the page…", stGeoLoc: "📍 Getting your location (the browser will ask permission)…", trSearchN: "Searched for «{q}» — got {n} results", trSearchC: "Searched for «{q}» — got {n} characters", trFetch: "Read {h} — got {n} characters", trFetchFail: "Could not read {h}", trJsErr: "Ran code — an error appeared", trJsOk: "Ran code — {n} characters returned", trImgOk: "Drew an image ✅", trImgFail: "The image failed", trLocOk: "Located you ✅", trLocFail: "Tried to locate you — did not succeed", trHtmlOk: "Tested the page — no errors ✅", trHtmlErr: "Tested the page — errors appeared", trTool: "Used {name}",
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'Category', fxGenWomen: 'Women', fxGenMen: 'Men', fxGenKids: 'Kids', fxColorsLbl: 'Preferred colours', fxColBlack: 'Black', fxColWhite: 'White', fxColNavy: 'Navy', fxColRed: 'Red', fxColGold: 'Gold',
     fxColGreen: 'Green', fxColBeige: 'Beige', fxColMulti: 'Multicolour', fxAccLbl: 'Accessories', fxAccGlasses: 'Glasses', fxAccWatch: 'Watch', fxAccHandbag: 'Handbag', fxAccShoes: 'Shoes', fxAccScarf: 'Scarf', fxAccMakeup: 'Makeup',
@@ -4295,6 +4299,24 @@ function tRaw(key){
  * القفل يحوّل الاختطاف إلى لا-عمليّة صامتة بلا كسر أيّ قراءة. */
 try{ Object.defineProperty(window, "t", { writable: false }); }catch(_){ __swallow(_, "lock:app-04-t"); }
 
+/* v656 — رسائل حالة الخادم كانت نصًّا عربيًّا ثابتًا تظهر في كلّ لغة.
+ * صار الخادم يرسل مفتاحًا (k) وبارامترات (p) بجانب النصّ، والترجمة تتمّ هنا؛
+ * ولو غاب المفتاح أو الترجمة نعود إلى نصّ الخادم كما كان. */
+function tStatus(ev){
+  try{
+    if(ev && ev.k){
+      var v = t(ev.k);
+      if(v && v !== ev.k){
+        var p = ev.p || {};
+        Object.keys(p).forEach(function(key){ v = v.split('{' + key + '}').join(String(p[key])); });
+        return v;
+      }
+    }
+  }catch(e){ __swallow(e, "misc:app-04-i18n-state#tStatus"); }
+  return (ev && ev.status) || '';
+}
+try{ window.tStatus = tStatus; }catch(_){ /* guard-ok: تعريض عالميّ اختياريّ — فشله لا يمنع الترجمة المحلّيّة. */ }
+
 function applyLanguage(){
   if(!I18N[lang] && I18N_LAZY.indexOf(lang) >= 0){
     loadLangFile(lang).then(function(){ if(I18N[lang]) { applyLanguage(); try{ renderAll(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#4"); } } });
@@ -4305,6 +4327,15 @@ function applyLanguage(){
   /* v655 — أسماء أزرار المزوّدين تتبع اللغة (تُستدعى ثانيةً بعد وصول ملفّ
      اللغة الكسول عبر applyLanguage نفسها). */
   try{ if(typeof relabelProviders === 'function') relabelProviders(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#prov"); }
+  /* v656 — الرسائل المرسومة تحمل نصًّا مترجمًا (وسم الذكاء، «تم إيقاف الرد»)
+     فتبقى بلغة وقت الرسم. نعيد رسمها عند تبديل اللغة — إلّا أثناء انتظار ردّ
+     جارٍ، فإعادة الرسم تُتلف عقدة البثّ. */
+  try{
+    if(typeof renderMessages === 'function' && typeof getCurrent === 'function'){
+      var __c = getCurrent();
+      if(__c && __c.messages && __c.messages.length && !__c.messages.some(function(m){ return m && m._loading; })) renderMessages(true);
+    }
+  }catch(_){ __swallow(_, "misc:app-04-i18n-state#relang"); }
   document.documentElement.lang = lang;
   /* v652 — الأردو كانت تنقلب ltr لحظة ثمّ ترجع rtl (الشعار يقفز عرض الشاشة):
      ملفّات اللغات الكسولة بلا مفتاح dir، فحتّى وصول ur.js يأتي القاموس
@@ -5546,14 +5577,14 @@ function renderMessages(keepScroll){
     if(m.role !== 'user' && __mc){
       const aiTag = document.createElement('div');
       aiTag.className = 'aiGenTag';
-      aiTag.textContent = lang === 'ar' ? '✨ محتوى مولّد بالذكاء الاصطناعي' : '✨ AI-generated content';
+      aiTag.textContent = t('aiGenTag');  /* v656 — كان ar/en فقط */
       aiTag.style.cssText = 'font-size:10px;opacity:.5;margin-top:6px;user-select:none;';
       div.appendChild(aiTag);
     }
     if(m.role !== 'user' && m._stopped && !document.documentElement.classList.contains('mobile-ui')){
       const stoppedNote = document.createElement('div');
       stoppedNote.className = 'msgStoppedNote';
-      stoppedNote.textContent = lang === 'ar' ? 'تم إيقاف الرد' : 'Response stopped';
+      stoppedNote.textContent = t('msgStopped');  /* v656 — كان ar/en فقط */
       div.appendChild(stoppedNote);
     }
     // 📚 اجمع الروابط المضمّنة في نص الرد + روابط المصادر في قائمة واحدة
@@ -14928,7 +14959,9 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
         // the whole trail stays visible instead of being overwritten.
         if(__agentStep) __agentStep.done();
         const __phaseIcon = {planning:'🗺️',executing:'⚙️',verifying:'🧪',reporting:'💬'}[ev.phase] || '•';
-        __agentStep = agentStatus.step(__phaseIcon, String(ev.status).replace(/^[^\p{L}\p{N}]+/u, '').trim() || ev.status);
+        /* v656 — نترجم الحالة بمفتاحها قبل العرض */
+        const __st = (typeof tStatus === 'function') ? tStatus(ev) : ev.status;
+        __agentStep = agentStatus.step(__phaseIcon, String(__st).replace(/^[^\p{L}\p{N}]+/u, '').trim() || __st);
       }
       if(ev.clientTool && window.omranAgentTools){
         // v411: الوكيل طلب تشغيل كود. ننفّذه في إطار معزول هنا ونعيد الناتج عبر
@@ -25104,7 +25137,7 @@ window.updateVersionLabel();
         if (line.indexOf('data: ') !== 0) continue;
         var ev;
         try { ev = JSON.parse(line.slice(6)); } catch (e) { continue; }
-        if (ev.status) note(ev.status);
+        if (ev.status) note((typeof tStatus === 'function') ? tStatus(ev) : ev.status);  /* v656 */
         if (ev.clientTool) serveClientTool(ev.clientTool);
         if (ev.delta) {
           noteEnd();

@@ -735,26 +735,37 @@ async function fetchPage(url) {
 }
 
 // الأثر المرئي — سطر واحد صادق لكل أداة، مشتقّ من المُدخل والناتج الحقيقيّين.
+/* v656 — كان يعيد نصًّا عربيًّا يُعرض كما هو في كلّ لغة. صار يعيد
+ * { text, k, p }: النصّ العربيّ كما كان (احتياطيّ)، ومفتاح ترجمة، وبارامترات
+ * يملؤها العميل بلغته. */
 function trailLine(name, input, result) {
   const s = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
   const r = String(result == null ? '' : result);
+  const R = (text, k, p) => ({ text, k, p: p || {} });
   if (name === 'web_search') {
     const n = (r.match(/(?:^|\n)\s*\d+\.\s/g) || []).length;
-    return 'بحثتُ عن «' + (s(input.query, 50) || '؟') + '» — ' + (n ? ('حصلتُ ' + n + ' نتيجة') : ('حصلتُ ' + r.length + ' حرفًا'));
+    const q = s(input.query, 50) || '؟';
+    return n
+      ? R('بحثتُ عن «' + q + '» — حصلتُ ' + n + ' نتيجة', 'trSearchN', { q: q, n: n })
+      : R('بحثتُ عن «' + q + '» — حصلتُ ' + r.length + ' حرفًا', 'trSearchC', { q: q, n: r.length });
   }
   if (name === 'fetch_page') {
     let h = s(input.url, 60);
     try { h = new URL(String(input.url)).hostname || h; } catch (e) { /* رابط مشوّه → نعرض ما أُرسل */ }
-    return 'قرأتُ ' + h + ' — ' + (/^فشل/.test(r) ? r.slice(0, 60) : ('حصلتُ ' + r.length + ' حرفًا'));
+    return /^فشل/.test(r)
+      ? R('قرأتُ ' + h + ' — ' + r.slice(0, 60), 'trFetchFail', { h: h })
+      : R('قرأتُ ' + h + ' — حصلتُ ' + r.length + ' حرفًا', 'trFetch', { h: h, n: r.length });
   }
   if (name === 'run_js') {
     const bad = r.match(/أخطاء:\n([\s\S]*)$/) || r.split('\n').filter((l) => /^\s*✗/.test(l))[0];
-    return 'شغّلتُ كودًا — ' + (bad ? 'ظهر خطأ' : ('عاد ناتج ' + r.length + ' حرفًا'));
+    return bad
+      ? R('شغّلتُ كودًا — ظهر خطأ', 'trJsErr')
+      : R('شغّلتُ كودًا — عاد ناتج ' + r.length + ' حرفًا', 'trJsOk', { n: r.length });
   }
-  if (name === 'generate_image') return /__IMG_/.test(r) ? 'رسمتُ صورة ✅' : ('تعذّرت الصورة — ' + s(r, 60));
-  if (name === 'get_location') return /رفض|تعذّر|انتهت|لا يدعم|لم يستجب/.test(r) ? ('حاولتُ تحديد موقعك — ' + s(r, 70)) : 'حدّدتُ موقعك ✅';
-  if (name === 'test_html') return /^✅/.test(r) ? 'جرّبتُ الصفحة — بلا أخطاء ✅' : 'جرّبتُ الصفحة — ظهرت أخطاء';
-  return 'استخدمتُ ' + name;
+  if (name === 'generate_image') return /__IMG_/.test(r) ? R('رسمتُ صورة ✅', 'trImgOk') : R('تعذّرت الصورة — ' + s(r, 60), 'trImgFail');
+  if (name === 'get_location') return /رفض|تعذّر|انتهت|لا يدعم|لم يستجب/.test(r) ? R('حاولتُ تحديد موقعك — ' + s(r, 70), 'trLocFail') : R('حدّدتُ موقعك ✅', 'trLocOk');
+  if (name === 'test_html') return /^✅/.test(r) ? R('جرّبتُ الصفحة — بلا أخطاء ✅', 'trHtmlOk') : R('جرّبتُ الصفحة — ظهرت أخطاء', 'trHtmlErr');
+  return R('استخدمتُ ' + name, 'trTool', { name: name });
 }
 
 // التنفيذ في متصفّح المستخدم لا هنا: نفس ملتقى Redis الذي يستعمله الوكيل،
@@ -890,7 +901,7 @@ module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
   const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); } catch (e) { /* العميل أغلق المجرى */ } };
-  send({ status: '💭 يقرأ سؤالك…' });
+  send({ status: '💭 يقرأ سؤالك…', k: 'stReading' });
 
   let accountMemory = '';
   if (usage.username && !quietSocialTurn) {
@@ -987,7 +998,7 @@ module.exports = async (req, res) => {
         return kept.length ? kept.join('\n\n') : text;
       }
           while (steps < MAX_STEPS) {
-      if (Date.now() - t0 > MAX_MS) { send({ status: '⏱️ انتهت مهلة الردّ.' }); break; }
+      if (Date.now() - t0 > MAX_MS) { send({ status: '⏱️ انتهت مهلة الردّ.', k: 'stTimeout' }); break; }
       steps++;
 
       const upstream = await fetch(CHAT_URL, {
@@ -1023,12 +1034,12 @@ module.exports = async (req, res) => {
           if (ev.type === 'content_block_start') {
             const cb = ev.content_block || {};
             blocks[ev.index] = { type: cb.type, text: '', name: cb.name, id: cb.id, inputJson: '' };
-            if (cb.type === 'tool_use' && cb.name === 'web_search') send({ status: '🔍 أتحقق لك من المصادر الحية…' });
-            else if (cb.type === 'tool_use' && cb.name === 'fetch_page') send({ status: '🌐 يقرأ صفحة…' });
-            else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ status: '⚙️ يشغّل كودًا للتحقّق…' });
-            else if (cb.type === 'tool_use' && cb.name === 'generate_image') send({ status: '🎨 يرسم صورة…' });
-            else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ status: '🧪 يجرّب الصفحة…' });
-            else if (cb.type === 'tool_use' && cb.name === 'get_location') send({ status: '📍 يحدّد موقعك (سيطلب المتصفّح إذنك)…' });
+            if (cb.type === 'tool_use' && cb.name === 'web_search') send({ status: '🔍 أتحقق لك من المصادر الحية…', k: 'stSearch' });
+            else if (cb.type === 'tool_use' && cb.name === 'fetch_page') send({ status: '🌐 يقرأ صفحة…', k: 'stFetchPage' });
+            else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ status: '⚙️ يشغّل كودًا للتحقّق…', k: 'stRunJs' });
+            else if (cb.type === 'tool_use' && cb.name === 'generate_image') send({ status: '🎨 يرسم صورة…', k: 'stGenImage' });
+            else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ status: '🧪 يجرّب الصفحة…', k: 'stTestHtml' });
+            else if (cb.type === 'tool_use' && cb.name === 'get_location') send({ status: '📍 يحدّد موقعك (سيطلب المتصفّح إذنك)…', k: 'stGeoLoc' });
           } else if (ev.type === 'content_block_delta') {
             const cb = blocks[ev.index];
             if (!cb) continue;
@@ -1092,7 +1103,8 @@ module.exports = async (req, res) => {
           // مع التوازي، فشل أداة واحدة لا يُسقط الردّ كله — يُبلَّغ النموذج ويكمل.
           result = 'فشل تنفيذ الأداة: ' + String((toolErr && toolErr.message) || toolErr).slice(0, 150);
         }
-        send({ status: '↳ ' + trailLine(cb.name, input, result) });
+        const __tl = trailLine(cb.name, input, result);
+        send({ status: '↳ ' + __tl.text, k: __tl.k, p: __tl.p });
         // v-one-brain: بطاقات «المصادر» كانت تأتي من طبقة البحث المحذوفة —
         // الآن تُستخرج من نتيجة أداة البحث نفسها وتُبثّ للعميل ليرسمها.
         if (cb.name === 'web_search') {
