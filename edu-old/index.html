@@ -361,9 +361,23 @@
   }
 
   /* v-lang-dd: المنسدلة بدل الأزرار — نفس الحفظ ونفس applyLang */
+  /* v-lang-sync: على iOS داخل الإطار قد لا يصل حدث change من المنسدلة —
+     نلتقط input/blur أيضًا، والمولّد يقرأ قيمة المنسدلة مباشرة وقت الضغط
+     فلا تضيع اللغة المختارة حتى لو لم يصل أي حدث. */
+  function syncLangFromDd(){
+    const dd = $('#uiLang');
+    if (dd && dd.value && dd.value !== lang) {
+      lang = dd.value;
+      localStorage.setItem('omranedu_lang', lang);
+      applyLang();
+    }
+  }
   (function(){
     const dd = $('#uiLang');
-    if (dd) dd.onchange = () => { lang = dd.value; localStorage.setItem('omranedu_lang', lang); applyLang(); };
+    if (!dd) return;
+    dd.addEventListener('change', syncLangFromDd);
+    dd.addEventListener('input', syncLangFromDd);
+    dd.addEventListener('blur', syncLangFromDd);
   })();
 
   let lessonData = null; // { title, slides: [{heading, bullets, narration}] }
@@ -416,6 +430,7 @@
   }
 
   $('#btnGenerateScript').onclick = async () => {
+    syncLangFromDd(); // v-lang-sync: اللغة المولَّد بها = ما تعرضه المنسدلة الآن، دائمًا
     const topic = ($('#topic').value || '').trim();
     if(!topic){ setStatus1(T('needTopic')); return; }
     const duration = $('#duration').value;
