@@ -18017,11 +18017,37 @@ if('serviceWorker' in navigator){
         if(document.visibilityState === 'visible') reg.update().catch(() => {});
       });
       // If a new worker takes control (after an update), the page it served is stale — reload once.
+      /* v653 — «الجواب يطلع ومرّة وحدة يختفي» (شكوى المالك ٢٩ أغسطس): بعد أيّ
+         نشر يتولّى العامل الجديد فتُعاد الصفحة فورًا ولو كان الردّ يُكتب —
+         فيُمسح الردّ ولا يعود. مقيس حيًّا: ردّ ٤٨٦ حرفًا اختفى ولم يعد خلال ٣٥
+         ثانية. الآن: لا تُقاطَع صفحة مرئيّة أبدًا — الإعادة تُؤجَّل إلى أوّل
+         لحظة يغادر فيها المستخدم الشاشة ولا شيء جارٍ. وأوّل تسجيل للعامل لا
+         يستحقّ إعادة أصلًا (الصفحة أحدث منه). */
       let refreshedOnce = false;
+      const __hadController = !!navigator.serviceWorker.controller;
+      const __busyNow = () => {
+        try{
+          const c = (typeof getCurrent === 'function') ? getCurrent() : null;
+          if(c && c.messages && c.messages.some(m => m && m._loading)) return true;
+          const pr = document.getElementById('prompt');
+          if(pr && pr.value && pr.value.trim()) return true;
+        }catch(e){ return true; }
+        return false;
+      };
+      const __reloadNow = () => { if(refreshedOnce) return; refreshedOnce = true; window.location.reload(); };
+      window.__omranReloadWhenSafe = () => {
+        if(document.visibilityState === 'hidden' && !__busyNow()) return __reloadNow();
+        document.addEventListener('visibilitychange', function __onHide(){
+          if(document.visibilityState === 'hidden' && !__busyNow()){
+            document.removeEventListener('visibilitychange', __onHide);
+            __reloadNow();
+          }
+        });
+      };
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if(refreshedOnce) return;
-        refreshedOnce = true;
-        window.location.reload();
+        if(!__hadController) return; // أوّل تسجيل — الصفحة أحدث من العامل
+        window.__omranReloadWhenSafe();
       });
     }).catch(() => {});
   });
