@@ -1887,6 +1887,8 @@ function toggleSettingsSection(id){
     if (arrow) arrow.style.transform = 'rotate(90deg)';
     // 💰 عند فتح قسم الباقات: جلب رصيد النقاط وعرضه
     if (id === 'pricingSection' && typeof refreshPointsWallet === 'function') refreshPointsWallet();
+    // v-points-acct: فتح «حسابي» يجلب الرصيد ويُظهر تحذير قرب النفاد تلقائيًا
+    if (id === 'accountSection' && typeof refreshAcctPoints === 'function') refreshAcctPoints();
   }
 }
 function collapseAllSettingsSections(){
@@ -1964,6 +1966,11 @@ function showSettingsPage(sid){
   if(content) content.style.display = 'block';
   if(arrow) arrow.style.transform = 'rotate(90deg)';
   if(settingsDialog) settingsDialog.scrollTop = 0;
+  // v-points-acct: الدخول لصفحة «حسابي» أو «الباقات» من القائمة يجلب الرصيد تلقائيًا
+  try{
+    if(sid === 'accountSection' && typeof refreshAcctPoints === 'function') refreshAcctPoints();
+    if(sid === 'pricingSection' && typeof refreshPointsWallet === 'function') refreshPointsWallet();
+  }catch(e){ __swallow(e, 'points:acct-refresh'); }
 }
 window.showSettingsPage = showSettingsPage;
 (function(){

@@ -2433,6 +2433,10 @@ const I18N = {
     privacyConsentText: 'قبل استخدام Omran AI Builder، يرجى قراءة <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">سياسة الخصوصية</a> و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">شروط الاستخدام</a>. نوضح فيهما ما نجمعه وكيف نحميه وحقك في حذف بياناتك.',
     privacyConsentRead: 'قراءة السياسة',
     privacyConsentAgree: 'أوافق وأتابع',
+    acctPointsLabel: 'رصيد النقاط',
+    acctPointsLow: '⚠️ رصيدك قارب على الانتهاء — اشحن نقاطك قبل النفاد.',
+    acctPointsOut: '🔴 رصيدك انتهى — اشحن نقاطك للمتابعة.',
+    acctPointsBuyBtn: '💳 شحن النقاط',
     aboutFeatChat: 'بناء تطبيقات كاملة بالمحادثة', aboutFeatProviders: '٩ مزودي ذكاء + «اسأل الكل»', aboutFeatMaha: 'مها — مساعدتك الصوتية الحية', aboutFeatStudios: '٧ استوديوهات إبداعية للصور', aboutFeatStocks: 'سوق الأسهم ومحفظة تعليمية', aboutFeatPrivacy: 'خصوصيتك أولوية — مفاتيحك عندك', aboutChipUAE: 'صُنع في الإمارات 🇦🇪', aboutChipPWA: 'تطبيق PWA', aboutChipLangs: '١٤ لغة', aboutMoreSummary: '📖 المزيد عن المنصة',
     videoNeedDesc: '⚠️ اكتب وصف الفيديو أولًا.', videoVoiceFemale: '👩 فاطمة (أنثى)', videoVoiceMale: '👨 حمدان (ذكر)',
     pickerOptsForFeature: 'خيارًا لهذه الميزة', pickerStylesForCategory: 'نمطًا لهذه الفئة', pickerOptsWord: 'خيارًا', pickerOptsPick: 'خيارًا — اختر ما يناسبك', videoOptAdspot: '📢 إعلان سريع (5ث طولي + سرد)', videoOptReels: '📱 ريلز ذكي (10ث طولي + سرد)', fashionEngineLabel: '🎨 محرك الصور', fashionEngineGemini: 'Gemini — الأدق في الحفاظ على الوجه (الافتراضي)', fashionEngineOpenai: 'ChatGPT (gpt-image-1) — نفس محرك صور ChatGPT', videoAdvanced: 'خيارات متقدمة',
@@ -3446,6 +3450,10 @@ const I18N = {
     privacyConsentText: 'Before using Omran AI Builder, please read the <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">Privacy Policy</a> and <a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">Terms of Use</a>. They explain what we collect, how we protect it, and your right to delete your data.',
     privacyConsentRead: 'Read the policy',
     privacyConsentAgree: 'Agree & continue',
+    acctPointsLabel: 'Points balance',
+    acctPointsLow: '⚠️ Your balance is running low — top up before it runs out.',
+    acctPointsOut: '🔴 Your balance is empty — top up your points to continue.',
+    acctPointsBuyBtn: '💳 Top up points',
     aboutFeatChat: 'Build complete apps by chatting', aboutFeatProviders: '9 AI providers + "Ask All"', aboutFeatMaha: 'Maha — your live voice assistant', aboutFeatStudios: '7 creative image studios', aboutFeatStocks: 'Stock market & learning portfolio', aboutFeatPrivacy: 'Privacy first — your keys stay yours', aboutChipUAE: 'Made in the UAE 🇦🇪', aboutChipPWA: 'PWA app', aboutChipLangs: '14 languages', aboutMoreSummary: '📖 More about the platform',
     videoNeedDesc: '⚠️ Please describe the video first.', videoVoiceFemale: '👩 Fatima (female)', videoVoiceMale: '👨 Hamdan (male)',
     pickerOptsForFeature: 'options for this feature', pickerStylesForCategory: 'styles for this category', pickerOptsWord: 'options', pickerOptsPick: 'options — pick yours', videoOptAdspot: '📢 Quick ad (5s vertical + narration)', videoOptReels: '📱 Smart reels (10s vertical + narration)', fashionEngineLabel: '🎨 Image engine', fashionEngineGemini: 'Gemini — best at preserving the face (default)', fashionEngineOpenai: 'ChatGPT (gpt-image-1) — the same ChatGPT image engine', videoAdvanced: 'Advanced options',
@@ -4234,7 +4242,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=613'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
+    sc.src = 'i18n/' + lg + '.js?v=614'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -7950,6 +7958,8 @@ function toggleSettingsSection(id){
     if (arrow) arrow.style.transform = 'rotate(90deg)';
     // 💰 عند فتح قسم الباقات: جلب رصيد النقاط وعرضه
     if (id === 'pricingSection' && typeof refreshPointsWallet === 'function') refreshPointsWallet();
+    // v-points-acct: فتح «حسابي» يجلب الرصيد ويُظهر تحذير قرب النفاد تلقائيًا
+    if (id === 'accountSection' && typeof refreshAcctPoints === 'function') refreshAcctPoints();
   }
 }
 function collapseAllSettingsSections(){
@@ -8027,6 +8037,11 @@ function showSettingsPage(sid){
   if(content) content.style.display = 'block';
   if(arrow) arrow.style.transform = 'rotate(90deg)';
   if(settingsDialog) settingsDialog.scrollTop = 0;
+  // v-points-acct: الدخول لصفحة «حسابي» أو «الباقات» من القائمة يجلب الرصيد تلقائيًا
+  try{
+    if(sid === 'accountSection' && typeof refreshAcctPoints === 'function') refreshAcctPoints();
+    if(sid === 'pricingSection' && typeof refreshPointsWallet === 'function') refreshPointsWallet();
+  }catch(e){ __swallow(e, 'points:acct-refresh'); }
 }
 window.showSettingsPage = showSettingsPage;
 (function(){
@@ -8522,6 +8537,43 @@ async function refreshPointsWallet(){
   }catch(e){ /* صامت */ }
 }
 window.refreshPointsWallet = refreshPointsWallet;
+
+/* v-points-acct (طلب المالك): رصيد النقاط في قائمة الحساب فقط، مع تحذير
+   تلقائي قبل النفاد (≤ 20 نقطة) ورسالة نفاد + زر شحن يفتح باقات النقاط.
+   يُستدعى تلقائيًا عند فتح قسم «حسابي» — لا زر ولا خطوة من المستخدم. */
+const ACCT_POINTS_LOW = 20;
+async function refreshAcctPoints(){
+  const box = document.getElementById('acctPointsBox');
+  const val = document.getElementById('acctPointsValue');
+  const warn = document.getElementById('acctPointsLowWarn');
+  const warnText = document.getElementById('acctPointsLowText');
+  if(!box || !val) return;
+  const token = authGet('aiapp_auth_token');
+  if(!token){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; return; }
+  try{
+    const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'balance', token }) });
+    const d = await r.json();
+    if(!(d && d.ok && d.authed)){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; return; }
+    box.style.display = 'flex';
+    if(d.unlimited){
+      val.textContent = '∞';
+      if(warn) warn.style.display = 'none';
+      return;
+    }
+    const bal = Math.max(0, Number(d.points) || 0);
+    val.textContent = bal + ' ' + t('pricingPointsUnit');
+    window.__pointsBalance = bal;
+    if(warn && warnText){
+      if(bal <= ACCT_POINTS_LOW){
+        const key = bal <= 0 ? 'acctPointsOut' : 'acctPointsLow';
+        warnText.setAttribute('data-i18n', key);
+        warnText.textContent = t(key);
+        warn.style.display = 'block';
+      } else warn.style.display = 'none';
+    }
+  }catch(e){ /* صامت — الشبكة قد تنقطع، لا نكسر قائمة الحساب */ }
+}
+window.refreshAcctPoints = refreshAcctPoints;
 
 function openCheckout(plan){
   checkoutCurrentPlan = plan;
