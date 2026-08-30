@@ -2563,7 +2563,7 @@ function __friendlyErr(e){
       const __stHint = __nm ? __numMap[Number(__nm[1])] : text;
       __showImgLoading(thinkingDiv, 'جارٍ تصميم الطوابع', 'Designing stamps');
       try{
-        const __stBody = { name:__sp.name, school:__sp.school, subject:__sp.subject, hint:__stHint, imageBase64:__sp.b64, mimeType:__sp.mime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
+        const __stBody = { name:__sp.name, school:__sp.school, subject:__sp.subject, count:__stCount, hint:__stHint, imageBase64:__sp.b64, mimeType:__sp.mime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
         const __stRes = await fetch('/api/tools?action=stamps',{method:'POST',headers:{'Content-Type':'application/json'},signal:genAbortController.signal,body:JSON.stringify(__stBody)});
         const __stData = await __stRes.json().catch(()=>({}));
         if(!__stRes.ok || !__stData.imageBase64){
@@ -2574,7 +2574,7 @@ function __friendlyErr(e){
           const __stMime = __stData.mimeType||'image/png';
           cur.lastEditedImage={b64:__stData.imageBase64,mime:__stMime};
           cur.lastMsgWasImageEdit=true;
-          cur.messages.push({role:'assistant',content:'',attachments:[{name:'stamps.png',isImage:true,mime:__stMime,dataUrl:'data:'+__stMime+';base64,'+__stData.imageBase64}]});
+          cur.messages.push({role:'assistant',content:'',attachments:[{name:'stamps-' + __stCount + '.png',isImage:true,mime:__stMime,dataUrl:'data:'+__stMime+';base64,'+__stData.imageBase64}]});
         }
       }catch(__e){
         if(__e&&__e.name==='AbortError') return;
@@ -2605,6 +2605,30 @@ function __friendlyErr(e){
       __stName = __stName.replace(__stCutRe,'').trim();
       __stSchool = __stSchool.replace(/\s*(?:و\s*)?(?:مادته|مادتها|مادة|ماده|المادة|الماده)(?=\s|$)[\s\S]*$/,'').trim();
       __stSubject = __stSubject.replace(/\s*(?:و\s*)?(?:مدرسته|مدرستها|مدرسة|مدرسه|المدرسة|المدرسه)(?=\s|$)[\s\S]*$/,'').trim();
+      // 🏷️ v-stamp-count: اختيار عدد الطوابع داخل المحادثة قبل بدء التوليد.
+      window.__stPickCount = window.__stPickCount || function(){
+        return new Promise(function(rs){
+          var ov=document.createElement('div');
+          ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.76);backdrop-filter:blur(7px);display:flex;align-items:center;justify-content:center;padding:12px;';
+          ov.innerHTML='<div dir="rtl" style="width:100%;max-width:390px;background:#18181f;border:1px solid rgba(255,255,255,.12);border-radius:22px;padding:20px;color:#fff;font-family:inherit;box-shadow:0 24px 70px rgba(0,0,0,.7);">'
+            +'<div style="font-size:18px;font-weight:700;margin-bottom:6px;text-align:center;">🏷️ كم طابع تريد؟</div>'
+            +'<div style="font-size:12px;opacity:.6;margin-bottom:16px;text-align:center;">اختر العدد قبل بدء التصميم</div>'
+            +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">'
+            +'<button class="__stCount" data-n="1" style="border:1px solid rgba(168,130,255,.4);background:rgba(168,130,255,.1);border-radius:16px;padding:18px 8px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;touch-action:manipulation;">1<br><small style="font-size:11px;opacity:.7;">طابع</small></button>'
+            +'<button class="__stCount" data-n="2" style="border:1px solid rgba(168,130,255,.4);background:rgba(168,130,255,.1);border-radius:16px;padding:18px 8px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;touch-action:manipulation;">2<br><small style="font-size:11px;opacity:.7;">طابعان</small></button>'
+            +'<button class="__stCount" data-n="4" style="border:1px solid rgba(168,130,255,.4);background:rgba(168,130,255,.1);border-radius:16px;padding:18px 8px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;touch-action:manipulation;">4<br><small style="font-size:11px;opacity:.7;">طوابع</small></button>'
+            +'</div>'
+            +'<button id="__stCountCnc" style="width:100%;padding:10px;margin-top:12px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:transparent;color:#777;font-size:13px;cursor:pointer;touch-action:manipulation;">إلغاء</button>'
+            +'</div>';
+          document.body.appendChild(ov);
+          function done(v){try{document.body.removeChild(ov);}catch(_){ /* guard-ok — cleanup, intentional */ }rs(v);}
+          ov.querySelectorAll('.__stCount').forEach(function(b){b.onclick=function(){done(Number(b.getAttribute('data-n')));};});
+          ov.querySelector('#__stCountCnc').onclick=function(){done(null);};
+          ov.addEventListener('click',function(e){if(e.target===ov)done(null);});
+        });
+      };
+      var __stCount = await window.__stPickCount();
+      if(!__stCount){ thinkingDiv.remove(); renderAll(); saveState(); return; }
       if(!/فضاء|كواكب|صاروخ|ديناصور|دايناصور|أميرة|اميرة|برنسيس|ملكة|كرة|كوره|رياضة|رياضه|بحر|سمك|قرش|شاطئ|سيار|سباق|يونيكورن|قوس قزح|حيوان|غابة|باندا|ورد|زهور|فراش|تراث|صقر|روبوت|حلوى|حلويات|كيك|دونات|كلاسيكي|مدرسي كلاسيكي|كرومي|ماي ملدي|ميلودي|هالو كاتي|هيلو كيتي|كيتي|الدبب|دببة|قيمنق|قيمنج|جيمنج|جيمر|بلايستيشن|أنمي|انمي|مانجا|ستريت|سكيت|قرافيتي|جرافيتي|مغامر|طعوس|دباب|اوف رود|أوف رود|أساطير|اساطير|ذئب|تنين|بناتي|استاتيك|اسثتيك|فاشن|موضة|موضه|مكياج|فاجئني|عشوائي/i.test(text)){
         // 🎨 v734: ورقة ثيمات كاملة — overlay picker بدل نص مرقّم
         window.__stPickTheme = window.__stPickTheme || function(){
@@ -2662,7 +2686,7 @@ function __friendlyErr(e){
         var __stFinalHint = __stHint === 'فاجئني' ? '' : __stHint;
         __showImgLoading(thinkingDiv, 'جارٍ تصميم الطوابع', 'Designing stamps');
         try{
-          var __stBodyOv = { name:__stName, school:__stSchool, subject:__stSubject, hint:__stFinalHint, imageBase64:__stSrcB64, mimeType:__stSrcMime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
+          var __stBodyOv = { name:__stName, school:__stSchool, subject:__stSubject, count:__stCount, hint:__stFinalHint, imageBase64:__stSrcB64, mimeType:__stSrcMime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
           var __stResOv = await fetch('/api/tools?action=stamps',{method:'POST',headers:{'Content-Type':'application/json'},signal:genAbortController.signal,body:JSON.stringify(__stBodyOv)});
           var __stDataOv = await __stResOv.json().catch(()=>({}));
           if(!__stResOv.ok || !__stDataOv.imageBase64){
@@ -2673,7 +2697,7 @@ function __friendlyErr(e){
             var __stMimeOv = __stDataOv.mimeType||'image/png';
             cur.lastEditedImage={b64:__stDataOv.imageBase64,mime:__stMimeOv};
             cur.lastMsgWasImageEdit=true;
-            cur.messages.push({role:'assistant',content:'',attachments:[{name:'stamps.png',isImage:true,mime:__stMimeOv,dataUrl:'data:'+__stMimeOv+';base64,'+__stDataOv.imageBase64}]});
+            cur.messages.push({role:'assistant',content:'',attachments:[{name:'stamps-' + __stCount + '.png',isImage:true,mime:__stMimeOv,dataUrl:'data:'+__stMimeOv+';base64,'+__stDataOv.imageBase64}]});
           }
         }catch(__eOv){
           if(__eOv&&__eOv.name==='AbortError') return;
@@ -2685,7 +2709,7 @@ function __friendlyErr(e){
       }
       __showImgLoading(thinkingDiv, 'جارٍ تصميم الطوابع', 'Designing stamps');
       try{
-        const __stBody = { name:__stName, school:__stSchool, subject:__stSubject, hint:text, imageBase64:__stSrcB64, mimeType:__stSrcMime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
+        const __stBody = { name:__stName, school:__stSchool, subject:__stSubject, count:__stCount, hint:text, imageBase64:__stSrcB64, mimeType:__stSrcMime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
         const __stRes = await fetch('/api/tools?action=stamps',{method:'POST',headers:{'Content-Type':'application/json'},signal:genAbortController.signal,body:JSON.stringify(__stBody)});
         const __stData = await __stRes.json().catch(()=>({}));
         if(!__stRes.ok || !__stData.imageBase64){
@@ -2696,7 +2720,7 @@ function __friendlyErr(e){
           const __stMime = __stData.mimeType||'image/png';
           cur.lastEditedImage={b64:__stData.imageBase64,mime:__stMime};
           cur.lastMsgWasImageEdit=true;
-          cur.messages.push({role:'assistant',content:'',attachments:[{name:'stamps.png',isImage:true,mime:__stMime,dataUrl:'data:'+__stMime+';base64,'+__stData.imageBase64}]});
+          cur.messages.push({role:'assistant',content:'',attachments:[{name:'stamps-' + __stCount + '.png',isImage:true,mime:__stMime,dataUrl:'data:'+__stMime+';base64,'+__stData.imageBase64}]});
         }
       }catch(__e){
         if(__e&&__e.name==='AbortError') return;
