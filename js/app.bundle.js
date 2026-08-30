@@ -952,13 +952,9 @@ const $ = s => document.querySelector(s);
       let iosWrap = false;
       try { iosWrap = !!(window.webkit && window.webkit.messageHandlers && (window.webkit.messageHandlers.omranShare || window.webkit.messageHandlers.omranPdf)); } catch(e){ /* guard-ok */ }
       if (iosWrap) {
-<<<<<<< HEAD
         // v-login-done: &app=1 يعلّم الخادم أن هذا مسار الغلاف — بعد نجاح
         // الدخول يعرض سفاري صفحة «✅ ارجع للتطبيق» بدل نسخة كاملة من الموقع.
         window.open(location.origin + gStartUrl + '&app=1', '_blank');
-=======
-        window.open(location.origin + gStartUrl, '_blank');
->>>>>>> origin/main
         try {
           const bx = $('#authError');
           if (bx) {
