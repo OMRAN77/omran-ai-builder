@@ -594,7 +594,7 @@ console.log('  ✓ v-login-done: سفاري يقول «ارجع للتطبيق»
   assert.ok(it8.includes('v-font-pretty'), '«مزخرف» وأخواتها تختار الديواني');
   const at9 = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
   assert.ok(at9.includes('__nameSwap') && at9.includes('REPLACE that existing name'), 'تغيير الاسم = استبدال يمحو القديم');
-  assert.ok(at9.includes('__explicitStyle && !__nameSwap'), 'الاستبدال لا يسقط لكانفس لا يمحو');
+  assert.ok(at9.includes('if(!__nameSwap) throw { __localFont: true }'), 'الاستبدال وحده للذكاء — والكانفس لا يمحو');
 }
 console.log('  ✓ v-name-swap: «غيّر الاسم» يبدل الاسم داخل التصميم — لا كتابة فوقه');
 
@@ -603,7 +603,7 @@ console.log('  ✓ v-name-swap: «غيّر الاسم» يبدل الاسم دا
 // بالكانفس المحلي الذي يحترمه.
 {
   const at9b = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
-  assert.ok(at9b.includes('__explicitStyle') && at9b.includes("__textSpec.color !== '#ffffff'") && at9b.includes('__textSpec.positionAuto === false'), 'اللون والموضع الصريحان يذهبان للكانفس');
+  assert.ok(at9b.includes('v-exact-canvas'), 'كل نص حرفي للكانفس — الخط واللون والموضع محترمة حتمًا');
 }
 console.log('  ✓ v-style-honor: الخط واللون والموضع المطلوبة تُحترم — الكانفس لا الرسّام');
 
@@ -684,5 +684,14 @@ console.log('  ✓ v-font-real: الخطوط المزخرفة تظهر فعلً�
   assert.ok(r4.fontKey === 'kufi', 'الخط المسمى يغلب الوصف الجمالي');
 }
 console.log('  ✓ v-font-pretty: الكلمات الجمالية كلها تودي للخط المزخرف');
+
+// 57 v-exact-canvas: «عبداله مران تيم — الأسامي ليس دقيقة» — رسّام الذكاء
+// يسقط حروفًا من الأسماء العربية. كل نص حرفي يطبعه الراسم المحلي (يستحيل
+// أن يخطئ إملائيًا)؛ الذكاء فقط لتبديل اسم داخل تصميم.
+{
+  const at9g = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
+  assert.ok(at9g.includes('v-exact-canvas') && at9g.includes('if(!__nameSwap) throw { __localFont: true }'), 'النص الحرفي دائمًا للراسم المحلي');
+}
+console.log('  ✓ v-exact-canvas: الأسماء تُطبع حرفيًا — صفر أخطاء إملائية ممكنة');
 
 console.log('fashion locks tests passed');
