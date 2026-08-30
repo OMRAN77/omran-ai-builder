@@ -1221,13 +1221,27 @@ const MAHA_FONTS = {
 };
 async function mahaLoadFont(key){
   const f = MAHA_FONTS[key] || MAHA_FONTS.default;
+  /* v-font-real (شكوى: «جربنا كل الخطوط ما في أي خط مرتب»): كان يضيف رابط
+     الخط ويرسم فورًا قبل وصول الملف — fonts.load ترجع فارغة لأن قاعدة
+     @font-face لم تُقرأ بعد، فيسقط الرسم على الخط العادي في كل مرة أولى.
+     الآن: ننتظر تحميل ورقة الأنماط ثم نتحقق فعليًا أن الخط جاهز (حتى 3 ثوانٍ).
+     الطلب بلا bold لأن الخطوط الزخرفية (Katibeh/Rakkas/Gulzar) وزنها 400 فقط. */
   if(!document.getElementById('gf-' + f.css)){
-    const l = document.createElement('link');
-    l.id = 'gf-' + f.css; l.rel = 'stylesheet';
-    l.href = 'https://fonts.googleapis.com/css2?family=' + f.gf + '&display=swap';
-    document.head.appendChild(l);
+    await new Promise((res) => {
+      const l = document.createElement('link');
+      l.id = 'gf-' + f.css; l.rel = 'stylesheet';
+      l.href = 'https://fonts.googleapis.com/css2?family=' + f.gf + '&display=swap';
+      l.onload = res; l.onerror = res;
+      document.head.appendChild(l);
+      setTimeout(res, 3000);
+    });
   }
-  try{ await document.fonts.load('bold 40px "' + f.css + '"', 'عيدكم مبارك'); }catch(_){ __swallow(_, "misc:app-09-attach#3"); }
+  const spec = '40px "' + f.css + '"';
+  for(let i = 0; i < 20; i++){
+    try{ await document.fonts.load(spec, 'عيدكم مبارك'); }catch(_){ __swallow(_, "misc:app-09-attach#3"); }
+    try{ if(document.fonts.check(spec, 'عيدكم مبارك')) break; }catch(_){ break; }
+    await new Promise(r => setTimeout(r, 150));
+  }
   return f.css;
 }
 async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
