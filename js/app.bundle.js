@@ -8413,9 +8413,6 @@ async function postWithConfirm(url, payload){
     sheet.style.display = 'flex';
     var c = el('pickerSheetClose');
     if(c) c.onclick = function(){ sheet.style.display = 'none'; };
-    /* v-picker-close: زر إغلاق سفلي في متناول الإبهام — ✕ العلوي كان تحت الساعة */
-    var c2 = el('pickerSheetCloseBottom');
-    if(c2) c2.onclick = function(){ sheet.style.display = 'none'; };
   } };
   /* بطاقة مصغّرة موحّدة «عرض الكل ›» — get() ترجع {img,name,sub}،
      وopenCfg() ترجع إعدادات open. ترجع {el,refresh}. */
@@ -19440,11 +19437,10 @@ function openShareModal(project){
   });
 })();
 
-/* v-modal-bottom-close (طلب عمران: «في الديكور كامل سوّ ✕» بعد شكوى «✕ فوق عند
-   الساعة ما ينضغط»): كل نوافذ الأدوات الكبيرة تأخذ زرّ إغلاق سفليًّا ثابتًا في
-   متناول الإبهام يضغط زرّ ✕ الأصلي، وهامش أمان علويًّا حتى لا يختبئ الرأس تحت
-   الساعة. قائمة معلنة — لا لمس لأي نافذة أخرى. */
-(function omranModalBottomClose(){
+/* v-modal-close-fix (شكوى عمران: «✕ فوق عند الساعة ما ينضغط» — وبطلبه لاحقًا:
+   بلا أي زر إضافي): كل نوافذ الأدوات الكبيرة يأخذ رأسها هامش أمان علويًّا حتى
+   لا يختبئ ✕ تحت الساعة، ويكبر الزر نفسه. قائمة معلنة — لا لمس لغيرها. */
+(function omranModalCloseFix(){
   var PAIRS = [
     ['designAiModal', 'designAiCloseBtn'],
     ['fashionAiModal', 'fashionAiCloseBtn'],
@@ -19464,13 +19460,6 @@ function openShareModal(project){
       modal.__omranBC = 1;
       try{ modal.style.paddingTop = 'calc(20px + env(safe-area-inset-top, 0px))'; }catch(e){ /* guard-ok — cosmetic */ }
       try{ closeBtn.style.minWidth = '44px'; closeBtn.style.minHeight = '40px'; closeBtn.style.fontSize = '16px'; }catch(e){ /* guard-ok — cosmetic */ }
-      var bar = document.createElement('button');
-      bar.type = 'button';
-      bar.textContent = '✕';
-      bar.setAttribute('aria-label', 'close');
-      bar.style.cssText = 'position:absolute; bottom:calc(10px + env(safe-area-inset-bottom,0px)); inset-inline-start:16px; inset-inline-end:16px; padding:12px; border-radius:13px; border:1px solid rgba(255,255,255,.2); background:rgba(20,20,24,.92); color:#eef0f6; font-size:16px; font-weight:700; cursor:pointer; touch-action:manipulation; z-index:5;';
-      bar.addEventListener('click', function(ev){ ev.stopPropagation(); closeBtn.click(); });
-      modal.appendChild(bar);
     });
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ arm(); setTimeout(arm, 1200); });
@@ -21396,9 +21385,6 @@ function stuL(ar, en){
   }
   if(styleTrigger) styleTrigger.onclick = function(){ renderPortraitStyleCards(); if(styleSheet) styleSheet.style.display = 'flex'; };
   if(styleSheetClose) styleSheetClose.onclick = function(){ styleSheet.style.display = 'none'; };
-  /* v-picker-close: زر الإغلاق السفلي في متناول الإبهام */
-  var styleSheetCloseBottom = document.getElementById('portraitStyleSheetCloseBottom');
-  if(styleSheetCloseBottom) styleSheetCloseBottom.onclick = function(){ styleSheet.style.display = 'none'; };
   refreshStyleTrigger();
   function refreshStarIcon(){
     if(!favStarBtn || !styleEl) return;
