@@ -1,4 +1,5 @@
 // «طوابع المدرسة» — ورقة طوابع/ملصقات قابلة للطباعة والقص عبر OpenAI (gpt-image-2).
+// v-strong-school-stamps: جودة عالية + دقة صورة مرجعية للطباعة.
 // يأخذ صورة الطفل + اسمه ويعيد ورقة كاملة فيها طوابع صغيرة كثيرة بأشكال جميلة.
 // نفس حرّاس adimage.js: هويّة مُتحقَّقة ثم سقف يومي، وsignal خاص يتخطى حارس الـ٣٠ ثانية.
 const { checkAndConsumeCustom } = require('./_usage.js');
@@ -94,9 +95,9 @@ module.exports = async (req, res) => {
         ? 'A printable sticker/stamp sheet for a girl, vertical portrait page on a clean WHITE background, designed for home printing and scissor cutting. Art direction: elegant dreamy girly aesthetic, soft and sophisticated.\n'
         : 'A printable sticker/stamp sheet for a school kid, vertical portrait page on a clean WHITE background, designed for home printing and scissor cutting.\n';
     let p = audience
-      + 'The provided image is the child\'s REAL photo. STRICT RULE: the face must stay EXACTLY as photographed — same face, same features, same skin tone, same hair. Do NOT beautify, restyle, cartoonize or replace the face. You may neatly crop it into each sticker frame.\n'
-      + 'Layout: ' + layout + ', evenly spaced with generous white gaps and a thin light-grey dashed cut line around every sticker.\n'
-      + 'Every sticker features the child\'s photo inside a DIFFERENT frame — all 12 frames must be visibly different from each other. ' + theme.d + '. Doodles never cover the face.\n'
+      + 'The provided image is the child\'s REAL photo. IDENTITY LOCK — the face must stay EXACTLY as photographed in every sticker: same eyes, nose, mouth, skin tone, hair, age and expression. Do NOT beautify, retouch, slim, age, gender-swap, redraw, cartoonize or replace the face. Do NOT merge faces or invent a second child. Use the original photo as the only person reference and crop it cleanly into each frame.\n'
+      + 'Layout: ' + layout + ', evenly spaced with generous white gaps and a thin light-grey dashed cut line around every sticker. Premium print-ready composition: crisp edges, strong contrast, balanced margins, clear separation between all stickers, no cropped sticker, no visual clutter.\n'
+      + 'Every sticker features the child\'s photo inside a DIFFERENT frame — all 12 frames must be visibly different from each other, with bold polished school-reward badge design and consistent visual quality. ' + theme.d + '. Doodles never cover the face or touch the eyes, nose or mouth.\n'
       + (function(){
         var lines = [];
         if (name) lines.push('the name "' + name + '" in clear bold lettering');
@@ -111,10 +112,10 @@ module.exports = async (req, res) => {
       model: 'gpt-image-2',
       prompt: p,
       size: '1024x1536',
-      quality: 'medium',
+      quality: b.quality === 'fast' ? 'medium' : 'high',
+      input_fidelity: 'high',
       n: 1,
-      output_format: 'webp',
-      output_compression: 82,
+      output_format: 'png',
     };
     const form = new FormData();
     for (const k of Object.keys(body)) form.append(k, String(body[k]));
