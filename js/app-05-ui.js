@@ -2311,9 +2311,6 @@ async function postWithConfirm(url, payload){
     sheet.style.display = 'flex';
     var c = el('pickerSheetClose');
     if(c) c.onclick = function(){ sheet.style.display = 'none'; };
-    /* v-picker-close: زر إغلاق سفلي في متناول الإبهام — ✕ العلوي كان تحت الساعة */
-    var c2 = el('pickerSheetCloseBottom');
-    if(c2) c2.onclick = function(){ sheet.style.display = 'none'; };
   } };
   /* بطاقة مصغّرة موحّدة «عرض الكل ›» — get() ترجع {img,name,sub}،
      وopenCfg() ترجع إعدادات open. ترجع {el,refresh}. */

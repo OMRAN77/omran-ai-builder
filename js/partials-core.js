@@ -472,7 +472,7 @@
         <span style="color:#d4af37; font-size:12.5px; font-weight:700; flex:none;" data-i18n="portraitStyleBrowseAll">عرض الكل ›</span>
       </div>
       <div id="portraitStyleSheet" style="display:none; position:fixed; inset:0; z-index:10060; background:#0b0b0d; flex-direction:column;">
-        <!-- v-picker-close: نفس علاج pickerSheet — الرأس تحت الساعة وزر إغلاق سفلي -->
+        <!-- v-picker-close: نفس علاج pickerSheet — الرأس تحت الساعة والزر أكبر -->
         <div style="display:flex; align-items:center; justify-content:space-between; padding:calc(14px + env(safe-area-inset-top,0px)) 16px 14px; border-bottom:1px solid rgba(212,175,55,.25); flex:none;">
           <div>
             <div style="font-size:18px; font-weight:800;" data-i18n="portraitStyleSheetTitle">🎨 أنماط الصور</div>
@@ -482,9 +482,6 @@
         </div>
         <div style="flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;">
           <div id="portraitStyleCards" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; padding:14px; max-width:1080px; margin:0 auto;"></div>
-        </div>
-        <div style="flex:none; padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px)); border-top:1px solid rgba(212,175,55,.18);">
-          <button type="button" id="portraitStyleSheetCloseBottom" style="width:100%; padding:13px; border-radius:13px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:#eef0f6; font-size:16px; font-weight:700; cursor:pointer; touch-action:manipulation;">✕</button>
         </div>
       </div>
       <select id="portraitStyleSelect" style="display:none;">
@@ -897,7 +894,7 @@
      لكل القوائم الكبيرة (أزياء، ديكور، ستايل). -->
 <div id="pickerSheet" style="display:none; position:fixed; inset:0; z-index:10070; background:#0b0b0d; flex-direction:column;">
   <!-- v-picker-close (شكوى عمران: «✕ فوق عند الساعة ما أقدر أضغطه»): الرأس ينزل
-       تحت شريط الحالة بهامش الأمان، والزر أكبر، وزر إغلاق سفلي في متناول الإبهام. -->
+       تحت شريط الحالة بهامش الأمان والزر أكبر — بلا أي زر إضافي بطلبه. -->
   <div style="display:flex; align-items:center; justify-content:space-between; padding:calc(14px + env(safe-area-inset-top,0px)) 16px 14px; border-bottom:1px solid rgba(212,175,55,.25); flex:none;">
     <div>
       <div id="pickerSheetTitle" style="font-size:18px; font-weight:800; color:#eef0f6;"></div>
@@ -907,9 +904,6 @@
   </div>
   <div style="flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;">
     <div id="pickerSheetGrid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(175px,1fr)); gap:14px; padding:16px; max-width:1500px; margin:0 auto;"></div>
-  </div>
-  <div style="flex:none; padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px)); border-top:1px solid rgba(212,175,55,.18);">
-    <button type="button" id="pickerSheetCloseBottom" style="width:100%; padding:13px; border-radius:13px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:#eef0f6; font-size:16px; font-weight:700; cursor:pointer; touch-action:manipulation;">✕</button>
   </div>
 </div>
 
