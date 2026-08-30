@@ -949,8 +949,13 @@ const $ = s => document.querySelector(s);
       // وأي قفزة لمتصفح خارجي بنصف الطريق تصل بلا كوكيز الجلسة فترد جوجل
       // «400 malformed». نفتح سفاري من أول خطوة — كوكيز جوجل والباسكيز هناك —
       // وجسر oauth-claim أعلاه يستلم الجلسة تلقائيًا عند العودة للتطبيق.
+      // v-google-safari-2: الغلاف الفعلي في المتجر بلا جسور omranShare/omranPdf
+      // (تأكدنا من مصدره) فكان الكشف السابق خاملًا والدخول يبقى داخل الويب-فيو.
+      // كاباسيتور نفسه يسجل جسر «bridge» في كل صفحة ويحقن window.Capacitor —
+      // إشارتان مضمونتان لا توجدان في سفاري ولا PWA ولا أندرويد.
       let iosWrap = false;
-      try { iosWrap = !!(window.webkit && window.webkit.messageHandlers && (window.webkit.messageHandlers.omranShare || window.webkit.messageHandlers.omranPdf)); } catch(e){ /* guard-ok */ }
+      try { iosWrap = !!(window.Capacitor && (window.Capacitor.isNativePlatform ? window.Capacitor.isNativePlatform() : window.Capacitor.isNative)); } catch(e){ /* guard-ok */ }
+      try { if(!iosWrap){ const mh = window.webkit && window.webkit.messageHandlers; iosWrap = !!(mh && (mh.bridge || mh.omranShare || mh.omranPdf)); } } catch(e){ /* guard-ok */ }
       if (iosWrap) {
         // v-login-done: &app=1 يعلّم الخادم أن هذا مسار الغلاف — بعد نجاح
         // الدخول يعرض سفاري صفحة «✅ ارجع للتطبيق» بدل نسخة كاملة من الموقع.
@@ -22164,7 +22169,9 @@ function stuL(ar, en){
        (نفس علة الدخول) — نفتح سفاري، والربط يُخزَّن في الخادم تحت حساب
        المستخدم فيظهر عند العودة والتحديث. */
     let emIosWrap = false;
-    try { emIosWrap = !!(window.webkit && window.webkit.messageHandlers && (window.webkit.messageHandlers.omranShare || window.webkit.messageHandlers.omranPdf)); } catch(e){ /* guard-ok */ }
+    /* v-google-safari-2: الكشف بجسر كاباسيتور «bridge» — الغلاف الفعلي بلا جسور omran */
+    try { emIosWrap = !!(window.Capacitor && (window.Capacitor.isNativePlatform ? window.Capacitor.isNativePlatform() : window.Capacitor.isNative)); } catch(e){ /* guard-ok */ }
+    try { if(!emIosWrap){ const mh = window.webkit && window.webkit.messageHandlers; emIosWrap = !!(mh && (mh.bridge || mh.omranShare || mh.omranPdf)); } } catch(e){ /* guard-ok */ }
     if (emIosWrap) { window.open(location.origin + emStartUrl, '_blank'); return; }
     window.location.href = emStartUrl;
   });
