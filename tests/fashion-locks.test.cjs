@@ -649,4 +649,14 @@ console.log('  ✓ v-hifi-edit: تعديل البطاقات بدقة ChatGPT —
 }
 console.log('  ✓ v-arabic-script: الخط عربي أصيل — لا نستعليق أردو');
 
+// 54 v-logo-soft: «الصفحة تومض كأني أسويله أبديت» — لمس الشعار كان يعيد
+// تحميل الصفحة كاملة، ولمسه سهل على الآيفون. صار رجوعًا للرئيسية داخل
+// الصفحة بلا إعادة تحميل.
+{
+  const ft10c = fs.readFileSync(path.join(__dirname, '../js/app-10-features.js'), 'utf8');
+  assert.ok(ft10c.includes('v-logo-soft') && !ft10c.includes('location.href = location.pathname'), 'الشعار لا يعيد التحميل');
+  assert.ok(ft10c.includes('data-omnav="home"'), 'الشعار يضغط زر الرئيسية داخليًا');
+}
+console.log('  ✓ v-logo-soft: لمس الشعار رجوع ناعم — لا وميض ولا إعادة إقلاع');
+
 console.log('fashion locks tests passed');
