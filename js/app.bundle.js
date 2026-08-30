@@ -25422,7 +25422,8 @@ window.updateVersionLabel();
           if (!r2.errors.length) return '✅ شُغِّل بلا أخطاء تشغيل.' + (r2.logs.length ? '\nالطرفية:\n' + r2.logs.join('\n') : '');
           return '⚠️ أخطاء تشغيل:\n' + r2.errors.join('\n');
         }
-        // 🎬 إنشاء فيديو من داخل المحادثة — يستخدم نفس محركات صانع الفيديو الحالي.
+        // v-chat-video-sync: keep the generated bundle hash moving with source changes.
+// 🎬 إنشاء فيديو من داخل المحادثة — يستخدم نفس محركات صانع الفيديو الحالي.
         if (name === 'generate_video') {
           var va = args || {};
           var vp = String(va.prompt || '').trim();
