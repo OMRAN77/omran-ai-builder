@@ -624,10 +624,21 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   };
 })();
 
-// Brand title: click = home (reload), text follows language
+// Brand title: click = home, text follows language
 (function(){
   const h1 = document.querySelector('header h1');
-  if(h1) h1.onclick = () => { try{ saveState(); }catch(_){ __swallow(_, "save:app-10-features#16"); } location.href = location.pathname; };
+  /* v-logo-soft (شكوى: «الصفحة تومض كأني أسويله أبديت»): الشعار كان يعيد
+     تحميل الصفحة كاملة — ولمسه سهل على الآيفون فتومض الشاشة وتعيد الإقلاع.
+     صار يرجع للرئيسية داخل الصفحة نفسها بلا أي إعادة تحميل. */
+  if(h1) h1.onclick = () => {
+    try{ saveState(); }catch(_){ __swallow(_, "save:app-10-features#16"); }
+    try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(_){ /* guard-ok */ }
+    try{
+      const homeBtn = document.querySelector('#omranBottomNav [data-omnav="home"]');
+      if(homeBtn){ homeBtn.click(); return; }
+    }catch(_){ /* guard-ok */ }
+    try{ window.scrollTo(0, 0); const m = document.getElementById('messages'); if(m) m.scrollTop = 0; }catch(_){ /* guard-ok */ }
+  };
   /* v-brand-l10n (طلب المالك ٢٩ أغسطس): شعار ذهبي مخصوص لكل لغة — العربي
      والإنجليزي كما هما بلا أي تغيير. الأعراض عند ارتفاع 42 من ملفات PNG
      الفعلية (الأصل 168px = ٤×). لغة بلا شعار خاص ترجع للإنجليزي. */
