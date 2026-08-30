@@ -27883,6 +27883,20 @@ if(document.readyState === 'loading'){
     var closeBtn = $id('vgClose');
     if (closeBtn) closeBtn.addEventListener('click', close);
 
+    /* v-vg-quiet (شكوى عمران: «إذا طلعت من الصفحة يظل يتكلم ولازم أطلع من
+       التطبيق عشان يسكت»): الخروج عبر أزرار التنقل السفلية لا يمر بزر
+       الإغلاق — أي نقرة تنقل لغير المرشد تغلقه وتسكته، وإخفاء التطبيق
+       (تبديل/قفل الشاشة) يسكته فورًا. */
+    document.addEventListener('click', function (e) {
+      if (!S.open) return;
+      var nb = (e.target && e.target.closest) ? e.target.closest('[data-omnav]') : null;
+      if (nb && nb.getAttribute('data-omnav') !== 'guide') close();
+    }, true);
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden && S.open) { shutUp(); stopListening(); stopLoop(); }
+    });
+    window.addEventListener('pagehide', function () { if (S.open) shutUp(); });
+
     document.querySelectorAll('.vgModeBtn').forEach(function (b) {
       b.addEventListener('click', function () { setMode(b.getAttribute('data-vgmode')); });
     });
