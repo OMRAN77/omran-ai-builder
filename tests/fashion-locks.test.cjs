@@ -640,4 +640,13 @@ console.log('  ✓ v-edit-rescue: تعديل الصور له إنقاذ — وا
 }
 console.log('  ✓ v-hifi-edit: تعديل البطاقات بدقة ChatGPT — الاسم يتبدل والباقي يبقى');
 
+// 53 v-arabic-script: «نوعية الخط كأنها أردو» — «خط جميل» كان يجر المحرك
+// للنستعليق المائل. التعليمة تفرض الثلث/الديواني العربي وتمنع النستعليق نصًا.
+{
+  const at9e = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
+  assert.ok((at9e.match(/NEVER Urdu Nastaliq/g) || []).length >= 2, 'منع النستعليق في مساري الاستبدال والكتابة');
+  assert.ok(at9e.includes('Thuluth or Diwani'), 'الثلث والديواني هما المرجع');
+}
+console.log('  ✓ v-arabic-script: الخط عربي أصيل — لا نستعليق أردو');
+
 console.log('fashion locks tests passed');
