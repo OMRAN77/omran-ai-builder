@@ -272,6 +272,10 @@ module.exports = async (req, res) => {
       body = JSON.parse(body || '{}');
     }
     const { buildingType, floors, area, style, notes, token, annexes, includeInterior, budget, includePlan, includePhoto, plotArea, emirate } = body;
+    // v-cons-i18n (طلب عمران): التقرير بلغة التطبيق — ar/ur عربي، وإلا لغة المستخدم.
+    const LANG_NAMES = { en: 'English', fr: 'French', hi: 'Hindi', bn: 'Bengali', ne: 'Nepali', id: 'Indonesian', fil: 'Filipino', tr: 'Turkish', zh: 'Simplified Chinese', ru: 'Russian', es: 'Spanish', ml: 'Malayalam' };
+    const uiLang = String(body.lang || 'ar').toLowerCase();
+    const replyLangName = (uiLang === 'ar' || uiLang === 'ur') ? null : (LANG_NAMES[uiLang] || 'English');
     const wantPlan = includePlan !== false; // default true
     const wantPhoto = !!includePhoto;
     const stagePart = OUTPUT_PARTS.includes(body.part) ? body.part : '';
@@ -406,7 +410,8 @@ module.exports = async (req, res) => {
       '<<<BOQ>>>\n' +
       'البند|الوحدة|الكمية|سعر الوحدة (درهم)|الإجمالي (درهم)\n' +
       '<<<END>>>\n' +
-      'املأه بـ 14-18 بندًا يغطي: الحفر والردم، الأساسات، الخرسانة، حديد التسليح، الطابوق، اللياسة، العزل، البلاط والرخام، الأبواب والشبابيك، الدهانات، الكهرباء، السباكة، التكييف، المطبخ، الأدوات الصحية، الأعمال الخارجية، والملاحق المطلوبة. الكميات والأسعار أرقام مجردة بلا فواصل أو رموز، وآخر سطر للإجمالي.';
+      'املأه بـ 14-18 بندًا يغطي: الحفر والردم، الأساسات، الخرسانة، حديد التسليح، الطابوق، اللياسة، العزل، البلاط والرخام، الأبواب والشبابيك، الدهانات، الكهرباء، السباكة، التكييف، المطبخ، الأدوات الصحية، الأعمال الخارجية، والملاحق المطلوبة. الكميات والأسعار أرقام مجردة بلا فواصل أو رموز، وآخر سطر للإجمالي.'
+      + (replyLangName ? ('\n\nCRITICAL LANGUAGE RULE: write the ENTIRE report — every heading, bullet and BOQ item name — in ' + replyLangName + ' instead of Arabic. Keep all numbers in Western digits, keep amounts in AED, and keep the <<<BOQ>>> / <<<END>>> markers and the pipe-separated BOQ format exactly as specified.') : '');
 
     const textEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + apiKey;
     const textReqBody = { contents: [{ parts: [{ text: textPrompt }] }] };
@@ -546,7 +551,9 @@ module.exports = async (req, res) => {
       }
     } catch (e) { boq = null; }
 
-    const disclaimer = '\n\n⚠️ تصور أولي فقط لأغراض العرض — لا يغني عن مهندس مرخّص أو رخصة بناء رسمية.';
+    const disclaimer = replyLangName
+      ? '\n\n⚠️ Preliminary concept for presentation only — not a substitute for a licensed engineer or an official building permit.'
+      : '\n\n⚠️ تصور أولي فقط لأغراض العرض — لا يغني عن مهندس مرخّص أو رخصة بناء رسمية.';
 
     let remaining = job ? job.r : quota.remaining;
     let jobTicket = null;
