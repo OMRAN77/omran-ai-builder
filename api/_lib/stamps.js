@@ -137,7 +137,7 @@ module.exports = async (req, res) => {
       res.status(502).end(JSON.stringify({ error: 'empty', message_ar: 'لم يرجع النموذج صورة. جرّب مرّة أخرى.' }));
       return;
     }
-    res.status(200).end(JSON.stringify({ imageBase64: out.b64_json, mimeType: 'image/webp', dailyLimit: DAILY }));
+    res.status(200).end(JSON.stringify({ imageBase64: out.b64_json, mimeType: 'image/png', dailyLimit: DAILY }));
   } catch (e) {
     const msg = e && e.name === 'TimeoutError' ? 'استغرق التوليد وقتًا أطول من المسموح. جرّب مرّة أخرى.' : (e && e.message ? e.message : String(e));
     res.status(500).end(JSON.stringify({ error: 'proxy', message_ar: msg }));
