@@ -972,7 +972,7 @@ function openShareModal(project){
       var closeBtn = document.getElementById(p[1]);
       if(!modal || !closeBtn || modal.__omranBC) return;
       modal.__omranBC = 1;
-      try{ modal.style.paddingTop = 'calc(20px + env(safe-area-inset-top, 0px))'; }catch(e){ /* guard-ok — cosmetic */ }
+      try{ modal.style.paddingTop = 'calc(20px + max(env(safe-area-inset-top, 0px), 30px))'; }catch(e){ /* guard-ok — cosmetic */ }
       try{ closeBtn.style.minWidth = '44px'; closeBtn.style.minHeight = '40px'; closeBtn.style.fontSize = '16px'; }catch(e){ /* guard-ok — cosmetic */ }
     });
   }
