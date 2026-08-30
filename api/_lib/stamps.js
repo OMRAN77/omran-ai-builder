@@ -48,10 +48,30 @@ module.exports = async (req, res) => {
       { k: /هالو كاتي|هيلو كيتي|هيلو كاتي|كيتي/i, d: 'HELLO KITTY SANRIO theme: Hello Kitty face outline (no-mouth, red bow, whiskers), bow-arch, red-apple, heart-locket, polka-dot circle, strawberry-badge, piano-key-border, cupcake, rainbow-ribbon, shooting-star, cloud-castle and gift-box frames; signature red, white, cream and pastel-pink palette with tiny bows, apples and stars doodles' },
       { k: /الدبب|دببة ثلاث|دبب 3|الدببة الثلاثة/i, d: 'WE BARE BEARS theme: grizzly-bear-head, panda-face, ice-bear-silhouette, three-bears-stack-arch, pawprint-badge, pizza-slice, rainbow-stripe, phone-screen-frame, bear-stack-medal, ice-cream-cone, fish-badge and cityscape-arch frames; warm brown, black-and-white and pale-blue palette with tiny paws, phones and pizza slices doodles' },
       { k: /كلاسيكي|مدرسي/i, d: 'CLASSIC SCHOOL theme: circle, heart, star, cloud, hexagon, flower, shield-badge, rounded-square, oval, ribbon-rosette, pencil-shaped and open-book frames; cheerful pastel palette (soft blue, mint, peach, lilac, sunny yellow) with tiny stars, pencils and books doodles' },
+      // 🧑 v735 (طلب عمران): ثيمات للشباب +12 — أسلوب «كول» ناضج، ممنوع الطفولي.
+      { k: /قيمنق|قيمنج|جيمنج|جيمر|بلايستيشن|اكس\s*بوكس|إكس\s*بوكس|فورتنايت|ألعاب\s*فيديو|العاب\s*فيديو|gaming|gamer|esport/i, teen: true, d: 'ESPORTS GAMING theme: game-controller, neon-hexagon, gaming-headset-badge, pixel-heart, level-up-arrow, victory-trophy, lightning-bolt, keyboard-key, joystick-shield, power-button-ring, XP-star and arcade-screen frames; dark navy, neon purple, electric cyan and lime palette with tiny pixels, controllers and lightning doodles' },
+      { k: /أنمي|انمي|مانجا|anime|manga/i, teen: true, d: 'ANIME MANGA theme: manga-panel frame, speed-lines-burst, katana-cross-badge, cherry-blossom-storm circle, shonen-power-aura ring, headband-banner, ramen-bowl, torii-gate-arch, lightning-scar emblem, scroll-frame, spiky-hair-silhouette badge and rising-sun-rays frames; ink black, crimson, white and gold palette with tiny sakura petals and action stars doodles' },
+      { k: /ستريت|سكيت|قرافيتي|جرافيتي|سنيكرز|street|skate|graffiti/i, teen: true, d: 'URBAN STREET theme: skateboard, graffiti-splash-tag, sneaker-badge, boombox, snapback-cap, spray-can, lightning-sticker, cassette-tape, headphones-ring, star-burst-patch, ticket-stub and vinyl-record frames; matte black, white, electric orange and teal palette with tiny paint drips and stars doodles' },
+      { k: /مغامر|طعوس|تخييم|قنص|رحلات|دباب|أوف\s*رود|اوف\s*رود|offroad|adventure|camp/i, teen: true, d: 'DESERT ADVENTURE theme: 4x4-offroad-truck, dune-buggy, mountain-peak-badge, compass-ring, camping-tent, campfire, binoculars, quad-bike, rope-knot-frame, canteen-flask, folded-map and eagle-wings-badge frames; sand, khaki, burnt-orange and deep-green palette with tiny tire tracks and desert stars doodles' },
+      { k: /أساطير|اساطير|ذئب|تنين|نمر\b|شعار|دروع|legend|dragon|wolf/i, teen: true, d: 'LEGENDARY EMBLEMS theme: wolf-head-crest, dragon-wing-arch, tiger-stripe-hexagon, phoenix-flame-badge, knight-shield, crossed-swords-ring, lion-crest, thunder-rune, dragon-scale-frame, claw-mark-slash, crescent-mountain emblem and royal-laurel ring frames; charcoal, steel-blue, crimson and antique-gold palette with tiny flames and rune marks doodles' },
+      // 🌸 v735: ميزة البنات — ثيمات راقية ناعمة.
+      { k: /بناتي|استاتيك|اسثتيك|إستاتيك|جورنال|راقي|ناعم|aesthetic|journal/i, girlx: true, d: 'SOFT AESTHETIC theme: satin-ribbon-bow arch, pearl-heart, iced-coffee-cup, journal-page frame, pressed-wildflower sprig, crescent-moon-and-stars, lace-edged oval, butterfly-hairpin badge, fluffy-cloud frame, vintage-postage-stamp edge, wax-seal medallion and sparkle-ring frames; cream, blush pink, sage green and soft gold palette with tiny hearts, stars and petals doodles' },
+      { k: /فاشن|موضة|موضه|ميك\s*اب|ميكب|مكياج|جلام|fashion|glam|makeup/i, girlx: true, d: 'GIRLY GLAM theme: quilted-handbag badge, oversized-bow frame, perfume-bottle, heart-sunglasses, vanity-mirror oval, nail-polish-bottle, pearl-necklace ring, shopping-bag, lipstick-kiss-mark badge, gemstone-hexagon, high-heel silhouette and boutique-window arch frames; rose pink, ivory, lilac and gold palette with tiny sparkles, bows and pearls doodles' },
     ];
     let theme = null;
     for (const t of THEMES) { if (t.k && t.k.test(hint)) { theme = t; break; } }
-    if (!theme) theme = THEMES[Math.floor(Math.random() * THEMES.length)];
+    if (!theme) {
+      // «فاجئني»: العشوائي يحترم العمر والجنس إن ذُكرا — وإلا يبقى على ثيمات الصغار.
+      const teenHint = /مراهق|شباب|ثانوي|إعدادي|اعدادي|متوسط|كبير|(?:1[2-9]|٢٠|20)\s*(?:سنه|سنة|عام)|teen/i.test(hint);
+      const girlHint = /بنت|بنات|بنيه|بنية|girl/i.test(hint);
+      let pool;
+      if (teenHint && girlHint) pool = THEMES.filter((t) => t.girlx);
+      else if (teenHint) pool = THEMES.filter((t) => t.teen);
+      else if (girlHint) pool = THEMES.filter((t) => t.girlx || /أميرة|يونيكورن|ورد|فراشة|فراش|ميلودي|كيتي|حلوى/.test(String(t.k)));
+      else pool = THEMES.filter((t) => !t.teen && !t.girlx);
+      if (!pool.length) pool = THEMES;
+      theme = pool[Math.floor(Math.random() * pool.length)];
+    }
     // تنويع إضافي: تخطيطات مختلفة كل مرة
     const LAYOUTS = ['a tidy grid of 12 small stickers (4 rows x 3 columns)', 'a tidy grid of 12 small stickers (3 rows x 4 columns, landscape-ish cells)', 'a playful staggered arrangement of 12 small stickers (rows slightly offset like a honeycomb)'];
     const layout = LAYOUTS[Math.floor(Math.random() * LAYOUTS.length)];
@@ -68,7 +88,12 @@ module.exports = async (req, res) => {
       return;
     }
 
-    let p = 'A printable sticker/stamp sheet for a school kid, vertical portrait page on a clean WHITE background, designed for home printing and scissor cutting.\n'
+    const audience = theme.teen
+      ? 'A printable sticker/stamp sheet for a TEENAGER (age 12+), vertical portrait page on a clean WHITE background, designed for home printing and scissor cutting. Art direction: bold modern cool style — absolutely NO babyish or childish elements.\n'
+      : theme.girlx
+        ? 'A printable sticker/stamp sheet for a girl, vertical portrait page on a clean WHITE background, designed for home printing and scissor cutting. Art direction: elegant dreamy girly aesthetic, soft and sophisticated.\n'
+        : 'A printable sticker/stamp sheet for a school kid, vertical portrait page on a clean WHITE background, designed for home printing and scissor cutting.\n';
+    let p = audience
       + 'The provided image is the child\'s REAL photo. STRICT RULE: the face must stay EXACTLY as photographed — same face, same features, same skin tone, same hair. Do NOT beautify, restyle, cartoonize or replace the face. You may neatly crop it into each sticker frame.\n'
       + 'Layout: ' + layout + ', evenly spaced with generous white gaps and a thin light-grey dashed cut line around every sticker.\n'
       + 'Every sticker features the child\'s photo inside a DIFFERENT frame — all 12 frames must be visibly different from each other. ' + theme.d + '. Doodles never cover the face.\n'

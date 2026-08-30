@@ -16110,7 +16110,7 @@ function __friendlyErr(e){
           text += '\n(ملاحظة للنظام: المستخدم أرفق صورة لهذا الإعلان — اجعلها صورة البطل باستخدام src="__USER_IMAGE__" بالضبط، والتفاصيل خارج الصورة حسب قالب OUTSIDE)';
         }
       }
-    } else if(text && cur.__stPending && (/^\s*([1-9]|1[0-9])\s*$/.test(text) || /فضاء|كواكب|صاروخ|ديناصور|دايناصور|أميرة|اميرة|برنسيس|ملكة|كرة|كوره|رياضة|رياضه|بحر|سمك|قرش|شاطئ|سيار|سباق|يونيكورن|قوس قزح|حيوان|غابة|باندا|ورد|زهور|فراش|تراث|صقر|روبوت|حلوى|حلويات|كيك|دونات|كلاسيكي|مدرسي كلاسيكي|كرومي|ماي ملدي|ميلودي|هالو كاتي|هيلو كيتي|كيتي|الدبب|دببة|فاجئني|عشوائي/i.test(text)) && text.length < 60){
+    } else if(text && cur.__stPending && (/^\s*([1-9]|1[0-9])\s*$/.test(text) || /فضاء|كواكب|صاروخ|ديناصور|دايناصور|أميرة|اميرة|برنسيس|ملكة|كرة|كوره|رياضة|رياضه|بحر|سمك|قرش|شاطئ|سيار|سباق|يونيكورن|قوس قزح|حيوان|غابة|باندا|ورد|زهور|فراش|تراث|صقر|روبوت|حلوى|حلويات|كيك|دونات|كلاسيكي|مدرسي كلاسيكي|كرومي|ماي ملدي|ميلودي|هالو كاتي|هيلو كيتي|كيتي|الدبب|دببة|قيمنق|قيمنج|جيمنج|جيمر|بلايستيشن|أنمي|انمي|مانجا|ستريت|سكيت|قرافيتي|جرافيتي|مغامر|طعوس|دباب|اوف رود|أوف رود|أساطير|اساطير|ذئب|تنين|بناتي|استاتيك|اسثتيك|فاشن|موضة|موضه|مكياج|فاجئني|عشوائي/i.test(text)) && text.length < 60){
       // 🏷️ v732: المستخدم اختار ثيم الطوابع من قائمة الاقتراحات
       const __sp = cur.__stPending; cur.__stPending = null;
       const __numMap = {1:'فضاء',2:'ديناصور',3:'أميرة',4:'كرة',5:'بحر',6:'سيارة سباق',7:'يونيكورن',8:'حيوانات',9:'ورد',10:'مدرسي كلاسيكي',11:'تراث صقر',12:'روبوت',13:'حلويات',14:'فراشة',15:'كرومي',16:'ماي ملدي',17:'هالو كاتي',18:'الدببة الثلاثة'};
@@ -16160,31 +16160,46 @@ function __friendlyErr(e){
       __stName = __stName.replace(__stCutRe,'').trim();
       __stSchool = __stSchool.replace(/\s*(?:و\s*)?(?:مادته|مادتها|مادة|ماده|المادة|الماده)(?=\s|$)[\s\S]*$/,'').trim();
       __stSubject = __stSubject.replace(/\s*(?:و\s*)?(?:مدرسته|مدرستها|مدرسة|مدرسه|المدرسة|المدرسه)(?=\s|$)[\s\S]*$/,'').trim();
-      if(!/فضاء|كواكب|صاروخ|ديناصور|دايناصور|أميرة|اميرة|برنسيس|ملكة|كرة|كوره|رياضة|رياضه|بحر|سمك|قرش|شاطئ|سيار|سباق|يونيكورن|قوس قزح|حيوان|غابة|باندا|ورد|زهور|فراش|تراث|صقر|روبوت|حلوى|حلويات|كيك|دونات|كلاسيكي|مدرسي كلاسيكي|كرومي|ماي ملدي|ميلودي|هالو كاتي|هيلو كيتي|كيتي|الدبب|دببة|فاجئني|عشوائي/i.test(text)){
+      if(!/فضاء|كواكب|صاروخ|ديناصور|دايناصور|أميرة|اميرة|برنسيس|ملكة|كرة|كوره|رياضة|رياضه|بحر|سمك|قرش|شاطئ|سيار|سباق|يونيكورن|قوس قزح|حيوان|غابة|باندا|ورد|زهور|فراش|تراث|صقر|روبوت|حلوى|حلويات|كيك|دونات|كلاسيكي|مدرسي كلاسيكي|كرومي|ماي ملدي|ميلودي|هالو كاتي|هيلو كيتي|كيتي|الدبب|دببة|قيمنق|قيمنج|جيمنج|جيمر|بلايستيشن|أنمي|انمي|مانجا|ستريت|سكيت|قرافيتي|جرافيتي|مغامر|طعوس|دباب|اوف رود|أوف رود|أساطير|اساطير|ذئب|تنين|بناتي|استاتيك|اسثتيك|فاشن|موضة|موضه|مكياج|فاجئني|عشوائي/i.test(text)){
         // 🎨 v734: ورقة ثيمات كاملة — overlay picker بدل نص مرقّم
         window.__stPickTheme = window.__stPickTheme || function(){
           return new Promise(function(rs){
-            var __themes=[
-              {k:'فضاء',e:'🚀'},{k:'ديناصور',e:'🦖'},{k:'أميرة',e:'👑'},
-              {k:'رياضة',e:'⚽'},{k:'بحر',e:'🌊'},{k:'سيارة سباق',e:'🏎️'},
-              {k:'يونيكورن',e:'🦄'},{k:'حيوانات',e:'🐼'},{k:'ورود',e:'🌸'},
-              {k:'تراث صقر',e:'🦅'},{k:'روبوتات',e:'🤖'},{k:'حلويات',e:'🍩'},
-              {k:'فراشات',e:'🦋'},{k:'مدرسي كلاسيكي',e:'📚'},
-              {k:'كرومي',e:'🎨'},{k:'ماي ملدي',e:'🐰'},{k:'هالو كاتي',e:'🎀'},{k:'الدببة الثلاثة',e:'🐻'}
+            /* v735 (طلب عمران): أقسام بالعمر والجنس — صغار / شباب +12 / بنات */
+            var __groups=[
+              { t:'👶 للصغار', th:[
+                {k:'فضاء',e:'🚀'},{k:'ديناصور',e:'🦖'},{k:'أميرة',e:'👑'},
+                {k:'رياضة',e:'⚽'},{k:'بحر',e:'🌊'},{k:'سيارة سباق',e:'🏎️'},
+                {k:'يونيكورن',e:'🦄'},{k:'حيوانات',e:'🐼'},{k:'ورود',e:'🌸'},
+                {k:'تراث صقر',e:'🦅'},{k:'روبوتات',e:'🤖'},{k:'حلويات',e:'🍩'},
+                {k:'فراشات',e:'🦋'},{k:'مدرسي كلاسيكي',e:'📚'},
+                {k:'كرومي',e:'🎨'},{k:'ماي ملدي',e:'🐰'},{k:'هالو كاتي',e:'🎀'},{k:'الدببة الثلاثة',e:'🐻'}
+              ]},
+              { t:'🧑 شباب +12', th:[
+                {k:'قيمنق',e:'🎮'},{k:'أنمي',e:'⚔️'},{k:'ستريت',e:'🛹'},
+                {k:'مغامرات وطعوس',e:'🏜️'},{k:'أساطير',e:'🐺'}
+              ]},
+              { t:'🌸 بنات', th:[
+                {k:'بناتي راقي',e:'🎀'},{k:'فاشن',e:'👜'}
+              ]}
             ];
             var ov=document.createElement('div');
             ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.76);backdrop-filter:blur(7px);display:flex;align-items:center;justify-content:center;padding:12px;';
             var cards='';
-            __themes.forEach(function(t){
-              cards+='<button class="__stCard" data-k="'+t.k+'" style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);border-radius:16px;padding:13px 6px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:7px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">'
-                +'<span style="font-size:34px;line-height:1.1">'+t.e+'</span>'
-                +'<span style="font-size:11px;color:#ddd;font-weight:600;text-align:center;line-height:1.3">'+t.k+'</span>'
-                +'</button>';
+            __groups.forEach(function(g){
+              cards+='<div style="font-size:12.5px;font-weight:700;color:#c9b3ff;margin:4px 2px 8px;text-align:right;">'+g.t+'</div>'
+                +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:13px;">';
+              g.th.forEach(function(t){
+                cards+='<button class="__stCard" data-k="'+t.k+'" style="border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);border-radius:16px;padding:13px 6px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:7px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">'
+                  +'<span style="font-size:34px;line-height:1.1">'+t.e+'</span>'
+                  +'<span style="font-size:11px;color:#ddd;font-weight:600;text-align:center;line-height:1.3">'+t.k+'</span>'
+                  +'</button>';
+              });
+              cards+='</div>';
             });
             ov.innerHTML='<div dir="rtl" style="width:100%;max-width:430px;max-height:87vh;overflow-y:auto;background:#18181f;border:1px solid rgba(255,255,255,.12);border-radius:22px;padding:18px;color:#fff;font-family:inherit;box-shadow:0 24px 70px rgba(0,0,0,.7);">'
               +'<div style="font-size:17px;font-weight:700;margin-bottom:3px;text-align:center;">🏷️ اختر ثيم الطوابع</div>'
               +'<div style="font-size:12px;opacity:.55;margin-bottom:14px;text-align:center;">اضغط وأبدأ التصميم مباشرة</div>'
-              +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:13px;">'+cards+'</div>'
+              +cards
               +'<button id="__stSurp" style="width:100%;padding:13px;border-radius:14px;border:1px solid rgba(168,130,255,.4);background:rgba(168,130,255,.1);color:#c9b3ff;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:9px;touch-action:manipulation;">✨ فاجئني — اختر لي</button>'
               +'<button id="__stCnc" style="width:100%;padding:10px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:transparent;color:#777;font-size:13px;cursor:pointer;touch-action:manipulation;">إلغاء</button>'
               +'</div>';
