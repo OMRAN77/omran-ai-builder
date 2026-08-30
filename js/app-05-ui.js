@@ -23,6 +23,10 @@ function omranLikelyApp(){
     if(localStorage.getItem('aiapp_store')) return true;
     if(window.matchMedia && matchMedia('(display-mode: standalone)').matches) return true;
     if(navigator.standalone === true) return true;
+    /* v-cap-detect (شكوى عمران «PDF عند + ما يشتغل» على TestFlight): غلاف
+       كاباسيتور يحمّل الموقع الحي بلا أي علامة — جسره المحقون هو العلامة. */
+    if(window.Capacitor && (window.Capacitor.isNative === true || (typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()))) return true;
+    if(window.webkit && window.webkit.messageHandlers && (window.webkit.messageHandlers.omranShare || window.webkit.messageHandlers.omranPdf || window.webkit.messageHandlers.bridge)) return true;
   }catch(e){ __swallow(e, 'share:app-detect'); }
   return false;
 }
@@ -57,6 +61,13 @@ async function omranSaveBlob(blob, filename){
   if(omranLikelyApp() && (blob.type === 'application/pdf' || /\.pdf$/i.test(filename || ''))){
     try{
       const url = await omranBlobToServerLink(blob, filename);
+      /* v-cap-browser: داخل غلاف كاباسيتور القديم افتح الرابط بعارض النظام
+         (SFSafariViewController) — قبل window.open حتى لا يُبحر التطبيق نفسه. */
+      try{
+        const cap = window.Capacitor;
+        const br = cap && cap.Plugins && cap.Plugins.Browser;
+        if(br && typeof br.open === 'function'){ await br.open({ url: url }); return; }
+      }catch(e){ __swallow(e, 'share:cap-browser'); }
       const w = window.open(url, '_blank');
       /* v-pdf-noleave (شكوى ٢٩ أغسطس: «تحميل PDF يرجّعني لصفحة المحادثة»):
          داخل التطبيق المثبّت window.open يرجع null، وكان location.href
