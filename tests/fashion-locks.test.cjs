@@ -617,4 +617,16 @@ console.log('  ✓ v-style-honor: الخط واللون والموضع المط�
 }
 console.log('  ✓ v-no-kickout: العودة للتطبيق لا تطرد المستخدم — لا reload بعد النشر');
 
+// 51 v-edit-rescue + v-edit-honest: تعديل الصور كان بلا خط إنقاذ (انشغال
+// Gemini = فشل كل تعديل والسقوط على شريط كانفس «غش»). الإنقاذ عبر
+// images/edits، وفشل الاستبدال يصارح المستخدم بدل الشريط.
+{
+  const mi = fs.readFileSync(path.join(__dirname, '../api/_lib/maha-image.js'), 'utf8');
+  assert.ok(mi.includes('v-edit-rescue') && mi.includes('images/edits'), 'التعديل له خط إنقاذ gpt-image-1');
+  assert.ok(!mi.includes('if (editImageBase64) return null;'), 'الإنقاذ لم يعد يستثني التعديل');
+  const at9c = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
+  assert.ok(at9c.includes('v-edit-honest') && at9c.includes('__finalB64 && __nameSwap'), 'فشل الاستبدال مصارحة لا شريط');
+}
+console.log('  ✓ v-edit-rescue: تعديل الصور له إنقاذ — والاستبدال الفاشل يصارح لا يغش');
+
 console.log('fashion locks tests passed');

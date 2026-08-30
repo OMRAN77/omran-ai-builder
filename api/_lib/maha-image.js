@@ -212,9 +212,32 @@ module.exports = async (req, res) => {
     const rescuePromptText = (parts.find(function (p) { return p && p.text; }) || {}).text || cleanPrompt;
     const rescueAspect = imageConfig.aspectRatio || '3:4';
     async function openaiRescueImage() {
-      if (editImageBase64) return null;
       const okey = process.env.OPENAI_API_KEY;
       if (!okey) return null;
+      /* v-edit-rescue (لقطة بطاقة التجنيد «غش»): التعديل كان بلا خط إنقاذ —
+         إذا انشغل Gemini فشل كل تعديل صورة في المحادثة وسقط العميل على شريط
+         الكانفس. gpt-image-1 يعدل عبر images/edits بنفس الصورة والتعليمة. */
+      if (editImageBase64) {
+        try {
+          const bytes = Buffer.from(editImageBase64, 'base64');
+          const form = new FormData();
+          form.append('model', 'gpt-image-1');
+          form.append('prompt', String(rescuePromptText).slice(0, 3800));
+          form.append('size', 'auto');
+          form.append('quality', 'medium');
+          form.append('image', new Blob([bytes], { type: editMimeType || 'image/jpeg' }), 'photo.jpg');
+          const r = await fetch('https://api.openai.com/v1/images/edits', {
+            method: 'POST',
+            headers: { Authorization: 'Bearer ' + okey },
+            signal: AbortSignal.timeout(120000),
+            body: form,
+          });
+          const d = await r.json().catch(function () { return null; });
+          if (!r.ok) { console.error('[maha-image] edit-rescue status=' + r.status + ' ' + String((d && d.error && d.error.message) || '').slice(0, 120)); return null; }
+          const b64 = d && d.data && d.data[0] && d.data[0].b64_json;
+          return b64 || null;
+        } catch (e) { console.error('[maha-image] edit-rescue error: ' + (e && e.message)); return null; }
+      }
       try {
         const size = rescueAspect === '16:9' ? '1536x1024' : (rescueAspect === '1:1' ? '1024x1024' : '1024x1536');
         const r = await fetch('https://api.openai.com/v1/images/generations', {
