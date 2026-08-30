@@ -411,7 +411,7 @@
     '- راعِ العادات الخليجية: مجلس رجال منفصل بمدخله، ومطبخ داخلي وخارجي إن كانت المساحة تسمح.',
   ].join('\n');
 
-  window.omranFloorplan = { renderPlan: renderPlan, extractSpec: extractSpec, PROMPT: PROMPT, renderFloor: renderFloor };
+  window.omranFloorplan = { renderPlan: renderPlan, extractSpec: extractSpec, PROMPT: PROMPT, renderFloor: renderFloor, uiLng: uiLng, l10nFor: l10nFor };
 })();
 
 /* ───────── الواجهة من نفس المواصفات ─────────
@@ -670,7 +670,9 @@
 
   btn.addEventListener('click', function () {
     var label = btn.textContent;
-    var TT = l10nFor(uiLng()); /* v-cons-i18n: الحالات بلغة التطبيق */
+    /* v-l10n-scope-fix (لقطة عمران TestFlight: ReferenceError l10nFor): الدالتان
+       معرفتان في وحدة الرسم — تُقرآن من omranFloorplan لا من هذا النطاق. */
+    var TT = (FP && FP.l10nFor && FP.uiLng) ? FP.l10nFor(FP.uiLng()) : null;
     function ttt(k, arv){ return (TT && TT[k]) || arv; }
     btn.disabled = true;
     btn.textContent = ttt('prep', '⏳ يجهّز المخطط…');
