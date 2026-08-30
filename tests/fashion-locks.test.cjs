@@ -590,8 +590,8 @@ console.log('  ✓ v-login-done: سفاري يقول «ارجع للتطبيق»
 // و«زخرف» = ديواني، ونية تغيير الاسم تتحول لأمر استبدال للرسّام.
 {
   const it8 = fs.readFileSync(path.join(__dirname, '../js/app-08-image-text.js'), 'utf8');
-  assert.ok(it8.includes('v-name-swap') && /يكون\|خليه/.test(it8), 'قائد «ويكون» يفصل ذيل التنسيق عن النص');
-  assert.ok(it8.includes("return 'diwani'; /* v-name-swap"), '«مزخرف» يختار الديواني');
+  assert.ok(/يكون\|خليه/.test(it8), 'قائد «ويكون» يفصل ذيل التنسيق عن النص');
+  assert.ok(it8.includes('v-font-pretty'), '«مزخرف» وأخواتها تختار الديواني');
   const at9 = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
   assert.ok(at9.includes('__nameSwap') && at9.includes('REPLACE that existing name'), 'تغيير الاسم = استبدال يمحو القديم');
   assert.ok(at9.includes('__explicitStyle && !__nameSwap'), 'الاستبدال لا يسقط لكانفس لا يمحو');
@@ -669,5 +669,20 @@ console.log('  ✓ v-logo-soft: لمس الشعار رجوع ناعم — لا �
   assert.ok(!at9f.includes("fonts.load('bold 40px"), 'الطلب بلا bold — الخطوط الزخرفية وزن 400');
 }
 console.log('  ✓ v-font-real: الخطوط المزخرفة تظهر فعلًا — لا رسم قبل وصول الخط');
+
+// 56 v-font-pretty (طلب عمران): «مزخرف/جميل/مرتب/حلو» وأخواتها = الخط
+// المزخرف (ديواني) تلقائيًا لا العادي، وتُقص من ذيل التنسيق لا تُطبع.
+{
+  const it8b = require('../js/app-08-image-text.js');
+  const r1 = it8b.parseImageTextSpec('اكتب سيف بخط مرتب');
+  assert.ok(r1.exactText === 'سيف' && r1.fontKey === 'diwani', '«مرتب» = ديواني والنص نظيف');
+  const r2 = it8b.parseImageTextSpec('اكتب سيف بخط جميل وفخم');
+  assert.ok(r2.exactText === 'سيف' && r2.fontKey === 'diwani', '«جميل وفخم» = ديواني');
+  const r3 = it8b.parseImageTextSpec('اكتبي عمران');
+  assert.ok(r3.exactText === 'عمران' && r3.fontKey === 'default', 'بلا وصف = الخط العادي كما هو');
+  const r4 = it8b.parseImageTextSpec('اكتب سيف بخط كوفي');
+  assert.ok(r4.fontKey === 'kufi', 'الخط المسمى يغلب الوصف الجمالي');
+}
+console.log('  ✓ v-font-pretty: الكلمات الجمالية كلها تودي للخط المزخرف');
 
 console.log('fashion locks tests passed');

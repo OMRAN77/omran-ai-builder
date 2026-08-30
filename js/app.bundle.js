@@ -11041,7 +11041,8 @@ async function postWithConfirm(url, payload){
     if(/عثماني|othmani/i.test(source)) return 'othmani';
     if(/نسخ\s*نوتو|نوتو|noto\s*naskh/i.test(source)) return 'naskh2'; if(/ثلث|thuluth/i.test(source)) return 'thuluth'; if(/فارسي|نستعليق|farsi|nastaliq/i.test(source)) return 'farsi'; if(/مصحف|قرآني|quran/i.test(source)) return 'quran';
     if(/نسخ|naskh/i.test(source)) return 'naskh';
-    if(/زخرف|مزخرف|decorat/i.test(source)) return 'diwani'; /* v-name-swap: «مزخرف» = أقرب خطوطنا زخرفةً */
+    /* v-font-pretty (طلب عمران): كل كلمة جمالية = الخط المزخرف، لا العادي */
+    if(/زخرف|مزخرف|جميل|حلو[ةه]?|مرتب|أنيق|انيق|راقي|فخم|ملكي|مميز|رائع|فني|إبداعي|ابداعي|جذاب|beautiful|fancy|elegant|stylish|decorat|ornate|pretty|nice|royal|calligraph/i.test(source)) return 'diwani';
     return 'default';
   }
   function textColor(source){
@@ -11182,7 +11183,7 @@ async function postWithConfirm(url, payload){
     }else{
       /* v-name-swap: «ويكون بخط حلو وزخرف» ذيل تنسيق لا جزء من النصّ —
          نسمح بقائد (ويكون/خليه) وبأوصاف زخرفة متلاحقة بعد اسم الخط. */
-      const styleTail = rest.match(/\s+(?:،|,)?\s*(?:و?\s*(?:يكون|خليه|خله|اجعله)\s+)?(?:(?:بخط|بالخط)\s+\S+(?:\s+و?(?:م?زخرف[ةه]?|حلو[ةه]?|جميل[ةه]?|أنيق[ةه]?|انيق[ةه]?|ذهبي(?:ة)?|أبيض|ابيض|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|بيج|gold|white|black|green|blue|red|beige))*|(?:بلون|باللون|لون\s+النص)\s+\S+|(?:واجعل|اجعل|وخلي|خلي)\s+النص\s+(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|الوسط|المنتصف|الأسفل|الاسفل))(?:\s+(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|فوق|الوسط|المنتصف|المركز|الأسفل|الاسفل))?\s*$/i);
+      const styleTail = rest.match(/\s+(?:،|,)?\s*(?:و?\s*(?:يكون|خليه|خله|اجعله)\s+)?(?:(?:بخط|بالخط)\s+\S+(?:\s+و?(?:م?زخرف[ةه]?|حلو[ةه]?|جميل[ةه]?|أنيق[ةه]?|انيق[ةه]?|مرتب[ةه]?|راقي[ةه]?|فخم[ةه]?|رائع[ةه]?|مميز[ةه]?|ملكي[ةه]?|فني[ةه]?|جذاب[ةه]?|ذهبي(?:ة)?|أبيض|ابيض|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|بيج|gold|white|black|green|blue|red|beige))*|(?:بلون|باللون|لون\s+النص)\s+\S+|(?:واجعل|اجعل|وخلي|خلي)\s+النص\s+(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|الوسط|المنتصف|الأسفل|الاسفل))(?:\s+(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|فوق|الوسط|المنتصف|المركز|الأسفل|الاسفل))?\s*$/i);
       if(styleTail && styleTail.index >= 0){ suffix = rest.slice(styleTail.index); rest = rest.slice(0, styleTail.index); }
       styleSource = suffix;
       // ذيل «على الصورة / فوق الصورة» ليس جزءًا من النصّ المكتوب.
@@ -16634,7 +16635,8 @@ function __showImgLoading(el, ar, en){
              الخطوط المحلية بعينها — الكانفس يكتب بخطه المطلوب على صورته
              نفسها بلا أي توليد (رسّام الذكاء يتجاهل اختيار الخط ويعيد رسم
              المشهد أحيانًا — لقطة الطفل المستبدل). */
-          const __wantsNamedFont = /(ديواني|رقع[ةه]|كوفي|عثماني|نسخ|ثلث|فارسي|نستعليق|مصحف|قرآني|diwani|ruqaa|kufi|othmani|naskh|thuluth|farsi|nastaliq|quran)/i.test(text || '');
+          /* v-font-pretty: الكلمات الجمالية أيضًا = رسم محلي بخط مزخرف مضمون */
+          const __wantsNamedFont = /(ديواني|رقع[ةه]|كوفي|عثماني|نسخ|ثلث|فارسي|نستعليق|مصحف|قرآني|diwani|ruqaa|kufi|othmani|naskh|thuluth|farsi|nastaliq|quran|مزخرف|زخرف|بخط\s+(?:جميل|حلو|مرتب|أنيق|انيق|راقي|فخم|رائع|مميز|ملكي)|beautiful|fancy|elegant|ornate|decorated)/i.test(text || '');
           /* v-name-swap (لقطة بطاقة التجنيد: «غيري الاسم واكتبي سيف» كتب الجملة
              فوق البطاقة وترك «أحمد») — نية تغيير الاسم/النص الموجود = أمر
              استبدال للرسّام: يمحو القديم ويكتب الجديد في مكانه بنفس الأسلوب. */
