@@ -252,8 +252,28 @@
           if(!ev.data || ev.data.type !== 'omran-reload') return;
           if(Date.now() - __swReloadedAt < 3000) return;
           __swReloadedAt = Date.now();
-          sessionStorage.setItem('omranHealed', '1');
-          location.reload();
+          /* v653 — هذه القناة كانت تعيد التحميل فورًا ولو كان الردّ يُكتب،
+             فيختفي الردّ. الآن تُؤجَّل حتّى يغادر المستخدم الشاشة ولا شيء جارٍ. */
+      var __v653Busy = function(){
+        try{
+          var c = (typeof getCurrent === 'function') ? getCurrent() : null;
+          if(c && c.messages && c.messages.some(function(m){ return m && m._loading; })) return true;
+          var pr = document.getElementById('prompt');
+          if(pr && pr.value && pr.value.trim()) return true;
+        }catch(e){ return true; }
+        return false;
+      };
+          var __v653Go = function(){
+            try{ sessionStorage.setItem('omranHealed', '1'); }catch(e){ /* guard-ok */ }
+            location.reload();
+          };
+          if(document.visibilityState === 'hidden' && !__v653Busy()) return __v653Go();
+          document.addEventListener('visibilitychange', function __v653OnHide(){
+            if(document.visibilityState === 'hidden' && !__v653Busy()){
+              document.removeEventListener('visibilitychange', __v653OnHide);
+              __v653Go();
+            }
+          });
         }catch(e){ /* guard-ok: قناة الإنقاذ لا تكسر شيئًا */ }
       });
     }

@@ -336,8 +336,8 @@ html.mobile-ui #composerRow > #btnMahaDock .mahaGlyph{font-size:24px; transform:
 }
 html.mobile-ui #composerRow{gap:6px;}
 html.mobile-ui #composerRow > #btnMahaDock{width:48px; border-radius:16px !important;}
-#composerBox:not(.typing) > #btnSend{ display:none !important; }
-#composerBox.typing > #btnSend{ animation:morphIn .16s ease; }
+#composerBox:not(.typing) > #btnSend{ opacity:.55; }
+#composerBox.typing > #btnSend{ opacity:1; animation:morphIn .16s ease; }
 @keyframes morphIn{ from{ transform:scale(.6); opacity:0; } to{ transform:scale(1); opacity:1; } }
 
 /* ===== v-agent-settings — بطاقة زر «الوكيل» داخل قسم الإعدادات ===== */

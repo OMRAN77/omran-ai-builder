@@ -1,4 +1,4 @@
-const CACHE_NAME = 'omran-ai-builder-uniform-black-9811b047';
+const CACHE_NAME = 'omran-ai-builder-uniform-black-41dfefc0';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -75,7 +75,14 @@ self.addEventListener('activate', (event) => {
     if (__swIsUpdate) {
       const clients = await self.clients.matchAll({ type: 'window' });
       for (const c of clients) {
-        try { await c.navigate(c.url); } catch (e) { /* iOS Safari لا يدعم client.navigate إطلاقًا */ }
+        /* v653 — الملاحة القسريّة كانت تمسح ردًّا يُكتب أمام المستخدم. الآن
+           النافذة المرئيّة لا تُقاطَع: تصلها الرسالة فقط وهي تقرّر اللحظة
+           الآمنة. النوافذ المخفيّة تُحدَّث فورًا كما كان. */
+        var __vis = 'visible';
+        try { __vis = c.visibilityState || 'visible'; } catch (e) { /* بعض المتصفّحات لا تكشفها */ }
+        if (__vis !== 'visible') {
+          try { await c.navigate(c.url); } catch (e) { /* iOS Safari لا يدعم client.navigate إطلاقًا */ }
+        }
         // v-boot-watchdog3: قناة الرسائل تعمل على iOS — selfdiag (يُحمَّل مبكرًا
         // حتى في صفحة نصف معطوبة) يستقبلها ويعيد التحميل فورًا.
         try { c.postMessage({ type: 'omran-reload' }); } catch (e) { /* احتياط فقط */ }

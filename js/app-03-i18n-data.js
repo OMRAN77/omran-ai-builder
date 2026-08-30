@@ -1918,3 +1918,7 @@ Style (the owner's fingerprint — every reply): a warm, genuinely enthusiastic 
     emailAsst_addingEvent: "Adding event…", emailAsst_eventAdded: "✅ Added to your calendar", emailAsst_calReauth: "Reconnect Gmail to allow calendar access", emailAsst_voiceLoading: "🔊 Preparing voice summary…", emailAsst_voiceEmpty: "No emails to summarize.", emailAsst_urgent: "🔴 Urgent", emailAsst_normal: "🟡 Normal", emailAsst_low: "⚪ Low",
   }
 };window.I18N = I18N;
+/* v649 — لوحة المحفظة التعليميّة (كانت عربيّة ثابتة في كلّ اللغات) */
+Object.assign(I18N.ar, {"pfGuestTitle":"💼 المحفظة التعليمية","pfGuestIntro":"100 ألف افتراضية تتداول بها بأسعار السوق الحقيقية وتنافس بقية المستخدمين 🏆","pfGuestLogin":"سجّل الدخول لبدء محفظتك — تقدمك يُحفظ في حسابك.","pfLoadingBox":"⏳ نجهز محفظتك…","pfLoadFail":"تعذر تحميل المحفظة"});
+Object.assign(I18N.en, {"pfGuestTitle":"💼 Practice Portfolio","pfGuestIntro":"100k virtual — trade at real market prices and compete with everyone else 🏆","pfGuestLogin":"Sign in to start your portfolio — your progress is saved to your account.","pfLoadingBox":"⏳ Preparing your portfolio…","pfLoadFail":"Couldn't load the portfolio"});
+/* v650 */ window.__bT=function(a,e){try{var L=localStorage.getItem('aiapp_lang')||'ar';var L2=(typeof lang!=='undefined'&&lang)?String(lang):L;L=L2||'ar';if(L==='ar')return a;if(L==='en')return e;var d=window.__BI&&window.__BI[L];if(d&&d[e])return d[e];}catch(_){ /* guard-ok: label lookup is cosmetic — any failure falls back to the English label below. */ }return e;};

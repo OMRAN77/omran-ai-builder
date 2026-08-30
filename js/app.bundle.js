@@ -4194,6 +4194,10 @@ Style (the owner's fingerprint — every reply): a warm, genuinely enthusiastic 
     emailAsst_addingEvent: "Adding event…", emailAsst_eventAdded: "✅ Added to your calendar", emailAsst_calReauth: "Reconnect Gmail to allow calendar access", emailAsst_voiceLoading: "🔊 Preparing voice summary…", emailAsst_voiceEmpty: "No emails to summarize.", emailAsst_urgent: "🔴 Urgent", emailAsst_normal: "🟡 Normal", emailAsst_low: "⚪ Low",
   }
 };window.I18N = I18N;
+/* v649 — لوحة المحفظة التعليميّة (كانت عربيّة ثابتة في كلّ اللغات) */
+Object.assign(I18N.ar, {"pfGuestTitle":"💼 المحفظة التعليمية","pfGuestIntro":"100 ألف افتراضية تتداول بها بأسعار السوق الحقيقية وتنافس بقية المستخدمين 🏆","pfGuestLogin":"سجّل الدخول لبدء محفظتك — تقدمك يُحفظ في حسابك.","pfLoadingBox":"⏳ نجهز محفظتك…","pfLoadFail":"تعذر تحميل المحفظة"});
+Object.assign(I18N.en, {"pfGuestTitle":"💼 Practice Portfolio","pfGuestIntro":"100k virtual — trade at real market prices and compete with everyone else 🏆","pfGuestLogin":"Sign in to start your portfolio — your progress is saved to your account.","pfLoadingBox":"⏳ Preparing your portfolio…","pfLoadFail":"Couldn't load the portfolio"});
+/* v650 */ window.__bT=function(a,e){try{var L=localStorage.getItem('aiapp_lang')||'ar';var L2=(typeof lang!=='undefined'&&lang)?String(lang):L;L=L2||'ar';if(L==='ar')return a;if(L==='en')return e;var d=window.__BI&&window.__BI[L];if(d&&d[e])return d[e];}catch(_){ /* guard-ok: label lookup is cosmetic — any failure falls back to the English label below. */ }return e;};
 /* v424: أساس الاحتياط للّغات. سبعة ملفّات لغة ناقصة (٣٠ مفتاحًا من ٧٩٦) كانت
    تُظهر العربية لمن لا يقرأها. الإنجليزية أساسٌ أصدق، ولغة الملفّ تبقى فوقه.
    العربية والإنجليزية تُعادان كما هما — لا دمج ولا كلفة على الجمهور الأوّل. */
@@ -4298,8 +4302,14 @@ function applyLanguage(){
   const dict = window.__i18nDict ? window.__i18nDict(lang) : (I18N[lang] || I18N.en || I18N.ar);
   try{ if(window.__syncBrandTitle) window.__syncBrandTitle(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#5"); }
   try{ if(window.__tickerRelabel) window.__tickerRelabel(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#tick"); }
+  /* v655 — أسماء أزرار المزوّدين تتبع اللغة (تُستدعى ثانيةً بعد وصول ملفّ
+     اللغة الكسول عبر applyLanguage نفسها). */
+  try{ if(typeof relabelProviders === 'function') relabelProviders(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#prov"); }
   document.documentElement.lang = lang;
-  document.documentElement.dir = dict.dir;
+  /* v652 — الأردو كانت تنقلب ltr لحظة ثمّ ترجع rtl (الشعار يقفز عرض الشاشة):
+     ملفّات اللغات الكسولة بلا مفتاح dir، فحتّى وصول ur.js يأتي القاموس
+     الاحتياطيّ الإنجليزيّ ومعه ltr. الاتّجاه صفة لغة لا صفة قاموس. */
+  document.documentElement.dir = (lang === 'ar' || lang === 'ur') ? 'rtl' : (dict.dir || 'ltr');
   if (dict.pageTitle && dict.pageTitle.trim()) document.title = dict.pageTitle;
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const raw = el.getAttribute('data-i18n');
@@ -7189,6 +7199,28 @@ function initProvDropdown(){
   if(search){ search.addEventListener('input', () => provDDFilter(search.value)); search.onclick = (e) => e.stopPropagation(); }
   provDDUpdateButton();
 }
+/* v655 — أسماء المزوّدين (الكينج/السريع/العميق) كانت تُكتب مرّة واحدة عند
+   البناء فتتجمّد بلغة تلك اللحظة: عربيّة عند تبديل اللغة بلا تحديث،
+   وإنجليزيّة في اللغات الكسولة لأنّ الشريط يُبنى قبل وصول ملفّ اللغة.
+   الآن تُعاد تسميتها في كلّ تطبيق للّغة. */
+function relabelProviders(){
+  try{
+    document.querySelectorAll('#providerGridCells .prov-cell').forEach(cell => {
+      const lbl = functionalLabel(cell.dataset.provider);
+      const nm = cell.querySelector('.prov-name');
+      if(nm) nm.textContent = lbl;
+      cell.title = lbl;
+    });
+    document.querySelectorAll('#providerStripMobile .prov-chip-m').forEach(chip => {
+      const lbl = functionalLabel(chip.dataset.provider);
+      const nm = chip.querySelector('span');
+      if(nm) nm.textContent = lbl;
+      chip.title = lbl;
+    });
+    if(typeof provDDUpdateButton === 'function') provDDUpdateButton();
+  }catch(e){ __swallow(e, "ui:app-05-ui#relabel"); }
+}
+try{ window.relabelProviders = relabelProviders; }catch(_){ /* guard-ok — تصدير اختياري، فشله لا يعطل الشريط */ }
 function updateProviderQuickBarActive(){
   const current = localStorage.getItem('aiapp_provider') || 'claude';
   document.querySelectorAll('.prov-cell, .prov-chip-m').forEach(el => {
@@ -18014,11 +18046,37 @@ if('serviceWorker' in navigator){
         if(document.visibilityState === 'visible') reg.update().catch(() => {});
       });
       // If a new worker takes control (after an update), the page it served is stale — reload once.
+      /* v653 — «الجواب يطلع ومرّة وحدة يختفي» (شكوى المالك ٢٩ أغسطس): بعد أيّ
+         نشر يتولّى العامل الجديد فتُعاد الصفحة فورًا ولو كان الردّ يُكتب —
+         فيُمسح الردّ ولا يعود. مقيس حيًّا: ردّ ٤٨٦ حرفًا اختفى ولم يعد خلال ٣٥
+         ثانية. الآن: لا تُقاطَع صفحة مرئيّة أبدًا — الإعادة تُؤجَّل إلى أوّل
+         لحظة يغادر فيها المستخدم الشاشة ولا شيء جارٍ. وأوّل تسجيل للعامل لا
+         يستحقّ إعادة أصلًا (الصفحة أحدث منه). */
       let refreshedOnce = false;
+      const __hadController = !!navigator.serviceWorker.controller;
+      const __busyNow = () => {
+        try{
+          const c = (typeof getCurrent === 'function') ? getCurrent() : null;
+          if(c && c.messages && c.messages.some(m => m && m._loading)) return true;
+          const pr = document.getElementById('prompt');
+          if(pr && pr.value && pr.value.trim()) return true;
+        }catch(e){ return true; }
+        return false;
+      };
+      const __reloadNow = () => { if(refreshedOnce) return; refreshedOnce = true; window.location.reload(); };
+      window.__omranReloadWhenSafe = () => {
+        if(document.visibilityState === 'hidden' && !__busyNow()) return __reloadNow();
+        document.addEventListener('visibilitychange', function __onHide(){
+          if(document.visibilityState === 'hidden' && !__busyNow()){
+            document.removeEventListener('visibilitychange', __onHide);
+            __reloadNow();
+          }
+        });
+      };
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if(refreshedOnce) return;
-        refreshedOnce = true;
-        window.location.reload();
+        if(!__hadController) return; // أوّل تسجيل — الصفحة أحدث من العامل
+        window.__omranReloadWhenSafe();
       });
     }).catch(() => {});
   });
@@ -18880,6 +18938,7 @@ function openShareModal(project){
   if(!modal || !btnOpen) return;
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function isOwnerAccount(){
     const u = (typeof authGet === 'function') ? (authGet('aiapp_username') || '') : '';
     const key = String(u).trim().toLowerCase();
@@ -19043,20 +19102,20 @@ function openShareModal(project){
       if(!wrap){ resolve(scenes); return; }
       const overlay = document.createElement('div');
       overlay.style.cssText = 'position:absolute;inset:0;z-index:20;background:var(--bg,#111);overflow-y:auto;padding:16px;border-radius:inherit;';
-      let html = `<h4 style="margin:0 0 10px;text-align:center;">📋 ${isEn() ? 'Review Scenes' : 'راجع مشاهد الفيلم'}</h4>`;
-      html += `<p style="font-size:12px;color:var(--muted);margin-bottom:10px;">${isEn() ? 'Edit or delete scenes before generating. Each scene = 1 video credit.' : 'عدّل أو احذف أي مشهد قبل البدء — كل مشهد = كريدت واحد.'}</p>`;
+      let html = `<h4 style="margin:0 0 10px;text-align:center;">📋 ${bT('راجع مشاهد الفيلم','Review Scenes')}</h4>`;
+      html += `<p style="font-size:12px;color:var(--muted);margin-bottom:10px;">${bT('عدّل أو احذف أي مشهد قبل البدء — كل مشهد = كريدت واحد.','Edit or delete scenes before generating. Each scene = 1 video credit.')}</p>`;
       scenes.forEach((sc, i) => {
         html += `<div class="sp-scene" data-idx="${i}" style="margin-bottom:10px;border:1px solid rgba(139,92,246,.35);border-radius:8px;padding:10px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <b style="font-size:12px;">${isEn() ? 'Scene' : 'مشهد'} ${i+1}</b>
-            <button type="button" class="sp-del" style="background:rgba(239,68,68,.15);border:none;color:#ef4444;border-radius:6px;padding:2px 10px;cursor:pointer;font-size:12px;">${isEn() ? 'Remove' : 'حذف'}</button>
+            <b style="font-size:12px;">${bT('مشهد','Scene')} ${i+1}</b>
+            <button type="button" class="sp-del" style="background:rgba(239,68,68,.15);border:none;color:#ef4444;border-radius:6px;padding:2px 10px;cursor:pointer;font-size:12px;">${bT('حذف','Remove')}</button>
           </div>
           <textarea rows="2" class="sp-txt" style="width:100%;font-size:12px;resize:none;box-sizing:border-box;">${(sc.visual||'').replace(/</g,'&lt;')}</textarea>
         </div>`;
       });
       html += `<div style="display:flex;gap:10px;justify-content:center;margin-top:12px;">
-        <button type="button" id="spCancel" style="padding:8px 20px;border-radius:10px;background:rgba(239,68,68,.15);color:#ef4444;border:none;cursor:pointer;">${isEn() ? '❌ Cancel' : '❌ إلغاء'}</button>
-        <button type="button" id="spGo" style="padding:8px 20px;border-radius:10px;background:rgba(139,92,246,.8);color:#fff;border:none;cursor:pointer;font-weight:bold;">${isEn() ? '✨ Generate' : '✨ ابدأ التوليد'}</button>
+        <button type="button" id="spCancel" style="padding:8px 20px;border-radius:10px;background:rgba(239,68,68,.15);color:#ef4444;border:none;cursor:pointer;">${bT('❌ إلغاء','❌ Cancel')}</button>
+        <button type="button" id="spGo" style="padding:8px 20px;border-radius:10px;background:rgba(139,92,246,.8);color:#fff;border:none;cursor:pointer;font-weight:bold;">${bT('✨ ابدأ التوليد','✨ Generate')}</button>
       </div>`;
       overlay.innerHTML = html;
       wrap.style.position = 'relative';
@@ -19235,13 +19294,11 @@ function openShareModal(project){
             clearInterval(iv);
             let reason = data.failure || data.failureCode || (data.error) || '';
             if(/moderation|SAFETY|content did not pass/i.test(reason)){
-              reason = isEn()
-                ? 'Content was rejected by safety filters — try a calmer description, or remove the person photo.'
-                : 'الرقابة رفضت المحتوى — جرّب وصفًا أهدأ (بدون عنف أو خطر)، أو شِل صورة الشخص وحاول من جديد.';
+              reason = bT('الرقابة رفضت المحتوى — جرّب وصفًا أهدأ (بدون عنف أو خطر)، أو شِل صورة الشخص وحاول من جديد.','Content was rejected by safety filters — try a calmer description, or remove the person photo.');
             }
-            reject(new Error((isEn() ? 'Video generation failed.' : 'فشل إنشاء الفيديو.') + (reason ? (' — ' + reason) : '')));
+            reject(new Error((bT('فشل إنشاء الفيديو.','Video generation failed.')) + (reason ? (' — ' + reason) : '')));
           } else {
-            setStatus((isEn() ? '⏳ Status: ' : '⏳ الحالة: ') + (data.status || '...'));
+            setStatus((bT('⏳ الحالة: ','⏳ Status: ')) + (data.status || '...'));
           }
         } catch(e){ /* transient network hiccup; keep polling */ }
       }, 5000);
@@ -19366,26 +19423,26 @@ function openShareModal(project){
   }
 
   async function runCanvasOnly(text, ratio, seconds, signature, wantNarration, narrationVal){
-    setStatus(isEn() ? '🎨 Rendering canvas video...' : '🎨 جاري إنشاء فيديو الكانفا...');
+    setStatus(bT('🎨 جاري إنشاء فيديو الكانفا...','🎨 Rendering canvas video...'));
     const clipBlob = await recordCanvasClip({ title: text, signature, seconds, ratio });
     let finalBlob = clipBlob;
     if(wantNarration){
       try{
-        setStatus(isEn() ? '🎙️ Generating narration...' : '🎙️ جاري إنشاء التعليق الصوتي...');
+        setStatus(bT('🎙️ جاري إنشاء التعليق الصوتي...','🎙️ Generating narration...'));
         const narrationInput = narrationVal || text;
         const ttsRes = await fetch('/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: isEn() ? 'en' : 'ar', gender: getNarrationGender() }),
+          body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
         });
         if(ttsRes.ok){
           const audioBlob = await ttsRes.blob();
-          setStatus(isEn() ? '🎚️ Merging narration...' : '🎚️ جاري دمج الصوت...');
+          setStatus(bT('🎚️ جاري دمج الصوت...','🎚️ Merging narration...'));
           finalBlob = await muxNarrationAny(clipBlob, audioBlob, true);
         }
       } catch(e){ /* keep silent clip on failure */ }
     }
     const finalUrl = URL.createObjectURL(finalBlob);
-    setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
+    setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
     resultEl.src = finalUrl;
     resultEl.style.display = 'block';
     downloadEl.href = finalUrl;
@@ -19395,22 +19452,22 @@ function openShareModal(project){
 
   async function runHybrid(text, style, ratio, durationVal, signature, token, wantNarration, narrationVal){
     const seconds = (durationVal === 'long20') ? 10 : (parseInt(durationVal, 10) || 5);
-    setStatus(isEn() ? '🎨 Building intro...' : '🎨 جاري إنشاء المقدمة...');
+    setStatus(bT('🎨 جاري إنشاء المقدمة...','🎨 Building intro...'));
     const introBlob = await recordCanvasClip({ title: text, signature: '', seconds: 2, ratio });
-    setStatus(isEn() ? '🎨 Building outro...' : '🎨 جاري إنشاء الخاتمة...');
+    setStatus(bT('🎨 جاري إنشاء الخاتمة...','🎨 Building outro...'));
     const outroBlob = await recordCanvasClip({
       title: '',
-      signature: signature ? ((isEn() ? 'Made by: ' : 'صُنع بواسطة: ') + signature) : (isEn() ? 'Made with Omran AI Video' : 'صُنع بواسطة صانع فيديو عمران'),
+      signature: signature ? ((bT('صُنع بواسطة: ','Made by: ')) + signature) : (bT('صُنع بواسطة صانع فيديو عمران','Made with Omran AI Video')),
       seconds: 2, ratio,
     });
 
-    setStatus(isEn() ? '🚀 Sending request to the AI video engine...' : '🚀 جاري إرسال الطلب لمحرك الفيديو الذكي...');
+    setStatus(bT('🚀 جاري إرسال الطلب لمحرك الفيديو الذكي...','🚀 Sending request to the AI video engine...'));
     const mainUrl = await createSceneWithRetry(text, style, seconds, ratio, token, false, (attempt, max) => {
       setStatus(isEn()
         ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
         : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
     });
-    setStatus(isEn() ? '🎬 Finalizing your video...' : '🎬 جاري إنهاء الفيديو...');
+    setStatus(bT('🎬 جاري إنهاء الفيديو...','🎬 Finalizing your video...'));
 
     const ffmpeg = await getFFmpeg();
     const { fetchFile } = await import('/ffmpeg/util/index.js');
@@ -19421,14 +19478,14 @@ function openShareModal(project){
 
     let mainForConcat = 'main.mp4';
     if(signature){
-      setStatus(isEn() ? '✍️ Adding your signature watermark...' : '✍️ جاري إضافة توقيعك على الفيديو...');
+      setStatus(bT('✍️ جاري إضافة توقيعك على الفيديو...','✍️ Adding your signature watermark...'));
       const wmBlob = await makeWatermarkPng(signature, ratio);
       await ffmpeg.writeFile('wm.png', await fetchFile(wmBlob));
       await ffmpeg.exec(['-i', 'main.mp4', '-i', 'wm.png', '-filter_complex', 'overlay=0:H-h:shortest=1', '-c:a', 'copy', 'main_wm.mp4']);
       mainForConcat = 'main_wm.mp4';
     }
 
-    setStatus(isEn() ? '🔗 Merging canvas + AI video...' : '🔗 جاري دمج الكانفا مع فيديو الذكاء الاصطناعي...');
+    setStatus(bT('🔗 جاري دمج الكانفا مع فيديو الذكاء الاصطناعي...','🔗 Merging canvas + AI video...'));
     const { w, h } = ratioDims(ratio);
     await ffmpeg.exec([
       '-i', 'intro.webm', '-i', mainForConcat, '-i', 'outro.webm',
@@ -19444,22 +19501,22 @@ function openShareModal(project){
 
     if(wantNarration){
       try{
-        setStatus(isEn() ? '🎙️ Generating narration...' : '🎙️ جاري إنشاء التعليق الصوتي...');
+        setStatus(bT('🎙️ جاري إنشاء التعليق الصوتي...','🎙️ Generating narration...'));
         const narrationInput = narrationVal || text;
         const ttsRes = await fetch('/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: isEn() ? 'en' : 'ar', gender: getNarrationGender() }),
+          body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
         });
         if(ttsRes.ok){
           const audioBlob = await ttsRes.blob();
-          setStatus(isEn() ? '🎚️ Merging narration...' : '🎚️ جاري دمج الصوت...');
+          setStatus(bT('🎚️ جاري دمج الصوت...','🎚️ Merging narration...'));
           finalBlob = await muxNarrationAny(finalBlob, audioBlob, false);
         }
       } catch(e){ /* keep video without narration */ }
     }
 
     const finalUrl = URL.createObjectURL(finalBlob);
-    setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
+    setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
     resultEl.src = finalUrl;
     resultEl.style.display = 'block';
     downloadEl.href = finalUrl;
@@ -19584,12 +19641,12 @@ function openShareModal(project){
   btnGenerate.onclick = async () => {
     const text = (promptEl.value || '').trim();
     if(!text && modeEl.value !== 'actor'){
-      setStatus((typeof window.t === 'function' && window.t('videoNeedDesc') !== 'videoNeedDesc') ? window.t('videoNeedDesc') : (isEn() ? '⚠️ Please describe the video first.' : '⚠️ اكتب وصف الفيديو أولًا.'));
+      setStatus((typeof window.t === 'function' && window.t('videoNeedDesc') !== 'videoNeedDesc') ? window.t('videoNeedDesc') : (bT('⚠️ اكتب وصف الفيديو أولًا.','⚠️ Please describe the video first.')));
       return;
     }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
     if(!token){
-      setStatus(isEn() ? '🔑 Please log in first to use the Video Maker.' : '🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.');
+      setStatus(bT('🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.','🔑 Please log in first to use the Video Maker.'));
       return;
     }
 
@@ -19609,9 +19666,9 @@ function openShareModal(project){
 
     function friendlyError(err){
       const code = err && err.code;
-      if(code === 'auth_required') return isEn() ? '🔑 Please log in first to use the Video Maker.' : '🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.';
+      if(code === 'auth_required') return bT('🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.','🔑 Please log in first to use the Video Maker.');
       if(code === 'daily_limit_reached') return isEn() ? "⏳ You have reached today's free video limit. Try again tomorrow." : '⏳ لقد استهلكت حد الفيديوهات المجانية لليوم. حاول مرة أخرى غدًا.';
-      return (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (err && err.message ? err.message : String(err));
+      return (bT('❌ خطأ: ','❌ Error: ')) + (err && err.message ? err.message : String(err));
     }
 
     const creationMode = modeEl.value;
@@ -19650,7 +19707,7 @@ function openShareModal(project){
             const d = await st.json();
             if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
             if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
-            else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((isEn() ? 'Veo failed.' : 'فشل Veo.') + (d.failure ? ' — ' + d.failure : ''))); }
+            else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل Veo.','Veo failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
           } catch(e){ /* keep polling */ }
         }, 8000);
       });
@@ -19660,44 +19717,44 @@ function openShareModal(project){
       try{
         const filmUseVeo = (creationMode === 'veo');
         if(filmUseVeo && !isOwnerAccount()){
-          setStatus(isEn() ? '🔒 Veo 3 is limited to the owner account for now.' : '🔒 Veo 3 مقتصر على حساب المالك حاليًا.');
+          setStatus(bT('🔒 Veo 3 مقتصر على حساب المالك حاليًا.','🔒 Veo 3 is limited to the owner account for now.'));
           btnGenerate.disabled = false;
           return;
         }
         const filmScenes = isOwnerAccount() ? 5 : 3;
-        setStatus(isEn() ? '✍️ Writing the film script scene by scene...' : '✍️ جاري كتابة سيناريو الفيلم مشهد بمشهد...');
+        setStatus(bT('✍️ جاري كتابة سيناريو الفيلم مشهد بمشهد...','✍️ Writing the film script scene by scene...'));
         const scriptRes = await fetch('/api/video-script', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topic: text, mode: 'film', sceneCount: filmScenes, style, lang: (isEn() ? 'en' : 'ar'), hero: !!filmHeroBase64, token }),
+          body: JSON.stringify({ topic: text, mode: 'film', sceneCount: filmScenes, style, lang: (bT('ar','en')), hero: !!filmHeroBase64, token }),
         });
         const scriptData = await scriptRes.json();
         if(scriptRes.status === 401){ const e = new Error('auth'); e.code = 'auth_required'; throw e; }
         if(scriptRes.status === 403 && scriptData && scriptData.error === 'daily_limit_reached'){ const e = new Error('limit'); e.code = 'daily_limit_reached'; throw e; }
         if(!scriptRes.ok || scriptData.error || !Array.isArray(scriptData.scenes) || !scriptData.scenes.length){
-          throw new Error(scriptData.error || (isEn() ? 'Could not generate the film script.' : 'تعذّر إنشاء سيناريو الفيلم.'));
+          throw new Error(scriptData.error || (bT('تعذّر إنشاء سيناريو الفيلم.','Could not generate the film script.')));
         }
         let scenes = scriptData.scenes.slice(0, filmScenes);
         // 📋 معاينة السيناريو — يراجع المستخدم المشاهد ويعدّلها قبل التوليد
-        setStatus(isEn() ? '📋 Review the script...' : '📋 راجع السيناريو...');
+        setStatus(bT('📋 راجع السيناريو...','📋 Review the script...'));
         const approvedScenes = await showScriptPreview(scriptData.title || text, scenes);
         if(!approvedScenes || !approvedScenes.length){
-          setStatus(isEn() ? '❌ Cancelled.' : '❌ تم الإلغاء.');
+          setStatus(bT('❌ تم الإلغاء.','❌ Cancelled.'));
           btnGenerate.disabled = false; return;
         }
         scenes = approvedScenes;
         if(!filmUseVeo){
-          setStatus(isEn() ? '💳 Checking video credits...' : '💳 جاري التأكد من رصيد الفيديو...');
+          setStatus(bT('💳 جاري التأكد من رصيد الفيديو...','💳 Checking video credits...'));
           const ok = await ensureRunwayCredits(scenes.length * 50);
           if(!ok){ btnGenerate.disabled = false; return; }
         }
         if(filmUseVeo && filmHeroBase64){
-          setStatus(isEn() ? 'ℹ️ Hero photo is supported with Runway only; continuing without it...' : 'ℹ️ صورة البطل مدعومة مع Runway فقط؛ سيتم المتابعة بدونها...');
+          setStatus(bT('ℹ️ صورة البطل مدعومة مع Runway فقط؛ سيتم المتابعة بدونها...','ℹ️ Hero photo is supported with Runway only; continuing without it...'));
         }
         const builtScenes = [];
         for(let i = 0; i < scenes.length; i++){
           const sc = scenes[i];
-          setStatus((isEn() ? '🎥 Generating scene ' : '🎥 جاري توليد المشهد ') + (i + 1) + '/' + scenes.length + (filmUseVeo ? ' (Veo 3)' : '') + '...');
+          setStatus((bT('🎥 جاري توليد المشهد ','🎥 Generating scene ')) + (i + 1) + '/' + scenes.length + (filmUseVeo ? ' (Veo 3)' : '') + '...');
           // إذا كان هناك بطل: نثبّت موضعه في كل prompt حتى يبدو بنفس المكان عبر المشاهد
           const baseScenePrompt = sc.visual || text;
           const heroAnchor = filmHeroBase64
@@ -19711,7 +19768,7 @@ function openShareModal(project){
                   ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
                   : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
               }, filmHeroBase64, filmHeroMime);
-          setStatus((isEn() ? '🎙️ Narrating scene ' : '🎙️ جاري تسجيل سرد المشهد ') + (i + 1) + '/' + scenes.length + '...');
+          setStatus((bT('🎙️ جاري تسجيل سرد المشهد ','🎙️ Narrating scene ')) + (i + 1) + '/' + scenes.length + '...');
           let audioBlob = null;
           try{
             const ttsCtl = new AbortController();
@@ -19719,7 +19776,7 @@ function openShareModal(project){
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: sc.narration || text, voice: 'maha', lang: isEn() ? 'en' : 'ar', gender: getNarrationGender() }),
+              body: JSON.stringify({ text: sc.narration || text, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
               signal: ttsCtl.signal,
             });
             clearTimeout(ttsTimer);
@@ -19738,9 +19795,9 @@ function openShareModal(project){
             if(idx < builtScenes.length){
               resultEl.src = builtScenes[idx].videoUrl;
               resultEl.play().catch(() => {});
-              setStatus((isEn() ? '▶️ Scene ' : '▶️ المشهد ') + (idx + 1) + '/' + builtScenes.length);
+              setStatus((bT('▶️ المشهد ','▶️ Scene ')) + (idx + 1) + '/' + builtScenes.length);
             } else {
-              setStatus(isEn() ? '✅ All scenes played.' : '✅ انتهى عرض كل المشاهد.');
+              setStatus(bT('✅ انتهى عرض كل المشاهد.','✅ All scenes played.'));
             }
           };
           resultEl.src = builtScenes[0].videoUrl;
@@ -19758,36 +19815,34 @@ function openShareModal(project){
             const a = document.createElement('a');
             a.href = proxyVideoUrl(sc.videoUrl);
             a.download = 'scene-' + (i + 1) + '.mp4';
-            a.textContent = (isEn() ? '⬇️ Scene ' : '⬇️ مشهد ') + (i + 1);
+            a.textContent = (bT('⬇️ مشهد ','⬇️ Scene ')) + (i + 1);
             a.style.cssText = 'padding:6px 12px;border-radius:10px;background:rgba(139,92,246,.18);color:inherit;text-decoration:none;font-size:13px;';
             linksEl.appendChild(a);
           });
-          setStatus(isEn()
-            ? '✅ Your film is ready! Scenes will play back-to-back — download each scene below.'
-            : '✅ فيلمك جاهز! المشاهد تُعرض ورا بعض تلقائيًا — وتقدر تحمّل كل مشهد من الأزرار تحت.');
+          setStatus(bT('✅ فيلمك جاهز! المشاهد تُعرض ورا بعض تلقائيًا — وتقدر تحمّل كل مشهد من الأزرار تحت.','✅ Your film is ready! Scenes will play back-to-back — download each scene below.'));
         };
         const oldLinks = document.getElementById('filmSceneLinks');
         if(oldLinks) oldLinks.innerHTML = '';
         resultEl.onended = null;
         // دائماً ندمج — حتى على هواوي (الدمج يعمل بالجهاز لا بالسيرفر)
-        setStatus(isEn() ? '🔗 Merging all scenes into your final film...' : '🔗 جاري دمج كل المشاهد بالفيلم النهائي...');
+        setStatus(bT('🔗 جاري دمج كل المشاهد بالفيلم النهائي...','🔗 Merging all scenes into your final film...'));
         let finalUrl = null;
         try{
           const finalBlob = await buildLongVideo(builtScenes, (i, total) => {
-            setStatus((isEn() ? '🔗 Merging scene ' : '🔗 جاري دمج المشهد ') + (i + 1) + '/' + total + '...');
+            setStatus((bT('🔗 جاري دمج المشهد ','🔗 Merging scene ')) + (i + 1) + '/' + total + '...');
           });
           finalUrl = URL.createObjectURL(finalBlob);
         } catch(e){
           try{
             const blob = await concatScenes(builtScenes.map(s => s.videoUrl));
             finalUrl = URL.createObjectURL(blob);
-            setStatus(isEn() ? '⚠️ Narration merge failed; film merged without narration.' : '⚠️ تعذّر دمج السرد؛ تم دمج الفيلم بدون السرد.');
+            setStatus(bT('⚠️ تعذّر دمج السرد؛ تم دمج الفيلم بدون السرد.','⚠️ Narration merge failed; film merged without narration.'));
           } catch(e2){
             finalUrl = null;
           }
         }
         if(finalUrl){
-          setStatus(isEn() ? '✅ Your film is ready!' : '✅ فيلمك جاهز!');
+          setStatus(bT('✅ فيلمك جاهز!','✅ Your film is ready!'));
           resultEl.src = finalUrl;
           resultEl.style.display = 'block';
           downloadEl.href = finalUrl;
@@ -19808,7 +19863,7 @@ function openShareModal(project){
     if(creationMode === 'veo' || creationMode === 'actor'){
       try{
         if(!isOwnerAccount()){
-          setStatus(isEn() ? '🔒 Veo 3 is limited to the owner account for now.' : '🔒 Veo 3 مقتصر على حساب المالك حاليًا.');
+          setStatus(bT('🔒 Veo 3 مقتصر على حساب المالك حاليًا.','🔒 Veo 3 is limited to the owner account for now.'));
           return;
         }
         let veoPrompt = text;
@@ -19816,14 +19871,14 @@ function openShareModal(project){
           const speechEl = document.getElementById('videoMakerActorSpeech');
           const speech = speechEl ? speechEl.value.trim() : '';
           if(!speech){
-            setStatus(isEn() ? '🗣️ Write what the actor should say first.' : '🗣️ اكتب أول شي وش يقول الممثل.');
+            setStatus(bT('🗣️ اكتب أول شي وش يقول الممثل.','🗣️ Write what the actor should say first.'));
             return;
           }
           veoPrompt = (text || 'An Emirati man in traditional white kandura and ghutra, warm friendly face')
             + '. The person looks directly at the camera and speaks in Emirati Gulf Arabic dialect (لهجة إماراتية خليجية), saying exactly these Arabic words: "' + speech + '". '
             + 'Perfect accurate lip-sync matching the Arabic words, natural authentic Emirati voice and accent, natural hand gestures, cinematic lighting, realistic. No subtitles, no captions, no text on screen.';
         }
-        setStatus(isEn() ? '🚀 Sending to Google Veo 3...' : '🚀 جاري الإرسال إلى Google Veo 3...');
+        setStatus(bT('🚀 جاري الإرسال إلى Google Veo 3...','🚀 Sending to Google Veo 3...'));
         const cr = await fetch('/api/video?action=veo-create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -19838,17 +19893,17 @@ function openShareModal(project){
               const d = await st.json();
               if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
               if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
-              else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((isEn() ? 'Veo failed.' : 'فشل Veo.') + (d.failure ? ' — ' + d.failure : ''))); }
-              else setStatus(isEn() ? '⏳ Veo 3 is generating (may take 1-3 min)...' : '⏳ Veo 3 يولّد الفيديو (قد يستغرق ١-٣ دقائق)...');
+              else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل Veo.','Veo failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
+              else setStatus(bT('⏳ Veo 3 يولّد الفيديو (قد يستغرق ١-٣ دقائق)...','⏳ Veo 3 is generating (may take 1-3 min)...'));
             } catch(e){ /* keep polling */ }
           }, 8000);
         });
-        setStatus(isEn() ? '⬇️ Downloading the video...' : '⬇️ جاري تحميل الفيديو...');
+        setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading the video...'));
         const vres = await fetch(proxyVideoUrl(videoUrl));
         if(!vres.ok) throw new Error('download failed ' + vres.status);
         const vblob = await vres.blob();
         const vurl = URL.createObjectURL(vblob);
-        setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
+        setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
         resultEl.src = vurl;
         resultEl.style.display = 'block';
         // رابط التحميل = المسار المباشر للسيرفر (Content-Disposition: attachment)، يشتغل على هواوي
@@ -19888,23 +19943,23 @@ function openShareModal(project){
     if(durationEl.value === 'longMinutes'){
       try{
         if(!isOwnerAccount()){
-          setStatus(isEn() ? '🔒 This feature is limited to the owner account.' : '🔒 هذه الميزة مقتصرة على حساب المالك.');
+          setStatus(bT('🔒 هذه الميزة مقتصرة على حساب المالك.','🔒 This feature is limited to the owner account.'));
           btnGenerate.disabled = false;
           return;
         }
         const mins = Math.max(1, Math.min(10, parseInt(longMinutesInput.value, 10) || 1));
-        setStatus(isEn() ? '✍️ Writing the full scene-by-scene script...' : '✍️ جاري كتابة السكربت كامل مشهد بمشهد...');
+        setStatus(bT('✍️ جاري كتابة السكربت كامل مشهد بمشهد...','✍️ Writing the full scene-by-scene script...'));
         const scriptRes = await fetch('/api/video-script', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topic: text, minutes: mins, style, lang: (isEn() ? 'en' : 'ar'), token }),
+          body: JSON.stringify({ topic: text, minutes: mins, style, lang: (bT('ar','en')), token }),
         });
         const scriptData = await scriptRes.json();
         if(!scriptRes.ok || scriptData.error || !Array.isArray(scriptData.scenes) || !scriptData.scenes.length){
-          throw new Error(scriptData.error || (isEn() ? 'Could not generate the script.' : 'تعذّر إنشاء السكربت.'));
+          throw new Error(scriptData.error || (bT('تعذّر إنشاء السكربت.','Could not generate the script.')));
         }
         const scenes = scriptData.scenes;
-        setStatus(isEn() ? '💳 Checking video credits...' : '💳 جاري التأكد من رصيد الفيديو...');
+        setStatus(bT('💳 جاري التأكد من رصيد الفيديو...','💳 Checking video credits...'));
         const okBal = await ensureRunwayCredits(scenes.length * 50);
         if(!okBal){ btnGenerate.disabled = false; return; }
         const estLow = (scenes.length * 2).toFixed(0);
@@ -19913,7 +19968,7 @@ function openShareModal(project){
           ? `This video will generate ${scenes.length} scenes (~${(scenes.length * SCENE_SECONDS_CONST) / 60 | 0} min). Estimated real cost: about $${estLow}-$${estHigh} charged to your Runway account. Continue?`
           : `هذا الفيديو راح يولّد ${scenes.length} مشهد (~${(scenes.length * SCENE_SECONDS_CONST / 60) | 0} دقيقة). التكلفة التقديرية الحقيقية: حوالي ${estLow}$-${estHigh}$ تُخصم من حساب Runway. تكمل؟`;
         if(!window.confirm(confirmMsg)){
-          setStatus(isEn() ? '❌ Cancelled.' : '❌ تم الإلغاء.');
+          setStatus(bT('❌ تم الإلغاء.','❌ Cancelled.'));
           btnGenerate.disabled = false;
           return;
         }
@@ -19921,14 +19976,14 @@ function openShareModal(project){
         const builtScenes = [];
         for(let i = 0; i < scenes.length; i++){
           const sc = scenes[i];
-          setStatus((isEn() ? '🚀 Sending scene ' : '🚀 جاري إرسال المشهد ') + (i + 1) + '/' + scenes.length + '...');
+          setStatus((bT('🚀 جاري إرسال المشهد ','🚀 Sending scene ')) + (i + 1) + '/' + scenes.length + '...');
           const lmHeroAnchor = filmHeroBase64 ? 'Hero centered in frame, medium shot, consistent camera angle. ' : '';
           const videoUrl = await createSceneWithRetry(lmHeroAnchor + (sc.visual || text), style, SCENE_SECONDS_CONST, ratio, token, true, (attempt, max) => {
             setStatus(isEn()
               ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
               : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
           }, filmHeroBase64, filmHeroMime);
-          setStatus((isEn() ? '🎙️ Narrating scene ' : '🎙️ جاري تسجيل صوت المشهد ') + (i + 1) + '/' + scenes.length + '...');
+          setStatus((bT('🎙️ جاري تسجيل صوت المشهد ','🎙️ Narrating scene ')) + (i + 1) + '/' + scenes.length + '...');
           let audioBlob = null;
           try{
             const ttsCtl2 = new AbortController();
@@ -19936,7 +19991,7 @@ function openShareModal(project){
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: sc.narration || text, voice: 'maha', lang: isEn() ? 'en' : 'ar', gender: getNarrationGender() }),
+              body: JSON.stringify({ text: sc.narration || text, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
               signal: ttsCtl2.signal,
             });
             clearTimeout(ttsTimer2);
@@ -19945,18 +20000,18 @@ function openShareModal(project){
           builtScenes.push({ videoUrl, audioBlob: audioBlob || new Blob() });
         }
 
-        setStatus(isEn() ? '🔗 Joining all scenes with narration into the final video...' : '🔗 جاري دمج كل المشاهد مع السرد بالفيديو النهائي...');
+        setStatus(bT('🔗 جاري دمج كل المشاهد مع السرد بالفيديو النهائي...','🔗 Joining all scenes with narration into the final video...'));
         const finalBlob = await buildLongVideo(builtScenes, (i, total) => {
-          setStatus((isEn() ? '🔗 Joining scene ' : '🔗 جاري دمج المشهد ') + (i + 1) + '/' + total + '...');
+          setStatus((bT('🔗 جاري دمج المشهد ','🔗 Joining scene ')) + (i + 1) + '/' + total + '...');
         });
         const finalUrl = URL.createObjectURL(finalBlob);
-        setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
+        setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
         resultEl.src = finalUrl;
         resultEl.style.display = 'block';
         downloadEl.href = finalUrl;
         downloadEl.style.display = 'block';
       } catch(e){
-        setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+        setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
       } finally {
         btnGenerate.disabled = false;
       }
@@ -19970,11 +20025,11 @@ function openShareModal(project){
       const singleHeroAnchor = filmHeroBase64 ? 'Hero centered in frame, medium shot, consistent camera angle. ' : '';
       if(isLong){
         const scenePrompts = [
-          singleHeroAnchor + text + (isEn() ? ' (opening moment of the scene)' : ' (اللحظة الافتتاحية للمشهد)'),
-          singleHeroAnchor + text + (isEn() ? ' (continuing the same scene, next moment)' : ' (استكمال نفس المشهد، اللحظة التالية)'),
+          singleHeroAnchor + text + (bT(' (اللحظة الافتتاحية للمشهد)',' (opening moment of the scene)')),
+          singleHeroAnchor + text + (bT(' (استكمال نفس المشهد، اللحظة التالية)',' (continuing the same scene, next moment)')),
         ];
         for(let i = 0; i < scenePrompts.length; i++){
-          setStatus((isEn() ? '🚀 Sending scene ' : '🚀 جاري إرسال المشهد ') + (i + 1) + '/' + scenePrompts.length + '...');
+          setStatus((bT('🚀 جاري إرسال المشهد ','🚀 Sending scene ')) + (i + 1) + '/' + scenePrompts.length + '...');
           const url = await createSceneWithRetry(scenePrompts[i], style, 10, ratio, token, false, (attempt, max) => {
             setStatus(isEn()
               ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
@@ -19983,7 +20038,7 @@ function openShareModal(project){
           sceneUrls.push(url);
         }
       } else {
-        setStatus(isEn() ? '🚀 Sending request...' : '🚀 جاري إرسال الطلب...');
+        setStatus(bT('🚀 جاري إرسال الطلب...','🚀 Sending request...'));
         const url = await createSceneWithRetry(singleHeroAnchor + text, style, durationEl.value, ratio, token, false, (attempt, max) => {
           setStatus(isEn()
             ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
@@ -19996,19 +20051,19 @@ function openShareModal(project){
       let finalIsBlob = false;
 
       if(sceneUrls.length > 1){
-        setStatus(isEn() ? '🔗 Joining scenes together...' : '🔗 جاري دمج المشاهد معًا...');
+        setStatus(bT('🔗 جاري دمج المشاهد معًا...','🔗 Joining scenes together...'));
         try{
           const blob = await concatScenes(sceneUrls);
           finalSrc = blob;
           finalIsBlob = true;
         } catch(e){
-          setStatus(isEn() ? '⚠️ Could not join scenes; showing the first scene only.' : '⚠️ تعذّر دمج المشاهد؛ سيتم عرض المشهد الأول فقط.');
+          setStatus(bT('⚠️ تعذّر دمج المشاهد؛ سيتم عرض المشهد الأول فقط.','⚠️ Could not join scenes; showing the first scene only.'));
         }
       }
 
       if(wantQuality){
         try{
-          setStatus(isEn() ? '🔎 Upscaling video quality...' : '🔎 جاري ترقية جودة الفيديو...');
+          setStatus(bT('🔎 جاري ترقية جودة الفيديو...','🔎 Upscaling video quality...'));
           const upRes = await fetch('/api/video-upscale-create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -20025,22 +20080,22 @@ function openShareModal(project){
 
       if(wantNarration){
         try{
-          setStatus(isEn() ? '🎙️ Generating narration...' : '🎙️ جاري إنشاء التعليق الصوتي...');
+          setStatus(bT('🎙️ جاري إنشاء التعليق الصوتي...','🎙️ Generating narration...'));
           const narrationInput = (narrationText.value || '').trim() || text;
           const ttsRes = await fetch('/api/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: isEn() ? 'en' : 'ar', gender: getNarrationGender() }),
+            body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
           });
           if(ttsRes.ok){
             const audioBlob = await ttsRes.blob();
-            setStatus(isEn() ? '🎚️ Adding narration to the video...' : '🎚️ جاري إضافة التعليق الصوتي للفيديو...');
+            setStatus(bT('🎚️ جاري إضافة التعليق الصوتي للفيديو...','🎚️ Adding narration to the video...'));
             const merged = await muxNarration(finalSrc, audioBlob);
             finalSrc = merged;
             finalIsBlob = true;
           }
         } catch(e){
-          setStatus(isEn() ? '⚠️ Could not add narration; showing the video without it.' : '⚠️ تعذّر إضافة التعليق الصوتي؛ سيتم عرض الفيديو بدونه.');
+          setStatus(bT('⚠️ تعذّر إضافة التعليق الصوتي؛ سيتم عرض الفيديو بدونه.','⚠️ Could not add narration; showing the video without it.'));
         }
       }
 
@@ -20054,7 +20109,7 @@ function openShareModal(project){
         // رابط التحميل = proxy URL (same-origin + Content-Disposition: attachment = يشتغل على هواوي)
         dlUrl = proxyVideoUrl(finalSrc);
         try{
-          setStatus(isEn() ? '⬇️ Downloading video...' : '⬇️ جاري تحميل الفيديو...');
+          setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading video...'));
           const vres = await fetch(dlUrl);
           if(!vres.ok) throw new Error('proxy ' + vres.status);
           playerUrl = URL.createObjectURL(await vres.blob());
@@ -20062,7 +20117,7 @@ function openShareModal(project){
           playerUrl = finalSrc; // آخر ملاذ للمشغّل فقط
         }
       }
-      setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
+      setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
       resultEl.src = playerUrl;
       resultEl.style.display = 'block';
       resultEl.play().catch(function(){ /* autoplay may be blocked */ });
@@ -20141,10 +20196,11 @@ async function __safeJson(res){
   if(!modal || !btnOpen) return;
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function t(key){
     /* v-global-first: المترجم العام (الـ14 لغة) أولًا — المحلي يعرف عربي/إنجليزي فقط */
     try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ /* لم يجهز بعد */ }
-    const dict = (typeof I18N !== 'undefined') ? I18N[isEn() ? 'en' : 'ar'] : null;
+    const dict = (typeof I18N !== 'undefined') ? I18N[bT('ar','en')] : null;
     return (dict && dict[key]) || key;
   }
   function setStatus(text){
@@ -20158,6 +20214,8 @@ async function __safeJson(res){
 
   btnOpen.onclick = () => {
     modal.style.display = 'flex';
+    /* v651: صفّ «غرفتي بكل الأنماط» يُبنى قبل وصول ملفّ اللغة الكسول فيتجمّد — يُعاد عند الفتح. */
+    try { buildCompareStyleRow(); } catch(_e651) { /* guard-ok: rebuilding the compare row is cosmetic — a failure must never block opening the modal. */ }
     closeHeaderMenu();
   };
   btnClose.onclick = () => { modal.style.display = 'none'; };
@@ -20285,7 +20343,7 @@ async function __safeJson(res){
           const vb = document.createElement('button');
           vb.type = 'button';
           vb.className = 'btn';
-          vb.textContent = isEn() ? '\u2728 More like this' : '\u2728 \u0632\u0648\u0651\u062F\u0646\u064A \u0645\u062B\u0644\u0647';
+          vb.textContent = bT('\u2728 \u0632\u0648\u0651\u062F\u0646\u064A \u0645\u062B\u0644\u0647','\u2728 More like this');
           vb.style.cssText = 'width:100%; margin-top:5px; font-size:11.5px; padding:5px 4px;';
           vb.onclick = (ev) => { ev.preventDefault(); variantSrc = im.imageBase64; btnGenerate.onclick(); };
           cell.appendChild(vb);
@@ -20306,7 +20364,7 @@ async function __safeJson(res){
       downloadEl.style.display = 'block';
       setStatus(t('designAiDone'));
     } catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       btnGenerate.disabled = false;
     }
@@ -20393,7 +20451,14 @@ async function __safeJson(res){
     const o = styleEl && Array.prototype.find.call(styleEl.options, function(x){ return x.value === v; });
     if(!o) return v;
     const den = isEn() && o.getAttribute('data-en');
-    return ((den || o.textContent) || '').trim();
+    if(den) return String(den).trim();
+    /* v649: القاموس الحيّ أوّلًا — البطاقة تُبنى قبل وصول ملفّ اللغة الكسول فتلتقط الإنجليزيّة وتتجمّد. */
+    const k649 = o.getAttribute('data-i18n');
+    if(k649 && typeof t === 'function'){ const v649 = t(k649); if(v649 && v649 !== k649) return String(v649).trim(); }
+    /* v651: 39 نمطًا بلا مفتاح i18n كانت تعرض العربيّة في الـ12 لغة — القاموس الثنائيّ __BI يترجمها. */
+    const den651 = o.getAttribute('data-en');
+    if(!k649 && den651 && typeof window.__bT === 'function') return window.__bT((o.textContent || '').trim(), String(den651).trim());
+    return (o.textContent || '').trim();
   }
   function buildCompareStyleRow(){
     if(!cmpChecksEl || !styleEl) return;
@@ -20416,6 +20481,8 @@ async function __safeJson(res){
       img.onerror = function(){ img.remove(); };
       const label = document.createElement('div');
       label.textContent = styleTitle(v);
+      /* v649: تسليم التسمية لنظام i18n كي تُترجَم عند تبديل اللغة بلا إعادة بناء الصفّ. */
+      const lk649 = o.getAttribute('data-i18n'); if(lk649) label.setAttribute('data-i18n', lk649);
       label.style.cssText = 'position:absolute; left:0; right:0; bottom:0; padding:12px 3px 4px; font-size:10px; font-weight:700; text-align:center; z-index:1;' +
         ' color:' + (on ? '#d4af37' : '#eef0f6') + '; background:linear-gradient(transparent,rgba(0,0,0,.85));';
       if(on){
@@ -20427,7 +20494,7 @@ async function __safeJson(res){
       card.onclick = function(){
         const i = cmpPicks.indexOf(v);
         if(i >= 0) cmpPicks.splice(i, 1);
-        else { if(cmpPicks.length >= 3){ cmpStatus(isEn() ? 'Max 3 styles' : 'الحد ٣ أنماط'); return; } cmpPicks.push(v); }
+        else { if(cmpPicks.length >= 3){ cmpStatus(bT('الحد ٣ أنماط','Max 3 styles')); return; } cmpPicks.push(v); }
         cmpStatus('');
         buildCompareStyleRow();
       };
@@ -20436,8 +20503,8 @@ async function __safeJson(res){
   }
   buildCompareStyleRow();
   if(cmpBtn) cmpBtn.onclick = async () => {
-    if(!selectedBase64){ cmpStatus(isEn() ? 'Upload your room photo first' : 'ارفعي صورة غرفتك أولًا'); return; }
-    if(cmpPicks.length < 2){ cmpStatus(isEn() ? 'Pick 2-3 styles' : 'اختاري نمطين أو ثلاثة'); return; }
+    if(!selectedBase64){ cmpStatus(bT('ارفعي صورة غرفتك أولًا','Upload your room photo first')); return; }
+    if(cmpPicks.length < 2){ cmpStatus(bT('اختاري نمطين أو ثلاثة','Pick 2-3 styles')); return; }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
     if(!token){ cmpStatus(t('designAiNeedLogin')); return; }
     cmpBtn.disabled = true;
@@ -20447,7 +20514,7 @@ async function __safeJson(res){
     try{
       for(let i = 0; i < picks.length; i++){
         const v = picks[i];
-        cmpStatus((isEn() ? 'Designing ' : 'نصمّم ') + styleTitle(v) + ' — ' + (i + 1) + '/' + picks.length + '…');
+        cmpStatus((bT('نصمّم ','Designing ')) + styleTitle(v) + ' — ' + (i + 1) + '/' + picks.length + '…');
         const res = await fetch('/api/design-create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -20457,7 +20524,7 @@ async function __safeJson(res){
         if(!res.ok || data.error){
           if(data.error === 'daily_limit_reached'){ cmpStatus(t('designAiLimitReached')); break; }
           if(data.error === 'auth_required'){ cmpStatus(t('designAiNeedLogin')); break; }
-          cmpStatus((isEn() ? '❌ Failed at ' : '❌ تعثّر عند ') + styleTitle(v));
+          cmpStatus((bT('❌ تعثّر عند ','❌ Failed at ')) + styleTitle(v));
           continue;
         }
         const u = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
@@ -20471,7 +20538,7 @@ async function __safeJson(res){
         cap.style.cssText = 'font-size:12px; font-weight:700; text-align:center; margin-top:4px;';
         const pick = document.createElement('button');
         pick.type = 'button'; pick.className = 'btn';
-        pick.textContent = isEn() ? '👍 Pick this' : '👍 اعتمدي هذا';
+        pick.textContent = bT('👍 اعتمدي هذا','👍 Pick this');
         pick.style.cssText = 'width:100%; margin-top:4px; font-size:11.5px; padding:5px 4px;';
         pick.onclick = function(){
           styleEl.value = v;
@@ -20483,10 +20550,10 @@ async function __safeJson(res){
         cell.appendChild(im); cell.appendChild(cap); cell.appendChild(pick);
         cmpResultsEl.appendChild(cell);
         cmpResultsEl.style.display = 'flex';
-        if(i === picks.length - 1) cmpStatus(isEn() ? '✓ Done — swipe and pick' : '✓ تم — اسحبي وقارني واختاري');
+        if(i === picks.length - 1) cmpStatus(bT('✓ تم — اسحبي وقارني واختاري','✓ Done — swipe and pick'));
       }
     } catch(e){
-      cmpStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      cmpStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       cmpBtn.disabled = false;
     }
@@ -20577,8 +20644,10 @@ async function __safeJson(res){
   function optLabel(o){
     if(!o) return '';
     var l = pstyleLang();
-    if(l.indexOf('ar') !== 0 && l.indexOf('ur') !== 0 && !o.hasAttribute('data-i18n')){
-      var de = o.getAttribute('data-en'); if(de) return de;
+    /* v651: كانت كلّ لغة غير ar/ur ترى الإنجليزيّة، والأردو ترث العربيّة. */
+    if(l.indexOf('ar') !== 0 && !o.hasAttribute('data-i18n')){
+      var de = o.getAttribute('data-en');
+      if(de) return (typeof window.__bT === 'function') ? window.__bT((o.textContent||'').trim(), String(de).trim()) : de;
     }
     return o.textContent;
   }
@@ -20760,10 +20829,11 @@ async function __safeJson(res){
   if(!modal || !btnOpen) return;
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function t(key){
     /* v-global-first: المترجم العام (الـ14 لغة) أولًا — المحلي يعرف عربي/إنجليزي فقط */
     try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ /* لم يجهز بعد */ }
-    const dict = (typeof I18N !== 'undefined') ? I18N[isEn() ? 'en' : 'ar'] : null;
+    const dict = (typeof I18N !== 'undefined') ? I18N[bT('ar','en')] : null;
     return (dict && dict[key]) || key;
   }
   function setStatus(text){
@@ -20873,7 +20943,7 @@ async function __safeJson(res){
         setStatus(t('portraitDone'));
       }
     } catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       btnGenerate.disabled = false;
     }
@@ -20923,13 +20993,16 @@ async function __safeJson(res){
   if(!modal || !btnOpen) return;
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   /* v-look-labels: خيارات اللوكات القديمة نصها عربي مع data-en — غير العربي
      والأردو يأخذ الإنجليزية (خيارات data-i18n تُترجم أصلًا فلا تُمس). */
   function optLabel(o){
     if(!o) return '';
     var l7 = lang7();
-    if(l7 !== 'ar' && l7 !== 'ur' && !o.hasAttribute('data-i18n')){
-      var de = o.getAttribute('data-en'); if(de) return de;
+    /* v651: كانت كلّ لغة غير ar/ur ترى الإنجليزيّة، والأردو ترث العربيّة. */
+    if(l7 !== 'ar' && !o.hasAttribute('data-i18n')){
+      var de = o.getAttribute('data-en');
+      if(de) return (typeof window.__bT === 'function') ? window.__bT((o.textContent||'').trim(), String(de).trim()) : de;
     }
     return o.textContent;
   }
@@ -20980,8 +21053,8 @@ async function __safeJson(res){
     const list = GENDER_STYLES[g] || GENDER_STYLES.women;
     if(!window.omranPicker) return;
     window.omranPicker.open({
-      title: isEn() ? '👗 Fashion styles' : '👗 أنماط الأزياء',
-      count: list.length + ' ' + ((typeof window.t === 'function' && window.t('pickerOptsPick') !== 'pickerOptsPick') ? window.t('pickerOptsPick') : (isEn() ? 'styles — pick yours' : 'نمطًا — اختر ما يناسبك')),
+      title: bT('👗 أنماط الأزياء','👗 Fashion styles'),
+      count: list.length + ' ' + ((typeof window.t === 'function' && window.t('pickerOptsPick') !== 'pickerOptsPick') ? window.t('pickerOptsPick') : (bT('نمطًا — اختر ما يناسبك','styles — pick yours'))),
       items: list.map(function(v){
         const opt = fashionOptFor(v);
         return opt && {
@@ -21014,11 +21087,11 @@ async function __safeJson(res){
     nm.textContent = opt ? optLabel(opt) : '';
     nm.style.cssText = 'font-size:13.5px; font-weight:700;';
     const sub = document.createElement('div');
-    sub.textContent = list.length + ' ' + ((typeof window.t === 'function' && window.t('pickerStylesForCategory') !== 'pickerStylesForCategory') ? window.t('pickerStylesForCategory') : (isEn() ? 'styles for this category' : 'نمطًا لهذه الفئة'));
+    sub.textContent = list.length + ' ' + ((typeof window.t === 'function' && window.t('pickerStylesForCategory') !== 'pickerStylesForCategory') ? window.t('pickerStylesForCategory') : (bT('نمطًا لهذه الفئة','styles for this category')));
     sub.style.cssText = 'font-size:11px; color:var(--muted,#999);';
     info.appendChild(nm); info.appendChild(sub);
     const all = document.createElement('span');
-    all.textContent = (typeof window.t === 'function' && window.t('portraitStyleBrowseAll') !== 'portraitStyleBrowseAll') ? window.t('portraitStyleBrowseAll') : (isEn() ? 'Browse all ›' : 'عرض الكل ›');
+    all.textContent = (typeof window.t === 'function' && window.t('portraitStyleBrowseAll') !== 'portraitStyleBrowseAll') ? window.t('portraitStyleBrowseAll') : (bT('عرض الكل ›','Browse all ›'));
     all.style.cssText = 'color:#d4af37; font-size:12.5px; font-weight:700; flex:none;';
     trig.appendChild(img); trig.appendChild(info); trig.appendChild(all);
     trig.onclick = openFashionPicker;
@@ -21182,6 +21255,8 @@ async function __safeJson(res){
   btnOpen.onclick = () => {
     modal.style.display = 'flex';
     renderStyleCards(); // تسميات الترجمة قد تكون تغيّرت بعد التهيئة
+    /* v651: صفّ «قارن بين الإطلالات» كان يتجمّد على الإنجليزيّة لنفس السبب. */
+    try { buildCompareChecks(); } catch(_e651) { /* guard-ok: rebuilding the compare row is cosmetic — a failure must never block opening the modal. */ }
     closeHeaderMenu();
   };
   btnClose.onclick = () => { modal.style.display = 'none'; };
@@ -21273,7 +21348,7 @@ async function __safeJson(res){
       __refineRemember(data.imageBase64, data.mimeType || 'image/png');
       setStatus(t('fashionAiDone'));
     } catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       btnGenerate.disabled = false;
     }
@@ -21350,7 +21425,7 @@ async function __safeJson(res){
       refineInput.value = '';
       setStatus(t('fashionAiDone'));
     }catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     }finally{
       refineBtn.disabled = false; btnGenerate.disabled = false;
     }
@@ -21418,7 +21493,7 @@ async function __safeJson(res){
       suggestionsEl.style.display = list.length ? 'flex' : 'none';
       setStatus(list.length ? '' : t('fashionSuggestNeedImage'));
     } catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       suggestBtn.disabled = false;
     }
@@ -21499,7 +21574,7 @@ async function __safeJson(res){
       compareResultsEl.style.display = 'grid';
       compareStatusEl.style.display = 'none';
     } catch(e){
-      compareStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+      compareStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
     } finally {
       compareBtn.disabled = false;
     }
@@ -22256,10 +22331,7 @@ async function __safeJson(res){
 
   /* v-pf-i18n (شكوى المالك ٢٩ أغسطس: نافذة الأسهم عربية وسط واجهة المليالم):
      عربي/أردو ← عربي، وغير ذلك ← إنجليزي — نفس قاعدة v-tools-i18n. */
-  function stT(arTxt, enTxt){
-    var l = (typeof lang !== 'undefined' && lang) ? String(lang) : (function(){ try{ return localStorage.getItem('aiapp_lang')||'ar'; }catch(e){ return 'ar'; } })();
-    return (l === 'ar' || l === 'ur') ? arTxt : enTxt;
-  }
+  function stT(arTxt, enTxt){ return (window.__bT) ? window.__bT(arTxt, enTxt) : (isEn()?enTxt:arTxt); }
   function pfRender(d){
     if(!pfWrap) return;
     var p = d.portfolio, bd = d.board || { top: [], rank: null, total: 0 };
@@ -22360,15 +22432,17 @@ async function __safeJson(res){
     });
   }
 
+  /* v649: قراءة من قاموس اللغة مع سقوط آمن على العربيّة إن غاب المفتاح. */
+  function pfT(k, ar){ try{ var v = (typeof t === 'function') ? t(k) : ''; return (v && v !== k) ? v : ar; }catch(e){ return ar; } }
   function pfLoad(){
     if(!pfWrap) return;
     if(!pfTok()){
-      pfWrap.innerHTML = '<div style="text-align:center;padding:26px 10px;font-size:13px;line-height:2;">💼 <b>المحفظة التعليمية</b><br>100 ألف افتراضية تتداول بها بأسعار السوق الحقيقية وتنافس بقية المستخدمين 🏆<br><span style="color:var(--muted);font-size:12px;">سجّل الدخول لبدء محفظتك — تقدمك يُحفظ في حسابك.</span></div>';
+      pfWrap.innerHTML = '<div style="text-align:center;padding:26px 10px;font-size:13px;line-height:2;"><b>' + pfT('pfGuestTitle', '💼 المحفظة التعليمية') + '</b><br>' + pfT('pfGuestIntro', '100 ألف افتراضية تتداول بها بأسعار السوق الحقيقية وتنافس بقية المستخدمين 🏆') + '<br><span style="color:var(--muted);font-size:12px;">' + pfT('pfGuestLogin', 'سجّل الدخول لبدء محفظتك — تقدمك يُحفظ في حسابك.') + '</span></div>';
       return;
     }
-    pfWrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">⏳ نجهز محفظتك…</div>';
+    pfWrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">' + pfT('pfLoadingBox', '⏳ نجهز محفظتك…') + '</div>';
     api({ mode:'pf-get', token: pfTok() }).then(pfRender)
-      .catch(function(e){ pfWrap.innerHTML = '<div style="text-align:center;padding:20px;color:#e05252;font-size:13px;">⚠️ ' + pfEsc(e.message || 'تعذر تحميل المحفظة') + '</div>'; });
+      .catch(function(e){ pfWrap.innerHTML = '<div style="text-align:center;padding:20px;color:#e05252;font-size:13px;">⚠️ ' + pfEsc(e.message || pfT('pfLoadFail', 'تعذر تحميل المحفظة')) + '</div>'; });
   }
   btnOpen.addEventListener('click', function(){ modal.style.display = 'flex'; stkShowTab('global'); });
   btnClose.addEventListener('click', function(){
@@ -22466,10 +22540,11 @@ async function __safeJson(res){
   }
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function t(key){
     /* v-global-first: المترجم العام (الـ14 لغة) أولًا — المحلي يعرف عربي/إنجليزي فقط */
     try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ /* لم يجهز بعد */ }
-    const dict = (typeof I18N !== 'undefined') ? I18N[isEn() ? 'en' : 'ar'] : null;
+    const dict = (typeof I18N !== 'undefined') ? I18N[bT('ar','en')] : null;
     return (dict && dict[key]) || key;
   }
   function setStatus(text){
@@ -22481,7 +22556,7 @@ async function __safeJson(res){
     const b = $('#constructionQuotaBadge');
     if(!b || !d || typeof d.remaining !== 'number') return;
     b.style.display = 'inline-block';
-    b.textContent = (isEn() ? 'Left today: ' : 'المتبقّي اليوم: ') + d.remaining + ' / ' + (d.dailyLimit || 6);
+    b.textContent = (bT('المتبقّي اليوم: ','Left today: ')) + d.remaining + ' / ' + (d.dailyLimit || 6);
   }
   function shrinkRef(b64, mime){
     return new Promise((resolve) => {
@@ -22547,9 +22622,7 @@ async function __safeJson(res){
     };
   }
 
-  const showGenerationFailure = () => setStatus(isEn()
-    ? '⚠️ Design generation took too long or the service is temporarily busy. Please try again.'
-    : '⚠️ تعذّر إكمال التصميم الآن؛ قد تستغرق العملية وقتًا أطول أو تكون الخدمة مشغولة مؤقتًا. حاول مرة أخرى.');
+  const showGenerationFailure = () => setStatus(bT('⚠️ تعذّر إكمال التصميم الآن؛ قد تستغرق العملية وقتًا أطول أو تكون الخدمة مشغولة مؤقتًا. حاول مرة أخرى.','⚠️ Design generation took too long or the service is temporarily busy. Please try again.'));
 
   btnRun.onclick = async () => {
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
@@ -22558,7 +22631,7 @@ async function __safeJson(res){
       return;
     }
     if(modePlanEl && modePhotoEl && !modePlanEl.checked && !modePhotoEl.checked){
-      setStatus(isEn() ? 'Pick at least one output type.' : 'اختر نوع نتيجة واحدًا على الأقل.');
+      setStatus(bT('اختر نوع نتيجة واحدًا على الأقل.','Pick at least one output type.'));
       return;
     }
     btnRun.disabled = true;
@@ -22649,7 +22722,7 @@ async function __safeJson(res){
 
   if(boqBtn) boqBtn.onclick = function(){
     const rows = boqRows();
-    if(!rows){ setStatus(isEn() ? '⚠️ This result has no bill of quantities.' : '⚠️ لا يوجد جدول كميات في هذه النتيجة.'); return; }
+    if(!rows){ setStatus(bT('⚠️ لا يوجد جدول كميات في هذه النتيجة.','⚠️ This result has no bill of quantities.')); return; }
     const csv = '\ufeff' + rows.map(function(r){ return r.map(csvEsc).join(','); }).join('\r\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
@@ -22659,9 +22732,9 @@ async function __safeJson(res){
   };
 
   if(pdfBtn) pdfBtn.onclick = function(){
-    if(!lastData){ setStatus(isEn() ? '⚠️ Generate a design first.' : '⚠️ ولّد التصميم أولًا.'); return; }
+    if(!lastData){ setStatus(bT('⚠️ ولّد التصميم أولًا.','⚠️ Generate a design first.')); return; }
     const w = window.open('', '_blank');
-    if(!w){ setStatus(isEn() ? '⚠️ Allow pop-ups to export the report.' : '⚠️ اسمح بالنوافذ المنبثقة لتصدير التقرير.'); return; }
+    if(!w){ setStatus(bT('⚠️ اسمح بالنوافذ المنبثقة لتصدير التقرير.','⚠️ Allow pop-ups to export the report.')); return; }
     const fig = function(b64, mime, cap){
       return b64 ? ('<figure><img src="data:' + (mime || 'image/png') + ';base64,' + b64 + '"><figcaption>' + cap + '</figcaption></figure>') : '';
     };
@@ -22719,7 +22792,7 @@ async function __safeJson(res){
         if(!res.ok){
           if(data.error === 'auth_required') angleStatusEl.textContent = t('designAiNeedLogin');
           else if(data.error === 'daily_limit_reached') angleStatusEl.textContent = t('designAiLimitReached');
-          else angleStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (data.error || 'unknown');
+          else angleStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (data.error || 'unknown');
           return;
         }
         angleImageEl.src = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
@@ -22728,7 +22801,7 @@ async function __safeJson(res){
         angleStatusEl.style.display = 'none';
         showQuota(data);
       }catch(e){
-        angleStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+        angleStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
       }finally{
         angleBtns.forEach((b) => { b.disabled = false; });
       }
@@ -22752,7 +22825,7 @@ async function __safeJson(res){
       if(!res.ok){
         if(data.error === 'auth_required') roomStatusEl.textContent = t('designAiNeedLogin');
         else if(data.error === 'daily_limit_reached') roomStatusEl.textContent = t('designAiLimitReached');
-        else roomStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (data.error || 'unknown');
+        else roomStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (data.error || 'unknown');
         return;
       }
       roomImageEl.src = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
@@ -22761,7 +22834,7 @@ async function __safeJson(res){
       roomStatusEl.style.display = 'none';
       showQuota(data);
     }catch(e){
-      roomStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+      roomStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
     }finally{
       roomViewBtn.disabled = false;
     }
@@ -22818,6 +22891,7 @@ async function __safeJson(res){
   if(!modal || !btnOpen) return;
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function lang7(){ return (typeof currentLang === 'function') ? currentLang() : (localStorage.getItem('aiapp_lang') || 'ar'); }
   function t2(key){
     const dict = (typeof window.__i18nDict === 'function') ? window.__i18nDict(lang7()) : ((typeof I18N !== 'undefined') ? I18N[lang7()] : null);
@@ -22957,7 +23031,7 @@ async function __safeJson(res){
   function populateStyleSelect(){
     const opts = STUDIO_OPTIONS[feature] || [];
     const langKey = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
-    styleEl.innerHTML = opts.map((o) => '<option value="' + o.value + '">' + (o[langKey] || o.en) + '</option>').join('');
+    styleEl.innerHTML = opts.map((o) => '<option value="' + o.value + '">' + (o[langKey] || (window.__bT ? window.__bT(o.ar, o.en) : o.en)) + '</option>').join('');
   }
 
   /* ---- 👤 saved face profile ---- */
@@ -23070,8 +23144,8 @@ async function __safeJson(res){
     if(!window.omranPicker || !styleEl) return;
     const opts = Array.from(styleEl.options);
     window.omranPicker.open({
-      title: featureTitle() || (isEn() ? '✨ AI style' : '✨ ستايل الذكاء الاصطناعي'),
-      count: opts.length + (isEn() ? ' options — pick yours' : ' خيارًا — اختر ما يناسبك'),
+      title: featureTitle() || (bT('✨ ستايل الذكاء الاصطناعي','✨ AI style')),
+      count: opts.length + (bT(' خيارًا — اختر ما يناسبك',' options — pick yours')),
       items: opts.map((opt) => ({
         v: opt.value, title: opt.textContent.trim(), active: opt.value === styleEl.value,
         img: 'assets/studio/options/' + feature + '-' + opt.value + '.webp',
@@ -23101,11 +23175,11 @@ async function __safeJson(res){
     nm.textContent = cur.textContent.trim();
     nm.style.cssText = 'font-size:13.5px; font-weight:700;';
     const sub = document.createElement('div');
-    sub.textContent = styleEl.options.length + ' ' + (typeof window.t==='function'&&window.t('pickerOptsForFeature')!=='pickerOptsForFeature'?window.t('pickerOptsForFeature'):(isEn() ? 'options for this feature' : 'خيارًا لهذه الميزة'));
+    sub.textContent = styleEl.options.length + ' ' + (typeof window.t==='function'&&window.t('pickerOptsForFeature')!=='pickerOptsForFeature'?window.t('pickerOptsForFeature'):(bT('خيارًا لهذه الميزة','options for this feature')));
     sub.style.cssText = 'font-size:11px; color:var(--muted,#999);';
     info.appendChild(nm); info.appendChild(sub);
     const all = document.createElement('span');
-    all.textContent = (typeof window.t==='function'&&window.t('portraitStyleBrowseAll')!=='portraitStyleBrowseAll'?window.t('portraitStyleBrowseAll'):(isEn() ? 'Browse all ›' : 'عرض الكل ›'));
+    all.textContent = (typeof window.t==='function'&&window.t('portraitStyleBrowseAll')!=='portraitStyleBrowseAll'?window.t('portraitStyleBrowseAll'):(bT('عرض الكل ›','Browse all ›')));
     all.style.cssText = 'color:#d4af37; font-size:12.5px; font-weight:700; flex:none;';
     trig.appendChild(img); trig.appendChild(info); trig.appendChild(all);
     trig.onclick = openStudioPicker;
@@ -23320,7 +23394,7 @@ async function __safeJson(res){
       suggestionsEl.style.display = list.length ? 'flex' : 'none';
       setStatus(list.length ? '' : t('studioAiNeedImage'));
     } catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       suggestBtn.disabled = false;
     }
@@ -23376,7 +23450,7 @@ async function __safeJson(res){
       compareResultsEl.style.display = 'grid';
       compareStatusEl.style.display = 'none';
     } catch(e){
-      compareStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+      compareStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
     } finally {
       compareBtn.disabled = false;
     }
@@ -23435,7 +23509,7 @@ async function __safeJson(res){
       heritageCompareResultsEl.style.display = 'grid';
       heritageCompareStatusEl.style.display = 'none';
     } catch(e){
-      heritageCompareStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+      heritageCompareStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
     } finally {
       heritageCompareBtn.disabled = false;
     }

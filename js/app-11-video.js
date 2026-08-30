@@ -39,6 +39,7 @@
   if(!modal || !btnOpen) return;
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function isOwnerAccount(){
     const u = (typeof authGet === 'function') ? (authGet('aiapp_username') || '') : '';
     const key = String(u).trim().toLowerCase();
@@ -202,20 +203,20 @@
       if(!wrap){ resolve(scenes); return; }
       const overlay = document.createElement('div');
       overlay.style.cssText = 'position:absolute;inset:0;z-index:20;background:var(--bg,#111);overflow-y:auto;padding:16px;border-radius:inherit;';
-      let html = `<h4 style="margin:0 0 10px;text-align:center;">📋 ${isEn() ? 'Review Scenes' : 'راجع مشاهد الفيلم'}</h4>`;
-      html += `<p style="font-size:12px;color:var(--muted);margin-bottom:10px;">${isEn() ? 'Edit or delete scenes before generating. Each scene = 1 video credit.' : 'عدّل أو احذف أي مشهد قبل البدء — كل مشهد = كريدت واحد.'}</p>`;
+      let html = `<h4 style="margin:0 0 10px;text-align:center;">📋 ${bT('راجع مشاهد الفيلم','Review Scenes')}</h4>`;
+      html += `<p style="font-size:12px;color:var(--muted);margin-bottom:10px;">${bT('عدّل أو احذف أي مشهد قبل البدء — كل مشهد = كريدت واحد.','Edit or delete scenes before generating. Each scene = 1 video credit.')}</p>`;
       scenes.forEach((sc, i) => {
         html += `<div class="sp-scene" data-idx="${i}" style="margin-bottom:10px;border:1px solid rgba(139,92,246,.35);border-radius:8px;padding:10px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <b style="font-size:12px;">${isEn() ? 'Scene' : 'مشهد'} ${i+1}</b>
-            <button type="button" class="sp-del" style="background:rgba(239,68,68,.15);border:none;color:#ef4444;border-radius:6px;padding:2px 10px;cursor:pointer;font-size:12px;">${isEn() ? 'Remove' : 'حذف'}</button>
+            <b style="font-size:12px;">${bT('مشهد','Scene')} ${i+1}</b>
+            <button type="button" class="sp-del" style="background:rgba(239,68,68,.15);border:none;color:#ef4444;border-radius:6px;padding:2px 10px;cursor:pointer;font-size:12px;">${bT('حذف','Remove')}</button>
           </div>
           <textarea rows="2" class="sp-txt" style="width:100%;font-size:12px;resize:none;box-sizing:border-box;">${(sc.visual||'').replace(/</g,'&lt;')}</textarea>
         </div>`;
       });
       html += `<div style="display:flex;gap:10px;justify-content:center;margin-top:12px;">
-        <button type="button" id="spCancel" style="padding:8px 20px;border-radius:10px;background:rgba(239,68,68,.15);color:#ef4444;border:none;cursor:pointer;">${isEn() ? '❌ Cancel' : '❌ إلغاء'}</button>
-        <button type="button" id="spGo" style="padding:8px 20px;border-radius:10px;background:rgba(139,92,246,.8);color:#fff;border:none;cursor:pointer;font-weight:bold;">${isEn() ? '✨ Generate' : '✨ ابدأ التوليد'}</button>
+        <button type="button" id="spCancel" style="padding:8px 20px;border-radius:10px;background:rgba(239,68,68,.15);color:#ef4444;border:none;cursor:pointer;">${bT('❌ إلغاء','❌ Cancel')}</button>
+        <button type="button" id="spGo" style="padding:8px 20px;border-radius:10px;background:rgba(139,92,246,.8);color:#fff;border:none;cursor:pointer;font-weight:bold;">${bT('✨ ابدأ التوليد','✨ Generate')}</button>
       </div>`;
       overlay.innerHTML = html;
       wrap.style.position = 'relative';
@@ -394,13 +395,11 @@
             clearInterval(iv);
             let reason = data.failure || data.failureCode || (data.error) || '';
             if(/moderation|SAFETY|content did not pass/i.test(reason)){
-              reason = isEn()
-                ? 'Content was rejected by safety filters — try a calmer description, or remove the person photo.'
-                : 'الرقابة رفضت المحتوى — جرّب وصفًا أهدأ (بدون عنف أو خطر)، أو شِل صورة الشخص وحاول من جديد.';
+              reason = bT('الرقابة رفضت المحتوى — جرّب وصفًا أهدأ (بدون عنف أو خطر)، أو شِل صورة الشخص وحاول من جديد.','Content was rejected by safety filters — try a calmer description, or remove the person photo.');
             }
-            reject(new Error((isEn() ? 'Video generation failed.' : 'فشل إنشاء الفيديو.') + (reason ? (' — ' + reason) : '')));
+            reject(new Error((bT('فشل إنشاء الفيديو.','Video generation failed.')) + (reason ? (' — ' + reason) : '')));
           } else {
-            setStatus((isEn() ? '⏳ Status: ' : '⏳ الحالة: ') + (data.status || '...'));
+            setStatus((bT('⏳ الحالة: ','⏳ Status: ')) + (data.status || '...'));
           }
         } catch(e){ /* transient network hiccup; keep polling */ }
       }, 5000);
@@ -525,26 +524,26 @@
   }
 
   async function runCanvasOnly(text, ratio, seconds, signature, wantNarration, narrationVal){
-    setStatus(isEn() ? '🎨 Rendering canvas video...' : '🎨 جاري إنشاء فيديو الكانفا...');
+    setStatus(bT('🎨 جاري إنشاء فيديو الكانفا...','🎨 Rendering canvas video...'));
     const clipBlob = await recordCanvasClip({ title: text, signature, seconds, ratio });
     let finalBlob = clipBlob;
     if(wantNarration){
       try{
-        setStatus(isEn() ? '🎙️ Generating narration...' : '🎙️ جاري إنشاء التعليق الصوتي...');
+        setStatus(bT('🎙️ جاري إنشاء التعليق الصوتي...','🎙️ Generating narration...'));
         const narrationInput = narrationVal || text;
         const ttsRes = await fetch('/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: isEn() ? 'en' : 'ar', gender: getNarrationGender() }),
+          body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
         });
         if(ttsRes.ok){
           const audioBlob = await ttsRes.blob();
-          setStatus(isEn() ? '🎚️ Merging narration...' : '🎚️ جاري دمج الصوت...');
+          setStatus(bT('🎚️ جاري دمج الصوت...','🎚️ Merging narration...'));
           finalBlob = await muxNarrationAny(clipBlob, audioBlob, true);
         }
       } catch(e){ /* keep silent clip on failure */ }
     }
     const finalUrl = URL.createObjectURL(finalBlob);
-    setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
+    setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
     resultEl.src = finalUrl;
     resultEl.style.display = 'block';
     downloadEl.href = finalUrl;
@@ -554,22 +553,22 @@
 
   async function runHybrid(text, style, ratio, durationVal, signature, token, wantNarration, narrationVal){
     const seconds = (durationVal === 'long20') ? 10 : (parseInt(durationVal, 10) || 5);
-    setStatus(isEn() ? '🎨 Building intro...' : '🎨 جاري إنشاء المقدمة...');
+    setStatus(bT('🎨 جاري إنشاء المقدمة...','🎨 Building intro...'));
     const introBlob = await recordCanvasClip({ title: text, signature: '', seconds: 2, ratio });
-    setStatus(isEn() ? '🎨 Building outro...' : '🎨 جاري إنشاء الخاتمة...');
+    setStatus(bT('🎨 جاري إنشاء الخاتمة...','🎨 Building outro...'));
     const outroBlob = await recordCanvasClip({
       title: '',
-      signature: signature ? ((isEn() ? 'Made by: ' : 'صُنع بواسطة: ') + signature) : (isEn() ? 'Made with Omran AI Video' : 'صُنع بواسطة صانع فيديو عمران'),
+      signature: signature ? ((bT('صُنع بواسطة: ','Made by: ')) + signature) : (bT('صُنع بواسطة صانع فيديو عمران','Made with Omran AI Video')),
       seconds: 2, ratio,
     });
 
-    setStatus(isEn() ? '🚀 Sending request to the AI video engine...' : '🚀 جاري إرسال الطلب لمحرك الفيديو الذكي...');
+    setStatus(bT('🚀 جاري إرسال الطلب لمحرك الفيديو الذكي...','🚀 Sending request to the AI video engine...'));
     const mainUrl = await createSceneWithRetry(text, style, seconds, ratio, token, false, (attempt, max) => {
       setStatus(isEn()
         ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
         : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
     });
-    setStatus(isEn() ? '🎬 Finalizing your video...' : '🎬 جاري إنهاء الفيديو...');
+    setStatus(bT('🎬 جاري إنهاء الفيديو...','🎬 Finalizing your video...'));
 
     const ffmpeg = await getFFmpeg();
     const { fetchFile } = await import('/ffmpeg/util/index.js');
@@ -580,14 +579,14 @@
 
     let mainForConcat = 'main.mp4';
     if(signature){
-      setStatus(isEn() ? '✍️ Adding your signature watermark...' : '✍️ جاري إضافة توقيعك على الفيديو...');
+      setStatus(bT('✍️ جاري إضافة توقيعك على الفيديو...','✍️ Adding your signature watermark...'));
       const wmBlob = await makeWatermarkPng(signature, ratio);
       await ffmpeg.writeFile('wm.png', await fetchFile(wmBlob));
       await ffmpeg.exec(['-i', 'main.mp4', '-i', 'wm.png', '-filter_complex', 'overlay=0:H-h:shortest=1', '-c:a', 'copy', 'main_wm.mp4']);
       mainForConcat = 'main_wm.mp4';
     }
 
-    setStatus(isEn() ? '🔗 Merging canvas + AI video...' : '🔗 جاري دمج الكانفا مع فيديو الذكاء الاصطناعي...');
+    setStatus(bT('🔗 جاري دمج الكانفا مع فيديو الذكاء الاصطناعي...','🔗 Merging canvas + AI video...'));
     const { w, h } = ratioDims(ratio);
     await ffmpeg.exec([
       '-i', 'intro.webm', '-i', mainForConcat, '-i', 'outro.webm',
@@ -603,22 +602,22 @@
 
     if(wantNarration){
       try{
-        setStatus(isEn() ? '🎙️ Generating narration...' : '🎙️ جاري إنشاء التعليق الصوتي...');
+        setStatus(bT('🎙️ جاري إنشاء التعليق الصوتي...','🎙️ Generating narration...'));
         const narrationInput = narrationVal || text;
         const ttsRes = await fetch('/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: isEn() ? 'en' : 'ar', gender: getNarrationGender() }),
+          body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
         });
         if(ttsRes.ok){
           const audioBlob = await ttsRes.blob();
-          setStatus(isEn() ? '🎚️ Merging narration...' : '🎚️ جاري دمج الصوت...');
+          setStatus(bT('🎚️ جاري دمج الصوت...','🎚️ Merging narration...'));
           finalBlob = await muxNarrationAny(finalBlob, audioBlob, false);
         }
       } catch(e){ /* keep video without narration */ }
     }
 
     const finalUrl = URL.createObjectURL(finalBlob);
-    setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
+    setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
     resultEl.src = finalUrl;
     resultEl.style.display = 'block';
     downloadEl.href = finalUrl;
@@ -743,12 +742,12 @@
   btnGenerate.onclick = async () => {
     const text = (promptEl.value || '').trim();
     if(!text && modeEl.value !== 'actor'){
-      setStatus((typeof window.t === 'function' && window.t('videoNeedDesc') !== 'videoNeedDesc') ? window.t('videoNeedDesc') : (isEn() ? '⚠️ Please describe the video first.' : '⚠️ اكتب وصف الفيديو أولًا.'));
+      setStatus((typeof window.t === 'function' && window.t('videoNeedDesc') !== 'videoNeedDesc') ? window.t('videoNeedDesc') : (bT('⚠️ اكتب وصف الفيديو أولًا.','⚠️ Please describe the video first.')));
       return;
     }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
     if(!token){
-      setStatus(isEn() ? '🔑 Please log in first to use the Video Maker.' : '🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.');
+      setStatus(bT('🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.','🔑 Please log in first to use the Video Maker.'));
       return;
     }
 
@@ -768,9 +767,9 @@
 
     function friendlyError(err){
       const code = err && err.code;
-      if(code === 'auth_required') return isEn() ? '🔑 Please log in first to use the Video Maker.' : '🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.';
+      if(code === 'auth_required') return bT('🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.','🔑 Please log in first to use the Video Maker.');
       if(code === 'daily_limit_reached') return isEn() ? "⏳ You have reached today's free video limit. Try again tomorrow." : '⏳ لقد استهلكت حد الفيديوهات المجانية لليوم. حاول مرة أخرى غدًا.';
-      return (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (err && err.message ? err.message : String(err));
+      return (bT('❌ خطأ: ','❌ Error: ')) + (err && err.message ? err.message : String(err));
     }
 
     const creationMode = modeEl.value;
@@ -809,7 +808,7 @@
             const d = await st.json();
             if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
             if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
-            else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((isEn() ? 'Veo failed.' : 'فشل Veo.') + (d.failure ? ' — ' + d.failure : ''))); }
+            else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل Veo.','Veo failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
           } catch(e){ /* keep polling */ }
         }, 8000);
       });
@@ -819,44 +818,44 @@
       try{
         const filmUseVeo = (creationMode === 'veo');
         if(filmUseVeo && !isOwnerAccount()){
-          setStatus(isEn() ? '🔒 Veo 3 is limited to the owner account for now.' : '🔒 Veo 3 مقتصر على حساب المالك حاليًا.');
+          setStatus(bT('🔒 Veo 3 مقتصر على حساب المالك حاليًا.','🔒 Veo 3 is limited to the owner account for now.'));
           btnGenerate.disabled = false;
           return;
         }
         const filmScenes = isOwnerAccount() ? 5 : 3;
-        setStatus(isEn() ? '✍️ Writing the film script scene by scene...' : '✍️ جاري كتابة سيناريو الفيلم مشهد بمشهد...');
+        setStatus(bT('✍️ جاري كتابة سيناريو الفيلم مشهد بمشهد...','✍️ Writing the film script scene by scene...'));
         const scriptRes = await fetch('/api/video-script', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topic: text, mode: 'film', sceneCount: filmScenes, style, lang: (isEn() ? 'en' : 'ar'), hero: !!filmHeroBase64, token }),
+          body: JSON.stringify({ topic: text, mode: 'film', sceneCount: filmScenes, style, lang: (bT('ar','en')), hero: !!filmHeroBase64, token }),
         });
         const scriptData = await scriptRes.json();
         if(scriptRes.status === 401){ const e = new Error('auth'); e.code = 'auth_required'; throw e; }
         if(scriptRes.status === 403 && scriptData && scriptData.error === 'daily_limit_reached'){ const e = new Error('limit'); e.code = 'daily_limit_reached'; throw e; }
         if(!scriptRes.ok || scriptData.error || !Array.isArray(scriptData.scenes) || !scriptData.scenes.length){
-          throw new Error(scriptData.error || (isEn() ? 'Could not generate the film script.' : 'تعذّر إنشاء سيناريو الفيلم.'));
+          throw new Error(scriptData.error || (bT('تعذّر إنشاء سيناريو الفيلم.','Could not generate the film script.')));
         }
         let scenes = scriptData.scenes.slice(0, filmScenes);
         // 📋 معاينة السيناريو — يراجع المستخدم المشاهد ويعدّلها قبل التوليد
-        setStatus(isEn() ? '📋 Review the script...' : '📋 راجع السيناريو...');
+        setStatus(bT('📋 راجع السيناريو...','📋 Review the script...'));
         const approvedScenes = await showScriptPreview(scriptData.title || text, scenes);
         if(!approvedScenes || !approvedScenes.length){
-          setStatus(isEn() ? '❌ Cancelled.' : '❌ تم الإلغاء.');
+          setStatus(bT('❌ تم الإلغاء.','❌ Cancelled.'));
           btnGenerate.disabled = false; return;
         }
         scenes = approvedScenes;
         if(!filmUseVeo){
-          setStatus(isEn() ? '💳 Checking video credits...' : '💳 جاري التأكد من رصيد الفيديو...');
+          setStatus(bT('💳 جاري التأكد من رصيد الفيديو...','💳 Checking video credits...'));
           const ok = await ensureRunwayCredits(scenes.length * 50);
           if(!ok){ btnGenerate.disabled = false; return; }
         }
         if(filmUseVeo && filmHeroBase64){
-          setStatus(isEn() ? 'ℹ️ Hero photo is supported with Runway only; continuing without it...' : 'ℹ️ صورة البطل مدعومة مع Runway فقط؛ سيتم المتابعة بدونها...');
+          setStatus(bT('ℹ️ صورة البطل مدعومة مع Runway فقط؛ سيتم المتابعة بدونها...','ℹ️ Hero photo is supported with Runway only; continuing without it...'));
         }
         const builtScenes = [];
         for(let i = 0; i < scenes.length; i++){
           const sc = scenes[i];
-          setStatus((isEn() ? '🎥 Generating scene ' : '🎥 جاري توليد المشهد ') + (i + 1) + '/' + scenes.length + (filmUseVeo ? ' (Veo 3)' : '') + '...');
+          setStatus((bT('🎥 جاري توليد المشهد ','🎥 Generating scene ')) + (i + 1) + '/' + scenes.length + (filmUseVeo ? ' (Veo 3)' : '') + '...');
           // إذا كان هناك بطل: نثبّت موضعه في كل prompt حتى يبدو بنفس المكان عبر المشاهد
           const baseScenePrompt = sc.visual || text;
           const heroAnchor = filmHeroBase64
@@ -870,7 +869,7 @@
                   ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
                   : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
               }, filmHeroBase64, filmHeroMime);
-          setStatus((isEn() ? '🎙️ Narrating scene ' : '🎙️ جاري تسجيل سرد المشهد ') + (i + 1) + '/' + scenes.length + '...');
+          setStatus((bT('🎙️ جاري تسجيل سرد المشهد ','🎙️ Narrating scene ')) + (i + 1) + '/' + scenes.length + '...');
           let audioBlob = null;
           try{
             const ttsCtl = new AbortController();
@@ -878,7 +877,7 @@
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: sc.narration || text, voice: 'maha', lang: isEn() ? 'en' : 'ar', gender: getNarrationGender() }),
+              body: JSON.stringify({ text: sc.narration || text, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
               signal: ttsCtl.signal,
             });
             clearTimeout(ttsTimer);
@@ -897,9 +896,9 @@
             if(idx < builtScenes.length){
               resultEl.src = builtScenes[idx].videoUrl;
               resultEl.play().catch(() => {});
-              setStatus((isEn() ? '▶️ Scene ' : '▶️ المشهد ') + (idx + 1) + '/' + builtScenes.length);
+              setStatus((bT('▶️ المشهد ','▶️ Scene ')) + (idx + 1) + '/' + builtScenes.length);
             } else {
-              setStatus(isEn() ? '✅ All scenes played.' : '✅ انتهى عرض كل المشاهد.');
+              setStatus(bT('✅ انتهى عرض كل المشاهد.','✅ All scenes played.'));
             }
           };
           resultEl.src = builtScenes[0].videoUrl;
@@ -917,36 +916,34 @@
             const a = document.createElement('a');
             a.href = proxyVideoUrl(sc.videoUrl);
             a.download = 'scene-' + (i + 1) + '.mp4';
-            a.textContent = (isEn() ? '⬇️ Scene ' : '⬇️ مشهد ') + (i + 1);
+            a.textContent = (bT('⬇️ مشهد ','⬇️ Scene ')) + (i + 1);
             a.style.cssText = 'padding:6px 12px;border-radius:10px;background:rgba(139,92,246,.18);color:inherit;text-decoration:none;font-size:13px;';
             linksEl.appendChild(a);
           });
-          setStatus(isEn()
-            ? '✅ Your film is ready! Scenes will play back-to-back — download each scene below.'
-            : '✅ فيلمك جاهز! المشاهد تُعرض ورا بعض تلقائيًا — وتقدر تحمّل كل مشهد من الأزرار تحت.');
+          setStatus(bT('✅ فيلمك جاهز! المشاهد تُعرض ورا بعض تلقائيًا — وتقدر تحمّل كل مشهد من الأزرار تحت.','✅ Your film is ready! Scenes will play back-to-back — download each scene below.'));
         };
         const oldLinks = document.getElementById('filmSceneLinks');
         if(oldLinks) oldLinks.innerHTML = '';
         resultEl.onended = null;
         // دائماً ندمج — حتى على هواوي (الدمج يعمل بالجهاز لا بالسيرفر)
-        setStatus(isEn() ? '🔗 Merging all scenes into your final film...' : '🔗 جاري دمج كل المشاهد بالفيلم النهائي...');
+        setStatus(bT('🔗 جاري دمج كل المشاهد بالفيلم النهائي...','🔗 Merging all scenes into your final film...'));
         let finalUrl = null;
         try{
           const finalBlob = await buildLongVideo(builtScenes, (i, total) => {
-            setStatus((isEn() ? '🔗 Merging scene ' : '🔗 جاري دمج المشهد ') + (i + 1) + '/' + total + '...');
+            setStatus((bT('🔗 جاري دمج المشهد ','🔗 Merging scene ')) + (i + 1) + '/' + total + '...');
           });
           finalUrl = URL.createObjectURL(finalBlob);
         } catch(e){
           try{
             const blob = await concatScenes(builtScenes.map(s => s.videoUrl));
             finalUrl = URL.createObjectURL(blob);
-            setStatus(isEn() ? '⚠️ Narration merge failed; film merged without narration.' : '⚠️ تعذّر دمج السرد؛ تم دمج الفيلم بدون السرد.');
+            setStatus(bT('⚠️ تعذّر دمج السرد؛ تم دمج الفيلم بدون السرد.','⚠️ Narration merge failed; film merged without narration.'));
           } catch(e2){
             finalUrl = null;
           }
         }
         if(finalUrl){
-          setStatus(isEn() ? '✅ Your film is ready!' : '✅ فيلمك جاهز!');
+          setStatus(bT('✅ فيلمك جاهز!','✅ Your film is ready!'));
           resultEl.src = finalUrl;
           resultEl.style.display = 'block';
           downloadEl.href = finalUrl;
@@ -967,7 +964,7 @@
     if(creationMode === 'veo' || creationMode === 'actor'){
       try{
         if(!isOwnerAccount()){
-          setStatus(isEn() ? '🔒 Veo 3 is limited to the owner account for now.' : '🔒 Veo 3 مقتصر على حساب المالك حاليًا.');
+          setStatus(bT('🔒 Veo 3 مقتصر على حساب المالك حاليًا.','🔒 Veo 3 is limited to the owner account for now.'));
           return;
         }
         let veoPrompt = text;
@@ -975,14 +972,14 @@
           const speechEl = document.getElementById('videoMakerActorSpeech');
           const speech = speechEl ? speechEl.value.trim() : '';
           if(!speech){
-            setStatus(isEn() ? '🗣️ Write what the actor should say first.' : '🗣️ اكتب أول شي وش يقول الممثل.');
+            setStatus(bT('🗣️ اكتب أول شي وش يقول الممثل.','🗣️ Write what the actor should say first.'));
             return;
           }
           veoPrompt = (text || 'An Emirati man in traditional white kandura and ghutra, warm friendly face')
             + '. The person looks directly at the camera and speaks in Emirati Gulf Arabic dialect (لهجة إماراتية خليجية), saying exactly these Arabic words: "' + speech + '". '
             + 'Perfect accurate lip-sync matching the Arabic words, natural authentic Emirati voice and accent, natural hand gestures, cinematic lighting, realistic. No subtitles, no captions, no text on screen.';
         }
-        setStatus(isEn() ? '🚀 Sending to Google Veo 3...' : '🚀 جاري الإرسال إلى Google Veo 3...');
+        setStatus(bT('🚀 جاري الإرسال إلى Google Veo 3...','🚀 Sending to Google Veo 3...'));
         const cr = await fetch('/api/video?action=veo-create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -997,17 +994,17 @@
               const d = await st.json();
               if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
               if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
-              else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((isEn() ? 'Veo failed.' : 'فشل Veo.') + (d.failure ? ' — ' + d.failure : ''))); }
-              else setStatus(isEn() ? '⏳ Veo 3 is generating (may take 1-3 min)...' : '⏳ Veo 3 يولّد الفيديو (قد يستغرق ١-٣ دقائق)...');
+              else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل Veo.','Veo failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
+              else setStatus(bT('⏳ Veo 3 يولّد الفيديو (قد يستغرق ١-٣ دقائق)...','⏳ Veo 3 is generating (may take 1-3 min)...'));
             } catch(e){ /* keep polling */ }
           }, 8000);
         });
-        setStatus(isEn() ? '⬇️ Downloading the video...' : '⬇️ جاري تحميل الفيديو...');
+        setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading the video...'));
         const vres = await fetch(proxyVideoUrl(videoUrl));
         if(!vres.ok) throw new Error('download failed ' + vres.status);
         const vblob = await vres.blob();
         const vurl = URL.createObjectURL(vblob);
-        setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
+        setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
         resultEl.src = vurl;
         resultEl.style.display = 'block';
         // رابط التحميل = المسار المباشر للسيرفر (Content-Disposition: attachment)، يشتغل على هواوي
@@ -1047,23 +1044,23 @@
     if(durationEl.value === 'longMinutes'){
       try{
         if(!isOwnerAccount()){
-          setStatus(isEn() ? '🔒 This feature is limited to the owner account.' : '🔒 هذه الميزة مقتصرة على حساب المالك.');
+          setStatus(bT('🔒 هذه الميزة مقتصرة على حساب المالك.','🔒 This feature is limited to the owner account.'));
           btnGenerate.disabled = false;
           return;
         }
         const mins = Math.max(1, Math.min(10, parseInt(longMinutesInput.value, 10) || 1));
-        setStatus(isEn() ? '✍️ Writing the full scene-by-scene script...' : '✍️ جاري كتابة السكربت كامل مشهد بمشهد...');
+        setStatus(bT('✍️ جاري كتابة السكربت كامل مشهد بمشهد...','✍️ Writing the full scene-by-scene script...'));
         const scriptRes = await fetch('/api/video-script', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topic: text, minutes: mins, style, lang: (isEn() ? 'en' : 'ar'), token }),
+          body: JSON.stringify({ topic: text, minutes: mins, style, lang: (bT('ar','en')), token }),
         });
         const scriptData = await scriptRes.json();
         if(!scriptRes.ok || scriptData.error || !Array.isArray(scriptData.scenes) || !scriptData.scenes.length){
-          throw new Error(scriptData.error || (isEn() ? 'Could not generate the script.' : 'تعذّر إنشاء السكربت.'));
+          throw new Error(scriptData.error || (bT('تعذّر إنشاء السكربت.','Could not generate the script.')));
         }
         const scenes = scriptData.scenes;
-        setStatus(isEn() ? '💳 Checking video credits...' : '💳 جاري التأكد من رصيد الفيديو...');
+        setStatus(bT('💳 جاري التأكد من رصيد الفيديو...','💳 Checking video credits...'));
         const okBal = await ensureRunwayCredits(scenes.length * 50);
         if(!okBal){ btnGenerate.disabled = false; return; }
         const estLow = (scenes.length * 2).toFixed(0);
@@ -1072,7 +1069,7 @@
           ? `This video will generate ${scenes.length} scenes (~${(scenes.length * SCENE_SECONDS_CONST) / 60 | 0} min). Estimated real cost: about $${estLow}-$${estHigh} charged to your Runway account. Continue?`
           : `هذا الفيديو راح يولّد ${scenes.length} مشهد (~${(scenes.length * SCENE_SECONDS_CONST / 60) | 0} دقيقة). التكلفة التقديرية الحقيقية: حوالي ${estLow}$-${estHigh}$ تُخصم من حساب Runway. تكمل؟`;
         if(!window.confirm(confirmMsg)){
-          setStatus(isEn() ? '❌ Cancelled.' : '❌ تم الإلغاء.');
+          setStatus(bT('❌ تم الإلغاء.','❌ Cancelled.'));
           btnGenerate.disabled = false;
           return;
         }
@@ -1080,14 +1077,14 @@
         const builtScenes = [];
         for(let i = 0; i < scenes.length; i++){
           const sc = scenes[i];
-          setStatus((isEn() ? '🚀 Sending scene ' : '🚀 جاري إرسال المشهد ') + (i + 1) + '/' + scenes.length + '...');
+          setStatus((bT('🚀 جاري إرسال المشهد ','🚀 Sending scene ')) + (i + 1) + '/' + scenes.length + '...');
           const lmHeroAnchor = filmHeroBase64 ? 'Hero centered in frame, medium shot, consistent camera angle. ' : '';
           const videoUrl = await createSceneWithRetry(lmHeroAnchor + (sc.visual || text), style, SCENE_SECONDS_CONST, ratio, token, true, (attempt, max) => {
             setStatus(isEn()
               ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
               : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
           }, filmHeroBase64, filmHeroMime);
-          setStatus((isEn() ? '🎙️ Narrating scene ' : '🎙️ جاري تسجيل صوت المشهد ') + (i + 1) + '/' + scenes.length + '...');
+          setStatus((bT('🎙️ جاري تسجيل صوت المشهد ','🎙️ Narrating scene ')) + (i + 1) + '/' + scenes.length + '...');
           let audioBlob = null;
           try{
             const ttsCtl2 = new AbortController();
@@ -1095,7 +1092,7 @@
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: sc.narration || text, voice: 'maha', lang: isEn() ? 'en' : 'ar', gender: getNarrationGender() }),
+              body: JSON.stringify({ text: sc.narration || text, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
               signal: ttsCtl2.signal,
             });
             clearTimeout(ttsTimer2);
@@ -1104,18 +1101,18 @@
           builtScenes.push({ videoUrl, audioBlob: audioBlob || new Blob() });
         }
 
-        setStatus(isEn() ? '🔗 Joining all scenes with narration into the final video...' : '🔗 جاري دمج كل المشاهد مع السرد بالفيديو النهائي...');
+        setStatus(bT('🔗 جاري دمج كل المشاهد مع السرد بالفيديو النهائي...','🔗 Joining all scenes with narration into the final video...'));
         const finalBlob = await buildLongVideo(builtScenes, (i, total) => {
-          setStatus((isEn() ? '🔗 Joining scene ' : '🔗 جاري دمج المشهد ') + (i + 1) + '/' + total + '...');
+          setStatus((bT('🔗 جاري دمج المشهد ','🔗 Joining scene ')) + (i + 1) + '/' + total + '...');
         });
         const finalUrl = URL.createObjectURL(finalBlob);
-        setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
+        setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
         resultEl.src = finalUrl;
         resultEl.style.display = 'block';
         downloadEl.href = finalUrl;
         downloadEl.style.display = 'block';
       } catch(e){
-        setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+        setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
       } finally {
         btnGenerate.disabled = false;
       }
@@ -1129,11 +1126,11 @@
       const singleHeroAnchor = filmHeroBase64 ? 'Hero centered in frame, medium shot, consistent camera angle. ' : '';
       if(isLong){
         const scenePrompts = [
-          singleHeroAnchor + text + (isEn() ? ' (opening moment of the scene)' : ' (اللحظة الافتتاحية للمشهد)'),
-          singleHeroAnchor + text + (isEn() ? ' (continuing the same scene, next moment)' : ' (استكمال نفس المشهد، اللحظة التالية)'),
+          singleHeroAnchor + text + (bT(' (اللحظة الافتتاحية للمشهد)',' (opening moment of the scene)')),
+          singleHeroAnchor + text + (bT(' (استكمال نفس المشهد، اللحظة التالية)',' (continuing the same scene, next moment)')),
         ];
         for(let i = 0; i < scenePrompts.length; i++){
-          setStatus((isEn() ? '🚀 Sending scene ' : '🚀 جاري إرسال المشهد ') + (i + 1) + '/' + scenePrompts.length + '...');
+          setStatus((bT('🚀 جاري إرسال المشهد ','🚀 Sending scene ')) + (i + 1) + '/' + scenePrompts.length + '...');
           const url = await createSceneWithRetry(scenePrompts[i], style, 10, ratio, token, false, (attempt, max) => {
             setStatus(isEn()
               ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
@@ -1142,7 +1139,7 @@
           sceneUrls.push(url);
         }
       } else {
-        setStatus(isEn() ? '🚀 Sending request...' : '🚀 جاري إرسال الطلب...');
+        setStatus(bT('🚀 جاري إرسال الطلب...','🚀 Sending request...'));
         const url = await createSceneWithRetry(singleHeroAnchor + text, style, durationEl.value, ratio, token, false, (attempt, max) => {
           setStatus(isEn()
             ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
@@ -1155,19 +1152,19 @@
       let finalIsBlob = false;
 
       if(sceneUrls.length > 1){
-        setStatus(isEn() ? '🔗 Joining scenes together...' : '🔗 جاري دمج المشاهد معًا...');
+        setStatus(bT('🔗 جاري دمج المشاهد معًا...','🔗 Joining scenes together...'));
         try{
           const blob = await concatScenes(sceneUrls);
           finalSrc = blob;
           finalIsBlob = true;
         } catch(e){
-          setStatus(isEn() ? '⚠️ Could not join scenes; showing the first scene only.' : '⚠️ تعذّر دمج المشاهد؛ سيتم عرض المشهد الأول فقط.');
+          setStatus(bT('⚠️ تعذّر دمج المشاهد؛ سيتم عرض المشهد الأول فقط.','⚠️ Could not join scenes; showing the first scene only.'));
         }
       }
 
       if(wantQuality){
         try{
-          setStatus(isEn() ? '🔎 Upscaling video quality...' : '🔎 جاري ترقية جودة الفيديو...');
+          setStatus(bT('🔎 جاري ترقية جودة الفيديو...','🔎 Upscaling video quality...'));
           const upRes = await fetch('/api/video-upscale-create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1184,22 +1181,22 @@
 
       if(wantNarration){
         try{
-          setStatus(isEn() ? '🎙️ Generating narration...' : '🎙️ جاري إنشاء التعليق الصوتي...');
+          setStatus(bT('🎙️ جاري إنشاء التعليق الصوتي...','🎙️ Generating narration...'));
           const narrationInput = (narrationText.value || '').trim() || text;
           const ttsRes = await fetch('/api/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: isEn() ? 'en' : 'ar', gender: getNarrationGender() }),
+            body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
           });
           if(ttsRes.ok){
             const audioBlob = await ttsRes.blob();
-            setStatus(isEn() ? '🎚️ Adding narration to the video...' : '🎚️ جاري إضافة التعليق الصوتي للفيديو...');
+            setStatus(bT('🎚️ جاري إضافة التعليق الصوتي للفيديو...','🎚️ Adding narration to the video...'));
             const merged = await muxNarration(finalSrc, audioBlob);
             finalSrc = merged;
             finalIsBlob = true;
           }
         } catch(e){
-          setStatus(isEn() ? '⚠️ Could not add narration; showing the video without it.' : '⚠️ تعذّر إضافة التعليق الصوتي؛ سيتم عرض الفيديو بدونه.');
+          setStatus(bT('⚠️ تعذّر إضافة التعليق الصوتي؛ سيتم عرض الفيديو بدونه.','⚠️ Could not add narration; showing the video without it.'));
         }
       }
 
@@ -1213,7 +1210,7 @@
         // رابط التحميل = proxy URL (same-origin + Content-Disposition: attachment = يشتغل على هواوي)
         dlUrl = proxyVideoUrl(finalSrc);
         try{
-          setStatus(isEn() ? '⬇️ Downloading video...' : '⬇️ جاري تحميل الفيديو...');
+          setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading video...'));
           const vres = await fetch(dlUrl);
           if(!vres.ok) throw new Error('proxy ' + vres.status);
           playerUrl = URL.createObjectURL(await vres.blob());
@@ -1221,7 +1218,7 @@
           playerUrl = finalSrc; // آخر ملاذ للمشغّل فقط
         }
       }
-      setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
+      setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
       resultEl.src = playerUrl;
       resultEl.style.display = 'block';
       resultEl.play().catch(function(){ /* autoplay may be blocked */ });
