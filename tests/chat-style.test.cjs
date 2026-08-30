@@ -206,7 +206,7 @@ check(!bundle.includes('فردّ حرفيًا: «أهلًا بك.» فقط'), '�
     // الكلمات المحذوفة — الأدوات الآن في كل دور غير اجتماعي فلا حاجة لتفعيل بكلمة.
     check(chatServer.includes('قاعدة الصورة/الفيديو التوضيحي'), 'القاعدة الصريحة موجودة في تعليمات الأدوات');
     check(chatServer.includes('ممنوع web_search للطلبات التوضيحية'), 'يمنع web_search صراحةً عند الطلب التوضيحي');
-    check(chatServer.includes('استدعِ generate_image بـ prompt إنجليزي وصفي'), 'يُوجّه النموذج لاستخدام generate_image بوصف من سياق المحادثة');
+    check(chatServer.includes('فاستدعِ generate_image') && chatServer.includes('فاستدعِ generate_video بوصف حركي'), 'يوجّه الصور إلى generate_image والفيديو الفعلي إلى generate_video');
     
     // ===== فحوصات أسلوب المحادثة الجديد =====
     // v-chat-tools: فحصا «ملابس/سيارات تفعّلان مسار الأدوات» ثبّتا القائمة
