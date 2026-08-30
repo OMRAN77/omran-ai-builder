@@ -403,3 +403,8 @@ html[data-mode="light"] #eduHubModal .eduNote{color:var(--muted) !important;}
   #videoMakerModal .vmk-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
   #videoMakerModal .vmk-main{max-height:none;overflow:visible}
 }
+
+/* v-modal-close-fix (شكوى عمران: ✕ عند الساعة في مساعد المستندات ومحلل
+   المصاريف): الرأس ينزل تحت شريط الحالة بهامش الأمان والزر أكبر. */
+#expModal .expHead, .xm .xmHead{padding-top:calc(14px + env(safe-area-inset-top,0px));}
+#expModal .expX, .xm .xmX{width:42px;height:40px;}
