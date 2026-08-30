@@ -11041,6 +11041,7 @@ async function postWithConfirm(url, payload){
     if(/عثماني|othmani/i.test(source)) return 'othmani';
     if(/نسخ\s*نوتو|نوتو|noto\s*naskh/i.test(source)) return 'naskh2'; if(/ثلث|thuluth/i.test(source)) return 'thuluth'; if(/فارسي|نستعليق|farsi|nastaliq/i.test(source)) return 'farsi'; if(/مصحف|قرآني|quran/i.test(source)) return 'quran';
     if(/نسخ|naskh/i.test(source)) return 'naskh';
+    if(/زخرف|مزخرف|decorat/i.test(source)) return 'diwani'; /* v-name-swap: «مزخرف» = أقرب خطوطنا زخرفةً */
     return 'default';
   }
   function textColor(source){
@@ -11179,7 +11180,9 @@ async function postWithConfirm(url, payload){
       suffix = rest.slice(quoted.index + quoted.whole.length);
       styleSource = rest.slice(0, quoted.index) + ' ' + suffix;
     }else{
-      const styleTail = rest.match(/\s+(?:،|,)?\s*(?:(?:بخط|بالخط)\s+\S+(?:\s+(?:ذهبي(?:ة)?|أبيض|ابيض|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|بيج|gold|white|black|green|blue|red|beige))?|(?:بلون|باللون|لون\s+النص)\s+\S+|(?:واجعل|اجعل|وخلي|خلي)\s+النص\s+(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|الوسط|المنتصف|الأسفل|الاسفل))(?:\s+(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|فوق|الوسط|المنتصف|المركز|الأسفل|الاسفل))?\s*$/i);
+      /* v-name-swap: «ويكون بخط حلو وزخرف» ذيل تنسيق لا جزء من النصّ —
+         نسمح بقائد (ويكون/خليه) وبأوصاف زخرفة متلاحقة بعد اسم الخط. */
+      const styleTail = rest.match(/\s+(?:،|,)?\s*(?:و?\s*(?:يكون|خليه|خله|اجعله)\s+)?(?:(?:بخط|بالخط)\s+\S+(?:\s+و?(?:م?زخرف[ةه]?|حلو[ةه]?|جميل[ةه]?|أنيق[ةه]?|انيق[ةه]?|ذهبي(?:ة)?|أبيض|ابيض|أسود|اسود|أخضر|اخضر|أزرق|ازرق|أحمر|احمر|بيج|gold|white|black|green|blue|red|beige))*|(?:بلون|باللون|لون\s+النص)\s+\S+|(?:واجعل|اجعل|وخلي|خلي)\s+النص\s+(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|الوسط|المنتصف|الأسفل|الاسفل))(?:\s+(?:في|بال|إلى|الى)\s*(?:الأعلى|الاعلى|فوق|الوسط|المنتصف|المركز|الأسفل|الاسفل))?\s*$/i);
       if(styleTail && styleTail.index >= 0){ suffix = rest.slice(styleTail.index); rest = rest.slice(0, styleTail.index); }
       styleSource = suffix;
       // ذيل «على الصورة / فوق الصورة» ليس جزءًا من النصّ المكتوب.
@@ -16617,10 +16620,16 @@ function __showImgLoading(el, ar, en){
              نفسها بلا أي توليد (رسّام الذكاء يتجاهل اختيار الخط ويعيد رسم
              المشهد أحيانًا — لقطة الطفل المستبدل). */
           const __wantsNamedFont = /(ديواني|رقع[ةه]|كوفي|عثماني|نسخ|ثلث|فارسي|نستعليق|مصحف|قرآني|diwani|ruqaa|kufi|othmani|naskh|thuluth|farsi|nastaliq|quran)/i.test(text || '');
+          /* v-name-swap (لقطة بطاقة التجنيد: «غيري الاسم واكتبي سيف» كتب الجملة
+             فوق البطاقة وترك «أحمد») — نية تغيير الاسم/النص الموجود = أمر
+             استبدال للرسّام: يمحو القديم ويكتب الجديد في مكانه بنفس الأسلوب. */
+          const __nameSwap = /(?:غير|غيّر|غيري|غيّري|بدل|بدّل|بدلي|بدّلي|استبدل|استبدلي)\s+(?:ال[إا]سم|اسم|النص|الكلمة|الكلمه|المكتوب)/i.test(text || '');
           try{
-            if(__wantsNamedFont) throw { __localFont: true }; /* مباشرة للكانفس */
+            if(__wantsNamedFont && !__nameSwap) throw { __localFont: true }; /* مباشرة للكانفس */
             const __cmp = await __compressB64(__wb64, __wmime);
-            const __aiTxtPrompt = 'Write this EXACT Arabic text verbatim onto the image — do NOT change, add, or remove any word or letter: \u00AB' + __resolvedText + '\u00BB. Use beautiful Arabic calligraphy with full diacritics (tashkeel) harmonizing with the scene palette and lighting. Place it ONLY in a clean empty area (sky, wall, margins) — NEVER over faces or the main subject. Do not alter anything else.';
+            const __aiTxtPrompt = __nameSwap
+              ? 'This image contains a personal name (or short text) written on it. REPLACE that existing name with the EXACT Arabic text \u00AB' + __resolvedText + '\u00BB: erase the old name completely and write the new one in its exact place, matching the original calligraphy style, size, color and orientation as closely as possible. Do NOT change anything else \u2014 keep every other text, logo, decoration and layout identical.'
+              : 'Write this EXACT Arabic text verbatim onto the image — do NOT change, add, or remove any word or letter: \u00AB' + __resolvedText + '\u00BB. Use beautiful Arabic calligraphy with full diacritics (tashkeel) harmonizing with the scene palette and lighting. Place it ONLY in a clean empty area (sky, wall, margins) — NEVER over faces or the main subject. Do not alter anything else.';
             const __aiTRes = await fetch('/api/maha-image', {
               method:'POST', headers:{ 'Content-Type':'application/json' },
               signal: genAbortController.signal,
