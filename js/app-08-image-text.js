@@ -44,6 +44,9 @@
     if(/أزرق|ازرق|blue/i.test(source)) return '#2979ff';
     if(/أحمر|احمر|red/i.test(source)) return '#d32f2f';
     if(/بيج|beige/i.test(source)) return '#ead9bd';
+    /* v-gold-overlay: «بخط جميل ومزخرف» بلا لون محدد = ذهب متدرّج (يفعّل
+       المعالجة الذهبية الكاملة في الراسم — كالنموذج الذي اعتمده عمران) */
+    if(/زخرف|مزخرف|جميل|حلو[ةه]?|أنيق|انيق|راقي|فخم|ملكي|مميز|رائع|beautiful|fancy|elegant|ornate|royal|decorat|calligraph/i.test(source)) return '#f4cf65';
     return '#ffffff';
   }
   // «فوق الصورة/فوقها» تعني «عليها» لا أعلاها — تُنقّى قبل قراءة الموضع.
