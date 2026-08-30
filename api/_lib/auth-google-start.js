@@ -45,13 +45,17 @@ module.exports = async (req, res) => {
     return;
   }
 
+  // v-login-done: مسار غلاف الآيفون يمرّر app=1 — نلحق «-app» بالـstate
+  // (جوجل تعيده كما هو) ليعرف الكولباك أن يعرض صفحة «ارجع للتطبيق»
+  // بدل تحويل سفاري إلى نسخة كاملة من الموقع.
+  const stateOut = (typeof q.state === 'string' ? q.state : '') + (q.app ? '-app' : '');
   const params = new URLSearchParams({
     client_id: id,
     redirect_uri: redirectUri,
     response_type: 'code',
     scope: 'openid email profile',
     prompt: 'select_account',
-    state: typeof q.state === 'string' ? q.state : '',
+    state: stateOut,
   });
   res.writeHead(302, { Location: 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString() });
   res.end();

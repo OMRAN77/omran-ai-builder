@@ -558,12 +558,29 @@ console.log('  ✓ v-lang-follow: التعليم بلغة التطبيق تلق�
 // oauth-claim يستلم الجلسة عند العودة. نفس الشيء لربط الإيميل.
 {
   const auth1 = fs.readFileSync(path.join(__dirname, '../js/app-01-boot-auth.js'), 'utf8');
-  assert.ok(auth1.includes('v-google-safari') && auth1.includes("window.open(location.origin + gStartUrl, '_blank')"), 'الدخول يفتح سفاري داخل الغلاف');
+  assert.ok(auth1.includes('v-google-safari') && auth1.includes("window.open(location.origin + gStartUrl + '&app=1', '_blank')"), 'الدخول يفتح سفاري داخل الغلاف');
   assert.ok(auth1.includes('messageHandlers.omranShare'), 'كشف الغلاف من جسوره لا من UA');
   assert.ok(auth1.includes('الدخول يكتمل تلقائيًا'), 'رسالة إرشاد ظاهرة للمستخدم');
   const st12 = fs.readFileSync(path.join(__dirname, '../js/app-12-studios.js'), 'utf8');
   assert.ok(st12.includes("window.open(location.origin + emStartUrl, '_blank')"), 'ربط الإيميل يفتح سفاري أيضًا');
 }
 console.log('  ✓ v-google-safari: جوجل في سفاري داخل تطبيق الآيفون — لا 400 ولا باسكيز عالقة');
+
+// ㊼ v-login-done: بعد نجاح الدخول من الغلاف كان سفاري يهبط على نسخة كاملة
+// من الموقع (ترفض gtoken لغياب state جلستها) — ارتباك بلا فائدة. مسار الغلاف
+// يمرّر app=1 → لاحقة «-app» في state → الكولباك يودع الجلسة تحت الجزء
+// السداسي ويوجّه سفاري لصفحة «✅ ارجع للتطبيق».
+{
+  const gs = fs.readFileSync(path.join(__dirname, '../api/_lib/auth-google-start.js'), 'utf8');
+  assert.ok(gs.includes("(q.app ? '-app' : '')"), 'البدء يلحق -app لمسار الغلاف');
+  const gc = fs.readFileSync(path.join(__dirname, '../api/_lib/auth-google-callback.js'), 'utf8');
+  assert.ok(gc.includes('([0-9a-f]{16,64})(-app)?') && gc.includes("stM[1].toLowerCase()"), 'الإيداع تحت الجزء السداسي وحده');
+  assert.ok(gc.includes("'/login-done.html'"), 'مسار الغلاف يهبط على صفحة الرجوع');
+  const auth1b = fs.readFileSync(path.join(__dirname, '../js/app-01-boot-auth.js'), 'utf8');
+  assert.ok(auth1b.includes("gStartUrl + '&app=1'"), 'الغلاف يعلّم نفسه بـ app=1');
+  const ld = fs.readFileSync(path.join(__dirname, '../login-done.html'), 'utf8');
+  assert.ok(ld.includes('تم تسجيل الدخول بنجاح') && ld.includes('safe-area-inset-top'), 'صفحة الرجوع عربية وتحت شريط الحالة');
+}
+console.log('  ✓ v-login-done: سفاري يقول «ارجع للتطبيق» بعد الدخول — لا نسخة موقع مربكة');
 
 console.log('fashion locks tests passed');
