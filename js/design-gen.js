@@ -79,7 +79,7 @@
       sel.style.display='none';
       var kind=(sel===occ)?'occasion':'season';
       var lab=host.querySelector('label'), labTxt=(lab?lab.textContent:'').trim();
-      function optTxt(o){ var l0=(document.documentElement.lang||'ar')+''; var den=(l0.indexOf('ar')!==0&&l0.indexOf('ur')!==0)&&o.getAttribute('data-en'); return ((den||o.textContent)||'').trim(); } /* v-look-labels */
+      function optTxt(o){ return (typeof window.__optT==='function')?window.__optT(o):(((o&&o.textContent)||'')+'').trim(); } /* v657 */
       function cur(){ var os=sel.options; for(var i=0;i<os.length;i++) if(os[i].value===sel.value) return os[i]; return os[0]; }
       var tr=window.omranPicker.trigger(function(){
         var o=cur();
@@ -88,7 +88,8 @@
       }, function(){
         return {
           title: labTxt,
-          count: sel.options.length+(((document.documentElement.lang||'ar')==='en')?' options — pick yours':' خيارًا — اختر ما يناسبك'),
+          /* v657: العدّاد يتبع اللغة كما في design-sels. */
+          count: sel.options.length+' '+((typeof window.t==='function'&&window.t('pickerOptsPick')!=='pickerOptsPick')?window.t('pickerOptsPick'):(((document.documentElement.lang||'ar')==='en')?'options — pick yours':'خيارًا — اختر ما يناسبك')),
           items: Array.prototype.map.call(sel.options,function(o){
             return { v:o.value, title:optTxt(o), active:o.value===sel.value, img:o.value?LOOKS+kind+'/'+o.value+'.webp':'' };
           }),

@@ -76,9 +76,9 @@
 
     <!-- AppGallery 7.5: سياسة الخصوصية ظاهرة بوضوح في صفحة الدخول/التسجيل -->
     <p style="margin:14px 0 0; text-align:center; font-size:12px; color:var(--muted,#8a8a8a);" data-i18n-skip>
-      بتسجيلك أو دخولك فأنت توافق على
-      <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa); text-decoration:underline;">سياسة الخصوصية</a>
-      و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa); text-decoration:underline;">شروط الاستخدام</a>
+      <span data-bi="By signing up or signing in you agree to">بتسجيلك أو دخولك فأنت توافق على</span>
+      <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa); text-decoration:underline;" data-bi="Privacy Policy">سياسة الخصوصية</a>
+      <span data-bi="and" data-bi-space="1">و</span><a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa); text-decoration:underline;" data-bi="Terms of Use">شروط الاستخدام</a>
     </p>
   </div>
 </div>
