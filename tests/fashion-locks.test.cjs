@@ -585,4 +585,17 @@ console.log('  ✓ v-google-safari: جوجل في سفاري داخل تطبيق
 }
 console.log('  ✓ v-login-done: سفاري يقول «ارجع للتطبيق» بعد الدخول — لا نسخة موقع مربكة');
 
+// ㊽ v-name-swap: «غيري الاسم واكتبي سيف ويكون بخط حلو وزخرف» على بطاقة —
+// كتب الجملة كلها فوق البطاقة وترك «أحمد». ذيل التنسيق يُقص من النص،
+// و«زخرف» = ديواني، ونية تغيير الاسم تتحول لأمر استبدال للرسّام.
+{
+  const it8 = fs.readFileSync(path.join(__dirname, '../js/app-08-image-text.js'), 'utf8');
+  assert.ok(it8.includes('v-name-swap') && /يكون\|خليه/.test(it8), 'قائد «ويكون» يفصل ذيل التنسيق عن النص');
+  assert.ok(it8.includes("return 'diwani'; /* v-name-swap"), '«مزخرف» يختار الديواني');
+  const at9 = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
+  assert.ok(at9.includes('__nameSwap') && at9.includes('REPLACE that existing name'), 'تغيير الاسم = استبدال يمحو القديم');
+  assert.ok(at9.includes('__wantsNamedFont && !__nameSwap'), 'الاستبدال لا يسقط لكانفس لا يمحو');
+}
+console.log('  ✓ v-name-swap: «غيّر الاسم» يبدل الاسم داخل التصميم — لا كتابة فوقه');
+
 console.log('fashion locks tests passed');
