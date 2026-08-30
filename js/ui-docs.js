@@ -863,8 +863,22 @@
         '<div class="xmDisc">'+T('نصيحة: من نافذة الطباعة اختر «حفظ كـ PDF».','Tip: in the print dialog choose “Save as PDF”.')+'</div>';
       var fr=document.getElementById('cvFrame');
       try{ fr.contentDocument.open(); fr.contentDocument.write(html); fr.contentDocument.close(); }catch(e){ __swallow(e, "misc:index#26"); }
-      document.getElementById('cvPdf').onclick=function(){
-        var w=window.open('','_blank'); if(!w){ alert(T('اسمح بالنوافذ المنبثقة للطباعة.','Allow pop-ups to print.')); return; }
+      document.getElementById('cvPdf').onclick=async function(){
+        /* v-cv-pdf (شكوى عمران «موضوع PDF ما يشتغل»): داخل التطبيق نافذة
+           الطباعة ميتة — نصدّر ملف PDF حقيقيًا عبر سلسلة الجسر/المشاركة/الرابط. */
+        var inApp=false; try{ inApp = typeof window.omranLikelyApp==='function' && window.omranLikelyApp(); }catch(e){ /* guard-ok */ }
+        async function fileExport(){
+          if(typeof window.omranExportHtmlAsPdfFile!=='function') return false;
+          try{
+            var st=(lastHtml.match(/<style[\s\S]*?<\/style>/gi)||[]).join('');
+            var bm=lastHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+            await window.omranExportHtmlAsPdfFile(st+(bm?bm[1]:lastHtml), { rtl:/dir=["']rtl/i.test(lastHtml), fileName:'omran-cv.pdf' });
+            return true;
+          }catch(e){ return false; }
+        }
+        if(inApp && await fileExport()) return;
+        var w=window.open('','_blank');
+        if(!w){ if(await fileExport()) return; alert(T('اسمح بالنوافذ المنبثقة للطباعة.','Allow pop-ups to print.')); return; }
         w.document.write(lastHtml+'<script>setTimeout(function(){window.print();},400);<\/script>'); w.document.close();
       };
       document.getElementById('cvEdit').onclick=form;

@@ -762,10 +762,8 @@
     setTimeout(function(){ try{ URL.revokeObjectURL(a.href); a.remove(); }catch(e){} }, 1500);
   };
 
-  if(pdfBtn) pdfBtn.onclick = function(){
+  if(pdfBtn) pdfBtn.onclick = async function(){
     if(!lastData){ setStatus(bT('⚠️ ولّد التصميم أولًا.','⚠️ Generate a design first.')); return; }
-    const w = window.open('', '_blank');
-    if(!w){ setStatus(bT('⚠️ اسمح بالنوافذ المنبثقة لتصدير التقرير.','⚠️ Allow pop-ups to export the report.')); return; }
     const fig = function(b64, mime, cap){
       return b64 ? ('<figure><img src="data:' + (mime || 'image/png') + ';base64,' + b64 + '"><figcaption>' + cap + '</figcaption></figure>') : '';
     };
@@ -781,7 +779,7 @@
     const meta = [oTxt(typeEl), floorsEl.value + ' أدوار', areaEl.value + ' م² بناء',
       (plotEl && plotEl.value ? plotEl.value + ' م² أرض' : ''), oTxt(styleEl),
       (emirateEl && emirateEl.value ? oTxt(emirateEl) : '')].filter(Boolean).join(' · ');
-    w.document.write('<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>تقرير مشروع البناء</title><style>'
+    const __docHtml = ('<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>تقرير مشروع البناء</title><style>'
       + 'body{font-family:"Segoe UI",Tahoma,Arial,sans-serif;margin:0;padding:0 26px 26px;color:#111;}'
       + 'header{background:linear-gradient(135deg,#0f766e,#134e4a);color:#fff;margin:0 -26px 18px;padding:20px 26px;}'
       + 'header h1{margin:0;font-size:21px}header p{margin:6px 0 0;font-size:13px;opacity:.92}'
@@ -801,6 +799,26 @@
       + '<h2>📋 التفاصيل والتكلفة</h2><pre>' + esc(lastData.planText || '') + '</pre>' + tbl
       + '<footer>تصوّر أولي فقط — لا يغني عن مهندس مرخّص أو رخصة بناء رسمية. صادر من تطبيق عمران.</footer>'
       + '</body></html>');
+    /* v-cons-pdf (شكوى عمران «موضوع PDF ما يشتغل»): داخل التطبيق نافذة الطباعة
+       ميتة — نصدّر ملف PDF حقيقيًا؛ والطباعة تبقى للكمبيوتر. */
+    let __inApp = false; try{ __inApp = typeof window.omranLikelyApp === 'function' && window.omranLikelyApp(); }catch(e){ /* guard-ok — cosmetic */ }
+    async function __fileExport(){
+      if(typeof window.omranExportHtmlAsPdfFile !== 'function') return false;
+      try{
+        const __st = (__docHtml.match(/<style[\s\S]*?<\/style>/gi) || []).join('');
+        const __bm = __docHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+        await window.omranExportHtmlAsPdfFile(__st + (__bm ? __bm[1] : __docHtml), { rtl: true, fileName: 'omran-construction.pdf' });
+        return true;
+      }catch(e){ return false; }
+    }
+    if(__inApp && await __fileExport()) return;
+    const w = window.open('', '_blank');
+    if(!w){
+      if(await __fileExport()) return;
+      setStatus(bT('⚠️ اسمح بالنوافذ المنبثقة لتصدير التقرير.','⚠️ Allow pop-ups to export the report.'));
+      return;
+    }
+    w.document.write(__docHtml);
     w.document.close();
     setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} }, 800);
   };
