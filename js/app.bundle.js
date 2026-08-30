@@ -3229,6 +3229,8 @@ const I18N = {
     shareCopyBtn: 'نسخ الرابط',
     shareCreating: 'جارٍ الإنشاء...',
     shareError: 'تعذّر إنشاء الرابط، حاول مرة أخرى.',
+    shareNeedCode: 'ما في تطبيق للمشاركة بعد — أنشئ تطبيقك أولًا في هذا المشروع ثم شاركه.',
+    shareTooLarge: 'المشروع أكبر من حد المشاركة (2MB) — صغّر الصور أو المحتوى ثم أعد المحاولة.',
     shareCopied: 'تم نسخ الرابط! ✅',
     /* v601: مساعد البريد الذكيّ — 24 نصًّا كانت en()?:  مباشرةً (لغتان فقط) */
     emailAsst_connectText: "اربط حساب Gmail الخاص بك ليقرأ الذكاء الاصطناعي إيميلاتك ويقترح ردودًا جاهزة تعتمدها قبل الإرسال.", emailAsst_connectBtn: "🔗 ربط Gmail", emailAsst_disclaimer: "⚠️ لن يتم إرسال أي رد إلا بعد موافقتك الصريحة على كل رسالة.", emailAsst_title: "📧 مساعد البريد الذكي", emailAsst_refresh: "تحديث", emailAsst_loading: "جارٍ فحص بريدك…", emailAsst_empty: "لا توجد إيميلات جديدة تحتاج ردًا الآن.",
@@ -3666,6 +3668,8 @@ const I18N = {
     shareCopied: 'Link copied! ✅',
     shareCreating: 'Creating...',
     shareError: 'Could not create link, please try again.',
+    shareNeedCode: 'Nothing to share yet — build your app in this project first, then share it.',
+    shareTooLarge: 'Project exceeds the 2MB share limit — reduce images or content and try again.',
     videoMakerModalTitle: '🎬 AI Video Maker',
     videoMakerDesc: 'Describe the video you want, then pick a style and duration. This feature is in testing with a small daily limit per account.',
     videoMakerPromptPlaceholder: 'Describe the video you want to create... e.g. a small cat playing in a sunny garden',
@@ -4217,7 +4221,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=611'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
+    sc.src = 'i18n/' + lg + '.js?v=612'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -7216,7 +7220,7 @@ function relabelProviders(){
     if(typeof provDDUpdateButton === 'function') provDDUpdateButton();
   }catch(e){ __swallow(e, "ui:app-05-ui#relabel"); }
 }
-try{ window.relabelProviders = relabelProviders; }catch(_){ }
+try{ window.relabelProviders = relabelProviders; }catch(_){ /* guard-ok — تصدير اختياري، فشله لا يعطل الشريط */ }
 function updateProviderQuickBarActive(){
   const current = localStorage.getItem('aiapp_provider') || 'claude';
   document.querySelectorAll('.prov-cell, .prov-chip-m').forEach(el => {
@@ -18843,6 +18847,13 @@ function openShareModal(project){
 
   if(createBtn) createBtn.addEventListener('click', async () => {
     if(!shareModalProject) return;
+    /* v-share-why (شكوى المالك: «تعذّر إنشاء الرابط» بلا سبب): الخادم يرفض
+       مشروعًا بلا كود تطبيق — نقولها بوضوح قبل الإرسال بدل رسالة عامة. */
+    if(!String(shareModalProject.code || '').trim()){
+      statusMsg.style.display = 'block';
+      statusMsg.textContent = t('shareNeedCode');
+      return;
+    }
     const isPublic = $('#sharePublicYes').checked;
     statusMsg.style.display = 'block';
     statusMsg.textContent = t('shareCreating');
@@ -18867,7 +18878,12 @@ function openShareModal(project){
       resultBox.style.display = 'block';
       statusMsg.style.display = 'none';
     }catch(e){
-      statusMsg.textContent = t('shareError');
+      /* v-share-why: السبب الحقيقي يظهر — «بلا كود» و«أكبر من الحد» لهما
+         رسالتاهما، وأي خطأ خادم آخر يُعرض نصّه بين قوسين ليُشخَّص فورًا. */
+      var __sm = (e && e.message) || '';
+      if(__sm === 'Missing code') statusMsg.textContent = t('shareNeedCode');
+      else if(__sm === 'code_too_large') statusMsg.textContent = t('shareTooLarge');
+      else statusMsg.textContent = t('shareError') + ((__sm && __sm !== 'error') ? ' (' + __sm.slice(0, 120) + ')' : '');
     }finally{
       createBtn.disabled = false;
     }
