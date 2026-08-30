@@ -1307,66 +1307,41 @@ async function mahaLoadFont(key){
 async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
   const exact = String(txt == null ? '' : txt).replace(/\r\n?/g, '\n');
   if(!exact.trim()) throw new Error('missing_exact_text');
-  const fontCss = await mahaLoadFont(fontKey || 'modern');
+  const fontCss = await mahaLoadFont(fontKey || 'default');
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
       try{
+        /* v-gold-overlay (أمر عمران ٣٠ أغسطس — «يخرب الصورة، ابدأ من الصفر،
+           أريد أفضل من GPT»): إعادة بناء الراسم كاملًا.
+           1) لا شرائط ولا تمديد كانفس أبدًا — أبعاد الصورة تبقى كما هي والنص
+              يُرسم عليها (شريط v676 الملوّن كان يشوّه الصورة).
+           2) ذهب متدرّج حقيقي + حدّ داكن ناعم + ظل، مع وشاح تعتيم متدرّج
+              خفيف خلف النص فقط ليُقرأ على أي خلفية.
+           3) زخرفة فاصلة (فلوريش) تحت النص مع الخطوط المزخرفة/الذهبية —
+              مثل تصاميم الخطاطين، والإملاء مضمون حرفيًا (رسم محلي لا توليد). */
         const c = document.createElement('canvas');
         c.width = img.naturalWidth; c.height = img.naturalHeight;
         const ctx = c.getContext('2d');
         ctx.drawImage(img, 0, 0);
-        // 🎯 v676: نقيس أهدأ نطاق أفقي في الصورة.
-        // لو ما فيه مساحة فاضية كافية (كل الصورة فيها موضوع)، نمدد الكانفس
-        // ونضيف شريطاً ملوّناً بلون حافة الصورة ونكتب فيه — الموضوع لا يُمسّ.
-        let __stripAdded = false, __stripHeight = 0, __stripAtTop = false;
+        // اختيار تلقائي: أهدأ طرف (أعلى/أسفل فقط) — الأسفل مفضّل كالتصاميم الاحترافية
         if(!position || position === 'auto'){
           position = 'bottom';
           try{
-            let best = null;
-            const __bands = [['top',0.0,0.22],['upper',0.22,0.22],['center',0.40,0.22],['lower',0.60,0.22],['bottom',0.74,0.22]];
-            const __bandPen = { top:0, upper:12, center:42, lower:12, bottom:0 };
-            __bands.forEach(function(b){
-              const zy = Math.floor(c.height * b[1]), zh = Math.max(1, Math.min(c.height - zy, Math.floor(c.height * b[2])));
+            const bandSd = (fy) => {
+              const zy = Math.floor(c.height * fy), zh = Math.max(1, Math.min(c.height - Math.floor(c.height * fy), Math.floor(c.height * 0.22)));
               const d = ctx.getImageData(0, zy, c.width, zh).data;
               let sum = 0, sq = 0, n = 0;
-              for(let i = 0; i < d.length; i += 52){ const lum = d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114; sum+=lum; sq+=lum*lum; n++; }
-              const mn = sum/n, sd = Math.sqrt(Math.max(0, sq/n - mn*mn));
-              const sc = sd + __bandPen[b[0]];
-              if(!best || sc < best.sc) best = { name: b[0]==='upper'?'top':b[0]==='lower'?'bottom':b[0], sc, sd };
-            });
-            if(best) position = best.name;
-            // لو أهدأ نطاق لا يزال فيه تفاصيل كثيرة (sd عالية) → امدد الكانفس
-            if(best && best.sd > 18){
-              __stripAtTop = (position === 'top'); // اختر جهة أهدأ طرف
-              // قياس أكثر لون تكراراً في حافة الصورة
-              const __ey = __stripAtTop ? 0 : c.height - 4;
-              const __ed = ctx.getImageData(0, __ey, c.width, 4).data;
-              let __er=0,__eg=0,__eb=0,__en=0;
-              for(let i=0;i<__ed.length;i+=16){__er+=__ed[i];__eg+=__ed[i+1];__eb+=__ed[i+2];__en++;}
-              const __ec = 'rgb('+Math.round(__er/__en)+','+Math.round(__eg/__en)+','+Math.round(__eb/__en)+')';
-              const __orgH = c.height;
-              __stripHeight = Math.max(Math.floor(c.height * 0.28), 160);
-              c.height = c.height + __stripHeight;
-              // أعد رسم الصورة في مكانها (الكانفس يُفرغ عند تغيير height)
-              if(__stripAtTop){
-                ctx.drawImage(img, 0, __stripHeight);
-                const __grad = ctx.createLinearGradient(0,0,0,__stripHeight);
-                __grad.addColorStop(0, __ec); __grad.addColorStop(1, __ec);
-                ctx.fillStyle = __grad; ctx.fillRect(0, 0, c.width, __stripHeight);
-              } else {
-                ctx.drawImage(img, 0, 0);
-                const __grad = ctx.createLinearGradient(0,__orgH,0,c.height);
-                __grad.addColorStop(0, __ec); __grad.addColorStop(1, __ec);
-                ctx.fillStyle = __grad; ctx.fillRect(0, __orgH, c.width, __stripHeight);
-              }
-              __stripAdded = true;
-              position = __stripAtTop ? 'top' : 'bottom';
-            }
+              for(let i = 0; i < d.length; i += 52){ const l = d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114; sum+=l; sq+=l*l; n++; }
+              const mn = sum/n; return Math.sqrt(Math.max(0, sq/n - mn*mn));
+            };
+            if(bandSd(0.02) + 8 < bandSd(0.76)) position = 'top';
           }catch(e){ position = 'bottom'; }
         }
-        const __side=/^(right|left)-/.exec(position||''), maxWidth=c.width*(__side?.[1]?0.30:(__stripAdded?0.84:0.72)), maxHeight=__stripAdded?(__stripHeight*0.80):(c.height*(__side?0.44:0.26)); if(__side){ctx.translate((__side[1]==='right'?1:-1)*c.width*.34,0);position=position.slice(__side[0].length);}
-        let fs = Math.floor(Math.min(c.width / 9.5, c.height / 9));
+        const __side=/^(right|left)-/.exec(position||'');
+        const maxWidth=c.width*(__side?.[1]?0.30:0.84), maxHeight=c.height*(__side?0.44:0.24);
+        if(__side){ctx.translate((__side[1]==='right'?1:-1)*c.width*.34,0);position=position.slice(__side[0].length);}
+        let fs = Math.floor(Math.min(c.width / 8.5, c.height / 9));
         let lines = [];
         const setF = () => { ctx.font = '700 ' + fs + 'px "' + fontCss + '", "Segoe UI", Tahoma, Arial, sans-serif'; };
         const wrap = (line) => {
@@ -1384,51 +1359,87 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
         do{
           setF();
           lines = exact.split('\n').flatMap(wrap);
-          if(lines.length * fs * 1.38 <= maxHeight && lines.every((line) => ctx.measureText(line).width <= maxWidth)) break;
+          if(lines.length * fs * 1.42 <= maxHeight && lines.every((line) => ctx.measureText(line).width <= maxWidth)) break;
           fs -= 2;
         }while(fs > Math.max(22, Math.floor(c.width / 68)));
         setF();
-        const lineHeight = fs * 1.38, totalHeight = lines.length * lineHeight;
-        const __textAreaOffset = __stripAdded ? (__stripAtTop ? 0 : (c.height - __stripHeight)) : 0; let firstY = __stripAdded ? __textAreaOffset + (__stripHeight - totalHeight) / 2 + lineHeight / 2 : c.height - c.height * 0.07 - totalHeight + lineHeight / 2;
-        if(position === 'top') firstY = c.height * 0.08 + lineHeight / 2;
-        if(position === 'center') firstY = c.height / 2 - totalHeight / 2 + lineHeight / 2;
+        const lineHeight = fs * 1.42, totalHeight = lines.length * lineHeight;
+        const decorative = /^(diwani|thuluth|ruqaa|quran|othmani|farsi|kufi)$/.test(String(fontKey || ''));
+        const goldHex = /^#(f4cf65|ffd400|f4d03f|d4af37|c9962e)$/i.test(String(colorStr || ''));
+        const goldMode = goldHex || (decorative && (!colorStr || /^#ffffff$/i.test(colorStr)));
+        const ornH = (decorative || goldMode) ? Math.floor(fs * 0.9) : 0;
+        let firstY = c.height - c.height * 0.055 - (totalHeight + ornH) + lineHeight / 2;
+        if(position === 'top') firstY = c.height * 0.07 + lineHeight / 2;
+        if(position === 'center') firstY = c.height / 2 - (totalHeight + ornH) / 2 + lineHeight / 2;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.direction = /[\u0600-\u06FF]/.test(exact) ? 'rtl' : 'ltr';
-        // v674: بلا لون محدد → نستخرج لوناً منسجماً من ألوان الصورة نفسها بدل الأبيض دائماً
-        let fill = colorStr || '';
-        let dark = false;
-        if(!fill){
-          try{
-            const ry = Math.max(0, Math.floor(firstY - lineHeight / 2));
-            const rh = Math.max(1, Math.min(c.height - ry, Math.ceil(totalHeight)));
-            const rd = ctx.getImageData(0, ry, c.width, rh).data;
-            let r = 0, g = 0, b = 0, n = 0;
-            for(let i = 0; i < rd.length; i += 48){ r += rd[i]; g += rd[i+1]; b += rd[i+2]; n++; }
-            r /= n; g /= n; b /= n;
-            const bgLum = r*0.299 + g*0.587 + b*0.114;
-            const mx = Math.max(r,g,b), mn = Math.min(r,g,b);
-            let hue = 0;
-            if(mx !== mn){ const df = mx - mn; hue = (mx===r ? ((g-b)/df + (g<b?6:0)) : mx===g ? ((b-r)/df + 2) : ((r-g)/df + 4)) * 60; }
-            const sat = mx === 0 ? 0 : (mx - mn) / mx;
-            dark = bgLum >= 150; /* خلفية فاتحة → كتابة غامقة والعكس */
-            const s = Math.round(Math.min(78, sat*100 + 26));
-            fill = 'hsl(' + Math.round(hue) + ',' + s + '%,' + (dark ? '20%' : '90%') + ')';
-          }catch(e){ fill = '#ffffff'; dark = false; }
-        } else if(/^#[0-9a-f]{6}$/i.test(fill)){
-          const lum = parseInt(fill.slice(1,3),16)*0.299 + parseInt(fill.slice(3,5),16)*0.587 + parseInt(fill.slice(5,7),16)*0.114;
-          dark = lum < 128;
+        const blockTop = firstY - lineHeight / 2, blockBot = firstY + (lines.length - 1) * lineHeight + lineHeight / 2;
+        // وشاح قراءة متدرّج خفيف خلف منطقة النص فقط — يذوب في الصورة ولا يغطيها
+        try{
+          const zt = Math.max(0, blockTop - lineHeight), zb = Math.min(c.height, blockBot + ornH + lineHeight * 0.8);
+          const g = ctx.createLinearGradient(0, zt, 0, zb);
+          if(position === 'top'){ g.addColorStop(0,'rgba(0,0,0,.36)'); g.addColorStop(0.7,'rgba(0,0,0,.14)'); g.addColorStop(1,'rgba(0,0,0,0)'); }
+          else { g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(0.3,'rgba(0,0,0,.14)'); g.addColorStop(1,'rgba(0,0,0,.36)'); }
+          ctx.fillStyle = g;
+          ctx.fillRect(__side ? -c.width : 0, zt, c.width * 3, zb - zt);
+        }catch(e){ __swallow(e, 'img:overlay#scrim'); }
+        // التعبئة: ذهب متدرّج للمزخرف/الذهبي، وإلا اللون المطلوب بحدّ ذكي
+        const mkGold = (y1, y2) => {
+          const g = ctx.createLinearGradient(0, y1, 0, y2);
+          g.addColorStop(0,'#fdf3c0'); g.addColorStop(0.38,'#f3d67a'); g.addColorStop(0.62,'#d9a83f'); g.addColorStop(0.82,'#b8862b'); g.addColorStop(1,'#f0cf6f');
+          return g;
+        };
+        let fill, strokeCol, shadowCol;
+        if(goldMode){ fill = mkGold(blockTop, blockBot); strokeCol = 'rgba(70,44,8,.55)'; shadowCol = 'rgba(0,0,0,.5)'; }
+        else {
+          const base = colorStr || '#ffffff';
+          let dark = false;
+          if(/^#[0-9a-f]{6}$/i.test(base)){
+            const lum = parseInt(base.slice(1,3),16)*0.299 + parseInt(base.slice(3,5),16)*0.587 + parseInt(base.slice(5,7),16)*0.114;
+            dark = lum < 128;
+          }
+          fill = base;
+          strokeCol = dark ? 'rgba(255,255,255,.9)' : 'rgba(0,0,0,.7)';
+          shadowCol = dark ? 'rgba(255,255,255,.3)' : 'rgba(0,0,0,.5)';
         }
         ctx.lineJoin = 'round'; ctx.miterLimit = 2;
-        ctx.lineWidth = Math.max(3, Math.floor(fs / 11));
-        ctx.strokeStyle = dark ? 'rgba(255,255,255,.92)' : 'rgba(0,0,0,.84)';
+        ctx.lineWidth = Math.max(2, Math.floor(fs / 14));
+        ctx.strokeStyle = strokeCol;
         ctx.fillStyle = fill;
-        ctx.shadowColor = dark ? 'rgba(255,255,255,.35)' : 'rgba(0,0,0,.55)';
-        ctx.shadowBlur = Math.max(4, Math.floor(fs / 9));
+        ctx.shadowColor = shadowCol;
+        ctx.shadowBlur = Math.max(6, Math.floor(fs / 7));
+        ctx.shadowOffsetY = Math.max(1, Math.floor(fs / 30));
         lines.forEach((line, i) => {
           const y = firstY + i * lineHeight;
           ctx.strokeText(line, c.width / 2, y, maxWidth);
           ctx.fillText(line, c.width / 2, y, maxWidth);
         });
+        // 🌿 الزخرفة الفاصلة تحت النص — لفّتان متناظرتان ومعيّن مركزي
+        if(ornH){
+          try{
+            const cx = c.width / 2, oy = blockBot + ornH * 0.55;
+            const w = Math.min(maxWidth * 0.62, fs * 6.4);
+            const og = goldMode ? mkGold(oy - fs * 0.3, oy + fs * 0.3) : fill;
+            ctx.save();
+            ctx.shadowBlur = Math.max(3, Math.floor(fs / 12));
+            ctx.shadowOffsetY = 1;
+            ctx.lineWidth = Math.max(2, Math.floor(fs / 18));
+            ctx.strokeStyle = og;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(cx + fs * 0.5, oy);
+            ctx.bezierCurveTo(cx + w * 0.24, oy - fs * 0.30, cx + w * 0.32, oy + fs * 0.32, cx + w * 0.5, oy - fs * 0.06);
+            ctx.moveTo(cx - fs * 0.5, oy);
+            ctx.bezierCurveTo(cx - w * 0.24, oy - fs * 0.30, cx - w * 0.32, oy + fs * 0.32, cx - w * 0.5, oy - fs * 0.06);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(cx, oy - fs * 0.17); ctx.lineTo(cx + fs * 0.17, oy); ctx.lineTo(cx, oy + fs * 0.17); ctx.lineTo(cx - fs * 0.17, oy);
+            ctx.closePath();
+            ctx.fillStyle = og;
+            ctx.fill();
+            ctx.restore();
+          }catch(e){ __swallow(e, 'img:overlay#ornament'); }
+        }
         resolve(c.toDataURL('image/png').split(',')[1]);
       }catch(e){ reject(e); }
     };
