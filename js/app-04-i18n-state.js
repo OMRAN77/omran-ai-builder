@@ -188,6 +188,8 @@ function applyLanguage(){
   localStorage.setItem('aiapp_lang', lang);
   renderQuickChips();
   renderOmranBotChips();
+  /* v658: خيارات القوائم وقائمة الدول والعناصر الموسومة تتبع اللغة بعد كلّ تطبيق. */
+  try{ if(window.__langSync) window.__langSync(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#v658"); }
   try{ if(window.__refreshProjMenuLabels) window.__refreshProjMenuLabels(); }catch(_){ __swallow(_, "save:app-04-i18n-state#7"); }
   /* v-boot-l10n: ستار الإقلاع (index.html) يُرفع فقط بعد تطبيق قاموس اللغة
      الحقيقي — قبل ذلك كانت الصفحة تظهر عربية كاملة ثم تنقلب أمام المستخدم. */

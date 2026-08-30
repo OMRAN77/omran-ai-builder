@@ -215,6 +215,37 @@ NC|كاليدونيا الجديدة|🇳🇨|USD|$|1|أوقيانوسيا
     r.querySelectorAll('.cursym').forEach(function (e) { e.textContent = C.sy; });
   }
 
+  /* v658: اسم الدولة بلغة المستخدم عبر Intl.DisplayNames (بلا جدول ترجمة)،
+     وعنوان المجموعة عبر القاموس الثنائيّ __BI. كانت ١٦١ دولة عربيّة في كلّ اللغات. */
+  var GRP_EN = { 'الخليج والعالم العربي':'Gulf & Arab world', 'آسيا':'Asia', 'أفريقيا':'Africa',
+    'أوروبا':'Europe', 'أوقيانوسيا':'Oceania', 'الأمريكتان':'Americas' };
+  function curLang(){
+    try{ if(typeof lang !== 'undefined' && lang) return String(lang);
+      return localStorage.getItem('aiapp_lang') || 'ar'; }
+    catch(_){ /* guard-ok: language probe falls back to Arabic. */ return 'ar'; }
+  }
+  function curName(x){
+    var Lg = curLang(); if(Lg === 'ar') return x.n;
+    try{ var d = new Intl.DisplayNames([Lg, 'en'], { type: 'region' });
+      var nm = d.of(x.c); if(nm && nm !== x.c) return nm; }
+    catch(_){ /* guard-ok: unsupported locale falls back to the Arabic table. */ }
+    return x.n;
+  }
+  function relabelCur(sel){
+    if(!sel) return;
+    var by = {}; L.forEach(function (x) { by[x.c] = x; });
+    Array.prototype.forEach.call(sel.querySelectorAll('optgroup'), function (og) {
+      var ar = og.getAttribute('data-ar') || og.label;
+      og.label = (typeof window.__bT === 'function') ? window.__bT(ar, GRP_EN[ar] || ar) : ar;
+    });
+    Array.prototype.forEach.call(sel.options, function (o) {
+      var x = by[o.value]; if(x) o.textContent = x.f + '  ' + curName(x) + ' — ' + x.cc;
+    });
+  }
+  window.__curRelabel = function(){
+    Array.prototype.forEach.call(document.querySelectorAll('select[data-cur-filled="1"]'), relabelCur);
+  };
+
   function fillSelect(sel) {
     if (!sel || sel.dataset.curFilled) return;
     var seen = {}, groups = [];
@@ -222,6 +253,7 @@ NC|كاليدونيا الجديدة|🇳🇨|USD|$|1|أوقيانوسيا
     groups.forEach(function (g) {
       var og = document.createElement('optgroup');
       og.label = g;
+      og.setAttribute('data-ar', g);
       L.filter(function (x) { return x.g === g; }).forEach(function (x) {
         var o = document.createElement('option');
         o.value = x.c;
@@ -231,6 +263,7 @@ NC|كاليدونيا الجديدة|🇳🇨|USD|$|1|أوقيانوسيا
       sel.appendChild(og);
     });
     sel.dataset.curFilled = '1';
+    relabelCur(sel);
   }
 
   function mount(root, sel) {
