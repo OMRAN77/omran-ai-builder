@@ -629,4 +629,15 @@ console.log('  ✓ v-no-kickout: العودة للتطبيق لا تطرد ال�
 }
 console.log('  ✓ v-edit-rescue: تعديل الصور له إنقاذ — والاستبدال الفاشل يصارح لا يغش');
 
+// 52 v-hifi-edit: مقارنة عمران مع ChatGPT — تطبيقنا بدّل الاسم صح لكن خربش
+// باقي نصوص البطاقة. السببان: تصغير المدخل إلى 800px (يمسح تفاصيل النص)
+// وغياب input_fidelity=high الذي يحفظ نصوص وشعارات الأصل.
+{
+  const mi2 = fs.readFileSync(path.join(__dirname, '../api/_lib/maha-image.js'), 'utf8');
+  assert.ok(mi2.includes("form.append('input_fidelity', 'high')"), 'الإنقاذ بدقة مدخل عالية');
+  const at9d = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
+  assert.ok(at9d.includes('__mxd2 = 1600'), 'المدخل 1600px لا 800 — نصوص البطاقة تبقى مقروءة');
+}
+console.log('  ✓ v-hifi-edit: تعديل البطاقات بدقة ChatGPT — الاسم يتبدل والباقي يبقى');
+
 console.log('fashion locks tests passed');

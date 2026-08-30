@@ -224,7 +224,10 @@ module.exports = async (req, res) => {
           form.append('model', 'gpt-image-1');
           form.append('prompt', String(rescuePromptText).slice(0, 3800));
           form.append('size', 'auto');
-          form.append('quality', 'medium');
+          /* v-hifi-edit (مقارنة عمران مع ChatGPT): input_fidelity=high يحفظ
+             نصوص وشعارات الصورة الأصلية — بدونه يعاد رسمها مخربشة. */
+          form.append('input_fidelity', 'high');
+          form.append('quality', 'high');
           form.append('image', new Blob([bytes], { type: editMimeType || 'image/jpeg' }), 'photo.jpg');
           const r = await fetch('https://api.openai.com/v1/images/edits', {
             method: 'POST',
