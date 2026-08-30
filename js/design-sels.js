@@ -17,8 +17,8 @@
     var g=document.createElement('div'); g.className='optGrid';
     g.style.gridTemplateColumns='repeat('+(opts.length<=4?opts.length:3)+',1fr)';
     opts.forEach(function(o){
-      var l0g=(document.documentElement.lang||'ar')+''; var den=(l0g.indexOf('ar')!==0&&l0g.indexOf('ur')!==0)&&o.getAttribute('data-en'); /* v-look-labels */
-      var txt=((den||o.textContent)||'').trim(), m=txt.match(EMO);
+      /* v657: النصّ بلغة المستخدم — لا إجبار على data-en. */
+      var txt=(typeof window.__optT==='function'?window.__optT(o):((o.textContent||'')+'').trim()), m=txt.match(EMO);
       var ic=m?m[1]:(((ICONS[sel.id]||{})[o.value])||'');
       if(m) txt=txt.replace(EMO,'');
       var c=document.createElement('div');
@@ -280,7 +280,7 @@
   }
   function selTrigger(s){
     var ien=(document.documentElement.lang||'ar')==='en';
-    function optTxt(o){ var l0=(document.documentElement.lang||'ar')+''; var den=(l0.indexOf('ar')!==0&&l0.indexOf('ur')!==0)&&o.getAttribute('data-en'); return ((den||o.textContent)||'').trim(); } /* v-look-labels */
+    function optTxt(o){ return (typeof window.__optT==='function')?window.__optT(o):(((o&&o.textContent)||'')+'').trim(); } /* v657 */
     function cur(){ var os=s.options; for(var i=0;i<os.length;i++) if(os[i].value===s.value) return os[i]; return os[0]; }
     var lab=s.parentElement.querySelector('label');
     var labTxt=(lab?lab.textContent:'').trim();
