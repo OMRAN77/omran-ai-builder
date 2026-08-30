@@ -506,4 +506,16 @@ console.log('  ✓ v-store-safe: حزمة هواوي بلا أي محتوى ما
 }
 console.log('  ✓ v-lab-haiku: التجربة الحية تكتمل — نموذج سريع + إتمام تلقائي');
 
+// ㊷ v-edu-selfhost: مستودع omran-edu غير موصول بالنشر — الصفحة المحدثة
+// (لغة الدرس منسدلة بدل أزرار مكدسة) تُستضاف هنا فتنشر مع التطبيق تلقائيًا.
+{
+  const eo = fs.readFileSync(path.join(__dirname, '../edu-old/index.html'), 'utf8');
+  assert.ok(eo.includes('id="uiLang"') && !eo.includes('id="btnBn"'), 'المنسدلة بدل أزرار اللغات');
+  assert.ok(eo.split('omran-edu.vercel.app/api').length >= 4, 'الخلفية على النشر القديم الشغال');
+  assert.ok(eo.includes("'/edu-old/ffmpeg-assets/"), 'أصول ffmpeg نفس النطاق (شرط الـWorkers)');
+  const ft10 = fs.readFileSync(path.join(__dirname, '../js/app-10-features.js'), 'utf8');
+  assert.ok(ft10.includes("frame.src = '/edu-old/index.html'"), 'الإطار على النسخة المستضافة ذاتيًا');
+}
+console.log('  ✓ v-edu-selfhost: التعليمي القديم ينشر مع التطبيق — بلا لوحة Vercel');
+
 console.log('fashion locks tests passed');
