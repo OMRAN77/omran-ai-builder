@@ -907,9 +907,13 @@ function openShareModal(project){
 
   if(createBtn) createBtn.addEventListener('click', async () => {
     if(!shareModalProject) return;
-    /* v-share-why (شكوى المالك: «تعذّر إنشاء الرابط» بلا سبب): الخادم يرفض
-       مشروعًا بلا كود تطبيق — نقولها بوضوح قبل الإرسال بدل رسالة عامة. */
-    if(!String(shareModalProject.code || '').trim()){
+    /* v-share-chat (طلب المالك: «مش ضروري فقط التطبيق — كل شي»): المحادثة
+       تُشارك أيضًا — الرفض فقط لمشروع فارغ تمامًا (لا كود ولا رسائل). */
+    const __shareMsgs = (shareModalProject.messages || [])
+      .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && String(m.content || '').trim())
+      .slice(-300)
+      .map((m) => ({ role: m.role, content: String(m.content).slice(0, 20000) }));
+    if(!String(shareModalProject.code || '').trim() && !__shareMsgs.length){
       statusMsg.style.display = 'block';
       statusMsg.textContent = t('shareNeedCode');
       return;
@@ -929,6 +933,7 @@ function openShareModal(project){
           code: shareModalProject.code || '',
           username,
           isPublic,
+          messages: __shareMsgs, /* v-share-chat */
         }),
       });
       const data = await resp.json();
@@ -941,7 +946,7 @@ function openShareModal(project){
       /* v-share-why: السبب الحقيقي يظهر — «بلا كود» و«أكبر من الحد» لهما
          رسالتاهما، وأي خطأ خادم آخر يُعرض نصّه بين قوسين ليُشخَّص فورًا. */
       var __sm = (e && e.message) || '';
-      if(__sm === 'Missing code') statusMsg.textContent = t('shareNeedCode');
+      if(__sm === 'Missing code' || __sm === 'empty_project') statusMsg.textContent = t('shareNeedCode');
       else if(__sm === 'code_too_large') statusMsg.textContent = t('shareTooLarge');
       else statusMsg.textContent = t('shareError') + ((__sm && __sm !== 'error') ? ' (' + __sm.slice(0, 120) + ')' : '');
     }finally{

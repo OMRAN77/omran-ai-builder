@@ -3229,7 +3229,7 @@ const I18N = {
     shareCopyBtn: 'نسخ الرابط',
     shareCreating: 'جارٍ الإنشاء...',
     shareError: 'تعذّر إنشاء الرابط، حاول مرة أخرى.',
-    shareNeedCode: 'ما في تطبيق للمشاركة بعد — أنشئ تطبيقك أولًا في هذا المشروع ثم شاركه.',
+    shareNeedCode: 'المشروع فارغ — اكتب رسالة أو أنشئ تطبيقًا ثم شاركه.',
     shareTooLarge: 'المشروع أكبر من حد المشاركة (2MB) — صغّر الصور أو المحتوى ثم أعد المحاولة.',
     shareCopied: 'تم نسخ الرابط! ✅',
     /* v601: مساعد البريد الذكيّ — 24 نصًّا كانت en()?:  مباشرةً (لغتان فقط) */
@@ -3668,7 +3668,7 @@ const I18N = {
     shareCopied: 'Link copied! ✅',
     shareCreating: 'Creating...',
     shareError: 'Could not create link, please try again.',
-    shareNeedCode: 'Nothing to share yet — build your app in this project first, then share it.',
+    shareNeedCode: 'This project is empty — write a message or build an app, then share it.',
     shareTooLarge: 'Project exceeds the 2MB share limit — reduce images or content and try again.',
     videoMakerModalTitle: '🎬 AI Video Maker',
     videoMakerDesc: 'Describe the video you want, then pick a style and duration. This feature is in testing with a small daily limit per account.',
@@ -4221,7 +4221,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=612'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
+    sc.src = 'i18n/' + lg + '.js?v=613'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -18847,9 +18847,13 @@ function openShareModal(project){
 
   if(createBtn) createBtn.addEventListener('click', async () => {
     if(!shareModalProject) return;
-    /* v-share-why (شكوى المالك: «تعذّر إنشاء الرابط» بلا سبب): الخادم يرفض
-       مشروعًا بلا كود تطبيق — نقولها بوضوح قبل الإرسال بدل رسالة عامة. */
-    if(!String(shareModalProject.code || '').trim()){
+    /* v-share-chat (طلب المالك: «مش ضروري فقط التطبيق — كل شي»): المحادثة
+       تُشارك أيضًا — الرفض فقط لمشروع فارغ تمامًا (لا كود ولا رسائل). */
+    const __shareMsgs = (shareModalProject.messages || [])
+      .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && String(m.content || '').trim())
+      .slice(-300)
+      .map((m) => ({ role: m.role, content: String(m.content).slice(0, 20000) }));
+    if(!String(shareModalProject.code || '').trim() && !__shareMsgs.length){
       statusMsg.style.display = 'block';
       statusMsg.textContent = t('shareNeedCode');
       return;
@@ -18869,6 +18873,7 @@ function openShareModal(project){
           code: shareModalProject.code || '',
           username,
           isPublic,
+          messages: __shareMsgs, /* v-share-chat */
         }),
       });
       const data = await resp.json();
@@ -18881,7 +18886,7 @@ function openShareModal(project){
       /* v-share-why: السبب الحقيقي يظهر — «بلا كود» و«أكبر من الحد» لهما
          رسالتاهما، وأي خطأ خادم آخر يُعرض نصّه بين قوسين ليُشخَّص فورًا. */
       var __sm = (e && e.message) || '';
-      if(__sm === 'Missing code') statusMsg.textContent = t('shareNeedCode');
+      if(__sm === 'Missing code' || __sm === 'empty_project') statusMsg.textContent = t('shareNeedCode');
       else if(__sm === 'code_too_large') statusMsg.textContent = t('shareTooLarge');
       else statusMsg.textContent = t('shareError') + ((__sm && __sm !== 'error') ? ' (' + __sm.slice(0, 120) + ')' : '');
     }finally{

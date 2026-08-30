@@ -953,7 +953,7 @@ const I18N = {
     shareCopyBtn: 'نسخ الرابط',
     shareCreating: 'جارٍ الإنشاء...',
     shareError: 'تعذّر إنشاء الرابط، حاول مرة أخرى.',
-    shareNeedCode: 'ما في تطبيق للمشاركة بعد — أنشئ تطبيقك أولًا في هذا المشروع ثم شاركه.',
+    shareNeedCode: 'المشروع فارغ — اكتب رسالة أو أنشئ تطبيقًا ثم شاركه.',
     shareTooLarge: 'المشروع أكبر من حد المشاركة (2MB) — صغّر الصور أو المحتوى ثم أعد المحاولة.',
     shareCopied: 'تم نسخ الرابط! ✅',
     /* v601: مساعد البريد الذكيّ — 24 نصًّا كانت en()?:  مباشرةً (لغتان فقط) */
@@ -1392,7 +1392,7 @@ const I18N = {
     shareCopied: 'Link copied! ✅',
     shareCreating: 'Creating...',
     shareError: 'Could not create link, please try again.',
-    shareNeedCode: 'Nothing to share yet — build your app in this project first, then share it.',
+    shareNeedCode: 'This project is empty — write a message or build an app, then share it.',
     shareTooLarge: 'Project exceeds the 2MB share limit — reduce images or content and try again.',
     videoMakerModalTitle: '🎬 AI Video Maker',
     videoMakerDesc: 'Describe the video you want, then pick a style and duration. This feature is in testing with a small daily limit per account.',
