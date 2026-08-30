@@ -54,17 +54,36 @@ async function listExplore(limit) {
   return items.filter(Boolean);
 }
 
+// v-share-chat (طلب المالك: «مش ضروري فقط التطبيق — كل شي»): المشاركة تقبل
+// المحادثة أيضًا — مشروع بلا كود يُشارك نصّ محادثته وتعرضه p.html كفقاعات.
+const MAX_SHARE_MSGS = 300;
+function cleanShareMessages(list) {
+  if (!Array.isArray(list)) return null;
+  const out = [];
+  for (const m of list.slice(-MAX_SHARE_MSGS)) {
+    if (!m || (m.role !== 'user' && m.role !== 'assistant')) continue;
+    const txt = (typeof m.content === 'string') ? m.content.slice(0, 20000) : '';
+    if (!txt.trim()) continue;
+    out.push({ role: m.role, content: txt });
+  }
+  return out.length ? out : null;
+}
+
 // v423: إنشاء المشاركة صار دالّة واحدة يستدعيها المسار العام وأداة الوكيل معًا.
 // نسختان من منطق تخزين واحد = عطبان يومًا ما، وتكرار المنطق أصل أعطاب هذا المستودع.
 async function createShare(opts) {
   const o = opts || {};
-  if (!o.code || typeof o.code !== 'string') return { error: 'Missing code' };
-  if (o.code.length > MAX_CODE_SIZE) return { error: 'code_too_large' };
+  const code = (typeof o.code === 'string') ? o.code : '';
+  const msgs = cleanShareMessages(o.messages);
+  if (!code.trim() && !msgs) return { error: 'empty_project' };
+  if (code.length > MAX_CODE_SIZE) return { error: 'code_too_large' };
   const id = crypto.randomBytes(6).toString('hex');
   const createdAt = Date.now();
   const safeTitle = (o.title || 'مشروع بدون اسم').toString().slice(0, 120);
   const safeUser = (o.username || 'زائر').toString().slice(0, 60);
-  await putBlob(sharePath(id), { id, title: safeTitle, code: o.code, username: safeUser, createdAt, public: !!o.isPublic });
+  const rec = { id, title: safeTitle, code, username: safeUser, createdAt, public: !!o.isPublic };
+  if (msgs) rec.messages = msgs;
+  await putBlob(sharePath(id), rec);
   if (o.isPublic) await putBlob('db/explore/' + createdAt + '_' + id + '.json', { id, title: safeTitle, username: safeUser, createdAt });
   return { id, url: '/p.html?id=' + id };
 }
@@ -108,16 +127,9 @@ module.exports = async (req, res) => {
     if (req.method === 'POST') {
       let body = req.body;
       if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
-      const { title, code, username, isPublic } = body;
-      if (!code || typeof code !== 'string') {
-        res.status(400).json({ error: 'Missing code' });
-        return;
-      }
-      if (code.length > MAX_CODE_SIZE) {
-        res.status(413).json({ error: 'code_too_large' });
-        return;
-      }
-      const made = await createShare({ title, code, username, isPublic });
+      const { title, code, username, isPublic, messages } = body;
+      // v-share-chat: الكود لم يعد شرطًا — تكفي محادثة؛ createShare يتحقق.
+      const made = await createShare({ title, code, username, isPublic, messages });
       if (made.error) { res.status(made.error === 'code_too_large' ? 413 : 400).json({ error: made.error }); return; }
       res.status(200).json(made);
       return;

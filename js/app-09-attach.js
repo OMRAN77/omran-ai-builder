@@ -1502,7 +1502,9 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
         // the whole trail stays visible instead of being overwritten.
         if(__agentStep) __agentStep.done();
         const __phaseIcon = {planning:'🗺️',executing:'⚙️',verifying:'🧪',reporting:'💬'}[ev.phase] || '•';
-        __agentStep = agentStatus.step(__phaseIcon, String(ev.status).replace(/^[^\p{L}\p{N}]+/u, '').trim() || ev.status);
+        /* v656 — نترجم الحالة بمفتاحها قبل العرض */
+        const __st = (typeof tStatus === 'function') ? tStatus(ev) : ev.status;
+        __agentStep = agentStatus.step(__phaseIcon, String(__st).replace(/^[^\p{L}\p{N}]+/u, '').trim() || __st);
       }
       if(ev.clientTool && window.omranAgentTools){
         // v411: الوكيل طلب تشغيل كود. ننفّذه في إطار معزول هنا ونعيد الناتج عبر
@@ -3328,6 +3330,13 @@ function __showImgLoading(el, ar, en){
         '- التطبيق يوفّر توليد الصور والفيديو وPDF؛ استخدم القدرة المناسبة بدل ادعاء العجز.\n' +
         '- التحية الخالصة لها رد قصير مستقل. أمّا سؤال المجاملة أو المتابعة مثل «كيف الحال؟» فأجب عنه كحديث مستمر بلا إعادة تحية أو عرض خدمة.';
     }
+    /* v-reply-lang2 (تدقيق المالك ٢٩ أغسطس: «على حسب السؤال — كل واحد ولغته»):
+       الأساس لغة رسالة المستخدم نفسها، أيًّا كانت لغة الواجهة. لغة الواجهة
+       احتياط فقط حين لا تُعرف لغة الرسالة (أرقام، إيموجي، كلمة غامضة).
+       القواعد الملحقة العربية كانت تجرّ النموذج للعربي — هذه توقفه. */
+    const __LANG_NAMES = { ar:'Arabic', en:'English', zh:'Chinese', hi:'Hindi', es:'Spanish', fr:'French', bn:'Bengali', ru:'Russian', ur:'Urdu', id:'Indonesian', fil:'Filipino', tr:'Turkish', ne:'Nepali', ml:'Malayalam' };
+    const __uiLangName = __LANG_NAMES[(typeof lang !== 'undefined' && lang) ? lang : 'ar'] || 'Arabic';
+    __sys += '\nREPLY LANGUAGE RULE (mandatory, highest priority): ALWAYS write your ENTIRE reply in the SAME language the user\'s latest message is written in — whoever writes in Malayalam gets Malayalam, whoever writes in French gets French, and so on, regardless of the app UI language. The fact that the instructions above are written in Arabic or English does NOT mean you should reply in them. Only when the message\'s language cannot be determined (numbers, emoji, a name, an ambiguous short word), fall back to the app UI language, which is ' + __uiLangName + '. Never default to Arabic unless the user wrote in Arabic or that fallback applies.';
     // الدور الاجتماعي القصير يُعزل عن الذاكرة والمواضيع السابقة، لكن سؤال الحال
     // يبقى استمرارًا للمحادثة لا تحية جديدة.
     const __quietSocialTurn = isPureGreeting(text) || isCasualCheckIn(text);
@@ -4220,11 +4229,13 @@ DESIGN RULES (non-negotiable):
       try{
         var __selLabel = (typeof functionalLabel === 'function') ? functionalLabel(__selProv) : __selProv;
         if(__effProv !== __selProv && window.__chatStatus && !window.__chatStatus.isReleased() && !cur.adMode){
-          var __why = (__gateNoBuild || __routeFix) ? 'البناء وتعديل الكود'
-                    : (__visionOverride ? 'قراءة الصور' : 'هذا النوع من الطلبات');
-          window.__chatStatus.note('↪️', (__provUiHidden() ? 'محادثتك على ' : 'اخترتَ ') + __selLabel + ' — و' + __why + ' يُنفَّذ بـ ' +
-            ((typeof functionalLabel === 'function') ? functionalLabel(__effProv) : __effProv) +
-            ' لأنه الأدقّ فيه. محادثتك العادية تبقى على ' + __selLabel + '.');
+          /* v-prov-status-i18n (شكوى المالك: جملة التحويل عربية وسط واجهة أجنبية):
+             قالب مترجم بلغة الواجهة مع خانات {sel}/{why}/{eff}. */
+          var __why = (__gateNoBuild || __routeFix) ? t('provWhyBuild')
+                    : (__visionOverride ? t('provWhyVision') : t('provWhyGeneral'));
+          var __effLabel = (typeof functionalLabel === 'function') ? functionalLabel(__effProv) : __effProv;
+          window.__chatStatus.note('↪️', t(__provUiHidden() ? 'provSwitchNoteHidden' : 'provSwitchNote')
+            .replace(/\{sel\}/g, __selLabel).replace('{why}', __why).replace('{eff}', __effLabel));
         }
       }catch(e){ __swallow(e, 'ui:switchnote'); }
       const __teamOrder = [__effProv, ...(__routeFix ? ['claude', 'openai', 'gemini'] : ['claude', 'openai', 'gemini']).filter(p => p !== __effProv)];

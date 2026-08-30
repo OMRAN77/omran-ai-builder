@@ -1,4 +1,4 @@
-const CACHE_NAME = 'omran-ai-builder-gold-icons-a7bef0f8';
+const CACHE_NAME = 'omran-ai-builder-uniform-black-633094bd';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -75,7 +75,14 @@ self.addEventListener('activate', (event) => {
     if (__swIsUpdate) {
       const clients = await self.clients.matchAll({ type: 'window' });
       for (const c of clients) {
-        try { await c.navigate(c.url); } catch (e) { /* iOS Safari لا يدعم client.navigate إطلاقًا */ }
+        /* v653 — الملاحة القسريّة كانت تمسح ردًّا يُكتب أمام المستخدم. الآن
+           النافذة المرئيّة لا تُقاطَع: تصلها الرسالة فقط وهي تقرّر اللحظة
+           الآمنة. النوافذ المخفيّة تُحدَّث فورًا كما كان. */
+        var __vis = 'visible';
+        try { __vis = c.visibilityState || 'visible'; } catch (e) { /* بعض المتصفّحات لا تكشفها */ }
+        if (__vis !== 'visible') {
+          try { await c.navigate(c.url); } catch (e) { /* iOS Safari لا يدعم client.navigate إطلاقًا */ }
+        }
         // v-boot-watchdog3: قناة الرسائل تعمل على iOS — selfdiag (يُحمَّل مبكرًا
         // حتى في صفحة نصف معطوبة) يستقبلها ويعيد التحميل فورًا.
         try { c.postMessage({ type: 'omran-reload' }); } catch (e) { /* احتياط فقط */ }
@@ -128,6 +135,11 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return; // never touch POST/PUT (auth, AI calls)
 
   const url = new URL(req.url);
+
+  // v-pdf-noleave: روابط التنزيل /p/<id> (PDF) و /i/<id> (صور) لا يلمسها
+  // العامل أبدًا — كان مسار «القشرة» يرجّع index.html كاحتياط عند أي تعثّر،
+  // فيهبط المستخدم على صفحة المحادثة بدل ملفه. المتصفح يتولاها مباشرة.
+  if (/^\/(p|i)\/[A-Za-z0-9]/.test(url.pathname)) return;
 
   // API calls: always go to network. If offline, return a friendly JSON
   // error instead of letting the request fail with a generic network error.

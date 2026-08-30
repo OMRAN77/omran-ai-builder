@@ -4,6 +4,8 @@ const emptyState = $('#emptyState');
 const historyEl = $('#history');
 const I18N = {
   ar: {
+    /* v656 — وسم الذكاء وحالات الخادم: تصل بمفتاح فتُترجَم في كلّ لغة */
+    aiGenTag: "✨ محتوى مولّد بالذكاء الاصطناعي", msgStopped: "تم إيقاف الرد", stReading: "💭 يقرأ سؤالك…", stTimeout: "⏱️ انتهت مهلة الردّ.", stSearch: "🔍 أتحقق لك من المصادر الحية…", stFetchPage: "🌐 يقرأ صفحة…", stRunJs: "⚙️ يشغّل كودًا للتحقّق…", stGenImage: "🎨 يرسم صورة…", stTestHtml: "🧪 يجرّب الصفحة…", stGeoLoc: "📍 يحدّد موقعك (سيطلب المتصفّح إذنك)…", trSearchN: "بحثتُ عن «{q}» — حصلتُ {n} نتيجة", trSearchC: "بحثتُ عن «{q}» — حصلتُ {n} حرفًا", trFetch: "قرأتُ {h} — حصلتُ {n} حرفًا", trFetchFail: "تعذّرت قراءة {h}", trJsErr: "شغّلتُ كودًا — ظهر خطأ", trJsOk: "شغّلتُ كودًا — عاد ناتج {n} حرفًا", trImgOk: "رسمتُ صورة ✅", trImgFail: "تعذّرت الصورة", trLocOk: "حدّدتُ موقعك ✅", trLocFail: "حاولتُ تحديد موقعك — لم ينجح", trHtmlOk: "جرّبتُ الصفحة — بلا أخطاء ✅", trHtmlErr: "جرّبتُ الصفحة — ظهرت أخطاء", trTool: "استخدمتُ {name}",
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'الفئة', fxGenWomen: 'نسائي', fxGenMen: 'رجالي', fxGenKids: 'أطفال', fxColorsLbl: 'الألوان المفضّلة', fxColBlack: 'أسود', fxColWhite: 'أبيض', fxColNavy: 'كحلي', fxColRed: 'أحمر', fxColGold: 'ذهبي',
     fxColGreen: 'أخضر', fxColBeige: 'بيج', fxColMulti: 'متعدد', fxAccLbl: 'إضافات', fxAccGlasses: 'نظارات', fxAccWatch: 'ساعة', fxAccHandbag: 'حقيبة', fxAccShoes: 'أحذية', fxAccScarf: 'وشاح', fxAccMakeup: 'مكياج',
@@ -137,6 +139,35 @@ const I18N = {
     logoutTitle: 'تسجيل الخروج',
     loginAction: 'دخول',
     acctSectionTitle: '👤 حسابي',
+    aboutSupportTitle: '📞 خدمة العملاء والدعم',
+    aboutSupportDesc: 'نرد على استفساراتك خلال ٢٤-٤٨ ساعة.',
+    aboutCopyright: '© فريق عمران AI — صُنع بحب في الإمارات 🇦🇪',
+    adminPanelTitle: '🛠️ لوحة التحكم (خاص بالمالك)',
+    videoBadgeShort: 'قصير',
+    videoBadgeFull: 'كامل',
+    provTypingSuffix: 'يكتب…',
+    provFailSwitch: 'لم يستجب ({why}) — جارٍ التحويل…',
+    provUnknownReason: 'سبب غير معروف',
+    provWhyBuild: 'البناء وتعديل الكود',
+    provWhyVision: 'قراءة الصور',
+    provWhyGeneral: 'هذا النوع من الطلبات',
+    provSwitchNote: 'اخترتَ {sel} — و{why} يُنفَّذ بـ {eff} لأنه الأدقّ فيه. محادثتك العادية تبقى على {sel}.',
+    provSwitchNoteHidden: 'محادثتك على {sel} — و{why} يُنفَّذ بـ {eff} لأنه الأدقّ فيه. محادثتك العادية تبقى على {sel}.',
+    privacyConsentTitle: '🔒 خصوصيتك أولًا',
+    privacyConsentText: 'قبل استخدام Omran AI Builder، يرجى قراءة <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">سياسة الخصوصية</a> و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">شروط الاستخدام</a>. نوضح فيهما ما نجمعه وكيف نحميه وحقك في حذف بياناتك.',
+    privacyConsentRead: 'قراءة السياسة',
+    privacyConsentAgree: 'أوافق وأتابع',
+    acctPointsLabel: 'رصيد النقاط',
+    acctPointsLow: '⚠️ رصيدك قارب على الانتهاء — اشحن نقاطك قبل النفاد.',
+    acctPointsOut: '🔴 رصيدك انتهى — اشحن نقاطك للمتابعة.',
+    acctPointsBuyBtn: '💳 شحن النقاط',
+    aboutFeatChat: 'بناء تطبيقات كاملة بالمحادثة', aboutFeatProviders: '٩ مزودي ذكاء + «اسأل الكل»', aboutFeatMaha: 'مها — مساعدتك الصوتية الحية', aboutFeatStudios: '٧ استوديوهات إبداعية للصور', aboutFeatStocks: 'سوق الأسهم ومحفظة تعليمية', aboutFeatPrivacy: 'خصوصيتك أولوية — مفاتيحك عندك', aboutChipUAE: 'صُنع في الإمارات 🇦🇪', aboutChipPWA: 'تطبيق PWA', aboutChipLangs: '١٤ لغة', aboutMoreSummary: '📖 المزيد عن المنصة',
+    videoNeedDesc: '⚠️ اكتب وصف الفيديو أولًا.', videoVoiceFemale: '👩 فاطمة (أنثى)', videoVoiceMale: '👨 حمدان (ذكر)',
+    pickerOptsForFeature: 'خيارًا لهذه الميزة', pickerStylesForCategory: 'نمطًا لهذه الفئة', pickerOptsWord: 'خيارًا', pickerOptsPick: 'خيارًا — اختر ما يناسبك', videoOptAdspot: '📢 إعلان سريع (5ث طولي + سرد)', videoOptReels: '📱 ريلز ذكي (10ث طولي + سرد)', fashionEngineLabel: '🎨 محرك الصور', fashionEngineGemini: 'Gemini — الأدق في الحفاظ على الوجه (الافتراضي)', fashionEngineOpenai: 'ChatGPT (gpt-image-1) — نفس محرك صور ChatGPT', videoAdvanced: 'خيارات متقدمة',
+    fashionRefinePh: 'مثال: غيّري لون الفستان إلى أزرق فقط', fashionRefineBtn: '✏️ عدّلي شيئًا محددًا', fashionRefineNeed: 'اكتبي التعديل المطلوب أولًا', fashionRefining: 'جاري تطبيق التعديل…',
+    modeCreateImage: 'إنشاء صورة', modeWebSearch: 'البحث على الويب', modeThinkDeeper: 'التفكير العميق', psheetCountSuffix: 'ستايلًا — نفس وجهك بكل ستايل',
+    provNickKing: 'الكينج', provNickFast: 'السريع', provNickDeep: 'العميق',
+    acctLoginBtnLabel: '🔐 تسجيل الدخول / حساب جديد',
     statsSectionTitle: 'إحصائياتي',
     statsProjectsLabel: 'عدد المشاريع',
     statsMessagesLabel: 'إجمالي الرسائل المُرسلة',
@@ -928,6 +959,8 @@ const I18N = {
     shareCopyBtn: 'نسخ الرابط',
     shareCreating: 'جارٍ الإنشاء...',
     shareError: 'تعذّر إنشاء الرابط، حاول مرة أخرى.',
+    shareNeedCode: 'المشروع فارغ — اكتب رسالة أو أنشئ تطبيقًا ثم شاركه.',
+    shareTooLarge: 'المشروع أكبر من حد المشاركة (2MB) — صغّر الصور أو المحتوى ثم أعد المحاولة.',
     shareCopied: 'تم نسخ الرابط! ✅',
     /* v601: مساعد البريد الذكيّ — 24 نصًّا كانت en()?:  مباشرةً (لغتان فقط) */
     emailAsst_connectText: "اربط حساب Gmail الخاص بك ليقرأ الذكاء الاصطناعي إيميلاتك ويقترح ردودًا جاهزة تعتمدها قبل الإرسال.", emailAsst_connectBtn: "🔗 ربط Gmail", emailAsst_disclaimer: "⚠️ لن يتم إرسال أي رد إلا بعد موافقتك الصريحة على كل رسالة.", emailAsst_title: "📧 مساعد البريد الذكي", emailAsst_refresh: "تحديث", emailAsst_loading: "جارٍ فحص بريدك…", emailAsst_empty: "لا توجد إيميلات جديدة تحتاج ردًا الآن.",
@@ -935,6 +968,8 @@ const I18N = {
     emailAsst_eventAdded: "✅ انضاف لتقويمك", emailAsst_calReauth: "أعد ربط Gmail للسماح بالوصول للتقويم", emailAsst_voiceLoading: "🔊 جارٍ تجهيز الملخص الصوتي…", emailAsst_voiceEmpty: "لا توجد إيميلات لتلخيصها.", emailAsst_urgent: "🔴 عاجل", emailAsst_normal: "🟡 عادي", emailAsst_low: "⚪ منخفض",
   },
   en: {
+    /* v656 — وسم الذكاء وحالات الخادم: تصل بمفتاح فتُترجَم في كلّ لغة */
+    aiGenTag: "✨ AI-generated content", msgStopped: "Response stopped", stReading: "💭 Reading your question…", stTimeout: "⏱️ The response timed out.", stSearch: "🔍 Checking live sources for you…", stFetchPage: "🌐 Reading a page…", stRunJs: "⚙️ Running code to verify…", stGenImage: "🎨 Drawing an image…", stTestHtml: "🧪 Testing the page…", stGeoLoc: "📍 Getting your location (the browser will ask permission)…", trSearchN: "Searched for «{q}» — got {n} results", trSearchC: "Searched for «{q}» — got {n} characters", trFetch: "Read {h} — got {n} characters", trFetchFail: "Could not read {h}", trJsErr: "Ran code — an error appeared", trJsOk: "Ran code — {n} characters returned", trImgOk: "Drew an image ✅", trImgFail: "The image failed", trLocOk: "Located you ✅", trLocFail: "Tried to locate you — did not succeed", trHtmlOk: "Tested the page — no errors ✅", trHtmlErr: "Tested the page — errors appeared", trTool: "Used {name}",
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'Category', fxGenWomen: 'Women', fxGenMen: 'Men', fxGenKids: 'Kids', fxColorsLbl: 'Preferred colours', fxColBlack: 'Black', fxColWhite: 'White', fxColNavy: 'Navy', fxColRed: 'Red', fxColGold: 'Gold',
     fxColGreen: 'Green', fxColBeige: 'Beige', fxColMulti: 'Multicolour', fxAccLbl: 'Accessories', fxAccGlasses: 'Glasses', fxAccWatch: 'Watch', fxAccHandbag: 'Handbag', fxAccShoes: 'Shoes', fxAccScarf: 'Scarf', fxAccMakeup: 'Makeup',
@@ -1121,6 +1156,35 @@ const I18N = {
     logoutTitle: 'Log out',
     loginAction: 'Login',
     acctSectionTitle: '👤 My account',
+    aboutSupportTitle: '📞 Customer service & support',
+    aboutSupportDesc: 'We answer your inquiries within 24–48 hours.',
+    aboutCopyright: '© Omran AI team — Made with love in the UAE 🇦🇪',
+    adminPanelTitle: '🛠️ Admin panel (owner only)',
+    videoBadgeShort: 'Short',
+    videoBadgeFull: 'Full',
+    provTypingSuffix: 'is typing…',
+    provFailSwitch: 'did not respond ({why}) — switching…',
+    provUnknownReason: 'unknown reason',
+    provWhyBuild: 'building & code editing',
+    provWhyVision: 'reading images',
+    provWhyGeneral: 'this kind of request',
+    provSwitchNote: 'You chose {sel} — but {why} is handled by {eff}, the most accurate for it. Your regular chat stays on {sel}.',
+    provSwitchNoteHidden: 'Your chat runs on {sel} — but {why} is handled by {eff}, the most accurate for it. Your regular chat stays on {sel}.',
+    privacyConsentTitle: '🔒 Your privacy first',
+    privacyConsentText: 'Before using Omran AI Builder, please read the <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">Privacy Policy</a> and <a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">Terms of Use</a>. They explain what we collect, how we protect it, and your right to delete your data.',
+    privacyConsentRead: 'Read the policy',
+    privacyConsentAgree: 'Agree & continue',
+    acctPointsLabel: 'Points balance',
+    acctPointsLow: '⚠️ Your balance is running low — top up before it runs out.',
+    acctPointsOut: '🔴 Your balance is empty — top up your points to continue.',
+    acctPointsBuyBtn: '💳 Top up points',
+    aboutFeatChat: 'Build complete apps by chatting', aboutFeatProviders: '9 AI providers + "Ask All"', aboutFeatMaha: 'Maha — your live voice assistant', aboutFeatStudios: '7 creative image studios', aboutFeatStocks: 'Stock market & learning portfolio', aboutFeatPrivacy: 'Privacy first — your keys stay yours', aboutChipUAE: 'Made in the UAE 🇦🇪', aboutChipPWA: 'PWA app', aboutChipLangs: '14 languages', aboutMoreSummary: '📖 More about the platform',
+    videoNeedDesc: '⚠️ Please describe the video first.', videoVoiceFemale: '👩 Fatima (female)', videoVoiceMale: '👨 Hamdan (male)',
+    pickerOptsForFeature: 'options for this feature', pickerStylesForCategory: 'styles for this category', pickerOptsWord: 'options', pickerOptsPick: 'options — pick yours', videoOptAdspot: '📢 Quick ad (5s vertical + narration)', videoOptReels: '📱 Smart reels (10s vertical + narration)', fashionEngineLabel: '🎨 Image engine', fashionEngineGemini: 'Gemini — best at preserving the face (default)', fashionEngineOpenai: 'ChatGPT (gpt-image-1) — the same ChatGPT image engine', videoAdvanced: 'Advanced options',
+    fashionRefinePh: 'e.g. change only the dress colour to blue', fashionRefineBtn: '✏️ Edit one specific thing', fashionRefineNeed: 'Type the change you want first', fashionRefining: 'Applying your edit…',
+    modeCreateImage: 'Create image', modeWebSearch: 'Web search', modeThinkDeeper: 'Think deeper', psheetCountSuffix: 'styles — same face, every style',
+    provNickKing: 'The King', provNickFast: 'The Fast', provNickDeep: 'The Deep',
+    acctLoginBtnLabel: '🔐 Sign in / Create account',
     statsSectionTitle: 'My stats',
     statsProjectsLabel: 'Projects count',
     statsMessagesLabel: 'Total messages sent',
@@ -1340,6 +1404,8 @@ const I18N = {
     shareCopied: 'Link copied! ✅',
     shareCreating: 'Creating...',
     shareError: 'Could not create link, please try again.',
+    shareNeedCode: 'This project is empty — write a message or build an app, then share it.',
+    shareTooLarge: 'Project exceeds the 2MB share limit — reduce images or content and try again.',
     videoMakerModalTitle: '🎬 AI Video Maker',
     videoMakerDesc: 'Describe the video you want, then pick a style and duration. This feature is in testing with a small daily limit per account.',
     videoMakerPromptPlaceholder: 'Describe the video you want to create... e.g. a small cat playing in a sunny garden',
@@ -1864,3 +1930,16 @@ Style (the owner's fingerprint — every reply): a warm, genuinely enthusiastic 
     emailAsst_addingEvent: "Adding event…", emailAsst_eventAdded: "✅ Added to your calendar", emailAsst_calReauth: "Reconnect Gmail to allow calendar access", emailAsst_voiceLoading: "🔊 Preparing voice summary…", emailAsst_voiceEmpty: "No emails to summarize.", emailAsst_urgent: "🔴 Urgent", emailAsst_normal: "🟡 Normal", emailAsst_low: "⚪ Low",
   }
 };window.I18N = I18N;
+/* v649 — لوحة المحفظة التعليميّة (كانت عربيّة ثابتة في كلّ اللغات) */
+Object.assign(I18N.ar, {"pfGuestTitle":"💼 المحفظة التعليمية","pfGuestIntro":"100 ألف افتراضية تتداول بها بأسعار السوق الحقيقية وتنافس بقية المستخدمين 🏆","pfGuestLogin":"سجّل الدخول لبدء محفظتك — تقدمك يُحفظ في حسابك.","pfLoadingBox":"⏳ نجهز محفظتك…","pfLoadFail":"تعذر تحميل المحفظة"});
+Object.assign(I18N.en, {"pfGuestTitle":"💼 Practice Portfolio","pfGuestIntro":"100k virtual — trade at real market prices and compete with everyone else 🏆","pfGuestLogin":"Sign in to start your portfolio — your progress is saved to your account.","pfLoadingBox":"⏳ Preparing your portfolio…","pfLoadFail":"Couldn't load the portfolio"});
+/* v650 */ window.__bT=function(a,e){try{var L=localStorage.getItem('aiapp_lang')||'ar';var L2=(typeof lang!=='undefined'&&lang)?String(lang):L;L=L2||'ar';if(L==='ar')return a;if(L==='en')return e;var d=window.__BI&&window.__BI[L];if(d&&d[e])return d[e];}catch(_){ /* guard-ok: label lookup is cosmetic — any failure falls back to the English label below. */ }return e;};
+/* v657: نصّ خيار <option> بلغة المستخدم — مفتاح i18n أوّلًا، فالقاموس الثنائيّ __BI عبر data-en، فالنصّ كما هو. كان العرض يُجبر كلّ لغة غير ar/ur على data-en فتضيع الترجمة الموجودة. */
+window.__optT=function(o){try{if(!o)return '';var tx=((o.textContent||'')+'').trim();var k=o.getAttribute('data-i18n');if(k&&typeof window.t==='function'){var v=window.t(k);if(v&&v!==k)return String(v).trim();}var en=o.getAttribute('data-en');if(en&&typeof window.__bT==='function')return window.__bT(tx,String(en).trim());return tx;}catch(_){ /* guard-ok: option label lookup is cosmetic — falls back to raw text. */ return ((o&&o.textContent)||'')+''; }};
+/* v658: نصّ الخيار داخل الـDOM نفسه — كل مستهلك يقرأ textContent (بطاقات المقارنة، منتقي الاستوديو، مصغّرة البورتريه) كان يرى العربيّة في كلّ اللغات. */
+window.__optSync=function(root){try{var ns=(root||document).querySelectorAll('select option');for(var i=0;i<ns.length;i++){var o=ns[i];var k=o.getAttribute('data-i18n'),en=o.getAttribute('data-en');if(!k&&!en)continue;var cur=((o.textContent||'')+'').trim();if(!o.hasAttribute('data-ar')&&/[\u0621-\u064A]/.test(cur))o.setAttribute('data-ar',cur);var ar=o.getAttribute('data-ar')||cur;var out='';if(k&&typeof window.t==='function'){var v=window.t(k);if(v&&v!==k)out=String(v).trim();}if(!out&&en&&typeof window.__bT==='function')out=window.__bT(ar,String(en).trim());if(!out)out=ar;if(out&&out!==cur)o.textContent=out;}}catch(_){ /* guard-ok: option label sync is cosmetic — the raw label stays. */ }};
+/* v658: أي عنصر يحمل data-bi (نصّه الإنجليزيّ) يُترجم من القاموس الثنائيّ __BI. */
+window.__biSync=function(root){try{var ns=(root||document).querySelectorAll('[data-bi]');for(var i=0;i<ns.length;i++){var e=ns[i];var cur=((e.textContent||'')+'').trim();if(!e.hasAttribute('data-ar'))e.setAttribute('data-ar',cur);var ar=e.getAttribute('data-ar')||cur;var en=e.getAttribute('data-bi')||'';var out=(typeof window.__bT==='function')?window.__bT(ar,en):ar;if(!out)out=ar;if(e.hasAttribute('data-bi-space')&&out!==ar)out=' '+out+' ';if(out!==e.textContent)e.textContent=out;}}catch(_){ /* guard-ok: label sync is cosmetic — the raw label stays. */ }};
+/* v658: نداء واحد يجمع الثلاثة — يُستدعى بعد applyLanguage وعند تغيّر lang. */
+window.__langSync=function(){try{if(window.__optSync)window.__optSync();}catch(_){ /* guard-ok: cosmetic. */ }try{if(window.__biSync)window.__biSync();}catch(_){ /* guard-ok: cosmetic. */ }try{if(window.__curRelabel)window.__curRelabel();}catch(_){ /* guard-ok: cosmetic. */ }};
+try{(function(){function go(){try{window.__langSync();}catch(_){ /* guard-ok: cosmetic. */ }}function arm(){setTimeout(go,600);setTimeout(go,1800);}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',arm);else arm();try{new MutationObserver(go).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});}catch(_){ /* guard-ok: observer is a safety net, not the main path. */ }})();}catch(_){ /* guard-ok: bootstrap is a safety net. */ }

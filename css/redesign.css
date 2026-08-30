@@ -3,6 +3,9 @@
 :root{ --omGold:#6b7280; --omGoldSoft:rgba(var(--accent-tint-rgb),.32); --omLine:rgba(255,255,255,.09); }
 
 /* ---------------- Header ---------------- */
+/* v-brand-stable: زر الإضاءة بمقاس ثابت — أيقونته تُحقن بعد الإقلاع وكان
+   اتساعها اللاحق يزحزح الشعار المجاور لحظة التحديث. */
+#btnMode{width:34px; height:34px; min-width:34px; display:inline-flex; align-items:center; justify-content:center;}
 .omIconBtn{display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:var(--r-2); background:none; border:1px solid transparent; color:var(--muted); cursor:pointer; padding:0; flex:0 0 auto;}
 .omIconBtn:hover{color:var(--accent-ink); background:rgba(var(--accent-tint-rgb),.10);}
 #omranUserBlock{display:flex; align-items:center; gap:9px; flex:0 0 auto;}
@@ -244,7 +247,12 @@ html[dir="ltr"] #plusToolsPopup #btnToolsBox .omChev{transform:rotate(180deg);}
    مستطيل المحادثة أصغر وأخف، والفراغ فوق الهيدر أقل (الباقي هو المنطقة
    الآمنة للساعة والبطارية — لا يجوز البناء فوقها). */
 @media (max-width:860px){
-  header{padding-top:env(safe-area-inset-top,0px) !important; padding-bottom:6px;}
+  /* v-ios-header-drop: سقف 62px للمنطقة الآمنة — أقصى قيمة حقيقية في كل
+     الآيفونات 59px، وسفاري/WKWebView أحيانًا يضاعف env() بعد الكيبورد أو
+     الدوران فينزل الهيدر لنص الشاشة. السقف يمنع المضاعفة مهما بلغت. */
+  /* v-sat-measure: ‎--omran-sat تُقاس في selfdiag.js — env() فقط إذا كانت
+     النافذة ممتدة فعلًا تحت شريط الساعة، وإلا صفر (غلاف نازل أساسًا). */
+  header{padding-top:min(var(--omran-sat, env(safe-area-inset-top,0px)), 62px) !important; padding-bottom:6px;}
   #inputbar{padding:2px 10px 5px;}
   #composerBox{padding:4px 8px 3px !important; border-radius:16px !important; gap:1px;}
   #prompt{min-height:20px; max-height:84px; font-size:13px; padding:4px 8px 2px;}
@@ -254,7 +262,7 @@ html[dir="ltr"] #plusToolsPopup #btnToolsBox .omChev{transform:rotate(180deg);}
   #omranBottomNav{padding:3px 2px max(2px, calc(env(safe-area-inset-bottom,0px) - 15px));}
   main{padding-bottom:calc(48px + env(safe-area-inset-bottom,0px));}
 }
-html.mobile-ui header{padding-top:env(safe-area-inset-top,0px) !important; padding-bottom:6px;}
+html.mobile-ui header{padding-top:min(var(--omran-sat, env(safe-area-inset-top,0px)), 62px) !important; padding-bottom:6px;}
 html.mobile-ui #omranBottomNav{padding:3px 2px max(2px, calc(env(safe-area-inset-bottom,0px) - 15px));}
 html.mobile-ui main{padding-bottom:calc(48px + env(safe-area-inset-bottom,0px));}
 html.mobile-ui #inputbar{padding:2px 10px 5px;}
@@ -266,14 +274,19 @@ html.mobile-ui #btnSend, html.mobile-ui #btnStop{width:30px; height:30px; flex:0
    iOS وتمرير الوثيقة)، والتمرير داخل المحتوى فقط، وبلا شريط سحب ظاهر. */
 @media (max-width:860px){
   html{overflow:hidden; overscroll-behavior:none; height:100%;}
-  /* iOS القديم يتجاهل overscroll-behavior — تثبيت body يقتل سحب الوثيقة نهائيًا */
-  body{overscroll-behavior:none; min-height:100%;}
+  /* iOS القديم يتجاهل overscroll-behavior — تثبيت body يقتل سحب الوثيقة نهائيًا.
+     v644 (مقيس على جهاز حقيقي أثناء الكتابة): inset:0 وحده لا يكفي — WebKit
+     يمرّر منفذ التخطيط قسرًا عند فتح الكيبورد (offsetTop=264) فينزاح الجسم
+     المثبّت خارج الشاشة ويظهر فراغ أعلاها. الآن نلصق الجسم بالمنفذ المرئي:
+     --vv-top و--vv-h يكتبهما pinVisualViewport في app-01-boot-auth.js،
+     وبلا JS يرجع السلوك لـtop:0/height:100% أي حال ما قبل الرقعة. */
+  body{overscroll-behavior:none; position:fixed; left:0; right:0; width:100%; top:var(--vv-top,0px); height:var(--vv-h,100%);}
   main, #messages, #omranHero{overscroll-behavior-y:contain;}
   *{scrollbar-width:none;}
   *::-webkit-scrollbar{width:0 !important; height:0 !important; display:none;}
 }
 html.mobile-ui{overflow:hidden; overscroll-behavior:none; height:100%;}
-html.mobile-ui body{overscroll-behavior:none; min-height:100%;}
+html.mobile-ui body{overscroll-behavior:none; position:fixed; left:0; right:0; width:100%; top:var(--vv-top,0px); height:var(--vv-h,100%);}
 html.mobile-ui main, html.mobile-ui #messages{overscroll-behavior-y:contain;}
 
 /* v-morph-btn: الخانة الأخيرة تتحول بين مها والإرسال (طلب المالك):
@@ -281,14 +294,50 @@ html.mobile-ui main, html.mobile-ui #messages{overscroll-behavior-y:contain;}
    المايك بمكانه الأصلي دائمًا — لا دمج له. */
 #composerBox > .inputbar-tools{flex:1 1 auto;}
 #composerBox .inputbar-tools-left{flex:1 1 auto; display:flex;}
-#composerBox #btnMahaDock{
-  margin-inline-start:auto;
-  transition:opacity .15s ease, transform .15s ease;
+/* v-maha-outside (طلب المالك ٢٩ أغسطس): «م» خارج المستطيل جنبه من جهة اليسار،
+   والمستطيل يتمدد بكامل العرض حتى آخر المساحة. «م» تبقى ظاهرة دائمًا. */
+#composerRow{display:flex; align-items:stretch; gap:8px; width:100%;}
+#composerRow > #composerBox{flex:1 1 auto; min-width:0;}
+/* خانة «م»: نفس ارتفاع المستطيل (stretch) وبنفس إطاره وقوسه، خلفية زجاجية
+   ضبابية (backdrop-filter)، والحرف متمركز تمامًا في المنتصف. */
+/* بلا خط إطار (طلب المالك) — الضباب الزجاجي وحده يحدّ الخانة. */
+#composerRow > #btnMahaDock{
+  flex:0 0 auto; width:58px; margin:0; padding:0;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,.05) !important;
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  border:none !important;
+  border-radius:var(--r-4) !important;
+  box-shadow:none !important;
+  transition:background .15s ease;
 }
-#composerBox.typing #btnMahaDock{ display:none; }
-#composerBox:has(#btnStop.live) #btnMahaDock{ display:none; }
-#composerBox:not(.typing) > #btnSend{ display:none !important; }
-#composerBox.typing > #btnSend{ animation:morphIn .16s ease; }
+#composerRow > #btnMahaDock:hover{background:rgba(249,227,130,.10) !important;}
+/* لون الحرف مأخوذ من شعار «عمران» نفسه (icons/brand-ar.png): توهج ‎#faf0a1
+   → ذهب ‎#f9e382/#f2d164 → ظل ‎#ba842a — نفس تدرج الشعار لا ذهب الثيم الرمادي. */
+#composerRow > #btnMahaDock .mahaGlyph{
+  display:block; line-height:1; font-weight:700; font-size:30px;
+  font-family:'Tajawal', Tahoma, Arial, sans-serif;
+  color:#f2d164;
+  text-shadow:none;
+  transform:translateY(-4px);
+}
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+  #composerRow > #btnMahaDock .mahaGlyph{
+    background:linear-gradient(180deg, #faf0a1 0%, #f9e382 38%, #f2d164 62%, #ba842a 100%);
+    -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent;
+  }
+}
+@media (max-width:860px){ #composerRow > #btnMahaDock .mahaGlyph{font-size:24px; transform:translateY(-3px);} }
+html.mobile-ui #composerRow > #btnMahaDock .mahaGlyph{font-size:24px; transform:translateY(-3px);}
+@media (max-width:860px){
+  #composerRow{gap:6px;}
+  #composerRow > #btnMahaDock{width:48px; border-radius:16px !important;}
+}
+html.mobile-ui #composerRow{gap:6px;}
+html.mobile-ui #composerRow > #btnMahaDock{width:48px; border-radius:16px !important;}
+#composerBox:not(.typing) > #btnSend{ opacity:.55; }
+#composerBox.typing > #btnSend{ opacity:1; animation:morphIn .16s ease; }
 @keyframes morphIn{ from{ transform:scale(.6); opacity:0; } to{ transform:scale(1); opacity:1; } }
 
 /* ===== v-agent-settings — بطاقة زر «الوكيل» داخل قسم الإعدادات ===== */
@@ -349,3 +398,10 @@ html.mobile-ui #portraitStyleModal > div{
   #portraitStyleModal{ touch-action:none; }
   #portraitStyleModal > div{ overscroll-behavior:contain; touch-action:pan-y; -webkit-overflow-scrolling:touch; }
 }
+
+/* ===== v-uniform-black (أمر عمران ٢٩ أغسطس): الصفحة كلها بدرجة سواد واحدة =====
+   الهيدر والشريط السفلي وشريط الكتابة بنفس خلفية منطقة الدردشة (--bg = أسود
+   نقي في الداكن). الوضع الفاتح محكوم بقواعده الخاصة (أبيض) فلا يتأثر. */
+header{background:var(--bg); backdrop-filter:none;}
+#omranBottomNav{background:var(--bg); backdrop-filter:none;}
+#inputbar{background:var(--bg);}

@@ -904,3 +904,135 @@ I18N['tr'] = {
     emailAsst_empty: "Şu anda yanıt gerektiren yeni e-posta yok.", emailAsst_notConnected: "Gmail bağlı değil, lütfen yeniden bağlayın.", emailAsst_send: "✅ Gönder", emailAsst_ignore: "🚫 Bu göndereni yoksay", emailAsst_sending: "Gönderiliyor…", emailAsst_sent: "✅ Gönderildi", emailAsst_ignored: "🚫 Yoksayıldı — tekrar gösterilmeyecek", emailAsst_error: "❌ Hata: ", emailAsst_voiceBtn: "Sesli özet",
     emailAsst_addToCalendar: "📅 Takvime ekle", emailAsst_addingEvent: "Etkinlik ekleniyor…", emailAsst_eventAdded: "✅ Takviminize eklendi", emailAsst_calReauth: "Takvim erişimine izin vermek için Gmail’i yeniden bağlayın", emailAsst_voiceLoading: "🔊 Sesli özet hazırlanıyor…", emailAsst_voiceEmpty: "Özetlenecek e-posta yok.", emailAsst_urgent: "🔴 Acil", emailAsst_normal: "🟡 Normal", emailAsst_low: "⚪ Düşük",
 };
+
+/* v-i18n-fill (فحص ٢٩ أغسطس ٢٠٢٦): الـ٤٤ مفتاحًا التي أُضيفت للعربية
+   والإنجليزية فقط مع الميزات الأخيرة — المرشد البصري والنبرة ودخول OTP
+   والوكيل وغيرها — تُستكمل هنا فلا يظهر إنجليزي وسط هذه الواجهة. */
+Object.assign(I18N["tr"], {
+    acctLoginBtnLabel: "🔐 Giriş yap / Hesap oluştur",
+    designCompareTitle: "🆚 Odam tüm tarzlarda",
+    designCompareHint: "Odanızın fotoğrafını yükleyin, 2-3 tarz seçin — yan yana tasarlayalım",
+    designCompareBtn: "🆚 Seçilen tarzlarla tasarla",
+    designBABefore: "Önce",
+    designBAAfter: "Sonra",
+    portraitStyleBrowseAll: "Tümünü gör ›",
+    portraitStyleSheetTitle: "🎨 Fotoğraf tarzları",
+    fashionDropTitle: "Boydan bir fotoğraf yükleyin",
+    fashionDropHint: "Baştan ayağa · net aydınlatma",
+    agentSectionTitle: "🤖 Ajan",
+    agentSectionDesc: "Ajan modu: kendi başına planlar ve uygular — teslimden önce kodu kurar, düzenler ve test eder, canlı kaynakları kontrol eder ve sayfa kapansa bile çalışmaya devam eder. Açın, sonra isteğinizi sohbete yazın.",
+    agentOnNote: "Ajan açık — sohbete dönüp isteğinizi yazın.",
+    vgModeTranslate: "Canlı çeviri",
+    vgModeAsk: "Bunu sor",
+    vgTitle: "Görsel Rehber",
+    vgModeDescribe: "Çevreyi tarif et",
+    vgModeRead: "Metni oku",
+    vgModeSteps: "Adım adım",
+    vgModeTour: "Uygulama turu",
+    vgAsk: "Sor",
+    vgAuto: "Oto",
+    vgRepeat: "Tekrarla",
+    vgSound: "Ses",
+    vgTorch: "Fener",
+    vgHint: "Herhangi bir yere dokunun, hemen anlatayım",
+    omNavGuide: "Rehber",
+    authEmailOtpBtn: "E-posta ile giriş",
+    authOtpBack: "Geri",
+    authOtpCodeLabel: "Doğrulama kodu",
+    authOtpEmailLabel: "E-posta adresi",
+    authOtpSendBtn: "Kodu gönder",
+    aboutTagline: "Yapay zekâ ile uygulama geliştirmek için Arapça bir platform",
+    videosGroupTitle: "🎬 Tanıtım videoları",
+    toneSectionLabel: "Ton",
+    toneAuto: "Sana kalmış",
+    toneWarm: "Samimi",
+    toneDirect: "Doğrudan",
+    toneFormal: "Resmî",
+    toneHint: "Tercih ettiğiniz yanıt tarzını seçin — veya yapay zekâ size otomatik uyum sağlasın.",
+    mahaCcTitle: "Canlı arama altyazıları",
+    checkoutApplePay: "Apple Pay",
+    checkoutGooglePay: "Google Pay",
+    checkoutWalletUnavailable: "Bu cihazda kullanılamıyor",
+});
+
+/* v-nick-i18n: ألقاب المزودين الثلاثة */
+Object.assign(I18N['tr'], { provNickKing: "King", provNickFast: "Hızlı", provNickDeep: "Derin" });
+
+/* v-modes-i18n + v-psub */
+Object.assign(I18N['tr'], { modeCreateImage: "Görsel oluştur", modeWebSearch: "Web araması", modeThinkDeeper: "Derin düşünme", psheetCountSuffix: "stil — aynı yüz, her stil" });
+
+/* v-fashion-refine */
+Object.assign(I18N['tr'], { fashionRefinePh: "örn. sadece elbisenin rengini maviye çevir", fashionRefineBtn: "✏️ Belirli bir şeyi düzenle", fashionRefineNeed: "Önce istediğiniz değişikliği yazın", fashionRefining: "Düzenleme uygulanıyor…" });
+
+/* v-studios-i18n: بقايا نوافذ الاستوديوهات + محلل المصاريف */
+Object.assign(I18N['tr'], {
+  pickerOptsForFeature: "bu özellik için seçenek",
+  pickerStylesForCategory: "bu kategori için stil",
+  pickerOptsWord: "seçenek",
+  pickerOptsPick: "seçenek — seçin",
+  videoOptAdspot: "📢 Hızlı reklam (5sn dikey + anlatım)",
+  videoOptReels: "📱 Akıllı reels (10sn + anlatım)",
+  fashionEngineLabel: "🎨 Görsel motoru",
+  fashionEngineGemini: "Gemini — yüzü en iyi koruyan (varsayılan)",
+  fashionEngineOpenai: "ChatGPT (gpt-image-1) — ChatGPT görsel motoru",
+  videoAdvanced: "Gelişmiş seçenekler",
+  exp_title: "Harcama Analizi",
+  exp_intro: "Banka ekstrenizi (PDF veya görsel) yükleyin, harcamalarınız sınıflandırılsın",
+  exp_pick: "📄 Ekstre seçin (PDF / görsel)",
+  exp_hint: "PDF veya net bir fotoğraf",
+  exp_paste: "Ya da harcamaları metin olarak yapıştırın",
+  exp_pastePh: "İşlemleri buraya yapıştırın…",
+  exp_go: "Harcamaları analiz et",
+  exp_busy: "Analiz ediliyor…",
+  exp_total: "Toplam harcama",
+  exp_tx: "işlem",
+  exp_dist: "Harcama dağılımı",
+  exp_biggest: "En büyük harcama",
+  exp_tips: "Tasarruf ipuçları",
+  exp_again: "Başka ekstre analiz et",
+  exp_disc: "Yaklaşık rakamlar — yalnızca yol gösterici, mali tavsiye değildir.",
+  exp_noContent: "Önce dosya seçin veya metin yapıştırın",
+  exp_err: "Analiz başarısız, tekrar deneyin"
+});
+
+Object.assign(I18N['tr'], { videoNeedDesc: "⚠️ Önce videoyu tanımlayın.", videoVoiceFemale: "👩 Fatima (kadın)", videoVoiceMale: "👨 Hamdan (erkek)" }); // v-video-i18n
+
+/* v-about-i18n */
+Object.assign(I18N['tr'], {
+  aboutFeatChat: "Sohbet ederek eksiksiz uygulamalar üretin",
+  aboutFeatProviders: "9 yapay zekâ sağlayıcısı + «Hepsine sor»",
+  aboutFeatMaha: "Maha — canlı sesli asistanınız",
+  aboutFeatStudios: "7 yaratıcı görsel stüdyosu",
+  aboutFeatStocks: "Borsa ve eğitim portföyü",
+  aboutFeatPrivacy: "Önce gizlilik — anahtarlarınız sizde",
+  aboutChipUAE: "BAE yapımı 🇦🇪",
+  aboutChipPWA: "PWA uygulaması",
+  aboutChipLangs: "14 dil",
+  aboutMoreSummary: "📖 Platform hakkında"
+});
+Object.assign(I18N['tr'], {
+  "aboutSupportTitle": "📞 Müşteri hizmetleri ve destek",
+  "aboutSupportDesc": "Sorularınızı 24–48 saat içinde yanıtlıyoruz.",
+  "aboutCopyright": "© Omran AI ekibi — BAE'de sevgiyle yapıldı 🇦🇪",
+  "adminPanelTitle": "🛠️ Yönetim paneli (yalnızca sahibi)"
+});
+Object.assign(I18N['tr'], {"videoBadgeShort":"Kısa","videoBadgeFull":"Tam"});
+Object.assign(I18N['tr'], {
+  "provTypingSuffix": "yazıyor…",
+  "provFailSwitch": "yanıt vermedi ({why}) — geçiliyor…",
+  "provUnknownReason": "bilinmeyen neden",
+  "provWhyBuild": "uygulama oluşturma ve kod düzenleme",
+  "provWhyVision": "görselleri okuma",
+  "provWhyGeneral": "bu tür istekler",
+  "provSwitchNote": "{sel} seçtiniz — ancak {why} bu konuda en isabetli olan {eff} tarafından yürütülür. Normal sohbetiniz {sel} üzerinde kalır.",
+  "provSwitchNoteHidden": "Sohbetiniz {sel} üzerinde — ancak {why} bu konuda en isabetli olan {eff} tarafından yürütülür. Normal sohbetiniz {sel} üzerinde kalır."
+});
+Object.assign(I18N['tr'], {"pageTitle":"Omran AI — Yapay zekâ platformu"});
+Object.assign(I18N['tr'], {"privacyConsentTitle":"🔒 Önce gizliliğiniz","privacyConsentText":"Omran AI Builder’ı kullanmadan önce lütfen <a href=\"/privacy.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">gizlilik politikasını</a> ve <a href=\"/terms.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">kullanım şartlarını</a> okuyun. Neleri topladığımızı, nasıl koruduğumuzu ve verilerinizi silme hakkınızı açıklarlar.","privacyConsentRead":"Politikayı oku","privacyConsentAgree":"Kabul et ve devam et"});
+Object.assign(I18N['tr'], {"shareNeedCode":"Bu proje boş — bir mesaj yaz veya bir uygulama oluştur, sonra paylaş.","shareTooLarge":"Proje 2 MB paylaşım sınırını aşıyor — görselleri veya içeriği küçültüp tekrar dene."});
+Object.assign(I18N['tr'], {"pfGuestTitle":"💼 Deneme Portföyü","pfGuestIntro":"100 bin sanal — gerçek piyasa fiyatlarıyla işlem yapın ve diğer kullanıcılarla yarışın 🏆","pfGuestLogin":"Portföyünüzü başlatmak için giriş yapın — ilerlemeniz hesabınıza kaydedilir.","pfLoadingBox":"⏳ Portföyünüz hazırlanıyor…","pfLoadFail":"Portföy yüklenemedi"});
+/* v650 */ window.__BI=window.__BI||{}; window.__BI["tr"]={"⚫ Black":"⚫ Siyah","🟤 Brown":"🟤 Kahverengi","🟡 Blonde":"🟡 Sarı","🔴 Red":"🔴 Kırmızı","⚪ Silver/Gray":"⚪ Gümüş/Gri","🌈 Colorful":"🌈 Renkli","✨ Highlights":"✨ Röfle","❄️ Platinum":"❄️ Platin","🍷 Burgundy":"🍷 Bordo","💙 Electric blue":"💙 Elektrik mavisi","🌀 Curly":"🌀 Kıvırcık","📏 Sleek straight":"📏 Düz fönlü","🌊 Hollywood waves":"🌊 Hollywood dalgaları","💇 Bob cut":"💇 Bob kesim","🧚 Pixie cut":"🧚 Pixie kesim","👩‍🦱 Long layers":"👩‍🦱 Uzun katlı","🌸 Pink":"🌸 Pembe","🟡 Gold":"🟡 Altın","✨ Glitter":"✨ Simli","🩶 Matte greige":"🩶 Mat vizon","🪞 Chrome":"🪞 Krom","🏛️ Marble art":"🏛️ Mermer desenli","🌸 Floral art":"🌸 Çiçek desenli","🌿 Natural":"🌿 Doğal","✨ Glam Evening":"✨ Gece makyajı","⚫ Smokey Eyes":"⚫ Dumanlı gözler","💋 Bold Red Lips":"💋 Belirgin kırmızı dudaklar","👰 Bridal":"👰 Gelin","🖤 Arabic kohl":"🖤 Arap sürmesi","💧 Dewy glow":"💧 Islak bitiş","🤎 Full matte":"🤎 Tam mat","🎨 Editorial":"🎨 Editoryal","🧔 Full Beard":"🧔 Tam sakal","🪒 Light Stubble":"🪒 Kirli sakal","👨 Mustache Only":"👨 Yalnızca bıyık","🐐 Goatee":"🐐 Keçi sakal","✨ Clean Shave":"✨ Sinekkaydı tıraş","◼️ Short boxed":"◼️ Kısa kare sakal","💈 Faded":"💈 Kademeli sakal","🧔‍♂️ Long thick":"🧔‍♂️ Uzun gür sakal","⚓ Anchor":"⚓ Çapa sakal","✨ Subtle Smoothing":"✨ Hafif pürüzsüzleştirme","🌟 Natural Glow":"🌟 Doğal ışıltı","👁️ Reduce Dark Circles":"👁️ Göz altı halkalarını azalt","🌞 Golden tan":"🌞 Altın bronzluk","🧴 Matte finish":"🧴 Mat bitiş","✨ Freckles":"✨ Çil","🕶️ Classic Sunglasses":"🕶️ Klasik güneş gözlüğü","⭕ Round":"⭕ Yuvarlak","🐱 Cat-Eye":"🐱 Kedi gözü","✈️ Aviator":"✈️ Damla (Aviator)","🔲 Rimless":"🔲 Çerçevesiz","👓 Oversized":"👓 Büyük boy","🚴 Sport":"🚴 Spor","🥇 Gold frame":"🥇 Altın çerçeve","🕰️ Retro tinted":"🕰️ Retro renkli","⬡ Hexagon":"⬡ Altıgen","🧊 Clear frame":"🧊 Şeffaf çerçeve","💪 Full Sleeve":"💪 Kol kaplama","✋ Small Wrist":"✋ Küçük bilek dövmesi","🔙 Back Piece":"🔙 Sırt dövmesi","📝 Custom (from description)":"📝 Özel (açıklamadan)","🔷 Geometric":"🔷 Geometrik","➖ Minimal line":"➖ İnce çizgi","🖋️ Arabic calligraphy":"🖋️ Arapça hat sanatı","🌿 Floral":"🌿 Çiçeksi","🎌 Classic Anime":"🎌 Klasik Anime","🌱 Ghibli Style":"🌱 Ghibli tarzı","⬛ Manga B&W":"⬛ Siyah-Beyaz Manga","⚡ Shonen action":"⚡ Shonen aksiyon","📼 Retro 90s":"📼 90'lar Retro Anime","👳 Gulf Kandora & Ghutra":"👳 Körfez Kandurası ve Gutrası","🧥 Luxury Bisht Cloak":"🧥 Lüks Bişt Kaftanı","🖤 Traditional Abaya":"🖤 Geleneksel Abaya","🧵 Embroidered Thobe Nashal":"🧵 İşlemeli Neşel Elbisesi","🇸🇦 Saudi Thobe & Shemagh":"🇸🇦 Suudi Sevbi ve Şemağı","🇦🇪 Emirati Embroidered Kaftan":"🇦🇪 Emirlik İşlemeli Kaftanı","🇴🇲 Omani":"🇴🇲 Umman Kumması","🧥 Bisht & shemagh":"🧥 Bişt ve şemağ","🇲🇦 Moroccan djellaba":"🇲🇦 Fas cellabesi","🇵🇸 Embroidered thobe":"🇵🇸 İşlemeli elbise (Sevbi)","🎓 Learning mode — 100% virtual money":"🎓 Öğrenme modu — %100 sanal para","Portfolio value":"Portföy değeri","Available cash":"Kullanılabilir nakit","Profit/Loss":"Kâr/Zarar","New trade (at the real live price)":"Yeni işlem (canlı piyasa fiyatıyla)","Symbol e.g. AAPL":"Sembol örn. AAPL","Quantity":"Miktar","Buy":"Al","Sell":"Sat","Your positions":"Pozisyonlarınız","No shares yet — try your first practice trade! Type a symbol like AAPL, a quantity, then press Buy.":"Henüz hisseniz yok — ilk deneme işleminizi yapın! AAPL gibi bir sembol ve miktar girip Al'a basın.","shares":"lot","Sell all":"Tümünü sat","🎓 Teach me":"🎓 Bana öğret","Traders leaderboard":"Yatırımcı liderlik tablosu"," — your rank: ":" — sıralamanız: "," of ":" / ","Your recent trades":"Son işlemleriniz","🟢 Buy":"🟢 Al","🔴 Sell":"🔴 Sat","Educational paper trading — real prices, virtual money. Not investment advice.":"Eğitim amaçlı sanal borsa — gerçek fiyatlar, sanal para. Yatırım tavsiyesi değildir.","🔄 Start over (100k)":"🔄 Yeniden başla (100 bin)","Enter a stock symbol and quantity first":"Önce hisse sembolü ve miktarını girin","⏳ Executing at the live price…":"⏳ Canlı fiyattan işlem gerçekleştiriliyor…","Trade failed":"İşlem başarısız oldu","en":"tr","Left today: ":"Bugün kalan: ","⚠️ Design generation took too long or the service is temporarily busy. Please try again.":"⚠️ Tasarım oluşturma çok uzun sürdü veya servis geçici olarak meşgul. Lütfen tekrar deneyin.","Pick at least one output type.":"En az bir çıktı türü seçin.","⚠️ This result has no bill of quantities.":"⚠️ Bu sonuçta metraj/keşif listesi bulunmuyor.","⚠️ Generate a design first.":"⚠️ Önce bir tasarım oluşturun.","⚠️ Allow pop-ups to export the report.":"⚠️ Raporu dışa aktarmak için açılır pencerelere (pop-up) izin verin.","❌ Error: ":"❌ Hata: ","✨ AI style":"✨ Yapay zekâ stili"," options — pick yours":" seçenek — sizinkini seçin","options for this feature":"bu özellik için seçenek","Browse all ›":"Tümüne göz at ›","✨ More like this":"\\u2728 Buna benzer daha fazla","Max 3 styles":"En fazla 3 stil","Upload your room photo first":"Önce oda fotoğrafınızı yükleyin","Pick 2-3 styles":"2-3 stil seçin","Designing ":"Tasarım hazırlanıyor: ","❌ Failed at ":"❌ Şurada başarısız oldu: ","👍 Pick this":"👍 Bunu seç","✓ Done — swipe and pick":"✓ Tamamlandı — kaydırın ve seçin","👗 Fashion styles":"👗 Moda stilleri","styles — pick yours":"stil — sizinkini seçin","styles for this category":"bu kategori için stil","Review Scenes":"Sahneleri İncele","Edit or delete scenes before generating. Each scene = 1 video credit.":"Oluşturmadan önce sahneleri düzenleyin veya silin. Her sahne = 1 video kredisi.","Scene":"Sahne","Remove":"Kaldır","❌ Cancel":"❌ İptal","✨ Generate":"✨ Oluştur","Content was rejected by safety filters — try a calmer description, or remove the person photo.":"İçerik güvenlik filtreleri tarafından reddedildi — daha sakin bir açıklama deneyin veya kişi fotoğrafını kaldırın.","Video generation failed.":"Video oluşturma başarısız oldu.","⏳ Status: ":"⏳ Durum: ","🎨 Rendering canvas video...":"🎨 Kanvas videosu işleniyor...","🎙️ Generating narration...":"🎙️ Seslendirme oluşturuluyor...","🎚️ Merging narration...":"🎚️ Seslendirme birleştiriliyor...","✅ Done!":"✅ Tamamlandı!","🎨 Building intro...":"🎨 Giriş sahnesi oluşturuluyor...","🎨 Building outro...":"🎨 Çıkış sahnesi oluşturuluyor...","Made by: ":"Hazırlayan: ","Made with Omran AI Video":"Omran AI Video ile hazırlandı","🚀 Sending request to the AI video engine...":"🚀 İstek yapay zekâ video motoruna gönderiliyor...","🎬 Finalizing your video...":"🎬 Videonuz tamamlanıyor...","✍️ Adding your signature watermark...":"✍️ İmza filigranınız ekleniyor...","🔗 Merging canvas + AI video...":"🔗 Kanvas ve yapay zekâ videosu birleştiriliyor...","⚠️ Please describe the video first.":"⚠️ Lütfen önce videoyu açıklayın.","🔑 Please log in first to use the Video Maker.":"🔑 Video Yapıcıyı kullanmak için lütfen önce giriş yapın.","Veo failed.":"Veo başarısız oldu.","🔒 Veo 3 is limited to the owner account for now.":"🔒 Veo 3 şu anda yalnızca yönetici hesabına açıktır.","✍️ Writing the film script scene by scene...":"✍️ Film senaryosu sahne sahne yazılıyor...","Could not generate the film script.":"Film senaryosu oluşturulamadı.","📋 Review the script...":"📋 Senaryoyu inceleyin...","❌ Cancelled.":"❌ İptal edildi.","💳 Checking video credits...":"💳 Video kredileri kontrol ediliyor...","ℹ️ Hero photo is supported with Runway only; continuing without it...":"ℹ️ Ana karakter fotoğrafı yalnızca Runway ile desteklenir; fotoğrafsız devam ediliyor...","🎥 Generating scene ":"🎥 Sahne oluşturuluyor: ","🎙️ Narrating scene ":"🎙️ Sahne seslendiriliyor: ","▶️ Scene ":"▶️ Sahne ","✅ All scenes played.":"✅ Tüm sahneler oynatıldı.","⬇️ Scene ":"⬇️ Sahne ","✅ Your film is ready! Scenes will play back-to-back — download each scene below.":"✅ Filminiz hazır! Sahneler art arda oynatılacak — aşağıdaki butonlardan her sahneyi indirebilirsiniz.","🔗 Merging all scenes into your final film...":"🔗 Tüm sahneler nihai filminizde birleştiriliyor...","🔗 Merging scene ":"🔗 Sahne birleştiriliyor: ","⚠️ Narration merge failed; film merged without narration.":"⚠️ Seslendirme birleştirilemedi; film seslendirme olmadan birleştirildi.","✅ Your film is ready!":"✅ Filminiz hazır!","🗣️ Write what the actor should say first.":"🗣️ Önce oyuncunun ne söyleyeceğini yazın.","🚀 Sending to Google Veo 3...":"🚀 Google Veo 3'e gönderiliyor...","⏳ Veo 3 is generating (may take 1-3 min)...":"⏳ Veo 3 oluşturuyor (1-3 dakika sürebilir)...","⬇️ Downloading the video...":"⬇️ Video indiriliyor...","🔒 This feature is limited to the owner account.":"🔒 Bu özellik yalnızca yönetici hesabına açıktır.","✍️ Writing the full scene-by-scene script...":"✍️ Tam senaryo sahne sahne yazılıyor...","Could not generate the script.":"Senaryo oluşturulamadı.","🚀 Sending scene ":"🚀 Sahne gönderiliyor: ","🔗 Joining all scenes with narration into the final video...":"🔗 Tüm sahneler ve seslendirme son videoda birleştiriliyor...","🔗 Joining scene ":"🔗 Sahne birleştiriliyor: "," (opening moment of the scene)":" (sahnenin açılış anı)"," (continuing the same scene, next moment)":" (aynı sahnenin devamı, sonraki an)","🚀 Sending request...":"🚀 İstek gönderiliyor...","🔗 Joining scenes together...":"🔗 Sahneler birbirine bağlanıyor...","⚠️ Could not join scenes; showing the first scene only.":"⚠️ Sahneler birleştirilemedi; yalnızca ilk sahne gösteriliyor.","🔎 Upscaling video quality...":"🔎 Video kalitesi yükseltiliyor...","🎚️ Adding narration to the video...":"🎚️ Videoya seslendirme ekleniyor...","⚠️ Could not add narration; showing the video without it.":"⚠️ Seslendirme eklenemedi; video seslendirme olmadan gösteriliyor.","⬇️ Downloading video...":"⬇️ Video indiriliyor...","🌴 Emirati modern":"🌴 Modern Emirlik","🌿 Scandinavian":"🌿 İskandinav","🎋 Japandi":"🎋 Japandi","🏭 Industrial":"🏭 Endüstriyel","🪑 Mid-century":"🪑 Mid-Century","💎 Art Deco":"💎 Art Deco","🏛️ Neoclassic":"🏛️ Neoklasik","🕯️ Victorian":"🕯️ Viktoryen","👑 Baroque":"👑 Barok","🦇 Gothic":"🦇 Gotik","🪵 Rustic":"🪵 Rustik","🏡 Farmhouse":"🏡 Çiftlik Evi","🌊 Coastal":"🌊 Sahil","🏖️ Mediterranean":"🏖️ Akdeniz","🕌 Moroccan":"🕌 Fas","🧿 Ottoman Turkish":"🧿 Osmanlı","🪔 Persian":"🪔 Fars","🐘 Indian":"🐘 Hint","⛩️ Japanese":"⛩️ Japon","🧘 Zen":"🧘 Zen","🍵 Wabi-sabi":"🍵 Wabi-Sabi","🌴 Tropical":"🌴 Tropikal","🏜️ Desert":"🏜️ Çöl","🏙️ Urban loft":"🏙️ Şehir Loftu","🚀 Futuristic":"🚀 Fütüristik","🌃 Cyberpunk":"🌃 Cyberpunk","🎮 Gamer room":"🎮 Oyuncu Odası","📚 Dark academia":"📚 Dark Academia","🏔️ Alpine chalet":"🏔️ Alp Dağ Evi","💜 Provence":"💜 Provans","🎬 Hollywood glam":"🎬 Hollywood Glam","⬛ Monochrome":"⬛ Monokrom","🏺 Earthy organic":"🏺 Doğal Toprak","🌸 Pastel":"🌸 Pastel","🤖 Smart home":"🤖 Akıllı Ev","♻️ Eco green":"♻️ Eko Yeşil","🕺 Retro 70s":"🕺 70'ler Retro","🌈 Pop art":"🌈 Pop Art","⬜ Gallery white":"⬜ Galeri Beyazı","👘 Kaftan":"👘 Kaftan","🌙 Jalabiya":"🌙 Celabiye","🧕 Hijab chic":"🧕 Şık Tesettür","🎩 Old money":"🎩 Old Money","🛹 Streetwear":"🛹 Sokak Modası","🏃 Sporty":"🏃 Sportif","🧥 Winter luxury":"🧥 Lüks Kış","☀️ Summer linen":"☀️ Yazlık Keten","💼 Office chic":"💼 Ofis Şıklığı","🥂 Cocktail":"🥂 Kokteyl","👑 Ballgown":"👑 Balo Elbisesi","🌾 Boho":"🌾 Bohem","📻 Vintage 50s":"📻 50'ler Vintage","💿 Y2K":"💿 Y2K","⬜ Minimal":"⬜ Minimal","💎 Glam":"💎 Glam","🖤 Leather":"🖤 Deri","👖 Denim":"👖 Denim","🌺 Floral":"🌺 Çiçekli","🍷 Velvet":"🍷 Kadife","🎀 Silk":"🎀 İpek","🕴️ Power suit":"🕴️ Power Suit","🧿 Turkish":"🧿 Türk","🏰 Princess":"🏰 Prenses","🦁 Safari":"🦁 Safari","🎓 Preppy":"🎓 Preppy","🎭 Avant-garde":"🎭 Avangart","🧥 Bisht":"🧥 Bişt","👞 Smart casual":"👞 Smart Casual","🤵 Three-piece":"🤵 Üç Parça Takım","⚡ Athleisure":"⚡ Athleisure","🎸 Rockstar":"🎸 Rockstar","🕌 Djellaba":"🕌 Cellabe","🏫 School":"🏫 Okul Stili","🌙 Eid kids":"🌙 Çocuk Bayramlığı"};
+Object.assign(I18N['tr'], {"acctPointsLabel":"Puan bakiyesi","acctPointsLow":"⚠️ Bakiyeniz azalıyor — bitmeden yükleyin.","acctPointsOut":"🔴 Bakiyeniz bitti — devam etmek için puan yükleyin.","acctPointsBuyBtn":"💳 Puan yükle"});
+/* v656 */ Object.assign(I18N["tr"], {"aiGenTag": "✨ Yapay zekâ ile üretilen içerik", "msgStopped": "Yanıt durduruldu", "stReading": "💭 Sorunuzu okuyorum…", "stTimeout": "⏱️ Yanıt süresi doldu.", "stSearch": "🔍 Canlı kaynakları kontrol ediyorum…", "stFetchPage": "🌐 Bir sayfa okuyorum…", "stRunJs": "⚙️ Doğrulamak için kod çalıştırıyorum…", "stGenImage": "🎨 Görsel çiziyorum…", "stTestHtml": "🧪 Sayfayı test ediyorum…", "stGeoLoc": "📍 Konumunuzu belirliyorum (tarayıcı izin isteyecek)…", "trSearchN": "«{q}» aradım — {n} sonuç buldum", "trSearchC": "«{q}» aradım — {n} karakter aldım", "trFetch": "{h} sayfasını okudum — {n} karakter aldım", "trFetchFail": "{h} okunamadı", "trJsErr": "Kod çalıştırdım — bir hata çıktı", "trJsOk": "Kod çalıştırdım — {n} karakter döndü", "trImgOk": "Bir görsel çizdim ✅", "trImgFail": "Görsel oluşturulamadı", "trLocOk": "Konumunuz belirlendi ✅", "trLocFail": "Konumunuzu belirlemeyi denedim — başarılı olmadı", "trHtmlOk": "Sayfayı test ettim — hata yok ✅", "trHtmlErr": "Sayfayı test ettim — hatalar çıktı", "trTool": "{name} kullandım"});
+/* v657 */ window.__BI=window.__BI||{}; window.__BI["tr"]=Object.assign(window.__BI["tr"]||{}, {"📄 Document Assistant": "📄 Belge Asistanı", "Upload your document": "Belgenizi yükleyin", "Contract · Invoice · Report · Quote (PDF or image)": "Sözleşme · Fatura · Rapor · Teklif (PDF veya görsel)", "Or paste document text": "Ya da belge metnini yapıştırın", "Paste document text here…": "Belge metnini buraya yapıştırın…", "Analyze document": "Belgeyi analiz et", "Upload a file or paste text first.": "Önce bir dosya yükleyin veya metin yapıştırın.", "Reading your document…": "Belgeniz okunuyor…", "Document": "Belge", "Key details": "Önemli bilgiler", "Summary": "Özet", "Important points": "Önemli noktalar", "Ask about the document": "Belge hakkında soru sorun", "Type your question…": "Sorunuzu yazın…", "New document": "Yeni belge", "🧾 Government Services": "🧾 Devlet Hizmetleri", "Ask about any UAE government service — steps, fees and the official link, with live search.": "Herhangi bir BAE devlet hizmeti hakkında sorun — adımlar, ücretler ve resmî bağlantı; canlı arama ile.", "Type your service… e.g. how to renew my trade license?": "Hizmeti yazın… ör. ticaret ruhsatımı nasıl yenilerim?", "Searching official sources…": "Resmî kaynaklar aranıyor…", "Official sources": "Resmî kaynaklar", "💼 CV Builder": "💼 CV Oluşturucu", "Fill your info and get a professional CV + cover letter ready as PDF.": "Bilgilerinizi doldurun; PDF olarak hazır, profesyonel bir CV ve ön yazı alın.", "Full name *": "Ad soyad *", "John Doe": "Ayşe Yılmaz", "Job title": "İş unvanı", "Software Engineer": "Yazılım Mühendisi", "Email": "E-posta", "Phone": "Telefon", "City": "Şehir", "Dubai, UAE": "Dubai, BAE", "Professional summary": "Profesyonel özet", "Two lines about your experience & goals": "Deneyiminiz ve hedefleriniz hakkında iki satır", "Work experience": "İş deneyimi", "Title - Company - Duration - key achievements (one per line)": "Unvan - Şirket - Süre - önemli başarılar (her satıra bir tane)", "Education": "Eğitim", "Degree - University - Year": "Derece - Üniversite - Yıl", "Skills": "Beceriler", "Comma separated": "Virgülle ayırın", "Languages": "Diller", "Arabic (native), English (fluent)": "Arapça (ana dil), İngilizce (akıcı)", "Target job/company (for cover letter)": "Hedef pozisyon/şirket (ön yazı için)", "Optional": "İsteğe bağlı", "Generate my CV": "CV’mi oluştur", "Enter your name at least.": "En azından adınızı girin.", "Designing your CV…": "CV’niz hazırlanıyor…", "Your CV": "CV’niz", "Save PDF": "PDF olarak kaydet", "Edit info": "Bilgileri düzenle", "Cover letter": "Ön yazı", "Tip: in the print dialog choose “Save as PDF”.": "İpucu: yazdırma iletişim kutusunda “PDF olarak kaydet” seçeneğini belirleyin.", "Allow pop-ups to print.": "Yazdırmak için açılır pencerelere izin verin."});
+/* v658 */ window.__BI=window.__BI||{}; window.__BI["tr"]=Object.assign(window.__BI["tr"]||{}, {"By signing up or signing in you agree to": "Kaydolarak veya giriş yaparak şunları kabul etmiş olursunuz", "Privacy Policy": "Gizlilik Politikası", "Terms of Use": "Kullanım Koşulları", "and": "ve", "Gulf & Arab world": "Körfez ve Arap dünyası", "Asia": "Asya", "Africa": "Afrika", "Europe": "Avrupa", "Oceania": "Okyanusya", "Americas": "Amerikalar", "❌ Error: ": "❌ Hata: ", "⏳ Status: ": "⏳ Durum: "});

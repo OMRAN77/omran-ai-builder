@@ -98,6 +98,15 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
 // causing the `@media (max-width:860px)` mobile layout to never trigger even on a phone.
 // Detect real touch/mobile devices via user-agent + touch support as a reliable fallback,
 // and force the mobile UI class regardless of the reported viewport width.
+/* v-pdf-link: بصمة غلاف TWA تُلتقط مبكرًا (referrer يوجد في أول فتحة فقط)
+   وتبقى محفوظة — يقرأها مسار حفظ PDF ليعرف أنه داخل تطبيق مغلّف. */
+(function markTwa(){
+  try{
+    if(document.referrer && document.referrer.indexOf('android-app://') === 0){
+      localStorage.setItem('aiapp_twa', '1');
+    }
+  }catch(e){ __swallow(e, 'boot:twa-mark'); }
+})();
 (function applyMobileUiClass(){
   const ua = navigator.userAgent || '';
   const isMobileUA = /Android|iPhone|iPad|iPod|Mobile|Huawei|HarmonyOS/i.test(ua);
@@ -145,8 +154,19 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
     const ae = document.activeElement;
     return !!(ae && (ae.tagName === 'TEXTAREA' || ae.tagName === 'INPUT' || ae.isContentEditable));
   };
+  /* v-ios-header-drop (شكوى ٢٨ أغسطس: الهيدر «ينزل» عند دخول المحادثة):
+     التخطي القديم كان يعتمد على التركيز وحده، وسفاري iOS كثيرًا ما يقفل
+     الكيبورد ويُبقي التركيز في الحقل (إملاء/سحب الكيبورد للأسفل/تسجيل صوتي)
+     — فكان الانزياح يبقى للأبد لأن المُصحِّح لا يعمل أبدًا. الآن نتخطى فقط
+     عندما يكون الكيبورد مفتوحًا فعلًا: المنفذ المرئي أقصر من النافذة بوضوح. */
+  const keyboardOpen = () => {
+    if(!inputFocused()) return false;
+    const vv = window.visualViewport;
+    if(!vv) return true; // بلا visualViewport لا نعرف حال الكيبورد — نتصرف كالسابق
+    return (window.innerHeight - vv.height) > 60;
+  };
   const reset = () => {
-    if(inputFocused()) return;
+    if(keyboardOpen()) return;
     if(window.scrollY || document.documentElement.scrollTop || document.body.scrollTop){
       window.scrollTo(0, 0);
       document.documentElement.scrollTop = 0;
@@ -154,8 +174,97 @@ window.safeParse = safeParse; window.safeParseLS = safeParseLS;
     }
   };
   window.addEventListener('scroll', reset, {passive:true});
-  if(window.visualViewport) window.visualViewport.addEventListener('resize', () => setTimeout(reset, 60));
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', () => setTimeout(reset, 60));
+    /* v-ios-header-drop: انزلاق المنفذ المرئي (pan) بلا resize — نصحّح بعده */
+    window.visualViewport.addEventListener('scroll', () => setTimeout(reset, 60));
+  }
   document.addEventListener('focusout', () => setTimeout(reset, 120));
+  window.addEventListener('orientationchange', () => setTimeout(reset, 250));
+  window.addEventListener('pageshow', () => setTimeout(reset, 60));
+  /* v644: حُذف الحارس الدوري (600ms). القياس على الجهاز الحقيقي أثبت أنه كان
+     يعمل بلا أثر: الوثيقة غير قابلة للتمرير فـscrollTo لا يُصفّر شيئًا —
+     مؤقّت دائم يستهلك البطارية فقط. بديله الملاءمة أدناه. */
+  document.addEventListener('focusin', () => setTimeout(reset, 60));
+})();
+
+/* v644 — ملاءمة الجسم للمنفذ المرئي (علّة الفراغ أعلى شاشة iOS):
+   مقيس حيًّا أثناء الكتابة: visualViewport.offsetTop=264 وscrollTop=264
+   بينما جسم الصفحة مثبّت بمنفذ التخطيط (rect.top=-264) — فالهيدر يُسحب
+   خارج الشاشة ويبقى أعلاها فارغًا. scrollTo لا يعالجها (لا مجال تمرير).
+   نكتب انزياح المنفذ المرئي وارتفاعه في متغيّرين يقرأهما redesign.css،
+   فيلتصق الهيدر بأعلى المرئي وشريط الإدخال بأسفله فوق الكيبورد. */
+(function pinVisualViewport(){
+  const vv = window.visualViewport;
+  if(!vv) return;
+  const root = document.documentElement;
+  let lastT = -1, lastH = -1;
+  const apply = () => {
+    const t  = Math.max(0, Math.round(vv.offsetTop));
+    const h  = Math.max(220, Math.round(vv.height));
+    const kb = Math.round(window.innerHeight - vv.height);
+    /* v646-fix (لقطتا فاطمة 6:37 — بعد الكتابة يعلق الهيدر نازلًا والريلود
+       يصلحه): كان الشرط (t>0 || kb>=40) — وسفاري iOS أحيانًا يترك offsetTop
+       عالقًا > 0 بعد إغلاق الكيبورد بلا أي حدث لاحق، فيبقى الجسم مدفوعًا
+       للأسفل للأبد. التكبير معطّل (user-scalable=no) فلا يوجد وضع شرعي يكون
+       فيه المنفذ منزاحًا والكيبورد مقفولًا — الكيبورد وحده هو المعيار. */
+    const on = kb >= 40;
+    const nt = on ? t : 0, nh = on ? h : 0;
+    if(nt !== lastT){
+      lastT = nt;
+      if(on) root.style.setProperty('--vv-top', nt + 'px');
+      else   root.style.removeProperty('--vv-top');
+    }
+    if(nh !== lastH){
+      lastH = nh;
+      if(on) root.style.setProperty('--vv-h', nh + 'px');
+      else   root.style.removeProperty('--vv-h');
+    }
+  };
+  // v645 (مقيس على جهاز فاطمة): iOS لا يُطلق حدث المنفذ المرئيّ كلّ إطار أثناء
+  //   حركة الكيبورد (≈0.25ث)، فتصحيحٌ واحد يتأخّر إطارات ويُرى الهيدر يزحف تحت
+  //   شريط الحالة (bd:-10/-23/-43 مقيسة). الآن نُلاحق القيمة إطارًا بإطار لمدّة
+  //   محدودة بعد كلّ حدث ثمّ نتوقّف — لا مؤقّت دائم.
+  let until = 0, running = false;
+  const now = () => (window.performance && performance.now ? performance.now() : Date.now());
+  const chase = (ms) => {
+    until = Math.max(until, now() + (ms || 520));
+    if(running) return;
+    running = true;
+    const step = () => {
+      apply();
+      if(now() < until) requestAnimationFrame(step);
+      else running = false;
+    };
+    requestAnimationFrame(step);
+  };
+  const schedule = () => chase(520);
+  vv.addEventListener('resize', schedule);
+  vv.addEventListener('scroll', schedule);
+  window.addEventListener('scroll', schedule, { passive:true });
+  document.addEventListener('focusin', () => chase(900));
+  /* v646-fix: نافذة أطول بعد الخروج من الحقل — إغلاق الكيبورد قد يكتمل
+     متأخرًا فتفوت لحظة التصفير على نافذة 900ms وتبقى القيم العالقة. */
+  document.addEventListener('focusout', () => chase(2500));
+  window.addEventListener('orientationchange', () => chase(1200));
+  window.addEventListener('pageshow', schedule);
+  schedule();
+  /* v647-sweep (شكوى «نفس الشي» بعد #211): سفاري/الغلاف قد يوصل لحالة
+     عالقة بلا أي حدث إطلاقًا — لا focusout ولا resize ولا scroll — فتفوت
+     كل نوافذ الملاحقة مهما طالت. كنس دوري خفيف (قراءتان كل 800ms، لا
+     قياس تخطيط): ما دام الكيبورد مقفولًا يمسح التثبيت العالق ويصفّر أي
+     تمرير وثيقة متبقٍّ. يختلف عن حارس v644 المحذوف: ذاك كان scrollTo
+     أعمى؛ هذا يمسح متغيّري التثبيت أيضًا — وهما اللذان يدفعان الجسم. */
+  setInterval(() => {
+    const kb = Math.round(window.innerHeight - vv.height);
+    if(kb >= 40) return; // كيبورد مفتوح — التثبيت شرعي، لا نلمسه
+    apply();
+    if(window.scrollY || document.documentElement.scrollTop || document.body.scrollTop){
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+  }, 800);
 })();
 
 const $ = s => document.querySelector(s);
@@ -271,6 +380,10 @@ const $ = s => document.querySelector(s);
 
   function showOverlay(){ overlay.style.display = 'flex'; }
   function hideOverlay(){ overlay.style.display = 'none'; }
+  /* v-auth-optional: الدخول اختياري — الشاشة صارت تُغلق بـ✕ ويتابع كضيف.
+     (كانت تُفرض عند الإقلاع وتظهر وميضًا مزعجًا مع كل ريلود — شكوى ٢٨ أغسطس) */
+  const authCloseBtn = $('#authCloseBtn');
+  if(authCloseBtn) authCloseBtn.onclick = hideOverlay;
 
   // "Remember me": when checked (default), the session survives browser
   // restarts (localStorage). When unchecked, the session only lasts for the
@@ -620,13 +733,44 @@ const $ = s => document.querySelector(s);
     if(authToggleBtn) authToggleBtn.style.display = 'none';
     const headerLoginBtn = $('#btnHeaderLogin');
     if(headerLoginBtn){
-      headerLoginBtn.style.display = loggedIn ? 'none' : 'inline-flex';
+      /* v-auth-optional-2 (أمر عمران ٢٩ أغسطس): زر «دخول» يُحذف من الهيدر
+         نهائيًا — جوال وكمبيوتر. الدخول من الإعدادات → حسابي فقط، أو
+         تلقائيًا عند ميزة تتطلب حسابًا (requireLogin). */
+      headerLoginBtn.style.display = 'none';
       headerLoginBtn.onclick = () => { setMode('login'); showOverlay(); };
+    }
+    /* v-auth-optional (طلب عمران ٢٨ أغسطس): الدخول صار اختياريًا — زر دائم
+       في الإعدادات (قسم «حسابي») يظهر للضيف ويفتح نفس الشاشة. */
+    const acctLoginBtn = $('#acctLoginBtn');
+    if(acctLoginBtn){
+      acctLoginBtn.style.display = loggedIn ? 'none' : 'block';
+      acctLoginBtn.onclick = () => {
+        try{ const sd = document.getElementById('settingsDialog'); if(sd && sd.close) sd.close(); }catch(e){ __swallow(e, 'auth:acct-login#close-settings'); }
+        setMode('login');
+        showOverlay();
+      };
+    }
+    /* v-auth-optional-3 (أمر عمران ٢٩ أغسطس): الاسم أيضًا يُحذف من الهيدر —
+       هويّة الحساب والخروج صارا في الإعدادات → حسابي، وزر الإضاءة يأخذ
+       مكان الاسم في زاوية الهيدر تلقائيًا. */
+    const acctNameWrap = $('#acctSignedInAs');
+    const acctNameEl = $('#acctSignedInAsName');
+    if(acctNameWrap){
+      acctNameWrap.style.display = loggedIn ? 'flex' : 'none';
+      if(acctNameEl) acctNameEl.textContent = loggedIn ? (authGet('aiapp_username') || '') : '';
+    }
+    const acctLogoutBtn = $('#acctLogoutBtn');
+    if(acctLogoutBtn){
+      acctLogoutBtn.style.display = loggedIn ? 'block' : 'none';
+      acctLogoutBtn.onclick = () => {
+        try{ const sd = document.getElementById('settingsDialog'); if(sd && sd.close) sd.close(); }catch(e){ __swallow(e, 'auth:acct-logout#close-settings'); }
+        doLogout();
+      };
     }
     const headerUserBtn = $('#btnHeaderUser');
     const headerUserDD = $('#headerUserDropdown');
     if(headerUserBtn){
-      headerUserBtn.style.display = loggedIn ? 'inline-flex' : 'none';
+      headerUserBtn.style.display = 'none';
       const nm = $('#headerUserName');
       if(nm) nm.textContent = (authGet('aiapp_username') || '');
       // v444: صورة المستخدم الحقيقية في زر الهيدر
@@ -2136,6 +2280,8 @@ const emptyState = $('#emptyState');
 const historyEl = $('#history');
 const I18N = {
   ar: {
+    /* v656 — وسم الذكاء وحالات الخادم: تصل بمفتاح فتُترجَم في كلّ لغة */
+    aiGenTag: "✨ محتوى مولّد بالذكاء الاصطناعي", msgStopped: "تم إيقاف الرد", stReading: "💭 يقرأ سؤالك…", stTimeout: "⏱️ انتهت مهلة الردّ.", stSearch: "🔍 أتحقق لك من المصادر الحية…", stFetchPage: "🌐 يقرأ صفحة…", stRunJs: "⚙️ يشغّل كودًا للتحقّق…", stGenImage: "🎨 يرسم صورة…", stTestHtml: "🧪 يجرّب الصفحة…", stGeoLoc: "📍 يحدّد موقعك (سيطلب المتصفّح إذنك)…", trSearchN: "بحثتُ عن «{q}» — حصلتُ {n} نتيجة", trSearchC: "بحثتُ عن «{q}» — حصلتُ {n} حرفًا", trFetch: "قرأتُ {h} — حصلتُ {n} حرفًا", trFetchFail: "تعذّرت قراءة {h}", trJsErr: "شغّلتُ كودًا — ظهر خطأ", trJsOk: "شغّلتُ كودًا — عاد ناتج {n} حرفًا", trImgOk: "رسمتُ صورة ✅", trImgFail: "تعذّرت الصورة", trLocOk: "حدّدتُ موقعك ✅", trLocFail: "حاولتُ تحديد موقعك — لم ينجح", trHtmlOk: "جرّبتُ الصفحة — بلا أخطاء ✅", trHtmlErr: "جرّبتُ الصفحة — ظهرت أخطاء", trTool: "استخدمتُ {name}",
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'الفئة', fxGenWomen: 'نسائي', fxGenMen: 'رجالي', fxGenKids: 'أطفال', fxColorsLbl: 'الألوان المفضّلة', fxColBlack: 'أسود', fxColWhite: 'أبيض', fxColNavy: 'كحلي', fxColRed: 'أحمر', fxColGold: 'ذهبي',
     fxColGreen: 'أخضر', fxColBeige: 'بيج', fxColMulti: 'متعدد', fxAccLbl: 'إضافات', fxAccGlasses: 'نظارات', fxAccWatch: 'ساعة', fxAccHandbag: 'حقيبة', fxAccShoes: 'أحذية', fxAccScarf: 'وشاح', fxAccMakeup: 'مكياج',
@@ -2269,6 +2415,35 @@ const I18N = {
     logoutTitle: 'تسجيل الخروج',
     loginAction: 'دخول',
     acctSectionTitle: '👤 حسابي',
+    aboutSupportTitle: '📞 خدمة العملاء والدعم',
+    aboutSupportDesc: 'نرد على استفساراتك خلال ٢٤-٤٨ ساعة.',
+    aboutCopyright: '© فريق عمران AI — صُنع بحب في الإمارات 🇦🇪',
+    adminPanelTitle: '🛠️ لوحة التحكم (خاص بالمالك)',
+    videoBadgeShort: 'قصير',
+    videoBadgeFull: 'كامل',
+    provTypingSuffix: 'يكتب…',
+    provFailSwitch: 'لم يستجب ({why}) — جارٍ التحويل…',
+    provUnknownReason: 'سبب غير معروف',
+    provWhyBuild: 'البناء وتعديل الكود',
+    provWhyVision: 'قراءة الصور',
+    provWhyGeneral: 'هذا النوع من الطلبات',
+    provSwitchNote: 'اخترتَ {sel} — و{why} يُنفَّذ بـ {eff} لأنه الأدقّ فيه. محادثتك العادية تبقى على {sel}.',
+    provSwitchNoteHidden: 'محادثتك على {sel} — و{why} يُنفَّذ بـ {eff} لأنه الأدقّ فيه. محادثتك العادية تبقى على {sel}.',
+    privacyConsentTitle: '🔒 خصوصيتك أولًا',
+    privacyConsentText: 'قبل استخدام Omran AI Builder، يرجى قراءة <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">سياسة الخصوصية</a> و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">شروط الاستخدام</a>. نوضح فيهما ما نجمعه وكيف نحميه وحقك في حذف بياناتك.',
+    privacyConsentRead: 'قراءة السياسة',
+    privacyConsentAgree: 'أوافق وأتابع',
+    acctPointsLabel: 'رصيد النقاط',
+    acctPointsLow: '⚠️ رصيدك قارب على الانتهاء — اشحن نقاطك قبل النفاد.',
+    acctPointsOut: '🔴 رصيدك انتهى — اشحن نقاطك للمتابعة.',
+    acctPointsBuyBtn: '💳 شحن النقاط',
+    aboutFeatChat: 'بناء تطبيقات كاملة بالمحادثة', aboutFeatProviders: '٩ مزودي ذكاء + «اسأل الكل»', aboutFeatMaha: 'مها — مساعدتك الصوتية الحية', aboutFeatStudios: '٧ استوديوهات إبداعية للصور', aboutFeatStocks: 'سوق الأسهم ومحفظة تعليمية', aboutFeatPrivacy: 'خصوصيتك أولوية — مفاتيحك عندك', aboutChipUAE: 'صُنع في الإمارات 🇦🇪', aboutChipPWA: 'تطبيق PWA', aboutChipLangs: '١٤ لغة', aboutMoreSummary: '📖 المزيد عن المنصة',
+    videoNeedDesc: '⚠️ اكتب وصف الفيديو أولًا.', videoVoiceFemale: '👩 فاطمة (أنثى)', videoVoiceMale: '👨 حمدان (ذكر)',
+    pickerOptsForFeature: 'خيارًا لهذه الميزة', pickerStylesForCategory: 'نمطًا لهذه الفئة', pickerOptsWord: 'خيارًا', pickerOptsPick: 'خيارًا — اختر ما يناسبك', videoOptAdspot: '📢 إعلان سريع (5ث طولي + سرد)', videoOptReels: '📱 ريلز ذكي (10ث طولي + سرد)', fashionEngineLabel: '🎨 محرك الصور', fashionEngineGemini: 'Gemini — الأدق في الحفاظ على الوجه (الافتراضي)', fashionEngineOpenai: 'ChatGPT (gpt-image-1) — نفس محرك صور ChatGPT', videoAdvanced: 'خيارات متقدمة',
+    fashionRefinePh: 'مثال: غيّري لون الفستان إلى أزرق فقط', fashionRefineBtn: '✏️ عدّلي شيئًا محددًا', fashionRefineNeed: 'اكتبي التعديل المطلوب أولًا', fashionRefining: 'جاري تطبيق التعديل…',
+    modeCreateImage: 'إنشاء صورة', modeWebSearch: 'البحث على الويب', modeThinkDeeper: 'التفكير العميق', psheetCountSuffix: 'ستايلًا — نفس وجهك بكل ستايل',
+    provNickKing: 'الكينج', provNickFast: 'السريع', provNickDeep: 'العميق',
+    acctLoginBtnLabel: '🔐 تسجيل الدخول / حساب جديد',
     statsSectionTitle: 'إحصائياتي',
     statsProjectsLabel: 'عدد المشاريع',
     statsMessagesLabel: 'إجمالي الرسائل المُرسلة',
@@ -3060,6 +3235,8 @@ const I18N = {
     shareCopyBtn: 'نسخ الرابط',
     shareCreating: 'جارٍ الإنشاء...',
     shareError: 'تعذّر إنشاء الرابط، حاول مرة أخرى.',
+    shareNeedCode: 'المشروع فارغ — اكتب رسالة أو أنشئ تطبيقًا ثم شاركه.',
+    shareTooLarge: 'المشروع أكبر من حد المشاركة (2MB) — صغّر الصور أو المحتوى ثم أعد المحاولة.',
     shareCopied: 'تم نسخ الرابط! ✅',
     /* v601: مساعد البريد الذكيّ — 24 نصًّا كانت en()?:  مباشرةً (لغتان فقط) */
     emailAsst_connectText: "اربط حساب Gmail الخاص بك ليقرأ الذكاء الاصطناعي إيميلاتك ويقترح ردودًا جاهزة تعتمدها قبل الإرسال.", emailAsst_connectBtn: "🔗 ربط Gmail", emailAsst_disclaimer: "⚠️ لن يتم إرسال أي رد إلا بعد موافقتك الصريحة على كل رسالة.", emailAsst_title: "📧 مساعد البريد الذكي", emailAsst_refresh: "تحديث", emailAsst_loading: "جارٍ فحص بريدك…", emailAsst_empty: "لا توجد إيميلات جديدة تحتاج ردًا الآن.",
@@ -3067,6 +3244,8 @@ const I18N = {
     emailAsst_eventAdded: "✅ انضاف لتقويمك", emailAsst_calReauth: "أعد ربط Gmail للسماح بالوصول للتقويم", emailAsst_voiceLoading: "🔊 جارٍ تجهيز الملخص الصوتي…", emailAsst_voiceEmpty: "لا توجد إيميلات لتلخيصها.", emailAsst_urgent: "🔴 عاجل", emailAsst_normal: "🟡 عادي", emailAsst_low: "⚪ منخفض",
   },
   en: {
+    /* v656 — وسم الذكاء وحالات الخادم: تصل بمفتاح فتُترجَم في كلّ لغة */
+    aiGenTag: "✨ AI-generated content", msgStopped: "Response stopped", stReading: "💭 Reading your question…", stTimeout: "⏱️ The response timed out.", stSearch: "🔍 Checking live sources for you…", stFetchPage: "🌐 Reading a page…", stRunJs: "⚙️ Running code to verify…", stGenImage: "🎨 Drawing an image…", stTestHtml: "🧪 Testing the page…", stGeoLoc: "📍 Getting your location (the browser will ask permission)…", trSearchN: "Searched for «{q}» — got {n} results", trSearchC: "Searched for «{q}» — got {n} characters", trFetch: "Read {h} — got {n} characters", trFetchFail: "Could not read {h}", trJsErr: "Ran code — an error appeared", trJsOk: "Ran code — {n} characters returned", trImgOk: "Drew an image ✅", trImgFail: "The image failed", trLocOk: "Located you ✅", trLocFail: "Tried to locate you — did not succeed", trHtmlOk: "Tested the page — no errors ✅", trHtmlErr: "Tested the page — errors appeared", trTool: "Used {name}",
     /* v603: أزياء AI — الفئة والألوان والإضافات (٢٠ مفتاحًا) */
     fxCatLbl: 'Category', fxGenWomen: 'Women', fxGenMen: 'Men', fxGenKids: 'Kids', fxColorsLbl: 'Preferred colours', fxColBlack: 'Black', fxColWhite: 'White', fxColNavy: 'Navy', fxColRed: 'Red', fxColGold: 'Gold',
     fxColGreen: 'Green', fxColBeige: 'Beige', fxColMulti: 'Multicolour', fxAccLbl: 'Accessories', fxAccGlasses: 'Glasses', fxAccWatch: 'Watch', fxAccHandbag: 'Handbag', fxAccShoes: 'Shoes', fxAccScarf: 'Scarf', fxAccMakeup: 'Makeup',
@@ -3253,6 +3432,35 @@ const I18N = {
     logoutTitle: 'Log out',
     loginAction: 'Login',
     acctSectionTitle: '👤 My account',
+    aboutSupportTitle: '📞 Customer service & support',
+    aboutSupportDesc: 'We answer your inquiries within 24–48 hours.',
+    aboutCopyright: '© Omran AI team — Made with love in the UAE 🇦🇪',
+    adminPanelTitle: '🛠️ Admin panel (owner only)',
+    videoBadgeShort: 'Short',
+    videoBadgeFull: 'Full',
+    provTypingSuffix: 'is typing…',
+    provFailSwitch: 'did not respond ({why}) — switching…',
+    provUnknownReason: 'unknown reason',
+    provWhyBuild: 'building & code editing',
+    provWhyVision: 'reading images',
+    provWhyGeneral: 'this kind of request',
+    provSwitchNote: 'You chose {sel} — but {why} is handled by {eff}, the most accurate for it. Your regular chat stays on {sel}.',
+    provSwitchNoteHidden: 'Your chat runs on {sel} — but {why} is handled by {eff}, the most accurate for it. Your regular chat stays on {sel}.',
+    privacyConsentTitle: '🔒 Your privacy first',
+    privacyConsentText: 'Before using Omran AI Builder, please read the <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">Privacy Policy</a> and <a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">Terms of Use</a>. They explain what we collect, how we protect it, and your right to delete your data.',
+    privacyConsentRead: 'Read the policy',
+    privacyConsentAgree: 'Agree & continue',
+    acctPointsLabel: 'Points balance',
+    acctPointsLow: '⚠️ Your balance is running low — top up before it runs out.',
+    acctPointsOut: '🔴 Your balance is empty — top up your points to continue.',
+    acctPointsBuyBtn: '💳 Top up points',
+    aboutFeatChat: 'Build complete apps by chatting', aboutFeatProviders: '9 AI providers + "Ask All"', aboutFeatMaha: 'Maha — your live voice assistant', aboutFeatStudios: '7 creative image studios', aboutFeatStocks: 'Stock market & learning portfolio', aboutFeatPrivacy: 'Privacy first — your keys stay yours', aboutChipUAE: 'Made in the UAE 🇦🇪', aboutChipPWA: 'PWA app', aboutChipLangs: '14 languages', aboutMoreSummary: '📖 More about the platform',
+    videoNeedDesc: '⚠️ Please describe the video first.', videoVoiceFemale: '👩 Fatima (female)', videoVoiceMale: '👨 Hamdan (male)',
+    pickerOptsForFeature: 'options for this feature', pickerStylesForCategory: 'styles for this category', pickerOptsWord: 'options', pickerOptsPick: 'options — pick yours', videoOptAdspot: '📢 Quick ad (5s vertical + narration)', videoOptReels: '📱 Smart reels (10s vertical + narration)', fashionEngineLabel: '🎨 Image engine', fashionEngineGemini: 'Gemini — best at preserving the face (default)', fashionEngineOpenai: 'ChatGPT (gpt-image-1) — the same ChatGPT image engine', videoAdvanced: 'Advanced options',
+    fashionRefinePh: 'e.g. change only the dress colour to blue', fashionRefineBtn: '✏️ Edit one specific thing', fashionRefineNeed: 'Type the change you want first', fashionRefining: 'Applying your edit…',
+    modeCreateImage: 'Create image', modeWebSearch: 'Web search', modeThinkDeeper: 'Think deeper', psheetCountSuffix: 'styles — same face, every style',
+    provNickKing: 'The King', provNickFast: 'The Fast', provNickDeep: 'The Deep',
+    acctLoginBtnLabel: '🔐 Sign in / Create account',
     statsSectionTitle: 'My stats',
     statsProjectsLabel: 'Projects count',
     statsMessagesLabel: 'Total messages sent',
@@ -3472,6 +3680,8 @@ const I18N = {
     shareCopied: 'Link copied! ✅',
     shareCreating: 'Creating...',
     shareError: 'Could not create link, please try again.',
+    shareNeedCode: 'This project is empty — write a message or build an app, then share it.',
+    shareTooLarge: 'Project exceeds the 2MB share limit — reduce images or content and try again.',
     videoMakerModalTitle: '🎬 AI Video Maker',
     videoMakerDesc: 'Describe the video you want, then pick a style and duration. This feature is in testing with a small daily limit per account.',
     videoMakerPromptPlaceholder: 'Describe the video you want to create... e.g. a small cat playing in a sunny garden',
@@ -3996,6 +4206,19 @@ Style (the owner's fingerprint — every reply): a warm, genuinely enthusiastic 
     emailAsst_addingEvent: "Adding event…", emailAsst_eventAdded: "✅ Added to your calendar", emailAsst_calReauth: "Reconnect Gmail to allow calendar access", emailAsst_voiceLoading: "🔊 Preparing voice summary…", emailAsst_voiceEmpty: "No emails to summarize.", emailAsst_urgent: "🔴 Urgent", emailAsst_normal: "🟡 Normal", emailAsst_low: "⚪ Low",
   }
 };window.I18N = I18N;
+/* v649 — لوحة المحفظة التعليميّة (كانت عربيّة ثابتة في كلّ اللغات) */
+Object.assign(I18N.ar, {"pfGuestTitle":"💼 المحفظة التعليمية","pfGuestIntro":"100 ألف افتراضية تتداول بها بأسعار السوق الحقيقية وتنافس بقية المستخدمين 🏆","pfGuestLogin":"سجّل الدخول لبدء محفظتك — تقدمك يُحفظ في حسابك.","pfLoadingBox":"⏳ نجهز محفظتك…","pfLoadFail":"تعذر تحميل المحفظة"});
+Object.assign(I18N.en, {"pfGuestTitle":"💼 Practice Portfolio","pfGuestIntro":"100k virtual — trade at real market prices and compete with everyone else 🏆","pfGuestLogin":"Sign in to start your portfolio — your progress is saved to your account.","pfLoadingBox":"⏳ Preparing your portfolio…","pfLoadFail":"Couldn't load the portfolio"});
+/* v650 */ window.__bT=function(a,e){try{var L=localStorage.getItem('aiapp_lang')||'ar';var L2=(typeof lang!=='undefined'&&lang)?String(lang):L;L=L2||'ar';if(L==='ar')return a;if(L==='en')return e;var d=window.__BI&&window.__BI[L];if(d&&d[e])return d[e];}catch(_){ /* guard-ok: label lookup is cosmetic — any failure falls back to the English label below. */ }return e;};
+/* v657: نصّ خيار <option> بلغة المستخدم — مفتاح i18n أوّلًا، فالقاموس الثنائيّ __BI عبر data-en، فالنصّ كما هو. كان العرض يُجبر كلّ لغة غير ar/ur على data-en فتضيع الترجمة الموجودة. */
+window.__optT=function(o){try{if(!o)return '';var tx=((o.textContent||'')+'').trim();var k=o.getAttribute('data-i18n');if(k&&typeof window.t==='function'){var v=window.t(k);if(v&&v!==k)return String(v).trim();}var en=o.getAttribute('data-en');if(en&&typeof window.__bT==='function')return window.__bT(tx,String(en).trim());return tx;}catch(_){ /* guard-ok: option label lookup is cosmetic — falls back to raw text. */ return ((o&&o.textContent)||'')+''; }};
+/* v658: نصّ الخيار داخل الـDOM نفسه — كل مستهلك يقرأ textContent (بطاقات المقارنة، منتقي الاستوديو، مصغّرة البورتريه) كان يرى العربيّة في كلّ اللغات. */
+window.__optSync=function(root){try{var ns=(root||document).querySelectorAll('select option');for(var i=0;i<ns.length;i++){var o=ns[i];var k=o.getAttribute('data-i18n'),en=o.getAttribute('data-en');if(!k&&!en)continue;var cur=((o.textContent||'')+'').trim();if(!o.hasAttribute('data-ar')&&/[\u0621-\u064A]/.test(cur))o.setAttribute('data-ar',cur);var ar=o.getAttribute('data-ar')||cur;var out='';if(k&&typeof window.t==='function'){var v=window.t(k);if(v&&v!==k)out=String(v).trim();}if(!out&&en&&typeof window.__bT==='function')out=window.__bT(ar,String(en).trim());if(!out)out=ar;if(out&&out!==cur)o.textContent=out;}}catch(_){ /* guard-ok: option label sync is cosmetic — the raw label stays. */ }};
+/* v658: أي عنصر يحمل data-bi (نصّه الإنجليزيّ) يُترجم من القاموس الثنائيّ __BI. */
+window.__biSync=function(root){try{var ns=(root||document).querySelectorAll('[data-bi]');for(var i=0;i<ns.length;i++){var e=ns[i];var cur=((e.textContent||'')+'').trim();if(!e.hasAttribute('data-ar'))e.setAttribute('data-ar',cur);var ar=e.getAttribute('data-ar')||cur;var en=e.getAttribute('data-bi')||'';var out=(typeof window.__bT==='function')?window.__bT(ar,en):ar;if(!out)out=ar;if(e.hasAttribute('data-bi-space')&&out!==ar)out=' '+out+' ';if(out!==e.textContent)e.textContent=out;}}catch(_){ /* guard-ok: label sync is cosmetic — the raw label stays. */ }};
+/* v658: نداء واحد يجمع الثلاثة — يُستدعى بعد applyLanguage وعند تغيّر lang. */
+window.__langSync=function(){try{if(window.__optSync)window.__optSync();}catch(_){ /* guard-ok: cosmetic. */ }try{if(window.__biSync)window.__biSync();}catch(_){ /* guard-ok: cosmetic. */ }try{if(window.__curRelabel)window.__curRelabel();}catch(_){ /* guard-ok: cosmetic. */ }};
+try{(function(){function go(){try{window.__langSync();}catch(_){ /* guard-ok: cosmetic. */ }}function arm(){setTimeout(go,600);setTimeout(go,1800);}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',arm);else arm();try{new MutationObserver(go).observe(document.documentElement,{attributes:true,attributeFilter:['lang']});}catch(_){ /* guard-ok: observer is a safety net, not the main path. */ }})();}catch(_){ /* guard-ok: bootstrap is a safety net. */ }
 /* v424: أساس الاحتياط للّغات. سبعة ملفّات لغة ناقصة (٣٠ مفتاحًا من ٧٩٦) كانت
    تُظهر العربية لمن لا يقرأها. الإنجليزية أساسٌ أصدق، ولغة الملفّ تبقى فوقه.
    العربية والإنجليزية تُعادان كما هما — لا دمج ولا كلفة على الجمهور الأوّل. */
@@ -4019,7 +4242,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=601';
+    sc.src = 'i18n/' + lg + '.js?v=614'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -4093,6 +4316,24 @@ function tRaw(key){
  * القفل يحوّل الاختطاف إلى لا-عمليّة صامتة بلا كسر أيّ قراءة. */
 try{ Object.defineProperty(window, "t", { writable: false }); }catch(_){ __swallow(_, "lock:app-04-t"); }
 
+/* v656 — رسائل حالة الخادم كانت نصًّا عربيًّا ثابتًا تظهر في كلّ لغة.
+ * صار الخادم يرسل مفتاحًا (k) وبارامترات (p) بجانب النصّ، والترجمة تتمّ هنا؛
+ * ولو غاب المفتاح أو الترجمة نعود إلى نصّ الخادم كما كان. */
+function tStatus(ev){
+  try{
+    if(ev && ev.k){
+      var v = t(ev.k);
+      if(v && v !== ev.k){
+        var p = ev.p || {};
+        Object.keys(p).forEach(function(key){ v = v.split('{' + key + '}').join(String(p[key])); });
+        return v;
+      }
+    }
+  }catch(e){ __swallow(e, "misc:app-04-i18n-state#tStatus"); }
+  return (ev && ev.status) || '';
+}
+try{ window.tStatus = tStatus; }catch(_){ /* guard-ok: تعريض عالميّ اختياريّ — فشله لا يمنع الترجمة المحلّيّة. */ }
+
 function applyLanguage(){
   if(!I18N[lang] && I18N_LAZY.indexOf(lang) >= 0){
     loadLangFile(lang).then(function(){ if(I18N[lang]) { applyLanguage(); try{ renderAll(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#4"); } } });
@@ -4100,8 +4341,23 @@ function applyLanguage(){
   const dict = window.__i18nDict ? window.__i18nDict(lang) : (I18N[lang] || I18N.en || I18N.ar);
   try{ if(window.__syncBrandTitle) window.__syncBrandTitle(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#5"); }
   try{ if(window.__tickerRelabel) window.__tickerRelabel(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#tick"); }
+  /* v655 — أسماء أزرار المزوّدين تتبع اللغة (تُستدعى ثانيةً بعد وصول ملفّ
+     اللغة الكسول عبر applyLanguage نفسها). */
+  try{ if(typeof relabelProviders === 'function') relabelProviders(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#prov"); }
+  /* v656 — الرسائل المرسومة تحمل نصًّا مترجمًا (وسم الذكاء، «تم إيقاف الرد»)
+     فتبقى بلغة وقت الرسم. نعيد رسمها عند تبديل اللغة — إلّا أثناء انتظار ردّ
+     جارٍ، فإعادة الرسم تُتلف عقدة البثّ. */
+  try{
+    if(typeof renderMessages === 'function' && typeof getCurrent === 'function'){
+      var __c = getCurrent();
+      if(__c && __c.messages && __c.messages.length && !__c.messages.some(function(m){ return m && m._loading; })) renderMessages(true);
+    }
+  }catch(_){ __swallow(_, "misc:app-04-i18n-state#relang"); }
   document.documentElement.lang = lang;
-  document.documentElement.dir = dict.dir;
+  /* v652 — الأردو كانت تنقلب ltr لحظة ثمّ ترجع rtl (الشعار يقفز عرض الشاشة):
+     ملفّات اللغات الكسولة بلا مفتاح dir، فحتّى وصول ur.js يأتي القاموس
+     الاحتياطيّ الإنجليزيّ ومعه ltr. الاتّجاه صفة لغة لا صفة قاموس. */
+  document.documentElement.dir = (lang === 'ar' || lang === 'ur') ? 'rtl' : (dict.dir || 'ltr');
   if (dict.pageTitle && dict.pageTitle.trim()) document.title = dict.pageTitle;
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const raw = el.getAttribute('data-i18n');
@@ -4153,7 +4409,12 @@ function applyLanguage(){
   localStorage.setItem('aiapp_lang', lang);
   renderQuickChips();
   renderOmranBotChips();
+  /* v658: خيارات القوائم وقائمة الدول والعناصر الموسومة تتبع اللغة بعد كلّ تطبيق. */
+  try{ if(window.__langSync) window.__langSync(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#v658"); }
   try{ if(window.__refreshProjMenuLabels) window.__refreshProjMenuLabels(); }catch(_){ __swallow(_, "save:app-04-i18n-state#7"); }
+  /* v-boot-l10n: ستار الإقلاع (index.html) يُرفع فقط بعد تطبيق قاموس اللغة
+     الحقيقي — قبل ذلك كانت الصفحة تظهر عربية كاملة ثم تنقلب أمام المستخدم. */
+  try{ if(lang === 'ar' || lang === 'en' || I18N[lang]) document.documentElement.classList.remove('l10nPending'); }catch(_){ __swallow(_, "misc:app-04-l10nveil"); }
 }
 
 const QUICK_SUGGESTIONS = [
@@ -5234,7 +5495,15 @@ function renderMessages(keepScroll){
       pColor = getProviderColors()[m.providerLabel] || null;
       // v311: اسم المزود يظهر كامل داخل الشاشة بدون قص (سفاري الآيفون).
       label.style.cssText = 'font-size:11px; font-weight:700; color:' + (pColor || 'var(--accent2)') + '; margin-bottom:4px; display:block; unicode-bidi:isolate; max-width:100%; overflow-wrap:anywhere; white-space:normal;';
-      label.textContent = m.providerLabel;
+      /* v-prov-status-i18n: الاسم المحفوظ كان بلغة وقت التوليد — يُعاد حلّه بلغة
+         الواجهة الحالية من providerKey عند العرض. */
+      let __plbl = m.providerLabel;
+      try{
+        if(m.providerKey && typeof functionalLabel === 'function'){
+          __plbl = (/^🔄\s*/.test(__plbl || '') ? '🔄 ' : '') + functionalLabel(m.providerKey);
+        }
+      }catch(e){ /* الاسم المحفوظ احتياط */ }
+      label.textContent = __plbl;
       if(isAskAllReply) div.appendChild(label); // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ»)
     }
     const textDiv = document.createElement('div');
@@ -5327,14 +5596,14 @@ function renderMessages(keepScroll){
     if(m.role !== 'user' && __mc){
       const aiTag = document.createElement('div');
       aiTag.className = 'aiGenTag';
-      aiTag.textContent = lang === 'ar' ? '✨ محتوى مولّد بالذكاء الاصطناعي' : '✨ AI-generated content';
+      aiTag.textContent = t('aiGenTag');  /* v656 — كان ar/en فقط */
       aiTag.style.cssText = 'font-size:10px;opacity:.5;margin-top:6px;user-select:none;';
       div.appendChild(aiTag);
     }
     if(m.role !== 'user' && m._stopped && !document.documentElement.classList.contains('mobile-ui')){
       const stoppedNote = document.createElement('div');
       stoppedNote.className = 'msgStoppedNote';
-      stoppedNote.textContent = lang === 'ar' ? 'تم إيقاف الرد' : 'Response stopped';
+      stoppedNote.textContent = t('msgStopped');  /* v656 — كان ar/en فقط */
       div.appendChild(stoppedNote);
     }
     // 📚 اجمع الروابط المضمّنة في نص الرد + روابط المصادر في قائمة واحدة
@@ -5801,7 +6070,97 @@ function renderMessages(keepScroll){
   // v462: أنيميشن رسالة المستخدم — CSS class msg-anim يضاف أثناء بناء العنصر (سطر 973)
 }
 // ===== v199: reply action bar helpers (⋮ convert menu) =====
+/* v-app-share (شكوى ٢٨ أغسطس: «تحميل PDF ما يشتغل» في تطبيق المتجر):
+   WKWebView لا يدعم روابط التنزيل <a download> ولا window.print() إطلاقًا —
+   فكل التصديرات كانت تموت بصمت داخل تطبيق الآيفون. الغلاف (Capacitor) صار
+   يوفر جسرين: omranShare (ملف جاهز → ورقة مشاركة iOS) و omranPdf
+   (HTML → يُحوَّل PDF أصليًا → ورقة مشاركة). في المتصفح العادي لا يتغير شيء. */
+function omranNativeBridge(name){
+  try{
+    const h = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers[name];
+    return (h && h.postMessage) ? h : null;
+  }catch(e){ return null; }
+}
+/* v-pdf-universal: حفظ PDF يعمل في كل البيئات — جسر تطبيق الآيفون، ثم ورقة
+   مشاركة النظام (أندرويد/هواوي/TWA)، ثم التنزيل العادي (الكمبيوتر).
+   AbortError = المستخدم أغلق ورقة المشاركة بنفسه — ليس فشلًا فلا ننزّل نسخة ثانية. */
+/* v-pdf-link: هل نعمل داخل غلاف تطبيق (TWA/متجر/PWA مثبّت)؟ الأغلفة لا
+   تنفّذ تنزيل blob المحلي — نرفع الملف للسيرفر ونفتح رابط تنزيل حقيقي
+   يمرّ عبر منزّل النظام نفسه فيعمل في كل غلاف. */
+function omranLikelyApp(){
+  try{
+    if(document.referrer && document.referrer.indexOf('android-app://') === 0) localStorage.setItem('aiapp_twa', '1');
+    if(localStorage.getItem('aiapp_twa') === '1') return true;
+    if(localStorage.getItem('aiapp_store')) return true;
+    if(window.matchMedia && matchMedia('(display-mode: standalone)').matches) return true;
+    if(navigator.standalone === true) return true;
+  }catch(e){ __swallow(e, 'share:app-detect'); }
+  return false;
+}
+async function omranBlobToServerLink(blob, filename){
+  const b64 = await new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result || '').split(',')[1] || '');
+    fr.onerror = reject;
+    fr.readAsDataURL(blob);
+  });
+  if(!b64 || b64.length > 4 * 1024 * 1024) throw new Error('too-large');
+  const r = await fetch('/api/media?action=pdf', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data: b64, name: filename }),
+  });
+  const d = await r.json();
+  if(!r.ok || !d || !d.url) throw new Error('upload-failed');
+  return d.url;
+}
+async function omranSaveBlob(blob, filename){
+  if(omranNativeBridge('omranShare')){ msgDownloadBlob(blob, filename); return; }
+  try{
+    if(navigator.canShare && typeof File === 'function'){
+      const f = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
+      if(navigator.canShare({ files: [f] })){
+        try{ await navigator.share({ files: [f], title: filename }); return; }
+        catch(e){ if(e && e.name === 'AbortError') return; /* غيره: ننزل للمسار التالي */ }
+      }
+    }
+  }catch(e){ __swallow(e, 'share:universal'); }
+  /* داخل الأغلفة: رابط سيرفر حقيقي (PDF فقط — النقطة تفحص التوقيع) */
+  if(omranLikelyApp() && (blob.type === 'application/pdf' || /\.pdf$/i.test(filename || ''))){
+    try{
+      const url = await omranBlobToServerLink(blob, filename);
+      const w = window.open(url, '_blank');
+      /* v-pdf-noleave (شكوى ٢٩ أغسطس: «تحميل PDF يرجّعني لصفحة المحادثة»):
+         داخل التطبيق المثبّت window.open يرجع null، وكان location.href
+         يُبحر بصفحة التطبيق نفسها إلى رابط التنزيل — وأي تعثّر يعيد
+         المستخدم للمحادثة بلا ملف. iframe خفي يسلّم الملف لمنزّل النظام
+         (ترويسة attachment) دون مغادرة الصفحة إطلاقًا. */
+      if(!w){
+        const dfr = document.createElement('iframe');
+        dfr.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;';
+        dfr.src = url;
+        document.body.appendChild(dfr);
+        setTimeout(() => { try{ dfr.remove(); }catch(e){ __swallow(e, 'share:dl-frame'); } }, 60000);
+      }
+      return;
+    }catch(e){ __swallow(e, 'share:server-link'); }
+  }
+  msgDownloadBlob(blob, filename);
+}
 function msgDownloadBlob(blob, filename){
+  const share = omranNativeBridge('omranShare');
+  if(share){
+    try{
+      const fr = new FileReader();
+      fr.onload = () => {
+        try{
+          const b64 = String(fr.result || '').split(',')[1] || '';
+          share.postMessage({ b64, name: filename || 'omran-file', mime: blob.type || 'application/octet-stream' });
+        }catch(e){ __swallow(e, 'share:app#post'); }
+      };
+      fr.readAsDataURL(blob);
+      return;
+    }catch(e){ __swallow(e, 'share:app#reader'); }
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = filename;
@@ -5810,6 +6169,70 @@ function msgDownloadBlob(blob, filename){
 }
 function msgEscapeHtml(str){
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+/* v-pdf-file (شكوى ٢٩ أغسطس: «PDF ما يشتغل في الهاتف والكمبيوتر»):
+   مسارا «تحويل الرد/المحادثة إلى PDF» كانا يفتحان نافذة طباعة — المستخدم
+   يتوقع ملفًا ينزل مباشرة، والطباعة أصلًا ميتة داخل الأغلفة. المسار الموحد:
+   نرسم المحتوى بخط الصفحة نفسه (عربي مشكَّل صحيح عبر canvas) ثم نبنيه
+   PDF بصفحات A4 وننزله بمسار الحفظ الموحد. الطباعة تبقى احتياطًا أخيرًا. */
+let __omranJsPdfLoading = null;
+function omranLoadJsPdf(){
+  if(window.jspdf && window.jspdf.jsPDF) return Promise.resolve();
+  if(__omranJsPdfLoading) return __omranJsPdfLoading;
+  const load = (src) => new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = resolve; s.onerror = () => reject(new Error('load-failed'));
+    document.head.appendChild(s);
+  });
+  __omranJsPdfLoading = load('/js/vendor/jspdf.umd.min.js?v=1')
+    .catch(() => load('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'))
+    .catch((e) => { __omranJsPdfLoading = null; throw e; });
+  return __omranJsPdfLoading;
+}
+let __omranH2iLoading = null;
+function omranLoadHtmlToImage(){
+  if(window.htmlToImage && window.htmlToImage.toCanvas) return Promise.resolve();
+  if(__omranH2iLoading) return __omranH2iLoading;
+  __omranH2iLoading = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = '/js/vendor/html-to-image.js?v=1';
+    s.onload = resolve; s.onerror = () => { __omranH2iLoading = null; reject(new Error('load-failed')); };
+    document.head.appendChild(s);
+  });
+  return __omranH2iLoading;
+}
+async function omranExportHtmlAsPdfFile(bodyHtml, opts){
+  opts = opts || {};
+  const holder = document.createElement('div');
+  holder.dir = opts.rtl === false ? 'ltr' : 'rtl';
+  holder.style.cssText = 'position:fixed; left:-12000px; top:0; width:794px; background:#ffffff; color:#111; padding:40px 44px; box-sizing:border-box; line-height:1.9; font-size:15px;';
+  holder.style.fontFamily = opts.fontFamily || "'Tajawal', Tahoma, Arial, sans-serif";
+  holder.innerHTML = bodyHtml;
+  document.body.appendChild(holder);
+  try{
+    await Promise.all([omranLoadJsPdf(), omranLoadHtmlToImage()]);
+    try{ if(document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]); }catch(e){ __swallow(e, 'pdf:fonts-wait'); }
+    const canvas = await window.htmlToImage.toCanvas(holder, { backgroundColor: '#ffffff', pixelRatio: 2 });
+    if(!canvas.width || !canvas.height) throw new Error('empty-canvas');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+    const pw = pdf.internal.pageSize.getWidth();
+    const ph = pdf.internal.pageSize.getHeight();
+    const pageHpx = Math.floor(canvas.width * (ph / pw));
+    let y = 0, first = true;
+    while(y < canvas.height){
+      const sliceH = Math.min(pageHpx, canvas.height - y);
+      const slice = document.createElement('canvas');
+      slice.width = canvas.width; slice.height = sliceH;
+      slice.getContext('2d').drawImage(canvas, 0, y, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+      if(!first) pdf.addPage();
+      pdf.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pw, (sliceH / canvas.width) * pw);
+      first = false; y += sliceH;
+    }
+    await omranSaveBlob(pdf.output('blob'), opts.fileName || 'omran-ai.pdf');
+  } finally {
+    holder.remove();
+  }
 }
 function msgPdfFontSpec(){
   const fallback = {family:"'Tajawal'", google:'', line:1.7};
@@ -5825,6 +6248,15 @@ function msgPdfFontHead(font){
   return {family, link:'<link rel="stylesheet" data-pdf-font href="https://fonts.googleapis.com/css2?' + query + '&display=swap">'};
 }
 function msgPrintAfterFont(view, family, ctx){
+  /* v-app-share: داخل تطبيق المتجر window.print() لا يعمل — نرسل مستند
+     المعاينة كاملًا لجسر الغلاف ليحوّله PDF أصليًا ويفتح ورقة المشاركة. */
+  const pdfBridge = omranNativeBridge('omranPdf');
+  if(pdfBridge){
+    try{
+      pdfBridge.postMessage({ html: view.document.documentElement.outerHTML, name: 'omran-ai.pdf' });
+      return;
+    }catch(e){ __swallow(e, ctx + ':app-pdf'); }
+  }
   let done = false;
   const print = () => { if(done) return; done = true; try{ view.focus(); view.print(); }catch(e){ __swallow(e, ctx); } };
   const timer = setTimeout(print, 3000);
@@ -5842,13 +6274,23 @@ function msgPrintAfterFont(view, family, ctx){
   }catch(e){ __swallow(e, ctx + ':font-link'); wait(); }
 }
 function exportReplyAsPdf(text){
-  const w = window.open('', '_blank');
-  if(!w) return;
   const font = msgPdfFontSpec();
   const pdfFont = msgPdfFontHead(font);
   const html = '<html><head><meta charset="utf-8"><title>عمران AI</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';direction:rtl;padding:28px;line-height:' + font.line + ';color:#111;white-space:pre-wrap;word-break:break-word;}</style></head><body>' + msgEscapeHtml(text) + '</body></html>';
-  w.document.open(); w.document.write(html); w.document.close();
-  msgPrintAfterFont(w, pdfFont.family, 'ui:app-05-ui#1');
+  /* v-app-share: window.open داخل تطبيق المتجر يرجع null — نرسل للجسر مباشرة */
+  const pdfBridge = omranNativeBridge('omranPdf');
+  if(pdfBridge){
+    try{ pdfBridge.postMessage({ html, name: 'omran-ai.pdf' }); return; }catch(e){ __swallow(e, 'ui:app-05-ui#1-app'); }
+  }
+  /* v-pdf-file: ملف PDF ينزل مباشرة بدل نافذة الطباعة — الطباعة احتياط أخير */
+  const inner = '<div style="white-space:pre-wrap; word-break:break-word; line-height:' + font.line + ';">' + msgEscapeHtml(text) + '</div>';
+  omranExportHtmlAsPdfFile(inner, { fontFamily: pdfFont.family, fileName: 'omran-ai.pdf' }).catch((e) => {
+    __swallow(e, 'ui:app-05-ui#1-file');
+    const w = window.open('', '_blank');
+    if(!w) return;
+    w.document.open(); w.document.write(html); w.document.close();
+    msgPrintAfterFont(w, pdfFont.family, 'ui:app-05-ui#1');
+  });
 }
 function exportReplyAsWord(text){
   const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>عمران AI</title></head><body dir="rtl" style="font-family:Tahoma,Arial,sans-serif; line-height:2; white-space:pre-wrap;">' + msgEscapeHtml(text) + '</body></html>';
@@ -6665,10 +7107,22 @@ const PROVIDER_DISPLAY = {
   mistral: 'السريع', deepseek: 'العميق', perplexity: 'العميق',
   cohere: 'العميق', openrouter: 'العميق',
 };
+/* v-nick-i18n (شكوى المالك ٢٩ أغسطس: «الكينج» طلعت عربية وسط واجهة
+   المليالم): الألقاب الثلاثة صارت مفاتيح ترجمة تتبدل مع لغة الواجهة. */
+const PROVIDER_NICK_KEYS = {
+  claude: 'provNickKing', gemini: 'provNickFast', openai: 'provNickDeep', groq: 'provNickFast',
+  mistral: 'provNickFast', deepseek: 'provNickDeep', perplexity: 'provNickDeep',
+  cohere: 'provNickDeep', openrouter: 'provNickDeep',
+};
 function functionalLabel(key){
   // v362 — الستة المخفيون لا يظهر اسمهم أبدًا: أي مزود يرد → يُعرض باسم
   // رأس مجموعته الظاهر (Groq/Mistral→Gemini، DeepSeek/Perplexity/Cohere/OpenRouter→GPT، Claude→Claude).
   const primary = funcPrimaryOf(key);
+  const nickKey = PROVIDER_NICK_KEYS[primary];
+  if(nickKey && typeof t === 'function'){
+    const v = t(nickKey);
+    if(v && v !== nickKey) return v;
+  }
   return PROVIDER_DISPLAY[primary] || PROVIDER_KEY_LABELS[primary] || primary;
 }
 // v359 — 3 أزرار بأسمائها الحقيقية الشهيرة (الناس تعرفها) + شعاراتها الأصلية.
@@ -6795,6 +7249,28 @@ function initProvDropdown(){
   if(search){ search.addEventListener('input', () => provDDFilter(search.value)); search.onclick = (e) => e.stopPropagation(); }
   provDDUpdateButton();
 }
+/* v655 — أسماء المزوّدين (الكينج/السريع/العميق) كانت تُكتب مرّة واحدة عند
+   البناء فتتجمّد بلغة تلك اللحظة: عربيّة عند تبديل اللغة بلا تحديث،
+   وإنجليزيّة في اللغات الكسولة لأنّ الشريط يُبنى قبل وصول ملفّ اللغة.
+   الآن تُعاد تسميتها في كلّ تطبيق للّغة. */
+function relabelProviders(){
+  try{
+    document.querySelectorAll('#providerGridCells .prov-cell').forEach(cell => {
+      const lbl = functionalLabel(cell.dataset.provider);
+      const nm = cell.querySelector('.prov-name');
+      if(nm) nm.textContent = lbl;
+      cell.title = lbl;
+    });
+    document.querySelectorAll('#providerStripMobile .prov-chip-m').forEach(chip => {
+      const lbl = functionalLabel(chip.dataset.provider);
+      const nm = chip.querySelector('span');
+      if(nm) nm.textContent = lbl;
+      chip.title = lbl;
+    });
+    if(typeof provDDUpdateButton === 'function') provDDUpdateButton();
+  }catch(e){ __swallow(e, "ui:app-05-ui#relabel"); }
+}
+try{ window.relabelProviders = relabelProviders; }catch(_){ /* guard-ok — تصدير اختياري، فشله لا يعطل الشريط */ }
 function updateProviderQuickBarActive(){
   const current = localStorage.getItem('aiapp_provider') || 'claude';
   document.querySelectorAll('.prov-cell, .prov-chip-m').forEach(el => {
@@ -7482,6 +7958,8 @@ function toggleSettingsSection(id){
     if (arrow) arrow.style.transform = 'rotate(90deg)';
     // 💰 عند فتح قسم الباقات: جلب رصيد النقاط وعرضه
     if (id === 'pricingSection' && typeof refreshPointsWallet === 'function') refreshPointsWallet();
+    // v-points-acct: فتح «حسابي» يجلب الرصيد ويُظهر تحذير قرب النفاد تلقائيًا
+    if (id === 'accountSection' && typeof refreshAcctPoints === 'function') refreshAcctPoints();
   }
 }
 function collapseAllSettingsSections(){
@@ -7559,6 +8037,11 @@ function showSettingsPage(sid){
   if(content) content.style.display = 'block';
   if(arrow) arrow.style.transform = 'rotate(90deg)';
   if(settingsDialog) settingsDialog.scrollTop = 0;
+  // v-points-acct: الدخول لصفحة «حسابي» أو «الباقات» من القائمة يجلب الرصيد تلقائيًا
+  try{
+    if(sid === 'accountSection' && typeof refreshAcctPoints === 'function') refreshAcctPoints();
+    if(sid === 'pricingSection' && typeof refreshPointsWallet === 'function') refreshPointsWallet();
+  }catch(e){ __swallow(e, 'points:acct-refresh'); }
 }
 window.showSettingsPage = showSettingsPage;
 (function(){
@@ -7919,7 +8402,7 @@ async function postWithConfirm(url, payload){
     sb.style.cssText = 'font-size:11px;color:var(--muted,#999);';
     info.appendChild(nm); info.appendChild(sb);
     var all = document.createElement('span');
-    all.textContent = (localStorage.getItem('aiapp_lang') === 'en') ? 'Browse all ›' : 'عرض الكل ›';
+    all.textContent = (typeof t === 'function' && t('portraitStyleBrowseAll') !== 'portraitStyleBrowseAll') ? t('portraitStyleBrowseAll') : ((localStorage.getItem('aiapp_lang') === 'en') ? 'Browse all ›' : 'عرض الكل ›');
     all.style.cssText = 'color:#d4af37;font-size:12.5px;font-weight:700;flex:none;';
     d.appendChild(th); d.appendChild(info); d.appendChild(all);
     function refresh(){
@@ -7971,6 +8454,34 @@ async function postWithConfirm(url, payload){
 /* v-boot-watchdog */
 /* v-ios-slider */
 /* v-boot-watchdog3 */
+
+/* v-maha-center: «م» في خانة الصف توسَّط بحبرها لا بصندوق سطرها — مقاييس
+   الخط تختلف بين الأجهزة فتنزل الميم عن المركز؛ نقيس حبر الحرف فعليًّا
+   (canvas TextMetrics) ونزيحه ليطابق مركز الخانة بالبكسل، ونعيد القياس
+   بعد تحميل خط الصفحة. */
+(function centerMahaGlyph(){
+  const g = document.querySelector('#composerRow #btnMahaDock .mahaGlyph');
+  if(!g) return;
+  const fix = () => {
+    try{
+      const cs = getComputedStyle(g);
+      const ctx = document.createElement('canvas').getContext('2d');
+      ctx.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+      const m = ctx.measureText('م');
+      if(m.fontBoundingBoxAscent === undefined) return; // متصفح قديم: تبقى إزاحة CSS الافتراضية
+      const spanH = g.getBoundingClientRect().height;
+      const baselineTop = (spanH - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent;
+      const inkCenter = baselineTop + (m.actualBoundingBoxDescent - m.actualBoundingBoxAscent) / 2;
+      // أفقيًّا كذلك: حبر الميم يميل عن منتصف صندوق تقدّمها فنزيحه للمنتصف.
+      // الحبر يمتد من ‎-Left إلى ‎+Right حول نقطة الأصل، ومنتصفه = (R−L)/2.
+      const inkMidX = (m.actualBoundingBoxRight - m.actualBoundingBoxLeft) / 2;
+      const shiftX = (m.width / 2) - inkMidX;
+      g.style.transform = 'translate(' + shiftX.toFixed(1) + 'px,' + (spanH / 2 - inkCenter).toFixed(1) + 'px)';
+    }catch(e){ __swallow(e, 'ui:maha-center'); }
+  };
+  fix();
+  try{ if(document.fonts && document.fonts.ready) document.fonts.ready.then(fix, () => {}); }catch(e){ __swallow(e, 'ui:maha-center#fonts'); }
+})();
 window.postWithConfirm = postWithConfirm;
 /* يضبط شكل المحادثة كما يشترطه Gemini — يُستدعى قبل كل طلب. */
 function sanitizeGeminiContents(list){
@@ -8026,6 +8537,43 @@ async function refreshPointsWallet(){
   }catch(e){ /* صامت */ }
 }
 window.refreshPointsWallet = refreshPointsWallet;
+
+/* v-points-acct (طلب المالك): رصيد النقاط في قائمة الحساب فقط، مع تحذير
+   تلقائي قبل النفاد (≤ 20 نقطة) ورسالة نفاد + زر شحن يفتح باقات النقاط.
+   يُستدعى تلقائيًا عند فتح قسم «حسابي» — لا زر ولا خطوة من المستخدم. */
+const ACCT_POINTS_LOW = 20;
+async function refreshAcctPoints(){
+  const box = document.getElementById('acctPointsBox');
+  const val = document.getElementById('acctPointsValue');
+  const warn = document.getElementById('acctPointsLowWarn');
+  const warnText = document.getElementById('acctPointsLowText');
+  if(!box || !val) return;
+  const token = authGet('aiapp_auth_token');
+  if(!token){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; return; }
+  try{
+    const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'balance', token }) });
+    const d = await r.json();
+    if(!(d && d.ok && d.authed)){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; return; }
+    box.style.display = 'flex';
+    if(d.unlimited){
+      val.textContent = '∞';
+      if(warn) warn.style.display = 'none';
+      return;
+    }
+    const bal = Math.max(0, Number(d.points) || 0);
+    val.textContent = bal + ' ' + t('pricingPointsUnit');
+    window.__pointsBalance = bal;
+    if(warn && warnText){
+      if(bal <= ACCT_POINTS_LOW){
+        const key = bal <= 0 ? 'acctPointsOut' : 'acctPointsLow';
+        warnText.setAttribute('data-i18n', key);
+        warnText.textContent = t(key);
+        warn.style.display = 'block';
+      } else warn.style.display = 'none';
+    }
+  }catch(e){ /* صامت — الشبكة قد تنقطع، لا نكسر قائمة الحساب */ }
+}
+window.refreshAcctPoints = refreshAcctPoints;
 
 function openCheckout(plan){
   checkoutCurrentPlan = plan;
@@ -9922,7 +10470,9 @@ async function callAIWithFallback(messages, onDelta, preferredList){
       // and GPT felt "dead" next to Claude, which had its own thinking output.
       try{
         if(window.__chatStatus && !window.__chatStatus.isReleased()){
-          window.__chatStatus.phase('💭', (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey) + ' يكتب…');
+          /* v-prov-status-i18n (شكوى المالك: «يكتب…» عربية بجانب اسم مترجم): سطر
+             الحالة يتبع لغة الواجهة كبقية النصوص. */
+          window.__chatStatus.phase('💭', (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey) + ' ' + t('provTypingSuffix'));
         }
       }catch(e){ console.warn('[status] provider phase failed', e); }
       const reply = await callProviderAI(providerKey, messages, onDelta);
@@ -9953,8 +10503,9 @@ async function callAIWithFallback(messages, onDelta, preferredList){
       try{
         if(window.__chatStatus){
           const who = (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey);
-          const why = (err && (err.status ? ('HTTP ' + err.status) : String(err.message || '').slice(0, 70))) || 'سبب غير معروف';
-          window.__chatStatus.note('⚠️', who + ' لم يستجب (' + why + ') — جارٍ التحويل…');
+          const why = (err && (err.status ? ('HTTP ' + err.status) : String(err.message || '').slice(0, 70))) || t('provUnknownReason');
+          /* v-prov-status-i18n: رسالة التعثر بلغة الواجهة لا بالعربي دائمًا. */
+          window.__chatStatus.note('⚠️', who + ' ' + t('provFailSwitch').replace('{why}', why));
           console.warn('[fallback] ' + providerKey + ' failed:', err);
         }
       }catch(e){ console.warn('[status] fallback note failed', e); }
@@ -11219,15 +11770,26 @@ function exportTextAsPdf(raw){
     const isAr = /[\u0600-\u06FF]/.test(txt);
     const font = msgPdfFontSpec();
     const pdfFont = msgPdfFontHead(font);
-    const doc = '<!DOCTYPE html><html dir="' + (isAr ? 'rtl' : 'ltr') + '"><head><meta charset="utf-8"><title>Omran AI Builder</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';color:#111;background:#fff;padding:28px 32px;line-height:' + font.line + ';font-size:14.5px}h2{font-size:17px;margin:18px 0 6px;color:#4c2a92;border-bottom:1px solid #eee;padding-bottom:4px}ul{margin:4px 0;padding-' + (isAr ? 'right' : 'left') + ':22px}p{margin:6px 0}footer{margin-top:30px;font-size:11px;color:#999;text-align:center}</style></head><body>' + html + '<footer>Omran AI Builder</footer></body></html>';
-    const fr = document.createElement('iframe');
-    fr.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;';
-    document.body.appendChild(fr);
-    fr.srcdoc = doc;
-    fr.onload = function(){
-      msgPrintAfterFont(fr.contentWindow, pdfFont.family, 'ui:app-08-maha#7');
-      setTimeout(function(){ try{ fr.remove(); }catch(e){ __swallow(e, "ui:app-08-maha#8"); } }, 60000);
-    };
+    const inner = '<style>#omranPdfDoc h2{font-size:17px;margin:18px 0 6px;color:#4c2a92;border-bottom:1px solid #eee;padding-bottom:4px}#omranPdfDoc ul{margin:4px 0;padding-' + (isAr ? 'right' : 'left') + ':22px}#omranPdfDoc p{margin:6px 0}#omranPdfDoc footer{margin-top:30px;font-size:11px;color:#999;text-align:center}</style><div id="omranPdfDoc">' + html + '<footer>Omran AI Builder</footer></div>';
+    const doc = '<!DOCTYPE html><html dir="' + (isAr ? 'rtl' : 'ltr') + '"><head><meta charset="utf-8"><title>Omran AI Builder</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';color:#111;background:#fff;padding:28px 32px;line-height:' + font.line + ';font-size:14.5px}</style></head><body>' + inner + '</body></html>';
+    /* v-app-share: \u062F\u0627\u062E\u0644 \u062A\u0637\u0628\u064A\u0642 \u0627\u0644\u0622\u064A\u0641\u0648\u0646 \u2014 \u062C\u0633\u0631 PDF \u0627\u0644\u0623\u0635\u0644\u064A */
+    const pdfBridge = (typeof omranNativeBridge === 'function') ? omranNativeBridge('omranPdf') : null;
+    if(pdfBridge){
+      try{ pdfBridge.postMessage({ html: doc, name: 'omran-ai.pdf' }); return; }catch(e){ __swallow(e, 'ui:app-08-maha#7-app'); }
+    }
+    /* v-pdf-file (\u0634\u0643\u0648\u0649 \u0662\u0669 \u0623\u063A\u0633\u0637\u0633): \u0645\u0644\u0641 PDF \u064A\u0646\u0632\u0644 \u0645\u0628\u0627\u0634\u0631\u0629 \u0628\u062F\u0644 \u0646\u0627\u0641\u0630\u0629 \u0627\u0644\u0637\u0628\u0627\u0639\u0629 \u2014
+       \u0627\u0644\u0637\u0628\u0627\u0639\u0629 \u0627\u0644\u0642\u062F\u064A\u0645\u0629 \u062A\u0628\u0642\u0649 \u0627\u062D\u062A\u064A\u0627\u0637\u064B\u0627 \u0623\u062E\u064A\u0631\u064B\u0627 \u0625\u0646 \u0641\u0634\u0644 \u062A\u0648\u0644\u064A\u062F \u0627\u0644\u0645\u0644\u0641. */
+    omranExportHtmlAsPdfFile(inner, { rtl: isAr, fontFamily: pdfFont.family, fileName: 'omran-ai.pdf' }).catch(function(err){
+      __swallow(err, 'ui:app-08-maha#7-file');
+      const fr = document.createElement('iframe');
+      fr.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;';
+      document.body.appendChild(fr);
+      fr.srcdoc = doc;
+      fr.onload = function(){
+        msgPrintAfterFont(fr.contentWindow, pdfFont.family, 'ui:app-08-maha#7');
+        setTimeout(function(){ try{ fr.remove(); }catch(e){ __swallow(e, "ui:app-08-maha#8"); } }, 60000);
+      };
+    });
   }catch(e){ __swallow(e, "ui:app-08-maha#9"); }
 }
 function isPureGreeting(t){
@@ -12611,7 +13173,10 @@ async function mahaStartCallInner(mode){
   if(mahaOrbEl) mahaOrbEl.style.display = mahaCallMode === 'builder' ? 'none' : 'flex';
   if(mahaWaveEl) mahaWaveEl.style.display = mahaCallMode === 'builder' ? 'flex' : 'none';
   const mahaNameLabelEl = document.getElementById('mahaCallNameLabel');
-  if(mahaNameLabelEl) mahaNameLabelEl.textContent = mahaCallMode === 'builder' ? (t('voiceTabAssistantName') || 'المساعد') : 'مها';
+  /* v-maha-name: الاسم بالحروف اللاتينية لغير العربي/الأردو */
+  const __mahaLang = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
+  const __mahaName = (__mahaLang === 'ar' || __mahaLang === 'ur') ? 'مها' : 'Maha';
+  if(mahaNameLabelEl) mahaNameLabelEl.textContent = mahaCallMode === 'builder' ? (t('voiceTabAssistantName') || 'المساعد') : __mahaName;
   if(mahaCallMode !== 'builder') mahaUpdatePersonaUI();
   mahaCallActive = true;
   if(mahaCallScreenEl){
@@ -14457,7 +15022,9 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
         // the whole trail stays visible instead of being overwritten.
         if(__agentStep) __agentStep.done();
         const __phaseIcon = {planning:'🗺️',executing:'⚙️',verifying:'🧪',reporting:'💬'}[ev.phase] || '•';
-        __agentStep = agentStatus.step(__phaseIcon, String(ev.status).replace(/^[^\p{L}\p{N}]+/u, '').trim() || ev.status);
+        /* v656 — نترجم الحالة بمفتاحها قبل العرض */
+        const __st = (typeof tStatus === 'function') ? tStatus(ev) : ev.status;
+        __agentStep = agentStatus.step(__phaseIcon, String(__st).replace(/^[^\p{L}\p{N}]+/u, '').trim() || __st);
       }
       if(ev.clientTool && window.omranAgentTools){
         // v411: الوكيل طلب تشغيل كود. ننفّذه في إطار معزول هنا ونعيد الناتج عبر
@@ -16283,6 +16850,13 @@ function __showImgLoading(el, ar, en){
         '- التطبيق يوفّر توليد الصور والفيديو وPDF؛ استخدم القدرة المناسبة بدل ادعاء العجز.\n' +
         '- التحية الخالصة لها رد قصير مستقل. أمّا سؤال المجاملة أو المتابعة مثل «كيف الحال؟» فأجب عنه كحديث مستمر بلا إعادة تحية أو عرض خدمة.';
     }
+    /* v-reply-lang2 (تدقيق المالك ٢٩ أغسطس: «على حسب السؤال — كل واحد ولغته»):
+       الأساس لغة رسالة المستخدم نفسها، أيًّا كانت لغة الواجهة. لغة الواجهة
+       احتياط فقط حين لا تُعرف لغة الرسالة (أرقام، إيموجي، كلمة غامضة).
+       القواعد الملحقة العربية كانت تجرّ النموذج للعربي — هذه توقفه. */
+    const __LANG_NAMES = { ar:'Arabic', en:'English', zh:'Chinese', hi:'Hindi', es:'Spanish', fr:'French', bn:'Bengali', ru:'Russian', ur:'Urdu', id:'Indonesian', fil:'Filipino', tr:'Turkish', ne:'Nepali', ml:'Malayalam' };
+    const __uiLangName = __LANG_NAMES[(typeof lang !== 'undefined' && lang) ? lang : 'ar'] || 'Arabic';
+    __sys += '\nREPLY LANGUAGE RULE (mandatory, highest priority): ALWAYS write your ENTIRE reply in the SAME language the user\'s latest message is written in — whoever writes in Malayalam gets Malayalam, whoever writes in French gets French, and so on, regardless of the app UI language. The fact that the instructions above are written in Arabic or English does NOT mean you should reply in them. Only when the message\'s language cannot be determined (numbers, emoji, a name, an ambiguous short word), fall back to the app UI language, which is ' + __uiLangName + '. Never default to Arabic unless the user wrote in Arabic or that fallback applies.';
     // الدور الاجتماعي القصير يُعزل عن الذاكرة والمواضيع السابقة، لكن سؤال الحال
     // يبقى استمرارًا للمحادثة لا تحية جديدة.
     const __quietSocialTurn = isPureGreeting(text) || isCasualCheckIn(text);
@@ -17175,11 +17749,13 @@ DESIGN RULES (non-negotiable):
       try{
         var __selLabel = (typeof functionalLabel === 'function') ? functionalLabel(__selProv) : __selProv;
         if(__effProv !== __selProv && window.__chatStatus && !window.__chatStatus.isReleased() && !cur.adMode){
-          var __why = (__gateNoBuild || __routeFix) ? 'البناء وتعديل الكود'
-                    : (__visionOverride ? 'قراءة الصور' : 'هذا النوع من الطلبات');
-          window.__chatStatus.note('↪️', (__provUiHidden() ? 'محادثتك على ' : 'اخترتَ ') + __selLabel + ' — و' + __why + ' يُنفَّذ بـ ' +
-            ((typeof functionalLabel === 'function') ? functionalLabel(__effProv) : __effProv) +
-            ' لأنه الأدقّ فيه. محادثتك العادية تبقى على ' + __selLabel + '.');
+          /* v-prov-status-i18n (شكوى المالك: جملة التحويل عربية وسط واجهة أجنبية):
+             قالب مترجم بلغة الواجهة مع خانات {sel}/{why}/{eff}. */
+          var __why = (__gateNoBuild || __routeFix) ? t('provWhyBuild')
+                    : (__visionOverride ? t('provWhyVision') : t('provWhyGeneral'));
+          var __effLabel = (typeof functionalLabel === 'function') ? functionalLabel(__effProv) : __effProv;
+          window.__chatStatus.note('↪️', t(__provUiHidden() ? 'provSwitchNoteHidden' : 'provSwitchNote')
+            .replace(/\{sel\}/g, __selLabel).replace('{why}', __why).replace('{eff}', __effLabel));
         }
       }catch(e){ __swallow(e, 'ui:switchnote'); }
       const __teamOrder = [__effProv, ...(__routeFix ? ['claude', 'openai', 'gemini'] : ['claude', 'openai', 'gemini']).filter(p => p !== __effProv)];
@@ -17536,11 +18112,15 @@ window.postWithConfirm = postWithConfirm;
   wrap.id = 'privacyConsent';
   wrap.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.72);display:flex;align-items:flex-end;justify-content:center;';
   var card = document.createElement('div');
-  card.style.cssText = 'width:min(100%,560px);background:var(--panel,#161616);border-radius:18px 18px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -8px 40px rgba(0,0,0,.5);direction:rtl;text-align:right;';
-  card.innerHTML = '<h3 style="margin:0 0 8px;font-size:16px;">🔒 خصوصيتك أولًا</h3>'
-    + '<p style="margin:0 0 14px;font-size:13px;line-height:1.8;color:var(--muted,#9a9a9a);">قبل استخدام Omran AI Builder، يرجى قراءة <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">سياسة الخصوصية</a> و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">شروط الاستخدام</a>. نوضح فيهما ما نجمعه وكيف نحميه وحقك في حذف بياناتك.</p>'
-    + '<div style="display:flex;gap:10px;"><a href="/privacy.html" target="_blank" rel="noopener" class="btn" style="flex:1;text-align:center;line-height:42px;height:42px;text-decoration:none;border:1px solid var(--border,#333);border-radius:10px;color:var(--text,#eee);">قراءة السياسة</a>'
-    + '<button type="button" id="privacyAgreeBtn" class="btn primary" style="flex:1;height:42px;border-radius:10px;font-weight:bold;">أوافق وأتابع</button></div>';
+  /* v-privacy-i18n (شكوى المالك: البطاقة عربية بكل اللغات): النص من مفاتيح
+     الترجمة (t جاهزة هنا — عربي/إنجليزي فورًا)، وdata-i18n تلتقطها جولة
+     applyLanguage الثانية بعد وصول ملف اللغة الكسول. الاتجاه يتبع الصفحة. */
+  card.style.cssText = 'width:min(100%,560px);background:var(--panel,#161616);border-radius:18px 18px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -8px 40px rgba(0,0,0,.5);text-align:start;';
+  var pt = function(k, fb){ try{ if(typeof t === 'function'){ var v = t(k); if(v && v !== k) return v; } }catch(e){ __swallow(e, 'ui:privacy-t'); } return fb; };
+  card.innerHTML = '<h3 style="margin:0 0 8px;font-size:16px;" data-i18n="privacyConsentTitle">' + pt('privacyConsentTitle', '🔒 خصوصيتك أولًا') + '</h3>'
+    + '<p style="margin:0 0 14px;font-size:13px;line-height:1.8;color:var(--muted,#9a9a9a);" data-i18n="privacyConsentText">' + pt('privacyConsentText', 'قبل استخدام Omran AI Builder، يرجى قراءة <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">سياسة الخصوصية</a> و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">شروط الاستخدام</a>. نوضح فيهما ما نجمعه وكيف نحميه وحقك في حذف بياناتك.') + '</p>'
+    + '<div style="display:flex;gap:10px;"><a href="/privacy.html" target="_blank" rel="noopener" class="btn" style="flex:1;text-align:center;line-height:42px;height:42px;text-decoration:none;border:1px solid var(--border,#333);border-radius:10px;color:var(--text,#eee);" data-i18n="privacyConsentRead">' + pt('privacyConsentRead', 'قراءة السياسة') + '</a>'
+    + '<button type="button" id="privacyAgreeBtn" class="btn primary" style="flex:1;height:42px;border-radius:10px;font-weight:bold;" data-i18n="privacyConsentAgree">' + pt('privacyConsentAgree', 'أوافق وأتابع') + '</button></div>';
   wrap.appendChild(card);
   function mount(){ try { document.body.appendChild(wrap); } catch(e){ __swallow(e, 'ui:privacy-consent'); } }
   if (document.body) mount(); else window.addEventListener('DOMContentLoaded', mount);
@@ -17562,11 +18142,37 @@ if('serviceWorker' in navigator){
         if(document.visibilityState === 'visible') reg.update().catch(() => {});
       });
       // If a new worker takes control (after an update), the page it served is stale — reload once.
+      /* v653 — «الجواب يطلع ومرّة وحدة يختفي» (شكوى المالك ٢٩ أغسطس): بعد أيّ
+         نشر يتولّى العامل الجديد فتُعاد الصفحة فورًا ولو كان الردّ يُكتب —
+         فيُمسح الردّ ولا يعود. مقيس حيًّا: ردّ ٤٨٦ حرفًا اختفى ولم يعد خلال ٣٥
+         ثانية. الآن: لا تُقاطَع صفحة مرئيّة أبدًا — الإعادة تُؤجَّل إلى أوّل
+         لحظة يغادر فيها المستخدم الشاشة ولا شيء جارٍ. وأوّل تسجيل للعامل لا
+         يستحقّ إعادة أصلًا (الصفحة أحدث منه). */
       let refreshedOnce = false;
+      const __hadController = !!navigator.serviceWorker.controller;
+      const __busyNow = () => {
+        try{
+          const c = (typeof getCurrent === 'function') ? getCurrent() : null;
+          if(c && c.messages && c.messages.some(m => m && m._loading)) return true;
+          const pr = document.getElementById('prompt');
+          if(pr && pr.value && pr.value.trim()) return true;
+        }catch(e){ return true; }
+        return false;
+      };
+      const __reloadNow = () => { if(refreshedOnce) return; refreshedOnce = true; window.location.reload(); };
+      window.__omranReloadWhenSafe = () => {
+        if(document.visibilityState === 'hidden' && !__busyNow()) return __reloadNow();
+        document.addEventListener('visibilitychange', function __onHide(){
+          if(document.visibilityState === 'hidden' && !__busyNow()){
+            document.removeEventListener('visibilitychange', __onHide);
+            __reloadNow();
+          }
+        });
+      };
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if(refreshedOnce) return;
-        refreshedOnce = true;
-        window.location.reload();
+        if(!__hadController) return; // أوّل تسجيل — الصفحة أحدث من العامل
+        window.__omranReloadWhenSafe();
       });
     }).catch(() => {});
   });
@@ -18025,18 +18631,8 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   const btn = document.getElementById('btnImgToPdf');
   const input = document.getElementById('imgToPdfInput');
   if(!btn || !input) return;
-  let jsPdfLoading = null;
-  function loadJsPdf(){
-    if(window.jspdf && window.jspdf.jsPDF) return Promise.resolve();
-    if(jsPdfLoading) return jsPdfLoading;
-    jsPdfLoading = new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-      s.onload = resolve; s.onerror = () => { jsPdfLoading = null; reject(new Error('load-failed')); };
-      document.head.appendChild(s);
-    });
-    return jsPdfLoading;
-  }
+  /* v-pdf-file: محمّل مشترك واحد في app-05 (النسخة الموطّنة أولًا ثم CDN) */
+  function loadJsPdf(){ return omranLoadJsPdf(); }
   function readImage(file){
     return new Promise((resolve, reject) => {
       const fr = new FileReader();
@@ -18080,7 +18676,9 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
         if(i > 0) pdf.addPage();
         pdf.addImage(jpg, 'JPEG', (pw - w) / 2, (ph - h) / 2, w, h);
       }
-      pdf.save('omran-images.pdf');
+      /* v-pdf-universal: pdf.save() = رابط تنزيل لا يعمل داخل الأغلفة —
+         المسار الموحد: جسر الآيفون ← ورقة مشاركة النظام ← تنزيل عادي. */
+      await omranSaveBlob(pdf.output('blob'), 'omran-images.pdf');
     }catch(err){
       alert(isAr ? 'تعذر إنشاء ملف PDF — حاول مرة ثانية' : 'Could not create the PDF — please try again');
     }
@@ -18092,14 +18690,22 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
 (function(){
   const h1 = document.querySelector('header h1');
   if(h1) h1.onclick = () => { try{ saveState(); }catch(_){ __swallow(_, "save:app-10-features#16"); } location.href = location.pathname; };
+  /* v-brand-l10n (طلب المالك ٢٩ أغسطس): شعار ذهبي مخصوص لكل لغة — العربي
+     والإنجليزي كما هما بلا أي تغيير. الأعراض عند ارتفاع 42 من ملفات PNG
+     الفعلية (الأصل 168px = ٤×). لغة بلا شعار خاص ترجع للإنجليزي. */
+  const BRAND_L10N_W = { zh:84, hi:71, es:87, fr:89, bn:80, ru:89, ur:75, id:86, fil:93, tr:75, ne:69, ml:110 };
   const syncBrand = () => {
     const bt = document.getElementById('brandTitle');
     const l = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
-    const isAr = (l === 'ar' || l === 'ur');
     if(bt){
-      const imgSrc = isAr ? 'icons/brand-ar.png' : 'icons/brand-en.png';
-      const imgAlt = isAr ? 'عمران Ai' : 'Omran Ai';
-      bt.innerHTML = '<img src="' + imgSrc + '" alt="' + imgAlt + '" class="brandImg">';
+      /* v-brand-stable (شكوى ٢٩ أغسطس: الشعار يتحرك عند التحديث): أبعاد
+         الصورة تُعلن مسبقًا فيحجز المتصفح مكانها قبل تحميلها — لا قفزة.
+         النِّسب من ملفات PNG الفعلية: عربي 1203×400، إنجليزي 1534×400. */
+      let imgSrc, imgW, imgAlt;
+      if(l === 'ar'){ imgSrc = 'icons/brand-ar.png'; imgW = 126; imgAlt = 'عمران Ai'; }
+      else if(BRAND_L10N_W[l]){ imgSrc = 'icons/brand-' + l + '.png'; imgW = BRAND_L10N_W[l]; imgAlt = 'Omran Ai'; }
+      else { imgSrc = 'icons/brand-en.png'; imgW = 161; imgAlt = 'Omran Ai'; }
+      bt.innerHTML = '<img src="' + imgSrc + '" alt="' + imgAlt + '" class="brandImg" width="' + imgW + '" height="42">';
     }
   };
   syncBrand();
@@ -18337,6 +18943,17 @@ function openShareModal(project){
 
   if(createBtn) createBtn.addEventListener('click', async () => {
     if(!shareModalProject) return;
+    /* v-share-chat (طلب المالك: «مش ضروري فقط التطبيق — كل شي»): المحادثة
+       تُشارك أيضًا — الرفض فقط لمشروع فارغ تمامًا (لا كود ولا رسائل). */
+    const __shareMsgs = (shareModalProject.messages || [])
+      .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && String(m.content || '').trim())
+      .slice(-300)
+      .map((m) => ({ role: m.role, content: String(m.content).slice(0, 20000) }));
+    if(!String(shareModalProject.code || '').trim() && !__shareMsgs.length){
+      statusMsg.style.display = 'block';
+      statusMsg.textContent = t('shareNeedCode');
+      return;
+    }
     const isPublic = $('#sharePublicYes').checked;
     statusMsg.style.display = 'block';
     statusMsg.textContent = t('shareCreating');
@@ -18352,6 +18969,7 @@ function openShareModal(project){
           code: shareModalProject.code || '',
           username,
           isPublic,
+          messages: __shareMsgs, /* v-share-chat */
         }),
       });
       const data = await resp.json();
@@ -18361,7 +18979,12 @@ function openShareModal(project){
       resultBox.style.display = 'block';
       statusMsg.style.display = 'none';
     }catch(e){
-      statusMsg.textContent = t('shareError');
+      /* v-share-why: السبب الحقيقي يظهر — «بلا كود» و«أكبر من الحد» لهما
+         رسالتاهما، وأي خطأ خادم آخر يُعرض نصّه بين قوسين ليُشخَّص فورًا. */
+      var __sm = (e && e.message) || '';
+      if(__sm === 'Missing code' || __sm === 'empty_project') statusMsg.textContent = t('shareNeedCode');
+      else if(__sm === 'code_too_large') statusMsg.textContent = t('shareTooLarge');
+      else statusMsg.textContent = t('shareError') + ((__sm && __sm !== 'error') ? ' (' + __sm.slice(0, 120) + ')' : '');
     }finally{
       createBtn.disabled = false;
     }
@@ -18416,6 +19039,7 @@ function openShareModal(project){
   if(!modal || !btnOpen) return;
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function isOwnerAccount(){
     const u = (typeof authGet === 'function') ? (authGet('aiapp_username') || '') : '';
     const key = String(u).trim().toLowerCase();
@@ -18579,20 +19203,20 @@ function openShareModal(project){
       if(!wrap){ resolve(scenes); return; }
       const overlay = document.createElement('div');
       overlay.style.cssText = 'position:absolute;inset:0;z-index:20;background:var(--bg,#111);overflow-y:auto;padding:16px;border-radius:inherit;';
-      let html = `<h4 style="margin:0 0 10px;text-align:center;">📋 ${isEn() ? 'Review Scenes' : 'راجع مشاهد الفيلم'}</h4>`;
-      html += `<p style="font-size:12px;color:var(--muted);margin-bottom:10px;">${isEn() ? 'Edit or delete scenes before generating. Each scene = 1 video credit.' : 'عدّل أو احذف أي مشهد قبل البدء — كل مشهد = كريدت واحد.'}</p>`;
+      let html = `<h4 style="margin:0 0 10px;text-align:center;">📋 ${bT('راجع مشاهد الفيلم','Review Scenes')}</h4>`;
+      html += `<p style="font-size:12px;color:var(--muted);margin-bottom:10px;">${bT('عدّل أو احذف أي مشهد قبل البدء — كل مشهد = كريدت واحد.','Edit or delete scenes before generating. Each scene = 1 video credit.')}</p>`;
       scenes.forEach((sc, i) => {
         html += `<div class="sp-scene" data-idx="${i}" style="margin-bottom:10px;border:1px solid rgba(139,92,246,.35);border-radius:8px;padding:10px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <b style="font-size:12px;">${isEn() ? 'Scene' : 'مشهد'} ${i+1}</b>
-            <button type="button" class="sp-del" style="background:rgba(239,68,68,.15);border:none;color:#ef4444;border-radius:6px;padding:2px 10px;cursor:pointer;font-size:12px;">${isEn() ? 'Remove' : 'حذف'}</button>
+            <b style="font-size:12px;">${bT('مشهد','Scene')} ${i+1}</b>
+            <button type="button" class="sp-del" style="background:rgba(239,68,68,.15);border:none;color:#ef4444;border-radius:6px;padding:2px 10px;cursor:pointer;font-size:12px;">${bT('حذف','Remove')}</button>
           </div>
           <textarea rows="2" class="sp-txt" style="width:100%;font-size:12px;resize:none;box-sizing:border-box;">${(sc.visual||'').replace(/</g,'&lt;')}</textarea>
         </div>`;
       });
       html += `<div style="display:flex;gap:10px;justify-content:center;margin-top:12px;">
-        <button type="button" id="spCancel" style="padding:8px 20px;border-radius:10px;background:rgba(239,68,68,.15);color:#ef4444;border:none;cursor:pointer;">${isEn() ? '❌ Cancel' : '❌ إلغاء'}</button>
-        <button type="button" id="spGo" style="padding:8px 20px;border-radius:10px;background:rgba(139,92,246,.8);color:#fff;border:none;cursor:pointer;font-weight:bold;">${isEn() ? '✨ Generate' : '✨ ابدأ التوليد'}</button>
+        <button type="button" id="spCancel" style="padding:8px 20px;border-radius:10px;background:rgba(239,68,68,.15);color:#ef4444;border:none;cursor:pointer;">${bT('❌ إلغاء','❌ Cancel')}</button>
+        <button type="button" id="spGo" style="padding:8px 20px;border-radius:10px;background:rgba(139,92,246,.8);color:#fff;border:none;cursor:pointer;font-weight:bold;">${bT('✨ ابدأ التوليد','✨ Generate')}</button>
       </div>`;
       overlay.innerHTML = html;
       wrap.style.position = 'relative';
@@ -18771,13 +19395,11 @@ function openShareModal(project){
             clearInterval(iv);
             let reason = data.failure || data.failureCode || (data.error) || '';
             if(/moderation|SAFETY|content did not pass/i.test(reason)){
-              reason = isEn()
-                ? 'Content was rejected by safety filters — try a calmer description, or remove the person photo.'
-                : 'الرقابة رفضت المحتوى — جرّب وصفًا أهدأ (بدون عنف أو خطر)، أو شِل صورة الشخص وحاول من جديد.';
+              reason = bT('الرقابة رفضت المحتوى — جرّب وصفًا أهدأ (بدون عنف أو خطر)، أو شِل صورة الشخص وحاول من جديد.','Content was rejected by safety filters — try a calmer description, or remove the person photo.');
             }
-            reject(new Error((isEn() ? 'Video generation failed.' : 'فشل إنشاء الفيديو.') + (reason ? (' — ' + reason) : '')));
+            reject(new Error((bT('فشل إنشاء الفيديو.','Video generation failed.')) + (reason ? (' — ' + reason) : '')));
           } else {
-            setStatus((isEn() ? '⏳ Status: ' : '⏳ الحالة: ') + (data.status || '...'));
+            setStatus((bT('⏳ الحالة: ','⏳ Status: ')) + (data.status || '...'));
           }
         } catch(e){ /* transient network hiccup; keep polling */ }
       }, 5000);
@@ -18902,26 +19524,26 @@ function openShareModal(project){
   }
 
   async function runCanvasOnly(text, ratio, seconds, signature, wantNarration, narrationVal){
-    setStatus(isEn() ? '🎨 Rendering canvas video...' : '🎨 جاري إنشاء فيديو الكانفا...');
+    setStatus(bT('🎨 جاري إنشاء فيديو الكانفا...','🎨 Rendering canvas video...'));
     const clipBlob = await recordCanvasClip({ title: text, signature, seconds, ratio });
     let finalBlob = clipBlob;
     if(wantNarration){
       try{
-        setStatus(isEn() ? '🎙️ Generating narration...' : '🎙️ جاري إنشاء التعليق الصوتي...');
+        setStatus(bT('🎙️ جاري إنشاء التعليق الصوتي...','🎙️ Generating narration...'));
         const narrationInput = narrationVal || text;
         const ttsRes = await fetch('/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: isEn() ? 'en' : 'ar', gender: getNarrationGender() }),
+          body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
         });
         if(ttsRes.ok){
           const audioBlob = await ttsRes.blob();
-          setStatus(isEn() ? '🎚️ Merging narration...' : '🎚️ جاري دمج الصوت...');
+          setStatus(bT('🎚️ جاري دمج الصوت...','🎚️ Merging narration...'));
           finalBlob = await muxNarrationAny(clipBlob, audioBlob, true);
         }
       } catch(e){ /* keep silent clip on failure */ }
     }
     const finalUrl = URL.createObjectURL(finalBlob);
-    setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
+    setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
     resultEl.src = finalUrl;
     resultEl.style.display = 'block';
     downloadEl.href = finalUrl;
@@ -18931,22 +19553,22 @@ function openShareModal(project){
 
   async function runHybrid(text, style, ratio, durationVal, signature, token, wantNarration, narrationVal){
     const seconds = (durationVal === 'long20') ? 10 : (parseInt(durationVal, 10) || 5);
-    setStatus(isEn() ? '🎨 Building intro...' : '🎨 جاري إنشاء المقدمة...');
+    setStatus(bT('🎨 جاري إنشاء المقدمة...','🎨 Building intro...'));
     const introBlob = await recordCanvasClip({ title: text, signature: '', seconds: 2, ratio });
-    setStatus(isEn() ? '🎨 Building outro...' : '🎨 جاري إنشاء الخاتمة...');
+    setStatus(bT('🎨 جاري إنشاء الخاتمة...','🎨 Building outro...'));
     const outroBlob = await recordCanvasClip({
       title: '',
-      signature: signature ? ((isEn() ? 'Made by: ' : 'صُنع بواسطة: ') + signature) : (isEn() ? 'Made with Omran AI Video' : 'صُنع بواسطة صانع فيديو عمران'),
+      signature: signature ? ((bT('صُنع بواسطة: ','Made by: ')) + signature) : (bT('صُنع بواسطة صانع فيديو عمران','Made with Omran AI Video')),
       seconds: 2, ratio,
     });
 
-    setStatus(isEn() ? '🚀 Sending request to the AI video engine...' : '🚀 جاري إرسال الطلب لمحرك الفيديو الذكي...');
+    setStatus(bT('🚀 جاري إرسال الطلب لمحرك الفيديو الذكي...','🚀 Sending request to the AI video engine...'));
     const mainUrl = await createSceneWithRetry(text, style, seconds, ratio, token, false, (attempt, max) => {
       setStatus(isEn()
         ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
         : '⏳ محرك الفيديو مزدحم، جاري إعادة المحاولة (' + attempt + '/' + max + ')...');
     });
-    setStatus(isEn() ? '🎬 Finalizing your video...' : '🎬 جاري إنهاء الفيديو...');
+    setStatus(bT('🎬 جاري إنهاء الفيديو...','🎬 Finalizing your video...'));
 
     const ffmpeg = await getFFmpeg();
     const { fetchFile } = await import('/ffmpeg/util/index.js');
@@ -18957,14 +19579,14 @@ function openShareModal(project){
 
     let mainForConcat = 'main.mp4';
     if(signature){
-      setStatus(isEn() ? '✍️ Adding your signature watermark...' : '✍️ جاري إضافة توقيعك على الفيديو...');
+      setStatus(bT('✍️ جاري إضافة توقيعك على الفيديو...','✍️ Adding your signature watermark...'));
       const wmBlob = await makeWatermarkPng(signature, ratio);
       await ffmpeg.writeFile('wm.png', await fetchFile(wmBlob));
       await ffmpeg.exec(['-i', 'main.mp4', '-i', 'wm.png', '-filter_complex', 'overlay=0:H-h:shortest=1', '-c:a', 'copy', 'main_wm.mp4']);
       mainForConcat = 'main_wm.mp4';
     }
 
-    setStatus(isEn() ? '🔗 Merging canvas + AI video...' : '🔗 جاري دمج الكانفا مع فيديو الذكاء الاصطناعي...');
+    setStatus(bT('🔗 جاري دمج الكانفا مع فيديو الذكاء الاصطناعي...','🔗 Merging canvas + AI video...'));
     const { w, h } = ratioDims(ratio);
     await ffmpeg.exec([
       '-i', 'intro.webm', '-i', mainForConcat, '-i', 'outro.webm',
@@ -18980,22 +19602,22 @@ function openShareModal(project){
 
     if(wantNarration){
       try{
-        setStatus(isEn() ? '🎙️ Generating narration...' : '🎙️ جاري إنشاء التعليق الصوتي...');
+        setStatus(bT('🎙️ جاري إنشاء التعليق الصوتي...','🎙️ Generating narration...'));
         const narrationInput = narrationVal || text;
         const ttsRes = await fetch('/api/tts', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: isEn() ? 'en' : 'ar', gender: getNarrationGender() }),
+          body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
         });
         if(ttsRes.ok){
           const audioBlob = await ttsRes.blob();
-          setStatus(isEn() ? '🎚️ Merging narration...' : '🎚️ جاري دمج الصوت...');
+          setStatus(bT('🎚️ جاري دمج الصوت...','🎚️ Merging narration...'));
           finalBlob = await muxNarrationAny(finalBlob, audioBlob, false);
         }
       } catch(e){ /* keep video without narration */ }
     }
 
     const finalUrl = URL.createObjectURL(finalBlob);
-    setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
+    setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
     resultEl.src = finalUrl;
     resultEl.style.display = 'block';
     downloadEl.href = finalUrl;
@@ -19120,12 +19742,12 @@ function openShareModal(project){
   btnGenerate.onclick = async () => {
     const text = (promptEl.value || '').trim();
     if(!text && modeEl.value !== 'actor'){
-      setStatus(isEn() ? '⚠️ Please describe the video first.' : '⚠️ اكتب وصف الفيديو أولًا.');
+      setStatus((typeof window.t === 'function' && window.t('videoNeedDesc') !== 'videoNeedDesc') ? window.t('videoNeedDesc') : (bT('⚠️ اكتب وصف الفيديو أولًا.','⚠️ Please describe the video first.')));
       return;
     }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
     if(!token){
-      setStatus(isEn() ? '🔑 Please log in first to use the Video Maker.' : '🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.');
+      setStatus(bT('🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.','🔑 Please log in first to use the Video Maker.'));
       return;
     }
 
@@ -19145,9 +19767,9 @@ function openShareModal(project){
 
     function friendlyError(err){
       const code = err && err.code;
-      if(code === 'auth_required') return isEn() ? '🔑 Please log in first to use the Video Maker.' : '🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.';
+      if(code === 'auth_required') return bT('🔑 يجب تسجيل الدخول أولًا لاستخدام صانع الفيديو.','🔑 Please log in first to use the Video Maker.');
       if(code === 'daily_limit_reached') return isEn() ? "⏳ You have reached today's free video limit. Try again tomorrow." : '⏳ لقد استهلكت حد الفيديوهات المجانية لليوم. حاول مرة أخرى غدًا.';
-      return (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (err && err.message ? err.message : String(err));
+      return (bT('❌ خطأ: ','❌ Error: ')) + (err && err.message ? err.message : String(err));
     }
 
     const creationMode = modeEl.value;
@@ -19186,7 +19808,7 @@ function openShareModal(project){
             const d = await st.json();
             if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
             if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
-            else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((isEn() ? 'Veo failed.' : 'فشل Veo.') + (d.failure ? ' — ' + d.failure : ''))); }
+            else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل Veo.','Veo failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
           } catch(e){ /* keep polling */ }
         }, 8000);
       });
@@ -19196,44 +19818,44 @@ function openShareModal(project){
       try{
         const filmUseVeo = (creationMode === 'veo');
         if(filmUseVeo && !isOwnerAccount()){
-          setStatus(isEn() ? '🔒 Veo 3 is limited to the owner account for now.' : '🔒 Veo 3 مقتصر على حساب المالك حاليًا.');
+          setStatus(bT('🔒 Veo 3 مقتصر على حساب المالك حاليًا.','🔒 Veo 3 is limited to the owner account for now.'));
           btnGenerate.disabled = false;
           return;
         }
         const filmScenes = isOwnerAccount() ? 5 : 3;
-        setStatus(isEn() ? '✍️ Writing the film script scene by scene...' : '✍️ جاري كتابة سيناريو الفيلم مشهد بمشهد...');
+        setStatus(bT('✍️ جاري كتابة سيناريو الفيلم مشهد بمشهد...','✍️ Writing the film script scene by scene...'));
         const scriptRes = await fetch('/api/video-script', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topic: text, mode: 'film', sceneCount: filmScenes, style, lang: (isEn() ? 'en' : 'ar'), hero: !!filmHeroBase64, token }),
+          body: JSON.stringify({ topic: text, mode: 'film', sceneCount: filmScenes, style, lang: (bT('ar','en')), hero: !!filmHeroBase64, token }),
         });
         const scriptData = await scriptRes.json();
         if(scriptRes.status === 401){ const e = new Error('auth'); e.code = 'auth_required'; throw e; }
         if(scriptRes.status === 403 && scriptData && scriptData.error === 'daily_limit_reached'){ const e = new Error('limit'); e.code = 'daily_limit_reached'; throw e; }
         if(!scriptRes.ok || scriptData.error || !Array.isArray(scriptData.scenes) || !scriptData.scenes.length){
-          throw new Error(scriptData.error || (isEn() ? 'Could not generate the film script.' : 'تعذّر إنشاء سيناريو الفيلم.'));
+          throw new Error(scriptData.error || (bT('تعذّر إنشاء سيناريو الفيلم.','Could not generate the film script.')));
         }
         let scenes = scriptData.scenes.slice(0, filmScenes);
         // 📋 معاينة السيناريو — يراجع المستخدم المشاهد ويعدّلها قبل التوليد
-        setStatus(isEn() ? '📋 Review the script...' : '📋 راجع السيناريو...');
+        setStatus(bT('📋 راجع السيناريو...','📋 Review the script...'));
         const approvedScenes = await showScriptPreview(scriptData.title || text, scenes);
         if(!approvedScenes || !approvedScenes.length){
-          setStatus(isEn() ? '❌ Cancelled.' : '❌ تم الإلغاء.');
+          setStatus(bT('❌ تم الإلغاء.','❌ Cancelled.'));
           btnGenerate.disabled = false; return;
         }
         scenes = approvedScenes;
         if(!filmUseVeo){
-          setStatus(isEn() ? '💳 Checking video credits...' : '💳 جاري التأكد من رصيد الفيديو...');
+          setStatus(bT('💳 جاري التأكد من رصيد الفيديو...','💳 Checking video credits...'));
           const ok = await ensureRunwayCredits(scenes.length * 50);
           if(!ok){ btnGenerate.disabled = false; return; }
         }
         if(filmUseVeo && filmHeroBase64){
-          setStatus(isEn() ? 'ℹ️ Hero photo is supported with Runway only; continuing without it...' : 'ℹ️ صورة البطل مدعومة مع Runway فقط؛ سيتم المتابعة بدونها...');
+          setStatus(bT('ℹ️ صورة البطل مدعومة مع Runway فقط؛ سيتم المتابعة بدونها...','ℹ️ Hero photo is supported with Runway only; continuing without it...'));
         }
         const builtScenes = [];
         for(let i = 0; i < scenes.length; i++){
           const sc = scenes[i];
-          setStatus((isEn() ? '🎥 Generating scene ' : '🎥 جاري توليد المشهد ') + (i + 1) + '/' + scenes.length + (filmUseVeo ? ' (Veo 3)' : '') + '...');
+          setStatus((bT('🎥 جاري توليد المشهد ','🎥 Generating scene ')) + (i + 1) + '/' + scenes.length + (filmUseVeo ? ' (Veo 3)' : '') + '...');
           // إذا كان هناك بطل: نثبّت موضعه في كل prompt حتى يبدو بنفس المكان عبر المشاهد
           const baseScenePrompt = sc.visual || text;
           const heroAnchor = filmHeroBase64
@@ -19247,7 +19869,7 @@ function openShareModal(project){
                   ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
                   : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
               }, filmHeroBase64, filmHeroMime);
-          setStatus((isEn() ? '🎙️ Narrating scene ' : '🎙️ جاري تسجيل سرد المشهد ') + (i + 1) + '/' + scenes.length + '...');
+          setStatus((bT('🎙️ جاري تسجيل سرد المشهد ','🎙️ Narrating scene ')) + (i + 1) + '/' + scenes.length + '...');
           let audioBlob = null;
           try{
             const ttsCtl = new AbortController();
@@ -19255,7 +19877,7 @@ function openShareModal(project){
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: sc.narration || text, voice: 'maha', lang: isEn() ? 'en' : 'ar', gender: getNarrationGender() }),
+              body: JSON.stringify({ text: sc.narration || text, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
               signal: ttsCtl.signal,
             });
             clearTimeout(ttsTimer);
@@ -19274,9 +19896,9 @@ function openShareModal(project){
             if(idx < builtScenes.length){
               resultEl.src = builtScenes[idx].videoUrl;
               resultEl.play().catch(() => {});
-              setStatus((isEn() ? '▶️ Scene ' : '▶️ المشهد ') + (idx + 1) + '/' + builtScenes.length);
+              setStatus((bT('▶️ المشهد ','▶️ Scene ')) + (idx + 1) + '/' + builtScenes.length);
             } else {
-              setStatus(isEn() ? '✅ All scenes played.' : '✅ انتهى عرض كل المشاهد.');
+              setStatus(bT('✅ انتهى عرض كل المشاهد.','✅ All scenes played.'));
             }
           };
           resultEl.src = builtScenes[0].videoUrl;
@@ -19294,36 +19916,34 @@ function openShareModal(project){
             const a = document.createElement('a');
             a.href = proxyVideoUrl(sc.videoUrl);
             a.download = 'scene-' + (i + 1) + '.mp4';
-            a.textContent = (isEn() ? '⬇️ Scene ' : '⬇️ مشهد ') + (i + 1);
+            a.textContent = (bT('⬇️ مشهد ','⬇️ Scene ')) + (i + 1);
             a.style.cssText = 'padding:6px 12px;border-radius:10px;background:rgba(139,92,246,.18);color:inherit;text-decoration:none;font-size:13px;';
             linksEl.appendChild(a);
           });
-          setStatus(isEn()
-            ? '✅ Your film is ready! Scenes will play back-to-back — download each scene below.'
-            : '✅ فيلمك جاهز! المشاهد تُعرض ورا بعض تلقائيًا — وتقدر تحمّل كل مشهد من الأزرار تحت.');
+          setStatus(bT('✅ فيلمك جاهز! المشاهد تُعرض ورا بعض تلقائيًا — وتقدر تحمّل كل مشهد من الأزرار تحت.','✅ Your film is ready! Scenes will play back-to-back — download each scene below.'));
         };
         const oldLinks = document.getElementById('filmSceneLinks');
         if(oldLinks) oldLinks.innerHTML = '';
         resultEl.onended = null;
         // دائماً ندمج — حتى على هواوي (الدمج يعمل بالجهاز لا بالسيرفر)
-        setStatus(isEn() ? '🔗 Merging all scenes into your final film...' : '🔗 جاري دمج كل المشاهد بالفيلم النهائي...');
+        setStatus(bT('🔗 جاري دمج كل المشاهد بالفيلم النهائي...','🔗 Merging all scenes into your final film...'));
         let finalUrl = null;
         try{
           const finalBlob = await buildLongVideo(builtScenes, (i, total) => {
-            setStatus((isEn() ? '🔗 Merging scene ' : '🔗 جاري دمج المشهد ') + (i + 1) + '/' + total + '...');
+            setStatus((bT('🔗 جاري دمج المشهد ','🔗 Merging scene ')) + (i + 1) + '/' + total + '...');
           });
           finalUrl = URL.createObjectURL(finalBlob);
         } catch(e){
           try{
             const blob = await concatScenes(builtScenes.map(s => s.videoUrl));
             finalUrl = URL.createObjectURL(blob);
-            setStatus(isEn() ? '⚠️ Narration merge failed; film merged without narration.' : '⚠️ تعذّر دمج السرد؛ تم دمج الفيلم بدون السرد.');
+            setStatus(bT('⚠️ تعذّر دمج السرد؛ تم دمج الفيلم بدون السرد.','⚠️ Narration merge failed; film merged without narration.'));
           } catch(e2){
             finalUrl = null;
           }
         }
         if(finalUrl){
-          setStatus(isEn() ? '✅ Your film is ready!' : '✅ فيلمك جاهز!');
+          setStatus(bT('✅ فيلمك جاهز!','✅ Your film is ready!'));
           resultEl.src = finalUrl;
           resultEl.style.display = 'block';
           downloadEl.href = finalUrl;
@@ -19344,7 +19964,7 @@ function openShareModal(project){
     if(creationMode === 'veo' || creationMode === 'actor'){
       try{
         if(!isOwnerAccount()){
-          setStatus(isEn() ? '🔒 Veo 3 is limited to the owner account for now.' : '🔒 Veo 3 مقتصر على حساب المالك حاليًا.');
+          setStatus(bT('🔒 Veo 3 مقتصر على حساب المالك حاليًا.','🔒 Veo 3 is limited to the owner account for now.'));
           return;
         }
         let veoPrompt = text;
@@ -19352,14 +19972,14 @@ function openShareModal(project){
           const speechEl = document.getElementById('videoMakerActorSpeech');
           const speech = speechEl ? speechEl.value.trim() : '';
           if(!speech){
-            setStatus(isEn() ? '🗣️ Write what the actor should say first.' : '🗣️ اكتب أول شي وش يقول الممثل.');
+            setStatus(bT('🗣️ اكتب أول شي وش يقول الممثل.','🗣️ Write what the actor should say first.'));
             return;
           }
           veoPrompt = (text || 'An Emirati man in traditional white kandura and ghutra, warm friendly face')
             + '. The person looks directly at the camera and speaks in Emirati Gulf Arabic dialect (لهجة إماراتية خليجية), saying exactly these Arabic words: "' + speech + '". '
             + 'Perfect accurate lip-sync matching the Arabic words, natural authentic Emirati voice and accent, natural hand gestures, cinematic lighting, realistic. No subtitles, no captions, no text on screen.';
         }
-        setStatus(isEn() ? '🚀 Sending to Google Veo 3...' : '🚀 جاري الإرسال إلى Google Veo 3...');
+        setStatus(bT('🚀 جاري الإرسال إلى Google Veo 3...','🚀 Sending to Google Veo 3...'));
         const cr = await fetch('/api/video?action=veo-create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -19374,17 +19994,17 @@ function openShareModal(project){
               const d = await st.json();
               if(d.error){ clearInterval(iv); reject(new Error(d.error)); return; }
               if(d.status === 'SUCCEEDED'){ clearInterval(iv); resolve(d.output[0]); }
-              else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((isEn() ? 'Veo failed.' : 'فشل Veo.') + (d.failure ? ' — ' + d.failure : ''))); }
-              else setStatus(isEn() ? '⏳ Veo 3 is generating (may take 1-3 min)...' : '⏳ Veo 3 يولّد الفيديو (قد يستغرق ١-٣ دقائق)...');
+              else if(d.status === 'FAILED'){ clearInterval(iv); reject(new Error((bT('فشل Veo.','Veo failed.')) + (d.failure ? ' — ' + d.failure : ''))); }
+              else setStatus(bT('⏳ Veo 3 يولّد الفيديو (قد يستغرق ١-٣ دقائق)...','⏳ Veo 3 is generating (may take 1-3 min)...'));
             } catch(e){ /* keep polling */ }
           }, 8000);
         });
-        setStatus(isEn() ? '⬇️ Downloading the video...' : '⬇️ جاري تحميل الفيديو...');
+        setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading the video...'));
         const vres = await fetch(proxyVideoUrl(videoUrl));
         if(!vres.ok) throw new Error('download failed ' + vres.status);
         const vblob = await vres.blob();
         const vurl = URL.createObjectURL(vblob);
-        setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
+        setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
         resultEl.src = vurl;
         resultEl.style.display = 'block';
         // رابط التحميل = المسار المباشر للسيرفر (Content-Disposition: attachment)، يشتغل على هواوي
@@ -19424,23 +20044,23 @@ function openShareModal(project){
     if(durationEl.value === 'longMinutes'){
       try{
         if(!isOwnerAccount()){
-          setStatus(isEn() ? '🔒 This feature is limited to the owner account.' : '🔒 هذه الميزة مقتصرة على حساب المالك.');
+          setStatus(bT('🔒 هذه الميزة مقتصرة على حساب المالك.','🔒 This feature is limited to the owner account.'));
           btnGenerate.disabled = false;
           return;
         }
         const mins = Math.max(1, Math.min(10, parseInt(longMinutesInput.value, 10) || 1));
-        setStatus(isEn() ? '✍️ Writing the full scene-by-scene script...' : '✍️ جاري كتابة السكربت كامل مشهد بمشهد...');
+        setStatus(bT('✍️ جاري كتابة السكربت كامل مشهد بمشهد...','✍️ Writing the full scene-by-scene script...'));
         const scriptRes = await fetch('/api/video-script', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topic: text, minutes: mins, style, lang: (isEn() ? 'en' : 'ar'), token }),
+          body: JSON.stringify({ topic: text, minutes: mins, style, lang: (bT('ar','en')), token }),
         });
         const scriptData = await scriptRes.json();
         if(!scriptRes.ok || scriptData.error || !Array.isArray(scriptData.scenes) || !scriptData.scenes.length){
-          throw new Error(scriptData.error || (isEn() ? 'Could not generate the script.' : 'تعذّر إنشاء السكربت.'));
+          throw new Error(scriptData.error || (bT('تعذّر إنشاء السكربت.','Could not generate the script.')));
         }
         const scenes = scriptData.scenes;
-        setStatus(isEn() ? '💳 Checking video credits...' : '💳 جاري التأكد من رصيد الفيديو...');
+        setStatus(bT('💳 جاري التأكد من رصيد الفيديو...','💳 Checking video credits...'));
         const okBal = await ensureRunwayCredits(scenes.length * 50);
         if(!okBal){ btnGenerate.disabled = false; return; }
         const estLow = (scenes.length * 2).toFixed(0);
@@ -19449,7 +20069,7 @@ function openShareModal(project){
           ? `This video will generate ${scenes.length} scenes (~${(scenes.length * SCENE_SECONDS_CONST) / 60 | 0} min). Estimated real cost: about $${estLow}-$${estHigh} charged to your Runway account. Continue?`
           : `هذا الفيديو راح يولّد ${scenes.length} مشهد (~${(scenes.length * SCENE_SECONDS_CONST / 60) | 0} دقيقة). التكلفة التقديرية الحقيقية: حوالي ${estLow}$-${estHigh}$ تُخصم من حساب Runway. تكمل؟`;
         if(!window.confirm(confirmMsg)){
-          setStatus(isEn() ? '❌ Cancelled.' : '❌ تم الإلغاء.');
+          setStatus(bT('❌ تم الإلغاء.','❌ Cancelled.'));
           btnGenerate.disabled = false;
           return;
         }
@@ -19457,14 +20077,14 @@ function openShareModal(project){
         const builtScenes = [];
         for(let i = 0; i < scenes.length; i++){
           const sc = scenes[i];
-          setStatus((isEn() ? '🚀 Sending scene ' : '🚀 جاري إرسال المشهد ') + (i + 1) + '/' + scenes.length + '...');
+          setStatus((bT('🚀 جاري إرسال المشهد ','🚀 Sending scene ')) + (i + 1) + '/' + scenes.length + '...');
           const lmHeroAnchor = filmHeroBase64 ? 'Hero centered in frame, medium shot, consistent camera angle. ' : '';
           const videoUrl = await createSceneWithRetry(lmHeroAnchor + (sc.visual || text), style, SCENE_SECONDS_CONST, ratio, token, true, (attempt, max) => {
             setStatus(isEn()
               ? '⏳ The AI engine is busy, retrying scene ' + (i + 1) + ' (' + attempt + '/' + max + ')...'
               : '⏳ محرك الفيديو مزدحم، جاري إعادة محاولة المشهد ' + (i + 1) + ' (' + attempt + '/' + max + ')...');
           }, filmHeroBase64, filmHeroMime);
-          setStatus((isEn() ? '🎙️ Narrating scene ' : '🎙️ جاري تسجيل صوت المشهد ') + (i + 1) + '/' + scenes.length + '...');
+          setStatus((bT('🎙️ جاري تسجيل صوت المشهد ','🎙️ Narrating scene ')) + (i + 1) + '/' + scenes.length + '...');
           let audioBlob = null;
           try{
             const ttsCtl2 = new AbortController();
@@ -19472,7 +20092,7 @@ function openShareModal(project){
             const ttsRes = await fetch('/api/tts', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text: sc.narration || text, voice: 'maha', lang: isEn() ? 'en' : 'ar', gender: getNarrationGender() }),
+              body: JSON.stringify({ text: sc.narration || text, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
               signal: ttsCtl2.signal,
             });
             clearTimeout(ttsTimer2);
@@ -19481,18 +20101,18 @@ function openShareModal(project){
           builtScenes.push({ videoUrl, audioBlob: audioBlob || new Blob() });
         }
 
-        setStatus(isEn() ? '🔗 Joining all scenes with narration into the final video...' : '🔗 جاري دمج كل المشاهد مع السرد بالفيديو النهائي...');
+        setStatus(bT('🔗 جاري دمج كل المشاهد مع السرد بالفيديو النهائي...','🔗 Joining all scenes with narration into the final video...'));
         const finalBlob = await buildLongVideo(builtScenes, (i, total) => {
-          setStatus((isEn() ? '🔗 Joining scene ' : '🔗 جاري دمج المشهد ') + (i + 1) + '/' + total + '...');
+          setStatus((bT('🔗 جاري دمج المشهد ','🔗 Joining scene ')) + (i + 1) + '/' + total + '...');
         });
         const finalUrl = URL.createObjectURL(finalBlob);
-        setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
+        setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
         resultEl.src = finalUrl;
         resultEl.style.display = 'block';
         downloadEl.href = finalUrl;
         downloadEl.style.display = 'block';
       } catch(e){
-        setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+        setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
       } finally {
         btnGenerate.disabled = false;
       }
@@ -19506,11 +20126,11 @@ function openShareModal(project){
       const singleHeroAnchor = filmHeroBase64 ? 'Hero centered in frame, medium shot, consistent camera angle. ' : '';
       if(isLong){
         const scenePrompts = [
-          singleHeroAnchor + text + (isEn() ? ' (opening moment of the scene)' : ' (اللحظة الافتتاحية للمشهد)'),
-          singleHeroAnchor + text + (isEn() ? ' (continuing the same scene, next moment)' : ' (استكمال نفس المشهد، اللحظة التالية)'),
+          singleHeroAnchor + text + (bT(' (اللحظة الافتتاحية للمشهد)',' (opening moment of the scene)')),
+          singleHeroAnchor + text + (bT(' (استكمال نفس المشهد، اللحظة التالية)',' (continuing the same scene, next moment)')),
         ];
         for(let i = 0; i < scenePrompts.length; i++){
-          setStatus((isEn() ? '🚀 Sending scene ' : '🚀 جاري إرسال المشهد ') + (i + 1) + '/' + scenePrompts.length + '...');
+          setStatus((bT('🚀 جاري إرسال المشهد ','🚀 Sending scene ')) + (i + 1) + '/' + scenePrompts.length + '...');
           const url = await createSceneWithRetry(scenePrompts[i], style, 10, ratio, token, false, (attempt, max) => {
             setStatus(isEn()
               ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
@@ -19519,7 +20139,7 @@ function openShareModal(project){
           sceneUrls.push(url);
         }
       } else {
-        setStatus(isEn() ? '🚀 Sending request...' : '🚀 جاري إرسال الطلب...');
+        setStatus(bT('🚀 جاري إرسال الطلب...','🚀 Sending request...'));
         const url = await createSceneWithRetry(singleHeroAnchor + text, style, durationEl.value, ratio, token, false, (attempt, max) => {
           setStatus(isEn()
             ? '⏳ The AI engine is busy, retrying (' + attempt + '/' + max + ')...'
@@ -19532,19 +20152,19 @@ function openShareModal(project){
       let finalIsBlob = false;
 
       if(sceneUrls.length > 1){
-        setStatus(isEn() ? '🔗 Joining scenes together...' : '🔗 جاري دمج المشاهد معًا...');
+        setStatus(bT('🔗 جاري دمج المشاهد معًا...','🔗 Joining scenes together...'));
         try{
           const blob = await concatScenes(sceneUrls);
           finalSrc = blob;
           finalIsBlob = true;
         } catch(e){
-          setStatus(isEn() ? '⚠️ Could not join scenes; showing the first scene only.' : '⚠️ تعذّر دمج المشاهد؛ سيتم عرض المشهد الأول فقط.');
+          setStatus(bT('⚠️ تعذّر دمج المشاهد؛ سيتم عرض المشهد الأول فقط.','⚠️ Could not join scenes; showing the first scene only.'));
         }
       }
 
       if(wantQuality){
         try{
-          setStatus(isEn() ? '🔎 Upscaling video quality...' : '🔎 جاري ترقية جودة الفيديو...');
+          setStatus(bT('🔎 جاري ترقية جودة الفيديو...','🔎 Upscaling video quality...'));
           const upRes = await fetch('/api/video-upscale-create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -19561,22 +20181,22 @@ function openShareModal(project){
 
       if(wantNarration){
         try{
-          setStatus(isEn() ? '🎙️ Generating narration...' : '🎙️ جاري إنشاء التعليق الصوتي...');
+          setStatus(bT('🎙️ جاري إنشاء التعليق الصوتي...','🎙️ Generating narration...'));
           const narrationInput = (narrationText.value || '').trim() || text;
           const ttsRes = await fetch('/api/tts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: isEn() ? 'en' : 'ar', gender: getNarrationGender() }),
+            body: JSON.stringify({ text: narrationInput, voice: 'maha', lang: bT('ar','en'), gender: getNarrationGender() }),
           });
           if(ttsRes.ok){
             const audioBlob = await ttsRes.blob();
-            setStatus(isEn() ? '🎚️ Adding narration to the video...' : '🎚️ جاري إضافة التعليق الصوتي للفيديو...');
+            setStatus(bT('🎚️ جاري إضافة التعليق الصوتي للفيديو...','🎚️ Adding narration to the video...'));
             const merged = await muxNarration(finalSrc, audioBlob);
             finalSrc = merged;
             finalIsBlob = true;
           }
         } catch(e){
-          setStatus(isEn() ? '⚠️ Could not add narration; showing the video without it.' : '⚠️ تعذّر إضافة التعليق الصوتي؛ سيتم عرض الفيديو بدونه.');
+          setStatus(bT('⚠️ تعذّر إضافة التعليق الصوتي؛ سيتم عرض الفيديو بدونه.','⚠️ Could not add narration; showing the video without it.'));
         }
       }
 
@@ -19590,7 +20210,7 @@ function openShareModal(project){
         // رابط التحميل = proxy URL (same-origin + Content-Disposition: attachment = يشتغل على هواوي)
         dlUrl = proxyVideoUrl(finalSrc);
         try{
-          setStatus(isEn() ? '⬇️ Downloading video...' : '⬇️ جاري تحميل الفيديو...');
+          setStatus(bT('⬇️ جاري تحميل الفيديو...','⬇️ Downloading video...'));
           const vres = await fetch(dlUrl);
           if(!vres.ok) throw new Error('proxy ' + vres.status);
           playerUrl = URL.createObjectURL(await vres.blob());
@@ -19598,7 +20218,7 @@ function openShareModal(project){
           playerUrl = finalSrc; // آخر ملاذ للمشغّل فقط
         }
       }
-      setStatus(isEn() ? '✅ Done!' : '✅ تم الانتهاء!');
+      setStatus(bT('✅ تم الانتهاء!','✅ Done!'));
       resultEl.src = playerUrl;
       resultEl.style.display = 'block';
       resultEl.play().catch(function(){ /* autoplay may be blocked */ });
@@ -19677,8 +20297,11 @@ async function __safeJson(res){
   if(!modal || !btnOpen) return;
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function t(key){
-    const dict = (typeof I18N !== 'undefined') ? I18N[isEn() ? 'en' : 'ar'] : null;
+    /* v-global-first: المترجم العام (الـ14 لغة) أولًا — المحلي يعرف عربي/إنجليزي فقط */
+    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ /* لم يجهز بعد */ }
+    const dict = (typeof I18N !== 'undefined') ? I18N[bT('ar','en')] : null;
     return (dict && dict[key]) || key;
   }
   function setStatus(text){
@@ -19692,6 +20315,8 @@ async function __safeJson(res){
 
   btnOpen.onclick = () => {
     modal.style.display = 'flex';
+    /* v651: صفّ «غرفتي بكل الأنماط» يُبنى قبل وصول ملفّ اللغة الكسول فيتجمّد — يُعاد عند الفتح. */
+    try { buildCompareStyleRow(); } catch(_e651) { /* guard-ok: rebuilding the compare row is cosmetic — a failure must never block opening the modal. */ }
     closeHeaderMenu();
   };
   btnClose.onclick = () => { modal.style.display = 'none'; };
@@ -19819,7 +20444,7 @@ async function __safeJson(res){
           const vb = document.createElement('button');
           vb.type = 'button';
           vb.className = 'btn';
-          vb.textContent = isEn() ? '\u2728 More like this' : '\u2728 \u0632\u0648\u0651\u062F\u0646\u064A \u0645\u062B\u0644\u0647';
+          vb.textContent = bT('\u2728 \u0632\u0648\u0651\u062F\u0646\u064A \u0645\u062B\u0644\u0647','\u2728 More like this');
           vb.style.cssText = 'width:100%; margin-top:5px; font-size:11.5px; padding:5px 4px;';
           vb.onclick = (ev) => { ev.preventDefault(); variantSrc = im.imageBase64; btnGenerate.onclick(); };
           cell.appendChild(vb);
@@ -19840,7 +20465,7 @@ async function __safeJson(res){
       downloadEl.style.display = 'block';
       setStatus(t('designAiDone'));
     } catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       btnGenerate.disabled = false;
     }
@@ -19927,7 +20552,14 @@ async function __safeJson(res){
     const o = styleEl && Array.prototype.find.call(styleEl.options, function(x){ return x.value === v; });
     if(!o) return v;
     const den = isEn() && o.getAttribute('data-en');
-    return ((den || o.textContent) || '').trim();
+    if(den) return String(den).trim();
+    /* v649: القاموس الحيّ أوّلًا — البطاقة تُبنى قبل وصول ملفّ اللغة الكسول فتلتقط الإنجليزيّة وتتجمّد. */
+    const k649 = o.getAttribute('data-i18n');
+    if(k649 && typeof t === 'function'){ const v649 = t(k649); if(v649 && v649 !== k649) return String(v649).trim(); }
+    /* v651: 39 نمطًا بلا مفتاح i18n كانت تعرض العربيّة في الـ12 لغة — القاموس الثنائيّ __BI يترجمها. */
+    const den651 = o.getAttribute('data-en');
+    if(!k649 && den651 && typeof window.__bT === 'function') return window.__bT((o.textContent || '').trim(), String(den651).trim());
+    return (o.textContent || '').trim();
   }
   function buildCompareStyleRow(){
     if(!cmpChecksEl || !styleEl) return;
@@ -19950,6 +20582,8 @@ async function __safeJson(res){
       img.onerror = function(){ img.remove(); };
       const label = document.createElement('div');
       label.textContent = styleTitle(v);
+      /* v649: تسليم التسمية لنظام i18n كي تُترجَم عند تبديل اللغة بلا إعادة بناء الصفّ. */
+      const lk649 = o.getAttribute('data-i18n'); if(lk649) label.setAttribute('data-i18n', lk649);
       label.style.cssText = 'position:absolute; left:0; right:0; bottom:0; padding:12px 3px 4px; font-size:10px; font-weight:700; text-align:center; z-index:1;' +
         ' color:' + (on ? '#d4af37' : '#eef0f6') + '; background:linear-gradient(transparent,rgba(0,0,0,.85));';
       if(on){
@@ -19961,7 +20595,7 @@ async function __safeJson(res){
       card.onclick = function(){
         const i = cmpPicks.indexOf(v);
         if(i >= 0) cmpPicks.splice(i, 1);
-        else { if(cmpPicks.length >= 3){ cmpStatus(isEn() ? 'Max 3 styles' : 'الحد ٣ أنماط'); return; } cmpPicks.push(v); }
+        else { if(cmpPicks.length >= 3){ cmpStatus(bT('الحد ٣ أنماط','Max 3 styles')); return; } cmpPicks.push(v); }
         cmpStatus('');
         buildCompareStyleRow();
       };
@@ -19970,8 +20604,8 @@ async function __safeJson(res){
   }
   buildCompareStyleRow();
   if(cmpBtn) cmpBtn.onclick = async () => {
-    if(!selectedBase64){ cmpStatus(isEn() ? 'Upload your room photo first' : 'ارفعي صورة غرفتك أولًا'); return; }
-    if(cmpPicks.length < 2){ cmpStatus(isEn() ? 'Pick 2-3 styles' : 'اختاري نمطين أو ثلاثة'); return; }
+    if(!selectedBase64){ cmpStatus(bT('ارفعي صورة غرفتك أولًا','Upload your room photo first')); return; }
+    if(cmpPicks.length < 2){ cmpStatus(bT('اختاري نمطين أو ثلاثة','Pick 2-3 styles')); return; }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
     if(!token){ cmpStatus(t('designAiNeedLogin')); return; }
     cmpBtn.disabled = true;
@@ -19981,7 +20615,7 @@ async function __safeJson(res){
     try{
       for(let i = 0; i < picks.length; i++){
         const v = picks[i];
-        cmpStatus((isEn() ? 'Designing ' : 'نصمّم ') + styleTitle(v) + ' — ' + (i + 1) + '/' + picks.length + '…');
+        cmpStatus((bT('نصمّم ','Designing ')) + styleTitle(v) + ' — ' + (i + 1) + '/' + picks.length + '…');
         const res = await fetch('/api/design-create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -19991,7 +20625,7 @@ async function __safeJson(res){
         if(!res.ok || data.error){
           if(data.error === 'daily_limit_reached'){ cmpStatus(t('designAiLimitReached')); break; }
           if(data.error === 'auth_required'){ cmpStatus(t('designAiNeedLogin')); break; }
-          cmpStatus((isEn() ? '❌ Failed at ' : '❌ تعثّر عند ') + styleTitle(v));
+          cmpStatus((bT('❌ تعثّر عند ','❌ Failed at ')) + styleTitle(v));
           continue;
         }
         const u = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
@@ -20005,7 +20639,7 @@ async function __safeJson(res){
         cap.style.cssText = 'font-size:12px; font-weight:700; text-align:center; margin-top:4px;';
         const pick = document.createElement('button');
         pick.type = 'button'; pick.className = 'btn';
-        pick.textContent = isEn() ? '👍 Pick this' : '👍 اعتمدي هذا';
+        pick.textContent = bT('👍 اعتمدي هذا','👍 Pick this');
         pick.style.cssText = 'width:100%; margin-top:4px; font-size:11.5px; padding:5px 4px;';
         pick.onclick = function(){
           styleEl.value = v;
@@ -20017,10 +20651,10 @@ async function __safeJson(res){
         cell.appendChild(im); cell.appendChild(cap); cell.appendChild(pick);
         cmpResultsEl.appendChild(cell);
         cmpResultsEl.style.display = 'flex';
-        if(i === picks.length - 1) cmpStatus(isEn() ? '✓ Done — swipe and pick' : '✓ تم — اسحبي وقارني واختاري');
+        if(i === picks.length - 1) cmpStatus(bT('✓ تم — اسحبي وقارني واختاري','✓ Done — swipe and pick'));
       }
     } catch(e){
-      cmpStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      cmpStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       cmpBtn.disabled = false;
     }
@@ -20100,7 +20734,24 @@ async function __safeJson(res){
     astronaut: 'رائد فضاء',
   };
   function pstyleLang(){ try{ return localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ return 'ar'; } }
-  function pstyleSub(v){ return pstyleLang().startsWith('en') ? '' : (PSTYLE_SUBS[v] || ''); }
+  /* v-psub-ar-only (شكوى المالك ٢٩ أغسطس: الأوصاف طلعت عربية وسط واجهة
+     المليالم): الإنجليزي كان يخفي الوصف عمدًا بينما بقية اللغات تأخذ
+     العربي — القاعدة الآن واحدة: الوصف عربي للعربي فقط، ويختفي لغير ذلك
+     (العناوين نفسها مترجمة لكل اللغات فتبقى البطاقة مفهومة). */
+  function pstyleSub(v){ return pstyleLang().startsWith('ar') ? (PSTYLE_SUBS[v] || '') : ''; }
+  /* v-look-labels-fix: optLabel كانت معرّفة في نطاق الأزياء فقط بينما تُستدعى
+     هنا أيضًا — فتعطّل فتح ورقة الأنماط (ReferenceError). نسخة النطاق هذه:
+     خيارات البورتريه كلها data-i18n مترجمة فترجع نصّها كما هو. */
+  function optLabel(o){
+    if(!o) return '';
+    var l = pstyleLang();
+    /* v651: كانت كلّ لغة غير ar/ur ترى الإنجليزيّة، والأردو ترث العربيّة. */
+    if(l.indexOf('ar') !== 0 && !o.hasAttribute('data-i18n')){
+      var de = o.getAttribute('data-en');
+      if(de) return (typeof window.__bT === 'function') ? window.__bT((o.textContent||'').trim(), String(de).trim()) : de;
+    }
+    return o.textContent;
+  }
   function pstyleOpts(){
     const favs = getFavs();
     const opts = Array.from(styleEl.querySelectorAll('option'))
@@ -20120,12 +20771,19 @@ async function __safeJson(res){
     if(!styleCardsGrid || !styleEl) return;
     const favs = getFavs();
     const opts = pstyleOpts();
-    if(styleSheetCount) styleSheetCount.textContent = opts.length + (pstyleLang().startsWith('en') ? ' styles — same face, every style' : ' ستايلًا — نفس وجهك بكل ستايل');
+    /* v-psub-ar-only: سطر العدّاد صار مفتاح ترجمة لكل اللغات بدل عربي/إنجليزي فقط.
+       ملاحظة: t المحلية في هذا الملف تعرف عربي/إنجليزي فقط وتحجب المترجم
+       العام — نستدعي window.t (مترجم اللغات الـ14) صراحةً. */
+    if(styleSheetCount){
+      const __gt = (typeof window !== 'undefined' && typeof window.t === 'function') ? window.t : null;
+      const __cntSuffix = (__gt && __gt('psheetCountSuffix') !== 'psheetCountSuffix') ? __gt('psheetCountSuffix') : (pstyleLang().startsWith('en') ? 'styles — same face, every style' : 'ستايلًا — نفس وجهك بكل ستايل');
+      styleSheetCount.textContent = opts.length + ' ' + __cntSuffix;
+    }
     styleCardsGrid.innerHTML = '';
     opts.forEach((opt) => {
       const v = opt.value;
       const active = v === styleEl.value;
-      const title = opt.textContent.trim();
+      const title = optLabel(opt).trim();
       const card = document.createElement('div');
       card.setAttribute('data-pstyle-card', v);
       card.style.cssText = 'border-radius:14px; overflow:hidden; cursor:pointer; background:#17171b;' +
@@ -20272,8 +20930,11 @@ async function __safeJson(res){
   if(!modal || !btnOpen) return;
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function t(key){
-    const dict = (typeof I18N !== 'undefined') ? I18N[isEn() ? 'en' : 'ar'] : null;
+    /* v-global-first: المترجم العام (الـ14 لغة) أولًا — المحلي يعرف عربي/إنجليزي فقط */
+    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ /* لم يجهز بعد */ }
+    const dict = (typeof I18N !== 'undefined') ? I18N[bT('ar','en')] : null;
     return (dict && dict[key]) || key;
   }
   function setStatus(text){
@@ -20383,7 +21044,7 @@ async function __safeJson(res){
         setStatus(t('portraitDone'));
       }
     } catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       btnGenerate.disabled = false;
     }
@@ -20433,6 +21094,19 @@ async function __safeJson(res){
   if(!modal || !btnOpen) return;
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
+  /* v-look-labels: خيارات اللوكات القديمة نصها عربي مع data-en — غير العربي
+     والأردو يأخذ الإنجليزية (خيارات data-i18n تُترجم أصلًا فلا تُمس). */
+  function optLabel(o){
+    if(!o) return '';
+    var l7 = lang7();
+    /* v651: كانت كلّ لغة غير ar/ur ترى الإنجليزيّة، والأردو ترث العربيّة. */
+    if(l7 !== 'ar' && !o.hasAttribute('data-i18n')){
+      var de = o.getAttribute('data-en');
+      if(de) return (typeof window.__bT === 'function') ? window.__bT((o.textContent||'').trim(), String(de).trim()) : de;
+    }
+    return o.textContent;
+  }
   function lang7(){ return (typeof currentLang === 'function') ? currentLang() : (localStorage.getItem('aiapp_lang') || 'ar'); }
   function t(key){
     const dict = (typeof window.__i18nDict === 'function') ? window.__i18nDict(lang7()) : ((typeof I18N !== 'undefined') ? I18N[lang7()] : null);
@@ -20480,12 +21154,12 @@ async function __safeJson(res){
     const list = GENDER_STYLES[g] || GENDER_STYLES.women;
     if(!window.omranPicker) return;
     window.omranPicker.open({
-      title: isEn() ? '👗 Fashion styles' : '👗 أنماط الأزياء',
-      count: list.length + (isEn() ? ' styles — pick yours' : ' نمطًا — اختر ما يناسبك'),
+      title: bT('👗 أنماط الأزياء','👗 Fashion styles'),
+      count: list.length + ' ' + ((typeof window.t === 'function' && window.t('pickerOptsPick') !== 'pickerOptsPick') ? window.t('pickerOptsPick') : (bT('نمطًا — اختر ما يناسبك','styles — pick yours'))),
       items: list.map(function(v){
         const opt = fashionOptFor(v);
         return opt && {
-          v: v, title: opt.textContent.trim(), active: v === styleEl.value,
+          v: v, title: optLabel(opt).trim(), active: v === styleEl.value,
           img: 'assets/fashion/looks/' + g + '/' + v + '.webp',
           img2: 'assets/fashion/looks/' + v + '.webp',
         };
@@ -20506,19 +21180,19 @@ async function __safeJson(res){
     const trig = document.createElement('div');
     trig.id = 'fashionStyleTrigger';
     trig.style.cssText = 'display:flex; align-items:center; gap:10px; border:1px solid var(--border,#333); border-radius:12px; padding:8px 10px; cursor:pointer; background:var(--panel2,#101014);';
-    const img = lookImg(g, styleEl.value, opt ? opt.textContent : '');
+    const img = lookImg(g, styleEl.value, opt ? optLabel(opt) : '');
     img.style.cssText = 'width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
     const info = document.createElement('div');
     info.style.cssText = 'flex:1; min-width:0;';
     const nm = document.createElement('div');
-    nm.textContent = opt ? opt.textContent : '';
+    nm.textContent = opt ? optLabel(opt) : '';
     nm.style.cssText = 'font-size:13.5px; font-weight:700;';
     const sub = document.createElement('div');
-    sub.textContent = list.length + (isEn() ? ' styles for this category' : ' نمطًا لهذه الفئة');
+    sub.textContent = list.length + ' ' + ((typeof window.t === 'function' && window.t('pickerStylesForCategory') !== 'pickerStylesForCategory') ? window.t('pickerStylesForCategory') : (bT('نمطًا لهذه الفئة','styles for this category')));
     sub.style.cssText = 'font-size:11px; color:var(--muted,#999);';
     info.appendChild(nm); info.appendChild(sub);
     const all = document.createElement('span');
-    all.textContent = isEn() ? 'Browse all ›' : 'عرض الكل ›';
+    all.textContent = (typeof window.t === 'function' && window.t('portraitStyleBrowseAll') !== 'portraitStyleBrowseAll') ? window.t('portraitStyleBrowseAll') : (bT('عرض الكل ›','Browse all ›'));
     all.style.cssText = 'color:#d4af37; font-size:12.5px; font-weight:700; flex:none;';
     trig.appendChild(img); trig.appendChild(info); trig.appendChild(all);
     trig.onclick = openFashionPicker;
@@ -20639,7 +21313,7 @@ async function __safeJson(res){
       tick.style.cssText = 'position:absolute; top:6px; inset-inline-end:6px; width:22px; height:22px; border-radius:50%; background:#d4af37; color:#141414;' +
         ' font-weight:800; font-size:14px; display:none; align-items:center; justify-content:center; z-index:2;';
       const label = document.createElement('div');
-      label.textContent = opt.textContent;
+      label.textContent = optLabel(opt);
       label.style.cssText = 'position:absolute; left:0; right:0; bottom:0; padding:14px 6px 6px; font-size:11px; font-weight:700; text-align:center; color:#eef0f6;' +
         ' background:linear-gradient(transparent,rgba(0,0,0,.82));';
       function paint(){
@@ -20682,6 +21356,8 @@ async function __safeJson(res){
   btnOpen.onclick = () => {
     modal.style.display = 'flex';
     renderStyleCards(); // تسميات الترجمة قد تكون تغيّرت بعد التهيئة
+    /* v651: صفّ «قارن بين الإطلالات» كان يتجمّد على الإنجليزيّة لنفس السبب. */
+    try { buildCompareChecks(); } catch(_e651) { /* guard-ok: rebuilding the compare row is cosmetic — a failure must never block opening the modal. */ }
     closeHeaderMenu();
   };
   btnClose.onclick = () => { modal.style.display = 'none'; };
@@ -20769,13 +21445,92 @@ async function __safeJson(res){
       favSaveBtn.style.display = 'block';
       favSaveBtn.textContent = t('fashionFavoriteSaveBtn');
       setupBeforeAfter(dataUrl);
+      /* v-fashion-refine: احفظ النتيجة كمصدر للتعديل الموضعي وأظهر صفّه */
+      __refineRemember(data.imageBase64, data.mimeType || 'image/png');
       setStatus(t('fashionAiDone'));
     } catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       btnGenerate.disabled = false;
     }
   };
+
+  /* ---- ✏️ v-fashion-refine (شكوى المالك ٢٩ أغسطس): تعديل شيء محدد على
+     النتيجة نفسها بدل إعادة توليد اللوك كاملًا — النتيجة الأخيرة تُرسل
+     كمصدر مع طلب التعديل، والسيرفر يقفل كل ما عداه. ---- */
+  let __lastFxB64 = null, __lastFxMime = 'image/png';
+  const __gt2 = (k, arFb, enFb) => {
+    try{ if(typeof window.t === 'function'){ const v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* المترجم لم يجهز */ }
+    return isEn() ? enFb : arFb;
+  };
+  let refineRow = null, refineInput = null, refineBtn = null;
+  function __buildRefineRow(){
+    if(refineRow || !resultWrap) return;
+    refineRow = document.createElement('div');
+    refineRow.id = 'fashionRefineRow';
+    refineRow.style.cssText = 'display:none; gap:8px; margin-top:10px; align-items:stretch;';
+    refineInput = document.createElement('input');
+    refineInput.id = 'fashionRefineInput';
+    refineInput.type = 'text';
+    refineInput.maxLength = 300;
+    refineInput.style.cssText = 'flex:1 1 auto; min-width:0; padding:10px 12px; border-radius:12px; border:1px solid var(--border,#333); background:var(--panel2,#1b1b22); color:var(--text,#eee); font-family:inherit; font-size:13px;';
+    refineBtn = document.createElement('button');
+    refineBtn.id = 'fashionRefineBtn';
+    refineBtn.type = 'button';
+    refineBtn.className = 'btn';
+    refineBtn.style.cssText = 'flex:0 0 auto; white-space:nowrap;';
+    refineRow.appendChild(refineInput);
+    refineRow.appendChild(refineBtn);
+    resultWrap.appendChild(refineRow);
+    refineBtn.onclick = __doRefine;
+    refineInput.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); __doRefine(); } });
+  }
+  function __refineTexts(){
+    if(!refineInput) return;
+    refineInput.placeholder = __gt2('fashionRefinePh', 'مثال: غيّري لون الفستان إلى أزرق فقط', 'e.g. change only the dress colour to blue');
+    refineBtn.textContent = __gt2('fashionRefineBtn', '✏️ عدّلي شيئًا محددًا', '✏️ Edit one specific thing');
+  }
+  function __refineRemember(b64, mime){
+    __lastFxB64 = b64; __lastFxMime = mime;
+    __buildRefineRow();
+    __refineTexts();
+    if(refineRow){ refineRow.style.display = 'flex'; refineInput.value = ''; }
+  }
+  async function __doRefine(){
+    if(!__lastFxB64) return;
+    const reqTxt = (refineInput.value || '').trim();
+    if(!reqTxt){ setStatus(__gt2('fashionRefineNeed', 'اكتبي التعديل المطلوب أولًا', 'Type the change you want first')); refineInput.focus(); return; }
+    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+    if(!token){ setStatus(t('fashionAiNeedLogin')); return; }
+    refineBtn.disabled = true; btnGenerate.disabled = true;
+    setStatus(__gt2('fashionRefining', 'جاري تطبيق التعديل…', 'Applying your edit…'));
+    try{
+      const res = await fetch('/api/fashion-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'refine', imageBase64: __lastFxB64, mimeType: __lastFxMime, editRequest: reqTxt, token, engine: window.__fashionEngine || '' }),
+      });
+      const data = await __safeJson(res);
+      if(!res.ok || data.error){
+        if(data.error === 'auth_required'){ setStatus(t('fashionAiNeedLogin')); return; }
+        if(data.error === 'daily_limit_reached'){ setStatus(t('fashionAiLimitReached')); return; }
+        throw new Error(data.error || 'unknown');
+      }
+      /* قبل/بعد: «قبل» تصير النتيجة السابقة نفسها ليتضح التعديل الموضعي */
+      const prevUrl = 'data:' + __lastFxMime + ';base64,' + __lastFxB64;
+      const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
+      if(beforeImg){ beforeImg.src = prevUrl; }
+      resultEl.src = dataUrl;
+      downloadEl.href = dataUrl;
+      __lastFxB64 = data.imageBase64; __lastFxMime = data.mimeType || 'image/png';
+      refineInput.value = '';
+      setStatus(t('fashionAiDone'));
+    }catch(e){
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+    }finally{
+      refineBtn.disabled = false; btnGenerate.disabled = false;
+    }
+  }
 
   /* ---- 💡 suggest a look ---- */
   if(suggestBtn) suggestBtn.onclick = async () => {
@@ -20839,7 +21594,7 @@ async function __safeJson(res){
       suggestionsEl.style.display = list.length ? 'flex' : 'none';
       setStatus(list.length ? '' : t('fashionSuggestNeedImage'));
     } catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       suggestBtn.disabled = false;
     }
@@ -20920,7 +21675,7 @@ async function __safeJson(res){
       compareResultsEl.style.display = 'grid';
       compareStatusEl.style.display = 'none';
     } catch(e){
-      compareStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+      compareStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
     } finally {
       compareBtn.disabled = false;
     }
@@ -21287,18 +22042,11 @@ async function __safeJson(res){
       if(authBtn) authBtn.click();
       return;
     }
-    const clientId = '533765051685-2334rjfvu738sd2i50p7rb8gck1d00i2.apps.googleusercontent.com';
-    const redirectUri = window.location.origin + '/api/email-callback';
-    const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      response_type: 'code',
-      scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar.events',
-      access_type: 'offline',
-      prompt: 'consent',
-      state: token,
-    });
-    window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+    /* v-email-start-server: الرابط كان يُبنى هنا بـ window.location.origin ومعرّف
+       عميل مكتوب، بينما يبادل الخادم بـ SITE_URL ومعرّف البيئة — وجوجل تشترط
+       تطابق redirect_uri حرفًا بحرف، فكان الربط يفشل («مساعد الإيميل لا يعمل»).
+       الآن الخادم يبني الرابط بقيمه هو نفسها. (api/_lib/email-google-start.js) */
+    window.location.href = '/api/system?action=email-google-start&state=' + encodeURIComponent(token);
   });
 
   refreshBtn.addEventListener('click', loadEmails);
@@ -21682,45 +22430,48 @@ async function __safeJson(res){
   function pfMoney(n){ return (typeof n === 'number' && isFinite(n)) ? n.toLocaleString('en-US', {maximumFractionDigits: 0}) : '—'; }
   var pfBusy = false;
 
+  /* v-pf-i18n (شكوى المالك ٢٩ أغسطس: نافذة الأسهم عربية وسط واجهة المليالم):
+     عربي/أردو ← عربي، وغير ذلك ← إنجليزي — نفس قاعدة v-tools-i18n. */
+  function stT(arTxt, enTxt){ return (window.__bT) ? window.__bT(arTxt, enTxt) : (isEn()?enTxt:arTxt); }
   function pfRender(d){
     if(!pfWrap) return;
     var p = d.portfolio, bd = d.board || { top: [], rank: null, total: 0 };
     var h = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">'
-      + '<span style="font-size:11.5px;background:rgba(212,175,55,.14);border:1px solid rgba(212,175,55,.4);color:#d4af37;border-radius:999px;padding:4px 11px;">🎓 وضع تعليمي — أموال افتراضية 100٪</span></div>'
+      + '<span style="font-size:11.5px;background:rgba(212,175,55,.14);border:1px solid rgba(212,175,55,.4);color:#d4af37;border-radius:999px;padding:4px 11px;">' + stT('🎓 وضع تعليمي — أموال افتراضية 100٪','🎓 Learning mode — 100% virtual money') + '</span></div>'
       // البطاقة العلوية: القيمة الكلية والربح/الخسارة
       + '<div style="border:1px solid var(--border,#333);border-radius:14px;padding:14px;background:rgba(255,255,255,.02);margin-bottom:12px;">'
       + '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">'
-      + '<div><div style="font-size:11px;color:var(--muted);">قيمة المحفظة</div><div style="font-size:22px;font-weight:700;">$' + pfMoney(p.equity) + '</div></div>'
-      + '<div><div style="font-size:11px;color:var(--muted);">الكاش المتاح</div><div style="font-size:16px;font-weight:600;">$' + pfMoney(p.cash) + '</div></div>'
-      + '<div><div style="font-size:11px;color:var(--muted);">الربح/الخسارة</div><div style="font-size:16px;font-weight:700;color:' + pfCol(p.pl) + ';">' + (p.pl >= 0 ? '+' : '') + pfMoney(p.pl) + ' (' + p.plPct + '%)</div></div>'
+      + '<div><div style="font-size:11px;color:var(--muted);">' + stT('قيمة المحفظة','Portfolio value') + '</div><div style="font-size:22px;font-weight:700;">$' + pfMoney(p.equity) + '</div></div>'
+      + '<div><div style="font-size:11px;color:var(--muted);">' + stT('الكاش المتاح','Available cash') + '</div><div style="font-size:16px;font-weight:600;">$' + pfMoney(p.cash) + '</div></div>'
+      + '<div><div style="font-size:11px;color:var(--muted);">' + stT('الربح/الخسارة','Profit/Loss') + '</div><div style="font-size:16px;font-weight:700;color:' + pfCol(p.pl) + ';">' + (p.pl >= 0 ? '+' : '') + pfMoney(p.pl) + ' (' + p.plPct + '%)</div></div>'
       + '</div></div>'
       // نموذج الصفقة
       + '<div style="border:1px solid var(--border,#333);border-radius:14px;padding:12px;margin-bottom:12px;">'
-      + '<div style="font-size:12.5px;margin-bottom:8px;font-weight:600;">صفقة جديدة (بالسعر الحي الحقيقي)</div>'
+      + '<div style="font-size:12.5px;margin-bottom:8px;font-weight:600;">' + stT('صفقة جديدة (بالسعر الحي الحقيقي)','New trade (at the real live price)') + '</div>'
       + '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
-      + '<input id="pfSym" placeholder="الرمز مثل AAPL" style="flex:2;min-width:110px;padding:9px;border-radius:9px;border:1px solid var(--border,#444);background:transparent;color:inherit;font:inherit;text-transform:uppercase;">'
-      + '<input id="pfQty" type="number" min="1" placeholder="الكمية" style="flex:1;min-width:70px;padding:9px;border-radius:9px;border:1px solid var(--border,#444);background:transparent;color:inherit;font:inherit;">'
-      + '<button class="btn" id="pfBuy" style="background:#2E9E6B;color:#fff;border:none;">شراء</button>'
-      + '<button class="btn" id="pfSell" style="background:#e05252;color:#fff;border:none;">بيع</button>'
+      + '<input id="pfSym" placeholder="' + stT('الرمز مثل AAPL','Symbol e.g. AAPL') + '" style="flex:2;min-width:110px;padding:9px;border-radius:9px;border:1px solid var(--border,#444);background:transparent;color:inherit;font:inherit;text-transform:uppercase;">'
+      + '<input id="pfQty" type="number" min="1" placeholder="' + stT('الكمية','Quantity') + '" style="flex:1;min-width:70px;padding:9px;border-radius:9px;border:1px solid var(--border,#444);background:transparent;color:inherit;font:inherit;">'
+      + '<button class="btn" id="pfBuy" style="background:#2E9E6B;color:#fff;border:none;">' + stT('شراء','Buy') + '</button>'
+      + '<button class="btn" id="pfSell" style="background:#e05252;color:#fff;border:none;">' + stT('بيع','Sell') + '</button>'
       + '</div><div id="pfMsg" style="font-size:12px;margin-top:8px;line-height:1.7;"></div></div>';
     // المراكز
-    h += '<div style="font-size:12.5px;font-weight:600;margin:0 0 6px;">مراكزك (' + p.positions.length + ')</div>';
+    h += '<div style="font-size:12.5px;font-weight:600;margin:0 0 6px;">' + stT('مراكزك','Your positions') + ' (' + p.positions.length + ')</div>';
     if(!p.positions.length){
-      h += '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">ما عندك أسهم بعد — جرّب أول صفقة تعليمية! اكتب رمزًا مثل AAPL وكمية واضغط شراء.</div>';
+      h += '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">' + stT('ما عندك أسهم بعد — جرّب أول صفقة تعليمية! اكتب رمزًا مثل AAPL وكمية واضغط شراء.','No shares yet — try your first practice trade! Type a symbol like AAPL, a quantity, then press Buy.') + '</div>';
     } else {
       p.positions.forEach(function(pos){
         h += '<div style="display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(128,128,128,.15);padding:8px 2px;font-size:12.5px;flex-wrap:wrap;">'
           + '<b style="min-width:56px;">' + pfEsc(pos.symbol) + '</b>'
-          + '<span style="color:var(--muted);">' + pos.qty + ' سهم × $' + pos.price + '</span>'
+          + '<span style="color:var(--muted);">' + pos.qty + ' ' + stT('سهم','shares') + ' × $' + pos.price + '</span>'
           + '<span style="margin-inline-start:auto;font-weight:700;color:' + pfCol(pos.pl) + ';">' + (pos.pl >= 0 ? '+' : '') + pfMoney(pos.pl) + ' (' + pos.plPct + '%)</span>'
-          + '<button class="btn" data-pfsell="' + pfEsc(pos.symbol) + '" data-pfqty="' + pos.qty + '" style="padding:4px 10px;font-size:11px;">بيع الكل</button>'
-          + '<button class="btn" data-pfwhy="' + pfEsc(pos.symbol) + '" style="padding:4px 10px;font-size:11px;">🎓 علّمني</button>'
+          + '<button class="btn" data-pfsell="' + pfEsc(pos.symbol) + '" data-pfqty="' + pos.qty + '" style="padding:4px 10px;font-size:11px;">' + stT('بيع الكل','Sell all') + '</button>'
+          + '<button class="btn" data-pfwhy="' + pfEsc(pos.symbol) + '" style="padding:4px 10px;font-size:11px;">' + stT('🎓 علّمني','🎓 Teach me') + '</button>'
           + '</div>';
       });
     }
     // الترتيب
-    h += '<div style="font-size:12.5px;font-weight:600;margin:14px 0 6px;">🏆 ترتيب المتداولين'
-      + (bd.rank ? ' — مركزك: ' + bd.rank + ' من ' + bd.total : '') + '</div>';
+    h += '<div style="font-size:12.5px;font-weight:600;margin:14px 0 6px;">🏆 ' + stT('ترتيب المتداولين','Traders leaderboard') + ''
+      + (bd.rank ? stT(' — مركزك: ', ' — your rank: ') + bd.rank + stT(' من ', ' of ') + bd.total : '') + '</div>';
     (bd.top || []).forEach(function(r){
       h += '<div style="display:flex;gap:8px;font-size:12px;padding:4px 2px;' + '">'
         + '<span style="min-width:26px;">' + (r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : r.rank + '.') + '</span>'
@@ -21729,15 +22480,15 @@ async function __safeJson(res){
     });
     // آخر الصفقات + إعادة الضبط
     if((p.trades || []).length){
-      h += '<div style="font-size:12.5px;font-weight:600;margin:14px 0 6px;">آخر صفقاتك</div>';
+      h += '<div style="font-size:12.5px;font-weight:600;margin:14px 0 6px;">' + stT('آخر صفقاتك','Your recent trades') + '</div>';
       p.trades.forEach(function(t){
-        h += '<div style="font-size:11.5px;color:var(--muted);padding:2px 2px;">' + (t.side === 'buy' ? '🟢 شراء' : '🔴 بيع') + ' ' + t.qty + ' × ' + pfEsc(t.sym) + ' @ $' + t.price + '</div>';
+        h += '<div style="font-size:11.5px;color:var(--muted);padding:2px 2px;">' + (t.side === 'buy' ? stT('🟢 شراء','🟢 Buy') : stT('🔴 بيع','🔴 Sell')) + ' ' + t.qty + ' × ' + pfEsc(t.sym) + ' @ $' + t.price + '</div>';
       });
     }
     h += '<div id="pfLesson" style="display:none;margin-top:12px;border:1px solid rgba(212,175,55,.35);border-radius:12px;padding:12px;font-size:12.5px;line-height:1.9;white-space:pre-wrap;"></div>'
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:8px;flex-wrap:wrap;">'
-      + '<span style="font-size:10.5px;color:var(--muted);">تداول تجريبي تعليمي — أسعار حقيقية وأموال افتراضية، ليست نصيحة استثمارية.</span>'
-      + '<button class="btn" id="pfReset" style="font-size:11px;padding:5px 11px;">🔄 ابدأ من جديد (100 ألف)</button></div>';
+      + '<span style="font-size:10.5px;color:var(--muted);">' + stT('تداول تجريبي تعليمي — أسعار حقيقية وأموال افتراضية، ليست نصيحة استثمارية.','Educational paper trading — real prices, virtual money. Not investment advice.') + '</span>'
+      + '<button class="btn" id="pfReset" style="font-size:11px;padding:5px 11px;">' + stT('🔄 ابدأ من جديد (100 ألف)','🔄 Start over (100k)') + '</button></div>';
     pfWrap.innerHTML = h;
     pfWire();
   }
@@ -21748,15 +22499,15 @@ async function __safeJson(res){
     if(pfBusy) return;
     sym = String(sym || ($('#pfSym') && $('#pfSym').value) || '').trim().toUpperCase();
     qty = Math.floor(Number(qty != null ? qty : ($('#pfQty') && $('#pfQty').value)));
-    if(!sym || !qty || qty <= 0){ pfMsgShow('اكتب رمز السهم والكمية أولًا', false); return; }
-    pfBusy = true; pfMsgShow('⏳ ننفذ الصفقة بالسعر الحي…', true);
+    if(!sym || !qty || qty <= 0){ pfMsgShow(stT('اكتب رمز السهم والكمية أولًا','Enter a stock symbol and quantity first'), false); return; }
+    pfBusy = true; pfMsgShow(stT('⏳ ننفذ الصفقة بالسعر الحي…','⏳ Executing at the live price…'), true);
     api({ mode:'pf-trade', side: side, tradeSymbol: sym, qty: qty, token: pfTok(), guestId: (window.getGuestId ? getGuestId() : '') })
       .then(function(d){
         pfBusy = false; pfRender(d);
         var last = d.portfolio.trades && d.portfolio.trades[0];
         pfMsgShow(last ? ('✅ تمت: ' + (last.side === 'buy' ? 'شراء' : 'بيع') + ' ' + last.qty + ' × ' + last.sym + ' بسعر $' + last.price + (last.side === 'buy' ? ' — 🎓 درس: لا تضع كل كاشك في سهم واحد، التنويع يحميك.' : ' — 🎓 درس: البيع يثبّت الربح أو يوقف الخسارة، والقرار الجيد يُتخذ بخطة لا بعاطفة.')) : '✅ تمت الصفقة', true);
       })
-      .catch(function(e){ pfBusy = false; pfMsgShow('⚠️ ' + (e.message || 'تعذرت الصفقة'), false); });
+      .catch(function(e){ pfBusy = false; pfMsgShow('⚠️ ' + (e.message || stT('تعذرت الصفقة','Trade failed')), false); });
   }
 
   function pfWire(){
@@ -21782,15 +22533,17 @@ async function __safeJson(res){
     });
   }
 
+  /* v649: قراءة من قاموس اللغة مع سقوط آمن على العربيّة إن غاب المفتاح. */
+  function pfT(k, ar){ try{ var v = (typeof t === 'function') ? t(k) : ''; return (v && v !== k) ? v : ar; }catch(e){ return ar; } }
   function pfLoad(){
     if(!pfWrap) return;
     if(!pfTok()){
-      pfWrap.innerHTML = '<div style="text-align:center;padding:26px 10px;font-size:13px;line-height:2;">💼 <b>المحفظة التعليمية</b><br>100 ألف افتراضية تتداول بها بأسعار السوق الحقيقية وتنافس بقية المستخدمين 🏆<br><span style="color:var(--muted);font-size:12px;">سجّل الدخول لبدء محفظتك — تقدمك يُحفظ في حسابك.</span></div>';
+      pfWrap.innerHTML = '<div style="text-align:center;padding:26px 10px;font-size:13px;line-height:2;"><b>' + pfT('pfGuestTitle', '💼 المحفظة التعليمية') + '</b><br>' + pfT('pfGuestIntro', '100 ألف افتراضية تتداول بها بأسعار السوق الحقيقية وتنافس بقية المستخدمين 🏆') + '<br><span style="color:var(--muted);font-size:12px;">' + pfT('pfGuestLogin', 'سجّل الدخول لبدء محفظتك — تقدمك يُحفظ في حسابك.') + '</span></div>';
       return;
     }
-    pfWrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">⏳ نجهز محفظتك…</div>';
+    pfWrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">' + pfT('pfLoadingBox', '⏳ نجهز محفظتك…') + '</div>';
     api({ mode:'pf-get', token: pfTok() }).then(pfRender)
-      .catch(function(e){ pfWrap.innerHTML = '<div style="text-align:center;padding:20px;color:#e05252;font-size:13px;">⚠️ ' + pfEsc(e.message || 'تعذر تحميل المحفظة') + '</div>'; });
+      .catch(function(e){ pfWrap.innerHTML = '<div style="text-align:center;padding:20px;color:#e05252;font-size:13px;">⚠️ ' + pfEsc(e.message || pfT('pfLoadFail', 'تعذر تحميل المحفظة')) + '</div>'; });
   }
   btnOpen.addEventListener('click', function(){ modal.style.display = 'flex'; stkShowTab('global'); });
   btnClose.addEventListener('click', function(){
@@ -21888,8 +22641,11 @@ async function __safeJson(res){
   }
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function t(key){
-    const dict = (typeof I18N !== 'undefined') ? I18N[isEn() ? 'en' : 'ar'] : null;
+    /* v-global-first: المترجم العام (الـ14 لغة) أولًا — المحلي يعرف عربي/إنجليزي فقط */
+    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ /* لم يجهز بعد */ }
+    const dict = (typeof I18N !== 'undefined') ? I18N[bT('ar','en')] : null;
     return (dict && dict[key]) || key;
   }
   function setStatus(text){
@@ -21901,7 +22657,7 @@ async function __safeJson(res){
     const b = $('#constructionQuotaBadge');
     if(!b || !d || typeof d.remaining !== 'number') return;
     b.style.display = 'inline-block';
-    b.textContent = (isEn() ? 'Left today: ' : 'المتبقّي اليوم: ') + d.remaining + ' / ' + (d.dailyLimit || 6);
+    b.textContent = (bT('المتبقّي اليوم: ','Left today: ')) + d.remaining + ' / ' + (d.dailyLimit || 6);
   }
   function shrinkRef(b64, mime){
     return new Promise((resolve) => {
@@ -21967,9 +22723,7 @@ async function __safeJson(res){
     };
   }
 
-  const showGenerationFailure = () => setStatus(isEn()
-    ? '⚠️ Design generation took too long or the service is temporarily busy. Please try again.'
-    : '⚠️ تعذّر إكمال التصميم الآن؛ قد تستغرق العملية وقتًا أطول أو تكون الخدمة مشغولة مؤقتًا. حاول مرة أخرى.');
+  const showGenerationFailure = () => setStatus(bT('⚠️ تعذّر إكمال التصميم الآن؛ قد تستغرق العملية وقتًا أطول أو تكون الخدمة مشغولة مؤقتًا. حاول مرة أخرى.','⚠️ Design generation took too long or the service is temporarily busy. Please try again.'));
 
   btnRun.onclick = async () => {
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
@@ -21978,7 +22732,7 @@ async function __safeJson(res){
       return;
     }
     if(modePlanEl && modePhotoEl && !modePlanEl.checked && !modePhotoEl.checked){
-      setStatus(isEn() ? 'Pick at least one output type.' : 'اختر نوع نتيجة واحدًا على الأقل.');
+      setStatus(bT('اختر نوع نتيجة واحدًا على الأقل.','Pick at least one output type.'));
       return;
     }
     btnRun.disabled = true;
@@ -22069,7 +22823,7 @@ async function __safeJson(res){
 
   if(boqBtn) boqBtn.onclick = function(){
     const rows = boqRows();
-    if(!rows){ setStatus(isEn() ? '⚠️ This result has no bill of quantities.' : '⚠️ لا يوجد جدول كميات في هذه النتيجة.'); return; }
+    if(!rows){ setStatus(bT('⚠️ لا يوجد جدول كميات في هذه النتيجة.','⚠️ This result has no bill of quantities.')); return; }
     const csv = '\ufeff' + rows.map(function(r){ return r.map(csvEsc).join(','); }).join('\r\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
@@ -22079,9 +22833,9 @@ async function __safeJson(res){
   };
 
   if(pdfBtn) pdfBtn.onclick = function(){
-    if(!lastData){ setStatus(isEn() ? '⚠️ Generate a design first.' : '⚠️ ولّد التصميم أولًا.'); return; }
+    if(!lastData){ setStatus(bT('⚠️ ولّد التصميم أولًا.','⚠️ Generate a design first.')); return; }
     const w = window.open('', '_blank');
-    if(!w){ setStatus(isEn() ? '⚠️ Allow pop-ups to export the report.' : '⚠️ اسمح بالنوافذ المنبثقة لتصدير التقرير.'); return; }
+    if(!w){ setStatus(bT('⚠️ اسمح بالنوافذ المنبثقة لتصدير التقرير.','⚠️ Allow pop-ups to export the report.')); return; }
     const fig = function(b64, mime, cap){
       return b64 ? ('<figure><img src="data:' + (mime || 'image/png') + ';base64,' + b64 + '"><figcaption>' + cap + '</figcaption></figure>') : '';
     };
@@ -22139,7 +22893,7 @@ async function __safeJson(res){
         if(!res.ok){
           if(data.error === 'auth_required') angleStatusEl.textContent = t('designAiNeedLogin');
           else if(data.error === 'daily_limit_reached') angleStatusEl.textContent = t('designAiLimitReached');
-          else angleStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (data.error || 'unknown');
+          else angleStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (data.error || 'unknown');
           return;
         }
         angleImageEl.src = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
@@ -22148,7 +22902,7 @@ async function __safeJson(res){
         angleStatusEl.style.display = 'none';
         showQuota(data);
       }catch(e){
-        angleStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+        angleStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
       }finally{
         angleBtns.forEach((b) => { b.disabled = false; });
       }
@@ -22172,7 +22926,7 @@ async function __safeJson(res){
       if(!res.ok){
         if(data.error === 'auth_required') roomStatusEl.textContent = t('designAiNeedLogin');
         else if(data.error === 'daily_limit_reached') roomStatusEl.textContent = t('designAiLimitReached');
-        else roomStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (data.error || 'unknown');
+        else roomStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (data.error || 'unknown');
         return;
       }
       roomImageEl.src = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
@@ -22181,7 +22935,7 @@ async function __safeJson(res){
       roomStatusEl.style.display = 'none';
       showQuota(data);
     }catch(e){
-      roomStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+      roomStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
     }finally{
       roomViewBtn.disabled = false;
     }
@@ -22238,6 +22992,7 @@ async function __safeJson(res){
   if(!modal || !btnOpen) return;
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function lang7(){ return (typeof currentLang === 'function') ? currentLang() : (localStorage.getItem('aiapp_lang') || 'ar'); }
   function t2(key){
     const dict = (typeof window.__i18nDict === 'function') ? window.__i18nDict(lang7()) : ((typeof I18N !== 'undefined') ? I18N[lang7()] : null);
@@ -22377,7 +23132,7 @@ async function __safeJson(res){
   function populateStyleSelect(){
     const opts = STUDIO_OPTIONS[feature] || [];
     const langKey = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
-    styleEl.innerHTML = opts.map((o) => '<option value="' + o.value + '">' + (o[langKey] || o.en) + '</option>').join('');
+    styleEl.innerHTML = opts.map((o) => '<option value="' + o.value + '">' + (o[langKey] || (window.__bT ? window.__bT(o.ar, o.en) : o.en)) + '</option>').join('');
   }
 
   /* ---- 👤 saved face profile ---- */
@@ -22490,8 +23245,8 @@ async function __safeJson(res){
     if(!window.omranPicker || !styleEl) return;
     const opts = Array.from(styleEl.options);
     window.omranPicker.open({
-      title: featureTitle() || (isEn() ? '✨ AI style' : '✨ ستايل الذكاء الاصطناعي'),
-      count: opts.length + (isEn() ? ' options — pick yours' : ' خيارًا — اختر ما يناسبك'),
+      title: featureTitle() || (bT('✨ ستايل الذكاء الاصطناعي','✨ AI style')),
+      count: opts.length + (bT(' خيارًا — اختر ما يناسبك',' options — pick yours')),
       items: opts.map((opt) => ({
         v: opt.value, title: opt.textContent.trim(), active: opt.value === styleEl.value,
         img: 'assets/studio/options/' + feature + '-' + opt.value + '.webp',
@@ -22521,11 +23276,11 @@ async function __safeJson(res){
     nm.textContent = cur.textContent.trim();
     nm.style.cssText = 'font-size:13.5px; font-weight:700;';
     const sub = document.createElement('div');
-    sub.textContent = styleEl.options.length + (isEn() ? ' options for this feature' : ' خيارًا لهذه الميزة');
+    sub.textContent = styleEl.options.length + ' ' + (typeof window.t==='function'&&window.t('pickerOptsForFeature')!=='pickerOptsForFeature'?window.t('pickerOptsForFeature'):(bT('خيارًا لهذه الميزة','options for this feature')));
     sub.style.cssText = 'font-size:11px; color:var(--muted,#999);';
     info.appendChild(nm); info.appendChild(sub);
     const all = document.createElement('span');
-    all.textContent = isEn() ? 'Browse all ›' : 'عرض الكل ›';
+    all.textContent = (typeof window.t==='function'&&window.t('portraitStyleBrowseAll')!=='portraitStyleBrowseAll'?window.t('portraitStyleBrowseAll'):(bT('عرض الكل ›','Browse all ›')));
     all.style.cssText = 'color:#d4af37; font-size:12.5px; font-weight:700; flex:none;';
     trig.appendChild(img); trig.appendChild(info); trig.appendChild(all);
     trig.onclick = openStudioPicker;
@@ -22740,7 +23495,7 @@ async function __safeJson(res){
       suggestionsEl.style.display = list.length ? 'flex' : 'none';
       setStatus(list.length ? '' : t('studioAiNeedImage'));
     } catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       suggestBtn.disabled = false;
     }
@@ -22796,7 +23551,7 @@ async function __safeJson(res){
       compareResultsEl.style.display = 'grid';
       compareStatusEl.style.display = 'none';
     } catch(e){
-      compareStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+      compareStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
     } finally {
       compareBtn.disabled = false;
     }
@@ -22855,7 +23610,7 @@ async function __safeJson(res){
       heritageCompareResultsEl.style.display = 'grid';
       heritageCompareStatusEl.style.display = 'none';
     } catch(e){
-      heritageCompareStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+      heritageCompareStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
     } finally {
       heritageCompareBtn.disabled = false;
     }
@@ -24445,7 +25200,7 @@ window.updateVersionLabel();
         if (line.indexOf('data: ') !== 0) continue;
         var ev;
         try { ev = JSON.parse(line.slice(6)); } catch (e) { continue; }
-        if (ev.status) note(ev.status);
+        if (ev.status) note((typeof tStatus === 'function') ? tStatus(ev) : ev.status);  /* v656 */
         if (ev.clientTool) serveClientTool(ev.clientTool);
         if (ev.delta) {
           noteEnd();
@@ -25283,6 +26038,10 @@ window.__logoPickerOpen = openPicker;
 
 // ── زر في شريط الأدوات (يُربط بعد DOMContentLoaded) ─────────────────────────
 function mountLogoBtn(){
+  /* v-logos-off (أمر المالك ٢٩ أغسطس): بطاقة «شعارات العالم» تُحذف من مربع
+     الأدوات نهائيًا — الدالة تخرج مبكرًا فلا يُنشأ الزر، وبقية المكتبة
+     تبقى خاملة كما هي (اختبار fashion-locks يفحص نصوصها أدناه). */
+  return;
   // زر داخل مربع الأدوات.
   // v-wiring-sweep: toolsBox/toolsBoxInner لم يعودا موجودَين بعد إعادة تصميم
   // الواجهة، وكان الحارس القديم يخرج مبكرًا فلا يظهر زر «شعارات العالم» أبدًا.

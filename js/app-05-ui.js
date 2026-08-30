@@ -1,5 +1,95 @@
 // ===== v199: reply action bar helpers (⋮ convert menu) =====
+/* v-app-share (شكوى ٢٨ أغسطس: «تحميل PDF ما يشتغل» في تطبيق المتجر):
+   WKWebView لا يدعم روابط التنزيل <a download> ولا window.print() إطلاقًا —
+   فكل التصديرات كانت تموت بصمت داخل تطبيق الآيفون. الغلاف (Capacitor) صار
+   يوفر جسرين: omranShare (ملف جاهز → ورقة مشاركة iOS) و omranPdf
+   (HTML → يُحوَّل PDF أصليًا → ورقة مشاركة). في المتصفح العادي لا يتغير شيء. */
+function omranNativeBridge(name){
+  try{
+    const h = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers[name];
+    return (h && h.postMessage) ? h : null;
+  }catch(e){ return null; }
+}
+/* v-pdf-universal: حفظ PDF يعمل في كل البيئات — جسر تطبيق الآيفون، ثم ورقة
+   مشاركة النظام (أندرويد/هواوي/TWA)، ثم التنزيل العادي (الكمبيوتر).
+   AbortError = المستخدم أغلق ورقة المشاركة بنفسه — ليس فشلًا فلا ننزّل نسخة ثانية. */
+/* v-pdf-link: هل نعمل داخل غلاف تطبيق (TWA/متجر/PWA مثبّت)؟ الأغلفة لا
+   تنفّذ تنزيل blob المحلي — نرفع الملف للسيرفر ونفتح رابط تنزيل حقيقي
+   يمرّ عبر منزّل النظام نفسه فيعمل في كل غلاف. */
+function omranLikelyApp(){
+  try{
+    if(document.referrer && document.referrer.indexOf('android-app://') === 0) localStorage.setItem('aiapp_twa', '1');
+    if(localStorage.getItem('aiapp_twa') === '1') return true;
+    if(localStorage.getItem('aiapp_store')) return true;
+    if(window.matchMedia && matchMedia('(display-mode: standalone)').matches) return true;
+    if(navigator.standalone === true) return true;
+  }catch(e){ __swallow(e, 'share:app-detect'); }
+  return false;
+}
+async function omranBlobToServerLink(blob, filename){
+  const b64 = await new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(String(fr.result || '').split(',')[1] || '');
+    fr.onerror = reject;
+    fr.readAsDataURL(blob);
+  });
+  if(!b64 || b64.length > 4 * 1024 * 1024) throw new Error('too-large');
+  const r = await fetch('/api/media?action=pdf', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data: b64, name: filename }),
+  });
+  const d = await r.json();
+  if(!r.ok || !d || !d.url) throw new Error('upload-failed');
+  return d.url;
+}
+async function omranSaveBlob(blob, filename){
+  if(omranNativeBridge('omranShare')){ msgDownloadBlob(blob, filename); return; }
+  try{
+    if(navigator.canShare && typeof File === 'function'){
+      const f = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
+      if(navigator.canShare({ files: [f] })){
+        try{ await navigator.share({ files: [f], title: filename }); return; }
+        catch(e){ if(e && e.name === 'AbortError') return; /* غيره: ننزل للمسار التالي */ }
+      }
+    }
+  }catch(e){ __swallow(e, 'share:universal'); }
+  /* داخل الأغلفة: رابط سيرفر حقيقي (PDF فقط — النقطة تفحص التوقيع) */
+  if(omranLikelyApp() && (blob.type === 'application/pdf' || /\.pdf$/i.test(filename || ''))){
+    try{
+      const url = await omranBlobToServerLink(blob, filename);
+      const w = window.open(url, '_blank');
+      /* v-pdf-noleave (شكوى ٢٩ أغسطس: «تحميل PDF يرجّعني لصفحة المحادثة»):
+         داخل التطبيق المثبّت window.open يرجع null، وكان location.href
+         يُبحر بصفحة التطبيق نفسها إلى رابط التنزيل — وأي تعثّر يعيد
+         المستخدم للمحادثة بلا ملف. iframe خفي يسلّم الملف لمنزّل النظام
+         (ترويسة attachment) دون مغادرة الصفحة إطلاقًا. */
+      if(!w){
+        const dfr = document.createElement('iframe');
+        dfr.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;';
+        dfr.src = url;
+        document.body.appendChild(dfr);
+        setTimeout(() => { try{ dfr.remove(); }catch(e){ __swallow(e, 'share:dl-frame'); } }, 60000);
+      }
+      return;
+    }catch(e){ __swallow(e, 'share:server-link'); }
+  }
+  msgDownloadBlob(blob, filename);
+}
 function msgDownloadBlob(blob, filename){
+  const share = omranNativeBridge('omranShare');
+  if(share){
+    try{
+      const fr = new FileReader();
+      fr.onload = () => {
+        try{
+          const b64 = String(fr.result || '').split(',')[1] || '';
+          share.postMessage({ b64, name: filename || 'omran-file', mime: blob.type || 'application/octet-stream' });
+        }catch(e){ __swallow(e, 'share:app#post'); }
+      };
+      fr.readAsDataURL(blob);
+      return;
+    }catch(e){ __swallow(e, 'share:app#reader'); }
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = filename;
@@ -8,6 +98,70 @@ function msgDownloadBlob(blob, filename){
 }
 function msgEscapeHtml(str){
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+/* v-pdf-file (شكوى ٢٩ أغسطس: «PDF ما يشتغل في الهاتف والكمبيوتر»):
+   مسارا «تحويل الرد/المحادثة إلى PDF» كانا يفتحان نافذة طباعة — المستخدم
+   يتوقع ملفًا ينزل مباشرة، والطباعة أصلًا ميتة داخل الأغلفة. المسار الموحد:
+   نرسم المحتوى بخط الصفحة نفسه (عربي مشكَّل صحيح عبر canvas) ثم نبنيه
+   PDF بصفحات A4 وننزله بمسار الحفظ الموحد. الطباعة تبقى احتياطًا أخيرًا. */
+let __omranJsPdfLoading = null;
+function omranLoadJsPdf(){
+  if(window.jspdf && window.jspdf.jsPDF) return Promise.resolve();
+  if(__omranJsPdfLoading) return __omranJsPdfLoading;
+  const load = (src) => new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = resolve; s.onerror = () => reject(new Error('load-failed'));
+    document.head.appendChild(s);
+  });
+  __omranJsPdfLoading = load('/js/vendor/jspdf.umd.min.js?v=1')
+    .catch(() => load('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'))
+    .catch((e) => { __omranJsPdfLoading = null; throw e; });
+  return __omranJsPdfLoading;
+}
+let __omranH2iLoading = null;
+function omranLoadHtmlToImage(){
+  if(window.htmlToImage && window.htmlToImage.toCanvas) return Promise.resolve();
+  if(__omranH2iLoading) return __omranH2iLoading;
+  __omranH2iLoading = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = '/js/vendor/html-to-image.js?v=1';
+    s.onload = resolve; s.onerror = () => { __omranH2iLoading = null; reject(new Error('load-failed')); };
+    document.head.appendChild(s);
+  });
+  return __omranH2iLoading;
+}
+async function omranExportHtmlAsPdfFile(bodyHtml, opts){
+  opts = opts || {};
+  const holder = document.createElement('div');
+  holder.dir = opts.rtl === false ? 'ltr' : 'rtl';
+  holder.style.cssText = 'position:fixed; left:-12000px; top:0; width:794px; background:#ffffff; color:#111; padding:40px 44px; box-sizing:border-box; line-height:1.9; font-size:15px;';
+  holder.style.fontFamily = opts.fontFamily || "'Tajawal', Tahoma, Arial, sans-serif";
+  holder.innerHTML = bodyHtml;
+  document.body.appendChild(holder);
+  try{
+    await Promise.all([omranLoadJsPdf(), omranLoadHtmlToImage()]);
+    try{ if(document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]); }catch(e){ __swallow(e, 'pdf:fonts-wait'); }
+    const canvas = await window.htmlToImage.toCanvas(holder, { backgroundColor: '#ffffff', pixelRatio: 2 });
+    if(!canvas.width || !canvas.height) throw new Error('empty-canvas');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+    const pw = pdf.internal.pageSize.getWidth();
+    const ph = pdf.internal.pageSize.getHeight();
+    const pageHpx = Math.floor(canvas.width * (ph / pw));
+    let y = 0, first = true;
+    while(y < canvas.height){
+      const sliceH = Math.min(pageHpx, canvas.height - y);
+      const slice = document.createElement('canvas');
+      slice.width = canvas.width; slice.height = sliceH;
+      slice.getContext('2d').drawImage(canvas, 0, y, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+      if(!first) pdf.addPage();
+      pdf.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pw, (sliceH / canvas.width) * pw);
+      first = false; y += sliceH;
+    }
+    await omranSaveBlob(pdf.output('blob'), opts.fileName || 'omran-ai.pdf');
+  } finally {
+    holder.remove();
+  }
 }
 function msgPdfFontSpec(){
   const fallback = {family:"'Tajawal'", google:'', line:1.7};
@@ -23,6 +177,15 @@ function msgPdfFontHead(font){
   return {family, link:'<link rel="stylesheet" data-pdf-font href="https://fonts.googleapis.com/css2?' + query + '&display=swap">'};
 }
 function msgPrintAfterFont(view, family, ctx){
+  /* v-app-share: داخل تطبيق المتجر window.print() لا يعمل — نرسل مستند
+     المعاينة كاملًا لجسر الغلاف ليحوّله PDF أصليًا ويفتح ورقة المشاركة. */
+  const pdfBridge = omranNativeBridge('omranPdf');
+  if(pdfBridge){
+    try{
+      pdfBridge.postMessage({ html: view.document.documentElement.outerHTML, name: 'omran-ai.pdf' });
+      return;
+    }catch(e){ __swallow(e, ctx + ':app-pdf'); }
+  }
   let done = false;
   const print = () => { if(done) return; done = true; try{ view.focus(); view.print(); }catch(e){ __swallow(e, ctx); } };
   const timer = setTimeout(print, 3000);
@@ -40,13 +203,23 @@ function msgPrintAfterFont(view, family, ctx){
   }catch(e){ __swallow(e, ctx + ':font-link'); wait(); }
 }
 function exportReplyAsPdf(text){
-  const w = window.open('', '_blank');
-  if(!w) return;
   const font = msgPdfFontSpec();
   const pdfFont = msgPdfFontHead(font);
   const html = '<html><head><meta charset="utf-8"><title>عمران AI</title>' + pdfFont.link + '<style>body{font-family:' + pdfFont.family + ';direction:rtl;padding:28px;line-height:' + font.line + ';color:#111;white-space:pre-wrap;word-break:break-word;}</style></head><body>' + msgEscapeHtml(text) + '</body></html>';
-  w.document.open(); w.document.write(html); w.document.close();
-  msgPrintAfterFont(w, pdfFont.family, 'ui:app-05-ui#1');
+  /* v-app-share: window.open داخل تطبيق المتجر يرجع null — نرسل للجسر مباشرة */
+  const pdfBridge = omranNativeBridge('omranPdf');
+  if(pdfBridge){
+    try{ pdfBridge.postMessage({ html, name: 'omran-ai.pdf' }); return; }catch(e){ __swallow(e, 'ui:app-05-ui#1-app'); }
+  }
+  /* v-pdf-file: ملف PDF ينزل مباشرة بدل نافذة الطباعة — الطباعة احتياط أخير */
+  const inner = '<div style="white-space:pre-wrap; word-break:break-word; line-height:' + font.line + ';">' + msgEscapeHtml(text) + '</div>';
+  omranExportHtmlAsPdfFile(inner, { fontFamily: pdfFont.family, fileName: 'omran-ai.pdf' }).catch((e) => {
+    __swallow(e, 'ui:app-05-ui#1-file');
+    const w = window.open('', '_blank');
+    if(!w) return;
+    w.document.open(); w.document.write(html); w.document.close();
+    msgPrintAfterFont(w, pdfFont.family, 'ui:app-05-ui#1');
+  });
 }
 function exportReplyAsWord(text){
   const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>عمران AI</title></head><body dir="rtl" style="font-family:Tahoma,Arial,sans-serif; line-height:2; white-space:pre-wrap;">' + msgEscapeHtml(text) + '</body></html>';
@@ -863,10 +1036,22 @@ const PROVIDER_DISPLAY = {
   mistral: 'السريع', deepseek: 'العميق', perplexity: 'العميق',
   cohere: 'العميق', openrouter: 'العميق',
 };
+/* v-nick-i18n (شكوى المالك ٢٩ أغسطس: «الكينج» طلعت عربية وسط واجهة
+   المليالم): الألقاب الثلاثة صارت مفاتيح ترجمة تتبدل مع لغة الواجهة. */
+const PROVIDER_NICK_KEYS = {
+  claude: 'provNickKing', gemini: 'provNickFast', openai: 'provNickDeep', groq: 'provNickFast',
+  mistral: 'provNickFast', deepseek: 'provNickDeep', perplexity: 'provNickDeep',
+  cohere: 'provNickDeep', openrouter: 'provNickDeep',
+};
 function functionalLabel(key){
   // v362 — الستة المخفيون لا يظهر اسمهم أبدًا: أي مزود يرد → يُعرض باسم
   // رأس مجموعته الظاهر (Groq/Mistral→Gemini، DeepSeek/Perplexity/Cohere/OpenRouter→GPT، Claude→Claude).
   const primary = funcPrimaryOf(key);
+  const nickKey = PROVIDER_NICK_KEYS[primary];
+  if(nickKey && typeof t === 'function'){
+    const v = t(nickKey);
+    if(v && v !== nickKey) return v;
+  }
   return PROVIDER_DISPLAY[primary] || PROVIDER_KEY_LABELS[primary] || primary;
 }
 // v359 — 3 أزرار بأسمائها الحقيقية الشهيرة (الناس تعرفها) + شعاراتها الأصلية.
@@ -993,6 +1178,28 @@ function initProvDropdown(){
   if(search){ search.addEventListener('input', () => provDDFilter(search.value)); search.onclick = (e) => e.stopPropagation(); }
   provDDUpdateButton();
 }
+/* v655 — أسماء المزوّدين (الكينج/السريع/العميق) كانت تُكتب مرّة واحدة عند
+   البناء فتتجمّد بلغة تلك اللحظة: عربيّة عند تبديل اللغة بلا تحديث،
+   وإنجليزيّة في اللغات الكسولة لأنّ الشريط يُبنى قبل وصول ملفّ اللغة.
+   الآن تُعاد تسميتها في كلّ تطبيق للّغة. */
+function relabelProviders(){
+  try{
+    document.querySelectorAll('#providerGridCells .prov-cell').forEach(cell => {
+      const lbl = functionalLabel(cell.dataset.provider);
+      const nm = cell.querySelector('.prov-name');
+      if(nm) nm.textContent = lbl;
+      cell.title = lbl;
+    });
+    document.querySelectorAll('#providerStripMobile .prov-chip-m').forEach(chip => {
+      const lbl = functionalLabel(chip.dataset.provider);
+      const nm = chip.querySelector('span');
+      if(nm) nm.textContent = lbl;
+      chip.title = lbl;
+    });
+    if(typeof provDDUpdateButton === 'function') provDDUpdateButton();
+  }catch(e){ __swallow(e, "ui:app-05-ui#relabel"); }
+}
+try{ window.relabelProviders = relabelProviders; }catch(_){ /* guard-ok — تصدير اختياري، فشله لا يعطل الشريط */ }
 function updateProviderQuickBarActive(){
   const current = localStorage.getItem('aiapp_provider') || 'claude';
   document.querySelectorAll('.prov-cell, .prov-chip-m').forEach(el => {
@@ -1680,6 +1887,8 @@ function toggleSettingsSection(id){
     if (arrow) arrow.style.transform = 'rotate(90deg)';
     // 💰 عند فتح قسم الباقات: جلب رصيد النقاط وعرضه
     if (id === 'pricingSection' && typeof refreshPointsWallet === 'function') refreshPointsWallet();
+    // v-points-acct: فتح «حسابي» يجلب الرصيد ويُظهر تحذير قرب النفاد تلقائيًا
+    if (id === 'accountSection' && typeof refreshAcctPoints === 'function') refreshAcctPoints();
   }
 }
 function collapseAllSettingsSections(){
@@ -1757,6 +1966,11 @@ function showSettingsPage(sid){
   if(content) content.style.display = 'block';
   if(arrow) arrow.style.transform = 'rotate(90deg)';
   if(settingsDialog) settingsDialog.scrollTop = 0;
+  // v-points-acct: الدخول لصفحة «حسابي» أو «الباقات» من القائمة يجلب الرصيد تلقائيًا
+  try{
+    if(sid === 'accountSection' && typeof refreshAcctPoints === 'function') refreshAcctPoints();
+    if(sid === 'pricingSection' && typeof refreshPointsWallet === 'function') refreshPointsWallet();
+  }catch(e){ __swallow(e, 'points:acct-refresh'); }
 }
 window.showSettingsPage = showSettingsPage;
 (function(){
@@ -2117,7 +2331,7 @@ async function postWithConfirm(url, payload){
     sb.style.cssText = 'font-size:11px;color:var(--muted,#999);';
     info.appendChild(nm); info.appendChild(sb);
     var all = document.createElement('span');
-    all.textContent = (localStorage.getItem('aiapp_lang') === 'en') ? 'Browse all ›' : 'عرض الكل ›';
+    all.textContent = (typeof t === 'function' && t('portraitStyleBrowseAll') !== 'portraitStyleBrowseAll') ? t('portraitStyleBrowseAll') : ((localStorage.getItem('aiapp_lang') === 'en') ? 'Browse all ›' : 'عرض الكل ›');
     all.style.cssText = 'color:#d4af37;font-size:12.5px;font-weight:700;flex:none;';
     d.appendChild(th); d.appendChild(info); d.appendChild(all);
     function refresh(){
@@ -2169,3 +2383,31 @@ async function postWithConfirm(url, payload){
 /* v-boot-watchdog */
 /* v-ios-slider */
 /* v-boot-watchdog3 */
+
+/* v-maha-center: «م» في خانة الصف توسَّط بحبرها لا بصندوق سطرها — مقاييس
+   الخط تختلف بين الأجهزة فتنزل الميم عن المركز؛ نقيس حبر الحرف فعليًّا
+   (canvas TextMetrics) ونزيحه ليطابق مركز الخانة بالبكسل، ونعيد القياس
+   بعد تحميل خط الصفحة. */
+(function centerMahaGlyph(){
+  const g = document.querySelector('#composerRow #btnMahaDock .mahaGlyph');
+  if(!g) return;
+  const fix = () => {
+    try{
+      const cs = getComputedStyle(g);
+      const ctx = document.createElement('canvas').getContext('2d');
+      ctx.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+      const m = ctx.measureText('م');
+      if(m.fontBoundingBoxAscent === undefined) return; // متصفح قديم: تبقى إزاحة CSS الافتراضية
+      const spanH = g.getBoundingClientRect().height;
+      const baselineTop = (spanH - (m.fontBoundingBoxAscent + m.fontBoundingBoxDescent)) / 2 + m.fontBoundingBoxAscent;
+      const inkCenter = baselineTop + (m.actualBoundingBoxDescent - m.actualBoundingBoxAscent) / 2;
+      // أفقيًّا كذلك: حبر الميم يميل عن منتصف صندوق تقدّمها فنزيحه للمنتصف.
+      // الحبر يمتد من ‎-Left إلى ‎+Right حول نقطة الأصل، ومنتصفه = (R−L)/2.
+      const inkMidX = (m.actualBoundingBoxRight - m.actualBoundingBoxLeft) / 2;
+      const shiftX = (m.width / 2) - inkMidX;
+      g.style.transform = 'translate(' + shiftX.toFixed(1) + 'px,' + (spanH / 2 - inkCenter).toFixed(1) + 'px)';
+    }catch(e){ __swallow(e, 'ui:maha-center'); }
+  };
+  fix();
+  try{ if(document.fonts && document.fonts.ready) document.fonts.ready.then(fix, () => {}); }catch(e){ __swallow(e, 'ui:maha-center#fonts'); }
+})();

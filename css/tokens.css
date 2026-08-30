@@ -422,7 +422,7 @@
     border:none !important; box-shadow:none !important;
     border-radius:var(--r-2) !important; line-height:1; color:#fff;
   }
-  #btnSend{display:none; background:var(--grad) !important; transition:transform .15s ease;}
+  #btnSend{display:inline-flex; background:var(--grad) !important; transition:transform .15s ease, opacity .15s ease;}
   #btnSend.ready{display:inline-flex; transform:scale(1.06);}
   #btnSend svg, #btnStop svg{width:18px; height:18px; display:block;}
   #btnStop{background:#ff4d4d !important;}
@@ -566,7 +566,7 @@
      On mobile the CHAT is the main/default screen. ☰ opens the CODE drawer,
      💬 opens the PREVIEW drawer, and 📂 opens the projects-history drawer. */
   @media (max-width:860px){
-    header{padding:8px 10px 8px; padding-top:env(safe-area-inset-top, 0px) !important; gap:6px; flex-direction:row; align-items:center; justify-content:space-between; flex-wrap:nowrap;}
+    header{padding:8px 10px 8px; padding-top:min(var(--omran-sat, env(safe-area-inset-top, 0px)), 62px) !important; gap:6px; flex-direction:row; align-items:center; justify-content:space-between; flex-wrap:nowrap;}
     header h1{font-size:14px; min-width:0; flex:1 1 auto; overflow:hidden;}
     header h1 .brand{width:28px; height:28px; border-radius:9px; font-size:14px; flex-shrink:0;}
     header h1 .titles{min-width:0; overflow:hidden;}

@@ -908,3 +908,135 @@ I18N['fil'] = {
     emailAsst_error: "❌ Error: ", emailAsst_voiceBtn: "Buod na boses", emailAsst_addToCalendar: "📅 Idagdag sa Calendar", emailAsst_addingEvent: "Idinadagdag ang event…", emailAsst_eventAdded: "✅ Naidagdag sa iyong calendar", emailAsst_calReauth: "I-reconnect ang Gmail para payagan ang access sa calendar", emailAsst_voiceLoading: "🔊 Ihahanda ang buod na boses…", emailAsst_voiceEmpty: "Walang email na dapat buodin.",
     emailAsst_urgent: "🔴 Kagyat", emailAsst_normal: "🟡 Normal", emailAsst_low: "⚪ Mababa",
 };
+
+/* v-i18n-fill (فحص ٢٩ أغسطس ٢٠٢٦): الـ٤٤ مفتاحًا التي أُضيفت للعربية
+   والإنجليزية فقط مع الميزات الأخيرة — المرشد البصري والنبرة ودخول OTP
+   والوكيل وغيرها — تُستكمل هنا فلا يظهر إنجليزي وسط هذه الواجهة. */
+Object.assign(I18N["fil"], {
+    acctLoginBtnLabel: "🔐 Mag-sign in / Gumawa ng account",
+    designCompareTitle: "🆚 Ang kwarto ko sa lahat ng istilo",
+    designCompareHint: "I-upload ang larawan ng kwarto, pumili ng 2-3 istilo — idedesign namin nang magkatabi",
+    designCompareBtn: "🆚 Idesign sa napiling istilo",
+    designBABefore: "Bago",
+    designBAAfter: "Pagkatapos",
+    portraitStyleBrowseAll: "Tingnan lahat ›",
+    portraitStyleSheetTitle: "🎨 Mga istilo ng litrato",
+    fashionDropTitle: "Mag-upload ng buong-katawang litrato",
+    fashionDropHint: "Ulo hanggang paa · malinaw na ilaw",
+    agentSectionTitle: "🤖 Ahente",
+    agentSectionDesc: "Agent mode: nagpaplano at gumagawa mag-isa — binubuo, ineedit at tinetest ang code bago ihatid, tumitingin sa live na source, at patuloy na gumagana kahit sarado ang page. I-on ito, tapos i-type ang request mo sa chat.",
+    agentOnNote: "Naka-ON ang ahente — bumalik sa chat at i-type ang request mo.",
+    vgModeTranslate: "Live na salin",
+    vgModeAsk: "Itanong ito",
+    vgTitle: "Visual na Gabay",
+    vgModeDescribe: "Ilarawan ang paligid",
+    vgModeRead: "Basahin ang teksto",
+    vgModeSteps: "Hakbang-hakbang",
+    vgModeTour: "Tour ng app",
+    vgAsk: "Itanong",
+    vgAuto: "Auto",
+    vgRepeat: "Ulitin",
+    vgSound: "Tunog",
+    vgTorch: "Ilaw",
+    vgHint: "Pindutin kahit saan, ilalarawan ko agad",
+    omNavGuide: "Gabay",
+    authEmailOtpBtn: "Mag-sign in gamit ang email",
+    authOtpBack: "Bumalik",
+    authOtpCodeLabel: "Verification code",
+    authOtpEmailLabel: "Email address",
+    authOtpSendBtn: "Ipadala ang code",
+    aboutTagline: "Arabic na plataporma para gumawa ng apps gamit ang AI",
+    videosGroupTitle: "🎬 Mga panimulang video",
+    toneSectionLabel: "Tono",
+    toneAuto: "Ikaw ang bahala",
+    toneWarm: "Palakaibigan",
+    toneDirect: "Diretso",
+    toneFormal: "Pormal",
+    toneHint: "Piliin ang gusto mong istilo ng sagot — o hayaang umangkop ang AI sa iyo.",
+    mahaCcTitle: "Live na caption ng tawag",
+    checkoutApplePay: "Apple Pay",
+    checkoutGooglePay: "Google Pay",
+    checkoutWalletUnavailable: "Hindi available sa device na ito",
+});
+
+/* v-nick-i18n: ألقاب المزودين الثلاثة */
+Object.assign(I18N['fil'], { provNickKing: "Ang King", provNickFast: "Ang Mabilis", provNickDeep: "Ang Malalim" });
+
+/* v-modes-i18n + v-psub */
+Object.assign(I18N['fil'], { modeCreateImage: "Gumawa ng larawan", modeWebSearch: "Web search", modeThinkDeeper: "Malalim na pag-iisip", psheetCountSuffix: "istilo — parehong mukha, bawat istilo" });
+
+/* v-fashion-refine */
+Object.assign(I18N['fil'], { fashionRefinePh: "hal.: palitan lang ang kulay ng damit sa asul", fashionRefineBtn: "✏️ I-edit ang isang detalye", fashionRefineNeed: "Isulat muna ang gustong pagbabago", fashionRefining: "Ina-apply ang pagbabago…" });
+
+/* v-studios-i18n: بقايا نوافذ الاستوديوهات + محلل المصاريف */
+Object.assign(I18N['fil'], {
+  pickerOptsForFeature: "opsyon para sa feature na ito",
+  pickerStylesForCategory: "istilo para sa kategoryang ito",
+  pickerOptsWord: "opsyon",
+  pickerOptsPick: "opsyon — pumili",
+  videoOptAdspot: "📢 Mabilis na ad (5s + narration)",
+  videoOptReels: "📱 Smart reels (10s + narration)",
+  fashionEngineLabel: "🎨 Image engine",
+  fashionEngineGemini: "Gemini — pinaka-preserve ang mukha (default)",
+  fashionEngineOpenai: "ChatGPT (gpt-image-1) — image engine ng ChatGPT",
+  videoAdvanced: "Advanced na opsyon",
+  exp_title: "Expense Analyzer",
+  exp_intro: "I-upload ang bank statement (PDF o larawan) para i-categorize ang gastos",
+  exp_pick: "📄 Pumili ng statement (PDF / larawan)",
+  exp_hint: "PDF o malinaw na larawan",
+  exp_paste: "O i-paste ang gastos bilang teksto",
+  exp_pastePh: "I-paste ang transaksyon dito…",
+  exp_go: "Suriin ang gastos",
+  exp_busy: "Sinusuri…",
+  exp_total: "Kabuuang gastos",
+  exp_tx: "transaksyon",
+  exp_dist: "Hati-hati ng gastos",
+  exp_biggest: "Pinakamalaking gastos",
+  exp_tips: "Tips sa pag-iipon",
+  exp_again: "Iba pang statement",
+  exp_disc: "Tinatayang bilang — gabay lamang, hindi financial advice.",
+  exp_noContent: "Pumili muna ng file o mag-paste ng teksto",
+  exp_err: "Nabigo ang pagsusuri, subukan ulit"
+});
+
+Object.assign(I18N['fil'], { videoNeedDesc: "⚠️ Ilarawan muna ang video.", videoVoiceFemale: "👩 Fatima (babae)", videoVoiceMale: "👨 Hamdan (lalaki)" }); // v-video-i18n
+
+/* v-about-i18n */
+Object.assign(I18N['fil'], {
+  aboutFeatChat: "Gumawa ng buong app sa pag-chat",
+  aboutFeatProviders: "9 AI provider + «Tanungin lahat»",
+  aboutFeatMaha: "Maha — live voice assistant",
+  aboutFeatStudios: "7 creative image studios",
+  aboutFeatStocks: "Stock market at learning portfolio",
+  aboutFeatPrivacy: "Privacy muna — sa iyo ang keys",
+  aboutChipUAE: "Gawa sa UAE 🇦🇪",
+  aboutChipPWA: "PWA app",
+  aboutChipLangs: "14 na wika",
+  aboutMoreSummary: "📖 Higit pa"
+});
+Object.assign(I18N['fil'], {
+  "aboutSupportTitle": "📞 Serbisyo sa customer at suporta",
+  "aboutSupportDesc": "Sinasagot namin ang inyong mga tanong sa loob ng 24–48 oras.",
+  "aboutCopyright": "© Omran AI team — Gawa nang may pagmamahal sa UAE 🇦🇪",
+  "adminPanelTitle": "🛠️ Admin panel (para lang sa may-ari)"
+});
+Object.assign(I18N['fil'], {"videoBadgeShort":"Maikli","videoBadgeFull":"Buo"});
+Object.assign(I18N['fil'], {
+  "provTypingSuffix": "nagta-type…",
+  "provFailSwitch": "hindi tumugon ({why}) — lumilipat…",
+  "provUnknownReason": "di-kilalang dahilan",
+  "provWhyBuild": "paggawa ng app at pag-edit ng code",
+  "provWhyVision": "pagbabasa ng mga larawan",
+  "provWhyGeneral": "ganitong uri ng kahilingan",
+  "provSwitchNote": "Pinili mo ang {sel} — pero ang {why} ay hawak ng {eff}, ang pinakatumpak dito. Ang karaniwang chat mo ay mananatili sa {sel}.",
+  "provSwitchNoteHidden": "Ang chat mo ay nasa {sel} — pero ang {why} ay hawak ng {eff}, ang pinakatumpak dito. Ang karaniwang chat mo ay mananatili sa {sel}."
+});
+Object.assign(I18N['fil'], {"pageTitle":"Omran AI — Plataporma ng katalinuhan"});
+Object.assign(I18N['fil'], {"privacyConsentTitle":"🔒 Privacy mo muna","privacyConsentText":"Bago gamitin ang Omran AI Builder, pakibasa ang <a href=\"/privacy.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">patakaran sa privacy</a> at ang <a href=\"/terms.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">mga tuntunin ng paggamit</a>. Ipinapaliwanag ng mga ito kung ano ang kinokolekta namin, paano ito pinoprotektahan, at ang karapatan mong burahin ang iyong data.","privacyConsentRead":"Basahin ang patakaran","privacyConsentAgree":"Sumasang-ayon, magpatuloy"});
+Object.assign(I18N['fil'], {"shareNeedCode":"Walang laman ang proyektong ito — magsulat muna ng mensahe o gumawa ng app, saka ibahagi.","shareTooLarge":"Lumampas ang proyekto sa 2MB na limitasyon ng pagbabahagi — bawasan ang mga larawan o nilalaman at subukang muli."});
+Object.assign(I18N['fil'], {"pfGuestTitle":"💼 Portfolio na Pampraktis","pfGuestIntro":"100 libong virtual — mag-trade sa totoong presyo ng merkado at makipagtagisan sa ibang user 🏆","pfGuestLogin":"Mag-sign in para simulan ang iyong portfolio — nase-save ang progreso mo sa account mo.","pfLoadingBox":"⏳ Inihahanda ang iyong portfolio…","pfLoadFail":"Hindi na-load ang portfolio"});
+/* v650 */ window.__BI=window.__BI||{}; window.__BI["fil"]={"⚫ Black":"⚫ Itim","🟤 Brown":"🟤 Kayumanggi","🔴 Red":"🔴 Pula","🌈 Colorful":"🌈 Makulay","🌀 Curly":"🌀 Kulot","👩‍🦱 Long layers":"👩‍🦱 Mahabang layers","🧔 Full Beard":"🧔 Buong Balbas","👨 Mustache Only":"👨 Bigote Lamang","✨ Clean Shave":"✨ Malinis na Ahit","🧔‍♂️ Long thick":"🧔‍♂️ Mahaba at makapal","✨ Subtle Smoothing":"✨ Bahagyang Pagpapakinis","👁️ Reduce Dark Circles":"👁️ Bawasan ang Dark Circles","⭕ Round":"⭕ Bilog","✋ Small Wrist":"✋ Maliit sa Pulso","🔙 Back Piece":"🔙 Buong Likod","📝 Custom (from description)":"📝 Pasadya (mula sa paglalarawan)","🌱 Ghibli Style":"🌱 Estilong Ghibli","🧥 Luxury Bisht Cloak":"🧥 Marangyang Bisht Cloak","🖤 Traditional Abaya":"🖤 Tradisyonal na Abaya","🧵 Embroidered Thobe Nashal":"🧵 May Burdang Thobe Nashal","🇵🇸 Embroidered thobe":"🇵🇸 May burdang thobe","🎓 Learning mode — 100% virtual money":"🎓 Learning mode — 100% virtual na pera","Portfolio value":"Halaga ng portfolio","Available cash":"Magagamit na cash","Profit/Loss":"Kita/Lugi","New trade (at the real live price)":"Bagong trade (sa totoong live na presyo)","Symbol e.g. AAPL":"Simbolo hal. AAPL","Quantity":"Dami","Buy":"Bumili","Sell":"Magbenta","Your positions":"Ang iyong mga posisyon","No shares yet — try your first practice trade! Type a symbol like AAPL, a quantity, then press Buy.":"Wala pang shares — subukan ang iyong unang practice trade! Mag-type ng simbolo tulad ng AAPL, dami, pagkatapos ay pindutin ang Bumili.","Sell all":"Ibenta lahat","🎓 Teach me":"🎓 Turuan ako","Traders leaderboard":"Leaderboard ng mga trader"," — your rank: ":" — ang iyong ranggo: "," of ":" sa ","Your recent trades":"Iyong mga kamakailang trade","🟢 Buy":"🟢 Bumili","🔴 Sell":"🔴 Magbenta","Educational paper trading — real prices, virtual money. Not investment advice.":"Edukasyonal na paper trading — totoong presyo, virtual na pera. Hindi payo sa pamumuhunan.","🔄 Start over (100k)":"🔄 Magsimula muli (100k)","Enter a stock symbol and quantity first":"Maglagay muna ng simbolo ng stock at dami","⏳ Executing at the live price…":"⏳ Isinasagawa sa live na presyo…","Trade failed":"Nabigo ang trade","en":"fil","Left today: ":"Natitira ngayong araw: ","⚠️ Design generation took too long or the service is temporarily busy. Please try again.":"⚠️ Masyadong matagal ang pagbuo ng disenyo o pansamantalang abala ang serbisyo. Pakisubukang muli.","Pick at least one output type.":"Pumili ng kahit isang uri ng output.","⚠️ This result has no bill of quantities.":"⚠️ Walang bill of quantities ang resultang ito.","⚠️ Generate a design first.":"⚠️ Bumuo muna ng disenyo.","⚠️ Allow pop-ups to export the report.":"⚠️ Payagan ang mga pop-up upang i-export ang ulat.","✨ AI style":"✨ Estilo ng AI"," options — pick yours":" mga opsyon — piliin ang sa iyo","options for this feature":"mga opsyon para sa tampok na ito","Browse all ›":"Tingnan lahat ›","✨ More like this":"\\u2728 Higit pang katulad nito","Max 3 styles":"Hanggang 3 estilo","Upload your room photo first":"I-upload muna ang larawan ng iyong silid","Pick 2-3 styles":"Pumili ng 2-3 estilo","Designing ":"Idinidisenyo ang ","❌ Failed at ":"❌ Nabigo sa ","👍 Pick this":"👍 Piliin ito","✓ Done — swipe and pick":"✓ Tapos na — mag-swipe at pumili","👗 Fashion styles":"👗 Mga estilo ng fashion","styles — pick yours":"mga estilo — piliin ang sa iyo","styles for this category":"mga estilo para sa kategoryang ito","Review Scenes":"Suriin ang mga Eksena","Edit or delete scenes before generating. Each scene = 1 video credit.":"I-edit o tanggalin ang mga eksena bago bumuo. Bawat eksena = 1 video credit.","Scene":"Eksena","Remove":"Alisin","❌ Cancel":"❌ Kanselahin","✨ Generate":"✨ Bumuo","Content was rejected by safety filters — try a calmer description, or remove the person photo.":"Tinanggihan ang nilalaman ng mga safety filter — sumubok ng mas mahinahong paglalarawan, o alisin ang larawan ng tao.","Video generation failed.":"Nabigo ang pagbuo ng video.","⏳ Status: ":"⏳ Katayuan: ","🎨 Rendering canvas video...":"🎨 Nirerender ang canvas video...","🎙️ Generating narration...":"🎙️ Binubuo ang pagsasalaysay...","🎚️ Merging narration...":"🎚️ Pinagsasama ang pagsasalaysay...","✅ Done!":"✅ Tapos na!","🎨 Building intro...":"🎨 Binubuo ang intro...","🎨 Building outro...":"🎨 Binubuo ang outro...","Made by: ":"Gawa ni: ","Made with Omran AI Video":"Gawa gamit ang Omran AI Video","🚀 Sending request to the AI video engine...":"🚀 Ipinapadala ang kahilingan sa AI video engine...","🎬 Finalizing your video...":"🎬 Tinatapos ang iyong video...","✍️ Adding your signature watermark...":"✍️ Idinaragdag ang iyong lagdang watermark...","🔗 Merging canvas + AI video...":"🔗 Pinagsasama ang canvas + AI video...","⚠️ Please describe the video first.":"⚠️ Pakilarawan muna ang video.","🔑 Please log in first to use the Video Maker.":"🔑 Mangyaring mag-log in muna upang magamit ang Video Maker.","Veo failed.":"Nabigo ang Veo.","🔒 Veo 3 is limited to the owner account for now.":"🔒 Limitado muna ang Veo 3 sa account ng may-ari sa ngayon.","✍️ Writing the film script scene by scene...":"✍️ Isinusulat ang script ng pelikula bawat eksena...","Could not generate the film script.":"Hindi mabuo ang script ng pelikula.","📋 Review the script...":"📋 Suriin ang script...","❌ Cancelled.":"❌ Nakansela.","💳 Checking video credits...":"💳 Sinusuri ang mga video credit...","ℹ️ Hero photo is supported with Runway only; continuing without it...":"ℹ️ Ang hero photo ay sinusuportahan lamang sa Runway; nagpapatuloy nang wala ito...","🎥 Generating scene ":"🎥 Binubuo ang eksena ","🎙️ Narrating scene ":"🎙️ Isinasalaysay ang eksena ","▶️ Scene ":"▶️ Eksena ","✅ All scenes played.":"✅ Napanood na ang lahat ng eksena.","⬇️ Scene ":"⬇️ Eksena ","✅ Your film is ready! Scenes will play back-to-back — download each scene below.":"✅ Handa na ang iyong pelikula! Magkakasunod na magpe-play ang mga eksena — i-download ang bawat eksena sa ibaba.","🔗 Merging all scenes into your final film...":"🔗 Pinagsasama ang lahat ng eksena sa iyong huling pelikula...","🔗 Merging scene ":"🔗 Pinagsasama ang eksena ","⚠️ Narration merge failed; film merged without narration.":"⚠️ Nabigo ang pagsasama ng pagsasalaysay; pinagsama ang pelikula nang walang pagsasalaysay.","✅ Your film is ready!":"✅ Handa na ang iyong pelikula!","🗣️ Write what the actor should say first.":"🗣️ Isulat muna kung ano ang dapat sabihin ng aktor.","🚀 Sending to Google Veo 3...":"🚀 Ipinapadala sa Google Veo 3...","⏳ Veo 3 is generating (may take 1-3 min)...":"⏳ Bumubuo ang Veo 3 (maaaring tumagal nang 1-3 minuto)...","⬇️ Downloading the video...":"⬇️ Idino-download ang video...","🔒 This feature is limited to the owner account.":"🔒 Limitado ang tampok na ito sa account ng may-ari.","✍️ Writing the full scene-by-scene script...":"✍️ Isinusulat ang buong script bawat eksena...","Could not generate the script.":"Hindi mabuo ang script.","🚀 Sending scene ":"🚀 Ipinapadala ang eksena ","🔗 Joining all scenes with narration into the final video...":"🔗 Pinagsasama ang lahat ng eksena kasama ang pagsasalaysay sa huling video...","🔗 Joining scene ":"🔗 Pinagsasama ang eksena "," (opening moment of the scene)":" (pambungad na sandali ng eksena)"," (continuing the same scene, next moment)":" (pagpapatuloy ng parehong eksena, susunod na sandali)","🚀 Sending request...":"🚀 Ipinapadala ang kahilingan...","🔗 Joining scenes together...":"🔗 Pinagsasama ang mga eksena...","⚠️ Could not join scenes; showing the first scene only.":"⚠️ Hindi mapagsama ang mga eksena; unang eksena lamang ang ipinapakita.","🔎 Upscaling video quality...":"🔎 Pinapahusay ang kalidad ng video...","🎚️ Adding narration to the video...":"🎚️ Idinaragdag ang pagsasalaysay sa video...","⚠️ Could not add narration; showing the video without it.":"⚠️ Hindi maidagdag ang pagsasalaysay; ipinapakita ang video nang wala ito.","⬇️ Downloading video...":"⬇️ Idino-download ang video...","🌴 Emirati modern":"🌴 Makabagong Emirati","🌿 Scandinavian":"🌿 Eskandinabo","🎋 Japandi":"🎋 Japandi","🏭 Industrial":"🏭 Industriyal","🪑 Mid-century":"🪑 Mid-century","💎 Art Deco":"💎 Art Deco","🏛️ Neoclassic":"🏛️ Neoklasiko","🕯️ Victorian":"🕯️ Victorian","👑 Baroque":"👑 Baroque","🦇 Gothic":"🦇 Gotiko","🪵 Rustic":"🪵 Rustiko","🏡 Farmhouse":"🏡 Bahay-bukid","🌊 Coastal":"🌊 Tabing-dagat","🏖️ Mediterranean":"🏖️ Mediteraneo","🕌 Moroccan":"🕌 Moroccan","🧿 Ottoman Turkish":"🧿 Turkong Ottoman","🪔 Persian":"🪔 Persiano","🐘 Indian":"🐘 Indian","⛩️ Japanese":"⛩️ Hapon","🧘 Zen":"🧘 Zen","🍵 Wabi-sabi":"🍵 Wabi-sabi","🌴 Tropical":"🌴 Tropikal","🏜️ Desert":"🏜️ Disyerto","🏙️ Urban loft":"🏙️ Loft sa lungsod","🚀 Futuristic":"🚀 Panghinaharap","🌃 Cyberpunk":"🌃 Cyberpunk","🎮 Gamer room":"🎮 Silid ng gamer","📚 Dark academia":"📚 Madilim na akademya","🏔️ Alpine chalet":"🏔️ Chalet ng Alps","💜 Provence":"💜 Provence","🎬 Hollywood glam":"🎬 Karangyaan ng Hollywood","⬛ Monochrome":"⬛ Iisang kulay","🏺 Earthy organic":"🏺 Likas at makalupa","🌸 Pastel":"🌸 Pastel","🤖 Smart home":"🤖 Matalinong tahanan","♻️ Eco green":"♻️ Luntian at makakalikasan","🕺 Retro 70s":"🕺 Retro ng dekada 70","🌈 Pop art":"🌈 Pop art","⬜ Gallery white":"⬜ Puting galeriya","👘 Kaftan":"👘 Kaftan","🌙 Jalabiya":"🌙 Jalabiya","🧕 Hijab chic":"🧕 Eleganteng hijab","🎩 Old money":"🎩 Lumang yaman","🛹 Streetwear":"🛹 Panlakad na kasuotan","🏃 Sporty":"🏃 Pampalakasan","🧥 Winter luxury":"🧥 Marangyang pangtaglamig","☀️ Summer linen":"☀️ Lino para tag-init","💼 Office chic":"💼 Eleganteng pang-opisina","🥂 Cocktail":"🥂 Pang-cocktail","👑 Ballgown":"👑 Damit-pangsayaw","🌾 Boho":"🌾 Boho","📻 Vintage 50s":"📻 Vintage ng dekada 50","💿 Y2K":"💿 Y2K","⬜ Minimal":"⬜ Minimalista","💎 Glam":"💎 Glam","🖤 Leather":"🖤 Katad","👖 Denim":"👖 Denim","🌺 Floral":"🌺 Mabulaklak","🍷 Velvet":"🍷 Pelus","🎀 Silk":"🎀 Seda","🕴️ Power suit":"🕴️ Makapangyarihang terno","🧿 Turkish":"🧿 Turko","🏰 Princess":"🏰 Prinsesa","🦁 Safari":"🦁 Safari","🎓 Preppy":"🎓 Estudyanteng elegante","🎭 Avant-garde":"🎭 Avant-garde","🧥 Bisht":"🧥 Bisht","👞 Smart casual":"👞 Matalinong kaswal","🤵 Three-piece":"🤵 Tatlong piraso","⚡ Athleisure":"⚡ Athleisure","🎸 Rockstar":"🎸 Bituin ng rock","🕌 Djellaba":"🕌 Djellaba","🏫 School":"🏫 Pang-eskuwela","🌙 Eid kids":"🌙 Eid para sa bata"};
+Object.assign(I18N['fil'], {"acctPointsLabel":"Balanse ng puntos","acctPointsLow":"⚠️ Paubos na ang iyong balanse — mag-top up bago maubos.","acctPointsOut":"🔴 Ubos na ang iyong balanse — mag-top up ng puntos para magpatuloy.","acctPointsBuyBtn":"💳 Mag-top up ng puntos"});
+/* v656 */ Object.assign(I18N["fil"], {"aiGenTag": "✨ Nilikha ng AI", "msgStopped": "Itinigil ang sagot", "stReading": "💭 Binabasa ang tanong mo…", "stTimeout": "⏱️ Nag-time out ang sagot.", "stSearch": "🔍 Sinusuri ang mga live na pinagmulan…", "stFetchPage": "🌐 Nagbabasa ng pahina…", "stRunJs": "⚙️ Nagpapatakbo ng code para mag-verify…", "stGenImage": "🎨 Gumuguhit ng larawan…", "stTestHtml": "🧪 Sinusubukan ang pahina…", "stGeoLoc": "📍 Kinukuha ang lokasyon mo (hihingi ng pahintulot ang browser)…", "trSearchN": "Naghanap ng «{q}» — nakakuha ng {n} resulta", "trSearchC": "Naghanap ng «{q}» — nakakuha ng {n} karakter", "trFetch": "Binasa ang {h} — nakakuha ng {n} karakter", "trFetchFail": "Hindi mabasa ang {h}", "trJsErr": "Nagpatakbo ng code — may lumabas na error", "trJsOk": "Nagpatakbo ng code — {n} karakter ang naibalik", "trImgOk": "Gumuhit ng larawan ✅", "trImgFail": "Nabigo ang larawan", "trLocOk": "Nakuha ang lokasyon mo ✅", "trLocFail": "Sinubukang kunin ang lokasyon — hindi nagtagumpay", "trHtmlOk": "Sinubukan ang pahina — walang error ✅", "trHtmlErr": "Sinubukan ang pahina — may lumabas na error", "trTool": "Ginamit ang {name}"});
+/* v657 */ window.__BI=window.__BI||{}; window.__BI["fil"]=Object.assign(window.__BI["fil"]||{}, {"📄 Document Assistant": "📄 Document Assistant", "Upload your document": "I-upload ang iyong dokumento", "Contract · Invoice · Report · Quote (PDF or image)": "Kontrata · Invoice · Ulat · Quotation (PDF o larawan)", "Or paste document text": "O i-paste ang text ng dokumento", "Paste document text here…": "I-paste dito ang text ng dokumento…", "Analyze document": "Suriin ang dokumento", "Upload a file or paste text first.": "Mag-upload muna ng file o mag-paste ng text.", "Reading your document…": "Binabasa ang iyong dokumento…", "Document": "Dokumento", "Key details": "Mahahalagang detalye", "Summary": "Buod", "Important points": "Mahahalagang punto", "Ask about the document": "Magtanong tungkol sa dokumento", "Type your question…": "I-type ang iyong tanong…", "New document": "Bagong dokumento", "🧾 Government Services": "🧾 Mga Serbisyo ng Gobyerno", "Ask about any UAE government service — steps, fees and the official link, with live search.": "Magtanong tungkol sa anumang serbisyo ng gobyerno ng UAE — mga hakbang, bayarin, at opisyal na link, gamit ang live search.", "Type your service… e.g. how to renew my trade license?": "I-type ang serbisyo… hal. paano ko ire-renew ang business license ko?", "Searching official sources…": "Naghahanap sa mga opisyal na source…", "Official sources": "Mga opisyal na source", "💼 CV Builder": "💼 CV Builder", "Fill your info and get a professional CV + cover letter ready as PDF.": "Ilagay ang iyong impormasyon at kumuha ng propesyonal na CV + cover letter na handa bilang PDF.", "Full name *": "Buong pangalan *", "John Doe": "Juan dela Cruz", "Job title": "Trabaho", "Software Engineer": "Software Engineer", "Email": "Email", "Phone": "Telepono", "City": "Lungsod", "Dubai, UAE": "Dubai, UAE", "Professional summary": "Propesyonal na buod", "Two lines about your experience & goals": "Dalawang linya tungkol sa iyong karanasan at mga layunin", "Work experience": "Karanasan sa trabaho", "Title - Company - Duration - key achievements (one per line)": "Posisyon - Kumpanya - Tagal - mahahalagang tagumpay (isa bawat linya)", "Education": "Edukasyon", "Degree - University - Year": "Degree - Unibersidad - Taon", "Skills": "Mga kasanayan", "Comma separated": "Paghiwa-hiwalayin gamit ang kuwit", "Languages": "Mga wika", "Arabic (native), English (fluent)": "Arabic (katutubo), Ingles (matatas)", "Target job/company (for cover letter)": "Target na trabaho/kumpanya (para sa cover letter)", "Optional": "Opsyonal", "Generate my CV": "Gawin ang CV ko", "Enter your name at least.": "Ilagay man lang ang iyong pangalan.", "Designing your CV…": "Ginagawa ang iyong CV…", "Your CV": "Iyong CV", "Save PDF": "I-save bilang PDF", "Edit info": "I-edit ang impormasyon", "Cover letter": "Cover letter", "Tip: in the print dialog choose “Save as PDF”.": "Tip: sa print dialog, piliin ang “Save as PDF”.", "Allow pop-ups to print.": "Payagan ang mga pop-up para makapag-print."});
+/* v658 */ window.__BI=window.__BI||{}; window.__BI["fil"]=Object.assign(window.__BI["fil"]||{}, {"By signing up or signing in you agree to": "Sa pag-sign up o pag-sign in, sumasang-ayon ka sa", "Privacy Policy": "Patakaran sa Privacy", "Terms of Use": "Mga Tuntunin sa Paggamit", "and": "at", "Gulf & Arab world": "Gulf at mundong Arabo", "Asia": "Asya", "Africa": "Aprika", "Europe": "Europa", "Oceania": "Oceania", "Americas": "mga Amerika", "❌ Error: ": "❌ Error: ", "⏳ Status: ": "⏳ Status: "});

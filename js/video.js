@@ -21,7 +21,7 @@
     [id('videoMakerStatus'),id('videoMakerDownloadLink'),desc].forEach(function(e){ if(e) side.appendChild(e); });
     var st=id('videoMakerStyle'); if(st&&st.parentElement&&st.parentElement.parentElement) st.parentElement.parentElement.classList.add('vmk-row3');
     var det=document.createElement('details'); det.className='vmk-adv';
-    det.innerHTML='<summary>⚙️ '+(ar()?'خيارات متقدمة':'Advanced options')+'</summary>';
+    det.innerHTML='<summary>⚙️ '+((typeof window.t==='function'&&window.t('videoAdvanced')!=='videoAdvanced')?window.t('videoAdvanced'):(ar()?'خيارات متقدمة':'Advanced options'))+'</summary>';
     var nt=id('videoMakerNarrationToggle');
     [nt&&nt.closest('label'),id('videoMakerNarrationRow'),id('videoMakerQualityRow')].forEach(function(e){ if(e) det.appendChild(e); });
     main.appendChild(det);

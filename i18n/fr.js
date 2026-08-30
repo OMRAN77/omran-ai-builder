@@ -858,3 +858,135 @@ I18N['fr'] = {
     emailAsst_ignored: "🚫 Ignoré — ne s’affichera plus", emailAsst_error: "❌ Erreur : ", emailAsst_voiceBtn: "Résumé vocal", emailAsst_addToCalendar: "📅 Ajouter au calendrier", emailAsst_addingEvent: "Ajout de l’événement…", emailAsst_eventAdded: "✅ Ajouté à votre calendrier", emailAsst_calReauth: "Reconnectez Gmail pour autoriser l’accès au calendrier", emailAsst_voiceLoading: "🔊 Préparation du résumé vocal…",
     emailAsst_voiceEmpty: "Aucun e-mail à résumer.", emailAsst_urgent: "🔴 Urgent", emailAsst_normal: "🟡 Normal", emailAsst_low: "⚪ Faible",
 };
+
+/* v-i18n-fill (فحص ٢٩ أغسطس ٢٠٢٦): الـ٤٤ مفتاحًا التي أُضيفت للعربية
+   والإنجليزية فقط مع الميزات الأخيرة — المرشد البصري والنبرة ودخول OTP
+   والوكيل وغيرها — تُستكمل هنا فلا يظهر إنجليزي وسط هذه الواجهة. */
+Object.assign(I18N["fr"], {
+    acctLoginBtnLabel: "🔐 Connexion / Nouveau compte",
+    designCompareTitle: "🆚 Ma pièce dans tous les styles",
+    designCompareHint: "Téléchargez la photo de votre pièce, choisissez 2-3 styles — nous les concevons côte à côte",
+    designCompareBtn: "🆚 Concevoir avec les styles choisis",
+    designBABefore: "Avant",
+    designBAAfter: "Après",
+    portraitStyleBrowseAll: "Tout afficher ›",
+    portraitStyleSheetTitle: "🎨 Styles de photos",
+    fashionDropTitle: "Téléchargez une photo en pied",
+    fashionDropHint: "De la tête aux pieds · éclairage clair",
+    agentSectionTitle: "🤖 L'agent",
+    agentSectionDesc: "Mode agent : il planifie et exécute seul — il construit, modifie et teste le code avant la livraison, vérifie des sources en direct et continue même si la page se ferme. Activez-le puis tapez votre demande dans le chat.",
+    agentOnNote: "L'agent est actif — revenez au chat et tapez votre demande.",
+    vgModeTranslate: "Traduction en direct",
+    vgModeAsk: "Poser une question dessus",
+    vgTitle: "Guide visuel",
+    vgModeDescribe: "Décrire l'environnement",
+    vgModeRead: "Lire le texte",
+    vgModeSteps: "Étape par étape",
+    vgModeTour: "Visite de l'appli",
+    vgAsk: "Demander",
+    vgAuto: "Auto",
+    vgRepeat: "Répéter",
+    vgSound: "Son",
+    vgTorch: "Lampe",
+    vgHint: "Touchez n'importe où et je décris tout de suite",
+    omNavGuide: "Guide",
+    authEmailOtpBtn: "Connexion par e-mail",
+    authOtpBack: "Retour",
+    authOtpCodeLabel: "Code de vérification",
+    authOtpEmailLabel: "Adresse e-mail",
+    authOtpSendBtn: "Envoyer le code",
+    aboutTagline: "Une plateforme arabe pour créer des applications avec l'IA",
+    videosGroupTitle: "🎬 Vidéos de présentation",
+    toneSectionLabel: "Ton",
+    toneAuto: "Comme vous voulez",
+    toneWarm: "Amical",
+    toneDirect: "Direct",
+    toneFormal: "Formel",
+    toneHint: "Choisissez votre style de réponse préféré — ou laissez l'IA s'adapter à vous automatiquement.",
+    mahaCcTitle: "Sous-titres de l'appel",
+    checkoutApplePay: "Apple Pay",
+    checkoutGooglePay: "Google Pay",
+    checkoutWalletUnavailable: "Indisponible sur cet appareil",
+});
+
+/* v-nick-i18n: ألقاب المزودين الثلاثة */
+Object.assign(I18N['fr'], { provNickKing: "Le King", provNickFast: "Le Rapide", provNickDeep: "Le Profond" });
+
+/* v-modes-i18n + v-psub */
+Object.assign(I18N['fr'], { modeCreateImage: "Créer une image", modeWebSearch: "Recherche web", modeThinkDeeper: "Réflexion approfondie", psheetCountSuffix: "styles — même visage, chaque style" });
+
+/* v-fashion-refine */
+Object.assign(I18N['fr'], { fashionRefinePh: "ex. : changez seulement la couleur de la robe en bleu", fashionRefineBtn: "✏️ Modifier un détail précis", fashionRefineNeed: "Écrivez d’abord la modification", fashionRefining: "Application de la modification…" });
+
+/* v-studios-i18n: بقايا نوافذ الاستوديوهات + محلل المصاريف */
+Object.assign(I18N['fr'], {
+  pickerOptsForFeature: "options pour cette fonction",
+  pickerStylesForCategory: "styles pour cette catégorie",
+  pickerOptsWord: "options",
+  pickerOptsPick: "options — choisissez",
+  videoOptAdspot: "📢 Pub rapide (5s vertical + voix)",
+  videoOptReels: "📱 Reels intelligent (10s + voix)",
+  fashionEngineLabel: "🎨 Moteur d'images",
+  fashionEngineGemini: "Gemini — préserve le mieux le visage (défaut)",
+  fashionEngineOpenai: "ChatGPT (gpt-image-1) — le moteur d'images de ChatGPT",
+  videoAdvanced: "Options avancées",
+  exp_title: "Analyse des dépenses",
+  exp_intro: "Téléversez votre relevé bancaire (PDF ou image) pour classer vos dépenses",
+  exp_pick: "📄 Choisir un relevé (PDF / image)",
+  exp_hint: "PDF ou photo nette du relevé",
+  exp_paste: "Ou collez vos dépenses en texte",
+  exp_pastePh: "Collez vos transactions ici…",
+  exp_go: "Analyser les dépenses",
+  exp_busy: "Analyse en cours…",
+  exp_total: "Dépenses totales",
+  exp_tx: "transactions",
+  exp_dist: "Répartition des dépenses",
+  exp_biggest: "Plus grosse dépense",
+  exp_tips: "Conseils d'économie",
+  exp_again: "Analyser un autre relevé",
+  exp_disc: "Chiffres approximatifs — à titre indicatif, pas un conseil financier.",
+  exp_noContent: "Choisissez un fichier ou collez du texte d'abord",
+  exp_err: "Échec de l'analyse, réessayez"
+});
+
+Object.assign(I18N['fr'], { videoNeedDesc: "⚠️ Décrivez d’abord la vidéo.", videoVoiceFemale: "👩 Fatima (voix féminine)", videoVoiceMale: "👨 Hamdan (voix masculine)" }); // v-video-i18n
+
+/* v-about-i18n */
+Object.assign(I18N['fr'], {
+  aboutFeatChat: "Créez des applications complètes en discutant",
+  aboutFeatProviders: "9 fournisseurs IA + « Demander à tous »",
+  aboutFeatMaha: "Maha — votre assistante vocale en direct",
+  aboutFeatStudios: "7 studios créatifs d’images",
+  aboutFeatStocks: "Bourse et portefeuille pédagogique",
+  aboutFeatPrivacy: "Confidentialité d’abord — vos clés restent à vous",
+  aboutChipUAE: "Fabriqué aux Émirats 🇦🇪",
+  aboutChipPWA: "Appli PWA",
+  aboutChipLangs: "14 langues",
+  aboutMoreSummary: "📖 En savoir plus"
+});
+Object.assign(I18N['fr'], {
+  "aboutSupportTitle": "📞 Service client & support",
+  "aboutSupportDesc": "Nous répondons à vos demandes sous 24–48 h.",
+  "aboutCopyright": "© Équipe Omran AI — Fait avec amour aux Émirats 🇦🇪",
+  "adminPanelTitle": "🛠️ Panneau d'administration (propriétaire uniquement)"
+});
+Object.assign(I18N['fr'], {"videoBadgeShort":"Court","videoBadgeFull":"Complet"});
+Object.assign(I18N['fr'], {
+  "provTypingSuffix": "écrit…",
+  "provFailSwitch": "n'a pas répondu ({why}) — bascule en cours…",
+  "provUnknownReason": "raison inconnue",
+  "provWhyBuild": "la création et la modification de code",
+  "provWhyVision": "la lecture des images",
+  "provWhyGeneral": "ce type de demande",
+  "provSwitchNote": "Vous avez choisi {sel} — mais {why} est confié à {eff}, le plus précis pour cela. Votre conversation habituelle reste sur {sel}.",
+  "provSwitchNoteHidden": "Votre conversation utilise {sel} — mais {why} est confié à {eff}, le plus précis pour cela. Votre conversation habituelle reste sur {sel}."
+});
+Object.assign(I18N['fr'], {"pageTitle":"Omran AI — Plateforme d'intelligence"});
+Object.assign(I18N['fr'], {"privacyConsentTitle":"🔒 Votre vie privée d’abord","privacyConsentText":"Avant d’utiliser Omran AI Builder, veuillez lire la <a href=\"/privacy.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">politique de confidentialité</a> et les <a href=\"/terms.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">conditions d’utilisation</a>. Elles expliquent ce que nous collectons, comment nous le protégeons et votre droit de supprimer vos données.","privacyConsentRead":"Lire la politique","privacyConsentAgree":"J’accepte et je continue"});
+Object.assign(I18N['fr'], {"shareNeedCode":"Ce projet est vide — écrivez un message ou créez une application, puis partagez-le.","shareTooLarge":"Le projet dépasse la limite de partage de 2 Mo — réduisez les images ou le contenu puis réessayez."});
+Object.assign(I18N['fr'], {"pfGuestTitle":"💼 Portefeuille d'entraînement","pfGuestIntro":"100 000 virtuels : tradez aux vrais prix du marché et affrontez les autres utilisateurs 🏆","pfGuestLogin":"Connectez-vous pour démarrer votre portefeuille — votre progression est enregistrée sur votre compte.","pfLoadingBox":"⏳ Préparation de votre portefeuille…","pfLoadFail":"Impossible de charger le portefeuille"});
+/* v650 */ window.__BI=window.__BI||{}; window.__BI["fr"]={"⚫ Black":"⚫ Noir","🟤 Brown":"🟤 Châtain","🟡 Blonde":"🟡 Blond","🔴 Red":"🔴 Rouge","⚪ Silver/Gray":"⚪ Gris/Argenté","🌈 Colorful":"🌈 Coloré","🎨 Ombre":"🎨 Ombré","✨ Highlights":"✨ Mèches","❄️ Platinum":"❄️ Platine","🍷 Burgundy":"🍷 Bordeaux","💙 Electric blue":"💙 Bleu électrique","🌹 Rose gold":"🌹 Or rose","🌀 Curly":"🌀 Bouclés","📏 Sleek straight":"📏 Lisses","🌊 Hollywood waves":"🌊 Ondulations Hollywood","💇 Bob cut":"💇 Carré court","🧚 Pixie cut":"🧚 Coupe pixie","👩‍🦱 Long layers":"👩‍🦱 Dégradé long","🌸 Pink":"🌸 Rose","🟡 Gold":"🟡 Doré","✨ Glitter":"✨ Paillettes","🩶 Matte greige":"🩶 Grège mat","🏛️ Marble art":"🏛️ Effet marbre","🌸 Floral art":"🌸 Motif floral","🌿 Natural":"🌿 Naturel","✨ Glam Evening":"✨ Soirée glam","⚫ Smokey Eyes":"⚫ Smokey eyes","💋 Bold Red Lips":"💋 Lèvres rouges audacieuses","👰 Bridal":"👰 Mariée","🖤 Arabic kohl":"🖤 Khôl arabe","💧 Dewy glow":"💧 Éclat dewy","🤎 Full matte":"🤎 Totalement mat","🎨 Editorial":"🎨 Éditorial","🧔 Full Beard":"🧔 Barbe complète","🪒 Light Stubble":"🪒 Barbe de 3 jours","👨 Mustache Only":"👨 Moustache seule","🐐 Goatee":"🐐 Bouc","✨ Clean Shave":"✨ Rasé de près","◼️ Short boxed":"◼️ Barbe courte sculptée","💈 Faded":"💈 Dégradé","🧔‍♂️ Long thick":"🧔‍♂️ Longue et fournie","⚓ Anchor":"⚓ Ancre","✨ Subtle Smoothing":"✨ Lissage subtil","🌟 Natural Glow":"🌟 Éclat naturel","👁️ Reduce Dark Circles":"👁️ Réduire les cernes","🌞 Golden tan":"🌞 Teint hâlé doré","🧴 Matte finish":"🧴 Fini mat","✨ Freckles":"✨ Taches de rousseur","🕶️ Classic Sunglasses":"🕶️ Lunettes de soleil classiques","⭕ Round":"⭕ Rondes","🐱 Cat-Eye":"🐱 Œil-de-chat","✈️ Aviator":"✈️ Aviateur","🔲 Rimless":"🔲 Sans monture","👓 Oversized":"👓 Oversize","🥇 Gold frame":"🥇 Monture dorée","🕰️ Retro tinted":"🕰️ Rétro teintées","⬡ Hexagon":"⬡ Hexagonales","🧊 Clear frame":"🧊 Monture transparente","💪 Full Sleeve":"💪 Manchette complète","✋ Small Wrist":"✋ Petit au poignet","🔙 Back Piece":"🔙 Grande pièce au dos","📝 Custom (from description)":"📝 Personnalisé (selon description)","🔷 Geometric":"🔷 Géométrique fin","➖ Minimal line":"➖ Trait minimaliste","🖋️ Arabic calligraphy":"🖋️ Calligraphie arabe","🎌 Classic Anime":"🎌 Anime classique","🌱 Ghibli Style":"🌱 Style Ghibli","🌆 Cyberpunk Anime":"🌆 Anime cyberpunk","⬛ Manga B&W":"⬛ Manga N&B","📼 Retro 90s":"📼 Rétro années 90","👳 Gulf Kandora & Ghutra":"👳 Kandora et ghutra du Golfe","🧥 Luxury Bisht Cloak":"🧥 Bisht de luxe","🖤 Traditional Abaya":"🖤 Abaya traditionnelle","🧵 Embroidered Thobe Nashal":"🧵 Thobe Nashal brodé","🇸🇦 Saudi Thobe & Shemagh":"🇸🇦 Thobe et shemagh saoudiens","🇦🇪 Emirati Embroidered Kaftan":"🇦🇪 Caftan émirati brodé","🧥 Bisht & shemagh":"🧥 Bisht et shemagh","🇲🇦 Moroccan djellaba":"🇲🇦 Djellaba marocaine","🇵🇸 Embroidered thobe":"🇵🇸 Thobe brodé","🎓 Learning mode — 100% virtual money":"🎓 Mode d'apprentissage — 100 % d'argent virtuel","Portfolio value":"Valeur du portefeuille","Available cash":"Liquidités disponibles","Profit/Loss":"Gain/Perte","New trade (at the real live price)":"Nouvel ordre (au cours réel en direct)","Symbol e.g. AAPL":"Symbole ex. AAPL","Quantity":"Quantité","Buy":"Acheter","Sell":"Vendre","Your positions":"Vos positions","No shares yet — try your first practice trade! Type a symbol like AAPL, a quantity, then press Buy.":"Aucune action pour le moment — essayez votre premier ordre d'entraînement ! Saisissez un symbole comme AAPL, une quantité, puis cliquez sur Acheter.","shares":"actions","Sell all":"Tout vendre","🎓 Teach me":"🎓 Apprenez-moi","Traders leaderboard":"Classement des traders"," — your rank: ":" — votre rang : "," of ":" sur ","Your recent trades":"Vos transactions récentes","🟢 Buy":"🟢 Achat","🔴 Sell":"🔴 Vente","Educational paper trading — real prices, virtual money. Not investment advice.":"Trading virtuel éducatif — cours réels, argent virtuel. Ceci n'est pas un conseil en investissement.","🔄 Start over (100k)":"🔄 Recommencer (100k)","Enter a stock symbol and quantity first":"Saisissez d'abord un symbole boursier et une quantité","⏳ Executing at the live price…":"⏳ Exécution au cours en direct…","Trade failed":"Échec de la transaction","en":"fr","Left today: ":"Restant aujourd'hui : ","⚠️ Design generation took too long or the service is temporarily busy. Please try again.":"⚠️ La génération du design a pris trop de temps ou le service est temporairement surchargé. Veuillez réessayer.","Pick at least one output type.":"Choisissez au moins un type de résultat.","⚠️ This result has no bill of quantities.":"⚠️ Ce résultat ne contient pas de devis quantitatif.","⚠️ Generate a design first.":"⚠️ Générez d'abord un design.","⚠️ Allow pop-ups to export the report.":"⚠️ Autorisez les fenêtres contextuelles pour exporter le rapport.","❌ Error: ":"❌ Erreur : ","✨ AI style":"✨ Style IA"," options — pick yours":" options — choisissez la vôtre","options for this feature":"options pour cette fonctionnalité","Browse all ›":"Tout parcourir ›","✨ More like this":"✨ Plus de modèles similaires","Max 3 styles":"3 styles max","Upload your room photo first":"Importez d'abord la photo de votre pièce","Pick 2-3 styles":"Choisissez 2 à 3 styles","Designing ":"Création de ","❌ Failed at ":"❌ Échec à ","👍 Pick this":"👍 Choisir ceci","✓ Done — swipe and pick":"✓ Terminé — glissez et choisissez","👗 Fashion styles":"👗 Styles de mode","styles — pick yours":"styles — choisissez le vôtre","styles for this category":"styles pour cette catégorie","Review Scenes":"Vérifier les scènes","Edit or delete scenes before generating. Each scene = 1 video credit.":"Modifiez ou supprimez des scènes avant de générer. Chaque scène = 1 crédit vidéo.","Scene":"Scène","Remove":"Supprimer","❌ Cancel":"❌ Annuler","✨ Generate":"✨ Générer","Content was rejected by safety filters — try a calmer description, or remove the person photo.":"Le contenu a été rejeté par les filtres de sécurité — essayez une description plus calme ou retirez la photo de la personne.","Video generation failed.":"Échec de la génération vidéo.","⏳ Status: ":"⏳ Statut : ","🎨 Rendering canvas video...":"🎨 Rendu de la vidéo canevas...","🎙️ Generating narration...":"🎙️ Génération de la voix off...","🎚️ Merging narration...":"🎚️ Mixage de la voix off...","✅ Done!":"✅ Terminé !","🎨 Building intro...":"🎨 Création de l'introduction...","🎨 Building outro...":"🎨 Création de l'outro...","Made by: ":"Créé par : ","Made with Omran AI Video":"Créé avec Omran AI Video","🚀 Sending request to the AI video engine...":"🚀 Envoi de la demande au moteur vidéo IA...","🎬 Finalizing your video...":"🎬 Finalisation de votre vidéo...","✍️ Adding your signature watermark...":"✍️ Ajout de votre filigrane de signature...","🔗 Merging canvas + AI video...":"🔗 Fusion du canevas et de la vidéo IA...","⚠️ Please describe the video first.":"⚠️ Veuillez d'abord décrire la vidéo.","🔑 Please log in first to use the Video Maker.":"🔑 Veuillez d'abord vous connecter pour utiliser le créateur de vidéo.","Veo failed.":"Échec de Veo.","🔒 Veo 3 is limited to the owner account for now.":"🔒 Veo 3 est actuellement réservé au compte propriétaire.","✍️ Writing the film script scene by scene...":"✍️ Rédaction du script scène par scène...","Could not generate the film script.":"Impossible de générer le script du film.","📋 Review the script...":"📋 Examiner le script...","❌ Cancelled.":"❌ Annulé.","💳 Checking video credits...":"💳 Vérification des crédits vidéo...","ℹ️ Hero photo is supported with Runway only; continuing without it...":"ℹ️ La photo du héros est prise en charge uniquement avec Runway ; poursuite sans elle...","🎥 Generating scene ":"🎥 Génération de la scène ","🎙️ Narrating scene ":"🎙️ Enregistrement audio de la scène ","▶️ Scene ":"▶️ Scène ","✅ All scenes played.":"✅ Toutes les scènes ont été lues.","⬇️ Scene ":"⬇️ Scène ","✅ Your film is ready! Scenes will play back-to-back — download each scene below.":"✅ Votre film est prêt ! Les scènes s'enchaînent automatiquement — téléchargez chaque scène ci-dessous.","🔗 Merging all scenes into your final film...":"🔗 Fusion de toutes les scènes dans votre film final...","🔗 Merging scene ":"🔗 Fusion de la scène ","⚠️ Narration merge failed; film merged without narration.":"⚠️ Échec de la fusion de la voix off ; film assemblé sans voix off.","✅ Your film is ready!":"✅ Votre film est prêt !","🗣️ Write what the actor should say first.":"🗣️ Écrivez d'abord ce que l'acteur doit dire.","🚀 Sending to Google Veo 3...":"🚀 Envoi vers Google Veo 3...","⏳ Veo 3 is generating (may take 1-3 min)...":"⏳ Veo 3 génère la vidéo (peut prendre 1 à 3 min)...","⬇️ Downloading the video...":"⬇️ Téléchargement de la vidéo...","🔒 This feature is limited to the owner account.":"🔒 Cette fonctionnalité est réservée au compte propriétaire.","✍️ Writing the full scene-by-scene script...":"✍️ Rédaction du script complet scène par scène...","Could not generate the script.":"Impossible de générer le script.","🚀 Sending scene ":"🚀 Envoi de la scène ","🔗 Joining all scenes with narration into the final video...":"🔗 Assemblage de toutes les scènes avec la voix off dans la vidéo finale...","🔗 Joining scene ":"🔗 Assemblage de la scène "," (opening moment of the scene)":" (moment d'ouverture de la scène)"," (continuing the same scene, next moment)":" (suite de la même scène, instant suivant)","🚀 Sending request...":"🚀 Envoi de la demande...","🔗 Joining scenes together...":"🔗 Assemblage des scènes...","⚠️ Could not join scenes; showing the first scene only.":"⚠️ Impossible d'assembler les scènes ; affichage de la première scène uniquement.","🔎 Upscaling video quality...":"🔎 Amélioration de la qualité vidéo...","🎚️ Adding narration to the video...":"🎚️ Ajout de la voix off à la vidéo...","⚠️ Could not add narration; showing the video without it.":"⚠️ Impossible d'ajouter la voix off ; affichage de la vidéo sans celle-ci.","⬇️ Downloading video...":"⬇️ Téléchargement de la vidéo...","🌴 Emirati modern":"🌴 Émirati moderne","🌿 Scandinavian":"🌿 Scandinave","🎋 Japandi":"🎋 Japandi","🏭 Industrial":"🏭 Industriel","🪑 Mid-century":"🪑 Mid-century","💎 Art Deco":"💎 Art déco","🏛️ Neoclassic":"🏛️ Néoclassique","🕯️ Victorian":"🕯️ Victorien","👑 Baroque":"👑 Baroque","🦇 Gothic":"🦇 Gothique","🪵 Rustic":"🪵 Rustique","🏡 Farmhouse":"🏡 Farmhouse","🌊 Coastal":"🌊 Bord de mer","🏖️ Mediterranean":"🏖️ Méditerranéen","🕌 Moroccan":"🕌 Marocain","🧿 Ottoman Turkish":"🧿 Turc ottoman","🪔 Persian":"🪔 Persan","🐘 Indian":"🐘 Indien","⛩️ Japanese":"⛩️ Japonais","🧘 Zen":"🧘 Zen","🍵 Wabi-sabi":"🍵 Wabi-sabi","🌴 Tropical":"🌴 Tropical","🏜️ Desert":"🏜️ Désertique","🏙️ Urban loft":"🏙️ Loft urbain","🚀 Futuristic":"🚀 Futuriste","🌃 Cyberpunk":"🌃 Cyberpunk","🎮 Gamer room":"🎮 Gaming","📚 Dark academia":"📚 Dark academia","🏔️ Alpine chalet":"🏔️ Chalet alpin","💜 Provence":"💜 Provençal","🎬 Hollywood glam":"🎬 Hollywood glam","⬛ Monochrome":"⬛ Monochrome","🏺 Earthy organic":"🏺 Organique brut","🌸 Pastel":"🌸 Pastel","🤖 Smart home":"🤖 Maison connectée","♻️ Eco green":"♻️ Éco-responsable","🕺 Retro 70s":"🕺 Rétro 70s","🌈 Pop art":"🌈 Pop art","⬜ Gallery white":"⬜ Blanc galerie","👘 Kaftan":"👘 Caftan","🌙 Jalabiya":"🌙 Jalabiya","🧕 Hijab chic":"🧕 Hijab chic","🎩 Old money":"🎩 Old money","🛹 Streetwear":"🛹 Streetwear","🏃 Sporty":"🏃 Sportif","🧥 Winter luxury":"🧥 Luxe d'hiver","☀️ Summer linen":"☀️ Lin d'été","💼 Office chic":"💼 Office chic","🥂 Cocktail":"🥂 Cocktail","👑 Ballgown":"👑 Robe de bal","🌾 Boho":"🌾 Bohème","📻 Vintage 50s":"📻 Vintage 50s","💿 Y2K":"💿 Y2K","⬜ Minimal":"⬜ Minimaliste","💎 Glam":"💎 Glamour","🖤 Leather":"🖤 Cuir","👖 Denim":"👖 Denim","🌺 Floral":"🌺 Floral","🍷 Velvet":"🍷 Velours","🎀 Silk":"🎀 Soie","🕴️ Power suit":"🕴️ Power suit","🧿 Turkish":"🧿 Turc","🏰 Princess":"🏰 Princesse","🦁 Safari":"🦁 Safari","🎓 Preppy":"🎓 Preppy","🎭 Avant-garde":"🎭 Avant-garde","🧥 Bisht":"🧥 Bisht","👞 Smart casual":"👞 Smart casual","🤵 Three-piece":"🤵 Trois-pièces","⚡ Athleisure":"⚡ Athleisure","🎸 Rockstar":"🎸 Rockstar","🕌 Djellaba":"🕌 Djellaba","🏫 School":"🏫 Écolier chic","🌙 Eid kids":"🌙 Aïd enfants"};
+Object.assign(I18N['fr'], {"acctPointsLabel":"Solde de points","acctPointsLow":"⚠️ Votre solde est presque épuisé — rechargez avant qu’il ne soit à zéro.","acctPointsOut":"🔴 Votre solde est épuisé — rechargez vos points pour continuer.","acctPointsBuyBtn":"💳 Recharger les points"});
+/* v656 */ Object.assign(I18N["fr"], {"aiGenTag": "✨ Contenu généré par IA", "msgStopped": "Réponse arrêtée", "stReading": "💭 Lecture de votre question…", "stTimeout": "⏱️ Délai de réponse dépassé.", "stSearch": "🔍 Vérification des sources en direct…", "stFetchPage": "🌐 Lecture d'une page…", "stRunJs": "⚙️ Exécution de code pour vérifier…", "stGenImage": "🎨 Dessin d'une image…", "stTestHtml": "🧪 Test de la page…", "stGeoLoc": "📍 Localisation en cours (le navigateur demandera l'autorisation)…", "trSearchN": "J'ai cherché « {q} » — {n} résultats obtenus", "trSearchC": "J'ai cherché « {q} » — {n} caractères obtenus", "trFetch": "J'ai lu {h} — {n} caractères obtenus", "trFetchFail": "Impossible de lire {h}", "trJsErr": "J'ai exécuté du code — une erreur est apparue", "trJsOk": "J'ai exécuté du code — {n} caractères renvoyés", "trImgOk": "J'ai dessiné une image ✅", "trImgFail": "Échec de l'image", "trLocOk": "Position obtenue ✅", "trLocFail": "J'ai tenté de vous localiser — sans succès", "trHtmlOk": "J'ai testé la page — aucune erreur ✅", "trHtmlErr": "J'ai testé la page — des erreurs sont apparues", "trTool": "J'ai utilisé {name}"});
+/* v657 */ window.__BI=window.__BI||{}; window.__BI["fr"]=Object.assign(window.__BI["fr"]||{}, {"📄 Document Assistant": "📄 Assistant de documents", "Upload your document": "Importez votre document", "Contract · Invoice · Report · Quote (PDF or image)": "Contrat · Facture · Rapport · Devis (PDF ou image)", "Or paste document text": "Ou collez le texte du document", "Paste document text here…": "Collez le texte du document ici…", "Analyze document": "Analyser le document", "Upload a file or paste text first.": "Importez un fichier ou collez d’abord du texte.", "Reading your document…": "Lecture de votre document…", "Document": "Document", "Key details": "Informations clés", "Summary": "Résumé", "Important points": "Points importants", "Ask about the document": "Poser une question sur le document", "Type your question…": "Saisissez votre question…", "New document": "Nouveau document", "🧾 Government Services": "🧾 Services administratifs", "Ask about any UAE government service — steps, fees and the official link, with live search.": "Renseignez-vous sur tout service administratif des ÉAU — démarches, frais et lien officiel, avec recherche en direct.", "Type your service… e.g. how to renew my trade license?": "Saisissez votre démarche… ex. : comment renouveler ma licence commerciale ?", "Searching official sources…": "Recherche de sources officielles…", "Official sources": "Sources officielles", "💼 CV Builder": "💼 Créateur de CV", "Fill your info and get a professional CV + cover letter ready as PDF.": "Renseignez vos informations et obtenez un CV professionnel et une lettre de motivation prêts au format PDF.", "Full name *": "Nom complet *", "John Doe": "Marie Dupont", "Job title": "Intitulé du poste", "Software Engineer": "Ingénieur logiciel", "Email": "E-mail", "Phone": "Téléphone", "City": "Ville", "Dubai, UAE": "Dubaï, ÉAU", "Professional summary": "Profil professionnel", "Two lines about your experience & goals": "Deux lignes sur votre expérience et vos objectifs", "Work experience": "Expérience professionnelle", "Title - Company - Duration - key achievements (one per line)": "Poste - Entreprise - Durée - principales réalisations (une par ligne)", "Education": "Formation", "Degree - University - Year": "Diplôme - Université - Année", "Skills": "Compétences", "Comma separated": "Séparées par des virgules", "Languages": "Langues", "Arabic (native), English (fluent)": "Arabe (langue maternelle), anglais (courant)", "Target job/company (for cover letter)": "Poste/entreprise visé(e) (pour la lettre de motivation)", "Optional": "Facultatif", "Generate my CV": "Générer mon CV", "Enter your name at least.": "Saisissez au moins votre nom.", "Designing your CV…": "Création de votre CV…", "Your CV": "Votre CV", "Save PDF": "Enregistrer en PDF", "Edit info": "Modifier les informations", "Cover letter": "Lettre de motivation", "Tip: in the print dialog choose “Save as PDF”.": "Conseil : dans la boîte de dialogue d’impression, choisissez « Enregistrer au format PDF ».", "Allow pop-ups to print.": "Autorisez les fenêtres pop-up pour imprimer."});
+/* v658 */ window.__BI=window.__BI||{}; window.__BI["fr"]=Object.assign(window.__BI["fr"]||{}, {"By signing up or signing in you agree to": "En vous inscrivant ou en vous connectant, vous acceptez", "Privacy Policy": "Politique de confidentialité", "Terms of Use": "Conditions d’utilisation", "and": "et", "Gulf & Arab world": "Golfe et monde arabe", "Asia": "Asie", "Africa": "Afrique", "Europe": "Europe", "Oceania": "Océanie", "Americas": "Amériques", "❌ Error: ": "❌ Erreur: ", "⏳ Status: ": "⏳ Statut: "});

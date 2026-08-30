@@ -907,3 +907,135 @@ I18N['ru'] = {
     emailAsst_ignore: "🚫 Игнорировать этого отправителя", emailAsst_sending: "Отправка…", emailAsst_sent: "✅ Отправлено", emailAsst_ignored: "🚫 Игнорируется — больше не появится", emailAsst_error: "❌ Ошибка: ", emailAsst_voiceBtn: "Голосовая сводка", emailAsst_addToCalendar: "📅 Добавить в календарь", emailAsst_addingEvent: "Добавление события…", emailAsst_eventAdded: "✅ Добавлено в ваш календарь",
     emailAsst_calReauth: "Переподключите Gmail, чтобы разрешить доступ к календарю", emailAsst_voiceLoading: "🔊 Подготовка голосовой сводки…", emailAsst_voiceEmpty: "Нет писем для сводки.", emailAsst_urgent: "🔴 Срочно", emailAsst_normal: "🟡 Обычно", emailAsst_low: "⚪ Низкий",
 };
+
+/* v-i18n-fill (فحص ٢٩ أغسطس ٢٠٢٦): الـ٤٤ مفتاحًا التي أُضيفت للعربية
+   والإنجليزية فقط مع الميزات الأخيرة — المرشد البصري والنبرة ودخول OTP
+   والوكيل وغيرها — تُستكمل هنا فلا يظهر إنجليزي وسط هذه الواجهة. */
+Object.assign(I18N["ru"], {
+    acctLoginBtnLabel: "🔐 Вход / Создать аккаунт",
+    designCompareTitle: "🆚 Моя комната во всех стилях",
+    designCompareHint: "Загрузите фото комнаты, выберите 2-3 стиля — мы оформим их рядом",
+    designCompareBtn: "🆚 Оформить в выбранных стилях",
+    designBABefore: "До",
+    designBAAfter: "После",
+    portraitStyleBrowseAll: "Смотреть все ›",
+    portraitStyleSheetTitle: "🎨 Стили фото",
+    fashionDropTitle: "Загрузите фото в полный рост",
+    fashionDropHint: "С головы до ног · хорошее освещение",
+    agentSectionTitle: "🤖 Агент",
+    agentSectionDesc: "Режим агента: он сам планирует и выполняет — собирает, правит и тестирует код перед сдачей, проверяет живые источники и продолжает работать, даже если страница закрыта. Включите его и напишите запрос в чате.",
+    agentOnNote: "Агент включён — вернитесь в чат и напишите запрос.",
+    vgModeTranslate: "Живой перевод",
+    vgModeAsk: "Спросить об этом",
+    vgTitle: "Визуальный гид",
+    vgModeDescribe: "Описать окружение",
+    vgModeRead: "Прочитать текст",
+    vgModeSteps: "Шаг за шагом",
+    vgModeTour: "Тур по приложению",
+    vgAsk: "Спросить",
+    vgAuto: "Авто",
+    vgRepeat: "Повторить",
+    vgSound: "Звук",
+    vgTorch: "Фонарик",
+    vgHint: "Коснитесь любого места — и я сразу опишу",
+    omNavGuide: "Гид",
+    authEmailOtpBtn: "Вход по эл. почте",
+    authOtpBack: "Назад",
+    authOtpCodeLabel: "Код подтверждения",
+    authOtpEmailLabel: "Адрес эл. почты",
+    authOtpSendBtn: "Отправить код",
+    aboutTagline: "Арабская платформа для создания приложений с ИИ",
+    videosGroupTitle: "🎬 Ознакомительные видео",
+    toneSectionLabel: "Тон",
+    toneAuto: "Как вам удобно",
+    toneWarm: "Дружелюбный",
+    toneDirect: "Прямой",
+    toneFormal: "Официальный",
+    toneHint: "Выберите предпочтительный стиль ответов — или пусть ИИ подстроится автоматически.",
+    mahaCcTitle: "Субтитры звонка",
+    checkoutApplePay: "Apple Pay",
+    checkoutGooglePay: "Google Pay",
+    checkoutWalletUnavailable: "Недоступно на этом устройстве",
+});
+
+/* v-nick-i18n: ألقاب المزودين الثلاثة */
+Object.assign(I18N['ru'], { provNickKing: "Король", provNickFast: "Быстрый", provNickDeep: "Глубокий" });
+
+/* v-modes-i18n + v-psub */
+Object.assign(I18N['ru'], { modeCreateImage: "Создать изображение", modeWebSearch: "Поиск в интернете", modeThinkDeeper: "Глубокое размышление", psheetCountSuffix: "стилей — одно лицо, все стили" });
+
+/* v-fashion-refine */
+Object.assign(I18N['ru'], { fashionRefinePh: "напр.: измени только цвет платья на синий", fashionRefineBtn: "✏️ Изменить одну деталь", fashionRefineNeed: "Сначала напишите желаемое изменение", fashionRefining: "Применяю изменение…" });
+
+/* v-studios-i18n: بقايا نوافذ الاستوديوهات + محلل المصاريف */
+Object.assign(I18N['ru'], {
+  pickerOptsForFeature: "вариантов для этой функции",
+  pickerStylesForCategory: "стилей для этой категории",
+  pickerOptsWord: "вариантов",
+  pickerOptsPick: "вариантов — выберите",
+  videoOptAdspot: "📢 Быстрая реклама (5с + голос)",
+  videoOptReels: "📱 Умный Reels (10с + голос)",
+  fashionEngineLabel: "🎨 Движок изображений",
+  fashionEngineGemini: "Gemini — лучше всех сохраняет лицо (по умолчанию)",
+  fashionEngineOpenai: "ChatGPT (gpt-image-1) — движок изображений ChatGPT",
+  videoAdvanced: "Расширенные настройки",
+  exp_title: "Анализ расходов",
+  exp_intro: "Загрузите выписку из банка (PDF или фото) — расходы будут распределены по категориям",
+  exp_pick: "📄 Выбрать выписку (PDF / фото)",
+  exp_hint: "PDF или чёткое фото выписки",
+  exp_paste: "Или вставьте расходы текстом",
+  exp_pastePh: "Вставьте операции сюда…",
+  exp_go: "Проанализировать расходы",
+  exp_busy: "Анализирую…",
+  exp_total: "Всего расходов",
+  exp_tx: "операций",
+  exp_dist: "Структура расходов",
+  exp_biggest: "Крупнейший расход",
+  exp_tips: "Советы по экономии",
+  exp_again: "Другая выписка",
+  exp_disc: "Приблизительные цифры — только для ориентира, не финансовый совет.",
+  exp_noContent: "Сначала выберите файл или вставьте текст",
+  exp_err: "Не удалось, попробуйте снова"
+});
+
+Object.assign(I18N['ru'], { videoNeedDesc: "⚠️ Сначала опишите видео.", videoVoiceFemale: "👩 Фатима (женский голос)", videoVoiceMale: "👨 Хамдан (мужской голос)" }); // v-video-i18n
+
+/* v-about-i18n */
+Object.assign(I18N['ru'], {
+  aboutFeatChat: "Создавайте приложения в чате",
+  aboutFeatProviders: "9 ИИ-провайдеров + «Спросить всех»",
+  aboutFeatMaha: "Маха — живой голосовой помощник",
+  aboutFeatStudios: "7 творческих фотостудий",
+  aboutFeatStocks: "Биржа и учебный портфель",
+  aboutFeatPrivacy: "Приватность прежде всего — ключи у вас",
+  aboutChipUAE: "Сделано в ОАЭ 🇦🇪",
+  aboutChipPWA: "PWA-приложение",
+  aboutChipLangs: "14 языков",
+  aboutMoreSummary: "📖 Подробнее о платформе"
+});
+Object.assign(I18N['ru'], {
+  "aboutSupportTitle": "📞 Служба поддержки клиентов",
+  "aboutSupportDesc": "Мы отвечаем на ваши запросы в течение 24–48 часов.",
+  "aboutCopyright": "© Команда Omran AI — сделано с любовью в ОАЭ 🇦🇪",
+  "adminPanelTitle": "🛠️ Панель управления (только для владельца)"
+});
+Object.assign(I18N['ru'], {"videoBadgeShort":"Короткое","videoBadgeFull":"Полное"});
+Object.assign(I18N['ru'], {
+  "provTypingSuffix": "печатает…",
+  "provFailSwitch": "не ответил ({why}) — переключение…",
+  "provUnknownReason": "неизвестная причина",
+  "provWhyBuild": "создание и правка кода",
+  "provWhyVision": "чтение изображений",
+  "provWhyGeneral": "такой тип запросов",
+  "provSwitchNote": "Вы выбрали {sel} — но {why} выполняет {eff}, самый точный в этом. Обычный чат остаётся на {sel}.",
+  "provSwitchNoteHidden": "Ваш чат работает на {sel} — но {why} выполняет {eff}, самый точный в этом. Обычный чат остаётся на {sel}."
+});
+Object.assign(I18N['ru'], {"pageTitle":"Omran AI — Платформа ИИ"});
+Object.assign(I18N['ru'], {"privacyConsentTitle":"🔒 Ваша конфиденциальность прежде всего","privacyConsentText":"Перед использованием Omran AI Builder прочитайте <a href=\"/privacy.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">политику конфиденциальности</a> и <a href=\"/terms.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">условия использования</a>. В них описано, что мы собираем, как защищаем и ваше право удалить свои данные.","privacyConsentRead":"Читать политику","privacyConsentAgree":"Согласен, продолжить"});
+Object.assign(I18N['ru'], {"shareNeedCode":"Проект пуст — напишите сообщение или создайте приложение, затем поделитесь им.","shareTooLarge":"Проект превышает лимит 2 МБ — уменьшите изображения или содержимое и попробуйте снова."});
+Object.assign(I18N['ru'], {"pfGuestTitle":"💼 Учебный портфель","pfGuestIntro":"100 тысяч виртуальных — торгуйте по реальным ценам рынка и соревнуйтесь с другими пользователями 🏆","pfGuestLogin":"Войдите, чтобы начать свой портфель — прогресс сохраняется в вашем аккаунте.","pfLoadingBox":"⏳ Готовим ваш портфель…","pfLoadFail":"Не удалось загрузить портфель"});
+/* v650 */ window.__BI=window.__BI||{}; window.__BI["ru"]={"⚫ Black":"⚫ Чёрный","🟤 Brown":"🟤 Каштановый","🟡 Blonde":"🟡 Блонд","🔴 Red":"🔴 Красный","⚪ Silver/Gray":"⚪ Серебристый/Седой","🌈 Colorful":"🌈 Разноцветный","🎨 Ombre":"🎨 Омбре","✨ Highlights":"✨ Мелирование","❄️ Platinum":"❄️ Платиновый","🍷 Burgundy":"🍷 Бордовый","💙 Electric blue":"💙 Ярко-синий","🌹 Rose gold":"🌹 Розовое золото","🌀 Curly":"🌀 Кудрявые","📏 Sleek straight":"📏 Гладкие прямые","🌊 Hollywood waves":"🌊 Голливудские волны","💇 Bob cut":"💇 Каре","🧚 Pixie cut":"🧚 Пикси","👩‍🦱 Long layers":"👩‍🦱 Длинный каскад","🟤 Nude":"🟤 Нюд","⚪ French":"⚪ Френч","🌸 Pink":"🌸 Розовый","🟡 Gold":"🟡 Золотой","✨ Glitter":"✨ Глиттер","🩶 Matte greige":"🩶 Матовый грейж","🪞 Chrome":"🪞 Хром","🏛️ Marble art":"🏛️ Мраморный дизайн","🌸 Floral art":"🌸 Цветочный арт","🌿 Natural":"🌿 Натуральный","✨ Glam Evening":"✨ Вечерний глэм","⚫ Smokey Eyes":"⚫ Смоки айс","💋 Bold Red Lips":"💋 Ярко-красные губы","👰 Bridal":"👰 Свадебный","🌟 Soft glam":"🌟 Софт-глэм","🖤 Arabic kohl":"🖤 Арабский кайал","💧 Dewy glow":"💧 Влажное сияние","🤎 Full matte":"🤎 Полностью матовый","🎨 Editorial":"🎨 Эдиториал","🧔 Full Beard":"🧔 Полная борода","🪒 Light Stubble":"🪒 Лёгкая щетина","👨 Mustache Only":"👨 Только усы","🐐 Goatee":"🐐 Эспаньолка","✨ Clean Shave":"✨ Гладко выбрит","◼️ Short boxed":"◼️ Короткая квадратная","🎩 Van Dyke":"🎩 Ван Дейк","💈 Faded":"💈 С фейдом","🧔‍♂️ Long thick":"🧔‍♂️ Длинная густая","⚓ Anchor":"⚓ Якорь","✨ Subtle Smoothing":"✨ Лёгкое сглаживание","🌟 Natural Glow":"🌟 Естественное сияние","👁️ Reduce Dark Circles":"👁️ Уменьшить тёмные круги","🌞 Golden tan":"🌞 Золотистый загар","🧴 Matte finish":"🧴 Матовый финиш","✨ Freckles":"✨ Веснушки","🕶️ Classic Sunglasses":"🕶️ Классические солнцезащитные","⭕ Round":"⭕ Круглые","🐱 Cat-Eye":"🐱 Кошачий глаз","✈️ Aviator":"✈️ Авиаторы","🔲 Rimless":"🔲 Безободковые","🕶️ Wayfarer":"🕶️ Вайфареры","👓 Oversized":"👓 Оверсайз","🚴 Sport":"🚴 Спортивные","🥇 Gold frame":"🥇 Золотая оправа","🕰️ Retro tinted":"🕰️ Ретро тонированные","⬡ Hexagon":"⬡ Шестиугольные","🧊 Clear frame":"🧊 Прозрачная оправа","💪 Full Sleeve":"💪 Рукав","✋ Small Wrist":"✋ Небольшое на запястье","🔙 Back Piece":"🔙 На спине","⚫ Tribal":"⚫ Трайбл","📝 Custom (from description)":"📝 По описанию","🔷 Geometric":"🔷 Геометрия","➖ Minimal line":"➖ Минимализм/Лайнворк","🖋️ Arabic calligraphy":"🖋️ Арабская каллиграфия","🌿 Floral":"🌿 Флористика","🎌 Classic Anime":"🎌 Классическое аниме","🧸 Chibi":"🧸 Чиби","🌱 Ghibli Style":"🌱 В стиле Ghibli","🌆 Cyberpunk Anime":"🌆 Киберпанк аниме","⬛ Manga B&W":"⬛ Ч/Б Манга","⚡ Shonen action":"⚡ Сёнэн экшен","🌸 Kawaii":"🌸 Каваи","📱 Webtoon":"📱 Вебтун","📼 Retro 90s":"📼 Аниме 90-х","👳 Gulf Kandora & Ghutra":"👳 Кандура и гутра Персидского залива","🧥 Luxury Bisht Cloak":"🧥 Роскошный бишт","🖤 Traditional Abaya":"🖤 Традиционная абайя","🧵 Embroidered Thobe Nashal":"🧵 Расшитый тоб нашль","🇸🇦 Saudi Thobe & Shemagh":"🇸🇦 Саудовский тоб и шемаг","🇦🇪 Emirati Embroidered Kaftan":"🇦🇪 Эмиратский расшитый кафтан","🇴🇲 Omani":"🇴🇲 Оманский с куммой","🧥 Bisht & shemagh":"🧥 Бишт и шемаг","🇲🇦 Moroccan djellaba":"🇲🇦 Марокканская джеллаба","🇵🇸 Embroidered thobe":"🇵🇸 Вышитый палестинский тоб","🎓 Learning mode — 100% virtual money":"🎓 Обучающий режим — 100% виртуальные деньги","Portfolio value":"Стоимость портфеля","Available cash":"Доступные средства","Profit/Loss":"Прибыль/Убыток","New trade (at the real live price)":"Новая сделка (по реальной цене в реальном времени)","Symbol e.g. AAPL":"Тикер, напр. AAPL","Quantity":"Количество","Buy":"Купить","Sell":"Продать","Your positions":"Ваши позиции","No shares yet — try your first practice trade! Type a symbol like AAPL, a quantity, then press Buy.":"У вас пока нет акций — совершите первую учебную сделку! Введите тикер (например, AAPL), количество и нажмите «Купить».","shares":"акций","Sell all":"Продать всё","🎓 Teach me":"🎓 Обучение","Traders leaderboard":"Таблица лидеров трейдеров"," — your rank: ":" — ваше место: "," of ":" из ","Your recent trades":"Ваши недавние сделки","🟢 Buy":"🟢 Покупка","🔴 Sell":"🔴 Продажа","Educational paper trading — real prices, virtual money. Not investment advice.":"Учебный демо-трейдинг — реальные котировки, виртуальные деньги. Не является инвестиционной рекомендацией.","🔄 Start over (100k)":"🔄 Начать заново (100k)","Enter a stock symbol and quantity first":"Сначала введите тикер акции и количество","⏳ Executing at the live price…":"⏳ Исполняем сделку по текущей цене…","Trade failed":"Сделка не удалась","en":"ru","Left today: ":"Осталось на сегодня: ","⚠️ Design generation took too long or the service is temporarily busy. Please try again.":"⚠️ Создание дизайна заняло слишком много времени или сервис временно перегружен. Пожалуйста, попробуйте снова.","Pick at least one output type.":"Выберите хотя бы один тип результата.","⚠️ This result has no bill of quantities.":"⚠️ В этом результате нет ведомости объёмов работ.","⚠️ Generate a design first.":"⚠️ Сначала создайте дизайн.","⚠️ Allow pop-ups to export the report.":"⚠️ Разрешите всплывающие окна для экспорта отчёта.","❌ Error: ":"❌ Ошибка: ","✨ AI style":"✨ AI-стиль"," options — pick yours":" вариантов — выберите свой","options for this feature":"вариантов для этой функции","Browse all ›":"Посмотреть все ›","✨ More like this":"✨ Похожие","Max 3 styles":"Максимум 3 стиля","Upload your room photo first":"Сначала загрузите фото вашей комнаты","Pick 2-3 styles":"Выберите 2-3 стиля","Designing ":"Создаём дизайн ","❌ Failed at ":"❌ Ошибка на этапе ","👍 Pick this":"👍 Выбрать этот","✓ Done — swipe and pick":"✓ Готово — листайте и выбирайте","👗 Fashion styles":"👗 Стили одежды","styles — pick yours":"стилей — выберите свой","styles for this category":"стилей для этой категории","Review Scenes":"Просмотр сцен","Edit or delete scenes before generating. Each scene = 1 video credit.":"Отредактируйте или удалите сцены перед генерацией. Каждая сцена = 1 видеокредит.","Scene":"Сцена","Remove":"Удалить","❌ Cancel":"❌ Отмена","✨ Generate":"✨ Создать","Content was rejected by safety filters — try a calmer description, or remove the person photo.":"Контент был отклонён фильтрами безопасности — попробуйте более нейтральное описание или удалите фото человека.","Video generation failed.":"Не удалось создать видео.","⏳ Status: ":"⏳ Статус: ","🎨 Rendering canvas video...":"🎨 Создание канвас-видео...","🎙️ Generating narration...":"🎙️ Генерация озвучки...","🎚️ Merging narration...":"🎚️ Сведение аудио...","✅ Done!":"✅ Готово!","🎨 Building intro...":"🎨 Создание интро...","🎨 Building outro...":"🎨 Создание аутро...","Made by: ":"Создано: ","Made with Omran AI Video":"Создано с помощью Omran AI Video","🚀 Sending request to the AI video engine...":"🚀 Отправка запроса в AI-видеодвижок...","🎬 Finalizing your video...":"🎬 Финализация видео...","✍️ Adding your signature watermark...":"✍️ Добавление вашей подписи...","🔗 Merging canvas + AI video...":"🔗 Объединение канваса и AI-видео...","⚠️ Please describe the video first.":"⚠️ Пожалуйста, сначала опишите видео.","🔑 Please log in first to use the Video Maker.":"🔑 Войдите в аккаунт, чтобы использовать видеоредактор.","Veo failed.":"Сбой Veo.","🔒 Veo 3 is limited to the owner account for now.":"🔒 Veo 3 временно доступен только для аккаунта владельца.","✍️ Writing the film script scene by scene...":"✍️ Написание сценария фильма по сценам...","Could not generate the film script.":"Не удалось создать сценарий фильма.","📋 Review the script...":"📋 Проверьте сценарий...","❌ Cancelled.":"❌ Отменено.","💳 Checking video credits...":"💳 Проверка видеокредитов...","ℹ️ Hero photo is supported with Runway only; continuing without it...":"ℹ️ Фото героя поддерживается только в Runway; продолжаем без него...","🎥 Generating scene ":"🎥 Генерация сцены ","🎙️ Narrating scene ":"🎙️ Озвучивание сцены ","▶️ Scene ":"▶️ Сцена ","✅ All scenes played.":"✅ Все сцены воспроизведены.","⬇️ Scene ":"⬇️ Сцена ","✅ Your film is ready! Scenes will play back-to-back — download each scene below.":"✅ Ваш фильм готов! Сцены воспроизводятся подряд — скачайте каждую сцену ниже.","🔗 Merging all scenes into your final film...":"🔗 Объединение всех сцен в итоговый фильм...","🔗 Merging scene ":"🔗 Сведение сцены ","⚠️ Narration merge failed; film merged without narration.":"⚠️ Не удалось свести озвучку; фильм объединён без неё.","✅ Your film is ready!":"✅ Ваш фильм готов!","🗣️ Write what the actor should say first.":"🗣️ Сначала напишите, что должен сказать актёр.","🚀 Sending to Google Veo 3...":"🚀 Отправка в Google Veo 3...","⏳ Veo 3 is generating (may take 1-3 min)...":"⏳ Veo 3 генерирует видео (может занять 1-3 мин)...","⬇️ Downloading the video...":"⬇️ Загрузка видео...","🔒 This feature is limited to the owner account.":"🔒 Эта функция доступна только для аккаунта владельца.","✍️ Writing the full scene-by-scene script...":"✍️ Написание полного сценария по сценам...","Could not generate the script.":"Не удалось создать сценарий.","🚀 Sending scene ":"🚀 Отправка сцены ","🔗 Joining all scenes with narration into the final video...":"🔗 Объединение всех сцен с озвучкой в итоговое видео...","🔗 Joining scene ":"🔗 Объединение сцены "," (opening moment of the scene)":" (начало сцены)"," (continuing the same scene, next moment)":" (продолжение сцены, следующий момент)","🚀 Sending request...":"🚀 Отправка запроса...","🔗 Joining scenes together...":"🔗 Объединение сцен...","⚠️ Could not join scenes; showing the first scene only.":"⚠️ Не удалось объединить сцены; отображается только первая сцена.","🔎 Upscaling video quality...":"🔎 Улучшение качества видео...","🎚️ Adding narration to the video...":"🎚️ Добавление озвучки к видео...","⚠️ Could not add narration; showing the video without it.":"⚠️ Не удалось добавить озвучку; видео отображается без неё.","⬇️ Downloading video...":"⬇️ Загрузка видео...","🌴 Emirati modern":"🌴 Эмиратский модерн","🌿 Scandinavian":"🌿 Скандинавский","🎋 Japandi":"🎋 Джапанди","🏭 Industrial":"🏭 Лофт","🪑 Mid-century":"🪑 Мид-сенчури","💎 Art Deco":"💎 Ар-деко","🏛️ Neoclassic":"🏛️ Неоклассика","🕯️ Victorian":"🕯️ Викторианский","👑 Baroque":"👑 Барокко","🦇 Gothic":"🦇 Готика","🪵 Rustic":"🪵 Рустик","🏡 Farmhouse":"🏡 Фармхаус","🌊 Coastal":"🌊 Прибрежный","🏖️ Mediterranean":"🏖️ Средиземноморский","🕌 Moroccan":"🕌 Марокканский","🧿 Ottoman Turkish":"🧿 Османский","🪔 Persian":"🪔 Персидский","🐘 Indian":"🐘 Индийский","⛩️ Japanese":"⛩️ Японский","🧘 Zen":"🧘 Дзен","🍵 Wabi-sabi":"🍵 Ваби-саби","🌴 Tropical":"🌴 Тропический","🏜️ Desert":"🏜️ Пустынный","🏙️ Urban loft":"🏙️ Городской лофт","🚀 Futuristic":"🚀 Футуризм","🌃 Cyberpunk":"🌃 Киберпанк","🎮 Gamer room":"🎮 Геймерский","📚 Dark academia":"📚 Темная академия","🏔️ Alpine chalet":"🏔️ Альпийское шале","💜 Provence":"💜 Прованс","🎬 Hollywood glam":"🎬 Голливудский глэм","⬛ Monochrome":"⬛ Монохром","🏺 Earthy organic":"🏺 Органик","🌸 Pastel":"🌸 Пастель","🤖 Smart home":"🤖 Умный дом","♻️ Eco green":"♻️ Эко","🕺 Retro 70s":"🕺 Ретро 70-х","🌈 Pop art":"🌈 Поп-арт","⬜ Gallery white":"⬜ Галерейный белый","👘 Kaftan":"👘 Кафтан","🌙 Jalabiya":"🌙 Галабея","🧕 Hijab chic":"🧕 Хиджаб шик","🎩 Old money":"🎩 Олд мани","🛹 Streetwear":"🛹 Стритвир","🏃 Sporty":"🏃 Спорт","🧥 Winter luxury":"🧥 Зимний люкс","☀️ Summer linen":"☀️ Летний лен","💼 Office chic":"💼 Офисный шик","🥂 Cocktail":"🥂 Коктейль","👑 Ballgown":"👑 Бальное платье","🌾 Boho":"🌾 Бохо","📻 Vintage 50s":"📻 Винтаж 50-х","💿 Y2K":"💿 Y2K","⬜ Minimal":"⬜ Минимализм","💎 Glam":"💎 Глэм","🖤 Leather":"🖤 Кожа","👖 Denim":"👖 Деним","🌺 Floral":"🌺 Цветочный","🍷 Velvet":"🍷 Бархат","🎀 Silk":"🎀 Шелк","🕴️ Power suit":"🕴️ Деловой костюм","🧿 Turkish":"🧿 Турецкий","🏰 Princess":"🏰 Принцесса","🦁 Safari":"🦁 Сафари","🎓 Preppy":"🎓 Преппи","🎭 Avant-garde":"🎭 Авангард","🧥 Bisht":"🧥 Бишт","👞 Smart casual":"👞 Смарт-кэжуал","🤵 Three-piece":"🤵 Костюм-тройка","⚡ Athleisure":"⚡ Атлежер","🎸 Rockstar":"🎸 Рок-звезда","🕌 Djellaba":"🕌 Джеллаба","🏫 School":"🏫 Школьный","🌙 Eid kids":"🌙 Детский праздничный"};
+Object.assign(I18N['ru'], {"acctPointsLabel":"Баланс баллов","acctPointsLow":"⚠️ Баллы почти закончились — пополните заранее.","acctPointsOut":"🔴 Баллы закончились — пополните баланс, чтобы продолжить.","acctPointsBuyBtn":"💳 Пополнить баллы"});
+/* v656 */ Object.assign(I18N["ru"], {"aiGenTag": "✨ Контент создан ИИ", "msgStopped": "Ответ остановлен", "stReading": "💭 Читаю ваш вопрос…", "stTimeout": "⏱️ Время ответа истекло.", "stSearch": "🔍 Проверяю актуальные источники…", "stFetchPage": "🌐 Читаю страницу…", "stRunJs": "⚙️ Выполняю код для проверки…", "stGenImage": "🎨 Рисую изображение…", "stTestHtml": "🧪 Проверяю страницу…", "stGeoLoc": "📍 Определяю ваше местоположение (браузер запросит разрешение)…", "trSearchN": "Искал «{q}» — получено результатов: {n}", "trSearchC": "Искал «{q}» — получено символов: {n}", "trFetch": "Прочитал {h} — получено символов: {n}", "trFetchFail": "Не удалось прочитать {h}", "trJsErr": "Выполнил код — возникла ошибка", "trJsOk": "Выполнил код — возвращено символов: {n}", "trImgOk": "Нарисовал изображение ✅", "trImgFail": "Не удалось создать изображение", "trLocOk": "Местоположение определено ✅", "trLocFail": "Пытался определить местоположение — не удалось", "trHtmlOk": "Проверил страницу — ошибок нет ✅", "trHtmlErr": "Проверил страницу — появились ошибки", "trTool": "Использовал {name}"});
+/* v657 */ window.__BI=window.__BI||{}; window.__BI["ru"]=Object.assign(window.__BI["ru"]||{}, {"📄 Document Assistant": "📄 Помощник по документам", "Upload your document": "Загрузите документ", "Contract · Invoice · Report · Quote (PDF or image)": "Договор · счёт-фактура · отчёт · коммерческое предложение (PDF или изображение)", "Or paste document text": "Или вставьте текст документа", "Paste document text here…": "Вставьте текст документа сюда…", "Analyze document": "Проанализировать документ", "Upload a file or paste text first.": "Сначала загрузите файл или вставьте текст.", "Reading your document…": "Читаем ваш документ…", "Document": "Документ", "Key details": "Основные сведения", "Summary": "Краткое содержание", "Important points": "Важные пункты", "Ask about the document": "Задать вопрос о документе", "Type your question…": "Введите свой вопрос…", "New document": "Новый документ", "🧾 Government Services": "🧾 Государственные услуги", "Ask about any UAE government service — steps, fees and the official link, with live search.": "Спросите о любой госуслуге ОАЭ — порядок действий, стоимость и официальная ссылка с поиском в реальном времени.", "Type your service… e.g. how to renew my trade license?": "Опишите нужную услугу… например: как продлить торговую лицензию?", "Searching official sources…": "Ищем в официальных источниках…", "Official sources": "Официальные источники", "💼 CV Builder": "💼 Конструктор резюме", "Fill your info and get a professional CV + cover letter ready as PDF.": "Заполните данные и получите профессиональное резюме и сопроводительное письмо, готовые для сохранения в PDF.", "Full name *": "Полное имя *", "John Doe": "Иван Иванов", "Job title": "Должность", "Software Engineer": "Инженер-программист", "Email": "Эл. почта", "Phone": "Телефон", "City": "Город", "Dubai, UAE": "Дубай, ОАЭ", "Professional summary": "Профессиональный профиль", "Two lines about your experience & goals": "Пара строк о вашем опыте и целях", "Work experience": "Опыт работы", "Title - Company - Duration - key achievements (one per line)": "Должность — компания — период — ключевые достижения (по одному на строку)", "Education": "Образование", "Degree - University - Year": "Степень — университет — год", "Skills": "Навыки", "Comma separated": "Через запятую", "Languages": "Языки", "Arabic (native), English (fluent)": "Арабский (родной), английский (свободно)", "Target job/company (for cover letter)": "Целевая вакансия/компания (для сопроводительного письма)", "Optional": "Необязательно", "Generate my CV": "Создать резюме", "Enter your name at least.": "Введите хотя бы своё имя.", "Designing your CV…": "Оформляем ваше резюме…", "Your CV": "Ваше резюме", "Save PDF": "Сохранить PDF", "Edit info": "Изменить данные", "Cover letter": "Сопроводительное письмо", "Tip: in the print dialog choose “Save as PDF”.": "Совет: в диалоге печати выберите «Сохранить как PDF».", "Allow pop-ups to print.": "Разрешите всплывающие окна для печати."});
+/* v658 */ window.__BI=window.__BI||{}; window.__BI["ru"]=Object.assign(window.__BI["ru"]||{}, {"By signing up or signing in you agree to": "Регистрируясь или входя в систему, вы соглашаетесь с", "Privacy Policy": "Политикой конфиденциальности", "Terms of Use": "Условиями использования", "and": "и", "Gulf & Arab world": "Страны Персидского залива и арабского мира", "Asia": "Азия", "Africa": "Африка", "Europe": "Европа", "Oceania": "Океания", "Americas": "Америка", "❌ Error: ": "❌ Ошибка: ", "⏳ Status: ": "⏳ Статус: "});

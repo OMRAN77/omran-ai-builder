@@ -908,3 +908,135 @@ I18N['ml'] = {
     emailAsst_ignore: "🚫 ഈ അയച്ചയാളെ അവഗണിക്കുക", emailAsst_sending: "അയക്കുന്നു…", emailAsst_sent: "✅ അയച്ചു", emailAsst_ignored: "🚫 അവഗണിച്ചു — ഇനി കാണിക്കില്ല", emailAsst_error: "❌ പിശക്: ", emailAsst_voiceBtn: "വോയ്സ് സംഗ്രഹം", emailAsst_addToCalendar: "📅 കലണ്ടറിലേക്ക് ചേർക്കുക", emailAsst_addingEvent: "ഇവന്റ് ചേർക്കുന്നു…", emailAsst_eventAdded: "✅ നിങ്ങളുടെ കലണ്ടറിലേക്ക് ചേർത്തു",
     emailAsst_calReauth: "കലണ്ടർ ആക്സസ് അനുവദിക്കാൻ Gmail വീണ്ടും കണക്ട് ചെയ്യുക", emailAsst_voiceLoading: "🔊 വോയ്സ് സംഗ്രഹം തയ്യാറാക്കുന്നു…", emailAsst_voiceEmpty: "സംഗ്രഹിക്കാൻ ഇമെയിലുകളില്ല.", emailAsst_urgent: "🔴 അടിയന്തിരം", emailAsst_normal: "🟡 സാധാരണ", emailAsst_low: "⚪ കുറവ്",
 };
+
+/* v-i18n-fill (فحص ٢٩ أغسطس ٢٠٢٦): الـ٤٤ مفتاحًا التي أُضيفت للعربية
+   والإنجليزية فقط مع الميزات الأخيرة — المرشد البصري والنبرة ودخول OTP
+   والوكيل وغيرها — تُستكمل هنا فلا يظهر إنجليزي وسط هذه الواجهة. */
+Object.assign(I18N["ml"], {
+    acctLoginBtnLabel: "🔐 സൈൻ ഇൻ / പുതിയ അക്കൗണ്ട്",
+    designCompareTitle: "🆚 എന്റെ മുറി എല്ലാ ശൈലികളിലും",
+    designCompareHint: "മുറിയുടെ ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യൂ, 2-3 ശൈലികൾ തിരഞ്ഞെടുക്കൂ — ഞങ്ങൾ അടുത്തടുത്ത് ഡിസൈൻ ചെയ്യാം",
+    designCompareBtn: "🆚 തിരഞ്ഞെടുത്ത ശൈലികളിൽ ഡിസൈൻ ചെയ്യൂ",
+    designBABefore: "മുമ്പ്",
+    designBAAfter: "ശേഷം",
+    portraitStyleBrowseAll: "എല്ലാം കാണൂ ›",
+    portraitStyleSheetTitle: "🎨 ഫോട്ടോ ശൈലികൾ",
+    fashionDropTitle: "മുഴുനീള ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യൂ",
+    fashionDropHint: "തല മുതൽ കാൽ വരെ · വ്യക്തമായ വെളിച്ചം",
+    agentSectionTitle: "🤖 ഏജന്റ്",
+    agentSectionDesc: "ഏജന്റ് മോഡ്: സ്വയം ആസൂത്രണം ചെയ്ത് നടപ്പാക്കുന്നു — ഡെലിവറിക്ക് മുമ്പ് കോഡ് നിർമ്മിച്ച്, തിരുത്തി, പരീക്ഷിക്കുന്നു, തത്സമയ ഉറവിടങ്ങൾ പരിശോധിക്കുന്നു, പേജ് അടച്ചാലും തുടർന്നും പ്രവർത്തിക്കുന്നു. ഓൺ ചെയ്ത ശേഷം ചാറ്റിൽ നിങ്ങളുടെ ആവശ്യം എഴുതൂ.",
+    agentOnNote: "ഏജന്റ് ഓണാണ് — ചാറ്റിലേക്ക് മടങ്ങി നിങ്ങളുടെ ആവശ്യം എഴുതൂ.",
+    vgModeTranslate: "തത്സമയ വിവർത്തനം",
+    vgModeAsk: "ഇതിനെപ്പറ്റി ചോദിക്കൂ",
+    vgTitle: "വിഷ്വൽ ഗൈഡ്",
+    vgModeDescribe: "ചുറ്റുപാട് വിവരിക്കൂ",
+    vgModeRead: "ടെക്സ്റ്റ് വായിക്കൂ",
+    vgModeSteps: "ഘട്ടം ഘട്ടമായി",
+    vgModeTour: "ആപ്പ് ടൂർ",
+    vgAsk: "ചോദിക്കൂ",
+    vgAuto: "ഓട്ടോ",
+    vgRepeat: "ആവർത്തിക്കൂ",
+    vgSound: "ശബ്ദം",
+    vgTorch: "ടോർച്ച്",
+    vgHint: "എവിടെയെങ്കിലും തൊടൂ, ഞാൻ ഉടൻ വിവരിക്കാം",
+    omNavGuide: "ഗൈഡ്",
+    authEmailOtpBtn: "ഇമെയിൽ വഴി സൈൻ ഇൻ",
+    authOtpBack: "മടങ്ങുക",
+    authOtpCodeLabel: "സ്ഥിരീകരണ കോഡ്",
+    authOtpEmailLabel: "ഇമെയിൽ വിലാസം",
+    authOtpSendBtn: "കോഡ് അയയ്ക്കൂ",
+    aboutTagline: "AI ഉപയോഗിച്ച് ആപ്പുകൾ നിർമ്മിക്കാനുള്ള അറബി പ്ലാറ്റ്ഫോം",
+    videosGroupTitle: "🎬 പരിചയ വീഡിയോകൾ",
+    toneSectionLabel: "ടോൺ",
+    toneAuto: "നിങ്ങളുടെ ഇഷ്ടം",
+    toneWarm: "സൗഹൃദപരം",
+    toneDirect: "നേരിട്ട്",
+    toneFormal: "ഔപചാരികം",
+    toneHint: "ഇഷ്ടപ്പെട്ട മറുപടി ശൈലി തിരഞ്ഞെടുക്കൂ — അല്ലെങ്കിൽ AI സ്വയം പൊരുത്തപ്പെടട്ടെ.",
+    mahaCcTitle: "കോളിന്റെ തത്സമയ ക്യാപ്ഷനുകൾ",
+    checkoutApplePay: "Apple Pay",
+    checkoutGooglePay: "Google Pay",
+    checkoutWalletUnavailable: "ഈ ഉപകരണത്തിൽ ലഭ്യമല്ല",
+});
+
+/* v-nick-i18n: ألقاب المزودين الثلاثة */
+Object.assign(I18N['ml'], { provNickKing: "കിംഗ്", provNickFast: "വേഗം", provNickDeep: "ഡീപ്" });
+
+/* v-modes-i18n + v-psub */
+Object.assign(I18N['ml'], { modeCreateImage: "ചിത്രം സൃഷ്ടിക്കൂ", modeWebSearch: "വെബ് തിരയൽ", modeThinkDeeper: "ആഴത്തിൽ ചിന്തിക്കൂ", psheetCountSuffix: "ശൈലികൾ — ഒരേ മുഖം, ഓരോ ശൈലിയിലും" });
+
+/* v-fashion-refine */
+Object.assign(I18N['ml'], { fashionRefinePh: "ഉദാ: വസ്ത്രത്തിന്റെ നിറം മാത്രം നീലയാക്കൂ", fashionRefineBtn: "✏️ ഒരു കാര്യം മാത്രം മാറ്റൂ", fashionRefineNeed: "ആദ്യം വേണ്ട മാറ്റം എഴുതൂ", fashionRefining: "മാറ്റം പ്രയോഗിക്കുന്നു…" });
+
+/* v-studios-i18n: بقايا نوافذ الاستوديوهات + محلل المصاريف */
+Object.assign(I18N['ml'], {
+  pickerOptsForFeature: "ഓപ്ഷനുകൾ ഈ ഫീച്ചറിന്",
+  pickerStylesForCategory: "ശൈലികൾ ഈ വിഭാഗത്തിന്",
+  pickerOptsWord: "ഓപ്ഷനുകൾ",
+  pickerOptsPick: "ഓപ്ഷനുകൾ — തിരഞ്ഞെടുക്കൂ",
+  videoOptAdspot: "📢 ദ്രുത പരസ്യം (5സെ + വിവരണം)",
+  videoOptReels: "📱 സ്മാർട്ട് റീൽസ് (10സെ + വിവരണം)",
+  fashionEngineLabel: "🎨 ഇമേജ് എൻജിൻ",
+  fashionEngineGemini: "Gemini — മുഖം ഏറ്റവും നന്നായി നിലനിർത്തും (സ്ഥിര)",
+  fashionEngineOpenai: "ChatGPT (gpt-image-1) — ChatGPT ഇമേജ് എൻജിൻ",
+  videoAdvanced: "വിപുലമായ ഓപ്ഷനുകൾ",
+  exp_title: "ചെലവ് അനലൈസർ",
+  exp_intro: "ബാങ്ക് സ്റ്റേറ്റ്മെന്റ് (PDF/ചിത്രം) അപ്‌ലോഡ് ചെയ്യൂ — ചെലവുകൾ തരംതിരിക്കാം",
+  exp_pick: "📄 സ്റ്റേറ്റ്മെന്റ് തിരഞ്ഞെടുക്കൂ (PDF / ചിത്രം)",
+  exp_hint: "PDF അല്ലെങ്കിൽ വ്യക്തമായ ഫോട്ടോ",
+  exp_paste: "അല്ലെങ്കിൽ ചെലവുകൾ ടെക്സ്റ്റായി ഒട്ടിക്കൂ",
+  exp_pastePh: "ഇടപാടുകൾ ഇവിടെ ഒട്ടിക്കൂ…",
+  exp_go: "ചെലവുകൾ വിശകലനം ചെയ്യൂ",
+  exp_busy: "വിശകലനം ചെയ്യുന്നു…",
+  exp_total: "ആകെ ചെലവ്",
+  exp_tx: "ഇടപാടുകൾ",
+  exp_dist: "ചെലവ് വിഭജനം",
+  exp_biggest: "ഏറ്റവും വലിയ ചെലവ്",
+  exp_tips: "സമ്പാദ്യ നുറുങ്ങുകൾ",
+  exp_again: "മറ്റൊരു സ്റ്റേറ്റ്മെന്റ്",
+  exp_disc: "ഏകദേശ കണക്കുകൾ — മാർഗനിർദേശത്തിന് മാത്രം, സാമ്പത്തിക ഉപദേശമല്ല.",
+  exp_noContent: "ആദ്യം ഫയൽ/ടെക്സ്റ്റ് നൽകൂ",
+  exp_err: "വിശകലനം പരാജയപ്പെട്ടു, വീണ്ടും ശ്രമിക്കൂ"
+});
+
+Object.assign(I18N['ml'], { videoNeedDesc: "⚠️ ആദ്യം വീഡിയോ വിവരിക്കൂ.", videoVoiceFemale: "👩 ഫാത്തിമ (സ്ത്രീ)", videoVoiceMale: "👨 ഹംദാൻ (പുരുഷൻ)" }); // v-video-i18n
+
+/* v-about-i18n */
+Object.assign(I18N['ml'], {
+  aboutFeatChat: "ചാറ്റിലൂടെ പൂർണ്ണ ആപ്പുകൾ നിർമ്മിക്കൂ",
+  aboutFeatProviders: "9 AI പ്രൊവൈഡർമാർ + «എല്ലാവരോടും ചോദിക്കൂ»",
+  aboutFeatMaha: "മഹ — ലൈവ് വോയ്സ് അസിസ്റ്റന്റ്",
+  aboutFeatStudios: "7 ക്രിയേറ്റീവ് ഇമേജ് സ്റ്റുഡിയോകൾ",
+  aboutFeatStocks: "ഓഹരി വിപണിയും പഠന പോർട്ട്ഫോളിയോയും",
+  aboutFeatPrivacy: "സ്വകാര്യത ആദ്യം — കീകൾ നിങ്ങളുടേത്",
+  aboutChipUAE: "UAE-യിൽ നിർമ്മിതം 🇦🇪",
+  aboutChipPWA: "PWA ആപ്പ്",
+  aboutChipLangs: "14 ഭാഷകൾ",
+  aboutMoreSummary: "📖 കൂടുതൽ അറിയൂ"
+});
+Object.assign(I18N['ml'], {
+  "aboutSupportTitle": "📞 കസ്റ്റമർ സേവനവും പിന്തുണയും",
+  "aboutSupportDesc": "നിങ്ങളുടെ ചോദ്യങ്ങൾക്ക് 24–48 മണിക്കൂറിനുള്ളിൽ ഞങ്ങൾ മറുപടി നൽകും.",
+  "aboutCopyright": "© Omran AI ടീം — UAE-യിൽ സ്നേഹത്തോടെ നിർമ്മിച്ചത് 🇦🇪",
+  "adminPanelTitle": "🛠️ അഡ്മിൻ പാനൽ (ഉടമയ്ക്ക് മാത്രം)"
+});
+Object.assign(I18N['ml'], {"videoBadgeShort":"ചെറുത്","videoBadgeFull":"പൂർണ്ണം"});
+Object.assign(I18N['ml'], {
+  "provTypingSuffix": "ടൈപ്പ് ചെയ്യുന്നു…",
+  "provFailSwitch": "പ്രതികരിച്ചില്ല ({why}) — മാറ്റുന്നു…",
+  "provUnknownReason": "അജ്ഞാത കാരണം",
+  "provWhyBuild": "ആപ്പ് നിർമ്മാണവും കോഡ് എഡിറ്റിംഗും",
+  "provWhyVision": "ചിത്രങ്ങൾ വായിക്കൽ",
+  "provWhyGeneral": "ഇത്തരം അഭ്യർത്ഥനകൾ",
+  "provSwitchNote": "നിങ്ങൾ {sel} തിരഞ്ഞെടുത്തു — എന്നാൽ {why} ഇതിൽ ഏറ്റവും കൃത്യതയുള്ള {eff} ആണ് ചെയ്യുന്നത്. നിങ്ങളുടെ സാധാരണ ചാറ്റ് {sel}-ൽ തുടരും.",
+  "provSwitchNoteHidden": "നിങ്ങളുടെ ചാറ്റ് {sel}-ൽ ആണ് — എന്നാൽ {why} ഇതിൽ ഏറ്റവും കൃത്യതയുള്ള {eff} ആണ് ചെയ്യുന്നത്. നിങ്ങളുടെ സാധാരണ ചാറ്റ് {sel}-ൽ തുടരും."
+});
+Object.assign(I18N['ml'], {"pageTitle":"Omran AI — ഇന്റലിജൻസ് പ്ലാറ്റ്ഫോം"});
+Object.assign(I18N['ml'], {"privacyConsentTitle":"🔒 നിങ്ങളുടെ സ്വകാര്യത ആദ്യം","privacyConsentText":"Omran AI Builder ഉപയോഗിക്കുന്നതിന് മുമ്പ് ദയവായി <a href=\"/privacy.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">സ്വകാര്യതാ നയവും</a> <a href=\"/terms.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">ഉപയോഗ നിബന്ധനകളും</a> വായിക്കുക. ഞങ്ങൾ എന്ത് ശേഖരിക്കുന്നു, എങ്ങനെ സംരക്ഷിക്കുന്നു, നിങ്ങളുടെ ഡാറ്റ ഇല്ലാതാക്കാനുള്ള അവകാശം എന്നിവ അവയിൽ വിശദീകരിക്കുന്നു.","privacyConsentRead":"നയം വായിക്കുക","privacyConsentAgree":"സമ്മതം, തുടരുക"});
+Object.assign(I18N['ml'], {"shareNeedCode":"ഈ പ്രോജക്റ്റ് ശൂന്യമാണ് — ആദ്യം ഒരു സന്ദേശം എഴുതുകയോ ആപ്പ് നിർമ്മിക്കുകയോ ചെയ്യുക, പിന്നീട് പങ്കിടുക.","shareTooLarge":"പ്രോജക്റ്റ് 2MB പങ്കിടൽ പരിധി കവിഞ്ഞു — ചിത്രങ്ങളോ ഉള്ളടക്കമോ കുറച്ച് വീണ്ടും ശ്രമിക്കുക."});
+Object.assign(I18N['ml'], {"pfGuestTitle":"💼 പരിശീലന പോർട്ട്‌ഫോളിയോ","pfGuestIntro":"ഒരു ലക്ഷം വെർച്വൽ — യഥാർത്ഥ വിപണിവിലയിൽ വ്യാപാരം ചെയ്ത് മറ്റ് ഉപയോക്താക്കളോട് മത്സരിക്കൂ 🏆","pfGuestLogin":"നിങ്ങളുടെ പോർട്ട്‌ഫോളിയോ ആരംഭിക്കാൻ സൈൻ ഇൻ ചെയ്യൂ — പുരോഗതി അക്കൗണ്ടിൽ സൂക്ഷിക്കും.","pfLoadingBox":"⏳ നിങ്ങളുടെ പോർട്ട്‌ഫോളിയോ തയ്യാറാക്കുന്നു…","pfLoadFail":"പോർട്ട്‌ഫോളിയോ ലോഡ് ചെയ്യാനായില്ല"});
+/* v650 */ window.__BI=window.__BI||{}; window.__BI["ml"]={"⚫ Black":"⚫ കറുപ്പ്","🟤 Brown":"🟤 തവിട്ട്","🟡 Blonde":"🟡 ബ്ലോണ്ട്","🔴 Red":"🔴 ചുവപ്പ്","⚪ Silver/Gray":"⚪ വെള്ളി/ഗ്രേ","🌈 Colorful":"🌈 വർണ്ണാഭമായത്","🎨 Ombre":"🎨 ഓംബ്രെ","✨ Highlights":"✨ ഹൈലൈറ്റുകൾ","❄️ Platinum":"❄️ പ്ലാറ്റിനം","🍷 Burgundy":"🍷 ബർഗണ്ടി","💙 Electric blue":"💙 ഇലക്ട്രിക് ബ്ലൂ","🌹 Rose gold":"🌹 റോസ് ഗോൾഡ്","🌀 Curly":"🌀 ചുരുണ്ട മുടി","📏 Sleek straight":"📏 സ്ലീക്ക് സ്ട്രെയ്റ്റ്","🌊 Hollywood waves":"🌊 ഹോളിവുഡ് വേവ്സ്","💇 Bob cut":"💇 ബോബ് കട്ട്","🧚 Pixie cut":"🧚 പിക്സി കട്ട്","👩‍🦱 Long layers":"👩‍🦱 ലോംഗ് ലെയേഴ്സ്","🟤 Nude":"🟤 ന്യൂഡ്","⚪ French":"⚪ ഫ്രഞ്ച്","🌸 Pink":"🌸 പിങ്ക്","🟡 Gold":"🟡 ഗോൾഡ്","✨ Glitter":"✨ ഗ്ലിറ്റർ","🩶 Matte greige":"🩶 മാറ്റ് ഗ്രേജ്","🪞 Chrome":"🪞 ക്രോം","🏛️ Marble art":"🏛️ മാർബിൾ ആർട്ട്","🌸 Floral art":"🌸 ഫ്ലോറൽ ആർട്ട്","🌿 Natural":"🌿 സ്വാഭാവികം","✨ Glam Evening":"✨ ഗ്ലാം ഈവനിംഗ്","⚫ Smokey Eyes":"⚫ സ്മോക്കി ഐസ്","💋 Bold Red Lips":"💋 ബോൾഡ് റെഡ് ലിപ്സ്","👰 Bridal":"👰 ബ്രൈഡൽ","🌟 Soft glam":"🌟 സോഫ്റ്റ് ഗ്ലാം","🖤 Arabic kohl":"🖤 അറബിക് കൺമഷി","💧 Dewy glow":"💧 ഡ്യുയി ഗ്ലോ","🤎 Full matte":"🤎 ഫുൾ മാറ്റ്","🎨 Editorial":"🎨 എഡിറ്റോറിയൽ","🧔 Full Beard":"🧔 തിങ്ങിനിറഞ്ഞ താടി","🪒 Light Stubble":"🪒 ചെറിയ താടി","👨 Mustache Only":"👨 മീശ മാത്രം","🐐 Goatee":"🐐 ഗോട്ടി","✨ Clean Shave":"✨ ക്ലീൻ ഷേവ്","◼️ Short boxed":"◼️ ഷോർട്ട് ബോക്സ്ഡ്","🎩 Van Dyke":"🎩 വാൻ ഡൈക്ക്","💈 Faded":"💈 ഫേഡഡ്","🧔‍♂️ Long thick":"🧔‍♂️ നീളമുള്ള ഇടതൂർന്ന താടി","⚓ Anchor":"⚓ ആങ്കർ","✨ Subtle Smoothing":"✨ നേരിയ മിനുസപ്പെടുത്തൽ","🌟 Natural Glow":"🌟 സ്വാഭാവിക തിളക്കം","👁️ Reduce Dark Circles":"👁️ കണ്ണിനടിയിലെ കറുപ്പകറ്റുക","🌞 Golden tan":"🌞 ഗോൾഡൻ ടാൻ","🧴 Matte finish":"🧴 മാറ്റ് ഫിനിഷ്","✨ Freckles":"✨ പുള്ളികൾ","🕶️ Classic Sunglasses":"🕶️ ക്ലാസിക് സൺഗ്ലാസുകൾ","⭕ Round":"⭕ റൗണ്ട്","🐱 Cat-Eye":"🐱 ക്യാറ്റ്-ഐ","✈️ Aviator":"✈️ ഏവിയേറ്റർ","🔲 Rimless":"🔲 റിംലെസ്","🕶️ Wayfarer":"🕶️ വേഫെയറർ","👓 Oversized":"👓 ഓവർസൈസ്ഡ്","🚴 Sport":"🚴 സ്പോർട്ട്","🥇 Gold frame":"🥇 ഗോൾഡ് ഫ്രെയിം","🕰️ Retro tinted":"🕰️ റെട്രോ ടിന്റഡ്","⬡ Hexagon":"⬡ ഹെക്സാഗൺ","🧊 Clear frame":"🧊 ക്ലിയർ ഫ്രെയിം","💪 Full Sleeve":"💪 ഫുൾ സ്ലീവ്","✋ Small Wrist":"✋ കൈത്തണ്ടയിൽ ചെറുത്","🔙 Back Piece":"🔙 മുതുകിൽ","⚫ Tribal":"⚫ ട്രൈബൽ","📝 Custom (from description)":"📝 വിവരണത്തിനനുസരിച്ച്","🔷 Geometric":"🔷 ജ്യാമിതീയം","➖ Minimal line":"➖ മിനിമൽ ലൈൻ","🖋️ Arabic calligraphy":"🖋️ അറബിക് കാലിഗ്രാഫി","🌿 Floral":"🌿 ഫ്ലോറൽ","🎌 Classic Anime":"🎌 ക്ലാസിക് ആനിമേഷൻ","🧸 Chibi":"🧸 ചിബി","🌱 Ghibli Style":"🌱 ഗിബ്ലി ശൈലി","🌆 Cyberpunk Anime":"🌆 സൈബർപങ്ക് ആനിമേഷൻ","⬛ Manga B&W":"⬛ മാംഗ B&W","⚡ Shonen action":"⚡ ഷോണൻ ആക്ഷൻ","🌸 Kawaii":"🌸 കവായി","📱 Webtoon":"📱 വെബ്‌ടൂൺ","📼 Retro 90s":"📼 റെട്രോ 90s","👳 Gulf Kandora & Ghutra":"👳 ഗൾഫ് കന്ദൂറയും ഗുത്രയും","🧥 Luxury Bisht Cloak":"🧥 ആഡംബര ബിഷ്ത് അങ്കി","🖤 Traditional Abaya":"🖤 പരമ്പരാഗത അബായ","🧵 Embroidered Thobe Nashal":"🧵 എംബ്രോയ്ഡറി ചെയ്ത തോബ് നഷാൽ","🇸🇦 Saudi Thobe & Shemagh":"🇸🇦 സൗദി തോബും ഷെമാഗും","🇦🇪 Emirati Embroidered Kaftan":"🇦🇪 എമിറാത്തി എംബ്രോയ്ഡറി കഫ്താൻ","🇴🇲 Omani":"🇴🇲 ഒമാനി","🧥 Bisht & shemagh":"🧥 ബിഷ്തും ഷെമാഗും","🇲🇦 Moroccan djellaba":"🇲🇦 മൊറോക്കൻ ജെല്ലബ","🇵🇸 Embroidered thobe":"🇵🇸 എംബ്രോയ്ഡറി ചെയ്ത തോബ്","🎓 Learning mode — 100% virtual money":"🎓 ലേണിംഗ് മോഡ് — 100% വെർച്വൽ പണം","Portfolio value":"പോർട്ട്ഫോളിയോ മൂല്യം","Available cash":"ലഭ്യമായ പണം","Profit/Loss":"ലാഭം/നഷ്ടം","New trade (at the real live price)":"പുതിയ വ്യാപാരം (തത്സമയ വിലയിൽ)","Symbol e.g. AAPL":"സിംബൽ ഉദാ. AAPL","Quantity":"അളവ്","Buy":"വാങ്ങുക","Sell":"വിൽക്കുക","Your positions":"നിങ്ങളുടെ സ്ഥാനങ്ങൾ","No shares yet — try your first practice trade! Type a symbol like AAPL, a quantity, then press Buy.":"ഓഹരികൾ ഇതുവരെയില്ല — ആദ്യത്തെ പരിശീലന വ്യാപാരം നടത്തൂ! AAPL പോലുള്ള സിംബലും അളവും നൽകി വാങ്ങുക അമർത്തുക.","shares":"ഓഹരികൾ","Sell all":"എല്ലാം വിൽക്കുക","🎓 Teach me":"🎓 എന്നെ പഠിപ്പിക്കൂ","Traders leaderboard":"ട്രേഡേഴ്സ് ലീഡർബോർഡ്"," — your rank: ":" — നിങ്ങളുടെ റാങ്ക്: "," of ":" ൽ ","Your recent trades":"സമീപകാല ഇടപാടുകൾ","🟢 Buy":"🟢 വാങ്ങൽ","🔴 Sell":"🔴 വിൽക്കൽ","Educational paper trading — real prices, virtual money. Not investment advice.":"വിദ്യാഭ്യാസ പേപ്പർ ട്രേഡിംഗ് — യഥാർത്ഥ വിലകൾ, വെർച്വൽ പണം. നിക്ഷേപ ഉപദേശമല്ല.","🔄 Start over (100k)":"🔄 വീണ്ടും ആരംഭിക്കുക (100k)","Enter a stock symbol and quantity first":"ആദ്യം സ്റ്റോക്ക് സിംബലും അളവും നൽകുക","⏳ Executing at the live price…":"⏳ തത്സമയ വിലയിൽ ഇടപാട് നടപ്പിലാക്കുന്നു…","Trade failed":"ഇടപാട് പരാജയപ്പെട്ടു","en":"ml","Left today: ":"ഇന്ന് ബാക്കിയുള്ളത്: ","⚠️ Design generation took too long or the service is temporarily busy. Please try again.":"⚠️ ഡിസൈൻ ജനറേഷന് കൂടുതൽ സമയമെടുത്തു അല്ലെങ്കിൽ സേവനം താൽക്കാലികമായി തിരക്കിലാണ്. ദയവായി വീണ്ടും ശ്രമിക്കുക.","Pick at least one output type.":"കുറഞ്ഞത് ഒരു ഔട്ട്പുട്ട് തരമെങ്കിലും തിരഞ്ഞെടുക്കുക.","⚠️ This result has no bill of quantities.":"⚠️ ഈ ഫലത്തിൽ അളവുകളുടെ പട്ടികയില്ല.","⚠️ Generate a design first.":"⚠️ ആദ്യം ഒരു ഡിസൈൻ സൃഷ്ടിക്കുക.","⚠️ Allow pop-ups to export the report.":"⚠️ റിപ്പോർട്ട് എക്സ്പോർട്ട് ചെയ്യാൻ പോപ്പ്-അപ്പുകൾ അനുവദിക്കുക.","❌ Error: ":"❌ പിശക്: ","✨ AI style":"✨ AI ശൈലി"," options — pick yours":" ഓപ്ഷനുകൾ — നിങ്ങളുടേത് തിരഞ്ഞെടുക്കുക","options for this feature":"ഈ സവിശേഷതയ്ക്കുള്ള ഓപ്ഷനുകൾ","Browse all ›":"എല്ലാം കാണുക ›","✨ More like this":"✨ ഇതുപോലുള്ള കൂടുതൽ","Max 3 styles":"പരമാവധി 3 ശൈലികൾ","Upload your room photo first":"ആദ്യം നിങ്ങളുടെ മുറിയുടെ ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യുക","Pick 2-3 styles":"2-3 ശൈലികൾ തിരഞ്ഞെടുക്കുക","Designing ":"ഡിസൈൻ ചെയ്യുന്നു ","❌ Failed at ":"❌ പരാജയപ്പെട്ടു: ","👍 Pick this":"👍 ഇത് തിരഞ്ഞെടുക്കുക","✓ Done — swipe and pick":"✓ പൂർത്തിയായി — സ്വൈപ്പ് ചെയ്ത് തിരഞ്ഞെടുക്കുക","👗 Fashion styles":"👗 ഫാഷൻ ശൈലികൾ","styles — pick yours":"ശൈലികൾ — നിങ്ങളുടേത് തിരഞ്ഞെടുക്കുക","styles for this category":"ഈ വിഭാഗത്തിനായുള്ള ശൈലികൾ","Review Scenes":"രംഗങ്ങൾ അവലോകനം ചെയ്യുക","Edit or delete scenes before generating. Each scene = 1 video credit.":"സൃഷ്ടിക്കുന്നതിന് മുമ്പ് രംഗങ്ങൾ എഡിറ്റ് ചെയ്യുകയോ നീക്കം ചെയ്യുകയോ ചെയ്യുക. ഓരോ രംഗവും = 1 വീഡിയോ ക്രെഡിറ്റ്.","Scene":"രംഗം","Remove":"നീക്കം ചെയ്യുക","❌ Cancel":"❌ റദ്ദാക്കുക","✨ Generate":"✨ നിർമ്മിക്കുക","Content was rejected by safety filters — try a calmer description, or remove the person photo.":"സുരക്ഷാ ഫിൽട്ടറുകൾ ഉള്ളടക്കം നിരസിച്ചു — ശാന്തമായ വിവരണം നൽകി നോക്കുക, അല്ലെങ്കിൽ വ്യക്തിയുടെ ഫോട്ടോ നീക്കം ചെയ്യുക.","Video generation failed.":"വീഡിയോ നിർമ്മാണം പരാജയപ്പെട്ടു.","⏳ Status: ":"⏳ നില: ","🎨 Rendering canvas video...":"🎨 ക്യാൻവാസ് വീഡിയോ റെൻഡർ ചെയ്യുന്നു...","🎙️ Generating narration...":"🎙️ വിവരണം സൃഷ്ടിക്കുന്നു...","🎚️ Merging narration...":"🎚️ വിവരണം സംയോജിപ്പിക്കുന്നു...","✅ Done!":"✅ പൂർത്തിയായി!","🎨 Building intro...":"🎨 ഇൻട്രോ നിർമ്മിക്കുന്നു...","🎨 Building outro...":"🎨 ഔട്ട്‌റോ നിർമ്മിക്കുന്നു...","Made by: ":"നിർമ്മിച്ചത്: ","Made with Omran AI Video":"ഉമ്രാൻ AI വീഡിയോ ഉപയോഗിച്ച് നിർമ്മിച്ചത്","🚀 Sending request to the AI video engine...":"🚀 AI വീഡിയോ എഞ്ചിനിലേക്ക് അഭ്യർത്ഥന അയയ്ക്കുന്നു...","🎬 Finalizing your video...":"🎬 നിങ്ങളുടെ വീഡിയോ പൂർത്തിയാക്കുന്നു...","✍️ Adding your signature watermark...":"✍️ നിങ്ങളുടെ ഒപ്പ് വാട്ടർമാർക്ക് ചേർക്കുന്നു...","🔗 Merging canvas + AI video...":"🔗 ക്യാൻവാസും AI വീഡിയോയും സംയോജിപ്പിക്കുന്നു...","⚠️ Please describe the video first.":"⚠️ ദയവായി ആദ്യം വീഡിയോ വിവരണം നൽകുക.","🔑 Please log in first to use the Video Maker.":"🔑 വീഡിയോ മേക്കർ ഉപയോഗിക്കാൻ ദയവായി ആദ്യം ലോഗിൻ ചെയ്യുക.","Veo failed.":"Veo പരാജയപ്പെട്ടു.","🔒 Veo 3 is limited to the owner account for now.":"🔒 Veo 3 നിലവിൽ ഉടമയുടെ അക്കൗണ്ടിലേക്ക് പരിമിതപ്പെടുത്തിയിരിക്കുന്നു.","✍️ Writing the film script scene by scene...":"✍️ സിനിമയുടെ തിരക്കഥ ഓരോ രംഗമായി എഴുതുന്നു...","Could not generate the film script.":"സിനിമാ തിരക്കഥ സൃഷ്ടിക്കാൻ കഴിഞ്ഞില്ല.","📋 Review the script...":"📋 തിരക്കഥ അവലോകനം ചെയ്യുക...","❌ Cancelled.":"❌ റദ്ദാക്കി.","💳 Checking video credits...":"💳 വീഡിയോ ക്രെഡിറ്റുകൾ പരിശോധിക്കുന്നു...","ℹ️ Hero photo is supported with Runway only; continuing without it...":"ℹ️ Runway-യിൽ മാത്രമേ പ്രധാന ഫോട്ടോ പിന്തുണയ്ക്കൂ; ഇതില്ലാതെ തുടരുന്നു...","🎥 Generating scene ":"🎥 രംഗം സൃഷ്ടിക്കുന്നു ","🎙️ Narrating scene ":"🎙️ രംഗം വിവരണം നൽകുന്നു ","▶️ Scene ":"▶️ രംഗം ","✅ All scenes played.":"✅ എല്ലാ രംഗങ്ങളും പ്ലേ ചെയ്തു.","⬇️ Scene ":"⬇️ രംഗം ","✅ Your film is ready! Scenes will play back-to-back — download each scene below.":"✅ നിങ്ങളുടെ സിനിമ തയ്യാറാണ്! രംഗങ്ങൾ തുടർച്ചയായി പ്ലേ ചെയ്യും — ഓരോ രംഗവും താഴെ ഡൗൺലോഡ് ചെയ്യാം.","🔗 Merging all scenes into your final film...":"🔗 എല്ലാ രംഗങ്ങളും അന്തിമ സിനിമയിലേക്ക് സംയോജിപ്പിക്കുന്നു...","🔗 Merging scene ":"🔗 രംഗം സംയോജിപ്പിക്കുന്നു ","⚠️ Narration merge failed; film merged without narration.":"⚠️ വിവരണം സംയോജിപ്പിക്കൽ പരാജയപ്പെട്ടു; വിവരണം ഇല്ലാതെ സിനിമ സംയോജിപ്പിച്ചു.","✅ Your film is ready!":"✅ നിങ്ങളുടെ സിനിമ തയ്യാറാണ്!","🗣️ Write what the actor should say first.":"🗣️ നടൻ ആദ്യം എന്താണ് പറയേണ്ടതെന്ന് എഴുതുക.","🚀 Sending to Google Veo 3...":"🚀 Google Veo 3-ലേക്ക് അയയ്ക്കുന്നു...","⏳ Veo 3 is generating (may take 1-3 min)...":"⏳ Veo 3 സൃഷ്ടിക്കുന്നു (1-3 മിനിറ്റ് എടുത്തേക്കാം)...","⬇️ Downloading the video...":"⬇️ വീഡിയോ ഡൗൺലോഡ് ചെയ്യുന്നു...","🔒 This feature is limited to the owner account.":"🔒 ഈ സവിശേഷത ഉടമയുടെ അക്കൗണ്ടിലേക്ക് മാത്രമായി പരിമിതപ്പെടുത്തിയിരിക്കുന്നു.","✍️ Writing the full scene-by-scene script...":"✍️ മുഴുവൻ രംഗം തിരിച്ചുള്ള തിരക്കഥ എഴുതുന്നു...","Could not generate the script.":"തിരക്കഥ സൃഷ്ടിക്കാൻ കഴിഞ്ഞില്ല.","🚀 Sending scene ":"🚀 രംഗം അയയ്ക്കുന്നു ","🔗 Joining all scenes with narration into the final video...":"🔗 വിവരണത്തോടൊപ്പം എല്ലാ രംഗങ്ങളും അന്തിമ വീഡിയോയിലേക്ക് സംയോജിപ്പിക്കുന്നു...","🔗 Joining scene ":"🔗 രംഗം സംയോജിപ്പിക്കുന്നു "," (opening moment of the scene)":" (രംഗത്തിന്റെ ആരംഭ നിമിഷം)"," (continuing the same scene, next moment)":" (അതേ രംഗത്തിന്റെ തുടർച്ച, അടുത്ത നിമിഷം)","🚀 Sending request...":"🚀 അഭ്യർത്ഥന അയയ്ക്കുന്നു...","🔗 Joining scenes together...":"🔗 രംഗങ്ങൾ ഒന്നിച്ച് സംയോജിപ്പിക്കുന്നു...","⚠️ Could not join scenes; showing the first scene only.":"⚠️ രംഗങ്ങൾ സംയോജിപ്പിക്കാൻ കഴിഞ്ഞില്ല; ആദ്യ രംഗം മാത്രം കാണിക്കുന്നു.","🔎 Upscaling video quality...":"🔎 വീഡിയോ നിലവാരം ഉയർത്തുന്നു...","🎚️ Adding narration to the video...":"🎚️ വീഡിയോയിലേക്ക് വിവരണം ചേർക്കുന്നു...","⚠️ Could not add narration; showing the video without it.":"⚠️ വിവരണം ചേർക്കാൻ കഴിഞ്ഞില്ല; വിവരണം ഇല്ലാതെ വീഡിയോ കാണിക്കുന്നു.","⬇️ Downloading video...":"⬇️ വീഡിയോ ഡൗൺലോഡ് ചെയ്യുന്നു...","🌴 Emirati modern":"🌴 എമിറാത്തി മോഡേൺ","🌿 Scandinavian":"🌿 സ്കാൻഡിനേവിയൻ","🎋 Japandi":"🎋 ജപ്പാൻഡി","🏭 Industrial":"🏭 ഇൻഡസ്ട്രിയൽ","🪑 Mid-century":"🪑 മിഡ്-സെഞ്ച്വറി","💎 Art Deco":"💎 ആർട്ട് ഡെക്കോ","🏛️ Neoclassic":"🏛️ നിയോക്ലാസിക്","🕯️ Victorian":"🕯️ വിക്ടോറിയൻ","👑 Baroque":"👑 ബറോക്ക്","🦇 Gothic":"🦇 ഗോഥിക്","🪵 Rustic":"🪵 റസ്റ്റിക്","🏡 Farmhouse":"🏡 ഫാംഹൗസ്","🌊 Coastal":"🌊 തീരദേശ ശൈലി","🏖️ Mediterranean":"🏖️ മെഡിറ്ററേനിയൻ","🕌 Moroccan":"🕌 മൊറോക്കൻ","🧿 Ottoman Turkish":"🧿 ഓട്ടോമൻ തുർക്കിഷ്","🪔 Persian":"🪔 പേർഷ്യൻ","🐘 Indian":"🐘 ഇന്ത്യൻ","⛩️ Japanese":"⛩️ ജാപ്പനീസ്","🧘 Zen":"🧘 സെൻ","🍵 Wabi-sabi":"🍵 വാബി-സാബി","🌴 Tropical":"🌴 ട്രോപ്പിക്കൽ","🏜️ Desert":"🏜️ മരുഭൂമി ശൈലി","🏙️ Urban loft":"🏙️ അർബൻ ലോഫ്റ്റ്","🚀 Futuristic":"🚀 ഫ്യൂച്ചറിസ്റ്റിക്","🌃 Cyberpunk":"🌃 സൈബർപങ്ക്","🎮 Gamer room":"🎮 ഗെയിമർ റൂം","📚 Dark academia":"📚 ഡാർക്ക് അക്കാദമിയ","🏔️ Alpine chalet":"🏔️ ആൽപൈൻ ഷാലെ","💜 Provence":"💜 പ്രൊവെൻസ്","🎬 Hollywood glam":"🎬 ഹോളിവുഡ് ഗ്ലാം","⬛ Monochrome":"⬛ മോണോക്രോം","🏺 Earthy organic":"🏺 എർത്തി ഓർഗാനിക്","🌸 Pastel":"🌸 പാസ്റ്റൽ","🤖 Smart home":"🤖 സ്മാർട്ട് ഹോം","♻️ Eco green":"♻️ ഇക്കോ ഗ്രീൻ","🕺 Retro 70s":"🕺 റെട്രോ 70s","🌈 Pop art":"🌈 പോപ്പ് ആർട്ട്","⬜ Gallery white":"⬜ ഗാലറി വൈറ്റ്","👘 Kaftan":"👘 കഫ്താൻ","🌙 Jalabiya":"🌙 ജലാബിയ","🧕 Hijab chic":"🧕 ഹിജാബ് ചിക്","🎩 Old money":"🎩 ഓൾഡ് മണി","🛹 Streetwear":"🛹 സ്ട്രീറ്റ്‌വെയർ","🏃 Sporty":"🏃 സ്പോർട്ടി","🧥 Winter luxury":"🧥 വിന്റർ ലക്ഷ്വറി","☀️ Summer linen":"☀️ സമ്മർ ലിനൻ","💼 Office chic":"💼 ഓഫീസ് ചിക്","🥂 Cocktail":"🥂 കോക്ക്ടെയിൽ","👑 Ballgown":"👑 ബോൾഗൗൺ","🌾 Boho":"🌾 ബോഹോ","📻 Vintage 50s":"📻 വിന്റേജ് 50s","💿 Y2K":"💿 Y2K","⬜ Minimal":"⬜ മിനിമൽ","💎 Glam":"💎 ഗ്ലാം","🖤 Leather":"🖤 ലെതർ","👖 Denim":"👖 ഡെനിമ","🌺 Floral":"🌺 ഫ്ലോറൽ","🍷 Velvet":"🍷 വെൽവെറ്റ്","🎀 Silk":"🎀 പട്ട്","🕴️ Power suit":"🕴️ പവർ സ്യൂട്ട്","🧿 Turkish":"🧿 തുർക്കിഷ്","🏰 Princess":"🏰 പ്രിൻസസ്","🦁 Safari":"🦁 സഫാരി","🎓 Preppy":"🎓 പ്രെപ്പി","🎭 Avant-garde":"🎭 അവാന്ത്-ഗാർഡ്","🧥 Bisht":"🧥 ബിഷ്ത്","👞 Smart casual":"👞 സ്മാർട്ട് കാഷ്വൽ","🤵 Three-piece":"🤵 ത്രീ-പീസ് സ്യൂട്ട്","⚡ Athleisure":"⚡ അത്‌ലഷർ","🎸 Rockstar":"🎸 റോക്ക്സ്റ്റാർ","🕌 Djellaba":"🕌 ജല്ലബ","🏫 School":"🏫 സ്കൂൾ ചിക്","🌙 Eid kids":"🌙 ഈദ് കിഡ്സ്"};
+Object.assign(I18N['ml'], {"acctPointsLabel":"പോയിന്റ് ബാലൻസ്","acctPointsLow":"⚠️ നിങ്ങളുടെ ബാലൻസ് തീരാറായി — തീരും മുമ്പ് റീചാർജ് ചെയ്യുക.","acctPointsOut":"🔴 നിങ്ങളുടെ ബാലൻസ് തീർന്നു — തുടരാൻ പോയിന്റുകൾ റീചാർജ് ചെയ്യുക.","acctPointsBuyBtn":"💳 പോയിന്റുകൾ റീചാർജ് ചെയ്യുക"});
+/* v656 */ Object.assign(I18N["ml"], {"aiGenTag": "✨ AI സൃഷ്ടിച്ച ഉള്ളടക്കം", "msgStopped": "മറുപടി നിർത്തി", "stReading": "💭 നിങ്ങളുടെ ചോദ്യം വായിക്കുന്നു…", "stTimeout": "⏱️ മറുപടിയുടെ സമയം കഴിഞ്ഞു.", "stSearch": "🔍 തത്സമയ ഉറവിടങ്ങൾ പരിശോധിക്കുന്നു…", "stFetchPage": "🌐 ഒരു പേജ് വായിക്കുന്നു…", "stRunJs": "⚙️ പരിശോധിക്കാൻ കോഡ് പ്രവർത്തിപ്പിക്കുന്നു…", "stGenImage": "🎨 ചിത്രം വരയ്ക്കുന്നു…", "stTestHtml": "🧪 പേജ് പരീക്ഷിക്കുന്നു…", "stGeoLoc": "📍 നിങ്ങളുടെ സ്ഥാനം കണ്ടെത്തുന്നു (ബ്രൗസർ അനുമതി ചോദിക്കും)…", "trSearchN": "«{q}» തിരഞ്ഞു — {n} ഫലങ്ങൾ ലഭിച്ചു", "trSearchC": "«{q}» തിരഞ്ഞു — {n} അക്ഷരങ്ങൾ ലഭിച്ചു", "trFetch": "{h} വായിച്ചു — {n} അക്ഷരങ്ങൾ ലഭിച്ചു", "trFetchFail": "{h} വായിക്കാൻ കഴിഞ്ഞില്ല", "trJsErr": "കോഡ് പ്രവർത്തിപ്പിച്ചു — ഒരു പിശക് വന്നു", "trJsOk": "കോഡ് പ്രവർത്തിപ്പിച്ചു — {n} അക്ഷരങ്ങൾ ലഭിച്ചു", "trImgOk": "ഒരു ചിത്രം വരച്ചു ✅", "trImgFail": "ചിത്രം പരാജയപ്പെട്ടു", "trLocOk": "നിങ്ങളുടെ സ്ഥാനം കണ്ടെത്തി ✅", "trLocFail": "സ്ഥാനം കണ്ടെത്താൻ ശ്രമിച്ചു — വിജയിച്ചില്ല", "trHtmlOk": "പേജ് പരീക്ഷിച്ചു — പിശകുകളില്ല ✅", "trHtmlErr": "പേജ് പരീക്ഷിച്ചു — പിശകുകൾ കണ്ടെത്തി", "trTool": "{name} ഉപയോഗിച്ചു"});
+/* v657 */ window.__BI=window.__BI||{}; window.__BI["ml"]=Object.assign(window.__BI["ml"]||{}, {"📄 Document Assistant": "📄 ഡോക്യുമെന്റ് അസിസ്റ്റന്റ്", "Upload your document": "നിങ്ങളുടെ ഡോക്യുമെന്റ് അപ്‌ലോഡ് ചെയ്യുക", "Contract · Invoice · Report · Quote (PDF or image)": "കരാർ · ഇൻവോയ്സ് · റിപ്പോർട്ട് · ക്വട്ടേഷൻ (PDF അല്ലെങ്കിൽ ചിത്രം)", "Or paste document text": "അല്ലെങ്കിൽ ഡോക്യുമെന്റിന്റെ ടെക്സ്റ്റ് പേസ്റ്റ് ചെയ്യുക", "Paste document text here…": "ഡോക്യുമെന്റിന്റെ ടെക്സ്റ്റ് ഇവിടെ പേസ്റ്റ് ചെയ്യുക…", "Analyze document": "ഡോക്യുമെന്റ് വിശകലനം ചെയ്യുക", "Upload a file or paste text first.": "ആദ്യം ഒരു ഫയൽ അപ്‌ലോഡ് ചെയ്യുക അല്ലെങ്കിൽ ടെക്സ്റ്റ് പേസ്റ്റ് ചെയ്യുക.", "Reading your document…": "നിങ്ങളുടെ ഡോക്യുമെന്റ് വായിക്കുന്നു…", "Document": "ഡോക്യുമെന്റ്", "Key details": "പ്രധാന വിവരങ്ങൾ", "Summary": "സംഗ്രഹം", "Important points": "പ്രധാന കാര്യങ്ങൾ", "Ask about the document": "ഡോക്യുമെന്റിനെക്കുറിച്ച് ചോദിക്കുക", "Type your question…": "നിങ്ങളുടെ ചോദ്യം ടൈപ്പ് ചെയ്യുക…", "New document": "പുതിയ ഡോക്യുമെന്റ്", "🧾 Government Services": "🧾 സർക്കാർ സേവനങ്ങൾ", "Ask about any UAE government service — steps, fees and the official link, with live search.": "ഏതെങ്കിലും യുഎഇ സർക്കാർ സേവനത്തെക്കുറിച്ച് ചോദിക്കൂ — തത്സമയ തിരച്ചിലിലൂടെ ഘട്ടങ്ങൾ, ഫീസ്, ഔദ്യോഗിക ലിങ്ക് എന്നിവ ലഭിക്കും.", "Type your service… e.g. how to renew my trade license?": "നിങ്ങളുടെ സേവനം ടൈപ്പ് ചെയ്യുക… ഉദാ. എന്റെ വ്യാപാര ലൈസൻസ് എങ്ങനെ പുതുക്കാം?", "Searching official sources…": "ഔദ്യോഗിക സ്രോതസ്സുകളിൽ തിരയുന്നു…", "Official sources": "ഔദ്യോഗിക സ്രോതസ്സുകൾ", "💼 CV Builder": "💼 സിവി ബിൽഡർ", "Fill your info and get a professional CV + cover letter ready as PDF.": "നിങ്ങളുടെ വിവരങ്ങൾ പൂരിപ്പിക്കൂ; പ്രൊഫഷണൽ സിവിയും കവർ ലെറ്ററും PDF ആയി തയ്യാറാക്കൂ.", "Full name *": "പൂർണ നാമം *", "John Doe": "അനു മേനോൻ", "Job title": "ജോലി പദവി", "Software Engineer": "സോഫ്റ്റ്‌വെയർ എഞ്ചിനീയർ", "Email": "ഇമെയിൽ", "Phone": "ഫോൺ", "City": "നഗരം", "Dubai, UAE": "ദുബായ്, യുഎഇ", "Professional summary": "പ്രൊഫഷണൽ സംഗ്രഹം", "Two lines about your experience & goals": "നിങ്ങളുടെ അനുഭവത്തെയും ലക്ഷ്യങ്ങളെയും കുറിച്ച് രണ്ട് വരികൾ", "Work experience": "പ്രവൃത്തിപരിചയം", "Title - Company - Duration - key achievements (one per line)": "പദവി - കമ്പനി - കാലയളവ് - പ്രധാന നേട്ടങ്ങൾ (ഓരോന്നും ഒരു വരിയിൽ)", "Education": "വിദ്യാഭ്യാസം", "Degree - University - Year": "ബിരുദം - സർവകലാശാല - വർഷം", "Skills": "കഴിവുകൾ", "Comma separated": "കോമ ഉപയോഗിച്ച് വേർതിരിക്കുക", "Languages": "ഭാഷകൾ", "Arabic (native), English (fluent)": "അറബിക് (മാതൃഭാഷ), ഇംഗ്ലീഷ് (പ്രാവീണ്യം)", "Target job/company (for cover letter)": "ലക്ഷ്യമിടുന്ന ജോലി/കമ്പനി (കവർ ലെറ്ററിന്)", "Optional": "ഐച്ഛികം", "Generate my CV": "എന്റെ സിവി തയ്യാറാക്കുക", "Enter your name at least.": "കുറഞ്ഞത് നിങ്ങളുടെ പേര് നൽകുക.", "Designing your CV…": "നിങ്ങളുടെ സിവി രൂപകൽപ്പന ചെയ്യുന്നു…", "Your CV": "നിങ്ങളുടെ സിവി", "Save PDF": "PDF ആയി സംരക്ഷിക്കുക", "Edit info": "വിവരങ്ങൾ തിരുത്തുക", "Cover letter": "കവർ ലെറ്റർ", "Tip: in the print dialog choose “Save as PDF”.": "സൂചന: പ്രിന്റ് ഡയലോഗിൽ “PDF ആയി സംരക്ഷിക്കുക” തിരഞ്ഞെടുക്കുക.", "Allow pop-ups to print.": "പ്രിന്റ് ചെയ്യാൻ പോപ്പ്-അപ്പുകൾ അനുവദിക്കുക."});
+/* v658 */ window.__BI=window.__BI||{}; window.__BI["ml"]=Object.assign(window.__BI["ml"]||{}, {"By signing up or signing in you agree to": "സൈൻ അപ്പ് ചെയ്യുകയോ സൈൻ ഇൻ ചെയ്യുകയോ ചെയ്യുന്നതിലൂടെ നിങ്ങൾ സമ്മതിക്കുന്നു", "Privacy Policy": "സ്വകാര്യതാ നയം", "Terms of Use": "ഉപയോഗ നിബന്ധനകൾ", "and": "കൂടാതെ", "Gulf & Arab world": "ഗൾഫും അറബ് ലോകവും", "Asia": "ഏഷ്യ", "Africa": "ആഫ്രിക്ക", "Europe": "യൂറോപ്പ്", "Oceania": "ഓഷ്യാനിയ", "Americas": "അമേരിക്കകൾ", "❌ Error: ": "❌ പിശക്: ", "⏳ Status: ": "⏳ നില: "});

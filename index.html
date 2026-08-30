@@ -17,6 +17,35 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title id="pageTitle">عمران AI — منصّة الذكاء</title>
+<script>/* v-boot-l10n (شكوى المالك: عند التحديث الصفحة كلها تظهر بالعربي ثم تنقلب
+  وتقفز العناصر): الصفحة مكتوبة عربية، والترجمة تصل بعد تحميل الحزمة. هنا —
+  قبل أول رسمة — يُضبط الاتجاه واللغة من المحفوظ ويُسدل ستار حتى يُطبَّق قاموس
+  اللغة الحقيقي (يرفعه applyLanguage، وحارس زمني يرفعه قسرًا لو تعثّر التحميل). */
+(function(){try{
+  var l = localStorage.getItem('aiapp_lang') || 'ar';
+  if(l === 'ar') return;
+  var d = document.documentElement;
+  d.dir = (l === 'ur') ? 'rtl' : 'ltr';
+  d.lang = l;
+  d.classList.add('l10nPending');
+  document.title = (l === 'ur') ? 'عمران AI' : 'Omran AI';
+  setTimeout(function(){ d.classList.remove('l10nPending'); }, 6000);
+}catch(e){}})();</script>
+<style>html.l10nPending body{visibility:hidden}</style>
+<script>/* v652 — قفزة الهيدر عند التحديث (شكوى المالك ٢٩ أغسطس: الضغط على الاسم
+  فوق يعيد تحميل الصفحة فيقفز الشعار من الوسط إلى طرفه، ويظهر زر ☰ لحظة ثم
+  يختفي): تخطيط الهيدر كله معلّق على الفئة mobile-ui، وكانت تُضاف من الحزمة بعد
+  نحو ٢٨٠ms — أي بعد أول رسمة — فتنقلب أعمدة الهيدر أمام العين. اللغات الأخرى
+  كانت تخفيه خلف ستار l10nPending؛ العربية بلا ستار فظهرت القفزة عارية. هنا
+  تُضاف الفئة قبل أول رسمة بنفس شرط applyMobileUiClass حرفيًا، ويبقى الأصل في
+  app-01 كما هو (classList.add لا يكرّر). قياس قبل: 136←12. */
+(function(){try{
+  var ua = navigator.userAgent || '';
+  var isMobileUA = /Android|iPhone|iPad|iPod|Mobile|Huawei|HarmonyOS/i.test(ua);
+  var isTouch = (navigator.maxTouchPoints || 0) > 0;
+  var isNarrow = window.matchMedia('(max-width:860px)').matches;
+  if((isMobileUA && isTouch) || isNarrow) document.documentElement.classList.add('mobile-ui');
+}catch(e){}})();</script>
 <meta name="description" content="أنشئ تطبيقات وألعاب ومواقع ويب بالذكاء الاصطناعي مباشرة من المتصفح. يدعم OpenAI وGemini وClaude وGroq وMistral وDeepSeek وCohere وأكثر. تطبيق ويب تقدمي (PWA) ثنائي اللغة، مجاني بالكامل، بواسطة عمران.">
 <meta name="keywords" content="منشئ تطبيقات بالذكاء الاصطناعي, AI app builder, AI code generator, أدوات ذكاء اصطناعي, بناء تطبيقات بدون كود, no-code AI, ChatGPT builder, Gemini, Claude, Groq, DeepSeek, Mistral, Cohere, Omran AI">
 <meta name="author" content="Omran">
@@ -77,9 +106,9 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=gold-20260819">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/tokens.css?v=643">
-<link rel="stylesheet" href="css/redesign.css?v=640">
-<link rel="stylesheet" href="css/modules.css?v=527">
+<link rel="stylesheet" href="css/tokens.css?v=654">
+<link rel="stylesheet" href="css/redesign.css?v=654">
+<link rel="stylesheet" href="css/modules.css?v=648">
 <script>
 /* v434 — الوضع الفاتح/الداكن. الذهبي ثابت في الاثنين. */
 (function(){var K='aiapp_mode';
@@ -124,19 +153,31 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧أ: مودالات الأساس نُقلت إلى js/partials-core.js -->
-<script src="/js/partials-core.js?v=627"></script>
+<script src="/js/partials-core.js?v=631"></script>
 
 <!-- v416 · ديكور AI: منطقة رفع + شبكات بطاقات + رقاقات بدل القوائم المنسدلة. العقد مع app.bundle.js لم يتغيّر: القوائم ومربّعات الاختيار باقية في الصفحة مخفيّة وتُحدَّث برمجيًا. -->
-<script src="/js/design-sels.js?v=558"></script>
+<script src="/js/design-sels.js?v=560"></script>
 <!-- v417 · أزياء AI: فئة + بطاقات نمط/موسم/مناسبة + دائرات ألوان + رقاقات إضافات. الحقول الجديدة تصل إلى /api/fashion-create عبر window.omranFashionExtras. القوائم الأصلية باقية مخفيّة. -->
-<script src="/js/design-gen.js?v=606"></script>
+<script src="/js/design-gen.js?v=607"></script>
 
 
 <header>
   <button type="button" class="omIconBtn" id="omranHamburger" title="القائمة الجانبية" data-i18n-title="sidePanelTitle"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button>
   <h1>
     <span class="titles">
-      <span id="brandTitle" class="brandTitle brand-ar"><img src="icons/brand-ar.png" alt="عمران Ai" class="brandImg"></span>
+      <span id="brandTitle" class="brandTitle brand-ar"><img src="icons/brand-ar.png" alt="عمران Ai" class="brandImg" width="126" height="42"></span>
+      <script>/* v-brand-noflash (شكوى المالك: الضغط على الاسم فوق يُظهر «عمران» عربيًا
+        بأي لغة): الشعار العربي كان مكتوبًا في الصفحة فيظهر أول لقطة قبل الجافاسكربت.
+        هنا يُبدَّل فورًا أثناء التحليل بشعار اللغة المحفوظة — نفس جدول syncBrand. */
+      (function(){try{
+        var l = localStorage.getItem('aiapp_lang') || 'ar';
+        if(l === 'ar') return;
+        var W = { zh:84, hi:71, es:87, fr:89, bn:80, ru:89, ur:75, id:86, fil:93, tr:75, ne:69, ml:110 };
+        var s = W[l] ? ('icons/brand-' + l + '.png') : 'icons/brand-en.png';
+        var w = W[l] || 161;
+        document.getElementById('brandTitle').innerHTML = '<img src="' + s + '" alt="Omran Ai" class="brandImg" width="' + w + '" height="42">';
+        document.title = 'Omran AI';
+      }catch(e){}})();</script>
     </span>
   </h1>
   <div id="headerActions" style="display:flex; gap:8px; flex-wrap:nowrap; justify-content:flex-end; align-items:center; flex-shrink:0;">
@@ -197,7 +238,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 <main>
   <div id="sidebar">
     <button type="button" id="omranNewChatBtn"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg><span class="ncLabel" data-i18n="ncNewChatLabel">محادثة جديدة ✨</span></button>
-    <div id="omranHistTitle"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> المحادثات</div>
+    <div id="omranHistTitle"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> <span data-i18n="omNavChats">المحادثات</span></div>
     <div id="providerGridSidebar">
       <button id="provDropdownBtn" type="button"><span id="provDDLogo"></span><span class="provDDName" id="provDDName"></span><svg class="provDDChev" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
       <div id="provDropdownPanel">
@@ -254,6 +295,8 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
     <div id="inputbar">
       <input type="file" id="attachInput" accept="image/*,.txt,.md,.js,.jsx,.ts,.tsx,.py,.json,.csv,.html,.css,.log,.zip,.docx,.xlsx,.pptx,.jar,.pdf,.xml,.yml,.yaml,.sh,.php,.java,.c,.cpp,.go,.rs,.rb,.sql,.env,*" multiple style="display:none;">
       <div id="emojiPicker"></div>
+      <!-- v-maha-outside: «م» خارج المستطيل جنبه (طلب المالك ٢٩ أغسطس) — الصف يضم الصندوق + م -->
+      <div id="composerRow">
       <div id="composerBox">
       <div id="chatEditNotice" hidden><span data-i18n="editMsgNotice">تعديل الرسالة</span><button type="button" aria-label="إلغاء التعديل" data-i18n="cancel">إلغاء</button></div>
       <!-- v587 — المرفقات داخل صندوق الكتابة نفسه -->
@@ -289,12 +332,14 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
           <button type="button" id="omranBtnWeb" title="بحث في الإنترنت" data-i18n-title="qtWebSearch"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><line x1="3" y1="12" x2="21" y2="12"></line><path d="M12 3a15 15 0 0 1 4 9 15 15 0 0 1-4 9 15 15 0 0 1-4-9 15 15 0 0 1 4-9z"></path></svg></button>
           <button type="button" id="omranBtnClip" title="إرفاق ملف" data-i18n-title="attachFileTitle" style="display:none !important;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg></button>
           <button class="btn" id="btnMic" type="button" title="تحدث بدل الكتابة" data-i18n-title="micTitle"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg></button>
-          <button class="btn" id="btnMahaDock" type="button" title="مها — مكالمة صوتية" data-i18n-title="mahaTitle" style="padding:4px;"><img src="/icons/maha-m3.svg" alt="مها" style="width:27px; height:27px; border-radius:50%; display:block; pointer-events:none;"></button>
           <button class="btn" id="btnAskAllToggle" type="button" style="display:none !important;" title="اسأل الكل — 4 نماذج AI تبني تطبيقك معًا" data-i18n-title="askAllBtnTitle">🧠</button>
         </div>
       </div>
         <button class="btn" id="btnStop" type="button" title="إيقاف" data-i18n-title="stopTitle"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button>
         <button class="tab" id="btnSend" data-i18n-title="sendTitle" title="إرسال" style="line-height:1;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
+      </div>
+      <!-- حرف نصي بخط الصفحة بدل صورة SVG: الخط داخل <img> لا يُحمَّل فيرسم الحرف بخط بديل غير متمركز -->
+      <button class="btn" id="btnMahaDock" type="button" title="مها — مكالمة صوتية" data-i18n-title="mahaTitle"><span class="mahaGlyph" aria-hidden="true">م</span></button>
       </div>
       <div id="omranBelowComposer">
         <div id="omranChips">
@@ -386,12 +431,12 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧ب: الإعدادات + الساعة + القوالب نُقلت إلى js/partials-settings.js -->
-<script src="/js/partials-settings.js?v=643"></script>
+<script src="/js/partials-settings.js?v=647"></script>
 
-<script src="/js/selfdiag.js?v=643"></script>
+<script src="/js/selfdiag.js?v=1ba33c1a"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=a7bef0f8"></script>
+    <script defer src="/js/app.bundle.js?v=633094bd"></script>
     <script defer src="/js/modes.js?v=b23329c6"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
@@ -413,7 +458,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
   </div>
 </div>
 <div id="eduChatHint"><span id="eduChatHintTxt" style="flex:1;"></span><button class="eduPrimary" id="eduChatHintBtn" style="margin-top:0;padding:7px 12px;font-size:12px;border:none;border-radius:var(--r-2);cursor:pointer;color:var(--accent-on-surface);background:linear-gradient(90deg,var(--accent-surface),var(--accent-surface));">التعليم</button></div>
-<script defer src="/js/edu.js?v=660"></script>
+<script defer src="/js/edu.js?v=648"></script>
 
 <!-- 👑 الرد الاحترافي (Premium Reply) — client-side wiring only. Server enforces real deduction. -->
 <script defer src="/js/premium.js?v=620"></script>
@@ -430,7 +475,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
   </div>
   <input type="file" id="expFile" accept="application/pdf,image/*" style="display:none">
 </div>
-<script defer src="/js/exp.js?v=441"></script>
+<script defer src="/js/exp.js?v=442"></script>
 
 <!-- ================= 📄🧾💼 مساعد المستندات + المعاملات الحكومية + السيرة الذاتية ================= -->
 
@@ -438,7 +483,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 <div class="xm" id="govModal" dir="rtl"><div class="xmWrap"><div class="xmHead"><h2 id="govTitleH" data-i18n="govServicesTitle">🧾 المعاملات الحكومية</h2><button class="xmX" id="govX">✕</button></div><div class="xmBody" id="govBody"></div></div></div>
 <div class="xm" id="cvModal" dir="rtl"><div class="xmWrap"><div class="xmHead"><h2 id="cvTitleH" data-i18n="cvGenTitle">💼 مولّد السيرة الذاتية</h2><button class="xmX" id="cvX">✕</button></div><div class="xmBody" id="cvBody"></div></div></div>
 
-<script defer src="/js/ui-docs.js?v=472"></script>
+<script defer src="/js/ui-docs.js?v=473"></script>
 <nav id="omranBottomNav" aria-label="التنقل">
   <button type="button" class="omNavBtn active" data-omnav="home"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg><span data-i18n="omNavHome">الرئيسية</span></button>
   <button type="button" class="omNavBtn" data-omnav="chats"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg><span data-i18n="omNavChats">المحادثات</span></button>
@@ -456,7 +501,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 </nav>
 <script defer src="/js/ui-wiring.js?v=640"></script>
 <!-- v412 — استوديو صانع الفيديو (كمبيوتر فقط، لا يلمس الجوّال) -->
-<script defer src="/js/video.js?v=422"></script>
+<script defer src="/js/video.js?v=423"></script>
 
 <!-- v413 ديكور: إطار البطاقات · ذوبان حرفَي الشريط · مقبض اللوحة · زرّ المحادثة · الفواصل — كمبيوتر وجوّال -->
 

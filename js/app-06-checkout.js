@@ -54,6 +54,43 @@ async function refreshPointsWallet(){
 }
 window.refreshPointsWallet = refreshPointsWallet;
 
+/* v-points-acct (طلب المالك): رصيد النقاط في قائمة الحساب فقط، مع تحذير
+   تلقائي قبل النفاد (≤ 20 نقطة) ورسالة نفاد + زر شحن يفتح باقات النقاط.
+   يُستدعى تلقائيًا عند فتح قسم «حسابي» — لا زر ولا خطوة من المستخدم. */
+const ACCT_POINTS_LOW = 20;
+async function refreshAcctPoints(){
+  const box = document.getElementById('acctPointsBox');
+  const val = document.getElementById('acctPointsValue');
+  const warn = document.getElementById('acctPointsLowWarn');
+  const warnText = document.getElementById('acctPointsLowText');
+  if(!box || !val) return;
+  const token = authGet('aiapp_auth_token');
+  if(!token){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; return; }
+  try{
+    const r = await fetch('/api/points', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'balance', token }) });
+    const d = await r.json();
+    if(!(d && d.ok && d.authed)){ box.style.display = 'none'; if(warn) warn.style.display = 'none'; return; }
+    box.style.display = 'flex';
+    if(d.unlimited){
+      val.textContent = '∞';
+      if(warn) warn.style.display = 'none';
+      return;
+    }
+    const bal = Math.max(0, Number(d.points) || 0);
+    val.textContent = bal + ' ' + t('pricingPointsUnit');
+    window.__pointsBalance = bal;
+    if(warn && warnText){
+      if(bal <= ACCT_POINTS_LOW){
+        const key = bal <= 0 ? 'acctPointsOut' : 'acctPointsLow';
+        warnText.setAttribute('data-i18n', key);
+        warnText.textContent = t(key);
+        warn.style.display = 'block';
+      } else warn.style.display = 'none';
+    }
+  }catch(e){ /* صامت — الشبكة قد تنقطع، لا نكسر قائمة الحساب */ }
+}
+window.refreshAcctPoints = refreshAcctPoints;
+
 function openCheckout(plan){
   checkoutCurrentPlan = plan;
   const overlay = document.getElementById('checkoutModalOverlay');
@@ -1949,7 +1986,9 @@ async function callAIWithFallback(messages, onDelta, preferredList){
       // and GPT felt "dead" next to Claude, which had its own thinking output.
       try{
         if(window.__chatStatus && !window.__chatStatus.isReleased()){
-          window.__chatStatus.phase('💭', (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey) + ' يكتب…');
+          /* v-prov-status-i18n (شكوى المالك: «يكتب…» عربية بجانب اسم مترجم): سطر
+             الحالة يتبع لغة الواجهة كبقية النصوص. */
+          window.__chatStatus.phase('💭', (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey) + ' ' + t('provTypingSuffix'));
         }
       }catch(e){ console.warn('[status] provider phase failed', e); }
       const reply = await callProviderAI(providerKey, messages, onDelta);
@@ -1980,8 +2019,9 @@ async function callAIWithFallback(messages, onDelta, preferredList){
       try{
         if(window.__chatStatus){
           const who = (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey);
-          const why = (err && (err.status ? ('HTTP ' + err.status) : String(err.message || '').slice(0, 70))) || 'سبب غير معروف';
-          window.__chatStatus.note('⚠️', who + ' لم يستجب (' + why + ') — جارٍ التحويل…');
+          const why = (err && (err.status ? ('HTTP ' + err.status) : String(err.message || '').slice(0, 70))) || t('provUnknownReason');
+          /* v-prov-status-i18n: رسالة التعثر بلغة الواجهة لا بالعربي دائمًا. */
+          window.__chatStatus.note('⚠️', who + ' ' + t('provFailSwitch').replace('{why}', why));
           console.warn('[fallback] ' + providerKey + ' failed:', err);
         }
       }catch(e){ console.warn('[status] fallback note failed', e); }
