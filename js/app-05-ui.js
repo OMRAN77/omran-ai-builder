@@ -23,10 +23,6 @@ function omranLikelyApp(){
     if(localStorage.getItem('aiapp_store')) return true;
     if(window.matchMedia && matchMedia('(display-mode: standalone)').matches) return true;
     if(navigator.standalone === true) return true;
-    /* v-cap-detect (شكوى عمران «PDF عند + ما يشتغل» على TestFlight): غلاف
-       كاباسيتور يحمّل الموقع الحي بلا أي علامة — جسره المحقون هو العلامة. */
-    if(window.Capacitor && (window.Capacitor.isNative === true || (typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()))) return true;
-    if(window.webkit && window.webkit.messageHandlers && (window.webkit.messageHandlers.omranShare || window.webkit.messageHandlers.omranPdf)) return true;
   }catch(e){ __swallow(e, 'share:app-detect'); }
   return false;
 }
@@ -61,41 +57,19 @@ async function omranSaveBlob(blob, filename){
   if(omranLikelyApp() && (blob.type === 'application/pdf' || /\.pdf$/i.test(filename || ''))){
     try{
       const url = await omranBlobToServerLink(blob, filename);
-      /* v-cap-browser: داخل غلاف كاباسيتور القديم افتح الرابط بعارض النظام
-         (SFSafariViewController) — قبل window.open حتى لا يُبحر التطبيق نفسه. */
-      try{
-        const cap = window.Capacitor;
-        const br = cap && cap.Plugins && cap.Plugins.Browser;
-        if(br && typeof br.open === 'function'){ await br.open({ url: url }); return; }
-      }catch(e){ __swallow(e, 'share:cap-browser'); }
-      /* v-pdf-noleave + v-pdf-stay (شكوى عمران «بس سكرت»): داخل التطبيق
-         window.open قد يُبحر بصفحة التطبيق نفسها إلى الرابط فتختفي الشاشة.
-         لا window.open هنا إطلاقًا: iframe خفي يسلّم الملف لمنزّل النظام،
-         وشريط صغير بزر فتح يدوي لمن لم يظهر عنده شيء. */
-      const dfr = document.createElement('iframe');
-      dfr.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;';
-      dfr.src = url;
-      document.body.appendChild(dfr);
-      setTimeout(() => { try{ dfr.remove(); }catch(e){ __swallow(e, 'share:dl-frame'); } }, 60000);
-      try{
-        const isArT = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
-        const bar = document.createElement('div');
-        bar.style.cssText = 'position:fixed;bottom:calc(84px + env(safe-area-inset-bottom,0px));inset-inline:14px;z-index:99999;background:rgba(24,24,30,.96);border:1px solid rgba(212,175,55,.4);border-radius:14px;padding:11px 14px;display:flex;align-items:center;gap:10px;color:#eef0f6;font-size:13.5px;box-shadow:0 10px 30px rgba(0,0,0,.5);';
-        const txt = document.createElement('span');
-        txt.style.cssText = 'flex:1;';
-        txt.textContent = isArT ? '✅ ملف PDF جاهز' : '✅ PDF ready';
-        const a2 = document.createElement('a');
-        a2.href = url; a2.target = '_blank'; a2.rel = 'noopener';
-        a2.textContent = isArT ? 'فتح' : 'Open';
-        a2.style.cssText = 'color:#d4af37;font-weight:800;text-decoration:none;padding:6px 14px;border:1px solid rgba(212,175,55,.5);border-radius:10px;';
-        const x2 = document.createElement('button');
-        x2.textContent = '✕';
-        x2.style.cssText = 'background:none;border:none;color:#9a9a9e;font-size:14px;cursor:pointer;padding:4px 6px;';
-        x2.onclick = () => bar.remove();
-        bar.appendChild(txt); bar.appendChild(a2); bar.appendChild(x2);
-        document.body.appendChild(bar);
-        setTimeout(() => { try{ bar.remove(); }catch(e){ __swallow(e, 'share:dl-bar'); } }, 45000);
-      }catch(e){ __swallow(e, 'share:dl-bar2'); }
+      const w = window.open(url, '_blank');
+      /* v-pdf-noleave (شكوى ٢٩ أغسطس: «تحميل PDF يرجّعني لصفحة المحادثة»):
+         داخل التطبيق المثبّت window.open يرجع null، وكان location.href
+         يُبحر بصفحة التطبيق نفسها إلى رابط التنزيل — وأي تعثّر يعيد
+         المستخدم للمحادثة بلا ملف. iframe خفي يسلّم الملف لمنزّل النظام
+         (ترويسة attachment) دون مغادرة الصفحة إطلاقًا. */
+      if(!w){
+        const dfr = document.createElement('iframe');
+        dfr.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;';
+        dfr.src = url;
+        document.body.appendChild(dfr);
+        setTimeout(() => { try{ dfr.remove(); }catch(e){ __swallow(e, 'share:dl-frame'); } }, 60000);
+      }
       return;
     }catch(e){ __swallow(e, 'share:server-link'); }
   }
