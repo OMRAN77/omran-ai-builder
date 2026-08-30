@@ -1448,6 +1448,133 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
   });
 }
 
+// 🪪 v-tidy-card: «اكتب نفس المكتوب بس بخط مرتب» — نموذج مصوّر (بطاقة طالب/استمارة)
+// يُقرأ عبر /api/tools?action=card-extract ثم يُعاد رسمه هنا محليًّا على كانفس:
+// النص لا يمرّ على مولّد صور أبدًا فلا يتشوّه حرف، والصورة الشخصية والرسومات
+// تُقتصّ من صورة المستخدم نفسها وتُعاد بإطار مرتب.
+function __cardTidyIntent(s){
+  s = String(s || '');
+  if(/نفس\s*(?:الي|اللي|إلي|إللي|ما\s*هو|ما)?\s*(?:هو\s*)?(?:ال)?مكتوب/i.test(s)
+     && /(مرتب|رتب|نظم|منظم|أنظف|انظف|أجمل|اجمل|أحسن|احسن|أنيق|انيق|أفضل|افضل|عدل|عدّل|حسّن|حسن)/i.test(s)) return true;
+  if(/(?:^|[\s،,])(?:رتب|رتبي|رتبها|رتبيها|نظم|نظمي|نظمها)\s*(?:لي\s*)?(?:هال|هذي\s*|هذه\s*)?(?:ال)?(?:صور[ةه]|بطاق[ةه]|نموذج|استمار[ةه]|شهاد[ةه]|ورق[ةه]|كرت|بيانات|معلومات)/i.test(s)) return true;
+  if(/(بطاق[ةه]|نموذج|استمار[ةه]|كرت)/i.test(s)
+     && /(بخط\s*مرتب|مرتب[ةه]?|أنظف|انظف|أجمل|اجمل|أنيق|انيق|من\s*جديد|أعد|اعد|نفس)/i.test(s)) return true;
+  return false;
+}
+function __cardRoundRect(x, px, py, pw, ph, r){
+  const rr = Math.min(r, pw / 2, ph / 2);
+  x.beginPath();
+  x.moveTo(px + rr, py);
+  x.arcTo(px + pw, py, px + pw, py + ph, rr);
+  x.arcTo(px + pw, py + ph, px, py + ph, rr);
+  x.arcTo(px, py + ph, px, py, rr);
+  x.arcTo(px, py, px + pw, py, rr);
+  x.closePath();
+}
+async function renderTidyCardCanvas(spec, srcDataUrl){
+  await mahaLoadFont('default'); /* Tajawal — الخط المرتب */
+  const img = await new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i); i.onerror = () => rej(new Error('bad_source_image'));
+    i.src = srcDataUrl;
+  });
+  const W = 1600, H = 1048;
+  const THEMES = {
+    pink:   { main:'#e91e63', soft:'#f8a5c2', line:'#fde3ee', wash:'#fff7fa' },
+    blue:   { main:'#1565c0', soft:'#90caf9', line:'#e3f0fd', wash:'#f7fbff' },
+    green:  { main:'#2e7d32', soft:'#a5d6a7', line:'#e6f4e7', wash:'#f8fdf8' },
+    purple: { main:'#7b1fa2', soft:'#ce93d8', line:'#f3e6f7', wash:'#fdf9ff' },
+    gold:   { main:'#b8862b', soft:'#e6c675', line:'#f7ecd4', wash:'#fffdf6' },
+    neutral:{ main:'#37474f', soft:'#b0bec5', line:'#eceff1', wash:'#fafbfc' }
+  };
+  const th = THEMES[spec.theme] || THEMES.neutral;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  const bg = x.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#ffffff'); bg.addColorStop(1, th.wash);
+  x.fillStyle = bg; x.fillRect(0, 0, W, H);
+  __cardRoundRect(x, 20, 20, W - 40, H - 40, 42);
+  x.lineWidth = 8; x.strokeStyle = th.soft; x.stroke();
+  x.save(); x.setLineDash([10, 12]);
+  __cardRoundRect(x, 42, 42, W - 84, H - 84, 30);
+  x.lineWidth = 3; x.strokeStyle = th.line; x.stroke();
+  x.restore();
+  const iw = img.naturalWidth || 1, ih = img.naturalHeight || 1;
+  const crop = (b) => ({ sx: b.x * iw, sy: b.y * ih, sw: Math.max(1, b.w * iw), sh: Math.max(1, b.h * ih) });
+  let hasPhoto = false;
+  if(spec.photoBox){
+    hasPhoto = true;
+    const b = crop(spec.photoBox);
+    const pw = 380, ph = Math.max(320, Math.min(520, Math.round(pw * b.sh / b.sw)));
+    const px = W - 84 - pw, py = 68;
+    x.save(); __cardRoundRect(x, px, py, pw, ph, 28); x.clip();
+    x.fillStyle = '#fff'; x.fillRect(px, py, pw, ph);
+    x.drawImage(img, b.sx, b.sy, b.sw, b.sh, px, py, pw, ph);
+    x.restore();
+    __cardRoundRect(x, px, py, pw, ph, 28);
+    x.lineWidth = 8; x.strokeStyle = th.soft; x.stroke();
+  }
+  const decors = Array.isArray(spec.decorBoxes) ? spec.decorBoxes : [];
+  let hasTopDecor = false;
+  decors.slice(0, 2).forEach((d, i) => {
+    const b = crop(d);
+    const maxW = 290, maxH = 320;
+    const sc = Math.min(maxW / b.sw, maxH / b.sh);
+    const dw = Math.round(b.sw * sc), dh = Math.round(b.sh * sc);
+    let dx, dy;
+    if(i === 0){ dx = 78; dy = 60; hasTopDecor = true; }
+    else { dx = hasPhoto ? 90 : (W - 84 - dw); dy = H - 44 - dh; }
+    x.drawImage(img, b.sx, b.sy, b.sw, b.sh, dx, dy, dw, dh);
+  });
+  const LL = hasTopDecor ? 400 : 130;
+  const RR = hasPhoto ? W - 510 : W - 140;
+  x.direction = 'rtl';
+  let y0 = 120;
+  if(spec.title){
+    x.fillStyle = th.main; x.textAlign = 'center';
+    x.font = '700 54px "Tajawal", sans-serif';
+    x.fillText(String(spec.title), Math.round((LL + RR) / 2), 140);
+    y0 = 210;
+  }
+  const rows = (spec.rows || []).slice(0, 12);
+  if(rows.length){
+    const rh = Math.max(56, Math.min(100, Math.floor((H - y0 - 90) / rows.length)));
+    const fs = rows.length > 8 ? 34 : 42;
+    rows.forEach((r, i) => {
+      const yy = y0 + i * rh + Math.round(rh / 2) + Math.round(fs * 0.35);
+      const label = String(r.label || '').trim(), value = String(r.value || '').trim();
+      x.textAlign = 'right';
+      let vx = RR;
+      if(label){
+        x.fillStyle = th.main; x.font = '700 ' + fs + 'px "Tajawal", sans-serif';
+        /* تسمية لاتينية (Name) تُرسم LTR وإلا انقلبت النقطتان لبدايتها */
+        const lLtr = /^[\x20-\x7e]+$/.test(label);
+        const ltxt = lLtr ? (label.replace(/\s*[:：]\s*$/, '') + ':') : (label.replace(/\s*[:：]\s*$/, '') + ' :');
+        if(lLtr){ x.direction = 'ltr'; }
+        x.fillText(ltxt, RR, yy);
+        if(lLtr){ x.direction = 'rtl'; }
+        vx = RR - x.measureText(ltxt).width - 22;
+      }
+      if(value){
+        x.fillStyle = '#33303a'; x.font = '700 ' + Math.round(fs * 0.95) + 'px "Tajawal", sans-serif';
+        /* أرقام/لاتيني صِرف تُرسم LTR حتى لا تنقلب خانات الهاتف */
+        const ltr = /^[\x20-\x7e]+$/.test(value);
+        if(ltr){ x.direction = 'ltr'; }
+        x.fillText(value, vx, yy);
+        if(ltr){ x.direction = 'rtl'; }
+      }
+      if(i < rows.length - 1){
+        x.strokeStyle = th.line; x.lineWidth = 2;
+        x.beginPath();
+        x.moveTo(LL, y0 + (i + 1) * rh);
+        x.lineTo(RR, y0 + (i + 1) * rh);
+        x.stroke();
+      }
+    });
+  }
+  return c.toDataURL('image/png').split(',')[1];
+}
+
 // 🤖 وكيل عمران — عميل الواجهة: يرسل المحادثة لنقطة /api/ai?action=agent ويستقبل
 // بث SSE (حالات + نص). أي كود html يُستخرج للوحة الكود والمعاينة تلقائيًا.
 window.__agentModeOn = false; // v321: الوكيل دائمًا مطفي عند الفتح — لا يُحفظ تشغيله أبدًا
@@ -2948,7 +3075,7 @@ function __showImgLoading(el, ar, en){
     // v579: صورة مرفقة + طلب قصير (مثلًا بعد زرّ «تعديل») = تعديل عليها افتراضيًّا — إلّا سؤال/بحث/فيديو/شكر/صورة جديدة/قراءة-ترجمة-وصف.
     const __ATT_VISION_RE = /(ترجم|translate|اقرأ|اقري|إقرأ|قراءة|\bread\b|وصف|اوصف|صف\s|describe|حلل|حلّل|analyz|قارن|compare|(?:^|[\s،,])(?:وين|فين|شلون|ليش|متى|هل)(?=[\s؟?]|$)|حساب|باي\s*بال|بايبال|paypal|بنك|تجاري|اشتراك|تفعيل|تسجيل|إعدادات|اعدادات|رصيد|فلوس|أموال|اموال|جوجل\s*بلاي|قوقل|google\s*play|app\s*store|\baccount\b|\bsettings\b|sign\s*up|log\s*in)/i; // v719: أسئلة الحسابات والخدمات مع صورة = سؤال محادثة، ليست تعديل صورة
     const __ATT_EDIT = !!(__srcImg && !__srcImg._fromMemory && text && text.length <= 220 && __imgEditRe.test(text) && (!__IMGF_NOT_RE.test(text) || __IMG_EDIT_VERB_RE.test(text)) && !__IMGF_NEW_RE.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text));
-    if(text && !cur.adMode && (__IMG_UPGRADE || __IMG_FOLLOW || __ATT_EDIT || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || (__IMG_UPGRADE && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
+    if(text && !cur.adMode && (__IMG_UPGRADE || __IMG_FOLLOW || __ATT_EDIT || (__srcImg && !__srcImg._fromMemory && __cardTidyIntent(text)) || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || (__IMG_UPGRADE && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
       __showImgLoading(thinkingDiv, __IMG_UPGRADE ? 'جاري ترقية المشهد…' : 'جاري تعديل الصورة…', __IMG_UPGRADE ? 'Upgrading the scene…' : 'Editing image…');
       const __upgSrc = (!__srcImg && __IMG_UPGRADE && !(cur.lastEditedImage && cur.lastEditedImage.b64)) ? __IMG_UPGRADE_SRC : null;
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : (__upgSrc ? ((__upgSrc.dataUrl || '').split(',')[1] || '') : ((cur.lastEditedImage && cur.lastEditedImage.b64) || ''));
@@ -3091,6 +3218,30 @@ function __showImgLoading(el, ar, en){
               renderAll();saveState();return;
             }
           }catch(e){if(e&&e.name==='AbortError')return;__swallow(e,'decor:refine');}
+        }
+      }
+      // 🪪 v-tidy-card: صورة نموذج/بطاقة + «نفس المكتوب بس مرتب» → قراءة ثم رسم محلي مرتب
+      if(__isNewImageSource && __b64 && __cardTidyIntent(text)){
+        try{
+          __showImgLoading(thinkingDiv, 'جاري قراءة النموذج…', 'Reading the card…');
+          const __ceRes = await fetch('/api/tools?action=card-extract', {
+            method:'POST', headers:{ 'Content-Type':'application/json' }, signal: genAbortController.signal,
+            body: JSON.stringify({ imageBase64:__b64, mimeType:__mime, hint:String(text || '').slice(0, 300), token:authGet('aiapp_auth_token'), guestId:window.getGuestId() })
+          });
+          const __ceSpec = await __ceRes.json().catch(() => ({}));
+          if(!__ceRes.ok || !Array.isArray(__ceSpec.rows) || !__ceSpec.rows.length){
+            throw new Error(__ceSpec.message_ar || __ceSpec.error || ('HTTP ' + __ceRes.status));
+          }
+          chatPhase('🪪', lang === 'ar' ? 'جاري رسم النموذج بخط مرتب…' : 'Redrawing the card neatly…', thinkingDiv);
+          const __cardB64 = await renderTidyCardCanvas(__ceSpec, 'data:' + __mime + ';base64,' + __b64);
+          cur.lastEditedImage = { b64: __cardB64, mime: 'image/png' };
+          cur.lastMsgWasImageEdit = true;
+          cur.messages.push({ role:'assistant', content:'', attachments:[{ name:'tidy-card.png', isImage:true, mime:'image/png', dataUrl:'data:image/png;base64,' + __cardB64 }] });
+          renderAll(); saveState(); return;
+        }catch(e){
+          if(e && e.name === 'AbortError') return;
+          cur.messages.push({ role:'assistant', content:'⚠️ ' + __friendlyErr(e) });
+          renderAll(); saveState(); return;
         }
       }
       // ✍️ إذا الطلب كتابة نص/اسم على الصورة → نرسمه محليًا بخط سليم (بدون Gemini)
