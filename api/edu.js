@@ -288,6 +288,43 @@ async function callClaudeExpense(apiKey, contentBlocks, lang) {
   return extractJSON(text);
 }
 
+// v-cv-back (طلب عمران: زر السيرة كان يحوّل للمحادثة): مولّد السيرة عاد
+// نافذة مستقلة — كلود يبني HTML كاملًا للطباعة + خطاب تقديم بلغة التطبيق.
+async function callClaudeCv(apiKey, info, lang) {
+  const isAr = !lang || /^(ar|ur)/i.test(String(lang));
+  const outLang = isAr ? 'Arabic' : eduLangName(lang || 'en');
+  const sys = 'You are an expert CV writer and designer. From the user info build two things. '
+    + '(1) cvHtml: a COMPLETE standalone HTML document for a professional one-page CV — inline CSS only, '
+    + 'A4 print-friendly, a clean modern layout with a subtle colored header band, clear section headings '
+    + '(summary, experience, education, skills, languages), no external resources, no images, '
+    + 'dir="' + (isAr ? 'rtl' : 'ltr') + '" on <html>. Only include sections the user actually filled. '
+    + '(2) coverLetter: a short professional cover letter (120-180 words, plain text) addressed to the target '
+    + 'job/company if one is given, else an empty string. The person is in the UAE — never assume any other country. '
+    + 'Write ALL content in ' + outLang + '. '
+    + 'Return ONLY valid JSON exactly as {"cvHtml":"...","coverLetter":"..."} with the HTML JSON-escaped. No text outside the JSON.';
+  const userText = 'User info (JSON):\n' + JSON.stringify(info) + '\n\nBuild the CV now.';
+  const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    signal: AbortSignal.timeout(280000),
+    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: m, max_tokens: 8000, system: sys, messages: [{ role: 'user', content: [{ type: 'text', text: userText }] }] }),
+  });
+  let res = await doRequest(RESOLVED_MODEL || MODEL);
+  let data = await res.json().catch(() => null);
+  if (!res.ok && res.status === 404 && data && data.error && /model/i.test(JSON.stringify(data.error))) {
+    RESOLVED_MODEL = null;
+    const m = await resolveModel(apiKey);
+    res = await doRequest(m);
+    data = await res.json().catch(() => null);
+  }
+  if (!res.ok) {
+    const msg = (data && data.error && data.error.message) || ('HTTP ' + res.status);
+    const err = new Error(msg); err.status = res.status; throw err;
+  }
+  const text = (data && data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+  return extractJSON(text);
+}
+
 module.exports = withErrorCapture('edu', async (req, res) => {
   installCors(req, res);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -532,6 +569,43 @@ module.exports = withErrorCapture('edu', async (req, res) => {
     }
 
     // ---------------- 📊 expense analyzer ----------------
+    // ---------------- 💼 CV builder (returned from retirement بطلب عمران) ----------------
+    if (action === 'cv') {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      if (!username) {
+        const ip = (typeof clientIp === 'function' && clientIp(req)) || 'unknown';
+        const key = 'cv:proc:' + encodeURIComponent(ip) + ':' + todayStr();
+        let count = 0;
+        try { count = await kvIncr(key); if (count === 1) await kvExpire(key, 172800); } catch (e) { count = 0; }
+        if (count > GUEST_PROCESS_PER_DAY) {
+          res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + GUEST_PROCESS_PER_DAY + ' سير ذاتية). سجّل الدخول أو عد غدًا 🌙' });
+          return;
+        }
+      }
+      const info = body.info || {};
+      const cvName = String(info.name || '').trim();
+      if (!cvName) { res.status(400).json({ error: 'الاسم مطلوب.' }); return; }
+      const clean = {};
+      ['name', 'jobTitle', 'email', 'phone', 'city', 'summary', 'experience', 'education', 'skills', 'languages', 'targetJob'].forEach((k) => {
+        const v = String(info[k] == null ? '' : info[k]).slice(0, 4000).trim();
+        if (v) clean[k] = v;
+      });
+      let out = null;
+      try {
+        out = await callClaudeCv(apiKey, clean, body.lang);
+      } catch (e) {
+        res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذر توليد السيرة: ' + (e.message || 'خطأ في الخادم') + ' — حاول مرة أخرى.' });
+        return;
+      }
+      if (!out || typeof out.cvHtml !== 'string' || out.cvHtml.indexOf('<') === -1) {
+        res.status(502).json({ error: 'تعذر توليد السيرة الآن — حاول مرة أخرى.' });
+        return;
+      }
+      res.status(200).json({ ok: true, cvHtml: out.cvHtml, coverLetter: typeof out.coverLetter === 'string' ? out.coverLetter : '', guest: !username });
+      return;
+    }
+
     if (action === 'expense') {
       const apiKey = process.env.ANTHROPIC_API_KEY;
       if (!apiKey) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
