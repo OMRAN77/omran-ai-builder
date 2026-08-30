@@ -696,6 +696,9 @@
   };
   /* v-tools-i18n: كل أداة بلغة مستخدمها — عربي/أردو ← عربي، وغيرهما ← إنجليزي */
   function docL(ar, en){
+    /* v657: كل لغة بنصّها عبر القاموس الثنائيّ __BI؛ الرجوع ar/en عند غيابه. */
+    try{ if(typeof window.__bT === 'function'){ var v = window.__bT(ar, en); if(v) return v; } }
+    catch(_){ /* guard-ok: tool label lookup is cosmetic — falls back below. */ }
     var l = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
     if(l === 'ar' || l === 'ur') return ar;
     if(l === 'en') return en;

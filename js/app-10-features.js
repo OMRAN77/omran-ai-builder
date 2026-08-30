@@ -76,11 +76,15 @@ window.postWithConfirm = postWithConfirm;
   wrap.id = 'privacyConsent';
   wrap.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.72);display:flex;align-items:flex-end;justify-content:center;';
   var card = document.createElement('div');
-  card.style.cssText = 'width:min(100%,560px);background:var(--panel,#161616);border-radius:18px 18px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -8px 40px rgba(0,0,0,.5);direction:rtl;text-align:right;';
-  card.innerHTML = '<h3 style="margin:0 0 8px;font-size:16px;">🔒 خصوصيتك أولًا</h3>'
-    + '<p style="margin:0 0 14px;font-size:13px;line-height:1.8;color:var(--muted,#9a9a9a);">قبل استخدام Omran AI Builder، يرجى قراءة <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">سياسة الخصوصية</a> و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">شروط الاستخدام</a>. نوضح فيهما ما نجمعه وكيف نحميه وحقك في حذف بياناتك.</p>'
-    + '<div style="display:flex;gap:10px;"><a href="/privacy.html" target="_blank" rel="noopener" class="btn" style="flex:1;text-align:center;line-height:42px;height:42px;text-decoration:none;border:1px solid var(--border,#333);border-radius:10px;color:var(--text,#eee);">قراءة السياسة</a>'
-    + '<button type="button" id="privacyAgreeBtn" class="btn primary" style="flex:1;height:42px;border-radius:10px;font-weight:bold;">أوافق وأتابع</button></div>';
+  /* v-privacy-i18n (شكوى المالك: البطاقة عربية بكل اللغات): النص من مفاتيح
+     الترجمة (t جاهزة هنا — عربي/إنجليزي فورًا)، وdata-i18n تلتقطها جولة
+     applyLanguage الثانية بعد وصول ملف اللغة الكسول. الاتجاه يتبع الصفحة. */
+  card.style.cssText = 'width:min(100%,560px);background:var(--panel,#161616);border-radius:18px 18px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -8px 40px rgba(0,0,0,.5);text-align:start;';
+  var pt = function(k, fb){ try{ if(typeof t === 'function'){ var v = t(k); if(v && v !== k) return v; } }catch(e){ __swallow(e, 'ui:privacy-t'); } return fb; };
+  card.innerHTML = '<h3 style="margin:0 0 8px;font-size:16px;" data-i18n="privacyConsentTitle">' + pt('privacyConsentTitle', '🔒 خصوصيتك أولًا') + '</h3>'
+    + '<p style="margin:0 0 14px;font-size:13px;line-height:1.8;color:var(--muted,#9a9a9a);" data-i18n="privacyConsentText">' + pt('privacyConsentText', 'قبل استخدام Omran AI Builder، يرجى قراءة <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">سياسة الخصوصية</a> و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa);text-decoration:underline;">شروط الاستخدام</a>. نوضح فيهما ما نجمعه وكيف نحميه وحقك في حذف بياناتك.') + '</p>'
+    + '<div style="display:flex;gap:10px;"><a href="/privacy.html" target="_blank" rel="noopener" class="btn" style="flex:1;text-align:center;line-height:42px;height:42px;text-decoration:none;border:1px solid var(--border,#333);border-radius:10px;color:var(--text,#eee);" data-i18n="privacyConsentRead">' + pt('privacyConsentRead', 'قراءة السياسة') + '</a>'
+    + '<button type="button" id="privacyAgreeBtn" class="btn primary" style="flex:1;height:42px;border-radius:10px;font-weight:bold;" data-i18n="privacyConsentAgree">' + pt('privacyConsentAgree', 'أوافق وأتابع') + '</button></div>';
   wrap.appendChild(card);
   function mount(){ try { document.body.appendChild(wrap); } catch(e){ __swallow(e, 'ui:privacy-consent'); } }
   if (document.body) mount(); else window.addEventListener('DOMContentLoaded', mount);
@@ -102,11 +106,37 @@ if('serviceWorker' in navigator){
         if(document.visibilityState === 'visible') reg.update().catch(() => {});
       });
       // If a new worker takes control (after an update), the page it served is stale — reload once.
+      /* v653 — «الجواب يطلع ومرّة وحدة يختفي» (شكوى المالك ٢٩ أغسطس): بعد أيّ
+         نشر يتولّى العامل الجديد فتُعاد الصفحة فورًا ولو كان الردّ يُكتب —
+         فيُمسح الردّ ولا يعود. مقيس حيًّا: ردّ ٤٨٦ حرفًا اختفى ولم يعد خلال ٣٥
+         ثانية. الآن: لا تُقاطَع صفحة مرئيّة أبدًا — الإعادة تُؤجَّل إلى أوّل
+         لحظة يغادر فيها المستخدم الشاشة ولا شيء جارٍ. وأوّل تسجيل للعامل لا
+         يستحقّ إعادة أصلًا (الصفحة أحدث منه). */
       let refreshedOnce = false;
+      const __hadController = !!navigator.serviceWorker.controller;
+      const __busyNow = () => {
+        try{
+          const c = (typeof getCurrent === 'function') ? getCurrent() : null;
+          if(c && c.messages && c.messages.some(m => m && m._loading)) return true;
+          const pr = document.getElementById('prompt');
+          if(pr && pr.value && pr.value.trim()) return true;
+        }catch(e){ return true; }
+        return false;
+      };
+      const __reloadNow = () => { if(refreshedOnce) return; refreshedOnce = true; window.location.reload(); };
+      window.__omranReloadWhenSafe = () => {
+        if(document.visibilityState === 'hidden' && !__busyNow()) return __reloadNow();
+        document.addEventListener('visibilitychange', function __onHide(){
+          if(document.visibilityState === 'hidden' && !__busyNow()){
+            document.removeEventListener('visibilitychange', __onHide);
+            __reloadNow();
+          }
+        });
+      };
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if(refreshedOnce) return;
-        refreshedOnce = true;
-        window.location.reload();
+        if(!__hadController) return; // أوّل تسجيل — الصفحة أحدث من العامل
+        window.__omranReloadWhenSafe();
       });
     }).catch(() => {});
   });
@@ -627,7 +657,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   /* v-brand-l10n (طلب المالك ٢٩ أغسطس): شعار ذهبي مخصوص لكل لغة — العربي
      والإنجليزي كما هما بلا أي تغيير. الأعراض عند ارتفاع 42 من ملفات PNG
      الفعلية (الأصل 168px = ٤×). لغة بلا شعار خاص ترجع للإنجليزي. */
-  const BRAND_L10N_W = { zh:84, hi:71, es:87, fr:89, bn:75, ru:89, ur:75, id:86, fil:93, tr:75, ne:69, ml:110 };
+  const BRAND_L10N_W = { zh:84, hi:71, es:87, fr:89, bn:80, ru:89, ur:75, id:86, fil:93, tr:75, ne:69, ml:110 };
   const syncBrand = () => {
     const bt = document.getElementById('brandTitle');
     const l = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
@@ -877,6 +907,17 @@ function openShareModal(project){
 
   if(createBtn) createBtn.addEventListener('click', async () => {
     if(!shareModalProject) return;
+    /* v-share-chat (طلب المالك: «مش ضروري فقط التطبيق — كل شي»): المحادثة
+       تُشارك أيضًا — الرفض فقط لمشروع فارغ تمامًا (لا كود ولا رسائل). */
+    const __shareMsgs = (shareModalProject.messages || [])
+      .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && String(m.content || '').trim())
+      .slice(-300)
+      .map((m) => ({ role: m.role, content: String(m.content).slice(0, 20000) }));
+    if(!String(shareModalProject.code || '').trim() && !__shareMsgs.length){
+      statusMsg.style.display = 'block';
+      statusMsg.textContent = t('shareNeedCode');
+      return;
+    }
     const isPublic = $('#sharePublicYes').checked;
     statusMsg.style.display = 'block';
     statusMsg.textContent = t('shareCreating');
@@ -892,6 +933,7 @@ function openShareModal(project){
           code: shareModalProject.code || '',
           username,
           isPublic,
+          messages: __shareMsgs, /* v-share-chat */
         }),
       });
       const data = await resp.json();
@@ -901,7 +943,12 @@ function openShareModal(project){
       resultBox.style.display = 'block';
       statusMsg.style.display = 'none';
     }catch(e){
-      statusMsg.textContent = t('shareError');
+      /* v-share-why: السبب الحقيقي يظهر — «بلا كود» و«أكبر من الحد» لهما
+         رسالتاهما، وأي خطأ خادم آخر يُعرض نصّه بين قوسين ليُشخَّص فورًا. */
+      var __sm = (e && e.message) || '';
+      if(__sm === 'Missing code' || __sm === 'empty_project') statusMsg.textContent = t('shareNeedCode');
+      else if(__sm === 'code_too_large') statusMsg.textContent = t('shareTooLarge');
+      else statusMsg.textContent = t('shareError') + ((__sm && __sm !== 'error') ? ' (' + __sm.slice(0, 120) + ')' : '');
     }finally{
       createBtn.disabled = false;
     }

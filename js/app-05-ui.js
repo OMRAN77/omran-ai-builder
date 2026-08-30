@@ -1036,10 +1036,22 @@ const PROVIDER_DISPLAY = {
   mistral: 'السريع', deepseek: 'العميق', perplexity: 'العميق',
   cohere: 'العميق', openrouter: 'العميق',
 };
+/* v-nick-i18n (شكوى المالك ٢٩ أغسطس: «الكينج» طلعت عربية وسط واجهة
+   المليالم): الألقاب الثلاثة صارت مفاتيح ترجمة تتبدل مع لغة الواجهة. */
+const PROVIDER_NICK_KEYS = {
+  claude: 'provNickKing', gemini: 'provNickFast', openai: 'provNickDeep', groq: 'provNickFast',
+  mistral: 'provNickFast', deepseek: 'provNickDeep', perplexity: 'provNickDeep',
+  cohere: 'provNickDeep', openrouter: 'provNickDeep',
+};
 function functionalLabel(key){
   // v362 — الستة المخفيون لا يظهر اسمهم أبدًا: أي مزود يرد → يُعرض باسم
   // رأس مجموعته الظاهر (Groq/Mistral→Gemini، DeepSeek/Perplexity/Cohere/OpenRouter→GPT، Claude→Claude).
   const primary = funcPrimaryOf(key);
+  const nickKey = PROVIDER_NICK_KEYS[primary];
+  if(nickKey && typeof t === 'function'){
+    const v = t(nickKey);
+    if(v && v !== nickKey) return v;
+  }
   return PROVIDER_DISPLAY[primary] || PROVIDER_KEY_LABELS[primary] || primary;
 }
 // v359 — 3 أزرار بأسمائها الحقيقية الشهيرة (الناس تعرفها) + شعاراتها الأصلية.
@@ -1166,6 +1178,28 @@ function initProvDropdown(){
   if(search){ search.addEventListener('input', () => provDDFilter(search.value)); search.onclick = (e) => e.stopPropagation(); }
   provDDUpdateButton();
 }
+/* v655 — أسماء المزوّدين (الكينج/السريع/العميق) كانت تُكتب مرّة واحدة عند
+   البناء فتتجمّد بلغة تلك اللحظة: عربيّة عند تبديل اللغة بلا تحديث،
+   وإنجليزيّة في اللغات الكسولة لأنّ الشريط يُبنى قبل وصول ملفّ اللغة.
+   الآن تُعاد تسميتها في كلّ تطبيق للّغة. */
+function relabelProviders(){
+  try{
+    document.querySelectorAll('#providerGridCells .prov-cell').forEach(cell => {
+      const lbl = functionalLabel(cell.dataset.provider);
+      const nm = cell.querySelector('.prov-name');
+      if(nm) nm.textContent = lbl;
+      cell.title = lbl;
+    });
+    document.querySelectorAll('#providerStripMobile .prov-chip-m').forEach(chip => {
+      const lbl = functionalLabel(chip.dataset.provider);
+      const nm = chip.querySelector('span');
+      if(nm) nm.textContent = lbl;
+      chip.title = lbl;
+    });
+    if(typeof provDDUpdateButton === 'function') provDDUpdateButton();
+  }catch(e){ __swallow(e, "ui:app-05-ui#relabel"); }
+}
+try{ window.relabelProviders = relabelProviders; }catch(_){ /* guard-ok — تصدير اختياري، فشله لا يعطل الشريط */ }
 function updateProviderQuickBarActive(){
   const current = localStorage.getItem('aiapp_provider') || 'claude';
   document.querySelectorAll('.prov-cell, .prov-chip-m').forEach(el => {
@@ -1853,6 +1887,8 @@ function toggleSettingsSection(id){
     if (arrow) arrow.style.transform = 'rotate(90deg)';
     // 💰 عند فتح قسم الباقات: جلب رصيد النقاط وعرضه
     if (id === 'pricingSection' && typeof refreshPointsWallet === 'function') refreshPointsWallet();
+    // v-points-acct: فتح «حسابي» يجلب الرصيد ويُظهر تحذير قرب النفاد تلقائيًا
+    if (id === 'accountSection' && typeof refreshAcctPoints === 'function') refreshAcctPoints();
   }
 }
 function collapseAllSettingsSections(){
@@ -1930,6 +1966,11 @@ function showSettingsPage(sid){
   if(content) content.style.display = 'block';
   if(arrow) arrow.style.transform = 'rotate(90deg)';
   if(settingsDialog) settingsDialog.scrollTop = 0;
+  // v-points-acct: الدخول لصفحة «حسابي» أو «الباقات» من القائمة يجلب الرصيد تلقائيًا
+  try{
+    if(sid === 'accountSection' && typeof refreshAcctPoints === 'function') refreshAcctPoints();
+    if(sid === 'pricingSection' && typeof refreshPointsWallet === 'function') refreshPointsWallet();
+  }catch(e){ __swallow(e, 'points:acct-refresh'); }
 }
 window.showSettingsPage = showSettingsPage;
 (function(){
@@ -2290,7 +2331,7 @@ async function postWithConfirm(url, payload){
     sb.style.cssText = 'font-size:11px;color:var(--muted,#999);';
     info.appendChild(nm); info.appendChild(sb);
     var all = document.createElement('span');
-    all.textContent = (localStorage.getItem('aiapp_lang') === 'en') ? 'Browse all ›' : 'عرض الكل ›';
+    all.textContent = (typeof t === 'function' && t('portraitStyleBrowseAll') !== 'portraitStyleBrowseAll') ? t('portraitStyleBrowseAll') : ((localStorage.getItem('aiapp_lang') === 'en') ? 'Browse all ›' : 'عرض الكل ›');
     all.style.cssText = 'color:#d4af37;font-size:12.5px;font-weight:700;flex:none;';
     d.appendChild(th); d.appendChild(info); d.appendChild(all);
     function refresh(){

@@ -10,7 +10,14 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 // عبر _site.js لا من البيئة مباشرة — للسبب نفسه المشروح في _site.js:
 // قيمة غير صالحة كانت تُبنى منها عناوين تحويل تُبثّ إلى المتصفّح.
 const { siteUrl } = require('./_site.js');
-const emailRedirectUri = () => siteUrl() + '/api/email-callback';
+// v-email-req-origin: المبادلة تستعمل مضيف الطلب نفسه — جوجل أعادت التحويل
+// إلى redirect_uri حرفيًّا، فمضيف هذا الطلب هو هو ⇒ تطابق حتمي مع خطوة البدء.
+function reqOrigin(req) {
+  const h = String((req && req.headers && (req.headers['x-forwarded-host'] || req.headers.host)) || '').split(',')[0].trim();
+  if (/^[a-z0-9.-]+(:\d+)?$/i.test(h) && /\./.test(h)) return 'https://' + h;
+  return siteUrl();
+}
+const emailRedirectUri = (req) => reqOrigin(req) + '/api/email-callback';
 
 module.exports = async (req, res) => {
   const fail = (reason) => {
@@ -32,7 +39,7 @@ module.exports = async (req, res) => {
         code: String(code),
         client_id: GOOGLE_CLIENT_ID,
         client_secret: GOOGLE_CLIENT_SECRET,
-        redirect_uri: emailRedirectUri(),
+        redirect_uri: emailRedirectUri(req),
         grant_type: 'authorization_code',
       }),
     });

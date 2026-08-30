@@ -76,9 +76,9 @@
 
     <!-- AppGallery 7.5: سياسة الخصوصية ظاهرة بوضوح في صفحة الدخول/التسجيل -->
     <p style="margin:14px 0 0; text-align:center; font-size:12px; color:var(--muted,#8a8a8a);" data-i18n-skip>
-      بتسجيلك أو دخولك فأنت توافق على
-      <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa); text-decoration:underline;">سياسة الخصوصية</a>
-      و<a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa); text-decoration:underline;">شروط الاستخدام</a>
+      <span data-bi="By signing up or signing in you agree to">بتسجيلك أو دخولك فأنت توافق على</span>
+      <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa); text-decoration:underline;" data-bi="Privacy Policy">سياسة الخصوصية</a>
+      <span data-bi="and" data-bi-space="1">و</span><a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent2,#a78bfa); text-decoration:underline;" data-bi="Terms of Use">شروط الاستخدام</a>
     </p>
   </div>
 </div>
@@ -106,7 +106,7 @@
 </div>
 
 <div id="videoMakerModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
+  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
       <h3 style="margin:0;" data-i18n="videoMakerModalTitle">🎬 صانع الفيديو بالذكاء الاصطناعي</h3>
       <button type="button" class="btn iconBtn" id="videoMakerCloseBtn" style="padding:4px 10px;">✕</button>
@@ -159,8 +159,8 @@
           <option value="10">10</option>
           <option value="long20" data-i18n="videoMakerDurationLong">20 (⛓️ مشهدين)</option>
           <option value="film" data-i18n="videoMakerDurationFilm">🎬 فيلم متكامل (سيناريو + مشاهد + سرد)</option>
-          <option value="adspot">📢 إعلان سريع (5ث طولي + سرد)</option>
-          <option value="reels">📱 ريلز ذكي (10ث طولي + سرد)</option>
+          <option value="adspot" data-i18n="videoOptAdspot">📢 إعلان سريع (5ث طولي + سرد)</option>
+          <option value="reels" data-i18n="videoOptReels">📱 ريلز ذكي (10ث طولي + سرد)</option>
 
         </select>
       </div>
@@ -198,10 +198,10 @@
     <!-- اختيار الصوت: ذكر/أنثى -->
     <div id="videoMakerVoiceGenderRow" style="display:none; margin-top:8px; margin-bottom:2px; gap:16px; flex-wrap:wrap;" class="mini-mic-field-row">
       <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px;">
-        <input type="radio" name="videoVoiceGender" id="videoVoiceFemale" value="female" checked> 👩 فاطمة (أنثى)
+        <input type="radio" name="videoVoiceGender" id="videoVoiceFemale" value="female" checked> <span data-i18n="videoVoiceFemale">👩 فاطمة (أنثى)</span>
       </label>
       <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px;">
-        <input type="radio" name="videoVoiceGender" id="videoVoiceMale" value="male"> 👨 حمدان (ذكر)
+        <input type="radio" name="videoVoiceGender" id="videoVoiceMale" value="male"> <span data-i18n="videoVoiceMale">👨 حمدان (ذكر)</span>
       </label>
     </div>
     <div class="mini-mic-field-row" id="videoMakerNarrationRow" style="margin-top:6px; display:none;">
@@ -223,7 +223,7 @@
 </div>
 
 <div id="designAiModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
+  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
       <h3 style="margin:0;" data-i18n="designAiModalTitle">🏠 ديكور بالذكاء الاصطناعي</h3>
       <button type="button" class="btn iconBtn" id="designAiCloseBtn" style="padding:4px 10px;">✕</button>
@@ -441,7 +441,7 @@
 </div>
 
 <div id="portraitStyleModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
+  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
       <h3 style="margin:0;" data-i18n="portraitModalTitle">🎨 أنماط الصور الشخصية</h3>
       <button type="button" class="btn iconBtn" id="portraitStyleCloseBtn" style="padding:4px 10px;">✕</button>
@@ -687,15 +687,20 @@
 
     <div id="portraitStyleStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
     <div id="portraitCompareWrap" style="display:none; position:relative; margin-top:14px; border-radius:var(--r-2); overflow:hidden; background:#000; width:100%; user-select:none;">
-      <img id="portraitCompareBefore" style="display:block; width:100%;">
+      <!-- v-compare-fit: قصّة «الصورة ما تطلع كاملة» — النتيجة كانت تُمدَّد قسرًا
+           لمقاس صورة الأصل (عرض بكسل + height:100%) فتتشوّه وتنقص أطرافها حين
+           تختلف نسبة الأبعاد. object-fit:contain يعرضها كاملة على خلفية سوداء. -->
+      <img id="portraitCompareBefore" style="display:block; width:100%; max-height:70vh; object-fit:contain; background:#000;">
       <div id="portraitCompareAfterWrap" style="position:absolute; top:0; left:0; height:100%; overflow:hidden; width:50%;">
-        <img id="portraitStyleResult" style="position:absolute; top:0; left:0; height:100%;">
+        <img id="portraitStyleResult" style="position:absolute; top:0; left:0; height:100%; object-fit:contain; background:#000;">
       </div>
       <div id="portraitCompareDivider" style="position:absolute; top:0; bottom:0; left:50%; width:2px; margin-left:-1px; background:#fff; box-shadow:0 0 6px rgba(0,0,0,.7); pointer-events:none;"></div>
       <span style="position:absolute; top:6px; left:8px; font-size: var(--fs-5); background:rgba(0,0,0,.55); color:#fff; padding:2px 7px; border-radius:var(--r-1);" data-i18n="portraitCompareBeforeLabel">قبل</span>
       <span style="position:absolute; top:6px; right:8px; font-size: var(--fs-5); background:rgba(0,0,0,.55); color:#fff; padding:2px 7px; border-radius:var(--r-1);" data-i18n="portraitCompareAfterLabel">بعد</span>
     </div>
-    <input type="range" id="portraitCompareSlider" min="0" max="100" value="50" style="width:100%; margin-top:8px; display:none;">
+    <!-- v-slider-touch: «الشريط أوقات يسحب وأوقات لا» — سحب المقبض على الجوال كان
+         يتحوّل لتمرير الصفحة؛ touch-action:none يحسم الإيماءة للشريط، والارتفاع أكبر لليد. -->
+    <input type="range" id="portraitCompareSlider" min="0" max="100" value="50" style="width:100%; margin-top:8px; display:none; touch-action:none; height:32px; accent-color:#d4af37;">
     <a id="portraitStyleDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-portrait-style.png" data-i18n="portraitDownloadBtn">⬇️ تحميل الصورة</a>
     <button type="button" id="portraitShareBtn" style="display:none; margin-top:8px; width:100%;" class="btn" data-i18n="portraitShareBtn">↗️ مشاركة (واتساب/ستوري)</button>
   </div>
@@ -704,7 +709,7 @@
 <!-- v-fashion-look: شكل الاستوديو المعتمد من الكانفا — ذهبي على داكن،
      منطقة رفع منقّطة، رقاقات وبطاقات ذهبية. كل المعرّفات كما هي. -->
 <div id="fashionAiModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3); border-top:3px solid #d4af37;">
+  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3); border-top:3px solid #d4af37;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
       <h3 style="margin:0; font-size:20px;" data-i18n="fashionAiModalTitle">👗 استوديو الأزياء</h3>
       <button type="button" class="btn iconBtn" id="fashionAiCloseBtn" style="padding:4px 10px;">✕</button>
@@ -846,10 +851,10 @@
     </label>
 
     <div style="margin-top:10px;">
-      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;">🎨 محرك الصور</label>
+      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="fashionEngineLabel">🎨 محرك الصور</label>
       <select id="fashionAiEngine" style="width:100%;">
-        <option value="">Gemini — الأدق في الحفاظ على الوجه (الافتراضي)</option>
-        <option value="openai">ChatGPT (gpt-image-1) — نفس محرك صور ChatGPT</option>
+        <option value="" data-i18n="fashionEngineGemini">Gemini — الأدق في الحفاظ على الوجه (الافتراضي)</option>
+        <option value="openai" data-i18n="fashionEngineOpenai">ChatGPT (gpt-image-1) — نفس محرك صور ChatGPT</option>
       </select>
     </div>
 
@@ -859,10 +864,12 @@
 
     <div id="fashionAiResultWrap" style="display:none; position:relative; margin-top:14px; border-radius:var(--r-2); overflow:hidden; background:#000;">
       <img id="fashionAiResult" style="display:block; width:100%; border-radius:var(--r-2); background:#000;">
+      <!-- v-compare-fit: صورتك «قبل» كانت تُمدَّد لمقاس النتيجة فتتشوّه وتنقص —
+           object-fit:contain يعرضها كاملة. v-slider-touch: سحب الشريط على الجوال. -->
       <div id="fashionAiBeforeWrap" style="display:none; position:absolute; top:0; left:0; height:100%; overflow:hidden; border-right:2px solid #fff;">
-        <img id="fashionAiBeforeImg" style="display:block; height:100%; max-width:none;">
+        <img id="fashionAiBeforeImg" style="display:block; height:100%; max-width:none; object-fit:contain; background:#000;">
       </div>
-      <input type="range" id="fashionAiSliderRange" min="0" max="100" value="50" style="display:none; position:absolute; bottom:8px; left:8px; right:8px; width:calc(100% - 16px); z-index:5;">
+      <input type="range" id="fashionAiSliderRange" min="0" max="100" value="50" style="display:none; position:absolute; bottom:8px; left:8px; right:8px; width:calc(100% - 16px); z-index:5; touch-action:none; height:32px; accent-color:#d4af37;">
     </div>
     <a id="fashionAiDownloadLink" style="display:none; margin-top:8px; text-align:center;" class="btn primary" download="omran-fashion-ai.png" data-i18n="fashionAiDownloadBtn">⬇️ تحميل الصورة</a>
     <button type="button" class="btn" id="fashionAiFavoriteSaveBtn" style="display:none; width:100%; margin-top:8px;" data-i18n="fashionFavoriteSaveBtn">🤍 حفظ في المفضلة</button>
@@ -898,7 +905,7 @@
 </div>
 
 <div id="studioAiModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:460px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
+  <div style="max-width:460px; width:100%; max-height:90vh; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
       <h3 style="margin:0;" data-i18n="studioAiModalTitle">💄 ستايل الذكاء الاصطناعي</h3>
       <button type="button" class="btn iconBtn" id="studioAiCloseBtn" style="padding:4px 10px;">✕</button>
@@ -1029,7 +1036,7 @@
 </div>
 
 <div id="religionModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
+  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
       <h3 style="margin:0;" data-i18n="religionModalTitle">🕌 التفسير الديني</h3>
       <button type="button" class="btn iconBtn" id="religionCloseBtn" style="padding:4px 10px;">✕</button>
@@ -1057,7 +1064,7 @@
 </div>
 
 <div id="emailAssistModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:560px; width:100%; max-height:90vh; overflow-y:auto; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
+  <div style="max-width:560px; width:100%; max-height:90vh; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
       <h3 style="margin:0;" id="emailAssistHeaderTitle" data-i18n="emailAssistTitle">📧 مساعد البريد الذكي</h3>
       <button type="button" class="btn iconBtn" id="emailAssistCloseBtn" style="padding:4px 10px;">✕</button>

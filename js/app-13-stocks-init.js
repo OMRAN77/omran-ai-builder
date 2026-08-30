@@ -358,45 +358,48 @@
   function pfMoney(n){ return (typeof n === 'number' && isFinite(n)) ? n.toLocaleString('en-US', {maximumFractionDigits: 0}) : '—'; }
   var pfBusy = false;
 
+  /* v-pf-i18n (شكوى المالك ٢٩ أغسطس: نافذة الأسهم عربية وسط واجهة المليالم):
+     عربي/أردو ← عربي، وغير ذلك ← إنجليزي — نفس قاعدة v-tools-i18n. */
+  function stT(arTxt, enTxt){ return (window.__bT) ? window.__bT(arTxt, enTxt) : (isEn()?enTxt:arTxt); }
   function pfRender(d){
     if(!pfWrap) return;
     var p = d.portfolio, bd = d.board || { top: [], rank: null, total: 0 };
     var h = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">'
-      + '<span style="font-size:11.5px;background:rgba(212,175,55,.14);border:1px solid rgba(212,175,55,.4);color:#d4af37;border-radius:999px;padding:4px 11px;">🎓 وضع تعليمي — أموال افتراضية 100٪</span></div>'
+      + '<span style="font-size:11.5px;background:rgba(212,175,55,.14);border:1px solid rgba(212,175,55,.4);color:#d4af37;border-radius:999px;padding:4px 11px;">' + stT('🎓 وضع تعليمي — أموال افتراضية 100٪','🎓 Learning mode — 100% virtual money') + '</span></div>'
       // البطاقة العلوية: القيمة الكلية والربح/الخسارة
       + '<div style="border:1px solid var(--border,#333);border-radius:14px;padding:14px;background:rgba(255,255,255,.02);margin-bottom:12px;">'
       + '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">'
-      + '<div><div style="font-size:11px;color:var(--muted);">قيمة المحفظة</div><div style="font-size:22px;font-weight:700;">$' + pfMoney(p.equity) + '</div></div>'
-      + '<div><div style="font-size:11px;color:var(--muted);">الكاش المتاح</div><div style="font-size:16px;font-weight:600;">$' + pfMoney(p.cash) + '</div></div>'
-      + '<div><div style="font-size:11px;color:var(--muted);">الربح/الخسارة</div><div style="font-size:16px;font-weight:700;color:' + pfCol(p.pl) + ';">' + (p.pl >= 0 ? '+' : '') + pfMoney(p.pl) + ' (' + p.plPct + '%)</div></div>'
+      + '<div><div style="font-size:11px;color:var(--muted);">' + stT('قيمة المحفظة','Portfolio value') + '</div><div style="font-size:22px;font-weight:700;">$' + pfMoney(p.equity) + '</div></div>'
+      + '<div><div style="font-size:11px;color:var(--muted);">' + stT('الكاش المتاح','Available cash') + '</div><div style="font-size:16px;font-weight:600;">$' + pfMoney(p.cash) + '</div></div>'
+      + '<div><div style="font-size:11px;color:var(--muted);">' + stT('الربح/الخسارة','Profit/Loss') + '</div><div style="font-size:16px;font-weight:700;color:' + pfCol(p.pl) + ';">' + (p.pl >= 0 ? '+' : '') + pfMoney(p.pl) + ' (' + p.plPct + '%)</div></div>'
       + '</div></div>'
       // نموذج الصفقة
       + '<div style="border:1px solid var(--border,#333);border-radius:14px;padding:12px;margin-bottom:12px;">'
-      + '<div style="font-size:12.5px;margin-bottom:8px;font-weight:600;">صفقة جديدة (بالسعر الحي الحقيقي)</div>'
+      + '<div style="font-size:12.5px;margin-bottom:8px;font-weight:600;">' + stT('صفقة جديدة (بالسعر الحي الحقيقي)','New trade (at the real live price)') + '</div>'
       + '<div style="display:flex;gap:6px;flex-wrap:wrap;">'
-      + '<input id="pfSym" placeholder="الرمز مثل AAPL" style="flex:2;min-width:110px;padding:9px;border-radius:9px;border:1px solid var(--border,#444);background:transparent;color:inherit;font:inherit;text-transform:uppercase;">'
-      + '<input id="pfQty" type="number" min="1" placeholder="الكمية" style="flex:1;min-width:70px;padding:9px;border-radius:9px;border:1px solid var(--border,#444);background:transparent;color:inherit;font:inherit;">'
-      + '<button class="btn" id="pfBuy" style="background:#2E9E6B;color:#fff;border:none;">شراء</button>'
-      + '<button class="btn" id="pfSell" style="background:#e05252;color:#fff;border:none;">بيع</button>'
+      + '<input id="pfSym" placeholder="' + stT('الرمز مثل AAPL','Symbol e.g. AAPL') + '" style="flex:2;min-width:110px;padding:9px;border-radius:9px;border:1px solid var(--border,#444);background:transparent;color:inherit;font:inherit;text-transform:uppercase;">'
+      + '<input id="pfQty" type="number" min="1" placeholder="' + stT('الكمية','Quantity') + '" style="flex:1;min-width:70px;padding:9px;border-radius:9px;border:1px solid var(--border,#444);background:transparent;color:inherit;font:inherit;">'
+      + '<button class="btn" id="pfBuy" style="background:#2E9E6B;color:#fff;border:none;">' + stT('شراء','Buy') + '</button>'
+      + '<button class="btn" id="pfSell" style="background:#e05252;color:#fff;border:none;">' + stT('بيع','Sell') + '</button>'
       + '</div><div id="pfMsg" style="font-size:12px;margin-top:8px;line-height:1.7;"></div></div>';
     // المراكز
-    h += '<div style="font-size:12.5px;font-weight:600;margin:0 0 6px;">مراكزك (' + p.positions.length + ')</div>';
+    h += '<div style="font-size:12.5px;font-weight:600;margin:0 0 6px;">' + stT('مراكزك','Your positions') + ' (' + p.positions.length + ')</div>';
     if(!p.positions.length){
-      h += '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">ما عندك أسهم بعد — جرّب أول صفقة تعليمية! اكتب رمزًا مثل AAPL وكمية واضغط شراء.</div>';
+      h += '<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">' + stT('ما عندك أسهم بعد — جرّب أول صفقة تعليمية! اكتب رمزًا مثل AAPL وكمية واضغط شراء.','No shares yet — try your first practice trade! Type a symbol like AAPL, a quantity, then press Buy.') + '</div>';
     } else {
       p.positions.forEach(function(pos){
         h += '<div style="display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(128,128,128,.15);padding:8px 2px;font-size:12.5px;flex-wrap:wrap;">'
           + '<b style="min-width:56px;">' + pfEsc(pos.symbol) + '</b>'
-          + '<span style="color:var(--muted);">' + pos.qty + ' سهم × $' + pos.price + '</span>'
+          + '<span style="color:var(--muted);">' + pos.qty + ' ' + stT('سهم','shares') + ' × $' + pos.price + '</span>'
           + '<span style="margin-inline-start:auto;font-weight:700;color:' + pfCol(pos.pl) + ';">' + (pos.pl >= 0 ? '+' : '') + pfMoney(pos.pl) + ' (' + pos.plPct + '%)</span>'
-          + '<button class="btn" data-pfsell="' + pfEsc(pos.symbol) + '" data-pfqty="' + pos.qty + '" style="padding:4px 10px;font-size:11px;">بيع الكل</button>'
-          + '<button class="btn" data-pfwhy="' + pfEsc(pos.symbol) + '" style="padding:4px 10px;font-size:11px;">🎓 علّمني</button>'
+          + '<button class="btn" data-pfsell="' + pfEsc(pos.symbol) + '" data-pfqty="' + pos.qty + '" style="padding:4px 10px;font-size:11px;">' + stT('بيع الكل','Sell all') + '</button>'
+          + '<button class="btn" data-pfwhy="' + pfEsc(pos.symbol) + '" style="padding:4px 10px;font-size:11px;">' + stT('🎓 علّمني','🎓 Teach me') + '</button>'
           + '</div>';
       });
     }
     // الترتيب
-    h += '<div style="font-size:12.5px;font-weight:600;margin:14px 0 6px;">🏆 ترتيب المتداولين'
-      + (bd.rank ? ' — مركزك: ' + bd.rank + ' من ' + bd.total : '') + '</div>';
+    h += '<div style="font-size:12.5px;font-weight:600;margin:14px 0 6px;">🏆 ' + stT('ترتيب المتداولين','Traders leaderboard') + ''
+      + (bd.rank ? stT(' — مركزك: ', ' — your rank: ') + bd.rank + stT(' من ', ' of ') + bd.total : '') + '</div>';
     (bd.top || []).forEach(function(r){
       h += '<div style="display:flex;gap:8px;font-size:12px;padding:4px 2px;' + '">'
         + '<span style="min-width:26px;">' + (r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : r.rank + '.') + '</span>'
@@ -405,15 +408,15 @@
     });
     // آخر الصفقات + إعادة الضبط
     if((p.trades || []).length){
-      h += '<div style="font-size:12.5px;font-weight:600;margin:14px 0 6px;">آخر صفقاتك</div>';
+      h += '<div style="font-size:12.5px;font-weight:600;margin:14px 0 6px;">' + stT('آخر صفقاتك','Your recent trades') + '</div>';
       p.trades.forEach(function(t){
-        h += '<div style="font-size:11.5px;color:var(--muted);padding:2px 2px;">' + (t.side === 'buy' ? '🟢 شراء' : '🔴 بيع') + ' ' + t.qty + ' × ' + pfEsc(t.sym) + ' @ $' + t.price + '</div>';
+        h += '<div style="font-size:11.5px;color:var(--muted);padding:2px 2px;">' + (t.side === 'buy' ? stT('🟢 شراء','🟢 Buy') : stT('🔴 بيع','🔴 Sell')) + ' ' + t.qty + ' × ' + pfEsc(t.sym) + ' @ $' + t.price + '</div>';
       });
     }
     h += '<div id="pfLesson" style="display:none;margin-top:12px;border:1px solid rgba(212,175,55,.35);border-radius:12px;padding:12px;font-size:12.5px;line-height:1.9;white-space:pre-wrap;"></div>'
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:8px;flex-wrap:wrap;">'
-      + '<span style="font-size:10.5px;color:var(--muted);">تداول تجريبي تعليمي — أسعار حقيقية وأموال افتراضية، ليست نصيحة استثمارية.</span>'
-      + '<button class="btn" id="pfReset" style="font-size:11px;padding:5px 11px;">🔄 ابدأ من جديد (100 ألف)</button></div>';
+      + '<span style="font-size:10.5px;color:var(--muted);">' + stT('تداول تجريبي تعليمي — أسعار حقيقية وأموال افتراضية، ليست نصيحة استثمارية.','Educational paper trading — real prices, virtual money. Not investment advice.') + '</span>'
+      + '<button class="btn" id="pfReset" style="font-size:11px;padding:5px 11px;">' + stT('🔄 ابدأ من جديد (100 ألف)','🔄 Start over (100k)') + '</button></div>';
     pfWrap.innerHTML = h;
     pfWire();
   }
@@ -424,15 +427,15 @@
     if(pfBusy) return;
     sym = String(sym || ($('#pfSym') && $('#pfSym').value) || '').trim().toUpperCase();
     qty = Math.floor(Number(qty != null ? qty : ($('#pfQty') && $('#pfQty').value)));
-    if(!sym || !qty || qty <= 0){ pfMsgShow('اكتب رمز السهم والكمية أولًا', false); return; }
-    pfBusy = true; pfMsgShow('⏳ ننفذ الصفقة بالسعر الحي…', true);
+    if(!sym || !qty || qty <= 0){ pfMsgShow(stT('اكتب رمز السهم والكمية أولًا','Enter a stock symbol and quantity first'), false); return; }
+    pfBusy = true; pfMsgShow(stT('⏳ ننفذ الصفقة بالسعر الحي…','⏳ Executing at the live price…'), true);
     api({ mode:'pf-trade', side: side, tradeSymbol: sym, qty: qty, token: pfTok(), guestId: (window.getGuestId ? getGuestId() : '') })
       .then(function(d){
         pfBusy = false; pfRender(d);
         var last = d.portfolio.trades && d.portfolio.trades[0];
         pfMsgShow(last ? ('✅ تمت: ' + (last.side === 'buy' ? 'شراء' : 'بيع') + ' ' + last.qty + ' × ' + last.sym + ' بسعر $' + last.price + (last.side === 'buy' ? ' — 🎓 درس: لا تضع كل كاشك في سهم واحد، التنويع يحميك.' : ' — 🎓 درس: البيع يثبّت الربح أو يوقف الخسارة، والقرار الجيد يُتخذ بخطة لا بعاطفة.')) : '✅ تمت الصفقة', true);
       })
-      .catch(function(e){ pfBusy = false; pfMsgShow('⚠️ ' + (e.message || 'تعذرت الصفقة'), false); });
+      .catch(function(e){ pfBusy = false; pfMsgShow('⚠️ ' + (e.message || stT('تعذرت الصفقة','Trade failed')), false); });
   }
 
   function pfWire(){
@@ -458,15 +461,17 @@
     });
   }
 
+  /* v649: قراءة من قاموس اللغة مع سقوط آمن على العربيّة إن غاب المفتاح. */
+  function pfT(k, ar){ try{ var v = (typeof t === 'function') ? t(k) : ''; return (v && v !== k) ? v : ar; }catch(e){ return ar; } }
   function pfLoad(){
     if(!pfWrap) return;
     if(!pfTok()){
-      pfWrap.innerHTML = '<div style="text-align:center;padding:26px 10px;font-size:13px;line-height:2;">💼 <b>المحفظة التعليمية</b><br>100 ألف افتراضية تتداول بها بأسعار السوق الحقيقية وتنافس بقية المستخدمين 🏆<br><span style="color:var(--muted);font-size:12px;">سجّل الدخول لبدء محفظتك — تقدمك يُحفظ في حسابك.</span></div>';
+      pfWrap.innerHTML = '<div style="text-align:center;padding:26px 10px;font-size:13px;line-height:2;"><b>' + pfT('pfGuestTitle', '💼 المحفظة التعليمية') + '</b><br>' + pfT('pfGuestIntro', '100 ألف افتراضية تتداول بها بأسعار السوق الحقيقية وتنافس بقية المستخدمين 🏆') + '<br><span style="color:var(--muted);font-size:12px;">' + pfT('pfGuestLogin', 'سجّل الدخول لبدء محفظتك — تقدمك يُحفظ في حسابك.') + '</span></div>';
       return;
     }
-    pfWrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">⏳ نجهز محفظتك…</div>';
+    pfWrap.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">' + pfT('pfLoadingBox', '⏳ نجهز محفظتك…') + '</div>';
     api({ mode:'pf-get', token: pfTok() }).then(pfRender)
-      .catch(function(e){ pfWrap.innerHTML = '<div style="text-align:center;padding:20px;color:#e05252;font-size:13px;">⚠️ ' + pfEsc(e.message || 'تعذر تحميل المحفظة') + '</div>'; });
+      .catch(function(e){ pfWrap.innerHTML = '<div style="text-align:center;padding:20px;color:#e05252;font-size:13px;">⚠️ ' + pfEsc(e.message || pfT('pfLoadFail', 'تعذر تحميل المحفظة')) + '</div>'; });
   }
   btnOpen.addEventListener('click', function(){ modal.style.display = 'flex'; stkShowTab('global'); });
   btnClose.addEventListener('click', function(){
@@ -564,8 +569,11 @@
   }
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function t(key){
-    const dict = (typeof I18N !== 'undefined') ? I18N[isEn() ? 'en' : 'ar'] : null;
+    /* v-global-first: المترجم العام (الـ14 لغة) أولًا — المحلي يعرف عربي/إنجليزي فقط */
+    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ /* لم يجهز بعد */ }
+    const dict = (typeof I18N !== 'undefined') ? I18N[bT('ar','en')] : null;
     return (dict && dict[key]) || key;
   }
   function setStatus(text){
@@ -577,7 +585,7 @@
     const b = $('#constructionQuotaBadge');
     if(!b || !d || typeof d.remaining !== 'number') return;
     b.style.display = 'inline-block';
-    b.textContent = (isEn() ? 'Left today: ' : 'المتبقّي اليوم: ') + d.remaining + ' / ' + (d.dailyLimit || 6);
+    b.textContent = (bT('المتبقّي اليوم: ','Left today: ')) + d.remaining + ' / ' + (d.dailyLimit || 6);
   }
   function shrinkRef(b64, mime){
     return new Promise((resolve) => {
@@ -643,9 +651,7 @@
     };
   }
 
-  const showGenerationFailure = () => setStatus(isEn()
-    ? '⚠️ Design generation took too long or the service is temporarily busy. Please try again.'
-    : '⚠️ تعذّر إكمال التصميم الآن؛ قد تستغرق العملية وقتًا أطول أو تكون الخدمة مشغولة مؤقتًا. حاول مرة أخرى.');
+  const showGenerationFailure = () => setStatus(bT('⚠️ تعذّر إكمال التصميم الآن؛ قد تستغرق العملية وقتًا أطول أو تكون الخدمة مشغولة مؤقتًا. حاول مرة أخرى.','⚠️ Design generation took too long or the service is temporarily busy. Please try again.'));
 
   btnRun.onclick = async () => {
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
@@ -654,7 +660,7 @@
       return;
     }
     if(modePlanEl && modePhotoEl && !modePlanEl.checked && !modePhotoEl.checked){
-      setStatus(isEn() ? 'Pick at least one output type.' : 'اختر نوع نتيجة واحدًا على الأقل.');
+      setStatus(bT('اختر نوع نتيجة واحدًا على الأقل.','Pick at least one output type.'));
       return;
     }
     btnRun.disabled = true;
@@ -745,7 +751,7 @@
 
   if(boqBtn) boqBtn.onclick = function(){
     const rows = boqRows();
-    if(!rows){ setStatus(isEn() ? '⚠️ This result has no bill of quantities.' : '⚠️ لا يوجد جدول كميات في هذه النتيجة.'); return; }
+    if(!rows){ setStatus(bT('⚠️ لا يوجد جدول كميات في هذه النتيجة.','⚠️ This result has no bill of quantities.')); return; }
     const csv = '\ufeff' + rows.map(function(r){ return r.map(csvEsc).join(','); }).join('\r\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
@@ -755,9 +761,9 @@
   };
 
   if(pdfBtn) pdfBtn.onclick = function(){
-    if(!lastData){ setStatus(isEn() ? '⚠️ Generate a design first.' : '⚠️ ولّد التصميم أولًا.'); return; }
+    if(!lastData){ setStatus(bT('⚠️ ولّد التصميم أولًا.','⚠️ Generate a design first.')); return; }
     const w = window.open('', '_blank');
-    if(!w){ setStatus(isEn() ? '⚠️ Allow pop-ups to export the report.' : '⚠️ اسمح بالنوافذ المنبثقة لتصدير التقرير.'); return; }
+    if(!w){ setStatus(bT('⚠️ اسمح بالنوافذ المنبثقة لتصدير التقرير.','⚠️ Allow pop-ups to export the report.')); return; }
     const fig = function(b64, mime, cap){
       return b64 ? ('<figure><img src="data:' + (mime || 'image/png') + ';base64,' + b64 + '"><figcaption>' + cap + '</figcaption></figure>') : '';
     };
@@ -815,7 +821,7 @@
         if(!res.ok){
           if(data.error === 'auth_required') angleStatusEl.textContent = t('designAiNeedLogin');
           else if(data.error === 'daily_limit_reached') angleStatusEl.textContent = t('designAiLimitReached');
-          else angleStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (data.error || 'unknown');
+          else angleStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (data.error || 'unknown');
           return;
         }
         angleImageEl.src = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
@@ -824,7 +830,7 @@
         angleStatusEl.style.display = 'none';
         showQuota(data);
       }catch(e){
-        angleStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+        angleStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
       }finally{
         angleBtns.forEach((b) => { b.disabled = false; });
       }
@@ -848,7 +854,7 @@
       if(!res.ok){
         if(data.error === 'auth_required') roomStatusEl.textContent = t('designAiNeedLogin');
         else if(data.error === 'daily_limit_reached') roomStatusEl.textContent = t('designAiLimitReached');
-        else roomStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (data.error || 'unknown');
+        else roomStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (data.error || 'unknown');
         return;
       }
       roomImageEl.src = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
@@ -857,7 +863,7 @@
       roomStatusEl.style.display = 'none';
       showQuota(data);
     }catch(e){
-      roomStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+      roomStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
     }finally{
       roomViewBtn.disabled = false;
     }
@@ -914,6 +920,7 @@
   if(!modal || !btnOpen) return;
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function lang7(){ return (typeof currentLang === 'function') ? currentLang() : (localStorage.getItem('aiapp_lang') || 'ar'); }
   function t2(key){
     const dict = (typeof window.__i18nDict === 'function') ? window.__i18nDict(lang7()) : ((typeof I18N !== 'undefined') ? I18N[lang7()] : null);
@@ -1053,7 +1060,7 @@
   function populateStyleSelect(){
     const opts = STUDIO_OPTIONS[feature] || [];
     const langKey = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
-    styleEl.innerHTML = opts.map((o) => '<option value="' + o.value + '">' + (o[langKey] || o.en) + '</option>').join('');
+    styleEl.innerHTML = opts.map((o) => '<option value="' + o.value + '">' + (o[langKey] || (window.__bT ? window.__bT(o.ar, o.en) : o.en)) + '</option>').join('');
   }
 
   /* ---- 👤 saved face profile ---- */
@@ -1166,8 +1173,8 @@
     if(!window.omranPicker || !styleEl) return;
     const opts = Array.from(styleEl.options);
     window.omranPicker.open({
-      title: featureTitle() || (isEn() ? '✨ AI style' : '✨ ستايل الذكاء الاصطناعي'),
-      count: opts.length + (isEn() ? ' options — pick yours' : ' خيارًا — اختر ما يناسبك'),
+      title: featureTitle() || (bT('✨ ستايل الذكاء الاصطناعي','✨ AI style')),
+      count: opts.length + (bT(' خيارًا — اختر ما يناسبك',' options — pick yours')),
       items: opts.map((opt) => ({
         v: opt.value, title: opt.textContent.trim(), active: opt.value === styleEl.value,
         img: 'assets/studio/options/' + feature + '-' + opt.value + '.webp',
@@ -1197,11 +1204,11 @@
     nm.textContent = cur.textContent.trim();
     nm.style.cssText = 'font-size:13.5px; font-weight:700;';
     const sub = document.createElement('div');
-    sub.textContent = styleEl.options.length + (isEn() ? ' options for this feature' : ' خيارًا لهذه الميزة');
+    sub.textContent = styleEl.options.length + ' ' + (typeof window.t==='function'&&window.t('pickerOptsForFeature')!=='pickerOptsForFeature'?window.t('pickerOptsForFeature'):(bT('خيارًا لهذه الميزة','options for this feature')));
     sub.style.cssText = 'font-size:11px; color:var(--muted,#999);';
     info.appendChild(nm); info.appendChild(sub);
     const all = document.createElement('span');
-    all.textContent = isEn() ? 'Browse all ›' : 'عرض الكل ›';
+    all.textContent = (typeof window.t==='function'&&window.t('portraitStyleBrowseAll')!=='portraitStyleBrowseAll'?window.t('portraitStyleBrowseAll'):(bT('عرض الكل ›','Browse all ›')));
     all.style.cssText = 'color:#d4af37; font-size:12.5px; font-weight:700; flex:none;';
     trig.appendChild(img); trig.appendChild(info); trig.appendChild(all);
     trig.onclick = openStudioPicker;
@@ -1416,7 +1423,7 @@
       suggestionsEl.style.display = list.length ? 'flex' : 'none';
       setStatus(list.length ? '' : t('studioAiNeedImage'));
     } catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       suggestBtn.disabled = false;
     }
@@ -1472,7 +1479,7 @@
       compareResultsEl.style.display = 'grid';
       compareStatusEl.style.display = 'none';
     } catch(e){
-      compareStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+      compareStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
     } finally {
       compareBtn.disabled = false;
     }
@@ -1531,7 +1538,7 @@
       heritageCompareResultsEl.style.display = 'grid';
       heritageCompareStatusEl.style.display = 'none';
     } catch(e){
-      heritageCompareStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+      heritageCompareStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
     } finally {
       heritageCompareBtn.disabled = false;
     }

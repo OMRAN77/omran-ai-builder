@@ -1502,7 +1502,9 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
         // the whole trail stays visible instead of being overwritten.
         if(__agentStep) __agentStep.done();
         const __phaseIcon = {planning:'🗺️',executing:'⚙️',verifying:'🧪',reporting:'💬'}[ev.phase] || '•';
-        __agentStep = agentStatus.step(__phaseIcon, String(ev.status).replace(/^[^\p{L}\p{N}]+/u, '').trim() || ev.status);
+        /* v656 — نترجم الحالة بمفتاحها قبل العرض */
+        const __st = (typeof tStatus === 'function') ? tStatus(ev) : ev.status;
+        __agentStep = agentStatus.step(__phaseIcon, String(__st).replace(/^[^\p{L}\p{N}]+/u, '').trim() || __st);
       }
       if(ev.clientTool && window.omranAgentTools){
         // v411: الوكيل طلب تشغيل كود. ننفّذه في إطار معزول هنا ونعيد الناتج عبر
@@ -4227,11 +4229,13 @@ DESIGN RULES (non-negotiable):
       try{
         var __selLabel = (typeof functionalLabel === 'function') ? functionalLabel(__selProv) : __selProv;
         if(__effProv !== __selProv && window.__chatStatus && !window.__chatStatus.isReleased() && !cur.adMode){
-          var __why = (__gateNoBuild || __routeFix) ? 'البناء وتعديل الكود'
-                    : (__visionOverride ? 'قراءة الصور' : 'هذا النوع من الطلبات');
-          window.__chatStatus.note('↪️', (__provUiHidden() ? 'محادثتك على ' : 'اخترتَ ') + __selLabel + ' — و' + __why + ' يُنفَّذ بـ ' +
-            ((typeof functionalLabel === 'function') ? functionalLabel(__effProv) : __effProv) +
-            ' لأنه الأدقّ فيه. محادثتك العادية تبقى على ' + __selLabel + '.');
+          /* v-prov-status-i18n (شكوى المالك: جملة التحويل عربية وسط واجهة أجنبية):
+             قالب مترجم بلغة الواجهة مع خانات {sel}/{why}/{eff}. */
+          var __why = (__gateNoBuild || __routeFix) ? t('provWhyBuild')
+                    : (__visionOverride ? t('provWhyVision') : t('provWhyGeneral'));
+          var __effLabel = (typeof functionalLabel === 'function') ? functionalLabel(__effProv) : __effProv;
+          window.__chatStatus.note('↪️', t(__provUiHidden() ? 'provSwitchNoteHidden' : 'provSwitchNote')
+            .replace(/\{sel\}/g, __selLabel).replace('{why}', __why).replace('{eff}', __effLabel));
         }
       }catch(e){ __swallow(e, 'ui:switchnote'); }
       const __teamOrder = [__effProv, ...(__routeFix ? ['claude', 'openai', 'gemini'] : ['claude', 'openai', 'gemini']).filter(p => p !== __effProv)];

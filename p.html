@@ -14,6 +14,13 @@
   #frameWrap{position:absolute; top:56px; left:0; right:0; bottom:0;}
   iframe{width:100%; height:100%; border:none; background:#fff;}
   #state{display:flex; align-items:center; justify-content:center; height:70vh; font-size:14px; color:#9aa3b2; text-align:center; padding:0 20px;}
+  /* v-share-chat: عرض المحادثة المشتركة (مشروع بلا تطبيق مبني) */
+  #chatWrap{display:none; height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:18px 14px 40px; box-sizing:border-box;}
+  #chatInner{max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:10px;}
+  .shMsg{padding:10px 14px; border-radius:14px; font-size:14px; line-height:1.8; white-space:pre-wrap; word-break:break-word; max-width:88%;}
+  .shMsg.user{background:#2b3a55; align-self:flex-start; border:1px solid #35486b;}
+  .shMsg.assistant{background:#1b1e27; align-self:flex-end; border:1px solid #262b36;}
+  .shMsg .who{display:block; font-size:11px; color:#9aa3b2; margin-bottom:4px; font-weight:bold;}
 </style>
 </head>
 <body>
@@ -27,6 +34,7 @@
   <div id="frameWrap">
     <div id="state">جارِ تحميل المشروع...</div>
     <iframe id="frame" sandbox="allow-scripts" style="display:none;"></iframe>
+    <div id="chatWrap"><div id="chatInner"></div></div>
   </div>
 
 <script>
@@ -50,8 +58,29 @@
       const d = new Date(data.createdAt || Date.now());
       metaEl.textContent = 'بواسطة ' + (data.username || 'زائر') + ' — ' + d.toLocaleDateString('ar-EG');
       document.title = (data.title || 'مشروع مشترك') + ' — Omran AI Builder';
-      frame.srcdoc = data.code || '';
-      frame.style.display = 'block';
+      /* v-share-chat: كود → معاينة التطبيق كما كان؛ بلا كود → عرض المحادثة فقاعات. */
+      if(data.code && String(data.code).trim()){
+        frame.srcdoc = data.code;
+        frame.style.display = 'block';
+      } else if(Array.isArray(data.messages) && data.messages.length){
+        const inner = document.getElementById('chatInner');
+        data.messages.forEach(function(m){
+          if(!m || !m.content) return;
+          const div = document.createElement('div');
+          div.className = 'shMsg ' + (m.role === 'user' ? 'user' : 'assistant');
+          div.dir = 'auto';
+          const who = document.createElement('span');
+          who.className = 'who';
+          who.textContent = m.role === 'user' ? '👤' : '🤖 Omran AI';
+          div.appendChild(who);
+          div.appendChild(document.createTextNode(String(m.content)));
+          inner.appendChild(div);
+        });
+        document.getElementById('chatWrap').style.display = 'block';
+      } else {
+        stateEl.textContent = 'هذا المشروع فارغ.';
+        return;
+      }
       stateEl.style.display = 'none';
     })
     .catch(() => {

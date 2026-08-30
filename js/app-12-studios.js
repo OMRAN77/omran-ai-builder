@@ -64,8 +64,11 @@ async function __safeJson(res){
   if(!modal || !btnOpen) return;
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function t(key){
-    const dict = (typeof I18N !== 'undefined') ? I18N[isEn() ? 'en' : 'ar'] : null;
+    /* v-global-first: المترجم العام (الـ14 لغة) أولًا — المحلي يعرف عربي/إنجليزي فقط */
+    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ /* لم يجهز بعد */ }
+    const dict = (typeof I18N !== 'undefined') ? I18N[bT('ar','en')] : null;
     return (dict && dict[key]) || key;
   }
   function setStatus(text){
@@ -79,6 +82,8 @@ async function __safeJson(res){
 
   btnOpen.onclick = () => {
     modal.style.display = 'flex';
+    /* v651: صفّ «غرفتي بكل الأنماط» يُبنى قبل وصول ملفّ اللغة الكسول فيتجمّد — يُعاد عند الفتح. */
+    try { buildCompareStyleRow(); } catch(_e651) { /* guard-ok: rebuilding the compare row is cosmetic — a failure must never block opening the modal. */ }
     closeHeaderMenu();
   };
   btnClose.onclick = () => { modal.style.display = 'none'; };
@@ -206,7 +211,7 @@ async function __safeJson(res){
           const vb = document.createElement('button');
           vb.type = 'button';
           vb.className = 'btn';
-          vb.textContent = isEn() ? '\u2728 More like this' : '\u2728 \u0632\u0648\u0651\u062F\u0646\u064A \u0645\u062B\u0644\u0647';
+          vb.textContent = bT('\u2728 \u0632\u0648\u0651\u062F\u0646\u064A \u0645\u062B\u0644\u0647','\u2728 More like this');
           vb.style.cssText = 'width:100%; margin-top:5px; font-size:11.5px; padding:5px 4px;';
           vb.onclick = (ev) => { ev.preventDefault(); variantSrc = im.imageBase64; btnGenerate.onclick(); };
           cell.appendChild(vb);
@@ -227,7 +232,7 @@ async function __safeJson(res){
       downloadEl.style.display = 'block';
       setStatus(t('designAiDone'));
     } catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       btnGenerate.disabled = false;
     }
@@ -314,7 +319,14 @@ async function __safeJson(res){
     const o = styleEl && Array.prototype.find.call(styleEl.options, function(x){ return x.value === v; });
     if(!o) return v;
     const den = isEn() && o.getAttribute('data-en');
-    return ((den || o.textContent) || '').trim();
+    if(den) return String(den).trim();
+    /* v649: القاموس الحيّ أوّلًا — البطاقة تُبنى قبل وصول ملفّ اللغة الكسول فتلتقط الإنجليزيّة وتتجمّد. */
+    const k649 = o.getAttribute('data-i18n');
+    if(k649 && typeof t === 'function'){ const v649 = t(k649); if(v649 && v649 !== k649) return String(v649).trim(); }
+    /* v651: 39 نمطًا بلا مفتاح i18n كانت تعرض العربيّة في الـ12 لغة — القاموس الثنائيّ __BI يترجمها. */
+    const den651 = o.getAttribute('data-en');
+    if(!k649 && den651 && typeof window.__bT === 'function') return window.__bT((o.textContent || '').trim(), String(den651).trim());
+    return (o.textContent || '').trim();
   }
   function buildCompareStyleRow(){
     if(!cmpChecksEl || !styleEl) return;
@@ -337,6 +349,8 @@ async function __safeJson(res){
       img.onerror = function(){ img.remove(); };
       const label = document.createElement('div');
       label.textContent = styleTitle(v);
+      /* v649: تسليم التسمية لنظام i18n كي تُترجَم عند تبديل اللغة بلا إعادة بناء الصفّ. */
+      const lk649 = o.getAttribute('data-i18n'); if(lk649) label.setAttribute('data-i18n', lk649);
       label.style.cssText = 'position:absolute; left:0; right:0; bottom:0; padding:12px 3px 4px; font-size:10px; font-weight:700; text-align:center; z-index:1;' +
         ' color:' + (on ? '#d4af37' : '#eef0f6') + '; background:linear-gradient(transparent,rgba(0,0,0,.85));';
       if(on){
@@ -348,7 +362,7 @@ async function __safeJson(res){
       card.onclick = function(){
         const i = cmpPicks.indexOf(v);
         if(i >= 0) cmpPicks.splice(i, 1);
-        else { if(cmpPicks.length >= 3){ cmpStatus(isEn() ? 'Max 3 styles' : 'الحد ٣ أنماط'); return; } cmpPicks.push(v); }
+        else { if(cmpPicks.length >= 3){ cmpStatus(bT('الحد ٣ أنماط','Max 3 styles')); return; } cmpPicks.push(v); }
         cmpStatus('');
         buildCompareStyleRow();
       };
@@ -357,8 +371,8 @@ async function __safeJson(res){
   }
   buildCompareStyleRow();
   if(cmpBtn) cmpBtn.onclick = async () => {
-    if(!selectedBase64){ cmpStatus(isEn() ? 'Upload your room photo first' : 'ارفعي صورة غرفتك أولًا'); return; }
-    if(cmpPicks.length < 2){ cmpStatus(isEn() ? 'Pick 2-3 styles' : 'اختاري نمطين أو ثلاثة'); return; }
+    if(!selectedBase64){ cmpStatus(bT('ارفعي صورة غرفتك أولًا','Upload your room photo first')); return; }
+    if(cmpPicks.length < 2){ cmpStatus(bT('اختاري نمطين أو ثلاثة','Pick 2-3 styles')); return; }
     const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
     if(!token){ cmpStatus(t('designAiNeedLogin')); return; }
     cmpBtn.disabled = true;
@@ -368,7 +382,7 @@ async function __safeJson(res){
     try{
       for(let i = 0; i < picks.length; i++){
         const v = picks[i];
-        cmpStatus((isEn() ? 'Designing ' : 'نصمّم ') + styleTitle(v) + ' — ' + (i + 1) + '/' + picks.length + '…');
+        cmpStatus((bT('نصمّم ','Designing ')) + styleTitle(v) + ' — ' + (i + 1) + '/' + picks.length + '…');
         const res = await fetch('/api/design-create', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -378,7 +392,7 @@ async function __safeJson(res){
         if(!res.ok || data.error){
           if(data.error === 'daily_limit_reached'){ cmpStatus(t('designAiLimitReached')); break; }
           if(data.error === 'auth_required'){ cmpStatus(t('designAiNeedLogin')); break; }
-          cmpStatus((isEn() ? '❌ Failed at ' : '❌ تعثّر عند ') + styleTitle(v));
+          cmpStatus((bT('❌ تعثّر عند ','❌ Failed at ')) + styleTitle(v));
           continue;
         }
         const u = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
@@ -392,7 +406,7 @@ async function __safeJson(res){
         cap.style.cssText = 'font-size:12px; font-weight:700; text-align:center; margin-top:4px;';
         const pick = document.createElement('button');
         pick.type = 'button'; pick.className = 'btn';
-        pick.textContent = isEn() ? '👍 Pick this' : '👍 اعتمدي هذا';
+        pick.textContent = bT('👍 اعتمدي هذا','👍 Pick this');
         pick.style.cssText = 'width:100%; margin-top:4px; font-size:11.5px; padding:5px 4px;';
         pick.onclick = function(){
           styleEl.value = v;
@@ -404,10 +418,10 @@ async function __safeJson(res){
         cell.appendChild(im); cell.appendChild(cap); cell.appendChild(pick);
         cmpResultsEl.appendChild(cell);
         cmpResultsEl.style.display = 'flex';
-        if(i === picks.length - 1) cmpStatus(isEn() ? '✓ Done — swipe and pick' : '✓ تم — اسحبي وقارني واختاري');
+        if(i === picks.length - 1) cmpStatus(bT('✓ تم — اسحبي وقارني واختاري','✓ Done — swipe and pick'));
       }
     } catch(e){
-      cmpStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      cmpStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       cmpBtn.disabled = false;
     }
@@ -572,11 +586,25 @@ function stuL(ar, en){
     astronaut: 'رائد فضاء',
   };
   function pstyleLang(){ try{ return localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ return 'ar'; } }
+  /* دمج: الأوصاف مترجمة فعليًا لكل اللغات عبر STU_XL (بدل إخفائها) */
   function pstyleSub(v){
     var ar = PSTYLE_SUBS[v] || '';
     if(!ar) return '';
     var m = STU_XL[ar];
     return stuL(ar, (m && m.en) || '');
+  }
+  /* v-look-labels-fix: optLabel كانت معرّفة في نطاق الأزياء فقط بينما تُستدعى
+     هنا أيضًا — فتعطّل فتح ورقة الأنماط (ReferenceError). نسخة النطاق هذه:
+     خيارات البورتريه كلها data-i18n مترجمة فترجع نصّها كما هو. */
+  function optLabel(o){
+    if(!o) return '';
+    var l = pstyleLang();
+    /* v651: كانت كلّ لغة غير ar/ur ترى الإنجليزيّة، والأردو ترث العربيّة. */
+    if(l.indexOf('ar') !== 0 && !o.hasAttribute('data-i18n')){
+      var de = o.getAttribute('data-en');
+      if(de) return (typeof window.__bT === 'function') ? window.__bT((o.textContent||'').trim(), String(de).trim()) : de;
+    }
+    return o.textContent;
   }
   function pstyleOpts(){
     const favs = getFavs();
@@ -597,12 +625,19 @@ function stuL(ar, en){
     if(!styleCardsGrid || !styleEl) return;
     const favs = getFavs();
     const opts = pstyleOpts();
-    if(styleSheetCount) styleSheetCount.textContent = opts.length + (pstyleLang().startsWith('en') ? ' styles — same face, every style' : ' ستايلًا — نفس وجهك بكل ستايل');
+    /* v-psub-ar-only: سطر العدّاد صار مفتاح ترجمة لكل اللغات بدل عربي/إنجليزي فقط.
+       ملاحظة: t المحلية في هذا الملف تعرف عربي/إنجليزي فقط وتحجب المترجم
+       العام — نستدعي window.t (مترجم اللغات الـ14) صراحةً. */
+    if(styleSheetCount){
+      const __gt = (typeof window !== 'undefined' && typeof window.t === 'function') ? window.t : null;
+      const __cntSuffix = (__gt && __gt('psheetCountSuffix') !== 'psheetCountSuffix') ? __gt('psheetCountSuffix') : (pstyleLang().startsWith('en') ? 'styles — same face, every style' : 'ستايلًا — نفس وجهك بكل ستايل');
+      styleSheetCount.textContent = opts.length + ' ' + __cntSuffix;
+    }
     styleCardsGrid.innerHTML = '';
     opts.forEach((opt) => {
       const v = opt.value;
       const active = v === styleEl.value;
-      const title = opt.textContent.trim();
+      const title = optLabel(opt).trim();
       const card = document.createElement('div');
       card.setAttribute('data-pstyle-card', v);
       card.style.cssText = 'border-radius:14px; overflow:hidden; cursor:pointer; background:#17171b;' +
@@ -749,8 +784,11 @@ function stuL(ar, en){
   if(!modal || !btnOpen) return;
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
   function t(key){
-    const dict = (typeof I18N !== 'undefined') ? I18N[isEn() ? 'en' : 'ar'] : null;
+    /* v-global-first: المترجم العام (الـ14 لغة) أولًا — المحلي يعرف عربي/إنجليزي فقط */
+    try{ if(typeof window.t === 'function' && window.t !== t){ const g = window.t(key); if(g && g !== key) return g; } }catch(e){ /* لم يجهز بعد */ }
+    const dict = (typeof I18N !== 'undefined') ? I18N[bT('ar','en')] : null;
     return (dict && dict[key]) || key;
   }
   function setStatus(text){
@@ -860,7 +898,7 @@ function stuL(ar, en){
         setStatus(t('portraitDone'));
       }
     } catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       btnGenerate.disabled = false;
     }
@@ -910,6 +948,19 @@ function stuL(ar, en){
   if(!modal || !btnOpen) return;
 
   function isEn(){ return localStorage.getItem('aiapp_lang') === 'en'; }
+  function bT(a,e){ return (typeof window!=='undefined'&&window.__bT) ? window.__bT(a,e) : (isEn()?e:a); }
+  /* v-look-labels: خيارات اللوكات القديمة نصها عربي مع data-en — غير العربي
+     والأردو يأخذ الإنجليزية (خيارات data-i18n تُترجم أصلًا فلا تُمس). */
+  function optLabel(o){
+    if(!o) return '';
+    var l7 = lang7();
+    /* v651: كانت كلّ لغة غير ar/ur ترى الإنجليزيّة، والأردو ترث العربيّة. */
+    if(l7 !== 'ar' && !o.hasAttribute('data-i18n')){
+      var de = o.getAttribute('data-en');
+      if(de) return (typeof window.__bT === 'function') ? window.__bT((o.textContent||'').trim(), String(de).trim()) : de;
+    }
+    return o.textContent;
+  }
   function lang7(){ return (typeof currentLang === 'function') ? currentLang() : (localStorage.getItem('aiapp_lang') || 'ar'); }
   function t(key){
     const dict = (typeof window.__i18nDict === 'function') ? window.__i18nDict(lang7()) : ((typeof I18N !== 'undefined') ? I18N[lang7()] : null);
@@ -957,12 +1008,12 @@ function stuL(ar, en){
     const list = GENDER_STYLES[g] || GENDER_STYLES.women;
     if(!window.omranPicker) return;
     window.omranPicker.open({
-      title: isEn() ? '👗 Fashion styles' : '👗 أنماط الأزياء',
-      count: list.length + (isEn() ? ' styles — pick yours' : ' نمطًا — اختر ما يناسبك'),
+      title: bT('👗 أنماط الأزياء','👗 Fashion styles'),
+      count: list.length + ' ' + ((typeof window.t === 'function' && window.t('pickerOptsPick') !== 'pickerOptsPick') ? window.t('pickerOptsPick') : (bT('نمطًا — اختر ما يناسبك','styles — pick yours'))),
       items: list.map(function(v){
         const opt = fashionOptFor(v);
         return opt && {
-          v: v, title: opt.textContent.trim(), active: v === styleEl.value,
+          v: v, title: optLabel(opt).trim(), active: v === styleEl.value,
           img: 'assets/fashion/looks/' + g + '/' + v + '.webp',
           img2: 'assets/fashion/looks/' + v + '.webp',
         };
@@ -983,19 +1034,19 @@ function stuL(ar, en){
     const trig = document.createElement('div');
     trig.id = 'fashionStyleTrigger';
     trig.style.cssText = 'display:flex; align-items:center; gap:10px; border:1px solid var(--border,#333); border-radius:12px; padding:8px 10px; cursor:pointer; background:var(--panel2,#101014);';
-    const img = lookImg(g, styleEl.value, opt ? opt.textContent : '');
+    const img = lookImg(g, styleEl.value, opt ? optLabel(opt) : '');
     img.style.cssText = 'width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
     const info = document.createElement('div');
     info.style.cssText = 'flex:1; min-width:0;';
     const nm = document.createElement('div');
-    nm.textContent = opt ? opt.textContent : '';
+    nm.textContent = opt ? optLabel(opt) : '';
     nm.style.cssText = 'font-size:13.5px; font-weight:700;';
     const sub = document.createElement('div');
-    sub.textContent = list.length + (isEn() ? ' styles for this category' : ' نمطًا لهذه الفئة');
+    sub.textContent = list.length + ' ' + ((typeof window.t === 'function' && window.t('pickerStylesForCategory') !== 'pickerStylesForCategory') ? window.t('pickerStylesForCategory') : (bT('نمطًا لهذه الفئة','styles for this category')));
     sub.style.cssText = 'font-size:11px; color:var(--muted,#999);';
     info.appendChild(nm); info.appendChild(sub);
     const all = document.createElement('span');
-    all.textContent = isEn() ? 'Browse all ›' : 'عرض الكل ›';
+    all.textContent = (typeof window.t === 'function' && window.t('portraitStyleBrowseAll') !== 'portraitStyleBrowseAll') ? window.t('portraitStyleBrowseAll') : (bT('عرض الكل ›','Browse all ›'));
     all.style.cssText = 'color:#d4af37; font-size:12.5px; font-weight:700; flex:none;';
     trig.appendChild(img); trig.appendChild(info); trig.appendChild(all);
     trig.onclick = openFashionPicker;
@@ -1116,7 +1167,7 @@ function stuL(ar, en){
       tick.style.cssText = 'position:absolute; top:6px; inset-inline-end:6px; width:22px; height:22px; border-radius:50%; background:#d4af37; color:#141414;' +
         ' font-weight:800; font-size:14px; display:none; align-items:center; justify-content:center; z-index:2;';
       const label = document.createElement('div');
-      label.textContent = opt.textContent;
+      label.textContent = optLabel(opt);
       label.style.cssText = 'position:absolute; left:0; right:0; bottom:0; padding:14px 6px 6px; font-size:11px; font-weight:700; text-align:center; color:#eef0f6;' +
         ' background:linear-gradient(transparent,rgba(0,0,0,.82));';
       function paint(){
@@ -1159,6 +1210,8 @@ function stuL(ar, en){
   btnOpen.onclick = () => {
     modal.style.display = 'flex';
     renderStyleCards(); // تسميات الترجمة قد تكون تغيّرت بعد التهيئة
+    /* v651: صفّ «قارن بين الإطلالات» كان يتجمّد على الإنجليزيّة لنفس السبب. */
+    try { buildCompareChecks(); } catch(_e651) { /* guard-ok: rebuilding the compare row is cosmetic — a failure must never block opening the modal. */ }
     closeHeaderMenu();
   };
   btnClose.onclick = () => { modal.style.display = 'none'; };
@@ -1246,13 +1299,92 @@ function stuL(ar, en){
       favSaveBtn.style.display = 'block';
       favSaveBtn.textContent = t('fashionFavoriteSaveBtn');
       setupBeforeAfter(dataUrl);
+      /* v-fashion-refine: احفظ النتيجة كمصدر للتعديل الموضعي وأظهر صفّه */
+      __refineRemember(data.imageBase64, data.mimeType || 'image/png');
       setStatus(t('fashionAiDone'));
     } catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       btnGenerate.disabled = false;
     }
   };
+
+  /* ---- ✏️ v-fashion-refine (شكوى المالك ٢٩ أغسطس): تعديل شيء محدد على
+     النتيجة نفسها بدل إعادة توليد اللوك كاملًا — النتيجة الأخيرة تُرسل
+     كمصدر مع طلب التعديل، والسيرفر يقفل كل ما عداه. ---- */
+  let __lastFxB64 = null, __lastFxMime = 'image/png';
+  const __gt2 = (k, arFb, enFb) => {
+    try{ if(typeof window.t === 'function'){ const v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* المترجم لم يجهز */ }
+    return isEn() ? enFb : arFb;
+  };
+  let refineRow = null, refineInput = null, refineBtn = null;
+  function __buildRefineRow(){
+    if(refineRow || !resultWrap) return;
+    refineRow = document.createElement('div');
+    refineRow.id = 'fashionRefineRow';
+    refineRow.style.cssText = 'display:none; gap:8px; margin-top:10px; align-items:stretch;';
+    refineInput = document.createElement('input');
+    refineInput.id = 'fashionRefineInput';
+    refineInput.type = 'text';
+    refineInput.maxLength = 300;
+    refineInput.style.cssText = 'flex:1 1 auto; min-width:0; padding:10px 12px; border-radius:12px; border:1px solid var(--border,#333); background:var(--panel2,#1b1b22); color:var(--text,#eee); font-family:inherit; font-size:13px;';
+    refineBtn = document.createElement('button');
+    refineBtn.id = 'fashionRefineBtn';
+    refineBtn.type = 'button';
+    refineBtn.className = 'btn';
+    refineBtn.style.cssText = 'flex:0 0 auto; white-space:nowrap;';
+    refineRow.appendChild(refineInput);
+    refineRow.appendChild(refineBtn);
+    resultWrap.appendChild(refineRow);
+    refineBtn.onclick = __doRefine;
+    refineInput.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); __doRefine(); } });
+  }
+  function __refineTexts(){
+    if(!refineInput) return;
+    refineInput.placeholder = __gt2('fashionRefinePh', 'مثال: غيّري لون الفستان إلى أزرق فقط', 'e.g. change only the dress colour to blue');
+    refineBtn.textContent = __gt2('fashionRefineBtn', '✏️ عدّلي شيئًا محددًا', '✏️ Edit one specific thing');
+  }
+  function __refineRemember(b64, mime){
+    __lastFxB64 = b64; __lastFxMime = mime;
+    __buildRefineRow();
+    __refineTexts();
+    if(refineRow){ refineRow.style.display = 'flex'; refineInput.value = ''; }
+  }
+  async function __doRefine(){
+    if(!__lastFxB64) return;
+    const reqTxt = (refineInput.value || '').trim();
+    if(!reqTxt){ setStatus(__gt2('fashionRefineNeed', 'اكتبي التعديل المطلوب أولًا', 'Type the change you want first')); refineInput.focus(); return; }
+    const token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : null;
+    if(!token){ setStatus(t('fashionAiNeedLogin')); return; }
+    refineBtn.disabled = true; btnGenerate.disabled = true;
+    setStatus(__gt2('fashionRefining', 'جاري تطبيق التعديل…', 'Applying your edit…'));
+    try{
+      const res = await fetch('/api/fashion-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'refine', imageBase64: __lastFxB64, mimeType: __lastFxMime, editRequest: reqTxt, token, engine: window.__fashionEngine || '' }),
+      });
+      const data = await __safeJson(res);
+      if(!res.ok || data.error){
+        if(data.error === 'auth_required'){ setStatus(t('fashionAiNeedLogin')); return; }
+        if(data.error === 'daily_limit_reached'){ setStatus(t('fashionAiLimitReached')); return; }
+        throw new Error(data.error || 'unknown');
+      }
+      /* قبل/بعد: «قبل» تصير النتيجة السابقة نفسها ليتضح التعديل الموضعي */
+      const prevUrl = 'data:' + __lastFxMime + ';base64,' + __lastFxB64;
+      const dataUrl = 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64;
+      if(beforeImg){ beforeImg.src = prevUrl; }
+      resultEl.src = dataUrl;
+      downloadEl.href = dataUrl;
+      __lastFxB64 = data.imageBase64; __lastFxMime = data.mimeType || 'image/png';
+      refineInput.value = '';
+      setStatus(t('fashionAiDone'));
+    }catch(e){
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
+    }finally{
+      refineBtn.disabled = false; btnGenerate.disabled = false;
+    }
+  }
 
   /* ---- 💡 suggest a look ---- */
   if(suggestBtn) suggestBtn.onclick = async () => {
@@ -1316,7 +1448,7 @@ function stuL(ar, en){
       suggestionsEl.style.display = list.length ? 'flex' : 'none';
       setStatus(list.length ? '' : t('fashionSuggestNeedImage'));
     } catch(e){
-      setStatus((isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e)));
+      setStatus((bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e)));
     } finally {
       suggestBtn.disabled = false;
     }
@@ -1397,7 +1529,7 @@ function stuL(ar, en){
       compareResultsEl.style.display = 'grid';
       compareStatusEl.style.display = 'none';
     } catch(e){
-      compareStatusEl.textContent = (isEn() ? '❌ Error: ' : '❌ خطأ: ') + (e && e.message ? e.message : String(e));
+      compareStatusEl.textContent = (bT('❌ خطأ: ','❌ Error: ')) + (e && e.message ? e.message : String(e));
     } finally {
       compareBtn.disabled = false;
     }
@@ -1764,18 +1896,11 @@ function stuL(ar, en){
       if(authBtn) authBtn.click();
       return;
     }
-    const clientId = '533765051685-2334rjfvu738sd2i50p7rb8gck1d00i2.apps.googleusercontent.com';
-    const redirectUri = window.location.origin + '/api/email-callback';
-    const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      response_type: 'code',
-      scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar.events',
-      access_type: 'offline',
-      prompt: 'consent',
-      state: token,
-    });
-    window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+    /* v-email-start-server: الرابط كان يُبنى هنا بـ window.location.origin ومعرّف
+       عميل مكتوب، بينما يبادل الخادم بـ SITE_URL ومعرّف البيئة — وجوجل تشترط
+       تطابق redirect_uri حرفًا بحرف، فكان الربط يفشل («مساعد الإيميل لا يعمل»).
+       الآن الخادم يبني الرابط بقيمه هو نفسها. (api/_lib/email-google-start.js) */
+    window.location.href = '/api/system?action=email-google-start&state=' + encodeURIComponent(token);
   });
 
   refreshBtn.addEventListener('click', loadEmails);

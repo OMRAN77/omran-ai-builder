@@ -10,7 +10,16 @@
   ];
   window.__omMode = null;
   var chipWrap, popup, ta;
-  function lbl(m){ return AR ? m.ar : m.en; }
+  /* v-modes-i18n (شكوى المالك ٢٩ أغسطس): البنود كانت تُبنى مرة واحدة بلغة
+     لحظة التحميل (عربي غالبًا) ولا تتبدل مع اللغة — الآن مفاتيح ترجمة
+     تُقرأ حيًّا وتُوسم data-i18n فيعيد مبدّل اللغة ترجمتها. */
+  var MODE_KEYS = { image:'modeCreateImage', web:'modeWebSearch', think:'modeThinkDeeper' };
+  function lbl(m){
+    try{
+      if(typeof t === 'function'){ var v = t(MODE_KEYS[m.id]); if(v && v !== MODE_KEYS[m.id]) return v; }
+    }catch(e){ /* i18n لم يجهز بعد — الاحتياط أدناه */ }
+    return AR ? m.ar : m.en;
+  }
   function build(){
     var box = document.getElementById('composerBox');
     ta      = document.getElementById('prompt');
@@ -25,7 +34,8 @@
       var b = document.createElement('button');
       b.type = 'button'; b.className = 'btn omModeItem'; b.setAttribute('data-mode', m.id);
       b.title = lbl(m);
-      b.innerHTML = '<span class="omModeIc">' + m.ic + '</span><span class="btnLabel">' + lbl(m) + '</span>';
+      b.setAttribute('data-i18n-title', MODE_KEYS[m.id]);
+      b.innerHTML = '<span class="omModeIc">' + m.ic + '</span><span class="btnLabel" data-i18n="' + MODE_KEYS[m.id] + '">' + lbl(m) + '</span>';
       b.addEventListener('click', function(e){ e.stopPropagation(); pick(m.id); });
       popup.insertBefore(b, anchor);
     });

@@ -422,7 +422,7 @@
     border:none !important; box-shadow:none !important;
     border-radius:var(--r-2) !important; line-height:1; color:#fff;
   }
-  #btnSend{display:none; background:var(--grad) !important; transition:transform .15s ease;}
+  #btnSend{display:inline-flex; background:var(--grad) !important; transition:transform .15s ease, opacity .15s ease;}
   #btnSend.ready{display:inline-flex; transform:scale(1.06);}
   #btnSend svg, #btnStop svg{width:18px; height:18px; display:block;}
   #btnStop{background:#ff4d4d !important;}

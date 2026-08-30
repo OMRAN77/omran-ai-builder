@@ -15,6 +15,7 @@ function load(action) {
     case 'search': return require('./_lib/search.js');
     case 'realtime-session': return require('./_lib/realtime-session.js');
     case 'google-start': return require('./_lib/auth-google-start.js');
+    case 'email-google-start': return require('./_lib/email-google-start.js');
     case 'email-callback': return require('./_lib/email-callback.js');
     case 'email-list': return require('./_lib/email-list.js');
     case 'email-send': return require('./_lib/email-send.js');
