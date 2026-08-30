@@ -406,5 +406,5 @@ html[data-mode="light"] #eduHubModal .eduNote{color:var(--muted) !important;}
 
 /* v-modal-close-fix (شكوى عمران: ✕ عند الساعة في مساعد المستندات ومحلل
    المصاريف): الرأس ينزل تحت شريط الحالة بهامش الأمان والزر أكبر. */
-#expModal .expHead, .xm .xmHead{padding-top:calc(14px + env(safe-area-inset-top,0px));}
+#expModal .expHead, .xm .xmHead{padding-top:calc(14px + max(env(safe-area-inset-top,0px), 30px));}
 #expModal .expX, .xm .xmX{width:42px;height:40px;}
