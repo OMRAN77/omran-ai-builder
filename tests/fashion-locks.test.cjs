@@ -659,4 +659,15 @@ console.log('  ✓ v-arabic-script: الخط عربي أصيل — لا نستع
 }
 console.log('  ✓ v-logo-soft: لمس الشعار رجوع ناعم — لا وميض ولا إعادة إقلاع');
 
+// 55 v-font-real: «جربنا كل الخطوط ما في أي خط مرتب» — كان يرسم قبل وصول
+// ملف الخط فتطلع كل الخطوط بالخط العادي. الآن ينتظر ورقة الأنماط ويتحقق
+// فعليًا (fonts.check) قبل الرسم، وبلا bold لأن الزخرفية وزنها 400 فقط.
+{
+  const at9f = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
+  assert.ok(at9f.includes('v-font-real') && at9f.includes('l.onload = res'), 'ننتظر تحميل ورقة الخط');
+  assert.ok(at9f.includes('document.fonts.check(spec'), 'تحقق فعلي أن الخط جاهز قبل الرسم');
+  assert.ok(!at9f.includes("fonts.load('bold 40px"), 'الطلب بلا bold — الخطوط الزخرفية وزن 400');
+}
+console.log('  ✓ v-font-real: الخطوط المزخرفة تظهر فعلًا — لا رسم قبل وصول الخط');
+
 console.log('fashion locks tests passed');
