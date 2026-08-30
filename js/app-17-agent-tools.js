@@ -112,7 +112,7 @@
           if (vrsp.status === 428) return 'لم يتم تشغيل الفيديو لأن المستخدم لم يؤكد خصم النقاط.';
           if (!vrsp.ok || !vjson) return 'تعذّر بدء الفيديو: ' + String((vjson && vjson.error) || ('HTTP ' + vrsp.status)).slice(0, 160);
           var videoUrl = null;
-          var maxPoll = engine === 'veo' ? 48 : 36;
+          var maxPoll = engine === 'veo' ? 34 : 36;
           for (var pi = 0; pi < maxPoll; pi++) {
             await new Promise(function (resolve) { setTimeout(resolve, engine === 'veo' ? 8000 : 5000); });
             var sr = engine === 'veo'
