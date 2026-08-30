@@ -4064,7 +4064,12 @@ DESIGN RULES (non-negotiable):
           st._flushed = 0; // v610 — نصّ جديد يستحقّ رسمًا مصيَّرًا جديدًا
         };
         try{
-          const reply = await callWithWatchdog(p.key, apiMessages, onDelta, 75000, 180000);
+          const reply = await callWithWatchdog(p.key, apiMessages, onDelta, 75000, 360000);
+          var __chatVideo = window.__chatVideoResult;
+          if (__chatVideo && __chatVideo.url) {
+            msg.attachments = (msg.attachments || []).concat([{ isVideo: true, url: __chatVideo.url, name: __chatVideo.name || 'chat-video.mp4', mime: 'video/mp4' }]);
+            window.__chatVideoResult = null;
+          }
           let { code, explanation } = extractReply(reply);
           // 🔁 v326: مهمة بناء/تصميم رجعت نصًا بلا أي كود (مثل «تمام، هذا
           // لوجو دعائي كامل» والمعاينة فاضية) → إعادة الطلب مرة وحدة بأمر

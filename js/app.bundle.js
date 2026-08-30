@@ -17631,7 +17631,12 @@ DESIGN RULES (non-negotiable):
           st._flushed = 0; // v610 — نصّ جديد يستحقّ رسمًا مصيَّرًا جديدًا
         };
         try{
-          const reply = await callWithWatchdog(p.key, apiMessages, onDelta, 75000, 180000);
+          const reply = await callWithWatchdog(p.key, apiMessages, onDelta, 75000, 360000);
+          var __chatVideo = window.__chatVideoResult;
+          if (__chatVideo && __chatVideo.url) {
+            msg.attachments = (msg.attachments || []).concat([{ isVideo: true, url: __chatVideo.url, name: __chatVideo.name || 'chat-video.mp4', mime: 'video/mp4' }]);
+            window.__chatVideoResult = null;
+          }
           let { code, explanation } = extractReply(reply);
           // 🔁 v326: مهمة بناء/تصميم رجعت نصًا بلا أي كود (مثل «تمام، هذا
           // لوجو دعائي كامل» والمعاينة فاضية) → إعادة الطلب مرة وحدة بأمر
@@ -25417,6 +25422,50 @@ window.updateVersionLabel();
           if (!r2.errors.length) return '✅ شُغِّل بلا أخطاء تشغيل.' + (r2.logs.length ? '\nالطرفية:\n' + r2.logs.join('\n') : '');
           return '⚠️ أخطاء تشغيل:\n' + r2.errors.join('\n');
         }
+        // 🎬 إنشاء فيديو من داخل المحادثة — يستخدم نفس محركات صانع الفيديو الحالي.
+        if (name === 'generate_video') {
+          var va = args || {};
+          var vp = String(va.prompt || '').trim();
+          if (!vp) return 'وصف الفيديو فارغ — لم يبدأ التوليد.';
+          var engine = String(va.provider || 'runway').toLowerCase() === 'veo' ? 'veo' : 'runway';
+          var vr = String(va.ratio || '').toLowerCase();
+          var ratio = vr === 'portrait' || vr === '9:16' ? '720:1280' : '1280:720';
+          var ref = va.use_reference_image === false ? null : window.__chatVideoReference;
+          var token = (window.authGet && window.authGet('aiapp_auth_token')) || '';
+          var payload;
+          var endpoint;
+          if (engine === 'veo') {
+            endpoint = '/api/video?action=veo-create';
+            payload = { promptText: vp, ratio: ratio, token: token, quality: va.quality === 'high' ? 'high' : 'fast' };
+            var vd = parseInt(va.durationSeconds, 10);
+            if ([4, 6, 8].indexOf(vd) !== -1) payload.durationSeconds = vd;
+          } else {
+            endpoint = '/api/video?action=video-create';
+            payload = { promptText: vp, ratio: ratio, token: token, duration: parseInt(va.durationSeconds, 10) >= 8 ? 10 : 5, style: va.style === 'anime' ? 'anime' : 'realistic', longMode: false };
+          }
+          if (ref && ref.dataUrl) {
+            var comma = String(ref.dataUrl).indexOf(',');
+            if (comma > 0) { payload.imageBase64 = String(ref.dataUrl).slice(comma + 1); payload.imageMime = ref.mime || String(ref.dataUrl).slice(5, comma).split(';')[0] || 'image/png'; }
+          }
+          var vrsp = window.postWithConfirm ? await window.postWithConfirm(endpoint, payload) : await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+          var vjson = null; try { vjson = await vrsp.json(); } catch (e) { vjson = null; }
+          if (vrsp.status === 428) return 'لم يتم تشغيل الفيديو لأن المستخدم لم يؤكد خصم النقاط.';
+          if (!vrsp.ok || !vjson) return 'تعذّر بدء الفيديو: ' + String((vjson && vjson.error) || ('HTTP ' + vrsp.status)).slice(0, 160);
+          var videoUrl = null;
+          var maxPoll = engine === 'veo' ? 34 : 36;
+          for (var pi = 0; pi < maxPoll; pi++) {
+            await new Promise(function (resolve) { setTimeout(resolve, engine === 'veo' ? 8000 : 5000); });
+            var sr = engine === 'veo'
+              ? await fetch('/api/video?action=veo-status&op=' + encodeURIComponent(vjson.op || ''))
+              : await fetch('/api/video-status?id=' + encodeURIComponent(vjson.id || ''));
+            var sj = null; try { sj = await sr.json(); } catch (e2) { sj = null; }
+            if (sj && sj.status === 'SUCCEEDED') { videoUrl = Array.isArray(sj.output) ? sj.output[0] : sj.output; break; }
+            if (sj && sj.status === 'FAILED') return 'فشل إنشاء الفيديو: ' + String(sj.failure || sj.error || 'سبب غير معروف').slice(0, 180);
+          }
+          if (!videoUrl) return 'انتهت مهلة انتظار الفيديو قبل وصول النتيجة. حاول مرة أخرى إذا لم يظهر خلال دقائق.';
+          window.__chatVideoResult = { url: videoUrl, name: 'chat-video.mp4', provider: engine };
+          return '✅ تم إنشاء الفيديو بنجاح. سيظهر الآن داخل المحادثة مع زر التنزيل.';
+        }
         // 🎨 صورة حقيقية بدل رابط عشوائي. تُخزَّن محليًّا ويُعاد للنموذج رمز قصير
         // (__IMG_n__) يضعه في src؛ العميل يستبدله بـdata URI قبل العرض — فلا
         // تدخل مئات الكيلوبايت في سياق النموذج ولا في سجلّ المحادثة.
@@ -25559,6 +25608,17 @@ window.updateVersionLabel();
    * @returns {{reply:string, providerKey:string, switched:boolean, requestedKey:string}}
    */
   window.callChatWithTools = async function (messages, onDelta, provider) {
+    window.__chatVideoResult = null;
+    window.__chatVideoReference = null;
+    try {
+      for (var mi = messages.length - 1; mi >= 0; mi--) {
+        var mm = messages[mi];
+        if (mm && Array.isArray(mm.images) && mm.images.length) {
+          var im = mm.images[mm.images.length - 1];
+          if (im && im.dataUrl) { window.__chatVideoReference = { dataUrl: im.dataUrl, mime: im.mime || 'image/png' }; break; }
+        }
+      }
+    } catch (e) { /* guard-ok — مرجع الصورة اختياري ولا يجب أن يمنع المحادثة */ }
     // صور هذا الردّ فقط: تُمسح عند كلّ طلب جديد فلا يتراكم عشرات الميغابايت في
     // الذاكرة، وحدّ الأربع يبقى حدَّ ردٍّ لا حدَّ جلسة. الكود المبنيّ يُستبدل فيه
     // الرمز فور وصوله، فلا يضرّه المسح لاحقًا.
