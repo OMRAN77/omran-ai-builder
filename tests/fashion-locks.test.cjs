@@ -530,4 +530,15 @@ console.log('  ✓ v-edu-selfhost: التعليمي القديم ينشر مع �
 }
 console.log('  ✓ v-edu-x-safe: زر ✕ التعليم تحت شريط الحالة لا فوقه');
 
+// ㊹ v-lang-sync: «اللغه ماتتغير» على الآيفون — حدث change من المنسدلة داخل
+// الإطار قد لا يصل في WebKit. المولّد يقرأ قيمة المنسدلة مباشرة وقت الضغط،
+// والمزامنة تلتقط input/blur أيضًا — اللغة المختارة لا تضيع بأي سيناريو.
+{
+  const eo2 = fs.readFileSync(path.join(__dirname, '../edu-old/index.html'), 'utf8');
+  assert.ok(eo2.includes('function syncLangFromDd'), 'دالة مزامنة اللغة موجودة');
+  assert.ok(/btnGenerateScript'\)\.onclick = async \(\) => \{\s*\n\s*syncLangFromDd\(\)/.test(eo2), 'المولّد يقرأ المنسدلة مباشرة قبل الإرسال');
+  assert.ok(eo2.includes("addEventListener('input', syncLangFromDd)") && eo2.includes("addEventListener('blur', syncLangFromDd)"), 'التقاط input/blur لا change وحده');
+}
+console.log('  ✓ v-lang-sync: اللغة المختارة تصل المولّد حتى بلا أي حدث iOS');
+
 console.log('fashion locks tests passed');
