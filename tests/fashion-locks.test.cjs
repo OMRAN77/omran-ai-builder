@@ -541,4 +541,15 @@ console.log('  ✓ v-edu-x-safe: زر ✕ التعليم تحت شريط الح�
 }
 console.log('  ✓ v-lang-sync: اللغة المختارة تصل المولّد حتى بلا أي حدث iOS');
 
+// ㊺ v-lang-follow: تطبيقه بالبنغالية وصفحة التعليم بالعربية — الصفحة كانت لا
+// تقرأ لغة التطبيق. صارت ترث aiapp_lang (نفس النطاق بعد الاستضافة الذاتية)
+// ما لم يختر المستخدم لغة درس صراحة؛ لغة خارج السبع → إنجليزي.
+{
+  const eo3 = fs.readFileSync(path.join(__dirname, '../edu-old/index.html'), 'utf8');
+  assert.ok(eo3.includes('v-lang-follow') && eo3.includes("localStorage.getItem('aiapp_lang')"), 'الصفحة ترث لغة التطبيق');
+  assert.ok(eo3.includes("EDU_LANGS = ['ar','en','fr','hi','ur','bn','ne']"), 'التحقق من السبع المدعومة');
+  assert.ok(/EDU_LANGS\.indexOf\(saved\) !== -1\) return saved/.test(eo3), 'اختيار المستخدم الصريح يغلب لغة التطبيق');
+}
+console.log('  ✓ v-lang-follow: التعليم بلغة التطبيق تلقائيًا — والمنسدلة تغلب');
+
 console.log('fashion locks tests passed');
