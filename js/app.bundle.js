@@ -25208,11 +25208,12 @@ window.updateVersionLabel();
         if (res.ok && data.imageBase64) {
           reply({ ok: true, dataUrl: 'data:' + (data.mimeType || 'image/png') + ';base64,' + data.imageBase64 });
         } else {
-          reply({ ok: false, error: 'تعذر توليد الصورة الآن. حاول مرة أخرى بعد قليل.' });
+          /* v-view-err: مرّر سبب الخادم الحقيقي — والفارغ يعرضه المحرر بلغة التطبيق */
+          reply({ ok: false, error: (data && (data.message_ar || data.error)) || '' });
         }
       });
     }).catch(function () {
-      reply({ ok: false, error: 'تعذر توليد الصورة الآن. حاول مرة أخرى بعد قليل.' });
+      reply({ ok: false, error: '' });
     });
   });
 
@@ -25251,12 +25252,17 @@ window.updateVersionLabel();
   }
 
   function requestPlanSpec(desc) {
+    /* v-cons-i18n: العنوان والطراز وأسماء الطوابق بلغة التطبيق —
+       أسماء الغرف تبقى عربية (لوحة الألوان والترجمة عليها). */
+    var __lg = (FP.uiLng && FP.uiLng()) || 'ar';
+    var __langRule = __lg === 'ar' ? '' :
+      '\n- Write the "title", "style" and every floor "name" in the language with ISO code "' + __lg + '" (the app language). Room "name" values MUST stay in Arabic from the allowed list above.';
     return fetch('/api/gemini', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'gemini-flash-latest',
-        systemInstruction: { parts: [{ text: FP.PROMPT }] },
+        systemInstruction: { parts: [{ text: FP.PROMPT + __langRule }] },
         contents: [{ role: 'user', parts: [{ text: desc }] }],
         token: authGet('aiapp_auth_token'),
         guestId: window.getGuestId(),
