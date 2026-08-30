@@ -1021,3 +1021,4 @@ Object.assign(I18N['zh'], {
 });
 Object.assign(I18N['zh'], {"pageTitle":"Omran AI — 智能平台"});
 Object.assign(I18N['zh'], {"privacyConsentTitle":"🔒 隱私優先","privacyConsentText":"使用 Omran AI Builder 前，請先閱讀<a href=\"/privacy.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">隱私政策</a>與<a href=\"/terms.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">使用條款</a>。其中說明我們收集哪些資料、如何保護，以及您刪除資料的權利。","privacyConsentRead":"閱讀政策","privacyConsentAgree":"同意並繼續"});
+Object.assign(I18N['zh'], {"shareNeedCode":"還沒有可分享的內容 — 請先在此專案建立您的應用，再分享。","shareTooLarge":"專案超過 2MB 分享上限 — 請縮小圖片或內容後再試。"});

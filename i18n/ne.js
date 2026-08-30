@@ -981,3 +981,4 @@ Object.assign(I18N['ne'], {
 });
 Object.assign(I18N['ne'], {"pageTitle":"Omran AI — इन्टेलिजेन्स प्लेटफर्म"});
 Object.assign(I18N['ne'], {"privacyConsentTitle":"🔒 तपाईंको गोपनीयता पहिले","privacyConsentText":"Omran AI Builder प्रयोग गर्नुअघि कृपया <a href=\"/privacy.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">गोपनीयता नीति</a> र <a href=\"/terms.html\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--accent2,#a78bfa);text-decoration:underline;\">प्रयोगका सर्तहरू</a> पढ्नुहोस्। यिनमा हामी के सङ्कलन गर्छौं, कसरी सुरक्षित राख्छौं र तपाईंको डाटा मेटाउने अधिकार बताइएको छ।","privacyConsentRead":"नीति पढ्नुहोस्","privacyConsentAgree":"सहमत छु, जारी राख्नुहोस्"});
+Object.assign(I18N['ne'], {"shareNeedCode":"अहिले साझा गर्न केही छैन — पहिले यो परियोजनामा आफ्नो एप बनाउनुहोस्, अनि साझा गर्नुहोस्।","shareTooLarge":"परियोजना 2MB साझा सीमाभन्दा ठूलो छ — तस्बिर वा सामग्री घटाएर फेरि प्रयास गर्नुहोस्।"});

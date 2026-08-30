@@ -953,6 +953,8 @@ const I18N = {
     shareCopyBtn: 'نسخ الرابط',
     shareCreating: 'جارٍ الإنشاء...',
     shareError: 'تعذّر إنشاء الرابط، حاول مرة أخرى.',
+    shareNeedCode: 'ما في تطبيق للمشاركة بعد — أنشئ تطبيقك أولًا في هذا المشروع ثم شاركه.',
+    shareTooLarge: 'المشروع أكبر من حد المشاركة (2MB) — صغّر الصور أو المحتوى ثم أعد المحاولة.',
     shareCopied: 'تم نسخ الرابط! ✅',
     /* v601: مساعد البريد الذكيّ — 24 نصًّا كانت en()?:  مباشرةً (لغتان فقط) */
     emailAsst_connectText: "اربط حساب Gmail الخاص بك ليقرأ الذكاء الاصطناعي إيميلاتك ويقترح ردودًا جاهزة تعتمدها قبل الإرسال.", emailAsst_connectBtn: "🔗 ربط Gmail", emailAsst_disclaimer: "⚠️ لن يتم إرسال أي رد إلا بعد موافقتك الصريحة على كل رسالة.", emailAsst_title: "📧 مساعد البريد الذكي", emailAsst_refresh: "تحديث", emailAsst_loading: "جارٍ فحص بريدك…", emailAsst_empty: "لا توجد إيميلات جديدة تحتاج ردًا الآن.",
@@ -1390,6 +1392,8 @@ const I18N = {
     shareCopied: 'Link copied! ✅',
     shareCreating: 'Creating...',
     shareError: 'Could not create link, please try again.',
+    shareNeedCode: 'Nothing to share yet — build your app in this project first, then share it.',
+    shareTooLarge: 'Project exceeds the 2MB share limit — reduce images or content and try again.',
     videoMakerModalTitle: '🎬 AI Video Maker',
     videoMakerDesc: 'Describe the video you want, then pick a style and duration. This feature is in testing with a small daily limit per account.',
     videoMakerPromptPlaceholder: 'Describe the video you want to create... e.g. a small cat playing in a sunny garden',

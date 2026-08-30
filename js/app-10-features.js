@@ -881,6 +881,13 @@ function openShareModal(project){
 
   if(createBtn) createBtn.addEventListener('click', async () => {
     if(!shareModalProject) return;
+    /* v-share-why (شكوى المالك: «تعذّر إنشاء الرابط» بلا سبب): الخادم يرفض
+       مشروعًا بلا كود تطبيق — نقولها بوضوح قبل الإرسال بدل رسالة عامة. */
+    if(!String(shareModalProject.code || '').trim()){
+      statusMsg.style.display = 'block';
+      statusMsg.textContent = t('shareNeedCode');
+      return;
+    }
     const isPublic = $('#sharePublicYes').checked;
     statusMsg.style.display = 'block';
     statusMsg.textContent = t('shareCreating');
@@ -905,7 +912,12 @@ function openShareModal(project){
       resultBox.style.display = 'block';
       statusMsg.style.display = 'none';
     }catch(e){
-      statusMsg.textContent = t('shareError');
+      /* v-share-why: السبب الحقيقي يظهر — «بلا كود» و«أكبر من الحد» لهما
+         رسالتاهما، وأي خطأ خادم آخر يُعرض نصّه بين قوسين ليُشخَّص فورًا. */
+      var __sm = (e && e.message) || '';
+      if(__sm === 'Missing code') statusMsg.textContent = t('shareNeedCode');
+      else if(__sm === 'code_too_large') statusMsg.textContent = t('shareTooLarge');
+      else statusMsg.textContent = t('shareError') + ((__sm && __sm !== 'error') ? ' (' + __sm.slice(0, 120) + ')' : '');
     }finally{
       createBtn.disabled = false;
     }
