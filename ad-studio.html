@@ -2,13 +2,14 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>استوديو الإعلانات — عمران AI</title>
 <script src="/i18n/ad-studio.js?v=602"></script>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Tajawal',system-ui,sans-serif;background:#0e1013;color:#e8eaed;padding:20px 14px 70px}
+/* v-ad-safe: الصفحة كانت تبدأ تحت النوتش على الآيفون — حاشية أمان علوية وسفلية. */
+body{font-family:'Tajawal',system-ui,sans-serif;background:#0e1013;color:#e8eaed;padding:calc(20px + env(safe-area-inset-top,0px)) 14px calc(70px + env(safe-area-inset-bottom,0px))}
 .wrap{max-width:1240px;margin:0 auto}
 h1{font-size:24px;font-weight:900}
 .sub{color:#9aa3ad;font-size:13.5px;margin-top:6px;line-height:1.7}
