@@ -195,7 +195,19 @@
 <script>
 (function(){
   const $ = (s) => document.querySelector(s);
-  let lang = localStorage.getItem('omranedu_lang') || 'ar';
+  /* v-lang-follow: الصفحة صارت على نفس نطاق التطبيق — نرث لغة التطبيق
+     (aiapp_lang) تلقائيًا ما لم يختر المستخدم لغة درس بنفسه من المنسدلة.
+     لغة تطبيق خارج السبع المدعومة → إنجليزي (الخادم يرجع للعربية لو أُرسلت). */
+  const EDU_LANGS = ['ar','en','fr','hi','ur','bn','ne'];
+  let lang = (function(){
+    try {
+      const saved = localStorage.getItem('omranedu_lang');
+      if (saved && EDU_LANGS.indexOf(saved) !== -1) return saved;
+      const al = (localStorage.getItem('aiapp_lang') || 'ar').toLowerCase();
+      if (EDU_LANGS.indexOf(al) !== -1) return al;
+      return 'en';
+    } catch (e) { return 'ar'; }
+  })();
 
   const STR = {
     ar: {
