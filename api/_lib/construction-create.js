@@ -354,7 +354,8 @@ module.exports = async (req, res) => {
       'A clean 2D architectural floor plan (top-down blueprint style, black and white line drawing) of ' +
       floorsText + buildingDesc + ', approximately ' + area + ' square meters.' + plotEnText + notesText + annexEnText +
       ' Show clearly labeled rooms with their approximate dimensions in meters written inside each room, walls, doors, and windows. ' +
-      'Professional architectural floor plan style, straight lines, no color rendering, no perspective, no people, no furniture photos — just a clear labeled technical floor plan drawing.';
+      'Professional architectural floor plan style, straight lines, no color rendering, no perspective, no people, no furniture photos — just a clear labeled technical floor plan drawing.' +
+      (' Write ALL room labels in ' + (replyLangName || 'Arabic') + '.');
     const planReqBody = { contents: [{ parts: [{ text: planPrompt }] }], generationConfig: { imageConfig: { imageSize } } };
 
     const photoPrompt =
