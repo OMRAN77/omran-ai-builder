@@ -4298,6 +4298,9 @@ function applyLanguage(){
   const dict = window.__i18nDict ? window.__i18nDict(lang) : (I18N[lang] || I18N.en || I18N.ar);
   try{ if(window.__syncBrandTitle) window.__syncBrandTitle(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#5"); }
   try{ if(window.__tickerRelabel) window.__tickerRelabel(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#tick"); }
+  /* v655 — أسماء أزرار المزوّدين تتبع اللغة (تُستدعى ثانيةً بعد وصول ملفّ
+     اللغة الكسول عبر applyLanguage نفسها). */
+  try{ if(typeof relabelProviders === 'function') relabelProviders(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#prov"); }
   document.documentElement.lang = lang;
   /* v652 — الأردو كانت تنقلب ltr لحظة ثمّ ترجع rtl (الشعار يقفز عرض الشاشة):
      ملفّات اللغات الكسولة بلا مفتاح dir، فحتّى وصول ur.js يأتي القاموس
@@ -7192,6 +7195,28 @@ function initProvDropdown(){
   if(search){ search.addEventListener('input', () => provDDFilter(search.value)); search.onclick = (e) => e.stopPropagation(); }
   provDDUpdateButton();
 }
+/* v655 — أسماء المزوّدين (الكينج/السريع/العميق) كانت تُكتب مرّة واحدة عند
+   البناء فتتجمّد بلغة تلك اللحظة: عربيّة عند تبديل اللغة بلا تحديث،
+   وإنجليزيّة في اللغات الكسولة لأنّ الشريط يُبنى قبل وصول ملفّ اللغة.
+   الآن تُعاد تسميتها في كلّ تطبيق للّغة. */
+function relabelProviders(){
+  try{
+    document.querySelectorAll('#providerGridCells .prov-cell').forEach(cell => {
+      const lbl = functionalLabel(cell.dataset.provider);
+      const nm = cell.querySelector('.prov-name');
+      if(nm) nm.textContent = lbl;
+      cell.title = lbl;
+    });
+    document.querySelectorAll('#providerStripMobile .prov-chip-m').forEach(chip => {
+      const lbl = functionalLabel(chip.dataset.provider);
+      const nm = chip.querySelector('span');
+      if(nm) nm.textContent = lbl;
+      chip.title = lbl;
+    });
+    if(typeof provDDUpdateButton === 'function') provDDUpdateButton();
+  }catch(e){ __swallow(e, "ui:app-05-ui#relabel"); }
+}
+try{ window.relabelProviders = relabelProviders; }catch(_){ }
 function updateProviderQuickBarActive(){
   const current = localStorage.getItem('aiapp_provider') || 'claude';
   document.querySelectorAll('.prov-cell, .prov-chip-m').forEach(el => {

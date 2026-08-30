@@ -1178,6 +1178,28 @@ function initProvDropdown(){
   if(search){ search.addEventListener('input', () => provDDFilter(search.value)); search.onclick = (e) => e.stopPropagation(); }
   provDDUpdateButton();
 }
+/* v655 — أسماء المزوّدين (الكينج/السريع/العميق) كانت تُكتب مرّة واحدة عند
+   البناء فتتجمّد بلغة تلك اللحظة: عربيّة عند تبديل اللغة بلا تحديث،
+   وإنجليزيّة في اللغات الكسولة لأنّ الشريط يُبنى قبل وصول ملفّ اللغة.
+   الآن تُعاد تسميتها في كلّ تطبيق للّغة. */
+function relabelProviders(){
+  try{
+    document.querySelectorAll('#providerGridCells .prov-cell').forEach(cell => {
+      const lbl = functionalLabel(cell.dataset.provider);
+      const nm = cell.querySelector('.prov-name');
+      if(nm) nm.textContent = lbl;
+      cell.title = lbl;
+    });
+    document.querySelectorAll('#providerStripMobile .prov-chip-m').forEach(chip => {
+      const lbl = functionalLabel(chip.dataset.provider);
+      const nm = chip.querySelector('span');
+      if(nm) nm.textContent = lbl;
+      chip.title = lbl;
+    });
+    if(typeof provDDUpdateButton === 'function') provDDUpdateButton();
+  }catch(e){ __swallow(e, "ui:app-05-ui#relabel"); }
+}
+try{ window.relabelProviders = relabelProviders; }catch(_){ }
 function updateProviderQuickBarActive(){
   const current = localStorage.getItem('aiapp_provider') || 'claude';
   document.querySelectorAll('.prov-cell, .prov-chip-m').forEach(el => {

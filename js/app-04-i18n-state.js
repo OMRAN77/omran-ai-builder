@@ -102,6 +102,9 @@ function applyLanguage(){
   const dict = window.__i18nDict ? window.__i18nDict(lang) : (I18N[lang] || I18N.en || I18N.ar);
   try{ if(window.__syncBrandTitle) window.__syncBrandTitle(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#5"); }
   try{ if(window.__tickerRelabel) window.__tickerRelabel(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#tick"); }
+  /* v655 — أسماء أزرار المزوّدين تتبع اللغة (تُستدعى ثانيةً بعد وصول ملفّ
+     اللغة الكسول عبر applyLanguage نفسها). */
+  try{ if(typeof relabelProviders === 'function') relabelProviders(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#prov"); }
   document.documentElement.lang = lang;
   /* v652 — الأردو كانت تنقلب ltr لحظة ثمّ ترجع rtl (الشعار يقفز عرض الشاشة):
      ملفّات اللغات الكسولة بلا مفتاح dir، فحتّى وصول ur.js يأتي القاموس
