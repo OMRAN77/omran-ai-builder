@@ -709,6 +709,9 @@ function stuL(ar, en){
     refreshFavGroup();
     refreshStarIcon();
     refreshStyleTrigger();
+    /* v-ptrigger-lang: إعادة الرسم بعد وصول ملف اللغة الكسول */
+    setTimeout(refreshStyleTrigger, 1800);
+    setTimeout(refreshStyleTrigger, 4000);
   }
   if(styleEl && backdropWrap){
     styleEl.addEventListener('change', () => {
@@ -801,6 +804,9 @@ function stuL(ar, en){
 
   btnOpen.onclick = () => {
     modal.style.display = 'flex';
+    /* v-ptrigger-lang (لقطة عمران: الاسم عربي والواجهة إسبانية): البطاقة
+       رُسمت عند الإقلاع قبل وصول ملف اللغة الكسول — تُحدَّث عند كل فتح. */
+    try{ refreshStyleTrigger(); }catch(e){ /* guard-ok — cosmetic */ }
     closeHeaderMenu();
   };
   btnClose.onclick = () => { modal.style.display = 'none'; };
