@@ -26,6 +26,7 @@ function load(action) {
     case 'adchat': return require('./_lib/adchat.js');
     case 'adimage': return require('./_lib/adimage.js');
     case 'stamps': return require('./_lib/stamps.js');
+    case 'card-extract': return require('./_lib/card-extract.js');
     default: return null;
   }
 }
