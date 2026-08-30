@@ -15037,6 +15037,66 @@ async function omranShrinkForEdit(b64, mime){
   }catch(e){ return { b64: b64, mime: mime }; }
 }
 
+/* 🔤 v-text-swap (فكرة عمران): «بدل التاريخ بدل 28 حط 12» — الرؤية تقرأ الصورة
+   وتحدد سطر النص وموضعه ولونه، ونبدله هنا محليًّا: نطمس السطر القديم بلون
+   الخلفية المأخوذ من الصورة نفسها ونكتب الجديد مكانه — باقي الصورة لا يُمسّ. */
+function __textSwapIntent(s){
+  s = String(s || '');
+  if(/(?:^|[\s،,])(?:بدل|بدّل|غير|غيّر|صحح|صحّح|عدل|عدّل)\s*(?:ال)?(?:تاريخ|اسم|رقم|كلم[ةه]|نص|سن[ةه]|وقت|عنوان|توقيت)/i.test(s)) return true;
+  if(/بدل\s+\S+(?:\s+\S+)?\s+(?:حط|خل|الى|إلى)\s*\S+/i.test(s)) return true;
+  return false;
+}
+async function omranSwapTextOnImage(b64, mime, spec){
+  const fontCss = await mahaLoadFont(spec.fontKey || 'naskh');
+  const img = await new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i); i.onerror = () => rej(new Error('bad_source_image'));
+    i.src = 'data:' + mime + ';base64,' + b64;
+  });
+  const W = img.naturalWidth || 1, H = img.naturalHeight || 1;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  x.drawImage(img, 0, 0);
+  const padX = Math.round(spec.box.w * W * 0.08) + 4, padY = Math.round(spec.box.h * H * 0.22) + 3;
+  const bx = Math.max(0, Math.round(spec.box.x * W) - padX);
+  const by = Math.max(0, Math.round(spec.box.y * H) - padY);
+  const bw = Math.min(W - bx, Math.round(spec.box.w * W) + padX * 2);
+  const bh = Math.min(H - by, Math.round(spec.box.h * H) + padY * 2);
+  /* لون الطمس من الصورة نفسها: متوسط شريطين فوق الصندوق وتحته — أدقّ من تخمين النموذج */
+  function stripAvg(sy, sh){
+    try{
+      const d = x.getImageData(bx, Math.max(0, sy), bw, Math.max(1, sh)).data;
+      let r = 0, g = 0, bl = 0, n = 0;
+      for(let i2 = 0; i2 < d.length; i2 += 4){ r += d[i2]; g += d[i2 + 1]; bl += d[i2 + 2]; n++; }
+      return n ? [r / n, g / n, bl / n] : null;
+    }catch(e){ return null; }
+  }
+  const top = stripAvg(by - 6, 5) || stripAvg(by, 3);
+  const bot = stripAvg(by + bh + 1, 5) || stripAvg(by + bh - 3, 3);
+  const avg = top && bot ? [(top[0] + bot[0]) / 2, (top[1] + bot[1]) / 2, (top[2] + bot[2]) / 2] : (top || bot || [245, 243, 240]);
+  const rgb = (v) => 'rgb(' + Math.round(v[0]) + ',' + Math.round(v[1]) + ',' + Math.round(v[2]) + ')';
+  if(top && bot){
+    const g2 = x.createLinearGradient(0, by, 0, by + bh);
+    g2.addColorStop(0, rgb(top)); g2.addColorStop(1, rgb(bot));
+    x.fillStyle = g2;
+  }else{ x.fillStyle = rgb(avg); }
+  x.fillRect(bx, by, bw, bh);
+  /* النص الجديد: نفس الموضع، مقاس يملأ الصندوق الأصلي دون أن يفيض */
+  const line = String(spec.newLine || '').trim();
+  let fs = Math.max(10, Math.round(spec.box.h * H * 0.92));
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.direction = /[؀-ۿ]/.test(line) ? 'rtl' : 'ltr';
+  const weight = spec.bold ? '700 ' : '';
+  for(let t2 = 0; t2 < 40; t2++){
+    x.font = weight + fs + 'px "' + fontCss + '", sans-serif';
+    if(x.measureText(line).width <= spec.box.w * W * 1.04 || fs <= 10) break;
+    fs -= Math.max(1, Math.round(fs * 0.06));
+  }
+  x.fillStyle = spec.color || '#333333';
+  x.fillText(line, Math.round(spec.box.x * W + (spec.box.w * W) / 2), Math.round(spec.box.y * H + (spec.box.h * H) / 2));
+  return c.toDataURL('image/png').split(',')[1];
+}
+
 // 🪪 v-tidy-card: «اكتب نفس المكتوب بس بخط مرتب» — نموذج مصوّر (بطاقة طالب/استمارة)
 // يُقرأ عبر /api/tools?action=card-extract ثم يُعاد رسمه هنا محليًّا على كانفس:
 // النص لا يمرّ على مولّد صور أبدًا فلا يتشوّه حرف، والصورة الشخصية والرسومات
@@ -16976,6 +17036,30 @@ function __showImgLoading(el, ar, en){
         cur.lastMsgWasImageEdit = true;
         renderAll(); saveState();
         return;
+      }
+      /* 🔤 v-text-swap: تغيير نص مكتوب (تاريخ/اسم/رقم) → قراءة بالرؤية وتبديل محلي
+         دقيق؛ إن لم تجد الرؤية سطرًا نصيًا يسقط الطلب لمسار المولّد كالسابق. */
+      if(__b64 && __textSwapIntent(text)){
+        try{
+          chatPhase('🔎', lang === 'ar' ? 'جاري قراءة الكتابة على الصورة…' : 'Reading the text on the image…', thinkingDiv);
+          const __tsShr = await omranShrinkForEdit(__b64, __mime);
+          const __tsRes = await fetch('/api/tools?action=text-swap', {
+            method:'POST', headers:{ 'Content-Type':'application/json' }, signal: genAbortController.signal,
+            body: JSON.stringify({ imageBase64:__tsShr.b64, mimeType:__tsShr.mime, request:String(text || '').slice(0, 400), token:authGet('aiapp_auth_token'), guestId:window.getGuestId() })
+          });
+          const __tsSpec = await __tsRes.json().catch(() => ({}));
+          if(__tsRes.ok && __tsSpec.found && __tsSpec.box && __tsSpec.newLine){
+            chatPhase('✍️', lang === 'ar' ? 'جاري تبديل النص بدون المساس بالصورة…' : 'Swapping the text in place…', thinkingDiv);
+            const __tsB64 = await omranSwapTextOnImage(__b64, __mime, __tsSpec);
+            cur.lastEditedImage = { b64: __tsB64, mime: 'image/png' };
+            cur.lastMsgWasImageEdit = true;
+            cur.messages.push({ role:'assistant', content:'', attachments:[{ name:'edited.png', isImage:true, mime:'image/png', dataUrl:'data:image/png;base64,' + __tsB64 }] });
+            renderAll(); saveState(); return;
+          }
+        }catch(e){
+          if(e && e.name === 'AbortError') return;
+          __swallow(e, 'img:text-swap'); /* يسقط بهدوء لمسار المولّد */
+        }
       }
       const __continuesEditChain = !__isNewImageSource && cur.lastEditedImage && cur.lastEditedImage.b64 === __b64;
       const __original = latestOriginalUserImage(cur);

@@ -27,6 +27,7 @@ function load(action) {
     case 'adimage': return require('./_lib/adimage.js');
     case 'stamps': return require('./_lib/stamps.js');
     case 'card-extract': return require('./_lib/card-extract.js');
+    case 'text-swap': return require('./_lib/text-swap.js');
     default: return null;
   }
 }
