@@ -12,7 +12,6 @@ const RETIRED = {
   docqa: 'مساعد المستندات',
   docask: 'أسئلة المستندات',
   gov: 'المعاملات الحكومية',
-  cv: 'مولّد السيرة الذاتية',
 };
 
 function isRetired(action) {
