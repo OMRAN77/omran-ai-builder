@@ -858,7 +858,10 @@ $('#history').addEventListener('click', () => {
   // globally so the Edu Hub («التعليم») home card can open it.
   function openOldEdu(){
     if(frame.src === 'about:blank' || !frame.src){
-      frame.src = 'https://omran-edu.vercel.app';
+      /* v-edu-selfhost: مستودع omran-edu غير موصول بالنشر التلقائي — الصفحة
+         المحدثة تُستضاف هنا (edu-old/) فتنشر مع التطبيق، والخلفية تبقى على
+         النشر القديم الشغال (CORS مفتوح). */
+      frame.src = '/edu-old/index.html';
     }
     modal.style.display = 'flex';
     if(window.innerWidth <= 860 && typeof closeDrawers === 'function') closeDrawers();
