@@ -518,4 +518,16 @@ console.log('  ✓ v-lab-haiku: التجربة الحية تكتمل — نمو�
 }
 console.log('  ✓ v-edu-selfhost: التعليمي القديم ينشر مع التطبيق — بلا لوحة Vercel');
 
+// ㊸ v-edu-x-safe: على بناء iOS الأصلي (webview ملء الشاشة) زر ✕ لمودال التعليم
+// كان يركب فوق الساعة — رأس المودال يحتاج حشوة safe-area لأنه div لا dialog.
+{
+  const pc = fs.readFileSync(path.join(__dirname, '../js/partials-core.js'), 'utf8');
+  const eduIdx = pc.indexOf('id="omranEduModal"');
+  const closeIdx = pc.indexOf('id="omranEduCloseBtn"');
+  const head = pc.slice(eduIdx, closeIdx);
+  assert.ok(eduIdx > -1 && closeIdx > eduIdx, 'مودال التعليم وزر الإغلاق موجودان');
+  assert.ok(head.includes('env(safe-area-inset-top'), 'رأس مودال التعليم ينزل تحت الساعة');
+}
+console.log('  ✓ v-edu-x-safe: زر ✕ التعليم تحت شريط الحالة لا فوقه');
+
 console.log('fashion locks tests passed');
