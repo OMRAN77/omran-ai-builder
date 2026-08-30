@@ -14662,6 +14662,66 @@ async function pickSmartProviders(userText, eligibleKeys){
 
 
 // ✍️ كتابة نص على الصورة محليًا (Canvas) — خط عربي سليم 100% بدل رسم Gemini المشوه
+/* v-spell-quran (طلب عمران): تدقيق إملائي ذكي على كل نص يُطبع على صورة —
+   الأسماء الناقصة تُصحح (عبداله→عبدالله)، والمرجع في الألفاظ الدينية رسم
+   المصحف. حارس أمان: تُقبل فقط التعديلات الطفيفة (حتى حرفين بالكلمة، بلا
+   إضافة أو حذف كلمات) كي لا يتبدل اسم صحيح باسم آخر. الفشل = النص كما هو. */
+function __omLev(a, b){
+  const m = a.length, n = b.length;
+  if(!m) return n; if(!n) return m;
+  let prev = Array.from({length: n + 1}, (_, j) => j);
+  for(let i = 1; i <= m; i++){
+    const cur = [i];
+    for(let j = 1; j <= n; j++){
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[n];
+}
+function __spellGuardOk(orig, fixed){
+  const a = String(orig || '').trim().split(/\s+/), b = String(fixed || '').trim().split(/\s+/);
+  if(!b.length || !b[0] || a.length !== b.length) return false;
+  for(let i = 0; i < a.length; i++){
+    if(a[i] === b[i]) continue;
+    if(__omLev(a[i], b[i]) > Math.max(2, Math.ceil(Math.max(a[i].length, b[i].length) * 0.34))) return false;
+  }
+  return true;
+}
+/* تصحيحات حتمية برسم المصحف — لا تحتاج ذكاءً ولا يحدها حارس الكلمات */
+const __QURAN_FIXES = [
+  [/(^|\s)انشاء\s*الله($|\s)/g, '$1إن شاء الله$2'],
+  [/(^|\s)ان\s*شاء?الله($|\s)/g, '$1إن شاء الله$2'],
+  [/(^|\s)انشالله($|\s)/g, '$1إن شاء الله$2'],
+  [/(^|\s)ماشاء\s*الله($|\s)/g, '$1ما شاء الله$2'],
+  [/(^|\s)ماشالله($|\s)/g, '$1ما شاء الله$2'],
+  [/(^|\s)عبداله($|\s)/g, '$1عبدالله$2'],
+  [/(^|\s)الحمدالله($|\s)/g, '$1الحمد لله$2'],
+  [/(^|\s)جزاك\s*اله($|\s)/g, '$1جزاك الله$2'],
+];
+async function omranSpellFix(txt){
+  let t = String(txt || '').trim();
+  if(!t || !/[\u0600-\u06FF]/.test(t) || t.length > 300) return txt;
+  for(const [re, rep] of __QURAN_FIXES) t = t.replace(re, rep);
+  const sys = 'أنت مدقق إملائي عربي دقيق، مرجعك في الألفاظ والأسماء الدينية رسم المصحف الشريف. صحح الأخطاء الإملائية الواضحة فقط في النص التالي الذي سيُطبع على صورة (أسماء أشخاص، عبارات تهنئة، أدعية): الحروف الناقصة مثل «عبداله» تصير «عبدالله»، والهمزات، و«انشاء الله» تصير «إن شاء الله». لا تغيّر اسمًا يحتمل أن يكون صحيحًا كما هو، ولا تضف ولا تحذف كلمات، ولا تغيّر المعنى. أعد النص المصحح فقط بلا أي شرح ولا علامات اقتباس.';
+  try{
+    const fixed = await Promise.race([
+      (async () => {
+        for(const p of ['groq', 'mistral']){
+          try{
+            const r = await callProviderAI(p, [ { role: 'system', content: sys }, { role: 'user', content: t } ], () => {});
+            const out = String(r || '').trim().replace(/^[«"']+|[»"']+$/g, '').trim();
+            if(out) return out;
+          }catch(e){ /* جرب التالي */ }
+        }
+        return '';
+      })(),
+      new Promise(res => setTimeout(() => res(''), 6000)),
+    ]);
+    if(fixed && fixed !== t && __spellGuardOk(t, fixed)) return fixed;
+  }catch(e){ __swallow(e, 'img:spell-fix'); }
+  return t; /* التصحيحات الحتمية محفوظة حتى لو تعذر الذكاء */
+}
 function extractOverlayText(t){
   const spec = window.__parseImageTextSpec ? window.__parseImageTextSpec(t) : null;
   return spec && spec.exactText ? spec.exactText : null;
@@ -16582,6 +16642,7 @@ function __showImgLoading(el, ar, en){
       if(__textSpec.styleEdit && cur.imageTextLayer){ const __l=Object.assign({},cur.imageTextLayer); Object.keys(__textSpec.styleEdit).forEach(k=>{if(__textSpec.styleEdit[k])__l[k]=__textSpec.styleEdit[k]}); try{const __outB64=await overlayTextOnImage(__l.baseB64,__l.baseMime,__l.text,__l.fontKey,__l.color,__l.position);cur.imageTextLayer=__l;cur.lastEditedImage={b64:__outB64,mime:'image/png'};cur.lastMsgWasImageEdit=true;cur.messages.push({role:'assistant',content:'' /* v671: بلا جملة فوق الصورة */,attachments:[{name:'edited.png',isImage:true,mime:'image/png',dataUrl:'data:image/png;base64,'+__outB64}]})}catch(e){cur.messages.push({role:'assistant',content:lang==='ar'?'تعذّر تعديل تنسيق الكتابة.':'Could not update the text styling.'})} renderAll();saveState();return; }
       if(__textSpec.wantsText){
         let __resolvedText = __textSpec.exactText;
+        if(__resolvedText) __resolvedText = await omranSpellFix(__resolvedText); /* v-spell-quran */
         if(!__resolvedText && __textSpec.autoAuthored){
           try{
             const __planRes = await fetch('/api/maha-image', { method:'POST', headers:{'Content-Type':'application/json'}, signal:genAbortController.signal, body:JSON.stringify({ prayerRequest:String(__textSpec.prayerRequest || text).slice(0,800), textKind:__textSpec.kind, planPrayerOnly:true, textPosition:__textSpec.position, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() }) });
@@ -16872,7 +16933,7 @@ function __showImgLoading(el, ar, en){
           if(!__gOk){ if(!__gData) __gData = {}; __gData.__status = __gRes.status; }
         }
         if(__gOk){
-          const __resolvedText = __genTextSpec.exactText || (__genTextSpec.autoAuthored && typeof __gData.authoredText === 'string' ? __gData.authoredText.trim() : '');
+          let __resolvedText = __genTextSpec.exactText ? await omranSpellFix(__genTextSpec.exactText) : ((__genTextSpec.autoAuthored && typeof __gData.authoredText === 'string') ? __gData.authoredText.trim() : ''); /* v-spell-quran */
           if(__genTextSpec.wantsText && !__resolvedText) throw new Error('missing_authored_prayer');
           if(__resolvedText){
             cur.imageTextLayer = { baseB64:__gData.imageBase64, baseMime:__gData.mimeType||'image/png', text:__resolvedText, fontKey:__genTextSpec.fontKey, color:__genTextSpec.color, position:__genTextSpec.position };
