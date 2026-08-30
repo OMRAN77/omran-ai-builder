@@ -472,15 +472,19 @@
         <span style="color:#d4af37; font-size:12.5px; font-weight:700; flex:none;" data-i18n="portraitStyleBrowseAll">عرض الكل ›</span>
       </div>
       <div id="portraitStyleSheet" style="display:none; position:fixed; inset:0; z-index:10060; background:#0b0b0d; flex-direction:column;">
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid rgba(212,175,55,.25); flex:none;">
+        <!-- v-picker-close: نفس علاج pickerSheet — الرأس تحت الساعة وزر إغلاق سفلي -->
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:calc(14px + env(safe-area-inset-top,0px)) 16px 14px; border-bottom:1px solid rgba(212,175,55,.25); flex:none;">
           <div>
             <div style="font-size:18px; font-weight:800;" data-i18n="portraitStyleSheetTitle">🎨 أنماط الصور</div>
             <div id="portraitStyleSheetCount" style="font-size:11.5px; color:var(--muted);"></div>
           </div>
-          <button type="button" class="btn iconBtn" id="portraitStyleSheetClose" style="padding:6px 12px;">✕</button>
+          <button type="button" class="btn iconBtn" id="portraitStyleSheetClose" style="padding:10px 16px; min-width:46px; min-height:42px; font-size:17px;">✕</button>
         </div>
         <div style="flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;">
           <div id="portraitStyleCards" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; padding:14px; max-width:1080px; margin:0 auto;"></div>
+        </div>
+        <div style="flex:none; padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px)); border-top:1px solid rgba(212,175,55,.18);">
+          <button type="button" id="portraitStyleSheetCloseBottom" style="width:100%; padding:13px; border-radius:13px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:#eef0f6; font-size:16px; font-weight:700; cursor:pointer; touch-action:manipulation;">✕</button>
         </div>
       </div>
       <select id="portraitStyleSelect" style="display:none;">

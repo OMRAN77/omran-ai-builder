@@ -685,6 +685,9 @@ function stuL(ar, en){
   }
   if(styleTrigger) styleTrigger.onclick = function(){ renderPortraitStyleCards(); if(styleSheet) styleSheet.style.display = 'flex'; };
   if(styleSheetClose) styleSheetClose.onclick = function(){ styleSheet.style.display = 'none'; };
+  /* v-picker-close: زر الإغلاق السفلي في متناول الإبهام */
+  var styleSheetCloseBottom = document.getElementById('portraitStyleSheetCloseBottom');
+  if(styleSheetCloseBottom) styleSheetCloseBottom.onclick = function(){ styleSheet.style.display = 'none'; };
   refreshStyleTrigger();
   function refreshStarIcon(){
     if(!favStarBtn || !styleEl) return;
