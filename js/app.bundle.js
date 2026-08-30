@@ -18693,7 +18693,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   /* v-brand-l10n (طلب المالك ٢٩ أغسطس): شعار ذهبي مخصوص لكل لغة — العربي
      والإنجليزي كما هما بلا أي تغيير. الأعراض عند ارتفاع 42 من ملفات PNG
      الفعلية (الأصل 168px = ٤×). لغة بلا شعار خاص ترجع للإنجليزي. */
-  const BRAND_L10N_W = { zh:84, hi:71, es:87, fr:89, bn:75, ru:89, ur:75, id:86, fil:93, tr:75, ne:69, ml:110 };
+  const BRAND_L10N_W = { zh:84, hi:71, es:87, fr:89, bn:80, ru:89, ur:75, id:86, fil:93, tr:75, ne:69, ml:110 };
   const syncBrand = () => {
     const bt = document.getElementById('brandTitle');
     const l = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
