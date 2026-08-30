@@ -594,8 +594,27 @@ console.log('  ✓ v-login-done: سفاري يقول «ارجع للتطبيق»
   assert.ok(it8.includes("return 'diwani'; /* v-name-swap"), '«مزخرف» يختار الديواني');
   const at9 = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
   assert.ok(at9.includes('__nameSwap') && at9.includes('REPLACE that existing name'), 'تغيير الاسم = استبدال يمحو القديم');
-  assert.ok(at9.includes('__wantsNamedFont && !__nameSwap'), 'الاستبدال لا يسقط لكانفس لا يمحو');
+  assert.ok(at9.includes('__explicitStyle && !__nameSwap'), 'الاستبدال لا يسقط لكانفس لا يمحو');
 }
 console.log('  ✓ v-name-swap: «غيّر الاسم» يبدل الاسم داخل التصميم — لا كتابة فوقه');
+
+// ㊾ v-style-honor: «غير الخط واللون ووين مكانه — ما تغير شي» — رسّام الذكاء
+// (v681) يتجاهل اللون والموضع؛ أي تنسيق صريح (خط مسمّى/لون/موضع) يُرسم
+// بالكانفس المحلي الذي يحترمه.
+{
+  const at9b = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
+  assert.ok(at9b.includes('__explicitStyle') && at9b.includes("__textSpec.color !== '#ffffff'") && at9b.includes('__textSpec.positionAuto === false'), 'اللون والموضع الصريحان يذهبان للكانفس');
+}
+console.log('  ✓ v-style-honor: الخط واللون والموضع المطلوبة تُحترم — الكانفس لا الرسّام');
+
+// ㊿ v-no-kickout: «داخل المحادثة ويطلع واذا رجع يطلعه» — إعادة التحميل
+// المؤجلة للإخفاء بعد كل نشر كانت تطرد المستخدم عند كل عودة. القشرة
+// network-first فلا حاجة لأي reload على تحديث روتيني.
+{
+  const ft10b = fs.readFileSync(path.join(__dirname, '../js/app-10-features.js'), 'utf8');
+  assert.ok(ft10b.includes('v-no-kickout') && !ft10b.includes("addEventListener('controllerchange'"), 'لا إعادة تحميل عند تبدل العامل');
+  assert.ok(!ft10b.includes('__omranReloadWhenSafe'), 'قناة الإعادة المؤجلة أزيلت بلا بقايا');
+}
+console.log('  ✓ v-no-kickout: العودة للتطبيق لا تطرد المستخدم — لا reload بعد النشر');
 
 console.log('fashion locks tests passed');

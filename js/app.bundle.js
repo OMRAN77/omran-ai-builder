@@ -16625,7 +16625,13 @@ function __showImgLoading(el, ar, en){
              استبدال للرسّام: يمحو القديم ويكتب الجديد في مكانه بنفس الأسلوب. */
           const __nameSwap = /(?:غير|غيّر|غيري|غيّري|بدل|بدّل|بدلي|بدّلي|استبدل|استبدلي)\s+(?:ال[إا]سم|اسم|النص|الكلمة|الكلمه|المكتوب)/i.test(text || '');
           try{
-            if(__wantsNamedFont && !__nameSwap) throw { __localFont: true }; /* مباشرة للكانفس */
+            /* v-style-honor (شكوى: «غير الخط واللون ووين مكانه — ما صار شي»):
+               رسّام الذكاء يتجاهل اللون والموضع المطلوبين — أي طلب فيه تنسيق
+               صريح (خط مسمّى أو لون أو موضع) يُرسم محليًا بالكانفس الذي يحترمه. */
+            const __explicitStyle = __wantsNamedFont
+              || (__textSpec.color && __textSpec.color !== '#ffffff')
+              || __textSpec.positionAuto === false;
+            if(__explicitStyle && !__nameSwap) throw { __localFont: true }; /* مباشرة للكانفس */
             const __cmp = await __compressB64(__wb64, __wmime);
             const __aiTxtPrompt = __nameSwap
               ? 'This image contains a personal name (or short text) written on it. REPLACE that existing name with the EXACT Arabic text \u00AB' + __resolvedText + '\u00BB: erase the old name completely and write the new one in its exact place, matching the original calligraphy style, size, color and orientation as closely as possible. Do NOT change anything else \u2014 keep every other text, logo, decoration and layout identical.'
@@ -18178,39 +18184,13 @@ if('serviceWorker' in navigator){
       document.addEventListener('visibilitychange', () => {
         if(document.visibilityState === 'visible') reg.update().catch(() => {});
       });
-      // If a new worker takes control (after an update), the page it served is stale — reload once.
-      /* v653 — «الجواب يطلع ومرّة وحدة يختفي» (شكوى المالك ٢٩ أغسطس): بعد أيّ
-         نشر يتولّى العامل الجديد فتُعاد الصفحة فورًا ولو كان الردّ يُكتب —
-         فيُمسح الردّ ولا يعود. مقيس حيًّا: ردّ ٤٨٦ حرفًا اختفى ولم يعد خلال ٣٥
-         ثانية. الآن: لا تُقاطَع صفحة مرئيّة أبدًا — الإعادة تُؤجَّل إلى أوّل
-         لحظة يغادر فيها المستخدم الشاشة ولا شيء جارٍ. وأوّل تسجيل للعامل لا
-         يستحقّ إعادة أصلًا (الصفحة أحدث منه). */
-      let refreshedOnce = false;
-      const __hadController = !!navigator.serviceWorker.controller;
-      const __busyNow = () => {
-        try{
-          const c = (typeof getCurrent === 'function') ? getCurrent() : null;
-          if(c && c.messages && c.messages.some(m => m && m._loading)) return true;
-          const pr = document.getElementById('prompt');
-          if(pr && pr.value && pr.value.trim()) return true;
-        }catch(e){ return true; }
-        return false;
-      };
-      const __reloadNow = () => { if(refreshedOnce) return; refreshedOnce = true; window.location.reload(); };
-      window.__omranReloadWhenSafe = () => {
-        if(document.visibilityState === 'hidden' && !__busyNow()) return __reloadNow();
-        document.addEventListener('visibilitychange', function __onHide(){
-          if(document.visibilityState === 'hidden' && !__busyNow()){
-            document.removeEventListener('visibilitychange', __onHide);
-            __reloadNow();
-          }
-        });
-      };
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if(refreshedOnce) return;
-        if(!__hadController) return; // أوّل تسجيل — الصفحة أحدث من العامل
-        window.__omranReloadWhenSafe();
-      });
+      /* v-no-kickout (شكوى: «داخل المحادثة ويطلع واذا رجع يطلعه»): كانت
+         الصفحة تعيد تحميل نفسها لحظة مغادرة المستخدم الشاشة بعد كل نشر
+         (controllerchange مؤجَّل للإخفاء) — فيرجع ليجد التطبيق مقلوبًا من
+         أوله، ومع نشرات اليوم المتلاحقة صار طردًا متكررًا. القشرة أصلًا
+         network-first منذ v669، فالفتحة الطبيعية القادمة تجلب الأحدث بلا
+         أي إعادة — لا reload على تحديث روتيني إطلاقًا. قناة إنقاذ v653
+         في selfdiag باقية لحالات العامل المكسور فقط. */
     }).catch(() => {});
   });
 }

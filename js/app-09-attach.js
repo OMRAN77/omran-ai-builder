@@ -3074,7 +3074,13 @@ function __showImgLoading(el, ar, en){
              استبدال للرسّام: يمحو القديم ويكتب الجديد في مكانه بنفس الأسلوب. */
           const __nameSwap = /(?:غير|غيّر|غيري|غيّري|بدل|بدّل|بدلي|بدّلي|استبدل|استبدلي)\s+(?:ال[إا]سم|اسم|النص|الكلمة|الكلمه|المكتوب)/i.test(text || '');
           try{
-            if(__wantsNamedFont && !__nameSwap) throw { __localFont: true }; /* مباشرة للكانفس */
+            /* v-style-honor (شكوى: «غير الخط واللون ووين مكانه — ما صار شي»):
+               رسّام الذكاء يتجاهل اللون والموضع المطلوبين — أي طلب فيه تنسيق
+               صريح (خط مسمّى أو لون أو موضع) يُرسم محليًا بالكانفس الذي يحترمه. */
+            const __explicitStyle = __wantsNamedFont
+              || (__textSpec.color && __textSpec.color !== '#ffffff')
+              || __textSpec.positionAuto === false;
+            if(__explicitStyle && !__nameSwap) throw { __localFont: true }; /* مباشرة للكانفس */
             const __cmp = await __compressB64(__wb64, __wmime);
             const __aiTxtPrompt = __nameSwap
               ? 'This image contains a personal name (or short text) written on it. REPLACE that existing name with the EXACT Arabic text \u00AB' + __resolvedText + '\u00BB: erase the old name completely and write the new one in its exact place, matching the original calligraphy style, size, color and orientation as closely as possible. Do NOT change anything else \u2014 keep every other text, logo, decoration and layout identical.'
