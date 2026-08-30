@@ -16644,6 +16644,15 @@ function __showImgLoading(el, ar, en){
             const __aiTData = await __aiTRes.json().catch(() => ({}));
             if(__aiTRes.ok && __aiTData.imageBase64){ __finalB64 = __aiTData.imageBase64; __finalMime = __aiTData.mimeType || 'image/jpeg'; }
           }catch(e){ if(e && e.name === 'AbortError') return; __swallow(e, 'img:aiText-v681'); }
+          /* v-edit-honest: في الاستبدال، الكانفس لا يمحو الاسم القديم —
+             الكتابة فوق البطاقة «غش» (كلمة عمران). فشل الرسّام = مصارحة. */
+          if(!__finalB64 && __nameSwap){
+            cur.messages.push({ role:'assistant', content: lang==='ar'
+              ? 'ما قدرت أبدّل الاسم داخل التصميم هالمرة — محرك تعديل الصور مشغول أو رفض هذا التصميم. أعد المحاولة بعد دقيقة، وإذا تكررت جرّب صورة أوضح.'
+              : 'I could not replace the name inside the design this time — the image editor is busy or declined this design. Try again in a minute.' });
+            renderAll(); saveState();
+            return;
+          }
           // احتياطي: كانفس إذا فشل الذكاء
           if(!__finalB64){
             try{ __finalB64 = await overlayTextOnImage(__wb64, __wmime, __resolvedText, __textSpec.fontKey, __textSpec.color, __pos); __finalMime = 'image/png'; }
