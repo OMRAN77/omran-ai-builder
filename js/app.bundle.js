@@ -15015,6 +15015,28 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
   });
 }
 
+/* v-edit-shrink (شكوى عمران: «بدل التاريخ بدل 28 حط 12» على دعوة مولّدة فشلت
+   ٥ مرات بـ«انقطع الاتصال»): الصور المولّدة عالية الدقة تتجاوز حدّ جسم الطلب
+   في فيرسل (~4.5MB) فيسقط الطلب قبل وصول الخادم أصلًا. نضغط لأقصى 1280px
+   قبل الإرسال — كافية تمامًا لمولّد التعديل والنص يبقى مقروءًا. */
+async function omranShrinkForEdit(b64, mime){
+  try{
+    if(!b64 || b64.length < 900000) return { b64: b64, mime: mime };
+    const img = await new Promise((res, rej) => {
+      const i = new Image();
+      i.onload = () => res(i); i.onerror = () => rej(new Error('bad_image'));
+      i.src = 'data:' + (mime || 'image/png') + ';base64,' + b64;
+    });
+    const mx = 1280, sc = Math.min(1, mx / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+    if(sc >= 1 && b64.length < 1600000) return { b64: b64, mime: mime };
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round((img.naturalWidth || mx) * sc));
+    c.height = Math.max(1, Math.round((img.naturalHeight || mx) * sc));
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return { b64: c.toDataURL('image/jpeg', 0.88).split(',')[1], mime: 'image/jpeg' };
+  }catch(e){ return { b64: b64, mime: mime }; }
+}
+
 // 🪪 v-tidy-card: «اكتب نفس المكتوب بس بخط مرتب» — نموذج مصوّر (بطاقة طالب/استمارة)
 // يُقرأ عبر /api/tools?action=card-extract ثم يُعاد رسمه هنا محليًّا على كانفس:
 // النص لا يمرّ على مولّد صور أبدًا فلا يتشوّه حرف، والصورة الشخصية والرسومات
@@ -16806,9 +16828,10 @@ function __showImgLoading(el, ar, en){
       if(__isNewImageSource && __b64 && __cardTidyIntent(text)){
         try{
           __showImgLoading(thinkingDiv, 'جاري قراءة النموذج…', 'Reading the card…');
+          const __ceShr = await omranShrinkForEdit(__b64, __mime); /* v-edit-shrink */
           const __ceRes = await fetch('/api/tools?action=card-extract', {
             method:'POST', headers:{ 'Content-Type':'application/json' }, signal: genAbortController.signal,
-            body: JSON.stringify({ imageBase64:__b64, mimeType:__mime, hint:String(text || '').slice(0, 300), token:authGet('aiapp_auth_token'), guestId:window.getGuestId() })
+            body: JSON.stringify({ imageBase64:__ceShr.b64, mimeType:__ceShr.mime, hint:String(text || '').slice(0, 300), token:authGet('aiapp_auth_token'), guestId:window.getGuestId() })
           });
           const __ceSpec = await __ceRes.json().catch(() => ({}));
           if(!__ceRes.ok || !Array.isArray(__ceSpec.rows) || !__ceSpec.rows.length){
@@ -16858,6 +16881,8 @@ function __showImgLoading(el, ar, en){
           if(__visEdit){
             chatPhase('🎨', lang === 'ar' ? 'جاري تعديل الخلفية…' : 'Editing background…', thinkingDiv);
             try{
+              const __wShr = await omranShrinkForEdit(__wb64, __wmime); /* v-edit-shrink */
+              __wb64 = __wShr.b64; __wmime = __wShr.mime;
               const __vRes = await fetch('/api/maha-image', {
                 method:'POST', headers:{ 'Content-Type':'application/json' },
                 signal: genAbortController.signal,
@@ -16956,14 +16981,23 @@ function __showImgLoading(el, ar, en){
       const __original = latestOriginalUserImage(cur);
       const __pendingImageEditSource = { b64:__b64, mime:__mime };
       const __combinedEdit = cumulativeImageEditPrompt(cur, text, true);
-      const __editB64 = __pendingImageEditSource.b64;
-      const __editMime = __pendingImageEditSource.mime;
+      const __editShr = await omranShrinkForEdit(__pendingImageEditSource.b64, __pendingImageEditSource.mime); /* v-edit-shrink */
+      const __editB64 = __editShr.b64;
+      const __editMime = __editShr.mime;
       const __editPrompt = __combinedEdit.prompt;
       const __pendingImageEditInstructions = __combinedEdit.edits;
+      let __extraImgs;
+      if(imageAttachments.length > 1){
+        __extraImgs = [];
+        for(const __xa of imageAttachments.slice(0, -1)){
+          const __xs = await omranShrinkForEdit((__xa.dataUrl || '').split(',')[1] || '', __xa.mime || 'image/png');
+          __extraImgs.push({ data: __xs.b64, mime: __xs.mime });
+        }
+      }
       const __res = await fetch('/api/maha-image', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         signal: genAbortController.signal,
-        body: JSON.stringify({ prompt: __editPrompt, editImageBase64: __editB64, editMimeType: __editMime, sceneUpgrade: __IMG_UPGRADE || undefined, extraImages: imageAttachments.length > 1 ? imageAttachments.slice(0, -1).map(a => ({ data: (a.dataUrl || '').split(',')[1] || '', mime: a.mime || 'image/png' })) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+        body: JSON.stringify({ prompt: __editPrompt, editImageBase64: __editB64, editMimeType: __editMime, sceneUpgrade: __IMG_UPGRADE || undefined, extraImages: __extraImgs, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
       });
       const __data = await __res.json().catch(() => ({}));
       const __ok = __res.ok && !!__data.imageBase64;
