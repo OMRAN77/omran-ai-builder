@@ -559,7 +559,9 @@ console.log('  ✓ v-lang-follow: التعليم بلغة التطبيق تلق�
 {
   const auth1 = fs.readFileSync(path.join(__dirname, '../js/app-01-boot-auth.js'), 'utf8');
   assert.ok(auth1.includes('v-google-safari') && auth1.includes("window.open(location.origin + gStartUrl + '&app=1', '_blank')"), 'الدخول يفتح سفاري داخل الغلاف');
-  assert.ok(auth1.includes('messageHandlers.omranShare'), 'كشف الغلاف من جسوره لا من UA');
+  // v-google-safari-2: الغلاف الفعلي بلا جسور omran — الكشف بجسر كاباسيتور
+  // «bridge» (مسجل في كل صفحة، مؤكد من مصدر كاباسيتور 8) أو window.Capacitor.
+  assert.ok(auth1.includes('mh.bridge') && auth1.includes('window.Capacitor'), 'كشف الغلاف بجسر كاباسيتور المضمون');
   assert.ok(auth1.includes('الدخول يكتمل تلقائيًا'), 'رسالة إرشاد ظاهرة للمستخدم');
   const st12 = fs.readFileSync(path.join(__dirname, '../js/app-12-studios.js'), 'utf8');
   assert.ok(st12.includes("window.open(location.origin + emStartUrl, '_blank')"), 'ربط الإيميل يفتح سفاري أيضًا');

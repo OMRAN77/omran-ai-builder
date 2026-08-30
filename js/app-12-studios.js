@@ -1905,7 +1905,9 @@ function stuL(ar, en){
        (نفس علة الدخول) — نفتح سفاري، والربط يُخزَّن في الخادم تحت حساب
        المستخدم فيظهر عند العودة والتحديث. */
     let emIosWrap = false;
-    try { emIosWrap = !!(window.webkit && window.webkit.messageHandlers && (window.webkit.messageHandlers.omranShare || window.webkit.messageHandlers.omranPdf)); } catch(e){ /* guard-ok */ }
+    /* v-google-safari-2: الكشف بجسر كاباسيتور «bridge» — الغلاف الفعلي بلا جسور omran */
+    try { emIosWrap = !!(window.Capacitor && (window.Capacitor.isNativePlatform ? window.Capacitor.isNativePlatform() : window.Capacitor.isNative)); } catch(e){ /* guard-ok */ }
+    try { if(!emIosWrap){ const mh = window.webkit && window.webkit.messageHandlers; emIosWrap = !!(mh && (mh.bridge || mh.omranShare || mh.omranPdf)); } } catch(e){ /* guard-ok */ }
     if (emIosWrap) { window.open(location.origin + emStartUrl, '_blank'); return; }
     window.location.href = emStartUrl;
   });
