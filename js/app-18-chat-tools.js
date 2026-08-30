@@ -51,6 +51,17 @@
    * @returns {{reply:string, providerKey:string, switched:boolean, requestedKey:string}}
    */
   window.callChatWithTools = async function (messages, onDelta, provider) {
+    window.__chatVideoResult = null;
+    window.__chatVideoReference = null;
+    try {
+      for (var mi = messages.length - 1; mi >= 0; mi--) {
+        var mm = messages[mi];
+        if (mm && Array.isArray(mm.images) && mm.images.length) {
+          var im = mm.images[mm.images.length - 1];
+          if (im && im.dataUrl) { window.__chatVideoReference = { dataUrl: im.dataUrl, mime: im.mime || 'image/png' }; break; }
+        }
+      }
+    } catch (e) {}
     // صور هذا الردّ فقط: تُمسح عند كلّ طلب جديد فلا يتراكم عشرات الميغابايت في
     // الذاكرة، وحدّ الأربع يبقى حدَّ ردٍّ لا حدَّ جلسة. الكود المبنيّ يُستبدل فيه
     // الرمز فور وصوله، فلا يضرّه المسح لاحقًا.
