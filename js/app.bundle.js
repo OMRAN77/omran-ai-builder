@@ -16125,12 +16125,13 @@ function __friendlyErr(e){
     } else if(text && cur.__stPending && (/^\s*([1-9]|1[0-9])\s*$/.test(text) || /فضاء|كواكب|صاروخ|ديناصور|دايناصور|أميرة|اميرة|برنسيس|ملكة|كرة|كوره|رياضة|رياضه|بحر|سمك|قرش|شاطئ|سيار|سباق|يونيكورن|قوس قزح|حيوان|غابة|باندا|ورد|زهور|فراش|تراث|صقر|روبوت|حلوى|حلويات|كيك|دونات|كلاسيكي|مدرسي كلاسيكي|كرومي|ماي ملدي|ميلودي|هالو كاتي|هيلو كيتي|كيتي|الدبب|دببة|قيمنق|قيمنج|جيمنج|جيمر|بلايستيشن|أنمي|انمي|مانجا|ستريت|سكيت|قرافيتي|جرافيتي|مغامر|طعوس|دباب|اوف رود|أوف رود|أساطير|اساطير|ذئب|تنين|بناتي|استاتيك|اسثتيك|فاشن|موضة|موضه|مكياج|فاجئني|عشوائي/i.test(text)) && text.length < 60){
       // 🏷️ v732: المستخدم اختار ثيم الطوابع من قائمة الاقتراحات
       const __sp = cur.__stPending; cur.__stPending = null;
+      const __stCountPending = [1,2,4].includes(Number(__sp.count)) ? Number(__sp.count) : 4;
       const __numMap = {1:'فضاء',2:'ديناصور',3:'أميرة',4:'كرة',5:'بحر',6:'سيارة سباق',7:'يونيكورن',8:'حيوانات',9:'ورد',10:'مدرسي كلاسيكي',11:'تراث صقر',12:'روبوت',13:'حلويات',14:'فراشة',15:'كرومي',16:'ماي ملدي',17:'هالو كاتي',18:'الدببة الثلاثة'};
       const __nm = text.match(/^\s*([1-9]|1[0-4])\s*$/);
       const __stHint = __nm ? __numMap[Number(__nm[1])] : text;
       __showImgLoading(thinkingDiv, 'جارٍ تصميم الطوابع', 'Designing stamps');
       try{
-        const __stBody = { name:__sp.name, school:__sp.school, subject:__sp.subject, count:__stCount, hint:__stHint, imageBase64:__sp.b64, mimeType:__sp.mime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
+        const __stBody = { name:__sp.name, school:__sp.school, subject:__sp.subject, count:__stCountPending, hint:__stHint, imageBase64:__sp.b64, mimeType:__sp.mime, token:authGet('aiapp_auth_token'), guestId:window.getGuestId() };
         const __stRes = await fetch('/api/tools?action=stamps',{method:'POST',headers:{'Content-Type':'application/json'},signal:genAbortController.signal,body:JSON.stringify(__stBody)});
         const __stData = await __stRes.json().catch(()=>({}));
         if(!__stRes.ok || !__stData.imageBase64){
@@ -16141,7 +16142,7 @@ function __friendlyErr(e){
           const __stMime = __stData.mimeType||'image/png';
           cur.lastEditedImage={b64:__stData.imageBase64,mime:__stMime};
           cur.lastMsgWasImageEdit=true;
-          cur.messages.push({role:'assistant',content:'',attachments:[{name:'stamps-' + __stCount + '.png',isImage:true,mime:__stMime,dataUrl:'data:'+__stMime+';base64,'+__stData.imageBase64}]});
+          cur.messages.push({role:'assistant',content:'',attachments:[{name:'stamps-' + __stCountPending + '.png',isImage:true,mime:__stMime,dataUrl:'data:'+__stMime+';base64,'+__stData.imageBase64}]});
         }
       }catch(__e){
         if(__e&&__e.name==='AbortError') return;
