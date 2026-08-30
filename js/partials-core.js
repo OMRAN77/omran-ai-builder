@@ -892,15 +892,20 @@
 <!-- v-omran-picker: معرض اختيار موحّد ملء الشاشة — نفس نمط «أنماط الصور»
      لكل القوائم الكبيرة (أزياء، ديكور، ستايل). -->
 <div id="pickerSheet" style="display:none; position:fixed; inset:0; z-index:10070; background:#0b0b0d; flex-direction:column;">
-  <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid rgba(212,175,55,.25); flex:none;">
+  <!-- v-picker-close (شكوى عمران: «✕ فوق عند الساعة ما أقدر أضغطه»): الرأس ينزل
+       تحت شريط الحالة بهامش الأمان، والزر أكبر، وزر إغلاق سفلي في متناول الإبهام. -->
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:calc(14px + env(safe-area-inset-top,0px)) 16px 14px; border-bottom:1px solid rgba(212,175,55,.25); flex:none;">
     <div>
       <div id="pickerSheetTitle" style="font-size:18px; font-weight:800; color:#eef0f6;"></div>
       <div id="pickerSheetCount" style="font-size:11.5px; color:#9a9a9e;"></div>
     </div>
-    <button type="button" class="btn iconBtn" id="pickerSheetClose" style="padding:6px 12px;">✕</button>
+    <button type="button" class="btn iconBtn" id="pickerSheetClose" style="padding:10px 16px; min-width:46px; min-height:42px; font-size:17px;">✕</button>
   </div>
   <div style="flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;">
     <div id="pickerSheetGrid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(175px,1fr)); gap:14px; padding:16px; max-width:1500px; margin:0 auto;"></div>
+  </div>
+  <div style="flex:none; padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px)); border-top:1px solid rgba(212,175,55,.18);">
+    <button type="button" id="pickerSheetCloseBottom" style="width:100%; padding:13px; border-radius:13px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06); color:#eef0f6; font-size:16px; font-weight:700; cursor:pointer; touch-action:manipulation;">✕</button>
   </div>
 </div>
 
