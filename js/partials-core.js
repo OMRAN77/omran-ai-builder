@@ -97,7 +97,7 @@
 
 <div id="omranEduModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.85); display:none; align-items:stretch; justify-content:stretch; padding:0;">
   <div style="width:100%; height:100%; display:flex; flex-direction:column; background:var(--panel,#1a1a1a);">
-    <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; border-bottom:1px solid rgba(255,255,255,0.08); flex:0 0 auto;">
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:calc(10px + env(safe-area-inset-top,0px)) 16px 10px; border-bottom:1px solid rgba(255,255,255,0.08); flex:0 0 auto;">
       <h3 style="margin:0; font-size:15px;" data-i18n="omranEduModalTitle">🎓 التعليم</h3>
       <button type="button" class="btn iconBtn" id="omranEduCloseBtn" style="padding:4px 10px;">✕</button>
     </div>
