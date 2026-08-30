@@ -28,6 +28,8 @@ module.exports = async (req, res) => {
     const school = cut(b.school, 40);
     const subject = cut(b.subject, 30);
     const hint = String(b.hint || '').slice(0, 300);
+    const requestedCount = Number.parseInt(b.count, 10);
+    const stampCount = [1, 2, 4].includes(requestedCount) ? requestedCount : 4;
 
     // 🎨 v731: ثيمات متنوعة — كل توليد شكل مختلف؛ وإذا ذكر المستخدم ثيمًا التُزم به
     const THEMES = [
@@ -73,8 +75,12 @@ module.exports = async (req, res) => {
       if (!pool.length) pool = THEMES;
       theme = pool[Math.floor(Math.random() * pool.length)];
     }
-    // تنويع إضافي: تخطيطات مختلفة كل مرة
-    const LAYOUTS = ['a tidy grid of 12 small stickers (4 rows x 3 columns)', 'a tidy grid of 12 small stickers (3 rows x 4 columns, landscape-ish cells)', 'a playful staggered arrangement of 12 small stickers (rows slightly offset like a honeycomb)'];
+    // تخطيط مناسب للعدد المختار: طابع واحد كبير، أو طابعان، أو أربعة.
+    const LAYOUTS = stampCount === 1
+      ? ['one large centered sticker with generous whitespace around it']
+      : stampCount === 2
+        ? ['two large stickers side by side with generous whitespace', 'two large stickers stacked vertically with generous whitespace']
+        : ['a tidy 2x2 grid of 4 medium-large stickers with generous white gaps', 'four balanced stickers in a clean 2x2 printable grid'];
     const layout = LAYOUTS[Math.floor(Math.random() * LAYOUTS.length)];
     const hasImg = typeof b.imageBase64 === 'string' && b.imageBase64.length > 100;
     if (!hasImg) {
@@ -97,7 +103,7 @@ module.exports = async (req, res) => {
     let p = audience
       + 'The provided image is the child\'s REAL photo. IDENTITY LOCK — the face must stay EXACTLY as photographed in every sticker: same eyes, nose, mouth, skin tone, hair, age and expression. Do NOT beautify, retouch, slim, age, gender-swap, redraw, cartoonize or replace the face. Do NOT merge faces or invent a second child. Use the original photo as the only person reference and crop it cleanly into each frame.\n'
       + 'Layout: ' + layout + ', evenly spaced with generous white gaps and a thin light-grey dashed cut line around every sticker. Premium print-ready composition: crisp edges, strong contrast, balanced margins, clear separation between all stickers, no cropped sticker, no visual clutter.\n'
-      + 'Every sticker features the child\'s photo inside a DIFFERENT frame — all 12 frames must be visibly different from each other, with bold polished school-reward badge design and consistent visual quality. ' + theme.d + '. Doodles never cover the face or touch the eyes, nose or mouth.\n'
+      + 'Every sticker features the child\'s photo inside a DIFFERENT frame — all ' + stampCount + ' frames must be visibly different from each other, with bold polished school-reward badge design and consistent visual quality. ' + theme.d + '. Doodles never cover the face or touch the eyes, nose or mouth.\n'
       + (function(){
         var lines = [];
         if (name) lines.push('the name "' + name + '" in clear bold lettering');
@@ -137,7 +143,7 @@ module.exports = async (req, res) => {
       res.status(502).end(JSON.stringify({ error: 'empty', message_ar: 'لم يرجع النموذج صورة. جرّب مرّة أخرى.' }));
       return;
     }
-    res.status(200).end(JSON.stringify({ imageBase64: out.b64_json, mimeType: 'image/png', dailyLimit: DAILY }));
+    res.status(200).end(JSON.stringify({ imageBase64: out.b64_json, mimeType: 'image/png', stampCount, dailyLimit: DAILY }));
   } catch (e) {
     const msg = e && e.name === 'TimeoutError' ? 'استغرق التوليد وقتًا أطول من المسموح. جرّب مرّة أخرى.' : (e && e.message ? e.message : String(e));
     res.status(500).end(JSON.stringify({ error: 'proxy', message_ar: msg }));
