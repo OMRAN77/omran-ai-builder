@@ -3053,12 +3053,13 @@ function __showImgLoading(el, ar, en){
           const __compressB64 = (b64, mime) => new Promise(function(res3){
             const __ci2 = new Image();
             __ci2.onload = function(){
-              const __mxd2 = 800, __sc2 = Math.min(1, __mxd2 / Math.max(__ci2.naturalWidth||1, __ci2.naturalHeight||1));
+              /* v-hifi-edit: 800px كانت تمسح تفاصيل نصوص البطاقة فيعيد المحرك رسمها خربانة — 1600px تبقى تحت حد الطلب وتحفظ القراءة */
+              const __mxd2 = 1600, __sc2 = Math.min(1, __mxd2 / Math.max(__ci2.naturalWidth||1, __ci2.naturalHeight||1));
               const __cc2 = document.createElement('canvas');
               __cc2.width = Math.round((__ci2.naturalWidth||__mxd2) * __sc2);
               __cc2.height = Math.round((__ci2.naturalHeight||__mxd2) * __sc2);
               __cc2.getContext('2d').drawImage(__ci2, 0, 0, __cc2.width, __cc2.height);
-              res3({ b64: __cc2.toDataURL('image/jpeg', 0.80).split(',')[1], mime: 'image/jpeg' });
+              res3({ b64: __cc2.toDataURL('image/jpeg', 0.88).split(',')[1], mime: 'image/jpeg' });
             };
             __ci2.onerror = function(){ res3({ b64, mime }); };
             __ci2.src = 'data:' + mime + ';base64,' + b64;
