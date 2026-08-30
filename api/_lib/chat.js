@@ -70,6 +70,11 @@ const TOOLS = [
     input_schema: { type: 'object', properties: { prompt: { type: 'string', description: 'وصف الصورة بالإنجليزية، دقيق ومحدّد (نمط، إضاءة، زاوية).' } }, required: ['prompt'] },
   },
   {
+    name: 'generate_video',
+    description: 'أنشئ فيديو حقيقيًا داخل المحادثة من وصف المستخدم، أو حرّك الصورة المرفقة نفسها مع الحفاظ على فكرتها وشخصيتها. استخدمها فقط عندما يطلب المستخدم إنشاء/توليد/تحريك فيديو، وليس عند سؤاله عن كيفية صناعة الفيديو.',
+    input_schema: { type: 'object', properties: { prompt: { type: 'string', description: 'وصف الفيديو النهائي، مستخرج بذكاء من طلب المستخدم ومن الصورة المرفقة إن وجدت.' }, provider: { type: 'string', enum: ['runway', 'veo'], description: 'المحرك: runway افتراضي سريع، veo لجودة أعلى أو صوت طبيعي.' }, ratio: { type: 'string', enum: ['landscape', 'portrait'], description: 'اتجاه الفيديو.' }, durationSeconds: { type: 'integer', enum: [4, 5, 6, 8, 10], description: 'المدة بالثواني.' }, style: { type: 'string', enum: ['realistic', 'anime'], description: 'النمط عند استخدام Runway.' }, use_reference_image: { type: 'boolean', description: 'عند وجود صورة مرفقة: حرّكها كما هي بدل اختراع صورة جديدة.' } }, required: ['prompt'] },
+  },
+  {
     name: 'test_html',
     description: 'شغّل صفحة HTML كاملة في بيئة معزولة وأعد أخطاء التشغيل. استدعها مرّة واحدة على الصفحة النهائية قبل تسليمها.',
     input_schema: { type: 'object', properties: { html: { type: 'string', description: 'مستند HTML كامل.' } }, required: ['html'] },
@@ -81,16 +86,17 @@ const TOOLS = [
   },
 ];
 
-const TOOLS_NOTE = '\n\n[أدواتك الحقيقية — خمس، وهي تعمل فعلًا الآن]:\n' +
+const TOOLS_NOTE = '\n\n[أدواتك الحقيقية — ست، وهي تعمل فعلًا الآن]:\n' +
   '• web_search — أي سعر أو خبر أو طقس أو نتيجة أو رسوم رسمية أو معلومة قد تكون تغيّرت: ابحث أولًا.\n' +
   '• [حداثة الأخبار — إلزامي]: في سؤال عن خبر أو حدث أو «الجديد»، تحقق من تاريخ نشر كل نتيجة قبل الاستشهاد بها: اعتمد الأحدث واذكر تاريخ الخبر بجانبه صراحةً، ولا تقدّم مقالًا عمره شهور كأنه جديد — قارن تاريخ النشر بتاريخ اليوم المذكور لك. إن لم تجد إلا نتائج قديمة فقلها صراحة («أحدث ما وجدته بتاريخ كذا») ولا توهم بحداثتها.\n' +
   '• fetch_page — أي رابط ذكره المستخدم أو ظهر في البحث وتحتاج محتواه: افتحه واقرأه.\n' +
   '• run_js — أي حساب رقمي أو فرق تواريخ أو منطق: شغّله وخذ الناتج منه.\n' +
   '• generate_image — ترسم صورة حقيقية وتعيد رمزًا مثل __IMG_1__ تضعه حرفيًّا في src.\n' +
+  '• generate_video — إذا طلب المستخدم إنشاء أو توليد أو تحريك فيديو، استخرج فكرة ذكية من كلامه والصورة المرفقة ثم استدعها. لا تقل له اذهب إلى صانع الفيديو ولا تكتفِ بشرح الخطوات؛ أعِد النتيجة داخل هذه المحادثة.\n' +
   '• get_location — حين يسأل المستخدم عن موقعه الحالي: استدعها ولا تخمّن من عنوان الشبكة. وممنوع منعًا باتًا الجواب عن موقعه من سجلّ المحادثة — حتى لو أجبته عن موقعه قبل رسالتين استدعِ الأداة من جديد في كلّ سؤال موقع، فالموقع يتغيّر وجوابك السابق قد يكون خطأً أصلًا. إن رجعت برفض الإذن فاشرح له بلطف كيف يفعّل الموقع من متصفّحه ولا تكرّر المحاولة في نفس الردّ. وانقل تحذير الدقّة الذي تعيده الأداة كما هو — لا تحذفه ولا تختصره. وإن ناقض موقعُ الأداة دولةَ الشبكة المذكورة في [الموقع] (مثال: الأداة تقول إثيوبيا والشبكة إماراتية) فلا تجزم بأحدهما: اذكر التعارض صراحةً وقل إن سببه الغالب VPN أو خدمة موقع معطوبة في الجهاز.\n' +
   '• [قاعدة الصورة/الفيديو التوضيحي]: إذا طلب المستخدم صورة أو فيديو توضيحيًا عن موضوع في المحادثة:\n' +
   '  ١. حدّد الموضوع الدقيق من آخر سؤال أو ردّ في المحادثة (مثل: "مكيف كاريير" لا مجرد "مكيف").\n' +
-  '  ٢. استدعِ generate_image بـ prompt إنجليزي وصفي: "technical diagram of [الموضوع الدقيق], labeled educational illustration, white background, clear Arabic labels showing [التفصيل المطلوب]".\n' +
+  '  ٢. إذا طلب صورة توضيحية ثابتة فاستدعِ generate_image. إذا طلب فيديو فعليًا فاستدعِ generate_video بوصف حركي واضح، ولا تستبدله بصورة.\n' +
   '  ٣. ممنوع web_search للطلبات التوضيحية — الصور العشوائية لا توضّح.\n' +
   '  ٤. ممنوع prompt عام مثل "explanatory image" بلا موضوع — اذكر الموضوع صراحةً في الـ prompt.\n' +
   '• test_html — تشغّل صفحتك النهائية وتعيد أخطاء التشغيل.\n' +
@@ -776,10 +782,12 @@ async function runInClient(send, name, input, waitMs) {
   const key = 'agent/tool/' + id;
   try {
     await kvPutJSON('agent/wait/' + id, { at: Date.now() });
-    await kvExpire('agent/wait/' + id, 120);
+    const safeWaitMs = Math.min(300000, Math.max(20000, Number(waitMs) || 20000));
+    await kvExpire('agent/wait/' + id, Math.max(120, Math.ceil(safeWaitMs / 1000) + 30));
   } catch (e) { console.warn('[chat] claim failed', e && e.message); }
   send({ clientTool: { id, name, input } });
-  const deadline = Date.now() + (Number(waitMs) || 20000);
+  const safeWaitMs = Math.min(300000, Math.max(20000, Number(waitMs) || 20000));
+  const deadline = Date.now() + safeWaitMs;
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 400));
     let rec = null;
@@ -1038,6 +1046,7 @@ module.exports = async (req, res) => {
             else if (cb.type === 'tool_use' && cb.name === 'fetch_page') send({ status: '🌐 يقرأ صفحة…', k: 'stFetchPage' });
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ status: '⚙️ يشغّل كودًا للتحقّق…', k: 'stRunJs' });
             else if (cb.type === 'tool_use' && cb.name === 'generate_image') send({ status: '🎨 يرسم صورة…', k: 'stGenImage' });
+            else if (cb.type === 'tool_use' && cb.name === 'generate_video') send({ status: '🎬 ينشئ الفيديو داخل المحادثة…', k: 'stGenVideo' });
             else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ status: '🧪 يجرّب الصفحة…', k: 'stTestHtml' });
             else if (cb.type === 'tool_use' && cb.name === 'get_location') send({ status: '📍 يحدّد موقعك (سيطلب المتصفّح إذنك)…', k: 'stGeoLoc' });
           } else if (ev.type === 'content_block_delta') {
@@ -1096,6 +1105,7 @@ module.exports = async (req, res) => {
           else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
           else if (cb.name === 'run_js') result = await runInClient(send, 'run_js', input);
           else if (cb.name === 'generate_image') result = await runInClient(send, 'generate_image', input, 75000);
+          else if (cb.name === 'generate_video') result = await runInClient(send, 'generate_video', input, 290000);
           else if (cb.name === 'test_html') result = await runInClient(send, 'test_html', input, 30000);
           // إذن الموقع قد يستغرق وقتًا — مهلة أطول من بقية أدوات المتصفّح.
           else if (cb.name === 'get_location') result = await runInClient(send, 'get_location', input, 35000);
