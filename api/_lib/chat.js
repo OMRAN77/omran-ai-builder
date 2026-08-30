@@ -96,7 +96,7 @@ const TOOLS_NOTE = '\n\n[أدواتك الحقيقية — ست، وهي تعم�
   '• get_location — حين يسأل المستخدم عن موقعه الحالي: استدعها ولا تخمّن من عنوان الشبكة. وممنوع منعًا باتًا الجواب عن موقعه من سجلّ المحادثة — حتى لو أجبته عن موقعه قبل رسالتين استدعِ الأداة من جديد في كلّ سؤال موقع، فالموقع يتغيّر وجوابك السابق قد يكون خطأً أصلًا. إن رجعت برفض الإذن فاشرح له بلطف كيف يفعّل الموقع من متصفّحه ولا تكرّر المحاولة في نفس الردّ. وانقل تحذير الدقّة الذي تعيده الأداة كما هو — لا تحذفه ولا تختصره. وإن ناقض موقعُ الأداة دولةَ الشبكة المذكورة في [الموقع] (مثال: الأداة تقول إثيوبيا والشبكة إماراتية) فلا تجزم بأحدهما: اذكر التعارض صراحةً وقل إن سببه الغالب VPN أو خدمة موقع معطوبة في الجهاز.\n' +
   '• [قاعدة الصورة/الفيديو التوضيحي]: إذا طلب المستخدم صورة أو فيديو توضيحيًا عن موضوع في المحادثة:\n' +
   '  ١. حدّد الموضوع الدقيق من آخر سؤال أو ردّ في المحادثة (مثل: "مكيف كاريير" لا مجرد "مكيف").\n' +
-  '  ٢. استدعِ generate_image بـ prompt إنجليزي وصفي: "technical diagram of [الموضوع الدقيق], labeled educational illustration, white background, clear Arabic labels showing [التفصيل المطلوب]".\n' +
+  '  ٢. إذا طلب صورة توضيحية ثابتة فاستدعِ generate_image. إذا طلب فيديو فعليًا فاستدعِ generate_video بوصف حركي واضح، ولا تستبدله بصورة.\n' +
   '  ٣. ممنوع web_search للطلبات التوضيحية — الصور العشوائية لا توضّح.\n' +
   '  ٤. ممنوع prompt عام مثل "explanatory image" بلا موضوع — اذكر الموضوع صراحةً في الـ prompt.\n' +
   '• test_html — تشغّل صفحتك النهائية وتعيد أخطاء التشغيل.\n' +
@@ -782,10 +782,12 @@ async function runInClient(send, name, input, waitMs) {
   const key = 'agent/tool/' + id;
   try {
     await kvPutJSON('agent/wait/' + id, { at: Date.now() });
-    await kvExpire('agent/wait/' + id, 120);
+    const safeWaitMs = Math.min(300000, Math.max(20000, Number(waitMs) || 20000));
+    await kvExpire('agent/wait/' + id, Math.max(120, Math.ceil(safeWaitMs / 1000) + 30));
   } catch (e) { console.warn('[chat] claim failed', e && e.message); }
   send({ clientTool: { id, name, input } });
-  const deadline = Date.now() + (Number(waitMs) || 20000);
+  const safeWaitMs = Math.min(300000, Math.max(20000, Number(waitMs) || 20000));
+  const deadline = Date.now() + safeWaitMs;
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 400));
     let rec = null;
@@ -1044,6 +1046,7 @@ module.exports = async (req, res) => {
             else if (cb.type === 'tool_use' && cb.name === 'fetch_page') send({ status: '🌐 يقرأ صفحة…', k: 'stFetchPage' });
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ status: '⚙️ يشغّل كودًا للتحقّق…', k: 'stRunJs' });
             else if (cb.type === 'tool_use' && cb.name === 'generate_image') send({ status: '🎨 يرسم صورة…', k: 'stGenImage' });
+            else if (cb.type === 'tool_use' && cb.name === 'generate_video') send({ status: '🎬 ينشئ الفيديو داخل المحادثة…', k: 'stGenVideo' });
             else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ status: '🧪 يجرّب الصفحة…', k: 'stTestHtml' });
             else if (cb.type === 'tool_use' && cb.name === 'get_location') send({ status: '📍 يحدّد موقعك (سيطلب المتصفّح إذنك)…', k: 'stGeoLoc' });
           } else if (ev.type === 'content_block_delta') {
