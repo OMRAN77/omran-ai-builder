@@ -1900,7 +1900,14 @@ function stuL(ar, en){
        عميل مكتوب، بينما يبادل الخادم بـ SITE_URL ومعرّف البيئة — وجوجل تشترط
        تطابق redirect_uri حرفًا بحرف، فكان الربط يفشل («مساعد الإيميل لا يعمل»).
        الآن الخادم يبني الرابط بقيمه هو نفسها. (api/_lib/email-google-start.js) */
-    window.location.href = '/api/system?action=email-google-start&state=' + encodeURIComponent(token);
+    const emStartUrl = '/api/system?action=email-google-start&state=' + encodeURIComponent(token);
+    /* v-google-safari: داخل تطبيق الآيفون تفويض جوجل داخل الويب-فيو يفشل
+       (نفس علة الدخول) — نفتح سفاري، والربط يُخزَّن في الخادم تحت حساب
+       المستخدم فيظهر عند العودة والتحديث. */
+    let emIosWrap = false;
+    try { emIosWrap = !!(window.webkit && window.webkit.messageHandlers && (window.webkit.messageHandlers.omranShare || window.webkit.messageHandlers.omranPdf)); } catch(e){ /* guard-ok */ }
+    if (emIosWrap) { window.open(location.origin + emStartUrl, '_blank'); return; }
+    window.location.href = emStartUrl;
   });
 
   refreshBtn.addEventListener('click', loadEmails);

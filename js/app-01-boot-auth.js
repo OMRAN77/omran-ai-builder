@@ -868,7 +868,28 @@ const $ = s => document.querySelector(s);
       // v-ios-bridge: على آيفون المثبَّت تكمل جوجل في ورقة منفصلة — نحفظ
       // الرمز في localStorage (يبقى بعد تعليق التطبيق) لاستلام الجلسة عند العودة.
       try { localStorage.setItem('aiapp_oauth_pending', oauthState + ':' + Date.now()); } catch(e){ __swallow(e, 'auth:oauth-pending'); }
-      window.location.href = '/api/system?action=google-start&state=' + encodeURIComponent(oauthState);
+      const gStartUrl = '/api/system?action=google-start&state=' + encodeURIComponent(oauthState);
+      // v-google-safari: داخل تطبيق الآيفون (غلاف WKWebView — نعرفه من جسوره
+      // omranShare/omranPdf) دخول جوجل داخل الويب-فيو يفشل: الباسكيز لا تكتمل،
+      // وأي قفزة لمتصفح خارجي بنصف الطريق تصل بلا كوكيز الجلسة فترد جوجل
+      // «400 malformed». نفتح سفاري من أول خطوة — كوكيز جوجل والباسكيز هناك —
+      // وجسر oauth-claim أعلاه يستلم الجلسة تلقائيًا عند العودة للتطبيق.
+      let iosWrap = false;
+      try { iosWrap = !!(window.webkit && window.webkit.messageHandlers && (window.webkit.messageHandlers.omranShare || window.webkit.messageHandlers.omranPdf)); } catch(e){ /* guard-ok */ }
+      if (iosWrap) {
+        window.open(location.origin + gStartUrl, '_blank');
+        try {
+          const bx = $('#authError');
+          if (bx) {
+            bx.style.color = 'var(--accent, #7c6cff)';
+            bx.textContent = (localStorage.getItem('aiapp_lang') === 'en')
+              ? 'Finish signing in with Google in the browser, then come back here — you will be signed in automatically.'
+              : 'أكمل الدخول بجوجل في المتصفح، ثم ارجع هنا — الدخول يكتمل تلقائيًا.';
+          }
+        } catch(e){ __swallow(e, 'auth:google-hint'); }
+        return;
+      }
+      window.location.href = gStartUrl;
     };
   }
 

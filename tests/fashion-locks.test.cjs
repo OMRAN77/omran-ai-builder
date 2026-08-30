@@ -552,4 +552,18 @@ console.log('  ✓ v-lang-sync: اللغة المختارة تصل المولّ�
 }
 console.log('  ✓ v-lang-follow: التعليم بلغة التطبيق تلقائيًا — والمنسدلة تغلب');
 
+// ㊻ v-google-safari: دخول جوجل داخل WKWebView يفشل (باسكيز لا تكتمل، وقفزة
+// لمتصفح خارجي بنصف الطريق ترد «400 malformed» — لقطة عمران). داخل غلاف
+// الآيفون (جسور omranShare/omranPdf) يُفتح سفاري من أول خطوة، وجسر
+// oauth-claim يستلم الجلسة عند العودة. نفس الشيء لربط الإيميل.
+{
+  const auth1 = fs.readFileSync(path.join(__dirname, '../js/app-01-boot-auth.js'), 'utf8');
+  assert.ok(auth1.includes('v-google-safari') && auth1.includes("window.open(location.origin + gStartUrl, '_blank')"), 'الدخول يفتح سفاري داخل الغلاف');
+  assert.ok(auth1.includes('messageHandlers.omranShare'), 'كشف الغلاف من جسوره لا من UA');
+  assert.ok(auth1.includes('الدخول يكتمل تلقائيًا'), 'رسالة إرشاد ظاهرة للمستخدم');
+  const st12 = fs.readFileSync(path.join(__dirname, '../js/app-12-studios.js'), 'utf8');
+  assert.ok(st12.includes("window.open(location.origin + emStartUrl, '_blank')"), 'ربط الإيميل يفتح سفاري أيضًا');
+}
+console.log('  ✓ v-google-safari: جوجل في سفاري داخل تطبيق الآيفون — لا 400 ولا باسكيز عالقة');
+
 console.log('fashion locks tests passed');
