@@ -6186,8 +6186,9 @@ async function omranSaveBlob(blob, filename){
           if(e && e.name === 'AbortError') return;
           /* v-share-retap (عمران: «على طول استوت من الهاتف» مرة واحدة فقط):
              آيفون يرفض المشاركة بعد معالجة طويلة لانتهاء «ضغطة المستخدم».
-             ضغطة جديدة على شريط صغير تعيد فتح ورقة المشاركة الأصلية دائمًا. */
-          if(omranShareRetapBar(f, filename)) return;
+             ضغطة جديدة على شريط صغير تعيد فتح ورقة المشاركة الأصلية دائمًا.
+             داخل الأغلفة فقط — المتصفحات العادية تنزّل مباشرة كما كانت. */
+          if(omranLikelyApp() && omranShareRetapBar(f, filename)) return;
         }
       }
     }
