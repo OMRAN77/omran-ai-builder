@@ -54,4 +54,11 @@ let sw = await readFile('sw.js', 'utf8');
 sw = sw.replace(/(CACHE_NAME = ')([^']*)(')/, (_, a, v, z) => a + stamp(v, `omran-ai-builder-${hash}`) + z);
 await writeFile('sw.js', sw);
 
+// GitHub's bundle workflow stages the generated cache/version files too,
+// otherwise the bundle and service-worker cache key can drift apart.
+if (process.env.GITHUB_ACTIONS === 'true') {
+  const { execFileSync } = await import('node:child_process');
+  execFileSync('git', ['add', 'index.html', 'sw.js']);
+}
+
 console.log(`✓ ${names.length} جزءًا · ${bundle.split('\n').length} سطرًا · بصمة ${hash}`);
