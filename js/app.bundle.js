@@ -6148,6 +6148,33 @@ async function omranBlobToServerLink(blob, filename){
   if(!r.ok || !d || !d.url) throw new Error('upload-failed');
   return d.url;
 }
+function omranShareRetapBar(file, filename){
+  try{
+    const isArT = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
+    const bar = document.createElement('div');
+    bar.style.cssText = 'position:fixed;bottom:calc(84px + env(safe-area-inset-bottom,0px));inset-inline:14px;z-index:99999;background:rgba(24,24,30,.96);border:1px solid rgba(212,175,55,.4);border-radius:14px;padding:11px 14px;display:flex;align-items:center;gap:10px;color:#eef0f6;font-size:13.5px;box-shadow:0 10px 30px rgba(0,0,0,.5);';
+    const txt = document.createElement('span');
+    txt.style.cssText = 'flex:1;';
+    txt.textContent = isArT ? '✅ الملف جاهز' : '✅ File ready';
+    const go = document.createElement('button');
+    go.textContent = isArT ? 'حفظ / مشاركة' : 'Save / Share';
+    go.style.cssText = 'background:none;color:#d4af37;font-weight:800;font-size:13.5px;padding:7px 14px;border:1px solid rgba(212,175,55,.5);border-radius:10px;cursor:pointer;touch-action:manipulation;';
+    go.onclick = function(){
+      navigator.share({ files: [file], title: filename }).then(function(){ bar.remove(); }).catch(function(e3){
+        if(e3 && e3.name === 'AbortError'){ bar.remove(); return; }
+        __swallow(e3, 'share:retap');
+      });
+    };
+    const x2 = document.createElement('button');
+    x2.textContent = '✕';
+    x2.style.cssText = 'background:none;border:none;color:#9a9a9e;font-size:14px;cursor:pointer;padding:4px 6px;';
+    x2.onclick = function(){ bar.remove(); };
+    bar.appendChild(txt); bar.appendChild(go); bar.appendChild(x2);
+    document.body.appendChild(bar);
+    setTimeout(function(){ try{ bar.remove(); }catch(e){ __swallow(e, 'share:retap-bar'); } }, 60000);
+    return true;
+  }catch(e){ __swallow(e, 'share:retap-bar2'); return false; }
+}
 async function omranSaveBlob(blob, filename){
   if(omranNativeBridge('omranShare')){ msgDownloadBlob(blob, filename); return; }
   try{
@@ -6155,7 +6182,13 @@ async function omranSaveBlob(blob, filename){
       const f = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
       if(navigator.canShare({ files: [f] })){
         try{ await navigator.share({ files: [f], title: filename }); return; }
-        catch(e){ if(e && e.name === 'AbortError') return; /* غيره: ننزل للمسار التالي */ }
+        catch(e){
+          if(e && e.name === 'AbortError') return;
+          /* v-share-retap (عمران: «على طول استوت من الهاتف» مرة واحدة فقط):
+             آيفون يرفض المشاركة بعد معالجة طويلة لانتهاء «ضغطة المستخدم».
+             ضغطة جديدة على شريط صغير تعيد فتح ورقة المشاركة الأصلية دائمًا. */
+          if(omranShareRetapBar(f, filename)) return;
+        }
       }
     }
   }catch(e){ __swallow(e, 'share:universal'); }
