@@ -56,10 +56,12 @@ let lang = localStorage.getItem('aiapp_lang') || (function(){
 })();
 
 function mahaPersonaName(){
-  var male = false;
-  try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) { /* guard-ok: unavailable storage falls back to the default persona. */ }
   var isAr = false;
   try { isAr = (typeof lang !== 'undefined' && lang === 'ar'); } catch(e) { /* guard-ok: unavailable language state falls back to English. */ }
+  /* v-maha-pause: مها موقوفة مؤقتًا لغير المالك — كل نصوص {voice} تصير محايدة */
+  if (window.__mahaPaused) return isAr ? 'المساعد الصوتي' : 'the voice assistant';
+  var male = false;
+  try { male = localStorage.getItem('aiapp_voice_gender') === 'male'; } catch(e) { /* guard-ok: unavailable storage falls back to the default persona. */ }
   if (male) return isAr ? 'عبدالله' : 'Abdullah';
   return isAr ? 'مها' : 'Maha';
 }
