@@ -2057,6 +2057,7 @@ function mahaShowModeTag(mode){
 // body is untouched, now mahaStartCallInner().
 let mahaCallStarting = false;
 async function mahaStartCall(mode){
+  if(window.__mahaPaused) return; /* v-maha-pause: موقوفة مؤقتًا لغير المالك */
   if(mahaCallActive || mahaCallStarting) return;
   mahaCallStarting = true;
   try{ return await mahaStartCallInner(mode); }
@@ -2337,4 +2338,46 @@ if(btnMahaEndCallEl) btnMahaEndCallEl.onclick = () => { mahaEndCall(); };
     lightbox.style.display = 'flex';
   });
   lightbox.addEventListener('click', () => { lightbox.style.display = 'none'; });
+})();
+
+/* v-maha-pause (طلب عمران ٣١ أغسطس — مؤقت لحين ضبط مها): المكالمة الصوتية
+   موقوفة لغير المالك: زرا مها (الدوك والعائم) يختفيان ويرجع صندوق المحادثة
+   عاديًا، والميزة كاملة تبقى عند حساب المالك. واسما «مها/عبدالله» يُخفيان
+   من نصوص الإعدادات للجميع. للإلغاء لاحقًا: احذف هذا البلوك وحارس
+   mahaStartCall أعلاه. */
+(function(){
+  function __ownerAcct(){
+    try{ return String((typeof authGet === 'function' && authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }
+    catch(e){ return false; }
+  }
+  window.__mahaPaused = !__ownerAcct();
+  if(window.__mahaPaused){
+    var st = document.createElement('style');
+    st.id = 'mahaPauseCss';
+    st.textContent = '#btnMahaDock, #btnMaha{ display:none !important; }';
+    document.head.appendChild(st);
+  }
+  /* أسماء الإعدادات محايدة (كلمة كاملة فقط — «مهام» وأشباهها لا تُمس) */
+  function __scrubNames(){
+    try{
+      var root = document.getElementById('settingsDialog');
+      if(!root) return;
+      var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+      var n;
+      while((n = w.nextNode())){
+        var s = n.nodeValue;
+        if(!s || !(/مها|عبدالله|Maha|Abdullah/.test(s))) continue;
+        n.nodeValue = s
+          .replace(/[؀-ۿ]+/g, function(word){
+            if(word === 'مها') return 'المساعد الصوتي';
+            if(word === 'عبدالله') return 'المساعد';
+            return word;
+          })
+          .replace(/\bMaha\b/g, 'Assistant')
+          .replace(/\bAbdullah\b/g, 'Assistant');
+      }
+    }catch(e){ /* guard-ok: تنظيف تجميلي — فشله لا يعطل الإعدادات */ }
+  }
+  var sb = document.getElementById('btnSettings');
+  if(sb) sb.addEventListener('click', function(){ setTimeout(__scrubNames, 150); setTimeout(__scrubNames, 700); });
 })();
