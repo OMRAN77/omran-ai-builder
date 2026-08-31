@@ -35,6 +35,34 @@ function promptFor(mode, question, lang) {
 // v-eye-rescue: خط الإنقاذ الثامن — إن غاب مفتاح Gemini أو تعطّل أو أعاد
 // نصًا فارغًا، تُكمل «عين عمران» عبر رؤية OpenAI بنفس التوجيه تمامًا،
 // فلا يموت المرشد بموت مزوّد واحد.
+// v-eye-claude (فحص النظام: gemini_429 ×27 — حصة Gemini منتهية): إنقاذ أول
+// عبر Claude — نفس عقل المحادثة والمرشد، وOpenAI يبقى خط الإنقاذ الأخير.
+async function claudeRescue(image, prompt) {
+  const akey = process.env.ANTHROPIC_API_KEY;
+  if (!akey) return null;
+  try {
+    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': akey, 'anthropic-version': '2023-06-01' },
+      signal: AbortSignal.timeout(45000),
+      body: JSON.stringify({
+        model: process.env.VISUAL_GUIDE_CLAUDE_MODEL || 'claude-sonnet-5', // keep in sync with api/_lib/claude.js
+        max_tokens: 600,
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: image.mime, data: image.b64 } },
+          { type: 'text', text: prompt }
+        ] }]
+      })
+    });
+    if (!upstream.ok) { logError('visual-guide:claude', new Error('claude_' + upstream.status), { status: upstream.status }); return null; }
+    const data = await upstream.json().catch(() => null);
+    const text = String((data && data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n') || '').trim();
+    return text || null;
+  } catch (error) {
+    logError('visual-guide:claude', error, {});
+    return null;
+  }
+}
 async function openaiRescue(image, prompt) {
   const okey = process.env.OPENAI_API_KEY;
   if (!okey) return null;
@@ -93,6 +121,7 @@ module.exports = async function visualGuide(req, res) {
       }
     }
     let engine = text ? 'gemini' : '';
+    if (!text) { text = (await claudeRescue(image, prompt)) || ''; if (text) engine = 'claude'; }
     if (!text) { text = (await openaiRescue(image, prompt)) || ''; if (text) engine = 'openai'; }
     if (!text) { res.status(key ? 502 : 503).json({ error: key ? 'vision_unavailable' : 'visual_guide_unavailable' }); return; }
     // v-eye-probe: اسم المحرك في الرد — العميل يتجاهله والمجس يشخّص به.

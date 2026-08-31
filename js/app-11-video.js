@@ -99,8 +99,10 @@
       lines.push(missing.length ? ('❌ مفاتيح ناقصة: ' + missing.join(', ')) : '✅ كل مفاتيح API موجودة');
       if(d.clientErrorsCount > 0){
         lines.push('⚠️ أخطاء مسجلة من المستخدمين: ' + d.clientErrorsCount);
+        /* v-err-date: بلا تاريخ لا نفرق خطأ اليوم عن خطأ الأسبوع الماضي */
+        const __fmtD = (iso) => { try{ return iso ? new Date(iso).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : ''; }catch(_){ return ''; } };
         d.clientErrors.slice(0,5).forEach(e => {
-          lines.push('   • ' + String(e.message || '').slice(0,160) + (e.count > 1 ? ' (x' + e.count + ')' : ''));
+          lines.push('   • ' + String(e.message || '').slice(0,160) + (e.count > 1 ? ' (x' + e.count + ')' : '') + (__fmtD(e.lastSeen) ? ' — ' + __fmtD(e.lastSeen) : ''));
           /* v-crash-stack: انهيارات غلاف الأندرويد تُعرض بمكدسها — التشخيص
              يحتاج اسم الصنف والسطر لا الرسالة وحدها. */
           if(/android/i.test(String(e.source || '')) && e.stack){
@@ -116,7 +118,8 @@
       if(d.serverErrorsCount > 0){
         lines.push('⚠️ أخطاء الخادم: ' + d.serverErrorsCount);
         (d.serverErrors || []).slice(0,5).forEach(e => {
-          lines.push('   • [' + (e.route || '?') + (e.action ? '/' + e.action : '') + '] ' + String(e.message || '').slice(0,110) + (e.count > 1 ? ' (x' + e.count + ')' : ''));
+          const __d2 = (() => { try{ const v = e.lastAt || e.at; return v ? new Date(v).toLocaleString('en-GB', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : ''; }catch(_){ return ''; } })();
+          lines.push('   • [' + (e.route || '?') + (e.action ? '/' + e.action : '') + '] ' + String(e.message || '').slice(0,110) + (e.count > 1 ? ' (x' + e.count + ')' : '') + (__d2 ? ' — ' + __d2 : ''));
         });
       } else {
         lines.push('✅ لا توجد أخطاء في الخادم');
