@@ -262,13 +262,13 @@ module.exports = async (req, res) => {
 
     // ١١. الهدف تحقق
     if (step.done) {
-      res.status(200).json({ kind: 'done', screen: step.screen, message: step.instruction || (lang.startsWith('en') ? 'Done! Your goal has been achieved.' : 'تم! وصلت للهدف.'), price: step.price, _via: viaOf(), stored: false });
+      res.status(200).json({ kind: 'done', screen: step.screen, message: (step.analysis && !step.instruction ? step.analysis + '\n\n' : '') + (step.instruction || (lang.startsWith('en') ? 'Done! Your goal has been achieved.' : 'تم! وصلت للهدف.')), price: step.price, _via: viaOf(), stored: false });
       return;
     }
 
     // ١٢. سؤال توضيحي
     if (step.askFor) {
-      res.status(200).json({ kind: 'ask', message: step.askFor, _via: viaOf(), stored: false });
+      res.status(200).json({ kind: 'ask', message: (step.analysis ? step.analysis + '\n\n' : '') + step.askFor, _via: viaOf(), stored: false });
       return;
     }
 
@@ -276,6 +276,7 @@ module.exports = async (req, res) => {
     res.status(200).json({
       kind: 'step',
       screen: step.screen,
+      analysis: step.analysis,
       instruction: step.instruction,
       label: step.label,
       price: step.price,

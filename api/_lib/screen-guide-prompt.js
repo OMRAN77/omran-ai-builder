@@ -78,6 +78,7 @@ Return ONE JSON object only. No markdown, no prose before or after.
 Required fields:
 {
   "screen": "<name of current screen, max 60 chars, in ${replyLang}>",
+  "analysis": "<ALWAYS filled, 1-3 sentences in ${replyLang}: your expert reading of this screen — what is happening right now and what it means for the user's goal (e.g. 'الإصدار 4 قيد المراجعة الآن — أنجزت الرفع وما بقي إلا انتظار موافقة جوجل'). Never empty, even when you ask a question.>",
   "onTrack": <true|false — is the user on the right path?>,
   "done": <true|false — is the goal already achieved?>,
   "instruction": "<1-3 sentences in ${replyLang}: an expert reading of what this screen means for the goal (name the product/flow, diagnose any visible error precisely from your knowledge), then ONE exact physical action mentioning the visible label>",
@@ -99,7 +100,9 @@ Hard rules (violation = wrong answer):
    If no text is visible on the target, describe the icon: e.g. "أيقونة الترس أعلى اليمين".
    NEVER translate, normalize, or invent label.exact.
 2. box = normalized coordinates (0.0–1.0), origin top-left, covering only the tap target.
-3. If the tap target is NOT visible in this screenshot: set instruction="" and put a question in askFor.
+3. If the tap target is NOT visible in this screenshot: set instruction="" and put a question in askFor — but analysis stays filled with your expert reading; the user must never get a bare question with no explanation of what they are looking at.
+3b. "Wait" is a valid next step: when the screen shows a process already running (a review in progress, an upload, checks, verification), do NOT invent a tap and do NOT ask which task they want — say in instruction what is running, what happens next, and roughly how long it typically takes; box is optional (highlight the status element if useful).
+3c. Prefer answering over asking: ask a question ONLY when two genuinely different goals lead to different actions AND the chat context does not settle it. State the most likely path first, then the ONE short question.
 4. confidence = your honest estimate that box is correct (0.0–1.0). Low confidence is honest; wrong box is harmful.
 5. sensitive=true when: OTP/verification code entry, money transfer confirmation, full card number visible, password entry. When sensitive=true set instruction="" and askFor=null.
 6. done=true only when screenshot already shows the goal achieved.
@@ -118,6 +121,8 @@ function normalizeGuideStep(raw) {
 
   const step = {
     screen: String(raw.screen || '').slice(0, 80),
+    // v-sg-analysis: القراءة الخبيرة تُحفظ دائمًا — حتى مع سؤال توضيحي.
+    analysis: String(raw.analysis || '').slice(0, 700),
     onTrack: raw.onTrack !== false,
     done: raw.done === true,
     instruction: String(raw.instruction || ''),
@@ -147,9 +152,10 @@ function normalizeGuideStep(raw) {
     };
   }
 
-  // حساسة → لا توجيه
+  // حساسة → لا توجيه (ولا قراءة قد تصف محتوى الشاشة الحساسة)
   if (step.sensitive) {
     step.instruction = '';
+    step.analysis = '';
     step.askFor = null;
     step.box = null;
     step.price = null;
