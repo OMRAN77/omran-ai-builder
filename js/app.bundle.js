@@ -15978,8 +15978,13 @@ async function sendPrompt(){
     const __SG_NOT_RE = /(?:^|\s)(?:عدل|عدّل|غير|غيّر|امسح|احذف|شيل|ارسم|صمم|صمّم|ولّد|ولد)\s|اعمل\s+(?:بوستر|بطاقة|إعلان|تصميم|صورة)|(?:create|design|edit|remove|delete|generate)\s+(?:image|poster|design|logo)|(?:^|\s)(?:ابني|بناء|انشئ|اصنع)\s/i;
     // صورة بلا سؤال: نحلل ما يظهر، لكن لا نفترض معاملة أو زرًا؛ نطلب من المستخدم اختيار هدفه بعد الوصف.
     // طلبات التعديل والتصميم تبقى في مسار الصور العادي ولا تدخل هنا.
-    const __sgImplicit = __sgReal.length >= 1 && !String(text || '').trim();
-    const __sgMatch = __sgReal.length >= 1 && !cur.adMode && !__SG_NOT_RE.test(text) && (__sgImplicit || __SG_GUIDE_RE.test(text));
+    /* v-sg-cont (شكوى عمران): داخل جلسة إرشاد نشطة، إرسال اللقطة التالية بلا
+       نص كان يُعامل كطلب وصف محايد جديد («لا نفترض هدفًا») بدل متابعة
+       الإرشاد — لو في خطوات إرشاد سابقة قريبة، الصورة الصامتة = «هذه الشاشة
+       التالية، كمّل». */
+    const __sgActive = cur.messages.slice(-8).some(function(m){ return m._sgStep; });
+    const __sgImplicit = __sgReal.length >= 1 && !String(text || '').trim() && !__sgActive;
+    const __sgMatch = __sgReal.length >= 1 && !cur.adMode && !__SG_NOT_RE.test(text) && (__sgImplicit || (__sgActive && !String(text || '').trim()) || __SG_GUIDE_RE.test(text));
     if(__sgMatch){
       const __sgImg = __sgReal[0];
       const __sgB64 = (__sgImg.dataUrl || '').indexOf(',') !== -1 ? __sgImg.dataUrl.split(',')[1] : (__sgImg.dataUrl || '');
