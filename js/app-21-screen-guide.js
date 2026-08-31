@@ -42,7 +42,7 @@
       cv.width = w; cv.height = h;
       cv.getContext('2d').drawImage(img, 0, sy, img.naturalWidth, sh, 0, 0, w, h);
       var dataUrl = cv.toDataURL('image/jpeg', JPEG_Q);
-      return { b64: dataUrl.slice(dataUrl.indexOf(',') + 1), mime: 'image/jpeg', w: w, h: h, dataUrl: dataUrl };
+      return { b64: dataUrl.slice(dataUrl.indexOf(',') + 1), mime: 'image/jpeg', w: w, h: h, dataUrl: dataUrl, cv: cv };
     });
   }
 
@@ -56,8 +56,15 @@
     var cv = document.createElement('canvas');
     cv.width = shot.w; cv.height = shot.h;
     var ctx = cv.getContext('2d');
-    var im  = new Image(); im.src = shot.dataUrl;
-    ctx.drawImage(im, 0, 0, cv.width, cv.height);
+    // مصدر مضمون الفكّ: كانفاس التحضير أو Image محمَّلة مسبقًا — Image جديدة من
+    // dataUrl قد لا تكون مفكوكة لحظة الرسم فتخرج الخلفية سوداء.
+    var src = shot.cv || (shot.img && shot.img.complete && shot.img.naturalWidth ? shot.img : null);
+    if (!src) {
+      var im = new Image(); im.src = shot.dataUrl;
+      if (!(im.complete && im.naturalWidth)) return shot.dataUrl;
+      src = im;
+    }
+    ctx.drawImage(src, 0, 0, cv.width, cv.height);
 
     var x = box.x * cv.width,  y = box.y * cv.height;
     var w = box.w * cv.width,  h = box.h * cv.height;
@@ -120,6 +127,8 @@
     if (onLoading) onLoading(true);
 
     return prepareShot(file).then(function (shot) {
+      // اللقطة المحفوظة للرسم لاحقًا — بدونها لا يُرسم الإطار على الردّ.
+      window.__sgLastShot = shot;
       var payload = {
         goal:      goalText,
         imageB64:  shot.b64,
