@@ -405,6 +405,68 @@ module.exports = withErrorCapture('edu', async (req, res) => {
       return;
     }
 
+    // ---------------- lesson-script ----------------
+    // v-edu-14: كانت صفحة «التعليم» (edu-old/) تولّد السكربت من خلفية
+    // omran-edu.vercel.app القديمة التي تعرف 7 لغات فقط وغير موصولة بالنشر
+    // التلقائي — نُقل التوليد هنا بكل لغات التطبيق الـ14. نفس شكل الطلب والرد.
+    if (action === 'lesson-script') {
+      const oaiKey = process.env.OPENAI_API_KEY;
+      if (!oaiKey) { res.status(500).json({ error: 'Server is missing OPENAI_API_KEY' }); return; }
+      const topic = body.topic;
+      if (!topic || String(topic).trim().length < 2) { res.status(400).json({ error: 'Missing topic' }); return; }
+      // الصفحة لا ترسل توكن — سقف يومي بالـIP يحمي المفتاح دون تغيير التجربة.
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        if (await overDailyLimit(subject, 'lscript', 20)) {
+          res.status(402).json({ error: 'وصلت للحد اليومي لدروس الفيديو. عد غدًا 🌙' });
+          return;
+        }
+      }
+
+      const mins = Math.max(3, Math.min(45, Number(body.durationMinutes) || 10));
+      const langCode = body.lang || 'ar';
+      const LS_LANG_NAMES = {
+        ar: 'Arabic (Modern Standard Arabic, فصحى)', en: 'English', fr: 'French',
+        hi: 'Hindi', ur: 'Urdu', bn: 'Bengali', ne: 'Nepali', es: 'Spanish',
+        fil: 'Filipino (Tagalog)', id: 'Indonesian', ml: 'Malayalam', ru: 'Russian',
+        tr: 'Turkish', zh: 'Chinese (Simplified, 简体中文)',
+      };
+      const langName = LS_LANG_NAMES[langCode] || LS_LANG_NAMES.ar;
+      const levelLabel = body.level === 'university' ? 'university' : 'school';
+      const targetSlides = Math.max(3, Math.round(mins / 1.5));
+      const totalWords = Math.round(mins * 140);
+
+      const sys = 'You are an expert curriculum designer. Generate a complete lesson script as JSON only (no text outside JSON). The lesson is at ' + levelLabel + ' level. ALL text values in the JSON (title, heading, bullets, narration) MUST be written entirely in ' + langName + ' — do not mix in other languages. Content must be accurate, well organized, and sized for a video of about ' + mins + ' minutes (~' + totalWords + ' total narration words spread across slides).';
+      const userMsg = 'Topic: "' + String(topic).slice(0, 500) + '"\n\nGenerate about ' + targetSlides + ' slides (a bit more or fewer if truly needed). Write every field in ' + langName + '. Return ONLY JSON in exactly this shape:\n{\n  "title": "Lesson title (in ' + langName + ')",\n  "slides": [\n    { "heading": "Slide heading (in ' + langName + ')", "bullets": ["point 1", "point 2", "point 3"] (in ' + langName + '), "narration": "Full narration text a natural voice will read for this slide, in ' + langName + ', clear and easy to understand" }\n  ]\n}\nFirst slide is always an intro, last slide is a summary/conclusion.';
+
+      const upstream = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + oaiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'system', content: sys }, { role: 'user', content: userMsg }],
+          temperature: 0.7,
+          response_format: { type: 'json_object' },
+        }),
+      });
+      if (!upstream.ok) {
+        const errText = await upstream.text();
+        res.status(upstream.status).json({ error: 'OpenAI error: ' + errText.slice(0, 500) });
+        return;
+      }
+      const oaiData = await upstream.json();
+      const content = oaiData && oaiData.choices && oaiData.choices[0] && oaiData.choices[0].message && oaiData.choices[0].message.content;
+      if (!content) { res.status(502).json({ error: 'Empty response from model' }); return; }
+      let parsed;
+      try { parsed = JSON.parse(content); } catch (e) { res.status(502).json({ error: 'Model returned invalid JSON' }); return; }
+      if (!parsed.slides || !Array.isArray(parsed.slides) || parsed.slides.length === 0) {
+        res.status(502).json({ error: 'Model returned no slides' });
+        return;
+      }
+      res.status(200).json({ title: parsed.title || topic, slides: parsed.slides });
+      return;
+    }
+
     // ---------------- 📚 explain: درس من المنهج (بلد/مرحلة/صف/مادة/درس) — v655 ----------------
     if (action === 'explain') {
       const apiKey = process.env.ANTHROPIC_API_KEY;

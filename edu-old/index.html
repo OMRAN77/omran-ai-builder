@@ -172,6 +172,13 @@
       <option value="ur">اردو</option>
       <option value="bn">বাংলা</option>
       <option value="ne">नेपाली</option>
+      <option value="es">Español</option>
+      <option value="fil">Filipino</option>
+      <option value="id">Bahasa Indonesia</option>
+      <option value="ml">മലയാളം</option>
+      <option value="ru">Русский</option>
+      <option value="tr">Türkçe</option>
+      <option value="zh">中文</option>
     </select>
 
     <button class="primary" id="btnGenerateScript">✨ إنشاء سكربت الدرس</button>
@@ -198,7 +205,7 @@
   /* v-lang-follow: الصفحة صارت على نفس نطاق التطبيق — نرث لغة التطبيق
      (aiapp_lang) تلقائيًا ما لم يختر المستخدم لغة درس بنفسه من المنسدلة.
      لغة تطبيق خارج السبع المدعومة → إنجليزي (الخادم يرجع للعربية لو أُرسلت). */
-  const EDU_LANGS = ['ar','en','fr','hi','ur','bn','ne'];
+  const EDU_LANGS = ['ar','en','fr','hi','ur','bn','ne','es','fil','id','ml','ru','tr','zh'];
   let lang = (function(){
     try {
       const saved = localStorage.getItem('omranedu_lang');
@@ -330,6 +337,133 @@
       min40:'40 मिनेट', voiceMale:'पुरुष (Onyx)', voiceFemale:'महिला (Nova)',
       voiceNeutral:'तटस्थ (Alloy)',
     },
+    /* v-edu-14: بقية لغات التطبيق الـ14 — كانت الصفحة تسقط للإنجليزية */
+    es: {
+      brand:'Educación', setupTitle:'📝 Crea tu lección', lblTopic:'Tema de la lección',
+      topicPh:'ej.: El sistema circulatorio humano', lblDuration:'Duración aproximada del video',
+      lblLevel:'Nivel', school:'Escolar', university:'Universitario', lblVoice:'Voz del narrador', lblUiLang:'Idioma de la lección',
+      btnGenScript:'✨ Generar el guion de la lección', editorTitle:'📑 Revisa y edita las diapositivas',
+      btnGenVideo:'🎬 Crear el video', download:'⬇️ Descargar video',
+      footer:'Omran Edu — impulsado por IA',
+      genScriptWorking:'✨ Generando el guion de la lección con IA...', genScriptErr:'❌ Error: ',
+      needTopic:'⚠️ Escribe primero el tema de la lección.',
+      slideHeading:'Título de la diapositiva', slideBullets:'Puntos clave (uno por línea)', slideNarration:'Texto de narración',
+      slideLabel:'Diapositiva',
+      genSlideImg:'🖼️ Preparando la diapositiva ', genSlideAudio:'🔊 Generando el audio de la diapositiva ',
+      buildingClip:'🎞️ Creando el clip de la diapositiva ', joining:'🔗 Uniendo todas las diapositivas en un solo video...',
+      done:'✅ ¡Video creado con éxito!', videoErr:'❌ Error al crear el video: ',
+      loadingFFmpeg:'⚙️ Cargando las herramientas de video (solo la primera vez, puede tardar un minuto)...',
+      min5:'5 minutos', min10:'10 minutos', min15:'15 minutos', min20:'20 minutos', min30:'30 minutos', min40:'40 minutos',
+      voiceMale:'Masculina (Onyx)', voiceFemale:'Femenina (Nova)', voiceNeutral:'Neutra (Alloy)',
+    },
+    fil: {
+      brand:'Edukasyon', setupTitle:'📝 Gumawa ng iyong aralin', lblTopic:'Paksa ng aralin',
+      topicPh:'hal.: Ang sistema ng sirkulasyon ng tao', lblDuration:'Tinatayang haba ng video',
+      lblLevel:'Antas', school:'Paaralan', university:'Unibersidad', lblVoice:'Boses ng tagapagsalaysay', lblUiLang:'Wika ng aralin',
+      btnGenScript:'✨ Buuin ang script ng aralin', editorTitle:'📑 Suriin at i-edit ang mga slide',
+      btnGenVideo:'🎬 Gawin ang video', download:'⬇️ I-download ang video',
+      footer:'Omran Edu — pinapagana ng AI',
+      genScriptWorking:'✨ Binubuo ang script ng aralin gamit ang AI...', genScriptErr:'❌ Error: ',
+      needTopic:'⚠️ Isulat muna ang paksa ng aralin.',
+      slideHeading:'Pamagat ng slide', slideBullets:'Mga pangunahing punto (isa bawat linya)', slideNarration:'Teksto ng pagsasalaysay',
+      slideLabel:'Slide',
+      genSlideImg:'🖼️ Inihahanda ang slide ', genSlideAudio:'🔊 Binubuo ang audio para sa slide ',
+      buildingClip:'🎞️ Binubuo ang clip para sa slide ', joining:'🔗 Pinagsasama ang lahat ng slide sa isang video...',
+      done:'✅ Matagumpay na nagawa ang video!', videoErr:'❌ Error sa paggawa ng video: ',
+      loadingFFmpeg:'⚙️ Nilo-load ang mga tool sa video (unang beses lang, maaaring tumagal ng isang minuto)...',
+      min5:'5 minuto', min10:'10 minuto', min15:'15 minuto', min20:'20 minuto', min30:'30 minuto', min40:'40 minuto',
+      voiceMale:'Lalaki (Onyx)', voiceFemale:'Babae (Nova)', voiceNeutral:'Neutral (Alloy)',
+    },
+    id: {
+      brand:'Pendidikan', setupTitle:'📝 Buat pelajaran Anda', lblTopic:'Topik pelajaran',
+      topicPh:'mis.: Sistem peredaran darah manusia', lblDuration:'Perkiraan durasi video',
+      lblLevel:'Tingkat', school:'Sekolah', university:'Universitas', lblVoice:'Suara narator', lblUiLang:'Bahasa pelajaran',
+      btnGenScript:'✨ Buat naskah pelajaran', editorTitle:'📑 Tinjau dan edit slide',
+      btnGenVideo:'🎬 Buat video', download:'⬇️ Unduh video',
+      footer:'Omran Edu — didukung AI',
+      genScriptWorking:'✨ Sedang membuat naskah pelajaran dengan AI...', genScriptErr:'❌ Kesalahan: ',
+      needTopic:'⚠️ Tulis dulu topik pelajarannya.',
+      slideHeading:'Judul slide', slideBullets:'Poin-poin (satu per baris)', slideNarration:'Teks narasi',
+      slideLabel:'Slide',
+      genSlideImg:'🖼️ Menyiapkan slide ', genSlideAudio:'🔊 Membuat audio untuk slide ',
+      buildingClip:'🎞️ Menyusun klip untuk slide ', joining:'🔗 Menggabungkan semua slide menjadi satu video...',
+      done:'✅ Video berhasil dibuat!', videoErr:'❌ Kesalahan saat membuat video: ',
+      loadingFFmpeg:'⚙️ Memuat alat pemrosesan video (hanya pertama kali, bisa memakan waktu satu menit)...',
+      min5:'5 menit', min10:'10 menit', min15:'15 menit', min20:'20 menit', min30:'30 menit', min40:'40 menit',
+      voiceMale:'Pria (Onyx)', voiceFemale:'Wanita (Nova)', voiceNeutral:'Netral (Alloy)',
+    },
+    ml: {
+      brand:'വിദ്യാഭ്യാസം', setupTitle:'📝 നിങ്ങളുടെ പാഠം സൃഷ്ടിക്കുക', lblTopic:'പാഠത്തിന്റെ വിഷയം',
+      topicPh:'ഉദാ: മനുഷ്യ രക്തചംക്രമണ വ്യവസ്ഥ', lblDuration:'വീഡിയോയുടെ ഏകദേശ ദൈർഘ്യം',
+      lblLevel:'നില', school:'സ്കൂൾ', university:'സർവകലാശാല', lblVoice:'ആഖ്യാതാവിന്റെ ശബ്ദം', lblUiLang:'പാഠത്തിന്റെ ഭാഷ',
+      btnGenScript:'✨ പാഠ സ്ക്രിപ്റ്റ് സൃഷ്ടിക്കുക', editorTitle:'📑 സ്ലൈഡുകൾ അവലോകനം ചെയ്ത് എഡിറ്റ് ചെയ്യുക',
+      btnGenVideo:'🎬 വീഡിയോ സൃഷ്ടിക്കുക', download:'⬇️ വീഡിയോ ഡൗൺലോഡ് ചെയ്യുക',
+      footer:'ഒംറാൻ എജു — AI പിന്തുണയോടെ',
+      genScriptWorking:'✨ AI ഉപയോഗിച്ച് പാഠ സ്ക്രിപ്റ്റ് സൃഷ്ടിക്കുന്നു...', genScriptErr:'❌ പിശക്: ',
+      needTopic:'⚠️ ആദ്യം പാഠത്തിന്റെ വിഷയം എഴുതുക.',
+      slideHeading:'സ്ലൈഡ് തലക്കെട്ട്', slideBullets:'പ്രധാന പോയിന്റുകൾ (ഓരോ വരിയിലും ഒന്ന്)', slideNarration:'ആഖ്യാന വാചകം',
+      slideLabel:'സ്ലൈഡ്',
+      genSlideImg:'🖼️ സ്ലൈഡ് തയ്യാറാക്കുന്നു ', genSlideAudio:'🔊 സ്ലൈഡിനുള്ള ഓഡിയോ സൃഷ്ടിക്കുന്നു ',
+      buildingClip:'🎞️ സ്ലൈഡിന്റെ ക്ലിപ്പ് നിർമ്മിക്കുന്നു ', joining:'🔗 എല്ലാ സ്ലൈഡുകളും ഒരു വീഡിയോയായി ചേർക്കുന്നു...',
+      done:'✅ വീഡിയോ വിജയകരമായി സൃഷ്ടിച്ചു!', videoErr:'❌ വീഡിയോ സൃഷ്ടിക്കുന്നതിൽ പിശക്: ',
+      loadingFFmpeg:'⚙️ വീഡിയോ ഉപകരണങ്ങൾ ലോഡ് ചെയ്യുന്നു (ആദ്യ തവണ മാത്രം, ഒരു മിനിറ്റ് എടുത്തേക്കാം)...',
+      min5:'5 മിനിറ്റ്', min10:'10 മിനിറ്റ്', min15:'15 മിനിറ്റ്', min20:'20 മിനിറ്റ്', min30:'30 മിനിറ്റ്', min40:'40 മിനിറ്റ്',
+      voiceMale:'പുരുഷൻ (Onyx)', voiceFemale:'സ്ത്രീ (Nova)', voiceNeutral:'നിഷ്പക്ഷം (Alloy)',
+    },
+    ru: {
+      brand:'Образование', setupTitle:'📝 Создайте свой урок', lblTopic:'Тема урока',
+      topicPh:'напр.: Кровеносная система человека', lblDuration:'Примерная длительность видео',
+      lblLevel:'Уровень', school:'Школьный', university:'Университетский', lblVoice:'Голос диктора', lblUiLang:'Язык урока',
+      btnGenScript:'✨ Создать сценарий урока', editorTitle:'📑 Просмотрите и отредактируйте слайды',
+      btnGenVideo:'🎬 Создать видео', download:'⬇️ Скачать видео',
+      footer:'Omran Edu — на базе ИИ',
+      genScriptWorking:'✨ ИИ создаёт сценарий урока...', genScriptErr:'❌ Ошибка: ',
+      needTopic:'⚠️ Сначала введите тему урока.',
+      slideHeading:'Заголовок слайда', slideBullets:'Пункты (по одному на строку)', slideNarration:'Текст озвучки',
+      slideLabel:'Слайд',
+      genSlideImg:'🖼️ Подготовка слайда ', genSlideAudio:'🔊 Создание аудио для слайда ',
+      buildingClip:'🎞️ Сборка клипа для слайда ', joining:'🔗 Объединение всех слайдов в одно видео...',
+      done:'✅ Видео успешно создано!', videoErr:'❌ Ошибка при создании видео: ',
+      loadingFFmpeg:'⚙️ Загрузка инструментов обработки видео (только в первый раз, может занять минуту)...',
+      min5:'5 минут', min10:'10 минут', min15:'15 минут', min20:'20 минут', min30:'30 минут', min40:'40 минут',
+      voiceMale:'Мужской (Onyx)', voiceFemale:'Женский (Nova)', voiceNeutral:'Нейтральный (Alloy)',
+    },
+    tr: {
+      brand:'Eğitim', setupTitle:'📝 Dersini oluştur', lblTopic:'Ders konusu',
+      topicPh:'örn.: İnsanda dolaşım sistemi', lblDuration:'Yaklaşık video süresi',
+      lblLevel:'Seviye', school:'Okul', university:'Üniversite', lblVoice:'Anlatıcı sesi', lblUiLang:'Ders dili',
+      btnGenScript:'✨ Ders senaryosu oluştur', editorTitle:'📑 Slaytları incele ve düzenle',
+      btnGenVideo:'🎬 Videoyu oluştur', download:'⬇️ Videoyu indir',
+      footer:'Omran Edu — yapay zekâ destekli',
+      genScriptWorking:'✨ Ders senaryosu yapay zekâ ile oluşturuluyor...', genScriptErr:'❌ Hata: ',
+      needTopic:'⚠️ Önce ders konusunu yazın.',
+      slideHeading:'Slayt başlığı', slideBullets:'Maddeler (her satıra bir tane)', slideNarration:'Seslendirme metni',
+      slideLabel:'Slayt',
+      genSlideImg:'🖼️ Slayt hazırlanıyor ', genSlideAudio:'🔊 Slayt için ses oluşturuluyor ',
+      buildingClip:'🎞️ Slayt için klip oluşturuluyor ', joining:'🔗 Tüm slaytlar tek videoda birleştiriliyor...',
+      done:'✅ Video başarıyla oluşturuldu!', videoErr:'❌ Video oluşturulurken hata: ',
+      loadingFFmpeg:'⚙️ Video işleme araçları yükleniyor (yalnızca ilk sefer, bir dakika sürebilir)...',
+      min5:'5 dakika', min10:'10 dakika', min15:'15 dakika', min20:'20 dakika', min30:'30 dakika', min40:'40 dakika',
+      voiceMale:'Erkek (Onyx)', voiceFemale:'Kadın (Nova)', voiceNeutral:'Nötr (Alloy)',
+    },
+    zh: {
+      brand:'教育', setupTitle:'📝 创建你的课程', lblTopic:'课程主题',
+      topicPh:'例如：人体血液循环系统', lblDuration:'视频大致时长',
+      lblLevel:'级别', school:'中小学', university:'大学', lblVoice:'旁白声音', lblUiLang:'课程语言',
+      btnGenScript:'✨ 生成课程脚本', editorTitle:'📑 查看并编辑幻灯片',
+      btnGenVideo:'🎬 生成视频', download:'⬇️ 下载视频',
+      footer:'Omran 教育 — AI 驱动',
+      genScriptWorking:'✨ 正在用 AI 生成课程脚本…', genScriptErr:'❌ 错误：',
+      needTopic:'⚠️ 请先输入课程主题。',
+      slideHeading:'幻灯片标题', slideBullets:'要点（每行一个）', slideNarration:'旁白文字',
+      slideLabel:'幻灯片',
+      genSlideImg:'🖼️ 正在准备幻灯片 ', genSlideAudio:'🔊 正在生成幻灯片音频 ',
+      buildingClip:'🎞️ 正在合成幻灯片片段 ', joining:'🔗 正在把所有幻灯片合并为一个视频…',
+      done:'✅ 视频生成成功！', videoErr:'❌ 生成视频时出错：',
+      loadingFFmpeg:'⚙️ 正在加载视频处理工具（仅首次，可能需要一分钟）…',
+      min5:'5 分钟', min10:'10 分钟', min15:'15 分钟', min20:'20 分钟', min30:'30 分钟', min40:'40 分钟',
+      voiceMale:'男声 (Onyx)', voiceFemale:'女声 (Nova)', voiceNeutral:'中性 (Alloy)',
+    },
   };
 
   const RTL_LANGS = ['ar', 'ur'];
@@ -450,9 +584,11 @@
     $('#btnGenerateScript').disabled = true;
     setStatus1(T('genScriptWorking'));
     try{
-      const res = await fetch('https://omran-edu.vercel.app/api/lesson-script', {
+      /* v-edu-14: التوليد صار من خادم التطبيق نفسه (14 لغة) — الخلفية القديمة
+         تعرف 7 لغات فقط وترجع للعربية فيما عداها. TTS/STT باقيان عليها. */
+      const res = await fetch('/api/edu', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ topic, durationMinutes: duration, lang, level })
+        body: JSON.stringify({ action: 'lesson-script', topic, durationMinutes: duration, lang, level })
       });
       const data = await res.json();
       if(!res.ok || data.error) throw new Error(data.error || 'unknown');
@@ -689,7 +825,7 @@
     });
   }
   const miniMicStates = {};
-  const MIC_ERR = { ar:'المتصفح لا يدعم إدخال الصوت. جرّب متصفح Chrome.', en:'This browser does not support voice input. Try Chrome.', fr:"Ce navigateur ne prend pas en charge la saisie vocale. Essayez Chrome.", hi:'यह ब्राउज़र वॉइस इनपुट का समर्थन नहीं करता। Chrome आज़माएं।', ur:'یہ براؤزر وائس ان پٹ کو سپورٹ نہیں کرتا۔ Chrome آزمائیں۔', bn:'এই ব্রাউজার ভয়েস ইনপুট সমর্থন করে না। Chrome ব্যবহার করুন।', ne:'यो ब्राउजरले आवाज इनपुट समर्थन गर्दैन। Chrome प्रयोग गर्नुहोस्।' };
+  const MIC_ERR = { ar:'المتصفح لا يدعم إدخال الصوت. جرّب متصفح Chrome.', en:'This browser does not support voice input. Try Chrome.', fr:"Ce navigateur ne prend pas en charge la saisie vocale. Essayez Chrome.", hi:'यह ब्राउज़र वॉइस इनपुट का समर्थन नहीं करता। Chrome आज़माएं।', ur:'یہ براؤزر وائس ان پٹ کو سپورٹ نہیں کرتا۔ Chrome آزمائیں۔', bn:'এই ব্রাউজার ভয়েস ইনপুট সমর্থন করে না। Chrome ব্যবহার করুন।', ne:'यो ब्राउजरले आवाज इनपुट समर्थन गर्दैन। Chrome प्रयोग गर्नुहोस्।', es:'Este navegador no admite entrada de voz. Prueba Chrome.', fil:'Hindi sinusuportahan ng browser na ito ang voice input. Subukan ang Chrome.', id:'Browser ini tidak mendukung input suara. Coba Chrome.', ml:'ഈ ബ്രൗസർ വോയ്സ് ഇൻപുട്ട് പിന്തുണയ്ക്കുന്നില്ല. Chrome ഉപയോഗിക്കുക.', ru:'Этот браузер не поддерживает голосовой ввод. Попробуйте Chrome.', tr:'Bu tarayıcı sesli girişi desteklemiyor. Chrome deneyin.', zh:'此浏览器不支持语音输入。请尝试 Chrome。' };
   function micErr(){ return MIC_ERR[lang] || MIC_ERR.ar; }
 
   async function miniMicStart(btn, targetId){
