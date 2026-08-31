@@ -15988,7 +15988,14 @@ async function sendPrompt(){
     if(__sgMatch){
       const __sgImg = __sgReal[0];
       const __sgB64 = (__sgImg.dataUrl || '').indexOf(',') !== -1 ? __sgImg.dataUrl.split(',')[1] : (__sgImg.dataUrl || '');
-      const __sgGoal = __sgImplicit ? (lang === 'ar' ? '[DESCRIBE_ONLY] صف ما يظهر في هذه الصفحة فقط. اذكر اسم الصفحة أو الجهة إن كان ظاهرًا، والحقول أو الأزرار أو الرسائل المهمة الظاهرة. لا تفترض أن لدى المستخدم معاملة أو هدفًا، ثم اسأله ماذا يريد المساعدة فيه مع خيارات مناسبة لما يظهر.' : '[DESCRIBE_ONLY] Describe only what is visible on this page: identify the page or service if visible and list important fields, buttons, or messages. Do not assume a task for the user; then ask what they want help with and offer relevant choices.') : (String(text || '').trim() || (lang === 'ar' ? 'حلل هذه الشاشة: أين أنا في الإجراء الآن، وما الخطوة التالية بالضبط؟ قل لي أين أضغط أو أي قسم أراجع.' : 'Analyze this screen: where am I in the process, and what exact next step should I take? Tell me what to tap or which section to visit.'));
+      /* v-sg-expert (شكوى عمران «مستوى صفر»): الصورة الصامتة كانت تُرسل بأمر
+         «صِف فقط ولا تفترض هدفًا واسأل» فيخرج وصف بارد وسؤال — صارت قراءة
+         خبير: ماذا يحدث الآن وما الخطوة المنطقية التالية لحالة الشاشة. */
+      const __sgGoal = __sgImplicit ? (lang === 'ar' ? 'اقرأ هذه الشاشة كخبير في المنتج الظاهر فيها: قل لي ماذا يحدث فيها بالضبط الآن، وما أهم خطوة تالية منطقية لحالتها الظاهرة (زر يُضغط، أمر يُنتظر، حقل يُعبّأ). إن احتمل الوضع هدفين مختلفين فاذكر الأرجح أولًا ثم اسأل سؤالًا واحدًا قصيرًا.' : 'Read this screen like an expert in the product shown: tell me exactly what is happening right now and the single most logical next step for its visible state (a button to press, a process to wait for, a field to fill). If two different goals are plausible, state the most likely first, then ask ONE short question.') : (String(text || '').trim() || (lang === 'ar' ? 'حلل هذه الشاشة: أين أنا في الإجراء الآن، وما الخطوة التالية بالضبط؟ قل لي أين أضغط أو أي قسم أراجع.' : 'Analyze this screen: where am I in the process, and what exact next step should I take? Tell me what to tap or which section to visit.'));
+      /* v-sg-ctx: آخر رسائل المحادثة النصية تمر للمرشد — يعرف سياقك وهدفك
+         كما يعرفه المساعد في المحادثة نفسها. */
+      let __sgCtx = [];
+      try{ __sgCtx = cur.messages.slice(-12).filter(function(m){ return !m._loading && !m._sgStep && typeof m.content === 'string' && m.content.trim(); }).slice(-4).map(function(m){ return (m.role === 'user' ? 'U: ' : 'A: ') + m.content.replace(/\s+/g, ' ').slice(0, 220); }); }catch(e){ /* guard-ok */ }
       const __sgToken = (typeof authGet === 'function' ? authGet('aiapp_auth_token') : null);
       const __sgGuest = (typeof window.getGuestId === 'function' ? window.getGuestId() : (typeof authGet === 'function' ? authGet('aiapp_guest') : null));
       const __sgLoadMsg = { role: 'assistant', content: lang === 'ar' ? '🔭 يحلل الشاشة…' : '🔭 Analyzing screen…', _loading: true };
@@ -16011,7 +16018,7 @@ async function sendPrompt(){
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             signal: genAbortController ? genAbortController.signal : undefined,
-            body: JSON.stringify({ goal: __sgGoal, imageB64: __sgB64, mime: __sgImg.mime || 'image/jpeg', lang: lang || 'ar', token: __sgToken, guestId: __sgGuest, sessionId: (cur._sgSessionId = cur._sgSessionId || ('sg_' + cur.id.slice(-8))), history: __sgHist }),
+            body: JSON.stringify({ goal: __sgGoal, imageB64: __sgB64, mime: __sgImg.mime || 'image/jpeg', lang: lang || 'ar', token: __sgToken, guestId: __sgGuest, sessionId: (cur._sgSessionId = cur._sgSessionId || ('sg_' + cur.id.slice(-8))), history: __sgHist, chatContext: __sgCtx }),
           });
           const __sgData = await __sgRes.json().catch(function(){ return {}; });
           let __sgText = '';
@@ -16038,8 +16045,6 @@ async function sendPrompt(){
           } else if(__sgData.error === 'auth_required'){ __sgText = __ar2 ? 'سجّل دخولك أولاً لاستخدام المرشد البصري.' : 'Please sign in to use the visual guide.';
           } else if(__sgData.error === 'no_points'){ __sgText = __ar2 ? 'نقاطك غير كافية — أضف رصيدًا لمتابعة المرشد البصري.' : 'Not enough points for the visual guide.'; cur._sgSessionId = null;
           } else { __sgText = __ar2 ? 'تعذّر تحليل الصورة — تأكد من اتصالك وحاول مرة أخرى.' : 'Could not analyze screenshot. Check your connection and retry.'; }
-          /* v-sg-via: للمالك فقط — أي نموذج أجاب فعلًا (تشخيص جودة الإرشاد) */
-          try{ if(__sgData._via && typeof authGet === 'function' && String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran') __sgText += '\n\n`🤖 ' + __sgData._via + '`'; }catch(e){ /* guard-ok */ }
           __sgLoadMsg.content = __sgText; __sgLoadMsg._loading = false;
           renderMessages(true); saveState();
         } catch(err){

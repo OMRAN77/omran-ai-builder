@@ -148,6 +148,10 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') body = safeParse(body || '{}', {}, 'screen-guide:body') || {};
 
     const { goal, token, guestId, lang = 'ar', appId, sessionId, history = [] } = body;
+    // v-sg-ctx: آخر رسائل المحادثة (نص فقط) — تكشف هدف المستخدم وسياقه.
+    const chatContext = Array.isArray(body.chatContext)
+      ? body.chatContext.filter((s) => typeof s === 'string').slice(-6).map((s) => s.slice(0, 300))
+      : [];
 
     // ١. بوابة الطلب الغامض — قبل أي خصم
     if (needsMoreInfo(goal)) {
@@ -195,7 +199,7 @@ module.exports = async (req, res) => {
     const appInfo = appId ? (apps[String(appId).toLowerCase()] || null) : null;
 
     // ٦. بناء التعليمة
-    const prompt = buildGuidePrompt(goal, { lang, app: appInfo, history: histArr, stuck });
+    const prompt = buildGuidePrompt(goal, { lang, app: appInfo, history: histArr, stuck, chatContext });
 
     // ٧. استدعاء Claude أولاً (الخبرة الحقيقية)، ثم Gemini احتياطًا
     let raw = null;
@@ -250,8 +254,8 @@ module.exports = async (req, res) => {
     // وضع الوصف المحايد لا يعني أن هدفًا تحقق؛ أعِد وصفًا وسؤالًا دائمًا.
     if (describeOnly) {
       const fallbackDescription = String(lang || 'ar').startsWith('en')
-        ? ('This page shows ' + (step.screen || 'an app form') + '. I will not assume what you want to do. What would you like help with?')
-        : ('تظهر صفحة ' + (step.screen || 'نموذج في تطبيق') + '. لن أفترض ما تريد إنجازه. ما الذي تريد المساعدة فيه؟');
+        ? ('This page shows ' + (step.screen || 'an app form') + '. What would you like help with?')
+        : ('تعرض هذه الصفحة ' + (step.screen || 'نموذجًا في تطبيق') + '. ما الذي تريد المساعدة فيه؟');
       res.status(200).json({ kind: 'ask', message: step.askFor || fallbackDescription, _via: viaOf(), stored: false });
       return;
     }
