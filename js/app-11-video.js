@@ -105,6 +105,16 @@
       } else {
         lines.push('✅ لا توجد أخطاء مسجلة من المستخدمين');
       }
+      /* v-health-srv: أخطاء الخادم نفسها (نداءات النماذج، المسارات) — كانت
+         تُسجّل في KV بلا أي نافذة عرض للمالك. */
+      if(d.serverErrorsCount > 0){
+        lines.push('⚠️ أخطاء الخادم: ' + d.serverErrorsCount);
+        (d.serverErrors || []).slice(0,5).forEach(e => {
+          lines.push('   • [' + (e.route || '?') + (e.action ? '/' + e.action : '') + '] ' + String(e.message || '').slice(0,110) + (e.count > 1 ? ' (x' + e.count + ')' : ''));
+        });
+      } else {
+        lines.push('✅ لا توجد أخطاء في الخادم');
+      }
     }catch(e){
       lines.push('❌ فحص الخادم فشل: ' + e.message);
     }

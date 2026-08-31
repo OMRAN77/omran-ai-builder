@@ -214,6 +214,8 @@ module.exports = async (req, res) => {
 
     let step = raw ? normalizeGuideStep(raw) : null;
     const describeOnly = String(goal || "").trim().startsWith("[DESCRIBE_ONLY]");
+    // v-sg-via: أي نموذج أجاب فعلًا — يظهر للمالك في العميل لتشخيص الجودة.
+    const viaOf = () => (fromClaude ? 'claude' : (usedFallback ? 'gpt-4o' : 'gemini'));
 
     // ٨. سلسلة النماذج: Claude لم يجب وثقة الاحتياط منخفضة → GPT-4o
     if (!fromClaude && oaiKey && (describeOnly || !step || (!step.sensitive && !step.askFor && !step.done && (step.confidence || 0) < CHAIN_THRESHOLD))) {
@@ -250,19 +252,19 @@ module.exports = async (req, res) => {
       const fallbackDescription = String(lang || 'ar').startsWith('en')
         ? ('This page shows ' + (step.screen || 'an app form') + '. I will not assume what you want to do. What would you like help with?')
         : ('تظهر صفحة ' + (step.screen || 'نموذج في تطبيق') + '. لن أفترض ما تريد إنجازه. ما الذي تريد المساعدة فيه؟');
-      res.status(200).json({ kind: 'ask', message: step.askFor || fallbackDescription, stored: false });
+      res.status(200).json({ kind: 'ask', message: step.askFor || fallbackDescription, _via: viaOf(), stored: false });
       return;
     }
 
     // ١١. الهدف تحقق
     if (step.done) {
-      res.status(200).json({ kind: 'done', screen: step.screen, message: step.instruction || (lang.startsWith('en') ? 'Done! Your goal has been achieved.' : 'تم! وصلت للهدف.'), price: step.price, stored: false });
+      res.status(200).json({ kind: 'done', screen: step.screen, message: step.instruction || (lang.startsWith('en') ? 'Done! Your goal has been achieved.' : 'تم! وصلت للهدف.'), price: step.price, _via: viaOf(), stored: false });
       return;
     }
 
     // ١٢. سؤال توضيحي
     if (step.askFor) {
-      res.status(200).json({ kind: 'ask', message: step.askFor, stored: false });
+      res.status(200).json({ kind: 'ask', message: step.askFor, _via: viaOf(), stored: false });
       return;
     }
 
@@ -281,6 +283,7 @@ module.exports = async (req, res) => {
       stuck,
       _imgHash: imgHash,   // يعاد للعميل فيحفظه في history لكشف التكرار لاحقًا
       usedFallback,
+      _via: viaOf(),
       stored: false,
     });
 
