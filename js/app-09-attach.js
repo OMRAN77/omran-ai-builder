@@ -4087,13 +4087,16 @@ DESIGN RULES (non-negotiable):
       // doesn't all pop in at once - a light typewriter feel rather than a
       // raw network-speed dump.
       const revealStates = new Map();
-      /* v-reveal-fast: كانت 2 حرف/35مث = ~57 حرفًا بالثانية — رد 1500 حرف
-         يقضي 26 ثانية «يتكتب» على الشاشة بعدما خلّص النموذج فعلًا. هذا جزء
-         كبير من إحساس «المحادثة 30 ثانية». الآن الوتيرة تكيفية: تسارع مع
-         تراكم النص المنتظر فلا تتأخر عن البث أكثر من نحو نصف ثانية، وتبقى
-         ناعمة في البدايات القصيرة. */
-      const REVEAL_TICK_MS = 16;
-      const __revealStep = (st) => Math.max(4, Math.ceil((st.target.length - st.shown) / 25));
+      /* v-reveal-slow (طلب عمران ٣١ أغسطس: «اريد سرعة المحادثة بطيئة»):
+         الوتيرة المتسارعة السابقة (v-reveal-fast) كانت تلحق البث خلال نصف
+         ثانية فيظهر الرد دفعة واحدة تقريبًا. رجعنا لإحساس الكتابة الهادئ
+         ~66 حرفًا بالثانية، مع تسريع فقط عند تراكم يفوق 1200 حرف حتى لا
+         يقضي ردٌّ طويل جدًا دقيقة كاملة «يتكتب» بعد اكتماله. */
+      const REVEAL_TICK_MS = 30;
+      const __revealStep = (st) => {
+        const left = st.target.length - st.shown;
+        return left > 1200 ? Math.ceil(left / 300) : 2;
+      };
       const ensureRevealTimer = (msg) => {
         let st = revealStates.get(msg._uid);
         if(!st){
