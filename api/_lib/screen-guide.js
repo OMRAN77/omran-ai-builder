@@ -31,7 +31,9 @@ const SESSION_PREFIX  = 'sg_charged_';  // مفتاح KV لتتبع الجلسا
 let KNOWN_APPS = null;
 function loadApps() {
   if (KNOWN_APPS) return KNOWN_APPS;
-  try { KNOWN_APPS = require('../../knowledge/screen-guide/apps.json'); }
+  /* v-apps-bundle (فحص النظام: Cannot find module ×18): الملف خارج api/ لا
+     يدخل حزمة الدالة على Vercel — نسخة داخل _lib تُحمّل دائمًا. */
+  try { KNOWN_APPS = require('./screen-guide-apps.json'); }
   catch (e) { logError('screen-guide:apps', e, {}); KNOWN_APPS = {}; }
   return KNOWN_APPS;
 }
