@@ -19219,13 +19219,13 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   /* v-logo-soft (شكوى: «الصفحة تومض كأني أسويله أبديت»): الشعار كان يعيد
      تحميل الصفحة كاملة — ولمسه سهل على الآيفون فتومض الشاشة وتعيد الإقلاع.
      صار يرجع للرئيسية داخل الصفحة نفسها بلا أي إعادة تحميل. */
+  /* v-logo-keep (شكوى عمران ٣١ أغسطس: «إذا أضغط على كلمة عمران يفتح محادثة
+     جديدة»): الشعار كان ينقر زر «الرئيسية» فيُنشئ محادثة جديدة — ولمسه سهل
+     أعلى الشاشة فتضيع المحادثة الحالية من قدام المستخدم. صار غير مدمر:
+     يقفل الأدراج ويرجع لأعلى المحادثة فقط. محادثة جديدة = زر + أو الرئيسية. */
   if(h1) h1.onclick = () => {
     try{ saveState(); }catch(_){ __swallow(_, "save:app-10-features#16"); }
     try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(_){ /* guard-ok */ }
-    try{
-      const homeBtn = document.querySelector('#omranBottomNav [data-omnav="home"]');
-      if(homeBtn){ homeBtn.click(); return; }
-    }catch(_){ /* guard-ok */ }
     try{ window.scrollTo(0, 0); const m = document.getElementById('messages'); if(m) m.scrollTop = 0; }catch(_){ /* guard-ok */ }
   };
   /* v-brand-l10n (طلب المالك ٢٩ أغسطس): شعار ذهبي مخصوص لكل لغة — العربي
