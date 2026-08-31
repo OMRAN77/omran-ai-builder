@@ -2388,6 +2388,8 @@ async function sendPrompt(){
           } else if(__sgData.error === 'auth_required'){ __sgText = __ar2 ? 'سجّل دخولك أولاً لاستخدام المرشد البصري.' : 'Please sign in to use the visual guide.';
           } else if(__sgData.error === 'no_points'){ __sgText = __ar2 ? 'نقاطك غير كافية — أضف رصيدًا لمتابعة المرشد البصري.' : 'Not enough points for the visual guide.'; cur._sgSessionId = null;
           } else { __sgText = __ar2 ? 'تعذّر تحليل الصورة — تأكد من اتصالك وحاول مرة أخرى.' : 'Could not analyze screenshot. Check your connection and retry.'; }
+          /* v-sg-via: للمالك فقط — أي نموذج أجاب فعلًا (تشخيص جودة الإرشاد) */
+          try{ if(__sgData._via && typeof authGet === 'function' && String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran') __sgText += '\n\n`🤖 ' + __sgData._via + '`'; }catch(e){ /* guard-ok */ }
           __sgLoadMsg.content = __sgText; __sgLoadMsg._loading = false;
           renderMessages(true); saveState();
         } catch(err){

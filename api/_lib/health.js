@@ -22,6 +22,20 @@ async function readClientErrors() {
   } catch (e) { return []; }
 }
 
+// v-health-srv: أخطاء الخادم (المسجّلة عبر _errors.js/log-error.js) كانت تُكتب
+// في KV بلا أي نافذة قراءة — لوحة المالك ترى أخطاء المتصفّح فقط. بلا الرسائل
+// الكاملة للـstack (قد تطول)، يكفي الموضع والرسالة والعدد.
+async function readServerErrors() {
+  try {
+    const items = await kvGetJSON('db/server-errors/log.json');
+    if (!Array.isArray(items)) return [];
+    return items.slice(0, 10).map((e) => ({
+      at: e.at, lastAt: e.lastAt || null, route: e.route, action: e.action || null,
+      message: String(e.message || '').slice(0, 200), count: e.count || 1,
+    }));
+  } catch (e) { return []; }
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
@@ -44,7 +58,7 @@ module.exports = async (req, res) => {
     Resend: !!process.env.RESEND_API_KEY
   };
 
-  const [redisOk, clientErrors] = await Promise.all([checkRedis(), readClientErrors()]);
+  const [redisOk, clientErrors, serverErrors] = await Promise.all([checkRedis(), readClientErrors(), readServerErrors()]);
 
   res.status(200).json({
     ok: redisOk && Object.values(envKeys).every(Boolean) ? true : false,
@@ -54,6 +68,8 @@ module.exports = async (req, res) => {
     env: envReport(), // فهرس الـ٥٠ متغيّرًا — حضور فقط، لا قيم
 
     clientErrorsCount: clientErrors.length,
-    clientErrors
+    clientErrors,
+    serverErrorsCount: serverErrors.length,
+    serverErrors
   });
 };
