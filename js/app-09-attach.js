@@ -2344,6 +2344,14 @@ async function sendPrompt(){
       (async function(){
         try{
           const __sgHist = cur.messages.slice(-8).filter(function(m){ return m._sgStep; }).map(function(m){ return { screen: m._sgScreen || '', instruction: m.content || '', _imgHash: m._sgHash || '' }; });
+          // v-sg-arrow: حفظ اللقطة المفكوكة قبل الطلب — drawHighlight يحتاج {w,h,img}
+          // وبدون هذا السطر كان الردّ يصل نصًا بلا صورة السهم إطلاقًا.
+          window.__sgLastShot = await new Promise(function(res){
+            var __im = new Image();
+            __im.onload = function(){ res({ w: __im.naturalWidth, h: __im.naturalHeight, dataUrl: __sgImg.dataUrl, img: __im }); };
+            __im.onerror = function(){ res(null); };
+            __im.src = __sgImg.dataUrl;
+          });
           const __sgRes = await fetch('/api/ai?action=screen-guide', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

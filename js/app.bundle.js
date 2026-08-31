@@ -15981,6 +15981,14 @@ async function sendPrompt(){
       (async function(){
         try{
           const __sgHist = cur.messages.slice(-8).filter(function(m){ return m._sgStep; }).map(function(m){ return { screen: m._sgScreen || '', instruction: m.content || '', _imgHash: m._sgHash || '' }; });
+          // v-sg-arrow: حفظ اللقطة المفكوكة قبل الطلب — drawHighlight يحتاج {w,h,img}
+          // وبدون هذا السطر كان الردّ يصل نصًا بلا صورة السهم إطلاقًا.
+          window.__sgLastShot = await new Promise(function(res){
+            var __im = new Image();
+            __im.onload = function(){ res({ w: __im.naturalWidth, h: __im.naturalHeight, dataUrl: __sgImg.dataUrl, img: __im }); };
+            __im.onerror = function(){ res(null); };
+            __im.src = __sgImg.dataUrl;
+          });
           const __sgRes = await fetch('/api/ai?action=screen-guide', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -26885,7 +26893,7 @@ else setTimeout(mountLogoBtn, 1000);
       cv.width = w; cv.height = h;
       cv.getContext('2d').drawImage(img, 0, sy, img.naturalWidth, sh, 0, 0, w, h);
       var dataUrl = cv.toDataURL('image/jpeg', JPEG_Q);
-      return { b64: dataUrl.slice(dataUrl.indexOf(',') + 1), mime: 'image/jpeg', w: w, h: h, dataUrl: dataUrl };
+      return { b64: dataUrl.slice(dataUrl.indexOf(',') + 1), mime: 'image/jpeg', w: w, h: h, dataUrl: dataUrl, cv: cv };
     });
   }
 
@@ -26899,8 +26907,15 @@ else setTimeout(mountLogoBtn, 1000);
     var cv = document.createElement('canvas');
     cv.width = shot.w; cv.height = shot.h;
     var ctx = cv.getContext('2d');
-    var im  = new Image(); im.src = shot.dataUrl;
-    ctx.drawImage(im, 0, 0, cv.width, cv.height);
+    // مصدر مضمون الفكّ: كانفاس التحضير أو Image محمَّلة مسبقًا — Image جديدة من
+    // dataUrl قد لا تكون مفكوكة لحظة الرسم فتخرج الخلفية سوداء.
+    var src = shot.cv || (shot.img && shot.img.complete && shot.img.naturalWidth ? shot.img : null);
+    if (!src) {
+      var im = new Image(); im.src = shot.dataUrl;
+      if (!(im.complete && im.naturalWidth)) return shot.dataUrl;
+      src = im;
+    }
+    ctx.drawImage(src, 0, 0, cv.width, cv.height);
 
     var x = box.x * cv.width,  y = box.y * cv.height;
     var w = box.w * cv.width,  h = box.h * cv.height;
@@ -26963,6 +26978,8 @@ else setTimeout(mountLogoBtn, 1000);
     if (onLoading) onLoading(true);
 
     return prepareShot(file).then(function (shot) {
+      // اللقطة المحفوظة للرسم لاحقًا — بدونها لا يُرسم الإطار على الردّ.
+      window.__sgLastShot = shot;
       var payload = {
         goal:      goalText,
         imageB64:  shot.b64,
