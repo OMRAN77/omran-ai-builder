@@ -14,7 +14,11 @@ const {
   needsMoreInfo, askMessage, normalizeGuideStep, buildGuidePrompt, SENSITIVE_AR, SENSITIVE_EN,
 } = require('./screen-guide-prompt.js');
 
-// — إعدادات النموذجين —
+// — إعدادات النماذج —
+// v-sg-claude (شكوى عمران: الإرشاد «تجريبي… 0» بلا خبرة حقيقية): Claude صار
+// العقل الأساسي — نفس النموذج الذي يرشده في المحادثات العادية بخبرة فعلية،
+// وGemini/GPT-4o احتياط فقط عند تعذّره.
+const ANT_MODEL   = process.env.SCREEN_GUIDE_CLAUDE_MODEL || 'claude-sonnet-5'; // keep in sync with api/_lib/claude.js
 const GEM_MODEL   = process.env.SCREEN_GUIDE_MODEL   || 'gemini-3.1-pro-preview';
 const OAI_MODEL   = process.env.SCREEN_GUIDE_OAI_MODEL || 'gpt-4o';
 const GEM_BASE    = 'https://generativelanguage.googleapis.com/v1beta/models/';
@@ -50,6 +54,36 @@ function quickHash(b64) {
   // أخذ عينة من 200 حرف من المنتصف لتجنب headers الثابتة
   const mid = Math.floor(b64.length / 2);
   return b64.slice(mid, mid + 200);
+}
+
+// ---- استدعاء Claude Vision (الأساسي) ----
+async function callClaudeVision(apiKey, prompt, image) {
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    signal: AbortSignal.timeout(90000),
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: ANT_MODEL,
+      max_tokens: 1200,
+      system: 'Return ONE valid JSON object only — no prose, no markdown fences, nothing outside the JSON.',
+      messages: [{ role: 'user', content: [
+        { type: 'image', source: { type: 'base64', media_type: image.mime, data: image.b64 } },
+        { type: 'text', text: prompt },
+      ] }],
+    }),
+  });
+  const text = await resp.text();
+  if (!resp.ok) { const e = new Error('claude_http_' + resp.status); e.providerBody = text.slice(0, 300); throw e; }
+  const d = safeParse(text, null, 'screen-guide:claude');
+  const inner = (d && d.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+  // قد يسبق الكائنَ سطرُ تمهيد رغم التعليمة — نقتطع من أول { إلى آخر }
+  const s = inner.indexOf('{'), e2 = inner.lastIndexOf('}');
+  if (s === -1 || e2 <= s) return null;
+  return safeParse(inner.slice(s, e2 + 1), null, 'screen-guide:claude-inner');
 }
 
 // ---- استدعاء Gemini Vision ----
@@ -105,9 +139,10 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') { res.status(405).json({ error: 'method_not_allowed' }); return; }
 
   try {
+    const antKey = process.env.ANTHROPIC_API_KEY;
     const gemKey = process.env.GEMINI_API_KEY;
     const oaiKey = process.env.OPENAI_API_KEY;
-    if (!gemKey) { res.status(503).json({ error: 'screen_guide_unavailable' }); return; }
+    if (!antKey && !gemKey) { res.status(503).json({ error: 'screen_guide_unavailable' }); return; }
 
     let body = req.body;
     if (!body || typeof body === 'string') body = safeParse(body || '{}', {}, 'screen-guide:body') || {};
@@ -162,18 +197,26 @@ module.exports = async (req, res) => {
     // ٦. بناء التعليمة
     const prompt = buildGuidePrompt(goal, { lang, app: appInfo, history: histArr, stuck });
 
-    // ٧. استدعاء Gemini أولاً
+    // ٧. استدعاء Claude أولاً (الخبرة الحقيقية)، ثم Gemini احتياطًا
     let raw = null;
     let usedFallback = false;
-    try { raw = await callGemini(gemKey, prompt, img); } catch (e) {
-      logError('screen-guide:gemini-call', e, { action: 'primary' });
+    let fromClaude = false;
+    if (antKey) {
+      try { raw = await callClaudeVision(antKey, prompt, img); fromClaude = !!raw; } catch (e) {
+        logError('screen-guide:claude-call', e, { action: 'primary' });
+      }
+    }
+    if (!raw && gemKey) {
+      try { raw = await callGemini(gemKey, prompt, img); } catch (e) {
+        logError('screen-guide:gemini-call', e, { action: 'secondary' });
+      }
     }
 
     let step = raw ? normalizeGuideStep(raw) : null;
     const describeOnly = String(goal || "").trim().startsWith("[DESCRIBE_ONLY]");
 
-    // ٨. سلسلة النماذج: إذا ثقة منخفضة وعندنا GPT-4o → أعد المحاولة
-    if (oaiKey && (describeOnly || !step || (!step.sensitive && !step.askFor && !step.done && (step.confidence || 0) < CHAIN_THRESHOLD))) {
+    // ٨. سلسلة النماذج: Claude لم يجب وثقة الاحتياط منخفضة → GPT-4o
+    if (!fromClaude && oaiKey && (describeOnly || !step || (!step.sensitive && !step.askFor && !step.done && (step.confidence || 0) < CHAIN_THRESHOLD))) {
       try {
         const raw2 = await callGPT4o(oaiKey, prompt, img);
         const step2 = raw2 ? normalizeGuideStep(raw2) : null;
