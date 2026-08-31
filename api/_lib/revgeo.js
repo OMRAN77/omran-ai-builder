@@ -18,9 +18,17 @@ async function timed(url, opts, ms) {
 }
 
 function part(v) { return String(v || '').trim(); }
+// v-geo-fix (بلاغ عمران): مزوّدو الترميز يكتبون بعض الأسماء الإماراتية خطأً —
+// قرية «ثوبان» بالفجيرة تصلهم «شوبان». جدول تصحيح يُطبَّق على كل جزء.
+const NAME_FIX = {
+  'شوبان': 'ثوبان',
+  'Thoban': 'ثوبان',
+  'Thawban': 'ثوبان',
+};
+function fixName(v) { const p = part(v); return NAME_FIX[p] || p; }
 function joinLabel(parts) {
   const seen = new Set();
-  return parts.map(part).filter((p) => {
+  return parts.map(fixName).filter((p) => {
     if (!p || seen.has(p)) return false;
     seen.add(p);
     return true;
@@ -32,7 +40,7 @@ async function viaBigDataCloud(lat, lon) {
     + '&longitude=' + lon + '&localityLanguage=ar', {}, 6000);
   if (!d) return null;
   const label = joinLabel([d.locality, d.city, d.principalSubdivision, d.countryName]);
-  return label ? { label, city: part(d.city || d.locality), region: part(d.principalSubdivision), country: part(d.countryName), src: 'bigdatacloud' } : null;
+  return label ? { label, city: fixName(d.city || d.locality), region: fixName(d.principalSubdivision), country: part(d.countryName), src: 'bigdatacloud' } : null;
 }
 
 async function viaNominatim(lat, lon) {
@@ -45,7 +53,7 @@ async function viaNominatim(lat, lon) {
   if (!a) return null;
   const city = a.city || a.town || a.village || a.municipality || '';
   const label = joinLabel([a.suburb || a.neighbourhood || a.quarter, city, a.state || a.region, a.country]);
-  return label ? { label, city: part(city), region: part(a.state || a.region), country: part(a.country), src: 'nominatim' } : null;
+  return label ? { label, city: fixName(city), region: fixName(a.state || a.region), country: part(a.country), src: 'nominatim' } : null;
 }
 
 module.exports = async (req, res) => {
