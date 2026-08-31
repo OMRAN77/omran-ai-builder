@@ -19672,7 +19672,13 @@ function openShareModal(project){
       if(d.clientErrorsCount > 0){
         lines.push('⚠️ أخطاء مسجلة من المستخدمين: ' + d.clientErrorsCount);
         d.clientErrors.slice(0,5).forEach(e => {
-          lines.push('   • ' + String(e.message || '').slice(0,120) + (e.count > 1 ? ' (x' + e.count + ')' : ''));
+          lines.push('   • ' + String(e.message || '').slice(0,160) + (e.count > 1 ? ' (x' + e.count + ')' : ''));
+          /* v-crash-stack: انهيارات غلاف الأندرويد تُعرض بمكدسها — التشخيص
+             يحتاج اسم الصنف والسطر لا الرسالة وحدها. */
+          if(/android/i.test(String(e.source || '')) && e.stack){
+            String(e.stack).split('\n').slice(0,6).forEach(l => { if(l.trim()) lines.push('     ' + l.trim().slice(0,140)); });
+          }
+          if(e.ua && /android/i.test(String(e.source || ''))) lines.push('     📱 ' + String(e.ua).slice(0,80));
         });
       } else {
         lines.push('✅ لا توجد أخطاء مسجلة من المستخدمين');
