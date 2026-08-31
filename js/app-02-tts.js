@@ -123,6 +123,7 @@ function buildSpokenWordSpans(container, text){
   let m, lastIndex = 0;
   let boldOpen = false;
   let headerLevel = 0; // >0 while inside a "## ..." heading line
+  let lineStart = true; // v-md-list: هل التوكن الحالي أول توكن في سطره؟
   let parent = container;    // where tokens/text currently get appended
   let codePre = null;        // non-null while inside a ``` fenced code block
   const openCodeBlock = (lang) => {
@@ -155,7 +156,7 @@ function buildSpokenWordSpans(container, text){
     if(m.index > lastIndex){
       const between = text.slice(lastIndex, m.index);
       parent.appendChild(document.createTextNode(between));
-      if(between.indexOf('\n') !== -1) headerLevel = 0;
+      if(between.indexOf('\n') !== -1){ headerLevel = 0; lineStart = true; }
     }
     if(/^```/.test(m[0])){
       // fence token: hide it, toggle code mode (span kept so TTS word mapping stays aligned)
@@ -178,6 +179,7 @@ function buildSpokenWordSpans(container, text){
       continue;
     }
     const token = m[0];
+    const __atStart = lineStart; lineStart = false;
     const span = document.createElement('span');
     span.className = 'tts-word';
     if(headerLevel === 0 && /^#{1,6}$/.test(token)){
@@ -191,6 +193,17 @@ function buildSpokenWordSpans(container, text){
       if(markerCount){
         display = token.split('**').join('');
         if(markerCount % 2 === 1) boldOpen = !boldOpen;
+      }
+      /* v-md-list (شكوى عمران — «-مرجان» ملتصقة والشرطات تقفز): علامة
+         القائمة «- » أول السطر كانت تبقى شرطة خام، وبيدي السطر المخلوط
+         عربي/لاتيني يبعثر مكانها. تصير نقطة حقيقية معزولة الاتجاه، سواء
+         جاءت منفصلة («- بند») أو ملتصقة بالكلمة («-مرجان»). */
+      if(__atStart && headerLevel === 0){
+        if(/^[-*+•]$/.test(display)){
+          display = '•'; span.style.unicodeBidi = 'isolate';
+        } else if(/^[-•][؀-ۿݐ-ݿA-Za-z]/.test(display)){
+          display = '• ' + display.slice(1); span.style.unicodeBidi = 'isolate';
+        }
       }
       // 🔗 clickable links: markdown [text](url) or plain URLs
       // v467: الرابط المسبوق بقوس أو علامة اقتباس — (https://…) أو «https://…» —
