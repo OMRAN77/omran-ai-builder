@@ -2377,6 +2377,8 @@ async function sendPrompt(){
             var __ls = [];
             if(__sgData.screen) __ls.push((__ar2 ? '**الشاشة:** ' : '**Screen:** ') + __sgData.screen);
             if(__sgData.stepNumber && __sgData.totalSteps) __ls.push((__ar2 ? '**الخطوة ' : '**Step ') + __sgData.stepNumber + (__ar2 ? ' من ' : ' / ') + __sgData.totalSteps + '**');
+            /* v-sg-analysis: القراءة الخبيرة أولًا — ماذا يحدث الآن وماذا يعني */
+            if(__sgData.analysis && __sgData.analysis !== __sgData.instruction){ __ls.push(''); __ls.push(__sgData.analysis); }
             __ls.push('');
             __ls.push(__sgData.instruction || '');
             if(__sgData.label && __sgData.label.exact) __ls.push((__ar2 ? '> اضغط على: **' : '> Tap: **') + __sgData.label.exact + '**');
