@@ -27696,6 +27696,52 @@ if(document.readyState === 'loading'){
 
   /* ---------------- الكاميرا ---------------- */
 
+  /* v-vg-cam2: فشل الكاميرا كان رسالة واحدة عامة بلا أثر — الآن نميّز السبب
+   * (إذن مرفوض / لا كاميرا / مشغولة)، نبلّغ لوحة الأخطاء حتى نشخّص عن بُعد،
+   * وداخل تطبيق أندرويد نفتح إعدادات التطبيق مباشرة ليمنح الإذن. */
+  function camFail(err) {
+    var name = (err && err.name) || '';
+    console.error('[visual-guide] camera denied:', name, err);
+    try {
+      fetch('/api/system?action=client-errors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: 'VG CAMERA FAIL: ' + (name || '?') + ' — ' + String((err && err.message) || err).slice(0, 200),
+          source: 'visual-guide',
+          url: location.href,
+          ua: navigator.userAgent
+        }),
+        keepalive: true
+      }).catch(function () { /* guard-ok: الإبلاغ نفسه لا يعطّل شيئًا */ });
+    } catch (e) { __swallow(e, 'vg:report'); }
+
+    var inApp = false;
+    try { inApp = typeof window.omranLikelyApp === 'function' && window.omranLikelyApp(); }
+    catch (e) { __swallow(e, 'vg:inapp'); }
+
+    var msg;
+    if (name === 'NotFoundError' || name === 'DevicesNotFoundError' || name === 'OverconstrainedError') {
+      msg = t('لم أجد كاميرا على هذا الجهاز.', 'No camera found on this device.');
+    } else if (name === 'NotReadableError' || name === 'TrackStartError') {
+      msg = t('الكاميرا مشغولة بتطبيق آخر — أغلقه وجرّب من جديد.',
+              'Camera is busy in another app — close it and retry.');
+    } else if (inApp) {
+      msg = t('إذن الكاميرا مرفوض — أفتح لك إعدادات التطبيق: اضغط «الأذونات» واسمح بالكاميرا ثم ارجع.',
+              'Camera permission denied — opening app settings: tap Permissions, allow Camera, then come back.');
+      // v10 من تطبيق أندرويد يفهم هذا الرابط ويفتح صفحة إعدادات التطبيق؛
+      // النسخ الأقدم تتجاهله بصمت فلا ضرر.
+      setTimeout(function () {
+        try { location.href = 'omran-app://settings'; }
+        catch (e) { __swallow(e, 'vg:appset'); }
+      }, 1600);
+    } else {
+      msg = t('تعذّر فتح الكاميرا. اسمح للموقع باستخدام الكاميرا من إعدادات المتصفح.',
+              'Camera unavailable. Please allow camera access in browser settings.');
+    }
+    announce(msg, true);
+  }
+
   async function camOn() {
     if (S.stream) return true;
     try {
@@ -27704,12 +27750,13 @@ if(document.readyState === 'loading'){
         audio: false
       });
     } catch (e) {
-      console.error('[visual-guide] camera denied:', e);
-      announce(t(
-        'تعذّر فتح الكاميرا. افتح الإعدادات واسمح للتطبيق باستخدام الكاميرا.',
-        'Camera unavailable. Please allow camera access in settings.'
-      ), true);
-      return false;
+      // محاولة ثانية بلا أي قيود — بعض أجهزة WebView ترفض القيود نفسها
+      try {
+        S.stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      } catch (e2) {
+        camFail(e2 && e2.name ? e2 : e);
+        return false;
+      }
     }
     var v = $id('vgVideo');
     if (v) {
