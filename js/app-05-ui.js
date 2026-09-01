@@ -1720,14 +1720,6 @@ async function applyBg3D(id, save){
   if(id === 'none') return;
   const eff = BG3D_EFFECTS.find(e => e.id === id);
   if(!eff) return;
-  /* v-bg3d-app-lite (شاشة سوداء + «يستجيب ببطء» في تطبيق الأندرويد):
-     محركات WebGL (three/vanta/p5) تجمّد الخيط الرئيسي داخل WebView
-     الأغلفة على أجهزة كثيرة — داخل التطبيق نكتفي بالخلفيات الخفيفة
-     (custom canvas) والويب بلا أي تغيير. */
-  if(eff.lib !== 'custom' && typeof omranLikelyApp === 'function' && omranLikelyApp()){
-    document.body.classList.remove('vantaActive');
-    return;
-  }
   if(eff.lib === 'custom'){
     try { initCustomBg3D(id); } catch(e){ console.warn('bg3d custom init failed', e); }
     return;
@@ -1788,7 +1780,16 @@ function setupBg3DAutoTimer(){
 }
 document.addEventListener('DOMContentLoaded', () => {
   const saved = localStorage.getItem('aiapp_bg3d') || 'none';
-  applyBg3D(saved, false);
+  /* v-bg3d-app-defer (بدل المنع الكامل السابق): داخل الأغلفة كانت خلفية
+     WebGL تجمّد الإقلاع («يستجيب ببطء» وشاشة سوداء) — نؤجلها ثواني حتى
+     تكتمل الواجهة، واختيار المستخدم من الإعدادات يطبق فورًا كالمعتاد. */
+  const eff = BG3D_EFFECTS.find(e => e.id === saved);
+  const heavy = eff && eff.lib && eff.lib !== 'custom';
+  if(heavy && typeof omranLikelyApp === 'function' && omranLikelyApp()){
+    setTimeout(() => { try{ applyBg3D(saved, false); }catch(e){ __swallow(e, 'bg3d:defer'); } }, 2500);
+  } else {
+    applyBg3D(saved, false);
+  }
   setupBg3DAutoTimer();
 });
 
