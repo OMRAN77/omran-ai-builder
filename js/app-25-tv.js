@@ -445,27 +445,49 @@
     });
   }
 
+  /* v-tv-live: الفحص اللحظي عند الضغطة — تضمين live_stream القديم لا يعمل
+   * لأغلب القنوات وبعضها يمنع التضمين. السيرفر يرجع رقم فيديو البث الجاري:
+   * مسموح تضمينه → داخل التطبيق؛ ممنوع → تطبيق يوتيوب على البث نفسه. */
+  function resolveLive(handle){
+    return fetch('/api/system?action=tv-resolve&handle=' + encodeURIComponent(handle) + '&live=1')
+      .then(function(r){ return r.json().then(function(d){ return r.ok ? d : Promise.reject(d); }); })
+      .catch(function(e){
+        // احتياط: بيانات الفحص اليومي
+        var st = TV_STATUS && TV_STATUS[handle];
+        if(st && st.ok) return { channelId: st.id, isLive: !!st.live, videoId: st.vid || null, embeddable: st.embeddable !== false };
+        return Promise.reject(e);
+      });
+  }
+
   function playChannel(ch, card){
     // قناة بلا بث يوتيوب أصلًا → منصتها الرسمية مباشرة
     if(!ch.h && ch.u){ openExternal(ch.u); return; }
     var el = shell();
     var old = card.innerHTML;
     card.innerHTML = '<span style="font-size:26px;">⏳</span><span style="font-size:13px;">' + tt('جارٍ الفتح...', 'Opening...') + '</span>';
-    resolveChannel(ch.h).then(function(cid){
+    resolveLive(ch.h).then(function(info){
       card.innerHTML = old;
-      el.querySelector('#tvNowName').textContent = ch.n;
-      el.querySelector('#tvFrame').src =
-        'https://www.youtube.com/embed/live_stream?channel=' + encodeURIComponent(cid) + '&autoplay=1&hl=' + (tvIsAr() ? 'ar' : 'en');
-      el.querySelector('#tvBrowse').style.display = 'none';
-      el.querySelector('#tvPlayerWrap').style.display = 'flex';
-    }).catch(function(e){
-      __swallow(e, 'tv:resolve');
-      // الاحتياط الذكي: بث يوتيوب غير متاح لكن للقناة منصة رسمية → افتحها
-      if(ch.u){
-        card.innerHTML = old;
-        openExternal(ch.u);
+      if(info.isLive && info.videoId && info.embeddable !== false){
+        el.querySelector('#tvNowName').textContent = ch.n;
+        el.querySelector('#tvFrame').src =
+          'https://www.youtube.com/embed/' + encodeURIComponent(info.videoId) + '?autoplay=1&hl=' + (tvIsAr() ? 'ar' : 'en');
+        el.querySelector('#tvBrowse').style.display = 'none';
+        el.querySelector('#tvPlayerWrap').style.display = 'flex';
         return;
       }
+      if(info.isLive && info.videoId){
+        // القناة تمنع التضمين — البث نفسه في تطبيق يوتيوب
+        openExternal('https://www.youtube.com/watch?v=' + info.videoId);
+        return;
+      }
+      // ليست حية الآن → منصتها الرسمية أو صفحة قناتها
+      if(ch.u){ openExternal(ch.u); return; }
+      if(info.channelId){ openExternal('https://www.youtube.com/channel/' + info.channelId + '/live'); return; }
+      card.innerHTML = '<span style="font-size:26px;">😴</span><span style="font-size:12px;">' + tt('القناة موقفة البث حاليًا', 'Not streaming right now') + '</span>';
+      setTimeout(function(){ card.innerHTML = old; }, 2600);
+    }).catch(function(e){
+      __swallow(e, 'tv:resolve');
+      if(ch.u){ card.innerHTML = old; openExternal(ch.u); return; }
       card.innerHTML = '<span style="font-size:26px;">😴</span><span style="font-size:12px;">' + tt('القناة موقفة البث حاليًا', 'Not streaming right now') + '</span>';
       setTimeout(function(){ card.innerHTML = old; }, 2600);
     });
