@@ -1,14 +1,17 @@
 {
- "checkedAt": "2026-09-01T15:47:07.905Z",
+ "checkedAt": "2026-09-01T15:54:10.137Z",
  "counts": {
   "total": 157,
-  "ok": 43,
-  "live": 16
+  "ok": 157,
+  "live": 75,
+  "repaired": 115
  },
  "channels": {
   "skynewsarabia": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCIJXOvggjKtCagMfxvcCzAA",
+   "via": "search"
   },
   "AlArabiya": {
    "ok": true,
@@ -21,8 +24,10 @@
    "id": "UCYcogyJ0RBPHvfw3X-5L0bQ"
   },
   "dubaitv": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCnxcG6CqTO85dBXlyjPKInA",
+   "via": "search"
   },
   "sharjahtv": {
    "ok": true,
@@ -30,20 +35,28 @@
    "id": "UCx3YAbhK0eyTI1Y5w6usxAQ"
   },
   "ADSportsTV": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCF8Fpc7bPHC8Jrflci-mUiQ",
+   "via": "search"
   },
   "DubaiSportsTV": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCmJr9VRnC8Q1TCIrf2G8bcg",
+   "via": "search"
   },
   "sharjahsporttv": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCdF4bi6osRgJ_rXwCTGG3ZQ",
+   "via": "search"
   },
   "cnbcarabia": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCsHdPPJXT-yKVTLGkn3DSvQ",
+   "via": "search"
   },
   "asharqnews": {
    "ok": true,
@@ -56,36 +69,52 @@
    "id": "UCRJUVYt9gjg8MnlGacySUdg"
   },
   "alekhbariyatv": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCkqJVFe0B-d8h_mIRx2ZYsQ",
+   "via": "search"
   },
   "ssc_sports": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCZ3tVV0D7MlCSd9zqtH5GwA",
+   "via": "search"
   },
   "quraantv": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCos52azQNBgW63_9uDJoPDA",
+   "via": "search"
   },
   "sunnahtv": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCROKYPep-UuODNwyipe6JMw",
+   "via": "search"
   },
   "RotanaKhalijia": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCsVQJ4sjopcYEQHxWnS2Spg",
+   "via": "search"
   },
   "alarabiya_saudi": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCrj5BGAhtWxDfqbza9T9hqA",
+   "via": "search"
   },
   "aljazeera": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCfiwzLy-8yKzIbsmZTzxDgw",
+   "via": "search"
   },
   "aljazeeramubasher": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCCv1Pd24oPErw5S7zJWltnQ",
+   "via": "search"
   },
   "AlJazeeraEnglish": {
    "ok": true,
@@ -93,24 +122,34 @@
    "id": "UCfiwzLy-8yKzIbsmZTzxDgw"
   },
   "QatarTelevision": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UC2EJXBsWR_5BTCy6R4kIO3A",
+   "via": "search"
   },
   "AlkassTV": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCGLeK7rJ0vi0xodW3JynjbA",
+   "via": "search"
   },
   "KTVKuwait": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCMU5LZUMoX09dP_h3lVx27Q",
+   "via": "search"
   },
   "BahrainTV": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCzaQqsTWICqdvnstCoirQYw",
+   "via": "search"
   },
   "OmanTV": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCSuFrGdFpUSrBHp6sR-uR6w",
+   "via": "search"
   },
   "AlQaheraNews": {
    "ok": true,
@@ -118,8 +157,10 @@
    "id": "UCIJXOvggjKtCagMfxvcCzAA"
   },
   "ExtraNewsEG": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCGyS7uRX_tmdfAgf-4tsUlg",
+   "via": "search"
   },
   "baladtv": {
    "ok": true,
@@ -127,32 +168,46 @@
    "id": "UCJWuV-EkLmRrGZ4afwUBenw"
   },
   "MBCMASR": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCnFKsbAof9fRv614I4wJX_w",
+   "via": "search"
   },
   "ONTimeSports": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCo2TvjBHS1BtyIkeGGTMe6w",
+   "via": "search"
   },
   "AlNaharTV": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UC57OCoLoU6zAtBdJOmwg2vA",
+   "via": "search"
   },
   "MadrasetnaEG": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCZ-g-5yYrEI7KCLIDZAEF-w",
+   "via": "search"
   },
   "AlMamlakaTV": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UC0jiFAzTgl17k7awGbuoYew",
+   "via": "search"
   },
   "RoyaTV": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UC_0F7pdI2lfiEGF0Lpa269Q",
+   "via": "search"
   },
   "aljadeedonline": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UC4JCsTLFcHGk10qpiNMh0Ww",
+   "via": "search"
   },
   "mtvlebanon": {
    "ok": true,
@@ -160,16 +215,22 @@
    "id": "UC9_XmAwE5szLHF76FjMylaw"
   },
   "alsharqiyatv": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UC4wI0bNpRBauwbKgRaQyTVQ",
+   "via": "search"
   },
   "IMNchannel": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UC5h9SokuzgNiebEOzU2BHoA",
+   "via": "search"
   },
   "PalestineTvLive": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UC1xAKR0vwwrHeorDesok6vw",
+   "via": "search"
   },
   "BelqeesTV": {
    "ok": true,
@@ -177,20 +238,28 @@
    "id": "UC4crEsRjJ1ClxEPkD8TKBXw"
   },
   "Sudania24TV": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCrH0R6bG_X2FCB9Qt8JWxRg",
+   "via": "search"
   },
   "Medi1TVArabic": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCfXlL8avQjg74WbRyksr9bQ",
+   "via": "search"
   },
   "echorouktv": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCd9ox6D3VbhNp3kJNTxQzCQ",
+   "via": "search"
   },
   "EnnaharTv": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UC57OCoLoU6zAtBdJOmwg2vA",
+   "via": "search"
   },
   "WataniaReplay": {
    "ok": true,
@@ -213,8 +282,10 @@
    "id": "UCnyCrv8b7bu0oWFXGyHaPzg"
   },
   "IndiaToday": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCYPvAwZP8pZhSMW8qs7cVCw",
+   "via": "search"
   },
   "NDTV": {
    "ok": true,
@@ -227,16 +298,22 @@
    "id": "UCYPvAwZP8pZhSMW8qs7cVCw"
   },
   "ABPNEWS": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCRWFSbif-RFENbBrSiez1DA",
+   "via": "search"
   },
   "zeenews": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCIvaYmXn910QMdemBG3v1pQ",
+   "via": "search"
   },
   "WION": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UC_gUM8rL-Lrg6O3adPW9K1g",
+   "via": "search"
   },
   "RepublicWorld": {
    "ok": true,
@@ -249,20 +326,28 @@
    "id": "UCfaww9Q8C_-EaM0sXI8o-fA"
   },
   "asianetnews": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCf8w5m0YsRa8MHQ5bwSGmbw",
+   "via": "search"
   },
   "manoramanews": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCP0uG-mcMImgKnJz-VjJZmQ",
+   "via": "search"
   },
   "PolimerNews": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UC8Z-VjXBtDJTvq6aqkIskPg",
+   "via": "search"
   },
   "StarSportsIndia": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCmqfX0S3x0I3uwLkPdpX03w",
+   "via": "search"
   },
   "GeoNews": {
    "ok": true,
@@ -270,28 +355,40 @@
    "id": "UCe9JSDmyqNgA_l2BzGHq1Ug"
   },
   "ARYNEWSTV": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCMmpLL2ucRHAXbNHiCPyIyg",
+   "via": "search"
   },
   "DunyaNews": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCnMBV5Iw4WqKILKue1nP6Hg",
+   "via": "search"
   },
   "SamaaTVNews": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCJekW1Vj5fCVEGdye_mBN6Q",
+   "via": "search"
   },
   "ExpressNewsPK": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCTur7oM6mLL0rM2k0znuZpQ",
+   "via": "search"
   },
   "PTVSportsOfficial": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCoBYqqQdFjKxwbIO8avvRXA",
+   "via": "search"
   },
   "SomoyTV": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCxHoBXkY88Tb8z1Ssj6CWsQ",
+   "via": "search"
   },
   "JamunaTVbd": {
    "ok": true,
@@ -299,40 +396,58 @@
    "id": "UC2qb5FD5IRnXEP4CBdt7PvA"
   },
   "Channel24Digital": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCHLqIOMPk20w-6cFgkA90jw",
+   "via": "search"
   },
   "EkattorTV": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCtqvtAVmad5zywaziN6CbfA",
+   "via": "search"
   },
   "ChanneliTv": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCAz6rveBalVnE6qTmfQnvyQ",
+   "via": "search"
   },
   "gmanews": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCqYw-CTd1dU2yGI71sEyqNw",
+   "via": "search"
   },
   "ABSCBNNews": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCE2606prvXQc_noEqKxVJXA",
+   "via": "search"
   },
   "rappler": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCdnZdQxYXnbN4uWJg96oGxw",
+   "via": "search"
   },
   "PTVPhilippines": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCJCUbMaY593_4SN1QPG7NFQ",
+   "via": "search"
   },
   "KompasTVNews": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UC5BMIWZe9isJXLZZWPWvBlg",
+   "via": "search"
   },
   "CNNIndonesiaOfficial": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCKII0Ml9S5wneKbHswmUrIQ",
+   "via": "search"
   },
   "tvOneNews": {
    "ok": true,
@@ -340,8 +455,10 @@
    "id": "UCER4rvDnRBPr_ncYW4UCZjg"
   },
   "adaderana": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCCK3OZi788Ok44K97WAhLKQ",
+   "via": "search"
   },
   "HiruNews": {
    "ok": true,
@@ -349,8 +466,10 @@
    "id": "UCcDzc3CNB9g096rvxPb5Jdg"
   },
   "KantipurTV": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UC3yDoaqQzOd1bNP74ZrGPTA",
+   "via": "search"
   },
   "SkyNews": {
    "ok": true,
@@ -358,12 +477,16 @@
    "id": "UCkFclpi8U9VJjfxLYoms7Aw"
   },
   "BBCNews": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UC16niRr50-MSBwiO3YDb3RA",
+   "via": "search"
   },
   "ABCNews": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCBi2mrWuNuyYy4gbM6fU18Q",
+   "via": "search"
   },
   "NBCNews": {
    "ok": true,
@@ -372,12 +495,15 @@
   },
   "CBSNews": {
    "ok": true,
-   "live": false,
-   "id": "UC-SJ6nODDmufqBzPBwCvYvQ"
+   "live": true,
+   "id": "UC8p1vwvWtl6T73JiExfWs1g",
+   "via": "search"
   },
   "markets": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCIALMKvObZNtJ6AmdCLP7Lg",
+   "via": "search"
   },
   "CNBC": {
    "ok": true,
@@ -385,20 +511,28 @@
    "id": "UCH5_L3ytGbBziX0CLuYdQ1Q"
   },
   "France24_ar": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCdTyuXgmJkG_O8_75eqej-w",
+   "via": "search"
   },
   "FRANCE24English": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCQfwfsi5VrQ8yKZ-UWmAEFg",
+   "via": "search"
   },
   "euronewsarabic": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCqr_xxiCUdqkDS1e4IIb0KA",
+   "via": "search"
   },
   "dwarabia": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UC30ditU5JI16o5NbFsHde_Q",
+   "via": "search"
   },
   "dwnews": {
    "ok": true,
@@ -406,8 +540,10 @@
    "id": "UCbbS1GE942k3UVqpLklyhIA"
   },
   "RTarabic": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UC5GvVahlgulCyo4cshSmbcg",
+   "via": "search"
   },
   "alhurra": {
    "ok": true,
@@ -415,20 +551,28 @@
    "id": "UCbyj3Tff1pGUpu8CyDQofkw"
   },
   "BBCArabic": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCelk6aHijZq-GJBBB9YpReA",
+   "via": "search"
   },
   "cgtnarabic": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCQmJk0ErE_FiorcLBsDKORA",
+   "via": "search"
   },
   "NatGeoAD": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCLiTe0aOHShx7hXGyqZ9UIw",
+   "via": "search"
   },
   "CNA": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UC83jt4dlz1Gjl58fzQrrKZg",
+   "via": "search"
   },
   "africanews": {
    "ok": true,
@@ -436,12 +580,16 @@
    "id": "UC25EuGAePOPvPrUA5cmu3dQ"
   },
   "samadubaitv": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCpTncbkcIjS0v51sJz2jhsg",
+   "via": "search"
   },
   "dubairacing": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCrxT9VVKe_X-rSEpnzIpXPQ",
+   "via": "search"
   },
   "noordubaitv": {
    "ok": true,
@@ -449,68 +597,100 @@
    "id": "UCnxcG6CqTO85dBXlyjPKInA"
   },
   "ADtvae": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCZ33NIO6rgl291T88-9jreQ",
+   "via": "search"
   },
   "AlDhafraTV": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCpRo_yIP97H_Jiz_DCBaFQA",
+   "via": "search"
   },
   "AjmanTV": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCydHUsLxkYX7dpcsa0mZq9Q",
+   "via": "search"
   },
   "saudiatv": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UC2mWeEHv9IY6i74okFMkGPw",
+   "via": "search"
   },
   "sbc_sa": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCgueo9ODdhQ0skNUJIondYw",
+   "via": "search"
   },
   "saudiactv": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCboSLTiZ8KZ4REgXY0L07UA",
+   "via": "search"
   },
   "AlArabiyaBusiness": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UC0mthbFRIm_uYkkzMX09sJw",
+   "via": "search"
   },
   "dmctveg": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCEeFa7t5I0fqpcLGF-36TEw",
+   "via": "search"
   },
   "AlHayahTV": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCfOU7pvD66X5yVTNIbOhILw",
+   "via": "search"
   },
   "MehwarTv": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCYoo3rvwB24q9_kRCgR897Q",
+   "via": "search"
   },
   "AlhadathAlyoumTv": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCUgx6DGLfzubExKFaurEdCg",
+   "via": "search"
   },
   "TeNTVChannel": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCIt3SC3X_6DPGsBa-9_KffA",
+   "via": "search"
   },
   "HudaTv": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCI6leRzrGomQqgTbQEojRDw",
+   "via": "search"
   },
   "iqraatv": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCiC_h4iC9s7Ddr3CT82_EpA",
+   "via": "search"
   },
   "AlresalahTv": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCtFKCoLm69Wj0RJdYHpsvyA",
+   "via": "search"
   },
   "spacetoon": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCuQKih3Ac3NABADQKQdeV6A",
+   "via": "search"
   },
   "toyoraljanahtv": {
    "ok": true,
@@ -523,16 +703,22 @@
    "id": "UCZbpK_Lgctew3YNELlG2ecw"
   },
   "TimesNow": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UC6RJ7-PaXg6TIH2BzZfTV7w",
+   "via": "search"
   },
   "CNNNews18": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCef1-8eOpJgud7szVPlZQAQ",
+   "via": "search"
   },
   "CNBCTV18": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCmRbHAgG2k2vDUvb3xsEunQ",
+   "via": "search"
   },
   "DDNews": {
    "ok": true,
@@ -540,16 +726,22 @@
    "id": "UCGDQNvybfDDeGTf4GtigXaw"
   },
   "DDIndia": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCGDQNvybfDDeGTf4GtigXaw",
+   "via": "search"
   },
   "sunnews": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCYlh4lH762HvHt6mmiecyWQ",
+   "via": "search"
   },
   "News18India": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCef1-8eOpJgud7szVPlZQAQ",
+   "via": "search"
   },
   "HumNewsPakistan": {
    "ok": true,
@@ -567,36 +759,52 @@
    "id": "UCAHSsxoI_t-hAbs-ZQVxZ7Q"
   },
   "92NewsHD": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCsgC5cbz3DE2Shh34gNKiog",
+   "via": "search"
   },
   "rtvonline": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCE5RIa7b_JIK0a31Uaq4xRw",
+   "via": "search"
   },
   "ntvdigitalbd": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCqBJ47FjJcl61fmSbcadAVg",
+   "via": "search"
   },
   "dbcnews": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCUvXoiDEKI8VZJrr58g4VAw",
+   "via": "search"
   },
   "UNTVNewsRescue": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UC3XaG-7UVi2vD8ZZEMNnnpw",
+   "via": "search"
   },
   "News5Everywhere": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCGEbMwiX774cseKvJqF9R2g",
+   "via": "search"
   },
   "HimalayaTV": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCczsYSRGukY9LA7Fd_govMw",
+   "via": "search"
   },
   "News24Nepal": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCjG2HX7jfwqIjzTlaF1CPGA",
+   "via": "search"
   },
   "newsfirstsrilanka": {
    "ok": true,
@@ -609,24 +817,34 @@
    "id": "UCJCYKGZ4ZyjjshYa6fhRgRw"
   },
   "haberturktv": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCn6dNfiRE_Xunu7iMyvD7AA",
+   "via": "search"
   },
   "ahaber": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCKQhfw-lzz0uKnE1fY1PsAA",
+   "via": "search"
   },
   "halktvcomtr": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCf_ResXZzE-o18zACUEmyvQ",
+   "via": "search"
   },
   "gbnewsonline": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UC0vn8ISa4LKMunLbzaXLnOQ",
+   "via": "search"
   },
   "SkyNewsAustralia": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCO0akufu9MOzyz3nvGIXAAw",
+   "via": "search"
   },
   "abcnewsaustralia": {
    "ok": true,
@@ -644,12 +862,16 @@
    "id": "UCUsBMOIUl_ad6JUOC16DpmQ"
   },
   "CNEWS": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UCXKJrYczY2_fJEZgFPGY0HQ",
+   "via": "search"
   },
   "franceinfo": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCO6K_kkdP-lnSCiO3tPx7WA",
+   "via": "search"
   },
   "WELTVideoTV": {
    "ok": true,
@@ -657,8 +879,10 @@
    "id": "UCRwMtNziueImGTt_ihnGYpg"
   },
   "tagesschau": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": false,
+   "id": "UC5NOEUbkLheQcaaRldYW5GA",
+   "via": "search"
   },
   "phoenix": {
    "ok": true,
@@ -666,16 +890,22 @@
    "id": "UCqmQ1b96-PNH4coqgHTuTlA"
   },
   "NoticiasCaracol": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UC2Xq2PK-got3Rtz9ZJ32hLQ",
+   "via": "search"
   },
   "MilenioTelevision": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCFxHplbcoJK9m70c4VyTIxg",
+   "via": "search"
   },
   "dwespanol": {
-   "ok": false,
-   "live": false
+   "ok": true,
+   "live": true,
+   "id": "UCT4Jg8h03dD0iN3Pb5L0PMA",
+   "via": "search"
   }
  }
 }
