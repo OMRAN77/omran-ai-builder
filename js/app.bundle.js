@@ -28683,8 +28683,28 @@ window.__omranBundleOk = true;
 
   var S = { country: 'ae', cat: 'all', q: '' };
 
-  /* حل معرّف القناة الرقمي (UC...) عبر السيرفر — كاش محلي 30 يومًا */
+  /* v-tv-verified: فاحص GitHub Actions اليومي يكتب tv-status.json —
+   * قناة ok:false تُخفى (معرّف خاطئ/محذوف)، وok مع live تأخذ 🔴.
+   * غياب الملف = لا فلترة (أول نشر). */
+  var TV_STATUS = null;
+  function loadStatus(){
+    return fetch('/tv-status.json', { cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){ TV_STATUS = (d && d.channels) || null; })
+      .catch(function(e){ __swallow(e, 'tv:status'); });
+  }
+  function stOf(ch){ return (ch.h && TV_STATUS && TV_STATUS[ch.h]) || null; }
+  function chVisible(ch){
+    if(!ch.h) return true;                 // قناة منصة فقط
+    var st = stOf(ch);
+    if(!st) return true;                   // لا بيانات فحص بعد
+    return st.ok !== false || !!ch.u;      // معرّف ميت بلا احتياط → تُخفى
+  }
+
+  /* حل معرّف القناة الرقمي (UC...) — من ملف الفحص اليومي أولًا، ثم السيرفر */
   function resolveChannel(handle){
+    var st = TV_STATUS && TV_STATUS[handle];
+    if(st && st.ok && st.id) return Promise.resolve(st.id);
     var KEY = 'aiapp_tv_' + handle;
     try{
       var c = JSON.parse(localStorage.getItem(KEY) || 'null');
@@ -28812,10 +28832,17 @@ window.__omranBundleOk = true;
     var q = S.q.toLowerCase();
     if(!q && S.cat === 'all') renderPlatforms(grid);
     var list = TV_CH.filter(function(ch){
-      if(q) return (ch.n + ' ' + ch.h).toLowerCase().indexOf(q) !== -1; // البحث يتجاوز فلتر البلد
+      if(!chVisible(ch)) return false;
+      if(q) return (ch.n + ' ' + (ch.h || '')).toLowerCase().indexOf(q) !== -1; // البحث يتجاوز فلتر البلد
       if(ch.c !== S.country) return false;
       if(S.cat !== 'all' && ch.g !== S.cat) return false;
       return true;
+    });
+    // الحيّ الآن أولًا
+    list.sort(function(a, b){
+      var la = stOf(a) && stOf(a).live ? 1 : 0;
+      var lb = stOf(b) && stOf(b).live ? 1 : 0;
+      return lb - la;
     });
     if(!list.length){
       var empty = document.createElement('div');
@@ -28829,7 +28856,11 @@ window.__omranBundleOk = true;
       card.type = 'button';
       card.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:14px;border:1px solid var(--border,rgba(255,255,255,.1));background:rgba(255,255,255,.03);color:inherit;cursor:pointer;text-align:center;';
       var cat = TV_CATS[ch.g] || TV_CATS.general;
-      card.innerHTML = '<span style="font-size:26px;">' + cat[2] + '</span><span style="font-size:13px;font-weight:600;line-height:1.5;">' + ch.n + '</span>';
+      var st = stOf(ch);
+      var badge = (st && st.live)
+        ? '<span style="font-size:10px;color:#ff5b5b;font-weight:800;">🔴 ' + tt('مباشر الآن', 'LIVE') + '</span>'
+        : (!ch.h ? '<span style="font-size:10px;color:var(--muted,#98a0b3);">↗ ' + tt('المنصة الرسمية', 'Official site') + '</span>' : '');
+      card.innerHTML = '<span style="font-size:26px;">' + cat[2] + '</span><span style="font-size:13px;font-weight:600;line-height:1.5;">' + ch.n + '</span>' + badge;
       card.onclick = function(){ playChannel(ch, card); };
       grid.appendChild(card);
     });
@@ -28873,6 +28904,9 @@ window.__omranBundleOk = true;
     renderChips();
     renderGrid();
     el.style.display = 'flex';
+    if(TV_STATUS === null){
+      loadStatus().then(function(){ if(el.style.display === 'flex') renderGrid(); });
+    }
   }
   function closeTv(){
     stopPlayer();
