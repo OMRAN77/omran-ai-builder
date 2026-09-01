@@ -35,12 +35,19 @@ async function bySearch(name) {
   return m ? m[1] : null;
 }
 
-async function isLive(id) {
+async function liveInfo(id) {
   try {
     const { html } = await page('https://www.youtube.com/channel/' + id + '/live');
-    return /"isLive"\s*:\s*true|"isLiveNow"\s*:\s*true/.test(html)
+    const live = /"isLive"\s*:\s*true|"isLiveNow"\s*:\s*true/.test(html)
       && !/"status"\s*:\s*"LIVE_STREAM_OFFLINE"/.test(html);
-  } catch { return false; }
+    if (!live) return { live: false };
+    const vm = html.match(/"videoId"\s*:\s*"([\w-]{11})"/);
+    return {
+      live: true,
+      vid: vm ? vm[1] : null,
+      embeddable: !/"playableInEmbed"\s*:\s*false/.test(html),
+    };
+  } catch { return { live: false }; }
 }
 
 const src = await readFile('js/app-25-tv.js', 'utf8');
@@ -76,8 +83,13 @@ for (const { name, h } of list) {
     }
     if (entry.ok) {
       okCount++;
-      entry.live = await isLive(entry.id);
-      if (entry.live) liveCount++;
+      const li = await liveInfo(entry.id);
+      entry.live = li.live;
+      if (li.live) {
+        liveCount++;
+        if (li.vid) entry.vid = li.vid;
+        entry.embeddable = li.embeddable;
+      }
     }
   } catch { /* شبكة — تُعاد غدًا */ }
   channels[h] = entry;
