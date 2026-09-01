@@ -913,7 +913,7 @@ html.store-safe #aboutStocksCard{display:none !important;}
   #portraitStyleCloseBtn, #videoMakerCloseBtn, #designAiCloseBtn, #fashionAiCloseBtn,
   #studioAiCloseBtn, #tvClose, #stocksCloseBtn, #constructionCloseBtn, #expCloseBtn,
   #docX, #govX, #cvX, #fbClose, #eduCloseBtn, #religionCloseBtn, #emailAssistCloseBtn,
-  #sectionsToolsPopup .stpClose{
+  #qClose, #sectionsToolsPopup .stpClose{
     position:fixed !important;
     top:calc(10px + env(safe-area-inset-top, 0px)) !important;
     left:12px !important;
