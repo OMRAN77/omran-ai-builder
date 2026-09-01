@@ -6,7 +6,8 @@
   var H = String.raw`<dialog id="settingsDialog">
   <!-- v-settings-grab (طلب عمران): مقبض السحب المعياري أعلى الورقة —
        يبين أنها تُسحب للإغلاق، والنقر عليه يغلقها أيضًا. -->
-  <div id="settingsGrab" style="position:sticky; top:0; z-index:6; padding:10px 0 6px; display:flex; justify-content:center; cursor:grab; touch-action:none; background:#000;">
+  <!-- v-settings-drawer: صار درجًا جانبيًا (نفس ChatGPT) — المقبض السفلي ألغي -->
+  <div id="settingsGrab" style="display:none;">
     <div style="width:44px; height:5px; border-radius:99px; background:var(--border,#3a3a3a);"></div>
   </div>
   <h3 id="settingsDlgTitle" data-i18n-title="settingsDlgMaxTitle" style="display:none; margin-top:0; cursor:zoom-in; user-select:none;" title="دبل كلك للتكبير/التصغير" data-i18n="settingsTitle">إعدادات الاتصال بالذكاء الاصطناعي</h3>
