@@ -28084,8 +28084,24 @@ if(document.readyState === 'loading'){
     document.addEventListener('click', function (e) {
       if (!S.open) return;
       var nb = (e.target && e.target.closest) ? e.target.closest('[data-omnav]') : null;
-      if (nb && nb.getAttribute('data-omnav') !== 'guide') close();
+      if (nb && nb.getAttribute('data-omnav') !== 'guide') { close(); return; }
+      /* v-vg-quiet2: زر الشعار ما عاد ينقر تبويب الرئيسية (v-logo-keep) —
+         نغلق عليه مباشرة، وكذلك أي زر رأس يغادر صفحة المرشد */
+      var hb = (e.target && e.target.closest) ? e.target.closest('header h1, #brandTitle') : null;
+      if (hb) close();
     }, true);
+    /* v-vg-quiet2: رجوع المتصفح/الجهاز (غلاف WebView الجديد) يغلق ويسكت */
+    window.addEventListener('popstate', function () { if (S.open) close(); });
+    /* حارس أخير: أي اختفاء فعلي لواجهة المرشد والصوت شغال → إسكات فوري،
+       مهما كان مسار الخروج الذي فاتنا */
+    setInterval(function () {
+      if (!S.open) return;
+      var shell = $id('vgShell');
+      /* لا offsetParent هنا: القشرة position:fixed فيرجع null دائمًا */
+      if (!shell || !shell.classList.contains('show') ||
+          getComputedStyle(shell).display === 'none' ||
+          !document.documentElement.classList.contains('vg-open')) close();
+    }, 600);
     document.addEventListener('visibilitychange', function () {
       if (document.hidden && S.open) { shutUp(); stopListening(); stopLoop(); }
     });
