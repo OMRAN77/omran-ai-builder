@@ -698,11 +698,18 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
           }), keepalive: true
         }).catch(function(){ /* guard-ok: الإبلاغ لا يعطل شيئًا */ });
       }catch(e2){ __swallow(e2, 'img2pdf:report'); }
-      const heicish = failedNames.length || files.some(f => /hei[cf]/i.test((f.type || '') + (f.name || '')));
-      alert(heicish
-        ? (isAr ? 'صيغة الصور غير مدعومة (HEIC من الكاميرا). غيّر إعداد الكاميرا إلى JPEG (الإعدادات ← الصيغة عالية الكفاءة ← إيقاف) أو اختر صورًا أخرى.'
-                : 'Unsupported image format (HEIC from the camera). Switch the camera to JPEG (settings → high-efficiency format → off) or pick other photos.')
-        : (isAr ? 'تعذر إنشاء ملف PDF — حاول مرة ثانية' : 'Could not create the PDF — please try again'));
+      /* v-heic-diag: الرسالة تطبع السبب الفعلي واسم/نوع الملف — سكرينشوت
+         المستخدم يصير هو التشخيص الكامل بدل جولات تخمين. */
+      const detParts = [];
+      if(failedNames.length) detParts.push(failedNames.slice(0,3).join('، '));
+      detParts.push(files.map(f => (f.type || '?').replace('image/','')).slice(0,4).join('،'));
+      if(window.__omranHeicErr) detParts.push(window.__omranHeicErr);
+      detParts.push(String((err && err.message) || err).slice(0,120));
+      const heicish = files.some(f => /hei[cf]/i.test((f.type || '') + (f.name || '')));
+      alert((heicish
+        ? (isAr ? 'تعذر فك صور HEIC هذه بالذات.' : 'Could not decode these specific HEIC photos.')
+        : (isAr ? 'تعذر قراءة الصور المحددة.' : 'Could not read the selected images.'))
+        + '\n' + (isAr ? 'التفاصيل: ' : 'Details: ') + detParts.filter(Boolean).join(' | '));
     }
     btn.disabled = false;
   };
