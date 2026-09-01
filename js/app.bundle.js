@@ -28587,6 +28587,95 @@ window.__omranBundleOk = true;
     { n: 'بي بي سي عربي', h: 'BBCArabic', c: 'intl', g: 'news' },
     { n: 'CGTN Arabic', h: 'cgtnarabic', c: 'intl', g: 'news' },
     { n: 'ناشونال جيوغرافيك أبوظبي', h: 'NatGeoAD', c: 'intl', g: 'general' },
+    { n: 'CNA (سنغافورة)', h: 'CNA', c: 'intl', g: 'news' },
+    { n: 'Africanews', h: 'africanews', c: 'intl', g: 'news' },
+    // ——— توسعة الإمارات (قنوات دبي وأبوظبي — الاحتياط منصتها الرسمية)
+    { n: 'سما دبي', h: 'samadubaitv', c: 'ae', g: 'general', u: 'https://awaan.ae/live' },
+    { n: 'دبي ريسينغ', h: 'dubairacing', c: 'ae', g: 'sports', u: 'https://awaan.ae/live' },
+    { n: 'نور دبي', h: 'noordubaitv', c: 'ae', g: 'general', u: 'https://awaan.ae/live' },
+    { n: 'دبي ون (المنصة)', u: 'https://awaan.ae/live', c: 'ae', g: 'general' },
+    { n: 'دبي زمان (المنصة)', u: 'https://awaan.ae/live', c: 'ae', g: 'general' },
+    { n: 'قناة أبوظبي', h: 'ADtvae', c: 'ae', g: 'general', u: 'https://www.adtv.ae/live' },
+    { n: 'الإمارات (المنصة)', u: 'https://www.adtv.ae/live', c: 'ae', g: 'general' },
+    { n: 'ماجد للأطفال (المنصة)', u: 'https://www.adtv.ae/live', c: 'ae', g: 'kids' },
+    { n: 'الظفرة', h: 'AlDhafraTV', c: 'ae', g: 'general' },
+    { n: 'عجمان', h: 'AjmanTV', c: 'ae', g: 'general' },
+    // ——— توسعة السعودية
+    { n: 'السعودية', h: 'saudiatv', c: 'sa', g: 'general' },
+    { n: 'SBC', h: 'sbc_sa', c: 'sa', g: 'general' },
+    { n: 'الثقافية السعودية', h: 'saudiactv', c: 'sa', g: 'general' },
+    { n: 'العربية Business', h: 'AlArabiyaBusiness', c: 'sa', g: 'biz' },
+    // ——— توسعة مصر
+    { n: 'MBC مصر (شاهد)', u: 'https://shahid.mbc.net/ar/live', c: 'eg', g: 'general' },
+    { n: 'DMC', h: 'dmctveg', c: 'eg', g: 'general' },
+    { n: 'الحياة', h: 'AlHayahTV', c: 'eg', g: 'general' },
+    { n: 'المحور', h: 'MehwarTv', c: 'eg', g: 'general' },
+    { n: 'الحدث اليوم', h: 'AlhadathAlyoumTv', c: 'eg', g: 'news' },
+    { n: 'TeN TV', h: 'TeNTVChannel', c: 'eg', g: 'general' },
+    // ——— دينية إضافية
+    { n: 'هدى TV', h: 'HudaTv', c: 'sa', g: 'religion' },
+    { n: 'اقرأ', h: 'iqraatv', c: 'sa', g: 'religion' },
+    { n: 'الرسالة', h: 'AlresalahTv', c: 'sa', g: 'religion' },
+    // ——— أطفال إضافية
+    { n: 'سبيستون', h: 'spacetoon', c: 'intl', g: 'kids' },
+    { n: 'طيور الجنة', h: 'toyoraljanahtv', c: 'jo', g: 'kids' },
+    { n: 'طيور بيبي', h: 'ToyorBabyChannel', c: 'jo', g: 'kids' },
+    // ——— توسعة الهند
+    { n: 'Times Now', h: 'TimesNow', c: 'in_', g: 'news' },
+    { n: 'CNN News18', h: 'CNNNews18', c: 'in_', g: 'news' },
+    { n: 'CNBC TV18', h: 'CNBCTV18', c: 'in_', g: 'biz' },
+    { n: 'DD News', h: 'DDNews', c: 'in_', g: 'news' },
+    { n: 'DD India', h: 'DDIndia', c: 'in_', g: 'news' },
+    { n: 'Sun News (تاميل)', h: 'sunnews', c: 'in_', g: 'news' },
+    { n: 'News18 (هندي)', h: 'News18India', c: 'in_', g: 'news' },
+    // ——— توسعة باكستان
+    { n: 'Hum News (أردو)', h: 'HumNewsPakistan', c: 'pk', g: 'news' },
+    { n: 'Bol News (أردو)', h: 'BOLNetworkOfficial', c: 'pk', g: 'news' },
+    { n: 'GNN (أردو)', h: 'GNNHDOfficial', c: 'pk', g: 'news' },
+    { n: '92 News (أردو)', h: '92NewsHD', c: 'pk', g: 'news' },
+    // ——— توسعة بنغلاديش
+    { n: 'RTV (بنغالي)', h: 'rtvonline', c: 'bd', g: 'general' },
+    { n: 'NTV (بنغالي)', h: 'ntvdigitalbd', c: 'bd', g: 'news' },
+    { n: 'DBC News (بنغالي)', h: 'dbcnews', c: 'bd', g: 'news' },
+    // ——— توسعة الفلبين / نيبال / سريلانكا
+    { n: 'UNTV (فلبيني)', h: 'UNTVNewsRescue', c: 'ph', g: 'news' },
+    { n: 'News5 (فلبيني)', h: 'News5Everywhere', c: 'ph', g: 'news' },
+    { n: 'Himalaya TV (نيبالي)', h: 'HimalayaTV', c: 'np', g: 'news' },
+    { n: 'News24 Nepal (نيبالي)', h: 'News24Nepal', c: 'np', g: 'news' },
+    { n: 'News 1st (سنهالي)', h: 'newsfirstsrilanka', c: 'lk', g: 'news' },
+    // ——— توسعة تركيا
+    { n: 'CNN Türk (تركي)', h: 'cnnturk', c: 'tr', g: 'news' },
+    { n: 'Habertürk (تركي)', h: 'haberturktv', c: 'tr', g: 'news' },
+    { n: 'A Haber (تركي)', h: 'ahaber', c: 'tr', g: 'news' },
+    { n: 'Halk TV (تركي)', h: 'halktvcomtr', c: 'tr', g: 'news' },
+    // ——— توسعة أوروبا/أمريكا/أستراليا
+    { n: 'GB News', h: 'gbnewsonline', c: 'uk', g: 'news' },
+    { n: 'Sky News Australia', h: 'SkyNewsAustralia', c: 'uk', g: 'news' },
+    { n: 'ABC News Australia', h: 'abcnewsaustralia', c: 'uk', g: 'news' },
+    { n: 'Fox News (مقاطع حية)', h: 'FoxNews', c: 'us', g: 'news' },
+    { n: 'BFMTV (فرنسي)', h: 'BFMTV', c: 'fr', g: 'news' },
+    { n: 'CNEWS (فرنسي)', h: 'CNEWS', c: 'fr', g: 'news' },
+    { n: 'franceinfo (فرنسي)', h: 'franceinfo', c: 'fr', g: 'news' },
+    { n: 'WELT (ألماني)', h: 'WELTVideoTV', c: 'de', g: 'news' },
+    { n: 'tagesschau24 (ألماني)', h: 'tagesschau', c: 'de', g: 'news' },
+    { n: 'Phoenix (ألماني)', h: 'phoenix', c: 'de', g: 'news' },
+    // ——— أمريكا اللاتينية (إسباني)
+    { n: 'Noticias Caracol (إسباني)', h: 'NoticiasCaracol', c: 'intl', g: 'news' },
+    { n: 'Milenio (إسباني)', h: 'MilenioTelevision', c: 'intl', g: 'news' },
+    { n: 'DW Español', h: 'dwespanol', c: 'intl', g: 'news' },
+  ];
+
+  /* منصات رسمية — تفتح بتطبيقها/موقعها الرسمي بحساب المستخدم نفسه.
+   * القيمة: قنوات الاشتراك والقنوات التي لا تبث يوتيوب (دراما MBC، دبي ون...) */
+  var TV_PLATFORMS = [
+    { n: 'شاهد', d: 'كل قنوات MBC مباشر', u: 'https://shahid.mbc.net/ar/live', i: '🎬' },
+    { n: 'عوان', d: 'كل قنوات دبي مباشر', u: 'https://awaan.ae/live', i: '🏙️' },
+    { n: 'ADtv', d: 'قنوات أبوظبي وماجد', u: 'https://www.adtv.ae/live', i: '🦅' },
+    { n: 'TOD', d: 'beIN باشتراكك', u: 'https://www.tod.tv', i: '⚽' },
+    { n: 'روتانا+', d: 'قنوات روتانا', u: 'https://rotanaplus.net', i: '🎵' },
+    { n: 'نتفلكس', d: 'باشتراكك', u: 'https://www.netflix.com', i: '🍿' },
+    { n: 'OSN+', d: 'باشتراكك', u: 'https://www.osnplus.com', i: '📀' },
+    { n: 'ستارزبلاي', d: 'باشتراكك', u: 'https://www.starzplay.com', i: '⭐' },
   ];
 
   function tvIsAr(){ try{ return (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur'); }catch(e){ return true; } }
@@ -28683,11 +28772,45 @@ window.__omranBundleOk = true;
     });
   }
 
+  /* فتح رابط خارجي: داخل غلاف أندرويد نغيّر الموقع — معالج الروابط في
+   * الغلاف يحوّل المضيف الغريب لتطبيق/متصفح النظام ولا يبحر بصفحتنا؛
+   * في المتصفح العادي نافذة جديدة. */
+  function openExternal(url){
+    var inApp = false;
+    try{ inApp = typeof window.omranLikelyApp === 'function' && window.omranLikelyApp(); }
+    catch(e){ __swallow(e, 'tv:inapp'); }
+    if(inApp){ try{ location.href = url; return; }catch(e){ __swallow(e, 'tv:extapp'); } }
+    try{ window.open(url, '_blank', 'noopener'); }catch(e){ __swallow(e, 'tv:extwin'); }
+  }
+
+  function renderPlatforms(grid){
+    var head = document.createElement('div');
+    head.style.cssText = 'grid-column:1/-1;font-size:13px;color:var(--muted,#98a0b3);padding:2px 2px 0;';
+    head.textContent = tt('منصات رسمية — تفتح بحسابك', 'Official platforms — opens with your account');
+    grid.appendChild(head);
+    var row = document.createElement('div');
+    row.style.cssText = 'grid-column:1/-1;display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;';
+    TV_PLATFORMS.forEach(function(pf){
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.style.cssText = 'flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 14px;border-radius:14px;border:1px solid var(--omGoldSoft,rgba(212,175,55,.35));background:rgba(212,175,55,.06);color:inherit;cursor:pointer;min-width:96px;';
+      b.innerHTML = '<span style="font-size:22px;">' + pf.i + '</span><span style="font-size:13px;font-weight:700;">' + pf.n + ' ↗</span><span style="font-size:10.5px;color:var(--muted,#98a0b3);">' + pf.d + '</span>';
+      b.onclick = function(){ openExternal(pf.u); };
+      row.appendChild(b);
+    });
+    grid.appendChild(row);
+    var sep = document.createElement('div');
+    sep.style.cssText = 'grid-column:1/-1;font-size:13px;color:var(--muted,#98a0b3);padding:6px 2px 0;';
+    sep.textContent = tt('قنوات مباشرة داخل التطبيق', 'Live channels inside the app');
+    grid.appendChild(sep);
+  }
+
   function renderGrid(){
     var el = shell();
     var grid = el.querySelector('#tvGrid');
     grid.innerHTML = '';
     var q = S.q.toLowerCase();
+    if(!q && S.cat === 'all') renderPlatforms(grid);
     var list = TV_CH.filter(function(ch){
       if(q) return (ch.n + ' ' + ch.h).toLowerCase().indexOf(q) !== -1; // البحث يتجاوز فلتر البلد
       if(ch.c !== S.country) return false;
@@ -28713,6 +28836,8 @@ window.__omranBundleOk = true;
   }
 
   function playChannel(ch, card){
+    // قناة بلا بث يوتيوب أصلًا → منصتها الرسمية مباشرة
+    if(!ch.h && ch.u){ openExternal(ch.u); return; }
     var el = shell();
     var old = card.innerHTML;
     card.innerHTML = '<span style="font-size:26px;">⏳</span><span style="font-size:13px;">' + tt('جارٍ الفتح...', 'Opening...') + '</span>';
@@ -28725,6 +28850,12 @@ window.__omranBundleOk = true;
       el.querySelector('#tvPlayerWrap').style.display = 'flex';
     }).catch(function(e){
       __swallow(e, 'tv:resolve');
+      // الاحتياط الذكي: بث يوتيوب غير متاح لكن للقناة منصة رسمية → افتحها
+      if(ch.u){
+        card.innerHTML = old;
+        openExternal(ch.u);
+        return;
+      }
       card.innerHTML = '<span style="font-size:26px;">😴</span><span style="font-size:12px;">' + tt('القناة موقفة البث حاليًا', 'Not streaming right now') + '</span>';
       setTimeout(function(){ card.innerHTML = old; }, 2600);
     });
