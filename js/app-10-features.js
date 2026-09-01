@@ -656,7 +656,11 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       const ph = pdf.internal.pageSize.getHeight();
       for(let i = 0; i < files.length; i++){
         let decoded;
-        try{ decoded = await readImage(files[i]); }
+        try{
+          /* v-heic: تحويل HEIC إلى JPEG محليًا قبل الفك */
+          const nf = await omranNormalizeImageFile(files[i]);
+          decoded = await readImage(nf);
+        }
         catch(e){ failedNames.push(files[i].name || files[i].type || '?'); continue; }
         const img = decoded.img;
         // draw to canvas as JPEG to keep the PDF small and support all formats
