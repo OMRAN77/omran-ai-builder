@@ -18980,6 +18980,57 @@ function openDrawer(el){
     try{ document.getElementById('plusToolsPopup').classList.remove('show'); }catch(_){ __swallow(_, "ui:app-10-features#6"); }
   }
 }
+/* v-drawer-drag2 (طلب عمران): نفس سحب الإعدادات لدرجي المحادثات والملفات —
+   الدرج يتبع الإصبع؛ فلته قبل ثلث العرض يرجع، وبعده (أو سحبة سريعة)
+   ينزلق ويغلق. يعمل بالاتجاهين (RTL يمين / LTR يسار). */
+function omranDrawerDrag(el){
+  if(!el) return;
+  let t0 = null, dragging = false, w = 0, sign = 1;
+  const setX = (x, anim) => {
+    el.style.setProperty('transition', anim ? 'transform .18s ease-out' : 'none', 'important');
+    if(x === null) el.style.removeProperty('transform');
+    else el.style.setProperty('transform', 'translateX(' + x + 'px)', 'important');
+  };
+  const clear = () => { el.style.removeProperty('transform'); el.style.removeProperty('transition'); };
+  el.addEventListener('touchstart', (e) => {
+    if(e.touches.length !== 1 || !el.classList.contains('open')){ t0 = null; return; }
+    t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY, ts: Date.now() };
+    dragging = false;
+    w = el.getBoundingClientRect().width || 300;
+    sign = (document.documentElement.dir === 'rtl') ? 1 : -1;
+  }, { passive: true });
+  el.addEventListener('touchmove', (e) => {
+    if(!t0) return;
+    const d = (e.touches[0].clientX - t0.x) * sign;  /* موجب = نحو حافة الإغلاق */
+    const dy = e.touches[0].clientY - t0.y;
+    if(!dragging){
+      if(Math.abs(d) < 14 || Math.abs(d) < Math.abs(dy) * 1.4) return;
+      if(d <= 0){ t0 = null; return; }
+      dragging = true;
+    }
+    setX(Math.max(0, d) * sign, false);
+  }, { passive: true });
+  const fin = (e) => {
+    if(!t0) return;
+    const was = dragging;
+    const d = (was && e.changedTouches && e.changedTouches[0]) ? (e.changedTouches[0].clientX - t0.x) * sign : 0;
+    const dt = Date.now() - t0.ts;
+    t0 = null; dragging = false;
+    if(!was) return;
+    if(d > w * 0.35 || (dt < 300 && d > 70)){
+      setX((w + 40) * sign, true);
+      setTimeout(() => { clear(); closeDrawers(); }, 190);
+    } else {
+      setX(0, true);
+      setTimeout(clear, 220);
+    }
+  };
+  el.addEventListener('touchend', fin, { passive: true });
+  el.addEventListener('touchcancel', fin, { passive: true });
+}
+omranDrawerDrag(sidebarEl);
+omranDrawerDrag(workareaEl);
+
 function switchWorkTab(tabName){
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabName));
   document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tabName));

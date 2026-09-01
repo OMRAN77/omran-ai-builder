@@ -585,9 +585,10 @@
     .resizer{display:none;}
     main{position:relative;}
     #sidebar, #workarea{
-      position:fixed; top:0; bottom:0; left:0; width:92vw; max-width:420px; height:100%;
+      position:fixed; top:0; bottom:0; left:0; width:80vw; max-width:420px; height:100%;
       z-index:60; transition:transform .25s ease; box-shadow:0 10px 50px rgba(0,0,0,.55);
       background:var(--bg2); opacity:1;
+      touch-action:pan-y; /* v-drawer-drag2: الأفقي لنا والرأسي للمتصفح */
     }
     #sidebar > *, #workarea > *{ position:relative; z-index:1; }
     #sidebar{transform:translateX(-100%); max-width:360px;}
@@ -643,7 +644,8 @@
   html.mobile-ui .resizer{display:none;}
   html.mobile-ui main{position:relative;}
   html.mobile-ui #sidebar, html.mobile-ui #workarea{
-    position:fixed; top:0; bottom:0; left:0; width:92vw; max-width:420px; height:100%;
+    position:fixed; top:0; bottom:0; left:0; width:80vw; max-width:420px; height:100%;
+    touch-action:pan-y; /* v-drawer-drag2 */
     z-index:60; transition:transform .25s ease; box-shadow:var(--sh-4);
     background:var(--bg2); opacity:1;
   }
