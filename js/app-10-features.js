@@ -642,6 +642,12 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
     if(!files.length) return;
     const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
     btn.disabled = true;
+    /* v-img2pdf-heic (لقطة عمران ١ سبتمبر): صورة واحدة بصيغة لا يفكها
+       المتصفح (HEIC من كاميرات هواوي/آيفون) كانت تُفشل العملية كلها برسالة
+       عامة. الآن: الصورة الفاشلة تُتخطى، والرسالة تسمي السبب، والفشل يُبلغ
+       لوحة الأخطاء ليُشخَّص عن بُعد. */
+    const failedNames = [];
+    let added = 0;
     try{
       await loadJsPdf();
       const { jsPDF } = window.jspdf;
@@ -649,7 +655,10 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       const pw = pdf.internal.pageSize.getWidth();
       const ph = pdf.internal.pageSize.getHeight();
       for(let i = 0; i < files.length; i++){
-        const { img, dataUrl } = await readImage(files[i]);
+        let decoded;
+        try{ decoded = await readImage(files[i]); }
+        catch(e){ failedNames.push(files[i].name || files[i].type || '?'); continue; }
+        const img = decoded.img;
         // draw to canvas as JPEG to keep the PDF small and support all formats
         const cv = document.createElement('canvas');
         const maxSide = 2000;
@@ -662,14 +671,34 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
         const margin = 24;
         const fit = Math.min((pw - margin * 2) / cv.width, (ph - margin * 2) / cv.height);
         const w = cv.width * fit, h = cv.height * fit;
-        if(i > 0) pdf.addPage();
+        if(added > 0) pdf.addPage();
         pdf.addImage(jpg, 'JPEG', (pw - w) / 2, (ph - h) / 2, w, h);
+        added++;
       }
+      if(!added) throw new Error('no-decodable-images');
       /* v-pdf-universal: pdf.save() = رابط تنزيل لا يعمل داخل الأغلفة —
          المسار الموحد: جسر الآيفون ← ورقة مشاركة النظام ← تنزيل عادي. */
       await omranSaveBlob(pdf.output('blob'), 'omran-images.pdf');
+      if(failedNames.length){
+        alert(isAr
+          ? 'تم إنشاء الـPDF، لكن تخطّيت ' + failedNames.length + ' صورة بصيغة غير مدعومة (HEIC؟): ' + failedNames.slice(0,3).join('، ')
+          : 'PDF created, but ' + failedNames.length + ' unsupported image(s) were skipped (HEIC?): ' + failedNames.slice(0,3).join(', '));
+      }
     }catch(err){
-      alert(isAr ? 'تعذر إنشاء ملف PDF — حاول مرة ثانية' : 'Could not create the PDF — please try again');
+      try{
+        fetch('/api/system?action=client-errors', { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            message: 'IMG2PDF FAIL: ' + String((err && err.message) || err).slice(0,120)
+              + ' — types: ' + files.map(f => f.type || f.name || '?').slice(0,5).join(','),
+            source: 'img-to-pdf', url: location.href, ua: navigator.userAgent
+          }), keepalive: true
+        }).catch(function(){ /* guard-ok: الإبلاغ لا يعطل شيئًا */ });
+      }catch(e2){ __swallow(e2, 'img2pdf:report'); }
+      const heicish = failedNames.length || files.some(f => /hei[cf]/i.test((f.type || '') + (f.name || '')));
+      alert(heicish
+        ? (isAr ? 'صيغة الصور غير مدعومة (HEIC من الكاميرا). غيّر إعداد الكاميرا إلى JPEG (الإعدادات ← الصيغة عالية الكفاءة ← إيقاف) أو اختر صورًا أخرى.'
+                : 'Unsupported image format (HEIC from the camera). Switch the camera to JPEG (settings → high-efficiency format → off) or pick other photos.')
+        : (isAr ? 'تعذر إنشاء ملف PDF — حاول مرة ثانية' : 'Could not create the PDF — please try again'));
     }
     btn.disabled = false;
   };
