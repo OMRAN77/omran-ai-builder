@@ -24,6 +24,7 @@ function load(action) {
     case 'memory': return require('./_lib/memory.js');
     case 'client-errors': return require('./_lib/client-errors.js');
     case 'tv-resolve': return require('./_lib/tv-resolve.js');
+    case 'ip-geo': return require('./_lib/ip-geo.js');
     case 'health': return require('./_lib/health.js');
     case 'feedback': return require('./_lib/feedback.js');
     case 'revgeo': return require('./_lib/revgeo.js');
