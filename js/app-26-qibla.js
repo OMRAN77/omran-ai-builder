@@ -53,14 +53,16 @@
   function tx(key){ var m = TX[key]; return (m && (m[qLang()] || m.en)) || (m && m.ar) || key; }
   function qt(ar, en){ return qIsRtl() ? ar : en; } // للنصوص المركّبة القليلة المتبقية
 
+  // طرق الحساب بالـ14 لغة (أسماء الهيئات — تُترجم وصفيًا)
   var METHODS = [
-    { v: 4, ar: 'أم القرى (مكة)', en: 'Umm al-Qura' },
-    { v: 3, ar: 'رابطة العالم الإسلامي', en: 'Muslim World League' },
-    { v: 8, ar: 'الخليج', en: 'Gulf Region' },
-    { v: 5, ar: 'الهيئة المصرية', en: 'Egyptian Authority' },
-    { v: 1, ar: 'كراتشي', en: 'Karachi' },
-    { v: 2, ar: 'أمريكا الشمالية (ISNA)', en: 'ISNA' },
+    { v: 4, t: { ar:'أم القرى (مكة)', en:'Umm al-Qura (Makkah)', fr:'Oumm al-Qoura', hi:'उम्म अल-क़ुरा (मक्का)', ur:'ام القریٰ (مکہ)', bn:'উম্মুল কুরা (মক্কা)', ne:'उम्म अल-कुरा (मक्का)', fil:'Umm al-Qura (Makkah)', id:'Umm al-Qura (Makkah)', zh:'古拉大学（麦加）', ru:'Умм аль-Кура (Мекка)', tr:'Ümmü\'l-Kura (Mekke)', ml:'ഉമ്മുൽ ഖുറാ (മക്ക)', es:'Umm al-Qura (La Meca)' } },
+    { v: 3, t: { ar:'رابطة العالم الإسلامي', en:'Muslim World League', fr:'Ligue islamique mondiale', hi:'मुस्लिम वर्ल्ड लीग', ur:'رابطہ عالم اسلامی', bn:'মুসলিম ওয়ার্ল্ড লীগ', ne:'मुस्लिम वर्ल्ड लिग', fil:'Muslim World League', id:'Liga Dunia Muslim', zh:'世界穆斯林联盟', ru:'Всемирная мусульманская лига', tr:'İslam Dünyası Birliği', ml:'മുസ്‌ലിം വേൾഡ് ലീഗ്', es:'Liga Mundial Musulmana' } },
+    { v: 8, t: { ar:'الخليج', en:'Gulf Region', fr:'Région du Golfe', hi:'खाड़ी क्षेत्र', ur:'خلیجی خطہ', bn:'উপসাগরীয় অঞ্চল', ne:'खाडी क्षेत्र', fil:'Rehiyon ng Golpo', id:'Kawasan Teluk', zh:'海湾地区', ru:'Персидский залив', tr:'Körfez Bölgesi', ml:'ഗൾഫ് മേഖല', es:'Región del Golfo' } },
+    { v: 5, t: { ar:'الهيئة المصرية', en:'Egyptian Authority', fr:'Autorité égyptienne', hi:'मिस्री प्राधिकरण', ur:'مصری ادارہ', bn:'মিশরীয় কর্তৃপক্ষ', ne:'इजिप्टियन प्राधिकरण', fil:'Awtoridad ng Ehipto', id:'Otoritas Mesir', zh:'埃及总局', ru:'Египетское управление', tr:'Mısır Kurumu', ml:'ഈജിപ്ഷ്യൻ അതോറിറ്റി', es:'Autoridad Egipcia' } },
+    { v: 1, t: { ar:'كراتشي', en:'Karachi', fr:'Karachi', hi:'कराची', ur:'کراچی', bn:'করাচি', ne:'कराची', fil:'Karachi', id:'Karachi', zh:'卡拉奇', ru:'Карачи', tr:'Karaçi', ml:'കറാച്ചി', es:'Karachi' } },
+    { v: 2, t: { ar:'أمريكا الشمالية (ISNA)', en:'North America (ISNA)', fr:'Amérique du Nord (ISNA)', hi:'उत्तरी अमेरिका (ISNA)', ur:'شمالی امریکہ (ISNA)', bn:'উত্তর আমেরিকা (ISNA)', ne:'उत्तर अमेरिका (ISNA)', fil:'Hilagang Amerika (ISNA)', id:'Amerika Utara (ISNA)', zh:'北美 (ISNA)', ru:'Северная Америка (ISNA)', tr:'Kuzey Amerika (ISNA)', ml:'വടക്കേ അമേരിക്ക (ISNA)', es:'Norteamérica (ISNA)' } },
   ];
+  function methodName(m){ return (m.t && (m.t[qLang()] || m.t.en)) || m.t.ar; }
 
   function qIsAr(){ return qIsRtl(); }
   function getMethod(){ try{ return parseInt(localStorage.getItem('aiapp_pray_method') || '4', 10); }catch(e){ return 4; } }
@@ -202,7 +204,7 @@
       return;
     }
     var np = nextPrayer();
-    var mOpts = METHODS.map(function(m){ return '<option value="' + m.v + '"' + (m.v === getMethod() ? ' selected' : '') + '>' + qt(m.ar, m.en) + '</option>'; }).join('');
+    var mOpts = METHODS.map(function(m){ return '<option value="' + m.v + '"' + (m.v === getMethod() ? ' selected' : '') + ' style="background:#141420;color:#fff;">' + methodName(m) + '</option>'; }).join('');
     var rows = PRAYERS.map(function(k){
       var isNext = np && np.key === k;
       return '<div style="display:flex;align-items:center;gap:10px;padding:13px 14px;border-radius:12px;margin-bottom:7px;' +
