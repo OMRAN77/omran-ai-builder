@@ -9334,6 +9334,9 @@ settingsDialog.addEventListener('close', () => { try{ saveSettingsNow(); }catch(
     if(dy > 90 && dy > dx * 2 && settingsDialog.scrollTop <= 2){ t0 = null; closeDialogSafe(settingsDialog); }
   }, { passive: true });
   settingsDialog.addEventListener('touchend', () => { t0 = null; }, { passive: true });
+  /* v-settings-grab: النقر على المقبض يغلق أيضًا (مفيد للكمبيوتر) */
+  const grab = document.getElementById('settingsGrab');
+  if(grab) grab.addEventListener('click', () => closeDialogSafe(settingsDialog));
 })();
 
 // Allow manually editing the generated code directly in the code panel:
