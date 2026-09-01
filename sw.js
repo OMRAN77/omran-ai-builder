@@ -1,4 +1,4 @@
-const CACHE_NAME = 'omran-ai-builder-blackchat-178d3d5d';
+const CACHE_NAME = 'omran-ai-builder-blackchat-b6ad2c6f';
 const STATIC_ASSETS = [
   './',
   './index.html',
