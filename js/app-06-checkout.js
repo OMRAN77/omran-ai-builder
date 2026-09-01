@@ -732,6 +732,15 @@ settingsDialog.addEventListener('close', () => { try{ saveSettingsNow(); }catch(
   /* v-settings-grab: النقر على المقبض يغلق أيضًا (مفيد للكمبيوتر) */
   const grab = document.getElementById('settingsGrab');
   if(grab) grab.addEventListener('click', () => closeDialogSafe(settingsDialog));
+  /* v-settings-outside (فكرة عمران): الورقة أصغر من الشاشة — النقر على
+     المساحة الفاضية (الـbackdrop) يغلقها ويرجعك */
+  settingsDialog.addEventListener('click', (e) => {
+    if(e.target !== settingsDialog) return;
+    const r = settingsDialog.getBoundingClientRect();
+    if(e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom){
+      closeDialogSafe(settingsDialog);
+    }
+  });
 })();
 
 // Allow manually editing the generated code directly in the code panel:
