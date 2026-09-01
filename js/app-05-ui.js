@@ -7,7 +7,19 @@
 function omranNativeBridge(name){
   try{
     const h = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers[name];
-    return (h && h.postMessage) ? h : null;
+    if(h && h.postMessage) return h;
+    /* v-android-share (شكوى عمران «مافيه مشاركة» ١ سبتمبر): غلاف أندرويد v12+
+       يحقن OmranAndroidShare عبر addJavascriptInterface — نلفّه بنفس عقد
+       postMessage فتفتح ورقة مشاركة أندرويد الحقيقية لكل الملفات. */
+    if(name === 'omranShare' && window.OmranAndroidShare && typeof window.OmranAndroidShare.share === 'function'){
+      return { postMessage: function(m){
+        window.OmranAndroidShare.share(
+          String((m && m.b64) || ''),
+          String((m && m.name) || 'omran-file'),
+          String((m && m.mime) || 'application/octet-stream'));
+      } };
+    }
+    return null;
   }catch(e){ return null; }
 }
 /* v-pdf-universal: حفظ PDF يعمل في كل البيئات — جسر تطبيق الآيفون، ثم ورقة
