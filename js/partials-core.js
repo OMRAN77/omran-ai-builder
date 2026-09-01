@@ -1123,10 +1123,10 @@
       <div id="globalChips" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">
         <button type="button" class="btn" data-tv="OANDA:XAUUSD" style="padding:4px 10px; font-size:12px;">🥇 Gold</button>
         <button type="button" class="btn" data-tv="TVC:USOIL" style="padding:4px 10px; font-size:12px;">🛢️ Oil</button>
-        <button type="button" class="btn" data-tv="DJ:DJI" style="padding:4px 10px; font-size:12px;">Dow Jones</button>
-        <button type="button" class="btn" data-tv="NASDAQ:IXIC" style="padding:4px 10px; font-size:12px;">NASDAQ</button>
-        <button type="button" class="btn" data-tv="SP:SPX" style="padding:4px 10px; font-size:12px;">S&amp;P 500</button>
-        <button type="button" class="btn" data-tv="XETR:DAX" style="padding:4px 10px; font-size:12px;">DAX</button>
+        <button type="button" class="btn" data-tv="AMEX:DIA" style="padding:4px 10px; font-size:12px;">Dow Jones</button>
+        <button type="button" class="btn" data-tv="NASDAQ:QQQ" style="padding:4px 10px; font-size:12px;">NASDAQ</button>
+        <button type="button" class="btn" data-tv="AMEX:SPY" style="padding:4px 10px; font-size:12px;">S&amp;P 500</button>
+        <button type="button" class="btn" data-tv="FOREXCOM:GRXEUR" style="padding:4px 10px; font-size:12px;">DAX</button>
         <button type="button" class="btn" data-tv="BITSTAMP:BTCUSD" style="padding:4px 10px; font-size:12px;">₿ BTC</button>
         <button type="button" class="btn" data-tv="FX:EURUSD" style="padding:4px 10px; font-size:12px;">EUR/USD</button>
       </div>
