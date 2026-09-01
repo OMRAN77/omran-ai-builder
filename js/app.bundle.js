@@ -9320,18 +9320,18 @@ const saveSettingsNow = () => {
 $('#btnSaveSettings').onclick = () => { saveSettingsNow(); closeDialogSafe(settingsDialog); };
 /* الحفظ التلقائي: أي إغلاق (سحب، ✕، ESC، رجوع) يحفظ أولًا */
 settingsDialog.addEventListener('close', () => { try{ saveSettingsNow(); }catch(e){ __swallow(e, 'settings:autosave'); } });
-/* السحب لأسفل يغلق — فقط عندما يكون المحتوى في أعلاه، فلا يتعارض مع التمرير */
+/* v-settings-drawer: درج جانبي (نفس ChatGPT) — سحب أفقي نحو حافة الدرج
+   يغلقه، والتمرير الرأسي داخل المحتوى لا يتأثر إطلاقًا */
 (function(){
   let t0 = null;
   settingsDialog.addEventListener('touchstart', (e) => {
-    t0 = (settingsDialog.scrollTop <= 2 && e.touches.length === 1)
-      ? { y: e.touches[0].clientY, x: e.touches[0].clientX } : null;
+    t0 = (e.touches.length === 1) ? { y: e.touches[0].clientY, x: e.touches[0].clientX } : null;
   }, { passive: true });
   settingsDialog.addEventListener('touchmove', (e) => {
     if(!t0) return;
-    const dy = e.touches[0].clientY - t0.y;
-    const dx = Math.abs(e.touches[0].clientX - t0.x);
-    if(dy > 90 && dy > dx * 2 && settingsDialog.scrollTop <= 2){ t0 = null; closeDialogSafe(settingsDialog); }
+    const dx = e.touches[0].clientX - t0.x;      /* موجب = نحو اليمين (حافة الدرج) */
+    const dy = Math.abs(e.touches[0].clientY - t0.y);
+    if(dx > 90 && dx > dy * 2){ t0 = null; closeDialogSafe(settingsDialog); }
   }, { passive: true });
   settingsDialog.addEventListener('touchend', () => { t0 = null; }, { passive: true });
   /* v-settings-grab: النقر على المقبض يغلق أيضًا (مفيد للكمبيوتر) */

@@ -671,12 +671,16 @@
     padding-top:env(safe-area-inset-top, 0px);
   }
   html.mobile-ui #settingsDialog{ resize:none; }
-  /* v-settings-sheet (طلب عمران): الإعدادات ورقة سفلية أصغر من الشاشة —
-     مساحة فاضية معتمة فوقها، والنقر عليها يرجعك. بقية النوافذ بلا تغيير. */
+  /* v-settings-drawer (طلب عمران — «نفس ChatGPT»): الإعدادات درج جانبي
+     بطول الشاشة كامل، وشريط فاضٍ معتم على الجنب — النقر عليه يرجعك.
+     بقية النوافذ بلا تغيير. */
   html.mobile-ui #settingsDialog{
-    top:auto; bottom:0; height:auto; max-height:86dvh;
-    border-radius:22px 22px 0 0; border-top:1px solid var(--border);
-    padding-top:0;
+    top:0; bottom:0; height:100dvh; max-height:100dvh;
+    right:0; left:auto; margin:0;
+    width:86vw; max-width:86vw;
+    border-radius:0; border:none; border-inline-end:none;
+    border-inline-start:1px solid var(--border);
+    padding-top:env(safe-area-inset-top, 0px);
   }
   #settingsDialog::backdrop{ background:rgba(0,0,0,.55); }
   html.mobile-ui dialog > div:first-child{ padding-top:4px; } /* v-fix: safe-area already on dialog */
