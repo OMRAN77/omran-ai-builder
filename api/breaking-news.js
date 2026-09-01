@@ -12,6 +12,24 @@ const CACHE_MS = 5 * 60 * 1000; // 5 دقائق
 const EMERGENCY_RE = /طوار[ئئي]|تحذير.*عسكر|صاروخ|قصف|هجوم|كارثة|زلزال.*قوي|إخلاء|تحذير طارئ|missile|emergency alert|evacuation|explosion|attack|disaster/i;
 const BREAKING_RE  = /عاجل|خبر.*عاجل|عاجلاً|بيان.*رسمي|وفاة|اغتيال|انقلاب|breaking|urgent|just in|developing/i;
 
+// v-alerts-clean: نصّ Tavily خام يجيب معه فضلات الصفحة (قوائم روابط جانبية،
+// Weather Today / Live Score...). نبني المقتطف من جُمل مكتملة فقط —
+// أي شظية بدون علامة ترقيم نهائية أو قصيرة جداً تُهمل.
+function cleanSnippet(raw){
+  const txt = String(raw || '').replace(/\s+/g, ' ').trim();
+  if (!txt) return '';
+  const parts = txt.match(/[^.!?؟…]+[.!?؟…]+/g) || [];
+  const good = [];
+  for (const p of parts) {
+    const s = p.trim();
+    if (s.length < 30) continue; // فتات
+    if (/weather today|live score|horoscope|latest news|top news|also read|read more|advertisement/i.test(s)) continue;
+    good.push(s);
+    if (good.join(' ').length > 280) break;
+  }
+  return good.join(' ').slice(0, 400);
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -71,13 +89,15 @@ module.exports = async (req, res) => {
       const id = (r.url || r.title || '').slice(0, 80);
       if (seen.has(id)) continue;
       seen.add(id);
-      const text = (r.title || '') + ' ' + (r.content || '');
+      // v-alerts-clean: التصنيف من العنوان فقط — نصّ الصفحة الكامل يحتوي
+      // غالباً كلمات مثل attack/breaking في أخبار جانبية فيطلع إنذار كاذب
+      const text = (r.title || '');
       const level = EMERGENCY_RE.test(text) ? 'emergency' : BREAKING_RE.test(text) ? 'breaking' : null;
       if (!level) continue; // نتجاهل الأخبار العادية
       items.push({
         id,
         title: (r.title || '').trim().slice(0, 200),
-        snippet: (r.content || '').trim().slice(0, 400),
+        snippet: cleanSnippet(r.content),
         url: r.url || '',
         publishedDate: r.published_date || '',
         level, // 'emergency' | 'breaking'
