@@ -28969,17 +28969,40 @@ window.__omranBundleOk = true;
 
   var S = { timings: null, dateStr: null, loc: null, ticker: null };
 
+  /* v-geo-fallback: GPS أولًا، وإن رُفض/تعذّر نسقط على موقع تقريبي من IP —
+     فالمواقيت والقبلة تعمل على أي جهاز حتى بلا إذن موقع دقيق. */
+  function ipLoc(){
+    return fetch('/api/system?action=ip-geo')
+      .then(function(r){ return r.json(); })
+      .then(function(d){ return (d && typeof d.lat === 'number') ? { lat: d.lat, lng: d.lng, approx: true } : null; })
+      .catch(function(){ return null; });
+  }
+  function gpsLoc(){
+    return new Promise(function(res){
+      try{
+        var cached = JSON.parse(localStorage.getItem('aiapp_last_geo') || 'null');
+        if(cached && (Date.now() - cached.ts) < 3600000){ res({ lat: cached.lat, lng: cached.lng }); return; }
+      }catch(e){ /* guard-ok */ }
+      if(!navigator.geolocation){ res(null); return; }
+      var done = false;
+      var finish = function(v){ if(done) return; done = true; res(v); };
+      // مهلة قصيرة حتى لا يعلق المستخدم إن لم يستجب الحساس؛ الاحتياط IP بعدها
+      setTimeout(function(){ finish(null); }, 4500);
+      navigator.geolocation.getCurrentPosition(
+        function(p){
+          var l = { lat: p.coords.latitude, lng: p.coords.longitude };
+          try{ localStorage.setItem('aiapp_last_geo', JSON.stringify(Object.assign({ ts: Date.now() }, l))); }catch(e){ /* guard-ok */ }
+          finish(l);
+        },
+        function(){ finish(null); },
+        { timeout: 4500, maximumAge: 3600000 });
+    });
+  }
   function loc(){
     if(S.loc) return Promise.resolve(S.loc);
-    if(typeof mahaGetLocation === 'function'){
-      return mahaGetLocation().then(function(l){ S.loc = l; return l; });
-    }
-    return new Promise(function(res){
-      if(!navigator.geolocation){ res(null); return; }
-      navigator.geolocation.getCurrentPosition(
-        function(p){ S.loc = { lat: p.coords.latitude, lng: p.coords.longitude }; res(S.loc); },
-        function(){ res(null); },
-        { timeout: 8000, maximumAge: 3600000 });
+    return gpsLoc().then(function(l){
+      if(l){ S.loc = l; return l; }
+      return ipLoc().then(function(ip){ if(ip){ S.loc = ip; } return ip; });
     });
   }
 
@@ -29092,6 +29115,7 @@ window.__omranBundleOk = true;
         '</div>';
     }).join('');
     var hij = S.hijri ? (S.hijri.day + ' ' + (qIsAr() ? S.hijri.month.ar : S.hijri.month.en) + ' ' + S.hijri.year + ' ' + qt('هـ', 'AH')) : '';
+    var approxNote = (S.loc && S.loc.approx) ? '<div style="text-align:center;font-size:11.5px;color:var(--muted,#98a0b3);margin-bottom:10px;">📶 ' + qt('موقع تقريبي (من الشبكة) — فعّل خدمة الموقع لدقة أعلى', 'Approximate location (network) — enable location for accuracy') + '</div>' : '';
     body.innerHTML =
       (np ? '<div style="text-align:center;background:linear-gradient(135deg,rgba(212,175,55,.16),rgba(212,175,55,.04));border:1px solid var(--omGoldSoft,rgba(212,175,55,.35));border-radius:16px;padding:16px;margin-bottom:14px;">' +
         '<div style="font-size:13px;color:var(--muted,#98a0b3);">' + qt('الصلاة القادمة', 'Next prayer') + '</div>' +
@@ -29099,6 +29123,7 @@ window.__omranBundleOk = true;
         '<div id="qCountdown" style="font-size:28px;font-weight:800;letter-spacing:2px;font-variant-numeric:tabular-nums;color:var(--omGold,#d4af37);">--:--:--</div>' +
         '</div>' : '') +
       (hij ? '<div style="text-align:center;font-size:13px;color:var(--muted,#98a0b3);margin-bottom:12px;">📅 ' + hij + '</div>' : '') +
+      approxNote +
       rows +
       '<div style="margin-top:14px;font-size:13px;color:var(--muted,#98a0b3);">' + qt('طريقة الحساب', 'Calculation method') + '</div>' +
       '<select id="qMethod" style="width:100%;margin-top:6px;padding:10px;border-radius:10px;background:rgba(255,255,255,.04);color:inherit;border:1px solid var(--border,rgba(255,255,255,.12));font-size:14px;">' + mOpts + '</select>' +
