@@ -6302,6 +6302,32 @@ function omranLoadJsPdf(){
     .catch((e) => { __omranJsPdfLoading = null; throw e; });
   return __omranJsPdfLoading;
 }
+/* v-heic (لقطتا عمران ١ سبتمبر): كاميرات هواوي/آيفون تصور HEIC والمتصفح
+   لا يفكها — كانت تُفشل صور→PDF وتُربك تحليل المرفقات. نحولها JPEG محليًا
+   (مكتبة موطّنة تُحمَّل فقط عند أول ملف HEIC، بلا أي سيرفر). */
+let __omranHeicLoading = null;
+function omranLoadHeic2Any(){
+  if(window.heic2any) return Promise.resolve();
+  if(__omranHeicLoading) return __omranHeicLoading;
+  __omranHeicLoading = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = '/js/vendor/heic2any.min.js?v=1';
+    s.onload = resolve; s.onerror = () => { __omranHeicLoading = null; reject(new Error('load-failed')); };
+    document.head.appendChild(s);
+  });
+  return __omranHeicLoading;
+}
+async function omranNormalizeImageFile(file){
+  try{
+    const heic = /hei[cf]/i.test((file && file.type) || '') || /\.hei[cf]$/i.test((file && file.name) || '');
+    if(!heic) return file;
+    await omranLoadHeic2Any();
+    const out = await window.heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+    const blob = Array.isArray(out) ? out[0] : out;
+    const base = String(file.name || 'photo').replace(/\.hei[cf]$/i, '');
+    return new File([blob], base + '.jpg', { type: 'image/jpeg' });
+  }catch(e){ __swallow(e, 'heic:convert'); return file; }
+}
 let __omranH2iLoading = null;
 function omranLoadHtmlToImage(){
   if(window.htmlToImage && window.htmlToImage.toCanvas) return Promise.resolve();
@@ -14768,17 +14794,22 @@ $('#attachInput').addEventListener('change', async (e) => {
         continue;
       }
       if(IMAGE_TYPES.test(file.type)){
+        /* v-heic: صور HEIC (هواوي/آيفون) كانت تمر خامًا فيرفضها التحليل —
+           تُحوَّل JPEG محليًا قبل التصغير. */
+        let imgFile = file;
+        try{ imgFile = await omranNormalizeImageFile(file); }
+        catch(e){ __swallow(e, 'attach:heic'); }
         let dataUrl, mime;
         try{
-          const resized = await resizeImageFile(file);
+          const resized = await resizeImageFile(imgFile);
           dataUrl = resized.dataUrl;
           mime = resized.mime;
         }catch(resizeErr){
           // Fall back to the original file if resizing fails for any reason
           // (e.g. unsupported image type in <canvas>), but warn if it's huge.
           console.error('image resize failed, using original', resizeErr);
-          dataUrl = await readFileAsDataUrl(file);
-          mime = file.type;
+          dataUrl = await readFileAsDataUrl(imgFile);
+          mime = imgFile.type;
         }
         // v381: نسخة مضغوطة للمزامنة
         var serverThumb = '';
@@ -19361,7 +19392,11 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       const ph = pdf.internal.pageSize.getHeight();
       for(let i = 0; i < files.length; i++){
         let decoded;
-        try{ decoded = await readImage(files[i]); }
+        try{
+          /* v-heic: تحويل HEIC إلى JPEG محليًا قبل الفك */
+          const nf = await omranNormalizeImageFile(files[i]);
+          decoded = await readImage(nf);
+        }
         catch(e){ failedNames.push(files[i].name || files[i].type || '?'); continue; }
         const img = decoded.img;
         // draw to canvas as JPEG to keep the PDF small and support all formats

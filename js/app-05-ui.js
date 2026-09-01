@@ -185,6 +185,32 @@ function omranLoadJsPdf(){
     .catch((e) => { __omranJsPdfLoading = null; throw e; });
   return __omranJsPdfLoading;
 }
+/* v-heic (لقطتا عمران ١ سبتمبر): كاميرات هواوي/آيفون تصور HEIC والمتصفح
+   لا يفكها — كانت تُفشل صور→PDF وتُربك تحليل المرفقات. نحولها JPEG محليًا
+   (مكتبة موطّنة تُحمَّل فقط عند أول ملف HEIC، بلا أي سيرفر). */
+let __omranHeicLoading = null;
+function omranLoadHeic2Any(){
+  if(window.heic2any) return Promise.resolve();
+  if(__omranHeicLoading) return __omranHeicLoading;
+  __omranHeicLoading = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = '/js/vendor/heic2any.min.js?v=1';
+    s.onload = resolve; s.onerror = () => { __omranHeicLoading = null; reject(new Error('load-failed')); };
+    document.head.appendChild(s);
+  });
+  return __omranHeicLoading;
+}
+async function omranNormalizeImageFile(file){
+  try{
+    const heic = /hei[cf]/i.test((file && file.type) || '') || /\.hei[cf]$/i.test((file && file.name) || '');
+    if(!heic) return file;
+    await omranLoadHeic2Any();
+    const out = await window.heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+    const blob = Array.isArray(out) ? out[0] : out;
+    const base = String(file.name || 'photo').replace(/\.hei[cf]$/i, '');
+    return new File([blob], base + '.jpg', { type: 'image/jpeg' });
+  }catch(e){ __swallow(e, 'heic:convert'); return file; }
+}
 let __omranH2iLoading = null;
 function omranLoadHtmlToImage(){
   if(window.htmlToImage && window.htmlToImage.toCanvas) return Promise.resolve();

@@ -1004,17 +1004,22 @@ $('#attachInput').addEventListener('change', async (e) => {
         continue;
       }
       if(IMAGE_TYPES.test(file.type)){
+        /* v-heic: صور HEIC (هواوي/آيفون) كانت تمر خامًا فيرفضها التحليل —
+           تُحوَّل JPEG محليًا قبل التصغير. */
+        let imgFile = file;
+        try{ imgFile = await omranNormalizeImageFile(file); }
+        catch(e){ __swallow(e, 'attach:heic'); }
         let dataUrl, mime;
         try{
-          const resized = await resizeImageFile(file);
+          const resized = await resizeImageFile(imgFile);
           dataUrl = resized.dataUrl;
           mime = resized.mime;
         }catch(resizeErr){
           // Fall back to the original file if resizing fails for any reason
           // (e.g. unsupported image type in <canvas>), but warn if it's huge.
           console.error('image resize failed, using original', resizeErr);
-          dataUrl = await readFileAsDataUrl(file);
-          mime = file.type;
+          dataUrl = await readFileAsDataUrl(imgFile);
+          mime = imgFile.type;
         }
         // v381: نسخة مضغوطة للمزامنة
         var serverThumb = '';
