@@ -108,7 +108,13 @@
           if(/android/i.test(String(e.source || '')) && e.stack){
             String(e.stack).split('\n').slice(0,6).forEach(l => { if(l.trim()) lines.push('     ' + l.trim().slice(0,140)); });
           }
-          if(e.ua && /android/i.test(String(e.source || ''))) lines.push('     📱 ' + String(e.ua).slice(0,80));
+          /* v-vg-ua: أخطاء الكاميرا أيضًا تعرض الجهاز — ووسم OmranApp/N في
+             آخر الـua يكشف نسخة تطبيق الأندرويد فنقدّمه قبل القص */
+          if(e.ua && /android|visual-guide/i.test(String(e.source || ''))){
+            const uaS = String(e.ua);
+            const appTag = (uaS.match(/OmranApp\/\d+/) || [])[0] || '';
+            lines.push('     📱 ' + (appTag ? appTag + ' — ' : '') + uaS.slice(0,80));
+          }
         });
       } else {
         lines.push('✅ لا توجد أخطاء مسجلة من المستخدمين');

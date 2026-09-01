@@ -19845,7 +19845,13 @@ function openShareModal(project){
           if(/android/i.test(String(e.source || '')) && e.stack){
             String(e.stack).split('\n').slice(0,6).forEach(l => { if(l.trim()) lines.push('     ' + l.trim().slice(0,140)); });
           }
-          if(e.ua && /android/i.test(String(e.source || ''))) lines.push('     📱 ' + String(e.ua).slice(0,80));
+          /* v-vg-ua: أخطاء الكاميرا أيضًا تعرض الجهاز — ووسم OmranApp/N في
+             آخر الـua يكشف نسخة تطبيق الأندرويد فنقدّمه قبل القص */
+          if(e.ua && /android|visual-guide/i.test(String(e.source || ''))){
+            const uaS = String(e.ua);
+            const appTag = (uaS.match(/OmranApp\/\d+/) || [])[0] || '';
+            lines.push('     📱 ' + (appTag ? appTag + ' — ' : '') + uaS.slice(0,80));
+          }
         });
       } else {
         lines.push('✅ لا توجد أخطاء مسجلة من المستخدمين');
@@ -27744,20 +27750,27 @@ if(document.readyState === 'loading'){
 
   async function camOn() {
     if (S.stream) return true;
-    try {
-      S.stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } },
-        audio: false
-      });
-    } catch (e) {
-      // محاولة ثانية بلا أي قيود — بعض أجهزة WebView ترفض القيود نفسها
+    // v-vg-cam3: NotReadableError يعني الكاميرا محجوزة — قد تكون ميزة ثانية
+    // عندنا (كاميرا مها) ما زالت ماسكتها، فنحررها قبل المحاولة
+    try { if (typeof mahaCameraOff === 'function') mahaCameraOff(); }
+    catch (e) { __swallow(e, 'vg:mahacam'); }
+    var lastErr = null;
+    for (var attempt = 0; attempt < 3 && !S.stream; attempt++) {
+      if (attempt === 2) {
+        // المحاولة الثالثة فقط لحجز عابر للكاميرا — ننتظر ثم نعيد
+        var n = lastErr && lastErr.name;
+        if (n !== 'NotReadableError' && n !== 'TrackStartError' && n !== 'AbortError') break;
+        await new Promise(function (r) { setTimeout(r, 900); });
+      }
       try {
-        S.stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      } catch (e2) {
-        camFail(e2 && e2.name ? e2 : e);
-        return false;
+        S.stream = await navigator.mediaDevices.getUserMedia(attempt === 0
+          ? { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }, audio: false }
+          : { video: true, audio: false });
+      } catch (e) {
+        if (e && e.name) lastErr = e; else if (!lastErr) lastErr = e;
       }
     }
+    if (!S.stream) { camFail(lastErr); return false; }
     var v = $id('vgVideo');
     if (v) {
       v.srcObject = S.stream;
