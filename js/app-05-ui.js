@@ -222,6 +222,9 @@ async function omranNormalizeImageFile(file){
     const base = String(file.name || 'photo').replace(/\.hei[cf]$/i, '');
     return new File([blob], base + '.jpg', { type: 'image/jpeg' });
   }catch(e){
+    /* v-heic-diag: آخر سبب فشل يُحفظ ليُعرض في رسالة الخطأ نفسها —
+       سكرينشوت المستخدم يصير هو التشخيص. */
+    try{ window.__omranHeicErr = String((e && e.message) || e).slice(0, 160); }catch(e3){ /* guard-ok */ }
     /* v-heic-report: فشل التحويل نفسه يجب أن يصل لوحة المالك — بدونه نعمى
        عن نكهات HEIC التي لا تفكها المكتبة. */
     try{
