@@ -705,8 +705,154 @@
     { n: 'ستارزبلاي', d: 'باشتراكك', u: 'https://www.starzplay.com', i: '⭐' },
   ];
 
-  function tvIsAr(){ try{ return (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur'); }catch(e){ return true; } }
+
+  /* v660: الاسم اللاتيني للقنوات عربيّة الاسم — يُعرض لكلّ لغة عدا العربية. */
+  var TV_EN = {
+    "سكاي نيوز عربية": "Sky News Arabia",
+    "العربية": "Al Arabiya",
+    "الحدث": "Al Hadath",
+    "تلفزيون دبي": "Dubai TV",
+    "قناة الشارقة": "Sharjah TV",
+    "أبوظبي الرياضية": "Abu Dhabi Sports",
+    "دبي الرياضية": "Dubai Sports",
+    "الشارقة الرياضية": "Sharjah Sports",
+    "الشرق للأخبار": "Asharq News",
+    "الشرق بلومبرغ": "Asharq Business with Bloomberg",
+    "الإخبارية": "Al Ekhbariya",
+    "قناة القرآن الكريم — مكة": "Quran TV — Makkah",
+    "قناة السنة النبوية — المدينة": "Sunnah TV — Madinah",
+    "روتانا خليجية": "Rotana Khalijia",
+    "العربية الحدث السعودي": "Al Hadath Saudi",
+    "الجزيرة": "Al Jazeera",
+    "الجزيرة مباشر": "Al Jazeera Mubasher",
+    "الجزيرة الإنجليزية": "Al Jazeera English",
+    "قطر التلفزيون": "Qatar TV",
+    "الكأس الرياضية": "Alkass Sports",
+    "تلفزيون الكويت": "Kuwait TV",
+    "تلفزيون البحرين": "Bahrain TV",
+    "عُمان التلفزيون": "Oman TV",
+    "القاهرة الإخبارية": "Al Qahera News",
+    "إكسترا نيوز": "Extra News",
+    "صدى البلد": "Sada El Balad",
+    "أون سبورت": "ON Sport",
+    "النهار": "Al Nahar",
+    "قناة مدرستنا": "Madrasatna TV",
+    "المملكة": "Al Mamlaka TV",
+    "رؤيا": "Roya TV",
+    "الجديد": "Al Jadeed",
+    "الشرقية": "Al Sharqiya",
+    "العراقية الإخبارية": "Al Iraqiya News",
+    "تلفزيون فلسطين": "Palestine TV",
+    "بلقيس": "Belqees TV",
+    "سودانية 24": "Sudania 24",
+    "ميدي 1 تيفي": "Medi 1 TV",
+    "الشروق الجزائرية": "Echorouk TV",
+    "النهار الجزائرية": "Ennahar TV",
+    "الوطنية التونسية": "El Watania 1",
+    "ليبيا الأحرار": "Libya Al Ahrar",
+    "فرانس 24 عربي": "France 24 Arabic",
+    "الحرة": "Alhurra",
+    "بي بي سي عربي": "BBC Arabic",
+    "ناشونال جيوغرافيك أبوظبي": "National Geographic Abu Dhabi",
+    "سما دبي": "Sama Dubai",
+    "دبي ريسينغ": "Dubai Racing",
+    "نور دبي": "Noor Dubai",
+    "دبي ون (المنصة)": "Dubai One",
+    "دبي زمان (المنصة)": "Dubai Zaman",
+    "قناة أبوظبي": "Abu Dhabi TV",
+    "الإمارات (المنصة)": "Emarat TV",
+    "ماجد للأطفال (المنصة)": "Majid Kids TV",
+    "الظفرة": "Al Dhafra TV",
+    "عجمان": "Ajman TV",
+    "السعودية": "Saudi TV",
+    "الثقافية السعودية": "Saudi Al Thaqafiya",
+    "الحياة": "Al Hayah TV",
+    "المحور": "Al Mehwar TV",
+    "الحدث اليوم": "Al Hadath Al Youm",
+    "اقرأ": "Iqraa TV",
+    "الرسالة": "Al Resalah",
+    "سبيستون": "Spacetoon",
+    "طيور الجنة": "Toyor Al Janah",
+    "طيور بيبي": "Toyor Baby",
+    "العربي 2": "Al Araby TV 2",
+    "قناة دجلة الفضائية": "Dijlah TV",
+    "قناة التناصح الفضائية": "Tanasuh TV",
+    "تلفزيون المسار": "Al Masar TV",
+    "شاهد": "Shahid",
+    "عوان": "Awaan",
+    "روتانا+": "Rotana+",
+    "نتفلكس": "Netflix",
+    "ستارزبلاي": "STARZPLAY",
+    "CNBC عربية": "CNBC Arabia",
+    "قناة SSC الرياضية": "SSC Sports",
+    "MBC مصر": "MBC Masr",
+    "MBC مصر (شاهد)": "MBC Masr (Shahid)",
+    "MTV لبنان": "MTV Lebanon",
+    "TRT عربي": "TRT Arabi",
+    "euronews عربي": "euronews Arabic",
+    "DW عربية": "DW Arabic",
+    "العربية Business": "Al Arabiya Business",
+    "هدى TV": "Huda TV",
+  };
+  var TV_PF_KEY = {
+    'كل قنوات MBC مباشر': 'tvPfShahid',
+    'كل قنوات دبي مباشر': 'tvPfAwaan',
+    'قنوات أبوظبي وماجد': 'tvPfAdtv',
+    'beIN باشتراكك': 'tvPfTod',
+    'قنوات روتانا': 'tvPfRotana',
+    'باشتراكك': 'tvPfSub'
+  };
+
+  /* v660: أربع عشرة لغة — كلّ عنصر في القسم يتبع لغة المستخدم واتجاهها.
+   * النصوص من i18n/*.js · أسماء الدول من CLDR · الأسماء اللاتينية من TV_EN. */
+  function tvLang(){ try{ return (typeof lang === 'string' && lang) ? lang : 'ar'; }catch(e){ return 'ar'; } }
+  function tvIsAr(){ return tvLang() === 'ar'; }
+  function tvDir(){ var L = tvLang(); return (L === 'ar' || L === 'ur') ? 'rtl' : 'ltr'; }
+  function tvT(key, ar, en){
+    var L = tvLang();
+    try{
+      var D = window.I18N || null;
+      if(D){
+        var v = D[L] && D[L][key];
+        if(typeof v === 'string' && v) return v;
+        if(L !== 'ar'){ var ve = D.en && D.en[key]; if(typeof ve === 'string' && ve) return ve; }
+      }
+    }catch(e){ /* guard-ok: القاموس لم يُحمّل بعد — نرجع للنصّ المضمّن */ }
+    return (L === 'ar') ? ar : en;
+  }
   function tt(ar, en){ return tvIsAr() ? ar : en; }
+  function tvCountryName(code){
+    var meta = TV_COUNTRIES[code]; if(!meta) return code;
+    var L = tvLang();
+    if(L === 'ar') return meta[0];
+    if(code === 'intl') return tvT('tvCIntl', meta[0], meta[1]);
+    try{
+      var D = window.I18N && I18N[L] && I18N[L].tvCountries;
+      if(D && D[code]) return D[code];
+    }catch(e){ /* guard-ok */ }
+    if(L === 'en') return meta[1];
+    try{
+      var iso = code.replace(/_$/, '').toUpperCase();
+      if(iso.length === 2 && typeof Intl !== 'undefined' && Intl.DisplayNames){
+        var dn = new Intl.DisplayNames([L], { type: 'region' }).of(iso);
+        if(dn && dn !== iso) return dn;
+      }
+    }catch(e){ /* guard-ok: بيئة بلا CLDR — الإنجليزية بديلًا */ }
+    return meta[1];
+  }
+  var TV_CAT_KEY = { news: 'tvCatNews', sports: 'tvCatSports', general: 'tvCatGeneral', religion: 'tvCatReligion', kids: 'tvCatKids', biz: 'tvCatBiz' };
+  function tvCatName(g){
+    var meta = TV_CATS[g] || TV_CATS.general;
+    return tvT(TV_CAT_KEY[g] || 'tvCatGeneral', meta[0], meta[1]);
+  }
+  function tvChName(n){
+    if(tvLang() === 'ar') return n;
+    if(TV_EN[n]) return TV_EN[n];
+    var s = String(n).replace(/\s*[(（][^)）]*[\u0621-\u064A][^)）]*[)）]\s*$/, '').trim();
+    return s || n;
+  }
+  function tvPfDesc(pf){ var k = TV_PF_KEY[pf.d]; return k ? tvT(k, pf.d, pf.d) : pf.d; }
+  function tvBackLbl(){ return (tvDir() === 'rtl' ? '→ ' : '← ') + tvT('tvBack', 'رجوع', 'Back'); }
 
   var S = { country: 'ae', cat: 'all', q: '' };
 
@@ -768,23 +914,23 @@
     if(el) return el;
     el = document.createElement('div');
     el.id = 'omranTvShell';
-    el.dir = 'rtl';
+    el.dir = tvDir();
     el.style.cssText = 'position:fixed;inset:0;z-index:9500;background:var(--bg,#0a0b10);display:none;flex-direction:column;overflow:hidden;';
     el.innerHTML =
       '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px calc(6px);border-bottom:1px solid var(--border,rgba(255,255,255,.08));">' +
-        '<h2 style="margin:0;font-size:17px;flex:1;">📺 ' + tt('تلفزيون', 'TV') + '</h2>' +
+        '<h2 id="tvTitleTxt" style="margin:0;font-size:17px;flex:1;">' + tvT('tvTitle', '📺 تلفزيون', '📺 TV') + '</h2>' +
         '<button type="button" id="tvClose" aria-label="close" style="background:none;border:1px solid var(--border,rgba(255,255,255,.15));border-radius:50%;width:34px;height:34px;color:inherit;font-size:15px;cursor:pointer;">✕</button>' +
       '</div>' +
       '<div id="tvPlayerWrap" style="display:none;flex-direction:column;flex:1;min-height:0;">' +
         '<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;">' +
-          '<button type="button" id="tvBack" style="background:none;border:1px solid var(--border,rgba(255,255,255,.15));border-radius:10px;padding:6px 14px;color:inherit;cursor:pointer;">→ ' + tt('رجوع', 'Back') + '</button>' +
+          '<button type="button" id="tvBack" style="background:none;border:1px solid var(--border,rgba(255,255,255,.15));border-radius:10px;padding:6px 14px;color:inherit;cursor:pointer;">' + tvBackLbl() + '</button>' +
           '<span id="tvNowName" style="font-size:14px;font-weight:700;"></span>' +
-          '<button type="button" id="tvExt" style="display:none;margin-inline-start:auto;background:none;border:1px solid var(--border,rgba(255,255,255,.15));border-radius:10px;padding:6px 12px;color:inherit;cursor:pointer;font-size:12px;">↗ ' + tt('يوتيوب', 'YouTube') + '</button>' +
+          '<button type="button" id="tvExt" style="display:none;margin-inline-start:auto;background:none;border:1px solid var(--border,rgba(255,255,255,.15));border-radius:10px;padding:6px 12px;color:inherit;cursor:pointer;font-size:12px;">↗ ' + tvT('tvYoutube', 'يوتيوب', 'YouTube') + '</button>' +
         '</div>' +
         '<div style="flex:1;min-height:0;background:#000;"><iframe id="tvFrame" style="width:100%;height:100%;border:0;" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>' +
       '</div>' +
       '<div id="tvBrowse" style="display:flex;flex-direction:column;flex:1;min-height:0;">' +
-        '<div style="padding:8px 14px 0;"><input id="tvSearch" type="search" placeholder="🔍 ' + tt('ابحث عن قناة...', 'Search channels...') + '" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:12px;border:1px solid var(--border,rgba(255,255,255,.12));background:rgba(255,255,255,.04);color:inherit;font-size:14px;"></div>' +
+        '<div style="padding:8px 14px 0;"><input id="tvSearch" type="search" placeholder="🔍 ' + tvT('tvSearchPh', 'ابحث عن قناة...', 'Search channels...') + '" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:12px;border:1px solid var(--border,rgba(255,255,255,.12));background:rgba(255,255,255,.04);color:inherit;font-size:14px;"></div>' +
         '<div id="tvCountries" style="display:flex;gap:6px;overflow-x:auto;padding:10px 14px 4px;-webkit-overflow-scrolling:touch;"></div>' +
         '<div id="tvCats" style="display:flex;gap:6px;overflow-x:auto;padding:6px 14px;-webkit-overflow-scrolling:touch;"></div>' +
         '<div id="tvGrid" style="flex:1;min-height:0;overflow-y:auto;padding:8px 14px calc(20px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;align-content:start;"></div>' +
@@ -814,7 +960,7 @@
       var b = document.createElement('button');
       b.type = 'button';
       b.style.cssText = chipCss(S.country === code);
-      b.textContent = meta[2] + ' ' + tt(meta[0], meta[1]);
+      b.textContent = meta[2] + ' ' + tvCountryName(code);
       b.onclick = function(){ S.country = code; renderChips(); renderGrid(); };
       cw.appendChild(b);
     });
@@ -823,7 +969,7 @@
     var allB = document.createElement('button');
     allB.type = 'button';
     allB.style.cssText = chipCss(S.cat === 'all');
-    allB.textContent = tt('الكل', 'All');
+    allB.textContent = tvT('tvAll', 'الكل', 'All');
     allB.onclick = function(){ S.cat = 'all'; renderChips(); renderGrid(); };
     gw.appendChild(allB);
     Object.keys(TV_CATS).forEach(function(g){
@@ -831,7 +977,7 @@
       var b = document.createElement('button');
       b.type = 'button';
       b.style.cssText = chipCss(S.cat === g);
-      b.textContent = meta[2] + ' ' + tt(meta[0], meta[1]);
+      b.textContent = meta[2] + ' ' + tvCatName(g);
       b.onclick = function(){ S.cat = g; renderChips(); renderGrid(); };
       gw.appendChild(b);
     });
@@ -851,7 +997,7 @@
   function renderPlatforms(grid){
     var head = document.createElement('div');
     head.style.cssText = 'grid-column:1/-1;font-size:13px;color:var(--muted,#98a0b3);padding:2px 2px 0;';
-    head.textContent = tt('منصات رسمية — تفتح بحسابك', 'Official platforms — opens with your account');
+    head.textContent = tvT('tvPlatforms', 'منصات رسمية — تفتح بحسابك', 'Official platforms — open with your account');
     grid.appendChild(head);
     var row = document.createElement('div');
     row.style.cssText = 'grid-column:1/-1;display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;';
@@ -859,14 +1005,14 @@
       var b = document.createElement('button');
       b.type = 'button';
       b.style.cssText = 'flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 14px;border-radius:14px;border:1px solid var(--omGoldSoft,rgba(212,175,55,.35));background:rgba(212,175,55,.06);color:inherit;cursor:pointer;min-width:96px;';
-      b.innerHTML = '<span style="font-size:22px;">' + pf.i + '</span><span style="font-size:13px;font-weight:700;">' + pf.n + ' ↗</span><span style="font-size:10.5px;color:var(--muted,#98a0b3);">' + pf.d + '</span>';
+      b.innerHTML = '<span style="font-size:22px;">' + pf.i + '</span><span style="font-size:13px;font-weight:700;">' + tvChName(pf.n) + ' ↗</span><span style="font-size:10.5px;color:var(--muted,#98a0b3);">' + tvPfDesc(pf) + '</span>';
       b.onclick = function(){ openExternal(pf.u); };
       row.appendChild(b);
     });
     grid.appendChild(row);
     var sep = document.createElement('div');
     sep.style.cssText = 'grid-column:1/-1;font-size:13px;color:var(--muted,#98a0b3);padding:6px 2px 0;';
-    sep.textContent = tt('قنوات مباشرة داخل التطبيق', 'Live channels inside the app');
+    sep.textContent = tvT('tvLiveIn', 'قنوات مباشرة داخل التطبيق', 'Live channels inside the app');
     grid.appendChild(sep);
   }
 
@@ -892,7 +1038,7 @@
     if(!list.length){
       var empty = document.createElement('div');
       empty.style.cssText = 'grid-column:1/-1;color:var(--muted,#98a0b3);padding:24px 0;text-align:center;';
-      empty.textContent = tt('لا توجد قنوات مطابقة', 'No matching channels');
+      empty.textContent = tvT('tvNoMatch', 'لا توجد قنوات مطابقة', 'No matching channels');
       grid.appendChild(empty);
       return;
     }
@@ -903,9 +1049,9 @@
       var cat = TV_CATS[ch.g] || TV_CATS.general;
       var st = stOf(ch);
       var badge = (st && st.live)
-        ? '<span style="font-size:10px;color:#ff5b5b;font-weight:800;">🔴 ' + tt('مباشر الآن', 'LIVE') + '</span>'
-        : (!ch.h ? '<span style="font-size:10px;color:var(--muted,#98a0b3);">↗ ' + tt('المنصة الرسمية', 'Official site') + '</span>' : '');
-      card.innerHTML = '<span style="font-size:26px;">' + cat[2] + '</span><span style="font-size:13px;font-weight:600;line-height:1.5;">' + ch.n + '</span>' + badge;
+        ? '<span style="font-size:10px;color:#ff5b5b;font-weight:800;">🔴 ' + tvT('tvLive', 'مباشر الآن', 'LIVE') + '</span>'
+        : (!ch.h ? '<span style="font-size:10px;color:var(--muted,#98a0b3);">↗ ' + tvT('tvOfficial', 'المنصة الرسمية', 'Official site') + '</span>' : '');
+      card.innerHTML = '<span style="font-size:26px;">' + cat[2] + '</span><span style="font-size:13px;font-weight:600;line-height:1.5;">' + tvChName(ch.n) + '</span>' + badge;
       card.onclick = function(){ playChannel(ch, card); };
       grid.appendChild(card);
     });
@@ -928,9 +1074,10 @@
   /* v659: تشغيل داخل التطبيق — نقطة واحدة يستعملها المسار العادي والاحتياطي */
   function playEmbed(ch, info){
     var el = shell();
-    el.querySelector('#tvNowName').textContent = ch.n;
+    S.nowName = ch.n;
+    el.querySelector('#tvNowName').textContent = tvChName(ch.n);
     el.querySelector('#tvFrame').src =
-      'https://www.youtube.com/embed/' + encodeURIComponent(info.videoId) + '?autoplay=1&hl=' + (tvIsAr() ? 'ar' : 'en');
+      'https://www.youtube.com/embed/' + encodeURIComponent(info.videoId) + '?autoplay=1&hl=' + encodeURIComponent(tvLang());
     S.nowUrl = 'https://www.youtube.com/watch?v=' + info.videoId;
     var xb = el.querySelector('#tvExt'); if(xb) xb.style.display = '';
     el.querySelector('#tvBrowse').style.display = 'none';
@@ -942,7 +1089,7 @@
     if(!ch.h && ch.u){ openExternal(ch.u); return; }
     var el = shell();
     var old = card.innerHTML;
-    card.innerHTML = '<span style="font-size:26px;">⏳</span><span style="font-size:13px;">' + tt('جارٍ الفتح...', 'Opening...') + '</span>';
+    card.innerHTML = '<span style="font-size:26px;">⏳</span><span style="font-size:13px;">' + tvT('tvOpening', 'جارٍ الفتح...', 'Opening...') + '</span>';
     resolveLive(ch.h).then(function(info){
       card.innerHTML = old;
       // v659: ردّ بلا رقم بثّ (كاش المعرّف أو حجب يوتيوب للسيرفر) لا يعني صمت
@@ -960,14 +1107,14 @@
       // ليست حية الآن → منصتها الرسمية أو صفحة قناتها
       if(ch.u){ openExternal(ch.u); return; }
       if(info.channelId){ openExternal('https://www.youtube.com/channel/' + info.channelId + '/live'); return; }
-      card.innerHTML = '<span style="font-size:26px;">😴</span><span style="font-size:12px;">' + tt('القناة موقفة البث حاليًا', 'Not streaming right now') + '</span>';
+      card.innerHTML = '<span style="font-size:26px;">😴</span><span style="font-size:12px;">' + tvT('tvOff', 'القناة موقفة البث حاليًا', 'Not streaming right now') + '</span>';
       setTimeout(function(){ card.innerHTML = old; }, 2600);
     }).catch(function(e){
       __swallow(e, 'tv:resolve');
       var altc = statusLive(ch.h);
       if(altc){ card.innerHTML = old; playEmbed(ch, altc); return; }
       if(ch.u){ card.innerHTML = old; openExternal(ch.u); return; }
-      card.innerHTML = '<span style="font-size:26px;">😴</span><span style="font-size:12px;">' + tt('القناة موقفة البث حاليًا', 'Not streaming right now') + '</span>';
+      card.innerHTML = '<span style="font-size:26px;">😴</span><span style="font-size:12px;">' + tvT('tvOff', 'القناة موقفة البث حاليًا', 'Not streaming right now') + '</span>';
       setTimeout(function(){ card.innerHTML = old; }, 2600);
     });
   }
@@ -983,6 +1130,8 @@
 
   function openTv(){
     var el = shell();
+    el.dir = tvDir();
+    applyTvLang();
     renderChips();
     renderGrid();
     el.style.display = 'flex';
@@ -995,6 +1144,36 @@
     var el = document.getElementById('omranTvShell');
     if(el) el.style.display = 'none';
   }
+
+  /* v660: تبديل اللغة أثناء فتح القسم — كلّ نصّ واتجاه يتبع فورًا. */
+  function applyTvLang(){
+    var el = document.getElementById('omranTvShell'); if(!el) return;
+    el.dir = tvDir();
+    var q = el.querySelector('#tvTitleTxt'); if(q) q.textContent = tvT('tvTitle', '📺 تلفزيون', '📺 TV');
+    q = el.querySelector('#tvBack'); if(q) q.textContent = tvBackLbl();
+    q = el.querySelector('#tvExt'); if(q) q.textContent = '↗ ' + tvT('tvYoutube', 'يوتيوب', 'YouTube');
+    q = el.querySelector('#tvSearch'); if(q) q.placeholder = '🔍 ' + tvT('tvSearchPh', 'ابحث عن قناة...', 'Search channels...');
+    q = el.querySelector('#tvNowName'); if(q && S.nowName) q.textContent = tvChName(S.nowName);
+    try{ renderChips(); }catch(e){ __swallow(e, 'tv:relang-chips'); }
+    try{ var br = el.querySelector('#tvBrowse'); if(br && br.style.display !== 'none') renderGrid(); }catch(e){ __swallow(e, 'tv:relang-grid'); }
+  }
+  try{
+    var _tvAL = window.applyLanguage;
+    if(typeof _tvAL === 'function'){
+      window.applyLanguage = function(){
+        var r = _tvAL.apply(this, arguments);
+        try{ applyTvLang(); }catch(e){ __swallow(e, 'tv:relang-hook'); }
+        return r;
+      };
+    }
+  }catch(e){ __swallow(e, 'tv:hook'); }
+  var _tvSeenLang = null;
+  setInterval(function(){
+    var el = document.getElementById('omranTvShell');
+    if(!el || el.style.display !== 'flex') return;
+    var L = tvLang(); if(L === _tvSeenLang) return;
+    _tvSeenLang = L; try{ applyTvLang(); }catch(e){ __swallow(e, 'tv:relang-tick'); }
+  }, 700);
 
   var btn = document.getElementById('btnOmranTV');
   if(btn) btn.onclick = openTv;
