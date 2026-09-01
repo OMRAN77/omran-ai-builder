@@ -405,7 +405,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
     { title: null, ids: ['btnSettings','btnAuthToggle','btnToggleHistory'] },
     { title: 'grpCreate', ids: ['btnPortraitStyle','btnQuickTemplates','btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnAdStudio'] },
     // v597: «رأيك يهمنا» جنب «مساعد البريد» بأمر عمران · مجموعة grpTools أُزيلت (أزرارها الأربعة مخفيّة بسطر ١٠٦ في index.html)
-    { title: 'grpSections', ids: ['btnStocks','btnConstruction','btnOmranEdu','btnExpense','btnDocs','btnGov','btnCV','btnReligion','btnEmailAssist','btnFeedback'] }
+    { title: 'grpSections', ids: ['btnOmranTV','btnStocks','btnConstruction','btnOmranEdu','btnExpense','btnDocs','btnGov','btnCV','btnReligion','btnEmailAssist','btnFeedback'] }
   ];
   // v433: مجموعات الإبداع/الأقسام/الأدوات في مربع الأدوات المنفصل (تبويب الأدوات)
   const ptPopup = document.getElementById('sectionsToolsPopup');
@@ -423,6 +423,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
     btnFashionAI:   'Dress/3D/dress_3d.png',
     btnStudioAI:    'Magic%20wand/3D/magic_wand_3d.png',
     btnAdStudio:    'Megaphone/3D/megaphone_3d.png',
+    btnOmranTV:     'Television/3D/television_3d.png',
     btnStocks:      'Chart%20increasing/3D/chart_increasing_3d.png',
     btnConstruction:'Building%20construction/3D/building_construction_3d.png',
     btnOmranEdu:    'Graduation%20cap/3D/graduation_cap_3d.png',
