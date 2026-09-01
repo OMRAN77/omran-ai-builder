@@ -461,11 +461,11 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       grid.className = 'ptGrid';
       ptPopup.appendChild(grid);
       g.ids.forEach(id => { const b = document.getElementById(id); if(b){ grid.appendChild(b); stpApply3d(b, id); } });
-      grid.addEventListener('click', (e) => {
-        const _hit = e.target.closest ? e.target.closest('button') : null;
-        if(_hit && _hit.id === 'btnQuickTemplates') return; // v549: الاقتراحات تُفتح داخل المربّع — لا يُغلق تحتها
-        if(_hit) setTimeout(() => { if(ptOverlay) ptOverlay.classList.remove('show'); }, 120);
-      });
+      /* v-tools-back (طلب عمران ١ سبتمبر): اختيار ميزة كان يغلق مربع
+         الأدوات تحتها — فإغلاق الميزة يرمي المستخدم للمحادثة بدل «نقطة
+         خلف». كل الميزات تفتح فوق المربع (تدقيق z-index للسبع عشرة)،
+         فنبقيه مفتوحًا: إغلاق الميزة يكشف المربع، وإغلاق المربع نفسه
+         (✕ أو الخلفية) يعود للمحادثة. */
     } else {
       g.ids.forEach(id => { const b = document.getElementById(id); if(b && b.parentElement === dd) dd.appendChild(b); });
     }
