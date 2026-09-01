@@ -27505,7 +27505,12 @@ if(document.readyState === 'loading'){
     const source = modal.querySelector('#omranEmAlertSource');
     if(title)  title.textContent  = isAr() ? '🚨 تحذير طارئ' : '🚨 Emergency Alert';
     if(body)   body.textContent   = item.title + (item.snippet ? '\n\n' + item.snippet.slice(0, 300) : '');
-    if(source) source.textContent = item.url || '';
+    if(source){ // v-alerts-clean: نعرض اسم الموقع فقط بدل الرابط الكامل
+      let host = '';
+      try{ host = new URL(item.url).hostname.replace(/^www\./,''); }
+      catch(e){ /* guard-ok: رابط غير صالح من المصدر — نتركه فاضي بدل ما نكسر العرض */ }
+      source.textContent = host;
+    }
     modal.style.display = 'flex';
     // صوت تنبيه
     try{
