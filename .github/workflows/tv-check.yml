@@ -1,0 +1,27 @@
+# فاحص قنوات التلفزيون اليومي — يتحقق من كل قناة على يوتيوب ويحدّث
+# tv-status.json؛ العميل يخفي الميت ويعلّم الحيّ. يدويًا أو ٣ فجرًا UTC.
+name: TV channels check
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run channel checker
+        run: node scripts/tv-check.mjs
+      - name: Commit status file
+        run: |
+          git config user.name "omran-tv-checker"
+          git config user.email "actions@github.com"
+          git add tv-status.json
+          git diff --cached --quiet && echo "لا تغيير" && exit 0
+          git commit -m "تحديث حالة قنوات التلفزيون (فحص تلقائي)"
+          git push
