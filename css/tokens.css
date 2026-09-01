@@ -684,13 +684,9 @@
     border-left:1px solid var(--border);
     padding-top:env(safe-area-inset-top, 0px);
   }
-  /* شريط السحب العمودي في منتصف الحافة — نفس نموذج ChatGPT */
-  html.mobile-ui #settingsDialog::before{
-    content:''; position:fixed; z-index:9;
-    top:50%; left:calc(20vw + 7px); transform:translateY(-50%);
-    width:5px; height:48px; border-radius:99px;
-    background:var(--muted,#8a8a8a); opacity:.55;
-  }
+  /* v-drawer-drag: الدرج ينسحب مع الإصبع — pan-y يترك التمرير الرأسي للمتصفح
+     ويعطينا الحركة الأفقية بلا تعارض. العصية العمودية حُذفت بطلب عمران. */
+  html.mobile-ui #settingsDialog{ touch-action: pan-y; }
   #settingsDialog::backdrop{ background:rgba(0,0,0,.55); }
   html.mobile-ui dialog > div:first-child{ padding-top:4px; } /* v-fix: safe-area already on dialog */
   body.vantaActive{background:transparent !important; animation:none !important;}
