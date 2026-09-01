@@ -247,7 +247,7 @@ module.exports = async (req, res) => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + okey },
           signal: AbortSignal.timeout(90000),
-          body: JSON.stringify({ model: 'gpt-image-1', prompt: String(rescuePromptText).slice(0, 3800), size, quality: 'medium', n: 1 }),
+          body: JSON.stringify({ model: 'gpt-image-2', prompt: String(rescuePromptText).slice(0, 3800), size, quality: 'high', n: 1 }),
         });
         if (!r.ok) { console.error('[maha-image] rescue failed status=' + r.status); return null; }
         const d = await r.json().catch(function () { return null; });

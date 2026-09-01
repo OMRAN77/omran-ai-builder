@@ -22,8 +22,10 @@ async function openaiStudioEdit(promptText, images) {
     const form = new FormData();
     form.append('model', 'gpt-image-1');
     form.append('prompt', String(promptText).slice(0, 3900));
-    form.append('size', '1024x1536');
-    form.append('quality', 'medium');
+    form.append('size', 'auto');
+    /* v-strong-rescue: حفظ الملامح وجودة عالية */
+    form.append('input_fidelity', 'high');
+    form.append('quality', 'high');
     images.forEach(([b64, mime], i) => {
       form.append('image', new Blob([Buffer.from(b64, 'base64')], { type: mime || 'image/jpeg' }), 'photo' + i + '.jpg');
     });

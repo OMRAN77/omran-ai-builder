@@ -144,7 +144,7 @@ module.exports = async (req, res) => {
           const r = await fetch('https://api.openai.com/v1/images/generations', {
             method: 'POST',
             headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: 'gpt-image-1', prompt: prompt.slice(0, 3900), size: '1536x1024', quality: 'medium' }),
+            body: JSON.stringify({ model: 'gpt-image-2', prompt: prompt.slice(0, 3900), size: '1536x1024', quality: 'high' }),
           });
           const d = await r.json();
           if (r.ok && d && d.data && d.data[0] && d.data[0].b64_json) { outB64 = d.data[0].b64_json; outMime = 'image/png'; }

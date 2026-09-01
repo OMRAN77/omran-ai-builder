@@ -23,7 +23,7 @@ async function openaiRescueImage(promptText, landscape) {
     const r = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'gpt-image-1', prompt: String(promptText).slice(0, 3900), size: landscape ? '1536x1024' : '1024x1024', quality: 'medium' }),
+      body: JSON.stringify({ model: 'gpt-image-2', prompt: String(promptText).slice(0, 3900), size: landscape ? '1536x1024' : '1024x1024', quality: 'high' }),
     });
     const d = await r.json();
     if (!r.ok) { console.warn('[construction] openai img HTTP ' + r.status + ' ' + String((d.error && d.error.message) || '').slice(0, 120)); return null; }
