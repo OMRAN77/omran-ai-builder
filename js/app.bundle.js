@@ -18811,19 +18811,27 @@ window.postWithConfirm = postWithConfirm;
 // with a large delay, we know it was frozen and warn the user (after
 // auto-saving their current project so nothing is lost). ---
 (function(){
-  const FREEZE_THRESHOLD_MS = 5000;
+  const FREEZE_THRESHOLD_MS = 6000;
+  /* v-freeze-tune (لقطة عمران: بانر «يستجيب ببطء» أثناء إقلاع ثقيل): الإقلاع
+     على جهاز/شبكة بطيئة يحجب الخيط الرئيسي لحظيًا فيطلع البانر بلا داعٍ.
+     الآن: مهلة سماح ١٨ث بعد الفتح (فترة الإقلاع لا تُحسَب تجمّدًا)، ونحتاج
+     رصدين متتاليين لا واحد (توقّف GC عابر لا يطلّعه). */
+  const BOOT_GRACE_MS = 18000;
+  const bootAt = Date.now();
   const banner = $('#freezeBanner');
   const reloadBtn = $('#freezeReloadBtn');
   const dismissBtn = $('#freezeDismissBtn');
   if(!banner || !window.Worker) return;
   let shown = false;
   let dismissedUntil = 0;
+  let strikes = 0;
 
   reloadBtn.onclick = () => location.reload();
   dismissBtn.onclick = () => {
     banner.style.display = 'none';
     shown = false;
-    dismissedUntil = Date.now() + 60000; // don't nag again for 1 minute
+    strikes = 0;
+    dismissedUntil = Date.now() + 120000; // لا إزعاج لمدة دقيقتين
   };
 
   let worker = null;
@@ -18835,10 +18843,17 @@ window.postWithConfirm = postWithConfirm;
 
   worker.onmessage = (e) => {
     const delay = Date.now() - e.data;
-    if(delay > FREEZE_THRESHOLD_MS && !shown && Date.now() > dismissedUntil){
-      try{ saveState(); }catch(err){ __swallow(err, "save:app-10-features#1"); }
-      shown = true;
-      banner.style.display = 'flex';
+    // خلال فترة الإقلاع لا نحسب أي تأخّر تجمّدًا
+    if(Date.now() - bootAt < BOOT_GRACE_MS){ strikes = 0; return; }
+    if(delay > FREEZE_THRESHOLD_MS){
+      strikes++;
+      if(strikes >= 2 && !shown && Date.now() > dismissedUntil){
+        try{ saveState(); }catch(err){ __swallow(err, "save:app-10-features#1"); }
+        shown = true;
+        banner.style.display = 'flex';
+      }
+    } else {
+      strikes = 0; // نبضة سليمة تصفّر العدّاد
     }
   };
   window.addEventListener('beforeunload', () => { try{ worker.terminate(); }catch(e){ __swallow(e, "save:app-10-features#2"); } });
