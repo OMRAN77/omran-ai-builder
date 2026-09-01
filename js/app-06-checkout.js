@@ -675,7 +675,9 @@ $('#btnSaveClock').onclick = () => {
 };
 
 $('#btnCancelSettings').onclick = () => closeDialogSafe(settingsDialog);
-$('#btnSaveSettings').onclick = () => {
+/* v-settings-sheet (طلب عمران): زرا حفظ/إلغاء أُخفيا — الحفظ صار تلقائيًا
+   عند إغلاق النافذة، والسحب لأسفل من أعلى المحتوى يغلقها كورقة جوال. */
+const saveSettingsNow = () => {
   localStorage.setItem('aiapp_provider', $('#provider').value);
   localStorage.setItem('aiapp_apikey', $('#apiKey').value.trim());
   localStorage.setItem('aiapp_model', $('#modelName').value.trim() || 'gpt-4o-mini');
@@ -709,8 +711,25 @@ $('#btnSaveSettings').onclick = () => {
   localStorage.setItem('aiapp_include_deepseek', $('#chkIncludeDeepSeek').checked ? 'true' : 'false');
   localStorage.setItem('aiapp_include_cohere', $('#chkIncludeCohere').checked ? 'true' : 'false');
   saveThemeFromForm();
-  closeDialogSafe(settingsDialog);
 };
+$('#btnSaveSettings').onclick = () => { saveSettingsNow(); closeDialogSafe(settingsDialog); };
+/* الحفظ التلقائي: أي إغلاق (سحب، ✕، ESC، رجوع) يحفظ أولًا */
+settingsDialog.addEventListener('close', () => { try{ saveSettingsNow(); }catch(e){ __swallow(e, 'settings:autosave'); } });
+/* السحب لأسفل يغلق — فقط عندما يكون المحتوى في أعلاه، فلا يتعارض مع التمرير */
+(function(){
+  let t0 = null;
+  settingsDialog.addEventListener('touchstart', (e) => {
+    t0 = (settingsDialog.scrollTop <= 2 && e.touches.length === 1)
+      ? { y: e.touches[0].clientY, x: e.touches[0].clientX } : null;
+  }, { passive: true });
+  settingsDialog.addEventListener('touchmove', (e) => {
+    if(!t0) return;
+    const dy = e.touches[0].clientY - t0.y;
+    const dx = Math.abs(e.touches[0].clientX - t0.x);
+    if(dy > 90 && dy > dx * 2 && settingsDialog.scrollTop <= 2){ t0 = null; closeDialogSafe(settingsDialog); }
+  }, { passive: true });
+  settingsDialog.addEventListener('touchend', () => { t0 = null; }, { passive: true });
+})();
 
 // Allow manually editing the generated code directly in the code panel:
 // typing here now updates the project's stored code, saves it, and live-refreshes

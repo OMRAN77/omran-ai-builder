@@ -572,7 +572,9 @@
     </div>
   </div>
 
-  <div class="dlg-actions">
+  <!-- v-settings-sheet (طلب عمران): الزران مخفيان — الحفظ تلقائي عند الإغلاق
+       والسحب لأسفل يغلق. العنصران باقيان لأن app-06 يربطهما بالمعرف. -->
+  <div class="dlg-actions" style="display:none;">
     <button class="btn" id="btnCancelSettings" style="background:none; border:none; box-shadow:none;">✖️ <span data-i18n="cancel">إلغاء</span></button>
     <button class="btn primary" id="btnSaveSettings" style="background:none; border:none; box-shadow:none; color:var(--accent);">💾 <span data-i18n="save">حفظ</span></button>
   </div>
