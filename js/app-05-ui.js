@@ -209,7 +209,20 @@ async function omranNormalizeImageFile(file){
     const blob = Array.isArray(out) ? out[0] : out;
     const base = String(file.name || 'photo').replace(/\.hei[cf]$/i, '');
     return new File([blob], base + '.jpg', { type: 'image/jpeg' });
-  }catch(e){ __swallow(e, 'heic:convert'); return file; }
+  }catch(e){
+    /* v-heic-report: فشل التحويل نفسه يجب أن يصل لوحة المالك — بدونه نعمى
+       عن نكهات HEIC التي لا تفكها المكتبة. */
+    try{
+      fetch('/api/system?action=client-errors', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          message: 'HEIC CONVERT FAIL: ' + String((e && e.message) || e).slice(0,150) + ' — ' + ((file && file.name) || ''),
+          source: 'heic-convert', url: location.href, ua: navigator.userAgent
+        }), keepalive: true
+      }).catch(function(){ /* guard-ok: الإبلاغ لا يعطل شيئًا */ });
+    }catch(e2){ __swallow(e2, 'heic:report'); }
+    __swallow(e, 'heic:convert');
+    return file;
+  }
 }
 let __omranH2iLoading = null;
 function omranLoadHtmlToImage(){
