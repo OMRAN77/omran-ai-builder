@@ -678,9 +678,18 @@
     top:0; bottom:0; height:100dvh; max-height:100dvh;
     right:0; left:auto; margin:0;
     width:80vw; max-width:80vw;
-    border-radius:0; border:none; border-inline-end:none;
-    border-inline-start:1px solid var(--border);
+    border-radius:0; border:none;
+    /* v-drawer-rail: الحافة المكشوفة يسار الدرج — border-inline-start في RTL
+       كان يرسمها على اليمين الملاصق للشاشة فلا تظهر إطلاقًا */
+    border-left:1px solid var(--border);
     padding-top:env(safe-area-inset-top, 0px);
+  }
+  /* شريط السحب العمودي في منتصف الحافة — نفس نموذج ChatGPT */
+  html.mobile-ui #settingsDialog::before{
+    content:''; position:fixed; z-index:9;
+    top:50%; left:calc(20vw + 7px); transform:translateY(-50%);
+    width:5px; height:48px; border-radius:99px;
+    background:var(--muted,#8a8a8a); opacity:.55;
   }
   #settingsDialog::backdrop{ background:rgba(0,0,0,.55); }
   html.mobile-ui dialog > div:first-child{ padding-top:4px; } /* v-fix: safe-area already on dialog */
