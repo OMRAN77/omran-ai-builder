@@ -1,22 +1,26 @@
 {
- "checkedAt": "2026-09-01T15:54:10.137Z",
+ "checkedAt": "2026-09-01T16:26:05.175Z",
  "counts": {
   "total": 157,
   "ok": 157,
   "live": 75,
-  "repaired": 115
+  "repaired": 114
  },
  "channels": {
   "skynewsarabia": {
    "ok": true,
    "live": true,
    "id": "UCIJXOvggjKtCagMfxvcCzAA",
-   "via": "search"
+   "via": "search",
+   "vid": "hE2zFSj1S-c",
+   "embeddable": true
   },
   "AlArabiya": {
    "ok": true,
    "live": true,
-   "id": "UCrj5BGAhtWxDfqbza9T9hqA"
+   "id": "UCrj5BGAhtWxDfqbza9T9hqA",
+   "vid": "Qrh5q7u-iXc",
+   "embeddable": true
   },
   "AlHadath": {
    "ok": true,
@@ -56,23 +60,31 @@
    "ok": true,
    "live": true,
    "id": "UCsHdPPJXT-yKVTLGkn3DSvQ",
-   "via": "search"
+   "via": "search",
+   "vid": "SLMli9LCao4",
+   "embeddable": true
   },
   "asharqnews": {
    "ok": true,
    "live": true,
-   "id": "UCxjpGbfoLy6oodYdiyzQE4g"
+   "id": "UCxjpGbfoLy6oodYdiyzQE4g",
+   "vid": "LkMJqJMPKEg",
+   "embeddable": true
   },
   "AsharqBusiness": {
    "ok": true,
    "live": true,
-   "id": "UCRJUVYt9gjg8MnlGacySUdg"
+   "id": "UCRJUVYt9gjg8MnlGacySUdg",
+   "vid": "LkMJqJMPKEg",
+   "embeddable": true
   },
   "alekhbariyatv": {
    "ok": true,
-   "live": false,
-   "id": "UCkqJVFe0B-d8h_mIRx2ZYsQ",
-   "via": "search"
+   "live": true,
+   "id": "UCV01ajGl6nt09h40iDoHDNg",
+   "via": "search",
+   "vid": "3AaW-XEcHZs",
+   "embeddable": true
   },
   "ssc_sports": {
    "ok": true,
@@ -84,13 +96,17 @@
    "ok": true,
    "live": true,
    "id": "UCos52azQNBgW63_9uDJoPDA",
-   "via": "search"
+   "via": "search",
+   "vid": "zbWvaiGZsW0",
+   "embeddable": true
   },
   "sunnahtv": {
    "ok": true,
    "live": true,
    "id": "UCROKYPep-UuODNwyipe6JMw",
-   "via": "search"
+   "via": "search",
+   "vid": "1gn78pWnXDU",
+   "embeddable": true
   },
   "RotanaKhalijia": {
    "ok": true,
@@ -102,35 +118,45 @@
    "ok": true,
    "live": true,
    "id": "UCrj5BGAhtWxDfqbza9T9hqA",
-   "via": "search"
+   "via": "search",
+   "vid": "Qrh5q7u-iXc",
+   "embeddable": true
   },
   "aljazeera": {
    "ok": true,
    "live": true,
    "id": "UCfiwzLy-8yKzIbsmZTzxDgw",
-   "via": "search"
+   "via": "search",
+   "vid": "7YdjNe0LJAg",
+   "embeddable": true
   },
   "aljazeeramubasher": {
    "ok": true,
    "live": true,
-   "id": "UCCv1Pd24oPErw5S7zJWltnQ",
-   "via": "search"
+   "id": "UCfiwzLy-8yKzIbsmZTzxDgw",
+   "via": "search",
+   "vid": "MZIXs4x52RE",
+   "embeddable": true
   },
   "AlJazeeraEnglish": {
    "ok": true,
    "live": true,
-   "id": "UCfiwzLy-8yKzIbsmZTzxDgw"
+   "id": "UCfiwzLy-8yKzIbsmZTzxDgw",
+   "vid": "5MMPpHKKruE",
+   "embeddable": true
   },
   "QatarTelevision": {
    "ok": true,
    "live": true,
    "id": "UC2EJXBsWR_5BTCy6R4kIO3A",
-   "via": "search"
+   "via": "search",
+   "vid": "xPfO5fsxnKg",
+   "embeddable": true
   },
   "AlkassTV": {
    "ok": true,
    "live": false,
-   "id": "UCGLeK7rJ0vi0xodW3JynjbA",
+   "id": "UCS_yHXNb5w5S74KQL_TK8Yw",
    "via": "search"
   },
   "KTVKuwait": {
@@ -154,7 +180,9 @@
   "AlQaheraNews": {
    "ok": true,
    "live": true,
-   "id": "UCIJXOvggjKtCagMfxvcCzAA"
+   "id": "UCIJXOvggjKtCagMfxvcCzAA",
+   "vid": "hE2zFSj1S-c",
+   "embeddable": true
   },
   "ExtraNewsEG": {
    "ok": true,
@@ -195,7 +223,9 @@
    "ok": true,
    "live": true,
    "id": "UC0jiFAzTgl17k7awGbuoYew",
-   "via": "search"
+   "via": "search",
+   "vid": "DR52pls5-ak",
+   "embeddable": true
   },
   "RoyaTV": {
    "ok": true,
@@ -206,7 +236,7 @@
   "aljadeedonline": {
    "ok": true,
    "live": false,
-   "id": "UC4JCsTLFcHGk10qpiNMh0Ww",
+   "id": "UC5f_fxJa5G9AR9L3J5Z2I4A",
    "via": "search"
   },
   "mtvlebanon": {
@@ -222,15 +252,19 @@
   },
   "IMNchannel": {
    "ok": true,
-   "live": false,
+   "live": true,
    "id": "UC5h9SokuzgNiebEOzU2BHoA",
-   "via": "search"
+   "via": "search",
+   "vid": "5talLS0qo5Q",
+   "embeddable": true
   },
   "PalestineTvLive": {
    "ok": true,
    "live": true,
    "id": "UC1xAKR0vwwrHeorDesok6vw",
-   "via": "search"
+   "via": "search",
+   "vid": "2-jYGn6PiUE",
+   "embeddable": true
   },
   "BelqeesTV": {
    "ok": true,
@@ -264,7 +298,9 @@
   "WataniaReplay": {
    "ok": true,
    "live": true,
-   "id": "UCJW9gatYczI191TunQxMGbA"
+   "id": "UCJW9gatYczI191TunQxMGbA",
+   "vid": "h-UNJ4KBoB8",
+   "embeddable": true
   },
   "LibyaAlAhrarTV": {
    "ok": true,
@@ -274,7 +310,9 @@
   "TRTArabi": {
    "ok": true,
    "live": true,
-   "id": "UC7fWeaHhqgM4Ry-RMpM2YYw"
+   "id": "UC7fWeaHhqgM4Ry-RMpM2YYw",
+   "vid": "qxP5cPSaxu0",
+   "embeddable": true
   },
   "trtworld": {
    "ok": true,
@@ -285,63 +323,83 @@
    "ok": true,
    "live": true,
    "id": "UCYPvAwZP8pZhSMW8qs7cVCw",
-   "via": "search"
+   "via": "search",
+   "vid": "wHVMCte7cxk",
+   "embeddable": true
   },
   "NDTV": {
    "ok": true,
    "live": true,
-   "id": "UCXBD5iG5cr4ZYZ99K-fmDHg"
+   "id": "UCXBD5iG5cr4ZYZ99K-fmDHg",
+   "vid": "yXtNi7_whvs",
+   "embeddable": true
   },
   "aajtak": {
    "ok": true,
    "live": true,
-   "id": "UCYPvAwZP8pZhSMW8qs7cVCw"
+   "id": "UCYPvAwZP8pZhSMW8qs7cVCw",
+   "vid": "sg7YNUbaV-8",
+   "embeddable": true
   },
   "ABPNEWS": {
    "ok": true,
    "live": true,
    "id": "UCRWFSbif-RFENbBrSiez1DA",
-   "via": "search"
+   "via": "search",
+   "vid": "DQePNw_WZQ4",
+   "embeddable": true
   },
   "zeenews": {
    "ok": true,
    "live": true,
    "id": "UCIvaYmXn910QMdemBG3v1pQ",
-   "via": "search"
+   "via": "search",
+   "vid": "-b4zsRTc2xc",
+   "embeddable": true
   },
   "WION": {
    "ok": true,
    "live": true,
    "id": "UC_gUM8rL-Lrg6O3adPW9K1g",
-   "via": "search"
+   "via": "search",
+   "vid": "MZIXs4x52RE",
+   "embeddable": true
   },
   "RepublicWorld": {
    "ok": true,
    "live": true,
-   "id": "UChIuMQsOdbrc4Evj_raoDZA"
+   "id": "UChIuMQsOdbrc4Evj_raoDZA",
+   "vid": "706VngaweHo",
+   "embeddable": true
   },
   "tv9telugulive": {
    "ok": true,
-   "live": true,
+   "live": false,
    "id": "UCfaww9Q8C_-EaM0sXI8o-fA"
   },
   "asianetnews": {
    "ok": true,
    "live": true,
    "id": "UCf8w5m0YsRa8MHQ5bwSGmbw",
-   "via": "search"
+   "via": "search",
+   "vid": "HruQalDcVpY",
+   "embeddable": true
   },
   "manoramanews": {
    "ok": true,
    "live": true,
    "id": "UCP0uG-mcMImgKnJz-VjJZmQ",
-   "via": "search"
+   "via": "search",
+   "vid": "dXRRLQEd5r4",
+   "embeddable": true
   },
   "PolimerNews": {
    "ok": true,
    "live": true,
    "id": "UC8Z-VjXBtDJTvq6aqkIskPg",
-   "via": "search"
+   "via": "search",
+   "vid": "3j5HztVunlk",
+   "embeddable": true
   },
   "StarSportsIndia": {
    "ok": true,
@@ -358,25 +416,33 @@
    "ok": true,
    "live": true,
    "id": "UCMmpLL2ucRHAXbNHiCPyIyg",
-   "via": "search"
+   "via": "search",
+   "vid": "BYY8Z5AeEgg",
+   "embeddable": true
   },
   "DunyaNews": {
    "ok": true,
    "live": true,
    "id": "UCnMBV5Iw4WqKILKue1nP6Hg",
-   "via": "search"
+   "via": "search",
+   "vid": "MZIXs4x52RE",
+   "embeddable": true
   },
   "SamaaTVNews": {
    "ok": true,
    "live": true,
    "id": "UCJekW1Vj5fCVEGdye_mBN6Q",
-   "via": "search"
+   "via": "search",
+   "vid": "koM5j5X8Gl0",
+   "embeddable": true
   },
   "ExpressNewsPK": {
    "ok": true,
    "live": true,
    "id": "UCTur7oM6mLL0rM2k0znuZpQ",
-   "via": "search"
+   "via": "search",
+   "vid": "5MENzmRmx1c",
+   "embeddable": true
   },
   "PTVSportsOfficial": {
    "ok": true,
@@ -388,7 +454,9 @@
    "ok": true,
    "live": true,
    "id": "UCxHoBXkY88Tb8z1Ssj6CWsQ",
-   "via": "search"
+   "via": "search",
+   "vid": "Y2s5nTFTMpc",
+   "embeddable": true
   },
   "JamunaTVbd": {
    "ok": true,
@@ -399,13 +467,17 @@
    "ok": true,
    "live": true,
    "id": "UCHLqIOMPk20w-6cFgkA90jw",
-   "via": "search"
+   "via": "search",
+   "vid": "Xe__eWmSRgc",
+   "embeddable": true
   },
   "EkattorTV": {
    "ok": true,
    "live": true,
    "id": "UCtqvtAVmad5zywaziN6CbfA",
-   "via": "search"
+   "via": "search",
+   "vid": "Xe__eWmSRgc",
+   "embeddable": true
   },
   "ChanneliTv": {
    "ok": true,
@@ -417,7 +489,9 @@
    "ok": true,
    "live": true,
    "id": "UCqYw-CTd1dU2yGI71sEyqNw",
-   "via": "search"
+   "via": "search",
+   "vid": "YZXCQkKvtL4",
+   "embeddable": true
   },
   "ABSCBNNews": {
    "ok": true,
@@ -441,18 +515,24 @@
    "ok": true,
    "live": true,
    "id": "UC5BMIWZe9isJXLZZWPWvBlg",
-   "via": "search"
+   "via": "search",
+   "vid": "NsgMDP-q_Hc",
+   "embeddable": true
   },
   "CNNIndonesiaOfficial": {
    "ok": true,
    "live": true,
    "id": "UCKII0Ml9S5wneKbHswmUrIQ",
-   "via": "search"
+   "via": "search",
+   "vid": "vxs9kKEg2-s",
+   "embeddable": true
   },
   "tvOneNews": {
    "ok": true,
    "live": true,
-   "id": "UCER4rvDnRBPr_ncYW4UCZjg"
+   "id": "UCER4rvDnRBPr_ncYW4UCZjg",
+   "vid": "aqmQ5vp7DWg",
+   "embeddable": true
   },
   "adaderana": {
    "ok": true,
@@ -480,13 +560,17 @@
    "ok": true,
    "live": true,
    "id": "UC16niRr50-MSBwiO3YDb3RA",
-   "via": "search"
+   "via": "search",
+   "vid": "qxP5cPSaxu0",
+   "embeddable": true
   },
   "ABCNews": {
    "ok": true,
    "live": true,
    "id": "UCBi2mrWuNuyYy4gbM6fU18Q",
-   "via": "search"
+   "via": "search",
+   "vid": "iipR5yUp36o",
+   "embeddable": true
   },
   "NBCNews": {
    "ok": true,
@@ -495,15 +579,16 @@
   },
   "CBSNews": {
    "ok": true,
-   "live": true,
-   "id": "UC8p1vwvWtl6T73JiExfWs1g",
-   "via": "search"
+   "live": false,
+   "id": "UC-SJ6nODDmufqBzPBwCvYvQ"
   },
   "markets": {
    "ok": true,
    "live": true,
    "id": "UCIALMKvObZNtJ6AmdCLP7Lg",
-   "via": "search"
+   "via": "search",
+   "vid": "xVSWCE__utg",
+   "embeddable": true
   },
   "CNBC": {
    "ok": true,
@@ -514,13 +599,17 @@
    "ok": true,
    "live": true,
    "id": "UCdTyuXgmJkG_O8_75eqej-w",
-   "via": "search"
+   "via": "search",
+   "vid": "vrrBj-VaTUk",
+   "embeddable": true
   },
   "FRANCE24English": {
    "ok": true,
    "live": true,
    "id": "UCQfwfsi5VrQ8yKZ-UWmAEFg",
-   "via": "search"
+   "via": "search",
+   "vid": "MZIXs4x52RE",
+   "embeddable": true
   },
   "euronewsarabic": {
    "ok": true,
@@ -532,7 +621,9 @@
    "ok": true,
    "live": true,
    "id": "UC30ditU5JI16o5NbFsHde_Q",
-   "via": "search"
+   "via": "search",
+   "vid": "l7PvfvPQ08M",
+   "embeddable": true
   },
   "dwnews": {
    "ok": true,
@@ -543,7 +634,9 @@
    "ok": true,
    "live": true,
    "id": "UC5GvVahlgulCyo4cshSmbcg",
-   "via": "search"
+   "via": "search",
+   "vid": "MZIXs4x52RE",
+   "embeddable": true
   },
   "alhurra": {
    "ok": true,
@@ -554,7 +647,9 @@
    "ok": true,
    "live": true,
    "id": "UCelk6aHijZq-GJBBB9YpReA",
-   "via": "search"
+   "via": "search",
+   "vid": "3AaW-XEcHZs",
+   "embeddable": true
   },
   "cgtnarabic": {
    "ok": true,
@@ -572,12 +667,16 @@
    "ok": true,
    "live": true,
    "id": "UC83jt4dlz1Gjl58fzQrrKZg",
-   "via": "search"
+   "via": "search",
+   "vid": "MZIXs4x52RE",
+   "embeddable": true
   },
   "africanews": {
    "ok": true,
    "live": true,
-   "id": "UC25EuGAePOPvPrUA5cmu3dQ"
+   "id": "UC25EuGAePOPvPrUA5cmu3dQ",
+   "vid": "D5Kl8evvYVk",
+   "embeddable": true
   },
   "samadubaitv": {
    "ok": true,
@@ -611,7 +710,7 @@
   "AjmanTV": {
    "ok": true,
    "live": false,
-   "id": "UCydHUsLxkYX7dpcsa0mZq9Q",
+   "id": "UCGoQ7TmpeFYbLKDmdUeisJw",
    "via": "search"
   },
   "saudiatv": {
@@ -630,18 +729,22 @@
    "ok": true,
    "live": true,
    "id": "UCboSLTiZ8KZ4REgXY0L07UA",
-   "via": "search"
+   "via": "search",
+   "vid": "lv2b8JziEQk",
+   "embeddable": true
   },
   "AlArabiyaBusiness": {
    "ok": true,
    "live": true,
    "id": "UC0mthbFRIm_uYkkzMX09sJw",
-   "via": "search"
+   "via": "search",
+   "vid": "3AaW-XEcHZs",
+   "embeddable": true
   },
   "dmctveg": {
    "ok": true,
    "live": false,
-   "id": "UCEeFa7t5I0fqpcLGF-36TEw",
+   "id": "UCjSs9wqcw9ny2537OeQtp7A",
    "via": "search"
   },
   "AlHayahTV": {
@@ -671,19 +774,21 @@
   "HudaTv": {
    "ok": true,
    "live": false,
-   "id": "UCI6leRzrGomQqgTbQEojRDw",
+   "id": "UCZXQ4L5F3JiERLf4rWRJ97Q",
    "via": "search"
   },
   "iqraatv": {
    "ok": true,
    "live": true,
    "id": "UCiC_h4iC9s7Ddr3CT82_EpA",
-   "via": "search"
+   "via": "search",
+   "vid": "NEpxE0Z9EO0",
+   "embeddable": true
   },
   "AlresalahTv": {
    "ok": true,
    "live": false,
-   "id": "UCtFKCoLm69Wj0RJdYHpsvyA",
+   "id": "UCBVUg4nQTryjzB2mQRNTJIw",
    "via": "search"
   },
   "spacetoon": {
@@ -700,48 +805,64 @@
   "ToyorBabyChannel": {
    "ok": true,
    "live": true,
-   "id": "UCZbpK_Lgctew3YNELlG2ecw"
+   "id": "UCZbpK_Lgctew3YNELlG2ecw",
+   "vid": "alQB27_Vg_c",
+   "embeddable": true
   },
   "TimesNow": {
    "ok": true,
    "live": true,
    "id": "UC6RJ7-PaXg6TIH2BzZfTV7w",
-   "via": "search"
+   "via": "search",
+   "vid": "Bd8_vO5zrjo",
+   "embeddable": true
   },
   "CNNNews18": {
    "ok": true,
    "live": true,
    "id": "UCef1-8eOpJgud7szVPlZQAQ",
-   "via": "search"
+   "via": "search",
+   "vid": "MZIXs4x52RE",
+   "embeddable": true
   },
   "CNBCTV18": {
    "ok": true,
    "live": true,
    "id": "UCmRbHAgG2k2vDUvb3xsEunQ",
-   "via": "search"
+   "via": "search",
+   "vid": "BXtDH2IXKY8",
+   "embeddable": true
   },
   "DDNews": {
    "ok": true,
    "live": true,
-   "id": "UCGDQNvybfDDeGTf4GtigXaw"
+   "id": "UCGDQNvybfDDeGTf4GtigXaw",
+   "vid": "wHVMCte7cxk",
+   "embeddable": true
   },
   "DDIndia": {
    "ok": true,
    "live": true,
    "id": "UCGDQNvybfDDeGTf4GtigXaw",
-   "via": "search"
+   "via": "search",
+   "vid": "MZIXs4x52RE",
+   "embeddable": true
   },
   "sunnews": {
    "ok": true,
    "live": true,
    "id": "UCYlh4lH762HvHt6mmiecyWQ",
-   "via": "search"
+   "via": "search",
+   "vid": "3j5HztVunlk",
+   "embeddable": true
   },
   "News18India": {
    "ok": true,
    "live": true,
    "id": "UCef1-8eOpJgud7szVPlZQAQ",
-   "via": "search"
+   "via": "search",
+   "vid": "MZIXs4x52RE",
+   "embeddable": true
   },
   "HumNewsPakistan": {
    "ok": true,
@@ -751,7 +872,9 @@
   "BOLNetworkOfficial": {
    "ok": true,
    "live": true,
-   "id": "UCz2yxQJZgiB_5elTzqV7FiQ"
+   "id": "UCz2yxQJZgiB_5elTzqV7FiQ",
+   "vid": "wHVMCte7cxk",
+   "embeddable": true
   },
   "GNNHDOfficial": {
    "ok": true,
@@ -762,31 +885,41 @@
    "ok": true,
    "live": true,
    "id": "UCsgC5cbz3DE2Shh34gNKiog",
-   "via": "search"
+   "via": "search",
+   "vid": "MZIXs4x52RE",
+   "embeddable": true
   },
   "rtvonline": {
    "ok": true,
    "live": true,
    "id": "UCE5RIa7b_JIK0a31Uaq4xRw",
-   "via": "search"
+   "via": "search",
+   "vid": "E8xCZg3rJnQ",
+   "embeddable": true
   },
   "ntvdigitalbd": {
    "ok": true,
    "live": true,
-   "id": "UCqBJ47FjJcl61fmSbcadAVg",
-   "via": "search"
+   "id": "UCwga1dPCqBddbtq5KYRii2g",
+   "via": "search",
+   "vid": "1TtGb4Oga6g",
+   "embeddable": true
   },
   "dbcnews": {
    "ok": true,
    "live": true,
    "id": "UCUvXoiDEKI8VZJrr58g4VAw",
-   "via": "search"
+   "via": "search",
+   "vid": "Xe__eWmSRgc",
+   "embeddable": true
   },
   "UNTVNewsRescue": {
    "ok": true,
    "live": true,
    "id": "UC3XaG-7UVi2vD8ZZEMNnnpw",
-   "via": "search"
+   "via": "search",
+   "vid": "30IxtPVF3QI",
+   "embeddable": true
   },
   "News5Everywhere": {
    "ok": true,
@@ -820,25 +953,33 @@
    "ok": true,
    "live": true,
    "id": "UCn6dNfiRE_Xunu7iMyvD7AA",
-   "via": "search"
+   "via": "search",
+   "vid": "0km7cYX29iQ",
+   "embeddable": true
   },
   "ahaber": {
    "ok": true,
    "live": true,
    "id": "UCKQhfw-lzz0uKnE1fY1PsAA",
-   "via": "search"
+   "via": "search",
+   "vid": "Lp9MU1Dlaxk",
+   "embeddable": true
   },
   "halktvcomtr": {
    "ok": true,
    "live": true,
    "id": "UCf_ResXZzE-o18zACUEmyvQ",
-   "via": "search"
+   "via": "search",
+   "vid": "jHMsvYrf-UA",
+   "embeddable": true
   },
   "gbnewsonline": {
    "ok": true,
    "live": true,
    "id": "UC0vn8ISa4LKMunLbzaXLnOQ",
-   "via": "search"
+   "via": "search",
+   "vid": "JNoA2-7N7gI",
+   "embeddable": true
   },
   "SkyNewsAustralia": {
    "ok": true,
@@ -871,7 +1012,9 @@
    "ok": true,
    "live": true,
    "id": "UCO6K_kkdP-lnSCiO3tPx7WA",
-   "via": "search"
+   "via": "search",
+   "vid": "h-B5kUP7NbU",
+   "embeddable": true
   },
   "WELTVideoTV": {
    "ok": true,
@@ -893,19 +1036,25 @@
    "ok": true,
    "live": true,
    "id": "UC2Xq2PK-got3Rtz9ZJ32hLQ",
-   "via": "search"
+   "via": "search",
+   "vid": "TOdsm3OlKWc",
+   "embeddable": true
   },
   "MilenioTelevision": {
    "ok": true,
    "live": true,
    "id": "UCFxHplbcoJK9m70c4VyTIxg",
-   "via": "search"
+   "via": "search",
+   "vid": "oPy8a-TCjzA",
+   "embeddable": true
   },
   "dwespanol": {
    "ok": true,
    "live": true,
    "id": "UCT4Jg8h03dD0iN3Pb5L0PMA",
-   "via": "search"
+   "via": "search",
+   "vid": "GquKSEH-s_Y",
+   "embeddable": true
   }
  }
 }
