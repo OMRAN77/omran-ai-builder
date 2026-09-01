@@ -715,20 +715,49 @@ const saveSettingsNow = () => {
 $('#btnSaveSettings').onclick = () => { saveSettingsNow(); closeDialogSafe(settingsDialog); };
 /* الحفظ التلقائي: أي إغلاق (سحب، ✕، ESC، رجوع) يحفظ أولًا */
 settingsDialog.addEventListener('close', () => { try{ saveSettingsNow(); }catch(e){ __swallow(e, 'settings:autosave'); } });
-/* v-settings-drawer: درج جانبي (نفس ChatGPT) — سحب أفقي نحو حافة الدرج
-   يغلقه، والتمرير الرأسي داخل المحتوى لا يتأثر إطلاقًا */
+/* v-drawer-drag (طلب عمران — نفس ChatGPT): الدرج يتبع الإصبع أثناء السحب؛
+   فلته قبل ثلث العرض يرجع لمكانه بحركة، وبعده (أو بسحبة سريعة) ينزلق
+   خارج الشاشة ويغلق. التمرير الرأسي داخل المحتوى لا يتأثر. */
 (function(){
-  let t0 = null;
+  let t0 = null, dragging = false, w = 0;
+  const setX = (x, anim) => {
+    settingsDialog.style.transition = anim ? 'transform .18s ease-out' : 'none';
+    settingsDialog.style.transform = x ? ('translateX(' + x + 'px)') : '';
+  };
   settingsDialog.addEventListener('touchstart', (e) => {
-    t0 = (e.touches.length === 1) ? { y: e.touches[0].clientY, x: e.touches[0].clientX } : null;
+    if(e.touches.length !== 1){ t0 = null; return; }
+    t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY, ts: Date.now() };
+    dragging = false;
+    w = settingsDialog.getBoundingClientRect().width || 300;
   }, { passive: true });
   settingsDialog.addEventListener('touchmove', (e) => {
     if(!t0) return;
-    const dx = e.touches[0].clientX - t0.x;      /* موجب = نحو اليمين (حافة الدرج) */
-    const dy = Math.abs(e.touches[0].clientY - t0.y);
-    if(dx > 90 && dx > dy * 2){ t0 = null; closeDialogSafe(settingsDialog); }
+    const dx = e.touches[0].clientX - t0.x;   /* موجب = نحو حافة الدرج اليمنى */
+    const dy = e.touches[0].clientY - t0.y;
+    if(!dragging){
+      if(Math.abs(dx) < 14 || Math.abs(dx) < Math.abs(dy) * 1.4) return; /* تمرير رأسي */
+      if(dx <= 0){ t0 = null; return; }
+      dragging = true;
+    }
+    setX(Math.max(0, dx), false);
   }, { passive: true });
-  settingsDialog.addEventListener('touchend', () => { t0 = null; }, { passive: true });
+  const finish = (e) => {
+    if(!t0) return;
+    const wasDragging = dragging;
+    const dx = (wasDragging && e.changedTouches && e.changedTouches[0]) ? (e.changedTouches[0].clientX - t0.x) : 0;
+    const dt = Date.now() - t0.ts;
+    t0 = null; dragging = false;
+    if(!wasDragging) return;
+    if(dx > w * 0.35 || (dt < 300 && dx > 70)){
+      setX(w + 40, true);
+      setTimeout(() => { setX(0, false); closeDialogSafe(settingsDialog); }, 190);
+    } else {
+      setX(0, true);
+      setTimeout(() => { settingsDialog.style.transition = 'none'; }, 220);
+    }
+  };
+  settingsDialog.addEventListener('touchend', finish, { passive: true });
+  settingsDialog.addEventListener('touchcancel', finish, { passive: true });
   /* v-settings-grab: النقر على المقبض يغلق أيضًا (مفيد للكمبيوتر) */
   const grab = document.getElementById('settingsGrab');
   if(grab) grab.addEventListener('click', () => closeDialogSafe(settingsDialog));
