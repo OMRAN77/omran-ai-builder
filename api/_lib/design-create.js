@@ -15,8 +15,10 @@ async function openaiDesignEdit(promptText, imageBase64, mimeType) {
     const form = new FormData();
     form.append('model', 'gpt-image-1');
     form.append('prompt', String(promptText).slice(0, 3900));
-    form.append('size', '1536x1024');
-    form.append('quality', 'medium');
+    form.append('size', 'auto');
+    /* v-strong-rescue */
+    form.append('input_fidelity', 'high');
+    form.append('quality', 'high');
     form.append('output_format', 'webp');
     form.append('image', new Blob([bytes], { type: mimeType || 'image/jpeg' }), 'room.jpg');
     const r = await fetch('https://api.openai.com/v1/images/edits', {

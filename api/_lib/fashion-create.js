@@ -20,8 +20,10 @@ async function openaiRedress(promptText, imageBase64, mimeType) {
     const form = new FormData();
     form.append('model', 'gpt-image-1');
     form.append('prompt', promptText.slice(0, 3900));
-    form.append('size', '1024x1536');
-    form.append('quality', 'medium');
+    form.append('size', 'auto');
+    /* v-strong-rescue: حفظ الملامح وجودة عالية */
+    form.append('input_fidelity', 'high');
+    form.append('quality', 'high');
     form.append('image', new Blob([bytes], { type: mimeType || 'image/jpeg' }), 'photo.jpg');
     const r = await fetch('https://api.openai.com/v1/images/edits', {
       method: 'POST',
@@ -44,7 +46,7 @@ async function openaiGenerate(promptText) {
     const r = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'gpt-image-1', prompt: promptText.slice(0, 3900), size: '1024x1536', quality: 'medium' }),
+      body: JSON.stringify({ model: 'gpt-image-2', prompt: promptText.slice(0, 3900), size: '1024x1536', quality: 'high' }),
     });
     const d = await r.json();
     if (!r.ok) { console.warn('[fashion-create] openai gen HTTP ' + r.status + ' ' + String((d.error && d.error.message) || '').slice(0, 120)); return null; }

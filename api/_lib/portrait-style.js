@@ -17,8 +17,11 @@ async function openaiPortraitEdit(promptText, imageBase64, mimeType) {
     const form = new FormData();
     form.append('model', 'gpt-image-1');
     form.append('prompt', String(promptText).slice(0, 3900));
-    form.append('size', '1024x1536');
-    form.append('quality', 'medium');
+    form.append('size', 'auto');
+    /* v-strong-rescue: input_fidelity=high يحفظ ملامح الوجه والنصوص —
+       بدونه كان الإنقاذ يعيد رسم الشخص «ضعيف» (شكوى المالك ١ سبتمبر). */
+    form.append('input_fidelity', 'high');
+    form.append('quality', 'high');
     form.append('image', new Blob([bytes], { type: mimeType || 'image/jpeg' }), 'photo.jpg');
     const r = await fetch('https://api.openai.com/v1/images/edits', {
       method: 'POST',
