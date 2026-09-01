@@ -677,7 +677,7 @@
   html.mobile-ui #settingsDialog{
     top:0; bottom:0; height:100dvh; max-height:100dvh;
     right:0; left:auto; margin:0;
-    width:86vw; max-width:86vw;
+    width:80vw; max-width:80vw;
     border-radius:0; border:none; border-inline-end:none;
     border-inline-start:1px solid var(--border);
     padding-top:env(safe-area-inset-top, 0px);
