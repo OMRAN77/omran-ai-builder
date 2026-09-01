@@ -250,7 +250,10 @@
   #btnNew.newbtn{margin:6px 10px; padding:7px 10px; font-size:12.5px; opacity:.9;}
   #chatcol{
     width:380px; display:flex; flex-direction:column;
-    flex-shrink:0; background:rgba(10,11,16,.35); position:relative;
+    /* v-black-chat (طلب عمران): كانت الطبقة rgba(10,11,16,.35) ترمّد خلفية
+       المحادثة فتبدو أفتح من صندوق الكتابة الأسود الصافي — نزيلها فتتّحد
+       كلها على أسود واحد. */
+    flex-shrink:0; background:transparent; position:relative;
   }
   html[dir="rtl"] #chatcol{border-left:1px solid var(--border);}
   html[dir="ltr"] #chatcol{border-right:1px solid var(--border);}
