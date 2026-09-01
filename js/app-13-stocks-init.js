@@ -280,7 +280,7 @@
     setTvChart('OANDA:XAUUSD');
     const ov = { colorTheme:'dark', dateRange:'1D', showChart:false, locale: uiLang(), isTransparent:true, width:'100%', height:400,
       tabs:[
-        { title:'Indices', symbols:[{s:'DJ:DJI',d:'Dow Jones'},{s:'NASDAQ:IXIC',d:'NASDAQ'},{s:'SP:SPX',d:'S&P 500'},{s:'XETR:DAX',d:'DAX'},{s:'TVC:NI225',d:'Nikkei 225'}] },
+        { title:'Indices', symbols:[{s:'AMEX:DIA',d:'Dow Jones'},{s:'NASDAQ:QQQ',d:'NASDAQ 100'},{s:'AMEX:SPY',d:'S&P 500'},{s:'FOREXCOM:GRXEUR',d:'DAX'},{s:'TVC:NI225',d:'Nikkei 225'}] },
         { title:'Commodities', symbols:[{s:'OANDA:XAUUSD',d:'Gold'},{s:'TVC:SILVER',d:'Silver'},{s:'TVC:USOIL',d:'Oil WTI'},{s:'TVC:UKOIL',d:'Brent'}] },
         { title:'Forex', symbols:[{s:'FX:EURUSD'},{s:'FX:GBPUSD'},{s:'FX:USDJPY'},{s:'FX_IDC:USDAED',d:'USD/AED'}] },
         { title:'Crypto', symbols:[{s:'BITSTAMP:BTCUSD',d:'Bitcoin'},{s:'BITSTAMP:ETHUSD',d:'Ethereum'}] }
