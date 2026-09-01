@@ -20,6 +20,14 @@ module.exports = async (req, res) => {
     const cached = await kvGetJSON(key);
     if (cached && cached.id && (Date.now() - (cached.ts || 0)) < CACHE_MS) {
       res.setHeader('X-Cache', 'HIT');
+      // v659: الكاش يحفظ المعرّف الرقمي فقط — لكن طلب live=1 يريد رقم البثّ
+      // الجاري أيضًا. بدونه يظنّ العميل أن القناة صامتة فيقذف المستخدم خارج
+      // التطبيق. نُكمل الرد بفحص البثّ (له كاشه القصير المستقل).
+      if (String(req.query && req.query.live) === '1') {
+        const live = await liveInfo(cached.id);
+        res.status(200).json(Object.assign({ channelId: cached.id }, live));
+        return;
+      }
       res.status(200).json({ channelId: cached.id });
       return;
     }
