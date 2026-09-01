@@ -844,7 +844,9 @@
   html[data-mode="light"] .spinner{border-color:rgba(0,0,0,.25); border-top-color:var(--accent);}
   html[data-mode="light"] .btn.primary,
   html[data-mode="light"] #btnSend{color:#14161a;}
-  html[data-mode="light"] #sidebar, html[data-mode="light"] #workarea{background:var(--bg2);}
+  /* v-freeze-tune: الخلفية السوداء المضمّنة على الدرجين (تمنع وميض الأبيض
+     أثناء الإقلاع) يجب أن يتغلّب عليها الوضع الفاتح — !important */
+  html[data-mode="light"] #sidebar, html[data-mode="light"] #workarea{background:var(--bg2) !important;}
   html[data-mode="light"] .omToolCard{background:rgba(0,0,0,.03);}
   html[data-mode="light"] .attach-chip,
   html[data-mode="light"] .msg-attachments .file-chip,
