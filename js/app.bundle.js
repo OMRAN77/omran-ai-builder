@@ -7837,6 +7837,14 @@ async function applyBg3D(id, save){
   if(id === 'none') return;
   const eff = BG3D_EFFECTS.find(e => e.id === id);
   if(!eff) return;
+  /* v-bg3d-app-lite (شاشة سوداء + «يستجيب ببطء» في تطبيق الأندرويد):
+     محركات WebGL (three/vanta/p5) تجمّد الخيط الرئيسي داخل WebView
+     الأغلفة على أجهزة كثيرة — داخل التطبيق نكتفي بالخلفيات الخفيفة
+     (custom canvas) والويب بلا أي تغيير. */
+  if(eff.lib !== 'custom' && typeof omranLikelyApp === 'function' && omranLikelyApp()){
+    document.body.classList.remove('vantaActive');
+    return;
+  }
   if(eff.lib === 'custom'){
     try { initCustomBg3D(id); } catch(e){ console.warn('bg3d custom init failed', e); }
     return;
