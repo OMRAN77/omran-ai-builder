@@ -1,4 +1,4 @@
-const CACHE_NAME = 'omran-ai-builder-freeze-66acb87d-tv-8c11d824-attach-903585d6';
+const CACHE_NAME = 'omran-ai-builder-freeze-66acb87d-tv-8c11d824-attach-903585d6-toolphotos-1';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -7,6 +7,15 @@ const STATIC_ASSETS = [
   // wrong path rejected the whole precache on every install, and the
   // .catch(() => {}) below swallowed the error silently.
   './js/app.bundle.js',
+  './css/tool-card-images.css?v=1',
+  './js/tool-card-images.js?v=1',
+  './assets/tool-cards/portrait.png',
+  './assets/tool-cards/suggestions.png',
+  './assets/tool-cards/video.png',
+  './assets/tool-cards/decor.png',
+  './assets/tool-cards/fashion.png',
+  './assets/tool-cards/style.png',
+  './assets/tool-cards/ads.png',
   './templates-data.js',
   './manifest.json',
   './icons/icon-192-v2.png?icon=gold-20260819',
