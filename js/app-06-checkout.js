@@ -1283,6 +1283,9 @@ function throwProviderError(status, errText){
     err = new Error(t('providerError') + status + ' - ' + (errText || '').slice(0, 200));
   }
   err.status = status;
+  // v-claude-shape: مقتطف خطأ المزود الأصلي يظهر في سطر الحالة — «HTTP 400»
+  // وحدها كانت تخفي السبب الحقيقي (شكل رسائل مرفوض، مفتاح، نموذج...).
+  err.upstreamText = String(errText || '').replace(/\s+/g, ' ').slice(0, 160);
   throw err;
 }
 
@@ -1880,7 +1883,7 @@ async function callClaude(messages, onDelta){
   let model = window.__claudeModelOverride || localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-5';
   const systemMsgsC = messages.filter(m => m.role === 'system');
   const systemMsg = systemMsgsC.length ? { content: systemMsgsC.map(m => m.content).join('\n\n') } : null;
-  const rest = messages.filter(m => m.role !== 'system').map(m => {
+  let rest = messages.filter(m => m.role !== 'system').map(m => {
     if(m.images && m.images.length){
       const content = [{ type: 'text', text: m.content }];
       m.images.forEach(img => {
@@ -1891,6 +1894,17 @@ async function callClaude(messages, onDelta){
     }
     return { role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content };
   });
+  /* v-claude-shape: أنثروبيك يرفض 400 محادثة أولها assistant (كود المشروع
+     يوضع كذلك في المقدمة) أو فيها محتوى فارغ أو دوران متتاليان بنفس الدور —
+     كان كل رد في مشروع فيه كود يموت على كلود ويتحوّل للاحتياط. */
+  rest = rest.filter(m => Array.isArray(m.content) ? m.content.length : String(m.content || '').trim());
+  for(let i = rest.length - 1; i > 0; i--){
+    if(rest[i].role === rest[i - 1].role && typeof rest[i].content === 'string' && typeof rest[i - 1].content === 'string'){
+      rest[i - 1] = { role: rest[i - 1].role, content: rest[i - 1].content + '\n\n' + rest[i].content };
+      rest.splice(i, 1);
+    }
+  }
+  if(rest.length && rest[0].role !== 'user') rest.unshift({ role: 'user', content: 'هذا مشروعي الحالي — اعتمد عليه فيما يلي:' });
   // If the visitor hasn't entered their own Claude key, fall back to the server-side
   // proxy which uses the site owner's key (for quick trials without setup).
   if(!apiKey){
@@ -2079,7 +2093,7 @@ async function callAIWithFallback(messages, onDelta, preferredList){
       try{
         if(window.__chatStatus){
           const who = (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey);
-          const why = (err && (err.status ? ('HTTP ' + err.status) : String(err.message || '').slice(0, 70))) || t('provUnknownReason');
+          const why = (err && (err.status ? ('HTTP ' + err.status + (err.upstreamText ? ' — ' + err.upstreamText.slice(0, 80) : '')) : String(err.message || '').slice(0, 70))) || t('provUnknownReason');
           /* v-prov-status-i18n: رسالة التعثر بلغة الواجهة لا بالعربي دائمًا. */
           window.__chatStatus.note('⚠️', who + ' ' + t('provFailSwitch').replace('{why}', why));
           console.warn('[fallback] ' + providerKey + ' failed:', err);

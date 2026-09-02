@@ -4,6 +4,37 @@
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
 const { spendPoints, refundPoints, verifyPointsToken, PREMIUM_MODELS, PREMIUM_COST } = require('./points.js');
 
+/* v-claude-shape (شكوى المالك: «الكينج لم يستجب HTTP 400» بلا صورة أصلًا):
+ * أنثروبيك يرفض المحادثة كلها إذا خالفت شكله — أول رسالة يجب أن تكون user،
+ * الأدوار تتناوب، ولا محتوى فارغ. العميل يضع كود المشروع كرسالة assistant
+ * في المقدمة، فأي محادثة فيها كود كانت تموت 400 على كلود وحده (البقية
+ * يقبلونها) ويتحوّل كل رد للاحتياط. هنا نصلّح الشكل بدل رفض الطلب. */
+function sanitizeClaudeMessages(list) {
+  const src = (Array.isArray(list) ? list : []).filter((m) => {
+    if (!m || (m.role !== 'user' && m.role !== 'assistant')) return false;
+    if (typeof m.content === 'string') return m.content.trim().length > 0;
+    return Array.isArray(m.content) && m.content.length > 0;
+  });
+  const out = [];
+  for (const m of src) {
+    const prev = out[out.length - 1];
+    if (prev && prev.role === m.role) {
+      if (typeof prev.content === 'string' && typeof m.content === 'string') {
+        prev.content += '\n\n' + m.content;
+      } else {
+        const a = Array.isArray(prev.content) ? prev.content : [{ type: 'text', text: String(prev.content) }];
+        const b = Array.isArray(m.content) ? m.content : [{ type: 'text', text: String(m.content) }];
+        prev.content = a.concat(b);
+      }
+      continue;
+    }
+    out.push({ role: m.role, content: m.content });
+  }
+  if (out.length && out[0].role !== 'user') out.unshift({ role: 'user', content: 'هذا مشروعي الحالي — اعتمد عليه فيما يلي:' });
+  while (out.length && out[out.length - 1].role !== 'user') out.pop();
+  return out;
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -29,8 +60,9 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { messages, model, system, token, guestId } = body;
-    if (!messages) {
+    const { model, system, token, guestId } = body;
+    const messages = sanitizeClaudeMessages(body.messages);
+    if (!messages.length) {
       res.status(400).json({ error: 'Missing messages' });
       return;
     }

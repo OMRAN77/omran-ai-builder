@@ -953,6 +953,17 @@ module.exports = async (req, res) => {
   const convo = compactConversation(convoSource
       .map((m) => ({ role: m.role, content: typeof m.content === 'string' ? m.content.slice(0, 12000) : m.content })));
       while (convo.length && convo[convo.length - 1].role !== 'user') convo.pop();
+  /* v-claude-shape: أنثروبيك يرفض 400 محادثة أولها assistant أو فيها دوران
+   * متتاليان بنفس الدور — كود المشروع يصل كرسالة assistant في المقدمة،
+   * والمسار القصير في compactConversation يمرّره كما هو. نصلّح الشكل هنا. */
+  for (let i = convo.length - 1; i > 0; i--) {
+    if (convo[i].role === convo[i - 1].role
+        && typeof convo[i].content === 'string' && typeof convo[i - 1].content === 'string') {
+      convo[i - 1] = { role: convo[i - 1].role, content: convo[i - 1].content + '\n\n' + convo[i].content };
+      convo.splice(i, 1);
+    }
+  }
+  if (convo.length && convo[0].role !== 'user') convo.unshift({ role: 'user', content: 'هذا مشروعي الحالي — اعتمد عليه فيما يلي:' });
   // الترويسات فُتحت أعلاه فلا status(400) هنا — حدث خطأ في المجرى نفسه.
   if (!convo.length) { send({ error: 'Missing user message' }); res.end(); return; }
 
