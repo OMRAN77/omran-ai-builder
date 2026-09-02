@@ -1,4 +1,4 @@
-const CACHE_NAME = 'omran-ai-builder-freeze-dacedbc9-tv-8c11d824';
+const CACHE_NAME = 'omran-ai-builder-freeze-9ccb4dd6-tv-8c11d824';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -106,29 +106,7 @@ function isStaticAsset(url) {
   );
 }
 
-// Share Target: المستخدم يضغط "مشاركة" على لقطة شاشة من هاتفه → تصل هنا كـPOST.
-// هذا الاستثناء الوحيد لقاعدة "SW لا يلمس POST" — موثّق هنا عمداً.
-// الصورة تُخزَّن مؤقتاً في cache خاص (sg-share) ثم تُحذف بعد 5 دقائق.
-self.addEventListener('fetch', (shareEvent) => {
-  const req = shareEvent.request;
-  const url = new URL(req.url);
-  if (req.method === 'POST' && url.searchParams.get('share') === 'screen-guide') {
-    shareEvent.respondWith((async () => {
-      try {
-        const fd = await req.formData();
-        const file = fd.get('screenshot') || fd.getAll('files')[0] || null;
-        if (file && file instanceof File) {
-          const cache = await caches.open('sg-share');
-          await cache.put('/__sg_shared_image__', new Response(file, { headers: { 'Content-Type': file.type || 'image/jpeg' } }));
-          // حذف تلقائي بعد 5 دقائق حتى لا تبقى الصورة في الكاش
-          setTimeout(() => caches.open('sg-share').then(c => c.delete('/__sg_shared_image__')).catch(() => {}), 5 * 60 * 1000);
-        }
-      } catch (e) { /* فشل صامت — الصفحة تُفتح عادياً */ }
-      return Response.redirect('./?share=screen-guide', 303);
-    })());
-    return;
-  }
-});
+// v-vg-removed: مُعالج Share Target للمرشد البصري حُذف مع حذف الميزة نهائيًا.
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
