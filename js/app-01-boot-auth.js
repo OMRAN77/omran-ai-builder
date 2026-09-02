@@ -574,6 +574,24 @@ const $ = s => document.querySelector(s);
       renderAdminUserTable();
     }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
   };
+  /* v-claude-diag: يجرب مفتاح كلود الفعلي في الخادم ويعرض رد أنثروبيك
+     الكامل + ذيل المفتاح — يحسم فورًا أي حساب يخص المفتاح وهل رصيده يكفي. */
+  window.adminClaudeDiag = async function(){
+    const box = document.getElementById('adminClaudeDiagBox');
+    if(box){ box.style.display = 'block'; box.textContent = '⏳ يفحص مفتاح كلود على أنثروبيك…'; }
+    try{
+      const token = authGet('aiapp_auth_token');
+      const res = await fetch('/api/admin-actions', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ token, action: 'claude-diag' }),
+      });
+      const data = await res.json();
+      if(!res.ok){ if(box) box.textContent = '❌ ' + (data.error || 'فشل'); return; }
+      if(box) box.textContent = (data.ok ? '✅' : '❌') + ' المفتاح: ' + (data.keyTail || '؟')
+        + '\nالحالة: HTTP ' + (data.status || '؟')
+        + '\n' + (data.detail || '');
+    }catch(e){ if(box) box.textContent = '❌ خطأ: ' + (e && e.message || e); }
+  };
   window.adminMessageUser = async function(username){
     const text = prompt('اكتب الرسالة التي ستصل لـ "' + username + '" (تظهر له عند فتح البرنامج):');
     if(!text || !text.trim()) return;
