@@ -4294,7 +4294,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=661'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
+    sc.src = 'i18n/' + lg + '.js?v=662'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -29554,6 +29554,9 @@ window.__omranBundleOk = true;
     if(!ch.h && ch.u){ openExternal(ch.u); return; }
     var el = shell();
     var old = card.innerHTML;
+    // v662: الفحص الخارجي الطازج أوّلًا — يشغّل فورًا بلا انتظار الخادم
+    var ready = statusLive(ch.h);
+    if(ready){ playEmbed(ch, ready); return; }
     card.innerHTML = '<span style="font-size:26px;">⏳</span><span style="font-size:13px;">' + tvT('tvOpening', 'جارٍ الفتح...', 'Opening...') + '</span>';
     resolveLive(ch.h).then(function(info){
       card.innerHTML = old;

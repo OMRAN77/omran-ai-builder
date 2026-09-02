@@ -1101,6 +1101,9 @@
     if(!ch.h && ch.u){ openExternal(ch.u); return; }
     var el = shell();
     var old = card.innerHTML;
+    // v662: الفحص الخارجي الطازج أوّلًا — يشغّل فورًا بلا انتظار الخادم
+    var ready = statusLive(ch.h);
+    if(ready){ playEmbed(ch, ready); return; }
     card.innerHTML = '<span style="font-size:26px;">⏳</span><span style="font-size:13px;">' + tvT('tvOpening', 'جارٍ الفتح...', 'Opening...') + '</span>';
     resolveLive(ch.h).then(function(info){
       card.innerHTML = old;
