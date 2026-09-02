@@ -28,6 +28,19 @@ const REMOVED_SOURCE_TEXT_RE = /(?:https?:\/\/)?(?:www\.)?news\.google\.com(?:\/
 function withoutRemovedSourceMentions(value) {
   return String(value || '').replace(REMOVED_SOURCE_TEXT_RE, '').replace(/\s{2,}/g, ' ').trim();
 }
+// v-no-fake-embed (شكوى عمران «شعار شرطة دبي»): مزوّد البحث كان يُرجع أحيانًا
+// وسم <img> فارغ src="" أو رابط تنزيل بلا هدف داخل نص الإجابة. الواجهة تعرض
+// النص كماركداون فتظهر هذه الوسوم ككود معطّل بلا فائدة (الصور الحقيقية تُعرض
+// من مصفوفة images المنفصلة). نُزيلها من النص قبل إرساله.
+function stripFakeEmbeds(value) {
+  return String(value || '')
+    .replace(/<img\b[^>]*>/gi, '')                 // وسوم <img> الخام (دائمًا معطّلة هنا)
+    .replace(/!\[[^\]]*\]\(\s*\)/g, '')            // صورة ماركداون بهدف فارغ ![..]()
+    .replace(/\[[^\]]*\]\(\s*#?\s*\)/g, '')        // رابط ماركداون بهدف فارغ [..]() أو [..](#)
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
 function isFreshNewsResult(item) {
   const raw = item && (item.published_date || item.publishedDate || item.date || item.published_at);
   if (!raw) return true; // Tavily time_range is still the primary freshness gate.
@@ -620,8 +633,8 @@ module.exports = async (req, res) => {
       const deepSocial = mergeSocial(await deepSocialP, pickSocial(mergedResults));
       deepSocial.forEach(sc => { if (deepSources.length < 14) deepSources.push({ title: sc.title, url: sc.url }); });
       res.status(200).json({
-        answer: answers[0] || '',
-        deepAnswers: answers,
+        answer: stripFakeEmbeds(answers[0] || ''),
+        deepAnswers: answers.map(stripFakeEmbeds),
         results: mergedResults.slice(0, 15),
         sources: deepSources,
         social: deepSocial,
@@ -929,7 +942,7 @@ module.exports = async (req, res) => {
     }
 
     res.status(200).json({
-      answer: withoutRemovedSourceMentions(data.answer),
+      answer: stripFakeEmbeds(withoutRemovedSourceMentions(data.answer)),
       results,
       google: googleItems,
       images,
