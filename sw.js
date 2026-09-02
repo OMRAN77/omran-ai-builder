@@ -1,4 +1,4 @@
-const CACHE_NAME = 'omran-ai-builder-freeze-e6063037';
+const CACHE_NAME = 'omran-ai-builder-freeze-4ff42249-tv-8c11d824-attach-903585d6-toolphotos-3';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -7,6 +7,26 @@ const STATIC_ASSETS = [
   // wrong path rejected the whole precache on every install, and the
   // .catch(() => {}) below swallowed the error silently.
   './js/app.bundle.js',
+  './css/tool-card-images.css?v=1',
+  './js/tool-card-images.js?v=1',
+  './assets/tool-cards/portrait.png',
+  './assets/tool-cards/suggestions.png',
+  './assets/tool-cards/video.png',
+  './assets/tool-cards/decor.png',
+  './assets/tool-cards/fashion.png',
+  './assets/tool-cards/style.png',
+  './assets/tool-cards/ads.png',
+  './assets/tool-cards/sections/stocks.png',
+  './assets/tool-cards/sections/tv.png',
+  './assets/tool-cards/sections/qibla.png',
+  './assets/tool-cards/sections/expense.png',
+  './assets/tool-cards/sections/education.png',
+  './assets/tool-cards/sections/construction.png',
+  './assets/tool-cards/sections/religion.png',
+  './assets/tool-cards/sections/cv.png',
+  './assets/tool-cards/sections/docs.png',
+  './assets/tool-cards/sections/feedback.png',
+  './assets/tool-cards/sections/email.png',
   './templates-data.js',
   './manifest.json',
   './icons/icon-192-v2.png?icon=gold-20260819',
@@ -106,29 +126,7 @@ function isStaticAsset(url) {
   );
 }
 
-// Share Target: المستخدم يضغط "مشاركة" على لقطة شاشة من هاتفه → تصل هنا كـPOST.
-// هذا الاستثناء الوحيد لقاعدة "SW لا يلمس POST" — موثّق هنا عمداً.
-// الصورة تُخزَّن مؤقتاً في cache خاص (sg-share) ثم تُحذف بعد 5 دقائق.
-self.addEventListener('fetch', (shareEvent) => {
-  const req = shareEvent.request;
-  const url = new URL(req.url);
-  if (req.method === 'POST' && url.searchParams.get('share') === 'screen-guide') {
-    shareEvent.respondWith((async () => {
-      try {
-        const fd = await req.formData();
-        const file = fd.get('screenshot') || fd.getAll('files')[0] || null;
-        if (file && file instanceof File) {
-          const cache = await caches.open('sg-share');
-          await cache.put('/__sg_shared_image__', new Response(file, { headers: { 'Content-Type': file.type || 'image/jpeg' } }));
-          // حذف تلقائي بعد 5 دقائق حتى لا تبقى الصورة في الكاش
-          setTimeout(() => caches.open('sg-share').then(c => c.delete('/__sg_shared_image__')).catch(() => {}), 5 * 60 * 1000);
-        }
-      } catch (e) { /* فشل صامت — الصفحة تُفتح عادياً */ }
-      return Response.redirect('./?share=screen-guide', 303);
-    })());
-    return;
-  }
-});
+// v-vg-removed: مُعالج Share Target للمرشد البصري حُذف مع حذف الميزة نهائيًا.
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;

@@ -1,0 +1,42 @@
+/* Photo cards for the seven creative tools only. Existing buttons/handlers stay untouched. */
+#sectionsToolsPopup .ptGrid .btn.hasToolPhoto{
+  min-height:118px!important;
+  padding:0!important;
+  gap:0!important;
+  overflow:hidden;
+  justify-content:flex-start!important;
+  background:#070709!important;
+  border-color:rgba(255,255,255,.2)!important;
+}
+#sectionsToolsPopup .ptGrid .btn.hasToolPhoto:hover{
+  border-color:rgba(var(--accent-tint-rgb),.78)!important;
+  box-shadow:0 10px 24px rgba(0,0,0,.28),0 0 0 1px rgba(var(--accent-glow-rgb),.12)!important;
+  transform:translateY(-2px);
+}
+#sectionsToolsPopup .ptGrid .btn.hasToolPhoto img.stp3d.toolPhotoImage{
+  display:block!important;
+  width:100%!important;
+  height:82px!important;
+  flex:0 0 82px!important;
+  object-fit:cover!important;
+  object-position:center!important;
+  border-radius:0!important;
+  pointer-events:none;
+}
+#sectionsToolsPopup .ptGrid .btn.hasToolPhoto .btnLabel{
+  display:flex!important;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  min-height:36px;
+  padding:7px 6px 8px;
+  color:var(--text)!important;
+  font-size:11.5px;
+  font-weight:700;
+  line-height:1.3;
+}
+@media (max-width:760px){
+  #sectionsToolsPopup .ptGrid .btn.hasToolPhoto{min-height:104px!important;}
+  #sectionsToolsPopup .ptGrid .btn.hasToolPhoto img.stp3d.toolPhotoImage{height:68px!important;flex-basis:68px!important;}
+  #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .btnLabel{min-height:35px;padding:6px 4px 7px;font-size:10.5px;}
+}

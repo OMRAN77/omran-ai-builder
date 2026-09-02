@@ -124,6 +124,14 @@ function openCheckout(plan){
     const sd = document.getElementById('settingsDialog');
     if (sd && sd.open && typeof sd.close === 'function') { try { sd.close(); } catch (e) { /* guard-ok — cleanup: close() may throw on some browsers */ } }
     overlay.style.display = 'flex';
+    // v-ios-nogpay (طلب عمران): زر Google Pay منتج أندرويد ولا معنى له على
+    // الآيفون — نُخفيه على iOS ويبقى على بقية الأجهزة. البطاقة وPayPal (دفع
+    // خارجي) يبقيان للجميع، فيأخذ PayPal مكان Google Pay على الآيفون.
+    try {
+      var __isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      var __gpay = overlay.querySelector('button[onclick="clickGooglePay()"]');
+      if (__gpay) __gpay.style.display = __isIOS ? 'none' : 'flex';
+    } catch (e) { /* guard-ok */ }
   }
   loadPaypalButtons();
   setupWalletPaymentRequest(plan);

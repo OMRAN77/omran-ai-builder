@@ -195,3 +195,22 @@
 // والأسلاك اشتغلت، فيسكت رقيب selfdiag ويُمحى حارس إعادة المحاولة.
 window.__omranBootOk = true;
 try{ sessionStorage.removeItem('omranBootRetry'); }catch(e){ /* guard-ok: بلا تخزين لا حارس أصلًا */ }
+
+/* v-toolphotos-1: visual-only photo cards for the seven creative tools. */
+(function(){
+  'use strict';
+  if(!document.querySelector('link[data-omran-tool-photos]')){
+    var css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = '/css/tool-card-images.css?v=1';
+    css.setAttribute('data-omran-tool-photos', '');
+    document.head.appendChild(css);
+  }
+  if(!document.querySelector('script[data-omran-tool-photos]')){
+    var js = document.createElement('script');
+    js.src = '/js/tool-card-images.js?v=1';
+    js.async = false;
+    js.setAttribute('data-omran-tool-photos', '');
+    document.head.appendChild(js);
+  }
+})();

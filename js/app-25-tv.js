@@ -888,7 +888,11 @@
     catch(e){ return false; }
   })();
   function streamUsable(u){
-    if(TV_M3U_BAD[u]) return false;
+    var badAt = TV_M3U_BAD[u];
+    if(badAt){
+      if(Date.now() - badAt < 8000) return false;
+      delete TV_M3U_BAD[u];
+    }
     var ss = TV_STATUS === null ? null : null;
     try{ ss = window.__tvStreamsStatus || null; }catch(e){ ss = null; }
     if(!ss || !ss[u]) return true;         // لا بيانات فحص — نتفاءل ويحسمها التشغيل
@@ -906,7 +910,12 @@
     return list.length ? list : null;
   }
 
-  /* v659: رقم البثّ من الفحص اليومي — احتياط حين يصمت السيرفر. يُستعمل فقط
+  function clearChannelFailures(ch){
+        var raw = ch.m || (ch.h && TV_M3U && TV_M3U.byHandle && TV_M3U.byHandle[ch.h]) || null;
+        (Array.isArray(raw) ? raw : raw ? [raw] : []).forEach(function(u){ delete TV_M3U_BAD[u]; });
+      }
+
+      /* v659: رقم البثّ من الفحص اليومي — احتياط حين يصمت السيرفر. يُستعمل فقط
    * إن كان الفحص طازجًا (٣٦ ساعة) والتضمين مسموحًا، وإلّا نرجع للسلوك القديم. */
   /* v661: القسم لا يعرض إلّا ما يشتغل فعلًا.
    * الفحص طازج (≤٣ ساعات) → تظهر القناة التي تبثّ الآن أو بثّت خلال ٧ أيام.
@@ -1086,8 +1095,8 @@
       });
       // الحيّ الآن أولًا — وصاحب البث المباشر النظيف قبله
       list.sort(function(a, b){
-        var la = mOf(a) ? 2 : (stOf(a) && stOf(a).live ? 1 : 0);
-        var lb = mOf(b) ? 2 : (stOf(b) && stOf(b).live ? 1 : 0);
+        var la = mOf(a) ? 2 : 0;
+        var lb = mOf(b) ? 2 : 0;
         return lb - la;
       });
     }
@@ -1108,13 +1117,13 @@
       card.type = 'button';
       card.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:14px;border:1px solid var(--border,rgba(255,255,255,.1));background:rgba(255,255,255,.03);color:inherit;cursor:pointer;text-align:center;';
       var cat = TV_CATS[ch.g] || TV_CATS.general;
-      var st = stOf(ch);
-      var badge = mOf(ch)
-        ? '<span style="font-size:10px;color:#3ddc84;font-weight:800;">▶ ' + tvT('tvDirect', 'بث مباشر', 'Live stream') + '</span>'
-        : (st && st.live)
-        ? '<span style="font-size:10px;color:#ff5b5b;font-weight:800;">🔴 ' + tvT('tvLive', 'مباشر الآن', 'LIVE') + '</span>'
-        : (!ch.h ? '<span style="font-size:10px;color:var(--muted,#98a0b3);">↗ ' + tvT('tvOfficial', 'المنصة الرسمية', 'Official site') + '</span>' : '');
-      card.innerHTML = '<span style="font-size:26px;">' + cat[2] + '</span><span style="font-size:13px;font-weight:600;line-height:1.5;">' + tvChName(ch.n) + '</span>' + badge;
+      var direct = mOf(ch);
+        var badge = direct
+          ? '<span style="font-size:10px;color:#3ddc84;font-weight:800;">▶ ' + tvT('tvDirect', 'بث مباشر داخل التطبيق', 'Live in app') + '</span>'
+          : ch.u
+          ? '<span style="font-size:10px;color:var(--muted,#98a0b3);">↗ ' + tvT('tvOfficial', 'المنصة الرسمية', 'Official site') + '</span>'
+          : '<span style="font-size:10px;color:#a5a5ad;font-weight:700;">' + tvT('tvUnavailable', 'لا يوجد بث مباشر داخل التطبيق', 'No in-app live stream') + '</span>';
+          card.innerHTML = '<span style="font-size:26px;">' + cat[2] + '</span><span style="font-size:13px;font-weight:600;line-height:1.5;">' + tvChName(ch.n) + '</span>' + badge;
       card.onclick = function(){ playChannel(ch, card); };
       grid.appendChild(card);
     });
@@ -1153,7 +1162,7 @@
         if(failed) return;
         failed = true;
         ready();
-        TV_M3U_BAD[url] = 1;
+        TV_M3U_BAD[url] = Date.now();
         stopHls();
         if(typeof onFail === 'function') onFail();
       }
@@ -1168,32 +1177,42 @@
         el.querySelector('#tvBrowse').style.display = 'none';
         el.querySelector('#tvPlayerWrap').style.display = 'flex';
       }
+      function startPlayback(){
+        v.autoplay = true;
+        v.muted = false;
+        try{ v.removeAttribute('muted'); }catch(e){ __swallow(e, 'tv:unmute-attr'); }
+        v.play().catch(function(e){
+          if(!e || e.name !== 'NotAllowedError'){ fail(); return; }
+          /* Chrome/WebView يفقد إذن التشغيل بعد تحميل HLS غير المتزامن.
+           * أعد التشغيل صامتًا بدل إبقاء الشاشة عند 0:00؛ التحكم الظاهر
+           * يتيح للمستخدم تشغيل الصوت بلمسة واحدة. */
+          v.muted = true;
+          try{ v.setAttribute('muted', ''); }catch(x){ __swallow(x, 'tv:mute-attr'); }
+          v.play().catch(fail);
+        });
+      }
       v.onerror = fail;
       v.onplaying = ready;
-      v.onloadedmetadata = ready;
+      v.onloadedmetadata = null;
       if(v.canPlayType('application/vnd.apple.mpegurl')){
         show();
         v.src = url;
-        v.play().catch(function(e){
-          if(e && e.name === 'NotAllowedError'){ ready(); return; }
-          fail();
-        });
+        startPlayback();
         return;
       }
       loadHlsLib().then(function(){
         if(!window.Hls || !window.Hls.isSupported()){ fail(); return; }
         show();
-        curHls = new window.Hls({ maxBufferLength: 20, manifestLoadingTimeOut: 9000, levelLoadingTimeOut: 9000, fragLoadingTimeOut: 9000 });
-        curHls.on(window.Hls.Events.ERROR, function(ev, data){ if(data && data.fatal) fail(); });
-        curHls.on(window.Hls.Events.FRAG_LOADED, ready);
-        curHls.loadSource(url);
-        curHls.attachMedia(v);
-        curHls.on(window.Hls.Events.MANIFEST_PARSED, function(){
-          v.play().catch(function(e){
-            if(e && e.name === 'NotAllowedError'){ ready(); return; }
-            fail();
-          });
+        curHls = new window.Hls({ enableWorker: false, maxBufferLength: 20, manifestLoadingTimeOut: 9000, levelLoadingTimeOut: 9000, fragLoadingTimeOut: 9000 });
+        curHls.on(window.Hls.Events.ERROR, function(ev, data){
+          try{ if(data) console.warn('[tv:hls]', data.type, data.details, !!data.fatal, url); }catch(e){ __swallow(e, 'tv:hls-log'); }
+          if(data && data.fatal) fail();
         });
+        /* اربط MediaSource بالفيديو أولًا؛ تحميل المصدر قبله كان يجلب القطع
+         * لكن يترك video.src فارغًا في Chrome/WebView. */
+        curHls.on(window.Hls.Events.MEDIA_ATTACHED, function(){ if(!failed && curHls) curHls.loadSource(url); });
+        curHls.on(window.Hls.Events.MANIFEST_PARSED, startPlayback);
+        curHls.attachMedia(v);
       }).catch(fail);
     }
       function stopHls(){
@@ -1217,6 +1236,7 @@
 
   /* v-direct-tv: تشغيل مباشر فقط — لا يوتيوب ولا تحويل خارجي. */
   function playChannel(ch, card){
+    clearChannelFailures(ch);
     var mu = mOf(ch);
     if(!mu || !mu.length){ stopPlayer(); cardOff(card); return; }
     var i = 0;
