@@ -13,11 +13,6 @@
   <h3 id="settingsDlgTitle" data-i18n-title="settingsDlgMaxTitle" style="display:none; margin-top:0; cursor:zoom-in; user-select:none;" title="دبل كلك للتكبير/التصغير" data-i18n="settingsTitle">إعدادات الاتصال بالذكاء الاصطناعي</h3>
 
 <div id="settingsHomeView">
-  <div id="settingsCmdBox" style="display:flex; align-items:center; gap:6px; background:var(--panel2); border:1px solid var(--border); border-radius:var(--r-4); padding:6px 8px; margin:6px 0 16px;">
-    <button type="button" id="settingsCmdMicBtn" title="تسجيل صوتي" data-i18n-title="micTitle" style="flex:0 0 auto; background:none; border:none; cursor:pointer; color:var(--muted); display:flex; align-items:center; justify-content:center; padding:6px; border-radius:50%;"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1"></path><line x1="12" y1="18" x2="12" y2="22"></line><line x1="8" y1="22" x2="16" y2="22"></line></svg></button>
-    <input type="text" id="settingsCmdInput" data-i18n-placeholder="settingsCmdPh" placeholder="اكتب ما تريد تغييره… مثال: خط أكبر وخلفية بحرية" style="flex:1 1 auto; min-width:0; border:none; background:none; outline:none; color:var(--text); font-size: var(--fs-3); padding:6px 2px;">
-    <button type="button" id="settingsCmdSendBtn" title="تنفيذ" data-i18n-title="settingsCmdSend" style="flex:0 0 auto; background:none; border:none; cursor:pointer; color:var(--accent); display:flex; align-items:center; justify-content:center; padding:6px; border-radius:50%;"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
-  </div>
   <div id="settingsNavList"></div>
   <div id="appVersionLabel" style="text-align:center; color:var(--muted); font-size:12px; opacity:.7; margin-top:22px; padding-bottom:6px; user-select:text;"></div>
 </div>
