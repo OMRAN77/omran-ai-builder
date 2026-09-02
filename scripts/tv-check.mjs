@@ -127,10 +127,53 @@ for (const { name, h } of list) {
   await new Promise((res) => setTimeout(res, 120));
 }
 
+/* v-tv-hls-check (شكوى المالك: «أكثر القنوات ما تشتغل يحوّل على جوجل»):
+ * روابط البث المباشر تُفحص من هنا — وصولًا (#EXTM3U) وCORS للمتصفح: مشغّل
+ * المتصفح (hls.js) يحتاج Access-Control-Allow-Origin، وأغلب روابط الفهرس
+ * تعمل في تطبيقات التلفزيون لا المتصفح. العميل يعتمد النتيجة: cors:false
+ * تُتجاهل على غير سفاري، وok:false تُتجاهل كليًا. */
+const streamsStatus = {};
+let mOk = 0, mCors = 0;
+try {
+  const tvs = JSON.parse(await readFile('tv-streams.json', 'utf8'));
+  const urls = new Set();
+  Object.values(tvs.byHandle || {}).forEach((v) => (Array.isArray(v) ? v : [v]).forEach((u) => urls.add(u)));
+  (tvs.sports || []).forEach((s) => (Array.isArray(s.m) ? s.m : [s.m]).forEach((u) => urls.add(u)));
+  const all = [...urls];
+  console.log('\nفحص ' + all.length + ' رابط بث مباشر...');
+  const CONC = 12;
+  let idx = 0;
+  async function worker() {
+    while (idx < all.length) {
+      const u = all[idx++];
+      const st = { ok: false, cors: false };
+      try {
+        const r = await fetch(u, {
+          headers: { 'User-Agent': HEADERS['User-Agent'], Origin: 'https://omran-ai-builder.vercel.app' },
+          redirect: 'follow',
+          signal: AbortSignal.timeout(9000),
+        });
+        if (r.ok) {
+          const head = (await r.text()).slice(0, 4000);
+          st.ok = head.includes('#EXTM3U');
+          const acao = r.headers.get('access-control-allow-origin') || '';
+          st.cors = acao === '*' || acao.includes('omran-ai-builder.vercel.app');
+        }
+      } catch { /* رابط ميت/بطيء — يبقى ok:false */ }
+      if (st.ok) mOk++;
+      if (st.ok && st.cors) mCors++;
+      streamsStatus[u] = st;
+    }
+  }
+  await Promise.all(Array.from({ length: CONC }, worker));
+  console.log('روابط شغالة: ' + mOk + ' — منها صالحة للمتصفح (CORS): ' + mCors);
+} catch (e) { console.log('فحص الروابط تخطى: ' + (e && e.message)); }
+
 const out = {
   checkedAt: new Date().toISOString(),
-  counts: { total: list.length, ok: okCount, live: liveCount, repaired },
+  counts: { total: list.length, ok: okCount, live: liveCount, repaired, streamsOk: mOk, streamsCors: mCors },
   channels,
+  streams: streamsStatus,
 };
 await writeFile('tv-status.json', JSON.stringify(out) + '\n');
 console.log('\nالخلاصة: ' + okCount + '/' + list.length + ' محلولة (منها ' + repaired + ' أُصلحت بالبحث)، ' + liveCount + ' حية الآن.');

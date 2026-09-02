@@ -863,6 +863,7 @@
       .then(function(d){
         TV_STATUS = (d && d.channels) || null;
         TV_CHECKED_AT = (d && d.checkedAt) ? (Date.parse(d.checkedAt) || 0) : 0;
+        try{ window.__tvStreamsStatus = (d && d.streams) || null; }catch(e){ __swallow(e, 'tv:ss'); }
       })
       .catch(function(e){ __swallow(e, 'tv:status'); });
   }
@@ -880,9 +881,26 @@
       .then(function(d){ TV_M3U = d || null; })
       .catch(function(e){ __swallow(e, 'tv:streams'); });
   }
+  /* v-tv-hls-check: هل هذا المتصفح يشغّل HLS أصيلًا (سفاري/آيفون)؟ الأصيل
+   * لا يحتاج CORS، أمّا hls.js فيحتاجه — فنفلتر بنتيجة فحص GitHub اليومي. */
+  var TV_NATIVE_HLS = (function(){
+    try{ return !!document.createElement('video').canPlayType('application/vnd.apple.mpegurl'); }
+    catch(e){ return false; }
+  })();
+  function streamUsable(u){
+    if(TV_M3U_BAD[u]) return false;
+    var ss = TV_STATUS === null ? null : null;
+    try{ ss = window.__tvStreamsStatus || null; }catch(e){ ss = null; }
+    if(!ss || !ss[u]) return true;         // لا بيانات فحص — نتفاءل ويحسمها التشغيل
+    if(ss[u].ok === false) return false;   // رابط ميت مؤكد
+    if(!TV_NATIVE_HLS && ss[u].cors === false) return false; // المتصفح سيمنعه حتمًا
+    return true;
+  }
   function mOf(ch){
-    var u = ch.m || (ch.h && TV_M3U && TV_M3U.byHandle && TV_M3U.byHandle[ch.h]) || null;
-    return (u && !TV_M3U_BAD[u]) ? u : null;
+    var raw = ch.m || (ch.h && TV_M3U && TV_M3U.byHandle && TV_M3U.byHandle[ch.h]) || null;
+    if(!raw) return null;
+    var list = (Array.isArray(raw) ? raw : [raw]).filter(streamUsable);
+    return list.length ? list : null;
   }
 
   /* v659: رقم البثّ من الفحص اليومي — احتياط حين يصمت السيرفر. يُستعمل فقط
@@ -1074,14 +1092,15 @@
       TV_CH.forEach(function(ch){
         if(ch.g !== 'sports' || !chVisible(ch)) return;
         seenN[ch.n.toLowerCase().replace(/\s+/g, '')] = 1;
-        var u0 = mOf(ch); if(u0) seenU[u0] = 1;   // نفس البث باسمين = قناة واحدة
+        var u0 = mOf(ch); if(u0) u0.forEach(function(u){ seenU[u] = 1; }); // نفس البث باسمين = قناة واحدة
         list.push(ch);
       });
       ((TV_M3U && TV_M3U.sports) || []).forEach(function(s){
         var k = s.n.toLowerCase().replace(/\s+/g, '');
-        if(seenN[k] || seenU[s.m] || TV_M3U_BAD[s.m]) return;
-        seenN[k] = 1; seenU[s.m] = 1;
-        list.push({ n: s.n, c: s.c, g: 'sports', m: s.m });
+        var us = (Array.isArray(s.m) ? s.m : [s.m]).filter(streamUsable);
+        if(seenN[k] || !us.length || us.some(function(u){ return seenU[u]; })) return;
+        seenN[k] = 1; us.forEach(function(u){ seenU[u] = 1; });
+        list.push({ n: s.n, c: s.c, g: 'sports', m: us });
       });
       list.sort(function(a, b){
         var ia = ARAB_CC.indexOf(a.c), ib = ARAB_CC.indexOf(b.c);
@@ -1228,21 +1247,34 @@
     }
   }
 
-  function playChannel(ch, card){
-    /* v-tv-hls: البث المباشر النظيف أولًا — بلا أي علامة يوتيوب. فشله
-     * الفعلي (رابط مات/محجوب جغرافيًا) يهبط تلقائيًا لمسار يوتيوب القديم. */
-    var mu = mOf(ch);
-    if(mu){
-      playHls(ch, mu, card, function(){ playChannelYt(ch, card); });
-      return;
-    }
-    playChannelYt(ch, card);
+  /* v-tv-hls-check: رسالة على البطاقة بدل قذف المستخدم خارج التطبيق */
+  function cardOff(card){
+    if(!card) return;
+    var old = card.innerHTML;
+    card.innerHTML = '<span style="font-size:26px;">😴</span><span style="font-size:12px;">' + tvT('tvOff', 'القناة موقفة البث حاليًا', 'Not streaming right now') + '</span>';
+    setTimeout(function(){ card.innerHTML = old; }, 2600);
   }
 
-  function playChannelYt(ch, card){
-    // قناة بلا بث يوتيوب أصلًا → منصتها الرسمية مباشرة
+  function playChannel(ch, card){
+    /* v-tv-hls: البث المباشر النظيف أولًا — بلا أي علامة يوتيوب. تجرب
+     * الروابط بالتتابع، وفشلها كلها يهبط ليوتيوب داخل التطبيق لا خارجه. */
+    var mu = mOf(ch);
+    if(mu && mu.length){
+      var i = 0;
+      var tryNext = function(){
+        if(i >= mu.length){ playChannelYt(ch, card, true); return; }
+        playHls(ch, mu[i++], card, tryNext);
+      };
+      tryNext();
+      return;
+    }
+    playChannelYt(ch, card, false);
+  }
+
+  function playChannelYt(ch, card, fromHls){
+    // قناة بلا بث يوتيوب أصلًا → منصتها الرسمية، وإلا رسالة على البطاقة
     if(!ch.h && ch.u){ openExternal(ch.u); return; }
-    if(!ch.h){ stopPlayer(); return; }
+    if(!ch.h){ stopPlayer(); cardOff(card); return; }
     var el = shell();
     var old = card.innerHTML;
     // v662: الفحص الخارجي الطازج أوّلًا — يشغّل فورًا بلا انتظار الخادم
@@ -1263,9 +1295,9 @@
         openExternal('https://www.youtube.com/watch?v=' + info.videoId);
         return;
       }
-      // ليست حية الآن → منصتها الرسمية أو صفحة قناتها
+      // ليست حية الآن → منصتها الرسمية إن وُجدت، وإلا رسالة على البطاقة —
+      // v-tv-hls-check: كان يفتح صفحة يوتيوب («يحوّل على جوجل») — ما عاد.
       if(ch.u){ openExternal(ch.u); return; }
-      if(info.channelId){ openExternal('https://www.youtube.com/channel/' + info.channelId + '/live'); return; }
       card.innerHTML = '<span style="font-size:26px;">😴</span><span style="font-size:12px;">' + tvT('tvOff', 'القناة موقفة البث حاليًا', 'Not streaming right now') + '</span>';
       setTimeout(function(){ card.innerHTML = old; }, 2600);
     }).catch(function(e){
