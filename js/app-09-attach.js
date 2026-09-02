@@ -4616,33 +4616,67 @@ DESIGN RULES (non-negotiable):
     } else {
       // فقاعة واحدة من الانتظار حتى آخر كلمة: ننسّق Markdown المكتمل داخل
       // البث نفسه، ونأخذ قرار متابعة التمرير قبل أن يكبر الرد.
+      /* v-reveal-live (طلب عمران ٢ سبتمبر: «اريده الرد مرتب تدريجى»):
+         فقاعة المزود الواحد كانت ترسم النص بسرعة الشبكة — دفعات كبيرة تقفز
+         دفعة واحدة فيبدو الرد مكوَّمًا لا متدرّجًا. الآن نفس إحساس الكتابة
+         الهادئ المعتمد في Ask-All (~66 حرفًا بالثانية، مع تسارع عند تراكم
+         يفوق 1200 حرف)، والتنسيق حيّ عبر renderStreamingAssistant فيظهر
+         الرد مرتّبًا تدريجيًّا. الحركة عرضٌ فقط: النص الكامل محفوظ دائمًا. */
+      const __live = { target: '', shown: 0, timer: null, done: false, waiters: [], _mLast: 0 };
+      const __liveRender = () => {
+        const shownTxt = __live.target.slice(0, __live.shown);
+        if(!document.documentElement.classList.contains('mobile-ui')){
+          const __followReply = typeof chatIsNearBottom === 'function' ? chatIsNearBottom() : true;
+          renderStreamingAssistant(thinkingDiv, shownTxt);
+          smartScrollBottom(__followReply);
+        } else {
+          // الجوال ينسّق حيًّا كسطح المكتب، مع كبح لإعادة البناء كل ١٥٠مل
+          // حفاظًا على أداء الجوال.
+          const __now = Date.now();
+          if(__now - __live._mLast >= 150 || __live.shown >= __live.target.length){
+            __live._mLast = __now;
+            renderStreamingAssistant(thinkingDiv, shownTxt);
+          }
+          try{
+            const __mobileGap = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight;
+            if(__mobileGap < 140) messagesEl.scrollTop = messagesEl.scrollHeight;
+          }catch(e){ __swallow(e, "misc:app-09-attach#26-mobile"); }
+        }
+      };
+      const __liveTimer = () => {
+        if(__live.timer) return;
+        __live.timer = setInterval(() => {
+          // الفقاعة أُزيلت (إيقاف/خطأ) → الحركة تنتهي بصمت ولا تعلّق شيئًا.
+          if(!thinkingDiv.isConnected){ __live.shown = __live.target.length; __live.done = true; }
+          if(__live.shown < __live.target.length){
+            const left = __live.target.length - __live.shown;
+            __live.shown = Math.min(__live.target.length, __live.shown + (left > 1200 ? Math.ceil(left / 300) : 2));
+            __liveRender();
+          } else if(__live.done){
+            clearInterval(__live.timer);
+            __live.timer = null;
+            __live.waiters.splice(0).forEach((fn) => fn());
+          }
+        }, 30);
+      };
+      // بعد اكتمال البث ننتظر الحركة تلحق آخر حرف (بسقف أمان) قبل الرسم
+      // النهائي — وإلا قفز باقي الرد دفعة واحدة وضاع الإحساس التدريجي.
+      const __liveFinish = (maxMs) => new Promise((res) => {
+        __live.done = true;
+        __liveTimer();
+        if(__live.shown >= __live.target.length && !__live.timer) return res();
+        __live.waiters.push(res);
+        setTimeout(() => { __live.shown = __live.target.length; }, maxMs);
+      });
       const onDelta = (partial) => {
         onDelta._p = partial;
-        __lastStreamPartial = liveStripCode(partial);
-        if(onDelta._raf) return;
-        onDelta._raf = requestAnimationFrame(() => {
-          onDelta._raf = null;
-          const __desktopRhythm = !document.documentElement.classList.contains('mobile-ui');
-          const __followReply = __desktopRhythm && typeof chatIsNearBottom === 'function' ? chatIsNearBottom() : true;
-          (function(){ try{ if(window.__chatStatus) window.__chatStatus.release(); }catch(e){ __swallow(e, "misc:app-09-attach#26"); } })();
-          if(__desktopRhythm){
-            renderStreamingAssistant(thinkingDiv, liveStripCode(onDelta._p));
-            smartScrollBottom(__followReply);
-          } else {
-            // الجوال كان يعرض النص خامًا (نجمتا Markdown ورموز __IMG__ وبطاقات
-            // [[OPT]] ظاهرة كزحمة ثم «ترجع عادي» عند الاكتمال). الآن ينسّق حيًّا
-            // كسطح المكتب، مع كبح لإعادة البناء كل ١٥٠مل حفاظًا على أداء الجوال.
-            const __now = Date.now();
-            if(!onDelta._mLast || __now - onDelta._mLast >= 150){
-              onDelta._mLast = __now;
-              renderStreamingAssistant(thinkingDiv, liveStripCode(onDelta._p));
-            }
-            try{
-              const __mobileGap = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight;
-              if(__mobileGap < 140) messagesEl.scrollTop = messagesEl.scrollHeight;
-            }catch(e){ __swallow(e, "misc:app-09-attach#26-mobile"); }
-          }
-        });
+        const stripped = liveStripCode(partial);
+        __lastStreamPartial = stripped;
+        (function(){ try{ if(window.__chatStatus) window.__chatStatus.release(); }catch(e){ __swallow(e, "misc:app-09-attach#26"); } })();
+        // ✂️ liveStripCode قد يُرجِع نصًّا أقصر عند دخول كتلة كود — لا نتجاوزه
+        if(stripped.length < __live.target.length) __live.shown = Math.min(__live.shown, Math.max(0, stripped.length - 1));
+        __live.target = stripped;
+        __liveTimer();
       };
       // المزود المختار من المستخدم يرد بنفسه (Claude هو الافتراضي)؛ الاحتياط صامت عند التعطل فقط
       const isBuildTask = __routeFix && !__gateNoBuild;
@@ -4726,8 +4760,15 @@ DESIGN RULES (non-negotiable):
         window.__claudeThinking = false;
       }
       let { code, explanation, codeType } = extractReply(reply);
-      // v467: ما تبنيه يد المحادثة يُعرض في المعاينة كأي بناء — وإلّا بقي
-      // الموقع حبيس فقاعة نصّيّة لا تُرى.
+      // v-reveal-live: رد نصّي بلا كود → ننتظر حركة الكتابة تلحق آخر حرف
+      // قبل الرسم النهائي. مع الكود لا ننتظر إطلاقًا حتى لا تتأخر المعاينة.
+      if(code){
+        __live.done = true;
+        __live.shown = __live.target.length;
+        if(__live.timer){ clearInterval(__live.timer); __live.timer = null; }
+      } else {
+        try{ await __liveFinish(15000); }catch(e){ __swallow(e, 'ui:reveal-live'); }
+      }
       const __builtByTools = !!(code && __ctUsed && !isBuildTask);
       // v491: أيّ كود مُستخرَج يصل المعاينة دائمًا — حتّى لو لم يعرف كاشف
       // النيّة الطلب (مثال: ردّ المستخدم «أبدأ» على سؤال البوّابة).
