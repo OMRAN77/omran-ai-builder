@@ -4752,6 +4752,25 @@ DESIGN RULES (non-negotiable):
         if(__toolsWillRun){
           try{ __ct = await window.callChatWithTools(apiMessages.filter(m => !m.__static), onDelta, __effProv); }
           catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; __swallow(e, 'chat:tools'); }
+          /* v-tools-team (شكوى المالك «خربت الدنيا بخصوص الأخبار»): فشل مزود
+             الأدوات الأول (مثال: رصيد كلود نفد) كان يهبط فورًا للمسار القديم
+             بلا بحث حي، فيؤلف البديل أخبارًا من خياله (فهم «العالمي» نادي
+             النصر واخترع نتائج). الآن الاحتياط يبقى داخل مسار الأدوات نفسه —
+             نفس البحث الحي الحقيقي — قبل أي هبوط للمسار القديم. */
+          if(!__ct && !(imageAttachments.length && __effProv === 'claude')){
+            const __toolsTeam = ['openai', 'deepseek', 'gemini'].filter(p => p !== __effProv && TOOL_PROVIDERS.indexOf(p) !== -1).slice(0, 2);
+            for(const __tp of __toolsTeam){
+              try{
+                try{
+                  if(window.__chatStatus && !window.__chatStatus.isReleased()){
+                    window.__chatStatus.phase('💭', functionalLabel(__tp) + ' ' + t('provTypingSuffix'));
+                  }
+                }catch(e){ __swallow(e, 'ui:toolsteam'); }
+                __ct = await window.callChatWithTools(apiMessages.filter(m => !m.__static), onDelta, __tp);
+                if(__ct) break;
+              }catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; __swallow(e, 'chat:tools-team'); }
+            }
+          }
         }
         if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; }
         else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, onDelta, __teamOrder));
