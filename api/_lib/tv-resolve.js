@@ -65,6 +65,30 @@ module.exports = async (req, res) => {
 /* v-tv-live: تضمين live_stream القديم لا يعمل لأغلب القنوات، وبعضها يمنع
  * التضمين كليًا. الحل: صفحة /live للقناة تكشف لحظيًا — هل تبث؟ ما رقم
  * فيديو البث؟ وهل التضمين مسموح (playableInEmbed)؟ كاش ٢٠ دقيقة. */
+
+/* v661: يستخرج كائن ytInitialPlayerResponse كاملًا بموازنة الأقواس.
+ * هو المصدر الوحيد الذي يفرّق بين بثّ جارٍ ومقطع مسجَّل في نفس الصفحة. */
+function playerResponse(html) {
+  const i = html.indexOf('ytInitialPlayerResponse');
+  if (i < 0) return null;
+  const s = html.indexOf('{', i);
+  if (s < 0) return null;
+  let depth = 0, inStr = false, esc = false;
+  for (let j = s; j < html.length; j++) {
+    const ch = html[j];
+    if (esc) { esc = false; continue; }
+    if (ch === '\\') { esc = true; continue; }
+    if (ch === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (!depth) { try { return JSON.parse(html.slice(s, j + 1)); } catch (e) { return null; } }
+    }
+  }
+  return null;
+}
+
 const LIVE_CACHE_MS = 20 * 60 * 1000;
 async function liveInfo(id) {
   const lkey = 'db/tv/live/' + id;
@@ -85,14 +109,17 @@ async function liveInfo(id) {
     });
     if (r.ok) {
       const html = await r.text();
-      const isLive = (/"isLive"\s*:\s*true|"isLiveNow"\s*:\s*true/.test(html))
-        && !/"status"\s*:\s*"LIVE_STREAM_OFFLINE"/.test(html);
-      if (isLive) {
-        const vm = html.match(/"videoId"\s*:\s*"([\w-]{11})"/);
+      // v661: أوّل "videoId" في الصفحة هو أوّل مقطع في القناة لا البثّ نفسه.
+      // البثّ الحقيقي داخل ytInitialPlayerResponse — نقرؤه ونثق بحقوله.
+      const pr = playerResponse(html);
+      const vd = (pr && pr.videoDetails) || {};
+      const ps = (pr && pr.playabilityStatus) || {};
+      if (vd.isLive === true && ps.status === 'OK' && vd.videoId) {
         out = {
           isLive: true,
-          videoId: vm ? vm[1] : null,
-          embeddable: !/"playableInEmbed"\s*:\s*false/.test(html),
+          videoId: vd.videoId,
+          embeddable: ps.playableInEmbed !== false,
+          title: (vd.title || '').slice(0, 120) || undefined,
         };
       }
     }

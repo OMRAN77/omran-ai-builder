@@ -22,7 +22,7 @@ async function page(url) {
 }
 
 async function byHandle(h) {
-  const { status, html } = await page('https://www.youtube.com/@' + encodeURIComponent(h));
+  const { status, html } = await page('https://www.youtube.com/@' + encodeURIComponent(h) + '/live');
   const m = html.match(ID_RE);
   return { id: m ? m[1] : null, status, len: html.length };
 }
@@ -35,17 +35,40 @@ async function bySearch(name) {
   return m ? m[1] : null;
 }
 
+/* v661: كائن البثّ الحقيقي — لا أوّل مقطع في الصفحة */
+function playerResponse(html) {
+  const i = html.indexOf('ytInitialPlayerResponse');
+  if (i < 0) return null;
+  const s = html.indexOf('{', i);
+  if (s < 0) return null;
+  let depth = 0, inStr = false, esc = false;
+  for (let j = s; j < html.length; j++) {
+    const ch = html[j];
+    if (esc) { esc = false; continue; }
+    if (ch === '\\') { esc = true; continue; }
+    if (ch === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (!depth) { try { return JSON.parse(html.slice(s, j + 1)); } catch { return null; } }
+    }
+  }
+  return null;
+}
+
 async function liveInfo(id) {
   try {
     const { html } = await page('https://www.youtube.com/channel/' + id + '/live');
-    const live = /"isLive"\s*:\s*true|"isLiveNow"\s*:\s*true/.test(html)
-      && !/"status"\s*:\s*"LIVE_STREAM_OFFLINE"/.test(html);
-    if (!live) return { live: false };
-    const vm = html.match(/"videoId"\s*:\s*"([\w-]{11})"/);
+    const pr = playerResponse(html);
+    const vd = (pr && pr.videoDetails) || {};
+    const ps = (pr && pr.playabilityStatus) || {};
+    if (vd.isLive !== true || ps.status !== 'OK' || !vd.videoId) return { live: false };
     return {
       live: true,
-      vid: vm ? vm[1] : null,
-      embeddable: !/"playableInEmbed"\s*:\s*false/.test(html),
+      vid: vd.videoId,
+      embeddable: ps.playableInEmbed !== false,
+      title: (vd.title || '').slice(0, 120),
     };
   } catch { return { live: false }; }
 }
@@ -57,6 +80,9 @@ const entries = [...src.matchAll(/\{\s*n:\s*'([^']+)',\s*h:\s*'([A-Za-z0-9_.\-]+
 const seen = new Set();
 const list = entries.filter((e) => !seen.has(e.h) && seen.add(e.h));
 console.log('فحص ' + list.length + ' قناة...');
+
+let prev = {};
+try { prev = JSON.parse(await readFile('tv-status.json', 'utf8')).channels || {}; } catch { prev = {}; }
 
 const channels = {};
 let okCount = 0, liveCount = 0, repaired = 0;
@@ -92,10 +118,13 @@ for (const { name, h } of list) {
       }
     }
   } catch { /* شبكة — تُعاد غدًا */ }
+  const before = prev[h] || {};
+  if (entry.live) entry.lastLive = new Date().toISOString();
+  else if (before.lastLive) entry.lastLive = before.lastLive;
   channels[h] = entry;
   console.log((entry.live ? '🔴 ' : entry.ok ? '✅ ' : '❌ ')
     + h + (entry.via ? ' (بحث)' : '') + (entry.id ? ' ' + entry.id : ' status=' + (entry.status || '?')));
-  await new Promise((res) => setTimeout(res, 250));
+  await new Promise((res) => setTimeout(res, 120));
 }
 
 const out = {
@@ -103,5 +132,5 @@ const out = {
   counts: { total: list.length, ok: okCount, live: liveCount, repaired },
   channels,
 };
-await writeFile('tv-status.json', JSON.stringify(out, null, 1) + '\n');
+await writeFile('tv-status.json', JSON.stringify(out) + '\n');
 console.log('\nالخلاصة: ' + okCount + '/' + list.length + ' محلولة (منها ' + repaired + ' أُصلحت بالبحث)، ' + liveCount + ' حية الآن.');

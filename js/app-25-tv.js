@@ -115,11 +115,11 @@
     { n: 'سكاي نيوز عربية', h: 'skynewsarabia', c: 'ae', g: 'news' },
     { n: 'العربية', h: 'AlArabiya', c: 'ae', g: 'news' },
     { n: 'الحدث', h: 'AlHadath', c: 'ae', g: 'news' },
-    { n: 'تلفزيون دبي', h: 'dubaitv', c: 'ae', g: 'general' },
+    { n: 'تلفزيون دبي', h: 'dubai_tv', c: 'ae', g: 'general' },
     { n: 'قناة الشارقة', h: 'sharjahtv', c: 'ae', g: 'general' },
     { n: 'أبوظبي الرياضية', h: 'ADSportsTV', c: 'ae', g: 'sports' },
     { n: 'دبي الرياضية', h: 'DubaiSportsTV', c: 'ae', g: 'sports' },
-    { n: 'الشارقة الرياضية', h: 'sharjahsporttv', c: 'ae', g: 'sports' },
+    { n: 'الشارقة الرياضية', h: 'Sharjahsportstv', c: 'ae', g: 'sports' },
     { n: 'CNBC عربية', h: 'cnbcarabia', c: 'ae', g: 'biz' },
     { n: 'الشرق للأخبار', h: 'asharqnews', c: 'ae', g: 'news' },
     { n: 'الشرق بلومبرغ', h: 'AsharqBusiness', c: 'ae', g: 'biz' },
@@ -129,39 +129,37 @@
     { n: 'قناة القرآن الكريم — مكة', h: 'quraantv', c: 'sa', g: 'religion' },
     { n: 'قناة السنة النبوية — المدينة', h: 'sunnahtv', c: 'sa', g: 'religion' },
     { n: 'روتانا خليجية', h: 'RotanaKhalijia', c: 'sa', g: 'general' },
-    { n: 'العربية الحدث السعودي', h: 'alarabiya_saudi', c: 'sa', g: 'news' },
     // ——— قطر
     { n: 'الجزيرة', h: 'aljazeera', c: 'qa', g: 'news' },
     { n: 'الجزيرة مباشر', h: 'aljazeeramubasher', c: 'qa', g: 'news' },
     { n: 'الجزيرة الإنجليزية', h: 'AlJazeeraEnglish', c: 'qa', g: 'news' },
     { n: 'قطر التلفزيون', h: 'QatarTelevision', c: 'qa', g: 'general' },
-    { n: 'الكأس الرياضية', h: 'AlkassTV', c: 'qa', g: 'sports' },
+    { n: 'الكأس الرياضية', h: 'AlkassTVSports', c: 'qa', g: 'sports' },
     // ——— الكويت / البحرين / عُمان
-    { n: 'تلفزيون الكويت', h: 'KTVKuwait', c: 'kw', g: 'general' },
+    { n: 'تلفزيون الكويت', h: 'KWTTV1', c: 'kw', g: 'general' },
     { n: 'تلفزيون البحرين', h: 'BahrainTV', c: 'bh', g: 'general' },
-    { n: 'عُمان التلفزيون', h: 'OmanTV', c: 'om', g: 'general' },
+    { n: 'عُمان التلفزيون', h: 'OmanTVGeneral', c: 'om', g: 'general' },
     // ——— مصر
     { n: 'القاهرة الإخبارية', h: 'AlQaheraNews', c: 'eg', g: 'news' },
-    { n: 'إكسترا نيوز', h: 'ExtraNewsEG', c: 'eg', g: 'news' },
+    { n: 'إكسترا نيوز', h: 'extranewsstream', c: 'eg', g: 'news' },
     { n: 'صدى البلد', h: 'baladtv', c: 'eg', g: 'general' },
-    { n: 'MBC مصر', h: 'MBCMASR', c: 'eg', g: 'general' },
+    { n: 'MBC مصر', h: 'MBCMASRtv', c: 'eg', g: 'general' },
     { n: 'أون سبورت', h: 'ONTimeSports', c: 'eg', g: 'sports' },
-    { n: 'النهار', h: 'AlNaharTV', c: 'eg', g: 'general' },
-    { n: 'قناة مدرستنا', h: 'MadrasetnaEG', c: 'eg', g: 'kids' },
+    { n: 'النهار', h: 'alnahareg', c: 'eg', g: 'general' },
+    { n: 'قناة مدرستنا', h: 'Madrasetnasecondary', c: 'eg', g: 'kids' },
     // ——— الأردن / لبنان / العراق / فلسطين
     { n: 'المملكة', h: 'AlMamlakaTV', c: 'jo', g: 'news' },
     { n: 'رؤيا', h: 'RoyaTV', c: 'jo', g: 'general' },
-    { n: 'الجديد', h: 'aljadeedonline', c: 'lb', g: 'general' },
     { n: 'MTV لبنان', h: 'mtvlebanon', c: 'lb', g: 'general' },
     { n: 'الشرقية', h: 'alsharqiyatv', c: 'iq', g: 'general' },
     { n: 'العراقية الإخبارية', h: 'IMNchannel', c: 'iq', g: 'news' },
-    { n: 'تلفزيون فلسطين', h: 'PalestineTvLive', c: 'ps', g: 'general' },
+    { n: 'تلفزيون فلسطين', h: 'palestinetvchannel', c: 'ps', g: 'general' },
     // ——— اليمن / السودان / المغرب العربي
     { n: 'بلقيس', h: 'BelqeesTV', c: 'ye', g: 'news' },
     { n: 'سودانية 24', h: 'Sudania24TV', c: 'sd', g: 'general' },
-    { n: 'ميدي 1 تيفي', h: 'Medi1TVArabic', c: 'ma', g: 'news' },
-    { n: 'الشروق الجزائرية', h: 'echorouktv', c: 'dz', g: 'news' },
-    { n: 'النهار الجزائرية', h: 'EnnaharTv', c: 'dz', g: 'news' },
+    { n: 'ميدي 1 تيفي', h: 'medi1tv', c: 'ma', g: 'news' },
+    { n: 'الشروق الجزائرية', h: 'Echourouk_news', c: 'dz', g: 'news' },
+    { n: 'النهار الجزائرية', h: 'Ennahartvonline', c: 'dz', g: 'news' },
     { n: 'الوطنية التونسية', h: 'WataniaReplay', c: 'tn', g: 'general' },
     { n: 'ليبيا الأحرار', h: 'LibyaAlAhrarTV', c: 'ly', g: 'news' },
     // ——— تركيا
@@ -182,29 +180,29 @@
     { n: 'Star Sports (يوتيوب)', h: 'StarSportsIndia', c: 'in_', g: 'sports' },
     // ——— باكستان
     { n: 'Geo News (أردو)', h: 'GeoNews', c: 'pk', g: 'news' },
-    { n: 'ARY News (أردو)', h: 'ARYNEWSTV', c: 'pk', g: 'news' },
+    { n: 'ARY News (أردو)', h: 'ArynewsTvofficial', c: 'pk', g: 'news' },
     { n: 'Dunya News (أردو)', h: 'DunyaNews', c: 'pk', g: 'news' },
-    { n: 'Samaa TV (أردو)', h: 'SamaaTVNews', c: 'pk', g: 'news' },
-    { n: 'Express News (أردو)', h: 'ExpressNewsPK', c: 'pk', g: 'news' },
-    { n: 'PTV Sports', h: 'PTVSportsOfficial', c: 'pk', g: 'sports' },
+    { n: 'Samaa TV (أردو)', h: 'Samaatv', c: 'pk', g: 'news' },
+    { n: 'Express News (أردو)', h: 'ExpressNewspkofficial', c: 'pk', g: 'news' },
+    { n: 'PTV Sports', h: 'PTVSPORTSOFFICIALpk', c: 'pk', g: 'sports' },
     // ——— بنغلاديش
-    { n: 'Somoy TV (بنغالي)', h: 'SomoyTV', c: 'bd', g: 'news' },
+    { n: 'Somoy TV (بنغالي)', h: 'somoynews360', c: 'bd', g: 'news' },
     { n: 'Jamuna TV (بنغالي)', h: 'JamunaTVbd', c: 'bd', g: 'news' },
     { n: 'Channel 24 (بنغالي)', h: 'Channel24Digital', c: 'bd', g: 'news' },
-    { n: 'Ekattor TV (بنغالي)', h: 'EkattorTV', c: 'bd', g: 'news' },
+    { n: 'Ekattor TV (بنغالي)', h: 'EkattorTelevision', c: 'bd', g: 'news' },
     { n: 'Channel i (بنغالي)', h: 'ChanneliTv', c: 'bd', g: 'general' },
     // ——— الفلبين
     { n: 'GMA News (فلبيني)', h: 'gmanews', c: 'ph', g: 'news' },
     { n: 'ABS-CBN News (فلبيني)', h: 'ABSCBNNews', c: 'ph', g: 'news' },
     { n: 'Rappler', h: 'rappler', c: 'ph', g: 'news' },
-    { n: 'PTV Philippines', h: 'PTVPhilippines', c: 'ph', g: 'general' },
+    { n: 'PTV Philippines', h: 'ptvph', c: 'ph', g: 'general' },
     // ——— إندونيسيا / سريلانكا / نيبال
-    { n: 'Kompas TV (إندونيسي)', h: 'KompasTVNews', c: 'id_', g: 'news' },
-    { n: 'CNN Indonesia', h: 'CNNIndonesiaOfficial', c: 'id_', g: 'news' },
+    { n: 'Kompas TV (إندونيسي)', h: 'kompastv', c: 'id_', g: 'news' },
+    { n: 'CNN Indonesia', h: 'CNNIDOFFICIAL', c: 'id_', g: 'news' },
     { n: 'tvOne (إندونيسي)', h: 'tvOneNews', c: 'id_', g: 'news' },
     { n: 'Ada Derana (سنهالي)', h: 'adaderana', c: 'lk', g: 'news' },
     { n: 'Hiru News (سنهالي)', h: 'HiruNews', c: 'lk', g: 'news' },
-    { n: 'Kantipur TV (نيبالي)', h: 'KantipurTV', c: 'np', g: 'news' },
+    { n: 'Kantipur TV (نيبالي)', h: 'KantipurTVHD', c: 'np', g: 'news' },
     // ——— بريطانيا / أمريكا
     { n: 'Sky News', h: 'SkyNews', c: 'uk', g: 'news' },
     { n: 'BBC News (يوتيوب)', h: 'BBCNews', c: 'uk', g: 'news' },
@@ -215,17 +213,17 @@
     { n: 'CNBC', h: 'CNBC', c: 'us', g: 'biz' },
     // ——— فرنسا / ألمانيا / روسيا
     { n: 'فرانس 24 عربي', h: 'France24_ar', c: 'fr', g: 'news' },
-    { n: 'France 24 English', h: 'FRANCE24English', c: 'fr', g: 'news' },
-    { n: 'euronews عربي', h: 'euronewsarabic', c: 'fr', g: 'news' },
+    { n: 'France 24 English', h: 'France24_en', c: 'fr', g: 'news' },
+    { n: 'euronews عربي', h: 'euronewsar', c: 'fr', g: 'news' },
     { n: 'DW عربية', h: 'dwarabia', c: 'de', g: 'news' },
     { n: 'DW News', h: 'dwnews', c: 'de', g: 'news' },
-    { n: 'RT Arabic', h: 'RTarabic', c: 'ru', g: 'news' },
+    { n: 'RT Arabic', h: 'RT_Arabicc', c: 'ru', g: 'news' },
     // ——— عالمية
     { n: 'الحرة', h: 'alhurra', c: 'intl', g: 'news' },
-    { n: 'بي بي سي عربي', h: 'BBCArabic', c: 'intl', g: 'news' },
+    { n: 'بي بي سي عربي', h: 'bbcnewsarabic', c: 'intl', g: 'news' },
     { n: 'CGTN Arabic', h: 'cgtnarabic', c: 'intl', g: 'news' },
     { n: 'ناشونال جيوغرافيك أبوظبي', h: 'NatGeoAD', c: 'intl', g: 'general' },
-    { n: 'CNA (سنغافورة)', h: 'CNA', c: 'intl', g: 'news' },
+    { n: 'CNA (سنغافورة)', h: 'channelnewsasia', c: 'intl', g: 'news' },
     { n: 'Africanews', h: 'africanews', c: 'intl', g: 'news' },
     // ——— توسعة الإمارات (قنوات دبي وأبوظبي — الاحتياط منصتها الرسمية)
     { n: 'سما دبي', h: 'samadubaitv', c: 'ae', g: 'general', u: 'https://awaan.ae/live' },
@@ -233,62 +231,60 @@
     { n: 'نور دبي', h: 'noordubaitv', c: 'ae', g: 'general', u: 'https://awaan.ae/live' },
     { n: 'دبي ون (المنصة)', u: 'https://awaan.ae/live', c: 'ae', g: 'general' },
     { n: 'دبي زمان (المنصة)', u: 'https://awaan.ae/live', c: 'ae', g: 'general' },
-    { n: 'قناة أبوظبي', h: 'ADtvae', c: 'ae', g: 'general', u: 'https://www.adtv.ae/live' },
+    { n: 'قناة أبوظبي', h: 'AbuDhabiTV', c: 'ae', g: 'general', u: 'https://www.adtv.ae/live' },
     { n: 'الإمارات (المنصة)', u: 'https://www.adtv.ae/live', c: 'ae', g: 'general' },
     { n: 'ماجد للأطفال (المنصة)', u: 'https://www.adtv.ae/live', c: 'ae', g: 'kids' },
     { n: 'الظفرة', h: 'AlDhafraTV', c: 'ae', g: 'general' },
     { n: 'عجمان', h: 'AjmanTV', c: 'ae', g: 'general' },
     // ——— توسعة السعودية
-    { n: 'السعودية', h: 'saudiatv', c: 'sa', g: 'general' },
+    { n: 'السعودية', h: 'SaudiChannelOne', c: 'sa', g: 'general' },
     { n: 'SBC', h: 'sbc_sa', c: 'sa', g: 'general' },
-    { n: 'الثقافية السعودية', h: 'saudiactv', c: 'sa', g: 'general' },
+    { n: 'الثقافية السعودية', h: 'thaqafeyah', c: 'sa', g: 'general' },
     { n: 'العربية Business', h: 'AlArabiyaBusiness', c: 'sa', g: 'biz' },
     // ——— توسعة مصر
     { n: 'MBC مصر (شاهد)', u: 'https://shahid.mbc.net/ar/live', c: 'eg', g: 'general' },
     { n: 'DMC', h: 'dmctveg', c: 'eg', g: 'general' },
     { n: 'الحياة', h: 'AlHayahTV', c: 'eg', g: 'general' },
-    { n: 'المحور', h: 'MehwarTv', c: 'eg', g: 'general' },
-    { n: 'الحدث اليوم', h: 'AlhadathAlyoumTv', c: 'eg', g: 'news' },
+    { n: 'المحور', h: 'MehwartvChannel', c: 'eg', g: 'general' },
     { n: 'TeN TV', h: 'TeNTVChannel', c: 'eg', g: 'general' },
     // ——— دينية إضافية
-    { n: 'هدى TV', h: 'HudaTv', c: 'sa', g: 'religion' },
-    { n: 'اقرأ', h: 'iqraatv', c: 'sa', g: 'religion' },
+    { n: 'هدى TV', h: 'HudaTvChannel', c: 'sa', g: 'religion' },
+    { n: 'اقرأ', h: 'iqraa', c: 'sa', g: 'religion' },
     { n: 'الرسالة', h: 'AlresalahTv', c: 'sa', g: 'religion' },
     // ——— أطفال إضافية
-    { n: 'سبيستون', h: 'spacetoon', c: 'intl', g: 'kids' },
+    { n: 'سبيستون', h: 'SpacetoonYouTube', c: 'intl', g: 'kids' },
     { n: 'طيور الجنة', h: 'toyoraljanahtv', c: 'jo', g: 'kids' },
     { n: 'طيور بيبي', h: 'ToyorBabyChannel', c: 'jo', g: 'kids' },
     // ——— توسعة الهند
     { n: 'Times Now', h: 'TimesNow', c: 'in_', g: 'news' },
     { n: 'CNN News18', h: 'CNNNews18', c: 'in_', g: 'news' },
-    { n: 'CNBC TV18', h: 'CNBCTV18', c: 'in_', g: 'biz' },
+    { n: 'CNBC TV18', h: 'CNBC-TV18', c: 'in_', g: 'biz' },
     { n: 'DD News', h: 'DDNews', c: 'in_', g: 'news' },
     { n: 'DD India', h: 'DDIndia', c: 'in_', g: 'news' },
-    { n: 'Sun News (تاميل)', h: 'sunnews', c: 'in_', g: 'news' },
+    { n: 'Sun News (تاميل)', h: 'Sunnewstamil', c: 'in_', g: 'news' },
     { n: 'News18 (هندي)', h: 'News18India', c: 'in_', g: 'news' },
     // ——— توسعة باكستان
     { n: 'Hum News (أردو)', h: 'HumNewsPakistan', c: 'pk', g: 'news' },
     { n: 'Bol News (أردو)', h: 'BOLNetworkOfficial', c: 'pk', g: 'news' },
     { n: 'GNN (أردو)', h: 'GNNHDOfficial', c: 'pk', g: 'news' },
-    { n: '92 News (أردو)', h: '92NewsHD', c: 'pk', g: 'news' },
+    { n: '92 News (أردو)', h: '92newshdTv', c: 'pk', g: 'news' },
     // ——— توسعة بنغلاديش
-    { n: 'RTV (بنغالي)', h: 'rtvonline', c: 'bd', g: 'general' },
-    { n: 'NTV (بنغالي)', h: 'ntvdigitalbd', c: 'bd', g: 'news' },
+    { n: 'RTV (بنغالي)', h: 'RtvNews', c: 'bd', g: 'general' },
+    { n: 'NTV (بنغالي)', h: 'NTVlatestnews', c: 'bd', g: 'news' },
     { n: 'DBC News (بنغالي)', h: 'dbcnews', c: 'bd', g: 'news' },
     // ——— توسعة الفلبين / نيبال / سريلانكا
     { n: 'UNTV (فلبيني)', h: 'UNTVNewsRescue', c: 'ph', g: 'news' },
     { n: 'News5 (فلبيني)', h: 'News5Everywhere', c: 'ph', g: 'news' },
-    { n: 'Himalaya TV (نيبالي)', h: 'HimalayaTV', c: 'np', g: 'news' },
-    { n: 'News24 Nepal (نيبالي)', h: 'News24Nepal', c: 'np', g: 'news' },
+    { n: 'Himalaya TV (نيبالي)', h: 'himalayatvnepal', c: 'np', g: 'news' },
+    { n: 'News24 Nepal (نيبالي)', h: 'news24tvchannel', c: 'np', g: 'news' },
     { n: 'News 1st (سنهالي)', h: 'newsfirstsrilanka', c: 'lk', g: 'news' },
     // ——— توسعة تركيا
     { n: 'CNN Türk (تركي)', h: 'cnnturk', c: 'tr', g: 'news' },
     { n: 'Habertürk (تركي)', h: 'haberturktv', c: 'tr', g: 'news' },
     { n: 'A Haber (تركي)', h: 'ahaber', c: 'tr', g: 'news' },
-    { n: 'Halk TV (تركي)', h: 'halktvcomtr', c: 'tr', g: 'news' },
+    { n: 'Halk TV (تركي)', h: 'Halktvkanali', c: 'tr', g: 'news' },
     // ——— توسعة أوروبا/أمريكا/أستراليا
     { n: 'GB News', h: 'gbnewsonline', c: 'uk', g: 'news' },
-    { n: 'Sky News Australia', h: 'SkyNewsAustralia', c: 'uk', g: 'news' },
     { n: 'ABC News Australia', h: 'abcnewsaustralia', c: 'uk', g: 'news' },
     { n: 'Fox News (مقاطع حية)', h: 'FoxNews', c: 'us', g: 'news' },
     { n: 'BFMTV (فرنسي)', h: 'BFMTV', c: 'fr', g: 'news' },
@@ -299,7 +295,7 @@
     { n: 'Phoenix (ألماني)', h: 'phoenix', c: 'de', g: 'news' },
     // ——— أمريكا اللاتينية (إسباني)
     { n: 'Noticias Caracol (إسباني)', h: 'NoticiasCaracol', c: 'intl', g: 'news' },
-    { n: 'Milenio (إسباني)', h: 'MilenioTelevision', c: 'intl', g: 'news' },
+    { n: 'Milenio (إسباني)', h: 'Milenio', c: 'intl', g: 'news' },
     { n: 'DW Español', h: 'dwespanol', c: 'intl', g: 'news' },
     // ——— السعودية (v659)
     { n: 'Al Arabiya English', h: 'AlArabiyaEnglish', c: 'sa', g: 'news' },
@@ -883,11 +879,21 @@
     }
     return null;
   }
+  /* v661: القسم لا يعرض إلّا ما يشتغل فعلًا.
+   * الفحص طازج (≤٣ ساعات) → تظهر القناة التي تبثّ الآن أو بثّت خلال ٧ أيام.
+   * الفحص بائت أو غائب → لا فلترة (لا نُفرغ القسم بسبب عطل في الفاحص). */
+  var FRESH_MS = 3 * 36e5;
+  var RECENT_MS = 7 * 864e5;
+  function statusFresh(){ return !!TV_CHECKED_AT && (Date.now() - TV_CHECKED_AT) < FRESH_MS; }
   function chVisible(ch){
     if(!ch.h) return true;                 // قناة منصة فقط
     var st = stOf(ch);
     if(!st) return true;                   // لا بيانات فحص بعد
-    return st.ok !== false || !!ch.u;      // معرّف ميت بلا احتياط → تُخفى
+    if(st.ok === false && !ch.u) return false;
+    if(!statusFresh()) return true;
+    if(st.live) return true;
+    if(st.lastLive && (Date.now() - Date.parse(st.lastLive)) < RECENT_MS) return true;
+    return !!ch.u;
   }
 
   /* حل معرّف القناة الرقمي (UC...) — من ملف الفحص اليومي أولًا، ثم السيرفر */
@@ -933,6 +939,7 @@
         '<div style="padding:8px 14px 0;"><input id="tvSearch" type="search" placeholder="🔍 ' + tvT('tvSearchPh', 'ابحث عن قناة...', 'Search channels...') + '" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:12px;border:1px solid var(--border,rgba(255,255,255,.12));background:rgba(255,255,255,.04);color:inherit;font-size:14px;"></div>' +
         '<div id="tvCountries" style="display:flex;gap:6px;overflow-x:auto;padding:10px 14px 4px;-webkit-overflow-scrolling:touch;"></div>' +
         '<div id="tvCats" style="display:flex;gap:6px;overflow-x:auto;padding:6px 14px;-webkit-overflow-scrolling:touch;"></div>' +
+        '<div id="tvMeta" style="padding:0 14px 2px;font-size:11px;color:var(--muted,#98a0b3);min-height:14px;"></div>' +
         '<div id="tvGrid" style="flex:1;min-height:0;overflow-y:auto;padding:8px 14px calc(20px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;align-content:start;"></div>' +
       '</div>';
     document.body.appendChild(el);
@@ -1035,6 +1042,11 @@
       var lb = stOf(b) && stOf(b).live ? 1 : 0;
       return lb - la;
     });
+    var liveNow = list.filter(function(x){ var t = stOf(x); return t && t.live; }).length;
+    var meta = el.querySelector('#tvMeta');
+    if(meta) meta.textContent = liveNow
+      ? (liveNow + ' ' + tvT('tvLiveCount', 'قناة تبثّ الآن', 'channels live now'))
+      : '';
     if(!list.length){
       var empty = document.createElement('div');
       empty.style.cssText = 'grid-column:1/-1;color:var(--muted,#98a0b3);padding:24px 0;text-align:center;';
