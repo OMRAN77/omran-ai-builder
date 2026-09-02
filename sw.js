@@ -1,4 +1,4 @@
-const CACHE_NAME = 'omran-ai-builder-freeze-66acb87d-tv-8c11d824-attach-903585d6-toolphotos-1';
+const CACHE_NAME = 'omran-ai-builder-freeze-66acb87d-tv-8c11d824-attach-903585d6-toolphotos-2';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -16,6 +16,17 @@ const STATIC_ASSETS = [
   './assets/tool-cards/fashion.png',
   './assets/tool-cards/style.png',
   './assets/tool-cards/ads.png',
+  './assets/tool-cards/sections/stocks.png',
+  './assets/tool-cards/sections/tv.png',
+  './assets/tool-cards/sections/qibla.png',
+  './assets/tool-cards/sections/expense.png',
+  './assets/tool-cards/sections/education.png',
+  './assets/tool-cards/sections/construction.png',
+  './assets/tool-cards/sections/religion.png',
+  './assets/tool-cards/sections/cv.png',
+  './assets/tool-cards/sections/docs.png',
+  './assets/tool-cards/sections/feedback.png',
+  './assets/tool-cards/sections/email.png',
   './templates-data.js',
   './manifest.json',
   './icons/icon-192-v2.png?icon=gold-20260819',
