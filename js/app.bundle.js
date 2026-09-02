@@ -29600,8 +29600,8 @@ window.__omranBundleOk = true;
       });
       // الحيّ الآن أولًا — وصاحب البث المباشر النظيف قبله
       list.sort(function(a, b){
-        var la = mOf(a) ? 2 : (stOf(a) && stOf(a).live ? 1 : 0);
-        var lb = mOf(b) ? 2 : (stOf(b) && stOf(b).live ? 1 : 0);
+        var la = mOf(a) ? 2 : 0;
+        var lb = mOf(b) ? 2 : 0;
         return lb - la;
       });
     }
@@ -29622,14 +29622,18 @@ window.__omranBundleOk = true;
       card.type = 'button';
       card.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:14px;border:1px solid var(--border,rgba(255,255,255,.1));background:rgba(255,255,255,.03);color:inherit;cursor:pointer;text-align:center;';
       var cat = TV_CATS[ch.g] || TV_CATS.general;
-      var st = stOf(ch);
-      var badge = mOf(ch)
-        ? '<span style="font-size:10px;color:#3ddc84;font-weight:800;">▶ ' + tvT('tvDirect', 'بث مباشر', 'Live stream') + '</span>'
-        : (st && st.live)
-        ? '<span style="font-size:10px;color:#ff5b5b;font-weight:800;">🔴 ' + tvT('tvLive', 'مباشر الآن', 'LIVE') + '</span>'
-        : (!ch.h ? '<span style="font-size:10px;color:var(--muted,#98a0b3);">↗ ' + tvT('tvOfficial', 'المنصة الرسمية', 'Official site') + '</span>' : '');
-      card.innerHTML = '<span style="font-size:26px;">' + cat[2] + '</span><span style="font-size:13px;font-weight:600;line-height:1.5;">' + tvChName(ch.n) + '</span>' + badge;
-      card.onclick = function(){ playChannel(ch, card); };
+      var direct = mOf(ch);
+        var badge = direct
+          ? '<span style="font-size:10px;color:#3ddc84;font-weight:800;">▶ ' + tvT('tvDirect', 'بث مباشر داخل التطبيق', 'Live in app') + '</span>'
+          : ch.u
+          ? '<span style="font-size:10px;color:var(--muted,#98a0b3);">↗ ' + tvT('tvOfficial', 'المنصة الرسمية', 'Official site') + '</span>'
+          : '<span style="font-size:10px;color:#a5a5ad;font-weight:700;">' + tvT('tvUnavailable', 'لا يوجد بث مباشر داخل التطبيق', 'No in-app live stream') + '</span>';
+          card.innerHTML = '<span style="font-size:26px;">' + cat[2] + '</span><span style="font-size:13px;font-weight:600;line-height:1.5;">' + tvChName(ch.n) + '</span>' + badge;
+      card.onclick = function(){
+            if(mOf(ch)) playChannel(ch, card);
+            else if(ch.u) openExternal(ch.u);
+            else cardOff(card);
+          };
       grid.appendChild(card);
     });
   }
@@ -29732,7 +29736,7 @@ window.__omranBundleOk = true;
   /* v-direct-tv: تشغيل مباشر فقط — لا يوتيوب ولا تحويل خارجي. */
   function playChannel(ch, card){
     var mu = mOf(ch);
-    if(!mu || !mu.length){ stopPlayer(); cardOff(card); return; }
+    if(!mu || !mu.length){ if(ch.u) openExternal(ch.u); else { stopPlayer(); cardOff(card); } return; }
     var i = 0;
     var tryNext = function(){
       if(i >= mu.length){ stopPlayer(); cardOff(card); setTimeout(renderGrid, 0); return; }
