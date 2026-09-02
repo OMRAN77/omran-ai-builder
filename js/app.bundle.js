@@ -18497,7 +18497,11 @@ DESIGN RULES (non-negotiable):
           if(!thinkingDiv.isConnected){ __live.shown = __live.target.length; __live.done = true; }
           if(__live.shown < __live.target.length){
             const left = __live.target.length - __live.shown;
-            __live.shown = Math.min(__live.target.length, __live.shown + (left > 1200 ? Math.ceil(left / 300) : 2));
+            /* v-reveal-quick (شكوى المالك: «الردود بطيئة جدًا»): وتيرة ٦٦ حرفًا
+               بالثانية كانت تمطّط ردًّا عاديًّا ١٢+ ثانية. الآن ~١٦٦ حرفًا
+               بالثانية — يبقى الإحساس التدريجي المرتب بلا انتظار ممل — مع
+               لحاق سريع متى تراكم البث فوق ٤٠٠ حرف. */
+            __live.shown = Math.min(__live.target.length, __live.shown + (left > 400 ? Math.ceil(left / 120) : 5));
             __liveRender();
           } else if(__live.done){
             clearInterval(__live.timer);
@@ -18633,7 +18637,8 @@ DESIGN RULES (non-negotiable):
         __live.shown = __live.target.length;
         if(__live.timer){ clearInterval(__live.timer); __live.timer = null; }
       } else {
-        try{ await __liveFinish(15000); }catch(e){ __swallow(e, 'ui:reveal-live'); }
+        // v-reveal-quick: سقف الأمان هبط ١٥→٦ ثوانٍ — اللحاق المتسارع يكفي.
+        try{ await __liveFinish(6000); }catch(e){ __swallow(e, 'ui:reveal-live'); }
       }
       const __builtByTools = !!(code && __ctUsed && !isBuildTask);
       // v491: أيّ كود مُستخرَج يصل المعاينة دائمًا — حتّى لو لم يعرف كاشف
