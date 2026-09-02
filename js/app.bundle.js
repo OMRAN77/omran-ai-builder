@@ -17642,6 +17642,13 @@ function __showImgLoading(el, ar, en){
     if(imageAttachments.length){
       apiMessages.push({role: 'system', content: 'The user has ATTACHED an image with this message. You MUST look at the attached image carefully and answer based on its actual visual content in detail (identify objects, brands, models, text, measurements — whatever is relevant to the question). Never say you cannot see images, never give a generic answer that ignores the image, and never reply with empty or evasive text.'});
     }
+    /* 📰 v-news-intent (شكوى المالك: «اخبار العالمي» فُهمت نادي النصر واختُرعت
+       نتائج مباريات): طلب أخبار عام = أخبار دولية حقيقية من بحث حي — لا نادٍ
+       رياضي إلا إذا سمّاه المستخدم بنفسه، ولا اختراع خبر بلا مصدر أبدًا. */
+    if(text && /(اخبار|أخبار|الاخبار|الأخبار|\bnews\b)/i.test(text)
+      && !/(النصر|الهلال|الاتحاد|الأهلي|الاهلي|ريال|برشلونة|دوري|مباراة|مباريات|كورة|كرة|لاعب|فريق|نادي|رياضة|رياضية|football|soccer|match|league|team|club|sport)/i.test(text)){
+      apiMessages.push({role: 'system', content: 'طلب المستخدم أخبارًا عامة. «أخبار العالم/العالمية/العالمي/آخر الأخبار» تعني عناوين الأخبار الدولية العامة (سياسة، اقتصاد، أحداث كبرى) — وليست أخبار أي نادٍ رياضي: كلمة «العالمي» وحدها ليست نادي النصر. ابحث الآن بحثًا حيًّا عن أحدث العناوين وقدّم ٥-٧ عناوين موجزة بمصادرها. ممنوع منعًا باتًا اختراع أي خبر أو نتيجة مباراة أو تاريخ من ذاكرتك — إذا لم يتوفر لك بحث حي فقل ذلك بصراحة بجملة واحدة.'});
+    }
     // v686: وضع الإعلان — فرض توليد HTML إعلان فوراً بدون نص
     if(cur.adMode === 'inside' || cur.adMode === 'outside'){
       const __hasUserImg = !!(cur.lastEditedImage && cur.lastEditedImage.b64);
