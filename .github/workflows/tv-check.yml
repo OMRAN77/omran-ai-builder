@@ -18,10 +18,17 @@ jobs:
       - name: Run channel checker
         run: node scripts/tv-check.mjs
       - name: Commit status file
+        # الفحص يأخذ ~12 دقيقة والفرع يتحرك خلالها (تشغيلان فشلا بـfetch first)
+        # — نعيد القاعدة تحتنا بـrebase قبل الدفع، بثلاث محاولات.
         run: |
           git config user.name "omran-tv-checker"
           git config user.email "actions@github.com"
           git add tv-status.json
           git diff --cached --quiet && echo "لا تغيير" && exit 0
           git commit -m "تحديث حالة قنوات التلفزيون (فحص تلقائي)"
-          git push
+          for i in 1 2 3; do
+            git pull --rebase -X theirs origin "${GITHUB_REF_NAME}" || true
+            git push && exit 0
+            sleep 10
+          done
+          echo "فشل الدفع بعد ٣ محاولات" && exit 1
