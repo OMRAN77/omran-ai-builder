@@ -8759,8 +8759,25 @@ async function refreshAcctPoints(){
 }
 window.refreshAcctPoints = refreshAcctPoints;
 
+/* v-ios-external-pay (طلب المالك): غلاف أبل ستور يدفع خارج التطبيق —
+   صفحة Stripe المستضافة تُفتح في متصفح النظام (وفيها Apple Pay جاهز
+   تلقائيًا في Safari) بدل أي شراء داخلي في الغلاف. كشف الغلاف: آيفون +
+   جسر كاباسيتور/WebKit، أو علامة ?store=apple المحفوظة. الويب وPWA
+   المثبّت بلا أي تغيير. */
+function omranIOSStoreApp(){
+  try{
+    if(!/iPad|iPhone|iPod/.test(navigator.userAgent || '')) return false;
+    if(window.Capacitor && (window.Capacitor.isNative === true || (typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()))) return true;
+    if(window.webkit && window.webkit.messageHandlers && (window.webkit.messageHandlers.omranShare || window.webkit.messageHandlers.omranPdf)) return true;
+    if((localStorage.getItem('aiapp_store') || '') === 'apple') return true;
+  }catch(e){ /* guard-ok — بلا كشف تبقى النافذة الداخلية المعتادة */ }
+  return false;
+}
+
 function openCheckout(plan){
   checkoutCurrentPlan = plan;
+  // v-ios-external-pay: بلا نافذة داخلية إطلاقًا — مباشرة للدفع الخارجي.
+  if(omranIOSStoreApp()){ startStripeCheckout(); return; }
   const overlay = document.getElementById('checkoutModalOverlay');
   const label = document.getElementById('checkoutPlanLabel');
   const statusMsg = document.getElementById('checkoutStatusMsg');
@@ -8816,6 +8833,15 @@ async function startStripeCheckout(){
     // بلا توكن فلا تُضاف النقاط. نحفظ رقم الجلسة، وعند العودة للتطبيق يتحقق
     // بنفسه (verify-checkout آمنة التكرار — لا تضيف النقاط مرتين).
     if (data.id) { try { localStorage.setItem('aiapp_ck_pending', data.id + ':' + Date.now()); } catch(e){ __swallow(e, 'checkout:pending'); } }
+    /* v-ios-external-pay: في غلاف أبل ستور تُفتح صفحة Stripe في متصفح
+       النظام (Apple Pay خارجي) — والعودة للتطبيق تُكمل التحقق عبر
+       aiapp_ck_pending (v-ios-bridge، آمن التكرار). لو منع الغلاف
+       window.open نهبط للتحويل المعتاد فلا يضيع الدفع بأي حال. */
+    if (omranIOSStoreApp()){
+      let w = null;
+      try{ w = window.open(data.url, '_blank', 'noopener'); }catch(e){ __swallow(e, 'checkout:extopen'); }
+      if (w){ closeCheckout(); return; }
+    }
     window.location.href = data.url;
   } catch (e) {
     if (statusMsg) statusMsg.textContent = t('checkoutError');
@@ -17559,6 +17585,13 @@ function __showImgLoading(el, ar, en){
     if(imageAttachments.length){
       apiMessages.push({role: 'system', content: 'The user has ATTACHED an image with this message. You MUST look at the attached image carefully and answer based on its actual visual content in detail (identify objects, brands, models, text, measurements — whatever is relevant to the question). Never say you cannot see images, never give a generic answer that ignores the image, and never reply with empty or evasive text.'});
     }
+    /* 📰 v-news-intent (شكوى المالك: «اخبار العالمي» فُهمت نادي النصر واختُرعت
+       نتائج مباريات): طلب أخبار عام = أخبار دولية حقيقية من بحث حي — لا نادٍ
+       رياضي إلا إذا سمّاه المستخدم بنفسه، ولا اختراع خبر بلا مصدر أبدًا. */
+    if(text && /(اخبار|أخبار|الاخبار|الأخبار|\bnews\b)/i.test(text)
+      && !/(النصر|الهلال|الاتحاد|الأهلي|الاهلي|ريال|برشلونة|دوري|مباراة|مباريات|كورة|كرة|لاعب|فريق|نادي|رياضة|رياضية|football|soccer|match|league|team|club|sport)/i.test(text)){
+      apiMessages.push({role: 'system', content: 'طلب المستخدم أخبارًا عامة. «أخبار العالم/العالمية/العالمي/آخر الأخبار» تعني عناوين الأخبار الدولية العامة (سياسة، اقتصاد، أحداث كبرى) — وليست أخبار أي نادٍ رياضي: كلمة «العالمي» وحدها ليست نادي النصر. ابحث الآن بحثًا حيًّا عن أحدث العناوين وقدّم ٥-٧ عناوين موجزة بمصادرها. ممنوع منعًا باتًا اختراع أي خبر أو نتيجة مباراة أو تاريخ من ذاكرتك — إذا لم يتوفر لك بحث حي فقل ذلك بصراحة بجملة واحدة.'});
+    }
     // v686: وضع الإعلان — فرض توليد HTML إعلان فوراً بدون نص
     if(cur.adMode === 'inside' || cur.adMode === 'outside'){
       const __hasUserImg = !!(cur.lastEditedImage && cur.lastEditedImage.b64);
@@ -18407,7 +18440,11 @@ DESIGN RULES (non-negotiable):
           if(!thinkingDiv.isConnected){ __live.shown = __live.target.length; __live.done = true; }
           if(__live.shown < __live.target.length){
             const left = __live.target.length - __live.shown;
-            __live.shown = Math.min(__live.target.length, __live.shown + (left > 1200 ? Math.ceil(left / 300) : 2));
+            /* v-reveal-quick (شكوى المالك: «الردود بطيئة جدًا»): وتيرة ٦٦ حرفًا
+               بالثانية كانت تمطّط ردًّا عاديًّا ١٢+ ثانية. الآن ~١٦٦ حرفًا
+               بالثانية — يبقى الإحساس التدريجي المرتب بلا انتظار ممل — مع
+               لحاق سريع متى تراكم البث فوق ٤٠٠ حرف. */
+            __live.shown = Math.min(__live.target.length, __live.shown + (left > 400 ? Math.ceil(left / 120) : 5));
             __liveRender();
           } else if(__live.done){
             clearInterval(__live.timer);
@@ -18509,6 +18546,25 @@ DESIGN RULES (non-negotiable):
         if(__toolsWillRun){
           try{ __ct = await window.callChatWithTools(apiMessages.filter(m => !m.__static), onDelta, __effProv); }
           catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; __swallow(e, 'chat:tools'); }
+          /* v-tools-team (شكوى المالك «خربت الدنيا بخصوص الأخبار»): فشل مزود
+             الأدوات الأول (مثال: رصيد كلود نفد) كان يهبط فورًا للمسار القديم
+             بلا بحث حي، فيؤلف البديل أخبارًا من خياله (فهم «العالمي» نادي
+             النصر واخترع نتائج). الآن الاحتياط يبقى داخل مسار الأدوات نفسه —
+             نفس البحث الحي الحقيقي — قبل أي هبوط للمسار القديم. */
+          if(!__ct && !(imageAttachments.length && __effProv === 'claude')){
+            const __toolsTeam = ['openai', 'deepseek', 'gemini'].filter(p => p !== __effProv && TOOL_PROVIDERS.indexOf(p) !== -1).slice(0, 2);
+            for(const __tp of __toolsTeam){
+              try{
+                try{
+                  if(window.__chatStatus && !window.__chatStatus.isReleased()){
+                    window.__chatStatus.phase('💭', functionalLabel(__tp) + ' ' + t('provTypingSuffix'));
+                  }
+                }catch(e){ __swallow(e, 'ui:toolsteam'); }
+                __ct = await window.callChatWithTools(apiMessages.filter(m => !m.__static), onDelta, __tp);
+                if(__ct) break;
+              }catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; __swallow(e, 'chat:tools-team'); }
+            }
+          }
         }
         if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; }
         else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, onDelta, __teamOrder));
@@ -18524,7 +18580,8 @@ DESIGN RULES (non-negotiable):
         __live.shown = __live.target.length;
         if(__live.timer){ clearInterval(__live.timer); __live.timer = null; }
       } else {
-        try{ await __liveFinish(15000); }catch(e){ __swallow(e, 'ui:reveal-live'); }
+        // v-reveal-quick: سقف الأمان هبط ١٥→٦ ثوانٍ — اللحاق المتسارع يكفي.
+        try{ await __liveFinish(6000); }catch(e){ __swallow(e, 'ui:reveal-live'); }
       }
       const __builtByTools = !!(code && __ctUsed && !isBuildTask);
       // v491: أيّ كود مُستخرَج يصل المعاينة دائمًا — حتّى لو لم يعرف كاشف
