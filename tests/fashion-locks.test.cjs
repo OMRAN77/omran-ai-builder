@@ -511,10 +511,13 @@ console.log('  ✓ v-lab-haiku: التجربة الحية تكتمل — نمو�
 {
   const eo = fs.readFileSync(path.join(__dirname, '../edu-old/index.html'), 'utf8');
   assert.ok(eo.includes('id="uiLang"') && !eo.includes('id="btnBn"'), 'المنسدلة بدل أزرار اللغات');
-  assert.ok(eo.split('omran-edu.vercel.app/api').length >= 4, 'الخلفية على النشر القديم الشغال');
+  /* v-tv-hls: الصفحة على main صارت تستدعي الخلفية مرتين لا ثلاثًا والفحص بقي
+     على العدّ القديم فاحمرّ — الجوهر أنّ الخلفية على النشر القديم، لا كم مرة. */
+  assert.ok(eo.split('omran-edu.vercel.app/api').length >= 2, 'الخلفية على النشر القديم الشغال');
   assert.ok(eo.includes("'/edu-old/ffmpeg-assets/"), 'أصول ffmpeg نفس النطاق (شرط الـWorkers)');
   const ft10 = fs.readFileSync(path.join(__dirname, '../js/app-10-features.js'), 'utf8');
-  assert.ok(ft10.includes("frame.src = '/edu-old/index.html'"), 'الإطار على النسخة المستضافة ذاتيًا');
+  /* v-tv-hls: main أضافت ?v=14l على الرابط والفحص بقي على الحرف — يكفي البادئة. */
+  assert.ok(ft10.includes("frame.src = '/edu-old/index.html"), 'الإطار على النسخة المستضافة ذاتيًا');
 }
 console.log('  ✓ v-edu-selfhost: التعليمي القديم ينشر مع التطبيق — بلا لوحة Vercel');
 
@@ -547,7 +550,9 @@ console.log('  ✓ v-lang-sync: اللغة المختارة تصل المولّ�
 {
   const eo3 = fs.readFileSync(path.join(__dirname, '../edu-old/index.html'), 'utf8');
   assert.ok(eo3.includes('v-lang-follow') && eo3.includes("localStorage.getItem('aiapp_lang')"), 'الصفحة ترث لغة التطبيق');
-  assert.ok(eo3.includes("EDU_LANGS = ['ar','en','fr','hi','ur','bn','ne']"), 'التحقق من السبع المدعومة');
+  /* v-tv-hls: main وسّعت EDU_LANGS إلى ١٤ لغة والفحص بقي على قائمة السبع
+     حرفيًا — الجوهر أن القائمة موجودة وتشمل السبع الأصلية على الأقل. */
+  assert.ok(/EDU_LANGS = \['ar','en','fr','hi','ur','bn','ne'/.test(eo3), 'التحقق من اللغات المدعومة (السبع الأصلية فأكثر)');
   assert.ok(/EDU_LANGS\.indexOf\(saved\) !== -1\) return saved/.test(eo3), 'اختيار المستخدم الصريح يغلب لغة التطبيق');
 }
 console.log('  ✓ v-lang-follow: التعليم بلغة التطبيق تلقائيًا — والمنسدلة تغلب');
@@ -655,7 +660,9 @@ console.log('  ✓ v-arabic-script: الخط عربي أصيل — لا نستع
 {
   const ft10c = fs.readFileSync(path.join(__dirname, '../js/app-10-features.js'), 'utf8');
   assert.ok(ft10c.includes('v-logo-soft') && !ft10c.includes('location.href = location.pathname'), 'الشعار لا يعيد التحميل');
-  assert.ok(ft10c.includes('data-omnav="home"'), 'الشعار يضغط زر الرئيسية داخليًا');
+  /* v-tv-hls: v-logo-keep على main ألغت نقر «الرئيسية» (كانت تفتح محادثة
+     جديدة وتضيع الحالية) — الفحص يقبل السلوكين: غير مدمر أو زر الرئيسية. */
+  assert.ok(ft10c.includes('v-logo-keep') || ft10c.includes('data-omnav="home"'), 'الشعار رجوع ناعم غير مدمر');
 }
 console.log('  ✓ v-logo-soft: لمس الشعار رجوع ناعم — لا وميض ولا إعادة إقلاع');
 
