@@ -888,7 +888,11 @@
     catch(e){ return false; }
   })();
   function streamUsable(u){
-    if(TV_M3U_BAD[u]) return false;
+    var badAt = TV_M3U_BAD[u];
+    if(badAt){
+      if(Date.now() - badAt < 8000) return false;
+      delete TV_M3U_BAD[u];
+    }
     var ss = TV_STATUS === null ? null : null;
     try{ ss = window.__tvStreamsStatus || null; }catch(e){ ss = null; }
     if(!ss || !ss[u]) return true;         // لا بيانات فحص — نتفاءل ويحسمها التشغيل
@@ -906,7 +910,12 @@
     return list.length ? list : null;
   }
 
-  /* v659: رقم البثّ من الفحص اليومي — احتياط حين يصمت السيرفر. يُستعمل فقط
+  function clearChannelFailures(ch){
+        var raw = ch.m || (ch.h && TV_M3U && TV_M3U.byHandle && TV_M3U.byHandle[ch.h]) || null;
+        (Array.isArray(raw) ? raw : raw ? [raw] : []).forEach(function(u){ delete TV_M3U_BAD[u]; });
+      }
+
+      /* v659: رقم البثّ من الفحص اليومي — احتياط حين يصمت السيرفر. يُستعمل فقط
    * إن كان الفحص طازجًا (٣٦ ساعة) والتضمين مسموحًا، وإلّا نرجع للسلوك القديم. */
   /* v661: القسم لا يعرض إلّا ما يشتغل فعلًا.
    * الفحص طازج (≤٣ ساعات) → تظهر القناة التي تبثّ الآن أو بثّت خلال ٧ أيام.
@@ -1115,11 +1124,7 @@
           ? '<span style="font-size:10px;color:var(--muted,#98a0b3);">↗ ' + tvT('tvOfficial', 'المنصة الرسمية', 'Official site') + '</span>'
           : '<span style="font-size:10px;color:#a5a5ad;font-weight:700;">' + tvT('tvUnavailable', 'لا يوجد بث مباشر داخل التطبيق', 'No in-app live stream') + '</span>';
           card.innerHTML = '<span style="font-size:26px;">' + cat[2] + '</span><span style="font-size:13px;font-weight:600;line-height:1.5;">' + tvChName(ch.n) + '</span>' + badge;
-      card.onclick = function(){
-            if(mOf(ch)) playChannel(ch, card);
-            else if(ch.u) openExternal(ch.u);
-            else cardOff(card);
-          };
+      card.onclick = function(){ playChannel(ch, card); };
       grid.appendChild(card);
     });
   }
@@ -1157,7 +1162,7 @@
         if(failed) return;
         failed = true;
         ready();
-        TV_M3U_BAD[url] = 1;
+        TV_M3U_BAD[url] = Date.now();
         stopHls();
         if(typeof onFail === 'function') onFail();
       }
@@ -1221,8 +1226,9 @@
 
   /* v-direct-tv: تشغيل مباشر فقط — لا يوتيوب ولا تحويل خارجي. */
   function playChannel(ch, card){
+    clearChannelFailures(ch);
     var mu = mOf(ch);
-    if(!mu || !mu.length){ if(ch.u) openExternal(ch.u); else { stopPlayer(); cardOff(card); } return; }
+    if(!mu || !mu.length){ stopPlayer(); cardOff(card); return; }
     var i = 0;
     var tryNext = function(){
       if(i >= mu.length){ stopPlayer(); cardOff(card); setTimeout(renderGrid, 0); return; }
