@@ -711,9 +711,15 @@ function readFileAsDataUrl(file){
 // and provider payload limits, silently killing the whole send. We cap the
 // longest side at 1280px and re-encode as JPEG (unless it's a PNG with
 // transparency, which we keep as PNG) at moderate quality.
-const IMAGE_MAX_DIMENSION = 2048;
-const IMAGE_JPEG_QUALITY = 0.95;
-const IMAGE_PASSTHROUGH_BYTES = 3.5 * 1024 * 1024; // send as-is, zero re-encode
+/* v-img-fast (شكوى المالك: «الكينج HTTP 400» مع صورة + «المحادثة أسرع»):
+   كانت الصورة حتى 3.5MB تمر خامًا — رفعها على شبكة الجوال ياخذ دقيقة كاملة
+   قبل أن يبدأ الرد، وقد تتجاوز حدود مزوّد الرؤية فيرد 400 ويضيع وقت التحويل.
+   والموثّق أن كلود يصغّر أي صورة أطول من ~1568px على خادمه أصلًا — فالإرسال
+   الأكبر هدر محض بلا أي مكسب جودة عند النموذج. 1568px + JPEG 85% تعطي نفس
+   ما يراه النموذج بحجم ~200-400KB بدل عدة ميغا. */
+const IMAGE_MAX_DIMENSION = 1568;
+const IMAGE_JPEG_QUALITY = 0.85;
+const IMAGE_PASSTHROUGH_BYTES = 900 * 1024; // send as-is, zero re-encode
 // v381: نسخة مضغوطة للمزامنة بين الأجهزة (400px, JPEG 40%)
 const SERVER_THUMB_MAX = 400;
 const SERVER_THUMB_QUALITY = 0.4;
