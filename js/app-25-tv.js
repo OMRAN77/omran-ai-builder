@@ -1177,32 +1177,42 @@
         el.querySelector('#tvBrowse').style.display = 'none';
         el.querySelector('#tvPlayerWrap').style.display = 'flex';
       }
+      function startPlayback(){
+        v.autoplay = true;
+        v.muted = false;
+        try{ v.removeAttribute('muted'); }catch(e){ __swallow(e, 'tv:unmute-attr'); }
+        v.play().catch(function(e){
+          if(!e || e.name !== 'NotAllowedError'){ fail(); return; }
+          /* Chrome/WebView يفقد إذن التشغيل بعد تحميل HLS غير المتزامن.
+           * أعد التشغيل صامتًا بدل إبقاء الشاشة عند 0:00؛ التحكم الظاهر
+           * يتيح للمستخدم تشغيل الصوت بلمسة واحدة. */
+          v.muted = true;
+          try{ v.setAttribute('muted', ''); }catch(x){ __swallow(x, 'tv:mute-attr'); }
+          v.play().catch(fail);
+        });
+      }
       v.onerror = fail;
       v.onplaying = ready;
-      v.onloadedmetadata = ready;
+      v.onloadedmetadata = null;
       if(v.canPlayType('application/vnd.apple.mpegurl')){
         show();
         v.src = url;
-        v.play().catch(function(e){
-          if(e && e.name === 'NotAllowedError'){ ready(); return; }
-          fail();
-        });
+        startPlayback();
         return;
       }
       loadHlsLib().then(function(){
         if(!window.Hls || !window.Hls.isSupported()){ fail(); return; }
         show();
-        curHls = new window.Hls({ maxBufferLength: 20, manifestLoadingTimeOut: 9000, levelLoadingTimeOut: 9000, fragLoadingTimeOut: 9000 });
-        curHls.on(window.Hls.Events.ERROR, function(ev, data){ if(data && data.fatal) fail(); });
-        curHls.on(window.Hls.Events.FRAG_LOADED, ready);
-        curHls.loadSource(url);
-        curHls.attachMedia(v);
-        curHls.on(window.Hls.Events.MANIFEST_PARSED, function(){
-          v.play().catch(function(e){
-            if(e && e.name === 'NotAllowedError'){ ready(); return; }
-            fail();
-          });
+        curHls = new window.Hls({ enableWorker: false, maxBufferLength: 20, manifestLoadingTimeOut: 9000, levelLoadingTimeOut: 9000, fragLoadingTimeOut: 9000 });
+        curHls.on(window.Hls.Events.ERROR, function(ev, data){
+          try{ if(data) console.warn('[tv:hls]', data.type, data.details, !!data.fatal, url); }catch(e){ __swallow(e, 'tv:hls-log'); }
+          if(data && data.fatal) fail();
         });
+        /* اربط MediaSource بالفيديو أولًا؛ تحميل المصدر قبله كان يجلب القطع
+         * لكن يترك video.src فارغًا في Chrome/WebView. */
+        curHls.on(window.Hls.Events.MEDIA_ATTACHED, function(){ if(!failed && curHls) curHls.loadSource(url); });
+        curHls.on(window.Hls.Events.MANIFEST_PARSED, startPlayback);
+        curHls.attachMedia(v);
       }).catch(fail);
     }
       function stopHls(){
