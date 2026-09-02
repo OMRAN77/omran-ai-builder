@@ -28457,7 +28457,7 @@ if(document.readyState === 'loading'){
 
 /* v-boot-watchdog: آخر شريحة في الحزمة — وصول التنفيذ هنا يعني الحزمة كلها اشتغلت. */
 window.__omranBundleOk = true;
-// 📺 تلفزيون عمران — دليل قنوات عالمي بمصادر رسمية فقط (بث يوتيوب الرسمي).
+// 📺 تلفزيون عمران — دليل قنوات عالمي بمصادر بث مباشر رسمية فقط (HLS/DASH).
 // المبدأ الثابت: لا روابط m3u8 مسرّبة ولا إعادة بث — أي بلاغ حقوق يقتل
 // التطبيق من المتاجر. تضمين live_stream يشير دائمًا لبث القناة الجاري،
 // فلا روابط تموت ولا صيانة يدوية.
@@ -28567,8 +28567,8 @@ window.__omranBundleOk = true;
     biz: ['اقتصاد', 'Business', '📊'],
   };
 
-  /* الدليل: n الاسم · h معرّف قناة يوتيوب الرسمي · c البلد · g القسم.
-   * قناة لا يستدلّ السيرفر على بثها تُعلَن «غير متاحة الآن» — لا شاشة سوداء. */
+  /* الدليل: n الاسم · h معرّف مرجعي · c البلد · g القسم.
+   * h لا يُستعمل للتشغيل؛ مصدر التشغيل المباشر هو m أو tv-streams.json فقط. */
   var TV_CH = [
     // ——— الإمارات
     { n: 'سكاي نيوز عربية', h: 'skynewsarabia', c: 'ae', g: 'news' },
@@ -29367,15 +29367,6 @@ window.__omranBundleOk = true;
 
   /* v659: رقم البثّ من الفحص اليومي — احتياط حين يصمت السيرفر. يُستعمل فقط
    * إن كان الفحص طازجًا (٣٦ ساعة) والتضمين مسموحًا، وإلّا نرجع للسلوك القديم. */
-  function statusLive(handle){
-    if(!handle || !TV_CHECKED_AT) return null;
-    if((Date.now() - TV_CHECKED_AT) > 36 * 36e5) return null;
-    var st = TV_STATUS && TV_STATUS[handle];
-    if(st && st.ok && st.live && st.vid && st.embeddable !== false){
-      return { channelId: st.id || null, isLive: true, videoId: st.vid, embeddable: true };
-    }
-    return null;
-  }
   /* v661: القسم لا يعرض إلّا ما يشتغل فعلًا.
    * الفحص طازج (≤٣ ساعات) → تظهر القناة التي تبثّ الآن أو بثّت خلال ٧ أيام.
    * الفحص بائت أو غائب → لا فلترة (لا نُفرغ القسم بسبب عطل في الفاحص). */
@@ -29385,36 +29376,10 @@ window.__omranBundleOk = true;
   var FRESH_MS = 26 * 36e5;
   var RECENT_MS = 30 * 864e5;
   function statusFresh(){ return !!TV_CHECKED_AT && (Date.now() - TV_CHECKED_AT) < FRESH_MS; }
-  function chVisible(ch){
-    if(mOf(ch)) return true;               // بث مباشر HLS — تشتغل بلا يوتيوب
-    if(!ch.h) return true;                 // قناة منصة فقط
-    var st = stOf(ch);
-    if(!st) return true;                   // لا بيانات فحص بعد
-    if(st.ok === false && !ch.u) return false;
-    if(!statusFresh()) return true;
-    if(st.live) return true;
-    if(st.lastLive && (Date.now() - Date.parse(st.lastLive)) < RECENT_MS) return true;
-    return !!ch.u;
-  }
+  /* v-direct-tv: أبقِ أسماء الدليل الحالية، لكن التشغيل لا يمر إلا عبر HLS/DASH. */
+  function chVisible(ch){ return !!ch; }
 
   /* حل معرّف القناة الرقمي (UC...) — من ملف الفحص اليومي أولًا، ثم السيرفر */
-  function resolveChannel(handle){
-    var st = TV_STATUS && TV_STATUS[handle];
-    if(st && st.ok && st.id) return Promise.resolve(st.id);
-    var KEY = 'aiapp_tv_' + handle;
-    try{
-      var c = JSON.parse(localStorage.getItem(KEY) || 'null');
-      if(c && c.id && (Date.now() - c.ts) < 30 * 864e5) return Promise.resolve(c.id);
-    }catch(e){ /* guard-ok: كاش تالف — نحل من السيرفر */ }
-    return fetch('/api/system?action=tv-resolve&handle=' + encodeURIComponent(handle))
-      .then(function(r){ return r.json().then(function(d){ return r.ok ? d : Promise.reject(d); }); })
-      .then(function(d){
-        if(!d || !d.channelId) throw new Error('no-id');
-        try{ localStorage.setItem(KEY, JSON.stringify({ id: d.channelId, ts: Date.now() })); }
-        catch(e){ /* guard-ok: تخزين ممتلئ — يُحل كل مرة */ }
-        return d.channelId;
-      });
-  }
 
   function shell(){
     var el = document.getElementById('omranTvShell');
@@ -29552,7 +29517,7 @@ window.__omranBundleOk = true;
       var seenN = {}, seenU = {};
       list = [];
       TV_CH.forEach(function(ch){
-        if(ch.g !== 'sports' || !chVisible(ch)) return;
+        if(ch.g !== 'sports' || !mOf(ch)) return;
         seenN[ch.n.toLowerCase().replace(/\s+/g, '')] = 1;
         var u0 = mOf(ch); if(u0) u0.forEach(function(u){ seenU[u] = 1; }); // نفس البث باسمين = قناة واحدة
         list.push(ch);
@@ -29585,10 +29550,10 @@ window.__omranBundleOk = true;
         return lb - la;
       });
     }
-    var liveNow = list.filter(function(x){ var t = stOf(x); return t && t.live; }).length;
+    var liveNow = list.filter(function(x){ return !!mOf(x); }).length;
     var meta = el.querySelector('#tvMeta');
     if(meta) meta.textContent = liveNow
-      ? (liveNow + ' ' + tvT('tvLiveCount', 'قناة تبثّ الآن', 'channels live now'))
+      ? (liveNow + ' ' + tvT('tvLiveCount', 'قناة بمصدر مباشر', 'channels with direct stream'))
       : '';
     if(!list.length){
       var empty = document.createElement('div');
@@ -29617,30 +29582,8 @@ window.__omranBundleOk = true;
   /* v-tv-live: الفحص اللحظي عند الضغطة — تضمين live_stream القديم لا يعمل
    * لأغلب القنوات وبعضها يمنع التضمين. السيرفر يرجع رقم فيديو البث الجاري:
    * مسموح تضمينه → داخل التطبيق؛ ممنوع → تطبيق يوتيوب على البث نفسه. */
-  function resolveLive(handle){
-    return fetch('/api/system?action=tv-resolve&handle=' + encodeURIComponent(handle) + '&live=1')
-      .then(function(r){ return r.json().then(function(d){ return r.ok ? d : Promise.reject(d); }); })
-      .catch(function(e){
-        // احتياط: بيانات الفحص اليومي
-        var st = TV_STATUS && TV_STATUS[handle];
-        if(st && st.ok) return { channelId: st.id, isLive: !!st.live, videoId: st.vid || null, embeddable: st.embeddable !== false };
-        return Promise.reject(e);
-      });
-  }
 
   /* v659: تشغيل داخل التطبيق — نقطة واحدة يستعملها المسار العادي والاحتياطي */
-  function playEmbed(ch, info){
-    var el = shell();
-    stopHls();                             /* v-tv-hls: يعيد الإطار مكان الفيديو */
-    S.nowName = ch.n;
-    el.querySelector('#tvNowName').textContent = tvChName(ch.n);
-    el.querySelector('#tvFrame').src =
-      'https://www.youtube.com/embed/' + encodeURIComponent(info.videoId) + '?autoplay=1&hl=' + encodeURIComponent(tvLang());
-    S.nowUrl = 'https://www.youtube.com/watch?v=' + info.videoId;
-    var xb = el.querySelector('#tvExt'); if(xb) xb.style.display = '';
-    el.querySelector('#tvBrowse').style.display = 'none';
-    el.querySelector('#tvPlayerWrap').style.display = 'flex';
-  }
 
   /* v-tv-hls: تحميل مكتبة hls.js محليًا عند أول حاجة (سفاري يشغّل m3u8 أصلًا) */
   var hlsLibP = null;
@@ -29717,60 +29660,18 @@ window.__omranBundleOk = true;
     setTimeout(function(){ card.innerHTML = old; }, 2600);
   }
 
+  /* v-direct-tv: تشغيل مباشر فقط — لا يوتيوب ولا تحويل خارجي. */
   function playChannel(ch, card){
-    /* v-tv-hls: البث المباشر النظيف أولًا — بلا أي علامة يوتيوب. تجرب
-     * الروابط بالتتابع، وفشلها كلها يهبط ليوتيوب داخل التطبيق لا خارجه. */
     var mu = mOf(ch);
-    if(mu && mu.length){
-      var i = 0;
-      var tryNext = function(){
-        if(i >= mu.length){ playChannelYt(ch, card, true); return; }
-        playHls(ch, mu[i++], card, tryNext);
-      };
-      tryNext();
-      return;
-    }
-    playChannelYt(ch, card, false);
+    if(!mu || !mu.length){ stopPlayer(); cardOff(card); return; }
+    var i = 0;
+    var tryNext = function(){
+      if(i >= mu.length){ cardOff(card); return; }
+      playHls(ch, mu[i++], card, tryNext);
+    };
+    tryNext();
   }
 
-  function playChannelYt(ch, card, fromHls){
-    // قناة بلا بث يوتيوب أصلًا → منصتها الرسمية، وإلا رسالة على البطاقة
-    if(!ch.h && ch.u){ openExternal(ch.u); return; }
-    if(!ch.h){ stopPlayer(); cardOff(card); return; }
-    var el = shell();
-    var old = card.innerHTML;
-    // v662: الفحص الخارجي الطازج أوّلًا — يشغّل فورًا بلا انتظار الخادم
-    var ready = statusLive(ch.h);
-    if(ready){ playEmbed(ch, ready); return; }
-    card.innerHTML = '<span style="font-size:26px;">⏳</span><span style="font-size:13px;">' + tvT('tvOpening', 'جارٍ الفتح...', 'Opening...') + '</span>';
-    resolveLive(ch.h).then(function(info){
-      card.innerHTML = old;
-      // v659: ردّ بلا رقم بثّ (كاش المعرّف أو حجب يوتيوب للسيرفر) لا يعني صمت
-      // القناة — الفحص اليومي يحمل الرقم، فنشغّل داخل التطبيق بدل القذف خارجه.
-      if(!info || !info.isLive || !info.videoId){
-        var alt = statusLive(ch.h);
-        if(alt) info = alt;
-      }
-      if(info.isLive && info.videoId && info.embeddable !== false){ playEmbed(ch, info); return; }
-      if(info.isLive && info.videoId){
-        // القناة تمنع التضمين — البث نفسه في تطبيق يوتيوب
-        openExternal('https://www.youtube.com/watch?v=' + info.videoId);
-        return;
-      }
-      // ليست حية الآن → منصتها الرسمية إن وُجدت، وإلا رسالة على البطاقة —
-      // v-tv-hls-check: كان يفتح صفحة يوتيوب («يحوّل على جوجل») — ما عاد.
-      if(ch.u){ openExternal(ch.u); return; }
-      card.innerHTML = '<span style="font-size:26px;">😴</span><span style="font-size:12px;">' + tvT('tvOff', 'القناة موقفة البث حاليًا', 'Not streaming right now') + '</span>';
-      setTimeout(function(){ card.innerHTML = old; }, 2600);
-    }).catch(function(e){
-      __swallow(e, 'tv:resolve');
-      var altc = statusLive(ch.h);
-      if(altc){ card.innerHTML = old; playEmbed(ch, altc); return; }
-      if(ch.u){ card.innerHTML = old; openExternal(ch.u); return; }
-      card.innerHTML = '<span style="font-size:26px;">😴</span><span style="font-size:12px;">' + tvT('tvOff', 'القناة موقفة البث حاليًا', 'Not streaming right now') + '</span>';
-      setTimeout(function(){ card.innerHTML = old; }, 2600);
-    });
-  }
 
   function stopPlayer(){
     var el = shell();
