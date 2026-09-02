@@ -779,8 +779,10 @@ function trailLine(name, input, result) {
       ? R('شغّلتُ كودًا — ظهر خطأ', 'trJsErr')
       : R('شغّلتُ كودًا — عاد ناتج ' + r.length + ' حرفًا', 'trJsOk', { n: r.length });
   }
-  if (name === 'generate_image') return /__IMG_/.test(r) ? R('رسمتُ صورة ✅', 'trImgOk') : R('تعذّرت الصورة — ' + s(r, 60), 'trImgFail');
-  if (name === 'edit_image') return /__IMG_/.test(r) ? R('عدّلتُ الصورة ✅', 'trImgOk') : R('تعذّر التعديل — ' + s(r, 60), 'trImgFail');
+  // v-img-engine-tag: اسم المحرك في سطر الأثر (gpt-image أم نانو بنانا).
+  const engTag = /engine:\s*openai/i.test(r) ? ' · gpt-image' : (/engine:/i.test(r) ? ' · نانو بنانا' : '');
+  if (name === 'generate_image') return /__IMG_/.test(r) ? R('رسمتُ صورة ✅' + engTag, 'trImgOk') : R('تعذّرت الصورة — ' + s(r, 60), 'trImgFail');
+  if (name === 'edit_image') return /__IMG_/.test(r) ? R('عدّلتُ الصورة ✅' + engTag, 'trImgOk') : R('تعذّر التعديل — ' + s(r, 60), 'trImgFail');
   if (name === 'get_location') return /رفض|تعذّر|انتهت|لا يدعم|لم يستجب/.test(r) ? R('حاولتُ تحديد موقعك — ' + s(r, 70), 'trLocFail') : R('حدّدتُ موقعك ✅', 'trLocOk');
   if (name === 'test_html') return /^✅/.test(r) ? R('جرّبتُ الصفحة — بلا أخطاء ✅', 'trHtmlOk') : R('جرّبتُ الصفحة — ظهرت أخطاء', 'trHtmlErr');
   return R('استخدمتُ ' + name, 'trTool', { name: name });
