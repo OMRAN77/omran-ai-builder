@@ -161,7 +161,8 @@
           }
           var tok = '__IMG_' + (Object.keys(window.__genImages).length + 1) + '__';
           window.__genImages[tok] = 'data:' + (j.mimeType || 'image/png') + ';base64,' + j.imageBase64;
-          return '✅ رُسمت الصورة. ضع هذا الرمز حرفيًّا في src بلا أي إضافة: ' + tok;
+          // v-img-engine-tag: اسم المحرك يظهر في سطر الأثر — يحسم «أي محرك نفّذ» فورًا.
+          return '✅ رُسمت الصورة (engine: ' + (j.engine || 'gemini') + '). ضع هذا الرمز حرفيًّا في src بلا أي إضافة: ' + tok;
         }
         /* v-edit-image-tool: تعديل الصورة المرفقة في هذا الدور بنفس محرك التطبيق
            (المصدر: آخر صورة أرفقها المستخدم — app-18 يحفظها في __chatVideoReference). */
@@ -192,7 +193,7 @@
           }
           var etok = '__IMG_' + (Object.keys(window.__genImages).length + 1) + '__';
           window.__genImages[etok] = 'data:' + (ej.mimeType || 'image/png') + ';base64,' + ej.imageBase64;
-          return '✅ عُدّلت الصورة. ضع هذا الرمز وحده في سطر داخل ردّك: ' + etok;
+          return '✅ عُدّلت الصورة (engine: ' + (ej.engine || 'gemini') + '). ضع هذا الرمز وحده في سطر داخل ردّك: ' + etok;
         }
         // 📍 موقع المستخدم الحالي — يُطلب إذن المتصفح هنا فقط، عند استدعاء
         // الأداة فعلًا، لا عند فتح الصفحة. الإحداثيات تُستهلك في نداء التحويل

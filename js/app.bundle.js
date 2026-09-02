@@ -17376,6 +17376,8 @@ function __showImgLoading(el, ar, en){
       if(__ok){
         const __outMime = __data.mimeType || 'image/png';
         cur.messages.push({ role: 'assistant', content: '' /* v671: بلا جملة فوق الصورة */, attachments: [{ name: 'edited.png', isImage: true, mime: __outMime, dataUrl: 'data:' + __outMime + ';base64,' + __data.imageBase64 }] });
+        // v-img-engine-tag: بصمة المحرك في شريط الحالة — يحسم «أي محرك نفّذ» فورًا.
+        try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (__data.engine === 'openai' ? 'gpt-image' : 'نانو بنانا')); }catch(e){ __swallow(e, 'ui:img-engine'); }
         cur.lastEditedImage = { b64: __data.imageBase64, mime: __outMime };
         cur.imageEditSource = __pendingImageEditSource;
         cur.imageEditInstructions = __pendingImageEditInstructions;
@@ -26220,7 +26222,8 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
           }
           var tok = '__IMG_' + (Object.keys(window.__genImages).length + 1) + '__';
           window.__genImages[tok] = 'data:' + (j.mimeType || 'image/png') + ';base64,' + j.imageBase64;
-          return '✅ رُسمت الصورة. ضع هذا الرمز حرفيًّا في src بلا أي إضافة: ' + tok;
+          // v-img-engine-tag: اسم المحرك يظهر في سطر الأثر — يحسم «أي محرك نفّذ» فورًا.
+          return '✅ رُسمت الصورة (engine: ' + (j.engine || 'gemini') + '). ضع هذا الرمز حرفيًّا في src بلا أي إضافة: ' + tok;
         }
         /* v-edit-image-tool: تعديل الصورة المرفقة في هذا الدور بنفس محرك التطبيق
            (المصدر: آخر صورة أرفقها المستخدم — app-18 يحفظها في __chatVideoReference). */
@@ -26251,7 +26254,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
           }
           var etok = '__IMG_' + (Object.keys(window.__genImages).length + 1) + '__';
           window.__genImages[etok] = 'data:' + (ej.mimeType || 'image/png') + ';base64,' + ej.imageBase64;
-          return '✅ عُدّلت الصورة. ضع هذا الرمز وحده في سطر داخل ردّك: ' + etok;
+          return '✅ عُدّلت الصورة (engine: ' + (ej.engine || 'gemini') + '). ضع هذا الرمز وحده في سطر داخل ردّك: ' + etok;
         }
         // 📍 موقع المستخدم الحالي — يُطلب إذن المتصفح هنا فقط، عند استدعاء
         // الأداة فعلًا، لا عند فتح الصفحة. الإحداثيات تُستهلك في نداء التحويل
