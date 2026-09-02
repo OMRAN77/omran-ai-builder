@@ -1124,11 +1124,7 @@
           ? '<span style="font-size:10px;color:var(--muted,#98a0b3);">↗ ' + tvT('tvOfficial', 'المنصة الرسمية', 'Official site') + '</span>'
           : '<span style="font-size:10px;color:#a5a5ad;font-weight:700;">' + tvT('tvUnavailable', 'لا يوجد بث مباشر داخل التطبيق', 'No in-app live stream') + '</span>';
           card.innerHTML = '<span style="font-size:26px;">' + cat[2] + '</span><span style="font-size:13px;font-weight:600;line-height:1.5;">' + tvChName(ch.n) + '</span>' + badge;
-      card.onclick = function(){
-            if(mOf(ch)) playChannel(ch, card);
-            else if(ch.u) openExternal(ch.u);
-            else cardOff(card);
-          };
+      card.onclick = function(){ playChannel(ch, card); };
       grid.appendChild(card);
     });
   }
@@ -1230,8 +1226,6 @@
 
   /* v-direct-tv: تشغيل مباشر فقط — لا يوتيوب ولا تحويل خارجي. */
   function playChannel(ch, card){
-    clearChannelFailures(ch);
-    var mu = mOf(ch);
     clearChannelFailures(ch);
     var mu = mOf(ch);
     if(!mu || !mu.length){ stopPlayer(); cardOff(card); return; }
