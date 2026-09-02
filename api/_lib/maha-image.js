@@ -188,23 +188,33 @@ module.exports = async (req, res) => {
     if (!editImageBase64) imageConfig.aspectRatio = (pipelineActive && pipelineRewrite && pipelineRewrite.aspect) ? pipelineRewrite.aspect : (isArchitectural ? '16:9' : pickAspect(cleanPrompt));
     const reqBody = JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: editImageBase64 ? (isSceneUpgrade ? 0.5 : (isReimagine ? 0.9 : 0.15)) : 0.85, imageConfig } });
 
-    // Image generation normally takes 35–50 seconds, so it must bypass the
-    // shared 30-second fetch guard. Retry transient failures inside this one
-    // request; the user should not have to resend the same prompt.
-    const imageResult = await fetchImageWithRetry({
-      url: endpoint,
-      init: {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: reqBody,
-      },
-      onRetry: ({ attempt, response, error }) => {
-        const detail = response ? ('status=' + response.status) : ('error=' + String(error && error.name || 'fetch'));
-        console.error('[maha-image] retrying upstream image request after attempt ' + attempt + ' ' + detail);
-      },
-    });
-    const upstream = imageResult.response;
-    const data = imageResult.data || {};
+    /* v-img-textwise (شكوى المالك: «توليد الصور زفت» — لقطة شاشة التطبيق
+       رجعت بعناوين عربية مشوهة): مصدرٌ مليء بالنصوص (لقطة واجهة، مستند،
+       بوستر، قائمة) يُعاد رسمه كاملًا عند Gemini فتنكسر الحروف مهما شددت
+       التعليمات. gpt-image-1 عبر images/edits بـinput_fidelity=high ينقل
+       الحروف من المصدر كما هي — فيصير هو الخط الأول لهذه الفئة تحديدًا،
+       وGemini يبقى أساس المشاهد المصورة وخط إنقاذ للكل. الكشف بنداء
+       flash خاطف (نعم/لا) قبل التوليد. */
+    async function sourceLooksTextDense() {
+      if (!editImageBase64) return false;
+      try {
+        const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(8000),
+          body: JSON.stringify({
+            contents: [{ parts: [
+              { text: 'Answer with exactly one word, YES or NO. YES only if this image is text-dense: a UI screenshot, app screen, document, menu, form, chart with many labels, or a poster whose main content is many words. NO for photos, people, places, products and scenes.' },
+              { inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } },
+            ] }],
+            generationConfig: { temperature: 0, maxOutputTokens: 4 },
+          }),
+        });
+        const d = await r.json().catch(function () { return null; });
+        const txt = String((((((d || {}).candidates || [])[0] || {}).content || {}).parts || []).map(function (p) { return p.text || ''; }).join(' '));
+        return /\bYES\b/i.test(txt);
+      } catch (e) { return false; }
+    }
 
     // v-maha-image-rescue (خط الإنقاذ التاسع — لقطات عمران ٢٧ أغسطس «الخدمة
     // مشغولة»): زحام أو رفض Gemini في التوليد النصي يهبط لـgpt-image-1 بنفس
@@ -255,6 +265,35 @@ module.exports = async (req, res) => {
         return b64 || null;
       } catch (e) { console.error('[maha-image] rescue error: ' + (e && e.message)); return null; }
     }
+
+    // v-img-textwise: مصدر نصّي كثيف → gpt-image-1 عالي الدقة أولًا؛
+    // فشله أو غيابه يُكمل مسار Gemini المعتاد بلا أي خسارة.
+    if (editImageBase64 && process.env.OPENAI_API_KEY && await sourceLooksTextDense()) {
+      const denseB64 = await openaiRescueImage();
+      if (denseB64) {
+        res.status(200).json({ imageBase64: denseB64, mimeType: 'image/png', engine: 'openai', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined });
+        return;
+      }
+    }
+
+    // Image generation normally takes 35–50 seconds, so it must bypass the
+    // shared 30-second fetch guard. Retry transient failures inside this one
+    // request; the user should not have to resend the same prompt.
+    const imageResult = await fetchImageWithRetry({
+      url: endpoint,
+      init: {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: reqBody,
+      },
+      onRetry: ({ attempt, response, error }) => {
+        const detail = response ? ('status=' + response.status) : ('error=' + String(error && error.name || 'fetch'));
+        console.error('[maha-image] retrying upstream image request after attempt ' + attempt + ' ' + detail);
+      },
+    });
+    const upstream = imageResult.response;
+    const data = imageResult.data || {};
+
 
     if (!upstream || !upstream.ok) {
       const rescuedB64 = await openaiRescueImage();
