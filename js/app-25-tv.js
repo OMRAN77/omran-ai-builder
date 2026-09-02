@@ -868,6 +868,23 @@
   }
   function stOf(ch){ return (ch.h && TV_STATUS && TV_STATUS[ch.h]) || null; }
 
+  /* v-tv-hls (طلب المالك: بث مباشر بلا يوتيوب): tv-streams.json — روابط بث
+   * HLS رسمية عامة (فهرس iptv-org) لقنواتنا + قائمة رياضية عالمية. القناة
+   * التي لها رابط مباشر تُشغَّل في مشغّلنا الخاص (بلا أي علامة يوتيوب)،
+   * ويوتيوب يبقى احتياطًا. رابط يفشل تشغيله يُستثنى لبقية الجلسة. */
+  var TV_M3U = null;
+  var TV_M3U_BAD = {};
+  function loadStreams(){
+    return fetch('/tv-streams.json', { cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){ TV_M3U = d || null; })
+      .catch(function(e){ __swallow(e, 'tv:streams'); });
+  }
+  function mOf(ch){
+    var u = ch.m || (ch.h && TV_M3U && TV_M3U.byHandle && TV_M3U.byHandle[ch.h]) || null;
+    return (u && !TV_M3U_BAD[u]) ? u : null;
+  }
+
   /* v659: رقم البثّ من الفحص اليومي — احتياط حين يصمت السيرفر. يُستعمل فقط
    * إن كان الفحص طازجًا (٣٦ ساعة) والتضمين مسموحًا، وإلّا نرجع للسلوك القديم. */
   function statusLive(handle){
@@ -882,10 +899,14 @@
   /* v661: القسم لا يعرض إلّا ما يشتغل فعلًا.
    * الفحص طازج (≤٣ ساعات) → تظهر القناة التي تبثّ الآن أو بثّت خلال ٧ أيام.
    * الفحص بائت أو غائب → لا فلترة (لا نُفرغ القسم بسبب عطل في الفاحص). */
-  var FRESH_MS = 3 * 36e5;
-  var RECENT_MS = 7 * 864e5;
+  /* v-tv-hls: الفاحص يمر مرة باليوم — نافذة «طازج» ٣ ساعات كانت تجعل الفلتر
+   * يعمل ٣ ساعات فقط وبقية اليوم تظهر القنوات الميتة كلها. ٢٦ ساعة تغطي
+   * الدورة كاملة، و«بثت مؤخرًا» ٣٠ يومًا كي لا تختفي قناة تبث أحيانًا. */
+  var FRESH_MS = 26 * 36e5;
+  var RECENT_MS = 30 * 864e5;
   function statusFresh(){ return !!TV_CHECKED_AT && (Date.now() - TV_CHECKED_AT) < FRESH_MS; }
   function chVisible(ch){
+    if(mOf(ch)) return true;               // بث مباشر HLS — تشتغل بلا يوتيوب
     if(!ch.h) return true;                 // قناة منصة فقط
     var st = stOf(ch);
     if(!st) return true;                   // لا بيانات فحص بعد
@@ -933,7 +954,11 @@
           '<span id="tvNowName" style="font-size:14px;font-weight:700;"></span>' +
           '<button type="button" id="tvExt" style="display:none;margin-inline-start:auto;background:none;border:1px solid var(--border,rgba(255,255,255,.15));border-radius:10px;padding:6px 12px;color:inherit;cursor:pointer;font-size:12px;">↗ ' + tvT('tvYoutube', 'يوتيوب', 'YouTube') + '</button>' +
         '</div>' +
-        '<div style="flex:1;min-height:0;background:#000;"><iframe id="tvFrame" style="width:100%;height:100%;border:0;" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>' +
+        '<div style="flex:1;min-height:0;background:#000;position:relative;">' +
+          '<iframe id="tvFrame" style="width:100%;height:100%;border:0;" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>' +
+          /* v-tv-hls: مشغّلنا الخاص — بث مباشر نظيف بلا أي علامة يوتيوب */
+          '<video id="tvVideo" controls playsinline style="display:none;position:absolute;inset:0;width:100%;height:100%;background:#000;"></video>' +
+        '</div>' +
       '</div>' +
       '<div id="tvBrowse" style="display:flex;flex-direction:column;flex:1;min-height:0;">' +
         '<div style="padding:8px 14px 0;"><input id="tvSearch" type="search" placeholder="🔍 ' + tvT('tvSearchPh', 'ابحث عن قناة...', 'Search channels...') + '" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:12px;border:1px solid var(--border,rgba(255,255,255,.12));background:rgba(255,255,255,.04);color:inherit;font-size:14px;"></div>' +
@@ -961,8 +986,18 @@
     var el = shell();
     var cw = el.querySelector('#tvCountries');
     cw.innerHTML = '';
+    /* v-tv-hls (طلب المالك: «رتب لي الرياضة»): زرّ أول ثابت — كل القنوات
+     * الرياضية الشغالة من كل الدول في شاشة واحدة، العربية أولًا. */
+    var sb = document.createElement('button');
+    sb.type = 'button';
+    sb.style.cssText = chipCss(S.country === '__sports');
+    sb.textContent = '🏆 ' + tvT('tvSportsWorld', 'رياضة العالم', 'World Sports');
+    sb.onclick = function(){ S.country = '__sports'; S.cat = 'all'; renderChips(); renderGrid(); };
+    cw.appendChild(sb);
     Object.keys(TV_COUNTRIES).forEach(function(code){
-      if(!TV_CH.some(function(ch){ return ch.c === code; })) return;
+      /* v-tv-hls: دولة بلا أي قناة ظاهرة (كلها ميتة) لا يظهر زرها — كانت
+       * تفتح شبكة فاضية (مصر ٠ من ١٣ في فحص اليوم). */
+      if(!TV_CH.some(function(ch){ return ch.c === code && chVisible(ch); })) return;
       var meta = TV_COUNTRIES[code];
       var b = document.createElement('button');
       b.type = 'button';
@@ -1028,20 +1063,47 @@
     var grid = el.querySelector('#tvGrid');
     grid.innerHTML = '';
     var q = S.q.toLowerCase();
-    if(!q && S.cat === 'all') renderPlatforms(grid);
-    var list = TV_CH.filter(function(ch){
-      if(!chVisible(ch)) return false;
-      if(q) return (ch.n + ' ' + (ch.h || '')).toLowerCase().indexOf(q) !== -1; // البحث يتجاوز فلتر البلد
-      if(ch.c !== S.country) return false;
-      if(S.cat !== 'all' && ch.g !== S.cat) return false;
-      return true;
-    });
-    // الحيّ الآن أولًا
-    list.sort(function(a, b){
-      var la = stOf(a) && stOf(a).live ? 1 : 0;
-      var lb = stOf(b) && stOf(b).live ? 1 : 0;
-      return lb - la;
-    });
+    if(!q && S.cat === 'all' && S.country !== '__sports') renderPlatforms(grid);
+    var list;
+    if(!q && S.country === '__sports'){
+      /* v-tv-hls: شاشة «رياضة العالم» — قنواتنا الرياضية + كل قناة رياضية
+       * لها بث مباشر في الفهرس، بلا تكرار، العربية أولًا. */
+      var ARAB_CC = ['sa','ae','qa','kw','bh','om','jo','eg','iq','sy','lb','ps','ye','ly','tn','dz','ma','sd','mr'];
+      var seenN = {}, seenU = {};
+      list = [];
+      TV_CH.forEach(function(ch){
+        if(ch.g !== 'sports' || !chVisible(ch)) return;
+        seenN[ch.n.toLowerCase().replace(/\s+/g, '')] = 1;
+        var u0 = mOf(ch); if(u0) seenU[u0] = 1;   // نفس البث باسمين = قناة واحدة
+        list.push(ch);
+      });
+      ((TV_M3U && TV_M3U.sports) || []).forEach(function(s){
+        var k = s.n.toLowerCase().replace(/\s+/g, '');
+        if(seenN[k] || seenU[s.m] || TV_M3U_BAD[s.m]) return;
+        seenN[k] = 1; seenU[s.m] = 1;
+        list.push({ n: s.n, c: s.c, g: 'sports', m: s.m });
+      });
+      list.sort(function(a, b){
+        var ia = ARAB_CC.indexOf(a.c), ib = ARAB_CC.indexOf(b.c);
+        if(ia < 0) ia = 99; if(ib < 0) ib = 99;
+        if(ia !== ib) return ia - ib;
+        return a.n < b.n ? -1 : 1;
+      });
+    } else {
+      list = TV_CH.filter(function(ch){
+        if(!chVisible(ch)) return false;
+        if(q) return (ch.n + ' ' + (ch.h || '')).toLowerCase().indexOf(q) !== -1; // البحث يتجاوز فلتر البلد
+        if(ch.c !== S.country) return false;
+        if(S.cat !== 'all' && ch.g !== S.cat) return false;
+        return true;
+      });
+      // الحيّ الآن أولًا — وصاحب البث المباشر النظيف قبله
+      list.sort(function(a, b){
+        var la = mOf(a) ? 2 : (stOf(a) && stOf(a).live ? 1 : 0);
+        var lb = mOf(b) ? 2 : (stOf(b) && stOf(b).live ? 1 : 0);
+        return lb - la;
+      });
+    }
     var liveNow = list.filter(function(x){ var t = stOf(x); return t && t.live; }).length;
     var meta = el.querySelector('#tvMeta');
     if(meta) meta.textContent = liveNow
@@ -1060,7 +1122,9 @@
       card.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px;border-radius:14px;border:1px solid var(--border,rgba(255,255,255,.1));background:rgba(255,255,255,.03);color:inherit;cursor:pointer;text-align:center;';
       var cat = TV_CATS[ch.g] || TV_CATS.general;
       var st = stOf(ch);
-      var badge = (st && st.live)
+      var badge = mOf(ch)
+        ? '<span style="font-size:10px;color:#3ddc84;font-weight:800;">▶ ' + tvT('tvDirect', 'بث مباشر', 'Live stream') + '</span>'
+        : (st && st.live)
         ? '<span style="font-size:10px;color:#ff5b5b;font-weight:800;">🔴 ' + tvT('tvLive', 'مباشر الآن', 'LIVE') + '</span>'
         : (!ch.h ? '<span style="font-size:10px;color:var(--muted,#98a0b3);">↗ ' + tvT('tvOfficial', 'المنصة الرسمية', 'Official site') + '</span>' : '');
       card.innerHTML = '<span style="font-size:26px;">' + cat[2] + '</span><span style="font-size:13px;font-weight:600;line-height:1.5;">' + tvChName(ch.n) + '</span>' + badge;
@@ -1086,6 +1150,7 @@
   /* v659: تشغيل داخل التطبيق — نقطة واحدة يستعملها المسار العادي والاحتياطي */
   function playEmbed(ch, info){
     var el = shell();
+    stopHls();                             /* v-tv-hls: يعيد الإطار مكان الفيديو */
     S.nowName = ch.n;
     el.querySelector('#tvNowName').textContent = tvChName(ch.n);
     el.querySelector('#tvFrame').src =
@@ -1096,9 +1161,88 @@
     el.querySelector('#tvPlayerWrap').style.display = 'flex';
   }
 
+  /* v-tv-hls: تحميل مكتبة hls.js محليًا عند أول حاجة (سفاري يشغّل m3u8 أصلًا) */
+  var hlsLibP = null;
+  function loadHlsLib(){
+    if(window.Hls) return Promise.resolve();
+    if(hlsLibP) return hlsLibP;
+    hlsLibP = new Promise(function(res, rej){
+      var sc = document.createElement('script');
+      sc.src = '/js/vendor/hls.min.js';
+      sc.onload = res;
+      sc.onerror = function(){ hlsLibP = null; rej(new Error('hls lib')); };
+      document.head.appendChild(sc);
+    });
+    return hlsLibP;
+  }
+  var curHls = null;
+  function playHls(ch, url, card, onFail){
+    var el = shell();
+    var v = el.querySelector('#tvVideo');
+    var fr = el.querySelector('#tvFrame');
+    var failed = false;
+    function fail(){
+      if(failed) return;
+      failed = true;
+      TV_M3U_BAD[url] = 1;                 // لا نعيد المحاولة هذه الجلسة
+      stopHls();
+      if(typeof onFail === 'function') onFail();
+    }
+    function show(){
+      S.nowName = ch.n;
+      el.querySelector('#tvNowName').textContent = tvChName(ch.n);
+      S.nowUrl = '';
+      var xb = el.querySelector('#tvExt'); if(xb) xb.style.display = 'none';
+      fr.src = 'about:blank';
+      fr.style.display = 'none';
+      v.style.display = 'block';
+      el.querySelector('#tvBrowse').style.display = 'none';
+      el.querySelector('#tvPlayerWrap').style.display = 'flex';
+    }
+    v.onerror = fail;
+    // سفاري (آيفون): تشغيل HLS أصيل بلا مكتبات
+    if(v.canPlayType('application/vnd.apple.mpegurl')){
+      show();
+      v.src = url;
+      v.play().catch(function(e){ __swallow(e, 'tv:hls-auto'); });
+      return;
+    }
+    loadHlsLib().then(function(){
+      if(!window.Hls || !window.Hls.isSupported()){ fail(); return; }
+      show();
+      curHls = new window.Hls({ maxBufferLength: 20 });
+      curHls.on(window.Hls.Events.ERROR, function(ev, data){ if(data && data.fatal) fail(); });
+      curHls.loadSource(url);
+      curHls.attachMedia(v);
+      curHls.on(window.Hls.Events.MANIFEST_PARSED, function(){ v.play().catch(function(e){ __swallow(e, 'tv:hls-auto2'); }); });
+    }).catch(fail);
+  }
+  function stopHls(){
+    var el = document.getElementById('omranTvShell');
+    try{ if(curHls){ curHls.destroy(); curHls = null; } }catch(e){ __swallow(e, 'tv:hls-stop'); }
+    if(el){
+      var v = el.querySelector('#tvVideo');
+      if(v){ try{ v.pause(); }catch(e){ __swallow(e, 'tv:vid-pause'); } v.removeAttribute('src'); try{ v.load(); }catch(e){ __swallow(e, 'tv:vid-load'); } v.style.display = 'none'; }
+      var fr = el.querySelector('#tvFrame');
+      if(fr) fr.style.display = '';
+    }
+  }
+
   function playChannel(ch, card){
+    /* v-tv-hls: البث المباشر النظيف أولًا — بلا أي علامة يوتيوب. فشله
+     * الفعلي (رابط مات/محجوب جغرافيًا) يهبط تلقائيًا لمسار يوتيوب القديم. */
+    var mu = mOf(ch);
+    if(mu){
+      playHls(ch, mu, card, function(){ playChannelYt(ch, card); });
+      return;
+    }
+    playChannelYt(ch, card);
+  }
+
+  function playChannelYt(ch, card){
     // قناة بلا بث يوتيوب أصلًا → منصتها الرسمية مباشرة
     if(!ch.h && ch.u){ openExternal(ch.u); return; }
+    if(!ch.h){ stopPlayer(); return; }
     var el = shell();
     var old = card.innerHTML;
     // v662: الفحص الخارجي الطازج أوّلًا — يشغّل فورًا بلا انتظار الخادم
@@ -1137,6 +1281,7 @@
   function stopPlayer(){
     var el = shell();
     S.nowUrl = '';
+    stopHls();                             /* v-tv-hls */
     var xb = el.querySelector('#tvExt'); if(xb) xb.style.display = 'none';
     el.querySelector('#tvFrame').src = 'about:blank';
     el.querySelector('#tvPlayerWrap').style.display = 'none';
@@ -1151,7 +1296,11 @@
     renderGrid();
     el.style.display = 'flex';
     if(TV_STATUS === null){
-      loadStatus().then(function(){ if(el.style.display === 'flex') renderGrid(); });
+      loadStatus().then(function(){ if(el.style.display === 'flex'){ renderChips(); renderGrid(); } });
+    }
+    if(TV_M3U === null){
+      /* v-tv-hls: روابط البث المباشر — تصل وتُحدَّث الشبكة والأزرار */
+      loadStreams().then(function(){ if(el.style.display === 'flex'){ renderChips(); renderGrid(); } });
     }
   }
   function closeTv(){
