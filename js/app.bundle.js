@@ -28778,6 +28778,7 @@ if(document.readyState === 'loading'){
 
   function startCompass(bearing){
     var hint = document.getElementById('qCompassHint');
+    var gotHeading = false;   // v-desktop-nosensor: هل وصل حدث بوصلة فعلي؟
     function apply(heading){
       var needle = document.getElementById('qNeedle');
       if(!needle) return;
@@ -28796,13 +28797,18 @@ if(document.readyState === 'loading'){
       var heading = null;
       if(typeof e.webkitCompassHeading === 'number') heading = e.webkitCompassHeading; // iOS
       else if(e.absolute && typeof e.alpha === 'number') heading = 360 - e.alpha;      // أندرويد مطلق
-      if(heading != null) apply(heading);
+      if(heading != null){ gotHeading = true; apply(heading); }
     }
     function attach(){
       compassHandler = onOrient;
       window.addEventListener('deviceorientationabsolute', onOrient, true);
       window.addEventListener('deviceorientation', onOrient, true);
       if(hint) hint.textContent = tx('calib');
+      // v-desktop-nosensor: DeviceOrientationEvent موجود على الكمبيوتر (وبعض
+      // متصفحات الأندرويد) لكن لا يصل أي حدث بوصلة فعلي — كانت تظهر «حرّك هاتفك
+      // على شكل ٨» والإبرة ميتة. بعد مهلة قصيرة بلا حدث نعرض إرشاد الزاوية
+      // الثابتة (٢٥٨° من الشمال) بدل رسالة المعايرة المضلّلة.
+      setTimeout(function(){ if(!gotHeading && hint) hint.textContent = tx('noSensor'); }, 1800);
     }
     // iOS 13+ يحتاج إذنًا صريحًا
     if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
