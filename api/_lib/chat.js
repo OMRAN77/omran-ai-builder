@@ -70,6 +70,14 @@ const TOOLS = [
     input_schema: { type: 'object', properties: { prompt: { type: 'string', description: 'وصف الصورة بالإنجليزية، دقيق ومحدّد (نمط، إضاءة، زاوية).' } }, required: ['prompt'] },
   },
   {
+    /* v-edit-image-tool (شكوى المالك: النموذج يرد «أنا مساعد نصي ما أقدر أعدّل صور»
+       على لقطة مرفقة + «سوّها 3D»): كانت عنده أداة توليد من وصف فقط بلا أداة تعديل
+       للمرفق، فيعتذر. الآن يعدّل الصورة المرفقة فعلًا بنفس محرك التطبيق. */
+    name: 'edit_image',
+    description: 'عدّل أو أعد رسم الصورة التي أرفقها المستخدم في هذه المحادثة (تحويل أسلوب: 3D، كرتون، أنيمي، لوحة؛ تغيير عناصر أو ألوان أو خلفية؛ تحسين أو ترقية). استخدمها كلما طلب المستخدم تغييرًا على صورة مرفقة — ولا تقل أبدًا إنك لا تستطيع تعديل الصور. تُعيد رمزًا مثل __IMG_1__ تضعه وحده في سطر داخل ردّك فيظهر صورةً. ملاحظة: النصوص الكثيفة داخل الصورة (لقطات شاشة) قد تتشوّه عند إعادة الرسم الكامل — نفّذ ثم أخبر المستخدم بجملة واحدة إن كان ذلك واردًا.',
+    input_schema: { type: 'object', properties: { instruction: { type: 'string', description: 'تعليمة التعديل بالإنجليزية، دقيقة (ماذا يتغيّر، وماذا يبقى كما هو).' } }, required: ['instruction'] },
+  },
+  {
     name: 'generate_video',
     description: 'أنشئ فيديو حقيقيًا داخل المحادثة من وصف المستخدم، أو حرّك الصورة المرفقة نفسها مع الحفاظ على فكرتها وشخصيتها. استخدمها فقط عندما يطلب المستخدم إنشاء/توليد/تحريك فيديو، وليس عند سؤاله عن كيفية صناعة الفيديو.',
     input_schema: { type: 'object', properties: { prompt: { type: 'string', description: 'وصف الفيديو النهائي، مستخرج بذكاء من طلب المستخدم ومن الصورة المرفقة إن وجدت.' }, provider: { type: 'string', enum: ['runway', 'veo'], description: 'المحرك: runway افتراضي سريع، veo لجودة أعلى أو صوت طبيعي.' }, ratio: { type: 'string', enum: ['landscape', 'portrait'], description: 'اتجاه الفيديو.' }, durationSeconds: { type: 'integer', enum: [4, 5, 6, 8, 10], description: 'المدة بالثواني.' }, style: { type: 'string', enum: ['realistic', 'anime'], description: 'النمط عند استخدام Runway.' }, use_reference_image: { type: 'boolean', description: 'عند وجود صورة مرفقة: حرّكها كما هي بدل اختراع صورة جديدة.' } }, required: ['prompt'] },
@@ -86,7 +94,8 @@ const TOOLS = [
   },
 ];
 
-const TOOLS_NOTE = '\n\n[أدواتك الحقيقية — ست، وهي تعمل فعلًا الآن]:\n' +
+const TOOLS_NOTE = '\n\n[أدواتك الحقيقية — سبع، وهي تعمل فعلًا الآن]:\n' +
+  '• edit_image — الصورة المرفقة تُعدَّل بها فعلًا (3D، كرتون، تغيير عناصر، تحسين). ممنوع منعًا باتًا أن تقول «أنا مساعد نصي» أو «لا أستطيع إنتاج/تعديل الصور» — أنت تستطيع، بهذه الأداة وبـgenerate_image.\n' +
   '• web_search — أي سعر أو خبر أو طقس أو نتيجة أو رسوم رسمية أو معلومة قد تكون تغيّرت: ابحث أولًا.\n' +
   '• [حداثة الأخبار — إلزامي]: في سؤال عن خبر أو حدث أو «الجديد»، تحقق من تاريخ نشر كل نتيجة قبل الاستشهاد بها: اعتمد الأحدث واذكر تاريخ الخبر بجانبه صراحةً، ولا تقدّم مقالًا عمره شهور كأنه جديد — قارن تاريخ النشر بتاريخ اليوم المذكور لك. إن لم تجد إلا نتائج قديمة فقلها صراحة («أحدث ما وجدته بتاريخ كذا») ولا توهم بحداثتها.\n' +
   '• fetch_page — أي رابط ذكره المستخدم أو ظهر في البحث وتحتاج محتواه: افتحه واقرأه.\n' +
@@ -771,6 +780,7 @@ function trailLine(name, input, result) {
       : R('شغّلتُ كودًا — عاد ناتج ' + r.length + ' حرفًا', 'trJsOk', { n: r.length });
   }
   if (name === 'generate_image') return /__IMG_/.test(r) ? R('رسمتُ صورة ✅', 'trImgOk') : R('تعذّرت الصورة — ' + s(r, 60), 'trImgFail');
+  if (name === 'edit_image') return /__IMG_/.test(r) ? R('عدّلتُ الصورة ✅', 'trImgOk') : R('تعذّر التعديل — ' + s(r, 60), 'trImgFail');
   if (name === 'get_location') return /رفض|تعذّر|انتهت|لا يدعم|لم يستجب/.test(r) ? R('حاولتُ تحديد موقعك — ' + s(r, 70), 'trLocFail') : R('حدّدتُ موقعك ✅', 'trLocOk');
   if (name === 'test_html') return /^✅/.test(r) ? R('جرّبتُ الصفحة — بلا أخطاء ✅', 'trHtmlOk') : R('جرّبتُ الصفحة — ظهرت أخطاء', 'trHtmlErr');
   return R('استخدمتُ ' + name, 'trTool', { name: name });
@@ -1059,6 +1069,7 @@ module.exports = async (req, res) => {
             else if (cb.type === 'tool_use' && cb.name === 'fetch_page') send({ status: '🌐 يقرأ صفحة…', k: 'stFetchPage' });
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ status: '⚙️ يشغّل كودًا للتحقّق…', k: 'stRunJs' });
             else if (cb.type === 'tool_use' && cb.name === 'generate_image') send({ status: '🎨 يرسم صورة…', k: 'stGenImage' });
+            else if (cb.type === 'tool_use' && cb.name === 'edit_image') send({ status: '🎨 يعدّل الصورة…', k: 'stGenImage' });
             else if (cb.type === 'tool_use' && cb.name === 'generate_video') send({ status: '🎬 ينشئ الفيديو داخل المحادثة…', k: 'stGenVideo' });
             else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ status: '🧪 يجرّب الصفحة…', k: 'stTestHtml' });
             else if (cb.type === 'tool_use' && cb.name === 'get_location') send({ status: '📍 يحدّد موقعك (سيطلب المتصفّح إذنك)…', k: 'stGeoLoc' });
@@ -1118,6 +1129,8 @@ module.exports = async (req, res) => {
           else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
           else if (cb.name === 'run_js') result = await runInClient(send, 'run_js', input);
           else if (cb.name === 'generate_image') result = await runInClient(send, 'generate_image', input, 75000);
+          // v-edit-image-tool: التعديل عالي الدقة (gpt-image للنصّي) قد يأخذ دقيقتين.
+          else if (cb.name === 'edit_image') result = await runInClient(send, 'edit_image', input, 150000);
           else if (cb.name === 'generate_video') result = await runInClient(send, 'generate_video', input, 290000);
           else if (cb.name === 'test_html') result = await runInClient(send, 'test_html', input, 30000);
           // إذن الموقع قد يستغرق وقتًا — مهلة أطول من بقية أدوات المتصفّح.
