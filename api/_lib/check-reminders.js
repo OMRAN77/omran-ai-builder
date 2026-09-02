@@ -75,7 +75,13 @@ module.exports = async (req, res) => {
   // وترسل إشعاراتهم — استنزاف بلا فائدة، وإزعاج للمستخدمين.
   {
     const isVercelCron = !!(req.headers && (req.headers['x-vercel-cron'] || String(req.headers['user-agent'] || '').indexOf('vercel-cron') !== -1));
-    const key = (req.query && req.query.key) || '';
+    // v-ext-cron: نقبل مفتاح المراقبة من الرابط (?key=) أو من ترويسة
+    // (x-monitor-key أو Authorization: Bearer) — الترويسة أأمن لأنها لا تظهر
+    // في سجلّات خدمة الكرون الخارجية (cron-job.org) كما يظهر رابط الاستعلام.
+    const hdrKey = req.headers
+      ? (req.headers['x-monitor-key'] || String(req.headers['authorization'] || '').replace(/^Bearer\s+/i, ''))
+      : '';
+    const key = ((req.query && req.query.key) || hdrKey || '').trim();
     const monitor = (process.env.MONITOR_KEY || '').trim();
     if (!isVercelCron && !(monitor && key === monitor)) {
       // v405 — «نبضة» مدفوعة بحركة المستخدمين: خطة Hobby لا تسمح بكرون كل دقيقة،
