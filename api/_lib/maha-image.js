@@ -256,12 +256,20 @@ module.exports = async (req, res) => {
       }
       try {
         const size = rescueAspect === '16:9' ? '1536x1024' : (rescueAspect === '1:1' ? '1024x1024' : '1024x1536');
-        const r = await fetch('https://api.openai.com/v1/images/generations', {
+        const genOnce = (model) => fetch('https://api.openai.com/v1/images/generations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + okey },
           signal: AbortSignal.timeout(90000),
-          body: JSON.stringify({ model: 'gpt-image-2', prompt: String(rescuePromptText).slice(0, 3800), size, quality: 'high', n: 1 }),
+          body: JSON.stringify({ model, prompt: String(rescuePromptText).slice(0, 3800), size, quality: 'high', n: 1 }),
         });
+        let r = await genOnce('gpt-image-2');
+        // v-img-model-fallback: لو النموذج الأحدث غير متاح لهذا المفتاح (400/404)
+        // نرجع لـgpt-image-1 المضمون بدل الفشل الصامت.
+        if (!r.ok && (r.status === 400 || r.status === 404)) {
+          const t1 = await r.text().catch(function () { return ''; });
+          if (/model/i.test(t1)) r = await genOnce('gpt-image-1');
+          else { lastRescueErr = 'openai gen status=' + r.status + ' ' + t1.slice(0, 120); console.error('[maha-image] rescue failed ' + lastRescueErr); return null; }
+        }
         if (!r.ok) { lastRescueErr = 'openai gen status=' + r.status + ' ' + String(await r.text().catch(function(){return '';})).slice(0, 120); console.error('[maha-image] rescue failed ' + lastRescueErr); return null; }
         const d = await r.json().catch(function () { return null; });
         const b64 = d && d.data && d.data[0] && d.data[0].b64_json;
@@ -296,7 +304,13 @@ module.exports = async (req, res) => {
 
     // v-img-textwise: مصدر نصّي كثيف → gpt-image-1 عالي الدقة أولًا؛
     // فشله أو غيابه يُكمل مسار Gemini المعتاد بلا أي خسارة.
-    if (editImageBase64 && process.env.OPENAI_API_KEY && await sourceLooksTextDense()) {
+    /* v-img-textwise-gen (صورة ChatGPT عند المالك: واجهة أدوات كاملة بعناوين
+       عربية سليمة — gpt-image ينفّذها وGemini يكسر الحروف): طلب توليد جديد
+       يذكر نصوصًا/عناوين/أيقونات/واجهة/شاشة يبدأ أيضًا بـgpt-image. */
+    const __textCueRe = /نص|كتاب|مكتوب|عنوان|عناوين|أيقون|ايقون|واجهة|شاشة|تطبيق|قائمة|كلمات|حروف|خط\s*عرب|\btext\b|label|icon|\bui\b|screen|interface|\bapp\b|menu|typograph|lettering|caption/i;
+    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan
+      && (editImageBase64 ? await sourceLooksTextDense() : __textCueRe.test(cleanPrompt));
+    if (__textRoute) {
       const denseB64 = await openaiRescueImage();
       if (denseB64) {
         res.status(200).json({ imageBase64: denseB64, mimeType: 'image/png', engine: 'openai', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined });
