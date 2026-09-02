@@ -209,12 +209,14 @@ module.exports = async (req, res) => {
     let fromClaude = false;
     if (antKey) {
       try { raw = await callClaudeVision(antKey, prompt, img); fromClaude = !!raw; } catch (e) {
-        logError('screen-guide:claude-call', e, { action: 'primary' });
+        // v-sg-body: نُضمّن سبب المزوّد الحقيقي (providerBody) — لولاه يظهر
+        // "http_400" في لوحة الفحص بلا تفسير فيتعذّر تشخيص السبب الجذري.
+        logError('screen-guide:claude-call', e, { action: 'primary', body: e && e.providerBody });
       }
     }
     if (!raw && gemKey) {
       try { raw = await callGemini(gemKey, prompt, img); } catch (e) {
-        logError('screen-guide:gemini-call', e, { action: 'secondary' });
+        logError('screen-guide:gemini-call', e, { action: 'secondary', body: e && e.providerBody });
       }
     }
 
@@ -233,7 +235,7 @@ module.exports = async (req, res) => {
           usedFallback = true;
         }
       } catch (e2) {
-        logError('screen-guide:gpt4o-call', e2, { action: 'fallback' });
+        logError('screen-guide:gpt4o-call', e2, { action: 'fallback', body: e2 && e2.providerBody });
       }
     }
 
