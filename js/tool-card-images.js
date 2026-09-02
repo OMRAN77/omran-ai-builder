@@ -26,12 +26,20 @@
     var button = document.getElementById(id);
     if(!button || button.classList.contains('hasToolPhoto')) return;
     var oldImage = button.querySelector('img.stp3d');
-    if(!oldImage) return;
     var preload = new Image();
     preload.onload = function(){
-      oldImage.src = src;
-      oldImage.classList.add('toolPhotoImage');
-      button.classList.add('hasToolPhoto');
+      if(oldImage){
+        oldImage.src = src;
+        oldImage.classList.add('toolPhotoImage');
+      } else {
+        oldImage = document.createElement('img');
+        oldImage.className = 'stp3d toolPhotoImage';
+        oldImage.loading = 'lazy';
+        oldImage.alt = '';
+        oldImage.src = src;
+        button.insertBefore(oldImage, button.firstChild);
+      }
+      button.classList.add('has3d', 'hasToolPhoto');
     };
     preload.onerror = function(){ /* Keep the existing icon when a photo cannot load. */ };
     preload.src = src;
