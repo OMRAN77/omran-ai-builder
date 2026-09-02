@@ -42,6 +42,19 @@ module.exports = async (req, res) => {
   if (req.method !== 'GET') { res.status(405).json({ error: 'method' }); return; }
   if (!isOwner(req)) { res.status(401).json({ error: 'unauthorized' }); return; }
 
+  // v-clear-log: مسح سجلّ الأخطاء القديم بطلب المالك (مثل أخطاء ميزةٍ حُذفت).
+  // للمالك فقط (محميّ بـ isOwner أعلاه). الاستعمال: ...&clear=errors
+  if (req.query && (req.query.clear === 'errors' || req.query.clear === '1')) {
+    try {
+      await kvPutJSON('db/server-errors/log.json', []);
+      await kvPutJSON('db/client-errors/log.json', []);
+      res.status(200).json({ ok: true, cleared: true });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: 'clear_failed' });
+    }
+    return;
+  }
+
   const envKeys = {
     OpenAI: !!process.env.OPENAI_API_KEY,
     Gemini: !!process.env.GEMINI_API_KEY,
