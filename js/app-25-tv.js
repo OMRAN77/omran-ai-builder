@@ -1141,48 +1141,62 @@
     return hlsLibP;
   }
   var curHls = null;
-  function playHls(ch, url, card, onFail){
-    var el = shell();
-    var v = el.querySelector('#tvVideo');
-    var fr = el.querySelector('#tvFrame');
-    var failed = false;
-    function fail(){
-      if(failed) return;
-      failed = true;
-      TV_M3U_BAD[url] = 1;                 // لا نعيد المحاولة هذه الجلسة
-      stopHls();
-      if(typeof onFail === 'function') onFail();
+  /* v-tv-reliable: لا شاشة سوداء — لكل مصدر مهلة، ثم نجرب البديل. */
+    function playHls(ch, url, card, onFail){
+      var el = shell();
+      var v = el.querySelector('#tvVideo');
+      var fr = el.querySelector('#tvFrame');
+      var failed = false;
+      var timer = setTimeout(fail, 12000);
+      function ready(){ if(timer){ clearTimeout(timer); timer = null; } }
+      function fail(){
+        if(failed) return;
+        failed = true;
+        ready();
+        TV_M3U_BAD[url] = 1;
+        stopHls();
+        if(typeof onFail === 'function') onFail();
+      }
+      function show(){
+        S.nowName = ch.n;
+        el.querySelector('#tvNowName').textContent = tvChName(ch.n);
+        S.nowUrl = '';
+        var xb = el.querySelector('#tvExt'); if(xb) xb.style.display = 'none';
+        fr.src = 'about:blank';
+        fr.style.display = 'none';
+        v.style.display = 'block';
+        el.querySelector('#tvBrowse').style.display = 'none';
+        el.querySelector('#tvPlayerWrap').style.display = 'flex';
+      }
+      v.onerror = fail;
+      v.onplaying = ready;
+      v.onloadedmetadata = ready;
+      if(v.canPlayType('application/vnd.apple.mpegurl')){
+        show();
+        v.src = url;
+        v.play().catch(function(e){
+          if(e && e.name === 'NotAllowedError'){ ready(); return; }
+          fail();
+        });
+        return;
+      }
+      loadHlsLib().then(function(){
+        if(!window.Hls || !window.Hls.isSupported()){ fail(); return; }
+        show();
+        curHls = new window.Hls({ maxBufferLength: 20, manifestLoadingTimeOut: 9000, levelLoadingTimeOut: 9000, fragLoadingTimeOut: 9000 });
+        curHls.on(window.Hls.Events.ERROR, function(ev, data){ if(data && data.fatal) fail(); });
+        curHls.on(window.Hls.Events.FRAG_LOADED, ready);
+        curHls.loadSource(url);
+        curHls.attachMedia(v);
+        curHls.on(window.Hls.Events.MANIFEST_PARSED, function(){
+          v.play().catch(function(e){
+            if(e && e.name === 'NotAllowedError'){ ready(); return; }
+            fail();
+          });
+        });
+      }).catch(fail);
     }
-    function show(){
-      S.nowName = ch.n;
-      el.querySelector('#tvNowName').textContent = tvChName(ch.n);
-      S.nowUrl = '';
-      var xb = el.querySelector('#tvExt'); if(xb) xb.style.display = 'none';
-      fr.src = 'about:blank';
-      fr.style.display = 'none';
-      v.style.display = 'block';
-      el.querySelector('#tvBrowse').style.display = 'none';
-      el.querySelector('#tvPlayerWrap').style.display = 'flex';
-    }
-    v.onerror = fail;
-    // سفاري (آيفون): تشغيل HLS أصيل بلا مكتبات
-    if(v.canPlayType('application/vnd.apple.mpegurl')){
-      show();
-      v.src = url;
-      v.play().catch(function(e){ __swallow(e, 'tv:hls-auto'); });
-      return;
-    }
-    loadHlsLib().then(function(){
-      if(!window.Hls || !window.Hls.isSupported()){ fail(); return; }
-      show();
-      curHls = new window.Hls({ maxBufferLength: 20 });
-      curHls.on(window.Hls.Events.ERROR, function(ev, data){ if(data && data.fatal) fail(); });
-      curHls.loadSource(url);
-      curHls.attachMedia(v);
-      curHls.on(window.Hls.Events.MANIFEST_PARSED, function(){ v.play().catch(function(e){ __swallow(e, 'tv:hls-auto2'); }); });
-    }).catch(fail);
-  }
-  function stopHls(){
+      function stopHls(){
     var el = document.getElementById('omranTvShell');
     try{ if(curHls){ curHls.destroy(); curHls = null; } }catch(e){ __swallow(e, 'tv:hls-stop'); }
     if(el){
@@ -1207,7 +1221,7 @@
     if(!mu || !mu.length){ stopPlayer(); cardOff(card); return; }
     var i = 0;
     var tryNext = function(){
-      if(i >= mu.length){ cardOff(card); return; }
+      if(i >= mu.length){ stopPlayer(); cardOff(card); setTimeout(renderGrid, 0); return; }
       playHls(ch, mu[i++], card, tryNext);
     };
     tryNext();
