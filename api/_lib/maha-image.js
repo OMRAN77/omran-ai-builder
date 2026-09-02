@@ -259,7 +259,34 @@ module.exports = async (req, res) => {
       } catch (e) { lastRescueErr = 'openai gen ' + (e && e.message); console.error('[maha-image] rescue error: ' + (e && e.message)); return null; }
     }
 
+    // v-nano-banana (طلب عمران): إذا فشل موديل الصور الأساسي، نجرّب موديل Google
+    // «Nano Banana» (gemini-2.5-flash-image) بصيغة طلب نظيفة قبل خط إنقاذ OpenAI —
+    // كثيرًا ما يكون متاحًا لمفاتيح لا يتاح لها gemini-3-pro-image، فيُنقذ التوليد.
+    let lastNanoErr = '';
+    async function geminiNanoBananaImage() {
+      const models = ['gemini-2.5-flash-image', 'gemini-2.5-flash-image-preview'];
+      for (let i = 0; i < models.length; i++) {
+        try {
+          const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent?key=' + apiKey, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: AbortSignal.timeout(90000),
+            body: JSON.stringify({ contents: [{ parts: parts }] }),
+          });
+          if (!r.ok) { lastNanoErr = models[i] + ' status=' + r.status; continue; }
+          const d = await r.json().catch(function () { return null; });
+          const p = (((d && d.candidates || [])[0] || {}).content || {}).parts || [];
+          const img = p.find(function (x) { return x.inlineData && x.inlineData.data; });
+          if (img && img.inlineData.data) return img.inlineData.data;
+          lastNanoErr = models[i] + ' no-image-part';
+        } catch (e) { lastNanoErr = models[i] + ' ' + (e && e.message); }
+      }
+      return null;
+    }
+
     if (!upstream || !upstream.ok) {
+      const nanoB64 = await geminiNanoBananaImage();
+      if (nanoB64) { res.status(200).json({ imageBase64: nanoB64, mimeType: 'image/png', engine: 'gemini-nano-banana', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
       const rescuedB64 = await openaiRescueImage();
       /* v-prayer-carry: الإنقاذ كان يفقد الدعاء المؤلَّف فيرفضه العميل
          (missing_authored_prayer — لقطة المالك). يُمرَّر مع الصورة المنقذة. */
@@ -270,7 +297,7 @@ module.exports = async (req, res) => {
       const errorCode = timedOut ? 'image_generation_timeout' : (retryable ? 'image_generation_busy' : 'image_generation_failed');
       console.error('[maha-image] upstream image request failed after ' + imageResult.attempts + ' attempt(s)' + (upstream ? ' status=' + upstream.status : ''));
       // v-img-visible: يظهر السبب الحقيقي (رصيد/حصة/موديل) في لوحة المالك.
-      try { require('./log-error.js').logError('maha-image:both-failed', new Error(errorCode), { gemini: upstream ? ('status=' + upstream.status) : 'no-response', openai: lastRescueErr || 'no-rescue', attempts: imageResult.attempts }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
+      try { require('./log-error.js').logError('maha-image:both-failed', new Error(errorCode), { gemini: upstream ? ('status=' + upstream.status) : 'no-response', nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue', attempts: imageResult.attempts }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
       res.status(timedOut ? 504 : 502).json({ error: errorCode, retryable });
       return;
     }
@@ -278,11 +305,13 @@ module.exports = async (req, res) => {
     let respParts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
     let imgPart = respParts.find((p) => p.inlineData && p.inlineData.data);
     if (!imgPart) {
+      const nanoB64b = await geminiNanoBananaImage();
+      if (nanoB64b) { res.status(200).json({ imageBase64: nanoB64b, mimeType: 'image/png', engine: 'gemini-nano-banana', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
       const rescuedB64b = await openaiRescueImage();
       if (rescuedB64b) { res.status(200).json({ imageBase64: rescuedB64b, mimeType: 'image/png', engine: 'openai', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
       await refundImageCharge();
       console.error('[maha-image] no image part in response: ' + JSON.stringify(data).slice(0, 2000));
-      try { require('./log-error.js').logError('maha-image:no-image-part', new Error('gemini_no_image_part'), { openai: lastRescueErr || 'no-rescue' }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
+      try { require('./log-error.js').logError('maha-image:no-image-part', new Error('gemini_no_image_part'), { nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue' }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
       res.status(500).json({ error: 'لم يرجع الموديل صورة، حاول توصيف مختلف.' });
       return;
     }
