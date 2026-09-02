@@ -153,12 +153,16 @@ try {
           redirect: 'follow',
           signal: AbortSignal.timeout(9000),
         });
+        st.code = r.status;
         if (r.ok) {
           const head = (await r.text()).slice(0, 4000);
           st.ok = head.includes('#EXTM3U');
           const acao = r.headers.get('access-control-allow-origin') || '';
           st.cors = acao === '*' || acao.includes('omran-ai-builder.vercel.app');
         }
+        /* v-tv-geo: 403/451 من أمريكا ≠ رابط ميت — قنوات المنطقة (الكأس،
+         * الشارقة…) تمنع خارجها وتعمل عند مستخدمينا. تُعلَّم geo ولا تُخفى. */
+        if (!st.ok && (r.status === 403 || r.status === 451)) st.geo = true;
       } catch { /* رابط ميت/بطيء — يبقى ok:false */ }
       if (st.ok) mOk++;
       if (st.ok && st.cors) mCors++;

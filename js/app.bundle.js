@@ -29345,6 +29345,9 @@ window.__omranBundleOk = true;
     var ss = TV_STATUS === null ? null : null;
     try{ ss = window.__tvStreamsStatus || null; }catch(e){ ss = null; }
     if(!ss || !ss[u]) return true;         // لا بيانات فحص — نتفاءل ويحسمها التشغيل
+    /* v-tv-geo: 403 عند فاحص أمريكا = حجب جغرافي غالبًا — القناة تعمل في
+     * منطقتها (الكأس/الشارقة عند مستخدمينا)؛ نتفاءل ويحسمها التشغيل الفعلي. */
+    if(ss[u].geo) return true;
     if(ss[u].ok === false) return false;   // رابط ميت مؤكد
     if(!TV_NATIVE_HLS && ss[u].cors === false) return false; // المتصفح سيمنعه حتمًا
     return true;
