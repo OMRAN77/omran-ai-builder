@@ -177,7 +177,7 @@
     { n: 'Asianet News (مالايالام)', h: 'asianetnews', c: 'in_', g: 'news' },
     { n: 'Manorama News (مالايالام)', h: 'manoramanews', c: 'in_', g: 'news' },
     { n: 'Polimer News (تاميل)', h: 'PolimerNews', c: 'in_', g: 'news' },
-    { n: 'Star Sports (يوتيوب)', h: 'StarSportsIndia', c: 'in_', g: 'sports' },
+    { n: 'Star Sports', h: 'StarSportsIndia', c: 'in_', g: 'sports' },
     // ——— باكستان
     { n: 'Geo News (أردو)', h: 'GeoNews', c: 'pk', g: 'news' },
     { n: 'ARY News (أردو)', h: 'ArynewsTvofficial', c: 'pk', g: 'news' },
@@ -205,7 +205,7 @@
     { n: 'Kantipur TV (نيبالي)', h: 'KantipurTVHD', c: 'np', g: 'news' },
     // ——— بريطانيا / أمريكا
     { n: 'Sky News', h: 'SkyNews', c: 'uk', g: 'news' },
-    { n: 'BBC News (يوتيوب)', h: 'BBCNews', c: 'uk', g: 'news' },
+    { n: 'BBC News', h: 'BBCNews', c: 'uk', g: 'news' },
     { n: 'ABC News Live', h: 'ABCNews', c: 'us', g: 'news' },
     { n: 'NBC News Now', h: 'NBCNews', c: 'us', g: 'news' },
     { n: 'CBS News', h: 'CBSNews', c: 'us', g: 'news' },
@@ -689,7 +689,7 @@
   ];
 
   /* منصات رسمية — تفتح بتطبيقها/موقعها الرسمي بحساب المستخدم نفسه.
-   * القيمة: قنوات الاشتراك والقنوات التي لا تبث يوتيوب (دراما MBC، دبي ون...) */
+   * القيمة: قنوات الاشتراك والقنوات التي لا توفر بثًا مباشرًا عامًا (دراما MBC، دبي ون...) */
   var TV_PLATFORMS = [
     { n: 'شاهد', d: 'كل قنوات MBC مباشر', u: 'https://shahid.mbc.net/ar/live', i: '🎬' },
     { n: 'عوان', d: 'كل قنوات دبي مباشر', u: 'https://awaan.ae/live', i: '🏙️' },
@@ -869,10 +869,9 @@
   }
   function stOf(ch){ return (ch.h && TV_STATUS && TV_STATUS[ch.h]) || null; }
 
-  /* v-tv-hls (طلب المالك: بث مباشر بلا يوتيوب): tv-streams.json — روابط بث
+  /* v-tv-hls: tv-streams.json — روابط بث مباشر عامة
    * HLS رسمية عامة (فهرس iptv-org) لقنواتنا + قائمة رياضية عالمية. القناة
-   * التي لها رابط مباشر تُشغَّل في مشغّلنا الخاص (بلا أي علامة يوتيوب)،
-   * ويوتيوب يبقى احتياطًا. رابط يفشل تشغيله يُستثنى لبقية الجلسة. */
+   * التي لها رابط مباشر تُشغَّل في مشغّلنا الخاص. رابط يفشل تشغيله يُستثنى لبقية الجلسة. */
   var TV_M3U = null;
   var TV_M3U_BAD = {};
   function loadStreams(){
@@ -938,11 +937,10 @@
         '<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;">' +
           '<button type="button" id="tvBack" style="background:none;border:1px solid var(--border,rgba(255,255,255,.15));border-radius:10px;padding:6px 14px;color:inherit;cursor:pointer;">' + tvBackLbl() + '</button>' +
           '<span id="tvNowName" style="font-size:14px;font-weight:700;"></span>' +
-          '<button type="button" id="tvExt" style="display:none;margin-inline-start:auto;background:none;border:1px solid var(--border,rgba(255,255,255,.15));border-radius:10px;padding:6px 12px;color:inherit;cursor:pointer;font-size:12px;">↗ ' + tvT('tvYoutube', 'يوتيوب', 'YouTube') + '</button>' +
         '</div>' +
         '<div style="flex:1;min-height:0;background:#000;position:relative;">' +
           '<iframe id="tvFrame" style="width:100%;height:100%;border:0;" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>' +
-          /* v-tv-hls: مشغّلنا الخاص — بث مباشر نظيف بلا أي علامة يوتيوب */
+          /* v-tv-hls: مشغّل البث المباشر داخل التطبيق */
           '<video id="tvVideo" controls playsinline style="display:none;position:absolute;inset:0;width:100%;height:100%;background:#000;"></video>' +
         '</div>' +
       '</div>' +
@@ -956,7 +954,6 @@
     document.body.appendChild(el);
     el.querySelector('#tvClose').onclick = closeTv;
     el.querySelector('#tvBack').onclick = stopPlayer;
-    el.querySelector('#tvExt').onclick = function(){ if(S.nowUrl) openExternal(S.nowUrl); };
     el.querySelector('#tvSearch').oninput = function(){ S.q = this.value.trim(); renderGrid(); };
     return el;
   }
@@ -1122,10 +1119,9 @@
 
   /* v-tv-live: الفحص اللحظي عند الضغطة — تضمين live_stream القديم لا يعمل
    * لأغلب القنوات وبعضها يمنع التضمين. السيرفر يرجع رقم فيديو البث الجاري:
-   * مسموح تضمينه → داخل التطبيق؛ ممنوع → تطبيق يوتيوب على البث نفسه. */
+   * لا يُستعمل هذا المسار في وضع البث المباشر فقط. */
 
-  /* v659: تشغيل داخل التطبيق — نقطة واحدة يستعملها المسار العادي والاحتياطي */
-
+  
   /* v-tv-hls: تحميل مكتبة hls.js محليًا عند أول حاجة (سفاري يشغّل m3u8 أصلًا) */
   var hlsLibP = null;
   function loadHlsLib(){
@@ -1251,7 +1247,6 @@
     el.dir = tvDir();
     var q = el.querySelector('#tvTitleTxt'); if(q) q.textContent = tvT('tvTitle', '📺 تلفزيون', '📺 TV');
     q = el.querySelector('#tvBack'); if(q) q.textContent = tvBackLbl();
-    q = el.querySelector('#tvExt'); if(q) q.textContent = '↗ ' + tvT('tvYoutube', 'يوتيوب', 'YouTube');
     q = el.querySelector('#tvSearch'); if(q) q.placeholder = '🔍 ' + tvT('tvSearchPh', 'ابحث عن قناة...', 'Search channels...');
     q = el.querySelector('#tvNowName'); if(q && S.nowName) q.textContent = tvChName(S.nowName);
     try{ renderChips(); }catch(e){ __swallow(e, 'tv:relang-chips'); }
