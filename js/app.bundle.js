@@ -8759,8 +8759,25 @@ async function refreshAcctPoints(){
 }
 window.refreshAcctPoints = refreshAcctPoints;
 
+/* v-ios-external-pay (طلب المالك): غلاف أبل ستور يدفع خارج التطبيق —
+   صفحة Stripe المستضافة تُفتح في متصفح النظام (وفيها Apple Pay جاهز
+   تلقائيًا في Safari) بدل أي شراء داخلي في الغلاف. كشف الغلاف: آيفون +
+   جسر كاباسيتور/WebKit، أو علامة ?store=apple المحفوظة. الويب وPWA
+   المثبّت بلا أي تغيير. */
+function omranIOSStoreApp(){
+  try{
+    if(!/iPad|iPhone|iPod/.test(navigator.userAgent || '')) return false;
+    if(window.Capacitor && (window.Capacitor.isNative === true || (typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()))) return true;
+    if(window.webkit && window.webkit.messageHandlers && (window.webkit.messageHandlers.omranShare || window.webkit.messageHandlers.omranPdf)) return true;
+    if((localStorage.getItem('aiapp_store') || '') === 'apple') return true;
+  }catch(e){ /* guard-ok — بلا كشف تبقى النافذة الداخلية المعتادة */ }
+  return false;
+}
+
 function openCheckout(plan){
   checkoutCurrentPlan = plan;
+  // v-ios-external-pay: بلا نافذة داخلية إطلاقًا — مباشرة للدفع الخارجي.
+  if(omranIOSStoreApp()){ startStripeCheckout(); return; }
   const overlay = document.getElementById('checkoutModalOverlay');
   const label = document.getElementById('checkoutPlanLabel');
   const statusMsg = document.getElementById('checkoutStatusMsg');
@@ -8808,6 +8825,15 @@ async function startStripeCheckout(){
     // بلا توكن فلا تُضاف النقاط. نحفظ رقم الجلسة، وعند العودة للتطبيق يتحقق
     // بنفسه (verify-checkout آمنة التكرار — لا تضيف النقاط مرتين).
     if (data.id) { try { localStorage.setItem('aiapp_ck_pending', data.id + ':' + Date.now()); } catch(e){ __swallow(e, 'checkout:pending'); } }
+    /* v-ios-external-pay: في غلاف أبل ستور تُفتح صفحة Stripe في متصفح
+       النظام (Apple Pay خارجي) — والعودة للتطبيق تُكمل التحقق عبر
+       aiapp_ck_pending (v-ios-bridge، آمن التكرار). لو منع الغلاف
+       window.open نهبط للتحويل المعتاد فلا يضيع الدفع بأي حال. */
+    if (omranIOSStoreApp()){
+      let w = null;
+      try{ w = window.open(data.url, '_blank', 'noopener'); }catch(e){ __swallow(e, 'checkout:extopen'); }
+      if (w){ closeCheckout(); return; }
+    }
     window.location.href = data.url;
   } catch (e) {
     if (statusMsg) statusMsg.textContent = t('checkoutError');
