@@ -1203,11 +1203,16 @@
       loadHlsLib().then(function(){
         if(!window.Hls || !window.Hls.isSupported()){ fail(); return; }
         show();
-        curHls = new window.Hls({ maxBufferLength: 20, manifestLoadingTimeOut: 9000, levelLoadingTimeOut: 9000, fragLoadingTimeOut: 9000 });
-        curHls.on(window.Hls.Events.ERROR, function(ev, data){ if(data && data.fatal) fail(); });
-        curHls.loadSource(url);
-        curHls.attachMedia(v);
+        curHls = new window.Hls({ enableWorker: false, maxBufferLength: 20, manifestLoadingTimeOut: 9000, levelLoadingTimeOut: 9000, fragLoadingTimeOut: 9000 });
+        curHls.on(window.Hls.Events.ERROR, function(ev, data){
+          try{ if(data) console.warn('[tv:hls]', data.type, data.details, !!data.fatal, url); }catch(e){ __swallow(e, 'tv:hls-log'); }
+          if(data && data.fatal) fail();
+        });
+        /* اربط MediaSource بالفيديو أولًا؛ تحميل المصدر قبله كان يجلب القطع
+         * لكن يترك video.src فارغًا في Chrome/WebView. */
+        curHls.on(window.Hls.Events.MEDIA_ATTACHED, function(){ if(!failed && curHls) curHls.loadSource(url); });
         curHls.on(window.Hls.Events.MANIFEST_PARSED, startPlayback);
+        curHls.attachMedia(v);
       }).catch(fail);
     }
       function stopHls(){
