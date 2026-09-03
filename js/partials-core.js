@@ -471,7 +471,8 @@
         </div>
         <span style="color:#d4af37; font-size:12.5px; font-weight:700; flex:none;" data-i18n="portraitStyleBrowseAll">عرض الكل ›</span>
       </div>
-      <div id="portraitStyleSheet" style="display:none; position:fixed; inset:0; z-index:10060; background:#0b0b0d; flex-direction:column;">
+      <!-- v-sheet-above-x: الصفحة الكاملة فوق زرّ X المثبّت للنافذة الأم (z 10070) — كان يظهر X مزدوج -->
+      <div id="portraitStyleSheet" style="display:none; position:fixed; inset:0; z-index:10080; background:#0b0b0d; flex-direction:column;">
         <!-- v-picker-close: نفس علاج pickerSheet — الرأس تحت الساعة والزر أكبر -->
         <div style="display:flex; align-items:center; justify-content:space-between; padding:calc(14px + max(env(safe-area-inset-top,0px), 30px)) 16px 14px; border-bottom:1px solid rgba(212,175,55,.25); flex:none;">
           <div>
@@ -892,7 +893,7 @@
 
 <!-- v-omran-picker: معرض اختيار موحّد ملء الشاشة — نفس نمط «أنماط الصور»
      لكل القوائم الكبيرة (أزياء، ديكور، ستايل). -->
-<div id="pickerSheet" style="display:none; position:fixed; inset:0; z-index:10070; background:#0b0b0d; flex-direction:column;">
+<div id="pickerSheet" style="display:none; position:fixed; inset:0; z-index:10080; background:#0b0b0d; flex-direction:column;">
   <!-- v-picker-close (شكوى عمران: «✕ فوق عند الساعة ما أقدر أضغطه»): الرأس ينزل
        تحت شريط الحالة بهامش الأمان والزر أكبر — بلا أي زر إضافي بطلبه. -->
   <div style="display:flex; align-items:center; justify-content:space-between; padding:calc(14px + max(env(safe-area-inset-top,0px), 30px)) 16px 14px; border-bottom:1px solid rgba(212,175,55,.25); flex:none;">
