@@ -116,36 +116,37 @@ module.exports = async (req, res) => {
       finalPrompt = (preservePrefix + finalPrompt).slice(0, 1000);
     }
 
-    const upstreamBody = useImage
-      ? {
-          model: 'gen4_turbo',
-          promptImage: 'data:' + (imageMime || 'image/png') + ';base64,' + imageBase64,
-          promptText: finalPrompt,
-          ratio: finalRatio,
-          duration: finalDuration,
-        }
-      : {
-          model: 'gen4_turbo',
-          promptText: finalPrompt,
-          ratio: finalRatio,
-          duration: finalDuration,
-        };
-    const upstream = await fetch(endpoint, {
+    /* v-runway-model (لقطات المالك: «Validation of body failed … expected one of
+       gen4.5 | kling3.0_pro | veo3.1 …»): Runway أوقف اسم gen4_turbo فصار كل
+       فيديو يفشل بخطأ خام. الاسم الحالي gen4.5، ولو غيّروه مجددًا نقرأ قائمة
+       الأسماء المقبولة من خطأهم نفسه ونعيد الطلب تلقائيًا بأفضل متاح — بلا
+       تدخّل يدوي في كل مرة يغيّر فيها Runway نماذجه. */
+    const RUNWAY_PREF = ['gen4.5', 'gen4_turbo', 'veo3.1_fast', 'veo3.1', 'kling3.0_standard', 'kling2.5_turbo_pro', 'seedance2_fast'];
+    const buildBody = (model) => useImage
+      ? { model, promptImage: 'data:' + (imageMime || 'image/png') + ';base64,' + imageBase64, promptText: finalPrompt, ratio: finalRatio, duration: finalDuration }
+      : { model, promptText: finalPrompt, ratio: finalRatio, duration: finalDuration };
+    const callRunway = (model) => fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + apiKey,
-        'Content-Type': 'application/json',
-        'X-Runway-Version': RUNWAY_VERSION,
-      },
-      body: JSON.stringify(upstreamBody),
+      headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json', 'X-Runway-Version': RUNWAY_VERSION },
+      body: JSON.stringify(buildBody(model)),
     });
-
-    const data = await upstream.json().catch(() => ({}));
+    let upstream = await callRunway(process.env.RUNWAY_MODEL || RUNWAY_PREF[0]);
+    let data = await upstream.json().catch(() => ({}));
+    if (!upstream.ok && data && Array.isArray(data.issues)) {
+      const issue = data.issues.find((i) => i && Array.isArray(i.values) && i.values.length);
+      if (issue) {
+        const allowed = issue.values.map(String);
+        const pick = RUNWAY_PREF.find((m) => allowed.includes(m)) || allowed[0];
+        console.error('[video-create] runway model rejected — retrying with ' + pick);
+        upstream = await callRunway(pick);
+        data = await upstream.json().catch(() => ({}));
+      }
+    }
     if (!upstream.ok) {
-      // Always include Runway's FULL response body (it puts the useful
-      // validation details in extra fields, not just in .error).
       if (chargedUser) await pointsLib.refundPoints(chargedUser, pointsLib.COSTS.runway_video);
-      res.status(upstream.status).json({ error: 'Runway error: ' + JSON.stringify(data).slice(0, 700) });
+      // رسالة مفهومة للمستخدم + ذيل تقني قصير للتشخيص — لا JSON خام بطول شاشة.
+      const tech = String((data && (data.error || (data.issues && data.issues[0] && data.issues[0].message))) || ('HTTP ' + upstream.status)).slice(0, 160);
+      res.status(upstream.status).json({ error: 'تعذّر بدء الفيديو مؤقتًا — أعد المحاولة بعد لحظات. (' + tech + ')', retryable: true });
       return;
     }
 
