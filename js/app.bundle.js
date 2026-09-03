@@ -13974,7 +13974,7 @@ function makeChatStatus(el){
     /* v-status-ai (طلب المالك «شكل جميل يخص الذكاء الاصطناعي»): شرارة نابضة،
        ونص بلمعان ذهبي يمرّ عليه، ونقاط «كتابة» صغيرة ما دامت الخطوة جارية. */
     currentIcon.textContent = current.state === 'fail' ? '✗' : (current.state === 'done' ? '✓' : '✦');
-    if(current.state === 'run') currentIcon.classList.add('chat-status-spark');
+    if(current.state === 'run'){ currentIcon.classList.add('chat-status-spark'); summary.classList.add('is-running'); } /* v-status-glow */
     const currentText = document.createElement('span');
     currentText.textContent = current.text;
     currentText.className = 'chat-status-text' + (current.state === 'run' ? ' chat-status-running' : '');
