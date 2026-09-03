@@ -20,6 +20,7 @@ function load(action) {
     case 'fashion-create': return require('./_lib/fashion-create.js');
     case 'fashion-suggest': return require('./_lib/fashion-suggest.js');
     case 'studio-create': return require('./_lib/studio-create.js');
+    case 'studio-preview': return require('./_lib/studio-preview.js');
     case 'studio-suggest': return require('./_lib/studio-suggest.js');
     case 'portrait-style': return require('./_lib/portrait-style.js');
     case 'analyze-zip': return require('./_lib/analyze-zip.js');

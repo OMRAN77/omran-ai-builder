@@ -195,6 +195,10 @@
       "destination": "/api/tools?action=studio-create"
     },
     {
+      "source": "/api/studio-preview",
+      "destination": "/api/tools?action=studio-preview"
+    },
+    {
       "source": "/api/studio-suggest",
       "destination": "/api/tools?action=studio-suggest"
     },
