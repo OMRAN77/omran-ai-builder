@@ -69,3 +69,21 @@ html[lang="ar"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto img.stp3d.toolPhot
 }
 html[lang="ar"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.toolPhotoCard .btnLabel{display:none!important;}
 html[lang="ar"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto:not(.toolPhotoCard) .btnLabel{min-height:0;padding:6px 6px 9px;}
+/* v-tools-card-is-photo (لقطة المالك: إطار البطاقة يظهر فوق إطار الصورة
+   المطبوع فتبدو «صورة فوق صورة»): صورة القسم هي البطاقة كلها — لا إطار ولا
+   خلفية ولا حشو من الزرّ، والصورة بعرض البطاقة كاملًا بزواياها المطبوعة. */
+html[lang="ar"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.toolPhotoCard,
+html[lang="ar"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.toolPhotoCard:hover{
+  border:none!important;
+  background:transparent!important;
+  padding:0!important;
+  border-radius:14px!important;
+  box-shadow:none!important;
+  overflow:visible;
+}
+html[lang="ar"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.toolPhotoCard img.stp3d.toolPhotoImage{
+  display:block!important;
+  width:100%!important;
+  height:auto!important;
+  border-radius:14px!important;
+}
