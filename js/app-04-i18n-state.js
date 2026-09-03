@@ -813,10 +813,12 @@ function chatsServerSave(){
     try{ __chatsPushNow(); }catch(e){ __swallow(e, "sync:app-04-i18n-state#24"); }
   });
 }
-window.appFullCleanup = function(){
+window.appFullCleanup = async function(){
   var msg = 'سيتم حذف كل المحادثات والمشاريع نهائيًا. هل أنت متأكد؟';
   try{ var m = (typeof t === 'function') ? t('acctCleanupConfirm') : ''; if(m && m !== 'acctCleanupConfirm') msg = m; }catch(e){ __swallow(e, "misc:app-04-i18n-state#25"); }
-  if(!confirm(msg)) return;
+  if(typeof window.omranConfirmDelete === 'function'){
+    if(!(await window.omranConfirmDelete({ message: msg, itemLabel: 'كل المحادثات والمشاريع' }))) return;
+  } else if(!confirm(msg)) return;
   try{ clearTimeout(__chatsSyncTimer); }catch(e){ __swallow(e, "sync:app-04-i18n-state#26"); }
   window.__chatsMergeDone = false;
   var token = '';
