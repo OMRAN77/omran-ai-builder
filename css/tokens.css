@@ -361,7 +361,10 @@
   #sectionsToolsOverlay.show{display:flex;}
   #sectionsToolsPopup{width:100%; max-width:none; height:100%; max-height:none; overflow-y:auto; background:var(--panel,#141420); border:none; border-radius:0; padding:calc(10px + env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom));}
   @media (min-width: 761px){ #sectionsToolsOverlay{align-items:center; padding:20px;} #sectionsToolsPopup{max-width:560px; height:auto; max-height:82vh; border:1px solid var(--omGoldSoft); border-radius:var(--r-4); padding:14px 14px 18px;} }
-  #sectionsToolsPopup .stpClose{display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); color:#ccc; margin:0 0 4px auto; cursor:pointer;}
+  /* v-tools-x-fixed (شكوى المالك: «X مش ثابت نفس المكان»): زر الإغلاق كان يقلب
+     جهته مع اتجاه اللغة (يمين بالعربي، يسار بالإنجليزي) على التابلت والحاسوب.
+     margin-right:auto يدفعه إلى اليسار فعليًّا في الاتجاهين — نفس ركن الجوال. */
+  #sectionsToolsPopup .stpClose{display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); color:#ccc; margin:0 auto 4px 0; cursor:pointer;}
   html[dir="ltr"] #sectionsToolsPopup .stpClose{margin:0 auto 4px 0;}
   #sectionsToolsPopup .ptGrid .btn img.stp3d{width:34px; height:34px; object-fit:contain; pointer-events:none;}
   #sectionsToolsPopup .ptGrid .btn.has3d svg{display:none;}
