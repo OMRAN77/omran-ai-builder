@@ -50,3 +50,22 @@ html:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto img.stp3d.to
   #sectionsToolsPopup .ptGrid .btn.hasToolPhoto img.stp3d.toolPhotoImage{height:68px!important;flex-basis:68px!important;}
   #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .btnLabel{min-height:35px;padding:6px 4px 7px;font-size:10.5px;}
 }
+/* v-tools-fullcard (لقطة المالك بالعربية): صور الأقسام بطاقات كاملة بعنوانها
+   ووصفها وسهمها — تُعرض كاملة بلا قصّ وبلا عنوان نصّي تحتها، ثلاثة في الصف.
+   البطاقات الإبداعية السبع صورها بلا عنوان مطبوع فيبقى عنوانها تحتها.
+   خارج العربية يبقى العرض السابق (العنوان المطبوع عربي). */
+html[lang="ar"] #sectionsToolsPopup .ptGrid{align-items:start;}
+html[lang="ar"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto{
+  min-height:0!important;
+  height:auto!important;
+  border-radius:14px!important;
+  background:#070709!important;
+}
+html[lang="ar"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto img.stp3d.toolPhotoImage{
+  height:auto!important;
+  flex:0 0 auto!important;
+  object-fit:contain!important;
+  object-position:center!important;
+}
+html[lang="ar"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.toolPhotoCard .btnLabel{display:none!important;}
+html[lang="ar"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto:not(.toolPhotoCard) .btnLabel{min-height:0;padding:6px 6px 9px;}

@@ -40,6 +40,8 @@
         button.insertBefore(oldImage, button.firstChild);
       }
       button.classList.add('has3d', 'hasToolPhoto');
+      /* v-tools-fullcard: صور الأقسام بطاقات كاملة بعنوانها المطبوع — تُميَّز ليُخفى عنوانها النصي بالعربية */
+      if(src.indexOf('/sections/') !== -1) button.classList.add('toolPhotoCard');
     };
     preload.onerror = function(){ /* Keep the existing icon when a photo cannot load. */ };
     preload.src = src;
