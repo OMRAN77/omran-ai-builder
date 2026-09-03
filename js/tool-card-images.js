@@ -22,9 +22,24 @@
     btnEmailAssist: '/assets/tool-cards/sections/email.png?v=2'
   };
 
+  /* v-tools-owner-cards: بالعربية تُعرض بطاقات المالك الجاهزة (صورة كاملة
+     بعنوانها ووصفها وسهمها) مقصوصةً من تصميمه حرفيًا — كلّ الثماني عشرة.
+     خارج العربية تبقى الصور السابقة مع العنوان النصّي. */
+  var FULL_AR_IDS = ['btnVideoMaker','btnQuickTemplates','btnPortraitStyle','btnStudioAI','btnFashionAI','btnDesignAI','btnAdStudio','btnStocks','btnOmranTV','btnQibla','btnExpense','btnOmranEdu','btnConstruction','btnReligion','btnCV','btnDocs','btnFeedback','btnEmailAssist'];
+  function isAr(){ return String(document.documentElement.lang || 'ar').toLowerCase().indexOf('ar') === 0; }
+  function srcFor(id){
+    if(isAr() && FULL_AR_IDS.indexOf(id) !== -1) return '/assets/tool-cards/full/' + id + '.png?v=1';
+    return TOOL_PHOTOS[id];
+  }
+
   function upgradeButton(id, src){
     var button = document.getElementById(id);
-    if(!button || button.classList.contains('hasToolPhoto')) return;
+    if(!button) return;
+    var cur = button.querySelector('img.stp3d.toolPhotoImage');
+    if(button.classList.contains('hasToolPhoto')){
+      if(cur && cur.getAttribute('src') !== src){ cur.src = src; button.classList.toggle('toolPhotoCard', src.indexOf('/full/') !== -1 || src.indexOf('/sections/') !== -1); }
+      return;
+    }
     var oldImage = button.querySelector('img.stp3d');
     var preload = new Image();
     preload.onload = function(){
@@ -40,16 +55,17 @@
         button.insertBefore(oldImage, button.firstChild);
       }
       button.classList.add('has3d', 'hasToolPhoto');
-      /* v-tools-fullcard: صور الأقسام بطاقات كاملة بعنوانها المطبوع — تُميَّز ليُخفى عنوانها النصي بالعربية */
-      if(src.indexOf('/sections/') !== -1) button.classList.add('toolPhotoCard');
+      /* بطاقة كاملة بعنوان مطبوع → يُخفى عنوانها النصي بالعربية (CSS) */
+      if(src.indexOf('/full/') !== -1 || src.indexOf('/sections/') !== -1) button.classList.add('toolPhotoCard');
     };
     preload.onerror = function(){ /* Keep the existing icon when a photo cannot load. */ };
     preload.src = src;
   }
 
   function applyToolPhotos(){
-    Object.keys(TOOL_PHOTOS).forEach(function(id){ upgradeButton(id, TOOL_PHOTOS[id]); });
+    Object.keys(TOOL_PHOTOS).forEach(function(id){ upgradeButton(id, srcFor(id)); });
   }
+  try{ new MutationObserver(applyToolPhotos).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* بلا مراقب: تُطبَّق عند التحميل فقط */ }
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyToolPhotos, { once:true });
   else applyToolPhotos();
