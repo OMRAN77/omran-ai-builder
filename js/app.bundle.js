@@ -17021,12 +17021,19 @@ function __showImgLoading(el, ar, en){
        ارسم صورة») بلا أي فعل تعديل وبلا إشارة للمرفق = توليد جديد نظيف
        يتجاهل المرفق، إلّا لو كتب المستخدم فعل تعديل صريح أو أشار للصورة. */
     const __refersAttachment = /هذه?\s*الصور|هذي\s*الصور|هالصور|علي?ها|في?ها|من?ها|نفس\s*(?:الصور|الشكل|هذ)|\bthis\s*(?:image|picture|photo)\b|\bit\b/i.test(text || '');
+    /* v-style-word-edit (رد «زفت»: «3d» مع صورة راح للنموذج النصي فشرح أي أداة
+       تُستعمل بدل التنفيذ): كلمة أسلوب قصيرة مع صورة مرفقة — أو بعد صورة
+       معدّلة للتو — = تحويل أسلوب فوري في محرر الصور، بلا حاجة لفعل «عدّل». */
+    const __STYLE_RE = /(^|[\s،,])(3d|ثلاثي|مجسم|مجسّم|كرتون|كارتون|أنيمي|انمي|بيكسار|ديزني|زيتي|مائي|رصاص|بكسل|بيكسل|سايبر|نيون|كوميك|كومكس|مانجا|فانتازيا|واقعي|ستايل|أسلوب|اسلوب|نمط|anime|cartoon|pixar|disney|pixel|cyberpunk|neon|comic|manga|fantasy|watercolor|sketch|realistic|render|style)(?=$|[\s،,.!?؟])/i;
+    const __styleShort = !!(text && text.length <= 80 && __STYLE_RE.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !/[؟?]\s*$/.test(text));
+    const __ATT_STYLE = !!(__srcImg && !__srcImg._fromMemory && __styleShort);
+    const __STYLE_FOLLOW = !!(!__srcImg && __styleShort && cur.lastEditedImage && cur.lastEditedImage.b64 && cur.lastMsgWasImageEdit);
     const __freshGenWins = !!(text && __srcImg && !__srcImg._fromMemory
       && __imgGenIntentRe.test(text)
       && !__imgEditRe.test(text) && !__IMG_UPGRADE && !__IMG_FOLLOW && !__ATT_EDIT
       && !__refersAttachment && !__cardTidyIntent(text)
       && !/(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|للتواصل|poster|logo|banner|certificate|card|invitation)/i.test(text));
-    if(!__freshGenWins && text && !cur.adMode && !__isSupportQ && (__IMG_UPGRADE || __IMG_FOLLOW || __ATT_EDIT || (__srcImg && !__srcImg._fromMemory && __cardTidyIntent(text)) || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || (__IMG_UPGRADE && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
+    if(!__freshGenWins && text && !cur.adMode && !__isSupportQ && (__IMG_UPGRADE || __IMG_FOLLOW || __ATT_EDIT || __ATT_STYLE || __STYLE_FOLLOW || (__srcImg && !__srcImg._fromMemory && __cardTidyIntent(text)) || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || __STYLE_FOLLOW || (__IMG_UPGRADE && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
       __showImgLoading(thinkingDiv, __IMG_UPGRADE ? 'جاري ترقية المشهد…' : 'جاري تعديل الصورة…', __IMG_UPGRADE ? 'Upgrading the scene…' : 'Editing image…');
       const __upgSrc = (!__srcImg && __IMG_UPGRADE && !(cur.lastEditedImage && cur.lastEditedImage.b64)) ? __IMG_UPGRADE_SRC : null;
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : (__upgSrc ? ((__upgSrc.dataUrl || '').split(',')[1] || '') : ((cur.lastEditedImage && cur.lastEditedImage.b64) || ''));
