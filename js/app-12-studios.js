@@ -1792,7 +1792,7 @@ function stuL(ar, en){
       const token = localStorage.getItem('aiapp_auth_token');
       const r = await fetch('/api/email-list', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ token, lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar' }),
       });
       const d = await r.json();
       if(!r.ok){
@@ -1805,7 +1805,8 @@ function stuL(ar, en){
         throw new Error(d.error || 'load failed');
       }
       gmailLabel.textContent = d.gmailAddress || '';
-      setStatus('');
+      // v-email-scope: الخادم يشرح نطاق ما عرضه (أو أن الوارد فارغ) بدل الصمت.
+      setStatus(d.note || '');
       lastLoadedEmails = d.emails || [];
       renderEmails(d.emails);
     }catch(e){
