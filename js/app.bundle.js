@@ -21321,6 +21321,7 @@ async function __safeJson(res){
   const decorAccessoriesEl = $('#designAiDecorAccessories');
   const statusEl = $('#designAiStatus');
   const resultEl = $('#designAiResult');
+  const resultWrap = $('#designAiResultWrap'); /* v-decor-fix: كان غير معرّف فيرمي ReferenceError عند كل ضغطة «صمم الغرفة» */
   const downloadEl = $('#designAiDownloadLink');
   if(!modal || !btnOpen) return;
 
@@ -21396,8 +21397,39 @@ async function __safeJson(res){
   }
 
   let variantSrc = null;
+  /* v-decor-ideas: أفكار بلا صورة — رقائق لأنواع الأماكن + سطر حرّ «اكتب ما تريد» */
+  const ideaChips = document.getElementById('designAiIdeaChips');
+  const ideaText = document.getElementById('designAiIdeaText');
+  const ideaGo = document.getElementById('designAiIdeaGo');
+  const ideaTitle = document.getElementById('designAiIdeasTitle');
+  function buildIdeaChips(){
+    if(!ideaChips || !placeEl) return;
+    ideaChips.innerHTML = '';
+    Array.prototype.forEach.call(placeEl.options, function(o){
+      if(!o.value) return;
+      const c = document.createElement('button');
+      c.type = 'button'; c.className = 'btn'; c.dataset.place = o.value;
+      c.style.cssText = 'width:auto; padding:6px 11px; font-size:12.5px; border-radius:999px;';
+      c.textContent = (window.__optT ? window.__optT(o) : o.textContent).trim();
+      c.onclick = function(){ placeEl.value = o.value; if(ideaText) ideaText.value = ''; btnGenerate.onclick(); };
+      ideaChips.appendChild(c);
+    });
+    if(ideaTitle) ideaTitle.textContent = '💡 ' + bT('أفكار بلا صورة — اختر نوع المكان أو اكتب ما تريد', 'Ideas without a photo — pick a place or describe what you want');
+    if(ideaText) ideaText.placeholder = bT('مثال: مجلس عربي فخم لعشرين شخصًا', 'e.g. a luxurious Arabic majlis for twenty guests');
+    if(ideaGo) ideaGo.textContent = '✨ ' + bT('أعطني أفكارًا', 'Give me ideas');
+  }
+  buildIdeaChips();
+  if(ideaGo) ideaGo.onclick = function(){
+    const v = ideaText ? ideaText.value.trim() : '';
+    if(!v){ setStatus(bT('اكتب ما تريد أو اختر نوع المكان.', 'Describe what you want or pick a place.')); return; }
+    if(placeEl) placeEl.value = '';
+    btnGenerate.onclick();
+  };
+  if(ideaText) ideaText.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); if(ideaGo) ideaGo.onclick(); } });
+
   btnGenerate.onclick = async () => {
-    const placeVal = placeEl ? placeEl.value : '';
+    const idea = ideaText ? ideaText.value.trim() : '';
+    const placeVal = (placeEl ? placeEl.value : '') || (idea && !selectedBase64 ? 'custom' : '');
     const notesEl = document.getElementById('designAiNotes');
     if(!selectedBase64 && !placeVal){
       setStatus(t('designAiNeedPick'));
@@ -21428,7 +21460,7 @@ async function __safeJson(res){
           mimeType: selectedMime,
           place: placeVal,
           count: selectedBase64 ? 1 : 4,
-          notes: notesEl ? String(notesEl.value || '').slice(0, 400) : '',
+          notes: ((placeVal && idea ? idea + '. ' : '') + (notesEl ? String(notesEl.value || '') : '')).slice(0, 400),
           variantOf: variantSrc || '',
           style: styleEl.value,
           lighting: lightingEl ? lightingEl.value : '',

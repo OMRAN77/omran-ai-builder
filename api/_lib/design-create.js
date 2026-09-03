@@ -213,7 +213,8 @@ module.exports = async (req, res) => {
         res.status(500).json({ error: 'Server is missing OPENAI_API_KEY' });
         return;
       }
-      const placeDesc = PLACE_PROMPTS[place];
+      // v-decor-ideas: «custom» = مكان يصفه المستخدم بكلماته (مجلس لعشرين شخصًا…) بلا صورة
+      const placeDesc = place === 'custom' ? (notesText ? 'an interior space exactly as the user describes' : null) : PLACE_PROMPTS[place];
       if (!placeDesc) {
         res.status(400).json({ error: 'Unknown place' });
         return;

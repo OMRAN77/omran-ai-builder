@@ -229,6 +229,15 @@
       <button type="button" class="btn iconBtn" id="designAiCloseBtn" style="padding:4px 10px;">✕</button>
     </div>
     <p style="font-size:12.5px; color:var(--muted); margin-top:2px;" data-i18n="designAiDesc">ارفع صورة لغرفتك واختر نمط الديكور، وسيقوم الذكاء الاصطناعي بإعادة تصميمها. ميزة قيد التجربة بحد أقصى قليل يوميًا لكل حساب.</p>
+    <!-- v-decor-ideas (طلب المالك): أفكار جاهزة بلا صورة — يختار نوع المكان بلمسة أو يكتب ما يريد -->
+    <div id="designAiIdeas" style="margin:10px 0 4px; padding:10px 12px; border:1px solid var(--omGoldSoft,rgba(212,175,55,.35)); border-radius:14px; background:rgba(212,175,55,.06);">
+      <div id="designAiIdeasTitle" style="font-size:13px; font-weight:700; margin-bottom:8px;">💡 أفكار بلا صورة — اختر نوع المكان أو اكتب ما تريد</div>
+      <div id="designAiIdeaChips" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;"></div>
+      <div style="display:flex; gap:6px; align-items:stretch;">
+        <input id="designAiIdeaText" type="text" maxlength="200" style="flex:1; min-width:0; padding:9px 10px; border-radius:10px; border:1px solid var(--border,rgba(255,255,255,.14)); background:rgba(255,255,255,.04); color:inherit; font-family:inherit;" placeholder="مثال: مجلس عربي فخم لعشرين شخصًا">
+        <button type="button" class="btn primary" id="designAiIdeaGo" style="width:auto; white-space:nowrap;">✨ أعطني أفكارًا</button>
+      </div>
+    </div>
 
     <div style="margin-top:12px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="designAiPlaceLabel">نوع المكان</label>
