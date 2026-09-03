@@ -110,7 +110,33 @@ function setActiveWord(wordEls, idx){
 // "## heading" lines get the '#' markers hidden + a heading class, and
 // "**bold**" spans get their asterisks stripped + a bold class. This never
 // changes which token maps to which span, only how that span looks.
+/* v-md-table (لقطة المالك: صف جدول ظهر بعلامات | خامًا فوق الرد): راسم الفقاعة
+   يقطّع الكلمات للقراءة الصوتية ولا يفهم جداول الماركداون. الجدول يتحوّل إلى
+   سطور مرتبة تناسب عرض الجوال: صف العناوين سطر بارز، وكل صف نقطة أول خليتها
+   بارزة وبقية الخلايا بعد «—». يعمل في البث وفي الرد النهائي معًا. */
+function mdTablesToLines(text){
+  const lines = String(text || '').split('\n');
+  const out = [];
+  const isSep = (l) => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(l || '');
+  for(let i = 0; i < lines.length; i++){
+    const l = lines[i];
+    if(/^\s*\|.*\|\s*$/.test(l)){
+      if(isSep(l)) continue;
+      const cells = l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+      while(cells.length && cells[cells.length - 1] === '') cells.pop();
+      if(!cells.length) continue;
+      if(isSep(lines[i + 1])){ out.push('**' + cells.map(c => c.replace(/\*\*/g, '')).join(' · ') + '**'); continue; }
+      const first = cells[0].replace(/\*\*/g, '');
+      const rest = cells.slice(1).filter(Boolean);
+      out.push('• **' + first + '**' + (rest.length ? ' — ' + rest.join(' — ') : ''));
+      continue;
+    }
+    out.push(l);
+  }
+  return out.join('\n');
+}
 function buildSpokenWordSpans(container, text){
+  text = mdTablesToLines(text); // v-md-table
   // بعض الردود تفصل عنوان المصدر عن رابطه بسطر جديد:
   // [عنوان المصدر]\nhttps://example.com — نعيده إلى ماركداون صالح
   // قبل التقسيم كي يصير رابطًا نظيفًا ويُجمع تحت زر «المصادر».
