@@ -27,10 +27,11 @@ async function putJson(key, value) {
 
 function todayStr(d) { return d.toISOString().slice(0, 10); }
 
-async function fetchPrayerTimeMs(lat, lng, prayerName, dateStr) {
+async function fetchPrayerTimeMs(lat, lng, prayerName, dateStr, method) {
   try {
-    const url = `https://api.aladhan.com/v1/timings/${dateStr}?latitude=${lat}&longitude=${lng}&method=2`;
-    const r = await fetch(url);
+    const m = Number.isFinite(method) ? method : 4; /* v-prayer-method: نفس طريقة الشاشة (الافتراضي أم القرى) */
+    const url = `https://api.aladhan.com/v1/timings/${dateStr}?latitude=${lat}&longitude=${lng}&method=${m}`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(20000) });
     if (!r.ok) return null;
     const data = await r.json();
     const timings = data && data.data && data.data.timings;
@@ -138,14 +139,16 @@ module.exports = async (req, res) => {
         }
       } else if (r.type === 'prayer') {
         if (r.cachedDate !== today) {
-          const targetMs = await fetchPrayerTimeMs(r.lat, r.lng, r.prayerName, today);
+          const targetMs = await fetchPrayerTimeMs(r.lat, r.lng, r.prayerName, today, r.method);
           if (targetMs != null) {
             r.cachedDate = today;
             r.cachedTargetMs = targetMs - (r.offsetMinutes || 0) * 60000;
             changed = true;
           }
         }
-        if (r.cachedTargetMs && r.lastSentDate !== today && nowMs >= r.cachedTargetMs && nowMs - r.cachedTargetMs < 90000) {
+        // v-prayer-window: النبض يأتي من التطبيقات المفتوحة فقط وقد يتأخر (خلفية/خمول)؛
+        // نافذة 10 دقائق تُوصل تنبيهًا متأخرًا قليلًا بدل إسقاطه كليًا.
+        if (r.cachedTargetMs && r.lastSentDate !== today && nowMs >= r.cachedTargetMs && nowMs - r.cachedTargetMs < 10 * 60000) {
           dueNow = true;
         }
       }
