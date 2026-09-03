@@ -362,9 +362,11 @@ function showLessons(subject,lessons){
     };
   });
   body.querySelectorAll('[data-del]').forEach(function(btn){
-    btn.onclick=function(e){
+    btn.onclick=async function(e){
       e.stopPropagation();
-      if(!confirm(T('confirmDel'))) return;
+      var lessonTitle='';
+      try{var lessonMatch=(lessons||[]).find(function(x){return String(x.id)===String(btn.getAttribute('data-del'))});lessonTitle=lessonMatch&&lessonMatch.title||''}catch(_){}
+      if(!(await window.omranConfirmDelete({message:T('confirmDel'),itemLabel:lessonTitle||T('del')}))) return;
       deleteLesson(btn.getAttribute('data-del')).then(function(){
         listLessons().then(function(r){
           var left=(r.lessons||[]).filter(function(l){return (l.subject||'—')===subject;});
