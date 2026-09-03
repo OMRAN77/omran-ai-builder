@@ -28,7 +28,7 @@
   var FULL_AR_IDS = ['btnVideoMaker','btnQuickTemplates','btnPortraitStyle','btnStudioAI','btnFashionAI','btnDesignAI','btnAdStudio','btnStocks','btnOmranTV','btnQibla','btnExpense','btnOmranEdu','btnConstruction','btnReligion','btnCV','btnDocs','btnFeedback','btnEmailAssist'];
   function isAr(){ return String(document.documentElement.lang || 'ar').toLowerCase().indexOf('ar') === 0; }
   function srcFor(id){
-    if(isAr() && FULL_AR_IDS.indexOf(id) !== -1) return '/assets/tool-cards/full/' + id + '.png?v=1';
+    if(isAr() && FULL_AR_IDS.indexOf(id) !== -1) return '/assets/tool-cards/full/' + id + '.png?v=2';
     return TOOL_PHOTOS[id];
   }
 
