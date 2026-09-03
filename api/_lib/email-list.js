@@ -113,6 +113,7 @@ async function draftReply(fromName, subject, bodyText, styleProfile) {
     const r = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
+      signal: AbortSignal.timeout(25000), // v-email-alive: نداء معلّق لا يعلّق القائمة كلها
       body: JSON.stringify({
         store: false,
         model: 'gpt-4o-mini',
@@ -157,13 +158,31 @@ module.exports = async (req, res) => {
     if (!refreshToken) { res.status(400).json({ error: 'تعذر قراءة صلاحية Gmail، أعد الربط', notConnected: true }); return; }
 
     const accessToken = await getAccessToken(refreshToken);
-    const styleProfile = await getStyleProfile(accessToken, user, username);
-    const listRes = await fetch(
-      'https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&q=' +
-      encodeURIComponent('in:inbox -in:chats -category:promotions -category:social newer_than:7d'),
-      { headers: { Authorization: 'Bearer ' + accessToken } }
-    );
-    const listData = await listRes.json();
+    /* v-email-alive (شكوى المالك «البريد شغال لكن لا يعمل»): ملف الأسلوب كان
+       يُنتظر قبل جلب الوارد (٨ رسائل متسلسلة + نداء ذكاء) — الآن بالتوازي. */
+    const [styleProfile, listRes] = await Promise.all([
+      getStyleProfile(accessToken, user, username),
+      fetch(
+        'https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&q=' +
+        encodeURIComponent('in:inbox -in:chats -category:promotions -category:social newer_than:7d'),
+        { headers: { Authorization: 'Bearer ' + accessToken } }
+      ),
+    ]);
+    const listData = await listRes.json().catch(() => ({}));
+    /* v-email-alive: خطأ Gmail API كان يُبتلع صامتًا (messages غائبة ⇒ قائمة
+       فارغة تبدو «لا يعمل»). أشهر سبب: Gmail API غير مفعّل في مشروع Google
+       Cloud رغم نجاح الربط — يُقال بوضوح مع رابط التفعيل. */
+    if (!listRes.ok || (listData && listData.error)) {
+      const gm = String((listData && listData.error && listData.error.message) || ('HTTP ' + listRes.status));
+      const disabled = /has not been used|is disabled|not enabled|accessNotConfigured|SERVICE_DISABLED/i.test(gm);
+      res.status(502).json({
+        error: disabled
+          ? 'Gmail API غير مفعّل في مشروع Google Cloud — فعّله من: https://console.cloud.google.com/apis/library/gmail.googleapis.com ثم أعد المحاولة بعد دقيقة.'
+          : 'Gmail: ' + gm.slice(0, 200),
+        gmailApiDisabled: disabled,
+      });
+      return;
+    }
     const ignoreList = user.emailAssist.ignoreList || [];
     const msgs = listData.messages || [];
 
@@ -174,22 +193,23 @@ module.exports = async (req, res) => {
       return msgRes.json();
     }));
 
-    const results = [];
-    for (const msg of detailed) {
-      if (!msg || !msg.payload) continue;
+    /* v-email-alive: المسودات كانت متسلسلة (١٠ نداءات ذكاء واحدًا بعد الآخر
+       ≈ دقيقة) — الآن بالتوازي فتصل القائمة في ثوانٍ. */
+    const results = (await Promise.all(detailed.map(async (msg) => {
+      if (!msg || !msg.payload) return null;
       const headers = msg.payload.headers || [];
       const from = (headers.find((h) => h.name === 'From') || {}).value || '';
       const subject = (headers.find((h) => h.name === 'Subject') || {}).value || '(بدون عنوان)';
       const messageIdHeader = (headers.find((h) => h.name === 'Message-ID' || h.name === 'Message-Id') || {}).value || '';
-      if (ignoreList.some((pattern) => from.toLowerCase().includes(String(pattern).toLowerCase()))) continue;
+      if (ignoreList.some((pattern) => from.toLowerCase().includes(String(pattern).toLowerCase()))) return null;
       let bodyText = extractPlainText(msg.payload) || msg.snippet || '';
       bodyText = stripHtml(bodyText);
       const ai = await draftReply(from, subject, bodyText, styleProfile);
-      results.push({
+      return {
         id: msg.id, threadId: msg.threadId, messageIdHeader, from, subject,
         snippet: msg.snippet || '', priority: ai.priority, lang: ai.lang, draft: ai.draft, meeting: ai.meeting || null,
-      });
-    }
+      };
+    }))).filter(Boolean);
     const order = { urgent: 0, normal: 1, low: 2 };
     results.sort((a, b) => (order[a.priority] ?? 1) - (order[b.priority] ?? 1));
 

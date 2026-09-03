@@ -20,8 +20,10 @@ function reqOrigin(req) {
 const emailRedirectUri = (req) => reqOrigin(req) + '/api/email-callback';
 
 module.exports = async (req, res) => {
+  /* v-email-alive: العودة للتطبيق بمضيف الطلب نفسه (كما redirect_uri) — لا
+     بـSITE_URL الذي قد يشير لنطاق آخر فيهبط المستخدم خارج تطبيقه. */
   const fail = (reason) => {
-    res.writeHead(302, { Location: siteUrl() + '/?emailerror=' + encodeURIComponent(reason) });
+    res.writeHead(302, { Location: reqOrigin(req) + '/?emailerror=' + encodeURIComponent(reason) });
     res.end();
   };
   try {
@@ -62,7 +64,7 @@ module.exports = async (req, res) => {
       connectedAt: Date.now(),
     };
     await putUser(username, user);
-    res.writeHead(302, { Location: siteUrl() + '/?emailconnected=1' });
+    res.writeHead(302, { Location: reqOrigin(req) + '/?emailconnected=1' });
     res.end();
   } catch (e) {
     fail('server_error');
