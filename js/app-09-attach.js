@@ -812,8 +812,10 @@ emojiPickerEl.addEventListener('click', e => {
   const t = e.target.closest('.em');
   if (!t) return;
   const promptEl = $('#prompt');
-  const start = promptEl.selectionStart ?? promptEl.value.length;
-  const end = promptEl.selectionEnd ?? promptEl.value.length;
+  // v-old-webview (رفض هواوي 4.1 على EMUI 8.1/10): «??» و«?.» صياغة لا تفهمها
+  // متصفحات الأجهزة القديمة فتموت الحزمة كلها ويبقى للمراجع شاشة واحدة.
+  const start = (promptEl.selectionStart != null) ? promptEl.selectionStart : promptEl.value.length;
+  const end = (promptEl.selectionEnd != null) ? promptEl.selectionEnd : promptEl.value.length;
   promptEl.value = promptEl.value.slice(0, start) + t.textContent + promptEl.value.slice(end);
   const newPos = start + t.textContent.length;
   promptEl.focus();
@@ -2253,7 +2255,7 @@ async function sendPrompt(){
   let cur = getCurrent();
   if(!cur){
     const id = 'p_' + Date.now();
-    cur = {id, title: (text || pendingAttachments[0]?.name || 'مشروع').slice(0, 30), messages: [], code: '', codeType: 'html'};
+    cur = {id, title: (text || (pendingAttachments[0] && pendingAttachments[0].name) || 'مشروع').slice(0, 30), messages: [], code: '', codeType: 'html'};
     state.projects.push(cur);
     state.currentId = id;
   }
@@ -2262,7 +2264,7 @@ async function sendPrompt(){
     __editReq.index >= 0 && __editReq.index < cur.messages.length && cur.messages[__editReq.index].role === 'user') ? __editReq.index : -1;
   const __editedOriginal = __editIndex >= 0 ? cur.messages[__editIndex] : null;
   if(cur.messages.length === 0){
-    cur.title = (text || pendingAttachments[0]?.name || 'مشروع').slice(0, 30);
+    cur.title = (text || (pendingAttachments[0] && pendingAttachments[0].name) || 'مشروع').slice(0, 30);
   }
 
   // عند إعادة التوليد نعيد استخدام مرفقات السؤال الأصلي؛ وعند التحرير مع

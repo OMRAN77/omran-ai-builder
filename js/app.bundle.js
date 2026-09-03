@@ -73,6 +73,28 @@ function safeParseLS(key, fallback){
   if(raw !== null && raw !== ''){ try{ localStorage.removeItem(key); }catch(e){ window.__swallow(e, 'parse:purge:' + key); } }
   return fallback;
 }
+
+/* v-old-webview (رفض هواوي 4.1 — المراجعة على Mate 30 Pro/EMUI 10 وP20/EMUI 8.1):
+   متصفحات هذه الأجهزة أقدم من Chrome 80: بلا AbortSignal.timeout ولا
+   Promise.allSettled ولا flatMap — فتسقط الميزات التي تستعملها بصمت. بدائل
+   خفيفة تُركَّب فقط عند غيابها؛ المتصفحات الحديثة لا تُمسّ. */
+(function(){
+  try{
+    if(typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout !== 'function'){
+      AbortSignal.timeout = function(ms){ var c = new AbortController(); setTimeout(function(){ try{ c.abort(); }catch(e){ /* guard-ok */ } }, ms); return c.signal; };
+    }
+    if(typeof Promise !== 'undefined' && typeof Promise.allSettled !== 'function'){
+      Promise.allSettled = function(list){ return Promise.all(Array.from(list).map(function(p){ return Promise.resolve(p).then(function(v){ return { status: 'fulfilled', value: v }; }, function(e){ return { status: 'rejected', reason: e }; }); })); };
+    }
+    if(!Array.prototype.flatMap){
+      Object.defineProperty(Array.prototype, 'flatMap', { configurable: true, writable: true, value: function(fn, thisArg){ var out = []; for(var i = 0; i < this.length; i++){ var r = fn.call(thisArg, this[i], i, this); if(Array.isArray(r)) out.push.apply(out, r); else out.push(r); } return out; } });
+    }
+    if(!Array.prototype.flat){
+      Object.defineProperty(Array.prototype, 'flat', { configurable: true, writable: true, value: function(d){ d = (d === undefined) ? 1 : d; var out = []; for(var i = 0; i < this.length; i++){ var v = this[i]; if(Array.isArray(v) && d > 0) out.push.apply(out, v.flat(d - 1)); else out.push(v); } return out; } });
+    }
+    if(typeof globalThis === 'undefined'){ try{ window.globalThis = window; }catch(e){ /* guard-ok */ } }
+  }catch(e){ /* guard-ok: البدائل ترف — غيابها لا يوقف الإقلاع */ }
+})();
 window.safeParse = safeParse; window.safeParseLS = safeParseLS;
 // ONE-TIME MIGRATION: earlier versions of this app let visitors paste their own
 // provider API keys/models into localStorage for direct (client-side) calls.
@@ -14730,8 +14752,10 @@ emojiPickerEl.addEventListener('click', e => {
   const t = e.target.closest('.em');
   if (!t) return;
   const promptEl = $('#prompt');
-  const start = promptEl.selectionStart ?? promptEl.value.length;
-  const end = promptEl.selectionEnd ?? promptEl.value.length;
+  // v-old-webview (رفض هواوي 4.1 على EMUI 8.1/10): «??» و«?.» صياغة لا تفهمها
+  // متصفحات الأجهزة القديمة فتموت الحزمة كلها ويبقى للمراجع شاشة واحدة.
+  const start = (promptEl.selectionStart != null) ? promptEl.selectionStart : promptEl.value.length;
+  const end = (promptEl.selectionEnd != null) ? promptEl.selectionEnd : promptEl.value.length;
   promptEl.value = promptEl.value.slice(0, start) + t.textContent + promptEl.value.slice(end);
   const newPos = start + t.textContent.length;
   promptEl.focus();
@@ -16171,7 +16195,7 @@ async function sendPrompt(){
   let cur = getCurrent();
   if(!cur){
     const id = 'p_' + Date.now();
-    cur = {id, title: (text || pendingAttachments[0]?.name || 'مشروع').slice(0, 30), messages: [], code: '', codeType: 'html'};
+    cur = {id, title: (text || (pendingAttachments[0] && pendingAttachments[0].name) || 'مشروع').slice(0, 30), messages: [], code: '', codeType: 'html'};
     state.projects.push(cur);
     state.currentId = id;
   }
@@ -16180,7 +16204,7 @@ async function sendPrompt(){
     __editReq.index >= 0 && __editReq.index < cur.messages.length && cur.messages[__editReq.index].role === 'user') ? __editReq.index : -1;
   const __editedOriginal = __editIndex >= 0 ? cur.messages[__editIndex] : null;
   if(cur.messages.length === 0){
-    cur.title = (text || pendingAttachments[0]?.name || 'مشروع').slice(0, 30);
+    cur.title = (text || (pendingAttachments[0] && pendingAttachments[0].name) || 'مشروع').slice(0, 30);
   }
 
   // عند إعادة التوليد نعيد استخدام مرفقات السؤال الأصلي؛ وعند التحرير مع

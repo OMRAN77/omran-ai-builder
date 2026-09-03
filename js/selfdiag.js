@@ -22,6 +22,22 @@
     if(sp) localStorage.setItem('aiapp_store', String(sp).slice(0, 20));
     if((localStorage.getItem('aiapp_store') || '') === 'huawei'){
       document.documentElement.classList.add('store-safe');
+      /* v-store-showcase (رفض هواوي 4.1 «ميزة واحدة»): المراجع فتح التطبيق فرأى
+         شاشة محادثة فقط. في أول تشغيل لحزمة المتجر يُفتح مربع الأدوات تلقائيًّا
+         فيرى الـ٢٠ أداة (صور، فيديو، تلفزيون، تعليم، قبلة…) من أول ثانية.
+         مرة واحدة فقط — ثم يُترك للمستخدم. */
+      if(!localStorage.getItem('aiapp_store_tour')){
+        var __openTour = function(){
+          try{
+            var o = document.getElementById('sectionsToolsOverlay');
+            if(!o) return setTimeout(__openTour, 400);
+            o.classList.add('show');
+            localStorage.setItem('aiapp_store_tour', '1');
+          }catch(e){ /* guard-ok */ }
+        };
+        if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(__openTour, 1800); });
+        else setTimeout(__openTour, 1800);
+      }
     }
   }catch(e){ /* guard-ok: بلا العلامة تبقى النسخة الكاملة */ }
 })();
