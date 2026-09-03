@@ -96,7 +96,10 @@ check(chatServer.includes('tools: toolTurn ? TOOLS : undefined'), 'الأدوا�
 check(chatServer.includes('const toolTurn = !quietSocialTurn;'), 'كل دور غير اجتماعي يحمل الأدوات والتاريخ والموقع');
 check(!chatServer.includes('TOOL_INTENT_RE.test('), 'قائمة الكلمات البيضاء التي حجبت البحث أزيلت');
 check(chatServer.includes('countryNote(country, city)'), 'مدينة المستخدم تدخل توجيه الموقع');
-check(chatServer.includes('اعتمد فيه مدينته'), 'الأسئلة المكانية تعتمد مدينة المستخدم تلقائيًا');
+// v-no-region-assume (قرار المالك «يذكر المنطقة وأنا لست فيها»): مدينة الشبكة تلميح
+// غير مؤكّد — لا تُذكر بالاسم ولا تُقترح بها خدمات، والسؤال المكاني يسأل المستخدم.
+check(chatServer.includes('v-no-region-assume') && chatServer.includes('فاسأل المستخدم عن مدينته') && !chatServer.includes('اعتمد فيه مدينته'), 'الأسئلة المكانية لا تفترض مدينة الشبكة — تسأل المستخدم');
+check(chatServer.includes('function nowNote(tz)') && !chatServer.includes('توقيت الإمارات]'), 'الوقت بمنطقة جهاز المستخدم لا بتوقيت الإمارات');
 check(!chatServer.includes('prepareTurn(') && chatServer.includes('v-one-brain'), 'v-one-brain: لا بحث استباقي في الخادم — النموذج يقرر بنفسه');
 // v-chat-speed: الذاكرة تُقرأ بالتوازي مع فحص الحصة، والمحفزات العامة
 // (اليوم/الآن/حالي) خارج البحث الاستباقي.

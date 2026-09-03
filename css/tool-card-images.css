@@ -35,6 +35,16 @@
   font-weight:700;
   line-height:1.3;
 }
+/* v-photo-caption-crop (لقطة المالك بالتركية: العناوين العربية مطبوعة داخل
+   الصور تحت عنوان تركي): شريط العنوان العربي في أسفل كل صورة (~الربع
+   الأخير) — خارج العربية نكبّر الصورة من أعلاها فيُقصّ الشريط ويبقى المشهد. */
+html:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto img.stp3d.toolPhotoImage{
+  object-position:50% 0!important;
+  width:150%!important;
+  max-width:none!important;
+  margin:0 -25%!important;
+  align-self:center;
+}
 @media (max-width:760px){
   #sectionsToolsPopup .ptGrid .btn.hasToolPhoto{min-height:104px!important;}
   #sectionsToolsPopup .ptGrid .btn.hasToolPhoto img.stp3d.toolPhotoImage{height:68px!important;flex-basis:68px!important;}

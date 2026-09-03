@@ -459,11 +459,16 @@ const OR_MODELS = {
   groq: 'meta-llama/llama-4-maverick',
 };
 
-function nowNote() {
-  const opts = { timeZone: 'Asia/Dubai', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true };
+/* v-no-region-assume (شكوى المالك «يذكر المنطقة وأنا لست فيها»): الوقت كان
+   مثبّتًا على توقيت الإمارات والموقع يُفترض من عنوان الشبكة ويُذكر بالاسم.
+   الآن الوقت بمنطقة الجهاز الزمنية الحقيقية (يرسلها العميل)، والموقع تلميح
+   لا يُعلَن ولا تُقترح به خدمات محلية إلا إذا ذكره المستخدم أو سأل. */
+function nowNote(tz) {
+  const zone = (typeof tz === 'string' && /^[A-Za-z_]+\/[A-Za-z_\/+\-0-9]+$/.test(tz)) ? tz : 'Asia/Dubai';
+  const opts = { timeZone: zone, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true };
   let ar = '';
-  try { ar = new Intl.DateTimeFormat('ar-AE', opts).format(new Date()); } catch (e) { /* Intl غائب — يبقى فارغًا */ }
-  return ar ? ('\n[التاريخ الحقيقي الآن — توقيت الإمارات]: ' + ar + '. تجاهل أي تاريخ من بيانات تدريبك.') : '';
+  try { ar = new Intl.DateTimeFormat('ar', opts).format(new Date()); } catch (e) { try { ar = new Intl.DateTimeFormat('ar', Object.assign({}, opts, { timeZone: 'Asia/Dubai' })).format(new Date()); } catch (e2) { /* يبقى فارغًا */ } }
+  return ar ? ('\n[التاريخ والوقت الآن بتوقيت جهاز المستخدم]: ' + ar + '. تجاهل أي تاريخ من بيانات تدريبك، ولا تذكر اسم بلد أو مدينة عند ذكر الوقت.') : '';
 }
 
 function countryNote(code, cityRaw) {
@@ -472,14 +477,14 @@ function countryNote(code, cityRaw) {
   let city = '';
   try { city = decodeURIComponent(String(cityRaw || '')).trim(); } catch (e) { city = String(cityRaw || '').trim(); }
   const c = (typeof code === 'string' ? code.trim().toUpperCase() : '');
-  if (!/^[A-Z]{2}$/.test(c)) return '\n[الدولة]: افترض أن المستخدم في الإمارات ما لم يذكر غير ذلك.';
+  // v-no-region-assume: لا افتراض دولة عند غياب الرمز.
+  if (!/^[A-Z]{2}$/.test(c)) return '\n[الموقع]: غير معروف — لا تفترض دولة أو مدينة؛ إذا احتاج الجواب مكانًا فاسأل المستخدم عنه.';
   let ar = '';
   try { ar = new Intl.DisplayNames(['ar'], { type: 'region' }).of(c) || ''; } catch (e) { /* رمز لا يعرفه Intl */ }
-  return '\n[الموقع]: المستخدم يتصفّح من ' + (city ? city + '، ' : '') + (ar || c)
-    + ' — أجب بمعلومات هذه الدولة (عملتها، جهاتها الرسمية) ما لم يذكر غيرها.'
-    + (city ? ' وأي سؤال يعتمد على المكان (مواقيت الصلاة، الطقس، أقرب مكان) اعتمد فيه مدينته ' + city + ' تلقائيًّا بلا أن تسأله عنها.' : '')
-    // v-geo-precise: مقيس — «في أي منطقة أنا؟» أُجيب من مدينة الشبكة فأخطأ ١٥-٢٠ كم.
-    + ' تنبيه إلزاميّ: هذه المدينة تقدير من عنوان الشبكة وقد تخطئ عشرات الكيلومترات — إذا سأل المستخدم عن موقعه هو («وين أنا» · «في أي منطقة أنا» · «موقعي») فممنوع الجواب منها؛ استدعِ get_location واذكر الدقّة التي تعيدها.';
+  return '\n[تلميح موقع من الشبكة — ليس مؤكّدًا]: ' + (city ? city + '، ' : '') + (ar || c)
+    + '. هذا تقدير من عنوان الشبكة وقد يكون خاطئًا تمامًا (سفر، VPN، شبكة شركة). قواعد إلزامية: (١) لا تذكر هذه المدينة أو الدولة بالاسم في ردّك ولا تقترح خدمات أو عيادات أو محلات «قريبة في X» من تلقاء نفسك. (٢) إذا احتاج الجواب مكانًا (مواقيت الصلاة، الطقس، أقرب مكان) فاسأل المستخدم عن مدينته بسؤال قصير أو استدعِ get_location بإذنه — ولا تعتمد التقدير إلا إن أكّده المستخدم. (٣) يجوز اعتماد الدولة فقط لاختيار العملة والجهات الرسمية عند الحاجة، بلا تصريح بأنه فيها.'
+    // v-geo-precise: «في أي منطقة أنا؟» أُجيب من مدينة الشبكة فأخطأ ١٥-٢٠ كم.
+    + ' وإذا سأل عن موقعه هو («وين أنا» · «موقعي») فممنوع الجواب منها؛ استدعِ get_location واذكر الدقّة التي تعيدها.';
 }
 
 // 🛰️ v566 — سلسلة الصمود: محرّك معرفة واحد = نقطة فشل واحدة. Tavily سقطت
@@ -964,7 +969,7 @@ module.exports = async (req, res) => {
       : toolTurn
         /* v-clean-slate: كتاب القواعد فُصل كله من النظام — بقي القصير + التاريخ
            والمدينة (حقائق) + ملف المالك + ذاكرة الحساب (تصل ضمن baseSystem). */
-        ? PERSONA_NOTE + '\n' + baseSystem + nowNote() + countryNote(country, city) + ownerKnowledge
+        ? PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz) + countryNote(country, city) + ownerKnowledge
         : PERSONA_NOTE + '\n' + baseSystem;
 
       const convoSource = quietSocialTurn ? [lastUser] : messages;
