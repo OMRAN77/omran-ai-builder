@@ -953,3 +953,39 @@ html.store-safe #aboutStocksCard{display:none !important;}
     box-shadow:0 2px 10px rgba(0,0,0,.4) !important;
   }
 }
+
+/* v-tools-fullpage (طلب المالك ٣ سبتمبر «خلهم صفحة كاملة»): نوافذ الأدوات
+   كانت بطاقات عائمة فوق شاشة الأدوات — الآن كل أداة صفحة كاملة تملأ الشاشة
+   (كما الأسهم والتعليم أصلًا). التلفزيون خارج هذا التعديل. */
+#portraitStyleModal, #videoMakerModal, #designAiModal, #fashionAiModal,
+#studioAiModal, #constructionModal, #religionModal, #emailAssistModal{
+  padding:0 !important;
+  align-items:stretch !important;
+  justify-content:stretch !important;
+  background:var(--panel,#141420) !important;
+}
+#portraitStyleModal > div, #videoMakerModal > div, #designAiModal > div, #fashionAiModal > div,
+#studioAiModal > div, #constructionModal > div, #religionModal > div, #emailAssistModal > div{
+  width:100% !important;
+  max-width:none !important;
+  height:100% !important;
+  max-height:none !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  box-sizing:border-box !important;
+  padding-bottom:calc(28px + env(safe-area-inset-bottom,0px)) !important;
+}
+@media (min-width: 761px){
+  #portraitStyleModal > div, #videoMakerModal > div, #designAiModal > div, #fashionAiModal > div,
+  #studioAiModal > div, #constructionModal > div, #religionModal > div, #emailAssistModal > div{
+    padding-left:max(24px, calc((100vw - 900px) / 2)) !important;
+    padding-right:max(24px, calc((100vw - 900px) / 2)) !important;
+  }
+}
+@media (max-width: 760px){
+  /* زر X المثبّت أعلى يسار الشاشة — نترك له مكانه فوق المحتوى */
+  #portraitStyleModal > div, #videoMakerModal > div, #designAiModal > div, #fashionAiModal > div,
+  #studioAiModal > div, #constructionModal > div, #religionModal > div, #emailAssistModal > div{
+    padding-top:calc(58px + env(safe-area-inset-top,0px)) !important;
+  }
+}
