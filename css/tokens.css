@@ -772,8 +772,8 @@
   .msgMoreMenu button{ display:flex; width:100%; text-align:start; background:none; border:none; padding:9px 10px; border-radius:var(--r-1); cursor:pointer; color:var(--text); font-size: var(--fs-3); }
   .msgMoreMenu button:hover{ background:var(--panel2); }
   .chat-status-fold{font-size:13px; line-height:1.7; opacity:.9; max-width:100%; min-width:0;} /* v-status-tidy: نفس العرض المطويّ على الجوال */
-  .chat-status-fold summary > span:last-child{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .chat-status-fold[open] summary > span:last-child{white-space:normal;}
+  .chat-status-text{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .chat-status-fold[open] .chat-status-text{white-space:normal;}
   .chat-status-fold summary{display:flex; align-items:center; gap:7px; cursor:pointer; list-style:none; width:max-content; max-width:100%;}
   .chat-status-fold summary::-webkit-details-marker{display:none;}
   .chat-status-fold summary::after{content:'⌄'; color:var(--muted); font-size:11px; margin-inline-start:2px;}
@@ -784,6 +784,19 @@
   .chat-status-row{display:flex; align-items:flex-start; gap:7px;}
   .chat-status-row.done>span:first-child{color:#2e9e6b;}
   .chat-status-row.fail>span:first-child{color:#c0453f;}
+  /* v-status-ai: مظهر «الذكاء يكتب» — حبّة ذهبية خفيفة، شرارة نابضة، لمعان يمرّ على النص، ونقاط كتابة */
+  .chat-status-fold summary{padding:7px 13px; border-radius:999px; background:linear-gradient(90deg, rgba(212,175,55,.12), rgba(212,175,55,.03)); border:1px solid rgba(212,175,55,.28); box-shadow:inset 0 0 18px rgba(212,175,55,.06), 0 2px 12px rgba(0,0,0,.18);}
+  .chat-status-fold[open] summary{border-radius:16px;}
+  .chat-status-spark{color:var(--omGold,#d4af37) !important; display:inline-block; animation:omranSpark 1.6s ease-in-out infinite; text-shadow:0 0 8px rgba(212,175,55,.65);}
+  .chat-status-running{animation:none; background:linear-gradient(90deg, var(--muted,#98a0b3) 0%, var(--muted,#98a0b3) 35%, #fff 48%, var(--omGold,#d4af37) 52%, var(--muted,#98a0b3) 65%, var(--muted,#98a0b3) 100%); background-size:240% 100%; -webkit-background-clip:text; background-clip:text; color:transparent; animation:omranShimmer 2.2s linear infinite;}
+  .chat-status-dots{display:inline-flex; gap:3px; align-items:center; margin-inline-start:2px;}
+  .chat-status-dots i{width:4px; height:4px; border-radius:50%; background:var(--omGold,#d4af37); opacity:.35; animation:omranDots 1.2s ease-in-out infinite;}
+  .chat-status-dots i:nth-child(2){animation-delay:.2s;}
+  .chat-status-dots i:nth-child(3){animation-delay:.4s;}
+  @keyframes omranSpark{0%,100%{transform:scale(.85) rotate(0deg); opacity:.75} 50%{transform:scale(1.2) rotate(25deg); opacity:1}}
+  @keyframes omranShimmer{from{background-position:220% 0} to{background-position:-20% 0}}
+  @keyframes omranDots{0%,100%{opacity:.25; transform:translateY(0)} 50%{opacity:1; transform:translateY(-2px)}}
+  @media (prefers-reduced-motion: reduce){ .chat-status-spark, .chat-status-running, .chat-status-dots i{animation:none;} .chat-status-running{color:var(--text,#fff); background:none;} }
   html:not(.mobile-ui) .msg.msg-streaming::after{content:''; display:inline-block; width:6px; height:1em; margin-inline-start:3px; vertical-align:-.15em; border-radius:3px; background:currentColor; opacity:.55; animation:omranPulse 1s ease-in-out infinite;}
 @keyframes omranPulse{0%,100%{opacity:.6}50%{opacity:1}}
   /* v418 (٦ أغسطس): قائمة المزوّدين التسعة مخفيّة على الكمبيوتر — التوجيه صار تلقائيًّا بالتخصص.

@@ -13971,11 +13971,20 @@ function makeChatStatus(el){
     const summary = document.createElement('summary');
     const currentIcon = document.createElement('span');
     currentIcon.className = 'chat-status-icon';
-    currentIcon.textContent = current.state === 'fail' ? '✗' : (current.state === 'done' ? '✓' : current.icon || '•');
+    /* v-status-ai (طلب المالك «شكل جميل يخص الذكاء الاصطناعي»): شرارة نابضة،
+       ونص بلمعان ذهبي يمرّ عليه، ونقاط «كتابة» صغيرة ما دامت الخطوة جارية. */
+    currentIcon.textContent = current.state === 'fail' ? '✗' : (current.state === 'done' ? '✓' : '✦');
+    if(current.state === 'run') currentIcon.classList.add('chat-status-spark');
     const currentText = document.createElement('span');
     currentText.textContent = current.text;
-    if(current.state === 'run') currentText.className = 'chat-status-running';
+    currentText.className = 'chat-status-text' + (current.state === 'run' ? ' chat-status-running' : '');
     summary.appendChild(currentIcon); summary.appendChild(currentText);
+    if(current.state === 'run'){
+      const dots = document.createElement('span');
+      dots.className = 'chat-status-dots';
+      dots.innerHTML = '<i></i><i></i><i></i>';
+      summary.appendChild(dots);
+    }
     details.appendChild(summary);
     if(steps.length > 1){
       const history = document.createElement('div');
