@@ -18648,7 +18648,16 @@ DESIGN RULES (non-negotiable):
       // v559: لا بطاقات مصادر تحت سؤال توضيحي قصير بلا نتائج.
       const __ansTxt = String((code ? stripCodeFromChat(explanation) : explanation) || '').trim();
       const __clarifyQ = __ansTxt.length < 140 && /[?？؟]\s*$/.test(__ansTxt);
-      cur.messages.push({role: 'assistant', content: (code ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: code || null, providerLabel, providerKey, askAllReply: false,
+      /* v-chat-video-attach (لقطة المالك: «تم! هذا فيديو ترويجي…» بلا أي فيديو):
+         أداة generate_video تنجح وتحفظ الرابط في __chatVideoResult، لكن هذا
+         المسار (المزود الواحد + الأدوات) لم يكن يقرأه — كان يُقرأ في مسار
+         «اسأل الكل» فقط — فيضيع الفيديو وتبدو الرسالة إنجازًا وهميًّا. */
+      let __chatVidAtt;
+      try{
+        const __cv = window.__chatVideoResult;
+        if(__cv && __cv.url){ __chatVidAtt = [{ isVideo: true, url: __cv.url, name: __cv.name || 'chat-video.mp4', mime: 'video/mp4' }]; window.__chatVideoResult = null; }
+      }catch(e){ __swallow(e, 'ui:chat-video-attach'); }
+      cur.messages.push({role: 'assistant', content: (code ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: code || null, providerLabel, providerKey, askAllReply: false, attachments: __chatVidAtt,
         // v-one-brain: بطاقات المصادر من بحث النموذج نفسه (حدث sources في البث).
         sources: (!__clarifyQ && (__ctSources || (__searchData && __searchData.sources))) || undefined,
         searchImages: (__searchData && __searchData.images) || undefined});
