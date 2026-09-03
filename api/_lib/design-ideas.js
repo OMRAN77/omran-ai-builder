@@ -34,33 +34,49 @@ module.exports = async (req, res) => {
   const subjectAr = text || PLACE_AR[place] || '';
   if (!subjectEn) { res.status(400).json({ error: 'Missing q or place' }); return; }
 
-  const queries = [
+  // v-ideas-50 (طلب المالك: ٥٠ صورة على الأقل): موجتان من الاستعلامات —
+  // الأولى ثمانية استعلامات متوازية، وإن لم تبلغ الصور خمسين تُطلق الثانية.
+  const wave1 = [
     subjectEn + ' interior design ideas ' + style,
     subjectEn + ' interior design inspiration photos',
     subjectAr + ' تصميم ديكور أفكار',
     subjectEn + ' modern luxury interior',
     subjectEn + ' decor pinterest ideas',
     subjectAr + ' ديكور فخم صور',
-  ].map((q) => q.replace(/\s+/g, ' ').trim());
-
-  const runs = await Promise.all(queries.map((q) => fetch(TAVILY, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ api_key: apiKey, query: q, search_depth: 'basic', include_images: true, include_answer: false, max_results: 8 }),
-    signal: AbortSignal.timeout(15000),
-  }).then((r) => (r.ok ? r.json() : { images: [] })).catch(() => ({ images: [] }))));
-
+    subjectEn + ' interior 2025 trends',
+    subjectAr + ' تصاميم حديثة',
+  ];
+  const wave2 = [
+    subjectEn + ' classic interior design photos',
+    subjectEn + ' minimalist interior design',
+    subjectEn + ' interior design gallery',
+    subjectAr + ' ديكور عصري',
+    subjectAr + ' ديكور كلاسيك',
+    subjectEn + ' cozy interior ideas',
+    subjectEn + ' elegant interior design',
+    subjectAr + ' أفكار ديكور ' + style,
+  ];
   const seen = new Set();
   const images = [];
-  runs.forEach((d) => {
-    const list = Array.isArray(d && d.images) ? d.images : [];
-    list.forEach((it) => {
-      const u = typeof it === 'string' ? it : (it && it.url) || '';
-      if (!u || seen.has(u) || !looksLikePhoto(u)) return;
-      seen.add(u);
-      images.push(u);
+  async function run(list) {
+    const runs = await Promise.all(list.map((q) => q.replace(/\s+/g, ' ').trim()).map((q) => fetch(TAVILY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: apiKey, query: q, search_depth: 'basic', include_images: true, include_answer: false, max_results: 10 }),
+      signal: AbortSignal.timeout(15000),
+    }).then((r) => (r.ok ? r.json() : { images: [] })).catch(() => ({ images: [] }))));
+    runs.forEach((d) => {
+      const l = Array.isArray(d && d.images) ? d.images : [];
+      l.forEach((it) => {
+        const u = typeof it === 'string' ? it : (it && it.url) || '';
+        if (!u || seen.has(u) || !looksLikePhoto(u)) return;
+        seen.add(u);
+        images.push(u);
+      });
     });
-  });
+  }
+  await run(wave1);
+  if (images.length < 50) await run(wave2);
   res.setHeader('Cache-Control', 'private, max-age=600');
-  res.status(200).json({ images: images.slice(0, 48), count: Math.min(images.length, 48) });
+  res.status(200).json({ images: images.slice(0, 80), count: Math.min(images.length, 80) });
 };
