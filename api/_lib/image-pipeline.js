@@ -85,6 +85,7 @@ function openaiProvider(apiKey) {
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(240000), /* v-image-timeout */
       });
 
       if (!res.ok) {
@@ -117,6 +118,7 @@ function geminiProvider(apiKey, model) {
             contents: [{ parts: [{ text: full }] }],
             generationConfig: { imageConfig: { aspectRatio: aspect } },
           }),
+          signal: AbortSignal.timeout(240000), /* v-image-timeout */
         }
       );
 

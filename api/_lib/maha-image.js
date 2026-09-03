@@ -385,11 +385,11 @@ module.exports = async (req, res) => {
         allowStyleChange: explicitlyRequestsStyleChange(cleanPrompt),
         allowBroadChange: isSceneUpgrade,
       });
-      if (!guard.ok) {
+      if (!guard.ok && guard.reason === 'validation_unavailable') console.warn('[maha-image] guard unavailable — passing result through'); /* v-guard-fail-open */
+      else if (!guard.ok) {
         await refundImageCharge();
-        const unavailable = guard.reason === 'validation_unavailable';
         console.error('[maha-image] rejected edited image: ' + guard.reason);
-        res.status(unavailable ? 502 : 422).json({ error: publicGuardError(guard), retryable: unavailable });
+        res.status(422).json({ error: publicGuardError(guard), retryable: false });
         return;
       }
     }

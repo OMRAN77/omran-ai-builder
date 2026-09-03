@@ -29,6 +29,7 @@ async function openaiRedress(promptText, imageBase64, mimeType) {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + key },
       body: form,
+      signal: AbortSignal.timeout(240000), /* v-image-timeout */
     });
     const d = await r.json();
     if (!r.ok) { console.warn('[fashion-create] openai HTTP ' + r.status + ' ' + String((d.error && d.error.message) || '').slice(0, 120)); return null; }
@@ -47,6 +48,7 @@ async function openaiGenerate(promptText) {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
       body: JSON.stringify({ model: 'gpt-image-2', prompt: promptText.slice(0, 3900), size: '1024x1536', quality: 'high' }),
+      signal: AbortSignal.timeout(240000), /* v-image-timeout */
     });
     const d = await r.json();
     if (!r.ok) { console.warn('[fashion-create] openai gen HTTP ' + r.status + ' ' + String((d.error && d.error.message) || '').slice(0, 120)); return null; }
@@ -306,6 +308,7 @@ module.exports = async (req, res) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(reqBody),
+      signal: AbortSignal.timeout(240000), /* v-image-timeout */
     });
 
     const data = await upstream.json();
@@ -345,9 +348,11 @@ module.exports = async (req, res) => {
         resultMime: imgPart.inlineData.mimeType || 'image/png',
         userPrompt: [styleDesc, description, detailClause, multiAngleClause].filter(Boolean).join(' '),
       });
-      if (!guard.ok) {
-        const unavailable = guard.reason === 'validation_unavailable';
-        res.status(unavailable ? 502 : 422).json({ error: publicGuardError(guard), retryable: unavailable });
+      /* v-guard-fail-open: تعطّل الحارس نفسه (مهلة/حصة) لا يُسقط صورةً جاهزة —
+         نعرضها ونسجّل؛ الرفض فقط عند حكمٍ صريح بتغيير الهوية أو الأسلوب. */
+      if (!guard.ok && guard.reason === 'validation_unavailable') console.warn('[fashion-create] guard unavailable — passing result through');
+      else if (!guard.ok) {
+        res.status(422).json({ error: publicGuardError(guard), retryable: false });
         return;
       }
     }
