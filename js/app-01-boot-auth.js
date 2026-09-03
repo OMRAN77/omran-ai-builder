@@ -546,7 +546,7 @@ const $ = s => document.querySelector(s);
     }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
   };
   window.adminDeleteUser = async function(username){
-    if(!confirm('⚠️ حذف نهائي لحساب "' + username + '"؟ لا يمكن التراجع.')) return;
+    if(!(await window.omranConfirmDelete({ message: 'سيتم حذف هذا الحساب نهائيًا. لا يمكن التراجع عن هذا الإجراء.', itemLabel: 'حساب: ' + username }))) return;
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/admin-actions', {
@@ -560,7 +560,7 @@ const $ = s => document.querySelector(s);
     }catch(e){ alert('❌ خطأ: ' + (e && e.message || e)); }
   };
   window.adminPurgeChecks = async function(){
-    if(!confirm('🧹 حذف كل حسابات الفحص الآلية (zzcheck…) ونقاطها نهائيًّا؟ لا تطال أي حساب حقيقي.')) return;
+    if(!(await window.omranConfirmDelete({ message: 'سيتم حذف كل حسابات الفحص الآلية ونقاطها نهائيًا. لا تطال أي حساب حقيقي.', itemLabel: 'حسابات الفحص الآلية (zzcheck…)' }))) return;
     try{
       const token = authGet('aiapp_auth_token');
       const res = await fetch('/api/admin-actions', {
