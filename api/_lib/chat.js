@@ -914,14 +914,26 @@ module.exports = async (req, res) => {
 
   // الذاكرة تُقرأ من الحساب في الخادم لكل رسالة، لا من نسخة الجهاز. هكذا يرى
   // الكمبيوتر والجوال الملف نفسه حتى لو كان أحدهما لم يحدّث صفحته بعد.
-  const lastUser = messages.slice().reverse().find((m) => m && m.role === 'user' && typeof m.content === 'string');
-  const pureGreetingTurn = isPureGreeting(lastUser && lastUser.content);
-  const casualCheckInTurn = isCasualCheckIn(lastUser && lastUser.content);
+  // v-image-not-greeting (لقطة المالك: أرفق صورة بعد «السلام عليكم» فردّ النموذج
+  // بتحية وتجاهل الصورة): آخر دور للمستخدم كان يُلتقط بشرط «نصّ» فقط، فإذا كانت
+  // الرسالة الأخيرة صورةً (محتوى مصفوفة) قفز إلى التحية السابقة وعاملها كدور
+  // اجتماعي هادئ يُرسل وحده بلا الصورة. الآن: آخر دور للمستخدم أيًّا كان شكله،
+  // ودور فيه صورة ليس تحية أبدًا.
+  const lastUserAny = messages.slice().reverse().find((m) => m && m.role === 'user');
+  const lastUserHasImage = !!(lastUserAny && Array.isArray(lastUserAny.content) && lastUserAny.content.some((b) => b && b.type === 'image'));
+  const lastUserText = lastUserAny
+    ? (typeof lastUserAny.content === 'string'
+        ? lastUserAny.content
+        : (Array.isArray(lastUserAny.content) ? lastUserAny.content.filter((b) => b && b.type === 'text').map((b) => String(b.text || '')).join('\n') : ''))
+    : '';
+  const lastUser = lastUserAny ? { role: 'user', content: lastUserAny.content } : null;
+  const pureGreetingTurn = !lastUserHasImage && isPureGreeting(lastUserText);
+  const casualCheckInTurn = !lastUserHasImage && isCasualCheckIn(lastUserText);
   const quietSocialTurn = pureGreetingTurn || casualCheckInTurn;
   const wizardTurn = messages.some((m) => m && typeof m.content === 'string' && WIZARD_RE.test(m.content));
-  const foreignTurn = !!(lastUser && isForeignAsk(lastUser.content));
+  const foreignTurn = !!(lastUser && isForeignAsk(lastUserText));
   const reC = (wizardTurn || foreignTurn) ? null : reCtx(messages);
-  const askCapNote = (foreignTurn ? GLOBAL_NOTE : ((lastUser && NUM_ASK_RE.test(lastUser.content)) ? NUM_NOTE : (reC ? (RE_NOTE + (reC.layer > 0 ? RE_MORE_NOTE : '')) : ''))) + ((!wizardTurn && askStreak(messages) >= 2) ? ASK_CAP_NOTE : '');
+  const askCapNote = (foreignTurn ? GLOBAL_NOTE : ((lastUser && NUM_ASK_RE.test(lastUserText)) ? NUM_NOTE : (reC ? (RE_NOTE + (reC.layer > 0 ? RE_MORE_NOTE : '')) : ''))) + ((!wizardTurn && askStreak(messages) >= 2) ? ASK_CAP_NOTE : '');
   // v-social-alive: الرد المخزّن الحرفي حُذف
   // بطلب المالك — كانت التحية لا تصل للنموذج أصلًا فبقي أسلوبها جامدًا مهما
   // تغيّرت البصمة. الآن تمر لفرع quietSocialTurn: نموذج حقيقي ببصمة كاملة،
@@ -1134,7 +1146,7 @@ module.exports = async (req, res) => {
             } else if (mySearchNo > 2) {
               result = 'بلغتَ سقف البحث لهذا الردّ (بحثان). لديك نتائج كافية — أجب الآن مما جمعت ولا تطلب بحثًا إضافيًا.';
             } else {
-              result = filterDuplicateUrls(await tavilySearch(_q, reC, !foreignTurn && !!(lastUser && NUM_ASK_RE.test(lastUser.content)), country, city));
+              result = filterDuplicateUrls(await tavilySearch(_q, reC, !foreignTurn && !!(lastUser && NUM_ASK_RE.test(lastUserText)), country, city));
             }
           }
           else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');

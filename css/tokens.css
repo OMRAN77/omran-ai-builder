@@ -793,10 +793,13 @@
   .chat-status-dots i{width:4px; height:4px; border-radius:50%; background:var(--omGold,#d4af37); opacity:.35; animation:omranDots 1.2s ease-in-out infinite;}
   .chat-status-dots i:nth-child(2){animation-delay:.2s;}
   .chat-status-dots i:nth-child(3){animation-delay:.4s;}
+  /* v-status-glow (طلب المالك «شي وميض»): وميض ذهبي يتنفّس حول الحبّة ما دام الذكاء يعمل */
+  .chat-status-fold summary.is-running{animation:omranGlow 2.4s ease-in-out infinite; border-color:rgba(212,175,55,.45);}
+  @keyframes omranGlow{0%,100%{box-shadow:inset 0 0 18px rgba(212,175,55,.06), 0 0 0 rgba(212,175,55,0)} 50%{box-shadow:inset 0 0 22px rgba(212,175,55,.14), 0 0 22px rgba(212,175,55,.38)}}
   @keyframes omranSpark{0%,100%{transform:scale(.85) rotate(0deg); opacity:.75} 50%{transform:scale(1.2) rotate(25deg); opacity:1}}
   @keyframes omranShimmer{from{background-position:220% 0} to{background-position:-20% 0}}
   @keyframes omranDots{0%,100%{opacity:.25; transform:translateY(0)} 50%{opacity:1; transform:translateY(-2px)}}
-  @media (prefers-reduced-motion: reduce){ .chat-status-spark, .chat-status-running, .chat-status-dots i{animation:none;} .chat-status-running{color:var(--text,#fff); background:none;} }
+  @media (prefers-reduced-motion: reduce){ .chat-status-spark, .chat-status-running, .chat-status-dots i, .chat-status-fold summary.is-running{animation:none;} .chat-status-running{color:var(--text,#fff); background:none;} }
   html:not(.mobile-ui) .msg.msg-streaming::after{content:''; display:inline-block; width:6px; height:1em; margin-inline-start:3px; vertical-align:-.15em; border-radius:3px; background:currentColor; opacity:.55; animation:omranPulse 1s ease-in-out infinite;}
 @keyframes omranPulse{0%,100%{opacity:.6}50%{opacity:1}}
   /* v418 (٦ أغسطس): قائمة المزوّدين التسعة مخفيّة على الكمبيوتر — التوجيه صار تلقائيًّا بالتخصص.
