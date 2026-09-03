@@ -1,4 +1,4 @@
-const CACHE_NAME = 'omran-ai-builder-freeze-03364ea5-tv-8c11d824-attach-903585d6-toolphotos-3';
+const CACHE_NAME = 'delete-selection-20260903';
 const STATIC_ASSETS = [
   './',
   './index.html',

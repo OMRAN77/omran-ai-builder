@@ -214,3 +214,13 @@ try{ sessionStorage.removeItem('omranBootRetry'); }catch(e){ /* guard-ok: بلا
     document.head.appendChild(js);
   }
 })();
+
+/* Global delete confirmation — WhatsApp-style selection and warning. */
+(function(){
+  if(document.getElementById('omranDeleteConfirmLoader')) return;
+  var s=document.createElement('script');
+  s.id='omranDeleteConfirmLoader';
+  s.src='/js/delete-confirm.js?v=20260903';
+  s.defer=true;
+  (document.head||document.documentElement).appendChild(s);
+})();
