@@ -941,9 +941,11 @@ html.store-safe #aboutStocksCard{display:none !important;}
    (14px، 46px، 90px من اليسار وبأشكال شتى) — نقطة واحدة ثابتة أعلى يسار
    الشاشة وشكل موحد. الجوال فقط؛ حاسوبيًا تبقى داخل رؤوس نوافذها. */
 @media (max-width: 760px){
-  #portraitStyleCloseBtn, #videoMakerCloseBtn, #designAiCloseBtn, #fashionAiCloseBtn,
-  #studioAiCloseBtn, #tvClose, #stocksCloseBtn, #constructionCloseBtn, #expCloseBtn,
-  #docX, #govX, #cvX, #fbClose, #eduCloseBtn, #religionCloseBtn, #emailAssistCloseBtn,
+  /* v-tools-x-scroll (طلب المالك ٣ سبتمبر): أزرار X لصفحات الأدوات الكاملة
+     (أنماط الصور، الفيديو، الديكور، الأزياء، ستايل، المقاولات، التفسير، البريد)
+     أُخرجت من التثبيت — تبقى في رأس الصفحة وتتحرك معها. */
+  #tvClose, #stocksCloseBtn, #expCloseBtn,
+  #docX, #govX, #cvX, #fbClose, #eduCloseBtn,
   #qClose{ /* v-tools-x-scroll: X شاشة الأدوات يتحرك مع الصفحة لا مثبّت (طلب المالك) — أُخرج من قائمة التثبيت */
     position:fixed !important;
     top:calc(10px + env(safe-area-inset-top, 0px)) !important;
@@ -1001,9 +1003,8 @@ html.store-safe #aboutStocksCard{display:none !important;}
   }
 }
 @media (max-width: 760px){
-  /* زر X المثبّت أعلى يسار الشاشة — نترك له مكانه فوق المحتوى */
   #portraitStyleModal > div, #videoMakerModal > div, #designAiModal > div, #fashionAiModal > div,
   #studioAiModal > div, #constructionModal > div, #religionModal > div, #emailAssistModal > div{
-    padding-top:calc(58px + env(safe-area-inset-top,0px)) !important;
+    padding-top:calc(12px + env(safe-area-inset-top,0px)) !important;
   }
 }
