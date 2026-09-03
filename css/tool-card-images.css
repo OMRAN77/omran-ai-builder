@@ -87,3 +87,11 @@ html[lang="ar"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.toolPhotoCard img.
   height:auto!important;
   border-radius:14px!important;
 }
+/* v-tools-bigger (لقطة المالك على الهاتف: البطاقات صغيرة وعناوينها المطبوعة
+   لا تُقرأ): عمودان على الهاتف بدل ثلاثة، والنافذة أعرض على الشاشات الكبيرة. */
+@media (max-width:600px){
+  html[lang="ar"] #sectionsToolsPopup .ptGrid{grid-template-columns:repeat(2,1fr)!important; gap:10px!important;}
+}
+@media (min-width:761px){
+  html[lang="ar"] #sectionsToolsPopup{max-width:780px!important;}
+}
