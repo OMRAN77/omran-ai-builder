@@ -184,7 +184,28 @@ module.exports = async (req, res) => {
       return;
     }
     const ignoreList = user.emailAssist.ignoreList || [];
-    const msgs = listData.messages || [];
+    let msgs = listData.messages || [];
+    /* v-email-scope (شكوى المالك «البريد موصل… ما في أي شي»): الفلتر الصارم
+       (الأساسي فقط، آخر ٧ أيام، بلا عروض/اجتماعي) يرجع فارغًا عند كثيرين
+       فتبدو الأداة معطّلة بلا تفسير. نوسّع تلقائيًا: ٣٠ يومًا بكل الفئات، ثم
+       آخر رسائل الوارد كلها — ونخبر المستخدم بالنطاق المعروض بدل الصمت. */
+    const uiLang = String((body && body.lang) || 'ar').toLowerCase().startsWith('ar') ? 'ar' : 'en';
+    let scopeNote = '';
+    if (!msgs.length) {
+      const widen = async (q) => {
+        const r2 = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&q=' + encodeURIComponent(q), { headers: { Authorization: 'Bearer ' + accessToken } });
+        const d2 = await r2.json().catch(() => ({}));
+        return (r2.ok && d2 && d2.messages) || [];
+      };
+      msgs = await widen('in:inbox newer_than:30d');
+      if (msgs.length) scopeNote = uiLang === 'ar' ? 'لا رسائل أساسية خلال آخر ٧ أيام — عرضتُ رسائل الوارد خلال ٣٠ يومًا (بكل الفئات).' : 'No primary mail in the last 7 days — showing all inbox mail from the last 30 days.';
+      else {
+        msgs = await widen('in:inbox');
+        scopeNote = msgs.length
+          ? (uiLang === 'ar' ? 'لا رسائل خلال آخر ٣٠ يومًا — عرضتُ آخر رسائل الوارد.' : 'No mail in the last 30 days — showing the latest inbox mail.')
+          : (uiLang === 'ar' ? 'الربط سليم ✅ لكن صندوق الوارد فارغ تمامًا في هذا الحساب.' : 'Connected ✅ but this inbox is completely empty.');
+      }
+    }
 
     const detailed = await Promise.all(msgs.map(async (m) => {
       const msgRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/' + m.id + '?format=full', {
@@ -213,7 +234,7 @@ module.exports = async (req, res) => {
     const order = { urgent: 0, normal: 1, low: 2 };
     results.sort((a, b) => (order[a.priority] ?? 1) - (order[b.priority] ?? 1));
 
-    res.status(200).json({ ok: true, gmailAddress: user.emailAssist.gmailAddress, emails: results });
+    res.status(200).json({ ok: true, gmailAddress: user.emailAssist.gmailAddress, emails: results, note: scopeNote || undefined });
   } catch (e) {
     res.status(500).json({ error: 'Email list error: ' + (e && e.message ? e.message : String(e)) });
   }
