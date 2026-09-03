@@ -33,7 +33,7 @@ async function verifyLocalizedImageEdit(options) {
   if (!opts.apiKey || !opts.sourceBase64 || !opts.resultBase64) return { ok: false, reason: 'validation_unavailable' };
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 25000);
+  const timer = setTimeout(() => controller.abort(), 45000); /* v-guard-fail-open: صورتان 2K تحتاجان أكثر من 25 ثانية */
   try {
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + opts.apiKey;
     const instruction = [

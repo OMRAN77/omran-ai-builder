@@ -126,7 +126,7 @@ module.exports = async (req, res) => {
 
     let upstream = null, data = null;
     try {
-      upstream = await fetch(imgEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(imgReqBody) });
+      upstream = await fetch(imgEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(imgReqBody), signal: AbortSignal.timeout(240000) /* v-image-timeout */ });
       data = await upstream.json();
     } catch (e) { upstream = null; data = null; }
 
@@ -145,6 +145,7 @@ module.exports = async (req, res) => {
             method: 'POST',
             headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
             body: JSON.stringify({ model: 'gpt-image-2', prompt: prompt.slice(0, 3900), size: '1536x1024', quality: 'high' }),
+            signal: AbortSignal.timeout(240000), /* v-image-timeout */
           });
           const d = await r.json();
           if (r.ok && d && d.data && d.data[0] && d.data[0].b64_json) { outB64 = d.data[0].b64_json; outMime = 'image/png'; }

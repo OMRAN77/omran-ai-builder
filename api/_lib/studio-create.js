@@ -33,6 +33,7 @@ async function openaiStudioEdit(promptText, images) {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + key },
       body: form,
+      signal: AbortSignal.timeout(240000), /* v-image-timeout */
     });
     const d = await r.json();
     if (!r.ok) { console.warn('[studio-create] openai HTTP ' + r.status + ' ' + String((d.error && d.error.message) || '').slice(0, 120)); return null; }
@@ -273,6 +274,7 @@ module.exports = async (req, res) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(reqBody),
+      signal: AbortSignal.timeout(240000), /* v-image-timeout */
     });
 
     const data = await upstream.json();
@@ -311,9 +313,11 @@ module.exports = async (req, res) => {
         userPrompt: [feature, style, description].filter(Boolean).join(' '),
         allowStyleChange: feature === 'anime',
       });
-      if (!guard.ok) {
-        const unavailable = guard.reason === 'validation_unavailable';
-        res.status(unavailable ? 502 : 422).json({ error: publicGuardError(guard), retryable: unavailable });
+      /* v-guard-fail-open: تعطّل الحارس نفسه (مهلة/حصة) لا يُسقط صورةً جاهزة —
+         نعرضها ونسجّل؛ الرفض فقط عند حكمٍ صريح بتغيير الهوية أو الأسلوب. */
+      if (!guard.ok && guard.reason === 'validation_unavailable') console.warn('[studio-create] guard unavailable — passing result through');
+      else if (!guard.ok) {
+        res.status(422).json({ error: publicGuardError(guard), retryable: false });
         return;
       }
     }
