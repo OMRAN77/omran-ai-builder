@@ -50,6 +50,11 @@
     opening: { ar:'جارٍ الفتح...', en:'Opening...', fr:'Ouverture...', hi:'खुल रहा है...', ur:'کھل رہا ہے...', bn:'খুলছে...', ne:'खुल्दै...', fil:'Binubuksan...', id:'Membuka...', zh:'正在打开...', ru:'Открытие...', tr:'Açılıyor...', ml:'തുറക്കുന്നു...', es:'Abriendo...' },
     alert:   { ar:'تنبيه', en:'Alert', fr:'Alerte', hi:'सूचना', ur:'اطلاع', bn:'সতর্কতা', ne:'सूचना', fil:'Abiso', id:'Peringatan', zh:'提醒', ru:'Оповещение', tr:'Uyarı', ml:'അറിയിപ്പ്', es:'Alerta' },
   };
+  /* v-prayer-local: حالة الإشعارات بعد تفعيل الجرس + تنبيه محلي والتطبيق مفتوح */
+  TX.pushOk = { ar:'✅ التنبيه مفعّل، وسيصلك إشعار حتى والتطبيق مغلق.', en:'✅ Alert on — you will get a notification even when the app is closed.' };
+  TX.pushDenied = { ar:'⚠️ الإشعارات مرفوضة على هذا الجهاز. اسمح بها من إعدادات التطبيق؛ وحتى ذلك يصلك التنبيه فقط والتطبيق مفتوح.', en:'⚠️ Notifications are blocked on this device. Allow them in the app settings; until then the alert only fires while the app is open.' };
+  TX.pushUnavail = { ar:'⚠️ هذا الجهاز لا يدعم إشعارات الدفع (مثل أجهزة هواوي بلا خدمات جوجل). سيصلك التنبيه والتطبيق مفتوح أو في الخلفية فقط.', en:'⚠️ Push notifications are not available on this device (e.g. Huawei without Google services). The alert fires only while the app is open or in the background.' };
+  TX.localTitle = { ar:'عمران — مواقيت الصلاة', en:'Omran — Prayer times' };
   function tx(key){ var m = TX[key]; return (m && (m[qLang()] || m.en)) || (m && m.ar) || key; }
   function qt(ar, en){ return qIsRtl() ? ar : en; } // للنصوص المركّبة القليلة المتبقية
 
@@ -117,6 +122,7 @@
         .then(function(data){
           if(!data || !data.data || !data.data.timings) throw new Error('bad-data');
           S.timings = data.data.timings;
+          S.dateStr = new Date().toDateString();
           S.hijri = data.data.date && data.data.date.hijri;
           return S.timings;
         });
@@ -227,7 +233,8 @@
       rows +
       '<div style="margin-top:14px;font-size:13px;color:var(--muted,#98a0b3);">' + tx('method') + '</div>' +
       '<select id="qMethod" style="width:100%;margin-top:6px;padding:10px;border-radius:10px;background:rgba(255,255,255,.04);color:inherit;border:1px solid var(--border,rgba(255,255,255,.12));font-size:14px;">' + mOpts + '</select>' +
-      '<div style="font-size:12px;color:var(--muted,#98a0b3);margin-top:12px;line-height:1.7;">🔔 ' + tx('alertHint') + '</div>';
+      '<div style="font-size:12px;color:var(--muted,#98a0b3);margin-top:12px;line-height:1.7;">🔔 ' + tx('alertHint') + '</div>' +
+      '<div id="qAlertStatus" style="display:none;font-size:12.5px;margin-top:8px;line-height:1.7;padding:8px 10px;border-radius:10px;background:rgba(212,175,55,.08);border:1px solid var(--omGoldSoft,rgba(212,175,55,.35));"></div>';
 
     body.querySelector('#qMethod').onchange = function(){
       try{ localStorage.setItem('aiapp_pray_method', this.value); }catch(e){ /* guard-ok */ }
@@ -250,15 +257,107 @@
   /* ==== التنبيهات (تُخزَّن محليًا للعرض + تُرسل للسيرفر) ==== */
   function alertsMap(){ try{ return JSON.parse(localStorage.getItem('aiapp_pray_alerts') || '{}'); }catch(e){ return {}; } }
   function hasAlert(k){ return !!alertsMap()[k]; }
+  function alertId(v){ return (v && typeof v === 'object') ? v.id : v; }
+  function alertOff(v){ return (v && typeof v === 'object' && Number.isFinite(v.off)) ? v.off : 0; }
+  function setAlertStatus(txt){ var el = document.getElementById('qAlertStatus'); if(el){ el.textContent = txt || ''; el.style.display = txt ? '' : 'none'; } }
+
+  /* v-prayer-local: اشتراك الدفع يُطلب عند كل تفعيل (لا مرة واحدة بالجلسة) ويعيد سبب الفشل بدل الصمت */
+  function ensurePush(){
+    return new Promise(function(res){
+      (async function(){
+        try{
+          if(!('Notification' in window)) return res({ ok:false, reason:'unsupported' });
+          var perm = Notification.permission;
+          if(perm === 'default') perm = await Notification.requestPermission();
+          if(perm !== 'granted') return res({ ok:false, reason:'denied' });
+          if(!('serviceWorker' in navigator) || !('PushManager' in window)) return res({ ok:false, reason:'nopush' });
+          var token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : '';
+          if(!token) return res({ ok:false, reason:'auth' });
+          var reg = await navigator.serviceWorker.ready;
+          var sub = await reg.pushManager.getSubscription();
+          if(!sub){
+            var kd = await (await fetch('/api/vapid-public-key')).json();
+            if(!kd || !kd.publicKey) return res({ ok:false, reason:'novapid' });
+            var conv = (typeof urlBase64ToUint8Array === 'function') ? urlBase64ToUint8Array : function(b){ var pad = '='.repeat((4 - b.length % 4) % 4); var raw = atob((b + pad).replace(/-/g, '+').replace(/_/g, '/')); var out = new Uint8Array(raw.length); for(var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i); return out; };
+            sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: conv(kd.publicKey) });
+          }
+          var r = await fetch('/api/push-subscribe', { method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + token }, body: JSON.stringify({ subscription: sub.toJSON() }) });
+          res({ ok: r.ok, reason: r.ok ? '' : 'server' });
+        }catch(e){ res({ ok:false, reason:'pushfail:' + ((e && e.name) || '') }); }
+      })();
+    });
+  }
+  function pushStatusText(st){
+    if(st.ok) return tx('pushOk');
+    if(st.reason === 'denied') return tx('pushDenied');
+    return tx('pushUnavail');
+  }
+
+  /* v-prayer-local: تنبيه محلي من الجهاز نفسه عند حلول الوقت — يعمل والتطبيق
+     مفتوح أو في الخلفية حتى لو تعذّر الدفع (هواوي بلا خدمات جوجل، أو إذن مرفوض).
+     يُعتمد على مواقيت الشاشة نفسها فلا يختلف الوقت عن المعروض. */
+  function firedMap(){ try{ return JSON.parse(localStorage.getItem('aiapp_pray_fired') || '{}'); }catch(e){ return {}; } }
+  function markFired(key){ var f = firedMap(); var ds = new Date().toDateString(); Object.keys(f).forEach(function(x){ if(x.indexOf(ds) !== 0) delete f[x]; }); f[key] = 1; try{ localStorage.setItem('aiapp_pray_fired', JSON.stringify(f)); }catch(e){ /* guard-ok */ } }
+  function localTargets(){
+    if(!S.timings) return [];
+    var m = alertsMap(), out = [];
+    Object.keys(m).forEach(function(k){
+      var hm = String(S.timings[k] || '').split(':'); if(hm.length < 2) return;
+      var t = new Date(); t.setHours(+hm[0], +hm[1], 0, 0);
+      var off = alertOff(m[k]);
+      out.push({ k:k, off:off, at: t.getTime() - off * 60000 });
+    });
+    return out;
+  }
+  function notifyLocal(x){
+    var title = tx('localTitle');
+    var body = x.off > 0 ? qt('باقي ' + x.off + ' دقيقة على ' + prName(x.k), x.off + ' min to ' + prName(x.k)) : qt('حان وقت ' + prName(x.k), prName(x.k) + ' time');
+    try{ if(navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 300]); }catch(e){ /* guard-ok */ }
+    try{
+      if(!('Notification' in window) || Notification.permission !== 'granted'){ alert('🕌 ' + body); return; }
+      var opts = { body: body, icon: './icons/icon-192-v2.png?icon=gold-20260819', badge: './icons/icon-192-v2.png?icon=gold-20260819', tag: 'prayer-local-' + x.k, vibrate: [300, 150, 300, 150, 300], requireInteraction: true };
+      if('serviceWorker' in navigator){
+        navigator.serviceWorker.ready.then(function(reg){ return reg.showNotification(title, opts); }).catch(function(){ try{ new Notification(title, opts); }catch(e){ alert('🕌 ' + body); } });
+      } else { new Notification(title, opts); }
+    }catch(e){ try{ alert('🕌 ' + body); }catch(_){ /* guard-ok */ } }
+  }
+  function checkLocal(){
+    var now = Date.now(), ds = new Date().toDateString(), f = firedMap();
+    localTargets().forEach(function(x){
+      var key = ds + '|' + x.k + '|' + x.off;
+      if(f[key]) return;
+      var d = now - x.at;
+      if(d >= 0 && d < 10 * 60000){ markFired(key); notifyLocal(x); }
+    });
+  }
+  function quietLoc(){
+    if(S.loc) return Promise.resolve(S.loc);
+    try{ var c = JSON.parse(localStorage.getItem('aiapp_last_geo') || 'null'); if(c && typeof c.lat === 'number'){ S.loc = { lat:c.lat, lng:c.lng }; return Promise.resolve(S.loc); } }catch(e){ /* guard-ok */ }
+    return ipLoc().then(function(ip){ if(ip) S.loc = ip; return ip; });
+  }
+  var localBooted = false;
+  function bootLocalAlerts(){
+    if(localBooted) return; localBooted = true;
+    function ensureToday(){
+      var ds = new Date().toDateString();
+      if(S.timings && S.dateStr === ds) return Promise.resolve();
+      return quietLoc().then(function(l){ if(!l) return; return fetchTimings().then(function(){ S.dateStr = ds; }); }).catch(function(e){ __swallow(e, 'qibla:local-times'); });
+    }
+    function tickLocal(){ if(!Object.keys(alertsMap()).length) return; ensureToday().then(checkLocal); }
+    setTimeout(tickLocal, 4000);
+    setInterval(tickLocal, 20000);
+    document.addEventListener('visibilitychange', function(){ if(!document.hidden) tickLocal(); });
+  }
   function toggleAlert(k, btn){
     var token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : '';
     if(!token){ alert(tx('signIn')); return; }
     var m = alertsMap();
     if(m[k]){ // إيقاف
-      var id = m[k];
+      var id = alertId(m[k]);
       delete m[k];
       try{ localStorage.setItem('aiapp_pray_alerts', JSON.stringify(m)); }catch(e){ /* guard-ok */ }
       if(btn) btn.textContent = '🔕';
+      setAlertStatus('');
       fetch('/api/reminders?id=' + encodeURIComponent(id), { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } })
         .catch(function(e){ __swallow(e, 'qibla:del'); });
       return;
@@ -274,15 +373,17 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({
-          type: 'prayer', prayerName: k, offsetMinutes: off, lat: l.lat, lng: l.lng,
+          type: 'prayer', prayerName: k, offsetMinutes: off, lat: l.lat, lng: l.lng, method: getMethod(),
           message: off > 0 ? qt('باقي ' + off + ' دقيقة على ' + prName(k), off + ' min to ' + prName(k)) : qt('حان وقت ' + prName(k), prName(k) + ' time'),
         }),
       }).then(function(r){ return r.json(); }).then(function(d){
         if(d && d.ok && d.reminder){
-          var mm = alertsMap(); mm[k] = d.reminder.id;
+          var mm = alertsMap(); mm[k] = { id: d.reminder.id, off: off };
           try{ localStorage.setItem('aiapp_pray_alerts', JSON.stringify(mm)); }catch(e){ /* guard-ok */ }
           if(btn) btn.textContent = '🔔';
-          if(typeof mahaEnsurePushSubscribed === 'function') mahaEnsurePushSubscribed();
+          setAlertStatus('⏳');
+          ensurePush().then(function(st){ setAlertStatus(pushStatusText(st)); });
+          bootLocalAlerts();
         } else { if(btn) btn.textContent = '🔕'; alert(tx('saveFail')); }
       });
     }).catch(function(e){ __swallow(e, 'qibla:alert'); if(btn) btn.textContent = '🔕'; });
@@ -385,5 +486,7 @@
 
   var btn = document.getElementById('btnQibla');
   if(btn) btn.onclick = openQibla;
-  window.omranQibla = { open: openQibla, close: closeQibla };
+  window.omranQibla = { open: openQibla, close: closeQibla, checkLocal: checkLocal, _S: S };
+  /* v-prayer-local: إن كان للمستخدم تنبيهات محفوظة نراقبها محليًا منذ فتح التطبيق */
+  try{ if(Object.keys(alertsMap()).length) bootLocalAlerts(); }catch(e){ __swallow(e, 'qibla:boot-local'); }
 })();
