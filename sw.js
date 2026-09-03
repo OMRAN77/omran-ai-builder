@@ -1,4 +1,4 @@
-const CACHE_NAME = 'delete-selection-5630aa59';
+const CACHE_NAME = 'delete-selection-ebdcf588';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -118,6 +118,7 @@ function isApiRequest(url) {
 function isStaticAsset(url) {
   return (
     url.pathname.endsWith('.png') ||
+    url.pathname.endsWith('.webp') || /* v-picker-load: معاينات الأنماط تُخزَّن بعد أول تحميل */
     url.pathname.endsWith('.jpg') ||
     url.pathname.endsWith('.svg') ||
     url.pathname.endsWith('.ico') ||

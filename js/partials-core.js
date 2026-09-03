@@ -916,7 +916,7 @@
     <button type="button" class="btn iconBtn" id="pickerSheetClose" style="padding:10px 16px; min-width:46px; min-height:42px; font-size:17px;">✕</button>
   </div>
   <div style="flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;">
-    <div id="pickerSheetGrid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(175px,1fr)); gap:14px; padding:16px; max-width:1500px; margin:0 auto;"></div>
+    <div id="pickerSheetGrid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:14px; padding:16px; max-width:1500px; margin:0 auto;"></div>
   </div>
 </div>
 
