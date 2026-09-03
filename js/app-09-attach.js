@@ -19,26 +19,8 @@ function makeChatStatus(el){
   let finished = false;
   function render(){
     if(!el || finished || !steps.length) return;
-    // الجوال خارج نطاق هذه المرحلة: نحافظ على عرضه السابق حرفيًا.
-    if(document.documentElement.classList.contains('mobile-ui')){
-      el.innerHTML = '';
-      const wrap = document.createElement('div');
-      wrap.style.cssText = 'display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.7;opacity:.9;';
-      steps.forEach(function(s, i){
-        const row = document.createElement('div');
-        const isLast = (i === steps.length - 1);
-        row.style.cssText = 'display:flex;align-items:flex-start;gap:7px;' + (s.state === 'fail' ? 'opacity:.75;' : '');
-        const icon = document.createElement('span');
-        icon.textContent = s.state === 'fail' ? '✗' : (s.state === 'done' ? '✓' : s.icon || '•');
-        icon.style.cssText = 'flex:0 0 auto;' + (s.state === 'done' ? 'color:#2e9e6b;' : (s.state === 'fail' ? 'color:#c0453f;' : ''));
-        const txt = document.createElement('span');
-        txt.textContent = s.text;
-        if(isLast && s.state === 'run') txt.style.cssText = 'animation:omranPulse 1.4s ease-in-out infinite;';
-        row.appendChild(icon); row.appendChild(txt); wrap.appendChild(row);
-      });
-      el.appendChild(wrap);
-      return;
-    }
+    /* v-status-tidy (طلب المالك «رتب أول خروج المحادثة»): الجوال كان يعرض كل
+       الخطوات سطورًا متراكمة — الآن سطر واحد للخطوة الحالية وسجلّ مطويّ كالحاسوب. */
     const oldDetails = el.querySelector && el.querySelector('.chat-status-fold');
     const wasOpen = !!(oldDetails && oldDetails.open);
     el.innerHTML = '';

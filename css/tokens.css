@@ -771,17 +771,19 @@
   .msgMoreMenu{ position:absolute; z-index:9999; background:var(--panel,#1c2230); border:1px solid var(--border,rgba(255,255,255,.12)); border-radius:var(--r-2); box-shadow:var(--sh-2); padding:6px; min-width:170px; font-size: var(--fs-3); }
   .msgMoreMenu button{ display:flex; width:100%; text-align:start; background:none; border:none; padding:9px 10px; border-radius:var(--r-1); cursor:pointer; color:var(--text); font-size: var(--fs-3); }
   .msgMoreMenu button:hover{ background:var(--panel2); }
-  html:not(.mobile-ui) .chat-status-fold{font-size:13px; line-height:1.7; opacity:.9;}
-  html:not(.mobile-ui) .chat-status-fold summary{display:flex; align-items:center; gap:7px; cursor:pointer; list-style:none; width:max-content; max-width:100%;}
-  html:not(.mobile-ui) .chat-status-fold summary::-webkit-details-marker{display:none;}
-  html:not(.mobile-ui) .chat-status-fold summary::after{content:'⌄'; color:var(--muted); font-size:11px; margin-inline-start:2px;}
-  html:not(.mobile-ui) .chat-status-fold[open] summary::after{transform:rotate(180deg);}
-  html:not(.mobile-ui) .chat-status-icon{flex:0 0 auto; color:var(--accent2);}
-  html:not(.mobile-ui) .chat-status-running{animation:omranPulse 1.4s ease-in-out infinite;}
-  html:not(.mobile-ui) .chat-status-history{display:flex; flex-direction:column; gap:4px; margin-top:6px; padding-inline-start:18px; color:var(--muted);}
-  html:not(.mobile-ui) .chat-status-row{display:flex; align-items:flex-start; gap:7px;}
-  html:not(.mobile-ui) .chat-status-row.done>span:first-child{color:#2e9e6b;}
-  html:not(.mobile-ui) .chat-status-row.fail>span:first-child{color:#c0453f;}
+  .chat-status-fold{font-size:13px; line-height:1.7; opacity:.9; max-width:100%; min-width:0;} /* v-status-tidy: نفس العرض المطويّ على الجوال */
+  .chat-status-fold summary > span:last-child{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .chat-status-fold[open] summary > span:last-child{white-space:normal;}
+  .chat-status-fold summary{display:flex; align-items:center; gap:7px; cursor:pointer; list-style:none; width:max-content; max-width:100%;}
+  .chat-status-fold summary::-webkit-details-marker{display:none;}
+  .chat-status-fold summary::after{content:'⌄'; color:var(--muted); font-size:11px; margin-inline-start:2px;}
+  .chat-status-fold[open] summary::after{transform:rotate(180deg);}
+  .chat-status-icon{flex:0 0 auto; color:var(--accent2);}
+  .chat-status-running{animation:omranPulse 1.4s ease-in-out infinite;}
+  .chat-status-history{display:flex; flex-direction:column; gap:4px; margin-top:6px; padding-inline-start:18px; color:var(--muted);}
+  .chat-status-row{display:flex; align-items:flex-start; gap:7px;}
+  .chat-status-row.done>span:first-child{color:#2e9e6b;}
+  .chat-status-row.fail>span:first-child{color:#c0453f;}
   html:not(.mobile-ui) .msg.msg-streaming::after{content:''; display:inline-block; width:6px; height:1em; margin-inline-start:3px; vertical-align:-.15em; border-radius:3px; background:currentColor; opacity:.55; animation:omranPulse 1s ease-in-out infinite;}
 @keyframes omranPulse{0%,100%{opacity:.6}50%{opacity:1}}
   /* v418 (٦ أغسطس): قائمة المزوّدين التسعة مخفيّة على الكمبيوتر — التوجيه صار تلقائيًّا بالتخصص.
