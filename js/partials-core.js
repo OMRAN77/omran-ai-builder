@@ -237,6 +237,9 @@
         <input id="designAiIdeaText" type="text" maxlength="200" style="flex:1; min-width:0; padding:9px 10px; border-radius:10px; border:1px solid var(--border,rgba(255,255,255,.14)); background:rgba(255,255,255,.04); color:inherit; font-family:inherit;" placeholder="مثال: مجلس عربي فخم لعشرين شخصًا">
         <button type="button" class="btn primary" id="designAiIdeaGo" style="width:auto; white-space:nowrap;">✨ أعطني أفكارًا</button>
       </div>
+      <div id="designAiIdeaStatus" style="display:none; font-size:12.5px; margin-top:8px; line-height:1.7;"></div>
+      <div id="designAiIdeaGallery" style="display:none; columns:2; column-gap:6px; margin-top:8px;"></div>
+      <button type="button" class="btn" id="designAiIdeaAI" style="display:none; width:100%; margin-top:8px;">🎨 ولّد ٤ تصاميم بالذكاء الاصطناعي</button>
     </div>
 
     <div style="margin-top:12px;">

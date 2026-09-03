@@ -21419,12 +21419,57 @@ async function __safeJson(res){
     if(ideaGo) ideaGo.textContent = '✨ ' + bT('أعطني أفكارًا', 'Give me ideas');
   }
   buildIdeaChips();
+  /* v-decor-gallery: معرض صور حقيقية (عشرات) من الويب — يفتح فورًا، والتوليد بالذكاء زرّ منفصل */
+  const ideaStatusEl = document.getElementById('designAiIdeaStatus');
+  const ideaGallery = document.getElementById('designAiIdeaGallery');
+  const ideaAI = document.getElementById('designAiIdeaAI');
+  function ideaStatus(txt){ if(!ideaStatusEl) return; ideaStatusEl.textContent = txt || ''; ideaStatusEl.style.display = txt ? 'block' : 'none'; }
+  let ideaReq = 0;
+  async function loadIdeas(opts){
+    const my = ++ideaReq;
+    if(ideaGallery){ ideaGallery.style.display = 'none'; ideaGallery.innerHTML = ''; }
+    if(ideaAI) ideaAI.style.display = 'none';
+    ideaStatus('⏳ ' + bT('أجمع لك صورًا وتصاميم…', 'Collecting photos and designs…'));
+    try{
+      const r = await fetch('/api/design-ideas', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ place: opts.place || '', q: opts.q || '', style: styleEl ? styleEl.value : '' }) });
+      const d = await __safeJson(r);
+      if(my !== ideaReq) return;
+      const imgs = Array.isArray(d.images) ? d.images : [];
+      if(!imgs.length){ ideaStatus('😕 ' + bT('ما حصلت صورًا لهذا الطلب — جرّب وصفًا آخر، أو ولّد تصاميم بالذكاء.', 'No photos found for this — try another description, or generate AI designs.')); if(ideaAI) ideaAI.style.display = ''; return; }
+      imgs.forEach(function(u){
+        const a = document.createElement('a'); a.href = u; a.target = '_blank'; a.rel = 'noopener';
+        a.style.cssText = 'display:block; break-inside:avoid; margin-bottom:6px; border-radius:12px; overflow:hidden; background:rgba(255,255,255,.04);';
+        const im = document.createElement('img'); im.src = u; im.loading = 'lazy'; im.alt = '';
+        im.style.cssText = 'display:block; width:100%; height:auto;';
+        im.onerror = function(){ a.remove(); };
+        a.appendChild(im); ideaGallery.appendChild(a);
+      });
+      ideaGallery.style.display = 'block';
+      ideaStatus('🖼️ ' + imgs.length + ' ' + bT('صورة وتصميم من الويب — اضغط أي صورة لعرضها كبيرة', 'photos and designs from the web — tap any to open it'));
+      if(ideaAI) ideaAI.style.display = '';
+      try{ ideaGallery.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){ /* guard-ok */ }
+    }catch(e){ if(my === ideaReq) ideaStatus('⚠️ ' + bT('تعذّر جلب الصور الآن.', 'Could not fetch photos right now.')); }
+  }
+  if(ideaChips) Array.prototype.forEach.call(ideaChips.querySelectorAll('button'), function(c){
+    c.onclick = function(){ if(placeEl) placeEl.value = c.dataset.place; if(ideaText) ideaText.value = ''; loadIdeas({ place: c.dataset.place }); };
+  });
   if(ideaGo) ideaGo.onclick = function(){
     const v = ideaText ? ideaText.value.trim() : '';
-    if(!v){ setStatus(bT('اكتب ما تريد أو اختر نوع المكان.', 'Describe what you want or pick a place.')); return; }
+    if(!v){ ideaStatus(bT('اكتب ما تريد أو اختر نوع المكان.', 'Describe what you want or pick a place.')); return; }
     if(placeEl) placeEl.value = '';
-    btnGenerate.onclick();
+    loadIdeas({ q: v });
   };
+  if(ideaAI) ideaAI.onclick = async function(){
+    ideaAI.disabled = true;
+    ideaStatus('⏳ ' + bT('يولّد ٤ تصاميم بالذكاء… نحو دقيقة', 'Generating 4 AI designs… about a minute'));
+    try{ await btnGenerate.onclick(); }finally{ ideaAI.disabled = false; }
+    ideaStatus('');
+    try{
+      const target = (gridEl && gridEl.style.display !== 'none') ? gridEl : ((resultEl && resultEl.style.display !== 'none') ? resultEl : statusEl);
+      if(target) target.scrollIntoView({ behavior:'smooth', block:'start' });
+    }catch(e){ /* guard-ok */ }
+  };
+  if(ideaAI) ideaAI.textContent = '🎨 ' + bT('ولّد ٤ تصاميم بالذكاء الاصطناعي', 'Generate 4 AI designs');
   if(ideaText) ideaText.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); if(ideaGo) ideaGo.onclick(); } });
 
   btnGenerate.onclick = async () => {
