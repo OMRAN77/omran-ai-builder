@@ -9,17 +9,17 @@
     btnFashionAI: '/assets/tool-cards/fashion.png',
     btnStudioAI: '/assets/tool-cards/style.png',
     btnAdStudio: '/assets/tool-cards/ads.png',
-    btnStocks: '/assets/tool-cards/sections/stocks.png',
-    btnOmranTV: '/assets/tool-cards/sections/tv.png',
-    btnQibla: '/assets/tool-cards/sections/qibla.png',
-    btnExpense: '/assets/tool-cards/sections/expense.png',
-    btnOmranEdu: '/assets/tool-cards/sections/education.png',
-    btnConstruction: '/assets/tool-cards/sections/construction.png',
-    btnReligion: '/assets/tool-cards/sections/religion.png',
-    btnCV: '/assets/tool-cards/sections/cv.png',
-    btnDocs: '/assets/tool-cards/sections/docs.png',
-    btnFeedback: '/assets/tool-cards/sections/feedback.png',
-    btnEmailAssist: '/assets/tool-cards/sections/email.png'
+    btnStocks: '/assets/tool-cards/sections/stocks.png?v=2',
+    btnOmranTV: '/assets/tool-cards/sections/tv.png?v=2',
+    btnQibla: '/assets/tool-cards/sections/qibla.png?v=2',
+    btnExpense: '/assets/tool-cards/sections/expense.png?v=2',
+    btnOmranEdu: '/assets/tool-cards/sections/education.png?v=2',
+    btnConstruction: '/assets/tool-cards/sections/construction.png?v=2',
+    btnReligion: '/assets/tool-cards/sections/religion.png?v=2',
+    btnCV: '/assets/tool-cards/sections/cv.png?v=2',
+    btnDocs: '/assets/tool-cards/sections/docs.png?v=2',
+    btnFeedback: '/assets/tool-cards/sections/feedback.png?v=2',
+    btnEmailAssist: '/assets/tool-cards/sections/email.png?v=2'
   };
 
   function upgradeButton(id, src){
