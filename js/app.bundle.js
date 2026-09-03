@@ -8585,7 +8585,7 @@ async function postWithConfirm(url, payload){
     el('pickerSheetTitle').textContent = cfg.title || '';
     el('pickerSheetCount').textContent = cfg.count || '';
     grid.innerHTML = '';
-    (cfg.items || []).forEach(function(it){
+    (cfg.items || []).forEach(function(it, idx){
       var card = document.createElement('div');
       card.style.cssText = 'border-radius:14px;overflow:hidden;cursor:pointer;background:#17171b;' +
         (it.active ? 'border:2px solid #d4af37;box-shadow:0 0 14px rgba(212,175,55,.3);' : 'border:1px solid #2a2a30;');
@@ -8601,7 +8601,8 @@ async function postWithConfirm(url, payload){
       }
       if(it.img){
         var im = document.createElement('img');
-        im.src = it.img; im.alt = it.title || ''; im.loading = 'lazy';
+        /* v-picker-load: أول ١٢ صورة تُحمَّل فورًا (كانت كلها كسولة فبدت «لا تتحمّل») */
+        im.src = it.img; im.alt = it.title || ''; im.loading = idx < 12 ? 'eager' : 'lazy'; im.decoding = 'async';
         im.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
         im.onerror = function(){
           if(it.img2 && !im.__flat){ im.__flat = 1; im.src = it.img2; }
