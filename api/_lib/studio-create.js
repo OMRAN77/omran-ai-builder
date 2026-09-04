@@ -246,6 +246,21 @@ module.exports = async (req, res) => {
       parts.push({ text: promptText });
       parts.push({ inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } });
       parts.push({ inlineData: { mimeType: mimeTypeB || 'image/jpeg', data: imageBase64B } });
+    } else if (feature === 'combo') {
+      /* v-studio-combo (طلب المالك: «اختار ٤ أشياء من الستايل»): حتى أربعة خيارات
+         من ميزات مختلفة تُطبَّق معًا في صورة واحدة. */
+      const items = (Array.isArray(body.combo) ? body.combo : []).slice(0, 4)
+        .map((it) => ({ f: String((it && it.feature) || ''), v: String((it && it.style) || '') }))
+        .filter((it) => STYLE_TEXT[it.f] && STYLE_TEXT[it.f][it.v] && it.f !== 'merge');
+      if (!items.length) { res.status(400).json({ error: 'combo empty' }); return; }
+      const lines = items.map((it, i) => (i + 1) + ') ' + it.f + ': ' + STYLE_TEXT[it.f][it.v]);
+      const extra = description ? (' Additional instructions: ' + String(description).slice(0, 300) + '.') : '';
+      let promptText = 'Apply ALL of the following changes together to this photo, each one clearly visible:\n' + lines.join('\n') +
+        '\nKeep the same person, face and identity clearly recognizable, the same pose and the same background unless one of the changes replaces the background. Blend the changes naturally into one coherent, photorealistic image.' + extra +
+        ' Output a single photorealistic image.';
+      if (!items.some((it) => it.f === 'anime')) promptText += '\n' + sourceStylePreservationRule();
+      parts.push({ text: promptText });
+      parts.push({ inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } });
     } else {
       const styleMap = STYLE_TEXT[feature] || {};
       let styleDesc = styleMap[style];
@@ -316,7 +331,7 @@ module.exports = async (req, res) => {
         resultBase64: imgPart.inlineData.data,
         resultMime: imgPart.inlineData.mimeType || 'image/png',
         userPrompt: [feature, style, description].filter(Boolean).join(' '),
-        allowStyleChange: feature === 'anime',
+        allowStyleChange: feature === 'anime' || (feature === 'combo' && Array.isArray(body.combo) && body.combo.some((it) => it && it.feature === 'anime')),
       });
       /* v-guard-fail-open: تعطّل الحارس نفسه (مهلة/حصة) لا يُسقط صورةً جاهزة —
          نعرضها ونسجّل؛ الرفض فقط عند حكمٍ صريح بتغيير الهوية أو الأسلوب. */

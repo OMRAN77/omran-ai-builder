@@ -1226,7 +1226,7 @@
         img: 'assets/studio/options/' + feature + '-' + opt.value + '.webp',
         img2: PREVIEW_API(feature, opt.value), /* v-studio-14: معاينة مولّدة على الخادم إن لم توجد صورة جاهزة */
       })),
-      onPick: function(v){ styleEl.value = v; renderStudioStyleCards(); },
+      onPick: function(v){ styleEl.value = v; renderStudioStyleCards(); comboRender(); },
     });
   }
   function renderStudioStyleCards(){
@@ -1260,6 +1260,72 @@
     trig.appendChild(img); trig.appendChild(info); trig.appendChild(all);
     trig.onclick = openStudioPicker;
     studioCardsEl.appendChild(trig);
+    try{ comboRender(); }catch(e){ /* guard-ok */ }
+  }
+  /* v-studio-combo (طلب المالك): سلّة تجمع حتى ٤ خيارات من ميزات مختلفة وتطبّقها معًا في صورة واحدة */
+  const COMBO_TX = {
+    add:   { ar:'➕ أضف هذا الخيار إلى المجموعة', en:'➕ Add this option to the set', fr:'➕ Ajouter cette option', es:'➕ Añadir esta opción', tr:'➕ Bu seçeneği sete ekle', ru:'➕ Добавить в набор', hi:'➕ इस विकल्प को सेट में जोड़ें', ur:'➕ یہ آپشن سیٹ میں شامل کریں', bn:'➕ সেটে যোগ করুন', ne:'➕ सेटमा थप्नुहोस्', fil:'➕ Idagdag sa set', id:'➕ Tambahkan ke set', zh:'➕ 加入组合', ml:'➕ സെറ്റിലേക്ക് ചേർക്കുക' },
+    title: { ar:'🧩 مجموعتك — حتى ٤ خيارات معًا', en:'🧩 Your set — up to 4 options together', fr:'🧩 Votre set — jusqu\'à 4 options', es:'🧩 Tu set — hasta 4 opciones', tr:'🧩 Setin — en fazla 4 seçenek', ru:'🧩 Ваш набор — до 4 опций', hi:'🧩 आपका सेट — अधिकतम 4 विकल्प', ur:'🧩 آپ کا سیٹ — زیادہ سے زیادہ 4', bn:'🧩 আপনার সেট — সর্বোচ্চ ৪টি', ne:'🧩 तपाईंको सेट — बढीमा ४', fil:'🧩 Iyong set — hanggang 4', id:'🧩 Set kamu — maks 4 opsi', zh:'🧩 你的组合 — 最多4项', ml:'🧩 നിങ്ങളുടെ സെറ്റ് — 4 വരെ' },
+    apply: { ar:'✨ طبّق المجموعة معًا', en:'✨ Apply the set together', fr:'✨ Appliquer le set', es:'✨ Aplicar el set', tr:'✨ Seti birlikte uygula', ru:'✨ Применить набор', hi:'✨ सेट एक साथ लागू करें', ur:'✨ سیٹ ایک ساتھ لگائیں', bn:'✨ একসাথে প্রয়োগ করুন', ne:'✨ सेट सँगै लागू गर्नुहोस्', fil:'✨ Ilapat ang set', id:'✨ Terapkan set bersama', zh:'✨ 一起应用组合', ml:'✨ സെറ്റ് ഒരുമിച്ച് പ്രയോഗിക്കുക' },
+    full:  { ar:'المجموعة ممتلئة (٤ خيارات) — احذف خيارًا لتضيف غيره.', en:'The set is full (4 options) — remove one to add another.', fr:'Set complet (4) — retirez-en une.', es:'Set completo (4) — quita una.', tr:'Set dolu (4) — birini çıkar.', ru:'Набор полон (4) — удалите одну.', hi:'सेट भर गया (4) — एक हटाएँ।', ur:'سیٹ بھر گیا (4) — ایک ہٹائیں۔', bn:'সেট পূর্ণ (৪) — একটি সরান।', ne:'सेट भरियो (४) — एउटा हटाउनुहोस्।', fil:'Puno na ang set (4).', id:'Set penuh (4) — hapus satu.', zh:'组合已满（4项）— 请先移除一项。', ml:'സെറ്റ് നിറഞ്ഞു (4) — ഒന്ന് നീക്കുക.' },
+  };
+  function comboT(k){ const lg = (typeof lang !== 'undefined' && lang) ? lang : (localStorage.getItem('aiapp_lang') || 'ar'); const m = COMBO_TX[k]; return (m && (m[lg] || m.en)) || ''; }
+  let comboItems = [];
+  let comboApply = false;
+  let comboBox = null;
+  function comboLabelOf(f, v){
+    const fb = tabsWrap.querySelector('.studioAiTabBtn[data-feature="' + f + '"]');
+    const fl = fb ? fb.textContent.trim() : f;
+    const o = (STUDIO_OPTIONS[f] || []).find((x) => x.value === v);
+    const lg = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
+    const ol = o ? (o[lg] || (window.__bT ? window.__bT(o.ar, o.en) : o.en)) : v;
+    return fl + ' · ' + ol;
+  }
+  function comboRender(){
+    if(!studioCardsEl) return;
+    if(!comboBox){
+      comboBox = document.createElement('div');
+      comboBox.id = 'studioComboBox';
+      comboBox.style.cssText = 'margin-top:10px; border:1px solid var(--omGoldSoft,rgba(212,175,55,.35)); border-radius:14px; padding:10px 12px; background:rgba(212,175,55,.06);';
+      studioCardsEl.insertAdjacentElement('afterend', comboBox);
+    }
+    comboBox.style.display = (feature === 'merge') ? 'none' : 'block';
+    comboBox.innerHTML = '';
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button'; addBtn.className = 'btn'; addBtn.style.cssText = 'width:100%;';
+    addBtn.textContent = comboT('add') + ' (' + comboItems.length + '/4)';
+    addBtn.onclick = function(){
+      const v = styleEl ? styleEl.value : '';
+      if(!v || feature === 'merge') return;
+      if(comboItems.some((it) => it.feature === feature)) comboItems = comboItems.filter((it) => it.feature !== feature); /* خيار واحد لكل ميزة */
+      if(comboItems.length >= 4){ setStatus(comboT('full')); return; }
+      comboItems.push({ feature: feature, style: v });
+      comboRender();
+    };
+    comboBox.appendChild(addBtn);
+    if(comboItems.length){
+      const ttl = document.createElement('div');
+      ttl.style.cssText = 'font-size:12.5px; font-weight:700; margin:10px 0 6px;';
+      ttl.textContent = comboT('title');
+      comboBox.appendChild(ttl);
+      const chips = document.createElement('div');
+      chips.style.cssText = 'display:flex; flex-wrap:wrap; gap:6px;';
+      comboItems.forEach((it) => {
+        const c = document.createElement('span');
+        c.style.cssText = 'display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px; background:rgba(255,255,255,.06); border:1px solid var(--border,rgba(255,255,255,.14)); font-size:12px;';
+        const x = document.createElement('button'); x.type = 'button'; x.textContent = '✕';
+        x.style.cssText = 'background:none; border:none; color:inherit; cursor:pointer; font-size:12px; padding:0;';
+        x.onclick = function(){ comboItems = comboItems.filter((z) => z !== it); comboRender(); };
+        c.appendChild(document.createTextNode(comboLabelOf(it.feature, it.style)));
+        c.appendChild(x); chips.appendChild(c);
+      });
+      comboBox.appendChild(chips);
+      const go = document.createElement('button');
+      go.type = 'button'; go.className = 'btn primary'; go.style.cssText = 'width:100%; margin-top:10px;';
+      go.textContent = comboT('apply') + ' (' + comboItems.length + ')';
+      go.onclick = function(){ comboApply = true; btnGenerate.onclick(); };
+      comboBox.appendChild(go);
+    }
   }
   /* v-studio-tabs: تبويبات الميزات بطاقات مصوّرة من assets/studio/features/. */
   function photoizeStudioTabs(){
@@ -1393,6 +1459,9 @@
         mimeType: selectedMimeA,
         multiAngle: !!(multiAngleEl && multiAngleEl.checked),
       };
+      /* v-studio-combo: تطبيق المجموعة (حتى ٤ خيارات) في طلب واحد */
+      if(comboApply && comboItems.length){ payload.feature = 'combo'; payload.combo = comboItems.slice(0, 4); payload.multiAngle = false; }
+      comboApply = false;
       if(feature === 'merge'){
         payload.imageBase64B = selectedBase64B;
         payload.mimeTypeB = selectedMimeB;

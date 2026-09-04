@@ -1,4 +1,4 @@
-const CACHE_NAME = 'delete-selection-0ddb353d';
+const CACHE_NAME = 'delete-selection-bdc408fa';
 const STATIC_ASSETS = [
   './',
   './index.html',
