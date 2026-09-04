@@ -319,7 +319,18 @@ module.exports = async (req, res) => {
     const respParts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
     const imgPart = respParts.find((p) => p.inlineData && p.inlineData.data);
     if (!imgPart) {
-      res.status(500).json({ error: 'لم يرجع الموديل صورة. حاول بصورة أو خيار آخر.' });
+      // v-studio-noimg-rescue (شكوى المالك «لم يرجع الموديل صورة»): Gemini يردّ نصًا أو
+      // يرفض بعض الطلبات (شكل الجسم، العمر، الحجاب…) — نجرّب gpt-image-1 قبل إبلاغ الفشل.
+      const noImgSrcs = [[imageBase64, mimeType]];
+      if (feature === 'merge' && imageBase64B) noImgSrcs.push([imageBase64B, mimeTypeB]);
+      const noImgRescue = await openaiStudioEdit((parts[0] && parts[0].text) || '', noImgSrcs);
+      if (noImgRescue) {
+        const remN = await consumeStudio(quota.username);
+        res.status(200).json({ imageBase64: noImgRescue, mimeType: 'image/png', engine: 'openai', remaining: remN, dailyLimit: STUDIO_DAILY_LIMIT });
+        return;
+      }
+      const why = String((((data.candidates || [])[0] || {}).finishReason) || (data.promptFeedback && data.promptFeedback.blockReason) || '').slice(0, 40);
+      res.status(500).json({ error: 'لم يرجع الموديل صورة. حاول بصورة أو خيار آخر.' + (why ? ' (' + why + ')' : '') });
       return;
     }
 
