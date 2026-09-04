@@ -25194,7 +25194,13 @@ function stuL(ar, en){
       favSaveBtn.style.display = 'block';
       favSaveBtn.textContent = t2('studioFavoriteSaveBtn');
       setupBeforeAfter();
-      setStatus(t('studioAiDone'));
+      /* v-studio-combo-chain: عدد التغييرات المطبّقة فعلًا من المجموعة */
+      if(data.engine === 'chain' && typeof data.requested === 'number'){
+        const n = Array.isArray(data.applied) ? data.applied.length : 0;
+        setStatus(t('studioAiDone') + ' — ' + (lang === 'ar' ? ('طُبّق ' + n + ' من ' + data.requested) : ('applied ' + n + ' of ' + data.requested)) + (data.partial && data.note ? ' · ' + data.note : ''));
+      } else {
+        setStatus(t('studioAiDone'));
+      }
     } catch(e){
       setStatus((lang === 'ar' ? '❌ خطأ: ' : '❌ Error: ') + (e && e.message ? e.message : String(e)));
     } finally {

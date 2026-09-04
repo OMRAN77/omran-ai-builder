@@ -207,6 +207,86 @@ const LOCK_WHAT = {
   iconic: 'the outfit, hair and setting', age: 'the apparent age', combo: 'the listed changes',
 };
 
+/* ───── بناء أمر ميزة واحدة (كان داخل المعالج) ───── */
+function buildSinglePrompt(feature, style, description, multiAngle) {
+  const styleMap = STYLE_TEXT[feature] || {};
+  let styleDesc = styleMap[style];
+  if (!styleDesc) {
+    const firstKey = Object.keys(styleMap)[0];
+    styleDesc = firstKey ? styleMap[firstKey] : 'a stylish new look';
+  }
+  if (feature === 'tattoo' && style === 'custom' && description) {
+    styleDesc = 'a tattoo design of ' + String(description).slice(0, 300);
+  } else if (description) {
+    styleDesc += ' (' + String(description).slice(0, 200) + ')';
+  }
+  const buildFn = FEATURE_INSTRUCTIONS[feature];
+  if (!buildFn) return null;
+  let promptText = buildFn(styleDesc);
+  if (feature !== 'anime') promptText += '\n' + sourceStylePreservationRule() + EDIT_LOCK(LOCK_WHAT[feature] || 'the requested detail');
+  if (multiAngle && (feature === 'hair' || feature === 'heritage' || feature === 'beard')) {
+    promptText += ' Output a single image laid out as a clean 3-panel collage side by side showing the SAME person and look from three angles: front view, side view, and back view.';
+  }
+  return promptText;
+}
+
+/* ───── نداء Gemini واحد: { b64, mime } أو { error, status, detail, why } ───── */
+async function geminiImage(apiKey, parts, feature) {
+  const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
+  const reqBody = { contents: [{ parts }], generationConfig: { temperature: feature === 'anime' ? 0.65 : 0.15, imageConfig: { imageSize: '2K' } } };
+  const upstream = await fetch(endpoint, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reqBody),
+    signal: AbortSignal.timeout(240000), /* v-image-timeout */
+  });
+  const data = await upstream.json();
+  if (!upstream.ok) {
+    const detail = String((data && data.error && data.error.message) || 'unknown').replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
+    console.error('[studio-create] upstream failed status=' + upstream.status + ' detail=' + detail);
+    return { error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.', status: 502, upstream: upstream.status, detail };
+  }
+  const respParts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
+  const imgPart = respParts.find((p) => p.inlineData && p.inlineData.data);
+  if (!imgPart) {
+    const why = String((((data.candidates || [])[0] || {}).finishReason) || (data.promptFeedback && data.promptFeedback.blockReason) || '').slice(0, 40);
+    return { error: 'لم يرجع الموديل صورة. حاول بصورة أو خيار آخر.' + (why ? ' (' + why + ')' : ''), status: 500, why };
+  }
+  return { b64: imgPart.inlineData.data, mime: imgPart.inlineData.mimeType || 'image/png' };
+}
+
+/* ───── تعديل واحد كامل: قفل الوجه ← Gemini ← إنقاذ ← حارس. يرجع { b64, mime, engine } أو يرمي { status, payload } ───── */
+async function runEdit(o) {
+  if (o.lockLevel && o.lockLevel !== 'none') {
+    const locked = await faceLock.lockedEdit({
+      geminiKey: o.apiKey, openaiKey: o.openaiKey, promptText: o.promptText,
+      imageBase64: o.imageBase64, mimeType: o.mimeType, level: o.lockLevel,
+    });
+    if (locked && locked.b64) return { b64: locked.b64, mime: 'image/png', engine: 'openai-lock' };
+    console.warn('[studio-create] face-lock unavailable for ' + o.feature + ' — falling back to gemini');
+  }
+  const parts = [{ text: o.promptText }, { inlineData: { mimeType: o.mimeType || 'image/jpeg', data: o.imageBase64 } }];
+  const out = await geminiImage(o.apiKey, parts, o.feature);
+  if (!out.b64) {
+    /* v-studio-rescue / v-studio-noimg-rescue: gpt-image-1 قبل إبلاغ الفشل */
+    const rescue = await rescueGuarded(o.promptText, [[o.imageBase64, o.mimeType]], o.apiKey, o.feature);
+    if (rescue) return { b64: rescue, mime: 'image/png', engine: 'openai' };
+    const payload = { error: out.error };
+    if (out.upstream) { payload.upstream = out.upstream; payload.detail = out.detail; }
+    throw { status: out.status || 502, payload };
+  }
+  if (!o.skipGuard) {
+    const guard = await verifyLocalizedImageEdit({
+      apiKey: o.apiKey, sourceBase64: o.imageBase64, sourceMime: o.mimeType || 'image/jpeg',
+      resultBase64: out.b64, resultMime: out.mime,
+      userPrompt: (o.guard && o.guard.userPrompt) || o.feature,
+      allowStyleChange: !!(o.guard && o.guard.allowStyleChange),
+    });
+    /* v-guard-fail-open: تعطّل الحارس نفسه لا يُسقط صورةً جاهزة */
+    if (!guard.ok && guard.reason === 'validation_unavailable') console.warn('[studio-create] guard unavailable — passing result through');
+    else if (!guard.ok) throw { status: 422, payload: { error: publicGuardError(guard), retryable: false } };
+  }
+  return { b64: out.b64, mime: out.mime, engine: 'gemini' };
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -265,7 +345,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const parts = [];
+    const openaiKey = (process.env.OPENAI_API_KEY || '').trim();
 
     if (feature === 'merge') {
       const extra = description ? (' Additional instructions: ' + String(description).slice(0, 300) + '.') : '';
@@ -273,140 +353,77 @@ module.exports = async (req, res) => {
         'Merge the two photos provided into a single combined, coherent, photorealistic image. ' +
         'Keep the people/subjects from both photos recognizable, and blend them naturally together in one consistent scene.' +
         extra + ' Output a single photorealistic image.';
-      parts.push({ text: promptText });
-      parts.push({ inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } });
-      parts.push({ inlineData: { mimeType: mimeTypeB || 'image/jpeg', data: imageBase64B } });
-    } else if (feature === 'combo') {
-      /* v-studio-combo (طلب المالك: «اختار ٤ أشياء من الستايل»): حتى أربعة خيارات
-         من ميزات مختلفة تُطبَّق معًا في صورة واحدة. */
-      const items = (Array.isArray(body.combo) ? body.combo : []).slice(0, 4)
-        .map((it) => ({ f: String((it && it.feature) || ''), v: String((it && it.style) || '') }))
-        .filter((it) => STYLE_TEXT[it.f] && STYLE_TEXT[it.f][it.v] && it.f !== 'merge');
-      if (!items.length) { res.status(400).json({ error: 'combo empty' }); return; }
-      const lines = items.map((it, i) => (i + 1) + ') ' + it.f + ': ' + STYLE_TEXT[it.f][it.v]);
-      const extra = description ? (' Additional instructions: ' + String(description).slice(0, 300) + '.') : '';
-      let promptText = 'Apply ALL of the following changes together to this photo, each one clearly visible:\n' + lines.join('\n') +
-        '\nKeep the same person, face and identity clearly recognizable, the same pose and the same background unless one of the changes replaces the background. Blend the changes naturally into one coherent, photorealistic image.' + extra +
-        ' Output a single photorealistic image.';
-      if (!items.some((it) => it.f === 'anime')) promptText += '\n' + sourceStylePreservationRule() + EDIT_LOCK('the listed changes');
-      parts.push({ text: promptText });
-      parts.push({ inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } });
-    } else {
-      const styleMap = STYLE_TEXT[feature] || {};
-      let styleDesc = styleMap[style];
-      if (!styleDesc) {
-        const firstKey = Object.keys(styleMap)[0];
-        styleDesc = firstKey ? styleMap[firstKey] : 'a stylish new look';
-      }
-      if (feature === 'tattoo' && style === 'custom' && description) {
-        styleDesc = 'a tattoo design of ' + String(description).slice(0, 300);
-      } else if (description) {
-        styleDesc += ' (' + String(description).slice(0, 200) + ')';
-      }
-      const buildFn = FEATURE_INSTRUCTIONS[feature];
-      if (!buildFn) {
-        res.status(400).json({ error: 'Unknown feature' });
+      const parts = [
+        { text: promptText },
+        { inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } },
+        { inlineData: { mimeType: mimeTypeB || 'image/jpeg', data: imageBase64B } },
+      ];
+      const out = await geminiImage(apiKey, parts, 'merge');
+      if (out.b64) {
+        const rem = await consumeStudio(quota.username);
+        res.status(200).json({ imageBase64: out.b64, mimeType: out.mime, remaining: rem, dailyLimit: STUDIO_DAILY_LIMIT });
         return;
       }
-      let promptText = buildFn(styleDesc);
-      if (feature !== 'anime') promptText += '\n' + sourceStylePreservationRule() + EDIT_LOCK(LOCK_WHAT[feature] || 'the requested detail');
-      if (multiAngle && (feature === 'hair' || feature === 'heritage' || feature === 'beard')) {
-        promptText += ' Output a single image laid out as a clean 3-panel collage side by side showing the SAME person and look from three angles: front view, side view, and back view.';
-      }
-      parts.push({ text: promptText });
-      parts.push({ inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } });
-    }
-
-    /* v-face-lock (شكوى المالك المتكررة «يغيّر شكل الشخص»): للميزات التي لا تمسّ الوجه
-       نبدأ بتعديل بقناع بكسلي يحمي الوجه/الرأس عبر gpt-image-1 — الوجه يُنسخ ولا يُعاد رسمه.
-       أي فشل (لا مفتاح، صورة مدوّرة، لا وجه، رفض) يسقط بصمت إلى مسار Gemini أدناه. */
-    const lockLevel = (feature === 'merge') ? 'none' : faceLock.protectLevel(feature, body.combo);
-    if (lockLevel !== 'none') {
-      const locked = await faceLock.lockedEdit({
-        geminiKey: apiKey, openaiKey: (process.env.OPENAI_API_KEY || '').trim(),
-        promptText: (parts[0] && parts[0].text) || '', imageBase64, mimeType, level: lockLevel,
-      });
-      if (locked && locked.b64) {
-        const remL = await consumeStudio(quota.username);
-        res.status(200).json({ imageBase64: locked.b64, mimeType: 'image/png', engine: 'openai-lock', lock: lockLevel, remaining: remL, dailyLimit: STUDIO_DAILY_LIMIT });
-        return;
-      }
-      console.warn('[studio-create] face-lock unavailable for ' + feature + ' — falling back to gemini');
-    }
-
-    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
-    const reqBody = { contents: [{ parts }], generationConfig: { temperature: feature === 'anime' ? 0.65 : 0.15, imageConfig: { imageSize: '2K' } } };
-
-    const upstream = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(reqBody),
-      signal: AbortSignal.timeout(240000), /* v-image-timeout */
-    });
-
-    const data = await upstream.json();
-    if (!upstream.ok) {
-      const detail = String((data && data.error && data.error.message) || 'unknown')
-        .replace(/key=[^&\s"']+/g, 'key=***').slice(0, 200);
-      console.error('[studio-create] upstream failed status=' + upstream.status + ' detail=' + detail);
-      // v-studio-rescue: جرّب gpt-image-1 قبل إبلاغ الفشل — حارس التحقق على
-      // Gemini نفسه فيُتجاوز في مسار الإنقاذ.
-      const rescueImgs = [[imageBase64, mimeType]];
-      if (feature === 'merge' && imageBase64B) rescueImgs.push([imageBase64B, mimeTypeB]);
-      const rescue = await rescueGuarded((parts[0] && parts[0].text) || '', rescueImgs, apiKey, feature);
+      const rescue = await rescueGuarded(promptText, [[imageBase64, mimeType], [imageBase64B, mimeTypeB]], apiKey, 'merge');
       if (rescue) {
         const remR = await consumeStudio(quota.username);
         res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: STUDIO_DAILY_LIMIT });
         return;
       }
-      res.status(502).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.', upstream: upstream.status, detail });
+      res.status(out.status || 502).json({ error: out.error || 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
       return;
     }
 
-    const respParts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
-    const imgPart = respParts.find((p) => p.inlineData && p.inlineData.data);
-    if (!imgPart) {
-      // v-studio-noimg-rescue (شكوى المالك «لم يرجع الموديل صورة»): Gemini يردّ نصًا أو
-      // يرفض بعض الطلبات (شكل الجسم، العمر، الحجاب…) — نجرّب gpt-image-1 قبل إبلاغ الفشل.
-      const noImgSrcs = [[imageBase64, mimeType]];
-      if (feature === 'merge' && imageBase64B) noImgSrcs.push([imageBase64B, mimeTypeB]);
-      const noImgRescue = await rescueGuarded((parts[0] && parts[0].text) || '', noImgSrcs, apiKey, feature);
-      if (noImgRescue) {
-        const remN = await consumeStudio(quota.username);
-        res.status(200).json({ imageBase64: noImgRescue, mimeType: 'image/png', engine: 'openai', remaining: remN, dailyLimit: STUDIO_DAILY_LIMIT });
-        return;
+    if (feature === 'combo') {
+      /* v-studio-combo-chain (شكوى المالك «الدمج ٤ أشياء ما تستوي — فقط شي واحد»): أمر واحد
+         بأربعة تغييرات كان الموديل ينفّذ منها واحدًا. الآن تُطبَّق واحدًا تلو الآخر: كل خطوة
+         تعديل موضعي واحد على ناتج الخطوة السابقة، بقفل الوجه المناسب لها. */
+      const items = (Array.isArray(body.combo) ? body.combo : []).slice(0, 4)
+        .map((it) => ({ f: String((it && it.feature) || ''), v: String((it && it.style) || '') }))
+        .filter((it) => STYLE_TEXT[it.f] && STYLE_TEXT[it.f][it.v] && it.f !== 'merge');
+      if (!items.length) { res.status(400).json({ error: 'combo empty' }); return; }
+      const t0 = Date.now();
+      let cur = { b64: imageBase64, mime: mimeType || 'image/jpeg' };
+      const applied = [];
+      let lastErr = null;
+      for (const it of items) {
+        if (applied.length && Date.now() - t0 > 210000) { console.warn('[studio-create] combo time budget — stopping at ' + applied.length); break; }
+        const promptText = buildSinglePrompt(it.f, it.v, applied.length ? '' : description, false);
+        if (!promptText) continue;
+        try {
+          const r = await runEdit({
+            apiKey, openaiKey, feature: it.f, promptText, imageBase64: cur.b64, mimeType: cur.mime,
+            lockLevel: faceLock.protectLevel(it.f), skipGuard: true,
+          });
+          cur = { b64: r.b64, mime: r.mime };
+          applied.push(it.f);
+        } catch (err) {
+          lastErr = err;
+          console.warn('[studio-create] combo step ' + it.f + ' failed: ' + JSON.stringify(err && err.payload ? err.payload : String(err)).slice(0, 160));
+          if (!applied.length) { res.status((err && err.status) || 500).json((err && err.payload) || { error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' }); return; }
+        }
       }
-      const why = String((((data.candidates || [])[0] || {}).finishReason) || (data.promptFeedback && data.promptFeedback.blockReason) || '').slice(0, 40);
-      res.status(500).json({ error: 'لم يرجع الموديل صورة. حاول بصورة أو خيار آخر.' + (why ? ' (' + why + ')' : '') });
+      const remC = await consumeStudio(quota.username);
+      res.status(200).json({ imageBase64: cur.b64, mimeType: cur.mime, engine: 'chain', applied, requested: items.length, partial: applied.length < items.length, remaining: remC, dailyLimit: STUDIO_DAILY_LIMIT, note: lastErr && lastErr.payload ? lastErr.payload.error : undefined });
       return;
     }
 
-    if (feature !== 'merge') {
-      const guard = await verifyLocalizedImageEdit({
-        apiKey,
-        sourceBase64: imageBase64,
-        sourceMime: mimeType || 'image/jpeg',
-        resultBase64: imgPart.inlineData.data,
-        resultMime: imgPart.inlineData.mimeType || 'image/png',
-        userPrompt: [feature, style, description].filter(Boolean).join(' '),
-        allowStyleChange: feature === 'anime' || (feature === 'combo' && Array.isArray(body.combo) && body.combo.some((it) => it && it.feature === 'anime')),
+    const promptText = buildSinglePrompt(feature, style, description, multiAngle);
+    if (!promptText) { res.status(400).json({ error: 'Unknown feature' }); return; }
+    let guardOpts = null;
+    if (feature !== 'merge') guardOpts = { userPrompt: [feature, style, description].filter(Boolean).join(' '), allowStyleChange: feature === 'anime' };
+    try {
+      const r = await runEdit({
+        apiKey, openaiKey, feature, promptText, imageBase64, mimeType,
+        lockLevel: faceLock.protectLevel(feature),
+        guard: guardOpts, skipGuard: !guardOpts,
       });
-      /* v-guard-fail-open: تعطّل الحارس نفسه (مهلة/حصة) لا يُسقط صورةً جاهزة —
-         نعرضها ونسجّل؛ الرفض فقط عند حكمٍ صريح بتغيير الهوية أو الأسلوب. */
-      if (!guard.ok && guard.reason === 'validation_unavailable') console.warn('[studio-create] guard unavailable — passing result through');
-      else if (!guard.ok) {
-        res.status(422).json({ error: publicGuardError(guard), retryable: false });
-        return;
-      }
+      const remaining = await consumeStudio(quota.username);
+      res.status(200).json({ imageBase64: r.b64, mimeType: r.mime, engine: r.engine, remaining, dailyLimit: STUDIO_DAILY_LIMIT });
+    } catch (err) {
+      if (err && err.status && err.payload) { res.status(err.status).json(err.payload); return; }
+      throw err;
     }
-
-    const remaining = await consumeStudio(quota.username);
-    res.status(200).json({
-      imageBase64: imgPart.inlineData.data,
-      mimeType: imgPart.inlineData.mimeType || 'image/png',
-      remaining,
-      dailyLimit: STUDIO_DAILY_LIMIT,
-    });
   } catch (e) {
     console.error('[studio-create] exception: ' + (e && e.stack ? e.stack : e));
     res.status(500).json({ error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' });
