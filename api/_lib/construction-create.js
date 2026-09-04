@@ -361,7 +361,7 @@ module.exports = async (req, res) => {
 
     const photoPrompt =
       'A photorealistic architectural exterior render of ' + floorsText + buildingDesc +
-      ', approximately ' + area + ' square meters, in ' + styleDesc + '.' + notesText + annexEnText + budgetEnText +
+      ', approximately ' + area + ' square meters, in ' + styleDesc + '.' + notesText + annexEnText +
       ' STRICT CONSISTENCY: this exterior must match the floor plan of the same request exactly — same number of floors, same garage capacity, pool and annexes only if requested and in their requested location. Do not invent extra floors or elements.' +
       ' Daytime, clear sky, professional architectural visualization, high detail, no people, no text overlays.';
     const photoReqBody = { contents: [{ parts: [{ text: photoPrompt }] }], generationConfig: { imageConfig: { imageSize } } };
@@ -380,19 +380,8 @@ module.exports = async (req, res) => {
       '- كمية الأسمنت (عدد الأكياس التقريبي)\n' +
       '- حديد التسليح (طن تقريبي)\n' +
       '- 3-5 مواد إضافية أساسية (تشطيبات، عزل، إلخ)\n' +
-      (annexArText ? ('اعتبر الملاحق التالية ضمن الكميات والتكلفة: ' + annexArText + '.\n') : '') + '\n' +
-      '### 💰 تقدير التكلفة\n' +
-      'الميزانية المختارة: ' + (budgetRangeArText || 'غير محددة') + (budgetArText ? (' — ' + budgetArText) : '') + '.\n' +
-      'اعتمد أسعار السوق الإماراتي الحالية للمتر المربع حسب مستوى التشطيب أعلاه، واذكر أرقامًا صريحة بالدرهم لكل بند:\n' +
-      '- سعر المتر المربع التقريبي (درهم/م²)\n' +
-      '- العظم والهيكل الإنشائي\n' +
-      '- التشطيبات\n' +
-      '- الكهرباء والسباكة\n' +
-      '- التكييف\n' +
-      '- الملاحق الإضافية\n' +
-      '- **الإجمالي التقريبي: رقم واحد صريح بالدرهم**\n' +
-      '- قارن الإجمالي بالميزانية المختارة وقل بوضوح: ضمن الميزانية أم يتجاوزها وبكم.\n' +
-      'ثم أضف سطرًا أخيرًا: "هذا المبلغ تقريبي فقط ولا يشمل أجرة المقاول، وقد يختلف حسب المنطقة وأسعار السوق."\n\n' +
+      (annexArText ? ('اعتبر الملاحق التالية ضمن الكميات: ' + annexArText + '.\n') : '') + '\n' +
+      /* v-cx-noprice (طلب المالك): لا أسعار ولا تكلفة ولا ميزانية في تقرير المقاولات */
       (plotNum ? (
         '### 📏 نسبة البناء والارتدادات\n' +
         'مساحة الأرض ' + plotNum + ' م² ومساحة البناء ' + area + ' م².\n' +
@@ -402,15 +391,11 @@ module.exports = async (req, res) => {
       ) : '') +
       '### 🗓️ الجدول الزمني التنفيذي\n' +
       'سطر واحد لكل مرحلة بصيغة: المرحلة — المدة بالأسابيع. غطِّ: التصميم والرخصة، الحفر والأساسات، الهيكل الخرساني، الطابوق والتمديدات، اللياسة والعزل، التشطيبات، الأعمال الخارجية، التسليم. ثم اذكر المدة الإجمالية بالأشهر.\n\n' +
-      (emirateText ? (
-        '### 📋 الموافقات والرخص\n' +
-        'الإمارة: ' + emirateText + '.\n' +
-        'اذكر خطوات الترخيص بالترتيب، كل خطوة بسطر: الخطوة — الجهة المسؤولة — المدة التقريبية.\n\n'
-      ) : '') +
+      /* v-cx-noprice: قسم الإمارة والرخص أُزيل */
       'كن مختصرًا جدًا وواضحًا، استخدم نقاط قصيرة فقط تحت كل عنوان.\n\n' +
       'وفي نهاية ردّك تمامًا أضف جدول الكميات بهذه الصيغة الحرفية بلا أي نص بعده:\n' +
       '<<<BOQ>>>\n' +
-      'البند|الوحدة|الكمية|سعر الوحدة (درهم)|الإجمالي (درهم)\n' +
+      'البند|الوحدة|الكمية\n' +
       '<<<END>>>\n' +
       'املأه بـ 14-18 بندًا يغطي: الحفر والردم، الأساسات، الخرسانة، حديد التسليح، الطابوق، اللياسة، العزل، البلاط والرخام، الأبواب والشبابيك، الدهانات، الكهرباء، السباكة، التكييف، المطبخ، الأدوات الصحية، الأعمال الخارجية، والملاحق المطلوبة. الكميات والأسعار أرقام مجردة بلا فواصل أو رموز، وآخر سطر للإجمالي.'
       + (replyLangName ? ('\n\nCRITICAL LANGUAGE RULE: write the ENTIRE report — every heading, bullet and BOQ item name — in ' + replyLangName + ' instead of Arabic. Keep all numbers in Western digits, keep amounts in AED, and keep the <<<BOQ>>> / <<<END>>> markers and the pipe-separated BOQ format exactly as specified.') : '');

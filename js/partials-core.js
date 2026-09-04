@@ -1289,19 +1289,7 @@
         <label style="font-size: var(--fs-5); color:var(--muted); display:block; margin-bottom:3px;" data-i18n="cnLandArea">مساحة الأرض (م²) — اختياري</label>
         <input type="number" id="constructionPlot" style="width:100%;" min="50" max="200000" placeholder="مثال: 500" data-i18n-placeholder="cnLandAreaPh">
       </div>
-      <div>
-        <label style="font-size: var(--fs-5); color:var(--muted); display:block; margin-bottom:3px;" data-i18n="cnEmirateOpt">الإمارة — اختياري</label>
-        <select id="constructionEmirate" style="width:100%;">
-          <option value="" data-i18n="constructionEmirateNone">— بدون —</option>
-          <option value="dubai" data-i18n="constructionEmirateDubai">دبي</option>
-          <option value="abudhabi" data-i18n="constructionEmirateAbudhabi">أبوظبي</option>
-          <option value="sharjah" data-i18n="constructionEmirateSharjah">الشارقة</option>
-          <option value="ajman" data-i18n="constructionEmirateAjman">عجمان</option>
-          <option value="ummalquwain" data-i18n="constructionEmirateUmmalquwain">أم القيوين</option>
-          <option value="rasalkhaimah" data-i18n="constructionEmirateRasalkhaimah">رأس الخيمة</option>
-          <option value="fujairah" data-i18n="constructionEmirateFujairah">الفجيرة</option>
-        </select>
-      </div>
+      <!-- v-cx-noprice: اختيار الإمارة أُزيل بطلب المالك -->
     </div>
 
     <div style="margin-top:10px;">
@@ -1356,17 +1344,7 @@
       <input type="checkbox" id="constructionIncludeInterior">
       <span data-i18n="constructionIncludeInteriorLabel">🛋️ ولّد أيضًا صورة تصميم داخلي</span>
     </label>
-
-    <div style="margin-top:10px;">
-      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="constructionBudgetLabel">💰 مستوى الميزانية</label>
-      <select id="constructionBudget" style="width:100%;">
-        <option value="b1" data-i18n="constructionBudgetB1">💵 حتى 300 ألف درهم</option>
-        <option value="b2" selected data-i18n="constructionBudgetB2">💰 300 - 600 ألف درهم</option>
-        <option value="b3" data-i18n="constructionBudgetB3">💎 600 ألف - 1 مليون درهم</option>
-        <option value="b4" data-i18n="constructionBudgetB4">👑 أكثر من 1 مليون درهم</option>
-      </select>
-      <div style="font-size: var(--fs-5); color:var(--muted); margin-top:4px;" data-i18n="constructionBudgetDisclaimer">* هذا المبلغ تقريبي فقط ولا يشمل أجرة المقاول.</div>
-    </div>
+    <!-- v-cx-noprice: مستوى الميزانية والأسعار أُزيلت بطلب المالك -->
 
     <div style="margin-top:10px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="constructionOutputModeLabel">📄 نوع النتيجة</label>
