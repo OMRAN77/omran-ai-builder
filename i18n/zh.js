@@ -233,6 +233,8 @@ I18N['zh'] = {
     "copyCodeTitle": "复制代码",
     "copiedMsg": "已复制 ✅",
     "copyMsgTitle": "复制回复",
+    "msgShareReply": "分享回复",
+    "msgShareCopied": "回复已复制，请粘贴到你想用的应用中",
     "uploadCodeTitle": "上传代码文件(HTML 或 Python)",
     "newProject": "+ 新建项目",
     "promptPlaceholder": "描述您想要构建的应用、游戏或网站...例如：一个简单的贪吃蛇游戏",

@@ -39,6 +39,8 @@ I18N['fr'] = {
     convertToWord: 'Convertir en Word',
     copiedToast: 'Copié',
     copyMsgTitle: 'Copier la réponse',
+    msgShareReply: 'Partager la réponse',
+    msgShareCopied: 'Réponse copiée — collez-la dans l’app de votre choix',
     designAiNeedPick: 'Choisissez d\'abord un type de lieu ou téléchargez une photo',
     downloadTxt: 'Télécharger le TXT',
     moreOptionsTitle: 'Plus d\'options',

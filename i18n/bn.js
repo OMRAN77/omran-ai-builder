@@ -38,6 +38,8 @@ I18N['bn'] = {
     convertToWord: 'Word-এ রূপান্তর করুন',
     copiedToast: 'কপি করা হয়েছে',
     copyMsgTitle: 'উত্তর কপি করুন',
+    msgShareReply: 'উত্তর শেয়ার করুন',
+    msgShareCopied: 'উত্তর কপি হয়েছে — পছন্দের অ্যাপে পেস্ট করুন',
     designAiNeedPick: 'প্রথমে জায়গার ধরন বেছে নিন বা ছবি আপলোড করুন',
     downloadTxt: 'TXT ডাউনলোড করুন',
     moreOptionsTitle: 'আরও অপশন',
