@@ -317,6 +317,19 @@
       </div>
     </div></div>
 
+  <div id="notifSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('notifSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size: var(--fs-3);" data-i18n="notifSectionLabel">🔔 التنبيهات</h3><span class="settingsSectionArrow" id="notifSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="notifSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+      <label style="display:flex; align-items:center; gap:10px; padding:12px; background:var(--panel2); border-radius:var(--r-2); cursor:pointer; user-select:none;">
+        <input type="checkbox" id="chkNewsAlerts" style="width:auto;">
+        <span style="display:flex; flex-direction:column; gap:3px;">
+          <span data-i18n="newsAlertsLabel" style="font-size:14px; font-weight:700;">📢 تنبيهات الأخبار العاجلة</span>
+          <span data-i18n="newsAlertsHint" style="font-size:12px; color:var(--muted);">يصلك إشعار عند وجود خبر عاجل أو تحذير طارئ حتى والتطبيق مغلق</span>
+        </span>
+      </label>
+      <div id="newsAlertsStatus" style="font-size:12px; min-height:16px; margin-top:8px; color:var(--muted);"></div>
+    </div>
+  </div>
+
   <div id="voiceSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('voiceSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size: var(--fs-3);" data-i18n="voiceSectionLabel">الصوت</h3><span class="settingsSectionArrow" id="voiceSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="voiceSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
   <label data-i18n="voiceGenderLabel">نوع الصوت المفضل</label>

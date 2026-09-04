@@ -1,4 +1,4 @@
-const CACHE_NAME = 'delete-selection-3af67bc5';
+const CACHE_NAME = 'delete-selection-a566ca1d';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -69,14 +69,18 @@ self.addEventListener('push', (event) => {
       silent: false,
       vibrate: [300, 150, 300, 150, 300],
       requireInteraction: true,
+      data: { url: data.url || '' },
     })
   );
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  // v-news-push: إشعار خبر عاجل يفتح رابط الخبر نفسه؛ التذكيرات تفتح التطبيق
+  const url = (event.notification && event.notification.data && event.notification.data.url) || '';
   event.waitUntil(
     self.clients.matchAll({ type: 'window' }).then((clientsArr) => {
+      if (url) return self.clients.openWindow(url);
       const existing = clientsArr.find((c) => 'focus' in c);
       if (existing) return existing.focus();
       return self.clients.openWindow('./');

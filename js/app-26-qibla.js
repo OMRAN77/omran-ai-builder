@@ -287,6 +287,7 @@
       })();
     });
   }
+  window.omranEnsurePush = ensurePush; /* v-news-push: تنبيهات الأخبار في الإعدادات تعيد استخدام الاشتراك نفسه */
   function pushStatusText(st){
     if(st.ok) return tx('pushOk');
     if(st.reason === 'denied') return tx('pushDenied');

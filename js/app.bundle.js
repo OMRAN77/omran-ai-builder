@@ -2427,6 +2427,14 @@ const emptyState = $('#emptyState');
 const historyEl = $('#history');
 const I18N = {
   ar: {
+    notifSectionLabel: '🔔 التنبيهات',
+    newsAlertsLabel: '📢 تنبيهات الأخبار العاجلة',
+    newsAlertsHint: 'يصلك إشعار عند وجود خبر عاجل أو تحذير طارئ حتى والتطبيق مغلق',
+    newsAlertsOn: '✅ تم التفعيل — ستصلك الأخبار العاجلة',
+    newsAlertsOff: 'تم الإيقاف',
+    newsAlertsLogin: '🔑 سجّل الدخول أولًا لتفعيل التنبيهات',
+    newsAlertsDenied: '⚠️ إذن الإشعارات مرفوض من الجهاز — فعّله من إعدادات الهاتف',
+    newsAlertsUnavail: '⚠️ الإشعارات غير متاحة على هذا الجهاز',
     introSplashLabel: '✨ شاشة الافتتاح عند فتح التطبيق',
     introSkip: 'اضغط للمتابعة',
     /* v660 — التلفزيون: نصوص القسم في كلّ لغة */
@@ -3397,6 +3405,14 @@ const I18N = {
     emailAsst_eventAdded: "✅ انضاف لتقويمك", emailAsst_calReauth: "أعد ربط Gmail للسماح بالوصول للتقويم", emailAsst_voiceLoading: "🔊 جارٍ تجهيز الملخص الصوتي…", emailAsst_voiceEmpty: "لا توجد إيميلات لتلخيصها.", emailAsst_urgent: "🔴 عاجل", emailAsst_normal: "🟡 عادي", emailAsst_low: "⚪ منخفض",
   },
   en: {
+    notifSectionLabel: '🔔 Notifications',
+    newsAlertsLabel: '📢 Breaking news alerts',
+    newsAlertsHint: 'Get a notification for breaking news or emergency warnings, even when the app is closed',
+    newsAlertsOn: '✅ Enabled — breaking news will reach you',
+    newsAlertsOff: 'Turned off',
+    newsAlertsLogin: '🔑 Log in first to enable alerts',
+    newsAlertsDenied: '⚠️ Notification permission denied — enable it in phone settings',
+    newsAlertsUnavail: '⚠️ Notifications are unavailable on this device',
     introSplashLabel: '✨ Opening screen when the app starts',
     introSkip: 'Tap to continue',
     /* v660 — التلفزيون: نصوص القسم في كلّ لغة */
@@ -4404,7 +4420,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=663'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
+    sc.src = 'i18n/' + lg + '.js?v=664'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -6273,7 +6289,7 @@ function renderMessages(keepScroll){
       }catch(e){ /* guard-ok — نكمل بالرابط */ }
       try{
         var u = URL.createObjectURL(blob), a = document.createElement('a');
-        a.href = u; a.download = nm; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
+        a.href = u; a.download = nm; a.rel = 'noopener'; a.dataset.nativeDownload = '1'; document.body.appendChild(a); a.click(); a.remove();
         setTimeout(function(){ URL.revokeObjectURL(u); }, 15000);
         return true;
       }catch(e){ /* guard-ok */ }
@@ -6282,6 +6298,9 @@ function renderMessages(keepScroll){
   };
   /* كل روابط التحميل في التطبيق تمرّ من الحافظ الموحّد */
   document.addEventListener('click', function(e){
+    /* v-pdf-loop (شكوى المالك «تحميل الـPDF»): النقرات البرمجية (a.click() من مصدّر
+       الـPDF ومن هذا الحافظ نفسه) كانت تُلتقط هنا وتدور بلا تنزيل — نلتقط نقرة المستخدم فقط */
+    if(!e.isTrusted) return;
     var a = e.target && e.target.closest ? e.target.closest('a[download]') : null;
     if(!a || a.dataset.nativeDownload === '1') return;
     var href = a.getAttribute('href') || '';
@@ -8323,7 +8342,7 @@ function collapseAllSettingsSections(){
 }
 
 // ===== v199 Settings redesign: two-level nav (ChatGPT style) =====
-const SETTINGS_NAV_IDS = ['langSection','accountSection','statsSection','agentSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection'];
+const SETTINGS_NAV_IDS = ['langSection','accountSection','statsSection','agentSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','notifSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection'];
 const SETTINGS_NAV_ICONS = {
   langSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`,
   accountSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`,
@@ -8333,6 +8352,7 @@ const SETTINGS_NAV_ICONS = {
   themeSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>`,
   fontFamilySection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14"></path><path d="M12 5v14"></path><path d="M8 19h8"></path></svg>`,
   fontSizeSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 14h-5"></path><path d="M16 16v-3.5a2.5 2.5 0 0 1 5 0V16"></path><path d="M4.5 13h6"></path><path d="m3 16 4.5-9 4.5 9"></path></svg>`,
+  notifSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>`,
   voiceSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.5 8.5a5 5 0 0 1 0 7"></path><path d="M18.5 5.5a9 9 0 0 1 0 13"></path></svg>`,
   toneSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
   memorySection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 0 0-3 3 3 3 0 0 0-1 5.8V16a3 3 0 0 0 4 2.8A3 3 0 0 0 16 16v-2.2A3 3 0 0 0 15 8a3 3 0 0 0-3-3Z"/><path d="M12 5v14"/></svg>`,
@@ -27894,6 +27914,56 @@ if(document.readyState === 'loading'){
     if(btn && modal) btn.onclick = function(){ modal.style.display = 'none'; };
   });
 })();
+/* v-news-push (طلب المالك: «الي يريد أخبار … تخليها في الإعدادات زر تفعيل فقط»):
+   مفتاح واحد في الإعدادات ← التنبيهات. التفعيل يطلب إذن الإشعارات ويشترك بالدفع
+   (نفس اشتراك تنبيهات الصلاة) ويسجّل اشتراك «news» في الخادم؛ كرون التذكيرات
+   يدفع كل خبر عاجل/طارئ جديد مرة واحدة حتى والتطبيق مغلق. */
+(function(){
+  'use strict';
+  var KEY_ON = 'aiapp_news_alerts', KEY_ID = 'aiapp_news_alert_id';
+  function T(k){ try{ return (typeof t === 'function') ? t(k) : k; }catch(e){ return k; } }
+  function token(){ try{ return (typeof authGet === 'function') ? authGet('aiapp_auth_token') : (localStorage.getItem('aiapp_auth_token') || ''); }catch(e){ return ''; } }
+  function status(msg){ var el = document.getElementById('newsAlertsStatus'); if(el) el.textContent = msg || ''; }
+  function setLocal(on, id){
+    try{ localStorage.setItem(KEY_ON, on ? '1' : '0'); if(id) localStorage.setItem(KEY_ID, id); else localStorage.removeItem(KEY_ID); }catch(e){ /* guard-ok */ }
+  }
+  async function enable(chk){
+    var tk = token();
+    if(!tk){ chk.checked = false; status(T('newsAlertsLogin')); return; }
+    status('…');
+    var st = (typeof window.omranEnsurePush === 'function') ? await window.omranEnsurePush() : { ok:false, reason:'nopush' };
+    if(!st.ok){
+      chk.checked = false;
+      status(st.reason === 'denied' ? T('newsAlertsDenied') : (st.reason === 'auth' ? T('newsAlertsLogin') : T('newsAlertsUnavail')));
+      return;
+    }
+    try{
+      var r = await fetch('/api/reminders', { method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + tk }, body: JSON.stringify({ type:'news', message:'الأخبار العاجلة' }) });
+      var j = r.ok ? await r.json() : null;
+      if(!j || !j.ok){ chk.checked = false; status(T('newsAlertsUnavail')); return; }
+      setLocal(true, j.reminder && j.reminder.id);
+      status(T('newsAlertsOn'));
+    }catch(e){ chk.checked = false; status(T('newsAlertsUnavail')); }
+  }
+  async function disable(){
+    var tk = token(), id = '';
+    try{ id = localStorage.getItem(KEY_ID) || ''; }catch(e){ /* guard-ok */ }
+    setLocal(false, '');
+    status(T('newsAlertsOff'));
+    if(tk && id){
+      try{ await fetch('/api/reminders?id=' + encodeURIComponent(id), { method:'DELETE', headers:{ Authorization:'Bearer ' + tk } }); }catch(e){ /* guard-ok */ }
+    }
+  }
+  function wire(){
+    var chk = document.getElementById('chkNewsAlerts');
+    if(!chk || chk.dataset.wired === '1') return;
+    chk.dataset.wired = '1';
+    try{ chk.checked = localStorage.getItem(KEY_ON) === '1'; }catch(e){ /* guard-ok */ }
+    chk.addEventListener('change', function(){ if(chk.checked) enable(chk); else disable(); });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire); else wire();
+  window.omranNewsAlerts = { enable: function(){ var c = document.getElementById('chkNewsAlerts'); if(c){ c.checked = true; enable(c); } } };
+})();
 // 📺 تلفزيون عمران — دليل قنوات عالمي بمصادر بث مباشر رسمية فقط (HLS/DASH).
 // المبدأ الثابت: لا روابط m3u8 مسرّبة ولا إعادة بث — أي بلاغ حقوق يقتل
 // التطبيق من المتاجر. تضمين live_stream يشير دائمًا لبث القناة الجاري،
@@ -29498,6 +29568,7 @@ if(document.readyState === 'loading'){
       })();
     });
   }
+  window.omranEnsurePush = ensurePush; /* v-news-push: تنبيهات الأخبار في الإعدادات تعيد استخدام الاشتراك نفسه */
   function pushStatusText(st){
     if(st.ok) return tx('pushOk');
     if(st.reason === 'denied') return tx('pushDenied');

@@ -38,7 +38,7 @@
       }catch(e){ /* guard-ok — نكمل بالرابط */ }
       try{
         var u = URL.createObjectURL(blob), a = document.createElement('a');
-        a.href = u; a.download = nm; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
+        a.href = u; a.download = nm; a.rel = 'noopener'; a.dataset.nativeDownload = '1'; document.body.appendChild(a); a.click(); a.remove();
         setTimeout(function(){ URL.revokeObjectURL(u); }, 15000);
         return true;
       }catch(e){ /* guard-ok */ }
@@ -47,6 +47,9 @@
   };
   /* كل روابط التحميل في التطبيق تمرّ من الحافظ الموحّد */
   document.addEventListener('click', function(e){
+    /* v-pdf-loop (شكوى المالك «تحميل الـPDF»): النقرات البرمجية (a.click() من مصدّر
+       الـPDF ومن هذا الحافظ نفسه) كانت تُلتقط هنا وتدور بلا تنزيل — نلتقط نقرة المستخدم فقط */
+    if(!e.isTrusted) return;
     var a = e.target && e.target.closest ? e.target.closest('a[download]') : null;
     if(!a || a.dataset.nativeDownload === '1') return;
     var href = a.getAttribute('href') || '';

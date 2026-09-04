@@ -1,4 +1,12 @@
 I18N['es'] = {
+    "notifSectionLabel": "🔔 Notificaciones",
+    "newsAlertsLabel": "📢 Alertas de noticias urgentes",
+    "newsAlertsHint": "Recibe una notificación con noticias urgentes o avisos de emergencia, incluso con la app cerrada",
+    "newsAlertsOn": "✅ Activado: te llegarán las noticias urgentes",
+    "newsAlertsOff": "Desactivado",
+    "newsAlertsLogin": "🔑 Inicia sesión primero para activar las alertas",
+    "newsAlertsDenied": "⚠️ Permiso de notificaciones denegado: actívalo en los ajustes del teléfono",
+    "newsAlertsUnavail": "⚠️ Las notificaciones no están disponibles en este dispositivo",
     "introSplashLabel": "✨ Pantalla de apertura al iniciar la app",
     "introSkip": "Toca para continuar",
     /* v660 — التلفزيون: نصوص القسم وأسماء الدول (CLDR) */
