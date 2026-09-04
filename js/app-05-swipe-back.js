@@ -3,7 +3,7 @@
  * حرفيًا — اسحب بالإصبع لليمين من أي مكان في الشاشة فتتبعك الشاشة، وبعد ثلث العرض (أو نفضة
  * سريعة) تنزلق وتُغلق وترجع للصفحة خلفها. لا مقابض ولا أشرطة ولا مناطق حافة. التمرير الرأسي
  * والقوائم الأفقية والمنزلقات لا تتأثر. أزرار ✕ مخفية ويُضغط عليها برمجيًا فيبقى منطق الإغلاق
- * الأصلي. Esc يغلق على الكمبيوتر. التلفزيون خارج هذا التعديل (أمر المالك). */
+ * الأصلي. Esc يغلق على الكمبيوتر. التلفزيون مشمول بأمر المالك اللاحق. */
 (function(){
   'use strict';
   var MAP = {
@@ -12,6 +12,7 @@
     religionModal: 'religionCloseBtn', emailAssistModal: 'emailAssistCloseBtn', stocksModal: 'stocksCloseBtn',
     expModal: 'expCloseBtn', docModal: 'docX', govModal: 'govX', cvModal: 'cvX', eduHubModal: 'eduCloseBtn',
     omranQiblaShell: 'qClose', fbOverlay: 'fbClose', sectionsToolsOverlay: 'stpCloseBtn',
+    omranTvShell: 'tvClose', /* أمر المالك ٤ سبتمبر: «التلفزيون X ما يستوي — سحب» */
   };
 
   var css = document.createElement('style');
@@ -54,7 +55,10 @@
     var e = t;
     for(var i = 0; e && e !== document.body && i < 12; i++){
       var tag = (e.tagName || '').toLowerCase();
-      if(tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'video' || tag === 'canvas' || tag === 'iframe') return true;
+      if(tag === 'video' || tag === 'canvas' || tag === 'iframe') return true;
+      if(tag === 'input' && (e.type === 'range' || e.type === 'file')) return true;
+      /* الحقول: السحب منها مسموح ما لم تكن قيد الكتابة (شكوى المالك في مولّد السيرة: الصفحة كلها حقول) */
+      if((tag === 'input' || tag === 'textarea' || tag === 'select') && document.activeElement === e) return true;
       try{
         var cs = getComputedStyle(e);
         if((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && e.scrollWidth > e.clientWidth + 4) return true;
@@ -128,5 +132,7 @@
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ensureBound); else ensureBound();
   setInterval(ensureBound, 900);
+  /* الشاشات التي تُنشأ عند فتحها (التلفزيون): نربطها لحظة أول لمسة قبل وصول الحدث إليها */
+  document.addEventListener('touchstart', ensureBound, { capture: true, passive: true });
   window.omranSwipeBack = { close: function(){ var t = topTool(); return t ? closeTool(t) : false; }, top: topTool };
 })();
