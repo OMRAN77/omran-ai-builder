@@ -6,8 +6,6 @@
 const { kvGetRaw, kvSetRaw, kvSetIfAbsent } = require('./kv.js');
 const MORE = require('./studio-more.js');
 
-const BASE_PHOTO = { m: '/assets/fashion/looks/men/casual.webp', w: '/assets/fashion/looks/women/casual.webp' };
-
 function reqOrigin(req) {
   const h = String((req && req.headers && (req.headers['x-forwarded-host'] || req.headers.host)) || '').split(',')[0].trim();
   if (/^[a-z0-9.-]+(:\d+)?$/i.test(h) && /\./.test(h)) return 'https://' + h;
@@ -30,7 +28,7 @@ module.exports = async (req, res) => {
   if (!map) { res.status(404).json({ error: 'unknown feature' }); return; }
   if (value === '__tab') value = Object.keys(map)[0];
   if (!map[value]) { res.status(404).json({ error: 'unknown value' }); return; }
-  const key = 'studio:preview:v1:' + feature + ':' + value;
+  const key = 'studio:preview:v2:' + feature + ':' + value; /* v2: توليد من الصفر بتأطير يُظهر الميزة (الإصدار الأول عدّل صورة كاملة فلم تظهر الحناء ولا شكل الجسم) */
 
   try {
     const cached = await kvGetRaw(key);
@@ -55,24 +53,19 @@ module.exports = async (req, res) => {
 
   try {
     const gender = ((MORE.PREVIEW_SUBJECT[feature] || {})[value]) || ((MORE.PREVIEW_SUBJECT[feature] || {}).__tab) || 'w';
-    const srcRes = await fetch(reqOrigin(req) + BASE_PHOTO[gender], { signal: AbortSignal.timeout(20000) });
-    if (!srcRes.ok) throw new Error('base photo ' + srcRes.status);
-    const srcBuf = Buffer.from(await srcRes.arrayBuffer());
-    const prompt = MORE.FEATURE_INSTRUCTIONS[feature](map[value]) +
-      ' Keep the same studio setting: dark warm brown backdrop with soft golden light, full-body framing, photorealistic.';
-    const form = new FormData();
-    form.append('model', 'gpt-image-1');
-    form.append('prompt', prompt.slice(0, 3900));
-    form.append('size', '1024x1536');
-    form.append('quality', 'medium');
-    form.append('input_fidelity', 'high');
-    form.append('output_format', 'webp');
-    form.append('output_compression', '72');
-    form.append('image', new Blob([srcBuf], { type: 'image/webp' }), 'model.webp');
-    const r = await fetch('https://api.openai.com/v1/images/edits', {
+    const who = (feature === 'age') ? ('an Arab ' + (gender === 'm' ? 'man' : 'woman')) : ('a young Arab ' + (gender === 'm' ? 'man' : 'woman'));
+    const frame = MORE.PREVIEW_FRAME[feature] || 'three-quarter portrait';
+    const fname = MORE.PREVIEW_FEATURE_NAME[feature] || 'the requested style';
+    const desc = map[value];
+    const bg = (feature === 'background' || feature === 'idphoto' || feature === 'iconic' || feature === 'seasons')
+      ? ''
+      : ' Dark warm brown studio backdrop with soft golden light.';
+    const prompt = 'Photorealistic editorial studio photograph of ' + who + ', ' + frame + ', ' + desc + ' — the image must clearly and prominently show ' + fname + '.' +
+      bg + ' Consistent premium studio style, natural skin texture, high detail. No text, no watermark, no logo.';
+    const r = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
-      headers: { Authorization: 'Bearer ' + oaKey },
-      body: form,
+      headers: { Authorization: 'Bearer ' + oaKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'gpt-image-1', prompt: prompt.slice(0, 3900), size: '1024x1536', quality: 'medium', n: 1, output_format: 'webp', output_compression: 72 }),
       signal: AbortSignal.timeout(240000),
     });
     const d = await r.json();
