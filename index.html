@@ -140,7 +140,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 <style>/* v-intro-splash: شاشة افتتاح كاملة من مخطط المالك تظهر مرة عند كل فتح ثم تذوب تمامًا */
 #omranIntro{position:fixed;inset:0;z-index:2147483000;background:#07070B;overflow:hidden;opacity:1;transition:opacity .95s ease,transform .95s ease;cursor:pointer;visibility:visible}
 #omranIntro.oiOut{opacity:0;transform:scale(1.04);pointer-events:none}
-#omranIntro .oiBg{position:absolute;inset:-48px;background:#07070B url(/assets/intro/splash.jpg?v=2) center/cover no-repeat;filter:blur(30px) brightness(.5);transform:scale(1.12)}
+#omranIntro .oiBg{position:absolute;inset:-48px;background:#07070B url(/assets/intro/splash.jpg?v=3) center/cover no-repeat;filter:blur(30px) brightness(.5);transform:scale(1.12)}
 #omranIntro .oiImg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;animation:oiBreathe 4.5s ease-in-out infinite alternate}
 #omranIntro .oiSheen{position:absolute;inset:0;background:linear-gradient(115deg,transparent 38%,rgba(255,238,180,.26) 50%,transparent 62%);background-size:260% 100%;mix-blend-mode:screen;animation:oiSheen 2.6s ease-in-out .4s infinite}
 #omranIntro .oiSkip{position:absolute;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));text-align:center;font:500 12px/1 system-ui,sans-serif;color:rgba(212,175,55,.75);letter-spacing:.4px;opacity:0;animation:oiUp 1s ease 1.4s forwards}
@@ -155,7 +155,7 @@ html.oiOn body{overflow:hidden}
 
 <div id="omranIntro" role="button" tabindex="0" aria-label="اضغط للمتابعة">
   <div class="oiBg"></div>
-  <img class="oiImg" src="/assets/intro/splash.jpg?v=2" alt="" decoding="async" fetchpriority="high">
+  <img class="oiImg" src="/assets/intro/splash.jpg?v=3" alt="" decoding="async" fetchpriority="high">
   <div class="oiSheen"></div>
   <div class="oiSkip" data-i18n="introSkip">اضغط للمتابعة</div>
 </div>
