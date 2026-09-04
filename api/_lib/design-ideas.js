@@ -21,8 +21,10 @@ const PLACE_AR = {
 };
 
 function cleanQ(s) { return String(s || '').replace(/[\r\n]+/g, ' ').replace(/["`\\<>]/g, '').trim().slice(0, 120); }
+const ADULT = /nude|naked|nsfw|porn|xxx|sex|erotic|adult|bikini|lingerie|escort|onlyfans|xvideos|xnxx|redtube|pornhub/i;
 function looksLikePhoto(u) {
   if (!/^https?:\/\//i.test(u)) return false;
+  if (ADULT.test(u)) return false;
   if (/\.svg(\?|$)|\/logo|favicon|sprite|icon|avatar|\.gif(\?|$)|pixel|tracking|1x1/i.test(u)) return false;
   return true;
 }
@@ -142,10 +144,10 @@ async function gather(apiKey, wave1, wave2, gq) {
   /* سلسلة البدائل بلا مفتاح: Google صور → Google صفحات → Bing → DuckDuckGo → Openverse */
   /* v-ideas-relevant (صورة المالك: قطط وزفاف بدل مطعم): مصادر «بحث الصور» فقط — صور الصفحات
      (pagemap) وOpenverse تعطي صورًا لا علاقة لها بالطلب فأُزيلتا من السلسلة. */
+  /* v-ideas-safe (المالك: «فيه صور عارية»): Bing وDuckDuckGo بلا تصفية مضمونة — أُوقفا نهائيًا.
+     يبقى Tavily وGoogle صور مع safe=active فقط. */
   const chain = [
     ['google', () => googleImages(gq, state)],
-    ['bing', () => bingImages(gq, state)],
-    ['ddg', () => ddgImages(gq, state)],
   ];
   for (const [name, fn] of chain) {
     if (!(state.tavilyFail || images.length < 12)) break;
@@ -157,8 +159,6 @@ async function gather(apiKey, wave1, wave2, gq) {
   const detail = {
     tavily: state.tavilyFail || (state.tavilyErr ? 'net' : (apiKey ? 'ok' : 'off')),
     google: state.googleFail || (state.googleErr ? 'net' : ((process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_CX) ? 'ok' : 'off')),
-    bing: state.bingFail || (state.bingErr ? 'net' : 'ok'),
-    ddg: state.ddgFail || (state.ddgErr ? 'net' : 'ok'),
   };
   if (!images.length) {
     out.error = 'provider';
