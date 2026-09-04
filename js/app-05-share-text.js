@@ -57,9 +57,59 @@
     });
     document.body.appendChild(ov);
   }
+  /* v-share-native (المالك: «هذي صور مش من الهاتف نفسه»): داخل غلاف المتجر لا توجد navigator.share،
+     والجسر الأصلي يشارك ملفًا فقط — نرسم الردّ بطاقةً صورة بخط الصفحة ونرسلها عبر الجسر، فتفتح
+     ورقة مشاركة الهاتف الحقيقية بتطبيقاته. */
+  function textCard(text){
+    var W = 1080, pad = 72, fs = 40, lh = Math.round(fs * 1.75);
+    var rtl = /[\u0600-\u06FF]/.test(text);
+    var fam = '';
+    try{ fam = getComputedStyle(document.body).fontFamily || ''; }catch(e){ /* guard-ok */ }
+    var font = fs + 'px ' + (fam || 'system-ui, sans-serif');
+    var c = document.createElement('canvas'); c.width = W; c.height = 400;
+    var x = c.getContext('2d'); x.font = font;
+    var maxW = W - pad * 2, lines = [];
+    String(text).split(/\r?\n/).forEach(function(par){
+      var words = par.split(/\s+/).filter(Boolean), cur = '';
+      if(!words.length){ lines.push(''); return; }
+      words.forEach(function(w){
+        var t = cur ? cur + ' ' + w : w;
+        if(x.measureText(t).width <= maxW) cur = t; else { if(cur) lines.push(cur); cur = w; }
+      });
+      lines.push(cur);
+    });
+    if(lines.length > 70){ lines = lines.slice(0, 70); lines.push('…'); }
+    var head = 150, foot = 90;
+    c.height = head + lines.length * lh + foot + pad;
+    x = c.getContext('2d');
+    x.fillStyle = '#0b0b0d'; x.fillRect(0, 0, c.width, c.height);
+    x.fillStyle = '#d4af37'; x.font = 'bold 44px ' + (fam || 'system-ui, sans-serif');
+    x.textBaseline = 'alphabetic';
+    x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left';
+    var ax = rtl ? W - pad : pad;
+    x.fillText('عمران AI', ax, 92);
+    x.fillStyle = 'rgba(212,175,55,.45)'; x.fillRect(pad, 118, W - pad * 2, 2);
+    x.fillStyle = '#f3efe4'; x.font = font;
+    lines.forEach(function(l, i){ x.fillText(l, ax, head + (i + 1) * lh - Math.round(lh * 0.3)); });
+    x.fillStyle = '#8f8a7c'; x.font = '26px ' + (fam || 'system-ui, sans-serif');
+    x.fillText('omran-ai-builder.vercel.app', ax, c.height - 44);
+    return c;
+  }
+  function cardBlob(text, cb){
+    try{ var c = textCard(text); c.toBlob(function(b){ cb(b || null); }, 'image/png'); }catch(e){ cb(null); }
+  }
+  function bridgeShare(text){
+    try{
+      if(typeof omranNativeBridge !== 'function' || !omranNativeBridge('omranShare') || typeof msgDownloadBlob !== 'function') return false;
+      cardBlob(text, function(b){ if(b) msgDownloadBlob(b, 'omran-reply-' + Date.now() + '.png'); else sheet(text); });
+      return true;
+    }catch(e){ return false; }
+  }
+  window.omranShareTextCard = textCard;
   window.omranShareText = function(text){
     text = String(text || '').trim();
     if(!text) return false;
+    if(bridgeShare(text)) return true;
     if(typeof navigator.share === 'function'){
       try{
         var pr = navigator.share({ text: text });
