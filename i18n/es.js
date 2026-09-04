@@ -239,6 +239,8 @@ I18N['es'] = {
     "copyCodeTitle": "Copiar código",
     "copiedMsg": "Copiado ✅",
     "copyMsgTitle": "Copiar respuesta",
+    "msgShareReply": "Compartir respuesta",
+    "msgShareCopied": "Respuesta copiada — pégala en la app que quieras",
     "uploadCodeTitle": "Sube un archivo de código (HTML o Python)",
     "newProject": "+ Nuevo proyecto",
     "promptPlaceholder": "Describe la app, el juego o el sitio web que quieres crear... p. ej., un juego sencillo de la serpiente",

@@ -1,0 +1,73 @@
+/* v-share-reply (المالك ٤ سبتمبر: «شعار المشاركة غير موجود في آخر شي»): مشاركة نصّ الردّ.
+   ١) ورقة النظام (navigator.share بالنصّ) حيث تتوفّر.
+   ٢) وإلا ورقة صغيرة: واتساب، تيليجرام، X، البريد، نسخ — روابط نصّية تفتح التطبيق مباشرة،
+      تعمل داخل أغلفة المتجر بلا Web Share (المتصفح/الغلاف يحوّل الرابط للتطبيق). */
+(function(){
+  'use strict';
+  function tt(k, ar, en){ try{ var v = (typeof window.t === 'function') ? window.t(k) : k; if(v && v !== k) return v; }catch(e){ /* guard-ok */ } return ((document.documentElement.lang || 'ar') === 'ar') ? ar : en; }
+  function copyText(txt){
+    try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt); return true; } }catch(e){ /* guard-ok */ }
+    try{ var ta = document.createElement('textarea'); ta.value = txt; ta.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); return true; }catch(e){ /* guard-ok */ }
+    return false;
+  }
+  function toast(msg){ try{ if(typeof settingsToast === 'function'){ settingsToast(msg); return; } }catch(e){ /* guard-ok */ } try{ alert(msg); }catch(e){ /* guard-ok */ } }
+  function openExternal(url){
+    try{ var a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener'; a.style.cssText = 'position:fixed;left:-9999px;top:0'; document.body.appendChild(a); a.click(); setTimeout(function(){ try{ a.remove(); }catch(e){ /* guard-ok */ } }, 1000); return true; }catch(e){ /* guard-ok */ }
+    try{ window.open(url, '_blank'); return true; }catch(e){ /* guard-ok */ }
+    return false;
+  }
+  function css(){
+    if(document.getElementById('oShTxtCss')) return;
+    var st = document.createElement('style'); st.id = 'oShTxtCss';
+    st.textContent = '.oStOv{position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,.58);display:flex;align-items:flex-end;justify-content:center}'
+      + '.oStSh{width:100%;max-width:520px;background:#15171b;color:#f1f2f4;border:1px solid rgba(212,175,55,.25);border-bottom:0;border-radius:20px 20px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px));box-shadow:0 -20px 60px rgba(0,0,0,.55)}'
+      + '.oStHd{display:flex;align-items:center;justify-content:space-between;font-size:16px;font-weight:700;margin:0 2px 12px}'
+      + '.oStX{background:0;border:0;color:inherit;opacity:.7;font-size:15px;cursor:pointer;padding:4px 6px;font-family:inherit}'
+      + '.oStGr{display:grid;grid-template-columns:repeat(4,1fr);gap:14px 4px;margin-bottom:6px}'
+      + '.oStT{display:flex;flex-direction:column;align-items:center;gap:7px;background:0;border:0;padding:0;color:inherit;font-family:inherit;font-size:11.5px;cursor:pointer}'
+      + '.oStT i{display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:999px;font-style:normal;font-size:22px;font-weight:800;color:#fff}'
+      + '.oStT:active i{transform:scale(.92)}'
+      + 'html[data-mode="light"] .oStSh{background:#fff;color:#14161a}';
+    document.head.appendChild(st);
+  }
+  function sheet(text){
+    css();
+    var ov = document.createElement('div'); ov.className = 'oStOv';
+    var sh = document.createElement('div'); sh.className = 'oStSh'; ov.appendChild(sh);
+    var close = function(){ try{ ov.remove(); }catch(e){ /* guard-ok */ } };
+    ov.onclick = function(e){ if(e.target === ov) close(); };
+    var hd = document.createElement('div'); hd.className = 'oStHd';
+    hd.innerHTML = '<span>' + tt('msgShareReply', 'مشاركة الردّ', 'Share reply') + '</span>';
+    var xb = document.createElement('button'); xb.type = 'button'; xb.className = 'oStX'; xb.textContent = tt('closeBtn', 'إغلاق', 'Close'); xb.onclick = close; hd.appendChild(xb);
+    sh.appendChild(hd);
+    var gr = document.createElement('div'); gr.className = 'oStGr'; sh.appendChild(gr);
+    var enc = encodeURIComponent(text);
+    var APPS = [
+      { n: 'WhatsApp', g: '✆', c: '#25D366', u: 'https://wa.me/?text=' + enc },
+      { n: 'Telegram', g: '➤', c: '#229ED9', u: 'https://t.me/share/url?url=' + encodeURIComponent(' ') + '&text=' + enc },
+      { n: 'X', g: 'X', c: '#000', u: 'https://twitter.com/intent/tweet?text=' + enc },
+      { n: tt('emailWord', 'البريد', 'Email'), g: '✉', c: '#EA4335', u: 'mailto:?body=' + enc },
+      { n: tt('copyMsgTitle', 'نسخ الردّ', 'Copy reply'), g: '⧉', c: '#d4af37', copy: true },
+    ];
+    APPS.forEach(function(a){
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'oStT';
+      b.innerHTML = '<i style="background:' + a.c + '">' + a.g + '</i><span>' + a.n + '</span>';
+      b.onclick = function(){ if(a.copy){ if(copyText(text)) toast(tt('msgShareCopied', 'نُسخ الردّ — الصقه في التطبيق الذي تريده', 'Reply copied — paste it in the app you want')); close(); return; } openExternal(a.u); close(); };
+      gr.appendChild(b);
+    });
+    document.body.appendChild(ov);
+  }
+  window.omranShareText = function(text){
+    text = String(text || '').trim();
+    if(!text) return false;
+    if(typeof navigator.share === 'function'){
+      try{
+        var pr = navigator.share({ text: text });
+        if(pr && pr.catch) pr.catch(function(err){ if(err && err.name === 'AbortError') return; sheet(text); });
+        return true;
+      }catch(e){ /* guard-ok */ }
+    }
+    sheet(text);
+    return true;
+  };
+})();

@@ -38,6 +38,8 @@ I18N['ne'] = {
     convertToWord: 'Word मा रूपान्तरण गर्नुहोस्',
     copiedToast: 'प्रतिलिपि गरियो',
     copyMsgTitle: 'जवाफ प्रतिलिपि गर्नुहोस्',
+    msgShareReply: 'जवाफ साझा गर्नुहोस्',
+    msgShareCopied: 'जवाफ प्रतिलिपि भयो — चाहेको एपमा टाँस्नुहोस्',
     designAiNeedPick: 'पहिले स्थानको प्रकार छान्नुहोस् वा फोटो अपलोड गर्नुहोस्',
     downloadTxt: 'TXT डाउनलोड गर्नुहोस्',
     moreOptionsTitle: 'थप विकल्पहरू',

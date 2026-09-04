@@ -38,6 +38,8 @@ I18N['hi'] = {
     convertToWord: 'Word में बदलें',
     copiedToast: 'कॉपी किया गया',
     copyMsgTitle: 'जवाब कॉपी करें',
+    msgShareReply: 'जवाब साझा करें',
+    msgShareCopied: 'जवाब कॉपी हो गया — अपनी पसंद के ऐप में पेस्ट करें',
     designAiNeedPick: 'पहले जगह का प्रकार चुनें या फ़ोटो अपलोड करें',
     downloadTxt: 'TXT डाउनलोड करें',
     moreOptionsTitle: 'और विकल्प',

@@ -238,6 +238,8 @@ I18N['tr'] = {
     "copyCodeTitle": "Kodu kopyala",
     "copiedMsg": "Kopyalandı ✅",
     "copyMsgTitle": "Yanıtı kopyala",
+    "msgShareReply": "Yanıtı paylaş",
+    "msgShareCopied": "Yanıt kopyalandı — istediğiniz uygulamaya yapıştırın",
     "uploadCodeTitle": "Bir kod dosyası yükleyin (HTML veya Python)",
     "newProject": "+ Yeni Proje",
     "promptPlaceholder": "Oluşturmak istediğiniz uygulamayı, oyunu veya web sitesini tanımlayın... örn. basit bir yılan oyunu",

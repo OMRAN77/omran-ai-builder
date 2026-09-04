@@ -37,6 +37,8 @@ I18N['ur'] = {
     convertToWord: 'Word میں تبدیل کریں',
     copiedToast: 'کاپی ہو گیا',
     copyMsgTitle: 'جواب کاپی کریں',
+    msgShareReply: 'جواب شیئر کریں',
+    msgShareCopied: 'جواب کاپی ہو گیا — جس ایپ میں چاہیں پیسٹ کریں',
     designAiNeedPick: 'پہلے جگہ کی قسم منتخب کریں یا تصویر اپ لوڈ کریں',
     downloadTxt: 'TXT ڈاؤن لوڈ کریں',
     moreOptionsTitle: 'مزید اختیارات',

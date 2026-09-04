@@ -240,6 +240,8 @@ I18N['fil'] = {
     "copyCodeTitle": "Kopyahin ang code",
     "copiedMsg": "Nakopya na ✅",
     "copyMsgTitle": "Kopyahin ang sagot",
+    "msgShareReply": "Ibahagi ang sagot",
+    "msgShareCopied": "Nakopya ang sagot — i-paste sa app na gusto mo",
     "uploadCodeTitle": "Mag-upload ng code file (HTML o Python)",
     "newProject": "+ Bagong Proyekto",
     "promptPlaceholder": "Ilarawan ang app, laro, o website na gusto mong buuin... hal. simpleng snake game",
