@@ -48,6 +48,16 @@ function resample(img, W, H) {
 /* وزن الأصل عند البكسل (1 = من الأصل تمامًا، 0 = من الناتج). المناطق:
    { kind:'rect', x0,y0,x1,y1 } مستطيل بحافة ناعمة خارجه، أو { kind:'above', y } كل ما فوق الخط
    بحافة ناعمة تحته. الإحداثيات نسبية 0..1 من أبعاد الأصل. */
+function sampleBilinear(img, fx, fy, c) {
+  fx = Math.max(0, Math.min(img.w - 1, fx)); fy = Math.max(0, Math.min(img.h - 1, fy));
+  const x0 = Math.floor(fx), y0 = Math.floor(fy), x1 = Math.min(img.w - 1, x0 + 1), y1 = Math.min(img.h - 1, y0 + 1);
+  const wx = fx - x0, wy = fy - y0;
+  const p00 = (y0 * img.w + x0) * 4 + c, p01 = (y0 * img.w + x1) * 4 + c, p10 = (y1 * img.w + x0) * 4 + c, p11 = (y1 * img.w + x1) * 4 + c;
+  return (img.data[p00] * (1 - wx) + img.data[p01] * wx) * (1 - wy) + (img.data[p10] * (1 - wx) + img.data[p11] * wx) * wy;
+}
+
+/* وزن + مصدر البكسل. { kind:'map', src:{x0,y0,x1,y1}, dst:{x0,y0,x1,y1} }: الوجه انتقل/تغيّر حجمه في
+   الناتج، فنأخذ مستطيل الأصل ونضعه في مستطيل الناتج المكتشف (تحجيم + إزاحة) */
 function weightAt(zones, x, y, W, H, feather) {
   let a = 0;
   for (const z of zones) {
@@ -56,7 +66,8 @@ function weightAt(zones, x, y, W, H, feather) {
       const yy = z.y * H;
       v = y <= yy ? 1 : Math.max(0, 1 - (y - yy) / feather);
     } else {
-      const x0 = z.x0 * W, x1 = z.x1 * W, y0 = z.y0 * H, y1 = z.y1 * H;
+      const rr = z.kind === 'map' ? z.dst : z;
+      const x0 = rr.x0 * W, x1 = rr.x1 * W, y0 = rr.y0 * H, y1 = rr.y1 * H;
       const dx = x < x0 ? x0 - x : (x > x1 ? x - x1 : 0);
       const dy = y < y0 ? y0 - y : (y > y1 ? y - y1 : 0);
       const d = Math.sqrt(dx * dx + dy * dy);
@@ -73,9 +84,10 @@ function compositeProtected(opts) {
     const orig = decode(Buffer.from(opts.origBase64, 'base64'));
     const res = decode(Buffer.from(opts.resultBase64, 'base64'));
     if (!orig || !res || !orig.w || !res.w) return null;
-    /* اختلاف النسبة > 3% = الموديل غيّر التأطير؛ اللصق سيكون في غير مكانه */
+    /* اختلاف النسبة > 3% بلا خريطة = الموديل غيّر التأطير؛ اللصق سيكون في غير مكانه */
     const ar = (orig.w / orig.h) / (res.w / res.h);
-    if (ar < 0.97 || ar > 1.03) { console.warn('[face-composite] aspect mismatch ' + orig.w + 'x' + orig.h + ' vs ' + res.w + 'x' + res.h); return null; }
+    const hasMap = Array.isArray(opts.zones) && opts.zones.some((z) => z && z.kind === 'map');
+    if (!hasMap && (ar < 0.97 || ar > 1.03)) { console.warn('[face-composite] aspect mismatch ' + orig.w + 'x' + orig.h + ' vs ' + res.w + 'x' + res.h); return null; }
     /* نعمل في أبعاد الناتج (يبقى حادًّا)، والأصل يُحجَّم إليه */
     const W = res.w, H = res.h;
     const src = resample(orig, W, H);
@@ -83,6 +95,7 @@ function compositeProtected(opts) {
     const zones = Array.isArray(opts.zones) ? opts.zones : [];
     if (!zones.length) return null;
     const out = Buffer.from(res.data);
+    const mapZone = zones.find((z) => z.kind === 'map');
     let touched = 0;
     for (let y = 0; y < H; y++) {
       for (let x = 0; x < W; x++) {
@@ -90,10 +103,17 @@ function compositeProtected(opts) {
         if (a <= 0) continue;
         touched++;
         const o = (y * W + x) * 4;
-        if (a >= 1) { out[o] = src.data[o]; out[o + 1] = src.data[o + 1]; out[o + 2] = src.data[o + 2]; continue; }
-        out[o] = Math.round(src.data[o] * a + res.data[o] * (1 - a));
-        out[o + 1] = Math.round(src.data[o + 1] * a + res.data[o + 1] * (1 - a));
-        out[o + 2] = Math.round(src.data[o + 2] * a + res.data[o + 2] * (1 - a));
+        let r, g, b;
+        if (mapZone) {
+          /* إحداثيات الناتج → إحداثيات الأصل عبر المستطيلين */
+          const u = mapZone.src.x0 + ((x / W) - mapZone.dst.x0) / (mapZone.dst.x1 - mapZone.dst.x0) * (mapZone.src.x1 - mapZone.src.x0);
+          const v = mapZone.src.y0 + ((y / H) - mapZone.dst.y0) / (mapZone.dst.y1 - mapZone.dst.y0) * (mapZone.src.y1 - mapZone.src.y0);
+          r = sampleBilinear(orig, u * orig.w, v * orig.h, 0); g = sampleBilinear(orig, u * orig.w, v * orig.h, 1); b = sampleBilinear(orig, u * orig.w, v * orig.h, 2);
+        } else { r = src.data[o]; g = src.data[o + 1]; b = src.data[o + 2]; }
+        if (a >= 1) { out[o] = Math.round(r); out[o + 1] = Math.round(g); out[o + 2] = Math.round(b); continue; }
+        out[o] = Math.round(r * a + res.data[o] * (1 - a));
+        out[o + 1] = Math.round(g * a + res.data[o + 1] * (1 - a));
+        out[o + 2] = Math.round(b * a + res.data[o + 2] * (1 - a));
       }
     }
     if (!touched) return null;

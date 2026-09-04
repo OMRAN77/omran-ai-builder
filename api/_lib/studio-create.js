@@ -256,11 +256,11 @@ async function geminiImage(apiKey, parts, feature) {
 /* ───── تعديل واحد كامل: قفل الوجه ← Gemini ← إنقاذ ← حارس. يرجع { b64, mime, engine } أو يرمي { status, payload } ───── */
 async function runEdit(o) {
   /* v-face-composite: مهما كان المحرّك، بكسلات الوجه/الرأس تُعاد من الأصل في النهاية */
-  const prep = (o.lockLevel && o.lockLevel !== 'none')
+  const prep = (o.lockLevel && o.lockLevel !== 'none' && !o.collage)
     ? await faceLock.prepare({ geminiKey: o.apiKey, imageBase64: o.imageBase64, mimeType: o.mimeType, level: o.lockLevel })
     : null;
-  const finish = (b64, mime, engine) => {
-    const fixed = faceLock.restoreProtected(prep, o.imageBase64, b64);
+  const finish = async (b64, mime, engine) => {
+    const fixed = await faceLock.restoreProtected(prep, o.imageBase64, b64, o.apiKey, mime);
     if (fixed && fixed.b64) return { b64: fixed.b64, mime: fixed.mime, engine: engine + '+restore' };
     return { b64, mime, engine };
   };
@@ -424,6 +424,7 @@ module.exports = async (req, res) => {
       const r = await runEdit({
         apiKey, openaiKey, feature, promptText, imageBase64, mimeType,
         lockLevel: faceLock.protectLevel(feature),
+        collage: !!(multiAngle && (feature === 'hair' || feature === 'heritage' || feature === 'beard')),
         guard: guardOpts, skipGuard: !guardOpts,
       });
       const remaining = await consumeStudio(quota.username);
