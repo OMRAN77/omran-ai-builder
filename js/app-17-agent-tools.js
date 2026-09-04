@@ -87,9 +87,12 @@
           var va = args || {};
           var vp = String(va.prompt || '').trim();
           if (!vp) return 'وصف الفيديو فارغ — لم يبدأ التوليد.';
-          var engine = String(va.provider || 'runway').toLowerCase() === 'veo' ? 'veo' : 'runway';
+          /* v-video-trends: الترند يحدد المحرك والنسبة ويُبنى أمره على الخادم */
+          var trendMeta = null;
+          try { trendMeta = (window.__VIDEO_TRENDS && va.trend) ? (window.__VIDEO_TRENDS.trends || []).filter(function (t) { return t.key === va.trend; })[0] : null; } catch (e) { trendMeta = null; }
+          var engine = trendMeta ? trendMeta.engine : (String(va.provider || 'runway').toLowerCase() === 'veo' ? 'veo' : 'runway');
           var vr = String(va.ratio || '').toLowerCase();
-          var ratio = vr === 'portrait' || vr === '9:16' ? '720:1280' : '1280:720';
+          var ratio = trendMeta ? trendMeta.ratio : (vr === 'portrait' || vr === '9:16' ? '720:1280' : '1280:720');
           var ref = va.use_reference_image === false ? null : window.__chatVideoReference;
           var token = (window.authGet && window.authGet('aiapp_auth_token')) || '';
           var payload;
@@ -103,6 +106,7 @@
             endpoint = '/api/video?action=video-create';
             payload = { promptText: vp, ratio: ratio, token: token, duration: parseInt(va.durationSeconds, 10) >= 8 ? 10 : 5, style: va.style === 'anime' ? 'anime' : 'realistic', longMode: false };
           }
+          if (trendMeta) { payload.trend = va.trend; payload.params = { name: va.trend_name || '', text: va.trend_text || '' }; if (engine === 'veo') payload.durationSeconds = 8; }
           if (ref && ref.dataUrl) {
             var comma = String(ref.dataUrl).indexOf(',');
             if (comma > 0) { payload.imageBase64 = String(ref.dataUrl).slice(comma + 1); payload.imageMime = ref.mime || String(ref.dataUrl).slice(5, comma).split(';')[0] || 'image/png'; }

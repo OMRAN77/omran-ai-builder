@@ -24,7 +24,10 @@ module.exports = async (req, res) => {
   const q = req.query || {};
   const feature = String(q.feature || '').trim();
   let value = String(q.value || '').trim();
-  const map = MORE.STYLE_PROMPTS[feature];
+  /* v-video-trends: feature=trend → معاينة بطاقات ترندات الفيديو من نفس المولّد */
+  const TRENDS = require('./video-trends.js').TRENDS;
+  const isTrend = feature === 'trend';
+  const map = isTrend ? Object.fromEntries(Object.keys(TRENDS).map((k) => [k, TRENDS[k].preview.frame])) : MORE.STYLE_PROMPTS[feature];
   if (!map) { res.status(404).json({ error: 'unknown feature' }); return; }
   if (value === '__tab') value = Object.keys(map)[0];
   if (!map[value]) { res.status(404).json({ error: 'unknown value' }); return; }
@@ -52,6 +55,19 @@ module.exports = async (req, res) => {
   }
 
   try {
+    if (isTrend) {
+      const tp = 'High quality ' + map[value] + ', vertical 3:4 composition, cinematic color grading, no text, no watermark, no logo.';
+      const tr = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST', headers: { Authorization: 'Bearer ' + oaKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'gpt-image-1', prompt: tp.slice(0, 3900), size: '1024x1536', quality: 'medium', n: 1, output_format: 'webp', output_compression: 72 }),
+        signal: AbortSignal.timeout(240000),
+      });
+      const td = await tr.json();
+      const tb = td && td.data && td.data[0] && td.data[0].b64_json;
+      if (!tr.ok || !tb) throw new Error('openai ' + tr.status);
+      try { await kvSetRaw(key, tb); } catch (e) { /* يُقدَّم الآن */ }
+      sendImage(res, tb); return;
+    }
     const gender = ((MORE.PREVIEW_SUBJECT[feature] || {})[value]) || ((MORE.PREVIEW_SUBJECT[feature] || {}).__tab) || 'w';
     const who = (feature === 'age') ? ('an Arab ' + (gender === 'm' ? 'man' : 'woman')) : ('a young Arab ' + (gender === 'm' ? 'man' : 'woman'));
     const frame = MORE.PREVIEW_FRAME[feature] || 'three-quarter portrait';

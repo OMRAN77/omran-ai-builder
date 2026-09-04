@@ -12,7 +12,13 @@ module.exports = async (req, res) => {
   try {
     let body = req.body;
     if (!body || typeof body === 'string') body = JSON.parse(body || '{}');
-    const { promptText, ratio, token, quality, imageBase64, imageMime, durationSeconds } = body;
+    let { promptText, ratio, token, quality, imageBase64, imageMime, durationSeconds } = body;
+    /* v-video-trends: ترند بلمسة — الأمر يُبنى على الخادم من قالب الترند ومدخلات المستخدم */
+    if (body.trend) {
+      const built = require('./video-trends.js').buildTrendPrompt(String(body.trend), Object.assign({}, body.params || {}, { hasImage: !!(imageBase64 && String(imageBase64).trim()) }));
+      if (!built) { res.status(400).json({ error: 'unknown trend' }); return; }
+      promptText = built.prompt; ratio = ratio || built.ratio; if (!durationSeconds) durationSeconds = 8;
+    }
     let durSec = parseInt(durationSeconds, 10);
     if (![4, 6, 8].includes(durSec)) durSec = 0; // 0 = default (leave to Veo)
     if (!promptText || !String(promptText).trim()) {

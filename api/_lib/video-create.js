@@ -27,7 +27,13 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { promptText, ratio, duration, style, token, longMode, imageBase64, imageMime } = body;
+    let { promptText, ratio, duration, style, token, longMode, imageBase64, imageMime } = body;
+    /* v-video-trends */
+    if (body.trend) {
+      const built = require('./video-trends.js').buildTrendPrompt(String(body.trend), Object.assign({}, body.params || {}, { hasImage: !!(imageBase64 && String(imageBase64).trim()) }));
+      if (!built) { res.status(400).json({ error: 'unknown trend' }); return; }
+      promptText = built.prompt; ratio = ratio || built.ratio;
+    }
 
     if (!promptText || !String(promptText).trim()) {
       res.status(400).json({ error: 'Missing promptText' });
