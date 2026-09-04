@@ -895,5 +895,18 @@
   });
 })();
 </script>
+<script>
+/* v-swipe-back (أمر المالك: التعليم يُسحب كالبقية): الصفحة داخل إطار، فاللمس لا يصل للتطبيق —
+   نسحب هنا ونبلّغ التطبيق ليغلق شاشة التعليم */
+(function(){
+  var t0=null,dragging=false,w=0;
+  function blocked(t){var e=t;for(var i=0;e&&e!==document.body&&i<12;i++){var tag=(e.tagName||'').toLowerCase();if(tag==='video'||tag==='canvas'||tag==='iframe')return true;if((tag==='input'||tag==='textarea'||tag==='select')&&document.activeElement===e)return true;try{var cs=getComputedStyle(e);if((cs.overflowX==='auto'||cs.overflowX==='scroll')&&e.scrollWidth>e.clientWidth+4)return true;}catch(err){}e=e.parentElement;}return false;}
+  function setX(x,anim){document.body.style.transition=anim?'transform .18s ease-out,opacity .18s ease-out':'none';document.body.style.transform=x?('translateX('+x+'px)'):'';document.body.style.opacity=x?String(Math.max(.3,1-x/Math.max(1,w)*.9)):'';}
+  document.addEventListener('touchstart',function(e){if(e.touches.length!==1||blocked(e.target)){t0=null;return;}t0={x:e.touches[0].clientX,y:e.touches[0].clientY,ts:Date.now()};dragging=false;w=window.innerWidth||360;},{passive:true});
+  document.addEventListener('touchmove',function(e){if(!t0)return;var dx=e.touches[0].clientX-t0.x,dy=e.touches[0].clientY-t0.y;if(!dragging){if(Math.abs(dx)<14||Math.abs(dx)<Math.abs(dy)*1.4)return;if(dx<=0){t0=null;return;}dragging=true;}setX(Math.max(0,dx),false);},{passive:true});
+  function finish(e){if(!t0)return;var was=dragging;var dx=(was&&e.changedTouches&&e.changedTouches[0])?(e.changedTouches[0].clientX-t0.x):0;var dt=Date.now()-t0.ts;t0=null;dragging=false;if(!was)return;if(dx>w*0.35||(dt<300&&dx>70)){setX(w+40,true);setTimeout(function(){ try{ window.parent.postMessage({ omranSwipeBack: 1 }, '*'); }catch(err){} setTimeout(function(){ setX(0,false); },400); },190);}else{setX(0,true);}}
+  document.addEventListener('touchend',finish,{passive:true});document.addEventListener('touchcancel',finish,{passive:true});
+})();
+</script>
 </body>
 </html>

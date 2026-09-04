@@ -13,6 +13,7 @@
     expModal: 'expCloseBtn', docModal: 'docX', govModal: 'govX', cvModal: 'cvX', eduHubModal: 'eduCloseBtn',
     omranQiblaShell: 'qClose', fbOverlay: 'fbClose', sectionsToolsOverlay: 'stpCloseBtn',
     omranTvShell: 'tvClose', /* أمر المالك ٤ سبتمبر: «التلفزيون X ما يستوي — سحب» */
+    portraitStyleSheet: 'portraitStyleSheetClose', /* ورقة أنماط الصور */
   };
 
   var css = document.createElement('style');
@@ -122,6 +123,19 @@
       bind(el);
     });
   }
+
+  /* شاشة التعليم داخل إطار: السحب فيها يصل رسالةً من الإطار */
+  window.addEventListener('message', function(e){
+    try{ if(e && e.data && e.data.omranSwipeBack){ var el = document.getElementById('eduHubModal'); if(visible(el)) closeTool(el); } }catch(err){ /* guard-ok */ }
+  });
+  /* العودة من استوديو الإعلانات (صفحة مستقلة) إلى قائمة الأدوات لا المحادثة */
+  try{
+    if(/[?&]tools=1(&|$)/.test(location.search)){
+      var openTools = function(){ var o = document.getElementById('sectionsToolsOverlay'); if(o){ o.classList.add('show'); return true; } return false; };
+      if(!openTools()) setTimeout(openTools, 800);
+      try{ history.replaceState(null, '', location.pathname + location.hash); }catch(e2){ /* guard-ok */ }
+    }
+  }catch(e){ /* guard-ok */ }
 
   /* Esc يغلق أعلى أداة مفتوحة (الكمبيوتر) */
   document.addEventListener('keydown', function(e){
