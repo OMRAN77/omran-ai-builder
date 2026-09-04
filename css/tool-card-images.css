@@ -93,5 +93,5 @@ html[lang="ar"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.toolPhotoCard img.
   html[lang="ar"] #sectionsToolsPopup .ptGrid{grid-template-columns:repeat(2,1fr)!important; gap:10px!important;}
 }
 @media (min-width:761px){
-  html[lang="ar"] #sectionsToolsPopup{max-width:780px!important;}
+  html[lang="ar"] #sectionsToolsPopup{max-width:none!important;}
 }
