@@ -204,7 +204,7 @@ const LOCK_WHAT = {
   idphoto: 'the background and framing', hijab: 'the head covering and outfit', gulfmen: 'the outfit and headwear', menhair: 'the hair',
   henna: 'the henna on the skin', wedding: 'the outfit, hairstyle and makeup', accessories: 'the added accessory', eyes: 'the eyes or smile',
   body: 'the body shape', background: 'the background', palette: 'the colors of the outfit', seasons: 'the outfit and setting',
-  iconic: 'the outfit, hair and setting', age: 'the apparent age', combo: 'the listed changes',
+  iconic: 'the outfit, hair and setting', age: 'the apparent age',
 };
 
 /* ───── بناء أمر ميزة واحدة (كان داخل المعالج) ───── */
@@ -382,39 +382,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    if (feature === 'combo') {
-      /* v-studio-combo-chain (شكوى المالك «الدمج ٤ أشياء ما تستوي — فقط شي واحد»): أمر واحد
-         بأربعة تغييرات كان الموديل ينفّذ منها واحدًا. الآن تُطبَّق واحدًا تلو الآخر: كل خطوة
-         تعديل موضعي واحد على ناتج الخطوة السابقة، بقفل الوجه المناسب لها. */
-      const items = (Array.isArray(body.combo) ? body.combo : []).slice(0, 4)
-        .map((it) => ({ f: String((it && it.feature) || ''), v: String((it && it.style) || '') }))
-        .filter((it) => STYLE_TEXT[it.f] && STYLE_TEXT[it.f][it.v] && it.f !== 'merge');
-      if (!items.length) { res.status(400).json({ error: 'combo empty' }); return; }
-      const t0 = Date.now();
-      let cur = { b64: imageBase64, mime: mimeType || 'image/jpeg' };
-      const applied = [];
-      let lastErr = null;
-      for (const it of items) {
-        if (applied.length && Date.now() - t0 > 210000) { console.warn('[studio-create] combo time budget — stopping at ' + applied.length); break; }
-        const promptText = buildSinglePrompt(it.f, it.v, applied.length ? '' : description, false);
-        if (!promptText) continue;
-        try {
-          const r = await runEdit({
-            apiKey, openaiKey, feature: it.f, promptText, imageBase64: cur.b64, mimeType: cur.mime,
-            lockLevel: faceLock.protectLevel(it.f), skipGuard: true,
-          });
-          cur = { b64: r.b64, mime: r.mime };
-          applied.push(it.f);
-        } catch (err) {
-          lastErr = err;
-          console.warn('[studio-create] combo step ' + it.f + ' failed: ' + JSON.stringify(err && err.payload ? err.payload : String(err)).slice(0, 160));
-          if (!applied.length) { res.status((err && err.status) || 500).json((err && err.payload) || { error: 'تعذّر إنشاء الصورة الآن. جرّب مرة أخرى.' }); return; }
-        }
-      }
-      const remC = await consumeStudio(quota.username);
-      res.status(200).json({ imageBase64: cur.b64, mimeType: cur.mime, engine: 'chain', applied, requested: items.length, partial: applied.length < items.length, remaining: remC, dailyLimit: STUDIO_DAILY_LIMIT, note: lastErr && lastErr.payload ? lastErr.payload.error : undefined });
-      return;
-    }
+    if (feature === 'combo') { res.status(410).json({ error: 'combo_removed' }); return; } /* v-studio-combo-removed: أمر المالك */
 
     const promptText = buildSinglePrompt(feature, style, description, multiAngle);
     if (!promptText) { res.status(400).json({ error: 'Unknown feature' }); return; }
