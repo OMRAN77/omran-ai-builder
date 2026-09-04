@@ -220,6 +220,30 @@ const TRENDS = {
    "frame": "photorealistic festive still of a smiling Arab family in Eid attire with lanterns and crescent decorations, golden light",
    "gender": "m"
   }
+ },
+ "drone": {
+  "engine": "veo",
+  "ratio": "1280:720",
+  "photo": "req",
+  "kind": "none",
+  "prompt": "Cinematic aerial drone footage starting exactly from the reference image: the camera lifts off smoothly, rises high and slowly orbits the location revealing the surroundings from above, stabilized gimbal motion, golden-hour light, gentle wind, realistic scale, subtle ambient sound, 4K look, no text.",
+  "scenes": null,
+  "preview": {
+   "frame": "photorealistic aerial drone still of a modern white villa with a pool seen from above at golden hour",
+   "gender": "m"
+  }
+ },
+ "orbit360": {
+  "engine": "veo",
+  "ratio": "720:1280",
+  "photo": "req",
+  "kind": "none",
+  "prompt": "Smooth 360-degree orbit camera move around the subject of the reference image, the subject stays still and centered, background parallax, consistent lighting, cinematic depth of field, seamless loop feel, photorealistic, no text.",
+  "scenes": null,
+  "preview": {
+   "frame": "photorealistic still of a young Arab man standing still in a studio while a motion-blurred camera orbit circles around him",
+   "gender": "m"
+  }
  }
 };
 function clean(s) { return String(s || '').replace(/[\r\n]+/g, ' ').replace(/["`\\<>]/g, '').trim().slice(0, 240); }
