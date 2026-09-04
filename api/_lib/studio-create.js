@@ -41,6 +41,17 @@ async function openaiStudioEdit(promptText, images) {
   } catch (e) { console.warn('[studio-create] openai ' + (e && e.message)); return null; }
 }
 const { sourceStylePreservationRule } = require('./image-prompt');
+/* v-studio-lock: الإنقاذ بـgpt-image-1 يمرّ بحارس الهوية أيضًا — إن تغيّر الشخص نعيد مرة بقفل أشدّ */
+async function rescueGuarded(promptText, images, apiKey, feature) {
+  const first = await openaiStudioEdit(promptText, images);
+  if (!first || feature === 'anime' || feature === 'merge' || !apiKey) return first;
+  try {
+    const g = await verifyLocalizedImageEdit({ apiKey, sourceBase64: images[0][0], sourceMime: images[0][1] || 'image/jpeg', resultBase64: first, resultMime: 'image/png', userPrompt: promptText.slice(0, 600) });
+    if (g.ok || g.reason === 'validation_unavailable') return first;
+    const second = await openaiStudioEdit(promptText + STRONGER_LOCK, images);
+    return second || first;
+  } catch (e) { return first; }
+}
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 
 const STYLE_TEXT = {
@@ -177,6 +188,24 @@ const __MORE = require('./studio-more.js');
 Object.keys(__MORE.STYLE_PROMPTS).forEach((k) => { if (!STYLE_TEXT[k]) STYLE_TEXT[k] = __MORE.STYLE_PROMPTS[k]; });
 Object.keys(__MORE.FEATURE_INSTRUCTIONS).forEach((k) => { if (!FEATURE_INSTRUCTIONS[k]) FEATURE_INSTRUCTIONS[k] = __MORE.FEATURE_INSTRUCTIONS[k]; });
 
+/* v-studio-lock (شكوى المالك: طلب «بشت» فتغيّر الوجه والوقفة والغترة): قفل تعديل
+   صارم يُلحق بكل أمر — تعديل موضعي على الصورة نفسها لا صورة جديدة. */
+const EDIT_LOCK = (what) =>
+  '\nSTRICT EDIT LOCK (highest priority): this is a localized edit of the provided photo, NOT a new image. ' +
+  'Keep the exact same person and face (identity, features, skin, expression, beard), the same head position, gaze, body pose, hands, ' +
+  'the same camera angle, framing, crop, lighting and background — pixel-for-pixel wherever not touched. ' +
+  'Change ONLY ' + what + '. If the requested change does not mention headwear, keep the existing headwear exactly as it is. ' +
+  'Do not beautify, restyle, re-pose or regenerate anything else.';
+const STRONGER_LOCK = '\nSECOND ATTEMPT — the previous result changed the person. Preserve the reference photo exactly; apply the single requested change as a thin overlay on the original pixels only.';
+const LOCK_WHAT = {
+  hair: 'the hair', nails: 'the fingernails', makeup: 'the facial makeup', beard: 'the facial hair', skin: 'the skin finish',
+  glasses: 'the glasses', tattoo: 'the tattoo', anime: 'the art style', heritage: 'the clothing/outfit',
+  idphoto: 'the background and framing', hijab: 'the head covering and outfit', gulfmen: 'the outfit and headwear', menhair: 'the hair',
+  henna: 'the henna on the skin', wedding: 'the outfit, hairstyle and makeup', accessories: 'the added accessory', eyes: 'the eyes or smile',
+  body: 'the body shape', background: 'the background', palette: 'the colors of the outfit', seasons: 'the outfit and setting',
+  iconic: 'the outfit, hair and setting', age: 'the apparent age', combo: 'the listed changes',
+};
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -258,7 +287,7 @@ module.exports = async (req, res) => {
       let promptText = 'Apply ALL of the following changes together to this photo, each one clearly visible:\n' + lines.join('\n') +
         '\nKeep the same person, face and identity clearly recognizable, the same pose and the same background unless one of the changes replaces the background. Blend the changes naturally into one coherent, photorealistic image.' + extra +
         ' Output a single photorealistic image.';
-      if (!items.some((it) => it.f === 'anime')) promptText += '\n' + sourceStylePreservationRule();
+      if (!items.some((it) => it.f === 'anime')) promptText += '\n' + sourceStylePreservationRule() + EDIT_LOCK('the listed changes');
       parts.push({ text: promptText });
       parts.push({ inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } });
     } else {
@@ -279,7 +308,7 @@ module.exports = async (req, res) => {
         return;
       }
       let promptText = buildFn(styleDesc);
-      if (feature !== 'anime') promptText += '\n' + sourceStylePreservationRule();
+      if (feature !== 'anime') promptText += '\n' + sourceStylePreservationRule() + EDIT_LOCK(LOCK_WHAT[feature] || 'the requested detail');
       if (multiAngle && (feature === 'hair' || feature === 'heritage' || feature === 'beard')) {
         promptText += ' Output a single image laid out as a clean 3-panel collage side by side showing the SAME person and look from three angles: front view, side view, and back view.';
       }
@@ -306,7 +335,7 @@ module.exports = async (req, res) => {
       // Gemini نفسه فيُتجاوز في مسار الإنقاذ.
       const rescueImgs = [[imageBase64, mimeType]];
       if (feature === 'merge' && imageBase64B) rescueImgs.push([imageBase64B, mimeTypeB]);
-      const rescue = await openaiStudioEdit((parts[0] && parts[0].text) || '', rescueImgs);
+      const rescue = await rescueGuarded((parts[0] && parts[0].text) || '', rescueImgs, apiKey, feature);
       if (rescue) {
         const remR = await consumeStudio(quota.username);
         res.status(200).json({ imageBase64: rescue, mimeType: 'image/png', engine: 'openai', remaining: remR, dailyLimit: STUDIO_DAILY_LIMIT });
@@ -323,7 +352,7 @@ module.exports = async (req, res) => {
       // يرفض بعض الطلبات (شكل الجسم، العمر، الحجاب…) — نجرّب gpt-image-1 قبل إبلاغ الفشل.
       const noImgSrcs = [[imageBase64, mimeType]];
       if (feature === 'merge' && imageBase64B) noImgSrcs.push([imageBase64B, mimeTypeB]);
-      const noImgRescue = await openaiStudioEdit((parts[0] && parts[0].text) || '', noImgSrcs);
+      const noImgRescue = await rescueGuarded((parts[0] && parts[0].text) || '', noImgSrcs, apiKey, feature);
       if (noImgRescue) {
         const remN = await consumeStudio(quota.username);
         res.status(200).json({ imageBase64: noImgRescue, mimeType: 'image/png', engine: 'openai', remaining: remN, dailyLimit: STUDIO_DAILY_LIMIT });
