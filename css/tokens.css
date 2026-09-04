@@ -1004,15 +1004,17 @@ html.store-safe #aboutStocksCard{display:none !important;}
 @media (min-width: 761px){
   #portraitStyleModal > div, #videoMakerModal > div, #designAiModal > div, #fashionAiModal > div,
   #studioAiModal > div, #constructionModal > div, #religionModal > div, #emailAssistModal > div{
-    padding-left:28px !important;
-    padding-right:28px !important;
+    /* v-tools-deskfit (شكوى المالك «كبرت الشاشة زيادة»): الخلفية شاشة كاملة، والمحتوى بعرض مريح 1100px في الوسط */
+    padding-left:max(28px, calc((100vw - 1100px) / 2)) !important;
+    padding-right:max(28px, calc((100vw - 1100px) / 2)) !important;
   }
-  #eduHubModal .eduWrap, #expModal .expWrap, .xm .xmWrap{max-width:none !important; border-inline:none !important;}
-  html body #videoMakerModal .vmk-studio{max-width:none !important; width:100% !important; margin:0 !important;}
+  #eduHubModal .eduWrap, #expModal .expWrap, .xm .xmWrap{max-width:1100px !important; margin-inline:auto !important;}
+  html body #videoMakerModal .vmk-studio{max-width:1100px !important; margin-inline:auto !important;}
+  #eduHubModal .eduWrap, #expModal .expWrap, .xm .xmWrap{border-inline:none !important;}
   /* نافذة الأدوات نفسها شاشة كاملة على الكمبيوتر (لقطة المالك: بطاقة وسط الشاشة بشريط سحب) */
   #sectionsToolsOverlay{align-items:stretch !important; padding:0 !important;}
-  html[lang] body #sectionsToolsPopup{max-width:none !important; width:100% !important; height:100% !important; max-height:none !important; border:none !important; border-radius:0 !important; padding:18px 28px 32px !important;}
-  html[lang] body #sectionsToolsPopup .ptGrid{grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)) !important; gap:14px !important;}
+  html[lang] body #sectionsToolsPopup{max-width:none !important; width:100% !important; height:100% !important; max-height:none !important; border:none !important; border-radius:0 !important; padding:18px max(28px, calc((100vw - 1180px) / 2)) 32px !important;}
+  html[lang] body #sectionsToolsPopup .ptGrid{grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)) !important; gap:12px !important;}
   /* بلا شريط سحب ظاهر في الأدوات على الكمبيوتر */
   #sectionsToolsPopup, #portraitStyleModal > div, #videoMakerModal > div, #designAiModal > div, #fashionAiModal > div,
   #studioAiModal > div, #constructionModal > div, #religionModal > div, #emailAssistModal > div,
