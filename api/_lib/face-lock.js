@@ -108,9 +108,11 @@ function maskPng(w, h, rects) {
    head = الرأس كله بالشعر والغطاء، none = الميزة تمسّ الوجه نفسه ───── */
 const PROTECT = {
   hair: 'face', menhair: 'face', hijab: 'face', gulfmen: 'face', iconic: 'face', accessories: 'face', wedding: 'face',
-  nails: 'head', tattoo: 'head', heritage: 'head', idphoto: 'head', henna: 'head', body: 'head', background: 'head', palette: 'head', seasons: 'head',
+  idphoto: 'head', background: 'head',
+  /* body: القابل للتعديل هو ما تحت الرأس فقط (الملابس/الجسم/اليدان) — الرأس والخلفية فوقه محفوظان بالبكسل */
+  nails: 'body', tattoo: 'body', heritage: 'body', henna: 'body', body: 'body', palette: 'body', seasons: 'body',
 };
-const RANK = { none: 0, face: 1, head: 2 };
+const RANK = { none: 0, face: 1, head: 2, body: 3 };
 function protectLevel(feature, comboItems) {
   if (feature === 'combo') {
     const items = Array.isArray(comboItems) ? comboItems : [];
@@ -195,11 +197,21 @@ async function lockedEdit(opts) {
   if (!size || !size.w || !size.h) return null;
   if (size.type === 'jpeg' && jpegOrientation(buf) !== 1) { console.warn('[face-lock] rotated EXIF — no mask'); return null; }
   const boxes = await detectBoxes(geminiKey, imageBase64, mimeType);
-  const box = boxes && (level === 'head' ? (boxes.head || boxes.face) : (boxes.face || null));
+  const box = boxes && (level === 'face' ? (boxes.face || null) : (boxes.head || boxes.face));
   if (!box) return null;
-  const rect = boxToRect(box, size.w, size.h, level === 'head' ? 0.08 : 0.06);
-  const mask = maskPng(size.w, size.h, [rect]);
-  const lockNote = '\nPIXEL LOCK: the masked area (the person\'s ' + (level === 'head' ? 'head, hair and headwear' : 'face') + ') is locked and must remain exactly as in the photo; blend the edit seamlessly around it with matching lighting, skin tone and proportions.';
+  const rects = [];
+  let lockNote;
+  if (level === 'body') {
+    /* كل ما فوق أسفل الرأس (مع تداخل بسيط عند الرقبة) محفوظ: الوجه والشعر والغطاء والخلفية العلوية */
+    const headRect = boxToRect(box, size.w, size.h, 0.06);
+    const neckY = Math.min(size.h, headRect.y1 - (headRect.y1 - headRect.y0) * 0.06);
+    rects.push({ x0: 0, y0: 0, x1: size.w, y1: neckY });
+    lockNote = '\nPIXEL LOCK: everything above the neck line (the person\'s face, hair, headwear and the upper background) is locked and must remain exactly as in the photo. Edit only the unmasked area below it: the body and clothing. Match the lighting, skin tone, proportions and the neck line seamlessly.';
+  } else {
+    rects.push(boxToRect(box, size.w, size.h, level === 'head' ? 0.08 : 0.06));
+    lockNote = '\nPIXEL LOCK: the masked area (the person\'s ' + (level === 'head' ? 'head, hair and headwear' : 'face') + ') is locked and must remain exactly as in the photo; blend the edit seamlessly around it with matching lighting, skin tone and proportions.';
+  }
+  const mask = maskPng(size.w, size.h, rects);
   const b64 = await openaiMaskedEdit(openaiKey, promptText + lockNote, buf, mimeType, mask);
   return b64 ? { b64, level, box } : null;
 }
