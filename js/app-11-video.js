@@ -343,6 +343,7 @@
     return ffmpeg;
   }
 
+  window.__omranConcatScenes = function(urls){ return concatScenes(urls); }; /* v-video-trends: دمج مشاهد القصة */
   async function concatScenes(urls){
     const ffmpeg = await getFFmpeg();
     const { fetchFile } = await import('/ffmpeg/util/index.js');
