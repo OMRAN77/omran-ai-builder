@@ -62,8 +62,32 @@
     preload.src = src;
   }
 
+  /* v-tools-14 (المالك: «ترتب مكان واحد وكأنه ما عندي 14 لغة»): خارج العربية تُبنى البطاقة
+     نفسها نصًّا مترجمًا — العنوان، الوصف، والسهم — بدل عنوان وحيد وفراغ. */
+  function subFor(id){
+    var k = 'tcSub_' + id;
+    try{ if(typeof window.t === 'function'){ var v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* guard-ok */ }
+    try{ var I = window.I18N, L = document.documentElement.lang || 'en'; if(I){ if(I[L] && I[L][k]) return I[L][k]; if(I.en && I.en[k]) return I.en[k]; } }catch(e){ /* guard-ok */ }
+    return '';
+  }
+  function decorate(id){
+    var b = document.getElementById(id); if(!b) return;
+    var lab = b.querySelector('.btnLabel'); if(!lab) return;
+    var meta = b.querySelector('.tcMeta');
+    if(isAr()){ if(meta) meta.remove(); b.classList.remove('tcTxt'); return; }
+    if(!meta){
+      meta = document.createElement('span'); meta.className = 'tcMeta';
+      var txt = document.createElement('span'); txt.className = 'tcTxt';
+      var sub = document.createElement('span'); sub.className = 'tcSub'; sub.setAttribute('data-i18n', 'tcSub_' + id);
+      var arr = document.createElement('span'); arr.className = 'tcArrow'; arr.setAttribute('aria-hidden', 'true'); arr.textContent = '›';
+      lab.parentNode.insertBefore(meta, lab);
+      txt.appendChild(lab); txt.appendChild(sub); meta.appendChild(txt); meta.appendChild(arr);
+    }
+    var s = meta.querySelector('.tcSub'); if(s){ var v = subFor(id); if(v) s.textContent = v; }
+    b.classList.add('tcTxt');
+  }
   function applyToolPhotos(){
-    Object.keys(TOOL_PHOTOS).forEach(function(id){ upgradeButton(id, srcFor(id)); });
+    Object.keys(TOOL_PHOTOS).forEach(function(id){ upgradeButton(id, srcFor(id)); decorate(id); });
   }
   try{ new MutationObserver(applyToolPhotos).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* بلا مراقب: تُطبَّق عند التحميل فقط */ }
 
@@ -71,4 +95,5 @@
   else applyToolPhotos();
   setTimeout(applyToolPhotos, 250);
   setTimeout(applyToolPhotos, 1200);
+  setTimeout(applyToolPhotos, 3000); /* بعد وصول ملف اللغة الكسول */
 })();

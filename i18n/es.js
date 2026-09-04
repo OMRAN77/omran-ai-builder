@@ -239,6 +239,7 @@ I18N['es'] = {
     "copyCodeTitle": "Copiar código",
     "copiedMsg": "Copiado ✅",
     "copyMsgTitle": "Copiar respuesta",
+    "tcSub_btnPortraitStyle": "Una amplia gama de estilos de retrato", "tcSub_btnQuickTemplates": "Ideas e inspiración para tus próximos proyectos", "tcSub_btnVideoMaker": "Crea y edita vídeos con calidad profesional", "tcSub_btnStudioAI": "Estilos y efectos inteligentes", "tcSub_btnFashionAI": "Diseño de moda con IA", "tcSub_btnDesignAI": "Diseño de decoración interior y exterior", "tcSub_btnAdStudio": "Diseño de anuncios profesionales", "tcSub_btnStocks": "Análisis y datos de los mercados", "tcSub_btnOmranTV": "Contenido y entretenimiento sin límites", "tcSub_btnQibla": "Horarios de oración y dirección de la Qibla", "tcSub_btnExpense": "Gestiona gastos y presupuestos", "tcSub_btnOmranEdu": "Cursos y lecciones", "tcSub_btnConstruction": "Diseños de ingeniería y arquitectura", "tcSub_btnReligion": "Preguntas religiosas, respuestas fiables", "tcSub_btnCV": "Crea un CV profesional", "tcSub_btnDocs": "Analiza y resume documentos", "tcSub_btnFeedback": "Comparte tu opinión e ideas", "tcSub_btnEmailAssist": "Redacta correos y respuestas",
     "msgShareReply": "Compartir respuesta",
     "msgShareCopied": "Respuesta copiada — pégala en la app que quieras",
     "uploadCodeTitle": "Sube un archivo de código (HTML o Python)",
