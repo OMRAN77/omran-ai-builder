@@ -53,6 +53,7 @@ async function rescueGuarded(promptText, images, apiKey, feature) {
   } catch (e) { return first; }
 }
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
+const faceLock = require('./face-lock.js');
 
 const STYLE_TEXT = {
   hair: {
@@ -314,6 +315,23 @@ module.exports = async (req, res) => {
       }
       parts.push({ text: promptText });
       parts.push({ inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } });
+    }
+
+    /* v-face-lock (شكوى المالك المتكررة «يغيّر شكل الشخص»): للميزات التي لا تمسّ الوجه
+       نبدأ بتعديل بقناع بكسلي يحمي الوجه/الرأس عبر gpt-image-1 — الوجه يُنسخ ولا يُعاد رسمه.
+       أي فشل (لا مفتاح، صورة مدوّرة، لا وجه، رفض) يسقط بصمت إلى مسار Gemini أدناه. */
+    const lockLevel = (feature === 'merge') ? 'none' : faceLock.protectLevel(feature, body.combo);
+    if (lockLevel !== 'none') {
+      const locked = await faceLock.lockedEdit({
+        geminiKey: apiKey, openaiKey: (process.env.OPENAI_API_KEY || '').trim(),
+        promptText: (parts[0] && parts[0].text) || '', imageBase64, mimeType, level: lockLevel,
+      });
+      if (locked && locked.b64) {
+        const remL = await consumeStudio(quota.username);
+        res.status(200).json({ imageBase64: locked.b64, mimeType: 'image/png', engine: 'openai-lock', lock: lockLevel, remaining: remL, dailyLimit: STUDIO_DAILY_LIMIT });
+        return;
+      }
+      console.warn('[studio-create] face-lock unavailable for ' + feature + ' — falling back to gemini');
     }
 
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
