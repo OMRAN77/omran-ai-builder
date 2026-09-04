@@ -177,6 +177,7 @@ async function __safeJson(res){
       if(!imgs.length){ ideaStatus('😕 ' + bT('ما حصلت صورًا لهذا الطلب — جرّب وصفًا آخر، أو ولّد تصاميم بالذكاء.', 'No photos found for this — try another description, or generate AI designs.')); if(ideaAI) ideaAI.style.display = ''; return; }
       imgs.forEach(function(u){
         const a = document.createElement('a'); a.href = u; a.target = '_blank'; a.rel = 'noopener';
+        a.onclick = function(e){ if(window.omranLightbox){ e.preventDefault(); window.omranLightbox(u); } }; /* v-cx-ideas: معرض داخل التطبيق */
         a.style.cssText = 'display:block; break-inside:avoid; margin-bottom:6px; border-radius:12px; overflow:hidden; background:rgba(255,255,255,.04);';
         const im = document.createElement('img'); im.src = u; im.loading = 'lazy'; im.alt = '';
         im.style.cssText = 'display:block; width:100%; height:auto;';
