@@ -1394,19 +1394,46 @@
   if(fileBtnA) fileBtnA.onclick = () => fileInputA.click();
   if(fileBtnB) fileBtnB.onclick = () => fileInputB.click();
 
+  /* v-face-lock: الصورة تُعاد ترميزها في المتصفح (يثبّت اتجاه EXIF ويحدّ الحجم بـ2048)
+     حتى تتطابق إحداثيات قناع الوجه في الخادم مع البكسلات الفعلية. */
+  function normalizeStudioPhoto(file){
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = String(reader.result || '');
+        const raw = { b64: dataUrl.split(',')[1] || '', mime: file.type || 'image/jpeg', dataUrl };
+        try{
+          const img = new Image();
+          img.onload = () => {
+            try{
+              const s = Math.min(1, 2048 / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+              const c = document.createElement('canvas');
+              c.width = Math.max(1, Math.round((img.naturalWidth || img.width) * s));
+              c.height = Math.max(1, Math.round((img.naturalHeight || img.height) * s));
+              c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+              const out = c.toDataURL('image/jpeg', 0.92);
+              const b64 = out.split(',')[1] || '';
+              resolve(b64 ? { b64, mime: 'image/jpeg', dataUrl: out } : raw);
+            }catch(e){ resolve(raw); }
+          };
+          img.onerror = () => resolve(raw);
+          img.src = dataUrl;
+        }catch(e){ resolve(raw); }
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+  }
   fileInputA.onchange = () => {
     const file = fileInputA.files && fileInputA.files[0];
     if(!file) return;
-    selectedMimeA = file.type || 'image/jpeg';
     if(fileNameA) fileNameA.textContent = file.name;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result || '');
-      selectedBase64A = dataUrl.split(',')[1] || '';
-      previewA.src = dataUrl;
+    normalizeStudioPhoto(file).then((r) => {
+      if(!r) return;
+      selectedMimeA = r.mime; selectedBase64A = r.b64;
+      previewA.src = r.dataUrl;
       previewA.style.display = 'block';
-    };
-    reader.readAsDataURL(file);
+    });
   };
 
   fileInputB.onchange = () => {
