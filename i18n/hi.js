@@ -38,6 +38,7 @@ I18N['hi'] = {
     convertToWord: 'Word में बदलें',
     copiedToast: 'कॉपी किया गया',
     copyMsgTitle: 'जवाब कॉपी करें',
+    'tcSub_btnPortraitStyle': 'पोर्ट्रेट स्टाइल की विस्तृत श्रृंखला', 'tcSub_btnQuickTemplates': 'अगले प्रोजेक्ट के लिए विचार और प्रेरणा', 'tcSub_btnVideoMaker': 'पेशेवर तरीके से वीडियो बनाएं और संपादित करें', 'tcSub_btnStudioAI': 'स्मार्ट स्टाइल और इफ़ेक्ट', 'tcSub_btnFashionAI': 'AI से फ़ैशन डिज़ाइन', 'tcSub_btnDesignAI': 'इंटीरियर और एक्सटीरियर डेकोर डिज़ाइन', 'tcSub_btnAdStudio': 'पेशेवर विज्ञापन डिज़ाइन', 'tcSub_btnStocks': 'बाज़ार विश्लेषण और डेटा', 'tcSub_btnOmranTV': 'असीमित सामग्री और मनोरंजन', 'tcSub_btnQibla': 'नमाज़ के समय और क़िबला दिशा', 'tcSub_btnExpense': 'खर्च और बजट प्रबंधन', 'tcSub_btnOmranEdu': 'कोर्स और पाठ', 'tcSub_btnConstruction': 'इंजीनियरिंग और वास्तु डिज़ाइन', 'tcSub_btnReligion': 'धार्मिक प्रश्न, विश्वसनीय उत्तर', 'tcSub_btnCV': 'पेशेवर CV बनाएं', 'tcSub_btnDocs': 'दस्तावेज़ों का विश्लेषण और सारांश', 'tcSub_btnFeedback': 'अपनी राय और सुझाव साझा करें', 'tcSub_btnEmailAssist': 'ईमेल और जवाब लिखें',
     msgShareReply: 'जवाब साझा करें',
     msgShareCopied: 'जवाब कॉपी हो गया — अपनी पसंद के ऐप में पेस्ट करें',
     designAiNeedPick: 'पहले जगह का प्रकार चुनें या फ़ोटो अपलोड करें',
