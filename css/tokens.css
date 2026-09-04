@@ -944,7 +944,7 @@ html.store-safe #aboutStocksCard{display:none !important;}
   /* v-tools-x-scroll (طلب المالك ٣ سبتمبر): أزرار X لصفحات الأدوات الكاملة
      (أنماط الصور، الفيديو، الديكور، الأزياء، ستايل، المقاولات، التفسير، البريد)
      أُخرجت من التثبيت — تبقى في رأس الصفحة وتتحرك معها. */
-  #tvClose, #stocksCloseBtn, #expCloseBtn,
+  #tvClose, #expCloseBtn,
   #docX, #govX, #cvX, #fbClose, #eduCloseBtn,
   #qClose{ /* v-tools-x-scroll: X شاشة الأدوات يتحرك مع الصفحة لا مثبّت (طلب المالك) — أُخرج من قائمة التثبيت */
     position:fixed !important;
@@ -1003,6 +1003,10 @@ html.store-safe #aboutStocksCard{display:none !important;}
 #sectionsToolsPopup::-webkit-scrollbar, #sectionsToolsPopup *::-webkit-scrollbar, #portraitStyleModal *::-webkit-scrollbar, #videoMakerModal *::-webkit-scrollbar, #designAiModal *::-webkit-scrollbar, #fashionAiModal *::-webkit-scrollbar,
 #studioAiModal *::-webkit-scrollbar, #constructionModal *::-webkit-scrollbar, #religionModal *::-webkit-scrollbar, #emailAssistModal *::-webkit-scrollbar, #eduHubModal *::-webkit-scrollbar, #expModal *::-webkit-scrollbar, .xm *::-webkit-scrollbar,
 #stocksModal *::-webkit-scrollbar, #omranQiblaShell *::-webkit-scrollbar, #fbOverlay *::-webkit-scrollbar, #adStudioPage *::-webkit-scrollbar, #docModal *::-webkit-scrollbar, #govModal *::-webkit-scrollbar, #cvModal *::-webkit-scrollbar{width:0 !important; height:0 !important; display:none !important;}
+
+/* v-vmk-static-cta (لقطة المالك: زر «إنشاء الفيديو» يتحرك ويغطي النص): كان لاصقًا أسفل النافذة — ثابت في مكانه */
+#videoMakerModal #videoMakerGenerateBtn{position:static !important; box-shadow:none !important;}
+/* v-stocks-x (لقطة المالك: ✕ الأسهم دائرة كبيرة تغطي الرسم): أُخرجت من التثبيت — تبقى في رأس الصفحة كبقية الأدوات */
 
 /* v-cx-x (طلب المالك: «في المقاولات X وحدة معهم»): رأس المقاولات بلا توزيع فكانت ✕ ملاصقة للعنوان — الآن في الركن كبقية الأدوات */
 #constructionModal .cx-head{justify-content:space-between !important;}
