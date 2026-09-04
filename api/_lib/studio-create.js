@@ -255,20 +255,28 @@ async function geminiImage(apiKey, parts, feature) {
 
 /* ───── تعديل واحد كامل: قفل الوجه ← Gemini ← إنقاذ ← حارس. يرجع { b64, mime, engine } أو يرمي { status, payload } ───── */
 async function runEdit(o) {
-  if (o.lockLevel && o.lockLevel !== 'none') {
-    const locked = await faceLock.lockedEdit({
-      geminiKey: o.apiKey, openaiKey: o.openaiKey, promptText: o.promptText,
-      imageBase64: o.imageBase64, mimeType: o.mimeType, level: o.lockLevel,
-    });
-    if (locked && locked.b64) return { b64: locked.b64, mime: 'image/png', engine: 'openai-lock' };
-    console.warn('[studio-create] face-lock unavailable for ' + o.feature + ' — falling back to gemini');
+  /* v-face-composite: مهما كان المحرّك، بكسلات الوجه/الرأس تُعاد من الأصل في النهاية */
+  const prep = (o.lockLevel && o.lockLevel !== 'none')
+    ? await faceLock.prepare({ geminiKey: o.apiKey, imageBase64: o.imageBase64, mimeType: o.mimeType, level: o.lockLevel })
+    : null;
+  const finish = (b64, mime, engine) => {
+    const fixed = faceLock.restoreProtected(prep, o.imageBase64, b64);
+    if (fixed && fixed.b64) return { b64: fixed.b64, mime: fixed.mime, engine: engine + '+restore' };
+    return { b64, mime, engine };
+  };
+  if (prep) {
+    const masked = await faceLock.maskedEdit(prep, o.openaiKey, o.promptText);
+    if (masked) return finish(masked, 'image/png', 'openai-lock');
+    console.warn('[studio-create] masked edit unavailable for ' + o.feature + ' — falling back to gemini');
+  } else if (o.lockLevel && o.lockLevel !== 'none') {
+    console.warn('[studio-create] face-lock prepare failed for ' + o.feature + ' — no pixel restore');
   }
   const parts = [{ text: o.promptText }, { inlineData: { mimeType: o.mimeType || 'image/jpeg', data: o.imageBase64 } }];
   const out = await geminiImage(o.apiKey, parts, o.feature);
   if (!out.b64) {
     /* v-studio-rescue / v-studio-noimg-rescue: gpt-image-1 قبل إبلاغ الفشل */
     const rescue = await rescueGuarded(o.promptText, [[o.imageBase64, o.mimeType]], o.apiKey, o.feature);
-    if (rescue) return { b64: rescue, mime: 'image/png', engine: 'openai' };
+    if (rescue) return finish(rescue, 'image/png', 'openai');
     const payload = { error: out.error };
     if (out.upstream) { payload.upstream = out.upstream; payload.detail = out.detail; }
     throw { status: out.status || 502, payload };
@@ -284,7 +292,7 @@ async function runEdit(o) {
     if (!guard.ok && guard.reason === 'validation_unavailable') console.warn('[studio-create] guard unavailable — passing result through');
     else if (!guard.ok) throw { status: 422, payload: { error: publicGuardError(guard), retryable: false } };
   }
-  return { b64: out.b64, mime: out.mime, engine: 'gemini' };
+  return finish(out.b64, out.mime, 'gemini');
 }
 
 module.exports = async (req, res) => {

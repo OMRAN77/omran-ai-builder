@@ -186,34 +186,58 @@ async function openaiMaskedEdit(openaiKey, promptText, imgBuf, mime, maskBuf) {
   try { return await attempt(true); } catch (e) { console.warn('[face-lock] ' + (e && e.message)); return null; }
 }
 
-/* ───── الواجهة الواحدة: يرجع { b64, level } أو null ───── */
-async function lockedEdit(opts) {
-  const { geminiKey, openaiKey, promptText, imageBase64, mimeType, level } = opts || {};
-  if (!openaiKey || !imageBase64 || !level || level === 'none') return null;
+/* ───── التحضير: أبعاد + صناديق + مناطق الحماية (نسبية 0..1) — يُحسب مرة لكل تعديل ───── */
+async function prepare(opts) {
+  const { geminiKey, imageBase64, mimeType, level } = opts || {};
+  if (!imageBase64 || !level || level === 'none') return null;
   let buf;
   try { buf = Buffer.from(imageBase64, 'base64'); } catch (e) { return null; }
   if (buf.length > 45 * 1024 * 1024) return null;
   const size = imageSize(buf);
   if (!size || !size.w || !size.h) return null;
-  if (size.type === 'jpeg' && jpegOrientation(buf) !== 1) { console.warn('[face-lock] rotated EXIF — no mask'); return null; }
+  if (size.type === 'jpeg' && jpegOrientation(buf) !== 1) { console.warn('[face-lock] rotated EXIF — no lock'); return null; }
   const boxes = await detectBoxes(geminiKey, imageBase64, mimeType);
   const box = boxes && (level === 'face' ? (boxes.face || null) : (boxes.head || boxes.face));
   if (!box) return null;
   const rects = [];
+  const zones = [];
   let lockNote;
   if (level === 'body') {
-    /* كل ما فوق أسفل الرأس (مع تداخل بسيط عند الرقبة) محفوظ: الوجه والشعر والغطاء والخلفية العلوية */
     const headRect = boxToRect(box, size.w, size.h, 0.06);
     const neckY = Math.min(size.h, headRect.y1 - (headRect.y1 - headRect.y0) * 0.06);
     rects.push({ x0: 0, y0: 0, x1: size.w, y1: neckY });
+    zones.push({ kind: 'above', y: neckY / size.h });
     lockNote = '\nPIXEL LOCK: everything above the neck line (the person\'s face, hair, headwear and the upper background) is locked and must remain exactly as in the photo. Edit only the unmasked area below it: the body and clothing. Match the lighting, skin tone, proportions and the neck line seamlessly.';
   } else {
-    rects.push(boxToRect(box, size.w, size.h, level === 'head' ? 0.08 : 0.06));
+    const r = boxToRect(box, size.w, size.h, level === 'head' ? 0.08 : 0.06);
+    rects.push(r);
+    zones.push({ kind: 'rect', x0: r.x0 / size.w, y0: r.y0 / size.h, x1: r.x1 / size.w, y1: r.y1 / size.h });
     lockNote = '\nPIXEL LOCK: the masked area (the person\'s ' + (level === 'head' ? 'head, hair and headwear' : 'face') + ') is locked and must remain exactly as in the photo; blend the edit seamlessly around it with matching lighting, skin tone and proportions.';
   }
-  const mask = maskPng(size.w, size.h, rects);
-  const b64 = await openaiMaskedEdit(openaiKey, promptText + lockNote, buf, mimeType, mask);
-  return b64 ? { b64, level, box } : null;
+  return { buf, size, box, rects, zones, level, lockNote, mimeType: mimeType || 'image/jpeg' };
 }
 
-module.exports = { imageSize, jpegOrientation, maskPng, protectLevel, detectBoxes, boxToRect, lockedEdit, PROTECT };
+/* ───── التعديل بالقناع (يحتاج prepare) — يرجع base64 أو null ───── */
+async function maskedEdit(prep, openaiKey, promptText) {
+  if (!prep || !openaiKey) return null;
+  const mask = maskPng(prep.size.w, prep.size.h, prep.rects);
+  return openaiMaskedEdit(openaiKey, promptText + prep.lockNote, prep.buf, prep.mimeType, mask);
+}
+
+/* ───── الضمان النهائي: لصق بكسلات المنطقة المحمية من الأصل فوق الناتج ───── */
+function restoreProtected(prep, origBase64, resultBase64) {
+  if (!prep) return null;
+  try {
+    return require('./face-composite.js').compositeProtected({ origBase64, resultBase64, zones: prep.zones });
+  } catch (e) { return null; }
+}
+
+/* ───── المسار القديم بخطوة واحدة (يبقى للتوافق) ───── */
+async function lockedEdit(opts) {
+  const prep = await prepare(opts);
+  if (!prep) return null;
+  const b64 = await maskedEdit(prep, opts.openaiKey, opts.promptText);
+  return b64 ? { b64, level: prep.level, box: prep.box } : null;
+}
+
+module.exports = { imageSize, jpegOrientation, maskPng, protectLevel, detectBoxes, boxToRect, prepare, maskedEdit, restoreProtected, lockedEdit, PROTECT };
