@@ -55,7 +55,7 @@
       var d = await r.json();
       if(my !== req) return;
       var imgs = Array.isArray(d.images) ? d.images : [];
-      if(!imgs.length){ setStatus(T(D.tx.none)); return; }
+      if(!imgs.length){ setStatus(T((d && d.error === 'provider') ? D.tx.err : D.tx.none)); return; }
       imgs.forEach(function(u){
         var a = document.createElement('a'); a.href = u;
         a.style.cssText = 'display:block; break-inside:avoid; margin-bottom:6px; border-radius:12px; overflow:hidden; background:rgba(255,255,255,.04); cursor:zoom-in;';
