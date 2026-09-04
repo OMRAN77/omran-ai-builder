@@ -349,6 +349,17 @@ window.__omranImgTools = function(wrap, dataUrl){
     hint(bl);
     return false;
   };
+  const nativeBridgeShare = () => {
+    try{
+      if(typeof omranNativeBridge !== 'function' || !omranNativeBridge('omranShare')) return false;
+      const bl = toBlob(dataUrl);
+      if(!bl) return false;
+      if(typeof msgDownloadBlob === 'function'){ msgDownloadBlob(bl, nmOf()); return true; }
+    }catch(e){ __swallow(e, 'bridgeShare:app-09-attach#v-share-bridge'); }
+    return false;
+  };
+  /* غلاف WebView (تطبيق المتجر بلا جسر): روابط intent: لا تُنفَّذ فيه — نفتح ورقتنا فورًا بلا انتظار */
+  const inWebView = () => { try{ const ua = navigator.userAgent || ''; return /\bwv\b/.test(ua) || /Version\/\d+\.\d+.*Chrome\//.test(ua) || !!window.OmranAndroidShare; }catch(e){ return false; } };
   const shareFile = (onFail) => {
     const nv = navigator;
     if(typeof File !== 'function' || typeof nv.share !== 'function') return false;
@@ -488,16 +499,7 @@ window.__omranImgTools = function(wrap, dataUrl){
       ? (ar ? 'تُرسَل الصورة ملفًّا — بلا رابط ولا بطاقة' : 'Sent as a file — no link, no card')
       : (ar ? 'سيُرسَل رابط الصورة مباشرةً للتطبيق الذي تختاره' : 'A direct image link will be sent to the app you pick');
     sh.appendChild(stx);
-    // v652 — سطر تشخيص: لماذا ظهرت هذه القائمة بدل قائمة النظام + اسم المتصفح
-    try{
-      const ua = navigator.userAgent || '';
-      const bn = /HuaweiBrowser/i.test(ua) ? 'Huawei Browser' : /SamsungBrowser/i.test(ua) ? 'Samsung Internet' : /EdgA?\//.test(ua) ? 'Edge' : /OPR\//.test(ua) ? 'Opera' : /MiuiBrowser/i.test(ua) ? 'Mi Browser' : /FxiOS/.test(ua) ? 'Firefox iOS' : /Firefox/i.test(ua) ? 'Firefox' : /CriOS/.test(ua) ? 'Chrome iOS' : /Chrome\//.test(ua) ? 'Chrome' : /Safari/.test(ua) ? 'Safari' : '?';
-      const hasShare = (typeof navigator.share === 'function');
-      const dg = document.createElement('p'); dg.className = 'oShS';
-      dg.style.cssText = 'opacity:.9;color:#e8b84b;direction:ltr;text-align:start';
-      dg.textContent = '\u2699 ' + (__why || (hasShare ? 'fallback:?' : 'no-share-api')) + ' \u2022 ' + bn + ' \u2022 share-api:' + (hasShare ? 'yes' : 'no') + ' \u2022 clip:' + ((navigator.clipboard && navigator.clipboard.write && window.ClipboardItem) ? 'yes' : 'no') + ' \u2022 v653';
-      sh.appendChild(dg);
-    }catch(_){ /* guard-ok — debug overlay, best-effort */ }
+    /* v-share-bridge: سطر التشخيص (no-share-api • Chrome …) أُزيل من ورقة المستخدم — أدّى غرضه */
     const gr = document.createElement('div'); gr.className = 'oShGr'; sh.appendChild(gr);
     const go = (t) => {
       // v643 — الملفّ أوّلًا إن أمكن؛ وإلّا نرسل رابط الصورة مباشرةً لتطبيق
@@ -541,6 +543,7 @@ window.__omranImgTools = function(wrap, dataUrl){
       return b;
     };
     act(ar ? 'مشاركة عبر تطبيقات الجهاز' : 'Share via device apps', 'share', () => {
+      if(nativeBridgeShare()){ close(); return; }
       // v642 — الملفّ فقط. إن رفضه المتصفّح تُحفظ الصورة — لا يُشارَك رابط.
       if(shareFile(() => saveOpen(null))){ close(); return; }
       saveOpen(null);
@@ -563,7 +566,7 @@ window.__omranImgTools = function(wrap, dataUrl){
     // v653 — أندرويد بمتصفّح بلا Web Share: زرّ يفتح الصفحة في كروم حيث
     //    قائمة النظام الحقيقية تعمل كاملة (نشاط كروم يعلن BROWSABLE).
     try{
-      if(/android/i.test(navigator.userAgent || '') && typeof navigator.share !== 'function'){
+      if(/android/i.test(navigator.userAgent || '') && typeof navigator.share !== 'function' && !inWebView()){
         act(ar ? 'فتح الموقع في متصفّح كروم' : 'Open in Chrome', 'share', () => {
           const u = new URL(location.href); u.hash = '';
           const tg = u.host + u.pathname + u.search;
@@ -609,6 +612,10 @@ window.__omranImgTools = function(wrap, dataUrl){
     b.innerHTML = svg('share');
     b.onclick = (e) => {
       if(e && e.stopPropagation) e.stopPropagation();
+      /* v-share-bridge (صورة المالك ٤ سبتمبر: «share-api:no» داخل تطبيق المتجر): غلاف المتجر
+         (أندرويد/آيفون) بلا navigator.share لكنه يوفّر جسر omranShare — ورقة مشاركة النظام
+         الحقيقية بالملف نفسه. المسار الأول قبل أي شيء. */
+      if(nativeBridgeShare()) return;
       // v646 — أمر عمران: زرّ الإرسال يفتح ورقة النظام (تطبيقات الجهاز الحقيقية)
       //    مباشرةً — الملفّ إن أمكن، وإلّا الرابط. ورقتنا تبقى حلًّا أخيرًا فقط.
       if(filePossible() && shareFile(() => openSheet())) return;
@@ -645,7 +652,7 @@ window.__omranImgTools = function(wrap, dataUrl){
       //    النظام عبر intent أندرويد؛ إن حُجب الانتقال تنفتح ورقتنا بعد ثانية.
       const tryIntent = (u) => {
         try{
-          if(!/android/i.test(navigator.userAgent || '')) return false;
+          if(!/android/i.test(navigator.userAgent || '') || inWebView()) return false;
           setTimeout(() => { try{ if(!document.hidden) openSheet(); }catch(_){ /* guard-ok — delayed openSheet, suppress if dismissed */ } }, 1200);
           location.href = 'intent:#Intent;action=android.intent.action.SEND;type=text/plain;S.android.intent.extra.TEXT=' + encodeURIComponent(u) + ';end';
           return true;
