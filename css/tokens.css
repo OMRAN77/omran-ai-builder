@@ -380,14 +380,14 @@
   #sectionsToolsPopup .ptGrid .btn:hover{border-color:var(--omGold); background:rgba(var(--accent-tint-rgb),.08);}
   #sectionsToolsPopup .ptGrid .btn svg{width:22px; height:22px;}
   #sectionsToolsPopup .ptGrid .btn .rowChevron{display:none;}
-  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+1) svg{color:#8b5cf6;}
-  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+2) svg{color:#3b82f6;}
-  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+3) svg{color:#10b981;}
-  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+4) svg{color:#f59e0b;}
-  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+5) svg{color:#14b8a6;}
-  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+6) svg{color:#ec4899;}
-  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+7) svg{color:#06b6d4;}
-  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+8) svg{color:#ef4444;}
+  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+1) svg{color:var(--omGold);}
+  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+2) svg{color:var(--omGold);}
+  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+3) svg{color:var(--omGold);}
+  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+4) svg{color:var(--omGold);}
+  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+5) svg{color:var(--omGold);}
+  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+6) svg{color:var(--omGold);}
+  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+7) svg{color:var(--omGold);}
+  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+8) svg{color:var(--omGold);}
   .rowChevron{margin-inline-start:auto; opacity:.55; flex:0 0 auto;}
   html[dir="ltr"] .rowChevron{transform:scaleX(-1);}
   .miniSwitch{margin-inline-start:auto; width:30px; height:16px; border-radius:var(--r-pill); background:rgba(255,255,255,.18); position:relative; flex:0 0 auto; transition:background .2s;}
@@ -995,6 +995,10 @@ html.store-safe #aboutStocksCard{display:none !important;}
   box-sizing:border-box !important;
   padding-bottom:calc(28px + env(safe-area-inset-bottom,0px)) !important;
 }
+/* v-cx-x (طلب المالك: «في المقاولات X وحدة معهم»): رأس المقاولات بلا توزيع فكانت ✕ ملاصقة للعنوان — الآن في الركن كبقية الأدوات */
+#constructionModal .cx-head{justify-content:space-between !important;}
+#constructionModal .cx-head #constructionCloseBtn{margin-inline-start:auto !important;}
+
 /* v-tools-deskfull (طلب المالك ٤ سبتمبر «في الكمبيوتر كلها الشاشة كاملة نفس الهواتف»):
    على الكمبيوتر كان المحتوى محصورًا في ٩٠٠ بكسل وسط الشاشة — الآن يملأ العرض كله كالجوال. */
 @media (min-width: 761px){
@@ -1005,6 +1009,17 @@ html.store-safe #aboutStocksCard{display:none !important;}
   }
   #eduHubModal .eduWrap, #expModal .expWrap, .xm .xmWrap{max-width:none !important; border-inline:none !important;}
   html body #videoMakerModal .vmk-studio{max-width:none !important; width:100% !important; margin:0 !important;}
+  /* نافذة الأدوات نفسها شاشة كاملة على الكمبيوتر (لقطة المالك: بطاقة وسط الشاشة بشريط سحب) */
+  #sectionsToolsOverlay{align-items:stretch !important; padding:0 !important;}
+  html[lang] body #sectionsToolsPopup{max-width:none !important; width:100% !important; height:100% !important; max-height:none !important; border:none !important; border-radius:0 !important; padding:18px 28px 32px !important;}
+  html[lang] body #sectionsToolsPopup .ptGrid{grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)) !important; gap:14px !important;}
+  /* بلا شريط سحب ظاهر في الأدوات على الكمبيوتر */
+  #sectionsToolsPopup, #portraitStyleModal > div, #videoMakerModal > div, #designAiModal > div, #fashionAiModal > div,
+  #studioAiModal > div, #constructionModal > div, #religionModal > div, #emailAssistModal > div,
+  #eduHubModal .eduWrap, #eduHubModal .eduWrap *, #expModal .expWrap, #expModal .expWrap *, .xm .xmWrap, .xm .xmWrap *, #stocksModal *, #videoMakerModal .vmk-side{scrollbar-width:none !important;}
+  #sectionsToolsPopup::-webkit-scrollbar, #portraitStyleModal > div::-webkit-scrollbar, #videoMakerModal > div::-webkit-scrollbar, #designAiModal > div::-webkit-scrollbar, #fashionAiModal > div::-webkit-scrollbar,
+  #studioAiModal > div::-webkit-scrollbar, #constructionModal > div::-webkit-scrollbar, #religionModal > div::-webkit-scrollbar, #emailAssistModal > div::-webkit-scrollbar,
+  #eduHubModal *::-webkit-scrollbar, #expModal *::-webkit-scrollbar, .xm *::-webkit-scrollbar, #stocksModal *::-webkit-scrollbar{width:0 !important; height:0 !important; display:none !important;}
 }
 @media (max-width: 760px){
   #portraitStyleModal > div, #videoMakerModal > div, #designAiModal > div, #fashionAiModal > div,
