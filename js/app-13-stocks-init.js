@@ -678,7 +678,7 @@
       const params = Object.assign(currentParams(), {
         /* v-cons-i18n: التقرير بلغة التطبيق */
         lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar',
-        budget: budgetEl.value,
+        budget: budgetEl ? budgetEl.value : '',
         annexes: Array.from(document.querySelectorAll('.constructionAnnex:checked')).map((el) => el.value),
         includeInterior: !!($('#constructionIncludeInterior') && $('#constructionIncludeInterior').checked),
         includePlan: !modePlanEl || modePlanEl.checked,
