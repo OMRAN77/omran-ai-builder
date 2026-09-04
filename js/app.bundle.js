@@ -29636,7 +29636,15 @@ if(document.readyState === 'loading'){
   function qt(ar, en){ return qIsRtl() ? ar : en; } // للنصوص المركّبة القليلة المتبقية
 
   // طرق الحساب بالـ14 لغة (أسماء الهيئات — تُترجم وصفيًا)
+  /* v-pray-auto (شكوى المالك «التوقيت مش مضبوط»): أم القرى كانت الافتراضي للجميع، والإمارات وقطر والكويت
+     وغيرها لها طرق حساب رسمية تختلف دقائق في الفجر والعشاء. الافتراضي الآن «تلقائي حسب موقعك». */
   var METHODS = [
+    { v: 'auto', t: { ar:'تلقائي حسب موقعك', en:'Automatic (by your location)', fr:'Automatique (selon votre position)', ur:'خودکار (آپ کے مقام کے مطابق)', hi:'स्वचालित (आपके स्थान से)', id:'Otomatis (sesuai lokasi)', tr:'Otomatik (konumunuza göre)', es:'Automático (según tu ubicación)', ru:'Автоматически (по вашему местоположению)', zh:'自动（按您的位置）', bn:'স্বয়ংক্রিয় (আপনার অবস্থান অনুযায়ী)', ne:'स्वचालित (तपाईंको स्थानअनुसार)', fil:'Awtomatiko (ayon sa lokasyon)', ml:'സ്വയമേവ (നിങ്ങളുടെ സ്ഥാനമനുസരിച്ച്)' } },
+    { v: 16, t: { ar:'الإمارات (دبي)', en:'UAE (Dubai)', fr:'Émirats (Dubaï)', ur:'امارات (دبئی)' } },
+    { v: 10, t: { ar:'قطر', en:'Qatar', fr:'Qatar', ur:'قطر' } },
+    { v: 9, t: { ar:'الكويت', en:'Kuwait', fr:'Koweït', ur:'کویت' } },
+    { v: 23, t: { ar:'الأردن', en:'Jordan', fr:'Jordanie', ur:'اردن' } },
+    { v: 13, t: { ar:'تركيا (ديانت)', en:'Turkey (Diyanet)', fr:'Turquie (Diyanet)', ur:'ترکی' } },
     { v: 4, t: { ar:'أم القرى (مكة)', en:'Umm al-Qura (Makkah)', fr:'Oumm al-Qoura', hi:'उम्म अल-क़ुरा (मक्का)', ur:'ام القریٰ (مکہ)', bn:'উম্মুল কুরা (মক্কা)', ne:'उम्म अल-कुरा (मक्का)', fil:'Umm al-Qura (Makkah)', id:'Umm al-Qura (Makkah)', zh:'古拉大学（麦加）', ru:'Умм аль-Кура (Мекка)', tr:'Ümmü\'l-Kura (Mekke)', ml:'ഉമ്മുൽ ഖുറാ (മക്ക)', es:'Umm al-Qura (La Meca)' } },
     { v: 3, t: { ar:'رابطة العالم الإسلامي', en:'Muslim World League', fr:'Ligue islamique mondiale', hi:'मुस्लिम वर्ल्ड लीग', ur:'رابطہ عالم اسلامی', bn:'মুসলিম ওয়ার্ল্ড লীগ', ne:'मुस्लिम वर्ल्ड लिग', fil:'Muslim World League', id:'Liga Dunia Muslim', zh:'世界穆斯林联盟', ru:'Всемирная мусульманская лига', tr:'İslam Dünyası Birliği', ml:'മുസ്‌ലിം വേൾഡ് ലീഗ്', es:'Liga Mundial Musulmana' } },
     { v: 8, t: { ar:'الخليج', en:'Gulf Region', fr:'Région du Golfe', hi:'खाड़ी क्षेत्र', ur:'خلیجی خطہ', bn:'উপসাগরীয় অঞ্চল', ne:'खाडी क्षेत्र', fil:'Rehiyon ng Golpo', id:'Kawasan Teluk', zh:'海湾地区', ru:'Персидский залив', tr:'Körfez Bölgesi', ml:'ഗൾഫ് മേഖല', es:'Región del Golfo' } },
@@ -29647,7 +29655,35 @@ if(document.readyState === 'loading'){
   function methodName(m){ return (m.t && (m.t[qLang()] || m.t.en)) || m.t.ar; }
 
   function qIsAr(){ return qIsRtl(); }
-  function getMethod(){ try{ return parseInt(localStorage.getItem('aiapp_pray_method') || '4', 10); }catch(e){ return 4; } }
+  function storedMethod(){ try{ return localStorage.getItem('aiapp_pray_method') || 'auto'; }catch(e){ return 'auto'; } }
+  function autoMethod(l){
+    if(!l) return 4;
+    var la = l.lat, lo = l.lng;
+    var inBox = function(a, b, c, d){ return la >= a && la <= b && lo >= c && lo <= d; };
+    if(inBox(22.4, 26.6, 51.0, 56.6)) return 16;      /* الإمارات */
+    if(inBox(24.4, 26.3, 50.6, 51.8)) return 10;      /* قطر */
+    if(inBox(28.4, 30.2, 46.4, 48.6)) return 9;       /* الكويت */
+    if(inBox(25.5, 26.4, 50.3, 50.9)) return 8;       /* البحرين — الخليج */
+    if(inBox(16.0, 32.5, 34.4, 56.0)) return 4;       /* السعودية وعُمان واليمن — أم القرى */
+    if(inBox(29.1, 33.5, 34.8, 39.4)) return 23;      /* الأردن */
+    if(inBox(21.9, 31.8, 24.6, 36.9)) return 5;       /* مصر */
+    if(inBox(35.8, 42.2, 25.6, 45.0)) return 13;      /* تركيا */
+    if(inBox(27.6, 36.1, -13.2, -0.9)) return 21;     /* المغرب */
+    if(inBox(18.9, 37.2, -8.7, 12.0)) return 19;      /* الجزائر */
+    if(inBox(30.2, 37.6, 7.5, 11.7)) return 18;       /* تونس */
+    if(inBox(1.1, 1.5, 103.5, 104.1)) return 11;      /* سنغافورة */
+    if(inBox(0.8, 7.5, 99.5, 119.5)) return 17;       /* ماليزيا */
+    if(inBox(-11.0, 6.2, 95.0, 141.1)) return 20;     /* إندونيسيا */
+    if(inBox(5.0, 37.2, 60.8, 92.7)) return 1;        /* باكستان والهند وبنغلاديش — كراتشي */
+    if(inBox(15.0, 72.0, -170.0, -50.0)) return 2;    /* أمريكا الشمالية */
+    return 3;                                          /* رابطة العالم الإسلامي */
+  }
+  function getMethod(){
+    var m = storedMethod();
+    if(m === 'auto') return autoMethod(S.loc);
+    var n = parseInt(m, 10);
+    return Number.isFinite(n) ? n : autoMethod(S.loc);
+  }
 
   var S = { timings: null, dateStr: null, loc: null, ticker: null };
 
@@ -29789,7 +29825,7 @@ if(document.readyState === 'loading'){
       return;
     }
     var np = nextPrayer();
-    var mOpts = METHODS.map(function(m){ return '<option value="' + m.v + '"' + (m.v === getMethod() ? ' selected' : '') + ' style="background:#141420;color:#fff;">' + methodName(m) + '</option>'; }).join('');
+    var mOpts = METHODS.map(function(m){ return '<option value="' + m.v + '"' + (String(m.v) === String(storedMethod()) ? ' selected' : '') + ' style="background:#141420;color:#fff;">' + methodName(m) + (m.v === 'auto' ? ' — ' + (METHODS.filter(function(x){ return x.v === getMethod(); })[0] ? methodName(METHODS.filter(function(x){ return x.v === getMethod(); })[0]) : getMethod()) : '') + '</option>'; }).join('');
     var rows = PRAYERS.map(function(k){
       var isNext = np && np.key === k;
       return '<div style="display:flex;align-items:center;gap:10px;padding:13px 14px;border-radius:12px;margin-bottom:7px;' +
