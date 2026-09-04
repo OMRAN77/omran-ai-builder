@@ -995,12 +995,16 @@ html.store-safe #aboutStocksCard{display:none !important;}
   box-sizing:border-box !important;
   padding-bottom:calc(28px + env(safe-area-inset-bottom,0px)) !important;
 }
+/* v-tools-deskfull (طلب المالك ٤ سبتمبر «في الكمبيوتر كلها الشاشة كاملة نفس الهواتف»):
+   على الكمبيوتر كان المحتوى محصورًا في ٩٠٠ بكسل وسط الشاشة — الآن يملأ العرض كله كالجوال. */
 @media (min-width: 761px){
   #portraitStyleModal > div, #videoMakerModal > div, #designAiModal > div, #fashionAiModal > div,
   #studioAiModal > div, #constructionModal > div, #religionModal > div, #emailAssistModal > div{
-    padding-left:max(24px, calc((100vw - 900px) / 2)) !important;
-    padding-right:max(24px, calc((100vw - 900px) / 2)) !important;
+    padding-left:28px !important;
+    padding-right:28px !important;
   }
+  #eduHubModal .eduWrap, #expModal .expWrap, .xm .xmWrap{max-width:none !important; border-inline:none !important;}
+  html body #videoMakerModal .vmk-studio{max-width:none !important; width:100% !important; margin:0 !important;}
 }
 @media (max-width: 760px){
   #portraitStyleModal > div, #videoMakerModal > div, #designAiModal > div, #fashionAiModal > div,
