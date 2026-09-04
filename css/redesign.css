@@ -449,7 +449,19 @@ html #composerBox > #btnSend{
 html #composerBox > #btnSend svg{width:19px; height:19px; stroke:#d4af37;}
 html #composerBox.typing > #btnSend{box-shadow:0 0 0 3px rgba(212,175,55,.18), 0 0 22px rgba(212,175,55,.55) !important;}
 html #composerBox > #btnStop{width:44px !important; height:44px !important; flex:0 0 44px !important; border-radius:999px !important;}
-html[data-mode="light"] #composerBox{background:#101013 !important;}
+/* v-composer-light (طلب المالك ٤ سبتمبر): في الوضع الفاتح صندوق الكتابة أبيض بإطار ذهبي، لا أسود */
+html[data-mode="light"] #composerBox{
+  background:#ffffff !important; border:1px solid rgba(212,175,55,.55) !important;
+  box-shadow:0 6px 22px rgba(0,0,0,.08), inset 0 1px 0 rgba(255,255,255,.9);
+}
+html[data-mode="light"] #composerBox:focus-within{border-color:#d4af37 !important; box-shadow:0 0 0 3px rgba(212,175,55,.14), 0 6px 22px rgba(0,0,0,.08) !important;}
+html[data-mode="light"] #composerBox > .inputbar-tools{background:#f3f1ea; border-color:rgba(0,0,0,.08);}
+html[data-mode="light"] #inputbar .inputbar-tools-left > .btn, html[data-mode="light"] #inputbar .inputbar-tools-left > button, html[data-mode="light"] #inputbar #btnPlusTools{color:#2a2620 !important;}
+html[data-mode="light"] #inputbar .inputbar-tools-left > #btnMic::before{background:rgba(0,0,0,.12);}
+html[data-mode="light"] #composerBox > #prompt{color:#14161a;}
+html[data-mode="light"] #composerBox > #prompt::placeholder{color:#8a8578;}
+html[data-mode="light"] #composerBox > #btnSend{background:#fffdf5 !important; color:#b8902a !important; box-shadow:0 0 0 3px rgba(212,175,55,.14), 0 0 14px rgba(212,175,55,.30) !important;}
+html[data-mode="light"] #composerBox > #btnSend svg{stroke:#b8902a;}
 @media (max-width:860px){
   html #composerBox{min-height:50px; padding:5px 6px !important;}
   html #composerBox > #btnSend, html #composerBox > #btnStop{width:40px !important; height:40px !important; flex:0 0 40px !important;}
