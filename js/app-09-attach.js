@@ -2056,6 +2056,24 @@ try{
   });
 }catch(e){ try{ __swallow(e, 'misc:wd-vis'); }catch(_){ /* guard-ok — cleanup, intentional */ } }
 
+/* v-send-unlock (شكوى المالك ٤ سبتمبر «زر الإرسال بعد المحادثة ما يشتغل»): الزرّ المعطّل لا يستقبل
+   نقرًا أصلًا، فحارس v583 داخل sendPrompt لا يعمل باللمس. نلتقط اللمسة على الصندوق كلّه:
+   زرّ معطّل بلا طلب جارٍ = قفل يتيم → يُفكّ فورًا فتعمل اللمسة نفسها. */
+try{
+  ['touchstart','pointerdown'].forEach(function(evName){
+    document.addEventListener(evName, function(e){
+      try{
+        var box = document.getElementById('composerBox');
+        if(!box || !e.target || !box.contains(e.target)) return;
+        var __b = document.getElementById('btnSend');
+        if(!__b || !__b.disabled) return;
+        if(typeof genAbortController !== 'undefined' && genAbortController) return;
+        if(typeof __omranRestoreSendBtn === 'function') __omranRestoreSendBtn();
+      }catch(_){ /* guard-ok — cleanup, intentional */ }
+    }, { capture: true, passive: true });
+  });
+}catch(e){ try{ __swallow(e, 'misc:send-unlock'); }catch(_){ /* guard-ok — cleanup, intentional */ } }
+
 async function sendPrompt(){
   // ✅ v301: قفل الإرسال أثناء التوليد — Enter أو أي ضغطة إضافية لا ترسل
   // الطلب مرة ثانية (كان زر الإرسال ينقفل لكن Enter يظل شغالًا فيتكرر الطلب).

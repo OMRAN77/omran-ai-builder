@@ -140,7 +140,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 <style>/* v-intro-splash: شاشة افتتاح كاملة من مخطط المالك تظهر مرة عند كل فتح ثم تذوب تمامًا */
 #omranIntro{position:fixed;inset:0;z-index:2147483000;background:#07070B;overflow:hidden;opacity:1;transition:opacity .95s ease,transform .95s ease;cursor:pointer;visibility:visible}
 #omranIntro.oiOut{opacity:0;transform:scale(1.04);pointer-events:none}
-#omranIntro .oiBg{position:absolute;inset:-48px;background:#07070B url(/assets/intro/splash.jpg?v=1) center/cover no-repeat;filter:blur(30px) brightness(.5);transform:scale(1.12)}
+#omranIntro .oiBg{position:absolute;inset:-48px;background:#07070B url(/assets/intro/splash.jpg?v=2) center/cover no-repeat;filter:blur(30px) brightness(.5);transform:scale(1.12)}
 #omranIntro .oiImg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;animation:oiBreathe 4.5s ease-in-out infinite alternate}
 #omranIntro .oiSheen{position:absolute;inset:0;background:linear-gradient(115deg,transparent 38%,rgba(255,238,180,.26) 50%,transparent 62%);background-size:260% 100%;mix-blend-mode:screen;animation:oiSheen 2.6s ease-in-out .4s infinite}
 #omranIntro .oiSkip{position:absolute;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));text-align:center;font:500 12px/1 system-ui,sans-serif;color:rgba(212,175,55,.75);letter-spacing:.4px;opacity:0;animation:oiUp 1s ease 1.4s forwards}
@@ -155,7 +155,7 @@ html.oiOn body{overflow:hidden}
 
 <div id="omranIntro" role="button" tabindex="0" aria-label="اضغط للمتابعة">
   <div class="oiBg"></div>
-  <img class="oiImg" src="/assets/intro/splash.jpg?v=1" alt="" decoding="async" fetchpriority="high">
+  <img class="oiImg" src="/assets/intro/splash.jpg?v=2" alt="" decoding="async" fetchpriority="high">
   <div class="oiSheen"></div>
   <div class="oiSkip" data-i18n="introSkip">اضغط للمتابعة</div>
 </div>
@@ -365,7 +365,7 @@ html.oiOn body{overflow:hidden}
         </div>
       </div>
         <button class="btn" id="btnStop" type="button" title="إيقاف" data-i18n-title="stopTitle"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button>
-        <button class="tab" id="btnSend" data-i18n-title="sendTitle" title="إرسال" style="line-height:1;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
+        <button class="sendBtn" id="btnSend" data-i18n-title="sendTitle" title="إرسال" style="line-height:1;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
       </div>
       <!-- حرف نصي بخط الصفحة بدل صورة SVG: الخط داخل <img> لا يُحمَّل فيرسم الحرف بخط بديل غير متمركز -->
       <button class="btn" id="btnMahaDock" type="button" title="مها — مكالمة صوتية" data-i18n-title="mahaTitle"><span class="mahaGlyph" aria-hidden="true">م</span></button>
@@ -465,7 +465,7 @@ html.oiOn body{overflow:hidden}
 <script src="/js/selfdiag.js?v=1ba33c1b"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=31b91dd5"></script>
+    <script defer src="/js/app.bundle.js?v=df2f9c8c"></script>
     <script defer src="/js/modes.js?v=b23329c6"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
