@@ -1708,7 +1708,8 @@ function renderMessages(keepScroll){
       /* v-share-reply (المالك ٤ سبتمبر: «شعار المشاركة غير موجود في آخر شي»): كل ردّ نصّي يحمل زرّ
          المشاركة في الموضع الأخير نفسه الذي يحمله ردّ الصورة؛ يشارك نصّ الردّ نفسه لا رابطًا.
          ردود الصور لها زرّها الخاص من __omranImgTools فلا تكرار. */
-      if(m.role !== 'user' && !m._loading && typeof window.omranShareText === 'function'
+      /* الدالة تُعرَّف في جزء لاحق من الحزمة (app-05-share-text) — لا نشترطها وقت الرسم الأول للسجل */
+      if(m.role !== 'user' && !m._loading
          && !((m.attachments || []).some(a => a && (a.isImage || a.isVideo)))
          && !(typeof m.content === 'string' && m.content.indexOf('__IMG_') !== -1)){
         const shareBtnEl = document.createElement('button');
@@ -1716,7 +1717,7 @@ function renderMessages(keepScroll){
         shareBtnEl.title = (t('msgShareReply') !== 'msgShareReply' ? t('msgShareReply') : (lang === 'ar' ? 'مشاركة الردّ' : 'Share reply'));
         shareBtnEl.setAttribute('aria-label', shareBtnEl.title);
         shareBtnEl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5.2" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="18.8" r="2.6"/><path d="M8.35 10.8l7.3-4.3"/><path d="M8.35 13.2l7.3 4.3"/></svg>';
-        shareBtnEl.onclick = (e) => { e.stopPropagation(); try{ window.omranShareText((textDiv && textDiv.innerText) || String(m.content || ''), shareBtnEl); }catch(err){ /* guard-ok */ } };
+        shareBtnEl.onclick = (e) => { e.stopPropagation(); try{ if(typeof window.omranShareText === 'function') window.omranShareText((textDiv && textDiv.innerText) || String(m.content || ''), shareBtnEl); }catch(err){ /* guard-ok */ } };
         actionBar.appendChild(shareBtnEl);
       }
       // زر النسخ يبقى تحت رسالة المستخدم على الجوال؛ بقية الإجراءات لا تظهر
