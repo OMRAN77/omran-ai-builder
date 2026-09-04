@@ -731,37 +731,37 @@ $('#btnDeleteAll').onclick = () => {
 #fbOverlay{position:fixed;inset:0;z-index:10050;display:none;align-items:center;justify-content:center;background:rgba(8,6,20,.62);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:16px;}
 #fbOverlay.open{display:flex;animation:fbFade .3s ease;}
 @keyframes fbFade{from{opacity:0}to{opacity:1}}
-#fbCard{position:relative;width:100%;max-width:420px;max-height:92vh;overflow-y:auto;border-radius:28px;padding:2px;background:conic-gradient(from var(--fbAng,0deg),var(--accent,#6b7280),#06b6d4,#f59e0b,#ec4899,var(--accent,#6b7280));animation:fbSpin 5s linear infinite,fbPop .45s cubic-bezier(.2,1.4,.4,1);}
+#fbCard{position:relative;width:100%;max-width:420px;max-height:92vh;overflow-y:auto;border-radius:28px;padding:2px;background:conic-gradient(from var(--fbAng,0deg),#d4af37,#f1d98a,#b8902a,#f1d98a,#d4af37);animation:fbSpin 5s linear infinite,fbPop .45s cubic-bezier(.2,1.4,.4,1);}
 @property --fbAng{syntax:'<angle>';initial-value:0deg;inherits:false;}
 @keyframes fbSpin{to{--fbAng:360deg}}
 @keyframes fbPop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
-#fbInner{border-radius:26px;background:linear-gradient(160deg,rgba(22,18,42,.98),rgba(10,8,24,.98));padding:28px 24px 24px;text-align:center;position:relative;overflow:hidden;}
-#fbInner::before{content:'';position:absolute;top:-70px;right:-70px;width:190px;height:190px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent,#6b7280) 32%,transparent),transparent 70%);pointer-events:none;}
-#fbInner::after{content:'';position:absolute;bottom:-80px;left:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(6,182,212,.18),transparent 70%);pointer-events:none;}
-#fbHeart{width:64px;height:64px;margin:0 auto 12px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--accent,#6b7280),#ec4899);box-shadow:0 0 32px color-mix(in srgb,var(--accent,#6b7280) 55%,transparent);animation:fbBeat 1.6s ease-in-out infinite;}
+#fbInner{border-radius:26px;background:linear-gradient(160deg,rgba(24,23,20,.98),rgba(12,12,12,.98));padding:28px 24px 24px;text-align:center;position:relative;overflow:hidden;}
+#fbInner::before{content:'';position:absolute;top:-70px;right:-70px;width:190px;height:190px;border-radius:50%;background:radial-gradient(circle,rgba(212,175,55,.28),transparent 70%);pointer-events:none;}
+#fbInner::after{content:'';position:absolute;bottom:-80px;left:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(241,217,138,.14),transparent 70%);pointer-events:none;}
+#fbHeart{width:64px;height:64px;margin:0 auto 12px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#d4af37,#f1d98a);box-shadow:0 0 32px rgba(212,175,55,.55);animation:fbBeat 1.6s ease-in-out infinite;}
 @keyframes fbBeat{0%,100%{transform:scale(1)}12%{transform:scale(1.12)}24%{transform:scale(1)}36%{transform:scale(1.08)}48%{transform:scale(1)}}
-#fbTitle{font-size:21px;font-weight:700;background:linear-gradient(90deg,#fff,color-mix(in srgb,var(--accent,#6b7280) 60%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:4px;}
+#fbTitle{font-size:21px;font-weight:700;background:linear-gradient(90deg,#fff,#f1d98a);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:4px;}
 #fbSub{font-size:13px;color:var(--muted,#9aa);margin-bottom:18px;}
 #fbStars{display:flex;justify-content:center;gap:8px;margin-bottom:18px;direction:ltr;}
-.fbStar{width:42px;height:42px;cursor:pointer;transition:transform .18s;fill:none;stroke:#4b476b;stroke-width:1.6;}
+.fbStar{width:42px;height:42px;cursor:pointer;transition:transform .18s;fill:none;stroke:#6b5f3a;stroke-width:1.6;}
 .fbStar:hover{transform:scale(1.22) rotate(-8deg);}
 .fbStar.on{fill:url(#fbGold);stroke:#f5b942;filter:drop-shadow(0 0 8px rgba(245,185,66,.65));animation:fbStarPop .35s cubic-bezier(.2,1.6,.4,1);}
 @keyframes fbStarPop{50%{transform:scale(1.35)}}
 #fbChips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-bottom:16px;}
-.fbChip{padding:7px 14px;border-radius:999px;font-size:12.5px;cursor:pointer;color:#cfcbe8;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);transition:all .2s;user-select:none;}
-.fbChip.on{background:linear-gradient(135deg,var(--accent,#6b7280),#ec4899);border-color:transparent;color:#fff;box-shadow:0 4px 14px color-mix(in srgb,var(--accent,#6b7280) 45%,transparent);transform:translateY(-1px);}
+.fbChip{padding:7px 14px;border-radius:999px;font-size:12.5px;cursor:pointer;color:#e6dfc9;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);transition:all .2s;user-select:none;}
+.fbChip.on{background:linear-gradient(135deg,#d4af37,#f1d98a);border-color:transparent;color:#141414;box-shadow:0 4px 14px rgba(212,175,55,.45);transform:translateY(-1px);}
 #fbNote{width:100%;min-height:72px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#eee;font-size:13.5px;padding:12px;resize:none;outline:none;margin-bottom:16px;font-family:inherit;}
-#fbNote:focus{border-color:var(--accent,#6b7280);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent,#6b7280) 22%,transparent);}
-#fbSendBtn{width:100%;padding:13px;border:none;border-radius:14px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(135deg,var(--accent,#6b7280),#ec4899);position:relative;overflow:hidden;transition:transform .15s,box-shadow .2s;}
-#fbSendBtn:hover{transform:translateY(-2px);box-shadow:0 8px 24px color-mix(in srgb,var(--accent,#6b7280) 50%,transparent);}
+#fbNote:focus{border-color:#d4af37;box-shadow:0 0 0 3px rgba(212,175,55,.22);}
+#fbSendBtn{width:100%;padding:13px;border:none;border-radius:14px;font-size:15px;font-weight:700;color:#141414;cursor:pointer;background:linear-gradient(135deg,#d4af37,#f1d98a);position:relative;overflow:hidden;transition:transform .15s,box-shadow .2s;}
+#fbSendBtn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(212,175,55,.5);}
 #fbSendBtn::after{content:'';position:absolute;top:0;left:-80%;width:50%;height:100%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.35),transparent);animation:fbShine 2.8s ease-in-out infinite;}
 @keyframes fbShine{0%,60%{left:-80%}100%{left:130%}}
 #fbClose{position:absolute;top:14px;inset-inline-end:14px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,.08);color:#bbb;font-size:16px;cursor:pointer;z-index:2;}
 #fbClose:hover{background:rgba(255,255,255,.16);color:#fff;}
 #fbThanksView{display:none;padding:22px 0 10px;}
 #fbCheck{width:84px;height:84px;margin:0 auto 16px;}
-#fbCheck circle{stroke:#22c55e;stroke-width:2.4;fill:none;stroke-dasharray:245;stroke-dashoffset:245;animation:fbDraw .7s ease forwards;}
-#fbCheck path{stroke:#22c55e;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:60;stroke-dashoffset:60;animation:fbDraw .5s .5s ease forwards;}
+#fbCheck circle{stroke:#d4af37;stroke-width:2.4;fill:none;stroke-dasharray:245;stroke-dashoffset:245;animation:fbDraw .7s ease forwards;}
+#fbCheck path{stroke:#f1d98a;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:60;stroke-dashoffset:60;animation:fbDraw .5s .5s ease forwards;}
 @keyframes fbDraw{to{stroke-dashoffset:0}}
 .fbConf{position:absolute;top:38%;left:50%;width:9px;height:9px;border-radius:2px;opacity:0;pointer-events:none;animation:fbConf 1.3s ease-out forwards;}
 @keyframes fbConf{0%{opacity:1;transform:translate(0,0) rotate(0)}100%{opacity:0;transform:translate(var(--cx),var(--cy)) rotate(540deg)}}

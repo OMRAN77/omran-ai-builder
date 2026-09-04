@@ -1223,16 +1223,18 @@
 </div>
 
 <style id="cxSkin">
-#constructionModal .cx-head{margin:-26px -26px 16px; padding:16px 22px; background:linear-gradient(135deg,#0f766e 0%,#134e4a 100%); border-radius:var(--r-4) var(--r-4) 0 0;}
-#constructionModal .cx-head h3{color:#fff;}
-#constructionModal .cx-quota{margin-inline-start:auto; margin-inline-end:10px; font-size:11.5px; padding:4px 11px; border-radius:999px; background:rgba(255,255,255,.18); color:#fff; white-space:nowrap;}
+/* v-gold-unify: رأس المقاولات ذهبي على داكن بدل الأخضر */
+#constructionModal .cx-head{margin:-26px -26px 16px; padding:16px 22px; background:linear-gradient(135deg,rgba(212,175,55,.22) 0%,rgba(212,175,55,.05) 100%); border-bottom:1px solid rgba(212,175,55,.35); border-radius:var(--r-4) var(--r-4) 0 0;}
+#constructionModal .cx-head h3{color:#f1d98a;}
+#constructionModal .cx-quota{margin-inline-start:auto; margin-inline-end:10px; font-size:11.5px; padding:4px 11px; border-radius:999px; background:rgba(212,175,55,.18); color:#f1d98a; white-space:nowrap;}
 #constructionModal .cx-sec{border:1px solid var(--border,#333); border-radius:14px; padding:14px 14px 16px; margin-top:14px; background:rgba(255,255,255,.025);}
 #constructionModal .cx-h{margin:0 0 10px; font-size:12.5px; opacity:.92; letter-spacing:.2px;}
 #constructionModal .cx-pill{display:flex; align-items:center; gap:8px; padding:9px 12px; border:1px solid var(--border,#333); border-radius:999px; cursor:pointer; font-size:12.5px; background:var(--panel2,#141414); transition:border-color .15s, background .15s;}
-#constructionModal .cx-pill:hover{border-color:#2E9E6B;}
-#constructionModal .cx-pill input{accent-color:#2E9E6B; flex:none;}
-#constructionModal .cx-pill:has(input:checked){border-color:#2E9E6B; background:rgba(46,158,107,.14);}
-#constructionModal select,#constructionModal textarea,#constructionModal input[type=number],#constructionModal input[type=text]{border-radius:10px; padding:9px 10px;}
+#constructionModal .cx-pill:hover{border-color:#d4af37;}
+#constructionModal .cx-pill input{accent-color:#d4af37; flex:none;}
+#constructionModal .cx-pill:has(input:checked){border-color:#d4af37; background:rgba(212,175,55,.14);}
+#constructionModal select,#constructionModal textarea,#constructionModal input[type=number],#constructionModal input[type=text]{border-radius:10px; padding:9px 10px; background:var(--panel2,#141414) !important; color:var(--text,#f3efe4) !important; border:1px solid rgba(212,175,55,.35) !important;}
+#constructionModal .cx-sec{border-color:rgba(212,175,55,.22) !important;}
 #constructionModal optgroup{font-size:11.5px; opacity:.75;}
 #constructionModal .cx-out{border:1px solid var(--border,#333); border-radius:14px; overflow:hidden;}
 #constructionModal #constructionRunBtn{border-radius:12px; padding:12px; font-weight:600;}
