@@ -1,4 +1,6 @@
 I18N['es'] = {
+    "introSplashLabel": "✨ Pantalla de apertura al iniciar la app",
+    "introSkip": "Toca para continuar",
     /* v660 — التلفزيون: نصوص القسم وأسماء الدول (CLDR) */
     tvTitle: "📺 TV", tvBack: "Atrás", tvYoutube: "YouTube", tvSearchPh: "Buscar canales...", tvAll: "Todos", tvPlatforms: "Plataformas oficiales — se abren con tu cuenta", tvLiveIn: "Canales en directo dentro de la app", tvNoMatch: "No hay canales coincidentes", tvLive: "EN DIRECTO", tvLiveCount: "canales en directo ahora", tvOfficial: "Sitio oficial", tvOpening: "Abriendo...", tvOff: "El canal no está emitiendo ahora", tvCatNews: "Noticias", tvCatSports: "Deportes", tvCatGeneral: "General", tvCatReligion: "Religión", tvCatKids: "Infantil", tvCatBiz: "Economía", tvCIntl: "Internacional",
     tvPfShahid: "Todos los canales MBC en directo", tvPfAwaan: "Todos los canales de Dubái en directo", tvPfAdtv: "Canales de Abu Dabi y Majid", tvPfTod: "beIN con tu suscripción", tvPfRotana: "Canales Rotana", tvPfSub: "con tu suscripción",

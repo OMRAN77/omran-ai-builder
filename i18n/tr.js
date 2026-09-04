@@ -1,4 +1,6 @@
 I18N['tr'] = {
+    "introSplashLabel": "✨ Uygulama açılışında açılış ekranı",
+    "introSkip": "Devam etmek için dokunun",
     /* v660 — التلفزيون: نصوص القسم وأسماء الدول (CLDR) */
     tvTitle: "📺 TV", tvBack: "Geri", tvYoutube: "YouTube", tvSearchPh: "Kanal ara...", tvAll: "Tümü", tvPlatforms: "Resmî platformlar — kendi hesabınızla açılır", tvLiveIn: "Uygulama içinde canlı kanallar", tvNoMatch: "Eşleşen kanal yok", tvLive: "CANLI", tvLiveCount: "kanal şu anda canlı", tvOfficial: "Resmî site", tvOpening: "Açılıyor...", tvOff: "Kanal şu anda yayında değil", tvCatNews: "Haber", tvCatSports: "Spor", tvCatGeneral: "Genel", tvCatReligion: "Dinî", tvCatKids: "Çocuk", tvCatBiz: "Ekonomi", tvCIntl: "Uluslararası",
     tvPfShahid: "Tüm MBC kanalları canlı", tvPfAwaan: "Tüm Dubai kanalları canlı", tvPfAdtv: "Abu Dabi ve Majid kanalları", tvPfTod: "beIN aboneliğinizle", tvPfRotana: "Rotana kanalları", tvPfSub: "aboneliğinizle",

@@ -1,4 +1,6 @@
 I18N['zh'] = {
+    "introSplashLabel": "✨ 启动时显示开场画面",
+    "introSkip": "点按继续",
     /* v660 — التلفزيون: نصوص القسم وأسماء الدول (CLDR) */
     tvTitle: "📺 电视", tvBack: "返回", tvYoutube: "YouTube", tvSearchPh: "搜索频道...", tvAll: "全部", tvPlatforms: "官方平台 — 使用你的账号打开", tvLiveIn: "应用内直播频道", tvNoMatch: "没有匹配的频道", tvLive: "直播中", tvLiveCount: "个频道正在直播", tvOfficial: "官方网站", tvOpening: "正在打开...", tvOff: "该频道当前未直播", tvCatNews: "新闻", tvCatSports: "体育", tvCatGeneral: "综合", tvCatReligion: "宗教", tvCatKids: "少儿", tvCatBiz: "财经", tvCIntl: "国际",
     tvPfShahid: "MBC 全频道直播", tvPfAwaan: "迪拜全频道直播", tvPfAdtv: "阿布扎比与 Majid 频道", tvPfTod: "beIN 使用你的订阅", tvPfRotana: "Rotana 频道", tvPfSub: "使用你的订阅",

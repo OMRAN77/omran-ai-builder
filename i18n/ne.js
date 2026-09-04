@@ -1,4 +1,6 @@
 I18N['ne'] = {
+    "introSplashLabel": "✨ एप खुल्दा ओपनिङ स्क्रिन",
+    "introSkip": "जारी राख्न ट्याप गर्नुहोस्",
     /* v660 — التلفزيون: نصوص القسم وأسماء الدول (CLDR) */
     tvTitle: "📺 टिभी", tvBack: "पछाडि", tvYoutube: "युट्युब", tvSearchPh: "च्यानल खोज्नुहोस्...", tvAll: "सबै", tvPlatforms: "आधिकारिक प्लेटफर्म — तपाईंको खाताबाट खुल्छ", tvLiveIn: "एपभित्रै प्रत्यक्ष च्यानलहरू", tvNoMatch: "कुनै च्यानल भेटिएन", tvLive: "प्रत्यक्ष", tvLiveCount: "च्यानल अहिले प्रत्यक्ष", tvOfficial: "आधिकारिक साइट", tvOpening: "खुल्दै...", tvOff: "च्यानल अहिले प्रसारणमा छैन", tvCatNews: "समाचार", tvCatSports: "खेलकुद", tvCatGeneral: "सामान्य", tvCatReligion: "धार्मिक", tvCatKids: "बालबालिका", tvCatBiz: "अर्थतन्त्र", tvCIntl: "अन्तर्राष्ट्रिय",
     tvPfShahid: "सबै MBC च्यानल प्रत्यक्ष", tvPfAwaan: "सबै दुबई च्यानल प्रत्यक्ष", tvPfAdtv: "अबु धाबी र माजिद च्यानलहरू", tvPfTod: "beIN तपाईंको सदस्यताबाट", tvPfRotana: "रोटाना च्यानलहरू", tvPfSub: "तपाईंको सदस्यताबाट",

@@ -1,4 +1,6 @@
 I18N['ru'] = {
+    "introSplashLabel": "✨ Заставка при запуске приложения",
+    "introSkip": "Нажмите, чтобы продолжить",
     /* v660 — التلفزيون: نصوص القسم وأسماء الدول (CLDR) */
     tvTitle: "📺 ТВ", tvBack: "Назад", tvYoutube: "YouTube", tvSearchPh: "Поиск каналов...", tvAll: "Все", tvPlatforms: "Официальные платформы — открываются с вашей учётной записью", tvLiveIn: "Прямые каналы внутри приложения", tvNoMatch: "Каналы не найдены", tvLive: "В ЭФИРЕ", tvLiveCount: "каналов в эфире", tvOfficial: "Официальный сайт", tvOpening: "Открываем...", tvOff: "Канал сейчас не вещает", tvCatNews: "Новости", tvCatSports: "Спорт", tvCatGeneral: "Общие", tvCatReligion: "Религиозные", tvCatKids: "Детские", tvCatBiz: "Бизнес", tvCIntl: "Международные",
     tvPfShahid: "Все каналы MBC в прямом эфире", tvPfAwaan: "Все каналы Дубая в прямом эфире", tvPfAdtv: "Каналы Абу-Даби и Majid", tvPfTod: "beIN по вашей подписке", tvPfRotana: "Каналы Rotana", tvPfSub: "по вашей подписке",
