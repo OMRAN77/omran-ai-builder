@@ -1179,6 +1179,10 @@
 
   /* ---- 🔄 before/after slider ---- */
   function setupBeforeAfter(){
+    /* v-no-slider (أمر المالك): لا شريط مقارنة قبل/بعد */
+    beforeWrap.style.display = 'none';
+    sliderRange.style.display = 'none';
+    if(true) return;
     if(feature === 'merge' || !selectedBase64A){
       beforeWrap.style.display = 'none';
       sliderRange.style.display = 'none';

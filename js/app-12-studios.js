@@ -368,14 +368,15 @@ async function __safeJson(res){
   if(baRange) baRange.oninput = function(){ baSet(baRange.value); };
   window.addEventListener('resize', function(){ if(baWrap && baWrap.style.display !== 'none') baSize(); });
   function showBeforeAfter(beforeUrl, afterUrl){
+    /* v-no-slider (أمر المالك ٤ سبتمبر «احذف شريط السحب»): لا شريط مقارنة — الناتج وحده */
     if(!baWrap || !baAfter || !baBefore) return false;
     baAfter.src = afterUrl;
     baBefore.src = beforeUrl;
     baAfter.onload = baSize;
     baWrap.style.display = 'block';
-    baRange.style.display = 'block';
-    baRange.value = 50;
-    baSet(50);
+    baRange.style.display = 'none';
+    baRange.value = 0;
+    baSet(0);
     return true;
   }
   window.__designShowBA = showBeforeAfter;
@@ -970,8 +971,8 @@ function stuL(ar, en){
         if(compareWrap && compareBefore && compareSlider){
           compareBefore.src = 'data:' + selectedMime + ';base64,' + selectedBase64;
           compareWrap.style.display = 'block';
-          compareSlider.style.display = 'block';
-          compareSlider.value = 50;
+          compareSlider.style.display = 'none'; /* v-no-slider */
+          compareSlider.value = 100;
           updateCompareSlider();
           layoutCompareAfter();
         }
@@ -1211,6 +1212,10 @@ function stuL(ar, en){
 
   /* ---- 🔄 before/after slider ---- */
   function setupBeforeAfter(afterUrl){
+    /* v-no-slider (أمر المالك): لا شريط مقارنة قبل/بعد */
+    beforeWrap.style.display = 'none';
+    sliderRange.style.display = 'none';
+    if(true) return;
     if(mode !== 'image' || !selectedBase64){
       beforeWrap.style.display = 'none';
       sliderRange.style.display = 'none';
