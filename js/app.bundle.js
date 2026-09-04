@@ -1,12 +1,10 @@
 /* v-intro-splash: شاشة الافتتاح الكاملة (مخطط المالك بلا «مها» وبحرف ع).
-   الرسم يبدأ من index.html قبل الحزمة؛ هنا التوقيت والإخفاء التام وزر التخطي
+   الرسم يبدأ من index.html قبل الحزمة؛ تبقى بوميضها حتى يضغط المستخدم ثم تُحذف تمامًا،
    ومفتاح الإعدادات. تظهر مرة لكل فتح للتطبيق (sessionStorage) وتُعطَّل من
    الإعدادات (aiapp_intro = '0'). */
 (function(){
   var el = document.getElementById('omranIntro');
-  var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
-  var MIN = 3200, MAX = 6000, done = false;
-  function now(){ return (window.performance && performance.now) ? performance.now() : Date.now(); }
+  var done = false;
   function out(){
     if(done) return; done = true;
     try{
@@ -21,9 +19,9 @@
     el.addEventListener('click', out, { passive: true });
     var img = el.querySelector('.oiImg');
     if(img){ img.addEventListener('error', out); }
-    var arm = function(){ var left = Math.max(0, MIN - (now() - t0)); setTimeout(out, left); };
-    if(document.readyState === 'complete') arm(); else window.addEventListener('load', arm);
-    setTimeout(out, MAX);
+    /* طلب المالك: تبقى الشاشة بوميضها حتى يضغط المستخدم — لا مؤقّت إغلاق تلقائي */
+    el.addEventListener('touchend', out, { passive: true });
+    el.addEventListener('keydown', out);
   } else {
     done = true;
   }
