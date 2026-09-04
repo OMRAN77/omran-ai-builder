@@ -313,4 +313,27 @@ const PREVIEW_SUBJECT = {
   "elder": "m"
  }
 };
-module.exports = { STYLE_PROMPTS, FEATURE_INSTRUCTIONS, PREVIEW_SUBJECT };
+// v-preview-fit: تأطير المعاينة بحيث تُظهر الميزة نفسها بوضوح (الحناء = يدان قريبتان، العيون = وجه قريب…)
+const PREVIEW_FRAME = {
+  idphoto: 'head-and-shoulders portrait, front-facing, neutral expression',
+  hijab: 'upper-body portrait, the head covering fully visible',
+  gulfmen: 'three-quarter portrait, the headwear and outfit fully visible',
+  menhair: 'head-and-shoulders portrait, the hairstyle clearly visible and in focus',
+  henna: 'close-up of the hands held toward the camera, palms and backs of hands filling the frame, the henna patterns sharp and clearly visible',
+  wedding: 'full-body portrait, the wedding outfit fully visible',
+  accessories: 'upper-body portrait, the accessory prominent and clearly visible',
+  eyes: 'close-up face portrait, the eyes and smile in sharp focus and clearly visible',
+  body: 'full-body standing portrait in fitted athletic clothing, the body shape clearly visible',
+  background: 'three-quarter portrait with the background fully visible and in focus',
+  palette: 'upper-body portrait, the outfit colors dominant and clearly visible',
+  seasons: 'three-quarter portrait, the outfit and setting clearly visible',
+  iconic: 'three-quarter portrait, the styling and setting clearly visible',
+  age: 'head-and-shoulders portrait, the age clearly readable in the face',
+};
+const PREVIEW_FEATURE_NAME = {
+  idphoto: 'the official ID-photo look', hijab: 'the hijab style', gulfmen: 'the Gulf attire', menhair: 'the haircut',
+  henna: 'the henna design', wedding: 'the wedding look', accessories: 'the accessory', eyes: 'the eye color or smile',
+  body: 'the body shape', background: 'the background', palette: 'the color palette', seasons: 'the occasion outfit',
+  iconic: 'the iconic style', age: 'the apparent age',
+};
+module.exports = { STYLE_PROMPTS, FEATURE_INSTRUCTIONS, PREVIEW_SUBJECT, PREVIEW_FRAME, PREVIEW_FEATURE_NAME };
