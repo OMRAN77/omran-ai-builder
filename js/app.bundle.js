@@ -20169,7 +20169,7 @@ $('#history').addEventListener('click', () => {
       /* v-edu-selfhost: مستودع omran-edu غير موصول بالنشر التلقائي — الصفحة
          المحدثة تُستضاف هنا (edu-old/) فتنشر مع التطبيق، والخلفية تبقى على
          النشر القديم الشغال (CORS مفتوح). */
-      frame.src = '/edu-old/index.html?v=15g'; /* v-gold-unify */ /* v-edu-14: كسر الكاش بعد إضافة اللغات */
+      frame.src = '/edu-old/index.html?v=15h'; /* v-gold-unify */ /* v-edu-14: كسر الكاش بعد إضافة اللغات */
     }
     modal.style.display = 'flex';
     if(window.innerWidth <= 860 && typeof closeDrawers === 'function') closeDrawers();
@@ -26066,6 +26066,7 @@ window.updateVersionLabel();
 
   /* v-gold-unify: محرّر المخططات أسود/ذهبي كبقية الأدوات */
   var CSS = [
+    '/* v-noscroll-all */ *{scrollbar-width:none !important} *::-webkit-scrollbar{width:0 !important;height:0 !important;display:none !important}',
     'body{font-family:Tajawal,Arial,sans-serif;margin:0;padding:14px;background:#000;color:#f3efe4;line-height:1.7;-webkit-user-select:none;user-select:none}',
     'header{text-align:center;margin:0 0 12px}h1{margin:0;font-size:20px;color:#f1d98a}',
     '.sub{color:#a9a290;font-size:13px}.tot{margin-top:6px;font-size:15px;color:#f1d98a}',

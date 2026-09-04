@@ -1037,3 +1037,10 @@ html.store-safe #aboutStocksCard{display:none !important;}
     padding-top:calc(12px + env(safe-area-inset-top,0px)) !important;
   }
 }
+
+/* ═══ v-noscroll-all (أمر المالك ٤ سبتمبر: «أي شريط سحب احذفه — في كل الهواتف والكمبيوتر»):
+   لا شريط سحب ظاهر في أي مكان في التطبيق على كل المقاسات. التمرير نفسه يعمل كما هو
+   (عجلة الفأرة، اللمس، لوحة المفاتيح). ═══ */
+html, body, *, *::before, *::after{scrollbar-width:none !important; -ms-overflow-style:none !important;}
+html::-webkit-scrollbar, body::-webkit-scrollbar, *::-webkit-scrollbar{width:0 !important; height:0 !important; display:none !important; background:transparent !important;}
+*::-webkit-scrollbar-thumb, *::-webkit-scrollbar-track{display:none !important; background:transparent !important;}

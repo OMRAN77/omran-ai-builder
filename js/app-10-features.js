@@ -954,7 +954,7 @@ $('#history').addEventListener('click', () => {
       /* v-edu-selfhost: مستودع omran-edu غير موصول بالنشر التلقائي — الصفحة
          المحدثة تُستضاف هنا (edu-old/) فتنشر مع التطبيق، والخلفية تبقى على
          النشر القديم الشغال (CORS مفتوح). */
-      frame.src = '/edu-old/index.html?v=15g'; /* v-gold-unify */ /* v-edu-14: كسر الكاش بعد إضافة اللغات */
+      frame.src = '/edu-old/index.html?v=15h'; /* v-gold-unify */ /* v-edu-14: كسر الكاش بعد إضافة اللغات */
     }
     modal.style.display = 'flex';
     if(window.innerWidth <= 860 && typeof closeDrawers === 'function') closeDrawers();
