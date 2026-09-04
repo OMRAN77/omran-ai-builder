@@ -1237,7 +1237,7 @@
 #constructionModal .cx-sec{border-color:rgba(212,175,55,.22) !important;}
 #constructionModal optgroup{font-size:11.5px; opacity:.75;}
 #constructionModal .cx-out{border:1px solid var(--border,#333); border-radius:14px; overflow:hidden;}
-#constructionModal #constructionRunBtn{border-radius:12px; padding:12px; font-weight:600;}
+#constructionModal #constructionRunBtn{border-radius:12px; padding:12px; font-weight:700; background:linear-gradient(90deg,#d4af37,#f1d98a) !important; color:#141414 !important; border:none !important; box-shadow:0 4px 18px rgba(212,175,55,.35) !important;}
 @media(max-width:640px){#constructionModal .cx-pill{padding:8px 10px;}}
 </style>
 <div id="constructionModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
@@ -1366,7 +1366,7 @@
     <div id="constructionLibraryEmpty" style="display:none; font-size:12px; color:var(--muted); text-align:center; margin-top:8px;" data-i18n="constructionLibraryEmpty">لا توجد تصاميم محفوظة مشابهة بعد — كن أول من يولّد!</div>
 
     <button type="button" class="btn primary" id="constructionRunBtn" style="width:100%; margin-top:14px;" data-i18n="constructionRunBtn">✨ ولّد التصميم</button>
-    <button type="button" class="btn" id="constructionEditorBtn" style="width:100%; margin-top:8px; background:#2E9E6B; border-color:#2E9E6B; color:#fff;" data-i18n="constructionEditorBtn">📐 محرّر المخططات التفاعلي — اسحب وعدّل بنفسك</button>
+    <button type="button" class="btn" id="constructionEditorBtn" style="width:100%; margin-top:8px; background:linear-gradient(90deg,#b8902a,#d4af37); border-color:#d4af37; color:#141414; font-weight:700;" data-i18n="constructionEditorBtn">📐 محرّر المخططات التفاعلي — اسحب وعدّل بنفسك</button>
     <div style="font-size: var(--fs-5); color:var(--muted); margin-top:4px; text-align:center;" data-i18n="constructionEditorHint">مخطط بمساحات محسوبة رياضيًا، تعدّله بأصبعك، ثم تولّد صور الواجهة والمجلس منه</div>
 
     <div id="constructionStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
