@@ -25,7 +25,8 @@
   css.textContent =
     Object.keys(MAP).map(function(k){ return '#' + MAP[k]; }).join(',') + '{display:none !important;}' +
     '.omranSwiping{transition:none !important;will-change:transform;}' +
-    '.omranSwipeSettle{transition:transform .18s ease-out, opacity .18s ease-out !important;}';
+    '.omranSwipeSettle{transition:transform .18s ease-out, opacity .18s ease-out !important;}' +
+    'html.omranMouseSwipe, html.omranMouseSwipe *{user-select:none !important; cursor:grabbing !important;}';
   document.head.appendChild(css);
 
   function visible(el){
@@ -49,7 +50,7 @@
   }
   function closeTool(el){
     var btn = el && document.getElementById(MAP[el.id]);
-    if(btn){ try{ btn.click(); return true; }catch(e){ /* guard-ok */ } }
+    if(btn){ try{ swipeClickGuardUntil = 0; btn.click(); return true; }catch(e){ /* guard-ok */ } }
     return false;
   }
   /* الجزء الذي يتحرك مع الإصبع: صندوق المحتوى (أول ابن كبير) وإلا الحاوية نفسها */
@@ -123,7 +124,61 @@
     };
     el.addEventListener('touchend', finish, { passive: true });
     el.addEventListener('touchcancel', finish, { passive: true });
+
+    /* سؤال المالك ٤ سبتمبر «في الكمبيوتر ما فيها سحب»: نفس السحب بالفأرة — اضغط واسحب لليمين
+       من أي مكان في الأداة فتتبعك وتُغلق. الحقول النصية والمنزلقات مستثناة، والنقرة بعد سحب لا تُحتسب. */
+    var m0 = null, mDrag = false;
+    var mouseBlocked = function(t){
+      var e = t;
+      for(var i = 0; e && e !== document.body && i < 12; i++){
+        var tag = (e.tagName || '').toLowerCase();
+        if(tag === 'input' || tag === 'textarea' || tag === 'select' || e.isContentEditable) return true;
+        if(tag === 'video' || tag === 'canvas' || tag === 'iframe') return true;
+        e = e.parentElement;
+      }
+      return blocked(t);
+    };
+    el.addEventListener('mousedown', function(e){
+      if(e.button !== 0 || mouseBlocked(e.target)){ m0 = null; return; }
+      if(topTool() !== el){ m0 = null; return; }
+      m0 = { x: e.clientX, y: e.clientY, ts: Date.now() };
+      mDrag = false; p = panel(el); w = window.innerWidth || 360;
+    });
+    document.addEventListener('mousemove', function(e){
+      if(!m0) return;
+      var dx = e.clientX - m0.x, dy = e.clientY - m0.y;
+      if(!mDrag){
+        if(Math.abs(dx) < 14 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+        if(dx <= 0){ m0 = null; return; }
+        mDrag = true;
+        document.documentElement.classList.add('omranMouseSwipe');
+        try{ var sel = window.getSelection(); if(sel && sel.removeAllRanges) sel.removeAllRanges(); }catch(err){ /* guard-ok */ }
+      }
+      e.preventDefault();
+      setX(Math.max(0, dx), false);
+    });
+    var mouseFinish = function(e){
+      if(!m0) return;
+      var was = mDrag, dx = was ? (e.clientX - m0.x) : 0, dt = Date.now() - m0.ts;
+      m0 = null; mDrag = false;
+      document.documentElement.classList.remove('omranMouseSwipe');
+      if(!was) return;
+      swipeClickGuardUntil = Date.now() + 120;
+      if(dx > w * 0.35 || (dt < 300 && dx > 70)){
+        setX(w + 40, true);
+        setTimeout(function(){ closeTool(el); setTimeout(function(){ setX(0, false); if(p){ p.classList.remove('omranSwiping'); } }, 40); }, 190);
+      } else {
+        setX(0, true);
+        setTimeout(function(){ if(p){ p.classList.remove('omranSwipeSettle'); p.classList.remove('omranSwiping'); } }, 220);
+      }
+    };
+    document.addEventListener('mouseup', mouseFinish);
   }
+  /* نقرة تصل بعد سحب بالفأرة مباشرة = ليست نقرة مقصودة */
+  var swipeClickGuardUntil = 0;
+  document.addEventListener('click', function(e){
+    if(Date.now() < swipeClickGuardUntil){ e.stopPropagation(); e.preventDefault(); }
+  }, true);
   function ensureBound(){
     Object.keys(MAP).forEach(function(id){
       var el = document.getElementById(id);
