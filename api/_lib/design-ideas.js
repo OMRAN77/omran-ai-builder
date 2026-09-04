@@ -70,6 +70,64 @@ async function googleImages(queries, state) {
   runs.forEach((j) => { ((j && j.items) || []).forEach((it) => { if (it && it.link) out.push(it.link); }); });
   return out;
 }
+/* Google بلا searchType (لو كان محرّك CSE بلا «بحث الصور»): صور الصفحات من pagemap */
+async function googlePageImages(queries, state) {
+  const gKey = (process.env.GOOGLE_SEARCH_API_KEY || '').trim();
+  const gCx = (process.env.GOOGLE_SEARCH_CX || '').trim();
+  if (!gKey || !gCx) return [];
+  const runs = await Promise.all(queries.map(norm).filter(Boolean).slice(0, 3).map((q) => fetch(
+    'https://www.googleapis.com/customsearch/v1?key=' + encodeURIComponent(gKey) + '&cx=' + encodeURIComponent(gCx) + '&num=10&q=' + encodeURIComponent(q),
+    { signal: AbortSignal.timeout(15000) }
+  ).then(async (r) => { if (r.ok) return r.json(); state.googlePageFail = r.status || 1; return {}; }).catch(() => { state.googlePageErr = true; return {}; })));
+  const out = [];
+  runs.forEach((j) => { ((j && j.items) || []).forEach((it) => {
+    const pm = (it && it.pagemap) || {};
+    (pm.cse_image || []).forEach((im) => { if (im && im.src) out.push(im.src); });
+  }); });
+  return out;
+}
+/* Bing صور (HTML عام بلا مفتاح): روابط murl داخل الصفحة */
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+function parseBing(html) {
+  const out = [];
+  const re = /murl(?:&quot;|"):(?:&quot;|")(https?:\/\/[^"&\s]+)/g;
+  let m;
+  while ((m = re.exec(html))) { try { out.push(decodeURIComponent(m[1].replace(/\\u002f/g, '/'))); } catch (e) { out.push(m[1]); } }
+  return out;
+}
+async function bingImages(queries, state) {
+  const runs = await Promise.all(queries.map(norm).filter(Boolean).slice(0, 4).map((q) => fetch(
+    'https://www.bing.com/images/async?q=' + encodeURIComponent(q) + '&first=0&count=35&mmasync=1',
+    { headers: { 'User-Agent': UA, 'Accept-Language': 'en-US,en;q=0.9,ar;q=0.8' }, signal: AbortSignal.timeout(15000) }
+  ).then(async (r) => { if (r.ok) return r.text(); state.bingFail = r.status || 1; return ''; }).catch(() => { state.bingErr = true; return ''; })));
+  const out = [];
+  runs.forEach((h) => { parseBing(h || '').forEach((u) => out.push(u)); });
+  return out;
+}
+/* DuckDuckGo صور (بلا مفتاح): رمز vqd ثم i.js */
+async function ddgImages(queries, state) {
+  const out = [];
+  for (const q of queries.map(norm).filter(Boolean).slice(0, 2)) {
+    try {
+      const h = await fetch('https://duckduckgo.com/?q=' + encodeURIComponent(q) + '&iax=images&ia=images', { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(12000) }).then((r) => r.text());
+      const vm = h.match(/vqd=["']?([\d-]+)["']?/) || h.match(/vqd=([\d-]+)/);
+      if (!vm) { state.ddgFail = 'novqd'; continue; }
+      const j = await fetch('https://duckduckgo.com/i.js?l=us-en&o=json&q=' + encodeURIComponent(q) + '&vqd=' + vm[1] + '&f=,,,,,&p=1', { headers: { 'User-Agent': UA, Referer: 'https://duckduckgo.com/' }, signal: AbortSignal.timeout(12000) }).then((r) => (r.ok ? r.json() : null));
+      ((j && j.results) || []).forEach((it) => { if (it && it.image) out.push(it.image); });
+    } catch (e) { state.ddgErr = true; }
+  }
+  return out;
+}
+/* Openverse (مفتوح، بلا مفتاح) — آخر حلّ */
+async function openverseImages(queries, state) {
+  const q = queries.map(norm).filter(Boolean)[0];
+  if (!q) return [];
+  try {
+    const j = await fetch('https://api.openverse.org/v1/images/?page_size=40&q=' + encodeURIComponent(q), { headers: { 'User-Agent': UA, Accept: 'application/json' }, signal: AbortSignal.timeout(12000) })
+      .then(async (r) => { if (r.ok) return r.json(); state.ovFail = r.status || 1; return null; });
+    return ((j && j.results) || []).map((it) => it && it.url).filter(Boolean);
+  } catch (e) { state.ovErr = true; return []; }
+}
 function dedupe(list, seen, images) {
   list.forEach((u) => { if (!u || seen.has(u) || !looksLikePhoto(u)) return; seen.add(u); images.push(u); });
 }
@@ -81,16 +139,34 @@ async function gather(apiKey, wave1, wave2, gq) {
   let source = 'tavily';
   dedupe(await tavilyImages(wave1, apiKey, state), seen, images);
   if (!state.tavilyFail && images.length < 24) dedupe(await tavilyImages(wave2, apiKey, state), seen, images);
-  if (state.tavilyFail || images.length < 12) {
-    const g = await googleImages(gq, state);
-    if (g.length) { dedupe(g, seen, images); source = images.length && state.tavilyFail ? 'google' : 'mixed'; }
+  /* سلسلة البدائل بلا مفتاح: Google صور → Google صفحات → Bing → DuckDuckGo → Openverse */
+  const chain = [
+    ['google', () => googleImages(gq, state)],
+    ['google-page', () => googlePageImages(gq, state)],
+    ['bing', () => bingImages(gq, state)],
+    ['ddg', () => ddgImages(gq, state)],
+    ['openverse', () => openverseImages(gq, state)],
+  ];
+  for (const [name, fn] of chain) {
+    if (!(state.tavilyFail || images.length < 12)) break;
+    let got = [];
+    try { got = await fn(); } catch (e) { /* guard-ok */ }
+    if (got.length) { dedupe(got, seen, images); source = state.tavilyFail ? name : 'mixed'; }
   }
   const out = { images: images.slice(0, 80), count: Math.min(images.length, 80), source };
+  const detail = {
+    tavily: state.tavilyFail || (state.tavilyErr ? 'net' : (apiKey ? 'ok' : 'off')),
+    google: state.googleFail || (state.googleErr ? 'net' : ((process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_CX) ? 'ok' : 'off')),
+    gpage: state.googlePageFail || (state.googlePageErr ? 'net' : 'ok'),
+    bing: state.bingFail || (state.bingErr ? 'net' : 'ok'),
+    ddg: state.ddgFail || (state.ddgErr ? 'net' : 'ok'),
+    ov: state.ovFail || (state.ovErr ? 'net' : 'ok'),
+  };
   if (!images.length) {
-    out.error = (state.tavilyFail || state.googleFail || state.tavilyErr || state.googleErr) ? 'provider' : 'none';
-    out.detail = { tavily: state.tavilyFail || (state.tavilyErr ? 'net' : 'ok'), google: state.googleFail || (state.googleErr ? 'net' : ((process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_CX) ? 'ok' : 'off')) };
-    console.warn('[design-ideas] no images', JSON.stringify(out.detail));
-  }
+    out.error = 'provider';
+    out.detail = detail;
+    console.warn('[design-ideas] no images', JSON.stringify(detail));
+  } else if (source !== 'tavily') { console.warn('[design-ideas] source=' + source, JSON.stringify(detail)); }
   return out;
 }
 
