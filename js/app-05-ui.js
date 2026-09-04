@@ -97,7 +97,7 @@ function omranMobileUA(){
   }catch(e){ /* guard-ok */ }
   return false;
 }
-function omranPdfReadySheet(url, file, filename){
+function omranPdfReadySheet(url, file, filename, kind, openUrl){
   try{
     const isArT = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
     const old = document.getElementById('omranPdfSheet'); if(old) old.remove();
@@ -106,7 +106,8 @@ function omranPdfReadySheet(url, file, filename){
     sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:rgba(20,20,26,.98);border-top:1px solid rgba(212,175,55,.45);border-radius:18px 18px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 40px rgba(0,0,0,.6);direction:' + (isArT ? 'rtl' : 'ltr') + ';font-family:inherit;';
     const head = document.createElement('div');
     head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;color:#f3efe4;font-weight:800;font-size:15px;';
-    const ttl = document.createElement('span'); ttl.textContent = isArT ? '✅ ملف PDF جاهز' : '✅ PDF ready';
+    const ttl = document.createElement('span');
+    ttl.textContent = kind === 'video' ? (isArT ? '✅ الفيديو جاهز' : '✅ Video ready') : (kind === 'image' ? (isArT ? '✅ الصورة جاهزة' : '✅ Image ready') : (isArT ? '✅ ملف PDF جاهز' : '✅ PDF ready'));
     const x = document.createElement('button'); x.textContent = '✕';
     x.style.cssText = 'background:none;border:none;color:#9a9a9e;font-size:18px;cursor:pointer;padding:2px 8px;';
     x.onclick = function(){ sheet.remove(); };
@@ -139,14 +140,14 @@ function omranPdfReadySheet(url, file, filename){
     }
     /* فتح: تبويب/عارض خارجي */
     const op = document.createElement('a');
-    op.href = url; op.target = '_blank'; op.rel = 'noopener';
+    op.href = openUrl || url; op.target = '_blank'; op.rel = 'noopener';
     op.style.cssText = btnCss + 'background:none;color:#f3efe4;border:1px solid rgba(255,255,255,.18);';
     op.textContent = isArT ? '🔗 فتح' : '🔗 Open';
     op.onclick = function(ev){
       try{
         const cap2 = window.Capacitor;
         const br2 = cap2 && cap2.Plugins && cap2.Plugins.Browser;
-        if(br2 && typeof br2.open === 'function'){ ev.preventDefault(); br2.open({ url: url }); }
+        if(br2 && typeof br2.open === 'function'){ ev.preventDefault(); br2.open({ url: openUrl || url }); }
       }catch(e2){ __swallow(e2, 'pdf:sheet-open'); }
     };
     row.appendChild(op);
