@@ -25087,11 +25087,18 @@ function stuL(ar, en){
           const img = new Image();
           img.onload = () => {
             try{
-              const s = Math.min(1, 2048 / Math.max(img.naturalWidth || img.width, img.naturalHeight || img.height));
+              /* v-face-composite: قصّ مركزي إلى أقرب نسبة يدعمها محرّك القناع (2:3، 3:2، 1:1)
+                 وبأبعاد ناتجه نفسها — فالناتج يطابق الأصل بكسلًا ببكسل ويُلصق الوجه بلا انزياح */
+              const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+              const ar = iw / ih;
+              const target = (ar < 0.82) ? [1024, 1536] : (ar > 1.22 ? [1536, 1024] : [1024, 1024]);
+              const tw = target[0], th = target[1], tr = tw / th;
+              let sw = iw, sh = ih;
+              if (ar > tr) sw = Math.round(ih * tr); else sh = Math.round(iw / tr);
+              const sx = Math.round((iw - sw) / 2), sy = Math.round((ih - sh) / 2);
               const c = document.createElement('canvas');
-              c.width = Math.max(1, Math.round((img.naturalWidth || img.width) * s));
-              c.height = Math.max(1, Math.round((img.naturalHeight || img.height) * s));
-              c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+              c.width = tw; c.height = th;
+              c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, tw, th);
               const out = c.toDataURL('image/jpeg', 0.92);
               const b64 = out.split(',')[1] || '';
               resolve(b64 ? { b64, mime: 'image/jpeg', dataUrl: out } : raw);
