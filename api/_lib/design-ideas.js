@@ -140,12 +140,12 @@ async function gather(apiKey, wave1, wave2, gq) {
   dedupe(await tavilyImages(wave1, apiKey, state), seen, images);
   if (!state.tavilyFail && images.length < 24) dedupe(await tavilyImages(wave2, apiKey, state), seen, images);
   /* سلسلة البدائل بلا مفتاح: Google صور → Google صفحات → Bing → DuckDuckGo → Openverse */
+  /* v-ideas-relevant (صورة المالك: قطط وزفاف بدل مطعم): مصادر «بحث الصور» فقط — صور الصفحات
+     (pagemap) وOpenverse تعطي صورًا لا علاقة لها بالطلب فأُزيلتا من السلسلة. */
   const chain = [
     ['google', () => googleImages(gq, state)],
-    ['google-page', () => googlePageImages(gq, state)],
     ['bing', () => bingImages(gq, state)],
     ['ddg', () => ddgImages(gq, state)],
-    ['openverse', () => openverseImages(gq, state)],
   ];
   for (const [name, fn] of chain) {
     if (!(state.tavilyFail || images.length < 12)) break;
@@ -157,10 +157,8 @@ async function gather(apiKey, wave1, wave2, gq) {
   const detail = {
     tavily: state.tavilyFail || (state.tavilyErr ? 'net' : (apiKey ? 'ok' : 'off')),
     google: state.googleFail || (state.googleErr ? 'net' : ((process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_CX) ? 'ok' : 'off')),
-    gpage: state.googlePageFail || (state.googlePageErr ? 'net' : 'ok'),
     bing: state.bingFail || (state.bingErr ? 'net' : 'ok'),
     ddg: state.ddgFail || (state.ddgErr ? 'net' : 'ok'),
-    ov: state.ovFail || (state.ovErr ? 'net' : 'ok'),
   };
   if (!images.length) {
     out.error = 'provider';
