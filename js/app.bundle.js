@@ -6397,10 +6397,14 @@ function renderMessages(keepScroll){
     portraitStyleModal: 'portraitStyleCloseBtn', videoMakerModal: 'videoMakerCloseBtn', designAiModal: 'designAiCloseBtn',
     fashionAiModal: 'fashionAiCloseBtn', studioAiModal: 'studioAiCloseBtn', constructionModal: 'constructionCloseBtn',
     religionModal: 'religionCloseBtn', emailAssistModal: 'emailAssistCloseBtn', stocksModal: 'stocksCloseBtn',
-    expModal: 'expCloseBtn', docModal: 'docX', govModal: 'govX', cvModal: 'cvX', eduHubModal: 'eduCloseBtn',
+    expModal: 'expCloseBtn', docModal: 'docX', govModal: 'govX', cvModal: 'cvX',
+    eduHubModal: 'eduCloseBtn', omranEduModal: 'omranEduCloseBtn', /* التعليم: المركز، والشاشة القديمة داخل إطار */
     omranQiblaShell: 'qClose', fbOverlay: 'fbClose', sectionsToolsOverlay: 'stpCloseBtn',
     omranTvShell: 'tvClose', /* أمر المالك ٤ سبتمبر: «التلفزيون X ما يستوي — سحب» */
     portraitStyleSheet: 'portraitStyleSheetClose', /* ورقة أنماط الصور */
+    /* أمر المالك ٤ سبتمبر: «في الديكور كلها داخل احذف X وخلها سحاب، وفي الاستايل بعد كلها، وفي التعليم»:
+       ورقة الخيارات الداخلية الموحّدة (الشعر، المناسبة، نمط الديكور، …) */
+    pickerSheet: 'pickerSheetClose',
   };
 
   var css = document.createElement('style');
@@ -6424,7 +6428,9 @@ function renderMessages(keepScroll){
       var el = document.getElementById(id);
       if(!visible(el)) return;
       var z = parseInt(getComputedStyle(el).zIndex || '0', 10) || 0;
-      if(z >= bz){ bz = z; best = el; }
+      /* تساوي الطبقة: المتأخر في المستند هو الأعلى بصريًا (التعليم القديم فوق مركز التعليم) */
+      var later = best ? !!(best.compareDocumentPosition(el) & 4) : true;
+      if(z > bz || (z === bz && later)){ bz = z; best = el; }
     });
     return best;
   }
@@ -6434,7 +6440,10 @@ function renderMessages(keepScroll){
     return false;
   }
   /* الجزء الذي يتحرك مع الإصبع: صندوق المحتوى (أول ابن كبير) وإلا الحاوية نفسها */
+  /* الأوراق المعتمة كاملة الشاشة (ورقة الخيارات، ورقة الأنماط، التعليم): تتحرك كلها كوحدة */
+  var SELF = { pickerSheet: 1, portraitStyleSheet: 1, omranEduModal: 1 };
   function panel(el){
+    if(SELF[el.id]) return el;
     var kids = Array.prototype.slice.call(el.children).filter(function(c){ var r = c.getBoundingClientRect(); return r.width > 100 && r.height > 100; });
     return kids[0] || el;
   }
@@ -6513,7 +6522,7 @@ function renderMessages(keepScroll){
 
   /* شاشة التعليم داخل إطار: السحب فيها يصل رسالةً من الإطار */
   window.addEventListener('message', function(e){
-    try{ if(e && e.data && e.data.omranSwipeBack){ var el = document.getElementById('eduHubModal'); if(visible(el)) closeTool(el); } }catch(err){ /* guard-ok */ }
+    try{ if(e && e.data && e.data.omranSwipeBack){ var el = document.getElementById('omranEduModal'); if(!visible(el)) el = document.getElementById('eduHubModal'); if(visible(el)) closeTool(el); } }catch(err){ /* guard-ok */ }
   });
   /* العودة من استوديو الإعلانات (صفحة مستقلة) إلى قائمة الأدوات لا المحادثة */
   try{
