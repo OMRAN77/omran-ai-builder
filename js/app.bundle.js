@@ -30170,7 +30170,12 @@ if(document.readyState === 'loading'){
     S.loc = null;
     S.timings = null;
     S.forceFresh = true; /* أول قراءة بعد الفتح من الحساس مباشرة لا من الذاكرة */
-    setTab('times');
+    /* v-pray-safe: أي خطأ في الرسم يظهر على الشاشة بدل أن يبدو الزر ميتًا */
+    try{ setTab('times'); }
+    catch(err){
+      __swallow(err, 'qibla:open-render');
+      try{ var body = el.querySelector('#qBody'); if(body) body.innerHTML = '<div style="text-align:center;color:var(--muted,#98a0b3);padding:30px 0;">⚠️ ' + String((err && err.message) || err) + '<br><br><button id="qRetry" style="padding:8px 16px;border-radius:10px;border:1px solid var(--omGoldSoft,rgba(212,175,55,.5));background:none;color:inherit;cursor:pointer;">↻</button></div>'; var rb = body && body.querySelector('#qRetry'); if(rb) rb.onclick = function(){ S.loc = null; S.timings = null; setTab('times'); }; }catch(e2){ /* guard-ok */ }
+    }
     /* بعد الرسم: لو تغيّر الموقع فعليًا ننقل التنبيهات معه */
     loc().then(function(l){
       if(!l) return;
@@ -30190,7 +30195,7 @@ if(document.readyState === 'loading'){
   }
 
   var btn = document.getElementById('btnQibla');
-  if(btn) btn.onclick = openQibla;
+  if(btn) btn.onclick = function(){ try{ openQibla(); }catch(e){ __swallow(e, 'qibla:open'); try{ var el = shell(); el.style.display = 'flex'; }catch(_){ /* guard-ok */ } } };
   window.omranQibla = { open: openQibla, close: closeQibla, checkLocal: checkLocal, _S: S };
   /* v-prayer-local: إن كان للمستخدم تنبيهات محفوظة نراقبها محليًا منذ فتح التطبيق */
   try{ if(Object.keys(alertsMap()).length) bootLocalAlerts(); }catch(e){ __swallow(e, 'qibla:boot-local'); }
