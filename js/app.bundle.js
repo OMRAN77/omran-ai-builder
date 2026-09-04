@@ -1,3 +1,45 @@
+/* v-intro-splash: شاشة الافتتاح الكاملة (مخطط المالك بلا «مها» وبحرف ع).
+   الرسم يبدأ من index.html قبل الحزمة؛ هنا التوقيت والإخفاء التام وزر التخطي
+   ومفتاح الإعدادات. تظهر مرة لكل فتح للتطبيق (sessionStorage) وتُعطَّل من
+   الإعدادات (aiapp_intro = '0'). */
+(function(){
+  var el = document.getElementById('omranIntro');
+  var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
+  var MIN = 3200, MAX = 6000, done = false;
+  function now(){ return (window.performance && performance.now) ? performance.now() : Date.now(); }
+  function out(){
+    if(done) return; done = true;
+    try{
+      if(el){ el.classList.add('oiOut'); }
+      setTimeout(function(){
+        try{ if(el && el.parentNode) el.parentNode.removeChild(el); }catch(e){ /* guard-ok */ }
+        try{ document.documentElement.classList.remove('oiOn'); }catch(e){ /* guard-ok */ }
+      }, 1000);
+    }catch(e){ __swallow(e, 'intro:out'); }
+  }
+  if(el){
+    el.addEventListener('click', out, { passive: true });
+    var img = el.querySelector('.oiImg');
+    if(img){ img.addEventListener('error', out); }
+    var arm = function(){ var left = Math.max(0, MIN - (now() - t0)); setTimeout(out, left); };
+    if(document.readyState === 'complete') arm(); else window.addEventListener('load', arm);
+    setTimeout(out, MAX);
+  } else {
+    done = true;
+  }
+  window.omranIntro = { skip: out };
+
+  /* مفتاح الإعدادات: «شاشة الافتتاح عند فتح التطبيق» */
+  function wire(){
+    var chk = document.getElementById('chkIntroSplash');
+    if(!chk) return;
+    try{ chk.checked = localStorage.getItem('aiapp_intro') !== '0'; }catch(e){ /* guard-ok */ }
+    chk.addEventListener('change', function(){
+      try{ localStorage.setItem('aiapp_intro', chk.checked ? '1' : '0'); }catch(e){ /* guard-ok */ }
+    });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire); else wire();
+})();
 /* ───────── __swallow: لا خطأ يختفي بلا أثر ─────────
  *
  * كان في الواجهة 468 كتلة `catch(e){}` فارغة تمامًا. معظمها متعمّد — فشل
@@ -2387,6 +2429,8 @@ const emptyState = $('#emptyState');
 const historyEl = $('#history');
 const I18N = {
   ar: {
+    introSplashLabel: '✨ شاشة الافتتاح عند فتح التطبيق',
+    introSkip: 'اضغط للمتابعة',
     /* v660 — التلفزيون: نصوص القسم في كلّ لغة */
     tvBack: "رجوع", tvYoutube: "يوتيوب", tvSearchPh: "ابحث عن قناة...", tvAll: "الكل", tvPlatforms: "منصات رسمية — تفتح بحسابك", tvLiveIn: "قنوات مباشرة داخل التطبيق", tvNoMatch: "لا توجد قنوات مطابقة", tvLive: "مباشر الآن", tvLiveCount: "قناة تبثّ الآن", tvOfficial: "المنصة الرسمية", tvOpening: "جارٍ الفتح...", tvOff: "القناة موقفة البث حاليًا", tvCatNews: "أخبار", tvCatSports: "رياضة", tvCatGeneral: "عامة", tvCatReligion: "دينية", tvCatKids: "أطفال", tvCatBiz: "اقتصاد", tvCIntl: "دولية", tvPfShahid: "كل قنوات MBC مباشر", tvPfAwaan: "كل قنوات دبي مباشر", tvPfAdtv: "قنوات أبوظبي وماجد", tvPfTod: "beIN باشتراكك", tvPfRotana: "قنوات روتانا", tvPfSub: "باشتراكك",
     /* v656 — وسم الذكاء وحالات الخادم: تصل بمفتاح فتُترجَم في كلّ لغة */
@@ -3355,6 +3399,8 @@ const I18N = {
     emailAsst_eventAdded: "✅ انضاف لتقويمك", emailAsst_calReauth: "أعد ربط Gmail للسماح بالوصول للتقويم", emailAsst_voiceLoading: "🔊 جارٍ تجهيز الملخص الصوتي…", emailAsst_voiceEmpty: "لا توجد إيميلات لتلخيصها.", emailAsst_urgent: "🔴 عاجل", emailAsst_normal: "🟡 عادي", emailAsst_low: "⚪ منخفض",
   },
   en: {
+    introSplashLabel: '✨ Opening screen when the app starts',
+    introSkip: 'Tap to continue',
     /* v660 — التلفزيون: نصوص القسم في كلّ لغة */
     tvBack: "Back", tvYoutube: "YouTube", tvSearchPh: "Search channels...", tvAll: "All", tvPlatforms: "Official platforms — open with your account", tvLiveIn: "Live channels inside the app", tvNoMatch: "No matching channels", tvLive: "LIVE", tvLiveCount: "channels live now", tvOfficial: "Official site", tvOpening: "Opening...", tvOff: "Not streaming right now", tvCatNews: "News", tvCatSports: "Sports", tvCatGeneral: "General", tvCatReligion: "Religion", tvCatKids: "Kids", tvCatBiz: "Business", tvCIntl: "International", tvPfShahid: "All MBC channels live", tvPfAwaan: "All Dubai channels live", tvPfAdtv: "Abu Dhabi & Majid channels", tvPfTod: "beIN with your subscription", tvPfRotana: "Rotana channels", tvPfSub: "with your subscription",
     /* v656 — وسم الذكاء وحالات الخادم: تصل بمفتاح فتُترجَم في كلّ لغة */

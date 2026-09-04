@@ -1,4 +1,6 @@
 I18N['fil'] = {
+    "introSplashLabel": "✨ Opening screen kapag binuksan ang app",
+    "introSkip": "I-tap para magpatuloy",
     /* v660 — التلفزيون: نصوص القسم وأسماء الدول (CLDR) */
     tvTitle: "📺 TV", tvBack: "Bumalik", tvYoutube: "YouTube", tvSearchPh: "Maghanap ng channel...", tvAll: "Lahat", tvPlatforms: "Opisyal na plataporma — bubukas gamit ang iyong account", tvLiveIn: "Mga live na channel sa loob ng app", tvNoMatch: "Walang tumugmang channel", tvLive: "LIVE", tvLiveCount: "channel na live ngayon", tvOfficial: "Opisyal na site", tvOpening: "Binubuksan...", tvOff: "Hindi nagbo-broadcast ang channel ngayon", tvCatNews: "Balita", tvCatSports: "Sports", tvCatGeneral: "Pangkalahatan", tvCatReligion: "Relihiyon", tvCatKids: "Pambata", tvCatBiz: "Negosyo", tvCIntl: "Pandaigdig",
     tvPfShahid: "Lahat ng MBC channel nang live", tvPfAwaan: "Lahat ng Dubai channel nang live", tvPfAdtv: "Mga channel ng Abu Dhabi at Majid", tvPfTod: "beIN gamit ang iyong subscription", tvPfRotana: "Mga channel ng Rotana", tvPfSub: "gamit ang iyong subscription",

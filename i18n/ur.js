@@ -1,4 +1,6 @@
 I18N['ur'] = {
+    "introSplashLabel": "✨ ایپ کھلنے پر افتتاحی اسکرین",
+    "introSkip": "جاری رکھنے کے لیے ٹیپ کریں",
     /* v660 — التلفزيون: نصوص القسم وأسماء الدول (CLDR) */
     tvTitle: "📺 ٹی وی", tvBack: "واپس", tvYoutube: "یوٹیوب", tvSearchPh: "چینل تلاش کریں...", tvAll: "سب", tvPlatforms: "سرکاری پلیٹ فارم — آپ کے اکاؤنٹ سے کھلیں گے", tvLiveIn: "ایپ کے اندر براہِ راست چینلز", tvNoMatch: "کوئی چینل نہیں ملا", tvLive: "براہِ راست", tvLiveCount: "چینلز ابھی لائیو", tvOfficial: "سرکاری سائٹ", tvOpening: "کھل رہا ہے...", tvOff: "چینل اِس وقت نشریات نہیں کر رہا", tvCatNews: "خبریں", tvCatSports: "کھیل", tvCatGeneral: "عمومی", tvCatReligion: "مذہبی", tvCatKids: "بچے", tvCatBiz: "کاروبار", tvCIntl: "بین الاقوامی",
     tvPfShahid: "تمام MBC چینلز براہِ راست", tvPfAwaan: "تمام دبئی چینلز براہِ راست", tvPfAdtv: "ابوظہبی اور ماجد چینلز", tvPfTod: "beIN آپ کی سبسکرپشن سے", tvPfRotana: "روٹانا چینلز", tvPfSub: "آپ کی سبسکرپشن سے",

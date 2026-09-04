@@ -273,6 +273,10 @@
 
   <div id="themeSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('themeSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="themeSectionLabel">🎨 تخصيص الألوان والمظهر</h3><span class="settingsSectionArrow" id="themeSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="themeSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+  <label style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:14px; background:var(--panel2); border-radius:var(--r-2); cursor:pointer; user-select:none;">
+    <input type="checkbox" id="chkIntroSplash" style="width:auto;" checked>
+    <span data-i18n="introSplashLabel" style="font-size:13px;">✨ شاشة الافتتاح عند فتح التطبيق</span>
+  </label>
 
   <div style="display:flex; flex-direction:column; gap:0; padding:10px 12px; margin-bottom:14px; background:var(--panel2); border-radius:var(--r-2);">
     <div onclick="toggleSubRow('bg3dSub')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><span data-i18n="bg3dSectionLabel" style="font-size:13px;">🌌 خلفية ثلاثية الأبعاد متحركة</span><span id="bg3dSubArrow" style="font-size:12px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>

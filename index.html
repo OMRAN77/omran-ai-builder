@@ -137,8 +137,36 @@ window.__swallow = window.__swallow || function (err, ctx) {
 .msg-text a{ color:#2dd4bf !important; }
 html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 </style>
+<style>/* v-intro-splash: شاشة افتتاح كاملة من مخطط المالك تظهر مرة عند كل فتح ثم تذوب تمامًا */
+#omranIntro{position:fixed;inset:0;z-index:2147483000;background:#07070B;overflow:hidden;opacity:1;transition:opacity .95s ease,transform .95s ease;cursor:pointer;visibility:visible}
+#omranIntro.oiOut{opacity:0;transform:scale(1.04);pointer-events:none}
+#omranIntro .oiBg{position:absolute;inset:-48px;background:#07070B url(/assets/intro/splash.jpg?v=1) center/cover no-repeat;filter:blur(30px) brightness(.5);transform:scale(1.12)}
+#omranIntro .oiImg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;animation:oiBreathe 4.5s ease-in-out infinite alternate}
+#omranIntro .oiSheen{position:absolute;inset:0;background:linear-gradient(115deg,transparent 38%,rgba(255,238,180,.26) 50%,transparent 62%);background-size:260% 100%;mix-blend-mode:screen;animation:oiSheen 2.6s ease-in-out .4s infinite}
+#omranIntro .oiSkip{position:absolute;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));text-align:center;font:500 12px/1 system-ui,sans-serif;color:rgba(212,175,55,.75);letter-spacing:.4px;opacity:0;animation:oiUp 1s ease 1.4s forwards}
+@keyframes oiSheen{0%{background-position:160% 0}100%{background-position:-70% 0}}
+@keyframes oiBreathe{from{transform:scale(1)}to{transform:scale(1.025)}}
+@keyframes oiUp{to{opacity:1}}
+@media (prefers-reduced-motion:reduce){#omranIntro .oiImg,#omranIntro .oiSheen{animation:none}}
+html.oiOn body{overflow:hidden}
+</style>
 </head>
 <body>
+
+<div id="omranIntro" aria-hidden="true">
+  <div class="oiBg"></div>
+  <img class="oiImg" src="/assets/intro/splash.jpg?v=1" alt="" decoding="async" fetchpriority="high">
+  <div class="oiSheen"></div>
+  <div class="oiSkip" data-i18n="introSkip">اضغط للمتابعة</div>
+</div>
+<script>/* v-intro-splash: القرار قبل أول رسمة — تظهر مرة لكل فتح، ويمكن إيقافها من الإعدادات */
+(function(){try{
+  var d=document.getElementById('omranIntro'); if(!d) return;
+  var off=false; try{ off = localStorage.getItem('aiapp_intro')==='0' || sessionStorage.getItem('omran_intro_seen')==='1'; }catch(e){}
+  if(off){ d.parentNode.removeChild(d); return; }
+  try{ sessionStorage.setItem('omran_intro_seen','1'); }catch(e){}
+  document.documentElement.classList.add('oiOn');
+}catch(e){ window.__swallow && window.__swallow(e,'intro:boot'); }})();</script>
 
 <div id="vantaBg"></div>
 <div id="offlineBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:10000; background:#b45309; color:#fff; font-size: var(--fs-3); text-align:center; padding:7px 10px;">
@@ -432,12 +460,12 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧ب: الإعدادات + الساعة + القوالب نُقلت إلى js/partials-settings.js -->
-<script src="/js/partials-settings.js?v=651"></script>
+<script src="/js/partials-settings.js?v=652"></script>
 
 <script src="/js/selfdiag.js?v=1ba33c1b"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=c4c321a4"></script>
+    <script defer src="/js/app.bundle.js?v=d4eea215"></script>
     <script defer src="/js/modes.js?v=b23329c6"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">

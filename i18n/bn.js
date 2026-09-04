@@ -1,4 +1,6 @@
 I18N['bn'] = {
+    "introSplashLabel": "✨ অ্যাপ খোলার সময় ওপেনিং স্ক্রিন",
+    "introSkip": "চালিয়ে যেতে ট্যাপ করুন",
     /* v660 — التلفزيون: نصوص القسم وأسماء الدول (CLDR) */
     tvTitle: "📺 টিভি", tvBack: "ফিরে যান", tvYoutube: "ইউটিউব", tvSearchPh: "চ্যানেল খুঁজুন...", tvAll: "সব", tvPlatforms: "অফিসিয়াল প্ল্যাটফর্ম — আপনার অ্যাকাউন্ট দিয়ে খুলবে", tvLiveIn: "অ্যাপের ভেতরেই সরাসরি চ্যানেল", tvNoMatch: "কোনো চ্যানেল মেলেনি", tvLive: "সরাসরি", tvLiveCount: "চ্যানেল এখন লাইভ", tvOfficial: "অফিসিয়াল সাইট", tvOpening: "খোলা হচ্ছে...", tvOff: "চ্যানেলটি এখন সম্প্রচারে নেই", tvCatNews: "সংবাদ", tvCatSports: "খেলা", tvCatGeneral: "সাধারণ", tvCatReligion: "ধর্মীয়", tvCatKids: "শিশু", tvCatBiz: "অর্থনীতি", tvCIntl: "আন্তর্জাতিক",
     tvPfShahid: "সব MBC চ্যানেল সরাসরি", tvPfAwaan: "সব দুবাই চ্যানেল সরাসরি", tvPfAdtv: "আবুধাবি ও মাজিদ চ্যানেল", tvPfTod: "beIN আপনার সাবস্ক্রিপশনে", tvPfRotana: "রোটানা চ্যানেল", tvPfSub: "আপনার সাবস্ক্রিপশনে",

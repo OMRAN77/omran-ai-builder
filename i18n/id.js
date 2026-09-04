@@ -1,4 +1,6 @@
 I18N['id'] = {
+    "introSplashLabel": "✨ Layar pembuka saat aplikasi dibuka",
+    "introSkip": "Ketuk untuk melanjutkan",
     /* v660 — التلفزيون: نصوص القسم وأسماء الدول (CLDR) */
     tvTitle: "📺 TV", tvBack: "Kembali", tvYoutube: "YouTube", tvSearchPh: "Cari saluran...", tvAll: "Semua", tvPlatforms: "Platform resmi — dibuka dengan akun Anda", tvLiveIn: "Saluran langsung di dalam aplikasi", tvNoMatch: "Tidak ada saluran yang cocok", tvLive: "LANGSUNG", tvLiveCount: "kanal siaran langsung", tvOfficial: "Situs resmi", tvOpening: "Membuka...", tvOff: "Saluran sedang tidak menyiarkan", tvCatNews: "Berita", tvCatSports: "Olahraga", tvCatGeneral: "Umum", tvCatReligion: "Keagamaan", tvCatKids: "Anak", tvCatBiz: "Ekonomi", tvCIntl: "Internasional",
     tvPfShahid: "Semua saluran MBC langsung", tvPfAwaan: "Semua saluran Dubai langsung", tvPfAdtv: "Saluran Abu Dhabi dan Majid", tvPfTod: "beIN dengan langganan Anda", tvPfRotana: "Saluran Rotana", tvPfSub: "dengan langganan Anda",
