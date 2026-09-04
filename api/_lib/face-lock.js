@@ -225,11 +225,32 @@ async function maskedEdit(prep, openaiKey, promptText) {
 }
 
 /* ───── الضمان النهائي: لصق بكسلات المنطقة المحمية من الأصل فوق الناتج ───── */
-function restoreProtected(prep, origBase64, resultBase64) {
+async function restoreProtected(prep, origBase64, resultBase64, geminiKey, resultMime) {
   if (!prep) return null;
   try {
-    return require('./face-composite.js').compositeProtected({ origBase64, resultBase64, zones: prep.zones });
-  } catch (e) { return null; }
+    let zones = prep.zones;
+    /* v-face-map: الموديل قد يحرّك الشخص أو يغيّر حجمه (خلفية جديدة مثلًا). نكشف الصندوق في
+       الناتج أيضًا؛ إن انزاح عن الأصل نلصق وجه الأصل في مكانه الجديد بالتحجيم بدل مكانه القديم. */
+    const w = prep.size.w, h = prep.size.h;
+    const srcRect = boxToRect(prep.box, w, h, prep.level === 'face' ? 0.06 : 0.08);
+    const src = { x0: srcRect.x0 / w, y0: srcRect.y0 / h, x1: srcRect.x1 / w, y1: srcRect.y1 / h };
+    const resBoxes = geminiKey ? await detectBoxes(geminiKey, resultBase64, resultMime || 'image/png') : null;
+    const resBox = resBoxes && (prep.level === 'face' ? resBoxes.face : (resBoxes.head || resBoxes.face));
+    if (resBox) {
+      const dst = { x0: resBox[1] / 1000, y0: resBox[0] / 1000, x1: resBox[3] / 1000, y1: resBox[2] / 1000 };
+      const pad = 0.03; /* هامش صغير حول الصندوق الجديد — أقلّ هالة من خلفية الأصل */
+      const dw = dst.x1 - dst.x0, dh = dst.y1 - dst.y0;
+      const dstP = { x0: dst.x0 - dw * pad, y0: dst.y0 - dh * pad, x1: dst.x1 + dw * pad, y1: dst.y1 + dh * pad };
+      const cxs = (src.x0 + src.x1) / 2, cys = (src.y0 + src.y1) / 2, cxd = (dstP.x0 + dstP.x1) / 2, cyd = (dstP.y0 + dstP.y1) / 2;
+      const shift = Math.hypot(cxs - cxd, cys - cyd);
+      const sizeRatio = ((dstP.x1 - dstP.x0) * (dstP.y1 - dstP.y0)) / Math.max(1e-6, (src.x1 - src.x0) * (src.y1 - src.y0));
+      if (shift > 0.025 || sizeRatio < 0.85 || sizeRatio > 1.18) {
+        console.warn('[face-lock] subject moved (shift ' + shift.toFixed(3) + ', size ' + sizeRatio.toFixed(2) + ') — mapping face to new place');
+        zones = [{ kind: 'map', src, dst: dstP }];
+      }
+    }
+    return require('./face-composite.js').compositeProtected({ origBase64, resultBase64, zones });
+  } catch (e) { console.warn('[face-lock] restore ' + (e && e.message)); return null; }
 }
 
 /* ───── المسار القديم بخطوة واحدة (يبقى للتوافق) ───── */
