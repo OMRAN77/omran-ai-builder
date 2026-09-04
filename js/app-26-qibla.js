@@ -37,6 +37,8 @@
     approx:  { ar:'موقع تقريبي (من الشبكة) — فعّل خدمة الموقع لدقة أعلى', en:'Approximate location (network) — enable location for accuracy', fr:'Position approximative — activez la localisation', hi:'अनुमानित स्थान — सटीकता हेतु लोकेशन चालू करें', ur:'تخمینی مقام — درستگی کے لیے لوکیشن آن کریں', bn:'আনুমানিক অবস্থান — নির্ভুলতার জন্য লোকেশন চালু করুন', ne:'अनुमानित स्थान — शुद्धताको लागि लोकेसन सक्रिय गर्नुहोस्', fil:'Tinatayang lokasyon — i-enable ang location', id:'Lokasi perkiraan — aktifkan lokasi untuk akurasi', zh:'大致位置（网络）— 开启定位更准确', ru:'Приблизительное местоположение — включите геолокацию', tr:'Yaklaşık konum — hassasiyet için konumu açın', ml:'ഏകദേശ സ്ഥാനം — കൃത്യതയ്ക്ക് ലൊക്കേഷൻ ഓണാക്കുക', es:'Ubicación aproximada — activa la ubicación' },
     signIn:  { ar:'تسجيل الدخول مطلوب لتفعيل التنبيهات.', en:'Please sign in to enable alerts.', fr:'Connectez-vous pour activer les alertes.', hi:'सूचना हेतु साइन इन करें।', ur:'اطلاعات کے لیے سائن ان کریں۔', bn:'সতর্কতার জন্য সাইন ইন করুন।', ne:'सूचनाका लागि साइन इन गर्नुहोस्।', fil:'Mag-sign in para sa abiso.', id:'Masuk untuk mengaktifkan peringatan.', zh:'请登录以启用提醒。', ru:'Войдите, чтобы включить уведомления.', tr:'Uyarılar için giriş yapın.', ml:'അറിയിപ്പിന് സൈൻ ഇൻ ചെയ്യുക.', es:'Inicia sesión para activar alertas.' },
     minsBefore:{ ar:'كم دقيقة قبل {p}؟ (0 = وقت الأذان)', en:'How many minutes before {p}? (0 = at adhan)', fr:'Combien de minutes avant {p} ? (0 = à l\'adhan)', hi:'{p} से कितने मिनट पहले? (0 = अज़ान पर)', ur:'{p} سے کتنے منٹ پہلے؟ (0 = اذان پر)', bn:'{p} এর কত মিনিট আগে? (0 = আজানে)', ne:'{p} भन्दा कति मिनेट अघि? (0 = अजानमा)', fil:'Ilang minuto bago ang {p}? (0 = sa adhan)', id:'Berapa menit sebelum {p}? (0 = saat azan)', zh:'{p}前几分钟？(0=宣礼时)', ru:'За сколько минут до {p}? (0 = во время азана)', tr:'{p} vaktinden kaç dakika önce? (0 = ezanda)', ml:'{p} ന് എത്ര മിനിറ്റ് മുമ്പ്? (0 = അദാനിൽ)', es:'¿Cuántos minutos antes de {p}? (0 = en el adhan)' },
+    atAdhan:{ ar:'عند الأذان', en:'At adhan', fr:'À l\'adhan', hi:'अज़ान पर', ur:'اذان کے وقت', bn:'আযানের সময়', ne:'अजानमा', fil:'Sa adhan', id:'Saat azan', zh:'宣礼时', ru:'Во время азана', tr:'Ezan vakti', ml:'അദാൻ സമയത്ത്', es:'Al adhan' },
+    minUnit:{ ar:'دقيقة قبل', en:'min before', fr:'min avant', hi:'मिनट पहले', ur:'منٹ پہلے', bn:'মিনিট আগে', ne:'मिनेट अघि', fil:'min bago', id:'menit sebelum', zh:'分钟前', ru:'мин до', tr:'dk önce', ml:'മിനിറ്റ് മുമ്പ്', es:'min antes' },
     locUnavail:{ ar:'تعذّر تحديد الموقع.', en:'Location unavailable.', fr:'Position indisponible.', hi:'स्थान उपलब्ध नहीं।', ur:'مقام دستیاب نہیں۔', bn:'অবস্থান নেই।', ne:'स्थान उपलब्ध छैन।', fil:'Walang lokasyon.', id:'Lokasi tidak tersedia.', zh:'无法获取位置。', ru:'Местоположение недоступно.', tr:'Konum yok.', ml:'സ്ഥാനം ലഭ്യമല്ല.', es:'Ubicación no disponible.' },
     saveFail:{ ar:'تعذّر حفظ التنبيه.', en:'Could not save alert.', fr:'Échec de l\'enregistrement.', hi:'सूचना सहेजी नहीं गई।', ur:'اطلاع محفوظ نہیں ہوئی۔', bn:'সতর্কতা সংরক্ষণ ব্যর্থ।', ne:'सूचना सुरक्षित भएन।', fil:'Hindi na-save.', id:'Gagal menyimpan.', zh:'无法保存提醒。', ru:'Не удалось сохранить.', tr:'Kaydedilemedi.', ml:'സേവ് ചെയ്യാനായില്ല.', es:'No se pudo guardar.' },
     qHead:   { ar:'اتجاه القبلة من موقعك', en:'Qibla direction from your location', fr:'Direction de la Qibla', hi:'आपके स्थान से क़िबला दिशा', ur:'آپ کے مقام سے قبلہ کی سمت', bn:'আপনার অবস্থান থেকে কিবলা দিক', ne:'तपाईंको स्थानबाट किब्ला दिशा', fil:'Direksyon ng Qibla', id:'Arah kiblat dari lokasi Anda', zh:'从您的位置看朝向', ru:'Направление киблы', tr:'Konumunuzdan kıble yönü', ml:'നിങ്ങളുടെ സ്ഥാനത്തുനിന്ന് ഖിബ്‌ല ദിശ', es:'Dirección de la Qibla' },
@@ -86,7 +88,8 @@
     return new Promise(function(res){
       try{
         var cached = JSON.parse(localStorage.getItem('aiapp_last_geo') || 'null');
-        if(cached && (Date.now() - cached.ts) < 3600000){ res({ lat: cached.lat, lng: cached.lng }); return; }
+        /* v-pray-fresh (شكوى المالك: «التوقيت يثبت على آخر منطقة»): الذاكرة دقيقتان لا ساعة */
+        if(!S.forceFresh && cached && (Date.now() - cached.ts) < 120000){ res({ lat: cached.lat, lng: cached.lng }); return; }
       }catch(e){ /* guard-ok */ }
       if(!navigator.geolocation){ res(null); return; }
       var done = false;
@@ -100,7 +103,8 @@
           finish(l);
         },
         function(){ finish(null); },
-        { timeout: 4500, maximumAge: 3600000 });
+        { timeout: 4500, maximumAge: S.forceFresh ? 0 : 120000, enableHighAccuracy: false });
+      S.forceFresh = false;
     });
   }
   function loc(){
@@ -297,6 +301,21 @@
   /* v-prayer-local: تنبيه محلي من الجهاز نفسه عند حلول الوقت — يعمل والتطبيق
      مفتوح أو في الخلفية حتى لو تعذّر الدفع (هواوي بلا خدمات جوجل، أو إذن مرفوض).
      يُعتمد على مواقيت الشاشة نفسها فلا يختلف الوقت عن المعروض. */
+  /* v-pray-toast: alert() لا يعمل داخل أغلفة أندرويد/هواوي — تنبيه داخل التطبيق مع صوت قصير */
+  function localToast(msg){
+    try{
+      var old = document.getElementById('qLocalToast'); if(old) old.remove();
+      var t = document.createElement('div');
+      t.id = 'qLocalToast';
+      t.style.cssText = 'position:fixed;left:50%;top:calc(16px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:2147483001;max-width:92vw;background:rgba(20,20,26,.97);color:#f1d98a;border:1px solid rgba(212,175,55,.6);border-radius:14px;padding:12px 16px;font-size:15px;font-weight:700;box-shadow:0 10px 30px rgba(0,0,0,.5);text-align:center;';
+      t.textContent = msg;
+      t.onclick = function(){ t.remove(); };
+      document.body.appendChild(t);
+      setTimeout(function(){ try{ t.remove(); }catch(e){ /* guard-ok */ } }, 60000);
+      try{ var ctx = new (window.AudioContext || window.webkitAudioContext)(); [880, 660, 880].forEach(function(hz, i){ var o = ctx.createOscillator(), g = ctx.createGain(); o.connect(g); g.connect(ctx.destination); o.frequency.value = hz; g.gain.value = .25; o.start(ctx.currentTime + i * .3); o.stop(ctx.currentTime + i * .3 + .22); }); }catch(e){ /* guard-ok */ }
+      if(navigator.vibrate) try{ navigator.vibrate([300, 150, 300]); }catch(e){ /* guard-ok */ }
+    }catch(e){ /* guard-ok */ }
+  }
   function firedMap(){ try{ return JSON.parse(localStorage.getItem('aiapp_pray_fired') || '{}'); }catch(e){ return {}; } }
   function markFired(key){ var f = firedMap(); var ds = new Date().toDateString(); Object.keys(f).forEach(function(x){ if(x.indexOf(ds) !== 0) delete f[x]; }); f[key] = 1; try{ localStorage.setItem('aiapp_pray_fired', JSON.stringify(f)); }catch(e){ /* guard-ok */ } }
   function localTargets(){
@@ -315,12 +334,12 @@
     var body = x.off > 0 ? qt('باقي ' + x.off + ' دقيقة على ' + prName(x.k), x.off + ' min to ' + prName(x.k)) : qt('حان وقت ' + prName(x.k), prName(x.k) + ' time');
     try{ if(navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 300]); }catch(e){ /* guard-ok */ }
     try{
-      if(!('Notification' in window) || Notification.permission !== 'granted'){ alert('🕌 ' + body); return; }
+      if(!('Notification' in window) || Notification.permission !== 'granted'){ localToast('🕌 ' + body); return; }
       var opts = { body: body, icon: './icons/icon-192-v2.png?icon=gold-20260819', badge: './icons/icon-192-v2.png?icon=gold-20260819', tag: 'prayer-local-' + x.k, vibrate: [300, 150, 300, 150, 300], requireInteraction: true };
       if('serviceWorker' in navigator){
-        navigator.serviceWorker.ready.then(function(reg){ return reg.showNotification(title, opts); }).catch(function(){ try{ new Notification(title, opts); }catch(e){ alert('🕌 ' + body); } });
+        navigator.serviceWorker.ready.then(function(reg){ return reg.showNotification(title, opts); }).catch(function(){ try{ new Notification(title, opts); }catch(e){ localToast('🕌 ' + body); } });
       } else { new Notification(title, opts); }
-    }catch(e){ try{ alert('🕌 ' + body); }catch(_){ /* guard-ok */ } }
+    }catch(e){ try{ localToast('🕌 ' + body); }catch(_){ /* guard-ok */ } }
   }
   function checkLocal(){
     var now = Date.now(), ds = new Date().toDateString(), f = firedMap();
@@ -351,7 +370,7 @@
   }
   function toggleAlert(k, btn){
     var token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : '';
-    if(!token){ alert(tx('signIn')); return; }
+    if(!token){ setAlertStatus(tx('signIn')); return; }
     var m = alertsMap();
     if(m[k]){ // إيقاف
       var id = alertId(m[k]);
@@ -363,13 +382,44 @@
         .catch(function(e){ __swallow(e, 'qibla:del'); });
       return;
     }
-    // تفعيل — نسأل كم دقيقة قبل
-    var mins = prompt(tx('minsBefore').replace('{p}', prName(k)), '10');
-    if(mins === null) return;
-    var off = Math.max(0, Math.min(120, parseInt(mins, 10) || 0));
+    // تفعيل — اختيار الدقائق من ورقة صغيرة (v-pray-picker: prompt() لا يعمل داخل أغلفة أندرويد/هواوي فكان الجرس صامتًا)
+    pickMinutes(k, btn, function(off){ armAlert(k, btn, off); });
+  }
+  function pickMinutes(k, btn, cb){
+    var old = document.getElementById('qMinsPick'); if(old) old.remove();
+    var host = btn && btn.closest ? btn.closest('div') : null;
+    var box = document.createElement('div');
+    box.id = 'qMinsPick';
+    box.style.cssText = 'margin:6px 0 10px;padding:10px 12px;border-radius:12px;background:rgba(212,175,55,.10);border:1px solid var(--omGoldSoft,rgba(212,175,55,.45));font-size:13px;';
+    var title = document.createElement('div');
+    title.style.cssText = 'margin-bottom:8px;color:var(--muted,#98a0b3);';
+    title.textContent = tx('minsBefore').replace('{p}', prName(k)).replace(/\s*\(.*\)\s*$/, '');
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;';
+    [0, 5, 10, 15, 30].forEach(function(v){
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.style.cssText = 'padding:8px 12px;border-radius:999px;border:1px solid var(--omGoldSoft,rgba(212,175,55,.5));background:' + (v === 10 ? 'rgba(212,175,55,.25)' : 'rgba(255,255,255,.04)') + ';color:inherit;font:inherit;font-size:13px;cursor:pointer;';
+      b.textContent = v === 0 ? tx('atAdhan') : (v + ' ' + tx('minUnit'));
+      b.onclick = function(){ box.remove(); cb(v); };
+      row.appendChild(b);
+    });
+    var cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.style.cssText = 'padding:8px 12px;border-radius:999px;border:none;background:none;color:var(--muted,#98a0b3);font:inherit;font-size:13px;cursor:pointer;';
+    cancel.textContent = '✕';
+    cancel.onclick = function(){ box.remove(); };
+    row.appendChild(cancel);
+    box.appendChild(title); box.appendChild(row);
+    if(host && host.parentNode) host.parentNode.insertBefore(box, host.nextSibling);
+    else { var body = document.querySelector('#qBody'); if(body) body.insertBefore(box, body.firstChild); }
+  }
+  function armAlert(k, btn, off){
+    var token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : '';
     if(btn) btn.textContent = '⏳';
     loc().then(function(l){
-      if(!l){ if(btn) btn.textContent = '🔕'; alert(tx('locUnavail')); return; }
+      if(!l){ if(btn) btn.textContent = '🔕'; setAlertStatus(tx('locUnavail')); return; }
+      try{ localStorage.setItem('aiapp_pray_alert_loc', JSON.stringify({ lat: l.lat, lng: l.lng })); }catch(e){ /* guard-ok */ }
       return fetch('/api/reminders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
@@ -385,7 +435,7 @@
           setAlertStatus('⏳');
           ensurePush().then(function(st){ setAlertStatus(pushStatusText(st)); });
           bootLocalAlerts();
-        } else { if(btn) btn.textContent = '🔕'; alert(tx('saveFail')); }
+        } else { if(btn) btn.textContent = '🔕'; setAlertStatus(tx('saveFail')); }
       });
     }).catch(function(e){ __swallow(e, 'qibla:alert'); if(btn) btn.textContent = '🔕'; });
   }
@@ -473,10 +523,44 @@
     }
   }
 
+  /* v-pray-fresh: عند كل فتح نعيد تحديد الموقع؛ إن تغيّر عن السابق بأكثر من ~3 كم نعيد جلب المواقيت
+     وننقل تنبيهات الصلاة المسجّلة في الخادم إلى الموقع الجديد */
+  function distKm(a, b){ var R = 6371, dLat = (b.lat - a.lat) * Math.PI / 180, dLng = (b.lng - a.lng) * Math.PI / 180; var x = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2); return 2 * R * Math.asin(Math.sqrt(x)); }
+  function moveAlertsTo(l){
+    var token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : '';
+    var m = alertsMap(); var keys = Object.keys(m);
+    if(!token || !keys.length) return;
+    keys.forEach(function(k){
+      var old = m[k], off = (old && typeof old === 'object') ? (old.off || 0) : 0, oldId = alertId(old);
+      fetch('/api/reminders', { method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + token },
+        body: JSON.stringify({ type:'prayer', prayerName:k, offsetMinutes:off, lat:l.lat, lng:l.lng, method:getMethod(),
+          message: off > 0 ? qt('باقي ' + off + ' دقيقة على ' + prName(k), off + ' min to ' + prName(k)) : qt('حان وقت ' + prName(k), prName(k) + ' time') }) })
+        .then(function(r){ return r.json(); }).then(function(d){
+          if(d && d.ok && d.reminder){
+            var mm = alertsMap(); mm[k] = { id: d.reminder.id, off: off };
+            try{ localStorage.setItem('aiapp_pray_alerts', JSON.stringify(mm)); }catch(e){ /* guard-ok */ }
+            if(oldId) fetch('/api/reminders?id=' + encodeURIComponent(oldId), { method:'DELETE', headers:{ Authorization:'Bearer ' + token } }).catch(function(){ /* guard-ok: حذف التذكير القديم تحسين لا شرط */ });
+          }
+        }).catch(function(e){ __swallow(e, 'qibla:move-alert'); });
+    });
+  }
   function openQibla(){
     var el = shell();
     el.style.display = 'flex';
+    S.loc = null;
+    S.timings = null;
+    S.forceFresh = true; /* أول قراءة بعد الفتح من الحساس مباشرة لا من الذاكرة */
     setTab('times');
+    /* بعد الرسم: لو تغيّر الموقع فعليًا ننقل التنبيهات معه */
+    loc().then(function(l){
+      if(!l) return;
+      var last = null; try{ last = JSON.parse(localStorage.getItem('aiapp_pray_alert_loc') || 'null'); }catch(e){ last = null; }
+      var moved = !last || distKm(last, l) > 3;
+      if(moved){
+        try{ localStorage.setItem('aiapp_pray_alert_loc', JSON.stringify({ lat: l.lat, lng: l.lng })); }catch(e){ /* guard-ok */ }
+        if(last) moveAlertsTo(l);
+      }
+    }).catch(function(e){ __swallow(e, 'qibla:open-loc'); });
   }
   function closeQibla(){
     if(S.ticker){ clearInterval(S.ticker); S.ticker = null; }
