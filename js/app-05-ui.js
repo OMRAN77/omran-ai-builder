@@ -237,7 +237,16 @@ async function omranSaveBlob(blob, filename){
         setTimeout(() => { try{ bar.remove(); }catch(e){ __swallow(e, 'share:dl-bar'); } }, 45000);
       }catch(e){ __swallow(e, 'share:dl-bar2'); }
       return;
-    }catch(e){ __swallow(e, 'share:server-link'); }
+    }catch(e){
+      __swallow(e, 'share:server-link');
+      /* v-pdf-big (شكوى المالك: بصورة واحدة يعمل وبخمس لا): تعذّر رابط الخادم (ملف كبير) —
+         الورقة نفسها بملف محلي: مشاركة بالملف (تعمل في الأغلفة) ورابط blob وفتح */
+      try{
+        let f2 = null; try{ if(typeof File === 'function') f2 = new File([blob], filename, { type: 'application/pdf' }); }catch(e2){ f2 = null; }
+        const bu = URL.createObjectURL(blob);
+        if(omranPdfReadySheet(bu, f2, filename, 'pdf', bu)) return;
+      }catch(e3){ __swallow(e3, 'share:big-sheet'); }
+    }
   }
   msgDownloadBlob(blob, filename);
 }

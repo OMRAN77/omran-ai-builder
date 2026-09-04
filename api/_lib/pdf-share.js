@@ -17,9 +17,18 @@ module.exports = async (req, res) => {
     const rawId = String((req.query && req.query.id) || '');
     const id = String((rawId.match(/^[a-f0-9]{6,24}/i) || [''])[0]).toLowerCase();
     if (!id) { res.status(400).json({ error: 'Missing id' }); return; }
-    const raw = await kvGetRaw(KEY(id));
+    let raw = await kvGetRaw(KEY(id));
     if (!raw) { res.status(404).json({ error: 'not_found' }); return; }
-    const s = String(raw);
+    let s = String(raw);
+    /* v-pdf-chunks (شكوى المالك: PDF بصورة واحدة يعمل وبخمس صور لا): الملف الكبير مخزّن على أجزاء */
+    if (s.indexOf('chunks:') === 0) {
+      const parts = s.split(':');
+      const n = parseInt(parts[1], 10) || 0;
+      const name = parts.slice(2).join(':') || 'omran-ai.pdf';
+      const pieces = [];
+      for (let i = 0; i < n; i++) { const c = await kvGetRaw(KEY(id) + ':' + i); if (!c) { res.status(404).json({ error: 'not_found' }); return; } pieces.push(String(c)); }
+      s = name + ':' + pieces.join('');
+    }
     // الصيغة: name:base64 — الاسم بلا نقطتين (يُعقَّم عند الحفظ)
     const i = s.indexOf(':');
     const name = i > 0 ? s.slice(0, i) : 'omran-ai.pdf';
@@ -49,7 +58,16 @@ module.exports = async (req, res) => {
     const rawName = String(body.name || 'omran-ai.pdf');
     const name = (rawName.replace(/\.pdf$/i, '').replace(/[^A-Za-z0-9_\-؀-ۿ]/g, '-').slice(0, 60) || 'omran-ai') + '.pdf';
     const id = crypto.randomBytes(6).toString('hex');
-    const ok = await kvSetIfAbsent(KEY(id), name + ':' + data, TTL_SEC);
+    const CHUNK = 700 * 1024; /* أقل من حدّ حجم الطلب في Upstash */
+    let ok;
+    if (data.length <= CHUNK) {
+      ok = await kvSetIfAbsent(KEY(id), name + ':' + data, TTL_SEC);
+    } else {
+      const n = Math.ceil(data.length / CHUNK);
+      ok = true;
+      for (let i = 0; i < n && ok; i++) ok = await kvSetIfAbsent(KEY(id) + ':' + i, data.slice(i * CHUNK, (i + 1) * CHUNK), TTL_SEC);
+      if (ok) ok = await kvSetIfAbsent(KEY(id), 'chunks:' + n + ':' + name, TTL_SEC);
+    }
     if (!ok) { res.status(500).json({ error: 'store_failed' }); return; }
     res.status(200).json({ id, url: '/p/' + id, ttlDays: 7 });
     return;
