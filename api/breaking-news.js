@@ -30,22 +30,20 @@ function cleanSnippet(raw){
   return good.join(' ').slice(0, 400);
 }
 
-module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  if (req.method === 'OPTIONS') { res.status(204).end(); return; }
+const NEWS_KV_KEY = 'news:breaking:v1';
 
-  // هل النتيجة المخزّنة لا تزال طازجة؟
-  if (_cache && (Date.now() - _cacheTs) < CACHE_MS) {
-    res.setHeader('X-Cache', 'HIT');
-    res.json(_cache);
-    return;
-  }
-
-  const apiKey = process.env.TAVILY_API_KEY;
-  if (!apiKey) { res.status(500).json({ items: [] }); return; }
-
+// v-news-push: الجلب مشترك بين الواجهة وكرون التنبيهات، وذاكرة Redis 5 دقائق
+// تمنع استدعاء Tavily عند كل نبضة (كل cold-start يصفّر ذاكرة العملية).
+async function fetchBreaking() {
+  if (_cache && (Date.now() - _cacheTs) < CACHE_MS) return _cache;
   try {
+    const { kvGetRaw } = require('./_lib/kv.js');
+    const raw = await kvGetRaw(NEWS_KV_KEY);
+    if (raw) { const c = JSON.parse(raw); if (c && Array.isArray(c.items)) { _cache = c; _cacheTs = Date.now(); return c; } }
+  } catch (e) { /* guard-ok: بلا Redis نجلب مباشرة */ }
+  const apiKey = process.env.TAVILY_API_KEY;
+  if (!apiKey) return { items: [], fetchedAt: Date.now() };
+
     // بحثان متوازيان: واحد عربي وواحد إنجليزي
     const [arRes, enRes] = await Promise.all([
       fetch('https://api.tavily.com/search', {
@@ -107,12 +105,23 @@ module.exports = async (req, res) => {
     // الأطوارئ أولاً
     items.sort((a, b) => (a.level === 'emergency' ? -1 : 1) - (b.level === 'emergency' ? -1 : 1));
 
-    _cache = { items, fetchedAt: Date.now() };
-    _cacheTs = Date.now();
+  _cache = { items, fetchedAt: Date.now() };
+  _cacheTs = Date.now();
+  try { const { kvSetRaw } = require('./_lib/kv.js'); await kvSetRaw(NEWS_KV_KEY, JSON.stringify(_cache), 300); } catch (e) { /* guard-ok */ }
+  return _cache;
+}
 
-    res.setHeader('X-Cache', 'MISS');
-    res.json(_cache);
+module.exports = async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  if (req.method === 'OPTIONS') { res.status(204).end(); return; }
+  try {
+    const hit = !!(_cache && (Date.now() - _cacheTs) < CACHE_MS);
+    const data = await fetchBreaking();
+    res.setHeader('X-Cache', hit ? 'HIT' : 'MISS');
+    res.json(data);
   } catch (e) {
     res.status(500).json({ items: [], error: String(e && e.message || e) });
   }
 };
+module.exports.fetchBreaking = fetchBreaking;

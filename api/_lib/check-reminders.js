@@ -108,6 +108,18 @@ module.exports = async (req, res) => {
   const userKeys = await kvList('db/reminders/');
   let sent = 0;
 
+  // v-news-push: الأخبار العاجلة تُجلب مرة واحدة لكل دورة (ومخزّنة 5 دقائق في Redis)
+  let newsItemsP = null;
+  function newsItems() {
+    if (!newsItemsP) {
+      newsItemsP = (async () => {
+        try { const d = await require('../breaking-news.js').fetchBreaking(); return Array.isArray(d && d.items) ? d.items : []; }
+        catch (e) { return []; }
+      })();
+    }
+    return newsItemsP;
+  }
+
   for (const key of userKeys) {
     const usernameMatch = String(key).match(/^db\/reminders\/(.+)\.json$/);
     if (!usernameMatch) continue;
@@ -151,6 +163,28 @@ module.exports = async (req, res) => {
         if (r.cachedTargetMs && r.lastSentDate !== today && nowMs >= r.cachedTargetMs && nowMs - r.cachedTargetMs < 10 * 60000) {
           dueNow = true;
         }
+      }
+
+      if (r.type === 'news') {
+        // كل خبر عاجل/طارئ جديد يُدفع مرة واحدة فقط لهذا الحساب (بحد خبرين لكل دورة)
+        const items = await newsItems();
+        const sentIds = Array.isArray(r.sentIds) ? r.sentIds : [];
+        const fresh = items.filter((it) => it && it.id && !sentIds.includes(it.id)).slice(0, 2);
+        for (const it of fresh) {
+          try {
+            await webpush.sendNotification(sub, JSON.stringify({
+              title: it.level === 'emergency' ? '🚨 تحذير طارئ' : '📢 خبر عاجل',
+              body: it.title,
+              url: it.url || '',
+            }));
+            sent++;
+          } catch (e) { /* اشتراك منتهٍ — نتابع */ }
+          sentIds.push(it.id);
+          changed = true;
+        }
+        r.sentIds = sentIds.slice(-100);
+        nextList.push(r);
+        continue;
       }
 
       if (dueNow) {

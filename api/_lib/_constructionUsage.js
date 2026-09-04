@@ -4,6 +4,15 @@
 const crypto = require('crypto');
 const { kvGetJSON, kvPutJSON } = require('./kv.js');
 const { isBanned } = require('./auth.js');
+const { isVip } = require('./_vip.js');
+// v-owner-unlimited (شكوى المالك «استهلكت المجاني كلها»): المالك وVIP بلا حدّ يومي هنا
+// كما في الديكور والأزياء والبورتريه.
+const __OWNERS = require('./_owner.js').ownerList();
+async function __unlimitedUser(username) {
+  if (!username) return false;
+  if (__OWNERS.includes(String(username).toLowerCase())) return true;
+  try { return await isVip(username); } catch (e) { return false; }
+}
 
 const AUTH_SECRET = require('./_secrets.js').AUTH_SECRET;
 
@@ -50,6 +59,9 @@ async function checkConstructionQuota(token) {
   // Suspended accounts hold a valid token for up to 30 days; the ban
   // has to bite on the paths that actually spend money, not just login.
   if (await isBanned(username)) return { allowed: false, reason: 'auth', banned: true, username };
+  if (await __unlimitedUser(username)) {
+    return { allowed: true, username, remaining: Infinity, unlimited: true };
+  }
   const today = todayStr();
   let usage = await getUsage(username);
   if (!usage || usage.date !== today) {
@@ -62,6 +74,7 @@ async function checkConstructionQuota(token) {
 }
 
 async function consumeConstruction(username) {
+  if (await __unlimitedUser(username)) return Infinity;
   const today = todayStr();
   let usage = await getUsage(username);
   if (!usage || usage.date !== today) {

@@ -4,6 +4,14 @@ const emptyState = $('#emptyState');
 const historyEl = $('#history');
 const I18N = {
   ar: {
+    notifSectionLabel: '🔔 التنبيهات',
+    newsAlertsLabel: '📢 تنبيهات الأخبار العاجلة',
+    newsAlertsHint: 'يصلك إشعار عند وجود خبر عاجل أو تحذير طارئ حتى والتطبيق مغلق',
+    newsAlertsOn: '✅ تم التفعيل — ستصلك الأخبار العاجلة',
+    newsAlertsOff: 'تم الإيقاف',
+    newsAlertsLogin: '🔑 سجّل الدخول أولًا لتفعيل التنبيهات',
+    newsAlertsDenied: '⚠️ إذن الإشعارات مرفوض من الجهاز — فعّله من إعدادات الهاتف',
+    newsAlertsUnavail: '⚠️ الإشعارات غير متاحة على هذا الجهاز',
     introSplashLabel: '✨ شاشة الافتتاح عند فتح التطبيق',
     introSkip: 'اضغط للمتابعة',
     /* v660 — التلفزيون: نصوص القسم في كلّ لغة */
@@ -974,6 +982,14 @@ const I18N = {
     emailAsst_eventAdded: "✅ انضاف لتقويمك", emailAsst_calReauth: "أعد ربط Gmail للسماح بالوصول للتقويم", emailAsst_voiceLoading: "🔊 جارٍ تجهيز الملخص الصوتي…", emailAsst_voiceEmpty: "لا توجد إيميلات لتلخيصها.", emailAsst_urgent: "🔴 عاجل", emailAsst_normal: "🟡 عادي", emailAsst_low: "⚪ منخفض",
   },
   en: {
+    notifSectionLabel: '🔔 Notifications',
+    newsAlertsLabel: '📢 Breaking news alerts',
+    newsAlertsHint: 'Get a notification for breaking news or emergency warnings, even when the app is closed',
+    newsAlertsOn: '✅ Enabled — breaking news will reach you',
+    newsAlertsOff: 'Turned off',
+    newsAlertsLogin: '🔑 Log in first to enable alerts',
+    newsAlertsDenied: '⚠️ Notification permission denied — enable it in phone settings',
+    newsAlertsUnavail: '⚠️ Notifications are unavailable on this device',
     introSplashLabel: '✨ Opening screen when the app starts',
     introSkip: 'Tap to continue',
     /* v660 — التلفزيون: نصوص القسم في كلّ لغة */

@@ -1,4 +1,12 @@
 I18N['zh'] = {
+    "notifSectionLabel": "🔔 通知",
+    "newsAlertsLabel": "📢 突发新闻提醒",
+    "newsAlertsHint": "有突发新闻或紧急警报时向您推送通知，即使应用已关闭",
+    "newsAlertsOn": "✅ 已开启，突发新闻会推送给您",
+    "newsAlertsOff": "已关闭",
+    "newsAlertsLogin": "🔑 请先登录以开启提醒",
+    "newsAlertsDenied": "⚠️ 通知权限被拒绝，请在手机设置中开启",
+    "newsAlertsUnavail": "⚠️ 此设备不支持通知",
     "introSplashLabel": "✨ 启动时显示开场画面",
     "introSkip": "点按继续",
     /* v660 — التلفزيون: نصوص القسم وأسماء الدول (CLDR) */

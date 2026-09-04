@@ -1,4 +1,12 @@
 I18N['fil'] = {
+    "notifSectionLabel": "🔔 Mga notipikasyon",
+    "newsAlertsLabel": "📢 Mga alerto ng breaking news",
+    "newsAlertsHint": "Makatanggap ng notipikasyon para sa breaking news o emergency warning, kahit sarado ang app",
+    "newsAlertsOn": "✅ Naka-on — darating sa iyo ang breaking news",
+    "newsAlertsOff": "Naka-off",
+    "newsAlertsLogin": "🔑 Mag-log in muna para i-on ang mga alerto",
+    "newsAlertsDenied": "⚠️ Tinanggihan ang pahintulot sa notipikasyon — i-on ito sa settings ng telepono",
+    "newsAlertsUnavail": "⚠️ Hindi available ang mga notipikasyon sa device na ito",
     "introSplashLabel": "✨ Opening screen kapag binuksan ang app",
     "introSkip": "I-tap para magpatuloy",
     /* v660 — التلفزيون: نصوص القسم وأسماء الدول (CLDR) */

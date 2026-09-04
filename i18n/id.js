@@ -1,4 +1,12 @@
 I18N['id'] = {
+    "notifSectionLabel": "🔔 Notifikasi",
+    "newsAlertsLabel": "📢 Peringatan berita terkini",
+    "newsAlertsHint": "Dapatkan notifikasi untuk berita terkini atau peringatan darurat, meski aplikasi ditutup",
+    "newsAlertsOn": "✅ Aktif — berita terkini akan sampai kepada Anda",
+    "newsAlertsOff": "Dimatikan",
+    "newsAlertsLogin": "🔑 Masuk dulu untuk mengaktifkan peringatan",
+    "newsAlertsDenied": "⚠️ Izin notifikasi ditolak — aktifkan di pengaturan ponsel",
+    "newsAlertsUnavail": "⚠️ Notifikasi tidak tersedia di perangkat ini",
     "introSplashLabel": "✨ Layar pembuka saat aplikasi dibuka",
     "introSkip": "Ketuk untuk melanjutkan",
     /* v660 — التلفزيون: نصوص القسم وأسماء الدول (CLDR) */

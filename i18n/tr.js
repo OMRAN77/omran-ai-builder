@@ -1,4 +1,12 @@
 I18N['tr'] = {
+    "notifSectionLabel": "🔔 Bildirimler",
+    "newsAlertsLabel": "📢 Son dakika haber uyarıları",
+    "newsAlertsHint": "Son dakika haberi veya acil durum uyarısı olduğunda uygulama kapalıyken bile bildirim alın",
+    "newsAlertsOn": "✅ Açık — son dakika haberleri size ulaşacak",
+    "newsAlertsOff": "Kapatıldı",
+    "newsAlertsLogin": "🔑 Uyarıları açmak için önce giriş yapın",
+    "newsAlertsDenied": "⚠️ Bildirim izni reddedildi — telefon ayarlarından açın",
+    "newsAlertsUnavail": "⚠️ Bu cihazda bildirimler kullanılamıyor",
     "introSplashLabel": "✨ Uygulama açılışında açılış ekranı",
     "introSkip": "Devam etmek için dokunun",
     /* v660 — التلفزيون: نصوص القسم وأسماء الدول (CLDR) */
