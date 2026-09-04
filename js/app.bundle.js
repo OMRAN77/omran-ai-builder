@@ -6396,7 +6396,80 @@ function omranShareRetapBar(file, filename){
     return true;
   }catch(e){ __swallow(e, 'share:retap-bar2'); return false; }
 }
+/* v-pdf-sheet (شكوى المالك ٤ سبتمبر «تحميل PDF ما اشتغل في الهواوي والأندرويد»):
+   كشف الغلاف كان يخطئ (لا مرجع android-app ولا standalone في بعض الأغلفة) فيسقط
+   الملف على تنزيل blob الذي لا تنفّذه الأغلفة — صامتًا. الآن على أي جوال: نرفع
+   الملف للسيرفر ونعرض ورقة ثابتة بأزرار حقيقية بلمسة المستخدم (لمسة جديدة =
+   تفعيل جديد): تحميل عبر رابط HTTPS برأس attachment، مشاركة، وفتح. */
+function omranMobileUA(){
+  try{
+    if(/Android|HarmonyOS|HUAWEI|HONOR|iPhone|iPad|iPod|Mobile|Tablet/i.test(navigator.userAgent)) return true;
+    if(navigator.maxTouchPoints > 1 && /Mac|Linux/i.test(navigator.platform || '')) return true;
+  }catch(e){ /* guard-ok */ }
+  return false;
+}
+function omranPdfReadySheet(url, file, filename){
+  try{
+    const isArT = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
+    const old = document.getElementById('omranPdfSheet'); if(old) old.remove();
+    const sheet = document.createElement('div');
+    sheet.id = 'omranPdfSheet';
+    sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:rgba(20,20,26,.98);border-top:1px solid rgba(212,175,55,.45);border-radius:18px 18px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 40px rgba(0,0,0,.6);direction:' + (isArT ? 'rtl' : 'ltr') + ';font-family:inherit;';
+    const head = document.createElement('div');
+    head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;color:#f3efe4;font-weight:800;font-size:15px;';
+    const ttl = document.createElement('span'); ttl.textContent = isArT ? '✅ ملف PDF جاهز' : '✅ PDF ready';
+    const x = document.createElement('button'); x.textContent = '✕';
+    x.style.cssText = 'background:none;border:none;color:#9a9a9e;font-size:18px;cursor:pointer;padding:2px 8px;';
+    x.onclick = function(){ sheet.remove(); };
+    head.appendChild(ttl); head.appendChild(x);
+    const row = document.createElement('div');
+    row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;';
+    const btnCss = 'display:flex;align-items:center;justify-content:center;gap:6px;min-height:46px;border-radius:12px;font-weight:800;font-size:14px;text-decoration:none;cursor:pointer;touch-action:manipulation;';
+    /* تحميل: رابط حقيقي بلمسة المستخدم — يمرّ عبر منزّل النظام في TWA/WebView/هواوي */
+    const dl = document.createElement('a');
+    dl.href = url; dl.setAttribute('download', filename || 'omran-ai.pdf'); dl.dataset.nativeDownload = '1'; dl.rel = 'noopener';
+    dl.style.cssText = btnCss + 'background:#d4af37;color:#111;';
+    dl.textContent = isArT ? '⬇️ تحميل' : '⬇️ Download';
+    dl.onclick = function(){ setTimeout(function(){ try{ ttl.textContent = isArT ? '📥 بدأ التحميل — افتح الإشعارات/التنزيلات' : '📥 Downloading — check notifications/Downloads'; }catch(e){ /* guard-ok */ } }, 400); };
+    row.appendChild(dl);
+    /* مشاركة: ورقة النظام (تحفظ في الملفات/المعرض) — بلمسة جديدة فلا يرفضها المتصفح */
+    let canShareFile = false;
+    try{ canShareFile = !!(file && navigator.canShare && navigator.canShare({ files: [file] })); }catch(e){ canShareFile = false; }
+    if(canShareFile){
+      const sh = document.createElement('button');
+      sh.style.cssText = btnCss + 'background:none;color:#d4af37;border:1px solid rgba(212,175,55,.55);';
+      sh.textContent = isArT ? '📤 مشاركة' : '📤 Share';
+      sh.onclick = function(){
+        navigator.share({ files: [file], title: filename }).then(function(){ sheet.remove(); }).catch(function(e3){
+          if(e3 && e3.name === 'AbortError') return;
+          __swallow(e3, 'pdf:sheet-share');
+          ttl.textContent = isArT ? '⚠️ المشاركة غير متاحة — استخدم تحميل أو فتح' : '⚠️ Share unavailable — use Download or Open';
+        });
+      };
+      row.appendChild(sh);
+    }
+    /* فتح: تبويب/عارض خارجي */
+    const op = document.createElement('a');
+    op.href = url; op.target = '_blank'; op.rel = 'noopener';
+    op.style.cssText = btnCss + 'background:none;color:#f3efe4;border:1px solid rgba(255,255,255,.18);';
+    op.textContent = isArT ? '🔗 فتح' : '🔗 Open';
+    op.onclick = function(ev){
+      try{
+        const cap2 = window.Capacitor;
+        const br2 = cap2 && cap2.Plugins && cap2.Plugins.Browser;
+        if(br2 && typeof br2.open === 'function'){ ev.preventDefault(); br2.open({ url: url }); }
+      }catch(e2){ __swallow(e2, 'pdf:sheet-open'); }
+    };
+    row.appendChild(op);
+    if(!canShareFile) row.style.gridTemplateColumns = '1fr 1fr';
+    sheet.appendChild(head); sheet.appendChild(row);
+    document.body.appendChild(sheet);
+    setTimeout(function(){ try{ sheet.remove(); }catch(e){ /* guard-ok */ } }, 120000);
+    return true;
+  }catch(e){ __swallow(e, 'pdf:sheet'); return false; }
+}
 async function omranSaveBlob(blob, filename){
+  const isPdfFile = !!(blob && (blob.type === 'application/pdf' || /\.pdf$/i.test(filename || '')));
   if(omranNativeBridge('omranShare')){ msgDownloadBlob(blob, filename); return; }
   try{
     if(navigator.canShare && typeof File === 'function'){
@@ -6409,15 +6482,28 @@ async function omranSaveBlob(blob, filename){
              آيفون يرفض المشاركة بعد معالجة طويلة لانتهاء «ضغطة المستخدم».
              ضغطة جديدة على شريط صغير تعيد فتح ورقة المشاركة الأصلية دائمًا.
              داخل الأغلفة فقط — المتصفحات العادية تنزّل مباشرة كما كانت. */
-          if(omranLikelyApp() && omranShareRetapBar(f, filename)) return;
+          /* v-pdf-sheet: PDF على الجوال → ورقة الأزرار (أدناه) بدل شريط إعادة اللمس */
+          if(!(isPdfFile && (omranLikelyApp() || omranMobileUA())) && omranLikelyApp() && omranShareRetapBar(f, filename)) return;
         }
       }
     }
   }catch(e){ __swallow(e, 'share:universal'); }
-  /* داخل الأغلفة: رابط سيرفر حقيقي (PDF فقط — النقطة تفحص التوقيع) */
-  if(omranLikelyApp() && (blob.type === 'application/pdf' || /\.pdf$/i.test(filename || ''))){
+  /* داخل الأغلفة وعلى أي جوال: رابط سيرفر حقيقي (PDF فقط — النقطة تفحص التوقيع) */
+  if(isPdfFile && (omranLikelyApp() || omranMobileUA())){
     try{
       const url = await omranBlobToServerLink(blob, filename);
+      let fileForShare = null;
+      try{ if(typeof File === 'function') fileForShare = new File([blob], filename, { type: 'application/pdf' }); }catch(e){ fileForShare = null; }
+      if(omranPdfReadySheet(url, fileForShare, filename)){
+        /* محاولة تنزيل تلقائي صامتة إلى جانب الورقة (تعمل في TWA كروم) */
+        try{
+          const dfr0 = document.createElement('iframe');
+          dfr0.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;';
+          dfr0.src = url; document.body.appendChild(dfr0);
+          setTimeout(() => { try{ dfr0.remove(); }catch(e){ /* guard-ok */ } }, 60000);
+        }catch(e){ __swallow(e, 'pdf:auto-frame'); }
+        return;
+      }
       /* v-cap-browser: داخل غلاف كاباسيتور القديم افتح الرابط بعارض النظام
          (SFSafariViewController) — قبل window.open حتى لا يُبحر التطبيق نفسه. */
       try{
@@ -6570,6 +6656,15 @@ async function omranExportHtmlAsPdfFile(bodyHtml, opts){
   holder.style.fontFamily = opts.fontFamily || "'Tajawal', Tahoma, Arial, sans-serif";
   holder.innerHTML = bodyHtml;
   document.body.appendChild(holder);
+  /* v-pdf-sheet: مؤشر ظاهر أثناء التجهيز ورسالة واضحة عند الفشل بدل الصمت */
+  const isArP = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
+  let pill = null;
+  try{
+    pill = document.createElement('div');
+    pill.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:2147483000;background:rgba(20,20,26,.96);color:#f3efe4;border:1px solid rgba(212,175,55,.45);border-radius:999px;padding:9px 16px;font-size:13.5px;font-weight:700;';
+    pill.textContent = isArP ? '⏳ جاري تجهيز ملف PDF…' : '⏳ Preparing PDF…';
+    document.body.appendChild(pill);
+  }catch(e){ pill = null; }
   try{
     await Promise.all([omranLoadJsPdf(), omranLoadHtmlToImage()]);
     try{ if(document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]); }catch(e){ __swallow(e, 'pdf:fonts-wait'); }
@@ -6591,8 +6686,15 @@ async function omranExportHtmlAsPdfFile(bodyHtml, opts){
       first = false; y += sliceH;
     }
     await omranSaveBlob(pdf.output('blob'), opts.fileName || 'omran-ai.pdf');
+  } catch(err){
+    try{
+      const errPill = pill; pill = null; /* يبقى ظاهرًا ٦ ثوانٍ — finally لا يزيله */
+      if(errPill){ errPill.textContent = (isArP ? '❌ تعذّر إنشاء PDF: ' : '❌ PDF failed: ') + ((err && (err.message || err.name)) || err); errPill.style.borderColor = '#b91c1c'; setTimeout(function(){ try{ errPill.remove(); }catch(e){ /* guard-ok */ } }, 6000); }
+    }catch(e){ /* guard-ok */ }
+    throw err;
   } finally {
     holder.remove();
+    try{ if(pill) pill.remove(); }catch(e){ /* guard-ok */ }
   }
 }
 function msgPdfFontSpec(){
