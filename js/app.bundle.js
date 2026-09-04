@@ -6115,7 +6115,7 @@ function renderMessages(keepScroll){
         shareBtnEl.type = 'button'; shareBtnEl.className = 'oSendOut oShareText';
         shareBtnEl.title = (t('msgShareReply') !== 'msgShareReply' ? t('msgShareReply') : (lang === 'ar' ? 'مشاركة الردّ' : 'Share reply'));
         shareBtnEl.setAttribute('aria-label', shareBtnEl.title);
-        shareBtnEl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5.2" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="18.8" r="2.6"/><path d="M8.35 10.8l7.3-4.3"/><path d="M8.35 13.2l7.3 4.3"/></svg>';
+        shareBtnEl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:17px;height:17px;display:block"><circle cx="18" cy="5.2" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="18.8" r="2.6"/><path d="M8.35 10.8l7.3-4.3"/><path d="M8.35 13.2l7.3 4.3"/></svg>';
         shareBtnEl.onclick = (e) => { e.stopPropagation(); try{ if(typeof window.omranShareText === 'function') window.omranShareText((textDiv && textDiv.innerText) || String(m.content || ''), shareBtnEl); }catch(err){ /* guard-ok */ } };
         actionBar.appendChild(shareBtnEl);
       }
