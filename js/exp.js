@@ -31,7 +31,7 @@
   function eRTL(){ return ['ar','ur'].indexOf(eLang())>=0; }
   function eEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function eTok(){ try{ return (typeof authGet==='function'?authGet('aiapp_auth_token'):null)||localStorage.getItem('aiapp_auth_token')||sessionStorage.getItem('aiapp_auth_token')||''; }catch(e){ return ''; } }
-  var PAL = ['#34d399','#6b7280','#f59e0b','#38bdf8','#f472b6','#a3e635','#fb7185','#9ca3af'];
+  var PAL = ['#d4af37','#f1d98a','#b8902a','#e8a13c','#8c6a16','#f0be7a','#c98226','#a9a290']; /* v-gold-unify */
   var modal=document.getElementById('expModal'), body=document.getElementById('expBody'), fileInput=document.getElementById('expFile');
   var pending=null; // {base64,mime,name}
 
@@ -50,7 +50,7 @@
     pending=null; fileInput.value='';
     body.innerHTML =
       '<p style="opacity:.8;font-size: var(--fs-3);text-align:center;margin:2px 0 16px;line-height:1.6">'+eEsc(eT('intro'))+'</p>'+
-      '<div class="expDrop" id="expDrop"><svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><span id="expDropLabel">'+eEsc(eT('pick'))+'</span><small>'+eEsc(eT('hint'))+'</small></div>'+
+      '<div class="expDrop" id="expDrop"><svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#d4af37" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg><span id="expDropLabel">'+eEsc(eT('pick'))+'</span><small>'+eEsc(eT('hint'))+'</small></div>'+
       '<div style="text-align:center"><button class="expPasteToggle" id="expPasteToggle">'+eEsc(eT('paste'))+'</button></div>'+
       '<div class="expPaste" id="expPaste"><textarea id="expText" placeholder="'+eEsc(eT('pastePh'))+'"></textarea></div>'+
       '<button class="expGo" id="expGo">'+eEsc(eT('go'))+'</button>'+
@@ -96,7 +96,7 @@
       return '<div class="expLegRow"><span class="expDot" style="background:'+col+'"></span><span class="expLegName">'+eEsc((c.icon||'')+' '+c.name)+'</span><span class="expLegVal">'+fmtNum(c.amount)+' '+eEsc(cur)+'</span><span class="expLegPct">'+(c.pct||0)+'%</span></div>';
     }).join('');
     var tips=(rep.tips||[]).map(function(t){ return '<div class="expTip"><span>✓</span><div>'+eEsc(t)+'</div></div>'; }).join('');
-    var big = rep.biggest&&rep.biggest.name ? '<div class="expSecTitle">'+eEsc(eT('biggest'))+'</div><div class="expBig"><span>'+eEsc(rep.biggest.name)+'</span><b style="letter-spacing:0;color:#fca5a5">'+fmtNum(rep.biggest.amount)+' '+eEsc(cur)+'</b></div>' : '';
+    var big = rep.biggest&&rep.biggest.name ? '<div class="expSecTitle">'+eEsc(eT('biggest'))+'</div><div class="expBig"><span>'+eEsc(rep.biggest.name)+'</span><b style="letter-spacing:0;color:#f1d98a">'+fmtNum(rep.biggest.amount)+' '+eEsc(cur)+'</b></div>' : '';
     body.innerHTML =
       '<div class="expTotal"><div class="lab">'+eEsc(eT('total'))+'</div><div class="val">'+fmtNum(rep.total)+' '+eEsc(cur)+'</div><div class="sub">'+(rep.txCount?rep.txCount+' '+eEsc(eT('tx')):'')+(rep.period?' · '+eEsc(rep.period):'')+'</div></div>'+
       '<div class="expSecTitle">'+eEsc(eT('dist'))+'</div>'+
