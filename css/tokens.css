@@ -1047,3 +1047,38 @@ html::-webkit-scrollbar, body::-webkit-scrollbar, *::-webkit-scrollbar{width:0 !
 
 /* v-no-slider (أمر المالك ٤ سبتمبر «احذف شريط السحب»): أشرطة مقارنة قبل/بعد في أدوات الصور كلها مخفية */
 #designBARange, #portraitCompareSlider, #fashionAiSliderRange, #studioAiSliderRange, #designBALine, #fashionAiBeforeWrap, #studioAiBeforeWrap{display:none !important;}
+
+/* v-noscroll-clip (لقطة المالك على التابلت: شريط تمرير رمادي على يسار نافذة الأدوات رغم قواعد الإخفاء —
+   بعض أغلفة WebView ترسم الشريط بنفسها وتتجاهل CSS). الحيلة: الحاوية الأم تقصّ، والعنصر المتمرّر يمتدّ
+   40px خارجها من جهة الشريط (اليسار في العربية، اليمين في اللاتينية) فيختفي الشريط خلف القصّ. */
+html.mobile-ui #sectionsToolsOverlay, html.mobile-ui #portraitStyleModal, html.mobile-ui #designAiModal, html.mobile-ui #fashionAiModal, html.mobile-ui #studioAiModal, html.mobile-ui #constructionModal, html.mobile-ui #religionModal, html.mobile-ui #emailAssistModal, html.mobile-ui #stocksModal, html.mobile-ui .xm .xmWrap, html.mobile-ui #eduHubModal .eduWrap, html.mobile-ui #expModal .expWrap, html.mobile-ui #videoMakerModal .vmk-studio, html.mobile-ui #chatcol{overflow:hidden !important;}
+html.mobile-ui[dir="rtl"] #sectionsToolsPopup, html.mobile-ui[dir="rtl"] #portraitStyleModal > div, html.mobile-ui[dir="rtl"] #designAiModal > div, html.mobile-ui[dir="rtl"] #fashionAiModal > div, html.mobile-ui[dir="rtl"] #studioAiModal > div, html.mobile-ui[dir="rtl"] #constructionModal > div, html.mobile-ui[dir="rtl"] #religionModal > div, html.mobile-ui[dir="rtl"] #emailAssistModal > div, html.mobile-ui[dir="rtl"] #videoMakerModal .vmk-main, html.mobile-ui[dir="rtl"] #stocksPage, html.mobile-ui[dir="rtl"] .xm .xmBody, html.mobile-ui[dir="rtl"] #eduHubModal .eduBody, html.mobile-ui[dir="rtl"] #expModal .expBody, html.mobile-ui[dir="rtl"] #messages{margin-left:-40px !important; width:calc(100% + 40px) !important; max-width:none !important; box-sizing:border-box !important;}
+html.mobile-ui[dir="ltr"] #sectionsToolsPopup, html.mobile-ui[dir="ltr"] #portraitStyleModal > div, html.mobile-ui[dir="ltr"] #designAiModal > div, html.mobile-ui[dir="ltr"] #fashionAiModal > div, html.mobile-ui[dir="ltr"] #studioAiModal > div, html.mobile-ui[dir="ltr"] #constructionModal > div, html.mobile-ui[dir="ltr"] #religionModal > div, html.mobile-ui[dir="ltr"] #emailAssistModal > div, html.mobile-ui[dir="ltr"] #videoMakerModal .vmk-main, html.mobile-ui[dir="ltr"] #stocksPage, html.mobile-ui[dir="ltr"] .xm .xmBody, html.mobile-ui[dir="ltr"] #eduHubModal .eduBody, html.mobile-ui[dir="ltr"] #expModal .expBody, html.mobile-ui[dir="ltr"] #messages{margin-right:-40px !important; width:calc(100% + 40px) !important; max-width:none !important; box-sizing:border-box !important;}
+html.mobile-ui[dir="rtl"] #sectionsToolsPopup{padding-left:52px !important;}
+html.mobile-ui[dir="ltr"] #sectionsToolsPopup{padding-right:52px !important;}
+html.mobile-ui[dir="rtl"] #portraitStyleModal > div{padding-left:66px !important;}
+html.mobile-ui[dir="ltr"] #portraitStyleModal > div{padding-right:66px !important;}
+html.mobile-ui[dir="rtl"] #designAiModal > div{padding-left:66px !important;}
+html.mobile-ui[dir="ltr"] #designAiModal > div{padding-right:66px !important;}
+html.mobile-ui[dir="rtl"] #fashionAiModal > div{padding-left:66px !important;}
+html.mobile-ui[dir="ltr"] #fashionAiModal > div{padding-right:66px !important;}
+html.mobile-ui[dir="rtl"] #studioAiModal > div{padding-left:66px !important;}
+html.mobile-ui[dir="ltr"] #studioAiModal > div{padding-right:66px !important;}
+html.mobile-ui[dir="rtl"] #constructionModal > div{padding-left:66px !important;}
+html.mobile-ui[dir="ltr"] #constructionModal > div{padding-right:66px !important;}
+html.mobile-ui[dir="rtl"] #religionModal > div{padding-left:66px !important;}
+html.mobile-ui[dir="ltr"] #religionModal > div{padding-right:66px !important;}
+html.mobile-ui[dir="rtl"] #emailAssistModal > div{padding-left:66px !important;}
+html.mobile-ui[dir="ltr"] #emailAssistModal > div{padding-right:66px !important;}
+html.mobile-ui[dir="rtl"] #videoMakerModal .vmk-main{padding-left:40px !important;}
+html.mobile-ui[dir="ltr"] #videoMakerModal .vmk-main{padding-right:40px !important;}
+html.mobile-ui[dir="rtl"] #stocksPage{padding-left:54px !important;}
+html.mobile-ui[dir="ltr"] #stocksPage{padding-right:54px !important;}
+html.mobile-ui[dir="rtl"] .xm .xmBody{padding-left:56px !important;}
+html.mobile-ui[dir="ltr"] .xm .xmBody{padding-right:56px !important;}
+html.mobile-ui[dir="rtl"] #eduHubModal .eduBody{padding-left:56px !important;}
+html.mobile-ui[dir="ltr"] #eduHubModal .eduBody{padding-right:56px !important;}
+html.mobile-ui[dir="rtl"] #expModal .expBody{padding-left:56px !important;}
+html.mobile-ui[dir="ltr"] #expModal .expBody{padding-right:56px !important;}
+html.mobile-ui[dir="rtl"] #messages{padding-left:56px !important;}
+html.mobile-ui[dir="ltr"] #messages{padding-right:56px !important;}
