@@ -6762,7 +6762,16 @@ async function omranSaveBlob(blob, filename){
         setTimeout(() => { try{ bar.remove(); }catch(e){ __swallow(e, 'share:dl-bar'); } }, 45000);
       }catch(e){ __swallow(e, 'share:dl-bar2'); }
       return;
-    }catch(e){ __swallow(e, 'share:server-link'); }
+    }catch(e){
+      __swallow(e, 'share:server-link');
+      /* v-pdf-big (شكوى المالك: بصورة واحدة يعمل وبخمس لا): تعذّر رابط الخادم (ملف كبير) —
+         الورقة نفسها بملف محلي: مشاركة بالملف (تعمل في الأغلفة) ورابط blob وفتح */
+      try{
+        let f2 = null; try{ if(typeof File === 'function') f2 = new File([blob], filename, { type: 'application/pdf' }); }catch(e2){ f2 = null; }
+        const bu = URL.createObjectURL(blob);
+        if(omranPdfReadySheet(bu, f2, filename, 'pdf', bu)) return;
+      }catch(e3){ __swallow(e3, 'share:big-sheet'); }
+    }
   }
   msgDownloadBlob(blob, filename);
 }
@@ -20035,13 +20044,13 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
         const img = decoded.img;
         // draw to canvas as JPEG to keep the PDF small and support all formats
         const cv = document.createElement('canvas');
-        const maxSide = 2000;
+        const maxSide = 1600; /* v-pdf-big: صفحات أخفّ حتى تمرّ ٥ صور وأكثر عبر رابط الخادم */
         const sc = Math.min(1, maxSide / Math.max(img.width, img.height));
         cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc);
         const cx = cv.getContext('2d');
         cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
         cx.drawImage(img, 0, 0, cv.width, cv.height);
-        const jpg = cv.toDataURL('image/jpeg', 0.88);
+        const jpg = cv.toDataURL('image/jpeg', 0.82);
         const margin = 24;
         const fit = Math.min((pw - margin * 2) / cv.width, (ph - margin * 2) / cv.height);
         const w = cv.width * fit, h = cv.height * fit;

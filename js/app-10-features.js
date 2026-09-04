@@ -682,13 +682,13 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
         const img = decoded.img;
         // draw to canvas as JPEG to keep the PDF small and support all formats
         const cv = document.createElement('canvas');
-        const maxSide = 2000;
+        const maxSide = 1600; /* v-pdf-big: صفحات أخفّ حتى تمرّ ٥ صور وأكثر عبر رابط الخادم */
         const sc = Math.min(1, maxSide / Math.max(img.width, img.height));
         cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc);
         const cx = cv.getContext('2d');
         cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
         cx.drawImage(img, 0, 0, cv.width, cv.height);
-        const jpg = cv.toDataURL('image/jpeg', 0.88);
+        const jpg = cv.toDataURL('image/jpeg', 0.82);
         const margin = 24;
         const fit = Math.min((pw - margin * 2) / cv.width, (ph - margin * 2) / cv.height);
         const w = cv.width * fit, h = cv.height * fit;
