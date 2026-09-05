@@ -86,7 +86,10 @@ assert.ok(thumbsGen.includes('CARD_SETS') && thumbsGen.includes("occasion:") && 
 // ⑧ أنماط الصور صفحة كاملة: بطاقة مصغّرة تفتح معرضًا ملء الشاشة بشبكة عمودية
 //    متجاوبة (auto-fill)، عنوان ووصف لكل ستايل، والسلكت مخفيّ باقٍ والرسّام
 //    يبثّ change ليتفاعل ما يعتمد عليه (خلفيات/تجميل)، والمفضلة أولًا.
-assert.ok(partials.includes('portraitStyleSheet') && partials.includes('portraitStyleTrigger') && partials.includes('id="portraitStyleSelect" style="display:none;"'), 'معرض ملء الشاشة + بطاقة مصغّرة والسلكت مخفيّ لا محذوف');
+//    v-psheet-only (قرار المالك ٥ سبتمبر: «احذف الواجهة وخلّ الداخلي»): لا بطاقة مصغّرة ولا واجهة خارجية —
+//    المعرض هو الأداة: شريط سفلي (الستايل المختار + ⭐ + 📁 + زر التنفيذ) ولوحة عمل أعلى المعرض للخيارات والنتيجة.
+assert.ok(partials.includes('portraitStyleSheet') && !partials.includes('portraitStyleTrigger') && partials.includes('id="portraitStyleSelect" style="display:none;"'), 'معرض ملء الشاشة بلا واجهة خارجية والسلكت مخفيّ لا محذوف');
+assert.ok(studios.includes('v-psheet-only') && studios.includes("id = 'portraitStyleFoot'") && studios.includes("id = 'portraitWork'") && studios.includes('document.body.appendChild(styleSheet)'), 'المعرض هو الأداة: شريط سفلي ولوحة عمل، ويُنقل إلى body ليُرسم');
 assert.ok(partials.includes('repeat(auto-fill,minmax(150px,1fr))'), 'الشبكة عمودية متجاوبة للكمبيوتر والهواتف');
 assert.ok(studios.includes('v-portrait-style-page') && studios.includes('assets/portrait/styles/'), 'رسّام أنماط الصور من أصوله');
 assert.ok(studios.includes('PSTYLE_SUBS') && studios.includes('رسم يدوي بالرصاص'), 'وصف عربي قصير لكل ستايل');
