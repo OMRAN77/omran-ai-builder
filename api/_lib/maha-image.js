@@ -136,7 +136,9 @@ module.exports = async (req, res) => {
        بقواعد وحرّاس وحكم. من يبدأ طلبه بـ«نانو:» أو «nano:» يصل نصّه إلى نانو بنانا برو حرفيًا:
        بلا صياغة، بلا حارس، بلا محرّك ثانٍ، بلا لصق وجه — نفس ما يعطيه تطبيق Gemini. */
     const RAW_RE = /^\s*(?:نانو|نانو\s*بنانا|nano(?:\s*banana)?)\s*[:：\-–—]?\s*/i;
-    const rawMode = !prayerPlan && RAW_RE.test(String(prompt || ''));
+    /* v-nano-default (المالك: «أريد نانو بنانا عندي في التطبيق نفس الفكرة»): الوضع الخام هو الافتراضي لكل صور
+       الدردشة — نصّ المستخدم كما هو مع صورته، بلا صياغة ولا حارس، كتطبيق Gemini تمامًا. IMAGE_RAW_DEFAULT=off يعيد الصياغة. */
+    const rawMode = !prayerPlan && (RAW_RE.test(String(prompt || '')) || String(process.env.IMAGE_RAW_DEFAULT || 'on').toLowerCase() !== 'off');
     const cleanPrompt = rawMode
       ? String(prompt || '').replace(RAW_RE, '').trim().slice(0, 4000)
       : cleanImagePrompt(prayerPlan ? prayerPlan.visualBrief : prompt).slice(0, promptLimit);
@@ -348,7 +350,8 @@ module.exports = async (req, res) => {
 
     /* v-image-duo: gpt-image يعمل بالتوازي مع Gemini على الطلب نفسه؛ الحكم يختار الأدقّ في النهاية.
        يُستثنى الدعاء المؤلَّف وخط الأنابيب (لهما تحقّق خاص) وما سلك مسار النصّ الكثيف. */
-    const duoOn = duoEnabled() && !prayerPlan && !pipelineActive && !rawMode && (!__textRoute || !!densePromise);
+    /* المحرّك الثاني يبقى بالتوازي في الوضع الخام أيضًا بالنصّ الخام نفسه، والحكم يختار */
+    const duoOn = duoEnabled() && !prayerPlan && !pipelineActive && (!__textRoute || !!densePromise);
     const duoP = duoOn ? (densePromise || openaiRescueImage().catch(function () { return null; })) : null;
     let duoEngine = '';
     // Image generation normally takes 35–50 seconds, so it must bypass the
