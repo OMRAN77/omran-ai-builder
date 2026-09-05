@@ -199,10 +199,16 @@
     }catch(e){ /* guard-ok */ }
     let file = null;
     try{ if(typeof File === 'function') file = new File([blob], name, { type: blob.type || 'image/png' }); }catch(e){ file = null; }
+    /* v-share-native-first (أمر المالك): ورقة النظام أولًا على كل الأجهزة (الكمبيوتر أيضًا) عند المشاركة؛
+       وعلى الجوال عند الحفظ كذلك. رفض AbortError خلال أقل من ١.٥ ثانية = فشل اللوحة (ويندوز) لا إلغاء. */
     const mobile = (typeof omranMobileUA === 'function' && omranMobileUA()) || appish();
-    if(mobile && file && navigator.canShare){
+    if((mobile || mode === 'share') && file && navigator.canShare){
       let ok = false; try{ ok = navigator.canShare({ files: [file] }); }catch(e){ ok = false; }
-      if(ok){ try{ await navigator.share({ files: [file], title: 'Omran AI' }); return true; }catch(e){ if(e && e.name === 'AbortError') return true; } }
+      if(ok){
+        const t0 = Date.now();
+        try{ await navigator.share({ files: [file], title: 'Omran AI' }); return true; }
+        catch(e){ if(e && e.name === 'AbortError' && (Date.now() - t0) > 1500) return true; }
+      }
     }
     if(mode !== 'share' && !appish()){ plainDownload(blob, name); return true; }
     /* الورقة تظهر فورًا بحالة «جارٍ التجهيز» — بلا ضغطة تبدو ميتة أثناء الرفع */

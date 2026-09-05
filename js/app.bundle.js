@@ -6465,10 +6465,16 @@ function renderMessages(keepScroll){
     }catch(e){ /* guard-ok */ }
     let file = null;
     try{ if(typeof File === 'function') file = new File([blob], name, { type: blob.type || 'image/png' }); }catch(e){ file = null; }
+    /* v-share-native-first (أمر المالك): ورقة النظام أولًا على كل الأجهزة (الكمبيوتر أيضًا) عند المشاركة؛
+       وعلى الجوال عند الحفظ كذلك. رفض AbortError خلال أقل من ١.٥ ثانية = فشل اللوحة (ويندوز) لا إلغاء. */
     const mobile = (typeof omranMobileUA === 'function' && omranMobileUA()) || appish();
-    if(mobile && file && navigator.canShare){
+    if((mobile || mode === 'share') && file && navigator.canShare){
       let ok = false; try{ ok = navigator.canShare({ files: [file] }); }catch(e){ ok = false; }
-      if(ok){ try{ await navigator.share({ files: [file], title: 'Omran AI' }); return true; }catch(e){ if(e && e.name === 'AbortError') return true; } }
+      if(ok){
+        const t0 = Date.now();
+        try{ await navigator.share({ files: [file], title: 'Omran AI' }); return true; }
+        catch(e){ if(e && e.name === 'AbortError' && (Date.now() - t0) > 1500) return true; }
+      }
     }
     if(mode !== 'share' && !appish()){ plainDownload(blob, name); return true; }
     /* الورقة تظهر فورًا بحالة «جارٍ التجهيز» — بلا ضغطة تبدو ميتة أثناء الرفع */
@@ -6742,15 +6748,18 @@ function renderMessages(keepScroll){
     text = String(text || '').trim();
     if(!text) return false;
     if(bridgeShare(text)) return true;
-    /* v-share-desktop (فيديو المالك ٥ سبتمبر: زر المشاركة على الكمبيوتر يضغط ولا يظهر شيء):
-       navigator.share على ويندوز/ماك يفتح لوحة نظام قد لا تظهر أو تعلّق بلا رفض — على الكمبيوتر
-       نعرض ورقتنا مباشرة (واتساب ويب، تيليجرام، X، البريد، نسخ). ورقة النظام للجوال فقط. */
-    var mobile = false;
-    try{ mobile = (typeof omranMobileUA === 'function') ? omranMobileUA() : /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || ''); }catch(e){ mobile = false; }
-    if(mobile && typeof navigator.share === 'function'){
+    /* v-share-native-first (أمر المالك ٥ سبتمبر: «في شي يسمونه رسمي مش رسمة من عندك»): ورقة النظام
+       أولًا على كل الأجهزة بما فيها الكمبيوتر. على ويندوز قد تفشل لوحة النظام في الفتح فترفض بـ AbortError
+       فورًا (بلا تدخل المستخدم) — رفض خلال أقل من ١.٥ ثانية = فشل اللوحة لا إلغاء، فنعرض ورقتنا؛
+       أما الإلغاء الحقيقي فيأخذ وقتًا أطول ولا نعرض شيئًا بعده. */
+    if(typeof navigator.share === 'function'){
       try{
+        var t0 = Date.now();
         var pr = navigator.share({ text: text });
-        if(pr && pr.catch) pr.catch(function(err){ if(err && err.name === 'AbortError') return; sheet(text); });
+        if(pr && pr.catch) pr.catch(function(err){
+          if(err && err.name === 'AbortError' && (Date.now() - t0) > 1500) return;
+          sheet(text);
+        });
         return true;
       }catch(e){ /* guard-ok */ }
     }
