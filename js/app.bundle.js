@@ -18189,7 +18189,13 @@ function __showImgLoading(el, ar, en){
        = صورة جديدة من الفكرة نفسها؛ وأي رسالة قصيرة بعد صورة أنتجناها = تعديل عليها بلا إعادة رفع. */
     // v-visual-assist: لقطة شاشة بلا فعل تعديل صريح = تحليل وإرشاد، ليست تعديل صورة.
     const __SHOT_ANALYZE = !!(__srcImg && !__srcImg._fromMemory && __srcImg._screenshot && !__imgEditRe.test(text || '') && !__IMGF_NEW_RE.test(text || ''));
-    const __ATT_DEFAULT = !!(!__SHOT_ANALYZE && __srcImg && !__srcImg._fromMemory && text && text.length <= 300 && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text));
+    /* v-assistant-first (المالك: «رفع أي لقطة + طلب = المساعد يقرأها ويرشد، لا
+       يعدّل الصورة» — لقطة خدمة حكومية + «متابعة سير الإجراءات» كانت تُعاد رسمها
+       فتتخربش وتُخصَم بلا داعي). التعديل الافتراضي لا يعمل إلا إذا جاءت الصورة من
+       زرّ «تعديل» صراحةً (اسمها edit-*)، أو حملت أمر تعديل/أسلوب/ترقية (تلتقطها
+       مسارات __ATT_EDIT/__ATT_STYLE/__IMG_UPGRADE). غير ذلك → مساعد يقرأ ويرشد. */
+    const __cameFromEditBtn = !!(__srcImg && /^edit-\d+\.png$/i.test(String(__srcImg.name || '')));
+    const __ATT_DEFAULT = !!(__cameFromEditBtn && !__SHOT_ANALYZE && __srcImg && !__srcImg._fromMemory && text && text.length <= 300 && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text));
     const __FOLLOW_DEFAULT = !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && text && text.length <= 220 && String(text).trim().split(/\s+/).length >= 2 && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text) && !/^\s*(?:شكرا|شكرًا|تمام|ممتاز|رائع|جميل|حلو|ok|okay|thanks|thank you|nice|great)\b/i.test(text));
     /* v-fresh-gen-wins (شكوى المالك: «عطني صور» مع صورة مرفقة كانت تُعدّل
        اللقطة بدل توليد صور جديدة → نتيجة زفت). طلب توليد صريح («عطني/ولّد/
