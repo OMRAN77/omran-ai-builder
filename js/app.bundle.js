@@ -17585,7 +17585,7 @@ function __friendlyErr(e){
       return;
     }
     const __codeWordRe = /(كود|تطبيق|موقع|صفحة|زر\s|لعبة|سكربت|code|app|website|page|button|game|script)/i;
-    const __ATT_VISION_RE = /(ترجم|translate|اقرأ|اقري|إقرأ|قراءة|\bread\b|وصف|اوصف|صف\s|describe|حلل|حلّل|analyz|قارن|compare|(?:^|[\s،,])(?:وين|فين|شلون|ليش|متى|هل)(?=[\s؟?]|$)|حساب|باي\s*بال|بايبال|paypal|بنك|تجاري|اشتراك|تفعيل|تسجيل|إعدادات|اعدادات|رصيد|فلوس|أموال|اموال|جوجل\s*بلاي|قوقل|google\s*play|app\s*store|\baccount\b|\bsettings\b|sign\s*up|log\s*in)/i; // v719: أسئلة الحسابات والخدمات مع صورة = سؤال محادثة، ليست تعديل صورة
+    const __ATT_VISION_RE = /(ترجم|translate|اقرأ|اقري|إقرأ|قراءة|\bread\b|وصف|اوصف|صف\s|describe|حلل|حلّل|analyz|قارن|compare|(?:^|[\s،,])(?:وين|فين|شلون|ليش|متى|هل|وش|ايش|أيش|شو|كيف|ماذا)(?=[\s؟?]|$)|مواصفات|مواصفه|مواصفة|سعر|سعره|بكم|كم\s*سعر|نوع|موديل|ماركة|ماركه|جهاز|معلومات\s*عن|متابعة|إجراء|اجراء|إجراءات|اجراءات|معاملة|معامله|خدمة|خدمه|طلب|حجز|موعد|رخصة|رخصه|شهادة|شهاده|فاتورة|فاتوره|سداد|استعلام|منصة|منصه|بوابة|بوابه|حساب|باي\s*بال|بايبال|paypal|بنك|تجاري|اشتراك|تفعيل|تسجيل|إعدادات|اعدادات|رصيد|فلوس|أموال|اموال|جوجل\s*بلاي|قوقل|google\s*play|app\s*store|\baccount\b|\bsettings\b|sign\s*up|log\s*in)/i; // v719: أسئلة الحسابات والخدمات مع صورة = سؤال محادثة، ليست تعديل صورة. v-assistant2: أضيف مواصفات/سعر/نوع/موديل/إجراءات/خدمة = سؤال مساعد لا توليد صورة
     const __nanoQ = /[؟?]\s*$|^\s*(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|لماذا|ماذا|why|how|what|where|when|who)(?=$|[\s،,])/i;
     // 🧠 v293: أي صورة مرفقة جديدة تنحفظ كآخر صورة في المحادثة
     if(__srcImg && !__srcImg._fromMemory){
@@ -18197,7 +18197,16 @@ function __showImgLoading(el, ar, en){
        فكرة ثانية/كرتون/3d) على صورة كهذه يبقى تعديل صورة؛ تحليل اللقطة للأسئلة والإرشاد فقط. */
     const __SHOT_CREATIVE = !!(text && text.length <= 160 && __IMG_CREATIVE_RE.test(text) && !/[؟?]\s*$/.test(text) && !__codeWordRe.test(text) && !__supIssueRe.test(text) && !__ATT_VISION_RE.test(text));
     const __SHOT_ANALYZE = !!(__srcImg && !__srcImg._fromMemory && __srcImg._screenshot && !__SHOT_CREATIVE && !__imgEditRe.test(text || '') && !__IMGF_NEW_RE.test(text || ''));
-    const __ATT_DEFAULT = !!(!__SHOT_ANALYZE && __srcImg && !__srcImg._fromMemory && text && text.length <= 300 && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text));
+    /* v-assistant-first (المالك: «رفع أي لقطة + طلب = المساعد يقرأها ويرشد، لا
+       يعدّل الصورة» — لقطة خدمة حكومية + «متابعة سير الإجراءات» كانت تُعاد رسمها
+       فتتخربش وتُخصَم بلا داعي). التعديل الافتراضي لا يعمل إلا إذا جاءت الصورة من
+       زرّ «تعديل» صراحةً (اسمها edit-*)، أو حملت أمر تعديل/أسلوب/ترقية (تلتقطها
+       مسارات __ATT_EDIT/__ATT_STYLE/__IMG_UPGRADE). غير ذلك → مساعد يقرأ ويرشد.
+       v-nano-pro-edit: الاستثناء الوحيد فوق زرّ «تعديل» هو الطلب الإبداعي القصير الصريح على
+       الصورة («أقوى/أفخم/طوّرها/فكرة ثانية/كرتون» — __SHOT_CREATIVE، وهو يستثني أسئلة
+       المواصفات والدعم والحسابات) لأنه بالضبط ما طلبه المالك على بطاقة التفسير الديني. */
+    const __cameFromEditBtn = !!(__srcImg && /^edit-\d+\.png$/i.test(String(__srcImg.name || '')));
+    const __ATT_DEFAULT = !!((__cameFromEditBtn || __SHOT_CREATIVE) && !__SHOT_ANALYZE && __srcImg && !__srcImg._fromMemory && text && text.length <= 300 && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text));
     const __FOLLOW_DEFAULT = !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && text && text.length <= 220 && String(text).trim().split(/\s+/).length >= 2 && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text) && !/^\s*(?:شكرا|شكرًا|تمام|ممتاز|رائع|جميل|حلو|ok|okay|thanks|thank you|nice|great)\b/i.test(text));
     /* v-fresh-gen-wins (شكوى المالك: «عطني صور» مع صورة مرفقة كانت تُعدّل
        اللقطة بدل توليد صور جديدة → نتيجة زفت). طلب توليد صريح («عطني/ولّد/
