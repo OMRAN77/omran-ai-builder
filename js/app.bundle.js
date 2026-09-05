@@ -2539,7 +2539,7 @@ const I18N = {
     voiceTabAssistantName: 'المساعد',
     copyCode: 'نسخ',
     copiedMsg: 'تم النسخ ✅',
-    copyMsgTitle: 'نسخ الردّ', 'homeLastImage': '🖼️ آخر صورة', 'homeLastVideo': '🎬 آخر فيديو', 'homeCollection': '✨ التشكيلة — آخر ٣ أعمال', 'homeNoImage': 'لسا ما سويت شي هنا', 'homeTryNow': 'جرّب الآن ›', 'homeNoVideo': 'لا يوجد فيديوهات بعد', 'homeMakeVideo': 'أنشئ أول فيديو ›', 'homeEmptyLib': 'مكتبتك فارغة تمامًا', 'homeStartCreating': 'ابدأ الإبداع ›', 'grpBusiness': '💼 أعمال', 'grpLife': '🕌 حياة يومية', 'psheetAll': 'الكل', 'psheetGrpArt': '🎨 فنية', 'psheetBefore': 'قبل', 'psheetBeforeSub': 'صورة واحدة → كل الستايلات', 'psheetTry': '✨ جرّب على صورتك', 'tcSub_btnPortraitStyle': 'مجموعة متنوعة من أنماط الصور', 'tcSub_btnQuickTemplates': 'أفكار وإلهام لمشاريعك القادمة', 'tcSub_btnVideoMaker': 'إنشاء وتحرير الفيديو باحترافية', 'tcSub_btnStudioAI': 'أنماط وتأثيرات ذكية', 'tcSub_btnFashionAI': 'تصميم أزياء بالذكاء الاصطناعي', 'tcSub_btnDesignAI': 'تصميم الديكور الداخلي والخارجي', 'tcSub_btnAdStudio': 'تصميم إعلانات احترافية', 'tcSub_btnStocks': 'تحليلات وبيانات الأسواق', 'tcSub_btnOmranTV': 'محتوى وترفيه بلا حدود', 'tcSub_btnQibla': 'مواقيت الصلاة واتجاه القبلة', 'tcSub_btnExpense': 'إدارة المصاريف والميزانيات', 'tcSub_btnOmranEdu': 'كورسات ودروس تعليمية', 'tcSub_btnConstruction': 'تصميمات هندسية ومعمارية', 'tcSub_btnReligion': 'أسئلة دينية وإجابات موثوقة', 'tcSub_btnCV': 'إنشاء سيرة ذاتية احترافية', 'tcSub_btnDocs': 'تحليل وتلخيص المستندات', 'tcSub_btnFeedback': 'شاركنا رأيك واقتراحاتك', 'tcSub_btnEmailAssist': 'صياغة الرسائل والردود', msgShareReply: 'مشاركة الردّ', msgShareCopied: 'نُسخ الردّ — الصقه في التطبيق الذي تريده', attachDropHere: "أفلت الصورة هنا",
+    copyMsgTitle: 'نسخ الردّ', 'homeLastImage': '🖼️ آخر صورة', 'homeLastVideo': '🎬 آخر فيديو', 'homeCollection': '✨ التشكيلة — آخر ٣ أعمال', 'homeNoImage': 'لسا ما سويت شي هنا', 'homeTryNow': 'جرّب الآن ›', 'homeNoVideo': 'لا يوجد فيديوهات بعد', 'homeMakeVideo': 'أنشئ أول فيديو ›', 'homeEmptyLib': 'مكتبتك فارغة تمامًا', 'homeStartCreating': 'ابدأ الإبداع ›', 'grpBusiness': '💼 أعمال', 'grpLife': '🕌 حياة يومية', 'psheetAll': 'الكل', 'psheetGrpArt': '🎨 فنية', 'psheetBefore': 'قبل', 'psheetBeforeSub': 'صورة واحدة → كل الستايلات', 'psheetTry': '✨ جرّب على صورتك', 'tcSub_btnPortraitStyle': 'مجموعة متنوعة من أنماط الصور', 'tcSub_btnQuickTemplates': 'أفكار وإلهام لمشاريعك القادمة', 'tcSub_btnVideoMaker': 'إنشاء وتحرير الفيديو باحترافية', 'tcSub_btnStudioAI': 'أنماط وتأثيرات ذكية', 'tcSub_btnFashionAI': 'تصميم أزياء بالذكاء الاصطناعي', 'tcSub_btnDesignAI': 'تصميم الديكور الداخلي والخارجي', 'tcSub_btnAdStudio': 'تصميم إعلانات احترافية', 'tcSub_btnStocks': 'تحليلات وبيانات الأسواق', 'tcSub_btnOmranTV': 'محتوى وترفيه بلا حدود', 'tcSub_btnQibla': 'مواقيت الصلاة واتجاه القبلة', 'tcSub_btnExpense': 'إدارة المصاريف والميزانيات', 'tcSub_btnOmranEdu': 'كورسات ودروس تعليمية', 'tcSub_btnConstruction': 'تصميمات هندسية ومعمارية', 'tcSub_btnReligion': 'أسئلة دينية وإجابات موثوقة', 'tcSub_btnCV': 'إنشاء سيرة ذاتية احترافية', 'tcSub_btnDocs': 'تحليل وتلخيص المستندات', 'tcSub_btnFeedback': 'شاركنا رأيك واقتراحاتك', 'tcSub_btnEmailAssist': 'صياغة الرسائل والردود', msgShareReply: 'مشاركة الردّ', msgShareCopied: 'نُسخ الردّ — الصقه في التطبيق الذي تريده', attachDropHere: "أفلت الصورة هنا", imgReadyTitle: "✅ الصورة جاهزة", imgDlBtn: "⬇️ تحميل", imgDlStarted: "📥 بدأ التحميل — افتح الإشعارات/التنزيلات", imgWaBtn: "💬 واتساب", imgLinkCopied: "نُسخ رابط الصورة — الصقه في واتساب", imgShareBtn: "📤 مشاركة", imgOpenBtn: "🔗 فتح",
     adStudioTitle: 'استوديو الإعلانات',
     adStudioHint: 'استوديو الإعلانات — اصنع إعلانك بالمحادثة',
     appTitle: 'مُنشئ التطبيقات بالذكاء الاصطناعي',
@@ -3730,7 +3730,7 @@ const I18N = {
     copyCode: 'Copy',
     copyCodeTitle: 'Copy code',
     copiedMsg: 'Copied ✅',
-    copyMsgTitle: 'Copy reply', 'homeLastImage': '🖼️ Last image', 'homeLastVideo': '🎬 Last video', 'homeCollection': '✨ Collection — last 3 works', 'homeNoImage': 'Nothing here yet', 'homeTryNow': 'Try now ›', 'homeNoVideo': 'No videos yet', 'homeMakeVideo': 'Make your first video ›', 'homeEmptyLib': 'Your library is empty', 'homeStartCreating': 'Start creating ›', 'grpBusiness': '💼 Business', 'grpLife': '🕌 Daily life', 'psheetAll': 'All', 'psheetGrpArt': '🎨 Artistic', 'psheetBefore': 'Before', 'psheetBeforeSub': 'One photo → every style', 'psheetTry': '✨ Try it on your photo', 'tcSub_btnPortraitStyle': 'A wide range of portrait styles', 'tcSub_btnQuickTemplates': 'Ideas and inspiration for your next projects', 'tcSub_btnVideoMaker': 'Create and edit videos professionally', 'tcSub_btnStudioAI': 'Smart styles and effects', 'tcSub_btnFashionAI': 'AI-powered fashion design', 'tcSub_btnDesignAI': 'Interior and exterior decor design', 'tcSub_btnAdStudio': 'Professional ad design', 'tcSub_btnStocks': 'Market analytics and data', 'tcSub_btnOmranTV': 'Unlimited content and entertainment', 'tcSub_btnQibla': 'Prayer times and Qibla direction', 'tcSub_btnExpense': 'Manage expenses and budgets', 'tcSub_btnOmranEdu': 'Courses and lessons', 'tcSub_btnConstruction': 'Engineering and architectural designs', 'tcSub_btnReligion': 'Religious questions, trusted answers', 'tcSub_btnCV': 'Build a professional CV', 'tcSub_btnDocs': 'Analyze and summarize documents', 'tcSub_btnFeedback': 'Share your feedback and ideas', 'tcSub_btnEmailAssist': 'Draft emails and replies', msgShareReply: 'Share reply', msgShareCopied: 'Reply copied — paste it in the app you want', attachDropHere: "Drop the image here",
+    copyMsgTitle: 'Copy reply', 'homeLastImage': '🖼️ Last image', 'homeLastVideo': '🎬 Last video', 'homeCollection': '✨ Collection — last 3 works', 'homeNoImage': 'Nothing here yet', 'homeTryNow': 'Try now ›', 'homeNoVideo': 'No videos yet', 'homeMakeVideo': 'Make your first video ›', 'homeEmptyLib': 'Your library is empty', 'homeStartCreating': 'Start creating ›', 'grpBusiness': '💼 Business', 'grpLife': '🕌 Daily life', 'psheetAll': 'All', 'psheetGrpArt': '🎨 Artistic', 'psheetBefore': 'Before', 'psheetBeforeSub': 'One photo → every style', 'psheetTry': '✨ Try it on your photo', 'tcSub_btnPortraitStyle': 'A wide range of portrait styles', 'tcSub_btnQuickTemplates': 'Ideas and inspiration for your next projects', 'tcSub_btnVideoMaker': 'Create and edit videos professionally', 'tcSub_btnStudioAI': 'Smart styles and effects', 'tcSub_btnFashionAI': 'AI-powered fashion design', 'tcSub_btnDesignAI': 'Interior and exterior decor design', 'tcSub_btnAdStudio': 'Professional ad design', 'tcSub_btnStocks': 'Market analytics and data', 'tcSub_btnOmranTV': 'Unlimited content and entertainment', 'tcSub_btnQibla': 'Prayer times and Qibla direction', 'tcSub_btnExpense': 'Manage expenses and budgets', 'tcSub_btnOmranEdu': 'Courses and lessons', 'tcSub_btnConstruction': 'Engineering and architectural designs', 'tcSub_btnReligion': 'Religious questions, trusted answers', 'tcSub_btnCV': 'Build a professional CV', 'tcSub_btnDocs': 'Analyze and summarize documents', 'tcSub_btnFeedback': 'Share your feedback and ideas', 'tcSub_btnEmailAssist': 'Draft emails and replies', msgShareReply: 'Share reply', msgShareCopied: 'Reply copied — paste it in the app you want', attachDropHere: "Drop the image here", imgReadyTitle: "✅ Image ready", imgDlBtn: "⬇️ Download", imgDlStarted: "📥 Downloading — check notifications/Downloads", imgWaBtn: "💬 WhatsApp", imgLinkCopied: "Image link copied — paste it in WhatsApp", imgShareBtn: "📤 Share", imgOpenBtn: "🔗 Open",
     uploadCodeTitle: 'Upload a code file (HTML or Python)',
     newProject: '+ New Project',
     promptPlaceholder: 'Type your message here ...',
@@ -4420,7 +4420,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=669'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
+    sc.src = 'i18n/' + lg + '.js?v=670'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -6264,6 +6264,171 @@ function renderMessages(keepScroll){
   try{ if(typeof syncChatJumpButton === 'function') syncChatJumpButton(); }catch(e){ __swallow(e, "ui:chatJump"); }
   // v462: أنيميشن رسالة المستخدم — CSS class msg-anim يضاف أثناء بناء العنصر (سطر 973)
 }
+/* v-img-save-universal (شكوى المالك ٥ سبتمبر: «تحميل الصور ومشاركة واتساب ما تشتغل» في أنماط الصور،
+   و«لا تحط أزرار ما تشتغل»): أغلفة المتجر لا تنفّذ <a download> على data:/blob: ولا navigator.share.
+   مسار موحّد لكل صور الاستوديوهات:
+   ① جسر التطبيق (iOS/أندرويد) → ورقة مشاركة النظام (حفظ في المعرض/واتساب…)
+   ② navigator.share بملف (متصفحات الجوال)
+   ③ داخل غلاف بلا جسر: رفع الصورة للسيرفر → ورقة بأزرار حقيقية: تحميل عبر رابط HTTPS برأس
+      attachment (منزّل النظام)، واتساب (رابط + نسخ)، فتح، ومشاركة إن توفّرت.
+   ④ الكمبيوتر/المتصفح العادي: تنزيل <a download> كما كان.
+   كل روابط <a download> على data:/blob: في التطبيق تُحوَّل لهذا المسار تلقائيًا. */
+(function(){
+  function isAr(){ try{ const l = (typeof lang !== 'undefined' && lang) ? lang : (localStorage.getItem('aiapp_lang') || 'ar'); return l === 'ar' || l === 'ur'; }catch(e){ return true; } }
+  function gtx(k, ar, en){ try{ if(typeof window.t === 'function'){ const v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* guard-ok */ } return isAr() ? ar : en; }
+  function appish(){
+    try{
+      if(typeof omranNativeBridge === 'function' && omranNativeBridge('omranShare')) return true;
+      if(typeof omranLikelyApp === 'function' && omranLikelyApp()) return true;
+      const ua = navigator.userAgent || '';
+      if(/\bwv\b/.test(ua) || /Version\/\d+\.\d+.*Chrome\//.test(ua) || !!window.OmranAndroidShare) return true;
+    }catch(e){ /* guard-ok */ }
+    return false;
+  }
+  function dataUrlToBlob(du){
+    const s = String(du), i = s.indexOf(',');
+    const m = (s.slice(0, i).match(/:([^;,]+)/) || [])[1] || 'image/png';
+    const bin = atob(s.slice(i + 1)), u8 = new Uint8Array(bin.length);
+    for(let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k);
+    return new Blob([u8], { type: m });
+  }
+  async function toBlob(src){
+    if(src instanceof Blob) return src;
+    const s = String(src || '');
+    if(s.slice(0, 5) === 'data:') return dataUrlToBlob(s);
+    if(!s) return null;
+    const r = await fetch(s); return await r.blob();
+  }
+  function extOf(mime){ return mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : (mime === 'image/gif' ? 'gif' : 'jpg')); }
+  /* رفع للسيرفر (حدّ ٣MB base64): PNG كبير يُحوَّل JPEG محليًا */
+  function shrinkForUpload(blob){
+    return new Promise((resolve) => {
+      try{
+        const du0 = URL.createObjectURL(blob);
+        const im = new Image();
+        im.onload = () => {
+          try{
+            const MAX = 1600, k = Math.min(1, MAX / Math.max(im.naturalWidth || 1, im.naturalHeight || 1));
+            const c = document.createElement('canvas');
+            c.width = Math.max(1, Math.round((im.naturalWidth || 1) * k)); c.height = Math.max(1, Math.round((im.naturalHeight || 1) * k));
+            c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+            URL.revokeObjectURL(du0);
+            resolve({ data: c.toDataURL('image/jpeg', 0.92), w: c.width, h: c.height, mime: 'image/jpeg' });
+          }catch(e){ resolve(null); }
+        };
+        im.onerror = () => resolve(null);
+        im.src = du0;
+      }catch(e){ resolve(null); }
+    });
+  }
+  async function uploadImage(blob, name){
+    let b64 = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result || '')); fr.onerror = rej; fr.readAsDataURL(blob); });
+    let mime = blob.type || 'image/png', w, h;
+    if(b64.length > 2.6 * 1024 * 1024 || mime === 'image/gif' && b64.length > 2.6 * 1024 * 1024){
+      const sm = await shrinkForUpload(blob);
+      if(sm){ b64 = sm.data; mime = sm.mime; w = sm.w; h = sm.h; }
+    }
+    const i = b64.indexOf(',');
+    const r = await fetch('/api/media?action=img', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: b64.slice(i + 1), mime, w, h }) });
+    const j = await r.json();
+    if(!r.ok || !j || !j.id) throw new Error('upload-failed');
+    const ext = extOf(mime);
+    const safe = String(name || 'omran-image').replace(/\.[A-Za-z0-9]+$/, '').replace(/[^A-Za-z0-9_\-]/g, '-').slice(0, 50) || 'omran-image';
+    return {
+      open: location.origin + '/i/' + j.id + '.' + ext,
+      dl: location.origin + '/i/' + j.id + '.raw.' + ext + '?dl=1&name=' + encodeURIComponent(safe + '.' + ext),
+    };
+  }
+  function toast(m){ try{ if(typeof settingsToast === 'function'){ settingsToast(m); return; } }catch(e){ /* guard-ok */ } try{ alert(m); }catch(e){ /* guard-ok */ } }
+  function copyText(s){ try{ if(navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(s); }catch(e){ /* guard-ok */ } return Promise.reject(new Error('no-clipboard')); }
+  function readySheet(links, file, name){
+    const old = document.getElementById('omranImgSheet'); if(old) old.remove();
+    const sheet = document.createElement('div'); sheet.id = 'omranImgSheet';
+    sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:rgba(20,20,26,.98);border-top:1px solid rgba(212,175,55,.45);border-radius:18px 18px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(0,0,0,.5);font-family:inherit;color:#f3efe4;';
+    const head = document.createElement('div');
+    head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-weight:800;font-size:15px;';
+    const ttl = document.createElement('span'); ttl.textContent = gtx('imgReadyTitle', '✅ الصورة جاهزة', '✅ Image ready');
+    const x = document.createElement('button'); x.textContent = '✕'; x.type = 'button';
+    x.style.cssText = 'background:none;border:none;color:#9a9a9e;font-size:18px;cursor:pointer;padding:2px 8px;';
+    x.onclick = function(){ sheet.remove(); };
+    head.appendChild(ttl); head.appendChild(x);
+    const row = document.createElement('div');
+    row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;';
+    const btnCss = 'display:flex;align-items:center;justify-content:center;gap:6px;min-height:46px;border-radius:12px;font-weight:800;font-size:14px;text-decoration:none;cursor:pointer;touch-action:manipulation;';
+    const dl = document.createElement('a');
+    dl.href = links.dl; dl.setAttribute('download', name); dl.dataset.nativeDownload = '1'; dl.rel = 'noopener';
+    dl.style.cssText = btnCss + 'background:#d4af37;color:#111;';
+    dl.textContent = gtx('imgDlBtn', '⬇️ تحميل', '⬇️ Download');
+    dl.onclick = function(){ setTimeout(function(){ ttl.textContent = gtx('imgDlStarted', '📥 بدأ التحميل — افتح الإشعارات/التنزيلات', '📥 Downloading — check notifications/Downloads'); }, 600); };
+    row.appendChild(dl);
+    const wa = document.createElement('a');
+    wa.href = 'https://wa.me/?text=' + encodeURIComponent(links.open); wa.target = '_blank'; wa.rel = 'noopener';
+    wa.style.cssText = btnCss + 'background:#25D366;color:#0b1a12;';
+    wa.textContent = gtx('imgWaBtn', '💬 واتساب', '💬 WhatsApp');
+    wa.onclick = function(){ copyText(links.open).then(function(){ ttl.textContent = gtx('imgLinkCopied', 'نُسخ رابط الصورة — الصقه في واتساب', 'Image link copied — paste it in WhatsApp'); }).catch(function(){ /* guard-ok */ }); };
+    row.appendChild(wa);
+    let canShareFile = false;
+    try{ canShareFile = !!(file && navigator.canShare && navigator.canShare({ files: [file] })); }catch(e){ canShareFile = false; }
+    if(canShareFile){
+      const sh = document.createElement('button'); sh.type = 'button';
+      sh.style.cssText = btnCss + 'background:none;color:#d4af37;border:1px solid rgba(212,175,55,.55);';
+      sh.textContent = gtx('imgShareBtn', '📤 مشاركة', '📤 Share');
+      sh.onclick = function(){ navigator.share({ files: [file], title: 'Omran AI' }).then(function(){ sheet.remove(); }).catch(function(e3){ if(e3 && e3.name === 'AbortError') return; }); };
+      row.appendChild(sh);
+    }
+    const op = document.createElement('a');
+    op.href = links.open; op.target = '_blank'; op.rel = 'noopener';
+    op.style.cssText = btnCss + 'background:none;color:#f3efe4;border:1px solid rgba(255,255,255,.18);';
+    op.textContent = gtx('imgOpenBtn', '🔗 فتح', '🔗 Open');
+    op.onclick = function(ev){ try{ const cap2 = window.Capacitor, br2 = cap2 && cap2.Plugins && cap2.Plugins.Browser; if(br2 && typeof br2.open === 'function'){ ev.preventDefault(); br2.open({ url: links.open }); } }catch(e2){ /* guard-ok */ } };
+    row.appendChild(op);
+    sheet.appendChild(head); sheet.appendChild(row);
+    document.body.appendChild(sheet);
+    setTimeout(function(){ try{ sheet.remove(); }catch(e){ /* guard-ok */ } }, 120000);
+    return true;
+  }
+  function plainDownload(blob, name){
+    const u = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = u; a.download = name; a.rel = 'noopener'; a.dataset.nativeDownload = '1';
+    a.style.cssText = 'position:fixed;left:-9999px;top:0';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ try{ a.remove(); URL.revokeObjectURL(u); }catch(e){ /* guard-ok */ } }, 60000);
+  }
+  /* mode: 'save' (زر تحميل) أو 'share' (زر مشاركة) */
+  window.omranSaveImage = async function(src, name, mode){
+    name = name || ('omran-image-' + Date.now() + '.png');
+    let blob = null;
+    try{ blob = await toBlob(src); }catch(e){ blob = null; }
+    if(!blob) return false;
+    try{
+      if(typeof omranNativeBridge === 'function' && omranNativeBridge('omranShare') && typeof msgDownloadBlob === 'function'){ msgDownloadBlob(blob, name); return true; }
+    }catch(e){ /* guard-ok */ }
+    let file = null;
+    try{ if(typeof File === 'function') file = new File([blob], name, { type: blob.type || 'image/png' }); }catch(e){ file = null; }
+    const mobile = (typeof omranMobileUA === 'function' && omranMobileUA()) || appish();
+    if(mobile && file && navigator.canShare){
+      let ok = false; try{ ok = navigator.canShare({ files: [file] }); }catch(e){ ok = false; }
+      if(ok){ try{ await navigator.share({ files: [file], title: 'Omran AI' }); return true; }catch(e){ if(e && e.name === 'AbortError') return true; } }
+    }
+    if(mode !== 'share' && !appish()){ plainDownload(blob, name); return true; }
+    try{ const links = await uploadImage(blob, name); return readySheet(links, file, name); }
+    catch(e){ /* guard-ok — الرفع تعذّر */ }
+    plainDownload(blob, name);
+    return true;
+  };
+  /* روابط التنزيل المحلية داخل الأغلفة → المسار الموحّد */
+  document.addEventListener('click', function(e){
+    try{
+      const a = e.target && e.target.closest ? e.target.closest('a[download]') : null;
+      if(!a || a.dataset.nativeDownload) return;
+      const h = a.getAttribute('href') || '';
+      if(!/^(data:|blob:)/i.test(h)) return;
+      if(!appish()) return;
+      e.preventDefault(); e.stopPropagation();
+      window.omranSaveImage(h, a.getAttribute('download') || 'omran-image.png', 'save');
+    }catch(err){ /* guard-ok */ }
+  }, true);
+})();
 /* ───────── v-save-media (شكوى المالك «الفيديو والصور ما يتحمّلون»): حفظ موحّد ─────────
  * روابط <a download> على هواوي/أندرويد داخل التطبيق لا تنزّل شيئًا (data: وblob: محظوران
  * برمجيًا، والنقر البرمجي مرفوض). v-media-dl (٤ سبتمبر — «كلهم يشتكون»): على أي جوال
@@ -23305,25 +23470,24 @@ function stuL(ar, en){
   const compareSlider = $('#portraitCompareSlider');
   const shareBtn2 = $('#portraitShareBtn');
   if(shareBtn2){
-    shareBtn2.onclick = async () => {
-      // ⚠️ v592 — نفس عطب أيقونة الحفظ: السياسة تحجب fetch على data: ⇒ التحويل محليّ.
-      const dataUrl = (resultEl && resultEl.src) || '';
-      const isData = /^data:/i.test(String(dataUrl));
-      const toBlob = (du) => { const s = String(du), i = s.indexOf(','), m = (s.slice(0, i).match(/:([^;,]+)/) || [])[1] || 'image/png', bin = atob(s.slice(i + 1)), u8 = new Uint8Array(bin.length); for(let k = 0; k < bin.length; k++) u8[k] = bin.charCodeAt(k); return new Blob([u8], { type: m }); };
-      const nm = 'omran-portrait-style.png';
-      try{
-        const blob = isData ? toBlob(dataUrl) : await (await fetch(dataUrl)).blob();
-        const file = new File([blob], nm, { type: blob.type || 'image/png' });
-        if(navigator.canShare && navigator.canShare({ files: [file] })){
-          try{ await navigator.share({ files: [file], title: 'Omran AI', text: 'Omran AI ✨' }); return; }
-          catch(err){ if(err && err.name === 'AbortError') return; }
-        } else if(navigator.share && !isData){
-          try{ await navigator.share({ title: 'Omran AI', url: dataUrl }); return; }
-          catch(err){ if(err && err.name === 'AbortError') return; }
-        }
-        const u = URL.createObjectURL(blob), el = document.createElement('a'); el.href = u; el.download = nm; el.click(); setTimeout(() => URL.revokeObjectURL(u), 4000);
-      } catch(e){ try{ if(downloadEl) downloadEl.click(); }catch(_){ /* guard-ok — download fallback, nothing useful to do if both fail */ } }
+    /* v-img-save-universal: مشاركة عبر المسار الموحّد (جسر التطبيق → ورقة النظام → رابط سيرفر + واتساب) */
+    shareBtn2.onclick = () => {
+      const src = (resultEl && resultEl.src) || '';
+      const nm = /gif/i.test(src.slice(0, 20)) || (downloadEl && /\.gif$/i.test(downloadEl.getAttribute('download') || '')) ? 'omran-avatar.gif' : 'omran-portrait-style.png';
+      if(typeof window.omranSaveImage === 'function'){ window.omranSaveImage(src, nm, 'share'); return; }
+      try{ if(downloadEl) downloadEl.click(); }catch(_){ /* guard-ok — fallback */ }
     };
+  }
+  if(downloadEl){
+    /* التحميل على الجوال/الأغلفة يمرّ بالمسار الموحّد؛ الكمبيوتر يبقى تنزيلًا مباشرًا */
+    downloadEl.addEventListener('click', (ev) => {
+      try{
+        const mobile = (typeof omranMobileUA === 'function' && omranMobileUA()) || (typeof omranLikelyApp === 'function' && omranLikelyApp());
+        if(!mobile || typeof window.omranSaveImage !== 'function') return;
+        ev.preventDefault(); ev.stopPropagation();
+        window.omranSaveImage(downloadEl.href, downloadEl.getAttribute('download') || 'omran-portrait-style.png', 'save');
+      }catch(_){ /* guard-ok — يسقط للتنزيل العادي */ }
+    });
   }
   function updateCompareSlider(){
     if(!compareSlider || !compareAfterWrap) return;

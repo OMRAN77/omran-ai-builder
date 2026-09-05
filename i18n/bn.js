@@ -38,6 +38,7 @@ I18N['bn'] = {
     convertToWord: 'Word-এ রূপান্তর করুন',
     copiedToast: 'কপি করা হয়েছে',
     copyMsgTitle: 'উত্তর কপি করুন',
+    imgReadyTitle: "✅ ছবি প্রস্তুত", imgDlBtn: "⬇️ ডাউনলোড", imgDlStarted: "📥 ডাউনলোড শুরু হয়েছে — নোটিফিকেশন/ডাউনলোড দেখুন", imgWaBtn: "💬 হোয়াটসঅ্যাপ", imgLinkCopied: "ছবির লিঙ্ক কপি হয়েছে — হোয়াটসঅ্যাপে পেস্ট করুন", imgShareBtn: "📤 শেয়ার", imgOpenBtn: "🔗 খুলুন",
     attachDropHere: "ছবিটি এখানে ছেড়ে দিন",
     'homeLastImage': '🖼️ শেষ ছবি', 'homeLastVideo': '🎬 শেষ ভিডিও', 'homeCollection': '✨ সংগ্রহ — শেষ ৩টি কাজ', 'homeNoImage': 'এখানে এখনো কিছু নেই', 'homeTryNow': 'এখনই চেষ্টা করুন ›', 'homeNoVideo': 'এখনো কোনো ভিডিও নেই', 'homeMakeVideo': 'আপনার প্রথম ভিডিও তৈরি করুন ›', 'homeEmptyLib': 'আপনার লাইব্রেরি খালি', 'homeStartCreating': 'তৈরি শুরু করুন ›',
     'grpBusiness': '💼 ব্যবসা', 'grpLife': '🕌 দৈনন্দিন জীবন',

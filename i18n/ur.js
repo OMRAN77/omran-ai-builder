@@ -37,6 +37,7 @@ I18N['ur'] = {
     convertToWord: 'Word میں تبدیل کریں',
     copiedToast: 'کاپی ہو گیا',
     copyMsgTitle: 'جواب کاپی کریں',
+    imgReadyTitle: "✅ تصویر تیار ہے", imgDlBtn: "⬇️ ڈاؤن لوڈ", imgDlStarted: "📥 ڈاؤن لوڈ شروع — نوٹیفکیشن/ڈاؤن لوڈز دیکھیں", imgWaBtn: "💬 واٹس ایپ", imgLinkCopied: "تصویر کا لنک کاپی ہو گیا — واٹس ایپ میں پیسٹ کریں", imgShareBtn: "📤 شیئر", imgOpenBtn: "🔗 کھولیں",
     attachDropHere: "تصویر یہاں چھوڑیں",
     'homeLastImage': '🖼️ آخری تصویر', 'homeLastVideo': '🎬 آخری ویڈیو', 'homeCollection': '✨ مجموعہ — آخری 3 کام', 'homeNoImage': 'یہاں ابھی کچھ نہیں', 'homeTryNow': 'ابھی آزمائیں ›', 'homeNoVideo': 'ابھی کوئی ویڈیو نہیں', 'homeMakeVideo': 'اپنی پہلی ویڈیو بنائیں ›', 'homeEmptyLib': 'آپ کی لائبریری خالی ہے', 'homeStartCreating': 'تخلیق شروع کریں ›',
     'grpBusiness': '💼 کاروبار', 'grpLife': '🕌 روزمرہ زندگی',
