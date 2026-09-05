@@ -55,7 +55,16 @@
       b.onclick = function(){ if(a.copy){ if(copyText(text)) toast(tt('msgShareCopied', 'نُسخ الردّ — الصقه في التطبيق الذي تريده', 'Reply copied — paste it in the app you want')); close(); return; } openExternal(a.u); close(); };
       gr.appendChild(b);
     });
+    /* طابع الإصدار (رمادي صغير) — للتشخيص من لقطة الشاشة */
+    try{
+      var sc = document.querySelector('script[src*="app.bundle.js"]');
+      var vv = sc ? (String(sc.getAttribute('src') || '').split('v=')[1] || '') : '';
+      var vd = document.createElement('div'); vd.style.cssText = 'margin-top:8px;font-size:10px;opacity:.45;text-align:center;direction:ltr;';
+      vd.textContent = 'v ' + vv.slice(0, 8) + (typeof navigator.share === 'function' ? ' · share:yes' : ' · share:no');
+      sh.appendChild(vd);
+    }catch(e){ /* guard-ok */ }
     document.body.appendChild(ov);
+    return ov;
   }
   /* v-share-native (المالك: «هذي صور مش من الهاتف نفسه»): داخل غلاف المتجر لا توجد navigator.share،
      والجسر الأصلي يشارك ملفًا فقط — نرسم الردّ بطاقةً صورة بخط الصفحة ونرسلها عبر الجسر، فتفتح
@@ -110,20 +119,37 @@
     text = String(text || '').trim();
     if(!text) return false;
     if(bridgeShare(text)) return true;
-    /* v-share-native-first (أمر المالك ٥ سبتمبر: «في شي يسمونه رسمي مش رسمة من عندك»): ورقة النظام
-       أولًا على كل الأجهزة بما فيها الكمبيوتر. على ويندوز قد تفشل لوحة النظام في الفتح فترفض بـ AbortError
-       فورًا (بلا تدخل المستخدم) — رفض خلال أقل من ١.٥ ثانية = فشل اللوحة لا إلغاء، فنعرض ورقتنا؛
-       أما الإلغاء الحقيقي فيأخذ وقتًا أطول ولا نعرض شيئًا بعده. */
+    /* v-share-native-first (أمر المالك ٥ سبتمبر: «في شي يسمونه رسمي مش رسمة من عندك»): ورقة النظام أولًا.
+       v-share-desktop-both (المالك: «نفس المشكلة» على ويندوز): لوحة ويندوز أحيانًا لا تفتح ولا ترفض ولا
+       يمكن كشفها بيقين. على الكمبيوتر: نطلب لوحة النظام ونعرض ورقتنا خلفها في اللحظة نفسها — إن فتحت
+       اللوحة فهي فوق ورقتنا وتُزال ورقتنا عند اكتمالها أو إلغائها؛ وإن لم تفتح فورقتنا حاضرة. على الجوال:
+       لوحة النظام وحدها، وورقتنا فقط عند رفضها. */
+    var mobile = false;
+    try{ mobile = (typeof omranMobileUA === 'function') ? omranMobileUA() : /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || ''); }catch(e){ mobile = false; }
     if(typeof navigator.share === 'function'){
-      try{
-        var t0 = Date.now();
-        var pr = navigator.share({ text: text });
-        if(pr && pr.catch) pr.catch(function(err){
-          if(err && err.name === 'AbortError' && (Date.now() - t0) > 1500) return;
-          sheet(text);
-        });
+      if(mobile){
+        try{
+          var t0 = Date.now();
+          var pr = navigator.share({ text: text });
+          if(pr && pr.catch) pr.catch(function(err){
+            if(err && err.name === 'AbortError' && (Date.now() - t0) > 1500) return;
+            sheet(text);
+          });
+          return true;
+        }catch(e){ /* guard-ok */ }
+      } else {
+        var ov = null;
+        try{ ov = sheet(text); }catch(e){ ov = null; }
+        try{
+          var t1 = Date.now();
+          var pr2 = navigator.share({ text: text });
+          if(pr2 && pr2.then) pr2.then(function(){ try{ if(ov) ov.remove(); }catch(e){ /* guard-ok */ } }, function(err){
+            /* إلغاء حقيقي من المستخدم (بعد وقت) → لا نُبقي شيئًا؛ فشل فوري → ورقتنا تبقى */
+            if(err && err.name === 'AbortError' && (Date.now() - t1) > 1500){ try{ if(ov) ov.remove(); }catch(e){ /* guard-ok */ } }
+          });
+        }catch(e){ /* guard-ok — ورقتنا حاضرة */ }
         return true;
-      }catch(e){ /* guard-ok */ }
+      }
     }
     sheet(text);
     return true;
