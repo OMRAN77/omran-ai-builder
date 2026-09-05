@@ -179,9 +179,17 @@ function buildSceneUpgradePrompt(userPrompt){
   ].join('\n');
 }
 
+/* v-text-edit (لقطة المالك «شيل حرف م واكتب ع»): تعديل حرف/كلمة على صورة فيها
+   نصوص كثيفة (لقطة شاشة/شعار) كان يعيد رسم الصورة كلها فتتشوّه بقيّة الحروف
+   العربية («٤» و«تعديل» بدل م/ع). القاعدة الإضافية: عند طلب كتابة/حذف حرف أو
+   كلمة، الْمس المنطقة المطلوبة فقط واترك كل حرف آخر مطابقًا حرفًا بحرف. */
+function isTextEditRequest(text){
+  return /\b(?:write|add|remove|delete|erase|replace|change|swap)\b[^\n]{0,40}\b(?:letter|word|text|character|caption|title|logo)\b/i.test(text)
+    || /(?:اكتب|أكتب|اضف|أضف|ضيف|شيل|احذف|امسح|بدّل|بدل|غيّر|غير|استبدل)[^\n]{0,30}(?:حرف|كلمة|كلمه|نص|النص|اسم|عنوان|شعار|رقم)/.test(text);
+}
 function buildEditPrompt(userPrompt){
   const prompt = cleanImagePrompt(userPrompt);
-  return [
+  const rules = [
     'TASK: "' + prompt + '"',
     '',
     'This is a LOCALIZED EDIT of the attached ORIGINAL SOURCE image, not a re-creation. Apply the complete current task directly to this source; do not continue any style or appearance invented by a previous generated result. Rules:',
@@ -191,9 +199,13 @@ function buildEditPrompt(userPrompt){
     '4. Use exactly the named item, brand, model, type and color. Do not substitute or generalize it.',
     '5. Preserve the original image resolution, sharpness, white balance, exposure, saturation and skin tones. Do not add color grading or filters.',
     '6. Never write, draw, translate or render the instruction itself inside the image. Preserve existing text character-for-character unless the USER REQUEST explicitly replaces it.',
-    '7. Never return the image unchanged. Always apply the USER REQUEST as written: if it is short or vague, apply its most reasonable literal interpretation to the closest matching element — changing nothing else. Do not add, invent or improve anything the USER REQUEST did not ask for.',
-    'Re-read the USER REQUEST now: "' + prompt + '". Return only one finished edited image.'
-  ].join('\n');
+    '7. Never return the image unchanged. Always apply the USER REQUEST as written: if it is short or vague, apply its most reasonable literal interpretation to the closest matching element — changing nothing else. Do not add, invent or improve anything the USER REQUEST did not ask for.'
+  ];
+  if(isTextEditRequest(prompt)){
+    rules.push('8. TEXT/LETTER EDIT: touch ONLY the exact letter or word named in the request. Every OTHER letter, word, number and label anywhere in the image must stay identical, character-for-character, in the same font, size, colour and position — do NOT repaint, reflow or re-typeset surrounding text. Render any new Arabic text with correct, cleanly joined right-to-left glyphs. Do NOT insert stray digits, random symbols, or the words of the instruction (like "تعديل"/"edit").');
+  }
+  rules.push('Re-read the USER REQUEST now: "' + prompt + '". Return only one finished edited image.');
+  return rules.join('\n');
 }
 
 /* v-restyle-bold (مقارنة المالك مع ChatGPT «عدل 3d»): طلب تحويل أسلوب كامل
