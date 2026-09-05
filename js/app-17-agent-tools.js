@@ -175,6 +175,14 @@
           if (!instr) return 'تعليمة التعديل فارغة — لم يُعدَّل شيء.';
           var ref = window.__chatVideoReference;
           var srcB64 = ref && ref.dataUrl ? String(ref.dataUrl).split(',')[1] : '';
+          /* v-nano-pro-edit: بلا مرفق في هذا الدور نعود لآخر صورة في المحادثة (المرفوعة أو المولّدة)
+             بدل الاعتذار — فكان النموذج يهرب إلى generate_image ويرسم صورة جديدة بلا علاقة بالمصدر. */
+          if (!srcB64) {
+            try {
+              var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+              if (cur && cur.lastEditedImage && cur.lastEditedImage.b64) { srcB64 = cur.lastEditedImage.b64; ref = { mime: cur.lastEditedImage.mime || 'image/png' }; }
+            } catch (e) { /* guard-ok — المحادثة الحالية اختيارية هنا */ }
+          }
           if (!srcB64) return 'لا توجد صورة مرفقة في هذه الرسالة لتعديلها — اطلب من المستخدم إرفاقها.';
           window.__genImages = window.__genImages || {};
           var er = null, ej = null;
@@ -184,6 +192,7 @@
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 prompt: instr,
+                userText: String(window.__chatLastUserText || '').slice(0, 600),
                 editImageBase64: srcB64,
                 editMimeType: ref.mime || 'image/png',
                 token: (window.authGet && window.authGet('aiapp_auth_token')) || '',

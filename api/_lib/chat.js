@@ -795,7 +795,7 @@ function trailLine(name, input, result) {
       : R('شغّلتُ كودًا — عاد ناتج ' + r.length + ' حرفًا', 'trJsOk', { n: r.length });
   }
   // v-img-engine-tag: اسم المحرك في سطر الأثر (gpt-image أم نانو بنانا).
-  const engTag = /engine:\s*openai/i.test(r) ? ' · gpt-image' : (/engine:/i.test(r) ? ' · نانو بنانا' : '');
+  const engTag = /engine:\s*openai/i.test(r) ? ' · gpt-image' : (/engine:\s*nano-pro/i.test(r) ? ' · نانو بنانا برو' : (/engine:/i.test(r) ? ' · نانو بنانا' : ''));
   if (name === 'generate_image') return /__IMG_/.test(r) ? R('رسمتُ صورة ✅' + engTag, 'trImgOk') : R('تعذّرت الصورة — ' + s(r, 60), 'trImgFail');
   if (name === 'edit_image') return /__IMG_/.test(r) ? R('عدّلتُ الصورة ✅' + engTag, 'trImgOk') : R('تعذّر التعديل — ' + s(r, 60), 'trImgFail');
   if (name === 'get_location') return /رفض|تعذّر|انتهت|لا يدعم|لم يستجب/.test(r) ? R('حاولتُ تحديد موقعك — ' + s(r, 70), 'trLocFail') : R('حدّدتُ موقعك ✅', 'trLocOk');

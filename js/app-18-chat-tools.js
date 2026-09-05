@@ -53,6 +53,7 @@
   window.callChatWithTools = async function (messages, onDelta, provider) {
     window.__chatVideoResult = null;
     window.__chatVideoReference = null;
+    window.__chatLastUserText = '';
     try {
       for (var mi = messages.length - 1; mi >= 0; mi--) {
         var mm = messages[mi];
@@ -60,6 +61,16 @@
           var im = mm.images[mm.images.length - 1];
           if (im && im.dataUrl) { window.__chatVideoReference = { dataUrl: im.dataUrl, mime: im.mime || 'image/png' }; break; }
         }
+      }
+      /* v-nano-pro-edit: أداة edit_image ترسل أمر النموذج بالإنجليزية؛ كلمات المستخدم الأصلية
+         («أقوى/أفخم/فكرة ثانية») تُحفظ هنا ليقرأ الخادم النيّة منها لا من إعادة الصياغة. */
+      for (var ui = messages.length - 1; ui >= 0; ui--) {
+        var um = messages[ui];
+        if (!um || um.role !== 'user') continue;
+        var ut = typeof um.content === 'string' ? um.content
+          : (Array.isArray(um.content) ? um.content.filter(function (c) { return c && c.type === 'text'; }).map(function (c) { return c.text || ''; }).join(' ') : '');
+        window.__chatLastUserText = String(ut || '').slice(0, 600);
+        break;
       }
     } catch (e) { /* guard-ok — مرجع الصورة اختياري ولا يجب أن يمنع المحادثة */ }
     // صور هذا الردّ فقط: تُمسح عند كلّ طلب جديد فلا يتراكم عشرات الميغابايت في

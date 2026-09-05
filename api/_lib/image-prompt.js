@@ -195,20 +195,24 @@ function isRemoveTextRequest(text){
     || /(?:احذف|امسح|شيل|ازل|أزل|نظّف|نظف|اخفِ|اخفي)\s*(?:ال)?(?:أسماء|اسماء|اسم|كتابة|كتابه|النص|نص|نصوص|كلام|حروف|أرقام|ارقام|توقيع|علامة\s*مائية|لوجو|شعار|واتر\s*مارك)/.test(t)
     || /\b(?:remove|erase|delete|clear|without|no)\b[^\n]{0,20}\b(?:names?|text|writing|words?|letters?|numbers?|caption|watermark|logo|signature|labels?)\b/i.test(t);
 }
-/* v-elevate (المالك: «أقوى = نفس الفكرة مرفوعة، لا فكرة جديدة»): طلب «أفضل/أقوى
-   من هذي» يبقي الموضوع والتركيب والمعنى نفسه ويرفع الجودة والإتقان بقوة — لا
-   يخترع مشهدًا جديدًا (كان يحوّل كرت «أنماط الصور» إلى وجه مرصّع بلا علاقة). */
+/* v-elevate (المالك: «أقوى = نفس الفكرة مرفوعة، لا فكرة جديدة») ثم
+   v-nano-pro-edit (المالك: «الصورة المزخرفة من نانو والثانية من التطبيق — النتيجة صفر»):
+   الصياغة السابقة كانت تفرض «خامات واقعية وإضاءة سينمائية» وتمنع أي إضافة، فتخرج
+   صورةً فوتوغرافية باهتة لموضوع الكرت بدل تصميم أغنى. الآن: الفكرة نفسها والتركيب
+   نفسه، لكن مع إثراء ينتمي للموضوع (زخارف، رموز، خطّ عربي صحيح مرتبط بالمعنى، عمق
+   وإضاءة درامية) — وهو ما يفعله نانو بنانا عندما يُطلب منه «أقوى». */
 function buildElevatePrompt(userPrompt){
   const prompt = cleanImagePrompt(userPrompt);
   return [
     'TASK: "' + prompt + '"',
     '',
-    'This is an ELEVATED, stronger version of the attached SOURCE image. Keep the SAME idea: the same main subject, the same overall composition, the same purpose and meaning — the result must be instantly recognizable as an improved version of THIS exact image, NOT a different picture and NOT a new concept. Rules:',
-    '1. Preserve what the image is ABOUT: the same main object/person/scene/product, the same layout and framing intent. Do NOT replace the subject or invent an unrelated artistic concept.',
-    '2. Dramatically raise quality and impact: sharper detail, richer realistic materials and textures, professional cinematic lighting with real depth, refined harmonious colours, cleaner premium composition, higher perceived resolution — a top-tier professional rendition of the SAME thing.',
-    '3. You may tastefully refine styling, background polish, lighting and finish, but stay coherent with the original idea. Do NOT add random unrelated elements (extra faces, jewels, wires, gadgets, effects) that were not in or implied by the source.',
-    '4. Keep any real person recognizably the same person; keep existing text correct.',
-    '5. Never return the image essentially unchanged, and never drift into a completely different scene. Goal: the SAME image, clearly stronger, richer and more beautiful.',
+    'Create a STRONGER, RICHER, far more impressive version of the attached SOURCE image — the SAME idea taken to a much higher level, the way a top art director would "plus" it. Rules:',
+    '1. Same idea, same picture: keep the main subject, the setting, the overall composition, the meaning and the purpose. Anyone who sees the source must instantly recognize the result as the elevated version of THIS image — not a different picture, not a new concept, not a replaced subject.',
+    '2. A subtle polish is a FAILURE. Go big: dramatic cinematic lighting, atmosphere (glow, haze, golden light, reflections, particles), much richer detail and textures, a stronger focal point, refined premium colour grading, real depth and dimensionality.',
+    '3. Enrich with elements that BELONG to the theme of the source: symbolic motifs, ornamental patterns, storytelling details in the background or foreground, and — where it fits the subject — elegant decorative calligraphy or lettering tied to its meaning (only correctly spelled, legible; Arabic in correct right-to-left joined script). Every added element must reinforce the same idea. Never add unrelated objects, random faces, gadgets, jewels, wires or gimmicks.',
+    '4. Match the source medium: a designed graphic, card, poster, icon or illustration becomes a richer, more elaborate design; a real photograph of a place or person stays a believable photograph with upgraded lighting, staging, materials and atmosphere.',
+    '5. Keep any real person recognizably the same person. Keep existing text correct character-for-character unless the request changes it. Never write the instruction itself into the image.',
+    '6. Finish quality: magazine-cover / app-store-hero grade, tack-sharp, coherent, no artifacts, no blur, no toy-like rendering.',
     'Return only one finished, elevated image.'
   ].join('\n');
 }

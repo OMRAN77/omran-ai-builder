@@ -2,7 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { buildGenerationPrompt, buildEditPrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange } = require('../api/_lib/image-prompt');
+const { buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange } = require('../api/_lib/image-prompt');
 const { assessEditVerdict, publicGuardError } = require('../api/_lib/image-edit-guard');
 
 test('generation prompt follows the subject instead of forcing one camera style', () => {
@@ -125,4 +125,19 @@ test('specialized image routes do not expose provider errors to the user', () =>
     assert.doesNotMatch(source, /json\(\{ error: 'Server is missing GEMINI_API_KEY'/);
     assert.doesNotMatch(source, /json\(\{ error: \(frameData && frameData\.error/);
   }
+});
+
+/* v-nano-pro-edit — «أقوى» = الفكرة نفسها مرفوعة بإثراء ينتمي للموضوع، لا صورة فوتوغرافية باهتة */
+test('elevate prompt keeps the same idea but demands thematic enrichment instead of a plain photo', () => {
+  const p = buildElevatePrompt('أقوى');
+  assert.match(p, /TASK: "أقوى"/);
+  assert.match(p, /keep the main subject, the setting, the overall composition, the meaning/);
+  assert.match(p, /A subtle polish is a FAILURE/);
+  assert.match(p, /symbolic motifs, ornamental patterns/);
+  assert.match(p, /decorative calligraphy or lettering/);
+  assert.match(p, /Arabic in correct right-to-left joined script/);
+  assert.match(p, /Never add unrelated objects, random faces, gadgets, jewels, wires or gimmicks/);
+  assert.match(p, /a real photograph of a place or person stays a believable photograph/);
+  assert.doesNotMatch(p, /realistic materials and textures/);
+  assert.doesNotMatch(p, /Do NOT add random unrelated elements \(extra faces, jewels, wires, gadgets, effects\)/);
 });
