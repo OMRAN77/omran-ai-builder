@@ -206,7 +206,17 @@
       let ok = false; try{ ok = navigator.canShare({ files: [file] }); }catch(e){ ok = false; }
       if(ok){
         const t0 = Date.now();
-        try{ await navigator.share({ files: [file], title: 'Omran AI' }); return true; }
+        /* v-share-win-hang: على ويندوز قد تبقى اللوحة معلّقة بلا فتح — إن بقي التركيز في الصفحة
+           بعد ١.٢ ثانية نعتبرها لم تفتح ونكمل للبدائل (الوعد المعلّق يُهمَل). */
+        const winHang = /Windows/i.test(navigator.userAgent || '')
+          ? new Promise((res) => setTimeout(() => res(document.hasFocus() ? 'hang' : 'open'), 1200))
+          : new Promise(() => {});
+        try{
+          const r = await Promise.race([navigator.share({ files: [file], title: 'Omran AI' }).then(() => 'done'), winHang]);
+          if(r === 'open'){ return true; }
+          if(r === 'done') return true;
+          /* 'hang' → نكمل للبدائل */
+        }
         catch(e){ if(e && e.name === 'AbortError' && (Date.now() - t0) > 1500) return true; }
       }
     }

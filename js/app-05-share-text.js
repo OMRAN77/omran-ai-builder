@@ -116,12 +116,20 @@
        أما الإلغاء الحقيقي فيأخذ وقتًا أطول ولا نعرض شيئًا بعده. */
     if(typeof navigator.share === 'function'){
       try{
-        var t0 = Date.now();
+        var t0 = Date.now(), settled = false, shown = false;
+        var fail = function(){ if(shown) return; shown = true; sheet(text); };
         var pr = navigator.share({ text: text });
-        if(pr && pr.catch) pr.catch(function(err){
+        if(pr && pr.then) pr.then(function(){ settled = true; }, function(err){
+          settled = true;
           if(err && err.name === 'AbortError' && (Date.now() - t0) > 1500) return;
-          sheet(text);
+          fail();
         });
+        /* v-share-win-hang (المالك: «ما في شي جديد» على ويندوز): لوحة ويندوز أحيانًا لا تفتح ولا ترفض —
+           الوعد يبقى معلّقًا. اللوحة الحقيقية تأخذ التركيز من الصفحة؛ فإن بقي التركيز في الصفحة بعد
+           ١.٢ ثانية والوعد معلّقًا، فاللوحة لم تفتح → ورقتنا. ويندوز فقط (على ماك اللوحة لا تأخذ التركيز). */
+        if(/Windows/i.test(navigator.userAgent || '')){
+          setTimeout(function(){ try{ if(!settled && document.hasFocus()) fail(); }catch(e){ /* guard-ok */ } }, 1200);
+        }
         return true;
       }catch(e){ /* guard-ok */ }
     }
