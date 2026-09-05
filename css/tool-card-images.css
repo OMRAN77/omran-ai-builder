@@ -66,5 +66,7 @@ html[data-mode="light"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .tcArrow{b
   #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcIco svg{width:13px!important; height:13px!important;}
 }
 /* v-live-cards: شريحة بيانات حيّة على صورة البطاقة */
-#sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcLive{position:absolute; top:8px; inset-inline-end:8px; max-width:calc(100% - 52px); padding:4px 9px; border-radius:999px; font-size:11px; font-weight:800; line-height:1.2; color:#f3efe4; background:rgba(7,7,9,.74); border:1px solid color-mix(in srgb, var(--tc,#d4af37) 70%, transparent); backdrop-filter:blur(4px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; direction:ltr; unicode-bidi:plaintext;}
-@media (max-width:600px){#sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcLive{font-size:10px; padding:3px 7px; top:6px; inset-inline-end:6px;}}
+#sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcLive{position:absolute; top:8px; right:8px; left:auto; max-width:calc(100% - 52px); padding:4px 9px; border-radius:999px; font-size:11px; font-weight:800; line-height:1.2; color:#f3efe4; background:rgba(7,7,9,.74); border:1px solid color-mix(in srgb, var(--tc,#d4af37) 70%, transparent); backdrop-filter:blur(4px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; direction:ltr; unicode-bidi:plaintext;}
+/* الاتجاه المحلي للشريحة LTR فلا نعتمد inline-end (كانت تقفز فوق شارة الأيقونة في العربية) */
+html[dir="rtl"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcLive{left:8px; right:auto;}
+@media (max-width:600px){#sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcLive{font-size:10px; padding:3px 7px; top:6px; right:6px;} html[dir="rtl"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcLive{left:6px; right:auto;}}
