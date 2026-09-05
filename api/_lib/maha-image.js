@@ -347,8 +347,14 @@ module.exports = async (req, res) => {
        عربية سليمة — gpt-image ينفّذها وGemini يكسر الحروف): طلب توليد جديد
        يذكر نصوصًا/عناوين/أيقونات/واجهة/شاشة يبدأ أيضًا بـgpt-image. */
     const __textCueRe = /نص|كتاب|مكتوب|عنوان|عناوين|أيقون|ايقون|واجهة|شاشة|تطبيق|قائمة|كلمات|حروف|خط\s*عرب|\btext\b|label|icon|\bui\b|screen|interface|\bapp\b|menu|typograph|lettering|caption/i;
-    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !rawMode
-      && (editImageBase64 ? await sourceLooksTextDense() : __textCueRe.test(cleanPrompt));
+    /* v-textedit-raw (لقطة المالك «شيل حرف م واكتب ع» رجعت مشوّهة «٤/تعديل»):
+       تعديل مصدرٍ نصّيٍّ كثيف (لقطة شاشة/شعار) هو بالضبط ما يكسر فيه Gemini
+       الحروف العربية، وgpt-image-1 بـinput_fidelity=high ينقلها كما هي. كان
+       هذا المسار معطّلًا افتراضيًا لأن الوضع الخام (نانو) هو الافتراضي (!rawMode).
+       الآن: للتعديل على مصدر نصّي كثيف يعمل المسار حتى في الوضع الخام؛ ويبقى
+       الوضع الخام نقيًّا للتوليد الجديد. */
+    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan
+      && (editImageBase64 ? await sourceLooksTextDense() : (!rawMode && __textCueRe.test(cleanPrompt)));
     /* v-duo-textroute (لقطة المالك: لقطة واجهة + «عطني أفضل ونفس الفكرة» → فنجان قهوة): مسار النصّ الكثيف كان
        يرجع ناتج gpt-image وحده بلا Gemini ولا حكم. الآن يعمل المحرّكان معًا هنا أيضًا والحكم يختار. */
     let densePromise = null;
