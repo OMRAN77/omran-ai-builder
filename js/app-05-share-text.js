@@ -110,7 +110,12 @@
     text = String(text || '').trim();
     if(!text) return false;
     if(bridgeShare(text)) return true;
-    if(typeof navigator.share === 'function'){
+    /* v-share-desktop (فيديو المالك ٥ سبتمبر: زر المشاركة على الكمبيوتر يضغط ولا يظهر شيء):
+       navigator.share على ويندوز/ماك يفتح لوحة نظام قد لا تظهر أو تعلّق بلا رفض — على الكمبيوتر
+       نعرض ورقتنا مباشرة (واتساب ويب، تيليجرام، X، البريد، نسخ). ورقة النظام للجوال فقط. */
+    var mobile = false;
+    try{ mobile = (typeof omranMobileUA === 'function') ? omranMobileUA() : /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || ''); }catch(e){ mobile = false; }
+    if(mobile && typeof navigator.share === 'function'){
       try{
         var pr = navigator.share({ text: text });
         if(pr && pr.catch) pr.catch(function(err){ if(err && err.name === 'AbortError') return; sheet(text); });
