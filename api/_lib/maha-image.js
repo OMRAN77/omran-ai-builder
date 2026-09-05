@@ -331,18 +331,25 @@ module.exports = async (req, res) => {
     const __textCueRe = /نص|كتاب|مكتوب|عنوان|عناوين|أيقون|ايقون|واجهة|شاشة|تطبيق|قائمة|كلمات|حروف|خط\s*عرب|\btext\b|label|icon|\bui\b|screen|interface|\bapp\b|menu|typograph|lettering|caption/i;
     const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !rawMode
       && (editImageBase64 ? await sourceLooksTextDense() : __textCueRe.test(cleanPrompt));
+    /* v-duo-textroute (لقطة المالك: لقطة واجهة + «عطني أفضل ونفس الفكرة» → فنجان قهوة): مسار النصّ الكثيف كان
+       يرجع ناتج gpt-image وحده بلا Gemini ولا حكم. الآن يعمل المحرّكان معًا هنا أيضًا والحكم يختار. */
+    let densePromise = null;
     if (__textRoute) {
-      const denseB64 = await openaiRescueImage();
-      if (denseB64) {
-        res.status(200).json({ imageBase64: denseB64, mimeType: 'image/png', engine: 'openai', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined });
-        return;
+      if (duoEnabled() && !pipelineActive) {
+        densePromise = openaiRescueImage().catch(function () { return null; });
+      } else {
+        const denseB64 = await openaiRescueImage();
+        if (denseB64) {
+          res.status(200).json({ imageBase64: denseB64, mimeType: 'image/png', engine: 'openai', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined });
+          return;
+        }
       }
     }
 
     /* v-image-duo: gpt-image يعمل بالتوازي مع Gemini على الطلب نفسه؛ الحكم يختار الأدقّ في النهاية.
        يُستثنى الدعاء المؤلَّف وخط الأنابيب (لهما تحقّق خاص) وما سلك مسار النصّ الكثيف. */
-    const duoOn = duoEnabled() && !prayerPlan && !pipelineActive && !__textRoute && !rawMode;
-    const duoP = duoOn ? openaiRescueImage().catch(function () { return null; }) : null;
+    const duoOn = duoEnabled() && !prayerPlan && !pipelineActive && !rawMode && (!__textRoute || !!densePromise);
+    const duoP = duoOn ? (densePromise || openaiRescueImage().catch(function () { return null; })) : null;
     let duoEngine = '';
     // Image generation normally takes 35–50 seconds, so it must bypass the
     // shared 30-second fetch guard. Retry transient failures inside this one
