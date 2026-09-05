@@ -238,6 +238,7 @@ I18N['tr'] = {
     "copyCodeTitle": "Kodu kopyala",
     "copiedMsg": "Kopyalandı ✅",
     "copyMsgTitle": "Yanıtı kopyala",
+    "psheetAll": "Tümü", "psheetGrpArt": "🎨 Sanatsal", "psheetBefore": "Önce", "psheetBeforeSub": "Tek fotoğraf → her stil", "psheetTry": "✨ Kendi fotoğrafında dene",
     "tcSub_btnPortraitStyle": "Geniş bir portre stili yelpazesi", "tcSub_btnQuickTemplates": "Sonraki projeleriniz için fikir ve ilham", "tcSub_btnVideoMaker": "Profesyonel video oluşturma ve düzenleme", "tcSub_btnStudioAI": "Akıllı stiller ve efektler", "tcSub_btnFashionAI": "Yapay zekâ ile moda tasarımı", "tcSub_btnDesignAI": "İç ve dış mekân dekorasyon tasarımı", "tcSub_btnAdStudio": "Profesyonel reklam tasarımı", "tcSub_btnStocks": "Piyasa analizleri ve verileri", "tcSub_btnOmranTV": "Sınırsız içerik ve eğlence", "tcSub_btnQibla": "Namaz vakitleri ve kıble yönü", "tcSub_btnExpense": "Harcama ve bütçe yönetimi", "tcSub_btnOmranEdu": "Kurslar ve dersler", "tcSub_btnConstruction": "Mühendislik ve mimari tasarımlar", "tcSub_btnReligion": "Dini sorular, güvenilir cevaplar", "tcSub_btnCV": "Profesyonel CV oluşturun", "tcSub_btnDocs": "Belgeleri analiz edin ve özetleyin", "tcSub_btnFeedback": "Görüş ve önerilerinizi paylaşın", "tcSub_btnEmailAssist": "E-posta ve yanıt yazımı",
     "msgShareReply": "Yanıtı paylaş",
     "msgShareCopied": "Yanıt kopyalandı — istediğiniz uygulamaya yapıştırın",

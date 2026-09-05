@@ -2539,7 +2539,7 @@ const I18N = {
     voiceTabAssistantName: 'المساعد',
     copyCode: 'نسخ',
     copiedMsg: 'تم النسخ ✅',
-    copyMsgTitle: 'نسخ الردّ', 'tcSub_btnPortraitStyle': 'مجموعة متنوعة من أنماط الصور', 'tcSub_btnQuickTemplates': 'أفكار وإلهام لمشاريعك القادمة', 'tcSub_btnVideoMaker': 'إنشاء وتحرير الفيديو باحترافية', 'tcSub_btnStudioAI': 'أنماط وتأثيرات ذكية', 'tcSub_btnFashionAI': 'تصميم أزياء بالذكاء الاصطناعي', 'tcSub_btnDesignAI': 'تصميم الديكور الداخلي والخارجي', 'tcSub_btnAdStudio': 'تصميم إعلانات احترافية', 'tcSub_btnStocks': 'تحليلات وبيانات الأسواق', 'tcSub_btnOmranTV': 'محتوى وترفيه بلا حدود', 'tcSub_btnQibla': 'مواقيت الصلاة واتجاه القبلة', 'tcSub_btnExpense': 'إدارة المصاريف والميزانيات', 'tcSub_btnOmranEdu': 'كورسات ودروس تعليمية', 'tcSub_btnConstruction': 'تصميمات هندسية ومعمارية', 'tcSub_btnReligion': 'أسئلة دينية وإجابات موثوقة', 'tcSub_btnCV': 'إنشاء سيرة ذاتية احترافية', 'tcSub_btnDocs': 'تحليل وتلخيص المستندات', 'tcSub_btnFeedback': 'شاركنا رأيك واقتراحاتك', 'tcSub_btnEmailAssist': 'صياغة الرسائل والردود', msgShareReply: 'مشاركة الردّ', msgShareCopied: 'نُسخ الردّ — الصقه في التطبيق الذي تريده',
+    copyMsgTitle: 'نسخ الردّ', 'psheetAll': 'الكل', 'psheetGrpArt': '🎨 فنية', 'psheetBefore': 'قبل', 'psheetBeforeSub': 'صورة واحدة → كل الستايلات', 'psheetTry': '✨ جرّب على صورتك', 'tcSub_btnPortraitStyle': 'مجموعة متنوعة من أنماط الصور', 'tcSub_btnQuickTemplates': 'أفكار وإلهام لمشاريعك القادمة', 'tcSub_btnVideoMaker': 'إنشاء وتحرير الفيديو باحترافية', 'tcSub_btnStudioAI': 'أنماط وتأثيرات ذكية', 'tcSub_btnFashionAI': 'تصميم أزياء بالذكاء الاصطناعي', 'tcSub_btnDesignAI': 'تصميم الديكور الداخلي والخارجي', 'tcSub_btnAdStudio': 'تصميم إعلانات احترافية', 'tcSub_btnStocks': 'تحليلات وبيانات الأسواق', 'tcSub_btnOmranTV': 'محتوى وترفيه بلا حدود', 'tcSub_btnQibla': 'مواقيت الصلاة واتجاه القبلة', 'tcSub_btnExpense': 'إدارة المصاريف والميزانيات', 'tcSub_btnOmranEdu': 'كورسات ودروس تعليمية', 'tcSub_btnConstruction': 'تصميمات هندسية ومعمارية', 'tcSub_btnReligion': 'أسئلة دينية وإجابات موثوقة', 'tcSub_btnCV': 'إنشاء سيرة ذاتية احترافية', 'tcSub_btnDocs': 'تحليل وتلخيص المستندات', 'tcSub_btnFeedback': 'شاركنا رأيك واقتراحاتك', 'tcSub_btnEmailAssist': 'صياغة الرسائل والردود', msgShareReply: 'مشاركة الردّ', msgShareCopied: 'نُسخ الردّ — الصقه في التطبيق الذي تريده',
     adStudioTitle: 'استوديو الإعلانات',
     adStudioHint: 'استوديو الإعلانات — اصنع إعلانك بالمحادثة',
     appTitle: 'مُنشئ التطبيقات بالذكاء الاصطناعي',
@@ -3730,7 +3730,7 @@ const I18N = {
     copyCode: 'Copy',
     copyCodeTitle: 'Copy code',
     copiedMsg: 'Copied ✅',
-    copyMsgTitle: 'Copy reply', 'tcSub_btnPortraitStyle': 'A wide range of portrait styles', 'tcSub_btnQuickTemplates': 'Ideas and inspiration for your next projects', 'tcSub_btnVideoMaker': 'Create and edit videos professionally', 'tcSub_btnStudioAI': 'Smart styles and effects', 'tcSub_btnFashionAI': 'AI-powered fashion design', 'tcSub_btnDesignAI': 'Interior and exterior decor design', 'tcSub_btnAdStudio': 'Professional ad design', 'tcSub_btnStocks': 'Market analytics and data', 'tcSub_btnOmranTV': 'Unlimited content and entertainment', 'tcSub_btnQibla': 'Prayer times and Qibla direction', 'tcSub_btnExpense': 'Manage expenses and budgets', 'tcSub_btnOmranEdu': 'Courses and lessons', 'tcSub_btnConstruction': 'Engineering and architectural designs', 'tcSub_btnReligion': 'Religious questions, trusted answers', 'tcSub_btnCV': 'Build a professional CV', 'tcSub_btnDocs': 'Analyze and summarize documents', 'tcSub_btnFeedback': 'Share your feedback and ideas', 'tcSub_btnEmailAssist': 'Draft emails and replies', msgShareReply: 'Share reply', msgShareCopied: 'Reply copied — paste it in the app you want',
+    copyMsgTitle: 'Copy reply', 'psheetAll': 'All', 'psheetGrpArt': '🎨 Artistic', 'psheetBefore': 'Before', 'psheetBeforeSub': 'One photo → every style', 'psheetTry': '✨ Try it on your photo', 'tcSub_btnPortraitStyle': 'A wide range of portrait styles', 'tcSub_btnQuickTemplates': 'Ideas and inspiration for your next projects', 'tcSub_btnVideoMaker': 'Create and edit videos professionally', 'tcSub_btnStudioAI': 'Smart styles and effects', 'tcSub_btnFashionAI': 'AI-powered fashion design', 'tcSub_btnDesignAI': 'Interior and exterior decor design', 'tcSub_btnAdStudio': 'Professional ad design', 'tcSub_btnStocks': 'Market analytics and data', 'tcSub_btnOmranTV': 'Unlimited content and entertainment', 'tcSub_btnQibla': 'Prayer times and Qibla direction', 'tcSub_btnExpense': 'Manage expenses and budgets', 'tcSub_btnOmranEdu': 'Courses and lessons', 'tcSub_btnConstruction': 'Engineering and architectural designs', 'tcSub_btnReligion': 'Religious questions, trusted answers', 'tcSub_btnCV': 'Build a professional CV', 'tcSub_btnDocs': 'Analyze and summarize documents', 'tcSub_btnFeedback': 'Share your feedback and ideas', 'tcSub_btnEmailAssist': 'Draft emails and replies', msgShareReply: 'Share reply', msgShareCopied: 'Reply copied — paste it in the app you want',
     uploadCodeTitle: 'Upload a code file (HTML or Python)',
     newProject: '+ New Project',
     promptPlaceholder: 'Type your message here ...',
@@ -4420,7 +4420,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=665'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
+    sc.src = 'i18n/' + lg + '.js?v=666'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -22834,10 +22834,70 @@ function stuL(ar, en){
     const nameEl = $('#portraitStyleTriggerName'); if(nameEl) nameEl.textContent = opt ? opt.textContent : '';
     const subEl = $('#portraitStyleTriggerSub'); if(subEl) subEl.textContent = pstyleSub(styleEl.value);
   }
+  /* v-psheet-oneface (فكرة المالك ٥ سبتمبر: نفس الوجه عبر كل الأنماط، فلتر فئات، بطاقة «قبل»،
+     لمعة عند التمرير، وزر «جرّب على صورتك»): */
+  function gt(k, ar, en){ try{ if(typeof window.t === 'function'){ var v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* guard-ok */ } return pstyleLang().indexOf('ar') === 0 ? ar : en; }
+  let pstyleFilter = 'all';
+  function pstyleGroupOf(opt){
+    const g = opt.parentElement;
+    if(!g || g.tagName !== 'OPTGROUP' || g.id === 'portraitFavGroup') return 'art';
+    return (g.getAttribute('data-i18n') || g.getAttribute('label') || 'art').replace(/^\[label\]/, '');
+  }
+  function pstyleGroups(){
+    const out = [{ k: 'all', label: gt('psheetAll', 'الكل', 'All') }, { k: 'art', label: gt('psheetGrpArt', '🎨 فنية', '🎨 Artistic') }];
+    Array.from(styleEl.querySelectorAll('optgroup')).forEach((g) => {
+      if(g.id === 'portraitFavGroup') return;
+      const k = (g.getAttribute('data-i18n') || '').replace(/^\[label\]/, '');
+      if(!k) return;
+      out.push({ k, label: gt(k, g.getAttribute('label') || k, g.getAttribute('label') || k) });
+    });
+    return out;
+  }
+  function ensurePsheetCss(){
+    if(document.getElementById('psheetCss')) return;
+    const st = document.createElement('style'); st.id = 'psheetCss';
+    st.textContent = '.pstyleCard{transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease; position:relative;}'
+      + '.pstyleCard:hover,.pstyleCard:focus-visible{transform:scale(1.035); border-color:#d4af37 !important; box-shadow:0 0 0 2px rgba(212,175,55,.35), 0 12px 30px rgba(0,0,0,.45), 0 0 26px rgba(212,175,55,.35) !important; outline:none; z-index:1;}'
+      + '.pstyleCard::after{content:""; position:absolute; inset:0; pointer-events:none; background:linear-gradient(115deg,transparent 40%,rgba(255,238,180,.22) 50%,transparent 60%); background-size:250% 100%; background-position:160% 0; opacity:0; transition:opacity .18s;}'
+      + '.pstyleCard:hover::after{opacity:1; animation:pstyleSheen 1.1s ease forwards;}'
+      + '@keyframes pstyleSheen{from{background-position:160% 0}to{background-position:-60% 0}}'
+      + '.pstyleChips{display:flex; gap:8px; overflow-x:auto; padding:10px 14px 4px; scrollbar-width:none;}'
+      + '.pstyleChips::-webkit-scrollbar{display:none}'
+      + '.pstyleChip{flex:0 0 auto; border-radius:999px; padding:7px 13px; font-size:12.5px; font-weight:700; border:1px solid rgba(212,175,55,.35); background:rgba(255,255,255,.04); color:#eef0f6; cursor:pointer; font-family:inherit;}'
+      + '.pstyleChip.on{background:#d4af37; color:#141414; border-color:#d4af37;}'
+      + '.pstyleBefore{border:2px solid rgba(212,175,55,.75) !important; box-shadow:0 0 18px rgba(212,175,55,.3) !important; cursor:default !important;}'
+      + '.pstyleCta{display:block; width:min(420px, calc(100% - 28px)); margin:14px auto 8px; padding:14px 18px; border-radius:999px; background:linear-gradient(135deg,#f1d98a,#d4af37 55%,#b8902a); color:#141414; font-weight:800; font-size:15px; border:none; cursor:pointer; box-shadow:0 8px 24px rgba(212,175,55,.35); font-family:inherit;}'
+      + '.pstyleCta:active{transform:scale(.985)}';
+    document.head.appendChild(st);
+  }
+  function ensurePsheetChrome(){
+    ensurePsheetCss();
+    const scroller = styleCardsGrid.parentElement; if(!scroller) return;
+    let chips = document.getElementById('portraitStyleChips');
+    if(!chips){ chips = document.createElement('div'); chips.id = 'portraitStyleChips'; chips.className = 'pstyleChips'; scroller.insertBefore(chips, styleCardsGrid); }
+    chips.innerHTML = '';
+    pstyleGroups().forEach((g) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'pstyleChip' + (pstyleFilter === g.k ? ' on' : ''); b.textContent = g.label;
+      b.onclick = function(){ pstyleFilter = g.k; renderPortraitStyleCards(); };
+      chips.appendChild(b);
+    });
+    let cta = document.getElementById('portraitStyleCta');
+    if(!cta){
+      cta = document.createElement('button'); cta.type = 'button'; cta.id = 'portraitStyleCta'; cta.className = 'pstyleCta';
+      cta.onclick = function(){
+        if(styleSheet) styleSheet.style.display = 'none';
+        const fb = $('#portraitStyleFileBtn') || $('#portraitStyleFileInput');
+        if(fb){ try{ fb.click(); }catch(e){ /* guard-ok */ } }
+      };
+      scroller.appendChild(cta);
+    }
+    cta.textContent = gt('psheetTry', '✨ جرّب على صورتك', '✨ Try it on your photo');
+  }
   function renderPortraitStyleCards(){
     if(!styleCardsGrid || !styleEl) return;
+    ensurePsheetChrome();
     const favs = getFavs();
-    const opts = pstyleOpts();
+    const opts = pstyleOpts().filter((o) => pstyleFilter === 'all' || pstyleGroupOf(o) === pstyleFilter);
     /* v-psub-ar-only: سطر العدّاد صار مفتاح ترجمة لكل اللغات بدل عربي/إنجليزي فقط.
        ملاحظة: t المحلية في هذا الملف تعرف عربي/إنجليزي فقط وتحجب المترجم
        العام — نستدعي window.t (مترجم اللغات الـ14) صراحةً. */
@@ -22847,12 +22907,28 @@ function stuL(ar, en){
       styleSheetCount.textContent = opts.length + ' ' + __cntSuffix;
     }
     styleCardsGrid.innerHTML = '';
+    /* بطاقة «قبل»: الوجه المرجعي الذي تحوّل إلى كل البطاقات — Before → كل الأنماط */
+    (function(){
+      const bc = document.createElement('div'); bc.className = 'pstyleCard pstyleBefore'; bc.setAttribute('data-pstyle-before', '1');
+      bc.style.cssText = 'border-radius:14px; overflow:hidden; background:#17171b; border:1px solid var(--border,#2a2a30);';
+      const w = document.createElement('div'); w.style.cssText = 'position:relative; aspect-ratio:3/4; background:linear-gradient(160deg,#23232a,#101014);';
+      const im = document.createElement('img'); im.src = 'assets/portrait/before.webp'; im.alt = ''; im.loading = 'eager';
+      im.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;'; im.onerror = function(){ im.remove(); };
+      const tag = document.createElement('div'); tag.textContent = gt('psheetBefore', 'قبل', 'Before');
+      tag.style.cssText = 'position:absolute; top:6px; inset-inline-start:7px; padding:3px 9px; border-radius:999px; background:#d4af37; color:#141414; font-weight:800; font-size:11.5px;';
+      w.appendChild(im); w.appendChild(tag);
+      const info = document.createElement('div'); info.style.cssText = 'padding:9px 10px 11px; text-align:center;';
+      const n = document.createElement('div'); n.textContent = gt('psheetBefore', 'قبل', 'Before'); n.style.cssText = 'font-size:12.5px; font-weight:700; color:#d4af37;';
+      const sb = document.createElement('div'); sb.textContent = gt('psheetBeforeSub', 'صورة واحدة → كل الستايلات', 'One photo → every style'); sb.style.cssText = 'font-size:10.5px; color:#9a9a9e; margin-top:3px; min-height:13px;';
+      info.appendChild(n); info.appendChild(sb); bc.appendChild(w); bc.appendChild(info);
+      styleCardsGrid.appendChild(bc);
+    })();
     opts.forEach((opt) => {
       const v = opt.value;
       const active = v === styleEl.value;
       const title = optLabel(opt).trim();
       const card = document.createElement('div');
-      card.setAttribute('data-pstyle-card', v);
+      card.setAttribute('data-pstyle-card', v); card.className = 'pstyleCard'; card.tabIndex = 0;
       card.style.cssText = 'border-radius:14px; overflow:hidden; cursor:pointer; background:#17171b;' +
         (active ? ' border:2px solid #d4af37; box-shadow:0 0 14px rgba(212,175,55,.3);' : ' border:1px solid var(--border,#2a2a30);');
       const imgWrap = document.createElement('div');

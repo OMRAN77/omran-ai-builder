@@ -239,6 +239,7 @@ I18N['ru'] = {
     "copyCodeTitle": "Копировать код",
     "copiedMsg": "Скопировано ✅",
     "copyMsgTitle": "Копировать ответ",
+    "psheetAll": "Все", "psheetGrpArt": "🎨 Художественные", "psheetBefore": "До", "psheetBeforeSub": "Одно фото → все стили", "psheetTry": "✨ Попробуйте на своём фото",
     "tcSub_btnPortraitStyle": "Широкий выбор стилей портрета", "tcSub_btnQuickTemplates": "Идеи и вдохновение для новых проектов", "tcSub_btnVideoMaker": "Создавайте и монтируйте видео профессионально", "tcSub_btnStudioAI": "Умные стили и эффекты", "tcSub_btnFashionAI": "Дизайн одежды с помощью ИИ", "tcSub_btnDesignAI": "Дизайн интерьера и экстерьера", "tcSub_btnAdStudio": "Профессиональный дизайн рекламы", "tcSub_btnStocks": "Аналитика и данные рынков", "tcSub_btnOmranTV": "Контент и развлечения без границ", "tcSub_btnQibla": "Время молитв и направление киблы", "tcSub_btnExpense": "Учёт расходов и бюджетов", "tcSub_btnOmranEdu": "Курсы и уроки", "tcSub_btnConstruction": "Инженерные и архитектурные проекты", "tcSub_btnReligion": "Религиозные вопросы, надёжные ответы", "tcSub_btnCV": "Создайте профессиональное резюме", "tcSub_btnDocs": "Анализ и краткое изложение документов", "tcSub_btnFeedback": "Поделитесь мнением и идеями", "tcSub_btnEmailAssist": "Составление писем и ответов",
     "msgShareReply": "Поделиться ответом",
     "msgShareCopied": "Ответ скопирован — вставьте его в нужное приложение",

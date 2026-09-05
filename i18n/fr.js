@@ -39,6 +39,7 @@ I18N['fr'] = {
     convertToWord: 'Convertir en Word',
     copiedToast: 'Copié',
     copyMsgTitle: 'Copier la réponse',
+    'psheetAll': 'Tout', 'psheetGrpArt': '🎨 Artistiques', 'psheetBefore': 'Avant', 'psheetBeforeSub': 'Une photo → tous les styles', 'psheetTry': '✨ Essayez sur votre photo',
     'tcSub_btnPortraitStyle': 'Une large gamme de styles de portrait', 'tcSub_btnQuickTemplates': 'Idées et inspiration pour vos prochains projets', 'tcSub_btnVideoMaker': 'Créez et montez des vidéos comme un pro', 'tcSub_btnStudioAI': 'Styles et effets intelligents', 'tcSub_btnFashionAI': 'Création de mode par IA', 'tcSub_btnDesignAI': 'Design de décoration intérieure et extérieure', 'tcSub_btnAdStudio': 'Création de publicités professionnelles', 'tcSub_btnStocks': 'Analyses et données des marchés', 'tcSub_btnOmranTV': 'Contenu et divertissement sans limites', 'tcSub_btnQibla': 'Horaires de prière et direction de la Qibla', 'tcSub_btnExpense': 'Gérez dépenses et budgets', 'tcSub_btnOmranEdu': 'Cours et leçons', 'tcSub_btnConstruction': 'Conceptions d’ingénierie et d’architecture', 'tcSub_btnReligion': 'Questions religieuses, réponses fiables', 'tcSub_btnCV': 'Créez un CV professionnel', 'tcSub_btnDocs': 'Analysez et résumez des documents', 'tcSub_btnFeedback': 'Partagez votre avis et vos idées', 'tcSub_btnEmailAssist': 'Rédigez e-mails et réponses',
     msgShareReply: 'Partager la réponse',
     msgShareCopied: 'Réponse copiée — collez-la dans l’app de votre choix',

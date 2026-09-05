@@ -68,6 +68,10 @@ const STYLE_SOURCE = {
   familystyle: 'm1', stickerpack: 'k2', celebtoon: 'k1', restore: 'm1', colorize: 'w3',
   upscale: 'm1', objectremove: 'm2', productshot: 'm1', newborn: 'k2', avatargif: 'm2',
 };
+// v-psheet-oneface (فكرة المالك ٥ سبتمبر): وجه مرجعي واحد (m1 — نفس assets/portrait/before.webp)
+// يمرّ على كل الأنماط، فتقرأ البطاقات «قبل → كل الأنماط». ONE_FACE=0 يعيد التنويع القديم.
+const ONE_FACE = process.env.ONE_FACE !== '0';
+if (ONE_FACE) Object.keys(STYLE_SOURCE).forEach((k) => { STYLE_SOURCE[k] = 'm1'; });
 const t0 = Date.now();
 const el = () => String(Date.now() - t0).padStart(6, ' ') + 'ms';
 

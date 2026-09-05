@@ -240,6 +240,7 @@ I18N['ml'] = {
     "copyCodeTitle": "കോഡ് കോപ്പി ചെയ്യുക",
     "copiedMsg": "കോപ്പി ചെയ്തു ✅",
     "copyMsgTitle": "മറുപടി കോപ്പി ചെയ്യുക",
+    "psheetAll": "എല്ലാം", "psheetGrpArt": "🎨 കലാപരം", "psheetBefore": "മുമ്പ്", "psheetBeforeSub": "ഒരു ഫോട്ടോ → എല്ലാ ശൈലികളും", "psheetTry": "✨ നിങ്ങളുടെ ഫോട്ടോയിൽ പരീക്ഷിക്കുക",
     "tcSub_btnPortraitStyle": "വൈവിധ്യമാർന്ന പോർട്രെയ്റ്റ് ശൈലികൾ", "tcSub_btnQuickTemplates": "അടുത്ത പ്രോജക്ടുകൾക്കുള്ള ആശയങ്ങളും പ്രചോദനവും", "tcSub_btnVideoMaker": "പ്രൊഫഷണലായി വീഡിയോ നിർമ്മിക്കുകയും എഡിറ്റ് ചെയ്യുകയും ചെയ്യുക", "tcSub_btnStudioAI": "സ്മാർട്ട് ശൈലികളും ഇഫക്ടുകളും", "tcSub_btnFashionAI": "AI ഫാഷൻ ഡിസൈൻ", "tcSub_btnDesignAI": "ഇന്റീരിയർ, എക്സ്റ്റീരിയർ ഡെക്കോർ ഡിസൈൻ", "tcSub_btnAdStudio": "പ്രൊഫഷണൽ പരസ്യ ഡിസൈൻ", "tcSub_btnStocks": "വിപണി വിശകലനവും ഡാറ്റയും", "tcSub_btnOmranTV": "പരിധിയില്ലാത്ത ഉള്ളടക്കവും വിനോദവും", "tcSub_btnQibla": "നമസ്കാര സമയങ്ങളും ഖിബ്‌ല ദിശയും", "tcSub_btnExpense": "ചെലവുകളും ബജറ്റും കൈകാര്യം ചെയ്യുക", "tcSub_btnOmranEdu": "കോഴ്‌സുകളും പാഠങ്ങളും", "tcSub_btnConstruction": "എൻജിനീയറിംഗ്, വാസ്തുവിദ്യാ ഡിസൈനുകൾ", "tcSub_btnReligion": "മതപരമായ ചോദ്യങ്ങൾ, വിശ്വസനീയ ഉത്തരങ്ങൾ", "tcSub_btnCV": "പ്രൊഫഷണൽ CV തയ്യാറാക്കുക", "tcSub_btnDocs": "രേഖകൾ വിശകലനം ചെയ്ത് സംഗ്രഹിക്കുക", "tcSub_btnFeedback": "നിങ്ങളുടെ അഭിപ്രായവും നിർദ്ദേശങ്ങളും പങ്കിടുക", "tcSub_btnEmailAssist": "ഇമെയിലുകളും മറുപടികളും തയ്യാറാക്കുക",
     "msgShareReply": "മറുപടി പങ്കിടുക",
     "msgShareCopied": "മറുപടി കോപ്പി ചെയ്തു — ഇഷ്ടമുള്ള ആപ്പിൽ പേസ്റ്റ് ചെയ്യുക",
