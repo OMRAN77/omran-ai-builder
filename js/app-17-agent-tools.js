@@ -143,10 +143,11 @@
           /* v-nano-pro-edit (تتبّع المالك: صورة مرفقة + «أقوى» → النموذج اختار generate_image فرسم مسجدًا آخر
              بلا علاقة): إن كانت كلمات المستخدم نفسها طلبًا إبداعيًا على صورته المرفقة في هذا الدور، فالصورة
              الجديدة تُبنى على المصدر (تعديل) لا من الوصف وحده. */
-          var gUserText = String((args && args.userText) || window.__chatLastUserText || '').slice(0, 600);
+          var gUserText = String((args && args.userText) || window.__chatLastUserText || '').replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600);
           var gRef = window.__chatVideoReference;
           var gRefB64 = gRef && gRef.dataUrl ? String(gRef.dataUrl).split(',')[1] : '';
-          var gCreative = !!(gRefB64 && gUserText && gUserText.length <= 160 && typeof __IMG_CREATIVE_RE !== 'undefined' && __IMG_CREATIVE_RE.test(gUserText) && !/[؟?]\s*$/.test(gUserText));
+          var gNewImage = /(?:صور[ةه]|كرت|بطاق[ةه]|تصميم|لوجو|شعار|بوستر|بنر|غلاف)\s*(?:جديد[ةه]?|ثاني[ةه]?|أخرى|اخرى|غير)|(?:^|[\s،,])(?:ارسم|أرسم|اصنع|انشئ|أنشئ|صمم|صمّم|ولّد|ولد|draw|create|generate|design)\s*(?:لي\s*)?(?:صور[ةه]|كرت|بطاق[ةه]|لوجو|شعار|بوستر|بنر|image|picture|card|logo|poster|banner)|\b(?:new|another|different)\s+(?:image|picture|photo|card|design|logo|poster|banner)\b/i.test(gUserText);
+          var gCreative = !!(gRefB64 && gUserText && gUserText.length <= 160 && !gNewImage && typeof __IMG_CREATIVE_RE !== 'undefined' && __IMG_CREATIVE_RE.test(gUserText) && !/[؟?]\s*$/.test(gUserText));
           if (gCreative) return await window.omranAgentTools.run('edit_image', { instruction: prompt, userText: gUserText });
           // v-maha-image-rescue: زحام عابر (retryable) يستحق محاولة ثانية بعد
           // مهلة قصيرة قبل إعلان الفشل — المستخدم لا يعيد طلبه بنفسه.

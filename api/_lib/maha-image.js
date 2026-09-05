@@ -77,7 +77,7 @@ module.exports = async (req, res) => {
     }
     const { prompt, editImageBase64, editMimeType, extraImages, token, guestId } = body;
     /* v-nano-pro-edit: كلمات المستخدم الأصلية (العميل يرسلها مع الأمر) — عليها تُقرأ النيّة */
-    const userText = typeof body.userText === 'string' ? body.userText.trim().slice(0, 1200) : '';
+    const userText = typeof body.userText === 'string' ? body.userText.replace(/\s*\[[^\[\]]*\]\s*$/, '').trim().slice(0, 1200) : '';
     const prayerRequest = typeof body.prayerRequest === 'string' ? body.prayerRequest.trim().slice(0, 800) : '';
     if (!prompt && !prayerRequest) {
       res.status(400).json({ error: 'Missing prompt' });
@@ -600,7 +600,7 @@ module.exports = async (req, res) => {
       mimeType: imgPart.inlineData.mimeType || 'image/png',
       caption: caption || undefined,
       /* v-nano-pro-edit: اسم المحرّك الحقيقي — برو أم 2.5 — ليراه المالك في شريط الحالة */
-      engine: duoEngine || (nanoPrimary ? (__pureRaw ? 'nano-raw' : 'nano') : (__pureRaw ? 'nano-pro-raw' : 'nano-pro')),
+      engine: duoEngine ? (nanoPrimary ? duoEngine : duoEngine.replace(/^gemini/, 'nano-pro')) : (nanoPrimary ? (__pureRaw ? 'nano-raw' : 'nano') : (__pureRaw ? 'nano-pro-raw' : 'nano-pro')),
       authoredText: prayerPlan ? prayerPlan.prayerText : undefined,
       visualPrompt: prayerPlan ? prayerPlan.visualBrief : undefined,
       prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined,

@@ -15929,7 +15929,7 @@ function summarizeCsvText(text){
 
 /* v-nano-pro-edit: الطلب الإبداعي القصير على صورة (أقوى/أفخم/طوّرها/فكرة ثانية/كرتون…) — يُقرأ هنا وفي أداة
    edit_image/generate_image (app-17) حتى لا يرسم النموذج صورة جديدة بلا علاقة بالمصدر. */
-const __IMG_CREATIVE_RE = /(?:^|[\s،,])(?:نسخ[ةه]\s*)?(?:ال)?(?:أ|ا|إ)(?:قوى|قوي|فخم|رقى|جمل|حلى|روع|بدع|حسن|فضل|بهى)(?=$|[\s،,.!؟?])|(?:^|[\s،,])(?:فخم[ةه]?|راقي[ةه]?|خيالي[ةه]?|جبار[ةه]?|مبهر[ةه]?|إبداعي[ةه]?|ابداعي[ةه]?)(?=$|[\s،,.!؟?])|(?:^|[\s،,])(?:طوّ?ر|حسّ?ن|جمّ?ل|قوّ?|رقّ?|زيّ?ن|ارفع)(?:ها|ه|يها|يه)(?=$|[\s،,.!؟?])|فكر[ةه]\s*(?:ثاني[ةه]|مختلف[ةه]|جديد[ةه]|أقوى|اقوى)|(?:^|[\s،,])(?:3d|ثلاثي|مجسم|مجسّم|كرتون|كارتون|أنيمي|انمي|بيكسار|ديزني|anime|cartoon|pixar|disney)(?=$|[\s،,.!؟?])|\b(?:stronger|bolder|fancier|premium|luxurious|epic|level\s*up|glow\s*up|next\s*level|better\s*(?:than|version)|best\s*version|reimagine|different\s*(?:idea|concept))\b/i;
+const __IMG_CREATIVE_RE = /(?:^|[\s،,])(?:نسخ[ةه]\s*)?(?:ال)?(?:أ|ا|إ)(?:قوى|قوي|فخم|رقى|جمل|حلى|روع|بدع|حسن|فضل|بهى)(?=$|[\s،,.!؟?])|(?:^|[\s،,])(?:فخم[ةه]?|راقي[ةه]?|خيالي[ةه]?|جبار[ةه]?|مبهر[ةه]?|إبداعي[ةه]?|ابداعي[ةه]?)(?=$|[\s،,.!؟?])|(?:^|[\s،,])(?:[اأ]?(?:طوّ?ر|حسّ?ن|جمّ?ل|قوّ?|رقّ?|زيّ?ن)|ارفع)(?:ها|ه|يها|يه)(?=$|[\s،,.!؟?])|فكر[ةه]\s*(?:ثاني[ةه]|مختلف[ةه]|جديد[ةه]|أقوى|اقوى)|(?:^|[\s،,])(?:3d|ثلاثي|مجسم|مجسّم|كرتون|كارتون|أنيمي|انمي|بيكسار|ديزني|anime|cartoon|pixar|disney)(?=$|[\s،,.!؟?])|\b(?:stronger|bolder|fancier|premium|luxurious|epic|level\s*up|glow\s*up|next\s*level|better\s*(?:than|version)|best\s*version|reimagine|different\s*(?:idea|concept))\b/i;
 /* v-visual-assist: لقطة شاشة لواجهة (اسم الملف/لصق من الحافظة/PNG بنسبة شاشة)
    تُعلَّم _screenshot لتذهب للتحليل والإرشاد بدل مسار تعديل الصور. */
 function omranLooksLikeScreenshot(file, dims, opts){
@@ -18195,7 +18195,7 @@ function __showImgLoading(el, ar, en){
        صورة جديدة بلا علاقة): أي لصق من الحافظة أو PNG عريض يُعلَّم «لقطة شاشة»، وبطاقات الأدوات
        1200×720 تدخل فيه. طلب إبداعي قصير (أقوى/أفخم/أرقى/أجمل/أبدع/طوّرها/حسّنها/نسخة أفضل/
        فكرة ثانية/كرتون/3d) على صورة كهذه يبقى تعديل صورة؛ تحليل اللقطة للأسئلة والإرشاد فقط. */
-    const __SHOT_CREATIVE = !!(text && text.length <= 160 && __IMG_CREATIVE_RE.test(text) && !/[؟?]\s*$/.test(text) && !__codeWordRe.test(text));
+    const __SHOT_CREATIVE = !!(text && text.length <= 160 && __IMG_CREATIVE_RE.test(text) && !/[؟?]\s*$/.test(text) && !__codeWordRe.test(text) && !__supIssueRe.test(text) && !__ATT_VISION_RE.test(text));
     const __SHOT_ANALYZE = !!(__srcImg && !__srcImg._fromMemory && __srcImg._screenshot && !__SHOT_CREATIVE && !__imgEditRe.test(text || '') && !__IMGF_NEW_RE.test(text || ''));
     const __ATT_DEFAULT = !!(!__SHOT_ANALYZE && __srcImg && !__srcImg._fromMemory && text && text.length <= 300 && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text));
     const __FOLLOW_DEFAULT = !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && text && text.length <= 220 && String(text).trim().split(/\s+/).length >= 2 && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text) && !/^\s*(?:شكرا|شكرًا|تمام|ممتاز|رائع|جميل|حلو|ok|okay|thanks|thank you|nice|great)\b/i.test(text));
@@ -28047,10 +28047,11 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
           /* v-nano-pro-edit (تتبّع المالك: صورة مرفقة + «أقوى» → النموذج اختار generate_image فرسم مسجدًا آخر
              بلا علاقة): إن كانت كلمات المستخدم نفسها طلبًا إبداعيًا على صورته المرفقة في هذا الدور، فالصورة
              الجديدة تُبنى على المصدر (تعديل) لا من الوصف وحده. */
-          var gUserText = String((args && args.userText) || window.__chatLastUserText || '').slice(0, 600);
+          var gUserText = String((args && args.userText) || window.__chatLastUserText || '').replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600);
           var gRef = window.__chatVideoReference;
           var gRefB64 = gRef && gRef.dataUrl ? String(gRef.dataUrl).split(',')[1] : '';
-          var gCreative = !!(gRefB64 && gUserText && gUserText.length <= 160 && typeof __IMG_CREATIVE_RE !== 'undefined' && __IMG_CREATIVE_RE.test(gUserText) && !/[؟?]\s*$/.test(gUserText));
+          var gNewImage = /(?:صور[ةه]|كرت|بطاق[ةه]|تصميم|لوجو|شعار|بوستر|بنر|غلاف)\s*(?:جديد[ةه]?|ثاني[ةه]?|أخرى|اخرى|غير)|(?:^|[\s،,])(?:ارسم|أرسم|اصنع|انشئ|أنشئ|صمم|صمّم|ولّد|ولد|draw|create|generate|design)\s*(?:لي\s*)?(?:صور[ةه]|كرت|بطاق[ةه]|لوجو|شعار|بوستر|بنر|image|picture|card|logo|poster|banner)|\b(?:new|another|different)\s+(?:image|picture|photo|card|design|logo|poster|banner)\b/i.test(gUserText);
+          var gCreative = !!(gRefB64 && gUserText && gUserText.length <= 160 && !gNewImage && typeof __IMG_CREATIVE_RE !== 'undefined' && __IMG_CREATIVE_RE.test(gUserText) && !/[؟?]\s*$/.test(gUserText));
           if (gCreative) return await window.omranAgentTools.run('edit_image', { instruction: prompt, userText: gUserText });
           // v-maha-image-rescue: زحام عابر (retryable) يستحق محاولة ثانية بعد
           // مهلة قصيرة قبل إعلان الفشل — المستخدم لا يعيد طلبه بنفسه.

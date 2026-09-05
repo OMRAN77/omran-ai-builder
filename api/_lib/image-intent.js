@@ -9,7 +9,7 @@
 const SAME_IMAGE_RE = /نفس\s*الصور[ةه]|زيها\s*بالضبط|طبق\s*الأصل|بالضبط\s*نفس|كما\s*هي|same\s*image|exact(?:ly)?\s*same|identical/i;
 
 /* «عدل 3d» / «حوّلها كرتون» / «ستايل أنيمي» = تحويل أسلوب كامل لا تعديل موضعي */
-const RESTYLE_RE = /(^|[\s،,])(3d|ثلاثي|مجسم|مجسّم|كرتون|كارتون|أنيمي|انمي|بيكسار|ديزني|زيتي|مائي|رصاص|بكسل|بيكسل|سايبر|نيون|كوميك|كومكس|مانجا|فانتازيا|واقعي|anime|cartoon|pixar|disney|pixel|cyberpunk|neon|comic|manga|fantasy|watercolor|oil\s*paint|sketch|realistic|render)/i;
+const RESTYLE_RE = /(^|[\s،,])(3d|ثلاثي|مجسم|مجسّم|كرتون|كارتون|أنيمي|انمي|بيكسار|ديزني|زيتي|مائي|رصاص|بكسل|بيكسل|سايبر|نيون|كوميك|كومكس|مانجا|فانتازيا|واقعي|anime|cartoon|pixar|disney|pixel\s*art|cyberpunk|neon\s*(?:style|look|art)|comic|manga|fantasy|watercolor|oil\s*paint(?:ing)?|sketch|realistic|3d\s*render)(?:ي[ةه]?|[ةه]|ات)?(?=$|[\s،,.!؟?])/i;
 
 /* «فكرة ثانية/مختلفة» = مشهد جديد كليًّا من الموضوع نفسه */
 const REIMAGINE_RE = /فكرة\s*(ثانية|ثانيه|مختلفة|مختلفه|جديدة|جديده|غير)|فكره\s*(ثانية|ثانيه|مختلفة|مختلفه|جديدة|جديده|غير)|غيّ?ر\s*الفكرة|بشكل\s*مختلف\s*تمام|مختلف\s*تمام|تصميم\s*ثاني|ستايل\s*ثاني|بدّ?ل\s*(الفكرة|التصميم|الستايل)|different\s*(idea|concept|style)|new\s*concept|another\s*(idea|take|concept)|reimagine/i;
@@ -20,19 +20,24 @@ const REIMAGINE_RE = /فكرة\s*(ثانية|ثانيه|مختلفة|مختلف�
 const AR_ELATIVE = '(?:أ|ا|إ)(?:قوى|قوي|فخم|رقى|رقي|جمل|حلى|حلا|روع|بدع|حسن|فضل|بهى|بهر|شيك)';
 const ELEVATE_RE = new RegExp([
   /* أقوى / نسخة أفخم / خلها أرقى / سوها أجمل / أفضل من هذي */
-  '(?:^|[\\s،,])(?:(?:نسخ[ةه]|صور[ةه]|شكل|تصميم|كرت|بطاق[ةه])\\s*)?(?:خلّ?ي?ها|خلّ?ي?ه|سوّ?ي?ها|سوّ?ي?ه|اجعلها|اجعله|صيّ?رها|عطني|أعطني|اعطني|ابي|أبي|ابغى|أبغى|ابغي|أبغي|أريد|اريد|ودي|ودّي|هات)?\\s*(?:نسخ[ةه]\\s*)?(?:ال)?' + AR_ELATIVE + '(?=$|[\\s،,.!؟?]|\\s*(?:من|بكثير|شوي|شوية|أكثر|اكثر|كثير|مرة))',
+  '(?:^|[\\s،,])(?:(?:نسخ[ةه]|صور[ةه]|شكل|تصميم|كرت|بطاق[ةه])\\s*)?(?:خلّ?ي?ها|خلّ?ي?ه|سوّ?ي?ها|سوّ?ي?ه|اجعلها|اجعله|صيّ?رها|عطني|أعطني|اعطني|ابي|أبي|ابغى|أبغى|ابغي|أبغي|أريد|اريد|ودي|ودّي|هات)?\\s*(?:نسخ[ةه]\\s*)?(?:ال)?' + AR_ELATIVE + '(?!\\s+(?:ال\\S|لو\\b|أن\\b|ان\\b|إن\\b|إنك|انك|تخل|تسو|تغي|تحط))(?=$|[\\s،,.!؟?]|\\s*(?:من|بكثير|شوي|شوية|أكثر|اكثر|كثير|مرة))',
   /* فخم / فخمة / راقية / احترافية أكثر / خيالية / جبارة / مبهرة */
   '(?:^|[\\s،,])(?:فخم[ةه]?|فخام[ةه]|راقي[ةه]?|رايق[ةه]?|خيالي[ةه]?|جبار[ةه]?|مبهر[ةه]?|احترافي[ةه]?\\s*(?:أكثر|اكثر)?|إبداعي[ةه]?|ابداعي[ةه]?)(?=$|[\\s،,.!؟?])',
   /* طوّرها / حسّنها / جمّلها / ارفع مستواها / قوّها / رقّيها / زيّنها */
   /* الفعل وحده يُعدّ ترقية فقط إن كان مفعوله الصورة كلها (طوّرها / حسّن الصورة / ارفع مستواها) أو
      جاء بلا مفعول في آخر الجملة؛ «حسّن الإضاءة» و«طوّر الخط» تعديلان موضعيان يبقيان في مسارهما. */
-  '(?:^|[\\s،,])(?:طوّ?ر|حسّ?ن|جمّ?ل|قوّ?|رقّ?|زيّ?ن|عزّ?ز|ارفع|إرفع|ارتقِ?|ابهر|أبهر)(?:(?:ها|ه|يها|يه|ي)(?=$|[\\s،,.!؟?])|\\s*(?:ال)?(?:صور[ةه]|كرت|بطاق[ةه]|تصميم|شكل|مستوى|مستواها|جودتها|النتيجة)(?=$|[\\s،,.!؟?])|(?=$|[،,.!؟?]))',
+  '(?:^|[\\s،,])(?:[اأ]?(?:طوّ?ر|حسّ?ن|جمّ?ل|قوّ?|رقّ?|زيّ?ن|عزّ?ز)|ارفع|إرفع|ارتقِ?|ابهر|أبهر)(?:(?:ها|ه|يها|يه|ي)(?=$|[\\s،,.!؟?])|\\s*(?:ال)?(?:صور[ةه]|كرت|بطاق[ةه]|تصميم|شكل|مستوى|مستواها|جودتها|النتيجة)(?=$|[\\s،,.!؟?])|(?=$|[،,.!؟?]))',
   /* الإنجليزية */
-  '\\b(?:stronger|bolder|richer|fancier|nicer|prettier|more\\s*(?:powerful|impressive|beautiful|elegant|luxurious|professional|premium|polished|refined|dramatic|striking|attractive)|premium|luxur(?:y|ious)|epic|level\\s*up|glow\\s*up|next\\s*level|better\\s*(?:than|version)|best\\s*version|(?:enhance|improve|upgrade|elevate|polish)\\s+(?:it|this|everything|overall|the\\s+(?:whole\\s+|entire\\s+|overall\\s+)?(?:image|picture|photo|card|design|scene|look|quality|result))|plus\\s*it|make\\s*it\\s*(?:better|pop|shine|stand\\s*out)|higher\\s*quality)\\b',
+  /* الإنجليزية: الصفة تُعدّ ترقية للصورة كلها فقط (make it …/… version/رسالة قصيرة من الصفة وحدها) —
+     «make the text bolder» و«add a premium badge» تعديلان موضعيان. */
+  '\\bmake\\s+(?:it|this|everything|the\\s+(?:whole\\s+|entire\\s+)?(?:image|picture|photo|card|design|scene|look))\\s+(?:much\\s+|way\\s+|a\\s+lot\\s+)?(?:stronger|bolder|richer|fancier|nicer|prettier|better|premium|luxurious|epic|pop|shine|stand\\s*out|more\\s+\\w+)\\b',
+  '\\b(?:a\\s+|an\\s+)?(?:stronger|bolder|richer|fancier|nicer|prettier|better|premium|luxurious|epic|enhanced|improved|upgraded|elevated|polished|cleaner|more\\s+(?:powerful|impressive|beautiful|elegant|luxurious|professional|premium|polished|refined|dramatic|striking|attractive))(?:,?\\s+(?:and\\s+)?(?:more\\s+\\w+|\\w+er))*\\s+(?:version|look|take|edition|rendition|variant)\\b',
+  '^\\s*(?:stronger|bolder|richer|fancier|nicer|prettier|better|premium|luxurious|epic|more\\s+\\w+)\\s*[.!]*\\s*$',
+  '\\b(?:level\\s*up|glow\\s*up|next\\s*level|better\\s+than\\s+(?:this|that|the\\s+original)|best\\s+version|higher\\s+quality|plus\\s+it|(?:enhance|improve|upgrade|elevate|polish)\\s+(?:it|this|everything|overall|the\\s+(?:whole\\s+|entire\\s+|overall\\s+)?(?:image|picture|photo|card|design|scene|look|quality|result)))\\b',
 ].join('|'), 'i');
 
 /* ترقية مشهد حقيقي (غرفة/مكان) — تبقى على أمر «نفس المكان نفس الزاوية» الفوتوغرافي */
-const PLACE_RE = /(?:غرف[ةه]|غرفتي|مكان|مشهد|ديكور|صال[ةه]|مجلس|بيت|منزل|فيلا|فله|مطبخ|حمام|حديق[ةه]|مكتب|محل|مطعم|كوفي|كافيه|مدخل|واجه[ةه]|room|space|place|interior|exterior|decor|house|villa|kitchen|office|shop|restaurant|cafe|garden|living|bedroom)/i;
+const PLACE_RE = /(?:^|[\s،,])(?:ال|لل|بال|وال)?(?:غرف[ةه]|غرفتي|مكان|مشهد|ديكور|صال[ةه]|مجلس|بيت|منزل|فيلا|فله|مطبخ|حمام|حديق[ةه]|مكتب|محل|مطعم|كوفي|كافيه|مدخل|واجه[ةه])(?:ي|نا|ك|كم|ها|ه|ات)?(?=$|[\s،,.!؟?])|\b(?:room|space|place|interior|exterior|decor|house|villa|kitchen|office|shop|restaurant|cafe|garden|living\s*room|bedroom)s?\b/i;
 const APPLY_RECS_RE = /(?:طبّ?ق|نفّ?ذ|سوّ?ي)\s*(?:لي\s*)?(?:كل\s*)?(?:ال)?(?:توصيات|اقتراحات|تحسينات|خطوات)|apply\s+(?:the\s+)?(?:recommendations|suggestions|upgrades)/i;
 
 /**
