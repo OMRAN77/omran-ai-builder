@@ -57,12 +57,12 @@
       }catch(e){ resolve(null); }
     });
   }
-  const UPLOAD_MAX_B64 = 900 * 1024;
+  const UPLOAD_MAX_B64 = 640 * 1024; /* حدّ طلب Upstash ≈1MB مع هامش (PDF يستخدم 700KB) */
   async function uploadImage(blob, name){
     let b64 = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result || '')); fr.onerror = rej; fr.readAsDataURL(blob); });
     let mime = blob.type || 'image/png', w, h;
     if(b64.length > UPLOAD_MAX_B64 || mime === 'image/gif'){
-      const steps = [[1600, 0.9], [1280, 0.85], [1024, 0.8], [800, 0.75]];
+      const steps = [[1400, 0.88], [1200, 0.84], [1024, 0.8], [800, 0.75], [640, 0.7]];
       for(let i = 0; i < steps.length; i++){
         const sm = await shrinkForUpload(blob, steps[i][0], steps[i][1]);
         if(!sm) break;
@@ -72,8 +72,8 @@
     }
     const i = b64.indexOf(',');
     const r = await fetch('/api/media?action=img', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: b64.slice(i + 1), mime, w, h }) });
-    const j = await r.json();
-    if(!r.ok || !j || !j.id) throw new Error('upload-failed');
+    let j = null; try{ j = await r.json(); }catch(e){ j = null; }
+    if(!r.ok || !j || !j.id) throw new Error((j && j.error) ? String(j.error) : ('http ' + r.status));
     const ext = extOf(mime);
     const safe = String(name || 'omran-image').replace(/\.[A-Za-z0-9]+$/, '').replace(/[^A-Za-z0-9_\-]/g, '-').slice(0, 50) || 'omran-image';
     return {
@@ -91,6 +91,49 @@
       sheet.textContent = gtx('imgPreparing', '⏳ جارٍ تجهيز الصورة…', '⏳ Preparing the image…');
       document.body.appendChild(sheet);
     }catch(e){ /* guard-ok */ }
+  }
+  function localSheet(blob, file, name, why){
+    const old = document.getElementById('omranImgSheet'); if(old) old.remove();
+    const sheet = document.createElement('div'); sheet.id = 'omranImgSheet';
+    sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:rgba(20,20,26,.98);border-top:1px solid rgba(212,175,55,.45);border-radius:18px 18px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(0,0,0,.5);font-family:inherit;color:#f3efe4;';
+    const head = document.createElement('div');
+    head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-weight:800;font-size:15px;';
+    const ttl = document.createElement('span'); ttl.textContent = gtx('imgReadyTitle', '✅ الصورة جاهزة', '✅ Image ready');
+    const x = document.createElement('button'); x.textContent = '✕'; x.type = 'button';
+    x.style.cssText = 'background:none;border:none;color:#9a9a9e;font-size:18px;cursor:pointer;padding:2px 8px;';
+    x.onclick = function(){ sheet.remove(); };
+    head.appendChild(ttl); head.appendChild(x);
+    const row = document.createElement('div');
+    row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;';
+    const btnCss = 'display:flex;align-items:center;justify-content:center;gap:6px;min-height:46px;border-radius:12px;font-weight:800;font-size:14px;text-decoration:none;cursor:pointer;touch-action:manipulation;';
+    const u = URL.createObjectURL(blob);
+    const dl = document.createElement('a');
+    dl.href = u; dl.setAttribute('download', name); dl.dataset.nativeDownload = '1'; dl.rel = 'noopener';
+    dl.style.cssText = btnCss + 'background:#d4af37;color:#111;';
+    dl.textContent = gtx('imgDlBtn', '⬇️ تحميل', '⬇️ Download');
+    row.appendChild(dl);
+    let canShareFile = false;
+    try{ canShareFile = !!(file && navigator.canShare && navigator.canShare({ files: [file] })); }catch(e){ canShareFile = false; }
+    if(canShareFile){
+      const sh = document.createElement('button'); sh.type = 'button';
+      sh.style.cssText = btnCss + 'background:none;color:#d4af37;border:1px solid rgba(212,175,55,.55);';
+      sh.textContent = gtx('imgShareBtn', '📤 مشاركة', '📤 Share');
+      sh.onclick = function(){ navigator.share({ files: [file], title: 'Omran AI' }).then(function(){ sheet.remove(); }).catch(function(e3){ if(e3 && e3.name === 'AbortError') return; }); };
+      row.appendChild(sh);
+    } else {
+      const op = document.createElement('a');
+      op.href = u; op.target = '_blank'; op.rel = 'noopener';
+      op.style.cssText = btnCss + 'background:none;color:#f3efe4;border:1px solid rgba(255,255,255,.18);';
+      op.textContent = gtx('imgOpenBtn', '🔗 فتح', '🔗 Open');
+      row.appendChild(op);
+    }
+    const sub = document.createElement('div');
+    sub.style.cssText = 'margin-top:10px;font-size:11px;color:#9a9a9e;text-align:center;direction:ltr;';
+    sub.textContent = 'link unavailable' + (why ? ' · ' + why.slice(0, 60) : '');
+    sheet.appendChild(head); sheet.appendChild(row); sheet.appendChild(sub);
+    document.body.appendChild(sheet);
+    setTimeout(function(){ try{ sheet.remove(); URL.revokeObjectURL(u); }catch(e){ /* guard-ok */ } }, 120000);
+    return true;
   }
   function readySheet(links, file, name){
     const old = document.getElementById('omranImgSheet'); if(old) old.remove();
@@ -164,9 +207,11 @@
     if(mode !== 'share' && !appish()){ plainDownload(blob, name); return true; }
     /* الورقة تظهر فورًا بحالة «جارٍ التجهيز» — بلا ضغطة تبدو ميتة أثناء الرفع */
     preparingSheet();
+    let upErr = '';
     try{ const links = await uploadImage(blob, name); return readySheet(links, file, name); }
-    catch(e){ /* guard-ok — الرفع تعذّر */ }
-    try{ const old = document.getElementById('omranImgSheet'); if(old) old.remove(); }catch(e){ /* guard-ok */ }
+    catch(e){ upErr = (e && e.message) ? String(e.message) : 'upload'; }
+    /* تعذّر الرفع: الورقة لا تختفي — تنزيل محلي مباشر + مشاركة إن توفّرت + سبب مختصر */
+    try{ return localSheet(blob, file, name, upErr); }catch(e){ /* guard-ok */ }
     plainDownload(blob, name);
     return true;
   };
