@@ -81,7 +81,40 @@
     try{ var clean = String(lab.textContent || '').replace(/^[^\p{L}\p{N}]+/u, '').trim(); if(clean && clean !== lab.textContent) lab.textContent = clean; }catch(e){ /* guard-ok */ }
     b.classList.add('tcTxt');
   }
+  /* v-live-cards: بيانات حيّة على البطاقة — القبلة (الصلاة القادمة ووقتها واتجاه القبلة) والأسهم (أول سهم في الشريط) */
+  function liveChip(id, txt){
+    var b = document.getElementById(id); if(!b) return;
+    var c = b.querySelector('.tcLive');
+    if(!txt){ if(c) c.remove(); return; }
+    if(!c){ c = document.createElement('span'); c.className = 'tcLive'; b.appendChild(c); }
+    c.textContent = txt;
+  }
+  function fmtNum(n){ try{ return Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 }); }catch(e){ return String(n); } }
+  function liveCards(){
+    try{
+      if(window.omranQibla && typeof window.omranQibla.live === 'function'){
+        window.omranQibla.live().then(function(v){
+          if(!v || !v.name) return;
+          liveChip('btnQibla', '🕋 ' + v.name + ' ' + v.time + (v.bearing != null ? ' · ' + v.bearing + '°' : ''));
+        }).catch(function(){ /* guard-ok */ });
+      }
+      var tk = window.__tickerLatest;
+      if(tk && tk.syms && tk.syms[0]){
+        var it = tk.syms[0], up = (it.change || 0) >= 0;
+        liveChip('btnStocks', it.symbol + ' ' + (up ? '▲' : '▼') + ' ' + fmtNum(it.price));
+        var lb = document.querySelector('#btnStocks .tcLive'); if(lb) lb.style.color = up ? '#34d399' : '#f87171';
+      }
+    }catch(e){ /* guard-ok */ }
+  }
+  var liveTimer = null;
+  function watchOverlay(){
+    var o = document.getElementById('sectionsToolsOverlay'); if(!o || o.__tcLive) return; o.__tcLive = 1;
+    var tick = function(){ if(o.classList.contains('show')){ liveCards(); if(!liveTimer) liveTimer = setInterval(function(){ if(o.classList.contains('show')) liveCards(); }, 60000); } };
+    try{ new MutationObserver(tick).observe(o, { attributes: true, attributeFilter: ['class'] }); }catch(e){ /* guard-ok */ }
+    tick();
+  }
   function applyToolPhotos(){
+    watchOverlay();
     Object.keys(TOOL_PHOTOS).forEach(function(id){ upgradeButton(id, srcFor(id)); decorate(id); });
   }
   try{ new MutationObserver(function(){ applyToolPhotos(); setTimeout(applyToolPhotos, 400); setTimeout(applyToolPhotos, 1600); setTimeout(applyToolPhotos, 3200); }).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* بلا مراقب: تُطبَّق عند التحميل فقط */ }
