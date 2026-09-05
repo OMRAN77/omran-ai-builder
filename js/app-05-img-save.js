@@ -83,6 +83,11 @@
   }
   function toast(m){ try{ if(typeof settingsToast === 'function'){ settingsToast(m); return; } }catch(e){ /* guard-ok */ } try{ alert(m); }catch(e){ /* guard-ok */ } }
   function copyText(s){ try{ if(navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(s); }catch(e){ /* guard-ok */ } return Promise.reject(new Error('no-clipboard')); }
+  function verStamp(){
+    const d = document.createElement('div'); d.style.cssText = 'margin-top:8px;font-size:10px;opacity:.45;text-align:center;direction:ltr;';
+    try{ const sc = document.querySelector('script[src*="app.bundle.js"]'); const vv = sc ? (String(sc.getAttribute('src') || '').split('v=')[1] || '') : ''; d.textContent = 'v ' + vv.slice(0, 8) + (navigator.canShare ? ' · share:yes' : ' · share:no'); }catch(e){ /* guard-ok */ }
+    return d;
+  }
   function preparingSheet(){
     try{
       const old = document.getElementById('omranImgSheet'); if(old) old.remove();
@@ -176,7 +181,7 @@
     op.textContent = gtx('imgOpenBtn', '🔗 فتح', '🔗 Open');
     op.onclick = function(ev){ try{ const cap2 = window.Capacitor, br2 = cap2 && cap2.Plugins && cap2.Plugins.Browser; if(br2 && typeof br2.open === 'function'){ ev.preventDefault(); br2.open({ url: links.open }); } }catch(e2){ /* guard-ok */ } };
     row.appendChild(op);
-    sheet.appendChild(head); sheet.appendChild(row);
+    sheet.appendChild(head); sheet.appendChild(row); sheet.appendChild(verStamp());
     document.body.appendChild(sheet);
     setTimeout(function(){ try{ sheet.remove(); }catch(e){ /* guard-ok */ } }, 120000);
     return true;
@@ -202,23 +207,20 @@
     /* v-share-native-first (أمر المالك): ورقة النظام أولًا على كل الأجهزة (الكمبيوتر أيضًا) عند المشاركة؛
        وعلى الجوال عند الحفظ كذلك. رفض AbortError خلال أقل من ١.٥ ثانية = فشل اللوحة (ويندوز) لا إلغاء. */
     const mobile = (typeof omranMobileUA === 'function' && omranMobileUA()) || appish();
-    if((mobile || mode === 'share') && file && navigator.canShare){
-      let ok = false; try{ ok = navigator.canShare({ files: [file] }); }catch(e){ ok = false; }
-      if(ok){
-        const t0 = Date.now();
-        /* v-share-win-hang: على ويندوز قد تبقى اللوحة معلّقة بلا فتح — إن بقي التركيز في الصفحة
-           بعد ١.٢ ثانية نعتبرها لم تفتح ونكمل للبدائل (الوعد المعلّق يُهمَل). */
-        const winHang = /Windows/i.test(navigator.userAgent || '')
-          ? new Promise((res) => setTimeout(() => res(document.hasFocus() ? 'hang' : 'open'), 1200))
-          : new Promise(() => {});
-        try{
-          const r = await Promise.race([navigator.share({ files: [file], title: 'Omran AI' }).then(() => 'done'), winHang]);
-          if(r === 'open'){ return true; }
-          if(r === 'done') return true;
-          /* 'hang' → نكمل للبدائل */
-        }
-        catch(e){ if(e && e.name === 'AbortError' && (Date.now() - t0) > 1500) return true; }
-      }
+    let canNative = false;
+    try{ canNative = !!(file && navigator.canShare && navigator.canShare({ files: [file] })); }catch(e){ canNative = false; }
+    if(mobile && canNative){
+      const t0 = Date.now();
+      try{ await navigator.share({ files: [file], title: 'Omran AI' }); return true; }
+      catch(e){ if(e && e.name === 'AbortError' && (Date.now() - t0) > 1500) return true; }
+    }
+    /* v-share-desktop-both: على الكمبيوتر نطلب لوحة النظام (إن وُجدت) ونعرض ورقتنا خلفها في اللحظة
+       نفسها؛ اكتمال اللوحة أو إلغاؤها يزيل ورقتنا، وفشلها الصامت يترك ورقتنا حاضرة. */
+    if(!mobile && mode === 'share' && canNative){
+      const t1 = Date.now();
+      try{
+        navigator.share({ files: [file], title: 'Omran AI' }).then(() => { const o = document.getElementById('omranImgSheet'); if(o) o.remove(); }, (e) => { if(e && e.name === 'AbortError' && (Date.now() - t1) > 1500){ const o = document.getElementById('omranImgSheet'); if(o) o.remove(); } });
+      }catch(e){ /* guard-ok */ }
     }
     if(mode !== 'share' && !appish()){ plainDownload(blob, name); return true; }
     /* الورقة تظهر فورًا بحالة «جارٍ التجهيز» — بلا ضغطة تبدو ميتة أثناء الرفع */
