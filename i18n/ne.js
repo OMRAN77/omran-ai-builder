@@ -38,6 +38,7 @@ I18N['ne'] = {
     convertToWord: 'Word मा रूपान्तरण गर्नुहोस्',
     copiedToast: 'प्रतिलिपि गरियो',
     copyMsgTitle: 'जवाफ प्रतिलिपि गर्नुहोस्',
+    'grpBusiness': '💼 व्यवसाय', 'grpLife': '🕌 दैनिक जीवन',
     'psheetAll': 'सबै', 'psheetGrpArt': '🎨 कलात्मक', 'psheetBefore': 'पहिले', 'psheetBeforeSub': 'एउटा फोटो → हरेक शैली', 'psheetTry': '✨ आफ्नो फोटोमा प्रयास गर्नुहोस्',
     'tcSub_btnPortraitStyle': 'पोर्ट्रेट शैलीहरूको विस्तृत श्रृंखला', 'tcSub_btnQuickTemplates': 'अर्को परियोजनाका लागि विचार र प्रेरणा', 'tcSub_btnVideoMaker': 'व्यावसायिक रूपमा भिडियो बनाउनुहोस् र सम्पादन गर्नुहोस्', 'tcSub_btnStudioAI': 'स्मार्ट शैली र प्रभावहरू', 'tcSub_btnFashionAI': 'AI द्वारा फेसन डिजाइन', 'tcSub_btnDesignAI': 'भित्री र बाहिरी सजावट डिजाइन', 'tcSub_btnAdStudio': 'व्यावसायिक विज्ञापन डिजाइन', 'tcSub_btnStocks': 'बजार विश्लेषण र डेटा', 'tcSub_btnOmranTV': 'असीमित सामग्री र मनोरञ्जन', 'tcSub_btnQibla': 'नमाजको समय र किब्लाको दिशा', 'tcSub_btnExpense': 'खर्च र बजेट व्यवस्थापन', 'tcSub_btnOmranEdu': 'कोर्स र पाठहरू', 'tcSub_btnConstruction': 'इन्जिनियरिङ र वास्तुकला डिजाइन', 'tcSub_btnReligion': 'धार्मिक प्रश्न, भरपर्दो उत्तर', 'tcSub_btnCV': 'व्यावसायिक CV बनाउनुहोस्', 'tcSub_btnDocs': 'कागजात विश्लेषण र सारांश', 'tcSub_btnFeedback': 'आफ्नो राय र सुझाव साझा गर्नुहोस्', 'tcSub_btnEmailAssist': 'इमेल र जवाफ लेख्नुहोस्',
     msgShareReply: 'जवाफ साझा गर्नुहोस्',

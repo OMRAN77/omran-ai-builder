@@ -20,9 +20,13 @@
       button.classList.remove('toolPhotoCard');
       return;
     }
-    var oldImage = button.querySelector('img.stp3d');
+    /* سباق تحميل: نداءان متتاليان قبل اكتمال أول تحميل كانا يضيفان صورتين للزر (لقطة المالك: اقتراحات) */
+    if(button.__tcLoading === src) return;
+    button.__tcLoading = src;
     var preload = new Image();
     preload.onload = function(){
+      var oldImage = button.querySelector('img.stp3d');
+      if(button.classList.contains('hasToolPhoto')) return;
       if(oldImage){
         oldImage.src = src;
         oldImage.classList.add('toolPhotoImage');
@@ -36,7 +40,7 @@
       }
       button.classList.add('has3d', 'hasToolPhoto');
     };
-    preload.onerror = function(){ /* Keep the existing icon when a photo cannot load. */ };
+    preload.onerror = function(){ button.__tcLoading = null; /* Keep the existing icon when a photo cannot load. */ };
     preload.src = src;
   }
 
@@ -48,9 +52,21 @@
     try{ var I = window.I18N, L = document.documentElement.lang || 'en'; if(I){ if(I[L] && I[L][k]) return I[L][k]; if(I.en && I.en[k]) return I.en[k]; } }catch(e){ /* guard-ok */ }
     return '';
   }
+  /* v-tools-accent (المالك ٥ سبتمبر): لون تمييزي لكل أداة + أيقونة مسطّحة صغيرة في زاوية الصورة */
+  var ACCENT = {
+    btnPortraitStyle: '#d4af37', btnQuickTemplates: '#f2b94a', btnVideoMaker: '#e0555b', btnDesignAI: '#f28c5a',
+    btnFashionAI: '#ff6fae', btnStudioAI: '#5ad1ff', btnAdStudio: '#ff5fa2', btnStocks: '#34d399', btnExpense: '#22c55e',
+    btnCV: '#60a5fa', btnDocs: '#a78bfa', btnEmailAssist: '#fb923c', btnConstruction: '#fbbf24', btnQibla: '#d4af37',
+    btnOmranTV: '#ef4444', btnOmranEdu: '#38bdf8', btnReligion: '#10b981', btnGov: '#94a3b8', btnFeedback: '#f472b6'
+  };
   function decorate(id){
     var b = document.getElementById(id); if(!b) return;
     var lab = b.querySelector('.btnLabel'); if(!lab) return;
+    try{ b.style.setProperty('--tc', ACCENT[id] || '#d4af37'); }catch(e){ /* guard-ok */ }
+    if(!b.querySelector('.tcIco')){
+      var src = b.querySelector(':scope > svg');
+      if(src){ var ico = document.createElement('span'); ico.className = 'tcIco'; ico.setAttribute('aria-hidden', 'true'); ico.appendChild(src.cloneNode(true)); b.appendChild(ico); }
+    }
     var meta = b.querySelector('.tcMeta');
     if(!meta){
       meta = document.createElement('span'); meta.className = 'tcMeta';
