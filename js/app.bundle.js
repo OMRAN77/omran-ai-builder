@@ -15198,6 +15198,15 @@ window.__omranImgTools = function(wrap, dataUrl){
     flash(b, '<span>' + (ar ? 'جاهزة' : 'Ready') + '</span>');
     const p = $('#prompt'); if(p){ p.focus(); p.placeholder = ar ? 'اكتب التعديل المطلوب على هذي الصورة…' : 'Describe the edit you want…'; }
   });
+  // 🔄 «نسخة ثانية» — يعيد آخر طلب صورة بضغطة، تنويعة جديدة بلا إعادة كتابة (طلب المالك)
+  if(window.__omranLastImageReq){
+    mk('txt', '<span>🔄 ' + (ar ? 'نسخة ثانية' : 'Another') + '</span>', ar ? 'نسخة ثانية' : 'Another version', (b) => {
+      if(!window.__omranLastImageReq){ flash(b, '<span>—</span>'); return; }
+      if(typeof genAbortController !== 'undefined' && genAbortController){ flash(b, '<span>' + (ar ? 'انتظر…' : 'Wait…') + '</span>'); return; }
+      flash(b, '<span>⏳</span>');
+      try{ window.omranAnotherVersion && window.omranAnotherVersion(); }catch(e){ __swallow(e, 'img:another-btn'); }
+    });
+  }
   // 📤 v635 — أمر عمران «زرّ الإرسال حطه هني جنبهم»: الإرسال يسكن شريط أزرار
   // الرسالة نفسه (بعد النسخ/الإعجاب) بنفس شكلهم وحجمهم؛ «تعديل» يبقى تحت الصورة.
   // رسالة الصورة بلا نصّ لا تبني شريطًا ⇒ أُنشئ شريطًا بنفس الصنف.
@@ -16614,6 +16623,8 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
       __m.content = (typeof __d.caption === 'string' && __d.caption) ? __d.caption : (lang === 'ar' ? 'تفضّل 👇' : 'Here you go 👇');
       __m.attachments = [{ isImage: true, mime: __mime, dataUrl: 'data:' + __mime + ';base64,' + __b64, name: 'image.png' }];
       try{ cur.lastEditedImage = { b64: __b64, mime: __mime }; cur.lastMsgWasImageEdit = true; }catch(e){ /* guard-ok — cleanup, intentional */ }
+      // 🔄 نحفظ طلب التوليد ليعيده زر «نسخة ثانية» بتنويعة جديدة
+      try{ window.__omranLastImageReq = { kind:'gen', promptText: promptText }; }catch(e){ __swallow(e, 'img:save-req-gen'); }
     } else {
       __m.content = lang === 'ar' ? ('تعذّر توليد الصورة الآن — ' + ((__d && __d.error) || ('HTTP ' + __r.status))) : ('Image generation failed — ' + ((__d && __d.error) || ('HTTP ' + __r.status)));
     }
@@ -16661,6 +16672,54 @@ window.chatRegenerateMessage = function(index){
   while(userIndex >= 0 && cur.messages[userIndex].role !== 'user') userIndex--;
   if(userIndex < 0 || !window.chatStartEditMessage(userIndex)) return;
   sendPrompt();
+};
+
+/* 🔄 v-another-version (طلب المالك: «صورة ورا صورة لين ما أقتنع … نتيجة مو
+   لعبة»): زر «نسخة ثانية» يعيد تنفيذ آخر طلب صورة (توليد أو تعديل) كما هو
+   فيعطي تنويعة جديدة بضغطة واحدة بلا إعادة كتابة، بلا حدّ لعدد المحاولات،
+   ويعمل على الجوّال (بخلاف «إعادة توليد الرد» المقيّدة بسطح المكتب). */
+window.__omranLastImageReq = null;
+window.omranAnotherVersion = async function(){
+  if(typeof genAbortController !== 'undefined' && genAbortController) return; // طلب جارٍ
+  const req = window.__omranLastImageReq;
+  const cur = getCurrent();
+  if(!req || !cur || !Array.isArray(cur.messages)) return;
+  const __sb = document.getElementById('btnSend'); if(__sb) __sb.disabled = true;
+  genAbortController = new AbortController();
+  try{ __omranArmWatchdog(); }catch(e){ /* guard-ok */ }
+  try{
+    if(req.kind === 'gen' && req.promptText){
+      await omModeGenerateImage(cur, req.promptText, null);
+      return;
+    }
+    const __m = { role:'assistant', content: lang === 'ar' ? '🎨 أرسم لك نسخة ثانية…' : '🎨 Creating another version…', _loading:true };
+    cur.messages.push(__m); renderAll();
+    const __res = await fetch(req.url || '/api/maha-image', {
+      method:'POST', headers:{ 'Content-Type':'application/json' },
+      signal: genAbortController.signal,
+      body: JSON.stringify(Object.assign({}, req.body, { token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }))
+    });
+    const __data = await __res.json().catch(() => ({}));
+    __m._loading = false;
+    if(__res.ok && __data.imageBase64){
+      const __outMime = __data.mimeType || 'image/png';
+      __m.content = (typeof __data.caption === 'string' ? __data.caption : '');
+      __m.attachments = [{ name:'edited.png', isImage:true, mime:__outMime, dataUrl:'data:' + __outMime + ';base64,' + __data.imageBase64 }];
+      cur.lastEditedImage = { b64: __data.imageBase64, mime: __outMime };
+      cur.lastMsgWasImageEdit = true;
+      try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (__data.engine === 'openai' ? 'gpt-image' : 'نانو بنانا')); }catch(e){ __swallow(e, 'ui:img-engine-again'); }
+    } else {
+      __m.content = imgErrFriendly(__data && __data.error, lang === 'ar') || (lang === 'ar' ? '⚠️ تعذّر توليد نسخة ثانية — جرّب مرّة أخرى.' : '⚠️ Could not create another version — try again.');
+    }
+    renderAll(); saveState();
+  }catch(e){
+    if(!(e && e.name === 'AbortError')) __swallow(e, 'img:another-run');
+    try{ renderAll(); saveState(); }catch(_){ /* guard-ok */ }
+  }finally{
+    genAbortController = null;
+    try{ __omranDisarmWatchdog(); }catch(e){ /* guard-ok */ }
+    try{ __omranRestoreSendBtn(); }catch(e){ /* guard-ok */ }
+  }
 };
 
 // v-social-alive: deterministicSocialReply حُذفت — التحية للنموذج دائمًا.
@@ -18208,6 +18267,8 @@ function __showImgLoading(el, ar, en){
         cur.imageEditInstructions = __pendingImageEditInstructions;
         cur.imageTextLayer = null;
         cur.lastMsgWasImageEdit = true;
+        // 🔄 نحفظ الطلب كما هو ليعيده زر «نسخة ثانية» بتنويعة جديدة
+        try{ window.__omranLastImageReq = { kind:'edit', url:'/api/maha-image', body: { prompt: __editPrompt, editImageBase64: __editB64, editMimeType: __editMime, sceneUpgrade: __IMG_UPGRADE || undefined, extraImages: __extraImgs } }; }catch(e){ __swallow(e, 'img:save-req'); }
       } else {
         cur.messages.push({ role: 'assistant', content: imgErrFriendly(__data && __data.error, lang === 'ar') || ((lang === 'ar' ? '⚠️ تعذر تعديل الصورة: ' : '⚠️ Image edit failed: ') + ((__data && __data.error) || ('HTTP ' + (__data.__status || '?')))) });
         cur.lastMsgWasImageEdit = true;

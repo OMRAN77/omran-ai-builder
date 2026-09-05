@@ -211,7 +211,15 @@ module.exports = async (req, res) => {
       if (editImageBase64) parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
       for (const x of extras) parts.push({ inlineData: { mimeType: x.mime || 'image/png', data: x.data } });
     }
-    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
+    /* v-nano-edit (مقارنة المالك: «نانو الأصلي» يعيد التخيّل بجرأة، وتطبيقنا
+       كان يعدّل تعديلًا خجولًا كفوتوشوب): محرّك التعديل الأساسي = نانو بنانا
+       (gemini-2.5-flash-image) لأنه هو من ينتج النتائج الإبداعية التي أراها
+       المالك. التوليد الجديد يبقى على gemini-3-pro-image بدقّة 2K. قابل للضبط
+       بمتغيّر IMAGE_EDIT_MODEL للرجوع فورًا بلا نشر. */
+    const editModel = (process.env.IMAGE_EDIT_MODEL || 'gemini-2.5-flash-image').trim();
+    const primaryModel = editImageBase64 ? editModel : 'gemini-3-pro-image';
+    const nanoPrimary = /2\.5-flash-image/.test(primaryModel);
+    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + primaryModel + ':generateContent?key=' + apiKey;
     // v656: نسبة أبعاد ذكية — الافتراضي طولي (3:4) لأن المستخدمين على الجوال،
     // مع احترام أي طلب صريح (عرضي/مربع/ستوري...). التعديل يحافظ على أبعاد المصدر.
     const pickAspect = function (p) {
@@ -223,9 +231,16 @@ module.exports = async (req, res) => {
     };
     const imageConfig = { imageSize: '2K' };
     if (!editImageBase64) imageConfig.aspectRatio = (pipelineActive && pipelineRewrite && pipelineRewrite.aspect) ? pipelineRewrite.aspect : (isArchitectural ? '16:9' : pickAspect(cleanPrompt));
+    /* نانو بنانا (2.5-flash-image) لا يدعم imageSize:'2K' — نرسل له صيغة نظيفة
+       بلا imageConfig كي لا يرفض الطلب (400). */
+    const genConfigFor = function (extra) {
+      const cfg = Object.assign({}, extra);
+      if (!nanoPrimary) cfg.imageConfig = imageConfig;
+      return cfg;
+    };
     const reqBody = JSON.stringify(rawMode
-      ? { contents: [{ parts }], generationConfig: { imageConfig } }
-      : { contents: [{ parts }], generationConfig: { temperature: editImageBase64 ? (isSceneUpgrade ? 0.5 : (isReimagine ? 0.9 : (isRestyle ? 0.6 : 0.15))) : 0.85, imageConfig } });
+      ? { contents: [{ parts }], generationConfig: genConfigFor({}) }
+      : { contents: [{ parts }], generationConfig: genConfigFor({ temperature: editImageBase64 ? (isSceneUpgrade ? 0.5 : (isReimagine ? 0.9 : (isRestyle ? 0.6 : 0.15))) : 0.85 }) });
 
     /* v-img-textwise (شكوى المالك: «توليد الصور زفت» — لقطة شاشة التطبيق
        رجعت بعناوين عربية مشوهة): مصدرٌ مليء بالنصوص (لقطة واجهة، مستند،
@@ -347,8 +362,14 @@ module.exports = async (req, res) => {
        عربية سليمة — gpt-image ينفّذها وGemini يكسر الحروف): طلب توليد جديد
        يذكر نصوصًا/عناوين/أيقونات/واجهة/شاشة يبدأ أيضًا بـgpt-image. */
     const __textCueRe = /نص|كتاب|مكتوب|عنوان|عناوين|أيقون|ايقون|واجهة|شاشة|تطبيق|قائمة|كلمات|حروف|خط\s*عرب|\btext\b|label|icon|\bui\b|screen|interface|\bapp\b|menu|typograph|lettering|caption/i;
-    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !rawMode
-      && (editImageBase64 ? await sourceLooksTextDense() : __textCueRe.test(cleanPrompt));
+    /* v-textedit-raw (لقطة المالك «شيل حرف م واكتب ع» رجعت مشوّهة «٤/تعديل»):
+       تعديل مصدرٍ نصّيٍّ كثيف (لقطة شاشة/شعار) هو بالضبط ما يكسر فيه Gemini
+       الحروف العربية، وgpt-image-1 بـinput_fidelity=high ينقلها كما هي. كان
+       هذا المسار معطّلًا افتراضيًا لأن الوضع الخام (نانو) هو الافتراضي (!rawMode).
+       الآن: للتعديل على مصدر نصّي كثيف يعمل المسار حتى في الوضع الخام؛ ويبقى
+       الوضع الخام نقيًّا للتوليد الجديد. */
+    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan
+      && (editImageBase64 ? await sourceLooksTextDense() : (!rawMode && __textCueRe.test(cleanPrompt)));
     /* v-duo-textroute (لقطة المالك: لقطة واجهة + «عطني أفضل ونفس الفكرة» → فنجان قهوة): مسار النصّ الكثيف كان
        يرجع ناتج gpt-image وحده بلا Gemini ولا حكم. الآن يعمل المحرّكان معًا هنا أيضًا والحكم يختار. */
     let densePromise = null;
