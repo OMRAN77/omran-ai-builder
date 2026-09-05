@@ -218,7 +218,15 @@ module.exports = async (req, res) => {
       }) });
     }
 
-    if (rawMode) {
+    /* v-raw-smart-edit (المالك: «المفاتيح عندي ودفعت لكن النتيجة منك»): الوضع
+       الخام كان يمسح كل الأوامر المهندسة (تطوير/إعادة تصوّر/إزالة أسماء) ويرسل
+       نصّ المستخدم الخام فقط — فتضيع كل الهندسة في التعديلات وتتذبذب النتيجة.
+       الآن: الوضع الخام يبقى للتوليد الجديد (إحساس تطبيق Gemini كما أراد المالك)
+       أو حين يبدأ الطلب بـ«نانو:» صراحةً؛ أمّا تعديل صورة مصدر فيستخدم الأمر
+       المهندس دائمًا لأنه هو ما يرفع الجودة فوق التمرير الخام. */
+    const __explicitRaw = RAW_RE.test(String(prompt || ''));
+    const __pureRaw = rawMode && (!editImageBase64 || __explicitRaw);
+    if (__pureRaw) {
       parts.length = 0;
       parts.push({ text: cleanPrompt });
       if (editImageBase64) parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
@@ -251,7 +259,7 @@ module.exports = async (req, res) => {
       if (!nanoPrimary) cfg.imageConfig = imageConfig;
       return cfg;
     };
-    const reqBody = JSON.stringify(rawMode
+    const reqBody = JSON.stringify(__pureRaw
       ? { contents: [{ parts }], generationConfig: genConfigFor({}) }
       : { contents: [{ parts }], generationConfig: genConfigFor({ temperature: editImageBase64 ? (isSceneUpgrade ? 0.5 : (isReimagine ? 0.9 : (isElevate ? 0.5 : (isRestyle ? 0.6 : 0.15)))) : 0.85 }) });
 
