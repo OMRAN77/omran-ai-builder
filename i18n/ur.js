@@ -37,6 +37,7 @@ I18N['ur'] = {
     convertToWord: 'Word میں تبدیل کریں',
     copiedToast: 'کاپی ہو گیا',
     copyMsgTitle: 'جواب کاپی کریں',
+    'psheetAll': 'سب', 'psheetGrpArt': '🎨 فنی', 'psheetBefore': 'پہلے', 'psheetBeforeSub': 'ایک تصویر → ہر اسٹائل', 'psheetTry': '✨ اپنی تصویر پر آزمائیں',
     'tcSub_btnPortraitStyle': 'پورٹریٹ اسٹائلز کی وسیع رینج', 'tcSub_btnQuickTemplates': 'اگلے منصوبوں کے لیے خیالات اور تحریک', 'tcSub_btnVideoMaker': 'پیشہ ورانہ انداز میں ویڈیو بنائیں اور ایڈٹ کریں', 'tcSub_btnStudioAI': 'اسمارٹ اسٹائلز اور ایفیکٹس', 'tcSub_btnFashionAI': 'AI سے فیشن ڈیزائن', 'tcSub_btnDesignAI': 'اندرونی اور بیرونی ڈیکور ڈیزائن', 'tcSub_btnAdStudio': 'پیشہ ورانہ اشتہارات کا ڈیزائن', 'tcSub_btnStocks': 'مارکیٹ کے تجزیے اور ڈیٹا', 'tcSub_btnOmranTV': 'لامحدود مواد اور تفریح', 'tcSub_btnQibla': 'نماز کے اوقات اور قبلہ کی سمت', 'tcSub_btnExpense': 'اخراجات اور بجٹ کا انتظام', 'tcSub_btnOmranEdu': 'کورسز اور اسباق', 'tcSub_btnConstruction': 'انجینئرنگ اور تعمیراتی ڈیزائن', 'tcSub_btnReligion': 'دینی سوالات، قابلِ اعتماد جوابات', 'tcSub_btnCV': 'پیشہ ورانہ CV بنائیں', 'tcSub_btnDocs': 'دستاویزات کا تجزیہ اور خلاصہ', 'tcSub_btnFeedback': 'اپنی رائے اور تجاویز شیئر کریں', 'tcSub_btnEmailAssist': 'ای میلز اور جوابات لکھیں',
     msgShareReply: 'جواب شیئر کریں',
     msgShareCopied: 'جواب کاپی ہو گیا — جس ایپ میں چاہیں پیسٹ کریں',
