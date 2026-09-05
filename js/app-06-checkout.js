@@ -2157,18 +2157,29 @@ $('#prompt').addEventListener('input', window.__updateSendReady);
 // v209: صندوق الكتابة يبدأ بسطر واحد صغير ويكبر تلقائيًا مع الكتابة فقط
 (function(){
   const p = $('#prompt');
+  /* v-composer-tall: الصندوق مستطيل مستدير (لا كبسولة) عند وجود مرفق أو أكثر من سطر */
+  function syncTall(){
+    try{
+      var box = document.getElementById('composerBox'); if(!box) return;
+      var strip = document.getElementById('attachStrip');
+      var tall = (parseInt(p.style.height, 10) || 0) > 46 || !!(strip && strip.childElementCount > 0);
+      box.classList.toggle('omTall', tall);
+    }catch(e){ /* guard-ok — cosmetic */ }
+  }
+  window.__composerSyncTall = syncTall;
   function autoGrow(){
     /* v-tap-fast: قياس scrollHeight يعيد تخطيط الصفحة كلها مع كل حرف —
        سطر واحد قصير والارتفاع أصلًا على الأدنى → لا قياس إطلاقًا. */
     var v = p.value;
     if(p.__omMinH && v.indexOf('\n') === -1 && v.length < 20){
-      if(p.style.height !== p.__omMinH) p.style.height = p.__omMinH;
+      if(p.style.height !== p.__omMinH){ p.style.height = p.__omMinH; syncTall(); }
       return;
     }
     p.style.height = 'auto';
     var h = Math.min(p.scrollHeight, 110) + 'px';
     p.style.height = h;
     if(v === '') p.__omMinH = h;
+    syncTall();
   }
   p.addEventListener('input', autoGrow);
   window.__promptAutoGrow = autoGrow;
