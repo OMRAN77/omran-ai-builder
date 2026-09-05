@@ -239,6 +239,7 @@ I18N['es'] = {
     "copyCodeTitle": "Copiar código",
     "copiedMsg": "Copiado ✅",
     "copyMsgTitle": "Copiar respuesta",
+    "imgPreparing": "⏳ Preparando la imagen…",
     "imgReadyTitle": "✅ Imagen lista", "imgDlBtn": "⬇️ Descargar", "imgDlStarted": "📥 Descargando — revisa notificaciones/Descargas", "imgWaBtn": "💬 WhatsApp", "imgLinkCopied": "Enlace de la imagen copiado — pégalo en WhatsApp", "imgShareBtn": "📤 Compartir", "imgOpenBtn": "🔗 Abrir",
     "attachDropHere": "Suelta la imagen aquí",
     "homeLastImage": "🖼️ Última imagen", "homeLastVideo": "🎬 Último vídeo", "homeCollection": "✨ Colección — últimos 3 trabajos", "homeNoImage": "Aún no hay nada aquí", "homeTryNow": "Probar ahora ›", "homeNoVideo": "Aún no hay vídeos", "homeMakeVideo": "Crea tu primer vídeo ›", "homeEmptyLib": "Tu biblioteca está vacía", "homeStartCreating": "Empieza a crear ›",

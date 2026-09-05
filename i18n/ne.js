@@ -38,6 +38,7 @@ I18N['ne'] = {
     convertToWord: 'Word मा रूपान्तरण गर्नुहोस्',
     copiedToast: 'प्रतिलिपि गरियो',
     copyMsgTitle: 'जवाफ प्रतिलिपि गर्नुहोस्',
+    imgPreparing: "⏳ तस्बिर तयार हुँदैछ…",
     imgReadyTitle: "✅ तस्बिर तयार छ", imgDlBtn: "⬇️ डाउनलोड", imgDlStarted: "📥 डाउनलोड सुरु — सूचना/डाउनलोड हेर्नुहोस्", imgWaBtn: "💬 व्हाट्सएप", imgLinkCopied: "तस्बिरको लिङ्क प्रतिलिपि भयो — व्हाट्सएपमा टाँस्नुहोस्", imgShareBtn: "📤 साझा गर्नुहोस्", imgOpenBtn: "🔗 खोल्नुहोस्",
     attachDropHere: "तस्बिर यहाँ छोड्नुहोस्",
     'homeLastImage': '🖼️ पछिल्लो तस्बिर', 'homeLastVideo': '🎬 पछिल्लो भिडियो', 'homeCollection': '✨ सङ्ग्रह — पछिल्ला ३ काम', 'homeNoImage': 'यहाँ अहिले केही छैन', 'homeTryNow': 'अहिले प्रयास गर्नुहोस् ›', 'homeNoVideo': 'अहिले कुनै भिडियो छैन', 'homeMakeVideo': 'आफ्नो पहिलो भिडियो बनाउनुहोस् ›', 'homeEmptyLib': 'तपाईंको लाइब्रेरी खाली छ', 'homeStartCreating': 'सिर्जना सुरु गर्नुहोस् ›',

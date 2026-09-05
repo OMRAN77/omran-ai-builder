@@ -238,6 +238,7 @@ I18N['id'] = {
     "copyCodeTitle": "Salin kode",
     "copiedMsg": "Disalin ✅",
     "copyMsgTitle": "Salin balasan",
+    "imgPreparing": "⏳ Menyiapkan gambar…",
     "imgReadyTitle": "✅ Gambar siap", "imgDlBtn": "⬇️ Unduh", "imgDlStarted": "📥 Mengunduh — cek notifikasi/Unduhan", "imgWaBtn": "💬 WhatsApp", "imgLinkCopied": "Tautan gambar disalin — tempel di WhatsApp", "imgShareBtn": "📤 Bagikan", "imgOpenBtn": "🔗 Buka",
     "attachDropHere": "Lepaskan gambar di sini",
     "homeLastImage": "🖼️ Gambar terakhir", "homeLastVideo": "🎬 Video terakhir", "homeCollection": "✨ Koleksi — 3 karya terakhir", "homeNoImage": "Belum ada apa-apa di sini", "homeTryNow": "Coba sekarang ›", "homeNoVideo": "Belum ada video", "homeMakeVideo": "Buat video pertamamu ›", "homeEmptyLib": "Perpustakaanmu kosong", "homeStartCreating": "Mulai berkarya ›",

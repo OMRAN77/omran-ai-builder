@@ -2539,7 +2539,7 @@ const I18N = {
     voiceTabAssistantName: 'المساعد',
     copyCode: 'نسخ',
     copiedMsg: 'تم النسخ ✅',
-    copyMsgTitle: 'نسخ الردّ', 'homeLastImage': '🖼️ آخر صورة', 'homeLastVideo': '🎬 آخر فيديو', 'homeCollection': '✨ التشكيلة — آخر ٣ أعمال', 'homeNoImage': 'لسا ما سويت شي هنا', 'homeTryNow': 'جرّب الآن ›', 'homeNoVideo': 'لا يوجد فيديوهات بعد', 'homeMakeVideo': 'أنشئ أول فيديو ›', 'homeEmptyLib': 'مكتبتك فارغة تمامًا', 'homeStartCreating': 'ابدأ الإبداع ›', 'grpBusiness': '💼 أعمال', 'grpLife': '🕌 حياة يومية', 'psheetAll': 'الكل', 'psheetGrpArt': '🎨 فنية', 'psheetBefore': 'قبل', 'psheetBeforeSub': 'صورة واحدة → كل الستايلات', 'psheetTry': '✨ جرّب على صورتك', 'tcSub_btnPortraitStyle': 'مجموعة متنوعة من أنماط الصور', 'tcSub_btnQuickTemplates': 'أفكار وإلهام لمشاريعك القادمة', 'tcSub_btnVideoMaker': 'إنشاء وتحرير الفيديو باحترافية', 'tcSub_btnStudioAI': 'أنماط وتأثيرات ذكية', 'tcSub_btnFashionAI': 'تصميم أزياء بالذكاء الاصطناعي', 'tcSub_btnDesignAI': 'تصميم الديكور الداخلي والخارجي', 'tcSub_btnAdStudio': 'تصميم إعلانات احترافية', 'tcSub_btnStocks': 'تحليلات وبيانات الأسواق', 'tcSub_btnOmranTV': 'محتوى وترفيه بلا حدود', 'tcSub_btnQibla': 'مواقيت الصلاة واتجاه القبلة', 'tcSub_btnExpense': 'إدارة المصاريف والميزانيات', 'tcSub_btnOmranEdu': 'كورسات ودروس تعليمية', 'tcSub_btnConstruction': 'تصميمات هندسية ومعمارية', 'tcSub_btnReligion': 'أسئلة دينية وإجابات موثوقة', 'tcSub_btnCV': 'إنشاء سيرة ذاتية احترافية', 'tcSub_btnDocs': 'تحليل وتلخيص المستندات', 'tcSub_btnFeedback': 'شاركنا رأيك واقتراحاتك', 'tcSub_btnEmailAssist': 'صياغة الرسائل والردود', msgShareReply: 'مشاركة الردّ', msgShareCopied: 'نُسخ الردّ — الصقه في التطبيق الذي تريده', attachDropHere: "أفلت الصورة هنا", imgReadyTitle: "✅ الصورة جاهزة", imgDlBtn: "⬇️ تحميل", imgDlStarted: "📥 بدأ التحميل — افتح الإشعارات/التنزيلات", imgWaBtn: "💬 واتساب", imgLinkCopied: "نُسخ رابط الصورة — الصقه في واتساب", imgShareBtn: "📤 مشاركة", imgOpenBtn: "🔗 فتح",
+    copyMsgTitle: 'نسخ الردّ', 'homeLastImage': '🖼️ آخر صورة', 'homeLastVideo': '🎬 آخر فيديو', 'homeCollection': '✨ التشكيلة — آخر ٣ أعمال', 'homeNoImage': 'لسا ما سويت شي هنا', 'homeTryNow': 'جرّب الآن ›', 'homeNoVideo': 'لا يوجد فيديوهات بعد', 'homeMakeVideo': 'أنشئ أول فيديو ›', 'homeEmptyLib': 'مكتبتك فارغة تمامًا', 'homeStartCreating': 'ابدأ الإبداع ›', 'grpBusiness': '💼 أعمال', 'grpLife': '🕌 حياة يومية', 'psheetAll': 'الكل', 'psheetGrpArt': '🎨 فنية', 'psheetBefore': 'قبل', 'psheetBeforeSub': 'صورة واحدة → كل الستايلات', 'psheetTry': '✨ جرّب على صورتك', 'tcSub_btnPortraitStyle': 'مجموعة متنوعة من أنماط الصور', 'tcSub_btnQuickTemplates': 'أفكار وإلهام لمشاريعك القادمة', 'tcSub_btnVideoMaker': 'إنشاء وتحرير الفيديو باحترافية', 'tcSub_btnStudioAI': 'أنماط وتأثيرات ذكية', 'tcSub_btnFashionAI': 'تصميم أزياء بالذكاء الاصطناعي', 'tcSub_btnDesignAI': 'تصميم الديكور الداخلي والخارجي', 'tcSub_btnAdStudio': 'تصميم إعلانات احترافية', 'tcSub_btnStocks': 'تحليلات وبيانات الأسواق', 'tcSub_btnOmranTV': 'محتوى وترفيه بلا حدود', 'tcSub_btnQibla': 'مواقيت الصلاة واتجاه القبلة', 'tcSub_btnExpense': 'إدارة المصاريف والميزانيات', 'tcSub_btnOmranEdu': 'كورسات ودروس تعليمية', 'tcSub_btnConstruction': 'تصميمات هندسية ومعمارية', 'tcSub_btnReligion': 'أسئلة دينية وإجابات موثوقة', 'tcSub_btnCV': 'إنشاء سيرة ذاتية احترافية', 'tcSub_btnDocs': 'تحليل وتلخيص المستندات', 'tcSub_btnFeedback': 'شاركنا رأيك واقتراحاتك', 'tcSub_btnEmailAssist': 'صياغة الرسائل والردود', msgShareReply: 'مشاركة الردّ', msgShareCopied: 'نُسخ الردّ — الصقه في التطبيق الذي تريده', attachDropHere: "أفلت الصورة هنا", imgReadyTitle: "✅ الصورة جاهزة", imgDlBtn: "⬇️ تحميل", imgDlStarted: "📥 بدأ التحميل — افتح الإشعارات/التنزيلات", imgWaBtn: "💬 واتساب", imgLinkCopied: "نُسخ رابط الصورة — الصقه في واتساب", imgShareBtn: "📤 مشاركة", imgOpenBtn: "🔗 فتح", imgPreparing: "⏳ جارٍ تجهيز الصورة…",
     adStudioTitle: 'استوديو الإعلانات',
     adStudioHint: 'استوديو الإعلانات — اصنع إعلانك بالمحادثة',
     appTitle: 'مُنشئ التطبيقات بالذكاء الاصطناعي',
@@ -3730,7 +3730,7 @@ const I18N = {
     copyCode: 'Copy',
     copyCodeTitle: 'Copy code',
     copiedMsg: 'Copied ✅',
-    copyMsgTitle: 'Copy reply', 'homeLastImage': '🖼️ Last image', 'homeLastVideo': '🎬 Last video', 'homeCollection': '✨ Collection — last 3 works', 'homeNoImage': 'Nothing here yet', 'homeTryNow': 'Try now ›', 'homeNoVideo': 'No videos yet', 'homeMakeVideo': 'Make your first video ›', 'homeEmptyLib': 'Your library is empty', 'homeStartCreating': 'Start creating ›', 'grpBusiness': '💼 Business', 'grpLife': '🕌 Daily life', 'psheetAll': 'All', 'psheetGrpArt': '🎨 Artistic', 'psheetBefore': 'Before', 'psheetBeforeSub': 'One photo → every style', 'psheetTry': '✨ Try it on your photo', 'tcSub_btnPortraitStyle': 'A wide range of portrait styles', 'tcSub_btnQuickTemplates': 'Ideas and inspiration for your next projects', 'tcSub_btnVideoMaker': 'Create and edit videos professionally', 'tcSub_btnStudioAI': 'Smart styles and effects', 'tcSub_btnFashionAI': 'AI-powered fashion design', 'tcSub_btnDesignAI': 'Interior and exterior decor design', 'tcSub_btnAdStudio': 'Professional ad design', 'tcSub_btnStocks': 'Market analytics and data', 'tcSub_btnOmranTV': 'Unlimited content and entertainment', 'tcSub_btnQibla': 'Prayer times and Qibla direction', 'tcSub_btnExpense': 'Manage expenses and budgets', 'tcSub_btnOmranEdu': 'Courses and lessons', 'tcSub_btnConstruction': 'Engineering and architectural designs', 'tcSub_btnReligion': 'Religious questions, trusted answers', 'tcSub_btnCV': 'Build a professional CV', 'tcSub_btnDocs': 'Analyze and summarize documents', 'tcSub_btnFeedback': 'Share your feedback and ideas', 'tcSub_btnEmailAssist': 'Draft emails and replies', msgShareReply: 'Share reply', msgShareCopied: 'Reply copied — paste it in the app you want', attachDropHere: "Drop the image here", imgReadyTitle: "✅ Image ready", imgDlBtn: "⬇️ Download", imgDlStarted: "📥 Downloading — check notifications/Downloads", imgWaBtn: "💬 WhatsApp", imgLinkCopied: "Image link copied — paste it in WhatsApp", imgShareBtn: "📤 Share", imgOpenBtn: "🔗 Open",
+    copyMsgTitle: 'Copy reply', 'homeLastImage': '🖼️ Last image', 'homeLastVideo': '🎬 Last video', 'homeCollection': '✨ Collection — last 3 works', 'homeNoImage': 'Nothing here yet', 'homeTryNow': 'Try now ›', 'homeNoVideo': 'No videos yet', 'homeMakeVideo': 'Make your first video ›', 'homeEmptyLib': 'Your library is empty', 'homeStartCreating': 'Start creating ›', 'grpBusiness': '💼 Business', 'grpLife': '🕌 Daily life', 'psheetAll': 'All', 'psheetGrpArt': '🎨 Artistic', 'psheetBefore': 'Before', 'psheetBeforeSub': 'One photo → every style', 'psheetTry': '✨ Try it on your photo', 'tcSub_btnPortraitStyle': 'A wide range of portrait styles', 'tcSub_btnQuickTemplates': 'Ideas and inspiration for your next projects', 'tcSub_btnVideoMaker': 'Create and edit videos professionally', 'tcSub_btnStudioAI': 'Smart styles and effects', 'tcSub_btnFashionAI': 'AI-powered fashion design', 'tcSub_btnDesignAI': 'Interior and exterior decor design', 'tcSub_btnAdStudio': 'Professional ad design', 'tcSub_btnStocks': 'Market analytics and data', 'tcSub_btnOmranTV': 'Unlimited content and entertainment', 'tcSub_btnQibla': 'Prayer times and Qibla direction', 'tcSub_btnExpense': 'Manage expenses and budgets', 'tcSub_btnOmranEdu': 'Courses and lessons', 'tcSub_btnConstruction': 'Engineering and architectural designs', 'tcSub_btnReligion': 'Religious questions, trusted answers', 'tcSub_btnCV': 'Build a professional CV', 'tcSub_btnDocs': 'Analyze and summarize documents', 'tcSub_btnFeedback': 'Share your feedback and ideas', 'tcSub_btnEmailAssist': 'Draft emails and replies', msgShareReply: 'Share reply', msgShareCopied: 'Reply copied — paste it in the app you want', attachDropHere: "Drop the image here", imgReadyTitle: "✅ Image ready", imgDlBtn: "⬇️ Download", imgDlStarted: "📥 Downloading — check notifications/Downloads", imgWaBtn: "💬 WhatsApp", imgLinkCopied: "Image link copied — paste it in WhatsApp", imgShareBtn: "📤 Share", imgOpenBtn: "🔗 Open", imgPreparing: "⏳ Preparing the image…",
     uploadCodeTitle: 'Upload a code file (HTML or Python)',
     newProject: '+ New Project',
     promptPlaceholder: 'Type your message here ...',
@@ -4420,7 +4420,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=670'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
+    sc.src = 'i18n/' + lg + '.js?v=671'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -6300,20 +6300,22 @@ function renderMessages(keepScroll){
     const r = await fetch(s); return await r.blob();
   }
   function extOf(mime){ return mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : (mime === 'image/gif' ? 'gif' : 'jpg')); }
-  /* رفع للسيرفر (حدّ ٣MB base64): PNG كبير يُحوَّل JPEG محليًا */
-  function shrinkForUpload(blob){
+  /* رفع للسيرفر: مخزن الروابط (Upstash) يرفض القيم الكبيرة (≈1MB) — كانت صورة PNG
+     بحجم ١.٥MB تفشل صامتة فيسقط الزر لتنزيل عادي. الآن تُحوَّل دائمًا JPEG بحجم متدرّج
+     حتى تنزل تحت ٩٠٠KB base64 (نفس نمط مشاركة صور الدردشة). */
+  function shrinkForUpload(blob, maxDim, q){
     return new Promise((resolve) => {
       try{
         const du0 = URL.createObjectURL(blob);
         const im = new Image();
         im.onload = () => {
           try{
-            const MAX = 1600, k = Math.min(1, MAX / Math.max(im.naturalWidth || 1, im.naturalHeight || 1));
+            const k = Math.min(1, maxDim / Math.max(im.naturalWidth || 1, im.naturalHeight || 1));
             const c = document.createElement('canvas');
             c.width = Math.max(1, Math.round((im.naturalWidth || 1) * k)); c.height = Math.max(1, Math.round((im.naturalHeight || 1) * k));
-            c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+            const cx = c.getContext('2d'); cx.fillStyle = '#000'; cx.fillRect(0, 0, c.width, c.height); cx.drawImage(im, 0, 0, c.width, c.height);
             URL.revokeObjectURL(du0);
-            resolve({ data: c.toDataURL('image/jpeg', 0.92), w: c.width, h: c.height, mime: 'image/jpeg' });
+            resolve({ data: c.toDataURL('image/jpeg', q), w: c.width, h: c.height, mime: 'image/jpeg' });
           }catch(e){ resolve(null); }
         };
         im.onerror = () => resolve(null);
@@ -6321,12 +6323,18 @@ function renderMessages(keepScroll){
       }catch(e){ resolve(null); }
     });
   }
+  const UPLOAD_MAX_B64 = 900 * 1024;
   async function uploadImage(blob, name){
     let b64 = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result || '')); fr.onerror = rej; fr.readAsDataURL(blob); });
     let mime = blob.type || 'image/png', w, h;
-    if(b64.length > 2.6 * 1024 * 1024 || mime === 'image/gif' && b64.length > 2.6 * 1024 * 1024){
-      const sm = await shrinkForUpload(blob);
-      if(sm){ b64 = sm.data; mime = sm.mime; w = sm.w; h = sm.h; }
+    if(b64.length > UPLOAD_MAX_B64 || mime === 'image/gif'){
+      const steps = [[1600, 0.9], [1280, 0.85], [1024, 0.8], [800, 0.75]];
+      for(let i = 0; i < steps.length; i++){
+        const sm = await shrinkForUpload(blob, steps[i][0], steps[i][1]);
+        if(!sm) break;
+        b64 = sm.data; mime = sm.mime; w = sm.w; h = sm.h;
+        if(b64.length <= UPLOAD_MAX_B64) break;
+      }
     }
     const i = b64.indexOf(',');
     const r = await fetch('/api/media?action=img', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: b64.slice(i + 1), mime, w, h }) });
@@ -6341,6 +6349,15 @@ function renderMessages(keepScroll){
   }
   function toast(m){ try{ if(typeof settingsToast === 'function'){ settingsToast(m); return; } }catch(e){ /* guard-ok */ } try{ alert(m); }catch(e){ /* guard-ok */ } }
   function copyText(s){ try{ if(navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(s); }catch(e){ /* guard-ok */ } return Promise.reject(new Error('no-clipboard')); }
+  function preparingSheet(){
+    try{
+      const old = document.getElementById('omranImgSheet'); if(old) old.remove();
+      const sheet = document.createElement('div'); sheet.id = 'omranImgSheet';
+      sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:rgba(20,20,26,.98);border-top:1px solid rgba(212,175,55,.45);border-radius:18px 18px 0 0;padding:18px 16px calc(22px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(0,0,0,.5);font-family:inherit;color:#f3efe4;font-weight:800;font-size:15px;text-align:center;';
+      sheet.textContent = gtx('imgPreparing', '⏳ جارٍ تجهيز الصورة…', '⏳ Preparing the image…');
+      document.body.appendChild(sheet);
+    }catch(e){ /* guard-ok */ }
+  }
   function readySheet(links, file, name){
     const old = document.getElementById('omranImgSheet'); if(old) old.remove();
     const sheet = document.createElement('div'); sheet.id = 'omranImgSheet';
@@ -6411,8 +6428,11 @@ function renderMessages(keepScroll){
       if(ok){ try{ await navigator.share({ files: [file], title: 'Omran AI' }); return true; }catch(e){ if(e && e.name === 'AbortError') return true; } }
     }
     if(mode !== 'share' && !appish()){ plainDownload(blob, name); return true; }
+    /* الورقة تظهر فورًا بحالة «جارٍ التجهيز» — بلا ضغطة تبدو ميتة أثناء الرفع */
+    preparingSheet();
     try{ const links = await uploadImage(blob, name); return readySheet(links, file, name); }
     catch(e){ /* guard-ok — الرفع تعذّر */ }
+    try{ const old = document.getElementById('omranImgSheet'); if(old) old.remove(); }catch(e){ /* guard-ok */ }
     plainDownload(blob, name);
     return true;
   };

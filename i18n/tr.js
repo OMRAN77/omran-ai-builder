@@ -238,6 +238,7 @@ I18N['tr'] = {
     "copyCodeTitle": "Kodu kopyala",
     "copiedMsg": "Kopyalandı ✅",
     "copyMsgTitle": "Yanıtı kopyala",
+    "imgPreparing": "⏳ Görsel hazırlanıyor…",
     "imgReadyTitle": "✅ Görsel hazır", "imgDlBtn": "⬇️ İndir", "imgDlStarted": "📥 İndirme başladı — bildirimlere/İndirilenlere bakın", "imgWaBtn": "💬 WhatsApp", "imgLinkCopied": "Görsel bağlantısı kopyalandı — WhatsApp’a yapıştırın", "imgShareBtn": "📤 Paylaş", "imgOpenBtn": "🔗 Aç",
     "attachDropHere": "Görseli buraya bırakın",
     "homeLastImage": "🖼️ Son görsel", "homeLastVideo": "🎬 Son video", "homeCollection": "✨ Koleksiyon — son 3 çalışma", "homeNoImage": "Burada henüz bir şey yok", "homeTryNow": "Şimdi dene ›", "homeNoVideo": "Henüz video yok", "homeMakeVideo": "İlk videonu oluştur ›", "homeEmptyLib": "Kütüphanen boş", "homeStartCreating": "Üretmeye başla ›",
