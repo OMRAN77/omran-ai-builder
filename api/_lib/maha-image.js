@@ -10,6 +10,22 @@ const { cleanImagePrompt, buildGenerationPrompt, buildEditPrompt, buildSceneUpgr
 const RESTYLE_RE = /(^|[\s،,])(3d|ثلاثي|مجسم|مجسّم|كرتون|كارتون|أنيمي|انمي|بيكسار|ديزني|زيتي|مائي|رصاص|بكسل|بيكسل|سايبر|نيون|كوميك|كومكس|مانجا|فانتازيا|واقعي|anime|cartoon|pixar|disney|pixel|cyberpunk|neon|comic|manga|fantasy|watercolor|oil\s*paint|sketch|realistic|render)/i;
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 const { judgeBest, duoEnabled } = require('./image-judge');
+/* v-nano-chat (المالك: «نفس فكرة نانو»): مع كل صورة جملة قصيرة تشرح ما فُعل واقتراح للخطوة التالية، بلغة الطلب */
+async function imageCaption(apiKey, prompt, b64, mime, sourceB64, sourceMime) {
+  try {
+    if (!apiKey || String(process.env.IMAGE_CAPTION || 'on').toLowerCase() === 'off') return '';
+    const parts = [{ text: 'The user asked: "' + String(prompt || '').slice(0, 500) + '".\n' + (sourceB64 ? 'The first image is what they sent; the second is the result you produced.' : 'The image is the result you produced.') + '\nReply in the SAME language as the user\'s request. Write exactly two short sentences: (1) what you did in the result, (2) one concrete follow-up suggestion phrased as a question. No markdown, no emojis, max 35 words total.' }];
+    if (sourceB64) parts.push({ inlineData: { mimeType: sourceMime || 'image/jpeg', data: sourceB64 } });
+    parts.push({ inlineData: { mimeType: mime || 'image/png', data: b64 } });
+    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(12000),
+      body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0.4, maxOutputTokens: 90 } }),
+    });
+    if (!r.ok) return '';
+    const d = await r.json().catch(() => null);
+    return String((((((d || {}).candidates || [])[0] || {}).content || {}).parts || []).map((p) => p.text || '').join(' ')).trim().slice(0, 300);
+  } catch (e) { return ''; }
+}
 const { authorPrayerPlan } = require('./prayer-plan');
 const { fetchImageWithRetry, isImageTimeoutError } = require('./image-fetch');
 const pipeline = require('./image-pipeline');
@@ -496,9 +512,11 @@ module.exports = async (req, res) => {
         }
       } catch (e) { console.warn('[maha-image] duo skipped: ' + (e && e.message)); }
     }
+    const caption = prayerPlan ? '' : await imageCaption(apiKey, cleanPrompt, imgPart.inlineData.data, imgPart.inlineData.mimeType || 'image/png', editImageBase64 || null, editMimeType || 'image/png');
     res.status(200).json({
       imageBase64: imgPart.inlineData.data,
       mimeType: imgPart.inlineData.mimeType || 'image/png',
+      caption: caption || undefined,
       engine: rawMode ? 'nano-raw' : (duoEngine || 'gemini'),
       authoredText: prayerPlan ? prayerPlan.prayerText : undefined,
       visualPrompt: prayerPlan ? prayerPlan.visualBrief : undefined,
