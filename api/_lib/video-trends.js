@@ -1,4 +1,4 @@
-// v-video-trends: قوالب ترندات الفيديو (١٨) — الأمر النهائي يُبنى هنا من قالب الترند ومدخلات المستخدم
+// v-video-trends: قوالب ترندات الفيديو (٢٥) — الأمر النهائي يُبنى هنا من قالب الترند ومدخلات المستخدم
 'use strict';
 const TRENDS = {
  "pixarstory": {
@@ -242,6 +242,66 @@ const TRENDS = {
   "scenes": null,
   "preview": {
    "frame": "photorealistic still of a young Arab man standing still in a studio while a motion-blurred camera orbit circles around him",
+   "gender": "m"
+  }
+ },
+ "timecapsule": {
+  "engine": "veo",
+  "ratio": "720:1280",
+  "photo": "req",
+  "kind": "none",
+  "prompt": "Photorealistic emotional video: the person from the reference image today stands beside their own future self from the year 2050 - the SAME identity aged realistically (gray hair, softened mature features, dignified posture, elegant clothes). They turn to face each other and smile warmly; the older self places a hand on the younger one's shoulder. Slow cinematic push-in, warm nostalgic light, natural skin texture, no text.",
+  "scenes": null,
+  "preview": {
+   "frame": "photorealistic still of a young Arab man standing beside his realistically aged 2050 self with gray hair, hand on shoulder, warm nostalgic light",
+   "gender": "m"
+  }
+ },
+ "bullettime": {
+  "engine": "veo",
+  "ratio": "1280:720",
+  "photo": "req",
+  "kind": "none",
+  "prompt": "Matrix-style bullet-time shot: the subject of the reference image is frozen mid-action inside a completely time-frozen scene - suspended water droplets, floating dust and debris hanging motionless in the air - while the camera sweeps a smooth 360-degree cinematic arc around them. Photorealistic, dramatic rim lighting, shallow depth of field, film grain, no text.",
+  "scenes": null,
+  "preview": {
+   "frame": "photorealistic bullet-time still of a young Arab man frozen mid-jump surrounded by suspended water droplets while a motion-blurred camera arcs around him, dramatic rim light",
+   "gender": "m"
+  }
+ },
+ "movieposter": {
+  "engine": "veo",
+  "ratio": "720:1280",
+  "photo": "req",
+  "kind": "name",
+  "prompt": "Cinematic motion poster: the person from the reference image as the movie star of a dramatic blockbuster film poster titled '{text}' - epic stormy backdrop, drifting smoke and light rays animating subtly, lens flares sweeping, the bold glowing title '{text}' and a small credits block at the bottom, the SAME face as the reference. Vertical poster framing, blockbuster color grade, slow majestic camera drift.",
+  "scenes": null,
+  "preview": {
+   "frame": "cinematic Hollywood movie poster still of a determined young Arab man in a dark coat, epic stormy backdrop, glowing bold title text and credits block, lens flare",
+   "gender": "m"
+  }
+ },
+ "materialize": {
+  "engine": "veo",
+  "ratio": "1280:720",
+  "photo": "req",
+  "kind": "product",
+  "prompt": "High-end product commercial: the exact product from the reference image materializes gradually from thousands of swirling golden particles and fine sand that spiral inward and assemble into the product, which settles softly onto a minimal dark studio pedestal with a gentle glow pulse. Macro detail, slow motion, elegant dark background, soft spotlight, no text.",
+  "scenes": null,
+  "preview": {
+   "frame": "luxury commercial still of a perfume bottle half-formed from swirling golden particles and sand spiraling inward over a dark studio pedestal, macro detail",
+   "gender": "m"
+  }
+ },
+ "parallaxpop": {
+  "engine": "veo",
+  "ratio": "720:1280",
+  "photo": "req",
+  "kind": "none",
+  "prompt": "2.5D parallax animation of the reference image: the still photo separates into layered depth planes - the foreground subject pops gently toward the camera while background layers drift slowly with realistic depth parallax, subtle dust particles floating between the layers, smooth camera sway, the subject stays crisp and unchanged, dreamy cinematic feel, no text.",
+  "scenes": null,
+  "preview": {
+   "frame": "2.5D parallax art still of a portrait photo separating into floating three-dimensional layers with depth, dust particles between layers, dreamy light",
    "gender": "m"
   }
  }
