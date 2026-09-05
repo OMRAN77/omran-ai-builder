@@ -14721,6 +14721,17 @@ const MAX_TEXT_ATTACH_CHARS = 100000;
 const MAX_ATTACH_FILE_BYTES = 25 * 1024 * 1024; // 25MB hard cap per file
 const ARCHIVE_EXT_RE = /\.(zip|docx|xlsx|pptx|jar)$/i;
 const IMAGE_TYPES = /^image\//;
+// v-huawei: بعض مدراء الملفات (هواوي/أندرويد) وصور HEIC يعطون file.type فارغًا
+// أو "application/octet-stream"، فيفشل فحص image/ ويعامَل الصورة كملف نصي —
+// لذلك نتحقق أيضًا من امتداد الاسم كخيار احتياطي.
+const IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp|bmp|heic|heif|avif|tiff?|svg)$/i;
+function isImageAttachment(file){
+  try{
+    if(file && IMAGE_TYPES.test(file.type || '')) return true;
+    if(file && file.name && IMAGE_EXT_RE.test(file.name)) return true;
+  }catch(_e){ __swallow(_e, "attach:isImage"); }
+  return false;
+}
 
 function renderAttachStrip(){
   const strip = $('#attachStrip');
@@ -15613,7 +15624,7 @@ $('#attachInput').addEventListener('change', async (e) => {
         pendingAttachments.push({ name: file.name, isImage: false, error: true, text: '⚠️ ' + file.name + ': ' + t('attachTruncated') });
         continue;
       }
-      if(IMAGE_TYPES.test(file.type)){
+      if(isImageAttachment(file)){
         /* v-heic: صور HEIC (هواوي/آيفون) كانت تمر خامًا فيرفضها التحليل —
            تُحوَّل JPEG محليًا قبل التصغير. */
         let imgFile = file;
