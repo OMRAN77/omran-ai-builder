@@ -240,6 +240,7 @@ I18N['ml'] = {
     "copyCodeTitle": "കോഡ് കോപ്പി ചെയ്യുക",
     "copiedMsg": "കോപ്പി ചെയ്തു ✅",
     "copyMsgTitle": "മറുപടി കോപ്പി ചെയ്യുക",
+    "attachDropHere": "ചിത്രം ഇവിടെ ഇടുക",
     "homeLastImage": "🖼️ അവസാന ചിത്രം", "homeLastVideo": "🎬 അവസാന വീഡിയോ", "homeCollection": "✨ ശേഖരം — അവസാന 3 സൃഷ്ടികൾ", "homeNoImage": "ഇവിടെ ഇതുവരെ ഒന്നുമില്ല", "homeTryNow": "ഇപ്പോൾ പരീക്ഷിക്കുക ›", "homeNoVideo": "ഇതുവരെ വീഡിയോകളില്ല", "homeMakeVideo": "ആദ്യ വീഡിയോ ഉണ്ടാക്കുക ›", "homeEmptyLib": "നിങ്ങളുടെ ലൈബ്രറി ശൂന്യമാണ്", "homeStartCreating": "സൃഷ്ടിക്കാൻ തുടങ്ങുക ›",
     "grpBusiness": "💼 ബിസിനസ്", "grpLife": "🕌 ദൈനംദിന ജീവിതം",
     "psheetAll": "എല്ലാം", "psheetGrpArt": "🎨 കലാപരം", "psheetBefore": "മുമ്പ്", "psheetBeforeSub": "ഒരു ഫോട്ടോ → എല്ലാ ശൈലികളും", "psheetTry": "✨ നിങ്ങളുടെ ഫോട്ടോയിൽ പരീക്ഷിക്കുക",

@@ -238,6 +238,7 @@ I18N['tr'] = {
     "copyCodeTitle": "Kodu kopyala",
     "copiedMsg": "Kopyalandı ✅",
     "copyMsgTitle": "Yanıtı kopyala",
+    "attachDropHere": "Görseli buraya bırakın",
     "homeLastImage": "🖼️ Son görsel", "homeLastVideo": "🎬 Son video", "homeCollection": "✨ Koleksiyon — son 3 çalışma", "homeNoImage": "Burada henüz bir şey yok", "homeTryNow": "Şimdi dene ›", "homeNoVideo": "Henüz video yok", "homeMakeVideo": "İlk videonu oluştur ›", "homeEmptyLib": "Kütüphanen boş", "homeStartCreating": "Üretmeye başla ›",
     "grpBusiness": "💼 İş", "grpLife": "🕌 Günlük yaşam",
     "psheetAll": "Tümü", "psheetGrpArt": "🎨 Sanatsal", "psheetBefore": "Önce", "psheetBeforeSub": "Tek fotoğraf → her stil", "psheetTry": "✨ Kendi fotoğrafında dene",

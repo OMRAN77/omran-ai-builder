@@ -39,6 +39,7 @@ I18N['fr'] = {
     convertToWord: 'Convertir en Word',
     copiedToast: 'Copié',
     copyMsgTitle: 'Copier la réponse',
+    attachDropHere: "Déposez l'image ici",
     'homeLastImage': '🖼️ Dernière image', 'homeLastVideo': '🎬 Dernière vidéo', 'homeCollection': '✨ Collection — 3 derniers travaux', 'homeNoImage': 'Rien ici pour l’instant', 'homeTryNow': 'Essayer ›', 'homeNoVideo': 'Aucune vidéo pour l’instant', 'homeMakeVideo': 'Créer votre première vidéo ›', 'homeEmptyLib': 'Votre bibliothèque est vide', 'homeStartCreating': 'Commencer à créer ›',
     'grpBusiness': '💼 Affaires', 'grpLife': '🕌 Vie quotidienne',
     'psheetAll': 'Tout', 'psheetGrpArt': '🎨 Artistiques', 'psheetBefore': 'Avant', 'psheetBeforeSub': 'Une photo → tous les styles', 'psheetTry': '✨ Essayez sur votre photo',

@@ -240,6 +240,7 @@ I18N['fil'] = {
     "copyCodeTitle": "Kopyahin ang code",
     "copiedMsg": "Nakopya na ✅",
     "copyMsgTitle": "Kopyahin ang sagot",
+    "attachDropHere": "I-drop ang larawan dito",
     "homeLastImage": "🖼️ Huling larawan", "homeLastVideo": "🎬 Huling video", "homeCollection": "✨ Koleksyon — huling 3 gawa", "homeNoImage": "Wala pang laman dito", "homeTryNow": "Subukan ngayon ›", "homeNoVideo": "Wala pang video", "homeMakeVideo": "Gumawa ng unang video ›", "homeEmptyLib": "Walang laman ang library mo", "homeStartCreating": "Magsimulang lumikha ›",
     "grpBusiness": "💼 Negosyo", "grpLife": "🕌 Pang-araw-araw na buhay",
     "psheetAll": "Lahat", "psheetGrpArt": "🎨 Artistiko", "psheetBefore": "Bago", "psheetBeforeSub": "Isang larawan → bawat estilo", "psheetTry": "✨ Subukan sa iyong larawan",

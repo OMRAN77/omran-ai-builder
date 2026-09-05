@@ -239,6 +239,7 @@ I18N['es'] = {
     "copyCodeTitle": "Copiar código",
     "copiedMsg": "Copiado ✅",
     "copyMsgTitle": "Copiar respuesta",
+    "attachDropHere": "Suelta la imagen aquí",
     "homeLastImage": "🖼️ Última imagen", "homeLastVideo": "🎬 Último vídeo", "homeCollection": "✨ Colección — últimos 3 trabajos", "homeNoImage": "Aún no hay nada aquí", "homeTryNow": "Probar ahora ›", "homeNoVideo": "Aún no hay vídeos", "homeMakeVideo": "Crea tu primer vídeo ›", "homeEmptyLib": "Tu biblioteca está vacía", "homeStartCreating": "Empieza a crear ›",
     "grpBusiness": "💼 Negocios", "grpLife": "🕌 Vida diaria",
     "psheetAll": "Todos", "psheetGrpArt": "🎨 Artísticos", "psheetBefore": "Antes", "psheetBeforeSub": "Una foto → todos los estilos", "psheetTry": "✨ Pruébalo con tu foto",

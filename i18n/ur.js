@@ -37,6 +37,7 @@ I18N['ur'] = {
     convertToWord: 'Word میں تبدیل کریں',
     copiedToast: 'کاپی ہو گیا',
     copyMsgTitle: 'جواب کاپی کریں',
+    attachDropHere: "تصویر یہاں چھوڑیں",
     'homeLastImage': '🖼️ آخری تصویر', 'homeLastVideo': '🎬 آخری ویڈیو', 'homeCollection': '✨ مجموعہ — آخری 3 کام', 'homeNoImage': 'یہاں ابھی کچھ نہیں', 'homeTryNow': 'ابھی آزمائیں ›', 'homeNoVideo': 'ابھی کوئی ویڈیو نہیں', 'homeMakeVideo': 'اپنی پہلی ویڈیو بنائیں ›', 'homeEmptyLib': 'آپ کی لائبریری خالی ہے', 'homeStartCreating': 'تخلیق شروع کریں ›',
     'grpBusiness': '💼 کاروبار', 'grpLife': '🕌 روزمرہ زندگی',
     'psheetAll': 'سب', 'psheetGrpArt': '🎨 فنی', 'psheetBefore': 'پہلے', 'psheetBeforeSub': 'ایک تصویر → ہر اسٹائل', 'psheetTry': '✨ اپنی تصویر پر آزمائیں',

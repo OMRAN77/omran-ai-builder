@@ -38,6 +38,7 @@ I18N['ne'] = {
     convertToWord: 'Word मा रूपान्तरण गर्नुहोस्',
     copiedToast: 'प्रतिलिपि गरियो',
     copyMsgTitle: 'जवाफ प्रतिलिपि गर्नुहोस्',
+    attachDropHere: "तस्बिर यहाँ छोड्नुहोस्",
     'homeLastImage': '🖼️ पछिल्लो तस्बिर', 'homeLastVideo': '🎬 पछिल्लो भिडियो', 'homeCollection': '✨ सङ्ग्रह — पछिल्ला ३ काम', 'homeNoImage': 'यहाँ अहिले केही छैन', 'homeTryNow': 'अहिले प्रयास गर्नुहोस् ›', 'homeNoVideo': 'अहिले कुनै भिडियो छैन', 'homeMakeVideo': 'आफ्नो पहिलो भिडियो बनाउनुहोस् ›', 'homeEmptyLib': 'तपाईंको लाइब्रेरी खाली छ', 'homeStartCreating': 'सिर्जना सुरु गर्नुहोस् ›',
     'grpBusiness': '💼 व्यवसाय', 'grpLife': '🕌 दैनिक जीवन',
     'psheetAll': 'सबै', 'psheetGrpArt': '🎨 कलात्मक', 'psheetBefore': 'पहिले', 'psheetBeforeSub': 'एउटा फोटो → हरेक शैली', 'psheetTry': '✨ आफ्नो फोटोमा प्रयास गर्नुहोस्',

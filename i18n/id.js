@@ -238,6 +238,7 @@ I18N['id'] = {
     "copyCodeTitle": "Salin kode",
     "copiedMsg": "Disalin ✅",
     "copyMsgTitle": "Salin balasan",
+    "attachDropHere": "Lepaskan gambar di sini",
     "homeLastImage": "🖼️ Gambar terakhir", "homeLastVideo": "🎬 Video terakhir", "homeCollection": "✨ Koleksi — 3 karya terakhir", "homeNoImage": "Belum ada apa-apa di sini", "homeTryNow": "Coba sekarang ›", "homeNoVideo": "Belum ada video", "homeMakeVideo": "Buat video pertamamu ›", "homeEmptyLib": "Perpustakaanmu kosong", "homeStartCreating": "Mulai berkarya ›",
     "grpBusiness": "💼 Bisnis", "grpLife": "🕌 Kehidupan sehari-hari",
     "psheetAll": "Semua", "psheetGrpArt": "🎨 Artistik", "psheetBefore": "Sebelum", "psheetBeforeSub": "Satu foto → semua gaya", "psheetTry": "✨ Coba di foto Anda",

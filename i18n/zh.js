@@ -233,6 +233,7 @@ I18N['zh'] = {
     "copyCodeTitle": "复制代码",
     "copiedMsg": "已复制 ✅",
     "copyMsgTitle": "复制回复",
+    "attachDropHere": "将图片拖放到此处",
     "homeLastImage": "🖼️ 最新图片", "homeLastVideo": "🎬 最新视频", "homeCollection": "✨ 作品集 — 最近 3 件", "homeNoImage": "这里还没有内容", "homeTryNow": "立即尝试 ›", "homeNoVideo": "还没有视频", "homeMakeVideo": "创建你的第一个视频 ›", "homeEmptyLib": "你的作品库是空的", "homeStartCreating": "开始创作 ›",
     "grpBusiness": "💼 商务", "grpLife": "🕌 日常生活",
     "psheetAll": "全部", "psheetGrpArt": "🎨 艺术风格", "psheetBefore": "原图", "psheetBeforeSub": "一张照片 → 所有风格", "psheetTry": "✨ 用你的照片试试",
