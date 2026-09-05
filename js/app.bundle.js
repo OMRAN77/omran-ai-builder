@@ -22976,6 +22976,15 @@ function stuL(ar, en){
       + '@keyframes pstyleIn{from{opacity:0; transform:translateY(8px) scale(.97)}to{opacity:1; transform:none}}'
       + '.pstyleCard{animation:pstyleIn .28s ease both;}'
       + '.pstyleEn{font-size:10px; color:#d4af37; letter-spacing:.3px; margin-top:2px; opacity:.9; direction:ltr;}'
+      + '.pstyleWork{max-width:640px; margin:10px auto 4px; padding:0 14px;}'
+      + '.pstyleWork #portraitWorkOpts > div{margin-top:8px;}'
+      + '.pstyleFoot{flex:none; display:flex; align-items:center; gap:10px; padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px)); border-top:1px solid rgba(212,175,55,.25); background:#0b0b0d;}'
+      + '.pstyleFootStyle{display:flex; align-items:center; gap:8px; min-width:0; flex:1;}'
+      + '.pstyleFootStyle img{width:40px; height:52px; object-fit:cover; border-radius:8px; background:#17171b; flex:none;}'
+      + '.pstyleFootStyle div{font-size:13px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}'
+      + '.pstyleFoot #portraitFavStarBtn{background:none; border:none; cursor:pointer; font-size:22px; padding:2px 4px; line-height:1; color:#d4af37;}'
+      + '.pstyleFoot #portraitFootPhoto{width:auto; padding:9px 12px; flex:none;}'
+      + '.pstyleFoot .pstyleCta{flex:0 1 auto; width:auto; min-width:150px; margin:0; padding:11px 18px;}'
       + '.pstyleHero{position:relative; width:min(340px, 92vw); aspect-ratio:1; margin:6px auto 2px; border-radius:50%;'
       + ' background:radial-gradient(circle at 50% 50%, rgba(212,175,55,.16) 0 18%, rgba(212,175,55,.05) 19% 38%, transparent 39%),'
       + ' repeating-conic-gradient(from 0deg, rgba(212,175,55,.22) 0deg 0.8deg, transparent 0.8deg 30deg);}'
@@ -23007,7 +23016,7 @@ function stuL(ar, en){
         const im = document.createElement('img'); im.src = 'assets/portrait/styles/' + v + '.webp'; im.alt = ''; im.loading = 'eager'; im.onerror = function(){ tdiv.remove(); };
         const lb = document.createElement('i'); lb.textContent = RING_EN[v] || pstyleEn(v);
         tdiv.appendChild(im); tdiv.appendChild(lb);
-        tdiv.onclick = function(){ const o = styleEl.querySelector('option[value="' + v + '"]'); if(!o) return; styleEl.value = v; styleEl.dispatchEvent(new Event('change', { bubbles: true })); refreshStyleTrigger(); if(styleSheet) styleSheet.style.display = 'none'; };
+        tdiv.onclick = function(){ selectPortraitStyle(v); };
         hero.appendChild(tdiv);
       });
       scroller.insertBefore(hero, styleCardsGrid);
@@ -23020,17 +23029,77 @@ function stuL(ar, en){
       b.onclick = function(){ pstyleFilter = g.k; renderPortraitStyleCards(); };
       chips.appendChild(b);
     });
-    let cta = document.getElementById('portraitStyleCta');
-    if(!cta){
-      cta = document.createElement('button'); cta.type = 'button'; cta.id = 'portraitStyleCta'; cta.className = 'pstyleCta';
-      cta.onclick = function(){
-        if(styleSheet) styleSheet.style.display = 'none';
-        const fb = $('#portraitStyleFileBtn') || $('#portraitStyleFileInput');
-        if(fb){ try{ fb.click(); }catch(e){ /* guard-ok */ } }
-      };
-      scroller.appendChild(cta);
+    /* v-psheet-only (قرار المالك: «احذف الواجهة وخلّ الداخلي» — الخيار ١): المعرض هو الأداة كلها.
+       لوحة العمل أعلى المعرض: خيارات الستايل + الحالة + النتيجة + حفظ ومشاركة.
+       شريط سفلي ثابت: الستايل المختار + ⭐ + 📁 تغيير الصورة + زر التنفيذ. */
+    let work = document.getElementById('portraitWork');
+    if(!work){
+      work = document.createElement('div'); work.id = 'portraitWork'; work.className = 'pstyleWork'; work.style.display = 'none';
+      const opts = document.createElement('div'); opts.id = 'portraitWorkOpts';
+      work.appendChild(opts);
+      ['portraitBackdropWrap','portraitBeautifyWrap','portraitAgeWrap','portraitHairWrap','portraitAdWrap','portraitCelebWrap','portraitRemoveWrap','portraitOutfitWrap','portraitProfWrap','portraitEraWrap','portraitMultiWrap'].forEach((id) => { const el = document.getElementById(id); if(el) opts.appendChild(el); });
+      ['portraitStyleStatus','portraitCompareWrap','portraitCompareSlider','portraitStyleDownloadLink','portraitShareBtn'].forEach((id) => { const el = document.getElementById(id); if(el) work.appendChild(el); });
+      scroller.insertBefore(work, scroller.firstChild);
     }
-    cta.textContent = gt('psheetTry', '✨ جرّب على صورتك', '✨ Try it on your photo');
+    let foot = document.getElementById('portraitStyleFoot');
+    if(!foot){
+      foot = document.createElement('div'); foot.id = 'portraitStyleFoot'; foot.className = 'pstyleFoot';
+      const pick = document.createElement('div'); pick.id = 'portraitFootStyle'; pick.className = 'pstyleFootStyle';
+      const pi = document.createElement('img'); pi.id = 'portraitFootImg'; pi.alt = ''; pi.onerror = function(){ pi.style.visibility = 'hidden'; };
+      const pt = document.createElement('div'); pt.id = 'portraitFootName';
+      pick.appendChild(pi); pick.appendChild(pt);
+      const star = document.getElementById('portraitFavStarBtn');
+      const photo = document.createElement('button'); photo.type = 'button'; photo.id = 'portraitFootPhoto'; photo.className = 'btn'; photo.textContent = '📁'; photo.title = gt('fileChooseBtn', '📁 اختيار ملف', '📁 Choose file');
+      photo.onclick = function(){ window.__portraitAutoRun = false; const fi = $('#portraitStyleFileInput'); if(fi){ try{ fi.click(); }catch(e){ /* guard-ok */ } } };
+      const cta = document.createElement('button'); cta.type = 'button'; cta.id = 'portraitStyleCta'; cta.className = 'pstyleCta';
+      cta.onclick = function(){
+        if(!window.__portraitHasPhoto){ window.__portraitAutoRun = true; const fi = $('#portraitStyleFileInput'); if(fi){ try{ fi.click(); }catch(e){ /* guard-ok */ } } return; }
+        const go = $('#portraitStyleGenerateBtn'); if(go && typeof go.onclick === 'function'){ showPortraitWork(true); go.onclick(); }
+      };
+      foot.appendChild(pick); if(star) foot.appendChild(star); foot.appendChild(photo); foot.appendChild(cta);
+      styleSheet.appendChild(foot);
+    }
+    refreshPortraitFoot();
+  }
+  function refreshPortraitFoot(){
+    const o = styleEl && styleEl.querySelector('option[value="' + styleEl.value + '"]');
+    const pi = document.getElementById('portraitFootImg'); if(pi){ pi.src = 'assets/portrait/styles/' + styleEl.value + '.webp'; pi.style.visibility = 'visible'; }
+    const pt = document.getElementById('portraitFootName'); if(pt) pt.textContent = o ? optLabel(o).trim() : '';
+    const cta = document.getElementById('portraitStyleCta');
+    if(cta) cta.textContent = window.__portraitHasPhoto ? gt('portraitGenerateBtn', '✨ حوّلها', '✨ Convert') : gt('psheetTry', '✨ جرّب على صورتك', '✨ Try it on your photo');
+  }
+  function showPortraitWork(scrollTop){
+    const work = document.getElementById('portraitWork'); if(!work) return;
+    work.style.display = 'block';
+    if(scrollTop){ const sc = work.parentElement; if(sc){ try{ sc.scrollTo({ top: 0, behavior: 'smooth' }); }catch(e){ sc.scrollTop = 0; } } }
+  }
+  function portraitOptsVisible(){
+    const opts = document.getElementById('portraitWorkOpts'); if(!opts) return false;
+    return Array.from(opts.children).some((el) => el.style.display && el.style.display !== 'none');
+  }
+  function markActiveCard(v){
+    if(!styleCardsGrid) return;
+    styleCardsGrid.querySelectorAll('[data-pstyle-card]').forEach((c) => {
+      const on = c.getAttribute('data-pstyle-card') === v;
+      c.style.border = on ? '2px solid #d4af37' : '1px solid var(--border,#2a2a30)';
+      c.style.boxShadow = on ? '0 0 14px rgba(212,175,55,.3)' : '';
+      const tk = c.querySelector('[data-pstyle-tick]'); if(tk) tk.style.display = on ? 'flex' : 'none';
+      const nm = c.querySelector('[data-pstyle-name]'); if(nm) nm.style.color = on ? '#d4af37' : '#eef0f6';
+    });
+  }
+  function selectPortraitStyle(v){
+    const o = styleEl.querySelector('option[value="' + v + '"]'); if(!o) return;
+    styleEl.value = v;
+    styleEl.dispatchEvent(new Event('change', { bubbles: true }));
+    refreshStyleTrigger();
+    markActiveCard(v);
+    refreshPortraitFoot();
+    if(window.__portraitHasPhoto && portraitOptsVisible()) showPortraitWork(true);
+  }
+  /* صورة المستخدم تصير وجه «قبل» في الحلقة وبطاقة «قبل» */
+  function setPortraitBeforeFace(dataUrl){
+    const c = document.querySelector('#portraitStyleHero .pstyleHeroC img'); if(c) c.src = dataUrl;
+    const b = styleCardsGrid && styleCardsGrid.querySelector('[data-pstyle-before] img'); if(b) b.src = dataUrl;
   }
   function renderPortraitStyleCards(){
     if(!styleCardsGrid || !styleEl) return;
@@ -23051,7 +23120,7 @@ function stuL(ar, en){
       const bc = document.createElement('div'); bc.className = 'pstyleCard pstyleBefore'; bc.setAttribute('data-pstyle-before', '1');
       bc.style.cssText = 'border-radius:14px; overflow:hidden; background:#17171b; border:1px solid var(--border,#2a2a30);';
       const w = document.createElement('div'); w.style.cssText = 'position:relative; aspect-ratio:3/4; background:linear-gradient(160deg,#23232a,#101014);';
-      const im = document.createElement('img'); im.src = 'assets/portrait/before.webp'; im.alt = ''; im.loading = 'eager';
+      const im = document.createElement('img'); im.src = window.__portraitPhotoUrl || 'assets/portrait/before.webp'; im.alt = ''; im.loading = 'eager';
       im.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;'; im.onerror = function(){ im.remove(); };
       const tag = document.createElement('div'); tag.textContent = gt('psheetBefore', 'قبل', 'Before');
       tag.style.cssText = 'position:absolute; top:6px; inset-inline-start:7px; padding:3px 9px; border-radius:999px; background:#d4af37; color:#141414; font-weight:800; font-size:11.5px;';
@@ -23087,15 +23156,15 @@ function stuL(ar, en){
         star.style.cssText = 'position:absolute; top:6px; inset-inline-end:7px; font-size:14px;';
         imgWrap.appendChild(star);
       }
-      if(active){
-        const tick = document.createElement('div'); tick.textContent = '✓';
-        tick.style.cssText = 'position:absolute; top:6px; inset-inline-start:7px; width:22px; height:22px; border-radius:50%; background:#d4af37; color:#141414; font-weight:800; font-size:14px; display:flex; align-items:center; justify-content:center;';
+      {
+        const tick = document.createElement('div'); tick.textContent = '✓'; tick.setAttribute('data-pstyle-tick', '1');
+        tick.style.cssText = 'position:absolute; top:6px; inset-inline-start:7px; width:22px; height:22px; border-radius:50%; background:#d4af37; color:#141414; font-weight:800; font-size:14px; display:' + (active ? 'flex' : 'none') + '; align-items:center; justify-content:center;';
         imgWrap.appendChild(tick);
       }
       const info = document.createElement('div');
       info.style.cssText = 'padding:9px 10px 11px; text-align:center;';
       const nameEl = document.createElement('div');
-      nameEl.textContent = title;
+      nameEl.textContent = title; nameEl.setAttribute('data-pstyle-name', '1');
       nameEl.style.cssText = 'font-size:12.5px; font-weight:700; color:' + (active ? '#d4af37' : '#eef0f6') + ';';
       const subEl = document.createElement('div');
       subEl.textContent = pstyleSub(v);
@@ -23103,12 +23172,7 @@ function stuL(ar, en){
       info.appendChild(nameEl); info.appendChild(subEl);
       if(pstyleLang().indexOf('en') !== 0){ const en = pstyleEn(v); if(en && en !== title){ const enEl = document.createElement('div'); enEl.className = 'pstyleEn'; enEl.textContent = en; info.appendChild(enEl); } }
       card.appendChild(imgWrap); card.appendChild(info);
-      card.onclick = function(){
-        styleEl.value = v;
-        styleEl.dispatchEvent(new Event('change', { bubbles: true }));
-        refreshStyleTrigger();
-        if(styleSheet) styleSheet.style.display = 'none';
-      };
+      card.onclick = function(){ selectPortraitStyle(v); };
       styleCardsGrid.appendChild(card);
     });
   }
@@ -23232,10 +23296,12 @@ function stuL(ar, en){
   let selectedMime = 'image/jpeg';
 
   btnOpen.onclick = () => {
-    modal.style.display = 'flex';
-    /* v-ptrigger-lang (لقطة عمران: الاسم عربي والواجهة إسبانية): البطاقة
-       رُسمت عند الإقلاع قبل وصول ملف اللغة الكسول — تُحدَّث عند كل فتح. */
-    try{ refreshStyleTrigger(); }catch(e){ /* guard-ok — cosmetic */ }
+    /* v-psheet-only: الواجهة الخارجية حُذفت — المعرض يفتح مباشرة */
+    modal.style.display = 'none';
+    /* المعرض كان ابن النافذة الأم المخفية فلا يُرسم — يُنقل إلى body مرة واحدة */
+    if(styleSheet && styleSheet.parentElement !== document.body) document.body.appendChild(styleSheet);
+    try{ renderPortraitStyleCards(); }catch(e){ /* guard-ok — cosmetic */ }
+    if(styleSheet) styleSheet.style.display = 'flex';
     closeHeaderMenu();
   };
   btnClose.onclick = () => { modal.style.display = 'none'; };
@@ -23252,6 +23318,13 @@ function stuL(ar, en){
       selectedBase64 = dataUrl.split(',')[1] || '';
       sourcePreview.src = dataUrl;
       sourcePreview.style.display = 'block';
+      window.__portraitHasPhoto = true; window.__portraitPhotoUrl = dataUrl;
+      try{ setPortraitBeforeFace(dataUrl); refreshPortraitFoot(); }catch(e){ /* guard-ok — cosmetic */ }
+      if(window.__portraitAutoRun){
+        window.__portraitAutoRun = false;
+        showPortraitWork(true);
+        if(!portraitOptsVisible()) btnGenerate.onclick();
+      }
     });
   };
 

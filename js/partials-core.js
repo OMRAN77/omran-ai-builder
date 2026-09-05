@@ -452,38 +452,15 @@
   </div>
 </div>
 
-<div id="portraitStyleModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
-  <div style="max-width:520px; width:100%; max-height:90vh; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; background:var(--panel,#1a1a1a); border-radius:var(--r-4); padding:26px; box-shadow:var(--sh-3);">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-      <h3 style="margin:0;" data-i18n="portraitModalTitle">🎨 أنماط الصور الشخصية</h3>
-      <button type="button" class="btn iconBtn" id="portraitStyleCloseBtn" style="padding:4px 10px;">✕</button>
-    </div>
-    <p style="font-size:12.5px; color:var(--muted); margin-top:2px;" data-i18n="portraitDesc">ارفع صورتك الشخصية واختر ستايل رسم، وسيحوّلها الذكاء الاصطناعي لهذا الأسلوب. ميزة قيد التجربة بحد أقصى قليل يوميًا لكل حساب.</p>
-
+<div id="portraitStyleModal" style="display:none;">
+  <div>
+    <button type="button" class="btn iconBtn" id="portraitStyleCloseBtn" style="display:none;">✕</button>
     <input type="file" id="portraitStyleFileInput" accept="image/*" style="display:none;">
-    <div style="display:flex; align-items:center; gap:10px; margin-top:12px;">
-      <button type="button" class="btn" id="portraitStyleFileBtn" style="width:auto; white-space:nowrap;" data-i18n="fileChooseBtn">📁 اختيار ملف</button>
-      <span id="portraitStyleFileName" style="font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" data-i18n="fileNoneChosen">لم يتم اختيار ملف</span>
-    </div>
-    <img id="portraitStyleSourcePreview" style="display:none; width:100%; margin-top:10px; border-radius:var(--r-2); max-height:220px; object-fit:contain; background:#000;">
-
-    <div style="margin-top:12px;">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
-        <label style="font-size:12px; color:var(--muted); display:block;" data-i18n="portraitStyleLabel">ستايل الرسم</label>
-        <button type="button" id="portraitFavStarBtn" title="⭐" style="background:none; border:none; cursor:pointer; font-size: var(--fs-2); padding:2px 4px; line-height:1;">☆</button>
-      </div>
-      <!-- v-portrait-style-page: أنماط الصور صفحة كاملة — بطاقة مصغّرة هنا
-           تفتح معرضًا ملء الشاشة (شبكة عمودية متجاوبة، عنوان ووصف لكل ستايل).
-           السلكت مخفيّ والأسلاك الخلفية عليه كما هي. -->
-      <div id="portraitStyleTrigger" style="display:flex; align-items:center; gap:10px; border:1px solid var(--border,#333); border-radius:12px; padding:8px 10px; cursor:pointer; background:var(--panel2,#101014);">
-        <img id="portraitStyleTriggerImg" alt="" style="width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;">
-        <div style="flex:1; min-width:0;">
-          <div id="portraitStyleTriggerName" style="font-size:13.5px; font-weight:700;"></div>
-          <div id="portraitStyleTriggerSub" style="font-size:11px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
-        </div>
-        <span style="color:#d4af37; font-size:12.5px; font-weight:700; flex:none;" data-i18n="portraitStyleBrowseAll">عرض الكل ›</span>
-      </div>
-      <!-- v-sheet-above-x: الصفحة الكاملة فوق زرّ X المثبّت للنافذة الأم (z 10070) — كان يظهر X مزدوج -->
+    <img id="portraitStyleSourcePreview" style="display:none;">
+    <div>
+      <button type="button" id="portraitFavStarBtn" title="⭐" style="background:none; border:none; cursor:pointer; font-size: var(--fs-2); padding:2px 4px; line-height:1;">☆</button>
+      <!-- v-psheet-only: الواجهة الخارجية حُذفت بقرار المالك — المعرض (portraitStyleSheet) هو الأداة كلها؛
+           بقيت هنا عناصر الأسلاك فقط (المدخل، السلكت المخفي، خيارات الستايلات، زر التنفيذ، النتيجة) وتُنقل للمعرض عند الفتح. -->
       <div id="portraitStyleSheet" style="display:none; position:fixed; inset:0; z-index:10080; background:#0b0b0d; flex-direction:column;">
         <!-- v-picker-close: نفس علاج pickerSheet — الرأس تحت الساعة والزر أكبر -->
         <div style="display:flex; align-items:center; justify-content:space-between; padding:calc(14px + max(env(safe-area-inset-top,0px), 30px)) 16px 14px; border-bottom:1px solid rgba(212,175,55,.25); flex:none;">
@@ -697,7 +674,7 @@
       </select>
     </div>
 
-    <button type="button" class="btn primary" id="portraitStyleGenerateBtn" style="width:100%; margin-top:14px;" data-i18n="portraitGenerateBtn">✨ حوّلها</button>
+    <button type="button" class="btn primary" id="portraitStyleGenerateBtn" style="display:none;" data-i18n="portraitGenerateBtn">✨ حوّلها</button>
 
     <div id="portraitStyleStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>
     <div id="portraitCompareWrap" style="display:none; position:relative; margin-top:14px; border-radius:var(--r-2); overflow:hidden; background:#000; width:100%; user-select:none;">
