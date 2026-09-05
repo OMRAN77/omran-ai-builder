@@ -39,6 +39,7 @@ I18N['fr'] = {
     convertToWord: 'Convertir en Word',
     copiedToast: 'Copié',
     copyMsgTitle: 'Copier la réponse',
+    imgPreparing: "⏳ Préparation de l'image…",
     imgReadyTitle: "✅ Image prête", imgDlBtn: "⬇️ Télécharger", imgDlStarted: "📥 Téléchargement — voir notifications/Téléchargements", imgWaBtn: "💬 WhatsApp", imgLinkCopied: "Lien de l'image copié — collez-le dans WhatsApp", imgShareBtn: "📤 Partager", imgOpenBtn: "🔗 Ouvrir",
     attachDropHere: "Déposez l'image ici",
     'homeLastImage': '🖼️ Dernière image', 'homeLastVideo': '🎬 Dernière vidéo', 'homeCollection': '✨ Collection — 3 derniers travaux', 'homeNoImage': 'Rien ici pour l’instant', 'homeTryNow': 'Essayer ›', 'homeNoVideo': 'Aucune vidéo pour l’instant', 'homeMakeVideo': 'Créer votre première vidéo ›', 'homeEmptyLib': 'Votre bibliothèque est vide', 'homeStartCreating': 'Commencer à créer ›',

@@ -34,20 +34,22 @@
     const r = await fetch(s); return await r.blob();
   }
   function extOf(mime){ return mime === 'image/png' ? 'png' : (mime === 'image/webp' ? 'webp' : (mime === 'image/gif' ? 'gif' : 'jpg')); }
-  /* رفع للسيرفر (حدّ ٣MB base64): PNG كبير يُحوَّل JPEG محليًا */
-  function shrinkForUpload(blob){
+  /* رفع للسيرفر: مخزن الروابط (Upstash) يرفض القيم الكبيرة (≈1MB) — كانت صورة PNG
+     بحجم ١.٥MB تفشل صامتة فيسقط الزر لتنزيل عادي. الآن تُحوَّل دائمًا JPEG بحجم متدرّج
+     حتى تنزل تحت ٩٠٠KB base64 (نفس نمط مشاركة صور الدردشة). */
+  function shrinkForUpload(blob, maxDim, q){
     return new Promise((resolve) => {
       try{
         const du0 = URL.createObjectURL(blob);
         const im = new Image();
         im.onload = () => {
           try{
-            const MAX = 1600, k = Math.min(1, MAX / Math.max(im.naturalWidth || 1, im.naturalHeight || 1));
+            const k = Math.min(1, maxDim / Math.max(im.naturalWidth || 1, im.naturalHeight || 1));
             const c = document.createElement('canvas');
             c.width = Math.max(1, Math.round((im.naturalWidth || 1) * k)); c.height = Math.max(1, Math.round((im.naturalHeight || 1) * k));
-            c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+            const cx = c.getContext('2d'); cx.fillStyle = '#000'; cx.fillRect(0, 0, c.width, c.height); cx.drawImage(im, 0, 0, c.width, c.height);
             URL.revokeObjectURL(du0);
-            resolve({ data: c.toDataURL('image/jpeg', 0.92), w: c.width, h: c.height, mime: 'image/jpeg' });
+            resolve({ data: c.toDataURL('image/jpeg', q), w: c.width, h: c.height, mime: 'image/jpeg' });
           }catch(e){ resolve(null); }
         };
         im.onerror = () => resolve(null);
@@ -55,12 +57,18 @@
       }catch(e){ resolve(null); }
     });
   }
+  const UPLOAD_MAX_B64 = 900 * 1024;
   async function uploadImage(blob, name){
     let b64 = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result || '')); fr.onerror = rej; fr.readAsDataURL(blob); });
     let mime = blob.type || 'image/png', w, h;
-    if(b64.length > 2.6 * 1024 * 1024 || mime === 'image/gif' && b64.length > 2.6 * 1024 * 1024){
-      const sm = await shrinkForUpload(blob);
-      if(sm){ b64 = sm.data; mime = sm.mime; w = sm.w; h = sm.h; }
+    if(b64.length > UPLOAD_MAX_B64 || mime === 'image/gif'){
+      const steps = [[1600, 0.9], [1280, 0.85], [1024, 0.8], [800, 0.75]];
+      for(let i = 0; i < steps.length; i++){
+        const sm = await shrinkForUpload(blob, steps[i][0], steps[i][1]);
+        if(!sm) break;
+        b64 = sm.data; mime = sm.mime; w = sm.w; h = sm.h;
+        if(b64.length <= UPLOAD_MAX_B64) break;
+      }
     }
     const i = b64.indexOf(',');
     const r = await fetch('/api/media?action=img', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: b64.slice(i + 1), mime, w, h }) });
@@ -75,6 +83,15 @@
   }
   function toast(m){ try{ if(typeof settingsToast === 'function'){ settingsToast(m); return; } }catch(e){ /* guard-ok */ } try{ alert(m); }catch(e){ /* guard-ok */ } }
   function copyText(s){ try{ if(navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(s); }catch(e){ /* guard-ok */ } return Promise.reject(new Error('no-clipboard')); }
+  function preparingSheet(){
+    try{
+      const old = document.getElementById('omranImgSheet'); if(old) old.remove();
+      const sheet = document.createElement('div'); sheet.id = 'omranImgSheet';
+      sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:rgba(20,20,26,.98);border-top:1px solid rgba(212,175,55,.45);border-radius:18px 18px 0 0;padding:18px 16px calc(22px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(0,0,0,.5);font-family:inherit;color:#f3efe4;font-weight:800;font-size:15px;text-align:center;';
+      sheet.textContent = gtx('imgPreparing', '⏳ جارٍ تجهيز الصورة…', '⏳ Preparing the image…');
+      document.body.appendChild(sheet);
+    }catch(e){ /* guard-ok */ }
+  }
   function readySheet(links, file, name){
     const old = document.getElementById('omranImgSheet'); if(old) old.remove();
     const sheet = document.createElement('div'); sheet.id = 'omranImgSheet';
@@ -145,8 +162,11 @@
       if(ok){ try{ await navigator.share({ files: [file], title: 'Omran AI' }); return true; }catch(e){ if(e && e.name === 'AbortError') return true; } }
     }
     if(mode !== 'share' && !appish()){ plainDownload(blob, name); return true; }
+    /* الورقة تظهر فورًا بحالة «جارٍ التجهيز» — بلا ضغطة تبدو ميتة أثناء الرفع */
+    preparingSheet();
     try{ const links = await uploadImage(blob, name); return readySheet(links, file, name); }
     catch(e){ /* guard-ok — الرفع تعذّر */ }
+    try{ const old = document.getElementById('omranImgSheet'); if(old) old.remove(); }catch(e){ /* guard-ok */ }
     plainDownload(blob, name);
     return true;
   };

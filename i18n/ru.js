@@ -239,6 +239,7 @@ I18N['ru'] = {
     "copyCodeTitle": "Копировать код",
     "copiedMsg": "Скопировано ✅",
     "copyMsgTitle": "Копировать ответ",
+    "imgPreparing": "⏳ Подготовка изображения…",
     "imgReadyTitle": "✅ Изображение готово", "imgDlBtn": "⬇️ Скачать", "imgDlStarted": "📥 Загрузка началась — смотрите уведомления/Загрузки", "imgWaBtn": "💬 WhatsApp", "imgLinkCopied": "Ссылка на изображение скопирована — вставьте её в WhatsApp", "imgShareBtn": "📤 Поделиться", "imgOpenBtn": "🔗 Открыть",
     "attachDropHere": "Перетащите изображение сюда",
     "homeLastImage": "🖼️ Последнее изображение", "homeLastVideo": "🎬 Последнее видео", "homeCollection": "✨ Коллекция — 3 последние работы", "homeNoImage": "Здесь пока пусто", "homeTryNow": "Попробовать ›", "homeNoVideo": "Видео пока нет", "homeMakeVideo": "Создать первое видео ›", "homeEmptyLib": "Ваша библиотека пуста", "homeStartCreating": "Начать творить ›",

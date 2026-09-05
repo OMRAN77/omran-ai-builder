@@ -240,6 +240,7 @@ I18N['ml'] = {
     "copyCodeTitle": "കോഡ് കോപ്പി ചെയ്യുക",
     "copiedMsg": "കോപ്പി ചെയ്തു ✅",
     "copyMsgTitle": "മറുപടി കോപ്പി ചെയ്യുക",
+    "imgPreparing": "⏳ ചിത്രം തയ്യാറാക്കുന്നു…",
     "imgReadyTitle": "✅ ചിത്രം തയ്യാർ", "imgDlBtn": "⬇️ ഡൗൺലോഡ്", "imgDlStarted": "📥 ഡൗൺലോഡ് തുടങ്ങി — അറിയിപ്പുകൾ/ഡൗൺലോഡുകൾ നോക്കുക", "imgWaBtn": "💬 വാട്സ്ആപ്പ്", "imgLinkCopied": "ചിത്രത്തിന്റെ ലിങ്ക് പകർത്തി — വാട്സ്ആപ്പിൽ ഒട്ടിക്കുക", "imgShareBtn": "📤 പങ്കിടുക", "imgOpenBtn": "🔗 തുറക്കുക",
     "attachDropHere": "ചിത്രം ഇവിടെ ഇടുക",
     "homeLastImage": "🖼️ അവസാന ചിത്രം", "homeLastVideo": "🎬 അവസാന വീഡിയോ", "homeCollection": "✨ ശേഖരം — അവസാന 3 സൃഷ്ടികൾ", "homeNoImage": "ഇവിടെ ഇതുവരെ ഒന്നുമില്ല", "homeTryNow": "ഇപ്പോൾ പരീക്ഷിക്കുക ›", "homeNoVideo": "ഇതുവരെ വീഡിയോകളില്ല", "homeMakeVideo": "ആദ്യ വീഡിയോ ഉണ്ടാക്കുക ›", "homeEmptyLib": "നിങ്ങളുടെ ലൈബ്രറി ശൂന്യമാണ്", "homeStartCreating": "സൃഷ്ടിക്കാൻ തുടങ്ങുക ›",
