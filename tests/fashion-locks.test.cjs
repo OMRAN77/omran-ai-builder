@@ -697,4 +697,25 @@ console.log('  ✓ v-exact-canvas: الأسماء تُطبع حرفيًا — ص
 }
 console.log('  ✓ v-spell-quran: تدقيق ذكي بمرجع المصحف — وبحارس يحمي الأسماء');
 
+// 59 v-trend-five (طلب عمران ٥ سبتمبر): خمسة ترندات جديدة — انعكاس العصر،
+// تجميد الزمن، البوستر السينمائي، تحول المواد، انفجار الأبعاد — بالـ14 لغة
+// ومرآة تامة بين العميل والخادم.
+{
+  const { TRENDS } = require('../api/_lib/video-trends.js');
+  for (const k of ['timecapsule', 'bullettime', 'movieposter', 'materialize', 'parallaxpop']) {
+    assert.ok(TRENDS[k] && TRENDS[k].prompt && TRENDS[k].preview && TRENDS[k].preview.frame, 'قالب الخادم كامل: ' + k);
+  }
+  global.window = global.window || {};
+  require('../js/app-11-video-trends-data.js');
+  const T = global.window.__VIDEO_TRENDS.trends;
+  assert.ok(T.length >= 25, 'العميل فيه 25 ترندًا فأكثر');
+  const langs = ['ar','en','fr','es','tr','ru','hi','ur','bn','ne','fil','id','zh','ml'];
+  for (const t of T) {
+    const srv = TRENDS[t.key];
+    assert.ok(srv && srv.ratio === t.ratio && srv.photo === t.photo && srv.kind === t.kind, 'مرآة عميل-خادم: ' + t.key);
+    for (const l of langs) assert.ok(t.title[l] && t.sub[l], 'لغة ' + l + ' في ' + t.key);
+  }
+}
+console.log('  ✓ v-trend-five: الترندات الخمسة الجديدة كاملة بالـ14 لغة ومرآة سليمة');
+
 console.log('fashion locks tests passed');
