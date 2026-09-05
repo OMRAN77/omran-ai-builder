@@ -163,6 +163,7 @@ function renderAttachStrip(){
     chip.appendChild(rm);
     strip.appendChild(chip);
   });
+  try{ window.__composerSyncTall && window.__composerSyncTall(); }catch(e){ /* guard-ok — cosmetic */ }
 }
 
 // 🖼️ v579 — أزرار فوق الصورة نفسها: «تعديل» يرجّع الصورة إلى صندوق الكتابة

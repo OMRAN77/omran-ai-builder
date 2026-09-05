@@ -462,8 +462,14 @@ html[data-mode="light"] #composerBox > #prompt{color:#14161a;}
 html[data-mode="light"] #composerBox > #prompt::placeholder{color:#8a8578;}
 html[data-mode="light"] #composerBox > #btnSend{background:#fffdf5 !important; color:#b8902a !important; box-shadow:0 0 0 3px rgba(212,175,55,.14), 0 0 14px rgba(212,175,55,.30) !important;}
 html[data-mode="light"] #composerBox > #btnSend svg{stroke:#b8902a;}
+/* v-composer-tall (طلب المالك ٥ سبتمبر «زر الإرسال يكون مع المستطيل»): مع مرفق أو أسطر
+   متعددة يصير الصندوق مستطيلًا مستدير الزوايا بدل الكبسولة، فيبقى زر الإرسال داخل الإطار
+   على صفّ النص لا فوق الحافة المنحنية. */
+html #composerBox.omTall{border-radius:26px !important; padding:8px 10px !important;}
+html #composerBox.omTall > #attachStrip{padding:2px 6px 6px !important;}
 @media (max-width:860px){
   html #composerBox{min-height:50px; padding:5px 6px !important;}
+  html #composerBox.omTall{border-radius:22px !important; padding:6px 8px !important;}
   html #composerBox > #btnSend, html #composerBox > #btnStop{width:40px !important; height:40px !important; flex:0 0 40px !important;}
   html #inputbar .inputbar-tools-left > .btn, html #inputbar .inputbar-tools-left > button, html #inputbar #btnPlusTools{width:34px; height:34px; flex:0 0 34px;}
 }
