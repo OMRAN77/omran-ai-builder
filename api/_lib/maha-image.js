@@ -151,7 +151,7 @@ module.exports = async (req, res) => {
        فيُعامل كإعادة تصوّر جريئة تبني على الموضوع نفسه. يُستثنى صراحةً طلب «نفس
        الصورة/زيها بالضبط» كي لا نغيّر عندما يريد الحرفية فعلًا. */
     const __sameImageRe = /نفس\s*الصور[ةه]|زيها\s*بالضبط|طبق\s*الأصل|بالضبط\s*نفس|كما\s*هي|same\s*image|exact(?:ly)?\s*same|identical/i;
-    const __strongerRe = /(?:^|[\s،,])(?:أقوى|اقوى|فكرة\s*أقوى|فكره\s*اقوى|أبدع|ابدع|أروع|اروع|خيالي[ةه]?|جبار[ةه]?|احترافي[ةه]\s*أكثر)(?=$|[\s،,.!؟?])|خلّ?ها\s*أقوى|خليها\s*اقوى|سوّ?ها\s*أقوى|سويها\s*اقوى|\b(?:stronger|more\s*powerful|bolder|epic|level\s*up|glow\s*up|next\s*level)\b/i;
+    const __strongerRe = /(?:^|[\s،,])(?:أقوى|اقوى|فكرة\s*أقوى|فكره\s*اقوى|أبدع|ابدع|أروع|اروع|خيالي[ةه]?|جبار[ةه]?|احترافي[ةه]\s*أكثر)(?=$|[\s،,.!؟?])|(?:أفضل|افضل|أحسن|احسن)\s*من(?=$|[\s،,.!؟?])|خلّ?ها\s*أقوى|خليها\s*اقوى|سوّ?ها\s*أقوى|سويها\s*اقوى|\b(?:stronger|more\s*powerful|bolder|epic|level\s*up|glow\s*up|next\s*level|better\s*than)\b/i;
     const isReimagine = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !__sameImageRe.test(String(prompt || '')) && (/فكرة\s*(ثانية|ثانيه|مختلفة|مختلفه|جديدة|جديده|غير)|فكره\s*(ثانية|ثانيه|مختلفة|مختلفه|جديدة|جديده|غير)|غيّ?ر\s*الفكرة|بشكل\s*مختلف\s*تمام|مختلف\s*تمام|تصميم\s*ثاني|ستايل\s*ثاني|بدّ?ل\s*(الفكرة|التصميم|الستايل)|different\s*(idea|concept|style)|new\s*concept|another\s*(idea|take|concept)|reimagine/i.test(String(prompt || '')) || __strongerRe.test(String(prompt || '')));
     const promptLimit = isArchitectural ? 2400 : (editImageBase64 ? 8000 : 1800);
     /* v-nano-raw (المالك ٥ سبتمبر: «ليش الفرق بينهم»): تطبيق Gemini يرسل نصّ المستخدم كما هو، ونحن نلفّه
@@ -374,7 +374,10 @@ module.exports = async (req, res) => {
        هذا المسار معطّلًا افتراضيًا لأن الوضع الخام (نانو) هو الافتراضي (!rawMode).
        الآن: للتعديل على مصدر نصّي كثيف يعمل المسار حتى في الوضع الخام؛ ويبقى
        الوضع الخام نقيًّا للتوليد الجديد. */
-    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan
+    /* v-bold-wins (المالك: «أقوى/أفضل من هذي — يرجّع نفس الصورة»): طلبات الإبداع
+       (إعادة تصوّر/تحويل أسلوب) يجب ألّا يتدخّل فيها محرّك «حفظ النص» لأنه يثبّت
+       الصورة كما هي؛ نتركها لنانو ليعطي نتيجة جريئة فعلًا. */
+    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade
       && (editImageBase64 ? await sourceLooksTextDense() : (!rawMode && __textCueRe.test(cleanPrompt)));
     /* v-duo-textroute (لقطة المالك: لقطة واجهة + «عطني أفضل ونفس الفكرة» → فنجان قهوة): مسار النصّ الكثيف كان
        يرجع ناتج gpt-image وحده بلا Gemini ولا حكم. الآن يعمل المحرّكان معًا هنا أيضًا والحكم يختار. */
@@ -394,7 +397,10 @@ module.exports = async (req, res) => {
     /* v-image-duo: gpt-image يعمل بالتوازي مع Gemini على الطلب نفسه؛ الحكم يختار الأدقّ في النهاية.
        يُستثنى الدعاء المؤلَّف وخط الأنابيب (لهما تحقّق خاص) وما سلك مسار النصّ الكثيف. */
     /* المحرّك الثاني يبقى بالتوازي في الوضع الخام أيضًا بالنصّ الخام نفسه، والحكم يختار */
-    const duoOn = duoEnabled() && !prayerPlan && !pipelineActive && (!__textRoute || !!densePromise);
+    /* v-bold-wins: في طلبات الإبداع (إعادة تصوّر/تحويل أسلوب) لا نُشغّل المنافس
+       gpt-image (input_fidelity=high يحافظ على المصدر فيفوز الحكم بالنسخة الحرفية)
+       — نعتمد نتيجة نانو الجريئة مباشرة؛ خطوط الإنقاذ تبقى عند الفشل فقط. */
+    const duoOn = duoEnabled() && !prayerPlan && !pipelineActive && !isReimagine && !isRestyle && (!__textRoute || !!densePromise);
     const duoP = duoOn ? (densePromise || openaiRescueImage().catch(function () { return null; })) : null;
     let duoEngine = '';
     // Image generation normally takes 35–50 seconds, so it must bypass the
