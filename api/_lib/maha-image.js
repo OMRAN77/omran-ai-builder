@@ -9,6 +9,7 @@ const { cleanImagePrompt, buildGenerationPrompt, buildEditPrompt, buildSceneUpgr
    لا تعديل موضعي — explicitlyRequestsStyleChange لا يلتقط «3d» وحدها. */
 const RESTYLE_RE = /(^|[\s،,])(3d|ثلاثي|مجسم|مجسّم|كرتون|كارتون|أنيمي|انمي|بيكسار|ديزني|زيتي|مائي|رصاص|بكسل|بيكسل|سايبر|نيون|كوميك|كومكس|مانجا|فانتازيا|واقعي|anime|cartoon|pixar|disney|pixel|cyberpunk|neon|comic|manga|fantasy|watercolor|oil\s*paint|sketch|realistic|render)/i;
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
+const { judgeBest, duoEnabled } = require('./image-judge');
 const { authorPrayerPlan } = require('./prayer-plan');
 const { fetchImageWithRetry, isImageTimeoutError } = require('./image-fetch');
 const pipeline = require('./image-pipeline');
@@ -131,13 +132,22 @@ module.exports = async (req, res) => {
     const isRestyle = !!editImageBase64 && !isSceneUpgrade && RESTYLE_RE.test(String(prompt || ''));
     const isReimagine = !!editImageBase64 && !isSceneUpgrade && !isRestyle && /فكرة\s*(ثانية|ثانيه|مختلفة|مختلفه|جديدة|جديده|غير)|فكره\s*(ثانية|ثانيه|مختلفة|مختلفه|جديدة|جديده|غير)|غيّ?ر\s*الفكرة|بشكل\s*مختلف\s*تمام|مختلف\s*تمام|تصميم\s*ثاني|ستايل\s*ثاني|بدّ?ل\s*(الفكرة|التصميم|الستايل)|different\s*(idea|concept|style)|new\s*concept|another\s*(idea|take|concept)|reimagine/i.test(String(prompt || ''));
     const promptLimit = isArchitectural ? 2400 : (editImageBase64 ? 8000 : 1800);
-    const cleanPrompt = cleanImagePrompt(prayerPlan ? prayerPlan.visualBrief : prompt).slice(0, promptLimit);
+    /* v-nano-raw (المالك ٥ سبتمبر: «ليش الفرق بينهم»): تطبيق Gemini يرسل نصّ المستخدم كما هو، ونحن نلفّه
+       بقواعد وحرّاس وحكم. من يبدأ طلبه بـ«نانو:» أو «nano:» يصل نصّه إلى نانو بنانا برو حرفيًا:
+       بلا صياغة، بلا حارس، بلا محرّك ثانٍ، بلا لصق وجه — نفس ما يعطيه تطبيق Gemini. */
+    const RAW_RE = /^\s*(?:نانو|نانو\s*بنانا|nano(?:\s*banana)?)\s*[:：\-–—]?\s*/i;
+    /* v-nano-default (المالك: «أريد نانو بنانا عندي في التطبيق نفس الفكرة»): الوضع الخام هو الافتراضي لكل صور
+       الدردشة — نصّ المستخدم كما هو مع صورته، بلا صياغة ولا حارس، كتطبيق Gemini تمامًا. IMAGE_RAW_DEFAULT=off يعيد الصياغة. */
+    const rawMode = !prayerPlan && (RAW_RE.test(String(prompt || '')) || String(process.env.IMAGE_RAW_DEFAULT || 'on').toLowerCase() !== 'off');
+    const cleanPrompt = rawMode
+      ? String(prompt || '').replace(RAW_RE, '').trim().slice(0, 4000)
+      : cleanImagePrompt(prayerPlan ? prayerPlan.visualBrief : prompt).slice(0, promptLimit);
     const extras = Array.isArray(extraImages) ? extraImages.filter((x) => x && x.data).slice(0, 5) : [];
 
     // 🧪 خط أنابيب الصور الجديد: يعمل فقط لتوليد جديد (لا تعديل، لا دعاء،
     // لا إعادة تصور، لا ترقية مشهد)، ومحمي خلف علم بيئة صريح كي لا يمسّ أي
     // مسار قائم قبل التحقّق منه.
-    let pipelineActive = process.env.IMAGE_PIPELINE === '1' && !editImageBase64 && !prayerPlan;
+    let pipelineActive = process.env.IMAGE_PIPELINE === '1' && !editImageBase64 && !prayerPlan && !rawMode;
     let pipelineRewrite = null;
     if (pipelineActive) {
       try {
@@ -179,6 +189,12 @@ module.exports = async (req, res) => {
       }) });
     }
 
+    if (rawMode) {
+      parts.length = 0;
+      parts.push({ text: cleanPrompt });
+      if (editImageBase64) parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
+      for (const x of extras) parts.push({ inlineData: { mimeType: x.mime || 'image/png', data: x.data } });
+    }
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
     // v656: نسبة أبعاد ذكية — الافتراضي طولي (3:4) لأن المستخدمين على الجوال،
     // مع احترام أي طلب صريح (عرضي/مربع/ستوري...). التعديل يحافظ على أبعاد المصدر.
@@ -191,7 +207,9 @@ module.exports = async (req, res) => {
     };
     const imageConfig = { imageSize: '2K' };
     if (!editImageBase64) imageConfig.aspectRatio = (pipelineActive && pipelineRewrite && pipelineRewrite.aspect) ? pipelineRewrite.aspect : (isArchitectural ? '16:9' : pickAspect(cleanPrompt));
-    const reqBody = JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: editImageBase64 ? (isSceneUpgrade ? 0.5 : (isReimagine ? 0.9 : (isRestyle ? 0.6 : 0.15))) : 0.85, imageConfig } });
+    const reqBody = JSON.stringify(rawMode
+      ? { contents: [{ parts }], generationConfig: { imageConfig } }
+      : { contents: [{ parts }], generationConfig: { temperature: editImageBase64 ? (isSceneUpgrade ? 0.5 : (isReimagine ? 0.9 : (isRestyle ? 0.6 : 0.15))) : 0.85, imageConfig } });
 
     /* v-img-textwise (شكوى المالك: «توليد الصور زفت» — لقطة شاشة التطبيق
        رجعت بعناوين عربية مشوهة): مصدرٌ مليء بالنصوص (لقطة واجهة، مستند،
@@ -313,16 +331,29 @@ module.exports = async (req, res) => {
        عربية سليمة — gpt-image ينفّذها وGemini يكسر الحروف): طلب توليد جديد
        يذكر نصوصًا/عناوين/أيقونات/واجهة/شاشة يبدأ أيضًا بـgpt-image. */
     const __textCueRe = /نص|كتاب|مكتوب|عنوان|عناوين|أيقون|ايقون|واجهة|شاشة|تطبيق|قائمة|كلمات|حروف|خط\s*عرب|\btext\b|label|icon|\bui\b|screen|interface|\bapp\b|menu|typograph|lettering|caption/i;
-    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan
+    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !rawMode
       && (editImageBase64 ? await sourceLooksTextDense() : __textCueRe.test(cleanPrompt));
+    /* v-duo-textroute (لقطة المالك: لقطة واجهة + «عطني أفضل ونفس الفكرة» → فنجان قهوة): مسار النصّ الكثيف كان
+       يرجع ناتج gpt-image وحده بلا Gemini ولا حكم. الآن يعمل المحرّكان معًا هنا أيضًا والحكم يختار. */
+    let densePromise = null;
     if (__textRoute) {
-      const denseB64 = await openaiRescueImage();
-      if (denseB64) {
-        res.status(200).json({ imageBase64: denseB64, mimeType: 'image/png', engine: 'openai', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined });
-        return;
+      if (duoEnabled() && !pipelineActive) {
+        densePromise = openaiRescueImage().catch(function () { return null; });
+      } else {
+        const denseB64 = await openaiRescueImage();
+        if (denseB64) {
+          res.status(200).json({ imageBase64: denseB64, mimeType: 'image/png', engine: 'openai', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined });
+          return;
+        }
       }
     }
 
+    /* v-image-duo: gpt-image يعمل بالتوازي مع Gemini على الطلب نفسه؛ الحكم يختار الأدقّ في النهاية.
+       يُستثنى الدعاء المؤلَّف وخط الأنابيب (لهما تحقّق خاص) وما سلك مسار النصّ الكثيف. */
+    /* المحرّك الثاني يبقى بالتوازي في الوضع الخام أيضًا بالنصّ الخام نفسه، والحكم يختار */
+    const duoOn = duoEnabled() && !prayerPlan && !pipelineActive && (!__textRoute || !!densePromise);
+    const duoP = duoOn ? (densePromise || openaiRescueImage().catch(function () { return null; })) : null;
+    let duoEngine = '';
     // Image generation normally takes 35–50 seconds, so it must bypass the
     // shared 30-second fetch guard. Retry transient failures inside this one
     // request; the user should not have to resend the same prompt.
@@ -345,7 +376,7 @@ module.exports = async (req, res) => {
     if (!upstream || !upstream.ok) {
       const nanoB64 = await geminiNanoBananaImage();
       if (nanoB64) { res.status(200).json({ imageBase64: nanoB64, mimeType: 'image/png', engine: 'gemini-nano-banana', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
-      const rescuedB64 = await openaiRescueImage();
+      const rescuedB64 = duoP ? await duoP : await openaiRescueImage();
       /* v-prayer-carry: الإنقاذ كان يفقد الدعاء المؤلَّف فيرفضه العميل
          (missing_authored_prayer — لقطة المالك). يُمرَّر مع الصورة المنقذة. */
       if (rescuedB64) { res.status(200).json({ imageBase64: rescuedB64, mimeType: 'image/png', engine: 'openai', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
@@ -365,7 +396,7 @@ module.exports = async (req, res) => {
     if (!imgPart) {
       const nanoB64b = await geminiNanoBananaImage();
       if (nanoB64b) { res.status(200).json({ imageBase64: nanoB64b, mimeType: 'image/png', engine: 'gemini-nano-banana', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
-      const rescuedB64b = await openaiRescueImage();
+      const rescuedB64b = duoP ? await duoP : await openaiRescueImage();
       if (rescuedB64b) { res.status(200).json({ imageBase64: rescuedB64b, mimeType: 'image/png', engine: 'openai', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
       await refundImageCharge();
       console.error('[maha-image] no image part in response: ' + JSON.stringify(data).slice(0, 2000));
@@ -374,7 +405,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    if (editImageBase64 && !extras.length) {
+    if (editImageBase64 && !extras.length && !rawMode) {
       const guard = await verifyLocalizedImageEdit({
         apiKey,
         sourceBase64: editImageBase64,
@@ -447,9 +478,28 @@ module.exports = async (req, res) => {
       }
     }
 
+    /* v-image-duo: المرشّح الثاني (gpt-image) يمرّ بحارس الهوية نفسه إن كان تعديلًا، ثم الحكم */
+    if (duoP) {
+      try {
+        const alt = await duoP;
+        if (alt) {
+          let altOk = true;
+          if (editImageBase64 && !extras.length) {
+            const g2 = await verifyLocalizedImageEdit({ apiKey, sourceBase64: editImageBase64, sourceMime: editMimeType || 'image/png', resultBase64: alt, resultMime: 'image/png', userPrompt: cleanPrompt, allowStyleChange: explicitlyRequestsStyleChange(cleanPrompt), allowBroadChange: isSceneUpgrade });
+            altOk = !!(g2 && (g2.ok || g2.reason === 'validation_unavailable'));
+          }
+          if (altOk) {
+            const pick = await judgeBest({ apiKey, prompt: cleanPrompt, source: editImageBase64 ? { b64: editImageBase64, mime: editMimeType || 'image/png' } : null, a: { b64: imgPart.inlineData.data, mime: imgPart.inlineData.mimeType || 'image/png' }, b: { b64: alt, mime: 'image/png' } });
+            if (pick === 'b') { imgPart = { inlineData: { data: alt, mimeType: 'image/png' } }; duoEngine = 'openai+judge'; }
+            else duoEngine = 'gemini+judge';
+          } else duoEngine = 'gemini';
+        }
+      } catch (e) { console.warn('[maha-image] duo skipped: ' + (e && e.message)); }
+    }
     res.status(200).json({
       imageBase64: imgPart.inlineData.data,
       mimeType: imgPart.inlineData.mimeType || 'image/png',
+      engine: rawMode ? 'nano-raw' : (duoEngine || 'gemini'),
       authoredText: prayerPlan ? prayerPlan.prayerText : undefined,
       visualPrompt: prayerPlan ? prayerPlan.visualBrief : undefined,
       prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined,

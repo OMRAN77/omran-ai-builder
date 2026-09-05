@@ -418,9 +418,10 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   if(!dd) return;
   const groups = [
     { title: null, ids: ['btnSettings','btnAuthToggle','btnToggleHistory'] },
-    { title: 'grpCreate', ids: ['btnPortraitStyle','btnQuickTemplates','btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI','btnAdStudio'] },
-    // v597: «رأيك يهمنا» جنب «مساعد البريد» بأمر عمران · مجموعة grpTools أُزيلت (أزرارها الأربعة مخفيّة بسطر ١٠٦ في index.html)
-    { title: 'grpSections', ids: ['btnQibla','btnOmranTV','btnStocks','btnConstruction','btnOmranEdu','btnExpense','btnDocs','btnGov','btnCV','btnReligion','btnEmailAssist','btnFeedback'] }
+    /* v-tools-groups3 (المالك ٥ سبتمبر): تجميع منطقي بثلاثة عناوين — إنشاء / أعمال / حياة يومية — بدل شبكة مكدّسة */
+    { title: 'grpCreate', ids: ['btnPortraitStyle','btnQuickTemplates','btnVideoMaker','btnDesignAI','btnFashionAI','btnStudioAI'] },
+    { title: 'grpBusiness', ids: ['btnAdStudio','btnStocks','btnExpense','btnCV','btnDocs','btnEmailAssist','btnConstruction'] },
+    { title: 'grpLife', ids: ['btnQibla','btnOmranTV','btnOmranEdu','btnReligion','btnGov','btnFeedback'] }
   ];
   // v433: مجموعات الإبداع/الأقسام/الأدوات في مربع الأدوات المنفصل (تبويب الأدوات)
   const ptPopup = document.getElementById('sectionsToolsPopup');

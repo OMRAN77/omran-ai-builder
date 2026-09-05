@@ -8,6 +8,7 @@
 const { checkFashionQuota, consumeFashion, FASHION_DAILY_LIMIT } = require('./_fashionUsage');
 const { sourceStylePreservationRule } = require('./image-prompt');
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
+const { judgeBest, duoEnabled } = require('./image-judge');
 const { locksFor } = require('./fashion-locks');
 
 // 🎨 محرك بديل اختياري: gpt-image-1 (نفس محرك صور ChatGPT) بمفتاح OPENAI_API_KEY.
@@ -303,6 +304,8 @@ module.exports = async (req, res) => {
 
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
     const reqBody = { contents: [{ parts }], generationConfig: { imageConfig: { imageSize: '2K' } } };
+    /* v-image-duo: gpt-image بالتوازي مع Gemini، والحكم يختار الأدقّ في النهاية */
+    const duoP = duoEnabled() ? (mode === 'image' ? openaiRedress(promptText, imageBase64, mimeType) : openaiGenerate(promptText)).catch(function () { return null; }) : null;
 
     const upstream = await fetch(endpoint, {
       method: 'POST',
@@ -320,9 +323,9 @@ module.exports = async (req, res) => {
       console.error('[fashion-create] upstream failed status=' + upstream.status + ' detail=' + detail);
       // v-fashion-rescue: رفضُ Gemini (نفاد رصيد/تعطّل) لا يعني تعطّل الميزة —
       // إن وُجد مفتاح OpenAI فجرّب gpt-image-1 قبل إبلاغ المستخدم بالفشل.
-      const rescue = mode === 'image'
+      const rescue = duoP ? await duoP : (mode === 'image'
         ? await openaiRedress(promptText, imageBase64, mimeType)
-        : await openaiGenerate(promptText);
+        : await openaiGenerate(promptText));
       if (rescue) {
         const remR = await consumeFashion(quota.username);
         res.status(200).json({ imageBase64: rescue.imageBase64, mimeType: rescue.mimeType, engine: 'openai', remaining: remR, dailyLimit: FASHION_DAILY_LIMIT });
@@ -357,10 +360,28 @@ module.exports = async (req, res) => {
       }
     }
 
+    let outB64 = imgPart.inlineData.data, outMime = imgPart.inlineData.mimeType || 'image/png', outEngine = 'gemini';
+    if (duoP) {
+      try {
+        const alt = await duoP;
+        if (alt && alt.imageBase64) {
+          let altOk = true;
+          if (mode === 'image') {
+            const g2 = await verifyLocalizedImageEdit({ apiKey, sourceBase64: imageBase64, sourceMime: mimeType || 'image/jpeg', resultBase64: alt.imageBase64, resultMime: alt.mimeType || 'image/png', userPrompt: [styleDesc, description, detailClause, multiAngleClause].filter(Boolean).join(' ') });
+            altOk = !!(g2 && (g2.ok || g2.reason === 'validation_unavailable'));
+          }
+          if (altOk) {
+            const pick = await judgeBest({ apiKey, prompt: promptText, source: mode === 'image' ? { b64: imageBase64, mime: mimeType || 'image/jpeg' } : null, a: { b64: outB64, mime: outMime }, b: { b64: alt.imageBase64, mime: alt.mimeType || 'image/png' } });
+            if (pick === 'b') { outB64 = alt.imageBase64; outMime = alt.mimeType || 'image/png'; outEngine = 'openai+judge'; } else outEngine = 'gemini+judge';
+          }
+        }
+      } catch (e) { console.warn('[fashion-create] duo skipped: ' + (e && e.message)); }
+    }
     const remaining = await consumeFashion(quota.username);
     res.status(200).json({
-      imageBase64: imgPart.inlineData.data,
-      mimeType: imgPart.inlineData.mimeType || 'image/png',
+      imageBase64: outB64,
+      mimeType: outMime,
+      engine: outEngine,
       remaining,
       dailyLimit: FASHION_DAILY_LIMIT,
     });

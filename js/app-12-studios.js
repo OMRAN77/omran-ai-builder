@@ -708,10 +708,114 @@ function stuL(ar, en){
     const nameEl = $('#portraitStyleTriggerName'); if(nameEl) nameEl.textContent = opt ? opt.textContent : '';
     const subEl = $('#portraitStyleTriggerSub'); if(subEl) subEl.textContent = pstyleSub(styleEl.value);
   }
+  /* v-psheet-oneface (فكرة المالك ٥ سبتمبر: نفس الوجه عبر كل الأنماط، فلتر فئات، بطاقة «قبل»،
+     لمعة عند التمرير، وزر «جرّب على صورتك»): */
+  function gt(k, ar, en){ try{ if(typeof window.t === 'function'){ var v = window.t(k); if(v && v !== k) return v; } }catch(e){ /* guard-ok */ } return pstyleLang().indexOf('ar') === 0 ? ar : en; }
+  let pstyleFilter = 'all';
+  function pstyleGroupOf(opt){
+    const g = opt.parentElement;
+    if(!g || g.tagName !== 'OPTGROUP' || g.id === 'portraitFavGroup') return 'art';
+    return (g.getAttribute('data-i18n') || g.getAttribute('label') || 'art').replace(/^\[label\]/, '');
+  }
+  /* الاسم الإنجليزي للنمط (يضيف مصداقية الأداة تحت كل بطاقة) — من قاموس en أو data-en */
+  function pstyleEn(v){
+    try{
+      const o = styleEl.querySelector('option[value="' + v + '"]'); if(!o) return '';
+      const k = o.getAttribute('data-i18n'); let en = '';
+      if(k && window.I18N && window.I18N.en && window.I18N.en[k]) en = window.I18N.en[k];
+      if(!en) en = o.getAttribute('data-en') || '';
+      return String(en).replace(/^[^\p{L}\p{N}]+/u, '').trim();
+    }catch(e){ return ''; }
+  }
+  function pstyleGroups(){
+    const out = [{ k: 'all', label: gt('psheetAll', 'الكل', 'All') }, { k: 'art', label: gt('psheetGrpArt', '🎨 فنية', '🎨 Artistic') }];
+    Array.from(styleEl.querySelectorAll('optgroup')).forEach((g) => {
+      if(g.id === 'portraitFavGroup') return;
+      const k = (g.getAttribute('data-i18n') || '').replace(/^\[label\]/, '');
+      if(!k) return;
+      out.push({ k, label: gt(k, g.getAttribute('label') || k, g.getAttribute('label') || k) });
+    });
+    return out;
+  }
+  function ensurePsheetCss(){
+    if(document.getElementById('psheetCss')) return;
+    const st = document.createElement('style'); st.id = 'psheetCss';
+    st.textContent = '.pstyleCard{transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease; position:relative;}'
+      + '.pstyleCard:hover,.pstyleCard:focus-visible{transform:scale(1.035); border-color:#d4af37 !important; box-shadow:0 0 0 2px rgba(212,175,55,.35), 0 12px 30px rgba(0,0,0,.45), 0 0 26px rgba(212,175,55,.35) !important; outline:none; z-index:1;}'
+      + '.pstyleCard::after{content:""; position:absolute; inset:0; pointer-events:none; background:linear-gradient(115deg,transparent 40%,rgba(255,238,180,.22) 50%,transparent 60%); background-size:250% 100%; background-position:160% 0; opacity:0; transition:opacity .18s;}'
+      + '.pstyleCard:hover::after{opacity:1; animation:pstyleSheen 1.1s ease forwards;}'
+      + '@keyframes pstyleSheen{from{background-position:160% 0}to{background-position:-60% 0}}'
+      + '.pstyleChips{display:flex; gap:8px; overflow-x:auto; padding:10px 14px 4px; scrollbar-width:none;}'
+      + '.pstyleChips::-webkit-scrollbar{display:none}'
+      + '.pstyleChip{flex:0 0 auto; border-radius:999px; padding:7px 13px; font-size:12.5px; font-weight:700; border:1px solid rgba(212,175,55,.35); background:rgba(255,255,255,.04); color:#eef0f6; cursor:pointer; font-family:inherit;}'
+      + '.pstyleChip.on{background:#d4af37; color:#141414; border-color:#d4af37;}'
+      + '.pstyleBefore{border:2px solid rgba(212,175,55,.75) !important; box-shadow:0 0 18px rgba(212,175,55,.3) !important; cursor:default !important;}'
+      + '.pstyleCta{display:block; width:min(420px, calc(100% - 28px)); margin:14px auto 8px; padding:14px 18px; border-radius:999px; background:linear-gradient(135deg,#f1d98a,#d4af37 55%,#b8902a); color:#141414; font-weight:800; font-size:15px; border:none; cursor:pointer; box-shadow:0 8px 24px rgba(212,175,55,.35); font-family:inherit;}'
+      + '.pstyleCta:active{transform:scale(.985)}'
+      + '@keyframes pstyleIn{from{opacity:0; transform:translateY(8px) scale(.97)}to{opacity:1; transform:none}}'
+      + '.pstyleCard{animation:pstyleIn .28s ease both;}'
+      + '.pstyleEn{font-size:10px; color:#d4af37; letter-spacing:.3px; margin-top:2px; opacity:.9; direction:ltr;}'
+      + '.pstyleHero{position:relative; width:min(340px, 92vw); aspect-ratio:1; margin:6px auto 2px; border-radius:50%;'
+      + ' background:radial-gradient(circle at 50% 50%, rgba(212,175,55,.16) 0 18%, rgba(212,175,55,.05) 19% 38%, transparent 39%),'
+      + ' repeating-conic-gradient(from 0deg, rgba(212,175,55,.22) 0deg 0.8deg, transparent 0.8deg 30deg);}'
+      + '.pstyleHero .pstyleHeroC{position:absolute; left:50%; top:50%; width:34%; aspect-ratio:1; transform:translate(-50%,-50%); border-radius:50%; overflow:hidden; border:3px solid #d4af37; box-shadow:0 0 0 6px rgba(212,175,55,.15), 0 0 40px rgba(212,175,55,.45); background:#101014;}'
+      + '.pstyleHero .pstyleHeroC img{width:100%; height:100%; object-fit:cover; object-position:50% 12%;}'
+      + '.pstyleHero .pstyleHeroC span{position:absolute; left:50%; bottom:6%; transform:translateX(-50%); padding:2px 9px; border-radius:999px; background:#d4af37; color:#141414; font-size:11px; font-weight:800; white-space:nowrap;}'
+      + '.pstyleHero .pstyleHeroT{position:absolute; width:19%; aspect-ratio:1; border-radius:50%; overflow:hidden; border:2px solid rgba(212,175,55,.75); background:#17171b; box-shadow:0 6px 18px rgba(0,0,0,.45); cursor:pointer; transform:translate(-50%,-50%); transition:transform .18s, box-shadow .18s;}'
+      + '.pstyleHero .pstyleHeroT:hover{transform:translate(-50%,-50%) scale(1.12); box-shadow:0 0 22px rgba(212,175,55,.6);}'
+      + '.pstyleHero .pstyleHeroT img{width:100%; height:100%; object-fit:cover; object-position:50% 12%;}'
+      + '.pstyleHero .pstyleHeroT i{position:absolute; left:0; right:0; bottom:0; font-style:normal; font-size:8.5px; line-height:1.1; padding:8px 7px 4px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff; background:linear-gradient(transparent, rgba(0,0,0,.8)); direction:ltr;}';
+    document.head.appendChild(st);
+  }
+  function ensurePsheetChrome(){
+    ensurePsheetCss();
+    const scroller = styleCardsGrid.parentElement; if(!scroller) return;
+    let hero = document.getElementById('portraitStyleHero');
+    if(!hero){
+      hero = document.createElement('div'); hero.id = 'portraitStyleHero'; hero.className = 'pstyleHero';
+      const c = document.createElement('div'); c.className = 'pstyleHeroC';
+      const ci = document.createElement('img'); ci.src = 'assets/portrait/before.webp'; ci.alt = ''; ci.onerror = function(){ ci.remove(); };
+      const cl = document.createElement('span'); cl.textContent = gt('psheetBefore', 'قبل', 'Before');
+      c.appendChild(ci); c.appendChild(cl); hero.appendChild(c);
+      const RING = ['anime', 'pixel', 'sketch', 'mosaic', 'oil', 'comic', 'watercolor', 'cyberpunk', 'lego', 'statue', 'pop', 'ghibli'];
+      const RING_EN = { anime: 'Anime', pixel: 'Pixel Art', sketch: 'Sketch', mosaic: 'Mosaic', oil: 'Oil Paint', comic: 'Comic', watercolor: 'Watercolor', cyberpunk: 'Cyberpunk', lego: 'LEGO', statue: 'Statue', pop: 'Pop Art', ghibli: 'Ghibli' };
+      RING.forEach((v, i) => {
+        const a = (-90 + i * (360 / RING.length)) * Math.PI / 180, r = 40.5;
+        const tdiv = document.createElement('div'); tdiv.className = 'pstyleHeroT'; tdiv.setAttribute('data-pstyle-ring', v);
+        tdiv.style.left = (50 + r * Math.cos(a)) + '%'; tdiv.style.top = (50 + r * Math.sin(a)) + '%';
+        const im = document.createElement('img'); im.src = 'assets/portrait/styles/' + v + '.webp'; im.alt = ''; im.loading = 'eager'; im.onerror = function(){ tdiv.remove(); };
+        const lb = document.createElement('i'); lb.textContent = RING_EN[v] || pstyleEn(v);
+        tdiv.appendChild(im); tdiv.appendChild(lb);
+        tdiv.onclick = function(){ const o = styleEl.querySelector('option[value="' + v + '"]'); if(!o) return; styleEl.value = v; styleEl.dispatchEvent(new Event('change', { bubbles: true })); refreshStyleTrigger(); if(styleSheet) styleSheet.style.display = 'none'; };
+        hero.appendChild(tdiv);
+      });
+      scroller.insertBefore(hero, styleCardsGrid);
+    }
+    let chips = document.getElementById('portraitStyleChips');
+    if(!chips){ chips = document.createElement('div'); chips.id = 'portraitStyleChips'; chips.className = 'pstyleChips'; scroller.insertBefore(chips, styleCardsGrid); }
+    chips.innerHTML = '';
+    pstyleGroups().forEach((g) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'pstyleChip' + (pstyleFilter === g.k ? ' on' : ''); b.textContent = g.label;
+      b.onclick = function(){ pstyleFilter = g.k; renderPortraitStyleCards(); };
+      chips.appendChild(b);
+    });
+    let cta = document.getElementById('portraitStyleCta');
+    if(!cta){
+      cta = document.createElement('button'); cta.type = 'button'; cta.id = 'portraitStyleCta'; cta.className = 'pstyleCta';
+      cta.onclick = function(){
+        if(styleSheet) styleSheet.style.display = 'none';
+        const fb = $('#portraitStyleFileBtn') || $('#portraitStyleFileInput');
+        if(fb){ try{ fb.click(); }catch(e){ /* guard-ok */ } }
+      };
+      scroller.appendChild(cta);
+    }
+    cta.textContent = gt('psheetTry', '✨ جرّب على صورتك', '✨ Try it on your photo');
+  }
   function renderPortraitStyleCards(){
     if(!styleCardsGrid || !styleEl) return;
+    ensurePsheetChrome();
     const favs = getFavs();
-    const opts = pstyleOpts();
+    const opts = pstyleOpts().filter((o) => pstyleFilter === 'all' || pstyleGroupOf(o) === pstyleFilter);
     /* v-psub-ar-only: سطر العدّاد صار مفتاح ترجمة لكل اللغات بدل عربي/إنجليزي فقط.
        ملاحظة: t المحلية في هذا الملف تعرف عربي/إنجليزي فقط وتحجب المترجم
        العام — نستدعي window.t (مترجم اللغات الـ14) صراحةً. */
@@ -721,12 +825,28 @@ function stuL(ar, en){
       styleSheetCount.textContent = opts.length + ' ' + __cntSuffix;
     }
     styleCardsGrid.innerHTML = '';
+    /* بطاقة «قبل»: الوجه المرجعي الذي تحوّل إلى كل البطاقات — Before → كل الأنماط */
+    (function(){
+      const bc = document.createElement('div'); bc.className = 'pstyleCard pstyleBefore'; bc.setAttribute('data-pstyle-before', '1');
+      bc.style.cssText = 'border-radius:14px; overflow:hidden; background:#17171b; border:1px solid var(--border,#2a2a30);';
+      const w = document.createElement('div'); w.style.cssText = 'position:relative; aspect-ratio:3/4; background:linear-gradient(160deg,#23232a,#101014);';
+      const im = document.createElement('img'); im.src = 'assets/portrait/before.webp'; im.alt = ''; im.loading = 'eager';
+      im.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover;'; im.onerror = function(){ im.remove(); };
+      const tag = document.createElement('div'); tag.textContent = gt('psheetBefore', 'قبل', 'Before');
+      tag.style.cssText = 'position:absolute; top:6px; inset-inline-start:7px; padding:3px 9px; border-radius:999px; background:#d4af37; color:#141414; font-weight:800; font-size:11.5px;';
+      w.appendChild(im); w.appendChild(tag);
+      const info = document.createElement('div'); info.style.cssText = 'padding:9px 10px 11px; text-align:center;';
+      const n = document.createElement('div'); n.textContent = gt('psheetBefore', 'قبل', 'Before'); n.style.cssText = 'font-size:12.5px; font-weight:700; color:#d4af37;';
+      const sb = document.createElement('div'); sb.textContent = gt('psheetBeforeSub', 'صورة واحدة → كل الستايلات', 'One photo → every style'); sb.style.cssText = 'font-size:10.5px; color:#9a9a9e; margin-top:3px; min-height:13px;';
+      info.appendChild(n); info.appendChild(sb); bc.appendChild(w); bc.appendChild(info);
+      styleCardsGrid.appendChild(bc);
+    })();
     opts.forEach((opt) => {
       const v = opt.value;
       const active = v === styleEl.value;
       const title = optLabel(opt).trim();
       const card = document.createElement('div');
-      card.setAttribute('data-pstyle-card', v);
+      card.setAttribute('data-pstyle-card', v); card.className = 'pstyleCard'; card.tabIndex = 0;
       card.style.cssText = 'border-radius:14px; overflow:hidden; cursor:pointer; background:#17171b;' +
         (active ? ' border:2px solid #d4af37; box-shadow:0 0 14px rgba(212,175,55,.3);' : ' border:1px solid var(--border,#2a2a30);');
       const imgWrap = document.createElement('div');
@@ -760,6 +880,7 @@ function stuL(ar, en){
       subEl.textContent = pstyleSub(v);
       subEl.style.cssText = 'font-size:10.5px; color:#9a9a9e; margin-top:3px; min-height:13px;';
       info.appendChild(nameEl); info.appendChild(subEl);
+      if(pstyleLang().indexOf('en') !== 0){ const en = pstyleEn(v); if(en && en !== title){ const enEl = document.createElement('div'); enEl.className = 'pstyleEn'; enEl.textContent = en; info.appendChild(enEl); } }
       card.appendChild(imgWrap); card.appendChild(info);
       card.onclick = function(){
         styleEl.value = v;

@@ -153,6 +153,7 @@
       let g = null;
       try{ g = await api({ mode:'gold' }); }catch(e){ __swallow(e, "misc:app-13-stocks-init#2"); }
       tickerRaw = { syms: (j && j.items) ? j.items : [], gold: g };
+      window.__tickerLatest = tickerRaw; /* v-live-cards: بطاقة الأسهم الحيّة */
       renderTicker(tickerItems());
     }catch(e){ /* keep old ticker on error */ }
   }

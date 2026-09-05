@@ -32,7 +32,7 @@ function norm(q) { return String(q || '').replace(/\s+/g, ' ').trim(); }
 
 /* ── الذاكرة المؤقتة (Upstash عبر kv.js؛ غيابها لا يعطّل شيئًا) ── */
 const CACHE_TTL = 24 * 3600;
-function cacheKey(parts) { return 'ideas:v2:' + crypto.createHash('sha1').update(JSON.stringify(parts)).digest('hex'); }
+function cacheKey(parts) { return 'ideas:v3:' + crypto.createHash('sha1').update(JSON.stringify(parts)).digest('hex'); }
 async function cacheGet(key) { try { const { kvGetRaw } = require('./kv.js'); const raw = await kvGetRaw(key); return raw ? JSON.parse(raw) : null; } catch (e) { return null; } }
 async function cacheSet(key, obj) { try { const { kvSetRaw } = require('./kv.js'); await kvSetRaw(key, JSON.stringify(obj), CACHE_TTL); } catch (e) { /* guard-ok */ } }
 
@@ -164,9 +164,15 @@ async function gather(apiKey, wave1, wave2, gq) {
   const state = {};
   const seen = new Set();
   const images = [];
-  let source = 'tavily';
-  dedupe(await tavilyImages(wave1, apiKey, state), seen, images);
-  if (!state.tavilyFail && images.length < 24) dedupe(await tavilyImages(wave2, apiKey, state), seen, images);
+  /* v-ideas-google-first (لقطة المالك: صفحة نحو وشلال بدل ديكور): صور Tavily تُقتطع من صفحات المقالات
+     فتأتي بلا علاقة؛ بحث Google للصور هو الأصل، وTavily تكملة فقط عند النقص أو الفشل. */
+  let source = 'google';
+  dedupe(await googleImages(gq, state), seen, images);
+  if (images.length < 12 && apiKey) {
+    source = images.length ? 'mixed' : 'tavily';
+    dedupe(await tavilyImages(wave1, apiKey, state), seen, images);
+    if (!state.tavilyFail && images.length < 24) dedupe(await tavilyImages(wave2, apiKey, state), seen, images);
+  }
   /* سلسلة البدائل بلا مفتاح: Google صور → Google صفحات → Bing → DuckDuckGo → Openverse */
   /* v-ideas-relevant (صورة المالك: قطط وزفاف بدل مطعم): مصادر «بحث الصور» فقط — صور الصفحات
      (pagemap) وOpenverse تعطي صورًا لا علاقة لها بالطلب فأُزيلتا من السلسلة. */
@@ -174,19 +180,19 @@ async function gather(apiKey, wave1, wave2, gq) {
      يبقى Tavily وGoogle صور مع safe=active.
      v-ideas-fallback (المالك: «مصدر الصور متوقف tavily:432 google:403»): عند نفاد الحصّتين
      المدفوعتين نضيف مصادر آمنة منسّقة — Pexels وUnsplash (بمفتاح مجاني، صفر محتوى بالغ)،
-     وOpenverse (بلا مفتاح، mature=false) كحلّ أخير حتى لا يظهر خطأ أبدًا. */
+     وOpenverse (بلا مفتاح، mature=false) كحلّ أخير حتى لا يظهر خطأ أبدًا. Google مُستبعَد
+     من السلسلة لأنه يعمل أولًا بالفعل. */
   const chain = [
-    ['google', () => googleImages(gq, state)],
     ['pexels', () => pexelsImages(wave1, state)],
     ['unsplash', () => unsplashImages(wave1, state)],
     ['openverse', () => openverseImages(gq, state)],
   ];
   for (const [name, fn] of chain) {
-    /* لا نستهلك حصص البدائل إلا عند فشل Tavily أو قلّة الصور الحقيقية */
-    if (!(state.tavilyFail || images.length < 12)) break;
+    /* لا نستهلك حصص البدائل إلا عند قلّة الصور الحقيقية بعد Google/Tavily */
+    if (images.length >= 12) break;
     let got = [];
     try { got = await fn(); } catch (e) { /* guard-ok */ }
-    if (got.length) { dedupe(got, seen, images); source = state.tavilyFail ? name : 'mixed'; }
+    if (got.length) { dedupe(got, seen, images); source = images.length && source === 'google' ? 'mixed' : name; }
   }
   const out = { images: images.slice(0, 80), count: Math.min(images.length, 80), source };
   const detail = {

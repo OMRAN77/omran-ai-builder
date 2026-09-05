@@ -1,3 +1,4 @@
+const { judgeBest, duoEnabled } = require('./image-judge');
 // Vercel Serverless Function: "🏠 AI Interior Design". Takes a photo of a
 // real room plus a chosen style, and asks Gemini's image-generation model
 // (server-side owner API key, GEMINI_API_KEY) to redesign the room in that
@@ -309,6 +310,8 @@ module.exports = async (req, res) => {
       ],
       generationConfig: { imageConfig: { imageSize: '2K' } },
     };
+    /* v-image-duo: gpt-image بالتوازي مع Gemini، والحكم يختار الأدقّ في النهاية */
+    const duoP = duoEnabled() ? openaiDesignEdit(promptText, imageBase64, mimeType).catch(function () { return null; }) : null;
 
     const upstream = await fetch(endpoint, {
       method: 'POST',
@@ -321,7 +324,7 @@ module.exports = async (req, res) => {
     if (!upstream.ok) {
       // v-design-rescue: رفض Gemini (رصيد/حصة/غيره) يهبط تلقائيًا إلى gpt-image-1
       // بمفتاح الخادم — نفس خط إنقاذ الأزياء والبورتريه والستايل.
-      const rescued = await openaiDesignEdit(promptText, imageBase64, mimeType);
+      const rescued = duoP ? await duoP : await openaiDesignEdit(promptText, imageBase64, mimeType);
       if (rescued) {
         const rrem = await consumeDesign(quota.username);
         res.status(200).json({ imageBase64: rescued, mimeType: 'image/webp', remaining: rrem, dailyLimit: DESIGN_DAILY_LIMIT, engine: 'openai' });
@@ -339,10 +342,21 @@ module.exports = async (req, res) => {
       return;
     }
 
+    let outB64 = imgPart.inlineData.data, outMime = imgPart.inlineData.mimeType || 'image/png', outEngine = 'gemini';
+    if (duoP) {
+      try {
+        const alt = await duoP;
+        if (alt) {
+          const pick = await judgeBest({ apiKey, prompt: promptText, source: { b64: imageBase64, mime: mimeType || 'image/jpeg' }, a: { b64: outB64, mime: outMime }, b: { b64: alt, mime: 'image/webp' } });
+          if (pick === 'b') { outB64 = alt; outMime = 'image/webp'; outEngine = 'openai+judge'; } else outEngine = 'gemini+judge';
+        }
+      } catch (e) { console.warn('[design-create] duo skipped: ' + (e && e.message)); }
+    }
     const remaining = await consumeDesign(quota.username);
     res.status(200).json({
-      imageBase64: imgPart.inlineData.data,
-      mimeType: imgPart.inlineData.mimeType || 'image/png',
+      imageBase64: outB64,
+      mimeType: outMime,
+      engine: outEngine,
       remaining,
       dailyLimit: DESIGN_DAILY_LIMIT,
     });
