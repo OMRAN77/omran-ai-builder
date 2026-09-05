@@ -10,6 +10,43 @@
 *{box-sizing:border-box;margin:0;padding:0}
 /* v-ad-safe: الصفحة كانت تبدأ تحت النوتش على الآيفون — حاشية أمان علوية وسفلية. */
 body{font-family:'Tajawal',system-ui,sans-serif;background:#0e1013;color:#e8eaed;padding:calc(20px + env(safe-area-inset-top,0px)) 14px calc(70px + env(safe-area-inset-bottom,0px))}
+/* ===== v-ad-cosmos (تصميم المالك ٥ سبتمبر: مجرّة ومكبّر صوت في المنتصف والفئات حوله) ===== */
+body{background:
+  radial-gradient(ellipse 60% 45% at 18% 12%, rgba(98,64,190,.38), transparent 60%),
+  radial-gradient(ellipse 55% 40% at 82% 28%, rgba(38,120,210,.30), transparent 60%),
+  radial-gradient(ellipse 70% 40% at 50% 100%, rgba(212,175,55,.14), transparent 60%),
+  radial-gradient(1px 1px at 12% 22%, rgba(255,255,255,.9), transparent 2px),
+  radial-gradient(1px 1px at 33% 71%, rgba(255,255,255,.7), transparent 2px),
+  radial-gradient(1.5px 1.5px at 58% 18%, rgba(255,255,255,.85), transparent 2px),
+  radial-gradient(1px 1px at 76% 62%, rgba(255,255,255,.65), transparent 2px),
+  radial-gradient(1px 1px at 90% 84%, rgba(255,255,255,.8), transparent 2px),
+  radial-gradient(1px 1px at 44% 44%, rgba(255,255,255,.55), transparent 2px),
+  radial-gradient(1.5px 1.5px at 8% 88%, rgba(255,255,255,.7), transparent 2px),
+  radial-gradient(1px 1px at 66% 92%, rgba(255,255,255,.6), transparent 2px),
+  radial-gradient(1px 1px at 25% 50%, rgba(255,255,255,.5), transparent 2px),
+  radial-gradient(1px 1px at 95% 8%, rgba(255,255,255,.8), transparent 2px),
+  #07070d;
+  background-attachment:fixed}
+.hero{position:relative;width:min(380px,94vw);aspect-ratio:1;margin:14px auto 0;border-radius:50%;
+  background:radial-gradient(circle at 50% 50%, rgba(212,175,55,.18) 0 17%, rgba(120,90,220,.10) 18% 40%, transparent 41%),
+  repeating-conic-gradient(from 0deg, rgba(212,175,55,.20) 0deg .8deg, transparent .8deg 45deg)}
+.hero.done{display:none}
+.hero .core{position:absolute;left:50%;top:50%;width:46%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;overflow:hidden;
+  border:3px solid #d4af37;box-shadow:0 0 0 8px rgba(212,175,55,.12),0 0 60px rgba(212,175,55,.45),0 0 120px rgba(120,90,220,.35);background:#0b0b12}
+.hero .core img{width:100%;height:100%;object-fit:cover;object-position:32% 55%;transform:scale(1.15);animation:heroBreathe 5s ease-in-out infinite alternate}
+@keyframes heroBreathe{from{transform:scale(1.12)}to{transform:scale(1.2)}}
+.hero .tile{position:absolute;width:21%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;
+  animation:tileIn .5s ease both;border:0;background:none;color:#eef0f6;font-family:inherit;padding:0}
+.hero .tile i{width:100%;aspect-ratio:1;border-radius:50%;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:clamp(20px,6vw,30px);
+  background:rgba(14,14,26,.72);border:1.5px solid var(--ac,#d4af37);box-shadow:0 0 18px color-mix(in srgb,var(--ac,#d4af37) 45%,transparent),inset 0 0 14px rgba(255,255,255,.05);
+  backdrop-filter:blur(6px);transition:transform .18s,box-shadow .18s}
+.hero .tile span{font:700 11px 'Tajawal',system-ui;color:#eef0f6;text-align:center;line-height:1.2;white-space:nowrap;text-shadow:0 1px 6px #000}
+.hero .tile:hover i,.hero .tile:focus-visible i{transform:scale(1.12);box-shadow:0 0 30px var(--ac,#d4af37)}
+@keyframes tileIn{from{opacity:0;transform:translate(-50%,-50%) scale(.6)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+.chips.ringOn{display:none}
+.chat{background:rgba(14,14,22,.78);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.comp input{background:rgba(10,10,18,.7)}
+@media (min-width:760px){.hero{width:min(520px,60vw)}}
 .wrap{max-width:1240px;margin:0 auto}
 h1{font-size:24px;font-weight:900}
 .sub{color:#9aa3ad;font-size:13.5px;margin-top:6px;line-height:1.7}
@@ -254,6 +291,11 @@ html:not([lang=ar]):not([lang=ur]) .J .jgrid span{flex-direction:row;justify-con
   <div class="sub" data-i18n="sub">تكتب ما تريد الإعلان عنه بكلامك، تُجيب عن سؤالين، ترفع صورتك — فتخرج تسعة تصاميم جاهزة تختار منها.</div>
   <a class="back" href="/" data-i18n="back" hidden style="display:none !important">← رجوع إلى التطبيق</a>
 
+  <div class="hero" id="hero" aria-hidden="false">
+    <div class="core"><img src="/assets/tool-cards/clean/btnAdStudio.jpg" alt="" decoding="async" fetchpriority="high"></div>
+    <div id="heroRing"></div>
+  </div>
+
   <div class="chat">
     <div class="chead"><b data-i18n="asstName">مساعد الإعلانات</b><span id="stepLbl" data-i18n="stepStart">ابدأ</span></div>
     <div class="cbody" id="cbody"></div>
@@ -382,13 +424,31 @@ function nums(t){
 }
 
 /* ================= خطوات المحادثة ================= */
+/* v-ad-cosmos: الفئات حلقةً حول مكبّر الصوت؛ رقائق المحادثة تُخفى ما دامت الحلقة ظاهرة */
+function buildRing(){
+  const ring=document.getElementById('heroRing'), hero=document.getElementById('hero'); if(!ring||!hero) return;
+  ring.innerHTML=''; hero.classList.remove('done');
+  const keys=Object.keys(CATS), n=keys.length, r=40;
+  keys.forEach((k,i)=>{
+    const a=(-90+i*(360/n))*Math.PI/180;
+    const b=document.createElement('button'); b.type='button'; b.className='tile'; b.style.setProperty('--ac',CATS[k].ac||'#d4af37');
+    b.style.left=(50+r*Math.cos(a))+'%'; b.style.top=(50+r*Math.sin(a))+'%'; b.style.animationDelay=(i*70)+'ms';
+    b.innerHTML='<i>'+CATS[k].ic+'</i><span></span>'; b.querySelector('span').textContent=CATS[k].n;
+    b.onclick=()=>{ const m=T('wantAd',{cat:CATS[k].n}); push('u',CATS[k].n); S.cat=k; S.unit=CATS[k].unit; turn(m); };
+    ring.appendChild(b);
+  });
+  chipsEl.classList.add('ringOn');
+}
+function heroDone(){ const hero=document.getElementById('hero'); if(hero) hero.classList.add('done'); chipsEl.classList.remove('ringOn'); }
 function start(){
   say(T('greet'), ()=>{
     setChips(Object.keys(CATS).map(k=>({t:CATS[k].ic+' '+CATS[k].n, f:()=>{ const m=T('wantAd',{cat:CATS[k].n}); push('u',CATS[k].n); S.cat=k; S.unit=CATS[k].unit; turn(m); }})));
+    buildRing();
   });
   S.step=0; stepLbl.textContent=step(1);
 }
 function pickCat(k){
+  heroDone();
   S.cat=k; const c=CATS[k]; S.unit=c.unit; setChips([]);
   stepLbl.textContent=step(2);
   say(c.intro+'\n\n'+T('needTwo')+'\n'+NU(1)+'. '+c.q1+'\n'+NU(2)+'. '+c.q2, ()=>{
