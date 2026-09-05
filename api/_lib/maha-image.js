@@ -4,7 +4,7 @@
 // model (server-side owner key, GEMINI_API_KEY) - the only one of the 9
 // providers that can actually output images.
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
-const { cleanImagePrompt, buildGenerationPrompt, buildEditPrompt, buildSceneUpgradePrompt, buildRestylePrompt, explicitlyRequestsStyleChange } = require('./image-prompt');
+const { cleanImagePrompt, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildSceneUpgradePrompt, buildRestylePrompt, explicitlyRequestsStyleChange } = require('./image-prompt');
 /* v-restyle-bold: «عدل 3d» / «حوّلها كرتون» / «ستايل أنيمي» = تحويل أسلوب كامل
    لا تعديل موضعي — explicitlyRequestsStyleChange لا يلتقط «3d» وحدها. */
 const RESTYLE_RE = /(^|[\s،,])(3d|ثلاثي|مجسم|مجسّم|كرتون|كارتون|أنيمي|انمي|بيكسار|ديزني|زيتي|مائي|رصاص|بكسل|بيكسل|سايبر|نيون|كوميك|كومكس|مانجا|فانتازيا|واقعي|anime|cartoon|pixar|disney|pixel|cyberpunk|neon|comic|manga|fantasy|watercolor|oil\s*paint|sketch|realistic|render)/i;
@@ -151,8 +151,14 @@ module.exports = async (req, res) => {
        فيُعامل كإعادة تصوّر جريئة تبني على الموضوع نفسه. يُستثنى صراحةً طلب «نفس
        الصورة/زيها بالضبط» كي لا نغيّر عندما يريد الحرفية فعلًا. */
     const __sameImageRe = /نفس\s*الصور[ةه]|زيها\s*بالضبط|طبق\s*الأصل|بالضبط\s*نفس|كما\s*هي|same\s*image|exact(?:ly)?\s*same|identical/i;
+    /* v-elevate (المالك: «أقوى = نفس الفكرة مرفوعة لا فكرة جديدة»): نفصل نيّتين
+       كانتا مدموجتين خطأً:
+       - isReimagine = «فكرة مختلفة/جديدة» → مشهد جديد كليًا (buildReimagine).
+       - isElevate  = «أقوى/أفضل من هذي» → نفس الموضوع والتركيب لكن أرقى بكثير
+         (buildElevatePrompt). دمجهما كان يحوّل كرتًا بسيطًا إلى لوحة بلا علاقة. */
     const __strongerRe = /(?:^|[\s،,])(?:أقوى|اقوى|فكرة\s*أقوى|فكره\s*اقوى|أبدع|ابدع|أروع|اروع|خيالي[ةه]?|جبار[ةه]?|احترافي[ةه]\s*أكثر)(?=$|[\s،,.!؟?])|(?:أفضل|افضل|أحسن|احسن)\s*من(?=$|[\s،,.!؟?])|خلّ?ها\s*أقوى|خليها\s*اقوى|سوّ?ها\s*أقوى|سويها\s*اقوى|\b(?:stronger|more\s*powerful|bolder|epic|level\s*up|glow\s*up|next\s*level|better\s*than)\b/i;
-    const isReimagine = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !__sameImageRe.test(String(prompt || '')) && (/فكرة\s*(ثانية|ثانيه|مختلفة|مختلفه|جديدة|جديده|غير)|فكره\s*(ثانية|ثانيه|مختلفة|مختلفه|جديدة|جديده|غير)|غيّ?ر\s*الفكرة|بشكل\s*مختلف\s*تمام|مختلف\s*تمام|تصميم\s*ثاني|ستايل\s*ثاني|بدّ?ل\s*(الفكرة|التصميم|الستايل)|different\s*(idea|concept|style)|new\s*concept|another\s*(idea|take|concept)|reimagine/i.test(String(prompt || '')) || __strongerRe.test(String(prompt || '')));
+    const isReimagine = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !__sameImageRe.test(String(prompt || '')) && /فكرة\s*(ثانية|ثانيه|مختلفة|مختلفه|جديدة|جديده|غير)|فكره\s*(ثانية|ثانيه|مختلفة|مختلفه|جديدة|جديده|غير)|غيّ?ر\s*الفكرة|بشكل\s*مختلف\s*تمام|مختلف\s*تمام|تصميم\s*ثاني|ستايل\s*ثاني|بدّ?ل\s*(الفكرة|التصميم|الستايل)|different\s*(idea|concept|style)|new\s*concept|another\s*(idea|take|concept)|reimagine/i.test(String(prompt || ''));
+    const isElevate = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !__sameImageRe.test(String(prompt || '')) && __strongerRe.test(String(prompt || ''));
     const promptLimit = isArchitectural ? 2400 : (editImageBase64 ? 8000 : 1800);
     /* v-nano-raw (المالك ٥ سبتمبر: «ليش الفرق بينهم»): تطبيق Gemini يرسل نصّ المستخدم كما هو، ونحن نلفّه
        بقواعد وحرّاس وحكم. من يبدأ طلبه بـ«نانو:» أو «nano:» يصل نصّه إلى نانو بنانا برو حرفيًا:
@@ -192,9 +198,10 @@ module.exports = async (req, res) => {
     } else if (editImageBase64) {
       parts.push({ text: isSceneUpgrade ? buildSceneUpgradePrompt(cleanPrompt)
         : (isRestyle ? buildRestylePrompt(cleanPrompt)
+        : (isElevate ? buildElevatePrompt(cleanPrompt)
         : (isReimagine
           ? ('TASK: "' + cleanPrompt + '"\n\nThe attached image is ONLY inspiration for the SUBJECT. Create a COMPLETELY NEW image of the same subject with a clearly DIFFERENT concept: new composition, new viewpoint, new background, new lighting and a fresh creative idea — the result must NOT look like a copy or minor edit of the source. Keep any real faces, logos or brand marks faithful if they are the subject. Quality bar: breathtaking, award-winning, magazine-cover grade, tack-sharp, professional cinematic lighting, no toy-like or amateur rendering.')
-          : buildEditPrompt(cleanPrompt))) });
+          : buildEditPrompt(cleanPrompt)))) });
       parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
     } else if (pipelineActive && pipelineRewrite) {
       // Pipeline prompt includes negative in separate field — combine for Gemini
@@ -246,7 +253,7 @@ module.exports = async (req, res) => {
     };
     const reqBody = JSON.stringify(rawMode
       ? { contents: [{ parts }], generationConfig: genConfigFor({}) }
-      : { contents: [{ parts }], generationConfig: genConfigFor({ temperature: editImageBase64 ? (isSceneUpgrade ? 0.5 : (isReimagine ? 0.9 : (isRestyle ? 0.6 : 0.15))) : 0.85 }) });
+      : { contents: [{ parts }], generationConfig: genConfigFor({ temperature: editImageBase64 ? (isSceneUpgrade ? 0.5 : (isReimagine ? 0.9 : (isElevate ? 0.5 : (isRestyle ? 0.6 : 0.15)))) : 0.85 }) });
 
     /* v-img-textwise (شكوى المالك: «توليد الصور زفت» — لقطة شاشة التطبيق
        رجعت بعناوين عربية مشوهة): مصدرٌ مليء بالنصوص (لقطة واجهة، مستند،
@@ -377,7 +384,7 @@ module.exports = async (req, res) => {
     /* v-bold-wins (المالك: «أقوى/أفضل من هذي — يرجّع نفس الصورة»): طلبات الإبداع
        (إعادة تصوّر/تحويل أسلوب) يجب ألّا يتدخّل فيها محرّك «حفظ النص» لأنه يثبّت
        الصورة كما هي؛ نتركها لنانو ليعطي نتيجة جريئة فعلًا. */
-    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade
+    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate
       && (editImageBase64 ? await sourceLooksTextDense() : (!rawMode && __textCueRe.test(cleanPrompt)));
     /* v-duo-textroute (لقطة المالك: لقطة واجهة + «عطني أفضل ونفس الفكرة» → فنجان قهوة): مسار النصّ الكثيف كان
        يرجع ناتج gpt-image وحده بلا Gemini ولا حكم. الآن يعمل المحرّكان معًا هنا أيضًا والحكم يختار. */
@@ -400,7 +407,7 @@ module.exports = async (req, res) => {
     /* v-bold-wins: في طلبات الإبداع (إعادة تصوّر/تحويل أسلوب) لا نُشغّل المنافس
        gpt-image (input_fidelity=high يحافظ على المصدر فيفوز الحكم بالنسخة الحرفية)
        — نعتمد نتيجة نانو الجريئة مباشرة؛ خطوط الإنقاذ تبقى عند الفشل فقط. */
-    const duoOn = duoEnabled() && !prayerPlan && !pipelineActive && !isReimagine && !isRestyle && (!__textRoute || !!densePromise);
+    const duoOn = duoEnabled() && !prayerPlan && !pipelineActive && !isReimagine && !isRestyle && !isElevate && (!__textRoute || !!densePromise);
     const duoP = duoOn ? (densePromise || openaiRescueImage().catch(function () { return null; })) : null;
     let duoEngine = '';
     // Image generation normally takes 35–50 seconds, so it must bypass the
@@ -463,7 +470,7 @@ module.exports = async (req, res) => {
         resultMime: imgPart.inlineData.mimeType || 'image/png',
         userPrompt: cleanPrompt,
         allowStyleChange: explicitlyRequestsStyleChange(cleanPrompt),
-        allowBroadChange: isSceneUpgrade,
+        allowBroadChange: isSceneUpgrade || isElevate || isReimagine,
       });
       if (!guard.ok && guard.reason === 'validation_unavailable') console.warn('[maha-image] guard unavailable — passing result through'); /* v-guard-fail-open */
       else if (!guard.ok) {

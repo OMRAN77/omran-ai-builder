@@ -195,6 +195,23 @@ function isRemoveTextRequest(text){
     || /(?:احذف|امسح|شيل|ازل|أزل|نظّف|نظف|اخفِ|اخفي)\s*(?:ال)?(?:أسماء|اسماء|اسم|كتابة|كتابه|النص|نص|نصوص|كلام|حروف|أرقام|ارقام|توقيع|علامة\s*مائية|لوجو|شعار|واتر\s*مارك)/.test(t)
     || /\b(?:remove|erase|delete|clear|without|no)\b[^\n]{0,20}\b(?:names?|text|writing|words?|letters?|numbers?|caption|watermark|logo|signature|labels?)\b/i.test(t);
 }
+/* v-elevate (المالك: «أقوى = نفس الفكرة مرفوعة، لا فكرة جديدة»): طلب «أفضل/أقوى
+   من هذي» يبقي الموضوع والتركيب والمعنى نفسه ويرفع الجودة والإتقان بقوة — لا
+   يخترع مشهدًا جديدًا (كان يحوّل كرت «أنماط الصور» إلى وجه مرصّع بلا علاقة). */
+function buildElevatePrompt(userPrompt){
+  const prompt = cleanImagePrompt(userPrompt);
+  return [
+    'TASK: "' + prompt + '"',
+    '',
+    'This is an ELEVATED, stronger version of the attached SOURCE image. Keep the SAME idea: the same main subject, the same overall composition, the same purpose and meaning — the result must be instantly recognizable as an improved version of THIS exact image, NOT a different picture and NOT a new concept. Rules:',
+    '1. Preserve what the image is ABOUT: the same main object/person/scene/product, the same layout and framing intent. Do NOT replace the subject or invent an unrelated artistic concept.',
+    '2. Dramatically raise quality and impact: sharper detail, richer realistic materials and textures, professional cinematic lighting with real depth, refined harmonious colours, cleaner premium composition, higher perceived resolution — a top-tier professional rendition of the SAME thing.',
+    '3. You may tastefully refine styling, background polish, lighting and finish, but stay coherent with the original idea. Do NOT add random unrelated elements (extra faces, jewels, wires, gadgets, effects) that were not in or implied by the source.',
+    '4. Keep any real person recognizably the same person; keep existing text correct.',
+    '5. Never return the image essentially unchanged, and never drift into a completely different scene. Goal: the SAME image, clearly stronger, richer and more beautiful.',
+    'Return only one finished, elevated image.'
+  ].join('\n');
+}
 function buildEditPrompt(userPrompt){
   const prompt = cleanImagePrompt(userPrompt);
   const rules = [
@@ -242,4 +259,4 @@ function buildRestylePrompt(userPrompt){
   ].join('\n');
 }
 
-module.exports = { cleanImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildSceneUpgradePrompt, buildRestylePrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };
+module.exports = { cleanImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildSceneUpgradePrompt, buildRestylePrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };
