@@ -21,7 +21,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=662'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
+    sc.src = 'i18n/' + lg + '.js?v=665'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -1705,6 +1705,21 @@ function renderMessages(keepScroll){
         }catch(e2){ /* never let a copy failure affect the rest of the UI */ }
       };
       actionBar.appendChild(copyBtnEl);
+      /* v-share-reply (المالك ٤ سبتمبر: «شعار المشاركة غير موجود في آخر شي»): كل ردّ نصّي يحمل زرّ
+         المشاركة في الموضع الأخير نفسه الذي يحمله ردّ الصورة؛ يشارك نصّ الردّ نفسه لا رابطًا.
+         ردود الصور لها زرّها الخاص من __omranImgTools فلا تكرار. */
+      /* الدالة تُعرَّف في جزء لاحق من الحزمة (app-05-share-text) — لا نشترطها وقت الرسم الأول للسجل */
+      if(m.role !== 'user' && !m._loading
+         && !((m.attachments || []).some(a => a && (a.isImage || a.isVideo)))
+         && !(typeof m.content === 'string' && m.content.indexOf('__IMG_') !== -1)){
+        const shareBtnEl = document.createElement('button');
+        shareBtnEl.type = 'button'; shareBtnEl.className = 'oSendOut oShareText';
+        shareBtnEl.title = (t('msgShareReply') !== 'msgShareReply' ? t('msgShareReply') : (lang === 'ar' ? 'مشاركة الردّ' : 'Share reply'));
+        shareBtnEl.setAttribute('aria-label', shareBtnEl.title);
+        shareBtnEl.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:17px;height:17px;display:block"><circle cx="18" cy="5.2" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="18.8" r="2.6"/><path d="M8.35 10.8l7.3-4.3"/><path d="M8.35 13.2l7.3 4.3"/></svg>';
+        shareBtnEl.onclick = (e) => { e.stopPropagation(); try{ if(typeof window.omranShareText === 'function') window.omranShareText((textDiv && textDiv.innerText) || String(m.content || ''), shareBtnEl); }catch(err){ /* guard-ok */ } };
+        actionBar.appendChild(shareBtnEl);
+      }
       // زر النسخ يبقى تحت رسالة المستخدم على الجوال؛ بقية الإجراءات لا تظهر
       // للمستخدم هناك، لذلك لا يعود الشريط طافيًا أو مزدحمًا.
       copyMsgBtn = actionBar;

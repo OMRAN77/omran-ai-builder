@@ -69,6 +69,7 @@ module.exports = async (req, res) => {
       const upstream = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(240000), /* v-image-timeout */
         body: JSON.stringify({
           contents: [{ parts: [{ text: editPrompt }, { inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } }] }],
           generationConfig: { imageConfig: { imageSize: '2K' } },

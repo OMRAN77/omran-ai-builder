@@ -35,8 +35,112 @@
   font-weight:700;
   line-height:1.3;
 }
+/* v-photo-caption-crop (لقطة المالك بالتركية: العناوين العربية مطبوعة داخل
+   الصور تحت عنوان تركي): شريط العنوان العربي في أسفل كل صورة (~الربع
+   الأخير) — خارج العربية نكبّر الصورة من أعلاها فيُقصّ الشريط ويبقى المشهد. */
+html:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto img.stp3d.toolPhotoImage{
+  object-position:50% 0!important;
+  width:150%!important;
+  max-width:none!important;
+  margin:0 -25%!important;
+  align-self:center;
+}
 @media (max-width:760px){
   #sectionsToolsPopup .ptGrid .btn.hasToolPhoto{min-height:104px!important;}
   #sectionsToolsPopup .ptGrid .btn.hasToolPhoto img.stp3d.toolPhotoImage{height:68px!important;flex-basis:68px!important;}
   #sectionsToolsPopup .ptGrid .btn.hasToolPhoto .btnLabel{min-height:35px;padding:6px 4px 7px;font-size:10.5px;}
+}
+/* v-tools-fullcard (لقطة المالك بالعربية): صور الأقسام بطاقات كاملة بعنوانها
+   ووصفها وسهمها — تُعرض كاملة بلا قصّ وبلا عنوان نصّي تحتها، ثلاثة في الصف.
+   البطاقات الإبداعية السبع صورها بلا عنوان مطبوع فيبقى عنوانها تحتها.
+   خارج العربية يبقى العرض السابق (العنوان المطبوع عربي). */
+html[lang="ar"] #sectionsToolsPopup .ptGrid{align-items:start;}
+html[lang="ar"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto{
+  min-height:0!important;
+  height:auto!important;
+  border-radius:14px!important;
+  background:#070709!important;
+}
+html[lang="ar"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto img.stp3d.toolPhotoImage{
+  height:auto!important;
+  flex:0 0 auto!important;
+  object-fit:contain!important;
+  object-position:center!important;
+}
+html[lang="ar"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.toolPhotoCard .btnLabel{display:none!important;}
+html[lang="ar"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto:not(.toolPhotoCard) .btnLabel{min-height:0;padding:6px 6px 9px;}
+/* v-tools-card-is-photo (لقطة المالك: إطار البطاقة يظهر فوق إطار الصورة
+   المطبوع فتبدو «صورة فوق صورة»): صورة القسم هي البطاقة كلها — لا إطار ولا
+   خلفية ولا حشو من الزرّ، والصورة بعرض البطاقة كاملًا بزواياها المطبوعة. */
+html[lang="ar"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.toolPhotoCard,
+html[lang="ar"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.toolPhotoCard:hover{
+  border:none!important;
+  background:transparent!important;
+  padding:0!important;
+  border-radius:14px!important;
+  box-shadow:none!important;
+  overflow:visible;
+}
+html[lang="ar"] #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.toolPhotoCard img.stp3d.toolPhotoImage{
+  display:block!important;
+  width:100%!important;
+  height:auto!important;
+  border-radius:14px!important;
+}
+/* v-tools-bigger (لقطة المالك على الهاتف: البطاقات صغيرة وعناوينها المطبوعة
+   لا تُقرأ): عمودان على الهاتف بدل ثلاثة، والنافذة أعرض على الشاشات الكبيرة. */
+@media (max-width:600px){
+  html[lang="ar"] #sectionsToolsPopup .ptGrid{grid-template-columns:repeat(2,1fr)!important; gap:10px!important;}
+}
+@media (min-width:761px){
+  html[lang="ar"] #sectionsToolsPopup{max-width:none!important;}
+}
+/* v-tools-14 (المالك: «ترتب مكان واحد وكأنه ما عندي 14 لغة»): خارج العربية البطاقة بنفس تكوين
+   بطاقات المالك — صورة في الأعلى، ثم العنوان والوصف المترجمان وسهم دائري. النصوص تلتف على سطرين
+   ولا تُقصّ بنقاط (لقطة المالك على الهاتف). */
+html:not([lang="ar"]) #sectionsToolsPopup .ptGrid{align-items:stretch;}
+html:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt{
+  min-height:0!important; height:auto!important; border-radius:14px!important;
+  border-color:rgba(212,175,55,.28)!important; background:#070709!important; justify-content:flex-start!important;
+}
+html:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt img.stp3d.toolPhotoImage{
+  flex:0 0 118px!important; height:118px!important; width:100%!important; max-width:100%!important; margin:0!important;
+  object-fit:cover!important; object-position:50% 40%!important;
+}
+/* صور الأقسام تحمل شريط عنوان عربي مطبوع في ربعها الأخير — تكبيرها من أعلاها يقصّه */
+html:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt.toolPhotoCard img.stp3d.toolPhotoImage{
+  width:150%!important; max-width:none!important; margin:0 -25%!important; object-position:50% 0!important; align-self:center;
+}
+html:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcMeta{
+  display:flex; align-items:center; gap:8px; width:100%; flex:1 0 auto; padding:9px 12px 11px;
+  background:#070709; text-align:start; direction:inherit;
+}
+html:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcTxt{flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:3px;}
+html:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .btnLabel{
+  display:-webkit-box!important; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden;
+  width:auto; min-height:0; max-height:none; padding:0; font-size:14px; font-weight:800; line-height:1.25; color:#f3efe4!important;
+  text-align:start; white-space:normal; text-overflow:clip;
+}
+html:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcSub{
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden;
+  font-size:11px; font-weight:500; line-height:1.3; color:#b9b3a3; white-space:normal;
+}
+html:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcArrow{
+  flex:0 0 30px; width:30px; height:30px; border-radius:999px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14);
+  display:inline-flex; align-items:center; justify-content:center; font-size:20px; line-height:1; color:#f3efe4; padding-bottom:2px;
+}
+html[dir="rtl"]:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcArrow{transform:scaleX(-1);}
+html[data-mode="light"]:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt,
+html[data-mode="light"]:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcMeta{background:#fff!important;}
+html[data-mode="light"]:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .btnLabel,
+html[data-mode="light"]:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcArrow{color:#14161a!important;}
+html[data-mode="light"]:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcSub{color:#6b6657;}
+html[data-mode="light"]:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcArrow{background:rgba(0,0,0,.05); border-color:rgba(0,0,0,.12);}
+@media (max-width:600px){
+  html:not([lang="ar"]) #sectionsToolsPopup .ptGrid{grid-template-columns:repeat(2,1fr)!important; gap:10px!important;}
+  html:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt img.stp3d.toolPhotoImage{flex-basis:96px!important; height:96px!important;}
+  html:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcMeta{padding:8px 9px 10px; gap:6px;}
+  html:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .btnLabel{font-size:13px;}
+  html:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcSub{font-size:10.5px;}
+  html:not([lang="ar"]) #sectionsToolsPopup .ptGrid .btn.hasToolPhoto.tcTxt .tcArrow{flex-basis:26px; width:26px; height:26px; font-size:17px;}
 }

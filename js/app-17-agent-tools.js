@@ -87,9 +87,12 @@
           var va = args || {};
           var vp = String(va.prompt || '').trim();
           if (!vp) return 'وصف الفيديو فارغ — لم يبدأ التوليد.';
-          var engine = String(va.provider || 'runway').toLowerCase() === 'veo' ? 'veo' : 'runway';
+          /* v-video-trends: الترند يحدد المحرك والنسبة ويُبنى أمره على الخادم */
+          var trendMeta = null;
+          try { trendMeta = (window.__VIDEO_TRENDS && va.trend) ? (window.__VIDEO_TRENDS.trends || []).filter(function (t) { return t.key === va.trend; })[0] : null; } catch (e) { trendMeta = null; }
+          var engine = trendMeta ? trendMeta.engine : (String(va.provider || 'runway').toLowerCase() === 'veo' ? 'veo' : 'runway');
           var vr = String(va.ratio || '').toLowerCase();
-          var ratio = vr === 'portrait' || vr === '9:16' ? '720:1280' : '1280:720';
+          var ratio = trendMeta ? trendMeta.ratio : (vr === 'portrait' || vr === '9:16' ? '720:1280' : '1280:720');
           var ref = va.use_reference_image === false ? null : window.__chatVideoReference;
           var token = (window.authGet && window.authGet('aiapp_auth_token')) || '';
           var payload;
@@ -103,6 +106,7 @@
             endpoint = '/api/video?action=video-create';
             payload = { promptText: vp, ratio: ratio, token: token, duration: parseInt(va.durationSeconds, 10) >= 8 ? 10 : 5, style: va.style === 'anime' ? 'anime' : 'realistic', longMode: false };
           }
+          if (trendMeta) { payload.trend = va.trend; payload.params = { name: va.trend_name || '', text: va.trend_text || '' }; if (engine === 'veo') payload.durationSeconds = 8; }
           if (ref && ref.dataUrl) {
             var comma = String(ref.dataUrl).indexOf(',');
             if (comma > 0) { payload.imageBase64 = String(ref.dataUrl).slice(comma + 1); payload.imageMime = ref.mime || String(ref.dataUrl).slice(5, comma).split(';')[0] || 'image/png'; }
@@ -161,7 +165,39 @@
           }
           var tok = '__IMG_' + (Object.keys(window.__genImages).length + 1) + '__';
           window.__genImages[tok] = 'data:' + (j.mimeType || 'image/png') + ';base64,' + j.imageBase64;
-          return '✅ رُسمت الصورة. ضع هذا الرمز حرفيًّا في src بلا أي إضافة: ' + tok;
+          // v-img-engine-tag: اسم المحرك يظهر في سطر الأثر — يحسم «أي محرك نفّذ» فورًا.
+          return '✅ رُسمت الصورة (engine: ' + (j.engine || 'gemini') + '). ضع هذا الرمز حرفيًّا في src بلا أي إضافة: ' + tok;
+        }
+        /* v-edit-image-tool: تعديل الصورة المرفقة في هذا الدور بنفس محرك التطبيق
+           (المصدر: آخر صورة أرفقها المستخدم — app-18 يحفظها في __chatVideoReference). */
+        if (name === 'edit_image') {
+          var instr = String((args && args.instruction) || '').trim();
+          if (!instr) return 'تعليمة التعديل فارغة — لم يُعدَّل شيء.';
+          var ref = window.__chatVideoReference;
+          var srcB64 = ref && ref.dataUrl ? String(ref.dataUrl).split(',')[1] : '';
+          if (!srcB64) return 'لا توجد صورة مرفقة في هذه الرسالة لتعديلها — اطلب من المستخدم إرفاقها.';
+          window.__genImages = window.__genImages || {};
+          var er = null, ej = null;
+          try {
+            er = await fetch('/api/media?action=maha-image', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                prompt: instr,
+                editImageBase64: srcB64,
+                editMimeType: ref.mime || 'image/png',
+                token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
+                guestId: window.getGuestId ? window.getGuestId() : '',
+              }),
+            });
+            try { ej = await er.json(); } catch (e) { ej = null; }
+          } catch (e) { return 'تعذّر تعديل الصورة: ' + String((e && e.message) || e).slice(0, 100); }
+          if (!er.ok || !ej || !ej.imageBase64) {
+            return 'تعذّر تعديل الصورة: ' + (((ej && ej.error) || ('HTTP ' + er.status)) + '').slice(0, 120);
+          }
+          var etok = '__IMG_' + (Object.keys(window.__genImages).length + 1) + '__';
+          window.__genImages[etok] = 'data:' + (ej.mimeType || 'image/png') + ';base64,' + ej.imageBase64;
+          return '✅ عُدّلت الصورة (engine: ' + (ej.engine || 'gemini') + '). ضع هذا الرمز وحده في سطر داخل ردّك: ' + etok;
         }
         // 📍 موقع المستخدم الحالي — يُطلب إذن المتصفح هنا فقط، عند استدعاء
         // الأداة فعلًا، لا عند فتح الصفحة. الإحداثيات تُستهلك في نداء التحويل

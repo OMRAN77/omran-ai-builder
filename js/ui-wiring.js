@@ -202,15 +202,25 @@ try{ sessionStorage.removeItem('omranBootRetry'); }catch(e){ /* guard-ok: بلا
   if(!document.querySelector('link[data-omran-tool-photos]')){
     var css = document.createElement('link');
     css.rel = 'stylesheet';
-    css.href = '/css/tool-card-images.css?v=1';
+    css.href = '/css/tool-card-images.css?v=10';
     css.setAttribute('data-omran-tool-photos', '');
     document.head.appendChild(css);
   }
   if(!document.querySelector('script[data-omran-tool-photos]')){
     var js = document.createElement('script');
-    js.src = '/js/tool-card-images.js?v=1';
+    js.src = '/js/tool-card-images.js?v=8';
     js.async = false;
     js.setAttribute('data-omran-tool-photos', '');
     document.head.appendChild(js);
   }
+})();
+
+/* Global delete confirmation — WhatsApp-style selection and warning. */
+(function(){
+  if(document.getElementById('omranDeleteConfirmLoader')) return;
+  var s=document.createElement('script');
+  s.id='omranDeleteConfirmLoader';
+  s.src='/js/delete-confirm.js?v=20260903b';
+  s.defer=true;
+  (document.head||document.documentElement).appendChild(s);
 })();

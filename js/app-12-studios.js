@@ -60,6 +60,7 @@ async function __safeJson(res){
   const decorAccessoriesEl = $('#designAiDecorAccessories');
   const statusEl = $('#designAiStatus');
   const resultEl = $('#designAiResult');
+  const resultWrap = $('#designAiResultWrap'); /* v-decor-fix: كان غير معرّف فيرمي ReferenceError عند كل ضغطة «صمم الغرفة» */
   const downloadEl = $('#designAiDownloadLink');
   if(!modal || !btnOpen) return;
 
@@ -135,8 +136,93 @@ async function __safeJson(res){
   }
 
   let variantSrc = null;
+  /* v-decor-ideas: أفكار بلا صورة — رقائق لأنواع الأماكن + سطر حرّ «اكتب ما تريد» */
+  const ideaChips = document.getElementById('designAiIdeaChips');
+  const ideaText = document.getElementById('designAiIdeaText');
+  const ideaGo = document.getElementById('designAiIdeaGo');
+  const ideaTitle = document.getElementById('designAiIdeasTitle');
+  function buildIdeaChips(){
+    if(!ideaChips || !placeEl) return;
+    ideaChips.innerHTML = '';
+    Array.prototype.forEach.call(placeEl.options, function(o){
+      if(!o.value) return;
+      const c = document.createElement('button');
+      c.type = 'button'; c.className = 'btn'; c.dataset.place = o.value;
+      c.style.cssText = 'width:auto; padding:6px 11px; font-size:12.5px; border-radius:999px;';
+      c.textContent = (window.__optT ? window.__optT(o) : o.textContent).trim();
+      c.onclick = function(){ placeEl.value = o.value; if(ideaText) ideaText.value = ''; btnGenerate.onclick(); };
+      ideaChips.appendChild(c);
+    });
+    if(ideaTitle) ideaTitle.textContent = '💡 ' + bT('أفكار بلا صورة — اختر نوع المكان أو اكتب ما تريد', 'Ideas without a photo — pick a place or describe what you want');
+    if(ideaText) ideaText.placeholder = bT('مثال: مجلس عربي فخم لعشرين شخصًا', 'e.g. a luxurious Arabic majlis for twenty guests');
+    if(ideaGo) ideaGo.textContent = '✨ ' + bT('أعطني أفكارًا', 'Give me ideas');
+  }
+  buildIdeaChips();
+  /* v-decor-gallery: معرض صور حقيقية (عشرات) من الويب — يفتح فورًا، والتوليد بالذكاء زرّ منفصل */
+  const ideaStatusEl = document.getElementById('designAiIdeaStatus');
+  const ideaGallery = document.getElementById('designAiIdeaGallery');
+  const ideaAI = document.getElementById('designAiIdeaAI');
+  function ideaStatus(txt){ if(!ideaStatusEl) return; ideaStatusEl.textContent = txt || ''; ideaStatusEl.style.display = txt ? 'block' : 'none'; }
+  let ideaReq = 0;
+  async function loadIdeas(opts){
+    const my = ++ideaReq;
+    if(ideaGallery){ ideaGallery.style.display = 'none'; ideaGallery.innerHTML = ''; }
+    if(ideaAI) ideaAI.style.display = 'none';
+    ideaStatus('⏳ ' + bT('أجمع لك صورًا وتصاميم…', 'Collecting photos and designs…'));
+    try{
+      const r = await fetch('/api/design-ideas', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ place: opts.place || '', q: opts.q || '', style: styleEl ? styleEl.value : '' }) });
+      const d = await __safeJson(r);
+      if(my !== ideaReq) return;
+      const imgs = Array.isArray(d.images) ? d.images : [];
+      if(!imgs.length){
+        /* v-ideas-resilient: مصدر الصور متوقف (حصّة) ≠ لا نتائج — نقول الحقيقة */
+        if(d && d.error === 'provider'){
+          var __dt = ''; try{ __dt = d.detail ? (' (' + Object.keys(d.detail).map(function(k){ return k + ':' + d.detail[k]; }).join(' · ') + ')') : ''; }catch(e){ __dt = ''; }
+          ideaStatus('⚠️ ' + bT('مصدر الصور متوقف مؤقتًا — جرّب بعد قليل، أو ولّد تصاميم بالذكاء.', 'The photo source is temporarily unavailable — try again shortly, or generate AI designs.') + __dt);
+        }
+        else ideaStatus('😕 ' + bT('ما حصلت صورًا لهذا الطلب — جرّب وصفًا آخر، أو ولّد تصاميم بالذكاء.', 'No photos found for this — try another description, or generate AI designs.'));
+        if(ideaAI) ideaAI.style.display = ''; return;
+      }
+      imgs.forEach(function(u){
+        const a = document.createElement('a'); a.href = u; a.target = '_blank'; a.rel = 'noopener';
+        a.onclick = function(e){ if(window.omranLightbox){ e.preventDefault(); window.omranLightbox(u); } }; /* v-cx-ideas: معرض داخل التطبيق */
+        a.style.cssText = 'display:block; break-inside:avoid; margin-bottom:6px; border-radius:12px; overflow:hidden; background:rgba(255,255,255,.04);';
+        const im = document.createElement('img'); im.src = u; im.loading = 'lazy'; im.alt = '';
+        im.style.cssText = 'display:block; width:100%; height:auto;';
+        im.onerror = function(){ a.remove(); };
+        a.appendChild(im); ideaGallery.appendChild(a);
+      });
+      ideaGallery.style.display = 'block';
+      ideaStatus('🖼️ ' + imgs.length + ' ' + bT('صورة وتصميم من الويب — اضغط أي صورة لعرضها كبيرة', 'photos and designs from the web — tap any to open it'));
+      if(ideaAI) ideaAI.style.display = '';
+      try{ ideaGallery.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){ /* guard-ok */ }
+    }catch(e){ if(my === ideaReq) ideaStatus('⚠️ ' + bT('تعذّر جلب الصور الآن.', 'Could not fetch photos right now.')); }
+  }
+  if(ideaChips) Array.prototype.forEach.call(ideaChips.querySelectorAll('button'), function(c){
+    c.onclick = function(){ if(placeEl) placeEl.value = c.dataset.place; if(ideaText) ideaText.value = ''; loadIdeas({ place: c.dataset.place }); };
+  });
+  if(ideaGo) ideaGo.onclick = function(){
+    const v = ideaText ? ideaText.value.trim() : '';
+    if(!v){ ideaStatus(bT('اكتب ما تريد أو اختر نوع المكان.', 'Describe what you want or pick a place.')); return; }
+    if(placeEl) placeEl.value = '';
+    loadIdeas({ q: v });
+  };
+  if(ideaAI) ideaAI.onclick = async function(){
+    ideaAI.disabled = true;
+    ideaStatus('⏳ ' + bT('يولّد ٤ تصاميم بالذكاء… نحو دقيقة', 'Generating 4 AI designs… about a minute'));
+    try{ await btnGenerate.onclick(); }finally{ ideaAI.disabled = false; }
+    ideaStatus('');
+    try{
+      const target = (gridEl && gridEl.style.display !== 'none') ? gridEl : ((resultEl && resultEl.style.display !== 'none') ? resultEl : statusEl);
+      if(target) target.scrollIntoView({ behavior:'smooth', block:'start' });
+    }catch(e){ /* guard-ok */ }
+  };
+  if(ideaAI) ideaAI.textContent = '🎨 ' + bT('ولّد ٤ تصاميم بالذكاء الاصطناعي', 'Generate 4 AI designs');
+  if(ideaText) ideaText.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); if(ideaGo) ideaGo.onclick(); } });
+
   btnGenerate.onclick = async () => {
-    const placeVal = placeEl ? placeEl.value : '';
+    const idea = ideaText ? ideaText.value.trim() : '';
+    const placeVal = (placeEl ? placeEl.value : '') || (idea && !selectedBase64 ? 'custom' : '');
     const notesEl = document.getElementById('designAiNotes');
     if(!selectedBase64 && !placeVal){
       setStatus(t('designAiNeedPick'));
@@ -167,7 +253,7 @@ async function __safeJson(res){
           mimeType: selectedMime,
           place: placeVal,
           count: selectedBase64 ? 1 : 4,
-          notes: notesEl ? String(notesEl.value || '').slice(0, 400) : '',
+          notes: ((placeVal && idea ? idea + '. ' : '') + (notesEl ? String(notesEl.value || '') : '')).slice(0, 400),
           variantOf: variantSrc || '',
           style: styleEl.value,
           lighting: lightingEl ? lightingEl.value : '',
@@ -290,14 +376,15 @@ async function __safeJson(res){
   if(baRange) baRange.oninput = function(){ baSet(baRange.value); };
   window.addEventListener('resize', function(){ if(baWrap && baWrap.style.display !== 'none') baSize(); });
   function showBeforeAfter(beforeUrl, afterUrl){
+    /* v-no-slider (أمر المالك ٤ سبتمبر «احذف شريط السحب»): لا شريط مقارنة — الناتج وحده */
     if(!baWrap || !baAfter || !baBefore) return false;
     baAfter.src = afterUrl;
     baBefore.src = beforeUrl;
     baAfter.onload = baSize;
     baWrap.style.display = 'block';
-    baRange.style.display = 'block';
-    baRange.value = 50;
-    baSet(50);
+    baRange.style.display = 'none';
+    baRange.value = 0;
+    baSet(0);
     return true;
   }
   window.__designShowBA = showBeforeAfter;
@@ -892,8 +979,8 @@ function stuL(ar, en){
         if(compareWrap && compareBefore && compareSlider){
           compareBefore.src = 'data:' + selectedMime + ';base64,' + selectedBase64;
           compareWrap.style.display = 'block';
-          compareSlider.style.display = 'block';
-          compareSlider.value = 50;
+          compareSlider.style.display = 'none'; /* v-no-slider */
+          compareSlider.value = 100;
           updateCompareSlider();
           layoutCompareAfter();
         }
@@ -1133,6 +1220,10 @@ function stuL(ar, en){
 
   /* ---- 🔄 before/after slider ---- */
   function setupBeforeAfter(afterUrl){
+    /* v-no-slider (أمر المالك): لا شريط مقارنة قبل/بعد */
+    beforeWrap.style.display = 'none';
+    sliderRange.style.display = 'none';
+    if(true) return;
     if(mode !== 'image' || !selectedBase64){
       beforeWrap.style.display = 'none';
       sliderRange.style.display = 'none';
@@ -1792,7 +1883,7 @@ function stuL(ar, en){
       const token = localStorage.getItem('aiapp_auth_token');
       const r = await fetch('/api/email-list', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ token, lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar' }),
       });
       const d = await r.json();
       if(!r.ok){
@@ -1805,7 +1896,8 @@ function stuL(ar, en){
         throw new Error(d.error || 'load failed');
       }
       gmailLabel.textContent = d.gmailAddress || '';
-      setStatus('');
+      // v-email-scope: الخادم يشرح نطاق ما عرضه (أو أن الوارد فارغ) بدل الصمت.
+      setStatus(d.note || '');
       lastLoadedEmails = d.emails || [];
       renderEmails(d.emails);
     }catch(e){

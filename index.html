@@ -106,9 +106,9 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=gold-20260819">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/tokens.css?v=665">
-<link rel="stylesheet" href="css/redesign.css?v=654">
-<link rel="stylesheet" href="css/modules.css?v=650">
+<link rel="stylesheet" href="css/tokens.css?v=682">
+<link rel="stylesheet" href="css/redesign.css?v=656">
+<link rel="stylesheet" href="css/modules.css?v=652">
 <script>
 /* v434 — الوضع الفاتح/الداكن. الذهبي ثابت في الاثنين. */
 (function(){var K='aiapp_mode';
@@ -137,8 +137,36 @@ window.__swallow = window.__swallow || function (err, ctx) {
 .msg-text a{ color:#2dd4bf !important; }
 html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 </style>
+<style>/* v-intro-splash: شاشة افتتاح كاملة من مخطط المالك تظهر مرة عند كل فتح ثم تذوب تمامًا */
+#omranIntro{position:fixed;inset:0;z-index:2147483000;background:#07070B;overflow:hidden;opacity:1;transition:opacity .95s ease,transform .95s ease;cursor:pointer;visibility:visible}
+#omranIntro.oiOut{opacity:0;transform:scale(1.04);pointer-events:none}
+#omranIntro .oiBg{position:absolute;inset:-48px;background:#07070B url(/assets/intro/splash.jpg?v=3) center/cover no-repeat;filter:blur(30px) brightness(.5);transform:scale(1.12)}
+#omranIntro .oiImg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;animation:oiBreathe 4.5s ease-in-out infinite alternate}
+#omranIntro .oiSheen{position:absolute;inset:0;background:linear-gradient(115deg,transparent 38%,rgba(255,238,180,.26) 50%,transparent 62%);background-size:260% 100%;mix-blend-mode:screen;animation:oiSheen 2.6s ease-in-out .4s infinite}
+#omranIntro .oiSkip{position:absolute;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));text-align:center;font:500 12px/1 system-ui,sans-serif;color:rgba(212,175,55,.75);letter-spacing:.4px;opacity:0;animation:oiUp 1s ease 1.4s forwards}
+@keyframes oiSheen{0%{background-position:160% 0}100%{background-position:-70% 0}}
+@keyframes oiBreathe{from{transform:scale(1)}to{transform:scale(1.025)}}
+@keyframes oiUp{to{opacity:1}}
+@media (prefers-reduced-motion:reduce){#omranIntro .oiImg,#omranIntro .oiSheen{animation:none}}
+html.oiOn body{overflow:hidden}
+</style>
 </head>
 <body>
+
+<div id="omranIntro" role="button" tabindex="0" aria-label="اضغط للمتابعة">
+  <div class="oiBg"></div>
+  <img class="oiImg" src="/assets/intro/splash.jpg?v=3" alt="" decoding="async" fetchpriority="high">
+  <div class="oiSheen"></div>
+  <div class="oiSkip" data-i18n="introSkip">اضغط للمتابعة</div>
+</div>
+<script>/* v-intro-splash: القرار قبل أول رسمة — تظهر مرة لكل فتح، ويمكن إيقافها من الإعدادات */
+(function(){try{
+  var d=document.getElementById('omranIntro'); if(!d) return;
+  var off=false; try{ off = localStorage.getItem('aiapp_intro')==='0' || sessionStorage.getItem('omran_intro_seen')==='1'; }catch(e){}
+  if(off){ d.parentNode.removeChild(d); return; }
+  try{ sessionStorage.setItem('omran_intro_seen','1'); }catch(e){}
+  document.documentElement.classList.add('oiOn');
+}catch(e){ window.__swallow && window.__swallow(e,'intro:boot'); }})();</script>
 
 <div id="vantaBg"></div>
 <div id="offlineBanner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:10000; background:#b45309; color:#fff; font-size: var(--fs-3); text-align:center; padding:7px 10px;">
@@ -152,7 +180,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧أ: مودالات الأساس نُقلت إلى js/partials-core.js -->
-<script src="/js/partials-core.js?v=637"></script>
+<script src="/js/partials-core.js?v=639"></script>
 
 <!-- v416 · ديكور AI: منطقة رفع + شبكات بطاقات + رقاقات بدل القوائم المنسدلة. العقد مع app.bundle.js لم يتغيّر: القوائم ومربّعات الاختيار باقية في الصفحة مخفيّة وتُحدَّث برمجيًا. -->
 <script src="/js/design-sels.js?v=560"></script>
@@ -337,7 +365,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
         </div>
       </div>
         <button class="btn" id="btnStop" type="button" title="إيقاف" data-i18n-title="stopTitle"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg></button>
-        <button class="tab" id="btnSend" data-i18n-title="sendTitle" title="إرسال" style="line-height:1;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
+        <button class="sendBtn" id="btnSend" data-i18n-title="sendTitle" title="إرسال" style="line-height:1;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
       </div>
       <!-- حرف نصي بخط الصفحة بدل صورة SVG: الخط داخل <img> لا يُحمَّل فيرسم الحرف بخط بديل غير متمركز -->
       <button class="btn" id="btnMahaDock" type="button" title="مها — مكالمة صوتية" data-i18n-title="mahaTitle"><span class="mahaGlyph" aria-hidden="true">م</span></button>
@@ -432,12 +460,12 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 </div>
 
 <!-- المرحلة ٣ · شريحة ٧ب: الإعدادات + الساعة + القوالب نُقلت إلى js/partials-settings.js -->
-<script src="/js/partials-settings.js?v=651"></script>
+<script src="/js/partials-settings.js?v=653"></script>
 
-<script src="/js/selfdiag.js?v=1ba33c1a"></script>
+<script src="/js/selfdiag.js?v=1ba33c1b"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=a258ffb3"></script>
+    <script defer src="/js/app.bundle.js?v=42e75725"></script>
     <script defer src="/js/modes.js?v=b23329c6"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
@@ -459,7 +487,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
   </div>
 </div>
 <div id="eduChatHint"><span id="eduChatHintTxt" style="flex:1;"></span><button class="eduPrimary" id="eduChatHintBtn" style="margin-top:0;padding:7px 12px;font-size:12px;border:none;border-radius:var(--r-2);cursor:pointer;color:var(--accent-on-surface);background:linear-gradient(90deg,var(--accent-surface),var(--accent-surface));">التعليم</button></div>
-<script defer src="/js/edu.js?v=663"></script>
+<script defer src="/js/edu.js?v=664"></script>
 
 <!-- 👑 الرد الاحترافي (Premium Reply) — client-side wiring only. Server enforces real deduction. -->
 <script defer src="/js/premium.js?v=620"></script>
@@ -476,7 +504,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
   </div>
   <input type="file" id="expFile" accept="application/pdf,image/*" style="display:none">
 </div>
-<script defer src="/js/exp.js?v=443"></script>
+<script defer src="/js/exp.js?v=444"></script>
 
 <!-- ================= 📄🧾💼 مساعد المستندات + المعاملات الحكومية + السيرة الذاتية ================= -->
 
@@ -491,7 +519,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
   <button type="button" class="omNavBtn" data-omnav="files"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg><span data-i18n="omNavFiles">الملفات</span></button>
   <button type="button" class="omNavBtn" data-omnav="settings"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6 1.65 1.65 0 0 0 10 3.09V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg><span data-i18n="omNavSettings">الإعدادات</span></button>
 </nav>
-<script defer src="/js/ui-wiring.js?v=640"></script>
+<script defer src="/js/ui-wiring.js?v=642"></script>
 <!-- v412 — استوديو صانع الفيديو (كمبيوتر فقط، لا يلمس الجوّال) -->
 <script defer src="/js/video.js?v=423"></script>
 

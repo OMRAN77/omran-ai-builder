@@ -73,3 +73,25 @@ function safeParseLS(key, fallback){
   if(raw !== null && raw !== ''){ try{ localStorage.removeItem(key); }catch(e){ window.__swallow(e, 'parse:purge:' + key); } }
   return fallback;
 }
+
+/* v-old-webview (رفض هواوي 4.1 — المراجعة على Mate 30 Pro/EMUI 10 وP20/EMUI 8.1):
+   متصفحات هذه الأجهزة أقدم من Chrome 80: بلا AbortSignal.timeout ولا
+   Promise.allSettled ولا flatMap — فتسقط الميزات التي تستعملها بصمت. بدائل
+   خفيفة تُركَّب فقط عند غيابها؛ المتصفحات الحديثة لا تُمسّ. */
+(function(){
+  try{
+    if(typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout !== 'function'){
+      AbortSignal.timeout = function(ms){ var c = new AbortController(); setTimeout(function(){ try{ c.abort(); }catch(e){ /* guard-ok */ } }, ms); return c.signal; };
+    }
+    if(typeof Promise !== 'undefined' && typeof Promise.allSettled !== 'function'){
+      Promise.allSettled = function(list){ return Promise.all(Array.from(list).map(function(p){ return Promise.resolve(p).then(function(v){ return { status: 'fulfilled', value: v }; }, function(e){ return { status: 'rejected', reason: e }; }); })); };
+    }
+    if(!Array.prototype.flatMap){
+      Object.defineProperty(Array.prototype, 'flatMap', { configurable: true, writable: true, value: function(fn, thisArg){ var out = []; for(var i = 0; i < this.length; i++){ var r = fn.call(thisArg, this[i], i, this); if(Array.isArray(r)) out.push.apply(out, r); else out.push(r); } return out; } });
+    }
+    if(!Array.prototype.flat){
+      Object.defineProperty(Array.prototype, 'flat', { configurable: true, writable: true, value: function(d){ d = (d === undefined) ? 1 : d; var out = []; for(var i = 0; i < this.length; i++){ var v = this[i]; if(Array.isArray(v) && d > 0) out.push.apply(out, v.flat(d - 1)); else out.push(v); } return out; } });
+    }
+    if(typeof globalThis === 'undefined'){ try{ window.globalThis = window; }catch(e){ /* guard-ok */ } }
+  }catch(e){ /* guard-ok: البدائل ترف — غيابها لا يوقف الإقلاع */ }
+})();

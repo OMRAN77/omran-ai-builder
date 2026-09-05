@@ -163,6 +163,10 @@
       "destination": "/api/tools?action=design-create"
     },
     {
+      "source": "/api/design-ideas",
+      "destination": "/api/tools?action=design-ideas"
+    },
+    {
       "source": "/api/construction-create",
       "destination": "/api/tools?action=construction-create"
     },
@@ -189,6 +193,10 @@
     {
       "source": "/api/studio-create",
       "destination": "/api/tools?action=studio-create"
+    },
+    {
+      "source": "/api/studio-preview",
+      "destination": "/api/tools?action=studio-preview"
     },
     {
       "source": "/api/studio-suggest",

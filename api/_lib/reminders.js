@@ -55,7 +55,7 @@ module.exports = async (req, res) => {
 
   if (req.method === 'POST') {
     const body = req.body || {};
-    const type = body.type === 'prayer' ? 'prayer' : (body.type === 'daily' ? 'daily' : 'once');
+    const type = body.type === 'prayer' ? 'prayer' : (body.type === 'daily' ? 'daily' : (body.type === 'news' ? 'news' : 'once'));
     const reminder = {
       id: Date.now() + '-' + crypto.randomBytes(4).toString('hex'),
       type,
@@ -78,9 +78,18 @@ module.exports = async (req, res) => {
       reminder.lat = typeof body.lat === 'number' ? body.lat : null;
       reminder.lng = typeof body.lng === 'number' ? body.lng : null;
       if (reminder.lat == null || reminder.lng == null) { res.status(400).json({ error: 'missing location' }); return; }
+      // v-prayer-method: طريقة الحساب نفسها التي يراها المستخدم في الشاشة (الافتراضي 4 أم القرى) —
+      // كان الخادم يحسب بطريقة ISNA (2) فيختلف وقت التنبيه عن الوقت المعروض.
+      const mth = parseInt(body.method, 10);
+      reminder.method = Number.isFinite(mth) && mth >= 0 && mth <= 23 ? mth : 4;
     }
 
-    const list = await getReminders(username);
+    let list = await getReminders(username);
+    if (type === 'news') {
+      // v-news-push: اشتراك واحد للأخبار العاجلة لكل حساب — التفعيل من الإعدادات يستبدل القديم
+      reminder.sentIds = [];
+      list = list.filter((r) => r.type !== 'news');
+    }
     list.push(reminder);
     await putReminders(username, list);
     res.status(200).json({ ok: true, reminder });

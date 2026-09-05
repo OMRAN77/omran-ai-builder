@@ -4,6 +4,16 @@ const emptyState = $('#emptyState');
 const historyEl = $('#history');
 const I18N = {
   ar: {
+    notifSectionLabel: '🔔 التنبيهات',
+    newsAlertsLabel: '📢 تنبيهات الأخبار العاجلة',
+    newsAlertsHint: 'يصلك إشعار عند وجود خبر عاجل أو تحذير طارئ حتى والتطبيق مغلق',
+    newsAlertsOn: '✅ تم التفعيل — ستصلك الأخبار العاجلة',
+    newsAlertsOff: 'تم الإيقاف',
+    newsAlertsLogin: '🔑 سجّل الدخول أولًا لتفعيل التنبيهات',
+    newsAlertsDenied: '⚠️ إذن الإشعارات مرفوض من الجهاز — فعّله من إعدادات الهاتف',
+    newsAlertsUnavail: '⚠️ الإشعارات غير متاحة على هذا الجهاز',
+    introSplashLabel: '✨ شاشة الافتتاح عند فتح التطبيق',
+    introSkip: 'اضغط للمتابعة',
     /* v660 — التلفزيون: نصوص القسم في كلّ لغة */
     tvBack: "رجوع", tvYoutube: "يوتيوب", tvSearchPh: "ابحث عن قناة...", tvAll: "الكل", tvPlatforms: "منصات رسمية — تفتح بحسابك", tvLiveIn: "قنوات مباشرة داخل التطبيق", tvNoMatch: "لا توجد قنوات مطابقة", tvLive: "مباشر الآن", tvLiveCount: "قناة تبثّ الآن", tvOfficial: "المنصة الرسمية", tvOpening: "جارٍ الفتح...", tvOff: "القناة موقفة البث حاليًا", tvCatNews: "أخبار", tvCatSports: "رياضة", tvCatGeneral: "عامة", tvCatReligion: "دينية", tvCatKids: "أطفال", tvCatBiz: "اقتصاد", tvCIntl: "دولية", tvPfShahid: "كل قنوات MBC مباشر", tvPfAwaan: "كل قنوات دبي مباشر", tvPfAdtv: "قنوات أبوظبي وماجد", tvPfTod: "beIN باشتراكك", tvPfRotana: "قنوات روتانا", tvPfSub: "باشتراكك",
     /* v656 — وسم الذكاء وحالات الخادم: تصل بمفتاح فتُترجَم في كلّ لغة */
@@ -106,7 +116,7 @@ const I18N = {
     voiceTabAssistantName: 'المساعد',
     copyCode: 'نسخ',
     copiedMsg: 'تم النسخ ✅',
-    copyMsgTitle: 'نسخ الردّ',
+    copyMsgTitle: 'نسخ الردّ', 'tcSub_btnPortraitStyle': 'مجموعة متنوعة من أنماط الصور', 'tcSub_btnQuickTemplates': 'أفكار وإلهام لمشاريعك القادمة', 'tcSub_btnVideoMaker': 'إنشاء وتحرير الفيديو باحترافية', 'tcSub_btnStudioAI': 'أنماط وتأثيرات ذكية', 'tcSub_btnFashionAI': 'تصميم أزياء بالذكاء الاصطناعي', 'tcSub_btnDesignAI': 'تصميم الديكور الداخلي والخارجي', 'tcSub_btnAdStudio': 'تصميم إعلانات احترافية', 'tcSub_btnStocks': 'تحليلات وبيانات الأسواق', 'tcSub_btnOmranTV': 'محتوى وترفيه بلا حدود', 'tcSub_btnQibla': 'مواقيت الصلاة واتجاه القبلة', 'tcSub_btnExpense': 'إدارة المصاريف والميزانيات', 'tcSub_btnOmranEdu': 'كورسات ودروس تعليمية', 'tcSub_btnConstruction': 'تصميمات هندسية ومعمارية', 'tcSub_btnReligion': 'أسئلة دينية وإجابات موثوقة', 'tcSub_btnCV': 'إنشاء سيرة ذاتية احترافية', 'tcSub_btnDocs': 'تحليل وتلخيص المستندات', 'tcSub_btnFeedback': 'شاركنا رأيك واقتراحاتك', 'tcSub_btnEmailAssist': 'صياغة الرسائل والردود', msgShareReply: 'مشاركة الردّ', msgShareCopied: 'نُسخ الردّ — الصقه في التطبيق الذي تريده',
     adStudioTitle: 'استوديو الإعلانات',
     adStudioHint: 'استوديو الإعلانات — اصنع إعلانك بالمحادثة',
     appTitle: 'مُنشئ التطبيقات بالذكاء الاصطناعي',
@@ -972,6 +982,16 @@ const I18N = {
     emailAsst_eventAdded: "✅ انضاف لتقويمك", emailAsst_calReauth: "أعد ربط Gmail للسماح بالوصول للتقويم", emailAsst_voiceLoading: "🔊 جارٍ تجهيز الملخص الصوتي…", emailAsst_voiceEmpty: "لا توجد إيميلات لتلخيصها.", emailAsst_urgent: "🔴 عاجل", emailAsst_normal: "🟡 عادي", emailAsst_low: "⚪ منخفض",
   },
   en: {
+    notifSectionLabel: '🔔 Notifications',
+    newsAlertsLabel: '📢 Breaking news alerts',
+    newsAlertsHint: 'Get a notification for breaking news or emergency warnings, even when the app is closed',
+    newsAlertsOn: '✅ Enabled — breaking news will reach you',
+    newsAlertsOff: 'Turned off',
+    newsAlertsLogin: '🔑 Log in first to enable alerts',
+    newsAlertsDenied: '⚠️ Notification permission denied — enable it in phone settings',
+    newsAlertsUnavail: '⚠️ Notifications are unavailable on this device',
+    introSplashLabel: '✨ Opening screen when the app starts',
+    introSkip: 'Tap to continue',
     /* v660 — التلفزيون: نصوص القسم في كلّ لغة */
     tvBack: "Back", tvYoutube: "YouTube", tvSearchPh: "Search channels...", tvAll: "All", tvPlatforms: "Official platforms — open with your account", tvLiveIn: "Live channels inside the app", tvNoMatch: "No matching channels", tvLive: "LIVE", tvLiveCount: "channels live now", tvOfficial: "Official site", tvOpening: "Opening...", tvOff: "Not streaming right now", tvCatNews: "News", tvCatSports: "Sports", tvCatGeneral: "General", tvCatReligion: "Religion", tvCatKids: "Kids", tvCatBiz: "Business", tvCIntl: "International", tvPfShahid: "All MBC channels live", tvPfAwaan: "All Dubai channels live", tvPfAdtv: "Abu Dhabi & Majid channels", tvPfTod: "beIN with your subscription", tvPfRotana: "Rotana channels", tvPfSub: "with your subscription",
     /* v656 — وسم الذكاء وحالات الخادم: تصل بمفتاح فتُترجَم في كلّ لغة */
@@ -1287,7 +1307,7 @@ const I18N = {
     copyCode: 'Copy',
     copyCodeTitle: 'Copy code',
     copiedMsg: 'Copied ✅',
-    copyMsgTitle: 'Copy reply',
+    copyMsgTitle: 'Copy reply', 'tcSub_btnPortraitStyle': 'A wide range of portrait styles', 'tcSub_btnQuickTemplates': 'Ideas and inspiration for your next projects', 'tcSub_btnVideoMaker': 'Create and edit videos professionally', 'tcSub_btnStudioAI': 'Smart styles and effects', 'tcSub_btnFashionAI': 'AI-powered fashion design', 'tcSub_btnDesignAI': 'Interior and exterior decor design', 'tcSub_btnAdStudio': 'Professional ad design', 'tcSub_btnStocks': 'Market analytics and data', 'tcSub_btnOmranTV': 'Unlimited content and entertainment', 'tcSub_btnQibla': 'Prayer times and Qibla direction', 'tcSub_btnExpense': 'Manage expenses and budgets', 'tcSub_btnOmranEdu': 'Courses and lessons', 'tcSub_btnConstruction': 'Engineering and architectural designs', 'tcSub_btnReligion': 'Religious questions, trusted answers', 'tcSub_btnCV': 'Build a professional CV', 'tcSub_btnDocs': 'Analyze and summarize documents', 'tcSub_btnFeedback': 'Share your feedback and ideas', 'tcSub_btnEmailAssist': 'Draft emails and replies', msgShareReply: 'Share reply', msgShareCopied: 'Reply copied — paste it in the app you want',
     uploadCodeTitle: 'Upload a code file (HTML or Python)',
     newProject: '+ New Project',
     promptPlaceholder: 'Type your message here ...',

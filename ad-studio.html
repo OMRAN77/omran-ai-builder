@@ -252,7 +252,7 @@ html:not([lang=ar]):not([lang=ur]) .J .jgrid span{flex-direction:row;justify-con
 <div class="wrap">
   <h1 data-i18n="h1">استوديو الإعلانات — تحدّث، ثمّ اختر تصميمك</h1>
   <div class="sub" data-i18n="sub">تكتب ما تريد الإعلان عنه بكلامك، تُجيب عن سؤالين، ترفع صورتك — فتخرج تسعة تصاميم جاهزة تختار منها.</div>
-  <a class="back" href="/" data-i18n="back">← رجوع إلى التطبيق</a>
+  <a class="back" href="/" data-i18n="back" hidden style="display:none !important">← رجوع إلى التطبيق</a>
 
   <div class="chat">
     <div class="chead"><b data-i18n="asstName">مساعد الإعلانات</b><span id="stepLbl" data-i18n="stepStart">ابدأ</span></div>
@@ -797,6 +797,21 @@ document.getElementById('grid').addEventListener('click',async e=>{
 window.__cardPng=cardPng;
 
 start();
+</script>
+<script>
+/* v-swipe-back (أمر المالك: «استوديو الإعلانات — رجوع إلى التطبيق احذفه»، سحب كدرج الإعدادات):
+   اسحب لليمين من أي مكان فتنزلق الصفحة وترجع للتطبيق. لا شريط تمرير ظاهر. */
+(function(){
+  var st=document.createElement('style'); st.textContent='*{scrollbar-width:none !important} *::-webkit-scrollbar{width:0 !important;height:0 !important;display:none !important} body.omranSwiping{transition:none !important} body.omranSwipeSettle{transition:transform .18s ease-out,opacity .18s ease-out !important}'; document.head.appendChild(st);
+  var t0=null,dragging=false,w=0;
+  function blocked(t){var e=t;for(var i=0;e&&e!==document.body&&i<12;i++){var tag=(e.tagName||'').toLowerCase();if(tag==='input'||tag==='textarea'||tag==='select'||tag==='video'||tag==='canvas'||tag==='iframe'){ if(document.activeElement===e) return true; }try{var cs=getComputedStyle(e);if((cs.overflowX==='auto'||cs.overflowX==='scroll')&&e.scrollWidth>e.clientWidth+4)return true;}catch(err){}e=e.parentElement;}return false;}
+  function setX(x,anim){document.body.classList.toggle('omranSwipeSettle',!!anim);document.body.classList.toggle('omranSwiping',!anim);document.body.style.transform=x?('translateX('+x+'px)'):'';document.body.style.opacity=x?String(Math.max(.3,1-x/Math.max(1,w)*.9)):'';}
+  document.addEventListener('touchstart',function(e){if(e.touches.length!==1||blocked(e.target)){t0=null;return;}t0={x:e.touches[0].clientX,y:e.touches[0].clientY,ts:Date.now()};dragging=false;w=window.innerWidth||360;},{passive:true});
+  document.addEventListener('touchmove',function(e){if(!t0)return;var dx=e.touches[0].clientX-t0.x,dy=e.touches[0].clientY-t0.y;if(!dragging){if(Math.abs(dx)<14||Math.abs(dx)<Math.abs(dy)*1.4)return;if(dx<=0){t0=null;return;}dragging=true;}setX(Math.max(0,dx),false);},{passive:true});
+  function finish(e){if(!t0)return;var was=dragging;var dx=(was&&e.changedTouches&&e.changedTouches[0])?(e.changedTouches[0].clientX-t0.x):0;var dt=Date.now()-t0.ts;t0=null;dragging=false;if(!was)return;if(dx>w*0.35||(dt<300&&dx>70)){setX(w+40,true);setTimeout(function(){ location.href='/?tools=1'; },190);}else{setX(0,true);setTimeout(function(){document.body.classList.remove('omranSwipeSettle');document.body.classList.remove('omranSwiping');},220);}}
+  document.addEventListener('touchend',finish,{passive:true});document.addEventListener('touchcancel',finish,{passive:true});
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'){ location.href='/?tools=1'; } });
+})();
 </script>
 </body>
 </html>

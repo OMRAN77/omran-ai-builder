@@ -37,6 +37,8 @@
     approx:  { ar:'موقع تقريبي (من الشبكة) — فعّل خدمة الموقع لدقة أعلى', en:'Approximate location (network) — enable location for accuracy', fr:'Position approximative — activez la localisation', hi:'अनुमानित स्थान — सटीकता हेतु लोकेशन चालू करें', ur:'تخمینی مقام — درستگی کے لیے لوکیشن آن کریں', bn:'আনুমানিক অবস্থান — নির্ভুলতার জন্য লোকেশন চালু করুন', ne:'अनुमानित स्थान — शुद्धताको लागि लोकेसन सक्रिय गर्नुहोस्', fil:'Tinatayang lokasyon — i-enable ang location', id:'Lokasi perkiraan — aktifkan lokasi untuk akurasi', zh:'大致位置（网络）— 开启定位更准确', ru:'Приблизительное местоположение — включите геолокацию', tr:'Yaklaşık konum — hassasiyet için konumu açın', ml:'ഏകദേശ സ്ഥാനം — കൃത്യതയ്ക്ക് ലൊക്കേഷൻ ഓണാക്കുക', es:'Ubicación aproximada — activa la ubicación' },
     signIn:  { ar:'تسجيل الدخول مطلوب لتفعيل التنبيهات.', en:'Please sign in to enable alerts.', fr:'Connectez-vous pour activer les alertes.', hi:'सूचना हेतु साइन इन करें।', ur:'اطلاعات کے لیے سائن ان کریں۔', bn:'সতর্কতার জন্য সাইন ইন করুন।', ne:'सूचनाका लागि साइन इन गर्नुहोस्।', fil:'Mag-sign in para sa abiso.', id:'Masuk untuk mengaktifkan peringatan.', zh:'请登录以启用提醒。', ru:'Войдите, чтобы включить уведомления.', tr:'Uyarılar için giriş yapın.', ml:'അറിയിപ്പിന് സൈൻ ഇൻ ചെയ്യുക.', es:'Inicia sesión para activar alertas.' },
     minsBefore:{ ar:'كم دقيقة قبل {p}؟ (0 = وقت الأذان)', en:'How many minutes before {p}? (0 = at adhan)', fr:'Combien de minutes avant {p} ? (0 = à l\'adhan)', hi:'{p} से कितने मिनट पहले? (0 = अज़ान पर)', ur:'{p} سے کتنے منٹ پہلے؟ (0 = اذان پر)', bn:'{p} এর কত মিনিট আগে? (0 = আজানে)', ne:'{p} भन्दा कति मिनेट अघि? (0 = अजानमा)', fil:'Ilang minuto bago ang {p}? (0 = sa adhan)', id:'Berapa menit sebelum {p}? (0 = saat azan)', zh:'{p}前几分钟？(0=宣礼时)', ru:'За сколько минут до {p}? (0 = во время азана)', tr:'{p} vaktinden kaç dakika önce? (0 = ezanda)', ml:'{p} ന് എത്ര മിനിറ്റ് മുമ്പ്? (0 = അദാനിൽ)', es:'¿Cuántos minutos antes de {p}? (0 = en el adhan)' },
+    atAdhan:{ ar:'عند الأذان', en:'At adhan', fr:'À l\'adhan', hi:'अज़ान पर', ur:'اذان کے وقت', bn:'আযানের সময়', ne:'अजानमा', fil:'Sa adhan', id:'Saat azan', zh:'宣礼时', ru:'Во время азана', tr:'Ezan vakti', ml:'അദാൻ സമയത്ത്', es:'Al adhan' },
+    minUnit:{ ar:'دقيقة قبل', en:'min before', fr:'min avant', hi:'मिनट पहले', ur:'منٹ پہلے', bn:'মিনিট আগে', ne:'मिनेट अघि', fil:'min bago', id:'menit sebelum', zh:'分钟前', ru:'мин до', tr:'dk önce', ml:'മിനിറ്റ് മുമ്പ്', es:'min antes' },
     locUnavail:{ ar:'تعذّر تحديد الموقع.', en:'Location unavailable.', fr:'Position indisponible.', hi:'स्थान उपलब्ध नहीं।', ur:'مقام دستیاب نہیں۔', bn:'অবস্থান নেই।', ne:'स्थान उपलब्ध छैन।', fil:'Walang lokasyon.', id:'Lokasi tidak tersedia.', zh:'无法获取位置。', ru:'Местоположение недоступно.', tr:'Konum yok.', ml:'സ്ഥാനം ലഭ്യമല്ല.', es:'Ubicación no disponible.' },
     saveFail:{ ar:'تعذّر حفظ التنبيه.', en:'Could not save alert.', fr:'Échec de l\'enregistrement.', hi:'सूचना सहेजी नहीं गई।', ur:'اطلاع محفوظ نہیں ہوئی۔', bn:'সতর্কতা সংরক্ষণ ব্যর্থ।', ne:'सूचना सुरक्षित भएन।', fil:'Hindi na-save.', id:'Gagal menyimpan.', zh:'无法保存提醒。', ru:'Не удалось сохранить.', tr:'Kaydedilemedi.', ml:'സേവ് ചെയ്യാനായില്ല.', es:'No se pudo guardar.' },
     qHead:   { ar:'اتجاه القبلة من موقعك', en:'Qibla direction from your location', fr:'Direction de la Qibla', hi:'आपके स्थान से क़िबला दिशा', ur:'آپ کے مقام سے قبلہ کی سمت', bn:'আপনার অবস্থান থেকে কিবলা দিক', ne:'तपाईंको स्थानबाट किब्ला दिशा', fil:'Direksyon ng Qibla', id:'Arah kiblat dari lokasi Anda', zh:'从您的位置看朝向', ru:'Направление киблы', tr:'Konumunuzdan kıble yönü', ml:'നിങ്ങളുടെ സ്ഥാനത്തുനിന്ന് ഖിബ്‌ല ദിശ', es:'Dirección de la Qibla' },
@@ -50,11 +52,24 @@
     opening: { ar:'جارٍ الفتح...', en:'Opening...', fr:'Ouverture...', hi:'खुल रहा है...', ur:'کھل رہا ہے...', bn:'খুলছে...', ne:'खुल्दै...', fil:'Binubuksan...', id:'Membuka...', zh:'正在打开...', ru:'Открытие...', tr:'Açılıyor...', ml:'തുറക്കുന്നു...', es:'Abriendo...' },
     alert:   { ar:'تنبيه', en:'Alert', fr:'Alerte', hi:'सूचना', ur:'اطلاع', bn:'সতর্কতা', ne:'सूचना', fil:'Abiso', id:'Peringatan', zh:'提醒', ru:'Оповещение', tr:'Uyarı', ml:'അറിയിപ്പ്', es:'Alerta' },
   };
+  /* v-prayer-local: حالة الإشعارات بعد تفعيل الجرس + تنبيه محلي والتطبيق مفتوح */
+  TX.pushOk = { ar:'✅ التنبيه مفعّل، وسيصلك إشعار حتى والتطبيق مغلق.', en:'✅ Alert on — you will get a notification even when the app is closed.' };
+  TX.pushDenied = { ar:'⚠️ الإشعارات مرفوضة على هذا الجهاز. اسمح بها من إعدادات التطبيق؛ وحتى ذلك يصلك التنبيه فقط والتطبيق مفتوح.', en:'⚠️ Notifications are blocked on this device. Allow them in the app settings; until then the alert only fires while the app is open.' };
+  TX.pushUnavail = { ar:'⚠️ هذا الجهاز لا يدعم إشعارات الدفع (مثل أجهزة هواوي بلا خدمات جوجل). سيصلك التنبيه والتطبيق مفتوح أو في الخلفية فقط.', en:'⚠️ Push notifications are not available on this device (e.g. Huawei without Google services). The alert fires only while the app is open or in the background.' };
+  TX.localTitle = { ar:'عمران — مواقيت الصلاة', en:'Omran — Prayer times' };
   function tx(key){ var m = TX[key]; return (m && (m[qLang()] || m.en)) || (m && m.ar) || key; }
   function qt(ar, en){ return qIsRtl() ? ar : en; } // للنصوص المركّبة القليلة المتبقية
 
   // طرق الحساب بالـ14 لغة (أسماء الهيئات — تُترجم وصفيًا)
+  /* v-pray-auto (شكوى المالك «التوقيت مش مضبوط»): أم القرى كانت الافتراضي للجميع، والإمارات وقطر والكويت
+     وغيرها لها طرق حساب رسمية تختلف دقائق في الفجر والعشاء. الافتراضي الآن «تلقائي حسب موقعك». */
   var METHODS = [
+    { v: 'auto', t: { ar:'تلقائي حسب موقعك', en:'Automatic (by your location)', fr:'Automatique (selon votre position)', ur:'خودکار (آپ کے مقام کے مطابق)', hi:'स्वचालित (आपके स्थान से)', id:'Otomatis (sesuai lokasi)', tr:'Otomatik (konumunuza göre)', es:'Automático (según tu ubicación)', ru:'Автоматически (по вашему местоположению)', zh:'自动（按您的位置）', bn:'স্বয়ংক্রিয় (আপনার অবস্থান অনুযায়ী)', ne:'स्वचालित (तपाईंको स्थानअनुसार)', fil:'Awtomatiko (ayon sa lokasyon)', ml:'സ്വയമേവ (നിങ്ങളുടെ സ്ഥാനമനുസരിച്ച്)' } },
+    { v: 16, t: { ar:'الإمارات (دبي)', en:'UAE (Dubai)', fr:'Émirats (Dubaï)', ur:'امارات (دبئی)' } },
+    { v: 10, t: { ar:'قطر', en:'Qatar', fr:'Qatar', ur:'قطر' } },
+    { v: 9, t: { ar:'الكويت', en:'Kuwait', fr:'Koweït', ur:'کویت' } },
+    { v: 23, t: { ar:'الأردن', en:'Jordan', fr:'Jordanie', ur:'اردن' } },
+    { v: 13, t: { ar:'تركيا (ديانت)', en:'Turkey (Diyanet)', fr:'Turquie (Diyanet)', ur:'ترکی' } },
     { v: 4, t: { ar:'أم القرى (مكة)', en:'Umm al-Qura (Makkah)', fr:'Oumm al-Qoura', hi:'उम्म अल-क़ुरा (मक्का)', ur:'ام القریٰ (مکہ)', bn:'উম্মুল কুরা (মক্কা)', ne:'उम्म अल-कुरा (मक्का)', fil:'Umm al-Qura (Makkah)', id:'Umm al-Qura (Makkah)', zh:'古拉大学（麦加）', ru:'Умм аль-Кура (Мекка)', tr:'Ümmü\'l-Kura (Mekke)', ml:'ഉമ്മുൽ ഖുറാ (മക്ക)', es:'Umm al-Qura (La Meca)' } },
     { v: 3, t: { ar:'رابطة العالم الإسلامي', en:'Muslim World League', fr:'Ligue islamique mondiale', hi:'मुस्लिम वर्ल्ड लीग', ur:'رابطہ عالم اسلامی', bn:'মুসলিম ওয়ার্ল্ড লীগ', ne:'मुस्लिम वर्ल्ड लिग', fil:'Muslim World League', id:'Liga Dunia Muslim', zh:'世界穆斯林联盟', ru:'Всемирная мусульманская лига', tr:'İslam Dünyası Birliği', ml:'മുസ്‌ലിം വേൾഡ് ലീഗ്', es:'Liga Mundial Musulmana' } },
     { v: 8, t: { ar:'الخليج', en:'Gulf Region', fr:'Région du Golfe', hi:'खाड़ी क्षेत्र', ur:'خلیجی خطہ', bn:'উপসাগরীয় অঞ্চল', ne:'खाडी क्षेत्र', fil:'Rehiyon ng Golpo', id:'Kawasan Teluk', zh:'海湾地区', ru:'Персидский залив', tr:'Körfez Bölgesi', ml:'ഗൾഫ് മേഖല', es:'Región del Golfo' } },
@@ -65,7 +80,35 @@
   function methodName(m){ return (m.t && (m.t[qLang()] || m.t.en)) || m.t.ar; }
 
   function qIsAr(){ return qIsRtl(); }
-  function getMethod(){ try{ return parseInt(localStorage.getItem('aiapp_pray_method') || '4', 10); }catch(e){ return 4; } }
+  function storedMethod(){ try{ return localStorage.getItem('aiapp_pray_method') || 'auto'; }catch(e){ return 'auto'; } }
+  function autoMethod(l){
+    if(!l) return 4;
+    var la = l.lat, lo = l.lng;
+    var inBox = function(a, b, c, d){ return la >= a && la <= b && lo >= c && lo <= d; };
+    if(inBox(22.4, 26.6, 51.0, 56.6)) return 16;      /* الإمارات */
+    if(inBox(24.4, 26.3, 50.6, 51.8)) return 10;      /* قطر */
+    if(inBox(28.4, 30.2, 46.4, 48.6)) return 9;       /* الكويت */
+    if(inBox(25.5, 26.4, 50.3, 50.9)) return 8;       /* البحرين — الخليج */
+    if(inBox(16.0, 32.5, 34.4, 56.0)) return 4;       /* السعودية وعُمان واليمن — أم القرى */
+    if(inBox(29.1, 33.5, 34.8, 39.4)) return 23;      /* الأردن */
+    if(inBox(21.9, 31.8, 24.6, 36.9)) return 5;       /* مصر */
+    if(inBox(35.8, 42.2, 25.6, 45.0)) return 13;      /* تركيا */
+    if(inBox(27.6, 36.1, -13.2, -0.9)) return 21;     /* المغرب */
+    if(inBox(18.9, 37.2, -8.7, 12.0)) return 19;      /* الجزائر */
+    if(inBox(30.2, 37.6, 7.5, 11.7)) return 18;       /* تونس */
+    if(inBox(1.1, 1.5, 103.5, 104.1)) return 11;      /* سنغافورة */
+    if(inBox(0.8, 7.5, 99.5, 119.5)) return 17;       /* ماليزيا */
+    if(inBox(-11.0, 6.2, 95.0, 141.1)) return 20;     /* إندونيسيا */
+    if(inBox(5.0, 37.2, 60.8, 92.7)) return 1;        /* باكستان والهند وبنغلاديش — كراتشي */
+    if(inBox(15.0, 72.0, -170.0, -50.0)) return 2;    /* أمريكا الشمالية */
+    return 3;                                          /* رابطة العالم الإسلامي */
+  }
+  function getMethod(){
+    var m = storedMethod();
+    if(m === 'auto') return autoMethod(S.loc);
+    var n = parseInt(m, 10);
+    return Number.isFinite(n) ? n : autoMethod(S.loc);
+  }
 
   var S = { timings: null, dateStr: null, loc: null, ticker: null };
 
@@ -81,7 +124,8 @@
     return new Promise(function(res){
       try{
         var cached = JSON.parse(localStorage.getItem('aiapp_last_geo') || 'null');
-        if(cached && (Date.now() - cached.ts) < 3600000){ res({ lat: cached.lat, lng: cached.lng }); return; }
+        /* v-pray-fresh (شكوى المالك: «التوقيت يثبت على آخر منطقة»): الذاكرة دقيقتان لا ساعة */
+        if(!S.forceFresh && cached && (Date.now() - cached.ts) < 120000){ res({ lat: cached.lat, lng: cached.lng }); return; }
       }catch(e){ /* guard-ok */ }
       if(!navigator.geolocation){ res(null); return; }
       var done = false;
@@ -95,7 +139,8 @@
           finish(l);
         },
         function(){ finish(null); },
-        { timeout: 4500, maximumAge: 3600000 });
+        { timeout: 4500, maximumAge: S.forceFresh ? 0 : 120000, enableHighAccuracy: false });
+      S.forceFresh = false;
     });
   }
   function loc(){
@@ -117,6 +162,7 @@
         .then(function(data){
           if(!data || !data.data || !data.data.timings) throw new Error('bad-data');
           S.timings = data.data.timings;
+          S.dateStr = new Date().toDateString();
           S.hijri = data.data.date && data.data.date.hijri;
           return S.timings;
         });
@@ -204,7 +250,7 @@
       return;
     }
     var np = nextPrayer();
-    var mOpts = METHODS.map(function(m){ return '<option value="' + m.v + '"' + (m.v === getMethod() ? ' selected' : '') + ' style="background:#141420;color:#fff;">' + methodName(m) + '</option>'; }).join('');
+    var mOpts = METHODS.map(function(m){ return '<option value="' + m.v + '"' + (String(m.v) === String(storedMethod()) ? ' selected' : '') + ' style="background:#141420;color:#fff;">' + methodName(m) + (m.v === 'auto' ? ' — ' + (METHODS.filter(function(x){ return x.v === getMethod(); })[0] ? methodName(METHODS.filter(function(x){ return x.v === getMethod(); })[0]) : getMethod()) : '') + '</option>'; }).join('');
     var rows = PRAYERS.map(function(k){
       var isNext = np && np.key === k;
       return '<div style="display:flex;align-items:center;gap:10px;padding:13px 14px;border-radius:12px;margin-bottom:7px;' +
@@ -227,7 +273,8 @@
       rows +
       '<div style="margin-top:14px;font-size:13px;color:var(--muted,#98a0b3);">' + tx('method') + '</div>' +
       '<select id="qMethod" style="width:100%;margin-top:6px;padding:10px;border-radius:10px;background:rgba(255,255,255,.04);color:inherit;border:1px solid var(--border,rgba(255,255,255,.12));font-size:14px;">' + mOpts + '</select>' +
-      '<div style="font-size:12px;color:var(--muted,#98a0b3);margin-top:12px;line-height:1.7;">🔔 ' + tx('alertHint') + '</div>';
+      '<div style="font-size:12px;color:var(--muted,#98a0b3);margin-top:12px;line-height:1.7;">🔔 ' + tx('alertHint') + '</div>' +
+      '<div id="qAlertStatus" style="display:none;font-size:12.5px;margin-top:8px;line-height:1.7;padding:8px 10px;border-radius:10px;background:rgba(212,175,55,.08);border:1px solid var(--omGoldSoft,rgba(212,175,55,.35));"></div>';
 
     body.querySelector('#qMethod').onchange = function(){
       try{ localStorage.setItem('aiapp_pray_method', this.value); }catch(e){ /* guard-ok */ }
@@ -250,40 +297,181 @@
   /* ==== التنبيهات (تُخزَّن محليًا للعرض + تُرسل للسيرفر) ==== */
   function alertsMap(){ try{ return JSON.parse(localStorage.getItem('aiapp_pray_alerts') || '{}'); }catch(e){ return {}; } }
   function hasAlert(k){ return !!alertsMap()[k]; }
+  function alertId(v){ return (v && typeof v === 'object') ? v.id : v; }
+  function alertOff(v){ return (v && typeof v === 'object' && Number.isFinite(v.off)) ? v.off : 0; }
+  function setAlertStatus(txt){ var el = document.getElementById('qAlertStatus'); if(el){ el.textContent = txt || ''; el.style.display = txt ? '' : 'none'; } }
+
+  /* v-prayer-local: اشتراك الدفع يُطلب عند كل تفعيل (لا مرة واحدة بالجلسة) ويعيد سبب الفشل بدل الصمت */
+  function ensurePush(){
+    return new Promise(function(res){
+      (async function(){
+        try{
+          if(!('Notification' in window)) return res({ ok:false, reason:'unsupported' });
+          var perm = Notification.permission;
+          if(perm === 'default') perm = await Notification.requestPermission();
+          if(perm !== 'granted') return res({ ok:false, reason:'denied' });
+          if(!('serviceWorker' in navigator) || !('PushManager' in window)) return res({ ok:false, reason:'nopush' });
+          var token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : '';
+          if(!token) return res({ ok:false, reason:'auth' });
+          var reg = await navigator.serviceWorker.ready;
+          var sub = await reg.pushManager.getSubscription();
+          if(!sub){
+            var kd = await (await fetch('/api/vapid-public-key')).json();
+            if(!kd || !kd.publicKey) return res({ ok:false, reason:'novapid' });
+            var conv = (typeof urlBase64ToUint8Array === 'function') ? urlBase64ToUint8Array : function(b){ var pad = '='.repeat((4 - b.length % 4) % 4); var raw = atob((b + pad).replace(/-/g, '+').replace(/_/g, '/')); var out = new Uint8Array(raw.length); for(var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i); return out; };
+            sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: conv(kd.publicKey) });
+          }
+          var r = await fetch('/api/push-subscribe', { method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + token }, body: JSON.stringify({ subscription: sub.toJSON() }) });
+          res({ ok: r.ok, reason: r.ok ? '' : 'server' });
+        }catch(e){ res({ ok:false, reason:'pushfail:' + ((e && e.name) || '') }); }
+      })();
+    });
+  }
+  window.omranEnsurePush = ensurePush; /* v-news-push: تنبيهات الأخبار في الإعدادات تعيد استخدام الاشتراك نفسه */
+  function pushStatusText(st){
+    if(st.ok) return tx('pushOk');
+    if(st.reason === 'denied') return tx('pushDenied');
+    return tx('pushUnavail');
+  }
+
+  /* v-prayer-local: تنبيه محلي من الجهاز نفسه عند حلول الوقت — يعمل والتطبيق
+     مفتوح أو في الخلفية حتى لو تعذّر الدفع (هواوي بلا خدمات جوجل، أو إذن مرفوض).
+     يُعتمد على مواقيت الشاشة نفسها فلا يختلف الوقت عن المعروض. */
+  /* v-pray-toast: alert() لا يعمل داخل أغلفة أندرويد/هواوي — تنبيه داخل التطبيق مع صوت قصير */
+  function localToast(msg){
+    try{
+      var old = document.getElementById('qLocalToast'); if(old) old.remove();
+      var t = document.createElement('div');
+      t.id = 'qLocalToast';
+      t.style.cssText = 'position:fixed;left:50%;top:calc(16px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:2147483001;max-width:92vw;background:rgba(20,20,26,.97);color:#f1d98a;border:1px solid rgba(212,175,55,.6);border-radius:14px;padding:12px 16px;font-size:15px;font-weight:700;box-shadow:0 10px 30px rgba(0,0,0,.5);text-align:center;';
+      t.textContent = msg;
+      t.onclick = function(){ t.remove(); };
+      document.body.appendChild(t);
+      setTimeout(function(){ try{ t.remove(); }catch(e){ /* guard-ok */ } }, 60000);
+      try{ var ctx = new (window.AudioContext || window.webkitAudioContext)(); [880, 660, 880].forEach(function(hz, i){ var o = ctx.createOscillator(), g = ctx.createGain(); o.connect(g); g.connect(ctx.destination); o.frequency.value = hz; g.gain.value = .25; o.start(ctx.currentTime + i * .3); o.stop(ctx.currentTime + i * .3 + .22); }); }catch(e){ /* guard-ok */ }
+      if(navigator.vibrate) try{ navigator.vibrate([300, 150, 300]); }catch(e){ /* guard-ok */ }
+    }catch(e){ /* guard-ok */ }
+  }
+  function firedMap(){ try{ return JSON.parse(localStorage.getItem('aiapp_pray_fired') || '{}'); }catch(e){ return {}; } }
+  function markFired(key){ var f = firedMap(); var ds = new Date().toDateString(); Object.keys(f).forEach(function(x){ if(x.indexOf(ds) !== 0) delete f[x]; }); f[key] = 1; try{ localStorage.setItem('aiapp_pray_fired', JSON.stringify(f)); }catch(e){ /* guard-ok */ } }
+  function localTargets(){
+    if(!S.timings) return [];
+    var m = alertsMap(), out = [];
+    Object.keys(m).forEach(function(k){
+      var hm = String(S.timings[k] || '').split(':'); if(hm.length < 2) return;
+      var t = new Date(); t.setHours(+hm[0], +hm[1], 0, 0);
+      var off = alertOff(m[k]);
+      out.push({ k:k, off:off, at: t.getTime() - off * 60000 });
+    });
+    return out;
+  }
+  function notifyLocal(x){
+    var title = tx('localTitle');
+    var body = x.off > 0 ? qt('باقي ' + x.off + ' دقيقة على ' + prName(x.k), x.off + ' min to ' + prName(x.k)) : qt('حان وقت ' + prName(x.k), prName(x.k) + ' time');
+    try{ if(navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 300]); }catch(e){ /* guard-ok */ }
+    try{
+      if(!('Notification' in window) || Notification.permission !== 'granted'){ localToast('🕌 ' + body); return; }
+      var opts = { body: body, icon: './icons/icon-192-v2.png?icon=gold-20260819', badge: './icons/icon-192-v2.png?icon=gold-20260819', tag: 'prayer-local-' + x.k, vibrate: [300, 150, 300, 150, 300], requireInteraction: true };
+      if('serviceWorker' in navigator){
+        navigator.serviceWorker.ready.then(function(reg){ return reg.showNotification(title, opts); }).catch(function(){ try{ new Notification(title, opts); }catch(e){ localToast('🕌 ' + body); } });
+      } else { new Notification(title, opts); }
+    }catch(e){ try{ localToast('🕌 ' + body); }catch(_){ /* guard-ok */ } }
+  }
+  function checkLocal(){
+    var now = Date.now(), ds = new Date().toDateString(), f = firedMap();
+    localTargets().forEach(function(x){
+      var key = ds + '|' + x.k + '|' + x.off;
+      if(f[key]) return;
+      var d = now - x.at;
+      if(d >= 0 && d < 10 * 60000){ markFired(key); notifyLocal(x); }
+    });
+  }
+  function quietLoc(){
+    if(S.loc) return Promise.resolve(S.loc);
+    try{ var c = JSON.parse(localStorage.getItem('aiapp_last_geo') || 'null'); if(c && typeof c.lat === 'number'){ S.loc = { lat:c.lat, lng:c.lng }; return Promise.resolve(S.loc); } }catch(e){ /* guard-ok */ }
+    return ipLoc().then(function(ip){ if(ip) S.loc = ip; return ip; });
+  }
+  var localBooted = false;
+  function bootLocalAlerts(){
+    if(localBooted) return; localBooted = true;
+    function ensureToday(){
+      var ds = new Date().toDateString();
+      if(S.timings && S.dateStr === ds) return Promise.resolve();
+      return quietLoc().then(function(l){ if(!l) return; return fetchTimings().then(function(){ S.dateStr = ds; }); }).catch(function(e){ __swallow(e, 'qibla:local-times'); });
+    }
+    function tickLocal(){ if(!Object.keys(alertsMap()).length) return; ensureToday().then(checkLocal); }
+    setTimeout(tickLocal, 4000);
+    setInterval(tickLocal, 20000);
+    document.addEventListener('visibilitychange', function(){ if(!document.hidden) tickLocal(); });
+  }
   function toggleAlert(k, btn){
     var token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : '';
-    if(!token){ alert(tx('signIn')); return; }
+    if(!token){ setAlertStatus(tx('signIn')); return; }
     var m = alertsMap();
     if(m[k]){ // إيقاف
-      var id = m[k];
+      var id = alertId(m[k]);
       delete m[k];
       try{ localStorage.setItem('aiapp_pray_alerts', JSON.stringify(m)); }catch(e){ /* guard-ok */ }
       if(btn) btn.textContent = '🔕';
+      setAlertStatus('');
       fetch('/api/reminders?id=' + encodeURIComponent(id), { method: 'DELETE', headers: { Authorization: 'Bearer ' + token } })
         .catch(function(e){ __swallow(e, 'qibla:del'); });
       return;
     }
-    // تفعيل — نسأل كم دقيقة قبل
-    var mins = prompt(tx('minsBefore').replace('{p}', prName(k)), '10');
-    if(mins === null) return;
-    var off = Math.max(0, Math.min(120, parseInt(mins, 10) || 0));
+    // تفعيل — اختيار الدقائق من ورقة صغيرة (v-pray-picker: prompt() لا يعمل داخل أغلفة أندرويد/هواوي فكان الجرس صامتًا)
+    pickMinutes(k, btn, function(off){ armAlert(k, btn, off); });
+  }
+  function pickMinutes(k, btn, cb){
+    var old = document.getElementById('qMinsPick'); if(old) old.remove();
+    var host = btn && btn.closest ? btn.closest('div') : null;
+    var box = document.createElement('div');
+    box.id = 'qMinsPick';
+    box.style.cssText = 'margin:6px 0 10px;padding:10px 12px;border-radius:12px;background:rgba(212,175,55,.10);border:1px solid var(--omGoldSoft,rgba(212,175,55,.45));font-size:13px;';
+    var title = document.createElement('div');
+    title.style.cssText = 'margin-bottom:8px;color:var(--muted,#98a0b3);';
+    title.textContent = tx('minsBefore').replace('{p}', prName(k)).replace(/\s*\(.*\)\s*$/, '');
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;';
+    [0, 5, 10, 15, 30].forEach(function(v){
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.style.cssText = 'padding:8px 12px;border-radius:999px;border:1px solid var(--omGoldSoft,rgba(212,175,55,.5));background:' + (v === 10 ? 'rgba(212,175,55,.25)' : 'rgba(255,255,255,.04)') + ';color:inherit;font:inherit;font-size:13px;cursor:pointer;';
+      b.textContent = v === 0 ? tx('atAdhan') : (v + ' ' + tx('minUnit'));
+      b.onclick = function(){ box.remove(); cb(v); };
+      row.appendChild(b);
+    });
+    var cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.style.cssText = 'padding:8px 12px;border-radius:999px;border:none;background:none;color:var(--muted,#98a0b3);font:inherit;font-size:13px;cursor:pointer;';
+    cancel.textContent = '✕';
+    cancel.onclick = function(){ box.remove(); };
+    row.appendChild(cancel);
+    box.appendChild(title); box.appendChild(row);
+    if(host && host.parentNode) host.parentNode.insertBefore(box, host.nextSibling);
+    else { var body = document.querySelector('#qBody'); if(body) body.insertBefore(box, body.firstChild); }
+  }
+  function armAlert(k, btn, off){
+    var token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : '';
     if(btn) btn.textContent = '⏳';
     loc().then(function(l){
-      if(!l){ if(btn) btn.textContent = '🔕'; alert(tx('locUnavail')); return; }
+      if(!l){ if(btn) btn.textContent = '🔕'; setAlertStatus(tx('locUnavail')); return; }
+      try{ localStorage.setItem('aiapp_pray_alert_loc', JSON.stringify({ lat: l.lat, lng: l.lng })); }catch(e){ /* guard-ok */ }
       return fetch('/api/reminders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({
-          type: 'prayer', prayerName: k, offsetMinutes: off, lat: l.lat, lng: l.lng,
+          type: 'prayer', prayerName: k, offsetMinutes: off, lat: l.lat, lng: l.lng, method: getMethod(),
           message: off > 0 ? qt('باقي ' + off + ' دقيقة على ' + prName(k), off + ' min to ' + prName(k)) : qt('حان وقت ' + prName(k), prName(k) + ' time'),
         }),
       }).then(function(r){ return r.json(); }).then(function(d){
         if(d && d.ok && d.reminder){
-          var mm = alertsMap(); mm[k] = d.reminder.id;
+          var mm = alertsMap(); mm[k] = { id: d.reminder.id, off: off };
           try{ localStorage.setItem('aiapp_pray_alerts', JSON.stringify(mm)); }catch(e){ /* guard-ok */ }
           if(btn) btn.textContent = '🔔';
-          if(typeof mahaEnsurePushSubscribed === 'function') mahaEnsurePushSubscribed();
-        } else { if(btn) btn.textContent = '🔕'; alert(tx('saveFail')); }
+          setAlertStatus('⏳');
+          ensurePush().then(function(st){ setAlertStatus(pushStatusText(st)); });
+          bootLocalAlerts();
+        } else { if(btn) btn.textContent = '🔕'; setAlertStatus(tx('saveFail')); }
       });
     }).catch(function(e){ __swallow(e, 'qibla:alert'); if(btn) btn.textContent = '🔕'; });
   }
@@ -371,10 +559,49 @@
     }
   }
 
+  /* v-pray-fresh: عند كل فتح نعيد تحديد الموقع؛ إن تغيّر عن السابق بأكثر من ~3 كم نعيد جلب المواقيت
+     وننقل تنبيهات الصلاة المسجّلة في الخادم إلى الموقع الجديد */
+  function distKm(a, b){ var R = 6371, dLat = (b.lat - a.lat) * Math.PI / 180, dLng = (b.lng - a.lng) * Math.PI / 180; var x = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2); return 2 * R * Math.asin(Math.sqrt(x)); }
+  function moveAlertsTo(l){
+    var token = (typeof authGet === 'function') ? authGet('aiapp_auth_token') : '';
+    var m = alertsMap(); var keys = Object.keys(m);
+    if(!token || !keys.length) return;
+    keys.forEach(function(k){
+      var old = m[k], off = (old && typeof old === 'object') ? (old.off || 0) : 0, oldId = alertId(old);
+      fetch('/api/reminders', { method:'POST', headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + token },
+        body: JSON.stringify({ type:'prayer', prayerName:k, offsetMinutes:off, lat:l.lat, lng:l.lng, method:getMethod(),
+          message: off > 0 ? qt('باقي ' + off + ' دقيقة على ' + prName(k), off + ' min to ' + prName(k)) : qt('حان وقت ' + prName(k), prName(k) + ' time') }) })
+        .then(function(r){ return r.json(); }).then(function(d){
+          if(d && d.ok && d.reminder){
+            var mm = alertsMap(); mm[k] = { id: d.reminder.id, off: off };
+            try{ localStorage.setItem('aiapp_pray_alerts', JSON.stringify(mm)); }catch(e){ /* guard-ok */ }
+            if(oldId) fetch('/api/reminders?id=' + encodeURIComponent(oldId), { method:'DELETE', headers:{ Authorization:'Bearer ' + token } }).catch(function(){ /* guard-ok: حذف التذكير القديم تحسين لا شرط */ });
+          }
+        }).catch(function(e){ __swallow(e, 'qibla:move-alert'); });
+    });
+  }
   function openQibla(){
     var el = shell();
     el.style.display = 'flex';
-    setTab('times');
+    S.loc = null;
+    S.timings = null;
+    S.forceFresh = true; /* أول قراءة بعد الفتح من الحساس مباشرة لا من الذاكرة */
+    /* v-pray-safe: أي خطأ في الرسم يظهر على الشاشة بدل أن يبدو الزر ميتًا */
+    try{ setTab('times'); }
+    catch(err){
+      __swallow(err, 'qibla:open-render');
+      try{ var body = el.querySelector('#qBody'); if(body) body.innerHTML = '<div style="text-align:center;color:var(--muted,#98a0b3);padding:30px 0;">⚠️ ' + String((err && err.message) || err) + '<br><br><button id="qRetry" style="padding:8px 16px;border-radius:10px;border:1px solid var(--omGoldSoft,rgba(212,175,55,.5));background:none;color:inherit;cursor:pointer;">↻</button></div>'; var rb = body && body.querySelector('#qRetry'); if(rb) rb.onclick = function(){ S.loc = null; S.timings = null; setTab('times'); }; }catch(e2){ /* guard-ok */ }
+    }
+    /* بعد الرسم: لو تغيّر الموقع فعليًا ننقل التنبيهات معه */
+    loc().then(function(l){
+      if(!l) return;
+      var last = null; try{ last = JSON.parse(localStorage.getItem('aiapp_pray_alert_loc') || 'null'); }catch(e){ last = null; }
+      var moved = !last || distKm(last, l) > 3;
+      if(moved){
+        try{ localStorage.setItem('aiapp_pray_alert_loc', JSON.stringify({ lat: l.lat, lng: l.lng })); }catch(e){ /* guard-ok */ }
+        if(last) moveAlertsTo(l);
+      }
+    }).catch(function(e){ __swallow(e, 'qibla:open-loc'); });
   }
   function closeQibla(){
     if(S.ticker){ clearInterval(S.ticker); S.ticker = null; }
@@ -384,6 +611,8 @@
   }
 
   var btn = document.getElementById('btnQibla');
-  if(btn) btn.onclick = openQibla;
-  window.omranQibla = { open: openQibla, close: closeQibla };
+  if(btn) btn.onclick = function(){ try{ openQibla(); }catch(e){ __swallow(e, 'qibla:open'); try{ var el = shell(); el.style.display = 'flex'; }catch(_){ /* guard-ok */ } } };
+  window.omranQibla = { open: openQibla, close: closeQibla, checkLocal: checkLocal, _S: S };
+  /* v-prayer-local: إن كان للمستخدم تنبيهات محفوظة نراقبها محليًا منذ فتح التطبيق */
+  try{ if(Object.keys(alertsMap()).length) bootLocalAlerts(); }catch(e){ __swallow(e, 'qibla:boot-local'); }
 })();

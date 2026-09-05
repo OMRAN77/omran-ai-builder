@@ -85,7 +85,81 @@ function omranShareRetapBar(file, filename){
     return true;
   }catch(e){ __swallow(e, 'share:retap-bar2'); return false; }
 }
+/* v-pdf-sheet (شكوى المالك ٤ سبتمبر «تحميل PDF ما اشتغل في الهواوي والأندرويد»):
+   كشف الغلاف كان يخطئ (لا مرجع android-app ولا standalone في بعض الأغلفة) فيسقط
+   الملف على تنزيل blob الذي لا تنفّذه الأغلفة — صامتًا. الآن على أي جوال: نرفع
+   الملف للسيرفر ونعرض ورقة ثابتة بأزرار حقيقية بلمسة المستخدم (لمسة جديدة =
+   تفعيل جديد): تحميل عبر رابط HTTPS برأس attachment، مشاركة، وفتح. */
+function omranMobileUA(){
+  try{
+    if(/Android|HarmonyOS|HUAWEI|HONOR|iPhone|iPad|iPod|Mobile|Tablet/i.test(navigator.userAgent)) return true;
+    if(navigator.maxTouchPoints > 1 && /Mac|Linux/i.test(navigator.platform || '')) return true;
+  }catch(e){ /* guard-ok */ }
+  return false;
+}
+function omranPdfReadySheet(url, file, filename, kind, openUrl){
+  try{
+    const isArT = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
+    const old = document.getElementById('omranPdfSheet'); if(old) old.remove();
+    const sheet = document.createElement('div');
+    sheet.id = 'omranPdfSheet';
+    sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483000;background:rgba(20,20,26,.98);border-top:1px solid rgba(212,175,55,.45);border-radius:18px 18px 0 0;padding:14px 16px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 40px rgba(0,0,0,.6);direction:' + (isArT ? 'rtl' : 'ltr') + ';font-family:inherit;';
+    const head = document.createElement('div');
+    head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;color:#f3efe4;font-weight:800;font-size:15px;';
+    const ttl = document.createElement('span');
+    ttl.textContent = kind === 'video' ? (isArT ? '✅ الفيديو جاهز' : '✅ Video ready') : (kind === 'image' ? (isArT ? '✅ الصورة جاهزة' : '✅ Image ready') : (isArT ? '✅ ملف PDF جاهز' : '✅ PDF ready'));
+    const x = document.createElement('button'); x.textContent = '✕';
+    x.style.cssText = 'background:none;border:none;color:#9a9a9e;font-size:18px;cursor:pointer;padding:2px 8px;';
+    x.onclick = function(){ sheet.remove(); };
+    head.appendChild(ttl); head.appendChild(x);
+    const row = document.createElement('div');
+    row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;';
+    const btnCss = 'display:flex;align-items:center;justify-content:center;gap:6px;min-height:46px;border-radius:12px;font-weight:800;font-size:14px;text-decoration:none;cursor:pointer;touch-action:manipulation;';
+    /* تحميل: رابط حقيقي بلمسة المستخدم — يمرّ عبر منزّل النظام في TWA/WebView/هواوي */
+    const dl = document.createElement('a');
+    dl.href = url; dl.setAttribute('download', filename || 'omran-ai.pdf'); dl.dataset.nativeDownload = '1'; dl.rel = 'noopener';
+    dl.style.cssText = btnCss + 'background:#d4af37;color:#111;';
+    dl.textContent = isArT ? '⬇️ تحميل' : '⬇️ Download';
+    dl.onclick = function(){ setTimeout(function(){ try{ ttl.textContent = isArT ? '📥 بدأ التحميل — افتح الإشعارات/التنزيلات' : '📥 Downloading — check notifications/Downloads'; }catch(e){ /* guard-ok */ } }, 400); };
+    row.appendChild(dl);
+    /* مشاركة: ورقة النظام (تحفظ في الملفات/المعرض) — بلمسة جديدة فلا يرفضها المتصفح */
+    let canShareFile = false;
+    try{ canShareFile = !!(file && navigator.canShare && navigator.canShare({ files: [file] })); }catch(e){ canShareFile = false; }
+    if(canShareFile){
+      const sh = document.createElement('button');
+      sh.style.cssText = btnCss + 'background:none;color:#d4af37;border:1px solid rgba(212,175,55,.55);';
+      sh.textContent = isArT ? '📤 مشاركة' : '📤 Share';
+      sh.onclick = function(){
+        navigator.share({ files: [file], title: filename }).then(function(){ sheet.remove(); }).catch(function(e3){
+          if(e3 && e3.name === 'AbortError') return;
+          __swallow(e3, 'pdf:sheet-share');
+          ttl.textContent = isArT ? '⚠️ المشاركة غير متاحة — استخدم تحميل أو فتح' : '⚠️ Share unavailable — use Download or Open';
+        });
+      };
+      row.appendChild(sh);
+    }
+    /* فتح: تبويب/عارض خارجي */
+    const op = document.createElement('a');
+    op.href = openUrl || url; op.target = '_blank'; op.rel = 'noopener';
+    op.style.cssText = btnCss + 'background:none;color:#f3efe4;border:1px solid rgba(255,255,255,.18);';
+    op.textContent = isArT ? '🔗 فتح' : '🔗 Open';
+    op.onclick = function(ev){
+      try{
+        const cap2 = window.Capacitor;
+        const br2 = cap2 && cap2.Plugins && cap2.Plugins.Browser;
+        if(br2 && typeof br2.open === 'function'){ ev.preventDefault(); br2.open({ url: openUrl || url }); }
+      }catch(e2){ __swallow(e2, 'pdf:sheet-open'); }
+    };
+    row.appendChild(op);
+    if(!canShareFile) row.style.gridTemplateColumns = '1fr 1fr';
+    sheet.appendChild(head); sheet.appendChild(row);
+    document.body.appendChild(sheet);
+    setTimeout(function(){ try{ sheet.remove(); }catch(e){ /* guard-ok */ } }, 120000);
+    return true;
+  }catch(e){ __swallow(e, 'pdf:sheet'); return false; }
+}
 async function omranSaveBlob(blob, filename){
+  const isPdfFile = !!(blob && (blob.type === 'application/pdf' || /\.pdf$/i.test(filename || '')));
   if(omranNativeBridge('omranShare')){ msgDownloadBlob(blob, filename); return; }
   try{
     if(navigator.canShare && typeof File === 'function'){
@@ -98,15 +172,28 @@ async function omranSaveBlob(blob, filename){
              آيفون يرفض المشاركة بعد معالجة طويلة لانتهاء «ضغطة المستخدم».
              ضغطة جديدة على شريط صغير تعيد فتح ورقة المشاركة الأصلية دائمًا.
              داخل الأغلفة فقط — المتصفحات العادية تنزّل مباشرة كما كانت. */
-          if(omranLikelyApp() && omranShareRetapBar(f, filename)) return;
+          /* v-pdf-sheet: PDF على الجوال → ورقة الأزرار (أدناه) بدل شريط إعادة اللمس */
+          if(!(isPdfFile && (omranLikelyApp() || omranMobileUA())) && omranLikelyApp() && omranShareRetapBar(f, filename)) return;
         }
       }
     }
   }catch(e){ __swallow(e, 'share:universal'); }
-  /* داخل الأغلفة: رابط سيرفر حقيقي (PDF فقط — النقطة تفحص التوقيع) */
-  if(omranLikelyApp() && (blob.type === 'application/pdf' || /\.pdf$/i.test(filename || ''))){
+  /* داخل الأغلفة وعلى أي جوال: رابط سيرفر حقيقي (PDF فقط — النقطة تفحص التوقيع) */
+  if(isPdfFile && (omranLikelyApp() || omranMobileUA())){
     try{
       const url = await omranBlobToServerLink(blob, filename);
+      let fileForShare = null;
+      try{ if(typeof File === 'function') fileForShare = new File([blob], filename, { type: 'application/pdf' }); }catch(e){ fileForShare = null; }
+      if(omranPdfReadySheet(url, fileForShare, filename)){
+        /* محاولة تنزيل تلقائي صامتة إلى جانب الورقة (تعمل في TWA كروم) */
+        try{
+          const dfr0 = document.createElement('iframe');
+          dfr0.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;';
+          dfr0.src = url; document.body.appendChild(dfr0);
+          setTimeout(() => { try{ dfr0.remove(); }catch(e){ /* guard-ok */ } }, 60000);
+        }catch(e){ __swallow(e, 'pdf:auto-frame'); }
+        return;
+      }
       /* v-cap-browser: داخل غلاف كاباسيتور القديم افتح الرابط بعارض النظام
          (SFSafariViewController) — قبل window.open حتى لا يُبحر التطبيق نفسه. */
       try{
@@ -150,7 +237,16 @@ async function omranSaveBlob(blob, filename){
         setTimeout(() => { try{ bar.remove(); }catch(e){ __swallow(e, 'share:dl-bar'); } }, 45000);
       }catch(e){ __swallow(e, 'share:dl-bar2'); }
       return;
-    }catch(e){ __swallow(e, 'share:server-link'); }
+    }catch(e){
+      __swallow(e, 'share:server-link');
+      /* v-pdf-big (شكوى المالك: بصورة واحدة يعمل وبخمس لا): تعذّر رابط الخادم (ملف كبير) —
+         الورقة نفسها بملف محلي: مشاركة بالملف (تعمل في الأغلفة) ورابط blob وفتح */
+      try{
+        let f2 = null; try{ if(typeof File === 'function') f2 = new File([blob], filename, { type: 'application/pdf' }); }catch(e2){ f2 = null; }
+        const bu = URL.createObjectURL(blob);
+        if(omranPdfReadySheet(bu, f2, filename, 'pdf', bu)) return;
+      }catch(e3){ __swallow(e3, 'share:big-sheet'); }
+    }
   }
   msgDownloadBlob(blob, filename);
 }
@@ -259,6 +355,15 @@ async function omranExportHtmlAsPdfFile(bodyHtml, opts){
   holder.style.fontFamily = opts.fontFamily || "'Tajawal', Tahoma, Arial, sans-serif";
   holder.innerHTML = bodyHtml;
   document.body.appendChild(holder);
+  /* v-pdf-sheet: مؤشر ظاهر أثناء التجهيز ورسالة واضحة عند الفشل بدل الصمت */
+  const isArP = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
+  let pill = null;
+  try{
+    pill = document.createElement('div');
+    pill.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:2147483000;background:rgba(20,20,26,.96);color:#f3efe4;border:1px solid rgba(212,175,55,.45);border-radius:999px;padding:9px 16px;font-size:13.5px;font-weight:700;';
+    pill.textContent = isArP ? '⏳ جاري تجهيز ملف PDF…' : '⏳ Preparing PDF…';
+    document.body.appendChild(pill);
+  }catch(e){ pill = null; }
   try{
     await Promise.all([omranLoadJsPdf(), omranLoadHtmlToImage()]);
     try{ if(document.fonts && document.fonts.ready) await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]); }catch(e){ __swallow(e, 'pdf:fonts-wait'); }
@@ -280,8 +385,15 @@ async function omranExportHtmlAsPdfFile(bodyHtml, opts){
       first = false; y += sliceH;
     }
     await omranSaveBlob(pdf.output('blob'), opts.fileName || 'omran-ai.pdf');
+  } catch(err){
+    try{
+      const errPill = pill; pill = null; /* يبقى ظاهرًا ٦ ثوانٍ — finally لا يزيله */
+      if(errPill){ errPill.textContent = (isArP ? '❌ تعذّر إنشاء PDF: ' : '❌ PDF failed: ') + ((err && (err.message || err.name)) || err); errPill.style.borderColor = '#b91c1c'; setTimeout(function(){ try{ errPill.remove(); }catch(e){ /* guard-ok */ } }, 6000); }
+    }catch(e){ /* guard-ok */ }
+    throw err;
   } finally {
     holder.remove();
+    try{ if(pill) pill.remove(); }catch(e){ /* guard-ok */ }
   }
 }
 function msgPdfFontSpec(){
@@ -628,37 +740,37 @@ $('#btnDeleteAll').onclick = () => {
 #fbOverlay{position:fixed;inset:0;z-index:10050;display:none;align-items:center;justify-content:center;background:rgba(8,6,20,.62);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:16px;}
 #fbOverlay.open{display:flex;animation:fbFade .3s ease;}
 @keyframes fbFade{from{opacity:0}to{opacity:1}}
-#fbCard{position:relative;width:100%;max-width:420px;max-height:92vh;overflow-y:auto;border-radius:28px;padding:2px;background:conic-gradient(from var(--fbAng,0deg),var(--accent,#6b7280),#06b6d4,#f59e0b,#ec4899,var(--accent,#6b7280));animation:fbSpin 5s linear infinite,fbPop .45s cubic-bezier(.2,1.4,.4,1);}
+#fbCard{position:relative;width:100%;max-width:420px;max-height:92vh;overflow-y:auto;border-radius:28px;padding:2px;background:conic-gradient(from var(--fbAng,0deg),#d4af37,#f1d98a,#b8902a,#f1d98a,#d4af37);animation:fbSpin 5s linear infinite,fbPop .45s cubic-bezier(.2,1.4,.4,1);}
 @property --fbAng{syntax:'<angle>';initial-value:0deg;inherits:false;}
 @keyframes fbSpin{to{--fbAng:360deg}}
 @keyframes fbPop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
-#fbInner{border-radius:26px;background:linear-gradient(160deg,rgba(22,18,42,.98),rgba(10,8,24,.98));padding:28px 24px 24px;text-align:center;position:relative;overflow:hidden;}
-#fbInner::before{content:'';position:absolute;top:-70px;right:-70px;width:190px;height:190px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent,#6b7280) 32%,transparent),transparent 70%);pointer-events:none;}
-#fbInner::after{content:'';position:absolute;bottom:-80px;left:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(6,182,212,.18),transparent 70%);pointer-events:none;}
-#fbHeart{width:64px;height:64px;margin:0 auto 12px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--accent,#6b7280),#ec4899);box-shadow:0 0 32px color-mix(in srgb,var(--accent,#6b7280) 55%,transparent);animation:fbBeat 1.6s ease-in-out infinite;}
+#fbInner{border-radius:26px;background:linear-gradient(160deg,rgba(24,23,20,.98),rgba(12,12,12,.98));padding:28px 24px 24px;text-align:center;position:relative;overflow:hidden;}
+#fbInner::before{content:'';position:absolute;top:-70px;right:-70px;width:190px;height:190px;border-radius:50%;background:radial-gradient(circle,rgba(212,175,55,.28),transparent 70%);pointer-events:none;}
+#fbInner::after{content:'';position:absolute;bottom:-80px;left:-60px;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(241,217,138,.14),transparent 70%);pointer-events:none;}
+#fbHeart{width:64px;height:64px;margin:0 auto 12px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#d4af37,#f1d98a);box-shadow:0 0 32px rgba(212,175,55,.55);animation:fbBeat 1.6s ease-in-out infinite;}
 @keyframes fbBeat{0%,100%{transform:scale(1)}12%{transform:scale(1.12)}24%{transform:scale(1)}36%{transform:scale(1.08)}48%{transform:scale(1)}}
-#fbTitle{font-size:21px;font-weight:700;background:linear-gradient(90deg,#fff,color-mix(in srgb,var(--accent,#6b7280) 60%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:4px;}
+#fbTitle{font-size:21px;font-weight:700;background:linear-gradient(90deg,#fff,#f1d98a);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:4px;}
 #fbSub{font-size:13px;color:var(--muted,#9aa);margin-bottom:18px;}
 #fbStars{display:flex;justify-content:center;gap:8px;margin-bottom:18px;direction:ltr;}
-.fbStar{width:42px;height:42px;cursor:pointer;transition:transform .18s;fill:none;stroke:#4b476b;stroke-width:1.6;}
+.fbStar{width:42px;height:42px;cursor:pointer;transition:transform .18s;fill:none;stroke:#6b5f3a;stroke-width:1.6;}
 .fbStar:hover{transform:scale(1.22) rotate(-8deg);}
 .fbStar.on{fill:url(#fbGold);stroke:#f5b942;filter:drop-shadow(0 0 8px rgba(245,185,66,.65));animation:fbStarPop .35s cubic-bezier(.2,1.6,.4,1);}
 @keyframes fbStarPop{50%{transform:scale(1.35)}}
 #fbChips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-bottom:16px;}
-.fbChip{padding:7px 14px;border-radius:999px;font-size:12.5px;cursor:pointer;color:#cfcbe8;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);transition:all .2s;user-select:none;}
-.fbChip.on{background:linear-gradient(135deg,var(--accent,#6b7280),#ec4899);border-color:transparent;color:#fff;box-shadow:0 4px 14px color-mix(in srgb,var(--accent,#6b7280) 45%,transparent);transform:translateY(-1px);}
+.fbChip{padding:7px 14px;border-radius:999px;font-size:12.5px;cursor:pointer;color:#e6dfc9;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);transition:all .2s;user-select:none;}
+.fbChip.on{background:linear-gradient(135deg,#d4af37,#f1d98a);border-color:transparent;color:#141414;box-shadow:0 4px 14px rgba(212,175,55,.45);transform:translateY(-1px);}
 #fbNote{width:100%;min-height:72px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#eee;font-size:13.5px;padding:12px;resize:none;outline:none;margin-bottom:16px;font-family:inherit;}
-#fbNote:focus{border-color:var(--accent,#6b7280);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent,#6b7280) 22%,transparent);}
-#fbSendBtn{width:100%;padding:13px;border:none;border-radius:14px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;background:linear-gradient(135deg,var(--accent,#6b7280),#ec4899);position:relative;overflow:hidden;transition:transform .15s,box-shadow .2s;}
-#fbSendBtn:hover{transform:translateY(-2px);box-shadow:0 8px 24px color-mix(in srgb,var(--accent,#6b7280) 50%,transparent);}
+#fbNote:focus{border-color:#d4af37;box-shadow:0 0 0 3px rgba(212,175,55,.22);}
+#fbSendBtn{width:100%;padding:13px;border:none;border-radius:14px;font-size:15px;font-weight:700;color:#141414;cursor:pointer;background:linear-gradient(135deg,#d4af37,#f1d98a);position:relative;overflow:hidden;transition:transform .15s,box-shadow .2s;}
+#fbSendBtn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(212,175,55,.5);}
 #fbSendBtn::after{content:'';position:absolute;top:0;left:-80%;width:50%;height:100%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.35),transparent);animation:fbShine 2.8s ease-in-out infinite;}
 @keyframes fbShine{0%,60%{left:-80%}100%{left:130%}}
 #fbClose{position:absolute;top:14px;inset-inline-end:14px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,.08);color:#bbb;font-size:16px;cursor:pointer;z-index:2;}
 #fbClose:hover{background:rgba(255,255,255,.16);color:#fff;}
 #fbThanksView{display:none;padding:22px 0 10px;}
 #fbCheck{width:84px;height:84px;margin:0 auto 16px;}
-#fbCheck circle{stroke:#22c55e;stroke-width:2.4;fill:none;stroke-dasharray:245;stroke-dashoffset:245;animation:fbDraw .7s ease forwards;}
-#fbCheck path{stroke:#22c55e;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:60;stroke-dashoffset:60;animation:fbDraw .5s .5s ease forwards;}
+#fbCheck circle{stroke:#d4af37;stroke-width:2.4;fill:none;stroke-dasharray:245;stroke-dashoffset:245;animation:fbDraw .7s ease forwards;}
+#fbCheck path{stroke:#f1d98a;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:60;stroke-dashoffset:60;animation:fbDraw .5s .5s ease forwards;}
 @keyframes fbDraw{to{stroke-dashoffset:0}}
 .fbConf{position:absolute;top:38%;left:50%;width:9px;height:9px;border-radius:2px;opacity:0;pointer-events:none;animation:fbConf 1.3s ease-out forwards;}
 @keyframes fbConf{0%{opacity:1;transform:translate(0,0) rotate(0)}100%{opacity:0;transform:translate(var(--cx),var(--cy)) rotate(540deg)}}
@@ -2031,7 +2143,7 @@ function collapseAllSettingsSections(){
 }
 
 // ===== v199 Settings redesign: two-level nav (ChatGPT style) =====
-const SETTINGS_NAV_IDS = ['langSection','accountSection','statsSection','agentSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection'];
+const SETTINGS_NAV_IDS = ['langSection','accountSection','statsSection','agentSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','notifSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection'];
 const SETTINGS_NAV_ICONS = {
   langSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`,
   accountSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`,
@@ -2041,6 +2153,7 @@ const SETTINGS_NAV_ICONS = {
   themeSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>`,
   fontFamilySection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14"></path><path d="M12 5v14"></path><path d="M8 19h8"></path></svg>`,
   fontSizeSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 14h-5"></path><path d="M16 16v-3.5a2.5 2.5 0 0 1 5 0V16"></path><path d="M4.5 13h6"></path><path d="m3 16 4.5-9 4.5 9"></path></svg>`,
+  notifSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>`,
   voiceSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.5 8.5a5 5 0 0 1 0 7"></path><path d="M18.5 5.5a9 9 0 0 1 0 13"></path></svg>`,
   toneSection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
   memorySection: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 0 0-3 3 3 3 0 0 0-1 5.8V16a3 3 0 0 0 4 2.8A3 3 0 0 0 16 16v-2.2A3 3 0 0 0 15 8a3 3 0 0 0-3-3Z"/><path d="M12 5v14"/></svg>`,
@@ -2394,7 +2507,7 @@ async function postWithConfirm(url, payload){
     el('pickerSheetTitle').textContent = cfg.title || '';
     el('pickerSheetCount').textContent = cfg.count || '';
     grid.innerHTML = '';
-    (cfg.items || []).forEach(function(it){
+    (cfg.items || []).forEach(function(it, idx){
       var card = document.createElement('div');
       card.style.cssText = 'border-radius:14px;overflow:hidden;cursor:pointer;background:#17171b;' +
         (it.active ? 'border:2px solid #d4af37;box-shadow:0 0 14px rgba(212,175,55,.3);' : 'border:1px solid #2a2a30;');
@@ -2410,7 +2523,8 @@ async function postWithConfirm(url, payload){
       }
       if(it.img){
         var im = document.createElement('img');
-        im.src = it.img; im.alt = it.title || ''; im.loading = 'lazy';
+        /* v-picker-load: أول ١٢ صورة تُحمَّل فورًا (كانت كلها كسولة فبدت «لا تتحمّل») */
+        im.src = it.img; im.alt = it.title || ''; im.loading = idx < 12 ? 'eager' : 'lazy'; im.decoding = 'async';
         im.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
         im.onerror = function(){
           if(it.img2 && !im.__flat){ im.__flat = 1; im.src = it.img2; }

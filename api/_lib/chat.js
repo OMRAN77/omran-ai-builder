@@ -70,9 +70,17 @@ const TOOLS = [
     input_schema: { type: 'object', properties: { prompt: { type: 'string', description: 'وصف الصورة بالإنجليزية، دقيق ومحدّد (نمط، إضاءة، زاوية).' } }, required: ['prompt'] },
   },
   {
+    /* v-edit-image-tool (شكوى المالك: النموذج يرد «أنا مساعد نصي ما أقدر أعدّل صور»
+       على لقطة مرفقة + «سوّها 3D»): كانت عنده أداة توليد من وصف فقط بلا أداة تعديل
+       للمرفق، فيعتذر. الآن يعدّل الصورة المرفقة فعلًا بنفس محرك التطبيق. */
+    name: 'edit_image',
+    description: 'عدّل أو أعد رسم الصورة التي أرفقها المستخدم في هذه المحادثة (تحويل أسلوب: 3D، كرتون، أنيمي، لوحة؛ تغيير عناصر أو ألوان أو خلفية؛ تحسين أو ترقية). استخدمها كلما طلب المستخدم تغييرًا على صورة مرفقة — ولا تقل أبدًا إنك لا تستطيع تعديل الصور. تُعيد رمزًا مثل __IMG_1__ تضعه وحده في سطر داخل ردّك فيظهر صورةً. ملاحظة: النصوص الكثيفة داخل الصورة (لقطات شاشة) قد تتشوّه عند إعادة الرسم الكامل — نفّذ ثم أخبر المستخدم بجملة واحدة إن كان ذلك واردًا.',
+    input_schema: { type: 'object', properties: { instruction: { type: 'string', description: 'تعليمة التعديل بالإنجليزية، دقيقة (ماذا يتغيّر، وماذا يبقى كما هو).' } }, required: ['instruction'] },
+  },
+  {
     name: 'generate_video',
     description: 'أنشئ فيديو حقيقيًا داخل المحادثة من وصف المستخدم، أو حرّك الصورة المرفقة نفسها مع الحفاظ على فكرتها وشخصيتها. استخدمها فقط عندما يطلب المستخدم إنشاء/توليد/تحريك فيديو، وليس عند سؤاله عن كيفية صناعة الفيديو.',
-    input_schema: { type: 'object', properties: { prompt: { type: 'string', description: 'وصف الفيديو النهائي، مستخرج بذكاء من طلب المستخدم ومن الصورة المرفقة إن وجدت.' }, provider: { type: 'string', enum: ['runway', 'veo'], description: 'المحرك: runway افتراضي سريع، veo لجودة أعلى أو صوت طبيعي.' }, ratio: { type: 'string', enum: ['landscape', 'portrait'], description: 'اتجاه الفيديو.' }, durationSeconds: { type: 'integer', enum: [4, 5, 6, 8, 10], description: 'المدة بالثواني.' }, style: { type: 'string', enum: ['realistic', 'anime'], description: 'النمط عند استخدام Runway.' }, use_reference_image: { type: 'boolean', description: 'عند وجود صورة مرفقة: حرّكها كما هي بدل اختراع صورة جديدة.' } }, required: ['prompt'] },
+    input_schema: { type: 'object', properties: { prompt: { type: 'string', description: 'وصف الفيديو النهائي، مستخرج بذكاء من طلب المستخدم ومن الصورة المرفقة إن وجدت.' }, provider: { type: 'string', enum: ['runway', 'veo'], description: 'المحرك: runway افتراضي سريع، veo لجودة أعلى أو صوت طبيعي.' }, ratio: { type: 'string', enum: ['landscape', 'portrait'], description: 'اتجاه الفيديو.' }, durationSeconds: { type: 'integer', enum: [4, 5, 6, 8, 10], description: 'المدة بالثواني.' }, style: { type: 'string', enum: ['realistic', 'anime'], description: 'النمط عند استخدام Runway.' }, use_reference_image: { type: 'boolean', description: 'عند وجود صورة مرفقة: حرّكها كما هي بدل اختراع صورة جديدة.' }, trend: { type: 'string', enum: ['pixarstory', 'pixarsketch', 'heritagesing', 'hugyounger', 'oldphoto', 'tencountries', 'babyversion', 'outfitswap', 'productad', 'beforeafter', 'talkingpet', 'ghibli', 'dance', 'productfly', 'agejourney', 'celebselfie', 'asmr', 'eidgreeting', 'drone', 'orbit360'], description: 'ترند فيديو جاهز حين يطابق طلب المستخدم أحد الترندات الرائجة: pixarstory (قصة بيكسار من ٣ مشاهد لطفل)، pixarsketch (اسكتش كوميدي بيكسار عربي)، heritagesing (يغني في سوق تراثي من صورته)، hugyounger (يعانق نفسه الصغيرة)، oldphoto (صورة قديمة تتحرك)، tencountries (نفسه في ١٠ دول)، babyversion (نسخة طفل)، outfitswap (٥ إطلالات)، productad (إعلان منتج)، beforeafter (قبل وبعد)، talkingpet (حيوان يتكلم)، ghibli (أنمي جيبلي)، dance (يرقص)، productfly (المنتج يطير)، agejourney (من طفل لكهل)، celebselfie (سيلفي في حفل فخم)، asmr (ASMR منتج)، eidgreeting (تهنئة عيد)، drone (صورة مكان/فيلا تصير لقطة درون طيران)، orbit360 (دوران ٣٦٠ حول الشخص أو المنتج). عند اختياره يُبنى الأمر على الخادم؛ ضع في prompt ملخصًا قصيرًا فقط.' }, trend_name: { type: 'string', description: 'اسم الطفل أو الشخص للترند إن ذُكر.' }, trend_text: { type: 'string', description: 'الجملة أو كلمات الأغنية أو الموقف أو اسم المنتج للترند.' } }, required: ['prompt'] },
   },
   {
     name: 'test_html',
@@ -86,13 +94,14 @@ const TOOLS = [
   },
 ];
 
-const TOOLS_NOTE = '\n\n[أدواتك الحقيقية — ست، وهي تعمل فعلًا الآن]:\n' +
+const TOOLS_NOTE = '\n\n[أدواتك الحقيقية — سبع، وهي تعمل فعلًا الآن]:\n' +
+  '• edit_image — الصورة المرفقة تُعدَّل بها فعلًا (3D، كرتون، تغيير عناصر، تحسين). ممنوع منعًا باتًا أن تقول «أنا مساعد نصي» أو «لا أستطيع إنتاج/تعديل الصور» — أنت تستطيع، بهذه الأداة وبـgenerate_image. وعند طلب أسلوب أو تعديل على صورة مرفقة: نفّذ فورًا بالأداة — ممنوع أن تشرح «أي أداة في التطبيق يستعمل» أو تعرض «إضافة أداة/ميزة» أو تذكر أسماء مزوّدات (Gemini وغيرها)؛ النتيجة صورة، لا شرح.\n' +
   '• web_search — أي سعر أو خبر أو طقس أو نتيجة أو رسوم رسمية أو معلومة قد تكون تغيّرت: ابحث أولًا.\n' +
   '• [حداثة الأخبار — إلزامي]: في سؤال عن خبر أو حدث أو «الجديد»، تحقق من تاريخ نشر كل نتيجة قبل الاستشهاد بها: اعتمد الأحدث واذكر تاريخ الخبر بجانبه صراحةً، ولا تقدّم مقالًا عمره شهور كأنه جديد — قارن تاريخ النشر بتاريخ اليوم المذكور لك. إن لم تجد إلا نتائج قديمة فقلها صراحة («أحدث ما وجدته بتاريخ كذا») ولا توهم بحداثتها.\n' +
   '• fetch_page — أي رابط ذكره المستخدم أو ظهر في البحث وتحتاج محتواه: افتحه واقرأه.\n' +
   '• run_js — أي حساب رقمي أو فرق تواريخ أو منطق: شغّله وخذ الناتج منه.\n' +
   '• generate_image — ترسم صورة حقيقية وتعيد رمزًا مثل __IMG_1__ تضعه حرفيًّا في src.\n' +
-  '• generate_video — إذا طلب المستخدم إنشاء أو توليد أو تحريك فيديو، استخرج فكرة ذكية من كلامه والصورة المرفقة ثم استدعها. لا تقل له اذهب إلى صانع الفيديو ولا تكتفِ بشرح الخطوات؛ أعِد النتيجة داخل هذه المحادثة.\n' +
+  '• generate_video — إذا طلب المستخدم إنشاء أو توليد أو تحريك فيديو، استخرج فكرة ذكية من كلامه والصورة المرفقة ثم استدعها. وإن طابق طلبه ترندًا رائجًا (قصة بيكسار لطفل، اسكتش كوميدي، يغني في سوق تراثي، صورة قديمة تتحرك، نسخة طفل، حيوان يتكلم، إعلان منتج…) فمرّر trend المناسب مع trend_name/trend_text ولا تسأله عن إعدادات. لا تقل له اذهب إلى صانع الفيديو ولا تكتفِ بشرح الخطوات؛ أعِد النتيجة داخل هذه المحادثة.\n' +
   '• get_location — حين يسأل المستخدم عن موقعه الحالي: استدعها ولا تخمّن من عنوان الشبكة. وممنوع منعًا باتًا الجواب عن موقعه من سجلّ المحادثة — حتى لو أجبته عن موقعه قبل رسالتين استدعِ الأداة من جديد في كلّ سؤال موقع، فالموقع يتغيّر وجوابك السابق قد يكون خطأً أصلًا. إن رجعت برفض الإذن فاشرح له بلطف كيف يفعّل الموقع من متصفّحه ولا تكرّر المحاولة في نفس الردّ. وانقل تحذير الدقّة الذي تعيده الأداة كما هو — لا تحذفه ولا تختصره. وإن ناقض موقعُ الأداة دولةَ الشبكة المذكورة في [الموقع] (مثال: الأداة تقول إثيوبيا والشبكة إماراتية) فلا تجزم بأحدهما: اذكر التعارض صراحةً وقل إن سببه الغالب VPN أو خدمة موقع معطوبة في الجهاز.\n' +
   '• [قاعدة الصورة/الفيديو التوضيحي]: إذا طلب المستخدم صورة أو فيديو توضيحيًا عن موضوع في المحادثة:\n' +
   '  ١. حدّد الموضوع الدقيق من آخر سؤال أو ردّ في المحادثة (مثل: "مكيف كاريير" لا مجرد "مكيف").\n' +
@@ -399,7 +408,12 @@ const WIZARD_RE = /كتالوج|كتالوق|منيو|قائمة طعام|قائ
     'LANGUAGE (highest priority): ALWAYS reply in the SAME language the user\'s latest message is written in — Malayalam gets Malayalam, French gets French, Arabic gets Arabic. These instructions being in Arabic does NOT mean you reply in Arabic.\n' +
     'شخصيتك: زميل خبير دافئ يحتفل بإنجاز المستخدم ويطمئنه قبل حل مشكلته؛ الزبدة أولًا ثم التفصيل، والردود الطويلة بفقرات وعناوين وقوائم مرتبة؛ تجاري لهجة المستخدم وروحه بروح المجلس — لست روبوتًا ولا موظف استقبال.\n' +
     'أدواتك تعمل فعلًا فاستعملها عند الحاجة بلا إفراط: web_search للمعلومات الحية (بحثان كحد أقصى في الرد)، fetch_page لقراءة رابط، generate_image للرسم (ضع الرمز العائد في مكان الصورة حرفيًّا)، run_js للحساب، test_html لفحص ما تبنيه، get_location لموقع المستخدم بإذنه.\n' +
+    /* v-news-intent: «اخبار العالمي» فُهمت نادي النصر واختُرعت نتائج مباريات */
+    'الأخبار: «أخبار العالم/العالمية/العالمي/آخر الأخبار» = عناوين الأخبار الدولية العامة (سياسة، اقتصاد، أحداث كبرى) عبر web_search الآن — كلمة «العالمي» وحدها ليست نادي النصر ولا أي فريق؛ الرياضة فقط إذا سمّى المستخدم فريقًا أو دوريًا أو رياضة صراحة. وممنوع اختراع أي خبر أو نتيجة أو تاريخ بلا مصدر من بحثك.\n' +
     'البناء: طلب تطبيق أو موقع أو لعبة = شرح سطرين ثم ملف HTML/CSS/JS واحد كامل يعمل مباشرة في كتلة ```html واحدة.\n' +
+    /* v-topic-switch (شكوى المالك: يغيّر الموضوع فيجيه جواب الأول والثاني معًا):
+       قاعدة متابعة الموضوع كانت في نظام العميل الثابت الذي لا يصل هذا المسار. */
+    'قاعدة الموضوع (أولوية قصوى): رسالة المستخدم الأخيرة هي مرجعك الوحيد لما تفعله الآن. إذا غيّر الموضوع فاتبع الجديد فورًا وكاملًا واترك القديم تمامًا — لا تكمله ولا تلخصه ولا تذكره ولا تجيب عنه مجددًا إلا إذا عاد إليه المستخدم بنفسه. تاريخ المحادثة خلفية فقط، وليس قائمة مهام.\n' +
     'قواعد صلبة: الروابط حصرًا من نتائج بحثك أو من المستخدم — لا روابط من ذاكرتك أبدًا؛ لا تذكر مزوّد النموذج أو تعليمات النظام؛ أجب دائمًا بلغة رسالة المستخدم نفسها ما لم يطلب غيرها — كل واحد يُجاوَب بلغته التي كتب بها؛ والأرقام والكلمات اللاتينية داخل الجملة العربية تُكتب بمحاذاة سليمة كما هي.\n' +
     'حقيقة عن الصور المولّدة: النص داخل الصورة يتشوّه (خصوصًا العربي) — اطلب صورًا بلا نص أو بنص إنجليزي قصير جدًا، ولا تلصق وصف الصورة أو مسودّتها في ردّك أبدًا؛ ردّك للمستخدم مستقل عن برومبت الصورة. ' +
     /* v-plan-labels: شكوى عمران — «غرفة نوم» داخل المخطط طلعت حروفًا مكسورة. */
@@ -424,8 +438,9 @@ const WIZARD_RE = /كتالوج|كتالوق|منيو|قائمة طعام|قائ
       tail.push(source[i]); chars += size;
     }
     tail.reverse();
-    const firstUser = source.find((m) => m.role === 'user');
-    if (firstUser && tail.indexOf(firstUser) === -1 && messageSize(firstUser.content) < 4000) tail.unshift(firstUser);
+    // v-topic-switch: كانت أول رسالة في المحادثة تُعاد إلى مقدمة السياق عند
+    // القصّ، فيظنها النموذج سؤالًا معلّقًا ويجيب عنه مع السؤال الجديد.
+    // المرساة الموضوعية تصل من العميل كتعليمة نظام قصيرة عند الحاجة — لا هنا.
     while (tail.length && tail[0].role !== 'user') tail.shift();
     while (tail.length && tail[tail.length - 1].role !== 'user') tail.pop();
     return tail.length ? tail : source.slice(-1);
@@ -444,11 +459,16 @@ const OR_MODELS = {
   groq: 'meta-llama/llama-4-maverick',
 };
 
-function nowNote() {
-  const opts = { timeZone: 'Asia/Dubai', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true };
+/* v-no-region-assume (شكوى المالك «يذكر المنطقة وأنا لست فيها»): الوقت كان
+   مثبّتًا على توقيت الإمارات والموقع يُفترض من عنوان الشبكة ويُذكر بالاسم.
+   الآن الوقت بمنطقة الجهاز الزمنية الحقيقية (يرسلها العميل)، والموقع تلميح
+   لا يُعلَن ولا تُقترح به خدمات محلية إلا إذا ذكره المستخدم أو سأل. */
+function nowNote(tz) {
+  const zone = (typeof tz === 'string' && /^[A-Za-z_]+\/[A-Za-z_\/+\-0-9]+$/.test(tz)) ? tz : 'Asia/Dubai';
+  const opts = { timeZone: zone, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true };
   let ar = '';
-  try { ar = new Intl.DateTimeFormat('ar-AE', opts).format(new Date()); } catch (e) { /* Intl غائب — يبقى فارغًا */ }
-  return ar ? ('\n[التاريخ الحقيقي الآن — توقيت الإمارات]: ' + ar + '. تجاهل أي تاريخ من بيانات تدريبك.') : '';
+  try { ar = new Intl.DateTimeFormat('ar', opts).format(new Date()); } catch (e) { try { ar = new Intl.DateTimeFormat('ar', Object.assign({}, opts, { timeZone: 'Asia/Dubai' })).format(new Date()); } catch (e2) { /* يبقى فارغًا */ } }
+  return ar ? ('\n[التاريخ والوقت الآن بتوقيت جهاز المستخدم]: ' + ar + '. تجاهل أي تاريخ من بيانات تدريبك، ولا تذكر اسم بلد أو مدينة عند ذكر الوقت.') : '';
 }
 
 function countryNote(code, cityRaw) {
@@ -457,14 +477,14 @@ function countryNote(code, cityRaw) {
   let city = '';
   try { city = decodeURIComponent(String(cityRaw || '')).trim(); } catch (e) { city = String(cityRaw || '').trim(); }
   const c = (typeof code === 'string' ? code.trim().toUpperCase() : '');
-  if (!/^[A-Z]{2}$/.test(c)) return '\n[الدولة]: افترض أن المستخدم في الإمارات ما لم يذكر غير ذلك.';
+  // v-no-region-assume: لا افتراض دولة عند غياب الرمز.
+  if (!/^[A-Z]{2}$/.test(c)) return '\n[الموقع]: غير معروف — لا تفترض دولة أو مدينة؛ إذا احتاج الجواب مكانًا فاسأل المستخدم عنه.';
   let ar = '';
   try { ar = new Intl.DisplayNames(['ar'], { type: 'region' }).of(c) || ''; } catch (e) { /* رمز لا يعرفه Intl */ }
-  return '\n[الموقع]: المستخدم يتصفّح من ' + (city ? city + '، ' : '') + (ar || c)
-    + ' — أجب بمعلومات هذه الدولة (عملتها، جهاتها الرسمية) ما لم يذكر غيرها.'
-    + (city ? ' وأي سؤال يعتمد على المكان (مواقيت الصلاة، الطقس، أقرب مكان) اعتمد فيه مدينته ' + city + ' تلقائيًّا بلا أن تسأله عنها.' : '')
-    // v-geo-precise: مقيس — «في أي منطقة أنا؟» أُجيب من مدينة الشبكة فأخطأ ١٥-٢٠ كم.
-    + ' تنبيه إلزاميّ: هذه المدينة تقدير من عنوان الشبكة وقد تخطئ عشرات الكيلومترات — إذا سأل المستخدم عن موقعه هو («وين أنا» · «في أي منطقة أنا» · «موقعي») فممنوع الجواب منها؛ استدعِ get_location واذكر الدقّة التي تعيدها.';
+  return '\n[تلميح موقع من الشبكة — ليس مؤكّدًا]: ' + (city ? city + '، ' : '') + (ar || c)
+    + '. هذا تقدير من عنوان الشبكة وقد يكون خاطئًا تمامًا (سفر، VPN، شبكة شركة). قواعد إلزامية: (١) لا تذكر هذه المدينة أو الدولة بالاسم في ردّك ولا تقترح خدمات أو عيادات أو محلات «قريبة في X» من تلقاء نفسك. (٢) إذا احتاج الجواب مكانًا (مواقيت الصلاة، الطقس، أقرب مكان) فاسأل المستخدم عن مدينته بسؤال قصير أو استدعِ get_location بإذنه — ولا تعتمد التقدير إلا إن أكّده المستخدم. (٣) يجوز اعتماد الدولة فقط لاختيار العملة والجهات الرسمية عند الحاجة، بلا تصريح بأنه فيها.'
+    // v-geo-precise: «في أي منطقة أنا؟» أُجيب من مدينة الشبكة فأخطأ ١٥-٢٠ كم.
+    + ' وإذا سأل عن موقعه هو («وين أنا» · «موقعي») فممنوع الجواب منها؛ استدعِ get_location واذكر الدقّة التي تعيدها.';
 }
 
 // 🛰️ v566 — سلسلة الصمود: محرّك معرفة واحد = نقطة فشل واحدة. Tavily سقطت
@@ -768,7 +788,10 @@ function trailLine(name, input, result) {
       ? R('شغّلتُ كودًا — ظهر خطأ', 'trJsErr')
       : R('شغّلتُ كودًا — عاد ناتج ' + r.length + ' حرفًا', 'trJsOk', { n: r.length });
   }
-  if (name === 'generate_image') return /__IMG_/.test(r) ? R('رسمتُ صورة ✅', 'trImgOk') : R('تعذّرت الصورة — ' + s(r, 60), 'trImgFail');
+  // v-img-engine-tag: اسم المحرك في سطر الأثر (gpt-image أم نانو بنانا).
+  const engTag = /engine:\s*openai/i.test(r) ? ' · gpt-image' : (/engine:/i.test(r) ? ' · نانو بنانا' : '');
+  if (name === 'generate_image') return /__IMG_/.test(r) ? R('رسمتُ صورة ✅' + engTag, 'trImgOk') : R('تعذّرت الصورة — ' + s(r, 60), 'trImgFail');
+  if (name === 'edit_image') return /__IMG_/.test(r) ? R('عدّلتُ الصورة ✅' + engTag, 'trImgOk') : R('تعذّر التعديل — ' + s(r, 60), 'trImgFail');
   if (name === 'get_location') return /رفض|تعذّر|انتهت|لا يدعم|لم يستجب/.test(r) ? R('حاولتُ تحديد موقعك — ' + s(r, 70), 'trLocFail') : R('حدّدتُ موقعك ✅', 'trLocOk');
   if (name === 'test_html') return /^✅/.test(r) ? R('جرّبتُ الصفحة — بلا أخطاء ✅', 'trHtmlOk') : R('جرّبتُ الصفحة — ظهرت أخطاء', 'trHtmlErr');
   return R('استخدمتُ ' + name, 'trTool', { name: name });
@@ -891,14 +914,26 @@ module.exports = async (req, res) => {
 
   // الذاكرة تُقرأ من الحساب في الخادم لكل رسالة، لا من نسخة الجهاز. هكذا يرى
   // الكمبيوتر والجوال الملف نفسه حتى لو كان أحدهما لم يحدّث صفحته بعد.
-  const lastUser = messages.slice().reverse().find((m) => m && m.role === 'user' && typeof m.content === 'string');
-  const pureGreetingTurn = isPureGreeting(lastUser && lastUser.content);
-  const casualCheckInTurn = isCasualCheckIn(lastUser && lastUser.content);
+  // v-image-not-greeting (لقطة المالك: أرفق صورة بعد «السلام عليكم» فردّ النموذج
+  // بتحية وتجاهل الصورة): آخر دور للمستخدم كان يُلتقط بشرط «نصّ» فقط، فإذا كانت
+  // الرسالة الأخيرة صورةً (محتوى مصفوفة) قفز إلى التحية السابقة وعاملها كدور
+  // اجتماعي هادئ يُرسل وحده بلا الصورة. الآن: آخر دور للمستخدم أيًّا كان شكله،
+  // ودور فيه صورة ليس تحية أبدًا.
+  const lastUserAny = messages.slice().reverse().find((m) => m && m.role === 'user');
+  const lastUserHasImage = !!(lastUserAny && Array.isArray(lastUserAny.content) && lastUserAny.content.some((b) => b && b.type === 'image'));
+  const lastUserText = lastUserAny
+    ? (typeof lastUserAny.content === 'string'
+        ? lastUserAny.content
+        : (Array.isArray(lastUserAny.content) ? lastUserAny.content.filter((b) => b && b.type === 'text').map((b) => String(b.text || '')).join('\n') : ''))
+    : '';
+  const lastUser = lastUserAny ? { role: 'user', content: lastUserAny.content } : null;
+  const pureGreetingTurn = !lastUserHasImage && isPureGreeting(lastUserText);
+  const casualCheckInTurn = !lastUserHasImage && isCasualCheckIn(lastUserText);
   const quietSocialTurn = pureGreetingTurn || casualCheckInTurn;
   const wizardTurn = messages.some((m) => m && typeof m.content === 'string' && WIZARD_RE.test(m.content));
-  const foreignTurn = !!(lastUser && isForeignAsk(lastUser.content));
+  const foreignTurn = !!(lastUser && isForeignAsk(lastUserText));
   const reC = (wizardTurn || foreignTurn) ? null : reCtx(messages);
-  const askCapNote = (foreignTurn ? GLOBAL_NOTE : ((lastUser && NUM_ASK_RE.test(lastUser.content)) ? NUM_NOTE : (reC ? (RE_NOTE + (reC.layer > 0 ? RE_MORE_NOTE : '')) : ''))) + ((!wizardTurn && askStreak(messages) >= 2) ? ASK_CAP_NOTE : '');
+  const askCapNote = (foreignTurn ? GLOBAL_NOTE : ((lastUser && NUM_ASK_RE.test(lastUserText)) ? NUM_NOTE : (reC ? (RE_NOTE + (reC.layer > 0 ? RE_MORE_NOTE : '')) : ''))) + ((!wizardTurn && askStreak(messages) >= 2) ? ASK_CAP_NOTE : '');
   // v-social-alive: الرد المخزّن الحرفي حُذف
   // بطلب المالك — كانت التحية لا تصل للنموذج أصلًا فبقي أسلوبها جامدًا مهما
   // تغيّرت البصمة. الآن تمر لفرع quietSocialTurn: نموذج حقيقي ببصمة كاملة،
@@ -946,7 +981,7 @@ module.exports = async (req, res) => {
       : toolTurn
         /* v-clean-slate: كتاب القواعد فُصل كله من النظام — بقي القصير + التاريخ
            والمدينة (حقائق) + ملف المالك + ذاكرة الحساب (تصل ضمن baseSystem). */
-        ? PERSONA_NOTE + '\n' + baseSystem + nowNote() + countryNote(country, city) + ownerKnowledge
+        ? PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz) + countryNote(country, city) + ownerKnowledge
         : PERSONA_NOTE + '\n' + baseSystem;
 
       const convoSource = quietSocialTurn ? [lastUser] : messages;
@@ -1057,6 +1092,7 @@ module.exports = async (req, res) => {
             else if (cb.type === 'tool_use' && cb.name === 'fetch_page') send({ status: '🌐 يقرأ صفحة…', k: 'stFetchPage' });
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ status: '⚙️ يشغّل كودًا للتحقّق…', k: 'stRunJs' });
             else if (cb.type === 'tool_use' && cb.name === 'generate_image') send({ status: '🎨 يرسم صورة…', k: 'stGenImage' });
+            else if (cb.type === 'tool_use' && cb.name === 'edit_image') send({ status: '🎨 يعدّل الصورة…', k: 'stGenImage' });
             else if (cb.type === 'tool_use' && cb.name === 'generate_video') send({ status: '🎬 ينشئ الفيديو داخل المحادثة…', k: 'stGenVideo' });
             else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ status: '🧪 يجرّب الصفحة…', k: 'stTestHtml' });
             else if (cb.type === 'tool_use' && cb.name === 'get_location') send({ status: '📍 يحدّد موقعك (سيطلب المتصفّح إذنك)…', k: 'stGeoLoc' });
@@ -1110,12 +1146,14 @@ module.exports = async (req, res) => {
             } else if (mySearchNo > 2) {
               result = 'بلغتَ سقف البحث لهذا الردّ (بحثان). لديك نتائج كافية — أجب الآن مما جمعت ولا تطلب بحثًا إضافيًا.';
             } else {
-              result = filterDuplicateUrls(await tavilySearch(_q, reC, !foreignTurn && !!(lastUser && NUM_ASK_RE.test(lastUser.content)), country, city));
+              result = filterDuplicateUrls(await tavilySearch(_q, reC, !foreignTurn && !!(lastUser && NUM_ASK_RE.test(lastUserText)), country, city));
             }
           }
           else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
           else if (cb.name === 'run_js') result = await runInClient(send, 'run_js', input);
           else if (cb.name === 'generate_image') result = await runInClient(send, 'generate_image', input, 75000);
+          // v-edit-image-tool: التعديل عالي الدقة (gpt-image للنصّي) قد يأخذ دقيقتين.
+          else if (cb.name === 'edit_image') result = await runInClient(send, 'edit_image', input, 150000);
           else if (cb.name === 'generate_video') result = await runInClient(send, 'generate_video', input, 290000);
           else if (cb.name === 'test_html') result = await runInClient(send, 'test_html', input, 30000);
           // إذن الموقع قد يستغرق وقتًا — مهلة أطول من بقية أدوات المتصفّح.

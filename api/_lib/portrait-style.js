@@ -27,6 +27,7 @@ async function openaiPortraitEdit(promptText, imageBase64, mimeType) {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + key },
       body: form,
+      signal: AbortSignal.timeout(240000), /* v-image-timeout */
     });
     const d = await r.json();
     if (!r.ok) { console.warn('[portrait-style] openai HTTP ' + r.status + ' ' + String((d.error && d.error.message) || '').slice(0, 120)); return null; }
@@ -179,6 +180,7 @@ module.exports = async (req, res) => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(frameReqBody),
+          signal: AbortSignal.timeout(240000), /* v-image-timeout */
         });
         const frameData = await frameUpstream.json();
         if (!frameUpstream.ok) {
@@ -201,9 +203,9 @@ module.exports = async (req, res) => {
           userPrompt: FRAME_PROMPTS[i],
           allowStyleChange: true,
         });
-        if (!frameGuard.ok) {
-          const unavailable = frameGuard.reason === 'validation_unavailable';
-          res.status(unavailable ? 502 : 422).json({ error: publicGuardError(frameGuard), retryable: unavailable });
+        if (!frameGuard.ok && frameGuard.reason === 'validation_unavailable') console.warn('[portrait-style] frame guard unavailable — passing result through'); /* v-guard-fail-open */
+        else if (!frameGuard.ok) {
+          res.status(422).json({ error: publicGuardError(frameGuard), retryable: false });
           return;
         }
         frames.push(frameImgPart.inlineData.data);
@@ -397,6 +399,7 @@ module.exports = async (req, res) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(reqBody),
+      signal: AbortSignal.timeout(240000), /* v-image-timeout */
     });
 
     const data = await upstream.json();
@@ -435,9 +438,11 @@ module.exports = async (req, res) => {
         userPrompt: promptText,
         allowStyleChange: !!STYLE_PROMPTS[style] || ['timeshift', 'adposter', 'celebtoon'].includes(style) || style === 'stickerpack',
       });
-      if (!guard.ok) {
-        const unavailable = guard.reason === 'validation_unavailable';
-        res.status(unavailable ? 502 : 422).json({ error: publicGuardError(guard), retryable: unavailable });
+      /* v-guard-fail-open: تعطّل الحارس نفسه (مهلة/حصة) لا يُسقط صورةً جاهزة —
+         نعرضها ونسجّل؛ الرفض فقط عند حكمٍ صريح بتغيير الهوية أو الأسلوب. */
+      if (!guard.ok && guard.reason === 'validation_unavailable') console.warn('[portrait-style] guard unavailable — passing result through');
+      else if (!guard.ok) {
+        res.status(422).json({ error: publicGuardError(guard), retryable: false });
         return;
       }
     }

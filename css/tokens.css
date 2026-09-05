@@ -361,25 +361,33 @@
   #sectionsToolsOverlay.show{display:flex;}
   #sectionsToolsPopup{width:100%; max-width:none; height:100%; max-height:none; overflow-y:auto; background:var(--panel,#141420); border:none; border-radius:0; padding:calc(10px + env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom));}
   @media (min-width: 761px){ #sectionsToolsOverlay{align-items:center; padding:20px;} #sectionsToolsPopup{max-width:560px; height:auto; max-height:82vh; border:1px solid var(--omGoldSoft); border-radius:var(--r-4); padding:14px 14px 18px;} }
-  #sectionsToolsPopup .stpClose{display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); color:#ccc; margin:0 0 4px auto; cursor:pointer;}
+  /* v-tools-x-fixed (شكوى المالك: «X مش ثابت نفس المكان»): زر الإغلاق كان يقلب
+     جهته مع اتجاه اللغة (يمين بالعربي، يسار بالإنجليزي) على التابلت والحاسوب.
+     margin-right:auto يدفعه إلى اليسار فعليًّا في الاتجاهين — نفس ركن الجوال. */
+  #sectionsToolsPopup .stpClose{display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); color:#ccc; margin:0 auto 4px 0; cursor:pointer;}
   html[dir="ltr"] #sectionsToolsPopup .stpClose{margin:0 auto 4px 0;}
   #sectionsToolsPopup .ptGrid .btn img.stp3d{width:34px; height:34px; object-fit:contain; pointer-events:none;}
   #sectionsToolsPopup .ptGrid .btn.has3d svg{display:none;}
   #sectionsToolsPopup .ptSectionTitle{font-size:12px; color:var(--accent-ink); font-weight: var(--w-bold); padding:10px 6px 6px;}
   #sectionsToolsPopup .ptGrid .btn .btnLabel{display:inline-flex !important;}
   #sectionsToolsPopup .ptGrid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; padding:2px 2px 6px;}
-  #sectionsToolsPopup .ptGrid .btn{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; width:100%; background:rgba(255,255,255,.02); border:1px solid var(--omGoldSoft); border-radius:var(--r-3); padding:12px 4px; font-size: var(--fs-5); min-height:80px; text-align:center; white-space:normal; line-height:1.35;}
+  /* v-tools-stable (شكوى المالك: بطاقات الأدوات «تتحرك من مكانها» بين اللغات):
+     العناوين الطويلة (فرنسي/روسي/مليالم) تلتف لسطرين فترتفع بطاقتها وحدها
+     ١٠٥→١٢٤ وتنزاح الصفوف. الآن ارتفاع موحّد لكل البطاقات في كل اللغات،
+     والعنوان مقصوص على سطرين — الشبكة لا تتغير مهما تغيرت اللغة. */
+  #sectionsToolsPopup .ptGrid .btn{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; width:100%; background:rgba(255,255,255,.02); border:1px solid var(--omGoldSoft); border-radius:var(--r-3); padding:12px 4px; font-size: var(--fs-5); min-height:124px; height:124px; box-sizing:border-box; text-align:center; white-space:normal; line-height:1.3;}
+  #sectionsToolsPopup .ptGrid .btn .btnLabel{display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; max-height:2.6em; width:100%; padding:0 2px;}
   #sectionsToolsPopup .ptGrid .btn:hover{border-color:var(--omGold); background:rgba(var(--accent-tint-rgb),.08);}
   #sectionsToolsPopup .ptGrid .btn svg{width:22px; height:22px;}
   #sectionsToolsPopup .ptGrid .btn .rowChevron{display:none;}
-  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+1) svg{color:#8b5cf6;}
-  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+2) svg{color:#3b82f6;}
-  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+3) svg{color:#10b981;}
-  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+4) svg{color:#f59e0b;}
-  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+5) svg{color:#14b8a6;}
-  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+6) svg{color:#ec4899;}
-  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+7) svg{color:#06b6d4;}
-  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+8) svg{color:#ef4444;}
+  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+1) svg{color:var(--omGold);}
+  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+2) svg{color:var(--omGold);}
+  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+3) svg{color:var(--omGold);}
+  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+4) svg{color:var(--omGold);}
+  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+5) svg{color:var(--omGold);}
+  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+6) svg{color:var(--omGold);}
+  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+7) svg{color:var(--omGold);}
+  #sectionsToolsPopup .ptGrid .btn:nth-child(8n+8) svg{color:var(--omGold);}
   .rowChevron{margin-inline-start:auto; opacity:.55; flex:0 0 auto;}
   html[dir="ltr"] .rowChevron{transform:scaleX(-1);}
   .miniSwitch{margin-inline-start:auto; width:30px; height:16px; border-radius:var(--r-pill); background:rgba(255,255,255,.18); position:relative; flex:0 0 auto; transition:background .2s;}
@@ -763,17 +771,35 @@
   .msgMoreMenu{ position:absolute; z-index:9999; background:var(--panel,#1c2230); border:1px solid var(--border,rgba(255,255,255,.12)); border-radius:var(--r-2); box-shadow:var(--sh-2); padding:6px; min-width:170px; font-size: var(--fs-3); }
   .msgMoreMenu button{ display:flex; width:100%; text-align:start; background:none; border:none; padding:9px 10px; border-radius:var(--r-1); cursor:pointer; color:var(--text); font-size: var(--fs-3); }
   .msgMoreMenu button:hover{ background:var(--panel2); }
-  html:not(.mobile-ui) .chat-status-fold{font-size:13px; line-height:1.7; opacity:.9;}
-  html:not(.mobile-ui) .chat-status-fold summary{display:flex; align-items:center; gap:7px; cursor:pointer; list-style:none; width:max-content; max-width:100%;}
-  html:not(.mobile-ui) .chat-status-fold summary::-webkit-details-marker{display:none;}
-  html:not(.mobile-ui) .chat-status-fold summary::after{content:'⌄'; color:var(--muted); font-size:11px; margin-inline-start:2px;}
-  html:not(.mobile-ui) .chat-status-fold[open] summary::after{transform:rotate(180deg);}
-  html:not(.mobile-ui) .chat-status-icon{flex:0 0 auto; color:var(--accent2);}
-  html:not(.mobile-ui) .chat-status-running{animation:omranPulse 1.4s ease-in-out infinite;}
-  html:not(.mobile-ui) .chat-status-history{display:flex; flex-direction:column; gap:4px; margin-top:6px; padding-inline-start:18px; color:var(--muted);}
-  html:not(.mobile-ui) .chat-status-row{display:flex; align-items:flex-start; gap:7px;}
-  html:not(.mobile-ui) .chat-status-row.done>span:first-child{color:#2e9e6b;}
-  html:not(.mobile-ui) .chat-status-row.fail>span:first-child{color:#c0453f;}
+  .chat-status-fold{font-size:13px; line-height:1.7; opacity:.9; max-width:100%; min-width:0;} /* v-status-tidy: نفس العرض المطويّ على الجوال */
+  .chat-status-text{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .chat-status-fold[open] .chat-status-text{white-space:normal;}
+  .chat-status-fold summary{display:flex; align-items:center; gap:7px; cursor:pointer; list-style:none; width:max-content; max-width:100%;}
+  .chat-status-fold summary::-webkit-details-marker{display:none;}
+  .chat-status-fold summary::after{content:'⌄'; color:var(--muted); font-size:11px; margin-inline-start:2px;}
+  .chat-status-fold[open] summary::after{transform:rotate(180deg);}
+  .chat-status-icon{flex:0 0 auto; color:var(--accent2);}
+  .chat-status-running{animation:omranPulse 1.4s ease-in-out infinite;}
+  .chat-status-history{display:flex; flex-direction:column; gap:4px; margin-top:6px; padding-inline-start:18px; color:var(--muted);}
+  .chat-status-row{display:flex; align-items:flex-start; gap:7px;}
+  .chat-status-row.done>span:first-child{color:#2e9e6b;}
+  .chat-status-row.fail>span:first-child{color:#c0453f;}
+  /* v-status-ai: مظهر «الذكاء يكتب» — حبّة ذهبية خفيفة، شرارة نابضة، لمعان يمرّ على النص، ونقاط كتابة */
+  .chat-status-fold summary{padding:7px 13px; border-radius:999px; background:linear-gradient(90deg, rgba(212,175,55,.12), rgba(212,175,55,.03)); border:1px solid rgba(212,175,55,.28); box-shadow:inset 0 0 18px rgba(212,175,55,.06), 0 2px 12px rgba(0,0,0,.18);}
+  .chat-status-fold[open] summary{border-radius:16px;}
+  .chat-status-spark{color:var(--omGold,#d4af37) !important; display:inline-block; animation:omranSpark 1.6s ease-in-out infinite; text-shadow:0 0 8px rgba(212,175,55,.65);}
+  .chat-status-running{animation:none; background:linear-gradient(90deg, var(--muted,#98a0b3) 0%, var(--muted,#98a0b3) 35%, #fff 48%, var(--omGold,#d4af37) 52%, var(--muted,#98a0b3) 65%, var(--muted,#98a0b3) 100%); background-size:240% 100%; -webkit-background-clip:text; background-clip:text; color:transparent; animation:omranShimmer 2.2s linear infinite;}
+  .chat-status-dots{display:inline-flex; gap:3px; align-items:center; margin-inline-start:2px;}
+  .chat-status-dots i{width:4px; height:4px; border-radius:50%; background:var(--omGold,#d4af37); opacity:.35; animation:omranDots 1.2s ease-in-out infinite;}
+  .chat-status-dots i:nth-child(2){animation-delay:.2s;}
+  .chat-status-dots i:nth-child(3){animation-delay:.4s;}
+  /* v-status-glow (طلب المالك «شي وميض»): وميض ذهبي يتنفّس حول الحبّة ما دام الذكاء يعمل */
+  .chat-status-fold summary.is-running{animation:omranGlow 2.4s ease-in-out infinite; border-color:rgba(212,175,55,.45);}
+  @keyframes omranGlow{0%,100%{box-shadow:inset 0 0 18px rgba(212,175,55,.06), 0 0 0 rgba(212,175,55,0)} 50%{box-shadow:inset 0 0 22px rgba(212,175,55,.14), 0 0 22px rgba(212,175,55,.38)}}
+  @keyframes omranSpark{0%,100%{transform:scale(.85) rotate(0deg); opacity:.75} 50%{transform:scale(1.2) rotate(25deg); opacity:1}}
+  @keyframes omranShimmer{from{background-position:220% 0} to{background-position:-20% 0}}
+  @keyframes omranDots{0%,100%{opacity:.25; transform:translateY(0)} 50%{opacity:1; transform:translateY(-2px)}}
+  @media (prefers-reduced-motion: reduce){ .chat-status-spark, .chat-status-running, .chat-status-dots i, .chat-status-fold summary.is-running{animation:none;} .chat-status-running{color:var(--text,#fff); background:none;} }
   html:not(.mobile-ui) .msg.msg-streaming::after{content:''; display:inline-block; width:6px; height:1em; margin-inline-start:3px; vertical-align:-.15em; border-radius:3px; background:currentColor; opacity:.55; animation:omranPulse 1s ease-in-out infinite;}
 @keyframes omranPulse{0%,100%{opacity:.6}50%{opacity:1}}
   /* v418 (٦ أغسطس): قائمة المزوّدين التسعة مخفيّة على الكمبيوتر — التوجيه صار تلقائيًّا بالتخصص.
@@ -915,10 +941,12 @@ html.store-safe #aboutStocksCard{display:none !important;}
    (14px، 46px، 90px من اليسار وبأشكال شتى) — نقطة واحدة ثابتة أعلى يسار
    الشاشة وشكل موحد. الجوال فقط؛ حاسوبيًا تبقى داخل رؤوس نوافذها. */
 @media (max-width: 760px){
-  #portraitStyleCloseBtn, #videoMakerCloseBtn, #designAiCloseBtn, #fashionAiCloseBtn,
-  #studioAiCloseBtn, #tvClose, #stocksCloseBtn, #constructionCloseBtn, #expCloseBtn,
-  #docX, #govX, #cvX, #fbClose, #eduCloseBtn, #religionCloseBtn, #emailAssistCloseBtn,
-  #qClose, #sectionsToolsPopup .stpClose{
+  /* v-tools-x-scroll (طلب المالك ٣ سبتمبر): أزرار X لصفحات الأدوات الكاملة
+     (أنماط الصور، الفيديو، الديكور، الأزياء، ستايل، المقاولات، التفسير، البريد)
+     أُخرجت من التثبيت — تبقى في رأس الصفحة وتتحرك معها. */
+  #tvClose, #expCloseBtn,
+  #docX, #govX, #cvX, #fbClose, #eduCloseBtn,
+  #qClose{ /* v-tools-x-scroll: X شاشة الأدوات يتحرك مع الصفحة لا مثبّت (طلب المالك) — أُخرج من قائمة التثبيت */
     position:fixed !important;
     top:calc(10px + env(safe-area-inset-top, 0px)) !important;
     left:12px !important;
@@ -945,3 +973,116 @@ html.store-safe #aboutStocksCard{display:none !important;}
     box-shadow:0 2px 10px rgba(0,0,0,.4) !important;
   }
 }
+
+/* v-tools-fullpage (طلب المالك ٣ سبتمبر «خلهم صفحة كاملة»): نوافذ الأدوات
+   كانت بطاقات عائمة فوق شاشة الأدوات — الآن كل أداة صفحة كاملة تملأ الشاشة
+   (كما الأسهم والتعليم أصلًا). التلفزيون خارج هذا التعديل. */
+#portraitStyleModal, #videoMakerModal, #designAiModal, #fashionAiModal,
+#studioAiModal, #constructionModal, #religionModal, #emailAssistModal{
+  padding:0 !important;
+  align-items:stretch !important;
+  justify-content:stretch !important;
+  background:var(--panel,#141420) !important;
+}
+#portraitStyleModal > div, #videoMakerModal > div, #designAiModal > div, #fashionAiModal > div,
+#studioAiModal > div, #constructionModal > div, #religionModal > div, #emailAssistModal > div{
+  width:100% !important;
+  max-width:none !important;
+  height:100% !important;
+  max-height:none !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  box-sizing:border-box !important;
+  padding-bottom:calc(28px + env(safe-area-inset-bottom,0px)) !important;
+}
+/* v-tools-noscroll (طلب المالك: «شيل شريط السحب من الأدوات كامل في الكمبيوتر والهواتف»):
+   بلا شريط سحب ظاهر في كل نوافذ الأدوات على كل المقاسات — التمرير يعمل كما هو. التلفزيون خارج هذا. */
+#sectionsToolsPopup, #sectionsToolsPopup *, #portraitStyleModal *, #videoMakerModal *, #designAiModal *, #fashionAiModal *,
+#studioAiModal *, #constructionModal *, #religionModal *, #emailAssistModal *, #eduHubModal *, #expModal *, .xm *,
+#stocksModal *, #omranQiblaShell *, #fbOverlay *, #adStudioPage *, #docModal *, #govModal *, #cvModal *{scrollbar-width:none !important; -ms-overflow-style:none !important;}
+#sectionsToolsPopup::-webkit-scrollbar, #sectionsToolsPopup *::-webkit-scrollbar, #portraitStyleModal *::-webkit-scrollbar, #videoMakerModal *::-webkit-scrollbar, #designAiModal *::-webkit-scrollbar, #fashionAiModal *::-webkit-scrollbar,
+#studioAiModal *::-webkit-scrollbar, #constructionModal *::-webkit-scrollbar, #religionModal *::-webkit-scrollbar, #emailAssistModal *::-webkit-scrollbar, #eduHubModal *::-webkit-scrollbar, #expModal *::-webkit-scrollbar, .xm *::-webkit-scrollbar,
+#stocksModal *::-webkit-scrollbar, #omranQiblaShell *::-webkit-scrollbar, #fbOverlay *::-webkit-scrollbar, #adStudioPage *::-webkit-scrollbar, #docModal *::-webkit-scrollbar, #govModal *::-webkit-scrollbar, #cvModal *::-webkit-scrollbar{width:0 !important; height:0 !important; display:none !important;}
+
+/* v-vmk-static-cta (لقطة المالك: زر «إنشاء الفيديو» يتحرك ويغطي النص): كان لاصقًا أسفل النافذة — ثابت في مكانه */
+#videoMakerModal #videoMakerGenerateBtn{position:static !important; box-shadow:none !important;}
+/* v-stocks-x (لقطة المالك: ✕ الأسهم دائرة كبيرة تغطي الرسم): أُخرجت من التثبيت — تبقى في رأس الصفحة كبقية الأدوات */
+
+/* v-cx-x (طلب المالك: «في المقاولات X وحدة معهم»): رأس المقاولات بلا توزيع فكانت ✕ ملاصقة للعنوان — الآن في الركن كبقية الأدوات */
+#constructionModal .cx-head{justify-content:space-between !important;}
+#constructionModal .cx-head #constructionCloseBtn{margin-inline-start:auto !important;}
+
+/* v-tools-deskfull (طلب المالك ٤ سبتمبر «في الكمبيوتر كلها الشاشة كاملة نفس الهواتف»):
+   على الكمبيوتر كان المحتوى محصورًا في ٩٠٠ بكسل وسط الشاشة — الآن يملأ العرض كله كالجوال. */
+@media (min-width: 761px){
+  #portraitStyleModal > div, #designAiModal > div, #fashionAiModal > div,
+  #studioAiModal > div, #constructionModal > div, #religionModal > div, #emailAssistModal > div{
+    /* v-tools-deskfit (شكوى المالك «كبرت الشاشة زيادة»): الخلفية شاشة كاملة، والمحتوى بعرض مريح 1100px في الوسط */
+    padding-left:max(28px, calc((100vw - 1100px) / 2)) !important;
+    padding-right:max(28px, calc((100vw - 1100px) / 2)) !important;
+  }
+  /* v-vmk-fit (لقطة المالك على التابلت: ✕ بجانب العنوان والنموذج بعرض صفر): صندوق صانع الفيديو هو
+     شبكة الاستوديو نفسها، فالحشو الكبير كان يخنق أعمدتها — حشو ثابت وعرض أقصى 1100 في الوسط */
+  #videoMakerModal > div{padding-left:28px !important; padding-right:28px !important; max-width:1100px !important; margin:0 auto !important;}
+  #eduHubModal .eduWrap, #expModal .expWrap, .xm .xmWrap{max-width:1100px !important; margin-inline:auto !important;}
+  #eduHubModal .eduWrap, #expModal .expWrap, .xm .xmWrap{border-inline:none !important;}
+  /* نافذة الأدوات نفسها شاشة كاملة على الكمبيوتر (لقطة المالك: بطاقة وسط الشاشة بشريط سحب) */
+  #sectionsToolsOverlay{align-items:stretch !important; padding:0 !important;}
+  html[lang] body #sectionsToolsPopup{max-width:none !important; width:100% !important; height:100% !important; max-height:none !important; border:none !important; border-radius:0 !important; padding:18px max(28px, calc((100vw - 1180px) / 2)) 32px !important;}
+  html[lang] body #sectionsToolsPopup .ptGrid{grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)) !important; gap:12px !important;}
+}
+@media (max-width: 760px){
+  #portraitStyleModal > div, #videoMakerModal > div, #designAiModal > div, #fashionAiModal > div,
+  #studioAiModal > div, #constructionModal > div, #religionModal > div, #emailAssistModal > div{
+    padding-top:calc(12px + env(safe-area-inset-top,0px)) !important;
+  }
+}
+
+/* ═══ v-noscroll-all (أمر المالك ٤ سبتمبر: «أي شريط سحب احذفه — في كل الهواتف والكمبيوتر»):
+   لا شريط سحب ظاهر في أي مكان في التطبيق على كل المقاسات. التمرير نفسه يعمل كما هو
+   (عجلة الفأرة، اللمس، لوحة المفاتيح). ═══ */
+html, body, *, *::before, *::after{scrollbar-width:none !important; -ms-overflow-style:none !important;}
+html::-webkit-scrollbar, body::-webkit-scrollbar, *::-webkit-scrollbar{width:0 !important; height:0 !important; display:none !important; background:transparent !important;}
+*::-webkit-scrollbar-thumb, *::-webkit-scrollbar-track{display:none !important; background:transparent !important;}
+
+/* v-no-slider (أمر المالك ٤ سبتمبر «احذف شريط السحب»): أشرطة مقارنة قبل/بعد في أدوات الصور كلها مخفية */
+#designBARange, #portraitCompareSlider, #fashionAiSliderRange, #studioAiSliderRange, #designBALine, #fashionAiBeforeWrap, #studioAiBeforeWrap{display:none !important;}
+
+/* v-noscroll-clip (لقطة المالك على التابلت: شريط تمرير رمادي على يسار نافذة الأدوات رغم قواعد الإخفاء —
+   بعض أغلفة WebView ترسم الشريط بنفسها وتتجاهل CSS). الحيلة: الحاوية الأم تقصّ، والعنصر المتمرّر يمتدّ
+   40px خارجها من جهة الشريط (اليسار في العربية، اليمين في اللاتينية) فيختفي الشريط خلف القصّ. */
+html.mobile-ui #sectionsToolsOverlay, html.mobile-ui #portraitStyleModal, html.mobile-ui #designAiModal, html.mobile-ui #fashionAiModal, html.mobile-ui #studioAiModal, html.mobile-ui #constructionModal, html.mobile-ui #religionModal, html.mobile-ui #emailAssistModal, html.mobile-ui #stocksModal, html.mobile-ui .xm .xmWrap, html.mobile-ui #eduHubModal .eduWrap, html.mobile-ui #expModal .expWrap, html.mobile-ui #videoMakerModal, html.mobile-ui #chatcol{overflow:hidden !important;}
+html.mobile-ui[dir="rtl"] #sectionsToolsPopup, html.mobile-ui[dir="rtl"] #portraitStyleModal > div, html.mobile-ui[dir="rtl"] #designAiModal > div, html.mobile-ui[dir="rtl"] #fashionAiModal > div, html.mobile-ui[dir="rtl"] #studioAiModal > div, html.mobile-ui[dir="rtl"] #constructionModal > div, html.mobile-ui[dir="rtl"] #religionModal > div, html.mobile-ui[dir="rtl"] #emailAssistModal > div, html.mobile-ui[dir="rtl"] #videoMakerModal > div, html.mobile-ui[dir="rtl"] #stocksPage, html.mobile-ui[dir="rtl"] .xm .xmBody, html.mobile-ui[dir="rtl"] #eduHubModal .eduBody, html.mobile-ui[dir="rtl"] #expModal .expBody, html.mobile-ui[dir="rtl"] #messages{margin-left:-40px !important; width:calc(100% + 40px) !important; max-width:none !important; box-sizing:border-box !important;}
+html.mobile-ui[dir="ltr"] #sectionsToolsPopup, html.mobile-ui[dir="ltr"] #portraitStyleModal > div, html.mobile-ui[dir="ltr"] #designAiModal > div, html.mobile-ui[dir="ltr"] #fashionAiModal > div, html.mobile-ui[dir="ltr"] #studioAiModal > div, html.mobile-ui[dir="ltr"] #constructionModal > div, html.mobile-ui[dir="ltr"] #religionModal > div, html.mobile-ui[dir="ltr"] #emailAssistModal > div, html.mobile-ui[dir="ltr"] #videoMakerModal > div, html.mobile-ui[dir="ltr"] #stocksPage, html.mobile-ui[dir="ltr"] .xm .xmBody, html.mobile-ui[dir="ltr"] #eduHubModal .eduBody, html.mobile-ui[dir="ltr"] #expModal .expBody, html.mobile-ui[dir="ltr"] #messages{margin-right:-40px !important; width:calc(100% + 40px) !important; max-width:none !important; box-sizing:border-box !important;}
+html.mobile-ui[dir="rtl"] #sectionsToolsPopup{padding-left:52px !important;}
+html.mobile-ui[dir="ltr"] #sectionsToolsPopup{padding-right:52px !important;}
+html.mobile-ui[dir="rtl"] #portraitStyleModal > div{padding-left:66px !important;}
+html.mobile-ui[dir="ltr"] #portraitStyleModal > div{padding-right:66px !important;}
+html.mobile-ui[dir="rtl"] #designAiModal > div{padding-left:66px !important;}
+html.mobile-ui[dir="ltr"] #designAiModal > div{padding-right:66px !important;}
+html.mobile-ui[dir="rtl"] #fashionAiModal > div{padding-left:66px !important;}
+html.mobile-ui[dir="ltr"] #fashionAiModal > div{padding-right:66px !important;}
+html.mobile-ui[dir="rtl"] #studioAiModal > div{padding-left:66px !important;}
+html.mobile-ui[dir="ltr"] #studioAiModal > div{padding-right:66px !important;}
+html.mobile-ui[dir="rtl"] #constructionModal > div{padding-left:66px !important;}
+html.mobile-ui[dir="ltr"] #constructionModal > div{padding-right:66px !important;}
+html.mobile-ui[dir="rtl"] #religionModal > div{padding-left:66px !important;}
+html.mobile-ui[dir="ltr"] #religionModal > div{padding-right:66px !important;}
+html.mobile-ui[dir="rtl"] #emailAssistModal > div{padding-left:66px !important;}
+html.mobile-ui[dir="ltr"] #emailAssistModal > div{padding-right:66px !important;}
+html.mobile-ui[dir="rtl"] #videoMakerModal > div{padding-left:66px !important;}
+html.mobile-ui[dir="ltr"] #videoMakerModal > div{padding-right:66px !important;}
+html.mobile-ui[dir="rtl"] #stocksPage{padding-left:54px !important;}
+html.mobile-ui[dir="ltr"] #stocksPage{padding-right:54px !important;}
+html.mobile-ui[dir="rtl"] .xm .xmBody{padding-left:56px !important;}
+html.mobile-ui[dir="ltr"] .xm .xmBody{padding-right:56px !important;}
+html.mobile-ui[dir="rtl"] #eduHubModal .eduBody{padding-left:56px !important;}
+html.mobile-ui[dir="ltr"] #eduHubModal .eduBody{padding-right:56px !important;}
+html.mobile-ui[dir="rtl"] #expModal .expBody{padding-left:56px !important;}
+html.mobile-ui[dir="ltr"] #expModal .expBody{padding-right:56px !important;}
+html.mobile-ui[dir="rtl"] #messages{padding-left:56px !important;}
+html.mobile-ui[dir="ltr"] #messages{padding-right:56px !important;}
+
+/* v-vmk-scroll (شكوى المالك «صانع الفيديو ما يتحرك»): صندوق صانع الفيديو هو المتمرّر على الجوال */
+html.mobile-ui #videoMakerModal > div{overflow-y:auto !important; max-height:none !important;}
+html.mobile-ui #videoMakerModal .vmk-main{max-height:none !important; overflow:visible !important;}

@@ -4,7 +4,10 @@
 // model (server-side owner key, GEMINI_API_KEY) - the only one of the 9
 // providers that can actually output images.
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
-const { cleanImagePrompt, buildGenerationPrompt, buildEditPrompt, buildSceneUpgradePrompt, explicitlyRequestsStyleChange } = require('./image-prompt');
+const { cleanImagePrompt, buildGenerationPrompt, buildEditPrompt, buildSceneUpgradePrompt, buildRestylePrompt, explicitlyRequestsStyleChange } = require('./image-prompt');
+/* v-restyle-bold: «عدل 3d» / «حوّلها كرتون» / «ستايل أنيمي» = تحويل أسلوب كامل
+   لا تعديل موضعي — explicitlyRequestsStyleChange لا يلتقط «3d» وحدها. */
+const RESTYLE_RE = /(^|[\s،,])(3d|ثلاثي|مجسم|مجسّم|كرتون|كارتون|أنيمي|انمي|بيكسار|ديزني|زيتي|مائي|رصاص|بكسل|بيكسل|سايبر|نيون|كوميك|كومكس|مانجا|فانتازيا|واقعي|anime|cartoon|pixar|disney|pixel|cyberpunk|neon|comic|manga|fantasy|watercolor|oil\s*paint|sketch|realistic|render)/i;
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 const { authorPrayerPlan } = require('./prayer-plan');
 const { fetchImageWithRetry, isImageTimeoutError } = require('./image-fetch');
@@ -125,7 +128,8 @@ module.exports = async (req, res) => {
     // v605: ترقية مشهد كاملة يطلبها المستخدم صراحةً («أعطني الأفضل»).
     const isSceneUpgrade = !!(body && body.sceneUpgrade === true && editImageBase64);
     // v656: «فكرة ثانية/مختلفة» على صورة موجودة = إعادة تصور كاملة لا تعديل حرفي.
-    const isReimagine = !!editImageBase64 && !isSceneUpgrade && /فكرة\s*(ثانية|ثانيه|مختلفة|مختلفه|جديدة|جديده|غير)|فكره\s*(ثانية|ثانيه|مختلفة|مختلفه|جديدة|جديده|غير)|غيّ?ر\s*الفكرة|بشكل\s*مختلف\s*تمام|مختلف\s*تمام|تصميم\s*ثاني|ستايل\s*ثاني|بدّ?ل\s*(الفكرة|التصميم|الستايل)|different\s*(idea|concept|style)|new\s*concept|another\s*(idea|take|concept)|reimagine/i.test(String(prompt || ''));
+    const isRestyle = !!editImageBase64 && !isSceneUpgrade && RESTYLE_RE.test(String(prompt || ''));
+    const isReimagine = !!editImageBase64 && !isSceneUpgrade && !isRestyle && /فكرة\s*(ثانية|ثانيه|مختلفة|مختلفه|جديدة|جديده|غير)|فكره\s*(ثانية|ثانيه|مختلفة|مختلفه|جديدة|جديده|غير)|غيّ?ر\s*الفكرة|بشكل\s*مختلف\s*تمام|مختلف\s*تمام|تصميم\s*ثاني|ستايل\s*ثاني|بدّ?ل\s*(الفكرة|التصميم|الستايل)|different\s*(idea|concept|style)|new\s*concept|another\s*(idea|take|concept)|reimagine/i.test(String(prompt || ''));
     const promptLimit = isArchitectural ? 2400 : (editImageBase64 ? 8000 : 1800);
     const cleanPrompt = cleanImagePrompt(prayerPlan ? prayerPlan.visualBrief : prompt).slice(0, promptLimit);
     const extras = Array.isArray(extraImages) ? extraImages.filter((x) => x && x.data).slice(0, 5) : [];
@@ -155,9 +159,10 @@ module.exports = async (req, res) => {
       for (const x of extras) parts.push({ inlineData: { mimeType: x.mime || 'image/png', data: x.data } });
     } else if (editImageBase64) {
       parts.push({ text: isSceneUpgrade ? buildSceneUpgradePrompt(cleanPrompt)
+        : (isRestyle ? buildRestylePrompt(cleanPrompt)
         : (isReimagine
           ? ('TASK: "' + cleanPrompt + '"\n\nThe attached image is ONLY inspiration for the SUBJECT. Create a COMPLETELY NEW image of the same subject with a clearly DIFFERENT concept: new composition, new viewpoint, new background, new lighting and a fresh creative idea — the result must NOT look like a copy or minor edit of the source. Keep any real faces, logos or brand marks faithful if they are the subject. Quality bar: breathtaking, award-winning, magazine-cover grade, tack-sharp, professional cinematic lighting, no toy-like or amateur rendering.')
-          : buildEditPrompt(cleanPrompt)) });
+          : buildEditPrompt(cleanPrompt))) });
       parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
     } else if (pipelineActive && pipelineRewrite) {
       // Pipeline prompt includes negative in separate field — combine for Gemini
@@ -186,25 +191,35 @@ module.exports = async (req, res) => {
     };
     const imageConfig = { imageSize: '2K' };
     if (!editImageBase64) imageConfig.aspectRatio = (pipelineActive && pipelineRewrite && pipelineRewrite.aspect) ? pipelineRewrite.aspect : (isArchitectural ? '16:9' : pickAspect(cleanPrompt));
-    const reqBody = JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: editImageBase64 ? (isSceneUpgrade ? 0.5 : (isReimagine ? 0.9 : 0.15)) : 0.85, imageConfig } });
+    const reqBody = JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: editImageBase64 ? (isSceneUpgrade ? 0.5 : (isReimagine ? 0.9 : (isRestyle ? 0.6 : 0.15))) : 0.85, imageConfig } });
 
-    // Image generation normally takes 35–50 seconds, so it must bypass the
-    // shared 30-second fetch guard. Retry transient failures inside this one
-    // request; the user should not have to resend the same prompt.
-    const imageResult = await fetchImageWithRetry({
-      url: endpoint,
-      init: {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: reqBody,
-      },
-      onRetry: ({ attempt, response, error }) => {
-        const detail = response ? ('status=' + response.status) : ('error=' + String(error && error.name || 'fetch'));
-        console.error('[maha-image] retrying upstream image request after attempt ' + attempt + ' ' + detail);
-      },
-    });
-    const upstream = imageResult.response;
-    const data = imageResult.data || {};
+    /* v-img-textwise (شكوى المالك: «توليد الصور زفت» — لقطة شاشة التطبيق
+       رجعت بعناوين عربية مشوهة): مصدرٌ مليء بالنصوص (لقطة واجهة، مستند،
+       بوستر، قائمة) يُعاد رسمه كاملًا عند Gemini فتنكسر الحروف مهما شددت
+       التعليمات. gpt-image-1 عبر images/edits بـinput_fidelity=high ينقل
+       الحروف من المصدر كما هي — فيصير هو الخط الأول لهذه الفئة تحديدًا،
+       وGemini يبقى أساس المشاهد المصورة وخط إنقاذ للكل. الكشف بنداء
+       flash خاطف (نعم/لا) قبل التوليد. */
+    async function sourceLooksTextDense() {
+      if (!editImageBase64) return false;
+      try {
+        const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(8000),
+          body: JSON.stringify({
+            contents: [{ parts: [
+              { text: 'Answer with exactly one word, YES or NO. YES only if this image is text-dense: a UI screenshot, app screen, document, menu, form, chart with many labels, or a poster whose main content is many words. NO for photos, people, places, products and scenes.' },
+              { inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } },
+            ] }],
+            generationConfig: { temperature: 0, maxOutputTokens: 4 },
+          }),
+        });
+        const d = await r.json().catch(function () { return null; });
+        const txt = String((((((d || {}).candidates || [])[0] || {}).content || {}).parts || []).map(function (p) { return p.text || ''; }).join(' '));
+        return /\bYES\b/i.test(txt);
+      } catch (e) { return false; }
+    }
 
     // v-maha-image-rescue (خط الإنقاذ التاسع — لقطات عمران ٢٧ أغسطس «الخدمة
     // مشغولة»): زحام أو رفض Gemini في التوليد النصي يهبط لـgpt-image-1 بنفس
@@ -246,12 +261,20 @@ module.exports = async (req, res) => {
       }
       try {
         const size = rescueAspect === '16:9' ? '1536x1024' : (rescueAspect === '1:1' ? '1024x1024' : '1024x1536');
-        const r = await fetch('https://api.openai.com/v1/images/generations', {
+        const genOnce = (model) => fetch('https://api.openai.com/v1/images/generations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + okey },
           signal: AbortSignal.timeout(90000),
-          body: JSON.stringify({ model: 'gpt-image-2', prompt: String(rescuePromptText).slice(0, 3800), size, quality: 'high', n: 1 }),
+          body: JSON.stringify({ model, prompt: String(rescuePromptText).slice(0, 3800), size, quality: 'high', n: 1 }),
         });
+        let r = await genOnce('gpt-image-2');
+        // v-img-model-fallback: لو النموذج الأحدث غير متاح لهذا المفتاح (400/404)
+        // نرجع لـgpt-image-1 المضمون بدل الفشل الصامت.
+        if (!r.ok && (r.status === 400 || r.status === 404)) {
+          const t1 = await r.text().catch(function () { return ''; });
+          if (/model/i.test(t1)) r = await genOnce('gpt-image-1');
+          else { lastRescueErr = 'openai gen status=' + r.status + ' ' + t1.slice(0, 120); console.error('[maha-image] rescue failed ' + lastRescueErr); return null; }
+        }
         if (!r.ok) { lastRescueErr = 'openai gen status=' + r.status + ' ' + String(await r.text().catch(function(){return '';})).slice(0, 120); console.error('[maha-image] rescue failed ' + lastRescueErr); return null; }
         const d = await r.json().catch(function () { return null; });
         const b64 = d && d.data && d.data[0] && d.data[0].b64_json;
@@ -283,6 +306,41 @@ module.exports = async (req, res) => {
       }
       return null;
     }
+
+    // v-img-textwise: مصدر نصّي كثيف → gpt-image-1 عالي الدقة أولًا؛
+    // فشله أو غيابه يُكمل مسار Gemini المعتاد بلا أي خسارة.
+    /* v-img-textwise-gen (صورة ChatGPT عند المالك: واجهة أدوات كاملة بعناوين
+       عربية سليمة — gpt-image ينفّذها وGemini يكسر الحروف): طلب توليد جديد
+       يذكر نصوصًا/عناوين/أيقونات/واجهة/شاشة يبدأ أيضًا بـgpt-image. */
+    const __textCueRe = /نص|كتاب|مكتوب|عنوان|عناوين|أيقون|ايقون|واجهة|شاشة|تطبيق|قائمة|كلمات|حروف|خط\s*عرب|\btext\b|label|icon|\bui\b|screen|interface|\bapp\b|menu|typograph|lettering|caption/i;
+    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan
+      && (editImageBase64 ? await sourceLooksTextDense() : __textCueRe.test(cleanPrompt));
+    if (__textRoute) {
+      const denseB64 = await openaiRescueImage();
+      if (denseB64) {
+        res.status(200).json({ imageBase64: denseB64, mimeType: 'image/png', engine: 'openai', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined });
+        return;
+      }
+    }
+
+    // Image generation normally takes 35–50 seconds, so it must bypass the
+    // shared 30-second fetch guard. Retry transient failures inside this one
+    // request; the user should not have to resend the same prompt.
+    const imageResult = await fetchImageWithRetry({
+      url: endpoint,
+      init: {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: reqBody,
+      },
+      onRetry: ({ attempt, response, error }) => {
+        const detail = response ? ('status=' + response.status) : ('error=' + String(error && error.name || 'fetch'));
+        console.error('[maha-image] retrying upstream image request after attempt ' + attempt + ' ' + detail);
+      },
+    });
+    const upstream = imageResult.response;
+    const data = imageResult.data || {};
+
 
     if (!upstream || !upstream.ok) {
       const nanoB64 = await geminiNanoBananaImage();
@@ -327,11 +385,11 @@ module.exports = async (req, res) => {
         allowStyleChange: explicitlyRequestsStyleChange(cleanPrompt),
         allowBroadChange: isSceneUpgrade,
       });
-      if (!guard.ok) {
+      if (!guard.ok && guard.reason === 'validation_unavailable') console.warn('[maha-image] guard unavailable — passing result through'); /* v-guard-fail-open */
+      else if (!guard.ok) {
         await refundImageCharge();
-        const unavailable = guard.reason === 'validation_unavailable';
         console.error('[maha-image] rejected edited image: ' + guard.reason);
-        res.status(unavailable ? 502 : 422).json({ error: publicGuardError(guard), retryable: unavailable });
+        res.status(422).json({ error: publicGuardError(guard), retryable: false });
         return;
       }
     }

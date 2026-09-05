@@ -12,6 +12,7 @@ const { isRetired, retiredResponse } = require('./_lib/_retired.js');
 function load(action) {
   switch (action) {
     case 'design-create': return require('./_lib/design-create.js');
+    case 'design-ideas': return require('./_lib/design-ideas.js');
     case 'construction-create': return require('./_lib/construction-create.js');
     case 'construction-view': return require('./_lib/construction-view.js');
     case 'construction-library': return require('./_lib/construction-library.js');
@@ -19,6 +20,7 @@ function load(action) {
     case 'fashion-create': return require('./_lib/fashion-create.js');
     case 'fashion-suggest': return require('./_lib/fashion-suggest.js');
     case 'studio-create': return require('./_lib/studio-create.js');
+    case 'studio-preview': return require('./_lib/studio-preview.js');
     case 'studio-suggest': return require('./_lib/studio-suggest.js');
     case 'portrait-style': return require('./_lib/portrait-style.js');
     case 'analyze-zip': return require('./_lib/analyze-zip.js');

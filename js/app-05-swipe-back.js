@@ -1,0 +1,216 @@
+/* ───────── v-swipe-back (فكرة المالك ٤ سبتمبر: «تلغي X وخليهم كلهم سحب يرجعك إلى الصفحة الي خلفها») ─────────
+ * v2 (أمر المالك: «سحب نفس الإعدادات، وشريط السحب احذفه من كل مكان»): نفس سلوك درج الإعدادات
+ * حرفيًا — اسحب بالإصبع لليمين من أي مكان في الشاشة فتتبعك الشاشة، وبعد ثلث العرض (أو نفضة
+ * سريعة) تنزلق وتُغلق وترجع للصفحة خلفها. لا مقابض ولا أشرطة ولا مناطق حافة. التمرير الرأسي
+ * والقوائم الأفقية والمنزلقات لا تتأثر. أزرار ✕ مخفية ويُضغط عليها برمجيًا فيبقى منطق الإغلاق
+ * الأصلي. Esc يغلق على الكمبيوتر. التلفزيون مشمول بأمر المالك اللاحق. */
+(function(){
+  'use strict';
+  var MAP = {
+    portraitStyleModal: 'portraitStyleCloseBtn', videoMakerModal: 'videoMakerCloseBtn', designAiModal: 'designAiCloseBtn',
+    fashionAiModal: 'fashionAiCloseBtn', studioAiModal: 'studioAiCloseBtn', constructionModal: 'constructionCloseBtn',
+    religionModal: 'religionCloseBtn', emailAssistModal: 'emailAssistCloseBtn', stocksModal: 'stocksCloseBtn',
+    expModal: 'expCloseBtn', docModal: 'docX', govModal: 'govX', cvModal: 'cvX',
+    eduHubModal: 'eduCloseBtn', omranEduModal: 'omranEduCloseBtn', /* التعليم: المركز، والشاشة القديمة داخل إطار */
+    omranQiblaShell: 'qClose', fbOverlay: 'fbClose', sectionsToolsOverlay: 'stpCloseBtn',
+    omranTvShell: 'tvClose', /* أمر المالك ٤ سبتمبر: «التلفزيون X ما يستوي — سحب» */
+    portraitStyleSheet: 'portraitStyleSheetClose', /* ورقة أنماط الصور */
+    /* أمر المالك ٤ سبتمبر: «في الديكور كلها داخل احذف X وخلها سحاب، وفي الاستايل بعد كلها، وفي التعليم»:
+       ورقة الخيارات الداخلية الموحّدة (الشعر، المناسبة، نمط الديكور، …) */
+    pickerSheet: 'pickerSheetClose',
+  };
+
+  var css = document.createElement('style');
+  css.id = 'omranSwipeBackCss';
+  css.textContent =
+    Object.keys(MAP).map(function(k){ return '#' + MAP[k]; }).join(',') + '{display:none !important;}' +
+    '.omranSwiping{transition:none !important;will-change:transform;}' +
+    '.omranSwipeSettle{transition:transform .18s ease-out, opacity .18s ease-out !important;}' +
+    'html.omranMouseSwipe, html.omranMouseSwipe *{user-select:none !important; cursor:grabbing !important;}';
+  document.head.appendChild(css);
+
+  function visible(el){
+    if(!el) return false;
+    var cs = getComputedStyle(el);
+    if(cs.display === 'none' || cs.visibility === 'hidden') return false;
+    var r = el.getBoundingClientRect();
+    return r.width > 50 && r.height > 50;
+  }
+  function topTool(){
+    var best = null, bz = -1;
+    Object.keys(MAP).forEach(function(id){
+      var el = document.getElementById(id);
+      if(!visible(el)) return;
+      var z = parseInt(getComputedStyle(el).zIndex || '0', 10) || 0;
+      /* تساوي الطبقة: المتأخر في المستند هو الأعلى بصريًا (التعليم القديم فوق مركز التعليم) */
+      var later = best ? !!(best.compareDocumentPosition(el) & 4) : true;
+      if(z > bz || (z === bz && later)){ bz = z; best = el; }
+    });
+    return best;
+  }
+  function closeTool(el){
+    var btn = el && document.getElementById(MAP[el.id]);
+    if(btn){ try{ swipeClickGuardUntil = 0; btn.click(); return true; }catch(e){ /* guard-ok */ } }
+    return false;
+  }
+  /* الجزء الذي يتحرك مع الإصبع: صندوق المحتوى (أول ابن كبير) وإلا الحاوية نفسها */
+  /* الأوراق المعتمة كاملة الشاشة (ورقة الخيارات، ورقة الأنماط، التعليم): تتحرك كلها كوحدة */
+  var SELF = { pickerSheet: 1, portraitStyleSheet: 1, omranEduModal: 1 };
+  function panel(el){
+    if(SELF[el.id]) return el;
+    var kids = Array.prototype.slice.call(el.children).filter(function(c){ var r = c.getBoundingClientRect(); return r.width > 100 && r.height > 100; });
+    return kids[0] || el;
+  }
+  /* عناصر لا نسحب منها: منزلقات، فيديو، كانفاس، حقول نصية، وأي قائمة تتمرر أفقيًا */
+  function blocked(t){
+    var e = t;
+    for(var i = 0; e && e !== document.body && i < 12; i++){
+      var tag = (e.tagName || '').toLowerCase();
+      if(tag === 'video' || tag === 'canvas' || tag === 'iframe') return true;
+      if(tag === 'input' && (e.type === 'range' || e.type === 'file')) return true;
+      /* الحقول: السحب منها مسموح ما لم تكن قيد الكتابة (شكوى المالك في مولّد السيرة: الصفحة كلها حقول) */
+      if((tag === 'input' || tag === 'textarea' || tag === 'select') && document.activeElement === e) return true;
+      try{
+        var cs = getComputedStyle(e);
+        if((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && e.scrollWidth > e.clientWidth + 4) return true;
+      }catch(err){ /* guard-ok */ }
+      e = e.parentElement;
+    }
+    return false;
+  }
+
+  function bind(el){
+    var t0 = null, dragging = false, w = 0, p = null;
+    var setX = function(x, anim){
+      if(!p) return;
+      p.classList.toggle('omranSwipeSettle', !!anim);
+      p.classList.toggle('omranSwiping', !anim);
+      p.style.transform = x ? ('translateX(' + x + 'px)') : '';
+      p.style.opacity = x ? String(Math.max(.3, 1 - x / Math.max(1, w) * .9)) : '';
+    };
+    el.addEventListener('touchstart', function(e){
+      if(e.touches.length !== 1 || blocked(e.target)){ t0 = null; return; }
+      if(topTool() !== el){ t0 = null; return; }
+      t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY, ts: Date.now() };
+      dragging = false;
+      p = panel(el);
+      w = window.innerWidth || 360;
+    }, { passive: true });
+    el.addEventListener('touchmove', function(e){
+      if(!t0) return;
+      var dx = e.touches[0].clientX - t0.x;
+      var dy = e.touches[0].clientY - t0.y;
+      if(!dragging){
+        if(Math.abs(dx) < 14 || Math.abs(dx) < Math.abs(dy) * 1.4) return; /* تمرير رأسي */
+        if(dx <= 0){ t0 = null; return; } /* لليسار: ليس رجوعًا */
+        dragging = true;
+      }
+      setX(Math.max(0, dx), false);
+    }, { passive: true });
+    var finish = function(e){
+      if(!t0) return;
+      var was = dragging;
+      var dx = (was && e.changedTouches && e.changedTouches[0]) ? (e.changedTouches[0].clientX - t0.x) : 0;
+      var dt = Date.now() - t0.ts;
+      t0 = null; dragging = false;
+      if(!was) return;
+      if(dx > w * 0.35 || (dt < 300 && dx > 70)){
+        setX(w + 40, true);
+        setTimeout(function(){ closeTool(el); setTimeout(function(){ setX(0, false); if(p){ p.classList.remove('omranSwiping'); } }, 40); }, 190);
+      } else {
+        setX(0, true);
+        setTimeout(function(){ if(p){ p.classList.remove('omranSwipeSettle'); p.classList.remove('omranSwiping'); } }, 220);
+      }
+    };
+    el.addEventListener('touchend', finish, { passive: true });
+    el.addEventListener('touchcancel', finish, { passive: true });
+
+    /* سؤال المالك ٤ سبتمبر «في الكمبيوتر ما فيها سحب»: نفس السحب بالفأرة — اضغط واسحب لليمين
+       من أي مكان في الأداة فتتبعك وتُغلق. الحقول النصية والمنزلقات مستثناة، والنقرة بعد سحب لا تُحتسب. */
+    var m0 = null, mDrag = false;
+    var mouseBlocked = function(t){
+      var e = t;
+      for(var i = 0; e && e !== document.body && i < 12; i++){
+        var tag = (e.tagName || '').toLowerCase();
+        if(tag === 'input' || tag === 'textarea' || tag === 'select' || e.isContentEditable) return true;
+        if(tag === 'video' || tag === 'canvas' || tag === 'iframe') return true;
+        e = e.parentElement;
+      }
+      return blocked(t);
+    };
+    el.addEventListener('mousedown', function(e){
+      if(e.button !== 0 || mouseBlocked(e.target)){ m0 = null; return; }
+      if(topTool() !== el){ m0 = null; return; }
+      m0 = { x: e.clientX, y: e.clientY, ts: Date.now() };
+      mDrag = false; p = panel(el); w = window.innerWidth || 360;
+    });
+    document.addEventListener('mousemove', function(e){
+      if(!m0) return;
+      var dx = e.clientX - m0.x, dy = e.clientY - m0.y;
+      if(!mDrag){
+        if(Math.abs(dx) < 14 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+        if(dx <= 0){ m0 = null; return; }
+        mDrag = true;
+        document.documentElement.classList.add('omranMouseSwipe');
+        try{ var sel = window.getSelection(); if(sel && sel.removeAllRanges) sel.removeAllRanges(); }catch(err){ /* guard-ok */ }
+      }
+      e.preventDefault();
+      setX(Math.max(0, dx), false);
+    });
+    var mouseFinish = function(e){
+      if(!m0) return;
+      var was = mDrag, dx = was ? (e.clientX - m0.x) : 0, dt = Date.now() - m0.ts;
+      m0 = null; mDrag = false;
+      document.documentElement.classList.remove('omranMouseSwipe');
+      if(!was) return;
+      swipeClickGuardUntil = Date.now() + 120;
+      if(dx > w * 0.35 || (dt < 300 && dx > 70)){
+        setX(w + 40, true);
+        setTimeout(function(){ closeTool(el); setTimeout(function(){ setX(0, false); if(p){ p.classList.remove('omranSwiping'); } }, 40); }, 190);
+      } else {
+        setX(0, true);
+        setTimeout(function(){ if(p){ p.classList.remove('omranSwipeSettle'); p.classList.remove('omranSwiping'); } }, 220);
+      }
+    };
+    document.addEventListener('mouseup', mouseFinish);
+  }
+  /* نقرة تصل بعد سحب بالفأرة مباشرة = ليست نقرة مقصودة */
+  var swipeClickGuardUntil = 0;
+  document.addEventListener('click', function(e){
+    if(Date.now() < swipeClickGuardUntil){ e.stopPropagation(); e.preventDefault(); }
+  }, true);
+  function ensureBound(){
+    Object.keys(MAP).forEach(function(id){
+      var el = document.getElementById(id);
+      if(!el || el.__omranSwipe) return;
+      el.__omranSwipe = true;
+      bind(el);
+    });
+  }
+
+  /* شاشة التعليم داخل إطار: السحب فيها يصل رسالةً من الإطار */
+  window.addEventListener('message', function(e){
+    try{ if(e && e.data && e.data.omranSwipeBack){ var el = document.getElementById('omranEduModal'); if(!visible(el)) el = document.getElementById('eduHubModal'); if(visible(el)) closeTool(el); } }catch(err){ /* guard-ok */ }
+  });
+  /* العودة من استوديو الإعلانات (صفحة مستقلة) إلى قائمة الأدوات لا المحادثة */
+  try{
+    if(/[?&]tools=1(&|$)/.test(location.search)){
+      var openTools = function(){ var o = document.getElementById('sectionsToolsOverlay'); if(o){ o.classList.add('show'); return true; } return false; };
+      if(!openTools()) setTimeout(openTools, 800);
+      try{ history.replaceState(null, '', location.pathname + location.hash); }catch(e2){ /* guard-ok */ }
+    }
+  }catch(e){ /* guard-ok */ }
+
+  /* Esc يغلق أعلى أداة مفتوحة (الكمبيوتر) */
+  document.addEventListener('keydown', function(e){
+    if(e.key !== 'Escape') return;
+    var t = topTool();
+    if(t && closeTool(t)) e.preventDefault();
+  });
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ensureBound); else ensureBound();
+  setInterval(ensureBound, 900);
+  /* الشاشات التي تُنشأ عند فتحها (التلفزيون): نربطها لحظة أول لمسة قبل وصول الحدث إليها */
+  document.addEventListener('touchstart', ensureBound, { capture: true, passive: true });
+  window.omranSwipeBack = { close: function(){ var t = topTool(); return t ? closeTool(t) : false; }, top: topTool };
+})();

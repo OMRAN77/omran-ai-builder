@@ -405,3 +405,65 @@ html.mobile-ui #portraitStyleModal > div{
 header{background:var(--bg); backdrop-filter:none;}
 #omranBottomNav{background:var(--bg); backdrop-filter:none;}
 #inputbar{background:var(--bg);}
+
+/* ═══ v-composer-pill (طلب المالك ٤ سبتمبر — صورة الرئيسية): صندوق الكتابة صفّ واحد
+   داكن مستدير تمامًا؛ يمينه كبسولة [مايك | +]، النص في الوسط، ويساره زر إرسال دائري
+   بإطار ذهبي متوهج. نفس التصميم على الجوال والكمبيوتر وفي الوضعين. ═══ */
+html #composerBox{
+  background:#101013 !important; border:1px solid rgba(212,175,55,.28) !important; border-radius:999px !important;
+  padding:6px 8px !important; gap:8px !important; align-items:center !important; min-height:54px;
+  box-shadow:0 6px 24px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);
+}
+html #composerBox:focus-within{border-color:rgba(212,175,55,.6) !important; box-shadow:0 0 0 3px rgba(212,175,55,.10), 0 6px 24px rgba(0,0,0,.35) !important;}
+html #composerBox > #attachStrip, html #composerBox > #chatEditNotice{order:0; flex:1 1 100%; width:100%; padding-inline:12px;}
+/* الكبسولة: في RTL أول عنصر = أقصى اليمين */
+html #composerBox > .inputbar-tools{
+  order:1 !important; flex:0 0 auto !important; margin:0 !important;
+  display:flex; align-items:center; background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.10);
+  border-radius:999px; padding:3px !important;
+}
+html #composerBox .inputbar-tools-left{flex:0 0 auto !important; display:flex; align-items:center; gap:0 !important;}
+html #inputbar .inputbar-tools-left > .btn, html #inputbar .inputbar-tools-left > button, html #inputbar #btnPlusTools{
+  width:36px; height:36px; flex:0 0 36px; padding:0 !important; border-radius:999px !important; border:none !important;
+  background:none !important; box-shadow:none !important; color:#e9e4d6 !important; display:inline-flex; align-items:center; justify-content:center;
+}
+html #inputbar #plusToolsWrap{display:inline-flex; align-items:center;}
+/* فاصل رفيع بين + والمايك كما في الصورة */
+html #inputbar .inputbar-tools-left > #btnMic{position:relative;}
+html #inputbar .inputbar-tools-left > #btnMic::before{content:''; position:absolute; top:8px; bottom:8px; inset-inline-end:-1px; width:1px; background:rgba(255,255,255,.14);}
+html #inputbar .inputbar-tools-left > #btnMic.recording{background:#ff4d4d !important; color:#fff !important;}
+html #inputbar .inputbar-tools-left svg, html #inputbar #btnPlusTools svg{width:21px; height:21px;}
+/* النص */
+html #composerBox > #prompt{
+  order:2 !important; flex:1 1 0 !important; width:auto !important; min-width:0; min-height:22px !important; max-height:96px;
+  padding:4px 10px !important; font-size:15px !important; color:#f3efe4; background:none !important; line-height:1.4;
+}
+html #composerBox > #prompt::placeholder{color:#8f8a7c;}
+/* زر الإرسال: دائرة بإطار ذهبي وتوهّج، في أقصى اليسار */
+html #composerBox > #btnStop, html #composerBox > #btnSend{order:3 !important; margin-inline-start:0 !important;}
+html #composerBox > #btnSend{
+  width:44px !important; height:44px !important; flex:0 0 44px !important; border-radius:999px !important;
+  background:#0c0c0f !important; border:1.5px solid #d4af37 !important; color:#d4af37 !important;
+  box-shadow:0 0 0 3px rgba(212,175,55,.12), 0 0 16px rgba(212,175,55,.35) !important; opacity:1 !important;
+}
+html #composerBox > #btnSend svg{width:19px; height:19px; stroke:#d4af37;}
+html #composerBox.typing > #btnSend{box-shadow:0 0 0 3px rgba(212,175,55,.18), 0 0 22px rgba(212,175,55,.55) !important;}
+html #composerBox > #btnStop{width:44px !important; height:44px !important; flex:0 0 44px !important; border-radius:999px !important;}
+/* v-composer-light (طلب المالك ٤ سبتمبر): في الوضع الفاتح صندوق الكتابة أبيض بإطار ذهبي، لا أسود */
+html[data-mode="light"] #composerBox{
+  background:#ffffff !important; border:1px solid rgba(212,175,55,.55) !important;
+  box-shadow:0 6px 22px rgba(0,0,0,.08), inset 0 1px 0 rgba(255,255,255,.9);
+}
+html[data-mode="light"] #composerBox:focus-within{border-color:#d4af37 !important; box-shadow:0 0 0 3px rgba(212,175,55,.14), 0 6px 22px rgba(0,0,0,.08) !important;}
+html[data-mode="light"] #composerBox > .inputbar-tools{background:#f3f1ea; border-color:rgba(0,0,0,.08);}
+html[data-mode="light"] #inputbar .inputbar-tools-left > .btn, html[data-mode="light"] #inputbar .inputbar-tools-left > button, html[data-mode="light"] #inputbar #btnPlusTools{color:#2a2620 !important;}
+html[data-mode="light"] #inputbar .inputbar-tools-left > #btnMic::before{background:rgba(0,0,0,.12);}
+html[data-mode="light"] #composerBox > #prompt{color:#14161a;}
+html[data-mode="light"] #composerBox > #prompt::placeholder{color:#8a8578;}
+html[data-mode="light"] #composerBox > #btnSend{background:#fffdf5 !important; color:#b8902a !important; box-shadow:0 0 0 3px rgba(212,175,55,.14), 0 0 14px rgba(212,175,55,.30) !important;}
+html[data-mode="light"] #composerBox > #btnSend svg{stroke:#b8902a;}
+@media (max-width:860px){
+  html #composerBox{min-height:50px; padding:5px 6px !important;}
+  html #composerBox > #btnSend, html #composerBox > #btnStop{width:40px !important; height:40px !important; flex:0 0 40px !important;}
+  html #inputbar .inputbar-tools-left > .btn, html #inputbar .inputbar-tools-left > button, html #inputbar #btnPlusTools{width:34px; height:34px; flex:0 0 34px;}
+}

@@ -62,6 +62,28 @@ module.exports = async (req, res) => {
       return;
     }
 
+    /* v-claude-diag (المالك: «فيه رصيد» ورسالة أنثروبيك تقول العكس): فحص
+       حاسم للمالك فقط — يجرب مفتاح الخادم الفعلي على أنثروبيك ويرجع رد
+       الخطأ كاملًا مع ذيل المفتاح، فيتضح فورًا أي حساب/منظمة يخص المفتاح
+       وهل الرصيد يخصه. لا يكشف المفتاح نفسه أبدًا. */
+    if (action === 'claude-diag') {
+      const akey = process.env.ANTHROPIC_API_KEY || '';
+      if (!akey) { res.status(200).json({ ok: false, keyTail: '(غير مضبوط)', detail: 'ANTHROPIC_API_KEY غير موجود في Vercel' }); return; }
+      let st = 0, bodyTxt = '';
+      try {
+        const r = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': akey, 'anthropic-version': '2023-06-01' },
+          signal: AbortSignal.timeout(20000),
+          body: JSON.stringify({ model: 'claude-sonnet-5', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] }),
+        });
+        st = r.status;
+        bodyTxt = (await r.text()).slice(0, 600);
+      } catch (e) { bodyTxt = 'fetch: ' + (e && e.message); }
+      res.status(200).json({ ok: st === 200, status: st, keyTail: '…' + akey.slice(-6), detail: st === 200 ? 'المفتاح شغال والرصيد سليم ✅' : bodyTxt });
+      return;
+    }
+
     if (!targetUsername || typeof targetUsername !== 'string') {
       res.status(400).json({ error: 'missing targetUsername' });
       return;

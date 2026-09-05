@@ -273,6 +273,10 @@
 
   <div id="themeSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('themeSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="themeSectionLabel">🎨 تخصيص الألوان والمظهر</h3><span class="settingsSectionArrow" id="themeSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="themeSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+  <label style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:14px; background:var(--panel2); border-radius:var(--r-2); cursor:pointer; user-select:none;">
+    <input type="checkbox" id="chkIntroSplash" style="width:auto;" checked>
+    <span data-i18n="introSplashLabel" style="font-size:13px;">✨ شاشة الافتتاح عند فتح التطبيق</span>
+  </label>
 
   <div style="display:flex; flex-direction:column; gap:0; padding:10px 12px; margin-bottom:14px; background:var(--panel2); border-radius:var(--r-2);">
     <div onclick="toggleSubRow('bg3dSub')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><span data-i18n="bg3dSectionLabel" style="font-size:13px;">🌌 خلفية ثلاثية الأبعاد متحركة</span><span id="bg3dSubArrow" style="font-size:12px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
@@ -312,6 +316,19 @@
         <span id="memoryStatus" role="status" aria-live="polite" style="font-size:var(--fs-6); opacity:.75;"></span>
       </div>
     </div></div>
+
+  <div id="notifSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('notifSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size: var(--fs-3);" data-i18n="notifSectionLabel">🔔 التنبيهات</h3><span class="settingsSectionArrow" id="notifSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="notifSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+      <label style="display:flex; align-items:center; gap:10px; padding:12px; background:var(--panel2); border-radius:var(--r-2); cursor:pointer; user-select:none;">
+        <input type="checkbox" id="chkNewsAlerts" style="width:auto;">
+        <span style="display:flex; flex-direction:column; gap:3px;">
+          <span data-i18n="newsAlertsLabel" style="font-size:14px; font-weight:700;">📢 تنبيهات الأخبار العاجلة</span>
+          <span data-i18n="newsAlertsHint" style="font-size:12px; color:var(--muted);">يصلك إشعار عند وجود خبر عاجل أو تحذير طارئ حتى والتطبيق مغلق</span>
+        </span>
+      </label>
+      <div id="newsAlertsStatus" style="font-size:12px; min-height:16px; margin-top:8px; color:var(--muted);"></div>
+    </div>
+  </div>
 
   <div id="voiceSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('voiceSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size: var(--fs-3);" data-i18n="voiceSectionLabel">الصوت</h3><span class="settingsSectionArrow" id="voiceSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div><div id="voiceSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
@@ -513,6 +530,9 @@
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('adminSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="adminPanelTitle">🛠️ لوحة التحكم (خاص بالمالك)</h3><span class="settingsSectionArrow" id="adminSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
     <div id="adminSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
       <button type="button" id="adminStatsRefreshBtn" onclick="loadAdminStats()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:13px; cursor:pointer; margin-bottom:10px;">🔄 تحديث الإحصائيات</button>
+      <!-- v-claude-diag: فحص مفتاح كلود الفعلي في الخادم — يحسم «فيه رصيد» من عدمه -->
+      <button type="button" id="adminClaudeDiagBtn" onclick="adminClaudeDiag()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:13px; cursor:pointer; margin-bottom:10px; margin-inline-start:8px;">👑 فحص مفتاح كلود</button>
+      <div id="adminClaudeDiagBox" style="display:none; font-size:12.5px; line-height:1.8; background:var(--panel2); border-radius:var(--r-2); padding:10px 12px; white-space:pre-wrap; word-break:break-all; margin-bottom:10px;"></div>
       <div id="adminStatsBox" style="font-size: var(--fs-3); line-height:1.9; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; white-space:pre-wrap;">اضغط "تحديث" لعرض الإحصائيات...</div>
       <div style="margin-top:14px; font-size:13px; font-weight:700; opacity:.8;">👤 إدارة المستخدمين (حظر / حذف / رسالة)</div>
       <div id="adminUsersTable" style="margin-top:8px; background:var(--panel2); border-radius:var(--r-2); padding:6px 10px; max-height:320px; overflow-y:auto;"></div>

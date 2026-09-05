@@ -71,7 +71,7 @@ assert.ok(app05.includes('it.bg') && app05.includes('s.bg'), 'المعرض وا�
 assert.ok(partials.includes('designCompareChecks') && partials.includes('v-decor-compare'), 'قسم المقارنة في واجهة الديكور');
 assert.ok(partials.includes('designBAWrap') && partials.includes('designBARange'), 'سحّاب قبل/بعد في واجهة الديكور');
 assert.ok(studios.includes('v-decor-compare') && studios.includes('cmpPicks.length >= 3') && studios.includes("style: v, token"), 'مقارنة حتى ٣ أنماط عبر design-create');
-assert.ok(studios.includes('v-decor-ba') && studios.includes('showBeforeAfter(') && studios.includes('baSet(50)'), 'السحّاب يعمل على النتيجة المفردة');
+assert.ok(studios.includes('v-decor-ba') && studios.includes('showBeforeAfter(') && studios.includes('v-no-slider') && studios.includes('baSet(0)'), 'النتيجة المفردة بلا سحّاب مقارنة (أمر المالك ٤ سبتمبر)');
 const dThumbs = fs.readFileSync(path.join(__dirname, '../scripts/design-thumbs.mjs'), 'utf8');
 assert.ok(dThumbs.includes("'minimalwhite'") && dThumbs.includes("'garden'") && dThumbs.includes('/api/design-create'), 'مولّد بطاقات الديكور: ٤٨ نمطًا و١٢ مكانًا');
 const designCreate = fs.readFileSync(path.join(__dirname, '../api/_lib/design-create.js'), 'utf8');
@@ -161,19 +161,11 @@ assert.ok(stocksCli.includes('v-stocks-paper') && stocksCli.includes('stocksPfBt
 assert.ok(stocksCli.includes('وضع تعليمي — أموال افتراضية') && stocksCli.includes("mode:'learn', symbol: sym"), 'الطابع التعليمي: شارة + زر علّمني يستدعي المعلم بالأرقام الحية');
 console.log('  ✓ v-stocks-paper: المحفظة التعليمية مقفولة');
 
-// ⑮ عين عمران: المرشد البصري بخط إنقاذ ثامن + وضعا الترجمة والسؤال.
-const vgSrv = fs.readFileSync(path.join(__dirname, '../api/_lib/visual-guide.js'), 'utf8');
-assert.ok(vgSrv.includes("new Set(['describe', 'read', 'steps', 'translate', 'ask'])"), 'الخادم يقبل وضعي الترجمة والسؤال');
-assert.ok(vgSrv.includes('v-eye-rescue') && vgSrv.includes('async function openaiRescue'), 'خط الإنقاذ الثامن موجود');
-assert.ok(vgSrv.includes("text = (await openaiRescue(image, prompt)) || ''"), 'سقوط Gemini أو فراغه يهبط للإنقاذ لا للفشل');
-assert.ok(vgSrv.includes('v-eye-probe') && vgSrv.includes('text, engine'), 'الرد يسمّي المحرك — المجس يشخّص به');
-assert.ok(vgSrv.includes("res.status(key ? 502 : 503)"), 'الفشل الكامل يحافظ على عقد الأخطاء القديم');
-const vgCli = fs.readFileSync(path.join(__dirname, '../js/app-24-visual-guide.js'), 'utf8');
-assert.ok(vgCli.includes("translate: ['ترجمة فورية'") && vgCli.includes("ask: ['اسأل عمّا تراه'"), 'الوضعان في قاموس الواجهة');
-assert.ok(vgCli.includes("mode === 'translate'") && vgCli.includes("mode === 'ask'"), 'إعلانات الوضعين ولمسة الالتقاط');
-const idx = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
-assert.ok(idx.includes('data-vgmode="translate"') && idx.includes('data-vgmode="ask"'), 'زرّا الوضعين في الواجهة');
-console.log('  ✓ عين عمران: إنقاذ + ترجمة + سؤال');
+// ⑮ v-vg-removed: المرشد البصري حُذف نهائيًا بطلب المالك (ملفاته أُزيلت من
+// main) — قفل الحذف: لا يعود لا الخادم ولا العميل.
+assert.ok(!fs.existsSync(path.join(__dirname, '../api/_lib/visual-guide.js')), 'v-vg-removed: خادم المرشد البصري محذوف');
+assert.ok(!fs.existsSync(path.join(__dirname, '../js/app-24-visual-guide.js')), 'v-vg-removed: عميل المرشد البصري محذوف');
+console.log('  ✓ v-vg-removed: المرشد البصري محذوف نهائيًا');
 
 // ⑯ v-maha-captions: ترجمة نصية حية للمكالمة — لحظية وأساسية، وتفريغ الإدخال بالخادم.
 const mahaCli = fs.readFileSync(path.join(__dirname, '../js/app-08-maha.js'), 'utf8');
@@ -283,12 +275,7 @@ console.log('  ✓ v-runway-host: فيديو Runway على المضيف الصح
   // أداة «بحث في الإنترنت» السريعة تنقر الزر الحي لا الميت.
   const uw = fs.readFileSync(path.join(__dirname, '../js/ui-wiring.js'), 'utf8');
   assert.ok(uw.includes("tap('#omranBtnWeb')") && !uw.includes("tap('#btnPreviewToggle')"), 'الأداة السريعة على الزر الحقيقي');
-  // زر «شعارات العالم» لا يموت بغياب toolsBox القديم.
-  const lg = fs.readFileSync(path.join(__dirname, '../js/app-21-logos.js'), 'utf8');
-  assert.ok(lg.includes('adBtnAnchor') && lg.includes('(!toolsBox && !adBtnAnchor)'), 'زر الشعارات له مرساة حية');
-  // جولة التطبيق تلتقط العنصر الظاهر لا نسخة الكمبيوتر المخفية.
-  const vg = fs.readFileSync(path.join(__dirname, '../js/app-24-visual-guide.js'), 'utf8');
-  assert.ok(vg.includes('cands[ci].offsetParent'), 'الجولة على العنصر الظاهر');
+  // v-vg-removed: فحصا «شعارات العالم» و«جولة التطبيق» سقطا مع حذف ملفيهما.
   // كل مفتاح data-i18n في الواجهة له ترجمة في القاموس.
   const dict = fs.readFileSync(path.join(__dirname, '../js/app-03-i18n-data.js'), 'utf8');
   const usedKeys = new Set();
@@ -410,15 +397,7 @@ console.log('  ✓ v-stream-tidy: لا زحمة أثناء الكتابة — م
 }
 console.log('  ✓ v-src-unclip: قائمة المصادر تفتح مرئية رغم قصّ الأداء');
 
-// ㉞ v-eye-hint: تعليمات أوضاع المرشد كانت صوتية فقط (#vgLive مقصوص لقارئات
-// الشاشة) — جوال صامت = «القراءة وما بعدها لا يعمل». التعليمة تظهر مكتوبة.
-{
-  const vg24 = fs.readFileSync(path.join(__dirname, '../js/app-24-visual-guide.js'), 'utf8');
-  assert.ok(vg24.includes('v-eye-hint'), 'تعليق الإصلاح موجود');
-  assert.ok(vg24.includes('المس الشاشة لألتقط وأقرأ'), 'تلميح القراءة مكتوب على الشاشة');
-  assert.ok(vg24.split('setStatus(t(').length >= 6, 'تلميح مكتوب لكل الأوضاع الخمسة');
-}
-console.log('  ✓ v-eye-hint: تعليمات المرشد مكتوبة لا صوتية فقط');
+// ㉞ v-vg-removed: فحص v-eye-hint سقط مع حذف المرشد البصري نهائيًا.
 
 // ㉟ v-edu-split: تحليل المحاضرة كان نداءً واحدًا ضخمًا (دقيقة+) — شُقّ إلى
 // نداءين متوازيين (الملخص | الأسئلة) فالزمن زمن الأطول فقط. مقاس بالمجس:

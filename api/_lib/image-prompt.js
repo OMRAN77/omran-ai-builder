@@ -196,4 +196,28 @@ function buildEditPrompt(userPrompt){
   ].join('\n');
 }
 
-module.exports = { cleanImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildSceneUpgradePrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };
+/* v-restyle-bold (مقارنة المالك مع ChatGPT «عدل 3d»): طلب تحويل أسلوب كامل
+   كان يمر بقالب التعديل الموضعي («غيّر فقط ما طُلب واحفظ كل بكسل») فيخرج
+   الأسلوب خجولًا، وأحيانًا تُرسم التعليمة نفسها كعنوان داخل الصورة. هذا
+   القالب يطلب إعادة رسم جريئة بالأسلوب المطلوب مع تثبيت التخطيط والنصوص. */
+function buildRestylePrompt(userPrompt){
+  const prompt = cleanImagePrompt(userPrompt);
+  const p = prompt.toLowerCase();
+  const style3d = /3d|ثلاثي|مجسم|مجسّم|render/.test(p);
+  const styleHint = style3d
+    ? 'BOLD premium 3D style: chunky volumetric objects with real depth, glossy and metallic materials, strong studio key light with soft rim light, crisp cast shadows, rounded beveled cards with subtle glow — the "3D icon pack / Fluent 3D" look, striking and polished.'
+    : 'Apply the requested style fully and confidently across the whole image — a clear, unmistakable transformation, not a subtle filter.';
+  return [
+    'TASK (style transformation): "' + prompt + '"',
+    '',
+    'Re-render the ENTIRE attached image in the requested style. ' + styleHint,
+    'Rules:',
+    '1. Keep the exact layout: same grid, same card positions and sizes, same element order, same aspect ratio and framing.',
+    '2. Every piece of text must be reproduced EXACTLY as in the source, character-for-character, same language and same position — Arabic labels must stay correct and readable. Never translate, paraphrase, drop or invent text.',
+    '3. NEVER write the task instruction itself (words like "3d", "عدل", "style") anywhere in the image.',
+    '4. Keep each icon\'s meaning and subject (a camera stays a camera, a dress stays a dress) while rendering it in the new style.',
+    '5. Output one finished image only — no borders, captions, watermarks or UI chrome added.',
+  ].join('\n');
+}
+
+module.exports = { cleanImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildSceneUpgradePrompt, buildRestylePrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };

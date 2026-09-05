@@ -1,4 +1,14 @@
 I18N['zh'] = {
+    "notifSectionLabel": "🔔 通知",
+    "newsAlertsLabel": "📢 突发新闻提醒",
+    "newsAlertsHint": "有突发新闻或紧急警报时向您推送通知，即使应用已关闭",
+    "newsAlertsOn": "✅ 已开启，突发新闻会推送给您",
+    "newsAlertsOff": "已关闭",
+    "newsAlertsLogin": "🔑 请先登录以开启提醒",
+    "newsAlertsDenied": "⚠️ 通知权限被拒绝，请在手机设置中开启",
+    "newsAlertsUnavail": "⚠️ 此设备不支持通知",
+    "introSplashLabel": "✨ 启动时显示开场画面",
+    "introSkip": "点按继续",
     /* v660 — التلفزيون: نصوص القسم وأسماء الدول (CLDR) */
     tvTitle: "📺 电视", tvBack: "返回", tvYoutube: "YouTube", tvSearchPh: "搜索频道...", tvAll: "全部", tvPlatforms: "官方平台 — 使用你的账号打开", tvLiveIn: "应用内直播频道", tvNoMatch: "没有匹配的频道", tvLive: "直播中", tvLiveCount: "个频道正在直播", tvOfficial: "官方网站", tvOpening: "正在打开...", tvOff: "该频道当前未直播", tvCatNews: "新闻", tvCatSports: "体育", tvCatGeneral: "综合", tvCatReligion: "宗教", tvCatKids: "少儿", tvCatBiz: "财经", tvCIntl: "国际",
     tvPfShahid: "MBC 全频道直播", tvPfAwaan: "迪拜全频道直播", tvPfAdtv: "阿布扎比与 Majid 频道", tvPfTod: "beIN 使用你的订阅", tvPfRotana: "Rotana 频道", tvPfSub: "使用你的订阅",
@@ -223,6 +233,9 @@ I18N['zh'] = {
     "copyCodeTitle": "复制代码",
     "copiedMsg": "已复制 ✅",
     "copyMsgTitle": "复制回复",
+    "tcSub_btnPortraitStyle": "多种人像风格", "tcSub_btnQuickTemplates": "为下一个项目提供灵感与创意", "tcSub_btnVideoMaker": "专业创作与剪辑视频", "tcSub_btnStudioAI": "智能风格与特效", "tcSub_btnFashionAI": "AI 时装设计", "tcSub_btnDesignAI": "室内与室外装饰设计", "tcSub_btnAdStudio": "专业广告设计", "tcSub_btnStocks": "市场分析与数据", "tcSub_btnOmranTV": "无限内容与娱乐", "tcSub_btnQibla": "礼拜时间与朝拜方向", "tcSub_btnExpense": "管理支出与预算", "tcSub_btnOmranEdu": "课程与教学", "tcSub_btnConstruction": "工程与建筑设计", "tcSub_btnReligion": "宗教问题，可靠解答", "tcSub_btnCV": "制作专业简历", "tcSub_btnDocs": "分析并总结文档", "tcSub_btnFeedback": "分享你的意见与建议", "tcSub_btnEmailAssist": "撰写邮件与回复",
+    "msgShareReply": "分享回复",
+    "msgShareCopied": "回复已复制，请粘贴到你想用的应用中",
     "uploadCodeTitle": "上传代码文件(HTML 或 Python)",
     "newProject": "+ 新建项目",
     "promptPlaceholder": "描述您想要构建的应用、游戏或网站...例如：一个简单的贪吃蛇游戏",
@@ -1033,3 +1046,6 @@ Object.assign(I18N['zh'], {"acctPointsLabel":"點數餘額","acctPointsLow":"⚠
 /* v657 */ window.__BI=window.__BI||{}; window.__BI["zh"]=Object.assign(window.__BI["zh"]||{}, {"📄 Document Assistant": "📄 文档助手", "Upload your document": "上传您的文档", "Contract · Invoice · Report · Quote (PDF or image)": "合同 · 发票 · 报告 · 报价单（PDF 或图片）", "Or paste document text": "或粘贴文档文本", "Paste document text here…": "在此粘贴文档文本…", "Analyze document": "分析文档", "Upload a file or paste text first.": "请先上传文件或粘贴文本。", "Reading your document…": "正在读取您的文档…", "Document": "文档", "Key details": "关键信息", "Summary": "摘要", "Important points": "重点内容", "Ask about the document": "询问有关文档的问题", "Type your question…": "输入您的问题…", "New document": "新建文档", "🧾 Government Services": "🧾 政府服务", "Ask about any UAE government service — steps, fees and the official link, with live search.": "通过实时搜索，咨询任何阿联酋政府服务的办理步骤、费用和官方网站链接。", "Type your service… e.g. how to renew my trade license?": "输入您要办理的服务…例如：如何续期我的营业执照？", "Searching official sources…": "正在搜索官方来源…", "Official sources": "官方来源", "💼 CV Builder": "💼 简历制作工具", "Fill your info and get a professional CV + cover letter ready as PDF.": "填写您的信息，即可获得专业简历和求职信，并可保存为 PDF。", "Full name *": "姓名 *", "John Doe": "王伟", "Job title": "职位名称", "Software Engineer": "软件工程师", "Email": "电子邮箱", "Phone": "电话", "City": "城市", "Dubai, UAE": "阿联酋迪拜", "Professional summary": "职业简介", "Two lines about your experience & goals": "用两句话介绍您的经验与目标", "Work experience": "工作经历", "Title - Company - Duration - key achievements (one per line)": "职位 - 公司 - 任职时间 - 主要成就（每行一条）", "Education": "教育经历", "Degree - University - Year": "学位 - 大学 - 年份", "Skills": "技能", "Comma separated": "用逗号分隔", "Languages": "语言", "Arabic (native), English (fluent)": "阿拉伯语（母语），英语（流利）", "Target job/company (for cover letter)": "目标职位/公司（用于求职信）", "Optional": "选填", "Generate my CV": "生成我的简历", "Enter your name at least.": "请至少填写您的姓名。", "Designing your CV…": "正在制作您的简历…", "Your CV": "您的简历", "Save PDF": "保存 PDF", "Edit info": "编辑信息", "Cover letter": "求职信", "Tip: in the print dialog choose “Save as PDF”.": "提示：在打印对话框中选择“另存为 PDF”。", "Allow pop-ups to print.": "请允许弹出窗口以便打印。"});
 /* v658 */ window.__BI=window.__BI||{}; window.__BI["zh"]=Object.assign(window.__BI["zh"]||{}, {"By signing up or signing in you agree to": "注册或登录即表示您同意", "Privacy Policy": "隐私政策", "Terms of Use": "使用条款", "and": "和", "Gulf & Arab world": "海湾及阿拉伯世界", "Asia": "亚洲", "Africa": "非洲", "Europe": "欧洲", "Oceania": "大洋洲", "Americas": "美洲", "❌ Error: ": "❌ 错误： ", "⏳ Status: ": "⏳ 状态： "});
 Object.assign(I18N['zh'], {"tvSportsWorld":"世界體育","tvDirect":"直播"});
+
+/* v-qibla-l10n: عنوان القبلة كان يظهر بالإنجليزية خارج العربية */
+Object.assign(I18N['zh'], { qiblaTitle: '📿 朝向与礼拜时间' });

@@ -113,6 +113,7 @@ async function draftReply(fromName, subject, bodyText, styleProfile) {
     const r = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
+      signal: AbortSignal.timeout(25000), // v-email-alive: نداء معلّق لا يعلّق القائمة كلها
       body: JSON.stringify({
         store: false,
         model: 'gpt-4o-mini',
@@ -157,15 +158,54 @@ module.exports = async (req, res) => {
     if (!refreshToken) { res.status(400).json({ error: 'تعذر قراءة صلاحية Gmail، أعد الربط', notConnected: true }); return; }
 
     const accessToken = await getAccessToken(refreshToken);
-    const styleProfile = await getStyleProfile(accessToken, user, username);
-    const listRes = await fetch(
-      'https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&q=' +
-      encodeURIComponent('in:inbox -in:chats -category:promotions -category:social newer_than:7d'),
-      { headers: { Authorization: 'Bearer ' + accessToken } }
-    );
-    const listData = await listRes.json();
+    /* v-email-alive (شكوى المالك «البريد شغال لكن لا يعمل»): ملف الأسلوب كان
+       يُنتظر قبل جلب الوارد (٨ رسائل متسلسلة + نداء ذكاء) — الآن بالتوازي. */
+    const [styleProfile, listRes] = await Promise.all([
+      getStyleProfile(accessToken, user, username),
+      fetch(
+        'https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&q=' +
+        encodeURIComponent('in:inbox -in:chats -category:promotions -category:social newer_than:7d'),
+        { headers: { Authorization: 'Bearer ' + accessToken } }
+      ),
+    ]);
+    const listData = await listRes.json().catch(() => ({}));
+    /* v-email-alive: خطأ Gmail API كان يُبتلع صامتًا (messages غائبة ⇒ قائمة
+       فارغة تبدو «لا يعمل»). أشهر سبب: Gmail API غير مفعّل في مشروع Google
+       Cloud رغم نجاح الربط — يُقال بوضوح مع رابط التفعيل. */
+    if (!listRes.ok || (listData && listData.error)) {
+      const gm = String((listData && listData.error && listData.error.message) || ('HTTP ' + listRes.status));
+      const disabled = /has not been used|is disabled|not enabled|accessNotConfigured|SERVICE_DISABLED/i.test(gm);
+      res.status(502).json({
+        error: disabled
+          ? 'Gmail API غير مفعّل في مشروع Google Cloud — فعّله من: https://console.cloud.google.com/apis/library/gmail.googleapis.com ثم أعد المحاولة بعد دقيقة.'
+          : 'Gmail: ' + gm.slice(0, 200),
+        gmailApiDisabled: disabled,
+      });
+      return;
+    }
     const ignoreList = user.emailAssist.ignoreList || [];
-    const msgs = listData.messages || [];
+    let msgs = listData.messages || [];
+    /* v-email-scope (شكوى المالك «البريد موصل… ما في أي شي»): الفلتر الصارم
+       (الأساسي فقط، آخر ٧ أيام، بلا عروض/اجتماعي) يرجع فارغًا عند كثيرين
+       فتبدو الأداة معطّلة بلا تفسير. نوسّع تلقائيًا: ٣٠ يومًا بكل الفئات، ثم
+       آخر رسائل الوارد كلها — ونخبر المستخدم بالنطاق المعروض بدل الصمت. */
+    const uiLang = String((body && body.lang) || 'ar').toLowerCase().startsWith('ar') ? 'ar' : 'en';
+    let scopeNote = '';
+    if (!msgs.length) {
+      const widen = async (q) => {
+        const r2 = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=10&q=' + encodeURIComponent(q), { headers: { Authorization: 'Bearer ' + accessToken } });
+        const d2 = await r2.json().catch(() => ({}));
+        return (r2.ok && d2 && d2.messages) || [];
+      };
+      msgs = await widen('in:inbox newer_than:30d');
+      if (msgs.length) scopeNote = uiLang === 'ar' ? 'لا رسائل أساسية خلال آخر ٧ أيام — عرضتُ رسائل الوارد خلال ٣٠ يومًا (بكل الفئات).' : 'No primary mail in the last 7 days — showing all inbox mail from the last 30 days.';
+      else {
+        msgs = await widen('in:inbox');
+        scopeNote = msgs.length
+          ? (uiLang === 'ar' ? 'لا رسائل خلال آخر ٣٠ يومًا — عرضتُ آخر رسائل الوارد.' : 'No mail in the last 30 days — showing the latest inbox mail.')
+          : (uiLang === 'ar' ? 'الربط سليم ✅ لكن صندوق الوارد فارغ تمامًا في هذا الحساب.' : 'Connected ✅ but this inbox is completely empty.');
+      }
+    }
 
     const detailed = await Promise.all(msgs.map(async (m) => {
       const msgRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/' + m.id + '?format=full', {
@@ -174,26 +214,27 @@ module.exports = async (req, res) => {
       return msgRes.json();
     }));
 
-    const results = [];
-    for (const msg of detailed) {
-      if (!msg || !msg.payload) continue;
+    /* v-email-alive: المسودات كانت متسلسلة (١٠ نداءات ذكاء واحدًا بعد الآخر
+       ≈ دقيقة) — الآن بالتوازي فتصل القائمة في ثوانٍ. */
+    const results = (await Promise.all(detailed.map(async (msg) => {
+      if (!msg || !msg.payload) return null;
       const headers = msg.payload.headers || [];
       const from = (headers.find((h) => h.name === 'From') || {}).value || '';
       const subject = (headers.find((h) => h.name === 'Subject') || {}).value || '(بدون عنوان)';
       const messageIdHeader = (headers.find((h) => h.name === 'Message-ID' || h.name === 'Message-Id') || {}).value || '';
-      if (ignoreList.some((pattern) => from.toLowerCase().includes(String(pattern).toLowerCase()))) continue;
+      if (ignoreList.some((pattern) => from.toLowerCase().includes(String(pattern).toLowerCase()))) return null;
       let bodyText = extractPlainText(msg.payload) || msg.snippet || '';
       bodyText = stripHtml(bodyText);
       const ai = await draftReply(from, subject, bodyText, styleProfile);
-      results.push({
+      return {
         id: msg.id, threadId: msg.threadId, messageIdHeader, from, subject,
         snippet: msg.snippet || '', priority: ai.priority, lang: ai.lang, draft: ai.draft, meeting: ai.meeting || null,
-      });
-    }
+      };
+    }))).filter(Boolean);
     const order = { urgent: 0, normal: 1, low: 2 };
     results.sort((a, b) => (order[a.priority] ?? 1) - (order[b.priority] ?? 1));
 
-    res.status(200).json({ ok: true, gmailAddress: user.emailAssist.gmailAddress, emails: results });
+    res.status(200).json({ ok: true, gmailAddress: user.emailAssist.gmailAddress, emails: results, note: scopeNote || undefined });
   } catch (e) {
     res.status(500).json({ error: 'Email list error: ' + (e && e.message ? e.message : String(e)) });
   }

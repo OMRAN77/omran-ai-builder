@@ -229,6 +229,18 @@
       <button type="button" class="btn iconBtn" id="designAiCloseBtn" style="padding:4px 10px;">✕</button>
     </div>
     <p style="font-size:12.5px; color:var(--muted); margin-top:2px;" data-i18n="designAiDesc">ارفع صورة لغرفتك واختر نمط الديكور، وسيقوم الذكاء الاصطناعي بإعادة تصميمها. ميزة قيد التجربة بحد أقصى قليل يوميًا لكل حساب.</p>
+    <!-- v-decor-ideas (طلب المالك): أفكار جاهزة بلا صورة — يختار نوع المكان بلمسة أو يكتب ما يريد -->
+    <div id="designAiIdeas" style="margin:10px 0 4px; padding:10px 12px; border:1px solid var(--omGoldSoft,rgba(212,175,55,.35)); border-radius:14px; background:rgba(212,175,55,.06);">
+      <div id="designAiIdeasTitle" style="font-size:13px; font-weight:700; margin-bottom:8px;">💡 أفكار بلا صورة — اختر نوع المكان أو اكتب ما تريد</div>
+      <div id="designAiIdeaChips" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;"></div>
+      <div style="display:flex; gap:6px; align-items:stretch;">
+        <input id="designAiIdeaText" type="text" maxlength="200" style="flex:1; min-width:0; padding:9px 10px; border-radius:10px; border:1px solid var(--border,rgba(255,255,255,.14)); background:rgba(255,255,255,.04); color:inherit; font-family:inherit;" placeholder="مثال: مجلس عربي فخم لعشرين شخصًا">
+        <button type="button" class="btn primary" id="designAiIdeaGo" style="width:auto; white-space:nowrap;">✨ أعطني أفكارًا</button>
+      </div>
+      <div id="designAiIdeaStatus" style="display:none; font-size:12.5px; margin-top:8px; line-height:1.7;"></div>
+      <div id="designAiIdeaGallery" style="display:none; columns:2; column-gap:6px; margin-top:8px;"></div>
+      <button type="button" class="btn" id="designAiIdeaAI" style="display:none; width:100%; margin-top:8px;">🎨 ولّد ٤ تصاميم بالذكاء الاصطناعي</button>
+    </div>
 
     <div style="margin-top:12px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="designAiPlaceLabel">نوع المكان</label>
@@ -471,7 +483,8 @@
         </div>
         <span style="color:#d4af37; font-size:12.5px; font-weight:700; flex:none;" data-i18n="portraitStyleBrowseAll">عرض الكل ›</span>
       </div>
-      <div id="portraitStyleSheet" style="display:none; position:fixed; inset:0; z-index:10060; background:#0b0b0d; flex-direction:column;">
+      <!-- v-sheet-above-x: الصفحة الكاملة فوق زرّ X المثبّت للنافذة الأم (z 10070) — كان يظهر X مزدوج -->
+      <div id="portraitStyleSheet" style="display:none; position:fixed; inset:0; z-index:10080; background:#0b0b0d; flex-direction:column;">
         <!-- v-picker-close: نفس علاج pickerSheet — الرأس تحت الساعة والزر أكبر -->
         <div style="display:flex; align-items:center; justify-content:space-between; padding:calc(14px + max(env(safe-area-inset-top,0px), 30px)) 16px 14px; border-bottom:1px solid rgba(212,175,55,.25); flex:none;">
           <div>
@@ -892,7 +905,7 @@
 
 <!-- v-omran-picker: معرض اختيار موحّد ملء الشاشة — نفس نمط «أنماط الصور»
      لكل القوائم الكبيرة (أزياء، ديكور، ستايل). -->
-<div id="pickerSheet" style="display:none; position:fixed; inset:0; z-index:10070; background:#0b0b0d; flex-direction:column;">
+<div id="pickerSheet" style="display:none; position:fixed; inset:0; z-index:10080; background:#0b0b0d; flex-direction:column;">
   <!-- v-picker-close (شكوى عمران: «✕ فوق عند الساعة ما أقدر أضغطه»): الرأس ينزل
        تحت شريط الحالة بهامش الأمان والزر أكبر — بلا أي زر إضافي بطلبه. -->
   <div style="display:flex; align-items:center; justify-content:space-between; padding:calc(14px + max(env(safe-area-inset-top,0px), 30px)) 16px 14px; border-bottom:1px solid rgba(212,175,55,.25); flex:none;">
@@ -903,7 +916,7 @@
     <button type="button" class="btn iconBtn" id="pickerSheetClose" style="padding:10px 16px; min-width:46px; min-height:42px; font-size:17px;">✕</button>
   </div>
   <div style="flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch;">
-    <div id="pickerSheetGrid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(175px,1fr)); gap:14px; padding:16px; max-width:1500px; margin:0 auto;"></div>
+    <div id="pickerSheetGrid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:14px; padding:16px; max-width:1500px; margin:0 auto;"></div>
   </div>
 </div>
 
@@ -1210,19 +1223,21 @@
 </div>
 
 <style id="cxSkin">
-#constructionModal .cx-head{margin:-26px -26px 16px; padding:16px 22px; background:linear-gradient(135deg,#0f766e 0%,#134e4a 100%); border-radius:var(--r-4) var(--r-4) 0 0;}
-#constructionModal .cx-head h3{color:#fff;}
-#constructionModal .cx-quota{margin-inline-start:auto; margin-inline-end:10px; font-size:11.5px; padding:4px 11px; border-radius:999px; background:rgba(255,255,255,.18); color:#fff; white-space:nowrap;}
+/* v-gold-unify: رأس المقاولات ذهبي على داكن بدل الأخضر */
+#constructionModal .cx-head{margin:-26px -26px 16px; padding:16px 22px; background:linear-gradient(135deg,rgba(212,175,55,.22) 0%,rgba(212,175,55,.05) 100%); border-bottom:1px solid rgba(212,175,55,.35); border-radius:var(--r-4) var(--r-4) 0 0;}
+#constructionModal .cx-head h3{color:#f1d98a;}
+#constructionModal .cx-quota{margin-inline-start:auto; margin-inline-end:10px; font-size:11.5px; padding:4px 11px; border-radius:999px; background:rgba(212,175,55,.18); color:#f1d98a; white-space:nowrap;}
 #constructionModal .cx-sec{border:1px solid var(--border,#333); border-radius:14px; padding:14px 14px 16px; margin-top:14px; background:rgba(255,255,255,.025);}
 #constructionModal .cx-h{margin:0 0 10px; font-size:12.5px; opacity:.92; letter-spacing:.2px;}
 #constructionModal .cx-pill{display:flex; align-items:center; gap:8px; padding:9px 12px; border:1px solid var(--border,#333); border-radius:999px; cursor:pointer; font-size:12.5px; background:var(--panel2,#141414); transition:border-color .15s, background .15s;}
-#constructionModal .cx-pill:hover{border-color:#2E9E6B;}
-#constructionModal .cx-pill input{accent-color:#2E9E6B; flex:none;}
-#constructionModal .cx-pill:has(input:checked){border-color:#2E9E6B; background:rgba(46,158,107,.14);}
-#constructionModal select,#constructionModal textarea,#constructionModal input[type=number],#constructionModal input[type=text]{border-radius:10px; padding:9px 10px;}
+#constructionModal .cx-pill:hover{border-color:#d4af37;}
+#constructionModal .cx-pill input{accent-color:#d4af37; flex:none;}
+#constructionModal .cx-pill:has(input:checked){border-color:#d4af37; background:rgba(212,175,55,.14);}
+#constructionModal select,#constructionModal textarea,#constructionModal input[type=number],#constructionModal input[type=text]{border-radius:10px; padding:9px 10px; background:var(--panel2,#141414) !important; color:var(--text,#f3efe4) !important; border:1px solid rgba(212,175,55,.35) !important;}
+#constructionModal .cx-sec{border-color:rgba(212,175,55,.22) !important;}
 #constructionModal optgroup{font-size:11.5px; opacity:.75;}
 #constructionModal .cx-out{border:1px solid var(--border,#333); border-radius:14px; overflow:hidden;}
-#constructionModal #constructionRunBtn{border-radius:12px; padding:12px; font-weight:600;}
+#constructionModal #constructionRunBtn{border-radius:12px; padding:12px; font-weight:700; background:linear-gradient(90deg,#d4af37,#f1d98a) !important; color:#141414 !important; border:none !important; box-shadow:0 4px 18px rgba(212,175,55,.35) !important;}
 @media(max-width:640px){#constructionModal .cx-pill{padding:8px 10px;}}
 </style>
 <div id="constructionModal" style="position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; padding:20px;">
@@ -1276,19 +1291,7 @@
         <label style="font-size: var(--fs-5); color:var(--muted); display:block; margin-bottom:3px;" data-i18n="cnLandArea">مساحة الأرض (م²) — اختياري</label>
         <input type="number" id="constructionPlot" style="width:100%;" min="50" max="200000" placeholder="مثال: 500" data-i18n-placeholder="cnLandAreaPh">
       </div>
-      <div>
-        <label style="font-size: var(--fs-5); color:var(--muted); display:block; margin-bottom:3px;" data-i18n="cnEmirateOpt">الإمارة — اختياري</label>
-        <select id="constructionEmirate" style="width:100%;">
-          <option value="" data-i18n="constructionEmirateNone">— بدون —</option>
-          <option value="dubai" data-i18n="constructionEmirateDubai">دبي</option>
-          <option value="abudhabi" data-i18n="constructionEmirateAbudhabi">أبوظبي</option>
-          <option value="sharjah" data-i18n="constructionEmirateSharjah">الشارقة</option>
-          <option value="ajman" data-i18n="constructionEmirateAjman">عجمان</option>
-          <option value="ummalquwain" data-i18n="constructionEmirateUmmalquwain">أم القيوين</option>
-          <option value="rasalkhaimah" data-i18n="constructionEmirateRasalkhaimah">رأس الخيمة</option>
-          <option value="fujairah" data-i18n="constructionEmirateFujairah">الفجيرة</option>
-        </select>
-      </div>
+      <!-- v-cx-noprice: اختيار الإمارة أُزيل بطلب المالك -->
     </div>
 
     <div style="margin-top:10px;">
@@ -1343,17 +1346,7 @@
       <input type="checkbox" id="constructionIncludeInterior">
       <span data-i18n="constructionIncludeInteriorLabel">🛋️ ولّد أيضًا صورة تصميم داخلي</span>
     </label>
-
-    <div style="margin-top:10px;">
-      <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="constructionBudgetLabel">💰 مستوى الميزانية</label>
-      <select id="constructionBudget" style="width:100%;">
-        <option value="b1" data-i18n="constructionBudgetB1">💵 حتى 300 ألف درهم</option>
-        <option value="b2" selected data-i18n="constructionBudgetB2">💰 300 - 600 ألف درهم</option>
-        <option value="b3" data-i18n="constructionBudgetB3">💎 600 ألف - 1 مليون درهم</option>
-        <option value="b4" data-i18n="constructionBudgetB4">👑 أكثر من 1 مليون درهم</option>
-      </select>
-      <div style="font-size: var(--fs-5); color:var(--muted); margin-top:4px;" data-i18n="constructionBudgetDisclaimer">* هذا المبلغ تقريبي فقط ولا يشمل أجرة المقاول.</div>
-    </div>
+    <!-- v-cx-noprice: مستوى الميزانية والأسعار أُزيلت بطلب المالك -->
 
     <div style="margin-top:10px;">
       <label style="font-size:12px; color:var(--muted); display:block; margin-bottom:4px;" data-i18n="constructionOutputModeLabel">📄 نوع النتيجة</label>
@@ -1373,7 +1366,7 @@
     <div id="constructionLibraryEmpty" style="display:none; font-size:12px; color:var(--muted); text-align:center; margin-top:8px;" data-i18n="constructionLibraryEmpty">لا توجد تصاميم محفوظة مشابهة بعد — كن أول من يولّد!</div>
 
     <button type="button" class="btn primary" id="constructionRunBtn" style="width:100%; margin-top:14px;" data-i18n="constructionRunBtn">✨ ولّد التصميم</button>
-    <button type="button" class="btn" id="constructionEditorBtn" style="width:100%; margin-top:8px; background:#2E9E6B; border-color:#2E9E6B; color:#fff;" data-i18n="constructionEditorBtn">📐 محرّر المخططات التفاعلي — اسحب وعدّل بنفسك</button>
+    <button type="button" class="btn" id="constructionEditorBtn" style="width:100%; margin-top:8px; background:linear-gradient(90deg,#b8902a,#d4af37); border-color:#d4af37; color:#141414; font-weight:700;" data-i18n="constructionEditorBtn">📐 محرّر المخططات التفاعلي — اسحب وعدّل بنفسك</button>
     <div style="font-size: var(--fs-5); color:var(--muted); margin-top:4px; text-align:center;" data-i18n="constructionEditorHint">مخطط بمساحات محسوبة رياضيًا، تعدّله بأصبعك، ثم تولّد صور الواجهة والمجلس منه</div>
 
     <div id="constructionStatus" style="display:none; margin-top:14px; text-align:center; font-size: var(--fs-3); color:var(--muted);"></div>

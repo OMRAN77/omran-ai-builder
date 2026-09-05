@@ -678,7 +678,7 @@
       const params = Object.assign(currentParams(), {
         /* v-cons-i18n: التقرير بلغة التطبيق */
         lang: (typeof lang !== 'undefined' && lang) || localStorage.getItem('aiapp_lang') || 'ar',
-        budget: budgetEl.value,
+        budget: budgetEl ? budgetEl.value : '',
         annexes: Array.from(document.querySelectorAll('.constructionAnnex:checked')).map((el) => el.value),
         includeInterior: !!($('#constructionIncludeInterior') && $('#constructionIncludeInterior').checked),
         includePlan: !modePlanEl || modePlanEl.checked,
@@ -1067,6 +1067,32 @@
     ],
     merge: [],
   };
+  /* v-studio-14: الميزات الأربع عشرة الجديدة (app-12-studio-more.js) */
+  const MORE = window.__STUDIO_MORE || { features: [], options: {} };
+  Object.keys(MORE.options).forEach((k) => { STUDIO_OPTIONS[k] = MORE.options[k]; });
+  const PREVIEW_API = (f, v) => '/api/studio-preview?feature=' + encodeURIComponent(f) + '&value=' + encodeURIComponent(v);
+  const IS_MORE = (f) => !!MORE.options[f];
+  function moreLabel(obj){
+    const lg = (typeof lang !== 'undefined' && lang) ? lang : (localStorage.getItem('aiapp_lang') || 'ar');
+    return obj[lg] || obj.en || obj.ar;
+  }
+  function injectMoreTabs(){
+    if(!tabsWrap || !MORE.features.length) return;
+    const mergeBtn = tabsWrap.querySelector('.studioAiTabBtn[data-feature="merge"]');
+    MORE.features.forEach((f) => {
+      let b = tabsWrap.querySelector('.studioAiTabBtn[data-feature="' + f.key + '"]');
+      if(!b){
+        b = document.createElement('button');
+        b.type = 'button'; b.className = 'btn studioAiTabBtn'; b.dataset.feature = f.key; b.dataset.more = '1';
+        b.style.whiteSpace = 'nowrap';
+        if(mergeBtn) tabsWrap.insertBefore(b, mergeBtn); else tabsWrap.appendChild(b);
+      }
+      const sp = b.querySelector('span');
+      if(sp) sp.textContent = moreLabel(f.labels); else b.textContent = moreLabel(f.labels);
+    });
+  }
+  injectMoreTabs();
+  try{ new MutationObserver(injectMoreTabs).observe(document.documentElement, { attributes:true, attributeFilter:['lang'] }); }catch(e){ /* guard-ok */ }
 
   let feature = 'hair';
   let selectedBase64A = '', selectedMimeA = 'image/jpeg';
@@ -1153,6 +1179,10 @@
 
   /* ---- 🔄 before/after slider ---- */
   function setupBeforeAfter(){
+    /* v-no-slider (أمر المالك): لا شريط مقارنة قبل/بعد */
+    beforeWrap.style.display = 'none';
+    sliderRange.style.display = 'none';
+    if(true) return;
     if(feature === 'merge' || !selectedBase64A){
       beforeWrap.style.display = 'none';
       sliderRange.style.display = 'none';
@@ -1198,6 +1228,7 @@
       items: opts.map((opt) => ({
         v: opt.value, title: opt.textContent.trim(), active: opt.value === styleEl.value,
         img: 'assets/studio/options/' + feature + '-' + opt.value + '.webp',
+        img2: PREVIEW_API(feature, opt.value), /* v-studio-14: معاينة مولّدة على الخادم إن لم توجد صورة جاهزة */
       })),
       onPick: function(v){ styleEl.value = v; renderStudioStyleCards(); },
     });
@@ -1217,7 +1248,7 @@
     img.src = 'assets/studio/options/' + feature + '-' + cur.value + '.webp';
     img.alt = cur.textContent.trim(); img.loading = 'eager';
     img.style.cssText = 'width:44px; height:58px; object-fit:cover; border-radius:8px; background:linear-gradient(160deg,#23232a,#101014); flex:none;';
-    img.onerror = function(){ img.style.visibility = 'hidden'; };
+    img.onerror = function(){ if(!img.__alt){ img.__alt = 1; img.src = PREVIEW_API(feature, cur.value); } else img.style.visibility = 'hidden'; }; /* v-studio-14 */
     const info = document.createElement('div');
     info.style.cssText = 'flex:1; min-width:0;';
     const nm = document.createElement('div');
@@ -1234,6 +1265,7 @@
     trig.onclick = openStudioPicker;
     studioCardsEl.appendChild(trig);
   }
+  /* v-studio-combo-removed (أمر المالك ٤ سبتمبر «احذف هذي الميزة»): سلّة المجموعة أُزيلت */
   /* v-studio-tabs: تبويبات الميزات بطاقات مصوّرة من assets/studio/features/. */
   function photoizeStudioTabs(){
     Array.from(tabsWrap.querySelectorAll('.studioAiTabBtn')).forEach((b) => {
@@ -1244,7 +1276,7 @@
       img.src = 'assets/studio/features/' + f + '.webp';
       img.alt = ''; img.loading = 'lazy';
       img.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0;';
-      img.onerror = function(){ img.remove(); };
+      img.onerror = function(){ if(!img.__alt && IS_MORE(f)){ img.__alt = 1; img.src = PREVIEW_API(f, '__tab'); } else img.remove(); }; /* v-studio-14 */
       const shade = document.createElement('div');
       shade.style.cssText = 'position:absolute; left:0; right:0; bottom:0; height:44%; background:linear-gradient(transparent,rgba(0,0,0,.88)); z-index:1;';
       b.insertBefore(shade, b.firstChild);
@@ -1301,19 +1333,53 @@
   if(fileBtnA) fileBtnA.onclick = () => fileInputA.click();
   if(fileBtnB) fileBtnB.onclick = () => fileInputB.click();
 
+  /* v-face-lock: الصورة تُعاد ترميزها في المتصفح (يثبّت اتجاه EXIF ويحدّ الحجم بـ2048)
+     حتى تتطابق إحداثيات قناع الوجه في الخادم مع البكسلات الفعلية. */
+  function normalizeStudioPhoto(file){
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = String(reader.result || '');
+        const raw = { b64: dataUrl.split(',')[1] || '', mime: file.type || 'image/jpeg', dataUrl };
+        try{
+          const img = new Image();
+          img.onload = () => {
+            try{
+              /* v-face-composite: قصّ مركزي إلى أقرب نسبة يدعمها محرّك القناع (2:3، 3:2، 1:1)
+                 وبأبعاد ناتجه نفسها — فالناتج يطابق الأصل بكسلًا ببكسل ويُلصق الوجه بلا انزياح */
+              const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+              const ar = iw / ih;
+              const target = (ar < 0.82) ? [1024, 1536] : (ar > 1.22 ? [1536, 1024] : [1024, 1024]);
+              const tw = target[0], th = target[1], tr = tw / th;
+              let sw = iw, sh = ih;
+              if (ar > tr) sw = Math.round(ih * tr); else sh = Math.round(iw / tr);
+              const sx = Math.round((iw - sw) / 2), sy = Math.round((ih - sh) / 2);
+              const c = document.createElement('canvas');
+              c.width = tw; c.height = th;
+              c.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, tw, th);
+              const out = c.toDataURL('image/jpeg', 0.92);
+              const b64 = out.split(',')[1] || '';
+              resolve(b64 ? { b64, mime: 'image/jpeg', dataUrl: out } : raw);
+            }catch(e){ resolve(raw); }
+          };
+          img.onerror = () => resolve(raw);
+          img.src = dataUrl;
+        }catch(e){ resolve(raw); }
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+  }
   fileInputA.onchange = () => {
     const file = fileInputA.files && fileInputA.files[0];
     if(!file) return;
-    selectedMimeA = file.type || 'image/jpeg';
     if(fileNameA) fileNameA.textContent = file.name;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result || '');
-      selectedBase64A = dataUrl.split(',')[1] || '';
-      previewA.src = dataUrl;
+    normalizeStudioPhoto(file).then((r) => {
+      if(!r) return;
+      selectedMimeA = r.mime; selectedBase64A = r.b64;
+      previewA.src = r.dataUrl;
       previewA.style.display = 'block';
-    };
-    reader.readAsDataURL(file);
+    });
   };
 
   fileInputB.onchange = () => {
