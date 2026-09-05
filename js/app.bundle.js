@@ -24445,6 +24445,7 @@ function stuL(ar, en){
       let g = null;
       try{ g = await api({ mode:'gold' }); }catch(e){ __swallow(e, "misc:app-13-stocks-init#2"); }
       tickerRaw = { syms: (j && j.items) ? j.items : [], gold: g };
+      window.__tickerLatest = tickerRaw; /* v-live-cards: بطاقة الأسهم الحيّة */
       renderTicker(tickerItems());
     }catch(e){ /* keep old ticker on error */ }
   }
@@ -30578,7 +30579,18 @@ if(document.readyState === 'loading'){
 
   var btn = document.getElementById('btnQibla');
   if(btn) btn.onclick = function(){ try{ openQibla(); }catch(e){ __swallow(e, 'qibla:open'); try{ var el = shell(); el.style.display = 'flex'; }catch(_){ /* guard-ok */ } } };
-  window.omranQibla = { open: openQibla, close: closeQibla, checkLocal: checkLocal, _S: S };
+  /* v-live-cards (فكرة المالك ٥ سبتمبر: بطاقة القبلة حيّة): الصلاة القادمة ووقتها واتجاه القبلة للبطاقة */
+  function live(){
+    var today = new Date().toDateString();
+    var pr = (S.timings && S.dateStr === today) ? Promise.resolve(S.timings) : fetchTimings();
+    return pr.then(function(){
+      var n = nextPrayer(), l = S.loc, lg = 'ar';
+      try{ lg = localStorage.getItem('aiapp_lang') || 'ar'; }catch(e){ /* guard-ok */ }
+      var nm = n ? (((PR[n.key] || {})[lg]) || (PR[n.key] || {}).en || n.key) : '';
+      return { key: n && n.key, name: nm, time: n ? (String(n.at.getHours()).padStart(2, '0') + ':' + String(n.at.getMinutes()).padStart(2, '0')) : '', bearing: l ? Math.round(qiblaBearing(l)) : null };
+    });
+  }
+  window.omranQibla = { open: openQibla, close: closeQibla, checkLocal: checkLocal, live: live, _S: S };
   /* v-prayer-local: إن كان للمستخدم تنبيهات محفوظة نراقبها محليًا منذ فتح التطبيق */
   try{ if(Object.keys(alertsMap()).length) bootLocalAlerts(); }catch(e){ __swallow(e, 'qibla:boot-local'); }
 })();
