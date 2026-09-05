@@ -120,15 +120,41 @@ async function ddgImages(queries, state) {
   }
   return out;
 }
-/* Openverse (مفتوح، بلا مفتاح) — آخر حلّ */
+/* Pexels صور (مفتاح مجاني PEXELS_API_KEY) — بنك صور احترافي منسّق بلا أي محتوى بالغ */
+async function pexelsImages(queries, state) {
+  const key = (process.env.PEXELS_API_KEY || '').trim();
+  if (!key) return [];
+  const runs = await Promise.all(queries.map(norm).filter(Boolean).slice(0, 4).map((q) => fetch(
+    'https://api.pexels.com/v1/search?per_page=15&orientation=landscape&query=' + encodeURIComponent(q),
+    { headers: { Authorization: key }, signal: AbortSignal.timeout(15000) }
+  ).then(async (r) => { if (r.ok) return r.json(); state.pexelsFail = r.status || 1; return {}; }).catch(() => { state.pexelsErr = true; return {}; })));
+  const out = [];
+  runs.forEach((j) => { ((j && j.photos) || []).forEach((p) => { const u = p && p.src && (p.src.large || p.src.medium || p.src.original); if (u) out.push(u); }); });
+  return out;
+}
+/* Unsplash صور (مفتاح مجاني UNSPLASH_ACCESS_KEY) — منسّق احترافي، content_filter=high */
+async function unsplashImages(queries, state) {
+  const key = (process.env.UNSPLASH_ACCESS_KEY || '').trim();
+  if (!key) return [];
+  const runs = await Promise.all(queries.map(norm).filter(Boolean).slice(0, 4).map((q) => fetch(
+    'https://api.unsplash.com/search/photos?per_page=15&content_filter=high&orientation=landscape&query=' + encodeURIComponent(q),
+    { headers: { Authorization: 'Client-ID ' + key, 'Accept-Version': 'v1' }, signal: AbortSignal.timeout(15000) }
+  ).then(async (r) => { if (r.ok) return r.json(); state.unsplashFail = r.status || 1; return {}; }).catch(() => { state.unsplashErr = true; return {}; })));
+  const out = [];
+  runs.forEach((j) => { ((j && j.results) || []).forEach((p) => { const u = p && p.urls && (p.urls.regular || p.urls.small); if (u) out.push(u); }); });
+  return out;
+}
+/* Openverse (مفتوح، بلا مفتاح) — آخر حلّ. mature=false افتراضيًا فآمن من المحتوى البالغ */
 async function openverseImages(queries, state) {
-  const q = queries.map(norm).filter(Boolean)[0];
-  if (!q) return [];
-  try {
-    const j = await fetch('https://api.openverse.org/v1/images/?page_size=40&q=' + encodeURIComponent(q), { headers: { 'User-Agent': UA, Accept: 'application/json' }, signal: AbortSignal.timeout(12000) })
-      .then(async (r) => { if (r.ok) return r.json(); state.ovFail = r.status || 1; return null; });
-    return ((j && j.results) || []).map((it) => it && it.url).filter(Boolean);
-  } catch (e) { state.ovErr = true; return []; }
+  const out = [];
+  for (const q of queries.map(norm).filter(Boolean).slice(0, 2)) {
+    try {
+      const j = await fetch('https://api.openverse.org/v1/images/?page_size=40&mature=false&q=' + encodeURIComponent(q), { headers: { 'User-Agent': UA, Accept: 'application/json' }, signal: AbortSignal.timeout(12000) })
+        .then(async (r) => { if (r.ok) return r.json(); state.ovFail = r.status || 1; return null; });
+      ((j && j.results) || []).forEach((it) => { const u = it && (it.url || it.thumbnail); if (u) out.push(u); });
+    } catch (e) { state.ovErr = true; }
+  }
+  return out;
 }
 function dedupe(list, seen, images) {
   list.forEach((u) => { if (!u || seen.has(u) || !looksLikePhoto(u)) return; seen.add(u); images.push(u); });
@@ -145,11 +171,18 @@ async function gather(apiKey, wave1, wave2, gq) {
   /* v-ideas-relevant (صورة المالك: قطط وزفاف بدل مطعم): مصادر «بحث الصور» فقط — صور الصفحات
      (pagemap) وOpenverse تعطي صورًا لا علاقة لها بالطلب فأُزيلتا من السلسلة. */
   /* v-ideas-safe (المالك: «فيه صور عارية»): Bing وDuckDuckGo بلا تصفية مضمونة — أُوقفا نهائيًا.
-     يبقى Tavily وGoogle صور مع safe=active فقط. */
+     يبقى Tavily وGoogle صور مع safe=active.
+     v-ideas-fallback (المالك: «مصدر الصور متوقف tavily:432 google:403»): عند نفاد الحصّتين
+     المدفوعتين نضيف مصادر آمنة منسّقة — Pexels وUnsplash (بمفتاح مجاني، صفر محتوى بالغ)،
+     وOpenverse (بلا مفتاح، mature=false) كحلّ أخير حتى لا يظهر خطأ أبدًا. */
   const chain = [
     ['google', () => googleImages(gq, state)],
+    ['pexels', () => pexelsImages(wave1, state)],
+    ['unsplash', () => unsplashImages(wave1, state)],
+    ['openverse', () => openverseImages(gq, state)],
   ];
   for (const [name, fn] of chain) {
+    /* لا نستهلك حصص البدائل إلا عند فشل Tavily أو قلّة الصور الحقيقية */
     if (!(state.tavilyFail || images.length < 12)) break;
     let got = [];
     try { got = await fn(); } catch (e) { /* guard-ok */ }
@@ -159,6 +192,9 @@ async function gather(apiKey, wave1, wave2, gq) {
   const detail = {
     tavily: state.tavilyFail || (state.tavilyErr ? 'net' : (apiKey ? 'ok' : 'off')),
     google: state.googleFail || (state.googleErr ? 'net' : ((process.env.GOOGLE_SEARCH_API_KEY && process.env.GOOGLE_SEARCH_CX) ? 'ok' : 'off')),
+    pexels: state.pexelsFail || (state.pexelsErr ? 'net' : (process.env.PEXELS_API_KEY ? 'ok' : 'off')),
+    unsplash: state.unsplashFail || (state.unsplashErr ? 'net' : (process.env.UNSPLASH_ACCESS_KEY ? 'ok' : 'off')),
+    openverse: state.ovFail || (state.ovErr ? 'net' : 'ok'),
   };
   if (!images.length) {
     out.error = 'provider';
