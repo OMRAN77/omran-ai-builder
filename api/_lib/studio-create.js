@@ -54,6 +54,7 @@ async function rescueGuarded(promptText, images, apiKey, feature) {
 }
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 const faceLock = require('./face-lock.js');
+const { judgeBest, duoEnabled } = require('./image-judge');
 
 const STYLE_TEXT = {
   hair: {
@@ -264,15 +265,36 @@ async function runEdit(o) {
     if (fixed && fixed.b64) return { b64: fixed.b64, mime: fixed.mime, engine: engine + '+restore' };
     return { b64, mime, engine };
   };
+  const parts = [{ text: o.promptText }, { inlineData: { mimeType: o.mimeType || 'image/jpeg', data: o.imageBase64 } }];
+  /* v-image-duo: مع قفل الوجه يعمل Gemini بالتوازي مع تعديل gpt-image بالقناع، والحكم يختار */
+  const duo = duoEnabled() && !!o.openaiKey;
+  let gemP = null;
+  const guardOf = async (b64, mime) => {
+    if (o.skipGuard) return true;
+    const g = await verifyLocalizedImageEdit({ apiKey: o.apiKey, sourceBase64: o.imageBase64, sourceMime: o.mimeType || 'image/jpeg', resultBase64: b64, resultMime: mime, userPrompt: (o.guard && o.guard.userPrompt) || o.feature, allowStyleChange: !!(o.guard && o.guard.allowStyleChange) });
+    return !!(g && (g.ok || g.reason === 'validation_unavailable'));
+  };
   if (prep) {
+    if (duo) gemP = geminiImage(o.apiKey, parts, o.feature).catch(function () { return {}; });
     const masked = await faceLock.maskedEdit(prep, o.openaiKey, o.promptText);
-    if (masked) return finish(masked, 'image/png', 'openai-lock');
+    if (masked) {
+      if (gemP) {
+        try {
+          const g = await gemP;
+          if (g && g.b64 && await guardOf(g.b64, g.mime)) {
+            const pick = await judgeBest({ apiKey: o.apiKey, prompt: o.promptText, source: { b64: o.imageBase64, mime: o.mimeType || 'image/jpeg' }, a: { b64: masked, mime: 'image/png' }, b: { b64: g.b64, mime: g.mime } });
+            if (pick === 'b') return finish(g.b64, g.mime, 'gemini+judge');
+          }
+        } catch (e) { console.warn('[studio-create] duo judge skipped: ' + (e && e.message)); }
+        return finish(masked, 'image/png', 'openai-lock+judge');
+      }
+      return finish(masked, 'image/png', 'openai-lock');
+    }
     console.warn('[studio-create] masked edit unavailable for ' + o.feature + ' — falling back to gemini');
   } else if (o.lockLevel && o.lockLevel !== 'none') {
     console.warn('[studio-create] face-lock prepare failed for ' + o.feature + ' — no pixel restore');
   }
-  const parts = [{ text: o.promptText }, { inlineData: { mimeType: o.mimeType || 'image/jpeg', data: o.imageBase64 } }];
-  const out = await geminiImage(o.apiKey, parts, o.feature);
+  const out = gemP ? await gemP : await geminiImage(o.apiKey, parts, o.feature);
   if (!out.b64) {
     /* v-studio-rescue / v-studio-noimg-rescue: gpt-image-1 قبل إبلاغ الفشل */
     const rescue = await rescueGuarded(o.promptText, [[o.imageBase64, o.mimeType]], o.apiKey, o.feature);

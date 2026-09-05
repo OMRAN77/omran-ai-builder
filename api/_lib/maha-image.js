@@ -9,6 +9,7 @@ const { cleanImagePrompt, buildGenerationPrompt, buildEditPrompt, buildSceneUpgr
    لا تعديل موضعي — explicitlyRequestsStyleChange لا يلتقط «3d» وحدها. */
 const RESTYLE_RE = /(^|[\s،,])(3d|ثلاثي|مجسم|مجسّم|كرتون|كارتون|أنيمي|انمي|بيكسار|ديزني|زيتي|مائي|رصاص|بكسل|بيكسل|سايبر|نيون|كوميك|كومكس|مانجا|فانتازيا|واقعي|anime|cartoon|pixar|disney|pixel|cyberpunk|neon|comic|manga|fantasy|watercolor|oil\s*paint|sketch|realistic|render)/i;
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
+const { judgeBest, duoEnabled } = require('./image-judge');
 const { authorPrayerPlan } = require('./prayer-plan');
 const { fetchImageWithRetry, isImageTimeoutError } = require('./image-fetch');
 const pipeline = require('./image-pipeline');
@@ -323,6 +324,11 @@ module.exports = async (req, res) => {
       }
     }
 
+    /* v-image-duo: gpt-image يعمل بالتوازي مع Gemini على الطلب نفسه؛ الحكم يختار الأدقّ في النهاية.
+       يُستثنى الدعاء المؤلَّف وخط الأنابيب (لهما تحقّق خاص) وما سلك مسار النصّ الكثيف. */
+    const duoOn = duoEnabled() && !prayerPlan && !pipelineActive && !__textRoute;
+    const duoP = duoOn ? openaiRescueImage().catch(function () { return null; }) : null;
+    let duoEngine = '';
     // Image generation normally takes 35–50 seconds, so it must bypass the
     // shared 30-second fetch guard. Retry transient failures inside this one
     // request; the user should not have to resend the same prompt.
@@ -345,7 +351,7 @@ module.exports = async (req, res) => {
     if (!upstream || !upstream.ok) {
       const nanoB64 = await geminiNanoBananaImage();
       if (nanoB64) { res.status(200).json({ imageBase64: nanoB64, mimeType: 'image/png', engine: 'gemini-nano-banana', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
-      const rescuedB64 = await openaiRescueImage();
+      const rescuedB64 = duoP ? await duoP : await openaiRescueImage();
       /* v-prayer-carry: الإنقاذ كان يفقد الدعاء المؤلَّف فيرفضه العميل
          (missing_authored_prayer — لقطة المالك). يُمرَّر مع الصورة المنقذة. */
       if (rescuedB64) { res.status(200).json({ imageBase64: rescuedB64, mimeType: 'image/png', engine: 'openai', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
@@ -365,7 +371,7 @@ module.exports = async (req, res) => {
     if (!imgPart) {
       const nanoB64b = await geminiNanoBananaImage();
       if (nanoB64b) { res.status(200).json({ imageBase64: nanoB64b, mimeType: 'image/png', engine: 'gemini-nano-banana', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
-      const rescuedB64b = await openaiRescueImage();
+      const rescuedB64b = duoP ? await duoP : await openaiRescueImage();
       if (rescuedB64b) { res.status(200).json({ imageBase64: rescuedB64b, mimeType: 'image/png', engine: 'openai', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
       await refundImageCharge();
       console.error('[maha-image] no image part in response: ' + JSON.stringify(data).slice(0, 2000));
@@ -447,9 +453,28 @@ module.exports = async (req, res) => {
       }
     }
 
+    /* v-image-duo: المرشّح الثاني (gpt-image) يمرّ بحارس الهوية نفسه إن كان تعديلًا، ثم الحكم */
+    if (duoP) {
+      try {
+        const alt = await duoP;
+        if (alt) {
+          let altOk = true;
+          if (editImageBase64 && !extras.length) {
+            const g2 = await verifyLocalizedImageEdit({ apiKey, sourceBase64: editImageBase64, sourceMime: editMimeType || 'image/png', resultBase64: alt, resultMime: 'image/png', userPrompt: cleanPrompt, allowStyleChange: explicitlyRequestsStyleChange(cleanPrompt), allowBroadChange: isSceneUpgrade });
+            altOk = !!(g2 && (g2.ok || g2.reason === 'validation_unavailable'));
+          }
+          if (altOk) {
+            const pick = await judgeBest({ apiKey, prompt: cleanPrompt, source: editImageBase64 ? { b64: editImageBase64, mime: editMimeType || 'image/png' } : null, a: { b64: imgPart.inlineData.data, mime: imgPart.inlineData.mimeType || 'image/png' }, b: { b64: alt, mime: 'image/png' } });
+            if (pick === 'b') { imgPart = { inlineData: { data: alt, mimeType: 'image/png' } }; duoEngine = 'openai+judge'; }
+            else duoEngine = 'gemini+judge';
+          } else duoEngine = 'gemini';
+        }
+      } catch (e) { console.warn('[maha-image] duo skipped: ' + (e && e.message)); }
+    }
     res.status(200).json({
       imageBase64: imgPart.inlineData.data,
       mimeType: imgPart.inlineData.mimeType || 'image/png',
+      engine: duoEngine || 'gemini',
       authoredText: prayerPlan ? prayerPlan.prayerText : undefined,
       visualPrompt: prayerPlan ? prayerPlan.visualBrief : undefined,
       prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined,
