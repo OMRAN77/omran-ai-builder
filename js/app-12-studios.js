@@ -717,6 +717,16 @@ function stuL(ar, en){
     if(!g || g.tagName !== 'OPTGROUP' || g.id === 'portraitFavGroup') return 'art';
     return (g.getAttribute('data-i18n') || g.getAttribute('label') || 'art').replace(/^\[label\]/, '');
   }
+  /* الاسم الإنجليزي للنمط (يضيف مصداقية الأداة تحت كل بطاقة) — من قاموس en أو data-en */
+  function pstyleEn(v){
+    try{
+      const o = styleEl.querySelector('option[value="' + v + '"]'); if(!o) return '';
+      const k = o.getAttribute('data-i18n'); let en = '';
+      if(k && window.I18N && window.I18N.en && window.I18N.en[k]) en = window.I18N.en[k];
+      if(!en) en = o.getAttribute('data-en') || '';
+      return String(en).replace(/^[^\p{L}\p{N}]+/u, '').trim();
+    }catch(e){ return ''; }
+  }
   function pstyleGroups(){
     const out = [{ k: 'all', label: gt('psheetAll', 'الكل', 'All') }, { k: 'art', label: gt('psheetGrpArt', '🎨 فنية', '🎨 Artistic') }];
     Array.from(styleEl.querySelectorAll('optgroup')).forEach((g) => {
@@ -741,12 +751,46 @@ function stuL(ar, en){
       + '.pstyleChip.on{background:#d4af37; color:#141414; border-color:#d4af37;}'
       + '.pstyleBefore{border:2px solid rgba(212,175,55,.75) !important; box-shadow:0 0 18px rgba(212,175,55,.3) !important; cursor:default !important;}'
       + '.pstyleCta{display:block; width:min(420px, calc(100% - 28px)); margin:14px auto 8px; padding:14px 18px; border-radius:999px; background:linear-gradient(135deg,#f1d98a,#d4af37 55%,#b8902a); color:#141414; font-weight:800; font-size:15px; border:none; cursor:pointer; box-shadow:0 8px 24px rgba(212,175,55,.35); font-family:inherit;}'
-      + '.pstyleCta:active{transform:scale(.985)}';
+      + '.pstyleCta:active{transform:scale(.985)}'
+      + '@keyframes pstyleIn{from{opacity:0; transform:translateY(8px) scale(.97)}to{opacity:1; transform:none}}'
+      + '.pstyleCard{animation:pstyleIn .28s ease both;}'
+      + '.pstyleEn{font-size:10px; color:#d4af37; letter-spacing:.3px; margin-top:2px; opacity:.9; direction:ltr;}'
+      + '.pstyleHero{position:relative; width:min(340px, 92vw); aspect-ratio:1; margin:6px auto 2px; border-radius:50%;'
+      + ' background:radial-gradient(circle at 50% 50%, rgba(212,175,55,.16) 0 18%, rgba(212,175,55,.05) 19% 38%, transparent 39%),'
+      + ' repeating-conic-gradient(from 0deg, rgba(212,175,55,.22) 0deg 0.8deg, transparent 0.8deg 30deg);}'
+      + '.pstyleHero .pstyleHeroC{position:absolute; left:50%; top:50%; width:34%; aspect-ratio:1; transform:translate(-50%,-50%); border-radius:50%; overflow:hidden; border:3px solid #d4af37; box-shadow:0 0 0 6px rgba(212,175,55,.15), 0 0 40px rgba(212,175,55,.45); background:#101014;}'
+      + '.pstyleHero .pstyleHeroC img{width:100%; height:100%; object-fit:cover; object-position:50% 12%;}'
+      + '.pstyleHero .pstyleHeroC span{position:absolute; left:50%; bottom:6%; transform:translateX(-50%); padding:2px 9px; border-radius:999px; background:#d4af37; color:#141414; font-size:11px; font-weight:800; white-space:nowrap;}'
+      + '.pstyleHero .pstyleHeroT{position:absolute; width:19%; aspect-ratio:1; border-radius:50%; overflow:hidden; border:2px solid rgba(212,175,55,.75); background:#17171b; box-shadow:0 6px 18px rgba(0,0,0,.45); cursor:pointer; transform:translate(-50%,-50%); transition:transform .18s, box-shadow .18s;}'
+      + '.pstyleHero .pstyleHeroT:hover{transform:translate(-50%,-50%) scale(1.12); box-shadow:0 0 22px rgba(212,175,55,.6);}'
+      + '.pstyleHero .pstyleHeroT img{width:100%; height:100%; object-fit:cover; object-position:50% 12%;}'
+      + '.pstyleHero .pstyleHeroT i{position:absolute; left:0; right:0; bottom:0; font-style:normal; font-size:8.5px; line-height:1.1; padding:8px 7px 4px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff; background:linear-gradient(transparent, rgba(0,0,0,.8)); direction:ltr;}';
     document.head.appendChild(st);
   }
   function ensurePsheetChrome(){
     ensurePsheetCss();
     const scroller = styleCardsGrid.parentElement; if(!scroller) return;
+    let hero = document.getElementById('portraitStyleHero');
+    if(!hero){
+      hero = document.createElement('div'); hero.id = 'portraitStyleHero'; hero.className = 'pstyleHero';
+      const c = document.createElement('div'); c.className = 'pstyleHeroC';
+      const ci = document.createElement('img'); ci.src = 'assets/portrait/before.webp'; ci.alt = ''; ci.onerror = function(){ ci.remove(); };
+      const cl = document.createElement('span'); cl.textContent = gt('psheetBefore', 'قبل', 'Before');
+      c.appendChild(ci); c.appendChild(cl); hero.appendChild(c);
+      const RING = ['anime', 'pixel', 'sketch', 'mosaic', 'oil', 'comic', 'watercolor', 'cyberpunk', 'lego', 'statue', 'pop', 'ghibli'];
+      const RING_EN = { anime: 'Anime', pixel: 'Pixel Art', sketch: 'Sketch', mosaic: 'Mosaic', oil: 'Oil Paint', comic: 'Comic', watercolor: 'Watercolor', cyberpunk: 'Cyberpunk', lego: 'LEGO', statue: 'Statue', pop: 'Pop Art', ghibli: 'Ghibli' };
+      RING.forEach((v, i) => {
+        const a = (-90 + i * (360 / RING.length)) * Math.PI / 180, r = 40.5;
+        const tdiv = document.createElement('div'); tdiv.className = 'pstyleHeroT'; tdiv.setAttribute('data-pstyle-ring', v);
+        tdiv.style.left = (50 + r * Math.cos(a)) + '%'; tdiv.style.top = (50 + r * Math.sin(a)) + '%';
+        const im = document.createElement('img'); im.src = 'assets/portrait/styles/' + v + '.webp'; im.alt = ''; im.loading = 'eager'; im.onerror = function(){ tdiv.remove(); };
+        const lb = document.createElement('i'); lb.textContent = RING_EN[v] || pstyleEn(v);
+        tdiv.appendChild(im); tdiv.appendChild(lb);
+        tdiv.onclick = function(){ const o = styleEl.querySelector('option[value="' + v + '"]'); if(!o) return; styleEl.value = v; styleEl.dispatchEvent(new Event('change', { bubbles: true })); refreshStyleTrigger(); if(styleSheet) styleSheet.style.display = 'none'; };
+        hero.appendChild(tdiv);
+      });
+      scroller.insertBefore(hero, styleCardsGrid);
+    }
     let chips = document.getElementById('portraitStyleChips');
     if(!chips){ chips = document.createElement('div'); chips.id = 'portraitStyleChips'; chips.className = 'pstyleChips'; scroller.insertBefore(chips, styleCardsGrid); }
     chips.innerHTML = '';
@@ -836,6 +880,7 @@ function stuL(ar, en){
       subEl.textContent = pstyleSub(v);
       subEl.style.cssText = 'font-size:10.5px; color:#9a9a9e; margin-top:3px; min-height:13px;';
       info.appendChild(nameEl); info.appendChild(subEl);
+      if(pstyleLang().indexOf('en') !== 0){ const en = pstyleEn(v); if(en && en !== title){ const enEl = document.createElement('div'); enEl.className = 'pstyleEn'; enEl.textContent = en; info.appendChild(enEl); } }
       card.appendChild(imgWrap); card.appendChild(info);
       card.onclick = function(){
         styleEl.value = v;
