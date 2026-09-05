@@ -132,13 +132,20 @@ module.exports = async (req, res) => {
     const isRestyle = !!editImageBase64 && !isSceneUpgrade && RESTYLE_RE.test(String(prompt || ''));
     const isReimagine = !!editImageBase64 && !isSceneUpgrade && !isRestyle && /فكرة\s*(ثانية|ثانيه|مختلفة|مختلفه|جديدة|جديده|غير)|فكره\s*(ثانية|ثانيه|مختلفة|مختلفه|جديدة|جديده|غير)|غيّ?ر\s*الفكرة|بشكل\s*مختلف\s*تمام|مختلف\s*تمام|تصميم\s*ثاني|ستايل\s*ثاني|بدّ?ل\s*(الفكرة|التصميم|الستايل)|different\s*(idea|concept|style)|new\s*concept|another\s*(idea|take|concept)|reimagine/i.test(String(prompt || ''));
     const promptLimit = isArchitectural ? 2400 : (editImageBase64 ? 8000 : 1800);
-    const cleanPrompt = cleanImagePrompt(prayerPlan ? prayerPlan.visualBrief : prompt).slice(0, promptLimit);
+    /* v-nano-raw (المالك ٥ سبتمبر: «ليش الفرق بينهم»): تطبيق Gemini يرسل نصّ المستخدم كما هو، ونحن نلفّه
+       بقواعد وحرّاس وحكم. من يبدأ طلبه بـ«نانو:» أو «nano:» يصل نصّه إلى نانو بنانا برو حرفيًا:
+       بلا صياغة، بلا حارس، بلا محرّك ثانٍ، بلا لصق وجه — نفس ما يعطيه تطبيق Gemini. */
+    const RAW_RE = /^\s*(?:نانو|نانو\s*بنانا|nano(?:\s*banana)?)\s*[:：\-–—]?\s*/i;
+    const rawMode = !prayerPlan && RAW_RE.test(String(prompt || ''));
+    const cleanPrompt = rawMode
+      ? String(prompt || '').replace(RAW_RE, '').trim().slice(0, 4000)
+      : cleanImagePrompt(prayerPlan ? prayerPlan.visualBrief : prompt).slice(0, promptLimit);
     const extras = Array.isArray(extraImages) ? extraImages.filter((x) => x && x.data).slice(0, 5) : [];
 
     // 🧪 خط أنابيب الصور الجديد: يعمل فقط لتوليد جديد (لا تعديل، لا دعاء،
     // لا إعادة تصور، لا ترقية مشهد)، ومحمي خلف علم بيئة صريح كي لا يمسّ أي
     // مسار قائم قبل التحقّق منه.
-    let pipelineActive = process.env.IMAGE_PIPELINE === '1' && !editImageBase64 && !prayerPlan;
+    let pipelineActive = process.env.IMAGE_PIPELINE === '1' && !editImageBase64 && !prayerPlan && !rawMode;
     let pipelineRewrite = null;
     if (pipelineActive) {
       try {
@@ -180,6 +187,12 @@ module.exports = async (req, res) => {
       }) });
     }
 
+    if (rawMode) {
+      parts.length = 0;
+      parts.push({ text: cleanPrompt });
+      if (editImageBase64) parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
+      for (const x of extras) parts.push({ inlineData: { mimeType: x.mime || 'image/png', data: x.data } });
+    }
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image:generateContent?key=' + apiKey;
     // v656: نسبة أبعاد ذكية — الافتراضي طولي (3:4) لأن المستخدمين على الجوال،
     // مع احترام أي طلب صريح (عرضي/مربع/ستوري...). التعديل يحافظ على أبعاد المصدر.
@@ -192,7 +205,9 @@ module.exports = async (req, res) => {
     };
     const imageConfig = { imageSize: '2K' };
     if (!editImageBase64) imageConfig.aspectRatio = (pipelineActive && pipelineRewrite && pipelineRewrite.aspect) ? pipelineRewrite.aspect : (isArchitectural ? '16:9' : pickAspect(cleanPrompt));
-    const reqBody = JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: editImageBase64 ? (isSceneUpgrade ? 0.5 : (isReimagine ? 0.9 : (isRestyle ? 0.6 : 0.15))) : 0.85, imageConfig } });
+    const reqBody = JSON.stringify(rawMode
+      ? { contents: [{ parts }], generationConfig: { imageConfig } }
+      : { contents: [{ parts }], generationConfig: { temperature: editImageBase64 ? (isSceneUpgrade ? 0.5 : (isReimagine ? 0.9 : (isRestyle ? 0.6 : 0.15))) : 0.85, imageConfig } });
 
     /* v-img-textwise (شكوى المالك: «توليد الصور زفت» — لقطة شاشة التطبيق
        رجعت بعناوين عربية مشوهة): مصدرٌ مليء بالنصوص (لقطة واجهة، مستند،
@@ -314,7 +329,7 @@ module.exports = async (req, res) => {
        عربية سليمة — gpt-image ينفّذها وGemini يكسر الحروف): طلب توليد جديد
        يذكر نصوصًا/عناوين/أيقونات/واجهة/شاشة يبدأ أيضًا بـgpt-image. */
     const __textCueRe = /نص|كتاب|مكتوب|عنوان|عناوين|أيقون|ايقون|واجهة|شاشة|تطبيق|قائمة|كلمات|حروف|خط\s*عرب|\btext\b|label|icon|\bui\b|screen|interface|\bapp\b|menu|typograph|lettering|caption/i;
-    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan
+    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !rawMode
       && (editImageBase64 ? await sourceLooksTextDense() : __textCueRe.test(cleanPrompt));
     if (__textRoute) {
       const denseB64 = await openaiRescueImage();
@@ -326,7 +341,7 @@ module.exports = async (req, res) => {
 
     /* v-image-duo: gpt-image يعمل بالتوازي مع Gemini على الطلب نفسه؛ الحكم يختار الأدقّ في النهاية.
        يُستثنى الدعاء المؤلَّف وخط الأنابيب (لهما تحقّق خاص) وما سلك مسار النصّ الكثيف. */
-    const duoOn = duoEnabled() && !prayerPlan && !pipelineActive && !__textRoute;
+    const duoOn = duoEnabled() && !prayerPlan && !pipelineActive && !__textRoute && !rawMode;
     const duoP = duoOn ? openaiRescueImage().catch(function () { return null; }) : null;
     let duoEngine = '';
     // Image generation normally takes 35–50 seconds, so it must bypass the
@@ -380,7 +395,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    if (editImageBase64 && !extras.length) {
+    if (editImageBase64 && !extras.length && !rawMode) {
       const guard = await verifyLocalizedImageEdit({
         apiKey,
         sourceBase64: editImageBase64,
@@ -474,7 +489,7 @@ module.exports = async (req, res) => {
     res.status(200).json({
       imageBase64: imgPart.inlineData.data,
       mimeType: imgPart.inlineData.mimeType || 'image/png',
-      engine: duoEngine || 'gemini',
+      engine: rawMode ? 'nano-raw' : (duoEngine || 'gemini'),
       authoredText: prayerPlan ? prayerPlan.prayerText : undefined,
       visualPrompt: prayerPlan ? prayerPlan.visualBrief : undefined,
       prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined,
