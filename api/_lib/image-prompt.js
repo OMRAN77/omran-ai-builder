@@ -185,7 +185,15 @@ function buildSceneUpgradePrompt(userPrompt){
    كلمة، الْمس المنطقة المطلوبة فقط واترك كل حرف آخر مطابقًا حرفًا بحرف. */
 function isTextEditRequest(text){
   return /\b(?:write|add|remove|delete|erase|replace|change|swap)\b[^\n]{0,40}\b(?:letter|word|text|character|caption|title|logo)\b/i.test(text)
-    || /(?:اكتب|أكتب|اضف|أضف|ضيف|شيل|احذف|امسح|بدّل|بدل|غيّر|غير|استبدل)[^\n]{0,30}(?:حرف|كلمة|كلمه|نص|النص|اسم|عنوان|شعار|رقم)/.test(text);
+    || /(?:اكتب|أكتب|اضف|أضف|ضيف|شيل|احذف|امسح|بدّل|بدل|غيّر|غير|استبدل)[^\n]{0,30}(?:حرف|كلمة|كلمه|نص|النص|اسم|أسماء|اسماء|عنوان|شعار|رقم)/.test(text);
+}
+/* v-remove-text (المالك: «بدون أسماء — يحذف الأسماء من الصورة»): طلب إزالة
+   الأسماء/الكتابة/العلامة المائية من الصورة. */
+function isRemoveTextRequest(text){
+  const t = String(text || '');
+  return /(?:بدون|بلا|من\s*دون)\s*(?:أسماء|اسماء|اسم|كتابة|كتابه|نص|نصوص|كلام|حروف|أرقام|ارقام|توقيع|علامة|لوجو|شعار|واتر\s*مارك)/.test(t)
+    || /(?:احذف|امسح|شيل|ازل|أزل|نظّف|نظف|اخفِ|اخفي)\s*(?:ال)?(?:أسماء|اسماء|اسم|كتابة|كتابه|النص|نص|نصوص|كلام|حروف|أرقام|ارقام|توقيع|علامة\s*مائية|لوجو|شعار|واتر\s*مارك)/.test(t)
+    || /\b(?:remove|erase|delete|clear|without|no)\b[^\n]{0,20}\b(?:names?|text|writing|words?|letters?|numbers?|caption|watermark|logo|signature|labels?)\b/i.test(t);
 }
 function buildEditPrompt(userPrompt){
   const prompt = cleanImagePrompt(userPrompt);
@@ -201,7 +209,9 @@ function buildEditPrompt(userPrompt){
     '6. Never write, draw, translate or render the instruction itself inside the image. Preserve existing text character-for-character unless the USER REQUEST explicitly replaces it.',
     '7. Never return the image unchanged. Always apply the USER REQUEST as written: if it is short or vague, apply its most reasonable literal interpretation to the closest matching element — changing nothing else. Do not add, invent or improve anything the USER REQUEST did not ask for.'
   ];
-  if(isTextEditRequest(prompt)){
+  if(isRemoveTextRequest(prompt)){
+    rules.push('8. REMOVE TEXT: completely erase ALL names, words, letters, numbers, captions, signatures, logos and watermarks that appear in the image, unless the request names specific text to keep. Rebuild whatever was behind the removed text so the surface looks clean and natural (matching colour, texture, lighting and perspective) as if the text was never there. Do NOT leave blur, smudges, ghosting or empty boxes. Change nothing else in the image.');
+  } else if(isTextEditRequest(prompt)){
     rules.push('8. TEXT/LETTER EDIT: touch ONLY the exact letter or word named in the request. Every OTHER letter, word, number and label anywhere in the image must stay identical, character-for-character, in the same font, size, colour and position — do NOT repaint, reflow or re-typeset surrounding text. Render any new Arabic text with correct, cleanly joined right-to-left glyphs. Do NOT insert stray digits, random symbols, or the words of the instruction (like "تعديل"/"edit").');
   }
   rules.push('Re-read the USER REQUEST now: "' + prompt + '". Return only one finished edited image.');
