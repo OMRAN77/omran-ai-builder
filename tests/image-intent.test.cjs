@@ -63,6 +63,11 @@ test('both chat clients forward the user\'s words and the tool path never loses 
   const chat = fs.readFileSync('api/_lib/chat.js', 'utf8');
   assert.match(attach, /prompt: __editPrompt, userText: String\(text \|\| ''\)\.slice\(0, 600\)/);
   assert.match(attach, /نانو بنانا برو/);
+  /* بطاقة ملصوقة/عريضة تُعلَّم «لقطة شاشة» — الطلب الإبداعي القصير عليها يبقى تعديل صورة لا تحليل لقطة */
+  assert.match(attach, /__srcImg\._screenshot && !__SHOT_CREATIVE && !__imgEditRe/);
+  const creativeRe = new RegExp(attach.match(/const __IMG_CREATIVE_RE = \/(.*)\/i;/)[1], 'i');
+  for (const t of ['أقوى', 'نسخة أفخم', 'خلها أرقى', 'طوّرها', 'فكرة ثانية', 'كرتون', 'make it stronger']) assert.ok(creativeRe.test(t), t);
+  for (const t of ['كيف أطبع هذي الشاشة', 'وش هذا الخطأ', 'ترجم الصورة']) assert.ok(!creativeRe.test(t), t);
   assert.match(chatTools, /window\.__chatLastUserText = String\(ut \|\| ''\)\.slice\(0, 600\)/);
   assert.match(tools, /userText: String\(window\.__chatLastUserText \|\| ''\)\.slice\(0, 600\)/);
   assert.match(tools, /cur\.lastEditedImage\.b64\) \{ srcB64 = cur\.lastEditedImage\.b64/);
