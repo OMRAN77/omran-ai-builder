@@ -228,7 +228,10 @@ module.exports = async (req, res) => {
         'elevated three-quarter angle showing the whole layout',
       ];
       const base = 'Photorealistic interior design photograph of ' + placeDesc + ', decorated in ' + styleDesc + '.' + extrasText +
-        ' Professional architectural photography, realistic materials and lighting, balanced composition, high detail.' +
+        ' Award-winning architectural interior photography, magazine editorial quality (Architectural Digest / Elle Decor grade):' +
+        ' physically accurate global illumination, soft natural light with believable shadows and reflections, rich real materials and textures,' +
+        ' tasteful premium styling, layered lighting, depth and atmosphere, tack-sharp focus, ultra-high detail, true-to-life color.' +
+        ' Not a cartoon, not a 3D render, not CGI, no over-saturation, no HDR halos.' +
         ' No people, no text, no watermark, no logo.' + notesPart;
       const vSrc = String(variantOf || '');
       if (vSrc && vSrc.length > 64) {
@@ -237,10 +240,11 @@ module.exports = async (req, res) => {
           fd.append('model', 'gpt-image-2');
           fd.append('prompt', 'Create a new variation of this interior photograph. Keep the same overall design style, color palette, materials and camera angle, but vary the furniture arrangement and the decorative details.' + notesPart + ' Photorealistic architectural photography. No people, no text, no watermark, no logo.');
           fd.append('size', '1536x1024');
-          fd.append('quality', 'medium');
+          /* v-decor-hq (المالك: «الصور لم تعجبني»): أعلى جودة بدل medium وضغط أخفّ */
+          fd.append('quality', 'high');
           fd.append('n', String(n));
           fd.append('output_format', 'webp');
-          fd.append('output_compression', '82');
+          fd.append('output_compression', '92');
           fd.append('image', new Blob([Buffer.from(vSrc, 'base64')], { type: 'image/webp' }), 'ref.webp');
           const vr = await fetch('https://api.openai.com/v1/images/edits', {
             method: 'POST',
@@ -269,10 +273,11 @@ module.exports = async (req, res) => {
           model: 'gpt-image-2',
           prompt: base + ' Camera: ' + VIEWS[i % VIEWS.length] + '.',
           size: '1536x1024',
-          quality: 'medium',
+          /* v-decor-hq (المالك: «الصور لم تعجبني»): أعلى جودة بدل medium وضغط أخفّ */
+          quality: 'high',
           n: 1,
           output_format: 'webp',
-          output_compression: 82,
+          output_compression: 92,
         }),
         signal: AbortSignal.timeout(240000),
       }).then((r) => r.json()).then((d) => {
