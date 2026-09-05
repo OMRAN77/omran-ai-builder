@@ -16887,6 +16887,33 @@ async function __agentApplyResult(cur, full){
   cur.messages.push(agentMsg);
 }
 
+/* ✨ v-sharpen (طلب المالك: تحسين جودة/حدّة الصور بلا تكلفة): قناع حدّة خفيف
+   (Unsharp Mask) على ناتج التوليد/التعديل — يجعل الصورة أوضح وأحدّ بلا تكبير
+   مبهّت وبلا أي نداء مدفوع. آمن: يسقط للأصل عند أي خطأ، ويتخطّى الصور الضخمة
+   حفاظًا على أداء الجوال. */
+async function omranSharpenImage(dataUrl, amount){
+  try{
+    if(!dataUrl || String(dataUrl).slice(0, 5) !== 'data:') return dataUrl;
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = dataUrl; });
+    const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+    if(!w || !h || (w * h) > 5000000) return dataUrl; // نتخطّى الضخم (>5MP) على الجوال
+    const base = document.createElement('canvas'); base.width = w; base.height = h;
+    const bctx = base.getContext('2d'); if(!bctx) return dataUrl;
+    bctx.drawImage(img, 0, 0);
+    const blur = document.createElement('canvas'); blur.width = w; blur.height = h;
+    const blctx = blur.getContext('2d'); if(!blctx) return dataUrl;
+    blctx.filter = 'blur(1.1px)'; blctx.drawImage(img, 0, 0); blctx.filter = 'none';
+    const bd = bctx.getImageData(0, 0, w, h), bl = blctx.getImageData(0, 0, w, h);
+    const a = (typeof amount === 'number') ? amount : 0.5; // خفيف كي لا تظهر هالات
+    const D = bd.data, L = bl.data;
+    for(let i = 0; i < D.length; i += 4){
+      for(let k = 0; k < 3; k++){ const v = D[i + k] + a * (D[i + k] - L[i + k]); D[i + k] = v < 0 ? 0 : (v > 255 ? 255 : v); }
+    }
+    bctx.putImageData(bd, 0, 0);
+    return base.toDataURL('image/png');
+  }catch(e){ __swallow(e, 'img:sharpen'); return dataUrl; }
+}
+
 async function omModeGenerateImage(cur, promptText, thinkingDiv){
   const textSpec = window.__parseImageTextSpec ? window.__parseImageTextSpec(promptText) : { wantsText:false, exactText:null, visualPrompt:promptText };
   const __m = { role: 'assistant', content: lang === 'ar' ? '🎨 أرسم لك الصورة…' : '🎨 Generating your image…', _loading: true };
@@ -16915,7 +16942,9 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
         __mime = 'image/png';
       }
       __m.content = (typeof __d.caption === 'string' && __d.caption) ? __d.caption : (lang === 'ar' ? 'تفضّل 👇' : 'Here you go 👇');
-      __m.attachments = [{ isImage: true, mime: __mime, dataUrl: 'data:' + __mime + ';base64,' + __b64, name: 'image.png' }];
+      let __genUrl = 'data:' + __mime + ';base64,' + __b64;
+      try{ __genUrl = await omranSharpenImage(__genUrl); }catch(e){ __swallow(e, 'img:sharpen-gen'); }
+      __m.attachments = [{ isImage: true, mime: (__genUrl.slice(5).split(';')[0] || __mime), dataUrl: __genUrl, name: 'image.png' }];
       try{ cur.lastEditedImage = { b64: __b64, mime: __mime }; cur.lastMsgWasImageEdit = true; }catch(e){ /* guard-ok — cleanup, intentional */ }
       // 🔄 نحفظ طلب التوليد ليعيده زر «نسخة ثانية» بتنويعة جديدة
       try{ window.__omranLastImageReq = { kind:'gen', promptText: promptText }; }catch(e){ __swallow(e, 'img:save-req-gen'); }
@@ -18563,7 +18592,9 @@ function __showImgLoading(el, ar, en){
       if(!__ok) __data.__status = __res.status;
       if(__ok){
         const __outMime = __data.mimeType || 'image/png';
-        cur.messages.push({ role: 'assistant', content: (typeof __data.caption === 'string' ? __data.caption : '') /* v-nano-chat: جملة قصيرة مع الصورة */, attachments: [{ name: 'edited.png', isImage: true, mime: __outMime, dataUrl: 'data:' + __outMime + ';base64,' + __data.imageBase64 }] });
+        let __editUrl = 'data:' + __outMime + ';base64,' + __data.imageBase64;
+        try{ __editUrl = await omranSharpenImage(__editUrl); }catch(e){ __swallow(e, 'img:sharpen-edit'); }
+        cur.messages.push({ role: 'assistant', content: (typeof __data.caption === 'string' ? __data.caption : '') /* v-nano-chat: جملة قصيرة مع الصورة */, attachments: [{ name: 'edited.png', isImage: true, mime: (__editUrl.slice(5).split(';')[0] || __outMime), dataUrl: __editUrl }] });
         // v-img-engine-tag: بصمة المحرك في شريط الحالة — يحسم «أي محرك نفّذ» فورًا.
         try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (__data.engine === 'openai' ? 'gpt-image' : 'نانو بنانا')); }catch(e){ __swallow(e, 'ui:img-engine'); }
         cur.lastEditedImage = { b64: __data.imageBase64, mime: __outMime };
