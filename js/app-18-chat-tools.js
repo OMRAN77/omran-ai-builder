@@ -69,7 +69,8 @@
         if (!um || um.role !== 'user') continue;
         var ut = typeof um.content === 'string' ? um.content
           : (Array.isArray(um.content) ? um.content.filter(function (c) { return c && c.type === 'text'; }).map(function (c) { return c.text || ''; }).join(' ') : '');
-        window.__chatLastUserText = String(ut || '').slice(0, 600);
+        /* الملحق «[الصور المرفقة: اسم.png]» يُحذف كي لا يخدع اسمُ ملفٍ مثل render.png قارئَ النيّة */
+        window.__chatLastUserText = String(ut || '').replace(/\s*\[[^\[\]]*\]\s*$/, '').trim().slice(0, 600);
         break;
       }
     } catch (e) { /* guard-ok — مرجع الصورة اختياري ولا يجب أن يمنع المحادثة */ }

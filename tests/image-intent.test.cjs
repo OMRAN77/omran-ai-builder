@@ -68,8 +68,19 @@ test('both chat clients forward the user\'s words and the tool path never loses 
   const creativeRe = new RegExp(attach.match(/const __IMG_CREATIVE_RE = \/(.*)\/i;/)[1], 'i');
   for (const t of ['أقوى', 'نسخة أفخم', 'خلها أرقى', 'طوّرها', 'فكرة ثانية', 'كرتون', 'make it stronger']) assert.ok(creativeRe.test(t), t);
   for (const t of ['كيف أطبع هذي الشاشة', 'وش هذا الخطأ', 'ترجم الصورة']) assert.ok(!creativeRe.test(t), t);
-  assert.match(chatTools, /window\.__chatLastUserText = String\(ut \|\| ''\)\.slice\(0, 600\)/);
-  assert.match(tools, /userText: String\(window\.__chatLastUserText \|\| ''\)\.slice\(0, 600\)/);
+  assert.match(chatTools, /window\.__chatLastUserText = String\(ut \|\| ''\)\.replace\(.*\)\.trim\(\)\.slice\(0, 600\)/);
+  assert.match(tools, /userText: String\(\(args && args\.userText\) \|\| window\.__chatLastUserText \|\| ''\)\.replace\(.*\)\.slice\(0, 600\)/);
   assert.match(tools, /cur\.lastEditedImage\.b64\) \{ srcB64 = cur\.lastEditedImage\.b64/);
   assert.match(chat, /engine:\\s\*nano-pro/);
+  /* الخادم يمرّر كلمات المستخدم مع أمر الأداة (يعمل حتى مع حزمة عميل قديمة)، ويعرّف النموذج بـedit_image في دور فيه صورة */
+  assert.match(chat, /if \(cb\.name === 'generate_image'\) \{ input\.userText = String\(lastUserText \|\| ''\)\.slice\(0, 600\)/);
+  assert.match(chat, /if \(cb\.name === 'edit_image'\) \{ input\.userText = String\(lastUserText \|\| ''\)\.slice\(0, 600\)/);
+  assert.match(chat, /const IMAGE_TURN_NOTE = lastUserHasImage/);
+  assert.match(chat, /ownerKnowledge \+ IMAGE_TURN_NOTE/);
+  assert.match(chat, /edit_image لأي تغيير أو ترقية أو نسخة أقوى/);
+  /* generate_image على صورة مرفوعة + طلب إبداعي من كلمات المستخدم = يبني على المصدر لا من الوصف وحده */
+  assert.match(tools, /if \(gCreative\) return await window\.omranAgentTools\.run\('edit_image', \{ instruction: prompt, userText: gUserText \}\)/);
+  assert.match(tools, /typeof __IMG_CREATIVE_RE !== 'undefined' && __IMG_CREATIVE_RE\.test\(gUserText\)/);
+  assert.match(attach, /^const __IMG_CREATIVE_RE = \//m);
+  assert.ok(chatTools.includes("replace(/\\s*\\[[^\\[\\]]*\\]\\s*$/, '')"), 'الملحق [الصور المرفقة: …] يُحذف قبل قراءة النيّة');
 });

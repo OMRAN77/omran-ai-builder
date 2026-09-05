@@ -140,6 +140,14 @@
           if (Object.keys(window.__genImages).length >= 4) {
             return 'بلغتَ حدّ أربع صور في هذا الردّ. أكمل الصفحة بخلفيات CSS بدل صور إضافية.';
           }
+          /* v-nano-pro-edit (تتبّع المالك: صورة مرفقة + «أقوى» → النموذج اختار generate_image فرسم مسجدًا آخر
+             بلا علاقة): إن كانت كلمات المستخدم نفسها طلبًا إبداعيًا على صورته المرفقة في هذا الدور، فالصورة
+             الجديدة تُبنى على المصدر (تعديل) لا من الوصف وحده. */
+          var gUserText = String((args && args.userText) || window.__chatLastUserText || '').slice(0, 600);
+          var gRef = window.__chatVideoReference;
+          var gRefB64 = gRef && gRef.dataUrl ? String(gRef.dataUrl).split(',')[1] : '';
+          var gCreative = !!(gRefB64 && gUserText && gUserText.length <= 160 && typeof __IMG_CREATIVE_RE !== 'undefined' && __IMG_CREATIVE_RE.test(gUserText) && !/[؟?]\s*$/.test(gUserText));
+          if (gCreative) return await window.omranAgentTools.run('edit_image', { instruction: prompt, userText: gUserText });
           // v-maha-image-rescue: زحام عابر (retryable) يستحق محاولة ثانية بعد
           // مهلة قصيرة قبل إعلان الفشل — المستخدم لا يعيد طلبه بنفسه.
           var resp = null, j = null;
@@ -149,6 +157,7 @@
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 prompt: prompt,
+                userText: gUserText,
                 token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
                 guestId: window.getGuestId ? window.getGuestId() : '',
               }),
@@ -192,7 +201,7 @@
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 prompt: instr,
-                userText: String(window.__chatLastUserText || '').slice(0, 600),
+                userText: String((args && args.userText) || window.__chatLastUserText || '').replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600),
                 editImageBase64: srcB64,
                 editMimeType: ref.mime || 'image/png',
                 token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
