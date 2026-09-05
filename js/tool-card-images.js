@@ -62,11 +62,8 @@
   function decorate(id){
     var b = document.getElementById(id); if(!b) return;
     var lab = b.querySelector('.btnLabel'); if(!lab) return;
-    try{ b.style.setProperty('--tc', ACCENT[id] || '#d4af37'); }catch(e){ /* guard-ok */ }
-    if(!b.querySelector('.tcIco')){
-      var src = b.querySelector(':scope > svg');
-      if(src){ var ico = document.createElement('span'); ico.className = 'tcIco'; ico.setAttribute('aria-hidden', 'true'); ico.appendChild(src.cloneNode(true)); b.appendChild(ico); }
-    }
+    /* v-clean-cards (المالك: «أنا عاطنك صور نظيفة ليش حطيت أشياء من عندك»): لا شارة أيقونة ولا لون تمييزي فوق الصورة */
+    try{ b.style.removeProperty('--tc'); var oldIco = b.querySelector('.tcIco'); if(oldIco) oldIco.remove(); }catch(e){ /* guard-ok */ }
     var meta = b.querySelector('.tcMeta');
     if(!meta){
       meta = document.createElement('span'); meta.className = 'tcMeta';
@@ -86,7 +83,7 @@
     var b = document.getElementById(id); if(!b) return;
     var c = b.querySelector('.tcLive');
     if(!txt){ if(c) c.remove(); return; }
-    if(!c){ c = document.createElement('span'); c.className = 'tcLive'; b.appendChild(c); }
+    if(!c){ c = document.createElement('span'); c.className = 'tcLive'; var host = b.querySelector('.tcTxt') || b; host.appendChild(c); }
     c.textContent = txt;
   }
   function fmtNum(n){ try{ return Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 }); }catch(e){ return String(n); } }
