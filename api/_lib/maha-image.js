@@ -9,13 +9,16 @@ const { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldU
    تُقرأ من نصّ المستخدم نفسه (body.userText) لا من أمر أعاد النموذج صياغته بالإنجليزية. */
 const { detectEditIntent } = require('./image-intent');
 const { classifyEditIntentLLM, llmIntentEnabled } = require('./image-intent-llm');
+const { verifyRequestApplied, requestCheckEnabled } = require('./request-check');
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 const { judgeBest, duoEnabled, bestOfCount } = require('./image-judge');
 /* v-nano-chat (المالك: «نفس فكرة نانو»): مع كل صورة جملة قصيرة تشرح ما فُعل واقتراح للخطوة التالية، بلغة الطلب */
 async function imageCaption(apiKey, prompt, b64, mime, sourceB64, sourceMime) {
   try {
     if (!apiKey || String(process.env.IMAGE_CAPTION || 'on').toLowerCase() === 'off') return '';
-    const parts = [{ text: 'The user asked: "' + String(prompt || '').slice(0, 500) + '".\n' + (sourceB64 ? 'The first image is what they sent; the second is the result you produced.' : 'The image is the result you produced.') + '\nReply in the SAME language as the user\'s request. Write exactly two short sentences: (1) what you did in the result, (2) one concrete follow-up suggestion phrased as a question. No markdown, no emojis, max 35 words total.' }];
+    /* v-caption-report (المالك ٦ سبتمبر: «بعد التعديل يكتب تقرير مختصر ويسأل إذا عجبك ولا أسوي لك كذا ولا كذا»): تقرير من
+       جملة عمّا تغيّر فعلًا، ثم سؤال «هل أعجبتك؟» مع خيارين ملموسين للخطوة التالية خاصّين بهذه الصورة، بلغة المستخدم ولهجته. */
+    const parts = [{ text: 'The user asked, verbatim: "' + String(prompt || '').slice(0, 500) + '".\n' + (sourceB64 ? 'The first image is what they sent; the second is the result you produced.' : 'The image is the result you produced.') + '\nReply in the SAME language and dialect as the user\'s request (Gulf Arabic if they wrote Gulf Arabic). Write: (1) one short sentence reporting exactly what changed in the result; (2) one question asking whether they like it and offering TWO concrete next options specific to this image, in the shape "هل أعجبتك؟ ولا أسوي لك … أو …؟". No markdown, no emojis, max 45 words total.' }];
     if (sourceB64) parts.push({ inlineData: { mimeType: sourceMime || 'image/jpeg', data: sourceB64 } });
     parts.push({ inlineData: { mimeType: mime || 'image/png', data: b64 } });
     const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey, {
@@ -24,7 +27,7 @@ async function imageCaption(apiKey, prompt, b64, mime, sourceB64, sourceMime) {
     });
     if (!r.ok) return '';
     const d = await r.json().catch(() => null);
-    return String((((((d || {}).candidates || [])[0] || {}).content || {}).parts || []).map((p) => p.text || '').join(' ')).trim().slice(0, 300);
+    return String((((((d || {}).candidates || [])[0] || {}).content || {}).parts || []).map((p) => p.text || '').join(' ')).trim().slice(0, 400);
   } catch (e) { return ''; }
 }
 const { authorPrayerPlan } = require('./prayer-plan');
@@ -593,7 +596,8 @@ module.exports = async (req, res) => {
     /* v-guard-off-creative (المالك ٦ سبتمبر: «أوقفت النتيجة لأنها غيّرت هوية الشخص» على طلب إبداعي — وهو يقارن بنانو الأصلي
        الذي لا يحجب شيئًا): الترقية والفكرة الجديدة وتحويل الأسلوب وترقية المكان تعيد الرسم بطبيعتها، فلا حارس عليها.
        التعديل الموضعي (اسم/حرف/لون) يبقى محروسًا: الوجه لا يتبدّل عند تغيير الاسم. */
-    if (editImageBase64 && !extras.length && !rawMode && !isCreativeEdit && !isPersonSwap && !isBroadEdit) {
+    const __guardLane = !!(editImageBase64 && !extras.length && !rawMode && !isCreativeEdit && !isPersonSwap && !isBroadEdit);
+    if (__guardLane) {
       const guard = await verifyLocalizedImageEdit({
         apiKey,
         sourceBase64: editImageBase64,
@@ -699,7 +703,35 @@ module.exports = async (req, res) => {
         }
       } catch (e) { console.warn('[maha-image] duo skipped: ' + (e && e.message)); }
     }
-    const caption = prayerPlan ? '' : await imageCaption(apiKey, cleanPrompt, imgPart.inlineData.data, imgPart.inlineData.mimeType || 'image/png', editImageBase64 || null, editMimeType || 'image/png');
+    /* v-request-check (المالك: «ما يعطيني الطلب الي أريده بالضبط»): هل تطبّق النتيجة طلب المستخدم كما كتبه؟ إن لا، محاولة
+       واحدة أخرى مع ذكر ما نقص حرفيًا، وتُقبل فقط إن اجتازت الفحص (وحارس الهوية في المسار الموضعي). */
+    if (editImageBase64 && !extras.length && !__pureRaw && !prayerPlan && !pipelineActive && requestCheckEnabled(process.env)) {
+      try {
+        const __src = { b64: editImageBase64, mime: editMimeType || 'image/png' };
+        const __rc = await verifyRequestApplied({ apiKey, request: intentText, source: __src, result: { b64: imgPart.inlineData.data, mime: imgPart.inlineData.mimeType || 'image/png' } });
+        if (__rc && __rc.applied === false) {
+          console.warn('[maha-image] request-check: not applied — ' + __rc.missing);
+          const __fixBody = JSON.parse(reqBody);
+          const __lastTurn = __fixBody.contents[__fixBody.contents.length - 1];
+          __lastTurn.parts.push({ text: 'CORRECTION: your previous attempt did NOT satisfy the request. What was missing: "' + String(__rc.missing || 'the requested change').slice(0, 300) + '". Redo the edit on the attached source and make sure this is clearly and fully applied this time.' });
+          const __fixRes = await fetchImageWithRetry({ url: endpoint, init: { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(__fixBody) }, onRetry: function () {} });
+          const __fixParts = (((((__fixRes && __fixRes.data) || {}).candidates || [])[0] || {}).content || {}).parts || [];
+          const __fixImg = (__fixRes && __fixRes.response && __fixRes.response.ok) ? __fixParts.find(function (p) { return p.inlineData && p.inlineData.data; }) : null;
+          if (__fixImg) {
+            let __ok2 = true;
+            if (__guardLane) {
+              const g3 = await verifyLocalizedImageEdit({ apiKey, sourceBase64: editImageBase64, sourceMime: editMimeType || 'image/png', resultBase64: __fixImg.inlineData.data, resultMime: __fixImg.inlineData.mimeType || 'image/png', userPrompt: cleanPrompt, allowStyleChange: explicitlyRequestsStyleChange(cleanPrompt), allowBroadChange: isSceneUpgrade });
+              __ok2 = !!(g3 && (g3.ok || g3.reason === 'validation_unavailable'));
+            }
+            if (__ok2) {
+              const __rc2 = await verifyRequestApplied({ apiKey, request: intentText, source: __src, result: { b64: __fixImg.inlineData.data, mime: __fixImg.inlineData.mimeType || 'image/png' } });
+              if (!__rc2 || __rc2.applied !== false) { imgPart = __fixImg; duoEngine = (duoEngine || 'gemini') + '+fix'; }
+            }
+          }
+        }
+      } catch (e) { console.warn('[maha-image] request-check skipped: ' + (e && e.message)); }
+    }
+    const caption = prayerPlan ? '' : await imageCaption(apiKey, intentText || cleanPrompt, imgPart.inlineData.data, imgPart.inlineData.mimeType || 'image/png', editImageBase64 || null, editMimeType || 'image/png');
     res.status(200).json({
       imageBase64: imgPart.inlineData.data,
       mimeType: imgPart.inlineData.mimeType || 'image/png',
