@@ -17,7 +17,7 @@
     "check": "for f in *.js js/*.js api/*.js api/_lib/*.js; do node --check \"$f\" || exit 1; done",
     "guard": "node scripts/guard.mjs",
     "coldstart": "node scripts/cold-start.mjs",
-    "test": "node tests/owner-gate.test.cjs && node tests/memory-profile.test.cjs && node tests/chat-style.test.cjs && node tests/removed-search-source.test.cjs && node tests/image-prompt.test.cjs && node tests/prayer-plan.test.cjs && node tests/image-text.test.cjs && node tests/image-fetch.test.cjs && node tests/construction-timeout.test.cjs && node tests/cors.test.cjs && node tests/safe-url.test.cjs && node tests/auth-key-rotation.test.cjs && node tests/admin-purge.test.cjs && node tests/google-reclaim.test.cjs && node tests/chat-search-ref.test.cjs && node tests/revgeo.test.cjs && node tests/fashion-locks.test.cjs",
+    "test": "node tests/owner-gate.test.cjs && node tests/memory-profile.test.cjs && node tests/chat-style.test.cjs && node tests/removed-search-source.test.cjs && node tests/image-prompt.test.cjs && node tests/image-intent.test.cjs && node tests/prayer-plan.test.cjs && node tests/image-text.test.cjs && node tests/image-fetch.test.cjs && node tests/construction-timeout.test.cjs && node tests/cors.test.cjs && node tests/safe-url.test.cjs && node tests/auth-key-rotation.test.cjs && node tests/admin-purge.test.cjs && node tests/google-reclaim.test.cjs && node tests/chat-search-ref.test.cjs && node tests/revgeo.test.cjs && node tests/fashion-locks.test.cjs",
     "ci": "npm run check && npm run guard && npm run coldstart && npm run verify && npm test",
     "smoke": "node scripts/smoke.mjs"
   }

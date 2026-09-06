@@ -415,7 +415,7 @@ const WIZARD_RE = /كتالوج|كتالوق|منيو|قائمة طعام|قائ
     const PERSONA_NOTE = 'أنت «عمران» — مساعد ذكي متعدد اللغات من تطبيق Omran AI Builder، من تطوير فريق عمران AI العربي.\n' +
     'LANGUAGE (highest priority): ALWAYS reply in the SAME language the user\'s latest message is written in — Malayalam gets Malayalam, French gets French, Arabic gets Arabic. These instructions being in Arabic does NOT mean you reply in Arabic.\n' +
     'شخصيتك: زميل خبير دافئ يحتفل بإنجاز المستخدم ويطمئنه قبل حل مشكلته؛ الزبدة أولًا ثم التفصيل، والردود الطويلة بفقرات وعناوين وقوائم مرتبة؛ تجاري لهجة المستخدم وروحه بروح المجلس — لست روبوتًا ولا موظف استقبال.\n' +
-    'أدواتك تعمل فعلًا فاستعملها عند الحاجة بلا إفراط: web_search للمعلومات الحية (بحثان كحد أقصى في الرد)، fetch_page لقراءة رابط، generate_image للرسم (ضع الرمز العائد في مكان الصورة حرفيًّا)، run_js للحساب، test_html لفحص ما تبنيه، get_location لموقع المستخدم بإذنه.\n' +
+    'أدواتك تعمل فعلًا فاستعملها عند الحاجة بلا إفراط: web_search للمعلومات الحية (بحثان كحد أقصى في الرد)، fetch_page لقراءة رابط، generate_image للرسم (ضع الرمز العائد في مكان الصورة حرفيًّا)، edit_image لأي تغيير أو ترقية أو نسخة أقوى/أفخم أو أسلوب جديد على الصورة التي أرفقها المستخدم (هي لا generate_image — الأداة تحتفظ بصورته مصدرًا)، run_js للحساب، test_html لفحص ما تبنيه، get_location لموقع المستخدم بإذنه.\n' +
     /* v-news-intent: «اخبار العالمي» فُهمت نادي النصر واختُرعت نتائج مباريات */
     'الأخبار: «أخبار العالم/العالمية/العالمي/آخر الأخبار» = عناوين الأخبار الدولية العامة (سياسة، اقتصاد، أحداث كبرى) عبر web_search الآن — كلمة «العالمي» وحدها ليست نادي النصر ولا أي فريق؛ الرياضة فقط إذا سمّى المستخدم فريقًا أو دوريًا أو رياضة صراحة. وممنوع اختراع أي خبر أو نتيجة أو تاريخ بلا مصدر من بحثك.\n' +
     'البناء: طلب تطبيق أو موقع أو لعبة = شرح سطرين ثم ملف HTML/CSS/JS واحد كامل يعمل مباشرة في كتلة ```html واحدة.\n' +
@@ -797,7 +797,7 @@ function trailLine(name, input, result) {
       : R('شغّلتُ كودًا — عاد ناتج ' + r.length + ' حرفًا', 'trJsOk', { n: r.length });
   }
   // v-img-engine-tag: اسم المحرك في سطر الأثر (gpt-image أم نانو بنانا).
-  const engTag = /engine:\s*openai/i.test(r) ? ' · gpt-image' : (/engine:/i.test(r) ? ' · نانو بنانا' : '');
+  const engTag = /engine:\s*openai/i.test(r) ? ' · gpt-image' : (/engine:\s*nano-pro/i.test(r) ? ' · نانو بنانا برو' : (/engine:/i.test(r) ? ' · نانو بنانا' : ''));
   if (name === 'generate_image') return /__IMG_/.test(r) ? R('رسمتُ صورة ✅' + engTag, 'trImgOk') : R('تعذّرت الصورة — ' + s(r, 60), 'trImgFail');
   if (name === 'edit_image') return /__IMG_/.test(r) ? R('عدّلتُ الصورة ✅' + engTag, 'trImgOk') : R('تعذّر التعديل — ' + s(r, 60), 'trImgFail');
   if (name === 'get_location') return /رفض|تعذّر|انتهت|لا يدعم|لم يستجب/.test(r) ? R('حاولتُ تحديد موقعك — ' + s(r, 70), 'trLocFail') : R('حدّدتُ موقعك ✅', 'trLocOk');
@@ -984,13 +984,18 @@ module.exports = async (req, res) => {
     const ownerKnowledge = toolTurn ? require('./_knowledge.js').ownerKnowledge(req, token) : '';
     // v-persona-front: البصمة أول ما يقرأه النموذج في المسارات الثلاثة —
     // حتى الدور الاجتماعي («كيف الحال») الذي كان محرومًا منها كليًّا.
+    /* v-nano-pro-edit (تتبّع المالك: صورة مرفقة + «أقوى» → النموذج اختار generate_image فرسم صورة جديدة بلا
+       علاقة): TOOLS_NOTE القديم لم يكن يُحقن أصلًا، فكان النموذج لا يعرف edit_image. سطر واحد في دور فيه صورة. */
+    const IMAGE_TURN_NOTE = lastUserHasImage
+      ? '\n[صورة مرفقة في هذا الدور]: أي طلب تغيير أو تحسين أو ترقية أو «نسخة أقوى/أفخم» أو أسلوب جديد على هذه الصورة = استدعِ edit_image فورًا بتعليمة إنجليزية دقيقة — لا generate_image (edit_image يبني على صورته مصدرًا، وgenerate_image يرسم من الوصف وحده صورة بلا علاقة). لا تسأل قبل التنفيذ؛ ضع رمز الصورة العائد وحده في سطر ثم جملة قصيرة واحدة.'
+      : '';
     const system = quietSocialTurn
       ? PERSONA_NOTE + '\n' + baseSystem + (casualCheckInTurn ? '\n\n[هذا دور اجتماعي]: أجب عن سؤال الحال بدفء وحضور وبلغة رسالة المستخدم نفسها — جملتان أو ثلاث فيها روح (المثال العربي «الحمدلله بأفضل حال وأنت منورنا! كيف يومك أنت؟» مجرد مثال، ترجم روحه للغة المستخدم) واسأله عن حاله أو يومه بسؤال واحد طبيعي. المحادثة مستمرة فلا تبدأ بتحية جديدة، وممنوع عرض الخدمات («كيف أقدر أساعدك؟») وممنوع سرد مشاريع أو مواضيع قديمة.' : '')
       : toolTurn
         /* v-clean-slate: كتاب القواعد فُصل كله من النظام — بقي القصير + التاريخ
            والمدينة (حقائق) + ملف المالك + ذاكرة الحساب (تصل ضمن baseSystem). */
-        ? PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz) + countryNote(country, city) + ownerKnowledge
-        : PERSONA_NOTE + '\n' + baseSystem;
+        ? PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz) + countryNote(country, city) + ownerKnowledge + IMAGE_TURN_NOTE
+        : PERSONA_NOTE + '\n' + baseSystem + IMAGE_TURN_NOTE;
 
       const convoSource = quietSocialTurn ? [lastUser] : messages;
   const convo = compactConversation(convoSource
@@ -1159,9 +1164,10 @@ module.exports = async (req, res) => {
           }
           else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
           else if (cb.name === 'run_js') result = await runInClient(send, 'run_js', input);
-          else if (cb.name === 'generate_image') result = await runInClient(send, 'generate_image', input, 75000);
+          /* v-nano-pro-edit: كلمات المستخدم نفسها تُرافق أمر النموذج الإنجليزي — منها يقرأ الخادم نيّة «أقوى/فكرة ثانية» */
+          else if (cb.name === 'generate_image') { input.userText = String(lastUserText || '').replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600); /* مع صورة مرفقة قد يتحوّل الرسم إلى تعديل على برو (v-nano-pro-edit) فيحتاج مهلة التعديل */ result = await runInClient(send, 'generate_image', input, lastUserHasImage ? 150000 : 75000); }
           // v-edit-image-tool: التعديل عالي الدقة (gpt-image للنصّي) قد يأخذ دقيقتين.
-          else if (cb.name === 'edit_image') result = await runInClient(send, 'edit_image', input, 150000);
+          else if (cb.name === 'edit_image') { input.userText = String(lastUserText || '').replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600); result = await runInClient(send, 'edit_image', input, 150000); }
           else if (cb.name === 'generate_video') result = await runInClient(send, 'generate_video', input, 290000);
           else if (cb.name === 'test_html') result = await runInClient(send, 'test_html', input, 30000);
           // إذن الموقع قد يستغرق وقتًا — مهلة أطول من بقية أدوات المتصفّح.

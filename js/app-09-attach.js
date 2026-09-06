@@ -1030,6 +1030,9 @@ function summarizeCsvText(text){
   }catch(_e){ return ''; }
 }
 
+/* v-nano-pro-edit: الطلب الإبداعي القصير على صورة (أقوى/أفخم/طوّرها/فكرة ثانية/كرتون…) — يُقرأ هنا وفي أداة
+   edit_image/generate_image (app-17) حتى لا يرسم النموذج صورة جديدة بلا علاقة بالمصدر. */
+const __IMG_CREATIVE_RE = /(?:^|[\s،,])(?:نسخ[ةه]\s*)?(?:ال)?(?:أ|ا|إ)(?:قوى|قوي|فخم|رقى|جمل|حلى|روع|بدع|حسن|فضل|بهى)(?=$|[\s،,.!؟?])|(?:^|[\s،,])(?:فخم[ةه]?|راقي[ةه]?|خيالي[ةه]?|جبار[ةه]?|مبهر[ةه]?|إبداعي[ةه]?|ابداعي[ةه]?|احترافي[ةه]?|تجنن|لايق[ةه]?)(?=$|[\s،,.!؟?])|(?:^|[\s،,])(?:[اأ]?(?:طوّ?ر|حسّ?ن|جمّ?ل|قوّ?|رقّ?|زيّ?ن|زخرف|فخّ?م|عزّ?ز)|ارفع|ابهر|أبهر)(?:ها|ه|يها|يه|ني)(?=$|[\s،,.!؟?])|(?:^|[\s،,])(?:ارفع|إرفع)\s*(?:ال)?(?:مستوى|مستواها|جودتها|جودة)|(?:^|[\s،,])(?:زوّ?د|زيد)\s*(?:ال)?(?:زخارف|زخرف[ةه]|تفاصيل|فخام[ةه])|فكر[ةه]\s*(?:ثاني[ةه]|مختلف[ةه]|جديد[ةه]|أقوى|اقوى)|(?:^|[\s،,])(?:3d|ثلاثي|مجسم|مجسّم|كرتون|كارتون|أنيمي|انمي|بيكسار|ديزني|anime|cartoon|pixar|disney)(?=$|[\s،,.!؟?])|\bmake\s+(?:it|this|everything|the\s+(?:whole\s+|entire\s+)?(?:image|picture|photo|card|design|scene|look))\s+(?:much\s+|way\s+|a\s+lot\s+)?(?:stronger|bolder|richer|fancier|nicer|prettier|better|premium|luxurious|epic|pop|shine|stand\s*out|more\s+\w+)\b|\b(?:stronger|bolder|richer|fancier|nicer|prettier|cleaner|premium|luxurious|epic|enhanced|improved|upgraded|polished|more\s+\w+)\s+(?:version|look|take|edition)\b|^\s*(?:stronger|bolder|richer|fancier|nicer|prettier|better|premium|luxurious|epic|more\s+\w+)\s*[.!]*\s*$|\b(?:level\s*up|glow\s*up|next\s*level|better\s+than|best\s+version|reimagine|different\s+(?:idea|concept)|(?:enhance|improve|upgrade|elevate|polish)\s+(?:it|this|everything|the\s+(?:whole\s+|entire\s+)?(?:image|picture|photo|card|design|scene|look)))\b/i;
 /* v-visual-assist: لقطة شاشة لواجهة (اسم الملف/لصق من الحافظة/PNG بنسبة شاشة)
    تُعلَّم _screenshot لتذهب للتحليل والإرشاد بدل مسار تعديل الصور. */
 function omranLooksLikeScreenshot(file, dims, opts){
@@ -1586,7 +1589,10 @@ async function omranBuildTextEditMask(b64, mime, box){
     i.onload = () => res(i); i.onerror = () => rej(new Error('bad_source_image'));
     i.src = 'data:' + (mime || 'image/png') + ';base64,' + b64;
   });
-  const W = img.naturalWidth || 1, H = img.naturalHeight || 1;
+  /* v-mask-shrink: صورتان PNG بالحجم الكامل (المصدر والقناع) في طلب واحد تتجاوز حدّ جسم الطلب في Vercel
+     فيسقط الطلب قبل الخادم — نعمل على 1280px كأي تعديل آخر، والمنطقة تُحسب بالإحداثيات المصغّرة نفسها. */
+  const __sc = Math.min(1, 1280 / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+  const W = Math.max(1, Math.round((img.naturalWidth || 1) * __sc)), H = Math.max(1, Math.round((img.naturalHeight || 1) * __sc));
   const source = document.createElement('canvas'); source.width = W; source.height = H;
   source.getContext('2d').drawImage(img, 0, 0, W, H);
   const padX = Math.max(5, Math.round(box.w * W * 0.18));
@@ -2178,7 +2184,7 @@ window.omranAnotherVersion = async function(){
       __m.attachments = [{ name:'edited.png', isImage:true, mime:__outMime, dataUrl:'data:' + __outMime + ';base64,' + __data.imageBase64 }];
       cur.lastEditedImage = { b64: __data.imageBase64, mime: __outMime };
       cur.lastMsgWasImageEdit = true;
-      try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (__data.engine === 'openai' ? 'gpt-image' : 'نانو بنانا')); }catch(e){ __swallow(e, 'ui:img-engine-again'); }
+      try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (/openai/.test(String(__data.engine || '')) ? 'gpt-image' : (/pro/.test(String(__data.engine || '')) ? 'نانو بنانا برو' : 'نانو بنانا'))); }catch(e){ __swallow(e, 'ui:img-engine-again'); }
     } else {
       __m.content = imgErrFriendly(__data && __data.error, lang === 'ar') || (lang === 'ar' ? '⚠️ تعذّر توليد نسخة ثانية — جرّب مرّة أخرى.' : '⚠️ Could not create another version — try again.');
     }
@@ -3690,6 +3696,33 @@ function __showImgLoading(el, ar, en){
       /* 🔤 v-text-swap: تغيير نص مكتوب (تاريخ/اسم/رقم) → قراءة بالرؤية وتبديل محلي
          دقيق؛ إن لم تجد الرؤية سطرًا نصيًا يسقط الطلب لمسار المولّد كالسابق. */
       if(__b64 && __textSwapIntent(text)){
+        /* v-letter-swap (لقطة المالك: «غير حرف م حط ع» رجّعت الصورة نفسها بينما Gemini بدّل الحرف): أولًا نانو بنانا
+           برو على الصورة كاملة بتعليمة قصيرة كتطبيق Gemini (الخادم يقرأ textSwap ويوجّه لبرو، وgpt-image ينافس بالحكم)؛
+           مسار «حدّد الموضع ثم قناع gpt-image» يبقى احتياطًا عند فشل الخادم فقط. */
+        try{
+          __showImgLoading(thinkingDiv, 'جاري تبديل الحرف في مكانه…', 'Swapping the letter in place…');
+          const __lsShr = await omranShrinkForEdit(__b64, __mime);
+          const __lsBody = { prompt: String(text || '').slice(0, 600), userText: String(text || '').slice(0, 600), textSwap: true, editImageBase64: __lsShr.b64, editMimeType: __lsShr.mime };
+          const __lsRes = await fetch('/api/maha-image', { method:'POST', headers:{ 'Content-Type':'application/json' }, signal: genAbortController.signal, body: JSON.stringify(Object.assign({}, __lsBody, { token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })) });
+          const __lsData = await __lsRes.json().catch(() => ({}));
+          if(__lsRes.ok && __lsData.imageBase64){
+            const __lsMime = __lsData.mimeType || 'image/png';
+            let __lsUrl = 'data:' + __lsMime + ';base64,' + __lsData.imageBase64;
+            try{ __lsUrl = await omranSharpenImage(__lsUrl); }catch(e){ __swallow(e, 'img:sharpen-swap'); }
+            cur.messages.push({ role:'assistant', content:(typeof __lsData.caption === 'string' ? __lsData.caption : ''), attachments:[{ name:'edited.png', isImage:true, mime:(__lsUrl.slice(5).split(';')[0] || __lsMime), dataUrl:__lsUrl }] });
+            try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (/openai/.test(String(__lsData.engine || '')) ? 'gpt-image' : (/pro/.test(String(__lsData.engine || '')) ? 'نانو بنانا برو' : 'نانو بنانا'))); }catch(e){ __swallow(e, 'ui:img-engine-swap'); }
+            cur.lastEditedImage = { b64: __lsData.imageBase64, mime: __lsMime };
+            cur.imageEditSource = { b64:__b64, mime:__mime };
+            cur.imageEditInstructions = [String(text || '').trim()];
+            cur.imageTextLayer = null;
+            cur.lastMsgWasImageEdit = true;
+            try{ window.__omranLastImageReq = { kind:'edit', url:'/api/maha-image', body: __lsBody }; }catch(e){ __swallow(e, 'img:save-req'); }
+            renderAll(); saveState(); return;
+          }
+        }catch(e){
+          if(e && e.name === 'AbortError') return;
+          __swallow(e, 'img:letter-swap'); /* يسقط بهدوء لمسار القناع الاحتياطي */
+        }
         try{
           chatPhase('🔎', lang === 'ar' ? 'جاري قراءة الكتابة على الصورة…' : 'Reading the text on the image…', thinkingDiv);
           const __tsShr = await omranShrinkForEdit(__b64, __mime);
@@ -3748,7 +3781,7 @@ function __showImgLoading(el, ar, en){
       const __res = await fetch('/api/maha-image', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         signal: genAbortController.signal,
-        body: JSON.stringify({ prompt: __editPrompt, editImageBase64: __editB64, editMimeType: __editMime, sceneUpgrade: __IMG_UPGRADE || undefined, extraImages: __extraImgs, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+        body: JSON.stringify({ prompt: __editPrompt, userText: String(text || '').slice(0, 600) /* v-nano-pro-edit: كلمات المستخدم نفسها للنيّة */, editImageBase64: __editB64, editMimeType: __editMime, sceneUpgrade: __IMG_UPGRADE || undefined, extraImages: __extraImgs, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
       });
       const __data = await __res.json().catch(() => ({}));
       const __ok = __res.ok && !!__data.imageBase64;
@@ -3759,14 +3792,14 @@ function __showImgLoading(el, ar, en){
         try{ __editUrl = await omranSharpenImage(__editUrl); }catch(e){ __swallow(e, 'img:sharpen-edit'); }
         cur.messages.push({ role: 'assistant', content: (typeof __data.caption === 'string' ? __data.caption : '') /* v-nano-chat: جملة قصيرة مع الصورة */, attachments: [{ name: 'edited.png', isImage: true, mime: (__editUrl.slice(5).split(';')[0] || __outMime), dataUrl: __editUrl }] });
         // v-img-engine-tag: بصمة المحرك في شريط الحالة — يحسم «أي محرك نفّذ» فورًا.
-        try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (__data.engine === 'openai' ? 'gpt-image' : 'نانو بنانا')); }catch(e){ __swallow(e, 'ui:img-engine'); }
+        try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (/openai/.test(String(__data.engine || '')) ? 'gpt-image' : (/pro/.test(String(__data.engine || '')) ? 'نانو بنانا برو' : 'نانو بنانا'))); }catch(e){ __swallow(e, 'ui:img-engine'); }
         cur.lastEditedImage = { b64: __data.imageBase64, mime: __outMime };
         cur.imageEditSource = __pendingImageEditSource;
         cur.imageEditInstructions = __pendingImageEditInstructions;
         cur.imageTextLayer = null;
         cur.lastMsgWasImageEdit = true;
         // 🔄 نحفظ الطلب كما هو ليعيده زر «نسخة ثانية» بتنويعة جديدة
-        try{ window.__omranLastImageReq = { kind:'edit', url:'/api/maha-image', body: { prompt: __editPrompt, editImageBase64: __editB64, editMimeType: __editMime, sceneUpgrade: __IMG_UPGRADE || undefined, extraImages: __extraImgs } }; }catch(e){ __swallow(e, 'img:save-req'); }
+        try{ window.__omranLastImageReq = { kind:'edit', url:'/api/maha-image', body: { prompt: __editPrompt, userText: String(text || '').slice(0, 600), editImageBase64: __editB64, editMimeType: __editMime, sceneUpgrade: __IMG_UPGRADE || undefined, extraImages: __extraImgs } }; }catch(e){ __swallow(e, 'img:save-req'); }
       } else {
         cur.messages.push({ role: 'assistant', content: imgErrFriendly(__data && __data.error, lang === 'ar') || ((lang === 'ar' ? '⚠️ تعذر تعديل الصورة: ' : '⚠️ Image edit failed: ') + ((__data && __data.error) || ('HTTP ' + (__data.__status || '?')))) });
         cur.lastMsgWasImageEdit = true;
