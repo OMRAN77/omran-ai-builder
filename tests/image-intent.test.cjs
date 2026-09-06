@@ -116,6 +116,18 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(maha, /if \(editImageBase64 && !\(body && body\.sceneUpgrade === true\) && !__intent\.restyle && !__intent\.reimagine && !__intent\.elevate && !__intent\.sameImage\n\s+&& intentText\.trim\(\)\.length <= 220 && !isTextEditRequest\(intentText\) && !isPureTextRemoval\(intentText\) && llmIntentEnabled\(process\.env\)\)/);
   assert.match(maha, /const __llm = await classifyEditIntentLLM\(\{ apiKey, text: intentText \}\);/);
   assert.match(maha, /if \(__llm\) \{ __intent\[__llm\.lane === 'same' \? 'sameImage' : __llm\.lane\] = true;/);
+  /* v-best-of: مرشّح ثانٍ بالتوازي في المسارات الإبداعية والحكم الإبداعي يختار؛ IMAGE_BEST_OF يضبط العدد */
+  assert.match(maha, /const __altP = \(isCreativeEdit && !pipelineActive && !prayerPlan && bestOfCount\(process\.env\) >= 2\)/);
+  assert.match(maha, /const pick = await judgeBest\(\{ apiKey, prompt: cleanPrompt, creative: true, source: \{ b64: editImageBase64/);
+  assert.match(maha, /if \(pick === 'b'\) imgPart = altImg;\n\s+duoEngine = 'gemini x2\+judge';/);
+  const judge = require('../api/_lib/image-judge');
+  assert.equal(judge.bestOfCount({}), 2, 'الافتراضي مرشّحان (الجودة قبل التكلفة)');
+  assert.equal(judge.bestOfCount({ IMAGE_BEST_OF: '1' }), 1);
+  assert.equal(judge.bestOfCount({ IMAGE_BEST_OF: 'off' }), 1);
+  assert.equal(judge.bestOfCount({ IMAGE_BEST_OF: '5' }), 3, 'الحد الأقصى 3');
+  const judgeSrc = fs.readFileSync('api/_lib/image-judge.js', 'utf8');
+  assert.match(judgeSrc, /const rubric = opts\.creative\n\s+\? 'You are a top art director judging two AI redesigns of the SOURCE image/);
+  assert.match(judgeSrc, /prefer the bolder, more complete design over the timid one/);
   const llm = require('../api/_lib/image-intent-llm');
   assert.deepEqual(llm.parseIntentReply('{"lane":"reimagine","confidence":0.92}'), { lane: 'reimagine', confidence: 0.92 });
   assert.deepEqual(llm.parseIntentReply('```json\n{"lane":"elevate","confidence":0.8}\n```'), { lane: 'elevate', confidence: 0.8 });

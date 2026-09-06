@@ -10,7 +10,7 @@ const { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldU
 const { detectEditIntent } = require('./image-intent');
 const { classifyEditIntentLLM, llmIntentEnabled } = require('./image-intent-llm');
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
-const { judgeBest, duoEnabled } = require('./image-judge');
+const { judgeBest, duoEnabled, bestOfCount } = require('./image-judge');
 /* v-nano-chat (المالك: «نفس فكرة نانو»): مع كل صورة جملة قصيرة تشرح ما فُعل واقتراح للخطوة التالية، بلغة الطلب */
 async function imageCaption(apiKey, prompt, b64, mime, sourceB64, sourceMime) {
   try {
@@ -524,6 +524,11 @@ module.exports = async (req, res) => {
     // Image generation normally takes 35–50 seconds, so it must bypass the
     // shared 30-second fetch guard. Retry transient failures inside this one
     // request; the user should not have to resend the same prompt.
+    /* v-best-of (خطة المالك ٦ سبتمبر: «نسختان بالتوازي واختيار الأفضل» — الجودة قبل التكلفة): في المسارات الإبداعية يُطلب مرشّح
+       ثانٍ من المحرّك نفسه بالتوازي مع الأول، والحكم الإبداعي يختار الأجرأ والأكمل مع الوفاء بالموضوع. IMAGE_BEST_OF=1 يوقفه. */
+    const __altP = (isCreativeEdit && !pipelineActive && !prayerPlan && bestOfCount(process.env) >= 2)
+      ? fetchImageWithRetry({ url: endpoint, init: { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: reqBody }, onRetry: function () {} }).catch(function () { return null; })
+      : null;
     const imageResult = await fetchImageWithRetry({
       url: endpoint,
       init: {
@@ -657,6 +662,19 @@ module.exports = async (req, res) => {
       }
     }
 
+    /* v-best-of: دمج المرشّح الثاني (المحرّك نفسه) بالحكم الإبداعي — أي تعثّر يُبقي الأول */
+    if (__altP) {
+      try {
+        const altRes = await __altP;
+        const altParts = (((((altRes && altRes.data) || {}).candidates || [])[0] || {}).content || {}).parts || [];
+        const altImg = (altRes && altRes.response && altRes.response.ok) ? altParts.find(function (p) { return p.inlineData && p.inlineData.data; }) : null;
+        if (altImg) {
+          const pick = await judgeBest({ apiKey, prompt: cleanPrompt, creative: true, source: { b64: editImageBase64, mime: editMimeType || 'image/png' }, a: { b64: imgPart.inlineData.data, mime: imgPart.inlineData.mimeType || 'image/png' }, b: { b64: altImg.inlineData.data, mime: altImg.inlineData.mimeType || 'image/png' } });
+          if (pick === 'b') imgPart = altImg;
+          duoEngine = 'gemini x2+judge';
+        }
+      } catch (e) { console.warn('[maha-image] best-of skipped: ' + (e && e.message)); }
+    }
     /* v-image-duo: المرشّح الثاني (gpt-image) يمرّ بحارس الهوية نفسه إن كان تعديلًا، ثم الحكم */
     if (duoP) {
       try {
