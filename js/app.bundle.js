@@ -18714,12 +18714,27 @@ function __showImgLoading(el, ar, en){
     // ✅ v303: «نعم/ابدأ/يلا/تمام» بعد رد معماري = تنفيذ فوري (مخطط + واجهة) بلا أسئلة.
     const __archAffirmRe = /^\s*(نعم|أجل|اجل|ايه|إيه|اي نعم|اوك|أوك|اوكي|أوكي|تمام|زين|طيب|يلا|يالله|ابدا|ابدأ|أبدأ|ابدي|كمل|أكمل|اكمل|نفذ|نفّذ|سو|سوها|yes|ok|okay|go|start|sure|continue)[\s.!،؟]*$/i;
     // ✅ v303: لو الرد الأخير من المساعد كان مواصفات معمارية نصية (بدون صور)، نعتبره سياق معماري حتى لو lastArchText فاضي.
+    /* ✅ v-arch-topic (لقطة المالك ٦ سبتمبر: «نعم» بعد ردّ عن شاحن BYD رسم مخطط كراج وواجهة، وكُتب نصّ الردّ كله داخل صورة
+       الواجهة): «تثبيت» كانت تُقرأ «بيت» و«مواصفات الشاحن» كانت تُعدّ سياقًا معماريًا لأن JS بلا حدود كلمات عربية. الآن:
+       كلمات البناء بحدود صريحة، و«نعم» بعد ردّ ينتهي بسؤال عن موضوع آخر جوابٌ لذلك السؤال لا موافقة على المخطط. */
+    const __archStrongRe = /(?:^|[\s،,.:؛()«»"'\-])(?:ال|لل|بال|وال|و)?(?:فيلا|فله|فلة|منزل|بيت|بيوت|شقة|شقه|عمارة|ملحق|استراحة|مخطط|مخططات|واجهة(?!\s*(?:المستخدم|مستخدم|برمجي))|واجهات|توزيع\s*داخلي|دور\s?أرضي|الشكل\s*الخارجي|م²|متر\s*مربع)(?:ي|ك|نا|كم|ها|ه)?(?=$|[\s،,.:؛()«»"'\-!؟?])|\b(?:floor\s?plan|facade|exterior|villa)\b/i;
+    const __lastAskedOffTopic = (m) => {
+      const c = String((m && m.content) || '').trim();
+      const q = Math.max(c.lastIndexOf('؟'), c.lastIndexOf('?'));
+      if(q < 0 || q < c.length - 200) return false;
+      const st = Math.max(c.lastIndexOf('\n', q - 1), c.lastIndexOf('.', q - 1), c.lastIndexOf('!', q - 1), c.lastIndexOf('؟', q - 1), c.lastIndexOf('?', q - 1)) + 1;
+      const sent = c.slice(st, q);
+      return !__archStrongRe.test(sent) && !/(?:أبدأ|ابدأ|ابدا|نبدأ|أنفذ|انفذ|أرسم|ارسم|أسوي|اسوي|نكمل|أكمل|اكمل|أصمم|اصمم|نصمم|أكمّل|start|proceed|begin|go\s*ahead|draw)/i.test(sent);
+    };
+    let __lastAsst = null;
+    try{ __lastAsst = [...cur.messages].reverse().find(m => m && m.role === 'assistant' && typeof m.content === 'string') || null; }catch(e){ __swallow(e, 'arch:last-asst'); }
     let __archCtxText = cur.lastArchText || '';
     if(!__archCtxText){
       try{
-        const __la = [...cur.messages].reverse().find(m => m && m.role === 'assistant' && typeof m.content === 'string');
-        if(__la && __la.content.length > 250 && /(فيلا|فله|فلة|منزل|بيت|مخطط|واجهة(?!\s*(?:المستخدم|مستخدم|برمجي))|غرف(?:ة)?\s*نوم|م²|دور\s?أرضي|ماستر|floor\s?plan|facade)/i.test(__la.content) && !/```/.test(__la.content) && !/(function|class |const |import |namespace|#include|برمج|كود|code|script|API|SDK|C#|C\+\+|Python|Java(?:Script)?)/i.test(__la.content)){
-          __archCtxText = __la.content.replace(/\s+/g, ' ').slice(0, 1500);
+        const __la = __lastAsst;
+        if(__la && __la.content.length > 250 && __archStrongRe.test(__la.content) && !/```/.test(__la.content) && !/(function|class |const |import |namespace|#include|برمج|كود|code|script|API|SDK|C#|C\+\+|Python|Java(?:Script)?)/i.test(__la.content)){
+          /* نصّ وصفي بلا ماركداون: الجداول والعناوين كانت تُرسم حرفيًا داخل صورة الواجهة */
+          __archCtxText = __la.content.replace(/[#*|_`>]+|-{3,}/g, ' ').replace(/\s+/g, ' ').slice(0, 1500);
         }
       }catch(e){ __swallow(e, "misc:app-09-attach#18"); }
     }
@@ -18727,14 +18742,14 @@ function __showImgLoading(el, ar, en){
     // «نعم» بعد رد عن فنادق/مواضيع ثانية ممنوع يرجّع تصميم فيلا قديم من lastArchText.
     if(__archCtxText){
       try{
-        const __laChk = [...cur.messages].reverse().find(m => m && m.role === 'assistant' && typeof m.content === 'string');
-        if(!__laChk || !/(مخطط|واجهة(?!\s*(?:المستخدم|مستخدم|برمجي))|م²|متر مربع|دور\s?أرضي|ماستر|مواصفات|توزيع داخلي|الشكل الخارجي|floor\s?plan|facade|exterior)/i.test(__laChk.content) || /(function|class |const |import |namespace|#include|برمج|كود|code|script|API|SDK|C#|C\+\+|Python|Java(?:Script)?)/i.test(__laChk.content)){
+        const __laChk = __lastAsst;
+        if(!__laChk || !__archStrongRe.test(__laChk.content) || /(function|class |const |import |namespace|#include|برمج|كود|code|script|API|SDK|C#|C\+\+|Python|Java(?:Script)?)/i.test(__laChk.content)){
           __archCtxText = '';
           cur.lastArchText = '';
         }
       }catch(e){ __swallow(e, "misc:app-09-attach#19"); }
     }
-    const __archAffirm = !!(__archCtxText && text && __archAffirmRe.test(text));
+    const __archAffirm = !!(__archCtxText && text && __archAffirmRe.test(text) && !__lastAskedOffTopic(__lastAsst));
     const __archFollowUp = !!(__archCtxText && text && !__srcImg && !__followUp &&
        !__codeWordRe.test(text) && !__designDocRe.test(text) && !__archExcludeRe.test(text) &&
        (__archAffirm || (text.length < 120 && __archFollowRe.test(text))));
@@ -18791,7 +18806,7 @@ function __showImgLoading(el, ar, en){
         }
         const __extImg = (__archFollowUp && !__archAffirm && !/واجهة|الواجهة|خارجي|الشكل|facade|exterior/i.test(text)) ? null : await __archGen(
           lang === 'ar' ? '🏠 جاري توليد الواجهة الخارجية…' : '🏠 Generating exterior facade…',
-          'Photorealistic exterior architectural photograph of the finished building.' + __floorRule + __poolRule + __garageRule + ' Request: "' + __archText + '". STRICT CONSISTENCY REQUIREMENT: this exterior photo must depict the exact same building described in the request and its 2D floor plan — same number of floors, same entrances (including a separate majlis/guest entrance if mentioned), same garage/carport, swimming pool and outdoor kitchen only if mentioned, same facade materials and window sizes as specified. Do NOT invent floors, wings, or elements not in the request. Modern UAE/Gulf villa facade, sand-tone and stone finishes with dark window frames, covered entrance, landscaped front yard, clear daytime sky, ultra realistic professional real-estate photo, no text, no watermark.');
+          'Photorealistic exterior architectural photograph of the finished building.' + __floorRule + __poolRule + __garageRule + ' Request (a written description only — never print, write or render any of its words, headings, tables or numbers as text inside the photo; the photo must contain no text at all): "' + __archText + '". STRICT CONSISTENCY REQUIREMENT: this exterior photo must depict the exact same building described in the request and its 2D floor plan — same number of floors, same entrances (including a separate majlis/guest entrance if mentioned), same garage/carport, swimming pool and outdoor kitchen only if mentioned, same facade materials and window sizes as specified. Do NOT invent floors, wings, or elements not in the request. Modern UAE/Gulf villa facade, sand-tone and stone finishes with dark window frames, covered entrance, landscaped front yard, clear daytime sky, ultra realistic professional real-estate photo, no text, no watermark.');
         if(__extImg){
           const __em = __extImg.mimeType || 'image/png';
           cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? '🏠 الشكل الخارجي:' : '🏠 Exterior view:'), attachments: [{ name: 'exterior.png', isImage: true, mime: __em, dataUrl: 'data:' + __em + ';base64,' + __extImg.imageBase64 }] });
