@@ -2,7 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange, shouldUseRawImagePrompt, stripRawImagePrefix } = require('../api/_lib/image-prompt');
+const { buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange, shouldUseRawImagePrompt, stripRawImagePrefix } = require('../api/_lib/image-prompt');
 const { assessEditVerdict, publicGuardError } = require('../api/_lib/image-edit-guard');
 
 test('engineered image prompts are the default and raw mode is explicit', () => {
@@ -156,6 +156,18 @@ test('specialized image routes do not expose provider errors to the user', () =>
     assert.doesNotMatch(source, /json\(\{ error: 'Server is missing GEMINI_API_KEY'/);
     assert.doesNotMatch(source, /json\(\{ error: \(frameData && frameData\.error/);
   }
+});
+
+/* v-reimagine-design — «عطني فكرة أقوى» = تصميم جديد للموضوع نفسه، لا المصدر مع لصقات فوتوشوب */
+test('reimagine prompt asks for a new concept of the same subject, not the source with overlays', () => {
+  const p = buildReimaginePrompt('عطني فكرة أقوى من هذي');
+  assert.match(p, /TASK: "عطني فكرة أقوى من هذي"/);
+  assert.match(p, /the BRIEF, not the template/);
+  assert.match(p, /Keep: the subject\(s\), the message and purpose, any real person recognizably the same person/);
+  assert.match(p, /Reinvent everything else: composition and layout/);
+  assert.match(p, /a Photoshop overlay, not a new concept/);
+  assert.match(p, /Match the source medium/);
+  assert.match(p, /Never write the instruction itself into the image/);
 });
 
 /* v-nano-pro-edit — «أقوى» = الفكرة نفسها مرفوعة بإثراء ينتمي للموضوع، لا صورة فوتوغرافية باهتة */

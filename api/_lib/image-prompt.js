@@ -240,6 +240,24 @@ function buildElevatePrompt(userPrompt){
     'Return only one finished, elevated image.'
   ].join('\n');
 }
+/* v-reimagine-design (لقطة المالك ٦ سبتمبر «عطني فكرة أقوى من هذي — شغل فوتوشوب»): «فكرة أقوى/عطني فكرة» كانت تمرّ بقالب
+   الترقية (التركيب نفسه + زخارف وخط) فتخرج كلصقة فوتوشوب. هذا القالب يطلب تصميمًا جديدًا جريئًا للموضوع نفسه كما يفعل Gemini:
+   الموضوع والرسالة والأشخاص الحقيقيون ثابتون، وكل ما عداهم (التركيب، الإطار، الخلفية، الإضاءة، الألوان، أسلوب الخط) يُعاد ابتكاره. */
+function buildReimaginePrompt(userPrompt){
+  const prompt = cleanImagePrompt(userPrompt);
+  return [
+    'TASK: "' + prompt + '"',
+    '',
+    'The attached SOURCE image is the BRIEF, not the template. Design a NEW, far stronger concept for the SAME subject and purpose — the kind of bold alternative a top art director would pitch. Rules:',
+    '1. Keep: the subject(s), the message and purpose, any real person recognizably the same person, and any logo, brand name or key wording (spelled exactly as in the source; Arabic in correct, cleanly joined right-to-left script).',
+    '2. Reinvent everything else: composition and layout, framing and viewpoint, environment and background, lighting and atmosphere, colour palette, typography style, decorative system and storytelling details. The result must read as a different, more striking design of the same idea.',
+    '3. Returning the source layout with extra ornaments, frames, glow or a caption added on top is a FAILURE — that is a Photoshop overlay, not a new concept.',
+    '4. Match the source medium: a card, poster, icon set, app screen or illustration becomes a new design of that kind; a real photograph becomes a new photograph of the same subject.',
+    '5. Never write the instruction itself into the image, and add no text that the source did not have unless the request asks for it.',
+    '6. Quality bar: breathtaking, award-winning, magazine-cover / app-store-hero grade, tack-sharp, coherent, professional cinematic lighting, no artifacts, no toy-like rendering.',
+    'Return only one finished image.'
+  ].join('\n');
+}
 function buildEditPrompt(userPrompt){
   const prompt = cleanImagePrompt(userPrompt);
   const rules = [
@@ -300,4 +318,4 @@ function buildRestylePrompt(userPrompt){
   ].join('\n');
 }
 
-module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildLetterSwapPrompt, buildSceneUpgradePrompt, buildRestylePrompt, isTextEditRequest, isRemoveTextRequest, isPureTextRemoval, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };
+module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, buildLetterSwapPrompt, buildSceneUpgradePrompt, buildRestylePrompt, isTextEditRequest, isRemoveTextRequest, isPureTextRemoval, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };

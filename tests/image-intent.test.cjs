@@ -9,16 +9,14 @@ const kind = (t) => { const r = detectEditIntent(t); return r.sameImage ? 'same'
 
 test('stronger/fancier requests in every common wording are an elevate, not a localized edit', () => {
   for (const t of ['أقوى', 'اقوى', 'أفضل من هذي', 'سو لي نسخة أفخم', 'خلها أفخم', 'خليها فخمة', 'طورها', 'طوّرها', 'حسّنها', 'جمّلها', 'ارفع مستواها',
-    'عطني الأفضل', 'حسن', 'طور الصورة', 'حسّن الكرت', 'احسنها', 'اجملها', 'اطورها', 'نسخة أقوى للكرت', 'اعطني نسخة أقوى من هذي الصورة', 'نسخة أرقى', 'خلها أحلى', 'أبدع', 'فكرة أقوى', 'احسن شوي',
+    'عطني الأفضل', 'حسن', 'طور الصورة', 'حسّن الكرت', 'احسنها', 'اجملها', 'اطورها', 'نسخة أقوى للكرت', 'اعطني نسخة أقوى من هذي الصورة', 'نسخة أرقى', 'خلها أحلى', 'أبدع', 'احسن شوي',
     'زخرفها', 'زخرف الكرت', 'فخّمها', 'ابهرني', 'خلها تجنن', 'خلها لايقة', 'زود الزخارف', 'زيد الفخامة', 'خل الكرت أفخم', 'سوها احترافية', 'ارفع جودتها',
     /* الاسم بعد الصفة/الفعل جانبٌ لا مفعول: الصورة كلها تُرفع */ 'طورها بالألوان', 'ممكن أقوى من فوق', 'أبيها أفخم من فوق', 'أبغاها أفخم بالألوان', 'حسّنها من ناحية الألوان', 'خلها فخمة بالألوان', 'خلها فخمة من فوق', 'خلها تجنن بالألوان', 'ابهرني بالألوان', 'فخّمها بالألوان والخط', 'زخرفها وحط اسمي فوق', 'حسنها كلها حتى الخط', 'خله أفخم بالألوان', 'لو سمحت أقوى بالألوان',
     'make it stronger but keep the text', 'make it more luxurious, keep the name', 'improve it, especially the lighting', 'a richer version with the same background', 'upgrade the design but keep the date', 'best version, keep the name', 'make this more premium with a gold frame', 'make it much nicer, keep the sky', 'make it a lot nicer',
     /* الجولة الرابعة: الصفة تتصدّر أو الضمير للصورة يغلب أي عنصر لاحق */ 'أقوى وحط إطار أفخم', 'غير الخط وخلها أقوى', 'حط إطار ذهبي وخلها أقوى', 'الصورة كلها أقوى', 'خل الصورة أقوى', 'زود زخارف', 'زيد جمال الصورة', 'فخم',
     'make it stronger', 'a cleaner, more luxurious version of this card', 'upgrade the design', 'improve it', 'best version', 'stronger', 'bolder version',
-    /* لقطات المالك من Gemini («عطني فكرة أقوّم هذي الصورة» أخرجت تصميمًا أغنى) + «زي الذكاء الاصطناعي مو فوتوشوب» */
-    'وهاذي تابعة لي ستايل عطني فكرة اقوم هذي الصورة', 'وهاذي تابعة تلفزيون عطني فكرة اقوم هذي الصورة', 'عطني فكرة اقوم هذي الصورة', 'عطني فكرة', 'اقترح لي فكرة', 'عطني افكار',
-    'قوّمها', 'قومها', 'قوم الصورة', 'اقوم هالصورة', 'خلها زي الذكاء الاصطناعي', 'سوها بالذكاء الاصطناعي', 'شغل ذكاء اصطناعي مو فوتوشوب',
-    'سوّي لي شي يجنن', 'سو لي شي خرافي', 'عطني نسخة رهيبة', 'خلها تخبل', 'give me an idea', 'any ideas', 'make it look ai generated']) {
+    /* «قوّمها» وصفات العامية مع «شي/نسخة/خلها» ترقية للتركيب نفسه */
+    'قوّمها', 'قومها', 'قوم الصورة', 'اقوم هالصورة', 'سوّي لي شي يجنن', 'سو لي شي خرافي', 'عطني نسخة رهيبة', 'خلها تخبل']) {
     assert.equal(kind(t), 'elevate', t);
   }
 });
@@ -59,6 +57,9 @@ test('same-image, restyle and reimagine keep their own lanes and beat elevate', 
   assert.equal(kind('عطني فكرة ثانية'), 'reimagine');
   assert.equal(kind('فكرة مختلفة أقوى'), 'reimagine');
   assert.equal(kind('different concept'), 'reimagine');
+  /* لقطات المالك ٦ سبتمبر: «فكرة أقوى» و«عطني فكرة» و«زي الذكاء الاصطناعي» و«شغل فوتوشوب» = تصميم جديد للموضوع نفسه، لا ترقية تبقي التركيب */
+  for (const t of ['عطني فكرة اقوى من هذي شغل فوتو شوب', 'فكرة أقوى', 'فكرة أفضل', 'وهاذي تابعة لي ستايل عطني فكرة اقوم هذي الصورة', 'وهاذي تابعة تلفزيون عطني فكرة اقوم هذي الصورة', 'عطني فكرة اقوم هذي الصورة', 'عطني فكرة', 'اقترح لي فكرة', 'عطني افكار',
+    'خلها زي الذكاء الاصطناعي', 'سوها بالذكاء الاصطناعي', 'شغل ذكاء اصطناعي مو فوتوشوب', 'شغل فوتوشوب', 'مو فوتوشوب', 'give me an idea', 'any ideas', 'make it look ai generated']) assert.equal(kind(t), 'reimagine', t);
 });
 
 test('place hints keep the photographic scene-upgrade lane for rooms', () => {
@@ -105,6 +106,7 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(maha, /const isTextSwap = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && !isTextRemove && \(body\.textSwap === true \|\| isTextEditRequest\(intentText\)\);/);
   assert.match(maha, /\(isCreativeEdit \|\| isTextSwap\) \? creativeModel : editModel/);
   assert.match(maha, /isTextSwap \? buildLetterSwapPrompt\(cleanPrompt\)/);
+  assert.match(maha, /isReimagine \? buildReimaginePrompt\(cleanPrompt\)/);
   assert.match(maha, /&& \(!isTextSwap \|\| __duoWouldRun\)\n/);
   /* العميل: برو أولًا على الصورة كاملة، ومسار القناع احتياط */
   assert.match(attach, /textSwap: true, editImageBase64: __lsShr\.b64/);
@@ -139,7 +141,7 @@ test('both chat clients forward the user\'s words and the tool path never loses 
   /* صفة إنجليزية عارية في سؤال رأي ليست طلبًا إبداعيًا (لا تتجاوز قراءة اللقطة ولا تُخصم) */
   for (const t of ['is this nicer', 'which one is prettier', 'the second one is prettier', 'this looks cleaner than before']) assert.ok(!creativeRe.test(t), t);
   assert.ok(creativeRe.test('make it a lot nicer'));
-  for (const t of ['عطني فكرة اقوم هذي الصورة', 'خلها زي الذكاء الاصطناعي', 'سوي لي شي يجنن', 'قوّمها', 'give me an idea']) assert.ok(creativeRe.test(t), t);
+  for (const t of ['عطني فكرة اقوم هذي الصورة', 'خلها زي الذكاء الاصطناعي', 'سوي لي شي يجنن', 'قوّمها', 'give me an idea', 'عطني فكرة اقوى من هذي شغل فوتو شوب', 'مو فوتوشوب']) assert.ok(creativeRe.test(t), t);
   for (const t of ['يجنن', 'أقوم بتغيير اللون', 'عطني فكرة لاسم المحل', 'give me an idea for a name']) assert.ok(!creativeRe.test(t), t);
   /* العميل: حذف الاسم/النصّ بلا بديل لا يدخل مسار تبديل الحرف */
   const __textSwapIntent = new Function(attach.match(/function __textSwapIntent\(s\)\{[\s\S]*?\n\}/)[0] + '; return __textSwapIntent;')();
