@@ -59,7 +59,9 @@ test('same-image, restyle and reimagine keep their own lanes and beat elevate', 
   assert.equal(kind('different concept'), 'reimagine');
   /* لقطات المالك ٦ سبتمبر: «فكرة أقوى» و«عطني فكرة» و«زي الذكاء الاصطناعي» و«شغل فوتوشوب» = تصميم جديد للموضوع نفسه، لا ترقية تبقي التركيب */
   for (const t of ['عطني فكرة اقوى من هذي شغل فوتو شوب', 'فكرة أقوى', 'فكرة أفضل', 'وهاذي تابعة لي ستايل عطني فكرة اقوم هذي الصورة', 'وهاذي تابعة تلفزيون عطني فكرة اقوم هذي الصورة', 'عطني فكرة اقوم هذي الصورة', 'عطني فكرة', 'اقترح لي فكرة', 'عطني افكار',
-    'خلها زي الذكاء الاصطناعي', 'سوها بالذكاء الاصطناعي', 'شغل ذكاء اصطناعي مو فوتوشوب', 'شغل فوتوشوب', 'مو فوتوشوب', 'give me an idea', 'any ideas', 'make it look ai generated']) assert.equal(kind(t), 'reimagine', t);
+    'خلها زي الذكاء الاصطناعي', 'سوها بالذكاء الاصطناعي', 'شغل ذكاء اصطناعي مو فوتوشوب', 'شغل فوتوشوب', 'مو فوتوشوب', 'give me an idea', 'any ideas', 'make it look ai generated',
+    /* «نفس الفكرة لكن أجمل» = الفكرة نفسها بتصميم جديد (لقطة لوحة عمران AI) */ 'عطني صورة نفس الفكره لكن أجمل منها', 'نفس الفكرة بس أقوى', 'نفس الفكرة بتصميم ثاني', 'نفس الفكرة لكن أفخم']) assert.equal(kind(t), 'reimagine', t);
+  assert.equal(kind('نفس الصورة بس أقوى'), 'same', '«نفس الصورة» تبقى حرفية');
 });
 
 test('place hints keep the photographic scene-upgrade lane for rooms', () => {
@@ -128,6 +130,13 @@ test('server reads the intent from the user\'s own words and sends creative edit
   const judgeSrc = fs.readFileSync('api/_lib/image-judge.js', 'utf8');
   assert.match(judgeSrc, /const rubric = opts\.creative\n\s+\? 'You are a top art director judging two AI redesigns of the SOURCE image/);
   assert.match(judgeSrc, /prefer the bolder, more complete design over the timid one/);
+  /* v-flash-budget: flash-latest يفكّر افتراضيًا والتفكير يلتهم السقف الصغير — لا سقف 4 ولا 90 في أي نداء مساعد */
+  for (const f of ['api/_lib/maha-image.js', 'api/_lib/image-judge.js', 'api/_lib/image-intent-llm.js', 'api/_lib/image-edit-guard.js']) {
+    const src = fs.readFileSync(f, 'utf8');
+    const caps = (src.match(/maxOutputTokens: (\d+)/g) || []).map(x => parseInt(x.split(': ')[1], 10));
+    assert.ok(caps.length > 0 && caps.every(c => c >= 64), f + ': ' + caps.join(','));
+  }
+  assert.match(maha, /maxOutputTokens: 400 \} \}\), \/\* v-flash-budget/);
   const llm = require('../api/_lib/image-intent-llm');
   assert.deepEqual(llm.parseIntentReply('{"lane":"reimagine","confidence":0.92}'), { lane: 'reimagine', confidence: 0.92 });
   assert.deepEqual(llm.parseIntentReply('```json\n{"lane":"elevate","confidence":0.8}\n```'), { lane: 'elevate', confidence: 0.8 });

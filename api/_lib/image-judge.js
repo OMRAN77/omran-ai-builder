@@ -41,7 +41,7 @@ async function judgeBest(opts) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: AbortSignal.timeout(opts.timeoutMs || 25000),
-      body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0, maxOutputTokens: 4 } }),
+      body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0, maxOutputTokens: 64 } }), /* v-flash-budget: سقف 4 مع التفكير الافتراضي = جواب فارغ = «A» دائمًا */
     });
     if (!r.ok) { console.warn('[image-judge] status=' + r.status); return 'a'; }
     const d = await r.json().catch(() => null);

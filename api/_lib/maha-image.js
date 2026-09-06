@@ -20,7 +20,7 @@ async function imageCaption(apiKey, prompt, b64, mime, sourceB64, sourceMime) {
     parts.push({ inlineData: { mimeType: mime || 'image/png', data: b64 } });
     const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(12000),
-      body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0.4, maxOutputTokens: 90 } }),
+      body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0.4, maxOutputTokens: 400 } }), /* v-flash-budget: التفكير الافتراضي يلتهم السقف الصغير («قمت بت») */
     });
     if (!r.ok) return '';
     const d = await r.json().catch(() => null);
@@ -194,7 +194,7 @@ module.exports = async (req, res) => {
               { text: 'Answer with exactly one word, PLACE or OTHER. PLACE only if this image is a real camera photograph of a physical place: a room, interior, house or building exterior, garden, street, shop or venue. OTHER for designed graphics, cards, posters, banners, icons, illustrations, artwork, 3D renders, logos, screenshots, product shots and portraits of people.' },
               { inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } },
             ] }],
-            generationConfig: { temperature: 0, maxOutputTokens: 4 },
+            generationConfig: { temperature: 0, maxOutputTokens: 64 }, /* v-flash-budget */
           }),
         });
         const d = await r.json().catch(function () { return null; });
@@ -361,7 +361,7 @@ module.exports = async (req, res) => {
               { text: 'Answer with exactly one word, YES or NO. YES only if this image is text-dense: a UI screenshot, app screen, document, menu, form, chart with many labels, or a poster whose main content is many words. NO for photos, people, places, products and scenes.' },
               { inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } },
             ] }],
-            generationConfig: { temperature: 0, maxOutputTokens: 4 },
+            generationConfig: { temperature: 0, maxOutputTokens: 64 }, /* v-flash-budget */
           }),
         });
         const d = await r.json().catch(function () { return null; });
