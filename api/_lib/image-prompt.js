@@ -238,6 +238,10 @@ const PERSON_SWAP_RE = new RegExp([
   '(?:بدون|من\\s*غير|بلا)\\s*تكرار\\s*(?:ال)?' + PERSON_WORDS,
   '\\b(?:change|replace|swap|use)\\s+(?:the\\s+|all\\s+)?(?:different\\s+|new\\s+)?(?:faces?|people|persons?|models?|characters?|men|women)\\b',
   '\\b(?:different|new|unique)\\s+(?:faces?|people|persons?|models?)\\b',
+  /* «غيّر على اسم الشخصية» / «غيّرها على حسب الاسم» / «طابق الشخص مع الاسم» / «غيّر الصور حسب الأسماء» = الشخص يطابق الاسم تحته */
+  '(?:^|[\\s،,])(?:غيّ?ر|غيري|بدّ?ل|بدلي|عدّ?ل|سوّ?ي?|خلّ?ي?|اجعل|طابق|طابقي)(?:ها|هم|ه|ي)?\\s*(?:(?:ال)?(?:صور[ةه]?|شخصي[ةه]|شخصيات|شخص|أشخاص|اشخاص|وجوه|أشكال|اشكال)\\s*)?(?:على\\s*حسب|على|حسب|بحسب|وفق|طبق|مثل|زي|بناء\\s*على|مع)\\s*(?:ال)?(?:اسم|أسماء|اسماء|اسمه|اسمها)',
+  '(?:يناسب|تناسب|يطابق|تطابق|يوافق|توافق)\\s*(?:ال)?(?:اسم|أسماء|اسماء)',
+  '\\b(?:match(?:es|ing)?|according\\s+to|based\\s+on)\\s+(?:the\\s+)?names?\\b',
 ].join('|'), 'i');
 function isPersonSwapRequest(text){ return PERSON_SWAP_RE.test(String(text || '')); }
 function buildPersonSwapPrompt(userPrompt, userWords){

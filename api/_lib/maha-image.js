@@ -9,6 +9,7 @@ const { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldU
    تُقرأ من نصّ المستخدم نفسه (body.userText) لا من أمر أعاد النموذج صياغته بالإنجليزية. */
 const { detectEditIntent } = require('./image-intent');
 const { classifyEditIntentLLM, llmIntentEnabled } = require('./image-intent-llm');
+const { verifyRequestApplied, requestCheckEnabled } = require('./request-check');
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 const { judgeBest, duoEnabled, bestOfCount } = require('./image-judge');
 /* v-nano-chat (المالك: «نفس فكرة نانو»): مع كل صورة جملة قصيرة تشرح ما فُعل واقتراح للخطوة التالية، بلغة الطلب */
@@ -593,7 +594,8 @@ module.exports = async (req, res) => {
     /* v-guard-off-creative (المالك ٦ سبتمبر: «أوقفت النتيجة لأنها غيّرت هوية الشخص» على طلب إبداعي — وهو يقارن بنانو الأصلي
        الذي لا يحجب شيئًا): الترقية والفكرة الجديدة وتحويل الأسلوب وترقية المكان تعيد الرسم بطبيعتها، فلا حارس عليها.
        التعديل الموضعي (اسم/حرف/لون) يبقى محروسًا: الوجه لا يتبدّل عند تغيير الاسم. */
-    if (editImageBase64 && !extras.length && !rawMode && !isCreativeEdit && !isPersonSwap && !isBroadEdit) {
+    const __guardLane = !!(editImageBase64 && !extras.length && !rawMode && !isCreativeEdit && !isPersonSwap && !isBroadEdit);
+    if (__guardLane) {
       const guard = await verifyLocalizedImageEdit({
         apiKey,
         sourceBase64: editImageBase64,
@@ -698,6 +700,34 @@ module.exports = async (req, res) => {
           } else duoEngine = 'gemini';
         }
       } catch (e) { console.warn('[maha-image] duo skipped: ' + (e && e.message)); }
+    }
+    /* v-request-check (المالك: «ما يعطيني الطلب الي أريده بالضبط»): هل تطبّق النتيجة طلب المستخدم كما كتبه؟ إن لا، محاولة
+       واحدة أخرى مع ذكر ما نقص حرفيًا، وتُقبل فقط إن اجتازت الفحص (وحارس الهوية في المسار الموضعي). */
+    if (editImageBase64 && !extras.length && !__pureRaw && !prayerPlan && !pipelineActive && requestCheckEnabled(process.env)) {
+      try {
+        const __src = { b64: editImageBase64, mime: editMimeType || 'image/png' };
+        const __rc = await verifyRequestApplied({ apiKey, request: intentText, source: __src, result: { b64: imgPart.inlineData.data, mime: imgPart.inlineData.mimeType || 'image/png' } });
+        if (__rc && __rc.applied === false) {
+          console.warn('[maha-image] request-check: not applied — ' + __rc.missing);
+          const __fixBody = JSON.parse(reqBody);
+          const __lastTurn = __fixBody.contents[__fixBody.contents.length - 1];
+          __lastTurn.parts.push({ text: 'CORRECTION: your previous attempt did NOT satisfy the request. What was missing: "' + String(__rc.missing || 'the requested change').slice(0, 300) + '". Redo the edit on the attached source and make sure this is clearly and fully applied this time.' });
+          const __fixRes = await fetchImageWithRetry({ url: endpoint, init: { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(__fixBody) }, onRetry: function () {} });
+          const __fixParts = (((((__fixRes && __fixRes.data) || {}).candidates || [])[0] || {}).content || {}).parts || [];
+          const __fixImg = (__fixRes && __fixRes.response && __fixRes.response.ok) ? __fixParts.find(function (p) { return p.inlineData && p.inlineData.data; }) : null;
+          if (__fixImg) {
+            let __ok2 = true;
+            if (__guardLane) {
+              const g3 = await verifyLocalizedImageEdit({ apiKey, sourceBase64: editImageBase64, sourceMime: editMimeType || 'image/png', resultBase64: __fixImg.inlineData.data, resultMime: __fixImg.inlineData.mimeType || 'image/png', userPrompt: cleanPrompt, allowStyleChange: explicitlyRequestsStyleChange(cleanPrompt), allowBroadChange: isSceneUpgrade });
+              __ok2 = !!(g3 && (g3.ok || g3.reason === 'validation_unavailable'));
+            }
+            if (__ok2) {
+              const __rc2 = await verifyRequestApplied({ apiKey, request: intentText, source: __src, result: { b64: __fixImg.inlineData.data, mime: __fixImg.inlineData.mimeType || 'image/png' } });
+              if (!__rc2 || __rc2.applied !== false) { imgPart = __fixImg; duoEngine = (duoEngine || 'gemini') + '+fix'; }
+            }
+          }
+        }
+      } catch (e) { console.warn('[maha-image] request-check skipped: ' + (e && e.message)); }
     }
     const caption = prayerPlan ? '' : await imageCaption(apiKey, cleanPrompt, imgPart.inlineData.data, imgPart.inlineData.mimeType || 'image/png', editImageBase64 || null, editMimeType || 'image/png');
     res.status(200).json({

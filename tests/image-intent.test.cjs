@@ -106,8 +106,9 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.ok(lp.split('\n').length <= 5, 'short prompt like the Gemini app');
   /* v-person-swap: «غيّر أشكال الأشخاص على الاسم» تغيير هوية مقصود لا تبديل حرف، برو بلا حارس ولا gpt-image */
   const { isPersonSwapRequest, buildPersonSwapPrompt } = require('../api/_lib/image-prompt');
-  for (const t of ['غير أشكال الأشخاص على الاسم الموجود الي تحت من غير تكرار الاشخاص', 'غير وجوه الأشخاص', 'بدل الشخص بشخص ثاني', 'خل الأشخاص مختلفين', 'أشخاص مختلفين', 'من غير تكرار الأشخاص', 'replace the faces', 'use different people']) assert.equal(isPersonSwapRequest(t), true, t);
-  for (const t of ['غير الاسم إلى عمران', 'شيل الشخص', 'حط شخص جنب الباب', 'غير لون القميص', 'أقوى', 'اكتب اسم الشخص فوق', 'غير حرف م حط ع']) assert.equal(isPersonSwapRequest(t), false, t);
+  for (const t of ['غير أشكال الأشخاص على الاسم الموجود الي تحت من غير تكرار الاشخاص', 'غير وجوه الأشخاص', 'بدل الشخص بشخص ثاني', 'خل الأشخاص مختلفين', 'أشخاص مختلفين', 'من غير تكرار الأشخاص', 'replace the faces', 'use different people',
+    /* «غيّر على اسم الشخصية» (شكوى المالك: ما غيّر) = طابق الشخص مع الاسم لا تبديل نص الاسم */ 'غير على اسم الشخصية', 'غيرها على حسب الاسم', 'طابق الشخص مع الاسم الي تحت', 'غير الصور حسب الأسماء', 'خل الشخصية تناسب الاسم', 'match the names']) assert.equal(isPersonSwapRequest(t), true, t);
+  for (const t of ['غير الاسم إلى عمران', 'غير اسم الشخصية إلى أحمد', 'شيل الشخص', 'حط شخص جنب الباب', 'غير لون القميص', 'أقوى', 'اكتب اسم الشخص فوق', 'غير حرف م حط ع']) assert.equal(isPersonSwapRequest(t), false, t);
   /* v-broad-edit: «رتّب الصور / خلها فقط صور / بدون كتابة» تعديل واسع على برو بلا حارس، وكل الأوامر معًا */
   const { isBroadEditRequest, buildBroadEditPrompt } = require('../api/_lib/image-prompt');
   for (const t of ['غير الملابس ورتب الصور خلها فقط صور', 'رتب الصور', 'رتبها', 'خلها فقط صور', 'بس صور', 'بدون كتابة', 'بدون أي نصوص', 'أعد ترتيب العناصر', 'rearrange the photos', 'photos only', 'no text']) assert.equal(isBroadEditRequest(t), true, t);
@@ -122,7 +123,7 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(maha, /const isTextRemove = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && !isPersonSwap && !isBroadEdit && isPureTextRemoval\(intentText\);/);
   assert.match(maha, /const isTextSwap = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && !isPersonSwap && !isBroadEdit && !isTextRemove && \(body\.textSwap === true \|\| isTextEditRequest\(intentText\)\);/);
   assert.match(maha, /isPersonSwap \? buildPersonSwapPrompt\(cleanPrompt, intentText\)/);
-  assert.match(maha, /if \(editImageBase64 && !extras\.length && !rawMode && !isCreativeEdit && !isPersonSwap && !isBroadEdit\) \{/);
+  assert.match(maha, /const __guardLane = !!\(editImageBase64 && !extras\.length && !rawMode && !isCreativeEdit && !isPersonSwap && !isBroadEdit\);/);
   assert.match(maha, /&& !isPersonSwapRequest\(intentText\) && !isBroadEditRequest\(intentText\) && llmIntentEnabled\(process\.env\)\)/);
   assert.match(maha, /\(isCreativeEdit \|\| isTextSwap \|\| isPersonSwap \|\| isBroadEdit\) \? creativeModel : editModel/);
   assert.match(maha, /isTextSwap \? buildLetterSwapPrompt\(cleanPrompt\)/);
@@ -169,7 +170,7 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(cp, /Request: "عطني  فكرة أقوى"/, 'الاقتباسات وأسطر الطلب لا تكسر القالب');
   for (const lane of llm.INTENT_LANES) assert.match(cp, new RegExp('- ' + lane + ':'));
   /* المالك ٦ سبتمبر: لا حارس هوية/أسلوب على المسارات الإبداعية (نانو الأصلي لا يحجب)، ويبقى على التعديل الموضعي */
-  assert.match(maha, /if \(editImageBase64 && !extras\.length && !rawMode && !isCreativeEdit && !isPersonSwap && !isBroadEdit\) \{\n\s+const guard = await verifyLocalizedImageEdit/);
+  assert.match(maha, /const __guardLane = !!\(editImageBase64 && !extras\.length && !rawMode && !isCreativeEdit && !isPersonSwap && !isBroadEdit\);\n\s+if \(__guardLane\) \{\n\s+const guard = await verifyLocalizedImageEdit/);
   /* 4K عند الطلب الصريح فقط، وإلا 2K */
   assert.match(maha, /const imageConfig = \{ imageSize: __want4K \? '4K' : '2K' \};/);
   const want4K = new RegExp(maha.match(/const __want4K = \/(.*)\/i\.test\(/)[1], 'i');
