@@ -27,5 +27,8 @@ test('client records each edit turn as a 768px thumb and sends the last three on
   assert.match(attach, /cur\.imageTurns = \[\]; \/\* v-image-memory: مصدر جديد = سلسلة جديدة \*\//);
   /* مسار الأدوات يرسل السياق نفسه ويسجّل الدور */
   assert.match(tools, /history: tHist,/);
+  /* v-tool-chain: صور الأدوات تدخل سلسلة التعديل فتعمل عليها الرسالة التالية («3d/أقوى») مباشرة لا عبر النموذج النصي */
+  assert.match(tools, /gcur\.lastEditedImage = \{ b64: j\.imageBase64, mime: j\.mimeType \|\| 'image\/png' \}; gcur\.lastMsgWasImageEdit = true; gcur\.imageTurns = \[\];/);
+  assert.match(tools, /tcur\.lastEditedImage = \{ b64: ej\.imageBase64, mime: ej\.mimeType \|\| 'image\/png' \}; tcur\.lastMsgWasImageEdit = true;/);
   assert.match(tools, /tcur\.imageTurns = tcur\.imageTurns\.concat\(\[tTurn\]\)\.slice\(-4\);/);
 });

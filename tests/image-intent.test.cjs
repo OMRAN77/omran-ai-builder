@@ -148,6 +148,7 @@ test('server reads the intent from the user\'s own words and sends creative edit
   const judgeSrc = fs.readFileSync('api/_lib/image-judge.js', 'utf8');
   assert.match(judgeSrc, /const rubric = opts\.creative\n\s+\? 'You are a top art director judging two AI redesigns of the SOURCE image/);
   assert.match(judgeSrc, /prefer the bolder, more complete design over the timid one/);
+  assert.match(judgeSrc, /\(1\) actually does what the request asks — the requested style, idea or change must be unmistakably applied/, 'الحكم الإبداعي: تنفيذ الطلب أولًا ثم الجمال');
   /* v-flash-budget: flash-latest يفكّر افتراضيًا والتفكير يلتهم السقف الصغير — لا سقف 4 ولا 90 في أي نداء مساعد */
   for (const f of ['api/_lib/maha-image.js', 'api/_lib/image-judge.js', 'api/_lib/image-intent-llm.js', 'api/_lib/image-edit-guard.js']) {
     const src = fs.readFileSync(f, 'utf8');
