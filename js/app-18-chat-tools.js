@@ -50,6 +50,17 @@
    * @param {Function} onDelta تُستدعى بالنصّ المتراكم كلّما وصلت قطعة.
    * @returns {{reply:string, providerKey:string, switched:boolean, requestedKey:string}}
    */
+  // ⏱️ v-chat-idle — حارس خمول العميل: fetch في المتصفّح بلا مهلة، والحارس
+  // الصلب لا يقطع إلا بعد ٥ دقائق، فنصّ طويل يتعثّر تدفّقه = صمت ٥ دقائق يقرأه
+  // المستخدم «مافي إجابة». هذا الحارس يقطع بعد صمتٍ فعليّ ويهبط لمزوّد احتياط.
+  var __CHAT_IDLE_MS = 45000;   // لا بايت من الخادم هذه المدة (خارج الأدوات) = تعثّر
+  var __CHAT_TOOL_MS = 295000;  // أثناء تشغيل أداة محلّيّة نترك القطع للحارس الصلب
+  function __raceIdle(p, ms, tag) {
+    var to;
+    var timer = new Promise(function (_res, rej) { to = setTimeout(function () { rej(new Error(tag)); }, ms); });
+    return Promise.race([p, timer]).finally(function () { try { clearTimeout(to); } catch (e) { /* guard-ok — تنظيف المؤقّت */ } });
+  }
+
   window.callChatWithTools = async function (messages, onDelta, provider) {
     window.__chatVideoResult = null;
     window.__chatVideoReference = null;
@@ -78,7 +89,7 @@
       });
       return { role: m.role, content: content };
     });
-    var res = await fetch('/api/ai?action=chat', {
+    var res = await __raceIdle(fetch('/api/ai?action=chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: (typeof genAbortController !== 'undefined' && genAbortController) ? genAbortController.signal : undefined,
@@ -90,7 +101,7 @@
         token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
         guestId: window.getGuestId ? window.getGuestId() : '',
       }),
-    });
+    }), __CHAT_IDLE_MS, '__chat_no_headers__');
     if (!res.ok || !res.body) {
       var errText = '';
       try { errText = await res.text(); } catch (e) { /* لا جسم للخطأ */ }
@@ -101,10 +112,19 @@
     var dec = new TextDecoder();
     var buf = '', full = '', serverErr = null;
     var __srcAcc = []; /* v-one-brain: مصادر بحث النموذج نفسه — لبطاقات «المصادر» */
+    var __toolBusy = false; /* أداة محلّيّة قيد التنفيذ → نطيل مهلة الخمول */
 
     while (true) {
-      var chunk = await reader.read();
+      var chunk;
+      try { chunk = await __raceIdle(reader.read(), __toolBusy ? __CHAT_TOOL_MS : __CHAT_IDLE_MS, '__chat_idle__'); }
+      catch (e) {
+        if (e && e.name === 'AbortError') throw e; /* إيقاف المستخدم أو الحارس الصلب — يمرّ كما هو */
+        try { reader.cancel(); } catch (_e) { /* guard-ok — تحرير المجرى */ }
+        if (full.trim()) break; /* عندنا نصّ جزئيّ — نعرضه بدل تضييعه */
+        throw new Error(serverErr || 'chat: stalled — no response');
+      }
       if (chunk.done) break;
+      __toolBusy = false; /* وصلت بايتات جديدة من الخادم → لم نعد بانتظار أداة */
       buf += dec.decode(chunk.value, { stream: true });
       var lines = buf.split('\n');
       buf = lines.pop();
@@ -114,7 +134,7 @@
         var ev;
         try { ev = JSON.parse(line.slice(6)); } catch (e) { continue; }
         if (ev.status) note((typeof tStatus === 'function') ? tStatus(ev) : ev.status);  /* v656 */
-        if (ev.clientTool) serveClientTool(ev.clientTool);
+        if (ev.clientTool) { __toolBusy = true; serveClientTool(ev.clientTool); }
         if (ev.delta) {
           noteEnd();
           full += ev.delta;
