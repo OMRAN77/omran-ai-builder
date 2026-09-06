@@ -289,10 +289,13 @@ module.exports = async (req, res) => {
     const imageConfig = { imageSize: '2K' };
     if (!editImageBase64) imageConfig.aspectRatio = (pipelineActive && pipelineRewrite && pipelineRewrite.aspect) ? pipelineRewrite.aspect : (isArchitectural ? '16:9' : pickAspect(cleanPrompt));
     /* نانو بنانا (2.5-flash-image) لا يدعم imageSize:'2K' — نرسل له صيغة نظيفة
-       بلا imageConfig كي لا يرفض الطلب (400). */
+       بلا imageConfig كي لا يرفض الطلب (400). لكنه يحتاج responseModalities:['IMAGE']
+       كي يرجّع صورة دائمًا لا نصًّا (سبب gemini_no_image_part) — وهذا ما يفعله
+       تطبيق Gemini الأصلي، فهو مفتاح تطابق الجودة/الموثوقية. */
     const genConfigFor = function (extra) {
       const cfg = Object.assign({}, extra);
-      if (!nanoPrimary) cfg.imageConfig = imageConfig;
+      if (nanoPrimary) cfg.responseModalities = ['IMAGE'];
+      else cfg.imageConfig = imageConfig;
       /* v-nano-pro-edit: توصية Google لجيل Gemini 3 — الحرارة الافتراضية (1.0)؛ خفضها يضعف النتيجة ويكرّرها.
          نانو 2.5 يبقى بحرارته المنخفضة للتعديل الموضعي الأمين. */
       if (!nanoPrimary) delete cfg.temperature;
@@ -403,7 +406,8 @@ module.exports = async (req, res) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             signal: AbortSignal.timeout(90000),
-            body: JSON.stringify({ contents: [{ parts: parts }] }),
+            /* responseModalities:['IMAGE'] كي يرجّع صورة دائمًا لا نصًّا (سبب gemini_no_image_part) */
+            body: JSON.stringify({ contents: [{ parts: parts }], generationConfig: { responseModalities: ['IMAGE'] } }),
           });
           if (!r.ok) { lastNanoErr = models[i] + ' status=' + r.status; continue; }
           const d = await r.json().catch(function () { return null; });
