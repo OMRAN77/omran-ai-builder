@@ -135,6 +135,19 @@ test('chat edit flow continues from the latest edited pixels and never auto-recr
   assert.doesNotMatch(maha, /mahaCallImageApi\(promptText, false\)/);
 });
 
+test('single-letter replacements are masked and cannot redraw the rest of the image', () => {
+  const attach = fs.readFileSync('js/app-09-attach.js', 'utf8');
+  const mahaApi = fs.readFileSync('api/_lib/maha-image.js', 'utf8');
+  const textSwap = fs.readFileSync('api/_lib/text-swap.js', 'utf8');
+  assert.match(attach, /شيل\|احذف\|امسح\|استبدل[\s\S]{0,100}حرف\|رمز/);
+  assert.match(attach, /omranBuildTextEditMask/);
+  assert.match(attach, /editMaskBase64:__masked\.maskB64/);
+  assert.match(attach, /omranMergeTextEditRegion/);
+  assert.match(mahaApi, /form\.append\('mask',[\s\S]{0,120}'mask\.png'\)/);
+  assert.match(mahaApi, /if \(exactTextEdit\) \{[\s\S]{0,500}return;[\s\S]{0,300}return;/);
+  assert.match(textSwap, /standalone letter or logo glyph/);
+});
+
 test('specialized image routes do not expose provider errors to the user', () => {
   for (const file of ['api/_lib/portrait-style.js', 'api/_lib/studio-create.js', 'api/_lib/fashion-create.js']) {
     const source = fs.readFileSync(file, 'utf8');

@@ -75,7 +75,7 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { prompt, editImageBase64, editMimeType, extraImages, token, guestId } = body;
+    const { prompt, editImageBase64, editMimeType, editMaskBase64, extraImages, token, guestId } = body;
     const prayerRequest = typeof body.prayerRequest === 'string' ? body.prayerRequest.trim().slice(0, 800) : '';
     if (!prompt && !prayerRequest) {
       res.status(400).json({ error: 'Missing prompt' });
@@ -142,6 +142,7 @@ module.exports = async (req, res) => {
     // يحمل عدد الطوابق وسعة الكراج والطراز والمواد — وهو ما يجعل الواجهة
     // تطابق المخطط. الوصف الهندسي يُسمح له بمساحة أوسع.
     const isArchitectural = !!(body && body.architectural);
+    const exactTextEdit = !!(body && body.exactTextEdit === true && editImageBase64 && editMaskBase64);
     // v605: ترقية مشهد كاملة يطلبها المستخدم صراحةً («أعطني الأفضل»).
     const isSceneUpgrade = !!(body && body.sceneUpgrade === true && editImageBase64);
     // v656: «فكرة ثانية/مختلفة» على صورة موجودة = إعادة تصور كاملة لا تعديل حرفي.
@@ -318,7 +319,11 @@ module.exports = async (req, res) => {
              نصوص وشعارات الصورة الأصلية — بدونه يعاد رسمها مخربشة. */
           form.append('input_fidelity', 'high');
           form.append('quality', 'high');
-          form.append('image', new Blob([bytes], { type: editMimeType || 'image/jpeg' }), 'photo.jpg');
+          form.append('image', new Blob([bytes], { type: editMimeType || 'image/jpeg' }), exactTextEdit ? 'photo.png' : 'photo.jpg');
+          if (exactTextEdit) {
+            const maskBytes = Buffer.from(editMaskBase64, 'base64');
+            form.append('mask', new Blob([maskBytes], { type: 'image/png' }), 'mask.png');
+          }
           const r = await fetch('https://api.openai.com/v1/images/edits', {
             method: 'POST',
             headers: { Authorization: 'Bearer ' + okey },
@@ -378,6 +383,19 @@ module.exports = async (req, res) => {
         } catch (e) { lastNanoErr = models[i] + ' ' + (e && e.message); }
       }
       return null;
+    }
+
+    // Never let an exact text replacement fall through to an unmasked renderer.
+    // The client also composites only the selected region over the source.
+    if (exactTextEdit) {
+      const exactB64 = await openaiRescueImage();
+      if (exactB64) {
+        res.status(200).json({ imageBase64: exactB64, mimeType: 'image/png', engine: 'openai-masked' });
+        return;
+      }
+      await refundImageCharge();
+      res.status(502).json({ error: 'image_generation_busy', retryable: true });
+      return;
     }
 
     // v-img-textwise: مصدر نصّي كثيف → gpt-image-1 عالي الدقة أولًا؛

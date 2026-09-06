@@ -16473,9 +16473,54 @@ async function omranShrinkForEdit(b64, mime){
    الخلفية المأخوذ من الصورة نفسها ونكتب الجديد مكانه — باقي الصورة لا يُمسّ. */
 function __textSwapIntent(s){
   s = String(s || '');
-  if(/(?:^|[\s،,])(?:بدل|بدّل|غير|غيّر|صحح|صحّح|عدل|عدّل)\s*(?:ال)?(?:تاريخ|اسم|رقم|كلم[ةه]|نص|سن[ةه]|وقت|عنوان|توقيت)/i.test(s)) return true;
+  if(/(?:^|[\s،,])(?:بدل|بدّل|غير|غيّر|صحح|صحّح|عدل|عدّل|شيل|احذف|امسح|استبدل)\s*(?:ال)?(?:تاريخ|اسم|رقم|حرف|رمز|كلم[ةه]|نص|سن[ةه]|وقت|عنوان|توقيت)/i.test(s)) return true;
   if(/بدل\s+\S+(?:\s+\S+)?\s+(?:حط|خل|الى|إلى)\s*\S+/i.test(s)) return true;
   return false;
+}
+async function omranBuildTextEditMask(b64, mime, box){
+  const img = await new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i); i.onerror = () => rej(new Error('bad_source_image'));
+    i.src = 'data:' + (mime || 'image/png') + ';base64,' + b64;
+  });
+  const W = img.naturalWidth || 1, H = img.naturalHeight || 1;
+  const source = document.createElement('canvas'); source.width = W; source.height = H;
+  source.getContext('2d').drawImage(img, 0, 0, W, H);
+  const padX = Math.max(5, Math.round(box.w * W * 0.18));
+  const padY = Math.max(5, Math.round(box.h * H * 0.35));
+  const region = {
+    x: Math.max(0, Math.round(box.x * W) - padX),
+    y: Math.max(0, Math.round(box.y * H) - padY),
+    w: 0, h: 0
+  };
+  region.w = Math.min(W - region.x, Math.round(box.w * W) + padX * 2);
+  region.h = Math.min(H - region.y, Math.round(box.h * H) + padY * 2);
+  const mask = document.createElement('canvas'); mask.width = W; mask.height = H;
+  const mx = mask.getContext('2d');
+  mx.fillStyle = '#ffffff'; mx.fillRect(0, 0, W, H);
+  mx.clearRect(region.x, region.y, region.w, region.h);
+  return {
+    sourceB64: source.toDataURL('image/png').split(',')[1],
+    maskB64: mask.toDataURL('image/png').split(',')[1],
+    region: region
+  };
+}
+async function omranMergeTextEditRegion(originalB64, originalMime, editedB64, editedMime, region){
+  const load = (b64, mime) => new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i); i.onerror = () => rej(new Error('bad_edit_image'));
+    i.src = 'data:' + (mime || 'image/png') + ';base64,' + b64;
+  });
+  const images = await Promise.all([load(originalB64, originalMime), load(editedB64, editedMime)]);
+  const W = images[0].naturalWidth || 1, H = images[0].naturalHeight || 1;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  x.drawImage(images[0], 0, 0, W, H);
+  x.save();
+  x.beginPath(); x.rect(region.x, region.y, region.w, region.h); x.clip();
+  x.drawImage(images[1], 0, 0, W, H);
+  x.restore();
+  return c.toDataURL('image/png').split(',')[1];
 }
 async function omranSwapTextOnImage(b64, mime, spec){
   const fontCss = await mahaLoadFont(spec.fontKey || 'naskh');
@@ -18552,7 +18597,18 @@ function __showImgLoading(el, ar, en){
           const __tsSpec = await __tsRes.json().catch(() => ({}));
           if(__tsRes.ok && __tsSpec.found && __tsSpec.box && __tsSpec.newLine){
             chatPhase('✍️', lang === 'ar' ? 'جاري تبديل النص بدون المساس بالصورة…' : 'Swapping the text in place…', thinkingDiv);
-            const __tsB64 = await omranSwapTextOnImage(__b64, __mime, __tsSpec);
+            const __masked = await omranBuildTextEditMask(__b64, __mime, __tsSpec.box);
+            const __maskedRes = await fetch('/api/maha-image', {
+              method:'POST', headers:{ 'Content-Type':'application/json' }, signal:genAbortController.signal,
+              body:JSON.stringify({
+                prompt:'Replace only the selected existing text with exactly «' + __tsSpec.newLine + '». Match its original style, color, size and alignment. Do not change anything outside the transparent mask.',
+                editImageBase64:__masked.sourceB64, editMimeType:'image/png', editMaskBase64:__masked.maskB64,
+                exactTextEdit:true, token:authGet('aiapp_auth_token'), guestId:window.getGuestId()
+              })
+            });
+            const __maskedData = await __maskedRes.json().catch(() => ({}));
+            if(!__maskedRes.ok || !__maskedData.imageBase64) throw new Error('masked_text_edit_failed');
+            const __tsB64 = await omranMergeTextEditRegion(__masked.sourceB64, 'image/png', __maskedData.imageBase64, __maskedData.mimeType || 'image/png', __masked.region);
             cur.lastEditedImage = { b64: __tsB64, mime: 'image/png' };
             cur.lastMsgWasImageEdit = true;
             cur.messages.push({ role:'assistant', content:'', attachments:[{ name:'edited.png', isImage:true, mime:'image/png', dataUrl:'data:image/png;base64,' + __tsB64 }] });
@@ -18560,8 +18616,14 @@ function __showImgLoading(el, ar, en){
           }
         }catch(e){
           if(e && e.name === 'AbortError') return;
-          __swallow(e, 'img:text-swap'); /* يسقط بهدوء لمسار المولّد */
+          __swallow(e, 'img:text-swap');
+          cur.messages.push({ role:'assistant', content:lang==='ar'?'تعذّر تبديل الحرف بدقة هذه المرة. أعد المحاولة بدون تغيير بقية الصورة.':'The character could not be replaced precisely this time. Please retry.' });
+          cur.lastMsgWasImageEdit = true;
+          renderAll(); saveState(); return;
         }
+        cur.messages.push({ role:'assistant', content:lang==='ar'?'لم أستطع تحديد الحرف المطلوب بثقة. حدده بكلمة أوضح.':'I could not locate the requested character confidently.' });
+        cur.lastMsgWasImageEdit = true;
+        renderAll(); saveState(); return;
       }
       const __continuesEditChain = !__isNewImageSource && cur.lastEditedImage && cur.lastEditedImage.b64 === __b64;
       const __original = latestOriginalUserImage(cur);
