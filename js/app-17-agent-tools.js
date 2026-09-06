@@ -198,6 +198,10 @@
             } catch (e) { /* guard-ok — المحادثة الحالية اختيارية هنا */ }
           }
           if (!srcB64) return 'لا توجد صورة مرفقة في هذه الرسالة لتعديلها — اطلب من المستخدم إرفاقها.';
+          /* v-image-memory: متابعة على آخر نتيجة = نرسل أدوار السلسلة السابقة كسياق */
+          var tcur = null; try { tcur = (typeof getCurrent === 'function') ? getCurrent() : null; } catch (e) { tcur = null; }
+          var tFollow = !!(tcur && tcur.lastEditedImage && tcur.lastEditedImage.b64 === srcB64);
+          var tHist = (tFollow && Array.isArray(tcur.imageTurns) && tcur.imageTurns.length) ? tcur.imageTurns.slice(-3) : undefined;
           window.__genImages = window.__genImages || {};
           var er = null, ej = null;
           try {
@@ -209,6 +213,7 @@
                 userText: String((args && args.userText) || window.__chatLastUserText || '').replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600),
                 editImageBase64: srcB64,
                 editMimeType: ref.mime || 'image/png',
+                history: tHist,
                 token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
                 guestId: window.getGuestId ? window.getGuestId() : '',
               }),
@@ -220,6 +225,16 @@
           }
           var etok = '__IMG_' + (Object.keys(window.__genImages).length + 1) + '__';
           window.__genImages[etok] = 'data:' + (ej.mimeType || 'image/png') + ';base64,' + ej.imageBase64;
+          /* v-image-memory: نسجّل الدور هنا أيضًا (كلمات المستخدم + مصغّر النتيجة) */
+          try {
+            if (tcur && typeof omranShrinkForEdit === 'function') {
+              if (!tFollow || !Array.isArray(tcur.imageTurns)) tcur.imageTurns = [];
+              var tRes = await omranShrinkForEdit(ej.imageBase64, ej.mimeType || 'image/png', 768, true);
+              var tTurn = { text: String((args && args.userText) || window.__chatLastUserText || instr || '').slice(0, 400), resultBase64: tRes.b64, resultMime: tRes.mime };
+              if (!tcur.imageTurns.length) { var tSrc = await omranShrinkForEdit(srcB64, ref.mime || 'image/png', 768, true); tTurn.sourceBase64 = tSrc.b64; tTurn.sourceMime = tSrc.mime; }
+              tcur.imageTurns = tcur.imageTurns.concat([tTurn]).slice(-4);
+            }
+          } catch (e) { /* guard-ok — الذاكرة اختيارية */ }
           return '✅ عُدّلت الصورة (engine: ' + (ej.engine || 'gemini') + '). ضع هذا الرمز وحده في سطر داخل ردّك: ' + etok;
         }
         // 📍 موقع المستخدم الحالي — يُطلب إذن المتصفح هنا فقط، عند استدعاء

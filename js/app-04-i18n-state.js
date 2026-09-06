@@ -504,25 +504,32 @@ let __saveDirty = false;
 // v-idb-mirror: كتابة المرآة المنحّفة — chatsSlimForServer تُعرَّف لاحقًا في هذا
 // الملف والاستدعاء يحدث بعد اكتمال التحميل، فالمرجع آمن وقت التنفيذ.
 let __mirrorAt = 0;
+let __idbSavedAt = 0; /* v-no-purge: آخر حفظ فعلي في IndexedDB — للتباعد مع كبر السجل */
 function __writeChatsMirror(){
   try{ localStorage.setItem('aiapp_projects_slim', JSON.stringify(chatsSlimForServer())); }
   catch(e){ /* guard-ok: المرآة رفاهية إقلاع — امتلاء التخزين لا يكسر الحفظ الأصلي */ }
 }
 window.__writeChatsMirror = __writeChatsMirror;
-function __saveFlush(){
+function __saveFlush(force){
   if(!__saveDirty) return;
   __saveDirty = false;
   try{ clearTimeout(__saveTimer); }catch(e){ __swallow(e, "save:app-04-i18n-state#11"); }
   __saveTimer = null;
   if(!__idbBroken && window.indexedDB){
     try{
-      // v714: حارس حجم صريح — المنظّف القديم كان لا يعمل إلا عند امتلاء localStorage،
-      // ومع IndexedDB لا يمتلئ أبدًا، فتتكدّس صور base64 (بوسترات الإعلانات خاصة)
-      // حتى يصير الحفظ الدوري كل 1.5 ثانية يجمّد الصفحة كلها. الآن: إذا تجاوز
-      // الحجم ~12MB نمسح بيانات الصور القديمة (تبقى آخر 6 رسائل في المشروع المفتوح).
-      try{
-        if(__projectsToJson().length > 12000000){ purgeOldImages(6); __projJsonCache = new WeakMap(); }
-      }catch(e){ __swallow(e, 'save:sizeGuard#v714'); }
+      /* v-no-purge (المالك ٦ سبتمبر: «🗑️ تم حذف الصورة تلقائيًا — شيل هذي الميزة… وأقدر أعدل حتى لو 1000 صورة ورا بعض»):
+         v714 كان يمسح بيانات الصور القديمة فوق ~12MB كي لا يجمّد الحفظ الدوري الصفحة. IndexedDB سعته بالجيجات، فلا حذف
+         بعد اليوم: بدل الحذف يتباعد الحفظ مع كبر السجل (فوق 12MB كل ١٠ ثوانٍ، فوق 60MB كل ٣٠ ثانية)، وعند مغادرة
+         الصفحة يُحفظ فورًا. المنظّف بقي لمسار localStorage الاحتياطي وحده لأن سقفه 5MB فعليًا. */
+      if(!force){
+        try{
+          const __sz = __projectsToJson().length;
+          const __gap = __sz > 60000000 ? 30000 : (__sz > 12000000 ? 10000 : 0);
+          const __wait = __gap - (Date.now() - __idbSavedAt);
+          if(__gap && __wait > 0){ __saveDirty = true; __saveTimer = setTimeout(__saveFlush, __wait); return; }
+        }catch(e){ __swallow(e, 'save:sizeGuard#v714'); }
+      }
+      __idbSavedAt = Date.now();
       idbSet('aiapp_projects', state.projects).catch(err => {
         console.error('IDB save failed → fallback to localStorage', err);
         __idbBroken = true;

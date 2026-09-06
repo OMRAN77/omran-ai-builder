@@ -9,16 +9,14 @@ const kind = (t) => { const r = detectEditIntent(t); return r.sameImage ? 'same'
 
 test('stronger/fancier requests in every common wording are an elevate, not a localized edit', () => {
   for (const t of ['أقوى', 'اقوى', 'أفضل من هذي', 'سو لي نسخة أفخم', 'خلها أفخم', 'خليها فخمة', 'طورها', 'طوّرها', 'حسّنها', 'جمّلها', 'ارفع مستواها',
-    'عطني الأفضل', 'حسن', 'طور الصورة', 'حسّن الكرت', 'احسنها', 'اجملها', 'اطورها', 'نسخة أقوى للكرت', 'اعطني نسخة أقوى من هذي الصورة', 'نسخة أرقى', 'خلها أحلى', 'أبدع', 'فكرة أقوى', 'احسن شوي',
+    'عطني الأفضل', 'حسن', 'طور الصورة', 'حسّن الكرت', 'احسنها', 'اجملها', 'اطورها', 'نسخة أقوى للكرت', 'اعطني نسخة أقوى من هذي الصورة', 'نسخة أرقى', 'خلها أحلى', 'أبدع', 'احسن شوي',
     'زخرفها', 'زخرف الكرت', 'فخّمها', 'ابهرني', 'خلها تجنن', 'خلها لايقة', 'زود الزخارف', 'زيد الفخامة', 'خل الكرت أفخم', 'سوها احترافية', 'ارفع جودتها',
     /* الاسم بعد الصفة/الفعل جانبٌ لا مفعول: الصورة كلها تُرفع */ 'طورها بالألوان', 'ممكن أقوى من فوق', 'أبيها أفخم من فوق', 'أبغاها أفخم بالألوان', 'حسّنها من ناحية الألوان', 'خلها فخمة بالألوان', 'خلها فخمة من فوق', 'خلها تجنن بالألوان', 'ابهرني بالألوان', 'فخّمها بالألوان والخط', 'زخرفها وحط اسمي فوق', 'حسنها كلها حتى الخط', 'خله أفخم بالألوان', 'لو سمحت أقوى بالألوان',
     'make it stronger but keep the text', 'make it more luxurious, keep the name', 'improve it, especially the lighting', 'a richer version with the same background', 'upgrade the design but keep the date', 'best version, keep the name', 'make this more premium with a gold frame', 'make it much nicer, keep the sky', 'make it a lot nicer',
     /* الجولة الرابعة: الصفة تتصدّر أو الضمير للصورة يغلب أي عنصر لاحق */ 'أقوى وحط إطار أفخم', 'غير الخط وخلها أقوى', 'حط إطار ذهبي وخلها أقوى', 'الصورة كلها أقوى', 'خل الصورة أقوى', 'زود زخارف', 'زيد جمال الصورة', 'فخم',
     'make it stronger', 'a cleaner, more luxurious version of this card', 'upgrade the design', 'improve it', 'best version', 'stronger', 'bolder version',
-    /* لقطات المالك من Gemini («عطني فكرة أقوّم هذي الصورة» أخرجت تصميمًا أغنى) + «زي الذكاء الاصطناعي مو فوتوشوب» */
-    'وهاذي تابعة لي ستايل عطني فكرة اقوم هذي الصورة', 'وهاذي تابعة تلفزيون عطني فكرة اقوم هذي الصورة', 'عطني فكرة اقوم هذي الصورة', 'عطني فكرة', 'اقترح لي فكرة', 'عطني افكار',
-    'قوّمها', 'قومها', 'قوم الصورة', 'اقوم هالصورة', 'خلها زي الذكاء الاصطناعي', 'سوها بالذكاء الاصطناعي', 'شغل ذكاء اصطناعي مو فوتوشوب',
-    'سوّي لي شي يجنن', 'سو لي شي خرافي', 'عطني نسخة رهيبة', 'خلها تخبل', 'give me an idea', 'any ideas', 'make it look ai generated']) {
+    /* «قوّمها» وصفات العامية مع «شي/نسخة/خلها» ترقية للتركيب نفسه */
+    'قوّمها', 'قومها', 'قوم الصورة', 'اقوم هالصورة', 'سوّي لي شي يجنن', 'سو لي شي خرافي', 'عطني نسخة رهيبة', 'خلها تخبل']) {
     assert.equal(kind(t), 'elevate', t);
   }
 });
@@ -59,6 +57,9 @@ test('same-image, restyle and reimagine keep their own lanes and beat elevate', 
   assert.equal(kind('عطني فكرة ثانية'), 'reimagine');
   assert.equal(kind('فكرة مختلفة أقوى'), 'reimagine');
   assert.equal(kind('different concept'), 'reimagine');
+  /* لقطات المالك ٦ سبتمبر: «فكرة أقوى» و«عطني فكرة» و«زي الذكاء الاصطناعي» و«شغل فوتوشوب» = تصميم جديد للموضوع نفسه، لا ترقية تبقي التركيب */
+  for (const t of ['عطني فكرة اقوى من هذي شغل فوتو شوب', 'فكرة أقوى', 'فكرة أفضل', 'وهاذي تابعة لي ستايل عطني فكرة اقوم هذي الصورة', 'وهاذي تابعة تلفزيون عطني فكرة اقوم هذي الصورة', 'عطني فكرة اقوم هذي الصورة', 'عطني فكرة', 'اقترح لي فكرة', 'عطني افكار',
+    'خلها زي الذكاء الاصطناعي', 'سوها بالذكاء الاصطناعي', 'شغل ذكاء اصطناعي مو فوتوشوب', 'شغل فوتوشوب', 'مو فوتوشوب', 'give me an idea', 'any ideas', 'make it look ai generated']) assert.equal(kind(t), 'reimagine', t);
 });
 
 test('place hints keep the photographic scene-upgrade lane for rooms', () => {
@@ -105,6 +106,52 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(maha, /const isTextSwap = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && !isTextRemove && \(body\.textSwap === true \|\| isTextEditRequest\(intentText\)\);/);
   assert.match(maha, /\(isCreativeEdit \|\| isTextSwap\) \? creativeModel : editModel/);
   assert.match(maha, /isTextSwap \? buildLetterSwapPrompt\(cleanPrompt\)/);
+  assert.match(maha, /isReimagine \? buildReimaginePrompt\(cleanPrompt, intentText\)/);
+  /* v-raw-words: كلمات المستخدم تصل نموذج الصور في المسارات الإبداعية، وIMAGE_RAW_CREATIVE يرسلها وحدها */
+  assert.match(maha, /isRestyle \? buildRestylePrompt\(cleanPrompt, intentText\)/);
+  assert.match(maha, /isElevate \? buildElevatePrompt\(cleanPrompt, intentText\)/);
+  assert.match(maha, /const __rawCreative = creativeRawEnabled\(process\.env\) && \(isElevate \|\| isReimagine \|\| isRestyle\);/);
+  assert.match(maha, /__rawCreative \? rawCreativePrompt\(cleanPrompt, intentText\)/);
+  /* v-intent-llm: النموذج يوسّع التعابير النمطية فقط حين لا تلتقط مسارًا إبداعيًا ولا تبديل/حذف نصّ، ولا يعمل بلا صورة مصدر */
+  assert.match(maha, /if \(editImageBase64 && !\(body && body\.sceneUpgrade === true\) && !__intent\.restyle && !__intent\.reimagine && !__intent\.elevate && !__intent\.sameImage\n\s+&& intentText\.trim\(\)\.length <= 220 && !isTextEditRequest\(intentText\) && !isPureTextRemoval\(intentText\) && llmIntentEnabled\(process\.env\)\)/);
+  assert.match(maha, /const __llm = await classifyEditIntentLLM\(\{ apiKey, text: intentText \}\);/);
+  assert.match(maha, /if \(__llm\) \{ __intent\[__llm\.lane === 'same' \? 'sameImage' : __llm\.lane\] = true;/);
+  /* v-best-of: مرشّح ثانٍ بالتوازي في المسارات الإبداعية والحكم الإبداعي يختار؛ IMAGE_BEST_OF يضبط العدد */
+  assert.match(maha, /const __altP = \(isCreativeEdit && !pipelineActive && !prayerPlan && bestOfCount\(process\.env\) >= 2\)/);
+  assert.match(maha, /const pick = await judgeBest\(\{ apiKey, prompt: cleanPrompt, creative: true, source: \{ b64: editImageBase64/);
+  assert.match(maha, /if \(pick === 'b'\) imgPart = altImg;\n\s+duoEngine = 'gemini x2\+judge';/);
+  const judge = require('../api/_lib/image-judge');
+  assert.equal(judge.bestOfCount({}), 2, 'الافتراضي مرشّحان (الجودة قبل التكلفة)');
+  assert.equal(judge.bestOfCount({ IMAGE_BEST_OF: '1' }), 1);
+  assert.equal(judge.bestOfCount({ IMAGE_BEST_OF: 'off' }), 1);
+  assert.equal(judge.bestOfCount({ IMAGE_BEST_OF: '5' }), 3, 'الحد الأقصى 3');
+  const judgeSrc = fs.readFileSync('api/_lib/image-judge.js', 'utf8');
+  assert.match(judgeSrc, /const rubric = opts\.creative\n\s+\? 'You are a top art director judging two AI redesigns of the SOURCE image/);
+  assert.match(judgeSrc, /prefer the bolder, more complete design over the timid one/);
+  const llm = require('../api/_lib/image-intent-llm');
+  assert.deepEqual(llm.parseIntentReply('{"lane":"reimagine","confidence":0.92}'), { lane: 'reimagine', confidence: 0.92 });
+  assert.deepEqual(llm.parseIntentReply('```json\n{"lane":"elevate","confidence":0.8}\n```'), { lane: 'elevate', confidence: 0.8 });
+  assert.equal(llm.parseIntentReply('{"lane":"edit","confidence":0.99}'), null, 'edit = لا تغيير');
+  assert.equal(llm.parseIntentReply('{"lane":"elevate","confidence":0.5}'), null, 'ثقة منخفضة = لا تغيير');
+  assert.equal(llm.parseIntentReply('{"lane":"delete_everything","confidence":1}'), null, 'مسار خارج القائمة = لا تغيير');
+  assert.equal(llm.parseIntentReply('not json'), null);
+  assert.equal(llm.llmIntentEnabled({}), true);
+  assert.equal(llm.llmIntentEnabled({ IMAGE_INTENT_LLM: 'off' }), false);
+  const cp = llm.buildIntentClassifierPrompt('عطني "فكرة"\nأقوى');
+  assert.match(cp, /Request: "عطني  فكرة أقوى"/, 'الاقتباسات وأسطر الطلب لا تكسر القالب');
+  for (const lane of llm.INTENT_LANES) assert.match(cp, new RegExp('- ' + lane + ':'));
+  /* المالك ٦ سبتمبر: لا حارس هوية/أسلوب على المسارات الإبداعية (نانو الأصلي لا يحجب)، ويبقى على التعديل الموضعي */
+  assert.match(maha, /if \(editImageBase64 && !extras\.length && !rawMode && !isCreativeEdit\) \{\n\s+const guard = await verifyLocalizedImageEdit/);
+  /* 4K عند الطلب الصريح فقط، وإلا 2K */
+  assert.match(maha, /const imageConfig = \{ imageSize: __want4K \? '4K' : '2K' \};/);
+  const want4K = new RegExp(maha.match(/const __want4K = \/(.*)\/i\.test\(/)[1], 'i');
+  for (const t of ['أقوى 4K', 'للطباعة', 'دقة عالية', 'print quality version']) assert.ok(want4K.test(t), t);
+  for (const t of ['أقوى', 'خلها أفخم', 'اطبع الاسم فوق']) assert.ok(!want4K.test(t), t);
+  /* المصدر يُرسل بدقة 2048px لتعديل الصورة الواحدة، و1280 فقط مع قناع أو صور إضافية */
+  assert.match(attach, /async function omranShrinkForEdit\(b64, mime, maxPx, force\)/);
+  assert.match(attach, /const mx = maxPx \|\| 2048, sc = /);
+  assert.match(attach, /const __tsShr = await omranShrinkForEdit\(__b64, __mime, 1280\)/);
+  assert.match(attach, /__xa\.mime \|\| 'image\/png', 1280\)/);
   assert.match(maha, /&& \(!isTextSwap \|\| __duoWouldRun\)\n/);
   /* العميل: برو أولًا على الصورة كاملة، ومسار القناع احتياط */
   assert.match(attach, /textSwap: true, editImageBase64: __lsShr\.b64/);
@@ -139,7 +186,7 @@ test('both chat clients forward the user\'s words and the tool path never loses 
   /* صفة إنجليزية عارية في سؤال رأي ليست طلبًا إبداعيًا (لا تتجاوز قراءة اللقطة ولا تُخصم) */
   for (const t of ['is this nicer', 'which one is prettier', 'the second one is prettier', 'this looks cleaner than before']) assert.ok(!creativeRe.test(t), t);
   assert.ok(creativeRe.test('make it a lot nicer'));
-  for (const t of ['عطني فكرة اقوم هذي الصورة', 'خلها زي الذكاء الاصطناعي', 'سوي لي شي يجنن', 'قوّمها', 'give me an idea']) assert.ok(creativeRe.test(t), t);
+  for (const t of ['عطني فكرة اقوم هذي الصورة', 'خلها زي الذكاء الاصطناعي', 'سوي لي شي يجنن', 'قوّمها', 'give me an idea', 'عطني فكرة اقوى من هذي شغل فوتو شوب', 'مو فوتوشوب']) assert.ok(creativeRe.test(t), t);
   for (const t of ['يجنن', 'أقوم بتغيير اللون', 'عطني فكرة لاسم المحل', 'give me an idea for a name']) assert.ok(!creativeRe.test(t), t);
   /* العميل: حذف الاسم/النصّ بلا بديل لا يدخل مسار تبديل الحرف */
   const __textSwapIntent = new Function(attach.match(/function __textSwapIntent\(s\)\{[\s\S]*?\n\}/)[0] + '; return __textSwapIntent;')();
