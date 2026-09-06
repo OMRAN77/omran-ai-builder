@@ -437,13 +437,16 @@ module.exports = async (req, res) => {
        الصورة كما هي؛ نتركها لنانو ليعطي نتيجة جريئة فعلًا. */
     /* v-nano-pro-edit: الترقية (isElevate) لا تُستثنى من مسار النصّ الكثيف — لقطة واجهة عربية + «حسّن» يجب أن تبقى
        على gpt-image عالي الدقة الذي يحفظ الحروف؛ برو يعيد رسمها فتتكسّر. الفحص لا يجري إلا بوجود مصدر نصّي كثيف فعلًا. */
-    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade
+    /* دمج عدة صور لا يمرّ بمسار gpt-image الأحادي (يُسقط الصور الإضافية) */
+    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !extras.length
       && (editImageBase64 ? await sourceLooksTextDense() : (!rawMode && __textCueRe.test(cleanPrompt)));
+    /* v-nano-pro-edit: قرار المزدوج يُحسم هنا مرة واحدة — الترقية مستثناة منه، فلا يُترك نداء gpt-image معلّقًا بلا حكم */
+    const __duoWouldRun = duoEnabled() && !prayerPlan && !pipelineActive && !isReimagine && !isRestyle && !isElevate;
     /* v-duo-textroute (لقطة المالك: لقطة واجهة + «عطني أفضل ونفس الفكرة» → فنجان قهوة): مسار النصّ الكثيف كان
        يرجع ناتج gpt-image وحده بلا Gemini ولا حكم. الآن يعمل المحرّكان معًا هنا أيضًا والحكم يختار. */
     let densePromise = null;
     if (__textRoute) {
-      if (duoEnabled() && !pipelineActive) {
+      if (__duoWouldRun) {
         densePromise = openaiRescueImage().catch(function () { return null; });
       } else {
         const denseB64 = await openaiRescueImage();
@@ -460,7 +463,7 @@ module.exports = async (req, res) => {
     /* v-bold-wins: في طلبات الإبداع (إعادة تصوّر/تحويل أسلوب) لا نُشغّل المنافس
        gpt-image (input_fidelity=high يحافظ على المصدر فيفوز الحكم بالنسخة الحرفية)
        — نعتمد نتيجة نانو الجريئة مباشرة؛ خطوط الإنقاذ تبقى عند الفشل فقط. */
-    const duoOn = duoEnabled() && !prayerPlan && !pipelineActive && !isReimagine && !isRestyle && !isElevate && (!__textRoute || !!densePromise);
+    const duoOn = __duoWouldRun && (!__textRoute || !!densePromise);
     const duoP = duoOn ? (densePromise || openaiRescueImage().catch(function () { return null; })) : null;
     let duoEngine = '';
     // Image generation normally takes 35–50 seconds, so it must bypass the
@@ -557,7 +560,7 @@ module.exports = async (req, res) => {
             ? pipelineRewrite.prompt + '\n\nDo not include: ' + pipelineRewrite.negative
             : pipelineRewrite.prompt);
           const retryParts = [{ text: retryPrompt }];
-          const retryReqBody = JSON.stringify({ contents: [{ parts: retryParts }], generationConfig: { temperature: 0.85, imageConfig } });
+          const retryReqBody = JSON.stringify({ contents: [{ parts: retryParts }], generationConfig: genConfigFor({ temperature: 0.85 }) });
           try {
             const retryResult = await fetchImageWithRetry({
               url: endpoint,
