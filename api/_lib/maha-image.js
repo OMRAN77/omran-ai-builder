@@ -4,26 +4,30 @@
 // model (server-side owner key, GEMINI_API_KEY) - the only one of the 9
 // providers that can actually output images.
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
-const { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildSceneUpgradePrompt, buildRestylePrompt, explicitlyRequestsStyleChange } = require('./image-prompt');
-/* v-restyle-bold: «عدل 3d» / «حوّلها كرتون» / «ستايل أنيمي» = تحويل أسلوب كامل
-   لا تعديل موضعي — explicitlyRequestsStyleChange لا يلتقط «3d» وحدها. */
-const RESTYLE_RE = /(^|[\s،,])(3d|ثلاثي|مجسم|مجسّم|كرتون|كارتون|أنيمي|انمي|بيكسار|ديزني|زيتي|مائي|رصاص|بكسل|بيكسل|سايبر|نيون|كوميك|كومكس|مانجا|فانتازيا|واقعي|anime|cartoon|pixar|disney|pixel|cyberpunk|neon|comic|manga|fantasy|watercolor|oil\s*paint|sketch|realistic|render)/i;
+const { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, creativeRawEnabled, rawCreativePrompt, buildLetterSwapPrompt, isPersonSwapRequest, buildPersonSwapPrompt, isBroadEditRequest, buildBroadEditPrompt, isTextEditRequest, isPureTextRemoval, buildSceneUpgradePrompt, buildRestylePrompt, explicitlyRequestsStyleChange } = require('./image-prompt');
+/* v-nano-pro-edit: نيّات التعديل (أسلوب/فكرة مختلفة/أقوى/نفس الصورة) في وحدة واحدة قابلة للاختبار،
+   تُقرأ من نصّ المستخدم نفسه (body.userText) لا من أمر أعاد النموذج صياغته بالإنجليزية. */
+const { detectEditIntent } = require('./image-intent');
+const { classifyEditIntentLLM, llmIntentEnabled } = require('./image-intent-llm');
+const { verifyRequestApplied, requestCheckEnabled } = require('./request-check');
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
-const { judgeBest, duoEnabled } = require('./image-judge');
+const { judgeBest, duoEnabled, bestOfCount } = require('./image-judge');
 /* v-nano-chat (المالك: «نفس فكرة نانو»): مع كل صورة جملة قصيرة تشرح ما فُعل واقتراح للخطوة التالية، بلغة الطلب */
 async function imageCaption(apiKey, prompt, b64, mime, sourceB64, sourceMime) {
   try {
     if (!apiKey || String(process.env.IMAGE_CAPTION || 'on').toLowerCase() === 'off') return '';
-    const parts = [{ text: 'The user asked: "' + String(prompt || '').slice(0, 500) + '".\n' + (sourceB64 ? 'The first image is what they sent; the second is the result you produced.' : 'The image is the result you produced.') + '\nReply in the SAME language as the user\'s request. Write exactly two short sentences: (1) what you did in the result, (2) one concrete follow-up suggestion phrased as a question. No markdown, no emojis, max 35 words total.' }];
+    /* v-caption-report (المالك ٦ سبتمبر: «بعد التعديل يكتب تقرير مختصر ويسأل إذا عجبك ولا أسوي لك كذا ولا كذا»): تقرير من
+       جملة عمّا تغيّر فعلًا، ثم سؤال «هل أعجبتك؟» مع خيارين ملموسين للخطوة التالية خاصّين بهذه الصورة، بلغة المستخدم ولهجته. */
+    const parts = [{ text: 'The user asked, verbatim: "' + String(prompt || '').slice(0, 500) + '".\n' + (sourceB64 ? 'The first image is what they sent; the second is the result you produced.' : 'The image is the result you produced.') + '\nReply in the SAME language and dialect as the user\'s request (Gulf Arabic if they wrote Gulf Arabic). Write: (1) one short sentence reporting exactly what changed in the result; (2) one question asking whether they like it and offering TWO concrete next options specific to this image, in the shape "هل أعجبتك؟ ولا أسوي لك … أو …؟". No markdown, no emojis, max 45 words total.' }];
     if (sourceB64) parts.push({ inlineData: { mimeType: sourceMime || 'image/jpeg', data: sourceB64 } });
     parts.push({ inlineData: { mimeType: mime || 'image/png', data: b64 } });
     const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(12000),
-      body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0.4, maxOutputTokens: 90 } }),
+      body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0.4, maxOutputTokens: 400 } }), /* v-flash-budget: التفكير الافتراضي يلتهم السقف الصغير («قمت بت») */
     });
     if (!r.ok) return '';
     const d = await r.json().catch(() => null);
-    return String((((((d || {}).candidates || [])[0] || {}).content || {}).parts || []).map((p) => p.text || '').join(' ')).trim().slice(0, 300);
+    return String((((((d || {}).candidates || [])[0] || {}).content || {}).parts || []).map((p) => p.text || '').join(' ')).trim().slice(0, 400);
   } catch (e) { return ''; }
 }
 const { authorPrayerPlan } = require('./prayer-plan');
@@ -76,6 +80,16 @@ module.exports = async (req, res) => {
       body = JSON.parse(body || '{}');
     }
     const { prompt, editImageBase64, editMimeType, editMaskBase64, extraImages, token, guestId } = body;
+    /* v-nano-pro-edit: كلمات المستخدم الأصلية (العميل يرسلها مع الأمر) — عليها تُقرأ النيّة */
+    const userText = typeof body.userText === 'string' ? body.userText.replace(/\s*\[[^\[\]]*\]\s*$/, '').trim().slice(0, 1200) : '';
+    /* v-image-memory (خطة المالك ٦ سبتمبر، البند ٣: «ذاكرة محادثة للصور»): العميل يرسل آخر أدوار سلسلة التعديل (نصّ الطلب +
+       مصغّر النتيجة، ومصغّر المصدر الأصلي في أول دور) فيرى نموذج الصور ما طُلب وما أخرجه قبل هذا الدور — «أفضل من هذي»،
+       «لا، رجّع الخلفية»، «خلها أهدأ» تصير محادثة متصلة كتطبيق Gemini. أربعة أدوار كحد أقصى، كل صورة ≤ 420KB. */
+    const __okMime = function (m) { return /^image\/(?:jpeg|png|webp)$/.test(String(m || '')) ? m : 'image/jpeg'; };
+    const history = Array.isArray(body.history) ? body.history
+      .filter(function (h) { return h && typeof h.text === 'string' && typeof h.resultBase64 === 'string' && h.resultBase64.length > 100 && h.resultBase64.length <= 420000; })
+      .slice(-4)
+      .map(function (h) { return { text: h.text.replace(/\s*\[[^\[\]]*\]\s*$/, '').trim().slice(0, 400), resultBase64: h.resultBase64, resultMime: __okMime(h.resultMime), sourceBase64: (typeof h.sourceBase64 === 'string' && h.sourceBase64.length > 100 && h.sourceBase64.length <= 420000) ? h.sourceBase64 : '', sourceMime: __okMime(h.sourceMime) }; }) : [];
     const prayerRequest = typeof body.prayerRequest === 'string' ? body.prayerRequest.trim().slice(0, 800) : '';
     if (!prompt && !prayerRequest) {
       res.status(400).json({ error: 'Missing prompt' });
@@ -144,22 +158,64 @@ module.exports = async (req, res) => {
     const isArchitectural = !!(body && body.architectural);
     const exactTextEdit = !!(body && body.exactTextEdit === true && editImageBase64 && editMaskBase64);
     // v605: ترقية مشهد كاملة يطلبها المستخدم صراحةً («أعطني الأفضل»).
-    const isSceneUpgrade = !!(body && body.sceneUpgrade === true && editImageBase64);
-    // v656: «فكرة ثانية/مختلفة» على صورة موجودة = إعادة تصور كاملة لا تعديل حرفي.
-    const isRestyle = !!editImageBase64 && !isSceneUpgrade && RESTYLE_RE.test(String(prompt || ''));
-    /* v-stronger (المالك: «أطلب صورة أقوى من الي عندي — يعطيني نفس الصورة»):
-       «أقوى/اقوى/فكرة أقوى/سوّها أقوى» = المستخدم يريد فكرة أبدع لا نسخةً حرفية،
-       فيُعامل كإعادة تصوّر جريئة تبني على الموضوع نفسه. يُستثنى صراحةً طلب «نفس
-       الصورة/زيها بالضبط» كي لا نغيّر عندما يريد الحرفية فعلًا. */
-    const __sameImageRe = /نفس\s*الصور[ةه]|زيها\s*بالضبط|طبق\s*الأصل|بالضبط\s*نفس|كما\s*هي|same\s*image|exact(?:ly)?\s*same|identical/i;
-    /* v-elevate (المالك: «أقوى = نفس الفكرة مرفوعة لا فكرة جديدة»): نفصل نيّتين
-       كانتا مدموجتين خطأً:
-       - isReimagine = «فكرة مختلفة/جديدة» → مشهد جديد كليًا (buildReimagine).
-       - isElevate  = «أقوى/أفضل من هذي» → نفس الموضوع والتركيب لكن أرقى بكثير
-         (buildElevatePrompt). دمجهما كان يحوّل كرتًا بسيطًا إلى لوحة بلا علاقة. */
-    const __strongerRe = /(?:^|[\s،,])(?:أقوى|اقوى|فكرة\s*أقوى|فكره\s*اقوى|أبدع|ابدع|أروع|اروع|خيالي[ةه]?|جبار[ةه]?|احترافي[ةه]\s*أكثر)(?=$|[\s،,.!؟?])|(?:أفضل|افضل|أحسن|احسن)\s*من(?=$|[\s،,.!؟?])|خلّ?ها\s*أقوى|خليها\s*اقوى|سوّ?ها\s*أقوى|سويها\s*اقوى|\b(?:stronger|more\s*powerful|bolder|epic|level\s*up|glow\s*up|next\s*level|better\s*than)\b/i;
-    const isReimagine = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !__sameImageRe.test(String(prompt || '')) && /فكرة\s*(ثانية|ثانيه|مختلفة|مختلفه|جديدة|جديده|غير)|فكره\s*(ثانية|ثانيه|مختلفة|مختلفه|جديدة|جديده|غير)|غيّ?ر\s*الفكرة|بشكل\s*مختلف\s*تمام|مختلف\s*تمام|تصميم\s*ثاني|ستايل\s*ثاني|بدّ?ل\s*(الفكرة|التصميم|الستايل)|different\s*(idea|concept|style)|new\s*concept|another\s*(idea|take|concept)|reimagine/i.test(String(prompt || ''));
-    const isElevate = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !__sameImageRe.test(String(prompt || '')) && __strongerRe.test(String(prompt || ''));
+    /* v-nano-pro-edit (المالك ٥ سبتمبر: «عندي نانو وجيمي وكل المفاتيح وآخر شي النتيجة صفر —
+       الصورة المزخرفة من نانو والثانية من التطبيق»): النيّة تُقرأ من كلمات المستخدم نفسه
+       (userText) حين يرسلها العميل، وإلا من الأمر. القاموس كله في image-intent.js:
+       - restyle   = «كرتون/3d/أنيمي…» تحويل أسلوب كامل.
+       - reimagine = «فكرة ثانية/مختلفة» مشهد جديد كليًّا.
+       - elevate   = «أقوى/أفخم/أرقى/أجمل/طوّرها/حسّنها/نسخة أفضل…» الفكرة نفسها مرفوعة بقوة.
+       - sameImage = «نفس الصورة/زيها بالضبط» يوقف الإبداع ويبقي الحرفية.
+       «خلها أفخم/عطني الأفضل» يصل من العميل بعلم sceneUpgrade المصمَّم لغرفة/مكان حقيقي
+       (نفس المكان ونفس الزاوية، صورة فوتوغرافية) — على كرت/تصميم/لوحة كان يحوّل الكرت إلى
+       صورة فوتوغرافية باهتة، وهو ما رآه المالك. لذلك يُحسم أدناه بسؤال خاطف: مكان حقيقي أم لا. */
+    const intentText = userText || String(prompt || '');
+    const __intent = detectEditIntent(intentText);
+    /* v-intent-llm: التعابير النمطية مرساة والنموذج يوسّع — طلب قصير على صورة مصدر لم تلتقط النية له مسارًا إبداعيًا
+       ولا تبديل/حذف نصّ يُسأل عنه flash (مهلة ٦ ثوانٍ)؛ جواب واثق فقط يرفعه إلى ترقية/فكرة/أسلوب/نفس الصورة. */
+    if (editImageBase64 && !(body && body.sceneUpgrade === true) && !__intent.restyle && !__intent.reimagine && !__intent.elevate && !__intent.sameImage
+        && intentText.trim().length <= 220 && !isTextEditRequest(intentText) && !isPureTextRemoval(intentText) && !isPersonSwapRequest(intentText) && !isBroadEditRequest(intentText) && llmIntentEnabled(process.env)) {
+      const __llm = await classifyEditIntentLLM({ apiKey, text: intentText });
+      if (__llm) { __intent[__llm.lane === 'same' ? 'sameImage' : __llm.lane] = true; console.log('[maha-image] intent-llm: ' + __llm.lane + ' (' + __llm.confidence + ')'); }
+    }
+    let isSceneUpgrade = !!(body && body.sceneUpgrade === true && editImageBase64);
+    const isRestyle = !!editImageBase64 && !isSceneUpgrade && __intent.restyle;
+    const isReimagine = !!editImageBase64 && !isSceneUpgrade && !isRestyle && __intent.reimagine;
+    let isElevate = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && __intent.elevate;
+    /* v-letter-swap: «غير حرف م حط ع» / «بدل الاسم» / «اكتب كلمة…» على صورة مصدر = تبديل نصّي في مكانه.
+       يذهب إلى نانو بنانا برو (الأقوى في الحروف العربية) بتعليمة قصيرة كتطبيق Gemini، وgpt-image منافسًا بالحكم. */
+    /* «شيل الاسم كامل» / «بدون أسماء» = حذف نصّ صِرف: تعديل عادي بقاعدة REMOVE TEXT، لا تبديل حرف (كان يفشل بـ«لم أستطع تحديد الحرف») */
+    /* v-person-swap: «غيّر أشكال الأشخاص…» تغيير هوية مقصود — يسبق تبديل الحرف الذي كانت تلتقطه كلمة «الاسم» */
+    const isPersonSwap = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && isPersonSwapRequest(intentText);
+    /* v-broad-edit: «رتّب الصور / خلها فقط صور / بدون كتابة» طلب مركّب واسع — برو بلا حارس، كل الأوامر معًا */
+    const isBroadEdit = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && !isPersonSwap && isBroadEditRequest(intentText);
+    const isTextRemove = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && !isPersonSwap && !isBroadEdit && isPureTextRemoval(intentText);
+    const isTextSwap = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && !isPersonSwap && !isBroadEdit && !isTextRemove && (body.textSwap === true || isTextEditRequest(intentText));
+    async function sourceIsRealPlacePhoto() {
+      try {
+        const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(8000),
+          body: JSON.stringify({
+            contents: [{ parts: [
+              { text: 'Answer with exactly one word, PLACE or OTHER. PLACE only if this image is a real camera photograph of a physical place: a room, interior, house or building exterior, garden, street, shop or venue. OTHER for designed graphics, cards, posters, banners, icons, illustrations, artwork, 3D renders, logos, screenshots, product shots and portraits of people.' },
+              { inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } },
+            ] }],
+            generationConfig: { temperature: 0, maxOutputTokens: 64 }, /* v-flash-budget */
+          }),
+        });
+        const d = await r.json().catch(function () { return null; });
+        const txt = String((((((d || {}).candidates || [])[0] || {}).content || {}).parts || []).map(function (p) { return p.text || ''; }).join(' '));
+        if (/\bPLACE\b/i.test(txt)) return true;
+        if (/\bOTHER\b/i.test(txt)) return false;
+        return null;
+      } catch (e) { return null; }
+    }
+    if (isSceneUpgrade && !__intent.placeUpgradeHint && !__intent.sameImage) {
+      const __place = await sourceIsRealPlacePhoto();
+      /* تعذّر السؤال (مهلة/عطل) بلا أي تلميح مكان = نعامل المصدر كتصميم لا كغرفة — السلوك الأقرب لطلب المالك */
+      if (__place !== true) { isSceneUpgrade = false; isElevate = true; }
+    }
     const promptLimit = isArchitectural ? 2400 : (editImageBase64 ? 8000 : 1800);
     /* الوضع المحسّن هو الافتراضي. «نانو:» يظل مخرجًا صريحًا لإرسال النص الخام،
        ويمكن إعادة السلوك القديم مؤقتًا عبر IMAGE_RAW_DEFAULT=on. */
@@ -196,12 +252,17 @@ module.exports = async (req, res) => {
       parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
       for (const x of extras) parts.push({ inlineData: { mimeType: x.mime || 'image/png', data: x.data } });
     } else if (editImageBase64) {
-      parts.push({ text: isSceneUpgrade ? buildSceneUpgradePrompt(cleanPrompt)
-        : (isRestyle ? buildRestylePrompt(cleanPrompt)
-        : (isElevate ? buildElevatePrompt(cleanPrompt)
-        : (isReimagine
-          ? ('TASK: "' + cleanPrompt + '"\n\nThe attached image is ONLY inspiration for the SUBJECT. Create a COMPLETELY NEW image of the same subject with a clearly DIFFERENT concept: new composition, new viewpoint, new background, new lighting and a fresh creative idea — the result must NOT look like a copy or minor edit of the source. Keep any real faces, logos or brand marks faithful if they are the subject. Quality bar: breathtaking, award-winning, magazine-cover grade, tack-sharp, professional cinematic lighting, no toy-like or amateur rendering.')
-          : buildEditPrompt(cleanPrompt)))) });
+      /* v-raw-words: كلمات المستخدم الحرفية (intentText) أولًا في المسارات الإبداعية؛ IMAGE_RAW_CREATIVE=on يرسلها وحدها كتطبيق Gemini */
+      const __rawCreative = creativeRawEnabled(process.env) && (isElevate || isReimagine || isRestyle);
+      parts.push({ text: __rawCreative ? rawCreativePrompt(cleanPrompt, intentText)
+        : isSceneUpgrade ? buildSceneUpgradePrompt(cleanPrompt)
+        : (isRestyle ? buildRestylePrompt(cleanPrompt, intentText)
+        : (isElevate ? buildElevatePrompt(cleanPrompt, intentText)
+        : (isPersonSwap ? buildPersonSwapPrompt(cleanPrompt, intentText)
+        : (isBroadEdit ? buildBroadEditPrompt(cleanPrompt, intentText)
+        : (isTextSwap ? buildLetterSwapPrompt(cleanPrompt)
+        : (isReimagine ? buildReimaginePrompt(cleanPrompt, intentText)
+          : buildEditPrompt(cleanPrompt))))))) });
       parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
     } else if (pipelineActive && pipelineRewrite) {
       // Pipeline prompt includes negative in separate field — combine for Gemini
@@ -238,7 +299,16 @@ module.exports = async (req, res) => {
        المالك. التوليد الجديد يبقى على gemini-3-pro-image بدقّة 2K. قابل للضبط
        بمتغيّر IMAGE_EDIT_MODEL للرجوع فورًا بلا نشر. */
     const editModel = (process.env.IMAGE_EDIT_MODEL || 'gemini-2.5-flash-image').trim();
-    const primaryModel = editImageBase64 ? editModel : 'gemini-3-pro-image';
+    /* v-nano-pro-edit: الإبداع (أقوى/فكرة مختلفة/تحويل أسلوب/ترقية مشهد/الوضع الخام) على نانو بنانا
+       برو (gemini-3-pro-image بدقّة 2K) — وهو المحرّك الذي أخرج للمالك صورته المزخرفة في تطبيق
+       Gemini؛ نانو 2.5 كان يرجّع صورة باهتة لموضوع الكرت. التعديل الموضعي (غيّر اللون/شيل الخلفية)
+       يبقى على نانو 2.5 السريع الأمين. IMAGE_CREATIVE_MODEL يبدّل بلا نشر، والإنقاذ (نانو 2.5 ثم
+       gpt-image) يبقى كما هو عند فشل برو. */
+    const creativeModel = (process.env.IMAGE_CREATIVE_MODEL || 'gemini-3-pro-image').trim();
+    /* دمج عدة صور (extras) يصل برو أيضًا حين تكون النيّة إبداعية — برو يتعامل مع مراجع متعددة أفضل بكثير */
+    const isCreativeEdit = !!editImageBase64 && (isElevate || isReimagine || isRestyle || isSceneUpgrade || __pureRaw);
+    /* تبديل الحروف على برو أيضًا: نانو 2.5 يكسر الحروف العربية وبرو يبدّلها في مكانها (لقطة المالك من Gemini) */
+    const primaryModel = editImageBase64 ? ((isCreativeEdit || isTextSwap || isPersonSwap || isBroadEdit) ? creativeModel : editModel) : creativeModel;
     const nanoPrimary = /2\.5-flash-image/.test(primaryModel);
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + primaryModel + ':generateContent?key=' + apiKey;
     // v656: نسبة أبعاد ذكية — الافتراضي طولي (3:4) لأن المستخدمين على الجوال،
@@ -250,7 +320,9 @@ module.exports = async (req, res) => {
       if (/ستوري|استوري|خلفية\s*(جوال|هاتف|موبايل)|خلفيه\s*(جوال|هاتف|موبايل)|story|wallpaper|9\s*[:x]\s*16|ريلز|reels|تيك\s*توك|tiktok|شورتس|shorts/i.test(s2)) return '9:16';
       return '3:4';
     };
-    const imageConfig = { imageSize: '2K' };
+    /* v-4k (المالك: «الجودة قبل التكلفة»): طلب صريح 4K/للطباعة/دقة عالية يرفع إخراج برو إلى 4K (≈ ضعف سعر 2K) */
+    const __want4K = /(?:^|[\s،,])(?:4k|٤k|للطباعة|طباعة|دقة\s*عالية|عالية\s*الدقة|أعلى\s*دقة|اعلى\s*دقة)(?=$|[\s،,.!؟?])|\b(?:4k|high[-\s]?res(?:olution)?|print[-\s]?(?:ready|quality))\b/i.test(intentText + ' ' + String(prompt || ''));
+    const imageConfig = { imageSize: __want4K ? '4K' : '2K' };
     if (!editImageBase64) imageConfig.aspectRatio = (pipelineActive && pipelineRewrite && pipelineRewrite.aspect) ? pipelineRewrite.aspect : (isArchitectural ? '16:9' : pickAspect(cleanPrompt));
     /* نانو بنانا (2.5-flash-image) لا يدعم imageSize:'2K' — نرسل له صيغة نظيفة
        بلا imageConfig كي لا يرفض الطلب (400). لكنه يحتاج responseModalities:['IMAGE']
@@ -260,11 +332,24 @@ module.exports = async (req, res) => {
       const cfg = Object.assign({}, extra);
       if (nanoPrimary) cfg.responseModalities = ['IMAGE'];
       else cfg.imageConfig = imageConfig;
+      /* v-nano-pro-edit: توصية Google لجيل Gemini 3 — الحرارة الافتراضية (1.0)؛ خفضها يضعف النتيجة ويكرّرها.
+         نانو 2.5 يبقى بحرارته المنخفضة للتعديل الموضعي الأمين. */
+      if (!nanoPrimary) delete cfg.temperature;
       return cfg;
     };
+    /* v-image-memory: الأدوار السابقة كسياق حواري فعلي (user → model) قبل الدور الحالي — للتعديل على صورة واحدة فقط */
+    const __historyTurns = (editImageBase64 && !extras.length && history.length) ? history.reduce(function (acc, h) {
+      const up = [{ text: h.text || '(image)' }];
+      if (h.sourceBase64) up.push({ inlineData: { mimeType: h.sourceMime, data: h.sourceBase64 } });
+      acc.push({ role: 'user', parts: up });
+      acc.push({ role: 'model', parts: [{ inlineData: { mimeType: h.resultMime, data: h.resultBase64 } }] });
+      return acc;
+    }, []) : [];
+    if (__historyTurns.length) parts.unshift({ text: 'Conversation context: the earlier turns show what the user asked before and the images you produced. The image attached to THIS turn is the current source — apply the current request to it, building on that history (e.g. "better than this", "bring the old background back"). Never return an earlier result unchanged.' });
+    const __contents = __historyTurns.length ? __historyTurns.concat([{ role: 'user', parts }]) : [{ parts }];
     const reqBody = JSON.stringify(__pureRaw
-      ? { contents: [{ parts }], generationConfig: genConfigFor({}) }
-      : { contents: [{ parts }], generationConfig: genConfigFor({ temperature: editImageBase64 ? (isSceneUpgrade ? 0.5 : (isReimagine ? 0.9 : (isElevate ? 0.5 : (isRestyle ? 0.6 : 0.15)))) : 0.85 }) });
+      ? { contents: __contents, generationConfig: genConfigFor({}) }
+      : { contents: __contents, generationConfig: genConfigFor({ temperature: editImageBase64 ? (isSceneUpgrade ? 0.5 : (isReimagine ? 0.9 : (isElevate ? 0.85 : (isRestyle ? 0.6 : 0.15)))) : 0.85 }) });
 
     /* v-img-textwise (شكوى المالك: «توليد الصور زفت» — لقطة شاشة التطبيق
        رجعت بعناوين عربية مشوهة): مصدرٌ مليء بالنصوص (لقطة واجهة، مستند،
@@ -285,7 +370,7 @@ module.exports = async (req, res) => {
               { text: 'Answer with exactly one word, YES or NO. YES only if this image is text-dense: a UI screenshot, app screen, document, menu, form, chart with many labels, or a poster whose main content is many words. NO for photos, people, places, products and scenes.' },
               { inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } },
             ] }],
-            generationConfig: { temperature: 0, maxOutputTokens: 4 },
+            generationConfig: { temperature: 0, maxOutputTokens: 64 }, /* v-flash-budget */
           }),
         });
         const d = await r.json().catch(function () { return null; });
@@ -411,13 +496,21 @@ module.exports = async (req, res) => {
     /* v-bold-wins (المالك: «أقوى/أفضل من هذي — يرجّع نفس الصورة»): طلبات الإبداع
        (إعادة تصوّر/تحويل أسلوب) يجب ألّا يتدخّل فيها محرّك «حفظ النص» لأنه يثبّت
        الصورة كما هي؛ نتركها لنانو ليعطي نتيجة جريئة فعلًا. */
-    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade
+    /* v-elevate-pro-always (لقطة المالك: شبكة أيقونات + «عطني أفضل من هذي» ×٣ = الصورة نفسها): لو صنّف الفاحص
+       المصدر «شاشة تطبيق» تحوّلت الترقية إلى gpt-image المحافظ (input_fidelity=high) فعادت الصورة كما هي.
+       الترقية تذهب إلى نانو بنانا برو دائمًا — وهو يحفظ الحروف العربية (بدّل حرفًا في لقطة واجهة بدقّة اليوم)؛
+       مسار النصّ الكثيف يبقى للتعديل الموضعي وتبديل الحروف حيث الحرفية هي المطلوب. */
+    /* دمج عدة صور لا يمرّ بمسار gpt-image الأحادي (يُسقط الصور الإضافية) */
+    /* v-nano-pro-edit: قرار المزدوج يُحسم هنا مرة واحدة — الترقية مستثناة منه، فلا يُترك نداء gpt-image معلّقًا بلا حكم */
+    const __duoWouldRun = duoEnabled() && !prayerPlan && !pipelineActive && !isReimagine && !isRestyle && !isElevate && !isPersonSwap && !isBroadEdit && !extras.length; /* دمج عدة صور: المنافس الأحادي يُسقط الصور الإضافية */
+    /* v-letter-swap: تبديل حرف على لقطة نصّية لا يُختطف إلى gpt-image وحده — برو يقوده، وgpt-image ينافس بالحكم فقط عند تفعيل المزدوج */
+    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !isBroadEdit && !extras.length && (!isTextSwap || __duoWouldRun)
       && (editImageBase64 ? await sourceLooksTextDense() : (!rawMode && __textCueRe.test(cleanPrompt)));
     /* v-duo-textroute (لقطة المالك: لقطة واجهة + «عطني أفضل ونفس الفكرة» → فنجان قهوة): مسار النصّ الكثيف كان
        يرجع ناتج gpt-image وحده بلا Gemini ولا حكم. الآن يعمل المحرّكان معًا هنا أيضًا والحكم يختار. */
     let densePromise = null;
     if (__textRoute) {
-      if (duoEnabled() && !pipelineActive) {
+      if (__duoWouldRun) {
         densePromise = openaiRescueImage().catch(function () { return null; });
       } else {
         const denseB64 = await openaiRescueImage();
@@ -434,12 +527,17 @@ module.exports = async (req, res) => {
     /* v-bold-wins: في طلبات الإبداع (إعادة تصوّر/تحويل أسلوب) لا نُشغّل المنافس
        gpt-image (input_fidelity=high يحافظ على المصدر فيفوز الحكم بالنسخة الحرفية)
        — نعتمد نتيجة نانو الجريئة مباشرة؛ خطوط الإنقاذ تبقى عند الفشل فقط. */
-    const duoOn = duoEnabled() && !prayerPlan && !pipelineActive && !isReimagine && !isRestyle && !isElevate && (!__textRoute || !!densePromise);
+    const duoOn = __duoWouldRun && (!__textRoute || !!densePromise);
     const duoP = duoOn ? (densePromise || openaiRescueImage().catch(function () { return null; })) : null;
     let duoEngine = '';
     // Image generation normally takes 35–50 seconds, so it must bypass the
     // shared 30-second fetch guard. Retry transient failures inside this one
     // request; the user should not have to resend the same prompt.
+    /* v-best-of (خطة المالك ٦ سبتمبر: «نسختان بالتوازي واختيار الأفضل» — الجودة قبل التكلفة): في المسارات الإبداعية يُطلب مرشّح
+       ثانٍ من المحرّك نفسه بالتوازي مع الأول، والحكم الإبداعي يختار الأجرأ والأكمل مع الوفاء بالموضوع. IMAGE_BEST_OF=1 يوقفه. */
+    const __altP = (isCreativeEdit && !pipelineActive && !prayerPlan && bestOfCount(process.env) >= 2)
+      ? fetchImageWithRetry({ url: endpoint, init: { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: reqBody }, onRetry: function () {} }).catch(function () { return null; })
+      : null;
     const imageResult = await fetchImageWithRetry({
       url: endpoint,
       init: {
@@ -458,7 +556,12 @@ module.exports = async (req, res) => {
 
     if (!upstream || !upstream.ok) {
       const nanoB64 = await geminiNanoBananaImage();
-      if (nanoB64) { res.status(200).json({ imageBase64: nanoB64, mimeType: 'image/png', engine: 'gemini-nano-banana', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
+      if (nanoB64) {
+        /* v-nano-pro-edit: فشل المحرّك الأساسي (برو غالبًا) ونجح نانو 2.5 — يُسجَّل في لوحة المالك بدل أن يختفي وراء نتيجة باهتة
+           تشبه الشكوى الأصلية (مفتاح بلا برو، اسم موديل، 400 على الإعدادات…). */
+        try { require('./log-error.js').logError('maha-image:primary-fallback', new Error(primaryModel + ' failed'), { model: primaryModel, status: upstream ? ('status=' + upstream.status) : 'no-response', creative: isCreativeEdit, detail: String((data && data.error && data.error.message) || '').slice(0, 160) }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
+        res.status(200).json({ imageBase64: nanoB64, mimeType: 'image/png', engine: 'gemini-nano-banana', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return;
+      }
       const rescuedB64 = duoP ? await duoP : await openaiRescueImage();
       /* v-prayer-carry: الإنقاذ كان يفقد الدعاء المؤلَّف فيرفضه العميل
          (missing_authored_prayer — لقطة المالك). يُمرَّر مع الصورة المنقذة. */
@@ -478,7 +581,9 @@ module.exports = async (req, res) => {
     let imgPart = respParts.find((p) => p.inlineData && p.inlineData.data);
     if (!imgPart) {
       const nanoB64b = await geminiNanoBananaImage();
-      if (nanoB64b) { res.status(200).json({ imageBase64: nanoB64b, mimeType: 'image/png', engine: 'gemini-nano-banana', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
+      if (nanoB64b) {
+        try { require('./log-error.js').logError('maha-image:primary-fallback', new Error(primaryModel + ' returned no image part'), { model: primaryModel, status: 'no-image-part', creative: isCreativeEdit }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
+        res.status(200).json({ imageBase64: nanoB64b, mimeType: 'image/png', engine: 'gemini-nano-banana', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
       const rescuedB64b = duoP ? await duoP : await openaiRescueImage();
       if (rescuedB64b) { res.status(200).json({ imageBase64: rescuedB64b, mimeType: 'image/png', engine: 'openai', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
       await refundImageCharge();
@@ -488,7 +593,11 @@ module.exports = async (req, res) => {
       return;
     }
 
-    if (editImageBase64 && !extras.length && !rawMode) {
+    /* v-guard-off-creative (المالك ٦ سبتمبر: «أوقفت النتيجة لأنها غيّرت هوية الشخص» على طلب إبداعي — وهو يقارن بنانو الأصلي
+       الذي لا يحجب شيئًا): الترقية والفكرة الجديدة وتحويل الأسلوب وترقية المكان تعيد الرسم بطبيعتها، فلا حارس عليها.
+       التعديل الموضعي (اسم/حرف/لون) يبقى محروسًا: الوجه لا يتبدّل عند تغيير الاسم. */
+    const __guardLane = !!(editImageBase64 && !extras.length && !rawMode && !isCreativeEdit && !isPersonSwap && !isBroadEdit);
+    if (__guardLane) {
       const guard = await verifyLocalizedImageEdit({
         apiKey,
         sourceBase64: editImageBase64,
@@ -496,8 +605,10 @@ module.exports = async (req, res) => {
         resultBase64: imgPart.inlineData.data,
         resultMime: imgPart.inlineData.mimeType || 'image/png',
         userPrompt: cleanPrompt,
-        allowStyleChange: explicitlyRequestsStyleChange(cleanPrompt),
-        allowBroadChange: isSceneUpgrade || isElevate || isReimagine,
+        /* v-guard-creative: بعد أن صار الأمر المهندس هو الافتراضي يعمل الحارس على كل تعديل — تحويل الأسلوب («عدل 3d»)
+           والترقية والفكرة المختلفة تغيّر الوسيط بطبيعتها فلا تُرفض لأجله؛ الهوية (نفس الشخص) تبقى مفروضة على الجميع. */
+        allowStyleChange: explicitlyRequestsStyleChange(cleanPrompt) || isRestyle || isReimagine || isElevate,
+        allowBroadChange: isSceneUpgrade || isElevate || isReimagine || isRestyle,
       });
       if (!guard.ok && guard.reason === 'validation_unavailable') console.warn('[maha-image] guard unavailable — passing result through'); /* v-guard-fail-open */
       else if (!guard.ok) {
@@ -524,7 +635,7 @@ module.exports = async (req, res) => {
             ? pipelineRewrite.prompt + '\n\nDo not include: ' + pipelineRewrite.negative
             : pipelineRewrite.prompt);
           const retryParts = [{ text: retryPrompt }];
-          const retryReqBody = JSON.stringify({ contents: [{ parts: retryParts }], generationConfig: { temperature: 0.85, imageConfig } });
+          const retryReqBody = JSON.stringify({ contents: [{ parts: retryParts }], generationConfig: genConfigFor({ temperature: 0.85 }) });
           try {
             const retryResult = await fetchImageWithRetry({
               url: endpoint,
@@ -561,6 +672,19 @@ module.exports = async (req, res) => {
       }
     }
 
+    /* v-best-of: دمج المرشّح الثاني (المحرّك نفسه) بالحكم الإبداعي — أي تعثّر يُبقي الأول */
+    if (__altP) {
+      try {
+        const altRes = await __altP;
+        const altParts = (((((altRes && altRes.data) || {}).candidates || [])[0] || {}).content || {}).parts || [];
+        const altImg = (altRes && altRes.response && altRes.response.ok) ? altParts.find(function (p) { return p.inlineData && p.inlineData.data; }) : null;
+        if (altImg) {
+          const pick = await judgeBest({ apiKey, prompt: cleanPrompt, creative: true, source: { b64: editImageBase64, mime: editMimeType || 'image/png' }, a: { b64: imgPart.inlineData.data, mime: imgPart.inlineData.mimeType || 'image/png' }, b: { b64: altImg.inlineData.data, mime: altImg.inlineData.mimeType || 'image/png' } });
+          if (pick === 'b') imgPart = altImg;
+          duoEngine = 'gemini x2+judge';
+        }
+      } catch (e) { console.warn('[maha-image] best-of skipped: ' + (e && e.message)); }
+    }
     /* v-image-duo: المرشّح الثاني (gpt-image) يمرّ بحارس الهوية نفسه إن كان تعديلًا، ثم الحكم */
     if (duoP) {
       try {
@@ -579,12 +703,41 @@ module.exports = async (req, res) => {
         }
       } catch (e) { console.warn('[maha-image] duo skipped: ' + (e && e.message)); }
     }
-    const caption = prayerPlan ? '' : await imageCaption(apiKey, cleanPrompt, imgPart.inlineData.data, imgPart.inlineData.mimeType || 'image/png', editImageBase64 || null, editMimeType || 'image/png');
+    /* v-request-check (المالك: «ما يعطيني الطلب الي أريده بالضبط»): هل تطبّق النتيجة طلب المستخدم كما كتبه؟ إن لا، محاولة
+       واحدة أخرى مع ذكر ما نقص حرفيًا، وتُقبل فقط إن اجتازت الفحص (وحارس الهوية في المسار الموضعي). */
+    if (editImageBase64 && !extras.length && !__pureRaw && !prayerPlan && !pipelineActive && requestCheckEnabled(process.env)) {
+      try {
+        const __src = { b64: editImageBase64, mime: editMimeType || 'image/png' };
+        const __rc = await verifyRequestApplied({ apiKey, request: intentText, source: __src, result: { b64: imgPart.inlineData.data, mime: imgPart.inlineData.mimeType || 'image/png' } });
+        if (__rc && __rc.applied === false) {
+          console.warn('[maha-image] request-check: not applied — ' + __rc.missing);
+          const __fixBody = JSON.parse(reqBody);
+          const __lastTurn = __fixBody.contents[__fixBody.contents.length - 1];
+          __lastTurn.parts.push({ text: 'CORRECTION: your previous attempt did NOT satisfy the request. What was missing: "' + String(__rc.missing || 'the requested change').slice(0, 300) + '". Redo the edit on the attached source and make sure this is clearly and fully applied this time.' });
+          const __fixRes = await fetchImageWithRetry({ url: endpoint, init: { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(__fixBody) }, onRetry: function () {} });
+          const __fixParts = (((((__fixRes && __fixRes.data) || {}).candidates || [])[0] || {}).content || {}).parts || [];
+          const __fixImg = (__fixRes && __fixRes.response && __fixRes.response.ok) ? __fixParts.find(function (p) { return p.inlineData && p.inlineData.data; }) : null;
+          if (__fixImg) {
+            let __ok2 = true;
+            if (__guardLane) {
+              const g3 = await verifyLocalizedImageEdit({ apiKey, sourceBase64: editImageBase64, sourceMime: editMimeType || 'image/png', resultBase64: __fixImg.inlineData.data, resultMime: __fixImg.inlineData.mimeType || 'image/png', userPrompt: cleanPrompt, allowStyleChange: explicitlyRequestsStyleChange(cleanPrompt), allowBroadChange: isSceneUpgrade });
+              __ok2 = !!(g3 && (g3.ok || g3.reason === 'validation_unavailable'));
+            }
+            if (__ok2) {
+              const __rc2 = await verifyRequestApplied({ apiKey, request: intentText, source: __src, result: { b64: __fixImg.inlineData.data, mime: __fixImg.inlineData.mimeType || 'image/png' } });
+              if (!__rc2 || __rc2.applied !== false) { imgPart = __fixImg; duoEngine = (duoEngine || 'gemini') + '+fix'; }
+            }
+          }
+        }
+      } catch (e) { console.warn('[maha-image] request-check skipped: ' + (e && e.message)); }
+    }
+    const caption = prayerPlan ? '' : await imageCaption(apiKey, intentText || cleanPrompt, imgPart.inlineData.data, imgPart.inlineData.mimeType || 'image/png', editImageBase64 || null, editMimeType || 'image/png');
     res.status(200).json({
       imageBase64: imgPart.inlineData.data,
       mimeType: imgPart.inlineData.mimeType || 'image/png',
       caption: caption || undefined,
-      engine: rawMode ? 'nano-raw' : (duoEngine || 'gemini'),
+      /* v-nano-pro-edit: اسم المحرّك الحقيقي — برو أم 2.5 — ليراه المالك في شريط الحالة */
+      engine: duoEngine ? (nanoPrimary ? duoEngine : duoEngine.replace(/^gemini/, 'nano-pro')) : (nanoPrimary ? (__pureRaw ? 'nano-raw' : 'nano') : (__pureRaw ? 'nano-pro-raw' : 'nano-pro')),
       authoredText: prayerPlan ? prayerPlan.prayerText : undefined,
       visualPrompt: prayerPlan ? prayerPlan.visualBrief : undefined,
       prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined,

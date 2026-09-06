@@ -595,15 +595,8 @@ window.__omranImgTools = function(wrap, dataUrl){
     flash(b, '<span>' + (ar ? 'جاهزة' : 'Ready') + '</span>');
     const p = $('#prompt'); if(p){ p.focus(); p.placeholder = ar ? 'اكتب التعديل المطلوب على هذي الصورة…' : 'Describe the edit you want…'; }
   });
-  // 🔄 «نسخة ثانية» — يعيد آخر طلب صورة بضغطة، تنويعة جديدة بلا إعادة كتابة (طلب المالك)
-  if(window.__omranLastImageReq){
-    mk('txt', '<span>🔄 ' + (ar ? 'نسخة ثانية' : 'Another') + '</span>', ar ? 'نسخة ثانية' : 'Another version', (b) => {
-      if(!window.__omranLastImageReq){ flash(b, '<span>—</span>'); return; }
-      if(typeof genAbortController !== 'undefined' && genAbortController){ flash(b, '<span>' + (ar ? 'انتظر…' : 'Wait…') + '</span>'); return; }
-      flash(b, '<span>⏳</span>');
-      try{ window.omranAnotherVersion && window.omranAnotherVersion(); }catch(e){ __swallow(e, 'img:another-btn'); }
-    });
-  }
+  // 🔄 زر «نسخة ثانية» أُزيل من فوق الصورة (طلب المالك ٦ سبتمبر: كان يغطّي نصّ
+  //    الصورة نفسها). window.omranAnotherVersion تبقى متاحة برمجيًا بلا زرّ.
   // 📤 v635 — أمر عمران «زرّ الإرسال حطه هني جنبهم»: الإرسال يسكن شريط أزرار
   // الرسالة نفسه (بعد النسخ/الإعجاب) بنفس شكلهم وحجمهم؛ «تعديل» يبقى تحت الصورة.
   // رسالة الصورة بلا نصّ لا تبني شريطًا ⇒ أُنشئ شريطًا بنفس الصنف.
@@ -1030,6 +1023,9 @@ function summarizeCsvText(text){
   }catch(_e){ return ''; }
 }
 
+/* v-nano-pro-edit: الطلب الإبداعي القصير على صورة (أقوى/أفخم/طوّرها/فكرة ثانية/كرتون…) — يُقرأ هنا وفي أداة
+   edit_image/generate_image (app-17) حتى لا يرسم النموذج صورة جديدة بلا علاقة بالمصدر. */
+const __IMG_CREATIVE_RE = /(?:^|[\s،,])(?:نسخ[ةه]\s*)?(?:ال)?(?:أ|ا|إ)(?:قوى|قوي|فخم|رقى|جمل|حلى|روع|بدع|حسن|فضل|بهى)(?=$|[\s،,.!؟?])|(?:^|[\s،,])(?:فخم[ةه]?|راقي[ةه]?|خيالي[ةه]?|جبار[ةه]?|مبهر[ةه]?|إبداعي[ةه]?|ابداعي[ةه]?|احترافي[ةه]?|تجنن|لايق[ةه]?)(?=$|[\s،,.!؟?])|(?:^|[\s،,])(?:[اأ]?(?:طوّ?ر|حسّ?ن|جمّ?ل|قوّ?|رقّ?|زيّ?ن|زخرف|فخّ?م|عزّ?ز)|ارفع|ابهر|أبهر)(?:ها|ه|يها|يه|ني)(?=$|[\s،,.!؟?])|(?:^|[\s،,])(?:ارفع|إرفع)\s*(?:ال)?(?:مستوى|مستواها|جودتها|جودة)|(?:^|[\s،,])(?:زوّ?د|زيد)\s*(?:ال)?(?:زخارف|زخرف[ةه]|تفاصيل|فخام[ةه])|فكر[ةه]\s*(?:ثاني[ةه]|مختلف[ةه]|جديد[ةه]|أقوى|اقوى)|(?:^|[\s،,])(?:3d|ثلاثي|مجسم|مجسّم|كرتون|كارتون|أنيمي|انمي|بيكسار|ديزني|anime|cartoon|pixar|disney)(?=$|[\s،,.!؟?])|(?:^|[\s،,])(?:عطني|أعطني|اعطني|هات|هاتي|اقترح|أقترح|اقترحي|ابي|أبي|ابغى|أبغى|ابغي|أبغي|أريد|اريد|ودي|ودّي|ممكن)\s*(?:لي\s*)?(?:فكر[ةه]|أفكار|افكار|اقتراح|اقتراحات)(?!\s*(?:ل|عن|بخصوص|اسم|نص|كلام|عبار[ةه]|شعار|تعليق|كابشن|وصف|هاشتاق|نكت[ةه]))(?=$|[\s،,.!؟?])|(?:زي|مثل|كأنه|كانه|كإنه|كأنها|كانها|شغل|بال|ب)\s*(?:ال)?ذكاء\s*(?:ال)?(?:اصطناعي|إصطناعي|صناعي)|(?:مو|مش|ليس|لا|بدون|بلا|غير)\s*(?:شغل\s*)?فوتو\s*شوب|شغل\s*فوتو\s*شوب|(?:^|[\s،,])(?:(?:سوّ?ي?|سو|اعمل|أعمل|عطني|أعطني|اعطني|هات|ابي|أبي|ابغى|أبغى|ابغي|أبغي|أريد|اريد|ودي|ودّي|طلع|طلّع)\s*(?:لي\s*)?(?:شي|شيء|نسخ[ةه]|تصميم|صور[ةه]|شكل)\s*(?:\S+\s+)?|(?:خلّ?ي?ها|سوّ?ي?ها|اجعلها|صيّ?رها|خلّ?ي?ه|سوّ?ي?ه|اجعله|صيّ?ره)\s*)(?:يجنن|تجنن|يخبل|تخبل|يهبل|تهبل|خرافي[ةه]?|أسطوري[ةه]?|اسطوري[ةه]?|رهيب[ةه]?|خيال|فخام[ةه])(?=$|[\s،,.!؟?])|(?:^|[\s،,])[اأ]?قوّ?م(?:ها|ه|\s*(?:(?:هذي|هذه|هذا|ذي)\s*|ه)?(?:ال)?(?:صور[ةه]|كرت|بطاق[ةه]|تصميم))(?=$|[\s،,.!؟?])|\b(?:give\s+me|suggest|any)\s+(?:an?\s+|some\s+)?(?:ideas?|suggestions?)\b(?!\s+for\s+(?:a\s+|the\s+)?(?:name|caption|slogan|title|text|tagline))|\bmake\s+(?:it|this|everything|the\s+(?:whole\s+|entire\s+)?(?:image|picture|photo|card|design|scene|look))\s+(?:much\s+|way\s+|a\s+lot\s+)?(?:stronger|bolder|richer|fancier|nicer|prettier|better|premium|luxurious|epic|pop|shine|stand\s*out|more\s+\w+)\b|\b(?:stronger|bolder|richer|fancier|nicer|prettier|cleaner|premium|luxurious|epic|enhanced|improved|upgraded|polished|more\s+\w+)\s+(?:version|look|take|edition)\b|^\s*(?:stronger|bolder|richer|fancier|nicer|prettier|better|premium|luxurious|epic|more\s+\w+)\s*[.!]*\s*$|\b(?:level\s*up|glow\s*up|next\s*level|better\s+than|best\s+version|reimagine|different\s+(?:idea|concept)|(?:enhance|improve|upgrade|elevate|polish)\s+(?:it|this|everything|the\s+(?:whole\s+|entire\s+)?(?:image|picture|photo|card|design|scene|look)))\b/i;
 /* v-visual-assist: لقطة شاشة لواجهة (اسم الملف/لصق من الحافظة/PNG بنسبة شاشة)
    تُعلَّم _screenshot لتذهب للتحليل والإرشاد بدل مسار تعديل الصور. */
 function omranLooksLikeScreenshot(file, dims, opts){
@@ -1553,16 +1549,18 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
    ٥ مرات بـ«انقطع الاتصال»): الصور المولّدة عالية الدقة تتجاوز حدّ جسم الطلب
    في فيرسل (~4.5MB) فيسقط الطلب قبل وصول الخادم أصلًا. نضغط لأقصى 1280px
    قبل الإرسال — كافية تمامًا لمولّد التعديل والنص يبقى مقروءًا. */
-async function omranShrinkForEdit(b64, mime){
+/* v-full-res (المالك: «كيف توصلني لمستوى نانو»): المصدر كان يُصغَّر إلى 1280px فتضيع تفاصيل الحروف والوجوه. الآن 2048px
+   للتعديل بصورة واحدة (≈1MB JPEG، تحت حد Vercel 4.5MB)؛ ومع قناع أو صور إضافية يبقى 1280 كي لا يتجاوز الطلب الحد. */
+async function omranShrinkForEdit(b64, mime, maxPx, force){
   try{
-    if(!b64 || b64.length < 900000) return { b64: b64, mime: mime };
+    if(!b64 || (!force && b64.length < 900000)) return { b64: b64, mime: mime };
     const img = await new Promise((res, rej) => {
       const i = new Image();
       i.onload = () => res(i); i.onerror = () => rej(new Error('bad_image'));
       i.src = 'data:' + (mime || 'image/png') + ';base64,' + b64;
     });
-    const mx = 1280, sc = Math.min(1, mx / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
-    if(sc >= 1 && b64.length < 1600000) return { b64: b64, mime: mime };
+    const mx = maxPx || 2048, sc = Math.min(1, mx / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+    if(!force && sc >= 1 && b64.length < 1600000) return { b64: b64, mime: mime };
     const c = document.createElement('canvas');
     c.width = Math.max(1, Math.round((img.naturalWidth || mx) * sc));
     c.height = Math.max(1, Math.round((img.naturalHeight || mx) * sc));
@@ -1576,6 +1574,10 @@ async function omranShrinkForEdit(b64, mime){
    الخلفية المأخوذ من الصورة نفسها ونكتب الجديد مكانه — باقي الصورة لا يُمسّ. */
 function __textSwapIntent(s){
   s = String(s || '');
+  /* v-remove-not-swap (لقطة المالك «شيل الاسم كامل» → «لم أستطع تحديد الحرف»): حذف الاسم/النصّ بلا بديل = تعديل عادي
+     يحذف النصّ ويرمّم الخلفية، لا مسار تبديل الحرف. «شيل الاسم وحط عمران» يبقى تبديلًا. */
+  if(/(?:^|[\s،,])(?:شيل|احذف|امسح|ازل|أزل|نظّف|نظف)\s*(?:ال)?(?:اسم|أسماء|اسماء|نص|النص|كتابة|كتابه|كلام|كلم[ةه]|عنوان|شعار|لوجو|رقم|تاريخ|توقيع)/i.test(s)
+     && !/(?:^|[\s،,و])(?:حط|حطي|اكتب|أكتب|بدل|بدّل|خل|خلي|استبدل|مكان[هاي]?|بدال[هاي]?)(?=$|[\s،,])|\b(?:with|to|into)\b|→|->|(?:^|\s)(?:إلى|الى)(?=\s)/i.test(s)) return false;
   if(/(?:^|[\s،,])(?:بدل|بدّل|غير|غيّر|صحح|صحّح|عدل|عدّل|شيل|احذف|امسح|استبدل)\s*(?:ال)?(?:تاريخ|اسم|رقم|حرف|رمز|كلم[ةه]|نص|سن[ةه]|وقت|عنوان|توقيت)/i.test(s)) return true;
   if(/بدل\s+\S+(?:\s+\S+)?\s+(?:حط|خل|الى|إلى)\s*\S+/i.test(s)) return true;
   return false;
@@ -1586,7 +1588,10 @@ async function omranBuildTextEditMask(b64, mime, box){
     i.onload = () => res(i); i.onerror = () => rej(new Error('bad_source_image'));
     i.src = 'data:' + (mime || 'image/png') + ';base64,' + b64;
   });
-  const W = img.naturalWidth || 1, H = img.naturalHeight || 1;
+  /* v-mask-shrink: صورتان PNG بالحجم الكامل (المصدر والقناع) في طلب واحد تتجاوز حدّ جسم الطلب في Vercel
+     فيسقط الطلب قبل الخادم — نعمل على 1280px كأي تعديل آخر، والمنطقة تُحسب بالإحداثيات المصغّرة نفسها. */
+  const __sc = Math.min(1, 1280 / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+  const W = Math.max(1, Math.round((img.naturalWidth || 1) * __sc)), H = Math.max(1, Math.round((img.naturalHeight || 1) * __sc));
   const source = document.createElement('canvas'); source.width = W; source.height = H;
   source.getContext('2d').drawImage(img, 0, 0, W, H);
   const padX = Math.max(5, Math.round(box.w * W * 0.18));
@@ -2178,7 +2183,7 @@ window.omranAnotherVersion = async function(){
       __m.attachments = [{ name:'edited.png', isImage:true, mime:__outMime, dataUrl:'data:' + __outMime + ';base64,' + __data.imageBase64 }];
       cur.lastEditedImage = { b64: __data.imageBase64, mime: __outMime };
       cur.lastMsgWasImageEdit = true;
-      try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (__data.engine === 'openai' ? 'gpt-image' : 'نانو بنانا')); }catch(e){ __swallow(e, 'ui:img-engine-again'); }
+      try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (/openai/.test(String(__data.engine || '')) ? 'gpt-image' : (/pro/.test(String(__data.engine || '')) ? 'نانو بنانا برو' : 'نانو بنانا'))); }catch(e){ __swallow(e, 'ui:img-engine-again'); }
     } else {
       __m.content = imgErrFriendly(__data && __data.error, lang === 'ar') || (lang === 'ar' ? '⚠️ تعذّر توليد نسخة ثانية — جرّب مرّة أخرى.' : '⚠️ Could not create another version — try again.');
     }
@@ -2224,7 +2229,7 @@ function cumulativeImageEditPrompt(cur, currentText, reset){
 var __omranWdTimer = null, __omranWdWake = null, __omranReqStartedAt = 0;
 var __OMRAN_WD_HARD_MS  = 300000;  // سقف صلب = سقف الخادم نفسه
 var __OMRAN_WD_STALE_MS = 120000;   // طلب أقدم من ذلك حين تعود الصفحة = مشبوه
-var __OMRAN_WD_GRACE_MS = 20000;   // مهلة سماح بعد العودة قبل القطع
+var __OMRAN_WD_GRACE_MS = 60000;   // مهلة سماح بعد العودة قبل القطع — مرشّحان على برو قد يستغرقان ٩٠ ثانية
 
 // إعادة زرّ الإرسال إلى هيئته الطبيعيّة (نفس أيقونة finally).
 function __omranRestoreSendBtn(){
@@ -2759,13 +2764,18 @@ function __friendlyErr(e){
       return;
     }
     const __codeWordRe = /(كود|تطبيق|موقع|صفحة|زر\s|لعبة|سكربت|code|app|website|page|button|game|script)/i;
-    const __ATT_VISION_RE = /(ترجم|translate|اقرأ|اقري|إقرأ|قراءة|\bread\b|وصف|اوصف|صف\s|describe|حلل|حلّل|analyz|قارن|compare|(?:^|[\s،,])(?:وين|فين|شلون|ليش|متى|هل|وش|ايش|أيش|شو|كيف|ماذا)(?=[\s؟?]|$)|مواصفات|مواصفه|مواصفة|سعر|سعره|بكم|كم\s*سعر|نوع|موديل|ماركة|ماركه|جهاز|معلومات\s*عن|متابعة|إجراء|اجراء|إجراءات|اجراءات|معاملة|معامله|خدمة|خدمه|طلب|حجز|موعد|رخصة|رخصه|شهادة|شهاده|فاتورة|فاتوره|سداد|استعلام|منصة|منصه|بوابة|بوابه|حساب|باي\s*بال|بايبال|paypal|بنك|تجاري|اشتراك|تفعيل|تسجيل|إعدادات|اعدادات|رصيد|فلوس|أموال|اموال|جوجل\s*بلاي|قوقل|google\s*play|app\s*store|\baccount\b|\bsettings\b|sign\s*up|log\s*in)/i; // v719: أسئلة الحسابات والخدمات مع صورة = سؤال محادثة، ليست تعديل صورة. v-assistant2: أضيف مواصفات/سعر/نوع/موديل/إجراءات/خدمة = سؤال مساعد لا توليد صورة
+    /* v-analysis-words (لقطة المالك ٦ سبتمبر: «عطني تحليل عن اليد كامل فقط» بعد تعديل صورة صار توليد صورة): الاسم «تحليل»
+       والشرح والتلخيص والاستخراج والتقييم طلبات قراءة لا تعديل — تخرج من بوّابة «أي رسالة بعد صورة = تعديل». */
+    /* v-talk-words (لقطة «قولي عن تنبؤا» بعد صورة → توليد صورة): أفعال الحديث والتوقع طلبات جواب نصي. بحدود صريحة كي لا تُلتقط
+       «قلل الإضاءة» و«قلب الصورة» و«وضح الصورة» (تعديلات). */
+    const __ATT_VISION_RE = /(ترجم|translate|اقرأ|اقري|إقرأ|قراءة|\bread\b|وصف|اوصف|صف\s|describe|حلل|حلّل|تحليل|analyz|اشرح|اشرحي|شرح|فسّر|فسر|تفسير|لخّص|لخص|ملخص|تلخيص|summar|explain|استخرج|استخراج|extract|رأيك|رايك|تقييم|قيّم|قارن|compare|(?:^|[\s،,])(?:قول|قولي|قلي|قل\s+لي|احكي|احك|احكيلي|كلمني|خبرني|اخبرني|أخبرني|حدثني|حدّثني|جاوب|جاوبني|اجب|أجب|توقع|توقّع|تنبأ|تنبؤ|تنبؤا|تنبؤات|توقعات|نصيحة|انصحني|أنصحني)(?=$|[\s،,.!؟?])|\btell\s+me\b|\bpredict|\badvi[cs]e\b|(?:^|[\s،,])(?:وين|فين|شلون|ليش|متى|هل|وش|ايش|أيش|شو|كيف|ماذا)(?=[\s؟?]|$)|مواصفات|مواصفه|مواصفة|سعر|سعره|بكم|كم\s*سعر|نوع|موديل|ماركة|ماركه|جهاز|معلومات\s*عن|متابعة|إجراء|اجراء|إجراءات|اجراءات|معاملة|معامله|خدمة|خدمه|طلب|حجز|موعد|رخصة|رخصه|شهادة|شهاده|فاتورة|فاتوره|سداد|استعلام|منصة|منصه|بوابة|بوابه|حساب|باي\s*بال|بايبال|paypal|بنك|تجاري|اشتراك|تفعيل|تسجيل|إعدادات|اعدادات|رصيد|فلوس|أموال|اموال|جوجل\s*بلاي|قوقل|google\s*play|app\s*store|\baccount\b|\bsettings\b|sign\s*up|log\s*in)/i; // v719: أسئلة الحسابات والخدمات مع صورة = سؤال محادثة، ليست تعديل صورة. v-assistant2: أضيف مواصفات/سعر/نوع/موديل/إجراءات/خدمة = سؤال مساعد لا توليد صورة
     const __nanoQ = /[؟?]\s*$|^\s*(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|لماذا|ماذا|why|how|what|where|when|who)(?=$|[\s،,])/i;
     // 🧠 v293: أي صورة مرفقة جديدة تنحفظ كآخر صورة في المحادثة
     if(__srcImg && !__srcImg._fromMemory){
       cur.lastEditedImage = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' };
       cur.imageEditInstructions = [];
       cur.imageEditSource = null;
+      cur.imageTurns = []; /* v-image-memory: مصدر جديد = سلسلة جديدة */
       cur.imageTextLayer = null;
       cur.adMode = null; // صورة جديدة = وضع إعلان جديد
     }
@@ -3690,9 +3700,36 @@ function __showImgLoading(el, ar, en){
       /* 🔤 v-text-swap: تغيير نص مكتوب (تاريخ/اسم/رقم) → قراءة بالرؤية وتبديل محلي
          دقيق؛ إن لم تجد الرؤية سطرًا نصيًا يسقط الطلب لمسار المولّد كالسابق. */
       if(__b64 && __textSwapIntent(text)){
+        /* v-letter-swap (لقطة المالك: «غير حرف م حط ع» رجّعت الصورة نفسها بينما Gemini بدّل الحرف): أولًا نانو بنانا
+           برو على الصورة كاملة بتعليمة قصيرة كتطبيق Gemini (الخادم يقرأ textSwap ويوجّه لبرو، وgpt-image ينافس بالحكم)؛
+           مسار «حدّد الموضع ثم قناع gpt-image» يبقى احتياطًا عند فشل الخادم فقط. */
+        try{
+          __showImgLoading(thinkingDiv, 'جاري تبديل الحرف في مكانه…', 'Swapping the letter in place…');
+          const __lsShr = await omranShrinkForEdit(__b64, __mime);
+          const __lsBody = { prompt: String(text || '').slice(0, 600), userText: String(text || '').slice(0, 600), textSwap: true, editImageBase64: __lsShr.b64, editMimeType: __lsShr.mime };
+          const __lsRes = await fetch('/api/maha-image', { method:'POST', headers:{ 'Content-Type':'application/json' }, signal: genAbortController.signal, body: JSON.stringify(Object.assign({}, __lsBody, { token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })) });
+          const __lsData = await __lsRes.json().catch(() => ({}));
+          if(__lsRes.ok && __lsData.imageBase64){
+            const __lsMime = __lsData.mimeType || 'image/png';
+            let __lsUrl = 'data:' + __lsMime + ';base64,' + __lsData.imageBase64;
+            try{ __lsUrl = await omranSharpenImage(__lsUrl); }catch(e){ __swallow(e, 'img:sharpen-swap'); }
+            cur.messages.push({ role:'assistant', content:(typeof __lsData.caption === 'string' ? __lsData.caption : ''), attachments:[{ name:'edited.png', isImage:true, mime:(__lsUrl.slice(5).split(';')[0] || __lsMime), dataUrl:__lsUrl }] });
+            try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (/openai/.test(String(__lsData.engine || '')) ? 'gpt-image' : (/pro/.test(String(__lsData.engine || '')) ? 'نانو بنانا برو' : 'نانو بنانا'))); }catch(e){ __swallow(e, 'ui:img-engine-swap'); }
+            cur.lastEditedImage = { b64: __lsData.imageBase64, mime: __lsMime };
+            cur.imageEditSource = { b64:__b64, mime:__mime };
+            cur.imageEditInstructions = [String(text || '').trim()];
+            cur.imageTextLayer = null;
+            cur.lastMsgWasImageEdit = true;
+            try{ window.__omranLastImageReq = { kind:'edit', url:'/api/maha-image', body: __lsBody }; }catch(e){ __swallow(e, 'img:save-req'); }
+            renderAll(); saveState(); return;
+          }
+        }catch(e){
+          if(e && e.name === 'AbortError') return;
+          __swallow(e, 'img:letter-swap'); /* يسقط بهدوء لمسار القناع الاحتياطي */
+        }
         try{
           chatPhase('🔎', lang === 'ar' ? 'جاري قراءة الكتابة على الصورة…' : 'Reading the text on the image…', thinkingDiv);
-          const __tsShr = await omranShrinkForEdit(__b64, __mime);
+          const __tsShr = await omranShrinkForEdit(__b64, __mime, 1280); /* مع قناع: صورتان في الطلب */
           const __tsRes = await fetch('/api/tools?action=text-swap', {
             method:'POST', headers:{ 'Content-Type':'application/json' }, signal: genAbortController.signal,
             body: JSON.stringify({ imageBase64:__tsShr.b64, mimeType:__tsShr.mime, request:String(text || '').slice(0, 400), token:authGet('aiapp_auth_token'), guestId:window.getGuestId() })
@@ -3741,14 +3778,14 @@ function __showImgLoading(el, ar, en){
       if(imageAttachments.length > 1){
         __extraImgs = [];
         for(const __xa of imageAttachments.slice(0, -1)){
-          const __xs = await omranShrinkForEdit((__xa.dataUrl || '').split(',')[1] || '', __xa.mime || 'image/png');
+          const __xs = await omranShrinkForEdit((__xa.dataUrl || '').split(',')[1] || '', __xa.mime || 'image/png', 1280);
           __extraImgs.push({ data: __xs.b64, mime: __xs.mime });
         }
       }
       const __res = await fetch('/api/maha-image', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         signal: genAbortController.signal,
-        body: JSON.stringify({ prompt: __editPrompt, editImageBase64: __editB64, editMimeType: __editMime, sceneUpgrade: __IMG_UPGRADE || undefined, extraImages: __extraImgs, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+        body: JSON.stringify({ prompt: __editPrompt, userText: String(text || '').slice(0, 600) /* v-nano-pro-edit: كلمات المستخدم نفسها للنيّة */, editImageBase64: __editB64, editMimeType: __editMime, sceneUpgrade: __IMG_UPGRADE || undefined, extraImages: __extraImgs, history: (__continuesEditChain && Array.isArray(cur.imageTurns) && cur.imageTurns.length) ? cur.imageTurns.slice(-3) : undefined /* v-image-memory */, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
       });
       const __data = await __res.json().catch(() => ({}));
       const __ok = __res.ok && !!__data.imageBase64;
@@ -3759,14 +3796,22 @@ function __showImgLoading(el, ar, en){
         try{ __editUrl = await omranSharpenImage(__editUrl); }catch(e){ __swallow(e, 'img:sharpen-edit'); }
         cur.messages.push({ role: 'assistant', content: (typeof __data.caption === 'string' ? __data.caption : '') /* v-nano-chat: جملة قصيرة مع الصورة */, attachments: [{ name: 'edited.png', isImage: true, mime: (__editUrl.slice(5).split(';')[0] || __outMime), dataUrl: __editUrl }] });
         // v-img-engine-tag: بصمة المحرك في شريط الحالة — يحسم «أي محرك نفّذ» فورًا.
-        try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (__data.engine === 'openai' ? 'gpt-image' : 'نانو بنانا')); }catch(e){ __swallow(e, 'ui:img-engine'); }
+        try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (/openai/.test(String(__data.engine || '')) ? 'gpt-image' : (/pro/.test(String(__data.engine || '')) ? 'نانو بنانا برو' : 'نانو بنانا'))); }catch(e){ __swallow(e, 'ui:img-engine'); }
         cur.lastEditedImage = { b64: __data.imageBase64, mime: __outMime };
+        /* v-image-memory: نحفظ الدور (كلمات المستخدم + مصغّر النتيجة 768px، ومصغّر المصدر الأصلي في أول دور) ليراه النموذج في الدور القادم */
+        try{
+          if(!__continuesEditChain || !Array.isArray(cur.imageTurns)) cur.imageTurns = [];
+          const __tRes = await omranShrinkForEdit(__data.imageBase64, __outMime, 768, true);
+          const __turn = { text: String(text || '').slice(0, 400), resultBase64: __tRes.b64, resultMime: __tRes.mime };
+          if(!cur.imageTurns.length){ const __tSrc = await omranShrinkForEdit(__pendingImageEditSource.b64, __pendingImageEditSource.mime, 768, true); __turn.sourceBase64 = __tSrc.b64; __turn.sourceMime = __tSrc.mime; }
+          cur.imageTurns = cur.imageTurns.concat([__turn]).slice(-4);
+        }catch(e){ __swallow(e, 'img:memory-turn'); }
         cur.imageEditSource = __pendingImageEditSource;
         cur.imageEditInstructions = __pendingImageEditInstructions;
         cur.imageTextLayer = null;
         cur.lastMsgWasImageEdit = true;
         // 🔄 نحفظ الطلب كما هو ليعيده زر «نسخة ثانية» بتنويعة جديدة
-        try{ window.__omranLastImageReq = { kind:'edit', url:'/api/maha-image', body: { prompt: __editPrompt, editImageBase64: __editB64, editMimeType: __editMime, sceneUpgrade: __IMG_UPGRADE || undefined, extraImages: __extraImgs } }; }catch(e){ __swallow(e, 'img:save-req'); }
+        try{ window.__omranLastImageReq = { kind:'edit', url:'/api/maha-image', body: { prompt: __editPrompt, userText: String(text || '').slice(0, 600), editImageBase64: __editB64, editMimeType: __editMime, sceneUpgrade: __IMG_UPGRADE || undefined, extraImages: __extraImgs } }; }catch(e){ __swallow(e, 'img:save-req'); }
       } else {
         cur.messages.push({ role: 'assistant', content: imgErrFriendly(__data && __data.error, lang === 'ar') || ((lang === 'ar' ? '⚠️ تعذر تعديل الصورة: ' : '⚠️ Image edit failed: ') + ((__data && __data.error) || ('HTTP ' + (__data.__status || '?')))) });
         cur.lastMsgWasImageEdit = true;
@@ -3787,12 +3832,27 @@ function __showImgLoading(el, ar, en){
     // ✅ v303: «نعم/ابدأ/يلا/تمام» بعد رد معماري = تنفيذ فوري (مخطط + واجهة) بلا أسئلة.
     const __archAffirmRe = /^\s*(نعم|أجل|اجل|ايه|إيه|اي نعم|اوك|أوك|اوكي|أوكي|تمام|زين|طيب|يلا|يالله|ابدا|ابدأ|أبدأ|ابدي|كمل|أكمل|اكمل|نفذ|نفّذ|سو|سوها|yes|ok|okay|go|start|sure|continue)[\s.!،؟]*$/i;
     // ✅ v303: لو الرد الأخير من المساعد كان مواصفات معمارية نصية (بدون صور)، نعتبره سياق معماري حتى لو lastArchText فاضي.
+    /* ✅ v-arch-topic (لقطة المالك ٦ سبتمبر: «نعم» بعد ردّ عن شاحن BYD رسم مخطط كراج وواجهة، وكُتب نصّ الردّ كله داخل صورة
+       الواجهة): «تثبيت» كانت تُقرأ «بيت» و«مواصفات الشاحن» كانت تُعدّ سياقًا معماريًا لأن JS بلا حدود كلمات عربية. الآن:
+       كلمات البناء بحدود صريحة، و«نعم» بعد ردّ ينتهي بسؤال عن موضوع آخر جوابٌ لذلك السؤال لا موافقة على المخطط. */
+    const __archStrongRe = /(?:^|[\s،,.:؛()«»"'\-])(?:ال|لل|بال|وال|و)?(?:فيلا|فله|فلة|منزل|بيت|بيوت|شقة|شقه|عمارة|ملحق|استراحة|مخطط|مخططات|واجهة(?!\s*(?:المستخدم|مستخدم|برمجي))|واجهات|توزيع\s*داخلي|دور\s?أرضي|الشكل\s*الخارجي|م²|متر\s*مربع)(?:ي|ك|نا|كم|ها|ه)?(?=$|[\s،,.:؛()«»"'\-!؟?])|\b(?:floor\s?plan|facade|exterior|villa)\b/i;
+    const __lastAskedOffTopic = (m) => {
+      const c = String((m && m.content) || '').trim();
+      const q = Math.max(c.lastIndexOf('؟'), c.lastIndexOf('?'));
+      if(q < 0 || q < c.length - 200) return false;
+      const st = Math.max(c.lastIndexOf('\n', q - 1), c.lastIndexOf('.', q - 1), c.lastIndexOf('!', q - 1), c.lastIndexOf('؟', q - 1), c.lastIndexOf('?', q - 1)) + 1;
+      const sent = c.slice(st, q);
+      return !__archStrongRe.test(sent) && !/(?:أبدأ|ابدأ|ابدا|نبدأ|أنفذ|انفذ|أرسم|ارسم|أسوي|اسوي|نكمل|أكمل|اكمل|أصمم|اصمم|نصمم|أكمّل|start|proceed|begin|go\s*ahead|draw)/i.test(sent);
+    };
+    let __lastAsst = null;
+    try{ __lastAsst = [...cur.messages].reverse().find(m => m && m.role === 'assistant' && typeof m.content === 'string') || null; }catch(e){ __swallow(e, 'arch:last-asst'); }
     let __archCtxText = cur.lastArchText || '';
     if(!__archCtxText){
       try{
-        const __la = [...cur.messages].reverse().find(m => m && m.role === 'assistant' && typeof m.content === 'string');
-        if(__la && __la.content.length > 250 && /(فيلا|فله|فلة|منزل|بيت|مخطط|واجهة(?!\s*(?:المستخدم|مستخدم|برمجي))|غرف(?:ة)?\s*نوم|م²|دور\s?أرضي|ماستر|floor\s?plan|facade)/i.test(__la.content) && !/```/.test(__la.content) && !/(function|class |const |import |namespace|#include|برمج|كود|code|script|API|SDK|C#|C\+\+|Python|Java(?:Script)?)/i.test(__la.content)){
-          __archCtxText = __la.content.replace(/\s+/g, ' ').slice(0, 1500);
+        const __la = __lastAsst;
+        if(__la && __la.content.length > 250 && __archStrongRe.test(__la.content) && !/```/.test(__la.content) && !/(function|class |const |import |namespace|#include|برمج|كود|code|script|API|SDK|C#|C\+\+|Python|Java(?:Script)?)/i.test(__la.content)){
+          /* نصّ وصفي بلا ماركداون: الجداول والعناوين كانت تُرسم حرفيًا داخل صورة الواجهة */
+          __archCtxText = __la.content.replace(/[#*|_`>]+|-{3,}/g, ' ').replace(/\s+/g, ' ').slice(0, 1500);
         }
       }catch(e){ __swallow(e, "misc:app-09-attach#18"); }
     }
@@ -3800,14 +3860,14 @@ function __showImgLoading(el, ar, en){
     // «نعم» بعد رد عن فنادق/مواضيع ثانية ممنوع يرجّع تصميم فيلا قديم من lastArchText.
     if(__archCtxText){
       try{
-        const __laChk = [...cur.messages].reverse().find(m => m && m.role === 'assistant' && typeof m.content === 'string');
-        if(!__laChk || !/(مخطط|واجهة(?!\s*(?:المستخدم|مستخدم|برمجي))|م²|متر مربع|دور\s?أرضي|ماستر|مواصفات|توزيع داخلي|الشكل الخارجي|floor\s?plan|facade|exterior)/i.test(__laChk.content) || /(function|class |const |import |namespace|#include|برمج|كود|code|script|API|SDK|C#|C\+\+|Python|Java(?:Script)?)/i.test(__laChk.content)){
+        const __laChk = __lastAsst;
+        if(!__laChk || !__archStrongRe.test(__laChk.content) || /(function|class |const |import |namespace|#include|برمج|كود|code|script|API|SDK|C#|C\+\+|Python|Java(?:Script)?)/i.test(__laChk.content)){
           __archCtxText = '';
           cur.lastArchText = '';
         }
       }catch(e){ __swallow(e, "misc:app-09-attach#19"); }
     }
-    const __archAffirm = !!(__archCtxText && text && __archAffirmRe.test(text));
+    const __archAffirm = !!(__archCtxText && text && __archAffirmRe.test(text) && !__lastAskedOffTopic(__lastAsst));
     const __archFollowUp = !!(__archCtxText && text && !__srcImg && !__followUp &&
        !__codeWordRe.test(text) && !__designDocRe.test(text) && !__archExcludeRe.test(text) &&
        (__archAffirm || (text.length < 120 && __archFollowRe.test(text))));
@@ -3864,7 +3924,7 @@ function __showImgLoading(el, ar, en){
         }
         const __extImg = (__archFollowUp && !__archAffirm && !/واجهة|الواجهة|خارجي|الشكل|facade|exterior/i.test(text)) ? null : await __archGen(
           lang === 'ar' ? '🏠 جاري توليد الواجهة الخارجية…' : '🏠 Generating exterior facade…',
-          'Photorealistic exterior architectural photograph of the finished building.' + __floorRule + __poolRule + __garageRule + ' Request: "' + __archText + '". STRICT CONSISTENCY REQUIREMENT: this exterior photo must depict the exact same building described in the request and its 2D floor plan — same number of floors, same entrances (including a separate majlis/guest entrance if mentioned), same garage/carport, swimming pool and outdoor kitchen only if mentioned, same facade materials and window sizes as specified. Do NOT invent floors, wings, or elements not in the request. Modern UAE/Gulf villa facade, sand-tone and stone finishes with dark window frames, covered entrance, landscaped front yard, clear daytime sky, ultra realistic professional real-estate photo, no text, no watermark.');
+          'Photorealistic exterior architectural photograph of the finished building.' + __floorRule + __poolRule + __garageRule + ' Request (a written description only — never print, write or render any of its words, headings, tables or numbers as text inside the photo; the photo must contain no text at all): "' + __archText + '". STRICT CONSISTENCY REQUIREMENT: this exterior photo must depict the exact same building described in the request and its 2D floor plan — same number of floors, same entrances (including a separate majlis/guest entrance if mentioned), same garage/carport, swimming pool and outdoor kitchen only if mentioned, same facade materials and window sizes as specified. Do NOT invent floors, wings, or elements not in the request. Modern UAE/Gulf villa facade, sand-tone and stone finishes with dark window frames, covered entrance, landscaped front yard, clear daytime sky, ultra realistic professional real-estate photo, no text, no watermark.');
         if(__extImg){
           const __em = __extImg.mimeType || 'image/png';
           cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? '🏠 الشكل الخارجي:' : '🏠 Exterior view:'), attachments: [{ name: 'exterior.png', isImage: true, mime: __em, dataUrl: 'data:' + __em + ';base64,' + __extImg.imageBase64 }] });
@@ -5173,7 +5233,10 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
           return (sp && (sp.messages || []).length > (ip.messages || []).length) ? sp : ip;
         }).concat(extra);
         window.__usingSlimProjects = false;
+        /* v-image-vault: صور المشروع المفتوح تُستعاد من المخزن قبل أول رسم؛ الباقي عند عرضه؛ وكنس اليتيمة بعد الإقلاع */
+        try{ await window.__hydrateProjectImages(state.projects.find(q => q.id === state.currentId)); }catch(e){ __swallow(e, 'vault:boot'); }
         renderAll();
+        try{ setTimeout(() => { window.__vaultSweep && window.__vaultSweep(); }, 15000); }catch(e){ __swallow(e, 'vault:sweep'); }
       }
       try{ if(window.__writeChatsMirror) window.__writeChatsMirror(); }catch(e){ __swallow(e, 'mirror:app-09#fresh'); }
     }

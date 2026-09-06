@@ -140,6 +140,19 @@
           if (Object.keys(window.__genImages).length >= 4) {
             return 'بلغتَ حدّ أربع صور في هذا الردّ. أكمل الصفحة بخلفيات CSS بدل صور إضافية.';
           }
+          /* v-nano-pro-edit (تتبّع المالك: صورة مرفقة + «أقوى» → النموذج اختار generate_image فرسم مسجدًا آخر
+             بلا علاقة): إن كانت كلمات المستخدم نفسها طلبًا إبداعيًا على صورته المرفقة في هذا الدور، فالصورة
+             الجديدة تُبنى على المصدر (تعديل) لا من الوصف وحده. */
+          var gUserText = String((args && args.userText) || window.__chatLastUserText || '').replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600);
+          var gRef = window.__chatVideoReference;
+          var gRefB64 = gRef && gRef.dataUrl ? String(gRef.dataUrl).split(',')[1] : '';
+          var gNewImage = /(?:صور[ةه]|كرت|بطاق[ةه]|تصميم|لوجو|شعار|بوستر|بنر|غلاف)\s*(?:جديد[ةه]?|ثاني[ةه]?|أخرى|اخرى|غير)|(?:^|[\s،,])(?:ارسم|أرسم|اصنع|انشئ|أنشئ|صمم|صمّم|ولّد|ولد|draw|create|generate|design)\s*(?:لي\s*)?(?:صور[ةه]|كرت|بطاق[ةه]|لوجو|شعار|بوستر|بنر|image|picture|card|logo|poster|banner)|\b(?:new|another|different)\s+(?:image|picture|photo|card|design|logo|poster|banner)\b/i.test(gUserText);
+          /* الحواجز نفسها التي تطبّقها بوابة المحادثة: لا سؤال، لا كود/بناء، لا قراءة/مواصفات/وصفة/دعم — وأول صورة في الردّ فقط،
+             كي لا تُختطف صور الصفحة كلها في طلب بناء يذكر صفة جودة مع شعار مرفق. */
+          var gNotEdit = /^\s*(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|لماذا|ماذا|why|how|what|where|when|who|which)(?=$|[\s،,])|(?:كود|تطبيق|موقع|صفحة|زر\s|لعبة|سكربت|بوت|code|app|website|page|button|game|script|bot|html|css)|(?:ترجم|اقرأ|اقري|وصف|اوصف|حلل|حلّل|قارن|مواصفات|سعر|بكم|موديل|وصفة|وصفه|طبق|طبخ|مشكل|خطأ|ما\s*يشتغل|translate|read|describe|analy|compare|specs|price|recipe|dish|cook|problem|error|issue)/i.test(gUserText);
+          var gFirst = Object.keys(window.__genImages).length === 0;
+          var gCreative = !!(gFirst && gRefB64 && gUserText && gUserText.length <= 120 && !gNewImage && !gNotEdit && typeof __IMG_CREATIVE_RE !== 'undefined' && __IMG_CREATIVE_RE.test(gUserText) && !/[؟?]\s*$/.test(gUserText));
+          if (gCreative) return await window.omranAgentTools.run('edit_image', { instruction: prompt, userText: gUserText });
           // v-maha-image-rescue: زحام عابر (retryable) يستحق محاولة ثانية بعد
           // مهلة قصيرة قبل إعلان الفشل — المستخدم لا يعيد طلبه بنفسه.
           var resp = null, j = null;
@@ -149,6 +162,7 @@
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 prompt: prompt,
+                userText: gUserText,
                 token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
                 guestId: window.getGuestId ? window.getGuestId() : '',
               }),
@@ -165,6 +179,9 @@
           }
           var tok = '__IMG_' + (Object.keys(window.__genImages).length + 1) + '__';
           window.__genImages[tok] = 'data:' + (j.mimeType || 'image/png') + ';base64,' + j.imageBase64;
+          /* v-tool-chain (لقطة المالك «غير الشخصيات الي 3d» بعد صورة من الأدوات → سؤال نصي): صورة الأدوات لم تكن تدخل سلسلة
+             التعديل، فالرسالة التالية تذهب للنموذج النصي. الآن هي آخر صورة وسلسلة جديدة، فتعمل عليها «3d/أقوى/غيّر…» مباشرة. */
+          try { var gcur = (typeof getCurrent === 'function') ? getCurrent() : null; if (gcur) { gcur.lastEditedImage = { b64: j.imageBase64, mime: j.mimeType || 'image/png' }; gcur.lastMsgWasImageEdit = true; gcur.imageTurns = []; } } catch (e) { /* guard-ok — السلسلة اختيارية */ }
           // v-img-engine-tag: اسم المحرك يظهر في سطر الأثر — يحسم «أي محرك نفّذ» فورًا.
           return '✅ رُسمت الصورة (engine: ' + (j.engine || 'gemini') + '). ضع هذا الرمز حرفيًّا في src بلا أي إضافة: ' + tok;
         }
@@ -175,7 +192,19 @@
           if (!instr) return 'تعليمة التعديل فارغة — لم يُعدَّل شيء.';
           var ref = window.__chatVideoReference;
           var srcB64 = ref && ref.dataUrl ? String(ref.dataUrl).split(',')[1] : '';
+          /* v-nano-pro-edit: بلا مرفق في هذا الدور نعود لآخر صورة في المحادثة (المرفوعة أو المولّدة)
+             بدل الاعتذار — فكان النموذج يهرب إلى generate_image ويرسم صورة جديدة بلا علاقة بالمصدر. */
+          if (!srcB64) {
+            try {
+              var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+              if (cur && cur.lastEditedImage && cur.lastEditedImage.b64) { srcB64 = cur.lastEditedImage.b64; ref = { mime: cur.lastEditedImage.mime || 'image/png' }; }
+            } catch (e) { /* guard-ok — المحادثة الحالية اختيارية هنا */ }
+          }
           if (!srcB64) return 'لا توجد صورة مرفقة في هذه الرسالة لتعديلها — اطلب من المستخدم إرفاقها.';
+          /* v-image-memory: متابعة على آخر نتيجة = نرسل أدوار السلسلة السابقة كسياق */
+          var tcur = null; try { tcur = (typeof getCurrent === 'function') ? getCurrent() : null; } catch (e) { tcur = null; }
+          var tFollow = !!(tcur && tcur.lastEditedImage && tcur.lastEditedImage.b64 === srcB64);
+          var tHist = (tFollow && Array.isArray(tcur.imageTurns) && tcur.imageTurns.length) ? tcur.imageTurns.slice(-3) : undefined;
           window.__genImages = window.__genImages || {};
           var er = null, ej = null;
           try {
@@ -184,8 +213,10 @@
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 prompt: instr,
+                userText: String((args && args.userText) || window.__chatLastUserText || '').replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600),
                 editImageBase64: srcB64,
                 editMimeType: ref.mime || 'image/png',
+                history: tHist,
                 token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
                 guestId: window.getGuestId ? window.getGuestId() : '',
               }),
@@ -197,6 +228,18 @@
           }
           var etok = '__IMG_' + (Object.keys(window.__genImages).length + 1) + '__';
           window.__genImages[etok] = 'data:' + (ej.mimeType || 'image/png') + ';base64,' + ej.imageBase64;
+          /* v-tool-chain: نتيجة أداة التعديل تصير آخر صورة في السلسلة كي تعمل عليها الرسالة التالية مباشرة */
+          try { if (tcur) { tcur.lastEditedImage = { b64: ej.imageBase64, mime: ej.mimeType || 'image/png' }; tcur.lastMsgWasImageEdit = true; } } catch (e) { /* guard-ok */ }
+          /* v-image-memory: نسجّل الدور هنا أيضًا (كلمات المستخدم + مصغّر النتيجة) */
+          try {
+            if (tcur && typeof omranShrinkForEdit === 'function') {
+              if (!tFollow || !Array.isArray(tcur.imageTurns)) tcur.imageTurns = [];
+              var tRes = await omranShrinkForEdit(ej.imageBase64, ej.mimeType || 'image/png', 768, true);
+              var tTurn = { text: String((args && args.userText) || window.__chatLastUserText || instr || '').slice(0, 400), resultBase64: tRes.b64, resultMime: tRes.mime };
+              if (!tcur.imageTurns.length) { var tSrc = await omranShrinkForEdit(srcB64, ref.mime || 'image/png', 768, true); tTurn.sourceBase64 = tSrc.b64; tTurn.sourceMime = tSrc.mime; }
+              tcur.imageTurns = tcur.imageTurns.concat([tTurn]).slice(-4);
+            }
+          } catch (e) { /* guard-ok — الذاكرة اختيارية */ }
           return '✅ عُدّلت الصورة (engine: ' + (ej.engine || 'gemini') + '). ضع هذا الرمز وحده في سطر داخل ردّك: ' + etok;
         }
         // 📍 موقع المستخدم الحالي — يُطلب إذن المتصفح هنا فقط، عند استدعاء

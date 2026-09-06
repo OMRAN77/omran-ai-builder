@@ -2,7 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { buildGenerationPrompt, buildEditPrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange, shouldUseRawImagePrompt, stripRawImagePrefix } = require('../api/_lib/image-prompt');
+const { buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, buildRestylePrompt, taskHeader, creativeRawEnabled, rawCreativePrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange, shouldUseRawImagePrompt, stripRawImagePrefix } = require('../api/_lib/image-prompt');
 const { assessEditVerdict, publicGuardError } = require('../api/_lib/image-edit-guard');
 
 test('engineered image prompts are the default and raw mode is explicit', () => {
@@ -156,4 +156,52 @@ test('specialized image routes do not expose provider errors to the user', () =>
     assert.doesNotMatch(source, /json\(\{ error: 'Server is missing GEMINI_API_KEY'/);
     assert.doesNotMatch(source, /json\(\{ error: \(frameData && frameData\.error/);
   }
+});
+
+/* v-raw-words — كلمات المستخدم الحرفية أولًا في المسارات الإبداعية، وإعادة الصياغة سطر ثانٍ؛ IMAGE_RAW_CREATIVE يرسلها وحدها */
+test('creative prompts lead with the user\'s own words; the English rewrite is secondary', () => {
+  for (const b of [buildElevatePrompt, buildReimaginePrompt, buildRestylePrompt]) {
+    const p = b('Make it stronger', 'أقوى');
+    assert.match(p, /^TASK[^\n]*\(the user's own words — follow them as written\): "أقوى"/m, b.name);
+    assert.match(p, /Assistant reading of the task \(secondary; the user's words win\): "Make it stronger"/, b.name);
+    assert.ok(p.indexOf('"أقوى"') < p.indexOf('"Make it stronger"'), b.name + ': كلمات المستخدم قبل إعادة الصياغة');
+  }
+  assert.deepEqual(taskHeader('أقوى', 'أقوى'), ['TASK: "أقوى"'], 'الكلمات نفسها = سطر واحد');
+  assert.deepEqual(taskHeader('أقوى', ''), ['TASK: "أقوى"']);
+  assert.match(buildRestylePrompt('3d', '3d'), /^TASK \(style transformation\): "3d"/m);
+  const raw = rawCreativePrompt('Make it stronger', 'أقوى');
+  assert.ok(raw.startsWith('أقوى\n'), 'الخام يبدأ بكلمات المستخدم');
+  assert.ok(!/TASK|Rules:/.test(raw), 'الخام بلا قوائم قواعد');
+  assert.equal(creativeRawEnabled({ IMAGE_RAW_CREATIVE: 'on' }), true);
+  assert.equal(creativeRawEnabled({ IMAGE_RAW_CREATIVE: 'off' }), false);
+  assert.equal(creativeRawEnabled({}), false);
+});
+
+/* v-reimagine-design — «عطني فكرة أقوى» = تصميم جديد للموضوع نفسه، لا المصدر مع لصقات فوتوشوب */
+test('reimagine prompt asks for a new concept of the same subject, not the source with overlays', () => {
+  const p = buildReimaginePrompt('عطني فكرة أقوى من هذي');
+  assert.match(p, /TASK: "عطني فكرة أقوى من هذي"/);
+  assert.match(p, /the BRIEF, not the template/);
+  assert.match(p, /Keep: the subject\(s\), the message and purpose, any real person recognizably the same person/);
+  assert.match(p, /Reinvent everything else: composition and layout/);
+  assert.match(p, /a Photoshop overlay, not a new concept/);
+  assert.match(p, /Match the source medium/);
+  assert.match(p, /Never write the instruction itself into the image/);
+});
+
+/* v-nano-pro-edit — «أقوى» = الفكرة نفسها مرفوعة بإثراء ينتمي للموضوع، لا صورة فوتوغرافية باهتة */
+test('elevate prompt keeps the same idea but demands thematic enrichment instead of a plain photo', () => {
+  const p = buildElevatePrompt('أقوى');
+  assert.match(p, /TASK: "أقوى"/);
+  assert.match(p, /keep the main subject, the setting, the message and the purpose/);
+  assert.match(p, /this is a redesign of the same idea, not the same picture with more glow/);
+  assert.match(p, /At a glance the result must look clearly different and clearly better/);
+  assert.match(p, /A subtle polish is a FAILURE/);
+  assert.match(p, /symbolic motifs, ornamental patterns/);
+  assert.match(p, /decorative calligraphy or lettering/);
+  assert.match(p, /Arabic in correct right-to-left joined script/);
+  assert.match(p, /Never add unrelated objects, random faces, gadgets, jewels, wires or gimmicks/);
+  assert.match(p, /a real photograph of a place or person stays a believable photograph/);
+  assert.doesNotMatch(p, /realistic materials and textures/);
+  assert.doesNotMatch(p, /Do NOT add random unrelated elements \(extra faces, jewels, wires, gadgets, effects\)/);
 });

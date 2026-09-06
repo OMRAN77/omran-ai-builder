@@ -211,21 +211,118 @@ function isRemoveTextRequest(text){
     || /(?:احذف|امسح|شيل|ازل|أزل|نظّف|نظف|اخفِ|اخفي)\s*(?:ال)?(?:أسماء|اسماء|اسم|كتابة|كتابه|النص|نص|نصوص|كلام|حروف|أرقام|ارقام|توقيع|علامة\s*مائية|لوجو|شعار|واتر\s*مارك)/.test(t)
     || /\b(?:remove|erase|delete|clear|without|no)\b[^\n]{0,20}\b(?:names?|text|writing|words?|letters?|numbers?|caption|watermark|logo|signature|labels?)\b/i.test(t);
 }
-/* v-elevate (المالك: «أقوى = نفس الفكرة مرفوعة، لا فكرة جديدة»): طلب «أفضل/أقوى
-   من هذي» يبقي الموضوع والتركيب والمعنى نفسه ويرفع الجودة والإتقان بقوة — لا
-   يخترع مشهدًا جديدًا (كان يحوّل كرت «أنماط الصور» إلى وجه مرصّع بلا علاقة). */
-function buildElevatePrompt(userPrompt){
+/* v-raw-words (خطة المالك ٦ سبتمبر، البند ٢: «إرسال كلماتي خامًا في المسارات الإبداعية»): في مسار الأدوات كان نموذج الصور
+   يرى إعادة الصياغة الإنجليزية فقط، وكلمات المستخدم تُقرأ للنيّة ثم تُرمى. الآن كلماته الحرفية هي سطر المهمة الأول في
+   الترقية والفكرة الجديدة وتحويل الأسلوب، وإعادة الصياغة سطر ثانٍ يخدمها لا يحلّ محلّها. */
+function taskHeader(prompt, userWords, label){
+  const words = String(userWords || '').trim().slice(0, 600);
+  const tag = label ? ' (' + label + ')' : '';
+  if(!words || words === prompt) return ['TASK' + tag + ': "' + prompt + '"'];
+  return ['TASK' + tag + ' (the user\'s own words — follow them as written): "' + words + '"', 'Assistant reading of the task (secondary; the user\'s words win): "' + prompt + '"'];
+}
+/* IMAGE_RAW_CREATIVE=on: المسارات الإبداعية ترسل كلمات المستخدم وحدها مع سطر جودة واحد — كتطبيق Gemini حرفيًا (للمقارنة A/B) */
+function creativeRawEnabled(env){
+  return /^(?:1|on|true|yes)$/i.test(String((env && env.IMAGE_RAW_CREATIVE) || '').trim());
+}
+function rawCreativePrompt(prompt, userWords){
+  const words = String(userWords || '').trim() || cleanImagePrompt(prompt);
+  return words + '\n\nHighest quality, magazine-cover finish. Keep any real person recognizably the same person. Never write these instructions inside the image.';
+}
+/* v-person-swap (لقطة المالك ٦ سبتمبر «غيّر أشكال الأشخاص على الاسم الموجود تحت من غير تكرار الأشخاص»): طلب تغيير هوية
+   الأشخاص عمدًا. كلمة «الاسم» في الجملة كانت تحوّله إلى تبديل حرف («غيّر فقط الحرف المسمّى»)، ثم يرفض حارسُ الهوية النتيجة
+   لأنها غيّرت الشخص — وهو المطلوب حرفيًا. مسار خاص: برو، بلا حارس هوية، وبلا gpt-image (إخلاصه العالي يُبقي الوجوه). */
+const PERSON_WORDS = '(?:أشخاص|اشخاص|شخص|رجال|رجل|بنات|بنت|نساء|امرأة|مرأة|أولاد|اولاد|أطفال|اطفال|ناس|موديل|موديلات|شخصيات|شخصي[ةه]|people|persons?|faces?|men|women|models?|characters?)';
+const PERSON_SWAP_RE = new RegExp([
+  '(?:^|[\\s،,])(?:غيّ?ر|غيري|بدّ?ل|بدلي|استبدل|خل|خلي|خلّي|اجعل|سوّ?ي?)\\s*(?:لي\\s*)?(?:(?:أشكال|اشكال|شكل|وجوه|وجه|ملامح|هوي[ةه]|صور[ةه]?|صور)\\s*)?(?:ال)?' + PERSON_WORDS + '(?=$|[\\s،,.!؟?])',
+  '(?:^|[\\s،,])(?:ال)?(?:أشخاص|اشخاص|وجوه|شخصيات|رجال|بنات|نساء)\\s*(?:مختلف|مختلفين|مختلفة|مختلفه|ثانيين|ثانية|ثانيه|جدد|جديدة|جديده|غير)(?=$|[\\s،,.!؟?])',
+  '(?:بدون|من\\s*غير|بلا)\\s*تكرار\\s*(?:ال)?' + PERSON_WORDS,
+  '\\b(?:change|replace|swap|use)\\s+(?:the\\s+|all\\s+)?(?:different\\s+|new\\s+)?(?:faces?|people|persons?|models?|characters?|men|women)\\b',
+  '\\b(?:different|new|unique)\\s+(?:faces?|people|persons?|models?)\\b',
+  /* «غيّر على اسم الشخصية» / «غيّرها على حسب الاسم» / «طابق الشخص مع الاسم» / «غيّر الصور حسب الأسماء» = الشخص يطابق الاسم تحته */
+  '(?:^|[\\s،,])(?:غيّ?ر|غيري|بدّ?ل|بدلي|عدّ?ل|سوّ?ي?|خلّ?ي?|اجعل|طابق|طابقي)(?:ها|هم|ه|ي)?\\s*(?:(?:ال)?(?:صور[ةه]?|شخصي[ةه]|شخصيات|شخص|أشخاص|اشخاص|وجوه|أشكال|اشكال)\\s*)?(?:على\\s*حسب|على|حسب|بحسب|وفق|طبق|مثل|زي|بناء\\s*على|مع)\\s*(?:ال)?(?:اسم|أسماء|اسماء|اسمه|اسمها)',
+  '(?:يناسب|تناسب|يطابق|تطابق|يوافق|توافق)\\s*(?:ال)?(?:اسم|أسماء|اسماء)',
+  '\\b(?:match(?:es|ing)?|according\\s+to|based\\s+on)\\s+(?:the\\s+)?names?\\b',
+].join('|'), 'i');
+function isPersonSwapRequest(text){ return PERSON_SWAP_RE.test(String(text || '')); }
+function buildPersonSwapPrompt(userPrompt, userWords){
   const prompt = cleanImagePrompt(userPrompt);
   return [
-    'TASK: "' + prompt + '"',
+    ...taskHeader(prompt, userWords),
     '',
-    'This is an ELEVATED, stronger version of the attached SOURCE image. Keep the SAME idea: the same main subject, the same overall composition, the same purpose and meaning — the result must be instantly recognizable as an improved version of THIS exact image, NOT a different picture and NOT a new concept. Rules:',
-    '1. Preserve what the image is ABOUT: the same main object/person/scene/product, the same layout and framing intent. Do NOT replace the subject or invent an unrelated artistic concept.',
-    '2. Dramatically raise quality and impact: sharper detail, richer realistic materials and textures, professional cinematic lighting with real depth, refined harmonious colours, cleaner premium composition, higher perceived resolution — a top-tier professional rendition of the SAME thing.',
-    '3. You may tastefully refine styling, background polish, lighting and finish, but stay coherent with the original idea. Do NOT add random unrelated elements (extra faces, jewels, wires, gadgets, effects) that were not in or implied by the source.',
-    '4. Keep any real person recognizably the same person; keep existing text correct.',
-    '5. Never return the image essentially unchanged, and never drift into a completely different scene. Goal: the SAME image, clearly stronger, richer and more beautiful.',
+    'PEOPLE REPLACEMENT on the attached source image. The user explicitly wants the people changed, so their identity must NOT be preserved:',
+    '1. Replace each person with a NEW, distinct, realistic person as the request describes. If a name, caption or label sits under or next to a person, that person must plausibly match that name (gender, age and cultural cues). No two people may look alike — different faces, hair, skin tones, builds and expressions; never repeat the same face twice.',
+    '2. Keep everything else exactly as in the source: layout, frames, positions, poses, outfits and dress code, background, lighting, colours, and every piece of text and every label character-for-character.',
+    '3. Never write the instruction itself into the image. Return only one finished image.'
+  ].join('\n');
+}
+/* v-broad-edit (لقطة المالك ٦ سبتمبر «غير الملابس ورتب الصور خلها فقط صور» على لقطة شاشة مليئة بالنصوص): طلب مركّب يعيد
+   الترتيب ويحذف الكتابة كلها ويغيّر اللبس. القالب الموضعي («لا تغيّر إلا ما طُلب واحفظ كل بكسل») يناقض إعادة الترتيب،
+   ومسار النصّ الكثيف يرسله إلى gpt-image المحافظ فتخرج الواجهة نفسها بحروف مشوّهة. مسار خاص: برو، بلا حارس، كل الأوامر معًا. */
+const BROAD_EDIT_RE = new RegExp([
+  '(?:^|[\\s،,])(?:رتّ?ب|رتبي|ترتيب|أعد\\s*ترتيب|اعد\\s*ترتيب|نظّ?م|تنظيم|وزّ?ع)(?:ها|هم|ه|ي)?(?=$|[\\s،,.!؟?])',
+  '(?:خلّ?ي?ها|اجعلها|سوّ?ي?ها|خله|خلي)\\s*(?:فقط|بس)\\s*(?:ال)?صور[ةه]?',
+  '(?:^|[\\s،,])(?:فقط|بس)\\s*(?:ال)?صور(?=$|[\\s،,.!؟?])|(?:^|[\\s،,])(?:ال)?صور\\s*(?:فقط|بس)(?=$|[\\s،,.!؟?])',
+  '(?:بدون|بلا|من\\s*غير)\\s*(?:أي\\s*)?(?:كتابة|كتابه|كلام|نص|نصوص|عناوين|تسميات|شرح|واجهة|أزرار|ازرار)',
+  '\\b(?:rearrange|reorganize|re-?layout|reorder|photos?\\s+only|pictures?\\s+only|images?\\s+only|only\\s+(?:the\\s+)?(?:photos?|pictures?|images?)|no\\s+text|without\\s+(?:any\\s+)?text)\\b',
+].join('|'), 'i');
+function isBroadEditRequest(text){ return BROAD_EDIT_RE.test(String(text || '')); }
+function buildBroadEditPrompt(userPrompt, userWords){
+  const prompt = cleanImagePrompt(userPrompt);
+  return [
+    ...taskHeader(prompt, userWords),
+    '',
+    'BROAD EDIT of the attached source image. The request may contain several instructions (for example: change the outfits, rearrange the pictures, and keep only the pictures) — apply EVERY one of them faithfully. Rules:',
+    '1. Keep the subject matter: every person stays recognizably the same person (face, skin, age) unless the request changes people; keep the same set of pictures and elements unless the request removes or adds some.',
+    '2. Rearranging is allowed and expected when asked: build a clean, balanced, professional layout (even grid, equal sizes, consistent spacing, no leftover UI chrome). Change clothes, colours, backgrounds or styles exactly as requested.',
+    '3. If the request says pictures only / no text / no labels, remove ALL text, captions, headers, badges, buttons and interface elements and rebuild the surface cleanly behind them. Otherwise keep existing text correct character-for-character — never re-typeset it into garbled letters.',
+    '4. Never write the instruction itself into the image. Output one finished, sharp image with no artifacts.'
+  ].join('\n');
+}
+/* v-remove-not-swap (لقطة المالك «شيل الاسم كامل» → «لم أستطع تحديد الحرف المطلوب»): حذف الاسم/النصّ كلّه
+   ليس تبديل حرف — كان يُحشر في مسار تبديل الحروف («غيّر فقط الحرف المسمّى») فيفشل. حذفٌ صِرف = بلا بديل بعده
+   («شيل الاسم وحط عمران» تبديل، «شيل حرف م» يبقى تبديلًا لأنه حرف لا اسم). */
+const REPLACE_CUE_RE = /(?:^|[\s،,و])(?:حط|حطي|اكتب|أكتب|بدل|بدّل|خل|خلي|استبدل|مكان[هاي]?|بدال[هاي]?)(?=$|[\s،,])|\b(?:with|to|into)\b|→|->|(?:^|\s)(?:إلى|الى)(?=\s)/i;
+function isPureTextRemoval(text){
+  const t = String(text || '');
+  return isRemoveTextRequest(t) && !REPLACE_CUE_RE.test(t);
+}
+/* v-elevate (المالك: «أقوى = نفس الفكرة مرفوعة، لا فكرة جديدة») ثم
+   v-nano-pro-edit (المالك: «الصورة المزخرفة من نانو والثانية من التطبيق — النتيجة صفر»):
+   الصياغة السابقة كانت تفرض «خامات واقعية وإضاءة سينمائية» وتمنع أي إضافة، فتخرج
+   صورةً فوتوغرافية باهتة لموضوع الكرت بدل تصميم أغنى. الآن: الفكرة نفسها والتركيب
+   نفسه، لكن مع إثراء ينتمي للموضوع (زخارف، رموز، خطّ عربي صحيح مرتبط بالمعنى، عمق
+   وإضاءة درامية) — وهو ما يفعله نانو بنانا عندما يُطلب منه «أقوى». */
+function buildElevatePrompt(userPrompt, userWords){
+  const prompt = cleanImagePrompt(userPrompt);
+  return [
+    ...taskHeader(prompt, userWords),
+    '',
+    'Create a STRONGER, RICHER, far more impressive version of the attached SOURCE image — the SAME idea taken to a much higher level, the way a top art director would "plus" it. Rules:',
+    '1. Same idea: keep the main subject, the setting, the message and the purpose, any key wording, and any real person recognizably the same. Anyone who sees the source must recognize the result as THIS idea taken much further — not a replaced subject, not an unrelated concept. The composition may be rebuilt, reframed or expanded whenever that makes the result stronger: this is a redesign of the same idea, not the same picture with more glow.',
+    '2. A subtle polish is a FAILURE. At a glance the result must look clearly different and clearly better. Go big: dramatic cinematic lighting, atmosphere (glow, haze, golden light, reflections, particles), much richer detail and textures, a stronger focal point, refined premium colour grading, real depth and dimensionality.',
+    '3. Enrich with elements that BELONG to the theme of the source: symbolic motifs, ornamental patterns, storytelling details in the background or foreground, and — where it fits the subject — elegant decorative calligraphy or lettering tied to its meaning (only correctly spelled, legible; Arabic in correct right-to-left joined script). Every added element must reinforce the same idea. Never add unrelated objects, random faces, gadgets, jewels, wires or gimmicks.',
+    '4. Match the source medium: a designed graphic, card, poster, icon or illustration becomes a richer, more elaborate design; a real photograph of a place or person stays a believable photograph with upgraded lighting, staging, materials and atmosphere.',
+    '5. Keep any real person recognizably the same person. Keep existing text correct character-for-character unless the request changes it. Never write the instruction itself into the image.',
+    '6. Finish quality: magazine-cover / app-store-hero grade, tack-sharp, coherent, no artifacts, no blur, no toy-like rendering.',
     'Return only one finished, elevated image.'
+  ].join('\n');
+}
+/* v-reimagine-design (لقطة المالك ٦ سبتمبر «عطني فكرة أقوى من هذي — شغل فوتوشوب»): «فكرة أقوى/عطني فكرة» كانت تمرّ بقالب
+   الترقية (التركيب نفسه + زخارف وخط) فتخرج كلصقة فوتوشوب. هذا القالب يطلب تصميمًا جديدًا جريئًا للموضوع نفسه كما يفعل Gemini:
+   الموضوع والرسالة والأشخاص الحقيقيون ثابتون، وكل ما عداهم (التركيب، الإطار، الخلفية، الإضاءة، الألوان، أسلوب الخط) يُعاد ابتكاره. */
+function buildReimaginePrompt(userPrompt, userWords){
+  const prompt = cleanImagePrompt(userPrompt);
+  return [
+    ...taskHeader(prompt, userWords),
+    '',
+    'The attached SOURCE image is the BRIEF, not the template. Design a NEW, far stronger concept for the SAME subject and purpose — the kind of bold alternative a top art director would pitch. Rules:',
+    '1. Keep: the subject(s), the message and purpose, any real person recognizably the same person, and any logo, brand name or key wording (spelled exactly as in the source; Arabic in correct, cleanly joined right-to-left script).',
+    '2. Reinvent everything else: composition and layout, framing and viewpoint, environment and background, lighting and atmosphere, colour palette, typography style, decorative system and storytelling details. The result must read as a different, more striking design of the same idea.',
+    '3. Returning the source layout with extra ornaments, frames, glow or a caption added on top is a FAILURE — that is a Photoshop overlay, not a new concept.',
+    '4. Match the source medium: a card, poster, icon set, app screen or illustration becomes a new design of that kind; a real photograph becomes a new photograph of the same subject.',
+    '5. Never write the instruction itself into the image, and add no text that the source did not have unless the request asks for it.',
+    '6. Quality bar: breathtaking, award-winning, magazine-cover / app-store-hero grade, tack-sharp, coherent, professional cinematic lighting, no artifacts, no toy-like rendering.',
+    'Return only one finished image.'
   ].join('\n');
 }
 function buildEditPrompt(userPrompt){
@@ -255,7 +352,20 @@ function buildEditPrompt(userPrompt){
    كان يمر بقالب التعديل الموضعي («غيّر فقط ما طُلب واحفظ كل بكسل») فيخرج
    الأسلوب خجولًا، وأحيانًا تُرسم التعليمة نفسها كعنوان داخل الصورة. هذا
    القالب يطلب إعادة رسم جريئة بالأسلوب المطلوب مع تثبيت التخطيط والنصوص. */
-function buildRestylePrompt(userPrompt){
+/* v-letter-swap (لقطة المالك: «غير حرف م حط ع» رجّعت الصورة نفسها من تطبيقنا بينما Gemini بدّل الحرف في
+   مكانه): تطبيق Gemini يرسل الصورة كاملة مع تعليمة المستخدم القصيرة إلى نانو بنانا برو — لا قناع ولا
+   ثماني قواعد. تعليمة قصيرة وحاسمة: بدّل هذا الحرف/الكلمة فقط، وكل بكسل آخر كما هو. */
+function buildLetterSwapPrompt(userPrompt){
+  const prompt = cleanImagePrompt(userPrompt);
+  return [
+    'Edit the attached image: "' + prompt + '"',
+    'Change ONLY the letter/word/number named in that request, in place. Keep every other pixel, letter, colour, font, size, position and the whole layout exactly as in the source — no redraw, no re-typesetting, no new elements.',
+    'Render the new Arabic text with correct, cleanly joined right-to-left glyphs in the same font, size, colour and position as the text it replaces. Never write the instruction itself into the image.',
+    'Return only one finished image.'
+  ].join('\n');
+}
+
+function buildRestylePrompt(userPrompt, userWords){
   const prompt = cleanImagePrompt(userPrompt);
   const p = prompt.toLowerCase();
   const style3d = /3d|ثلاثي|مجسم|مجسّم|render/.test(p);
@@ -263,7 +373,7 @@ function buildRestylePrompt(userPrompt){
     ? 'BOLD premium 3D style: chunky volumetric objects with real depth, glossy and metallic materials, strong studio key light with soft rim light, crisp cast shadows, rounded beveled cards with subtle glow — the "3D icon pack / Fluent 3D" look, striking and polished.'
     : 'Apply the requested style fully and confidently across the whole image — a clear, unmistakable transformation, not a subtle filter.';
   return [
-    'TASK (style transformation): "' + prompt + '"',
+    ...taskHeader(prompt, userWords, 'style transformation'),
     '',
     'Re-render the ENTIRE attached image in the requested style. ' + styleHint,
     'Rules:',
@@ -275,4 +385,4 @@ function buildRestylePrompt(userPrompt){
   ].join('\n');
 }
 
-module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildSceneUpgradePrompt, buildRestylePrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };
+module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, taskHeader, creativeRawEnabled, rawCreativePrompt, buildLetterSwapPrompt, isPersonSwapRequest, buildPersonSwapPrompt, isBroadEditRequest, buildBroadEditPrompt, buildSceneUpgradePrompt, buildRestylePrompt, isTextEditRequest, isRemoveTextRequest, isPureTextRemoval, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };

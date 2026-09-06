@@ -11,11 +11,24 @@ function duoEnabled() {
   return String(process.env.IMAGE_DUO || 'on').toLowerCase() !== 'off' && !!(process.env.OPENAI_API_KEY || '').trim();
 }
 
-/* opts: { apiKey, prompt, source:{b64,mime}|null, a:{b64,mime}, b:{b64,mime}, timeoutMs } → 'a' | 'b' */
+/* v-best-of (خطة المالك ٦ سبتمبر: «نسختان بالتوازي واختيار الأفضل» — الجودة قبل التكلفة): عدد المرشّحين في المسارات
+   الإبداعية، افتراضيًا 2 (ضعف تكلفة الصورة). IMAGE_BEST_OF=1 يوقفه، والحد الأقصى 3. */
+function bestOfCount(env) {
+  const raw = String((env && env.IMAGE_BEST_OF) || '').trim().toLowerCase();
+  if (!raw) return 2;
+  if (raw === 'off' || raw === 'false' || raw === 'no') return 1;
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) ? Math.min(3, Math.max(1, n)) : 2;
+}
+
+/* opts: { apiKey, prompt, source:{b64,mime}|null, a:{b64,mime}, b:{b64,mime}, creative?:bool, timeoutMs } → 'a' | 'b' */
 async function judgeBest(opts) {
   try {
     if (!opts || !opts.apiKey || !opts.a || !opts.b || !opts.a.b64 || !opts.b.b64) return 'a';
-    const rubric = opts.source
+    const rubric = opts.creative
+      ? 'You are a top art director judging two AI redesigns of the SOURCE image for this request: "' + String(opts.prompt || '').slice(0, 600) + '".\n' +
+        'Pick the candidate that (1) actually does what the request asks — the requested style, idea or change must be unmistakably applied; a candidate that ignores or waters down the request loses regardless of beauty; (2) is the most striking, rich and professionally finished — prefer the bolder, more complete design over the timid one; (3) stays faithful to the subject, purpose and any real person\'s identity and key wording of the source; (4) renders any text correctly (Arabic must be correct and readable) and has no artifacts, garbled details or instruction text written into the image.'
+      : opts.source
       ? 'You are a strict photo editor judging two AI edits of the SOURCE photo for this request: "' + String(opts.prompt || '').slice(0, 600) + '".\n' +
         'Pick the candidate that (1) keeps the same person: identical face, skin tone, body shape and identity; (2) applies exactly what was requested and nothing else; (3) keeps unrequested details (pose, background, framing) as in the source; (4) looks most realistic with correct text/letters if any. Reject candidates with distorted faces, changed identity, or artifacts.'
       : 'You are a strict art director judging two AI images generated for this request: "' + String(opts.prompt || '').slice(0, 600) + '".\n' +
@@ -28,7 +41,7 @@ async function judgeBest(opts) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: AbortSignal.timeout(opts.timeoutMs || 25000),
-      body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0, maxOutputTokens: 4 } }),
+      body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0, maxOutputTokens: 64 } }), /* v-flash-budget: سقف 4 مع التفكير الافتراضي = جواب فارغ = «A» دائمًا */
     });
     if (!r.ok) { console.warn('[image-judge] status=' + r.status); return 'a'; }
     const d = await r.json().catch(() => null);
@@ -39,4 +52,4 @@ async function judgeBest(opts) {
   } catch (e) { console.warn('[image-judge] ' + (e && e.message)); return 'a'; }
 }
 
-module.exports = { judgeBest, duoEnabled };
+module.exports = { judgeBest, duoEnabled, bestOfCount };
