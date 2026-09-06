@@ -100,8 +100,8 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.ok(attach.indexOf('textSwap: true') < attach.indexOf("fetch('/api/tools?action=text-swap'"), 'Pro-first, masked path second');
   /* تبديل الحرف بالقناع يعمل على 1280px كأي تعديل */
   assert.match(attach, /const __sc = Math\.min\(1, 1280 \/ Math\.max\(img\.naturalWidth \|\| 1, img\.naturalHeight \|\| 1\)\);/);
-  /* لقطة نصّية كثيفة + «حسّن» تبقى على gpt-image عالي الدقة — الترقية لا تُستثنى من مسار النصّ */
-  assert.match(maha, /const __textRoute = !!process\.env\.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !extras\.length && \(!isTextSwap \|\| __duoWouldRun\)\n/);
+  /* الترقية تذهب إلى برو دائمًا — لا تُختطف إلى gpt-image المحافظ حين يبدو المصدر «شاشة تطبيق» */
+  assert.match(maha, /const __textRoute = !!process\.env\.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !extras\.length && \(!isTextSwap \|\| __duoWouldRun\)\n/);
   /* قرار المزدوج مرة واحدة: مسار النصّ الكثيف لا يترك نداء gpt-image معلّقًا حين تكون الترقية مستثناة من الحكم */
   assert.match(maha, /const __duoWouldRun = duoEnabled\(\) && !prayerPlan && !pipelineActive && !isReimagine && !isRestyle && !isElevate && !extras\.length;/);
   assert.match(maha, /if \(__textRoute\) \{\n      if \(__duoWouldRun\) \{/);

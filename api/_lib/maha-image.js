@@ -455,13 +455,15 @@ module.exports = async (req, res) => {
     /* v-bold-wins (المالك: «أقوى/أفضل من هذي — يرجّع نفس الصورة»): طلبات الإبداع
        (إعادة تصوّر/تحويل أسلوب) يجب ألّا يتدخّل فيها محرّك «حفظ النص» لأنه يثبّت
        الصورة كما هي؛ نتركها لنانو ليعطي نتيجة جريئة فعلًا. */
-    /* v-nano-pro-edit: الترقية (isElevate) لا تُستثنى من مسار النصّ الكثيف — لقطة واجهة عربية + «حسّن» يجب أن تبقى
-       على gpt-image عالي الدقة الذي يحفظ الحروف؛ برو يعيد رسمها فتتكسّر. الفحص لا يجري إلا بوجود مصدر نصّي كثيف فعلًا. */
+    /* v-elevate-pro-always (لقطة المالك: شبكة أيقونات + «عطني أفضل من هذي» ×٣ = الصورة نفسها): لو صنّف الفاحص
+       المصدر «شاشة تطبيق» تحوّلت الترقية إلى gpt-image المحافظ (input_fidelity=high) فعادت الصورة كما هي.
+       الترقية تذهب إلى نانو بنانا برو دائمًا — وهو يحفظ الحروف العربية (بدّل حرفًا في لقطة واجهة بدقّة اليوم)؛
+       مسار النصّ الكثيف يبقى للتعديل الموضعي وتبديل الحروف حيث الحرفية هي المطلوب. */
     /* دمج عدة صور لا يمرّ بمسار gpt-image الأحادي (يُسقط الصور الإضافية) */
     /* v-nano-pro-edit: قرار المزدوج يُحسم هنا مرة واحدة — الترقية مستثناة منه، فلا يُترك نداء gpt-image معلّقًا بلا حكم */
     const __duoWouldRun = duoEnabled() && !prayerPlan && !pipelineActive && !isReimagine && !isRestyle && !isElevate && !extras.length; /* دمج عدة صور: المنافس الأحادي يُسقط الصور الإضافية */
     /* v-letter-swap: تبديل حرف على لقطة نصّية لا يُختطف إلى gpt-image وحده — برو يقوده، وgpt-image ينافس بالحكم فقط عند تفعيل المزدوج */
-    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !extras.length && (!isTextSwap || __duoWouldRun)
+    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !extras.length && (!isTextSwap || __duoWouldRun)
       && (editImageBase64 ? await sourceLooksTextDense() : (!rawMode && __textCueRe.test(cleanPrompt)));
     /* v-duo-textroute (لقطة المالك: لقطة واجهة + «عطني أفضل ونفس الفكرة» → فنجان قهوة): مسار النصّ الكثيف كان
        يرجع ناتج gpt-image وحده بلا Gemini ولا حكم. الآن يعمل المحرّكان معًا هنا أيضًا والحكم يختار. */
