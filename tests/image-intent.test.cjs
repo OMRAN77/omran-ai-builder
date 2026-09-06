@@ -106,7 +106,12 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(maha, /const isTextSwap = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && !isTextRemove && \(body\.textSwap === true \|\| isTextEditRequest\(intentText\)\);/);
   assert.match(maha, /\(isCreativeEdit \|\| isTextSwap\) \? creativeModel : editModel/);
   assert.match(maha, /isTextSwap \? buildLetterSwapPrompt\(cleanPrompt\)/);
-  assert.match(maha, /isReimagine \? buildReimaginePrompt\(cleanPrompt\)/);
+  assert.match(maha, /isReimagine \? buildReimaginePrompt\(cleanPrompt, intentText\)/);
+  /* v-raw-words: كلمات المستخدم تصل نموذج الصور في المسارات الإبداعية، وIMAGE_RAW_CREATIVE يرسلها وحدها */
+  assert.match(maha, /isRestyle \? buildRestylePrompt\(cleanPrompt, intentText\)/);
+  assert.match(maha, /isElevate \? buildElevatePrompt\(cleanPrompt, intentText\)/);
+  assert.match(maha, /const __rawCreative = creativeRawEnabled\(process\.env\) && \(isElevate \|\| isReimagine \|\| isRestyle\);/);
+  assert.match(maha, /__rawCreative \? rawCreativePrompt\(cleanPrompt, intentText\)/);
   /* المالك ٦ سبتمبر: لا حارس هوية/أسلوب على المسارات الإبداعية (نانو الأصلي لا يحجب)، ويبقى على التعديل الموضعي */
   assert.match(maha, /if \(editImageBase64 && !extras\.length && !rawMode && !isCreativeEdit\) \{\n\s+const guard = await verifyLocalizedImageEdit/);
   /* 4K عند الطلب الصريح فقط، وإلا 2K */

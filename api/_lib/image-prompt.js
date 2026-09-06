@@ -211,6 +211,23 @@ function isRemoveTextRequest(text){
     || /(?:احذف|امسح|شيل|ازل|أزل|نظّف|نظف|اخفِ|اخفي)\s*(?:ال)?(?:أسماء|اسماء|اسم|كتابة|كتابه|النص|نص|نصوص|كلام|حروف|أرقام|ارقام|توقيع|علامة\s*مائية|لوجو|شعار|واتر\s*مارك)/.test(t)
     || /\b(?:remove|erase|delete|clear|without|no)\b[^\n]{0,20}\b(?:names?|text|writing|words?|letters?|numbers?|caption|watermark|logo|signature|labels?)\b/i.test(t);
 }
+/* v-raw-words (خطة المالك ٦ سبتمبر، البند ٢: «إرسال كلماتي خامًا في المسارات الإبداعية»): في مسار الأدوات كان نموذج الصور
+   يرى إعادة الصياغة الإنجليزية فقط، وكلمات المستخدم تُقرأ للنيّة ثم تُرمى. الآن كلماته الحرفية هي سطر المهمة الأول في
+   الترقية والفكرة الجديدة وتحويل الأسلوب، وإعادة الصياغة سطر ثانٍ يخدمها لا يحلّ محلّها. */
+function taskHeader(prompt, userWords, label){
+  const words = String(userWords || '').trim().slice(0, 600);
+  const tag = label ? ' (' + label + ')' : '';
+  if(!words || words === prompt) return ['TASK' + tag + ': "' + prompt + '"'];
+  return ['TASK' + tag + ' (the user\'s own words — follow them as written): "' + words + '"', 'Assistant reading of the task (secondary; the user\'s words win): "' + prompt + '"'];
+}
+/* IMAGE_RAW_CREATIVE=on: المسارات الإبداعية ترسل كلمات المستخدم وحدها مع سطر جودة واحد — كتطبيق Gemini حرفيًا (للمقارنة A/B) */
+function creativeRawEnabled(env){
+  return /^(?:1|on|true|yes)$/i.test(String((env && env.IMAGE_RAW_CREATIVE) || '').trim());
+}
+function rawCreativePrompt(prompt, userWords){
+  const words = String(userWords || '').trim() || cleanImagePrompt(prompt);
+  return words + '\n\nHighest quality, magazine-cover finish. Keep any real person recognizably the same person. Never write these instructions inside the image.';
+}
 /* v-remove-not-swap (لقطة المالك «شيل الاسم كامل» → «لم أستطع تحديد الحرف المطلوب»): حذف الاسم/النصّ كلّه
    ليس تبديل حرف — كان يُحشر في مسار تبديل الحروف («غيّر فقط الحرف المسمّى») فيفشل. حذفٌ صِرف = بلا بديل بعده
    («شيل الاسم وحط عمران» تبديل، «شيل حرف م» يبقى تبديلًا لأنه حرف لا اسم). */
@@ -225,10 +242,10 @@ function isPureTextRemoval(text){
    صورةً فوتوغرافية باهتة لموضوع الكرت بدل تصميم أغنى. الآن: الفكرة نفسها والتركيب
    نفسه، لكن مع إثراء ينتمي للموضوع (زخارف، رموز، خطّ عربي صحيح مرتبط بالمعنى، عمق
    وإضاءة درامية) — وهو ما يفعله نانو بنانا عندما يُطلب منه «أقوى». */
-function buildElevatePrompt(userPrompt){
+function buildElevatePrompt(userPrompt, userWords){
   const prompt = cleanImagePrompt(userPrompt);
   return [
-    'TASK: "' + prompt + '"',
+    ...taskHeader(prompt, userWords),
     '',
     'Create a STRONGER, RICHER, far more impressive version of the attached SOURCE image — the SAME idea taken to a much higher level, the way a top art director would "plus" it. Rules:',
     '1. Same idea, same picture: keep the main subject, the setting, the overall composition, the meaning and the purpose. Anyone who sees the source must instantly recognize the result as the elevated version of THIS image — not a different picture, not a new concept, not a replaced subject.',
@@ -243,10 +260,10 @@ function buildElevatePrompt(userPrompt){
 /* v-reimagine-design (لقطة المالك ٦ سبتمبر «عطني فكرة أقوى من هذي — شغل فوتوشوب»): «فكرة أقوى/عطني فكرة» كانت تمرّ بقالب
    الترقية (التركيب نفسه + زخارف وخط) فتخرج كلصقة فوتوشوب. هذا القالب يطلب تصميمًا جديدًا جريئًا للموضوع نفسه كما يفعل Gemini:
    الموضوع والرسالة والأشخاص الحقيقيون ثابتون، وكل ما عداهم (التركيب، الإطار، الخلفية، الإضاءة، الألوان، أسلوب الخط) يُعاد ابتكاره. */
-function buildReimaginePrompt(userPrompt){
+function buildReimaginePrompt(userPrompt, userWords){
   const prompt = cleanImagePrompt(userPrompt);
   return [
-    'TASK: "' + prompt + '"',
+    ...taskHeader(prompt, userWords),
     '',
     'The attached SOURCE image is the BRIEF, not the template. Design a NEW, far stronger concept for the SAME subject and purpose — the kind of bold alternative a top art director would pitch. Rules:',
     '1. Keep: the subject(s), the message and purpose, any real person recognizably the same person, and any logo, brand name or key wording (spelled exactly as in the source; Arabic in correct, cleanly joined right-to-left script).',
@@ -298,7 +315,7 @@ function buildLetterSwapPrompt(userPrompt){
   ].join('\n');
 }
 
-function buildRestylePrompt(userPrompt){
+function buildRestylePrompt(userPrompt, userWords){
   const prompt = cleanImagePrompt(userPrompt);
   const p = prompt.toLowerCase();
   const style3d = /3d|ثلاثي|مجسم|مجسّم|render/.test(p);
@@ -306,7 +323,7 @@ function buildRestylePrompt(userPrompt){
     ? 'BOLD premium 3D style: chunky volumetric objects with real depth, glossy and metallic materials, strong studio key light with soft rim light, crisp cast shadows, rounded beveled cards with subtle glow — the "3D icon pack / Fluent 3D" look, striking and polished.'
     : 'Apply the requested style fully and confidently across the whole image — a clear, unmistakable transformation, not a subtle filter.';
   return [
-    'TASK (style transformation): "' + prompt + '"',
+    ...taskHeader(prompt, userWords, 'style transformation'),
     '',
     'Re-render the ENTIRE attached image in the requested style. ' + styleHint,
     'Rules:',
@@ -318,4 +335,4 @@ function buildRestylePrompt(userPrompt){
   ].join('\n');
 }
 
-module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, buildLetterSwapPrompt, buildSceneUpgradePrompt, buildRestylePrompt, isTextEditRequest, isRemoveTextRequest, isPureTextRemoval, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };
+module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, taskHeader, creativeRawEnabled, rawCreativePrompt, buildLetterSwapPrompt, buildSceneUpgradePrompt, buildRestylePrompt, isTextEditRequest, isRemoveTextRequest, isPureTextRemoval, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };

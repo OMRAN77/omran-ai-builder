@@ -2,7 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange, shouldUseRawImagePrompt, stripRawImagePrefix } = require('../api/_lib/image-prompt');
+const { buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, buildRestylePrompt, taskHeader, creativeRawEnabled, rawCreativePrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange, shouldUseRawImagePrompt, stripRawImagePrefix } = require('../api/_lib/image-prompt');
 const { assessEditVerdict, publicGuardError } = require('../api/_lib/image-edit-guard');
 
 test('engineered image prompts are the default and raw mode is explicit', () => {
@@ -156,6 +156,25 @@ test('specialized image routes do not expose provider errors to the user', () =>
     assert.doesNotMatch(source, /json\(\{ error: 'Server is missing GEMINI_API_KEY'/);
     assert.doesNotMatch(source, /json\(\{ error: \(frameData && frameData\.error/);
   }
+});
+
+/* v-raw-words — كلمات المستخدم الحرفية أولًا في المسارات الإبداعية، وإعادة الصياغة سطر ثانٍ؛ IMAGE_RAW_CREATIVE يرسلها وحدها */
+test('creative prompts lead with the user\'s own words; the English rewrite is secondary', () => {
+  for (const b of [buildElevatePrompt, buildReimaginePrompt, buildRestylePrompt]) {
+    const p = b('Make it stronger', 'أقوى');
+    assert.match(p, /^TASK[^\n]*\(the user's own words — follow them as written\): "أقوى"/m, b.name);
+    assert.match(p, /Assistant reading of the task \(secondary; the user's words win\): "Make it stronger"/, b.name);
+    assert.ok(p.indexOf('"أقوى"') < p.indexOf('"Make it stronger"'), b.name + ': كلمات المستخدم قبل إعادة الصياغة');
+  }
+  assert.deepEqual(taskHeader('أقوى', 'أقوى'), ['TASK: "أقوى"'], 'الكلمات نفسها = سطر واحد');
+  assert.deepEqual(taskHeader('أقوى', ''), ['TASK: "أقوى"']);
+  assert.match(buildRestylePrompt('3d', '3d'), /^TASK \(style transformation\): "3d"/m);
+  const raw = rawCreativePrompt('Make it stronger', 'أقوى');
+  assert.ok(raw.startsWith('أقوى\n'), 'الخام يبدأ بكلمات المستخدم');
+  assert.ok(!/TASK|Rules:/.test(raw), 'الخام بلا قوائم قواعد');
+  assert.equal(creativeRawEnabled({ IMAGE_RAW_CREATIVE: 'on' }), true);
+  assert.equal(creativeRawEnabled({ IMAGE_RAW_CREATIVE: 'off' }), false);
+  assert.equal(creativeRawEnabled({}), false);
 });
 
 /* v-reimagine-design — «عطني فكرة أقوى» = تصميم جديد للموضوع نفسه، لا المصدر مع لصقات فوتوشوب */

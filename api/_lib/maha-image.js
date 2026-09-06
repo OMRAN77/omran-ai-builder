@@ -4,7 +4,7 @@
 // model (server-side owner key, GEMINI_API_KEY) - the only one of the 9
 // providers that can actually output images.
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
-const { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, buildLetterSwapPrompt, isTextEditRequest, isPureTextRemoval, buildSceneUpgradePrompt, buildRestylePrompt, explicitlyRequestsStyleChange } = require('./image-prompt');
+const { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, creativeRawEnabled, rawCreativePrompt, buildLetterSwapPrompt, isTextEditRequest, isPureTextRemoval, buildSceneUpgradePrompt, buildRestylePrompt, explicitlyRequestsStyleChange } = require('./image-prompt');
 /* v-nano-pro-edit: نيّات التعديل (أسلوب/فكرة مختلفة/أقوى/نفس الصورة) في وحدة واحدة قابلة للاختبار،
    تُقرأ من نصّ المستخدم نفسه (body.userText) لا من أمر أعاد النموذج صياغته بالإنجليزية. */
 const { detectEditIntent } = require('./image-intent');
@@ -229,11 +229,14 @@ module.exports = async (req, res) => {
       parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
       for (const x of extras) parts.push({ inlineData: { mimeType: x.mime || 'image/png', data: x.data } });
     } else if (editImageBase64) {
-      parts.push({ text: isSceneUpgrade ? buildSceneUpgradePrompt(cleanPrompt)
-        : (isRestyle ? buildRestylePrompt(cleanPrompt)
-        : (isElevate ? buildElevatePrompt(cleanPrompt)
+      /* v-raw-words: كلمات المستخدم الحرفية (intentText) أولًا في المسارات الإبداعية؛ IMAGE_RAW_CREATIVE=on يرسلها وحدها كتطبيق Gemini */
+      const __rawCreative = creativeRawEnabled(process.env) && (isElevate || isReimagine || isRestyle);
+      parts.push({ text: __rawCreative ? rawCreativePrompt(cleanPrompt, intentText)
+        : isSceneUpgrade ? buildSceneUpgradePrompt(cleanPrompt)
+        : (isRestyle ? buildRestylePrompt(cleanPrompt, intentText)
+        : (isElevate ? buildElevatePrompt(cleanPrompt, intentText)
         : (isTextSwap ? buildLetterSwapPrompt(cleanPrompt)
-        : (isReimagine ? buildReimaginePrompt(cleanPrompt)
+        : (isReimagine ? buildReimaginePrompt(cleanPrompt, intentText)
           : buildEditPrompt(cleanPrompt))))) });
       parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
     } else if (pipelineActive && pipelineRewrite) {
