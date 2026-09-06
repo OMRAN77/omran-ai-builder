@@ -16,7 +16,9 @@ const { judgeBest, duoEnabled, bestOfCount } = require('./image-judge');
 async function imageCaption(apiKey, prompt, b64, mime, sourceB64, sourceMime) {
   try {
     if (!apiKey || String(process.env.IMAGE_CAPTION || 'on').toLowerCase() === 'off') return '';
-    const parts = [{ text: 'The user asked: "' + String(prompt || '').slice(0, 500) + '".\n' + (sourceB64 ? 'The first image is what they sent; the second is the result you produced.' : 'The image is the result you produced.') + '\nReply in the SAME language as the user\'s request. Write exactly two short sentences: (1) what you did in the result, (2) one concrete follow-up suggestion phrased as a question. No markdown, no emojis, max 35 words total.' }];
+    /* v-caption-report (المالك ٦ سبتمبر: «بعد التعديل يكتب تقرير مختصر ويسأل إذا عجبك ولا أسوي لك كذا ولا كذا»): تقرير من
+       جملة عمّا تغيّر فعلًا، ثم سؤال «هل أعجبتك؟» مع خيارين ملموسين للخطوة التالية خاصّين بهذه الصورة، بلغة المستخدم ولهجته. */
+    const parts = [{ text: 'The user asked, verbatim: "' + String(prompt || '').slice(0, 500) + '".\n' + (sourceB64 ? 'The first image is what they sent; the second is the result you produced.' : 'The image is the result you produced.') + '\nReply in the SAME language and dialect as the user\'s request (Gulf Arabic if they wrote Gulf Arabic). Write: (1) one short sentence reporting exactly what changed in the result; (2) one question asking whether they like it and offering TWO concrete next options specific to this image, in the shape "هل أعجبتك؟ ولا أسوي لك … أو …؟". No markdown, no emojis, max 45 words total.' }];
     if (sourceB64) parts.push({ inlineData: { mimeType: sourceMime || 'image/jpeg', data: sourceB64 } });
     parts.push({ inlineData: { mimeType: mime || 'image/png', data: b64 } });
     const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey, {
@@ -25,7 +27,7 @@ async function imageCaption(apiKey, prompt, b64, mime, sourceB64, sourceMime) {
     });
     if (!r.ok) return '';
     const d = await r.json().catch(() => null);
-    return String((((((d || {}).candidates || [])[0] || {}).content || {}).parts || []).map((p) => p.text || '').join(' ')).trim().slice(0, 300);
+    return String((((((d || {}).candidates || [])[0] || {}).content || {}).parts || []).map((p) => p.text || '').join(' ')).trim().slice(0, 400);
   } catch (e) { return ''; }
 }
 const { authorPrayerPlan } = require('./prayer-plan');
@@ -729,7 +731,7 @@ module.exports = async (req, res) => {
         }
       } catch (e) { console.warn('[maha-image] request-check skipped: ' + (e && e.message)); }
     }
-    const caption = prayerPlan ? '' : await imageCaption(apiKey, cleanPrompt, imgPart.inlineData.data, imgPart.inlineData.mimeType || 'image/png', editImageBase64 || null, editMimeType || 'image/png');
+    const caption = prayerPlan ? '' : await imageCaption(apiKey, intentText || cleanPrompt, imgPart.inlineData.data, imgPart.inlineData.mimeType || 'image/png', editImageBase64 || null, editMimeType || 'image/png');
     res.status(200).json({
       imageBase64: imgPart.inlineData.data,
       mimeType: imgPart.inlineData.mimeType || 'image/png',

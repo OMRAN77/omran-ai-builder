@@ -28,4 +28,8 @@ test('maha-image retries once with the missing part and accepts the retry only i
   /* الفحص بعد الحكم/المرشّح الثاني وقبل التعليق */
   assert.ok(maha.indexOf('const __rc = await verifyRequestApplied') > maha.indexOf("duoEngine = 'gemini x2+judge'"));
   assert.ok(maha.indexOf('const __rc = await verifyRequestApplied') < maha.indexOf("const caption = prayerPlan ? '' : await imageCaption("));
+  /* v-caption-report: تقرير مختصر + «هل أعجبتك؟ ولا أسوي لك … أو …؟» بلغة المستخدم، من كلماته الحرفية */
+  assert.match(maha, /one short sentence reporting exactly what changed in the result; \(2\) one question asking whether they like it and offering TWO concrete next options specific to this image/);
+  assert.match(maha, /Gulf Arabic if they wrote Gulf Arabic/);
+  assert.match(maha, /const caption = prayerPlan \? '' : await imageCaption\(apiKey, intentText \|\| cleanPrompt,/);
 });
