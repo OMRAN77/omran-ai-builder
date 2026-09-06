@@ -5229,7 +5229,10 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
           return (sp && (sp.messages || []).length > (ip.messages || []).length) ? sp : ip;
         }).concat(extra);
         window.__usingSlimProjects = false;
+        /* v-image-vault: صور المشروع المفتوح تُستعاد من المخزن قبل أول رسم؛ الباقي عند عرضه؛ وكنس اليتيمة بعد الإقلاع */
+        try{ await window.__hydrateProjectImages(state.projects.find(q => q.id === state.currentId)); }catch(e){ __swallow(e, 'vault:boot'); }
         renderAll();
+        try{ setTimeout(() => { window.__vaultSweep && window.__vaultSweep(); }, 15000); }catch(e){ __swallow(e, 'vault:sweep'); }
       }
       try{ if(window.__writeChatsMirror) window.__writeChatsMirror(); }catch(e){ __swallow(e, 'mirror:app-09#fresh'); }
     }
