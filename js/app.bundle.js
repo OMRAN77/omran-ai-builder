@@ -15492,15 +15492,8 @@ window.__omranImgTools = function(wrap, dataUrl){
     flash(b, '<span>' + (ar ? 'جاهزة' : 'Ready') + '</span>');
     const p = $('#prompt'); if(p){ p.focus(); p.placeholder = ar ? 'اكتب التعديل المطلوب على هذي الصورة…' : 'Describe the edit you want…'; }
   });
-  // 🔄 «نسخة ثانية» — يعيد آخر طلب صورة بضغطة، تنويعة جديدة بلا إعادة كتابة (طلب المالك)
-  if(window.__omranLastImageReq){
-    mk('txt', '<span>🔄 ' + (ar ? 'نسخة ثانية' : 'Another') + '</span>', ar ? 'نسخة ثانية' : 'Another version', (b) => {
-      if(!window.__omranLastImageReq){ flash(b, '<span>—</span>'); return; }
-      if(typeof genAbortController !== 'undefined' && genAbortController){ flash(b, '<span>' + (ar ? 'انتظر…' : 'Wait…') + '</span>'); return; }
-      flash(b, '<span>⏳</span>');
-      try{ window.omranAnotherVersion && window.omranAnotherVersion(); }catch(e){ __swallow(e, 'img:another-btn'); }
-    });
-  }
+  // 🔄 زر «نسخة ثانية» أُزيل من فوق الصورة (طلب المالك ٦ سبتمبر: كان يغطّي نصّ
+  //    الصورة نفسها). window.omranAnotherVersion تبقى متاحة برمجيًا بلا زرّ.
   // 📤 v635 — أمر عمران «زرّ الإرسال حطه هني جنبهم»: الإرسال يسكن شريط أزرار
   // الرسالة نفسه (بعد النسخ/الإعجاب) بنفس شكلهم وحجمهم؛ «تعديل» يبقى تحت الصورة.
   // رسالة الصورة بلا نصّ لا تبني شريطًا ⇒ أُنشئ شريطًا بنفس الصنف.

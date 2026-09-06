@@ -145,6 +145,8 @@ test('both chat clients forward the user\'s words and the tool path never loses 
   assert.match(chat, /runInClient\(send, 'generate_image', input, lastUserHasImage \? 150000 : 75000\)/);
   /* زر «نسخة ثانية» يسمّي المحرّك بالمنطق نفسه */
   assert.match(attach, /'نانو بنانا برو' : 'نانو بنانا'\)\)\); \}catch\(e\)\{ __swallow\(e, 'ui:img-engine-again'\)/);
+  /* زر «نسخة ثانية» لا يُبنى فوق الصورة (كان يغطّي نصّها) — الدالة تبقى بلا زرّ */
+  assert.ok(!/'نسخة ثانية' : 'Another'\)/.test(attach), 'زر «نسخة ثانية» أُزيل من فوق الصورة');
   assert.match(attach, /^const __IMG_CREATIVE_RE = \//m);
   assert.match(tools, /typeof __IMG_CREATIVE_RE !== 'undefined' && __IMG_CREATIVE_RE\.test\(gUserText\)/);
   assert.match(attach, /^const __IMG_CREATIVE_RE = \//m);
