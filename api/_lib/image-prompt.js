@@ -211,6 +211,14 @@ function isRemoveTextRequest(text){
     || /(?:احذف|امسح|شيل|ازل|أزل|نظّف|نظف|اخفِ|اخفي)\s*(?:ال)?(?:أسماء|اسماء|اسم|كتابة|كتابه|النص|نص|نصوص|كلام|حروف|أرقام|ارقام|توقيع|علامة\s*مائية|لوجو|شعار|واتر\s*مارك)/.test(t)
     || /\b(?:remove|erase|delete|clear|without|no)\b[^\n]{0,20}\b(?:names?|text|writing|words?|letters?|numbers?|caption|watermark|logo|signature|labels?)\b/i.test(t);
 }
+/* v-remove-not-swap (لقطة المالك «شيل الاسم كامل» → «لم أستطع تحديد الحرف المطلوب»): حذف الاسم/النصّ كلّه
+   ليس تبديل حرف — كان يُحشر في مسار تبديل الحروف («غيّر فقط الحرف المسمّى») فيفشل. حذفٌ صِرف = بلا بديل بعده
+   («شيل الاسم وحط عمران» تبديل، «شيل حرف م» يبقى تبديلًا لأنه حرف لا اسم). */
+const REPLACE_CUE_RE = /(?:^|[\s،,و])(?:حط|حطي|اكتب|أكتب|بدل|بدّل|خل|خلي|استبدل|مكان[هاي]?|بدال[هاي]?)(?=$|[\s،,])|\b(?:with|to|into)\b|→|->|(?:^|\s)(?:إلى|الى)(?=\s)/i;
+function isPureTextRemoval(text){
+  const t = String(text || '');
+  return isRemoveTextRequest(t) && !REPLACE_CUE_RE.test(t);
+}
 /* v-elevate (المالك: «أقوى = نفس الفكرة مرفوعة، لا فكرة جديدة») ثم
    v-nano-pro-edit (المالك: «الصورة المزخرفة من نانو والثانية من التطبيق — النتيجة صفر»):
    الصياغة السابقة كانت تفرض «خامات واقعية وإضاءة سينمائية» وتمنع أي إضافة، فتخرج
@@ -292,4 +300,4 @@ function buildRestylePrompt(userPrompt){
   ].join('\n');
 }
 
-module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildLetterSwapPrompt, buildSceneUpgradePrompt, buildRestylePrompt, isTextEditRequest, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };
+module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildLetterSwapPrompt, buildSceneUpgradePrompt, buildRestylePrompt, isTextEditRequest, isRemoveTextRequest, isPureTextRemoval, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };

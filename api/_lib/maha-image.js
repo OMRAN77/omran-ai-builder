@@ -4,7 +4,7 @@
 // model (server-side owner key, GEMINI_API_KEY) - the only one of the 9
 // providers that can actually output images.
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
-const { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildLetterSwapPrompt, isTextEditRequest, buildSceneUpgradePrompt, buildRestylePrompt, explicitlyRequestsStyleChange } = require('./image-prompt');
+const { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildLetterSwapPrompt, isTextEditRequest, isPureTextRemoval, buildSceneUpgradePrompt, buildRestylePrompt, explicitlyRequestsStyleChange } = require('./image-prompt');
 /* v-nano-pro-edit: نيّات التعديل (أسلوب/فكرة مختلفة/أقوى/نفس الصورة) في وحدة واحدة قابلة للاختبار،
    تُقرأ من نصّ المستخدم نفسه (body.userText) لا من أمر أعاد النموذج صياغته بالإنجليزية. */
 const { detectEditIntent } = require('./image-intent');
@@ -164,7 +164,9 @@ module.exports = async (req, res) => {
     let isElevate = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && __intent.elevate;
     /* v-letter-swap: «غير حرف م حط ع» / «بدل الاسم» / «اكتب كلمة…» على صورة مصدر = تبديل نصّي في مكانه.
        يذهب إلى نانو بنانا برو (الأقوى في الحروف العربية) بتعليمة قصيرة كتطبيق Gemini، وgpt-image منافسًا بالحكم. */
-    const isTextSwap = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && (body.textSwap === true || isTextEditRequest(intentText));
+    /* «شيل الاسم كامل» / «بدون أسماء» = حذف نصّ صِرف: تعديل عادي بقاعدة REMOVE TEXT، لا تبديل حرف (كان يفشل بـ«لم أستطع تحديد الحرف») */
+    const isTextRemove = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && isPureTextRemoval(intentText);
+    const isTextSwap = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && !isTextRemove && (body.textSwap === true || isTextEditRequest(intentText));
     async function sourceIsRealPlacePhoto() {
       try {
         const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey, {
