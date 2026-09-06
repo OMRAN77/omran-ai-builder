@@ -228,6 +228,29 @@ function rawCreativePrompt(prompt, userWords){
   const words = String(userWords || '').trim() || cleanImagePrompt(prompt);
   return words + '\n\nHighest quality, magazine-cover finish. Keep any real person recognizably the same person. Never write these instructions inside the image.';
 }
+/* v-person-swap (لقطة المالك ٦ سبتمبر «غيّر أشكال الأشخاص على الاسم الموجود تحت من غير تكرار الأشخاص»): طلب تغيير هوية
+   الأشخاص عمدًا. كلمة «الاسم» في الجملة كانت تحوّله إلى تبديل حرف («غيّر فقط الحرف المسمّى»)، ثم يرفض حارسُ الهوية النتيجة
+   لأنها غيّرت الشخص — وهو المطلوب حرفيًا. مسار خاص: برو، بلا حارس هوية، وبلا gpt-image (إخلاصه العالي يُبقي الوجوه). */
+const PERSON_WORDS = '(?:أشخاص|اشخاص|شخص|رجال|رجل|بنات|بنت|نساء|امرأة|مرأة|أولاد|اولاد|أطفال|اطفال|ناس|موديل|موديلات|شخصيات|شخصي[ةه]|people|persons?|faces?|men|women|models?|characters?)';
+const PERSON_SWAP_RE = new RegExp([
+  '(?:^|[\\s،,])(?:غيّ?ر|غيري|بدّ?ل|بدلي|استبدل|خل|خلي|خلّي|اجعل|سوّ?ي?)\\s*(?:لي\\s*)?(?:(?:أشكال|اشكال|شكل|وجوه|وجه|ملامح|هوي[ةه]|صور[ةه]?|صور)\\s*)?(?:ال)?' + PERSON_WORDS + '(?=$|[\\s،,.!؟?])',
+  '(?:^|[\\s،,])(?:ال)?(?:أشخاص|اشخاص|وجوه|شخصيات|رجال|بنات|نساء)\\s*(?:مختلف|مختلفين|مختلفة|مختلفه|ثانيين|ثانية|ثانيه|جدد|جديدة|جديده|غير)(?=$|[\\s،,.!؟?])',
+  '(?:بدون|من\\s*غير|بلا)\\s*تكرار\\s*(?:ال)?' + PERSON_WORDS,
+  '\\b(?:change|replace|swap|use)\\s+(?:the\\s+|all\\s+)?(?:different\\s+|new\\s+)?(?:faces?|people|persons?|models?|characters?|men|women)\\b',
+  '\\b(?:different|new|unique)\\s+(?:faces?|people|persons?|models?)\\b',
+].join('|'), 'i');
+function isPersonSwapRequest(text){ return PERSON_SWAP_RE.test(String(text || '')); }
+function buildPersonSwapPrompt(userPrompt, userWords){
+  const prompt = cleanImagePrompt(userPrompt);
+  return [
+    ...taskHeader(prompt, userWords),
+    '',
+    'PEOPLE REPLACEMENT on the attached source image. The user explicitly wants the people changed, so their identity must NOT be preserved:',
+    '1. Replace each person with a NEW, distinct, realistic person as the request describes. If a name, caption or label sits under or next to a person, that person must plausibly match that name (gender, age and cultural cues). No two people may look alike — different faces, hair, skin tones, builds and expressions; never repeat the same face twice.',
+    '2. Keep everything else exactly as in the source: layout, frames, positions, poses, outfits and dress code, background, lighting, colours, and every piece of text and every label character-for-character.',
+    '3. Never write the instruction itself into the image. Return only one finished image.'
+  ].join('\n');
+}
 /* v-remove-not-swap (لقطة المالك «شيل الاسم كامل» → «لم أستطع تحديد الحرف المطلوب»): حذف الاسم/النصّ كلّه
    ليس تبديل حرف — كان يُحشر في مسار تبديل الحروف («غيّر فقط الحرف المسمّى») فيفشل. حذفٌ صِرف = بلا بديل بعده
    («شيل الاسم وحط عمران» تبديل، «شيل حرف م» يبقى تبديلًا لأنه حرف لا اسم). */
@@ -335,4 +358,4 @@ function buildRestylePrompt(userPrompt, userWords){
   ].join('\n');
 }
 
-module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, taskHeader, creativeRawEnabled, rawCreativePrompt, buildLetterSwapPrompt, buildSceneUpgradePrompt, buildRestylePrompt, isTextEditRequest, isRemoveTextRequest, isPureTextRemoval, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };
+module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, taskHeader, creativeRawEnabled, rawCreativePrompt, buildLetterSwapPrompt, isPersonSwapRequest, buildPersonSwapPrompt, buildSceneUpgradePrompt, buildRestylePrompt, isTextEditRequest, isRemoveTextRequest, isPureTextRemoval, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };

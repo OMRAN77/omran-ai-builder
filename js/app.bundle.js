@@ -17232,7 +17232,7 @@ function cumulativeImageEditPrompt(cur, currentText, reset){
 var __omranWdTimer = null, __omranWdWake = null, __omranReqStartedAt = 0;
 var __OMRAN_WD_HARD_MS  = 300000;  // سقف صلب = سقف الخادم نفسه
 var __OMRAN_WD_STALE_MS = 120000;   // طلب أقدم من ذلك حين تعود الصفحة = مشبوه
-var __OMRAN_WD_GRACE_MS = 20000;   // مهلة سماح بعد العودة قبل القطع
+var __OMRAN_WD_GRACE_MS = 60000;   // مهلة سماح بعد العودة قبل القطع — مرشّحان على برو قد يستغرقان ٩٠ ثانية
 
 // إعادة زرّ الإرسال إلى هيئته الطبيعيّة (نفس أيقونة finally).
 function __omranRestoreSendBtn(){
