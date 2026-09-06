@@ -4,12 +4,11 @@
    وبالصورة الأصلية إن وُجدت ويختار الأدقّ. أي فشل في الحكم = نُبقي المرشّح الأول. */
 const JUDGE = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=';
 
-/* v-cost (المالك: «كل تعديل يكلّفني — تشغّل محرّكين وحكمًا في الطلب الواحد»):
-   الوضع المزدوج كان يشغّل نانو + gpt-image + حكمًا في كل طلب = ٣ نداءات مدفوعة.
-   بعدما صار نانو المحرّك الأساسي الموثوق، الافتراضي الآن نداء واحد فقط؛ gpt-image
-   يبقى خطّ إنقاذ عند فشل نانو لا منافسًا دائمًا. IMAGE_DUO=on يعيد المزدوج. */
+/* v-quality-first (قرار المالك النهائي: «انسى التكلفة — أريد النتيجة»): الوضع
+   المزدوج مُفعّل افتراضيًا مرة أخرى — نانو + gpt-image معًا والحكم يختار الأقوى
+   والأقرب للشخص في كل صورة. IMAGE_DUO=off يوقفه لو رغب لاحقًا. */
 function duoEnabled() {
-  return String(process.env.IMAGE_DUO || 'off').toLowerCase() === 'on' && !!(process.env.OPENAI_API_KEY || '').trim();
+  return String(process.env.IMAGE_DUO || 'on').toLowerCase() !== 'off' && !!(process.env.OPENAI_API_KEY || '').trim();
 }
 
 /* opts: { apiKey, prompt, source:{b64,mime}|null, a:{b64,mime}, b:{b64,mime}, timeoutMs } → 'a' | 'b' */
