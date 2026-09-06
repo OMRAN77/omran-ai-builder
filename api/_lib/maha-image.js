@@ -4,7 +4,7 @@
 // model (server-side owner key, GEMINI_API_KEY) - the only one of the 9
 // providers that can actually output images.
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
-const { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildSceneUpgradePrompt, buildRestylePrompt, explicitlyRequestsStyleChange } = require('./image-prompt');
+const { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildLetterSwapPrompt, isTextEditRequest, buildSceneUpgradePrompt, buildRestylePrompt, explicitlyRequestsStyleChange } = require('./image-prompt');
 /* v-nano-pro-edit: نيّات التعديل (أسلوب/فكرة مختلفة/أقوى/نفس الصورة) في وحدة واحدة قابلة للاختبار،
    تُقرأ من نصّ المستخدم نفسه (body.userText) لا من أمر أعاد النموذج صياغته بالإنجليزية. */
 const { detectEditIntent } = require('./image-intent');
@@ -162,6 +162,9 @@ module.exports = async (req, res) => {
     const isRestyle = !!editImageBase64 && !isSceneUpgrade && __intent.restyle;
     const isReimagine = !!editImageBase64 && !isSceneUpgrade && !isRestyle && __intent.reimagine;
     let isElevate = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && __intent.elevate;
+    /* v-letter-swap: «غير حرف م حط ع» / «بدل الاسم» / «اكتب كلمة…» على صورة مصدر = تبديل نصّي في مكانه.
+       يذهب إلى نانو بنانا برو (الأقوى في الحروف العربية) بتعليمة قصيرة كتطبيق Gemini، وgpt-image منافسًا بالحكم. */
+    const isTextSwap = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && (body.textSwap === true || isTextEditRequest(intentText));
     async function sourceIsRealPlacePhoto() {
       try {
         const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey, {
@@ -227,9 +230,10 @@ module.exports = async (req, res) => {
       parts.push({ text: isSceneUpgrade ? buildSceneUpgradePrompt(cleanPrompt)
         : (isRestyle ? buildRestylePrompt(cleanPrompt)
         : (isElevate ? buildElevatePrompt(cleanPrompt)
+        : (isTextSwap ? buildLetterSwapPrompt(cleanPrompt)
         : (isReimagine
           ? ('TASK: "' + cleanPrompt + '"\n\nThe attached image is ONLY inspiration for the SUBJECT. Create a COMPLETELY NEW image of the same subject with a clearly DIFFERENT concept: new composition, new viewpoint, new background, new lighting and a fresh creative idea — the result must NOT look like a copy or minor edit of the source. Keep any real faces, logos or brand marks faithful if they are the subject. Quality bar: breathtaking, award-winning, magazine-cover grade, tack-sharp, professional cinematic lighting, no toy-like or amateur rendering.')
-          : buildEditPrompt(cleanPrompt)))) });
+          : buildEditPrompt(cleanPrompt))))) });
       parts.push({ inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } });
     } else if (pipelineActive && pipelineRewrite) {
       // Pipeline prompt includes negative in separate field — combine for Gemini
@@ -274,7 +278,8 @@ module.exports = async (req, res) => {
     const creativeModel = (process.env.IMAGE_CREATIVE_MODEL || 'gemini-3-pro-image').trim();
     /* دمج عدة صور (extras) يصل برو أيضًا حين تكون النيّة إبداعية — برو يتعامل مع مراجع متعددة أفضل بكثير */
     const isCreativeEdit = !!editImageBase64 && (isElevate || isReimagine || isRestyle || isSceneUpgrade || __pureRaw);
-    const primaryModel = editImageBase64 ? (isCreativeEdit ? creativeModel : editModel) : creativeModel;
+    /* تبديل الحروف على برو أيضًا: نانو 2.5 يكسر الحروف العربية وبرو يبدّلها في مكانها (لقطة المالك من Gemini) */
+    const primaryModel = editImageBase64 ? ((isCreativeEdit || isTextSwap) ? creativeModel : editModel) : creativeModel;
     const nanoPrimary = /2\.5-flash-image/.test(primaryModel);
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + primaryModel + ':generateContent?key=' + apiKey;
     // v656: نسبة أبعاد ذكية — الافتراضي طولي (3:4) لأن المستخدمين على الجوال،
@@ -453,10 +458,11 @@ module.exports = async (req, res) => {
     /* v-nano-pro-edit: الترقية (isElevate) لا تُستثنى من مسار النصّ الكثيف — لقطة واجهة عربية + «حسّن» يجب أن تبقى
        على gpt-image عالي الدقة الذي يحفظ الحروف؛ برو يعيد رسمها فتتكسّر. الفحص لا يجري إلا بوجود مصدر نصّي كثيف فعلًا. */
     /* دمج عدة صور لا يمرّ بمسار gpt-image الأحادي (يُسقط الصور الإضافية) */
-    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !extras.length
-      && (editImageBase64 ? await sourceLooksTextDense() : (!rawMode && __textCueRe.test(cleanPrompt)));
     /* v-nano-pro-edit: قرار المزدوج يُحسم هنا مرة واحدة — الترقية مستثناة منه، فلا يُترك نداء gpt-image معلّقًا بلا حكم */
     const __duoWouldRun = duoEnabled() && !prayerPlan && !pipelineActive && !isReimagine && !isRestyle && !isElevate && !extras.length; /* دمج عدة صور: المنافس الأحادي يُسقط الصور الإضافية */
+    /* v-letter-swap: تبديل حرف على لقطة نصّية لا يُختطف إلى gpt-image وحده — برو يقوده، وgpt-image ينافس بالحكم فقط عند تفعيل المزدوج */
+    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !extras.length && (!isTextSwap || __duoWouldRun)
+      && (editImageBase64 ? await sourceLooksTextDense() : (!rawMode && __textCueRe.test(cleanPrompt)));
     /* v-duo-textroute (لقطة المالك: لقطة واجهة + «عطني أفضل ونفس الفكرة» → فنجان قهوة): مسار النصّ الكثيف كان
        يرجع ناتج gpt-image وحده بلا Gemini ولا حكم. الآن يعمل المحرّكان معًا هنا أيضًا والحكم يختار. */
     let densePromise = null;

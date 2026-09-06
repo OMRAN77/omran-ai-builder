@@ -3696,6 +3696,33 @@ function __showImgLoading(el, ar, en){
       /* 🔤 v-text-swap: تغيير نص مكتوب (تاريخ/اسم/رقم) → قراءة بالرؤية وتبديل محلي
          دقيق؛ إن لم تجد الرؤية سطرًا نصيًا يسقط الطلب لمسار المولّد كالسابق. */
       if(__b64 && __textSwapIntent(text)){
+        /* v-letter-swap (لقطة المالك: «غير حرف م حط ع» رجّعت الصورة نفسها بينما Gemini بدّل الحرف): أولًا نانو بنانا
+           برو على الصورة كاملة بتعليمة قصيرة كتطبيق Gemini (الخادم يقرأ textSwap ويوجّه لبرو، وgpt-image ينافس بالحكم)؛
+           مسار «حدّد الموضع ثم قناع gpt-image» يبقى احتياطًا عند فشل الخادم فقط. */
+        try{
+          __showImgLoading(thinkingDiv, 'جاري تبديل الحرف في مكانه…', 'Swapping the letter in place…');
+          const __lsShr = await omranShrinkForEdit(__b64, __mime);
+          const __lsBody = { prompt: String(text || '').slice(0, 600), userText: String(text || '').slice(0, 600), textSwap: true, editImageBase64: __lsShr.b64, editMimeType: __lsShr.mime };
+          const __lsRes = await fetch('/api/maha-image', { method:'POST', headers:{ 'Content-Type':'application/json' }, signal: genAbortController.signal, body: JSON.stringify(Object.assign({}, __lsBody, { token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })) });
+          const __lsData = await __lsRes.json().catch(() => ({}));
+          if(__lsRes.ok && __lsData.imageBase64){
+            const __lsMime = __lsData.mimeType || 'image/png';
+            let __lsUrl = 'data:' + __lsMime + ';base64,' + __lsData.imageBase64;
+            try{ __lsUrl = await omranSharpenImage(__lsUrl); }catch(e){ __swallow(e, 'img:sharpen-swap'); }
+            cur.messages.push({ role:'assistant', content:(typeof __lsData.caption === 'string' ? __lsData.caption : ''), attachments:[{ name:'edited.png', isImage:true, mime:(__lsUrl.slice(5).split(';')[0] || __lsMime), dataUrl:__lsUrl }] });
+            try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (/openai/.test(String(__lsData.engine || '')) ? 'gpt-image' : (/pro/.test(String(__lsData.engine || '')) ? 'نانو بنانا برو' : 'نانو بنانا'))); }catch(e){ __swallow(e, 'ui:img-engine-swap'); }
+            cur.lastEditedImage = { b64: __lsData.imageBase64, mime: __lsMime };
+            cur.imageEditSource = { b64:__b64, mime:__mime };
+            cur.imageEditInstructions = [String(text || '').trim()];
+            cur.imageTextLayer = null;
+            cur.lastMsgWasImageEdit = true;
+            try{ window.__omranLastImageReq = { kind:'edit', url:'/api/maha-image', body: __lsBody }; }catch(e){ __swallow(e, 'img:save-req'); }
+            renderAll(); saveState(); return;
+          }
+        }catch(e){
+          if(e && e.name === 'AbortError') return;
+          __swallow(e, 'img:letter-swap'); /* يسقط بهدوء لمسار القناع الاحتياطي */
+        }
         try{
           chatPhase('🔎', lang === 'ar' ? 'جاري قراءة الكتابة على الصورة…' : 'Reading the text on the image…', thinkingDiv);
           const __tsShr = await omranShrinkForEdit(__b64, __mime);

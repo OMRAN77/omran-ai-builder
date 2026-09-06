@@ -259,6 +259,19 @@ function buildEditPrompt(userPrompt){
    كان يمر بقالب التعديل الموضعي («غيّر فقط ما طُلب واحفظ كل بكسل») فيخرج
    الأسلوب خجولًا، وأحيانًا تُرسم التعليمة نفسها كعنوان داخل الصورة. هذا
    القالب يطلب إعادة رسم جريئة بالأسلوب المطلوب مع تثبيت التخطيط والنصوص. */
+/* v-letter-swap (لقطة المالك: «غير حرف م حط ع» رجّعت الصورة نفسها من تطبيقنا بينما Gemini بدّل الحرف في
+   مكانه): تطبيق Gemini يرسل الصورة كاملة مع تعليمة المستخدم القصيرة إلى نانو بنانا برو — لا قناع ولا
+   ثماني قواعد. تعليمة قصيرة وحاسمة: بدّل هذا الحرف/الكلمة فقط، وكل بكسل آخر كما هو. */
+function buildLetterSwapPrompt(userPrompt){
+  const prompt = cleanImagePrompt(userPrompt);
+  return [
+    'Edit the attached image: "' + prompt + '"',
+    'Change ONLY the letter/word/number named in that request, in place. Keep every other pixel, letter, colour, font, size, position and the whole layout exactly as in the source — no redraw, no re-typesetting, no new elements.',
+    'Render the new Arabic text with correct, cleanly joined right-to-left glyphs in the same font, size, colour and position as the text it replaces. Never write the instruction itself into the image.',
+    'Return only one finished image.'
+  ].join('\n');
+}
+
 function buildRestylePrompt(userPrompt){
   const prompt = cleanImagePrompt(userPrompt);
   const p = prompt.toLowerCase();
@@ -279,4 +292,4 @@ function buildRestylePrompt(userPrompt){
   ].join('\n');
 }
 
-module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildSceneUpgradePrompt, buildRestylePrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };
+module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildLetterSwapPrompt, buildSceneUpgradePrompt, buildRestylePrompt, isTextEditRequest, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };

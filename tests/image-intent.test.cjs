@@ -74,7 +74,7 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(maha, /body\.userText\.replace\(\/\\s\*\\\[\[\^\\\[\\\]\]\*\\\]\\s\*\$\/, ''\)/);
   assert.match(maha, /IMAGE_CREATIVE_MODEL \|\| 'gemini-3-pro-image'/);
   assert.match(maha, /const isCreativeEdit = !!editImageBase64 && \(isElevate \|\| isReimagine \|\| isRestyle \|\| isSceneUpgrade \|\| __pureRaw\)/);
-  assert.match(maha, /isCreativeEdit \? creativeModel : editModel/);
+  assert.match(maha, /\(isCreativeEdit \|\| isTextSwap\) \? creativeModel : editModel/);
   assert.match(maha, /isElevate \? 0\.85/);
   assert.match(maha, /sourceIsRealPlacePhoto/);
   assert.match(maha, /if \(__place !== true\) \{ isSceneUpgrade = false; isElevate = true; \}/);
@@ -83,10 +83,25 @@ test('server reads the intent from the user\'s own words and sends creative edit
   /* الحارس يعمل على كل تعديل الآن: الأسلوب/الترقية/الفكرة المختلفة لا تُرفض لتغيير الوسيط، والهوية مفروضة */
   assert.match(maha, /allowStyleChange: explicitlyRequestsStyleChange\(cleanPrompt\) \|\| isRestyle \|\| isReimagine \|\| isElevate,/);
   assert.match(maha, /allowBroadChange: isSceneUpgrade \|\| isElevate \|\| isReimagine \|\| isRestyle,/);
+  /* v-letter-swap: «غير حرف م حط ع» → نانو بنانا برو بتعليمة قصيرة، وgpt-image منافس بالحكم لا خاطف */
+  const { isTextEditRequest, buildLetterSwapPrompt } = require('../api/_lib/image-prompt');
+  for (const t of ['غير حرف م حط ع', 'شيل حرف م وحط ع', 'بدل الاسم إلى عمران', 'اكتب كلمة مبروك', 'replace the word Sale with Open']) assert.equal(isTextEditRequest(t), true, t);
+  for (const t of ['أقوى', 'خلها أفخم', 'شيل الخلفية']) assert.equal(isTextEditRequest(t), false, t);
+  const lp = buildLetterSwapPrompt('غير حرف م حط ع');
+  assert.match(lp, /Edit the attached image: "غير حرف م حط ع"/);
+  assert.match(lp, /Change ONLY the letter\/word\/number named in that request, in place/);
+  assert.ok(lp.split('\n').length <= 5, 'short prompt like the Gemini app');
+  assert.match(maha, /const isTextSwap = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && \(body\.textSwap === true \|\| isTextEditRequest\(intentText\)\);/);
+  assert.match(maha, /\(isCreativeEdit \|\| isTextSwap\) \? creativeModel : editModel/);
+  assert.match(maha, /isTextSwap \? buildLetterSwapPrompt\(cleanPrompt\)/);
+  assert.match(maha, /&& \(!isTextSwap \|\| __duoWouldRun\)\n/);
+  /* العميل: برو أولًا على الصورة كاملة، ومسار القناع احتياط */
+  assert.match(attach, /textSwap: true, editImageBase64: __lsShr\.b64/);
+  assert.ok(attach.indexOf('textSwap: true') < attach.indexOf("fetch('/api/tools?action=text-swap'"), 'Pro-first, masked path second');
   /* تبديل الحرف بالقناع يعمل على 1280px كأي تعديل */
   assert.match(attach, /const __sc = Math\.min\(1, 1280 \/ Math\.max\(img\.naturalWidth \|\| 1, img\.naturalHeight \|\| 1\)\);/);
   /* لقطة نصّية كثيفة + «حسّن» تبقى على gpt-image عالي الدقة — الترقية لا تُستثنى من مسار النصّ */
-  assert.match(maha, /const __textRoute = !!process\.env\.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !extras\.length\n/);
+  assert.match(maha, /const __textRoute = !!process\.env\.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !extras\.length && \(!isTextSwap \|\| __duoWouldRun\)\n/);
   /* قرار المزدوج مرة واحدة: مسار النصّ الكثيف لا يترك نداء gpt-image معلّقًا حين تكون الترقية مستثناة من الحكم */
   assert.match(maha, /const __duoWouldRun = duoEnabled\(\) && !prayerPlan && !pipelineActive && !isReimagine && !isRestyle && !isElevate && !extras\.length;/);
   assert.match(maha, /if \(__textRoute\) \{\n      if \(__duoWouldRun\) \{/);
