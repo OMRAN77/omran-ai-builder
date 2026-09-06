@@ -107,6 +107,18 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(maha, /\(isCreativeEdit \|\| isTextSwap\) \? creativeModel : editModel/);
   assert.match(maha, /isTextSwap \? buildLetterSwapPrompt\(cleanPrompt\)/);
   assert.match(maha, /isReimagine \? buildReimaginePrompt\(cleanPrompt\)/);
+  /* المالك ٦ سبتمبر: لا حارس هوية/أسلوب على المسارات الإبداعية (نانو الأصلي لا يحجب)، ويبقى على التعديل الموضعي */
+  assert.match(maha, /if \(editImageBase64 && !extras\.length && !rawMode && !isCreativeEdit\) \{\n\s+const guard = await verifyLocalizedImageEdit/);
+  /* 4K عند الطلب الصريح فقط، وإلا 2K */
+  assert.match(maha, /const imageConfig = \{ imageSize: __want4K \? '4K' : '2K' \};/);
+  const want4K = new RegExp(maha.match(/const __want4K = \/(.*)\/i\.test\(/)[1], 'i');
+  for (const t of ['أقوى 4K', 'للطباعة', 'دقة عالية', 'print quality version']) assert.ok(want4K.test(t), t);
+  for (const t of ['أقوى', 'خلها أفخم', 'اطبع الاسم فوق']) assert.ok(!want4K.test(t), t);
+  /* المصدر يُرسل بدقة 2048px لتعديل الصورة الواحدة، و1280 فقط مع قناع أو صور إضافية */
+  assert.match(attach, /async function omranShrinkForEdit\(b64, mime, maxPx\)/);
+  assert.match(attach, /const mx = maxPx \|\| 2048, sc = /);
+  assert.match(attach, /const __tsShr = await omranShrinkForEdit\(__b64, __mime, 1280\)/);
+  assert.match(attach, /__xa\.mime \|\| 'image\/png', 1280\)/);
   assert.match(maha, /&& \(!isTextSwap \|\| __duoWouldRun\)\n/);
   /* العميل: برو أولًا على الصورة كاملة، ومسار القناع احتياط */
   assert.match(attach, /textSwap: true, editImageBase64: __lsShr\.b64/);

@@ -1549,7 +1549,9 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
    ٥ مرات بـ«انقطع الاتصال»): الصور المولّدة عالية الدقة تتجاوز حدّ جسم الطلب
    في فيرسل (~4.5MB) فيسقط الطلب قبل وصول الخادم أصلًا. نضغط لأقصى 1280px
    قبل الإرسال — كافية تمامًا لمولّد التعديل والنص يبقى مقروءًا. */
-async function omranShrinkForEdit(b64, mime){
+/* v-full-res (المالك: «كيف توصلني لمستوى نانو»): المصدر كان يُصغَّر إلى 1280px فتضيع تفاصيل الحروف والوجوه. الآن 2048px
+   للتعديل بصورة واحدة (≈1MB JPEG، تحت حد Vercel 4.5MB)؛ ومع قناع أو صور إضافية يبقى 1280 كي لا يتجاوز الطلب الحد. */
+async function omranShrinkForEdit(b64, mime, maxPx){
   try{
     if(!b64 || b64.length < 900000) return { b64: b64, mime: mime };
     const img = await new Promise((res, rej) => {
@@ -1557,7 +1559,7 @@ async function omranShrinkForEdit(b64, mime){
       i.onload = () => res(i); i.onerror = () => rej(new Error('bad_image'));
       i.src = 'data:' + (mime || 'image/png') + ';base64,' + b64;
     });
-    const mx = 1280, sc = Math.min(1, mx / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+    const mx = maxPx || 2048, sc = Math.min(1, mx / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
     if(sc >= 1 && b64.length < 1600000) return { b64: b64, mime: mime };
     const c = document.createElement('canvas');
     c.width = Math.max(1, Math.round((img.naturalWidth || mx) * sc));
@@ -3722,7 +3724,7 @@ function __showImgLoading(el, ar, en){
         }
         try{
           chatPhase('🔎', lang === 'ar' ? 'جاري قراءة الكتابة على الصورة…' : 'Reading the text on the image…', thinkingDiv);
-          const __tsShr = await omranShrinkForEdit(__b64, __mime);
+          const __tsShr = await omranShrinkForEdit(__b64, __mime, 1280); /* مع قناع: صورتان في الطلب */
           const __tsRes = await fetch('/api/tools?action=text-swap', {
             method:'POST', headers:{ 'Content-Type':'application/json' }, signal: genAbortController.signal,
             body: JSON.stringify({ imageBase64:__tsShr.b64, mimeType:__tsShr.mime, request:String(text || '').slice(0, 400), token:authGet('aiapp_auth_token'), guestId:window.getGuestId() })
@@ -3771,7 +3773,7 @@ function __showImgLoading(el, ar, en){
       if(imageAttachments.length > 1){
         __extraImgs = [];
         for(const __xa of imageAttachments.slice(0, -1)){
-          const __xs = await omranShrinkForEdit((__xa.dataUrl || '').split(',')[1] || '', __xa.mime || 'image/png');
+          const __xs = await omranShrinkForEdit((__xa.dataUrl || '').split(',')[1] || '', __xa.mime || 'image/png', 1280);
           __extraImgs.push({ data: __xs.b64, mime: __xs.mime });
         }
       }

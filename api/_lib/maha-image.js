@@ -292,7 +292,9 @@ module.exports = async (req, res) => {
       if (/ستوري|استوري|خلفية\s*(جوال|هاتف|موبايل)|خلفيه\s*(جوال|هاتف|موبايل)|story|wallpaper|9\s*[:x]\s*16|ريلز|reels|تيك\s*توك|tiktok|شورتس|shorts/i.test(s2)) return '9:16';
       return '3:4';
     };
-    const imageConfig = { imageSize: '2K' };
+    /* v-4k (المالك: «الجودة قبل التكلفة»): طلب صريح 4K/للطباعة/دقة عالية يرفع إخراج برو إلى 4K (≈ ضعف سعر 2K) */
+    const __want4K = /(?:^|[\s،,])(?:4k|٤k|للطباعة|طباعة|دقة\s*عالية|عالية\s*الدقة|أعلى\s*دقة|اعلى\s*دقة)(?=$|[\s،,.!؟?])|\b(?:4k|high[-\s]?res(?:olution)?|print[-\s]?(?:ready|quality))\b/i.test(intentText + ' ' + String(prompt || ''));
+    const imageConfig = { imageSize: __want4K ? '4K' : '2K' };
     if (!editImageBase64) imageConfig.aspectRatio = (pipelineActive && pipelineRewrite && pipelineRewrite.aspect) ? pipelineRewrite.aspect : (isArchitectural ? '16:9' : pickAspect(cleanPrompt));
     /* نانو بنانا (2.5-flash-image) لا يدعم imageSize:'2K' — نرسل له صيغة نظيفة
        بلا imageConfig كي لا يرفض الطلب (400). لكنه يحتاج responseModalities:['IMAGE']
@@ -548,7 +550,10 @@ module.exports = async (req, res) => {
       return;
     }
 
-    if (editImageBase64 && !extras.length && !rawMode) {
+    /* v-guard-off-creative (المالك ٦ سبتمبر: «أوقفت النتيجة لأنها غيّرت هوية الشخص» على طلب إبداعي — وهو يقارن بنانو الأصلي
+       الذي لا يحجب شيئًا): الترقية والفكرة الجديدة وتحويل الأسلوب وترقية المكان تعيد الرسم بطبيعتها، فلا حارس عليها.
+       التعديل الموضعي (اسم/حرف/لون) يبقى محروسًا: الوجه لا يتبدّل عند تغيير الاسم. */
+    if (editImageBase64 && !extras.length && !rawMode && !isCreativeEdit) {
       const guard = await verifyLocalizedImageEdit({
         apiKey,
         sourceBase64: editImageBase64,

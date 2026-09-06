@@ -4903,25 +4903,32 @@ let __saveDirty = false;
 // v-idb-mirror: كتابة المرآة المنحّفة — chatsSlimForServer تُعرَّف لاحقًا في هذا
 // الملف والاستدعاء يحدث بعد اكتمال التحميل، فالمرجع آمن وقت التنفيذ.
 let __mirrorAt = 0;
+let __idbSavedAt = 0; /* v-no-purge: آخر حفظ فعلي في IndexedDB — للتباعد مع كبر السجل */
 function __writeChatsMirror(){
   try{ localStorage.setItem('aiapp_projects_slim', JSON.stringify(chatsSlimForServer())); }
   catch(e){ /* guard-ok: المرآة رفاهية إقلاع — امتلاء التخزين لا يكسر الحفظ الأصلي */ }
 }
 window.__writeChatsMirror = __writeChatsMirror;
-function __saveFlush(){
+function __saveFlush(force){
   if(!__saveDirty) return;
   __saveDirty = false;
   try{ clearTimeout(__saveTimer); }catch(e){ __swallow(e, "save:app-04-i18n-state#11"); }
   __saveTimer = null;
   if(!__idbBroken && window.indexedDB){
     try{
-      // v714: حارس حجم صريح — المنظّف القديم كان لا يعمل إلا عند امتلاء localStorage،
-      // ومع IndexedDB لا يمتلئ أبدًا، فتتكدّس صور base64 (بوسترات الإعلانات خاصة)
-      // حتى يصير الحفظ الدوري كل 1.5 ثانية يجمّد الصفحة كلها. الآن: إذا تجاوز
-      // الحجم ~12MB نمسح بيانات الصور القديمة (تبقى آخر 6 رسائل في المشروع المفتوح).
-      try{
-        if(__projectsToJson().length > 12000000){ purgeOldImages(6); __projJsonCache = new WeakMap(); }
-      }catch(e){ __swallow(e, 'save:sizeGuard#v714'); }
+      /* v-no-purge (المالك ٦ سبتمبر: «🗑️ تم حذف الصورة تلقائيًا — شيل هذي الميزة… وأقدر أعدل حتى لو 1000 صورة ورا بعض»):
+         v714 كان يمسح بيانات الصور القديمة فوق ~12MB كي لا يجمّد الحفظ الدوري الصفحة. IndexedDB سعته بالجيجات، فلا حذف
+         بعد اليوم: بدل الحذف يتباعد الحفظ مع كبر السجل (فوق 12MB كل ١٠ ثوانٍ، فوق 60MB كل ٣٠ ثانية)، وعند مغادرة
+         الصفحة يُحفظ فورًا. المنظّف بقي لمسار localStorage الاحتياطي وحده لأن سقفه 5MB فعليًا. */
+      if(!force){
+        try{
+          const __sz = __projectsToJson().length;
+          const __gap = __sz > 60000000 ? 30000 : (__sz > 12000000 ? 10000 : 0);
+          const __wait = __gap - (Date.now() - __idbSavedAt);
+          if(__gap && __wait > 0){ __saveDirty = true; __saveTimer = setTimeout(__saveFlush, __wait); return; }
+        }catch(e){ __swallow(e, 'save:sizeGuard#v714'); }
+      }
+      __idbSavedAt = Date.now();
       idbSet('aiapp_projects', state.projects).catch(err => {
         console.error('IDB save failed → fallback to localStorage', err);
         __idbBroken = true;
@@ -16446,7 +16453,9 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
    ٥ مرات بـ«انقطع الاتصال»): الصور المولّدة عالية الدقة تتجاوز حدّ جسم الطلب
    في فيرسل (~4.5MB) فيسقط الطلب قبل وصول الخادم أصلًا. نضغط لأقصى 1280px
    قبل الإرسال — كافية تمامًا لمولّد التعديل والنص يبقى مقروءًا. */
-async function omranShrinkForEdit(b64, mime){
+/* v-full-res (المالك: «كيف توصلني لمستوى نانو»): المصدر كان يُصغَّر إلى 1280px فتضيع تفاصيل الحروف والوجوه. الآن 2048px
+   للتعديل بصورة واحدة (≈1MB JPEG، تحت حد Vercel 4.5MB)؛ ومع قناع أو صور إضافية يبقى 1280 كي لا يتجاوز الطلب الحد. */
+async function omranShrinkForEdit(b64, mime, maxPx){
   try{
     if(!b64 || b64.length < 900000) return { b64: b64, mime: mime };
     const img = await new Promise((res, rej) => {
@@ -16454,7 +16463,7 @@ async function omranShrinkForEdit(b64, mime){
       i.onload = () => res(i); i.onerror = () => rej(new Error('bad_image'));
       i.src = 'data:' + (mime || 'image/png') + ';base64,' + b64;
     });
-    const mx = 1280, sc = Math.min(1, mx / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+    const mx = maxPx || 2048, sc = Math.min(1, mx / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
     if(sc >= 1 && b64.length < 1600000) return { b64: b64, mime: mime };
     const c = document.createElement('canvas');
     c.width = Math.max(1, Math.round((img.naturalWidth || mx) * sc));
@@ -18619,7 +18628,7 @@ function __showImgLoading(el, ar, en){
         }
         try{
           chatPhase('🔎', lang === 'ar' ? 'جاري قراءة الكتابة على الصورة…' : 'Reading the text on the image…', thinkingDiv);
-          const __tsShr = await omranShrinkForEdit(__b64, __mime);
+          const __tsShr = await omranShrinkForEdit(__b64, __mime, 1280); /* مع قناع: صورتان في الطلب */
           const __tsRes = await fetch('/api/tools?action=text-swap', {
             method:'POST', headers:{ 'Content-Type':'application/json' }, signal: genAbortController.signal,
             body: JSON.stringify({ imageBase64:__tsShr.b64, mimeType:__tsShr.mime, request:String(text || '').slice(0, 400), token:authGet('aiapp_auth_token'), guestId:window.getGuestId() })
@@ -18668,7 +18677,7 @@ function __showImgLoading(el, ar, en){
       if(imageAttachments.length > 1){
         __extraImgs = [];
         for(const __xa of imageAttachments.slice(0, -1)){
-          const __xs = await omranShrinkForEdit((__xa.dataUrl || '').split(',')[1] || '', __xa.mime || 'image/png');
+          const __xs = await omranShrinkForEdit((__xa.dataUrl || '').split(',')[1] || '', __xa.mime || 'image/png', 1280);
           __extraImgs.push({ data: __xs.b64, mime: __xs.mime });
         }
       }
