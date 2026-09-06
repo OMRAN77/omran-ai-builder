@@ -1,0 +1,22 @@
+tasks:
+  install:
+    name: Install dependencies
+    command: npm ci
+    triggeredBy:
+      - manual
+      - postDevcontainerStart
+      - prebuild
+  build:
+    name: Build bundle
+    command: npm run bundle
+    dependsOn:
+      - install
+    triggeredBy:
+      - manual
+  ci:
+    name: Run CI checks
+    command: npm run ci
+    dependsOn:
+      - install
+    triggeredBy:
+      - manual
