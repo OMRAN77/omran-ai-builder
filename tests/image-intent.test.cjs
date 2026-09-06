@@ -112,6 +112,22 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(maha, /isElevate \? buildElevatePrompt\(cleanPrompt, intentText\)/);
   assert.match(maha, /const __rawCreative = creativeRawEnabled\(process\.env\) && \(isElevate \|\| isReimagine \|\| isRestyle\);/);
   assert.match(maha, /__rawCreative \? rawCreativePrompt\(cleanPrompt, intentText\)/);
+  /* v-intent-llm: النموذج يوسّع التعابير النمطية فقط حين لا تلتقط مسارًا إبداعيًا ولا تبديل/حذف نصّ، ولا يعمل بلا صورة مصدر */
+  assert.match(maha, /if \(editImageBase64 && !\(body && body\.sceneUpgrade === true\) && !__intent\.restyle && !__intent\.reimagine && !__intent\.elevate && !__intent\.sameImage\n\s+&& intentText\.trim\(\)\.length <= 220 && !isTextEditRequest\(intentText\) && !isPureTextRemoval\(intentText\) && llmIntentEnabled\(process\.env\)\)/);
+  assert.match(maha, /const __llm = await classifyEditIntentLLM\(\{ apiKey, text: intentText \}\);/);
+  assert.match(maha, /if \(__llm\) \{ __intent\[__llm\.lane === 'same' \? 'sameImage' : __llm\.lane\] = true;/);
+  const llm = require('../api/_lib/image-intent-llm');
+  assert.deepEqual(llm.parseIntentReply('{"lane":"reimagine","confidence":0.92}'), { lane: 'reimagine', confidence: 0.92 });
+  assert.deepEqual(llm.parseIntentReply('```json\n{"lane":"elevate","confidence":0.8}\n```'), { lane: 'elevate', confidence: 0.8 });
+  assert.equal(llm.parseIntentReply('{"lane":"edit","confidence":0.99}'), null, 'edit = لا تغيير');
+  assert.equal(llm.parseIntentReply('{"lane":"elevate","confidence":0.5}'), null, 'ثقة منخفضة = لا تغيير');
+  assert.equal(llm.parseIntentReply('{"lane":"delete_everything","confidence":1}'), null, 'مسار خارج القائمة = لا تغيير');
+  assert.equal(llm.parseIntentReply('not json'), null);
+  assert.equal(llm.llmIntentEnabled({}), true);
+  assert.equal(llm.llmIntentEnabled({ IMAGE_INTENT_LLM: 'off' }), false);
+  const cp = llm.buildIntentClassifierPrompt('عطني "فكرة"\nأقوى');
+  assert.match(cp, /Request: "عطني  فكرة أقوى"/, 'الاقتباسات وأسطر الطلب لا تكسر القالب');
+  for (const lane of llm.INTENT_LANES) assert.match(cp, new RegExp('- ' + lane + ':'));
   /* المالك ٦ سبتمبر: لا حارس هوية/أسلوب على المسارات الإبداعية (نانو الأصلي لا يحجب)، ويبقى على التعديل الموضعي */
   assert.match(maha, /if \(editImageBase64 && !extras\.length && !rawMode && !isCreativeEdit\) \{\n\s+const guard = await verifyLocalizedImageEdit/);
   /* 4K عند الطلب الصريح فقط، وإلا 2K */

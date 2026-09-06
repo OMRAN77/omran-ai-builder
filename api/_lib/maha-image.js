@@ -8,6 +8,7 @@ const { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldU
 /* v-nano-pro-edit: نيّات التعديل (أسلوب/فكرة مختلفة/أقوى/نفس الصورة) في وحدة واحدة قابلة للاختبار،
    تُقرأ من نصّ المستخدم نفسه (body.userText) لا من أمر أعاد النموذج صياغته بالإنجليزية. */
 const { detectEditIntent } = require('./image-intent');
+const { classifyEditIntentLLM, llmIntentEnabled } = require('./image-intent-llm');
 const { verifyLocalizedImageEdit, publicGuardError } = require('./image-edit-guard');
 const { judgeBest, duoEnabled } = require('./image-judge');
 /* v-nano-chat (المالك: «نفس فكرة نانو»): مع كل صورة جملة قصيرة تشرح ما فُعل واقتراح للخطوة التالية، بلغة الطلب */
@@ -158,6 +159,13 @@ module.exports = async (req, res) => {
        صورة فوتوغرافية باهتة، وهو ما رآه المالك. لذلك يُحسم أدناه بسؤال خاطف: مكان حقيقي أم لا. */
     const intentText = userText || String(prompt || '');
     const __intent = detectEditIntent(intentText);
+    /* v-intent-llm: التعابير النمطية مرساة والنموذج يوسّع — طلب قصير على صورة مصدر لم تلتقط النية له مسارًا إبداعيًا
+       ولا تبديل/حذف نصّ يُسأل عنه flash (مهلة ٦ ثوانٍ)؛ جواب واثق فقط يرفعه إلى ترقية/فكرة/أسلوب/نفس الصورة. */
+    if (editImageBase64 && !(body && body.sceneUpgrade === true) && !__intent.restyle && !__intent.reimagine && !__intent.elevate && !__intent.sameImage
+        && intentText.trim().length <= 220 && !isTextEditRequest(intentText) && !isPureTextRemoval(intentText) && llmIntentEnabled(process.env)) {
+      const __llm = await classifyEditIntentLLM({ apiKey, text: intentText });
+      if (__llm) { __intent[__llm.lane === 'same' ? 'sameImage' : __llm.lane] = true; console.log('[maha-image] intent-llm: ' + __llm.lane + ' (' + __llm.confidence + ')'); }
+    }
     let isSceneUpgrade = !!(body && body.sceneUpgrade === true && editImageBase64);
     const isRestyle = !!editImageBase64 && !isSceneUpgrade && __intent.restyle;
     const isReimagine = !!editImageBase64 && !isSceneUpgrade && !isRestyle && __intent.reimagine;
