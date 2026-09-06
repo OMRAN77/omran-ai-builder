@@ -393,7 +393,7 @@ module.exports = async (req, res) => {
     /* v-bold-wins (المالك: «أقوى/أفضل من هذي — يرجّع نفس الصورة»): طلبات الإبداع
        (إعادة تصوّر/تحويل أسلوب) يجب ألّا يتدخّل فيها محرّك «حفظ النص» لأنه يثبّت
        الصورة كما هي؛ نتركها لنانو ليعطي نتيجة جريئة فعلًا. */
-    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate
+    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade
       && (editImageBase64 ? await sourceLooksTextDense() : (!rawMode && __textCueRe.test(cleanPrompt)));
     /* v-duo-textroute (لقطة المالك: لقطة واجهة + «عطني أفضل ونفس الفكرة» → فنجان قهوة): مسار النصّ الكثيف كان
        يرجع ناتج gpt-image وحده بلا Gemini ولا حكم. الآن يعمل المحرّكان معًا هنا أيضًا والحكم يختار. */

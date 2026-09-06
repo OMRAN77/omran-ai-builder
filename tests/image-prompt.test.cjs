@@ -120,7 +120,15 @@ test('chat edit flow continues from the latest edited pixels and never auto-recr
   assert.match(maha, /mahaCombinedEditPrompt\(promptText\)/);
   assert.doesNotMatch(maha, /mahaImageEditInstructions\.slice\(-/);
   assert.doesNotMatch(maha, /requestedStyleChange/);
-  assert.match(attach, /const __SHOT_ANALYZE = !!\([^;]{0,300}!__IMG_UPGRADE/);
+  assert.match(attach, /const __IMG_ELEVATE = !!\([^;]{0,500}__IMG_REIMAGINE_HINT/);
+  assert.match(attach, /const __SHOT_ANALYZE = !!\([^;]{0,600}!__IMG_UPGRADE && !__IMG_ELEVATE[^;]+!String\(text \|\| ''\)\.trim\(\)/);
+  assert.match(attach, /const __ATT_DEFAULT = !!\(__srcImg && !__srcImg\._fromMemory && String\(text \|\| ''\)\.trim\(\)/);
+  assert.doesNotMatch(attach, /const __ATT_DEFAULT = [^;]+__cameFromEditBtn/);
+  assert.match(attach, /const __FOLLOW_DEFAULT = [^;]+text\.length <= 1200/);
+  assert.doesNotMatch(attach, /const __FOLLOW_DEFAULT = [^;]+split\(\/\\s\+\/\)\.length >= 2/);
+  assert.match(attach, /__IMG_UPGRADE \|\| __IMG_ELEVATE \|\| __IMG_FOLLOW/);
+  assert.match(attach, /!__srcImg && \(__IMG_UPGRADE \|\| __IMG_ELEVATE\)[^;]+__IMG_UPGRADE_SRC/);
+  assert.doesNotMatch(mahaApi, /!isSceneUpgrade && !isElevate\s*\n\s*&& \(editImageBase64/);
   assert.match(mahaApi, /guestImageCharge = \{ counterKey \}/);
   assert.match(mahaApi, /await kvDecrBy\(charge\.counterKey, 1\)/);
   assert.match(mahaApi, /await refundImageCharge\(\)/);
