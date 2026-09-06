@@ -83,7 +83,7 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(maha, /body\.userText\.replace\(\/\\s\*\\\[\[\^\\\[\\\]\]\*\\\]\\s\*\$\/, ''\)/);
   assert.match(maha, /IMAGE_CREATIVE_MODEL \|\| 'gemini-3-pro-image'/);
   assert.match(maha, /const isCreativeEdit = !!editImageBase64 && \(isElevate \|\| isReimagine \|\| isRestyle \|\| isSceneUpgrade \|\| __pureRaw\)/);
-  assert.match(maha, /\(isCreativeEdit \|\| isTextSwap \|\| isPersonSwap\) \? creativeModel : editModel/);
+  assert.match(maha, /\(isCreativeEdit \|\| isTextSwap \|\| isPersonSwap \|\| isBroadEdit\) \? creativeModel : editModel/);
   assert.match(maha, /isElevate \? 0\.85/);
   assert.match(maha, /sourceIsRealPlacePhoto/);
   assert.match(maha, /if \(__place !== true\) \{ isSceneUpgrade = false; isElevate = true; \}/);
@@ -108,15 +108,23 @@ test('server reads the intent from the user\'s own words and sends creative edit
   const { isPersonSwapRequest, buildPersonSwapPrompt } = require('../api/_lib/image-prompt');
   for (const t of ['غير أشكال الأشخاص على الاسم الموجود الي تحت من غير تكرار الاشخاص', 'غير وجوه الأشخاص', 'بدل الشخص بشخص ثاني', 'خل الأشخاص مختلفين', 'أشخاص مختلفين', 'من غير تكرار الأشخاص', 'replace the faces', 'use different people']) assert.equal(isPersonSwapRequest(t), true, t);
   for (const t of ['غير الاسم إلى عمران', 'شيل الشخص', 'حط شخص جنب الباب', 'غير لون القميص', 'أقوى', 'اكتب اسم الشخص فوق', 'غير حرف م حط ع']) assert.equal(isPersonSwapRequest(t), false, t);
+  /* v-broad-edit: «رتّب الصور / خلها فقط صور / بدون كتابة» تعديل واسع على برو بلا حارس، وكل الأوامر معًا */
+  const { isBroadEditRequest, buildBroadEditPrompt } = require('../api/_lib/image-prompt');
+  for (const t of ['غير الملابس ورتب الصور خلها فقط صور', 'رتب الصور', 'رتبها', 'خلها فقط صور', 'بس صور', 'بدون كتابة', 'بدون أي نصوص', 'أعد ترتيب العناصر', 'rearrange the photos', 'photos only', 'no text']) assert.equal(isBroadEditRequest(t), true, t);
+  for (const t of ['غير الملابس', 'شيل الاسم كامل', 'بدون أسماء', 'أقوى', 'غير أشكال الأشخاص', 'وصف الصورة', 'غير حرف م حط ع']) assert.equal(isBroadEditRequest(t), false, t);
+  const bep = buildBroadEditPrompt('Change outfits, rearrange, pictures only', 'غير الملابس ورتب الصور خلها فقط صور');
+  assert.match(bep, /apply EVERY one of them faithfully/); assert.match(bep, /remove ALL text, captions, headers, badges, buttons and interface elements/); assert.match(bep, /never re-typeset it into garbled letters/);
+  assert.match(maha, /const isBroadEdit = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && !isPersonSwap && isBroadEditRequest\(intentText\);/);
+  assert.match(maha, /isBroadEdit \? buildBroadEditPrompt\(cleanPrompt, intentText\)/);
   const psp = buildPersonSwapPrompt('Change the people', 'غير أشكال الأشخاص');
   assert.match(psp, /identity must NOT be preserved/); assert.match(psp, /never repeat the same face twice/); assert.match(psp, /every label character-for-character/);
   assert.match(maha, /const isPersonSwap = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && isPersonSwapRequest\(intentText\);/);
-  assert.match(maha, /const isTextRemove = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && !isPersonSwap && isPureTextRemoval\(intentText\);/);
-  assert.match(maha, /const isTextSwap = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && !isPersonSwap && !isTextRemove && \(body\.textSwap === true \|\| isTextEditRequest\(intentText\)\);/);
+  assert.match(maha, /const isTextRemove = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && !isPersonSwap && !isBroadEdit && isPureTextRemoval\(intentText\);/);
+  assert.match(maha, /const isTextSwap = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && !isPersonSwap && !isBroadEdit && !isTextRemove && \(body\.textSwap === true \|\| isTextEditRequest\(intentText\)\);/);
   assert.match(maha, /isPersonSwap \? buildPersonSwapPrompt\(cleanPrompt, intentText\)/);
-  assert.match(maha, /if \(editImageBase64 && !extras\.length && !rawMode && !isCreativeEdit && !isPersonSwap\) \{/);
-  assert.match(maha, /&& !isPersonSwapRequest\(intentText\) && llmIntentEnabled\(process\.env\)\)/);
-  assert.match(maha, /\(isCreativeEdit \|\| isTextSwap \|\| isPersonSwap\) \? creativeModel : editModel/);
+  assert.match(maha, /if \(editImageBase64 && !extras\.length && !rawMode && !isCreativeEdit && !isPersonSwap && !isBroadEdit\) \{/);
+  assert.match(maha, /&& !isPersonSwapRequest\(intentText\) && !isBroadEditRequest\(intentText\) && llmIntentEnabled\(process\.env\)\)/);
+  assert.match(maha, /\(isCreativeEdit \|\| isTextSwap \|\| isPersonSwap \|\| isBroadEdit\) \? creativeModel : editModel/);
   assert.match(maha, /isTextSwap \? buildLetterSwapPrompt\(cleanPrompt\)/);
   assert.match(maha, /isReimagine \? buildReimaginePrompt\(cleanPrompt, intentText\)/);
   /* v-raw-words: كلمات المستخدم تصل نموذج الصور في المسارات الإبداعية، وIMAGE_RAW_CREATIVE يرسلها وحدها */
@@ -125,7 +133,7 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(maha, /const __rawCreative = creativeRawEnabled\(process\.env\) && \(isElevate \|\| isReimagine \|\| isRestyle\);/);
   assert.match(maha, /__rawCreative \? rawCreativePrompt\(cleanPrompt, intentText\)/);
   /* v-intent-llm: النموذج يوسّع التعابير النمطية فقط حين لا تلتقط مسارًا إبداعيًا ولا تبديل/حذف نصّ، ولا يعمل بلا صورة مصدر */
-  assert.match(maha, /if \(editImageBase64 && !\(body && body\.sceneUpgrade === true\) && !__intent\.restyle && !__intent\.reimagine && !__intent\.elevate && !__intent\.sameImage\n\s+&& intentText\.trim\(\)\.length <= 220 && !isTextEditRequest\(intentText\) && !isPureTextRemoval\(intentText\) && !isPersonSwapRequest\(intentText\) && llmIntentEnabled\(process\.env\)\)/);
+  assert.match(maha, /if \(editImageBase64 && !\(body && body\.sceneUpgrade === true\) && !__intent\.restyle && !__intent\.reimagine && !__intent\.elevate && !__intent\.sameImage\n\s+&& intentText\.trim\(\)\.length <= 220 && !isTextEditRequest\(intentText\) && !isPureTextRemoval\(intentText\) && !isPersonSwapRequest\(intentText\) && !isBroadEditRequest\(intentText\) && llmIntentEnabled\(process\.env\)\)/);
   assert.match(maha, /const __llm = await classifyEditIntentLLM\(\{ apiKey, text: intentText \}\);/);
   assert.match(maha, /if \(__llm\) \{ __intent\[__llm\.lane === 'same' \? 'sameImage' : __llm\.lane\] = true;/);
   /* v-best-of: مرشّح ثانٍ بالتوازي في المسارات الإبداعية والحكم الإبداعي يختار؛ IMAGE_BEST_OF يضبط العدد */
@@ -160,7 +168,7 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(cp, /Request: "عطني  فكرة أقوى"/, 'الاقتباسات وأسطر الطلب لا تكسر القالب');
   for (const lane of llm.INTENT_LANES) assert.match(cp, new RegExp('- ' + lane + ':'));
   /* المالك ٦ سبتمبر: لا حارس هوية/أسلوب على المسارات الإبداعية (نانو الأصلي لا يحجب)، ويبقى على التعديل الموضعي */
-  assert.match(maha, /if \(editImageBase64 && !extras\.length && !rawMode && !isCreativeEdit && !isPersonSwap\) \{\n\s+const guard = await verifyLocalizedImageEdit/);
+  assert.match(maha, /if \(editImageBase64 && !extras\.length && !rawMode && !isCreativeEdit && !isPersonSwap && !isBroadEdit\) \{\n\s+const guard = await verifyLocalizedImageEdit/);
   /* 4K عند الطلب الصريح فقط، وإلا 2K */
   assert.match(maha, /const imageConfig = \{ imageSize: __want4K \? '4K' : '2K' \};/);
   const want4K = new RegExp(maha.match(/const __want4K = \/(.*)\/i\.test\(/)[1], 'i');
@@ -178,9 +186,9 @@ test('server reads the intent from the user\'s own words and sends creative edit
   /* تبديل الحرف بالقناع يعمل على 1280px كأي تعديل */
   assert.match(attach, /const __sc = Math\.min\(1, 1280 \/ Math\.max\(img\.naturalWidth \|\| 1, img\.naturalHeight \|\| 1\)\);/);
   /* الترقية تذهب إلى برو دائمًا — لا تُختطف إلى gpt-image المحافظ حين يبدو المصدر «شاشة تطبيق» */
-  assert.match(maha, /const __textRoute = !!process\.env\.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !extras\.length && \(!isTextSwap \|\| __duoWouldRun\)\n/);
+  assert.match(maha, /const __textRoute = !!process\.env\.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate && !isPersonSwap && !isBroadEdit && !extras\.length && \(!isTextSwap \|\| __duoWouldRun\)\n/);
   /* قرار المزدوج مرة واحدة: مسار النصّ الكثيف لا يترك نداء gpt-image معلّقًا حين تكون الترقية مستثناة من الحكم */
-  assert.match(maha, /const __duoWouldRun = duoEnabled\(\) && !prayerPlan && !pipelineActive && !isReimagine && !isRestyle && !isElevate && !isPersonSwap && !extras\.length;/);
+  assert.match(maha, /const __duoWouldRun = duoEnabled\(\) && !prayerPlan && !pipelineActive && !isReimagine && !isRestyle && !isElevate && !isPersonSwap && !isBroadEdit && !extras\.length;/);
   assert.match(maha, /if \(__textRoute\) \{\n      if \(__duoWouldRun\) \{/);
   assert.match(maha, /const duoOn = __duoWouldRun && \(!__textRoute \|\| !!densePromise\);/);
   assert.match(maha, /generationConfig: genConfigFor\(\{ temperature: 0\.85 \}\) \}\);/);

@@ -251,6 +251,29 @@ function buildPersonSwapPrompt(userPrompt, userWords){
     '3. Never write the instruction itself into the image. Return only one finished image.'
   ].join('\n');
 }
+/* v-broad-edit (لقطة المالك ٦ سبتمبر «غير الملابس ورتب الصور خلها فقط صور» على لقطة شاشة مليئة بالنصوص): طلب مركّب يعيد
+   الترتيب ويحذف الكتابة كلها ويغيّر اللبس. القالب الموضعي («لا تغيّر إلا ما طُلب واحفظ كل بكسل») يناقض إعادة الترتيب،
+   ومسار النصّ الكثيف يرسله إلى gpt-image المحافظ فتخرج الواجهة نفسها بحروف مشوّهة. مسار خاص: برو، بلا حارس، كل الأوامر معًا. */
+const BROAD_EDIT_RE = new RegExp([
+  '(?:^|[\\s،,])(?:رتّ?ب|رتبي|ترتيب|أعد\\s*ترتيب|اعد\\s*ترتيب|نظّ?م|تنظيم|وزّ?ع)(?:ها|هم|ه|ي)?(?=$|[\\s،,.!؟?])',
+  '(?:خلّ?ي?ها|اجعلها|سوّ?ي?ها|خله|خلي)\\s*(?:فقط|بس)\\s*(?:ال)?صور[ةه]?',
+  '(?:^|[\\s،,])(?:فقط|بس)\\s*(?:ال)?صور(?=$|[\\s،,.!؟?])|(?:^|[\\s،,])(?:ال)?صور\\s*(?:فقط|بس)(?=$|[\\s،,.!؟?])',
+  '(?:بدون|بلا|من\\s*غير)\\s*(?:أي\\s*)?(?:كتابة|كتابه|كلام|نص|نصوص|عناوين|تسميات|شرح|واجهة|أزرار|ازرار)',
+  '\\b(?:rearrange|reorganize|re-?layout|reorder|photos?\\s+only|pictures?\\s+only|images?\\s+only|only\\s+(?:the\\s+)?(?:photos?|pictures?|images?)|no\\s+text|without\\s+(?:any\\s+)?text)\\b',
+].join('|'), 'i');
+function isBroadEditRequest(text){ return BROAD_EDIT_RE.test(String(text || '')); }
+function buildBroadEditPrompt(userPrompt, userWords){
+  const prompt = cleanImagePrompt(userPrompt);
+  return [
+    ...taskHeader(prompt, userWords),
+    '',
+    'BROAD EDIT of the attached source image. The request may contain several instructions (for example: change the outfits, rearrange the pictures, and keep only the pictures) — apply EVERY one of them faithfully. Rules:',
+    '1. Keep the subject matter: every person stays recognizably the same person (face, skin, age) unless the request changes people; keep the same set of pictures and elements unless the request removes or adds some.',
+    '2. Rearranging is allowed and expected when asked: build a clean, balanced, professional layout (even grid, equal sizes, consistent spacing, no leftover UI chrome). Change clothes, colours, backgrounds or styles exactly as requested.',
+    '3. If the request says pictures only / no text / no labels, remove ALL text, captions, headers, badges, buttons and interface elements and rebuild the surface cleanly behind them. Otherwise keep existing text correct character-for-character — never re-typeset it into garbled letters.',
+    '4. Never write the instruction itself into the image. Output one finished, sharp image with no artifacts.'
+  ].join('\n');
+}
 /* v-remove-not-swap (لقطة المالك «شيل الاسم كامل» → «لم أستطع تحديد الحرف المطلوب»): حذف الاسم/النصّ كلّه
    ليس تبديل حرف — كان يُحشر في مسار تبديل الحروف («غيّر فقط الحرف المسمّى») فيفشل. حذفٌ صِرف = بلا بديل بعده
    («شيل الاسم وحط عمران» تبديل، «شيل حرف م» يبقى تبديلًا لأنه حرف لا اسم). */
@@ -358,4 +381,4 @@ function buildRestylePrompt(userPrompt, userWords){
   ].join('\n');
 }
 
-module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, taskHeader, creativeRawEnabled, rawCreativePrompt, buildLetterSwapPrompt, isPersonSwapRequest, buildPersonSwapPrompt, buildSceneUpgradePrompt, buildRestylePrompt, isTextEditRequest, isRemoveTextRequest, isPureTextRemoval, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };
+module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildReimaginePrompt, taskHeader, creativeRawEnabled, rawCreativePrompt, buildLetterSwapPrompt, isPersonSwapRequest, buildPersonSwapPrompt, isBroadEditRequest, buildBroadEditPrompt, buildSceneUpgradePrompt, buildRestylePrompt, isTextEditRequest, isRemoveTextRequest, isPureTextRemoval, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };
