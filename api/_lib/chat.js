@@ -1165,7 +1165,7 @@ module.exports = async (req, res) => {
           else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
           else if (cb.name === 'run_js') result = await runInClient(send, 'run_js', input);
           /* v-nano-pro-edit: كلمات المستخدم نفسها تُرافق أمر النموذج الإنجليزي — منها يقرأ الخادم نيّة «أقوى/فكرة ثانية» */
-          else if (cb.name === 'generate_image') { input.userText = String(lastUserText || '').replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600); result = await runInClient(send, 'generate_image', input, 75000); }
+          else if (cb.name === 'generate_image') { input.userText = String(lastUserText || '').replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600); /* مع صورة مرفقة قد يتحوّل الرسم إلى تعديل على برو (v-nano-pro-edit) فيحتاج مهلة التعديل */ result = await runInClient(send, 'generate_image', input, lastUserHasImage ? 150000 : 75000); }
           // v-edit-image-tool: التعديل عالي الدقة (gpt-image للنصّي) قد يأخذ دقيقتين.
           else if (cb.name === 'edit_image') { input.userText = String(lastUserText || '').replace(/\s*\[[^\[\]]*\]\s*$/, '').slice(0, 600); result = await runInClient(send, 'edit_image', input, 150000); }
           else if (cb.name === 'generate_video') result = await runInClient(send, 'generate_video', input, 290000);

@@ -1032,7 +1032,7 @@ function summarizeCsvText(text){
 
 /* v-nano-pro-edit: الطلب الإبداعي القصير على صورة (أقوى/أفخم/طوّرها/فكرة ثانية/كرتون…) — يُقرأ هنا وفي أداة
    edit_image/generate_image (app-17) حتى لا يرسم النموذج صورة جديدة بلا علاقة بالمصدر. */
-const __IMG_CREATIVE_RE = /(?:^|[\s،,])(?:نسخ[ةه]\s*)?(?:ال)?(?:أ|ا|إ)(?:قوى|قوي|فخم|رقى|جمل|حلى|روع|بدع|حسن|فضل|بهى)(?=$|[\s،,.!؟?])|(?:^|[\s،,])(?:فخم[ةه]?|راقي[ةه]?|خيالي[ةه]?|جبار[ةه]?|مبهر[ةه]?|إبداعي[ةه]?|ابداعي[ةه]?)(?=$|[\s،,.!؟?])|(?:^|[\s،,])(?:[اأ]?(?:طوّ?ر|حسّ?ن|جمّ?ل|قوّ?|رقّ?|زيّ?ن)|ارفع)(?:ها|ه|يها|يه)(?=$|[\s،,.!؟?])|فكر[ةه]\s*(?:ثاني[ةه]|مختلف[ةه]|جديد[ةه]|أقوى|اقوى)|(?:^|[\s،,])(?:3d|ثلاثي|مجسم|مجسّم|كرتون|كارتون|أنيمي|انمي|بيكسار|ديزني|anime|cartoon|pixar|disney)(?=$|[\s،,.!؟?])|\b(?:stronger|bolder|fancier|premium|luxurious|epic|level\s*up|glow\s*up|next\s*level|better\s*(?:than|version)|best\s*version|reimagine|different\s*(?:idea|concept))\b/i;
+const __IMG_CREATIVE_RE = /(?:^|[\s،,])(?:نسخ[ةه]\s*)?(?:ال)?(?:أ|ا|إ)(?:قوى|قوي|فخم|رقى|جمل|حلى|روع|بدع|حسن|فضل|بهى)(?=$|[\s،,.!؟?])|(?:^|[\s،,])(?:فخم[ةه]?|راقي[ةه]?|خيالي[ةه]?|جبار[ةه]?|مبهر[ةه]?|إبداعي[ةه]?|ابداعي[ةه]?|احترافي[ةه]?|تجنن|لايق[ةه]?)(?=$|[\s،,.!؟?])|(?:^|[\s،,])(?:[اأ]?(?:طوّ?ر|حسّ?ن|جمّ?ل|قوّ?|رقّ?|زيّ?ن|زخرف|فخّ?م|عزّ?ز)|ارفع|ابهر|أبهر)(?:ها|ه|يها|يه|ني)(?=$|[\s،,.!؟?])|(?:^|[\s،,])(?:ارفع|إرفع)\s*(?:ال)?(?:مستوى|مستواها|جودتها|جودة)|(?:^|[\s،,])(?:زوّ?د|زيد)\s*(?:ال)?(?:زخارف|زخرف[ةه]|تفاصيل|فخام[ةه])|فكر[ةه]\s*(?:ثاني[ةه]|مختلف[ةه]|جديد[ةه]|أقوى|اقوى)|(?:^|[\s،,])(?:3d|ثلاثي|مجسم|مجسّم|كرتون|كارتون|أنيمي|انمي|بيكسار|ديزني|anime|cartoon|pixar|disney)(?=$|[\s،,.!؟?])|\b(?:stronger|bolder|richer|fancier|nicer|prettier|cleaner|premium|luxurious|epic|level\s*up|glow\s*up|next\s*level|better\s*(?:than|version)|best\s*version|reimagine|different\s*(?:idea|concept)|more\s+(?:impressive|beautiful|elegant|luxurious|professional|premium|polished|refined|dramatic|striking)|(?:enhance|improve|upgrade|elevate|polish)\s+(?:it|this|everything|the\s+(?:whole\s+|entire\s+)?(?:image|picture|photo|card|design|scene|look)))\b/i;
 /* v-visual-assist: لقطة شاشة لواجهة (اسم الملف/لصق من الحافظة/PNG بنسبة شاشة)
    تُعلَّم _screenshot لتذهب للتحليل والإرشاد بدل مسار تعديل الصور. */
 function omranLooksLikeScreenshot(file, dims, opts){
@@ -2107,7 +2107,7 @@ window.omranAnotherVersion = async function(){
       __m.attachments = [{ name:'edited.png', isImage:true, mime:__outMime, dataUrl:'data:' + __outMime + ';base64,' + __data.imageBase64 }];
       cur.lastEditedImage = { b64: __data.imageBase64, mime: __outMime };
       cur.lastMsgWasImageEdit = true;
-      try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (__data.engine === 'openai' ? 'gpt-image' : 'نانو بنانا')); }catch(e){ __swallow(e, 'ui:img-engine-again'); }
+      try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (/openai/.test(String(__data.engine || '')) ? 'gpt-image' : (/pro/.test(String(__data.engine || '')) ? 'نانو بنانا برو' : 'نانو بنانا'))); }catch(e){ __swallow(e, 'ui:img-engine-again'); }
     } else {
       __m.content = imgErrFriendly(__data && __data.error, lang === 'ar') || (lang === 'ar' ? '⚠️ تعذّر توليد نسخة ثانية — جرّب مرّة أخرى.' : '⚠️ Could not create another version — try again.');
     }

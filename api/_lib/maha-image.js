@@ -184,7 +184,8 @@ module.exports = async (req, res) => {
     }
     if (isSceneUpgrade && !__intent.placeUpgradeHint && !__intent.sameImage) {
       const __place = await sourceIsRealPlacePhoto();
-      if (__place === false) { isSceneUpgrade = false; isElevate = true; }
+      /* تعذّر السؤال (مهلة/عطل) بلا أي تلميح مكان = نعامل المصدر كتصميم لا كغرفة — السلوك الأقرب لطلب المالك */
+      if (__place !== true) { isSceneUpgrade = false; isElevate = true; }
     }
     const promptLimit = isArchitectural ? 2400 : (editImageBase64 ? 8000 : 1800);
     /* v-nano-raw (المالك ٥ سبتمبر: «ليش الفرق بينهم»): تطبيق Gemini يرسل نصّ المستخدم كما هو، ونحن نلفّه
@@ -271,7 +272,8 @@ module.exports = async (req, res) => {
        يبقى على نانو 2.5 السريع الأمين. IMAGE_CREATIVE_MODEL يبدّل بلا نشر، والإنقاذ (نانو 2.5 ثم
        gpt-image) يبقى كما هو عند فشل برو. */
     const creativeModel = (process.env.IMAGE_CREATIVE_MODEL || 'gemini-3-pro-image').trim();
-    const isCreativeEdit = !!editImageBase64 && !extras.length && (isElevate || isReimagine || isRestyle || isSceneUpgrade || __pureRaw);
+    /* دمج عدة صور (extras) يصل برو أيضًا حين تكون النيّة إبداعية — برو يتعامل مع مراجع متعددة أفضل بكثير */
+    const isCreativeEdit = !!editImageBase64 && (isElevate || isReimagine || isRestyle || isSceneUpgrade || __pureRaw);
     const primaryModel = editImageBase64 ? (isCreativeEdit ? creativeModel : editModel) : creativeModel;
     const nanoPrimary = /2\.5-flash-image/.test(primaryModel);
     const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + primaryModel + ':generateContent?key=' + apiKey;
@@ -291,6 +293,9 @@ module.exports = async (req, res) => {
     const genConfigFor = function (extra) {
       const cfg = Object.assign({}, extra);
       if (!nanoPrimary) cfg.imageConfig = imageConfig;
+      /* v-nano-pro-edit: توصية Google لجيل Gemini 3 — الحرارة الافتراضية (1.0)؛ خفضها يضعف النتيجة ويكرّرها.
+         نانو 2.5 يبقى بحرارته المنخفضة للتعديل الموضعي الأمين. */
+      if (!nanoPrimary) delete cfg.temperature;
       return cfg;
     };
     const reqBody = JSON.stringify(__pureRaw
@@ -426,7 +431,9 @@ module.exports = async (req, res) => {
     /* v-bold-wins (المالك: «أقوى/أفضل من هذي — يرجّع نفس الصورة»): طلبات الإبداع
        (إعادة تصوّر/تحويل أسلوب) يجب ألّا يتدخّل فيها محرّك «حفظ النص» لأنه يثبّت
        الصورة كما هي؛ نتركها لنانو ليعطي نتيجة جريئة فعلًا. */
-    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !isElevate
+    /* v-nano-pro-edit: الترقية (isElevate) لا تُستثنى من مسار النصّ الكثيف — لقطة واجهة عربية + «حسّن» يجب أن تبقى
+       على gpt-image عالي الدقة الذي يحفظ الحروف؛ برو يعيد رسمها فتتكسّر. الفحص لا يجري إلا بوجود مصدر نصّي كثيف فعلًا. */
+    const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade
       && (editImageBase64 ? await sourceLooksTextDense() : (!rawMode && __textCueRe.test(cleanPrompt)));
     /* v-duo-textroute (لقطة المالك: لقطة واجهة + «عطني أفضل ونفس الفكرة» → فنجان قهوة): مسار النصّ الكثيف كان
        يرجع ناتج gpt-image وحده بلا Gemini ولا حكم. الآن يعمل المحرّكان معًا هنا أيضًا والحكم يختار. */
@@ -473,7 +480,12 @@ module.exports = async (req, res) => {
 
     if (!upstream || !upstream.ok) {
       const nanoB64 = await geminiNanoBananaImage();
-      if (nanoB64) { res.status(200).json({ imageBase64: nanoB64, mimeType: 'image/png', engine: 'gemini-nano-banana', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
+      if (nanoB64) {
+        /* v-nano-pro-edit: فشل المحرّك الأساسي (برو غالبًا) ونجح نانو 2.5 — يُسجَّل في لوحة المالك بدل أن يختفي وراء نتيجة باهتة
+           تشبه الشكوى الأصلية (مفتاح بلا برو، اسم موديل، 400 على الإعدادات…). */
+        try { require('./log-error.js').logError('maha-image:primary-fallback', new Error(primaryModel + ' failed'), { model: primaryModel, status: upstream ? ('status=' + upstream.status) : 'no-response', creative: isCreativeEdit, detail: String((data && data.error && data.error.message) || '').slice(0, 160) }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
+        res.status(200).json({ imageBase64: nanoB64, mimeType: 'image/png', engine: 'gemini-nano-banana', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return;
+      }
       const rescuedB64 = duoP ? await duoP : await openaiRescueImage();
       /* v-prayer-carry: الإنقاذ كان يفقد الدعاء المؤلَّف فيرفضه العميل
          (missing_authored_prayer — لقطة المالك). يُمرَّر مع الصورة المنقذة. */
@@ -493,7 +505,9 @@ module.exports = async (req, res) => {
     let imgPart = respParts.find((p) => p.inlineData && p.inlineData.data);
     if (!imgPart) {
       const nanoB64b = await geminiNanoBananaImage();
-      if (nanoB64b) { res.status(200).json({ imageBase64: nanoB64b, mimeType: 'image/png', engine: 'gemini-nano-banana', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
+      if (nanoB64b) {
+        try { require('./log-error.js').logError('maha-image:primary-fallback', new Error(primaryModel + ' returned no image part'), { model: primaryModel, status: 'no-image-part', creative: isCreativeEdit }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
+        res.status(200).json({ imageBase64: nanoB64b, mimeType: 'image/png', engine: 'gemini-nano-banana', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
       const rescuedB64b = duoP ? await duoP : await openaiRescueImage();
       if (rescuedB64b) { res.status(200).json({ imageBase64: rescuedB64b, mimeType: 'image/png', engine: 'openai', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
       await refundImageCharge();
