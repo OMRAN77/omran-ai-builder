@@ -4821,11 +4821,16 @@ window.__omrS = state;
 
 // 💾 IndexedDB storage — سعة بالجيجات بدل حد 5MB في localStorage.
 // المشاريع/المحادثات/الصور تنحفظ هنا؛ localStorage يبقى للإعدادات الصغيرة فقط.
-const IDB_NAME = 'aiapp_db', IDB_STORE = 'kv';
+const IDB_NAME = 'aiapp_db', IDB_STORE = 'kv', IDB_IMAGES = 'images';
 function idbOpen(){
   return new Promise((res, rej) => {
-    const r = indexedDB.open(IDB_NAME, 1);
-    r.onupgradeneeded = () => { r.result.createObjectStore(IDB_STORE); };
+    /* v-image-vault: الإصدار 2 يضيف مخزن «images» — كل صورة سجلٌّ مستقل يُكتب مرة واحدة عند إنشائها */
+    const r = indexedDB.open(IDB_NAME, 2);
+    r.onupgradeneeded = () => {
+      const db = r.result;
+      if(!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+      if(!db.objectStoreNames.contains(IDB_IMAGES)) db.createObjectStore(IDB_IMAGES);
+    };
     r.onsuccess = () => res(r.result);
     r.onerror = () => rej(r.error);
   });
@@ -4847,6 +4852,98 @@ function idbGet(key){
   }));
 }
 let __idbBroken = false;
+
+/* v-image-vault (المالك ٦ سبتمبر: «أقدر أعدل حتى لو 1000 صورة ورا بعض»): كانت كل الصور base64 داخل سجلّ المشاريع الواحد،
+   فكل حفظ ينسخ الجيجات كلها وتتجمد الصفحة. الآن الصورة الكبيرة (> 150KB) تُكتب مرة واحدة في مخزن «images» بمعرّف vaultId،
+   وسجلّ المشاريع يحمل المعرّف فقط؛ وعند العرض تُستعاد من المخزن. في الذاكرة يبقى dataUrl كما هو فلا يتغير أي مسار آخر. */
+const VAULT_MIN = 150000;
+let __vaultSeq = 0;
+function __vaultEach(projects, fn){
+  (projects || []).forEach(p => (p && p.messages || []).forEach(m => {
+    (m && m.attachments || []).forEach(a => { if(a && a.isImage) fn(a); });
+    (m && m.apiImages || []).forEach(a => { if(a) fn(a); });
+  }));
+}
+/* يعيّن معرّفًا لكل صورة كبيرة بلا معرّف ويعيد ما يجب كتابته في المخزن */
+function __vaultAssign(projects, now){
+  const puts = [];
+  __vaultEach(projects, a => {
+    if(typeof a.dataUrl !== 'string' || a.dataUrl.length <= VAULT_MIN) return;
+    if(!a.vaultId){ a.vaultId = 'v' + (now || Date.now()).toString(36) + '_' + (++__vaultSeq).toString(36); a.vaultPending = true; }
+    if(a.vaultPending) puts.push({ id: a.vaultId, dataUrl: a.dataUrl, ref: a });
+  });
+  return puts;
+}
+/* نسخة الحفظ: الصورة المخزونة تُستبدل بمعرّفها فقط */
+function __vaultReplacer(k, v){
+  if(k === 'dataUrl' && this && this.vaultId && !this.vaultPending && typeof v === 'string' && v.length > VAULT_MIN) return '';
+  if(k === 'vaultPending') return undefined;
+  return v;
+}
+function __collectVaultIds(projects){
+  const ids = new Set();
+  __vaultEach(projects, a => { if(a.vaultId) ids.add(a.vaultId); });
+  return ids;
+}
+function idbImgPutAll(puts){
+  if(!puts.length) return Promise.resolve();
+  return idbOpen().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(IDB_IMAGES, 'readwrite');
+    const st = tx.objectStore(IDB_IMAGES);
+    puts.forEach(x => st.put(x.dataUrl, x.id));
+    tx.oncomplete = () => { db.close(); res(); };
+    tx.onerror = () => { db.close(); rej(tx.error); };
+  }));
+}
+function idbImgGet(id){
+  return idbOpen().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(IDB_IMAGES, 'readonly');
+    const rq = tx.objectStore(IDB_IMAGES).get(id);
+    rq.onsuccess = () => { db.close(); res(rq.result); };
+    rq.onerror = () => { db.close(); rej(rq.error); };
+  }));
+}
+function idbImgSweep(liveIds){
+  return idbOpen().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(IDB_IMAGES, 'readwrite');
+    const st = tx.objectStore(IDB_IMAGES);
+    const rq = st.getAllKeys();
+    rq.onsuccess = () => { (rq.result || []).forEach(k => { if(!liveIds.has(k)) st.delete(k); }); };
+    tx.oncomplete = () => { db.close(); res(); };
+    tx.onerror = () => { db.close(); rej(tx.error); };
+  }));
+}
+/* الحفظ: الصور الجديدة إلى المخزن أولًا، ثم سجلّ المشاريع بلا base64؛ أي تعثّر في المخزن = الحفظ الكامل كما كان */
+async function __vaultSave(){
+  const puts = __vaultAssign(state.projects, Date.now());
+  let vaulted = true;
+  try{ await idbImgPutAll(puts); puts.forEach(x => { delete x.ref.vaultPending; }); }
+  catch(e){ vaulted = false; __swallow(e, 'vault:put'); }
+  const copy = vaulted ? JSON.parse(JSON.stringify(state.projects, __vaultReplacer)) : JSON.parse(JSON.stringify(state.projects));
+  await idbSet('aiapp_projects', copy);
+}
+/* الاستعادة: صور مشروع بلا dataUrl تُقرأ من المخزن (عند الإقلاع للمشروع المفتوح، وعند العرض لغيره) */
+function idbImgGetMany(ids){
+  if(!ids.length) return Promise.resolve({});
+  return idbOpen().then(db => new Promise((res, rej) => {
+    const out = {};
+    const tx = db.transaction(IDB_IMAGES, 'readonly');
+    const st = tx.objectStore(IDB_IMAGES);
+    ids.forEach(id => { const rq = st.get(id); rq.onsuccess = () => { if(typeof rq.result === 'string') out[id] = rq.result; }; });
+    tx.oncomplete = () => { db.close(); res(out); };
+    tx.onerror = () => { db.close(); rej(tx.error); };
+  }));
+}
+async function hydrateProjectImages(p){
+  const need = [];
+  __vaultEach(p ? [p] : [], a => { if(a.vaultId && !a.dataUrl && !a.purged) need.push(a); });
+  if(!need.length) return 0;
+  /* معاملة واحدة لكل صور المشروع بدل فتح القاعدة لكل صورة */
+  try{ const got = await idbImgGetMany(need.map(a => a.vaultId)); need.forEach(a => { if(got[a.vaultId]) a.dataUrl = got[a.vaultId]; }); }catch(e){ __swallow(e, 'vault:get'); }
+  return need.length;
+}
+window.__hydrateProjectImages = hydrateProjectImages;
+window.__vaultSweep = function(){ try{ return idbImgSweep(__collectVaultIds(state.projects)); }catch(e){ return Promise.resolve(); } };
 
 // Strips old image data (keeps a small placeholder) to free up localStorage
 // space. Keeps the most recent images in the active project untouched so the
@@ -4929,7 +5026,7 @@ function __saveFlush(force){
         }catch(e){ __swallow(e, 'save:sizeGuard#v714'); }
       }
       __idbSavedAt = Date.now();
-      idbSet('aiapp_projects', state.projects).catch(err => {
+      __vaultSave().catch(err => {
         console.error('IDB save failed → fallback to localStorage', err);
         __idbBroken = true;
         saveStateLocal();
@@ -5918,6 +6015,8 @@ function renderMessages(keepScroll){
           wrap.appendChild(chip);
         } else if(a.isImage){
           const img = document.createElement('img');
+          /* v-image-vault: صورة مخزونة بلا dataUrl (مشروع لم يُستعد بعد) تُقرأ من المخزن عند عرضها */
+          if(!a.dataUrl && a.vaultId){ idbImgGet(a.vaultId).then(d => { if(typeof d === 'string' && d){ a.dataUrl = d; img.src = d; } }).catch(e => __swallow(e, 'vault:render')); }
           img.src = a.dataUrl;
           img.title = a.name;
           img.style.cursor = 'pointer';
@@ -20133,7 +20232,10 @@ try{ refreshProviderQuickBar(); }catch(e){ console.error('quickbar init', e); }
           return (sp && (sp.messages || []).length > (ip.messages || []).length) ? sp : ip;
         }).concat(extra);
         window.__usingSlimProjects = false;
+        /* v-image-vault: صور المشروع المفتوح تُستعاد من المخزن قبل أول رسم؛ الباقي عند عرضه؛ وكنس اليتيمة بعد الإقلاع */
+        try{ await window.__hydrateProjectImages(state.projects.find(q => q.id === state.currentId)); }catch(e){ __swallow(e, 'vault:boot'); }
         renderAll();
+        try{ setTimeout(() => { window.__vaultSweep && window.__vaultSweep(); }, 15000); }catch(e){ __swallow(e, 'vault:sweep'); }
       }
       try{ if(window.__writeChatsMirror) window.__writeChatsMirror(); }catch(e){ __swallow(e, 'mirror:app-09#fresh'); }
     }
