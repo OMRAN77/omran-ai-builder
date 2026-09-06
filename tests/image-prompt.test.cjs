@@ -2,8 +2,17 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { buildGenerationPrompt, buildEditPrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange } = require('../api/_lib/image-prompt');
+const { buildGenerationPrompt, buildEditPrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange, shouldUseRawImagePrompt, stripRawImagePrefix } = require('../api/_lib/image-prompt');
 const { assessEditVerdict, publicGuardError } = require('../api/_lib/image-edit-guard');
+
+test('engineered image prompts are the default and raw mode is explicit', () => {
+  assert.equal(shouldUseRawImagePrompt('صورة منتج احترافية'), false);
+  assert.equal(shouldUseRawImagePrompt('نانو: صورة منتج احترافية'), true);
+  assert.equal(shouldUseRawImagePrompt('nano banana - cinematic portrait'), true);
+  assert.equal(shouldUseRawImagePrompt('صورة منتج احترافية', { envDefault:'on' }), true);
+  assert.equal(shouldUseRawImagePrompt('نانو: دعاء', { prayerPlan:{} }), false);
+  assert.equal(stripRawImagePrefix('نانو بنانا:  قصر على البحر '), 'قصر على البحر');
+});
 
 test('generation prompt follows the subject instead of forcing one camera style', () => {
   const p = buildGenerationPrompt('شمس مرسومة بأسلوب مائي فوق الجبال');

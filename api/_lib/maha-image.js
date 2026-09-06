@@ -4,7 +4,7 @@
 // model (server-side owner key, GEMINI_API_KEY) - the only one of the 9
 // providers that can actually output images.
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
-const { cleanImagePrompt, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildSceneUpgradePrompt, buildRestylePrompt, explicitlyRequestsStyleChange } = require('./image-prompt');
+const { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildSceneUpgradePrompt, buildRestylePrompt, explicitlyRequestsStyleChange } = require('./image-prompt');
 /* v-restyle-bold: «عدل 3d» / «حوّلها كرتون» / «ستايل أنيمي» = تحويل أسلوب كامل
    لا تعديل موضعي — explicitlyRequestsStyleChange لا يلتقط «3d» وحدها. */
 const RESTYLE_RE = /(^|[\s،,])(3d|ثلاثي|مجسم|مجسّم|كرتون|كارتون|أنيمي|انمي|بيكسار|ديزني|زيتي|مائي|رصاص|بكسل|بيكسل|سايبر|نيون|كوميك|كومكس|مانجا|فانتازيا|واقعي|anime|cartoon|pixar|disney|pixel|cyberpunk|neon|comic|manga|fantasy|watercolor|oil\s*paint|sketch|realistic|render)/i;
@@ -160,15 +160,14 @@ module.exports = async (req, res) => {
     const isReimagine = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !__sameImageRe.test(String(prompt || '')) && /فكرة\s*(ثانية|ثانيه|مختلفة|مختلفه|جديدة|جديده|غير)|فكره\s*(ثانية|ثانيه|مختلفة|مختلفه|جديدة|جديده|غير)|غيّ?ر\s*الفكرة|بشكل\s*مختلف\s*تمام|مختلف\s*تمام|تصميم\s*ثاني|ستايل\s*ثاني|بدّ?ل\s*(الفكرة|التصميم|الستايل)|different\s*(idea|concept|style)|new\s*concept|another\s*(idea|take|concept)|reimagine/i.test(String(prompt || ''));
     const isElevate = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !__sameImageRe.test(String(prompt || '')) && __strongerRe.test(String(prompt || ''));
     const promptLimit = isArchitectural ? 2400 : (editImageBase64 ? 8000 : 1800);
-    /* v-nano-raw (المالك ٥ سبتمبر: «ليش الفرق بينهم»): تطبيق Gemini يرسل نصّ المستخدم كما هو، ونحن نلفّه
-       بقواعد وحرّاس وحكم. من يبدأ طلبه بـ«نانو:» أو «nano:» يصل نصّه إلى نانو بنانا برو حرفيًا:
-       بلا صياغة، بلا حارس، بلا محرّك ثانٍ، بلا لصق وجه — نفس ما يعطيه تطبيق Gemini. */
-    const RAW_RE = /^\s*(?:نانو|نانو\s*بنانا|nano(?:\s*banana)?)\s*[:：\-–—]?\s*/i;
-    /* v-nano-default (المالك: «أريد نانو بنانا عندي في التطبيق نفس الفكرة»): الوضع الخام هو الافتراضي لكل صور
-       الدردشة — نصّ المستخدم كما هو مع صورته، بلا صياغة ولا حارس، كتطبيق Gemini تمامًا. IMAGE_RAW_DEFAULT=off يعيد الصياغة. */
-    const rawMode = !prayerPlan && (RAW_RE.test(String(prompt || '')) || String(process.env.IMAGE_RAW_DEFAULT || 'on').toLowerCase() !== 'off');
+    /* الوضع المحسّن هو الافتراضي. «نانو:» يظل مخرجًا صريحًا لإرسال النص الخام،
+       ويمكن إعادة السلوك القديم مؤقتًا عبر IMAGE_RAW_DEFAULT=on. */
+    const rawMode = shouldUseRawImagePrompt(prompt, {
+      prayerPlan,
+      envDefault: process.env.IMAGE_RAW_DEFAULT,
+    });
     const cleanPrompt = rawMode
-      ? String(prompt || '').replace(RAW_RE, '').trim().slice(0, 4000)
+      ? stripRawImagePrefix(prompt).slice(0, 4000)
       : cleanImagePrompt(prayerPlan ? prayerPlan.visualBrief : prompt).slice(0, promptLimit);
     const extras = Array.isArray(extraImages) ? extraImages.filter((x) => x && x.data).slice(0, 5) : [];
 
@@ -224,7 +223,7 @@ module.exports = async (req, res) => {
        الآن: الوضع الخام يبقى للتوليد الجديد (إحساس تطبيق Gemini كما أراد المالك)
        أو حين يبدأ الطلب بـ«نانو:» صراحةً؛ أمّا تعديل صورة مصدر فيستخدم الأمر
        المهندس دائمًا لأنه هو ما يرفع الجودة فوق التمرير الخام. */
-    const __explicitRaw = RAW_RE.test(String(prompt || ''));
+    const __explicitRaw = isExplicitRawImagePrompt(prompt);
     const __pureRaw = rawMode && (!editImageBase64 || __explicitRaw);
     if (__pureRaw) {
       parts.length = 0;
@@ -387,12 +386,10 @@ module.exports = async (req, res) => {
        عربية سليمة — gpt-image ينفّذها وGemini يكسر الحروف): طلب توليد جديد
        يذكر نصوصًا/عناوين/أيقونات/واجهة/شاشة يبدأ أيضًا بـgpt-image. */
     const __textCueRe = /نص|كتاب|مكتوب|عنوان|عناوين|أيقون|ايقون|واجهة|شاشة|تطبيق|قائمة|كلمات|حروف|خط\s*عرب|\btext\b|label|icon|\bui\b|screen|interface|\bapp\b|menu|typograph|lettering|caption/i;
-    /* v-textedit-raw (لقطة المالك «شيل حرف م واكتب ع» رجعت مشوّهة «٤/تعديل»):
-       تعديل مصدرٍ نصّيٍّ كثيف (لقطة شاشة/شعار) هو بالضبط ما يكسر فيه Gemini
-       الحروف العربية، وgpt-image-1 بـinput_fidelity=high ينقلها كما هي. كان
-       هذا المسار معطّلًا افتراضيًا لأن الوضع الخام (نانو) هو الافتراضي (!rawMode).
-       الآن: للتعديل على مصدر نصّي كثيف يعمل المسار حتى في الوضع الخام؛ ويبقى
-       الوضع الخام نقيًّا للتوليد الجديد. */
+    /* v-textedit-raw: تعديل مصدرٍ نصّيٍّ كثيف (لقطة شاشة/شعار) هو بالضبط ما
+       يكسر فيه Gemini الحروف العربية، وgpt-image-1 بـinput_fidelity=high ينقلها
+       كما هي. يعمل المسار أيضًا عند تفعيل الوضع الخام من البيئة؛ أمّا طلب
+       «نانو:» الصريح فيبقى خامًا بالكامل كما طلب المستخدم. */
     /* v-bold-wins (المالك: «أقوى/أفضل من هذي — يرجّع نفس الصورة»): طلبات الإبداع
        (إعادة تصوّر/تحويل أسلوب) يجب ألّا يتدخّل فيها محرّك «حفظ النص» لأنه يثبّت
        الصورة كما هي؛ نتركها لنانو ليعطي نتيجة جريئة فعلًا. */
