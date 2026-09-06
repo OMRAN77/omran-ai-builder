@@ -4,6 +4,22 @@ function cleanImagePrompt(value){
   return String(value || '').trim().slice(0, 2400);
 }
 
+const RAW_IMAGE_PREFIX_RE = /^\s*(?:نانو\s*بنانا|نانو|nano(?:\s*banana)?)\s*[:：\-–—]?\s*/i;
+
+function isExplicitRawImagePrompt(value){
+  return RAW_IMAGE_PREFIX_RE.test(String(value || ''));
+}
+
+function stripRawImagePrefix(value){
+  return String(value || '').replace(RAW_IMAGE_PREFIX_RE, '').trim();
+}
+
+function shouldUseRawImagePrompt(value, options){
+  const opts = options || {};
+  if (opts.prayerPlan) return false;
+  return isExplicitRawImagePrompt(value) || String(opts.envDefault || 'off').toLowerCase() === 'on';
+}
+
 /* v590 — بنك تنويع الخلفيّات البيئيّة. سبب الرقعة: الفرع البيئيّ كان يعيد جملة
  * إنجليزيّة واحدة ثابتة لكلّ طلب، فكلّ "خلفيّة بحر" تصل للمولّد بنفس النصّ حرفيًّا
  * ⇒ صور شقيقة. الآن يُركَّب التوجيه من ٦ محاور مستقلّة لحظيًّا.
@@ -263,4 +279,4 @@ function buildRestylePrompt(userPrompt){
   ].join('\n');
 }
 
-module.exports = { cleanImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildSceneUpgradePrompt, buildRestylePrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };
+module.exports = { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, environmentDirection, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildSceneUpgradePrompt, buildRestylePrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange, subjectDirection };

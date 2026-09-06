@@ -12,7 +12,8 @@ test('stronger/fancier requests in every common wording are an elevate, not a lo
     'عطني الأفضل', 'حسن', 'طور الصورة', 'حسّن الكرت', 'احسنها', 'اجملها', 'اطورها', 'نسخة أقوى للكرت', 'اعطني نسخة أقوى من هذي الصورة', 'نسخة أرقى', 'خلها أحلى', 'أبدع', 'فكرة أقوى', 'احسن شوي',
     'زخرفها', 'زخرف الكرت', 'فخّمها', 'ابهرني', 'خلها تجنن', 'خلها لايقة', 'زود الزخارف', 'زيد الفخامة', 'خل الكرت أفخم', 'سوها احترافية', 'ارفع جودتها',
     /* الاسم بعد الصفة/الفعل جانبٌ لا مفعول: الصورة كلها تُرفع */ 'طورها بالألوان', 'ممكن أقوى من فوق', 'أبيها أفخم من فوق', 'أبغاها أفخم بالألوان', 'حسّنها من ناحية الألوان', 'خلها فخمة بالألوان', 'خلها فخمة من فوق', 'خلها تجنن بالألوان', 'ابهرني بالألوان', 'فخّمها بالألوان والخط', 'زخرفها وحط اسمي فوق', 'حسنها كلها حتى الخط', 'خله أفخم بالألوان', 'لو سمحت أقوى بالألوان',
-    'make it stronger but keep the text', 'make it more luxurious, keep the name', 'improve it, especially the lighting', 'a richer version with the same background', 'upgrade the design but keep the date', 'best version, keep the name', 'make this more premium with a gold frame', 'make it much nicer, keep the sky',
+    'make it stronger but keep the text', 'make it more luxurious, keep the name', 'improve it, especially the lighting', 'a richer version with the same background', 'upgrade the design but keep the date', 'best version, keep the name', 'make this more premium with a gold frame', 'make it much nicer, keep the sky', 'make it a lot nicer',
+    /* الجولة الرابعة: الصفة تتصدّر أو الضمير للصورة يغلب أي عنصر لاحق */ 'أقوى وحط إطار أفخم', 'غير الخط وخلها أقوى', 'حط إطار ذهبي وخلها أقوى', 'الصورة كلها أقوى', 'خل الصورة أقوى', 'زود زخارف', 'زيد جمال الصورة', 'فخم',
     'make it stronger', 'a cleaner, more luxurious version of this card', 'upgrade the design', 'improve it', 'best version', 'stronger', 'bolder version']) {
     assert.equal(kind(t), 'elevate', t);
   }
@@ -25,7 +26,9 @@ test('localized edits stay localized — the elevate detector must not swallow t
     /* «أفضّل لو/أن…» = أُفضّل لا أفضل؛ \b لا يعمل بعد حرف عربي */ 'أفضل لو تخلي الخلفية بيضاء', 'أحسن لو تغير اللون', 'أفضل أن تغير الخلفية', 'احسن لو تشيل الخلفية',
     /* حسن وزين أسماء لا أفعال حين تأتي مفعولًا */ 'اكتب اسم حسن', 'غير الاسم إلى زين', 'اكتب اسمي حسن!', 'الاسم حسن', 'اسم زين.',
     /* الصفة تصف عنصرًا واحدًا لا الصورة */ 'حط إطار أفخم', 'اجعل الخلفية أجمل', 'ضيف لمسة فخمة', 'عدل الخط وخله أجمل', 'اكتب اسم عمران فوق بخط احترافي', 'غيّر الخلفية لخلفية فخمة', 'خل الإضاءة أقوى',
-    /* الصفة بعدها اسم عنصر = تصفه هو */ 'أفضل لونها أزرق', 'أجمل خط', /* زيد جمال اسم */ 'اكتب زيد جمال', 'اكتب الاسم: زيد جمال',
+    /* الصفة بعدها اسم عنصر = تصفه هو */ 'أفضل لونها أزرق', 'أجمل خط', 'فخم الإطار', /* زيد جمال اسم */ 'اكتب زيد جمال', 'اكتب الاسم: زيد جمال',
+    /* كلمة بين الاسم والصفة، وتاء الملكية، وضمير مذكّر */ 'حط إطار ذهبي أفخم', 'خلفيتها أجمل', 'إضاءتها أقوى', 'الخلفية خلها أجمل',
+    /* دوران/صيغة ليست تحويل أسلوب */ 'turn the image upside down', 'convert it to png', 'convert the image to 16:9', 'turn it around', 'rotate the image 90 degrees', 'give the title a bolder look', 'a bolder version of the logo',
     /* ألوان لا أساليب */ 'غير لون الخلفية رصاصي', 'خلها رصاصية', 'غير اللون إلى أخضر زيتي', 'لون مائي فاتح', 'keep it in the same style but change the sky',
     /* «in a … style» على عنصر واحد ليس تحويل أسلوب */ 'write the name in an elegant style', 'put the logo in the corner, keep the style', 'make the text in a bigger font, same style', 'add a border in a gold style', 'restyle the text', 'redesign the logo']) {
     assert.equal(kind(t), 'edit', t);
@@ -43,7 +46,7 @@ test('same-image, restyle and reimagine keep their own lanes and beat elevate', 
   /* اسم ملف في ملحق المرفقات لا يخدع القارئ — الخادم يحذفه قبل القراءة، والحدود تمنع «renders/neon sign» */
   assert.equal(kind('make the neon sign brighter'), 'edit');
   /* الأسلوب الحقيقي بألفاظه الكاملة */
-  for (const t of ['رسم رصاص', 'لوحة زيتية', 'ألوان مائية', 'حولها للوحة زيتية', 'حولها لرسم رصاص', 'حوّلها لرسمة رصاص', 'ارسمها بألوان مائية', 'سوها بالألوان المائية', 'خلها بأسلوب مائي', 'خلها بستايل زيتي', 'رسم بقلم رصاص', 'رسم رصاصي', 'اسكتش', 'redesign this room in a modern style']) assert.equal(kind(t), 'restyle', t);
+  for (const t of ['رسم رصاص', 'لوحة زيتية', 'ألوان مائية', 'حولها للوحة زيتية', 'حولها لرسم رصاص', 'حوّلها لرسمة رصاص', 'ارسمها بألوان مائية', 'سوها بالألوان المائية', 'خلها بأسلوب مائي', 'خلها بستايل زيتي', 'رسم بقلم رصاص', 'رسم رصاصي', 'اسكتش', 'redesign this room in a modern style', 'turn it into a cartoon', 'convert it to a watercolor painting', 'make it in a vintage style', 'vintage style', 'turn it into a vintage poster look']) assert.equal(kind(t), 'restyle', t);
   /* أوامر الديكور المهندسة (٤ أنماط) تبقى تحويل أسلوب — «Keep layout identical» ليست «نفس الصورة» */
   assert.equal(kind('Redesign this restaurant interior in a sleek MODERN FINE DINING style: dark moody palette. Keep layout identical. Photorealistic architectural render.'), 'restyle');
   assert.equal(kind('make the exact same image but sharper'), 'same');
@@ -79,7 +82,7 @@ test('server reads the intent from the user\'s own words and sends creative edit
   /* لقطة نصّية كثيفة + «حسّن» تبقى على gpt-image عالي الدقة — الترقية لا تُستثنى من مسار النصّ */
   assert.match(maha, /const __textRoute = !!process\.env\.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !extras\.length\n/);
   /* قرار المزدوج مرة واحدة: مسار النصّ الكثيف لا يترك نداء gpt-image معلّقًا حين تكون الترقية مستثناة من الحكم */
-  assert.match(maha, /const __duoWouldRun = duoEnabled\(\) && !prayerPlan && !pipelineActive && !isReimagine && !isRestyle && !isElevate;/);
+  assert.match(maha, /const __duoWouldRun = duoEnabled\(\) && !prayerPlan && !pipelineActive && !isReimagine && !isRestyle && !isElevate && !extras\.length;/);
   assert.match(maha, /if \(__textRoute\) \{\n      if \(__duoWouldRun\) \{/);
   assert.match(maha, /const duoOn = __duoWouldRun && \(!__textRoute \|\| !!densePromise\);/);
   assert.match(maha, /generationConfig: genConfigFor\(\{ temperature: 0\.85 \}\) \}\);/);
@@ -96,13 +99,14 @@ test('both chat clients forward the user\'s words and the tool path never loses 
   assert.match(attach, /prompt: __editPrompt, userText: String\(text \|\| ''\)\.slice\(0, 600\)/);
   assert.match(attach, /نانو بنانا برو/);
   /* بطاقة ملصوقة/عريضة تُعلَّم «لقطة شاشة» — الطلب الإبداعي القصير عليها يبقى تعديل صورة لا تحليل لقطة */
-  assert.match(attach, /__srcImg\._screenshot && !__SHOT_CREATIVE && !__imgEditRe/);
-  /* بعد #504 (المساعد يقرأ ويرشد افتراضيًا): الطلب الإبداعي الصريح هو الاستثناء الوحيد فوق زرّ «تعديل» */
-  assert.match(attach, /const __ATT_DEFAULT = !!\(\(__cameFromEditBtn \|\| __SHOT_CREATIVE\) && !__SHOT_ANALYZE/);
+  /* بعد main (قرار المالك الأخير): أي أمر غير استفهامي مع صورة مرفقة = تعديل؛ «أقوى/أفضل من» تُلتقط بـ__IMG_ELEVATE */
+  assert.match(attach, /const __SHOT_ANALYZE = !!\([^;]{0,600}!__IMG_UPGRADE && !__IMG_ELEVATE/);
+  assert.match(attach, /const __ATT_DEFAULT = !!\(__srcImg && !__srcImg\._fromMemory && String\(text \|\| ''\)\.trim\(\)/);
   const creativeRe = new RegExp(attach.match(/const __IMG_CREATIVE_RE = \/(.*)\/i;/)[1], 'i');
   for (const t of ['أقوى', 'نسخة أفخم', 'خلها أرقى', 'طوّرها', 'احسنها', 'زخرفها', 'ابهرني', 'سوها احترافية', 'ارفع جودتها', 'فكرة ثانية', 'كرتون', 'make it stronger', 'improve it', 'upgrade the design', 'richer version', 'stronger']) assert.ok(creativeRe.test(t), t);
   /* صفة إنجليزية عارية في سؤال رأي ليست طلبًا إبداعيًا (لا تتجاوز قراءة اللقطة ولا تُخصم) */
   for (const t of ['is this nicer', 'which one is prettier', 'the second one is prettier', 'this looks cleaner than before']) assert.ok(!creativeRe.test(t), t);
+  assert.ok(creativeRe.test('make it a lot nicer'));
   for (const t of ['كيف أطبع هذي الشاشة', 'وش هذا الخطأ', 'ترجم الصورة']) assert.ok(!creativeRe.test(t), t);
   assert.match(chatTools, /window\.__chatLastUserText = String\(ut \|\| ''\)\.replace\(.*\)\.trim\(\)\.slice\(0, 600\)/);
   assert.match(tools, /userText: String\(\(args && args\.userText\) \|\| window\.__chatLastUserText \|\| ''\)\.replace\(.*\)\.slice\(0, 600\)/);
@@ -120,7 +124,7 @@ test('both chat clients forward the user\'s words and the tool path never loses 
   assert.match(chat, /runInClient\(send, 'generate_image', input, lastUserHasImage \? 150000 : 75000\)/);
   /* زر «نسخة ثانية» يسمّي المحرّك بالمنطق نفسه */
   assert.match(attach, /'نانو بنانا برو' : 'نانو بنانا'\)\)\); \}catch\(e\)\{ __swallow\(e, 'ui:img-engine-again'\)/);
-  assert.match(attach, /__IMG_CREATIVE_RE\.test\(text\) && !\/\[؟\?\]\\s\*\$\/\.test\(text\) && !__codeWordRe\.test\(text\) && !__supIssueRe\.test\(text\) && !__ATT_VISION_RE\.test\(text\)/);
+  assert.match(attach, /^const __IMG_CREATIVE_RE = \//m);
   assert.match(tools, /typeof __IMG_CREATIVE_RE !== 'undefined' && __IMG_CREATIVE_RE\.test\(gUserText\)/);
   assert.match(attach, /^const __IMG_CREATIVE_RE = \//m);
   assert.ok(chatTools.includes("replace(/\\s*\\[[^\\[\\]]*\\]\\s*$/, '')"), 'الملحق [الصور المرفقة: …] يُحذف قبل قراءة النيّة');

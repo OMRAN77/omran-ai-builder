@@ -4,7 +4,7 @@
 // model (server-side owner key, GEMINI_API_KEY) - the only one of the 9
 // providers that can actually output images.
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
-const { cleanImagePrompt, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildSceneUpgradePrompt, buildRestylePrompt, explicitlyRequestsStyleChange } = require('./image-prompt');
+const { cleanImagePrompt, isExplicitRawImagePrompt, stripRawImagePrefix, shouldUseRawImagePrompt, buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, buildSceneUpgradePrompt, buildRestylePrompt, explicitlyRequestsStyleChange } = require('./image-prompt');
 /* v-nano-pro-edit: نيّات التعديل (أسلوب/فكرة مختلفة/أقوى/نفس الصورة) في وحدة واحدة قابلة للاختبار،
    تُقرأ من نصّ المستخدم نفسه (body.userText) لا من أمر أعاد النموذج صياغته بالإنجليزية. */
 const { detectEditIntent } = require('./image-intent');
@@ -75,7 +75,7 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { prompt, editImageBase64, editMimeType, extraImages, token, guestId } = body;
+    const { prompt, editImageBase64, editMimeType, editMaskBase64, extraImages, token, guestId } = body;
     /* v-nano-pro-edit: كلمات المستخدم الأصلية (العميل يرسلها مع الأمر) — عليها تُقرأ النيّة */
     const userText = typeof body.userText === 'string' ? body.userText.replace(/\s*\[[^\[\]]*\]\s*$/, '').trim().slice(0, 1200) : '';
     const prayerRequest = typeof body.prayerRequest === 'string' ? body.prayerRequest.trim().slice(0, 800) : '';
@@ -144,6 +144,7 @@ module.exports = async (req, res) => {
     // يحمل عدد الطوابق وسعة الكراج والطراز والمواد — وهو ما يجعل الواجهة
     // تطابق المخطط. الوصف الهندسي يُسمح له بمساحة أوسع.
     const isArchitectural = !!(body && body.architectural);
+    const exactTextEdit = !!(body && body.exactTextEdit === true && editImageBase64 && editMaskBase64);
     // v605: ترقية مشهد كاملة يطلبها المستخدم صراحةً («أعطني الأفضل»).
     /* v-nano-pro-edit (المالك ٥ سبتمبر: «عندي نانو وجيمي وكل المفاتيح وآخر شي النتيجة صفر —
        الصورة المزخرفة من نانو والثانية من التطبيق»): النيّة تُقرأ من كلمات المستخدم نفسه
@@ -188,15 +189,14 @@ module.exports = async (req, res) => {
       if (__place !== true) { isSceneUpgrade = false; isElevate = true; }
     }
     const promptLimit = isArchitectural ? 2400 : (editImageBase64 ? 8000 : 1800);
-    /* v-nano-raw (المالك ٥ سبتمبر: «ليش الفرق بينهم»): تطبيق Gemini يرسل نصّ المستخدم كما هو، ونحن نلفّه
-       بقواعد وحرّاس وحكم. من يبدأ طلبه بـ«نانو:» أو «nano:» يصل نصّه إلى نانو بنانا برو حرفيًا:
-       بلا صياغة، بلا حارس، بلا محرّك ثانٍ، بلا لصق وجه — نفس ما يعطيه تطبيق Gemini. */
-    const RAW_RE = /^\s*(?:نانو|نانو\s*بنانا|nano(?:\s*banana)?)\s*[:：\-–—]?\s*/i;
-    /* v-nano-default (المالك: «أريد نانو بنانا عندي في التطبيق نفس الفكرة»): الوضع الخام هو الافتراضي لكل صور
-       الدردشة — نصّ المستخدم كما هو مع صورته، بلا صياغة ولا حارس، كتطبيق Gemini تمامًا. IMAGE_RAW_DEFAULT=off يعيد الصياغة. */
-    const rawMode = !prayerPlan && (RAW_RE.test(String(prompt || '')) || String(process.env.IMAGE_RAW_DEFAULT || 'on').toLowerCase() !== 'off');
+    /* الوضع المحسّن هو الافتراضي. «نانو:» يظل مخرجًا صريحًا لإرسال النص الخام،
+       ويمكن إعادة السلوك القديم مؤقتًا عبر IMAGE_RAW_DEFAULT=on. */
+    const rawMode = shouldUseRawImagePrompt(prompt, {
+      prayerPlan,
+      envDefault: process.env.IMAGE_RAW_DEFAULT,
+    });
     const cleanPrompt = rawMode
-      ? String(prompt || '').replace(RAW_RE, '').trim().slice(0, 4000)
+      ? stripRawImagePrefix(prompt).slice(0, 4000)
       : cleanImagePrompt(prayerPlan ? prayerPlan.visualBrief : prompt).slice(0, promptLimit);
     const extras = Array.isArray(extraImages) ? extraImages.filter((x) => x && x.data).slice(0, 5) : [];
 
@@ -252,7 +252,7 @@ module.exports = async (req, res) => {
        الآن: الوضع الخام يبقى للتوليد الجديد (إحساس تطبيق Gemini كما أراد المالك)
        أو حين يبدأ الطلب بـ«نانو:» صراحةً؛ أمّا تعديل صورة مصدر فيستخدم الأمر
        المهندس دائمًا لأنه هو ما يرفع الجودة فوق التمرير الخام. */
-    const __explicitRaw = RAW_RE.test(String(prompt || ''));
+    const __explicitRaw = isExplicitRawImagePrompt(prompt);
     const __pureRaw = rawMode && (!editImageBase64 || __explicitRaw);
     if (__pureRaw) {
       parts.length = 0;
@@ -358,7 +358,11 @@ module.exports = async (req, res) => {
              نصوص وشعارات الصورة الأصلية — بدونه يعاد رسمها مخربشة. */
           form.append('input_fidelity', 'high');
           form.append('quality', 'high');
-          form.append('image', new Blob([bytes], { type: editMimeType || 'image/jpeg' }), 'photo.jpg');
+          form.append('image', new Blob([bytes], { type: editMimeType || 'image/jpeg' }), exactTextEdit ? 'photo.png' : 'photo.jpg');
+          if (exactTextEdit) {
+            const maskBytes = Buffer.from(editMaskBase64, 'base64');
+            form.append('mask', new Blob([maskBytes], { type: 'image/png' }), 'mask.png');
+          }
           const r = await fetch('https://api.openai.com/v1/images/edits', {
             method: 'POST',
             headers: { Authorization: 'Bearer ' + okey },
@@ -420,18 +424,29 @@ module.exports = async (req, res) => {
       return null;
     }
 
+    // Never let an exact text replacement fall through to an unmasked renderer.
+    // The client also composites only the selected region over the source.
+    if (exactTextEdit) {
+      const exactB64 = await openaiRescueImage();
+      if (exactB64) {
+        res.status(200).json({ imageBase64: exactB64, mimeType: 'image/png', engine: 'openai-masked' });
+        return;
+      }
+      await refundImageCharge();
+      res.status(502).json({ error: 'image_generation_busy', retryable: true });
+      return;
+    }
+
     // v-img-textwise: مصدر نصّي كثيف → gpt-image-1 عالي الدقة أولًا؛
     // فشله أو غيابه يُكمل مسار Gemini المعتاد بلا أي خسارة.
     /* v-img-textwise-gen (صورة ChatGPT عند المالك: واجهة أدوات كاملة بعناوين
        عربية سليمة — gpt-image ينفّذها وGemini يكسر الحروف): طلب توليد جديد
        يذكر نصوصًا/عناوين/أيقونات/واجهة/شاشة يبدأ أيضًا بـgpt-image. */
     const __textCueRe = /نص|كتاب|مكتوب|عنوان|عناوين|أيقون|ايقون|واجهة|شاشة|تطبيق|قائمة|كلمات|حروف|خط\s*عرب|\btext\b|label|icon|\bui\b|screen|interface|\bapp\b|menu|typograph|lettering|caption/i;
-    /* v-textedit-raw (لقطة المالك «شيل حرف م واكتب ع» رجعت مشوّهة «٤/تعديل»):
-       تعديل مصدرٍ نصّيٍّ كثيف (لقطة شاشة/شعار) هو بالضبط ما يكسر فيه Gemini
-       الحروف العربية، وgpt-image-1 بـinput_fidelity=high ينقلها كما هي. كان
-       هذا المسار معطّلًا افتراضيًا لأن الوضع الخام (نانو) هو الافتراضي (!rawMode).
-       الآن: للتعديل على مصدر نصّي كثيف يعمل المسار حتى في الوضع الخام؛ ويبقى
-       الوضع الخام نقيًّا للتوليد الجديد. */
+    /* v-textedit-raw: تعديل مصدرٍ نصّيٍّ كثيف (لقطة شاشة/شعار) هو بالضبط ما
+       يكسر فيه Gemini الحروف العربية، وgpt-image-1 بـinput_fidelity=high ينقلها
+       كما هي. يعمل المسار أيضًا عند تفعيل الوضع الخام من البيئة؛ أمّا طلب
+       «نانو:» الصريح فيبقى خامًا بالكامل كما طلب المستخدم. */
     /* v-bold-wins (المالك: «أقوى/أفضل من هذي — يرجّع نفس الصورة»): طلبات الإبداع
        (إعادة تصوّر/تحويل أسلوب) يجب ألّا يتدخّل فيها محرّك «حفظ النص» لأنه يثبّت
        الصورة كما هي؛ نتركها لنانو ليعطي نتيجة جريئة فعلًا. */
@@ -441,7 +456,7 @@ module.exports = async (req, res) => {
     const __textRoute = !!process.env.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !extras.length
       && (editImageBase64 ? await sourceLooksTextDense() : (!rawMode && __textCueRe.test(cleanPrompt)));
     /* v-nano-pro-edit: قرار المزدوج يُحسم هنا مرة واحدة — الترقية مستثناة منه، فلا يُترك نداء gpt-image معلّقًا بلا حكم */
-    const __duoWouldRun = duoEnabled() && !prayerPlan && !pipelineActive && !isReimagine && !isRestyle && !isElevate;
+    const __duoWouldRun = duoEnabled() && !prayerPlan && !pipelineActive && !isReimagine && !isRestyle && !isElevate && !extras.length; /* دمج عدة صور: المنافس الأحادي يُسقط الصور الإضافية */
     /* v-duo-textroute (لقطة المالك: لقطة واجهة + «عطني أفضل ونفس الفكرة» → فنجان قهوة): مسار النصّ الكثيف كان
        يرجع ناتج gpt-image وحده بلا Gemini ولا حكم. الآن يعمل المحرّكان معًا هنا أيضًا والحكم يختار. */
     let densePromise = null;

@@ -2,8 +2,17 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange } = require('../api/_lib/image-prompt');
+const { buildGenerationPrompt, buildEditPrompt, buildElevatePrompt, sourceStylePreservationRule, explicitlyRequestsStyleChange, shouldUseRawImagePrompt, stripRawImagePrefix } = require('../api/_lib/image-prompt');
 const { assessEditVerdict, publicGuardError } = require('../api/_lib/image-edit-guard');
+
+test('engineered image prompts are the default and raw mode is explicit', () => {
+  assert.equal(shouldUseRawImagePrompt('صورة منتج احترافية'), false);
+  assert.equal(shouldUseRawImagePrompt('نانو: صورة منتج احترافية'), true);
+  assert.equal(shouldUseRawImagePrompt('nano banana - cinematic portrait'), true);
+  assert.equal(shouldUseRawImagePrompt('صورة منتج احترافية', { envDefault:'on' }), true);
+  assert.equal(shouldUseRawImagePrompt('نانو: دعاء', { prayerPlan:{} }), false);
+  assert.equal(stripRawImagePrefix('نانو بنانا:  قصر على البحر '), 'قصر على البحر');
+});
 
 test('generation prompt follows the subject instead of forcing one camera style', () => {
   const p = buildGenerationPrompt('شمس مرسومة بأسلوب مائي فوق الجبال');
@@ -111,10 +120,32 @@ test('chat edit flow continues from the latest edited pixels and never auto-recr
   assert.match(maha, /mahaCombinedEditPrompt\(promptText\)/);
   assert.doesNotMatch(maha, /mahaImageEditInstructions\.slice\(-/);
   assert.doesNotMatch(maha, /requestedStyleChange/);
+  assert.match(attach, /const __IMG_ELEVATE = !!\([^;]{0,500}__IMG_REIMAGINE_HINT/);
+  assert.match(attach, /const __SHOT_ANALYZE = !!\([^;]{0,600}!__IMG_UPGRADE && !__IMG_ELEVATE[^;]+!String\(text \|\| ''\)\.trim\(\)/);
+  assert.match(attach, /const __ATT_DEFAULT = !!\(__srcImg && !__srcImg\._fromMemory && String\(text \|\| ''\)\.trim\(\)/);
+  assert.doesNotMatch(attach, /const __ATT_DEFAULT = [^;]+__cameFromEditBtn/);
+  assert.match(attach, /const __FOLLOW_DEFAULT = [^;]+text\.length <= 1200/);
+  assert.doesNotMatch(attach, /const __FOLLOW_DEFAULT = [^;]+split\(\/\\s\+\/\)\.length >= 2/);
+  assert.match(attach, /__IMG_UPGRADE \|\| __IMG_ELEVATE \|\| __IMG_FOLLOW/);
+  assert.match(attach, /!__srcImg && \(__IMG_UPGRADE \|\| __IMG_ELEVATE\)[^;]+__IMG_UPGRADE_SRC/);
+  assert.doesNotMatch(mahaApi, /!isSceneUpgrade && !isElevate\s*\n\s*&& \(editImageBase64/);
   assert.match(mahaApi, /guestImageCharge = \{ counterKey \}/);
   assert.match(mahaApi, /await kvDecrBy\(charge\.counterKey, 1\)/);
   assert.match(mahaApi, /await refundImageCharge\(\)/);
   assert.doesNotMatch(maha, /mahaCallImageApi\(promptText, false\)/);
+});
+
+test('single-letter replacements are masked and cannot redraw the rest of the image', () => {
+  const attach = fs.readFileSync('js/app-09-attach.js', 'utf8');
+  const mahaApi = fs.readFileSync('api/_lib/maha-image.js', 'utf8');
+  const textSwap = fs.readFileSync('api/_lib/text-swap.js', 'utf8');
+  assert.match(attach, /شيل\|احذف\|امسح\|استبدل[\s\S]{0,100}حرف\|رمز/);
+  assert.match(attach, /omranBuildTextEditMask/);
+  assert.match(attach, /editMaskBase64:__masked\.maskB64/);
+  assert.match(attach, /omranMergeTextEditRegion/);
+  assert.match(mahaApi, /form\.append\('mask',[\s\S]{0,120}'mask\.png'\)/);
+  assert.match(mahaApi, /if \(exactTextEdit\) \{[\s\S]{0,500}return;[\s\S]{0,300}return;/);
+  assert.match(textSwap, /standalone letter or logo glyph/);
 });
 
 test('specialized image routes do not expose provider errors to the user', () => {

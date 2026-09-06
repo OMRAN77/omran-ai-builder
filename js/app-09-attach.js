@@ -1032,7 +1032,7 @@ function summarizeCsvText(text){
 
 /* v-nano-pro-edit: الطلب الإبداعي القصير على صورة (أقوى/أفخم/طوّرها/فكرة ثانية/كرتون…) — يُقرأ هنا وفي أداة
    edit_image/generate_image (app-17) حتى لا يرسم النموذج صورة جديدة بلا علاقة بالمصدر. */
-const __IMG_CREATIVE_RE = /(?:^|[\s،,])(?:نسخ[ةه]\s*)?(?:ال)?(?:أ|ا|إ)(?:قوى|قوي|فخم|رقى|جمل|حلى|روع|بدع|حسن|فضل|بهى)(?=$|[\s،,.!؟?])|(?:^|[\s،,])(?:فخم[ةه]?|راقي[ةه]?|خيالي[ةه]?|جبار[ةه]?|مبهر[ةه]?|إبداعي[ةه]?|ابداعي[ةه]?|احترافي[ةه]?|تجنن|لايق[ةه]?)(?=$|[\s،,.!؟?])|(?:^|[\s،,])(?:[اأ]?(?:طوّ?ر|حسّ?ن|جمّ?ل|قوّ?|رقّ?|زيّ?ن|زخرف|فخّ?م|عزّ?ز)|ارفع|ابهر|أبهر)(?:ها|ه|يها|يه|ني)(?=$|[\s،,.!؟?])|(?:^|[\s،,])(?:ارفع|إرفع)\s*(?:ال)?(?:مستوى|مستواها|جودتها|جودة)|(?:^|[\s،,])(?:زوّ?د|زيد)\s*(?:ال)?(?:زخارف|زخرف[ةه]|تفاصيل|فخام[ةه])|فكر[ةه]\s*(?:ثاني[ةه]|مختلف[ةه]|جديد[ةه]|أقوى|اقوى)|(?:^|[\s،,])(?:3d|ثلاثي|مجسم|مجسّم|كرتون|كارتون|أنيمي|انمي|بيكسار|ديزني|anime|cartoon|pixar|disney)(?=$|[\s،,.!؟?])|\bmake\s+(?:it|this|everything|the\s+(?:whole\s+|entire\s+)?(?:image|picture|photo|card|design|scene|look))\s+(?:much\s+|way\s+)?(?:stronger|bolder|richer|fancier|nicer|prettier|better|premium|luxurious|epic|pop|shine|stand\s*out|more\s+\w+)\b|\b(?:stronger|bolder|richer|fancier|nicer|prettier|cleaner|premium|luxurious|epic|enhanced|improved|upgraded|polished|more\s+\w+)\s+(?:version|look|take|edition)\b|^\s*(?:stronger|bolder|richer|fancier|nicer|prettier|better|premium|luxurious|epic|more\s+\w+)\s*[.!]*\s*$|\b(?:level\s*up|glow\s*up|next\s*level|better\s+than|best\s+version|reimagine|different\s+(?:idea|concept)|(?:enhance|improve|upgrade|elevate|polish)\s+(?:it|this|everything|the\s+(?:whole\s+|entire\s+)?(?:image|picture|photo|card|design|scene|look)))\b/i;
+const __IMG_CREATIVE_RE = /(?:^|[\s،,])(?:نسخ[ةه]\s*)?(?:ال)?(?:أ|ا|إ)(?:قوى|قوي|فخم|رقى|جمل|حلى|روع|بدع|حسن|فضل|بهى)(?=$|[\s،,.!؟?])|(?:^|[\s،,])(?:فخم[ةه]?|راقي[ةه]?|خيالي[ةه]?|جبار[ةه]?|مبهر[ةه]?|إبداعي[ةه]?|ابداعي[ةه]?|احترافي[ةه]?|تجنن|لايق[ةه]?)(?=$|[\s،,.!؟?])|(?:^|[\s،,])(?:[اأ]?(?:طوّ?ر|حسّ?ن|جمّ?ل|قوّ?|رقّ?|زيّ?ن|زخرف|فخّ?م|عزّ?ز)|ارفع|ابهر|أبهر)(?:ها|ه|يها|يه|ني)(?=$|[\s،,.!؟?])|(?:^|[\s،,])(?:ارفع|إرفع)\s*(?:ال)?(?:مستوى|مستواها|جودتها|جودة)|(?:^|[\s،,])(?:زوّ?د|زيد)\s*(?:ال)?(?:زخارف|زخرف[ةه]|تفاصيل|فخام[ةه])|فكر[ةه]\s*(?:ثاني[ةه]|مختلف[ةه]|جديد[ةه]|أقوى|اقوى)|(?:^|[\s،,])(?:3d|ثلاثي|مجسم|مجسّم|كرتون|كارتون|أنيمي|انمي|بيكسار|ديزني|anime|cartoon|pixar|disney)(?=$|[\s،,.!؟?])|\bmake\s+(?:it|this|everything|the\s+(?:whole\s+|entire\s+)?(?:image|picture|photo|card|design|scene|look))\s+(?:much\s+|way\s+|a\s+lot\s+)?(?:stronger|bolder|richer|fancier|nicer|prettier|better|premium|luxurious|epic|pop|shine|stand\s*out|more\s+\w+)\b|\b(?:stronger|bolder|richer|fancier|nicer|prettier|cleaner|premium|luxurious|epic|enhanced|improved|upgraded|polished|more\s+\w+)\s+(?:version|look|take|edition)\b|^\s*(?:stronger|bolder|richer|fancier|nicer|prettier|better|premium|luxurious|epic|more\s+\w+)\s*[.!]*\s*$|\b(?:level\s*up|glow\s*up|next\s*level|better\s+than|best\s+version|reimagine|different\s+(?:idea|concept)|(?:enhance|improve|upgrade|elevate|polish)\s+(?:it|this|everything|the\s+(?:whole\s+|entire\s+)?(?:image|picture|photo|card|design|scene|look)))\b/i;
 /* v-visual-assist: لقطة شاشة لواجهة (اسم الملف/لصق من الحافظة/PNG بنسبة شاشة)
    تُعلَّم _screenshot لتذهب للتحليل والإرشاد بدل مسار تعديل الصور. */
 function omranLooksLikeScreenshot(file, dims, opts){
@@ -1579,9 +1579,54 @@ async function omranShrinkForEdit(b64, mime){
    الخلفية المأخوذ من الصورة نفسها ونكتب الجديد مكانه — باقي الصورة لا يُمسّ. */
 function __textSwapIntent(s){
   s = String(s || '');
-  if(/(?:^|[\s،,])(?:بدل|بدّل|غير|غيّر|صحح|صحّح|عدل|عدّل)\s*(?:ال)?(?:تاريخ|اسم|رقم|كلم[ةه]|نص|سن[ةه]|وقت|عنوان|توقيت)/i.test(s)) return true;
+  if(/(?:^|[\s،,])(?:بدل|بدّل|غير|غيّر|صحح|صحّح|عدل|عدّل|شيل|احذف|امسح|استبدل)\s*(?:ال)?(?:تاريخ|اسم|رقم|حرف|رمز|كلم[ةه]|نص|سن[ةه]|وقت|عنوان|توقيت)/i.test(s)) return true;
   if(/بدل\s+\S+(?:\s+\S+)?\s+(?:حط|خل|الى|إلى)\s*\S+/i.test(s)) return true;
   return false;
+}
+async function omranBuildTextEditMask(b64, mime, box){
+  const img = await new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i); i.onerror = () => rej(new Error('bad_source_image'));
+    i.src = 'data:' + (mime || 'image/png') + ';base64,' + b64;
+  });
+  const W = img.naturalWidth || 1, H = img.naturalHeight || 1;
+  const source = document.createElement('canvas'); source.width = W; source.height = H;
+  source.getContext('2d').drawImage(img, 0, 0, W, H);
+  const padX = Math.max(5, Math.round(box.w * W * 0.18));
+  const padY = Math.max(5, Math.round(box.h * H * 0.35));
+  const region = {
+    x: Math.max(0, Math.round(box.x * W) - padX),
+    y: Math.max(0, Math.round(box.y * H) - padY),
+    w: 0, h: 0
+  };
+  region.w = Math.min(W - region.x, Math.round(box.w * W) + padX * 2);
+  region.h = Math.min(H - region.y, Math.round(box.h * H) + padY * 2);
+  const mask = document.createElement('canvas'); mask.width = W; mask.height = H;
+  const mx = mask.getContext('2d');
+  mx.fillStyle = '#ffffff'; mx.fillRect(0, 0, W, H);
+  mx.clearRect(region.x, region.y, region.w, region.h);
+  return {
+    sourceB64: source.toDataURL('image/png').split(',')[1],
+    maskB64: mask.toDataURL('image/png').split(',')[1],
+    region: region
+  };
+}
+async function omranMergeTextEditRegion(originalB64, originalMime, editedB64, editedMime, region){
+  const load = (b64, mime) => new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i); i.onerror = () => rej(new Error('bad_edit_image'));
+    i.src = 'data:' + (mime || 'image/png') + ';base64,' + b64;
+  });
+  const images = await Promise.all([load(originalB64, originalMime), load(editedB64, editedMime)]);
+  const W = images[0].naturalWidth || 1, H = images[0].naturalHeight || 1;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  x.drawImage(images[0], 0, 0, W, H);
+  x.save();
+  x.beginPath(); x.rect(region.x, region.y, region.w, region.h); x.clip();
+  x.drawImage(images[1], 0, 0, W, H);
+  x.restore();
+  return c.toDataURL('image/png').split(',')[1];
 }
 async function omranSwapTextOnImage(b64, mime, spec){
   const fontCss = await mahaLoadFont(spec.fontKey || 'naskh');
@@ -2740,6 +2785,7 @@ function __friendlyErr(e){
        ليعامله الخادم كإعادة تصوّر. «أعطني الأفضل» (للغرف) يبقى ترقية كما هو. */
     const __IMG_REIMAGINE_HINT = /(?:أقوى|اقوى|(?:أفضل|افضل|أحسن|احسن)\s*من|فكرة\s*(?:أقوى|اقوى|أبدع|ابدع)|من\s*هذي|من\s*هذه|من\s*هذا)(?=$|[\s،,.!؟?])/.test(text || '');
     const __IMG_UPGRADE = !!(text && text.length <= 140 && __IMG_UPGRADE_RE.test(text) && !__IMG_REIMAGINE_HINT && !__IMG_UPGRADE_NOT_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text) && (__srcImg || (cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC));
+    const __IMG_ELEVATE = !!(text && text.length <= 140 && __IMG_REIMAGINE_HINT && !__IMG_UPGRADE_NOT_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text) && (__srcImg || (cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC));
     // v311: رسالة تفاصيل إضافية أثناء تصميم إعلان قائم → تكمل التصميم نفسه.
     if(text && cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && text.indexOf('ملاحظة للنظام') === -1){
       text += '\n(ملاحظة للنظام: هذه تفاصيل إضافية للإعلان قيد التصميم — أكمل/حدّث تصميم الإعلان الكامل بهذه التفاصيل حسب قالب ' + (cur.adMode === 'inside' ? 'INSIDE فوق صورة المستخدم background-image:url(\'__USER_IMAGE__\')' : 'OUTSIDE مع src="__USER_IMAGE__"') + ' وأعد الملف كاملًا. ممنوع البحث في الإنترنت وممنوع عرض إعلانات مواقع أخرى وممنوع الرد بنص فقط)';
@@ -3322,24 +3368,13 @@ function __showImgLoading(el, ar, en){
     const __ATT_EDIT = !!(__srcImg && !__srcImg._fromMemory && text && text.length <= 220 && __imgEditRe.test(text) && (!__IMGF_NOT_RE.test(text) || __IMG_EDIT_VERB_RE.test(text)) && !__IMGF_NEW_RE.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text));
     /* v-nano-chat (المالك: «نفس فكرة نانو»): كتطبيق Gemini — صورة مرفقة مع أي طلب قصير ليس سؤالًا ولا كودًا
        = صورة جديدة من الفكرة نفسها؛ وأي رسالة قصيرة بعد صورة أنتجناها = تعديل عليها بلا إعادة رفع. */
-    // v-visual-assist: لقطة شاشة بلا فعل تعديل صريح = تحليل وإرشاد، ليست تعديل صورة.
-    /* v-nano-pro-edit (المالك: بطاقة ملصوقة + «أقوى» ذهبت لتحليل اللقطة لا للمحرّر — فرسم النموذج
-       صورة جديدة بلا علاقة): أي لصق من الحافظة أو PNG عريض يُعلَّم «لقطة شاشة»، وبطاقات الأدوات
-       1200×720 تدخل فيه. طلب إبداعي قصير (أقوى/أفخم/أرقى/أجمل/أبدع/طوّرها/حسّنها/نسخة أفضل/
-       فكرة ثانية/كرتون/3d) على صورة كهذه يبقى تعديل صورة؛ تحليل اللقطة للأسئلة والإرشاد فقط. */
-    const __SHOT_CREATIVE = !!(text && text.length <= 160 && __IMG_CREATIVE_RE.test(text) && !/[؟?]\s*$/.test(text) && !__codeWordRe.test(text) && !__supIssueRe.test(text) && !__ATT_VISION_RE.test(text));
-    const __SHOT_ANALYZE = !!(__srcImg && !__srcImg._fromMemory && __srcImg._screenshot && !__SHOT_CREATIVE && !__imgEditRe.test(text || '') && !__IMGF_NEW_RE.test(text || ''));
-    /* v-assistant-first (المالك: «رفع أي لقطة + طلب = المساعد يقرأها ويرشد، لا
-       يعدّل الصورة» — لقطة خدمة حكومية + «متابعة سير الإجراءات» كانت تُعاد رسمها
-       فتتخربش وتُخصَم بلا داعي). التعديل الافتراضي لا يعمل إلا إذا جاءت الصورة من
-       زرّ «تعديل» صراحةً (اسمها edit-*)، أو حملت أمر تعديل/أسلوب/ترقية (تلتقطها
-       مسارات __ATT_EDIT/__ATT_STYLE/__IMG_UPGRADE). غير ذلك → مساعد يقرأ ويرشد.
-       v-nano-pro-edit: الاستثناء الوحيد فوق زرّ «تعديل» هو الطلب الإبداعي القصير الصريح على
-       الصورة («أقوى/أفخم/طوّرها/فكرة ثانية/كرتون» — __SHOT_CREATIVE، وهو يستثني أسئلة
-       المواصفات والدعم والحسابات) لأنه بالضبط ما طلبه المالك على بطاقة التفسير الديني. */
-    const __cameFromEditBtn = !!(__srcImg && /^edit-\d+\.png$/i.test(String(__srcImg.name || '')));
-    const __ATT_DEFAULT = !!((__cameFromEditBtn || __SHOT_CREATIVE) && !__SHOT_ANALYZE && __srcImg && !__srcImg._fromMemory && text && text.length <= 300 && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text));
-    const __FOLLOW_DEFAULT = !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && text && text.length <= 220 && String(text).trim().split(/\s+/).length >= 2 && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text) && !/^\s*(?:شكرا|شكرًا|تمام|ممتاز|رائع|جميل|حلو|ok|okay|thanks|thank you|nice|great)\b/i.test(text));
+    // صورة بلا طلب، أو معها سؤال/طلب قراءة = تحليل. أي أمر غير استفهامي يعدّل
+    // نفس الصورة مباشرة، حتى لو كانت لقطة شاشة أو لم تأتِ من زر «تعديل».
+    const __SHOT_ANALYZE = !!(__srcImg && !__srcImg._fromMemory && __srcImg._screenshot && !__IMG_UPGRADE && !__IMG_ELEVATE && !__imgEditRe.test(text || '') && !__IMGF_NEW_RE.test(text || '') && (!String(text || '').trim() || __nanoQ.test(text) || __ATT_VISION_RE.test(text)));
+    const __ATT_DEFAULT = !!(__srcImg && !__srcImg._fromMemory && String(text || '').trim() && !__SHOT_ANALYZE && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text));
+    // بعد أول تعديل تبقى آخر نتيجة هي المصدر. لا نفرض عدد كلمات، كي تعمل أوامر
+    // متتابعة قصيرة مثل «أحمر» و«أكبر» مهما طال تسلسل التعديلات.
+    const __FOLLOW_DEFAULT = !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && String(text || '').trim() && text.length <= 1200 && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text) && !/^\s*(?:هلا|مرحبا|السلام|شكرا|شكرًا|مشكور|تسلم|تمام|ممتاز|رائع|جميل|حلو|نعم|لا|ok|okay|thanks|thank you|nice|great|yes|no)\b/i.test(text));
     /* v-fresh-gen-wins (شكوى المالك: «عطني صور» مع صورة مرفقة كانت تُعدّل
        اللقطة بدل توليد صور جديدة → نتيجة زفت). طلب توليد صريح («عطني/ولّد/
        ارسم صورة») بلا أي فعل تعديل وبلا إشارة للمرفق = توليد جديد نظيف
@@ -3354,12 +3389,12 @@ function __showImgLoading(el, ar, en){
     const __STYLE_FOLLOW = !!(!__srcImg && __styleShort && cur.lastEditedImage && cur.lastEditedImage.b64 && cur.lastMsgWasImageEdit);
     const __freshGenWins = !!(text && __srcImg && !__srcImg._fromMemory
       && __imgGenIntentRe.test(text)
-      && !__imgEditRe.test(text) && !__IMG_UPGRADE && !__IMG_FOLLOW && !__ATT_EDIT && __IMGF_NEW_RE.test(text)
+      && !__imgEditRe.test(text) && !__IMG_UPGRADE && !__IMG_ELEVATE && !__IMG_FOLLOW && !__ATT_EDIT && __IMGF_NEW_RE.test(text)
       && !__refersAttachment && !__cardTidyIntent(text)
       && !/(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|للتواصل|poster|logo|banner|certificate|card|invitation)/i.test(text));
-    if(!__freshGenWins && !__SHOT_ANALYZE && text && !cur.adMode && !__isSupportQ && (__IMG_UPGRADE || __IMG_FOLLOW || __ATT_EDIT || __ATT_DEFAULT || __FOLLOW_DEFAULT || __ATT_STYLE || __STYLE_FOLLOW || (__srcImg && !__srcImg._fromMemory && __cardTidyIntent(text)) || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || __STYLE_FOLLOW || __FOLLOW_DEFAULT || (__IMG_UPGRADE && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
-      __showImgLoading(thinkingDiv, __IMG_UPGRADE ? 'جاري ترقية المشهد…' : 'جاري تعديل الصورة…', __IMG_UPGRADE ? 'Upgrading the scene…' : 'Editing image…');
-      const __upgSrc = (!__srcImg && __IMG_UPGRADE && !(cur.lastEditedImage && cur.lastEditedImage.b64)) ? __IMG_UPGRADE_SRC : null;
+    if(!__freshGenWins && !__SHOT_ANALYZE && text && !cur.adMode && !__isSupportQ && (__IMG_UPGRADE || __IMG_ELEVATE || __IMG_FOLLOW || __ATT_EDIT || __ATT_DEFAULT || __FOLLOW_DEFAULT || __ATT_STYLE || __STYLE_FOLLOW || (__srcImg && !__srcImg._fromMemory && __cardTidyIntent(text)) || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || __STYLE_FOLLOW || __FOLLOW_DEFAULT || ((__IMG_UPGRADE || __IMG_ELEVATE) && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
+      __showImgLoading(thinkingDiv, (__IMG_UPGRADE || __IMG_ELEVATE) ? 'جاري تطوير الصورة…' : 'جاري تعديل الصورة…', (__IMG_UPGRADE || __IMG_ELEVATE) ? 'Improving the image…' : 'Editing image…');
+      const __upgSrc = (!__srcImg && (__IMG_UPGRADE || __IMG_ELEVATE) && !(cur.lastEditedImage && cur.lastEditedImage.b64)) ? __IMG_UPGRADE_SRC : null;
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : (__upgSrc ? ((__upgSrc.dataUrl || '').split(',')[1] || '') : ((cur.lastEditedImage && cur.lastEditedImage.b64) || ''));
       const __mime = __srcImg ? (__srcImg.mime || 'image/png') : (__upgSrc ? (__upgSrc.mime || 'image/png') : ((cur.lastEditedImage && cur.lastEditedImage.mime) || 'image/png'));
       const __isNewImageSource = !!(__srcImg && !__srcImg._fromMemory);
@@ -3668,7 +3703,18 @@ function __showImgLoading(el, ar, en){
           const __tsSpec = await __tsRes.json().catch(() => ({}));
           if(__tsRes.ok && __tsSpec.found && __tsSpec.box && __tsSpec.newLine){
             chatPhase('✍️', lang === 'ar' ? 'جاري تبديل النص بدون المساس بالصورة…' : 'Swapping the text in place…', thinkingDiv);
-            const __tsB64 = await omranSwapTextOnImage(__b64, __mime, __tsSpec);
+            const __masked = await omranBuildTextEditMask(__b64, __mime, __tsSpec.box);
+            const __maskedRes = await fetch('/api/maha-image', {
+              method:'POST', headers:{ 'Content-Type':'application/json' }, signal:genAbortController.signal,
+              body:JSON.stringify({
+                prompt:'Replace only the selected existing text with exactly «' + __tsSpec.newLine + '». Match its original style, color, size and alignment. Do not change anything outside the transparent mask.',
+                editImageBase64:__masked.sourceB64, editMimeType:'image/png', editMaskBase64:__masked.maskB64,
+                exactTextEdit:true, token:authGet('aiapp_auth_token'), guestId:window.getGuestId()
+              })
+            });
+            const __maskedData = await __maskedRes.json().catch(() => ({}));
+            if(!__maskedRes.ok || !__maskedData.imageBase64) throw new Error('masked_text_edit_failed');
+            const __tsB64 = await omranMergeTextEditRegion(__masked.sourceB64, 'image/png', __maskedData.imageBase64, __maskedData.mimeType || 'image/png', __masked.region);
             cur.lastEditedImage = { b64: __tsB64, mime: 'image/png' };
             cur.lastMsgWasImageEdit = true;
             cur.messages.push({ role:'assistant', content:'', attachments:[{ name:'edited.png', isImage:true, mime:'image/png', dataUrl:'data:image/png;base64,' + __tsB64 }] });
@@ -3676,8 +3722,14 @@ function __showImgLoading(el, ar, en){
           }
         }catch(e){
           if(e && e.name === 'AbortError') return;
-          __swallow(e, 'img:text-swap'); /* يسقط بهدوء لمسار المولّد */
+          __swallow(e, 'img:text-swap');
+          cur.messages.push({ role:'assistant', content:lang==='ar'?'تعذّر تبديل الحرف بدقة هذه المرة. أعد المحاولة بدون تغيير بقية الصورة.':'The character could not be replaced precisely this time. Please retry.' });
+          cur.lastMsgWasImageEdit = true;
+          renderAll(); saveState(); return;
         }
+        cur.messages.push({ role:'assistant', content:lang==='ar'?'لم أستطع تحديد الحرف المطلوب بثقة. حدده بكلمة أوضح.':'I could not locate the requested character confidently.' });
+        cur.lastMsgWasImageEdit = true;
+        renderAll(); saveState(); return;
       }
       const __continuesEditChain = !__isNewImageSource && cur.lastEditedImage && cur.lastEditedImage.b64 === __b64;
       const __original = latestOriginalUserImage(cur);

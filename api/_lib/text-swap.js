@@ -6,7 +6,7 @@ const { checkAndConsume, clientIp } = require('./_usage');
 
 const PROMPT = [
   'You are given an image that contains written text, plus a user request (usually Arabic dialect)',
-  'asking to change some of that text (a date, a name, a number, a word...).',
+  'asking to change some of that text (a date, a name, a number, a word, one letter or a logo glyph).',
   'Find the ONE existing text line that must change. Return ONLY strict JSON, no markdown:',
   '{"found":true,"box":{"x":number,"y":number,"w":number,"h":number},',
   '"newLine":string,"color":"#rrggbb","fontKey":"naskh"|"diwani"|"kufi"|"ruqaa"|"default","bold":boolean}',
@@ -14,7 +14,7 @@ const PROMPT = [
   '- newLine: the COMPLETE line exactly as it should read AFTER the change — apply only the requested',
   '  replacement and keep every other character identical (same language, same spelling, same digits).',
   '- box: a snug bounding box around the EXISTING line as fractions of image width/height (0..1),',
-  '  x/y = top-left corner. Cover the whole line, not just the changed word.',
+  '  x/y = top-left corner. For a standalone letter or logo glyph, box only that glyph. Otherwise cover the whole line.',
   '- color: the hex color of the existing text. fontKey: closest Arabic style of the existing text',
   '  (naskh = classic serif-like, diwani = ornate calligraphy, kufi = geometric, ruqaa = handwriting,',
   '  default = clean modern sans).',
