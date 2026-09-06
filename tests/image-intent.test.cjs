@@ -202,8 +202,9 @@ test('both chat clients forward the user\'s words and the tool path never loses 
   assert.match(attach, /const __ATT_DEFAULT = !!\(__srcImg && !__srcImg\._fromMemory && String\(text \|\| ''\)\.trim\(\)/);
   /* v-analysis-words: «عطني تحليل/اشرح/لخّص/استخرج» بعد صورة = قراءة لا تعديل */
   const visionRe = new Function('return ' + attach.match(/const __ATT_VISION_RE = (\/.*\/[a-z]*);/)[1])();
-  for (const t of ['عطني تحليل عن اليد كامل فقط', 'اشرح لي هذي الصورة', 'لخص الصورة', 'استخرج النص من الصورة', 'وش رايك في التصميم', 'حلل الصورة', 'ترجم الصورة']) assert.ok(visionRe.test(t), t);
-  for (const t of ['أقوى', 'غير اللون', 'عطني فكرة اقوى من هذي', 'شيل الاسم كامل', 'غير أشكال الأشخاص']) assert.ok(!visionRe.test(t), t);
+  for (const t of ['عطني تحليل عن اليد كامل فقط', 'اشرح لي هذي الصورة', 'لخص الصورة', 'استخرج النص من الصورة', 'وش رايك في التصميم', 'حلل الصورة', 'ترجم الصورة',
+    /* v-talk-words */ 'قولي عن تنبؤا', 'قول لي رأيك', 'اخبرني عن الصورة', 'توقع النتيجة', 'انصحني', 'tell me about it']) assert.ok(visionRe.test(t), t);
+  for (const t of ['أقوى', 'غير اللون', 'عطني فكرة اقوى من هذي', 'شيل الاسم كامل', 'غير أشكال الأشخاص', 'قلل الإضاءة', 'قلب الصورة', 'وضح الصورة', 'قللي الإضاءة']) assert.ok(!visionRe.test(t), t);
   const creativeRe = new RegExp(attach.match(/const __IMG_CREATIVE_RE = \/(.*)\/i;/)[1], 'i');
   for (const t of ['أقوى', 'نسخة أفخم', 'خلها أرقى', 'طوّرها', 'احسنها', 'زخرفها', 'ابهرني', 'سوها احترافية', 'ارفع جودتها', 'فكرة ثانية', 'كرتون', 'make it stronger', 'improve it', 'upgrade the design', 'richer version', 'stronger']) assert.ok(creativeRe.test(t), t);
   /* صفة إنجليزية عارية في سؤال رأي ليست طلبًا إبداعيًا (لا تتجاوز قراءة اللقطة ولا تُخصم) */
