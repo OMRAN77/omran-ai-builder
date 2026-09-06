@@ -1093,6 +1093,11 @@ module.exports = async (req, res) => {
         const { done, value } = await reader.read();
         if (done) break;
         buf += decoder.decode(value, { stream: true });
+        // v-chat-heartbeat: أثناء تحضير النموذج لنصّ طويل (قبل أوّل حرف) يصلنا
+        // من المزوّد بايتات (ping/message_start) لا نبثّها للعميل، فيبقى العميل
+        // صامتًا وقد يقطع حارسُ الخمول طلبًا شغّالًا فعلًا. نبضة خفيفة يتجاهلها
+        // العرض لكنها تُصفّر حارس العميل — تتوقّف تلقائيًّا فور تدفّق النصّ.
+        if (!anyText) send({ ping: 1 });
         const lines = buf.split('\n');
         buf = lines.pop();
         for (const line of lines) {
