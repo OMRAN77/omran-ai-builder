@@ -14,7 +14,11 @@ test('stronger/fancier requests in every common wording are an elevate, not a lo
     /* الاسم بعد الصفة/الفعل جانبٌ لا مفعول: الصورة كلها تُرفع */ 'طورها بالألوان', 'ممكن أقوى من فوق', 'أبيها أفخم من فوق', 'أبغاها أفخم بالألوان', 'حسّنها من ناحية الألوان', 'خلها فخمة بالألوان', 'خلها فخمة من فوق', 'خلها تجنن بالألوان', 'ابهرني بالألوان', 'فخّمها بالألوان والخط', 'زخرفها وحط اسمي فوق', 'حسنها كلها حتى الخط', 'خله أفخم بالألوان', 'لو سمحت أقوى بالألوان',
     'make it stronger but keep the text', 'make it more luxurious, keep the name', 'improve it, especially the lighting', 'a richer version with the same background', 'upgrade the design but keep the date', 'best version, keep the name', 'make this more premium with a gold frame', 'make it much nicer, keep the sky', 'make it a lot nicer',
     /* الجولة الرابعة: الصفة تتصدّر أو الضمير للصورة يغلب أي عنصر لاحق */ 'أقوى وحط إطار أفخم', 'غير الخط وخلها أقوى', 'حط إطار ذهبي وخلها أقوى', 'الصورة كلها أقوى', 'خل الصورة أقوى', 'زود زخارف', 'زيد جمال الصورة', 'فخم',
-    'make it stronger', 'a cleaner, more luxurious version of this card', 'upgrade the design', 'improve it', 'best version', 'stronger', 'bolder version']) {
+    'make it stronger', 'a cleaner, more luxurious version of this card', 'upgrade the design', 'improve it', 'best version', 'stronger', 'bolder version',
+    /* لقطات المالك من Gemini («عطني فكرة أقوّم هذي الصورة» أخرجت تصميمًا أغنى) + «زي الذكاء الاصطناعي مو فوتوشوب» */
+    'وهاذي تابعة لي ستايل عطني فكرة اقوم هذي الصورة', 'وهاذي تابعة تلفزيون عطني فكرة اقوم هذي الصورة', 'عطني فكرة اقوم هذي الصورة', 'عطني فكرة', 'اقترح لي فكرة', 'عطني افكار',
+    'قوّمها', 'قومها', 'قوم الصورة', 'اقوم هالصورة', 'خلها زي الذكاء الاصطناعي', 'سوها بالذكاء الاصطناعي', 'شغل ذكاء اصطناعي مو فوتوشوب',
+    'سوّي لي شي يجنن', 'سو لي شي خرافي', 'عطني نسخة رهيبة', 'خلها تخبل', 'give me an idea', 'any ideas', 'make it look ai generated']) {
     assert.equal(kind(t), 'elevate', t);
   }
 });
@@ -30,7 +34,8 @@ test('localized edits stay localized — the elevate detector must not swallow t
     /* كلمة بين الاسم والصفة، وتاء الملكية، وضمير مذكّر */ 'حط إطار ذهبي أفخم', 'خلفيتها أجمل', 'إضاءتها أقوى', 'الخلفية خلها أجمل',
     /* دوران/صيغة ليست تحويل أسلوب */ 'turn the image upside down', 'convert it to png', 'convert the image to 16:9', 'turn it around', 'rotate the image 90 degrees', 'give the title a bolder look', 'a bolder version of the logo',
     /* ألوان لا أساليب */ 'غير لون الخلفية رصاصي', 'خلها رصاصية', 'غير اللون إلى أخضر زيتي', 'لون مائي فاتح', 'keep it in the same style but change the sky',
-    /* «in a … style» على عنصر واحد ليس تحويل أسلوب */ 'write the name in an elegant style', 'put the logo in the corner, keep the style', 'make the text in a bigger font, same style', 'add a border in a gold style', 'restyle the text', 'redesign the logo']) {
+    /* «in a … style» على عنصر واحد ليس تحويل أسلوب */ 'write the name in an elegant style', 'put the logo in the corner, keep the style', 'make the text in a bigger font, same style', 'add a border in a gold style', 'restyle the text', 'redesign the logo',
+    /* «أقوم بـ» = أفعل؛ فكرة لاسم/عن = كلام لا صورة؛ الصفة العامية وحدها مجاملة؛ الصفة على عنصر */ 'أقوم بتغيير اللون', 'عطني فكرة لاسم المحل', 'عطني فكرة عن التسويق', 'يجنن', 'رهيب', 'روعة', 'فكرة', 'شيل الاسم كامل', 'حط خط يجنن', 'خل الخط يجنن', 'اكتب اسم قوم', 'الذكاء الاصطناعي ما يفهم', 'give me an idea for a name']) {
     assert.equal(kind(t), 'edit', t);
   }
 });
@@ -51,6 +56,7 @@ test('same-image, restyle and reimagine keep their own lanes and beat elevate', 
   assert.equal(kind('Redesign this restaurant interior in a sleek MODERN FINE DINING style: dark moody palette. Keep layout identical. Photorealistic architectural render.'), 'restyle');
   assert.equal(kind('make the exact same image but sharper'), 'same');
   assert.equal(kind('فكرة ثانية'), 'reimagine');
+  assert.equal(kind('عطني فكرة ثانية'), 'reimagine');
   assert.equal(kind('فكرة مختلفة أقوى'), 'reimagine');
   assert.equal(kind('different concept'), 'reimagine');
 });
@@ -87,11 +93,16 @@ test('server reads the intent from the user\'s own words and sends creative edit
   const { isTextEditRequest, buildLetterSwapPrompt } = require('../api/_lib/image-prompt');
   for (const t of ['غير حرف م حط ع', 'شيل حرف م وحط ع', 'بدل الاسم إلى عمران', 'اكتب كلمة مبروك', 'replace the word Sale with Open']) assert.equal(isTextEditRequest(t), true, t);
   for (const t of ['أقوى', 'خلها أفخم', 'شيل الخلفية']) assert.equal(isTextEditRequest(t), false, t);
+  /* «شيل الاسم كامل» حذف صِرف لا تبديل حرف (كان يسقط في «لم أستطع تحديد الحرف») — البديل بعده يعيده تبديلًا */
+  const { isPureTextRemoval } = require('../api/_lib/image-prompt');
+  for (const t of ['شيل الاسم كامل', 'شيل الاسم', 'بدون أسماء', 'احذف النص', 'remove the name']) assert.equal(isPureTextRemoval(t), true, t);
+  for (const t of ['شيل الاسم وحط عمران', 'شيل حرف م وحط ع', 'غير حرف م حط ع', 'بدل الاسم إلى عمران', 'replace the name with Omran', 'أقوى']) assert.equal(isPureTextRemoval(t), false, t);
   const lp = buildLetterSwapPrompt('غير حرف م حط ع');
   assert.match(lp, /Edit the attached image: "غير حرف م حط ع"/);
   assert.match(lp, /Change ONLY the letter\/word\/number named in that request, in place/);
   assert.ok(lp.split('\n').length <= 5, 'short prompt like the Gemini app');
-  assert.match(maha, /const isTextSwap = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && \(body\.textSwap === true \|\| isTextEditRequest\(intentText\)\);/);
+  assert.match(maha, /const isTextRemove = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && isPureTextRemoval\(intentText\);/);
+  assert.match(maha, /const isTextSwap = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && !isTextRemove && \(body\.textSwap === true \|\| isTextEditRequest\(intentText\)\);/);
   assert.match(maha, /\(isCreativeEdit \|\| isTextSwap\) \? creativeModel : editModel/);
   assert.match(maha, /isTextSwap \? buildLetterSwapPrompt\(cleanPrompt\)/);
   assert.match(maha, /&& \(!isTextSwap \|\| __duoWouldRun\)\n/);
@@ -128,6 +139,12 @@ test('both chat clients forward the user\'s words and the tool path never loses 
   /* صفة إنجليزية عارية في سؤال رأي ليست طلبًا إبداعيًا (لا تتجاوز قراءة اللقطة ولا تُخصم) */
   for (const t of ['is this nicer', 'which one is prettier', 'the second one is prettier', 'this looks cleaner than before']) assert.ok(!creativeRe.test(t), t);
   assert.ok(creativeRe.test('make it a lot nicer'));
+  for (const t of ['عطني فكرة اقوم هذي الصورة', 'خلها زي الذكاء الاصطناعي', 'سوي لي شي يجنن', 'قوّمها', 'give me an idea']) assert.ok(creativeRe.test(t), t);
+  for (const t of ['يجنن', 'أقوم بتغيير اللون', 'عطني فكرة لاسم المحل', 'give me an idea for a name']) assert.ok(!creativeRe.test(t), t);
+  /* العميل: حذف الاسم/النصّ بلا بديل لا يدخل مسار تبديل الحرف */
+  const __textSwapIntent = new Function(attach.match(/function __textSwapIntent\(s\)\{[\s\S]*?\n\}/)[0] + '; return __textSwapIntent;')();
+  for (const t of ['شيل الاسم كامل', 'احذف النص']) assert.equal(__textSwapIntent(t), false, t);
+  for (const t of ['شيل الاسم وحط عمران', 'غير حرف م حط ع', 'بدل التاريخ بدل 28 حط 12', 'شيل حرف م وحط ع']) assert.equal(__textSwapIntent(t), true, t);
   for (const t of ['كيف أطبع هذي الشاشة', 'وش هذا الخطأ', 'ترجم الصورة']) assert.ok(!creativeRe.test(t), t);
   assert.match(chatTools, /window\.__chatLastUserText = String\(ut \|\| ''\)\.replace\(.*\)\.trim\(\)\.slice\(0, 600\)/);
   assert.match(tools, /userText: String\(\(args && args\.userText\) \|\| window\.__chatLastUserText \|\| ''\)\.replace\(.*\)\.slice\(0, 600\)/);
@@ -145,6 +162,8 @@ test('both chat clients forward the user\'s words and the tool path never loses 
   assert.match(chat, /runInClient\(send, 'generate_image', input, lastUserHasImage \? 150000 : 75000\)/);
   /* زر «نسخة ثانية» يسمّي المحرّك بالمنطق نفسه */
   assert.match(attach, /'نانو بنانا برو' : 'نانو بنانا'\)\)\); \}catch\(e\)\{ __swallow\(e, 'ui:img-engine-again'\)/);
+  /* زر «نسخة ثانية» لا يُبنى فوق الصورة (كان يغطّي نصّها) — الدالة تبقى بلا زرّ */
+  assert.ok(!/'نسخة ثانية' : 'Another'\)/.test(attach), 'زر «نسخة ثانية» أُزيل من فوق الصورة');
   assert.match(attach, /^const __IMG_CREATIVE_RE = \//m);
   assert.match(tools, /typeof __IMG_CREATIVE_RE !== 'undefined' && __IMG_CREATIVE_RE\.test\(gUserText\)/);
   assert.match(attach, /^const __IMG_CREATIVE_RE = \//m);
