@@ -653,12 +653,118 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       fr.readAsDataURL(file);
     });
   }
-  btn.onclick = () => input.click();
-  input.onchange = async () => {
-    const files = Array.from(input.files || []).filter(f => f.type.indexOf('image/') === 0);
+  function isArNow(){ return (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur'); }
+  /* v-pdf-multi (شكوى عمران ٥ سبتمبر: «PDF ما أقدر أرفع إلا صورة وحدة»):
+     الحقل يحمل multiple منذ البداية، لكن منتقي الصور داخل أغلفة المتجر
+     (كاباسيتور/الويب فيو) ومتصفحات بعض الجوالات يرجع صورة واحدة كل مرة
+     ويتجاهل السمة — فكان الـPDF يُبنى فورًا من الصورة الوحيدة ولا سبيل
+     لإضافة غيرها. الآن: الصور تتجمّع في سلة، وورقة صغيرة تعرضها مع زر
+     «➕ أضف صورًا» (يفتح المنتقي مرة بعد مرة) وزر «📄 أنشئ PDF». من ينتقي
+     عشر صور دفعة واحدة يضغط الإنشاء مباشرة — لا خطوة زائدة تُذكر. */
+  const queue = [];
+  const QUEUE_MAX = 40;
+  let sheet = null;
+  function queueKey(f){ return (f.name || '') + '|' + (f.size || 0) + '|' + (f.lastModified || 0); }
+  function closeSheet(){
+    if(sheet){ try{ sheet.remove(); }catch(_){ /* guard-ok: عنصر أزيل مسبقًا */ } }
+    sheet = null;
+  }
+  function resetQueue(){ queue.length = 0; closeSheet(); }
+  function renderSheet(){
+    const isAr = isArNow();
+    closeSheet();
+    const ov = document.createElement('div');
+    ov.id = 'imgPdfSheet';
+    ov.style.cssText = 'position:fixed; inset:0; z-index:900; background:rgba(0,0,0,.72); backdrop-filter:blur(3px); display:flex; align-items:flex-end; justify-content:center; padding:12px;';
+    const box = document.createElement('div');
+    box.style.cssText = 'background:#12151d; color:#e8eaf1; border-radius:16px; max-width:520px; width:100%; max-height:82vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 8px 30px rgba(0,0,0,.45);';
+    const head = document.createElement('div');
+    head.style.cssText = 'display:flex; align-items:center; gap:10px; padding:14px 16px; font-size:14px; font-weight:700;';
+    const ttl = document.createElement('span');
+    ttl.textContent = '🖼️ ' + (isAr ? 'صور → PDF' : 'Images → PDF') + ' · ' + queue.length + ' ' + (isAr ? (queue.length === 1 ? 'صورة' : 'صور') : (queue.length === 1 ? 'image' : 'images'));
+    head.appendChild(ttl);
+    const sp = document.createElement('span'); sp.style.flex = '1'; head.appendChild(sp);
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.textContent = '✖';
+    closeBtn.setAttribute('aria-label', isAr ? 'إلغاء' : 'Cancel');
+    closeBtn.style.cssText = 'background:none; border:none; color:#fff; cursor:pointer; font-size:15px;';
+    closeBtn.onclick = resetQueue;
+    head.appendChild(closeBtn);
+    box.appendChild(head);
+    const hint = document.createElement('div');
+    hint.style.cssText = 'padding:0 16px 10px; font-size:12.5px; color:#98a0b3; line-height:1.6;';
+    hint.textContent = isAr
+      ? 'أضف الصور واحدة أو أكثر بأي ترتيب، ثم اضغط «أنشئ PDF». كل صورة = صفحة.'
+      : 'Add one or more images in any order, then tap "Create PDF". One image = one page.';
+    box.appendChild(hint);
+    const grid = document.createElement('div');
+    grid.style.cssText = 'overflow:auto; flex:1; padding:0 16px 12px; display:grid; grid-template-columns:repeat(auto-fill, minmax(84px, 1fr)); gap:8px;';
+    queue.forEach((f, idx) => {
+      const cell = document.createElement('div');
+      cell.style.cssText = 'position:relative; aspect-ratio:1; border-radius:10px; overflow:hidden; background:#1c2030;';
+      const im = document.createElement('img');
+      im.alt = f.name || '';
+      im.style.cssText = 'width:100%; height:100%; object-fit:cover; display:block;';
+      try{
+        const u = URL.createObjectURL(f);
+        im.src = u;
+        im.onload = im.onerror = () => { try{ URL.revokeObjectURL(u); }catch(_){ /* guard-ok: تحرير رابط مؤقت */ } };
+      }catch(e){ __swallow(e, 'img2pdf:thumb'); }
+      cell.appendChild(im);
+      const num = document.createElement('span');
+      num.textContent = String(idx + 1);
+      num.style.cssText = 'position:absolute; top:4px; inset-inline-start:4px; background:rgba(0,0,0,.6); color:#fff; font-size:11px; padding:1px 6px; border-radius:8px;';
+      cell.appendChild(num);
+      const rm = document.createElement('button');
+      rm.type = 'button';
+      rm.textContent = '✖';
+      rm.setAttribute('aria-label', isAr ? 'حذف الصورة' : 'Remove image');
+      rm.style.cssText = 'position:absolute; top:4px; inset-inline-end:4px; background:rgba(0,0,0,.6); color:#fff; border:none; border-radius:8px; font-size:11px; padding:1px 6px; cursor:pointer;';
+      rm.onclick = () => { queue.splice(idx, 1); if(queue.length) renderSheet(); else resetQueue(); };
+      cell.appendChild(rm);
+      grid.appendChild(cell);
+    });
+    box.appendChild(grid);
+    const foot = document.createElement('div');
+    foot.style.cssText = 'display:flex; gap:10px; padding:10px 16px 16px;';
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'btn';
+    addBtn.id = 'imgPdfAddMore';
+    addBtn.textContent = isAr ? '➕ أضف صورًا' : '➕ Add images';
+    addBtn.style.cssText = 'flex:1; justify-content:center; font-size:14px; padding:11px 12px;';
+    addBtn.onclick = () => { input.value = ''; input.click(); };
+    const goBtn = document.createElement('button');
+    goBtn.type = 'button';
+    goBtn.className = 'btn';
+    goBtn.id = 'imgPdfCreate';
+    goBtn.textContent = (isAr ? '📄 أنشئ PDF' : '📄 Create PDF') + ' (' + queue.length + ')';
+    goBtn.style.cssText = 'flex:1.3; justify-content:center; font-size:14px; padding:11px 12px; font-weight:700; background:var(--accent2,#00e0b8); color:#0b0e14;';
+    goBtn.onclick = () => {
+      const files = queue.slice();
+      resetQueue();
+      buildPdf(files);
+    };
+    foot.appendChild(addBtn); foot.appendChild(goBtn);
+    box.appendChild(foot);
+    ov.appendChild(box);
+    ov.onclick = (e) => { if(e.target === ov) resetQueue(); };
+    document.body.appendChild(ov);
+    sheet = ov;
+  }
+  btn.onclick = () => { input.value = ''; input.click(); };
+  input.onchange = () => {
+    const picked = Array.from(input.files || []).filter(f => f.type.indexOf('image/') === 0 || /\.(hei[cf]|jpe?g|png|webp|gif|bmp|avif)$/i.test(f.name || ''));
     input.value = '';
+    if(!picked.length) return;
+    const have = new Set(queue.map(queueKey));
+    picked.forEach(f => { if(queue.length < QUEUE_MAX && !have.has(queueKey(f))){ have.add(queueKey(f)); queue.push(f); } });
+    renderSheet();
+  };
+  async function buildPdf(files){
     if(!files.length) return;
-    const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
+    const isAr = isArNow();
     btn.disabled = true;
     /* v-img2pdf-heic (لقطة عمران ١ سبتمبر): صورة واحدة بصيغة لا يفكها
        المتصفح (HEIC من كاميرات هواوي/آيفون) كانت تُفشل العملية كلها برسالة
@@ -730,7 +836,7 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
         + '\n' + (isAr ? 'التفاصيل: ' : 'Details: ') + detParts.filter(Boolean).join(' | '));
     }
     btn.disabled = false;
-  };
+  }
 })();
 
 // Brand title: click = home, text follows language

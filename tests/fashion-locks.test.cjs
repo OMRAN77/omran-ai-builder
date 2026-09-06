@@ -700,4 +700,20 @@ console.log('  ✓ v-exact-canvas: الأسماء تُطبع حرفيًا — ص
 }
 console.log('  ✓ v-spell-quran: تدقيق ذكي بمرجع المصحف — وبحارس يحمي الأسماء');
 
+// 59 v-pdf-multi (شكوى عمران ٥ سبتمبر: «PDF ما أقدر أرفع إلا صورة وحدة»):
+// منتقي الصور داخل أغلفة المتجر يرجع صورة واحدة ويتجاهل multiple — فكان
+// الـPDF يُبنى فورًا من الوحيدة. الآن سلة تتجمّع فيها الصور عبر جولات
+// انتقاء متكرّرة، وورقة فيها «أضف صورًا» و«أنشئ PDF».
+{
+  const ix = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
+  assert.ok(/id="imgToPdfInput" accept="image\/\*" multiple/.test(ix), 'حقل الصور يطلب multiple من المتصفح');
+  const f10 = fs.readFileSync(path.join(__dirname, '../js/app-10-features.js'), 'utf8');
+  assert.ok(f10.includes('v-pdf-multi') && f10.includes('const queue = []'), 'سلة صور تتجمّع عبر جولات');
+  assert.ok(f10.includes("id = 'imgPdfAddMore'") && f10.includes('أضف صورًا'), 'زر «أضف صورًا» يعيد فتح المنتقي');
+  assert.ok(f10.includes("id = 'imgPdfCreate'") && f10.includes('أنشئ PDF'), 'زر «أنشئ PDF» يبني من السلة كلها');
+  assert.ok(f10.includes('function buildPdf(files)') && f10.includes('buildPdf(files);'), 'البناء لا يبدأ من onchange مباشرة');
+  assert.ok(!/input\.onchange = async/.test(f10), 'onchange لم يعد يبني الـPDF فورًا');
+}
+console.log('  ✓ v-pdf-multi: الصور تتجمّع جولة بعد جولة — الغلاف الذي يرجع صورة واحدة لم يعد يوقفنا');
+
 console.log('fashion locks tests passed');
