@@ -79,6 +79,14 @@ module.exports = async (req, res) => {
     const { prompt, editImageBase64, editMimeType, editMaskBase64, extraImages, token, guestId } = body;
     /* v-nano-pro-edit: كلمات المستخدم الأصلية (العميل يرسلها مع الأمر) — عليها تُقرأ النيّة */
     const userText = typeof body.userText === 'string' ? body.userText.replace(/\s*\[[^\[\]]*\]\s*$/, '').trim().slice(0, 1200) : '';
+    /* v-image-memory (خطة المالك ٦ سبتمبر، البند ٣: «ذاكرة محادثة للصور»): العميل يرسل آخر أدوار سلسلة التعديل (نصّ الطلب +
+       مصغّر النتيجة، ومصغّر المصدر الأصلي في أول دور) فيرى نموذج الصور ما طُلب وما أخرجه قبل هذا الدور — «أفضل من هذي»،
+       «لا، رجّع الخلفية»، «خلها أهدأ» تصير محادثة متصلة كتطبيق Gemini. أربعة أدوار كحد أقصى، كل صورة ≤ 420KB. */
+    const __okMime = function (m) { return /^image\/(?:jpeg|png|webp)$/.test(String(m || '')) ? m : 'image/jpeg'; };
+    const history = Array.isArray(body.history) ? body.history
+      .filter(function (h) { return h && typeof h.text === 'string' && typeof h.resultBase64 === 'string' && h.resultBase64.length > 100 && h.resultBase64.length <= 420000; })
+      .slice(-4)
+      .map(function (h) { return { text: h.text.replace(/\s*\[[^\[\]]*\]\s*$/, '').trim().slice(0, 400), resultBase64: h.resultBase64, resultMime: __okMime(h.resultMime), sourceBase64: (typeof h.sourceBase64 === 'string' && h.sourceBase64.length > 100 && h.sourceBase64.length <= 420000) ? h.sourceBase64 : '', sourceMime: __okMime(h.sourceMime) }; }) : [];
     const prayerRequest = typeof body.prayerRequest === 'string' ? body.prayerRequest.trim().slice(0, 800) : '';
     if (!prompt && !prayerRequest) {
       res.status(400).json({ error: 'Missing prompt' });
@@ -320,9 +328,19 @@ module.exports = async (req, res) => {
       if (!nanoPrimary) delete cfg.temperature;
       return cfg;
     };
+    /* v-image-memory: الأدوار السابقة كسياق حواري فعلي (user → model) قبل الدور الحالي — للتعديل على صورة واحدة فقط */
+    const __historyTurns = (editImageBase64 && !extras.length && history.length) ? history.reduce(function (acc, h) {
+      const up = [{ text: h.text || '(image)' }];
+      if (h.sourceBase64) up.push({ inlineData: { mimeType: h.sourceMime, data: h.sourceBase64 } });
+      acc.push({ role: 'user', parts: up });
+      acc.push({ role: 'model', parts: [{ inlineData: { mimeType: h.resultMime, data: h.resultBase64 } }] });
+      return acc;
+    }, []) : [];
+    if (__historyTurns.length) parts.unshift({ text: 'Conversation context: the earlier turns show what the user asked before and the images you produced. The image attached to THIS turn is the current source — apply the current request to it, building on that history (e.g. "better than this", "bring the old background back"). Never return an earlier result unchanged.' });
+    const __contents = __historyTurns.length ? __historyTurns.concat([{ role: 'user', parts }]) : [{ parts }];
     const reqBody = JSON.stringify(__pureRaw
-      ? { contents: [{ parts }], generationConfig: genConfigFor({}) }
-      : { contents: [{ parts }], generationConfig: genConfigFor({ temperature: editImageBase64 ? (isSceneUpgrade ? 0.5 : (isReimagine ? 0.9 : (isElevate ? 0.85 : (isRestyle ? 0.6 : 0.15)))) : 0.85 }) });
+      ? { contents: __contents, generationConfig: genConfigFor({}) }
+      : { contents: __contents, generationConfig: genConfigFor({ temperature: editImageBase64 ? (isSceneUpgrade ? 0.5 : (isReimagine ? 0.9 : (isElevate ? 0.85 : (isRestyle ? 0.6 : 0.15)))) : 0.85 }) });
 
     /* v-img-textwise (شكوى المالك: «توليد الصور زفت» — لقطة شاشة التطبيق
        رجعت بعناوين عربية مشوهة): مصدرٌ مليء بالنصوص (لقطة واجهة، مستند،

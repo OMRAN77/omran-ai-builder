@@ -1551,16 +1551,16 @@ async function overlayTextOnImage(b64, mime, txt, fontKey, colorStr, position){
    قبل الإرسال — كافية تمامًا لمولّد التعديل والنص يبقى مقروءًا. */
 /* v-full-res (المالك: «كيف توصلني لمستوى نانو»): المصدر كان يُصغَّر إلى 1280px فتضيع تفاصيل الحروف والوجوه. الآن 2048px
    للتعديل بصورة واحدة (≈1MB JPEG، تحت حد Vercel 4.5MB)؛ ومع قناع أو صور إضافية يبقى 1280 كي لا يتجاوز الطلب الحد. */
-async function omranShrinkForEdit(b64, mime, maxPx){
+async function omranShrinkForEdit(b64, mime, maxPx, force){
   try{
-    if(!b64 || b64.length < 900000) return { b64: b64, mime: mime };
+    if(!b64 || (!force && b64.length < 900000)) return { b64: b64, mime: mime };
     const img = await new Promise((res, rej) => {
       const i = new Image();
       i.onload = () => res(i); i.onerror = () => rej(new Error('bad_image'));
       i.src = 'data:' + (mime || 'image/png') + ';base64,' + b64;
     });
     const mx = maxPx || 2048, sc = Math.min(1, mx / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
-    if(sc >= 1 && b64.length < 1600000) return { b64: b64, mime: mime };
+    if(!force && sc >= 1 && b64.length < 1600000) return { b64: b64, mime: mime };
     const c = document.createElement('canvas');
     c.width = Math.max(1, Math.round((img.naturalWidth || mx) * sc));
     c.height = Math.max(1, Math.round((img.naturalHeight || mx) * sc));
@@ -2771,6 +2771,7 @@ function __friendlyErr(e){
       cur.lastEditedImage = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' };
       cur.imageEditInstructions = [];
       cur.imageEditSource = null;
+      cur.imageTurns = []; /* v-image-memory: مصدر جديد = سلسلة جديدة */
       cur.imageTextLayer = null;
       cur.adMode = null; // صورة جديدة = وضع إعلان جديد
     }
@@ -3780,7 +3781,7 @@ function __showImgLoading(el, ar, en){
       const __res = await fetch('/api/maha-image', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         signal: genAbortController.signal,
-        body: JSON.stringify({ prompt: __editPrompt, userText: String(text || '').slice(0, 600) /* v-nano-pro-edit: كلمات المستخدم نفسها للنيّة */, editImageBase64: __editB64, editMimeType: __editMime, sceneUpgrade: __IMG_UPGRADE || undefined, extraImages: __extraImgs, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
+        body: JSON.stringify({ prompt: __editPrompt, userText: String(text || '').slice(0, 600) /* v-nano-pro-edit: كلمات المستخدم نفسها للنيّة */, editImageBase64: __editB64, editMimeType: __editMime, sceneUpgrade: __IMG_UPGRADE || undefined, extraImages: __extraImgs, history: (__continuesEditChain && Array.isArray(cur.imageTurns) && cur.imageTurns.length) ? cur.imageTurns.slice(-3) : undefined /* v-image-memory */, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }),
       });
       const __data = await __res.json().catch(() => ({}));
       const __ok = __res.ok && !!__data.imageBase64;
@@ -3793,6 +3794,14 @@ function __showImgLoading(el, ar, en){
         // v-img-engine-tag: بصمة المحرك في شريط الحالة — يحسم «أي محرك نفّذ» فورًا.
         try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (/openai/.test(String(__data.engine || '')) ? 'gpt-image' : (/pro/.test(String(__data.engine || '')) ? 'نانو بنانا برو' : 'نانو بنانا'))); }catch(e){ __swallow(e, 'ui:img-engine'); }
         cur.lastEditedImage = { b64: __data.imageBase64, mime: __outMime };
+        /* v-image-memory: نحفظ الدور (كلمات المستخدم + مصغّر النتيجة 768px، ومصغّر المصدر الأصلي في أول دور) ليراه النموذج في الدور القادم */
+        try{
+          if(!__continuesEditChain || !Array.isArray(cur.imageTurns)) cur.imageTurns = [];
+          const __tRes = await omranShrinkForEdit(__data.imageBase64, __outMime, 768, true);
+          const __turn = { text: String(text || '').slice(0, 400), resultBase64: __tRes.b64, resultMime: __tRes.mime };
+          if(!cur.imageTurns.length){ const __tSrc = await omranShrinkForEdit(__pendingImageEditSource.b64, __pendingImageEditSource.mime, 768, true); __turn.sourceBase64 = __tSrc.b64; __turn.sourceMime = __tSrc.mime; }
+          cur.imageTurns = cur.imageTurns.concat([__turn]).slice(-4);
+        }catch(e){ __swallow(e, 'img:memory-turn'); }
         cur.imageEditSource = __pendingImageEditSource;
         cur.imageEditInstructions = __pendingImageEditInstructions;
         cur.imageTextLayer = null;

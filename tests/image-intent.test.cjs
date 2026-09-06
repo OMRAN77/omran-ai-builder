@@ -136,7 +136,7 @@ test('server reads the intent from the user\'s own words and sends creative edit
   for (const t of ['أقوى 4K', 'للطباعة', 'دقة عالية', 'print quality version']) assert.ok(want4K.test(t), t);
   for (const t of ['أقوى', 'خلها أفخم', 'اطبع الاسم فوق']) assert.ok(!want4K.test(t), t);
   /* المصدر يُرسل بدقة 2048px لتعديل الصورة الواحدة، و1280 فقط مع قناع أو صور إضافية */
-  assert.match(attach, /async function omranShrinkForEdit\(b64, mime, maxPx\)/);
+  assert.match(attach, /async function omranShrinkForEdit\(b64, mime, maxPx, force\)/);
   assert.match(attach, /const mx = maxPx \|\| 2048, sc = /);
   assert.match(attach, /const __tsShr = await omranShrinkForEdit\(__b64, __mime, 1280\)/);
   assert.match(attach, /__xa\.mime \|\| 'image\/png', 1280\)/);
