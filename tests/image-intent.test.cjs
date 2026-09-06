@@ -68,6 +68,7 @@ test('place hints keep the photographic scene-upgrade lane for rooms', () => {
 
 test('server reads the intent from the user\'s own words and sends creative edits to Nano Banana Pro', () => {
   const maha = fs.readFileSync('api/_lib/maha-image.js', 'utf8');
+  const attach = fs.readFileSync('js/app-09-attach.js', 'utf8');
   assert.match(maha, /require\('\.\/image-intent'\)/);
   assert.match(maha, /const intentText = userText \|\| String\(prompt \|\| ''\)/);
   assert.match(maha, /body\.userText\.replace\(\/\\s\*\\\[\[\^\\\[\\\]\]\*\\\]\\s\*\$\/, ''\)/);
@@ -79,6 +80,11 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(maha, /if \(__place !== true\) \{ isSceneUpgrade = false; isElevate = true; \}/);
   assert.match(maha, /if \(!nanoPrimary\) delete cfg\.temperature;/);
   assert.match(maha, /logError\('maha-image:primary-fallback'/);
+  /* الحارس يعمل على كل تعديل الآن: الأسلوب/الترقية/الفكرة المختلفة لا تُرفض لتغيير الوسيط، والهوية مفروضة */
+  assert.match(maha, /allowStyleChange: explicitlyRequestsStyleChange\(cleanPrompt\) \|\| isRestyle \|\| isReimagine \|\| isElevate,/);
+  assert.match(maha, /allowBroadChange: isSceneUpgrade \|\| isElevate \|\| isReimagine \|\| isRestyle,/);
+  /* تبديل الحرف بالقناع يعمل على 1280px كأي تعديل */
+  assert.match(attach, /const __sc = Math\.min\(1, 1280 \/ Math\.max\(img\.naturalWidth \|\| 1, img\.naturalHeight \|\| 1\)\);/);
   /* لقطة نصّية كثيفة + «حسّن» تبقى على gpt-image عالي الدقة — الترقية لا تُستثنى من مسار النصّ */
   assert.match(maha, /const __textRoute = !!process\.env\.OPENAI_API_KEY && !prayerPlan && !isReimagine && !isRestyle && !isSceneUpgrade && !extras\.length\n/);
   /* قرار المزدوج مرة واحدة: مسار النصّ الكثيف لا يترك نداء gpt-image معلّقًا حين تكون الترقية مستثناة من الحكم */

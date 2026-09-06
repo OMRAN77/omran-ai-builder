@@ -547,8 +547,10 @@ module.exports = async (req, res) => {
         resultBase64: imgPart.inlineData.data,
         resultMime: imgPart.inlineData.mimeType || 'image/png',
         userPrompt: cleanPrompt,
-        allowStyleChange: explicitlyRequestsStyleChange(cleanPrompt),
-        allowBroadChange: isSceneUpgrade || isElevate || isReimagine,
+        /* v-guard-creative: بعد أن صار الأمر المهندس هو الافتراضي يعمل الحارس على كل تعديل — تحويل الأسلوب («عدل 3d»)
+           والترقية والفكرة المختلفة تغيّر الوسيط بطبيعتها فلا تُرفض لأجله؛ الهوية (نفس الشخص) تبقى مفروضة على الجميع. */
+        allowStyleChange: explicitlyRequestsStyleChange(cleanPrompt) || isRestyle || isReimagine || isElevate,
+        allowBroadChange: isSceneUpgrade || isElevate || isReimagine || isRestyle,
       });
       if (!guard.ok && guard.reason === 'validation_unavailable') console.warn('[maha-image] guard unavailable — passing result through'); /* v-guard-fail-open */
       else if (!guard.ok) {

@@ -16486,7 +16486,10 @@ async function omranBuildTextEditMask(b64, mime, box){
     i.onload = () => res(i); i.onerror = () => rej(new Error('bad_source_image'));
     i.src = 'data:' + (mime || 'image/png') + ';base64,' + b64;
   });
-  const W = img.naturalWidth || 1, H = img.naturalHeight || 1;
+  /* v-mask-shrink: صورتان PNG بالحجم الكامل (المصدر والقناع) في طلب واحد تتجاوز حدّ جسم الطلب في Vercel
+     فيسقط الطلب قبل الخادم — نعمل على 1280px كأي تعديل آخر، والمنطقة تُحسب بالإحداثيات المصغّرة نفسها. */
+  const __sc = Math.min(1, 1280 / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+  const W = Math.max(1, Math.round((img.naturalWidth || 1) * __sc)), H = Math.max(1, Math.round((img.naturalHeight || 1) * __sc));
   const source = document.createElement('canvas'); source.width = W; source.height = H;
   source.getContext('2d').drawImage(img, 0, 0, W, H);
   const padX = Math.max(5, Math.round(box.w * W * 0.18));
