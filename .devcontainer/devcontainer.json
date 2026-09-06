@@ -1,0 +1,4 @@
+{
+  "name": "omran-ai-builder",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:24"
+}
