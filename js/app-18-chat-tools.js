@@ -81,7 +81,7 @@
         var ut = typeof um.content === 'string' ? um.content
           : (Array.isArray(um.content) ? um.content.filter(function (c) { return c && c.type === 'text'; }).map(function (c) { return c.text || ''; }).join(' ') : '');
         /* الملحق «[الصور المرفقة: اسم.png]» يُحذف كي لا يخدع اسمُ ملفٍ مثل render.png قارئَ النيّة */
-        window.__chatLastUserText = String(ut || '').replace(/\s*\[[^\[\]]*\]\s*$/, '').trim().slice(0, 600);
+        window.__chatLastUserText = String(ut || '').slice(0, 800).replace(/\s*\[[^\[\]]*\]\s*$/, '').trim().slice(0, 600); /* v-quad-fix: القصّ قبل الـregex — كانت O(n²) على اللصق الطويل */
         break;
       }
     } catch (e) { /* guard-ok — مرجع الصورة اختياري ولا يجب أن يمنع المحادثة */ }

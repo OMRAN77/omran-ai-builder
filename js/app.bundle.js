@@ -18921,7 +18921,7 @@ function __showImgLoading(el, ar, en){
       };
       try{
         let __floorsCount = 0;
-        const __fm = __archText.match(/(\d+|واحد|وحده|وحدة|اثنين|ثنتين|ثلاث(?:ة)?|أربع(?:ة)?|اربع(?:ة)?)\s*(?:طوابق|طابق|أدوار|ادوار|دور|floors?|stor(?:y|ies))/i) || __archText.match(/(?:طابق|دور)\s*(واحد|1|١)/);
+        const __fm = __archText.match(/(\d{1,4}|واحد|وحده|وحدة|اثنين|ثنتين|ثلاث(?:ة)?|أربع(?:ة)?|اربع(?:ة)?)\s*(?:طوابق|طابق|أدوار|ادوار|دور|floors?|stor(?:y|ies))/i) || __archText.match(/(?:طابق|دور)\s*(واحد|1|١)/); /* v-quad-fix: \d{1,4} بدل \d+ — كانت O(n²) على تتابع أرقام طويل */
         if(__fm){ const __w = __fm[1]; __floorsCount = /^\d+$/.test(__w) ? parseInt(__w) : ({'واحد':1,'وحده':1,'وحدة':1,'١':1,'1':1,'اثنين':2,'ثنتين':2,'ثلاث':3,'ثلاثة':3,'أربع':4,'أربعة':4,'اربع':4,'اربعة':4}[__w] || 0); }
         if(!__floorsCount && /أرضي|ارضي/.test(__archText)) __floorsCount = 1;
         const __floorRule = __floorsCount ? (' STRICT REQUIREMENT: the building must have EXACTLY ' + __floorsCount + ' floor(s)' + (__floorsCount === 1 ? ' — single-story ground-level building only, absolutely no upper floor, no first floor windows above, flat single-level roofline' : '') + '. Do not add extra floors.') : '';
@@ -19203,7 +19203,7 @@ DESIGN RULES (non-negotiable):
         const __openers = __historyMsgs.slice(0, __historyMsgs.length - MAX_TURNS).filter(m => m.role === 'user').slice(0, 3);
         if(__openers.length){
           const __anchorTxt = __openers.map(m => {
-            let s = String(__stripCodeForHistory('user', (m.apiText !== undefined ? m.apiText : m.content)) || '').replace(/\b\S+\.(jpg|jpeg|png|webp|gif)\b/gi, '(صورة)');
+            let s = String(__stripCodeForHistory('user', (m.apiText !== undefined ? m.apiText : m.content)) || '').replace(/\b\S{1,120}\.(jpg|jpeg|png|webp|gif)\b/gi, '(صورة)'); /* v-quad-fix: \S{1,120} بدل \S+ — كانت O(n²) على نصّ طويل بلا مسافات */
             return '- ' + (s.length > 300 ? s.slice(0, 300) + '…' : s);
           }).join('\n');
           apiMessages.push({role: 'system', content: '📌 موضوع هذه المحادثة الأصلي (للرجوع إليه عند الأسئلة المتصلة فقط):\n' + __anchorTxt + '\n⛔ لا تفتح موضوعًا قديمًا من نفسك إذا كان سؤال المستخدم الجديد غير متعلق به.'});
@@ -28561,7 +28561,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
         var ut = typeof um.content === 'string' ? um.content
           : (Array.isArray(um.content) ? um.content.filter(function (c) { return c && c.type === 'text'; }).map(function (c) { return c.text || ''; }).join(' ') : '');
         /* الملحق «[الصور المرفقة: اسم.png]» يُحذف كي لا يخدع اسمُ ملفٍ مثل render.png قارئَ النيّة */
-        window.__chatLastUserText = String(ut || '').replace(/\s*\[[^\[\]]*\]\s*$/, '').trim().slice(0, 600);
+        window.__chatLastUserText = String(ut || '').slice(0, 800).replace(/\s*\[[^\[\]]*\]\s*$/, '').trim().slice(0, 600); /* v-quad-fix: القصّ قبل الـregex — كانت O(n²) على اللصق الطويل */
         break;
       }
     } catch (e) { /* guard-ok — مرجع الصورة اختياري ولا يجب أن يمنع المحادثة */ }
