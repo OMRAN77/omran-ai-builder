@@ -3320,7 +3320,7 @@ function __showImgLoading(el, ar, en){
     /* v-nano-chat (المالك: «نفس فكرة نانو»): كتطبيق Gemini — صورة مرفقة مع أي طلب قصير ليس سؤالًا ولا كودًا
        = صورة جديدة من الفكرة نفسها؛ وأي رسالة قصيرة بعد صورة أنتجناها = تعديل عليها بلا إعادة رفع. */
     // v-visual-assist: لقطة شاشة بلا فعل تعديل صريح = تحليل وإرشاد، ليست تعديل صورة.
-    const __SHOT_ANALYZE = !!(__srcImg && !__srcImg._fromMemory && __srcImg._screenshot && !__imgEditRe.test(text || '') && !__IMGF_NEW_RE.test(text || ''));
+    const __SHOT_ANALYZE = !!(__srcImg && !__srcImg._fromMemory && __srcImg._screenshot && !__IMG_UPGRADE && !__imgEditRe.test(text || '') && !__IMGF_NEW_RE.test(text || ''));
     /* v-assistant-first (المالك: «رفع أي لقطة + طلب = المساعد يقرأها ويرشد، لا
        يعدّل الصورة» — لقطة خدمة حكومية + «متابعة سير الإجراءات» كانت تُعاد رسمها
        فتتخربش وتُخصَم بلا داعي). التعديل الافتراضي لا يعمل إلا إذا جاءت الصورة من

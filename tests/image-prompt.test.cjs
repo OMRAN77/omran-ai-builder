@@ -120,6 +120,7 @@ test('chat edit flow continues from the latest edited pixels and never auto-recr
   assert.match(maha, /mahaCombinedEditPrompt\(promptText\)/);
   assert.doesNotMatch(maha, /mahaImageEditInstructions\.slice\(-/);
   assert.doesNotMatch(maha, /requestedStyleChange/);
+  assert.match(attach, /const __SHOT_ANALYZE = !!\([^;]{0,300}!__IMG_UPGRADE/);
   assert.match(mahaApi, /guestImageCharge = \{ counterKey \}/);
   assert.match(mahaApi, /await kvDecrBy\(charge\.counterKey, 1\)/);
   assert.match(mahaApi, /await refundImageCharge\(\)/);
