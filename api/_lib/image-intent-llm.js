@@ -47,7 +47,7 @@ async function classifyEditIntentLLM({ apiKey, text, timeoutMs }) {
       signal: AbortSignal.timeout(timeoutMs || 6000),
       body: JSON.stringify({
         contents: [{ parts: [{ text: buildIntentClassifierPrompt(text) }] }],
-        generationConfig: { temperature: 0, maxOutputTokens: 60, responseMimeType: 'application/json' },
+        generationConfig: { temperature: 0, maxOutputTokens: 256, responseMimeType: 'application/json' }, /* v-flash-budget */
       }),
     });
     const d = await r.json().catch(function () { return null; });

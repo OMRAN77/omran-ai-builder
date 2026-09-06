@@ -193,7 +193,9 @@ test('reimagine prompt asks for a new concept of the same subject, not the sourc
 test('elevate prompt keeps the same idea but demands thematic enrichment instead of a plain photo', () => {
   const p = buildElevatePrompt('أقوى');
   assert.match(p, /TASK: "أقوى"/);
-  assert.match(p, /keep the main subject, the setting, the overall composition, the meaning/);
+  assert.match(p, /keep the main subject, the setting, the message and the purpose/);
+  assert.match(p, /this is a redesign of the same idea, not the same picture with more glow/);
+  assert.match(p, /At a glance the result must look clearly different and clearly better/);
   assert.match(p, /A subtle polish is a FAILURE/);
   assert.match(p, /symbolic motifs, ornamental patterns/);
   assert.match(p, /decorative calligraphy or lettering/);

@@ -63,7 +63,7 @@ async function verifyLocalizedImageEdit(options) {
           { inlineData: { mimeType: opts.resultMime || 'image/png', data: opts.resultBase64 } },
           { text: instruction }
         ] }],
-        generationConfig: { temperature: 0, maxOutputTokens: 768, responseMimeType: 'application/json' }
+        generationConfig: { temperature: 0, maxOutputTokens: 1536, responseMimeType: 'application/json' } /* v-flash-budget */
       })
     });
     if (!response.ok) return { ok: false, reason: 'validation_unavailable' };
