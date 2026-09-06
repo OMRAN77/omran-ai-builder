@@ -2066,6 +2066,26 @@ function __convLockProvider(conv, decided, oneOff, respectExplicit, deferLock){
    تحليل → openai) فيتجاوز العقل الواحد وميثاقه وبطاقات مصادره. كل شيء
    الآن للعقل الواحد وأدواته. */
 function pickSpecialtyProvider(){ return null; }
+// ⏱️ v-fallback-idle — حارس تقدّم لمسار الاحتياط: callProviderAI يبثّ عبر
+// onDelta بلا أي مهلة، فلو تعثّر المزوّد بعد المسار الأساسي بقي الطلب معلّقًا
+// حتى الحارس الصلب (٥ دقائق) والمستخدم يرى «مافي رد». هذا الحارس يقطع محاولة
+// المزوّد بعد صمتٍ فعليّ (لا تدفّق) فينتقل للتالي أو يُظهر خطأً واضحًا سريعًا.
+// idle لا total: يُصفَّر مع كل قطعة نصّ تصل، فلا يقطع ردًّا يُكتب فعلًا.
+var __FALLBACK_IDLE_MS = 45000;
+function __idleGuard(promise, idleMs, getLast){
+  return new Promise(function(resolve, reject){
+    var done = false;
+    var timer = setInterval(function(){
+      if(done) return;
+      if(Date.now() - getLast() > idleMs){
+        done = true; clearInterval(timer);
+        reject(new Error('__provider_idle__'));
+      }
+    }, 2000);
+    promise.then(function(v){ if(!done){ done = true; clearInterval(timer); resolve(v); } },
+                 function(e){ if(!done){ done = true; clearInterval(timer); reject(e); } });
+  });
+}
 async function callAIWithFallback(messages, onDelta, preferredList){
   // 🧹 v308: تعقيم نهائي — أي base64 عملاق داخل نص أي رسالة يُستبدل بعلامة
   // قصيرة قبل الإرسال (الصور المرفقة الحقيقية تبقى في حقل images المنفصل).
@@ -2099,7 +2119,9 @@ async function callAIWithFallback(messages, onDelta, preferredList){
           window.__chatStatus.phase('💭', (typeof functionalLabel === 'function' ? functionalLabel(providerKey) : providerKey) + ' ' + t('provTypingSuffix'));
         }
       }catch(e){ console.warn('[status] provider phase failed', e); }
-      const reply = await callProviderAI(providerKey, messages, onDelta);
+      var __lastProg = Date.now();
+      var __od = function(full){ __lastProg = Date.now(); if(onDelta) onDelta(full); };
+      const reply = await __idleGuard(callProviderAI(providerKey, messages, __od), __FALLBACK_IDLE_MS, function(){ return __lastProg; });
       // 🛡️ v309: رد فارغ = فشل → جرّب المزود التالي (يمنع الفقاعة الخفية)
       if(!String(reply || '').trim()){ lastErr = new Error(t('providerError')); continue; }
       if(isRefusalReply(reply) && refusalTries < 2){
