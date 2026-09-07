@@ -928,16 +928,6 @@ module.exports = async (req, res) => {
   const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } };
   send({ status: '💭 يقرأ سؤالك…', k: 'stReading' });
 
-  // v-prefill-heartbeat (شكوى المالك «النصّ الطويل يرد مرتين والثالثة لا»): كلّ
-  // دور يكبّر السياق، فبالثالث تطول «تعبئة» النموذج قبل أوّل حرف. Anthropic قد لا
-  // يرسل نبضات أثناء التعبئة الطويلة، فيصمت الخادم ويقطع حارس العميل (٩٠ث) الدور
-  // بلا رد. هذه النبضة كلّ ٢٠ث تُبقي الحارس حيًّا طوال التعبئة فقط — تتوقّف فور
-  // أوّل كتلة من النموذج (نصّ أو أداة)، فلا تُغذّي الحارس أثناء حلقة الأدوات
-  // (درس #527 محفوظ: لا إبقاء حيًّا بلا تقدّم حقيقيّ بعد بدء عمل النموذج).
-  let __gotFirstBlock = false;
-  let __kaTimer = setInterval(function () { try { if (!__gotFirstBlock) send({ status: '✍️ المزوّد يكتب الآن…', k: 'stWriting' }); } catch (e) { /* guard-ok */ } }, 20000);
-  const __clearKa = function () { if (__kaTimer) { try { clearInterval(__kaTimer); } catch (e) { /* guard-ok */ } __kaTimer = null; } };
-
   // v-chat-speed: قراءة الذاكرة كانت تنتظر فحص الحصة ثم تنتظر هي — رحلتا
   // شبكة متتاليتان قبل أول كلمة. verifyToken فوريّ (توقيع محلي)، فنطلق
   // القراءة الآن بالتوازي مع فحص الحصة ونستلمها لاحقًا جاهزة.
@@ -950,7 +940,6 @@ module.exports = async (req, res) => {
 
   const usage = await checkAndConsume(token, guestId, prov, clientIp(req));
   if (!usage.allowed) {
-    __clearKa();
     if (usage.reason === 'auth') send({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
     else send({ error: 'وصلت للحد اليومي المجاني (' + DAILY_LIMIT + ' رسالة). انتظر الغد أو اشترك.' });
     res.end();
@@ -1055,7 +1044,7 @@ module.exports = async (req, res) => {
   }
   if (convo.length && convo[0].role !== 'user') convo.unshift({ role: 'user', content: 'هذا مشروعي الحالي — اعتمد عليه فيما يلي:' });
   // الترويسات فُتحت أعلاه فلا status(400) هنا — حدث خطأ في المجرى نفسه.
-  if (!convo.length) { __clearKa(); send({ error: 'Missing user message' }); res.end(); return; }
+  if (!convo.length) { send({ error: 'Missing user message' }); res.end(); return; }
 
   // ─── live-answers: استبدل رسالة المستخدم الأخيرة بالنسخة المسنودة بالمصادر ───
 
@@ -1117,7 +1106,6 @@ module.exports = async (req, res) => {
       });
 
       if (!upstream.ok) {
-        __clearKa();
         const errText = (await upstream.text()).slice(0, 300);
         // لم يُكتب حرف بعد → أَبلِغ العميل ليهبط إلى مساره القديم بلا تكرار.
         send({ error: 'chat upstream ' + upstream.status + ': ' + errText, fallback: !anyText });
@@ -1153,7 +1141,6 @@ module.exports = async (req, res) => {
           let ev;
           try { ev = JSON.parse(line.slice(6)); } catch (e) { continue; }
           if (ev.type === 'content_block_start') {
-            __gotFirstBlock = true; __clearKa(); // v-prefill-heartbeat: انتهت التعبئة — أوقف النبضة قبل أي عمل أدوات
             const cb = ev.content_block || {};
             blocks[ev.index] = { type: cb.type, text: '', name: cb.name, id: cb.id, inputJson: '' };
             if (cb.type === 'tool_use' && cb.name === 'web_search') send({ status: '🔍 أتحقق لك من المصادر الحية…', k: 'stSearch' });
@@ -1188,7 +1175,7 @@ module.exports = async (req, res) => {
         }
         const _cleaned = stripMemoryUrls(fullText, toolCorpus);
           if (_cleaned !== fullText) { send({ patch: _cleaned }); }
-          __clearKa(); send({ done: true }); res.end(); return;
+          send({ done: true }); res.end(); return;
       }
 
       const assistantContent = blocks.filter(Boolean).map((cb) => {
@@ -1265,11 +1252,9 @@ module.exports = async (req, res) => {
       convo.push({ role: 'user', content: toolResults });
     }
 
-    __clearKa();
     send({ done: true });
     res.end();
   } catch (e) {
-    __clearKa();
     send({ error: 'chat error: ' + String((e && e.message) || e).slice(0, 200) });
     try { res.end(); } catch (e2) { /* المجرى مُغلق أصلًا */ }
   }
