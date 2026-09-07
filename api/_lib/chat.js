@@ -971,9 +971,13 @@ module.exports = async (req, res) => {
   // المهلة (٧٥ث) فيبدو «ما رد». وثيقةُ تحليلٍ لا تحتاج أدوات — نطفئها لهذا الدور
   // فيبدأ النموذج يكتب فورًا. نضيّق الكشف كي لا نطفئ أدوات سؤالٍ طويلٍ يحتاج بحثًا:
   // نصّ طويل (≥600 حرف أو ≥8 أسطر) + علامات وثيقة/كود، وليس طلب بحث/سعر/أخبار.
+  // v-analyze-any-long (أمر المالك «الصور بالطلب فقط»؛ لقطة: قصّة نوح رسم لها
+  // النموذج صورة): الشرط الثاني (أسطر≥٤ أو علامات كود) كان يترك الأدوات مفعّلة
+  // لنثرٍ طويلٍ بأسطر قليلة، فيرسم النموذج صورة توضيحيّة تلقائيّة بعد النصّ. الآن
+  // أيّ نصّ طويل (٦٠٠+ حرف) يطفئ الأدوات فيردّ نصًّا فقط — ما لم يكن طلب بحث/رقم.
+  // الطلبات الصريحة (ارسم صورة / ابنِ موقعًا) يلتقطها العميل قبل الخادم، فلا تتأثّر.
   const __analyzeDoc = !lastUserHasImage && !quietSocialTurn && !foreignTurn && typeof lastUserText === 'string'
     && (lastUserText.length >= 600 || lastUserText.split('\n').length >= 8)
-    && (lastUserText.split('\n').length >= 4 || /[{}();]|=>|\bfunction\b|\bconst\b|\bissue\b|\berror\b|\bexception\b|\btraceback\b|\bstack\b|\breport\b|\blog\b|\breview\b|\brejected\b|isRestyle|buildEditPrompt|→/.test(lastUserText))
     && !NUM_ASK_RE.test(lastUserText)
     && !/(?:^|[\s،,])(?:ابحث|دوّ?ر\s*لي|آخر\s*الأخبار|أخبار|اخبار|كم\s*سعر|السعر|الأسعار|الاسعار|طقس|الطقس|فندق|فنادق|مطعم|مطاعم|تذاكر|طيران|search|news|weather|price)(?=$|[\s،,.!؟?])/i.test(lastUserText);
   const reC = (wizardTurn || foreignTurn) ? null : reCtx(messages);
