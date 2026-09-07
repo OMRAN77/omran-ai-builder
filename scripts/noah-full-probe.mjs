@@ -104,8 +104,17 @@ await runOnce('بتاريخ', [
 // السيناريو ٣: يعيد إنتاج الخطأ — نُمرّر قاعدة الملصق (كما كان العميل يفعل حين
 // طابقت «دعوة» __dsnRe) بلا ملاحظة «حلّل»، ونقيس: هل يردّ الخادم بكتلة كود ```html
 // (ملصق) بدل نصّ؟ إن نعم، تأكّد أنّ سبب «مافي أي رد» هو توجيه الكود للمعاينة.
-const POSTER = 'DESIGN/POSTER RULE (mandatory, highest priority): when the user message mentions بطاقة/دعوة/بوستر/شهادة, the output is a STATIC VISUAL DESIGN built as ONE complete <html> document with rich CSS. Deliver the full HTML inside a ```html code block. Do NOT reply with plain analysis text.';
-await runOnce('ملصق-الخطأ', [
-  { role: 'system', content: SYS + POSTER },
+// نستخرج قاعدة الملصق الحقيقيّة كاملةً من المصدر (لا نسخة مختصرة) لنعيد إنتاج
+// ما كان العميل يرسله فعلًا حين طابقت «دعوة» __dsnRe — الاختبار الحاسم.
+import { readFileSync } from 'node:fs';
+let REAL_POSTER = '';
+try {
+  const src = readFileSync(new URL('../js/app-06-checkout.js', import.meta.url), 'utf8');
+  const m = src.match(/const DESIGN_POSTER_RULE = '([\s\S]*?)';\n/);
+  if (m) REAL_POSTER = m[1].replace(/\\n/g, '\n').replace(/\\'/g, "'");
+} catch (e) { console.log('تعذّر استخراج القاعدة:', e.message); }
+console.log('\nطول قاعدة الملصق الحقيقيّة المُستخرجة:', REAL_POSTER.length, 'حرف');
+await runOnce('ملصق-الخطأ (القاعدة الكاملة)', [
+  { role: 'system', content: SYS + '\n' + REAL_POSTER },
   { role: 'user', content: NOAH },
 ], token);
