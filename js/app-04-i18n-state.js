@@ -854,7 +854,11 @@ function __chatsMergeServer(server, deletedIds){
   }
   try{ saveState(); }catch(e){ __swallow(e, "save:app-04-i18n-state#18"); }
   try{ renderHistory(); }catch(e){ __swallow(e, "save:app-04-i18n-state#19"); }
-  try{ if(typeof renderAll === 'function') renderAll(); }catch(e){ __swallow(e, "save:app-04-i18n-state#20"); }
+  // v-keep-scroll (لقطة المالك: «المحادثة ترتفع فوق كل مرة أنزل»): دمج المحادثات
+  // مع السيرفر يعمل دوريًّا، وكان يُعيد الرسم بلا حفظ التمرير فيقفز لأسفل القائمة
+  // (scrollTop=scrollHeight) وسط قراءة ردّ طويل — فيبدو أن المحتوى «يرتفع». مع
+  // عدم تطابق عدّ السيرفر/المحلي كان يتكرّر كلّ دورة مزامنة. الآن يحفظ الموضع.
+  try{ if(typeof renderAll === 'function') renderAll(true); }catch(e){ __swallow(e, "save:app-04-i18n-state#20"); }
   try{ if(typeof buildChatList === 'function') buildChatList(); }catch(e){ __swallow(e, "save:app-04-i18n-state#21"); }
   return true;
 }
