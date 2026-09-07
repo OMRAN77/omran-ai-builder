@@ -2572,6 +2572,10 @@ async function sendPrompt(){
   genAbortController = new AbortController();
   btnStop.classList.add('live');
   __omranArmWatchdog();  // v586
+  /* v-diag-turn (تشخيص «النص الطويل ما يرد»): نلتقط نتيجة الدور لنعرف السبب
+     الحقيقي — لو انتهى الدور بلا رد ظاهر نعرض سطرًا فيه المزوّد وطول الرد والوقت
+     والخطأ. طول رد>0 بلا ظهور = عطل عرض؛ طول 0 = المزوّد رجّع فارغًا؛ خطأ = مهلة/شبكة. */
+  window.__diagTurn = { t0: Date.now(), provider: '', replyLen: -1, err: '' };
 /* v-err-human: أخطاء الشبكة العابرة كانت تنزل خامًا في المحادثة
    («⚠️ Load failed» عند مستخدمة حقيقية) — تُترجم لعربي واضح مع إرشاد. */
 function __friendlyErr(e){
@@ -5062,6 +5066,7 @@ DESIGN RULES (non-negotiable):
         window.__claudeModelOverride = null;
         window.__claudeThinking = false;
       }
+      try{ window.__diagTurn.provider = String(providerKey||''); window.__diagTurn.replyLen = String(reply||'').length; }catch(e){ __swallow(e,'ui:diag-ok'); }
       let { code, explanation, codeType } = extractReply(reply);
       // v-reveal-live: رد نصّي بلا كود → ننتظر حركة الكتابة تلحق آخر حرف
       // قبل الرسم النهائي. مع الكود لا ننتظر إطلاقًا حتى لا تتأخر المعاينة.
@@ -5119,6 +5124,7 @@ DESIGN RULES (non-negotiable):
       }catch(_){ __swallow(_, "points:app-09-attach#27"); }
     }
   }catch(err){
+    try{ window.__diagTurn.err = String((err && (err.name+': '+err.message)) || err || ''); }catch(e){ __swallow(e,'ui:diag-err'); }
     if(err && err.name === 'AbortError'){
       // الإيقاف لا يمحو سؤال المستخدم ولا يعيده إلى الصندوق. نثبّت آخر نص
       // وصل من البث كإجابة متوقفة، فيستطيع المستخدم قراءته أو إعادة توليده.
@@ -5155,6 +5161,23 @@ DESIGN RULES (non-negotiable):
     sendBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>' /* v-send-plane: سهم الإرسال طائرة ورقية كما في صورة المالك */;
     saveState();
     renderAll(__keepReaderPosition);
+    /* v-diag-turn: لو انتهى الدور بلا رد ظاهر (لا نصّ ولا كود ولا مرفق) وليس
+       إيقافًا من المستخدم — نعرض سطر تشخيص فيه سبب الغياب الحقيقي. مؤقّت للتشخيص. */
+    try{
+      var __la = cur.messages[cur.messages.length - 1];
+      var __visible = !!(__la && __la.role === 'assistant' && (String(__la.content || '').trim() || __la.code || (__la.attachments && __la.attachments.length)));
+      if(!__visible && !window.__omranTimedOut && !isPureGreeting(text) && !isCasualCheckIn(text)){
+        var __d = window.__diagTurn || {};
+        cur.messages.push({ role: 'assistant', _diag: true, content:
+          '🔧 تشخيص الرد الغائب:\n'
+          + '• المزوّد: ' + (__d.provider || '—') + '\n'
+          + '• طول الرد المُستلَم: ' + (__d.replyLen >= 0 ? (__d.replyLen + ' حرف') : 'لم يصل') + '\n'
+          + '• الوقت: ' + Math.round((Date.now() - (__d.t0 || Date.now())) / 1000) + ' ثانية\n'
+          + '• الخطأ: ' + ((__d.err || '').slice(0, 200) || 'لا يوجد') + '\n'
+          + '(طول>0 بلا ظهور = عطل عرض · طول «لم يصل» = المزوّد لم يرجّع · خطأ مهلة = timeout)' });
+        renderAll(__keepReaderPosition);
+      }
+    }catch(e){ __swallow(e, 'ui:diag-finally'); }
     // 🧠 تحديث ذاكرة المستخدم بعد اكتمال الرد (بدون انتظار)
     try{
       const __lastA = cur.messages.filter(m => m.role === 'assistant').slice(-1)[0];
