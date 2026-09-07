@@ -106,7 +106,7 @@
   const tickerTrack = $('#stockTickerTrack');
   const TICKER_SYMS = (function(){
     try{ const s = JSON.parse(localStorage.getItem('stockTickerSyms')||'null'); if(Array.isArray(s) && s.length) return s.slice(0,5); }catch(e){ __swallow(e, "misc:app-13-stocks-init#1"); }
-    return ['AAPL','TSLA','NVDA','MSFT','BTC/USD'];
+    return ['AAPL','TSLA','NVDA','MSFT','GOOGL']; /* v-no-crypto: أُزيلت BTC/USD امتثالًا لسياسة متجر هواوي (لا عملات رقمية) */
   })();
   let tickerTimer = null, tickerAnim = null, tickerX = 0;
 
@@ -283,8 +283,8 @@
       tabs:[
         { title:'Indices', symbols:[{s:'AMEX:DIA',d:'Dow Jones'},{s:'NASDAQ:QQQ',d:'NASDAQ 100'},{s:'AMEX:SPY',d:'S&P 500'},{s:'FOREXCOM:GRXEUR',d:'DAX'},{s:'TVC:NI225',d:'Nikkei 225'}] },
         { title:'Commodities', symbols:[{s:'OANDA:XAUUSD',d:'Gold'},{s:'TVC:SILVER',d:'Silver'},{s:'TVC:USOIL',d:'Oil WTI'},{s:'TVC:UKOIL',d:'Brent'}] },
-        { title:'Forex', symbols:[{s:'FX:EURUSD'},{s:'FX:GBPUSD'},{s:'FX:USDJPY'},{s:'FX_IDC:USDAED',d:'USD/AED'}] },
-        { title:'Crypto', symbols:[{s:'BITSTAMP:BTCUSD',d:'Bitcoin'},{s:'BITSTAMP:ETHUSD',d:'Ethereum'}] }
+        { title:'Forex', symbols:[{s:'FX:EURUSD'},{s:'FX:GBPUSD'},{s:'FX:USDJPY'},{s:'FX_IDC:USDAED',d:'USD/AED'}] }
+        /* v-no-crypto: قسم «Crypto» (Bitcoin/Ethereum) أُزيل امتثالًا لسياسة متجر هواوي */
       ] };
     $('#tvOverview').src = 'https://s.tradingview.com/embed-widget/market-overview/?locale=' + uiLang() + '#' + encodeURIComponent(JSON.stringify(ov));
     try{
