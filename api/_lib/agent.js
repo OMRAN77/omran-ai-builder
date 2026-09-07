@@ -360,11 +360,15 @@ module.exports = async (req, res) => {
     return;
   }
 
-  // SSE stream
+  // SSE stream — v-flush: بلا دفع صريح تبقى الترويسة وأوّل الكتابات مخزّنة حتّى
+  // نهاية الردّ، فيبدو الدور الطويل صامتًا تمامًا عند العميل (نفس عطل chat.js).
+  res.status(200);
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
-  const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); } catch (e) { /* العميل أغلق مجرى SSE — لا وجهة للكتابة، والمحاولة التالية ستكتشف ذلك */ } };
+  res.setHeader('X-Accel-Buffering', 'no');
+  if (res.flushHeaders) res.flushHeaders();
+  const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق مجرى SSE — لا وجهة للكتابة، والمحاولة التالية ستكتشف ذلك */ } };
 
   const runUser = usage.username || '';
   const run = { runId: 'r' + Date.now().toString(36), startedAt: Date.now(), updatedAt: Date.now(), step: 0,

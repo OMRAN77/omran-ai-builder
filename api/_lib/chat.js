@@ -911,10 +911,21 @@ module.exports = async (req, res) => {
   // المحادثة). أي تعثّر هناك = صمت تامّ عند العميل بلا حتى أول بايت. الآن
   // البثّ يُفتح هنا فعليًّا — أوّل سطر بعد تجهيز الموديل — فيرى العميل نبضة
   // فورية بغضّ النظر عمّا يتعثّر لاحقًا، وأخطاء الحصة تُرسَل كحدث بدل حالة HTTP.
+  // v-flush: السبب الجذريّ لـ«النصّ الطويل ما يرد». المسارات التسعة الأخرى
+  // (claude.js · openai.js · gemini.js …) كلّها تنادي flushHeaders؛ هذا المسار
+  // — مسار المحادثة الرئيسيّ — كان الوحيد الذي لا يناديها. بلا دفعٍ صريح تبقى
+  // الترويسة وأوّل الكتابات في مخزن Node/الحافة حتّى يمتلئ المخزن أو ينتهي
+  // الردّ: ردٌّ قصير ينتهي سريعًا فيُدفَع كلّه دفعةً واحدة (يبدو سليمًا)، وردٌّ
+  // طويل لا ينتهي قبل حارس الخمول (٤٥ث) فلا تصل ولا بايت — «pending» في تبويب
+  // الشبكة دقيقةً كاملة بلا ترويسة، والمستخدم لا يرى حتّى نبضة القلب.
+  // X-Accel-Buffering يمنع تخزين الحافة، وflushHeaders يدفع الترويسة فورًا.
+  res.status(200);
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
-  const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); } catch (e) { /* العميل أغلق المجرى */ } };
+  res.setHeader('X-Accel-Buffering', 'no');
+  if (res.flushHeaders) res.flushHeaders();
+  const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } };
   send({ status: '💭 يقرأ سؤالك…', k: 'stReading' });
 
   // v-chat-speed: قراءة الذاكرة كانت تنتظر فحص الحصة ثم تنتظر هي — رحلتا
