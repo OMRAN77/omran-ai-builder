@@ -939,7 +939,6 @@ module.exports = async (req, res) => {
   } catch (e) { /* guard-ok: الذاكرة تحسين لا شرط — مسارها القديم يبقى احتياطًا */ }
 
   const usage = await checkAndConsume(token, guestId, prov, clientIp(req));
-  send({ status: '🩺 debug: تجاوز فحص الحصة', k: 'stDebugQuota' }); // v-debug-trace: مؤقت لتشخيص «المزود صامت» — يُحذف بعد التأكيد
   if (!usage.allowed) {
     if (usage.reason === 'auth') send({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
     else send({ error: 'وصلت للحد اليومي المجاني (' + DAILY_LIMIT + ' رسالة). انتظر الغد أو اشترك.' });
@@ -985,14 +984,12 @@ module.exports = async (req, res) => {
   // معزول عن الذاكرة والمواضيع القديمة، وسقفه 350 توكن.
   // (البثّ فُتح فعليًّا أعلاه، قبل checkAndConsume — v-real-fast-headers)
 
-  send({ status: '🩺 debug: تجاوز معالجة النصّ (foreignTurn/analyzeDoc/reCtx)', k: 'stDebugText' }); // v-debug-trace: مؤقت
 
   let accountMemory = '';
   if (usage.username && !quietSocialTurn) {
     const cur = earlyMemoryP ? await earlyMemoryP : await readMemory(usage.username);
     accountMemory = memoryPromptBlock(cur.memory);
   }
-  send({ status: '🩺 debug: تجاوز قراءة الذاكرة', k: 'stDebugMem' }); // v-debug-trace: مؤقت
 
   // ─── live-answers: بحث استباقي ذكي خلف LIVE_ANSWERS=1 ───
   // v-live-gate: كان يعمل على كل رسالة (مرشّحه «غير محسوم → ابحث») فيحجز ٤
@@ -1102,14 +1099,12 @@ module.exports = async (req, res) => {
       if (Date.now() - t0 > MAX_MS) { send({ status: '⏱️ انتهت مهلة الردّ.', k: 'stTimeout' }); break; }
       steps++;
 
-      send({ status: '🩺 debug: يتصل بـ ' + CHAT_URL + ' (step ' + steps + ')', k: 'stDebugFetch' }); // v-debug-trace: مؤقت
       const upstream = await fetch(CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
         body: JSON.stringify({ model: CHAT_MODEL, max_tokens: quietSocialTurn ? 350 : 16000, system, messages: convo, tools: toolTurn ? TOOLS : undefined, stream: true }),
       });
 
-      send({ status: '🩺 debug: وصل ردّ upstream — status ' + upstream.status, k: 'stDebugUpstream' }); // v-debug-trace: مؤقت
       if (!upstream.ok) {
         const errText = (await upstream.text()).slice(0, 300);
         // لم يُكتب حرف بعد → أَبلِغ العميل ليهبط إلى مساره القديم بلا تكرار.
@@ -1123,6 +1118,12 @@ module.exports = async (req, res) => {
       let buf = '';
       let stopReason = null;
       const blocks = [];
+      // v-prefill-alive (البيانات: النصّ الطويل يأخذ ٢٨ث صمتًا قبل أوّل حرف —
+      // زمن «التعبئة» الحقيقيّ للنموذج، لا عطل). Anthropic يرسل نبضات ping أثناءه؛
+      // كنّا نتجاهلها فيبدو التطبيق متجمّدًا فيستسلم المستخدم. الآن نمرّرها
+      // كإشارة «يكتب» مرئية — لكن قبل أوّل حرفٍ فقط (لا نُعيد عطل #527: لا تغذية
+      // للحارس أثناء حلقة الأدوات الطويلة، فبعد بدء النصّ تتكفّل الدلتا الحقيقيّة).
+      let sawTextThisStep = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -1153,10 +1154,15 @@ module.exports = async (req, res) => {
           } else if (ev.type === 'content_block_delta') {
             const cb = blocks[ev.index];
             if (!cb) continue;
-            if (ev.delta && ev.delta.type === 'text_delta') { cb.text += ev.delta.text; fullText += ev.delta.text; anyText = true; send({ delta: ev.delta.text }); }
+            if (ev.delta && ev.delta.type === 'text_delta') { cb.text += ev.delta.text; fullText += ev.delta.text; anyText = true; sawTextThisStep = true; send({ delta: ev.delta.text }); }
             else if (ev.delta && ev.delta.type === 'input_json_delta') cb.inputJson += ev.delta.partial_json;
           } else if (ev.type === 'message_delta') {
             if (ev.delta && ev.delta.stop_reason) stopReason = ev.delta.stop_reason;
+          } else if (ev.type === 'ping' && !sawTextThisStep) {
+            // نبضة من Anthropic أثناء التعبئة قبل أوّل حرف: أظهرها كإشارة «يكتب»
+            // مرئية (تصفّر حارس العميل بحقّ لأنّ المزوّد يبثّ فعلًا). تتوقّف فور
+            // أوّل حرف، فلا تغذية للحارس أثناء حلقة الأدوات (درس #527 محفوظ).
+            send({ status: '✍️ المزوّد يكتب الآن…', k: 'stWriting' });
           }
         }
       }
