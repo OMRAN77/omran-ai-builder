@@ -1662,7 +1662,12 @@ window.updateVersionLabel = function(){
     var srvN = (typeof window.__chatsServerCount === 'number') ? window.__chatsServerCount : '?';
     var mrgR = window.__chatsMergeResult || '—';
     var mrgE = window.__chatsMergeErr || '';
+    // v-bundle-ver: بصمة البندل من وسم السكربت — تكشف أي نسخة يشغّلها الجهاز فعلًا
+    // (تأكيد وصول التحديث بدل التخمين).
+    var __bv = '';
+    try{ var __s = document.querySelector('script[src*="app.bundle.js"]'); if(__s){ var __mm = (__s.getAttribute('src')||'').match(/[?&]v=([a-z0-9]+)/i); if(__mm) __bv = __mm[1]; } }catch(e){ /* guard-ok */ }
     el.textContent = 'Omran AI Builder — ' + APP_VERSION
+      + ' · بندل: ' + (__bv || '؟')
       + ' · سحب: ' + fmt(pull) + pullErr
       + ' · رفع: ' + fmt(push) + pushErr
       + ' · سيرفر: ' + srvN
