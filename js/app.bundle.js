@@ -17807,7 +17807,15 @@ function __friendlyErr(e){
     // أيّ توليد صورة تلقائيّ لهذا الدور. الطلب الصريح («ارسم/صمّم/اصنع لي صورة/
     // بوستر/شعار») يبقى يعمل، وتعديل صورة مرفقة يبقى يعمل (شرطه __srcImg).
     const __explicitImgReq = /(?:^|[\s،,.])(?:ارسم|أرسم|ارسمي|اصنع|اصنعي|انشئ|أنشئ|صمم|صمّم|صمّمي|ولّد|ولد|صوّر|صور)\s*(?:لي\s*)?[^\n]{0,25}?(?:صور|رسم|بوستر|ملصق|شعار|لوجو|بطاق|بنر|غلاف|تصميم|image|picture|poster|logo|banner|drawing)/i.test(text || '');
-    const __blockAutoImage = !!(__looksPasted && !__srcImg && !__explicitImgReq);
+    // نُعيد حساب «نصّ ملصوق» محليًّا لأنّ __looksPasted معرّف في كتلة أخرى أعلى
+    // (نطاق const مقفل) — لا نُشير إليه هنا (كان يسبّب __looksPasted is not defined).
+    const __pastedLike = !!(text && !__strongBuildRe.test(text) && (
+      text.length > 400 ||
+      text.split('\n').length >= 6 ||
+      /[📋⬜☐🔹▪•✔️]/.test(text) ||
+      /^\s*(?:[-*]|\d+[.)])\s+\S.*\n\s*(?:[-*]|\d+[.)])\s+\S/m.test(text)
+    ));
+    const __blockAutoImage = !!(__pastedLike && !__srcImg && !__explicitImgReq);
     /* v-support-q (لقطة عمران ١ سبتمبر: «عندي مشكلة في الطباعة تصور خارج
        الصورة... كيف اسوي الإعدادات» راحت لتعديل صورة قديمة): سؤال مساعدة
        يحوي كلمات صور عرضًا (تصور/الصورة/تعديل) — نمنع توجيهه للصور حين لا
