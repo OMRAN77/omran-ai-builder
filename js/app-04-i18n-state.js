@@ -1346,6 +1346,30 @@ function renderMessages(keepScroll){
   // الموضع دائمًا ونقيس هل هو متابعٌ في الأسفل: إن كان يقرأ في الأعلى نحفظ موضعه،
   // ولا نتبع الأسفل إلّا إن كان أصلًا هناك. إرسال رسالة جديدة يمرّر للأسفل عبر
   // anchorLastUserMsgTop المستقلّ، فلا يتأثّر.
+  // v-render-guard (لقطة المالك: «تطلع وتختفي وتطلع» + وميض خفيف + قفز): إعادات
+  // رسم متطابقة متتالية (المزامنة الدوريّة تلحق الرسم الأوّل) كانت تمسح القائمة
+  // ثمّ تعيد بناءها بلا تغيّر فعليّ — فيومض المحتوى ويقفز التمرير. نحسب بصمة
+  // خفيفة لما سيُرسم (المحادثة · عدد الرسائل · مجموع أطوال النصّ · العلامات ·
+  // اللغة)؛ إن طابقت آخر رسم والقائمة معروضة نتخطّى كليًّا — لا مسح، لا وميض.
+  try{
+    const __c0 = getCurrent();
+    let __sig = 'none';
+    if(__c0 && Array.isArray(__c0.messages)){
+      let __len = 0;
+      for(let __i = 0; __i < __c0.messages.length; __i++){
+        const __m = __c0.messages[__i];
+        if(!__m) continue;
+        if(typeof __m.content === 'string') __len += __m.content.length;
+        if(__m.code) __len += 7;
+        if(__m.attachments) __len += __m.attachments.length * 3;
+      }
+      const __exp = Array.isArray(__c0.expandedAskAllBatches) ? __c0.expandedAskAllBatches.join(',') : '';
+      __sig = __c0.id + '|' + __c0.messages.length + '|' + __len + '|' + (__c0.__showAllMsgs ? 1 : 0) + '|' + __exp;
+    }
+    __sig += '|' + (localStorage.getItem('aiapp_lang') || 'ar');
+    if(window.__renderMsgSig === __sig && messagesEl.childElementCount > 0) return;
+    window.__renderMsgSig = __sig;
+  }catch(e){ /* guard-ok — البصمة تحسين لا شرط؛ عند أي خطأ نرسم كالمعتاد */ }
   const prevScrollTop = messagesEl.scrollTop;
   let __wasNearBottom = true;
   try{ __wasNearBottom = (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight) < 160; }catch(e){ /* guard-ok — قياس اختياري */ }
