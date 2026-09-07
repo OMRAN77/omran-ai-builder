@@ -25288,8 +25288,18 @@ function stuL(ar, en){
     // = تسارع. الآن نلغي أيّ حلقة قائمة قبل بدء واحدة — حلقة واحدة مضمونة دائمًا.
     if(tickerAnim){ try{ cancelAnimationFrame(tickerAnim); }catch(e){ /* guard-ok */ } tickerAnim = null; }
     {
-      const step = function(){
-        tickerX -= 0.6;
+      // v-ticker-time-based (شكوى المالك «اضغط الشاشة يسرع الشريط»): الحركة كانت
+      // ٠.٦ بكسل لكلّ إطار، وWebView الجوال يخفض معدّل الإطارات عند الخمول ويرفعه
+      // عند اللمس، فيبدو الشريط يتسارع فجأة عند الضغط. الآن الحركة بالزمن الحقيقيّ
+      // (بكسل/ثانية) لا بعدد الإطارات، فالسرعة ثابتة مهما تغيّر المعدّل. السقف
+      // ١٠٠مل يمنع قفزة كبيرة إن توقّفت الإطارات ثمّ عادت.
+      let __lastT = 0;
+      const __TSPEED = 36; // بكسل/ثانية = ٠.٦px عند ٦٠ إطار/ث (نفس السرعة الأصلية)
+      const step = function(ts){
+        if(!__lastT) __lastT = ts;
+        const __dt = Math.min(100, ts - __lastT);
+        __lastT = ts;
+        tickerX -= __TSPEED * __dt / 1000;
         const half = tickerTrack.scrollWidth / 2;
         if(half > 0 && -tickerX >= half) tickerX = 0;
         tickerTrack.style.transform = 'translateX(' + tickerX + 'px)';
