@@ -941,6 +941,16 @@ module.exports = async (req, res) => {
   const quietSocialTurn = pureGreetingTurn || casualCheckInTurn;
   const wizardTurn = messages.some((m) => m && typeof m.content === 'string' && WIZARD_RE.test(m.content));
   const foreignTurn = !!(lastUser && isForeignAsk(lastUserText));
+  // v-analyze-doc (تعليق «النص الطويل ما يرد»): لصق وثيقة/تقرير/سجلّ/كود طويل مع
+  // الأدوات مفعّلة كان يدفع النموذج لعمل بأدوات (بحث/تشغيل) بلا نصّ حتى تنتهي
+  // المهلة (٧٥ث) فيبدو «ما رد». وثيقةُ تحليلٍ لا تحتاج أدوات — نطفئها لهذا الدور
+  // فيبدأ النموذج يكتب فورًا. نضيّق الكشف كي لا نطفئ أدوات سؤالٍ طويلٍ يحتاج بحثًا:
+  // نصّ طويل (≥600 حرف أو ≥8 أسطر) + علامات وثيقة/كود، وليس طلب بحث/سعر/أخبار.
+  const __analyzeDoc = !lastUserHasImage && !quietSocialTurn && !foreignTurn && typeof lastUserText === 'string'
+    && (lastUserText.length >= 600 || lastUserText.split('\n').length >= 8)
+    && (/\n[\s\S]*\n[\s\S]*\n/.test(lastUserText) || /[{}();]|=>|\bfunction\b|\bconst\b|\bissue\b|\berror\b|\bexception\b|\btraceback\b|\bstack\b|\breport\b|\blog\b|\breview\b|\brejected\b|isRestyle|buildEditPrompt|→/.test(lastUserText))
+    && !NUM_ASK_RE.test(lastUserText)
+    && !/(?:^|[\s،,])(?:ابحث|دوّ?ر\s*لي|آخر\s*الأخبار|أخبار|اخبار|كم\s*سعر|السعر|الأسعار|الاسعار|طقس|الطقس|فندق|فنادق|مطعم|مطاعم|تذاكر|طيران|search|news|weather|price)(?=$|[\s،,.!؟?])/i.test(lastUserText);
   const reC = (wizardTurn || foreignTurn) ? null : reCtx(messages);
   const askCapNote = (foreignTurn ? GLOBAL_NOTE : ((lastUser && NUM_ASK_RE.test(lastUserText)) ? NUM_NOTE : (reC ? (RE_NOTE + (reC.layer > 0 ? RE_MORE_NOTE : '')) : ''))) + ((!wizardTurn && askStreak(messages) >= 2) ? ASK_CAP_NOTE : '');
   // v-social-alive: الرد المخزّن الحرفي حُذف
@@ -980,7 +990,7 @@ module.exports = async (req, res) => {
     const city = (req.headers && (req.headers['x-vercel-ip-city'] || '')) || '';
   // المجاملة القصيرة لا تحتاج تاريخًا أو دولة أو أدوات أو ملف المالك؛ حقن هذه
   // السياقات في «كيف الحال» هو ما حوّلها إلى قائمة فنادق ومواضيع قديمة.
-  const toolTurn = !quietSocialTurn;
+  const toolTurn = !quietSocialTurn && !__analyzeDoc;
     const baseSystem = sysParts.join('\n\n');
     const ownerKnowledge = toolTurn ? require('./_knowledge.js').ownerKnowledge(req, token) : '';
     // v-persona-front: البصمة أول ما يقرأه النموذج في المسارات الثلاثة —
