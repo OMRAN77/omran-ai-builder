@@ -1,0 +1,25 @@
+# مِجسّ «النصّ الطويل ما يرد»: يعيد إنتاج الشكوى على الإنتاج ويقيس أين تتعثّر.
+name: long-text-probe
+on:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: 'قاعدة الموقع (اتركه فارغًا للافتراضي)'
+        required: false
+        default: ''
+
+permissions: {}
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Probe long text on production
+        env:
+          PROBE_BASE: ${{ inputs.base }}
+        run: node scripts/long-text-probe.mjs
