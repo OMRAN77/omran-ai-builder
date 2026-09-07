@@ -25284,7 +25284,7 @@ function stuL(ar, en){
     tickerWrap.style.display = 'block';
     if(!tickerAnim){
       const step = function(){
-        tickerX -= 2.4; /* v-ticker-fast: سرعة الشريط ×٤ بطلب المالك (كانت 0.6) — في المصدر فتبقى دائمة عبر إعادة البناء */
+        tickerX -= 0.6;
         const half = tickerTrack.scrollWidth / 2;
         if(half > 0 && -tickerX >= half) tickerX = 0;
         tickerTrack.style.transform = 'translateX(' + tickerX + 'px)';
