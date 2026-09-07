@@ -121,7 +121,12 @@
     });
     tickerTrack.innerHTML = html + html; // duplicate for seamless loop
     tickerWrap.style.display = 'block';
-    if(!tickerAnim){
+    // v-ticker-single-loop (شكوى المالك «اضغط الشاشة يسرع الشريط»): كلّ نداء
+    // renderTicker (يحدث عند تبديل العرض/الضغط) كان قد يبدأ حلقة رسم ثانية إن
+    // وجد tickerAnim فارغًا للحظة، فتتراكم الحلقات ويتضاعف نقصان tickerX كلّ إطار
+    // = تسارع. الآن نلغي أيّ حلقة قائمة قبل بدء واحدة — حلقة واحدة مضمونة دائمًا.
+    if(tickerAnim){ try{ cancelAnimationFrame(tickerAnim); }catch(e){ /* guard-ok */ } tickerAnim = null; }
+    {
       const step = function(){
         tickerX -= 0.6;
         const half = tickerTrack.scrollWidth / 2;
