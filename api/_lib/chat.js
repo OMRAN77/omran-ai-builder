@@ -905,6 +905,18 @@ module.exports = async (req, res) => {
   // وCHAT_CLAUDE_MODEL يرجّع Opus للمحادثة كلها من البيئة بلا نشر.
   const CHAT_MODEL = viaOR ? OR_MODELS[prov] : (process.env.CHAT_CLAUDE_MODEL || 'claude-sonnet-5');
 
+  // v-real-fast-headers: «النصّ الطويل ما يرد» — الحارس أعلاه (v-fast-headers)
+  // كان تعليقًا فقط؛ الكود الفعلي كان يفتح البثّ بعد checkAndConsume (نداء
+  // شبكة/Redis) وبعد عدّة regex ضخمة (isForeignAsk وreCtx على كامل تاريخ
+  // المحادثة). أي تعثّر هناك = صمت تامّ عند العميل بلا حتى أول بايت. الآن
+  // البثّ يُفتح هنا فعليًّا — أوّل سطر بعد تجهيز الموديل — فيرى العميل نبضة
+  // فورية بغضّ النظر عمّا يتعثّر لاحقًا، وأخطاء الحصة تُرسَل كحدث بدل حالة HTTP.
+  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); } catch (e) { /* العميل أغلق المجرى */ } };
+  send({ status: '💭 يقرأ سؤالك…', k: 'stReading' });
+
   // v-chat-speed: قراءة الذاكرة كانت تنتظر فحص الحصة ثم تنتظر هي — رحلتا
   // شبكة متتاليتان قبل أول كلمة. verifyToken فوريّ (توقيع محلي)، فنطلق
   // القراءة الآن بالتوازي مع فحص الحصة ونستلمها لاحقًا جاهزة.
@@ -917,8 +929,9 @@ module.exports = async (req, res) => {
 
   const usage = await checkAndConsume(token, guestId, prov, clientIp(req));
   if (!usage.allowed) {
-    if (usage.reason === 'auth') res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
-    else res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + DAILY_LIMIT + ' رسالة). انتظر الغد أو اشترك.' });
+    if (usage.reason === 'auth') send({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
+    else send({ error: 'وصلت للحد اليومي المجاني (' + DAILY_LIMIT + ' رسالة). انتظر الغد أو اشترك.' });
+    res.end();
     return;
   }
 
@@ -958,13 +971,7 @@ module.exports = async (req, res) => {
   // بطلب المالك — كانت التحية لا تصل للنموذج أصلًا فبقي أسلوبها جامدًا مهما
   // تغيّرت البصمة. الآن تمر لفرع quietSocialTurn: نموذج حقيقي ببصمة كاملة،
   // معزول عن الذاكرة والمواضيع القديمة، وسقفه 350 توكن.
-  // v-fast-headers: البثّ يُفتح فورًا — قبل قراءة الذاكرة وقبل أي بحث استباقي —
-  // فيرى المستخدم حركة خلال ثانية بدل صمت ٥-٩ ثوانٍ قِيس بالمِجسّ.
-  res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-cache, no-transform');
-  res.setHeader('Connection', 'keep-alive');
-  const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); } catch (e) { /* العميل أغلق المجرى */ } };
-  send({ status: '💭 يقرأ سؤالك…', k: 'stReading' });
+  // (البثّ فُتح فعليًّا أعلاه، قبل checkAndConsume — v-real-fast-headers)
 
   let accountMemory = '';
   if (usage.username && !quietSocialTurn) {
