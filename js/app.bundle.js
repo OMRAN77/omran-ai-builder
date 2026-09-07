@@ -19978,10 +19978,24 @@ DESIGN RULES (non-negotiable):
       const __live = { target: '', shown: 0, timer: null, done: false, waiters: [], _mLast: 0 };
       const __liveRender = () => {
         const shownTxt = __live.target.slice(0, __live.shown);
+        // v-stream-scroll-free (شكوى المالك: «ما أقدر أحرّك المحادثة لين تخلص» +
+        // «لما تنتهي ترتفع»): البثّ كان يجبر التمرير للأسفل كلّ ~١٥٠مل فلا يستطيع
+        // المستخدم القراءة للأعلى، ويبقى بالأسفل عند الانتهاء فيبدو «يرتفع». الآن:
+        // إن حرّك المستخدم القائمة للأعلى (scrollTop نقص عمّا وضعناه) نرفع علم
+        // «تحرّر» فنتوقّف عن الملاحقة لبقيّة الدور — يقرأ بحرّية، وعند الانتهاء
+        // يبقى في موضعه (renderMessages المحروس يحفظه لأنّه ليس قرب الأسفل).
+        try{
+          if(!__live.userBroke && typeof __live.lastAutoTop === 'number' && messagesEl.scrollTop < __live.lastAutoTop - 40){
+            __live.userBroke = true;
+          }
+        }catch(e){ /* guard-ok — كشف تحرّر المستخدم اختياريّ */ }
         if(!document.documentElement.classList.contains('mobile-ui')){
-          const __followReply = typeof chatIsNearBottom === 'function' ? chatIsNearBottom() : true;
           renderStreamingAssistant(thinkingDiv, shownTxt);
-          smartScrollBottom(__followReply);
+          if(!__live.userBroke){
+            const __followReply = typeof chatIsNearBottom === 'function' ? chatIsNearBottom() : true;
+            smartScrollBottom(__followReply);
+            __live.lastAutoTop = messagesEl.scrollTop;
+          }
         } else {
           // الجوال ينسّق حيًّا كسطح المكتب، مع كبح لإعادة البناء كل ١٥٠مل
           // حفاظًا على أداء الجوال.
@@ -19990,10 +20004,12 @@ DESIGN RULES (non-negotiable):
             __live._mLast = __now;
             renderStreamingAssistant(thinkingDiv, shownTxt);
           }
-          try{
-            const __mobileGap = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight;
-            if(__mobileGap < 140) messagesEl.scrollTop = messagesEl.scrollHeight;
-          }catch(e){ __swallow(e, "misc:app-09-attach#26-mobile"); }
+          if(!__live.userBroke){
+            try{
+              const __mobileGap = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight;
+              if(__mobileGap < 140){ messagesEl.scrollTop = messagesEl.scrollHeight; __live.lastAutoTop = messagesEl.scrollTop; }
+            }catch(e){ __swallow(e, "misc:app-09-attach#26-mobile"); }
+          }
         }
       };
       const __liveTimer = () => {
