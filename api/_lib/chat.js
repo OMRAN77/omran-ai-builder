@@ -792,7 +792,8 @@ function trailLine(name, input, result) {
       : R('قرأتُ ' + h + ' — حصلتُ ' + r.length + ' حرفًا', 'trFetch', { h: h, n: r.length });
   }
   if (name === 'run_js') {
-    const bad = r.match(/أخطاء:\n([\s\S]*)$/) || r.split('\n').filter((l) => /^\s*✗/.test(l))[0];
+    const idx = r.indexOf('أخطاء:\n');
+    const bad = (idx >= 0) ? r.slice(idx + 8) : r.split('\n').filter((l) => /^\s*✗/.test(l))[0];
     return bad
       ? R('شغّلتُ كودًا — ظهر خطأ', 'trJsErr')
       : R('شغّلتُ كودًا — عاد ناتج ' + r.length + ' حرفًا', 'trJsOk', { n: r.length });
@@ -948,7 +949,7 @@ module.exports = async (req, res) => {
   // نصّ طويل (≥600 حرف أو ≥8 أسطر) + علامات وثيقة/كود، وليس طلب بحث/سعر/أخبار.
   const __analyzeDoc = !lastUserHasImage && !quietSocialTurn && !foreignTurn && typeof lastUserText === 'string'
     && (lastUserText.length >= 600 || lastUserText.split('\n').length >= 8)
-    && (/\n[\s\S]*\n[\s\S]*\n/.test(lastUserText) || /[{}();]|=>|\bfunction\b|\bconst\b|\bissue\b|\berror\b|\bexception\b|\btraceback\b|\bstack\b|\breport\b|\blog\b|\breview\b|\brejected\b|isRestyle|buildEditPrompt|→/.test(lastUserText))
+    && (lastUserText.split('\n').length >= 4 || /[{}();]|=>|\bfunction\b|\bconst\b|\bissue\b|\berror\b|\bexception\b|\btraceback\b|\bstack\b|\breport\b|\blog\b|\breview\b|\brejected\b|isRestyle|buildEditPrompt|→/.test(lastUserText))
     && !NUM_ASK_RE.test(lastUserText)
     && !/(?:^|[\s،,])(?:ابحث|دوّ?ر\s*لي|آخر\s*الأخبار|أخبار|اخبار|كم\s*سعر|السعر|الأسعار|الاسعار|طقس|الطقس|فندق|فنادق|مطعم|مطاعم|تذاكر|طيران|search|news|weather|price)(?=$|[\s،,.!؟?])/i.test(lastUserText);
   const reC = (wizardTurn || foreignTurn) ? null : reCtx(messages);
