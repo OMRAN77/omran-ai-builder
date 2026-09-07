@@ -1340,7 +1340,15 @@ function omranRenderOptions(host, blocks){
   });
 }
 function renderMessages(keepScroll){
-  const prevScrollTop = keepScroll ? messagesEl.scrollTop : null;
+  // v-scroll-respect (لقطة المالك: «المحادثة ترتفع كل مرة أنزل»): أيّ إعادة رسم
+  // بلا keepScroll كانت تقفز لأسفل القائمة (scrollHeight)، فإن كان المستخدم يقرأ
+  // ردًّا طويلًا في الأعلى تُقذف القائمة للأسفل ويبدو المحتوى «يرتفع». الآن نلتقط
+  // الموضع دائمًا ونقيس هل هو متابعٌ في الأسفل: إن كان يقرأ في الأعلى نحفظ موضعه،
+  // ولا نتبع الأسفل إلّا إن كان أصلًا هناك. إرسال رسالة جديدة يمرّر للأسفل عبر
+  // anchorLastUserMsgTop المستقلّ، فلا يتأثّر.
+  const prevScrollTop = messagesEl.scrollTop;
+  let __wasNearBottom = true;
+  try{ __wasNearBottom = (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight) < 160; }catch(e){ /* guard-ok — قياس اختياري */ }
   messagesEl.innerHTML = '';
   const cur = getCurrent();
   const chipsWrap = $('#chatQuickChipsWrap');
@@ -1967,10 +1975,12 @@ function renderMessages(keepScroll){
       }
     }
   });
-  if(keepScroll){
-    messagesEl.scrollTop = prevScrollTop;
-  } else {
+  // v-scroll-respect: نتبع الأسفل فقط إن كان المستخدم أصلًا هناك (متابِعًا) أو
+  // طُلب keepScroll صراحةً؛ وإلا نحفظ موضع قراءته كما كان.
+  if(__wasNearBottom && !keepScroll){
     messagesEl.scrollTop = messagesEl.scrollHeight;
+  } else {
+    messagesEl.scrollTop = prevScrollTop;
   }
   try{ if(typeof syncChatJumpButton === 'function') syncChatJumpButton(); }catch(e){ __swallow(e, "ui:chatJump"); }
   // v462: أنيميشن رسالة المستخدم — CSS class msg-anim يضاف أثناء بناء العنصر (سطر 973)
