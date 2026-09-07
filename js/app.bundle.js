@@ -18900,8 +18900,14 @@ function __showImgLoading(el, ar, en){
     const __archFollowUp = !!(__archCtxText && text && !__srcImg && !__followUp &&
        !__codeWordRe.test(text) && !__designDocRe.test(text) && !__archExcludeRe.test(text) &&
        (__archAffirm || (text.length < 120 && __archFollowRe.test(text))));
+    // v-arch-doclen (لقطة المالك: نصّ ديني/سردي طويل رسم مخطط فيلا): «بناء
+    // السفينة» يطابق فعل البناء و«البيت الحرام» يطابق كلمة البيت، وregex العربي
+    // بلا حدود كلمات فتلتقط الكلمتين داخل السرد. طلب التصميم الحقيقي أمرٌ قصير
+    // («صمّم فيلا دورين ٤ غرف»)، لا وثيقة ملصوقة. حدّ ٥٠٠ حرف يمنع الوثيقة من
+    // إطلاق المخطط، ويُبقي كلّ طلبات التصميم الفعليّة تعمل (المتابعة لها حدّها).
+    const __archReqOk = text.length < 500 && __archVerbRe.test(text) && __archHomeRe.test(text) && !__archExcludeRe.test(text);
     if(text && !__srcImg && !__followUp && !__codeWordRe.test(text) && !__designDocRe.test(text) &&
-       ((__archVerbRe.test(text) && __archHomeRe.test(text) && !__archExcludeRe.test(text)) || __archFollowUp)){
+       (__archReqOk || __archFollowUp)){
       const __archText = __archFollowUp ? (__archAffirm ? __archCtxText : (__archCtxText + ' — والمطلوب الآن تحديدًا: ' + text)) : text;
       cur.lastArchText = __archFollowUp ? __archCtxText : text;
       const __archGen = async (label, prompt) => {
