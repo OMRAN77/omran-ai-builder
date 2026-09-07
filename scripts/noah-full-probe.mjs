@@ -71,10 +71,13 @@ async function runOnce(label, messages, token) {
   }
   console.log(`[${label}] أحداث: ${JSON.stringify(kinds)}`);
   console.log(`[${label}] خطأ خادم: ${err || 'لا'} · طلب صورة: ${sawImg ? '⚠️ نعم' : 'لا'}`);
-  console.log(`[${label}] طول الردّ: ${full.length} حرف · الزمن ${Date.now() - t0}ms`);
+  const hasCode = /```html|<!doctype|<html[\s>]/i.test(full);
+  const textOnly = full.replace(/```[\s\S]*?```/g, '').trim();
+  console.log(`[${label}] طول الردّ: ${full.length} حرف · نصّ بلا كود: ${textOnly.length} · كتلة كود: ${hasCode ? '⚠️ نعم (يروح للمعاينة لا المحادثة)' : 'لا'} · الزمن ${Date.now() - t0}ms`);
   console.log(`[${label}] عيّنة: ${full.slice(0, 120).replace(/\n/g, ' ⏎ ') || '(فارغ — لا ردّ)'}`);
   if (!full.trim()) console.log(`[${label}] ✗✗ ردّ فارغ — هذا هو «مافي أي رد»`);
-  else console.log(`[${label}] ✓ وصل ردّ نصّي`);
+  else if (hasCode && textOnly.length < 40) console.log(`[${label}] ✗✗ كود فقط بلا نصّ محادثة — يبدو «مافي أي رد» لأنّ الكود يروح للمعاينة`);
+  else console.log(`[${label}] ✓ وصل ردّ نصّي في فقاعة المحادثة`);
 }
 
 const token = await signup();
@@ -95,5 +98,14 @@ await runOnce('بتاريخ', [
   { role: 'assistant', content: 'هلا وغلا! كيف أقدر أساعدك اليوم؟' },
   { role: 'system', content: TOPIC },
   { role: 'system', content: PASTED },
+  { role: 'user', content: NOAH },
+], token);
+
+// السيناريو ٣: يعيد إنتاج الخطأ — نُمرّر قاعدة الملصق (كما كان العميل يفعل حين
+// طابقت «دعوة» __dsnRe) بلا ملاحظة «حلّل»، ونقيس: هل يردّ الخادم بكتلة كود ```html
+// (ملصق) بدل نصّ؟ إن نعم، تأكّد أنّ سبب «مافي أي رد» هو توجيه الكود للمعاينة.
+const POSTER = 'DESIGN/POSTER RULE (mandatory, highest priority): when the user message mentions بطاقة/دعوة/بوستر/شهادة, the output is a STATIC VISUAL DESIGN built as ONE complete <html> document with rich CSS. Deliver the full HTML inside a ```html code block. Do NOT reply with plain analysis text.';
+await runOnce('ملصق-الخطأ', [
+  { role: 'system', content: SYS + POSTER },
   { role: 'user', content: NOAH },
 ], token);
