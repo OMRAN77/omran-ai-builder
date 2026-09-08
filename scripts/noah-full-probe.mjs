@@ -118,3 +118,18 @@ await runOnce('ملصق-الخطأ (القاعدة الكاملة)', [
   { role: 'system', content: SYS + '\n' + REAL_POSTER },
   { role: 'user', content: NOAH },
 ], token);
+
+// السيناريو ٤: محادثة منتفخة — المستخدم لصق القصّة مرّات كثيرة، فكلّ إرسال جديد
+// يعيد إرسال تاريخ ضخم (سقف العميل ~٩٠ ألف حرف). نقيس: هل يبطئ الخادم/يفشل حتى
+// يبدو «مافي أي رد»؟ نبني ~٢٤ دورًا (نوح + ردّ) لملء السقف، ثمّ الصقة الأخيرة.
+const bloated = [{ role: 'system', content: SYS }];
+for (let i = 0; i < 11; i++) {
+  bloated.push({ role: 'user', content: NOAH });
+  bloated.push({ role: 'assistant', content: 'ما شاء الله، سرد جميل لقصة نوح عليه السلام. ' + 'إليك بعض الملاحظات على التسلسل والدروس المستفادة من القصة. '.repeat(20) });
+}
+bloated.push({ role: 'system', content: TOPIC });
+bloated.push({ role: 'system', content: PASTED });
+bloated.push({ role: 'user', content: NOAH });
+const __bloatChars = bloated.reduce((n, m) => n + (m.content ? m.content.length : 0), 0);
+console.log('\nحجم المحادثة المنتفخة:', __bloatChars, 'حرف ·', bloated.length, 'رسالة');
+await runOnce('منتفخة', bloated, token);
