@@ -1,0 +1,21 @@
+# مجس أدوات المستندات على الإنتاج — التحليل بعد الرفع (التعليم/المصاريف/مساعد المستندات).
+name: doc-probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/hala-t3hsq0]
+    paths: ['scripts/doc-probe.mjs', '.github/workflows/doc-probe.yml']
+
+permissions: {}
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Probe production document tools
+        run: node scripts/doc-probe.mjs
