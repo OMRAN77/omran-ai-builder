@@ -3396,15 +3396,17 @@ function __showImgLoading(el, ar, en){
     // صورة بلا طلب، أو معها سؤال/طلب قراءة = تحليل. أي أمر غير استفهامي يعدّل
     // نفس الصورة مباشرة، حتى لو كانت لقطة شاشة أو لم تأتِ من زر «تعديل».
     const __SHOT_ANALYZE = !!(__srcImg && !__srcImg._fromMemory && __srcImg._screenshot && !__IMG_UPGRADE && !__IMG_ELEVATE && !__imgEditRe.test(text || '') && !__IMGF_NEW_RE.test(text || '') && (!String(text || '').trim() || __nanoQ.test(text) || __ATT_VISION_RE.test(text)));
-    const __ATT_DEFAULT = !!(__srcImg && !__srcImg._fromMemory && String(text || '').trim() && !__SHOT_ANALYZE && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text));
+    // v-att-edit-intent (شكوى المالك «أعطيك صورة وتغيّر الصورة ليش»): صورة مرفقة
+    // + أيّ نصّ (حتى «1024 w × 500 h») كانت تُعتبَر أمر تعديل تلقائيًّا فتُشوَّه
+    // صورته. الآن التعديل الافتراضيّ يشترط نيّة تعديل/أسلوب صريحة؛ وغير كذا تذهب
+    // الصورة للتحليل/الإجابة (لا تُعدَّل).
+    const __editStyleIntent = __imgEditRe.test(text) || __IMG_CREATIVE_RE.test(text) || /(?:^|[\s،,])(?:أحمر|احمر|أزرق|ازرق|أخضر|اخضر|أصفر|اصفر|أسود|اسود|أبيض|ابيض|برتقالي|بنفسجي|وردي|زهري|ذهبي|فضي|رمادي|بني|سماوي|تركوازي|فاتح|غامق|أكبر|اكبر|أصغر|اصغر|أطول|أعرض|أوضح|خلفية|إضاءة|اضاءة|ظل|red|blue|green|yellow|black|white|orange|purple|pink|gold|silver|gray|grey|brown|bigger|smaller|larger|lighter|darker|brighter|background|shadow)(?=$|[\s،,.!؟?])/i.test(text || '');
+    const __ATT_DEFAULT = !!(__srcImg && !__srcImg._fromMemory && String(text || '').trim() && __editStyleIntent && !__SHOT_ANALYZE && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text));
     // بعد أول تعديل تبقى آخر نتيجة هي المصدر. لا نفرض عدد كلمات، كي تعمل أوامر
     // متتابعة قصيرة مثل «أحمر» و«أكبر» مهما طال تسلسل التعديلات.
-    // v-follow-edit-intent (أمر المالك «الصور بالطلب أو تعديل صورة مرفقة»؛ لقطة:
-    // كلمة «الفئة» ولّدت صورة): المتابعة على آخر صورة مولّدة كانت تلتقط أيّ نصّ
-    // قصير فتُفاجئ المستخدم بصورة من كلمة غير متعلّقة. الآن تشترط نيّة تعديل/أسلوب
-    // صريحة — فعل تعديل، أو لون، أو حجم، أو ستايل. «كبّرها/خلها أحمر/3d» تبقى تعمل،
-    // و«الفئة» ونحوها لا تولّد شيئًا.
-    const __editStyleIntent = __imgEditRe.test(text) || __IMG_CREATIVE_RE.test(text) || /(?:^|[\s،,])(?:أحمر|احمر|أزرق|ازرق|أخضر|اخضر|أصفر|اصفر|أسود|اسود|أبيض|ابيض|برتقالي|بنفسجي|وردي|زهري|ذهبي|فضي|رمادي|بني|سماوي|تركوازي|فاتح|غامق|أكبر|اكبر|أصغر|اصغر|أطول|أعرض|أوضح|خلفية|إضاءة|اضاءة|ظل|red|blue|green|yellow|black|white|orange|purple|pink|gold|silver|gray|grey|brown|bigger|smaller|larger|lighter|darker|brighter|background|shadow)(?=$|[\s،,.!؟?])/i.test(text || '');
+    // v-follow-edit-intent: المتابعة على آخر صورة مولّدة تشترط نيّة تعديل/أسلوب
+    // صريحة (__editStyleIntent المعرّف أعلى) — «كبّرها/خلها أحمر/3d» تعمل، و«الفئة»
+    // ونحوها لا تولّد شيئًا.
     const __FOLLOW_DEFAULT = !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && String(text || '').trim() && text.length <= 1200 && __editStyleIntent && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text) && !/^\s*(?:هلا|مرحبا|السلام|شكرا|شكرًا|مشكور|تسلم|تمام|ممتاز|رائع|جميل|حلو|نعم|لا|ok|okay|thanks|thank you|nice|great|yes|no)\b/i.test(text));
     /* v-fresh-gen-wins (شكوى المالك: «عطني صور» مع صورة مرفقة كانت تُعدّل
        اللقطة بدل توليد صور جديدة → نتيجة زفت). طلب توليد صريح («عطني/ولّد/
