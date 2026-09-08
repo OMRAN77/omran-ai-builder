@@ -5245,6 +5245,12 @@ function __chatsMergeServer(server, deletedIds){
   state.projects.forEach(p => {
     if(p && p.id && !seen[p.id] && !delSet[p.id]) result.push(p);
   });
+  // v-stable-order (شكوى المالك «الأماكن تتغير كل مرة، ماتكون ثابتة»): ترتيب
+  // القائمة كان يتبع ترتيب السيرفر المتغيّر بين المزامنات فتقفز المشاريع. نرتّبها
+  // ترتيبًا ثابتًا بزمن الإنشاء المستخرَج من المعرّف (p_<وقت>)، فيبقى نفسه دائمًا
+  // (renderHistory يعكسها فيظهر الأحدث أولًا بترتيب ثابت لا يتغيّر).
+  const __projTs = (p) => { const m = /^p_(\d{10,})/.exec(String((p && p.id) || '')); return m ? Number(m[1]) : 0; };
+  result.sort((a, b) => __projTs(a) - __projTs(b));
   state.projects = result;
   var fpAfter = __fingerprint(result);
   if(fpAfter === fpBefore){
@@ -5412,7 +5418,10 @@ function renderHistory(){
   state.projects.forEach(p => { if(!p.provider){ p.provider = provKey; provDirty = true; } });
   if(provDirty) saveState();
   // v380: القائمة تعرض كل المحادثات من كل المزودات — حساب واحد، قائمة وحدة.
-  [...state.projects].reverse().forEach(p => {
+  // v-stable-order: نرتّب دائمًا بزمن الإنشاء (من المعرّف p_<وقت>) تنازليًّا —
+  // الأحدث أولًا — فلا يتغيّر ترتيب القائمة بين الفتحات مهما كان ترتيب المصفوفة.
+  const __histTs = (p) => { const m = /^p_(\d{10,})/.exec(String((p && p.id) || '')); return m ? Number(m[1]) : 0; };
+  [...state.projects].sort((a, b) => __histTs(b) - __histTs(a)).forEach(p => {
     const div = document.createElement('div');
     div.className = 'hist-item' + (p.id === state.currentId ? ' active' : '');
     div.dataset.pid = String(p.id); // v-chat-search: يربط العنصر بمشروعه للبحث داخل المحتوى
