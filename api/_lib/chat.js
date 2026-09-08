@@ -1135,6 +1135,16 @@ module.exports = async (req, res) => {
       // للحارس أثناء حلقة الأدوات الطويلة، فبعد بدء النصّ تتكفّل الدلتا الحقيقيّة).
       let sawTextThisStep = false;
 
+      // v-chat-keepalive2 (سبب «النصّ الطويل ما يرد» على الجوال): دور بلا أدوات
+      // (وثيقة/قصّة طويلة، toolTurn=false) يصمت النموذج فيه ١٥–٢٥ث وهو «يعبّئ»
+      // السياق الطويل قبل أوّل حرف. المِجسّ من شبكة ثابتة يستلم الردّ، لكن شبكة
+      // الجوال تُسقط الاتصال المتدفّق الخامل في تلك الفجوة فيصل «ما فيه ردّ» رغم
+      // أنّ الخادم ردّ فعلًا. نرسل تعليق SSE («: ka») كل ٤ث يُبقي الاتصال حيًّا
+      // ويصفّر حارس العميل بلا أيّ محتوى مرئيّ (العميل يتخطّى أسطر غير data:).
+      // مقصور على toolTurn=false: لا حلقة أدوات نُطيلها (درس #527 محفوظ)، ويُلغى
+      // فور انتهاء البثّ. الحارس الصلب (٥ دقائق) يبقى شبكة الأمان ضدّ التعليق.
+      let kaTimer = (!toolTurn) ? setInterval(() => { try { res.write(': ka\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } }, 4000) : null;
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -1176,6 +1186,7 @@ module.exports = async (req, res) => {
           }
         }
       }
+      if (kaTimer) { clearInterval(kaTimer); kaTimer = null; } // v-chat-keepalive2: أوقف النبض فور انتهاء البثّ
 
       if (stopReason !== 'tool_use') {
         const badRatings = unsourcedRatings(fullText, toolCorpus); // v608

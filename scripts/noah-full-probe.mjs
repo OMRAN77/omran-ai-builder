@@ -52,7 +52,7 @@ async function runOnce(label, messages, token) {
   if (!res.body) { console.log(`[${label}] لا جسم`); return; }
   const reader = res.body.getReader();
   const dec = new TextDecoder();
-  let buf = '', full = '', err = null, sawImg = false;
+  let buf = '', full = '', err = null, sawImg = false, keepalives = 0;
   const kinds = {};
   while (true) {
     let c; try { c = await reader.read(); } catch (e) { console.log(`[${label}] read فشل:`, e.message); break; }
@@ -60,6 +60,7 @@ async function runOnce(label, messages, token) {
     buf += dec.decode(c.value, { stream: true });
     const lines = buf.split('\n'); buf = lines.pop();
     for (const line of lines) {
+      if (line.startsWith(': ')) { keepalives++; continue; }
       if (!line.startsWith('data: ')) continue;
       let ev; try { ev = JSON.parse(line.slice(6)); } catch (e) { continue; }
       for (const k of Object.keys(ev)) kinds[k] = (kinds[k] || 0) + 1;
@@ -70,7 +71,7 @@ async function runOnce(label, messages, token) {
     if (Date.now() - t0 > 90000) { console.log(`[${label}] ⏱️ تجاوز 90ث`); break; }
   }
   console.log(`[${label}] أحداث: ${JSON.stringify(kinds)}`);
-  console.log(`[${label}] خطأ خادم: ${err || 'لا'} · طلب صورة: ${sawImg ? '⚠️ نعم' : 'لا'}`);
+  console.log(`[${label}] خطأ خادم: ${err || 'لا'} · طلب صورة: ${sawImg ? '⚠️ نعم' : 'لا'} · نبضات keepalive: ${keepalives}`);
   const hasCode = /```html|<!doctype|<html[\s>]/i.test(full);
   const textOnly = full.replace(/```[\s\S]*?```/g, '').trim();
   console.log(`[${label}] طول الردّ: ${full.length} حرف · نصّ بلا كود: ${textOnly.length} · كتلة كود: ${hasCode ? '⚠️ نعم (يروح للمعاينة لا المحادثة)' : 'لا'} · الزمن ${Date.now() - t0}ms`);
