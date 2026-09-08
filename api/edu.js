@@ -306,6 +306,21 @@ async function callClaudeExpense(apiKey, contentBlocks, lang) {
   return extractJSON(text);
 }
 
+// ---------- 📄 مساعد المستندات: يقرأ عقدًا/فاتورة/تقريرًا (PDF/صورة/نص) ----------
+// أُعيد بطلب المالك ٨ سبتمبر بعد تقاعده؛ الآن بحدّ يومي (المعالج في الراوتر).
+async function callClaudeDoc(apiKey, contentBlocks, lang) {
+  const outLang = (lang && /^ar/i.test(lang)) ? 'بالعربية' : ('in ' + eduLangName(lang || 'ar') + ' — not in Arabic');
+  const sys = 'أنت مساعد مستندات خبير (عقود، فواتير، تقارير، عروض أسعار). يُرسل إليك مستند (نص أو PDF أو صورة). '
+    + 'اقرأه بدقّة وأعد فقط JSON صالحًا بلا أي نص خارجه وبلا أسوار كود، بهذا الشكل بالضبط:\n'
+    + '{"docType":"نوع المستند (عقد/فاتورة/تقرير/عرض سعر…)","title":"عنوان قصير للمستند","fields":[{"label":"اسم الحقل","value":"قيمته"}],"summary":"ملخص منظم بصيغة ماركداون يغطي جوهر المستند","keypoints":["نقطة مهمة يجب الانتباه لها"],"docText":"النص المقروء من المستند كما هو للأسئلة اللاحقة"}\n'
+    + 'القواعد: '
+    + 'fields = أهم البيانات الرئيسية (الأطراف، المبالغ، التواريخ، الأرقام المرجعية…) بين 3 و10 حقول. '
+    + 'keypoints = 3 إلى 6 نقاط تنبيه عملية (التزامات، مواعيد، شروط جزائية، بنود مهمة). '
+    + 'docText = نصّ المستند المقروء (حتى ~15000 حرف) حتى يُجاب عن أسئلة المستخدم لاحقًا؛ إن كان المستند نصًّا مُدخلًا فأعده كما هو. '
+    + 'اكتب كل النصوص ' + outLang + '. لا تكتب أي شيء خارج كائن JSON.';
+  return anthropicJSON(apiKey, sys, contentBlocks, 8000);
+}
+
 // v-cv-back (طلب عمران: زر السيرة كان يحوّل للمحادثة): مولّد السيرة عاد
 // نافذة مستقلة — كلود يبني HTML كاملًا للطباعة + خطاب تقديم بلغة التطبيق.
 async function callClaudeCv(apiKey, info, lang) {
@@ -729,6 +744,104 @@ module.exports = withErrorCapture('edu', async (req, res) => {
         .map((c) => ({ name: String(c.name), icon: String(c.icon || '💵').slice(0, 4), amount: Math.round(c.amount * 100) / 100, pct: Math.max(0, Math.min(100, Math.round(c.pct || 0))), count: c.count || 0 }));
       result.tips = Array.isArray(result.tips) ? result.tips.filter((t) => t && String(t).trim()).slice(0, 5) : [];
       res.status(200).json({ ok: true, report: result, guest: !username });
+      return;
+    }
+
+    // ---------------- 📄 docqa: تحليل مستند (عقد/فاتورة/تقرير) ----------------
+    if (action === 'docqa') {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey && !process.env.OPENROUTER_API_KEY) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      // حدّ يومي (ضيف بالـIP، مسجّل بالحساب، المالك معفى) — يعالج سبب التقاعد
+      // الأمني: لا نداء كلود بلا هوية/حدّ.
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        const max = username ? USER_PROCESS_PER_DAY : GUEST_PROCESS_PER_DAY;
+        if (await overDailyLimit(subject, 'doc', max)) {
+          res.status(402).json({
+            error: username
+              ? 'وصلت للحد اليومي (' + max + ' مستندًا). عد غدًا 🌙'
+              : 'وصلت للحد اليومي المجاني (' + max + ' مستندات). سجّل الدخول أو عد غدًا 🌙',
+          });
+          return;
+        }
+      }
+      const { fileBase64, mime, text, lang } = body;
+      if ((fileBase64 || '').length > MAX_BASE64_CHARS) {
+        res.status(413).json({ error: 'حجم الملف كبير جدًا (الحد الأقصى حوالي 10 ميغابايت). جرّب ملفًا أصغر.' });
+        return;
+      }
+      const blocks = [];
+      if (fileBase64 && /pdf/i.test(mime || '')) {
+        blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: fileBase64 } });
+      } else if (fileBase64 && /^image\//i.test(mime || '')) {
+        blocks.push({ type: 'image', source: { type: 'base64', media_type: mime, data: fileBase64 } });
+      }
+      if (text && String(text).trim()) {
+        blocks.push({ type: 'text', text: 'نص المستند:\n\n' + String(text).slice(0, 200000) });
+      }
+      if (!blocks.length) { res.status(400).json({ error: 'لا يوجد محتوى للتحليل — ارفع مستندًا أو الصق نصًا.' }); return; }
+      blocks.push({ type: 'text', text: 'حلّل هذا المستند وأعد JSON فقط بالصيغة المطلوبة.' });
+      let result = null;
+      try {
+        result = await callClaudeDoc(apiKey, blocks, lang);
+      } catch (e) {
+        res.status(e.status === 429 ? 429 : 502).json({ error: 'تعذر تحليل المستند: ' + (e.message || 'خطأ في الخادم') + ' — حاول مرة أخرى.' });
+        return;
+      }
+      if (!result || !result.summary) {
+        res.status(502).json({ error: 'تعذر فهم رد الذكاء الاصطناعي — حاول مرة أخرى.' });
+        return;
+      }
+      result.fields = Array.isArray(result.fields)
+        ? result.fields.filter((f) => f && f.label && (f.value != null)).map((f) => ({ label: String(f.label), value: String(f.value) })).slice(0, 12)
+        : [];
+      result.keypoints = Array.isArray(result.keypoints) ? result.keypoints.filter((k) => k && String(k).trim()).slice(0, 8) : [];
+      if (typeof result.docText !== 'string' || !result.docText.trim()) result.docText = (text && String(text).trim()) ? String(text) : '';
+      res.status(200).json({ ok: true, doc: result, guest: !username });
+      return;
+    }
+
+    // ---------------- 📄 docask: سؤال عن مستند سبق تحليله ----------------
+    if (action === 'docask') {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey && !process.env.OPENROUTER_API_KEY) { res.status(500).json({ error: 'Server is missing ANTHROPIC_API_KEY' }); return; }
+      const docText = String(body.docText || '').slice(0, 60000).trim();
+      const question = String(body.question || '').slice(0, 2000).trim();
+      if (!docText || !question) { res.status(400).json({ error: 'ناقص نص المستند أو السؤال.' }); return; }
+      // رخيص لكنه قابل للتكرار — نحدّه كالتصحيح.
+      if (!isOwner) {
+        const subject = username || ((typeof clientIp === 'function' && clientIp(req)) || 'unknown');
+        const cap = username ? USER_GRADE_PER_DAY : 15;
+        if (await overDailyLimit(subject, 'docask', cap)) {
+          res.status(402).json({ error: 'وصلت للحد اليومي للأسئلة (' + cap + '). عد غدًا 🌙' });
+          return;
+        }
+      }
+      const lang = body.lang;
+      const outLang = (lang && /^ar/i.test(lang)) ? 'بالعربية' : ('in ' + eduLangName(lang || 'ar') + ' — not in Arabic');
+      const sys = 'أنت مساعد مستندات. يُعطى إليك نصّ مستند وسؤال عنه. أجب عن السؤال بالاعتماد على المستند فقط، '
+        + 'بإيجاز ودقّة. إن لم تكن الإجابة موجودة في المستند فقل ذلك صراحةً ولا تخترع. اكتب ' + outLang + '.';
+      const history = Array.isArray(body.history)
+        ? body.history.filter((h) => h && h.role && h.content).slice(-8) : [];
+      const messages = [
+        { role: 'user', content: 'نصّ المستند:\n"""\n' + docText + '\n"""' },
+        { role: 'assistant', content: 'تمام، جاهز للإجابة عن أسئلتك حول هذا المستند.' },
+      ];
+      history.forEach((h) => messages.push({ role: h.role === 'assistant' ? 'assistant' : 'user', content: String(h.content).slice(0, 4000) }));
+      messages.push({ role: 'user', content: question });
+      const base = { max_tokens: 1500, system: sys, messages };
+      let r = await sendClaude({ ...base, model: RESOLVED_MODEL || MODEL }, 120000);
+      if (!r.ok && r.status === 404 && r.data && r.data.error && /model/i.test(JSON.stringify(r.data.error))) {
+        RESOLVED_MODEL = null; const m = await resolveModel(apiKey); r = await sendClaude({ ...base, model: m }, 120000);
+      }
+      if (!r.ok) {
+        const msg = (r.data && r.data.error && r.data.error.message) || ('HTTP ' + r.status);
+        res.status(r.status === 429 ? 429 : 502).json({ error: 'تعذّر الإجابة: ' + msg + ' — حاول مرة أخرى.' });
+        return;
+      }
+      const answer = (r.data && r.data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim();
+      if (!answer) { res.status(502).json({ error: 'تعذّر توليد إجابة — أعد المحاولة.' }); return; }
+      res.status(200).json({ ok: true, answer });
       return;
     }
 
