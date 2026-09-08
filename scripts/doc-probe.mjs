@@ -31,7 +31,7 @@ async function call(label, body) {
   } catch (e) { console.log('❌ ' + label + ': FAIL ' + String(e.message).slice(0, 90)); return { status: 0, j: {} }; }
 }
 
-console.log('BASE=' + BASE + ' @ ' + new Date().toISOString() + '\n=== الأدوات الثلاث بعد نشر الكوميتات (docqa يفترض ✅ الآن) ===');
+console.log('BASE=' + BASE + ' @ ' + new Date().toISOString() + '\n=== بعد دمج PR #528 — التأكد أن مساعد المستندات صار ✅ ===');
 await call('التعليم / نصّ', { action: 'process', text: LECTURE_TEXT, lang: 'ar' });
 await call('التعليم / PDF', { action: 'process', fileBase64: PDF_B64, mime: 'application/pdf', lang: 'ar' });
 await call('المصاريف / نصّ', { action: 'expense', text: EXPENSE_TEXT, lang: 'ar' });
