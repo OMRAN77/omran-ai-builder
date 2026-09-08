@@ -93,6 +93,55 @@ async function resolveModel(apiKey) {
   return MODEL;
 }
 
+// v-or-fallback (طلب المالك ٨ سبتمبر بعد نفاد رصيد Anthropic المباشر): كل أدوات
+// كلود هنا تتصل مباشرة بـ api.anthropic.com؛ إن نفد رصيده أو تعثّر (502
+// «credit balance too low»، حصة، تحميل زائد، انقطاع) نُكمّل عبر OpenRouter
+// — رصيد منفصل، بروتوكول messages متطابق (نفس x-api-key)، نفس الموديل ببادئة
+// anthropic/ — فيبقى التحليل حيًّا بدل توقّف الأداة كلها.
+const ANTHROPIC_MSG_URL = 'https://api.anthropic.com/v1/messages';
+const OPENROUTER_MSG_URL = 'https://openrouter.ai/api/v1/messages';
+function orModelId(m) { return String(m).indexOf('/') >= 0 ? String(m) : ('anthropic/' + m); }
+// أخطاء يُجدي معها تحويل المزوّد: رصيد/حصة/تحميل زائد/خطأ خادم — لا أخطاء طلبنا
+// نحن (400/401/403) ولا 404 الموديل (له مساره الخاصّ في كل نداء).
+function worthFailover(status, data) {
+  if ([402, 429, 500, 502, 503, 504, 529].includes(status)) return true;
+  const msg = String((data && data.error && (data.error.message || data.error)) || '');
+  return /credit balance|too low|insufficient|billing|quota|overloaded|rate limit/i.test(msg);
+}
+// نداء رسائل كلود مع احتياط OpenRouter. يرجع { ok, status, data } بعد قراءة
+// الجسم مرّة واحدة (جسم الاستجابة يُقرأ مرّة). payload يحمل model/max_tokens/
+// system/messages كما ترسله دوال الأداة.
+async function sendClaude(payload, timeoutMs) {
+  const anthKey = (process.env.ANTHROPIC_API_KEY || '').trim();
+  const orKey = (process.env.OPENROUTER_API_KEY || '').trim();
+  const call = (url, key, model) => fetch(url, {
+    method: 'POST',
+    signal: AbortSignal.timeout(timeoutMs || 280000),
+    headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ ...payload, model }),
+  });
+  const viaOR = async () => {
+    const res = await call(OPENROUTER_MSG_URL, orKey, orModelId(payload.model));
+    const data = await res.json().catch(() => null);
+    return { ok: res.ok, status: res.status, data, via: 'openrouter' };
+  };
+  if (anthKey) {
+    try {
+      const res = await call(ANTHROPIC_MSG_URL, anthKey, payload.model);
+      const data = await res.json().catch(() => null);
+      if (res.ok || !orKey || !worthFailover(res.status, data)) return { ok: res.ok, status: res.status, data, via: 'anthropic' };
+      console.warn('[edu] anthropic ' + res.status + ' → openrouter failover');
+      return await viaOR();
+    } catch (e) {
+      if (!orKey) throw e;
+      console.warn('[edu] anthropic network fail → openrouter: ' + (e && e.message));
+      return await viaOR();
+    }
+  }
+  if (orKey) return await viaOR();
+  throw new Error('missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY');
+}
+
 // Language bridge: the student understands in one language but is examined in
 // another (an Arabic-speaking med student sitting an English exam, a Malayalam
 // speaker in an English-medium school). Explanations follow the native
@@ -132,37 +181,21 @@ function languageRules(lang, nativeLang, examLang) {
    الآن نداءان متوازيان على نفس المحتوى: الملخص | الأسئلة كلها — الزمن الكلي
    يصير زمن الأطول فقط (~النصف) بنفس المحتوى حرفيًا. */
 async function anthropicJSON(apiKey, sys, contentBlocks, maxTokens) {
-  const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    // v407: مهلة خاصة 120ث — التحليل التعليمي الثقيل يتجاوز مهلة الـ30ث العامة
-    signal: AbortSignal.timeout(280000),
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: m,
-      max_tokens: maxTokens,
-      system: sys,
-      messages: [{ role: 'user', content: contentBlocks }],
-    }),
-  });
-  let res = await doRequest(RESOLVED_MODEL || MODEL);
-  let data = await res.json().catch(() => null);
-  if (!res.ok && res.status === 404 && data && data.error && /model/i.test(JSON.stringify(data.error))) {
+  // v407: مهلة خاصة 280ث — التحليل التعليمي الثقيل يتجاوز مهلة الـ30ث العامة.
+  const base = { max_tokens: maxTokens, system: sys, messages: [{ role: 'user', content: contentBlocks }] };
+  let r = await sendClaude({ ...base, model: RESOLVED_MODEL || MODEL }, 280000);
+  if (!r.ok && r.status === 404 && r.data && r.data.error && /model/i.test(JSON.stringify(r.data.error))) {
     RESOLVED_MODEL = null;
     const m = await resolveModel(apiKey);
-    res = await doRequest(m);
-    data = await res.json().catch(() => null);
+    r = await sendClaude({ ...base, model: m }, 280000);
   }
-  if (!res.ok) {
-    const msg = (data && data.error && data.error.message) || ('HTTP ' + res.status);
+  if (!r.ok) {
+    const msg = (r.data && r.data.error && r.data.error.message) || ('HTTP ' + r.status);
     const err = new Error(msg);
-    err.status = res.status;
+    err.status = r.status;
     throw err;
   }
-  const text = (data && data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+  const text = (r.data && r.data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
   return extractJSON(text);
 }
 function eduLangTail(lang, nativeLang, examLang, stage) {
@@ -232,20 +265,13 @@ async function callClaudeGrade(apiKey, payload, lang, nativeLang) {
     + '\n\nإجابة الطالب:\n"""\n' + String(payload.answer || '').slice(0, 8000) + '\n"""'
     + (payload.dispute ? '\n\nاعتراض الطالب على تصحيح سابق (أعد التقييم بإنصاف وخذه بجدية):\n' + String(payload.dispute).slice(0, 1500) : '');
 
-  const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    // v407: مهلة خاصة 120ث — التحليل التعليمي الثقيل يتجاوز مهلة الـ30ث العامة
-    signal: AbortSignal.timeout(280000),
-    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: m, max_tokens: 2000, system: sys, messages: [{ role: 'user', content: user }] }),
-  });
-  let res = await doRequest(RESOLVED_MODEL || MODEL);
-  let data = await res.json().catch(() => null);
-  if (!res.ok && res.status === 404 && data && data.error && /model/i.test(JSON.stringify(data.error))) {
-    RESOLVED_MODEL = null; const m = await resolveModel(apiKey); res = await doRequest(m); data = await res.json().catch(() => null);
+  const base = { max_tokens: 2000, system: sys, messages: [{ role: 'user', content: user }] };
+  let r = await sendClaude({ ...base, model: RESOLVED_MODEL || MODEL }, 280000);
+  if (!r.ok && r.status === 404 && r.data && r.data.error && /model/i.test(JSON.stringify(r.data.error))) {
+    RESOLVED_MODEL = null; const m = await resolveModel(apiKey); r = await sendClaude({ ...base, model: m }, 280000);
   }
-  if (!res.ok) { const msg = (data && data.error && data.error.message) || ('HTTP ' + res.status); const err = new Error(msg); err.status = res.status; throw err; }
-  const text = (data && data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+  if (!r.ok) { const msg = (r.data && r.data.error && r.data.error.message) || ('HTTP ' + r.status); const err = new Error(msg); err.status = r.status; throw err; }
+  const text = (r.data && r.data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
   return extractJSON(text);
 }
 
@@ -265,26 +291,18 @@ async function callClaudeExpense(apiKey, contentBlocks, lang) {
     + 'اكتب كل النصوص (أسماء الفئات والنصائح) '
     + (lang && /^ar/i.test(lang) ? 'بالعربية.' : ('in ' + eduLangName(lang || 'ar') + ' — not in Arabic.'))
     + ' لا تكتب أي شيء خارج كائن JSON.';
-  const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    // v407: مهلة خاصة 120ث — التحليل التعليمي الثقيل يتجاوز مهلة الـ30ث العامة
-    signal: AbortSignal.timeout(280000),
-    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: m, max_tokens: 8000, system: sys, messages: [{ role: 'user', content: contentBlocks }] }),
-  });
-  let res = await doRequest(RESOLVED_MODEL || MODEL);
-  let data = await res.json().catch(() => null);
-  if (!res.ok && res.status === 404 && data && data.error && /model/i.test(JSON.stringify(data.error))) {
+  const base = { max_tokens: 8000, system: sys, messages: [{ role: 'user', content: contentBlocks }] };
+  let r = await sendClaude({ ...base, model: RESOLVED_MODEL || MODEL }, 280000);
+  if (!r.ok && r.status === 404 && r.data && r.data.error && /model/i.test(JSON.stringify(r.data.error))) {
     RESOLVED_MODEL = null;
     const m = await resolveModel(apiKey);
-    res = await doRequest(m);
-    data = await res.json().catch(() => null);
+    r = await sendClaude({ ...base, model: m }, 280000);
   }
-  if (!res.ok) {
-    const msg = (data && data.error && data.error.message) || ('HTTP ' + res.status);
-    const err = new Error(msg); err.status = res.status; throw err;
+  if (!r.ok) {
+    const msg = (r.data && r.data.error && r.data.error.message) || ('HTTP ' + r.status);
+    const err = new Error(msg); err.status = r.status; throw err;
   }
-  const text = (data && data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+  const text = (r.data && r.data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
   return extractJSON(text);
 }
 
@@ -303,25 +321,18 @@ async function callClaudeCv(apiKey, info, lang) {
     + 'Write ALL content in ' + outLang + '. '
     + 'Return ONLY valid JSON exactly as {"cvHtml":"...","coverLetter":"..."} with the HTML JSON-escaped. No text outside the JSON.';
   const userText = 'User info (JSON):\n' + JSON.stringify(info) + '\n\nBuild the CV now.';
-  const doRequest = (m) => fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    signal: AbortSignal.timeout(280000),
-    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: m, max_tokens: 8000, system: sys, messages: [{ role: 'user', content: [{ type: 'text', text: userText }] }] }),
-  });
-  let res = await doRequest(RESOLVED_MODEL || MODEL);
-  let data = await res.json().catch(() => null);
-  if (!res.ok && res.status === 404 && data && data.error && /model/i.test(JSON.stringify(data.error))) {
+  const base = { max_tokens: 8000, system: sys, messages: [{ role: 'user', content: [{ type: 'text', text: userText }] }] };
+  let r = await sendClaude({ ...base, model: RESOLVED_MODEL || MODEL }, 280000);
+  if (!r.ok && r.status === 404 && r.data && r.data.error && /model/i.test(JSON.stringify(r.data.error))) {
     RESOLVED_MODEL = null;
     const m = await resolveModel(apiKey);
-    res = await doRequest(m);
-    data = await res.json().catch(() => null);
+    r = await sendClaude({ ...base, model: m }, 280000);
   }
-  if (!res.ok) {
-    const msg = (data && data.error && data.error.message) || ('HTTP ' + res.status);
-    const err = new Error(msg); err.status = res.status; throw err;
+  if (!r.ok) {
+    const msg = (r.data && r.data.error && r.data.error.message) || ('HTTP ' + r.status);
+    const err = new Error(msg); err.status = r.status; throw err;
   }
-  const text = (data && data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+  const text = (r.data && r.data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
   return extractJSON(text);
 }
 
@@ -587,32 +598,25 @@ module.exports = withErrorCapture('edu', async (req, res) => {
          التوليد فتكتمل الصفحة في ~دقيقة ونصف، ولو انقطع عند السقف يُكمل
          تلقائيًا بجولة إتمام واحدة (prefill) — لا «تجربة غير مكتملة». */
       const LAB_MODEL = process.env.EDU_LAB_MODEL || 'claude-haiku-4-5-20251001';
-      const doRequest = (m, msgs, budget) => fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        signal: AbortSignal.timeout(280000),
-        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: m, max_tokens: budget, system: sys, messages: msgs }),
-      });
+      const doRequest = (m, msgs, budget) => sendClaude({ model: m, max_tokens: budget, system: sys, messages: msgs }, 280000);
       const baseMsgs = [{ role: 'user', content: user }];
       let labModel = LAB_MODEL;
       let r2 = await doRequest(labModel, baseMsgs, 14000);
-      let d2 = await r2.json().catch(() => null);
-      if (!r2.ok && r2.status === 404 && d2 && d2.error && /model/i.test(JSON.stringify(d2.error))) {
+      if (!r2.ok && r2.status === 404 && r2.data && r2.data.error && /model/i.test(JSON.stringify(r2.data.error))) {
         labModel = RESOLVED_MODEL || (await resolveModel(apiKey));
-        r2 = await doRequest(labModel, baseMsgs, 14000); d2 = await r2.json().catch(() => null);
+        r2 = await doRequest(labModel, baseMsgs, 14000);
       }
       if (!r2.ok) {
-        const msg = (d2 && d2.error && d2.error.message) || ('HTTP ' + r2.status);
+        const msg = (r2.data && r2.data.error && r2.data.error.message) || ('HTTP ' + r2.status);
         res.status(r2.status === 429 ? 429 : 502).json({ error: 'تعذر بناء التجربة: ' + msg + ' — حاول مرة أخرى.' });
         return;
       }
-      let raw = (d2 && d2.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+      let raw = (r2.data && r2.data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
       // جولة إتمام واحدة: الرد انقطع عند السقف → نكمله من حيث توقف حرفيًا.
-      if (d2 && d2.stop_reason === 'max_tokens') {
+      if (r2.data && r2.data.stop_reason === 'max_tokens') {
         try {
           const rc = await doRequest(labModel, [{ role: 'user', content: user }, { role: 'assistant', content: raw }], 8000);
-          const dc = await rc.json().catch(() => null);
-          if (rc.ok && dc) raw += (dc.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+          if (rc.ok && rc.data) raw += (rc.data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
         } catch (e) { console.warn('[edu] lab-continue ' + (e && e.message)); }
       }
       let html = '';
