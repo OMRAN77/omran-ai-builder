@@ -104,6 +104,9 @@
   /* ----- Live ticker bar ----- */
   const tickerWrap = $('#stockTicker');
   const tickerTrack = $('#stockTickerTrack');
+  // v-ticker-noflicker: طبقة GPU ثابتة + إخفاء الوجه الخلفيّ يمنعان وميض النصّ
+  // أثناء الحركة على WebView الجوال (بلا أيّ تغيير في السرعة).
+  try{ tickerTrack.style.backfaceVisibility = 'hidden'; tickerTrack.style.webkitBackfaceVisibility = 'hidden'; tickerTrack.style.transform = 'translate3d(0,0,0)'; }catch(e){ /* guard-ok */ }
   const TICKER_SYMS = (function(){
     try{ const s = JSON.parse(localStorage.getItem('stockTickerSyms')||'null'); if(Array.isArray(s) && s.length) return s.slice(0,5); }catch(e){ __swallow(e, "misc:app-13-stocks-init#1"); }
     return ['AAPL','TSLA','NVDA','MSFT','GOOGL']; /* v-no-crypto: أُزيلت BTC/USD امتثالًا لسياسة متجر هواوي (لا عملات رقمية) */
@@ -141,7 +144,10 @@
         tickerX -= __TSPEED * __dt / 1000;
         const half = tickerTrack.scrollWidth / 2;
         if(half > 0 && -tickerX >= half) tickerX = 0;
-        tickerTrack.style.transform = 'translateX(' + tickerX + 'px)';
+        // v-ticker-noflicker (شكوى المالك «الشريط فيه وميض»): translateX بلا طبقة
+        // مركّبة يومض على WebView الجوال. translate3d يجبر طبقة GPU مستقلّة فيختفي
+        // الوميض بلا أيّ تغيير في السرعة أو السلوك.
+        tickerTrack.style.transform = 'translate3d(' + tickerX + 'px,0,0)';
         tickerAnim = requestAnimationFrame(step);
       };
       tickerAnim = requestAnimationFrame(step);
