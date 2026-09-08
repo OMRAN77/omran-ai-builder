@@ -1024,6 +1024,13 @@ module.exports = async (req, res) => {
     const IMAGE_TURN_NOTE = lastUserHasImage
       ? '\n[صورة مرفقة في هذا الدور]: أي طلب تغيير أو تحسين أو ترقية أو «نسخة أقوى/أفخم» أو أسلوب جديد على هذه الصورة = استدعِ edit_image فورًا بتعليمة إنجليزية دقيقة — لا generate_image (edit_image يبني على صورته مصدرًا، وgenerate_image يرسم من الوصف وحده صورة بلا علاقة). لا تسأل قبل التنفيذ؛ ضع رمز الصورة العائد وحده في سطر ثم جملة قصيرة واحدة.'
       : '';
+    // v-visual-guide (أمر المالك «أبي إرشاد عام لأي شاشة… كله خطأ»): لقطة شاشة
+    // + سؤال «كيف/وين/أضغط إيش» كان يُجاب بإرشاد عامّ أو خاطئ (فهم «Developer
+    // Console» أدوات المتصفّح بدل Google Play Console). هذه القاعدة تجعله مرشدًا
+    // بصريًّا دقيقًا: يقرأ ما في الصورة فعلًا ويدلّ على العنصر الظاهر بالضبط.
+    const VISUAL_GUIDE_NOTE = lastUserHasImage
+      ? '\n\n[إرشاد بصريّ — إلزاميّ حين تكون الصورة لقطة شاشة (تطبيق/موقع/إعدادات جهاز) والمستخدم يسأل «كيف أسوي… / وين… / أضغط على إيش / ساعدني أوصل لـ…»]: أنت الآن مرشد بصريّ ينظر إلى شاشة المستخدم الحقيقيّة. (١) اقرأ العناصر الظاهرة فعلًا في اللقطة — الأزرار والتبويبات والقوائم بأسمائها ومواضعها كما تراها، ولا تخترع زرًّا أو خيارًا غير موجود. (٢) افهم هدف المستخدم من سياق الشاشة نفسها: إن كان المصطلح غامضًا فسّره بما يناسب ما يظهر (مثال: في صفحة Google Play كلمة «Developer Console» تعني «Google Play Console» لوحة نشر التطبيقات على play.google.com/console، لا أدوات مطوّري المتصفّح). (٣) أعطِ خطوات مرقّمة دقيقة تدلّه على الضغطة التالية بالاسم والموضع الظاهرين («اضغط الزرّ … أعلى اليمين»)، وإن كان الهدف ليس في هذه الشاشة فقل بالضبط لأي شاشة ينتقل وكيف يصلها. (٤) ممنوع الإرشاد العامّ المبهم («تصفّح بشكل طبيعي»)، وممنوع تغيير الموضوع، وممنوع اختلاق واجهة لا تظهر في الصورة. أجب بلغة المستخدم.'
+      : '';
     // v-img-on-request (أمر المالك: «الصور بالطلب، أو إرفاق صورة تعديل عليها»):
     // النموذج كان يبادر برسم صور توضيحية لقصص/شروح/تقارير (قصة نوح رسمها بلا طلب).
     // هذه القاعدة إلزاميّة وتوضع آخر النظام (أعلى أولويّة) فتغلب أي تشجيع سابق على
@@ -1035,8 +1042,8 @@ module.exports = async (req, res) => {
       : toolTurn
         /* v-clean-slate: كتاب القواعد فُصل كله من النظام — بقي القصير + التاريخ
            والمدينة (حقائق) + ملف المالك + ذاكرة الحساب (تصل ضمن baseSystem). */
-        ? PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz) + countryNote(country, city) + ownerKnowledge + IMAGE_TURN_NOTE + IMAGE_GATE_NOTE
-        : PERSONA_NOTE + '\n' + baseSystem + IMAGE_TURN_NOTE;
+        ? PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz) + countryNote(country, city) + ownerKnowledge + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_GATE_NOTE
+        : PERSONA_NOTE + '\n' + baseSystem + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE;
 
       const convoSource = quietSocialTurn ? [lastUser] : messages;
   const convo = compactConversation(convoSource
