@@ -26,5 +26,13 @@ async function gen(label, prompt) {
 }
 
 console.log('BASE=' + BASE + ' @ ' + new Date().toISOString());
-await gen('توليد منظر', 'منظر جبلي واقعي عالي الجودة مع بحيرة');
+// عيّنات متتابعة: نميّز بين إرهاق حصّة دائم (كل المحاولات busy) وارتفاع حِمل لحظي.
+const prompts = [
+  'منظر جبلي واقعي عالي الجودة مع بحيرة',
+  'قط صغير أبيض يجلس على سجادة حمراء، إضاءة ناعمة، واقعي',
+  'كوب قهوة على طاولة خشبية بجانب نافذة، ضوء الصباح، واقعي',
+];
+for (let i = 0; i < prompts.length; i++) {
+  await gen('عيّنة ' + (i + 1), prompts[i]);
+}
 console.log('PROBE DONE');
