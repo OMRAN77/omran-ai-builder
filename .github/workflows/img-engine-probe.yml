@@ -1,0 +1,21 @@
+# مجس محرّك الصور على الإنتاج — engine + caption (كشف توفّر gemini-3-pro-image).
+name: img-engine-probe
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/hala-t3hsq0]
+    paths: ['scripts/img-engine-probe.mjs', '.github/workflows/img-engine-probe.yml']
+
+permissions: {}
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Probe production image engine
+        run: node scripts/img-engine-probe.mjs

@@ -846,6 +846,12 @@ function __chatsMergeServer(server, deletedIds){
   state.projects.forEach(p => {
     if(p && p.id && !seen[p.id] && !delSet[p.id]) result.push(p);
   });
+  // v-stable-order (شكوى المالك «الأماكن تتغير كل مرة، ماتكون ثابتة»): ترتيب
+  // القائمة كان يتبع ترتيب السيرفر المتغيّر بين المزامنات فتقفز المشاريع. نرتّبها
+  // ترتيبًا ثابتًا بزمن الإنشاء المستخرَج من المعرّف (p_<وقت>)، فيبقى نفسه دائمًا
+  // (renderHistory يعكسها فيظهر الأحدث أولًا بترتيب ثابت لا يتغيّر).
+  const __projTs = (p) => { const m = /^p_(\d{10,})/.exec(String((p && p.id) || '')); return m ? Number(m[1]) : 0; };
+  result.sort((a, b) => __projTs(a) - __projTs(b));
   state.projects = result;
   var fpAfter = __fingerprint(result);
   if(fpAfter === fpBefore){
@@ -854,7 +860,11 @@ function __chatsMergeServer(server, deletedIds){
   }
   try{ saveState(); }catch(e){ __swallow(e, "save:app-04-i18n-state#18"); }
   try{ renderHistory(); }catch(e){ __swallow(e, "save:app-04-i18n-state#19"); }
-  try{ if(typeof renderAll === 'function') renderAll(); }catch(e){ __swallow(e, "save:app-04-i18n-state#20"); }
+  // v-keep-scroll (لقطة المالك: «المحادثة ترتفع فوق كل مرة أنزل»): دمج المحادثات
+  // مع السيرفر يعمل دوريًّا، وكان يُعيد الرسم بلا حفظ التمرير فيقفز لأسفل القائمة
+  // (scrollTop=scrollHeight) وسط قراءة ردّ طويل — فيبدو أن المحتوى «يرتفع». مع
+  // عدم تطابق عدّ السيرفر/المحلي كان يتكرّر كلّ دورة مزامنة. الآن يحفظ الموضع.
+  try{ if(typeof renderAll === 'function') renderAll(true); }catch(e){ __swallow(e, "save:app-04-i18n-state#20"); }
   try{ if(typeof buildChatList === 'function') buildChatList(); }catch(e){ __swallow(e, "save:app-04-i18n-state#21"); }
   return true;
 }
@@ -1009,7 +1019,10 @@ function renderHistory(){
   state.projects.forEach(p => { if(!p.provider){ p.provider = provKey; provDirty = true; } });
   if(provDirty) saveState();
   // v380: القائمة تعرض كل المحادثات من كل المزودات — حساب واحد، قائمة وحدة.
-  [...state.projects].reverse().forEach(p => {
+  // v-stable-order: نرتّب دائمًا بزمن الإنشاء (من المعرّف p_<وقت>) تنازليًّا —
+  // الأحدث أولًا — فلا يتغيّر ترتيب القائمة بين الفتحات مهما كان ترتيب المصفوفة.
+  const __histTs = (p) => { const m = /^p_(\d{10,})/.exec(String((p && p.id) || '')); return m ? Number(m[1]) : 0; };
+  [...state.projects].sort((a, b) => __histTs(b) - __histTs(a)).forEach(p => {
     const div = document.createElement('div');
     div.className = 'hist-item' + (p.id === state.currentId ? ' active' : '');
     div.dataset.pid = String(p.id); // v-chat-search: يربط العنصر بمشروعه للبحث داخل المحتوى
@@ -1336,7 +1349,39 @@ function omranRenderOptions(host, blocks){
   });
 }
 function renderMessages(keepScroll){
-  const prevScrollTop = keepScroll ? messagesEl.scrollTop : null;
+  // v-scroll-respect (لقطة المالك: «المحادثة ترتفع كل مرة أنزل»): أيّ إعادة رسم
+  // بلا keepScroll كانت تقفز لأسفل القائمة (scrollHeight)، فإن كان المستخدم يقرأ
+  // ردًّا طويلًا في الأعلى تُقذف القائمة للأسفل ويبدو المحتوى «يرتفع». الآن نلتقط
+  // الموضع دائمًا ونقيس هل هو متابعٌ في الأسفل: إن كان يقرأ في الأعلى نحفظ موضعه،
+  // ولا نتبع الأسفل إلّا إن كان أصلًا هناك. إرسال رسالة جديدة يمرّر للأسفل عبر
+  // anchorLastUserMsgTop المستقلّ، فلا يتأثّر.
+  // v-render-guard (لقطة المالك: «تطلع وتختفي وتطلع» + وميض خفيف + قفز): إعادات
+  // رسم متطابقة متتالية (المزامنة الدوريّة تلحق الرسم الأوّل) كانت تمسح القائمة
+  // ثمّ تعيد بناءها بلا تغيّر فعليّ — فيومض المحتوى ويقفز التمرير. نحسب بصمة
+  // خفيفة لما سيُرسم (المحادثة · عدد الرسائل · مجموع أطوال النصّ · العلامات ·
+  // اللغة)؛ إن طابقت آخر رسم والقائمة معروضة نتخطّى كليًّا — لا مسح، لا وميض.
+  try{
+    const __c0 = getCurrent();
+    let __sig = 'none';
+    if(__c0 && Array.isArray(__c0.messages)){
+      let __len = 0;
+      for(let __i = 0; __i < __c0.messages.length; __i++){
+        const __m = __c0.messages[__i];
+        if(!__m) continue;
+        if(typeof __m.content === 'string') __len += __m.content.length;
+        if(__m.code) __len += 7;
+        if(__m.attachments) __len += __m.attachments.length * 3;
+      }
+      const __exp = Array.isArray(__c0.expandedAskAllBatches) ? __c0.expandedAskAllBatches.join(',') : '';
+      __sig = __c0.id + '|' + __c0.messages.length + '|' + __len + '|' + (__c0.__showAllMsgs ? 1 : 0) + '|' + __exp;
+    }
+    __sig += '|' + (localStorage.getItem('aiapp_lang') || 'ar');
+    if(window.__renderMsgSig === __sig && messagesEl.childElementCount > 0) return;
+    window.__renderMsgSig = __sig;
+  }catch(e){ /* guard-ok — البصمة تحسين لا شرط؛ عند أي خطأ نرسم كالمعتاد */ }
+  const prevScrollTop = messagesEl.scrollTop;
+  let __wasNearBottom = true;
+  try{ __wasNearBottom = (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight) < 160; }catch(e){ /* guard-ok — قياس اختياري */ }
   messagesEl.innerHTML = '';
   const cur = getCurrent();
   const chipsWrap = $('#chatQuickChipsWrap');
@@ -1911,10 +1956,16 @@ function renderMessages(keepScroll){
         const layout = localStorage.getItem('askAllLayout') || 'horizontal';
         compareGroup = document.createElement('div');
         compareGroup.className = 'ask-all-compare-row';
+        /* v664 — «مافي أي رد» (شكوى عمران ٩ سبتمبر): #messages عمود flex، وهذا
+           الصفّ وحده يحمل overflow-x:auto فيفقد حماية min-height:auto، فيصبح
+           العنصر الوحيد القابل للضغط في العمود؛ فمتى طالت المحادثة عن الشاشة
+           امتصّ الفائض وانهار ارتفاعه إلى الحشو (٦ بكسل) وقصّ الردّ كاملًا
+           (قياس حيّ: فقاعة ٤٥٤ بكسل و٦١٦ حرفًا داخل صفّ ارتفاعه ٦). flex-shrink:0
+           يمنع الضغط فقط — لا يمسّ منطقًا ولا تصميمًا ولا مزوّدًا. */
         if(layout === 'vertical'){
-          compareGroup.style.cssText = 'display:flex; flex-direction:column; gap:10px; max-width:100%; padding-bottom:6px; align-items:stretch;';
+          compareGroup.style.cssText = 'display:flex; flex-direction:column; gap:10px; max-width:100%; padding-bottom:6px; align-items:stretch; flex-shrink:0;';
         } else {
-          compareGroup.style.cssText = 'display:flex; gap:10px; overflow-x:auto; max-width:100%; padding-bottom:6px; align-items:flex-start; scroll-snap-type:x proximity;';
+          compareGroup.style.cssText = 'display:flex; gap:10px; overflow-x:auto; max-width:100%; padding-bottom:6px; align-items:flex-start; scroll-snap-type:x proximity; flex-shrink:0;';
         }
         messagesEl.appendChild(compareGroup);
       }
@@ -1963,10 +2014,12 @@ function renderMessages(keepScroll){
       }
     }
   });
-  if(keepScroll){
-    messagesEl.scrollTop = prevScrollTop;
-  } else {
+  // v-scroll-respect: نتبع الأسفل فقط إن كان المستخدم أصلًا هناك (متابِعًا) أو
+  // طُلب keepScroll صراحةً؛ وإلا نحفظ موضع قراءته كما كان.
+  if(__wasNearBottom && !keepScroll){
     messagesEl.scrollTop = messagesEl.scrollHeight;
+  } else {
+    messagesEl.scrollTop = prevScrollTop;
   }
   try{ if(typeof syncChatJumpButton === 'function') syncChatJumpButton(); }catch(e){ __swallow(e, "ui:chatJump"); }
   // v462: أنيميشن رسالة المستخدم — CSS class msg-anim يضاف أثناء بناء العنصر (سطر 973)

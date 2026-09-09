@@ -1,0 +1,26 @@
+# مِجسّ الطلب الحقيقيّ: يعيد إنتاج طلب callChatWithTools كاملًا على الإنتاج
+# (رسائل system + المستخدم، وسيناريو محادثة فيها تاريخ) لكشف «مافي أي رد».
+name: noah-full-probe
+on:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: 'قاعدة الموقع (اتركه فارغًا للافتراضي)'
+        required: false
+        default: ''
+
+permissions: {}
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Probe full app request on production
+        env:
+          PROBE_BASE: ${{ inputs.base }}
+        run: node scripts/noah-full-probe.mjs

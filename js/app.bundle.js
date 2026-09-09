@@ -5245,6 +5245,12 @@ function __chatsMergeServer(server, deletedIds){
   state.projects.forEach(p => {
     if(p && p.id && !seen[p.id] && !delSet[p.id]) result.push(p);
   });
+  // v-stable-order (شكوى المالك «الأماكن تتغير كل مرة، ماتكون ثابتة»): ترتيب
+  // القائمة كان يتبع ترتيب السيرفر المتغيّر بين المزامنات فتقفز المشاريع. نرتّبها
+  // ترتيبًا ثابتًا بزمن الإنشاء المستخرَج من المعرّف (p_<وقت>)، فيبقى نفسه دائمًا
+  // (renderHistory يعكسها فيظهر الأحدث أولًا بترتيب ثابت لا يتغيّر).
+  const __projTs = (p) => { const m = /^p_(\d{10,})/.exec(String((p && p.id) || '')); return m ? Number(m[1]) : 0; };
+  result.sort((a, b) => __projTs(a) - __projTs(b));
   state.projects = result;
   var fpAfter = __fingerprint(result);
   if(fpAfter === fpBefore){
@@ -5253,7 +5259,11 @@ function __chatsMergeServer(server, deletedIds){
   }
   try{ saveState(); }catch(e){ __swallow(e, "save:app-04-i18n-state#18"); }
   try{ renderHistory(); }catch(e){ __swallow(e, "save:app-04-i18n-state#19"); }
-  try{ if(typeof renderAll === 'function') renderAll(); }catch(e){ __swallow(e, "save:app-04-i18n-state#20"); }
+  // v-keep-scroll (لقطة المالك: «المحادثة ترتفع فوق كل مرة أنزل»): دمج المحادثات
+  // مع السيرفر يعمل دوريًّا، وكان يُعيد الرسم بلا حفظ التمرير فيقفز لأسفل القائمة
+  // (scrollTop=scrollHeight) وسط قراءة ردّ طويل — فيبدو أن المحتوى «يرتفع». مع
+  // عدم تطابق عدّ السيرفر/المحلي كان يتكرّر كلّ دورة مزامنة. الآن يحفظ الموضع.
+  try{ if(typeof renderAll === 'function') renderAll(true); }catch(e){ __swallow(e, "save:app-04-i18n-state#20"); }
   try{ if(typeof buildChatList === 'function') buildChatList(); }catch(e){ __swallow(e, "save:app-04-i18n-state#21"); }
   return true;
 }
@@ -5408,7 +5418,10 @@ function renderHistory(){
   state.projects.forEach(p => { if(!p.provider){ p.provider = provKey; provDirty = true; } });
   if(provDirty) saveState();
   // v380: القائمة تعرض كل المحادثات من كل المزودات — حساب واحد، قائمة وحدة.
-  [...state.projects].reverse().forEach(p => {
+  // v-stable-order: نرتّب دائمًا بزمن الإنشاء (من المعرّف p_<وقت>) تنازليًّا —
+  // الأحدث أولًا — فلا يتغيّر ترتيب القائمة بين الفتحات مهما كان ترتيب المصفوفة.
+  const __histTs = (p) => { const m = /^p_(\d{10,})/.exec(String((p && p.id) || '')); return m ? Number(m[1]) : 0; };
+  [...state.projects].sort((a, b) => __histTs(b) - __histTs(a)).forEach(p => {
     const div = document.createElement('div');
     div.className = 'hist-item' + (p.id === state.currentId ? ' active' : '');
     div.dataset.pid = String(p.id); // v-chat-search: يربط العنصر بمشروعه للبحث داخل المحتوى
@@ -5735,7 +5748,39 @@ function omranRenderOptions(host, blocks){
   });
 }
 function renderMessages(keepScroll){
-  const prevScrollTop = keepScroll ? messagesEl.scrollTop : null;
+  // v-scroll-respect (لقطة المالك: «المحادثة ترتفع كل مرة أنزل»): أيّ إعادة رسم
+  // بلا keepScroll كانت تقفز لأسفل القائمة (scrollHeight)، فإن كان المستخدم يقرأ
+  // ردًّا طويلًا في الأعلى تُقذف القائمة للأسفل ويبدو المحتوى «يرتفع». الآن نلتقط
+  // الموضع دائمًا ونقيس هل هو متابعٌ في الأسفل: إن كان يقرأ في الأعلى نحفظ موضعه،
+  // ولا نتبع الأسفل إلّا إن كان أصلًا هناك. إرسال رسالة جديدة يمرّر للأسفل عبر
+  // anchorLastUserMsgTop المستقلّ، فلا يتأثّر.
+  // v-render-guard (لقطة المالك: «تطلع وتختفي وتطلع» + وميض خفيف + قفز): إعادات
+  // رسم متطابقة متتالية (المزامنة الدوريّة تلحق الرسم الأوّل) كانت تمسح القائمة
+  // ثمّ تعيد بناءها بلا تغيّر فعليّ — فيومض المحتوى ويقفز التمرير. نحسب بصمة
+  // خفيفة لما سيُرسم (المحادثة · عدد الرسائل · مجموع أطوال النصّ · العلامات ·
+  // اللغة)؛ إن طابقت آخر رسم والقائمة معروضة نتخطّى كليًّا — لا مسح، لا وميض.
+  try{
+    const __c0 = getCurrent();
+    let __sig = 'none';
+    if(__c0 && Array.isArray(__c0.messages)){
+      let __len = 0;
+      for(let __i = 0; __i < __c0.messages.length; __i++){
+        const __m = __c0.messages[__i];
+        if(!__m) continue;
+        if(typeof __m.content === 'string') __len += __m.content.length;
+        if(__m.code) __len += 7;
+        if(__m.attachments) __len += __m.attachments.length * 3;
+      }
+      const __exp = Array.isArray(__c0.expandedAskAllBatches) ? __c0.expandedAskAllBatches.join(',') : '';
+      __sig = __c0.id + '|' + __c0.messages.length + '|' + __len + '|' + (__c0.__showAllMsgs ? 1 : 0) + '|' + __exp;
+    }
+    __sig += '|' + (localStorage.getItem('aiapp_lang') || 'ar');
+    if(window.__renderMsgSig === __sig && messagesEl.childElementCount > 0) return;
+    window.__renderMsgSig = __sig;
+  }catch(e){ /* guard-ok — البصمة تحسين لا شرط؛ عند أي خطأ نرسم كالمعتاد */ }
+  const prevScrollTop = messagesEl.scrollTop;
+  let __wasNearBottom = true;
+  try{ __wasNearBottom = (messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight) < 160; }catch(e){ /* guard-ok — قياس اختياري */ }
   messagesEl.innerHTML = '';
   const cur = getCurrent();
   const chipsWrap = $('#chatQuickChipsWrap');
@@ -6310,10 +6355,16 @@ function renderMessages(keepScroll){
         const layout = localStorage.getItem('askAllLayout') || 'horizontal';
         compareGroup = document.createElement('div');
         compareGroup.className = 'ask-all-compare-row';
+        /* v664 — «مافي أي رد» (شكوى عمران ٩ سبتمبر): #messages عمود flex، وهذا
+           الصفّ وحده يحمل overflow-x:auto فيفقد حماية min-height:auto، فيصبح
+           العنصر الوحيد القابل للضغط في العمود؛ فمتى طالت المحادثة عن الشاشة
+           امتصّ الفائض وانهار ارتفاعه إلى الحشو (٦ بكسل) وقصّ الردّ كاملًا
+           (قياس حيّ: فقاعة ٤٥٤ بكسل و٦١٦ حرفًا داخل صفّ ارتفاعه ٦). flex-shrink:0
+           يمنع الضغط فقط — لا يمسّ منطقًا ولا تصميمًا ولا مزوّدًا. */
         if(layout === 'vertical'){
-          compareGroup.style.cssText = 'display:flex; flex-direction:column; gap:10px; max-width:100%; padding-bottom:6px; align-items:stretch;';
+          compareGroup.style.cssText = 'display:flex; flex-direction:column; gap:10px; max-width:100%; padding-bottom:6px; align-items:stretch; flex-shrink:0;';
         } else {
-          compareGroup.style.cssText = 'display:flex; gap:10px; overflow-x:auto; max-width:100%; padding-bottom:6px; align-items:flex-start; scroll-snap-type:x proximity;';
+          compareGroup.style.cssText = 'display:flex; gap:10px; overflow-x:auto; max-width:100%; padding-bottom:6px; align-items:flex-start; scroll-snap-type:x proximity; flex-shrink:0;';
         }
         messagesEl.appendChild(compareGroup);
       }
@@ -6362,10 +6413,12 @@ function renderMessages(keepScroll){
       }
     }
   });
-  if(keepScroll){
-    messagesEl.scrollTop = prevScrollTop;
-  } else {
+  // v-scroll-respect: نتبع الأسفل فقط إن كان المستخدم أصلًا هناك (متابِعًا) أو
+  // طُلب keepScroll صراحةً؛ وإلا نحفظ موضع قراءته كما كان.
+  if(__wasNearBottom && !keepScroll){
     messagesEl.scrollTop = messagesEl.scrollHeight;
+  } else {
+    messagesEl.scrollTop = prevScrollTop;
   }
   try{ if(typeof syncChatJumpButton === 'function') syncChatJumpButton(); }catch(e){ __swallow(e, "ui:chatJump"); }
   // v462: أنيميشن رسالة المستخدم — CSS class msg-anim يضاف أثناء بناء العنصر (سطر 973)
@@ -12549,6 +12602,9 @@ async function postWithConfirm(url, payload){
   function isExplicitImageEdit(input){
     const source = String(input || '').trim();
     if(!source) return false;
+    // v-longtext-noimg: تعليمة تعديل صورة قصيرة دائمًا؛ نصّ طويل (قصّة/شرح) ليس
+    // أمر تعديل صورة مهما حوى «عدّل/غيّر/دعاء…». يمنع اختطاف النصوص الطويلة.
+    if(source.length > 220) return false;
     if(textStyleEdit(source) || parseImageTextSpec(source).wantsText) return true;
     if(/(?:نفس\s+(?:الصورة|الصوره)|هذه\s+(?:الصورة|الصوره)|هذي\s+(?:الصورة|الصوره)|هالصورة|هالصوره|الصورة\s+السابقة|الصوره\s+السابقه|(?:same|this|previous)\s+(?:image|picture))/i.test(source)) return true;
     const editVerb = /(?:^|[\s،,.!?؟])(?:عدل|عدّل|حرر|حرّر|غير|غيّر|بدل|بدّل|احذف|امسح|ازل|أزل|شيل|أضف|اضف|ضيف|حط|اكتب|أكتب|خل|خلي|خلّي|اجعل|سو|سوي|سوّي|حول|حوّل|زيد|قص|كبر|كبّر|صغر|صغّر)(?=$|[\s،,.!?؟]|ها)/i.test(source) || /\b(?:edit|change|modify|remove|delete|add|put|write|resize)\b/i.test(source);
@@ -12558,6 +12614,11 @@ async function postWithConfirm(url, payload){
   }
   function autoPrayerSpec(input){
     const source = String(input || '').trim();
+    // v-longtext-noimg (بلاغ المالك المتكرر «قصّة نوح ما ترد»): نصّ طويل ملصوق
+    // (قصّة/شرح فيه «دعا»/«شعر») ليس طلب «صورة دعاء» — كان يُصنَّف wantsText=true
+    // فيُختطف لمسار توليد صورة النصّ بدل المحادثة. أي نصّ >220 حرفًا لا يُعامَل
+    // كطلب تأليف صورة إطلاقًا. الطلبات الحقيقية قصيرة («صورة فيها دعاء الجمعة»).
+    if(source.length > 220) return null;
     if(!/(?:^|[\s،,.!?؟])(?:دعا[ءدهً]?|[أا]دعي[ةه]|شعر|قصيدة|كلام\s+(?:غزل|رومانسي)|غزل|prayer|poem|romantic\s+words?)(?=$|[\s،,.!?؟:：\-–—])/i.test(source)) return null;
     // «النص: دعاء...» أو «اكتب كلمة دعاء» يعني نصًا حرفيًا، لا طلب تأليف.
     if(/(?:النص|العبارة|الكلام|الكلمة|كلمة|text|words?)\s*(?:هو|is)?\s*[:：\-–—]?\s*(?:دعا[ءدهً]?|شعر|قصيدة|غزل|prayer|poem)(?=$|[\s،,.!?؟])/i.test(source)) return null;
@@ -12579,6 +12640,11 @@ async function postWithConfirm(url, payload){
   function authorVisual(source, kind){ return visualCore(source) || fallbackVisual(kind, null); }
   function parseImageTextSpec(input){
     const source = String(input || '').replace(/\r\n?/g, '\n');
+    // v-longtext-noimg (بلاغ المالك «قصّة نوح ما ترد»): نصّ طويل ملصوق ليس طلب
+    // «صورة عليها نصّ». علامات مثل علامات الاقتباس أو «فيها/عليها» داخل قصّة
+    // كانت تُرجع wantsText=true فيُختطف النصّ لمسار توليد صورة النصّ بدل المحادثة.
+    // طلب الكتابة على صورة دائمًا قصير؛ أي نصّ >400 حرف = لا صورة، محادثة عادية.
+    if(source.length > 400) return { wantsText:false, exactText:null, visualPrompt:source.trim(), fontKey:'default', color:'#ffffff', position:'bottom', styleEditLoose:null };
     const styleEdit = textStyleEdit(source), autoPrayer = styleEdit ? null : autoPrayerSpec(source), marker = autoPrayer ? null : findTextMarker(source); if(styleEdit) return { wantsText:false, exactText:null, visualPrompt:'', styleEdit, styleEditLoose:styleEdit };
     if(!marker) return autoPrayer ? { wantsText:true, exactText:null, visualPrompt:authorVisual(source, autoPrayer.kind), visualEdit:visualCore(source) || null, prayerRequest:autoPrayer.request, fontKey:textFont(source), color:textColor(source), position:(/(?:يمين|right)/i.test(source)?'right-':/(?:يسار|left)/i.test(source)?'left-':'')+textPosition(source), positionAuto:!positionExplicit(source), kind:autoPrayer.kind, autoAuthored:true } : { wantsText:false, exactText:null, visualPrompt:source.trim(), fontKey:'default', color:'#ffffff', position:'bottom', styleEditLoose:textStyleEditLoose(source) };
     const literalPrayerText = /(?:النص|العبارة|الكلام|الكلمة|كلمة|text|words?)\s*(?:هو|is)?\s*[:：\-–—]?\s*(?:دعا[ءدهً]?|prayer|du[’']?a)(?=$|[\s،,.!?؟])/i.test(source.slice(marker.index));
@@ -17119,10 +17185,12 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
         __b64 = await overlayTextOnImage(__b64, __mime, __overlayText, textSpec.fontKey, textSpec.color, textSpec.position);
         __mime = 'image/png';
       }
-      __m.content = (typeof __d.caption === 'string' && __d.caption) ? __d.caption : (lang === 'ar' ? 'تفضّل 👇' : 'Here you go 👇');
+      __m.content = ''; // v666: بلا جملة فوق الصورة — التفسير يُعرض تحتها كرسالة منفصلة
       let __genUrl = 'data:' + __mime + ';base64,' + __b64;
       try{ __genUrl = await omranSharpenImage(__genUrl); }catch(e){ __swallow(e, 'img:sharpen-gen'); }
       __m.attachments = [{ isImage: true, mime: (__genUrl.slice(5).split(';')[0] || __mime), dataUrl: __genUrl, name: 'image.png' }];
+      // v-img-tafsir: «تفسير بعد الصورة» — تقرير قصير أسفل الصورة.
+      if(typeof __d.caption === 'string' && __d.caption.trim()){ cur.messages.push({ role: 'assistant', content: __d.caption.trim() }); }
       try{ cur.lastEditedImage = { b64: __b64, mime: __mime }; cur.lastMsgWasImageEdit = true; }catch(e){ /* guard-ok — cleanup, intentional */ }
       // 🔄 نحفظ طلب التوليد ليعيده زر «نسخة ثانية» بتنويعة جديدة
       try{ window.__omranLastImageReq = { kind:'gen', promptText: promptText }; }catch(e){ __swallow(e, 'img:save-req-gen'); }
@@ -17325,7 +17393,24 @@ try{
   });
 }catch(e){ try{ __swallow(e, 'misc:send-unlock'); }catch(_){ /* guard-ok — cleanup, intentional */ } }
 
+/* v-send-guard (بلاغ المالك المتكرّر «الرسالة الطويلة/القصّة ما ترد بلا أي أثر»):
+   غلاف يلتقط أي استثناء يسقط سطرَ الإرسال بصمت (قبل أو بعد try الداخلي) ويعرضه
+   في المحادثة بدل «لا شيء إطلاقًا»، ويكشف السبب الحقيقي في جهاز المستخدم. */
 async function sendPrompt(){
+  try{ return await __sendPromptCore.apply(this, arguments); }
+  catch(e){
+    try{
+      var __c = (typeof getCurrent === 'function') ? getCurrent() : null;
+      var __m = '⚠️ ' + (typeof __friendlyErr === 'function' ? __friendlyErr(e) : ((e && e.message) || e))
+        + '\n(تشخيص: ' + String((e && (e.name + ': ' + e.message)) || e).slice(0, 160) + ')';
+      if(__c && Array.isArray(__c.messages)){ __c.messages.push({ role:'assistant', content: __m }); try{ renderAll(); saveState(); }catch(_1){} }
+      else { try{ alert(__m); }catch(_2){} }
+    }catch(_3){}
+    try{ var __sb=$('#btnSend'); if(__sb){ __sb.disabled=false; } }catch(_4){}
+    console.error('[sendPrompt] fatal', e);
+  }
+}
+async function __sendPromptCore(){
   // ✅ v301: قفل الإرسال أثناء التوليد — Enter أو أي ضغطة إضافية لا ترسل
   // الطلب مرة ثانية (كان زر الإرسال ينقفل لكن Enter يظل شغالًا فيتكرر الطلب).
   // 🔓 v583 — قفل يتيم: الزرّ يبقى معطّلًا لو جُمّدت الصفحة أو انقطعت الشبكة
@@ -17600,7 +17685,7 @@ async function sendPrompt(){
   /* v-diag-turn (تشخيص «النص الطويل ما يرد»): نلتقط نتيجة الدور لنعرف السبب
      الحقيقي — لو انتهى الدور بلا رد ظاهر نعرض سطرًا فيه المزوّد وطول الرد والوقت
      والخطأ. طول رد>0 بلا ظهور = عطل عرض؛ طول 0 = المزوّد رجّع فارغًا؛ خطأ = مهلة/شبكة. */
-  window.__diagTurn = { t0: Date.now(), provider: '', replyLen: -1, err: '' };
+  window.__diagTurn = { t0: Date.now(), provider: '', replyLen: -1, err: '', toolsErr: '', path: '' };
 /* v-err-human: أخطاء الشبكة العابرة كانت تنزل خامًا في المحادثة
    («⚠️ Load failed» عند مستخدمة حقيقية) — تُترجم لعربي واضح مع إرشاد. */
 function __friendlyErr(e){
@@ -17656,7 +17741,38 @@ function __friendlyErr(e){
   // كلود يبني ويرد بروحه دائمًا (وGPT احتياط صامت إذا فشل).
   const __askAllExplicit = false;
   customProviders = null;
-  const askAll = !!customProviders || __askAllExplicit || (!__gateNoBuild && !__gateApprovedText && ((__routeBuildRe.test(text) && __routeCmdRe.test(text)) || __strongBuildRe.test(text)) && !__routeFix);
+  /* v665 — «في المحادثة الطويلة يطلع الكينج» (شكوى عمران ٩ سبتمبر):
+     شرط البناء كان يكفيه أن يجد اسم بناء + فعل أمر في أي موضع من النصّ، فقصّة
+     نوح (١٩٣٠ حرفًا) طابقت «دعوه» داخل «يدعوهم» (الموضع ٩١٩) و«بناء» من
+     «بناء السفينة» (الموضع ١٧١٩) → askAll=true → الردّ طلع بطاقة مزوّد بوسم
+     «الكينج» بلا تمرير يتبع الردّ. في الطلب الحقيقيّ الفعل والاسم متجاوران
+     (قياس: «ابني لي تطبيق»=٥ · «تصمم لي بطاقة»=٧)، وفي السرد متباعدان
+     (نوح=٢٣١). فللنصوص الطويلة نشترط الجوار أو الصدر — صفر تغيير في
+     المطابقات نفسها، والرسائل ≤٢٢٠ حرفًا على سلوكها القديم بالضبط. */
+  const __buildIntentShape = (() => {
+    try{
+      const __t = String(text || '').trim();
+      if(__t.length <= 220) return true;
+      const __idx = (re) => {
+        const __g = new RegExp(re.source, 'gi'), __out = [];
+        let __m;
+        while((__m = __g.exec(__t))){
+          __out.push(__m.index);
+          if(__g.lastIndex <= __m.index) __g.lastIndex = __m.index + 1;
+          if(__out.length > 400) break;
+        }
+        return __out;
+      };
+      const __cmds = __idx(__routeCmdRe), __nouns = __idx(__routeBuildRe);
+      if(!__cmds.length || !__nouns.length) return false;
+      // ١) جوار: فعل أمر واسم بناء داخل ٦٠ حرفًا = طلب صريح.
+      for(const __c of __cmds){ for(const __n of __nouns){ if(Math.abs(__c - __n) <= 60) return true; } }
+      // ٢) صدر: فعل الأمر في أوّل ٦٠ حرفًا واسم البناء في أوّل ٢٥٠.
+      if(__cmds[0] <= 60 && __nouns[0] <= 250) return true;
+      return false;
+    }catch(e){ return true; } // guard-ok: أي خطأ → السلوك القديم بالضبط
+  })();
+  const askAll = !!customProviders || __askAllExplicit || (!__gateNoBuild && !__gateApprovedText && ((__routeBuildRe.test(text) && __routeCmdRe.test(text) && __buildIntentShape) || __strongBuildRe.test(text)) && !__routeFix);
   // آخر نص كامل وصل من البث؛ نحتفظ به إذا أوقف المستخدم التوليد.
   let __lastStreamPartial = '';
 
@@ -17764,6 +17880,20 @@ function __friendlyErr(e){
     // Follow-up edits on the same image work too ("زين، الحين كبّر الخط").
     const __imgEditRe = /(?:^|[\s،,.!؟?()"'«»])(?:تعديل|عدل|عدّل|شيل|ابعد|أبعد|غير|غيّر|ضيف|أضف|اضف|حط|امسح|احذف|ازل|أزل|اجعل|خل|لون|لوّن|كبر|كبّر|صغر|صغّر|زخرف|اكتب|ارسم|حسن|حسّن|حول|حوّل|صمم|صمّم|نسق|نسّق|رتب|رتّب|ديكور|سوي|سوّي|سولي|دمج|ادمج|أدمج)|سو لي|\b(?:edit|change|add|put|remove|erase|make|recolor|write|draw|enhance|convert|transform|redesign|restyle|decor|merge|combine)\b/i; // v720: مطابقة على بداية كلمة فقط — «ادخل» ليست «خل» و«احوله» تبقى تمر عبر استثناء المواضيع
     const __srcImg = imageAttachments.length ? imageAttachments[imageAttachments.length - 1] : null;
+    // v-no-img-on-paste (أمر المالك: «الصور بالطلب أو تعديل صورة مرفقة فقط»):
+    // نصّ ملصوق طويل (قصّة/شرح/تقرير) بلا صورة مرفقة وبلا طلب صريح للصورة = يُمنع
+    // أيّ توليد صورة تلقائيّ لهذا الدور. الطلب الصريح («ارسم/صمّم/اصنع لي صورة/
+    // بوستر/شعار») يبقى يعمل، وتعديل صورة مرفقة يبقى يعمل (شرطه __srcImg).
+    const __explicitImgReq = /(?:^|[\s،,.])(?:ارسم|أرسم|ارسمي|اصنع|اصنعي|انشئ|أنشئ|صمم|صمّم|صمّمي|ولّد|ولد|صوّر|صور)\s*(?:لي\s*)?[^\n]{0,25}?(?:صور|رسم|بوستر|ملصق|شعار|لوجو|بطاق|بنر|غلاف|تصميم|image|picture|poster|logo|banner|drawing)/i.test(text || '');
+    // نُعيد حساب «نصّ ملصوق» محليًّا لأنّ __looksPasted معرّف في كتلة أخرى أعلى
+    // (نطاق const مقفل) — لا نُشير إليه هنا (كان يسبّب __looksPasted is not defined).
+    const __pastedLike = !!(text && !__strongBuildRe.test(text) && (
+      text.length > 400 ||
+      text.split('\n').length >= 6 ||
+      /[📋⬜☐🔹▪•✔️]/.test(text) ||
+      /^\s*(?:[-*]|\d+[.)])\s+\S.*\n\s*(?:[-*]|\d+[.)])\s+\S/m.test(text)
+    ));
+    const __blockAutoImage = !!(__pastedLike && !__srcImg && !__explicitImgReq);
     /* v-support-q (لقطة عمران ١ سبتمبر: «عندي مشكلة في الطباعة تصور خارج
        الصورة... كيف اسوي الإعدادات» راحت لتعديل صورة قديمة): سؤال مساعدة
        يحوي كلمات صور عرضًا (تصور/الصورة/تعديل) — نمنع توجيهه للصور حين لا
@@ -18017,7 +18147,7 @@ function __friendlyErr(e){
       }
       renderAll(); saveState();
       return;
-    } else if(text && __adIntentRe.test(text) && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !/(داخل|خارج)/i.test(text)){
+    } else if(text && __adIntentRe.test(text) && !__blockAutoImage && !cur.adMode && !cur.awaitingAdMode && !__codeWordRe.test(text) && !/(داخل|خارج)/i.test(text)){
       // v695: إعلان → /api/tools?action=adimage (gpt-image-2) بجودة احترافية حقيقية
       const __wM  = text.match(/(?:مطلوب|السعر|ب\s*(?:فقط)?)\s*([\d,،\s]+(?:الف|ألف|k)?)/i);
       const __mmM = text.match(/(?:الممشى|ممشى)\s*([\d,،\s]+(?:الف|ألف|k)?)/i);
@@ -18074,7 +18204,7 @@ function __friendlyErr(e){
       }
       renderAll(); saveState();
       return;
-    } else if(text && (__srcImg || __followUp) && /(لوجو|شعار|logo|أيقون|ايقون|صمم|صمّم|تصميم|بطاقة|دعوة|بوستر|غلاف|بنر|نفس هذ|design)/i.test(text) && !cur.adMode && !cur.awaitingAdMode && text.indexOf('ملاحظة للنظام') === -1 && !(text.length <= 300 && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !__nanoQ.test(text))){
+    } else if(text && !__blockAutoImage && (__srcImg || __followUp) && /(لوجو|شعار|logo|أيقون|ايقون|صمم|صمّم|تصميم|بطاقة|دعوة|بوستر|غلاف|بنر|نفس هذ|design)/i.test(text) && !cur.adMode && !cur.awaitingAdMode && text.indexOf('ملاحظة للنظام') === -1 && !(text.length <= 300 && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !__nanoQ.test(text))){
       // نمط نانو: رسالة قصيرة مع صورة (مرفقة أو من الذاكرة) بلا كلمة كود = تعديل صورة، لا تُطوَّل بملاحظة النظام حتى لا تُحرَم من مسار الصور.
       // 🎨 v328: صورة/شعار مرفق + طلب تصميم → صورة المستخدم تُضمَّن كما هي — ممنوع إعادة رسمها
       text += '\n(ملاحظة للنظام: المستخدم أرفق صورة/شعارًا — إذا كان ردك تصميمًا أو كودًا يجب استخدام صورته نفسها كما هي عبر src="__USER_IMAGE__" أو background-image:url(\'__USER_IMAGE__\') بالضبط، والتطبيق يستبدلها بالصورة الحقيقية تلقائيًا. ممنوع منعًا باتًا استبدال صورة المستخدم بلوجو أو صورة من تصميمك أو من الإنترنت — صورة المستخدم هي الأصل الرسمي وتظهر بدون أي تشويه أو قلب أو قص)';
@@ -18407,10 +18537,18 @@ function __showImgLoading(el, ar, en){
     // صورة بلا طلب، أو معها سؤال/طلب قراءة = تحليل. أي أمر غير استفهامي يعدّل
     // نفس الصورة مباشرة، حتى لو كانت لقطة شاشة أو لم تأتِ من زر «تعديل».
     const __SHOT_ANALYZE = !!(__srcImg && !__srcImg._fromMemory && __srcImg._screenshot && !__IMG_UPGRADE && !__IMG_ELEVATE && !__imgEditRe.test(text || '') && !__IMGF_NEW_RE.test(text || '') && (!String(text || '').trim() || __nanoQ.test(text) || __ATT_VISION_RE.test(text)));
-    const __ATT_DEFAULT = !!(__srcImg && !__srcImg._fromMemory && String(text || '').trim() && !__SHOT_ANALYZE && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text));
+    // v-att-edit-intent (شكوى المالك «أعطيك صورة وتغيّر الصورة ليش»): صورة مرفقة
+    // + أيّ نصّ (حتى «1024 w × 500 h») كانت تُعتبَر أمر تعديل تلقائيًّا فتُشوَّه
+    // صورته. الآن التعديل الافتراضيّ يشترط نيّة تعديل/أسلوب صريحة؛ وغير كذا تذهب
+    // الصورة للتحليل/الإجابة (لا تُعدَّل).
+    const __editStyleIntent = __imgEditRe.test(text) || __IMG_CREATIVE_RE.test(text) || /(?:^|[\s،,])(?:أحمر|احمر|أزرق|ازرق|أخضر|اخضر|أصفر|اصفر|أسود|اسود|أبيض|ابيض|برتقالي|بنفسجي|وردي|زهري|ذهبي|فضي|رمادي|بني|سماوي|تركوازي|فاتح|غامق|أكبر|اكبر|أصغر|اصغر|أطول|أعرض|أوضح|خلفية|إضاءة|اضاءة|ظل|red|blue|green|yellow|black|white|orange|purple|pink|gold|silver|gray|grey|brown|bigger|smaller|larger|lighter|darker|brighter|background|shadow)(?=$|[\s،,.!؟?])/i.test(text || '');
+    const __ATT_DEFAULT = !!(__srcImg && !__srcImg._fromMemory && String(text || '').trim() && __editStyleIntent && !__SHOT_ANALYZE && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text));
     // بعد أول تعديل تبقى آخر نتيجة هي المصدر. لا نفرض عدد كلمات، كي تعمل أوامر
     // متتابعة قصيرة مثل «أحمر» و«أكبر» مهما طال تسلسل التعديلات.
-    const __FOLLOW_DEFAULT = !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && String(text || '').trim() && text.length <= 1200 && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text) && !/^\s*(?:هلا|مرحبا|السلام|شكرا|شكرًا|مشكور|تسلم|تمام|ممتاز|رائع|جميل|حلو|نعم|لا|ok|okay|thanks|thank you|nice|great|yes|no)\b/i.test(text));
+    // v-follow-edit-intent: المتابعة على آخر صورة مولّدة تشترط نيّة تعديل/أسلوب
+    // صريحة (__editStyleIntent المعرّف أعلى) — «كبّرها/خلها أحمر/3d» تعمل، و«الفئة»
+    // ونحوها لا تولّد شيئًا.
+    const __FOLLOW_DEFAULT = !!((!__srcImg || __srcImg._fromMemory) && cur.lastMsgWasImageEdit && cur.lastEditedImage && cur.lastEditedImage.b64 && String(text || '').trim() && text.length <= 1200 && __editStyleIntent && !__nanoQ.test(text) && !__ATT_VISION_RE.test(text) && !__codeWordRe.test(text) && !__IMGF_NEW_RE.test(text) && !/^\s*(?:هلا|مرحبا|السلام|شكرا|شكرًا|مشكور|تسلم|تمام|ممتاز|رائع|جميل|حلو|نعم|لا|ok|okay|thanks|thank you|nice|great|yes|no)\b/i.test(text));
     /* v-fresh-gen-wins (شكوى المالك: «عطني صور» مع صورة مرفقة كانت تُعدّل
        اللقطة بدل توليد صور جديدة → نتيجة زفت). طلب توليد صريح («عطني/ولّد/
        ارسم صورة») بلا أي فعل تعديل وبلا إشارة للمرفق = توليد جديد نظيف
@@ -18428,7 +18566,7 @@ function __showImgLoading(el, ar, en){
       && !__imgEditRe.test(text) && !__IMG_UPGRADE && !__IMG_ELEVATE && !__IMG_FOLLOW && !__ATT_EDIT && __IMGF_NEW_RE.test(text)
       && !__refersAttachment && !__cardTidyIntent(text)
       && !/(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|للتواصل|poster|logo|banner|certificate|card|invitation)/i.test(text));
-    if(!__freshGenWins && !__SHOT_ANALYZE && text && !cur.adMode && !__isSupportQ && (__IMG_UPGRADE || __IMG_ELEVATE || __IMG_FOLLOW || __ATT_EDIT || __ATT_DEFAULT || __FOLLOW_DEFAULT || __ATT_STYLE || __STYLE_FOLLOW || (__srcImg && !__srcImg._fromMemory && __cardTidyIntent(text)) || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || __STYLE_FOLLOW || __FOLLOW_DEFAULT || ((__IMG_UPGRADE || __IMG_ELEVATE) && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
+    if(!__freshGenWins && !__SHOT_ANALYZE && text && !cur.adMode && !__isSupportQ && !__blockAutoImage && (__IMG_UPGRADE || __IMG_ELEVATE || __IMG_FOLLOW || __ATT_EDIT || __ATT_DEFAULT || __FOLLOW_DEFAULT || __ATT_STYLE || __STYLE_FOLLOW || (__srcImg && !__srcImg._fromMemory && __cardTidyIntent(text)) || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || __STYLE_FOLLOW || __FOLLOW_DEFAULT || ((__IMG_UPGRADE || __IMG_ELEVATE) && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
       __showImgLoading(thinkingDiv, (__IMG_UPGRADE || __IMG_ELEVATE) ? 'جاري تطوير الصورة…' : 'جاري تعديل الصورة…', (__IMG_UPGRADE || __IMG_ELEVATE) ? 'Improving the image…' : 'Editing image…');
       const __upgSrc = (!__srcImg && (__IMG_UPGRADE || __IMG_ELEVATE) && !(cur.lastEditedImage && cur.lastEditedImage.b64)) ? __IMG_UPGRADE_SRC : null;
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : (__upgSrc ? ((__upgSrc.dataUrl || '').split(',')[1] || '') : ((cur.lastEditedImage && cur.lastEditedImage.b64) || ''));
@@ -18900,8 +19038,14 @@ function __showImgLoading(el, ar, en){
     const __archFollowUp = !!(__archCtxText && text && !__srcImg && !__followUp &&
        !__codeWordRe.test(text) && !__designDocRe.test(text) && !__archExcludeRe.test(text) &&
        (__archAffirm || (text.length < 120 && __archFollowRe.test(text))));
-    if(text && !__srcImg && !__followUp && !__codeWordRe.test(text) && !__designDocRe.test(text) &&
-       ((__archVerbRe.test(text) && __archHomeRe.test(text) && !__archExcludeRe.test(text)) || __archFollowUp)){
+    // v-arch-doclen (لقطة المالك: نصّ ديني/سردي طويل رسم مخطط فيلا): «بناء
+    // السفينة» يطابق فعل البناء و«البيت الحرام» يطابق كلمة البيت، وregex العربي
+    // بلا حدود كلمات فتلتقط الكلمتين داخل السرد. طلب التصميم الحقيقي أمرٌ قصير
+    // («صمّم فيلا دورين ٤ غرف»)، لا وثيقة ملصوقة. حدّ ٥٠٠ حرف يمنع الوثيقة من
+    // إطلاق المخطط، ويُبقي كلّ طلبات التصميم الفعليّة تعمل (المتابعة لها حدّها).
+    const __archReqOk = text.length < 500 && __archVerbRe.test(text) && __archHomeRe.test(text) && !__archExcludeRe.test(text);
+    if(text && !__srcImg && !__blockAutoImage && !__followUp && !__codeWordRe.test(text) && !__designDocRe.test(text) &&
+       (__archReqOk || __archFollowUp)){
       const __archText = __archFollowUp ? (__archAffirm ? __archCtxText : (__archCtxText + ' — والمطلوب الآن تحديدًا: ' + text)) : text;
       cur.lastArchText = __archFollowUp ? __archCtxText : text;
       const __archGen = async (label, prompt) => {
@@ -18976,7 +19120,7 @@ function __showImgLoading(el, ar, en){
     // 🏛️ v225: طلب نصي بنية صورة بدون أي صورة مرفقة (تصور معماري/منظور/ارسم...)
     // → توليد صورة فعلي بـ Gemini بدل رد نظري أو وعود فارغة من المزود.
     const __txtOnlyImgRe = /^\s*صور[هة]\s+\S|(تصور|منظور|بورتريه|ارسم|أرسم|ارسمي|رسمة|معماري|معمارية|واجهات\s|تصميم\s*(?:لي\s*)?صوره?|صمم\s*(?:لي\s*)?صوره?|توليد\s*صوره?|(?:انشئ|أنشئ|انشاء|إنشاء|اصنع)\s*(?:لي\s*)?صوره?|صوره?\s*(?:من|عن)\s*الخيال|خيال\s*علمي|render|perspective|elevation|concept\s?art|\bdraw\b|\bpainting\b)/i;
-    if(text && (!__srcImg || __freshGenWins) && !__followUp && !__archImagesDone && !__codeWordRe.test(text) && (!__designDocRe.test(text) || __explicitImageTextRequest) &&
+    if(text && !__blockAutoImage && (!__srcImg || __freshGenWins) && !__followUp && !__archImagesDone && !__codeWordRe.test(text) && (!__designDocRe.test(text) || __explicitImageTextRequest) &&
        (__explicitImageTextRequest || __txtOnlyImgRe.test(text) || (__imgGenIntentRe.test(text) && /صور|رسمة|منظر|تصور|image|picture|visual/i.test(text)))){
       if(!__txtOnlyImgRe.test(text) && __isVagueMediaRequest(text)){
         cur.messages.push({ role: 'assistant', content: lang === 'ar' ? 'صورة عن شو؟ وصفلي اللي تبيه 🖼️' : 'An image of what? Describe what you want 🖼️' });
@@ -19020,7 +19164,11 @@ function __showImgLoading(el, ar, en){
       }
       if(__gOk){
         const __gm = __gData.mimeType || 'image/png';
-        cur.messages.push({ role: 'assistant', content: (typeof __gData.caption === 'string' && __gData.caption) ? __gData.caption : (lang === 'ar' ? 'تفضّل 👇' : 'Here you go 👇') /* v-caption-gen: أعاد المالك المحادثة بعد الصورة (كتطبيق Gemini) — نصّ مها من الخادم، يعكس v666 */, attachments: [{ name: 'generated.png', isImage: true, mime: __gm, dataUrl: 'data:' + __gm + ';base64,' + __gData.imageBase64 }] });
+        cur.messages.push({ role: 'assistant', content: '' /* v666: بلا جملة فوق الصورة — طلب عمران */, attachments: [{ name: 'generated.png', isImage: true, mime: __gm, dataUrl: 'data:' + __gm + ';base64,' + __gData.imageBase64 }] });
+        // v-img-tafsir: «تفسير بعد الصورة» — تقرير قصير أسفل الصورة (لا فوقها).
+        if(typeof __gData.caption === 'string' && __gData.caption.trim()){
+          cur.messages.push({ role: 'assistant', content: __gData.caption.trim() });
+        }
         cur.lastEditedImage = { b64: __gData.imageBase64, mime: __gm };
         cur.lastMsgWasImageEdit = true;
       } else {
@@ -19038,12 +19186,22 @@ function __showImgLoading(el, ar, en){
     const __bldRe = /(ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|سو\b|سوّ\b|صمم|صمّم|انشئ|أنشئ|انشاء|إنشاء|اصنع|عدل|عدّل|طور|طوّر|اضف|أضف|كمل|أكمل|build|create|make|design|develop|fix|add|update|improve)/i;
     const __appWd = /(تطبيق|موقع|لعبة|برنامج|بوت|صفحة|أداة|app|website|game|bot|page|tool|clone)/i;
     const __dsnRe = /(إعلان|بوستر|شهادة|بطاقة|دعوة|لوجو|شعار|بنر|غلاف|منشور|poster|flyer|certificate|card|invitation|logo|banner|cover)/i;
-    const __needsBuild = (__bldRe.test(text) && __appWd.test(text)) || __dsnRe.test(text) || !!cur.code || !!window.__buildOfferApproved;
+    /* v-pasted-no-design (شكوى المالك «مافي أي رد» على لصق قصّة نوح): كلمة
+       «دعوة» داخل القصّة كانت تُطابق __dsnRe فيُفعَّل مسار البناء/الملصق
+       (DESIGN_POSTER_RULE)، فيردّ النموذج بكتلة كود ```html (ملصق) بدل نصّ —
+       والعميل يوجّه الكود للمعاينة لا لفقاعة المحادثة، فيبدو «ما فيه ردّ».
+       النصّ الملصوق الطويل تحليلٌ لا طلب تصميم: نُعرّف __pastedDoc هنا (نُقل من
+       الأسفل) ونستثنيه من البناء والتصميم كي يمرّ للبروم الخفيف ويردّ نصًّا. */
+    const __pastedDoc = !!(text && !__strongBuildRe.test(text) && (text.length > 400 || text.split('\n').length >= 6 || /\b(issue|suggestion|rejected|review|error|exception|traceback|report|dear|regards)\b/i.test(text)));
+    const __designAskRe = /(صمم|صمّم|صممي|اصنع|ابغى|ابي|أبي|أبغى|سو|سوّ?ي|اعمل|أعمل|عطني|أعطني|هات|ارسم|صم?ّ?ملي|بوستر|تصميم|design|make|create)\s*(?:لي\s*)?(?:[^\n]{0,20})?(إعلان|بوستر|شهادة|بطاقة|دعوة|لوجو|شعار|بنر|غلاف|منشور|poster|flyer|certificate|card|invitation|logo|banner|cover)/i;
+    // النصّ الملصوق لا يُفعّل البناء إطلاقًا؛ وكلمات التصميم لا تُفعّله إلا بطلبٍ
+    // صريح («صمّم بطاقة»)، لا مجرّد ورود «دعوة/بطاقة» داخل جملة سرديّة.
+    const __needsBuild = !__pastedDoc && ((__bldRe.test(text) && __appWd.test(text)) || (__dsnRe.test(text) && __designAskRe.test(text)) || !!cur.code || !!window.__buildOfferApproved);
     // v469: Q&A = بروم خفيف مثل ChatGPT؛ البناء = تعليمات كاملة.
     let __sys;
     if(__needsBuild){
       __sys = t('systemPrompt') + APP_IDENTITY_NOTE + CONVERSATION_QUALITY_RULE + TOPIC_FOLLOW_RULE + BUILD_COMPLETENESS_RULE + NO_FAKE_EDIT_RULE + CHAT_STYLE_RULE + APP_CAPABILITY_RULE;
-      if(__dsnRe.test(text)) __sys += DESIGN_POSTER_RULE;
+      if(__dsnRe.test(text) && __designAskRe.test(text)) __sys += DESIGN_POSTER_RULE;
     } else {
       __sys = 'أنت مساعد ذكي في تطبيق Omran AI من فريق عمران AI.' + CONVERSATION_QUALITY_RULE +
         '\n[قواعد سياق المحادثة]:\n' +
@@ -19081,8 +19239,7 @@ function __showImgLoading(el, ar, en){
     /* v-pasted-analyze (لقطة المالك: لصق تقرير رفض هواوي فبنى النموذج تطبيقًا
        بدل تحليله — رأى «Submit an app with … features» فاعتبره طلب بناء):
        نص طويل ملصوق (تقرير/رسالة/سجل/خطأ) بلا أمر بناء صريح = تحليل وشرح
-       وخطوات، لا بناء ولا كود. */
-    const __pastedDoc = !!(text && !__strongBuildRe.test(text) && (text.length > 400 || text.split('\n').length >= 6 || /\b(issue|suggestion|rejected|review|error|exception|traceback|report|dear|regards)\b/i.test(text)));
+       وخطوات، لا بناء ولا كود. (عُرّف __pastedDoc أعلى — v-pasted-no-design) */
     if(__pastedDoc) apiMessages.push({role: 'system', content: 'رسالة المستخدم الأخيرة نصٌّ ملصوق (تقرير أو رسالة أو سجل أخطاء) وليست طلب بناء. حلّله: ماذا يعني، ما السبب، وما الخطوات العملية المطلوبة من المستخدم بالترتيب — بلغة المستخدم. ممنوع منعًا باتًا بناء تطبيق أو صفحة أو أي كتلة كود ردًّا عليه، حتى لو ورد فيه «app» أو «feature» أو «submit» — إلا إذا كتب المستخدم بنفسه أمر بناء صريحًا.'});
     if(!__quietSocialTurn) apiMessages.push({role: 'system', content: 'قاعدة الموضوع (أولوية قصوى): أجب عن رسالة المستخدم الأخيرة وحدها. إذا كان موضوعها مختلفًا عن الرسائل السابقة فاترك السابق تمامًا — لا تكمله ولا تلخصه ولا تذكره ولا تجيب عنه مرة أخرى. تاريخ المحادثة خلفية فقط، وليس قائمة مهام.', __topicRule: true});
     // 🤝 v345: المستخدم وافق على عرض بناء قدّمه المزود في رده السابق — يبنيه الآن كاملًا.
@@ -19414,7 +19571,11 @@ DESIGN RULES (non-negotiable):
       const __applyCode = isBuildTask || (providers.length === 1 && !!cur.code && __pinEditRe.test(text));
       const askAllBatchId = 'batch' + (++askAllUidCounter);
       const placeholders = providers.map(p => {
-        const msg = {role: 'assistant', content: '', providerLabel: p.label, providerKey: p.key, askAllReply: true, code: null, _loading: true, _uid: ++askAllUidCounter, batchId: askAllBatchId};
+        /* v665 — احتياط: بطاقة المزوّد ووسمه («الكينج») للمقارنة بين مزوّدين.
+           مع مزوّد واحد لا مقارنة، فكانت تطلع بطاقة ضيّقة موسومة بدل فقاعة
+           عاديّة. askAllReply=false للمزوّد الواحد → فقاعة عاديّة بلا وسم؛
+           data-askuid يبقى مضبوطًا فالتحديث الحيّ للنصّ كما هو. */
+        const msg = {role: 'assistant', content: '', providerLabel: p.label, providerKey: p.key, askAllReply: providers.length > 1, code: null, _loading: true, _uid: ++askAllUidCounter, batchId: askAllBatchId};
         cur.messages.push(msg);
         return msg;
       });
@@ -19934,10 +20095,24 @@ DESIGN RULES (non-negotiable):
       const __live = { target: '', shown: 0, timer: null, done: false, waiters: [], _mLast: 0 };
       const __liveRender = () => {
         const shownTxt = __live.target.slice(0, __live.shown);
+        // v-stream-scroll-free (شكوى المالك: «ما أقدر أحرّك المحادثة لين تخلص» +
+        // «لما تنتهي ترتفع»): البثّ كان يجبر التمرير للأسفل كلّ ~١٥٠مل فلا يستطيع
+        // المستخدم القراءة للأعلى، ويبقى بالأسفل عند الانتهاء فيبدو «يرتفع». الآن:
+        // إن حرّك المستخدم القائمة للأعلى (scrollTop نقص عمّا وضعناه) نرفع علم
+        // «تحرّر» فنتوقّف عن الملاحقة لبقيّة الدور — يقرأ بحرّية، وعند الانتهاء
+        // يبقى في موضعه (renderMessages المحروس يحفظه لأنّه ليس قرب الأسفل).
+        try{
+          if(!__live.userBroke && typeof __live.lastAutoTop === 'number' && messagesEl.scrollTop < __live.lastAutoTop - 40){
+            __live.userBroke = true;
+          }
+        }catch(e){ /* guard-ok — كشف تحرّر المستخدم اختياريّ */ }
         if(!document.documentElement.classList.contains('mobile-ui')){
-          const __followReply = typeof chatIsNearBottom === 'function' ? chatIsNearBottom() : true;
           renderStreamingAssistant(thinkingDiv, shownTxt);
-          smartScrollBottom(__followReply);
+          if(!__live.userBroke){
+            const __followReply = typeof chatIsNearBottom === 'function' ? chatIsNearBottom() : true;
+            smartScrollBottom(__followReply);
+            __live.lastAutoTop = messagesEl.scrollTop;
+          }
         } else {
           // الجوال ينسّق حيًّا كسطح المكتب، مع كبح لإعادة البناء كل ١٥٠مل
           // حفاظًا على أداء الجوال.
@@ -19946,10 +20121,12 @@ DESIGN RULES (non-negotiable):
             __live._mLast = __now;
             renderStreamingAssistant(thinkingDiv, shownTxt);
           }
-          try{
-            const __mobileGap = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight;
-            if(__mobileGap < 140) messagesEl.scrollTop = messagesEl.scrollHeight;
-          }catch(e){ __swallow(e, "misc:app-09-attach#26-mobile"); }
+          if(!__live.userBroke){
+            try{
+              const __mobileGap = messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight;
+              if(__mobileGap < 140){ messagesEl.scrollTop = messagesEl.scrollHeight; __live.lastAutoTop = messagesEl.scrollTop; }
+            }catch(e){ __swallow(e, "misc:app-09-attach#26-mobile"); }
+          }
         }
       };
       const __liveTimer = () => {
@@ -20064,7 +20241,7 @@ DESIGN RULES (non-negotiable):
         let __ct = null;
         if(__toolsWillRun){
           try{ __ct = await window.callChatWithTools(apiMessages.filter(m => !m.__static), onDelta, __effProv); }
-          catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; __swallow(e, 'chat:tools'); }
+          catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; try{ window.__diagTurn.toolsErr = String((e && (e.name + ': ' + e.message)) || e || '').slice(0, 180); window.__diagTurn.path = 'tools-failed→fallback'; }catch(_){ } __swallow(e, 'chat:tools'); }
           /* v-tools-team (شكوى المالك «خربت الدنيا بخصوص الأخبار»): فشل مزود
              الأدوات الأول (مثال: رصيد كلود نفد) كان يهبط فورًا للمسار القديم
              بلا بحث حي، فيؤلف البديل أخبارًا من خياله (فهم «العالمي» نادي
@@ -20091,7 +20268,7 @@ DESIGN RULES (non-negotiable):
         window.__claudeModelOverride = null;
         window.__claudeThinking = false;
       }
-      try{ window.__diagTurn.provider = String(providerKey||''); window.__diagTurn.replyLen = String(reply||'').length; }catch(e){ __swallow(e,'ui:diag-ok'); }
+      try{ window.__diagTurn.provider = String(providerKey||''); window.__diagTurn.replyLen = String(reply||'').length; if(!window.__diagTurn.path) window.__diagTurn.path = __ctUsed ? 'tools' : 'fallback'; }catch(e){ __swallow(e,'ui:diag-ok'); }
       let { code, explanation, codeType } = extractReply(reply);
       // v-reveal-live: رد نصّي بلا كود → ننتظر حركة الكتابة تلحق آخر حرف
       // قبل الرسم النهائي. مع الكود لا ننتظر إطلاقًا حتى لا تتأخر المعاينة.
@@ -20196,10 +20373,12 @@ DESIGN RULES (non-negotiable):
         cur.messages.push({ role: 'assistant', _diag: true, content:
           '🔧 تشخيص الرد الغائب:\n'
           + '• المزوّد: ' + (__d.provider || '—') + '\n'
+          + '• المسار: ' + (__d.path || '—') + '\n'
           + '• طول الرد المُستلَم: ' + (__d.replyLen >= 0 ? (__d.replyLen + ' حرف') : 'لم يصل') + '\n'
           + '• الوقت: ' + Math.round((Date.now() - (__d.t0 || Date.now())) / 1000) + ' ثانية\n'
-          + '• الخطأ: ' + ((__d.err || '').slice(0, 200) || 'لا يوجد') + '\n'
-          + '(طول>0 بلا ظهور = عطل عرض · طول «لم يصل» = المزوّد لم يرجّع · خطأ مهلة = timeout)' });
+          + '• خطأ مسار الأدوات: ' + ((__d.toolsErr || '').slice(0, 200) || 'لا يوجد') + '\n'
+          + '• الخطأ النهائي: ' + ((__d.err || '').slice(0, 200) || 'لا يوجد') + '\n'
+          + '(طول>0 بلا ظهور = عطل عرض · طول «لم يصل» = المزوّد لم يرجّع · خطأ مهلة/idle = انقطاع الاتصال)' });
         renderAll(__keepReaderPosition);
       }
     }catch(e){ __swallow(e, 'ui:diag-finally'); }
@@ -25221,11 +25400,24 @@ function stuL(ar, en){
   /* ----- Live ticker bar ----- */
   const tickerWrap = $('#stockTicker');
   const tickerTrack = $('#stockTickerTrack');
+  // v-ticker-noflicker: طبقة GPU ثابتة + إخفاء الوجه الخلفيّ يمنعان وميض النصّ
+  // أثناء الحركة على WebView الجوال (بلا أيّ تغيير في السرعة).
+  try{
+    tickerTrack.style.backfaceVisibility = 'hidden'; tickerTrack.style.webkitBackfaceVisibility = 'hidden';
+    // v-ticker-css-anim: تعريف حركة CSS مرّة واحدة — تعمل على معالج الرسم (GPU)
+    // بلا جافاسكربت لكلّ إطار وبلا قراءة scrollWidth (كانت تُجبر إعادة تخطيط كلّ
+    // إطار = وميض)، ولا تتأثّر بخفض معدّل rAF عند اللمس (لا تسارع عند الضغط).
+    if(!document.getElementById('omran-ticker-css')){
+      const st = document.createElement('style'); st.id = 'omran-ticker-css';
+      st.textContent = '@keyframes omranTickerScroll{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}';
+      document.head.appendChild(st);
+    }
+  }catch(e){ /* guard-ok */ }
   const TICKER_SYMS = (function(){
     try{ const s = JSON.parse(localStorage.getItem('stockTickerSyms')||'null'); if(Array.isArray(s) && s.length) return s.slice(0,5); }catch(e){ __swallow(e, "misc:app-13-stocks-init#1"); }
-    return ['AAPL','TSLA','NVDA','MSFT','BTC/USD'];
+    return ['AAPL','TSLA','NVDA','MSFT','GOOGL']; /* v-no-crypto: أُزيلت BTC/USD امتثالًا لسياسة متجر هواوي (لا عملات رقمية) */
   })();
-  let tickerTimer = null, tickerAnim = null, tickerX = 0;
+  let tickerTimer = null; // v-ticker-css-anim: الحركة صارت CSS، لا rAF
 
   function renderTicker(items){
     if(!items || !items.length){ tickerWrap.style.display='none'; return; }
@@ -25236,18 +25428,19 @@ function stuL(ar, en){
       html += '<span data-tsym="'+(it.gold?'__GOLD':it.symbol)+'" style="cursor:pointer; padding:0 18px; font-size:13px; font-weight:500;">' +
         it.symbol + ' <span style="color:'+col+';">' + (up?'▲':'▼') + ' ' + fmt(it.price) + (it.unit?(' '+it.unit):'') + (it.noPct?'':' (' + fmt(it.changePct) + '%)') + '</span></span><span style="color:rgba(255,255,255,0.2);">|</span>';
     });
-    tickerTrack.innerHTML = html + html; // duplicate for seamless loop
+    tickerTrack.innerHTML = html + html; // نسخة مكرّرة للّفّة السلسة (‑50% = نسخة واحدة)
     tickerWrap.style.display = 'block';
-    if(!tickerAnim){
-      const step = function(){
-        tickerX -= 0.6;
-        const half = tickerTrack.scrollWidth / 2;
-        if(half > 0 && -tickerX >= half) tickerX = 0;
-        tickerTrack.style.transform = 'translateX(' + tickerX + 'px)';
-        tickerAnim = requestAnimationFrame(step);
-      };
-      tickerAnim = requestAnimationFrame(step);
-    }
+    // v-ticker-css-anim: نشغّل حركة CSS بدل حلقة rAF. المسار المكرّر عرضه ضعف نسخة
+    // واحدة، فتحريكه ‑50% = نسخة كاملة → لفّة سلسة. المدّة = عرض نسخة ÷ السرعة، تُقرأ
+    // scrollWidth مرّة واحدة هنا فقط (لا كلّ إطار). لا وميض، ولا تسارع عند الضغط.
+    try{
+      const __TSPEED = 36; // بكسل/ثانية = ٠.٦px عند ٦٠ إطار/ث (نفس السرعة الأصلية)
+      tickerTrack.style.animation = 'none';
+      void tickerTrack.offsetWidth; // يُعيد ضبط الحركة قبل إعادة تشغيلها بالمدّة الجديدة
+      const oneCopy = tickerTrack.scrollWidth / 2;
+      const dur = (oneCopy > 0) ? (oneCopy / __TSPEED) : 30;
+      tickerTrack.style.animation = 'omranTickerScroll ' + dur + 's linear infinite';
+    }catch(e){ /* guard-ok — حركة الشريط ترفٌ لا يُسقط العرض */ }
   }
 
   // v598: تسميات الذهب تُبنى من القاموس، فتُحفظ البيانات الخام ويُعاد الوسم عند تبديل اللغة
@@ -25291,7 +25484,7 @@ function stuL(ar, en){
     if(icon) icon.style.transform = collapsed ? 'rotate(180deg)' : '';
     if(collapsed){
       if(tickerTimer){ clearInterval(tickerTimer); tickerTimer = null; }
-      if(tickerAnim){ cancelAnimationFrame(tickerAnim); tickerAnim = null; }
+      try{ tickerTrack.style.animation = 'none'; }catch(e){ /* guard-ok */ } // v-ticker-css-anim
     }
   }
   function startTicker(){
@@ -25303,7 +25496,7 @@ function stuL(ar, en){
   }
   function stopTicker(){
     if(tickerTimer){ clearInterval(tickerTimer); tickerTimer = null; }
-    if(tickerAnim){ cancelAnimationFrame(tickerAnim); tickerAnim = null; }
+    try{ tickerTrack.style.animation = 'none'; }catch(e){ /* guard-ok */ } // v-ticker-css-anim
     tickerWrap.style.display = 'none';
   }
   window.__tickerStart = startTicker;
@@ -25400,8 +25593,8 @@ function stuL(ar, en){
       tabs:[
         { title:'Indices', symbols:[{s:'AMEX:DIA',d:'Dow Jones'},{s:'NASDAQ:QQQ',d:'NASDAQ 100'},{s:'AMEX:SPY',d:'S&P 500'},{s:'FOREXCOM:GRXEUR',d:'DAX'},{s:'TVC:NI225',d:'Nikkei 225'}] },
         { title:'Commodities', symbols:[{s:'OANDA:XAUUSD',d:'Gold'},{s:'TVC:SILVER',d:'Silver'},{s:'TVC:USOIL',d:'Oil WTI'},{s:'TVC:UKOIL',d:'Brent'}] },
-        { title:'Forex', symbols:[{s:'FX:EURUSD'},{s:'FX:GBPUSD'},{s:'FX:USDJPY'},{s:'FX_IDC:USDAED',d:'USD/AED'}] },
-        { title:'Crypto', symbols:[{s:'BITSTAMP:BTCUSD',d:'Bitcoin'},{s:'BITSTAMP:ETHUSD',d:'Ethereum'}] }
+        { title:'Forex', symbols:[{s:'FX:EURUSD'},{s:'FX:GBPUSD'},{s:'FX:USDJPY'},{s:'FX_IDC:USDAED',d:'USD/AED'}] }
+        /* v-no-crypto: قسم «Crypto» (Bitcoin/Ethereum) أُزيل امتثالًا لسياسة متجر هواوي */
       ] };
     $('#tvOverview').src = 'https://s.tradingview.com/embed-widget/market-overview/?locale=' + uiLang() + '#' + encodeURIComponent(JSON.stringify(ov));
     try{
@@ -26764,7 +26957,12 @@ window.updateVersionLabel = function(){
     var srvN = (typeof window.__chatsServerCount === 'number') ? window.__chatsServerCount : '?';
     var mrgR = window.__chatsMergeResult || '—';
     var mrgE = window.__chatsMergeErr || '';
+    // v-bundle-ver: بصمة البندل من وسم السكربت — تكشف أي نسخة يشغّلها الجهاز فعلًا
+    // (تأكيد وصول التحديث بدل التخمين).
+    var __bv = '';
+    try{ var __s = document.querySelector('script[src*="app.bundle.js"]'); if(__s){ var __mm = (__s.getAttribute('src')||'').match(/[?&]v=([a-z0-9]+)/i); if(__mm) __bv = __mm[1]; } }catch(e){ /* guard-ok */ }
     el.textContent = 'Omran AI Builder — ' + APP_VERSION
+      + ' · بندل: ' + (__bv || '؟')
       + ' · سحب: ' + fmt(pull) + pullErr
       + ' · رفع: ' + fmt(push) + pushErr
       + ' · سيرفر: ' + srvN
@@ -28556,7 +28754,11 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
   // ⏱️ v-chat-idle — حارس خمول العميل: fetch في المتصفّح بلا مهلة، والحارس
   // الصلب لا يقطع إلا بعد ٥ دقائق، فنصّ طويل يتعثّر تدفّقه = صمت ٥ دقائق يقرأه
   // المستخدم «مافي إجابة». هذا الحارس يقطع بعد صمتٍ فعليّ ويهبط لمزوّد احتياط.
-  var __CHAT_IDLE_MS = 45000;   // لا بايت من الخادم هذه المدة (خارج الأدوات) = تعثّر
+  // v-idle-90 (تشخيص جهاز المالك: «٧١ ثانية · لم يصل · لا خطأ»): ٤٥ث كانت
+  // تقطع «تعبئة» النموذج للنصّ الطويل قبل أوّل حرف (المِجسّ قاس ١٤–٢٨ث، وقد
+  // يطول للّصق الكبير)، فتهبط لاحتياطٍ يفشل صامتًا. ٩٠ث تسع التعبئة الطويلة،
+  // والحارس الصلب (٥ دقائق) يبقى شبكة الأمان النهائيّة ضدّ التعليق الحقيقيّ.
+  var __CHAT_IDLE_MS = 90000;   // لا بايت من الخادم هذه المدة (خارج الأدوات) = تعثّر
   var __CHAT_TOOL_MS = 295000;  // أثناء تشغيل أداة محلّيّة نترك القطع للحارس الصلب
   function __raceIdle(p, ms, tag) {
     var to;

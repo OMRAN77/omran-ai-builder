@@ -104,11 +104,24 @@
   /* ----- Live ticker bar ----- */
   const tickerWrap = $('#stockTicker');
   const tickerTrack = $('#stockTickerTrack');
+  // v-ticker-noflicker: طبقة GPU ثابتة + إخفاء الوجه الخلفيّ يمنعان وميض النصّ
+  // أثناء الحركة على WebView الجوال (بلا أيّ تغيير في السرعة).
+  try{
+    tickerTrack.style.backfaceVisibility = 'hidden'; tickerTrack.style.webkitBackfaceVisibility = 'hidden';
+    // v-ticker-css-anim: تعريف حركة CSS مرّة واحدة — تعمل على معالج الرسم (GPU)
+    // بلا جافاسكربت لكلّ إطار وبلا قراءة scrollWidth (كانت تُجبر إعادة تخطيط كلّ
+    // إطار = وميض)، ولا تتأثّر بخفض معدّل rAF عند اللمس (لا تسارع عند الضغط).
+    if(!document.getElementById('omran-ticker-css')){
+      const st = document.createElement('style'); st.id = 'omran-ticker-css';
+      st.textContent = '@keyframes omranTickerScroll{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}';
+      document.head.appendChild(st);
+    }
+  }catch(e){ /* guard-ok */ }
   const TICKER_SYMS = (function(){
     try{ const s = JSON.parse(localStorage.getItem('stockTickerSyms')||'null'); if(Array.isArray(s) && s.length) return s.slice(0,5); }catch(e){ __swallow(e, "misc:app-13-stocks-init#1"); }
-    return ['AAPL','TSLA','NVDA','MSFT','BTC/USD'];
+    return ['AAPL','TSLA','NVDA','MSFT','GOOGL']; /* v-no-crypto: أُزيلت BTC/USD امتثالًا لسياسة متجر هواوي (لا عملات رقمية) */
   })();
-  let tickerTimer = null, tickerAnim = null, tickerX = 0;
+  let tickerTimer = null; // v-ticker-css-anim: الحركة صارت CSS، لا rAF
 
   function renderTicker(items){
     if(!items || !items.length){ tickerWrap.style.display='none'; return; }
@@ -119,18 +132,19 @@
       html += '<span data-tsym="'+(it.gold?'__GOLD':it.symbol)+'" style="cursor:pointer; padding:0 18px; font-size:13px; font-weight:500;">' +
         it.symbol + ' <span style="color:'+col+';">' + (up?'▲':'▼') + ' ' + fmt(it.price) + (it.unit?(' '+it.unit):'') + (it.noPct?'':' (' + fmt(it.changePct) + '%)') + '</span></span><span style="color:rgba(255,255,255,0.2);">|</span>';
     });
-    tickerTrack.innerHTML = html + html; // duplicate for seamless loop
+    tickerTrack.innerHTML = html + html; // نسخة مكرّرة للّفّة السلسة (‑50% = نسخة واحدة)
     tickerWrap.style.display = 'block';
-    if(!tickerAnim){
-      const step = function(){
-        tickerX -= 0.6;
-        const half = tickerTrack.scrollWidth / 2;
-        if(half > 0 && -tickerX >= half) tickerX = 0;
-        tickerTrack.style.transform = 'translateX(' + tickerX + 'px)';
-        tickerAnim = requestAnimationFrame(step);
-      };
-      tickerAnim = requestAnimationFrame(step);
-    }
+    // v-ticker-css-anim: نشغّل حركة CSS بدل حلقة rAF. المسار المكرّر عرضه ضعف نسخة
+    // واحدة، فتحريكه ‑50% = نسخة كاملة → لفّة سلسة. المدّة = عرض نسخة ÷ السرعة، تُقرأ
+    // scrollWidth مرّة واحدة هنا فقط (لا كلّ إطار). لا وميض، ولا تسارع عند الضغط.
+    try{
+      const __TSPEED = 36; // بكسل/ثانية = ٠.٦px عند ٦٠ إطار/ث (نفس السرعة الأصلية)
+      tickerTrack.style.animation = 'none';
+      void tickerTrack.offsetWidth; // يُعيد ضبط الحركة قبل إعادة تشغيلها بالمدّة الجديدة
+      const oneCopy = tickerTrack.scrollWidth / 2;
+      const dur = (oneCopy > 0) ? (oneCopy / __TSPEED) : 30;
+      tickerTrack.style.animation = 'omranTickerScroll ' + dur + 's linear infinite';
+    }catch(e){ /* guard-ok — حركة الشريط ترفٌ لا يُسقط العرض */ }
   }
 
   // v598: تسميات الذهب تُبنى من القاموس، فتُحفظ البيانات الخام ويُعاد الوسم عند تبديل اللغة
@@ -174,7 +188,7 @@
     if(icon) icon.style.transform = collapsed ? 'rotate(180deg)' : '';
     if(collapsed){
       if(tickerTimer){ clearInterval(tickerTimer); tickerTimer = null; }
-      if(tickerAnim){ cancelAnimationFrame(tickerAnim); tickerAnim = null; }
+      try{ tickerTrack.style.animation = 'none'; }catch(e){ /* guard-ok */ } // v-ticker-css-anim
     }
   }
   function startTicker(){
@@ -186,7 +200,7 @@
   }
   function stopTicker(){
     if(tickerTimer){ clearInterval(tickerTimer); tickerTimer = null; }
-    if(tickerAnim){ cancelAnimationFrame(tickerAnim); tickerAnim = null; }
+    try{ tickerTrack.style.animation = 'none'; }catch(e){ /* guard-ok */ } // v-ticker-css-anim
     tickerWrap.style.display = 'none';
   }
   window.__tickerStart = startTicker;
@@ -283,8 +297,8 @@
       tabs:[
         { title:'Indices', symbols:[{s:'AMEX:DIA',d:'Dow Jones'},{s:'NASDAQ:QQQ',d:'NASDAQ 100'},{s:'AMEX:SPY',d:'S&P 500'},{s:'FOREXCOM:GRXEUR',d:'DAX'},{s:'TVC:NI225',d:'Nikkei 225'}] },
         { title:'Commodities', symbols:[{s:'OANDA:XAUUSD',d:'Gold'},{s:'TVC:SILVER',d:'Silver'},{s:'TVC:USOIL',d:'Oil WTI'},{s:'TVC:UKOIL',d:'Brent'}] },
-        { title:'Forex', symbols:[{s:'FX:EURUSD'},{s:'FX:GBPUSD'},{s:'FX:USDJPY'},{s:'FX_IDC:USDAED',d:'USD/AED'}] },
-        { title:'Crypto', symbols:[{s:'BITSTAMP:BTCUSD',d:'Bitcoin'},{s:'BITSTAMP:ETHUSD',d:'Ethereum'}] }
+        { title:'Forex', symbols:[{s:'FX:EURUSD'},{s:'FX:GBPUSD'},{s:'FX:USDJPY'},{s:'FX_IDC:USDAED',d:'USD/AED'}] }
+        /* v-no-crypto: قسم «Crypto» (Bitcoin/Ethereum) أُزيل امتثالًا لسياسة متجر هواوي */
       ] };
     $('#tvOverview').src = 'https://s.tradingview.com/embed-widget/market-overview/?locale=' + uiLang() + '#' + encodeURIComponent(JSON.stringify(ov));
     try{
@@ -1647,7 +1661,12 @@ window.updateVersionLabel = function(){
     var srvN = (typeof window.__chatsServerCount === 'number') ? window.__chatsServerCount : '?';
     var mrgR = window.__chatsMergeResult || '—';
     var mrgE = window.__chatsMergeErr || '';
+    // v-bundle-ver: بصمة البندل من وسم السكربت — تكشف أي نسخة يشغّلها الجهاز فعلًا
+    // (تأكيد وصول التحديث بدل التخمين).
+    var __bv = '';
+    try{ var __s = document.querySelector('script[src*="app.bundle.js"]'); if(__s){ var __mm = (__s.getAttribute('src')||'').match(/[?&]v=([a-z0-9]+)/i); if(__mm) __bv = __mm[1]; } }catch(e){ /* guard-ok */ }
     el.textContent = 'Omran AI Builder — ' + APP_VERSION
+      + ' · بندل: ' + (__bv || '؟')
       + ' · سحب: ' + fmt(pull) + pullErr
       + ' · رفع: ' + fmt(push) + pushErr
       + ' · سيرفر: ' + srvN

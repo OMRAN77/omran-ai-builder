@@ -1117,7 +1117,7 @@
         <button type="button" class="btn" data-tv="NASDAQ:QQQ" style="padding:4px 10px; font-size:12px;">NASDAQ</button>
         <button type="button" class="btn" data-tv="AMEX:SPY" style="padding:4px 10px; font-size:12px;">S&amp;P 500</button>
         <button type="button" class="btn" data-tv="FOREXCOM:GRXEUR" style="padding:4px 10px; font-size:12px;">DAX</button>
-        <button type="button" class="btn" data-tv="BITSTAMP:BTCUSD" style="padding:4px 10px; font-size:12px;">₿ BTC</button>
+        <!-- v-no-crypto: زر ₿ BTC أُزيل امتثالًا لسياسة متجر هواوي (لا عملات رقمية) -->
         <button type="button" class="btn" data-tv="FX:EURUSD" style="padding:4px 10px; font-size:12px;">EUR/USD</button>
       </div>
       <iframe id="tvChart" style="width:100%; height:420px; border:0; border-radius:var(--r-2); background:#000;" allowtransparency="true"></iframe>

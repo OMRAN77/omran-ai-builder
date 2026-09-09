@@ -18,16 +18,27 @@ async function imageCaption(apiKey, prompt, b64, mime, sourceB64, sourceMime) {
     if (!apiKey || String(process.env.IMAGE_CAPTION || 'on').toLowerCase() === 'off') return '';
     /* v-caption-report (المالك ٦ سبتمبر: «بعد التعديل يكتب تقرير مختصر ويسأل إذا عجبك ولا أسوي لك كذا ولا كذا»): تقرير من
        جملة عمّا تغيّر فعلًا، ثم سؤال «هل أعجبتك؟» مع خيارين ملموسين للخطوة التالية خاصّين بهذه الصورة، بلغة المستخدم ولهجته. */
-    const parts = [{ text: 'The user asked, verbatim: "' + String(prompt || '').slice(0, 500) + '".\n' + (sourceB64 ? 'The first image is what they sent; the second is the result you produced.' : 'The image is the result you produced.') + '\nReply in the SAME language and dialect as the user\'s request (Gulf Arabic if they wrote Gulf Arabic). Write: ' + (sourceB64 ? '(1) one short sentence reporting exactly what changed in the result' : '(1) one short sentence describing what you created') + '; (2) one question asking whether they like it and offering TWO concrete next options specific to this image, in the shape "هل أعجبتك؟ ولا أسوي لك … أو …؟". No markdown, no emojis, max 45 words total.' }];
+    // v-img-tafsir (طلب المالك: «تفسير بعد الصورة» يظهر مع كلّ صورة مرسومة):
+    // للصورة المولّدة (بلا مصدر) = تقرير «📋 تفسير الفكرة» يشرح ما رُسم؛ للتعديل
+    // (بمصدر) يبقى تقرير «ما تغيّر + هل أعجبتك؟» كما طلب المالك ٦ سبتمبر.
+    const __instr = sourceB64
+      ? 'Write: (1) one short sentence reporting exactly what changed in the result; (2) one question asking whether they like it and offering TWO concrete next options specific to this image, in the shape "هل أعجبتك؟ ولا أسوي لك … أو …؟". No markdown, max 45 words total.'
+      : 'Write a short report whose FIRST line is exactly "📋 تفسير الفكرة", then 3 to 4 lines each starting with "• " explaining, from what is actually visible in the image: the main elements and their meaning, and the idea/message behind the picture. Concise, no fluff, max 60 words total.';
+    const parts = [{ text: 'The user asked, verbatim: "' + String(prompt || '').slice(0, 500) + '".\n' + (sourceB64 ? 'The first image is what they sent; the second is the result you produced.' : 'The image is the result you produced.') + '\nReply in the SAME language and dialect as the user\'s request (Gulf Arabic if they wrote Gulf Arabic). ' + __instr }];
     if (sourceB64) parts.push({ inlineData: { mimeType: sourceMime || 'image/jpeg', data: sourceB64 } });
     parts.push({ inlineData: { mimeType: mime || 'image/png', data: b64 } });
     const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(12000),
-      body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0.4, maxOutputTokens: 400, thinkingConfig: { thinkingBudget: 0 } } }), /* v-flash-budget: التفكير الافتراضي يلتهم السقف الصغير فترجع فارغة («قمت بت») — thinkingBudget:0 يوقفه */
+      // v-flash-nothink: gemini-flash يفكّر افتراضيًا فيلتهم maxOutputTokens كاملة
+      // ويرجّع finishReason=MAX_TOKENS بلا text (caption فارغ دائمًا). إيقاف
+      // التفكير (thinkingBudget:0) يحرّر السقف للنصّ الفعليّ.
+      body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0.4, maxOutputTokens: 400, thinkingConfig: { thinkingBudget: 0 } } }),
     });
-    if (!r.ok) return '';
+    if (!r.ok) { console.error('[maha-image] caption http=' + r.status); return ''; }
     const d = await r.json().catch(() => null);
-    return String((((((d || {}).candidates || [])[0] || {}).content || {}).parts || []).map((p) => p.text || '').join(' ')).trim().slice(0, 400);
+    const __txt = String((((((d || {}).candidates || [])[0] || {}).content || {}).parts || []).map((p) => p.text || '').join(' ')).trim().slice(0, 400);
+    if (!__txt) console.error('[maha-image] caption empty finish=' + ((((d || {}).candidates || [])[0] || {}).finishReason || '?'));
+    return __txt;
   } catch (e) { return ''; }
 }
 const { authorPrayerPlan } = require('./prayer-plan');
@@ -201,7 +212,7 @@ module.exports = async (req, res) => {
               { text: 'Answer with exactly one word, PLACE or OTHER. PLACE only if this image is a real camera photograph of a physical place: a room, interior, house or building exterior, garden, street, shop or venue. OTHER for designed graphics, cards, posters, banners, icons, illustrations, artwork, 3D renders, logos, screenshots, product shots and portraits of people.' },
               { inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } },
             ] }],
-            generationConfig: { temperature: 0, maxOutputTokens: 64, thinkingConfig: { thinkingBudget: 0 } }, /* v-flash-budget: thinkingBudget:0 يمنع التفكير من التهام السقف فترجع فارغة */
+            generationConfig: { temperature: 0, maxOutputTokens: 64, thinkingConfig: { thinkingBudget: 0 } }, /* v-flash-nothink: التفكير كان يلتهم الـ64 كاملة فترجع null/false دائمًا */
           }),
         });
         const d = await r.json().catch(function () { return null; });
@@ -228,16 +239,17 @@ module.exports = async (req, res) => {
       : cleanImagePrompt(prayerPlan ? prayerPlan.visualBrief : prompt).slice(0, promptLimit);
     const extras = Array.isArray(extraImages) ? extraImages.filter((x) => x && x.data).slice(0, 5) : [];
 
-    /* v-caption-all: مُرسِل موحّد لكل مسارات نجاح الصورة. الـcaption (نصّ مها القصير) كان يُرسل
-       من المسار الرئيسي وحده، فأي نتيجة من نانو الاحتياطي أو gpt-image أو مسار النصّ الكثيف تصل
-       بلا نصّ إطلاقًا. الآن كل مسار يمرّ من هنا فيُؤلَّف له نصّه ويُحمَل معه حقول الدعاء إن وُجدت. */
-    async function sendImage(b64, mime, engine) {
-      const outMime = mime || 'image/png';
-      const caption = prayerPlan ? '' : await imageCaption(apiKey, intentText || cleanPrompt, b64, outMime, editImageBase64 || null, editMimeType || 'image/png');
+    // v-img-tafsir (طلب المالك «تفسير بعد الصورة»): مُرسِل موحّد لكل مسارات
+    // الصورة — يحسب caption (تفسير الفكرة/تقرير التعديل) ويضمّه دائمًا. كانت
+    // مسارات الإنقاذ الستّة (nano/openai الاحتياطية، openai-masked، dense)
+    // ترجع الصورة بلا caption، فإن كان المحرّك الأساسيّ غير متاح لمفتاح المالك
+    // مرّت كلّ الطلبات عبرها بلا أيّ تفسير.
+    async function sendImg(b64, mime, engine) {
+      const cap = prayerPlan ? '' : await imageCaption(apiKey, intentText || cleanPrompt, b64, mime || 'image/png', editImageBase64 || null, editMimeType || 'image/png');
       res.status(200).json({
         imageBase64: b64,
-        mimeType: outMime,
-        caption: caption || undefined,
+        mimeType: mime || 'image/png',
+        caption: cap || undefined,
         engine: engine,
         authoredText: prayerPlan ? prayerPlan.prayerText : undefined,
         visualPrompt: prayerPlan ? prayerPlan.visualBrief : undefined,
@@ -387,7 +399,7 @@ module.exports = async (req, res) => {
               { text: 'Answer with exactly one word, YES or NO. YES only if this image is text-dense: a UI screenshot, app screen, document, menu, form, chart with many labels, or a poster whose main content is many words. NO for photos, people, places, products and scenes.' },
               { inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } },
             ] }],
-            generationConfig: { temperature: 0, maxOutputTokens: 64, thinkingConfig: { thinkingBudget: 0 } }, /* v-flash-budget: thinkingBudget:0 يمنع التفكير من التهام السقف فترجع فارغة */
+            generationConfig: { temperature: 0, maxOutputTokens: 64, thinkingConfig: { thinkingBudget: 0 } }, /* v-flash-nothink: التفكير كان يلتهم الـ64 كاملة فترجع null/false دائمًا */
           }),
         });
         const d = await r.json().catch(function () { return null; });
@@ -472,7 +484,9 @@ module.exports = async (req, res) => {
           const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent?key=' + apiKey, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            signal: AbortSignal.timeout(90000),
+            /* v-nano-failfast: هذا المسار لا يعمل إلا بعد فشل المحرّك الأساسي؛
+               مهلة 30ث بدل 90ث توصلنا لخط الإنقاذ المجاني بسرعة بدل تجميد 90ث. */
+            signal: AbortSignal.timeout(30000),
             /* responseModalities:['IMAGE'] كي يرجّع صورة دائمًا لا نصًّا (سبب gemini_no_image_part) */
             body: JSON.stringify({ contents: [{ parts: parts }], generationConfig: { responseModalities: ['IMAGE'] } }),
           });
@@ -487,12 +501,37 @@ module.exports = async (req, res) => {
       return null;
     }
 
+    // v-free-fallback (المالك: «لين ما خلص الرصيد» — يجب أن تُنتَج صورة حتى بلا
+    // رصيد مدفوع بدل 502 بعد تجميد طويل): Pollinations محرّك مجاني بلا مفتاح،
+    // توليد نصّي→صورة فقط (لا تحرير مصدر، ولا نصّ عربي دقيق). ملاذٌ أخير للتوليد
+    // الجديد بعد فشل المحرّكات المدفوعة. يُعطَّل بـIMAGE_FREE_FALLBACK=off.
+    let lastFreeErr = '';
+    async function freeFallbackImage() {
+      if (editImageBase64) { lastFreeErr = 'edit-unsupported'; return null; }
+      if (String(process.env.IMAGE_FREE_FALLBACK || 'on').toLowerCase() === 'off') { lastFreeErr = 'disabled'; return null; }
+      const dims = rescueAspect === '16:9' ? [1344, 768] : (rescueAspect === '1:1' ? [1024, 1024] : [768, 1024]);
+      const base = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(String(rescuePromptText).slice(0, 1800));
+      for (let i = 0; i < 2; i++) {
+        try {
+          const url = base + '?width=' + dims[0] + '&height=' + dims[1] + '&nologo=true&model=flux&seed=' + Math.floor(Math.random() * 1e9);
+          const r = await fetch(url, { signal: AbortSignal.timeout(45000) });
+          if (!r.ok) { lastFreeErr = 'pollinations status=' + r.status; continue; }
+          const ct = String(r.headers.get('content-type') || '');
+          if (!/^image\//.test(ct)) { lastFreeErr = 'pollinations non-image ' + ct.slice(0, 40); continue; }
+          const buf = Buffer.from(await r.arrayBuffer());
+          if (buf.length < 1500) { lastFreeErr = 'pollinations tiny ' + buf.length; continue; }
+          return { b64: buf.toString('base64'), mime: ct.split(';')[0].trim() || 'image/jpeg' };
+        } catch (e) { lastFreeErr = 'pollinations ' + (e && e.message ? String(e.message).slice(0, 80) : 'err'); }
+      }
+      return null;
+    }
+
     // Never let an exact text replacement fall through to an unmasked renderer.
     // The client also composites only the selected region over the source.
     if (exactTextEdit) {
       const exactB64 = await openaiRescueImage();
       if (exactB64) {
-        await sendImage(exactB64, 'image/png', 'openai-masked');
+        await sendImg(exactB64, 'image/png', 'openai-masked');
         return;
       }
       await refundImageCharge();
@@ -532,7 +571,7 @@ module.exports = async (req, res) => {
       } else {
         const denseB64 = await openaiRescueImage();
         if (denseB64) {
-          await sendImage(denseB64, 'image/png', 'openai');
+          await sendImg(denseB64, 'image/png', 'openai');
           return;
         }
       }
@@ -577,12 +616,20 @@ module.exports = async (req, res) => {
         /* v-nano-pro-edit: فشل المحرّك الأساسي (برو غالبًا) ونجح نانو 2.5 — يُسجَّل في لوحة المالك بدل أن يختفي وراء نتيجة باهتة
            تشبه الشكوى الأصلية (مفتاح بلا برو، اسم موديل، 400 على الإعدادات…). */
         try { await require('./log-error.js').logErrorAndFlush('maha-image:primary-fallback', new Error(primaryModel + ' failed'), { model: primaryModel, status: upstream ? ('status=' + upstream.status) : 'no-response', creative: isCreativeEdit, detail: String((data && data.error && data.error.message) || '').slice(0, 160) }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
-        await sendImage(nanoB64, 'image/png', 'gemini-nano-banana'); return;
+        await sendImg(nanoB64, 'image/png', 'gemini-nano-banana'); return;
       }
       const rescuedB64 = duoP ? await duoP : await openaiRescueImage();
       /* v-prayer-carry: الإنقاذ كان يفقد الدعاء المؤلَّف فيرفضه العميل
          (missing_authored_prayer — لقطة المالك). يُمرَّر مع الصورة المنقذة. */
-      if (rescuedB64) { await sendImage(rescuedB64, 'image/png', 'openai'); return; }
+      if (rescuedB64) { await sendImg(rescuedB64, 'image/png', 'openai'); return; }
+      // v-free-fallback: فشل المحرّكان المدفوعان (غالبًا نفاد الرصيد) — نُنتج صورة
+      // مجانية بدل 502 كي لا يبقى المستخدم بلا نتيجة عند خلوّ الرصيد.
+      const freeImg = await freeFallbackImage();
+      if (freeImg) {
+        try { await require('./log-error.js').logErrorAndFlush('maha-image:free-fallback', new Error('paid engines failed — used free'), { gemini: upstream ? ('status=' + upstream.status) : 'no-response', nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue' }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
+        await sendImg(freeImg.b64, freeImg.mime, 'pollinations-free');
+        return;
+      }
       await refundImageCharge();
       const timedOut = isImageTimeoutError(imageResult.error);
       const retryable = timedOut || !!(upstream && (upstream.status === 429 || upstream.status >= 500));
@@ -590,7 +637,20 @@ module.exports = async (req, res) => {
       console.error('[maha-image] upstream image request failed after ' + imageResult.attempts + ' attempt(s)' + (upstream ? ' status=' + upstream.status : ''));
       // v-img-visible: يظهر السبب الحقيقي (رصيد/حصة/موديل) في لوحة المالك.
       try { await require('./log-error.js').logErrorAndFlush('maha-image:both-failed', new Error(errorCode), { gemini: upstream ? ('status=' + upstream.status) : 'no-response', nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue', attempts: imageResult.attempts }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
-      res.status(timedOut ? 504 : 502).json({ error: errorCode, retryable });
+      // v-img-diag (تشخيص مؤقّت — يُزال بعد كشف السبب): يكشف الحالة الحقيقية للمزوّد
+      // في ردّ الفشل نفسه (حالة برو + رسالة جوجل + سبب سقوط نانو/OpenAI + مهلة أم لا).
+      const __diag = process.env.IMG_DIAG === 'off' ? undefined : {
+        primaryModel: primaryModel,
+        gStatus: upstream ? upstream.status : 'no-response',
+        gErr: String((data && data.error && (data.error.status || data.error.message)) || '').slice(0, 200),
+        nano: (lastNanoErr || 'no-nano').slice(0, 120),
+        openai: (lastRescueErr || 'no-rescue').slice(0, 120),
+        free: (lastFreeErr || 'not-tried').slice(0, 120),
+        timedOut: timedOut,
+        attempts: imageResult.attempts,
+        errName: String((imageResult.error && imageResult.error.name) || ''),
+      };
+      res.status(timedOut ? 504 : 502).json({ error: errorCode, retryable, __diag });
       return;
     }
 
@@ -600,9 +660,11 @@ module.exports = async (req, res) => {
       const nanoB64b = await geminiNanoBananaImage();
       if (nanoB64b) {
         try { await require('./log-error.js').logErrorAndFlush('maha-image:primary-fallback', new Error(primaryModel + ' returned no image part'), { model: primaryModel, status: 'no-image-part', creative: isCreativeEdit }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
-        await sendImage(nanoB64b, 'image/png', 'gemini-nano-banana'); return; }
+        await sendImg(nanoB64b, 'image/png', 'gemini-nano-banana'); return; }
       const rescuedB64b = duoP ? await duoP : await openaiRescueImage();
-      if (rescuedB64b) { await sendImage(rescuedB64b, 'image/png', 'openai'); return; }
+      if (rescuedB64b) { await sendImg(rescuedB64b, 'image/png', 'openai'); return; }
+      const freeImgB = await freeFallbackImage();
+      if (freeImgB) { await sendImg(freeImgB.b64, freeImgB.mime, 'pollinations-free'); return; }
       await refundImageCharge();
       console.error('[maha-image] no image part in response: ' + JSON.stringify(data).slice(0, 2000));
       try { await require('./log-error.js').logErrorAndFlush('maha-image:no-image-part', new Error('gemini_no_image_part'), { nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue' }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
@@ -750,7 +812,7 @@ module.exports = async (req, res) => {
     }
     /* v-nano-pro-edit: اسم المحرّك الحقيقي — برو أم 2.5 — ليراه المالك في شريط الحالة */
     const mainEngine = duoEngine ? (nanoPrimary ? duoEngine : duoEngine.replace(/^gemini/, 'nano-pro')) : (nanoPrimary ? (__pureRaw ? 'nano-raw' : 'nano') : (__pureRaw ? 'nano-pro-raw' : 'nano-pro'));
-    await sendImage(imgPart.inlineData.data, imgPart.inlineData.mimeType || 'image/png', mainEngine);
+    await sendImg(imgPart.inlineData.data, imgPart.inlineData.mimeType || 'image/png', mainEngine);
     return;
   } catch (e) {
     await refundImageCharge();
