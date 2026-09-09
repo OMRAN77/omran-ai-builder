@@ -246,10 +246,19 @@ module.exports = async (req, res) => {
     // مرّت كلّ الطلبات عبرها بلا أيّ تفسير.
     async function sendImg(b64, mime, engine) {
       const cap = prayerPlan ? '' : await imageCaption(apiKey, intentText || cleanPrompt, b64, mime || 'image/png', editImageBase64 || null, editMimeType || 'image/png');
+      /* v-caption-guaranteed (شكوى المالك: «ما في أي رد بعد الصورة» رغم نجاح التوليد): نصّ مها بعد الصورة كان
+         يعتمد كليًّا على نجاح نداء gemini-flash الثانوي؛ إن فشل (مفتاح/حصة/موديل) رجع فارغًا فاختفت «المحادثة
+         بعد الصورة» تمامًا. الآن نضمن متابعة قصيرة ثابتة بلغة المستخدم كي لا تكون النتيجة صفرًا أبدًا. الدعاء
+         المؤلَّف يبقى بلا caption (نصّه هو authoredText). */
+      const finalCap = (!prayerPlan && !cap)
+        ? (editImageBase64
+            ? 'تفضّل ✨ عدّلت الصورة. تبي أزيد تغييرات — ألوان، أو أسلوب، أو تفاصيل أكثر؟ قل لي وش في بالك.'
+            : 'تفضّل صورتك ✨ تبي أعدّل الألوان، أو الأسلوب، أو أضيف تفاصيل؟ قل لي وش في بالك.')
+        : cap;
       res.status(200).json({
         imageBase64: b64,
         mimeType: mime || 'image/png',
-        caption: cap || undefined,
+        caption: finalCap || undefined,
         engine: engine,
         authoredText: prayerPlan ? prayerPlan.prayerText : undefined,
         visualPrompt: prayerPlan ? prayerPlan.visualBrief : undefined,
