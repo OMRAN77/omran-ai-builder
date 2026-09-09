@@ -17385,7 +17385,24 @@ try{
   });
 }catch(e){ try{ __swallow(e, 'misc:send-unlock'); }catch(_){ /* guard-ok — cleanup, intentional */ } }
 
+/* v-send-guard (بلاغ المالك المتكرّر «الرسالة الطويلة/القصّة ما ترد بلا أي أثر»):
+   غلاف يلتقط أي استثناء يسقط سطرَ الإرسال بصمت (قبل أو بعد try الداخلي) ويعرضه
+   في المحادثة بدل «لا شيء إطلاقًا»، ويكشف السبب الحقيقي في جهاز المستخدم. */
 async function sendPrompt(){
+  try{ return await __sendPromptCore.apply(this, arguments); }
+  catch(e){
+    try{
+      var __c = (typeof getCurrent === 'function') ? getCurrent() : null;
+      var __m = '⚠️ ' + (typeof __friendlyErr === 'function' ? __friendlyErr(e) : ((e && e.message) || e))
+        + '\n(تشخيص: ' + String((e && (e.name + ': ' + e.message)) || e).slice(0, 160) + ')';
+      if(__c && Array.isArray(__c.messages)){ __c.messages.push({ role:'assistant', content: __m }); try{ renderAll(); saveState(); }catch(_1){} }
+      else { try{ alert(__m); }catch(_2){} }
+    }catch(_3){}
+    try{ var __sb=$('#btnSend'); if(__sb){ __sb.disabled=false; } }catch(_4){}
+    console.error('[sendPrompt] fatal', e);
+  }
+}
+async function __sendPromptCore(){
   // ✅ v301: قفل الإرسال أثناء التوليد — Enter أو أي ضغطة إضافية لا ترسل
   // الطلب مرة ثانية (كان زر الإرسال ينقفل لكن Enter يظل شغالًا فيتكرر الطلب).
   // 🔓 v583 — قفل يتيم: الزرّ يبقى معطّلًا لو جُمّدت الصفحة أو انقطعت الشبكة

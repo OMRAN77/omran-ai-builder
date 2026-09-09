@@ -1,4 +1,4 @@
-const CACHE_NAME = 'force-refresh-b28433e6-034b86ff';
+const CACHE_NAME = 'force-refresh-47052a69-034b86ff';
 const STATIC_ASSETS = [
   './',
   './index.html',
