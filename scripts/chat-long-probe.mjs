@@ -2,7 +2,11 @@
 // ويسجّل كل حدث SSE (status/delta/clientTool/error) + التوقيت — لكشف سبب «الرسالة
 // الطويلة ما ترد». لا ينفّذ الأدوات (لا عميل)، لكن يكشف: هل الخادم يبثّ نصًّا؟
 // يطلب أداة؟ يخطئ؟ يصمت؟
+import { readFileSync } from 'fs';
 const BASE = process.env.PROBE_BASE || 'https://omran-ai-builder.vercel.app';
+// نصّ قصّة نوح الحقيقي الذي شكا المالك أنّه «ما يرد» — نختبره حرفيًّا.
+let NOAH = '';
+try { NOAH = readFileSync(new URL('./noah-sample.txt', import.meta.url), 'utf8').trim(); } catch (e) {}
 
 // رسالة تشبه ما لصقه المالك: شرح عربي + كود بايثون إنجليزي (يُكتشف كلغة أجنبية/أدوات).
 const LONG = `شرح لي كيف تعمل نماذج الرؤية-اللغة بالتفصيل، وأعطني مثال كود عملي.
@@ -30,7 +34,11 @@ async function run() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messages: [{ role: 'user', content: LONG }],
+        // نحاكي ما يرسله العميل لقصّة نوح: تعليمة نظام «حلّل النصّ الملصوق» + النصّ.
+        messages: NOAH ? [
+          { role: 'system', content: 'رسالة المستخدم الأخيرة نصٌّ ملصوق وليست طلب بناء. حلّله بلغة المستخدم. ممنوع بناء تطبيق أو أي كتلة كود.' },
+          { role: 'user', content: NOAH },
+        ] : [{ role: 'user', content: LONG }],
         provider: 'claude',
         tz: 'Asia/Riyadh',
         guestId: guestId(),
