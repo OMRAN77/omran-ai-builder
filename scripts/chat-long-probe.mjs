@@ -6,7 +6,7 @@ import { readFileSync } from 'fs';
 const BASE = process.env.PROBE_BASE || 'https://omran-ai-builder.vercel.app';
 // نصّ قصّة نوح الحقيقي الذي شكا المالك أنّه «ما يرد» — نختبره حرفيًّا.
 let NOAH = '';
-try { NOAH = readFileSync(new URL('./noah-sample.txt', import.meta.url), 'utf8').trim(); } catch (e) {}
+try { NOAH = readFileSync(new URL('./noah-sample.txt', import.meta.url), 'utf8').trim(); } catch (e) { /* guard-ok: العيّنة اختيارية — غيابها لا يعطّل المجس */ }
 
 // رسالة تشبه ما لصقه المالك: شرح عربي + كود بايثون إنجليزي (يُكتشف كلغة أجنبية/أدوات).
 const LONG = `شرح لي كيف تعمل نماذج الرؤية-اللغة بالتفصيل، وأعطني مثال كود عملي.
@@ -52,7 +52,7 @@ async function run() {
   const dec = new TextDecoder();
   let buf = '', firstDelta = null, deltaChars = 0, kaCount = 0, events = {}, err = null, sawTool = null, lastByte = t0;
   // حارس صلب: أقصى ١٠٠ث للمجس
-  const HARD = setTimeout(() => { try { reader.cancel(); } catch (e) {} }, 100000);
+  const HARD = setTimeout(() => { try { reader.cancel(); } catch (e) { /* guard-ok: إلغاء أفضل جهد */ } }, 100000);
   while (true) {
     let r;
     try { r = await reader.read(); } catch (e) { console.log('read error @' + el() + ': ' + e.message); break; }

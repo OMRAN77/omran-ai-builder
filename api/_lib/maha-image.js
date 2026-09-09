@@ -615,7 +615,7 @@ module.exports = async (req, res) => {
       if (nanoB64) {
         /* v-nano-pro-edit: فشل المحرّك الأساسي (برو غالبًا) ونجح نانو 2.5 — يُسجَّل في لوحة المالك بدل أن يختفي وراء نتيجة باهتة
            تشبه الشكوى الأصلية (مفتاح بلا برو، اسم موديل، 400 على الإعدادات…). */
-        try { require('./log-error.js').logError('maha-image:primary-fallback', new Error(primaryModel + ' failed'), { model: primaryModel, status: upstream ? ('status=' + upstream.status) : 'no-response', creative: isCreativeEdit, detail: String((data && data.error && data.error.message) || '').slice(0, 160) }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
+        try { await require('./log-error.js').logErrorAndFlush('maha-image:primary-fallback', new Error(primaryModel + ' failed'), { model: primaryModel, status: upstream ? ('status=' + upstream.status) : 'no-response', creative: isCreativeEdit, detail: String((data && data.error && data.error.message) || '').slice(0, 160) }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
         await sendImg(nanoB64, 'image/png', 'gemini-nano-banana'); return;
       }
       const rescuedB64 = duoP ? await duoP : await openaiRescueImage();
@@ -626,7 +626,7 @@ module.exports = async (req, res) => {
       // مجانية بدل 502 كي لا يبقى المستخدم بلا نتيجة عند خلوّ الرصيد.
       const freeImg = await freeFallbackImage();
       if (freeImg) {
-        try { require('./log-error.js').logError('maha-image:free-fallback', new Error('paid engines failed — used free'), { gemini: upstream ? ('status=' + upstream.status) : 'no-response', nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue' }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
+        try { await require('./log-error.js').logErrorAndFlush('maha-image:free-fallback', new Error('paid engines failed — used free'), { gemini: upstream ? ('status=' + upstream.status) : 'no-response', nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue' }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
         await sendImg(freeImg.b64, freeImg.mime, 'pollinations-free');
         return;
       }
@@ -636,7 +636,7 @@ module.exports = async (req, res) => {
       const errorCode = timedOut ? 'image_generation_timeout' : (retryable ? 'image_generation_busy' : 'image_generation_failed');
       console.error('[maha-image] upstream image request failed after ' + imageResult.attempts + ' attempt(s)' + (upstream ? ' status=' + upstream.status : ''));
       // v-img-visible: يظهر السبب الحقيقي (رصيد/حصة/موديل) في لوحة المالك.
-      try { require('./log-error.js').logError('maha-image:both-failed', new Error(errorCode), { gemini: upstream ? ('status=' + upstream.status) : 'no-response', nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue', attempts: imageResult.attempts }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
+      try { await require('./log-error.js').logErrorAndFlush('maha-image:both-failed', new Error(errorCode), { gemini: upstream ? ('status=' + upstream.status) : 'no-response', nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue', attempts: imageResult.attempts }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
       // v-img-diag (تشخيص مؤقّت — يُزال بعد كشف السبب): يكشف الحالة الحقيقية للمزوّد
       // في ردّ الفشل نفسه (حالة برو + رسالة جوجل + سبب سقوط نانو/OpenAI + مهلة أم لا).
       const __diag = process.env.IMG_DIAG === 'off' ? undefined : {
@@ -659,7 +659,7 @@ module.exports = async (req, res) => {
     if (!imgPart) {
       const nanoB64b = await geminiNanoBananaImage();
       if (nanoB64b) {
-        try { require('./log-error.js').logError('maha-image:primary-fallback', new Error(primaryModel + ' returned no image part'), { model: primaryModel, status: 'no-image-part', creative: isCreativeEdit }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
+        try { await require('./log-error.js').logErrorAndFlush('maha-image:primary-fallback', new Error(primaryModel + ' returned no image part'), { model: primaryModel, status: 'no-image-part', creative: isCreativeEdit }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
         await sendImg(nanoB64b, 'image/png', 'gemini-nano-banana'); return; }
       const rescuedB64b = duoP ? await duoP : await openaiRescueImage();
       if (rescuedB64b) { await sendImg(rescuedB64b, 'image/png', 'openai'); return; }
@@ -667,7 +667,7 @@ module.exports = async (req, res) => {
       if (freeImgB) { await sendImg(freeImgB.b64, freeImgB.mime, 'pollinations-free'); return; }
       await refundImageCharge();
       console.error('[maha-image] no image part in response: ' + JSON.stringify(data).slice(0, 2000));
-      try { require('./log-error.js').logError('maha-image:no-image-part', new Error('gemini_no_image_part'), { nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue' }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
+      try { await require('./log-error.js').logErrorAndFlush('maha-image:no-image-part', new Error('gemini_no_image_part'), { nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue' }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
       res.status(500).json({ error: 'لم يرجع الموديل صورة، حاول توصيف مختلف.' });
       return;
     }
@@ -810,17 +810,10 @@ module.exports = async (req, res) => {
         }
       } catch (e) { console.warn('[maha-image] request-check skipped: ' + (e && e.message)); }
     }
-    const caption = prayerPlan ? '' : await imageCaption(apiKey, intentText || cleanPrompt, imgPart.inlineData.data, imgPart.inlineData.mimeType || 'image/png', editImageBase64 || null, editMimeType || 'image/png');
-    res.status(200).json({
-      imageBase64: imgPart.inlineData.data,
-      mimeType: imgPart.inlineData.mimeType || 'image/png',
-      caption: caption || undefined,
-      /* v-nano-pro-edit: اسم المحرّك الحقيقي — برو أم 2.5 — ليراه المالك في شريط الحالة */
-      engine: duoEngine ? (nanoPrimary ? duoEngine : duoEngine.replace(/^gemini/, 'nano-pro')) : (nanoPrimary ? (__pureRaw ? 'nano-raw' : 'nano') : (__pureRaw ? 'nano-pro-raw' : 'nano-pro')),
-      authoredText: prayerPlan ? prayerPlan.prayerText : undefined,
-      visualPrompt: prayerPlan ? prayerPlan.visualBrief : undefined,
-      prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined,
-    });
+    /* v-nano-pro-edit: اسم المحرّك الحقيقي — برو أم 2.5 — ليراه المالك في شريط الحالة */
+    const mainEngine = duoEngine ? (nanoPrimary ? duoEngine : duoEngine.replace(/^gemini/, 'nano-pro')) : (nanoPrimary ? (__pureRaw ? 'nano-raw' : 'nano') : (__pureRaw ? 'nano-pro-raw' : 'nano-pro'));
+    await sendImg(imgPart.inlineData.data, imgPart.inlineData.mimeType || 'image/png', mainEngine);
+    return;
   } catch (e) {
     await refundImageCharge();
     console.error('[maha-image] proxy exception: ' + (e && e.stack ? e.stack : e));
