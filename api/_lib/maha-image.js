@@ -18,16 +18,27 @@ async function imageCaption(apiKey, prompt, b64, mime, sourceB64, sourceMime) {
     if (!apiKey || String(process.env.IMAGE_CAPTION || 'on').toLowerCase() === 'off') return '';
     /* v-caption-report (المالك ٦ سبتمبر: «بعد التعديل يكتب تقرير مختصر ويسأل إذا عجبك ولا أسوي لك كذا ولا كذا»): تقرير من
        جملة عمّا تغيّر فعلًا، ثم سؤال «هل أعجبتك؟» مع خيارين ملموسين للخطوة التالية خاصّين بهذه الصورة، بلغة المستخدم ولهجته. */
-    const parts = [{ text: 'The user asked, verbatim: "' + String(prompt || '').slice(0, 500) + '".\n' + (sourceB64 ? 'The first image is what they sent; the second is the result you produced.' : 'The image is the result you produced.') + '\nReply in the SAME language and dialect as the user\'s request (Gulf Arabic if they wrote Gulf Arabic). Write: (1) one short sentence reporting exactly what changed in the result; (2) one question asking whether they like it and offering TWO concrete next options specific to this image, in the shape "هل أعجبتك؟ ولا أسوي لك … أو …؟". No markdown, no emojis, max 45 words total.' }];
+    // v-img-tafsir (طلب المالك: «تفسير بعد الصورة» يظهر مع كلّ صورة مرسومة):
+    // للصورة المولّدة (بلا مصدر) = تقرير «📋 تفسير الفكرة» يشرح ما رُسم؛ للتعديل
+    // (بمصدر) يبقى تقرير «ما تغيّر + هل أعجبتك؟» كما طلب المالك ٦ سبتمبر.
+    const __instr = sourceB64
+      ? 'Write: (1) one short sentence reporting exactly what changed in the result; (2) one question asking whether they like it and offering TWO concrete next options specific to this image, in the shape "هل أعجبتك؟ ولا أسوي لك … أو …؟". No markdown, max 45 words total.'
+      : 'Write a short report whose FIRST line is exactly "📋 تفسير الفكرة", then 3 to 4 lines each starting with "• " explaining, from what is actually visible in the image: the main elements and their meaning, and the idea/message behind the picture. Concise, no fluff, max 60 words total.';
+    const parts = [{ text: 'The user asked, verbatim: "' + String(prompt || '').slice(0, 500) + '".\n' + (sourceB64 ? 'The first image is what they sent; the second is the result you produced.' : 'The image is the result you produced.') + '\nReply in the SAME language and dialect as the user\'s request (Gulf Arabic if they wrote Gulf Arabic). ' + __instr }];
     if (sourceB64) parts.push({ inlineData: { mimeType: sourceMime || 'image/jpeg', data: sourceB64 } });
     parts.push({ inlineData: { mimeType: mime || 'image/png', data: b64 } });
     const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(12000),
-      body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0.4, maxOutputTokens: 400 } }), /* v-flash-budget: التفكير الافتراضي يلتهم السقف الصغير («قمت بت») */
+      // v-flash-nothink: gemini-flash يفكّر افتراضيًا فيلتهم maxOutputTokens كاملة
+      // ويرجّع finishReason=MAX_TOKENS بلا text (caption فارغ دائمًا). إيقاف
+      // التفكير (thinkingBudget:0) يحرّر السقف للنصّ الفعليّ.
+      body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0.4, maxOutputTokens: 400, thinkingConfig: { thinkingBudget: 0 } } }),
     });
-    if (!r.ok) return '';
+    if (!r.ok) { console.error('[maha-image] caption http=' + r.status); return ''; }
     const d = await r.json().catch(() => null);
-    return String((((((d || {}).candidates || [])[0] || {}).content || {}).parts || []).map((p) => p.text || '').join(' ')).trim().slice(0, 400);
+    const __txt = String((((((d || {}).candidates || [])[0] || {}).content || {}).parts || []).map((p) => p.text || '').join(' ')).trim().slice(0, 400);
+    if (!__txt) console.error('[maha-image] caption empty finish=' + ((((d || {}).candidates || [])[0] || {}).finishReason || '?'));
+    return __txt;
   } catch (e) { return ''; }
 }
 const { authorPrayerPlan } = require('./prayer-plan');
@@ -201,7 +212,7 @@ module.exports = async (req, res) => {
               { text: 'Answer with exactly one word, PLACE or OTHER. PLACE only if this image is a real camera photograph of a physical place: a room, interior, house or building exterior, garden, street, shop or venue. OTHER for designed graphics, cards, posters, banners, icons, illustrations, artwork, 3D renders, logos, screenshots, product shots and portraits of people.' },
               { inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } },
             ] }],
-            generationConfig: { temperature: 0, maxOutputTokens: 64 }, /* v-flash-budget */
+            generationConfig: { temperature: 0, maxOutputTokens: 64, thinkingConfig: { thinkingBudget: 0 } }, /* v-flash-nothink: التفكير كان يلتهم الـ64 كاملة فترجع null/false دائمًا */
           }),
         });
         const d = await r.json().catch(function () { return null; });
@@ -227,6 +238,24 @@ module.exports = async (req, res) => {
       ? stripRawImagePrefix(prompt).slice(0, 4000)
       : cleanImagePrompt(prayerPlan ? prayerPlan.visualBrief : prompt).slice(0, promptLimit);
     const extras = Array.isArray(extraImages) ? extraImages.filter((x) => x && x.data).slice(0, 5) : [];
+
+    // v-img-tafsir (طلب المالك «تفسير بعد الصورة»): مُرسِل موحّد لكل مسارات
+    // الصورة — يحسب caption (تفسير الفكرة/تقرير التعديل) ويضمّه دائمًا. كانت
+    // مسارات الإنقاذ الستّة (nano/openai الاحتياطية، openai-masked، dense)
+    // ترجع الصورة بلا caption، فإن كان المحرّك الأساسيّ غير متاح لمفتاح المالك
+    // مرّت كلّ الطلبات عبرها بلا أيّ تفسير.
+    async function sendImg(b64, mime, engine) {
+      const cap = prayerPlan ? '' : await imageCaption(apiKey, intentText || cleanPrompt, b64, mime || 'image/png', editImageBase64 || null, editMimeType || 'image/png');
+      res.status(200).json({
+        imageBase64: b64,
+        mimeType: mime || 'image/png',
+        caption: cap || undefined,
+        engine: engine,
+        authoredText: prayerPlan ? prayerPlan.prayerText : undefined,
+        visualPrompt: prayerPlan ? prayerPlan.visualBrief : undefined,
+        prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined,
+      });
+    }
 
     // 🧪 خط أنابيب الصور الجديد: يعمل فقط لتوليد جديد (لا تعديل، لا دعاء،
     // لا إعادة تصور، لا ترقية مشهد)، ومحمي خلف علم بيئة صريح كي لا يمسّ أي
@@ -370,7 +399,7 @@ module.exports = async (req, res) => {
               { text: 'Answer with exactly one word, YES or NO. YES only if this image is text-dense: a UI screenshot, app screen, document, menu, form, chart with many labels, or a poster whose main content is many words. NO for photos, people, places, products and scenes.' },
               { inlineData: { mimeType: editMimeType || 'image/png', data: editImageBase64 } },
             ] }],
-            generationConfig: { temperature: 0, maxOutputTokens: 64 }, /* v-flash-budget */
+            generationConfig: { temperature: 0, maxOutputTokens: 64, thinkingConfig: { thinkingBudget: 0 } }, /* v-flash-nothink: التفكير كان يلتهم الـ64 كاملة فترجع null/false دائمًا */
           }),
         });
         const d = await r.json().catch(function () { return null; });
@@ -475,7 +504,7 @@ module.exports = async (req, res) => {
     if (exactTextEdit) {
       const exactB64 = await openaiRescueImage();
       if (exactB64) {
-        res.status(200).json({ imageBase64: exactB64, mimeType: 'image/png', engine: 'openai-masked' });
+        await sendImg(exactB64, 'image/png', 'openai-masked');
         return;
       }
       await refundImageCharge();
@@ -515,7 +544,7 @@ module.exports = async (req, res) => {
       } else {
         const denseB64 = await openaiRescueImage();
         if (denseB64) {
-          res.status(200).json({ imageBase64: denseB64, mimeType: 'image/png', engine: 'openai', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined });
+          await sendImg(denseB64, 'image/png', 'openai');
           return;
         }
       }
@@ -560,12 +589,12 @@ module.exports = async (req, res) => {
         /* v-nano-pro-edit: فشل المحرّك الأساسي (برو غالبًا) ونجح نانو 2.5 — يُسجَّل في لوحة المالك بدل أن يختفي وراء نتيجة باهتة
            تشبه الشكوى الأصلية (مفتاح بلا برو، اسم موديل، 400 على الإعدادات…). */
         try { require('./log-error.js').logError('maha-image:primary-fallback', new Error(primaryModel + ' failed'), { model: primaryModel, status: upstream ? ('status=' + upstream.status) : 'no-response', creative: isCreativeEdit, detail: String((data && data.error && data.error.message) || '').slice(0, 160) }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
-        res.status(200).json({ imageBase64: nanoB64, mimeType: 'image/png', engine: 'gemini-nano-banana', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return;
+        await sendImg(nanoB64, 'image/png', 'gemini-nano-banana'); return;
       }
       const rescuedB64 = duoP ? await duoP : await openaiRescueImage();
       /* v-prayer-carry: الإنقاذ كان يفقد الدعاء المؤلَّف فيرفضه العميل
          (missing_authored_prayer — لقطة المالك). يُمرَّر مع الصورة المنقذة. */
-      if (rescuedB64) { res.status(200).json({ imageBase64: rescuedB64, mimeType: 'image/png', engine: 'openai', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
+      if (rescuedB64) { await sendImg(rescuedB64, 'image/png', 'openai'); return; }
       await refundImageCharge();
       const timedOut = isImageTimeoutError(imageResult.error);
       const retryable = timedOut || !!(upstream && (upstream.status === 429 || upstream.status >= 500));
@@ -583,9 +612,9 @@ module.exports = async (req, res) => {
       const nanoB64b = await geminiNanoBananaImage();
       if (nanoB64b) {
         try { require('./log-error.js').logError('maha-image:primary-fallback', new Error(primaryModel + ' returned no image part'), { model: primaryModel, status: 'no-image-part', creative: isCreativeEdit }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
-        res.status(200).json({ imageBase64: nanoB64b, mimeType: 'image/png', engine: 'gemini-nano-banana', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
+        await sendImg(nanoB64b, 'image/png', 'gemini-nano-banana'); return; }
       const rescuedB64b = duoP ? await duoP : await openaiRescueImage();
-      if (rescuedB64b) { res.status(200).json({ imageBase64: rescuedB64b, mimeType: 'image/png', engine: 'openai', authoredText: prayerPlan ? prayerPlan.prayerText : undefined, prayerTopic: prayerPlan ? prayerPlan.topicLabel : undefined }); return; }
+      if (rescuedB64b) { await sendImg(rescuedB64b, 'image/png', 'openai'); return; }
       await refundImageCharge();
       console.error('[maha-image] no image part in response: ' + JSON.stringify(data).slice(0, 2000));
       try { require('./log-error.js').logError('maha-image:no-image-part', new Error('gemini_no_image_part'), { nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue' }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
