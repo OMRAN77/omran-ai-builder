@@ -3995,7 +3995,7 @@ function __showImgLoading(el, ar, en){
       }
       if(__gOk){
         const __gm = __gData.mimeType || 'image/png';
-        cur.messages.push({ role: 'assistant', content: '' /* v666: بلا جملة فوق الصورة — طلب عمران */, attachments: [{ name: 'generated.png', isImage: true, mime: __gm, dataUrl: 'data:' + __gm + ';base64,' + __gData.imageBase64 }] });
+        cur.messages.push({ role: 'assistant', content: (typeof __gData.caption === 'string' && __gData.caption) ? __gData.caption : (lang === 'ar' ? 'تفضّل 👇' : 'Here you go 👇') /* v-caption-gen: أعاد المالك المحادثة بعد الصورة (كتطبيق Gemini) — نصّ مها من الخادم، يعكس v666 */, attachments: [{ name: 'generated.png', isImage: true, mime: __gm, dataUrl: 'data:' + __gm + ';base64,' + __gData.imageBase64 }] });
         cur.lastEditedImage = { b64: __gData.imageBase64, mime: __gm };
         cur.lastMsgWasImageEdit = true;
       } else {
