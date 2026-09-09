@@ -484,7 +484,9 @@ module.exports = async (req, res) => {
           const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + models[i] + ':generateContent?key=' + apiKey, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            signal: AbortSignal.timeout(90000),
+            /* v-nano-failfast: هذا المسار لا يعمل إلا بعد فشل المحرّك الأساسي؛
+               مهلة 30ث بدل 90ث توصلنا لخط الإنقاذ المجاني بسرعة بدل تجميد 90ث. */
+            signal: AbortSignal.timeout(30000),
             /* responseModalities:['IMAGE'] كي يرجّع صورة دائمًا لا نصًّا (سبب gemini_no_image_part) */
             body: JSON.stringify({ contents: [{ parts: parts }], generationConfig: { responseModalities: ['IMAGE'] } }),
           });
@@ -495,6 +497,31 @@ module.exports = async (req, res) => {
           if (img && img.inlineData.data) return img.inlineData.data;
           lastNanoErr = models[i] + ' no-image-part';
         } catch (e) { lastNanoErr = models[i] + ' ' + (e && e.message); }
+      }
+      return null;
+    }
+
+    // v-free-fallback (المالك: «لين ما خلص الرصيد» — يجب أن تُنتَج صورة حتى بلا
+    // رصيد مدفوع بدل 502 بعد تجميد طويل): Pollinations محرّك مجاني بلا مفتاح،
+    // توليد نصّي→صورة فقط (لا تحرير مصدر، ولا نصّ عربي دقيق). ملاذٌ أخير للتوليد
+    // الجديد بعد فشل المحرّكات المدفوعة. يُعطَّل بـIMAGE_FREE_FALLBACK=off.
+    let lastFreeErr = '';
+    async function freeFallbackImage() {
+      if (editImageBase64) { lastFreeErr = 'edit-unsupported'; return null; }
+      if (String(process.env.IMAGE_FREE_FALLBACK || 'on').toLowerCase() === 'off') { lastFreeErr = 'disabled'; return null; }
+      const dims = rescueAspect === '16:9' ? [1344, 768] : (rescueAspect === '1:1' ? [1024, 1024] : [768, 1024]);
+      const base = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(String(rescuePromptText).slice(0, 1800));
+      for (let i = 0; i < 2; i++) {
+        try {
+          const url = base + '?width=' + dims[0] + '&height=' + dims[1] + '&nologo=true&model=flux&seed=' + Math.floor(Math.random() * 1e9);
+          const r = await fetch(url, { signal: AbortSignal.timeout(45000) });
+          if (!r.ok) { lastFreeErr = 'pollinations status=' + r.status; continue; }
+          const ct = String(r.headers.get('content-type') || '');
+          if (!/^image\//.test(ct)) { lastFreeErr = 'pollinations non-image ' + ct.slice(0, 40); continue; }
+          const buf = Buffer.from(await r.arrayBuffer());
+          if (buf.length < 1500) { lastFreeErr = 'pollinations tiny ' + buf.length; continue; }
+          return { b64: buf.toString('base64'), mime: ct.split(';')[0].trim() || 'image/jpeg' };
+        } catch (e) { lastFreeErr = 'pollinations ' + (e && e.message ? String(e.message).slice(0, 80) : 'err'); }
       }
       return null;
     }
@@ -595,6 +622,14 @@ module.exports = async (req, res) => {
       /* v-prayer-carry: الإنقاذ كان يفقد الدعاء المؤلَّف فيرفضه العميل
          (missing_authored_prayer — لقطة المالك). يُمرَّر مع الصورة المنقذة. */
       if (rescuedB64) { await sendImg(rescuedB64, 'image/png', 'openai'); return; }
+      // v-free-fallback: فشل المحرّكان المدفوعان (غالبًا نفاد الرصيد) — نُنتج صورة
+      // مجانية بدل 502 كي لا يبقى المستخدم بلا نتيجة عند خلوّ الرصيد.
+      const freeImg = await freeFallbackImage();
+      if (freeImg) {
+        try { require('./log-error.js').logError('maha-image:free-fallback', new Error('paid engines failed — used free'), { gemini: upstream ? ('status=' + upstream.status) : 'no-response', nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue' }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
+        await sendImg(freeImg.b64, freeImg.mime, 'pollinations-free');
+        return;
+      }
       await refundImageCharge();
       const timedOut = isImageTimeoutError(imageResult.error);
       const retryable = timedOut || !!(upstream && (upstream.status === 429 || upstream.status >= 500));
@@ -602,7 +637,20 @@ module.exports = async (req, res) => {
       console.error('[maha-image] upstream image request failed after ' + imageResult.attempts + ' attempt(s)' + (upstream ? ' status=' + upstream.status : ''));
       // v-img-visible: يظهر السبب الحقيقي (رصيد/حصة/موديل) في لوحة المالك.
       try { require('./log-error.js').logError('maha-image:both-failed', new Error(errorCode), { gemini: upstream ? ('status=' + upstream.status) : 'no-response', nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue', attempts: imageResult.attempts }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
-      res.status(timedOut ? 504 : 502).json({ error: errorCode, retryable });
+      // v-img-diag (تشخيص مؤقّت — يُزال بعد كشف السبب): يكشف الحالة الحقيقية للمزوّد
+      // في ردّ الفشل نفسه (حالة برو + رسالة جوجل + سبب سقوط نانو/OpenAI + مهلة أم لا).
+      const __diag = process.env.IMG_DIAG === 'off' ? undefined : {
+        primaryModel: primaryModel,
+        gStatus: upstream ? upstream.status : 'no-response',
+        gErr: String((data && data.error && (data.error.status || data.error.message)) || '').slice(0, 200),
+        nano: (lastNanoErr || 'no-nano').slice(0, 120),
+        openai: (lastRescueErr || 'no-rescue').slice(0, 120),
+        free: (lastFreeErr || 'not-tried').slice(0, 120),
+        timedOut: timedOut,
+        attempts: imageResult.attempts,
+        errName: String((imageResult.error && imageResult.error.name) || ''),
+      };
+      res.status(timedOut ? 504 : 502).json({ error: errorCode, retryable, __diag });
       return;
     }
 
@@ -615,6 +663,8 @@ module.exports = async (req, res) => {
         await sendImg(nanoB64b, 'image/png', 'gemini-nano-banana'); return; }
       const rescuedB64b = duoP ? await duoP : await openaiRescueImage();
       if (rescuedB64b) { await sendImg(rescuedB64b, 'image/png', 'openai'); return; }
+      const freeImgB = await freeFallbackImage();
+      if (freeImgB) { await sendImg(freeImgB.b64, freeImgB.mime, 'pollinations-free'); return; }
       await refundImageCharge();
       console.error('[maha-image] no image part in response: ' + JSON.stringify(data).slice(0, 2000));
       try { require('./log-error.js').logError('maha-image:no-image-part', new Error('gemini_no_image_part'), { nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue' }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
