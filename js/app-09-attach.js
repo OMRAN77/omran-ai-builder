@@ -2100,6 +2100,7 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
       __m.attachments = [{ isImage: true, mime: (__genUrl.slice(5).split(';')[0] || __mime), dataUrl: __genUrl, name: 'image.png' }];
       // v-img-tafsir: «تفسير بعد الصورة» — تقرير قصير أسفل الصورة.
       if(typeof __d.caption === 'string' && __d.caption.trim()){ cur.messages.push({ role: 'assistant', content: __d.caption.trim() }); }
+      else if(!__overlayText){ cur.messages.push({ role: 'assistant', content: 'تفضّل صورتك ✨ تبي أعدّل الألوان، أو الأسلوب، أو أضيف تفاصيل؟ قل لي وش في بالك.' }); } /* v-caption-guaranteed: متابعة دائمة (عدا الدعاء) حتى لو غاب caption الخادم */
       try{ cur.lastEditedImage = { b64: __b64, mime: __mime }; cur.lastMsgWasImageEdit = true; }catch(e){ /* guard-ok — cleanup, intentional */ }
       // 🔄 نحفظ طلب التوليد ليعيده زر «نسخة ثانية» بتنويعة جديدة
       try{ window.__omranLastImageReq = { kind:'gen', promptText: promptText }; }catch(e){ __swallow(e, 'img:save-req-gen'); }
@@ -2181,7 +2182,7 @@ window.omranAnotherVersion = async function(){
     __m._loading = false;
     if(__res.ok && __data.imageBase64){
       const __outMime = __data.mimeType || 'image/png';
-      __m.content = (typeof __data.caption === 'string' ? __data.caption : '');
+      __m.content = (typeof __data.caption === 'string' && __data.caption) ? __data.caption : ((__data && typeof __data.authoredText === 'string' && __data.authoredText.trim()) ? '' : 'تفضّل ✨ نسخة ثانية جاهزة. تبي أعدّل شي فيها؟'); /* v-caption-guaranteed */
       __m.attachments = [{ name:'edited.png', isImage:true, mime:__outMime, dataUrl:'data:' + __outMime + ';base64,' + __data.imageBase64 }];
       cur.lastEditedImage = { b64: __data.imageBase64, mime: __outMime };
       cur.lastMsgWasImageEdit = true;
@@ -3870,7 +3871,7 @@ function __showImgLoading(el, ar, en){
         const __outMime = __data.mimeType || 'image/png';
         let __editUrl = 'data:' + __outMime + ';base64,' + __data.imageBase64;
         try{ __editUrl = await omranSharpenImage(__editUrl); }catch(e){ __swallow(e, 'img:sharpen-edit'); }
-        cur.messages.push({ role: 'assistant', content: (typeof __data.caption === 'string' ? __data.caption : '') /* v-nano-chat: جملة قصيرة مع الصورة */, attachments: [{ name: 'edited.png', isImage: true, mime: (__editUrl.slice(5).split(';')[0] || __outMime), dataUrl: __editUrl }] });
+        cur.messages.push({ role: 'assistant', content: ((typeof __data.caption === 'string' && __data.caption) ? __data.caption : 'تفضّل ✨ عدّلت الصورة. تبي أزيد تغييرات — ألوان، أو أسلوب، أو تفاصيل؟') /* v-nano-chat: جملة قصيرة مع الصورة · v-caption-guaranteed: متابعة دائمة */, attachments: [{ name: 'edited.png', isImage: true, mime: (__editUrl.slice(5).split(';')[0] || __outMime), dataUrl: __editUrl }] });
         // v-img-engine-tag: بصمة المحرك في شريط الحالة — يحسم «أي محرك نفّذ» فورًا.
         try{ if(window.__chatStatus) window.__chatStatus.note('🎨', (/openai/.test(String(__data.engine || '')) ? 'gpt-image' : (/pro/.test(String(__data.engine || '')) ? 'نانو بنانا برو' : 'نانو بنانا'))); }catch(e){ __swallow(e, 'ui:img-engine'); }
         cur.lastEditedImage = { b64: __data.imageBase64, mime: __outMime };
@@ -4077,6 +4078,8 @@ function __showImgLoading(el, ar, en){
         // v-img-tafsir: «تفسير بعد الصورة» — تقرير قصير أسفل الصورة (لا فوقها).
         if(typeof __gData.caption === 'string' && __gData.caption.trim()){
           cur.messages.push({ role: 'assistant', content: __gData.caption.trim() });
+        } else if(!(__gData && typeof __gData.authoredText === 'string' && __gData.authoredText.trim())){
+          cur.messages.push({ role: 'assistant', content: 'تفضّل صورتك ✨ تبي أعدّل الألوان، أو الأسلوب، أو أضيف تفاصيل؟ قل لي وش في بالك.' }); /* v-caption-guaranteed: متابعة دائمة (عدا الدعاء) */
         }
         cur.lastEditedImage = { b64: __gData.imageBase64, mime: __gm };
         cur.lastMsgWasImageEdit = true;
