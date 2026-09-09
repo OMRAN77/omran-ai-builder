@@ -12596,6 +12596,9 @@ async function postWithConfirm(url, payload){
   function isExplicitImageEdit(input){
     const source = String(input || '').trim();
     if(!source) return false;
+    // v-longtext-noimg: تعليمة تعديل صورة قصيرة دائمًا؛ نصّ طويل (قصّة/شرح) ليس
+    // أمر تعديل صورة مهما حوى «عدّل/غيّر/دعاء…». يمنع اختطاف النصوص الطويلة.
+    if(source.length > 220) return false;
     if(textStyleEdit(source) || parseImageTextSpec(source).wantsText) return true;
     if(/(?:نفس\s+(?:الصورة|الصوره)|هذه\s+(?:الصورة|الصوره)|هذي\s+(?:الصورة|الصوره)|هالصورة|هالصوره|الصورة\s+السابقة|الصوره\s+السابقه|(?:same|this|previous)\s+(?:image|picture))/i.test(source)) return true;
     const editVerb = /(?:^|[\s،,.!?؟])(?:عدل|عدّل|حرر|حرّر|غير|غيّر|بدل|بدّل|احذف|امسح|ازل|أزل|شيل|أضف|اضف|ضيف|حط|اكتب|أكتب|خل|خلي|خلّي|اجعل|سو|سوي|سوّي|حول|حوّل|زيد|قص|كبر|كبّر|صغر|صغّر)(?=$|[\s،,.!?؟]|ها)/i.test(source) || /\b(?:edit|change|modify|remove|delete|add|put|write|resize)\b/i.test(source);
@@ -12605,6 +12608,11 @@ async function postWithConfirm(url, payload){
   }
   function autoPrayerSpec(input){
     const source = String(input || '').trim();
+    // v-longtext-noimg (بلاغ المالك المتكرر «قصّة نوح ما ترد»): نصّ طويل ملصوق
+    // (قصّة/شرح فيه «دعا»/«شعر») ليس طلب «صورة دعاء» — كان يُصنَّف wantsText=true
+    // فيُختطف لمسار توليد صورة النصّ بدل المحادثة. أي نصّ >220 حرفًا لا يُعامَل
+    // كطلب تأليف صورة إطلاقًا. الطلبات الحقيقية قصيرة («صورة فيها دعاء الجمعة»).
+    if(source.length > 220) return null;
     if(!/(?:^|[\s،,.!?؟])(?:دعا[ءدهً]?|[أا]دعي[ةه]|شعر|قصيدة|كلام\s+(?:غزل|رومانسي)|غزل|prayer|poem|romantic\s+words?)(?=$|[\s،,.!?؟:：\-–—])/i.test(source)) return null;
     // «النص: دعاء...» أو «اكتب كلمة دعاء» يعني نصًا حرفيًا، لا طلب تأليف.
     if(/(?:النص|العبارة|الكلام|الكلمة|كلمة|text|words?)\s*(?:هو|is)?\s*[:：\-–—]?\s*(?:دعا[ءدهً]?|شعر|قصيدة|غزل|prayer|poem)(?=$|[\s،,.!?؟])/i.test(source)) return null;
@@ -12626,6 +12634,11 @@ async function postWithConfirm(url, payload){
   function authorVisual(source, kind){ return visualCore(source) || fallbackVisual(kind, null); }
   function parseImageTextSpec(input){
     const source = String(input || '').replace(/\r\n?/g, '\n');
+    // v-longtext-noimg (بلاغ المالك «قصّة نوح ما ترد»): نصّ طويل ملصوق ليس طلب
+    // «صورة عليها نصّ». علامات مثل علامات الاقتباس أو «فيها/عليها» داخل قصّة
+    // كانت تُرجع wantsText=true فيُختطف النصّ لمسار توليد صورة النصّ بدل المحادثة.
+    // طلب الكتابة على صورة دائمًا قصير؛ أي نصّ >400 حرف = لا صورة، محادثة عادية.
+    if(source.length > 400) return { wantsText:false, exactText:null, visualPrompt:source.trim(), fontKey:'default', color:'#ffffff', position:'bottom', styleEditLoose:null };
     const styleEdit = textStyleEdit(source), autoPrayer = styleEdit ? null : autoPrayerSpec(source), marker = autoPrayer ? null : findTextMarker(source); if(styleEdit) return { wantsText:false, exactText:null, visualPrompt:'', styleEdit, styleEditLoose:styleEdit };
     if(!marker) return autoPrayer ? { wantsText:true, exactText:null, visualPrompt:authorVisual(source, autoPrayer.kind), visualEdit:visualCore(source) || null, prayerRequest:autoPrayer.request, fontKey:textFont(source), color:textColor(source), position:(/(?:يمين|right)/i.test(source)?'right-':/(?:يسار|left)/i.test(source)?'left-':'')+textPosition(source), positionAuto:!positionExplicit(source), kind:autoPrayer.kind, autoAuthored:true } : { wantsText:false, exactText:null, visualPrompt:source.trim(), fontKey:'default', color:'#ffffff', position:'bottom', styleEditLoose:textStyleEditLoose(source) };
     const literalPrayerText = /(?:النص|العبارة|الكلام|الكلمة|كلمة|text|words?)\s*(?:هو|is)?\s*[:：\-–—]?\s*(?:دعا[ءدهً]?|prayer|du[’']?a)(?=$|[\s،,.!?؟])/i.test(source.slice(marker.index));
