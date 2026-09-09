@@ -6355,10 +6355,16 @@ function renderMessages(keepScroll){
         const layout = localStorage.getItem('askAllLayout') || 'horizontal';
         compareGroup = document.createElement('div');
         compareGroup.className = 'ask-all-compare-row';
+        /* v664 — «مافي أي رد» (شكوى عمران ٩ سبتمبر): #messages عمود flex، وهذا
+           الصفّ وحده يحمل overflow-x:auto فيفقد حماية min-height:auto، فيصبح
+           العنصر الوحيد القابل للضغط في العمود؛ فمتى طالت المحادثة عن الشاشة
+           امتصّ الفائض وانهار ارتفاعه إلى الحشو (٦ بكسل) وقصّ الردّ كاملًا
+           (قياس حيّ: فقاعة ٤٥٤ بكسل و٦١٦ حرفًا داخل صفّ ارتفاعه ٦). flex-shrink:0
+           يمنع الضغط فقط — لا يمسّ منطقًا ولا تصميمًا ولا مزوّدًا. */
         if(layout === 'vertical'){
-          compareGroup.style.cssText = 'display:flex; flex-direction:column; gap:10px; max-width:100%; padding-bottom:6px; align-items:stretch;';
+          compareGroup.style.cssText = 'display:flex; flex-direction:column; gap:10px; max-width:100%; padding-bottom:6px; align-items:stretch; flex-shrink:0;';
         } else {
-          compareGroup.style.cssText = 'display:flex; gap:10px; overflow-x:auto; max-width:100%; padding-bottom:6px; align-items:flex-start; scroll-snap-type:x proximity;';
+          compareGroup.style.cssText = 'display:flex; gap:10px; overflow-x:auto; max-width:100%; padding-bottom:6px; align-items:flex-start; scroll-snap-type:x proximity; flex-shrink:0;';
         }
         messagesEl.appendChild(compareGroup);
       }
