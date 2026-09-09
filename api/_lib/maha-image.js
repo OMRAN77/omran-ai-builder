@@ -602,7 +602,19 @@ module.exports = async (req, res) => {
       console.error('[maha-image] upstream image request failed after ' + imageResult.attempts + ' attempt(s)' + (upstream ? ' status=' + upstream.status : ''));
       // v-img-visible: يظهر السبب الحقيقي (رصيد/حصة/موديل) في لوحة المالك.
       try { require('./log-error.js').logError('maha-image:both-failed', new Error(errorCode), { gemini: upstream ? ('status=' + upstream.status) : 'no-response', nano: lastNanoErr || 'no-nano', openai: lastRescueErr || 'no-rescue', attempts: imageResult.attempts }); } catch (e) { /* التسجيل لا يعطّل الرد */ }
-      res.status(timedOut ? 504 : 502).json({ error: errorCode, retryable });
+      // v-img-diag (تشخيص مؤقّت — يُزال بعد كشف السبب): يكشف الحالة الحقيقية للمزوّد
+      // في ردّ الفشل نفسه (حالة برو + رسالة جوجل + سبب سقوط نانو/OpenAI + مهلة أم لا).
+      const __diag = process.env.IMG_DIAG === 'off' ? undefined : {
+        primaryModel: primaryModel,
+        gStatus: upstream ? upstream.status : 'no-response',
+        gErr: String((data && data.error && (data.error.status || data.error.message)) || '').slice(0, 200),
+        nano: (lastNanoErr || 'no-nano').slice(0, 120),
+        openai: (lastRescueErr || 'no-rescue').slice(0, 120),
+        timedOut: timedOut,
+        attempts: imageResult.attempts,
+        errName: String((imageResult.error && imageResult.error.name) || ''),
+      };
+      res.status(timedOut ? 504 : 502).json({ error: errorCode, retryable, __diag });
       return;
     }
 
