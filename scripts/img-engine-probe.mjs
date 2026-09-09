@@ -25,14 +25,26 @@ async function gen(label, prompt) {
   } catch (e) { console.log('❌ ' + label + ': FAIL ' + String(e.message).slice(0, 80)); return {}; }
 }
 
-console.log('BASE=' + BASE + ' @ ' + new Date().toISOString());
-// عيّنات متتابعة: نميّز بين إرهاق حصّة دائم (كل المحاولات busy) وارتفاع حِمل لحظي.
-const prompts = [
-  'منظر جبلي واقعي عالي الجودة مع بحيرة',
-  'قط صغير أبيض يجلس على سجادة حمراء، إضاءة ناعمة، واقعي',
-  'كوب قهوة على طاولة خشبية بجانب نافذة، ضوء الصباح، واقعي',
-];
-for (let i = 0; i < prompts.length; i++) {
-  await gen('عيّنة ' + (i + 1), prompts[i]);
+// يتحقّق أن محرّك Pollinations المجاني (بلا مفتاح) يرجّع صورة فعلية — إثبات أن
+// خط الإنقاذ المجاني الجديد سيعمل حتى مع خلوّ الرصيد المدفوع.
+async function freeCheck(label, prompt) {
+  const t0 = Date.now();
+  try {
+    const url = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(prompt)
+      + '?width=768&height=1024&nologo=true&model=flux&seed=' + Math.floor(Math.random() * 1e9);
+    const r = await fetch(url, { signal: AbortSignal.timeout(45000) });
+    const ms = Date.now() - t0;
+    const ct = String(r.headers.get('content-type') || '');
+    let bytes = 0;
+    if (r.ok && /^image\//.test(ct)) { bytes = (await r.arrayBuffer()).byteLength; }
+    console.log((bytes > 1500 ? '✅' : '❌') + ' ' + label + ': status=' + r.status + ' ' + ms + 'ms'
+      + ' | content-type=' + (ct || '—') + ' | bytes=' + bytes);
+  } catch (e) { console.log('❌ ' + label + ': FAIL ' + String(e.message).slice(0, 80)); }
 }
+
+console.log('BASE=' + BASE + ' @ ' + new Date().toISOString());
+// المحرّكات المدفوعة على الإنتاج (قد تكون 502 عند خلوّ الرصيد).
+await gen('مدفوع', 'منظر جبلي واقعي عالي الجودة مع بحيرة');
+// المحرّك المجاني مباشرةً — إثبات أنه ينتج صورة بلا مفتاح ولا رصيد.
+await freeCheck('مجاني', 'a realistic high quality mountain landscape with a lake, soft light');
 console.log('PROBE DONE');
