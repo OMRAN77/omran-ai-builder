@@ -18,7 +18,13 @@ async function imageCaption(apiKey, prompt, b64, mime, sourceB64, sourceMime) {
     if (!apiKey || String(process.env.IMAGE_CAPTION || 'on').toLowerCase() === 'off') return '';
     /* v-caption-report (المالك ٦ سبتمبر: «بعد التعديل يكتب تقرير مختصر ويسأل إذا عجبك ولا أسوي لك كذا ولا كذا»): تقرير من
        جملة عمّا تغيّر فعلًا، ثم سؤال «هل أعجبتك؟» مع خيارين ملموسين للخطوة التالية خاصّين بهذه الصورة، بلغة المستخدم ولهجته. */
-    const parts = [{ text: 'The user asked, verbatim: "' + String(prompt || '').slice(0, 500) + '".\n' + (sourceB64 ? 'The first image is what they sent; the second is the result you produced.' : 'The image is the result you produced.') + '\nReply in the SAME language and dialect as the user\'s request (Gulf Arabic if they wrote Gulf Arabic). Write: (1) one short sentence reporting exactly what changed in the result; (2) one question asking whether they like it and offering TWO concrete next options specific to this image, in the shape "هل أعجبتك؟ ولا أسوي لك … أو …؟". No markdown, no emojis, max 45 words total.' }];
+    // v-img-tafsir (طلب المالك: «تفسير بعد الصورة» يظهر مع كلّ صورة مرسومة):
+    // للصورة المولّدة (بلا مصدر) = تقرير «📋 تفسير الفكرة» يشرح ما رُسم؛ للتعديل
+    // (بمصدر) يبقى تقرير «ما تغيّر + هل أعجبتك؟» كما طلب المالك ٦ سبتمبر.
+    const __instr = sourceB64
+      ? 'Write: (1) one short sentence reporting exactly what changed in the result; (2) one question asking whether they like it and offering TWO concrete next options specific to this image, in the shape "هل أعجبتك؟ ولا أسوي لك … أو …؟". No markdown, max 45 words total.'
+      : 'Write a short report whose FIRST line is exactly "📋 تفسير الفكرة", then 3 to 4 lines each starting with "• " explaining, from what is actually visible in the image: the main elements and their meaning, and the idea/message behind the picture. Concise, no fluff, max 60 words total.';
+    const parts = [{ text: 'The user asked, verbatim: "' + String(prompt || '').slice(0, 500) + '".\n' + (sourceB64 ? 'The first image is what they sent; the second is the result you produced.' : 'The image is the result you produced.') + '\nReply in the SAME language and dialect as the user\'s request (Gulf Arabic if they wrote Gulf Arabic). ' + __instr }];
     if (sourceB64) parts.push({ inlineData: { mimeType: sourceMime || 'image/jpeg', data: sourceB64 } });
     parts.push({ inlineData: { mimeType: mime || 'image/png', data: b64 } });
     const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' + apiKey, {
