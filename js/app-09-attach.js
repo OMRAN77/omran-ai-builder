@@ -2597,38 +2597,6 @@ function __friendlyErr(e){
   window.__chatStatus = chatStatus;
   anchorLastUserMsgTop(thinkingDiv);
 
-  /* 🫧 v-stream-keep (عطل المالك «النص الطويل: لا رد ولا حتى ✍️ يكتب»):
-     فقاعة البثّ وشريط الحالة كلاهما داخل messagesEl، وكلّ إعادة رسم للمحادثة
-     تبدأ بـ messagesEl.innerHTML='' (renderMessages) — فتُفصَل الفقاعة وسط ردّ
-     طويل، ومؤقّت الحركة يرى isConnected=false فيستنزف البثّ بصمتٍ تامّ: لا نصّ،
-     ولا «يكتب»، ولا خطأ. الردّ القصير ينتهي قبل أي إعادة رسم فينجو؛ الطويل
-     (٢٨–٤٣ث) تمرّ عليه واحدة على الأقلّ (المزامنة الدوريّة كلّ ٢٠ث + ١٠٤ مستدعيًا).
-     الحارس هنا لا يمنع إعادة الرسم — يعيد إلحاق الفقاعة بعدها في موضعها الصحيح
-     (آخر القائمة) طول ما الدور جارٍ، فتبقى الكتابة والحالة مرئيّتين.
-     يعمل من قبل أوّل حرف (حيث لا مؤقّت حركة بعد) وحتّى نهاية الدور، ويتوقّف
-     ذاتيًّا بعد ٦ دقائق (أطول من الحارس الصلب) حتّى لو لم يمرّ الدور بـfinally. */
-  window.__streamBubble = thinkingDiv;
-  window.__streamLive = true;
-  window.__streamReattached = 0;
-  const __streamKeepT0 = Date.now();
-  const __streamKeepTimer = setInterval(() => {
-    try{
-      if(!window.__streamLive || Date.now() - __streamKeepT0 > 360000){
-        clearInterval(__streamKeepTimer);
-        return;
-      }
-      if(thinkingDiv && !thinkingDiv.isConnected && messagesEl){
-        messagesEl.appendChild(thinkingDiv);
-        window.__streamReattached++;
-      }
-    }catch(e){ /* guard-ok — الحارس ترفٌ لا يُسقط ردًّا */ }
-  }, 250);
-  const __streamKeepStop = () => {
-    window.__streamLive = false;
-    try{ clearInterval(__streamKeepTimer); }catch(e){ /* guard-ok */ }
-    window.__streamBubble = null;
-  };
-
   // A "continue with this only" selection (one or more providers picked from a
   // previous ask-all round) always takes priority: it lets the user keep
   // chatting with a custom subset of providers without needing to re-check
@@ -5016,17 +4984,7 @@ DESIGN RULES (non-negotiable):
         if(__live.timer) return;
         __live.timer = setInterval(() => {
           // الفقاعة أُزيلت (إيقاف/خطأ) → الحركة تنتهي بصمت ولا تعلّق شيئًا.
-          /* v-stream-keep: الفقاعة قد تُفصَل بإعادة رسم (innerHTML='') لا بإيقاف —
-             وكان الفصل يُنهي الحركة بصمتٍ تامّ فيضيع ردّ وصل فعلًا. نعيد إلحاقها
-             ونكمل؛ ولا ننهي بصمت إلّا إن تعذّرت الإعادة (القائمة نفسها ذهبت). */
-          if(!thinkingDiv.isConnected){
-            let __back = false;
-            try{
-              if(messagesEl){ messagesEl.appendChild(thinkingDiv); __back = thinkingDiv.isConnected; }
-            }catch(e){ /* guard-ok — تُعالَج بالسقوط أدناه */ }
-            if(__back){ window.__streamReattached = (window.__streamReattached || 0) + 1; }
-            else { __live.shown = __live.target.length; __live.done = true; }
-          }
+          if(!thinkingDiv.isConnected){ __live.shown = __live.target.length; __live.done = true; }
           if(__live.shown < __live.target.length){
             const left = __live.target.length - __live.shown;
             /* v-reveal-quick (شكوى المالك: «الردود بطيئة جدًا»): وتيرة ٦٦ حرفًا
@@ -5134,7 +5092,7 @@ DESIGN RULES (non-negotiable):
         let __ct = null;
         if(__toolsWillRun){
           try{ __ct = await window.callChatWithTools(apiMessages.filter(m => !m.__static), onDelta, __effProv); }
-          catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; try{ window.__diagTurn.toolsErr = String((e && (e.name + ': ' + e.message)) || e || '').slice(0, 180); window.__diagTurn.path = 'tools-failed→fallback'; }catch(_){ /* guard-ok — سطر تشخيص اختياريّ؛ فشله لا يُسقط الهبوط للاحتياط */ } __swallow(e, 'chat:tools'); }
+          catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; try{ window.__diagTurn.toolsErr = String((e && (e.name + ': ' + e.message)) || e || '').slice(0, 180); window.__diagTurn.path = 'tools-failed→fallback'; }catch(_){ } __swallow(e, 'chat:tools'); }
           /* v-tools-team (شكوى المالك «خربت الدنيا بخصوص الأخبار»): فشل مزود
              الأدوات الأول (مثال: رصيد كلود نفد) كان يهبط فورًا للمسار القديم
              بلا بحث حي، فيؤلف البديل أخبارًا من خياله (فهم «العالمي» نادي
@@ -5248,7 +5206,6 @@ DESIGN RULES (non-negotiable):
       cur.messages.push({role: 'assistant', content: '⚠️ ' + __friendlyErr(err)});
     }
   }finally{
-    __streamKeepStop();  // v-stream-keep: يُسقَط قبل أيّ إعادة رسم نهائيّة حتى لا تُعاد الفقاعة بعد إزالتها
     __omranDisarmWatchdog();  // v586
     const __keepReaderPosition = !document.documentElement.classList.contains('mobile-ui') && typeof chatIsNearBottom === 'function' ? !chatIsNearBottom() : false;
     genAbortController = null;
@@ -5257,20 +5214,6 @@ DESIGN RULES (non-negotiable):
     sendBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>' /* v-send-plane: سهم الإرسال طائرة ورقية كما في صورة المالك */;
     saveState();
     renderAll(__keepReaderPosition);
-    /* 🛟 v-stream-rescue (نفس العطل): نصّ وصل من البثّ ولم يُثبَّت كرسالة —
-       أيّ انقطاع في مسار الرسم كان يُضيّعه صامتًا فيرى المستخدم «لا ردّ» رغم
-       وصول الجواب. إن انتهى الدور وآخر رسالة لا تزال رسالة المستخدم، نثبّت
-       النصّ الواصل كردٍّ. المسار الناجح والإيقاف والخطأ كلّها تدفع رسالة مساعد
-       قبل هنا، فلا تكرار. */
-    try{
-      const __rescueLast = cur.messages[cur.messages.length - 1];
-      const __rescueTxt = String(__lastStreamPartial || '').trim();
-      if(__rescueTxt && __rescueLast && __rescueLast.role === 'user'){
-        cur.messages.push({ role: 'assistant', content: __rescueTxt, askAllReply: false, _rescued: true });
-        saveState();
-        renderAll(__keepReaderPosition);
-      }
-    }catch(e){ __swallow(e, 'ui:stream-rescue'); }
     /* v-diag-turn: لو انتهى الدور بلا رد ظاهر (لا نصّ ولا كود ولا مرفق) وليس
        إيقافًا من المستخدم — نعرض سطر تشخيص فيه سبب الغياب الحقيقي. مؤقّت للتشخيص. */
     try{
@@ -5286,7 +5229,6 @@ DESIGN RULES (non-negotiable):
           + '• الوقت: ' + Math.round((Date.now() - (__d.t0 || Date.now())) / 1000) + ' ثانية\n'
           + '• خطأ مسار الأدوات: ' + ((__d.toolsErr || '').slice(0, 200) || 'لا يوجد') + '\n'
           + '• الخطأ النهائي: ' + ((__d.err || '').slice(0, 200) || 'لا يوجد') + '\n'
-          + '• إعادة إلحاق فقاعة البثّ: ' + (window.__streamReattached || 0) + ' مرّة\n'
           + '(طول>0 بلا ظهور = عطل عرض · طول «لم يصل» = المزوّد لم يرجّع · خطأ مهلة/idle = انقطاع الاتصال)' });
         renderAll(__keepReaderPosition);
       }

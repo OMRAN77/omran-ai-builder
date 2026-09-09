@@ -93,9 +93,7 @@ check(chatServer.includes('const system = quietSocialTurn') && chatServer.includ
 check(chatServer.includes('tools: toolTurn ? TOOLS : undefined'), 'الأدوات تُمرَّر خلف toolTurn لا دائمًا');
 // v-chat-tools: قائمة الكلمات (TOOL_INTENT_RE) حجبت البحث عن «توقيت الصلاة في عجمان»
 // — قِيس بالمِجسّ ردٌّ بلا بحث يطلب التاريخ. القرار الآن للنموذج في كل دور غير اجتماعي.
-// v-test-tolerant: الشرط تمدّد لاحقًا بـ«&& !__analyzeDoc» (تحليل وثيقة لا يحتاج
-// أدوات) فصار الاختبار يفشل على كودٍ صحيح. نتحقّق من الأساس لا من الصيغة الحرفيّة.
-check(/const toolTurn = !quietSocialTurn\b/.test(chatServer), 'كل دور غير اجتماعي يحمل الأدوات والتاريخ والموقع');
+check(chatServer.includes('const toolTurn = !quietSocialTurn;'), 'كل دور غير اجتماعي يحمل الأدوات والتاريخ والموقع');
 check(!chatServer.includes('TOOL_INTENT_RE.test('), 'قائمة الكلمات البيضاء التي حجبت البحث أزيلت');
 check(chatServer.includes('countryNote(country, city)'), 'مدينة المستخدم تدخل توجيه الموقع');
 // v-no-region-assume (قرار المالك «يذكر المنطقة وأنا لست فيها»): مدينة الشبكة تلميح

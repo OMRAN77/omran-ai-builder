@@ -52,10 +52,7 @@ async function sw(vHash) {
   r.status === 200 ? ok('/sw.js → 200') : no(`/sw.js → ${r.status}`);
   /javascript/i.test(head(r, 'content-type')) ? ok('نوع المحتوى javascript') : no('نوع المحتوى ' + head(r, 'content-type'));
   const src = await r.text();
-  // v-smoke-cachehash: القيمة تحمل بصمة الحزمة ثمّ وسمًا يدويًّا قديمًا
-  // (force-refresh-<بصمة>-<وسم>)، وكان التثبيت على الاقتباس يقرأ الوسم الأخير
-  // فيصرخ أحمر زورًا على كل نشرة. البصمة هي الأولى — وهي ما يحدّثه build.mjs.
-  const cm = src.match(/CACHE_NAME\s*=\s*['"][^'"]*?([0-9a-f]{8})/);
+  const cm = src.match(/CACHE_NAME\s*=\s*['"][^'"]*?([0-9a-f]{8})['"]/);
   if (cm && vHash) cm[1] === vHash ? ok('إصدار الذاكرة يطابق index') : no(`ذاكرة ${cm[1]} ≠ index ${vHash}`);
   // تُجرَّد التعليقات أوّلًا: قائمة sw.js تذكر داخل تعليقٍ مسارًا قديمًا
   // خاطئًا، ولولا التجريد لحسبه هذا الفحص أصلًا مفقودًا فصرخ زورًا.
