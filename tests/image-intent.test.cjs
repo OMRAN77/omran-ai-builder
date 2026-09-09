@@ -88,7 +88,7 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(maha, /sourceIsRealPlacePhoto/);
   assert.match(maha, /if \(__place !== true\) \{ isSceneUpgrade = false; isElevate = true; \}/);
   assert.match(maha, /if \(!nanoPrimary\) delete cfg\.temperature;/);
-  assert.match(maha, /logError\('maha-image:primary-fallback'/);
+  assert.match(maha, /logError(?:AndFlush)?\('maha-image:primary-fallback'/);
   /* الحارس يعمل على كل تعديل الآن: الأسلوب/الترقية/الفكرة المختلفة لا تُرفض لتغيير الوسيط، والهوية مفروضة */
   assert.match(maha, /allowStyleChange: explicitlyRequestsStyleChange\(cleanPrompt\) \|\| isRestyle \|\| isReimagine \|\| isElevate,/);
   assert.match(maha, /allowBroadChange: isSceneUpgrade \|\| isElevate \|\| isReimagine \|\| isRestyle,/);
@@ -156,7 +156,7 @@ test('server reads the intent from the user\'s own words and sends creative edit
     const caps = (src.match(/maxOutputTokens: (\d+)/g) || []).map(x => parseInt(x.split(': ')[1], 10));
     assert.ok(caps.length > 0 && caps.every(c => c >= 64), f + ': ' + caps.join(','));
   }
-  assert.match(maha, /maxOutputTokens: 400 \} \}\), \/\* v-flash-budget/);
+  assert.match(maha, /maxOutputTokens: 400, thinkingConfig: \{ thinkingBudget: 0 \} \} \}\)/);
   const llm = require('../api/_lib/image-intent-llm');
   assert.deepEqual(llm.parseIntentReply('{"lane":"reimagine","confidence":0.92}'), { lane: 'reimagine', confidence: 0.92 });
   assert.deepEqual(llm.parseIntentReply('```json\n{"lane":"elevate","confidence":0.8}\n```'), { lane: 'elevate', confidence: 0.8 });
@@ -227,13 +227,13 @@ test('both chat clients forward the user\'s words and the tool path never loses 
   for (const t of ['شيل الاسم كامل', 'احذف النص']) assert.equal(__textSwapIntent(t), false, t);
   for (const t of ['شيل الاسم وحط عمران', 'غير حرف م حط ع', 'بدل التاريخ بدل 28 حط 12', 'شيل حرف م وحط ع']) assert.equal(__textSwapIntent(t), true, t);
   for (const t of ['كيف أطبع هذي الشاشة', 'وش هذا الخطأ', 'ترجم الصورة']) assert.ok(!creativeRe.test(t), t);
-  assert.match(chatTools, /window\.__chatLastUserText = String\(ut \|\| ''\)\.replace\(.*\)\.trim\(\)\.slice\(0, 600\)/);
+  assert.match(chatTools, /window\.__chatLastUserText = String\(ut \|\| ''\)\.slice\(0, 800\)\.replace\(.*\)\.trim\(\)\.slice\(0, 600\)/);
   assert.match(tools, /userText: String\(\(args && args\.userText\) \|\| window\.__chatLastUserText \|\| ''\)\.replace\(.*\)\.slice\(0, 600\)/);
   assert.match(tools, /cur\.lastEditedImage\.b64\) \{ srcB64 = cur\.lastEditedImage\.b64/);
   assert.match(chat, /engine:\\s\*nano-pro/);
   /* الخادم يمرّر كلمات المستخدم مع أمر الأداة (يعمل حتى مع حزمة عميل قديمة)، ويعرّف النموذج بـedit_image في دور فيه صورة */
-  assert.match(chat, /if \(cb\.name === 'generate_image'\) \{ input\.userText = String\(lastUserText \|\| ''\)\.replace\(.*\)\.slice\(0, 600\)/);
-  assert.match(chat, /if \(cb\.name === 'edit_image'\) \{ input\.userText = String\(lastUserText \|\| ''\)\.replace\(.*\)\.slice\(0, 600\)/);
+  assert.match(chat, /if \(cb\.name === 'generate_image'\) \{ input\.userText = String\(lastUserText \|\| ''\)\.slice\(0, 800\)\.replace\(.*\)\.slice\(0, 600\)/);
+  assert.match(chat, /if \(cb\.name === 'edit_image'\) \{ input\.userText = String\(lastUserText \|\| ''\)\.slice\(0, 800\)\.replace\(.*\)\.slice\(0, 600\)/);
   assert.match(chat, /const IMAGE_TURN_NOTE = lastUserHasImage/);
   assert.match(chat, /ownerKnowledge \+ IMAGE_TURN_NOTE/);
   assert.match(chat, /edit_image لأي تغيير أو ترقية أو نسخة أقوى/);

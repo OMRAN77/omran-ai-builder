@@ -27,9 +27,9 @@ test('maha-image retries once with the missing part and accepts the retry only i
   assert.match(maha, /if \(!__rc2 \|\| __rc2\.applied !== false\) \{ imgPart = __fixImg; duoEngine = \(duoEngine \|\| 'gemini'\) \+ '\+fix'; \}/);
   /* الفحص بعد الحكم/المرشّح الثاني وقبل التعليق */
   assert.ok(maha.indexOf('const __rc = await verifyRequestApplied') > maha.indexOf("duoEngine = 'gemini x2+judge'"));
-  assert.ok(maha.indexOf('const __rc = await verifyRequestApplied') < maha.indexOf("const caption = prayerPlan ? '' : await imageCaption("));
+  assert.ok(maha.indexOf('const __rc = await verifyRequestApplied') < maha.indexOf('await sendImg(imgPart.inlineData.data'));
   /* v-caption-report: تقرير مختصر + «هل أعجبتك؟ ولا أسوي لك … أو …؟» بلغة المستخدم، من كلماته الحرفية */
   assert.match(maha, /one short sentence reporting exactly what changed in the result; \(2\) one question asking whether they like it and offering TWO concrete next options specific to this image/);
   assert.match(maha, /Gulf Arabic if they wrote Gulf Arabic/);
-  assert.match(maha, /const caption = prayerPlan \? '' : await imageCaption\(apiKey, intentText \|\| cleanPrompt,/);
+  assert.match(maha, /const cap = prayerPlan \? '' : await imageCaption\(apiKey, intentText \|\| cleanPrompt,/);
 });

@@ -207,7 +207,7 @@ console.log('  ✓ v-physical-design: التصميم يُرى قبل أن يُق
 // ⑳ v-maha-image-rescue: مولد صور المحادثة بخط إنقاذ تاسع + لا خطف لطلبات صورة التصميم.
 const mahaImgSrv = fs.readFileSync(path.join(__dirname, '../api/_lib/maha-image.js'), 'utf8');
 assert.ok(mahaImgSrv.includes('v-maha-image-rescue') && mahaImgSrv.includes('openaiRescueImage'), 'إنقاذ gpt-image-1 موجود');
-assert.ok(mahaImgSrv.includes("engine: 'openai'") && mahaImgSrv.includes('v-prayer-carry'), 'الإنقاذ يرد صورة بنفس العقد ومعها الدعاء المؤلف');
+assert.ok(mahaImgSrv.includes("await sendImg(rescuedB64, 'image/png', 'openai')") && mahaImgSrv.includes('v-prayer-carry'), 'الإنقاذ يرد صورة بنفس العقد (sendImg) ومعها الدعاء المؤلف');
 const attachCli20 = fs.readFileSync(path.join(__dirname, '../js/app-09-attach.js'), 'utf8');
 assert.ok(attachCli20.includes('__designCtxRe') && attachCli20.includes('!__designCtxRe.test(text)'), 'طلب صورة التصميم لا يُخطف للبحث');
 const agentTools20 = fs.readFileSync(path.join(__dirname, '../js/app-17-agent-tools.js'), 'utf8');
@@ -420,7 +420,7 @@ console.log('  ✓ v-edu-split: تحليل المحاضرة بنصف الزمن 
 {
   const eduT = fs.readFileSync(path.join(__dirname, '../api/edu.js'), 'utf8');
   assert.ok(!eduT.includes('AbortSignal.timeout(120000)'), 'لا مهلة 120ث أقصر من التوليد المسموح');
-  assert.ok(eduT.split('AbortSignal.timeout(280000)').length >= 5, 'كل نداءات أنثروبيك على مهلة 280ث');
+  assert.ok(eduT.includes('AbortSignal.timeout(timeoutMs || 280000)'), 'كل نداءات أنثروبيك على مهلة 280ث عبر مُوحِّد sendClaude');
   // v-edu-budget: 9000 كانت تبتر الصفحة («تجربة غير مكتملة») — 14000 تحت مهلة 280ث.
   assert.ok(eduT.includes('baseMsgs, 14000') && !eduT.includes('max_tokens: 16000'), 'مخرجات التجربة الحية ضمن حدود المهلة');
   assert.ok(eduT.includes('v-edu-timeouts') && eduT.includes('التوليد أخذ وقتًا أطول من المتوقع'), 'المهلة تُشرح بالعربي المطمئن');
