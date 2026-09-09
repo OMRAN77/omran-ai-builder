@@ -2650,7 +2650,38 @@ function __friendlyErr(e){
   // كلود يبني ويرد بروحه دائمًا (وGPT احتياط صامت إذا فشل).
   const __askAllExplicit = false;
   customProviders = null;
-  const askAll = !!customProviders || __askAllExplicit || (!__gateNoBuild && !__gateApprovedText && ((__routeBuildRe.test(text) && __routeCmdRe.test(text)) || __strongBuildRe.test(text)) && !__routeFix);
+  /* v665 — «في المحادثة الطويلة يطلع الكينج» (شكوى عمران ٩ سبتمبر):
+     شرط البناء كان يكفيه أن يجد اسم بناء + فعل أمر في أي موضع من النصّ، فقصّة
+     نوح (١٩٣٠ حرفًا) طابقت «دعوه» داخل «يدعوهم» (الموضع ٩١٩) و«بناء» من
+     «بناء السفينة» (الموضع ١٧١٩) → askAll=true → الردّ طلع بطاقة مزوّد بوسم
+     «الكينج» بلا تمرير يتبع الردّ. في الطلب الحقيقيّ الفعل والاسم متجاوران
+     (قياس: «ابني لي تطبيق»=٥ · «تصمم لي بطاقة»=٧)، وفي السرد متباعدان
+     (نوح=٢٣١). فللنصوص الطويلة نشترط الجوار أو الصدر — صفر تغيير في
+     المطابقات نفسها، والرسائل ≤٢٢٠ حرفًا على سلوكها القديم بالضبط. */
+  const __buildIntentShape = (() => {
+    try{
+      const __t = String(text || '').trim();
+      if(__t.length <= 220) return true;
+      const __idx = (re) => {
+        const __g = new RegExp(re.source, 'gi'), __out = [];
+        let __m;
+        while((__m = __g.exec(__t))){
+          __out.push(__m.index);
+          if(__g.lastIndex <= __m.index) __g.lastIndex = __m.index + 1;
+          if(__out.length > 400) break;
+        }
+        return __out;
+      };
+      const __cmds = __idx(__routeCmdRe), __nouns = __idx(__routeBuildRe);
+      if(!__cmds.length || !__nouns.length) return false;
+      // ١) جوار: فعل أمر واسم بناء داخل ٦٠ حرفًا = طلب صريح.
+      for(const __c of __cmds){ for(const __n of __nouns){ if(Math.abs(__c - __n) <= 60) return true; } }
+      // ٢) صدر: فعل الأمر في أوّل ٦٠ حرفًا واسم البناء في أوّل ٢٥٠.
+      if(__cmds[0] <= 60 && __nouns[0] <= 250) return true;
+      return false;
+    }catch(e){ return true; } // guard-ok: أي خطأ → السلوك القديم بالضبط
+  })();
+  const askAll = !!customProviders || __askAllExplicit || (!__gateNoBuild && !__gateApprovedText && ((__routeBuildRe.test(text) && __routeCmdRe.test(text) && __buildIntentShape) || __strongBuildRe.test(text)) && !__routeFix);
   // آخر نص كامل وصل من البث؛ نحتفظ به إذا أوقف المستخدم التوليد.
   let __lastStreamPartial = '';
 
@@ -4449,7 +4480,11 @@ DESIGN RULES (non-negotiable):
       const __applyCode = isBuildTask || (providers.length === 1 && !!cur.code && __pinEditRe.test(text));
       const askAllBatchId = 'batch' + (++askAllUidCounter);
       const placeholders = providers.map(p => {
-        const msg = {role: 'assistant', content: '', providerLabel: p.label, providerKey: p.key, askAllReply: true, code: null, _loading: true, _uid: ++askAllUidCounter, batchId: askAllBatchId};
+        /* v665 — احتياط: بطاقة المزوّد ووسمه («الكينج») للمقارنة بين مزوّدين.
+           مع مزوّد واحد لا مقارنة، فكانت تطلع بطاقة ضيّقة موسومة بدل فقاعة
+           عاديّة. askAllReply=false للمزوّد الواحد → فقاعة عاديّة بلا وسم؛
+           data-askuid يبقى مضبوطًا فالتحديث الحيّ للنصّ كما هو. */
+        const msg = {role: 'assistant', content: '', providerLabel: p.label, providerKey: p.key, askAllReply: providers.length > 1, code: null, _loading: true, _uid: ++askAllUidCounter, batchId: askAllBatchId};
         cur.messages.push(msg);
         return msg;
       });
