@@ -226,7 +226,7 @@ async function __safeJson(res){
 
     if(ideaTitle) ideaTitle.textContent = '💡 ' + bT('أفكار بلا صورة — اضغط على المكان في الصورة أو اكتب ما تريد', 'Ideas without a photo — tap a place in the image or describe what you want');
     if(ideaText) ideaText.placeholder = bT('مثال: مجلس عربي فخم لعشرين شخصًا', 'e.g. a luxurious Arabic majlis for twenty guests');
-    if(ideaGo) ideaGo.textContent = '✨ ' + brainName;
+    if(ideaGo){ ideaGo.textContent = '✨ ' + brainName; ideaGo.style.display = 'none'; }
   }
   buildIdeaChips();
   /* v-decor-gallery: معرض صور حقيقية (عشرات) من الويب — يفتح فورًا، والتوليد بالذكاء زرّ منفصل */
