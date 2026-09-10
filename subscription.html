@@ -36,6 +36,7 @@
     .notice.info { color: var(--gold-light); border: 1px solid var(--line); background: rgba(212,175,55,.09); }
     .notice.error { color: #ffb0b0; border: 1px solid rgba(255,90,90,.35); background: rgba(255,55,55,.1); }
     .notice.success { color: #9be5b6; border: 1px solid rgba(85,210,125,.35); background: rgba(85,210,125,.1); }
+    .notice a { color: inherit; font-weight: 700; }
     .plans { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; align-items: stretch; margin-top: 34px; }
     .plan-card { position: relative; display: flex; flex-direction: column; min-width: 0; padding: 28px 21px 22px; border: 1px solid var(--line); border-radius: 20px; background: linear-gradient(145deg, rgba(25,25,25,.94), rgba(5,5,5,.98)); box-shadow: inset 0 1px rgba(255,255,255,.03); transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease; }
     .plan-card:hover { transform: translateY(-6px); border-color: var(--gold); box-shadow: 0 16px 42px rgba(212,175,55,.16); }
@@ -57,8 +58,7 @@
     .pay-btn:active:not(:disabled) { transform: translateY(0); }
     .pay-btn:disabled { cursor: wait; opacity: .6; }
     .pay-btn svg { width: 24px; height: 19px; flex: 0 0 auto; }
-    .apple { color: #fff; background: #050505; border-color: #2c2c2c; }
-    .google { color: #202124; background: #fff; border-color: #fff; }
+    .wallet-icons { display: inline-flex; align-items: center; gap: 6px; }
     .card-pay { color: var(--gold-light); background: transparent; border-color: var(--gold); }
     .paypal { color: #fff; background: #0070ba; border-color: #0070ba; }
     .free-note { margin-top: auto; padding-top: 20px; color: var(--muted); font-size: 12px; text-align: center; }
@@ -89,52 +89,191 @@
   <script>
     (async () => {
       'use strict';
+
+      // الأسعار والنقاط هنا للعرض فقط. الخادم هو مصدر الحقيقة: يستقبل مفتاح
+      // الخطة ويستخرج السعر والنقاط من جدوله — وإلا اشترى المهاجم 5000 نقطة بدولار.
       const plans = [
-        { key: 'free', name: 'مجانية', price: '$0', points: '0 نقاط', messages: '20 رسالة' },
-        { key: 'basic', name: 'عادية', price: '$10', unit: '/شهر', points: '500 نقطة', messages: '∞ رسائل' },
-        { key: 'medium', name: 'متوسطة', price: '$20', unit: '/شهر', points: '1,000 نقطة', messages: '∞ رسائل', popular: true },
-        { key: 'large', name: 'كبيرة', price: '$100', unit: '/شهر', points: '5,000 نقطة', messages: '∞ رسائل' }
+        { key: 'free',   name: 'مجانية', price: '$0',   points: '0 نقاط',     messages: '20 رسالة' },
+        { key: 'basic',  name: 'عادية',  price: '$10',  unit: '/شهر', points: '500 نقطة',   messages: '∞ رسائل' },
+        { key: 'medium', name: 'متوسطة', price: '$20',  unit: '/شهر', points: '1,000 نقطة', messages: '∞ رسائل', popular: true },
+        { key: 'large',  name: 'كبيرة',  price: '$100', unit: '/شهر', points: '5,000 نقطة', messages: '∞ رسائل' }
       ];
+
       const icons = {
         apple: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.09.8 1.2-.24 2.35-.93 3.63-.84 1.54.12 2.7.73 3.46 1.85-3.18 1.9-2.43 6.07.49 7.24-.58 1.51-1.34 3-2.67 3.92ZM12.04 7.25C11.89 5.01 13.71 3.16 15.75 3c.28 2.58-2.34 4.51-3.71 4.25Z"/></svg>',
         google: '<svg viewBox="0 0 30 20" aria-hidden="true"><path fill="#4285F4" d="M28 10.2c0-.7-.06-1.4-.18-2H15v3.8h7.3a6.3 6.3 0 0 1-2.7 4.1v3.4h4.4c2.6-2.4 4-5.6 4-9.3Z"/><path fill="#34A853" d="M15 20c3.7 0 6.8-1.2 9-3.2l-4.4-3.4c-1.2.8-2.7 1.3-4.6 1.3-3.5 0-6.5-2.4-7.6-5.7H2.9v3.5A13.6 13.6 0 0 0 15 20Z"/><path fill="#FBBC05" d="M7.4 9a8 8 0 0 1 0-5.1V.4H2.9a13.6 13.6 0 0 0 0 12.2L7.4 9Z"/><path fill="#EA4335" d="M15 4.2c2 0 3.8.7 5.2 2l3.9-3.8C21.8.9 18.7 0 15 0A13.6 13.6 0 0 0 2.9 7.4L7.4 11C8.5 6.7 11.5 4.2 15 4.2Z"/></svg>',
         card: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4" stroke-linecap="round"/></svg>',
         paypal: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M6.2 3h8.1c3.2 0 5.4 2.1 4.9 5.1-.6 3.6-3.1 5.7-6.7 5.7H9.8l-1.2 6H4.9L6.2 3Zm4.3 3-1 4.8h2.2c1.8 0 3-1 3.3-2.7.2-1.4-.5-2.1-1.9-2.1h-2.6Z"/><path d="M8.8 15.1h2.7c3.4 0 5.9-1.7 6.9-4.5.8.5 1.2 1.4.9 2.7-.5 3-2.8 4.7-5.9 4.7h-3.1l-.7 3H6.8l2-5.9Z" opacity=".72"/></svg>'
       };
-      const state = { plan: 'free', points: 0, username: '' };
-      const $ = id => document.getElementById(id);
-      function showNotice(text, type) { const el = $('notice'); el.textContent = text; el.className = 'notice show ' + type; }
-      function username() { try { return localStorage.getItem('username') || localStorage.getItem('user') || ''; } catch (_) { return ''; } }
+
+      const state = { plan: 'free', points: 0, authed: false };
+      const $ = (id) => document.getElementById(id);
+
+      // تهريب إلزامي: لو جاءت الخطط من الخادم يومًا يصبح innerHTML ثغرة XSS.
+      const esc = (s) => String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+      function showNotice(html, type) {
+        const el = $('notice');
+        el.innerHTML = html;
+        el.className = 'notice show ' + type;
+      }
+
+      // الهوية من توكن الجلسة لا من اسم مستخدم يكتبه العميل: localStorage
+      // يتحكّم فيه المستخدم، فإرسال username كان يسمح بالشحن لأي حساب.
+      // ملاحظة: الخادم يجب أن يستخرج المستخدم من التوكن ويتجاهل أي username في الجسم.
+      function authToken() {
+        try {
+          return localStorage.getItem('token')
+              || localStorage.getItem('session')
+              || localStorage.getItem('authToken')
+              || '';
+        } catch (_) { return ''; }
+      }
+
+      function authHeaders() {
+        const h = { 'Content-Type': 'application/json' };
+        const t = authToken();
+        if (t) h['Authorization'] = 'Bearer ' + t;
+        return h;
+      }
+
+      // Apple/Google Pay لا يُعرضان إلا إذا كان الجهاز يدعمهما فعلًا — زر بشعار
+      // Apple يقود إلى صفحة بطاقة عادية يخالف إرشادات Apple ويربك المستخدم.
+      const hasApplePay = (() => {
+        try { return !!(window.ApplePaySession && window.ApplePaySession.canMakePayments()); }
+        catch (_) { return false; }
+      })();
+      const hasGooglePay = /Android/i.test(navigator.userAgent || '');
+
+      function walletLabel() {
+        if (hasApplePay) return icons.apple + '<span>Apple Pay أو بطاقة</span>';
+        if (hasGooglePay) return icons.google + '<span>Google Pay أو بطاقة</span>';
+        return icons.card + '<span>بطاقة</span>';
+      }
+
       function cardMarkup(plan) {
         const current = state.plan === plan.key;
-        const buttons = plan.key === 'free' ? '<p class="free-note">الخطة الأساسية بدون تكلفة</p>' : `<div class="payment-area"><p class="payment-label">اختر طريقة الدفع</p><div class="payment-buttons">
-          <button class="pay-btn apple" data-method="stripe" data-plan="${plan.key}">${icons.apple}<span>Apple Pay</span></button>
-          <button class="pay-btn google" data-method="stripe" data-plan="${plan.key}">${icons.google}<span>Google Pay</span></button>
-          <button class="pay-btn card-pay" data-method="stripe" data-plan="${plan.key}">${icons.card}<span>بطاقة</span></button>
-          <button class="pay-btn paypal" data-method="paypal" data-plan="${plan.key}">${icons.paypal}<span>PayPal</span></button>
-        </div></div>`;
-        return `<article class="plan-card${current ? ' current' : ''}">${plan.popular ? '<span class="popular">الأكثر شعبية</span>' : ''}<div class="plan-top"><p class="plan-kicker">${current ? 'خطتك الحالية' : 'اشتراك مميز'}</p><h2>${plan.name}</h2><div class="price">${plan.price} ${plan.unit ? `<small>${plan.unit}</small>` : ''}</div></div><div class="details"><div class="detail"><span>النقاط</span><strong>${plan.points}</strong></div><div class="detail"><span>الرسائل</span><strong>${plan.messages}</strong></div></div>${buttons}</article>`;
+        const buttons = plan.key === 'free'
+          ? '<p class="free-note">الخطة الأساسية بدون تكلفة</p>'
+          : `<div class="payment-area"><p class="payment-label">اختر طريقة الدفع</p><div class="payment-buttons">
+              <button class="pay-btn card-pay" data-method="stripe" data-plan="${esc(plan.key)}"><span class="wallet-icons">${walletLabel()}</span></button>
+              <button class="pay-btn paypal" data-method="paypal" data-plan="${esc(plan.key)}">${icons.paypal}<span>PayPal</span></button>
+            </div></div>`;
+        return `<article class="plan-card${current ? ' current' : ''}">`
+          + (plan.popular ? '<span class="popular">الأكثر شعبية</span>' : '')
+          + `<div class="plan-top"><p class="plan-kicker">${current ? 'خطتك الحالية' : 'اشتراك مميز'}</p>`
+          + `<h2>${esc(plan.name)}</h2>`
+          + `<div class="price">${esc(plan.price)} ${plan.unit ? `<small>${esc(plan.unit)}</small>` : ''}</div></div>`
+          + `<div class="details"><div class="detail"><span>النقاط</span><strong>${esc(plan.points)}</strong></div>`
+          + `<div class="detail"><span>الرسائل</span><strong>${esc(plan.messages)}</strong></div></div>`
+          + buttons + '</article>';
       }
-      function render() { $('plans').innerHTML = plans.map(cardMarkup).join(''); $('currentPlan').textContent = plans.find(p => p.key === state.plan)?.name || 'مجانية'; $('pointsBalance').textContent = state.points.toLocaleString('en-US') + ' نقطة'; }
-      async function pay(method, plan, button) {
-        const endpoint = method === 'paypal' ? '/api/account/paypal-order' : '/api/account/create-checkout-session';
-        button.disabled = true; const original = button.innerHTML; button.innerHTML = '<span class="spinner"></span><span>جارٍ التحويل...</span>'; showNotice('جارٍ تجهيز عملية الدفع الآمنة...', 'info');
+
+      function render() {
+        $('plans').innerHTML = plans.map(cardMarkup).join('');
+        const found = plans.find((p) => p.key === state.plan);
+        $('currentPlan').textContent = (found && found.name) || 'مجانية';
+        $('pointsBalance').textContent = state.points.toLocaleString('en-US') + ' نقطة';
+      }
+
+      async function loadAccount() {
+        if (!authToken()) { state.authed = false; return; }
         try {
-          const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan, username: state.username }) });
-          const data = await response.json().catch(() => ({}));
-          if (!response.ok) throw new Error(data.error || 'تعذّر بدء عملية الدفع');
-          const url = data.url || data.checkoutUrl || data.approvalUrl;
-          if (url) window.location.assign(url);
-          else if (data.id || data.orderID) showNotice('تم إنشاء طلب PayPal، أكمل الدفع من نافذة PayPal.', 'success');
-          else throw new Error('لم يُرجع الخادم رابط الدفع');
-        } catch (error) { showNotice(error.message || 'حدث خطأ أثناء الدفع', 'error'); button.disabled = false; button.innerHTML = original; }
+          const response = await fetch('/api/account/points', { headers: authHeaders() });
+          if (response.status === 401) { state.authed = false; return; }
+          if (!response.ok) return;
+          const data = await response.json();
+          state.authed = true;
+          state.plan = data.plan || state.plan;
+          state.points = Number(data.points || data.balance || 0);
+          render();
+        } catch (_) { /* الشبكة متعثّرة — تبقى القيم الحالية */ }
       }
-      document.addEventListener('click', event => { const button = event.target.closest('.pay-btn'); if (button) pay(button.dataset.method, button.dataset.plan, button); });
-      state.username = username(); render();
-      try {
-        const response = await fetch('/api/account/points', { headers: { 'Content-Type': 'application/json' } });
-        if (response.ok) { const data = await response.json(); state.plan = data.plan || state.plan; state.points = Number(data.points || data.balance || 0); render(); }
-      } catch (_) { /* الحساب غير متاح قبل تسجيل الدخول */ }
+
+      async function pay(method, plan, button) {
+        // زائر بلا جلسة: رسالة واضحة بدل خطأ خادم غامض بعد الضغط.
+        if (!authToken()) {
+          showNotice('سجّل الدخول أولًا حتى تُضاف النقاط إلى حسابك. <a href="/login.html">تسجيل الدخول</a>', 'error');
+          return;
+        }
+
+        const endpoint = method === 'paypal'
+          ? '/api/account/paypal-order'
+          : '/api/account/create-checkout-session';
+
+        button.disabled = true;
+        const original = button.innerHTML;
+        button.innerHTML = '<span class="spinner"></span><span>جارٍ التحويل...</span>';
+        showNotice('جارٍ تجهيز عملية الدفع الآمنة...', 'info');
+
+        try {
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: authHeaders(),
+            // بلا username: الخادم يعرف من أنت من التوكن.
+            body: JSON.stringify({ plan }),
+          });
+          const data = await response.json().catch(() => ({}));
+
+          if (response.status === 401) throw new Error('انتهت جلستك، سجّل الدخول من جديد');
+          if (!response.ok) throw new Error(data.error || 'تعذّر بدء عملية الدفع');
+
+          const url = data.url || data.checkoutUrl || data.approvalUrl;
+          if (url) { window.location.assign(url); return; }
+          if (data.id || data.orderID) {
+            showNotice('تم إنشاء طلب PayPal، أكمل الدفع من نافذة PayPal.', 'success');
+          } else {
+            throw new Error('لم يُرجع الخادم رابط الدفع');
+          }
+          button.disabled = false;
+          button.innerHTML = original;
+        } catch (error) {
+          showNotice(esc(error.message || 'حدث خطأ أثناء الدفع'), 'error');
+          button.disabled = false;
+          button.innerHTML = original;
+        }
+      }
+
+      document.addEventListener('click', (event) => {
+        const button = event.target.closest && event.target.closest('.pay-btn');
+        if (button) pay(button.dataset.method, button.dataset.plan, button);
+      });
+
+      // العودة من بوابة الدفع: بلا هذا يرى المستخدم الصفحة كأن شيئًا لم يحدث،
+      // والنقاط تتأخر حتى يصل الـwebhook فيظن أن دفعه ضاع.
+      async function handleReturn() {
+        const params = new URLSearchParams(location.search);
+        if (params.get('canceled') || params.get('cancel')) {
+          showNotice('أُلغيت عملية الدفع، لم يُخصم شيء.', 'info');
+          history.replaceState(null, '', location.pathname);
+          return;
+        }
+        if (!params.get('success') && !params.get('paid')) return;
+
+        showNotice('تم استلام الدفع. تُضاف النقاط خلال لحظات...', 'success');
+        history.replaceState(null, '', location.pathname);
+
+        const before = state.points;
+        let tries = 0;
+        const timer = setInterval(async () => {
+          tries++;
+          await loadAccount();
+          if (state.points > before) {
+            clearInterval(timer);
+            showNotice('أُضيفت النقاط إلى حسابك. رصيدك الآن ' + state.points.toLocaleString('en-US') + ' نقطة.', 'success');
+          } else if (tries >= 8) {
+            clearInterval(timer);
+            showNotice('تم الدفع، لكن النقاط لم تصل بعد. حدّث الصفحة بعد دقيقة أو تواصل معنا إن استمر الأمر.', 'info');
+          }
+        }, 3000);
+      }
+
+      render();
+      await loadAccount();
+      render();
+      await handleReturn();
     })();
   </script>
 </body>
