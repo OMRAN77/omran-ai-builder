@@ -611,8 +611,7 @@ html.oiOn body{overflow:hidden}
         s.style.setProperty('--dly', (Math.random()*4).toFixed(2) + 's');
         sky.appendChild(s);
       }
-      sb.insertBefore(sky, sb.firstChild);
-    }
+    }sb.appendChild(sky);
     var h = Math.max(sb.clientHeight, sb.scrollHeight, 1);
     if(sky.style.height !== h + 'px') sky.style.height = h + 'px';
   }
