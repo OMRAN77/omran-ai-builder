@@ -1,5 +1,7 @@
-# مِجسّ «النصّ الطويل ما يرد»: يعيد إنتاج الشكوى على الإنتاج ويقيس أين تتعثّر.
 name: noah-probe
+
+# مِجسّ «النصّ الطويل ما يرد»: يعيد إنتاج الشكوى على الإنتاج ويقيس أين تتعثّر.
+
 on:
   workflow_dispatch:
     inputs:
@@ -7,8 +9,17 @@ on:
         description: 'قاعدة الموقع (اتركه فارغًا للافتراضي)'
         required: false
         default: ''
+      chars:
+        description: 'أطوال النصّ المُختبَرة (بالحروف، مفصولة بفواصل)'
+        required: false
+        default: '500,2000,8000,20000,50000'
 
-permissions: {}
+permissions:
+  contents: read
+
+concurrency:
+  group: noah-probe
+  cancel-in-progress: false
 
 jobs:
   probe:
@@ -16,10 +27,23 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22'
+
       - name: Probe long text on production
+        shell: bash
         env:
-          PROBE_BASE: ${{ inputs.base }}
-        run: node scripts/noah-probe.mjs
+          PROBE_BASE:  ${{ inputs.base }}
+          PROBE_TOKEN: ${{ secrets.PROBE_TOKEN }}
+          PROBE_CHARS: ${{ inputs.chars }}
+        run: node scripts/noah-probe.mjs | tee noah-probe.log
+
+      - name: Upload probe log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: noah-probe-${{ github.run_id }}
+          path: noah-probe.log
+          retention-days: 14
