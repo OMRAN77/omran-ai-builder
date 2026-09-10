@@ -258,7 +258,7 @@ async function __safeJson(res){
       try{ ideaGallery.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){ /* guard-ok */ }
     }catch(e){ if(my === ideaReq) ideaStatus('⚠️ ' + bT('تعذّر جلب الصور الآن.', 'Could not fetch photos right now.')); }
   }
-  if(ideaChips) Array.prototype.forEach.call(ideaChips.querySelectorAll('button'), function(c){
+  if(ideaChips) Array.prototype.forEach.call(ideaChips.querySelect  if(ideaChips) Array.prototype.forEach.call(ideaChips.querySelectorAll('button[data-place]'), function(c){orAll('button'), function(c){
     c.onclick = function(){ if(placeEl) placeEl.value = c.dataset.place; if(ideaText) ideaText.value = ''; loadIdeas({ place: c.dataset.place }); };
   });
   if(ideaGo) ideaGo.onclick = function(){
