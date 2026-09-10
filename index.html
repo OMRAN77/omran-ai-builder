@@ -627,7 +627,103 @@ html.oiOn body{overflow:hidden}
     window.addEventListener('resize', build);
     window.addEventListener('orientationchange', function(){ setTimeout(build, 200); });
     return true;
+  }<!-- ===== ✨ نجوم الشريط الجانبي (طبقة مستقلة خارج الشريط) ===== -->
+<style>
+#omSkyLayer{
+  position:fixed;
+  overflow:hidden;
+  pointer-events:none;
+  z-index:60;
+  display:none;
+}
+#omSkyLayer .omSkyStar{
+  position:absolute;
+  width:var(--sz); height:var(--sz);
+  background:#ffd76a;
+  clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%);
+  filter:drop-shadow(0 0 5px rgba(255,215,106,.85));
+  opacity:0;
+  animation:omSkyTwinkle var(--dur) ease-in-out infinite var(--dly);
+}
+@keyframes omSkyTwinkle{
+  0%,100%{ opacity:0;   transform:scale(.25) rotate(0deg); }
+  40%    { opacity:.85; transform:scale(1)   rotate(45deg); }
+  70%    { opacity:.25; transform:scale(.6)  rotate(90deg); }
+}
+@media (prefers-reduced-motion:reduce){ #omSkyLayer{ display:none !important; } }
+</style>
+<script>
+(function(){
+  var COUNT = 18, layer = null;
+
+  function makeLayer(){
+    if(layer) return layer;
+    layer = document.createElement('div');
+    layer.id = 'omSkyLayer';
+    for(var i=0;i<COUNT;i++){
+      var s = document.createElement('span');
+      s.className = 'omSkyStar';
+      s.style.top  = ((i + Math.random()) / COUNT * 100).toFixed(2) + '%';
+      s.style.left = (4 + Math.random()*92).toFixed(2) + '%';
+      s.style.setProperty('--sz',  (4 + Math.random()*5).toFixed(1) + 'px');
+      s.style.setProperty('--dur', (2.2 + Math.random()*2.4).toFixed(2) + 's');
+      s.style.setProperty('--dly', (Math.random()*4).toFixed(2) + 's');
+      layer.appendChild(s);
+    }
+    document.body.appendChild(layer);
+    return layer;
   }
+
+  function sync(){
+    var sb = document.getElementById('sidebar');
+    var L  = makeLayer();
+    if(!sb){ L.style.display = 'none'; return; }
+
+    var r = sb.getBoundingClientRect();
+    var visible = r.width > 40 && r.height > 40 &&
+                  r.right > 0 && r.left < window.innerWidth &&
+                  getComputedStyle(sb).visibility !== 'hidden' &&
+                  parseFloat(getComputedStyle(sb).opacity || '1') > .05;
+
+    if(!visible){ L.style.display = 'none'; return; }
+
+    L.style.display = 'block';
+    L.style.top    = Math.max(r.top, 0) + 'px';
+    L.style.left   = r.left + 'px';
+    L.style.width  = r.width + 'px';
+    L.style.height = (Math.min(r.bottom, window.innerHeight) - Math.max(r.top, 0)) + 'px';
+  }
+
+  var raf = null;
+  function schedule(){
+    if(raf) return;
+    raf = requestAnimationFrame(function(){ raf = null; sync(); });
+  }
+
+  function start(){
+    var sb = document.getElementById('sidebar');
+    if(!sb) return false;
+    sync();
+    if(window.ResizeObserver) new ResizeObserver(schedule).observe(sb);
+    new MutationObserver(schedule).observe(sb, {attributes:true, attributeFilter:['class','style']});
+    ['resize','orientationchange','scroll'].forEach(function(ev){
+      window.addEventListener(ev, schedule, {passive:true});
+    });
+    ['touchstart','touchmove','touchend','click'].forEach(function(ev){
+      document.addEventListener(ev, function(){ schedule(); setTimeout(sync, 200); setTimeout(sync, 450); },
+        {passive:true, capture:true});
+    });
+    setInterval(sync, 1000);
+    return true;
+  }
+
+  if(!start()){
+    var n = 0, id = setInterval(function(){
+      if(start() || ++n > 40) clearInterval(id);
+    }, 250);
+  }
+})();
+</script>
 
   if(!watch()){
     var n = 0, id = setInterval(function(){
