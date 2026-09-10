@@ -23211,74 +23211,85 @@ async function __safeJson(res){
   const ideaText = document.getElementById('designAiIdeaText');
   const ideaGo = document.getElementById('designAiIdeaGo');
   const ideaTitle = document.getElementById('designAiIdeasTitle');
- function buildIdeaChips(){
- if(!ideaChips || !placeEl) return;
- ideaChips.innerHTML = '';
+  /* v-decor-poster: البوستر نفسه هو الأزرار — كل غرفة نقطة نقر، والمخ = أعطني أفكارًا */
+  const POSTER_SRC = 'assets/decor/chips/001.jpg';
+  const POSTER_HOT = {
+    restaurant: [4.3, 20.5, 21.0, 24.0],
+    cafe:       [22.5, 15.5, 19.0, 24.0],
+    bedroom:    [40.7, 12.0, 20.0, 24.0],
+    majlis:     [60.5, 14.0, 18.5, 25.0],
+    living:     [76.5, 22.0, 21.0, 23.0],
+    kitchen:    [20.0, 38.5, 18.5, 21.5],
+    office:     [63.7, 39.0, 18.0, 22.0],
+    kids:       [80.5, 42.5, 19.0, 21.5],
+    shop:       [6.0, 58.0, 17.5, 24.0],
+    bath:       [23.8, 59.8, 17.5, 22.5],
+    entrance:   [60.4, 58.8, 18.5, 23.5],
+    garden:     [78.5, 60.0, 19.5, 22.0]
+  };
+  const POSTER_BRAIN = [41.5, 35.8, 19.0, 22.5];
+  function buildIdeaChips(){
+    if(!ideaChips || !placeEl) return;
     ideaChips.innerHTML = '';
-    /* v-decor-poster: البوستر نفسه هو الأزرار — كل غرفة نقطة نقر، والمخ = أعطني أفكارًا */
-    var HOT = {
-      restaurant:[3.9,20.8,21.4,24.1], cafe:[22.3,15.9,19.0,23.6],
-      bedroom:[40.7,12.1,19.9,23.6],   majlis:[60.4,14.3,18.3,24.7],
-      living:[76.4,22.3,20.9,22.7],    kitchen:[19.9,39.0,18.2,21.3],
-      office:[63.7,39.3,18.0,21.7],    kids:[80.5,42.8,18.9,21.4],
-      shop:[6.1,58.4,17.3,23.8],       bath:[23.9,60.1,17.1,22.4],
-      entrance:[60.4,59.0,18.2,23.5],  garden:[78.6,60.3,19.0,21.7]
-    };
-    var isAr = ((document.documentElement.lang||'ar')+'').indexOf('ar') === 0;
+    const isAr = ((document.documentElement.lang || 'ar') + '').indexOf('ar') === 0;
+
+    function optName(o){ return (window.__optT ? window.__optT(o) : o.textContent).trim(); }
 
     function textChips(){
       ideaChips.innerHTML = '';
       Array.prototype.forEach.call(placeEl.options, function(o){
         if(!o.value) return;
-        var c = document.createElement('button');
-        c.type='button'; c.className='btn'; c.dataset.place=o.value;
-        c.style.cssText='width:auto; padding:6px 11px; font-size:12.5px; border-radius:999px;';
-        c.textContent=(window.__optT ? window.__optT(o) : o.textContent).trim();
-        c.onclick=function(){ placeEl.value=o.value; if(ideaText) ideaText.value=''; loadIdeas({ place:o.value }); };
+        const c = document.createElement('button');
+        c.type = 'button'; c.className = 'btn'; c.dataset.place = o.value;
+        c.style.cssText = 'width:auto; padding:6px 11px; font-size:12.5px; border-radius:999px;';
+        c.textContent = optName(o);
+        c.onclick = function(){ placeEl.value = o.value; if(ideaText) ideaText.value = ''; loadIdeas({ place: o.value }); };
         ideaChips.appendChild(c);
       });
     }
 
-    var wrap = document.createElement('div');
+    const wrap = document.createElement('div');
     wrap.style.cssText = 'position:relative; width:100%; max-width:820px; margin:0 auto; line-height:0;';
-    var poster = document.createElement('img');
-    poster.src = 'assets/decor/chips/001.jpg';
+    const poster = document.createElement('img');
+    poster.src = POSTER_SRC;
     poster.alt = ''; poster.loading = 'lazy';
     poster.style.cssText = 'display:block; width:100%; height:auto; border-radius:14px;';
     poster.onerror = function(){ textChips(); };
     wrap.appendChild(poster);
 
-    function hot(l,t,w,h,name,round){
-      var b = document.createElement('button');
-      b.type='button';
-      b.title=name; b.setAttribute('aria-label',name);
-      b.style.cssText='position:absolute; left:'+l+'%; top:'+t+'%; width:'+w+'%; height:'+h+
-        '%; background:none; border:2px solid transparent; border-radius:'+(round?'50%':'12px')+
-        '; padding:0; margin:0; cursor:pointer; box-shadow:none; transition:.15s; min-height:0;';
-      b.onmouseenter=function(){ b.style.borderColor='#d4af37'; b.style.background='rgba(212,175,55,.15)'; };
-      b.onmouseleave=function(){ b.style.borderColor='transparent'; b.style.background='none'; };
+    function hotBtn(box, name, round){
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.title = name;
+      b.setAttribute('aria-label', name);
+      b.style.cssText = 'position:absolute; left:' + box[0] + '%; top:' + box[1] + '%; width:' + box[2] + '%; height:' + box[3] +
+        '%; background:none; border:2px solid transparent; border-radius:' + (round ? '50%' : '12px') +
+        '; padding:0; margin:0; min-height:0; cursor:pointer; box-shadow:none; transition:.15s;';
+      b.onmouseenter = function(){ b.style.borderColor = '#d4af37'; b.style.background = 'rgba(212,175,55,.15)'; };
+      b.onmouseleave = function(){ b.style.borderColor = 'transparent'; b.style.background = 'none'; };
       return b;
     }
 
     Array.prototype.forEach.call(placeEl.options, function(o){
-      var h = HOT[o.value]; if(!h) return;
-      var name = (window.__optT ? window.__optT(o) : o.textContent).trim();
-      var b = hot(h[0],h[1],h[2],h[3],name,false);
+      const box = POSTER_HOT[o.value];
+      if(!box) return;
+      const name = optName(o);
+      const b = hotBtn(box, name, false);
       b.dataset.place = o.value;
       if(!isAr){
-        var cap=document.createElement('span');
-        cap.textContent=name;
-        cap.style.cssText='position:absolute; left:50%; bottom:5%; transform:translateX(-50%); white-space:nowrap;'+
-          'font-size:11px; font-weight:700; color:#fff; background:rgba(0,0,0,.75); padding:2px 9px; border-radius:999px;';
+        const cap = document.createElement('span');
+        cap.textContent = name;
+        cap.style.cssText = 'position:absolute; left:50%; bottom:5%; transform:translateX(-50%); white-space:nowrap;' +
+          ' font-size:11px; font-weight:700; color:#fff; background:rgba(0,0,0,.75); padding:2px 9px; border-radius:999px;';
         b.appendChild(cap);
       }
-      b.onclick=function(){ placeEl.value=o.value; if(ideaText) ideaText.value=''; loadIdeas({ place:o.value }); };
+      b.onclick = function(){ placeEl.value = o.value; if(ideaText) ideaText.value = ''; loadIdeas({ place: o.value }); };
       wrap.appendChild(b);
     });
 
-    var brainName = bT('أعطني أفكارًا','Give me ideas');
-    var brain = hot(41.3,35.6,19.2,22.5,brainName,true);
-    brain.onclick=function(){ if(ideaGo && ideaGo.onclick) ideaGo.onclick(); };
+    const brainName = bT('أعطني أفكارًا', 'Give me ideas');
+    const brain = hotBtn(POSTER_BRAIN, brainName, true);
+    brain.onclick = function(){ if(ideaGo && typeof ideaGo.onclick === 'function') ideaGo.onclick(); };
     wrap.appendChild(brain);
 
     ideaChips.appendChild(wrap);
@@ -23328,7 +23339,6 @@ async function __safeJson(res){
       try{ ideaGallery.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){ /* guard-ok */ }
     }catch(e){ if(my === ideaReq) ideaStatus('⚠️ ' + bT('تعذّر جلب الصور الآن.', 'Could not fetch photos right now.')); }
   }
-  });
   if(ideaChips) Array.prototype.forEach.call(ideaChips.querySelectorAll('button[data-place]'), function(c){
     c.onclick = function(){ if(placeEl) placeEl.value = c.dataset.place; if(ideaText) ideaText.value = ''; loadIdeas({ place: c.dataset.place }); };
   });
@@ -23706,7 +23716,7 @@ const STU_XL = {
   'فن الورق المقصوص': {en:'Paper Cut Art',fr:'Art du Découpage de Papier',hi:'कागज कला कला',bn:'কাগজ কাটা শিল্প',ne:'कागज काट कला',id:'Seni Potong Kertas',fil:'Paper Cut Art',tr:'Kağıt Kesme Sanatı',zh:'纸艺术',ru:'Искусство вырезания из бумаги',es:'Arte de Corte de Papel',ml:'പേപ്പർ കട് ആർട്ട്'},
   'شخصية كروشيه محبوكة': {en:'Crocheted Character',fr:'Personnage au Crochet',hi:'क्रोचेटेड चरित्र',bn:'ক্রোশেটেড চরিত্র',ne:'क्रोचेटेड क्यारेक्टर',id:'Karakter Rajutan Kait',fil:'Crocheted Character',tr:'Tırtıklı Karakter',zh:'钩针编织角色',ru:'Вязаный крючком персонаж',es:'Personaje de Ganchillo',ml:'ഹുക്കിംഗ് ചെയ്ത പാത്രം'},
   'مجسم منفوخ لامع': {en:'Shiny Inflatable Figure',fr:'Figure Gonflable Brillante',hi:'चमकदार फुलाए जाने योग्य आकृति',bn:'চকচকে স্ফীত চিত্র',ne:'चमकदार फुलाउन योग्य चित्र',id:'Figura Balon Berkilau',fil:'Shiny Inflatable Figure',tr:'Parlak Şişirilebilir Figür',zh:'闪亮充气人物',ru:'Блестящая надувная фигура',es:'Figura Inflable Brillante',ml:'തിളങ്ങുന്ന നിരക്കയോഗ്യ ഫിഗർ'},
-  'فن ياباني كلاسيكي': {en:'Classical Japanese Art',fr:'Art Japonais Classique',hi:'शास्त्रीय जापानी कला',bn:'ক্লাসিক্যাল জাপানি শিল्প',ne:'शास्त्रीय जापानी कला',id:'Seni Jepang Klasik',fil:'Classical Japanese Art',tr:'Klasik Japon Sanatı',zh:'古典日本艺术',ru:'Классическое японское искусство',es:'Arte Japonés Clásico',ml:'ക്ലാസ്സിക്കൽ ജാപ്പനീസ് കലാ'},
+  'فن ياباني كلاسيكي': {en:'Classical Japanese Art',fr:'Art Japonais Classique',hi:'शास्त्रीय जापानी कला',bn:'ক্লাসিক্যাল জাপানি শিল্প',ne:'शास्त्रीय जापानी कला',id:'Seni Jepang Klasik',fil:'Classical Japanese Art',tr:'Klasik Japon Sanatı',zh:'古典日本艺术',ru:'Классическое японское искусство',es:'Arte Japonés Clásico',ml:'ക്ലാസ്സിക്കൽ ജാപ്പനീസ് കലാ'},
   'رسم رملي إماراتي': {en:'Emirati Sand Art',fr:'Art du Sable Émirati',hi:'एमिराती रेत कला',bn:'এমিরাতি বালি শিল্প',ne:'इमिराती बालु कला',id:'Seni Pasir Emirat',fil:'Emirati Sand Art',tr:'Emiratli Kum Sanatı',zh:'阿联酋沙画艺术',ru:'Эмиратское искусство из песка',es:'Arte de Arena Emiratí',ml:'എമിരാതി മണ്ണ് കലാ'},
   'لوحة نيون مضيئة': {en:'Glowing Neon Sign',fr:'Enseigne Néon Brillante',hi:'चमकता नीयन संकेत',bn:'উজ্জ্বল নিয়ন চিহ্ন',ne:'चमकदार नियोन संकेत',id:'Tanda Neon Bersinar',fil:'Glowing Neon Sign',tr:'Parlayan Neon İşareti',zh:'发光霓虹灯牌',ru:'Светящийся неоновый знак',es:'Letrero de Neón Brillante',ml:'തിളങ്ങുന്ന നിയോൺ ചിഹ്നം'},
   'تعريض مزدوج فني': {en:'Artistic Double Exposure',fr:'Double Exposition Artistique',hi:'कलात्मक दोहरी जोखिम',bn:'শিল্পকলা দ্বৈত এক্সপোজার',ne:'कलात्मक दोहरो जोखिम',id:'Eksposur Ganda Artistik',fil:'Artistic Double Exposure',tr:'Sanatsal Çift Pozlama',zh:'艺术双曝光',ru:'Художественная двойная экспозиция',es:'Exposición Doble Artística',ml:'കലാത്മക രണ്ടിരട്ടി എക്സ്പോഷർ'},
