@@ -23210,10 +23210,10 @@ async function __safeJson(res){
   const ideaChips = document.getElementById('designAiIdeaChips');
   const ideaText = document.getElementById('designAiIdeaText');
   const ideaGo = document.getElementById('designAiIdeaGo');
-  143    const ideaTitle = document.getElementById('designAiIdeasTitle');
-144  function buildIdeaChips(){
-145    if(!ideaChips || !placeEl) return;
-146    ideaChips.innerHTML = '';
+  const ideaTitle = document.getElementById('designAiIdeasTitle');
+ function buildIdeaChips(){
+ if(!ideaChips || !placeEl) return;
+ ideaChips.innerHTML = '';
     ideaChips.innerHTML = '';
     /* v-decor-poster: البوستر نفسه هو الأزرار — كل غرفة نقطة نقر، والمخ = أعطني أفكارًا */
     var HOT = {
