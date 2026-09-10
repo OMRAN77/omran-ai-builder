@@ -23211,21 +23211,81 @@ async function __safeJson(res){
   const ideaText = document.getElementById('designAiIdeaText');
   const ideaGo = document.getElementById('designAiIdeaGo');
   const ideaTitle = document.getElementById('designAiIdeasTitle');
-  function buildIdeaChips(){
+ alue; if(ideaText) ideaText.value = ''; btnGenerate.onclick(); };
+      ideaChips.appendChild(c);   function buildIdeaChips(){
     if(!ideaChips || !placeEl) return;
     ideaChips.innerHTML = '';
+    /* v-decor-poster: البوستر نفسه هو الأزرار — كل غرفة نقطة نقر، والمخ = أعطني أفكارًا */
+    var HOT = {
+      restaurant:[3.9,20.8,21.4,24.1], cafe:[22.3,15.9,19.0,23.6],
+      bedroom:[40.7,12.1,19.9,23.6],   majlis:[60.4,14.3,18.3,24.7],
+      living:[76.4,22.3,20.9,22.7],    kitchen:[19.9,39.0,18.2,21.3],
+      office:[63.7,39.3,18.0,21.7],    kids:[80.5,42.8,18.9,21.4],
+      shop:[6.1,58.4,17.3,23.8],       bath:[23.9,60.1,17.1,22.4],
+      entrance:[60.4,59.0,18.2,23.5],  garden:[78.6,60.3,19.0,21.7]
+    };
+    var isAr = ((document.documentElement.lang||'ar')+'').indexOf('ar') === 0;
+
+    function textChips(){
+      ideaChips.innerHTML = '';
+      Array.prototype.forEach.call(placeEl.options, function(o){
+        if(!o.value) return;
+        var c = document.createElement('button');
+        c.type='button'; c.className='btn'; c.dataset.place=o.value;
+        c.style.cssText='width:auto; padding:6px 11px; font-size:12.5px; border-radius:999px;';
+        c.textContent=(window.__optT ? window.__optT(o) : o.textContent).trim();
+        c.onclick=function(){ placeEl.value=o.value; if(ideaText) ideaText.value=''; loadIdeas({ place:o.value }); };
+        ideaChips.appendChild(c);
+      });
+    }
+
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'position:relative; width:100%; max-width:820px; margin:0 auto; line-height:0;';
+    var poster = document.createElement('img');
+    poster.src = 'assets/decor/chips/001.jpg';
+    poster.alt = ''; poster.loading = 'lazy';
+    poster.style.cssText = 'display:block; width:100%; height:auto; border-radius:14px;';
+    poster.onerror = function(){ textChips(); };
+    wrap.appendChild(poster);
+
+    function hot(l,t,w,h,name,round){
+      var b = document.createElement('button');
+      b.type='button';
+      b.title=name; b.setAttribute('aria-label',name);
+      b.style.cssText='position:absolute; left:'+l+'%; top:'+t+'%; width:'+w+'%; height:'+h+
+        '%; background:none; border:2px solid transparent; border-radius:'+(round?'50%':'12px')+
+        '; padding:0; margin:0; cursor:pointer; box-shadow:none; transition:.15s; min-height:0;';
+      b.onmouseenter=function(){ b.style.borderColor='#d4af37'; b.style.background='rgba(212,175,55,.15)'; };
+      b.onmouseleave=function(){ b.style.borderColor='transparent'; b.style.background='none'; };
+      return b;
+    }
+
     Array.prototype.forEach.call(placeEl.options, function(o){
-      if(!o.value) return;
-      const c = document.createElement('button');
-      c.type = 'button'; c.className = 'btn'; c.dataset.place = o.value;
-      c.style.cssText = 'width:auto; padding:6px 11px; font-size:12.5px; border-radius:999px;';
-      c.textContent = (window.__optT ? window.__optT(o) : o.textContent).trim();
-      c.onclick = function(){ placeEl.value = o.value; if(ideaText) ideaText.value = ''; btnGenerate.onclick(); };
-      ideaChips.appendChild(c);
+      var h = HOT[o.value]; if(!h) return;
+      var name = (window.__optT ? window.__optT(o) : o.textContent).trim();
+      var b = hot(h[0],h[1],h[2],h[3],name,false);
+      b.dataset.place = o.value;
+      if(!isAr){
+        var cap=document.createElement('span');
+        cap.textContent=name;
+        cap.style.cssText='position:absolute; left:50%; bottom:5%; transform:translateX(-50%); white-space:nowrap;'+
+          'font-size:11px; font-weight:700; color:#fff; background:rgba(0,0,0,.75); padding:2px 9px; border-radius:999px;';
+        b.appendChild(cap);
+      }
+      b.onclick=function(){ placeEl.value=o.value; if(ideaText) ideaText.value=''; loadIdeas({ place:o.value }); };
+      wrap.appendChild(b);
     });
-    if(ideaTitle) ideaTitle.textContent = '💡 ' + bT('أفكار بلا صورة — اختر نوع المكان أو اكتب ما تريد', 'Ideas without a photo — pick a place or describe what you want');
+
+    var brainName = bT('أعطني أفكارًا','Give me ideas');
+    var brain = hot(41.3,35.6,19.2,22.5,brainName,true);
+    brain.onclick=function(){ if(ideaGo && ideaGo.onclick) ideaGo.onclick(); };
+    wrap.appendChild(brain);
+
+    ideaChips.appendChild(wrap);
+
+    if(ideaTitle) ideaTitle.textContent = '💡 ' + bT('أفكار بلا صورة — اضغط على المكان في الصورة أو اكتب ما تريد', 'Ideas without a photo — tap a place in the image or describe what you want');
     if(ideaText) ideaText.placeholder = bT('مثال: مجلس عربي فخم لعشرين شخصًا', 'e.g. a luxurious Arabic majlis for twenty guests');
-    if(ideaGo) ideaGo.textContent = '✨ ' + bT('أعطني أفكارًا', 'Give me ideas');
+    if(ideaGo) ideaGo.textContent = '✨ ' + brainName;
   }
   buildIdeaChips();
   /* v-decor-gallery: معرض صور حقيقية (عشرات) من الويب — يفتح فورًا، والتوليد بالذكاء زرّ منفصل */
