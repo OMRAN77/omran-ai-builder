@@ -631,3 +631,47 @@ html.oiOn body{overflow:hidden}
 </script>
 </body>
 </html>
+<!-- ===== ✨ نجوم الشريط الجانبي ===== -->
+<style>
+.omSky{ position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0; }
+.omSky .omSkyStar{
+  position:absolute;
+  width:var(--sz); height:var(--sz);
+  background:#ffd76a;
+  clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%);
+  filter:drop-shadow(0 0 5px rgba(255,215,106,.85));
+  opacity:0;
+  animation:omSkyTwinkle var(--dur) ease-in-out infinite var(--dly);
+}
+@keyframes omSkyTwinkle{
+  0%,100%{ opacity:0;   transform:scale(.25) rotate(0deg); }
+  40%    { opacity:.85; transform:scale(1)   rotate(45deg); }
+  70%    { opacity:.25; transform:scale(.6)  rotate(90deg); }
+}
+@media (prefers-reduced-motion:reduce){ .omSky{ display:none; } }
+</style>
+<script>
+(function(){
+  var COUNT = 18;
+  function build(){
+    var sb = document.getElementById('sidebar');
+    if(!sb || sb.querySelector('.omSky')) return;
+    if(getComputedStyle(sb).position === 'static') sb.style.position = 'relative';
+    var sky = document.createElement('div');
+    sky.className = 'omSky';
+    for(var i=0;i<COUNT;i++){
+      var s = document.createElement('span');
+      s.className = 'omSkyStar';
+      s.style.top  = ((i + Math.random()) / COUNT * 100).toFixed(2) + '%';
+      s.style.left = (4 + Math.random()*92).toFixed(2) + '%';
+      s.style.setProperty('--sz',  (4 + Math.random()*5).toFixed(1) + 'px');
+      s.style.setProperty('--dur', (2.2 + Math.random()*2.4).toFixed(2) + 's');
+      s.style.setProperty('--dly', (Math.random()*4).toFixed(2) + 's');
+      sky.appendChild(s);
+    }
+    sb.insertBefore(sky, sb.firstChild);
+  }
+  build();
+  document.addEventListener('DOMContentLoaded', build);
+})();
+</script>
