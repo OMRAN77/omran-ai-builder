@@ -23294,7 +23294,11 @@ async function __safeJson(res){
 
     ideaChips.appendChild(wrap);
 
-    if(ideaTitle) ideaTitle.textContent = '💡 ' + bT('أفكار بلا صورة — اضغط على المكان في الصورة أو اكتب ما تريد', 'Ideas without a photo — tap a place in the image or describe what you want');
+     if(ideaTitle){
+     var __k = 'decorIdeasTitlePoster', __g = '';
+    try{ if(typeof window.t === 'function'){ var __v = window.t(__k); if(__v && __v !== __k) __g = __v; } }catch(e){ /* guard-ok */ }
+      ideaTitle.textContent = '💡 ' + (__g || bT('أفكار بلا صورة — اضغط على المكان في الصورة أو اكتب ما تريد', 'Ideas without a photo — tap a place in the image or describe what you want'));
+    }
     if(ideaText) ideaText.placeholder = bT('مثال: مجلس عربي فخم لعشرين شخصًا', 'e.g. a luxurious Arabic majlis for twenty guests');
     if(ideaGo){ ideaGo.textContent = '✨ ' + brainName; ideaGo.style.display = 'none'; }
   }
