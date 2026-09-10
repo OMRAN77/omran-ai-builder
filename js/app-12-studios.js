@@ -140,10 +140,10 @@ async function __safeJson(res){
   const ideaChips = document.getElementById('designAiIdeaChips');
   const ideaText = document.getElementById('designAiIdeaText');
   const ideaGo = document.getElementById('designAiIdeaGo');
-  const ideaTitle = document.getElementById('designAiIdeasTitle');
- alue; if(ideaText) ideaText.value = ''; btnGenerate.onclick(); };
-      ideaChips.appendChild(c);   function buildIdeaChips(){
-    if(!ideaChips || !placeEl) return;
+  143    const ideaTitle = document.getElementById('designAiIdeasTitle');
+144  function buildIdeaChips(){
+145    if(!ideaChips || !placeEl) return;
+146    ideaChips.innerHTML = '';
     ideaChips.innerHTML = '';
     /* v-decor-poster: البوستر نفسه هو الأزرار — كل غرفة نقطة نقر، والمخ = أعطني أفكارًا */
     var HOT = {
