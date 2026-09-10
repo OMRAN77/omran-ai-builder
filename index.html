@@ -571,6 +571,63 @@ html.oiOn body{overflow:hidden}
     }).observe(document.body, {childList:true, subtree:true, characterData:true});
     })();
     </script>
-    
+    <!-- ===== ✨ نجوم زر "محادثة جديدة" ===== -->
+<style>
+#omranNewChatBtn{ position:relative; overflow:hidden; }
+#omranNewChatBtn > .omStar{
+  position:absolute;
+  width:var(--sz); height:var(--sz);
+  background:#ffd76a;
+  clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%);
+  filter:drop-shadow(0 0 6px rgba(255,215,106,.95));
+  opacity:0; pointer-events:none; z-index:3;
+  animation:omStarTwinkle var(--dur) ease-in-out infinite var(--dly);
+}
+@keyframes omStarTwinkle{
+  0%,100%{ opacity:0; transform:scale(.3) rotate(0deg); }
+  35%    { opacity:1; transform:scale(1) rotate(45deg); }
+  60%    { opacity:.4; transform:scale(.65) rotate(90deg); }
+}
+#omranNewChatBtn::after{
+  content:""; position:absolute; inset:0; pointer-events:none; z-index:2;
+  background:linear-gradient(115deg,transparent 35%,rgba(255,238,180,.20) 50%,transparent 65%);
+  transform:translateX(-130%);
+  animation:omStarShine 5s ease-in-out infinite;
+}
+@keyframes omStarShine{ 0%,70%{transform:translateX(-130%)} 90%,100%{transform:translateX(130%)} }
+@media (prefers-reduced-motion:reduce){
+  #omranNewChatBtn > .omStar, #omranNewChatBtn::after{ animation:none; }
+}
+</style>
+<script>
+(function(){
+  var STARS = [
+    ['12%','10%','8px','2.4s','0s'],
+    ['62%','18%','6px','3.1s','.6s'],
+    ['22%','34%','5px','2.8s','1.2s'],
+    ['58%','50%','9px','3.4s','.3s'],
+    ['16%','68%','6px','2.6s','1.6s'],
+    ['66%','80%','7px','3s','.9s'],
+    ['30%','91%','5px','2.9s','1.9s']
+  ];
+  function build(){
+    var b = document.getElementById('omranNewChatBtn');
+    if(!b || b.dataset.omStars) return true;
+    b.dataset.omStars = '1';
+    STARS.forEach(function(p){
+      var s = document.createElement('span');
+      s.className = 'omStar';
+      s.style.top = p[0]; s.style.left = p[1];
+      s.style.setProperty('--sz', p[2]);
+      s.style.setProperty('--dur', p[3]);
+      s.style.setProperty('--dly', p[4]);
+      b.appendChild(s);
+    });
+    return true;
+  }
+  if(!build()) document.addEventListener('DOMContentLoaded', build);
+  document.addEventListener('DOMContentLoaded', build);
+})();
+</script>
 </body>
 </html>
