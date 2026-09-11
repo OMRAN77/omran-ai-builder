@@ -1771,11 +1771,10 @@ function renderMessages(keepScroll){
           /* v-gold-badge: نفس بطاقة صندوق الكتابة داخل الرسالة المرسلة.
              الدالة معرّفة في app-09-attach.js الذي يُحمّل بعد هذا الملفّ،
              لذا نفحص وجودها وقت العرض لا وقت التحليل. */
-          let __big = false;
-          try{ __big = !!(a.text && a.text.length >= OMRAN_PASTE_ATTACH_CHARS); }
-          catch(_e){ __big = !!(a.text && a.text.length >= 1000); }
-          if(__big && typeof omranGoldBadgeFill === 'function'){
-            omranGoldBadgeFill(chip, a);
+          const __lim = window.OMRAN_PASTE_ATTACH_CHARS || 1000;
+          const __big = !!(a.text && a.text.length >= __lim);
+          if(__big && typeof window.omranGoldBadgeFill === 'function'){
+            window.omranGoldBadgeFill(chip, a);
           } else {
             chip.textContent = '📄 ' + a.name;
           }
