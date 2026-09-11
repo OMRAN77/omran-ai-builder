@@ -604,7 +604,7 @@ function omranCodeEscape(s){
     return c === '&' ? '&amp;' : (c === '<' ? '&lt;' : '&gt;');
   });
 }
-var OMRAN_HL_MAX = 150000; /* فوقه نعرض بلا تلوين حفاظًا على الأداء */
+var OMRAN_HL_MAX = 400000; /* فوقه نعرض بلا تلوين حفاظًا على الأداء — الترقيم يبقى دائمًا بلا حدّ */
 function omranCodeHighlight(raw){
   var esc = omranCodeEscape(raw);
   if(esc.length > OMRAN_HL_MAX) return esc;
