@@ -1768,7 +1768,17 @@ function renderMessages(keepScroll){
         } else {
           const chip = document.createElement('div');
           chip.className = 'file-chip';
-          chip.textContent = '📄 ' + a.name;
+          /* v-gold-badge: نفس بطاقة صندوق الكتابة داخل الرسالة المرسلة.
+             الدالة معرّفة في app-09-attach.js الذي يُحمّل بعد هذا الملفّ،
+             لذا نفحص وجودها وقت العرض لا وقت التحليل. */
+          let __big = false;
+          try{ __big = !!(a.text && a.text.length >= OMRAN_PASTE_ATTACH_CHARS); }
+          catch(_e){ __big = !!(a.text && a.text.length >= 1000); }
+          if(__big && typeof omranGoldBadgeFill === 'function'){
+            omranGoldBadgeFill(chip, a);
+          } else {
+            chip.textContent = '📄 ' + a.name;
+          }
           if(a.text){
             chip.style.cursor = 'pointer';
             chip.title = a.name;
