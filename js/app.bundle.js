@@ -15438,6 +15438,52 @@ function isImageAttachment(file){
   return false;
 }
 
+/* v-gold-badge: بطاقة المرفق النصّي بإطار ذهبيّ من ثلاث شرائح — الطرفان
+   ثابتان والوسط يتكرّر، فتتمدّد مع أيّ لغة بلا تشويه. الأيقونة مدمجة في
+   الشريحة اليمنى؛ زرّ ✕ يوضع بالكود على الطرف المقابل ويتبع اتّجاه اللغة. */
+function omranGoldBadgeCss(){
+  if(document.getElementById('omranGoldBadgeCss')) return;
+  const st = document.createElement('style');
+  st.id = 'omranGoldBadgeCss';
+  st.textContent =
+    '.attach-chip.goldBadge{position:relative;display:inline-flex;align-items:center;height:60px;'
+    + 'min-width:190px;max-width:360px;box-sizing:border-box;background:none;border:0;padding:0;'
+    + 'background-image:url(/img/omran-badge-left.png),url(/img/omran-badge-right.png),url(/img/omran-badge-mid.png);'
+    + 'background-position:left center,right center,center;'
+    + 'background-size:auto 100%,auto 100%,auto 100%;'
+    + 'background-repeat:no-repeat,no-repeat,repeat-x;'
+    + 'padding-inline-start:44px;padding-inline-end:56px;cursor:pointer;}'
+    + '.attach-chip.goldBadge .gbTxt{flex:1;min-width:0;text-align:start;}'
+    + '.attach-chip.goldBadge .gbName{display:block;font-size:13.5px;font-weight:500;color:#f0e9d8;'
+    + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25;}'
+    + '.attach-chip.goldBadge .gbSub{display:block;font-size:11px;color:#9a9384;margin-top:2px;'
+    + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
+    + '.attach-chip.goldBadge .rm{position:absolute;inset-inline-start:10px;top:50%;transform:translateY(-50%);'
+    + 'width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;'
+    + 'background:linear-gradient(180deg,#23262c,#101216);border:1px solid rgba(255,255,255,.08);'
+    + 'color:#7b828e;font-size:13px;margin:0;}'
+    + '.attach-chip.goldBadge .rm:hover{color:#e05a5a;}';
+  document.head.appendChild(st);
+}
+/* يبني محتوى البطاقة: الاسم في سطر والحجم وعدد الأسطر تحته */
+function omranGoldBadgeFill(chip, a){
+  omranGoldBadgeCss();
+  chip.classList.add('goldBadge');
+  const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
+  const txt = document.createElement('span');
+  txt.className = 'gbTxt';
+  const nm = document.createElement('span');
+  nm.className = 'gbName';
+  nm.textContent = String(a.name || '').replace(/\s*·.*$/, '');
+  const sb = document.createElement('span');
+  sb.className = 'gbSub';
+  const kb = Math.max(1, Math.round(String(a.text || '').length / 1024));
+  const ln = String(a.text || '').split('\n').length;
+  sb.textContent = kb + ' KB · ' + ln.toLocaleString('en-US') + (isAr ? ' سطر' : ' lines')
+    + (a.pending ? ' ⏳' : (a.error ? ' ⚠️' : ''));
+  txt.appendChild(nm); txt.appendChild(sb);
+  chip.appendChild(txt);
+}
 function renderAttachStrip(){
   const strip = $('#attachStrip');
   strip.innerHTML = '';
@@ -15460,10 +15506,14 @@ function renderAttachStrip(){
         chip.appendChild(bdg);
       }
     } else {
-      const name = document.createElement('span');
-      name.className = 'name';
-      name.textContent = a.name + (a.pending ? ' ⏳' : (a.error ? ' ⚠️' : ''));
-      chip.appendChild(name);
+      if(a.text){
+        omranGoldBadgeFill(chip, a);          /* v-gold-badge */
+      } else {
+        const name = document.createElement('span');
+        name.className = 'name';
+        name.textContent = a.name + (a.pending ? ' ⏳' : (a.error ? ' ⚠️' : ''));
+        chip.appendChild(name);
+      }
       /* v-paste-attach: عرض محتوى المرفق النصّي في تبويب «الكود» قبل الإرسال */
       if(a.text && !a.pending){
         chip.style.cursor = 'pointer';
