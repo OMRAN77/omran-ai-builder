@@ -214,6 +214,12 @@ function omranGoldBadgeFill(chip, a){
   txt.appendChild(nm); txt.appendChild(sb);
   chip.appendChild(txt);
 }
+/* v-gold-badge-export: الملفّات تُحمَّل كوحدات (type="module")، فالتعريف أعلاه
+   محبوس في نطاق هذا الملفّ ولا يراه app-04-i18n-state.js. التعريض على window
+   هو ما يجعل البطاقة تظهر داخل الرسالة المرسلة أيضًا، لا في صندوق الكتابة فقط. */
+window.omranGoldBadgeFill = omranGoldBadgeFill;
+window.omranGoldBadgeCss  = omranGoldBadgeCss;
+window.OMRAN_PASTE_ATTACH_CHARS = OMRAN_PASTE_ATTACH_CHARS;
 function renderAttachStrip(){
   const strip = $('#attachStrip');
   strip.innerHTML = '';
