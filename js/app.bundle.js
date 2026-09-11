@@ -7889,6 +7889,13 @@ function renderCodeAndPreview(){
      كان يكلّف تخطيطًا كاملًا — نسنده فقط عند تغيّره فعلًا. */
   if(codeEl.value !== cur.code) codeEl.value = cur.code;
   emptyState.style.display = 'none';
+  /* v-panel-head: العنوان يتبع المعروض — اسم المشروع ونوع الكود */
+  try{
+    if(!previewFrame._imageView && typeof window.omranPanelTitle === 'function'){
+      var __ct = (cur.codeType === 'python') ? 'PY' : 'HTML';
+      window.omranPanelTitle((cur.title || '') + ' · ' + __ct, cur.code);
+    }
+  }catch(e){ __swallow(e, 'ui:panel-head#code'); }
   if(cur.codeType === 'python'){
     previewFrame.style.display = 'none';
     pyConsole.style.display = 'flex';
@@ -8425,6 +8432,51 @@ document.querySelectorAll('.tab').forEach(tab => {
   btn.id = 'waCollapseBtn'; btn.type = 'button'; btn.setAttribute('aria-label','طي اللوحة');
   btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><line x1="15" y1="4" x2="15" y2="20"></line></svg>';
   tabs.insertBefore(btn, tabs.firstElementChild);
+  /* v-panel-head: عنوان يبيّن المعروض حاليًا + زرّ نسخ لمحتوى اللوحة.
+     يُضافان داخل شريط #tabs نفسه بلا لمس أيّ زرّ قائم؛ العنوان يُحدَّث من
+     omranPanelTitle، والنسخ يأخذ الكود أو النصّ المعروض حسب الحالة. */
+  try{
+    var __ptl = document.createElement('span');
+    __ptl.id = 'waPanelTitle';
+    __ptl.style.cssText = 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'
+      + 'font-size:12.5px;font-weight:600;color:var(--muted,#98a0b3);padding:0 8px;';
+    tabs.appendChild(__ptl);
+    var __pcp = document.createElement('button');
+    __pcp.id = 'waCopyBtn'; __pcp.type = 'button';
+    __pcp.title = (typeof t === 'function' && t('copyMsgTitle') !== 'copyMsgTitle') ? t('copyMsgTitle') : 'نسخ';
+    __pcp.setAttribute('aria-label', __pcp.title);
+    var __cpIco = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+    var __okIco = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+    __pcp.innerHTML = __cpIco;
+    __pcp.style.cssText = 'background:none;border:0;color:var(--muted,#98a0b3);cursor:pointer;padding:4px 8px;display:flex;align-items:center;';
+    __pcp.onclick = function(e){
+      e.stopPropagation();
+      var txt = window.__omranPanelText || (codeEl && codeEl.value) || '';
+      if(!txt) return;
+      var flash = function(){ __pcp.innerHTML = __okIco; setTimeout(function(){ __pcp.innerHTML = __cpIco; }, 1500); };
+      try{
+        navigator.clipboard.writeText(txt).then(flash).catch(function(){
+          var ta = document.createElement('textarea');
+          ta.value = txt; ta.style.cssText = 'position:fixed;opacity:0';
+          document.body.appendChild(ta); ta.select();
+          try{ document.execCommand('copy'); flash(); }catch(e2){ /* guard-ok */ }
+          ta.remove();
+        });
+      }catch(e3){ __swallow(e3, 'ui:panel-copy'); }
+    };
+    tabs.appendChild(__pcp);
+  }catch(e){ __swallow(e, 'ui:panel-head'); }
+  /* يضبط عنوان اللوحة ونصّ النسخ. يُستدعى من renderCodeAndPreview ومن
+     omranOpenReplyInPanel (app-04) عند فتح ردّ نصّيّ. */
+  window.omranPanelTitle = function(label, textForCopy){
+    try{
+      var el = document.getElementById('waPanelTitle');
+      if(el) el.textContent = label || '';
+      window.__omranPanelText = (textForCopy === undefined) ? null : textForCopy;
+      var cb = document.getElementById('waCopyBtn');
+      if(cb) cb.style.display = (label ? 'flex' : 'none');
+    }catch(e){ __swallow(e, 'ui:panel-title'); }
+  };
   const ro = document.createElement('button');
   ro.id = 'waReopen'; ro.type = 'button'; ro.setAttribute('aria-label','فتح اللوحة');
   ro.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>';
