@@ -1352,6 +1352,19 @@ function omranRenderOptions(host, blocks){
    لا يلمس cur.code ولا المعاينة المحفوظة — يعرض النصّ مهرَّبًا فقط، كما تفعل
    رقاقة الملفّ النصّي تمامًا. أزرار الرسالة كلها تبقى في أماكنها بلا تغيير. */
 var OMRAN_LONG_REPLY_CHARS = 1500;
+/* v-long-reply-fix: الأنماط المباشرة (style.maxHeight) لم تقصّ شيئًا — تنسيق
+   .msg-text يحمل قواعد أقوى. قاعدة صنف بـ!important تحسم الأمر، ومعها
+   content-visibility:visible كي لا يتعارض قصّ v-tap-fast مع القناع. */
+function omranLongClipCss(){
+  if(document.getElementById('omranLongClipCss')) return;
+  var st = document.createElement('style');
+  st.id = 'omranLongClipCss';
+  st.textContent = '.msg-text.omranLongClip{max-height:260px !important;overflow:hidden !important;'
+    + 'content-visibility:visible !important;'
+    + '-webkit-mask-image:linear-gradient(#000 66%,transparent) !important;'
+    + 'mask-image:linear-gradient(#000 66%,transparent) !important;}';
+  document.head.appendChild(st);
+}
 function omranOpenReplyInPanel(text){
   try{
     var esc = String(text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -1557,11 +1570,8 @@ function renderMessages(keepScroll){
         var __lk = 'L' + mIdx;
         var __openNow = cur.__expandedLong.indexOf(__lk) !== -1;
         if(!__openNow){
+          omranLongClipCss();
           textDiv.classList.add('omranLongClip');
-          textDiv.style.maxHeight = '260px';
-          textDiv.style.overflow = 'hidden';
-          textDiv.style.webkitMaskImage = 'linear-gradient(#000 68%,transparent)';
-          textDiv.style.maskImage = 'linear-gradient(#000 68%,transparent)';
         }
         var __lrow = document.createElement('div');
         __lrow.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;';
