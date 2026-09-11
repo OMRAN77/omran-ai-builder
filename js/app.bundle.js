@@ -5777,6 +5777,10 @@ function omranOpenReplyInPanel(text){
       + 'font-family:Tajawal,Tahoma,Arial,sans-serif;white-space:pre-wrap;word-break:break-word;'
       + 'line-height:1.9;font-size:15px;padding:20px;direction:' + (rtl ? 'rtl' : 'ltr') + ';">'
       + esc + '</body></html>';
+    /* v-panel-head: عنوان اللوحة ونصّ النسخ يتبعان الردّ المعروض */
+    if(typeof window.omranPanelTitle === 'function'){
+      window.omranPanelTitle((typeof lang !== 'undefined' && (lang === 'ar' || lang === 'ur')) ? 'الرد الكامل' : 'Full reply', String(text || ''));
+    }
     if(typeof switchWorkTab === 'function') switchWorkTab('preview');
     if(typeof window.waAutoExpand === 'function') window.waAutoExpand();
     if(window.innerWidth <= 860 && localStorage.getItem('previewEnabled') !== 'off'){
