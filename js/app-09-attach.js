@@ -114,6 +114,10 @@ function AI_FACTORY_MODE(){ return AI_MODE_NAME() === 'factory'; }
 // ---- Attachments (images + text/code files) ----
 let pendingAttachments = [];
 const MAX_TEXT_ATTACH_CHARS = 100000;
+/* v-paste-attach: نصّ ملصوق أطول من هذا يصير مرفقًا بدل أن يملأ صندوق الكتابة.
+   مكسبان: المحادثة تبقى نظيفة، والنصّ يصل كاملًا (حدّ المرفق 100 ألف حرف)
+   بدل حدّ الرسالة الواحدة في السياق (7000). */
+const OMRAN_PASTE_ATTACH_CHARS = 1000;
 const MAX_ATTACH_FILE_BYTES = 25 * 1024 * 1024; // 25MB hard cap per file
 const ARCHIVE_EXT_RE = /\.(zip|docx|xlsx|pptx|jar)$/i;
 const IMAGE_TYPES = /^image\//;
@@ -127,6 +131,125 @@ function isImageAttachment(file){
     if(file && file.name && IMAGE_EXT_RE.test(file.name)) return true;
   }catch(_e){ __swallow(_e, "attach:isImage"); }
   return false;
+}
+
+/* v-gold-badge-i18n: كلمتا البطاقة بأربع عشرة لغة — نفس أسلوب __OLDT في app-04.
+   أيّ لغة غير مذكورة تسقط للإنجليزيّة تلقائيًّا. */
+const OMRAN_BADGE_T = {
+  lines: { ar:'سطر', en:'lines', fr:'lignes', hi:'पंक्तियाँ', ur:'سطریں', bn:'লাইন',
+           ne:'लाइन', id:'baris', fil:'linya', tr:'satır', zh:'行', ru:'строк',
+           es:'líneas', ml:'വരികൾ' },
+  scan:  { ar:'جارٍ التحليل…', en:'Analyzing…', fr:'Analyse…', hi:'विश्लेषण जारी…',
+           ur:'تجزیہ جاری…', bn:'বিশ্লেষণ চলছে…', ne:'विश्लेषण हुँदै…', id:'Menganalisis…',
+           fil:'Sinusuri…', tr:'Çözümleniyor…', zh:'正在分析…', ru:'Анализ…',
+           es:'Analizando…', ml:'വിശകലനം ചെയ്യുന്നു…' }
+};
+function omranBadgeT(key){
+  let lg = 'ar';
+  try{ lg = (typeof lang !== 'undefined' && lang) ? lang : (localStorage.getItem('aiapp_lang') || 'ar'); }
+  catch(e){ /* guard-ok: تخزين غير متاح → العربيّة */ }
+  const m = OMRAN_BADGE_T[key] || {};
+  return m[lg] || m.en || '';
+}
+/* ═══ v-gold-badge: بطاقة المرفق النصّي الكبير ═══
+   الإطار الذهبيّ مرسوم بالـCSS لا بصور base64 — يتمدّد مع أيّ لغة بلا تشويه،
+   وأخفّ ٣٠ كيلو على كلّ تحميل، والأيقونة عنصر مستقلّ فلا يركب عليها زرّ ✕.
+   تظهر للمرفقات ١٠٠٠ حرف فأكثر فقط؛ والملفّ الصغير يبقى رقاقة عاديّة. */
+function omranGoldBadgeCss(){
+  if(!document.getElementById('omGoldCodeDefs')){
+    try{
+      const d = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      d.id = 'omGoldCodeDefs';
+      d.setAttribute('aria-hidden', 'true');
+      d.setAttribute('style', 'position:absolute;width:0;height:0;overflow:hidden');
+      d.innerHTML = '<defs><linearGradient id="omGoldCodeG" x1="0" y1="0" x2="1" y2="1">'
+        + '<stop offset="0" stop-color="#4ade80"/><stop offset=".5" stop-color="#60a5fa"/>'
+        + '<stop offset="1" stop-color="#f472b6"/></linearGradient></defs>';
+      (document.body || document.documentElement).appendChild(d);
+    }catch(e){ /* guard-ok: بلا تدرّج تبقى الأيقونة ذهبيّة */ }
+  }
+  if(document.getElementById('omranGoldBadgeCss')) return;
+  const st = document.createElement('style');
+  st.id = 'omranGoldBadgeCss';
+  st.textContent =
+    /* الإطار: تدرّج ذهبيّ على border-box وداخل داكن على padding-box */
+      '.attach-chip.goldBadge{position:relative;display:inline-flex;align-items:center;gap:10px;'
+    + 'height:60px;min-width:215px;max-width:370px;box-sizing:border-box;'
+    + 'padding:0 16px;border-radius:999px;cursor:pointer;border:2px solid transparent;'
+    + 'background:linear-gradient(180deg,#171b23,#0b0e13) padding-box,'
+    + 'linear-gradient(145deg,#f6dc9a,#a9762a 34%,#fae7ab 52%,#8d5f22 72%,#e8c877) border-box;'
+    + 'box-shadow:0 4px 14px rgba(0,0,0,.55),inset 0 0 22px rgba(212,175,55,.10);}'
+    + '.attach-chip.goldBadge:active{transform:translateY(1px);}'
+    + '.attach-chip.goldBadge .gbTxt{flex:1 1 auto;min-width:0;text-align:start;unicode-bidi:plaintext;}'
+    /* plaintext على الاسم أيضًا: اسم ملفّ لاتينيّ لا ينقلب داخل واجهة عربيّة
+       (gbName وgbSub أبناء display:block فلا يرثان plaintext من gbTxt) */
+    + '.attach-chip.goldBadge .gbName{display:block;unicode-bidi:plaintext;font-size:13.5px;'
+    + 'font-weight:600;color:#f2ead8;white-space:nowrap;overflow:hidden;'
+    + 'text-overflow:ellipsis;line-height:1.25;}'
+    + '.attach-chip.goldBadge .gbSub{display:block;font-size:11px;color:#9a9384;margin-top:2px;'
+    + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;}'
+    + '.attach-chip.goldBadge .gbIcon{flex:0 0 auto;width:36px;height:36px;border-radius:50%;'
+    + 'display:flex;align-items:center;justify-content:center;'
+    + 'background:radial-gradient(circle at 32% 28%,#1d222c,#090b0f);'
+    + 'border:1.5px solid rgba(212,175,55,.85);'
+    + 'box-shadow:0 0 12px rgba(212,175,55,.45),inset 0 0 7px rgba(212,175,55,.28);}'
+    + '.attach-chip.goldBadge .gbIcon svg{width:18px;height:18px;display:block;}'
+    /* ✕ عنصر عاديّ في صفّ الـflex لا عائم فوق البطاقة — فلا يركب على الأيقونة
+       مهما كانت قاعدة .attach-chip .rm الأساسيّة (position/inset تُلغى هنا) */
+    + '.attach-chip.goldBadge .rm{position:static !important;inset:auto !important;'
+    + 'flex:0 0 auto;margin:0 !important;width:22px;height:22px;border-radius:50%;'
+    + 'display:flex;align-items:center;justify-content:center;'
+    + 'background:linear-gradient(180deg,#23262c,#101216);'
+    + 'border:1px solid rgba(255,255,255,.09);color:#7b828e;font-size:12px;line-height:1;}'
+    + '.attach-chip.goldBadge .rm:hover{color:#e05a5a;}'
+    + 'html[data-mode="light"] .attach-chip.goldBadge{'
+    + 'background:linear-gradient(180deg,#fdfaf2,#f3ece0) padding-box,'
+    + 'linear-gradient(145deg,#e2c173,#a9762a 34%,#f3dfa6 52%,#8d5f22 72%,#dcbe6e) border-box;'
+    + 'box-shadow:0 3px 10px rgba(0,0,0,.16),inset 0 0 20px rgba(212,175,55,.12);}'
+    + 'html[data-mode="light"] .attach-chip.goldBadge .gbName{color:#2a2317;}'
+    + 'html[data-mode="light"] .attach-chip.goldBadge .gbSub{color:#7d7463;}';
+  document.head.appendChild(st);
+}
+
+/* يبني محتوى البطاقة: الاسم في سطر، والحجم وعدد الأسطر تحته، والأيقونة في الطرف */
+function omranGoldBadgeFill(chip, a){
+  omranGoldBadgeCss();
+  chip.classList.add('goldBadge');
+  const txt = document.createElement('span');
+  txt.className = 'gbTxt';
+
+  const nm = document.createElement('span');
+  nm.className = 'gbName';
+  nm.textContent = String(a.name || '').replace(/\s*·.*$/, '');
+
+  const sb = document.createElement('span');
+  sb.className = 'gbSub';
+  const __body = String(a.text || '');
+  /* الحجم بالبايت الحقيقيّ لا بعدد الحروف: الحرف العربيّ بايتان في UTF-8،
+     فكان ملفّ ٩٨ كيلو يظهر نصف حجمه. Blob غير متاح؟ نعود لعدّ الحروف. */
+  let __bytes = __body.length;
+  try{ __bytes = new Blob([__body]).size; }catch(_e){ /* guard-ok */ }
+  const kb = Math.max(1, Math.round(__bytes / 1024));
+  const ln = __body ? __body.split('\n').length : 0;
+  /* \u2066…\u2069 عزل ثنائيّ الاتجاه — بدونه ينقلب السطر داخل الواجهة العربيّة
+     فيظهر «98 443 KB · سطر» بدل «44 KB · 3,898 سطر». */
+  sb.textContent = a.pending
+    ? (omranBadgeT('scan') + ' ⏳')
+    : ('\u2066' + kb + ' KB\u2069 · \u2066' + ln.toLocaleString('en-US') + '\u2069'
+       + ' ' + omranBadgeT('lines') + (a.error ? ' ⚠️' : ''));
+
+  txt.appendChild(nm); txt.appendChild(sb);
+  chip.appendChild(txt);
+
+  const ic = document.createElement('span');
+  ic.className = 'gbIcon';
+  ic.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="url(#omGoldCodeG)" stroke-width="1.8" '
+    + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+    + '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>'
+    + '<polyline points="14 2 14 8 20 8"/>'
+    + '<polyline points="10.5 12 8.5 14 10.5 16"/>'
+    + '<polyline points="13.5 12 15.5 14 13.5 16"/></svg>';
+  chip.appendChild(ic);
 }
 
 function renderAttachStrip(){
@@ -151,10 +274,24 @@ function renderAttachStrip(){
         chip.appendChild(bdg);
       }
     } else {
-      const name = document.createElement('span');
-      name.className = 'name';
-      name.textContent = a.name + (a.pending ? ' ⏳' : (a.error ? ' ⚠️' : ''));
-      chip.appendChild(name);
+      /* v-gold-badge: البطاقة الذهبيّة للمرفقات ١٠٠٠ حرف فأكثر فقط */
+      if(a.text && a.text.length >= OMRAN_PASTE_ATTACH_CHARS){
+        omranGoldBadgeFill(chip, a);
+      } else {
+        const name = document.createElement('span');
+        name.className = 'name';
+        name.textContent = a.name + (a.pending ? ' ⏳' : (a.error ? ' ⚠️' : ''));
+        chip.appendChild(name);
+      }
+      /* v-paste-attach: عرض محتوى المرفق النصّي في تبويب «الكود» قبل الإرسال */
+      if(a.text && !a.pending){
+        chip.style.cursor = 'pointer';
+        chip.title = a.name;
+        chip.onclick = (ev) => {
+          if(ev && ev.target && ev.target.classList && ev.target.classList.contains('rm')) return;
+          if(typeof window.omranOpenTextInCodePanel === 'function') window.omranOpenTextInCodePanel(a.text, a.name);
+        };
+      }
     }
     const rm = document.createElement('span');
     rm.className = 'rm';
@@ -1149,7 +1286,26 @@ $('#attachInput').addEventListener('change', async (e) => {
         if(ae && ae.id !== 'prompt' && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
         const items = Array.from((e.clipboardData && e.clipboardData.items) || []);
         const files = items.filter(i => i.kind === 'file' && /^image\//.test(i.type)).map(i => i.getAsFile()).filter(Boolean);
-        if(!files.length) return;
+        if(!files.length){
+          /* v-paste-attach: لصق نصّ طويل → مرفق قابل للفتح في تبويب «الكود» */
+          try{
+            const __pt = (e.clipboardData && e.clipboardData.getData) ? String(e.clipboardData.getData('text') || '') : '';
+            if(__pt.length > OMRAN_PASTE_ATTACH_CHARS){
+              e.preventDefault();
+              let __body = __pt;
+              if(__body.length > MAX_TEXT_ATTACH_CHARS) __body = __body.slice(0, MAX_TEXT_ATTACH_CHARS) + '\n... (' + t('attachTruncated') + ')';
+              const __isArP = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
+              pendingAttachments.push({
+                name: (__isArP ? 'نص ملصوق' : 'Pasted text') + ' (' + __pt.length.toLocaleString('en-US') + ')',
+                isImage: false, text: __body, _pasted: true
+              });
+              renderAttachStrip();
+              try{ if(typeof settingsToast === 'function') settingsToast(__isArP ? '📄 حُوّل النص إلى مرفق — اضغط عليه لعرضه' : '📄 Converted to an attachment — tap it to view'); }catch(_e){ /* guard-ok */ }
+              try{ $('#prompt').focus(); }catch(_e){ /* guard-ok */ }
+            }
+          }catch(err2){ __swallow(err2, 'attach:paste-text'); }
+          return;
+        }
         e.preventDefault();
         const named = files.map((f, i) => { try{ return new File([f], 'pasted-' + Date.now() + (i ? '-' + i : '') + '.png', { type: f.type || 'image/png' }); }catch(_){ return f; } });
         omranIngestFiles(named, { pasted: true }).then(() => { try{ $('#prompt').focus(); }catch(_){ /* guard-ok — cleanup, intentional */ } });
@@ -2527,6 +2683,11 @@ async function __sendPromptCore(){
     (__editedOriginal && Array.isArray(__editedOriginal.attachments) ? __editedOriginal.attachments.slice() : []);
   const imageAttachments = attachmentsForMsg.filter(a => a.isImage);
   const textAttachments = attachmentsForMsg.filter(a => !a.isImage);
+  /* v-file-analyze: ملف نصّي/كودي مرفق بلا أمر بناء صريح = طلب تحليل لا بناء.
+     بدونه كان وجود كود سابق في المشروع (cur.code) يكفي لتصنيف الرسالة بناءً،
+     فيُلصَق تحذير «لم يصل كود من المزوّد» في ذيل تحليل صحيح تمامًا. */
+  const __fileAnalyze = !!(textAttachments.length && !__strongBuildRe.test(text)
+    && !/(?:ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|اصنع|build|create|make|design)\s*(?:لي\s*)?[^\n]{0,20}(?:تطبيق|موقع|صفحة|لعبة|برنامج|بوت|أداة|اداة|app|website|page|game|bot|tool)/i.test(text || ''));
 
   // Build the text sent to the AI: original text + any text-file contents appended as code blocks
   let apiText = text;
@@ -2559,6 +2720,13 @@ async function __sendPromptCore(){
     // v473c: بعد «وصلتني الصورة» أي رسالة تالية قصيرة تُرفق الصورة المحفوظة تلقائياً
     if(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && cur.lastMsgWasImageEdit && text && text.length <= 220){
       imageAttachments.push({ isImage: true, name: 'memory.png', mime: cur.lastEditedImage.mime || 'image/png', dataUrl: 'data:' + (cur.lastEditedImage.mime || 'image/png') + ';base64,' + cur.lastEditedImage.b64, _fromMemory: true });
+    }
+    /* v-guide: نعيد نفس اللقطة مع الرسائل التالية داخل جلسة الإرشاد، وإلا أجاب
+       النموذج من ذاكرته عن شكل البرنامج بدل الشاشة التي أمام المستخدم.
+       السقف (٦ أدوار / ٤٠٠ حرف) يحدّ تكلفة إعادة الإرسال. */
+    if(!imageAttachments.length && cur.guideOn && cur.guideShot && cur.guideShot.b64 && text && text.length <= 400 && (cur.guideTurns || 0) < 6){
+      cur.guideTurns = (cur.guideTurns || 0) + 1;
+      imageAttachments.push({ isImage: true, name: 'screen.png', mime: cur.guideShot.mime || 'image/png', dataUrl: 'data:' + (cur.guideShot.mime || 'image/png') + ';base64,' + cur.guideShot.b64, _fromMemory: true, _screenshot: true, _guide: true });
     }
   }catch(e){ __swallow(e, "upload:app-09-attach#12"); }
   const __nextUserMessage = {role: 'user', content: (__gateApprovedText || text) || (t('imagesAttachedNote')), attachments: attachmentsForMsg.length ? attachmentsForMsg : undefined, apiText, apiImages: imageAttachments.length ? imageAttachments : undefined};
@@ -2681,7 +2849,7 @@ function __friendlyErr(e){
       return false;
     }catch(e){ return true; } // guard-ok: أي خطأ → السلوك القديم بالضبط
   })();
-  const askAll = !!customProviders || __askAllExplicit || (!__gateNoBuild && !__gateApprovedText && ((__routeBuildRe.test(text) && __routeCmdRe.test(text) && __buildIntentShape) || __strongBuildRe.test(text)) && !__routeFix);
+  const askAll = !!customProviders || __askAllExplicit || (!__gateNoBuild && !__gateApprovedText && !__fileAnalyze && ((__routeBuildRe.test(text) && __routeCmdRe.test(text) && __buildIntentShape) || __strongBuildRe.test(text)) && !__routeFix);
   // آخر نص كامل وصل من البث؛ نحتفظ به إذا أوقف المستخدم التوليد.
   let __lastStreamPartial = '';
 
@@ -2841,6 +3009,10 @@ function __friendlyErr(e){
     // 🧠 v293: أي صورة مرفقة جديدة تنحفظ كآخر صورة في المحادثة
     if(__srcImg && !__srcImg._fromMemory){
       cur.lastEditedImage = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' };
+      /* v-guide: لقطة شاشة = جلسة إرشاد — الشاشة تبقى حاضرة أمام النموذج في الأدوار
+         التالية. بدونها كان «عندي بالهاتف» يصل بلا صورة فيجيب من معلوماته العامة. */
+      if(__srcImg._screenshot){ cur.guideShot = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' }; cur.guideOn = true; cur.guideTurns = 0; }
+      else { cur.guideShot = null; cur.guideOn = false; }
       cur.imageEditInstructions = [];
       cur.imageEditSource = null;
       cur.imageTurns = []; /* v-image-memory: مصدر جديد = سلسلة جديدة */
@@ -3475,7 +3647,7 @@ function __showImgLoading(el, ar, en){
       && !__imgEditRe.test(text) && !__IMG_UPGRADE && !__IMG_ELEVATE && !__IMG_FOLLOW && !__ATT_EDIT && __IMGF_NEW_RE.test(text)
       && !__refersAttachment && !__cardTidyIntent(text)
       && !/(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|للتواصل|poster|logo|banner|certificate|card|invitation)/i.test(text));
-    if(!__freshGenWins && !__SHOT_ANALYZE && text && !cur.adMode && !__isSupportQ && !__blockAutoImage && (__IMG_UPGRADE || __IMG_ELEVATE || __IMG_FOLLOW || __ATT_EDIT || __ATT_DEFAULT || __FOLLOW_DEFAULT || __ATT_STYLE || __STYLE_FOLLOW || (__srcImg && !__srcImg._fromMemory && __cardTidyIntent(text)) || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || __STYLE_FOLLOW || __FOLLOW_DEFAULT || ((__IMG_UPGRADE || __IMG_ELEVATE) && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
+    if(!__freshGenWins && !__SHOT_ANALYZE && !(__srcImg && __srcImg._guide) && text && !cur.adMode && !__isSupportQ && !__blockAutoImage && (__IMG_UPGRADE || __IMG_ELEVATE || __IMG_FOLLOW || __ATT_EDIT || __ATT_DEFAULT || __FOLLOW_DEFAULT || __ATT_STYLE || __STYLE_FOLLOW || (__srcImg && !__srcImg._fromMemory && __cardTidyIntent(text)) || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || __STYLE_FOLLOW || __FOLLOW_DEFAULT || ((__IMG_UPGRADE || __IMG_ELEVATE) && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
       __showImgLoading(thinkingDiv, (__IMG_UPGRADE || __IMG_ELEVATE) ? 'جاري تطوير الصورة…' : 'جاري تعديل الصورة…', (__IMG_UPGRADE || __IMG_ELEVATE) ? 'Improving the image…' : 'Editing image…');
       const __upgSrc = (!__srcImg && (__IMG_UPGRADE || __IMG_ELEVATE) && !(cur.lastEditedImage && cur.lastEditedImage.b64)) ? __IMG_UPGRADE_SRC : null;
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : (__upgSrc ? ((__upgSrc.dataUrl || '').split(',')[1] || '') : ((cur.lastEditedImage && cur.lastEditedImage.b64) || ''));
@@ -4105,7 +4277,7 @@ function __showImgLoading(el, ar, en){
     const __designAskRe = /(صمم|صمّم|صممي|اصنع|ابغى|ابي|أبي|أبغى|سو|سوّ?ي|اعمل|أعمل|عطني|أعطني|هات|ارسم|صم?ّ?ملي|بوستر|تصميم|design|make|create)\s*(?:لي\s*)?(?:[^\n]{0,20})?(إعلان|بوستر|شهادة|بطاقة|دعوة|لوجو|شعار|بنر|غلاف|منشور|poster|flyer|certificate|card|invitation|logo|banner|cover)/i;
     // النصّ الملصوق لا يُفعّل البناء إطلاقًا؛ وكلمات التصميم لا تُفعّله إلا بطلبٍ
     // صريح («صمّم بطاقة»)، لا مجرّد ورود «دعوة/بطاقة» داخل جملة سرديّة.
-    const __needsBuild = !__pastedDoc && ((__bldRe.test(text) && __appWd.test(text)) || (__dsnRe.test(text) && __designAskRe.test(text)) || !!cur.code || !!window.__buildOfferApproved);
+    const __needsBuild = !__pastedDoc && !__fileAnalyze && ((__bldRe.test(text) && __appWd.test(text)) || (__dsnRe.test(text) && __designAskRe.test(text)) || !!cur.code || !!window.__buildOfferApproved);
     // v469: Q&A = بروم خفيف مثل ChatGPT؛ البناء = تعليمات كاملة.
     let __sys;
     if(__needsBuild){
@@ -4322,8 +4494,8 @@ DESIGN RULES (non-negotiable):
     if(imageAttachments.length && !cur.adMode && imageAttachments.some(a => a && a._screenshot)){
       // v-visual-assist: دور المساعد البصري للقطات الواجهات
       apiMessages.push({role: 'system', content: lang === 'ar'
-        ? 'أنت المساعد البصري داخل تطبيق عمران AI. المرفق لقطة شاشة لواجهة (تطبيق/موقع/إعدادات/رسالة خطأ). اقرأ الواجهة والأزرار والنصوص والقوائم بدقة كما تظهر فعلًا، وسمِّ العناصر بأسمائها المكتوبة في اللقطة. إذا كان فيها خطأ أو مشكلة: قل سببها بجملة ثم أعطِ خطوات قصيرة مرقّمة (٣ إلى ٦ خطوات) يطبّقها المستخدم مباشرة، كل خطوة تبدأ بالزر أو المكان الذي يضغطه. إذا كان الطلب غير واضح فاشرح ما تراه في اللقطة باختصار ثم اقترح الخطوة التالية المنطقية. لا تصف الألوان والتصميم إلا إذا سُئلت، ولا تخترع أزرارًا غير موجودة في اللقطة.'
-        : 'You are the visual assistant inside the Omran AI app. The attachment is a UI screenshot (app/website/settings/error message). Read the interface, buttons, texts and menus exactly as they appear and name elements by their visible labels. If it shows an error or problem: state the cause in one sentence, then give short numbered steps (3 to 6) the user can follow right away, each starting with the button or place to tap. If the request is unclear, briefly explain what the screenshot shows and suggest the logical next step. Do not describe colors or design unless asked, and never invent buttons that are not in the screenshot.'});
+        ? 'أنت المساعد البصري داخل تطبيق عمران AI. المرفق لقطة شاشة لواجهة. القواعد:\n• اعتمد على ما يظهر في اللقطة فقط، لا على ذاكرتك عن شكل البرنامج في أجهزة أخرى.\n• احفظ سياق المحادثة كاملًا: نوع الجهاز (جوال أو كمبيوتر)، لغة الواجهة، اسم البرنامج، هدف المستخدم، وكل خطوة سبق أن أعطيتها — حتى لو لم يذكرها في رسالته الأخيرة. الرسالة القصيرة مثل «ما فهمت» تعني إعادة الشرح لنفس الموقف لا بدء موضوع جديد.\n• إذا كان الجهاز جوالًا فممنوع ذكر اختصارات الكيبورد (Ctrl / Alt / Shift / Delete) — أعطِ البديل باللمس من القوائم.\n• إذا كانت الواجهة بالعربية فاذكر أسماء الأزرار بالعربية كما تظهر فيها.\n• اذكر اسم الزر بنصه الحرفي كما يظهر في اللقطة، ثم موضعه على الشاشة (أعلى اليمين، أسفل اليسار...).\n• إذا كانت الميزة التي يسأل عنها غير موجودة في هذا البرنامج فقل ذلك صراحةً في أول سطر، ثم اذكر البرنامج الذي فيه الميزة فعلًا. «غير موجودة» جواب صحيح ومقبول.\n• ممنوع اقتراح أداة وظيفتها مختلفة لمجرد تشابه الاسم أو الأيقونة أو قربها في القائمة.\n• ممنوع منعًا باتًا توجيه المستخدم إلى أداة تحذف أو تغيّر المحتوى نهائيًا (Redact / Flatten / Apply / Delete) كبديل عن ميزة سأل عنها — تُذكر فقط إذا طلبها بنفسه صراحةً.\n• خطوة واحدة في كل رد، ثم اطلب لقطة جديدة للتحقق. إذا بدت الشاشة الجديدة كالسابقة فالخطوة فشلت — أعطِ طريقة بديلة لا نفس الكلام.\n• إذا لم تجد العنصر في اللقطة فقل ذلك واطلب لقطة أوضح — ممنوع «دوّر على» أو «جرّب تضغط» أو «أحيانًا». الفشل الممنوع هنا هو إرسال المستخدم إلى زر خاطئ، لا الاعتراف بعدم وجود الميزة.'
+        : 'You are the visual assistant inside the Omran AI app. Rely ONLY on what is visible in the screenshot, never on your memory of how the program looks elsewhere. Keep the FULL conversation context: device type, UI language, app name, the user goal, and every step you already gave — a short message like "I do not understand" means re-explain the same situation, not start a new topic. On a phone, NEVER give keyboard shortcuts (Ctrl / Alt / Shift / Delete) — give the touch alternative from the menus. Quote button labels verbatim as they appear, in the UI language, then give their position on screen. If the feature the user asks about does not exist in this program, say so plainly in the first line and name the program that does have it — "it does not exist here" is a correct answer. Never suggest a different-purpose tool because its name, icon or menu position looks similar, and never point the user to a destructive tool (Redact / Flatten / Apply / Delete) as a substitute for a feature they asked about. One step per reply, then ask for a fresh screenshot; if the new screen looks unchanged the step failed — give a different route, not the same words. If you cannot find the element in the screenshot, say so and ask for a clearer one — never "look around" or "try tapping". The forbidden failure here is sending the user to the wrong button, not admitting a feature is missing.'});
     }
     if(imageAttachments.length && !cur.adMode){
       apiMessages.push({role: 'system', content: 'صورة مرفقة — القاعدة الأولى والأهم:\n0) إذا كتب المستخدم مع الصورة سؤالًا أو طلبًا محددًا فأجب عن طلبه هو فقط، مباشرة وباختصار مفيد — ممنوع منعًا باتًا نسخ نصوص الصورة كاملة أو سرد تحليل شامل (عناصر/ألوان/تقييم/خطوات) لم يطلبه. التحليل الشامل أدناه يُطبَّق فقط إذا أرسل الصورة بلا طلب محدد أو طلب صراحةً «حلّل الصورة».\n1) عند التحليل الشامل فقط: اقرأ كل نص ظاهر في الصورة حرفيًا كما هو (عربي أو إنجليزي أو أي لغة) واذكره كاملًا بدون تلخيص.\n2) عند التحليل الشامل فقط: حلّل الصورة بعمق: العناصر، الأشخاص، الألوان، المكان، السياق، الأرقام، الجداول، أي أخطاء أو ملاحظات مهمة، واستنتاجاتك.\n3) في كل الحالات، الإجابة تكون مربوطة بالصورة نفسها: حدّد أولًا أي شاشة/صفحة بالضبط تظهر في الصورة (اسم التطبيق والقسم)، ثم أعط الخطوة الدقيقة انطلاقًا من هذه الشاشة بالذات — سمِّ الزر أو الخيار الظاهر في الصورة حرفيًا الذي يضغطه المستخدم، وإذا كان المطلوب غير موجود في هذه الشاشة قل له بوضوح: «هذا غير موجود هنا، ارجع/ادخل على …» بخطوة واحدة محددة. ممنوع سرد كل الطرق والأماكن الممكنة — طريق واحد دقيق فقط.\n3ب) إذا أعاد المستخدم إرسال نفس الصورة بعد إجابة سابقة فمعناها أن إجابتك ما كانت دقيقة كفاية — ممنوع تكرار نفس الإجابة؛ دقّق في الصورة أكثر وأعطه خطوة أدق وأكثر تحديدًا، أو اسأله سؤالًا واحدًا قصيرًا يحدد وين توقف.\n4) لا تقل أبدًا "لا أستطيع رؤية الصورة" — الصورة أمامك، حلّلها مباشرة.' +
@@ -4413,7 +4585,7 @@ DESIGN RULES (non-negotiable):
         // pin - a pin from a past simple reply should never lock a later
         // full-app request down to a single provider.
         const BUILD_TASK_RE = /بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|العاب|ألعاب|أداة|اداة|نسخة|نسخه|شهادة|شهاده|بطاقة|بطاقه|دعوة|دعوه|بوستر|شعار|لوجو|تهنئة|تهنئه|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\btool\b|\bclone\b|\bcertificate\b|\bcard\b|\binvitation\b|\bposter\b|\blogo\b/i;
-        isBuildTask = !__gateNoBuild && (BUILD_TASK_RE.test(text) || __strongBuildRe.test(text));
+        isBuildTask = !__gateNoBuild && !__fileAnalyze && (BUILD_TASK_RE.test(text) || __strongBuildRe.test(text));
         if(__gateNoBuild){
           apiMessages.push({ role: 'system', content: 'المستخدم طلب بناء شيء. ممنوع أن تبنيه الآن. ردّ بنصّ محادثة فقط بلا أيّ كتلة كود: اذكر في سطرين إلى ثلاثة ماذا ستبني بالضبط (الأقسام الرئيسية + أنّك سترسم الصور بنفسك)، ثمّ اختم بسؤال واحد فقط: «تبيني أبدأ البناء الحين؟». لا تبدأ البناء حتّى يوافق المستخدم في رسالته التالية.' });
           // 💰 دور البوابة = وصف قصير فقط — مزود واحد يكفي بدل التسعة (توفير).
