@@ -1171,8 +1171,12 @@ $('#attachInput').addEventListener('change', async (e) => {
               let __body = __pt;
               if(__body.length > MAX_TEXT_ATTACH_CHARS) __body = __body.slice(0, MAX_TEXT_ATTACH_CHARS) + '\n... (' + t('attachTruncated') + ')';
               const __isArP = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
+              /* الاسم يعكس المخزَّن فعلًا لا الملصوق الأصلي، ويميّز الكود عن النثر */
+              const __looksCode = /[{}();=<>]/.test(__body.slice(0, 4000)) && /\n/.test(__body);
+              const __kb = Math.max(1, Math.round(__body.length / 1024));
               pendingAttachments.push({
-                name: (__isArP ? 'نص ملصوق' : 'Pasted text') + ' (' + __pt.length.toLocaleString('en-US') + ')',
+                name: (__isArP ? (__looksCode ? 'كود ملصوق' : 'نص ملصوق') : (__looksCode ? 'Pasted code' : 'Pasted text'))
+                  + ' · ' + __kb + ' KB' + (__body.length < __pt.length ? (__isArP ? ' (مقتطع)' : ' (truncated)') : ''),
                 isImage: false, text: __body, _pasted: true
               });
               renderAttachStrip();
