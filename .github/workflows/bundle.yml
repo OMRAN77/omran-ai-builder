@@ -1,7 +1,5 @@
 name: Rebuild bundle
 
-# يبني js/app.bundle.js تلقائيًا كلما تغيّرت إحدى شرائح المصدر،
-# ويدفع الناتج إلى نفس الفرع.
 on:
   push:
     branches: [main]
@@ -17,7 +15,7 @@ permissions:
 
 concurrency:
   group: rebuild-bundle-${{ github.ref }}
-  cancel-in-progress: false   # لا تقطع تشغيلًا في منتصف الدفع
+  cancel-in-progress: false
 
 jobs:
   bundle:
@@ -25,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0      # مطلوب لـ rebase عند التسابق
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -44,12 +42,12 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- js/app.bundle.js
-          if git diff --cached --quiet -- js/app.bundle.js; then
+          git add -- js/app.bundle.js index.html sw.js
+          if git diff --cached --quiet -- js/app.bundle.js index.html sw.js; then
             echo "الحزمة لم تتغيّر — لا شيء لدفعه."
             exit 0
           fi
-          git commit -m "build: rebuild app.bundle.js [skip ci]"
+          git commit -m "build: rebuild app.bundle.js + stamp [skip ci]"
           for i in 1 2 3; do
             git push origin HEAD:${{ github.ref_name }} && exit 0
             echo "فشل الدفع، إعادة المحاولة بعد rebase…"
