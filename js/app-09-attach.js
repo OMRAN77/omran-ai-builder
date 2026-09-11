@@ -2527,6 +2527,11 @@ async function __sendPromptCore(){
     (__editedOriginal && Array.isArray(__editedOriginal.attachments) ? __editedOriginal.attachments.slice() : []);
   const imageAttachments = attachmentsForMsg.filter(a => a.isImage);
   const textAttachments = attachmentsForMsg.filter(a => !a.isImage);
+  /* v-file-analyze: ملف نصّي/كودي مرفق بلا أمر بناء صريح = طلب تحليل لا بناء.
+     بدونه كان وجود كود سابق في المشروع (cur.code) يكفي لتصنيف الرسالة بناءً،
+     فيُلصَق تحذير «لم يصل كود من المزوّد» في ذيل تحليل صحيح تمامًا. */
+  const __fileAnalyze = !!(textAttachments.length && !__strongBuildRe.test(text)
+    && !/(?:ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|اصنع|build|create|make|design)\s*(?:لي\s*)?[^\n]{0,20}(?:تطبيق|موقع|صفحة|لعبة|برنامج|بوت|أداة|اداة|app|website|page|game|bot|tool)/i.test(text || ''));
 
   // Build the text sent to the AI: original text + any text-file contents appended as code blocks
   let apiText = text;
@@ -2688,7 +2693,7 @@ function __friendlyErr(e){
       return false;
     }catch(e){ return true; } // guard-ok: أي خطأ → السلوك القديم بالضبط
   })();
-  const askAll = !!customProviders || __askAllExplicit || (!__gateNoBuild && !__gateApprovedText && ((__routeBuildRe.test(text) && __routeCmdRe.test(text) && __buildIntentShape) || __strongBuildRe.test(text)) && !__routeFix);
+  const askAll = !!customProviders || __askAllExplicit || (!__gateNoBuild && !__gateApprovedText && !__fileAnalyze && ((__routeBuildRe.test(text) && __routeCmdRe.test(text) && __buildIntentShape) || __strongBuildRe.test(text)) && !__routeFix);
   // آخر نص كامل وصل من البث؛ نحتفظ به إذا أوقف المستخدم التوليد.
   let __lastStreamPartial = '';
 
@@ -4116,7 +4121,7 @@ function __showImgLoading(el, ar, en){
     const __designAskRe = /(صمم|صمّم|صممي|اصنع|ابغى|ابي|أبي|أبغى|سو|سوّ?ي|اعمل|أعمل|عطني|أعطني|هات|ارسم|صم?ّ?ملي|بوستر|تصميم|design|make|create)\s*(?:لي\s*)?(?:[^\n]{0,20})?(إعلان|بوستر|شهادة|بطاقة|دعوة|لوجو|شعار|بنر|غلاف|منشور|poster|flyer|certificate|card|invitation|logo|banner|cover)/i;
     // النصّ الملصوق لا يُفعّل البناء إطلاقًا؛ وكلمات التصميم لا تُفعّله إلا بطلبٍ
     // صريح («صمّم بطاقة»)، لا مجرّد ورود «دعوة/بطاقة» داخل جملة سرديّة.
-    const __needsBuild = !__pastedDoc && ((__bldRe.test(text) && __appWd.test(text)) || (__dsnRe.test(text) && __designAskRe.test(text)) || !!cur.code || !!window.__buildOfferApproved);
+    const __needsBuild = !__pastedDoc && !__fileAnalyze && ((__bldRe.test(text) && __appWd.test(text)) || (__dsnRe.test(text) && __designAskRe.test(text)) || !!cur.code || !!window.__buildOfferApproved);
     // v469: Q&A = بروم خفيف مثل ChatGPT؛ البناء = تعليمات كاملة.
     let __sys;
     if(__needsBuild){
@@ -4424,7 +4429,7 @@ DESIGN RULES (non-negotiable):
         // pin - a pin from a past simple reply should never lock a later
         // full-app request down to a single provider.
         const BUILD_TASK_RE = /بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|العاب|ألعاب|أداة|اداة|نسخة|نسخه|شهادة|شهاده|بطاقة|بطاقه|دعوة|دعوه|بوستر|شعار|لوجو|تهنئة|تهنئه|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\btool\b|\bclone\b|\bcertificate\b|\bcard\b|\binvitation\b|\bposter\b|\blogo\b/i;
-        isBuildTask = !__gateNoBuild && (BUILD_TASK_RE.test(text) || __strongBuildRe.test(text));
+        isBuildTask = !__gateNoBuild && !__fileAnalyze && (BUILD_TASK_RE.test(text) || __strongBuildRe.test(text));
         if(__gateNoBuild){
           apiMessages.push({ role: 'system', content: 'المستخدم طلب بناء شيء. ممنوع أن تبنيه الآن. ردّ بنصّ محادثة فقط بلا أيّ كتلة كود: اذكر في سطرين إلى ثلاثة ماذا ستبني بالضبط (الأقسام الرئيسية + أنّك سترسم الصور بنفسك)، ثمّ اختم بسؤال واحد فقط: «تبيني أبدأ البناء الحين؟». لا تبدأ البناء حتّى يوافق المستخدم في رسالته التالية.' });
           // 💰 دور البوابة = وصف قصير فقط — مزود واحد يكفي بدل التسعة (توفير).
