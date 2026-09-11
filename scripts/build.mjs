@@ -1,60 +1,57 @@
-name: Rebuild bundle
+/* المرحلة ٠ — مصدر حقيقة واحد للحزمة.
+ *
+ * قبل اليوم: app.bundle.js يُوصَل يدويًّا، ويُرقَّع مباشرةً، فتتأخّر أجزاؤه
+ * بصمت. في ٦ أغسطس ٢٠٢٦ كانت الأجزاء متأخّرة ١٢٢ سطرًا: أيّ بناءٍ ساذج
+ * كان سيمحو ثلاثة أيام عمل بلا صوت.
+ *
+ * بعد اليوم: الأجزاء js/app-NN-*.js شرائح متلاصقة، والحزمة نتيجةٌ لا مصدر.
+ * ومن حاول أن يبني بناءً يمحو الكثير، أوقفناه.
+ *
+ *   node scripts/build.mjs            بناء + بصمة
+ *   node scripts/build.mjs --force    تجاوز حدّ الأمان (بقصدٍ صريح)
+ */
+import { readFile, writeFile, readdir } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 
-# يبني js/app.bundle.js تلقائيًا كلما تغيّرت إحدى شرائح المصدر،
-# ويدفع الناتج إلى نفس الفرع.
-on:
-  push:
-    branches: [main]
-    paths:
-      - 'js/app-*.js'
-      - 'js/partials-*.js'
-      - 'scripts/build.mjs'
-      - 'package-lock.json'
-  workflow_dispatch:
+const JS = 'js';
+const BUNDLE = `${JS}/app.bundle.js`;
+const GUARD = 500; // أقصى عدد أسطر متغيّرة يُقبل بلا --force
+const force = process.argv.includes('--force');
 
-permissions:
-  contents: write
+const names = (await readdir(JS)).filter((f) => /^app-\d\d-.+\.js$/.test(f)).sort();
+if (names.length < 18) throw new Error(`توقّعتُ ١٨ جزءًا على الأقل، وجدتُ ${names.length}`);
 
-concurrency:
-  group: rebuild-bundle-${{ github.ref }}
-  cancel-in-progress: false   # لا تقطع تشغيلًا في منتصف الدفع
+// لا فاصل بين الأجزاء: كلّ جزءٍ شريحةٌ من الحزمة تنتهي بسطرٍ جديد.
+const bundle = (await Promise.all(names.map((n) => readFile(`${JS}/${n}`, 'utf8')))).join('');
 
-jobs:
-  bundle:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0      # مطلوب لـ rebase عند التسابق
+const prev = await readFile(BUNDLE, 'utf8').catch(() => null);
+if (prev !== null && prev !== bundle) {
+  const a = prev.split('\n'), b = bundle.split('\n');
+  const set = new Set(a);
+  const changed = b.filter((l) => !set.has(l)).length + Math.max(0, a.length - b.length);
+  if (changed > GUARD && !force) {
+    throw new Error(
+      `أوقفتُ البناء: ${changed} سطرًا متغيّرًا يتجاوز حدّ ${GUARD}. ` +
+      `إن كان هذا مقصودًا فأعِد الأمر مع --force.`
+    );
+  }
+}
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
+const hash = createHash('sha256').update(bundle).digest('hex').slice(0, 8);
+await writeFile(BUNDLE, bundle);
 
-      - run: npm ci
+// بصمة محتوى واحدة تحكم الترقيم في موضعين — لا رقم يدويّ بعد اليوم.
+// العلامة اليدويّة (532- · -g534) تبقى: هي وسيلة كسر الكاش حين يتغيّر
+// HTML/CSS وحده فلا تتغيّر بصمة الحزمة. نستبدل البصمة وحدها لا الوسم.
+const HEX8 = /(?<![0-9a-f])[0-9a-f]{8}(?![0-9a-f])/;
+const stamp = (v, fallback) => (HEX8.test(v) ? v.replace(HEX8, hash) : fallback);
 
-      - name: Build bundle
-        run: npm run bundle -- --force
+let html = await readFile('index.html', 'utf8');
+html = html.replace(/(app\.bundle\.js\?v=)([^"']*)/g, (_, k, v) => k + stamp(v, hash));
+await writeFile('index.html', html);
 
-      - name: Verify bundle
-        run: npm run verify
+let sw = await readFile('sw.js', 'utf8');
+sw = sw.replace(/(CACHE_NAME = ')([^']*)(')/, (_, a, v, z) => a + stamp(v, `omran-ai-builder-${hash}`) + z);
+await writeFile('sw.js', sw);
 
-      - name: Commit and push if changed
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # build.mjs يختم البصمة في index.html و sw.js أيضًا — لا بدّ من دفعهما
-          # مع الحزمة، وإلا بقي الوسم القديم في الصفحة فخدم المتصفح نسخة قديمة.
-          git add -- js/app.bundle.js index.html sw.js
-          if git diff --cached --quiet -- js/app.bundle.js index.html sw.js; then
-            echo "الحزمة لم تتغيّر — لا شيء لدفعه."
-            exit 0
-          fi
-          git commit -m "build: rebuild app.bundle.js + stamp [skip ci]"
-          for i in 1 2 3; do
-            git push origin HEAD:${{ github.ref_name }} && exit 0
-            echo "فشل الدفع، إعادة المحاولة بعد rebase…"
-            git pull --rebase origin ${{ github.ref_name }}
-          done
-          exit 1
+console.log(`✓ ${names.length} جزءًا · ${bundle.split('\n').length} سطرًا · بصمة ${hash}`);
