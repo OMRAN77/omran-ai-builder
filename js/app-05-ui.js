@@ -596,9 +596,87 @@ function openMsgMoreMenu(anchorBtn, text){
   __msgMoreMenuOpen = menu;
 }
 
+/* v-code-viewer: عارض قراءة داخل تبويب «الكود» — ترقيم أسطر وتلوين خفيف.
+   طبقة مستقلّة فوق خانة الكود، لا تلمس codeEl ولا cur.code إطلاقًا، فلا خطر
+   على التحرير أو الحفظ. تُستعمل لفتح المرفقات النصّيّة والأكواد الملصوقة. */
+function omranCodeEscape(s){
+  return String(s || '').replace(/[&<>]/g, function(c){
+    return c === '&' ? '&amp;' : (c === '<' ? '&lt;' : '&gt;');
+  });
+}
+var OMRAN_HL_MAX = 150000; /* فوقه نعرض بلا تلوين حفاظًا على الأداء */
+function omranCodeHighlight(raw){
+  var esc = omranCodeEscape(raw);
+  if(esc.length > OMRAN_HL_MAX) return esc;
+  var RE = /(\/\*[\s\S]*?\*\/|\/\/[^\n]*)|('(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`)|(&lt;\/?[a-zA-Z][\w-]*)|\b(function|return|const|let|var|if|else|for|while|try|catch|finally|new|class|this|typeof|null|undefined|true|false|async|await|import|export|from|of|in|do|switch|case|default|break|continue|throw|delete|instanceof|void)\b|\b(\d+(?:\.\d+)?)\b/g;
+  var C = function(col, txt){ return '<i style="color:' + col + ';font-style:normal">' + txt + '</i>'; };
+  return esc.replace(RE, function(m, cmt, str, tag, kw, num){
+    if(cmt) return C('#6a7d52', cmt);
+    if(str) return C('#c9a26a', str);
+    if(tag) return C('#e06c75', tag);
+    if(kw)  return C('#7aa2f7', kw);
+    if(num) return C('#c98b6b', num);
+    return m;
+  });
+}
+/* يفتح نصًّا في تبويب «الكود» كعرض قراءة مرقّم. title يظهر في عنوان اللوحة. */
+window.omranOpenTextInCodePanel = function(text, title){
+  try{
+    if(typeof codeEl === 'undefined' || !codeEl || !codeEl.parentNode) return;
+    var host = codeEl.parentNode;
+    try{ if(getComputedStyle(host).position === 'static') host.style.position = 'relative'; }catch(e){ /* guard-ok */ }
+    var ov = document.getElementById('omranCodeViewer');
+    if(!ov){
+      ov = document.createElement('div');
+      ov.id = 'omranCodeViewer';
+      ov.style.cssText = 'position:absolute;inset:0;z-index:5;display:flex;align-items:flex-start;'
+        + 'background:var(--panel2,#0d0f14);overflow:auto;direction:ltr;';
+      var gut = document.createElement('div');
+      gut.id = 'omranCodeGutter';
+      gut.style.cssText = 'flex:none;padding:12px 8px;text-align:right;color:#5a6070;'
+        + 'font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;'
+        + 'background:rgba(0,0,0,.25);user-select:none;border-inline-end:1px solid rgba(255,255,255,.07);white-space:pre;';
+      var pre = document.createElement('pre');
+      pre.id = 'omranCodePre';
+      pre.style.cssText = 'flex:1;margin:0;padding:12px 14px;color:#d8dee9;'
+        + 'font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre;';
+      var cls = document.createElement('button');
+      cls.type = 'button'; cls.textContent = '✕';
+      cls.title = (typeof lang !== 'undefined' && (lang === 'ar' || lang === 'ur')) ? 'إغلاق العارض' : 'Close viewer';
+      cls.style.cssText = 'position:sticky;top:6px;align-self:flex-start;margin:6px;background:rgba(0,0,0,.55);'
+        + 'border:1px solid rgba(255,255,255,.15);color:#ccc;border-radius:8px;cursor:pointer;padding:3px 9px;z-index:6;';
+      cls.onclick = function(){
+        try{ ov.remove(); }catch(e){ /* guard-ok */ }
+        try{ if(typeof renderCodeAndPreview === 'function') renderCodeAndPreview(); }catch(e){ /* guard-ok */ }
+      };
+      ov.appendChild(gut); ov.appendChild(pre); ov.appendChild(cls);
+      host.appendChild(ov);
+    }
+    var body = String(text || '');
+    var lines = body.split('\n').length;
+    var nums = [];
+    for(var i = 1; i <= lines; i++) nums.push(i);
+    ov.querySelector('#omranCodeGutter').textContent = nums.join('\n');
+    ov.querySelector('#omranCodePre').innerHTML = omranCodeHighlight(body);
+    try{ ov.dataset.pid = (typeof state !== 'undefined' && state.currentId) || ''; }catch(e){ /* guard-ok */ }
+    ov.scrollTop = 0;
+    if(typeof switchWorkTab === 'function') switchWorkTab('code');
+    if(typeof window.omranPanelTitle === 'function') window.omranPanelTitle(title || '', body);
+    if(typeof window.waAutoExpand === 'function') window.waAutoExpand();
+    if(window.innerWidth <= 860 && localStorage.getItem('previewEnabled') !== 'off'){
+      try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(e){ /* guard-ok */ }
+      try{ workareaEl.classList.add('open'); backdropEl.classList.add('show'); }catch(e){ /* guard-ok */ }
+    }
+  }catch(e){ __swallow(e, 'ui:code-viewer'); }
+};
 function renderCodeAndPreview(){
   const cur = getCurrent();
   const pyConsole = $('#pyConsole');
+  /* v-code-viewer: عارض القراءة يخصّ مشروعًا بعينه — يُزال عند تبديل المشروع */
+  try{
+    const __ov = document.getElementById('omranCodeViewer');
+    if(__ov && __ov.dataset.pid !== String((cur && cur.id) || '')) __ov.remove();
+  }catch(e){ /* guard-ok */ }
   if(!cur || !cur.code){
     if(previewFrame._imageView){
       pyConsole.style.display = 'none';
