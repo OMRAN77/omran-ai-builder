@@ -113,7 +113,12 @@ function AI_MODE_NAME(){
 function AI_FACTORY_MODE(){ return AI_MODE_NAME() === 'factory'; }
 // ---- Attachments (images + text/code files) ----
 let pendingAttachments = [];
-const MAX_TEXT_ATTACH_CHARS = 100000;
+/* v-attach-limit: رُفع من 100000 — ملفّ بحجم app-09-attach.js نفسه يبلغ
+   ~443 ألف حرف، فكان يصل مقصوصًا عند 22% منه ويقف ترقيم العارض في منتصفه.
+   ⚠️ ملفّ بهذا الحجم ≈ 150 ألف توكن في الطلب الواحد — تكلفة حقيقيّة لكلّ إرسال.
+   ⚠️ MAX_PER_MSG (7000) يسري على رسائل التاريخ: الرسالة التالية سترى المرفق
+      مقصوصًا إلى 7000 حرف، فاسأل كلّ ما تريده في الرسالة الأولى. */
+const MAX_TEXT_ATTACH_CHARS = 450000;
 /* v-paste-attach: نصّ ملصوق أطول من هذا يصير مرفقًا بدل أن يملأ صندوق الكتابة.
    مكسبان: المحادثة تبقى نظيفة، والنصّ يصل كاملًا (حدّ المرفق 100 ألف حرف)
    بدل حدّ الرسالة الواحدة في السياق (7000). */
@@ -196,14 +201,12 @@ function omranGoldBadgeFill(chip, a){
   const sb = document.createElement('span');
   sb.className = 'gbSub';
   const __body = String(a.text || '');
-  /* الحجم بالبايت الحقيقيّ لا بعدد الحروف: الحرف العربيّ بايتان في UTF-8،
-     فكان ملفّ ٩٨ كيلو يظهر نصف حجمه. Blob غير متاح؟ نعود لعدّ الحروف. */
+  /* الحجم بالبايت الحقيقيّ لا بعدد الحروف: الحرف العربيّ بايتان في UTF-8. */
   let __bytes = __body.length;
   try{ __bytes = new Blob([__body]).size; }catch(_e){ /* guard-ok */ }
   const kb = Math.max(1, Math.round(__bytes / 1024));
   const ln = __body ? __body.split('\n').length : 0;
-  /* \u2066…\u2069 عزل ثنائيّ الاتجاه — بدونه ينقلب السطر في الواجهة العربيّة
-     فيظهر «98 443 KB · سطر» بدل «44 KB · 3,898 سطر». */
+  /* \u2066…\u2069 عزل ثنائيّ الاتجاه — بدونه ينقلب السطر في الواجهة العربيّة. */
   sb.textContent = a.pending
     ? (omranBadgeT('scan') + ' ⏳')
     : ('\u2066' + kb + ' KB\u2069 · \u2066' + ln.toLocaleString('en-US') + '\u2069'
