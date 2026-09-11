@@ -15489,18 +15489,16 @@ function omranGoldBadgeCss(){
     + 'background-position:left center,right center,center;'
     + 'background-size:auto 100%,auto 100%,auto 100%;'
     + 'background-repeat:no-repeat,no-repeat,repeat-x;'
-    + 'padding-left:52px;padding-right:62px;cursor:pointer;}'
+    + 'padding-left:40px;padding-right:62px;cursor:pointer;}'
     + '.goldBadge .gbTxt{flex:1;min-width:0;text-align:start;unicode-bidi:plaintext;}'
     + '.goldBadge .gbName{display:block;unicode-bidi:plaintext;font-size:13.5px;font-weight:500;color:#f0e9d8;'
     + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25;}'
     + '.goldBadge .gbSub{display:block;font-size:11px;color:#9a9384;margin-top:2px;'
     + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
-    + '/* v-gold-badge: الأيقونة مدمجة في الشريحة اليمنى فلا تتبدّل؛ لذا يثبت ✕ يسارًا */'
-    + '.goldBadge .rm{position:absolute !important;left:13px !important;right:auto !important;z-index:2;top:50%;transform:translateY(-50%);'
-    + 'width:23px;height:23px;border-radius:50%;display:flex;align-items:center;justify-content:center;'
-    + 'background:linear-gradient(180deg,#23262c,#101216);border:1px solid rgba(255,255,255,.08);'
-    + 'color:#7b828e;font-size:13px;margin:0;}'
-    + '.goldBadge .rm:hover{color:#e05a5a;}';
+    /* v-gold-clean (أمر عمران): زرّ ✕ كان يشوّه الإطار الذهبي — أُخفي نهائيًّا،
+       وpadding-left رجع من 52 إلى 40 لأنّ الـ52 كانت مساحة محجوزة له فتدفع
+       النصّ فيبدو الطرف الأيسر مقطوعًا. */
+    + '.goldBadge .rm{display:none !important;}';
   document.head.appendChild(st);
 }
 /* يبني محتوى البطاقة: الاسم في سطر والحجم وعدد الأسطر تحته */
