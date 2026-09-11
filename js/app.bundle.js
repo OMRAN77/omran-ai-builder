@@ -15335,6 +15335,10 @@ function AI_FACTORY_MODE(){ return AI_MODE_NAME() === 'factory'; }
 // ---- Attachments (images + text/code files) ----
 let pendingAttachments = [];
 const MAX_TEXT_ATTACH_CHARS = 100000;
+/* v-paste-attach: نصّ ملصوق أطول من هذا يصير مرفقًا بدل أن يملأ صندوق الكتابة.
+   مكسبان: المحادثة تبقى نظيفة، والنصّ يصل كاملًا (حدّ المرفق 100 ألف حرف)
+   بدل حدّ الرسالة الواحدة في السياق (7000). */
+const OMRAN_PASTE_ATTACH_CHARS = 1000;
 const MAX_ATTACH_FILE_BYTES = 25 * 1024 * 1024; // 25MB hard cap per file
 const ARCHIVE_EXT_RE = /\.(zip|docx|xlsx|pptx|jar)$/i;
 const IMAGE_TYPES = /^image\//;
@@ -15376,6 +15380,15 @@ function renderAttachStrip(){
       name.className = 'name';
       name.textContent = a.name + (a.pending ? ' ⏳' : (a.error ? ' ⚠️' : ''));
       chip.appendChild(name);
+      /* v-paste-attach: عرض محتوى المرفق النصّي في تبويب «الكود» قبل الإرسال */
+      if(a.text && !a.pending){
+        chip.style.cursor = 'pointer';
+        chip.title = a.name;
+        chip.onclick = (ev) => {
+          if(ev && ev.target && ev.target.classList && ev.target.classList.contains('rm')) return;
+          if(typeof window.omranOpenTextInCodePanel === 'function') window.omranOpenTextInCodePanel(a.text, a.name);
+        };
+      }
     }
     const rm = document.createElement('span');
     rm.className = 'rm';
@@ -16370,7 +16383,26 @@ $('#attachInput').addEventListener('change', async (e) => {
         if(ae && ae.id !== 'prompt' && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
         const items = Array.from((e.clipboardData && e.clipboardData.items) || []);
         const files = items.filter(i => i.kind === 'file' && /^image\//.test(i.type)).map(i => i.getAsFile()).filter(Boolean);
-        if(!files.length) return;
+        if(!files.length){
+          /* v-paste-attach: لصق نصّ طويل → مرفق قابل للفتح في تبويب «الكود» */
+          try{
+            const __pt = (e.clipboardData && e.clipboardData.getData) ? String(e.clipboardData.getData('text') || '') : '';
+            if(__pt.length > OMRAN_PASTE_ATTACH_CHARS){
+              e.preventDefault();
+              let __body = __pt;
+              if(__body.length > MAX_TEXT_ATTACH_CHARS) __body = __body.slice(0, MAX_TEXT_ATTACH_CHARS) + '\n... (' + t('attachTruncated') + ')';
+              const __isArP = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
+              pendingAttachments.push({
+                name: (__isArP ? 'نص ملصوق' : 'Pasted text') + ' (' + __pt.length.toLocaleString('en-US') + ')',
+                isImage: false, text: __body, _pasted: true
+              });
+              renderAttachStrip();
+              try{ if(typeof settingsToast === 'function') settingsToast(__isArP ? '📄 حُوّل النص إلى مرفق — اضغط عليه لعرضه' : '📄 Converted to an attachment — tap it to view'); }catch(_e){ /* guard-ok */ }
+              try{ $('#prompt').focus(); }catch(_e){ /* guard-ok */ }
+            }
+          }catch(err2){ __swallow(err2, 'attach:paste-text'); }
+          return;
+        }
         e.preventDefault();
         const named = files.map((f, i) => { try{ return new File([f], 'pasted-' + Date.now() + (i ? '-' + i : '') + '.png', { type: f.type || 'image/png' }); }catch(_){ return f; } });
         omranIngestFiles(named, { pasted: true }).then(() => { try{ $('#prompt').focus(); }catch(_){ /* guard-ok — cleanup, intentional */ } });
