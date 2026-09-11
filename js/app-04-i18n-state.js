@@ -1773,6 +1773,12 @@ function renderMessages(keepScroll){
             chip.style.cursor = 'pointer';
             chip.title = a.name;
             chip.onclick = () => {
+              /* v-code-viewer: المرفق النصّي يُفتح في تبويب «الكود» بترقيم وتلوين.
+                 المسار القديم (المعاينة الخام) يبقى احتياطًا إن غاب العارض. */
+              if(typeof window.omranOpenTextInCodePanel === 'function'){
+                window.omranOpenTextInCodePanel(a.text, a.name);
+                return;
+              }
               previewFrame.style.display = 'block';
               $('#pyConsole').style.display = 'none';
               emptyState.style.display = 'none';
