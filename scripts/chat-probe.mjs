@@ -28,7 +28,7 @@ async function probeChat(token, text, label) {
   if (!res.ok || !res.body) throw new Error(label + ': HTTP ' + res.status);
   const reader = res.body.getReader();
   const dec = new TextDecoder();
-  let buf = '', full = '', tFirstDelta = 0, sourcesCount = 0, statuses = [], err = null;
+  let buf = '', full = '', tFirstDelta = 0, sourcesCount = 0, statuses = [], err = null, tier = null;
   while (true) {
     const c = await reader.read();
     if (c.done) break;
@@ -42,6 +42,7 @@ async function probeChat(token, text, label) {
       if (Array.isArray(ev.sources)) sourcesCount += ev.sources.length;
       if (ev.status) statuses.push(String(ev.status).slice(0, 40));
       if (ev.error) err = String(ev.error).slice(0, 120);
+      if (typeof ev.tier === 'string') tier = ev.tier; // v-tiers: free / guest / free-limit …
     }
     if (Date.now() - t0 > 90000) break; // سقف صارم
   }
@@ -53,21 +54,25 @@ async function probeChat(token, text, label) {
   console.log('  total      : ' + total + 'ms');
   console.log('  reply-chars: ' + full.length + ' | blank-line-breaks: ' + paras);
   console.log('  sources    : ' + sourcesCount);
+  console.log('  tier       : ' + (tier || 'pro'));
   console.log('  statuses   : ' + statuses.join(' | '));
   if (err) console.log('  ERROR      : ' + err);
   console.log('  sample     : ' + full.slice(0, 220).replace(/\n/g, ' ⏎ '));
-  return { tHead, tFirstDelta, total, len: full.length, sourcesCount, err };
+  return { tHead, tFirstDelta, total, len: full.length, sourcesCount, err, tier };
 }
 
 const token = await signup();
 console.log('probe account ready (zzcheck…)');
 const greet = await probeChat(token, 'مرحبا', 'GREETING');
 const search = await probeChat(token, 'كم سعر الذهب اليوم في الإمارات؟', 'LIVE-SEARCH');
+// v-tiers: حساب المجسّ مسجَّل بلا اشتراك → الطبقة المجانية بلا بحث حي، فغياب
+// المصادر هناك بالتصميم لا عطل. المصادر شرطٌ فقط حين يكون الحساب مشتركًا/VIP.
+const freeTier = search.tier === 'free' || search.tier === 'guest';
 const fails = [];
 if (greet.err || greet.len < 10) fails.push('greeting empty/error');
 if (greet.tFirstDelta > 12000) fails.push('greeting first-delta > 12s');
 if (search.err || search.len < 40) fails.push('search empty/error');
-if (search.sourcesCount < 1) fails.push('no sources event');
+if (search.sourcesCount < 1 && !freeTier) fails.push('no sources event');
 if (search.tFirstDelta > 20000) fails.push('search first-delta > 20s');
 if (fails.length) { console.log('PROBE FAILS: ' + fails.join(' · ')); process.exit(1); }
-console.log('PROBE OK ✓ — العقل الواحد حي على الإنتاج');
+console.log(freeTier ? 'PROBE OK ✓ — الطبقة المجانية حيّة على الإنتاج (بلا بحث حي بالتصميم)' : 'PROBE OK ✓ — العقل الواحد حي على الإنتاج');
