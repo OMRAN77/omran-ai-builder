@@ -463,6 +463,23 @@ const WIZARD_RE = /كتالوج|كتالوق|منيو|قائمة طعام|قائ
 // النموذج. البروتوكول (أحداث البثّ · tool_use · stop_reason) مُتحقَّق حيًّا على كلّ
 // نموذج أدناه في ٩ أغسطس ٢٠٢٦. cohere وperplexity غائبان عمدًا: لا يدعمان
 // الأدوات على هذا الطريق، فيبقيان على مسارهما القديم بلا كذب.
+// v-img-read (لقطتا المالك ١٢ سبتمبر «قرأت الصور، تحليل ضعيف جدًّا»): في اللقطة تنبيه
+// «المايك مشغول ببرنامج ثاني» والردّ وصف عناصر ثانويّة وتجاهله. الصورة تصل بدقّة كافية
+// (١٥٦٨ بكسل، JPEG ٨٥٪) فالعطب في القراءة لا في البكسلات: النموذج لم يُطالَب بجرد اللقطة
+// قبل الردّ. هذه القاعدة توضع بعد قاعدة الإرشاد (الأخير أعلى أولويّة) في كلّ دور فيه صورة.
+const IMAGE_READ_NOTE = '\n\n[قراءة اللقطة أوّلًا — إلزاميّ في كلّ دور فيه صورة]: قبل أن تكتب حرفًا من الردّ اقرأ الصورة كاملةً كما تقرأ مستندًا: (١) كلّ نصّ ظاهر فيها حرفيًّا بلغته. (٢) أيّ نافذة منبثقة أو تنبيه أو رسالة خطأ أو حوار تأكيد — هذا أهمّ ما في اللقطة: انقل نصّه حرفيًّا في أوّل سطر من ردّك، وفسّر معناه، وأعطِ الحلّ. (٣) العناصر والأزرار والحقول بأسمائها ومواضعها، وما يدلّ على الحالة (تحميل، خطأ، نجاح، إذن مرفوض). (٤) ثمّ اربط ما قرأته بطلب المستخدم وسياق المحادثة: إن كان في اللقطة ما يفسّر مشكلته فابدأ به لا بوصف العناصر الثانويّة. ممنوع ردّ عامّ لا يثبت أنّك قرأت اللقطة، وممنوع تكرار تعليمات سابقة بلا تحقّق ممّا تغيّر فعلًا في الصورة الجديدة. وإن كان في اللقطة تفصيل لا تستطيع قراءته فقل ذلك صراحةً بدل تخمينه.';
+
+// دور الصورة يستحقّ عمقًا أكبر: جهد xhigh على مسار أنثروبيك المباشر (الوسيط لا يضمن
+// تمريره)، ونموذج مستقلّ اختياريّ (CHAT_IMAGE_MODEL) — يُضبطان من البيئة بلا نشر.
+const IMG_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
+function imageTurnConfig(env, viaOR, fallbackModel) {
+  const e = env || {};
+  const want = (e.CHAT_IMAGE_MODEL && String(e.CHAT_IMAGE_MODEL).trim()) || '';
+  const model = want ? (viaOR && want.indexOf('/') === -1 ? 'anthropic/' + want : want) : fallbackModel;
+  const eff = String(e.CHAT_IMAGE_EFFORT || 'xhigh').trim().toLowerCase();
+  return { model, output_config: viaOR ? null : { effort: IMG_EFFORTS.indexOf(eff) === -1 ? 'xhigh' : eff } };
+}
+
 const OR_MODELS = {
   claude: 'anthropic/claude-sonnet-5', // v-chat-fast: نفس فئة الخط المباشر
   openai: 'openai/gpt-5.6-terra',
@@ -1059,6 +1076,7 @@ module.exports = async (req, res) => {
     // v-img-drift (المالك ٨ سبتمبر — «تشتت الذاكرة في المحادثات الطويلة»): أُضيفت
     // جملة مضادّة للانجراف — رسمُ صورٍ في أدوار سابقة لا يُبرّر الرسم الآن، فكل
     // دور يُقيَّم وحده بالرسالة الحالية فقط.
+    const IMAGE_READ = lastUserHasImage ? IMAGE_READ_NOTE : ''; // v-img-read
     const IMAGE_GATE_NOTE = lastUserHasImage ? '' :
       '\n\n[قاعدة الصور — إلزاميّة مطلقة تغلب ما سبق]: لا ترسم صورةً توضيحيّة تلقائيّة لقصّة أو شرح أو تقرير أو سؤال أو نصّ سرديّ أو تعليميّ أو دينيّ أو تاريخيّ مهما كان موضوعه — ردّ بالنصّ فقط. استدعِ generate_image فقط في إحدى حالتين: (أ) طلب المستخدم صورةً صراحةً في رسالته (مثل «ارسم/صمّم/اصنع/ولّد لي صورة أو بوستر أو شعار أو تصميم»)، أو (ب) كنت تبني تطبيقًا أو موقعًا أو صفحة داخل كتلة كود ```html تحتاج صورًا فعليّة. وعدا ذلك: نصّ فقط بلا أيّ صورة. وكونُ هذه المحادثة رسمتْ صورًا في أدوار سابقة لا يُبرّر أبدًا رسم صورة الآن — قيّم كلّ دور وحده، والعبرة بالرسالة الحاليّة فقط: إن لم تطلب صورةً صراحةً فالجواب نصّ خالص مهما كثُرت الصور قبله.';
     // v-img-tafsir (طلب المالك ٨ سبتمبر: «أريد تقرير/تفسير بعد رسم الصورة — نفس
@@ -1072,8 +1090,8 @@ module.exports = async (req, res) => {
       : toolTurn
         /* v-clean-slate: كتاب القواعد فُصل كله من النظام — بقي القصير + التاريخ
            والمدينة (حقائق) + ملف المالك + ذاكرة الحساب (تصل ضمن baseSystem). */
-        ? PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz) + countryNote(country, city) + ownerKnowledge + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_GATE_NOTE + IMAGE_REPORT_NOTE
-        : PERSONA_NOTE + '\n' + baseSystem + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE;
+        ? PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz) + countryNote(country, city) + ownerKnowledge + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_READ + IMAGE_GATE_NOTE + IMAGE_REPORT_NOTE
+        : PERSONA_NOTE + '\n' + baseSystem + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_READ;
 
       const convoSource = quietSocialTurn ? [lastUser] : messages;
   const convo = compactConversation(convoSource
@@ -1101,6 +1119,7 @@ module.exports = async (req, res) => {
   try {
     // ثمان خطوات لا خمس وعشرين: المحادثة ليست بناءً طويلًا، وكلّ خطوة استدعاء
     // كامل بسياق متراكم. السقفان معًا — خطوات ووقت — يمنعان فاتورة مفتوحة.
+    const __imgCfg = lastUserHasImage ? imageTurnConfig(process.env, viaOR, CHAT_MODEL) : null; // v-img-read
     const MAX_STEPS = Math.max(1, Math.min(16, Number(process.env.CHAT_MAX_STEPS) || 12));
     const MAX_MS = Math.max(20000, Number(process.env.CHAT_MAX_MS) || 240000);
     const t0 = Date.now();
@@ -1164,7 +1183,7 @@ module.exports = async (req, res) => {
       const upstream = await fetch(CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: CHAT_MODEL, max_tokens: quietSocialTurn ? 350 : 16000, system, messages: convo, tools: toolTurn ? TOOLS : undefined, stream: true }),
+        body: JSON.stringify(Object.assign({ model: __imgCfg ? __imgCfg.model : CHAT_MODEL, max_tokens: quietSocialTurn ? 350 : 16000, system, messages: convo, tools: toolTurn ? TOOLS : undefined, stream: true }, (__imgCfg && __imgCfg.output_config) ? { output_config: __imgCfg.output_config } : {})),
       });
 
       if (!upstream.ok) {
@@ -1342,3 +1361,4 @@ module.exports = async (req, res) => {
 module.exports.__v608 = { normNums, unsourcedRatings, ratingWarning }; // v608 — للاختبار
 module.exports.__v610 = { cleanLink }; // v610 — للاختبار
 module.exports.__vsearch = { tavilySearch, arWikiLookup }; // v-chat-ref — للاختبار
+module.exports.__vimg = { imageTurnConfig, IMAGE_READ_NOTE }; // v-img-read — للاختبار
