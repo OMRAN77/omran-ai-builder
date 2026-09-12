@@ -119,6 +119,12 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(maha, /isBroadEdit \? buildBroadEditPrompt\(cleanPrompt, intentText\)/);
   const psp = buildPersonSwapPrompt('Change the people', 'غير أشكال الأشخاص');
   assert.match(psp, /identity must NOT be preserved/); assert.match(psp, /never repeat the same face twice/); assert.match(psp, /every label character-for-character/);
+  /* v-person-clothes: ذكر الملابس في الطلب يقلب القاعدة ٢ من «أبقِ الملابس» إلى «غيّر الملابس أيضًا»؛ و«زي» بمعنى «مثل» لا تُحسب لباسًا */
+  assert.match(psp, /unmistakably different from the one in the source at a glance/); assert.match(psp, /outfits and dress code/); assert.doesNotMatch(psp, /Change the outfits too/);
+  const pspC = buildPersonSwapPrompt('Change the characters with the clothes', 'غير الشخصيات مع الملابس وخل كل شخصية غير عن الثانيه مع كل شخصية بي الاسم الي تحتها');
+  assert.match(pspC, /Change the outfits too/); assert.match(pspC, /no two outfits alike, and none copied from the source/); assert.doesNotMatch(pspC, /outfits and dress code/);
+  for (const w of ['غير الأشخاص ولبسهم', 'بدل الشخصيات مع الأزياء', 'use different people and outfits', 'غير الشخص والكندورة']) assert.match(buildPersonSwapPrompt('Change the people', w), /Change the outfits too/, w);
+  for (const w of ['غيرها زي الاسم', 'خل الشخصية زي اسمها', 'غير وجوه الأشخاص']) assert.doesNotMatch(buildPersonSwapPrompt('Change the people', w), /Change the outfits too/, w);
   assert.match(maha, /const isPersonSwap = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && isPersonSwapRequest\(intentText\);/);
   assert.match(maha, /const isTextRemove = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && !isPersonSwap && !isBroadEdit && isPureTextRemoval\(intentText\);/);
   assert.match(maha, /const isTextSwap = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && !isPersonSwap && !isBroadEdit && !isTextRemove && \(body\.textSwap === true \|\| isTextEditRequest\(intentText\)\);/);
@@ -157,6 +163,13 @@ test('server reads the intent from the user\'s own words and sends creative edit
     assert.ok(caps.length > 0 && caps.every(c => c >= 64), f + ': ' + caps.join(','));
   }
   assert.match(maha, /maxOutputTokens: 400, thinkingConfig: \{ thinkingBudget: 0 \} \} \}\)/);
+  /* v-flash-nothink: كل نداء flash مساعد بلا تفكير — وإلا التهم التفكيرُ السقفَ: الحكم «A» دائمًا (أفضل-من-٢ بلا فائدة)،
+     وفحص «هل نُفِّذ الطلب؟» null (بلا إعادة محاولة)، والمصنّف null، والحارس فارغ */
+  for (const f of ['api/_lib/image-judge.js', 'api/_lib/request-check.js', 'api/_lib/image-intent-llm.js', 'api/_lib/image-edit-guard.js']) {
+    const src = fs.readFileSync(f, 'utf8');
+    const n = (src.match(/generationConfig:/g) || []).length, k = (src.match(/thinkingConfig: \{ thinkingBudget: 0 \}/g) || []).length;
+    assert.ok(n > 0 && n === k, f + ': generationConfig=' + n + ' nothink=' + k);
+  }
   const llm = require('../api/_lib/image-intent-llm');
   assert.deepEqual(llm.parseIntentReply('{"lane":"reimagine","confidence":0.92}'), { lane: 'reimagine', confidence: 0.92 });
   assert.deepEqual(llm.parseIntentReply('```json\n{"lane":"elevate","confidence":0.8}\n```'), { lane: 'elevate', confidence: 0.8 });

@@ -34,7 +34,7 @@ async function verifyRequestApplied({ apiKey, request, source, result, timeoutMs
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: AbortSignal.timeout(timeoutMs || 20000),
-      body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0, maxOutputTokens: 256, responseMimeType: 'application/json' } }),
+      body: JSON.stringify({ contents: [{ parts }], generationConfig: { temperature: 0, maxOutputTokens: 256, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } } }), /* v-flash-nothink */
     });
     if (!r.ok) return null;
     const d = await r.json().catch(function () { return null; });
