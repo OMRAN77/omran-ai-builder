@@ -730,57 +730,129 @@ html.oiOn body{overflow:hidden}
 })();
 </script>
 
-<!-- ===== v-chat-center (كمبيوتر فقط) =====
-     ١) عمود محادثة مركزي بعرض محدود — شكل Claude.
-     ٢) حذف الخطّين الذهبيين حول شريط الأسهم (#stockTicker::before/::after في redesign.css).
-     ٣) منع خروج المحتوى خارج الشاشة.
-     كل شيء معلّق على html:not(.mobile-ui) + شاشة > 860px، فالجوال لا يتأثر. ===== -->
-<style>
-@media (min-width: 861px){
 
-  html:not(.mobile-ui){
-    /* عرض عمود المحادثة — غيّر هذا الرقم وحده */
-    --om-chat-max: 760px;
-    --om-chat-pad: 16px;
+<!-- ===== v-scroll-lock · تمرير المحادثة داخل العمود فقط (نفس فكرة واجهات المحادثة) =====
+     الشكوى: المحادثة تمتد خارج الشاشة وتصير الصفحة كلها تتمدد.
+     الحل: الصفحة نفسها لا تتمرّر إطلاقًا، والارتفاع يُقسَّم: هيدر ثابت + #messages
+     هو العنصر الوحيد القابل للتمرير + شريط الكتابة مثبّت أسفل العمود. -->
+<style id="omranScrollLock">
+  html, body{
+    height:100%;
+    max-width:100%;
+    overflow:hidden !important;
+    overscroll-behavior:none;
   }
 
-  /* ① لا شيء يتجاوز عرض الشاشة */
-  html:not(.mobile-ui),
-  html:not(.mobile-ui) body,
-  html:not(.mobile-ui) main{ max-width:100%; overflow-x:hidden; }
-  html:not(.mobile-ui) #chatcol{ min-width:0 !important; max-width:100%; }
-  html:not(.mobile-ui) #workarea{ min-width:0 !important; }
+  /* الخلفيات والستائر خارج تدفّق التخطيط حتى لا تضيف ارتفاعًا */
+  #vantaBg, #drawerBackdrop{ position:fixed; }
 
-  /* ② توسيط المحادثة — فراغ متساوٍ يمينًا ويسارًا */
-  html:not(.mobile-ui) #messages{
+  /* main يأخذ ما تبقّى من الشاشة بعد الهيدر/الشريط (يُحسب في السكربت أدناه) */
+  main{
+    height: calc(100dvh - var(--omMainTop, 0px));
+    max-height: calc(100dvh - var(--omMainTop, 0px));
+    min-height:0;
+    max-width:100%;
+    overflow:hidden !important;
+  }
+
+  #sidebar{
+    min-height:0;
+    max-height:100%;
+    overflow-y:auto;
     overflow-x:hidden;
-    padding-inline: max(var(--om-chat-pad), calc((100% - var(--om-chat-max)) / 2)) !important;
-  }
-  html:not(.mobile-ui) #inputbar,
-  html:not(.mobile-ui) #omranHero{
-    padding-inline: max(var(--om-chat-pad), calc((100% - var(--om-chat-max)) / 2)) !important;
+    overscroll-behavior:contain;
   }
 
-  /* ③ الرسائل لا تتمدد ولا تكسر التخطيط */
-  html:not(.mobile-ui) #messages .msg{ max-width:100%; }
-  html:not(.mobile-ui) #messages .msg,
-  html:not(.mobile-ui) #messages .msg *{ overflow-wrap:anywhere; }
-  html:not(.mobile-ui) #messages pre,
-  html:not(.mobile-ui) #messages table{ max-width:100%; overflow-x:auto; }
-  html:not(.mobile-ui) #messages img,
-  html:not(.mobile-ui) #messages iframe,
-  html:not(.mobile-ui) #messages video{ max-width:100%; }
+  #chatcol{
+    display:flex;
+    flex-direction:column;
+    min-width:0;          /* أهم سطر: يمنع أبناء الفلكس من تمديد العرض */
+    min-height:0;
+    max-width:100%;
+    max-height:100%;
+    overflow:hidden !important;
+  }
 
-  /* ④ صندوق الكتابة يتبع نفس العرض */
-  html:not(.mobile-ui) #composerRow,
-  html:not(.mobile-ui) #composerBox{ max-width:100%; min-width:0; }
+  /* العنصر الوحيد الذي يتمرّر */
+  #messages{
+    flex:1 1 auto;
+    min-height:0;
+    min-width:0;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    overscroll-behavior:contain;
+    scrollbar-gutter:stable;
+    -webkit-overflow-scrolling:touch;
+  }
 
-  /* ⑤ حذف خطوط شريط الأسهم (الذهبيّان من redesign.css + حدّ الـ inline) */
-  html:not(.mobile-ui) #stockTicker::before,
-  html:not(.mobile-ui) #stockTicker::after{ content:none !important; display:none !important; }
-  html:not(.mobile-ui) #stockTicker{ border-bottom:none !important; box-shadow:none !important; }
-}
+  #omranHero{ flex:0 0 auto; min-height:0; }
+  #inputbar{ flex:0 0 auto; }
+
+  /* لا شيء داخل المحادثة يتجاوز العرض */
+  #messages > *{ max-width:100%; }
+  #messages pre, #messages code, #messages table, #messages .codeCard{
+    max-width:100%;
+    overflow-x:auto;
+  }
+  #messages p, #messages li, #messages span, #messages div{
+    overflow-wrap:anywhere;
+    word-break:break-word;
+  }
+  #messages img, #messages video, #messages canvas, #messages iframe{
+    max-width:100%;
+    height:auto;
+  }
+
+  /* شريط تمرير رفيع وهادئ */
+  #messages, #sidebar{
+    scrollbar-width:thin;
+    scrollbar-color:rgba(255,255,255,.16) transparent;
+  }
+  #messages::-webkit-scrollbar, #sidebar::-webkit-scrollbar{ width:8px; height:8px; }
+  #messages::-webkit-scrollbar-track, #sidebar::-webkit-scrollbar-track{ background:transparent; }
+  #messages::-webkit-scrollbar-thumb, #sidebar::-webkit-scrollbar-thumb{
+    background:rgba(255,255,255,.15);
+    border:2px solid transparent;
+    background-clip:content-box;
+    border-radius:99px;
+  }
+  #messages:hover::-webkit-scrollbar-thumb, #sidebar:hover::-webkit-scrollbar-thumb{
+    background:rgba(255,255,255,.30);
+    background-clip:content-box;
+  }
 </style>
+
+<script>/* v-scroll-lock: يقيس أين يبدأ main فعليًا (الهيدر + شريط الأسهم إن ظهر)
+   ويحدّث المتغيّر --omMainTop، لأن ارتفاع الهيدر يتغيّر مع اللغة وإظهار الشريط. */
+(function(){
+  try{
+    var root = document.documentElement;
+    function sync(){
+      var m = document.querySelector('main');
+      if(!m) return;
+      var top = Math.max(0, Math.round(m.getBoundingClientRect().top));
+      var cur = parseInt(root.style.getPropertyValue('--omMainTop'), 10) || 0;
+      if(Math.abs(cur - top) > 1) root.style.setProperty('--omMainTop', top + 'px');
+    }
+    var t = null;
+    function schedule(){ if(t) return; t = setTimeout(function(){ t = null; sync(); }, 60); }
+
+    sync();
+    window.addEventListener('resize', schedule, {passive:true});
+    window.addEventListener('orientationchange', schedule, {passive:true});
+    document.addEventListener('DOMContentLoaded', sync);
+    window.addEventListener('load', function(){ sync(); setTimeout(sync, 400); });
+
+    if(window.ResizeObserver){
+      var ro = new ResizeObserver(schedule);
+      var h = document.querySelector('header'); if(h) ro.observe(h);
+      var s = document.getElementById('stockTicker'); if(s) ro.observe(s);
+    }
+    setTimeout(sync, 800);
+    setTimeout(sync, 2000);
+  }catch(e){ window.__swallow && window.__swallow(e, 'scrollLock'); }
+})();
+</script>
 
 </body>
 </html>
