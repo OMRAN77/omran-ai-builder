@@ -672,20 +672,52 @@ var omranTabsDotsRestore = null;
 /* زرّ ⋮ يُضاف من شريحة أخرى، فنلتقطه بالشكل لا بالمعرّف: آخر زرّ في #tabs
    نصّه ثلاث نقاط أو وسمه يدلّ على قائمة. يُنقل إلى طرف الشريط ما دام العارض
    مفتوحًا، ويعود مكانه عند الإغلاق. */
+/* زرّ ⋮ يُضاف من شريحة أخرى لا نملك معرّفها، وقد يُضاف بعد هذا الملفّ.
+   نبحث عنه بثلاث طرق متدرّجة: الرمز نصًّا، ثمّ أيقونة ثلاث دوائر، ثمّ آخر
+   عنصر قصير النصّ في #tabs ليس من عناصرنا. ثمّ نعيد المحاولة بعد التحميل. */
+var OMRAN_TABS_SKIP = { waPanelTitle:1, waCopyBtn:1, waCollapseBtn:1, omranCodeViewerBar:1 };
 function omranFindTabsMenu(tabs, skip){
   try{
-    var kids = tabs.children;
-    for(var k = kids.length - 1; k >= 0; k--){
-      var el = kids[k];
-      if(el === skip || el.id === 'waPanelTitle' || el.id === 'waCopyBtn') continue;
-      if(el.id === 'waCollapseBtn') continue;
-      var txt = (el.textContent || '').trim();
-      if(txt === '\u22EE' || txt === '\u2807' || txt === '...' || txt === '\u2026') return el;
-      var meta = (el.id || '') + ' ' + (el.title || '') + ' ' + (el.getAttribute('aria-label') || '');
-      if(/menu|more|kebab|dots|\u0642\u0627\u0626\u0645\u0629|\u0627\u0644\u0645\u0632\u064A\u062F/i.test(meta)) return el;
+    var DOT = /^(?:[\u22EE\u2807\u00B7\u2022\u2026]+|\.{2,})$/;
+    var META = /menu|more|kebab|dots|option|overflow|\u0642\u0627\u0626\u0645\u0629|\u0627\u0644\u0645\u0632\u064A\u062F|\u062E\u064A\u0627\u0631/i;
+    var kids = tabs.children, i, el;
+    var owner = function(node){
+      while(node && node.parentNode !== tabs) node = node.parentNode;
+      if(!node || node === skip || OMRAN_TABS_SKIP[node.id]) return null;
+      return node;
+    };
+    for(i = kids.length - 1; i >= 0; i--){
+      el = kids[i];
+      if(el === skip || OMRAN_TABS_SKIP[el.id]) continue;
+      if(DOT.test((el.textContent || '').trim())) return el;
+      var meta = (el.id || '') + ' ' + (el.getAttribute('class') || '') + ' '
+        + (el.title || '') + ' ' + (el.getAttribute('aria-label') || '');
+      if(META.test(meta)) return el;
+    }
+    var svgs = tabs.querySelectorAll('svg');
+    for(i = svgs.length - 1; i >= 0; i--){
+      if(svgs[i].querySelectorAll('circle').length >= 3){
+        var o = owner(svgs[i]);
+        if(o) return o;
+      }
+    }
+    for(i = kids.length - 1; i >= 0; i--){
+      el = kids[i];
+      if(el === skip || OMRAN_TABS_SKIP[el.id]) continue;
+      if((el.textContent || '').trim().length > 1) continue;
+      if(el.tagName === 'BUTTON' || el.querySelector('button, svg')) return el;
     }
   }catch(e){ /* guard-ok */ }
   return null;
+}
+function omranPlaceTabsMenu(){
+  try{
+    var tabs = document.getElementById('tabs');
+    var bar = document.getElementById('omranCodeViewerBar');
+    if(!tabs || !bar || bar.parentNode !== tabs) return;
+    var dots = omranFindTabsMenu(tabs, bar);
+    if(dots && dots !== tabs.lastElementChild) tabs.appendChild(dots);
+  }catch(e){ /* guard-ok */ }
 }
 function omranCodeViewerEsc(ev){ if(ev.key === 'Escape') omranCloseCodeViewer(); }
 /* v-viewer-title: «كود ملصوق · NN KB» كان يزاحم الشريط في #tabs. نخفي عنصر
@@ -770,13 +802,7 @@ function omranBuildCodeViewerBar(){
     }catch(e){ /* guard-ok */ }
   };
   window.omranCodeBarRetitle = bar._retitle;
-  if(tabs){
-    /* ⋮ يُضاف من شريحة أخرى؛ نلتقطه بالشكل وننقله إلى طرف الشريط كما في التصميم. */
-    try{
-      var dots = omranFindTabsMenu(tabs, bar);
-      if(dots) tabs.appendChild(dots);
-    }catch(e){ /* guard-ok */ }
-  }
+  if(tabs) omranPlaceTabsMenu();
 
   var setOn = function(b, on){
     b._on = on;
@@ -1534,7 +1560,13 @@ document.querySelectorAll('.tab').forEach(tab => {
   btn.onclick = () => setWA(true);
   ro.onclick = () => setWA(false);
   window.waAutoExpand = function(){ if(wa.classList.contains('waCollapsed')) setWA(false); };
-  try{ omranBuildCodeViewerBar(); }catch(e){ __swallow(e, 'ui:code-viewer-bar'); }
+  try{
+    omranBuildCodeViewerBar();
+    setTimeout(omranPlaceTabsMenu, 0);
+    setTimeout(omranPlaceTabsMenu, 500);
+    setTimeout(omranPlaceTabsMenu, 1500);
+    window.addEventListener('load', omranPlaceTabsMenu);
+  }catch(e){ __swallow(e, 'ui:code-viewer-bar'); }
   try{ if(localStorage.getItem('waCollapsed') === '1' && !document.documentElement.classList.contains('mobile-ui')) setWA(true); }catch(e){ __swallow(e, "ui:app-05-ui#18"); }
   // كود جديد يوصل → اللوحة تفتح تلقائيًا
   try{
