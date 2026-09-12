@@ -137,6 +137,31 @@ window.__swallow = window.__swallow || function (err, ctx) {
 .msg-text a{ color:#2dd4bf !important; }
 html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 </style>
+<style>
+/* v-chat-width: عمود قراءة محدود العرض — كمبيوتر فقط (أمر عمران ١٢ سبتمبر).
+   على شاشة عريضة كانت المحادثة تتمدّد على ١٤٠٠ بكسل فتلتصق الردود بالحافة
+   اليمنى وتبقى مساحة فارغة هائلة. #chatcol نفسه لم يُمسّ — هو عنصر مرن بين
+   resizer1 وresizer2، وتقييد عرضه يكسر السحب. قُيّد ما بداخله فقط.
+   الجوال محميّ بشرطين: min-width:861px و:not(.mobile-ui).
+   الرجوع: احذف هذه الكتلة كاملةً. العرض يُضبط من --om-chat-max وحده. */
+:root{ --om-chat-max: 860px; }
+@media (min-width: 861px){
+  html:not(.mobile-ui) #omranHero,
+  html:not(.mobile-ui) #messages > *,
+  html:not(.mobile-ui) #composerRow,
+  html:not(.mobile-ui) #omranBelowComposer{
+    width: 100%;
+    max-width: var(--om-chat-max);
+    margin-inline: auto !important;
+    box-sizing: border-box;
+  }
+  /* الزرّان الطافيان يتبعان حافة العمود لا حافة الشاشة */
+  html:not(.mobile-ui) #chatJumpBottom,
+  html:not(.mobile-ui) #chatQuickChipsWrap{
+    inset-inline-end: max(14px, calc((100% - var(--om-chat-max)) / 2 + 14px));
+  }
+}
+</style>
 <style>/* v-intro-splash: شاشة افتتاح كاملة من مخطط المالك تظهر مرة عند كل فتح ثم تذوب تمامًا */
 #omranIntro{position:fixed;inset:0;z-index:2147483000;background:#07070B;overflow:hidden;opacity:1;transition:opacity .95s ease,transform .95s ease;cursor:pointer;visibility:visible}
 #omranIntro.oiOut{opacity:0;transform:scale(1.04);pointer-events:none}
