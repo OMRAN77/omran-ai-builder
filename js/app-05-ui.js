@@ -604,7 +604,11 @@ function omranCodeEscape(s){
     return c === '&' ? '&amp;' : (c === '<' ? '&lt;' : '&gt;');
   });
 }
-var OMRAN_HL_MAX = 400000; /* فوقه نعرض بلا تلوين حفاظًا على الأداء — الترقيم يبقى دائمًا بلا حدّ */
+/* v-viewer-perf: التلوين يبني عنصر <i> لكلّ كلمة مفتاحيّة ونصّ ورقم — على
+   لصقة ١٠٠ ك.ب. يعني عشرات آلاف العقد في DOM واحد، فيثقل التمرير والكتابة
+   والتبديل بين التبويبات. فوق الحدّ نعرض نصًّا خامًّا (عقدة واحدة)؛ الترقيم
+   يبقى دائمًا بلا حدّ. */
+var OMRAN_HL_MAX = 60000;
 function omranCodeHighlight(raw){
   var esc = omranCodeEscape(raw);
   if(esc.length > OMRAN_HL_MAX) return esc;
@@ -635,6 +639,25 @@ function omranCodeViewerIcon(name){
   return '<svg ' + A + '><line x1="18" y1="6" x2="6" y2="18"></line>'
     + '<line x1="6" y1="6" x2="18" y2="18"></line></svg>';
 }
+var omranTabsDotsRestore = null;
+/* زرّ ⋮ يُضاف من شريحة أخرى، فنلتقطه بالشكل لا بالمعرّف: آخر زرّ في #tabs
+   نصّه ثلاث نقاط أو وسمه يدلّ على قائمة. يُنقل إلى طرف الشريط ما دام العارض
+   مفتوحًا، ويعود مكانه عند الإغلاق. */
+function omranFindTabsMenu(tabs, skip){
+  try{
+    var kids = tabs.children;
+    for(var k = kids.length - 1; k >= 0; k--){
+      var el = kids[k];
+      if(el === skip || el.id === 'waPanelTitle' || el.id === 'waCopyBtn') continue;
+      if(el.id === 'waCollapseBtn') continue;
+      var txt = (el.textContent || '').trim();
+      if(txt === '\u22EE' || txt === '\u2807' || txt === '...' || txt === '\u2026') return el;
+      var meta = (el.id || '') + ' ' + (el.title || '') + ' ' + (el.getAttribute('aria-label') || '');
+      if(/menu|more|kebab|dots|\u0642\u0627\u0626\u0645\u0629|\u0627\u0644\u0645\u0632\u064A\u062F/i.test(meta)) return el;
+    }
+  }catch(e){ /* guard-ok */ }
+  return null;
+}
 function omranCodeViewerEsc(ev){ if(ev.key === 'Escape') omranCloseCodeViewer(); }
 /* v-viewer-title: «كود ملصوق · NN KB» كان يزاحم الشريط في #tabs. نخفي عنصر
    العنوان وزرّ نسخه ما دام العارض مفتوحًا — لا نكتفي بترك استدعاء
@@ -652,6 +675,8 @@ function omranCloseCodeViewer(){
   try{ var b = document.getElementById('omranCodeViewerBar'); if(b) b.remove(); }catch(e){ /* guard-ok */ }
   try{ document.removeEventListener('keydown', omranCodeViewerEsc); }catch(e){ /* guard-ok */ }
   omranPanelTitleSuppress(false);
+  try{ if(omranTabsDotsRestore) omranTabsDotsRestore(); }catch(e){ /* guard-ok */ }
+  omranTabsDotsRestore = null;
   try{ if(typeof renderCodeAndPreview === 'function') renderCodeAndPreview(); }catch(e){ /* guard-ok */ }
 }
 /* v-viewer-edit (أمر عمران): العارض كان للقراءة فقط. الآن يُحرَّر مباشرةً،
@@ -702,8 +727,22 @@ function omranBuildCodeViewerBar(){
   var edt = mkBtn('edit', ar ? 'تحرير' : 'Edit');
   var sav = mkBtn('save', ar ? 'حفظ في كود المشروع' : 'Save to project code');
   var cls = mkBtn('close', ar ? 'إغلاق العارض' : 'Close viewer');
-  sav.style.display = 'none';
   bar.appendChild(edt); bar.appendChild(sav); bar.appendChild(cls);
+  if(tabs){
+    try{
+      var dots = omranFindTabsMenu(tabs, bar);
+      if(dots){
+        var prev = dots.previousSibling;
+        omranTabsDotsRestore = function(){
+          try{
+            if(prev && prev.parentNode === tabs) tabs.insertBefore(dots, prev.nextSibling);
+            else tabs.insertBefore(dots, tabs.firstChild);
+          }catch(e){ /* guard-ok */ }
+        };
+        tabs.appendChild(dots);
+      }
+    }catch(e){ /* guard-ok */ }
+  }
 
   cls.onclick = omranCloseCodeViewer;
 
@@ -717,15 +756,28 @@ function omranBuildCodeViewerBar(){
     p.spellcheck = false;
     p.style.background = 'rgba(255,255,255,.03)';
     p.focus();
-    edt.style.display = 'none';
-    sav.style.display = '';
+    /* الأزرار الثلاثة تبقى ظاهرة؛ «تحرير» يتحوّل إلى حالة نشطة بدل أن يختفي. */
+    edt.style.borderColor = 'var(--accent,#c9a26a)';
+    edt.style.color = 'var(--accent,#c9a26a)';
+    edt.onmouseleave = function(){
+      edt.style.background = 'transparent';
+      edt.style.borderColor = 'var(--accent,#c9a26a)';
+      edt.style.color = 'var(--accent,#c9a26a)';
+    };
+    /* v-viewer-perf: كان كلّ ضغطة زرّ تقرأ innerText كاملًا (يفرض تخطيطًا على
+       آلاف الأسطر) وتعيد بناء عمود الأرقام. نؤجّلها حتى تهدأ الكتابة. */
+    var gutTimer = null;
     p.oninput = function(){
-      try{
-        var g = document.getElementById('omranCodeGutter');
-        var n = p.innerText.split('\n').length, out = [];
-        for(var i = 1; i <= n; i++) out.push(i);
-        g.textContent = out.join('\n');
-      }catch(e){ /* guard-ok */ }
+      if(gutTimer) clearTimeout(gutTimer);
+      gutTimer = setTimeout(function(){
+        gutTimer = null;
+        try{
+          var g = document.getElementById('omranCodeGutter');
+          var n = p.innerText.split('\n').length, out = [];
+          for(var i = 1; i <= n; i++) out.push(i);
+          g.textContent = out.join('\n');
+        }catch(e){ /* guard-ok */ }
+      }, 180);
     };
   };
 
