@@ -12,7 +12,7 @@ const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
 // بلا اشتراك وضيف → سلسلة مجانية بلا أدوات وبسقف يومي صغير. انظر tier.js.
 const tierLib = require('./tier.js');
 const { streamFreeChain } = require('./free-chain.js');
-const { logError } = require('./log-error.js');
+const { logError, logErrorAndFlush } = require('./log-error.js');
 const { safeParse } = require('./safe-parse.js');
 const { fetchPlaces, isPlacesAsk, regionOf } = require('./search.js');
 const { readMemory, memoryPromptBlock } = require('./memory.js');
@@ -469,17 +469,20 @@ const WIZARD_RE = /كتالوج|كتالوق|منيو|قائمة طعام|قائ
 // قبل الردّ. هذه القاعدة توضع بعد قاعدة الإرشاد (الأخير أعلى أولويّة) في كلّ دور فيه صورة.
 const IMAGE_READ_NOTE = '\n\n[قراءة اللقطة أوّلًا — إلزاميّ في كلّ دور فيه صورة]: قبل أن تكتب حرفًا من الردّ اقرأ الصورة كاملةً كما تقرأ مستندًا: (١) كلّ نصّ ظاهر فيها حرفيًّا بلغته. (٢) أيّ نافذة منبثقة أو تنبيه أو رسالة خطأ أو حوار تأكيد — هذا أهمّ ما في اللقطة: انقل نصّه حرفيًّا في أوّل سطر من ردّك، وفسّر معناه، وأعطِ الحلّ. (٣) العناصر والأزرار والحقول بأسمائها ومواضعها، وما يدلّ على الحالة (تحميل، خطأ، نجاح، إذن مرفوض). (٤) ثمّ اربط ما قرأته بطلب المستخدم وسياق المحادثة: إن كان في اللقطة ما يفسّر مشكلته فابدأ به لا بوصف العناصر الثانويّة. ممنوع ردّ عامّ لا يثبت أنّك قرأت اللقطة، وممنوع تكرار تعليمات سابقة بلا تحقّق ممّا تغيّر فعلًا في الصورة الجديدة. وإن كان في اللقطة تفصيل لا تستطيع قراءته فقل ذلك صراحةً بدل تخمينه.';
 
-// دور الصورة يستحقّ عمقًا أكبر: جهد xhigh على مسار أنثروبيك المباشر (الوسيط لا يضمن
-// تمريره)، ونموذج مستقلّ اختياريّ (CHAT_IMAGE_MODEL) — يُضبطان من البيئة بلا نشر.
+// دور الصورة: جهد قابل للضبط على مسار أنثروبيك المباشر (الوسيط لا يضمن تمريره)،
+// ونموذج مستقلّ اختياريّ (CHAT_IMAGE_MODEL) — يُضبطان من البيئة بلا نشر.
+// v-img-err: الافتراضيّ high (افتراضيّ الواجهة نفسها) لا xhigh — بعد أن صارت الصورة
+// تصل فعلًا (v-img-wire) لم يعد العمق الإضافيّ يستحقّ زمن التفكير الأطول في دور
+// لقطة الشاشة، والانتظار الطويل بلا حرف كان يُسقط الدور إلى مسار الاحتياط.
 const IMG_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
 function imageTurnConfig(env, viaOR, fallbackModel) {
   const e = env || {};
   const want = (e.CHAT_IMAGE_MODEL && String(e.CHAT_IMAGE_MODEL).trim()) || '';
   const model = want ? (viaOR && want.indexOf('/') === -1 ? 'anthropic/' + want : want) : fallbackModel;
-  const eff = String(e.CHAT_IMAGE_EFFORT || 'xhigh').trim().toLowerCase();
+  const eff = String(e.CHAT_IMAGE_EFFORT || 'high').trim().toLowerCase();
   // output_config.effort مدعوم على الجيل الحاليّ فقط؛ نموذج أقدم من البيئة يبقى بلا جهد بدل 400.
   const effortOk = !viaOR && /^claude-(?:sonnet-5|opus-5|opus-4-[678]|sonnet-4-6|fable)/.test(model);
-  return { model, output_config: effortOk ? { effort: IMG_EFFORTS.indexOf(eff) === -1 ? 'xhigh' : eff } : null };
+  return { model, output_config: effortOk ? { effort: IMG_EFFORTS.indexOf(eff) === -1 ? 'high' : eff } : null };
 }
 
 const OR_MODELS = {
@@ -1190,15 +1193,20 @@ module.exports = async (req, res) => {
         body: JSON.stringify(Object.assign({ model: (withImg && __imgCfg) ? __imgCfg.model : CHAT_MODEL, max_tokens: quietSocialTurn ? 350 : 16000, system, messages: convo, tools: toolTurn ? TOOLS : undefined, stream: true }, (withImg && __imgCfg && __imgCfg.output_config) ? { output_config: __imgCfg.output_config } : {})),
       });
       let upstream = await callUpstream(true);
-      if (!upstream.ok && upstream.status === 400 && __imgCfg && (__imgCfg.output_config || __imgCfg.model !== CHAT_MODEL)) {
+      // v-img-err: أيّ فشل على إعداد دور الصورة (400 أو 404 نموذج لا يملكه المفتاح أو
+      // 403 أو 429…) = إعادة فوريّة بالطلب العاديّ قبل أيّ هبوط — لا 400 وحده.
+      if (!upstream.ok && __imgCfg && (__imgCfg.output_config || __imgCfg.model !== CHAT_MODEL)) {
         let __why = '';
         try { __why = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ }
-        logError('chat/image-turn-400', new Error(__why || 'upstream 400 on image-turn config'));
+        await logErrorAndFlush('chat/image-turn-' + upstream.status, new Error(__why || 'upstream ' + upstream.status + ' on image-turn config'), { action: 'image-turn-config' });
         upstream = await callUpstream(false);
       }
 
       if (!upstream.ok) {
         const errText = (await upstream.text()).slice(0, 300);
+        // v-img-err: الفشل النهائيّ يُسجَّل منتظَرًا (على serverless يضيع التسجيل غير
+        // المنتظَر) فيظهر في لوحة صحّة المالك مع نوع الدور — كان يمرّ بلا أثر.
+        await logErrorAndFlush('chat/upstream-fail', new Error(upstream.status + ': ' + errText), { action: lastUserHasImage ? 'image-turn' : 'text-turn' });
         // لم يُكتب حرف بعد → أَبلِغ العميل ليهبط إلى مساره القديم بلا تكرار.
         send({ error: 'chat upstream ' + upstream.status + ': ' + errText, fallback: !anyText });
         res.end();
@@ -1231,7 +1239,11 @@ module.exports = async (req, res) => {
       // اتصال الجوال في فجوة «التعبئة» الصامتة. الآن أيّ رسالة ٦٠٠+ حرف تأخذ
       // النبض مهما كان مسارها — فالرسائل الطويلة (سبب البلاغ) لا تُترك بلا حياة.
       const __longUserMsg = typeof lastUserText === 'string' && lastUserText.length >= 600;
-      let kaTimer = (!toolTurn || __longUserMsg) ? setInterval(() => { try { res.write(': ka\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } }, 4000) : null;
+      // v-img-err: دور الصورة يأخذ النبض أيضًا — التفكير على لقطة قبل أوّل حرف قد
+      // يطول بلا أيّ بايت للعميل (لا يُمرَّر من دلتا التفكير شيء)، فيقطعه حارس ٩٠ث
+      // ويهبط الدور إلى الاحتياط القديم. النبض هنا أثناء بثّ المزوّد فقط ويُلغى فور
+      // انتهائه، فدرس #527 (لا تغذية للحارس أثناء حلقة الأدوات) محفوظ.
+      let kaTimer = (!toolTurn || __longUserMsg || lastUserHasImage) ? setInterval(() => { try { res.write(': ka\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } }, 4000) : null;
 
       while (true) {
         const { done, value } = await reader.read();
