@@ -1,3 +1,4 @@
+const { stripPrivateKeys } = require('./_msgs.js'); // v-static-leak
 // Vercel Serverless Function: proxies chat requests to Cohere using the site
 // owner's own server-side API key (COHERE_API_KEY env var), so visitors can try
 // the app without entering their own key. This key is NEVER exposed to the client.
@@ -29,6 +30,7 @@ module.exports = async (req, res) => {
       body = JSON.parse(body || '{}');
     }
     let { messages, model, token, guestId } = body;
+    messages = stripPrivateKeys(messages); // v-static-leak: لا مفاتيح __ داخليّة إلى المزوّد
     // Deprecated/retired Cohere model names get silently upgraded server-side,
     // so stale client caches (old JS, old localStorage) never hit a hard error.
     const DEPRECATED_MODELS = new Set(['command-r-plus', 'command-r', 'command-r-plus-08-2024', 'command-r-08-2024', 'command']);

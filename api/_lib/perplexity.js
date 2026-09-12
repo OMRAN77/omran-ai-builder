@@ -1,3 +1,4 @@
+const { stripPrivateKeys } = require('./_msgs.js'); // v-static-leak
 // Vercel Serverless Function: proxies chat requests to Perplexity using the site
 // owner's own server-side API key (PERPLEXITY_API_KEY env var), so visitors can try
 // the app without entering their own key. This key is NEVER exposed to the client.
@@ -29,6 +30,7 @@ module.exports = async (req, res) => {
       body = JSON.parse(body || '{}');
     }
     let { messages, model, token, guestId } = body;
+    messages = stripPrivateKeys(messages); // v-static-leak: لا مفاتيح __ داخليّة إلى المزوّد
     if (!model) model = 'sonar';
     if (!messages) {
       res.status(400).json({ error: 'Missing messages' });

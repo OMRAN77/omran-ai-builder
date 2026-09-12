@@ -32,6 +32,10 @@ test('imageTurnConfig: defaults keep the chat model, xhigh effort on the direct 
   assert.deepEqual(imageTurnConfig({}, true, 'anthropic/claude-sonnet-5'), { model: 'anthropic/claude-sonnet-5', output_config: null }, 'الوسيط: بلا output_config');
   assert.deepEqual(imageTurnConfig({ CHAT_IMAGE_MODEL: 'claude-opus-5', CHAT_IMAGE_EFFORT: 'max' }, false, 'claude-sonnet-5'), { model: 'claude-opus-5', output_config: { effort: 'max' } });
   assert.equal(imageTurnConfig({ CHAT_IMAGE_MODEL: 'claude-opus-5' }, true, 'anthropic/claude-sonnet-5').model, 'anthropic/claude-opus-5', 'الوسيط يأخذ بادئة المزوّد');
-  assert.equal(imageTurnConfig({ CHAT_IMAGE_EFFORT: 'weird' }, false, 'm').output_config.effort, 'xhigh', 'جهد تالف = xhigh');
-  assert.equal(imageTurnConfig({ CHAT_IMAGE_EFFORT: ' HIGH ' }, false, 'm').output_config.effort, 'high');
+  assert.equal(imageTurnConfig({ CHAT_IMAGE_EFFORT: 'weird' }, false, 'claude-sonnet-5').output_config.effort, 'xhigh', 'جهد تالف = xhigh');
+  assert.equal(imageTurnConfig({ CHAT_IMAGE_EFFORT: ' HIGH ' }, false, 'claude-opus-5').output_config.effort, 'high');
+  assert.deepEqual(imageTurnConfig({}, false, 'claude-sonnet-4-5'), { model: 'claude-sonnet-4-5', output_config: null }, 'نموذج أقدم من البيئة: بلا جهد بدل 400');
+  assert.deepEqual(imageTurnConfig({ CHAT_IMAGE_MODEL: 'claude-3-5-sonnet-latest' }, false, 'claude-sonnet-5').output_config, null);
+  const src2 = fs.readFileSync(path.join(root, 'api/_lib/chat.js'), 'utf8');
+  assert.ok(src2.includes('let upstream = await callUpstream(true);') && src2.includes("logError('chat/image-turn-400'") && src2.includes('upstream = await callUpstream(false);'), '400 على إعداد الصورة = إعادة بالطلب العاديّ قبل الهبوط');
 });

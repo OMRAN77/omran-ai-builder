@@ -477,7 +477,9 @@ function imageTurnConfig(env, viaOR, fallbackModel) {
   const want = (e.CHAT_IMAGE_MODEL && String(e.CHAT_IMAGE_MODEL).trim()) || '';
   const model = want ? (viaOR && want.indexOf('/') === -1 ? 'anthropic/' + want : want) : fallbackModel;
   const eff = String(e.CHAT_IMAGE_EFFORT || 'xhigh').trim().toLowerCase();
-  return { model, output_config: viaOR ? null : { effort: IMG_EFFORTS.indexOf(eff) === -1 ? 'xhigh' : eff } };
+  // output_config.effort مدعوم على الجيل الحاليّ فقط؛ نموذج أقدم من البيئة يبقى بلا جهد بدل 400.
+  const effortOk = !viaOR && /^claude-(?:sonnet-5|opus-5|opus-4-[678]|sonnet-4-6|fable)/.test(model);
+  return { model, output_config: effortOk ? { effort: IMG_EFFORTS.indexOf(eff) === -1 ? 'xhigh' : eff } : null };
 }
 
 const OR_MODELS = {
@@ -1180,11 +1182,20 @@ module.exports = async (req, res) => {
       if (Date.now() - t0 > MAX_MS) { send({ status: '⏱️ انتهت مهلة الردّ.', k: 'stTimeout' }); break; }
       steps++;
 
-      const upstream = await fetch(CHAT_URL, {
+      // v-img-read: إعداد دور الصورة (نموذج/جهد) يُجرَّب أوّلًا؛ 400 عليه = إعادة فوريّة
+      // بالطلب العاديّ نفسه قبل أيّ هبوط إلى مسار العميل الاحتياطيّ.
+      const callUpstream = (withImg) => fetch(CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify(Object.assign({ model: __imgCfg ? __imgCfg.model : CHAT_MODEL, max_tokens: quietSocialTurn ? 350 : 16000, system, messages: convo, tools: toolTurn ? TOOLS : undefined, stream: true }, (__imgCfg && __imgCfg.output_config) ? { output_config: __imgCfg.output_config } : {})),
+        body: JSON.stringify(Object.assign({ model: (withImg && __imgCfg) ? __imgCfg.model : CHAT_MODEL, max_tokens: quietSocialTurn ? 350 : 16000, system, messages: convo, tools: toolTurn ? TOOLS : undefined, stream: true }, (withImg && __imgCfg && __imgCfg.output_config) ? { output_config: __imgCfg.output_config } : {})),
       });
+      let upstream = await callUpstream(true);
+      if (!upstream.ok && upstream.status === 400 && __imgCfg && (__imgCfg.output_config || __imgCfg.model !== CHAT_MODEL)) {
+        let __why = '';
+        try { __why = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ }
+        logError('chat/image-turn-400', new Error(__why || 'upstream 400 on image-turn config'));
+        upstream = await callUpstream(false);
+      }
 
       if (!upstream.ok) {
         const errText = (await upstream.text()).slice(0, 300);

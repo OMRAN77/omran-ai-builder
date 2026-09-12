@@ -19952,7 +19952,10 @@ function __showImgLoading(el, ar, en){
     /* v-clean-slate: __sys (كتاب قواعد العميل الثابت) يُوسم static — مسار العقل
        الواحد يرشّحه (هوية النظام هناك من الخادم القصير)، والمسار الاحتياطي
        القديم يبقى عليه. التوجيهات السياقية لكل دور (تحية، بناء، صورة) تمر. */
-    const apiMessages = [{role: 'system', content: __sys, __static: true}];
+    /* v-static-leak (لقطة المالك: Groq 400 «property '__static' is unsupported»): الخاصيّة
+       كانت تُرسل مع الرسالة إلى المزوّدات الصارمة على المسار الاحتياطيّ. الترشيح صار بالهويّة. */
+    const __staticSys = {role: 'system', content: __sys};
+    const apiMessages = [__staticSys];
     /* v-topic-switch (شكوى المالك: يغيّر الموضوع فيجيه جواب الأول والثاني معًا):
        TOPIC_FOLLOW_RULE كان داخل النظام الثابت الذي يُرشَّح عن مسار الأدوات —
        نسخة قصيرة غير ثابتة تصل المسارين، وتأتي أخيرة فتغلب. */
@@ -20961,7 +20964,7 @@ DESIGN RULES (non-negotiable):
       try{
         let __ct = null;
         if(__toolsWillRun){
-          try{ __ct = await window.callChatWithTools(apiMessages.filter(m => !m.__static), onDelta, __effProv); }
+          try{ __ct = await window.callChatWithTools(apiMessages.filter(m => m !== __staticSys), onDelta, __effProv); }
           catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; try{ window.__diagTurn.toolsErr = String((e && (e.name + ': ' + e.message)) || e || '').slice(0, 180); window.__diagTurn.path = 'tools-failed→fallback'; }catch(_){ /* guard-ok: تشخيص فقط؛ الخطأ يُبلَّغ بـ__swallow أدناه */ } __swallow(e, 'chat:tools'); }
           /* v-tools-team (شكوى المالك «خربت الدنيا بخصوص الأخبار»): فشل مزود
              الأدوات الأول (مثال: رصيد كلود نفد) كان يهبط فورًا للمسار القديم
@@ -20977,7 +20980,7 @@ DESIGN RULES (non-negotiable):
                     window.__chatStatus.phase('💭', functionalLabel(__tp) + ' ' + t('provTypingSuffix'));
                   }
                 }catch(e){ __swallow(e, 'ui:toolsteam'); }
-                __ct = await window.callChatWithTools(apiMessages.filter(m => !m.__static), onDelta, __tp);
+                __ct = await window.callChatWithTools(apiMessages.filter(m => m !== __staticSys), onDelta, __tp);
                 if(__ct) break;
               }catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; __swallow(e, 'chat:tools-team'); }
             }
