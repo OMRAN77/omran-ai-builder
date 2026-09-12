@@ -15482,23 +15482,39 @@ function omranGoldBadgeCss(){
   if(document.getElementById('omranGoldBadgeCss')) return;
   const st = document.createElement('style');
   st.id = 'omranGoldBadgeCss';
+  const H   = 78;
+  const SRC = '/assets/badge-frame.png';
+  const FRAME =
+      'border-style:solid;'
+    + 'border-width:15px 62px 15px 42px;'
+    + 'border-image-source:url("' + SRC + '");'
+    + 'border-image-slice:30 124 30 84 fill;'
+    + 'border-image-repeat:stretch;'
+    + 'background-color:#0a0c10;background-image:none;';
+  const XBTN =
+      '.goldBadgeWrap{position:relative;display:inline-block;line-height:0;}'
+    + '.goldBadgeWrap .rm{display:flex !important;position:absolute;top:-7px;inset-inline-end:-7px;'
+    + 'width:22px;height:22px;border-radius:50%;align-items:center;justify-content:center;'
+    + 'background:#14171d;border:1px solid rgba(212,175,55,.45);color:#c9c2b4;'
+    + 'font-size:12px;line-height:1;cursor:pointer;z-index:3;margin:0;padding:0;'
+    + 'opacity:0;transform:scale(.85);transition:opacity .15s,transform .15s,color .15s;}'
+    + '.goldBadgeWrap:hover .rm,.goldBadgeWrap .rm:focus-visible{opacity:1;transform:scale(1);}'
+    + '.goldBadgeWrap .rm:hover{color:#ff6b6b;border-color:rgba(255,107,107,.6);}'
+    + '@media (hover:none){.goldBadgeWrap .rm{opacity:1;transform:scale(1);}}';
   st.textContent =
-    '.goldBadge{position:relative;display:inline-flex;align-items:center;height:60px;'
-    + 'min-width:215px;max-width:370px;box-sizing:border-box;background:none;border:0;padding:0;'
-    + 'background-image:url("' + OMRAN_BADGE_L + '"),url("' + OMRAN_BADGE_R + '"),url("' + OMRAN_BADGE_M + '");'
-    + 'background-position:left center,right center,center;'
-    + 'background-size:auto 100%,auto 100%,auto 100%;'
-    + 'background-repeat:no-repeat,no-repeat,repeat-x;'
-    + 'padding-left:40px;padding-right:62px;cursor:pointer;}'
+    '.goldBadge{position:relative;box-sizing:border-box;display:inline-flex;align-items:center;'
+    + 'height:' + H + 'px;min-width:250px;max-width:390px;padding:0 8px;cursor:pointer;'
+    + FRAME + '}'
     + '.goldBadge .gbTxt{flex:1;min-width:0;text-align:start;unicode-bidi:plaintext;}'
-    + '.goldBadge .gbName{display:block;unicode-bidi:plaintext;font-size:13.5px;font-weight:500;color:#f0e9d8;'
+    + '.goldBadge .gbName{display:block;unicode-bidi:plaintext;font-size:14px;font-weight:500;color:#f0e9d8;'
     + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25;}'
-    + '.goldBadge .gbSub{display:block;font-size:11px;color:#9a9384;margin-top:2px;'
+    + '.goldBadge .gbSub{display:block;font-size:11.5px;color:#9a9384;margin-top:3px;'
     + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
-    /* v-gold-clean (أمر عمران): زرّ ✕ كان يشوّه الإطار الذهبي — أُخفي نهائيًّا،
-       وpadding-left رجع من 52 إلى 40 لأنّ الـ52 كانت مساحة محجوزة له فتدفع
-       النصّ فيبدو الطرف الأيسر مقطوعًا. */
-    + '.goldBadge .rm{display:none !important;}';
+    + '.goldBadge > .rm{display:none !important;}'
+    + XBTN
+    + '.file-chip.goldBadge{box-sizing:border-box;display:inline-flex;align-items:center;box-shadow:none;'
+    + 'height:' + H + 'px;min-width:250px;max-width:390px;padding:0 8px;'
+    + FRAME + '}';
   document.head.appendChild(st);
 }
 /* يبني محتوى البطاقة: الاسم في سطر والحجم وعدد الأسطر تحته */
