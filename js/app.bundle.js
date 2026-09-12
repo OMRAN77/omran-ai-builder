@@ -2453,10 +2453,10 @@ const I18N = {
     refreshBtn: 'تحديث', worldMarketsTitle: 'الأسواق العالمية', pickStockTitle: 'اختيار سهم', cnProjectData: '📋 بيانات المشروع', cnLandArea: 'مساحة الأرض (م²) — اختياري', cnLandAreaPh: 'مثال: 500',
     cnEmirateOpt: 'الإمارة — اختياري', cnDetailsAnnexes: '🏠 التفاصيل والملاحق', cnExElevator: 'مصعد داخلي', cnExStore: 'مخزن خارجي', cnExWaterTank: 'خزان مياه', cnExSolar: 'ألواح شمسية',
     cnExPlayground: 'ملعب خارجي', cnExCarport: 'مظلة سيارات إضافية', cnBudgetOutputs: '💰 الميزانية والمخرجات', cnDownloadBoq: '📊 تنزيل جدول الكميات', cnPdfReport: '📄 تقرير PDF',
-    keyHowToTitle: '📝 كيف تحصل على مفتاح لكل مزوّد:', showAllPlansCur: 'عرض كل الباقات والأسعار بعملتك', currencyLabel: 'العملة', plFreeMsgs: '20 رسالة يوميًا',
-    plFreeVoice: 'دقيقة واحدة محادثة صوتية', plFreeImgs: '3 صور بالذكاء الاصطناعي', plFreeNoVideo: 'بلا فيديو', plStMsgs: '300 رسالة شهريًا', plStVoice: '30 دقيقة محادثة صوتية', plStImgs: '15 صورة',
-    plStVideos: '5 مقاطع فيديو', plProMsgs: 'رسائل بلا حدود', plProVoice: '80 دقيقة محادثة صوتية', plProMedia: '40 صورة · 13 فيديو · 2 سينمائي', plProAgent: 'الوكيل الذكي',
-    plProPriority: 'أولوية في السرعة · شارة ذهبية', plMaxAllPro: 'كل مزايا Pro', plMaxVoice: '500 دقيقة محادثة صوتية', plMaxMedia: '250 صورة · 83 فيديو · 12 سينمائي', plMaxSupport: 'دعم مخصّص',
+    keyHowToTitle: '📝 كيف تحصل على مفتاح لكل مزوّد:', showAllPlansCur: 'عرض كل الباقات والأسعار بعملتك', currencyLabel: 'العملة', plFreeMsgs: '10 رسائل يوميًا',
+    plFreeVoice: 'دقيقة واحدة محادثة صوتية', plFreeImgs: '3 صور بالذكاء الاصطناعي', plFreeNoVideo: 'بلا فيديو', plStMsgs: '50 رسالة احترافية يوميًا', plStVoice: '33 دقيقة محادثة صوتية', plStImgs: '25 صورة',
+    plStVideos: '8 مقاطع فيديو', plProMsgs: '150 رسالة احترافية يوميًا', plProVoice: '80 دقيقة محادثة صوتية', plProMedia: '60 صورة · 20 فيديو · 3 سينمائي', plProAgent: 'الوكيل الذكي',
+    plProPriority: 'أولوية في السرعة · شارة ذهبية', plMaxAllPro: 'كل مزايا Pro · 400 رسالة احترافية يوميًا', plMaxVoice: '460 دقيقة محادثة صوتية', plMaxMedia: '350 صورة · 116 فيديو · 17 سينمائي', plMaxSupport: 'دعم مخصّص',
     /* v599: ترجمة خيارات القوائم المنسدلة (٨٧ عنصرًا) */
     portraitStylePassport: '🫎 صورة جواز/هوية رسمية', portraitStyleRestore: '🔧 ترميم صورة قديمة', portraitStyleColorize: '🎨 تلوين أبيض وأسود', portraitStyleUpscale: '🔍 رفع الدقة والوضوح', portraitStyleObjectremove: '🧹 إزالة شخص أو عنصر', portraitStyleOutfit: '👕 تبديل الملابس', portraitStyleProductshot: '📦 تصوير منتج احترافي', portraitStyleHajj: '🕋 تهنئة حج وعمرة', portraitStyleBirthday: '🎂 إطار عيد ميلاد', portraitStyleNewborn: '👶 تهنئة مولود جديد', portraitStyleFigurine: '🧸 مجسّم أكشن في علبة', portraitStyleGhibli: '🍃 ستايل جيبلي', portraitStyleLego: '🧱 شخصية ليغو', portraitStyleStickerpack: '💬 ملصقات واتساب (٦ تعبيرات)', portraitStyleChibi: '🐣 شيبي لطيف', portraitStyleStatue: '🗿 تمثال رخامي', portraitStylePolaroid: '📸 بولارويد قديمة', portraitStyleCelebtoon: '🦸 شخصية كرتونية مفضلة', portraitStyleProfession: '👩‍⚕️ مهنة (طبيب · طيار · شرطي...)', portraitStyleSuperhero: '🦸‍♂️ بطل خارق بزي كامل', portraitStyleAstronaut: '🚀 رائد فضاء', portraitOutfitKandura: '👔 كندورة إماراتية + غترة', portraitOutfitAbaya: '🧕 عباية + شيلة', portraitOutfitThobe: '🧣 ثوب خليجي + شماغ', portraitOutfitSuit: '🧵 بدلة رسمية', portraitOutfitDress: '👗 فستان سهرة', portraitOutfitCasual: '🧥 كاجوال أنيق', portraitOutfitSport: '🎽️ ملابس رياضية', portraitOutfitWinter: '🧤 معطف شتوي', portraitProfDoctor: '👩‍⚕️ طبيب', portraitProfPilot: '🧑‍✈️ طيار', portraitProfPolice: '👮 شرطي', portraitProfChef: '🧑‍🍳 طبّاخ', portraitProfEngineer: '👷 مهندس موقع', portraitProfTeacher: '🧑‍🏫 معلم', portraitProfFirefighter: '🧑‍🚒 إطفائي', portraitProfScientist: '🧑‍🔬 عالم مختبر', portraitGrpTools: '🛠️ أدوات عملية', portraitGrpOccasions: '🎉 مناسبات', portraitGrpTrending: '🔥 رائجة', portraitGrpDressup: '🎭 تلبيس', portraitStyleClaymation: '🏺 صلصال متحرك (كلاي)', portraitStyleLowpoly: '🔷 ثلاثي الأبعاد هندسي (Low Poly)', portraitStyleGraffiti: '🎨 جرافيتي شوارع', portraitStyleMosaic: '🧩 فسيفساء', portraitStyleStainedglass: '🪟 زجاج معشّق', portraitStylePapercraft: '📄 فن الورق الطبقي', portraitStyleCrochet: '🧶 دمية كروشيه', portraitStyleInflatable: '🎈 مجسّم بالون لامع', portraitStyleUkiyoe: '🌊 طباعة يابانية قديمة', portraitStyleSandart: '🏜️ رسم بالرمل الخليجي', portraitStyleNeonsign: '💡 نيون مضيء', portraitStyleDoubleexposure: '🌆 تعريض مزدوج فني', portraitGrpNew: '🆕 ستايلات جديدة',
     designAiPlaceFromPhoto: '📷 من صورتي', designAiPlaceRestaurant: '🍽️ مطعم', designAiPlaceCafe: '☕ كافيه', designAiPlaceBedroom: '🛏️ غرفة نوم', designAiPlaceMajlis: '🪑 مجلس', designAiPlaceLiving: '🛋️ صالة', designAiPlaceKitchen: '🍳 مطبخ', designAiPlaceOffice: '💼 مكتب', designAiPlaceShop: '🛍️ محل', designAiPlaceBath: '🛁 حمام', designAiPlaceKids: '🧸 غرفة أطفال', designAiPlaceEntrance: '🚪 مدخل', designAiPlaceGarden: '🌳 حديقة', designAiStyleNajdi: '🏜️ نجدي', designAiStyleIslamic: '✳️ إسلامي معاصر', designAiStyleAndalusi: '🏛️ أندلسي', fashionAiOccasionGraduation: '🎓 تخرج', fashionAiOccasionReligious: '🕌 مناسبة دينية', fashionAiSeasonAutumn: '🍂 خريفي', fashionAiSeasonSpring: '🌸 ربيعي',
@@ -3433,10 +3433,10 @@ const I18N = {
     cnLandArea: 'Land area (m²) — optional', cnLandAreaPh: 'e.g. 500', cnEmirateOpt: 'Emirate — optional', cnDetailsAnnexes: '🏠 Details and annexes', cnExElevator: 'Indoor elevator',
     cnExStore: 'Outdoor storeroom', cnExWaterTank: 'Water tank', cnExSolar: 'Solar panels', cnExPlayground: 'Outdoor playground', cnExCarport: 'Extra car canopy',
     cnBudgetOutputs: '💰 Budget and outputs', cnDownloadBoq: '📊 Download bill of quantities', cnPdfReport: '📄 PDF report', keyHowToTitle: '📝 How to get a key for each provider:',
-    showAllPlansCur: 'Show all plans and prices in your currency', currencyLabel: 'Currency', plFreeMsgs: '20 messages a day', plFreeVoice: 'One minute of voice chat', plFreeImgs: '3 AI images',
-    plFreeNoVideo: 'No video', plStMsgs: '300 messages a month', plStVoice: '30 minutes of voice chat', plStImgs: '15 images', plStVideos: '5 videos', plProMsgs: 'Unlimited messages',
-    plProVoice: '80 minutes of voice chat', plProMedia: '40 images · 13 videos · 2 cinematic', plProAgent: 'The smart agent', plProPriority: 'Priority speed · gold badge',
-    plMaxAllPro: 'Everything in Pro', plMaxVoice: '500 minutes of voice chat', plMaxMedia: '250 images · 83 videos · 12 cinematic', plMaxSupport: 'Dedicated support',
+    showAllPlansCur: 'Show all plans and prices in your currency', currencyLabel: 'Currency', plFreeMsgs: '10 messages a day', plFreeVoice: 'One minute of voice chat', plFreeImgs: '3 AI images',
+    plFreeNoVideo: 'No video', plStMsgs: '50 pro messages a day', plStVoice: '33 minutes of voice chat', plStImgs: '25 images', plStVideos: '8 videos', plProMsgs: '150 pro messages a day',
+    plProVoice: '80 minutes of voice chat', plProMedia: '60 images · 20 videos · 3 cinematic', plProAgent: 'The smart agent', plProPriority: 'Priority speed · gold badge',
+    plMaxAllPro: 'Everything in Pro · 400 pro messages a day', plMaxVoice: '460 minutes of voice chat', plMaxMedia: '350 images · 116 videos · 17 cinematic', plMaxSupport: 'Dedicated support',
     /* v599: ترجمة خيارات القوائم المنسدلة (٨٧ عنصرًا) */
     portraitStylePassport: '🫎 Passport/ID photo', portraitStyleRestore: '🔧 Restore old photo', portraitStyleColorize: '🎨 Colorize B&W', portraitStyleUpscale: '🔍 Upscale', portraitStyleObjectremove: '🧹 Remove person or object', portraitStyleOutfit: '👕 Change outfit', portraitStyleProductshot: '📦 Pro product shot', portraitStyleHajj: '🕋 Hajj & Umrah greeting', portraitStyleBirthday: '🎂 Birthday frame', portraitStyleNewborn: '👶 Newborn greeting', portraitStyleFigurine: '🧸 Boxed action figure', portraitStyleGhibli: '🍃 Ghibli style', portraitStyleLego: '🧱 LEGO character', portraitStyleStickerpack: '💬 WhatsApp stickers (6 emotions)', portraitStyleChibi: '🐣 Cute Chibi', portraitStyleStatue: '🗿 Marble statue', portraitStylePolaroid: '📸 Vintage Polaroid', portraitStyleCelebtoon: '🦸 Favorite cartoon character', portraitStyleProfession: '👩‍⚕️ Profession (doctor, pilot, police...)', portraitStyleSuperhero: '🦸‍♂️ Superhero full costume', portraitStyleAstronaut: '🚀 Astronaut', portraitOutfitKandura: '👔 Emirati Kandura + Ghutra', portraitOutfitAbaya: '🧕 Abaya + Shayla', portraitOutfitThobe: '🧣 Gulf Thobe + Shemagh', portraitOutfitSuit: '🧵 Formal suit', portraitOutfitDress: '👗 Evening dress', portraitOutfitCasual: '🧥 Smart casual', portraitOutfitSport: '🎽️ Sportswear', portraitOutfitWinter: '🧤 Winter coat', portraitProfDoctor: '👩‍⚕️ Doctor', portraitProfPilot: '🧑‍✈️ Pilot', portraitProfPolice: '👮 Police officer', portraitProfChef: '🧑‍🍳 Chef', portraitProfEngineer: '👷 Site engineer', portraitProfTeacher: '🧑‍🏫 Teacher', portraitProfFirefighter: '🧑‍🚒 Firefighter', portraitProfScientist: '🧑‍🔬 Lab scientist', portraitGrpTools: '🛠️ Practical tools', portraitGrpOccasions: '🎉 Occasions', portraitGrpTrending: '🔥 Trending', portraitGrpDressup: '🎭 Dress up', portraitStyleClaymation: '🏺 Claymation', portraitStyleLowpoly: '🔷 Low-poly 3D', portraitStyleGraffiti: '🎨 Street graffiti', portraitStyleMosaic: '🧩 Mosaic', portraitStyleStainedglass: '🪟 Stained glass', portraitStylePapercraft: '📄 Layered paper art', portraitStyleCrochet: '🧶 Crochet doll', portraitStyleInflatable: '🎈 Glossy 3D balloon', portraitStyleUkiyoe: '🌊 Japanese Ukiyo-e', portraitStyleSandart: '🏜️ Gulf sand art', portraitStyleNeonsign: '💡 Neon sign', portraitStyleDoubleexposure: '🌆 Double exposure', portraitGrpNew: '🆕 New styles',
     designAiPlaceFromPhoto: '📷 From my photo', designAiPlaceRestaurant: '🍽️ Restaurant', designAiPlaceCafe: '☕ Cafe', designAiPlaceBedroom: '🛏️ Bedroom', designAiPlaceMajlis: '🪑 Majlis', designAiPlaceLiving: '🛋️ Living room', designAiPlaceKitchen: '🍳 Kitchen', designAiPlaceOffice: '💼 Office', designAiPlaceShop: '🛍️ Shop', designAiPlaceBath: '🛁 Bathroom', designAiPlaceKids: '🧸 Kids room', designAiPlaceEntrance: '🚪 Entrance', designAiPlaceGarden: '🌳 Garden', designAiStyleNajdi: '🏜️ Najdi', designAiStyleIslamic: '✳️ Contemporary Islamic', designAiStyleAndalusi: '🏛️ Andalusian', fashionAiOccasionGraduation: '🎓 Graduation', fashionAiOccasionReligious: '🕌 Religious occasion', fashionAiSeasonAutumn: '🍂 Autumn', fashionAiSeasonSpring: '🌸 Spring',
@@ -5877,6 +5877,41 @@ function renderMessages(keepScroll){
       }catch(e){ /* الاسم المحفوظ احتياط */ }
       label.textContent = __plbl;
       if(isAskAllReply) div.appendChild(label); // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ»)
+    }
+    /* v-tiers (قرار المالك ١٢ سبتمبر): شارة صغيرة فوق الردّ المجاني، وزرّ اشتراك/تسجيل
+       عند نفاد الحصة. بلا اسم أي مزوّد. المشترك لا يرى شيئًا. */
+    if(m.role !== 'user' && (m.tier === 'free' || m.tier === 'free-limit' || m.tier === 'guest' || m.tier === 'guest-limit')){
+      try{
+        const __isArT = (lang === 'ar' || lang === 'ur');
+        const __isGuestT = (m.tier === 'guest' || m.tier === 'guest-limit');
+        const tb = document.createElement('div');
+        tb.className = 'tier-badge';
+        tb.style.cssText = 'display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:11px; color:var(--muted); margin-bottom:4px;';
+        const tl = document.createElement('span');
+        tl.textContent = (m.tier === 'guest-limit') ? (__isArT ? 'انتهت رسائل التجربة' : 'Trial messages used up')
+          : (m.tier === 'free-limit') ? (__isArT ? 'انتهت الرسائل المجانية لليوم' : 'Free messages used up for today')
+          : (__isArT ? 'ردّ مجاني' : 'Free reply');
+        tb.appendChild(tl);
+        const ta = document.createElement('button');
+        ta.type = 'button';
+        ta.style.cssText = 'padding:2px 10px; border-radius:12px; border:1px solid var(--border,rgba(255,255,255,.16)); background:transparent; color:var(--accent2,#d4af37); font:inherit; font-size:11px; cursor:pointer;';
+        if(__isGuestT){
+          ta.textContent = __isArT ? 'سجّل مجانًا' : 'Sign up free';
+          ta.onclick = function(e){
+            e.stopPropagation();
+            try{
+              const __tog = document.getElementById('btnAuthToggle');
+              const __ov = document.getElementById('authOverlay');
+              if(__tog) __tog.click(); else if(__ov) __ov.style.display = 'flex';
+            }catch(_e){ __swallow(_e, 'ui:tier-auth'); }
+          };
+        } else {
+          ta.textContent = __isArT ? 'اشترك للنسخة الاحترافية' : 'Upgrade to Pro';
+          ta.onclick = function(e){ e.stopPropagation(); try{ if(typeof openCheckout === 'function') openCheckout('pro'); }catch(_e){ __swallow(_e, 'ui:tier-checkout'); } };
+        }
+        tb.appendChild(ta);
+        div.appendChild(tb);
+      }catch(e){ __swallow(e, 'ui:tier-badge'); }
     }
     const textDiv = document.createElement('div');
     textDiv.className = 'msg-text';
@@ -20917,6 +20952,7 @@ DESIGN RULES (non-negotiable):
       let reply, providerKey, switched, requestedKey;
       let __ctUsed = false;
       let __ctSources = null; /* v-one-brain: مصادر بحث النموذج — نطاق يبلغ موضع اللصق */
+      let __ctTier = null; /* v-tiers: طبقة الردّ (free / free-limit / guest / guest-limit) لشارة «ردّ مجاني» */
       // 💬 عقل واحد: Claude وحده يرد في النقاش العادي — الاحتياط (GPT ثم Gemini)
       // صامت ويشتغل فقط إذا Claude تعطل أو خلص حده.
       // 🛠️ ومعه يداه: النقاش العادي على Claude يمرّ بحلقة الأدوات (بحث · قراءة
@@ -20947,7 +20983,7 @@ DESIGN RULES (non-negotiable):
             }
           }
         }
-        if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; }
+        if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; if(__ct.tier) __ctTier = __ct.tier; }
         else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, onDelta, __teamOrder));
       }finally{
         window.__claudeModelOverride = null;
@@ -20999,6 +21035,7 @@ DESIGN RULES (non-negotiable):
         if(__cv && __cv.url){ __chatVidAtt = [{ isVideo: true, url: __cv.url, name: __cv.name || 'chat-video.mp4', mime: 'video/mp4' }]; window.__chatVideoResult = null; }
       }catch(e){ __swallow(e, 'ui:chat-video-attach'); }
       cur.messages.push({role: 'assistant', content: (code ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: code || null, providerLabel, providerKey, askAllReply: false, attachments: __chatVidAtt,
+        tier: __ctTier || undefined, /* v-tiers */
         // v-one-brain: بطاقات المصادر من بحث النموذج نفسه (حدث sources في البث).
         sources: (!__clarifyQ && (__ctSources || (__searchData && __searchData.sources))) || undefined,
         searchImages: (__searchData && __searchData.images) || undefined});
@@ -29590,6 +29627,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     var buf = '', full = '', serverErr = null;
     var __srcAcc = []; /* v-one-brain: مصادر بحث النموذج نفسه — لبطاقات «المصادر» */
     var __toolBusy = false; /* أداة محلّيّة قيد التنفيذ → نطيل مهلة الخمول */
+    var __tier = null; /* v-tiers: free / free-limit / guest / guest-limit — لشارة «ردّ مجاني» */
 
     while (true) {
       var chunk;
@@ -29629,6 +29667,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
           });
         }
         if (ev.error) serverErr = ev.error;
+        if (typeof ev.tier === 'string' && ev.tier) __tier = ev.tier;
       }
     }
     noteEnd();
@@ -29636,7 +29675,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     // لا نصّ = لم يحدث شيء يُعرض؛ نرمي ليهبط المستدعي إلى مساره القديم.
     if (!full.trim()) throw new Error(serverErr || 'chat: empty reply');
     var __p = provider || 'claude';
-    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined };
+    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined };
   };
 })();
 

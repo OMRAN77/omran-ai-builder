@@ -1479,6 +1479,41 @@ function renderMessages(keepScroll){
       label.textContent = __plbl;
       if(isAskAllReply) div.appendChild(label); // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ»)
     }
+    /* v-tiers (قرار المالك ١٢ سبتمبر): شارة صغيرة فوق الردّ المجاني، وزرّ اشتراك/تسجيل
+       عند نفاد الحصة. بلا اسم أي مزوّد. المشترك لا يرى شيئًا. */
+    if(m.role !== 'user' && (m.tier === 'free' || m.tier === 'free-limit' || m.tier === 'guest' || m.tier === 'guest-limit')){
+      try{
+        const __isArT = (lang === 'ar' || lang === 'ur');
+        const __isGuestT = (m.tier === 'guest' || m.tier === 'guest-limit');
+        const tb = document.createElement('div');
+        tb.className = 'tier-badge';
+        tb.style.cssText = 'display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:11px; color:var(--muted); margin-bottom:4px;';
+        const tl = document.createElement('span');
+        tl.textContent = (m.tier === 'guest-limit') ? (__isArT ? 'انتهت رسائل التجربة' : 'Trial messages used up')
+          : (m.tier === 'free-limit') ? (__isArT ? 'انتهت الرسائل المجانية لليوم' : 'Free messages used up for today')
+          : (__isArT ? 'ردّ مجاني' : 'Free reply');
+        tb.appendChild(tl);
+        const ta = document.createElement('button');
+        ta.type = 'button';
+        ta.style.cssText = 'padding:2px 10px; border-radius:12px; border:1px solid var(--border,rgba(255,255,255,.16)); background:transparent; color:var(--accent2,#d4af37); font:inherit; font-size:11px; cursor:pointer;';
+        if(__isGuestT){
+          ta.textContent = __isArT ? 'سجّل مجانًا' : 'Sign up free';
+          ta.onclick = function(e){
+            e.stopPropagation();
+            try{
+              const __tog = document.getElementById('btnAuthToggle');
+              const __ov = document.getElementById('authOverlay');
+              if(__tog) __tog.click(); else if(__ov) __ov.style.display = 'flex';
+            }catch(_e){ __swallow(_e, 'ui:tier-auth'); }
+          };
+        } else {
+          ta.textContent = __isArT ? 'اشترك للنسخة الاحترافية' : 'Upgrade to Pro';
+          ta.onclick = function(e){ e.stopPropagation(); try{ if(typeof openCheckout === 'function') openCheckout('pro'); }catch(_e){ __swallow(_e, 'ui:tier-checkout'); } };
+        }
+        tb.appendChild(ta);
+        div.appendChild(tb);
+      }catch(e){ __swallow(e, 'ui:tier-badge'); }
+    }
     const textDiv = document.createElement('div');
     textDiv.className = 'msg-text';
     if(pColor) textDiv.style.setProperty('--msg-accent', pColor);

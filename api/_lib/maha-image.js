@@ -61,12 +61,14 @@ module.exports = async (req, res) => {
 
   let pointsLib = null;
   let mahaImgCharged = null;
+  let mahaImgChargedAmount = 0; /* v-costs-2026-09: الصورة 20 نقطة و4K 30 — يُردّ المبلغ المخصوم نفسه */
   let guestImageCharge = null;
   async function refundImageCharge() {
     if (mahaImgCharged && pointsLib) {
       const user = mahaImgCharged;
+      const amount = mahaImgChargedAmount || pointsLib.COSTS.image;
       mahaImgCharged = null;
-      try { await pointsLib.refundPoints(user, pointsLib.COSTS.image); } catch (error) { console.error('[maha-image] user refund failed'); }
+      try { await pointsLib.refundPoints(user, amount); } catch (error) { console.error('[maha-image] user refund failed'); }
     }
     if (guestImageCharge) {
       const charge = guestImageCharge;
@@ -135,12 +137,17 @@ module.exports = async (req, res) => {
     const mahaImgUser = pointsLib.verifyPointsToken(token);
     if (mahaImgUser) {
       if (!pointsLib.isOwnerUsername(mahaImgUser)) {
-        const pay = await pointsLib.spendPoints(mahaImgUser, pointsLib.COSTS.image, 'image');
+        // v-costs-2026-09: 4K بطلب صريح (4k / للطباعة / دقة عالية) تكلف أكثر فتُسعَّر أعلى.
+        const __ask4K = /(?:^|[\s،,])(?:4k|٤k|للطباعة|طباعة|دقة\s*عالية|عالية\s*الدقة|أعلى\s*دقة|اعلى\s*دقة)(?=$|[\s،,.!؟?])|\b(?:4k|high[-\s]?res(?:olution)?|print[-\s]?(?:ready|quality))\b/i
+          .test(String(userText || '') + ' ' + String(prompt || ''));
+        const __imgCost = __ask4K ? pointsLib.COSTS.image_4k : pointsLib.COSTS.image;
+        const pay = await pointsLib.spendPoints(mahaImgUser, __imgCost, __ask4K ? 'image_4k' : 'image');
         if (!pay.ok) {
-          res.status(402).json({ error: 'points_insufficient', needed: pointsLib.COSTS.image, points: pay.points || 0 });
+          res.status(402).json({ error: 'points_insufficient', needed: __imgCost, points: pay.points || 0 });
           return;
         }
         mahaImgCharged = mahaImgUser;
+        mahaImgChargedAmount = __imgCost;
       }
     } else if (typeof guestId === 'string' && /^[a-zA-Z0-9_-]{6,64}$/.test(guestId)) {
       const { kvGetJSON, kvSetIfAbsent, kvIncr, kvDecrBy } = require('./kv.js');

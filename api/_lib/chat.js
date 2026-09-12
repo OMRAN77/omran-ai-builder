@@ -8,6 +8,10 @@
 // هنا النموذج نفسه يقرّر: يجيب مباشرة، أو يستدعي أداة ثم يجيب. البروتوكول
 // نفسه الذي يفهمه عميل الوكيل منذ v411 — لا اختراع صيغة جديدة.
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
+// v-tiers (قرار المالك ١٢ سبتمبر): مشترك → المحرّك الاحترافي بكل الأدوات؛ مسجَّل
+// بلا اشتراك وضيف → سلسلة مجانية بلا أدوات وبسقف يومي صغير. انظر tier.js.
+const tierLib = require('./tier.js');
+const { streamFreeChain } = require('./free-chain.js');
 const { logError } = require('./log-error.js');
 const { safeParse } = require('./safe-parse.js');
 const { fetchPlaces, isPlacesAsk, regionOf } = require('./search.js');
@@ -938,13 +942,30 @@ module.exports = async (req, res) => {
     if (earlyUser) earlyMemoryP = readMemory(earlyUser).catch(() => ({ memory: null }));
   } catch (e) { /* guard-ok: الذاكرة تحسين لا شرط — مسارها القديم يبقى احتياطًا */ }
 
-  const usage = await checkAndConsume(token, guestId, prov, clientIp(req));
+  // v-tiers: الطبقة أولًا. غير المشترك يُعدّ في سلّة «chat» واحدة (لا سلّة لكل
+  // مزوّد) فسقفه اليومي رقم واحد مفهوم، والمشترك يبقى على سلّة مزوّده بسقف باقته.
+  let __tier = null;
+  try {
+    const { verifyToken: __vt } = require('./auth.js');
+    __tier = await tierLib.resolveTier(token ? __vt(token) : null);
+  } catch (e) { __tier = null; }
+  const usage = await checkAndConsume(token, guestId, (__tier && !__tier.subscriber) ? 'chat' : prov, clientIp(req), { tier: __tier || undefined });
   if (!usage.allowed) {
-    if (usage.reason === 'auth') send({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
-    else send({ error: 'وصلت للحد اليومي المجاني (' + DAILY_LIMIT + ' رسالة). انتظر الغد أو اشترك.' });
+    if (usage.reason === 'auth') { send({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' }); }
+    else if (usage.tier === 'free' || usage.tier === 'guest') {
+      // نفاد الطبقة المجانية ردٌّ عاديّ لا خطأ: العميل يعرضه مع زرّ الاشتراك/التسجيل
+      // ولا يهبط إلى مزوّدات أخرى (كلّها مغلقة أمامه أصلًا).
+      send({ tier: usage.tier === 'guest' ? 'guest-limit' : 'free-limit' });
+      send({ delta: usage.message || tierLib.FREE_TEXT.freeLimit });
+      send({ done: true });
+    }
+    else send({ error: usage.message || ('وصلت للحد اليومي (' + (usage.limit || DAILY_LIMIT) + ' رسالة). انتظر الغد.') });
     res.end();
     return;
   }
+  // مسار مجاني = طبقة معروفة وليست اشتراكًا. (غياب الطبقة — كما في الاختبارات
+  // التي تحاكي الحصة — يُبقي المسار القديم.)
+  const __freeLane = !!(usage.tier && !usage.subscriber);
 
   // الذاكرة تُقرأ من الحساب في الخادم لكل رسالة، لا من نسخة الجهاز. هكذا يرى
   // الكمبيوتر والجوال الملف نفسه حتى لو كان أحدهما لم يحدّث صفحته بعد.
@@ -1121,6 +1142,16 @@ module.exports = async (req, res) => {
         }
         return kept.length ? kept.join('\n\n') : text;
       }
+    // v-tiers: الطبقة المجانية تُبثّ من السلسلة المجانية بلا أدوات وتنتهي هنا.
+    // النظام: البصمة + ذاكرة الحساب + الوقت فقط (لا ملف المالك ولا ملاحظات الأدوات).
+    if (__freeLane) {
+      send({ tier: usage.tier });
+      const __fr = await streamFreeChain({ system: PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz), convo, send });
+      if (!__fr.ok) send({ delta: tierLib.FREE_TEXT.busy });
+      send({ done: true });
+      res.end();
+      return;
+    }
           while (steps < MAX_STEPS) {
       if (Date.now() - t0 > MAX_MS) { send({ status: '⏱️ انتهت مهلة الردّ.', k: 'stTimeout' }); break; }
       steps++;

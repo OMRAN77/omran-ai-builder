@@ -13,9 +13,10 @@ const { verifyToken, getUser, putUser } = require('./auth.js');
 const { kvIncrBy, kvGetRaw, kvSetIfAbsent } = require('./kv.js');
 
 const PLANS = {
+  // v-plans-2026-09: يجب أن تطابق create-checkout-session.js (نقاط ومبالغ).
   basic: { amount: '10.00', points: 500, name: 'عادية — 500 نقطة / Basic — 500 pts' },
-  pro: { amount: '20.00', points: 1000, name: 'متوسطة — 1,000 نقطة / Pro — 1,000 pts' },
-  max: { amount: '100.00', points: 5000, name: 'كبيرة — 5,000 نقطة / Premium — 5,000 pts' },
+  pro: { amount: '20.00', points: 1200, name: 'متوسطة — 1,200 نقطة / Pro — 1,200 pts' },
+  max: { amount: '100.00', points: 7000, name: 'كبيرة — 7,000 نقطة / Premium — 7,000 pts' },
 };
 
 function baseUrl() {
@@ -119,7 +120,13 @@ module.exports = async (req, res) => {
           const username = verifyToken(token);
           if (username && matchedPlan) {
             const user = await getUser(username);
-            if (user && !user.deleted) {
+            if (user && !user.deleted && user.lastPaypalOrderId === data.id) {
+              // v-paypal-idempotent: نفس الطلب لا يُشحن مرتين (تحديث صفحة النجاح أو
+              // تكرار نداء capture) — نفس حارس Stripe في grantPlanToUser.
+              planGranted = user.plan || matchedPlan;
+              pointsAdded = 0;
+              balance = Number(user.points || 0);
+            } else if (user && !user.deleted) {
               user.plan = matchedPlan;
               user.planUpdatedAt = Date.now();
               user.lastPaypalOrderId = data.id;
