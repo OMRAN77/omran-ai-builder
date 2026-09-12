@@ -102,21 +102,27 @@ async function streamFreeChain(args) {
   const log = args.log || ((m) => { try { console.warn('[free-chain] ' + m); } catch (e) { /* لا شيء */ } });
   const system = String(args.system || '') + FREE_NOTE;
   let attempts = 0;
+  // أسباب الفشل (بلا مفاتيح) — تُعاد للمستدعي ليسجّلها ويبثّها كتشخيص للمالك.
+  const errors = [];
+  if (!chain.length) errors.push('no-provider-keys');
   for (const spec of chain) {
     attempts++;
     const messages = toOpenAIMessages(system, args.convo, spec.vision);
-    if (!messages.some((m) => m.role === 'user')) return { ok: false, provider: null, text: '', attempts };
+    if (!messages.some((m) => m.role === 'user')) return { ok: false, provider: null, text: '', attempts, errors: ['no-user-message'] };
     let partial = '';
     try {
       const text = await streamOne(spec, messages, (ev) => { partial += ev.delta || ''; args.send(ev); }, args);
-      if (text && text.trim()) return { ok: true, provider: spec.id, text, attempts };
+      if (text && text.trim()) return { ok: true, provider: spec.id, text, attempts, errors };
       log(spec.id + ' returned empty text');
+      errors.push(spec.id + ': empty');
     } catch (e) {
-      log(spec.id + ' failed: ' + String((e && e.message) || e).slice(0, 200));
-      if (partial.trim()) return { ok: true, provider: spec.id, text: partial, attempts, truncated: true };
+      const msg = String((e && e.message) || e).replace(/[A-Za-z0-9_-]{24,}/g, '…').slice(0, 160);
+      log(spec.id + ' failed: ' + msg);
+      errors.push(spec.id + ': ' + msg);
+      if (partial.trim()) return { ok: true, provider: spec.id, text: partial, attempts, truncated: true, errors };
     }
   }
-  return { ok: false, provider: null, text: '', attempts };
+  return { ok: false, provider: null, text: '', attempts, errors };
 }
 
 module.exports = { streamFreeChain, toOpenAIMessages, streamOne, FREE_NOTE };

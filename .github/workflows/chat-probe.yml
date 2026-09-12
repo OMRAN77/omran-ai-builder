@@ -7,6 +7,9 @@ on:
       turns:
         description: 'عدد الرسائل في الجلسة'
         default: '10'
+      base:
+        description: 'عنوان النشر المستهدف (فارغ = الإنتاج؛ ضع عنوان معاينة Vercel لفحص فرع)'
+        default: ''
 
 permissions:
   contents: read
@@ -30,6 +33,7 @@ jobs:
         shell: bash
         env:
           PROBE_BASE_URL: ${{ vars.PROBE_BASE_URL }}
+          PROBE_BASE:     ${{ inputs.base }}
           PROBE_TOKEN:    ${{ secrets.PROBE_TOKEN }}
           PROBE_TURNS:    ${{ inputs.turns }}
         run: node scripts/chat-probe.mjs | tee probe-metrics.json

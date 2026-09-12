@@ -131,6 +131,9 @@ test('streamFreeChain: all providers down → ok:false and nothing sent', async 
   const sent = [];
   const r = await fc.streamFreeChain({ system: 'SYS', convo: [{ role: 'user', content: 'هلا' }], send: (e) => sent.push(e), env, fetchImpl, log: () => {} });
   assert.equal(r.ok, false); assert.equal(r.attempts, 3); assert.deepEqual(sent, []);
+  assert.deepEqual(r.errors, ['gemini: free-chain gemini http 503 down', 'groq: free-chain groq http 503 down', 'mistral: free-chain mistral http 503 down']);
+  const none = await fc.streamFreeChain({ system: 'SYS', convo: [{ role: 'user', content: 'هلا' }], send: () => {}, env: {}, fetchImpl, log: () => {} });
+  assert.deepEqual(none, { ok: false, provider: null, text: '', attempts: 0, errors: ['no-provider-keys'] });
 });
 
 test('chat.js wiring: tier first, free lane before the tool loop, limit as a reply with a tier event', () => {
@@ -139,7 +142,7 @@ test('chat.js wiring: tier first, free lane before the tool loop, limit as a rep
   assert.match(chat, /checkAndConsume\(token, guestId, \(__tier && !__tier\.subscriber\) \? 'chat' : prov, clientIp\(req\), \{ tier: __tier \|\| undefined \}\)/);
   assert.match(chat, /send\(\{ tier: usage\.tier === 'guest' \? 'guest-limit' : 'free-limit' \}\);\n\s+send\(\{ delta: usage\.message \|\| tierLib\.FREE_TEXT\.freeLimit \}\);\n\s+send\(\{ done: true \}\);/);
   assert.match(chat, /const __freeLane = !!\(usage\.tier && !usage\.subscriber\);/);
-  assert.match(chat, /if \(__freeLane\) \{\n\s+send\(\{ tier: usage\.tier \}\);\n\s+const __fr = await streamFreeChain\(\{ system: PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), convo, send \}\);\n\s+if \(!__fr\.ok\) send\(\{ delta: tierLib\.FREE_TEXT\.busy \}\);\n\s+send\(\{ done: true \}\);\n\s+res\.end\(\);\n\s+return;\n\s+\}\n\s+while \(steps < MAX_STEPS\) \{/);
+  assert.match(chat, /if \(__freeLane\) \{\n\s+send\(\{ tier: usage\.tier \}\);\n\s+const __fr = await streamFreeChain\(\{ system: PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), convo, send \}\);\n\s+if \(!__fr\.ok\) \{[\s\S]*?send\(\{ tierDiag: \(__fr\.errors \|\| \[\]\)\.slice\(0, 6\) \}\);\n\s+send\(\{ delta: tierLib\.FREE_TEXT\.busy \}\);\n\s+\}\n\s+send\(\{ done: true \}\);\n\s+res\.end\(\);\n\s+return;\n\s+\}\n\s+while \(steps < MAX_STEPS\) \{/);
 });
 
 test('_usage.js wiring: tier caps, paid providers closed to non-subscribers, guest cap from env', () => {

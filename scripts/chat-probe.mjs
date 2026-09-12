@@ -43,6 +43,7 @@ async function probeChat(token, text, label) {
       if (ev.status) statuses.push(String(ev.status).slice(0, 40));
       if (ev.error) err = String(ev.error).slice(0, 120);
       if (typeof ev.tier === 'string') tier = ev.tier; // v-tiers: free / guest / free-limit …
+      if (Array.isArray(ev.tierDiag)) console.log('  free-chain : ' + ev.tierDiag.join(' | '));
     }
     if (Date.now() - t0 > 90000) break; // سقف صارم
   }
