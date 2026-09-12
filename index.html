@@ -109,6 +109,34 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <link rel="stylesheet" href="css/tokens.css?v=682">
 <link rel="stylesheet" href="css/redesign.css?v=657">
 <link rel="stylesheet" href="css/modules.css?v=652">
+<style>
+/* v-onecol — لوح الكود لا يوجد قبل أن يوجد كود.
+   المشكلة الأصليّة: renderCodeAndPreview لم يكن يُخفي اللوحة حين لا كود، بل
+   يعرض فيها «حالة فارغة» عناوينها مخفيّة أصلًا (display:none في #emptyTitleEl
+   و#emptyDescEl) — فيبقى ثلث الشاشة مستطيلًا أسود بلا أي محتوى. وفوقه
+   setupResizer يثبّت عرضًا بالبكسل على #chatcol من panelWidthChat، فيظلّ عمود
+   المحادثة ضيّقًا ولو اختفت اللوحة.
+   العلاج: حالة واحدة على <body> يقودها ظهور #emptyState (المراقب في نهاية
+   الصفحة)، تُخرج اللوحة وفاصلها من التخطيط وتحرّر عمود المحادثة. */
+body[data-omran-code="none"] #workarea,
+body[data-omran-code="none"] #resizer2{ display:none !important; }
+
+@media (min-width:861px){
+  /* العرض المثبّت بالبكسل يُلغى فيأخذ العمود الشاشة كلّها */
+  body[data-omran-code="none"] #chatcol{
+    width:auto !important;
+    max-width:none !important;
+    flex:1 1 auto !important;
+  }
+  /* عمود قراءة في المنتصف بدل سطر يمتدّ عرض الشاشة */
+  body[data-omran-code="none"] #messages,
+  body[data-omran-code="none"] #composerRow,
+  body[data-omran-code="none"] #omranBelowComposer{
+    max-width:760px;
+    margin-inline:auto;
+  }
+}
+</style>
 <script>
 /* v434 — الوضع الفاتح/الداكن. الذهبي ثابت في الاثنين. */
 (function(){var K='aiapp_mode';
@@ -137,178 +165,6 @@ window.__swallow = window.__swallow || function (err, ctx) {
 .msg-text a{ color:#2dd4bf !important; }
 html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 </style>
-<style>
-/* v-chat-width: عمود قراءة محدود العرض — كمبيوتر فقط (أمر عمران ١٢ سبتمبر).
-   على شاشة عريضة كانت المحادثة تتمدّد على ١٤٠٠ بكسل فتلتصق الردود بالحافة
-   اليمنى وتبقى مساحة فارغة هائلة. #chatcol نفسه لم يُمسّ — هو عنصر مرن بين
-   resizer1 وresizer2، وتقييد عرضه يكسر السحب. قُيّد ما بداخله فقط.
-   الجوال محميّ بشرطين: min-width:861px و:not(.mobile-ui).
-   الرجوع: احذف هذه الكتلة كاملةً. العرض يُضبط من --om-chat-max وحده. */
-:root{ --om-chat-max: 860px; }
-@media (min-width: 861px){
-  html:not(.mobile-ui) #omranHero,
-  html:not(.mobile-ui) #messages > *,
-  html:not(.mobile-ui) #composerRow,
-  html:not(.mobile-ui) #omranBelowComposer{
-    width: 100%;
-    max-width: var(--om-chat-max);
-    margin-inline: auto !important;
-    box-sizing: border-box;
-  }
-  /* الزرّان الطافيان يتبعان حافة العمود لا حافة الشاشة */
-  html:not(.mobile-ui) #chatJumpBottom,
-  html:not(.mobile-ui) #chatQuickChipsWrap{
-    inset-inline-end: max(14px, calc((100% - var(--om-chat-max)) / 2 + 14px));
-  }
-  /* v-chat-solo: لوحة الكود مطويّة = تختفي تمامًا والمحادثة تأخذ العرض كلّه.
-     setupResizer يكتب عرضًا ثابتًا على #chatcol (٦٢٠ بكسل كحدّ أقصى) في
-     style المضمّن، فيبقى العمود ضيّقًا ملتصقًا بالجانب والمساحة الباقية
-     فارغة — لذلك يُلغى هنا بـ!important. الطيّ نفسه بزرّ اللوحة كما هو،
-     و#waReopen يبقى ظاهرًا لإرجاعها. */
-  html:not(.mobile-ui) body.waCollapsedMode #workarea,
-  html:not(.mobile-ui) body.waCollapsedMode #resizer2{
-    display: none !important;
-  }
-  html:not(.mobile-ui) body.waCollapsedMode #chatcol{
-    width: auto !important;
-    max-width: none !important;
-    flex: 1 1 auto !important;
-  }
-}
-</style>
-<style>
-/* v-topbar-merge (أمر عمران ١٢ سبتمبر): شريط الأسهم كان الشريط الثاني من
-   ثلاثة فوق المحادثة، فيأكل ارتفاعًا كاملًا في كل شاشة. صار داخل الهيدر
-   نفسه: الشعار طرفًا، والأسهم وسطًا، والأزرار الطرف الآخر — سطر واحد لاصق
-   بأعلى الشاشة. النقل نفسه يجري في app-05-ui.js لأنّ #stockTicker شقيق
-   للهيدر لا ابنه، وCSS لا ينقل عقدة.
-   الارتفاع ثابت في الحالتين (--om-head-h): لو انكمش الوسط عند الطيّ لقفزت
-   المحادثة كلّها — نفس قفزة الهيدر التي عولجت في v652.
-   الرجوع: احذف هذه الكتلة وكتلة v-topbar-merge في app-05-ui.js. */
-:root{ --om-head-h: 30px; }
-header{
-  position: sticky;
-  top: 0;
-  z-index: 900;
-  margin: 0 !important;
-  border-radius: 0 !important;
-}
-#omHeadCenter{
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: var(--om-head-h);
-  overflow: hidden;
-}
-#omHeadCenter #stockTicker{
-  flex: 1 1 auto;
-  min-width: 0;
-  height: var(--om-head-h);
-  background: transparent !important;
-  border: 0 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-}
-#omHeadCenter #stockTickerToggle{
-  position: static !important;
-  transform: none !important;
-  inset: auto !important;
-  flex: none;
-}
-#omHeadTitle{
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--muted, #98a0b3);
-  padding-inline: 4px;
-}
-/* الجوال: العرض لا يتّسع لثلاثة عناصر، والاسم يُقصّ فلا يُقرأ. الشعار
-   والأزرار فقط، والأسهم تبقى في سطرها تحت الهيدر كما هي. */
-html.mobile-ui #omHeadCenter{ display: none !important; }
-</style>
-<style>
-/* v-chat-solo2 (أمر عمران ١٢ سبتمبر — «نفس فكرة شاشة كلود»): الشاشة كانت
-   ثلاثة أعمدة فارغة عند الفتح — لوحة كود بلا كود، ومحادثة بلا رسائل،
-   ومشاريع. كلود لا يعرض لوحة الأرتيفاكت أصلًا حتى يوجد ما يُعرض فيها.
-   هنا: ما دام المشروع بلا كود ولا عارض مفتوح، اللوحة والفاصل ولسان الإرجاع
-   غير موجودين البتة، والمحادثة تأخذ العرض كلّه بعمود --om-chat-max وسطًا.
-   الفئة omNoCode يضعها app-05-ui.js (كتلة v-topbar-merge).
-   الرجوع: احذف هذه الكتلة وسطر body.classList.toggle('omNoCode'...). */
-@media (min-width: 861px){
-  html:not(.mobile-ui) body.omNoCode #workarea,
-  html:not(.mobile-ui) body.omNoCode #resizer2,
-  html:not(.mobile-ui) body.omNoCode #waReopen{
-    display: none !important;
-  }
-  html:not(.mobile-ui) body.omNoCode #chatcol{
-    width: auto !important;
-    max-width: none !important;
-    flex: 1 1 auto !important;
-  }
-}
-</style>
-<style>
-/* v-claude-look (أمر عمران ١٢ سبتمبر — «نفس الفكرة بالضبط»): ثلاثة أجزاء
-   من تخطيط كلود في النماذج التي أرسلها:
-   (١) الشريط الجانبي: زرّ جديد أعلى، ثمّ أسطر التنقّل أيقونة+اسم بمحاذاة
-       البداية، ثمّ المشاريع، ثمّ «المحادثات» وقائمتها، والمزوّد والأدوات قاعًا.
-       الترتيب نفسه يجري في app-05-ui.js لأنّ CSS لا يعيد ترتيب العقد.
-   (٢) رأس اللوحة: التبويبان أيقونتان (عين · وسم كود) بدل كلمتين، فيصير
-       الرأس سطرًا هادئًا كرأس أرتيفاكت كلود.
-   (٣) صندوق الكتابة: حبّة واحدة بحواف دائرية.
-   الرجوع: احذف هذه الكتلة وكتلة v-claude-look في app-05-ui.js. */
-@media (min-width: 861px){
-  html:not(.mobile-ui) #omNavGroup{
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 4px 8px 8px;
-  }
-  html:not(.mobile-ui) #omNavGroup .omNavBtn{
-    display: flex !important;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    justify-content: flex-start;
-    background: none;
-    border: 0;
-    box-shadow: none;
-    border-radius: 10px;
-    padding: 8px 10px;
-    font-size: 13.5px;
-    color: var(--text, #eef0f6);
-    cursor: pointer;
-    text-align: start;
-    min-height: 0;
-  }
-  html:not(.mobile-ui) #omNavGroup .omNavBtn:hover{ background: rgba(255,255,255,.06); }
-  html:not(.mobile-ui) #omNavGroup .omNavBtn.active{ background: rgba(255,255,255,.09); }
-  html:not(.mobile-ui) #omranHistTitle{
-    padding: 12px 14px 4px !important;
-    font-size: 11.5px !important;
-    color: var(--muted, #98a0b3) !important;
-  }
-  html:not(.mobile-ui) #tabs{ gap: 2px; }
-  html:not(.mobile-ui) #tabs .tab[data-tab]{
-    padding: 6px 9px !important;
-    border: 0 !important;
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 0;
-    color: var(--muted, #98a0b3);
-  }
-  html:not(.mobile-ui) #tabs .tab[data-tab].active{ color: var(--accent, #c9a26a); }
-  html:not(.mobile-ui) #composerBox{ border-radius: 24px !important; }
-}
-</style>
 <style>/* v-intro-splash: شاشة افتتاح كاملة من مخطط المالك تظهر مرة عند كل فتح ثم تذوب تمامًا */
 #omranIntro{position:fixed;inset:0;z-index:2147483000;background:#07070B;overflow:hidden;opacity:1;transition:opacity .95s ease,transform .95s ease;cursor:pointer;visibility:visible}
 #omranIntro.oiOut{opacity:0;transform:scale(1.04);pointer-events:none}
@@ -323,7 +179,7 @@ html.mobile-ui #omHeadCenter{ display: none !important; }
 html.oiOn body{overflow:hidden}
 </style>
 </head>
-<body>
+<body data-omran-code="none">
 
 <div id="omranIntro" role="button" tabindex="0" aria-label="اضغط للمتابعة">
   <div class="oiBg"></div>
@@ -637,7 +493,7 @@ html.oiOn body{overflow:hidden}
 <script src="/js/selfdiag.js?v=1ba33c1b"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=87bb1b88"></script>
+    <script defer src="/js/app.bundle.js?v=20f4213c"></script>
     <script defer src="/js/modes.js?v=b23329c6"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
@@ -894,6 +750,31 @@ html.oiOn body{overflow:hidden}
     return true;
   }
 
+  if(!start()){
+    var n = 0, id = setInterval(function(){
+      if(start() || ++n > 40) clearInterval(id);
+    }, 250);
+  }
+})();
+</script>
+
+<script>
+/* v-onecol: مراقب الحالة — لا يلمس أي دالّة في الحزمة.
+   renderCodeAndPreview يكتب emptyState.style.display = 'flex' حين لا كود،
+   و'none' حين يوجد كود أو صورة معاينة. هذه الخاصّيّة السطريّة هي إشارتنا:
+   نقرؤها بمراقب سمات فلا حاجة لقراءة نصّ الكود (١٨١ ك.ب كلّ مرّة) ولا لمؤقّت. */
+(function(){
+  function start(){
+    var es = document.getElementById('emptyState');
+    if(!es) return false;
+    function sync(){
+      var noCode = (es.style.display === 'flex');
+      document.body.setAttribute('data-omran-code', noCode ? 'none' : 'has');
+    }
+    new MutationObserver(sync).observe(es, { attributes:true, attributeFilter:['style'] });
+    sync();
+    return true;
+  }
   if(!start()){
     var n = 0, id = setInterval(function(){
       if(start() || ++n > 40) clearInterval(id);
