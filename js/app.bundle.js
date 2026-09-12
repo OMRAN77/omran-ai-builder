@@ -18040,9 +18040,11 @@ async function __sendPromptCore(){
     if(!imageAttachments.length && cur.guideOn && cur.guideShot && cur.guideShot.b64 && text && text.length <= 400 && (cur.guideTurns || 0) < 6){
       cur.guideTurns = (cur.guideTurns || 0) + 1;
       imageAttachments.push({ isImage: true, name: 'screen.png', mime: cur.guideShot.mime || 'image/png', dataUrl: 'data:' + (cur.guideShot.mime || 'image/png') + ';base64,' + cur.guideShot.b64, _fromMemory: true, _screenshot: true, _guide: true });
-    }
+      }
   }catch(e){ __swallow(e, "upload:app-09-attach#12"); }
-    const __nextUserMessage = {role: 'user', content: (__gateApprovedText || text) || (t('imagesAttachedNote')), attachments: attachmentsForMsg.length ? attachmentsForMsg : undefined};    // ChatGPT-like branch semantics في مخزن خطّي: التعديل يلغي الردود اللاحقة
+  const __nextUserMessage = {role: 'user', content: (__gateApprovedText || text) || (t('imagesAttachedNote')), attachments: attachmentsForMsg.length ? attachmentsForMsg : undefined};
+  if(__editIndex >= 0){
+    // ChatGPT-like branch semantics في مخزن خطّي: التعديل يلغي الردود اللاحقة
     // ثم يولّد جوابًا جديدًا من الرسالة المعدّلة، بلا نسخ السؤال مرتين.
     cur.messages.splice(__editIndex, cur.messages.length - __editIndex, __nextUserMessage);
   } else {
