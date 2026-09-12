@@ -26,6 +26,7 @@ const tierLib = require('./tier.js');
 const { streamFreeChain } = require('./free-chain.js');
 const { logError } = require('./log-error.js');
 const zipLib = require('./analyze-zip.js');
+const gh = require('./github-read.js'); // v-agent-github: رابط مستودع/مجلّد/ملفّ على GitHub
 
 const LIMITS = { files: 60, perFile: 200000, total: 500000, perFileFree: 60000, totalFree: 60000, ask: 1200 };
 const ZIP_MAX = 3 * 1024 * 1024;
@@ -74,6 +75,17 @@ function collectFiles(body, limits) {
   if (Array.isArray(body.files)) {
     for (const f of body.files) if (f && typeof f === 'object') push(f.name, f.content);
   }
+  const pushEntries = (entries) => {
+    for (const e of entries) {
+      if (!e || !e.name || /\/$/.test(e.name)) continue;
+      if (zipLib.SKIP_DIR_PATTERNS.some((p) => p.test(e.name))) continue;
+      if (zipLib.BINARY_EXT.test(e.name)) continue;
+      if (!zipLib.TEXT_EXT.test(e.name) && e.data.length > 200000) continue;
+      let t;
+      try { t = e.data.toString('utf8'); } catch (err) { continue; }
+      push(e.name, t);
+    }
+  };
   if (body.fileBase64) {
     let buf = null;
     try { buf = Buffer.from(String(body.fileBase64), 'base64'); } catch (e) { buf = null; }
@@ -82,17 +94,11 @@ function collectFiles(body, limits) {
     else if (buf && buf.length) {
       let entries = [];
       try { entries = zipLib.unzip(buf); } catch (e) { skipped.push({ name: zipName, why: 'badzip' }); }
-      for (const e of entries) {
-        if (!e.name || /\/$/.test(e.name)) continue;
-        if (zipLib.SKIP_DIR_PATTERNS.some((p) => p.test(e.name))) continue;
-        if (zipLib.BINARY_EXT.test(e.name)) continue;
-        if (!zipLib.TEXT_EXT.test(e.name) && e.data.length > 200000) continue;
-        let t;
-        try { t = e.data.toString('utf8'); } catch (err) { continue; }
-        push(e.name, t);
-      }
+      pushEntries(entries);
     }
   }
+  // مدخلات فُكّت مسبقًا (أرشيف GitHub جُلب في المعالج) — نفس المرشّحات.
+  if (Array.isArray(body._zipEntries)) pushEntries(body._zipEntries);
   return { files, skipped, total };
 }
 
@@ -438,6 +444,26 @@ module.exports = async function handler(req, res) {
       finish(); return;
     }
     const pro = !!usage.subscriber;
+    // v-agent-github: رابط GitHub → ملفّ واحد عبر contents، أو مستودع/مجلّد كأرشيف zipball.
+    if (typeof body.githubUrl === 'string' && body.githubUrl.trim()) {
+      const t = gh.parseTarget({ url: body.githubUrl, ref: body.githubRef });
+      if (!t) { send({ error: 'رابط GitHub غير مفهوم. أعطِ رابط مستودع أو مجلّد أو ملفّ.' }); finish(); return; }
+      if (t.kind === 'pr' || t.kind === 'issue') { send({ error: 'أعطِ رابط مستودع أو مجلّد أو ملفّ على GitHub — لا طلب سحب أو مسألة.' }); finish(); return; }
+      send({ status: '🐙 يحمّل من GitHub: ' + t.owner + '/' + t.repo + (t.path ? '/' + t.path : '') + '…', k: 'stGithub' });
+      try {
+        let asFile = null;
+        if (t.kind === 'file' || t.kind === 'path') {
+          const c = await gh.getContents(t, {});
+          if (c.error && t.kind === 'file') { send({ error: c.error }); finish(); return; }
+          if (c.type === 'file') asFile = c;
+        }
+        if (asFile) { body.files = (Array.isArray(body.files) ? body.files : []).concat([{ name: asFile.name || t.path, content: asFile.content }]); }
+        else { const z = await gh.fetchRepoZip(t, {}); body._zipEntries = z.entries; }
+      } catch (e) {
+        logError('code-analyze/github', e);
+        send({ error: 'تعذّر جلب GitHub: ' + String((e && e.message) || e).slice(0, 200) }); finish(); return;
+      }
+    }
     const col = collectFiles(body, pro ? null : { total: LIMITS.totalFree, perFile: LIMITS.perFileFree });
     if (!col.files.length) {
       const bad = col.skipped.find((s) => s.why === 'badzip' || s.why === 'toolarge');

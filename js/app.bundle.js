@@ -32957,7 +32957,7 @@ if(document.readyState === 'loading'){
   var MAX_FILES = 40;
   var ACCEPT = '.js,.mjs,.cjs,.jsx,.ts,.tsx,.py,.html,.htm,.css,.scss,.json,.md,.php,.java,.kt,.swift,.go,.rs,.c,.h,.cpp,.hpp,.cs,.rb,.sh,.sql,.yml,.yaml,.xml,.vue,.svelte,.dart,.toml,.txt,.zip';
 
-  var S = { files: [], zip: null, busy: false, report: null, t0: 0, timer: null };
+  var S = { files: [], zip: null, github: '', busy: false, report: null, t0: 0, timer: null };
 
   function $id(x) { return document.getElementById(x); }
   function esc(s) {
@@ -32981,6 +32981,7 @@ if(document.readyState === 'loading'){
       title: 'تحليل الكود وتقييمه', menu: 'تحليل', menuTitle: 'تحليل الكود وتقييمه بالذكاء الاصطناعي',
       pickFiles: 'اختر ملفّات أو zip', current: 'كود المشروع الحالي', paste: 'الصق كودًا', add: 'أضف',
       pasteName: 'اسم الملفّ (مثال app.js)', pastePh: 'الصق الكود هنا…', ask: 'ركّز على شيء معيّن؟ (اختياري)',
+      github: 'رابط GitHub', githubPh: 'https://github.com/owner/repo أو رابط مجلّد أو ملفّ', githubAdd: 'أضف من GitHub', githubBad: 'رابط GitHub غير مفهوم',
       askPh: 'مثال: الأمان فقط، أو الأداء في دالة الحفظ، أو هل يصلح للإنتاج؟', go: 'حلّل وقيّم كلّ شيء',
       note: 'يُقرأ كلّ ملفّ سطرًا سطرًا ويُحلَّل من ستّ زوايا (الصحّة، الأمان، الأداء، الوضوح، الصيانة، أفضل الممارسات) ثمّ يُقيَّم من ١٠٠ مع أفضل خطوة تالية. الطلب يُحسب رسالةً واحدة من رصيدك اليوميّ.',
       noFiles: 'اختر ملفًّا أو الصق كودًا أوّلًا', tooBig: 'أكبر من الحدّ — تُخطّي: ', zipBig: 'الأرشيف أكبر من ٣ ميجابايت',
@@ -32999,6 +33000,7 @@ if(document.readyState === 'loading'){
       title: 'Code analysis & rating', menu: 'Analyze', menuTitle: 'AI code analysis and rating',
       pickFiles: 'Pick files or zip', current: 'Current project code', paste: 'Paste code', add: 'Add',
       pasteName: 'File name (e.g. app.js)', pastePh: 'Paste code here…', ask: 'Focus on something? (optional)',
+      github: 'GitHub link', githubPh: 'https://github.com/owner/repo or a folder/file link', githubAdd: 'Add from GitHub', githubBad: 'Unrecognized GitHub link',
       askPh: 'e.g. security only, performance of the save function, or is it production-ready?', go: 'Analyze & rate everything',
       note: 'Every file is read line by line and reviewed from six angles (correctness, security, performance, readability, maintainability, best practices), then scored out of 100 with the best next step. Counts as one message of your daily quota.',
       noFiles: 'Pick a file or paste code first', tooBig: 'Over the size limit — skipped: ', zipBig: 'Archive is larger than 3 MB',
@@ -33079,13 +33081,14 @@ if(document.readyState === 'loading'){
     if (!el) return;
     var h = '';
     if (S.zip) h += chip('📦 ' + S.zip.name + ' · ' + Math.round(S.zip.file.size / 1024) + 'KB', 'zip');
+    if (S.github) h += chip('🐙 ' + S.github.replace(/^https?:\/\/(www\.)?github\.com\//, ''), 'gh');
     for (var i = 0; i < S.files.length; i++) h += chip(S.files[i].name + ' · ' + S.files[i].content.split('\n').length + ' ' + t('lines'), String(i));
     el.innerHTML = h;
     var xs = el.querySelectorAll('[data-rm]');
     for (var k = 0; k < xs.length; k++) {
       xs[k].onclick = function () {
         var v = this.getAttribute('data-rm');
-        if (v === 'zip') S.zip = null; else S.files.splice(+v, 1);
+        if (v === 'zip') S.zip = null; else if (v === 'gh') S.github = ''; else S.files.splice(+v, 1);
         renderList();
       };
     }
@@ -33102,6 +33105,10 @@ if(document.readyState === 'loading'){
       + '<button type="button" id="csFilesBtn" class="btn" style="' + BTN + '">' + esc(t('pickFiles')) + '</button>'
       + '<button type="button" id="csCurBtn" class="btn" style="' + BTN + '">' + esc(t('current')) + '</button>'
       + '<button type="button" id="csPasteBtn" class="btn" style="' + BTN + '">' + esc(t('paste')) + '</button>'
+      + '</div>'
+      + '<div style="display:flex;gap:8px;align-items:center;">'
+      + '<input id="csGh" placeholder="' + esc(t('githubPh')) + '" title="' + esc(t('github')) + '" style="flex:1;box-sizing:border-box;background:var(--panel2,#0d0f14);color:inherit;border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:8px 10px;font:13px inherit;direction:ltr;text-align:left;">'
+      + '<button type="button" id="csGhAdd" class="btn" style="' + BTN + '">' + esc(t('githubAdd')) + '</button>'
       + '</div>'
       + '<input type="file" id="csFile" multiple accept="' + ACCEPT + '" style="display:none;">'
       + '<div id="csList"></div>'
@@ -33143,6 +33150,11 @@ if(document.readyState === 'loading'){
       if (!cur || !cur.code) { setStatus(t('noProject')); return; }
       addFile(cur.codeType === 'python' ? 'project.py' : 'project.html', String(cur.code));
       renderList(); setStatus('');
+    };
+    $id('csGhAdd').onclick = function () {
+      var u = ($id('csGh').value || '').trim();
+      if (!/^(https?:\/\/)?(www\.)?(github\.com|raw\.githubusercontent\.com)\/[^\/\s]+\/[^\/\s]+/i.test(u) && !/^[\w.-]+\/[\w.-]+(\/\S*)?$/.test(u)) { setStatus(t('githubBad')); return; }
+      S.github = u; $id('csGh').value = ''; renderList(); setStatus('');
     };
     $id('csPasteBtn').onclick = function () { var w = $id('csPasteWrap'); w.style.display = w.style.display === 'none' ? 'flex' : 'none'; };
     $id('csPasteAdd').onclick = function () {
@@ -33194,13 +33206,13 @@ if(document.readyState === 'loading'){
   }
 
   function run() {
-    if (!S.files.length && !S.zip) { setStatus(t('noFiles')); return; }
+    if (!S.files.length && !S.zip && !S.github) { setStatus(t('noFiles')); return; }
     var ask = ($id('csAsk') && $id('csAsk').value || '').trim();
     S.busy = true; S.report = null; setStatus('');
     viewProgress();
     var payload = {
       files: S.files.map(function (f) { return { name: f.name, content: f.content }; }),
-      ask: ask, lang: L(), token: authTok(), guestId: guestId(),
+      ask: ask, lang: L(), token: authTok(), guestId: guestId(), githubUrl: S.github || undefined,
       tz: (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { return ''; } })(),
     };
     var prep = S.zip ? readB64(S.zip.file).then(function (b64) { payload.fileBase64 = b64; payload.filename = S.zip.name; }) : Promise.resolve();
@@ -33372,7 +33384,7 @@ if(document.readyState === 'loading'){
       h += '</div>';
     }
 
-    var canFix = S.files.length === 1 && !S.zip && typeof window.omranCodeFixOpenWith === 'function' && issues.length;
+    var canFix = S.files.length === 1 && !S.zip && !S.github && typeof window.omranCodeFixOpenWith === 'function' && issues.length;
     h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">'
       + (canFix ? '<button type="button" id="csFix" class="btn" style="' + BTN + 'font-weight:700;">' + esc(t('fixBtn')) + '</button>' : '')
       + '<button type="button" id="csDl" class="btn" style="' + BTN + '">' + esc(t('download')) + '</button>'
@@ -33387,7 +33399,7 @@ if(document.readyState === 'loading'){
     if (up) up.onclick = function () { close(); try { if (typeof openCheckout === 'function') openCheckout('pro'); } catch (e) { if (window.__swallow) window.__swallow(e, 'codescore:upgrade'); } };
     $id('csDl').onclick = function () {
       var blob = new Blob([toMarkdown(r)], { type: 'text/markdown;charset=utf-8' });
-      var nm = 'code-report-' + (S.files[0] ? S.files[0].name.replace(/[^\w.-]+/g, '_') : (S.zip ? S.zip.name.replace(/\.zip$/i, '') : 'project')) + '.md';
+      var nm = 'code-report-' + (S.files[0] ? S.files[0].name.replace(/[^\w.-]+/g, '_') : (S.zip ? S.zip.name.replace(/\.zip$/i, '') : (S.github ? S.github.replace(/^.*github\.com\//, '').replace(/[^\w.-]+/g, '_').slice(0, 60) : 'project'))) + '.md';
       if (typeof omranSaveBlob === 'function') { omranSaveBlob(blob, nm); return; }
       var a = document.createElement('a');
       a.href = URL.createObjectURL(blob); a.download = nm;

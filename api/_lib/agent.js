@@ -6,6 +6,7 @@ const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
 const { logError } = require('./log-error.js');
 const { safeParse } = require('./safe-parse.js');
 const { fetchPublicUrl } = require('./safe-url.js');
+const { readGithub } = require('./github-read.js'); // v-agent-github
 
 const TOOLS = [
   {
@@ -46,6 +47,21 @@ const TOOLS = [
     input_schema: {
       type: 'object',
       properties: { url: { type: 'string', description: 'رابط الصفحة الكامل https://...' } },
+      required: ['url'],
+    },
+  },
+  {
+    // v-agent-github (طلب المالك ١٢ سبتمبر «يقرأ الجيت هوب»): قراءة عبر واجهة GitHub لا صفحاته.
+    name: 'read_github',
+    description: 'اقرأ من GitHub مباشرةً عبر واجهته الرسميّة: مستودع (وصفه وشجرة ملفّاته وREADME)، أو مجلّدًا، أو ملفًّا بأسطر مرقّمة، أو طلب سحب (وصفه وملفّاته المتغيّرة)، أو مسألة (نصّها وتعليقاتها). أعطها رابط GitHub كما هو أو owner/repo مع path. الملفّ الطويل يعود مقطّعًا: أعد الاستدعاء نفسه مع from لقراءة التتمّة. استخدمها بدل fetch_page لأيّ رابط github.com.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'رابط GitHub كامل (مستودع أو مجلّد أو ملفّ أو pull أو issue) أو owner/repo' },
+        path: { type: 'string', description: 'مسار ملفّ أو مجلّد داخل المستودع (اختياريّ مع owner/repo)' },
+        ref: { type: 'string', description: 'فرع أو وسم أو commit (اختياريّ؛ الافتراضيّ الفرع الرئيسيّ)' },
+        from: { type: 'integer', description: 'رقم السطر الذي تبدأ منه قراءة ملفّ طويل (اختياريّ)' },
+      },
       required: ['url'],
     },
   },
@@ -106,6 +122,7 @@ function trailDid(name, input) {
     try { h = new URL(String(input.url)).hostname || h; } catch (e) { /* رابط مشوّه → نعرض ما أُرسل */ }
     return 'قرأتُ ' + h;
   }
+  if (name === 'read_github') return 'قرأتُ من GitHub ' + (s(input.url, 70) || '') + (input.path ? ' ' + s(input.path, 40) : '') + (input.from > 1 ? ' من السطر ' + input.from : '');
   if (name === 'run_js') return 'شغّلتُ كودًا (' + String(input.code || '').length + ' حرفًا)';
   if (name === 'test_html') return 'اختبرتُ صفحة (' + String(input.html || '').length + ' حرفًا)';
   if (name === 'publish') return 'نشرتُ «' + (s(input.title, 40) || 'مشروعًا') + '»';
@@ -121,6 +138,7 @@ function trailGot(name, result) {
     return 'فحصلتُ ' + (n === 1 ? 'نتيجة واحدة' : n === 2 ? 'نتيجتين' : n <= 10 ? (n + ' نتائج') : (n + ' نتيجة'));
   }
   if (name === 'fetch_page') return 'فحصلتُ ' + r.length + ' حرفًا من الصفحة';
+  if (name === 'read_github') { const h = r.split('\n')[0] || ''; return /^(غير موجود|GitHub|تعذّر|رابط)/.test(h) ? 'ففشلت: ' + h.slice(0, 80) : 'فحصلتُ ' + r.length + ' حرفًا: ' + h.slice(0, 70); }
   if (name === 'publish') { const u = r.match(/https?:\/\/\S+/); return u ? ('فحصلتُ رابطًا: ' + u[0]) : ('فلم يُنشر: ' + r.trim().slice(0, 70)); }
   if (name === 'test_html') {
     if (/^✅/.test(r.trim())) return 'فما ظهر خطأ تشغيل';
@@ -180,6 +198,7 @@ const SYSTEM = `أنت "وكيل عمران" 🤖 — وكيل ذكاء اصطن
 25. أي رابط تعطيه: تأكد منه بـ web_search أو fetch_page أولًا — ممنوع روابط من الذاكرة.
 25-ب. قبل أول أداة في أي مهمة تحتاج أكثر من خطوة واحدة: اكتب سطرًا واحدًا فقط يبدأ بـ🗺️ يعلن خطتك بـ١٥ كلمة أو أقل، ثم انطلق فورًا. سطر واحد لا قائمة، ولا تنتظر موافقة عليه، ولا تكرره لاحقًا. المهمة التي تُنجزها بلا أدوات لا تحتاج هذا السطر.
 25-ج. أداة publish تنشر ما بنيتَه في هذا التشغيل وتعيد رابطًا حقيقيًا: لا تستدعها إلا إذا طلب المستخدم النشر أو رابطًا صراحة، ولا تعطِ إلا الرابط الذي أعادته الأداة حرفًا بحرف (ممنوع تأليف رابط)، ولا تضعه في صفحة «استكشف» العامة إلا بطلب صريح. وبعد النشر اذكر أن الرابط عام لمن يملكه.
+25-د. أي رابط github.com أو ذكر مستودع أو ملف على GitHub: استخدم read_github لا fetch_page — تعطيك شجرة الملفات، والملف بأسطر مرقمة، وطلبات السحب والمسائل. الملف الطويل يعود مقطعًا فأعد الاستدعاء مع from حتى تقرأه كله قبل أن تحكم عليه. لا تحلل ولا تعدل كودًا من GitHub قبل قراءته فعلًا بهذه الأداة.
 26. أي رقم أو سعر أو إحصائية: اذكر مصدرها.
 27. إذا سُئلت "أيهم أفضل؟": أعطِ جدول مقارنة واضح.
 28. إذا اكتشفت أن ردك السابق خطأ: قل "أصحح معلومتي" وصحح بشجاعة — لا تكابر.
@@ -551,6 +570,7 @@ module.exports = async (req, res) => {
             contentBlocks[curIdx] = { type: cb.type, text: '', name: cb.name, id: cb.id, inputJson: '' };
             if (cb.type === 'tool_use' && cb.name === 'web_search') send({ phase: 'executing', status: '🔍 الوكيل يتحقق من المصادر الحية…' });
             else if (cb.type === 'tool_use' && cb.name === 'fetch_page') send({ phase: 'executing', status: '🌐 الوكيل يقرأ صفحة ويب…' });
+            else if (cb.type === 'tool_use' && cb.name === 'read_github') send({ phase: 'executing', status: '🐙 الوكيل يقرأ من GitHub…' });
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ phase: 'verifying', status: '⚙️ الوكيل يشغّل كودًا للتحقق…' });
             else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ phase: 'verifying', status: '🧪 الوكيل يختبر ما بناه…' });
             else if (cb.type === 'tool_use' && cb.name === 'publish') send({ phase: 'executing', status: '🔗 الوكيل ينشر التطبيق…' });
@@ -596,6 +616,7 @@ module.exports = async (req, res) => {
           let result = 'أداة غير معروفة';
           if (cb.name === 'web_search') result = await tavilySearch(input.query || '');
           else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
+          else if (cb.name === 'read_github') result = await readGithub(input);
           else if (cb.name === 'run_js' || cb.name === 'test_html') {
             // التنفيذ في متصفح المستخدم لا هنا: الخادم دالة بلا حالة ومحدودة
             // الزمن، والكود الذي يكتبه النموذج يجب ألا يعمل قط على بنيتك.
