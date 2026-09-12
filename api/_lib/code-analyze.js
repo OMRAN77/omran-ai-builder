@@ -349,7 +349,7 @@ async function callFree(prompt, opts) {
     send: (ev) => { if (ev && ev.delta) { text += ev.delta; if (o.onProgress) o.onProgress(text.length); } },
     maxTokens: o.maxTokens || 6000, timeoutMs: o.timeoutMs || 150000, env: o.env, fetchImpl: o.fetchImpl,
   });
-  if (!r.ok) throw new Error('free-busy');
+  if (!r.ok) { const e = new Error('free-busy: ' + (Array.isArray(r.errors) ? r.errors.join(' | ') : '').slice(0, 300)); e.freeBusy = true; throw e; }
   return r.text || text;
 }
 

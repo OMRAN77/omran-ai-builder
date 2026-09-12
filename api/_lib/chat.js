@@ -1147,7 +1147,12 @@ module.exports = async (req, res) => {
     if (__freeLane) {
       send({ tier: usage.tier });
       const __fr = await streamFreeChain({ system: PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz), convo, send });
-      if (!__fr.ok) send({ delta: tierLib.FREE_TEXT.busy });
+      if (!__fr.ok) {
+        // تشخيص للمالك (المجسّ يطبعه، والعميل يتجاهله): أي مزوّد فشل ولماذا — بلا مفاتيح.
+        try { logError('free-chain', new Error((__fr.errors || []).join(' | ').slice(0, 400))); } catch (e) { /* التسجيل تحسين */ }
+        send({ tierDiag: (__fr.errors || []).slice(0, 6) });
+        send({ delta: tierLib.FREE_TEXT.busy });
+      }
       send({ done: true });
       res.end();
       return;
