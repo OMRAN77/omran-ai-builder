@@ -24,6 +24,7 @@ function load(action) {
     case 'studio-suggest': return require('./_lib/studio-suggest.js');
     case 'portrait-style': return require('./_lib/portrait-style.js');
     case 'analyze-zip': return require('./_lib/analyze-zip.js');
+    case 'code-analyze': return require('./_lib/code-analyze.js'); // v-code-score: تحليل الكود وتقييمه
     case 'stocks': return require('./_lib/stocks.js');
     case 'adchat': return require('./_lib/adchat.js');
     case 'adimage': return require('./_lib/adimage.js');
