@@ -15602,12 +15602,20 @@ function renderAttachStrip(){
         };
       }
     }
-    const rm = document.createElement('span');
+        const rm = document.createElement('span');
     rm.className = 'rm';
     rm.textContent = '✕';
-    rm.onclick = () => { pendingAttachments.splice(idx, 1); renderAttachStrip(); };
-    chip.appendChild(rm);
-    strip.appendChild(chip);
+    rm.onclick = (e) => { e.stopPropagation(); pendingAttachments.splice(idx, 1); renderAttachStrip(); };
+    if(chip.classList.contains('goldBadge')){
+      const wrap = document.createElement('span');
+      wrap.className = 'goldBadgeWrap';
+      wrap.appendChild(chip);
+      wrap.appendChild(rm);
+      strip.appendChild(wrap);
+    } else {
+      chip.appendChild(rm);
+      strip.appendChild(chip);
+    }
   });
   try{ window.__composerSyncTall && window.__composerSyncTall(); }catch(e){ /* guard-ok — cosmetic */ }
 }
