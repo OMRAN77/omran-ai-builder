@@ -620,6 +620,7 @@ function omranCodeHighlight(raw){
   });
 }
 /* يفتح نصًّا في تبويب «الكود» كعرض قراءة مرقّم. title يظهر في عنوان اللوحة. */
+/* يفتح نصًّا في تبويب «الكود» كعرض قراءة مرقّم. title يظهر في عنوان اللوحة. */
 window.omranOpenTextInCodePanel = function(text, title){
   try{
     if(typeof codeEl === 'undefined' || !codeEl || !codeEl.parentNode) return;
@@ -640,17 +641,28 @@ window.omranOpenTextInCodePanel = function(text, title){
       pre.id = 'omranCodePre';
       pre.style.cssText = 'flex:1;margin:0;padding:12px 14px;color:#d8dee9;'
         + 'font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre;';
-      var cls = document.createElement('button');
-      cls.type = 'button'; cls.textContent = '✕';
-      cls.title = (typeof lang !== 'undefined' && (lang === 'ar' || lang === 'ur')) ? 'إغلاق العارض' : 'Close viewer';
-      cls.style.cssText = 'position:sticky;top:6px;align-self:flex-start;margin:6px;background:rgba(0,0,0,.55);'
-        + 'border:1px solid rgba(255,255,255,.15);color:#ccc;border-radius:8px;cursor:pointer;padding:3px 9px;z-index:6;';
-      cls.onclick = function(){
-        try{ ov.remove(); }catch(e){ /* guard-ok */ }
+      ov.appendChild(gut); ov.appendChild(pre);
+      host.appendChild(ov);
+      var cls = document.getElementById('omranCodeViewerClose');
+      if(!cls){
+        cls = document.createElement('button');
+        cls.id = 'omranCodeViewerClose';
+        cls.type = 'button'; cls.textContent = '✕';
+        cls.title = (typeof lang !== 'undefined' && (lang === 'ar' || lang === 'ur')) ? 'إغلاق العارض' : 'Close viewer';
+        cls.style.cssText = 'position:absolute;top:10px;inset-inline-end:12px;z-index:7;'
+          + 'background:rgba(0,0,0,.65);border:1px solid rgba(255,255,255,.18);color:#ddd;'
+          + 'border-radius:8px;cursor:pointer;padding:5px 11px;font-size:13px;line-height:1;';
+        host.appendChild(cls);
+      }
+      var closeViewer = function(){
+        try{ var o = document.getElementById('omranCodeViewer'); if(o) o.remove(); }catch(e){ /* guard-ok */ }
+        try{ var c = document.getElementById('omranCodeViewerClose'); if(c) c.remove(); }catch(e){ /* guard-ok */ }
+        try{ document.removeEventListener('keydown', onEsc); }catch(e){ /* guard-ok */ }
         try{ if(typeof renderCodeAndPreview === 'function') renderCodeAndPreview(); }catch(e){ /* guard-ok */ }
       };
-      ov.appendChild(gut); ov.appendChild(pre); ov.appendChild(cls);
-      host.appendChild(ov);
+      var onEsc = function(ev){ if(ev.key === 'Escape') closeViewer(); };
+      cls.onclick = closeViewer;
+      document.addEventListener('keydown', onEsc);
     }
     var body = String(text || '');
     var lines = body.split('\n').length;
