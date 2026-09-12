@@ -201,7 +201,8 @@ function omranGoldBadgeCss(){
     + '.file-chip.goldBadge{box-sizing:border-box;display:inline-flex;align-items:center;box-shadow:none;'
     + 'height:' + H + 'px;min-width:250px;max-width:390px;padding:0 8px;'
     + FRAME + '}'
-    + '.msg-attachments::before{content:none !important;}';
+    + '.msg-attachments::before{content:none !important;}'
+    + '.msg-text:has(+ .msg-attachments .goldBadge){display:none !important;}';
   document.head.appendChild(st);
 }
 /* يبني محتوى البطاقة: الاسم في سطر والحجم وعدد الأسطر تحته */
