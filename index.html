@@ -137,6 +137,92 @@ window.__swallow = window.__swallow || function (err, ctx) {
 .msg-text a{ color:#2dd4bf !important; }
 html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 </style>
+<style>
+/* v-chat-width: عمود قراءة محدود العرض — كمبيوتر فقط (أمر عمران ١٢ سبتمبر).
+   على شاشة عريضة كانت المحادثة تتمدّد على ١٤٠٠ بكسل فتلتصق الردود بالحافة
+   اليمنى وتبقى مساحة فارغة هائلة. #chatcol نفسه لم يُمسّ — هو عنصر مرن بين
+   resizer1 وresizer2، وتقييد عرضه يكسر السحب. قُيّد ما بداخله فقط.
+   الجوال محميّ بشرطين: min-width:861px و:not(.mobile-ui).
+   الرجوع: احذف هذه الكتلة كاملةً. العرض يُضبط من --om-chat-max وحده. */
+:root{ --om-chat-max: 860px; }
+@media (min-width: 861px){
+  html:not(.mobile-ui) #omranHero,
+  html:not(.mobile-ui) #messages > *,
+  html:not(.mobile-ui) #composerRow,
+  html:not(.mobile-ui) #omranBelowComposer{
+    width: 100%;
+    max-width: var(--om-chat-max);
+    margin-inline: auto !important;
+    box-sizing: border-box;
+  }
+  /* الزرّان الطافيان يتبعان حافة العمود لا حافة الشاشة */
+  html:not(.mobile-ui) #chatJumpBottom,
+  html:not(.mobile-ui) #chatQuickChipsWrap{
+    inset-inline-end: max(14px, calc((100% - var(--om-chat-max)) / 2 + 14px));
+  }
+  /* v-chat-solo: لوحة الكود مطويّة = تختفي تمامًا والمحادثة تأخذ العرض كلّه.
+     setupResizer يكتب عرضًا ثابتًا على #chatcol (٦٢٠ بكسل كحدّ أقصى) في
+     style المضمّن، فيبقى العمود ضيّقًا ملتصقًا بالجانب والمساحة الباقية
+     فارغة — لذلك يُلغى هنا بـ!important. الطيّ نفسه بزرّ اللوحة كما هو،
+     و#waReopen يبقى ظاهرًا لإرجاعها. */
+  html:not(.mobile-ui) body.waCollapsedMode #workarea,
+  html:not(.mobile-ui) body.waCollapsedMode #resizer2{
+    display: none !important;
+  }
+  html:not(.mobile-ui) body.waCollapsedMode #chatcol{
+    width: auto !important;
+    max-width: none !important;
+    flex: 1 1 auto !important;
+  }
+}
+</style>
+<style>
+/* v-topbar-merge (أمر عمران ١٢ سبتمبر): شريط الأسهم كان الشريط الثاني من
+   ثلاثة فوق المحادثة، فيأكل ارتفاعًا كاملًا في كل شاشة. صار داخل الهيدر
+   نفسه: الشعار طرفًا، والأسهم وسطًا، والأزرار الطرف الآخر — سطر واحد.
+   النقل نفسه يجري في app-05-ui.js لأنّ #stockTicker شقيق للهيدر لا ابنه،
+   وCSS لا ينقل عقدة.
+   لا اسم محادثة ولا خطّ فاصل في الوسط (أمر عمران): الوسط للأسهم وحدها،
+   وحين تُطوى يبقى فارغًا بلا أيّ نصّ أو أثر مرسوم.
+   الجوال خارج هذه الكتلة كلّها — كلّ قاعدة هنا داخل min-width:861px
+   ومقيّدة بـ:not(.mobile-ui)، والنقل نفسه لا يجري على الجوال أصلًا.
+   الرجوع: احذف هذه الكتلة وكتلة v-topbar-merge في app-05-ui.js. */
+@media (min-width: 861px){
+  html:not(.mobile-ui) header{
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+  html:not(.mobile-ui) #omHeadCenter{
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 30px;
+    overflow: hidden;
+  }
+  html:not(.mobile-ui) #omHeadCenter #stockTicker{
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 30px;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  html:not(.mobile-ui) #omHeadCenter #stockTickerToggle{
+    position: static !important;
+    transform: none !important;
+    inset: auto !important;
+    flex: none;
+  }
+}
+html.mobile-ui #omHeadCenter{ display: none !important; }
+</style>
 <style>/* v-intro-splash: شاشة افتتاح كاملة من مخطط المالك تظهر مرة عند كل فتح ثم تذوب تمامًا */
 #omranIntro{position:fixed;inset:0;z-index:2147483000;background:#07070B;overflow:hidden;opacity:1;transition:opacity .95s ease,transform .95s ease;cursor:pointer;visibility:visible}
 #omranIntro.oiOut{opacity:0;transform:scale(1.04);pointer-events:none}
@@ -729,101 +815,6 @@ html.oiOn body{overflow:hidden}
   }
 })();
 </script>
-
-
-<style id="omranScrollLock">
-/* ═══ v-desk-scroll-lock (شكوى المالك: المحادثة تتمدد خارج الشاشة والصفحة كلها تتمرّر) ═══
-   الجوّال كان مقفولًا أصلًا (v-mob-lock) لكن الكمبيوتر لا. هنا نفس المبدأ:
-   الصفحة نفسها لا تتمرّر إطلاقًا، والارتفاع يُقسَّم عبر flex — هيدر ثابت،
-   ثم main يملأ الباقي، و#messages هو العنصر الوحيد القابل للتمرير.
-   min-width:0 على #chatcol هو ما يمنع الرسائل الطويلة من تمديد العرض. */
-@media (min-width:861px){
-  html:not(.mobile-ui){ height:100%; max-width:100%; overflow:hidden; overscroll-behavior:none; }
-  html:not(.mobile-ui) body{
-    height:100%; max-width:100%; overflow:hidden; overscroll-behavior:none;
-    display:flex; flex-direction:column;
-  }
-
-  /* الخلفيات والستائر خارج تدفّق التخطيط حتى لا تضيف ارتفاعًا للعمود */
-  html:not(.mobile-ui) #vantaBg,
-  html:not(.mobile-ui) #drawerBackdrop{ position:fixed; }
-
-  html:not(.mobile-ui) header,
-  html:not(.mobile-ui) #stockTicker{ flex:0 0 auto; }
-
-  html:not(.mobile-ui) main{
-    flex:1 1 auto; min-height:0; max-width:100%; overflow:hidden;
-  }
-
-  html:not(.mobile-ui) #sidebar{
-    min-height:0; max-height:100%;
-    overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain;
-  }
-
-  html:not(.mobile-ui) #chatcol{
-    display:flex; flex-direction:column;
-    min-width:0;            /* أهم سطر — يمنع أبناء الفلكس من تمديد العرض */
-    min-height:0; max-height:100%; max-width:100%;
-    overflow:hidden;
-  }
-
-  /* العنصر الوحيد الذي يتمرّر */
-  html:not(.mobile-ui) #messages{
-    flex:1 1 auto; min-height:0; min-width:0;
-    overflow-y:auto; overflow-x:hidden;
-    overscroll-behavior:contain; scrollbar-gutter:stable;
-  }
-  html:not(.mobile-ui) #omranHero{ flex:1 1 auto; min-height:0; }
-  html:not(.mobile-ui) #inputbar{ flex:0 0 auto; }
-
-  html:not(.mobile-ui) #workarea{
-    display:flex; flex-direction:column;
-    min-width:0; min-height:0; max-height:100%; overflow:hidden;
-  }
-
-  /* لا شيء داخل المحادثة يتجاوز العرض */
-  html:not(.mobile-ui) #messages > *{ max-width:100%; }
-  html:not(.mobile-ui) #messages pre,
-  html:not(.mobile-ui) #messages code,
-  html:not(.mobile-ui) #messages table{ max-width:100%; overflow-x:auto; }
-  html:not(.mobile-ui) #messages p,
-  html:not(.mobile-ui) #messages li,
-  html:not(.mobile-ui) #messages span,
-  html:not(.mobile-ui) #messages div{ overflow-wrap:anywhere; word-break:break-word; }
-  html:not(.mobile-ui) #messages img,
-  html:not(.mobile-ui) #messages video,
-  html:not(.mobile-ui) #messages canvas,
-  html:not(.mobile-ui) #messages iframe{ max-width:100%; height:auto; }
-
-  /* شريط تمرير رفيع وهادئ */
-  html:not(.mobile-ui) #messages,
-  html:not(.mobile-ui) #sidebar,
-  html:not(.mobile-ui) #workarea{ scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.16) transparent; }
-  html:not(.mobile-ui) #messages::-webkit-scrollbar,
-  html:not(.mobile-ui) #sidebar::-webkit-scrollbar,
-  html:not(.mobile-ui) #workarea::-webkit-scrollbar{ width:8px; height:8px; }
-  html:not(.mobile-ui) #messages::-webkit-scrollbar-track,
-  html:not(.mobile-ui) #sidebar::-webkit-scrollbar-track,
-  html:not(.mobile-ui) #workarea::-webkit-scrollbar-track{ background:transparent; }
-  html:not(.mobile-ui) #messages::-webkit-scrollbar-thumb,
-  html:not(.mobile-ui) #sidebar::-webkit-scrollbar-thumb,
-  html:not(.mobile-ui) #workarea::-webkit-scrollbar-thumb{
-    background:rgba(255,255,255,.15); border:2px solid transparent;
-    background-clip:content-box; border-radius:99px;
-  }
-  html:not(.mobile-ui) #messages:hover::-webkit-scrollbar-thumb,
-  html:not(.mobile-ui) #sidebar:hover::-webkit-scrollbar-thumb{
-    background:rgba(255,255,255,.30); background-clip:content-box;
-  }
-  html[data-mode="light"]:not(.mobile-ui) #messages,
-  html[data-mode="light"]:not(.mobile-ui) #sidebar{ scrollbar-color:rgba(0,0,0,.20) transparent; }
-  html[data-mode="light"]:not(.mobile-ui) #messages::-webkit-scrollbar-thumb,
-  html[data-mode="light"]:not(.mobile-ui) #sidebar::-webkit-scrollbar-thumb{
-    background:rgba(0,0,0,.18); background-clip:content-box;
-  }
-}
-
-</style>
 
 </body>
 </html>
