@@ -160,7 +160,77 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
   html:not(.mobile-ui) #chatQuickChipsWrap{
     inset-inline-end: max(14px, calc((100% - var(--om-chat-max)) / 2 + 14px));
   }
+  /* v-chat-solo: لوحة الكود مطويّة = تختفي تمامًا والمحادثة تأخذ العرض كلّه.
+     setupResizer يكتب عرضًا ثابتًا على #chatcol (٦٢٠ بكسل كحدّ أقصى) في
+     style المضمّن، فيبقى العمود ضيّقًا ملتصقًا بالجانب والمساحة الباقية
+     فارغة — لذلك يُلغى هنا بـ!important. الطيّ نفسه بزرّ اللوحة كما هو،
+     و#waReopen يبقى ظاهرًا لإرجاعها. */
+  html:not(.mobile-ui) body.waCollapsedMode #workarea,
+  html:not(.mobile-ui) body.waCollapsedMode #resizer2{
+    display: none !important;
+  }
+  html:not(.mobile-ui) body.waCollapsedMode #chatcol{
+    width: auto !important;
+    max-width: none !important;
+    flex: 1 1 auto !important;
+  }
 }
+</style>
+<style>
+/* v-topbar-merge (أمر عمران ١٢ سبتمبر): شريط الأسهم كان الشريط الثاني من
+   ثلاثة فوق المحادثة، فيأكل ارتفاعًا كاملًا في كل شاشة. صار داخل الهيدر
+   نفسه: الشعار طرفًا، والأسهم وسطًا، والأزرار الطرف الآخر — سطر واحد لاصق
+   بأعلى الشاشة. النقل نفسه يجري في app-05-ui.js لأنّ #stockTicker شقيق
+   للهيدر لا ابنه، وCSS لا ينقل عقدة.
+   الارتفاع ثابت في الحالتين (--om-head-h): لو انكمش الوسط عند الطيّ لقفزت
+   المحادثة كلّها — نفس قفزة الهيدر التي عولجت في v652.
+   الرجوع: احذف هذه الكتلة وكتلة v-topbar-merge في app-05-ui.js. */
+:root{ --om-head-h: 30px; }
+header{
+  position: sticky;
+  top: 0;
+  z-index: 900;
+  margin: 0 !important;
+  border-radius: 0 !important;
+}
+#omHeadCenter{
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--om-head-h);
+  overflow: hidden;
+}
+#omHeadCenter #stockTicker{
+  flex: 1 1 auto;
+  min-width: 0;
+  height: var(--om-head-h);
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+#omHeadCenter #stockTickerToggle{
+  position: static !important;
+  transform: none !important;
+  inset: auto !important;
+  flex: none;
+}
+#omHeadTitle{
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted, #98a0b3);
+  padding-inline: 4px;
+}
+/* الجوال: العرض لا يتّسع لثلاثة عناصر، والاسم يُقصّ فلا يُقرأ. الشعار
+   والأزرار فقط، والأسهم تبقى في سطرها تحت الهيدر كما هي. */
+html.mobile-ui #omHeadCenter{ display: none !important; }
 </style>
 <style>/* v-intro-splash: شاشة افتتاح كاملة من مخطط المالك تظهر مرة عند كل فتح ثم تذوب تمامًا */
 #omranIntro{position:fixed;inset:0;z-index:2147483000;background:#07070B;overflow:hidden;opacity:1;transition:opacity .95s ease,transform .95s ease;cursor:pointer;visibility:visible}
