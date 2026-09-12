@@ -3111,7 +3111,19 @@ async function postWithConfirm(url, payload){
     return true;
   }
 
+  /* v-chat-solo2: لوحة الكود لا توجد قبل أن يوجد كود. العارض المفتوح
+     يعيش داخل اللوحة، فوجوده يمنع الإخفاء ولو كان cur.code فارغًا. */
+  function syncNoCode(){
+    try{
+      var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+      var hasCode = !!(cur && cur.code && String(cur.code).trim());
+      var viewer = !!document.getElementById('omranCodeViewer');
+      document.body.classList.toggle('omNoCode', !hasCode && !viewer);
+    }catch(e){ /* guard-ok */ }
+  }
+
   function sync(){
+    syncNoCode();
     try{
       if(isMobile()) return;
       var ttl = document.getElementById('omHeadTitle');
@@ -3121,6 +3133,12 @@ async function postWithConfirm(url, payload){
       /* «مطويّ» يشمل الحالتين: طواه المستخدم بالسهم، أو أطفأ الشريط من
          الإعدادات. في الحالتين الوسط يخلو فيستحقّه اسم المحادثة. */
       var live = !!(tk && tk.offsetHeight > 4 && trk && trk.offsetWidth > 0);
+      /* الشريط المطويّ كان يبقى مرنًا فيبتلع وسط الهيدر ويترك فجوة
+         طويلة بجانب اسم المحادثة — يتنازل عن مرونته حين لا يعرض شيئًا. */
+      if(tk){
+        var fl = live ? '1 1 auto' : '0 0 auto';
+        if(tk.style.flex !== fl) tk.style.flex = fl;
+      }
       var lbl = live ? '' : chatLabel();
       if(ttl.textContent !== lbl) ttl.textContent = lbl;
       var want = lbl ? '' : 'none';
@@ -3144,4 +3162,78 @@ async function postWithConfirm(url, payload){
     var n = 0;
     var id = setInterval(function(){ if(start() || ++n > 40) clearInterval(id); }, 250);
   }
+})();
+
+/* v-claude-look: ترتيب الشريط الجانبي وأيقنة تبويبَي اللوحة.
+   نقل العقد لا إعادة بنائها — فتبقى كلّ المعالجات المربوطة عليها كما هي.
+   التبويبان يحملان data-i18n فتُعيد applyLanguage كتابة نصّهما عند كلّ تبديل
+   لغة وتمحو الأيقونة؛ لذلك نعيد تركيبها في نبضة خفيفة بدل مرّة واحدة. */
+(function(){
+  var TAB_ICON = {
+    preview: '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"'
+      + ' fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"'
+      + ' stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7'
+      + '-4 7-11 7-11-7-11-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>',
+    code: '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"'
+      + ' fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"'
+      + ' stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6">'
+      + '</polyline><polyline points="8 6 2 12 8 18"></polyline></svg>'
+  };
+
+  function isMobileUi(){
+    try{ return document.documentElement.classList.contains('mobile-ui'); }
+    catch(e){ return false; }
+  }
+
+  function orderSidebar(){
+    var sb = document.getElementById('sidebar');
+    if(!sb || isMobileUi()) return false;
+    if(document.getElementById('omNavGroup')) return true;
+    var foot = document.getElementById('omranSidebarFoot');
+    var navs = foot ? foot.querySelectorAll('.omNavBtn.omDeskNav') : [];
+    if(!navs.length) return false;
+
+    var grp = document.createElement('div');
+    grp.id = 'omNavGroup';
+    for(var i = 0; i < navs.length; i++) grp.appendChild(navs[i]);
+
+    /* الترتيب من أعلى إلى أسفل كما في نماذج كلود. أي عنصر غائب يُتخطّى
+       بلا أثر — appendChild على عقدة قائمة ينقلها لا ينسخها. */
+    var order = ['omranNewChatBtn', null, 'projMenuWrap', 'omranHistTitle',
+                 'history', 'providerGridSidebar', 'omranSidebarFoot'];
+    for(var k = 0; k < order.length; k++){
+      if(order[k] === null){ sb.appendChild(grp); continue; }
+      var el = document.getElementById(order[k]);
+      if(el && el.parentNode === sb) sb.appendChild(el);
+    }
+    return true;
+  }
+
+  function iconizeTabs(){
+    try{
+      if(isMobileUi()) return;
+      var tabs = document.querySelectorAll('#tabs .tab[data-tab]');
+      for(var i = 0; i < tabs.length; i++){
+        var el = tabs[i];
+        var ico = TAB_ICON[el.dataset.tab];
+        if(!ico || el.querySelector('svg')) continue;
+        var txt = (el.textContent || '').trim();
+        if(txt){ el.title = txt; el.setAttribute('aria-label', txt); }
+        el.innerHTML = ico;
+      }
+    }catch(e){ /* guard-ok */ }
+  }
+
+  var done = false;
+  function start(){
+    if(!done) done = orderSidebar();
+    iconizeTabs();
+    return done;
+  }
+
+  if(!start()){
+    var n = 0;
+    var id = setInterval(function(){ if(start() || ++n > 40) clearInterval(id); }, 250);
+  }
+  setInterval(iconizeTabs, 1200);
 })();
