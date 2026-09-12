@@ -188,6 +188,61 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 }
 </style>
 <style>
+/* v-no-lines (أمر عمران ١٢ سبتمبر — رسمه على الخطوط): الصفحة بلا خطوط.
+   ثلاثة مصادر كانت ترسمها، كلّها بـ!important في redesign.css وmodules.css
+   فلا تُطفأ إلا بوزن أعلى (body + المعرّف):
+   ① الشعرة الذهبية تحت شريط الأسهم — ::after في redesign و::before في modules.
+   ② شعرة أسفل الترويسة — box-shadow على header.
+   ③ الفاصل بين الأعمدة — border-image على #sidebar و#chatcol.
+   تبقى الحدود حيث يوجد شيء فعلًا: لوحة الكود مفتوحة أو الدرج مفتوح.
+   الرجوع: احذف هذه الكتلة كاملةً. */
+@media (min-width: 861px){
+  html:not(.mobile-ui) body #stockTicker::before,
+  html:not(.mobile-ui) body #stockTicker::after{
+    content: none !important;
+    display: none !important;
+    background: none !important;
+  }
+  html:not(.mobile-ui) body #stockTicker{
+    border-bottom: 0 !important;
+    box-shadow: none !important;
+  }
+  html:not(.mobile-ui) body header{ box-shadow: none !important; }
+  html:not(.mobile-ui) body #sidebar,
+  html:not(.mobile-ui) body #chatcol,
+  html:not(.mobile-ui) body #workarea{
+    border-image: none !important;
+    border-inline: 0 !important;
+  }
+  html:not(.mobile-ui) body #omranSidebarFoot{
+    border-top: 0 !important;
+    background-image: none !important;
+  }
+  html:not(.mobile-ui) body #omranNewChatBtn::after{ content: none !important; }
+  /* الحدّ يعود حيث توجد لوحة فعلًا: الكود والمعاينة مفتوحان. */
+  html:not(.mobile-ui) body:not(.waCollapsedMode) #workarea{
+    border-inline-start: 1px solid rgba(255,255,255,.09) !important;
+  }
+  /* الشريط الجانبي مغلق = الأسهم تمتدّ على العرض كلّه معه. #stockTicker
+     شقيق للهيدر لا ابن لـ#chatcol، فامتداده يتبع اختفاء العمود وحده. */
+  html:not(.mobile-ui) body.waCollapsedMode #stockTicker{ width: 100% !important; }
+  /* v-chat-top (أمر عمران): منطقة المحادثة تصعد حتى تلامس شريط الأسهم.
+     كانت تبدأ عند ارتفاع شريط «المعاينة · الكود» فيبقى فوقها فراغ أسود.
+     #tabs لم يُمسّ — يبقى فوق لوحة الكود وحدها كما هو. */
+  html:not(.mobile-ui) #chatcol{
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+  }
+  html:not(.mobile-ui) #chatcol > #messages{
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+  }
+  html:not(.mobile-ui) #chatcol > #messages > *:first-child{
+    margin-top: var(--om-chat-pad) !important;
+  }
+}
+</style>
+<style>
 /* v-topbar-merge (أمر عمران ١٢ سبتمبر): شريط الأسهم كان الشريط الثاني من
    ثلاثة فوق المحادثة، فيأكل ارتفاعًا كاملًا في كل شاشة. صار داخل الهيدر
    نفسه: الشعار طرفًا، والأسهم وسطًا، والأزرار الطرف الآخر — سطر واحد.
@@ -579,7 +634,7 @@ html.oiOn body{overflow:hidden}
 <script src="/js/selfdiag.js?v=1ba33c1b"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=c2e51894"></script>
+    <script defer src="/js/app.bundle.js?v=20f4213c"></script>
     <script defer src="/js/modes.js?v=b23329c6"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
