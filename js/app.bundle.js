@@ -10319,6 +10319,107 @@ async function postWithConfirm(url, payload){
   fix();
   try{ if(document.fonts && document.fonts.ready) document.fonts.ready.then(fix, () => {}); }catch(e){ __swallow(e, 'ui:maha-center#fonts'); }
 })();
+
+/* v-topbar-merge (أمر عمران ١٢ سبتمبر): شريط الأسهم ينتقل إلى وسط الهيدر.
+   النقل هنا لا في index.html لأنّ #stockTicker شقيق للهيدر لا ابنه، ونقله
+   في المصدر كان يعني تحريك كتلة كاملة داخل ملفّ ٨٥ ك.ب — نقلةٌ واحدة في
+   وقت التشغيل أأمن وأقلّ أثرًا.
+   الزرّ الموجود (#stockTickerToggle) يبقى صاحب الطيّ بمعالجه الأصلي؛ لا
+   نضيف معالجًا ثانيًا كي لا يتعارض الاثنان على الحالة. نحن نقرأ النتيجة
+   فقط: إن اختفى شريط الأسهم ظهر اسم المحادثة مكانه بنفس الارتفاع.
+   قبل أوّل رسالة يبقى الوسط فارغًا — «محادثة جديدة» ليست معلومة. */
+(function(){
+  var TICK_MS = 700;
+  var MOBILE_KEY = 'omTickerMobileInit';
+
+  function isMobile(){
+    try{ return document.documentElement.classList.contains('mobile-ui'); }
+    catch(e){ return false; }
+  }
+
+  function chatLabel(){
+    try{
+      var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+      if(!cur) return '';
+      /* الوسط فارغ حتى تبدأ محادثة فعليّة */
+      var n = (cur.messages && cur.messages.length) ? cur.messages.length : 0;
+      if(!n) return '';
+      return String(cur.title || '').trim();
+    }catch(e){ return ''; }
+  }
+
+  function build(){
+    var hdr = document.querySelector('header');
+    var acts = document.getElementById('headerActions');
+    var tk = document.getElementById('stockTicker');
+    if(!hdr || !acts) return false;
+    if(document.getElementById('omHeadCenter')) return true;
+
+    var wrap = document.createElement('div');
+    wrap.id = 'omHeadCenter';
+    hdr.insertBefore(wrap, acts);
+
+    if(isMobile()){
+      /* الجوال: الوسط مخفيّ بالتنسيق، والأسهم تبقى في سطرها تحت الهيدر.
+         تُطوى مرّة واحدة في العمر بزرّها هي — لا بحالة موازية نخترعها. */
+      try{
+        if(tk && !localStorage.getItem(MOBILE_KEY)){
+          localStorage.setItem(MOBILE_KEY, '1');
+          setTimeout(function(){
+            try{
+              var tg = document.getElementById('stockTickerToggle');
+              if(tg && tk.offsetHeight > 4) tg.click();
+            }catch(e){ /* guard-ok */ }
+          }, 1500);
+        }
+      }catch(e){ /* guard-ok */ }
+      return true;
+    }
+
+    var tg = document.getElementById('stockTickerToggle');
+    if(tg) wrap.appendChild(tg);
+    if(tk) wrap.appendChild(tk);
+    var ttl = document.createElement('span');
+    ttl.id = 'omHeadTitle';
+    ttl.style.display = 'none';
+    wrap.appendChild(ttl);
+    return true;
+  }
+
+  function sync(){
+    try{
+      if(isMobile()) return;
+      var ttl = document.getElementById('omHeadTitle');
+      if(!ttl) return;
+      var tk = document.getElementById('stockTicker');
+      var trk = document.getElementById('stockTickerTrack');
+      /* «مطويّ» يشمل الحالتين: طواه المستخدم بالسهم، أو أطفأ الشريط من
+         الإعدادات. في الحالتين الوسط يخلو فيستحقّه اسم المحادثة. */
+      var live = !!(tk && tk.offsetHeight > 4 && trk && trk.offsetWidth > 0);
+      var lbl = live ? '' : chatLabel();
+      if(ttl.textContent !== lbl) ttl.textContent = lbl;
+      var want = lbl ? '' : 'none';
+      if(ttl.style.display !== want) ttl.style.display = want;
+      var tg = document.getElementById('stockTickerToggle');
+      if(tg){
+        var tgWant = (tk && tk.parentNode === document.getElementById('omHeadCenter')) ? '' : tg.style.display;
+        if(tg.style.display !== tgWant) tg.style.display = tgWant;
+      }
+    }catch(e){ /* guard-ok */ }
+  }
+
+  function start(){
+    if(!build()) return false;
+    sync();
+    setInterval(sync, TICK_MS);
+    return true;
+  }
+
+  if(!start()){
+    var n = 0;
+    var id = setInterval(function(){ if(start() || ++n > 40) clearInterval(id); }, 250);
+  }
+})();
 window.postWithConfirm = postWithConfirm;
 /* يضبط شكل المحادثة كما يشترطه Gemini — يُستدعى قبل كل طلب. */
 function sanitizeGeminiContents(list){
