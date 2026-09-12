@@ -5454,7 +5454,12 @@ DESIGN RULES (non-negotiable):
       try{ settingsToast(t('premiumNoPoints')); }catch(_){ __swallow(_, "points:app-09-attach#29"); }
       try{ if(typeof openPremiumBuyPoints === 'function') openPremiumBuyPoints(); }catch(_){ __swallow(_, "points:app-09-attach#30"); }
     } else {
-      cur.messages.push({role: 'assistant', content: '⚠️ ' + __friendlyErr(err)});
+      /* v-img-err: حين يفشل مسار الأدوات (كلود المباشر) ثمّ يفشل الاحتياط أيضًا،
+         كانت الفقاعة تعرض خطأ آخر مزوّد احتياطيّ وحده فيختفي السبب الحقيقيّ. نُظهر
+         خطأ المسار الأوّل معه. */
+      var __primaryErr = '';
+      try{ __primaryErr = String((window.__diagTurn && window.__diagTurn.toolsErr) || '').trim(); }catch(e){ __primaryErr = ''; }
+      cur.messages.push({role: 'assistant', content: '⚠️ ' + __friendlyErr(err) + (__primaryErr ? ('\n' + (lang === 'ar' ? 'المسار الأوّل (كلود): ' : 'Primary path (Claude): ') + __primaryErr.slice(0, 220)) : '')});
     }
   }finally{
     __omranDisarmWatchdog();  // v586
