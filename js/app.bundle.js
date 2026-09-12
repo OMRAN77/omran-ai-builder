@@ -7942,7 +7942,7 @@ function omranPanelTitleSuppress(hide){
     var el = document.getElementById('waPanelTitle');
     var cb = document.getElementById('waCopyBtn');
     if(el) el.style.visibility = hide ? 'hidden' : '';
-    if(cb) cb.style.display = hide ? 'none' : ((el && el.textContent) ? 'flex' : 'none');
+    if(cb) cb.style.display = hide ? 'none' : (window.__omranPanelText ? 'flex' : 'none');
   }catch(e){ /* guard-ok */ }
 }
 function omranCloseCodeViewer(){
@@ -8739,15 +8739,19 @@ document.querySelectorAll('.tab').forEach(tab => {
     };
     tabs.appendChild(__pcp);
   }catch(e){ __swallow(e, 'ui:panel-head'); }
-  /* يضبط عنوان اللوحة ونصّ النسخ. يُستدعى من renderCodeAndPreview ومن
-     omranOpenReplyInPanel (app-04) عند فتح ردّ نصّيّ. */
+  /* v-panel-notitle (أمر عمران): عنوان اللوحة «كود ملصوق · 98 KB · HTML» كان
+     يأتي من اسم المشروع نفسه عبر renderCodeAndPreview، فلا يكفي حذف استدعاء
+     واحد. الدالّة تبقى بتوقيعها كي لا ينكسر مستدعوها (app-04 وغيره) لكنّها لم
+     تعد تكتب نصًّا. العنصر يبقى موجودًا كفاصل مرن (flex:1) يدفع أزرار الشريط
+     إلى الطرف؛ إزالته كانت ستجرّها نحو التبويبات.
+     الوسيط label صار مهملًا؛ نصّ النسخ وحده هو ما يُحفظ. */
   window.omranPanelTitle = function(label, textForCopy){
     try{
       var el = document.getElementById('waPanelTitle');
-      if(el) el.textContent = label || '';
+      if(el) el.textContent = '';
       window.__omranPanelText = (textForCopy === undefined) ? null : textForCopy;
       var cb = document.getElementById('waCopyBtn');
-      if(cb) cb.style.display = (label ? 'flex' : 'none');
+      if(cb) cb.style.display = window.__omranPanelText ? 'flex' : 'none';
     }catch(e){ __swallow(e, 'ui:panel-title'); }
   };
   const ro = document.createElement('button');
