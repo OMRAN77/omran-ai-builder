@@ -390,37 +390,37 @@
       <div class="pprice"><span class="pnum" data-usd="0">0</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planFreePer">للتجربة</div>
       <div class="ppts"><b>70</b><span data-i18n="planPtsFree">نقطة ترحيب — مرّة واحدة</span></div>
-      <ul data-i18n="planFreeFeats"><li data-i18n="plFreeMsgs">20 رسالة يوميًا</li><li data-i18n="plFreeVoice">دقيقة واحدة محادثة صوتية</li><li data-i18n="plFreeImgs">3 صور بالذكاء الاصطناعي</li><li class="off" data-i18n="plFreeNoVideo">بلا فيديو</li></ul>
+      <ul data-i18n="planFreeFeats"><li data-i18n="plFreeMsgs">10 رسائل يوميًا</li><li data-i18n="plFreeVoice">دقيقة واحدة محادثة صوتية</li><li data-i18n="plFreeImgs">3 صور بالذكاء الاصطناعي</li><li class="off" data-i18n="plFreeNoVideo">بلا فيديو</li></ul>
       <button type="button" class="pbtn ghost" disabled data-i18n="planCurrentBtn">باقتك الحالية</button>
     </div>
     <div class="pcard">
       <div class="pname">Plus</div>
       <div class="pprice"><span class="pnum" data-usd="10">10</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
-      <div class="ppts"><b>300</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
-      <ul data-i18n="planPlusFeats"><li data-i18n="plStMsgs">300 رسالة شهريًا</li><li data-i18n="plStVoice">30 دقيقة محادثة صوتية</li><li data-i18n="plStImgs">15 صورة</li><li data-i18n="plStVideos">5 مقاطع فيديو</li></ul>
+      <div class="ppts"><b>500</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
+      <ul data-i18n="planPlusFeats"><li data-i18n="plStMsgs">50 رسالة احترافية يوميًا</li><li data-i18n="plStVoice">33 دقيقة محادثة صوتية</li><li data-i18n="plStImgs">25 صورة</li><li data-i18n="plStVideos">8 مقاطع فيديو</li></ul>
       <button type="button" class="pbtn" onclick="openCheckout('basic')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
     <div class="pcard feat"><span class="ptag" data-i18n="planTag">الأكثر اختيارًا</span>
       <div class="pname">Pro</div>
       <div class="pprice"><span class="pnum" data-usd="20">20</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
-      <div class="ppts"><b>800</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
-      <ul data-i18n="planProFeats"><li data-i18n="plProMsgs">رسائل بلا حدود</li><li data-i18n="plProVoice">80 دقيقة محادثة صوتية</li><li data-i18n="plProMedia">40 صورة · 13 فيديو · 2 سينمائي</li><li data-i18n="plProAgent">الوكيل الذكي</li><li data-i18n="plProPriority">أولوية في السرعة · شارة ذهبية</li></ul>
+      <div class="ppts"><b>1,200</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
+      <ul data-i18n="planProFeats"><li data-i18n="plProMsgs">150 رسالة احترافية يوميًا</li><li data-i18n="plProVoice">80 دقيقة محادثة صوتية</li><li data-i18n="plProMedia">60 صورة · 20 فيديو · 3 سينمائي</li><li data-i18n="plProAgent">الوكيل الذكي</li><li data-i18n="plProPriority">أولوية في السرعة · شارة ذهبية</li></ul>
       <button type="button" class="pbtn primary" onclick="openCheckout('pro')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
     <div class="pcard">
       <div class="pname">Max</div>
       <div class="pprice"><span class="pnum" data-usd="100">100</span><span class="pcur cursym">$</span></div>
       <div class="pper" data-i18n="planPer">شهريًا</div>
-      <div class="ppts"><b>5,000</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
-      <ul data-i18n="planMaxFeats"><li data-i18n="plMaxAllPro">كل مزايا Pro</li><li data-i18n="plMaxVoice">500 دقيقة محادثة صوتية</li><li data-i18n="plMaxMedia">250 صورة · 83 فيديو · 12 سينمائي</li><li data-i18n="plMaxSupport">دعم مخصّص</li></ul>
+      <div class="ppts"><b>7,000</b><span data-i18n="planPtsMo">نقطة كل شهر</span></div>
+      <ul data-i18n="planMaxFeats"><li data-i18n="plMaxAllPro">كل مزايا Pro · 400 رسالة احترافية يوميًا</li><li data-i18n="plMaxVoice">460 دقيقة محادثة صوتية</li><li data-i18n="plMaxMedia">350 صورة · 116 فيديو · 17 سينمائي</li><li data-i18n="plMaxSupport">دعم مخصّص</li></ul>
       <button type="button" class="pbtn" onclick="openCheckout('max')" data-i18n="pricingSubscribeBtn">اشترك الآن</button>
     </div>
   </div>
   <div style="margin-top:16px;">
     <div style="font-weight: var(--w-bold); font-size: var(--fs-3);" data-i18n="pricingPointsTitle">باقات النقاط</div>
-    <div style="font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.6;" data-i18n="pricingPointsDesc">النقاط عملة موحدة — تُصرف على مها الصوتية والفيديو والصور، بدون اشتراك. مها: 10 نقاط/دقيقة • فيديو: 60 • Veo 3: ‏400 • صورة: 10</div>
+    <div style="font-size:12.5px; color:var(--muted); margin-top:4px; line-height:1.6;" data-i18n="pricingPointsDesc">النقاط عملة موحدة — تُصرف على مها الصوتية والفيديو والصور، بدون اشتراك. مها: 15 نقطة/دقيقة • فيديو: 60 • Veo 3: ‏400 • صورة: 20</div>
     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;">
       <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(100)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">100</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);"><span class="pn" data-usd="4.99">4.99</span> <span class="cursym">$</span></span></button>
       <button type="button" class="btn pointsPackBtn" onclick="buyPointsPack(300)" style="padding:10px 8px; border-radius:var(--r-2); background:var(--panel2); border:none; cursor:pointer; text-align:center;"><b style="font-size: var(--fs-3);">300</b> <span data-i18n="pricingPointsUnit">نقطة</span><br><span style="font-size:12px; color:var(--muted);"><span class="pn" data-usd="12.99">12.99</span> <span class="cursym">$</span></span></button>

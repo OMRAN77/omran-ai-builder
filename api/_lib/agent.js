@@ -356,7 +356,7 @@ module.exports = async (req, res) => {
   const usage = await checkAndConsume(token, guestId, 'agent', clientIp(req));
   if (!usage.allowed) {
     if (usage.reason === 'auth') res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
-    else res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + DAILY_LIMIT + ' رسالة) للوكيل. انتظر الغد أو اشترك.' });
+    else res.status(402).json({ error: usage.message || ('وصلت للحد اليومي المجاني (' + (usage.limit || DAILY_LIMIT) + ' رسالة) للوكيل. انتظر الغد أو اشترك.'), subscribeOnly: !!usage.subscribeOnly }); /* v-tiers */
     return;
   }
 
