@@ -619,8 +619,135 @@ function omranCodeHighlight(raw){
     return m;
   });
 }
-/* يفتح نصًّا في تبويب «الكود» كعرض قراءة مرقّم. title يظهر في عنوان اللوحة. */
-/* يفتح نصًّا في تبويب «الكود» كعرض قراءة مرقّم. title يظهر في عنوان اللوحة. */
+/* v-viewer-bar: أزرار العارض انتقلت إلى شريط #tabs مع بقيّة أزرار اللوحة،
+   بأيقونات SVG بدل الإيموجي. تُبنى في دالّة مستقلّة حتى لا تُتخطّى حين تكون
+   طبقة العارض موجودة سلفًا (الحارس if(!ov) كان يبتلع بناء الشريط كلّه). */
+function omranCodeViewerIcon(name){
+  var A = 'xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"'
+    + ' fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"'
+    + ' stroke-linejoin="round" aria-hidden="true"';
+  if(name === 'edit') return '<svg ' + A + '><path d="M12 20h9"></path>'
+    + '<path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>';
+  if(name === 'save') return '<svg ' + A + '>'
+    + '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path>'
+    + '<polyline points="17 21 17 13 7 13 7 21"></polyline>'
+    + '<polyline points="7 3 7 8 15 8"></polyline></svg>';
+  return '<svg ' + A + '><line x1="18" y1="6" x2="6" y2="18"></line>'
+    + '<line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+}
+function omranCodeViewerEsc(ev){ if(ev.key === 'Escape') omranCloseCodeViewer(); }
+/* v-viewer-title: «كود ملصوق · NN KB» كان يزاحم الشريط في #tabs. نخفي عنصر
+   العنوان وزرّ نسخه ما دام العارض مفتوحًا — لا نكتفي بترك استدعاء
+   omranPanelTitle، لأنّ المستدعي قد يضبط العنوان بنفسه بعد الفتح. */
+function omranPanelTitleSuppress(hide){
+  try{
+    var el = document.getElementById('waPanelTitle');
+    var cb = document.getElementById('waCopyBtn');
+    if(el) el.style.visibility = hide ? 'hidden' : '';
+    if(cb) cb.style.display = hide ? 'none' : ((el && el.textContent) ? 'flex' : 'none');
+  }catch(e){ /* guard-ok */ }
+}
+function omranCloseCodeViewer(){
+  try{ var o = document.getElementById('omranCodeViewer'); if(o) o.remove(); }catch(e){ /* guard-ok */ }
+  try{ var b = document.getElementById('omranCodeViewerBar'); if(b) b.remove(); }catch(e){ /* guard-ok */ }
+  try{ document.removeEventListener('keydown', omranCodeViewerEsc); }catch(e){ /* guard-ok */ }
+  omranPanelTitleSuppress(false);
+  try{ if(typeof renderCodeAndPreview === 'function') renderCodeAndPreview(); }catch(e){ /* guard-ok */ }
+}
+/* v-viewer-edit (أمر عمران): العارض كان للقراءة فقط. الآن يُحرَّر مباشرةً،
+   والحفظ ينقل النصّ إلى كود المشروع — فتعمل المعاينة والتنزيل عليه.
+   المرفق في الرسالة يبقى كما أُرسل: الرسالة سجلٌّ لا مكان عمل. */
+function omranBuildCodeViewerBar(){
+  var bar = document.getElementById('omranCodeViewerBar');
+  if(bar) return bar;
+  var tabs = document.getElementById('tabs');
+  var host = (typeof codeEl !== 'undefined' && codeEl) ? codeEl.parentNode : null;
+  if(!tabs && !host) return null;
+  bar = document.createElement('div');
+  bar.id = 'omranCodeViewerBar';
+  if(tabs){
+    bar.style.cssText = 'display:flex;align-items:center;gap:6px;flex:none;'
+      + 'margin-inline-start:auto;margin-inline-end:4px;';
+    tabs.appendChild(bar);
+  } else {
+    /* احتياط: لو غاب #tabs نُثبّت الشريط على اللوحة نفسها لا داخل الطبقة
+       المتمرِّرة، وإلّا انزاح مع أطول سطر وصار غير قابل للضغط. */
+    bar.style.cssText = 'position:absolute;top:10px;inset-inline-end:12px;z-index:7;'
+      + 'display:flex;align-items:center;gap:2px;direction:ltr;';
+    host.appendChild(bar);
+  }
+  var ar = (typeof lang !== 'undefined' && (lang === 'ar' || lang === 'ur'));
+  var mkBtn = function(icon, tip){
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.innerHTML = omranCodeViewerIcon(icon);
+    b.title = tip;
+    b.setAttribute('aria-label', tip);
+    b.style.cssText = 'background:transparent;border:1px solid rgba(255,255,255,.16);'
+      + 'border-radius:8px;color:var(--muted,#98a0b3);cursor:pointer;padding:5px;'
+      + 'display:flex;align-items:center;justify-content:center;line-height:0;'
+      + 'transition:background .15s,color .15s,border-color .15s;';
+    b.onmouseenter = function(){
+      b.style.background = 'rgba(255,255,255,.07)';
+      b.style.borderColor = 'rgba(255,255,255,.28)';
+      b.style.color = 'var(--text,#eef0f6)';
+    };
+    b.onmouseleave = function(){
+      b.style.background = 'transparent';
+      b.style.borderColor = 'rgba(255,255,255,.16)';
+      b.style.color = 'var(--muted,#98a0b3)';
+    };
+    return b;
+  };
+  var edt = mkBtn('edit', ar ? 'تحرير' : 'Edit');
+  var sav = mkBtn('save', ar ? 'حفظ في كود المشروع' : 'Save to project code');
+  var cls = mkBtn('close', ar ? 'إغلاق العارض' : 'Close viewer');
+  sav.style.display = 'none';
+  bar.appendChild(edt); bar.appendChild(sav); bar.appendChild(cls);
+
+  cls.onclick = omranCloseCodeViewer;
+
+  edt.onclick = function(){
+    var p = document.getElementById('omranCodePre');
+    if(!p) return;
+    /* التلوين يضيف عناصر <i>؛ عند التحرير نرجع للنصّ الخام حتى لا تختلط
+       الوسوم بالكتابة، ونعيد الترقيم مع كلّ ضغطة. */
+    p.textContent = p.innerText;
+    p.contentEditable = 'true';
+    p.spellcheck = false;
+    p.style.background = 'rgba(255,255,255,.03)';
+    p.focus();
+    edt.style.display = 'none';
+    sav.style.display = '';
+    p.oninput = function(){
+      try{
+        var g = document.getElementById('omranCodeGutter');
+        var n = p.innerText.split('\n').length, out = [];
+        for(var i = 1; i <= n; i++) out.push(i);
+        g.textContent = out.join('\n');
+      }catch(e){ /* guard-ok */ }
+    };
+  };
+
+  sav.onclick = function(){
+    try{
+      var p = document.getElementById('omranCodePre');
+      if(!p) return;
+      codeEl.value = p.innerText;
+      var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+      if(cur){ cur.code = codeEl.value; }
+      if(typeof save === 'function') save();
+      omranCloseCodeViewer();
+      if(typeof renderCodeAndPreview === 'function') renderCodeAndPreview();
+    }catch(e){ __swallow(e, 'ui:code-viewer-save'); }
+  };
+
+  document.addEventListener('keydown', omranCodeViewerEsc);
+  omranPanelTitleSuppress(true);
+  return bar;
+}
+/* يفتح نصًّا في تبويب «الكود» كعرض قراءة مرقّم.
+   الوسيط title لم يعد يُكتب في عنوان اللوحة — الشريط يغني عنه. */
 window.omranOpenTextInCodePanel = function(text, title){
   try{
     if(typeof codeEl === 'undefined' || !codeEl || !codeEl.parentNode) return;
@@ -644,93 +771,19 @@ window.omranOpenTextInCodePanel = function(text, title){
         + 'outline:none;';
       ov.appendChild(gut); ov.appendChild(pre);
       host.appendChild(ov);
-
-      /* v-viewer-close (بلاغ عمران: «لا أستطيع الكتابة في الكود»):
-         زرّ الإغلاق كان آخر عنصر داخل صفّ مرن يسبقه <pre> عرضه بقدر أطول سطر،
-         فينزاح إلى آخر العرض ويحتاج تمريرًا أفقيًّا طويلًا للوصول إليه — أي أنّه
-         عمليًّا غير قابل للضغط، فيبقى العارض مفتوحًا فوق خانة التحرير للأبد.
-         الآن الأزرار خارج الطبقة المتمرِّرة، مثبَّتة على اللوحة نفسها، ومعها Esc. */
-      var bar = document.getElementById('omranCodeViewerBar');
-      if(!bar){
-        bar = document.createElement('div');
-        bar.id = 'omranCodeViewerBar';
-        bar.style.cssText = 'position:absolute;top:10px;inset-inline-end:12px;z-index:7;'
-          + 'display:flex;gap:6px;direction:ltr;';
-        host.appendChild(bar);
-      }
-      var mkBtn = function(label, tip){
-        var b = document.createElement('button');
-        b.type = 'button'; b.textContent = label; b.title = tip;
-        b.style.cssText = 'background:rgba(0,0,0,.65);border:1px solid rgba(255,255,255,.18);color:#ddd;'
-          + 'border-radius:8px;cursor:pointer;padding:5px 11px;font-size:13px;line-height:1;';
-        return b;
-      };
-      var ar = (typeof lang !== 'undefined' && (lang === 'ar' || lang === 'ur'));
-      /* v-viewer-edit (أمر عمران): العارض كان للقراءة فقط. الآن يُحرَّر مباشرةً،
-         والحفظ ينقل النصّ إلى كود المشروع — فتعمل المعاينة والتنزيل عليه.
-         المرفق في الرسالة يبقى كما أُرسل: الرسالة سجلٌّ لا مكان عمل. */
-      var edt = mkBtn('✏️', ar ? 'تحرير' : 'Edit');
-      var sav = mkBtn('💾', ar ? 'حفظ في كود المشروع' : 'Save to project code');
-      var cls = mkBtn('✕',  ar ? 'إغلاق العارض' : 'Close viewer');
-      sav.style.display = 'none';
-      bar.appendChild(edt); bar.appendChild(sav); bar.appendChild(cls);
-
-      var closeViewer = function(){
-        try{ var o = document.getElementById('omranCodeViewer'); if(o) o.remove(); }catch(e){ /* guard-ok */ }
-        try{ var b2 = document.getElementById('omranCodeViewerBar'); if(b2) b2.remove(); }catch(e){ /* guard-ok */ }
-        try{ document.removeEventListener('keydown', onEsc); }catch(e){ /* guard-ok */ }
-        try{ if(typeof renderCodeAndPreview === 'function') renderCodeAndPreview(); }catch(e){ /* guard-ok */ }
-      };
-      var onEsc = function(ev){ if(ev.key === 'Escape') closeViewer(); };
-      cls.onclick = closeViewer;
-
-      edt.onclick = function(){
-        var p = document.getElementById('omranCodePre');
-        if(!p) return;
-        /* التلوين يضيف عناصر <i>؛ عند التحرير نرجع للنصّ الخام حتى لا تختلط
-           الوسوم بالكتابة، ونعيد الترقيم مع كلّ ضغطة. */
-        p.textContent = p.innerText;
-        p.contentEditable = 'true';
-        p.spellcheck = false;
-        p.style.background = 'rgba(255,255,255,.03)';
-        p.focus();
-        edt.style.display = 'none';
-        sav.style.display = '';
-        p.oninput = function(){
-          try{
-            var g = document.getElementById('omranCodeGutter');
-            var n = p.innerText.split('\n').length, out = [];
-            for(var i = 1; i <= n; i++) out.push(i);
-            g.textContent = out.join('\n');
-          }catch(e){ /* guard-ok */ }
-        };
-      };
-
-      sav.onclick = function(){
-        try{
-          var p = document.getElementById('omranCodePre');
-          if(!p) return;
-          codeEl.value = p.innerText;
-          var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
-          if(cur){ cur.code = codeEl.value; }
-          if(typeof save === 'function') save();
-          closeViewer();
-          if(typeof renderCodeAndPreview === 'function') renderCodeAndPreview();
-        }catch(e){ __swallow(e, 'ui:code-viewer-save'); }
-      };
-
-      document.addEventListener('keydown', onEsc);
     }
+    /* خارج الحارس عمدًا: الطبقة قد تكون قائمة والشريط غائبًا. */
+    omranBuildCodeViewerBar();
     var body = String(text || '');
     var lines = body.split('\n').length;
     var nums = [];
     for(var i = 1; i <= lines; i++) nums.push(i);
     ov.querySelector('#omranCodeGutter').textContent = nums.join('\n');
     ov.querySelector('#omranCodePre').innerHTML = omranCodeHighlight(body);
+    ov.querySelector('#omranCodePre').contentEditable = 'false';
     try{ ov.dataset.pid = (typeof state !== 'undefined' && state.currentId) || ''; }catch(e){ /* guard-ok */ }
     ov.scrollTop = 0;
     if(typeof switchWorkTab === 'function') switchWorkTab('code');
-    if(typeof window.omranPanelTitle === 'function') window.omranPanelTitle(title || '', body);
     if(typeof window.waAutoExpand === 'function') window.waAutoExpand();
     if(window.innerWidth <= 860 && localStorage.getItem('previewEnabled') !== 'off'){
       try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(e){ /* guard-ok */ }
@@ -744,7 +797,13 @@ function renderCodeAndPreview(){
   /* v-code-viewer: عارض القراءة يخصّ مشروعًا بعينه — يُزال عند تبديل المشروع */
   try{
     const __ov = document.getElementById('omranCodeViewer');
-    if(__ov && __ov.dataset.pid !== String((cur && cur.id) || '')) __ov.remove();
+    if(__ov && __ov.dataset.pid !== String((cur && cur.id) || '')){
+      __ov.remove();
+      const __bar = document.getElementById('omranCodeViewerBar');
+      if(__bar) __bar.remove();
+      document.removeEventListener('keydown', omranCodeViewerEsc);
+      omranPanelTitleSuppress(false);
+    }
   }catch(e){ /* guard-ok */ }
   if(!cur || !cur.code){
     if(previewFrame._imageView){
