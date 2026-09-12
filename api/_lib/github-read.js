@@ -60,10 +60,14 @@ async function ghFetch(pathname, opts) {
     'X-GitHub-Api-Version': '2022-11-28',
   };
   if (env.GITHUB_TOKEN) headers.Authorization = 'Bearer ' + String(env.GITHUB_TOKEN).trim();
+  const init = { headers, signal: undefined };
+  if (o.method) init.method = o.method;
+  if (o.body !== undefined) { init.body = JSON.stringify(o.body); headers['Content-Type'] = 'application/json'; }
   const ctrl = new AbortController();
+  init.signal = ctrl.signal;
   const timer = setTimeout(() => ctrl.abort(), o.timeoutMs || 15000);
   try {
-    return await fetchPublicUrl(API + pathname, { headers, signal: ctrl.signal }, { fetchFn: o.fetchImpl, lookup: o.lookup, maxRedirects: 3 });
+    return await fetchPublicUrl(API + pathname, init, { fetchFn: o.fetchImpl, lookup: o.lookup, maxRedirects: 3 });
   } finally { clearTimeout(timer); }
 }
 
