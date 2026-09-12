@@ -281,7 +281,11 @@ async function fetchPage(url) {
  *
  * والمهلة إلزامية: متصفح أُغلق يعني انتظارًا حتى تنتهي مهلة الدالة كلها.
  */
-async function runInClient(name, input) {
+// v-agent-send-scope (لقطة المالك ١٢ سبتمبر «Agent error: send is not defined»): كانت
+// الدالّة تستدعي send وهو مُعرَّف داخل المعالج فقط، فأيّ أداة متصفّح (تشغيل كود/
+// اختبار/نشر/صورة) كانت تُسقط الوكيل كلّه بـReferenceError. الآن يُمرَّر send صراحةً
+// كما في chat.js.
+async function runInClient(send, name, input) {
   const { kvGetJSON, kvDel, kvPutJSON, kvExpire } = require('./kv.js');
   const id = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   const key = 'agent/tool/' + id;
@@ -595,7 +599,7 @@ module.exports = async (req, res) => {
           else if (cb.name === 'run_js' || cb.name === 'test_html') {
             // التنفيذ في متصفح المستخدم لا هنا: الخادم دالة بلا حالة ومحدودة
             // الزمن، والكود الذي يكتبه النموذج يجب ألا يعمل قط على بنيتك.
-            result = await runInClient(cb.name, input);
+            result = await runInClient(send, cb.name, input);
             // ما اختُبر فعلًا يصلح مصدرًا للنشر: بناه الآن وشغّله الآن.
             if (cb.name === 'test_html' && input.html) lastTested = String(input.html);
           } else if (cb.name === 'publish') {
@@ -648,3 +652,5 @@ module.exports = async (req, res) => {
     try { res.end(); } catch (e2) { /* المجرى مُغلق أصلًا — لا شيء يُنهى */ }
   }
 };
+
+module.exports.__test = { runInClient }; // v-agent-send-scope — للاختبار

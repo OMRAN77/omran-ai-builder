@@ -274,6 +274,8 @@
       setStatus('');
     };
     $id('cfxGo').onclick = run;
+    /* v-code-score: ملفّ سُلِّم من وحدة التحليل (omranCodeFixOpenWith) يظهر اسمه فورًا */
+    if (S.name && S.text) $id('cfxFileName').textContent = S.name + ' · ' + S.text.split('\n').length + ' سطر';
   }
 
   function run() {
@@ -427,6 +429,14 @@
   }
 
   window.omranCodeFixOpen = open;
+  /* v-code-score: وحدة «تحليل الكود وتقييمه» (app-27) تسلّم الملفّ الواحد وطلب الإصلاح
+     المبنيّ من أعلى المشاكل، فيبدأ المستخدم من شاشة الرقع مباشرةً. */
+  window.omranCodeFixOpenWith = function (name, text, ask) {
+    S.name = String(name || 'file.txt'); S.text = String(text || ''); S.original = null; S.patches = [];
+    open();
+    var a = $id('cfxAsk');
+    if (a && ask) a.value = String(ask);
+  };
 
   if (!mount()) {
     var n = 0;
