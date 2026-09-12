@@ -2,19 +2,23 @@
 //
 // المسار: /api/tools?action=code-analyze (POST، بثّ SSE).
 // المدخل: ملفّات نصّية {files:[{name,content}]} و/أو أرشيف zip (fileBase64) وسؤال
-// تركيز اختياريّ. المخرج: تقرير مُهيكل واحد {report} — درجة من ١٠٠، ستّ فئات،
-// نقاط القوّة، المشاكل بخطورتها وملفّها وسطرها وإصلاحها، توصيات مرتّبة من الأعلى
-// قيمة، وترتيب الملفّات من الأفضل إلى الأضعف، مع قياسات محلّية لا تحتاج نموذجًا.
+// تركيز اختياريّ. المخرج: تقرير مُهيكل واحد {report} — تحليل تفصيليّ حرّ (deep)،
+// درجة من ١٠٠، ستّ فئات، نقاط القوّة، المشاكل بخطورتها وملفّها وسطرها وإصلاحها،
+// توصيات مرتّبة من الأعلى قيمة، وترتيب الملفّات من الأفضل، مع قياسات محلّية.
 //
 // قرارات:
 // (١) المشترك على المحرّك الاحترافيّ (كلود مباشرةً كما في chat.js)، وغير المشترك
 //     على السلسلة المجانيّة بلا اسم مزوّد (قرار الطبقات ١٢ سبتمبر) — وبسقف نصّ أصغر.
 // (٢) الأسطر تُرقَّم قبل الإرسال (N| …) كي تكون أرقام السطور في التقرير حقيقيّة.
-// (٣) الردّ JSON واحد؛ يُستخرج بتسامح (أسوار كود، فواصل زائدة، أسطر خام داخل
-//     النصوص) ثمّ يُطبَّع: الدرجات تُقصّ إلى ٠–١٠٠، والخطورة إلى قيم معروفة،
-//     والمصفوفات تُحدّ. فشل الاستخراج لا يُسقط الطلب: يعود النصّ ملخّصًا بلا درجة.
+// (٣) الردّ جزآن: @@ANALYSIS تحليل حرّ عميق (يُعرض للمستخدم ويُجبر النموذج على المرور
+//     على كلّ شيء قبل الحكم) ثمّ @@REPORT وJSON واحد يُستخرج بتسامح ويُطبَّع. فشل
+//     الاستخراج لا يُسقط الطلب: يبقى التحليل الحرّ ويغيب الرقم.
 // (٤) القياسات المحلّية (TODO، console.log، eval، innerHTML، ==، var، سرّ مكتوب،
 //     except عامّة…) تُحسب هنا وتُرسل للنموذج كتلميح وتُعرض للمستخدم كما هي.
+// (٥) v-code-depth (شكوى المالك «التقرير طلع ضعيف»): النموذج الافتراضيّ claude-opus-5
+//     بتفكير تكيّفيّ وجهد xhigh، بلا معاملات عيّنة (الجيل الحاليّ يرفض temperature
+//     بـ400)، وسقف إخراج واسع، واحتياط رفض من الخادم (fallbacks: default) على مسار
+//     أنثروبيك المباشر. الحدود: ٢٠٠ ألف حرف للملفّ و٥٠٠ ألفًا للطلب للمشترك.
 'use strict';
 
 const { checkAndConsume, clientIp } = require('./_usage.js');
@@ -22,10 +26,15 @@ const tierLib = require('./tier.js');
 const { streamFreeChain } = require('./free-chain.js');
 const { logError } = require('./log-error.js');
 const zipLib = require('./analyze-zip.js');
+const gh = require('./github-read.js'); // v-agent-github: رابط مستودع/مجلّد/ملفّ على GitHub
 
-const LIMITS = { files: 40, perFile: 60000, total: 200000, totalFree: 60000, ask: 1200 };
+const LIMITS = { files: 60, perFile: 200000, total: 500000, perFileFree: 60000, totalFree: 60000, ask: 1200 };
 const ZIP_MAX = 3 * 1024 * 1024;
 const NUL = String.fromCharCode(0);
+const DEFAULT_MODEL = 'claude-opus-5';
+const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
+const MARK_A = '@@ANALYSIS';
+const MARK_R = '@@REPORT';
 
 const LANG_BY_EXT = {
   js: 'JavaScript', mjs: 'JavaScript', cjs: 'JavaScript', jsx: 'React JSX', ts: 'TypeScript', tsx: 'React TSX',
@@ -66,6 +75,17 @@ function collectFiles(body, limits) {
   if (Array.isArray(body.files)) {
     for (const f of body.files) if (f && typeof f === 'object') push(f.name, f.content);
   }
+  const pushEntries = (entries) => {
+    for (const e of entries) {
+      if (!e || !e.name || /\/$/.test(e.name)) continue;
+      if (zipLib.SKIP_DIR_PATTERNS.some((p) => p.test(e.name))) continue;
+      if (zipLib.BINARY_EXT.test(e.name)) continue;
+      if (!zipLib.TEXT_EXT.test(e.name) && e.data.length > 200000) continue;
+      let t;
+      try { t = e.data.toString('utf8'); } catch (err) { continue; }
+      push(e.name, t);
+    }
+  };
   if (body.fileBase64) {
     let buf = null;
     try { buf = Buffer.from(String(body.fileBase64), 'base64'); } catch (e) { buf = null; }
@@ -74,17 +94,11 @@ function collectFiles(body, limits) {
     else if (buf && buf.length) {
       let entries = [];
       try { entries = zipLib.unzip(buf); } catch (e) { skipped.push({ name: zipName, why: 'badzip' }); }
-      for (const e of entries) {
-        if (!e.name || /\/$/.test(e.name)) continue;
-        if (zipLib.SKIP_DIR_PATTERNS.some((p) => p.test(e.name))) continue;
-        if (zipLib.BINARY_EXT.test(e.name)) continue;
-        if (!zipLib.TEXT_EXT.test(e.name) && e.data.length > 200000) continue;
-        let t;
-        try { t = e.data.toString('utf8'); } catch (err) { continue; }
-        push(e.name, t);
-      }
+      pushEntries(entries);
     }
   }
+  // مدخلات فُكّت مسبقًا (أرشيف GitHub جُلب في المعالج) — نفس المرشّحات.
+  if (Array.isArray(body._zipEntries)) pushEntries(body._zipEntries);
   return { files, skipped, total };
 }
 
@@ -164,34 +178,39 @@ function numbered(text) {
 function buildPrompt(files, metrics, ask, lang) {
   const outLang = reportLanguage(lang);
   const system = [
-    'أنت كبير مراجعي الكود: خبير في الصحّة والأمان والأداء والقابليّة للصيانة عبر كلّ اللغات. تقرأ كلّ سطر، ولا تخترع مشكلة غير موجودة، ولا تُغفل مشكلة حقيقيّة.',
+    'أنت كبير مراجعي الكود (مهندس أوّل يراجع قبل الدمج): خبير في الصحّة والأمان والأداء والقابليّة للصيانة عبر كلّ اللغات. تقرأ كلّ سطر، ولا تخترع مشكلة غير موجودة، ولا تُغفل مشكلة حقيقيّة، ولا تكتفي بالعموميّات.',
     'المطلوب: تحليل شامل للملفّات المرفقة وتقييمها، ثمّ إعطاء أفضل ما يمكن فعله بها.',
     '',
-    '[نطاق التحليل — كلّه]: (١) أخطاء منطقيّة وحالات حدّيّة وأعطال محتملة. (٢) ثغرات أمنيّة (حقن، XSS، أسرار مكتوبة، تحقّق مفقود، صلاحيّات). (٣) الأداء والتعقيد والذاكرة. (٤) الوضوح والتسمية والتنظيم. (٥) القابليّة للصيانة والتكرار والاقتران. (٦) أفضل ممارسات اللغة والإطار، ومعالجة الأخطاء، وإمكانيّة الوصول في HTML، والاعتماديّات.',
+    '[نطاق التحليل — كلّه]: (١) أخطاء منطقيّة وحالات حدّيّة وأعطال محتملة (قيم فارغة، تزامن، حالات سباق، مدخلات غير متوقّعة). (٢) ثغرات أمنيّة (حقن، XSS، أسرار مكتوبة، تحقّق مفقود، صلاحيّات، تسريب بيانات). (٣) الأداء والتعقيد والذاكرة والشبكة. (٤) الوضوح والتسمية والتنظيم. (٥) القابليّة للصيانة والتكرار والاقتران والاختبار. (٦) أفضل ممارسات اللغة والإطار، ومعالجة الأخطاء، وإمكانيّة الوصول في HTML، والاعتماديّات، وما ينقص (اختبارات، توثيق، سجلّات).',
+    '',
+    '[شكل الإخراج — إلزاميّ مطلق]: ردّك من جزأين بهذا الترتيب وبهذين العنوانين حرفيًّا:',
+    MARK_A,
+    '(تحليل تفصيليّ حرّ بصيغة Markdown، بلغة ' + outLang + '، بعمق حقيقيّ: ١) ماذا يفعل الكود وبنيته وتدفّق البيانات فيه. ٢) مرور على كلّ ملفّ ثمّ على كلّ دالّة أو قسم مهمّ فيه: ما يعمل صحيحًا، وما يُخشى منه، مع أرقام السطور من الترقيم المرفق. ٣) الأخطاء المحتملة وحالات الحدّ التي تكسره. ٤) الأمان. ٥) الأداء. ٦) الجودة والصيانة. ٧) ما ينقص. لا عموميّات: كلّ ملاحظة مربوطة بموضع وسبب وأثر.)',
+    MARK_R,
+    '(JSON واحد فقط بالشكل أدناه، مبنيّ من تحليلك أعلاه بلا إسقاط أيّ ملاحظة ذكرتها، بلا أسوار كود وبلا أيّ نصّ بعده)',
     '',
     '[قواعد الدرجات]: score من ٠ إلى ١٠٠ يعكس الحالة الحقيقيّة: ٩٠+ جاهز للإنتاج بملاحظات طفيفة، ٧٥–٨٩ جيّد يحتاج تحسينات، ٦٠–٧٤ متوسّط فيه مشاكل واضحة، ٤٥–٥٩ ضعيف، أقلّ من ٤٥ فيه أعطال أو ثغرات خطيرة. وجود مشكلة critical أمنيّة يجعل score لا يتجاوز ٦٠. كلّ فئة في categories تُقيَّم على حدة.',
-    '[قواعد المشاكل]: كلّ مشكلة تحمل اسم الملفّ ورقم السطر من الترقيم المرفق (N| …)، وسبب أهمّيتها، وإصلاحًا عمليًّا بمقتطف كود قصير عند الحاجة. رتّبها من الأخطر. أربعون مشكلة كحدّ أقصى؛ ادمج المتكرّر في مشكلة واحدة تذكر مواضعه.',
-    '[قواعد التوصيات]: recommendations مرتّبة من الأعلى قيمة — أوّلها هو أفضل خطوة تالية. خمس عشرة كحدّ أقصى.',
-    '[قواعد الملفّات]: files تحوي كلّ ملفّ مرفق بدرجته وجملة حكم، كي يُرتَّب الأفضل فالأضعف.',
+    '[قواعد المشاكل]: اذكر كلّ مشكلة حقيقيّة (الحدّ الأقصى ٤٠؛ ادمج المتكرّر في مشكلة واحدة تذكر مواضعه). ملفّ يتجاوز ٨٠ سطرًا يُتوقّع فيه عادةً ثماني مشاكل فأكثر ما لم يكن نظيفًا فعلًا — وإن قلّت فاذكر في summary لماذا. لكلّ مشكلة: severity وcategory واسم الملفّ ورقم السطر من الترقيم المرفق، وdetail من جملتين فأكثر (ما الخطأ، متى يحدث، وما أثره)، وfix عمليّ بخطوات محدّدة ومقتطف كود قصير عند الإمكان. رتّبها من الأخطر.',
+    '[قواعد التوصيات]: recommendations خمس فأكثر (الحدّ ١٥)، كلّ واحدة محدّدة باسم الملفّ أو الدالّة وما يُفعل بالضبط، مرتّبة من الأعلى قيمة — أوّلها هو أفضل خطوة تالية.',
+    '[قواعد الباقي]: strengths ثلاث فأكثر ملموسة (لا «الكود منظّم» بل ما الذي نُظِّم جيّدًا وأين). summary ثلاث إلى خمس جمل: ماذا يفعل الكود، بنيته، وحالته. files تحوي كلّ ملفّ مرفق بدرجته وجملة حكم، كي يُرتَّب الأفضل فالأضعف. verdict حاسم: هل الكود جاهز؟ وما أفضل ما يُفعل به الآن؟',
     '',
-    '[شكل الإخراج — إلزاميّ مطلق]: JSON واحد فقط، بلا أسوار كود وبلا أيّ نصّ قبله أو بعده، بهذا الشكل حرفيًّا:',
     '{',
-    '  "summary": "فقرة قصيرة: ماذا يفعل الكود وما حالته العامّة",',
+    '  "summary": "ثلاث إلى خمس جمل: ماذا يفعل الكود وبنيته وحالته",',
     '  "language": "اللغة أو الإطار الرئيسيّ",',
     '  "score": 0,',
     '  "categories": {"correctness": 0, "security": 0, "performance": 0, "readability": 0, "maintainability": 0, "best_practices": 0},',
-    '  "strengths": ["نقطة قوّة حقيقيّة"],',
-    '  "issues": [{"severity": "critical|high|medium|low|info", "category": "correctness|security|performance|readability|maintainability|best_practices", "file": "اسم الملفّ", "line": 12, "title": "عنوان قصير", "detail": "الشرح ولماذا يهمّ", "fix": "كيف يُصلح، مع مقتطف كود قصير إن لزم"}],',
-    '  "recommendations": ["أفضل خطوة تالية", "ثمّ التالية"],',
+    '  "strengths": ["نقطة قوّة ملموسة بموضعها"],',
+    '  "issues": [{"severity": "critical|high|medium|low|info", "category": "correctness|security|performance|readability|maintainability|best_practices", "file": "اسم الملفّ", "line": 12, "title": "عنوان قصير", "detail": "ما الخطأ، متى يحدث، وما أثره", "fix": "كيف يُصلح بالضبط، مع مقتطف كود قصير إن لزم"}],',
+    '  "recommendations": ["أفضل خطوة تالية محدّدة", "ثمّ التالية"],',
     '  "files": [{"name": "اسم الملفّ", "score": 0, "note": "جملة حكم"}],',
-    '  "verdict": "حكم نهائيّ في جملتين: هل الكود جاهز؟ وما أفضل ما يُفعل به الآن؟"',
+    '  "verdict": "حكم نهائيّ حاسم في جملتين"',
     '}',
     'النصوص داخل JSON بلغة: ' + outLang + '. أسماء المتغيّرات والدوالّ ومقتطفات الكود تبقى كما هي. الأسطر الجديدة داخل النصوص تُكتب \\n. لا تعليقات داخل JSON.',
   ].join('\n');
 
   const blocks = files.map((f) => {
     const n = String(f.content || '').split('\n').length;
-    return '=== FILE: ' + f.name + ' (' + langOf(f.name) + ' · ' + n + ' سطرًا' + (f.truncated ? ' · مقتطع لطوله' : '') + ') ===\n'
+    return '=== FILE: ' + f.name + ' (' + langOf(f.name) + ' · ' + n + ' سطرًا' + (f.truncated ? ' · مقتطع لطوله — حلّل ما وصل واذكر أنّ الباقي لم يصل' : '') + ') ===\n'
       + numbered(f.content) + '\n=== END FILE ===';
   });
   const mt = metrics && metrics.totals ? metrics.totals : null;
@@ -206,11 +225,24 @@ function buildPrompt(files, metrics, ask, lang) {
   if (hints.length) user += '\n\n[قياسات آليّة أوّليّة — تحقّق منها ولا تعتمدها عمياء]: ' + hints.join(' · ');
   const a = String(ask || '').trim().slice(0, LIMITS.ask);
   if (a) user += '\n\n[تركيز إضافيّ طلبه المستخدم]: ' + a;
-  user += '\n\nحلّل كلّ شيء وقيّم وأخرج JSON التقرير الآن.';
+  user += '\n\nحلّل كلّ شيء بعمق: ابدأ بـ' + MARK_A + ' ثمّ ' + MARK_R + ' ثمّ JSON التقرير.';
   return { system, user };
 }
 
-/* ---------- استخراج JSON بتسامح ---------- */
+/* ---------- فصل الجزأين واستخراج JSON بتسامح ---------- */
+function splitOutput(text) {
+  const t = String(text || '');
+  const iR = t.lastIndexOf(MARK_R);
+  if (iR === -1) {
+    const iA0 = t.indexOf(MARK_A);
+    return { deep: iA0 === -1 ? '' : t.slice(iA0 + MARK_A.length).trim().slice(0, 30000), jsonText: t };
+  }
+  let deep = t.slice(0, iR);
+  const iA = deep.indexOf(MARK_A);
+  if (iA !== -1) deep = deep.slice(iA + MARK_A.length);
+  return { deep: deep.trim().slice(0, 30000), jsonText: t.slice(iR + MARK_R.length) };
+}
+
 function escapeCtrlInStrings(s) {
   let out = '', inStr = false, esc = false;
   for (const ch of s) {
@@ -253,7 +285,7 @@ function clamp100(v) { const n = Number(v); return Number.isFinite(n) ? Math.max
 function str(v, max) { return (typeof v === 'string' ? v : (v == null ? '' : String(v))).trim().slice(0, max || 2000); }
 function strList(v, max, each) { return (Array.isArray(v) ? v : []).map((x) => str(typeof x === 'object' && x ? (x.text || x.title || JSON.stringify(x)) : x, each || 600)).filter(Boolean).slice(0, max); }
 
-function normalizeReport(raw, rawText) {
+function normalizeReport(raw, rawText, deep) {
   const r = raw && typeof raw === 'object' ? raw : {};
   const categories = {};
   for (const c of CATS) categories[c] = clamp100(r.categories && r.categories[c]);
@@ -283,15 +315,19 @@ function normalizeReport(raw, rawText) {
     return { name: str(o.name, 200), score: clamp100(o.score), note: str(o.note, 500) };
   }).filter((f) => f.name);
   files.sort((x, y) => (y.score == null ? -1 : y.score) - (x.score == null ? -1 : x.score));
-  const summary = str(r.summary, 3000) || (raw ? '' : str(rawText, 4000));
+  const deepText = str(deep, 30000);
+  // بلا JSON وبلا تحليل حرّ: يُعرض نصّ النموذج الخام ملخّصًا كي لا يضيع شيء.
+  const summary = str(r.summary, 3000) || ((raw || deepText) ? '' : str(rawText, 4000));
   return {
     summary, language: str(r.language, 80), score, grade: gradeOf(score), categories,
     strengths: strList(r.strengths, 12), issues, counts, recommendations: strList(r.recommendations, 15, 800),
-    files, verdict: str(r.verdict, 1200), parsed: !!raw,
+    files, verdict: str(r.verdict, 1200), deep: deepText, parsed: !!raw,
   };
 }
 
 /* ---------- المحرّكان ---------- */
+function pickEffort(v) { const e = String(v || '').trim().toLowerCase(); return EFFORTS.indexOf(e) === -1 ? 'xhigh' : e; }
+
 async function callPro(prompt, opts) {
   const o = opts || {};
   const env = o.env || process.env;
@@ -299,19 +335,27 @@ async function callPro(prompt, opts) {
   const apiKey = viaOR ? env.OPENROUTER_API_KEY : env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('missing ANTHROPIC_API_KEY / OPENROUTER_API_KEY');
   const url = viaOR ? 'https://openrouter.ai/api/v1/messages' : 'https://api.anthropic.com/v1/messages';
-  const base = (env.CODE_ANALYZE_MODEL && String(env.CODE_ANALYZE_MODEL).trim()) || (env.CHAT_CLAUDE_MODEL && String(env.CHAT_CLAUDE_MODEL).trim()) || 'claude-sonnet-5';
+  const base = (env.CODE_ANALYZE_MODEL && String(env.CODE_ANALYZE_MODEL).trim()) || DEFAULT_MODEL;
   const model = viaOR && base.indexOf('/') === -1 ? 'anthropic/' + base : base;
+  const headers = { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
+  // بلا temperature: الجيل الحاليّ يرفض معاملات العيّنة بـ400. التفكير التكيّفيّ
+  // والجهد على مسار أنثروبيك المباشر فقط (الوسيط لا يضمن تمريرهما).
+  const body = { model, max_tokens: o.maxTokens || (viaOR ? 16000 : 32000), system: prompt.system, messages: [{ role: 'user', content: prompt.user }], stream: true };
+  if (!viaOR) {
+    body.thinking = { type: 'adaptive' };
+    body.output_config = { effort: pickEffort(o.effort || env.CODE_ANALYZE_EFFORT) };
+    // احتياط الرفض من الخادم: مصنّفات الأمان قد ترفض كودًا حسّاسًا (أمن/شبكات)،
+    // فيُعاد الطلب على نموذج بديل بدل تقرير فارغ. مدعوم على Opus 5 وما فوقه.
+    if (/^claude-(?:opus-5|fable)/.test(base)) { body.fallbacks = 'default'; headers['anthropic-beta'] = 'server-side-fallback-2026-07-01'; }
+  }
   const fetchImpl = o.fetchImpl || fetch;
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), o.timeoutMs || 240000);
+  const timer = setTimeout(() => ctrl.abort(), o.timeoutMs || 280000);
   let text = '';
+  let stopReason = null;
+  let refusalCategory = '';
   try {
-    const r = await fetchImpl(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model, max_tokens: o.maxTokens || 8000, temperature: 0.2, system: prompt.system, messages: [{ role: 'user', content: prompt.user }], stream: true }),
-      signal: ctrl.signal,
-    });
+    const r = await fetchImpl(url, { method: 'POST', headers, body: JSON.stringify(body), signal: ctrl.signal });
     if (!r.ok || !r.body) {
       const e = r && r.text ? await r.text().catch(() => '') : '';
       throw new Error('code-analyze upstream ' + (r && r.status) + ': ' + String(e).slice(0, 200));
@@ -332,11 +376,20 @@ async function callPro(prompt, opts) {
         if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta') {
           text += ev.delta.text;
           if (o.onProgress) o.onProgress(text.length);
+        } else if (ev.type === 'message_delta' && ev.delta && ev.delta.stop_reason) {
+          stopReason = ev.delta.stop_reason;
+          if (stopReason === 'refusal' && ev.delta.stop_details) refusalCategory = String(ev.delta.stop_details.category || '');
         } else if (ev.type === 'error') {
           throw new Error('code-analyze upstream error: ' + String((ev.error && ev.error.message) || '').slice(0, 200));
         }
       }
     }
+    if (stopReason === 'refusal') {
+      const e = new Error('refusal' + (refusalCategory ? ': ' + refusalCategory : ''));
+      e.refusal = true;
+      throw e;
+    }
+    if (stopReason === 'max_tokens') logError('code-analyze/max-tokens', new Error('report cut at max_tokens after ' + text.length + ' chars'));
     return text;
   } finally { clearTimeout(timer); }
 }
@@ -344,10 +397,12 @@ async function callPro(prompt, opts) {
 async function callFree(prompt, opts) {
   const o = opts || {};
   let text = '';
+  // السلسلة المجانيّة بلا تفكير: التذكير في ذيل الرسالة يُثبّت الشكل (النماذج توزنه أعلى).
+  const user = prompt.user + '\n\n[تذكير بالشكل — إلزاميّ]: اكتب ' + MARK_A + ' ثمّ التحليل التفصيليّ، ثمّ ' + MARK_R + ' ثمّ JSON التقرير وحده بلا أسوار كود.';
   const r = await streamFreeChain({
-    system: prompt.system, convo: [{ role: 'user', content: prompt.user }],
+    system: prompt.system, convo: [{ role: 'user', content: user }],
     send: (ev) => { if (ev && ev.delta) { text += ev.delta; if (o.onProgress) o.onProgress(text.length); } },
-    maxTokens: o.maxTokens || 6000, timeoutMs: o.timeoutMs || 150000, env: o.env, fetchImpl: o.fetchImpl,
+    maxTokens: o.maxTokens || 8000, timeoutMs: o.timeoutMs || 150000, env: o.env, fetchImpl: o.fetchImpl,
   });
   if (!r.ok) { const e = new Error('free-busy: ' + (Array.isArray(r.errors) ? r.errors.join(' | ') : '').slice(0, 300)); e.freeBusy = true; throw e; }
   return r.text || text;
@@ -389,28 +444,51 @@ module.exports = async function handler(req, res) {
       finish(); return;
     }
     const pro = !!usage.subscriber;
-    const col = collectFiles(body, pro ? null : { total: LIMITS.totalFree });
+    // v-agent-github: رابط GitHub → ملفّ واحد عبر contents، أو مستودع/مجلّد كأرشيف zipball.
+    if (typeof body.githubUrl === 'string' && body.githubUrl.trim()) {
+      const t = gh.parseTarget({ url: body.githubUrl, ref: body.githubRef });
+      if (!t) { send({ error: 'رابط GitHub غير مفهوم. أعطِ رابط مستودع أو مجلّد أو ملفّ.' }); finish(); return; }
+      if (t.kind === 'pr' || t.kind === 'issue') { send({ error: 'أعطِ رابط مستودع أو مجلّد أو ملفّ على GitHub — لا طلب سحب أو مسألة.' }); finish(); return; }
+      send({ status: '🐙 يحمّل من GitHub: ' + t.owner + '/' + t.repo + (t.path ? '/' + t.path : '') + '…', k: 'stGithub' });
+      try {
+        let asFile = null;
+        if (t.kind === 'file' || t.kind === 'path') {
+          const c = await gh.getContents(t, {});
+          if (c.error && t.kind === 'file') { send({ error: c.error }); finish(); return; }
+          if (c.type === 'file') asFile = c;
+        }
+        if (asFile) { body.files = (Array.isArray(body.files) ? body.files : []).concat([{ name: asFile.name || t.path, content: asFile.content }]); }
+        else { const z = await gh.fetchRepoZip(t, {}); body._zipEntries = z.entries; }
+      } catch (e) {
+        logError('code-analyze/github', e);
+        send({ error: 'تعذّر جلب GitHub: ' + String((e && e.message) || e).slice(0, 200) }); finish(); return;
+      }
+    }
+    const col = collectFiles(body, pro ? null : { total: LIMITS.totalFree, perFile: LIMITS.perFileFree });
     if (!col.files.length) {
       const bad = col.skipped.find((s) => s.why === 'badzip' || s.why === 'toolarge');
       send({ error: bad ? (bad.why === 'badzip' ? 'الملفّ ليس أرشيف zip صالحًا.' : 'الأرشيف أكبر من ٣ ميجابايت — احذف node_modules والملفّات الثقيلة.') : 'لم يصل أيّ ملفّ نصّيّ قابل للتحليل.' });
       finish(); return;
     }
     const metrics = metricsOf(col.files);
-    send({ status: '🔎 يحلّل ' + col.files.length + ' ملفًّا · ' + metrics.totals.lines + ' سطرًا…', k: 'stAnalyze', tier: usage.tier });
+    send({ status: '🔎 يقرأ ' + col.files.length + ' ملفًّا · ' + metrics.totals.lines + ' سطرًا ويفكّر…', k: 'stAnalyze', tier: usage.tier });
     const prompt = buildPrompt(col.files, metrics, body.ask, body.lang);
     let lastSent = 0;
-    const onProgress = (n) => { if (n - lastSent >= 1500) { lastSent = n; send({ status: '✍️ يكتب التقرير… ' + n + ' حرفًا', k: 'stWriting' }); } };
+    const onProgress = (n) => { if (n - lastSent >= 1500) { lastSent = n; send({ status: '✍️ يكتب التحليل… ' + n + ' حرفًا', k: 'stWriting' }); } };
     let text = '';
     try {
       text = pro ? await callPro(prompt, { onProgress }) : await callFree(prompt, { onProgress });
     } catch (e) {
       logError('code-analyze/engine', e);
-      send({ error: pro ? ('تعذّر التحليل: ' + String((e && e.message) || e).slice(0, 160)) : tierLib.FREE_TEXT.busy });
+      const msg = e && e.refusal ? 'رفض النموذج تحليل هذا الكود (تصنيف أمان). جرّب ملفًّا آخر أو أزل الجزء الحسّاس.'
+        : (pro ? ('تعذّر التحليل: ' + String((e && e.message) || e).slice(0, 160)) : tierLib.FREE_TEXT.busy);
+      send({ error: msg });
       finish(); return;
     }
-    const parsed = extractJson(text);
-    if (!parsed) logError('code-analyze/parse', new Error('no JSON in model output (' + String(text || '').length + ' chars)'));
-    const report = normalizeReport(parsed, text);
+    const parts = splitOutput(text);
+    const parsed = extractJson(parts.jsonText);
+    if (!parsed) logError('code-analyze/parse', new Error('no JSON in model output (' + String(text || '').length + ' chars, deep=' + parts.deep.length + ')'));
+    const report = normalizeReport(parsed, parts.jsonText, parts.deep);
     report.metrics = metrics;
     report.skipped = col.skipped.slice(0, 40);
     report.engine = pro ? 'pro' : 'free';
@@ -425,4 +503,4 @@ module.exports = async function handler(req, res) {
   }
 };
 
-module.exports.__test = { LIMITS, FLAG_DEFS, collectFiles, metricsOf, fileMetrics, buildPrompt, extractJson, normalizeReport, gradeOf, langOf, callPro, callFree, numbered };
+module.exports.__test = { LIMITS, DEFAULT_MODEL, FLAG_DEFS, collectFiles, metricsOf, fileMetrics, buildPrompt, splitOutput, extractJson, normalizeReport, gradeOf, langOf, callPro, callFree, numbered, pickEffort };

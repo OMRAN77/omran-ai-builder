@@ -5,44 +5,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
+const { makeZip } = require('./_zip.cjs');
 
 process.env.AUTH_SECRET = process.env.AUTH_SECRET || 'test-secret-for-code-analyze';
 const root = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 
 const CA = require('../api/_lib/code-analyze.js').__test;
-
-/* ---------- أرشيف zip مخزَّن (بلا ضغط) لاختبار مسار fileBase64 ---------- */
-function crc32(buf) {
-  let crc = 0xFFFFFFFF;
-  for (let n = 0; n < buf.length; n++) {
-    let c = (crc ^ buf[n]) & 0xFF;
-    for (let k = 0; k < 8; k++) c = c & 1 ? (c >>> 1) ^ 0xEDB88320 : c >>> 1;
-    crc = (crc >>> 8) ^ c;
-  }
-  return (crc ^ 0xFFFFFFFF) >>> 0;
-}
-function makeZip(entries) {
-  const locals = [], centrals = [];
-  let off = 0;
-  for (const e of entries) {
-    const name = Buffer.from(e.name);
-    const data = Buffer.isBuffer(e.data) ? e.data : Buffer.from(String(e.data));
-    const lh = Buffer.alloc(30);
-    lh.writeUInt32LE(0x04034b50, 0); lh.writeUInt16LE(20, 4); lh.writeUInt32LE(crc32(data), 14);
-    lh.writeUInt32LE(data.length, 18); lh.writeUInt32LE(data.length, 22); lh.writeUInt16LE(name.length, 26);
-    const ch = Buffer.alloc(46);
-    ch.writeUInt32LE(0x02014b50, 0); ch.writeUInt16LE(20, 4); ch.writeUInt16LE(20, 6); ch.writeUInt32LE(crc32(data), 16);
-    ch.writeUInt32LE(data.length, 20); ch.writeUInt32LE(data.length, 24); ch.writeUInt16LE(name.length, 28); ch.writeUInt32LE(off, 42);
-    locals.push(lh, name, data); centrals.push(ch, name);
-    off += 30 + name.length + data.length;
-  }
-  const cd = Buffer.concat(centrals);
-  const eocd = Buffer.alloc(22);
-  eocd.writeUInt32LE(0x06054b50, 0); eocd.writeUInt16LE(entries.length, 8); eocd.writeUInt16LE(entries.length, 10);
-  eocd.writeUInt32LE(cd.length, 12); eocd.writeUInt32LE(off, 16);
-  return Buffer.concat(locals.concat([cd, eocd]));
-}
 
 /* ---------- جمع الملفّات ---------- */
 test('collectFiles: text files, per-file and total caps, empty/binary skipped', () => {
@@ -149,6 +118,8 @@ test('buildPrompt: numbered lines, file headers, hints, ask, output language', (
   assert.ok(p.user.includes('var بدل let/const: 2'), 'القياسات تُمرَّر كتلميح');
   assert.ok(p.user.includes('[تركيز إضافيّ طلبه المستخدم]: ركّز على الأمان'));
   assert.ok(p.system.includes('بلغة: العربية'));
+  assert.ok(p.system.indexOf('@@ANALYSIS') !== -1 && p.system.indexOf('@@REPORT') > p.system.indexOf('@@ANALYSIS'), 'تحليل حرّ ثمّ تقرير');
+  assert.ok(p.user.includes('@@ANALYSIS') && p.user.includes('@@REPORT'));
   assert.ok(p.system.includes('"score"') && p.system.includes('"recommendations"') && p.system.includes('"files"'));
   const en = CA.buildPrompt(files, m, '', 'en');
   assert.ok(en.system.includes('بلغة: English'));
@@ -233,11 +204,17 @@ test('callPro: streams Anthropic text deltas, picks model from env, direct key w
     'data: {"type":"message_stop"}',
   ];
   const progress = [];
-  const text = await CA.callPro({ system: 'S', user: 'U' }, { env: { ANTHROPIC_API_KEY: 'k1', OPENROUTER_API_KEY: 'k2', CODE_ANALYZE_MODEL: 'claude-opus-5' }, fetchImpl: fakeFetch(cap, lines), onProgress: (n) => progress.push(n) });
+  const text = await CA.callPro({ system: 'S', user: 'U' }, { env: { ANTHROPIC_API_KEY: 'k1', OPENROUTER_API_KEY: 'k2' }, fetchImpl: fakeFetch(cap, lines), onProgress: (n) => progress.push(n) });
   assert.equal(text, '{"score": 88}');
   assert.equal(cap.url, 'https://api.anthropic.com/v1/messages');
   assert.equal(cap.headers['x-api-key'], 'k1');
-  assert.equal(cap.body.model, 'claude-opus-5');
+  assert.equal(cap.body.model, 'claude-opus-5', 'الافتراضي Opus 5');
+  assert.equal(cap.body.temperature, undefined, 'لا معاملات عيّنة — الجيل الحاليّ يرفضها');
+  assert.deepEqual(cap.body.thinking, { type: 'adaptive' });
+  assert.deepEqual(cap.body.output_config, { effort: 'xhigh' });
+  assert.equal(cap.body.fallbacks, 'default');
+  assert.equal(cap.headers['anthropic-beta'], 'server-side-fallback-2026-07-01');
+  assert.equal(cap.body.max_tokens, 32000);
   assert.equal(cap.body.system, 'S');
   assert.deepEqual(cap.body.messages, [{ role: 'user', content: 'U' }]);
   assert.equal(cap.body.stream, true);
@@ -247,9 +224,18 @@ test('callPro: streams Anthropic text deltas, picks model from env, direct key w
 
 test('callPro: falls back to OpenRouter with vendor prefix; no key throws', async () => {
   const cap = {};
-  await CA.callPro({ system: 'S', user: 'U' }, { env: { OPENROUTER_API_KEY: 'k2', CHAT_CLAUDE_MODEL: 'claude-sonnet-5' }, fetchImpl: fakeFetch(cap, ['data: {"type":"message_stop"}']) });
+  await CA.callPro({ system: 'S', user: 'U' }, { env: { OPENROUTER_API_KEY: 'k2' }, fetchImpl: fakeFetch(cap, ['data: {"type":"message_stop"}']) });
   assert.equal(cap.url, 'https://openrouter.ai/api/v1/messages');
-  assert.equal(cap.body.model, 'anthropic/claude-sonnet-5');
+  assert.equal(cap.body.model, 'anthropic/claude-opus-5');
+  assert.equal(cap.body.thinking, undefined, 'الوسيط لا يضمن تمرير التفكير');
+  assert.equal(cap.body.fallbacks, undefined);
+  assert.equal(cap.headers['anthropic-beta'], undefined);
+  const cap2 = {};
+  await CA.callPro({ system: 'S', user: 'U' }, { env: { ANTHROPIC_API_KEY: 'k', CODE_ANALYZE_MODEL: 'claude-sonnet-5', CODE_ANALYZE_EFFORT: 'weird' }, fetchImpl: fakeFetch(cap2, ['data: {"type":"message_stop"}']) });
+  assert.equal(cap2.body.model, 'claude-sonnet-5');
+  assert.equal(cap2.body.fallbacks, undefined, 'الاحتياط لـOpus 5 فما فوق فقط');
+  assert.deepEqual(cap2.body.output_config, { effort: 'xhigh' }, 'جهد تالف = xhigh');
+  assert.deepEqual(cap2.body.thinking, { type: 'adaptive' });
   await assert.rejects(() => CA.callPro({ system: 'S', user: 'U' }, { env: {} }), /missing ANTHROPIC_API_KEY/);
 });
 
@@ -269,8 +255,42 @@ test('callFree: uses the free chain (OpenAI-style SSE), no provider name leaks',
   assert.equal(text, '{"score": 55}');
   assert.ok(cap.url.includes('generativelanguage.googleapis.com'));
   assert.equal(cap.body.messages[0].role, 'system');
-  assert.equal(cap.body.messages[1].content, 'U');
+  assert.ok(cap.body.messages[1].content.startsWith('U') && cap.body.messages[1].content.includes('@@REPORT'), 'تذكير الشكل يُلحق بذيل الرسالة للسلسلة المجانيّة');
   await assert.rejects(() => CA.callFree({ system: 'S', user: 'U' }, { env: {}, fetchImpl: fakeFetch({}, []) }), /free-busy/);
+});
+
+test('splitOutput: analysis before the marker, JSON after; missing marker keeps everything', () => {
+  const s = CA.splitOutput('intro @@ANALYSIS\n## بنية\nيفعل كذا {x}\n@@REPORT\n{"score": 70}');
+  assert.equal(s.deep, '## بنية\nيفعل كذا {x}');
+  assert.deepEqual(CA.extractJson(s.jsonText), { score: 70 });
+  const n = CA.splitOutput('{"score": 1}');
+  assert.equal(n.deep, ''); assert.deepEqual(CA.extractJson(n.jsonText), { score: 1 });
+  const onlyA = CA.splitOutput('@@ANALYSIS\nنصّ بلا تقرير');
+  assert.equal(onlyA.deep, 'نصّ بلا تقرير'); assert.equal(CA.extractJson(onlyA.jsonText), null);
+  const r = CA.normalizeReport(null, onlyA.jsonText, onlyA.deep);
+  assert.equal(r.deep, 'نصّ بلا تقرير'); assert.equal(r.summary, '', 'مع تحليل حرّ لا يُكرَّر النصّ الخام كملخّص');
+  assert.equal(r.parsed, false);
+});
+
+test('callPro: refusal stop reason surfaces as a refusal error, thinking deltas are ignored', async () => {
+  const lines = [
+    'data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"hmm"}}',
+    'data: {"type":"message_delta","delta":{"stop_reason":"refusal","stop_details":{"type":"refusal","category":"cyber"}}}',
+  ];
+  await assert.rejects(() => CA.callPro({ system: 'S', user: 'U' }, { env: { ANTHROPIC_API_KEY: 'k' }, fetchImpl: fakeFetch({}, lines) }), (e) => e.refusal === true && /cyber/.test(e.message));
+  const ok = await CA.callPro({ system: 'S', user: 'U' }, { env: { ANTHROPIC_API_KEY: 'k' }, fetchImpl: fakeFetch({}, [
+    'data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"hmm"}}',
+    'data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"ok"}}',
+    'data: {"type":"message_delta","delta":{"stop_reason":"end_turn"}}',
+  ]) });
+  assert.equal(ok, 'ok');
+});
+
+test('limits: pro takes large files, free stays small', () => {
+  assert.equal(CA.LIMITS.perFile, 200000); assert.equal(CA.LIMITS.total, 500000);
+  assert.equal(CA.LIMITS.perFileFree, 60000); assert.equal(CA.LIMITS.totalFree, 60000);
+  assert.equal(CA.DEFAULT_MODEL, 'claude-opus-5');
+  assert.equal(CA.pickEffort('max'), 'max'); assert.equal(CA.pickEffort(''), 'xhigh'); assert.equal(CA.pickEffort('nope'), 'xhigh');
 });
 
 /* ---------- حراسة التوصيل ---------- */
@@ -281,6 +301,7 @@ test('wiring: tools router, vercel rewrite, bundle part, hand-off hook, test scr
   const part = read('js/app-27-codescore.js');
   assert.ok(part.includes("'/api/tools?action=code-analyze'"));
   assert.ok(part.includes('btnCodeScore') && part.includes('window.omranCodeScoreOpen = open'));
+  assert.ok(part.includes('r.deep') && part.includes('mdLite('), 'الواجهة تعرض التحليل التفصيليّ');
   assert.ok(read('js/app-24-codefix.js').includes('window.omranCodeFixOpenWith = function (name, text, ask)'));
   assert.ok(read('js/app.bundle.js').includes('btnCodeScore'), 'الحزمة مبنيّة بالجزء الجديد');
   assert.ok(JSON.parse(read('package.json')).scripts.test.includes('tests/code-analyze.test.cjs'));
