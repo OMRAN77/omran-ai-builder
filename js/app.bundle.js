@@ -10322,195 +10322,38 @@ async function postWithConfirm(url, payload){
 
 /* v-topbar-merge (أمر عمران ١٢ سبتمبر): شريط الأسهم ينتقل إلى وسط الهيدر.
    النقل هنا لا في index.html لأنّ #stockTicker شقيق للهيدر لا ابنه، ونقله
-   في المصدر كان يعني تحريك كتلة كاملة داخل ملفّ ٨٥ ك.ب — نقلةٌ واحدة في
+   في المصدر كان يعني تحريك كتلة كاملة داخل ملفّ ٨٧ ك.ب — نقلةٌ واحدة في
    وقت التشغيل أأمن وأقلّ أثرًا.
-   الزرّ الموجود (#stockTickerToggle) يبقى صاحب الطيّ بمعالجه الأصلي؛ لا
-   نضيف معالجًا ثانيًا كي لا يتعارض الاثنان على الحالة. نحن نقرأ النتيجة
-   فقط: إن اختفى شريط الأسهم ظهر اسم المحادثة مكانه بنفس الارتفاع.
-   قبل أوّل رسالة يبقى الوسط فارغًا — «محادثة جديدة» ليست معلومة. */
+   لا اسم محادثة ولا خطّ في الوسط: المحاولة السابقة وضعت عنصر عنوان هناك
+   فظهر «كود ملصوق · 169 KB» وخلفه خطّ طويل — حُذف العنصر كلّه لا نصّه،
+   فلا يبقى أثر مرسوم حين تُطوى الأسهم.
+   الجوال لا يُمَسّ إطلاقًا: لا نقل ولا طيّ تلقائيّ ولا هيدر لاصق. */
 (function(){
-  var TICK_MS = 700;
-  var MOBILE_KEY = 'omTickerMobileInit';
-
   function isMobile(){
     try{ return document.documentElement.classList.contains('mobile-ui'); }
     catch(e){ return false; }
   }
-
-  function chatLabel(){
-    try{
-      var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
-      if(!cur) return '';
-      /* الوسط فارغ حتى تبدأ محادثة فعليّة */
-      var n = (cur.messages && cur.messages.length) ? cur.messages.length : 0;
-      if(!n) return '';
-      return String(cur.title || '').trim();
-    }catch(e){ return ''; }
-  }
-
   function build(){
+    if(isMobile()) return true;              /* الجوال يبقى كما كان حرفيًّا */
     var hdr = document.querySelector('header');
     var acts = document.getElementById('headerActions');
-    var tk = document.getElementById('stockTicker');
     if(!hdr || !acts) return false;
     if(document.getElementById('omHeadCenter')) return true;
-
+    var tk = document.getElementById('stockTicker');
+    var tg = document.getElementById('stockTickerToggle');
     var wrap = document.createElement('div');
     wrap.id = 'omHeadCenter';
     hdr.insertBefore(wrap, acts);
-
-    if(isMobile()){
-      /* الجوال: الوسط مخفيّ بالتنسيق، والأسهم تبقى في سطرها تحت الهيدر.
-         تُطوى مرّة واحدة في العمر بزرّها هي — لا بحالة موازية نخترعها. */
-      try{
-        if(tk && !localStorage.getItem(MOBILE_KEY)){
-          localStorage.setItem(MOBILE_KEY, '1');
-          setTimeout(function(){
-            try{
-              var tg = document.getElementById('stockTickerToggle');
-              if(tg && tk.offsetHeight > 4) tg.click();
-            }catch(e){ /* guard-ok */ }
-          }, 1500);
-        }
-      }catch(e){ /* guard-ok */ }
-      return true;
-    }
-
-    var tg = document.getElementById('stockTickerToggle');
+    /* الزرّ يخرج من داخل الشريط ليبقى مضغوطًا حتى لو أُخفي الشريط،
+       ومعالجه الأصليّ في شريحة الأسهم يبقى مربوطًا عليه — نقل لا إعادة بناء. */
     if(tg) wrap.appendChild(tg);
     if(tk) wrap.appendChild(tk);
-    var ttl = document.createElement('span');
-    ttl.id = 'omHeadTitle';
-    ttl.style.display = 'none';
-    wrap.appendChild(ttl);
     return true;
   }
-
-  /* v-chat-solo2: لوحة الكود لا توجد قبل أن يوجد كود. العارض المفتوح
-     يعيش داخل اللوحة، فوجوده يمنع الإخفاء ولو كان cur.code فارغًا. */
-  function syncNoCode(){
-    try{
-      var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
-      var hasCode = !!(cur && cur.code && String(cur.code).trim());
-      var viewer = !!document.getElementById('omranCodeViewer');
-      document.body.classList.toggle('omNoCode', !hasCode && !viewer);
-    }catch(e){ /* guard-ok */ }
-  }
-
-  function sync(){
-    syncNoCode();
-    try{
-      if(isMobile()) return;
-      var ttl = document.getElementById('omHeadTitle');
-      if(!ttl) return;
-      var tk = document.getElementById('stockTicker');
-      var trk = document.getElementById('stockTickerTrack');
-      /* «مطويّ» يشمل الحالتين: طواه المستخدم بالسهم، أو أطفأ الشريط من
-         الإعدادات. في الحالتين الوسط يخلو فيستحقّه اسم المحادثة. */
-      var live = !!(tk && tk.offsetHeight > 4 && trk && trk.offsetWidth > 0);
-      /* الشريط المطويّ كان يبقى مرنًا فيبتلع وسط الهيدر ويترك فجوة
-         طويلة بجانب اسم المحادثة — يتنازل عن مرونته حين لا يعرض شيئًا. */
-      if(tk){
-        var fl = live ? '1 1 auto' : '0 0 auto';
-        if(tk.style.flex !== fl) tk.style.flex = fl;
-      }
-      var lbl = live ? '' : chatLabel();
-      if(ttl.textContent !== lbl) ttl.textContent = lbl;
-      var want = lbl ? '' : 'none';
-      if(ttl.style.display !== want) ttl.style.display = want;
-      var tg = document.getElementById('stockTickerToggle');
-      if(tg){
-        var tgWant = (tk && tk.parentNode === document.getElementById('omHeadCenter')) ? '' : tg.style.display;
-        if(tg.style.display !== tgWant) tg.style.display = tgWant;
-      }
-    }catch(e){ /* guard-ok */ }
-  }
-
-  function start(){
-    if(!build()) return false;
-    sync();
-    setInterval(sync, TICK_MS);
-    return true;
-  }
-
-  if(!start()){
+  if(!build()){
     var n = 0;
-    var id = setInterval(function(){ if(start() || ++n > 40) clearInterval(id); }, 250);
+    var id = setInterval(function(){ if(build() || ++n > 40) clearInterval(id); }, 250);
   }
-})();
-
-/* v-claude-look: ترتيب الشريط الجانبي وأيقنة تبويبَي اللوحة.
-   نقل العقد لا إعادة بنائها — فتبقى كلّ المعالجات المربوطة عليها كما هي.
-   التبويبان يحملان data-i18n فتُعيد applyLanguage كتابة نصّهما عند كلّ تبديل
-   لغة وتمحو الأيقونة؛ لذلك نعيد تركيبها في نبضة خفيفة بدل مرّة واحدة. */
-(function(){
-  var TAB_ICON = {
-    preview: '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"'
-      + ' fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"'
-      + ' stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7'
-      + '-4 7-11 7-11-7-11-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>',
-    code: '<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24"'
-      + ' fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"'
-      + ' stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6">'
-      + '</polyline><polyline points="8 6 2 12 8 18"></polyline></svg>'
-  };
-
-  function isMobileUi(){
-    try{ return document.documentElement.classList.contains('mobile-ui'); }
-    catch(e){ return false; }
-  }
-
-  function orderSidebar(){
-    var sb = document.getElementById('sidebar');
-    if(!sb || isMobileUi()) return false;
-    if(document.getElementById('omNavGroup')) return true;
-    var foot = document.getElementById('omranSidebarFoot');
-    var navs = foot ? foot.querySelectorAll('.omNavBtn.omDeskNav') : [];
-    if(!navs.length) return false;
-
-    var grp = document.createElement('div');
-    grp.id = 'omNavGroup';
-    for(var i = 0; i < navs.length; i++) grp.appendChild(navs[i]);
-
-    /* الترتيب من أعلى إلى أسفل كما في نماذج كلود. أي عنصر غائب يُتخطّى
-       بلا أثر — appendChild على عقدة قائمة ينقلها لا ينسخها. */
-    var order = ['omranNewChatBtn', null, 'projMenuWrap', 'omranHistTitle',
-                 'history', 'providerGridSidebar', 'omranSidebarFoot'];
-    for(var k = 0; k < order.length; k++){
-      if(order[k] === null){ sb.appendChild(grp); continue; }
-      var el = document.getElementById(order[k]);
-      if(el && el.parentNode === sb) sb.appendChild(el);
-    }
-    return true;
-  }
-
-  function iconizeTabs(){
-    try{
-      if(isMobileUi()) return;
-      var tabs = document.querySelectorAll('#tabs .tab[data-tab]');
-      for(var i = 0; i < tabs.length; i++){
-        var el = tabs[i];
-        var ico = TAB_ICON[el.dataset.tab];
-        if(!ico || el.querySelector('svg')) continue;
-        var txt = (el.textContent || '').trim();
-        if(txt){ el.title = txt; el.setAttribute('aria-label', txt); }
-        el.innerHTML = ico;
-      }
-    }catch(e){ /* guard-ok */ }
-  }
-
-  var done = false;
-  function start(){
-    if(!done) done = orderSidebar();
-    iconizeTabs();
-    return done;
-  }
-
-  if(!start()){
-    var n = 0;
-    var id = setInterval(function(){ if(start() || ++n > 40) clearInterval(id); }, 250);
-  }
-  setInterval(iconizeTabs, 1200);
 })();
 window.postWithConfirm = postWithConfirm;
 /* يضبط شكل المحادثة كما يشترطه Gemini — يُستدعى قبل كل طلب. */
