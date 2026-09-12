@@ -30,37 +30,51 @@ const SUB_WINDOW_MS = SUB_WINDOW_DAYS * 86400000;
 // المجانية والأدوات الصغيرة) يبقى على سقف الطبقة اليومي.
 const PAID_PROVIDERS = ['claude', 'openai', 'deepseek', 'cohere', 'perplexity', 'agent'];
 
+// أسماء النماذج تتغيّر باستمرار (المجسّ ١٢ سبتمبر: gemini-2.5-flash «لم يعد
+// متاحًا للمستخدمين الجدد»، llama-3.3-70b حُذف من Groq، mistral-large خارج
+// الطبقة المجانية، ونسخة OpenRouter المجانية أُزيلت). لذلك لكل مزوّد قائمة
+// مرشّحين تُجرَّب بالترتيب (خطأ «النموذج غير موجود» رخيص وفوري)، وإن سقطت كلها
+// يُستكشف نموذج من قائمة /models عند المزوّد بمرشّح انتقاء (pick). النموذج
+// الناجح يُحفظ في ذاكرة العملية. FREE_<المزوّد>_MODEL يُجرَّب أولًا.
 const FREE_PROVIDER_SPECS = {
   gemini: {
     name: 'Gemini',
     url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+    modelsUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/models',
     keyVar: 'GEMINI_API_KEY',
     modelVar: 'FREE_GEMINI_MODEL',
-    model: 'gemini-2.5-flash',
+    models: ['gemini-flash-latest', 'gemini-3-flash', 'gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite'],
+    pick: /^(?:models\/)?gemini-[\d.]+-flash(?:-lite)?(?:-preview[\w-]*)?$/i,
     vision: true,
   },
   groq: {
     name: 'Groq',
     url: 'https://api.groq.com/openai/v1/chat/completions',
+    modelsUrl: 'https://api.groq.com/openai/v1/models',
     keyVar: 'GROQ_API_KEY',
     modelVar: 'FREE_GROQ_MODEL',
-    model: 'llama-3.3-70b-versatile',
+    models: ['openai/gpt-oss-120b', 'meta-llama/llama-4-maverick-17b-128e-instruct', 'meta-llama/llama-4-scout-17b-16e-instruct', 'llama-3.3-70b-versatile', 'qwen/qwen3-32b', 'openai/gpt-oss-20b', 'llama-3.1-8b-instant'],
+    pick: /gpt-oss-120b|llama-4-maverick|llama-4-scout|llama-3\.3-70b|qwen3-32b|kimi-k2|gpt-oss-20b|llama-3\.1-8b/i,
     vision: false,
   },
   mistral: {
     name: 'Mistral',
     url: 'https://api.mistral.ai/v1/chat/completions',
+    modelsUrl: 'https://api.mistral.ai/v1/models',
     keyVar: 'MISTRAL_API_KEY',
     modelVar: 'FREE_MISTRAL_MODEL',
-    model: 'mistral-large-latest',
+    models: ['mistral-small-latest', 'mistral-medium-latest', 'open-mistral-nemo', 'ministral-8b-latest'],
+    pick: /^mistral-small-latest$|^mistral-medium-latest$|^open-mistral-nemo$|^ministral-8b-latest$|^mistral-small/i,
     vision: false,
   },
   openrouter: {
     name: 'OpenRouter',
     url: 'https://openrouter.ai/api/v1/chat/completions',
+    modelsUrl: 'https://openrouter.ai/api/v1/models',
     keyVar: 'OPENROUTER_API_KEY',
     modelVar: 'FREE_OPENROUTER_MODEL',
-    model: 'meta-llama/llama-3.3-70b-instruct:free',
+    models: ['meta-llama/llama-4-maverick:free', 'meta-llama/llama-3.3-70b-instruct:free', 'qwen/qwen3-235b-a22b:free', 'google/gemma-3-27b-it:free', 'deepseek/deepseek-chat-v3-0324:free', 'mistralai/mistral-small-3.2-24b-instruct:free'],
+    pick: /^(?:meta-llama\/llama-4|meta-llama\/llama-3\.3|qwen\/qwen3|google\/gemma-3|deepseek\/deepseek-chat|mistralai\/mistral-small)[\w.-]*:free$/i,
     vision: false,
   },
 };
@@ -159,8 +173,9 @@ function freeChain(env) {
     const spec = FREE_PROVIDER_SPECS[n];
     const key = e[spec.keyVar];
     if (!key) continue;
-    const model = (e[spec.modelVar] && String(e[spec.modelVar]).trim()) || spec.model;
-    out.push({ id: n, name: spec.name, url: spec.url, key, model, vision: !!spec.vision });
+    const pref = e[spec.modelVar] && String(e[spec.modelVar]).trim();
+    const models = (pref ? [pref] : []).concat(spec.models.filter((m) => m !== pref));
+    out.push({ id: n, name: spec.name, url: spec.url, modelsUrl: spec.modelsUrl, key, model: models[0], models, pick: spec.pick, vision: !!spec.vision });
   }
   return out;
 }

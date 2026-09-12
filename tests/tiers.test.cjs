@@ -66,11 +66,20 @@ test('freeChain: order from env, providers without keys skipped, model overrides
   assert.deepEqual(tier.freeChain(env).map((s) => s.id), ['gemini', 'groq', 'openrouter']);
   assert.deepEqual(tier.freeChain(Object.assign({ FREE_CHAIN: 'groq, gemini ,bogus' }, env)).map((s) => s.id), ['groq', 'gemini']);
   const g = tier.freeChain(Object.assign({ FREE_GEMINI_MODEL: 'gemini-9-flash' }, env))[0];
-  assert.equal(g.model, 'gemini-9-flash');
+  assert.equal(g.model, 'gemini-9-flash', 'نموذج البيئة يُجرَّب أولًا');
+  assert.equal(g.models[0], 'gemini-9-flash'); assert.equal(g.models[1], 'gemini-flash-latest');
   assert.equal(g.vision, true);
   assert.match(g.url, /generativelanguage\.googleapis\.com\/v1beta\/openai\/chat\/completions/);
-  assert.equal(tier.freeChain(env)[1].model, 'llama-3.3-70b-versatile');
-  for (const s of tier.freeChain(env)) assert.equal(typeof s.key, 'string');
+  assert.match(g.modelsUrl, /\/v1beta\/openai\/models$/);
+  assert.equal(tier.freeChain(env)[0].model, 'gemini-flash-latest', 'الاسم المستعار الذي يعمل في بقية الخادم');
+  assert.equal(tier.freeChain(env)[1].model, 'openai/gpt-oss-120b');
+  for (const s of tier.freeChain(env)) { assert.equal(typeof s.key, 'string'); assert.ok(s.models.length >= 4, s.id + ' candidates'); assert.ok(s.pick instanceof RegExp); }
+  /* مرشّح الانتقاء يلتقط نماذج flash النصّية فقط عند Gemini، والمجانية فقط عند OpenRouter */
+  const specs = tier.FREE_PROVIDER_SPECS;
+  assert.ok(specs.gemini.pick.test('models/gemini-3.1-flash-preview')); assert.ok(specs.gemini.pick.test('gemini-2.5-flash-lite'));
+  assert.ok(!specs.gemini.pick.test('gemini-3-pro-image')); assert.ok(!specs.gemini.pick.test('gemini-2.5-flash-image')); assert.ok(!specs.gemini.pick.test('gemini-embedding-001'));
+  assert.ok(specs.openrouter.pick.test('meta-llama/llama-4-scout:free')); assert.ok(!specs.openrouter.pick.test('meta-llama/llama-4-scout'));
+  assert.ok(specs.groq.pick.test('meta-llama/llama-4-maverick-17b-128e-instruct')); assert.ok(specs.mistral.pick.test('mistral-small-2506'));
 });
 
 test('no provider name reaches the user in free-tier texts', () => {
@@ -118,11 +127,48 @@ test('streamFreeChain: 429 on the first provider falls through, deltas are forwa
   const sent = [];
   const r = await fc.streamFreeChain({ system: 'SYS', convo: [{ role: 'user', content: 'هلا' }], send: (e) => sent.push(e), env, fetchImpl, log: () => {} });
   assert.equal(r.ok, true); assert.equal(r.provider, 'groq'); assert.equal(r.text, 'مرحبًا بك'); assert.equal(r.attempts, 2);
+  assert.equal(r.model, 'openai/gpt-oss-120b');
   assert.deepEqual(sent, [{ delta: 'مرحبًا ' }, { delta: 'بك' }]);
-  assert.equal(calls[1].body.model, 'llama-3.3-70b-versatile');
+  assert.equal(calls.length, 2, '429 عند Gemini ليس خطأ نموذج → لا تجربة مرشّحين آخرين عنده');
+  assert.equal(calls[1].body.model, 'openai/gpt-oss-120b');
   assert.equal(calls[1].body.stream, true);
   assert.match(calls[1].body.messages[0].content, /الوضع المجاني/, 'ملاحظة الوضع المجاني في النظام');
   assert.equal(calls[1].body.messages[0].content.indexOf('SYS'), 0);
+  fc.__workingModel.clear();
+});
+
+test('streamFreeChain: a retired model name (404) tries the next candidate, then /models discovery, and remembers the winner', async () => {
+  const env = { GEMINI_API_KEY: 'g' };
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    if (/\/openai\/models$/.test(url)) return new Response(JSON.stringify({ data: [{ id: 'models/gemini-3-pro-image' }, { id: 'models/gemini-3.1-flash-preview' }, { id: 'models/gemini-embedding-001' }] }), { status: 200 });
+    const body = JSON.parse(init.body);
+    calls.push(body.model);
+    if (body.model === 'gemini-3.1-flash-preview') return new Response(sse(['ok']), { status: 200 });
+    return new Response(JSON.stringify({ error: { code: 404, message: 'This model models/' + body.model + ' is no longer available to new users.' } }), { status: 404 });
+  };
+  const sent = [];
+  fc.__workingModel.clear();
+  const r = await fc.streamFreeChain({ system: 'SYS', convo: [{ role: 'user', content: 'هلا' }], send: (e) => sent.push(e), env, fetchImpl, log: () => {}, now: 1000 });
+  assert.equal(r.ok, true); assert.equal(r.provider, 'gemini'); assert.equal(r.model, 'gemini-3.1-flash-preview');
+  assert.deepEqual(sent, [{ delta: 'ok' }]);
+  assert.equal(calls.length, 7, 'ستة مرشّحين ثم المكتشَف');
+  assert.ok(r.errors.every((e) => /^gemini\/[\w.-]+: free-chain gemini http 404/.test(e)), r.errors.join(' | '));
+  /* الرسالة التالية تبدأ بالنموذج الذي نجح مباشرة */
+  calls.length = 0;
+  const r2 = await fc.streamFreeChain({ system: 'SYS', convo: [{ role: 'user', content: 'هلا' }], send: () => {}, env, fetchImpl, log: () => {}, now: 2000 });
+  assert.equal(r2.ok, true); assert.deepEqual(calls, ['gemini-3.1-flash-preview']);
+  fc.__workingModel.clear();
+});
+
+test('isModelError: 404 and tier/model 400/403 only', () => {
+  const mk = (status, body) => Object.assign(new Error('x'), { status, body });
+  assert.equal(fc.isModelError(mk(404, '')), true);
+  assert.equal(fc.isModelError(mk(403, '{"type":"tier_not_allowed"}')), true);
+  assert.equal(fc.isModelError(mk(400, 'The model `x` does not exist')), true);
+  assert.equal(fc.isModelError(mk(429, 'rate')), false);
+  assert.equal(fc.isModelError(mk(401, 'bad key')), false);
+  assert.equal(fc.isModelError(mk(503, 'down')), false);
 });
 
 test('streamFreeChain: all providers down → ok:false and nothing sent', async () => {
@@ -131,6 +177,9 @@ test('streamFreeChain: all providers down → ok:false and nothing sent', async 
   const sent = [];
   const r = await fc.streamFreeChain({ system: 'SYS', convo: [{ role: 'user', content: 'هلا' }], send: (e) => sent.push(e), env, fetchImpl, log: () => {} });
   assert.equal(r.ok, false); assert.equal(r.attempts, 3); assert.deepEqual(sent, []);
+  assert.deepEqual(r.errors, ['gemini: free-chain gemini http 503 down', 'groq: free-chain groq http 503 down', 'mistral: free-chain mistral http 503 down']);
+  const none = await fc.streamFreeChain({ system: 'SYS', convo: [{ role: 'user', content: 'هلا' }], send: () => {}, env: {}, fetchImpl, log: () => {} });
+  assert.deepEqual(none, { ok: false, provider: null, model: null, text: '', attempts: 0, errors: ['no-provider-keys'] });
 });
 
 test('chat.js wiring: tier first, free lane before the tool loop, limit as a reply with a tier event', () => {
@@ -139,7 +188,7 @@ test('chat.js wiring: tier first, free lane before the tool loop, limit as a rep
   assert.match(chat, /checkAndConsume\(token, guestId, \(__tier && !__tier\.subscriber\) \? 'chat' : prov, clientIp\(req\), \{ tier: __tier \|\| undefined \}\)/);
   assert.match(chat, /send\(\{ tier: usage\.tier === 'guest' \? 'guest-limit' : 'free-limit' \}\);\n\s+send\(\{ delta: usage\.message \|\| tierLib\.FREE_TEXT\.freeLimit \}\);\n\s+send\(\{ done: true \}\);/);
   assert.match(chat, /const __freeLane = !!\(usage\.tier && !usage\.subscriber\);/);
-  assert.match(chat, /if \(__freeLane\) \{\n\s+send\(\{ tier: usage\.tier \}\);\n\s+const __fr = await streamFreeChain\(\{ system: PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), convo, send \}\);\n\s+if \(!__fr\.ok\) send\(\{ delta: tierLib\.FREE_TEXT\.busy \}\);\n\s+send\(\{ done: true \}\);\n\s+res\.end\(\);\n\s+return;\n\s+\}\n\s+while \(steps < MAX_STEPS\) \{/);
+  assert.match(chat, /if \(__freeLane\) \{\n\s+send\(\{ tier: usage\.tier \}\);\n\s+const __fr = await streamFreeChain\(\{ system: PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), convo, send \}\);\n\s+if \(!__fr\.ok\) \{[\s\S]*?send\(\{ tierDiag: \(__fr\.errors \|\| \[\]\)\.slice\(0, 6\) \}\);\n\s+send\(\{ delta: tierLib\.FREE_TEXT\.busy \}\);\n\s+\}\n\s+send\(\{ done: true \}\);\n\s+res\.end\(\);\n\s+return;\n\s+\}\n\s+while \(steps < MAX_STEPS\) \{/);
 });
 
 test('_usage.js wiring: tier caps, paid providers closed to non-subscribers, guest cap from env', () => {
