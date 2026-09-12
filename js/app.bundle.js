@@ -32991,6 +32991,7 @@ if(document.readyState === 'loading'){
       again: 'تحليل جديد', enginePro: 'المحرّك الاحترافيّ', engineFree: 'ردّ مجاني', fail: 'تعذّر التحليل: ',
       unparsed: 'لم يصل تقرير مُهيكل — هذا نصّ النموذج كما هو:', skipped: 'تُخطّيت', rank: '#',
       upgrade: 'اشترك للنسخة الاحترافية', signup: 'سجّل مجانًا', commentRatio: 'نسبة التعليقات', truncated: 'مقتطع',
+      deep: 'التحليل التفصيليّ — ملفًّا ملفًّا ودالّةً دالّة', freeNote: 'هذا تقرير الوضع المجانيّ. النسخة الاحترافيّة تحلّل بعمق أكبر وبملفّات أكبر.',
       sev: { critical: 'حرِج', high: 'عالٍ', medium: 'متوسّط', low: 'منخفض', info: 'ملاحظة' },
       cat: { correctness: 'الصحّة', security: 'الأمان', performance: 'الأداء', readability: 'الوضوح', maintainability: 'الصيانة', best_practices: 'أفضل الممارسات' },
     },
@@ -33008,6 +33009,7 @@ if(document.readyState === 'loading'){
       again: 'New analysis', enginePro: 'Pro engine', engineFree: 'Free reply', fail: 'Analysis failed: ',
       unparsed: 'No structured report arrived — raw model text:', skipped: 'skipped', rank: '#',
       upgrade: 'Upgrade to Pro', signup: 'Sign up free', commentRatio: 'comment ratio', truncated: 'truncated',
+      deep: 'Detailed analysis — file by file, function by function', freeNote: 'This is the free-tier report. The Pro engine analyzes deeper and accepts larger files.',
       sev: { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', info: 'Info' },
       cat: { correctness: 'Correctness', security: 'Security', performance: 'Performance', readability: 'Readability', maintainability: 'Maintainability', best_practices: 'Best practices' },
     },
@@ -33249,6 +33251,26 @@ if(document.readyState === 'loading'){
   function pre(s) {
     return '<pre style="margin:6px 0 0;white-space:pre-wrap;word-break:break-word;background:var(--panel2,#0d0f14);border-radius:8px;padding:8px;font:11.5px/1.6 ui-monospace,Menlo,Consolas,monospace;direction:ltr;text-align:left;max-height:220px;overflow:auto;">' + esc(s) + '</pre>';
   }
+  /* Markdown مصغّر للتحليل الحرّ: أسوار كود، عناوين، نقاط، غامق، كود سطريّ. كلّ شيء يُهرَّب أوّلًا. */
+  function mdLite(md) {
+    var parts = String(md || '').split(/```[a-zA-Z0-9_-]*\n?/);
+    var out = '';
+    for (var i = 0; i < parts.length; i++) {
+      if (i % 2 === 1) { out += pre(parts[i].replace(/\n$/, '')); continue; }
+      var lines = parts[i].split('\n'), inList = false;
+      for (var k = 0; k < lines.length; k++) {
+        var ln = lines[k], m;
+        var inl = esc(ln).replace(/`([^`]+)`/g, '<code style="direction:ltr;unicode-bidi:embed;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;">$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+        if ((m = /^\s*([-*•]|\d+[.)])\s+(.*)$/.exec(inl))) { if (!inList) { out += '<ul style="margin:4px 0;padding-inline-start:20px;">'; inList = true; } out += '<li>' + m[2] + '</li>'; continue; }
+        if (inList) { out += '</ul>'; inList = false; }
+        if ((m = /^\s*(#{1,4})\s+(.*)$/.exec(inl))) { out += '<div style="font-weight:700;margin:10px 0 2px;font-size:' + (m[1].length <= 2 ? '13.5' : '12.5') + 'px;">' + m[2] + '</div>'; continue; }
+        if (!ln.trim()) continue;
+        out += '<div>' + inl + '</div>';
+      }
+      if (inList) out += '</ul>';
+    }
+    return out;
+  }
 
   function viewReport(r) {
     var h = '';
@@ -33265,6 +33287,17 @@ if(document.readyState === 'loading'){
       + (r.summary ? '<div>' + (r.parsed ? esc(r.summary) : '<span style="color:#e8b45a;">' + esc(t('unparsed')) + '</span>' + pre(r.summary)) + '</div>' : '')
       + (r.verdict ? '<div style="margin-top:6px;"><b>' + esc(t('verdict')) + ':</b> ' + esc(r.verdict) + '</div>' : '')
       + '</div></div>';
+
+    if (r.engine === 'free') {
+      h += '<div style="' + CARD + 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;"><span style="' + MUTED + 'flex:1;">' + esc(t('freeNote')) + '</span>'
+        + '<button type="button" id="csUp" class="btn" style="padding:6px 12px;">' + esc(t('upgrade')) + '</button></div>';
+    }
+
+    /* v-code-depth: التحليل التفصيليّ الحرّ — النموذج يمرّ على كلّ ملفّ ودالّة قبل الحكم */
+    if (r.deep) {
+      h += '<details style="' + CARD + '"><summary style="cursor:pointer;font-weight:700;">' + esc(t('deep')) + '</summary>'
+        + '<div style="margin-top:8px;line-height:1.85;font-size:12.5px;">' + mdLite(r.deep) + '</div></details>';
+    }
 
     if (r.parsed) {
       h += '<div style="' + CARD + '">';
@@ -33350,6 +33383,8 @@ if(document.readyState === 'loading'){
     var b = $id('csBody'); if (b) b.scrollTop = 0;
 
     $id('csAgain').onclick = viewPick;
+    var up = $id('csUp');
+    if (up) up.onclick = function () { close(); try { if (typeof openCheckout === 'function') openCheckout('pro'); } catch (e) { if (window.__swallow) window.__swallow(e, 'codescore:upgrade'); } };
     $id('csDl').onclick = function () {
       var blob = new Blob([toMarkdown(r)], { type: 'text/markdown;charset=utf-8' });
       var nm = 'code-report-' + (S.files[0] ? S.files[0].name.replace(/[^\w.-]+/g, '_') : (S.zip ? S.zip.name.replace(/\.zip$/i, '') : 'project')) + '.md';
@@ -33380,6 +33415,7 @@ if(document.readyState === 'loading'){
     if (r.language) o.push(r.language);
     if (r.summary) o.push('', r.summary);
     if (r.verdict) o.push('', '## ' + t('verdict'), r.verdict);
+    if (r.deep) o.push('', '## ' + t('deep'), '', r.deep);
     if (r.parsed && r.categories) {
       o.push('', '## ' + t('score'));
       for (var k in r.categories) if (Object.prototype.hasOwnProperty.call(r.categories, k)) o.push('- ' + catName(k) + ': ' + (r.categories[k] == null ? '—' : r.categories[k]));
