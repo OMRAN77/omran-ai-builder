@@ -18368,6 +18368,7 @@ async function __sendPromptCore(){
       imageAttachments.push({ isImage: true, name: 'screen.png', mime: cur.guideShot.mime || 'image/png', dataUrl: 'data:' + (cur.guideShot.mime || 'image/png') + ';base64,' + cur.guideShot.b64, _fromMemory: true, _screenshot: true, _guide: true });
       }
   }catch(e){ __swallow(e, "upload:app-09-attach#12"); }
+  const __textAtPush = String(text || ''); // v-img-wire: مرجع لحساب ما يُضاف إلى النصّ لاحقًا في هذا الدور
   const __nextUserMessage = {role: 'user', content: (__gateApprovedText || text) || (t('imagesAttachedNote')), attachments: attachmentsForMsg.length ? attachmentsForMsg : undefined};
   if(__editIndex >= 0){
     // ChatGPT-like branch semantics في مخزن خطّي: التعديل يلغي الردود اللاحقة
@@ -18929,27 +18930,27 @@ function __friendlyErr(e){
       // 🎨 v328: صورة/شعار مرفق + طلب تصميم → صورة المستخدم تُضمَّن كما هي — ممنوع إعادة رسمها
       text += '\n(ملاحظة للنظام: المستخدم أرفق صورة/شعارًا — إذا كان ردك تصميمًا أو كودًا يجب استخدام صورته نفسها كما هي عبر src="__USER_IMAGE__" أو background-image:url(\'__USER_IMAGE__\') بالضبط، والتطبيق يستبدلها بالصورة الحقيقية تلقائيًا. ممنوع منعًا باتًا استبدال صورة المستخدم بلوجو أو صورة من تصميمك أو من الإنترنت — صورة المستخدم هي الأصل الرسمي وتظهر بدون أي تشويه أو قلب أو قص)';
     }
-    // 🖼️ صورة مرفقة بدون أي نص → v716: إذا للمحادثة سياق واضح نحلّلها مباشرة، وإلا نسأل محليًا
+    // 🖼️ صورة مرفقة بدون أي نص → v-img-wire: تُحلَّل بالنموذج دائمًا، لا ردّ جاهز محلّيّ
     if(__srcImg && !(text || '').trim()){
       cur.lastEditedImage = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' };
       cur.lastMsgWasImageEdit = true;
-      // v716: «وصلتني الصورة 👍 شو تبي أسوي فيها؟» كانت تُقال حتى لو المستخدم أرسل الصورة
-      // استجابةً لطلب صريح في المحادثة (مثال: «أرسل لقطة شاشة لأحدد السبب»). الآن:
-      // إذا في المحادثة رسائل نصية حديثة ذات معنى → نمرّر الصورة للنموذج مع تعليمة
-      // أن يحلّلها في ضوء السياق مباشرة. السؤال المحلي يبقى فقط للمحادثة بلا سياق.
+      /* v-img-wire (لقطة المالك ١٢ سبتمبر: أرسل اللقطة بلا نصّ فجاءه «وصلتني الصورة 👍
+         شو تبي أسوي فيها؟» ثلاث مرّات بلا أيّ تحليل): الردّ الجاهز كان يُقال محلّيًّا
+         لكلّ محادثة بلا سياق نصّيّ حديث — وهي الحالة الغالبة عند إرسال لقطة شاشة —
+         فلا يرى النموذج الصورة أصلًا. الآن الصورة بلا نصّ = طلب تحليل كامل يُرسل
+         للنموذج دائمًا؛ ومع سياق نصّيّ حديث تُقرأ في ضوئه (v716). النصّ بصوت
+         المستخدم لا «ملاحظة للنظام» حتّى يبقى السجلّ طبيعيًّا عند أيّ مزوّد. */
       var __imgCtx = (cur.messages || []).slice(-6).filter(function(m){
-        return m && typeof m.content === 'string' && m.content.trim().length >= 12
+        return m && m !== __nextUserMessage && typeof m.content === 'string' && m.content.trim().length >= 12
           && m.content.indexOf('وصلتني الصورة') === -1 && m.content.indexOf('Got the image') === -1;
       });
-      if(__imgCtx.length){
-        text = (lang === 'ar')
-          ? '(ملاحظة للنظام: المستخدم أرفق صورة استكمالًا لسياق المحادثة أعلاه — حلّل الصورة مباشرة واربطها بآخر موضوع في المحادثة ورُدّ بجواب عملي، ولا تسأل المستخدم ماذا يريد أن يفعل بها)'
-          : '(System note: the user attached an image continuing the conversation above — analyze it directly in that context and give a practical answer; do not ask what they want to do with it)';
-      } else {
-        cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'وصلتني الصورة 👍 شو تبي أسوي فيها؟' : 'Got the image 👍 What would you like to do with it?') });
-        renderAll(); saveState();
-        return;
-      }
+      text = __imgCtx.length
+        ? ((lang === 'ar')
+          ? 'أرفقت هذه الصورة استكمالًا لكلامنا أعلاه: اقرأها كاملة أوّلًا (كلّ نصّ فيها حرفيًّا، وأيّ تنبيه أو رسالة خطأ قبل غيره)، ثمّ حلّلها في ضوء آخر موضوع بيننا وأعطني الجواب العمليّ مباشرة — لا تسألني ماذا أريد أن أفعل بها.'
+          : 'I attached this image as a follow-up to our conversation above: read it fully first (every text verbatim, any alert or error message before anything else), then analyze it in the context of our last topic and give me the practical answer directly. Do not ask what I want to do with it.')
+        : ((lang === 'ar')
+          ? 'حلّل هذه الصورة بالتفصيل: اقرأ كلّ نصّ فيها حرفيًّا، وإن كان فيها تنبيه أو رسالة خطأ فابدأ به واشرح سببه وحلّه، ثمّ اشرح ما يظهر فيها وما الخطوة العمليّة التالية — لا تسألني ماذا أريد أن أفعل بها.'
+          : 'Analyze this image in detail: read every text in it verbatim; if it shows an alert or error message, start with it and explain its cause and solution; then explain what is shown and the practical next step. Do not ask what I want to do with it.');
     }
     // 🎬 v363: شخصية كرتونية تتكلم من الدردشة مباشرة — صورة → كرتون (Gemini) → فيديو ناطق (Runway)
     let __charImg = __srcImg
@@ -19912,7 +19913,7 @@ function __showImgLoading(el, ar, en){
        والعميل يوجّه الكود للمعاينة لا لفقاعة المحادثة، فيبدو «ما فيه ردّ».
        النصّ الملصوق الطويل تحليلٌ لا طلب تصميم: نُعرّف __pastedDoc هنا (نُقل من
        الأسفل) ونستثنيه من البناء والتصميم كي يمرّ للبروم الخفيف ويردّ نصًّا. */
-    const __pastedDoc = !!(text && !__strongBuildRe.test(text) && (text.length > 400 || text.split('\n').length >= 6 || /\b(issue|suggestion|rejected|review|error|exception|traceback|report|dear|regards)\b/i.test(text)));
+    const __pastedDoc = !!(text && !(imageAttachments.length && !__textAtPush) /* v-img-wire: طلب تحليل الصورة المولَّد ليس نصًّا ملصوقًا */ && !__strongBuildRe.test(text) && (text.length > 400 || text.split('\n').length >= 6 || /\b(issue|suggestion|rejected|review|error|exception|traceback|report|dear|regards)\b/i.test(text)));
     const __designAskRe = /(صمم|صمّم|صممي|اصنع|ابغى|ابي|أبي|أبغى|سو|سوّ?ي|اعمل|أعمل|عطني|أعطني|هات|ارسم|صم?ّ?ملي|بوستر|تصميم|design|make|create)\s*(?:لي\s*)?(?:[^\n]{0,20})?(إعلان|بوستر|شهادة|بطاقة|دعوة|لوجو|شعار|بنر|غلاف|منشور|poster|flyer|certificate|card|invitation|logo|banner|cover)/i;
     // النصّ الملصوق لا يُفعّل البناء إطلاقًا؛ وكلمات التصميم لا تُفعّله إلا بطلبٍ
     // صريح («صمّم بطاقة»)، لا مجرّد ورود «دعوة/بطاقة» داخل جملة سرديّة.
@@ -20113,8 +20114,22 @@ DESIGN RULES (non-negotiable):
 
       // ③ الرسالة الحالية دائمًا آخر دور
       const __lastM = __historyMsgs[__historyMsgs.length - 1];
+      /* v-img-wire: apiText (نصّ الملفّات المرفقة + بادئة الوضع + ملاحظات الدور + طلب
+         تحليل الصورة) كان يُحسب ولا يُرسل — كان يُرسل content الفقاعة («مرفقات») —
+         فلا يصل للنموذج لا الملفّ ولا التعليمة. الآن يُرسل مع الدور الحاليّ، وما
+         أُضيف إلى text بعد الدفع يُلحق به. */
+      const __curApiText = (function(){
+        try{
+          var base = String(apiText || ''), now = String(text || ''), delta = '';
+          if(now !== __textAtPush) delta = (now.indexOf(__textAtPush) === 0) ? now.slice(__textAtPush.length) : now;
+          delta = delta.trim();
+          var out = !delta ? base : (!base ? delta : (__textAtPush ? (base + '\n\n' + delta) : (delta + '\n\n' + base)));
+          if(out.length > 200000) out = out.slice(0, 200000) + '\n… (قُصّ النصّ لطوله)';
+          return out;
+        }catch(e){ return String(apiText || ''); }
+      })();
       if(__lastM){
-        const __curText = String((__lastM.apiText !== undefined ? __lastM.apiText : __lastM.content) || '');
+        const __curText = (__lastM === __nextUserMessage && __curApiText) ? __curApiText : String((__lastM.apiText !== undefined ? __lastM.apiText : __lastM.content) || '');
         if(__turns.length && __turns[__turns.length - 1].role === __lastM.role) __turns.pop();
         __turns.push({role: __lastM.role, content: __curText});
       }
@@ -20127,7 +20142,13 @@ DESIGN RULES (non-negotiable):
 
       // ⑤ الصور على الرسالة الأخيرة فقط (v687: في وضع الإعلان لا ترسل الصورة)
       const __lastTurn = __turns[__turns.length - 1];
-      if(__lastTurn && __lastTurn.role === 'user' && !cur.adMode && __lastM && __lastM.apiImages) __lastTurn.images = __lastM.apiImages;
+      /* v-img-wire: apiImages لم يكن يُكتب في أيّ مكان، فكانت الصور المرفقة لا تصل
+         للنموذج إطلاقًا (المسار المباشر ومسار الاحتياط كلاهما يقرأ images من هنا)
+         وتعليمة «الصورة مرفقة» تُرسل بلا صورة فيؤلّف النموذج وصفًا. صور هذا الدور
+         (المرفقة أو المستدعاة من الذاكرة) تُلحق بالدور الأخير. */
+      const __turnImgs = (__lastM && __lastM.apiImages && __lastM.apiImages.length) ? __lastM.apiImages
+        : ((__lastM === __nextUserMessage) ? imageAttachments.filter(function(a){ return a && a.isImage && a.dataUrl; }).slice(0, 6).map(function(a){ return { dataUrl: a.dataUrl, mime: a.mime || 'image/png', name: a.name || '' }; }) : []);
+      if(__lastTurn && __lastTurn.role === 'user' && !cur.adMode && __turnImgs.length) __lastTurn.images = __turnImgs;
 
       __turns.forEach(m => apiMessages.push(m));
     }
