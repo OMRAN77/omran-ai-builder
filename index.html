@@ -109,34 +109,6 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <link rel="stylesheet" href="css/tokens.css?v=682">
 <link rel="stylesheet" href="css/redesign.css?v=657">
 <link rel="stylesheet" href="css/modules.css?v=652">
-<style>
-/* v-onecol — لوح الكود لا يوجد قبل أن يوجد كود.
-   المشكلة الأصليّة: renderCodeAndPreview لم يكن يُخفي اللوحة حين لا كود، بل
-   يعرض فيها «حالة فارغة» عناوينها مخفيّة أصلًا (display:none في #emptyTitleEl
-   و#emptyDescEl) — فيبقى ثلث الشاشة مستطيلًا أسود بلا أي محتوى. وفوقه
-   setupResizer يثبّت عرضًا بالبكسل على #chatcol من panelWidthChat، فيظلّ عمود
-   المحادثة ضيّقًا ولو اختفت اللوحة.
-   العلاج: حالة واحدة على <body> يقودها ظهور #emptyState (المراقب في نهاية
-   الصفحة)، تُخرج اللوحة وفاصلها من التخطيط وتحرّر عمود المحادثة. */
-body[data-omran-code="none"] #workarea,
-body[data-omran-code="none"] #resizer2{ display:none !important; }
-
-@media (min-width:861px){
-  /* العرض المثبّت بالبكسل يُلغى فيأخذ العمود الشاشة كلّها */
-  body[data-omran-code="none"] #chatcol{
-    width:auto !important;
-    max-width:none !important;
-    flex:1 1 auto !important;
-  }
-  /* عمود قراءة في المنتصف بدل سطر يمتدّ عرض الشاشة */
-  body[data-omran-code="none"] #messages,
-  body[data-omran-code="none"] #composerRow,
-  body[data-omran-code="none"] #omranBelowComposer{
-    max-width:760px;
-    margin-inline:auto;
-  }
-}
-</style>
 <script>
 /* v434 — الوضع الفاتح/الداكن. الذهبي ثابت في الاثنين. */
 (function(){var K='aiapp_mode';
@@ -179,7 +151,7 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 html.oiOn body{overflow:hidden}
 </style>
 </head>
-<body data-omran-code="none">
+<body>
 
 <div id="omranIntro" role="button" tabindex="0" aria-label="اضغط للمتابعة">
   <div class="oiBg"></div>
@@ -285,7 +257,7 @@ html.oiOn body{overflow:hidden}
 </header>
 
 
-<div id="stockTicker" dir="ltr" style="display:none; overflow:hidden; white-space:nowrap; background:rgba(0,0,0,0.45); padding:6px 0; position:relative; border-bottom:1px solid rgba(255,255,255,0.08);">
+<div id="stockTicker" dir="ltr" style="display:none; overflow:hidden; white-space:nowrap; background:rgba(0,0,0,0.45); padding:6px 0; position:relative; border-bottom:none;">
   <div id="stockTickerTrack" style="display:inline-block; white-space:nowrap; will-change:transform;"></div>
   <button id="stockTickerToggle" type="button" title="طي/فتح الشريط" data-i18n-title="tickerToggleLabel" aria-label="طي شريط الأسهم" data-i18n="[aria-label]tickerToggleLabel" style="position:absolute; top:50%; transform:translateY(-50%); inset-inline-end:6px; z-index:3; background:none; border:none; box-shadow:none; padding:2px; margin:0; color:rgba(255,255,255,.45); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; line-height:1;" onmouseover="this.style.color='rgba(255,255,255,.85)'" onmouseout="this.style.color='rgba(255,255,255,.45)'"><svg id="stockTickerToggleIcon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transition:transform .18s;"><polyline points="18 15 12 9 6 15"></polyline></svg></button>
 </div>
@@ -493,7 +465,7 @@ html.oiOn body{overflow:hidden}
 <script src="/js/selfdiag.js?v=1ba33c1b"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=87bb1b88"></script>
+    <script defer src="/js/app.bundle.js?v=20f4213c"></script>
     <script defer src="/js/modes.js?v=b23329c6"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
@@ -758,23 +730,121 @@ html.oiOn body{overflow:hidden}
 })();
 </script>
 
+<!-- ===== v-chat-center (سطح المكتب فقط): عمود محادثة مركزي بعرض محدود — شكل Claude.
+     كل ما تحت معلّق على html:not(.mobile-ui) + شاشة أعرض من 860px، فالجوال لا يتأثر إطلاقًا. ===== -->
+<style>
+/* v-no-ticker-line: إخفاء الخط الفاصل تحت شريط الأسهم (طلب المالك) */
+#stockTicker{ border-bottom:none !important; box-shadow:none !important; }
+</style>
+<style>
+@media (min-width: 861px){
+  html:not(.mobile-ui){
+    /* أقصى عرض للمحادثة — غيّر هذا الرقم وحده للتحكم بعرض العمود */
+    --om-chat-max: 760px;
+    --om-chat-pad: 16px;
+  }
+
+  /* 1) لا شيء يتجاوز عرض الشاشة */
+  html:not(.mobile-ui), html:not(.mobile-ui) body{ max-width:100%; overflow-x:hidden; }
+  html:not(.mobile-ui) main{ max-width:100%; overflow-x:hidden; }
+  html:not(.mobile-ui) #chatcol,
+  html:not(.mobile-ui) #workarea{ min-width:0; }
+  html:not(.mobile-ui) #chatcol{ max-width:100%; }
+
+  /* 2) توسيط المحادثة داخل عمودها — فراغ متساوٍ يمينًا ويسارًا */
+  html:not(.mobile-ui) #messages{
+    overflow-x:hidden;
+    padding-inline: max(var(--om-chat-pad), calc((100% - var(--om-chat-max)) / 2)) !important;
+  }
+  html:not(.mobile-ui) #inputbar,
+  html:not(.mobile-ui) #omranHero{
+    padding-inline: max(var(--om-chat-pad), calc((100% - var(--om-chat-max)) / 2)) !important;
+  }
+
+  /* 3) الرسائل لا تتمدد ولا تكسر التخطيط */
+  html:not(.mobile-ui) #messages .msg{ max-width:100%; }
+  html:not(.mobile-ui) #messages .msg,
+  html:not(.mobile-ui) #messages .msg *{ overflow-wrap:anywhere; }
+  html:not(.mobile-ui) #messages pre,
+  html:not(.mobile-ui) #messages table{ max-width:100%; overflow-x:auto; }
+  html:not(.mobile-ui) #messages img,
+  html:not(.mobile-ui) #messages iframe,
+  html:not(.mobile-ui) #messages video{ max-width:100%; }
+
+  /* 4) صندوق الكتابة يتبع نفس العرض */
+  html:not(.mobile-ui) #composerRow,
+  html:not(.mobile-ui) #composerBox{ max-width:100%; min-width:0; }
+  html:not(.mobile-ui) #composerBox textarea{ max-width:100%; }
+}
+</style>
 <script>
-/* v-onecol: مراقب الحالة — لا يلمس أي دالّة في الحزمة.
-   renderCodeAndPreview يكتب emptyState.style.display = 'flex' حين لا كود،
-   و'none' حين يوجد كود أو صورة معاينة. هذه الخاصّيّة السطريّة هي إشارتنا:
-   نقرؤها بمراقب سمات فلا حاجة لقراءة نصّ الكود (١٨١ ك.ب كلّ مرّة) ولا لمؤقّت. */
+/* v-chat-center (سطح المكتب فقط): لو سُحبت الفواصل وصار مجموع الأعمدة أكبر من عرض
+   الشاشة، يُقصّ عمود المحادثة بدل أن يخرج خارج الإطار. لا يعمل على الجوال ولا يعطّل السحب. */
 (function(){
+  var MIN_CHAT = 280;
+
+  function isDesktop(){
+    return window.innerWidth > 860 &&
+           !document.documentElement.classList.contains('mobile-ui');
+  }
+
+  function w(el){ return el ? el.getBoundingClientRect().width : 0; }
+
+  function laidOut(el){
+    if(!el) return false;
+    var cs = getComputedStyle(el);
+    if(cs.display === 'none' || cs.visibility === 'hidden') return false;
+    if(cs.position === 'fixed' || cs.position === 'absolute') return false;
+    return w(el) > 0;
+  }
+
+  function fit(){
+    try{
+      if(!isDesktop()) return;
+
+      var m    = document.querySelector('main');
+      var chat = document.getElementById('chatcol');
+      if(!m || !chat) return;
+
+      var avail = m.clientWidth;
+      if(!avail) return;
+
+      var others = 0, kids = m.children;
+      for(var i = 0; i < kids.length; i++){
+        if(kids[i] === chat) continue;
+        if(laidOut(kids[i])) others += w(kids[i]);
+      }
+
+      var room = avail - others;
+      if(room < MIN_CHAT) room = MIN_CHAT;
+
+      if(w(chat) > room + 1) chat.style.width = room + 'px';
+    }catch(e){ if(window.__swallow) window.__swallow(e, 'chat-center-fit'); }
+  }
+
+  var raf = null;
+  function schedule(){
+    if(raf) return;
+    raf = requestAnimationFrame(function(){ raf = null; fit(); });
+  }
+
   function start(){
-    var es = document.getElementById('emptyState');
-    if(!es) return false;
-    function sync(){
-      var noCode = (es.style.display === 'flex');
-      document.body.setAttribute('data-omran-code', noCode ? 'none' : 'has');
-    }
-    new MutationObserver(sync).observe(es, { attributes:true, attributeFilter:['style'] });
-    sync();
+    var m = document.querySelector('main');
+    if(!m) return false;
+    fit();
+    if(window.ResizeObserver) new ResizeObserver(schedule).observe(m);
+    new MutationObserver(schedule).observe(m, {
+      attributes:true, subtree:true, attributeFilter:['class','style']
+    });
+    ['resize','orientationchange'].forEach(function(ev){
+      window.addEventListener(ev, schedule, {passive:true});
+    });
+    document.addEventListener('click', function(){
+      schedule(); setTimeout(fit, 250); setTimeout(fit, 600);
+    }, {passive:true, capture:true});
     return true;
   }
+
   if(!start()){
     var n = 0, id = setInterval(function(){
       if(start() || ++n > 40) clearInterval(id);
