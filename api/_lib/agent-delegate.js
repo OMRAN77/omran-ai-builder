@@ -140,7 +140,11 @@ function formatCheck(res) {
   const head = 'المهمّة #' + res.issue + ' (' + res.issueUrl + ')';
   if (res.phase === 'queued') return head + '\n⏳ لم يبدأ التشغيل بعد (في الطابور أو الورك فلو غير مثبّت). أعد التحقّق بعد دقيقة، أو افتح صفحة التشغيلات.';
   if (res.phase === 'running') return head + '\n🏃 قيد التنفيذ: ' + (res.status && res.status.run_url ? res.status.run_url : '') + '\nالقراءة والتعديل وnpm run ci قد تأخذ دقائق. لا طلب سحب بعد — لا تدّعِ وجوده.';
-  if (res.phase === 'nochange') return head + '\n⚠️ انتهى التشغيل بلا تغيير في الكود' + (res.status && res.status.claude && res.status.claude !== 'success' ? ' (خطوة Claude: ' + res.status.claude + ' — تحقّق من ANTHROPIC_API_KEY وتطبيق Claude على المستودع)' : '') + '. التفاصيل في تعليقات المسألة' + (res.status && res.status.run_url ? ': ' + res.status.run_url : '.');
+  if (res.phase === 'nochange') {
+    const st = res.status || {};
+    const err = String(st.error || '').trim(); // v-agent-report: سبب الفشل من الورك فلو (فحص المفتاح أو ملفّ تنفيذ Claude)
+    return head + '\n⚠️ انتهى التشغيل بلا تغيير في الكود' + (st.claude && st.claude !== 'success' ? ' (خطوة Claude: ' + st.claude + (err ? '' : ' — تحقّق من ANTHROPIC_API_KEY وتطبيق Claude على المستودع') + ')' : '') + '.' + (err ? '\nالسبب: ' + err.slice(0, 300) : '') + '\nالتفاصيل في تعليقات المسألة' + (st.run_url ? ': ' + st.run_url : '.');
+  }
   const lines = [head, '✅ الفرع مدفوع: ' + res.branch + (res.status && res.status.sha ? ' (' + short(res.status.sha) + ')' : ''), 'npm run ci داخل التشغيل: ' + (res.status && res.status.ci === 'pass' ? '✅ نجح' : '❌ فشل — راجع تعليقات المسألة')];
   if (res.prUrl) lines.push('طلب السحب #' + res.prNumber + (res.prState === 'merged' ? ' (مدموج)' : res.prState === 'closed' ? ' (مغلق)' : '') + ': ' + res.prUrl);
   else if (res.prError) lines.push('لم يُفتح طلب سحب: ' + res.prError + ' — الفرع مرفوع ويمكن فتحه يدويًّا.');

@@ -2415,12 +2415,61 @@ function streamingMarkdownDisplayText(text){
     .replace(/\*{0,2}\[([^\]\n]+)\]$/g, '$1')
     .replace(/\*{0,2}\[([^\]\n]*)$/g, '$1');
 }
+/* v-stream-incremental (شكوى المالك ١٣ سبتمبر: «الشاشة ثقيلة كثير وتعلق»):
+   الرسم الحيّ كان يمسح الفقاعة ويعيد بناء الردّ كلّه كلمةً كلمةً في كلّ نبضة
+   (٣٠مل على الكمبيوتر) — ردّ من مئة سطر = آلاف العقد تُبنى ٣٣ مرّة في الثانية
+   فيختنق الخيط الرئيسي وتتجمّد الصفحة. الآن يُقسَم النصّ عند آخر فاصل أسطر:
+   الجزء المستقرّ يُرسم مرّة واحدة ويُلحَق به ما يستجدّ منه فقط، ولا يُعاد في
+   كلّ نبضة إلّا الذيل (السطر أو الفقرة الأخيرة). كتلة كود مفتوحة تبقى كاملةً
+   في الذيل كي لا تنقسم. الرسم النهائيّ (renderMessages) لا يتغيّر. */
+var OMRAN_STREAM_SPLIT_MIN = 600;
+function omranStreamSplitPoint(text){
+  if(!text || text.length <= OMRAN_STREAM_SPLIT_MIN) return -1;
+  var cut = text.lastIndexOf('\n\n', text.length - 2);
+  if(cut < 0) cut = text.lastIndexOf('\n', text.length - 2);
+  if(cut <= 0) return -1;
+  var fences = (text.slice(0, cut).match(/```/g) || []).length;
+  if(fences % 2 === 1) return -1;
+  return cut;
+}
 function renderStreamingAssistant(el, text){
   if(!el) return;
   el.classList.add('msg-streaming');
   let __st = streamingMarkdownDisplayText(text);
   if(__st && __st.indexOf('[[') >= 0) __st = __st.replace(/\[\[(?:OPT|MULTI)\]\][\s\S]*$/, '').trimEnd();
-  buildSpokenWordSpans(el, __st);
+  var cut = omranStreamSplitPoint(__st);
+  if(cut < 0){
+    el._omStreamHead = null; el._omStreamHeadEl = null; el._omStreamTailEl = null;
+    buildSpokenWordSpans(el, __st);
+    return;
+  }
+  var head = __st.slice(0, cut), tail = __st.slice(cut);
+  var hw = el._omStreamHeadEl, tw = el._omStreamTailEl;
+  var prev = el._omStreamHead;
+  var fresh = !hw || !tw || hw.parentNode !== el || tw.parentNode !== el || typeof prev !== 'string';
+  if(!fresh && head !== prev){
+    if(head.length > prev.length && head.indexOf(prev) === 0){
+      /* الرأس امتدّ فقط: نرسم الزيادة في مقطع جديد ونلحقه — لا إعادة لما رُسم. */
+      var seg = document.createElement('span');
+      seg.className = 'omStreamSeg';
+      buildSpokenWordSpans(seg, head.slice(prev.length));
+      hw.appendChild(seg);
+      el._omStreamHead = head;
+    } else {
+      fresh = true;
+    }
+  }
+  if(fresh){
+    el.innerHTML = '';
+    hw = document.createElement('span'); hw.className = 'omStreamHead';
+    tw = document.createElement('span'); tw.className = 'omStreamTail';
+    var seg0 = document.createElement('span'); seg0.className = 'omStreamSeg';
+    buildSpokenWordSpans(seg0, head);
+    hw.appendChild(seg0);
+    el.appendChild(hw); el.appendChild(tw);
+    el._omStreamHeadEl = hw; el._omStreamTailEl = tw; el._omStreamHead = head;
+  }
+  buildSpokenWordSpans(tw, tail);
 }
 
 const codeEl = $('#code');
@@ -3136,6 +3185,7 @@ const I18N = {
     codePlaceholder: 'سيظهر الكود المولّد هنا...',
     settingsTitle: 'إعدادات الاتصال بالذكاء الاصطناعي',
     provider: 'مزوّد الخدمة',
+    claudeModelPick: 'نموذج كلود', stModelFallback: '⚠️ نموذج {model} غير متاح على المفتاح الحاليّ — أكمل بالنموذج الافتراضيّ.',
     apiKeyLabel: 'مفتاح API الخاص بك',
     modelLabel: 'اسم النموذج',
     settingsHint: 'يُحفظ مفتاحك محليًا في متصفحك فقط (localStorage) ولا يُرسل إلى أي خادم تابع لنا. كل طلب توليد يُرسَل مباشرة من متصفحك إلى مزوّد الذكاء الاصطناعي الذي اخترته باستخدام مفتاحك الخاص.<br><br>OpenAI: احصل على مفتاح من platform.openai.com/api-keys<br>Gemini: احصل على مفتاح مجاني من aistudio.google.com/app/apikey<br>Groq: احصل على مفتاح مجاني من console.groq.com/keys<br>Claude: احصل على مفتاح من console.anthropic.com/settings/keys<br>OpenRouter: احصل على مفتاح من openrouter.ai/keys (يوفر نماذج مجانية أيضًا)<br>Perplexity: احصل على مفتاح من perplexity.ai/settings/api (مدفوع، ويوفر بحث حي)<br>Mistral AI: احصل على مفتاح مجاني من console.mistral.ai/api-keys<br>DeepSeek: احصل على مفتاح من platform.deepseek.com/api_keys (رخيص جدًا وحصة مجانية)<br>Cohere: احصل على مفتاح مجاني من dashboard.cohere.com/api-keys',
@@ -3775,6 +3825,7 @@ const I18N = {
     codePlaceholder: 'Generated code will appear here...',
     settingsTitle: 'AI Connection Settings',
     provider: 'Provider',
+    claudeModelPick: 'Claude model', stModelFallback: '⚠️ {model} is not available on the current key — continuing with the default model.',
     apiKeyLabel: 'Your API Key',
     modelLabel: 'Model Name',
     settingsHint: '🔒 Your key is stored locally in your browser only (localStorage) and never sent to any server of ours. Every generation request goes directly from your browser to the AI provider you chose, using your own key.<br><br><b>📝 How to get a key for each provider:</b><br><br>🔹 <b>OpenAI</b>: get a key from platform.openai.com/api-keys<br>🔹 <b>Gemini</b>: get a free key from aistudio.google.com/app/apikey<br>🔹 <b>Groq</b>: get a free key from console.groq.com/keys<br>🔹 <b>Claude</b>: get a key from console.anthropic.com/settings/keys<br>🔹 <b>OpenRouter</b>: get a key from openrouter.ai/keys (also offers free models)<br>🔹 <b>Perplexity</b>: get a key from perplexity.ai/settings/api (paid, offers live search)<br>🔹 <b>Mistral AI</b>: get a free key from console.mistral.ai/api-keys<br>🔹 <b>DeepSeek</b>: get a key from platform.deepseek.com/api_keys (very cheap, free trial credit)<br>🔹 <b>Cohere</b>: get a free key from dashboard.cohere.com/api-keys',
@@ -5768,17 +5819,38 @@ function omranLongClipCss(){
 }
 function omranOpenReplyInPanel(text){
   try{
-    var esc = String(text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    /* v-panel-md (لقطة المالك ١٣ سبتمبر: «**» و«>» خامًا في اللوحة): الردّ كان
+       يُهرَّب نصًّا صرفًا فتظهر علامات الماركداون. الآن يُنسَّق بالمُنسِّق نفسه
+       الذي ترسم به فقاعة المحادثة (عناوين، عريض، قوائم، روابط، كود)، وتُنزع أزرار
+       النسخ لأنّ الإطار بلا سكربت. اللون يتبع الوضع الفاتح/الداكن. */
+    var esc;
+    try{
+      var __host = document.createElement('div');
+      buildSpokenWordSpans(__host, String(text || ''));
+      __host.querySelectorAll('button').forEach(function(b){ b.remove(); });
+      esc = __host.innerHTML;
+    }catch(e){
+      __swallow(e, 'ui:long-reply-md');
+      esc = String(text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
     previewFrame.style.display = 'block';
     $('#pyConsole').style.display = 'none';
     emptyState.style.display = 'none';
     previewFrame._imageView = true;   /* يمنع renderCodeAndPreview من استبداله بالكود */
     previewFrame._lastSrc = null;
     var rtl = /[\u0600-\u06FF]/.test(String(text || ''));
-    previewFrame.srcdoc = '<html><body style="margin:0;background:#111;color:#eee;'
+    var __light = document.documentElement.getAttribute('data-mode') === 'light';
+    previewFrame.srcdoc = '<html><head><meta charset="utf-8"><style>'
+      + 'body{margin:0;background:' + (__light ? '#ffffff' : '#111') + ';color:' + (__light ? '#14161a' : '#eee') + ';'
       + 'font-family:Tajawal,Tahoma,Arial,sans-serif;white-space:pre-wrap;word-break:break-word;'
-      + 'line-height:1.9;font-size:15px;padding:20px;direction:' + (rtl ? 'rtl' : 'ltr') + ';">'
-      + esc + '</body></html>';
+      + 'line-height:1.9;font-size:15px;padding:20px;direction:' + (rtl ? 'rtl' : 'ltr') + ';}'
+      + '.md-bold{font-weight:700}.md-h1{font-size:1.45em;font-weight:700}.md-h2{font-size:1.28em;font-weight:700}'
+      + '.md-h3,.md-h4,.md-h5,.md-h6{font-size:1.12em;font-weight:700}'
+      + 'a{color:#d4af37}'
+      + '.chat-codeblock{direction:ltr;text-align:left;background:' + (__light ? '#f3f3f3' : '#1c1c1c') + ';border-radius:10px;padding:10px 12px;margin:8px 0;overflow:auto}'
+      + '.chat-codeblock-head{font-size:12px;opacity:.6;margin-bottom:6px}'
+      + '.chat-codeblock pre{margin:0;white-space:pre;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}'
+      + '</style></head><body>' + esc + '</body></html>';
     /* v-panel-head: عنوان اللوحة ونصّ النسخ يتبعان الردّ المعروض */
     if(typeof window.omranPanelTitle === 'function'){
       window.omranPanelTitle((typeof lang !== 'undefined' && (lang === 'ar' || lang === 'ur')) ? 'الرد الكامل' : 'Full reply', String(text || ''));
@@ -29793,6 +29865,8 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
       body: JSON.stringify({
         messages: messages,
         provider: provider || 'claude',
+        /* v-claude-models: النموذج المختار من الإعدادات — على مسار كلود فقط، والخادم يقبل قائمته حصرًا */
+        model: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeModelGet) ? window.claudeModelGet() : ''; } catch (e) { return ''; } })(),
         // v-no-region-assume: المنطقة الزمنية الحقيقية للجهاز — الوقت في الرد بها لا بتوقيت الإمارات.
         tz: (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } })(),
         token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
@@ -29811,6 +29885,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     var __srcAcc = []; /* v-one-brain: مصادر بحث النموذج نفسه — لبطاقات «المصادر» */
     var __toolBusy = false; /* أداة محلّيّة قيد التنفيذ → نطيل مهلة الخمول */
     var __tier = null; /* v-tiers: free / free-limit / guest / guest-limit — لشارة «ردّ مجاني» */
+    var __model = ''; /* v-claude-models: اسم النموذج الذي أجاب فعلًا (من الخادم) */
 
     while (true) {
       var chunk;
@@ -29851,6 +29926,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
         }
         if (ev.error) serverErr = ev.error;
         if (typeof ev.tier === 'string' && ev.tier) __tier = ev.tier;
+        if (typeof ev.modelLabel === 'string') __model = ev.modelLabel;
       }
     }
     noteEnd();
@@ -29858,7 +29934,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     // لا نصّ = لم يحدث شيء يُعرض؛ نرمي ليهبط المستدعي إلى مساره القديم.
     if (!full.trim()) throw new Error(serverErr || 'chat: empty reply');
     var __p = provider || 'claude';
-    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined };
+    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined };
   };
 })();
 
@@ -33728,4 +33804,60 @@ if(document.readyState === 'loading'){
       + ' · ' + (r.writable ? t('رفع ✅', 'push ✅') : t('رفع ❌ — الرفع يحتاج Contents: write + Pull requests: write', 'push ❌ — pushing needs Contents: write + Pull requests: write'))
       + (r.rateLimit ? '\n⏱️ ' + t('حدّ الطلبات: ', 'Rate limit: ') + r.rateLimit : '');
   };
+})();
+/* ===== app-29-claude-model — اختيار نموذج كلود (v-claude-models) =====
+   طلب المالك ١٣ سبتمبر (لقطة قائمة نماذج Claude Code): «ممكن تضيف هذيل كلهم».
+   قائمة في الإعدادات (تحت مزوّد الخدمة) بنماذج كلود التسعة؛ الاختيار يُحفظ محلّيًّا
+   ويُرسَل مع كلّ رسالة على مسار كلود فقط (app-18). الخادم يقبل القائمة نفسها حصرًا،
+   وإن رفض المفتاح النموذج (404/400 نموذج) رجع للافتراضيّ وأخبر المستخدم في سطر الحالة. */
+(function () {
+  'use strict';
+
+  var KEY = 'aiapp_claude_model';
+  var IDS = ['claude-fable-5-1', 'claude-fable-5', 'claude-opus-5', 'claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-5', 'claude-sonnet-4-6', 'claude-haiku-4-5'];
+  function isAr() { try { return (localStorage.getItem('aiapp_lang') || 'ar') !== 'en'; } catch (e) { return true; } }
+  var HINTS = {
+    '': ['الافتراضيّ: Sonnet 5 — الأسرع للمحادثة اليوميّة.', 'Default: Sonnet 5 — fastest for everyday chat.'],
+    'claude-fable-5-1': ['الأقوى على الإطلاق؛ أبطأ وأغلى، ويحتاج رصيد API في حساب Anthropic.', 'Most capable; slower and pricier, needs API credits on the Anthropic account.'],
+    'claude-fable-5': ['قويّ جدًّا؛ أبطأ وأغلى، ويحتاج رصيد API في حساب Anthropic.', 'Very capable; slower and pricier, needs API credits on the Anthropic account.'],
+    'claude-opus-5': ['أدقّ من Sonnet 5 في المهامّ الصعبة، وأبطأ منه.', 'More precise than Sonnet 5 on hard tasks, slower.'],
+    'claude-opus-4-8': ['الجيل السابق من Opus؛ متين وأبطأ.', 'Previous-generation Opus; solid, slower.'],
+    'claude-opus-4-7': ['الجيل السابق من Opus.', 'Previous-generation Opus.'],
+    'claude-opus-4-6': ['الجيل السابق من Opus.', 'Previous-generation Opus.'],
+    'claude-sonnet-5': ['توازن السرعة والدقّة — هو الافتراضيّ.', 'Balanced speed and quality — the default.'],
+    'claude-sonnet-4-6': ['الجيل السابق من Sonnet.', 'Previous-generation Sonnet.'],
+    'claude-haiku-4-5': ['الأسرع والأرخص؛ للأسئلة القصيرة.', 'Fastest and cheapest; for short questions.'],
+  };
+
+  function get() {
+    try { var v = localStorage.getItem(KEY) || ''; return IDS.indexOf(v) === -1 ? '' : v; } catch (e) { return ''; }
+  }
+  function set(v) {
+    v = IDS.indexOf(v) === -1 ? '' : v;
+    try { if (v) localStorage.setItem(KEY, v); else localStorage.removeItem(KEY); } catch (e) { /* guard-ok — التخزين المحلّيّ قد يكون مقفلًا */ }
+    return v;
+  }
+  function hint() {
+    var box = document.getElementById('claudeModelHint');
+    if (!box) return;
+    var h = HINTS[get()] || HINTS[''];
+    box.textContent = isAr() ? h[0] : h[1];
+  }
+  function sync() {
+    var sel = document.getElementById('claudeModel');
+    if (sel) sel.value = get();
+    hint();
+  }
+
+  document.addEventListener('change', function (e) {
+    var el = e && e.target;
+    if (!el || el.id !== 'claudeModel') return;
+    el.value = set(el.value);
+    hint();
+  });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sync); else sync();
+
+  window.claudeModelGet = get;
+  window.claudeModelSync = sync;
+  window.CLAUDE_MODEL_IDS = IDS.slice();
 })();

@@ -5,6 +5,7 @@
 // tracer (@vercel/nft) includes each module in the deployment bundle.
 // Installs a time-to-first-byte timeout on every outbound fetch (see _lib/_fetch-timeout.js).
 require('./_lib/_fetch-timeout.js');
+require('./_lib/_env-keys.js'); // v-key-shape: مفتاح OpenRouter الموضوع خطأً في ANTHROPIC_API_KEY يُنقل إلى مكانه
 // Nothing thrown in this router escapes unrecorded (see _lib/_errors.js).
 const { withErrorCapture } = require('./_lib/_errors.js');
 const { installCors } = require('./_lib/cors.js');

@@ -611,11 +611,60 @@ function streamingMarkdownDisplayText(text){
     .replace(/\*{0,2}\[([^\]\n]+)\]$/g, '$1')
     .replace(/\*{0,2}\[([^\]\n]*)$/g, '$1');
 }
+/* v-stream-incremental (شكوى المالك ١٣ سبتمبر: «الشاشة ثقيلة كثير وتعلق»):
+   الرسم الحيّ كان يمسح الفقاعة ويعيد بناء الردّ كلّه كلمةً كلمةً في كلّ نبضة
+   (٣٠مل على الكمبيوتر) — ردّ من مئة سطر = آلاف العقد تُبنى ٣٣ مرّة في الثانية
+   فيختنق الخيط الرئيسي وتتجمّد الصفحة. الآن يُقسَم النصّ عند آخر فاصل أسطر:
+   الجزء المستقرّ يُرسم مرّة واحدة ويُلحَق به ما يستجدّ منه فقط، ولا يُعاد في
+   كلّ نبضة إلّا الذيل (السطر أو الفقرة الأخيرة). كتلة كود مفتوحة تبقى كاملةً
+   في الذيل كي لا تنقسم. الرسم النهائيّ (renderMessages) لا يتغيّر. */
+var OMRAN_STREAM_SPLIT_MIN = 600;
+function omranStreamSplitPoint(text){
+  if(!text || text.length <= OMRAN_STREAM_SPLIT_MIN) return -1;
+  var cut = text.lastIndexOf('\n\n', text.length - 2);
+  if(cut < 0) cut = text.lastIndexOf('\n', text.length - 2);
+  if(cut <= 0) return -1;
+  var fences = (text.slice(0, cut).match(/```/g) || []).length;
+  if(fences % 2 === 1) return -1;
+  return cut;
+}
 function renderStreamingAssistant(el, text){
   if(!el) return;
   el.classList.add('msg-streaming');
   let __st = streamingMarkdownDisplayText(text);
   if(__st && __st.indexOf('[[') >= 0) __st = __st.replace(/\[\[(?:OPT|MULTI)\]\][\s\S]*$/, '').trimEnd();
-  buildSpokenWordSpans(el, __st);
+  var cut = omranStreamSplitPoint(__st);
+  if(cut < 0){
+    el._omStreamHead = null; el._omStreamHeadEl = null; el._omStreamTailEl = null;
+    buildSpokenWordSpans(el, __st);
+    return;
+  }
+  var head = __st.slice(0, cut), tail = __st.slice(cut);
+  var hw = el._omStreamHeadEl, tw = el._omStreamTailEl;
+  var prev = el._omStreamHead;
+  var fresh = !hw || !tw || hw.parentNode !== el || tw.parentNode !== el || typeof prev !== 'string';
+  if(!fresh && head !== prev){
+    if(head.length > prev.length && head.indexOf(prev) === 0){
+      /* الرأس امتدّ فقط: نرسم الزيادة في مقطع جديد ونلحقه — لا إعادة لما رُسم. */
+      var seg = document.createElement('span');
+      seg.className = 'omStreamSeg';
+      buildSpokenWordSpans(seg, head.slice(prev.length));
+      hw.appendChild(seg);
+      el._omStreamHead = head;
+    } else {
+      fresh = true;
+    }
+  }
+  if(fresh){
+    el.innerHTML = '';
+    hw = document.createElement('span'); hw.className = 'omStreamHead';
+    tw = document.createElement('span'); tw.className = 'omStreamTail';
+    var seg0 = document.createElement('span'); seg0.className = 'omStreamSeg';
+    buildSpokenWordSpans(seg0, head);
+    hw.appendChild(seg0);
+    el.appendChild(hw); el.appendChild(tw);
+    el._omStreamHeadEl = hw; el._omStreamTailEl = tw; el._omStreamHead = head;
+  }
+  buildSpokenWordSpans(tw, tail);
 }
 

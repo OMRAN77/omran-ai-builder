@@ -67,8 +67,15 @@ module.exports = async (req, res) => {
        الخطأ كاملًا مع ذيل المفتاح، فيتضح فورًا أي حساب/منظمة يخص المفتاح
        وهل الرصيد يخصه. لا يكشف المفتاح نفسه أبدًا. */
     if (action === 'claude-diag') {
+      const { shape } = require('./_env-keys.js'); // v-key-shape
       const akey = process.env.ANTHROPIC_API_KEY || '';
-      if (!akey) { res.status(200).json({ ok: false, keyTail: '(غير مضبوط)', detail: 'ANTHROPIC_API_KEY غير موجود في Vercel' }); return; }
+      if (!akey) {
+        const misplaced = process.env.ANTHROPIC_KEY_MISPLACED === 'openrouter';
+        res.status(200).json({ ok: false, keyTail: misplaced ? '(مفتاح OpenRouter)' : '(غير مضبوط)', detail: misplaced
+          ? 'ANTHROPIC_API_KEY في Vercel يحمل مفتاح OpenRouter (sk-or-…) لا مفتاح Anthropic. نُقل تلقائيًّا إلى OPENROUTER_API_KEY وكلود يمرّ عبر OpenRouter الآن. الصحيح: مفتاح من console.anthropic.com يبدأ بـsk-ant-api03- في هذا المتغيّر، أو احذف المتغيّر وأبقِ OPENROUTER_API_KEY.'
+          : 'ANTHROPIC_API_KEY غير موجود في Vercel' });
+        return;
+      }
       let st = 0, bodyTxt = '';
       try {
         const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -80,7 +87,8 @@ module.exports = async (req, res) => {
         st = r.status;
         bodyTxt = (await r.text()).slice(0, 600);
       } catch (e) { bodyTxt = 'fetch: ' + (e && e.message); }
-      res.status(200).json({ ok: st === 200, status: st, keyTail: '…' + akey.slice(-6), detail: st === 200 ? 'المفتاح شغال والرصيد سليم ✅' : bodyTxt });
+      const sh = shape(akey).label;
+      res.status(200).json({ ok: st === 200, status: st, keyTail: '…' + akey.slice(-6), shape: sh, detail: (st === 200 ? 'المفتاح شغال والرصيد سليم ✅' : bodyTxt) + '\nشكل المفتاح: ' + sh });
       return;
     }
 

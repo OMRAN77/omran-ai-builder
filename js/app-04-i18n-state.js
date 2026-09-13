@@ -1367,17 +1367,38 @@ function omranLongClipCss(){
 }
 function omranOpenReplyInPanel(text){
   try{
-    var esc = String(text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    /* v-panel-md (لقطة المالك ١٣ سبتمبر: «**» و«>» خامًا في اللوحة): الردّ كان
+       يُهرَّب نصًّا صرفًا فتظهر علامات الماركداون. الآن يُنسَّق بالمُنسِّق نفسه
+       الذي ترسم به فقاعة المحادثة (عناوين، عريض، قوائم، روابط، كود)، وتُنزع أزرار
+       النسخ لأنّ الإطار بلا سكربت. اللون يتبع الوضع الفاتح/الداكن. */
+    var esc;
+    try{
+      var __host = document.createElement('div');
+      buildSpokenWordSpans(__host, String(text || ''));
+      __host.querySelectorAll('button').forEach(function(b){ b.remove(); });
+      esc = __host.innerHTML;
+    }catch(e){
+      __swallow(e, 'ui:long-reply-md');
+      esc = String(text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
     previewFrame.style.display = 'block';
     $('#pyConsole').style.display = 'none';
     emptyState.style.display = 'none';
     previewFrame._imageView = true;   /* يمنع renderCodeAndPreview من استبداله بالكود */
     previewFrame._lastSrc = null;
     var rtl = /[\u0600-\u06FF]/.test(String(text || ''));
-    previewFrame.srcdoc = '<html><body style="margin:0;background:#111;color:#eee;'
+    var __light = document.documentElement.getAttribute('data-mode') === 'light';
+    previewFrame.srcdoc = '<html><head><meta charset="utf-8"><style>'
+      + 'body{margin:0;background:' + (__light ? '#ffffff' : '#111') + ';color:' + (__light ? '#14161a' : '#eee') + ';'
       + 'font-family:Tajawal,Tahoma,Arial,sans-serif;white-space:pre-wrap;word-break:break-word;'
-      + 'line-height:1.9;font-size:15px;padding:20px;direction:' + (rtl ? 'rtl' : 'ltr') + ';">'
-      + esc + '</body></html>';
+      + 'line-height:1.9;font-size:15px;padding:20px;direction:' + (rtl ? 'rtl' : 'ltr') + ';}'
+      + '.md-bold{font-weight:700}.md-h1{font-size:1.45em;font-weight:700}.md-h2{font-size:1.28em;font-weight:700}'
+      + '.md-h3,.md-h4,.md-h5,.md-h6{font-size:1.12em;font-weight:700}'
+      + 'a{color:#d4af37}'
+      + '.chat-codeblock{direction:ltr;text-align:left;background:' + (__light ? '#f3f3f3' : '#1c1c1c') + ';border-radius:10px;padding:10px 12px;margin:8px 0;overflow:auto}'
+      + '.chat-codeblock-head{font-size:12px;opacity:.6;margin-bottom:6px}'
+      + '.chat-codeblock pre{margin:0;white-space:pre;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}'
+      + '</style></head><body>' + esc + '</body></html>';
     /* v-panel-head: عنوان اللوحة ونصّ النسخ يتبعان الردّ المعروض */
     if(typeof window.omranPanelTitle === 'function'){
       window.omranPanelTitle((typeof lang !== 'undefined' && (lang === 'ar' || lang === 'ur')) ? 'الرد الكامل' : 'Full reply', String(text || ''));
