@@ -22,7 +22,7 @@ const I18N = {
     fxCatLbl: 'الفئة', fxGenWomen: 'نسائي', fxGenMen: 'رجالي', fxGenKids: 'أطفال', fxColorsLbl: 'الألوان المفضّلة', fxColBlack: 'أسود', fxColWhite: 'أبيض', fxColNavy: 'كحلي', fxColRed: 'أحمر', fxColGold: 'ذهبي',
     fxColGreen: 'أخضر', fxColBeige: 'بيج', fxColMulti: 'متعدد', fxAccLbl: 'إضافات', fxAccGlasses: 'نظارات', fxAccWatch: 'ساعة', fxAccHandbag: 'حقيبة', fxAccShoes: 'أحذية', fxAccScarf: 'وشاح', fxAccMakeup: 'مكياج',
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
-    sidePanelTitle: 'القائمة الجانبية', lightModeTitle: 'الوضع الفاتح', provSearchPh: 'ابحث عن نموذج...', jumpLatestTitle: 'أحدث رسالة', editMsgNotice: 'تعديل الرسالة', modesTitle: 'الأوضاع',
+    sidePanelTitle: 'القائمة الجانبية', lightModeTitle: 'الوضع الفاتح', darkModeTitle: 'الوضع الداكن', provSearchPh: 'ابحث عن نموذج...', jumpLatestTitle: 'أحدث رسالة', editMsgNotice: 'تعديل الرسالة', modesTitle: 'الأوضاع',
     attachFileTitle: 'إرفاق ملف', chipExam: 'حل امتحان', chipBook: 'تلخيص كتاب', chipArticle: 'كتابة مقال احترافي', chipIdeas: 'أفكار لمشروع', tryItTitle: 'جرّبه لي', closeTitle: 'إغلاق',
     docAssistTitle: '📄 مساعد المستندات', govServicesTitle: '🧾 المعاملات الحكومية', cvGenTitle: '💼 مولّد السيرة الذاتية', dsNotesLabel: '✍️ اكتب تفاصيلك بكلماتك (اختياري)',
     dsNotesPh: 'مثال: مطعم إيطالي ٤٠ كرسي، سقف عالي، طابع صناعي', rmWhatLabel: 'ماذا تريد إزالته من الصورة؟', rmWhatPh: 'مثال: الشخص الذي خلفي · السيارة · العمود', pickOutfitLabel: 'اختر الملابس',
@@ -1000,7 +1000,7 @@ const I18N = {
     fxCatLbl: 'Category', fxGenWomen: 'Women', fxGenMen: 'Men', fxGenKids: 'Kids', fxColorsLbl: 'Preferred colours', fxColBlack: 'Black', fxColWhite: 'White', fxColNavy: 'Navy', fxColRed: 'Red', fxColGold: 'Gold',
     fxColGreen: 'Green', fxColBeige: 'Beige', fxColMulti: 'Multicolour', fxAccLbl: 'Accessories', fxAccGlasses: 'Glasses', fxAccWatch: 'Watch', fxAccHandbag: 'Handbag', fxAccShoes: 'Shoes', fxAccScarf: 'Scarf', fxAccMakeup: 'Makeup',
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
-    sidePanelTitle: 'Side menu', lightModeTitle: 'Light mode', provSearchPh: 'Search for a model...', jumpLatestTitle: 'Latest message', editMsgNotice: 'Editing message', modesTitle: 'Modes',
+    sidePanelTitle: 'Side menu', lightModeTitle: 'Light mode', darkModeTitle: 'Dark mode', provSearchPh: 'Search for a model...', jumpLatestTitle: 'Latest message', editMsgNotice: 'Editing message', modesTitle: 'Modes',
     attachFileTitle: 'Attach a file', chipExam: 'Solve an exam', chipBook: 'Summarize a book', chipArticle: 'Write a professional article', chipIdeas: 'Project ideas', tryItTitle: 'Try it for me',
     closeTitle: 'Close', docAssistTitle: '📄 Document assistant', govServicesTitle: '🧾 Government services', cvGenTitle: '💼 CV generator',
     dsNotesLabel: '✍️ Write your details in your own words (optional)', dsNotesPh: 'e.g. Italian restaurant, 40 seats, high ceiling, industrial look',

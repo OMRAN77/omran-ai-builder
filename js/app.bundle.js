@@ -2447,7 +2447,7 @@ const I18N = {
     fxCatLbl: 'الفئة', fxGenWomen: 'نسائي', fxGenMen: 'رجالي', fxGenKids: 'أطفال', fxColorsLbl: 'الألوان المفضّلة', fxColBlack: 'أسود', fxColWhite: 'أبيض', fxColNavy: 'كحلي', fxColRed: 'أحمر', fxColGold: 'ذهبي',
     fxColGreen: 'أخضر', fxColBeige: 'بيج', fxColMulti: 'متعدد', fxAccLbl: 'إضافات', fxAccGlasses: 'نظارات', fxAccWatch: 'ساعة', fxAccHandbag: 'حقيبة', fxAccShoes: 'أحذية', fxAccScarf: 'وشاح', fxAccMakeup: 'مكياج',
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
-    sidePanelTitle: 'القائمة الجانبية', lightModeTitle: 'الوضع الفاتح', provSearchPh: 'ابحث عن نموذج...', jumpLatestTitle: 'أحدث رسالة', editMsgNotice: 'تعديل الرسالة', modesTitle: 'الأوضاع',
+    sidePanelTitle: 'القائمة الجانبية', lightModeTitle: 'الوضع الفاتح', darkModeTitle: 'الوضع الداكن', provSearchPh: 'ابحث عن نموذج...', jumpLatestTitle: 'أحدث رسالة', editMsgNotice: 'تعديل الرسالة', modesTitle: 'الأوضاع',
     attachFileTitle: 'إرفاق ملف', chipExam: 'حل امتحان', chipBook: 'تلخيص كتاب', chipArticle: 'كتابة مقال احترافي', chipIdeas: 'أفكار لمشروع', tryItTitle: 'جرّبه لي', closeTitle: 'إغلاق',
     docAssistTitle: '📄 مساعد المستندات', govServicesTitle: '🧾 المعاملات الحكومية', cvGenTitle: '💼 مولّد السيرة الذاتية', dsNotesLabel: '✍️ اكتب تفاصيلك بكلماتك (اختياري)',
     dsNotesPh: 'مثال: مطعم إيطالي ٤٠ كرسي، سقف عالي، طابع صناعي', rmWhatLabel: 'ماذا تريد إزالته من الصورة؟', rmWhatPh: 'مثال: الشخص الذي خلفي · السيارة · العمود', pickOutfitLabel: 'اختر الملابس',
@@ -3425,7 +3425,7 @@ const I18N = {
     fxCatLbl: 'Category', fxGenWomen: 'Women', fxGenMen: 'Men', fxGenKids: 'Kids', fxColorsLbl: 'Preferred colours', fxColBlack: 'Black', fxColWhite: 'White', fxColNavy: 'Navy', fxColRed: 'Red', fxColGold: 'Gold',
     fxColGreen: 'Green', fxColBeige: 'Beige', fxColMulti: 'Multicolour', fxAccLbl: 'Accessories', fxAccGlasses: 'Glasses', fxAccWatch: 'Watch', fxAccHandbag: 'Handbag', fxAccShoes: 'Shoes', fxAccScarf: 'Scarf', fxAccMakeup: 'Makeup',
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
-    sidePanelTitle: 'Side menu', lightModeTitle: 'Light mode', provSearchPh: 'Search for a model...', jumpLatestTitle: 'Latest message', editMsgNotice: 'Editing message', modesTitle: 'Modes',
+    sidePanelTitle: 'Side menu', lightModeTitle: 'Light mode', darkModeTitle: 'Dark mode', provSearchPh: 'Search for a model...', jumpLatestTitle: 'Latest message', editMsgNotice: 'Editing message', modesTitle: 'Modes',
     attachFileTitle: 'Attach a file', chipExam: 'Solve an exam', chipBook: 'Summarize a book', chipArticle: 'Write a professional article', chipIdeas: 'Project ideas', tryItTitle: 'Try it for me',
     closeTitle: 'Close', docAssistTitle: '📄 Document assistant', govServicesTitle: '🧾 Government services', cvGenTitle: '💼 CV generator',
     dsNotesLabel: '✍️ Write your details in your own words (optional)', dsNotesPh: 'e.g. Italian restaurant, 40 seats, high ceiling, industrial look',
@@ -4422,7 +4422,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=671'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
+    sc.src = 'i18n/' + lg + '.js?v=672'; /* v-mode-i18n: مفتاح darkModeTitle في الـ14 لغة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -10364,14 +10364,11 @@ async function postWithConfirm(url, payload){
    لا اسم محادثة ولا خطّ في الوسط: المحاولة السابقة وضعت عنصر عنوان هناك
    فظهر «كود ملصوق · 169 KB» وخلفه خطّ طويل — حُذف العنصر كلّه لا نصّه،
    فلا يبقى أثر مرسوم حين تُطوى الأسهم.
-   الجوال لا يُمَسّ إطلاقًا: لا نقل ولا طيّ تلقائيّ ولا هيدر لاصق. */
+   (كان الجوال مستثنًى؛ صار مشمولًا بأمر عمران ١٣ سبتمبر — v-topbar-merge-mobile.) */
 (function(){
-  function isMobile(){
-    try{ return document.documentElement.classList.contains('mobile-ui'); }
-    catch(e){ return false; }
-  }
   function build(){
-    if(isMobile()) return true;              /* الجوال يبقى كما كان حرفيًّا */
+    /* v-topbar-merge-mobile (أمر عمران ١٣ سبتمبر): النقل يشمل الجوال أيضًا —
+       كان مستثنًى؛ الشكل على الجوال في كتلة v-topbar-merge-mobile بـindex.html. */
     var hdr = document.querySelector('header');
     var acts = document.getElementById('headerActions');
     if(!hdr || !acts) return false;
@@ -10385,6 +10382,54 @@ async function postWithConfirm(url, payload){
        ومعالجه الأصليّ في شريحة الأسهم يبقى مربوطًا عليه — نقل لا إعادة بناء. */
     if(tg) wrap.appendChild(tg);
     if(tk) wrap.appendChild(tk);
+    return true;
+  }
+  if(!build()){
+    var n = 0;
+    var id = setInterval(function(){ if(build() || ++n > 40) clearInterval(id); }, 250);
+  }
+})();
+
+/* v-mode-nav (أمر عمران ١٣ سبتمبر): زرّ الوضع الفاتح/الداكن ينتقل من الهيدر
+   إلى شريط الجانبي السفلي بجوار «الإعدادات» — الهيدر صار لعمود المحادثة وحده
+   وشريط الأسهم يأخذ سطره كلّه حتى الطرف. الزرّ الأصليّ #btnMode يبقى في
+   مكانه مخفيًّا بـCSS (v-frame-c) لأنّ مزامنة الأيقونة والعنوان (v434) تكتب
+   عليه؛ زرّ التنقّل مرآة له: أيقونته وعنوانه يُنسخان منه عند كل تغيير
+   (MutationObserver) فيتبعان الوضع واللغة بلا منطق ثانٍ.
+   ليس .omNavBtn عمدًا: سلك التبويبات في ui-wiring.js يلوّن كل .omNavBtn
+   «نشطًا» عند النقر، وهذا زرّ فعل لا تبويب. على الجوال يُلحق بالشريط
+   السفلي #omranBottomNav تبويبًا خامسًا. */
+(function(){
+  function isMobile(){
+    try{ return document.documentElement.classList.contains('mobile-ui'); }
+    catch(e){ return false; }
+  }
+  function build(){
+    var src = document.getElementById('btnMode');
+    /* الجوال: الشريط السفلي (أمر عمران «طبّقها على الهواتف»)؛ الكمبيوتر: أسفل الجانبي. */
+    var foot = document.getElementById(isMobile() ? 'omranBottomNav' : 'omranSidebarFoot');
+    if(!src || !foot) return false;
+    if(document.getElementById('omNavMode')) return true;
+    var b = document.createElement('button');
+    b.type = 'button'; b.id = 'omNavMode'; b.className = 'omModeNav';
+    var ic = document.createElement('span'); ic.className = 'omModeNavIcon';
+    var lb = document.createElement('span'); lb.className = 'omModeNavLabel';
+    b.appendChild(ic); b.appendChild(lb);
+    function mirror(){
+      ic.innerHTML = src.innerHTML;
+      lb.textContent = src.title || '';
+      b.title = src.title || '';
+    }
+    mirror();
+    try{
+      new MutationObserver(mirror).observe(src, { childList: true, attributes: true, attributeFilter: ['title'] });
+    }catch(e){ __swallow(e, 'ui:mode-nav#observe'); }
+    b.addEventListener('click', function(){
+      try{ if(typeof window.omToggleMode === 'function') window.omToggleMode(); }
+      catch(e){ __swallow(e, 'ui:mode-nav#toggle'); }
+      mirror();
+    });
+    foot.appendChild(b);
     return true;
   }
   if(!build()){

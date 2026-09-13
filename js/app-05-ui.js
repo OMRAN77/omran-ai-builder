@@ -3052,14 +3052,11 @@ async function postWithConfirm(url, payload){
    لا اسم محادثة ولا خطّ في الوسط: المحاولة السابقة وضعت عنصر عنوان هناك
    فظهر «كود ملصوق · 169 KB» وخلفه خطّ طويل — حُذف العنصر كلّه لا نصّه،
    فلا يبقى أثر مرسوم حين تُطوى الأسهم.
-   الجوال لا يُمَسّ إطلاقًا: لا نقل ولا طيّ تلقائيّ ولا هيدر لاصق. */
+   (كان الجوال مستثنًى؛ صار مشمولًا بأمر عمران ١٣ سبتمبر — v-topbar-merge-mobile.) */
 (function(){
-  function isMobile(){
-    try{ return document.documentElement.classList.contains('mobile-ui'); }
-    catch(e){ return false; }
-  }
   function build(){
-    if(isMobile()) return true;              /* الجوال يبقى كما كان حرفيًّا */
+    /* v-topbar-merge-mobile (أمر عمران ١٣ سبتمبر): النقل يشمل الجوال أيضًا —
+       كان مستثنًى؛ الشكل على الجوال في كتلة v-topbar-merge-mobile بـindex.html. */
     var hdr = document.querySelector('header');
     var acts = document.getElementById('headerActions');
     if(!hdr || !acts) return false;
@@ -3073,6 +3070,54 @@ async function postWithConfirm(url, payload){
        ومعالجه الأصليّ في شريحة الأسهم يبقى مربوطًا عليه — نقل لا إعادة بناء. */
     if(tg) wrap.appendChild(tg);
     if(tk) wrap.appendChild(tk);
+    return true;
+  }
+  if(!build()){
+    var n = 0;
+    var id = setInterval(function(){ if(build() || ++n > 40) clearInterval(id); }, 250);
+  }
+})();
+
+/* v-mode-nav (أمر عمران ١٣ سبتمبر): زرّ الوضع الفاتح/الداكن ينتقل من الهيدر
+   إلى شريط الجانبي السفلي بجوار «الإعدادات» — الهيدر صار لعمود المحادثة وحده
+   وشريط الأسهم يأخذ سطره كلّه حتى الطرف. الزرّ الأصليّ #btnMode يبقى في
+   مكانه مخفيًّا بـCSS (v-frame-c) لأنّ مزامنة الأيقونة والعنوان (v434) تكتب
+   عليه؛ زرّ التنقّل مرآة له: أيقونته وعنوانه يُنسخان منه عند كل تغيير
+   (MutationObserver) فيتبعان الوضع واللغة بلا منطق ثانٍ.
+   ليس .omNavBtn عمدًا: سلك التبويبات في ui-wiring.js يلوّن كل .omNavBtn
+   «نشطًا» عند النقر، وهذا زرّ فعل لا تبويب. على الجوال يُلحق بالشريط
+   السفلي #omranBottomNav تبويبًا خامسًا. */
+(function(){
+  function isMobile(){
+    try{ return document.documentElement.classList.contains('mobile-ui'); }
+    catch(e){ return false; }
+  }
+  function build(){
+    var src = document.getElementById('btnMode');
+    /* الجوال: الشريط السفلي (أمر عمران «طبّقها على الهواتف»)؛ الكمبيوتر: أسفل الجانبي. */
+    var foot = document.getElementById(isMobile() ? 'omranBottomNav' : 'omranSidebarFoot');
+    if(!src || !foot) return false;
+    if(document.getElementById('omNavMode')) return true;
+    var b = document.createElement('button');
+    b.type = 'button'; b.id = 'omNavMode'; b.className = 'omModeNav';
+    var ic = document.createElement('span'); ic.className = 'omModeNavIcon';
+    var lb = document.createElement('span'); lb.className = 'omModeNavLabel';
+    b.appendChild(ic); b.appendChild(lb);
+    function mirror(){
+      ic.innerHTML = src.innerHTML;
+      lb.textContent = src.title || '';
+      b.title = src.title || '';
+    }
+    mirror();
+    try{
+      new MutationObserver(mirror).observe(src, { childList: true, attributes: true, attributeFilter: ['title'] });
+    }catch(e){ __swallow(e, 'ui:mode-nav#observe'); }
+    b.addEventListener('click', function(){
+      try{ if(typeof window.omToggleMode === 'function') window.omToggleMode(); }
+      catch(e){ __swallow(e, 'ui:mode-nav#toggle'); }
+      mirror();
+    });
+    foot.appendChild(b);
     return true;
   }
   if(!build()){
