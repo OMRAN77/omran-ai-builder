@@ -117,8 +117,8 @@
     { n: 'الحدث', h: 'AlHadath', c: 'ae', g: 'news' },
     { n: 'تلفزيون دبي', h: 'dubai_tv', c: 'ae', g: 'general' },
     { n: 'قناة الشارقة', h: 'sharjahtv', c: 'ae', g: 'general' },
-    { n: 'أبوظبي الرياضية', h: 'ADSportsTV', c: 'ae', g: 'sports' },
-    { n: 'دبي الرياضية', h: 'DubaiSportsTV', c: 'ae', g: 'sports' },
+    { n: 'أبوظبي الرياضية', h: 'ADSportsTV', c: 'ae', g: 'sports', u: 'https://www.adtv.ae/live' },
+    { n: 'دبي الرياضية', h: 'DubaiSportsTV', c: 'ae', g: 'sports', u: 'https://awaan.ae/live' },
     { n: 'الشارقة الرياضية', h: 'Sharjahsportstv', c: 'ae', g: 'sports' },
     { n: 'CNBC عربية', h: 'cnbcarabia', c: 'ae', g: 'biz' },
     { n: 'الشرق للأخبار', h: 'asharqnews', c: 'ae', g: 'news' },
@@ -1238,7 +1238,14 @@
   function playChannel(ch, card){
     clearChannelFailures(ch);
     var mu = mOf(ch);
-    if(!mu || !mu.length){ stopPlayer(); cardOff(card); return; }
+    if(!mu || !mu.length){
+      /* v-tv-platform-open (شكوى المالك: «دبي الرياضية وغيرها ما تشتغل»):
+         قناة بلا بثّ مباشر داخل التطبيق لكن لها منصّة رسميّة مجانيّة
+         (عوان/ADtv/شاهد) — كانت الضغطة بلا فائدة إطلاقًا. الآن تفتح المنصّة
+         الرسميّة بدل ما تبقى ميتة. */
+      if(ch.u){ openExternal(ch.u); cardOff(card); return; }
+      stopPlayer(); cardOff(card); return;
+    }
     var i = 0;
     var tryNext = function(){
       if(i >= mu.length){ stopPlayer(); cardOff(card); setTimeout(renderGrid, 0); return; }
