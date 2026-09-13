@@ -1,5 +1,8 @@
 # سجلّ القرارات
 
+## ١٣ سبتمبر ٢٠٢٦ — v-agent-smoke: أوّل مهمّة ينفّذها Claude Code في Actions بتفويض من وكيل التطبيق
+- **القرار:** مهمّة تجريبيّة للتحقّق من سلسلة التفويض كاملة (وكيل التطبيق ← delegate_code_task ← الورك فلو ← Claude Code ← التزام على فرع): tests/agent-delegate-tools.test.cjs يثبت أنّ api/_lib/agent-delegate.js يصدّر START_TOOL وCHECK_TOOL باسميهما وبـinput_schema فيه الحقل المطلوب لكلّ أداة. الدرس: أوّل تشغيل حقيقيّ يُختبر بمهمّة صغيرة قابلة للمراجعة بنظرة، لا بتغيير سلوك.
+
 ## ١٣ سبتمبر ٢٠٢٦ — v-agent-push-auth: أوّل تشغيل ناجح لـClaude Code في Actions (#560) سقط عند الدفع
 - **العرض:** بعد تصحيح مفتاح Anthropic نجحت خطوة Claude كاملة (قرأ، عدّل، `npm run ci` مرّ، التزم على الفرع)، ثمّ فشل `git push` في الخطوة الأخيرة: «Invalid username or token». السبب في سجلّ claude-code-action نفسه: يزيل ترويسة مصادقة actions/checkout، ويستبدل رابط origin برمز تطبيق Claude، ثمّ **يلغي الرمز** في خطوته الفرعيّة الأخيرة (Revoke app token) قبل أن تصل خطوتنا.
 - **القرار:** قبل الدفع نعيد رابط origin النظيف ونضبط ترويسة `AUTHORIZATION: basic x-access-token:GITHUB_TOKEN` كما يفعل actions/checkout؛ `contents: write` ممنوحة للورك فلو أصلًا. الدرس: إجراء يلمس مصادقة git يجب افتراض أنّه يتركها معطّلة بعده.
