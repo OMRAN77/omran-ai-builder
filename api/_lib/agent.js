@@ -63,6 +63,47 @@ const TOOLS = [
   },
 ];
 
+// 🔗 أدوات GitHub — تُضاف لمجموعة الأدوات للمالك وحده وفقط عند تهيئة البيئة
+// (GITHUB_OWNER_TOKEN + GITHUB_OWNER_REPO). لا يراها ولا يستطيعها غير المالك.
+const GITHUB_TOOLS = [
+  {
+    name: 'github_read',
+    description: 'اقرأ محتوى ملف من مستودع GitHub الخاص بالمالك (نصًّا). استخدمها قبل تعديل أي ملف لترى محتواه الحالي فتعدّل عليه بدقّة بدل الكتابة من فراغ.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'مسار الملف داخل المستودع، مثل js/app-09-attach.js' },
+        ref: { type: 'string', description: 'اسم الفرع أو الالتزام (اختياري) — الافتراضي الفرع الرئيسي.' },
+      },
+      required: ['path'],
+    },
+  },
+  {
+    name: 'github_push',
+    description: 'التزم (commit) ملفًا أو ملفات إلى فرعٍ في مستودع المالك على GitHub. يُنشئ الفرع إن لم يوجد. لا يلمس الفرع الرئيسي (main) أبدًا — الدمج والنشر بيد المالك وحده. استخدمها فقط حين يطلب المالك رفع تغيير فعلي للمستودع. أعطِ المالك رابط الفرع/المقارنة بعد نجاحها.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        branch: { type: 'string', description: 'اسم الفرع الهدف (اختياري، الافتراضي omran-agent). لا يُقبل main/master.' },
+        message: { type: 'string', description: 'رسالة الالتزام — وصف موجز لِمَا تغيّر.' },
+        files: {
+          type: 'array',
+          description: 'الملفات المراد كتابتها/تحديثها.',
+          items: {
+            type: 'object',
+            properties: {
+              path: { type: 'string', description: 'مسار الملف داخل المستودع.' },
+              content: { type: 'string', description: 'المحتوى الكامل الجديد للملف.' },
+            },
+            required: ['path', 'content'],
+          },
+        },
+      },
+      required: ['files'],
+    },
+  },
+];
+
 // 🪞 الأثر المرئي — «فعلتُ س فحصلت ص». كل سطر يُشتقّ من مُدخل الأداة الحقيقي
 // ومن ناتجها الحقيقي، لا من ادّعاء النموذج. فما يقرأه المستخدم هو ما جرى فعلًا.
 // كان الوكيل يقول «🔍 يتحقق من المصادر…» ولا يقول عن ماذا بحث ولا ماذا وجد،
@@ -109,6 +150,11 @@ function trailDid(name, input) {
   if (name === 'run_js') return 'شغّلتُ كودًا (' + String(input.code || '').length + ' حرفًا)';
   if (name === 'test_html') return 'اختبرتُ صفحة (' + String(input.html || '').length + ' حرفًا)';
   if (name === 'publish') return 'نشرتُ «' + (s(input.title, 40) || 'مشروعًا') + '»';
+  if (name === 'github_read') return 'قرأتُ من GitHub: ' + (s(input.path, 60) || '؟');
+  if (name === 'github_push') {
+    const n = Array.isArray(input.files) ? input.files.length : 0;
+    return 'رفعتُ ' + (n || '') + ' ملف(ات) لفرع «' + (s(input.branch, 40) || 'omran-agent') + '»';
+  }
   return 'استخدمتُ ' + name;
 }
 function trailGot(name, result) {
@@ -122,6 +168,8 @@ function trailGot(name, result) {
   }
   if (name === 'fetch_page') return 'فحصلتُ ' + r.length + ' حرفًا من الصفحة';
   if (name === 'publish') { const u = r.match(/https?:\/\/\S+/); return u ? ('فحصلتُ رابطًا: ' + u[0]) : ('فلم يُنشر: ' + r.trim().slice(0, 70)); }
+  if (name === 'github_read') return r.startsWith('✅') ? 'فقرأتُ الملف' : ('ففشلت: ' + r.slice(1, 80));
+  if (name === 'github_push') { const u = r.match(/compare\/\S+/); return r.startsWith('✅') ? ('فرُفع لفرعٍ' + (u ? ' — جاهز للدمج' : '')) : ('ففشل الرفع: ' + r.slice(1, 80)); }
   if (name === 'test_html') {
     if (/^✅/.test(r.trim())) return 'فما ظهر خطأ تشغيل';
     const first = r.split('\n').filter((l) => l.trim() && !/^⚠️/.test(l.trim()))[0] || '';
@@ -353,6 +401,15 @@ module.exports = async (req, res) => {
 
   if (!messages || !messages.length) { res.status(400).json({ error: 'Missing messages' }); return; }
 
+  // 🔗 أدوات GitHub للمالك فقط: تُتاح حين تكون الجلسة جلسة المالك الموقَّعة
+  // والبيئة مهيّأة. غير المالك لا يرى هذه الأدوات ولا ينفّذها إطلاقًا.
+  let __ghOn = false;
+  try {
+    const __who = require('./auth.js').verifyToken(token);
+    __ghOn = require('./_owner.js').isOwnerName(__who) && require('./github-agent.js').githubEnabled();
+  } catch (e) { __ghOn = false; }
+  const reqTools = __ghOn ? TOOLS.concat(GITHUB_TOOLS) : TOOLS;
+
   const usage = await checkAndConsume(token, guestId, 'agent', clientIp(req));
   if (!usage.allowed) {
     if (usage.reason === 'auth') res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
@@ -394,6 +451,11 @@ module.exports = async (req, res) => {
 
   // v545 — المعرفة الجماعيّة (لا تُحقن لمها الصوتيّة: شخصيّتها ومعلوماتها لا تُمَسّ).
   try { system += await require('./collective.js').blockAsync(); } catch (e) { /* guard-ok: collective enrichment is optional; the chat request must continue. */ }
+
+  // 🔗 للمالك فقط: تنبيه بوجود أدوات GitHub وحدودها (لا نشر إلا بدمج المالك).
+  if (__ghOn) {
+    system += '\n\nأنت متصل بمستودع GitHub الخاص بالمالك ولك أداتان: github_read لقراءة ملف، وgithub_push لرفع تغييرات إلى فرعٍ. القواعد: (١) لا ترفع إلا حين يطلب المالك رفعًا فعليًّا صراحةً. (٢) اقرأ الملف بـgithub_read قبل تعديله ثم ارفع الملف كاملًا. (٣) لا تلمس الفرع الرئيسي أبدًا — الرفع يكون لفرعٍ، والدمج/النشر بيد المالك وحده. (٤) بعد الرفع أعطِ المالك رابط الفرع ورابط المقارنة/الدمج حرفيًّا وذكّره أنّ شيئًا لن يُنشر حتى يدمج هو.';
+  }
 
   if (currentCode) {
     system += '\n\nالكود الحالي للمشروع (عدّل عليه إذا طلب المستخدم تعديلًا وأعد الملف كاملًا):\n```html\n' + String(currentCode).slice(0, 60000) + '\n```';
@@ -459,7 +521,7 @@ module.exports = async (req, res) => {
           max_tokens: 32000,
           system,
           messages: convo,
-          tools: TOOLS,
+          tools: reqTools,
           stream: true,
         }),
       });
@@ -550,6 +612,8 @@ module.exports = async (req, res) => {
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ phase: 'verifying', status: '⚙️ الوكيل يشغّل كودًا للتحقق…' });
             else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ phase: 'verifying', status: '🧪 الوكيل يختبر ما بناه…' });
             else if (cb.type === 'tool_use' && cb.name === 'publish') send({ phase: 'executing', status: '🔗 الوكيل ينشر التطبيق…' });
+            else if (cb.type === 'tool_use' && cb.name === 'github_read') send({ phase: 'executing', status: '📖 الوكيل يقرأ ملفًا من GitHub…' });
+            else if (cb.type === 'tool_use' && cb.name === 'github_push') send({ phase: 'executing', status: '⬆️ الوكيل يرفع إلى فرع GitHub…' });
           } else if (ev.type === 'content_block_delta') {
             const cb = contentBlocks[ev.index];
             if (!cb) continue;
@@ -604,6 +668,35 @@ module.exports = async (req, res) => {
             result = run.pubs > 3
               ? '✗ نشرتَ ثلاث مرات في هذا التشغيل وهذا حدّ مقصود — سلّم المستخدم آخر رابط حصلتَ عليه.'
               : await doPublish(input, lastCodeIn(run.text) || lastTested, runUser, req.headers && req.headers.host);
+          } else if (cb.name === 'github_read' || cb.name === 'github_push') {
+            // 🔗 أدوات GitHub — للمالك وحده وفقط عند التهيئة (حارسٌ مزدوج مع reqTools).
+            if (!__ghOn) {
+              result = '✗ أدوات GitHub غير متاحة (تحتاج جلسة المالك وتهيئة GITHUB_OWNER_TOKEN/GITHUB_OWNER_REPO في البيئة).';
+            } else if (cb.name === 'github_read') {
+              const rd = await require('./github-agent.js').readFile(input.path || '', input.ref || '');
+              result = rd.ok
+                ? ('✅ قرأتُ ' + rd.path + ' (' + rd.text.length + ' حرفًا):\n\n' + rd.text)
+                : ('✗ تعذّرت قراءة الملف: ' + (rd.reason || 'خطأ'));
+            } else {
+              // github_push
+              run.ghPushes = (run.ghPushes || 0) + 1;
+              if (run.ghPushes > 5) {
+                result = '✗ رفعتَ خمس مرات في هذا التشغيل وهذا حدّ مقصود — سلّم المالك رابط الفرع الأخير.';
+              } else {
+                const pr = await require('./github-agent.js').commitFiles({ branch: input.branch, message: input.message, files: input.files });
+                if (pr.ok) {
+                  result = '✅ رُفعت ' + pr.files.length + ' ملف(ات) إلى فرع «' + pr.branch + '» في ' + pr.repo
+                    + ' (لم يُلمس ' + pr.base + '). '
+                    + '\nالفرع: ' + pr.branchUrl
+                    + '\nالمقارنة/الدمج: ' + pr.compareUrl
+                    + '\nأعطِ المالك هذين الرابطين حرفيًّا، وذكّره أنّ النشر لا يتم إلا بدمجه هو.';
+                } else if (pr.reason === 'refuse_default_branch') {
+                  result = '✗ رُفض: لا يُسمح بالرفع إلى الفرع الرئيسي — اختر اسم فرعٍ آخر (النشر بيد المالك).';
+                } else {
+                  result = '✗ فشل الرفع: ' + (pr.reason || 'خطأ') + (pr.detail ? (' — ' + pr.detail) : '');
+                }
+              }
+            }
           }
           toolResults.push({ type: 'tool_result', tool_use_id: cb.id, content: result.slice(0, 8000) });
 
