@@ -1,0 +1,143 @@
+name: Omran Agent (Claude Code)
+
+# v-agent-delegate — «أبي الوكيل نفسك بالضبط»: وكيل التطبيق لا يملك بيئة تشغيل، فيسلّم
+# المهمّة إلى Claude Code نفسه هنا: يقرأ المستودع كاملًا، يعدّل، يعيد بناء الحزمة،
+# يشغّل npm run ci حتّى يمرّ، ويلتزم على فرع. الخطوة الأخيرة تدفع الفرع وتُبلغ في
+# مسألة المهمّة (تعليق فيه سطر حالة مخفيّ يقرأه وكيل التطبيق)، ثمّ يفتح وكيل التطبيق
+# طلب السحب بمفتاح المالك حتّى تعمل فحوص CI عليه. الدمج والنشر بيد المالك دائمًا.
+#
+# يحتاج مرّة واحدة: تثبيت تطبيق Claude على المستودع (github.com/apps/claude) وسرّ
+# ANTHROPIC_API_KEY في أسرار المستودع، ومفتاح GitHub في خزنة الأسرار بصلاحيّات
+# Actions: write · Issues: write · Contents: write · Pull requests: write.
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'المهمّة (بالعربيّة أو الإنجليزيّة)'
+        required: true
+        type: string
+      branch:
+        description: 'اسم الفرع الذي يُلتزم ويُدفع إليه (يحدّده وكيل التطبيق)'
+        required: true
+        type: string
+      issue:
+        description: 'رقم مسألة المهمّة التي تُكتب فيها التقارير'
+        required: true
+        type: string
+      base:
+        description: 'الفرع الأساس'
+        required: false
+        default: 'main'
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+  actions: read
+
+concurrency:
+  group: omran-agent
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TASK_BRANCH: ${{ inputs.branch }}
+      TASK_ISSUE: ${{ inputs.issue }}
+      TASK_BASE: ${{ inputs.base }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.base }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Announce start on the task issue
+        run: |
+          printf '🏃 بدأ التشغيل: %s\nالفرع المستهدف: `%s`\n\n<!-- omran-agent {"phase":"start","run_id":"%s","run_url":"%s"} -->\n' "$RUN_URL" "$TASK_BRANCH" "${{ github.run_id }}" "$RUN_URL" > /tmp/start.md
+          gh issue comment "$TASK_ISSUE" --body-file /tmp/start.md
+
+      - name: Claude Code
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: '--allowedTools "Bash,Read,Edit,MultiEdit,Write,Glob,Grep" --max-turns 80'
+          prompt: |
+            أنت Claude Code تعمل داخل GitHub Actions على مستودع «عمران AI» (${{ github.repository }})،
+            مفوَّضًا من وكيل التطبيق بطلب المالك. اعمل كما يعمل مهندس زميل محترف: افهم أوّلًا، ثمّ غيّر،
+            ثمّ تحقّق، ثمّ التزم.
+
+            المهمّة:
+            ${{ inputs.task }}
+
+            القواعد:
+            1. اقرأ README.md ورأس knowledge/DECISIONS.md أوّلًا لتفهم البنية والقرارات السابقة، ثمّ اقرأ
+               الملفّات المعنيّة كاملة قبل أيّ تعديل. لا تعدّل ما لم تقرأه.
+            2. الواجهة تُبنى من الأجزاء js/app-NN-*.js وjs/partials-*.js إلى js/app.bundle.js:
+               بعد أيّ تعديل عليها شغّل `npm run bundle` (يختم index.html وsw.js بالبصمة).
+            3. شغّل `npm run ci` (check + guard + coldstart + verify + test) وأصلح حتّى يمرّ كاملًا.
+               ممنوع تعطيل اختبار أو تخطّيه أو حذفه لتمرير الفحص.
+            4. أضف اختبارًا في tests/ لكلّ سلوك جديد وسجّله في السكربت test داخل package.json، وأضف
+               مدخلًا موجزًا في رأس knowledge/DECISIONS.md يشرح السبب والقرار.
+            5. أنشئ فرعًا اسمه بالضبط `${{ inputs.branch }}` (git checkout -b) والتزم عليه برسالة
+               عربيّة واضحة: السطر الأوّل ما تغيّر ولماذا، ثمّ التفاصيل. لا تدفع (push) ولا تفتح
+               طلب سحب: الخطوة التالية في الورك فلو تدفع الفرع وتُبلغ، ووكيل التطبيق يفتح الطلب.
+            6. لا تلمس الأسرار ولا ملفّات البيئة ولا مجلّد .github، ولا تحذف ما لا يخصّ المهمّة،
+               ولا تغيّر سلوكًا خارج نطاقها. إن كانت المهمّة غامضة أو خطرة فلا تخمّن: اكتب ما ينقصك
+               في الملخّص واترك الكود كما هو.
+            7. في نهاية عملك اكتب ملخّصًا موجزًا بالعربيّة (ماذا غيّرت ولماذا وكيف تحقّقت، وما تركته
+               وسببه) في الملفّ AGENT_SUMMARY.md في جذر المستودع. لا تلتزم هذا الملفّ في git.
+
+      - name: Verify, push the branch, and report on the task issue
+        if: always()
+        env:
+          CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
+        run: |
+          set +e
+          git config user.name  "omran-agent[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          SUMMARY=""
+          if [ -f AGENT_SUMMARY.md ]; then SUMMARY="$(head -c 6000 AGENT_SUMMARY.md)"; fi
+          git rm -q --cached --ignore-unmatch AGENT_SUMMARY.md >/dev/null 2>&1
+          rm -f AGENT_SUMMARY.md
+          # الفرع: على ما أنشأه Claude، وإلا فرع جديد من الأساس
+          if git rev-parse --verify "$TASK_BRANCH" >/dev/null 2>&1; then git checkout -q "$TASK_BRANCH"; else git checkout -q -b "$TASK_BRANCH"; fi
+          # التزم أيّ تعديل تركه Claude بلا التزام
+          if [ -n "$(git status --porcelain)" ]; then git add -A && git commit -q -m "وكيل عمران: تغييرات من التشغيل ${{ github.run_id }} (لم تُلتزم داخل الجلسة)"; fi
+          CHANGED=$(git rev-list --count "origin/$TASK_BASE..HEAD" 2>/dev/null || echo 0)
+          if [ "$CHANGED" = "0" ]; then
+            {
+              printf '⚠️ انتهى التشغيل بلا أيّ تغيير في الكود (خطوة Claude: %s).\n' "$CLAUDE_OUTCOME"
+              [ -n "$SUMMARY" ] && printf '\n**ملخّص Claude:**\n%s\n' "$SUMMARY"
+              [ "$CLAUDE_OUTCOME" != "success" ] && printf '\nإن كان السبب غياب المفتاح: أضف ANTHROPIC_API_KEY في أسرار المستودع وثبّت تطبيق Claude على المستودع.\n'
+              printf '\n<!-- omran-agent {"phase":"done","pushed":false,"changed":0,"claude":"%s","run_id":"%s","run_url":"%s"} -->\n' "$CLAUDE_OUTCOME" "${{ github.run_id }}" "$RUN_URL"
+            } > /tmp/report.md
+            gh issue comment "$TASK_ISSUE" --body-file /tmp/report.md
+            exit 0
+          fi
+          npm run ci > /tmp/ci.log 2>&1; CI=$?
+          CIRES=fail; [ "$CI" = "0" ] && CIRES=pass
+          git push -u origin "$TASK_BRANCH" > /tmp/push.log 2>&1; PUSHED=$?
+          SHA=$(git rev-parse HEAD)
+          {
+            if [ "$PUSHED" = "0" ]; then printf '✅ دُفع الفرع `%s` (%s التزامًا، آخره %s).\n' "$TASK_BRANCH" "$CHANGED" "${SHA:0:7}"; else printf '❌ فشل دفع الفرع `%s`:\n```\n%s\n```\n' "$TASK_BRANCH" "$(tail -n 5 /tmp/push.log)"; fi
+            if [ "$CIRES" = "pass" ]; then printf 'npm run ci: ✅ نجح.\n'; else printf 'npm run ci: ❌ فشل — آخر السطور:\n```\n%s\n```\n' "$(tail -n 25 /tmp/ci.log | sed 's/`//g')"; fi
+            [ -n "$SUMMARY" ] && printf '\n**ملخّص Claude:**\n%s\n' "$SUMMARY"
+            printf '\n<!-- omran-agent {"phase":"done","pushed":%s,"changed":%s,"ci":"%s","sha":"%s","claude":"%s","run_id":"%s","run_url":"%s"} -->\n' "$([ "$PUSHED" = "0" ] && echo true || echo false)" "$CHANGED" "$CIRES" "$SHA" "$CLAUDE_OUTCOME" "${{ github.run_id }}" "$RUN_URL"
+          } > /tmp/report.md
+          gh issue comment "$TASK_ISSUE" --body-file /tmp/report.md
+          [ "$PUSHED" = "0" ] || exit 1
