@@ -26,3 +26,7 @@ videos_tmp/
 # فتات نظام الملفّات.
 .DS_Store
 Thumbs.db
+
+# ملفّات وكيل الكود في Actions — تُقرأ وتُكتب أثناء التشغيل ولا تُلتزم.
+AGENT_SUMMARY.md
+AGENT_CONTEXT.md
