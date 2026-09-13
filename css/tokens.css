@@ -502,6 +502,10 @@
   }
   /* v214: عند فتح أي نافذة (الإعدادات وغيرها) كل ما خلفها يختفي تمامًا */
   dialog::backdrop{background:#000000;}
+  /* v-settings-clear-desktop (طلب المالك: «ما تغطّي الدردشة» — زي لوحة محادثة
+     جديدة): على الكمبيوتر يبقى درج الإعدادات على اليمين، وخلفيته شفافة فتظلّ
+     المحادثة ظاهرة خلفه بدل تعتيمها بالكامل. الجوال يحتفظ بتعتيمه (داخل @media). */
+  #settingsDialog::backdrop{ background:transparent; }
   dialog > *{padding-left:24px; padding-right:24px;}
   dialog > h3{padding-top:24px;}
   dialog h3{font-weight:700;}
