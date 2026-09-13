@@ -306,6 +306,79 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
 }
 html.mobile-ui #omHeadCenter{ display: none !important; }
 </style>
+<style>
+/* v-frame-c (أمر عمران ١٣ سبتمبر — النموذج «ج» من اللوحة): الشريط الجانبي
+   ولوحة الكود يمتدّان من أعلى النافذة إلى أسفلها، والهيدر (الشعار طرفًا
+   والأزرار الطرف الآخر) ثم شريط الأسهم تحته يعلوان عمود المحادثة وحده.
+   لا نقل في الـDOM: الجسم يصير شبكة (٥ أعمدة × ٣ صفوف) و<main> يذوب
+   بـdisplay:contents فتصير أبناؤه أبناء الشبكة مباشرةً — الأعمدة تنعكس مع
+   اتجاه اللغة تلقائيًّا (عربي: الجانبي يمين، إنجليزي: يسار).
+   لوحة مطويّة = عمودها صفر فيمتدّ الهيدر والأسهم مكانها من تلقاء أنفسهما.
+   الجوال خارج الكتلة كلّها: min-width:861px و:not(.mobile-ui).
+   الرجوع: احذف هذه الكتلة كاملةً. */
+@media (min-width: 861px){
+  html:not(.mobile-ui) body{
+    display: grid;
+    /* عمود اللوحة minmax(240px,auto): يبدأ من حدّها الأدنى ويتّسع إلى عرضها المضبوط
+       إن بقي مكان — كما كان يتقلّص بالمرونة — فلا يفيض عن النافذة الضيّقة. */
+    grid-template-columns: auto auto minmax(300px, 1fr) auto minmax(240px, auto);
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+  /* اللوحة مطويّة (display:none): حدّ العمود الأدنى يسقط فلا يبقى فراغ ٢٤٠px. */
+  html:not(.mobile-ui) body.waCollapsedMode{
+    grid-template-columns: auto auto minmax(300px, 1fr) auto auto;
+  }
+  html:not(.mobile-ui) body > main{ display: contents; }
+  html:not(.mobile-ui) body > header{ grid-column: 3; grid-row: 1; min-width: 0; }
+  /* قبل أن ينقله app-05-ui.js إلى الهيدر (أو إن تعطّل النقل) يبقى في مكانه المرئيّ نفسه. */
+  html:not(.mobile-ui) body > #stockTicker{ grid-column: 3; grid-row: 2; min-width: 0; }
+  html:not(.mobile-ui) body #chatcol{ grid-column: 3; grid-row: 3; min-width: 0; min-height: 0; }
+  html:not(.mobile-ui) body #sidebar{ grid-column: 1; grid-row: 1 / -1; min-height: 0; }
+  html:not(.mobile-ui) body #resizer1{ grid-column: 2; grid-row: 1 / -1; }
+  html:not(.mobile-ui) body #resizer2{ grid-column: 4; grid-row: 1 / -1; }
+  /* max-width:100% = عرض عمودها في الشبكة، فتنكمش اللوحة مع العمود في النافذة
+     الضيّقة بدل أن تفيض عنه بعرضها المضبوط (٥٦٠ أو ما سحبه المستخدم). */
+  html:not(.mobile-ui) body #workarea{ grid-column: 5; grid-row: 1 / -1; min-height: 0; max-width: 100%; }
+  /* أيّ ابن آخر للجسم داخل التدفّق (كخلفيّة الدرج الفارغة) يأخذ صفًّا كاملًا
+     أسفل الشبكة بلا ارتفاع — كما كان يأخذه أسفل العمود. */
+  html:not(.mobile-ui) body > :not(header):not(main):not(#stockTicker){ grid-column: 1 / -1; }
+
+  /* ② الهيدر سطران: الشعار والأزرار أوّلًا، ثم سطر الأسهم كاملَ العرض تحتهما.
+     row-reverse القائم يبقى فيحفظ انعكاس الشعار مع اللغة؛ #omHeadCenter
+     (السهم + الشريط) يُدفع آخرًا بـorder ويأخذ السطر كلّه. */
+  html:not(.mobile-ui) body > header{ flex-wrap: wrap; row-gap: 4px; padding-bottom: 6px !important; }
+  html:not(.mobile-ui) #omHeadCenter{ order: 1; flex: 0 0 100%; width: 100%; }
+  /* أطراف الشريط تذوب بدل القطع الحادّ (السهم خارج الشريط فلا يتأثّر). */
+  html:not(.mobile-ui) #omHeadCenter #stockTicker{
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  }
+  /* الزرّ كان يُدفع ٢٦px نزولًا ليفسح لسهم الشريط حين كان الشريط فوق الجانبي؛
+     الجانبي يبدأ الآن من أعلى النافذة والسهم فوق المحادثة، فيعود هامشه الطبيعيّ. */
+  html:not(.mobile-ui) body #omranNewChatBtn{ margin-top: 14px !important; }
+
+  /* ③ المحادثة عمود موسّط محدود العرض (كما في واجهة الـCode التي أرسلها عمران):
+     الرسائل والترحيب وصندوق الكتابة تحت بعضها في عمود واحد عرضه --om-chat-max
+     على الأكثر، وسط ما بقي من الشاشة؛ وإن ضاق العمود بقي هامش --om-chat-pad.
+     النسبة المئوية تُحسب من عرض العمود عند كلّ عنصر، فتُصفَّر حشوة #messages
+     و#inputbar الجانبية ليتطابق الأساس. حاشية التمرير محجوزة من الطرفين
+     (scrollbar-gutter) فلا تزيح الرسائل عن محور صندوق الكتابة. */
+  :root{ --om-chat-max: 800px; --om-chat-inset: max(var(--om-chat-pad), calc((100% - var(--om-chat-max)) / 2)); }
+  html:not(.mobile-ui) body #messages{ padding-inline: 0 !important; scrollbar-gutter: stable both-edges; }
+  html:not(.mobile-ui) body #inputbar{ padding-inline: 0 !important; }
+  html:not(.mobile-ui) body #omranHero,
+  html:not(.mobile-ui) body #messages > *,
+  html:not(.mobile-ui) body #askAllHintTip,
+  html:not(.mobile-ui) body #composerRow,
+  html:not(.mobile-ui) body #omranBelowComposer{
+    margin-inline: var(--om-chat-inset) !important;
+  }
+  html:not(.mobile-ui) body #chatJumpBottom,
+  html:not(.mobile-ui) body #chatQuickChipsWrap{
+    inset-inline-end: calc(var(--om-chat-inset) + 14px);
+  }
+}
+</style>
 <style>/* v-intro-splash: شاشة افتتاح كاملة من مخطط المالك تظهر مرة عند كل فتح ثم تذوب تمامًا */
 #omranIntro{position:fixed;inset:0;z-index:2147483000;background:#07070B;overflow:hidden;opacity:1;transition:opacity .95s ease,transform .95s ease;cursor:pointer;visibility:visible}
 #omranIntro.oiOut{opacity:0;transform:scale(1.04);pointer-events:none}
