@@ -59,7 +59,9 @@ async function startTask(input, opts) {
   const { r: ir, j: ij } = await ghJson(R + '/issues', Object.assign({}, o, { method: 'POST', body: { title: '🤖 مهمّة الوكيل: ' + task.split('\n')[0].slice(0, 90), body } }));
   if (!ir.ok || !ij || !ij.number) return { error: apiMsg(ir, ij, 'فتح مسألة المهمّة (يحتاج Issues: write)') };
 
-  const { r: dr, j: dj } = await ghJson(R + '/actions/workflows/' + WORKFLOW + '/dispatches', Object.assign({}, o, { method: 'POST', body: { ref: base, inputs: { task, branch, issue: String(ij.number), base } } }));
+  // v-agent-parity: نموذج مختار من القائمة نفسها التي في الإعدادات؛ خارجها = افتراضيّ الورك فلو (Fable 5.1)
+  const model = CLAUDE_MODEL_IDS.includes(String(i.model || '').trim()) ? String(i.model).trim() : '';
+  const { r: dr, j: dj } = await ghJson(R + '/actions/workflows/' + WORKFLOW + '/dispatches', Object.assign({}, o, { method: 'POST', body: { ref: base, inputs: Object.assign({ task, branch, issue: String(ij.number), base }, model ? { model } : {}) } }));
   if (dr.status !== 204 && !dr.ok) {
     return { error: apiMsg(dr, dj, 'تشغيل الورك فلو ' + WORKFLOW + ' (يحتاج Actions: write، والملفّ موجود على ' + base + ')'), issue: ij.number, issueUrl: ij.html_url };
   }
@@ -156,6 +158,7 @@ function formatCheck(res) {
 }
 
 /* ---------- تعريف الأداتين (للمالك وحده) ---------- */
+const CLAUDE_MODEL_IDS = ['claude-fable-5-1', 'claude-fable-5', 'claude-opus-5', 'claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-5', 'claude-sonnet-4-6', 'claude-haiku-4-5'];
 const START_TOOL = {
   name: 'delegate_code_task',
   description: 'سلّم مهمّة كود على مستودع المالك إلى Claude Code داخل GitHub Actions (يقرأ المستودع كاملًا، يعدّل، يعيد بناء الحزمة، يشغّل npm run ci حتّى يمرّ، ويدفع فرعًا). للمالك وحده. تُستخدم للتغييرات الحقيقيّة (إصلاح، ميزة، إعادة هيكلة) التي تحتاج اختبارًا؛ لا للقراءة ولا للأسئلة. اكتب المهمّة كما تكتبها لمهندس زميل: ماذا يتغيّر ولماذا وأين (مسارات الملفّات) وما معيار النجاح. تعود فورًا برقم مسألة وروابط، والتنفيذ يأخذ دقائق — تحقّق لاحقًا بـcheck_code_task.',
@@ -163,6 +166,7 @@ const START_TOOL = {
     type: 'object',
     properties: {
       task: { type: 'string', description: 'وصف المهمّة الكامل (بلا أسرار)' },
+      model: { type: 'string', enum: CLAUDE_MODEL_IDS, description: 'نموذج Claude Code للمهمّة (الافتراضيّ Fable 5.1؛ Sonnet 5 أرخص وأسرع للمهامّ الصغيرة)' },
       base: { type: 'string', description: 'الفرع الأساس (الافتراضيّ main)' },
       repo: { type: 'string', description: 'owner/repo (الافتراضيّ مستودع التطبيق)' },
     },
