@@ -163,31 +163,22 @@ module.exports = async (req, res) => {
     // mis-heard words using sentence context, without adding or changing meaning.
     if (cleanText.length >= 8) {
       try {
-        const fixCtrl = new AbortController();
-        const fixTimer = setTimeout(() => fixCtrl.abort(), 8000);
-        const fixResp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': 'Bearer ' + apiKey,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
-            temperature: 0,
-            max_tokens: 1024,
-            messages: [
-              {
-                role: 'system',
-                content: 'أنت مصحح نصوص ناتجة عن تحويل الصوت إلى كتابة (speech-to-text). النص قد يحتوي كلمات سُمعت غلط. مهمتك الوحيدة: تصحيح الكلمات المسموعة غلط اعتمادًا على سياق الجملة، مع الحفاظ الكامل على معنى المتكلم ولهجته الخليجية وأسلوبه. أمثلة شائعة: "همارة"→"إمارة"، "وغيرت"→"أبغي"، "اقدد"→"أقصد". قواعد صارمة: لا تضف كلمات جديدة، لا تحذف معنى، لا تغير اللهجة إلى فصحى، لا تجب على النص ولا تعلق عليه. إذا كان النص سليمًا أعده كما هو حرفيًا. أعد النص المصحح فقط بدون أي مقدمات أو علامات اقتباس.',
-              },
-              { role: 'user', content: cleanText },
-            ],
-          }),
-          signal: fixCtrl.signal,
+        // v-free-models: اسم النموذج لم يعد مزروعًا — مرشّحون ثم استكشاف (free-chain.js).
+        const fixResp = await require('./free-chain.js').completeJson('groq', {
+          key: apiKey,
+          timeoutMs: 8000,
+          temperature: 0,
+          max_tokens: 1024,
+          messages: [
+            {
+              role: 'system',
+              content: 'أنت مصحح نصوص ناتجة عن تحويل الصوت إلى كتابة (speech-to-text). النص قد يحتوي كلمات سُمعت غلط. مهمتك الوحيدة: تصحيح الكلمات المسموعة غلط اعتمادًا على سياق الجملة، مع الحفاظ الكامل على معنى المتكلم ولهجته الخليجية وأسلوبه. أمثلة شائعة: "همارة"→"إمارة"، "وغيرت"→"أبغي"، "اقدد"→"أقصد". قواعد صارمة: لا تضف كلمات جديدة، لا تحذف معنى، لا تغير اللهجة إلى فصحى، لا تجب على النص ولا تعلق عليه. إذا كان النص سليمًا أعده كما هو حرفيًا. أعد النص المصحح فقط بدون أي مقدمات أو علامات اقتباس.',
+            },
+            { role: 'user', content: cleanText },
+          ],
         });
-        clearTimeout(fixTimer);
-        if (fixResp.ok) {
-          const fixJson = await fixResp.json();
+        if (fixResp.ok && fixResp.json) {
+          const fixJson = fixResp.json;
           let fixed = (fixJson && fixJson.choices && fixJson.choices[0] && fixJson.choices[0].message && fixJson.choices[0].message.content || '').trim();
           // Strip accidental wrapping quotes.
           fixed = fixed.replace(/^["'«»\u201C\u201D]+|["'«»\u201C\u201D]+$/g, '').trim();

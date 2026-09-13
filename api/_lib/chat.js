@@ -1169,6 +1169,23 @@ module.exports = async (req, res) => {
 
       if (!upstream.ok) {
         const errText = (await upstream.text()).slice(0, 300);
+        // v-king-fallback (لقطة المالك ١٣ سبتمبر: «Your credit balance is too low»
+        // ثم فشل الاحتياط أيضًا): تعطّل المحرّك الاحترافي قبل أول حرف (رصيد/401/
+        // 429/5xx) يهبط هنا على الخادم إلى السلسلة المجانية بلا أدوات بدل أن يرى
+        // المستخدم JSON الخطأ خامًا. السطر التمهيدي يُبثّ مع أول حرف فقط، فإن فشلت
+        // السلسلة أيضًا يمضي مسار الخطأ القديم كما كان (العميل يهبط بنفسه).
+        if (!anyText) {
+          try { logError('chat/upstream', new Error(upstream.status + ' ' + errText.slice(0, 200))); } catch (e) { /* التسجيل تحسين */ }
+          send({ status: '⚠️ المحرّك الاحترافي غير متاح مؤقتًا — أردّ من المحرّك الاحتياطي…', k: 'stFallback' });
+          let __pre = false;
+          const __sendFb = (ev) => {
+            if (ev && ev.delta && !__pre) { __pre = true; send({ delta: '⚠️ المحرّك الاحترافي غير متاح مؤقتًا، فهذا ردّ من المحرّك الاحتياطي بلا أدوات:\n\n' }); }
+            send(ev);
+          };
+          const __fb = await streamFreeChain({ system: PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz), convo, send: __sendFb });
+          if (__fb.ok) { send({ done: true }); res.end(); return; }
+          send({ tierDiag: (__fb.errors || []).slice(0, 6) });
+        }
         // لم يُكتب حرف بعد → أَبلِغ العميل ليهبط إلى مساره القديم بلا تكرار.
         send({ error: 'chat upstream ' + upstream.status + ': ' + errText, fallback: !anyText });
         res.end();

@@ -45,19 +45,38 @@ module.exports = async (req, res) => {
     }
 
     const wantStream = !!body.stream;
-    const upstream = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    // v-free-models (لقطة المالك ١٣ سبتمبر: «The model … does not exist» على اسم llama القديم):
+    // اسم النموذج لم يعد مزروعًا. الاسم الذي يرسله العميل يُجرَّب أولًا إن لم يكن
+    // متقاعدًا، ثم الناجح المحفوظ، ثم المرشّحون، ثم استكشاف /models — والناجح يُحفظ.
+    const fc = require('./free-chain.js');
+    const spec = fc.providerSpec('groq', apiKey);
+    const callGroq = (m) => fetch(spec.url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + apiKey,
-      },
-      body: JSON.stringify({
-        model: model || 'llama-3.3-70b-versatile',
-        messages,
-        temperature: 0.7,
-        stream: wantStream,
-      }),
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({ model: m, messages, temperature: 0.7, stream: wantStream }),
     });
+    let upstream = null;
+    let lastFail = null;
+    const tried = fc.modelsToTry(spec, typeof model === 'string' ? model : '');
+    for (const m of tried) {
+      const r = await callGroq(m);
+      if (r.ok) { upstream = r; fc.rememberWorking('groq', m); break; }
+      const txt = await r.text().catch(() => '');
+      lastFail = { status: r.status, txt };
+      if (!fc.isModelErrorStatus(r.status, txt)) break; // خطأ غير النموذج (401/429/5xx) يُعاد للعميل كما هو
+    }
+    if (!upstream && lastFail && fc.isModelErrorStatus(lastFail.status, lastFail.txt)) {
+      const found = await fc.discoverModel(spec, {});
+      if (found && !tried.includes(found)) {
+        const r = await callGroq(found);
+        if (r.ok) { upstream = r; fc.rememberWorking('groq', found); }
+        else lastFail = { status: r.status, txt: await r.text().catch(() => '') };
+      }
+    }
+    if (!upstream) {
+      res.status((lastFail && lastFail.status) || 502).setHeader('Content-Type', 'application/json').send((lastFail && lastFail.txt) || '{"error":"groq unavailable"}');
+      return;
+    }
 
     if (wantStream && upstream.ok && upstream.body) {
       res.status(200);

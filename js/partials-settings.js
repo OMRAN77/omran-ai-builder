@@ -242,7 +242,7 @@
     </label>
     <input type="password" id="groqApiKey" placeholder="gsk_...">
     <label data-i18n="groqModelLabel">اسم النموذج</label>
-    <input type="text" id="groqModel" placeholder="llama-3.3-70b-versatile">
+    <input type="text" id="groqModel" placeholder="openai/gpt-oss-120b">
   </div>
   <div class="api-provider-card" style="border-inline-start:4px solid #d97757; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
     <label style="display:flex; align-items:center; justify-content:space-between; gap:8px;">

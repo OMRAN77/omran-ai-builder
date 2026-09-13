@@ -212,4 +212,69 @@ async function streamFreeChain(args) {
   return { ok: false, provider: null, model: null, text: '', attempts, errors };
 }
 
-module.exports = { streamFreeChain, toOpenAIMessages, streamOne, discoverModel, isModelError, FREE_NOTE, __workingModel: workingModel };
+// ─── مساعدات مشتركة لبقية الخادم (groq.js, memory.js, stt.js, live-deps.js, agent.js) ───
+// أسماء متقاعدة يرسلها عميل قديم أو إعداد محفوظ — تُستبدل بالمرشّحين الحاليين.
+const RETIRED_MODELS = new Set(['llama-3.3-70b-versatile', 'llama-3.1-70b-versatile', 'llama3-70b-8192', 'mixtral-8x7b-32768', 'gemini-2.5-flash', 'gemini-1.5-flash', 'mistral-large-latest']);
+
+// مواصفة مزوّد بمفتاح صريح (لا من البيئة بالضرورة) — نفس شكل عناصر freeChain().
+function providerSpec(id, key, env) {
+  const { FREE_PROVIDER_SPECS } = require('./tier.js');
+  const spec = FREE_PROVIDER_SPECS[id];
+  if (!spec) return null;
+  const e = env || process.env;
+  const pref = e[spec.modelVar] && String(e[spec.modelVar]).trim();
+  const models = (pref ? [pref] : []).concat(spec.models.filter((m) => m !== pref));
+  return { id, name: spec.name, url: spec.url, modelsUrl: spec.modelsUrl, key: key || e[spec.keyVar] || '', model: models[0], models, pick: spec.pick, vision: !!spec.vision };
+}
+
+// النماذج التي تُجرَّب بالترتيب: المفضّل (إن لم يكن متقاعدًا) ثم الناجح المحفوظ ثم المرشّحون.
+function modelsToTry(spec, preferred, now) {
+  const list = candidateModels(spec, typeof now === 'number' ? now : Date.now());
+  const p = typeof preferred === 'string' ? preferred.trim() : '';
+  if (p && !RETIRED_MODELS.has(p) && !list.includes(p)) list.unshift(p);
+  return list;
+}
+
+function rememberWorking(id, model, now) { if (id && model) workingModel.set(id, { model, at: typeof now === 'number' ? now : Date.now() }); }
+function isModelErrorStatus(status, body) { return isModelError({ status, body: String(body || '') }); }
+function defaultModel(id, env) { const spec = providerSpec(id, '', env); return spec ? modelsToTry(spec, '')[0] : ''; }
+
+// إكمال غير متدفّق (JSON) بمرشّحين: {ok:true, json, model} أو {ok:false, status, body, model}.
+async function completeJson(id, opts) {
+  const o = opts || {};
+  const spec = providerSpec(id, o.key, o.env);
+  if (!spec || !spec.key) return { ok: false, status: 0, body: 'no-key', model: null };
+  const fetchImpl = o.fetchImpl || fetch;
+  const now = typeof o.now === 'number' ? o.now : Date.now();
+  const models = modelsToTry(spec, o.model, now);
+  let last = { ok: false, status: 0, body: '', model: null };
+  const tryOne = async (model) => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), o.timeoutMs || 20000);
+    try {
+      const r = await fetchImpl(spec.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + spec.key },
+        body: JSON.stringify(Object.assign({ model, messages: o.messages, temperature: typeof o.temperature === 'number' ? o.temperature : 0.2, max_tokens: o.max_tokens || 1024 }, o.extra || {})),
+        signal: ctrl.signal,
+      });
+      if (r.ok) {
+        const json = await r.json().catch(() => null);
+        rememberWorking(id, model, now);
+        return { ok: true, json, model };
+      }
+      const body = await r.text().catch(() => '');
+      return { ok: false, status: r.status, body, model };
+    } finally { clearTimeout(timer); }
+  };
+  for (const model of models) {
+    last = await tryOne(model);
+    if (last.ok) return last;
+    if (!isModelErrorStatus(last.status, last.body)) return last;
+  }
+  const found = await discoverModel(spec, o);
+  if (found && !models.includes(found)) last = await tryOne(found);
+  return last;
+}
+
+module.exports = { streamFreeChain, toOpenAIMessages, streamOne, discoverModel, isModelError, isModelErrorStatus, providerSpec, modelsToTry, rememberWorking, defaultModel, completeJson, RETIRED_MODELS, FREE_NOTE, __workingModel: workingModel };

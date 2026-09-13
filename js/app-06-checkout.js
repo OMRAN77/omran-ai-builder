@@ -483,7 +483,7 @@ $('#btnSettings').onclick = () => {
   $('#geminiApiKey').value = localStorage.getItem('aiapp_gemini_apikey') || '';
   $('#geminiModel').value = localStorage.getItem('aiapp_gemini_model') || 'gemini-flash-latest';
   $('#groqApiKey').value = localStorage.getItem('aiapp_groq_apikey') || '';
-  $('#groqModel').value = localStorage.getItem('aiapp_groq_model') || 'llama-3.3-70b-versatile';
+  $('#groqModel').value = localStorage.getItem('aiapp_groq_model') || 'openai/gpt-oss-120b'; /* v-free-models: llama-3.3-70b تقاعد عند Groq */
   $('#claudeApiKey').value = localStorage.getItem('aiapp_claude_apikey') || '';
   $('#claudeModel').value = localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-5';
   $('#openrouterApiKey').value = localStorage.getItem('aiapp_openrouter_apikey') || '';
@@ -718,7 +718,7 @@ const saveSettingsNow = () => {
   localStorage.setItem('aiapp_gemini_apikey', $('#geminiApiKey').value.trim());
   localStorage.setItem('aiapp_gemini_model', $('#geminiModel').value.trim() || 'gemini-flash-latest');
   localStorage.setItem('aiapp_groq_apikey', $('#groqApiKey').value.trim());
-  localStorage.setItem('aiapp_groq_model', $('#groqModel').value.trim() || 'llama-3.3-70b-versatile');
+  localStorage.setItem('aiapp_groq_model', $('#groqModel').value.trim() || 'openai/gpt-oss-120b');
   localStorage.setItem('aiapp_claude_apikey', $('#claudeApiKey').value.trim());
   localStorage.setItem('aiapp_claude_model', $('#claudeModel').value.trim() || 'claude-sonnet-5');
   localStorage.setItem('aiapp_openrouter_apikey', $('#openrouterApiKey').value.trim());
@@ -1695,7 +1695,9 @@ async function callGemini(messages, onDelta){
 async function callGroq(messages, onDelta){
   const apiKey = localStorage.getItem('aiapp_groq_apikey');
   const hasImages = messages.some(m => m.images && m.images.length);
-  const model = hasImages ? GROQ_VISION_MODEL : (localStorage.getItem('aiapp_groq_model') || 'llama-3.3-70b-versatile');
+  /* v-free-models: الاسم المحفوظ القديم (llama-3.3-70b) تقاعد عند Groq — يُستبدل بالافتراضي الحالي */
+  const __savedGroq = localStorage.getItem('aiapp_groq_model');
+  const model = hasImages ? GROQ_VISION_MODEL : ((__savedGroq && __savedGroq !== 'llama-3.3-70b-versatile') ? __savedGroq : 'openai/gpt-oss-120b');
   const msgsOut = hasImages ? toOpenAIVisionMessages(messages) : messages;
   // If the visitor hasn't entered their own Groq key, fall back to the server-side
   // proxy which uses the site owner's key (for quick trials without setup).

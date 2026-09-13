@@ -86,13 +86,10 @@ async function callMergeModel(sys, user) {
   const groqKey = process.env.GROQ_API_KEY;
   if (groqKey) {
     try {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + groqKey },
-        body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [ { role: 'system', content: sys }, { role: 'user', content: user } ], temperature: 0.2, max_tokens: 900 }),
-      });
-      if (res.ok) {
-        const d = await res.json();
+      // v-free-models: اسم النموذج لم يعد مزروعًا — مرشّحون ثم استكشاف (free-chain.js).
+      const g = await require('./free-chain.js').completeJson('groq', { key: groqKey, messages: [ { role: 'system', content: sys }, { role: 'user', content: user } ], temperature: 0.2, max_tokens: 900 });
+      if (g.ok && g.json) {
+        const d = g.json;
         const out = (((d.choices || [])[0] || {}).message || {}).content || '';
         if (out.trim()) return out.trim();
       }
