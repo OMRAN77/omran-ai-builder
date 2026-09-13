@@ -56,8 +56,8 @@
   header{
     display:flex; align-items:center; justify-content:space-between;
     padding:10px 8px; background:rgba(13,15,22,.7); backdrop-filter:blur(16px);
-    border-bottom:1px solid var(--border); flex-shrink:0; z-index:10;
-  }
+    flex-shrink:0; z-index:10;
+  } /* v-onepage (طلب المالك): أُزيل border-bottom تحت الشريط العلوي — صفحة كاملة */
   /* v213: الهيدر يتبع اتجاه اللغة — عربي: الاسم يمين و⋮ يسار، إنجليزي: العكس */
   header h1{font-size: var(--fs-2); margin:0; display:flex; align-items:center; gap:10px; font-weight: var(--w-bold); letter-spacing:0;}
   header h1 .brand{display:none !important;}
