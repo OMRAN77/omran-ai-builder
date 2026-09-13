@@ -526,6 +526,25 @@
   </div></div>
 
 
+  <!-- v-secret-vault: خزنة الأسرار — للمالك وحده (تظهر مع لوحة التحكّم) -->
+  <div id="vaultSectionWrap" style="display:none;">
+    <div class="settingsSectionHeader" onclick="toggleSettingsSection('vaultSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;">🔐 خزنة الأسرار (خاص بالمالك)</h3><span class="settingsSectionArrow" id="vaultSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
+    <div id="vaultSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">
+      <div style="font-size:12.5px; line-height:1.8; opacity:.85;">الأسرار لا تُكتب في المحادثة أبدًا. احفظ توكن GitHub هنا: يُشفَّر في الخادم (AES-256-GCM) ولا يظهر مرّة أخرى، ويستخدمه الوكيل ومحلّل الكود للقراءة والرفع. الرفع يحتاج توكن بصلاحيّة Contents: write وPull requests: write على المستودع.</div>
+      <div id="vaultGhStatus" style="margin-top:10px; font-size:12.5px; background:var(--panel2); border-radius:var(--r-2); padding:8px 12px;">…</div>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <input type="password" id="vaultGhInput" autocomplete="off" spellcheck="false" placeholder="ghp_… أو github_pat_…" style="flex:1; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px; direction:ltr;">
+        <button type="button" onclick="vaultSave('github_token')" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">حفظ</button>
+        <button type="button" onclick="vaultClear('github_token')" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">حذف</button>
+      </div>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <input type="text" id="vaultRepoInput" value="OMRAN77/omran-ai-builder" spellcheck="false" style="flex:1; min-width:0; padding:8px 10px; border-radius:var(--r-2); border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:12.5px; direction:ltr;">
+        <button type="button" onclick="vaultTest()" style="padding:8px 14px; border-radius:var(--r-2); border:1px solid var(--accent); background:var(--panel2); color:var(--text); font-size:12px; cursor:pointer;">فحص المفتاح</button>
+      </div>
+      <div id="vaultTestBox" style="display:none; margin-top:8px; font-size:12.5px; line-height:1.8; background:var(--panel2); border-radius:var(--r-2); padding:8px 12px; white-space:pre-wrap;"></div>
+    </div>
+  </div>
+
   <div id="adminSectionWrap" style="display:none;">
     <div class="settingsSectionHeader" onclick="toggleSettingsSection('adminSection')" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;"><h3 style="margin:0; font-size:14px;" data-i18n="adminPanelTitle">🛠️ لوحة التحكم (خاص بالمالك)</h3><span class="settingsSectionArrow" id="adminSectionArrow" style="font-size:13px; transition:transform .2s; margin-inline-start:8px;">▶</span></div>
     <div id="adminSectionContent" class="settingsSectionContent" style="display:none; margin-top:12px;">

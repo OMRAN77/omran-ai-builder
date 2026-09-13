@@ -14,6 +14,7 @@ const tierLib = require('./tier.js');
 const { streamFreeChain } = require('./free-chain.js');
 const { logError, logErrorAndFlush } = require('./log-error.js');
 const { safeParse } = require('./safe-parse.js');
+const { redactMessages } = require('./_msgs.js'); // v-secret-vault: سرّ ملصوق لا يصل النموذج
 const { fetchPlaces, isPlacesAsk, regionOf } = require('./search.js');
 const { readMemory, memoryPromptBlock } = require('./memory.js');
 const { BIDI_RULE } = require('./_bidi.js'); // v568
@@ -907,7 +908,8 @@ module.exports = async (req, res) => {
 
   let body = req.body;
   if (!body || typeof body === 'string') body = safeParse(body, {}, 'chat:body');
-  const { messages, token, guestId } = body;
+  const { token, guestId } = body;
+  const messages = redactMessages(body.messages); // v-secret-vault: توكن/مفتاح ملصوق يُحذف قبل النموذج
   if (!Array.isArray(messages) || !messages.length) { res.status(400).json({ error: 'Missing messages' }); return; }
 
   const reqProv = String((body && body.provider) || '').toLowerCase();
