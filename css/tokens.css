@@ -314,7 +314,9 @@
   .msg.msg-anim{animation:msgFadeIn .4s ease-out;}
   @keyframes msgFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
   .tts-word{transition:background-color .15s ease, color .15s ease; border-radius:var(--r-1);}
-  .tts-word.active{background:var(--msg-accent, var(--accent-surface)); color:var(--accent-on-surface); padding:1px 2px; box-shadow:0 0 0 2px var(--msg-accent, var(--accent2));}
+  /* v-hl-yellow: تمييز الكلمة أثناء القراءة الصوتيّة كان يستعمل لون المزوّد
+     (أخضر لـOpenAI مثلًا) فتظهر خضراء ثم تعود عاديّة — طلب المالك توحيدها أصفر. */
+  .tts-word.active{background:var(--om-hl,#e3b341); color:#14161a; padding:1px 2px; box-shadow:0 0 0 2px var(--om-hl,#e3b341);}
   .tts-word.md-bold{font-weight:700;}
   .tts-word.md-h1,.tts-word.md-h2{font-weight:700; font-size:1.18em;}
   .tts-word.md-h3,.tts-word.md-h4{font-weight:700; font-size:1.08em;}
