@@ -28,7 +28,43 @@
       const wrap = document.getElementById('premiumToggleWrap');
       const host = document.getElementById('agentSettingsHost');
       if(wrap && host && wrap.parentElement !== host){ host.appendChild(wrap); wrap.style.marginTop = '0'; }
+      mountAgentModelPicker();
     }catch(_){ __swallow(_, "misc:premium#1"); }
+  }
+
+  // 🎛️ منتقي موديل الوكيل — للمالك وحده. الاختيار يُحفظ محليًّا ويُرسَل مع كل
+  // طلب وكيل؛ الخادم يحترمه للمالك فقط (يشتغل بمفتاح المالك = الرصيد من حسابه).
+  function mountAgentModelPicker(){
+    try{
+      const host = document.getElementById('agentSettingsHost');
+      if(!host) return;
+      const owner = (function(){ try{ return String((window.authGet && window.authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(_){ return false; } })();
+      let box = document.getElementById('agentModelPicker');
+      if(!owner){ if(box) box.remove(); return; }
+      if(box) return; // مُركَّب مسبقًا
+      const ar = (function(){ try{ return (localStorage.getItem('aiapp_lang') || 'ar') === 'ar'; }catch(_){ return true; } })();
+      let cur = ''; try{ cur = localStorage.getItem('aiapp_agent_model') || ''; }catch(_){ /* guard-ok */ }
+      const opts = [
+        ['', ar ? 'تلقائي (Sonnet 5)' : 'Auto (Sonnet 5)'],
+        ['opus-5', 'Opus 5'],
+        ['sonnet-5', 'Sonnet 5'],
+        ['haiku-4.5', 'Haiku 4.5'],
+        ['opus-4.8', 'Opus 4.8'],
+        ['fable-5.1', 'Fable 5.1'],
+      ];
+      box = document.createElement('div');
+      box.id = 'agentModelPicker';
+      box.style.cssText = 'margin-top:12px;';
+      box.innerHTML = '<label for="agentModelSel" style="display:block;font-size:12.5px;font-weight:700;margin-bottom:6px;color:var(--text,#eee);">'
+        + (ar ? 'موديل الوكيل (يُحتسب على مفتاحك):' : 'Agent model (billed to your key):') + '</label>'
+        + '<select id="agentModelSel" style="width:100%;padding:9px 10px;border-radius:10px;background:var(--panel2,rgba(255,255,255,.03));color:var(--text,#eee);border:1px solid var(--border,#333);font-family:inherit;font-size:13px;">'
+        + opts.map(function(o){ return '<option value="' + o[0] + '"' + (o[0] === cur ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('')
+        + '</select>'
+        + '<p style="margin:6px 0 0;font-size:11px;color:var(--muted,#999);line-height:1.6;">' + (ar ? 'لازم يكون لمفتاح Anthropic حقّك وصول للموديل المختار.' : 'Your Anthropic key must have access to the selected model.') + '</p>';
+      host.appendChild(box);
+      const sel = box.querySelector('#agentModelSel');
+      if(sel) sel.addEventListener('change', function(){ try{ localStorage.setItem('aiapp_agent_model', sel.value); }catch(_){ /* guard-ok */ } });
+    }catch(_){ /* guard-ok — المنتقي تحسينيّ */ }
   }
 
   function syncAgentNote(){

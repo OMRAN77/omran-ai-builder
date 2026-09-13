@@ -17792,7 +17792,7 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     signal: genAbortController ? genAbortController.signal : undefined,
-    body: JSON.stringify({ messages: history, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), currentCode: cur.code || '', projId: cur.id }),
+    body: JSON.stringify({ messages: history, token: authGet('aiapp_auth_token'), guestId: window.getGuestId(), currentCode: cur.code || '', projId: cur.id, agentModel: (function(){ try{ return localStorage.getItem('aiapp_agent_model') || ''; }catch(e){ return ''; } })() }),
   });
   if(!res.ok){
     try{ localStorage.removeItem('aiapp_agent_live'); }catch(e){ /* لم يبدأ تشغيل */ }

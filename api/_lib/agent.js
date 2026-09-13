@@ -467,7 +467,18 @@ module.exports = async (req, res) => {
   }
 
   try {
-    let model = 'claude-sonnet-5';
+    // 🎛️ اختيار موديل الوكيل — للمالك وحده (يشتغل بمفتاح المالك، فالرصيد من
+    // حسابه). غير المالك يبقى على الافتراضي كي لا يُستنزف رصيد المالك بموديلٍ
+    // غالٍ لكلّ الزوّار. الاسم الودّي يُترجَم لمعرّف Anthropic من قائمةٍ بيضاء
+    // فقط؛ ولو رفض المفتاح الموديل يسقط تلقائيًا للمتاح (resolveModel).
+    const AGENT_MODELS = {
+      'opus-5': 'claude-opus-5',
+      'sonnet-5': 'claude-sonnet-5',
+      'haiku-4.5': 'claude-haiku-4-5-20251001',
+      'fable-5.1': 'claude-fable-5-1',
+      'opus-4.8': 'claude-opus-4-8',
+    };
+    let model = (isOwner(runUser) && body.agentModel && AGENT_MODELS[String(body.agentModel)]) || 'claude-sonnet-5';
     let steps = 0;
 
     // 4 خطوات لا تكفي «اقرأ ← افهم ← جرّب ← أخطأت ← صحّح ← تحقّق». المهام
