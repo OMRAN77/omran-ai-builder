@@ -113,7 +113,7 @@ assert.ok(ui.includes("wrap.id = 'omHeadCenter'"), 'نقل الأسهم إلى �
 // v-perf (شكوى عمران «الشاشة ثقيلة»): لا صباغة دائمة — خلفيّة ساكنة، ولا قناع على المتمرِّر، ولا ضبابيّة خلف الهيدر
 const tokens = fs.readFileSync(path.join(__dirname, '..', 'css', 'tokens.css'), 'utf8');
 assert.ok(!/animation:\s*bgShift/.test(tokens), 'خلفيّة الصفحة لا تتحرّك على الدوام');
-assert.ok(html.includes('css/tokens.css?v=683'), 'كاسر كاش tokens.css رُفع');
+assert.ok(html.includes('css/tokens.css?v=686'), 'كاسر كاش tokens.css رُفع');
 const fillStart = html.indexOf('/* v-chat-fill');
 const fillBlock = html.slice(fillStart, html.indexOf('</style>', fillStart));
 assert.ok(!/#messages\{[^}]*mask-image/.test(fillBlock), 'لا mask-image على #messages');

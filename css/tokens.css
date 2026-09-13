@@ -491,15 +491,29 @@
     padding:0; width:440px; max-width:90vw; box-shadow:0 20px 60px rgba(0,0,0,.5);
     max-height:85vh; overflow-y:auto;
   }
-  #settingsDialog{ width:560px; max-height:90vh; }
-  /* Desktop: let the settings dialog be resized (grow/shrink) by dragging its
-     bottom-right corner, like a normal window. */
+  /* v-settings-drawer-desktop (طلب المالك: «الإعدادات ما تكون في نص الشاشة» —
+     نفس درج الجوال ChatGPT-style): على الكمبيوتر أيضًا درجٌ جانبيّ يمين بطول
+     الشاشة كامل بدل نافذةٍ وسط الشاشة. الجوال له درجه الخاص (html.mobile-ui). */
   #settingsDialog{
-    resize:both; overflow:auto; min-width:340px; min-height:260px;
-    max-width:96vw; max-height:92vh;
+    top:0; bottom:0; height:100vh; max-height:100vh;
+    right:0; left:auto; margin:0;
+    width:460px; max-width:94vw; min-width:340px;
+    border-radius:0; border:none;
+    border-inline-start:1px solid var(--border);
+    resize:none; overflow:auto;
+    box-shadow:-24px 0 60px rgba(0,0,0,.5);
   }
   /* v214: عند فتح أي نافذة (الإعدادات وغيرها) كل ما خلفها يختفي تمامًا */
   dialog::backdrop{background:#000000;}
+  /* v-settings-clear-desktop (طلب المالك: «ما تغطّي الدردشة» — زي لوحة محادثة
+     جديدة): على الكمبيوتر يبقى درج الإعدادات على اليمين، وخلفيته شفافة فتظلّ
+     المحادثة ظاهرة خلفه بدل تعتيمها بالكامل. الجوال يحتفظ بتعتيمه (داخل @media). */
+  #settingsDialog::backdrop{ background:transparent; }
+  /* v-settings-push (طلب المالك: «صلبة تدفع الدردشة، ما تغطّيها»): عند فتح درج
+     الإعدادات (يمين، ٤٦٠px) نُزيح كامل التطبيق يسارًا بنفس العرض على الكمبيوتر،
+     فيبقى الدرج صلبًا والمحادثة ظاهرة كاملةً جنبه بلا تراكب ولا تعتيم — كلاهما
+     يملأ الشاشة معًا فلا تظهر الخلفية الشفافة إطلاقًا. الجوال بلا إزاحة. */
+  html.settings-push:not(.mobile-ui) main{ margin-right:460px; transition:margin-right .18s ease; }
   dialog > *{padding-left:24px; padding-right:24px;}
   dialog > h3{padding-top:24px;}
   dialog h3{font-weight:700;}
