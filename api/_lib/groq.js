@@ -1,3 +1,4 @@
+const { stripPrivateKeys } = require('./_msgs.js'); // v-static-leak
 // Vercel Serverless Function: proxies chat requests to Groq using the site owner's
 // own server-side API key (GROQ_API_KEY env var), so visitors can try the app
 // without entering their own key. This key is NEVER exposed to the client.
@@ -28,7 +29,8 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { messages, model, token, guestId } = body;
+    const { model, token, guestId } = body;
+    const messages = stripPrivateKeys(body.messages); // v-static-leak: لا مفاتيح __ داخليّة إلى المزوّد
     if (!messages) {
       res.status(400).json({ error: 'Missing messages' });
       return;

@@ -211,6 +211,10 @@
       "destination": "/api/tools?action=analyze-zip"
     },
     {
+      "source": "/api/code-analyze",
+      "destination": "/api/tools?action=code-analyze"
+    },
+    {
       "source": "/api/adchat",
       "destination": "/api/tools?action=adchat"
     },
