@@ -84,16 +84,29 @@ jobs:
           fi
           echo "::add-mask::$KEY"
           echo "ANTHROPIC_KEY_CLEAN=$KEY" >> "$GITHUB_ENV"
-          if [ "${#KEY}" != "$(printf '%s' "$RAW_KEY" | wc -c | tr -d ' ')" ]; then echo "::notice::ANTHROPIC_API_KEY كان فيه فراغ أو سطر زائد وأُزيل تلقائيًّا."; fi
+          TRIM=""; if [ "${#KEY}" != "$(printf '%s' "$RAW_KEY" | wc -c | tr -d ' ')" ]; then TRIM=" · كان فيه فراغ أو سطر زائد وأُزيل"; echo "::notice::ANTHROPIC_API_KEY كان فيه فراغ أو سطر زائد وأُزيل تلقائيًّا."; fi
+          # شكل المفتاح (بادئته العامّة وطوله لا يكشفان شيئًا): api03 = مفتاح API، oat01 = رمز OAuth من اشتراك Claude
+          KIND=api; SHAPE=""
+          case "$KEY" in
+            sk-ant-api03-*) SHAPE="مفتاح API صحيح الشكل (sk-ant-api03-…، ${#KEY} حرفًا؛ المتوقّع نحو 108)";;
+            sk-ant-oat01-*) KIND=oauth; SHAPE="رمز OAuth من اشتراك Claude (sk-ant-oat01-…، ${#KEY} حرفًا) — يُمرَّر كـclaude_code_oauth_token";;
+            sk-ant-admin*) SHAPE="مفتاح Admin (sk-ant-admin…) — لا يصلح لاستدعاء النماذج؛ أنشئ مفتاح API عاديًّا";;
+            sk-ant-*) SHAPE="بادئة Anthropic غير معروفة (${KEY:0:10}…، ${#KEY} حرفًا)";;
+            sk-*) SHAPE="ليس مفتاح Anthropic (يبدأ بـ${KEY:0:6}… لا بـsk-ant-)؛ ربّما مفتاح مزوّد آخر";;
+            *) SHAPE="لا يشبه مفتاح Anthropic (${#KEY} حرفًا، لا يبدأ بـsk-ant-)";;
+          esac
+          echo "KEY_KIND=$KIND" >> "$GITHUB_ENV"
+          if [ "$KIND" = oauth ]; then AUTH=(-H "Authorization: Bearer $KEY" -H "anthropic-beta: oauth-2025-04-20"); else AUTH=(-H "x-api-key: $KEY"); fi
           CODE=$(curl -sS -o /tmp/probe.json -w '%{http_code}' --max-time 60 https://api.anthropic.com/v1/messages \
-            -H "x-api-key: $KEY" -H "anthropic-version: 2023-06-01" -H "content-type: application/json" \
+            "${AUTH[@]}" -H "anthropic-version: 2023-06-01" -H "content-type: application/json" \
             -d '{"model":"claude-haiku-4-5","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}' || echo 000)
           if [ "$CODE" = "200" ]; then
             echo "KEY_OK=true" >> "$GITHUB_ENV"
+            echo "::notice::مفتاح Anthropic يعمل: $SHAPE$TRIM"
           else
             MSG=$(node -e 'try{const j=JSON.parse(require("fs").readFileSync("/tmp/probe.json","utf8"));console.log((j.error&&(j.error.type+": "+j.error.message))||JSON.stringify(j).slice(0,300))}catch(e){console.log("")}' | tr '\n\r' '  ' | head -c 400)
             echo "KEY_OK=false" >> "$GITHUB_ENV"
-            echo "KEY_MSG=فحص مفتاح Anthropic فشل (HTTP $CODE): ${MSG:-بلا تفاصيل}" >> "$GITHUB_ENV"
+            echo "KEY_MSG=فحص مفتاح Anthropic فشل (HTTP $CODE): ${MSG:-بلا تفاصيل} · شكل السرّ المحفوظ: $SHAPE$TRIM" >> "$GITHUB_ENV"
           fi
 
       - name: Claude Code
@@ -101,7 +114,8 @@ jobs:
         if: env.KEY_OK == 'true'
         uses: anthropics/claude-code-action@v1
         with:
-          anthropic_api_key: ${{ env.ANTHROPIC_KEY_CLEAN }}
+          anthropic_api_key: ${{ env.KEY_KIND == 'api' && env.ANTHROPIC_KEY_CLEAN || '' }}
+          claude_code_oauth_token: ${{ env.KEY_KIND == 'oauth' && env.ANTHROPIC_KEY_CLEAN || '' }}
           claude_args: '--allowedTools "Bash,Read,Edit,MultiEdit,Write,Glob,Grep" --max-turns 80'
           prompt: |
             أنت Claude Code تعمل داخل GitHub Actions على مستودع «عمران AI» (${{ github.repository }})،

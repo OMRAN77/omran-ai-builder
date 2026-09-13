@@ -71,7 +71,12 @@ test('٤. الورك فلو: فحص المفتاح قبل Claude، وخطوة Cl
   assert.match(y, /::add-mask::\$KEY/);
   assert.match(y, /api\.anthropic\.com\/v1\/messages/);
   assert.match(y, /if: env\.KEY_OK == 'true'/);
-  assert.match(y, /anthropic_api_key: \$\{\{ env\.ANTHROPIC_KEY_CLEAN \}\}/);
+  assert.match(y, /anthropic_api_key: \$\{\{ env\.KEY_KIND == 'api' && env\.ANTHROPIC_KEY_CLEAN \|\| '' \}\}/);
+  assert.match(y, /claude_code_oauth_token: \$\{\{ env\.KEY_KIND == 'oauth' && env\.ANTHROPIC_KEY_CLEAN \|\| '' \}\}/);
+  // شكل السرّ (بادئة عامّة وطول) يُكتب في رسالة الفشل حتّى يعرف المالك ماذا لصق
+  assert.match(y, /sk-ant-api03-\*\)/);
+  assert.match(y, /sk-ant-oat01-\*\) KIND=oauth/);
+  assert.match(y, /شكل السرّ المحفوظ: \$SHAPE/);
   assert.doesNotMatch(y, /anthropic_api_key: \$\{\{ secrets\.ANTHROPIC_API_KEY \}\}/);
   assert.match(y, /CLAUDE_LOG: \$\{\{ steps\.claude\.outputs\.execution_file \}\}/);
   assert.match(y, /node scripts\/agent-claude-error\.cjs "\$LOG"/);
