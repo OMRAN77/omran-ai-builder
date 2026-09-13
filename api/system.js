@@ -28,6 +28,7 @@ function load(action) {
     case 'health': return require('./_lib/health.js');
     case 'feedback': return require('./_lib/feedback.js');
     case 'revgeo': return require('./_lib/revgeo.js');
+    case 'secrets': return require('./_lib/secrets.js'); // v-secret-vault: خزنة أسرار المالك
     default: return null;
   }
 }

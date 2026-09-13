@@ -483,7 +483,7 @@ $('#btnSettings').onclick = () => {
   $('#geminiApiKey').value = localStorage.getItem('aiapp_gemini_apikey') || '';
   $('#geminiModel').value = localStorage.getItem('aiapp_gemini_model') || 'gemini-flash-latest';
   $('#groqApiKey').value = localStorage.getItem('aiapp_groq_apikey') || '';
-  $('#groqModel').value = localStorage.getItem('aiapp_groq_model') || 'llama-3.3-70b-versatile';
+  $('#groqModel').value = localStorage.getItem('aiapp_groq_model') || 'openai/gpt-oss-120b'; /* v-free-models: llama-3.3-70b تقاعد عند Groq */
   $('#claudeApiKey').value = localStorage.getItem('aiapp_claude_apikey') || '';
   $('#claudeModel').value = localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-5';
   $('#openrouterApiKey').value = localStorage.getItem('aiapp_openrouter_apikey') || '';
@@ -718,7 +718,7 @@ const saveSettingsNow = () => {
   localStorage.setItem('aiapp_gemini_apikey', $('#geminiApiKey').value.trim());
   localStorage.setItem('aiapp_gemini_model', $('#geminiModel').value.trim() || 'gemini-flash-latest');
   localStorage.setItem('aiapp_groq_apikey', $('#groqApiKey').value.trim());
-  localStorage.setItem('aiapp_groq_model', $('#groqModel').value.trim() || 'llama-3.3-70b-versatile');
+  localStorage.setItem('aiapp_groq_model', $('#groqModel').value.trim() || 'openai/gpt-oss-120b');
   localStorage.setItem('aiapp_claude_apikey', $('#claudeApiKey').value.trim());
   localStorage.setItem('aiapp_claude_model', $('#claudeModel').value.trim() || 'claude-sonnet-5');
   localStorage.setItem('aiapp_openrouter_apikey', $('#openrouterApiKey').value.trim());
@@ -1693,10 +1693,25 @@ async function callGemini(messages, onDelta){
 }
 
 async function callGroq(messages, onDelta){
-  const apiKey = localStorage.getItem('aiapp_groq_apikey');
   const hasImages = messages.some(m => m.images && m.images.length);
-  const model = hasImages ? GROQ_VISION_MODEL : (localStorage.getItem('aiapp_groq_model') || 'llama-3.3-70b-versatile');
-  const msgsOut = hasImages ? toOpenAIVisionMessages(messages) : messages;
+  /* v-free-models: الاسم المحفوظ القديم (llama-3.3-70b) تقاعد عند Groq — يُستبدل بالافتراضي الحالي */
+  const __savedGroq = localStorage.getItem('aiapp_groq_model');
+  const textModel = (__savedGroq && __savedGroq !== 'llama-3.3-70b-versatile') ? __savedGroq : 'openai/gpt-oss-120b';
+  if(!hasImages) return await __groqSend(textModel, messages, onDelta);
+  /* v-img-err (لقطة المالك: «The model meta-llama/llama-4-scout-17b-16e-instruct does not
+     exist or you do not have access to it» 404): نموذج الرؤية عند Groq قد يتقاعد بلا
+     إشعار. نجرّبه، وعلى خطأ نموذج نهبط إلى وصف الصورة بنموذج رؤية آخر ثمّ النصّيّ —
+     كما تفعل بقيّة المزوّدات بلا رؤية — بدل إسقاط الدور كلّه. */
+  try{ return await __groqSend(GROQ_VISION_MODEL, toOpenAIVisionMessages(messages), onDelta); }
+  catch(e){
+    const __t = String((e && (e.upstreamText || e.message)) || '');
+    const __modelErr = !!(e && (e.status === 404 || /model_not_found|does not exist|decommissioned|has been deprecated|not supported/i.test(__t)));
+    if(!__modelErr || (e && e.name === 'AbortError')) throw e;
+    return await __groqSend(textModel, await stripImagesWithDescription(messages), onDelta);
+  }
+}
+async function __groqSend(model, msgsOut, onDelta){
+  const apiKey = localStorage.getItem('aiapp_groq_apikey');
   // If the visitor hasn't entered their own Groq key, fall back to the server-side
   // proxy which uses the site owner's key (for quick trials without setup).
   if(!apiKey){
@@ -2105,6 +2120,8 @@ async function callAIWithFallback(messages, onDelta, preferredList){
   const head = (preferredList && preferredList.length) ? preferredList : __grp;
   const order = [...head, ...AUTO_FALLBACK_ORDER.filter(p => !head.includes(p))];
   let lastErr = null;
+  let firstErr = null;     // v-img-err: خطأ المزوّد الأوّل (المطلوب) — هو السبب الحقيقيّ حين يفشل الجميع
+  let firstProv = '';
   let firstRefusal = null; // أول رد رفض (نرجعه فقط إذا رفض الجميع)
   let refusalTries = 0;    // حد أقصى محاولتين إضافيتين بعد الرفض
   let errSwitched = false; // التبديل بسبب عطل/ضغط فقط هو اللي يظهر للمستخدم
@@ -2141,6 +2158,7 @@ async function callAIWithFallback(messages, onDelta, preferredList){
         throw abortErr;
       }
       lastErr = err;
+      if(!firstErr){ firstErr = err; firstProv = providerKey; }
       // A silent switch means the user gets different quality with no
       // explanation and blames the app. Say it plainly.
       // نسمّي من فشل ولماذا. الرسالة العامة كانت تترك المستخدم يرى مزوّدًا
@@ -2162,6 +2180,17 @@ async function callAIWithFallback(messages, onDelta, preferredList){
     }
   }
   if(firstRefusal) return { reply: firstRefusal.reply, providerKey: firstRefusal.providerKey, switched: false, requestedKey: head[0] };
+  /* v-img-err (لقطة المالك: دور صورة فشل على كلّ السلسلة فظهر خطأ Groq الأخير «نموذج
+     لا يوجد» وحده): الخطأ المعروض هو خطأ المزوّد الأوّل المطلوب — السبب الحقيقيّ —
+     ويُلحق به فشل آخر مزوّد باختصار، لا العكس. */
+  if(firstErr && lastErr && firstErr !== lastErr){
+    try{
+      const __who = (typeof functionalLabel === 'function' ? functionalLabel(order[order.length - 1]) : order[order.length - 1]);
+      const __isAr = (typeof lang === 'undefined' || lang === 'ar');
+      firstErr.message = String(firstErr.message || '') + '\n' + (__isAr ? ('(الاحتياط فشل أيضًا — ' + __who + ': ') : ('(fallback failed too — ' + __who + ': ')) + String(lastErr.message || '').replace(/\s+/g, ' ').slice(0, 140) + ')';
+    }catch(e){ __swallow(e, 'fallback:first-err'); }
+    throw firstErr;
+  }
   throw lastErr || new Error(t('providerError') + ' - fallback');
 }
 

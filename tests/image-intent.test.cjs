@@ -88,7 +88,7 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(maha, /sourceIsRealPlacePhoto/);
   assert.match(maha, /if \(__place !== true\) \{ isSceneUpgrade = false; isElevate = true; \}/);
   assert.match(maha, /if \(!nanoPrimary\) delete cfg\.temperature;/);
-  assert.match(maha, /logError\('maha-image:primary-fallback'/);
+  assert.match(maha, /logError(?:AndFlush)?\('maha-image:primary-fallback'/);
   /* الحارس يعمل على كل تعديل الآن: الأسلوب/الترقية/الفكرة المختلفة لا تُرفض لتغيير الوسيط، والهوية مفروضة */
   assert.match(maha, /allowStyleChange: explicitlyRequestsStyleChange\(cleanPrompt\) \|\| isRestyle \|\| isReimagine \|\| isElevate,/);
   assert.match(maha, /allowBroadChange: isSceneUpgrade \|\| isElevate \|\| isReimagine \|\| isRestyle,/);
@@ -119,6 +119,12 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(maha, /isBroadEdit \? buildBroadEditPrompt\(cleanPrompt, intentText\)/);
   const psp = buildPersonSwapPrompt('Change the people', 'غير أشكال الأشخاص');
   assert.match(psp, /identity must NOT be preserved/); assert.match(psp, /never repeat the same face twice/); assert.match(psp, /every label character-for-character/);
+  /* v-person-clothes: ذكر الملابس في الطلب يقلب القاعدة ٢ من «أبقِ الملابس» إلى «غيّر الملابس أيضًا»؛ و«زي» بمعنى «مثل» لا تُحسب لباسًا */
+  assert.match(psp, /unmistakably different from the one in the source at a glance/); assert.match(psp, /outfits and dress code/); assert.doesNotMatch(psp, /Change the outfits too/);
+  const pspC = buildPersonSwapPrompt('Change the characters with the clothes', 'غير الشخصيات مع الملابس وخل كل شخصية غير عن الثانيه مع كل شخصية بي الاسم الي تحتها');
+  assert.match(pspC, /Change the outfits too/); assert.match(pspC, /no two outfits alike, and none copied from the source/); assert.doesNotMatch(pspC, /outfits and dress code/);
+  for (const w of ['غير الأشخاص ولبسهم', 'بدل الشخصيات مع الأزياء', 'use different people and outfits', 'غير الشخص والكندورة']) assert.match(buildPersonSwapPrompt('Change the people', w), /Change the outfits too/, w);
+  for (const w of ['غيرها زي الاسم', 'خل الشخصية زي اسمها', 'غير وجوه الأشخاص']) assert.doesNotMatch(buildPersonSwapPrompt('Change the people', w), /Change the outfits too/, w);
   assert.match(maha, /const isPersonSwap = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && isPersonSwapRequest\(intentText\);/);
   assert.match(maha, /const isTextRemove = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && !isPersonSwap && !isBroadEdit && isPureTextRemoval\(intentText\);/);
   assert.match(maha, /const isTextSwap = !!editImageBase64 && !isSceneUpgrade && !isRestyle && !isReimagine && !isElevate && !isPersonSwap && !isBroadEdit && !isTextRemove && \(body\.textSwap === true \|\| isTextEditRequest\(intentText\)\);/);
@@ -156,7 +162,14 @@ test('server reads the intent from the user\'s own words and sends creative edit
     const caps = (src.match(/maxOutputTokens: (\d+)/g) || []).map(x => parseInt(x.split(': ')[1], 10));
     assert.ok(caps.length > 0 && caps.every(c => c >= 64), f + ': ' + caps.join(','));
   }
-  assert.match(maha, /maxOutputTokens: 400 \} \}\), \/\* v-flash-budget/);
+  assert.match(maha, /maxOutputTokens: 400, thinkingConfig: \{ thinkingBudget: 0 \} \} \}\)/);
+  /* v-flash-nothink: كل نداء flash مساعد بلا تفكير — وإلا التهم التفكيرُ السقفَ: الحكم «A» دائمًا (أفضل-من-٢ بلا فائدة)،
+     وفحص «هل نُفِّذ الطلب؟» null (بلا إعادة محاولة)، والمصنّف null، والحارس فارغ */
+  for (const f of ['api/_lib/image-judge.js', 'api/_lib/request-check.js', 'api/_lib/image-intent-llm.js', 'api/_lib/image-edit-guard.js']) {
+    const src = fs.readFileSync(f, 'utf8');
+    const n = (src.match(/generationConfig:/g) || []).length, k = (src.match(/thinkingConfig: \{ thinkingBudget: 0 \}/g) || []).length;
+    assert.ok(n > 0 && n === k, f + ': generationConfig=' + n + ' nothink=' + k);
+  }
   const llm = require('../api/_lib/image-intent-llm');
   assert.deepEqual(llm.parseIntentReply('{"lane":"reimagine","confidence":0.92}'), { lane: 'reimagine', confidence: 0.92 });
   assert.deepEqual(llm.parseIntentReply('```json\n{"lane":"elevate","confidence":0.8}\n```'), { lane: 'elevate', confidence: 0.8 });
@@ -227,13 +240,13 @@ test('both chat clients forward the user\'s words and the tool path never loses 
   for (const t of ['شيل الاسم كامل', 'احذف النص']) assert.equal(__textSwapIntent(t), false, t);
   for (const t of ['شيل الاسم وحط عمران', 'غير حرف م حط ع', 'بدل التاريخ بدل 28 حط 12', 'شيل حرف م وحط ع']) assert.equal(__textSwapIntent(t), true, t);
   for (const t of ['كيف أطبع هذي الشاشة', 'وش هذا الخطأ', 'ترجم الصورة']) assert.ok(!creativeRe.test(t), t);
-  assert.match(chatTools, /window\.__chatLastUserText = String\(ut \|\| ''\)\.replace\(.*\)\.trim\(\)\.slice\(0, 600\)/);
+  assert.match(chatTools, /window\.__chatLastUserText = String\(ut \|\| ''\)\.slice\(0, 800\)\.replace\(.*\)\.trim\(\)\.slice\(0, 600\)/);
   assert.match(tools, /userText: String\(\(args && args\.userText\) \|\| window\.__chatLastUserText \|\| ''\)\.replace\(.*\)\.slice\(0, 600\)/);
   assert.match(tools, /cur\.lastEditedImage\.b64\) \{ srcB64 = cur\.lastEditedImage\.b64/);
   assert.match(chat, /engine:\\s\*nano-pro/);
   /* الخادم يمرّر كلمات المستخدم مع أمر الأداة (يعمل حتى مع حزمة عميل قديمة)، ويعرّف النموذج بـedit_image في دور فيه صورة */
-  assert.match(chat, /if \(cb\.name === 'generate_image'\) \{ input\.userText = String\(lastUserText \|\| ''\)\.replace\(.*\)\.slice\(0, 600\)/);
-  assert.match(chat, /if \(cb\.name === 'edit_image'\) \{ input\.userText = String\(lastUserText \|\| ''\)\.replace\(.*\)\.slice\(0, 600\)/);
+  assert.match(chat, /if \(cb\.name === 'generate_image'\) \{ input\.userText = String\(lastUserText \|\| ''\)\.slice\(0, 800\)\.replace\(.*\)\.slice\(0, 600\)/);
+  assert.match(chat, /if \(cb\.name === 'edit_image'\) \{ input\.userText = String\(lastUserText \|\| ''\)\.slice\(0, 800\)\.replace\(.*\)\.slice\(0, 600\)/);
   assert.match(chat, /const IMAGE_TURN_NOTE = lastUserHasImage/);
   assert.match(chat, /ownerKnowledge \+ IMAGE_TURN_NOTE/);
   assert.match(chat, /edit_image لأي تغيير أو ترقية أو نسخة أقوى/);

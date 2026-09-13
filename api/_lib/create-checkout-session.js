@@ -30,9 +30,12 @@ const { verifyToken, getUser, putUser } = require('./auth.js');
 const { kvIncrBy, kvGetRaw, kvSetIfAbsent } = require('./kv.js');
 
 const PLANS = {
+  // v-plans-2026-09 (قرار المالك ١٢ سبتمبر): الباقات الأكبر تأخذ سعر نقطة أفضل
+  // (كانت الثلاث بنفس السعر فلا حافز للترقية). يجب أن تطابق paypal-order.js
+  // وبطاقات partials-settings.js وpricing.html.
   basic: { amount: 1000, points: 500, name: 'عادية — 500 نقطة / Basic — 500 pts' },
-  pro: { amount: 2000, points: 1000, name: 'متوسطة — 1,000 نقطة / Pro — 1,000 pts' },
-  max: { amount: 10000, points: 5000, name: 'كبيرة — 5,000 نقطة / Premium — 5,000 pts' },
+  pro: { amount: 2000, points: 1200, name: 'متوسطة — 1,200 نقطة / Pro — 1,200 pts' },
+  max: { amount: 10000, points: 7000, name: 'كبيرة — 7,000 نقطة / Premium — 7,000 pts' },
 };
 
 // Shared "the payment definitely happened, now grant it" logic used by both

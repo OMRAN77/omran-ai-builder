@@ -1,6 +1,8 @@
+name: noah-full-probe
+
 # مِجسّ الطلب الحقيقيّ: يعيد إنتاج طلب callChatWithTools كاملًا على الإنتاج
 # (رسائل system + المستخدم، وسيناريو محادثة فيها تاريخ) لكشف «مافي أي رد».
-name: noah-full-probe
+
 on:
   workflow_dispatch:
     inputs:
@@ -8,8 +10,17 @@ on:
         description: 'قاعدة الموقع (اتركه فارغًا للافتراضي)'
         required: false
         default: ''
+      turns:
+        description: 'عدد أدوار المحادثة في السيناريو'
+        required: false
+        default: '8'
 
-permissions: {}
+permissions:
+  contents: read
+
+concurrency:
+  group: noah-full-probe
+  cancel-in-progress: false     # لا تقطع جلسة في منتصفها
 
 jobs:
   probe:
@@ -17,10 +28,23 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22'
+
       - name: Probe full app request on production
+        shell: bash
         env:
-          PROBE_BASE: ${{ inputs.base }}
-        run: node scripts/noah-full-probe.mjs
+          PROBE_BASE:  ${{ inputs.base }}
+          PROBE_TOKEN: ${{ secrets.PROBE_TOKEN }}
+          PROBE_TURNS: ${{ inputs.turns }}
+        run: node scripts/noah-full-probe.mjs | tee noah-probe.log
+
+      - name: Upload probe log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: noah-full-probe-${{ github.run_id }}
+          path: noah-probe.log
+          retention-days: 14

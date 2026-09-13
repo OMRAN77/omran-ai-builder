@@ -21,7 +21,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=671'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
+    sc.src = 'i18n/' + lg + '.js?v=672'; /* v-mode-i18n: مفتاح darkModeTitle في الـ14 لغة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -1348,6 +1348,49 @@ function omranRenderOptions(host, blocks){
     host.appendChild(wrap);
   });
 }
+/* v-long-reply: الردّ الطويل يُقصّ في المحادثة ويُقرأ كاملًا في لوحة المعاينة.
+   لا يلمس cur.code ولا المعاينة المحفوظة — يعرض النصّ مهرَّبًا فقط، كما تفعل
+   رقاقة الملفّ النصّي تمامًا. أزرار الرسالة كلها تبقى في أماكنها بلا تغيير. */
+var OMRAN_LONG_REPLY_CHARS = 1500;
+/* v-long-reply-fix: الأنماط المباشرة (style.maxHeight) لم تقصّ شيئًا — تنسيق
+   .msg-text يحمل قواعد أقوى. قاعدة صنف بـ!important تحسم الأمر، ومعها
+   content-visibility:visible كي لا يتعارض قصّ v-tap-fast مع القناع. */
+function omranLongClipCss(){
+  if(document.getElementById('omranLongClipCss')) return;
+  var st = document.createElement('style');
+  st.id = 'omranLongClipCss';
+  st.textContent = '.msg-text.omranLongClip{max-height:260px !important;overflow:hidden !important;'
+    + 'content-visibility:visible !important;'
+    + '-webkit-mask-image:linear-gradient(#000 66%,transparent) !important;'
+    + 'mask-image:linear-gradient(#000 66%,transparent) !important;}';
+  document.head.appendChild(st);
+}
+function omranOpenReplyInPanel(text){
+  try{
+    var esc = String(text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    previewFrame.style.display = 'block';
+    $('#pyConsole').style.display = 'none';
+    emptyState.style.display = 'none';
+    previewFrame._imageView = true;   /* يمنع renderCodeAndPreview من استبداله بالكود */
+    previewFrame._lastSrc = null;
+    var rtl = /[\u0600-\u06FF]/.test(String(text || ''));
+    previewFrame.srcdoc = '<html><body style="margin:0;background:#111;color:#eee;'
+      + 'font-family:Tajawal,Tahoma,Arial,sans-serif;white-space:pre-wrap;word-break:break-word;'
+      + 'line-height:1.9;font-size:15px;padding:20px;direction:' + (rtl ? 'rtl' : 'ltr') + ';">'
+      + esc + '</body></html>';
+    /* v-panel-head: عنوان اللوحة ونصّ النسخ يتبعان الردّ المعروض */
+    if(typeof window.omranPanelTitle === 'function'){
+      window.omranPanelTitle((typeof lang !== 'undefined' && (lang === 'ar' || lang === 'ur')) ? 'الرد الكامل' : 'Full reply', String(text || ''));
+    }
+    if(typeof switchWorkTab === 'function') switchWorkTab('preview');
+    if(typeof window.waAutoExpand === 'function') window.waAutoExpand();
+    if(window.innerWidth <= 860 && localStorage.getItem('previewEnabled') !== 'off'){
+      if(typeof closeDrawers === 'function') closeDrawers();
+      workareaEl.classList.add('open');
+      backdropEl.classList.add('show');
+    }
+  }catch(e){ __swallow(e, 'ui:long-reply-panel'); }
+}
 function renderMessages(keepScroll){
   // v-scroll-respect (لقطة المالك: «المحادثة ترتفع كل مرة أنزل»): أيّ إعادة رسم
   // بلا keepScroll كانت تقفز لأسفل القائمة (scrollHeight)، فإن كان المستخدم يقرأ
@@ -1373,7 +1416,7 @@ function renderMessages(keepScroll){
         if(__m.attachments) __len += __m.attachments.length * 3;
       }
       const __exp = Array.isArray(__c0.expandedAskAllBatches) ? __c0.expandedAskAllBatches.join(',') : '';
-      __sig = __c0.id + '|' + __c0.messages.length + '|' + __len + '|' + (__c0.__showAllMsgs ? 1 : 0) + '|' + __exp;
+      __sig = __c0.id + '|' + __c0.messages.length + '|' + __len + '|' + (__c0.__showAllMsgs ? 1 : 0) + '|' + __exp + '|' + (__c0.__expandedLong || []).join(',');  /* v-long-reply */
     }
     __sig += '|' + (localStorage.getItem('aiapp_lang') || 'ar');
     if(window.__renderMsgSig === __sig && messagesEl.childElementCount > 0) return;
@@ -1435,6 +1478,41 @@ function renderMessages(keepScroll){
       }catch(e){ /* الاسم المحفوظ احتياط */ }
       label.textContent = __plbl;
       if(isAskAllReply) div.appendChild(label); // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ»)
+    }
+    /* v-tiers (قرار المالك ١٢ سبتمبر): شارة صغيرة فوق الردّ المجاني، وزرّ اشتراك/تسجيل
+       عند نفاد الحصة. بلا اسم أي مزوّد. المشترك لا يرى شيئًا. */
+    if(m.role !== 'user' && (m.tier === 'free' || m.tier === 'free-limit' || m.tier === 'guest' || m.tier === 'guest-limit')){
+      try{
+        const __isArT = (lang === 'ar' || lang === 'ur');
+        const __isGuestT = (m.tier === 'guest' || m.tier === 'guest-limit');
+        const tb = document.createElement('div');
+        tb.className = 'tier-badge';
+        tb.style.cssText = 'display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:11px; color:var(--muted); margin-bottom:4px;';
+        const tl = document.createElement('span');
+        tl.textContent = (m.tier === 'guest-limit') ? (__isArT ? 'انتهت رسائل التجربة' : 'Trial messages used up')
+          : (m.tier === 'free-limit') ? (__isArT ? 'انتهت الرسائل المجانية لليوم' : 'Free messages used up for today')
+          : (__isArT ? 'ردّ مجاني' : 'Free reply');
+        tb.appendChild(tl);
+        const ta = document.createElement('button');
+        ta.type = 'button';
+        ta.style.cssText = 'padding:2px 10px; border-radius:12px; border:1px solid var(--border,rgba(255,255,255,.16)); background:transparent; color:var(--accent2,#d4af37); font:inherit; font-size:11px; cursor:pointer;';
+        if(__isGuestT){
+          ta.textContent = __isArT ? 'سجّل مجانًا' : 'Sign up free';
+          ta.onclick = function(e){
+            e.stopPropagation();
+            try{
+              const __tog = document.getElementById('btnAuthToggle');
+              const __ov = document.getElementById('authOverlay');
+              if(__tog) __tog.click(); else if(__ov) __ov.style.display = 'flex';
+            }catch(_e){ __swallow(_e, 'ui:tier-auth'); }
+          };
+        } else {
+          ta.textContent = __isArT ? 'اشترك للنسخة الاحترافية' : 'Upgrade to Pro';
+          ta.onclick = function(e){ e.stopPropagation(); try{ if(typeof openCheckout === 'function') openCheckout('pro'); }catch(_e){ __swallow(_e, 'ui:tier-checkout'); } };
+        }
+        tb.appendChild(ta);
+        div.appendChild(tb);
+      }catch(e){ __swallow(e, 'ui:tier-badge'); }
     }
     const textDiv = document.createElement('div');
     textDiv.className = 'msg-text';
@@ -1522,6 +1600,41 @@ function renderMessages(keepScroll){
       div.appendChild(imgStrip);
     }
     div.appendChild(textDiv);
+    /* v-long-reply: ردّ نصّيّ طويل بلا كود → يُقصّ ويُفتح كاملًا في اللوحة.
+       ردود البناء (m.code) تبقى كما هي — لها زرّ «استخدم هذا الإصدار». */
+    try{
+      if(m.role !== 'user' && !m._loading && !m.code && typeof __mc === 'string'
+         && __mc.length > OMRAN_LONG_REPLY_CHARS){
+        cur.__expandedLong = cur.__expandedLong || [];
+        var __lk = 'L' + mIdx;
+        var __openNow = cur.__expandedLong.indexOf(__lk) !== -1;
+        if(!__openNow){
+          omranLongClipCss();
+          textDiv.classList.add('omranLongClip');
+        }
+        var __lrow = document.createElement('div');
+        __lrow.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;';
+        var __mkL = function(label, fn){
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.textContent = label;
+          b.style.cssText = 'padding:5px 13px;border-radius:14px;border:1px solid var(--border,rgba(255,255,255,.16));background:transparent;color:var(--accent2,#d4af37);font:inherit;font-size:12.5px;cursor:pointer;';
+          b.onclick = function(e){ e.stopPropagation(); fn(); };
+          __lrow.appendChild(b);
+          return b;
+        };
+        var __isArL = (lang === 'ar' || lang === 'ur');
+        __mkL(__isArL ? '📄 اقرأ كامل الرد' : '📄 Read full reply', function(){
+          omranOpenReplyInPanel(__mc);
+        });
+        __mkL(__openNow ? (__isArL ? 'اطوِ' : 'Collapse') : (__isArL ? 'اعرضه هنا' : 'Expand here'), function(){
+          var __p = cur.__expandedLong.indexOf(__lk);
+          if(__p === -1) cur.__expandedLong.push(__lk); else cur.__expandedLong.splice(__p, 1);
+          renderMessages(true);
+        });
+        div.appendChild(__lrow);
+      }
+    }catch(e){ __swallow(e, 'ui:long-reply'); }
     // AppGallery: وسم صريح للمحتوى المولّد بالذكاء الاصطناعي على كل ردّ مساعد.
     if(m.role !== 'user' && __mc){
       const aiTag = document.createElement('div');
@@ -1690,11 +1803,26 @@ function renderMessages(keepScroll){
         } else {
           const chip = document.createElement('div');
           chip.className = 'file-chip';
-          chip.textContent = '📄 ' + a.name;
+          /* v-gold-badge: نفس بطاقة صندوق الكتابة داخل الرسالة المرسلة.
+             الدالة معرّفة في app-09-attach.js الذي يُحمّل بعد هذا الملفّ،
+             لذا نفحص وجودها وقت العرض لا وقت التحليل. */
+          const __lim = window.OMRAN_PASTE_ATTACH_CHARS || 1000;
+          const __big = !!(a.text && a.text.length >= __lim);
+          if(__big && typeof window.omranGoldBadgeFill === 'function'){
+            window.omranGoldBadgeFill(chip, a);
+          } else {
+            chip.textContent = '📄 ' + a.name;
+          }
           if(a.text){
             chip.style.cursor = 'pointer';
             chip.title = a.name;
             chip.onclick = () => {
+              /* v-code-viewer: المرفق النصّي يُفتح في تبويب «الكود» بترقيم وتلوين.
+                 المسار القديم (المعاينة الخام) يبقى احتياطًا إن غاب العارض. */
+              if(typeof window.omranOpenTextInCodePanel === 'function'){
+                window.omranOpenTextInCodePanel(a.text, a.name);
+                return;
+              }
               previewFrame.style.display = 'block';
               $('#pyConsole').style.display = 'none';
               emptyState.style.display = 'none';

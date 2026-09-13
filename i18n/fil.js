@@ -17,7 +17,7 @@ I18N['fil'] = {
     fxCatLbl: 'Kategorya', fxGenWomen: 'Pambabae', fxGenMen: 'Panlalaki', fxGenKids: 'Pambata', fxColorsLbl: 'Mga paboritong kulay', fxColBlack: 'Itim', fxColWhite: 'Puti', fxColNavy: 'Navy blue', fxColRed: 'Pula', fxColGold: 'Ginto',
     fxColGreen: 'Berde', fxColBeige: 'Beige', fxColMulti: 'Multikolor', fxAccLbl: 'Mga accessory', fxAccGlasses: 'Salamin', fxAccWatch: 'Relo', fxAccHandbag: 'Handbag', fxAccShoes: 'Sapatos', fxAccScarf: 'Scarf', fxAccMakeup: 'Makeup',
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
-    sidePanelTitle: 'Side menu', lightModeTitle: 'Light mode', provSearchPh: 'Maghanap ng modelo...', jumpLatestTitle: 'Pinakabagong mensahe', editMsgNotice: 'Ine-edit ang mensahe',
+    sidePanelTitle: 'Side menu', lightModeTitle: 'Light mode', darkModeTitle: 'Dark mode', provSearchPh: 'Maghanap ng modelo...', jumpLatestTitle: 'Pinakabagong mensahe', editMsgNotice: 'Ine-edit ang mensahe',
     modesTitle: 'Mga mode', attachFileTitle: 'Maglakip ng file', chipExam: 'Sagutan ang isang exam', chipBook: 'Buod ng libro', chipArticle: 'Sumulat ng propesyonal na artikulo',
     chipIdeas: 'Mga ideya para sa proyekto', tryItTitle: 'Subukan para sa akin', closeTitle: 'Isara', docAssistTitle: '📄 Katulong sa dokumento', govServicesTitle: '🧾 Mga serbisyo ng gobyerno',
     cvGenTitle: '💼 CV generator', dsNotesLabel: '✍️ Isulat ang mga detalye mo sa sarili mong pananalita (opsyonal)',

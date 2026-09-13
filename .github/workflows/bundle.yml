@@ -1,7 +1,5 @@
 name: Rebuild bundle
 
-# يبني js/app.bundle.js تلقائيًا كلما تغيّرت إحدى شرائح المصدر،
-# ويدفع الناتج إلى نفس الفرع. بهذا لا تحتاج تشغيل npm run bundle يدويًا.
 on:
   push:
     branches: [main]
@@ -9,42 +7,50 @@ on:
       - 'js/app-*.js'
       - 'js/partials-*.js'
       - 'scripts/build.mjs'
-  workflow_dispatch:        # يسمح بتشغيله يدويًا من تبويب Actions
+      - 'package-lock.json'
+  workflow_dispatch:
 
 permissions:
-  contents: write           # مطلوب لدفع الحزمة المبنيّة
+  contents: write
 
 concurrency:
   group: rebuild-bundle-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   bundle:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: '24'
           cache: npm
 
       - run: npm ci
 
       - name: Build bundle
-        run: npm run bundle
+        run: npm run bundle -- --force
 
       - name: Verify bundle
         run: npm run verify
 
       - name: Commit and push if changed
         run: |
-          if git diff --quiet -- js/app.bundle.js; then
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- js/app.bundle.js index.html sw.js
+          if git diff --cached --quiet -- js/app.bundle.js index.html sw.js; then
             echo "الحزمة لم تتغيّر — لا شيء لدفعه."
             exit 0
           fi
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add js/app.bundle.js
-          git commit -m "build: rebuild app.bundle.js [skip ci]"
-          git push
+          git commit -m "build: rebuild app.bundle.js + stamp [skip ci]"
+          for i in 1 2 3; do
+            git push origin HEAD:${{ github.ref_name }} && exit 0
+            echo "فشل الدفع، إعادة المحاولة بعد rebase…"
+            git pull --rebase origin ${{ github.ref_name }}
+          done
+          exit 1

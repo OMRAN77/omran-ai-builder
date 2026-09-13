@@ -1,3 +1,4 @@
+const { stripPrivateKeys } = require('./_msgs.js'); // v-static-leak
 // Vercel Serverless Function: proxies chat requests to DeepSeek using the site
 // owner's own server-side API key (DEEPSEEK_API_KEY env var), so visitors can try
 // the app without entering their own key. This key is NEVER exposed to the client.
@@ -29,7 +30,8 @@ module.exports = async (req, res) => {
     if (!body || typeof body === 'string') {
       body = JSON.parse(body || '{}');
     }
-    const { messages, model, token, guestId } = body;
+    const { model, token, guestId } = body;
+    const messages = stripPrivateKeys(body.messages); // v-static-leak: لا مفاتيح __ داخليّة إلى المزوّد
     if (!messages) {
       res.status(400).json({ error: 'Missing messages' });
       return;
@@ -40,7 +42,7 @@ module.exports = async (req, res) => {
       if (usage.reason === 'auth') {
         res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
       } else {
-        res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + DAILY_LIMIT + ' رسالة) لهذا المزوّد. جرّب مزودًا آخر بمفتاحك الخاص أو انتظر الغد.' });
+        res.status(402).json({ error: usage.message || ('وصلت للحد اليومي المجاني (' + (usage.limit || DAILY_LIMIT) + ' رسالة) لهذا المزوّد. جرّب مزودًا آخر بمفتاحك الخاص أو انتظر الغد.'), subscribeOnly: !!usage.subscribeOnly }); /* v-tiers */
       }
       return;
     }

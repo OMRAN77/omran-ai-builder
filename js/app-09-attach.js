@@ -113,7 +113,16 @@ function AI_MODE_NAME(){
 function AI_FACTORY_MODE(){ return AI_MODE_NAME() === 'factory'; }
 // ---- Attachments (images + text/code files) ----
 let pendingAttachments = [];
-const MAX_TEXT_ATTACH_CHARS = 100000;
+/* v-attach-limit: رُفع من 100000 — ملفّ بحجم app-09-attach.js نفسه يبلغ
+   ~443 ألف حرف، فكان يصل مقصوصًا عند 22% منه ويقف ترقيم العارض في منتصفه.
+   ⚠️ ملفّ بهذا الحجم ≈ 150 ألف توكن في الطلب الواحد — تكلفة حقيقيّة لكلّ إرسال.
+   ⚠️ MAX_PER_MSG (7000) يسري على رسائل التاريخ: الرسالة التالية سترى المرفق
+      مقصوصًا إلى 7000 حرف، فاسأل كلّ ما تريده في الرسالة الأولى. */
+const MAX_TEXT_ATTACH_CHARS = 450000;
+/* v-paste-attach: نصّ ملصوق أطول من هذا يصير مرفقًا بدل أن يملأ صندوق الكتابة.
+   مكسبان: المحادثة تبقى نظيفة، والنصّ يصل كاملًا (حدّ المرفق 100 ألف حرف)
+   بدل حدّ الرسالة الواحدة في السياق (7000). */
+const OMRAN_PASTE_ATTACH_CHARS = 1000;
 const MAX_ATTACH_FILE_BYTES = 25 * 1024 * 1024; // 25MB hard cap per file
 const ARCHIVE_EXT_RE = /\.(zip|docx|xlsx|pptx|jar)$/i;
 const IMAGE_TYPES = /^image\//;
@@ -129,6 +138,104 @@ function isImageAttachment(file){
   return false;
 }
 
+/* v-gold-badge: الشرائح مضمّنة داخل الملفّ — لا مسارات ولا ملفّات صور
+   منفصلة، فلا تتعطّل البطاقة إن لم يُنشَر مجلّد الصور. ~30KB إجمالًا. */
+const OMRAN_BADGE_L = 'data:image/png;base64,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';
+const OMRAN_BADGE_M = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAMAAACMCAYAAAC5zhOyAAABBUlEQVR42mM8srbtPwMUsIjzQRiMbOwMTDDR/79+IjgMDAzEclgEBEUQnLOnziI49+7cQ3AkJQQRnHcvniA4CnKicA7j/5tT4Q5lXFpuieBEmIsivHDjvQDCgBefviE4dnpyCE6inz+mq3/8+s3A6GFrhzBaQkIaYTQzCzupYTDKGeWMckY5g4fD8vfPTwSnJiUah7JPb98gyl4DNdX/2AtV5DKRhZ/1JwPj7x8QTk6gFsP/3/8YPn79xcD4/87C/wx/v0Bk9m1Zx/DpF0QfC5egNAMXAwMDw9//DCwfv/5FmPb5y08GFgaIXSzbDl9jYGBgYPj6k5nKpTILPytSgOioIioJAIXpUhaTWqa/AAAAAElFTkSuQmCC';
+const OMRAN_BADGE_R = 'data:image/png;base64,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';
+/* v-gold-badge: بطاقة المرفق النصّي بإطار ذهبيّ من ثلاث شرائح — الطرفان
+   ثابتان والوسط يتكرّر، فتتمدّد مع أيّ لغة بلا تشويه. الأيقونة مدمجة في
+   الشريحة اليمنى؛ زرّ ✕ يوضع بالكود على الطرف المقابل ويتبع اتّجاه اللغة. */
+/* v-gold-badge-i18n: كلمتا البطاقة بأربع عشرة لغة — نفس أسلوب __OLDT في app-04.
+   أيّ لغة غير مذكورة تسقط للإنجليزيّة تلقائيًّا. */
+const OMRAN_BADGE_T = {
+  lines: { ar:'سطر', en:'lines', fr:'lignes', hi:'पंक्तियाँ', ur:'سطریں', bn:'লাইন',
+           ne:'लाइन', id:'baris', fil:'linya', tr:'satır', zh:'行', ru:'строк',
+           es:'líneas', ml:'വരികൾ' },
+  scan:  { ar:'جارٍ التحليل…', en:'Analyzing…', fr:'Analyse…', hi:'विश्लेषण जारी…',
+           ur:'تجزیہ جاری…', bn:'বিশ্লেষণ চলছে…', ne:'विश्लेषण हुँदै…', id:'Menganalisis…',
+           fil:'Sinusuri…', tr:'Çözümleniyor…', zh:'正在分析…', ru:'Анализ…',
+           es:'Analizando…', ml:'വിശകലനം ചെയ്യുന്നു…' }
+};
+function omranBadgeT(key){
+  let lg = 'ar';
+  try{ lg = (typeof lang !== 'undefined' && lang) ? lang : (localStorage.getItem('aiapp_lang') || 'ar'); }
+  catch(e){ /* guard-ok: تخزين غير متاح → العربيّة */ }
+  const m = OMRAN_BADGE_T[key] || {};
+  return m[lg] || m.en || '';
+}
+function omranGoldBadgeCss(){
+  if(document.getElementById('omranGoldBadgeCss')) return;
+  const st = document.createElement('style');
+  st.id = 'omranGoldBadgeCss';
+  const H   = 78;
+  const SRC = '/assets/badge-frame.png';
+  const FRAME =
+      'border-style:solid;'
+    + 'border-width:15px 62px 15px 42px;'
+    + 'border-image-source:url("' + SRC + '");'
+    + 'border-image-slice:30 124 30 84 fill;'
+    + 'border-image-repeat:stretch;'
+    + 'background-color:#0a0c10;background-image:none;';
+  const XBTN =
+      '.goldBadgeWrap{position:relative;display:inline-block;line-height:0;}'
+    + '.goldBadgeWrap .rm{display:flex !important;position:absolute;top:-7px;inset-inline-end:-7px;'
+    + 'width:22px;height:22px;border-radius:50%;align-items:center;justify-content:center;'
+    + 'background:#14171d;border:1px solid rgba(212,175,55,.45);color:#c9c2b4;'
+    + 'font-size:12px;line-height:1;cursor:pointer;z-index:3;margin:0;padding:0;'
+    + 'opacity:0;transform:scale(.85);transition:opacity .15s,transform .15s,color .15s;}'
+    + '.goldBadgeWrap:hover .rm,.goldBadgeWrap .rm:focus-visible{opacity:1;transform:scale(1);}'
+    + '.goldBadgeWrap .rm:hover{color:#ff6b6b;border-color:rgba(255,107,107,.6);}'
+    + '@media (hover:none){.goldBadgeWrap .rm{opacity:1;transform:scale(1);}}';
+  st.textContent =
+    '.goldBadge{position:relative;box-sizing:border-box;display:inline-flex;align-items:center;'
+    + 'height:' + H + 'px;min-width:250px;max-width:390px;padding:0 8px;cursor:pointer;'
+    + FRAME + '}'
+    + '.goldBadge .gbTxt{flex:1;min-width:0;text-align:start;unicode-bidi:plaintext;}'
+    + '.goldBadge .gbName{display:block;unicode-bidi:plaintext;font-size:14px;font-weight:500;color:#f0e9d8;'
+    + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25;}'
+    + '.goldBadge .gbSub{display:block;font-size:11.5px;color:#9a9384;margin-top:3px;'
+    + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
+    + '.goldBadge > .rm{display:none !important;}'
+    + XBTN
+    + '.file-chip.goldBadge{box-sizing:border-box;display:inline-flex;align-items:center;box-shadow:none;'
+    + 'height:' + H + 'px;min-width:250px;max-width:390px;padding:0 8px;'
+    + FRAME + '}'
+    + '.msg-attachments::before{content:none !important;}'
+    + '.msg-text:has(+ .msg-attachments .goldBadge){display:none !important;}';
+  document.head.appendChild(st);
+}
+/* يبني محتوى البطاقة: الاسم في سطر والحجم وعدد الأسطر تحته */
+function omranGoldBadgeFill(chip, a){
+  omranGoldBadgeCss();
+  chip.classList.add('goldBadge');
+  const txt = document.createElement('span');
+  txt.className = 'gbTxt';
+  const nm = document.createElement('span');
+  nm.className = 'gbName';
+  nm.textContent = String(a.name || '').replace(/\s*·.*$/, '');
+  const sb = document.createElement('span');
+  sb.className = 'gbSub';
+  const __body = String(a.text || '');
+  /* الحجم بالبايت الحقيقيّ لا بعدد الحروف: الحرف العربيّ بايتان في UTF-8. */
+  let __bytes = __body.length;
+  try{ __bytes = new Blob([__body]).size; }catch(_e){ /* guard-ok */ }
+  const kb = Math.max(1, Math.round(__bytes / 1024));
+  const ln = __body ? __body.split('\n').length : 0;
+  /* \u2066…\u2069 عزل ثنائيّ الاتجاه — بدونه ينقلب السطر في الواجهة العربيّة. */
+  sb.textContent = a.pending
+    ? (omranBadgeT('scan') + ' ⏳')
+    : ('\u2066' + kb + ' KB\u2069 · \u2066' + ln.toLocaleString('en-US') + '\u2069'
+       + ' ' + omranBadgeT('lines') + (a.error ? ' ⚠️' : ''));
+  txt.appendChild(nm); txt.appendChild(sb);
+  chip.appendChild(txt);
+}
+/* v-gold-badge-export: الملفّات تُحمَّل كوحدات (type="module")، فالتعريف أعلاه
+   محبوس في نطاق هذا الملفّ ولا يراه app-04-i18n-state.js. التعريض على window
+   هو ما يجعل البطاقة تظهر داخل الرسالة المرسلة أيضًا، لا في صندوق الكتابة فقط. */
+window.omranGoldBadgeFill = omranGoldBadgeFill;
+window.omranGoldBadgeCss  = omranGoldBadgeCss;
+window.OMRAN_PASTE_ATTACH_CHARS = OMRAN_PASTE_ATTACH_CHARS;
 function renderAttachStrip(){
   const strip = $('#attachStrip');
   strip.innerHTML = '';
@@ -151,17 +258,38 @@ function renderAttachStrip(){
         chip.appendChild(bdg);
       }
     } else {
-      const name = document.createElement('span');
-      name.className = 'name';
-      name.textContent = a.name + (a.pending ? ' ⏳' : (a.error ? ' ⚠️' : ''));
-      chip.appendChild(name);
+      if(a.text && a.text.length >= OMRAN_PASTE_ATTACH_CHARS){
+        omranGoldBadgeFill(chip, a);          /* v-gold-badge: الكبيرة فقط */
+      } else {
+        const name = document.createElement('span');
+        name.className = 'name';
+        name.textContent = a.name + (a.pending ? ' ⏳' : (a.error ? ' ⚠️' : ''));
+        chip.appendChild(name);
+      }
+      /* v-paste-attach: عرض محتوى المرفق النصّي في تبويب «الكود» قبل الإرسال */
+      if(a.text && !a.pending){
+        chip.style.cursor = 'pointer';
+        chip.title = a.name;
+        chip.onclick = (ev) => {
+          if(ev && ev.target && ev.target.classList && ev.target.classList.contains('rm')) return;
+          if(typeof window.omranOpenTextInCodePanel === 'function') window.omranOpenTextInCodePanel(a.text, a.name);
+        };
+      }
     }
-    const rm = document.createElement('span');
+        const rm = document.createElement('span');
     rm.className = 'rm';
     rm.textContent = '✕';
-    rm.onclick = () => { pendingAttachments.splice(idx, 1); renderAttachStrip(); };
-    chip.appendChild(rm);
-    strip.appendChild(chip);
+    rm.onclick = (e) => { e.stopPropagation(); pendingAttachments.splice(idx, 1); renderAttachStrip(); };
+    if(chip.classList.contains('goldBadge')){
+      const wrap = document.createElement('span');
+      wrap.className = 'goldBadgeWrap';
+      wrap.appendChild(chip);
+      wrap.appendChild(rm);
+      strip.appendChild(wrap);
+    } else {
+      chip.appendChild(rm);
+      strip.appendChild(chip);
+    }
   });
   try{ window.__composerSyncTall && window.__composerSyncTall(); }catch(e){ /* guard-ok — cosmetic */ }
 }
@@ -1149,7 +1277,30 @@ $('#attachInput').addEventListener('change', async (e) => {
         if(ae && ae.id !== 'prompt' && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
         const items = Array.from((e.clipboardData && e.clipboardData.items) || []);
         const files = items.filter(i => i.kind === 'file' && /^image\//.test(i.type)).map(i => i.getAsFile()).filter(Boolean);
-        if(!files.length) return;
+        if(!files.length){
+          /* v-paste-attach: لصق نصّ طويل → مرفق قابل للفتح في تبويب «الكود» */
+          try{
+            const __pt = (e.clipboardData && e.clipboardData.getData) ? String(e.clipboardData.getData('text') || '') : '';
+            if(__pt.length > OMRAN_PASTE_ATTACH_CHARS){
+              e.preventDefault();
+              let __body = __pt;
+              if(__body.length > MAX_TEXT_ATTACH_CHARS) __body = __body.slice(0, MAX_TEXT_ATTACH_CHARS) + '\n... (' + t('attachTruncated') + ')';
+              const __isArP = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
+              /* الاسم يعكس المخزَّن فعلًا لا الملصوق الأصلي، ويميّز الكود عن النثر */
+              const __looksCode = /[{}();=<>]/.test(__body.slice(0, 4000)) && /\n/.test(__body);
+              const __kb = Math.max(1, Math.round(__body.length / 1024));
+              pendingAttachments.push({
+                name: (__isArP ? (__looksCode ? 'كود ملصوق' : 'نص ملصوق') : (__looksCode ? 'Pasted code' : 'Pasted text'))
+                  + ' · ' + __kb + ' KB' + (__body.length < __pt.length ? (__isArP ? ' (مقتطع)' : ' (truncated)') : ''),
+                isImage: false, text: __body, _pasted: true
+              });
+              renderAttachStrip();
+              try{ if(typeof settingsToast === 'function') settingsToast(__isArP ? '📄 حُوّل النص إلى مرفق — اضغط عليه لعرضه' : '📄 Converted to an attachment — tap it to view'); }catch(_e){ /* guard-ok */ }
+              try{ $('#prompt').focus(); }catch(_e){ /* guard-ok */ }
+            }
+          }catch(err2){ __swallow(err2, 'attach:paste-text'); }
+          return;
+        }
         e.preventDefault();
         const named = files.map((f, i) => { try{ return new File([f], 'pasted-' + Date.now() + (i ? '-' + i : '') + '.png', { type: f.type || 'image/png' }); }catch(_){ return f; } });
         omranIngestFiles(named, { pasted: true }).then(() => { try{ $('#prompt').focus(); }catch(_){ /* guard-ok — cleanup, intentional */ } });
@@ -1181,7 +1332,7 @@ async function pickSmartProviders(userText, eligibleKeys){
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-120b', /* v-free-models: الخادم يجرّب مرشّحين إن تقاعد هذا الاسم أيضًا */
         messages: [
           {role: 'system', content: sys},
           {role: 'user', content: String(userText || '').slice(0, 2000)}
@@ -2336,6 +2487,31 @@ async function __sendPromptCore(){
   const promptEl = $('#prompt');
   let text = promptEl.value.trim();
   if(!text && pendingAttachments.length === 0) return;
+  /* v-secret-vault (طلب المالك: «حقل خاصّ مشفّر لحفظ الأسرار بدل كتابته نصًّا خامًا بالمحادثة»):
+     توكن GitHub أو مفتاح API ملصوق في الرسالة لا يُرسل للنموذج ولا يُحفظ في المحادثة.
+     المالك يُعرض عليه حفظه في الخزنة المشفّرة؛ غيره يُنبَّه ويُحذف السرّ من نصّه.
+     الأنماط نفسها في الخادم (_msgs.js redactSecrets) شبكةَ أمان للحزم القديمة. */
+  try{
+    const __secRe = /\b(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|sk-ant-[A-Za-z0-9_\-]{20,}|sk-[A-Za-z0-9_\-]{32,}|AIza[0-9A-Za-z_\-]{30,})\b/g;
+    const __found = text.match(__secRe);
+    if(__found && __found.length){
+      const __isAr = (lang === 'ar');
+      const __gh = __found.find(function(s){ return /^(gh[pousr]_|github_pat_)/.test(s); });
+      const __ownerUi = String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran';
+      text = text.replace(__secRe, __isAr ? '[سرّ حُذف من الرسالة]' : '[secret removed]').trim();
+      promptEl.value = text;
+      if(__gh && __ownerUi && typeof window.omranVaultStore === 'function'){
+        if(confirm(__isAr ? 'رصدتُ توكن GitHub في رسالتك. أحفظه في خزنة الأسرار المشفّرة بدل إرساله للمحادثة؟' : 'A GitHub token was detected in your message. Save it in the encrypted secrets vault instead of sending it to the chat?')){
+          window.omranVaultStore('github_token', __gh).then(function(r){
+            try{ settingsToast(r && r.ok ? (__isAr ? '🔐 حُفظ توكن GitHub في الخزنة' : '🔐 GitHub token saved to the vault') : ((__isAr ? '⚠️ تعذّر الحفظ: ' : '⚠️ Save failed: ') + ((r && r.error) || ''))); }catch(e){ __swallow(e, 'vault:toast'); }
+          });
+        }
+      } else {
+        try{ settingsToast(__isAr ? '🔒 حُذف السرّ من رسالتك — الأسرار لا تُكتب في المحادثة' : '🔒 The secret was removed from your message — never paste secrets in chat'); }catch(e){ __swallow(e, 'vault:toast2'); }
+      }
+      if(!text && pendingAttachments.length === 0) return;
+    }
+  }catch(e){ __swallow(e, 'vault:intercept'); }
   if(pendingAttachments.some(a => a.pending)){
     alert(lang === 'ar' ? 'الرجاء الانتظار حتى ينتهي تحليل الأرشيف' : 'Please wait until archive analysis finishes');
     return;
@@ -2527,6 +2703,11 @@ async function __sendPromptCore(){
     (__editedOriginal && Array.isArray(__editedOriginal.attachments) ? __editedOriginal.attachments.slice() : []);
   const imageAttachments = attachmentsForMsg.filter(a => a.isImage);
   const textAttachments = attachmentsForMsg.filter(a => !a.isImage);
+  /* v-file-analyze: ملف نصّي/كودي مرفق بلا أمر بناء صريح = طلب تحليل لا بناء.
+     بدونه كان وجود كود سابق في المشروع (cur.code) يكفي لتصنيف الرسالة بناءً،
+     فيُلصَق تحذير «لم يصل كود من المزوّد» في ذيل تحليل صحيح تمامًا. */
+  const __fileAnalyze = !!(textAttachments.length && !__strongBuildRe.test(text)
+    && !/(?:ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|اصنع|build|create|make|design)\s*(?:لي\s*)?[^\n]{0,20}(?:تطبيق|موقع|صفحة|لعبة|برنامج|بوت|أداة|اداة|app|website|page|game|bot|tool)/i.test(text || ''));
 
   // Build the text sent to the AI: original text + any text-file contents appended as code blocks
   let apiText = text;
@@ -2560,8 +2741,16 @@ async function __sendPromptCore(){
     if(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && cur.lastMsgWasImageEdit && text && text.length <= 220){
       imageAttachments.push({ isImage: true, name: 'memory.png', mime: cur.lastEditedImage.mime || 'image/png', dataUrl: 'data:' + (cur.lastEditedImage.mime || 'image/png') + ';base64,' + cur.lastEditedImage.b64, _fromMemory: true });
     }
+    /* v-guide: نعيد نفس اللقطة مع الرسائل التالية داخل جلسة الإرشاد، وإلا أجاب
+       النموذج من ذاكرته عن شكل البرنامج بدل الشاشة التي أمام المستخدم.
+       السقف (٦ أدوار / ٤٠٠ حرف) يحدّ تكلفة إعادة الإرسال. */
+    if(!imageAttachments.length && cur.guideOn && cur.guideShot && cur.guideShot.b64 && text && text.length <= 400 && (cur.guideTurns || 0) < 6){
+      cur.guideTurns = (cur.guideTurns || 0) + 1;
+      imageAttachments.push({ isImage: true, name: 'screen.png', mime: cur.guideShot.mime || 'image/png', dataUrl: 'data:' + (cur.guideShot.mime || 'image/png') + ';base64,' + cur.guideShot.b64, _fromMemory: true, _screenshot: true, _guide: true });
+      }
   }catch(e){ __swallow(e, "upload:app-09-attach#12"); }
-  const __nextUserMessage = {role: 'user', content: (__gateApprovedText || text) || (t('imagesAttachedNote')), attachments: attachmentsForMsg.length ? attachmentsForMsg : undefined, apiText, apiImages: imageAttachments.length ? imageAttachments : undefined};
+  const __textAtPush = String(text || ''); // v-img-wire: مرجع لحساب ما يُضاف إلى النصّ لاحقًا في هذا الدور
+  const __nextUserMessage = {role: 'user', content: (__gateApprovedText || text) || (t('imagesAttachedNote')), attachments: attachmentsForMsg.length ? attachmentsForMsg : undefined};
   if(__editIndex >= 0){
     // ChatGPT-like branch semantics في مخزن خطّي: التعديل يلغي الردود اللاحقة
     // ثم يولّد جوابًا جديدًا من الرسالة المعدّلة، بلا نسخ السؤال مرتين.
@@ -2681,7 +2870,7 @@ function __friendlyErr(e){
       return false;
     }catch(e){ return true; } // guard-ok: أي خطأ → السلوك القديم بالضبط
   })();
-  const askAll = !!customProviders || __askAllExplicit || (!__gateNoBuild && !__gateApprovedText && ((__routeBuildRe.test(text) && __routeCmdRe.test(text) && __buildIntentShape) || __strongBuildRe.test(text)) && !__routeFix);
+  const askAll = !!customProviders || __askAllExplicit || (!__gateNoBuild && !__gateApprovedText && !__fileAnalyze && ((__routeBuildRe.test(text) && __routeCmdRe.test(text) && __buildIntentShape) || __strongBuildRe.test(text)) && !__routeFix);
   // آخر نص كامل وصل من البث؛ نحتفظ به إذا أوقف المستخدم التوليد.
   let __lastStreamPartial = '';
 
@@ -2841,6 +3030,10 @@ function __friendlyErr(e){
     // 🧠 v293: أي صورة مرفقة جديدة تنحفظ كآخر صورة في المحادثة
     if(__srcImg && !__srcImg._fromMemory){
       cur.lastEditedImage = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' };
+      /* v-guide: لقطة شاشة = جلسة إرشاد — الشاشة تبقى حاضرة أمام النموذج في الأدوار
+         التالية. بدونها كان «عندي بالهاتف» يصل بلا صورة فيجيب من معلوماته العامة. */
+      if(__srcImg._screenshot){ cur.guideShot = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' }; cur.guideOn = true; cur.guideTurns = 0; }
+      else { cur.guideShot = null; cur.guideOn = false; }
       cur.imageEditInstructions = [];
       cur.imageEditSource = null;
       cur.imageTurns = []; /* v-image-memory: مصدر جديد = سلسلة جديدة */
@@ -3118,27 +3311,27 @@ function __friendlyErr(e){
       // 🎨 v328: صورة/شعار مرفق + طلب تصميم → صورة المستخدم تُضمَّن كما هي — ممنوع إعادة رسمها
       text += '\n(ملاحظة للنظام: المستخدم أرفق صورة/شعارًا — إذا كان ردك تصميمًا أو كودًا يجب استخدام صورته نفسها كما هي عبر src="__USER_IMAGE__" أو background-image:url(\'__USER_IMAGE__\') بالضبط، والتطبيق يستبدلها بالصورة الحقيقية تلقائيًا. ممنوع منعًا باتًا استبدال صورة المستخدم بلوجو أو صورة من تصميمك أو من الإنترنت — صورة المستخدم هي الأصل الرسمي وتظهر بدون أي تشويه أو قلب أو قص)';
     }
-    // 🖼️ صورة مرفقة بدون أي نص → v716: إذا للمحادثة سياق واضح نحلّلها مباشرة، وإلا نسأل محليًا
+    // 🖼️ صورة مرفقة بدون أي نص → v-img-wire: تُحلَّل بالنموذج دائمًا، لا ردّ جاهز محلّيّ
     if(__srcImg && !(text || '').trim()){
       cur.lastEditedImage = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' };
       cur.lastMsgWasImageEdit = true;
-      // v716: «وصلتني الصورة 👍 شو تبي أسوي فيها؟» كانت تُقال حتى لو المستخدم أرسل الصورة
-      // استجابةً لطلب صريح في المحادثة (مثال: «أرسل لقطة شاشة لأحدد السبب»). الآن:
-      // إذا في المحادثة رسائل نصية حديثة ذات معنى → نمرّر الصورة للنموذج مع تعليمة
-      // أن يحلّلها في ضوء السياق مباشرة. السؤال المحلي يبقى فقط للمحادثة بلا سياق.
+      /* v-img-wire (لقطة المالك ١٢ سبتمبر: أرسل اللقطة بلا نصّ فجاءه «وصلتني الصورة 👍
+         شو تبي أسوي فيها؟» ثلاث مرّات بلا أيّ تحليل): الردّ الجاهز كان يُقال محلّيًّا
+         لكلّ محادثة بلا سياق نصّيّ حديث — وهي الحالة الغالبة عند إرسال لقطة شاشة —
+         فلا يرى النموذج الصورة أصلًا. الآن الصورة بلا نصّ = طلب تحليل كامل يُرسل
+         للنموذج دائمًا؛ ومع سياق نصّيّ حديث تُقرأ في ضوئه (v716). النصّ بصوت
+         المستخدم لا «ملاحظة للنظام» حتّى يبقى السجلّ طبيعيًّا عند أيّ مزوّد. */
       var __imgCtx = (cur.messages || []).slice(-6).filter(function(m){
-        return m && typeof m.content === 'string' && m.content.trim().length >= 12
+        return m && m !== __nextUserMessage && typeof m.content === 'string' && m.content.trim().length >= 12
           && m.content.indexOf('وصلتني الصورة') === -1 && m.content.indexOf('Got the image') === -1;
       });
-      if(__imgCtx.length){
-        text = (lang === 'ar')
-          ? '(ملاحظة للنظام: المستخدم أرفق صورة استكمالًا لسياق المحادثة أعلاه — حلّل الصورة مباشرة واربطها بآخر موضوع في المحادثة ورُدّ بجواب عملي، ولا تسأل المستخدم ماذا يريد أن يفعل بها)'
-          : '(System note: the user attached an image continuing the conversation above — analyze it directly in that context and give a practical answer; do not ask what they want to do with it)';
-      } else {
-        cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'وصلتني الصورة 👍 شو تبي أسوي فيها؟' : 'Got the image 👍 What would you like to do with it?') });
-        renderAll(); saveState();
-        return;
-      }
+      text = __imgCtx.length
+        ? ((lang === 'ar')
+          ? 'أرفقت هذه الصورة استكمالًا لكلامنا أعلاه: اقرأها كاملة أوّلًا (كلّ نصّ فيها حرفيًّا، وأيّ تنبيه أو رسالة خطأ قبل غيره)، ثمّ حلّلها في ضوء آخر موضوع بيننا وأعطني الجواب العمليّ مباشرة — لا تسألني ماذا أريد أن أفعل بها.'
+          : 'I attached this image as a follow-up to our conversation above: read it fully first (every text verbatim, any alert or error message before anything else), then analyze it in the context of our last topic and give me the practical answer directly. Do not ask what I want to do with it.')
+        : ((lang === 'ar')
+          ? 'حلّل هذه الصورة بالتفصيل: اقرأ كلّ نصّ فيها حرفيًّا، وإن كان فيها تنبيه أو رسالة خطأ فابدأ به واشرح سببه وحلّه، ثمّ اشرح ما يظهر فيها وما الخطوة العمليّة التالية — لا تسألني ماذا أريد أن أفعل بها.'
+          : 'Analyze this image in detail: read every text in it verbatim; if it shows an alert or error message, start with it and explain its cause and solution; then explain what is shown and the practical next step. Do not ask what I want to do with it.');
     }
     // 🎬 v363: شخصية كرتونية تتكلم من الدردشة مباشرة — صورة → كرتون (Gemini) → فيديو ناطق (Runway)
     let __charImg = __srcImg
@@ -3475,7 +3668,7 @@ function __showImgLoading(el, ar, en){
       && !__imgEditRe.test(text) && !__IMG_UPGRADE && !__IMG_ELEVATE && !__IMG_FOLLOW && !__ATT_EDIT && __IMGF_NEW_RE.test(text)
       && !__refersAttachment && !__cardTidyIntent(text)
       && !/(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|للتواصل|poster|logo|banner|certificate|card|invitation)/i.test(text));
-    if(!__freshGenWins && !__SHOT_ANALYZE && text && !cur.adMode && !__isSupportQ && !__blockAutoImage && (__IMG_UPGRADE || __IMG_ELEVATE || __IMG_FOLLOW || __ATT_EDIT || __ATT_DEFAULT || __FOLLOW_DEFAULT || __ATT_STYLE || __STYLE_FOLLOW || (__srcImg && !__srcImg._fromMemory && __cardTidyIntent(text)) || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || __STYLE_FOLLOW || __FOLLOW_DEFAULT || ((__IMG_UPGRADE || __IMG_ELEVATE) && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
+    if(!__freshGenWins && !__SHOT_ANALYZE && !(__srcImg && __srcImg._guide) && text && !cur.adMode && !__isSupportQ && !__blockAutoImage && (__IMG_UPGRADE || __IMG_ELEVATE || __IMG_FOLLOW || __ATT_EDIT || __ATT_DEFAULT || __FOLLOW_DEFAULT || __ATT_STYLE || __STYLE_FOLLOW || (__srcImg && !__srcImg._fromMemory && __cardTidyIntent(text)) || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || __STYLE_FOLLOW || __FOLLOW_DEFAULT || ((__IMG_UPGRADE || __IMG_ELEVATE) && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
       __showImgLoading(thinkingDiv, (__IMG_UPGRADE || __IMG_ELEVATE) ? 'جاري تطوير الصورة…' : 'جاري تعديل الصورة…', (__IMG_UPGRADE || __IMG_ELEVATE) ? 'Improving the image…' : 'Editing image…');
       const __upgSrc = (!__srcImg && (__IMG_UPGRADE || __IMG_ELEVATE) && !(cur.lastEditedImage && cur.lastEditedImage.b64)) ? __IMG_UPGRADE_SRC : null;
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : (__upgSrc ? ((__upgSrc.dataUrl || '').split(',')[1] || '') : ((cur.lastEditedImage && cur.lastEditedImage.b64) || ''));
@@ -4101,11 +4294,11 @@ function __showImgLoading(el, ar, en){
        والعميل يوجّه الكود للمعاينة لا لفقاعة المحادثة، فيبدو «ما فيه ردّ».
        النصّ الملصوق الطويل تحليلٌ لا طلب تصميم: نُعرّف __pastedDoc هنا (نُقل من
        الأسفل) ونستثنيه من البناء والتصميم كي يمرّ للبروم الخفيف ويردّ نصًّا. */
-    const __pastedDoc = !!(text && !__strongBuildRe.test(text) && (text.length > 400 || text.split('\n').length >= 6 || /\b(issue|suggestion|rejected|review|error|exception|traceback|report|dear|regards)\b/i.test(text)));
+    const __pastedDoc = !!(text && !(imageAttachments.length && !__textAtPush) /* v-img-wire: طلب تحليل الصورة المولَّد ليس نصًّا ملصوقًا */ && !__strongBuildRe.test(text) && (text.length > 400 || text.split('\n').length >= 6 || /\b(issue|suggestion|rejected|review|error|exception|traceback|report|dear|regards)\b/i.test(text)));
     const __designAskRe = /(صمم|صمّم|صممي|اصنع|ابغى|ابي|أبي|أبغى|سو|سوّ?ي|اعمل|أعمل|عطني|أعطني|هات|ارسم|صم?ّ?ملي|بوستر|تصميم|design|make|create)\s*(?:لي\s*)?(?:[^\n]{0,20})?(إعلان|بوستر|شهادة|بطاقة|دعوة|لوجو|شعار|بنر|غلاف|منشور|poster|flyer|certificate|card|invitation|logo|banner|cover)/i;
     // النصّ الملصوق لا يُفعّل البناء إطلاقًا؛ وكلمات التصميم لا تُفعّله إلا بطلبٍ
     // صريح («صمّم بطاقة»)، لا مجرّد ورود «دعوة/بطاقة» داخل جملة سرديّة.
-    const __needsBuild = !__pastedDoc && ((__bldRe.test(text) && __appWd.test(text)) || (__dsnRe.test(text) && __designAskRe.test(text)) || !!cur.code || !!window.__buildOfferApproved);
+    const __needsBuild = !__pastedDoc && !__fileAnalyze && ((__bldRe.test(text) && __appWd.test(text)) || (__dsnRe.test(text) && __designAskRe.test(text)) || !!cur.code || !!window.__buildOfferApproved);
     // v469: Q&A = بروم خفيف مثل ChatGPT؛ البناء = تعليمات كاملة.
     let __sys;
     if(__needsBuild){
@@ -4141,7 +4334,10 @@ function __showImgLoading(el, ar, en){
     /* v-clean-slate: __sys (كتاب قواعد العميل الثابت) يُوسم static — مسار العقل
        الواحد يرشّحه (هوية النظام هناك من الخادم القصير)، والمسار الاحتياطي
        القديم يبقى عليه. التوجيهات السياقية لكل دور (تحية، بناء، صورة) تمر. */
-    const apiMessages = [{role: 'system', content: __sys, __static: true}];
+    /* v-static-leak (لقطة المالك: Groq 400 «property '__static' is unsupported»): الخاصيّة
+       كانت تُرسل مع الرسالة إلى المزوّدات الصارمة على المسار الاحتياطيّ. الترشيح صار بالهويّة. */
+    const __staticSys = {role: 'system', content: __sys};
+    const apiMessages = [__staticSys];
     /* v-topic-switch (شكوى المالك: يغيّر الموضوع فيجيه جواب الأول والثاني معًا):
        TOPIC_FOLLOW_RULE كان داخل النظام الثابت الذي يُرشَّح عن مسار الأدوات —
        نسخة قصيرة غير ثابتة تصل المسارين، وتأتي أخيرة فتغلب. */
@@ -4299,28 +4495,22 @@ DESIGN RULES (non-negotiable):
 
       // ③ الرسالة الحالية دائمًا آخر دور
       const __lastM = __historyMsgs[__historyMsgs.length - 1];
-      if(__lastM){
-        let __curText = String((__lastM.apiText !== undefined ? __lastM.apiText : __lastM.content) || '');
-        /* v-attach-guarantee (بلاغ عمران «رفع الملفات ما يتحلّل»): نضمن وصول محتوى
-           كلّ مرفق نصّي للنموذج هنا وقت الإرسال — لا وقت بناء apiText فقط. لو سقط
-           المحتوى من apiText لأيّ سبب (سباق قراءة، حقل مختلف، إعادة تحرير) نُلحقه
-           الآن من كائن المرفق نفسه: .text أو .code أو .content أيًّا كان. آمنٌ
-           تمامًا: لا يضيف إلّا الغائب فعلًا (يتحقّق ببادئة ٦٠ حرفًا فلا تكرار). */
-        let __attN = 0, __attMissing = 0;
+      /* v-img-wire: apiText (نصّ الملفّات المرفقة + بادئة الوضع + ملاحظات الدور + طلب
+         تحليل الصورة) كان يُحسب ولا يُرسل — كان يُرسل content الفقاعة («مرفقات») —
+         فلا يصل للنموذج لا الملفّ ولا التعليمة. الآن يُرسل مع الدور الحاليّ، وما
+         أُضيف إلى text بعد الدفع يُلحق به. */
+      const __curApiText = (function(){
         try{
-          (__lastM.attachments || []).forEach(a => {
-            if(!a || a.isImage || a.isVideo) return;
-            const __body = String((a.text || a.code || '')).trim();
-            if(!__body) return;
-            __attN++;
-            const __probe = __body.slice(0, 60);
-            if(__curText.indexOf(__probe) === -1){
-              __attMissing++;
-              __curText += (__curText ? '\n\n' : '') + '📄 ' + (a.name || 'ملف') + ':\n```\n' + __body + '\n```';
-            }
-          });
-        }catch(e){ /* guard-ok */ }
-        try{ if(window.__diagTurn){ window.__diagTurn.att = __attN; window.__diagTurn.attMissing = __attMissing; } }catch(e){ /* guard-ok */ }
+          var base = String(apiText || ''), now = String(text || ''), delta = '';
+          if(now !== __textAtPush) delta = (now.indexOf(__textAtPush) === 0) ? now.slice(__textAtPush.length) : now;
+          delta = delta.trim();
+          var out = !delta ? base : (!base ? delta : (__textAtPush ? (base + '\n\n' + delta) : (delta + '\n\n' + base)));
+          if(out.length > 200000) out = out.slice(0, 200000) + '\n… (قُصّ النصّ لطوله)';
+          return out;
+        }catch(e){ return String(apiText || ''); }
+      })();
+      if(__lastM){
+        const __curText = (__lastM === __nextUserMessage && __curApiText) ? __curApiText : String((__lastM.apiText !== undefined ? __lastM.apiText : __lastM.content) || '');
         if(__turns.length && __turns[__turns.length - 1].role === __lastM.role) __turns.pop();
         __turns.push({role: __lastM.role, content: __curText});
       }
@@ -4333,7 +4523,13 @@ DESIGN RULES (non-negotiable):
 
       // ⑤ الصور على الرسالة الأخيرة فقط (v687: في وضع الإعلان لا ترسل الصورة)
       const __lastTurn = __turns[__turns.length - 1];
-      if(__lastTurn && __lastTurn.role === 'user' && !cur.adMode && __lastM && __lastM.apiImages) __lastTurn.images = __lastM.apiImages;
+      /* v-img-wire: apiImages لم يكن يُكتب في أيّ مكان، فكانت الصور المرفقة لا تصل
+         للنموذج إطلاقًا (المسار المباشر ومسار الاحتياط كلاهما يقرأ images من هنا)
+         وتعليمة «الصورة مرفقة» تُرسل بلا صورة فيؤلّف النموذج وصفًا. صور هذا الدور
+         (المرفقة أو المستدعاة من الذاكرة) تُلحق بالدور الأخير. */
+      const __turnImgs = (__lastM && __lastM.apiImages && __lastM.apiImages.length) ? __lastM.apiImages
+        : ((__lastM === __nextUserMessage) ? imageAttachments.filter(function(a){ return a && a.isImage && a.dataUrl; }).slice(0, 6).map(function(a){ return { dataUrl: a.dataUrl, mime: a.mime || 'image/png', name: a.name || '' }; }) : []);
+      if(__lastTurn && __lastTurn.role === 'user' && !cur.adMode && __turnImgs.length) __lastTurn.images = __turnImgs;
 
       __turns.forEach(m => apiMessages.push(m));
     }
@@ -4342,8 +4538,8 @@ DESIGN RULES (non-negotiable):
     if(imageAttachments.length && !cur.adMode && imageAttachments.some(a => a && a._screenshot)){
       // v-visual-assist: دور المساعد البصري للقطات الواجهات
       apiMessages.push({role: 'system', content: lang === 'ar'
-        ? 'أنت المساعد البصري داخل تطبيق عمران AI. المرفق لقطة شاشة لواجهة (تطبيق/موقع/إعدادات/رسالة خطأ). اقرأ الواجهة والأزرار والنصوص والقوائم بدقة كما تظهر فعلًا، وسمِّ العناصر بأسمائها المكتوبة في اللقطة. إذا كان فيها خطأ أو مشكلة: قل سببها بجملة ثم أعطِ خطوات قصيرة مرقّمة (٣ إلى ٦ خطوات) يطبّقها المستخدم مباشرة، كل خطوة تبدأ بالزر أو المكان الذي يضغطه. إذا كان الطلب غير واضح فاشرح ما تراه في اللقطة باختصار ثم اقترح الخطوة التالية المنطقية. لا تصف الألوان والتصميم إلا إذا سُئلت، ولا تخترع أزرارًا غير موجودة في اللقطة.'
-        : 'You are the visual assistant inside the Omran AI app. The attachment is a UI screenshot (app/website/settings/error message). Read the interface, buttons, texts and menus exactly as they appear and name elements by their visible labels. If it shows an error or problem: state the cause in one sentence, then give short numbered steps (3 to 6) the user can follow right away, each starting with the button or place to tap. If the request is unclear, briefly explain what the screenshot shows and suggest the logical next step. Do not describe colors or design unless asked, and never invent buttons that are not in the screenshot.'});
+        ? 'أنت المساعد البصري داخل تطبيق عمران AI. المرفق لقطة شاشة لواجهة. القواعد:\n• اعتمد على ما يظهر في اللقطة فقط، لا على ذاكرتك عن شكل البرنامج في أجهزة أخرى.\n• احفظ سياق المحادثة كاملًا: نوع الجهاز (جوال أو كمبيوتر)، لغة الواجهة، اسم البرنامج، هدف المستخدم، وكل خطوة سبق أن أعطيتها — حتى لو لم يذكرها في رسالته الأخيرة. الرسالة القصيرة مثل «ما فهمت» تعني إعادة الشرح لنفس الموقف لا بدء موضوع جديد.\n• إذا كان الجهاز جوالًا فممنوع ذكر اختصارات الكيبورد (Ctrl / Alt / Shift / Delete) — أعطِ البديل باللمس من القوائم.\n• إذا كانت الواجهة بالعربية فاذكر أسماء الأزرار بالعربية كما تظهر فيها.\n• اذكر اسم الزر بنصه الحرفي كما يظهر في اللقطة، ثم موضعه على الشاشة (أعلى اليمين، أسفل اليسار...).\n• إذا كانت الميزة التي يسأل عنها غير موجودة في هذا البرنامج فقل ذلك صراحةً في أول سطر، ثم اذكر البرنامج الذي فيه الميزة فعلًا. «غير موجودة» جواب صحيح ومقبول.\n• ممنوع اقتراح أداة وظيفتها مختلفة لمجرد تشابه الاسم أو الأيقونة أو قربها في القائمة.\n• ممنوع منعًا باتًا توجيه المستخدم إلى أداة تحذف أو تغيّر المحتوى نهائيًا (Redact / Flatten / Apply / Delete) كبديل عن ميزة سأل عنها — تُذكر فقط إذا طلبها بنفسه صراحةً.\n• خطوة واحدة في كل رد، ثم اطلب لقطة جديدة للتحقق. إذا بدت الشاشة الجديدة كالسابقة فالخطوة فشلت — أعطِ طريقة بديلة لا نفس الكلام.\n• إذا لم تجد العنصر في اللقطة فقل ذلك واطلب لقطة أوضح — ممنوع «دوّر على» أو «جرّب تضغط» أو «أحيانًا». الفشل الممنوع هنا هو إرسال المستخدم إلى زر خاطئ، لا الاعتراف بعدم وجود الميزة.'
+        : 'You are the visual assistant inside the Omran AI app. Rely ONLY on what is visible in the screenshot, never on your memory of how the program looks elsewhere. Keep the FULL conversation context: device type, UI language, app name, the user goal, and every step you already gave — a short message like "I do not understand" means re-explain the same situation, not start a new topic. On a phone, NEVER give keyboard shortcuts (Ctrl / Alt / Shift / Delete) — give the touch alternative from the menus. Quote button labels verbatim as they appear, in the UI language, then give their position on screen. If the feature the user asks about does not exist in this program, say so plainly in the first line and name the program that does have it — "it does not exist here" is a correct answer. Never suggest a different-purpose tool because its name, icon or menu position looks similar, and never point the user to a destructive tool (Redact / Flatten / Apply / Delete) as a substitute for a feature they asked about. One step per reply, then ask for a fresh screenshot; if the new screen looks unchanged the step failed — give a different route, not the same words. If you cannot find the element in the screenshot, say so and ask for a clearer one — never "look around" or "try tapping". The forbidden failure here is sending the user to the wrong button, not admitting a feature is missing.'});
     }
     if(imageAttachments.length && !cur.adMode){
       apiMessages.push({role: 'system', content: 'صورة مرفقة — القاعدة الأولى والأهم:\n0) إذا كتب المستخدم مع الصورة سؤالًا أو طلبًا محددًا فأجب عن طلبه هو فقط، مباشرة وباختصار مفيد — ممنوع منعًا باتًا نسخ نصوص الصورة كاملة أو سرد تحليل شامل (عناصر/ألوان/تقييم/خطوات) لم يطلبه. التحليل الشامل أدناه يُطبَّق فقط إذا أرسل الصورة بلا طلب محدد أو طلب صراحةً «حلّل الصورة».\n1) عند التحليل الشامل فقط: اقرأ كل نص ظاهر في الصورة حرفيًا كما هو (عربي أو إنجليزي أو أي لغة) واذكره كاملًا بدون تلخيص.\n2) عند التحليل الشامل فقط: حلّل الصورة بعمق: العناصر، الأشخاص، الألوان، المكان، السياق، الأرقام، الجداول، أي أخطاء أو ملاحظات مهمة، واستنتاجاتك.\n3) في كل الحالات، الإجابة تكون مربوطة بالصورة نفسها: حدّد أولًا أي شاشة/صفحة بالضبط تظهر في الصورة (اسم التطبيق والقسم)، ثم أعط الخطوة الدقيقة انطلاقًا من هذه الشاشة بالذات — سمِّ الزر أو الخيار الظاهر في الصورة حرفيًا الذي يضغطه المستخدم، وإذا كان المطلوب غير موجود في هذه الشاشة قل له بوضوح: «هذا غير موجود هنا، ارجع/ادخل على …» بخطوة واحدة محددة. ممنوع سرد كل الطرق والأماكن الممكنة — طريق واحد دقيق فقط.\n3ب) إذا أعاد المستخدم إرسال نفس الصورة بعد إجابة سابقة فمعناها أن إجابتك ما كانت دقيقة كفاية — ممنوع تكرار نفس الإجابة؛ دقّق في الصورة أكثر وأعطه خطوة أدق وأكثر تحديدًا، أو اسأله سؤالًا واحدًا قصيرًا يحدد وين توقف.\n4) لا تقل أبدًا "لا أستطيع رؤية الصورة" — الصورة أمامك، حلّلها مباشرة.' +
@@ -4433,7 +4629,7 @@ DESIGN RULES (non-negotiable):
         // pin - a pin from a past simple reply should never lock a later
         // full-app request down to a single provider.
         const BUILD_TASK_RE = /بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|العاب|ألعاب|أداة|اداة|نسخة|نسخه|شهادة|شهاده|بطاقة|بطاقه|دعوة|دعوه|بوستر|شعار|لوجو|تهنئة|تهنئه|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\btool\b|\bclone\b|\bcertificate\b|\bcard\b|\binvitation\b|\bposter\b|\blogo\b/i;
-        isBuildTask = !__gateNoBuild && (BUILD_TASK_RE.test(text) || __strongBuildRe.test(text));
+        isBuildTask = !__gateNoBuild && !__fileAnalyze && (BUILD_TASK_RE.test(text) || __strongBuildRe.test(text));
         if(__gateNoBuild){
           apiMessages.push({ role: 'system', content: 'المستخدم طلب بناء شيء. ممنوع أن تبنيه الآن. ردّ بنصّ محادثة فقط بلا أيّ كتلة كود: اذكر في سطرين إلى ثلاثة ماذا ستبني بالضبط (الأقسام الرئيسية + أنّك سترسم الصور بنفسك)، ثمّ اختم بسؤال واحد فقط: «تبيني أبدأ البناء الحين؟». لا تبدأ البناء حتّى يوافق المستخدم في رسالته التالية.' });
           // 💰 دور البوابة = وصف قصير فقط — مزود واحد يكفي بدل التسعة (توفير).
@@ -5161,6 +5357,7 @@ DESIGN RULES (non-negotiable):
       let reply, providerKey, switched, requestedKey;
       let __ctUsed = false;
       let __ctSources = null; /* v-one-brain: مصادر بحث النموذج — نطاق يبلغ موضع اللصق */
+      let __ctTier = null; /* v-tiers: طبقة الردّ (free / free-limit / guest / guest-limit) لشارة «ردّ مجاني» */
       // 💬 عقل واحد: Claude وحده يرد في النقاش العادي — الاحتياط (GPT ثم Gemini)
       // صامت ويشتغل فقط إذا Claude تعطل أو خلص حده.
       // 🛠️ ومعه يداه: النقاش العادي على Claude يمرّ بحلقة الأدوات (بحث · قراءة
@@ -5169,8 +5366,8 @@ DESIGN RULES (non-negotiable):
       try{
         let __ct = null;
         if(__toolsWillRun){
-          try{ __ct = await window.callChatWithTools(apiMessages.filter(m => !m.__static), onDelta, __effProv); }
-          catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; try{ window.__diagTurn.toolsErr = String((e && (e.name + ': ' + e.message)) || e || '').slice(0, 180); window.__diagTurn.path = 'tools-failed→fallback'; }catch(_){ } __swallow(e, 'chat:tools'); }
+          try{ __ct = await window.callChatWithTools(apiMessages.filter(m => m !== __staticSys), onDelta, __effProv); }
+          catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; try{ window.__diagTurn.toolsErr = String((e && (e.name + ': ' + e.message)) || e || '').slice(0, 180); window.__diagTurn.path = 'tools-failed→fallback'; }catch(_){ /* guard-ok: تشخيص فقط؛ الخطأ يُبلَّغ بـ__swallow أدناه */ } __swallow(e, 'chat:tools'); }
           /* v-tools-team (شكوى المالك «خربت الدنيا بخصوص الأخبار»): فشل مزود
              الأدوات الأول (مثال: رصيد كلود نفد) كان يهبط فورًا للمسار القديم
              بلا بحث حي، فيؤلف البديل أخبارًا من خياله (فهم «العالمي» نادي
@@ -5185,13 +5382,13 @@ DESIGN RULES (non-negotiable):
                     window.__chatStatus.phase('💭', functionalLabel(__tp) + ' ' + t('provTypingSuffix'));
                   }
                 }catch(e){ __swallow(e, 'ui:toolsteam'); }
-                __ct = await window.callChatWithTools(apiMessages.filter(m => !m.__static), onDelta, __tp);
+                __ct = await window.callChatWithTools(apiMessages.filter(m => m !== __staticSys), onDelta, __tp);
                 if(__ct) break;
               }catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; __swallow(e, 'chat:tools-team'); }
             }
           }
         }
-        if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; }
+        if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; if(__ct.tier) __ctTier = __ct.tier; }
         else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, onDelta, __teamOrder));
       }finally{
         window.__claudeModelOverride = null;
@@ -5243,6 +5440,7 @@ DESIGN RULES (non-negotiable):
         if(__cv && __cv.url){ __chatVidAtt = [{ isVideo: true, url: __cv.url, name: __cv.name || 'chat-video.mp4', mime: 'video/mp4' }]; window.__chatVideoResult = null; }
       }catch(e){ __swallow(e, 'ui:chat-video-attach'); }
       cur.messages.push({role: 'assistant', content: (code ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: code || null, providerLabel, providerKey, askAllReply: false, attachments: __chatVidAtt,
+        tier: __ctTier || undefined, /* v-tiers */
         // v-one-brain: بطاقات المصادر من بحث النموذج نفسه (حدث sources في البث).
         sources: (!__clarifyQ && (__ctSources || (__searchData && __searchData.sources))) || undefined,
         searchImages: (__searchData && __searchData.images) || undefined});
@@ -5281,7 +5479,12 @@ DESIGN RULES (non-negotiable):
       try{ settingsToast(t('premiumNoPoints')); }catch(_){ __swallow(_, "points:app-09-attach#29"); }
       try{ if(typeof openPremiumBuyPoints === 'function') openPremiumBuyPoints(); }catch(_){ __swallow(_, "points:app-09-attach#30"); }
     } else {
-      cur.messages.push({role: 'assistant', content: '⚠️ ' + __friendlyErr(err)});
+      /* v-img-err: حين يفشل مسار الأدوات (كلود المباشر) ثمّ يفشل الاحتياط أيضًا،
+         كانت الفقاعة تعرض خطأ آخر مزوّد احتياطيّ وحده فيختفي السبب الحقيقيّ. نُظهر
+         خطأ المسار الأوّل معه. */
+      var __primaryErr = '';
+      try{ __primaryErr = String((window.__diagTurn && window.__diagTurn.toolsErr) || '').trim(); }catch(e){ __primaryErr = ''; }
+      cur.messages.push({role: 'assistant', content: '⚠️ ' + __friendlyErr(err) + (__primaryErr ? ('\n' + (lang === 'ar' ? 'المسار الأوّل (كلود): ' : 'Primary path (Claude): ') + __primaryErr.slice(0, 220)) : '')});
     }
   }finally{
     __omranDisarmWatchdog();  // v586

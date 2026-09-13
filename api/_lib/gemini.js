@@ -41,7 +41,7 @@ module.exports = async (req, res) => {
       if (usage.reason === 'auth') {
         res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
       } else {
-        res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + DAILY_LIMIT + ' رسالة) لهذا المزوّد. جرّب مزودًا آخر بمفتاحك الخاص أو انتظر الغد.' });
+        res.status(402).json({ error: usage.message || ('وصلت للحد اليومي المجاني (' + (usage.limit || DAILY_LIMIT) + ' رسالة) لهذا المزوّد. جرّب مزودًا آخر بمفتاحك الخاص أو انتظر الغد.'), subscribeOnly: !!usage.subscribeOnly }); /* v-tiers */
       }
       return;
     }

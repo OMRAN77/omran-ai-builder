@@ -17,7 +17,7 @@ I18N['ne'] = {
     fxCatLbl: 'वर्ग', fxGenWomen: 'महिला', fxGenMen: 'पुरुष', fxGenKids: 'बालबालिका', fxColorsLbl: 'मनपर्ने रङ', fxColBlack: 'कालो', fxColWhite: 'सेतो', fxColNavy: 'नेभी ब्लू', fxColRed: 'रातो', fxColGold: 'सुनौलो',
     fxColGreen: 'हरियो', fxColBeige: 'बेज', fxColMulti: 'बहुरङ्गी', fxAccLbl: 'एक्सेसरिज', fxAccGlasses: 'चस्मा', fxAccWatch: 'घडी', fxAccHandbag: 'हेन्डब्याग', fxAccShoes: 'जुत्ता', fxAccScarf: 'स्कार्फ', fxAccMakeup: 'मेकअप',
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
-    sidePanelTitle: 'साइड मेनु', lightModeTitle: 'लाइट मोड', provSearchPh: 'मोडेल खोज्नुहोस्...', jumpLatestTitle: 'पछिल्लो सन्देश', editMsgNotice: 'सन्देश सम्पादन गरिँदैछ', modesTitle: 'मोडहरू',
+    sidePanelTitle: 'साइड मेनु', lightModeTitle: 'लाइट मोड', darkModeTitle: 'डार्क मोड', provSearchPh: 'मोडेल खोज्नुहोस्...', jumpLatestTitle: 'पछिल्लो सन्देश', editMsgNotice: 'सन्देश सम्पादन गरिँदैछ', modesTitle: 'मोडहरू',
     attachFileTitle: 'फाइल संलग्न गर्नुहोस्', chipExam: 'परीक्षा समाधान गर्नुहोस्', chipBook: 'किताबको सारांश', chipArticle: 'व्यावसायिक लेख लेख्नुहोस्', chipIdeas: 'प्रोजेक्टका विचारहरू',
     tryItTitle: 'मेरो लागि प्रयास गर्नुहोस्', closeTitle: 'बन्द गर्नुहोस्', docAssistTitle: '📄 कागजात सहायक', govServicesTitle: '🧾 सरकारी सेवाहरू', cvGenTitle: '💼 सीभी जेनेरेटर',
     dsNotesLabel: '✍️ आफ्नै शब्दमा विवरण लेख्नुहोस् (वैकल्पिक)', dsNotesPh: 'उदाहरण: इटालियन रेस्टुरेन्ट, 40 सिट, अग्लो छत, औद्योगिक शैली', rmWhatLabel: 'तपाईं तस्बिरबाट के हटाउन चाहनुहुन्छ?',

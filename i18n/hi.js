@@ -17,7 +17,7 @@ I18N['hi'] = {
     fxCatLbl: 'श्रेणी', fxGenWomen: 'महिला', fxGenMen: 'पुरुष', fxGenKids: 'बच्चे', fxColorsLbl: 'पसंदीदा रंग', fxColBlack: 'काला', fxColWhite: 'सफ़ेद', fxColNavy: 'नेवी ब्लू', fxColRed: 'लाल', fxColGold: 'सुनहरा',
     fxColGreen: 'हरा', fxColBeige: 'बेज', fxColMulti: 'बहुरंगी', fxAccLbl: 'एक्सेसरीज़', fxAccGlasses: 'चश्मा', fxAccWatch: 'घड़ी', fxAccHandbag: 'हैंडबैग', fxAccShoes: 'जूते', fxAccScarf: 'स्कार्फ़', fxAccMakeup: 'मेकअप',
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
-    sidePanelTitle: 'साइड मेनू', lightModeTitle: 'लाइट मोड', provSearchPh: 'मॉडल खोजें...', jumpLatestTitle: 'नवीनतम संदेश', editMsgNotice: 'संदेश संपादित हो रहा है', modesTitle: 'मोड',
+    sidePanelTitle: 'साइड मेनू', lightModeTitle: 'लाइट मोड', darkModeTitle: 'डार्क मोड', provSearchPh: 'मॉडल खोजें...', jumpLatestTitle: 'नवीनतम संदेश', editMsgNotice: 'संदेश संपादित हो रहा है', modesTitle: 'मोड',
     attachFileTitle: 'फ़ाइल जोड़ें', chipExam: 'परीक्षा हल करें', chipBook: 'किताब का सारांश', chipArticle: 'पेशेवर लेख लिखें', chipIdeas: 'प्रोजेक्ट के विचार', tryItTitle: 'मेरे लिए आज़माएं',
     closeTitle: 'बंद करें', docAssistTitle: '📄 दस्तावेज़ सहायक', govServicesTitle: '🧾 सरकारी सेवाएं', cvGenTitle: '💼 सीवी जनरेटर', dsNotesLabel: '✍️ अपनी बात अपने शब्दों में लिखें (वैकल्पिक)',
     dsNotesPh: 'उदा: इटैलियन रेस्टोरेंट, 40 सीटें, ऊंची छत, इंडस्ट्रियल लुक', rmWhatLabel: 'आप तस्वीर से क्या हटाना चाहते हैं?', rmWhatPh: 'उदा: मेरे पीछे वाला व्यक्ति · कार · खंभा',

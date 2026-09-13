@@ -162,3 +162,10 @@ module.exports = async function handler(req, res) {
     res.status(500).json({ error: err.message || 'Server error analyzing archive' });
   }
 }
+
+// v-code-score — محلّل الكود (code-analyze.js) يعيد استعمال فكّ الأرشيف وقوائم
+// الامتدادات نفسها بدل نسخها: مصدر واحد لما يُعدّ نصًّا وما يُتخطّى.
+module.exports.unzip = unzip;
+module.exports.TEXT_EXT = TEXT_EXT;
+module.exports.BINARY_EXT = BINARY_EXT;
+module.exports.SKIP_DIR_PATTERNS = SKIP_DIR_PATTERNS;

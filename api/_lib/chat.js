@@ -8,8 +8,13 @@
 // هنا النموذج نفسه يقرّر: يجيب مباشرة، أو يستدعي أداة ثم يجيب. البروتوكول
 // نفسه الذي يفهمه عميل الوكيل منذ v411 — لا اختراع صيغة جديدة.
 const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
-const { logError } = require('./log-error.js');
+// v-tiers (قرار المالك ١٢ سبتمبر): مشترك → المحرّك الاحترافي بكل الأدوات؛ مسجَّل
+// بلا اشتراك وضيف → سلسلة مجانية بلا أدوات وبسقف يومي صغير. انظر tier.js.
+const tierLib = require('./tier.js');
+const { streamFreeChain } = require('./free-chain.js');
+const { logError, logErrorAndFlush } = require('./log-error.js');
 const { safeParse } = require('./safe-parse.js');
+const { redactMessages } = require('./_msgs.js'); // v-secret-vault: سرّ ملصوق لا يصل النموذج
 const { fetchPlaces, isPlacesAsk, regionOf } = require('./search.js');
 const { readMemory, memoryPromptBlock } = require('./memory.js');
 const { BIDI_RULE } = require('./_bidi.js'); // v568
@@ -459,6 +464,28 @@ const WIZARD_RE = /كتالوج|كتالوق|منيو|قائمة طعام|قائ
 // النموذج. البروتوكول (أحداث البثّ · tool_use · stop_reason) مُتحقَّق حيًّا على كلّ
 // نموذج أدناه في ٩ أغسطس ٢٠٢٦. cohere وperplexity غائبان عمدًا: لا يدعمان
 // الأدوات على هذا الطريق، فيبقيان على مسارهما القديم بلا كذب.
+// v-img-read (لقطتا المالك ١٢ سبتمبر «قرأت الصور، تحليل ضعيف جدًّا»): في اللقطة تنبيه
+// «المايك مشغول ببرنامج ثاني» والردّ وصف عناصر ثانويّة وتجاهله. الصورة تصل بدقّة كافية
+// (١٥٦٨ بكسل، JPEG ٨٥٪) فالعطب في القراءة لا في البكسلات: النموذج لم يُطالَب بجرد اللقطة
+// قبل الردّ. هذه القاعدة توضع بعد قاعدة الإرشاد (الأخير أعلى أولويّة) في كلّ دور فيه صورة.
+const IMAGE_READ_NOTE = '\n\n[قراءة اللقطة أوّلًا — إلزاميّ في كلّ دور فيه صورة]: قبل أن تكتب حرفًا من الردّ اقرأ الصورة كاملةً كما تقرأ مستندًا: (١) كلّ نصّ ظاهر فيها حرفيًّا بلغته. (٢) أيّ نافذة منبثقة أو تنبيه أو رسالة خطأ أو حوار تأكيد — هذا أهمّ ما في اللقطة: انقل نصّه حرفيًّا في أوّل سطر من ردّك، وفسّر معناه، وأعطِ الحلّ. (٣) العناصر والأزرار والحقول بأسمائها ومواضعها، وما يدلّ على الحالة (تحميل، خطأ، نجاح، إذن مرفوض). (٤) ثمّ اربط ما قرأته بطلب المستخدم وسياق المحادثة: إن كان في اللقطة ما يفسّر مشكلته فابدأ به لا بوصف العناصر الثانويّة. ممنوع ردّ عامّ لا يثبت أنّك قرأت اللقطة، وممنوع تكرار تعليمات سابقة بلا تحقّق ممّا تغيّر فعلًا في الصورة الجديدة. وإن كان في اللقطة تفصيل لا تستطيع قراءته فقل ذلك صراحةً بدل تخمينه.';
+
+// دور الصورة: جهد قابل للضبط على مسار أنثروبيك المباشر (الوسيط لا يضمن تمريره)،
+// ونموذج مستقلّ اختياريّ (CHAT_IMAGE_MODEL) — يُضبطان من البيئة بلا نشر.
+// v-img-err: الافتراضيّ high (افتراضيّ الواجهة نفسها) لا xhigh — بعد أن صارت الصورة
+// تصل فعلًا (v-img-wire) لم يعد العمق الإضافيّ يستحقّ زمن التفكير الأطول في دور
+// لقطة الشاشة، والانتظار الطويل بلا حرف كان يُسقط الدور إلى مسار الاحتياط.
+const IMG_EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
+function imageTurnConfig(env, viaOR, fallbackModel) {
+  const e = env || {};
+  const want = (e.CHAT_IMAGE_MODEL && String(e.CHAT_IMAGE_MODEL).trim()) || '';
+  const model = want ? (viaOR && want.indexOf('/') === -1 ? 'anthropic/' + want : want) : fallbackModel;
+  const eff = String(e.CHAT_IMAGE_EFFORT || 'high').trim().toLowerCase();
+  // output_config.effort مدعوم على الجيل الحاليّ فقط؛ نموذج أقدم من البيئة يبقى بلا جهد بدل 400.
+  const effortOk = !viaOR && /^claude-(?:sonnet-5|opus-5|opus-4-[678]|sonnet-4-6|fable)/.test(model);
+  return { model, output_config: effortOk ? { effort: IMG_EFFORTS.indexOf(eff) === -1 ? 'high' : eff } : null };
+}
+
 const OR_MODELS = {
   claude: 'anthropic/claude-sonnet-5', // v-chat-fast: نفس فئة الخط المباشر
   openai: 'openai/gpt-5.6-terra',
@@ -881,7 +908,8 @@ module.exports = async (req, res) => {
 
   let body = req.body;
   if (!body || typeof body === 'string') body = safeParse(body, {}, 'chat:body');
-  const { messages, token, guestId } = body;
+  const { token, guestId } = body;
+  const messages = redactMessages(body.messages); // v-secret-vault: توكن/مفتاح ملصوق يُحذف قبل النموذج
   if (!Array.isArray(messages) || !messages.length) { res.status(400).json({ error: 'Missing messages' }); return; }
 
   const reqProv = String((body && body.provider) || '').toLowerCase();
@@ -938,13 +966,30 @@ module.exports = async (req, res) => {
     if (earlyUser) earlyMemoryP = readMemory(earlyUser).catch(() => ({ memory: null }));
   } catch (e) { /* guard-ok: الذاكرة تحسين لا شرط — مسارها القديم يبقى احتياطًا */ }
 
-  const usage = await checkAndConsume(token, guestId, prov, clientIp(req));
+  // v-tiers: الطبقة أولًا. غير المشترك يُعدّ في سلّة «chat» واحدة (لا سلّة لكل
+  // مزوّد) فسقفه اليومي رقم واحد مفهوم، والمشترك يبقى على سلّة مزوّده بسقف باقته.
+  let __tier = null;
+  try {
+    const { verifyToken: __vt } = require('./auth.js');
+    __tier = await tierLib.resolveTier(token ? __vt(token) : null);
+  } catch (e) { __tier = null; }
+  const usage = await checkAndConsume(token, guestId, (__tier && !__tier.subscriber) ? 'chat' : prov, clientIp(req), { tier: __tier || undefined });
   if (!usage.allowed) {
-    if (usage.reason === 'auth') send({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
-    else send({ error: 'وصلت للحد اليومي المجاني (' + DAILY_LIMIT + ' رسالة). انتظر الغد أو اشترك.' });
+    if (usage.reason === 'auth') { send({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' }); }
+    else if (usage.tier === 'free' || usage.tier === 'guest') {
+      // نفاد الطبقة المجانية ردٌّ عاديّ لا خطأ: العميل يعرضه مع زرّ الاشتراك/التسجيل
+      // ولا يهبط إلى مزوّدات أخرى (كلّها مغلقة أمامه أصلًا).
+      send({ tier: usage.tier === 'guest' ? 'guest-limit' : 'free-limit' });
+      send({ delta: usage.message || tierLib.FREE_TEXT.freeLimit });
+      send({ done: true });
+    }
+    else send({ error: usage.message || ('وصلت للحد اليومي (' + (usage.limit || DAILY_LIMIT) + ' رسالة). انتظر الغد.') });
     res.end();
     return;
   }
+  // مسار مجاني = طبقة معروفة وليست اشتراكًا. (غياب الطبقة — كما في الاختبارات
+  // التي تحاكي الحصة — يُبقي المسار القديم.)
+  const __freeLane = !!(usage.tier && !usage.subscriber);
 
   // الذاكرة تُقرأ من الحساب في الخادم لكل رسالة، لا من نسخة الجهاز. هكذا يرى
   // الكمبيوتر والجوال الملف نفسه حتى لو كان أحدهما لم يحدّث صفحته بعد.
@@ -1038,6 +1083,7 @@ module.exports = async (req, res) => {
     // v-img-drift (المالك ٨ سبتمبر — «تشتت الذاكرة في المحادثات الطويلة»): أُضيفت
     // جملة مضادّة للانجراف — رسمُ صورٍ في أدوار سابقة لا يُبرّر الرسم الآن، فكل
     // دور يُقيَّم وحده بالرسالة الحالية فقط.
+    const IMAGE_READ = lastUserHasImage ? IMAGE_READ_NOTE : ''; // v-img-read
     const IMAGE_GATE_NOTE = lastUserHasImage ? '' :
       '\n\n[قاعدة الصور — إلزاميّة مطلقة تغلب ما سبق]: لا ترسم صورةً توضيحيّة تلقائيّة لقصّة أو شرح أو تقرير أو سؤال أو نصّ سرديّ أو تعليميّ أو دينيّ أو تاريخيّ مهما كان موضوعه — ردّ بالنصّ فقط. استدعِ generate_image فقط في إحدى حالتين: (أ) طلب المستخدم صورةً صراحةً في رسالته (مثل «ارسم/صمّم/اصنع/ولّد لي صورة أو بوستر أو شعار أو تصميم»)، أو (ب) كنت تبني تطبيقًا أو موقعًا أو صفحة داخل كتلة كود ```html تحتاج صورًا فعليّة. وعدا ذلك: نصّ فقط بلا أيّ صورة. وكونُ هذه المحادثة رسمتْ صورًا في أدوار سابقة لا يُبرّر أبدًا رسم صورة الآن — قيّم كلّ دور وحده، والعبرة بالرسالة الحاليّة فقط: إن لم تطلب صورةً صراحةً فالجواب نصّ خالص مهما كثُرت الصور قبله.';
     // v-img-tafsir (طلب المالك ٨ سبتمبر: «أريد تقرير/تفسير بعد رسم الصورة — نفس
@@ -1051,8 +1097,8 @@ module.exports = async (req, res) => {
       : toolTurn
         /* v-clean-slate: كتاب القواعد فُصل كله من النظام — بقي القصير + التاريخ
            والمدينة (حقائق) + ملف المالك + ذاكرة الحساب (تصل ضمن baseSystem). */
-        ? PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz) + countryNote(country, city) + ownerKnowledge + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_GATE_NOTE + IMAGE_REPORT_NOTE
-        : PERSONA_NOTE + '\n' + baseSystem + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE;
+        ? PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz) + countryNote(country, city) + ownerKnowledge + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_READ + IMAGE_GATE_NOTE + IMAGE_REPORT_NOTE
+        : PERSONA_NOTE + '\n' + baseSystem + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_READ;
 
       const convoSource = quietSocialTurn ? [lastUser] : messages;
   const convo = compactConversation(convoSource
@@ -1080,6 +1126,7 @@ module.exports = async (req, res) => {
   try {
     // ثمان خطوات لا خمس وعشرين: المحادثة ليست بناءً طويلًا، وكلّ خطوة استدعاء
     // كامل بسياق متراكم. السقفان معًا — خطوات ووقت — يمنعان فاتورة مفتوحة.
+    const __imgCfg = lastUserHasImage ? imageTurnConfig(process.env, viaOR, CHAT_MODEL) : null; // v-img-read
     const MAX_STEPS = Math.max(1, Math.min(16, Number(process.env.CHAT_MAX_STEPS) || 12));
     const MAX_MS = Math.max(20000, Number(process.env.CHAT_MAX_MS) || 240000);
     const t0 = Date.now();
@@ -1121,18 +1168,63 @@ module.exports = async (req, res) => {
         }
         return kept.length ? kept.join('\n\n') : text;
       }
+    // v-tiers: الطبقة المجانية تُبثّ من السلسلة المجانية بلا أدوات وتنتهي هنا.
+    // النظام: البصمة + ذاكرة الحساب + الوقت فقط (لا ملف المالك ولا ملاحظات الأدوات).
+    if (__freeLane) {
+      send({ tier: usage.tier });
+      const __fr = await streamFreeChain({ system: PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz), convo, send });
+      if (!__fr.ok) {
+        // تشخيص للمالك (المجسّ يطبعه، والعميل يتجاهله): أي مزوّد فشل ولماذا — بلا مفاتيح.
+        try { logError('free-chain', new Error((__fr.errors || []).join(' | ').slice(0, 400))); } catch (e) { /* التسجيل تحسين */ }
+        send({ tierDiag: (__fr.errors || []).slice(0, 6) });
+        send({ delta: tierLib.FREE_TEXT.busy });
+      }
+      send({ done: true });
+      res.end();
+      return;
+    }
           while (steps < MAX_STEPS) {
       if (Date.now() - t0 > MAX_MS) { send({ status: '⏱️ انتهت مهلة الردّ.', k: 'stTimeout' }); break; }
       steps++;
 
-      const upstream = await fetch(CHAT_URL, {
+      // v-img-read: إعداد دور الصورة (نموذج/جهد) يُجرَّب أوّلًا؛ 400 عليه = إعادة فوريّة
+      // بالطلب العاديّ نفسه قبل أيّ هبوط إلى مسار العميل الاحتياطيّ.
+      const callUpstream = (withImg) => fetch(CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: CHAT_MODEL, max_tokens: quietSocialTurn ? 350 : 16000, system, messages: convo, tools: toolTurn ? TOOLS : undefined, stream: true }),
+        body: JSON.stringify(Object.assign({ model: (withImg && __imgCfg) ? __imgCfg.model : CHAT_MODEL, max_tokens: quietSocialTurn ? 350 : 16000, system, messages: convo, tools: toolTurn ? TOOLS : undefined, stream: true }, (withImg && __imgCfg && __imgCfg.output_config) ? { output_config: __imgCfg.output_config } : {})),
       });
+      let upstream = await callUpstream(true);
+      // v-img-err: أيّ فشل على إعداد دور الصورة (400 أو 404 نموذج لا يملكه المفتاح أو
+      // 403 أو 429…) = إعادة فوريّة بالطلب العاديّ قبل أيّ هبوط — لا 400 وحده.
+      if (!upstream.ok && __imgCfg && (__imgCfg.output_config || __imgCfg.model !== CHAT_MODEL)) {
+        let __why = '';
+        try { __why = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ }
+        await logErrorAndFlush('chat/image-turn-' + upstream.status, new Error(__why || 'upstream ' + upstream.status + ' on image-turn config'), { action: 'image-turn-config' });
+        upstream = await callUpstream(false);
+      }
 
       if (!upstream.ok) {
         const errText = (await upstream.text()).slice(0, 300);
+        // v-img-err: الفشل النهائيّ يُسجَّل منتظَرًا (على serverless يضيع التسجيل غير
+        // المنتظَر) فيظهر في لوحة صحّة المالك مع نوع الدور — كان يمرّ بلا أثر.
+        await logErrorAndFlush('chat/upstream-fail', new Error(upstream.status + ': ' + errText), { action: lastUserHasImage ? 'image-turn' : 'text-turn' });
+        // v-king-fallback (لقطة المالك ١٣ سبتمبر: «Your credit balance is too low»
+        // ثم فشل الاحتياط أيضًا): تعطّل المحرّك الاحترافي قبل أول حرف (رصيد/401/
+        // 429/5xx) يهبط هنا على الخادم إلى السلسلة المجانية بلا أدوات بدل أن يرى
+        // المستخدم JSON الخطأ خامًا. السطر التمهيدي يُبثّ مع أول حرف فقط، فإن فشلت
+        // السلسلة أيضًا يمضي مسار الخطأ القديم كما كان (العميل يهبط بنفسه).
+        if (!anyText) {
+          send({ status: '⚠️ المحرّك الاحترافي غير متاح مؤقتًا — أردّ من المحرّك الاحتياطي…', k: 'stFallback' });
+          let __pre = false;
+          const __sendFb = (ev) => {
+            if (ev && ev.delta && !__pre) { __pre = true; send({ delta: '⚠️ المحرّك الاحترافي غير متاح مؤقتًا، فهذا ردّ من المحرّك الاحتياطي بلا أدوات:\n\n' }); }
+            send(ev);
+          };
+          const __fb = await streamFreeChain({ system: PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz), convo, send: __sendFb });
+          if (__fb.ok) { send({ done: true }); res.end(); return; }
+          send({ tierDiag: (__fb.errors || []).slice(0, 6) });
+        }
         // لم يُكتب حرف بعد → أَبلِغ العميل ليهبط إلى مساره القديم بلا تكرار.
         send({ error: 'chat upstream ' + upstream.status + ': ' + errText, fallback: !anyText });
         res.end();
@@ -1165,7 +1257,11 @@ module.exports = async (req, res) => {
       // اتصال الجوال في فجوة «التعبئة» الصامتة. الآن أيّ رسالة ٦٠٠+ حرف تأخذ
       // النبض مهما كان مسارها — فالرسائل الطويلة (سبب البلاغ) لا تُترك بلا حياة.
       const __longUserMsg = typeof lastUserText === 'string' && lastUserText.length >= 600;
-      let kaTimer = (!toolTurn || __longUserMsg) ? setInterval(() => { try { res.write(': ka\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } }, 4000) : null;
+      // v-img-err: دور الصورة يأخذ النبض أيضًا — التفكير على لقطة قبل أوّل حرف قد
+      // يطول بلا أيّ بايت للعميل (لا يُمرَّر من دلتا التفكير شيء)، فيقطعه حارس ٩٠ث
+      // ويهبط الدور إلى الاحتياط القديم. النبض هنا أثناء بثّ المزوّد فقط ويُلغى فور
+      // انتهائه، فدرس #527 (لا تغذية للحارس أثناء حلقة الأدوات) محفوظ.
+      let kaTimer = (!toolTurn || __longUserMsg || lastUserHasImage) ? setInterval(() => { try { res.write(': ka\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } }, 4000) : null;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -1306,3 +1402,4 @@ module.exports = async (req, res) => {
 module.exports.__v608 = { normNums, unsourcedRatings, ratingWarning }; // v608 — للاختبار
 module.exports.__v610 = { cleanLink }; // v610 — للاختبار
 module.exports.__vsearch = { tavilySearch, arWikiLookup }; // v-chat-ref — للاختبار
+module.exports.__vimg = { imageTurnConfig, IMAGE_READ_NOTE }; // v-img-read — للاختبار

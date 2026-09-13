@@ -8,6 +8,9 @@ const crypto = require('crypto');
 const { getUser, putUser, isBanned } = require('./auth.js');
 const { kvIncr, kvExpire, kvGetJSON } = require('./kv.js');
 const { isVip } = require('./_vip.js');
+// v-tiers: السقف اليومي صار بحسب الطبقة (ضيف/مجاني/مشترك بباقته) لا رقمًا واحدًا،
+// والمزوّدات المدفوعة للمشتركين فقط. انظر tier.js.
+const tierLib = require('./tier.js');
 
 // ⏳ مؤجَّلة: قراءة السرّ في نطاق الوحدة تحوّل متغيّرًا مفقودًا إلى انهيار
 // عند الإقلاع البارد بلا سجلّ (حدث في /api/edu). انظر api/_lib/auth.js.
@@ -105,30 +108,38 @@ function isValidGuestId(id) {
 // If there is no valid login token but a guestId is supplied, falls back to a
 // lifetime free-trial allowance for that anonymous browser instead of hard
 // requiring an account (guest mode UX promise: N free messages, no login).
-async function checkAndConsume(token, guestId, provider, ip) {
+async function checkAndConsume(token, guestId, provider, ip, opts) {
   // Each AI provider (mistral / deepseek / cohere / openai / claude / gemini /
   // groq / openrouter / perplexity) gets its own fully independent daily
   // allowance, so "Ask All" only spends 1 message per provider instead of
   // draining a single shared pool. Callers that don't pass a provider name
   // fall back to a generic bucket ("general") to stay backward compatible.
   const providerKey = provider ? String(provider).toLowerCase() : 'general';
+  const o = opts || {};
 
   const username = verifyToken(token);
   if (username) {
     // Owner account: unlimited, always allowed, never tallied. VIP accounts
     // get the exact same treatment (المالك أوّلًا: قصر الدائرة بلا نداء Redis).
     if (isOwnerUsername(username) || await isVip(username)) {
-      return { allowed: true, username, remaining: Infinity };
+      return { allowed: true, username, remaining: Infinity, tier: isOwnerUsername(username) ? 'owner' : 'vip', subscriber: true };
     }
     // Suspended accounts keep a valid token until it expires; refuse here so
     // the ban actually costs them access instead of only the login screen.
     if (await isBanned(username)) return { allowed: false, reason: 'auth', banned: true, username };
+    // v-tiers: الطبقة تحدّد السقف — مشترك بباقته، وإلا الطبقة المجانية. المزوّدات
+    // المدفوعة (كلود/OpenAI/…/الوكيل) للمشتركين فقط: غير المشترك يُرفض قبل أي عدّ.
+    const tier = (o.tier && typeof o.tier === 'object') ? o.tier : await tierLib.resolveTier(username);
+    if (!tier.subscriber && tierLib.isPaidProvider(providerKey)) {
+      return { allowed: false, reason: 'limit', subscribeOnly: true, username, tier: tier.tier, subscriber: false, message: tierLib.FREE_TEXT.subscribeOnly };
+    }
+    const limit = Number.isFinite(tier.cap) ? tier.cap : DAILY_LIMIT;
     // Tally key includes today's date, so yesterday's marks simply stop
     // counting (no cleanup needed) and the limit naturally resets at UTC
     // midnight.
     const key = username + '_' + todayStr() + '_' + providerKey;
     const count = await countTally(key);
-    if (count >= DAILY_LIMIT) {
+    if (count >= limit) {
       // Daily free quota for this provider is used up — fall back to the
       // user's referral bonus balance (a one-time reward pool, not tied to
       // any single provider or day) before finally blocking the request.
@@ -137,13 +148,14 @@ async function checkAndConsume(token, guestId, provider, ip) {
         if (user && !user.deleted && (user.bonusMessages || 0) > 0) {
           user.bonusMessages -= 1;
           await putUser(username, user);
-          return { allowed: true, username, remaining: 0, usedBonus: true };
+          return { allowed: true, username, remaining: 0, usedBonus: true, tier: tier.tier, subscriber: !!tier.subscriber, plan: tier.plan || null };
         }
       } catch (e) { /* if the bonus check fails, just fall through to blocking */ }
-      return { allowed: false, reason: 'limit', username };
+      return { allowed: false, reason: 'limit', username, tier: tier.tier, subscriber: !!tier.subscriber, plan: tier.plan || null, limit,
+        message: tier.subscriber ? tierLib.FREE_TEXT.subLimit(limit) : tierLib.FREE_TEXT.freeLimit };
     }
     await addTally(key);
-    return { allowed: true, username, remaining: DAILY_LIMIT - (count + 1) };
+    return { allowed: true, username, remaining: limit - (count + 1), limit, tier: tier.tier, subscriber: !!tier.subscriber, plan: tier.plan || null };
   }
 
   // Guests are counted by network address, not by the id their own browser
@@ -152,15 +164,21 @@ async function checkAndConsume(token, guestId, provider, ip) {
   // and the owner's nine API keys were effectively open to anyone.
   // api/edu.js already limits by IP — this is the same approach, applied to the
   // path that actually spends money.
+  // v-tiers: الضيف على السلسلة المجانية فقط (GUEST_DAILY، افتراضيًّا ٣ يوميًّا)،
+  // والمزوّدات المدفوعة مغلقة أمامه.
+  if (tierLib.isPaidProvider(providerKey)) {
+    return { allowed: false, reason: 'limit', subscribeOnly: true, username: null, tier: 'guest', subscriber: false, message: tierLib.FREE_TEXT.subscribeOnly };
+  }
+  const guestLimit = tierLib.caps().guest;
   const addr = ip && String(ip).trim() ? String(ip).trim() : null;
   if (addr) {
     const key = 'guestip_' + addr + '_' + providerKey;
     const count = await countTally(key);
-    if (count >= GUEST_LIMIT) {
-      return { allowed: false, reason: 'limit', username: null };
+    if (count >= guestLimit) {
+      return { allowed: false, reason: 'limit', username: null, tier: 'guest', subscriber: false, limit: guestLimit, message: tierLib.FREE_TEXT.guestLimit };
     }
     await addTally(key);
-    return { allowed: true, username: null, remaining: GUEST_LIMIT - (count + 1) };
+    return { allowed: true, username: null, remaining: guestLimit - (count + 1), limit: guestLimit, tier: 'guest', subscriber: false };
   }
 
   // No address and no session: refuse rather than fall back to a
@@ -182,18 +200,21 @@ async function getAllRemaining(token, guestId) {
   if (username && (isOwnerUsername(username) || await isVip(username))) {
     const remaining = {};
     ALL_PROVIDERS.forEach((p) => { remaining[p] = Infinity; });
-    return { authed: true, username, remaining, limit: Infinity };
+    return { authed: true, username, remaining, limit: Infinity, tier: isOwnerUsername(username) ? 'owner' : 'vip', subscriber: true };
   }
-  const limit = username ? DAILY_LIMIT : GUEST_LIMIT;
+  // v-tiers: السقف المعروض بحسب الطبقة، والمزوّدات المدفوعة صفر لغير المشترك.
+  const tier = username ? await tierLib.resolveTier(username) : { tier: 'guest', cap: tierLib.caps().guest, subscriber: false, plan: null };
+  const limit = Number.isFinite(tier.cap) ? tier.cap : DAILY_LIMIT;
   const remaining = {};
   await Promise.all(ALL_PROVIDERS.map(async (p) => {
+    if (!tier.subscriber && tierLib.isPaidProvider(p)) { remaining[p] = 0; return; }
     const key = username
       ? username + '_' + todayStr() + '_' + p
       : 'guest_' + guestId + '_' + p;
     const count = await countTally(key);
     remaining[p] = Math.max(0, limit - count);
   }));
-  return { authed: true, username: username || null, remaining, limit };
+  return { authed: true, username: username || null, remaining, limit, tier: tier.tier, subscriber: !!tier.subscriber, plan: tier.plan || null };
 }
 
 // Generic metering for endpoints that (a) have their own custom daily cap

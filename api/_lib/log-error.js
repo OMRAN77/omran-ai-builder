@@ -21,23 +21,48 @@ function brief(meta) {
  * @param {any}    err    ما أمسكه catch.
  * @param {object} [meta] حقائق تُعين على الفهم، بلا أسرار ولا بيانات مستخدم.
  */
-function logError(scope, err, meta) {
+const FLUSH_TIMEOUT_MS = 1500; // على serverless لا ننتظر Upstash المتعطّل أكثر من هذا
+
+// النواة المشتركة: تسجّل الموضع (متزامنًا في سجل Vercel) وتُطلق الحفظ في KV،
+// وتُعيد وعد الحفظ (reportError) لمن يريد انتظاره — أو null إن لم يُطلَق شيء
+// (تجاوز السقف، أو الموضع تكرّر فوق الحد). لا ترمي استثناءً أبدًا.
+function record(scope, err, meta) {
   try {
     const key = String(scope || 'unknown');
     const msg = String((err && err.message) || err || 'unknown').slice(0, 300);
     const site = key + '|' + msg;
     seen[site] = (seen[site] || 0) + 1;
-    if (seen[site] > MAX_PER_SITE) return;
+    if (seen[site] > MAX_PER_SITE) return null;
     console.error('[swallowed] ' + key + ': ' + msg + brief(meta));
-    if (reported >= MAX_REPORTED) return;
+    if (reported >= MAX_REPORTED) return null;
     reported++;
     // require متأخّر: لا كلفة إقلاع على المسار السليم، ولا دورة استيراد.
     const { reportError } = require('./_errors.js');
-    Promise.resolve(reportError(err, { route: 'swallowed:' + key, action: (meta && meta.action) || null }))
+    return Promise.resolve(reportError(err, { route: 'swallowed:' + key, action: (meta && meta.action) || null }))
       .catch(() => { /* الإبلاغ نفسه لا يجوز أن يصير خطأً جديدًا */ });
   } catch (e) {
     /* لا استثناء يخرج من هنا أبدًا — انظر رأس الملف. */
+    return null;
   }
 }
 
-module.exports = { logError };
+// «أطلِق وانسَ»: للمسارات التي لا ينتظر ردّها الحفظ (خادم دائم، أو رد لا يعتمد عليه).
+function logError(scope, err, meta) {
+  record(scope, err, meta);
+}
+
+// نسخة تُنتظَر: على serverless (Vercel) يتجمّد العامل بعد `res.json()` فيُسقَط أيّ
+// وعد معلّق — فكتابة KV غير المنتظَرة تضيع ولا تبلغ لوحة المالك. هنا ننتظر الحفظ
+// قبل الرد، لكن بسقف زمني (Promise.race) كي لا يعلّق ردّ المستخدم إذا تعطّل Upstash.
+// لا ترمي استثناءً أبدًا.
+function logErrorAndFlush(scope, err, meta) {
+  let p = null;
+  try { p = record(scope, err, meta); } catch (e) { p = null; }
+  if (!p) return Promise.resolve();
+  return new Promise(function (resolve) {
+    const t = setTimeout(resolve, FLUSH_TIMEOUT_MS);
+    p.then(function () { clearTimeout(t); resolve(); }, function () { clearTimeout(t); resolve(); });
+  });
+}
+
+module.exports = { logError, logErrorAndFlush };

@@ -6,6 +6,11 @@ const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
 const { logError } = require('./log-error.js');
 const { safeParse } = require('./safe-parse.js');
 const { fetchPublicUrl } = require('./safe-url.js');
+const { readGithub } = require('./github-read.js'); // v-agent-github
+const { redactMessages } = require('./_msgs.js'); // v-secret-vault: سرّ ملصوق لا يصل النموذج
+const githubWrite = require('./github-write.js'); // v-agent-github-push: للمالك وحده
+const delegate = require('./agent-delegate.js'); // v-agent-delegate: Claude Code في GitHub Actions — للمالك وحده
+const { ownerList } = require('./_owner.js');
 
 const TOOLS = [
   {
@@ -50,6 +55,23 @@ const TOOLS = [
     },
   },
   {
+    // v-agent-github (طلب المالك ١٢ سبتمبر «يقرأ الجيت هوب»): قراءة عبر واجهة GitHub لا صفحاته.
+    name: 'read_github',
+    description: 'اقرأ من GitHub مباشرةً عبر واجهته الرسميّة: مستودع (وصفه وشجرة ملفّاته وREADME)، أو مجلّدًا، أو ملفًّا بأسطر مرقّمة، أو آخر الدفعات/الالتزامات على الفرع (what=commits)، أو طلب سحب (وصفه وملفّاته المتغيّرة)، أو مسألة (نصّها وتعليقاتها). أعطها رابط GitHub كما هو أو owner/repo مع path. الملفّ الطويل يعود مقطّعًا: أعد الاستدعاء نفسه مع from لقراءة التتمّة. استخدمها بدل fetch_page لأيّ رابط github.com.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'رابط GitHub كامل (مستودع أو مجلّد أو ملفّ أو pull أو issue) أو owner/repo' },
+        path: { type: 'string', description: 'مسار ملفّ أو مجلّد داخل المستودع (اختياريّ مع owner/repo)' },
+        ref: { type: 'string', description: 'فرع أو وسم أو commit (اختياريّ؛ الافتراضيّ الفرع الرئيسيّ)' },
+        from: { type: 'integer', description: 'رقم السطر الذي تبدأ منه قراءة ملفّ طويل (اختياريّ)' },
+        what: { type: 'string', enum: ['auto', 'commits'], description: 'commits = آخر الدفعات (الالتزامات) على المستودع/الفرع بدل محتواه (اختياريّ)' },
+        limit: { type: 'integer', description: 'عدد الالتزامات المطلوب مع what=commits (الافتراضيّ ١٥، الأقصى ٣٠)' },
+      },
+      required: ['url'],
+    },
+  },
+  {
     name: 'publish',
     description: 'انشر التطبيق الذي بنيتَه في هذا التشغيل واحصل على رابط حقيقي يفتحه أي أحد. لا تستدعها إلا إذا طلب المستخدم النشر أو الرابط صراحة. تنشر ما بنيتَه الآن فقط — إن لم تكتب كودًا كاملًا في هذا التشغيل فستُرفض، ولن تنشر كودًا قديمًا أبدًا.',
     input_schema: {
@@ -63,46 +85,9 @@ const TOOLS = [
   },
 ];
 
-// 🔗 أدوات GitHub — تُضاف لمجموعة الأدوات للمالك وحده وفقط عند تهيئة البيئة
-// (GITHUB_OWNER_TOKEN + GITHUB_OWNER_REPO). لا يراها ولا يستطيعها غير المالك.
-const GITHUB_TOOLS = [
-  {
-    name: 'github_read',
-    description: 'اقرأ محتوى ملف من مستودع GitHub الخاص بالمالك (نصًّا). استخدمها قبل تعديل أي ملف لترى محتواه الحالي فتعدّل عليه بدقّة بدل الكتابة من فراغ.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        path: { type: 'string', description: 'مسار الملف داخل المستودع، مثل js/app-09-attach.js' },
-        ref: { type: 'string', description: 'اسم الفرع أو الالتزام (اختياري) — الافتراضي الفرع الرئيسي.' },
-      },
-      required: ['path'],
-    },
-  },
-  {
-    name: 'github_push',
-    description: 'التزم (commit) ملفًا أو ملفات إلى فرعٍ في مستودع المالك على GitHub. يُنشئ الفرع إن لم يوجد. لا يلمس الفرع الرئيسي (main) أبدًا — الدمج والنشر بيد المالك وحده. استخدمها فقط حين يطلب المالك رفع تغيير فعلي للمستودع. أعطِ المالك رابط الفرع/المقارنة بعد نجاحها.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        branch: { type: 'string', description: 'اسم الفرع الهدف (اختياري، الافتراضي omran-agent). لا يُقبل main/master.' },
-        message: { type: 'string', description: 'رسالة الالتزام — وصف موجز لِمَا تغيّر.' },
-        files: {
-          type: 'array',
-          description: 'الملفات المراد كتابتها/تحديثها.',
-          items: {
-            type: 'object',
-            properties: {
-              path: { type: 'string', description: 'مسار الملف داخل المستودع.' },
-              content: { type: 'string', description: 'المحتوى الكامل الجديد للملف.' },
-            },
-            required: ['path', 'content'],
-          },
-        },
-      },
-      required: ['files'],
-    },
-  },
-];
+// v-agent-github-push: أداة الرفع تُعرض للمالك وحده — المفتاح مفتاحه، ولا يرفع به غيره.
+function isOwner(user) { return !!user && ownerList().includes(String(user).trim().toLowerCase()); }
+function toolsFor(user) { return isOwner(user) ? TOOLS.concat([githubWrite.TOOL, delegate.START_TOOL, delegate.CHECK_TOOL]) : TOOLS; }
 
 // 🪞 الأثر المرئي — «فعلتُ س فحصلت ص». كل سطر يُشتقّ من مُدخل الأداة الحقيقي
 // ومن ناتجها الحقيقي، لا من ادّعاء النموذج. فما يقرأه المستخدم هو ما جرى فعلًا.
@@ -147,14 +132,13 @@ function trailDid(name, input) {
     try { h = new URL(String(input.url)).hostname || h; } catch (e) { /* رابط مشوّه → نعرض ما أُرسل */ }
     return 'قرأتُ ' + h;
   }
+  if (name === 'write_github') return 'رفعتُ إلى GitHub ' + (s(input.repo, 50) || '') + ' (' + (Array.isArray(input.files) ? input.files.length : 0) + ' ملفًّا)';
+  if (name === 'delegate_code_task') return 'سلّمتُ مهمّة كود إلى Claude Code في GitHub Actions: «' + (s(input.task, 70) || '؟') + '»';
+  if (name === 'check_code_task') return 'تحقّقتُ من مهمّة الكود #' + (s(input.issue, 10) || '؟');
+  if (name === 'read_github') return 'قرأتُ من GitHub ' + (s(input.url, 70) || '') + (input.path ? ' ' + s(input.path, 40) : '') + (input.from > 1 ? ' من السطر ' + input.from : '') + (input.what === 'commits' ? ' — آخر الدفعات' : '');
   if (name === 'run_js') return 'شغّلتُ كودًا (' + String(input.code || '').length + ' حرفًا)';
   if (name === 'test_html') return 'اختبرتُ صفحة (' + String(input.html || '').length + ' حرفًا)';
   if (name === 'publish') return 'نشرتُ «' + (s(input.title, 40) || 'مشروعًا') + '»';
-  if (name === 'github_read') return 'قرأتُ من GitHub: ' + (s(input.path, 60) || '؟');
-  if (name === 'github_push') {
-    const n = Array.isArray(input.files) ? input.files.length : 0;
-    return 'رفعتُ ' + (n || '') + ' ملف(ات) لفرع «' + (s(input.branch, 40) || 'omran-agent') + '»';
-  }
   return 'استخدمتُ ' + name;
 }
 function trailGot(name, result) {
@@ -167,9 +151,11 @@ function trailGot(name, result) {
     return 'فحصلتُ ' + (n === 1 ? 'نتيجة واحدة' : n === 2 ? 'نتيجتين' : n <= 10 ? (n + ' نتائج') : (n + ' نتيجة'));
   }
   if (name === 'fetch_page') return 'فحصلتُ ' + r.length + ' حرفًا من الصفحة';
+  if (name === 'delegate_code_task') { const u = r.match(/https?:\/\/\S+\/issues\/\d+/); return /^🚀/.test(r.trim()) ? ('فبدأت: ' + (u ? u[0] : 'مسألة المهمّة')) : ('ففشلت: ' + r.trim().slice(0, 80)); }
+  if (name === 'check_code_task') { const u = r.match(/https?:\/\/\S+\/pull\/\d+/); return u ? ('فوجدتُ طلب سحب: ' + u[0]) : /قيد التنفيذ/.test(r) ? 'فهي قيد التنفيذ' : /لم يبدأ/.test(r) ? 'فلم تبدأ بعد' : ('فحصلتُ: ' + r.split('\n')[1] || r.slice(0, 60)); }
+  if (name === 'write_github') { const u = r.match(/https?:\/\/\S+\/pull\/\d+/); return /^✅/.test(r.trim()) ? ('فحصلتُ ' + (u ? 'طلب سحب: ' + u[0] : 'التزامًا')) : ('ففشلت: ' + r.trim().slice(0, 80)); }
+  if (name === 'read_github') { const h = r.split('\n')[0] || ''; return /^(غير موجود|GitHub|تعذّر|رابط)/.test(h) ? 'ففشلت: ' + h.slice(0, 80) : 'فحصلتُ ' + r.length + ' حرفًا: ' + h.slice(0, 70); }
   if (name === 'publish') { const u = r.match(/https?:\/\/\S+/); return u ? ('فحصلتُ رابطًا: ' + u[0]) : ('فلم يُنشر: ' + r.trim().slice(0, 70)); }
-  if (name === 'github_read') return r.startsWith('✅') ? 'فقرأتُ الملف' : ('ففشلت: ' + r.slice(1, 80));
-  if (name === 'github_push') { const u = r.match(/compare\/\S+/); return r.startsWith('✅') ? ('فرُفع لفرعٍ' + (u ? ' — جاهز للدمج' : '')) : ('ففشل الرفع: ' + r.slice(1, 80)); }
   if (name === 'test_html') {
     if (/^✅/.test(r.trim())) return 'فما ظهر خطأ تشغيل';
     const first = r.split('\n').filter((l) => l.trim() && !/^⚠️/.test(l.trim()))[0] || '';
@@ -228,6 +214,10 @@ const SYSTEM = `أنت "وكيل عمران" 🤖 — وكيل ذكاء اصطن
 25. أي رابط تعطيه: تأكد منه بـ web_search أو fetch_page أولًا — ممنوع روابط من الذاكرة.
 25-ب. قبل أول أداة في أي مهمة تحتاج أكثر من خطوة واحدة: اكتب سطرًا واحدًا فقط يبدأ بـ🗺️ يعلن خطتك بـ١٥ كلمة أو أقل، ثم انطلق فورًا. سطر واحد لا قائمة، ولا تنتظر موافقة عليه، ولا تكرره لاحقًا. المهمة التي تُنجزها بلا أدوات لا تحتاج هذا السطر.
 25-ج. أداة publish تنشر ما بنيتَه في هذا التشغيل وتعيد رابطًا حقيقيًا: لا تستدعها إلا إذا طلب المستخدم النشر أو رابطًا صراحة، ولا تعطِ إلا الرابط الذي أعادته الأداة حرفًا بحرف (ممنوع تأليف رابط)، ولا تضعه في صفحة «استكشف» العامة إلا بطلب صريح. وبعد النشر اذكر أن الرابط عام لمن يملكه.
+25-د. أي رابط github.com أو ذكر مستودع أو ملف على GitHub: استخدم read_github لا fetch_page — تعطيك شجرة الملفات، والملف بأسطر مرقمة، وطلبات السحب والمسائل. الملف الطويل يعود مقطعًا فأعد الاستدعاء مع from حتى تقرأه كله قبل أن تحكم عليه. لا تحلل ولا تعدل كودًا من GitHub قبل قراءته فعلًا بهذه الأداة. ولآخر الدفعات (الالتزامات) على المستودع استخدمها مع what=commits (وref للفرع وlimit للعدد).
+25-هـ. write_github (تظهر للمالك فقط): ترفع ملفات إلى مستودعه على فرع جديد بالتزام واحد وتفتح طلب سحب — لا تدفع إلى الفرع الرئيسي أبدًا؛ الدمج والنشر بيد المالك. لا ترفع إلا بطلب صريح («ارفع» / «ادفع» / «سوّ PR»)، واقرأ الملف الحالي بـread_github قبل تعديله وأعده كاملًا لا مقتطفًا، وأعطِ المستخدم رابط طلب السحب حرفًا بحرف ولا تقل إنه نُشر.
+25-ز. delegate_code_task وcheck_code_task (للمالك وحده): تغيير حقيقيّ في مستودع المالك (إصلاح عطل، ميزة، إعادة هيكلة، أيّ شيء يحتاج اختبارًا) لا تكتبه أنت بـwrite_github بل تسلّمه بـdelegate_code_task إلى Claude Code في GitHub Actions — يقرأ المستودع كاملًا ويعدّل ويشغّل npm run ci ويدفع فرعًا. اكتب المهمّة كما تكتبها لمهندس زميل: ماذا ولماذا وأين (مسارات الملفّات) ومعيار النجاح، وبلا أسرار. الأداة تعود فورًا بمسألة وروابط والتنفيذ يأخذ دقائق: قل ذلك للمستخدم وأعطه الروابط حرفًا بحرف ولا تدّعِ وجود طلب سحب. حين يسأل «شو صار» أو يمرّ وقت: check_code_task برقم المسألة — هي تفتح طلب السحب عند اكتمال الدفع وتعيد حالة الفحوص. write_github يبقى للرفع المباشر الصغير (ملفّ أو اثنان بلا حاجة لاختبار).
+25-و. الأسرار (توكن GitHub، مفاتيح API) لا تُكتب في المحادثة أبدًا: إن ظهر سرّ في رسالة فلا تكرّره ولا تحفظه ولا تستخدمه ولا تطلبه، ووجّه المالك إلى الإعدادات ← 🔐 خزنة الأسرار (أو متغيّرات البيئة). مفتاح GitHub الذي تعمل به read_github وwrite_github يأتي من الخزنة أو البيئة تلقائيًّا.
 26. أي رقم أو سعر أو إحصائية: اذكر مصدرها.
 27. إذا سُئلت "أيهم أفضل؟": أعطِ جدول مقارنة واضح.
 28. إذا اكتشفت أن ردك السابق خطأ: قل "أصحح معلومتي" وصحح بشجاعة — لا تكابر.
@@ -329,7 +319,11 @@ async function fetchPage(url) {
  *
  * والمهلة إلزامية: متصفح أُغلق يعني انتظارًا حتى تنتهي مهلة الدالة كلها.
  */
-async function runInClient(name, input) {
+// v-agent-send-scope (لقطة المالك ١٢ سبتمبر «Agent error: send is not defined»): كانت
+// الدالّة تستدعي send وهو مُعرَّف داخل المعالج فقط، فأيّ أداة متصفّح (تشغيل كود/
+// اختبار/نشر/صورة) كانت تُسقط الوكيل كلّه بـReferenceError. الآن يُمرَّر send صراحةً
+// كما في chat.js.
+async function runInClient(send, name, input) {
   const { kvGetJSON, kvDel, kvPutJSON, kvExpire } = require('./kv.js');
   const id = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   const key = 'agent/tool/' + id;
@@ -388,7 +382,8 @@ module.exports = async (req, res) => {
 
   let body = req.body;
   if (!body || typeof body === 'string') body = safeParse(body, {}, 'agent:body');
-  const { messages, token, guestId, currentCode, projId } = body;
+  const { token, guestId, currentCode, projId } = body;
+  const messages = redactMessages(body.messages); // v-secret-vault: توكن/مفتاح ملصوق يُحذف قبل النموذج والدفتر
 
   // استئناف: قراءة دفتر آخر تشغيل — بلا حصّة ولا بثّ، ولصاحب الدفتر وحده.
   if (body.runState) {
@@ -401,33 +396,10 @@ module.exports = async (req, res) => {
 
   if (!messages || !messages.length) { res.status(400).json({ error: 'Missing messages' }); return; }
 
-  // 🔗 أدوات GitHub للمالك فقط: تُتاح حين تكون الجلسة جلسة المالك الموقَّعة
-  // والبيئة مهيّأة. غير المالك لا يرى هذه الأدوات ولا ينفّذها إطلاقًا.
-  let __isOwner = false, __ghOn = false;
-  try {
-    const __who = require('./auth.js').verifyToken(token);
-    __isOwner = require('./_owner.js').isOwnerName(__who);
-    __ghOn = __isOwner && require('./github-agent.js').githubEnabled();
-  } catch (e) { __isOwner = false; __ghOn = false; }
-  const reqTools = __ghOn ? TOOLS.concat(GITHUB_TOOLS) : TOOLS;
-
-  // 🎛️ اختيار موديل الوكيل — للمالك وحده (يشتغل بمفتاح المالك، فالرصيد من
-  // حسابه). غير المالك يبقى على الافتراضي كي لا يُستنزف رصيد المالك بموديلٍ
-  // غالٍ لكلّ الزوّار. الاسم الودّي من العميل يُترجم لمعرّف Anthropic من قائمةٍ
-  // بيضاء فقط؛ أيّ قيمة أخرى تُتجاهل. لو رفض المفتاح الموديل يسقط resolveModel.
-  const AGENT_MODELS = {
-    'opus-5': 'claude-opus-5',
-    'sonnet-5': 'claude-sonnet-5',
-    'haiku-4.5': 'claude-haiku-4-5-20251001',
-    'fable-5.1': 'claude-fable-5-1',
-    'opus-4.8': 'claude-opus-4-8',
-  };
-  const __ownerModel = (__isOwner && body.agentModel && AGENT_MODELS[String(body.agentModel)]) || null;
-
   const usage = await checkAndConsume(token, guestId, 'agent', clientIp(req));
   if (!usage.allowed) {
     if (usage.reason === 'auth') res.status(401).json({ error: 'الجلسة منتهية، الرجاء تسجيل الدخول من جديد' });
-    else res.status(402).json({ error: 'وصلت للحد اليومي المجاني (' + DAILY_LIMIT + ' رسالة) للوكيل. انتظر الغد أو اشترك.' });
+    else res.status(402).json({ error: usage.message || ('وصلت للحد اليومي المجاني (' + (usage.limit || DAILY_LIMIT) + ' رسالة) للوكيل. انتظر الغد أو اشترك.'), subscribeOnly: !!usage.subscribeOnly }); /* v-tiers */
     return;
   }
 
@@ -466,11 +438,6 @@ module.exports = async (req, res) => {
   // v545 — المعرفة الجماعيّة (لا تُحقن لمها الصوتيّة: شخصيّتها ومعلوماتها لا تُمَسّ).
   try { system += await require('./collective.js').blockAsync(); } catch (e) { /* guard-ok: collective enrichment is optional; the chat request must continue. */ }
 
-  // 🔗 للمالك فقط: تنبيه بوجود أدوات GitHub وحدودها (لا نشر إلا بدمج المالك).
-  if (__ghOn) {
-    system += '\n\nأنت متصل بمستودع GitHub الخاص بالمالك ولك أداتان: github_read لقراءة ملف، وgithub_push لرفع تغييرات إلى فرعٍ. القواعد: (١) لا ترفع إلا حين يطلب المالك رفعًا فعليًّا صراحةً. (٢) اقرأ الملف بـgithub_read قبل تعديله ثم ارفع الملف كاملًا. (٣) لا تلمس الفرع الرئيسي أبدًا — الرفع يكون لفرعٍ، والدمج/النشر بيد المالك وحده. (٤) بعد الرفع أعطِ المالك رابط الفرع ورابط المقارنة/الدمج حرفيًّا وذكّره أنّ شيئًا لن يُنشر حتى يدمج هو.';
-  }
-
   if (currentCode) {
     system += '\n\nالكود الحالي للمشروع (عدّل عليه إذا طلب المستخدم تعديلًا وأعد الملف كاملًا):\n```html\n' + String(currentCode).slice(0, 60000) + '\n```';
   }
@@ -500,7 +467,18 @@ module.exports = async (req, res) => {
   }
 
   try {
-    let model = __ownerModel || 'claude-sonnet-5';
+    // 🎛️ اختيار موديل الوكيل — للمالك وحده (يشتغل بمفتاح المالك، فالرصيد من
+    // حسابه). غير المالك يبقى على الافتراضي كي لا يُستنزف رصيد المالك بموديلٍ
+    // غالٍ لكلّ الزوّار. الاسم الودّي يُترجَم لمعرّف Anthropic من قائمةٍ بيضاء
+    // فقط؛ ولو رفض المفتاح الموديل يسقط تلقائيًا للمتاح (resolveModel).
+    const AGENT_MODELS = {
+      'opus-5': 'claude-opus-5',
+      'sonnet-5': 'claude-sonnet-5',
+      'haiku-4.5': 'claude-haiku-4-5-20251001',
+      'fable-5.1': 'claude-fable-5-1',
+      'opus-4.8': 'claude-opus-4-8',
+    };
+    let model = (isOwner(runUser) && body.agentModel && AGENT_MODELS[String(body.agentModel)]) || 'claude-sonnet-5';
     let steps = 0;
 
     // 4 خطوات لا تكفي «اقرأ ← افهم ← جرّب ← أخطأت ← صحّح ← تحقّق». المهام
@@ -535,7 +513,7 @@ module.exports = async (req, res) => {
           max_tokens: 32000,
           system,
           messages: convo,
-          tools: reqTools,
+          tools: toolsFor(runUser),
           stream: true,
         }),
       });
@@ -549,8 +527,9 @@ module.exports = async (req, res) => {
         // فشل Claude → جرّب مزودين بدلاء (DeepSeek ثم Mistral ثم Groq) بدون أدوات.
         const fallbacks = [
           { name: 'DeepSeek', url: 'https://api.deepseek.com/chat/completions', key: process.env.DEEPSEEK_API_KEY, model: 'deepseek-chat' },
-          { name: 'Mistral', url: 'https://api.mistral.ai/v1/chat/completions', key: process.env.MISTRAL_API_KEY, model: 'mistral-large-latest' },
-          { name: 'Groq', url: 'https://api.groq.com/openai/v1/chat/completions', key: process.env.GROQ_API_KEY, model: 'llama-3.3-70b-versatile' },
+          // v-free-models: large خارج طبقة Mistral المجانية (403)، وGroq يأخذ النموذج الناجح/المرشّح الأول من free-chain.js.
+          { name: 'Mistral', url: 'https://api.mistral.ai/v1/chat/completions', key: process.env.MISTRAL_API_KEY, model: require('./free-chain.js').defaultModel('mistral') },
+          { name: 'Groq', url: 'https://api.groq.com/openai/v1/chat/completions', key: process.env.GROQ_API_KEY, model: require('./free-chain.js').defaultModel('groq') },
         ];
         // هبوط بلا أدوات: البديل لا يشغّل ولا يفحص شيئًا، فيجب ألّا يوهم المستخدم
         // بأنه جرّب. الصمت هنا أسوأ من الاعتراف — كلام جميل عن عمل لم يحدث.
@@ -623,11 +602,13 @@ module.exports = async (req, res) => {
             contentBlocks[curIdx] = { type: cb.type, text: '', name: cb.name, id: cb.id, inputJson: '' };
             if (cb.type === 'tool_use' && cb.name === 'web_search') send({ phase: 'executing', status: '🔍 الوكيل يتحقق من المصادر الحية…' });
             else if (cb.type === 'tool_use' && cb.name === 'fetch_page') send({ phase: 'executing', status: '🌐 الوكيل يقرأ صفحة ويب…' });
+            else if (cb.type === 'tool_use' && cb.name === 'read_github') send({ phase: 'executing', status: '🐙 الوكيل يقرأ من GitHub…' });
+            else if (cb.type === 'tool_use' && cb.name === 'write_github') send({ phase: 'executing', status: '⬆️ الوكيل يرفع إلى GitHub ويفتح طلب سحب…' });
+            else if (cb.type === 'tool_use' && cb.name === 'delegate_code_task') send({ phase: 'executing', status: '🚀 الوكيل يسلّم المهمّة إلى Claude Code في GitHub Actions…' });
+            else if (cb.type === 'tool_use' && cb.name === 'check_code_task') send({ phase: 'executing', status: '🔎 الوكيل يتحقّق من حالة مهمّة الكود…' });
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ phase: 'verifying', status: '⚙️ الوكيل يشغّل كودًا للتحقق…' });
             else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ phase: 'verifying', status: '🧪 الوكيل يختبر ما بناه…' });
             else if (cb.type === 'tool_use' && cb.name === 'publish') send({ phase: 'executing', status: '🔗 الوكيل ينشر التطبيق…' });
-            else if (cb.type === 'tool_use' && cb.name === 'github_read') send({ phase: 'executing', status: '📖 الوكيل يقرأ ملفًا من GitHub…' });
-            else if (cb.type === 'tool_use' && cb.name === 'github_push') send({ phase: 'executing', status: '⬆️ الوكيل يرفع إلى فرع GitHub…' });
           } else if (ev.type === 'content_block_delta') {
             const cb = contentBlocks[ev.index];
             if (!cb) continue;
@@ -670,10 +651,30 @@ module.exports = async (req, res) => {
           let result = 'أداة غير معروفة';
           if (cb.name === 'web_search') result = await tavilySearch(input.query || '');
           else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
+          else if (cb.name === 'read_github') result = await readGithub(input);
+          else if (cb.name === 'write_github') {
+            // للمالك وحده، وبسقف ثلاث رفعات في التشغيل: حلقة ترفع بلا حدّ تُغرق المستودع بالفروع.
+            if (!isOwner(runUser)) result = '✗ الرفع إلى GitHub للمالك وحده.';
+            else {
+              run.pushes = (run.pushes || 0) + 1;
+              result = run.pushes > 3 ? '✗ ثلاث رفعات في هذا التشغيل حدّ مقصود — سلّم المستخدم آخر رابط.' : githubWrite.formatPush(await githubWrite.pushFiles(input));
+            }
+          }
+          else if (cb.name === 'delegate_code_task') {
+            // v-agent-delegate: للمالك وحده، ومهمّة واحدة في التشغيل — كلّ تسليم يشغّل Claude Code على حساب المالك.
+            if (!isOwner(runUser)) result = '✗ تفويض مهامّ الكود للمالك وحده.';
+            else {
+              run.delegates = (run.delegates || 0) + 1;
+              result = run.delegates > 1 ? '✗ مهمّة واحدة مفوَّضة في التشغيل الواحد — سلّم المستخدم روابط المهمّة الأولى.' : delegate.formatStart(await delegate.startTask(input));
+            }
+          }
+          else if (cb.name === 'check_code_task') {
+            result = isOwner(runUser) ? delegate.formatCheck(await delegate.checkTask(input)) : '✗ التحقّق من مهامّ الكود للمالك وحده.';
+          }
           else if (cb.name === 'run_js' || cb.name === 'test_html') {
             // التنفيذ في متصفح المستخدم لا هنا: الخادم دالة بلا حالة ومحدودة
             // الزمن، والكود الذي يكتبه النموذج يجب ألا يعمل قط على بنيتك.
-            result = await runInClient(cb.name, input);
+            result = await runInClient(send, cb.name, input);
             // ما اختُبر فعلًا يصلح مصدرًا للنشر: بناه الآن وشغّله الآن.
             if (cb.name === 'test_html' && input.html) lastTested = String(input.html);
           } else if (cb.name === 'publish') {
@@ -682,35 +683,6 @@ module.exports = async (req, res) => {
             result = run.pubs > 3
               ? '✗ نشرتَ ثلاث مرات في هذا التشغيل وهذا حدّ مقصود — سلّم المستخدم آخر رابط حصلتَ عليه.'
               : await doPublish(input, lastCodeIn(run.text) || lastTested, runUser, req.headers && req.headers.host);
-          } else if (cb.name === 'github_read' || cb.name === 'github_push') {
-            // 🔗 أدوات GitHub — للمالك وحده وفقط عند التهيئة (حارسٌ مزدوج مع reqTools).
-            if (!__ghOn) {
-              result = '✗ أدوات GitHub غير متاحة (تحتاج جلسة المالك وتهيئة GITHUB_OWNER_TOKEN/GITHUB_OWNER_REPO في البيئة).';
-            } else if (cb.name === 'github_read') {
-              const rd = await require('./github-agent.js').readFile(input.path || '', input.ref || '');
-              result = rd.ok
-                ? ('✅ قرأتُ ' + rd.path + ' (' + rd.text.length + ' حرفًا):\n\n' + rd.text)
-                : ('✗ تعذّرت قراءة الملف: ' + (rd.reason || 'خطأ'));
-            } else {
-              // github_push
-              run.ghPushes = (run.ghPushes || 0) + 1;
-              if (run.ghPushes > 5) {
-                result = '✗ رفعتَ خمس مرات في هذا التشغيل وهذا حدّ مقصود — سلّم المالك رابط الفرع الأخير.';
-              } else {
-                const pr = await require('./github-agent.js').commitFiles({ branch: input.branch, message: input.message, files: input.files });
-                if (pr.ok) {
-                  result = '✅ رُفعت ' + pr.files.length + ' ملف(ات) إلى فرع «' + pr.branch + '» في ' + pr.repo
-                    + ' (لم يُلمس ' + pr.base + '). '
-                    + '\nالفرع: ' + pr.branchUrl
-                    + '\nالمقارنة/الدمج: ' + pr.compareUrl
-                    + '\nأعطِ المالك هذين الرابطين حرفيًّا، وذكّره أنّ النشر لا يتم إلا بدمجه هو.';
-                } else if (pr.reason === 'refuse_default_branch') {
-                  result = '✗ رُفض: لا يُسمح بالرفع إلى الفرع الرئيسي — اختر اسم فرعٍ آخر (النشر بيد المالك).';
-                } else {
-                  result = '✗ فشل الرفع: ' + (pr.reason || 'خطأ') + (pr.detail ? (' — ' + pr.detail) : '');
-                }
-              }
-            }
           }
           toolResults.push({ type: 'tool_result', tool_use_id: cb.id, content: result.slice(0, 8000) });
 
@@ -755,3 +727,5 @@ module.exports = async (req, res) => {
     try { res.end(); } catch (e2) { /* المجرى مُغلق أصلًا — لا شيء يُنهى */ }
   }
 };
+
+module.exports.__test = { runInClient, toolsFor, isOwner }; // v-agent-send-scope · v-agent-github-push — للاختبار

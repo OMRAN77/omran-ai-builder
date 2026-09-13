@@ -899,6 +899,8 @@ const $ = s => document.querySelector(s);
       const uname = String(authGet('aiapp_username') || '').trim().toLowerCase();
       const isAdminUI = (loggedIn && uname === 'omran');
       adminWrap.style.display = isAdminUI ? '' : 'none';
+      /* v-secret-vault: خزنة الأسرار للمالك وحده — بجانب لوحة التحكّم */
+      try{ const __vw = $('#vaultSectionWrap'); if(__vw){ __vw.style.display = isAdminUI ? '' : 'none'; if(isAdminUI && window.vaultRefresh) window.vaultRefresh(); } }catch(e){ /* guard-ok — قسم اختياريّ لا يُسقط الإعدادات */ }
       // القائمة تُملأ عند كشف القسم لا عند فتحه: زرّ «تحديث» موجود
       // للإحصائيات وحدها، وVIP قائمة قصيرة نداؤها رخيص.
       if(isAdminUI && window.loadVipList) window.loadVipList();
@@ -2445,7 +2447,7 @@ const I18N = {
     fxCatLbl: 'الفئة', fxGenWomen: 'نسائي', fxGenMen: 'رجالي', fxGenKids: 'أطفال', fxColorsLbl: 'الألوان المفضّلة', fxColBlack: 'أسود', fxColWhite: 'أبيض', fxColNavy: 'كحلي', fxColRed: 'أحمر', fxColGold: 'ذهبي',
     fxColGreen: 'أخضر', fxColBeige: 'بيج', fxColMulti: 'متعدد', fxAccLbl: 'إضافات', fxAccGlasses: 'نظارات', fxAccWatch: 'ساعة', fxAccHandbag: 'حقيبة', fxAccShoes: 'أحذية', fxAccScarf: 'وشاح', fxAccMakeup: 'مكياج',
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
-    sidePanelTitle: 'القائمة الجانبية', lightModeTitle: 'الوضع الفاتح', provSearchPh: 'ابحث عن نموذج...', jumpLatestTitle: 'أحدث رسالة', editMsgNotice: 'تعديل الرسالة', modesTitle: 'الأوضاع',
+    sidePanelTitle: 'القائمة الجانبية', lightModeTitle: 'الوضع الفاتح', darkModeTitle: 'الوضع الداكن', provSearchPh: 'ابحث عن نموذج...', jumpLatestTitle: 'أحدث رسالة', editMsgNotice: 'تعديل الرسالة', modesTitle: 'الأوضاع',
     attachFileTitle: 'إرفاق ملف', chipExam: 'حل امتحان', chipBook: 'تلخيص كتاب', chipArticle: 'كتابة مقال احترافي', chipIdeas: 'أفكار لمشروع', tryItTitle: 'جرّبه لي', closeTitle: 'إغلاق',
     docAssistTitle: '📄 مساعد المستندات', govServicesTitle: '🧾 المعاملات الحكومية', cvGenTitle: '💼 مولّد السيرة الذاتية', dsNotesLabel: '✍️ اكتب تفاصيلك بكلماتك (اختياري)',
     dsNotesPh: 'مثال: مطعم إيطالي ٤٠ كرسي، سقف عالي، طابع صناعي', rmWhatLabel: 'ماذا تريد إزالته من الصورة؟', rmWhatPh: 'مثال: الشخص الذي خلفي · السيارة · العمود', pickOutfitLabel: 'اختر الملابس',
@@ -2453,10 +2455,10 @@ const I18N = {
     refreshBtn: 'تحديث', worldMarketsTitle: 'الأسواق العالمية', pickStockTitle: 'اختيار سهم', cnProjectData: '📋 بيانات المشروع', cnLandArea: 'مساحة الأرض (م²) — اختياري', cnLandAreaPh: 'مثال: 500',
     cnEmirateOpt: 'الإمارة — اختياري', cnDetailsAnnexes: '🏠 التفاصيل والملاحق', cnExElevator: 'مصعد داخلي', cnExStore: 'مخزن خارجي', cnExWaterTank: 'خزان مياه', cnExSolar: 'ألواح شمسية',
     cnExPlayground: 'ملعب خارجي', cnExCarport: 'مظلة سيارات إضافية', cnBudgetOutputs: '💰 الميزانية والمخرجات', cnDownloadBoq: '📊 تنزيل جدول الكميات', cnPdfReport: '📄 تقرير PDF',
-    keyHowToTitle: '📝 كيف تحصل على مفتاح لكل مزوّد:', showAllPlansCur: 'عرض كل الباقات والأسعار بعملتك', currencyLabel: 'العملة', plFreeMsgs: '20 رسالة يوميًا',
-    plFreeVoice: 'دقيقة واحدة محادثة صوتية', plFreeImgs: '3 صور بالذكاء الاصطناعي', plFreeNoVideo: 'بلا فيديو', plStMsgs: '300 رسالة شهريًا', plStVoice: '30 دقيقة محادثة صوتية', plStImgs: '15 صورة',
-    plStVideos: '5 مقاطع فيديو', plProMsgs: 'رسائل بلا حدود', plProVoice: '80 دقيقة محادثة صوتية', plProMedia: '40 صورة · 13 فيديو · 2 سينمائي', plProAgent: 'الوكيل الذكي',
-    plProPriority: 'أولوية في السرعة · شارة ذهبية', plMaxAllPro: 'كل مزايا Pro', plMaxVoice: '500 دقيقة محادثة صوتية', plMaxMedia: '250 صورة · 83 فيديو · 12 سينمائي', plMaxSupport: 'دعم مخصّص',
+    keyHowToTitle: '📝 كيف تحصل على مفتاح لكل مزوّد:', showAllPlansCur: 'عرض كل الباقات والأسعار بعملتك', currencyLabel: 'العملة', plFreeMsgs: '10 رسائل يوميًا',
+    plFreeVoice: 'دقيقة واحدة محادثة صوتية', plFreeImgs: '3 صور بالذكاء الاصطناعي', plFreeNoVideo: 'بلا فيديو', plStMsgs: '50 رسالة احترافية يوميًا', plStVoice: '33 دقيقة محادثة صوتية', plStImgs: '25 صورة',
+    plStVideos: '8 مقاطع فيديو', plProMsgs: '150 رسالة احترافية يوميًا', plProVoice: '80 دقيقة محادثة صوتية', plProMedia: '60 صورة · 20 فيديو · 3 سينمائي', plProAgent: 'الوكيل الذكي',
+    plProPriority: 'أولوية في السرعة · شارة ذهبية', plMaxAllPro: 'كل مزايا Pro · 400 رسالة احترافية يوميًا', plMaxVoice: '460 دقيقة محادثة صوتية', plMaxMedia: '350 صورة · 116 فيديو · 17 سينمائي', plMaxSupport: 'دعم مخصّص',
     /* v599: ترجمة خيارات القوائم المنسدلة (٨٧ عنصرًا) */
     portraitStylePassport: '🫎 صورة جواز/هوية رسمية', portraitStyleRestore: '🔧 ترميم صورة قديمة', portraitStyleColorize: '🎨 تلوين أبيض وأسود', portraitStyleUpscale: '🔍 رفع الدقة والوضوح', portraitStyleObjectremove: '🧹 إزالة شخص أو عنصر', portraitStyleOutfit: '👕 تبديل الملابس', portraitStyleProductshot: '📦 تصوير منتج احترافي', portraitStyleHajj: '🕋 تهنئة حج وعمرة', portraitStyleBirthday: '🎂 إطار عيد ميلاد', portraitStyleNewborn: '👶 تهنئة مولود جديد', portraitStyleFigurine: '🧸 مجسّم أكشن في علبة', portraitStyleGhibli: '🍃 ستايل جيبلي', portraitStyleLego: '🧱 شخصية ليغو', portraitStyleStickerpack: '💬 ملصقات واتساب (٦ تعبيرات)', portraitStyleChibi: '🐣 شيبي لطيف', portraitStyleStatue: '🗿 تمثال رخامي', portraitStylePolaroid: '📸 بولارويد قديمة', portraitStyleCelebtoon: '🦸 شخصية كرتونية مفضلة', portraitStyleProfession: '👩‍⚕️ مهنة (طبيب · طيار · شرطي...)', portraitStyleSuperhero: '🦸‍♂️ بطل خارق بزي كامل', portraitStyleAstronaut: '🚀 رائد فضاء', portraitOutfitKandura: '👔 كندورة إماراتية + غترة', portraitOutfitAbaya: '🧕 عباية + شيلة', portraitOutfitThobe: '🧣 ثوب خليجي + شماغ', portraitOutfitSuit: '🧵 بدلة رسمية', portraitOutfitDress: '👗 فستان سهرة', portraitOutfitCasual: '🧥 كاجوال أنيق', portraitOutfitSport: '🎽️ ملابس رياضية', portraitOutfitWinter: '🧤 معطف شتوي', portraitProfDoctor: '👩‍⚕️ طبيب', portraitProfPilot: '🧑‍✈️ طيار', portraitProfPolice: '👮 شرطي', portraitProfChef: '🧑‍🍳 طبّاخ', portraitProfEngineer: '👷 مهندس موقع', portraitProfTeacher: '🧑‍🏫 معلم', portraitProfFirefighter: '🧑‍🚒 إطفائي', portraitProfScientist: '🧑‍🔬 عالم مختبر', portraitGrpTools: '🛠️ أدوات عملية', portraitGrpOccasions: '🎉 مناسبات', portraitGrpTrending: '🔥 رائجة', portraitGrpDressup: '🎭 تلبيس', portraitStyleClaymation: '🏺 صلصال متحرك (كلاي)', portraitStyleLowpoly: '🔷 ثلاثي الأبعاد هندسي (Low Poly)', portraitStyleGraffiti: '🎨 جرافيتي شوارع', portraitStyleMosaic: '🧩 فسيفساء', portraitStyleStainedglass: '🪟 زجاج معشّق', portraitStylePapercraft: '📄 فن الورق الطبقي', portraitStyleCrochet: '🧶 دمية كروشيه', portraitStyleInflatable: '🎈 مجسّم بالون لامع', portraitStyleUkiyoe: '🌊 طباعة يابانية قديمة', portraitStyleSandart: '🏜️ رسم بالرمل الخليجي', portraitStyleNeonsign: '💡 نيون مضيء', portraitStyleDoubleexposure: '🌆 تعريض مزدوج فني', portraitGrpNew: '🆕 ستايلات جديدة',
     designAiPlaceFromPhoto: '📷 من صورتي', designAiPlaceRestaurant: '🍽️ مطعم', designAiPlaceCafe: '☕ كافيه', designAiPlaceBedroom: '🛏️ غرفة نوم', designAiPlaceMajlis: '🪑 مجلس', designAiPlaceLiving: '🛋️ صالة', designAiPlaceKitchen: '🍳 مطبخ', designAiPlaceOffice: '💼 مكتب', designAiPlaceShop: '🛍️ محل', designAiPlaceBath: '🛁 حمام', designAiPlaceKids: '🧸 غرفة أطفال', designAiPlaceEntrance: '🚪 مدخل', designAiPlaceGarden: '🌳 حديقة', designAiStyleNajdi: '🏜️ نجدي', designAiStyleIslamic: '✳️ إسلامي معاصر', designAiStyleAndalusi: '🏛️ أندلسي', fashionAiOccasionGraduation: '🎓 تخرج', fashionAiOccasionReligious: '🕌 مناسبة دينية', fashionAiSeasonAutumn: '🍂 خريفي', fashionAiSeasonSpring: '🌸 ربيعي',
@@ -3423,7 +3425,7 @@ const I18N = {
     fxCatLbl: 'Category', fxGenWomen: 'Women', fxGenMen: 'Men', fxGenKids: 'Kids', fxColorsLbl: 'Preferred colours', fxColBlack: 'Black', fxColWhite: 'White', fxColNavy: 'Navy', fxColRed: 'Red', fxColGold: 'Gold',
     fxColGreen: 'Green', fxColBeige: 'Beige', fxColMulti: 'Multicolour', fxAccLbl: 'Accessories', fxAccGlasses: 'Glasses', fxAccWatch: 'Watch', fxAccHandbag: 'Handbag', fxAccShoes: 'Shoes', fxAccScarf: 'Scarf', fxAccMakeup: 'Makeup',
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
-    sidePanelTitle: 'Side menu', lightModeTitle: 'Light mode', provSearchPh: 'Search for a model...', jumpLatestTitle: 'Latest message', editMsgNotice: 'Editing message', modesTitle: 'Modes',
+    sidePanelTitle: 'Side menu', lightModeTitle: 'Light mode', darkModeTitle: 'Dark mode', provSearchPh: 'Search for a model...', jumpLatestTitle: 'Latest message', editMsgNotice: 'Editing message', modesTitle: 'Modes',
     attachFileTitle: 'Attach a file', chipExam: 'Solve an exam', chipBook: 'Summarize a book', chipArticle: 'Write a professional article', chipIdeas: 'Project ideas', tryItTitle: 'Try it for me',
     closeTitle: 'Close', docAssistTitle: '📄 Document assistant', govServicesTitle: '🧾 Government services', cvGenTitle: '💼 CV generator',
     dsNotesLabel: '✍️ Write your details in your own words (optional)', dsNotesPh: 'e.g. Italian restaurant, 40 seats, high ceiling, industrial look',
@@ -3433,10 +3435,10 @@ const I18N = {
     cnLandArea: 'Land area (m²) — optional', cnLandAreaPh: 'e.g. 500', cnEmirateOpt: 'Emirate — optional', cnDetailsAnnexes: '🏠 Details and annexes', cnExElevator: 'Indoor elevator',
     cnExStore: 'Outdoor storeroom', cnExWaterTank: 'Water tank', cnExSolar: 'Solar panels', cnExPlayground: 'Outdoor playground', cnExCarport: 'Extra car canopy',
     cnBudgetOutputs: '💰 Budget and outputs', cnDownloadBoq: '📊 Download bill of quantities', cnPdfReport: '📄 PDF report', keyHowToTitle: '📝 How to get a key for each provider:',
-    showAllPlansCur: 'Show all plans and prices in your currency', currencyLabel: 'Currency', plFreeMsgs: '20 messages a day', plFreeVoice: 'One minute of voice chat', plFreeImgs: '3 AI images',
-    plFreeNoVideo: 'No video', plStMsgs: '300 messages a month', plStVoice: '30 minutes of voice chat', plStImgs: '15 images', plStVideos: '5 videos', plProMsgs: 'Unlimited messages',
-    plProVoice: '80 minutes of voice chat', plProMedia: '40 images · 13 videos · 2 cinematic', plProAgent: 'The smart agent', plProPriority: 'Priority speed · gold badge',
-    plMaxAllPro: 'Everything in Pro', plMaxVoice: '500 minutes of voice chat', plMaxMedia: '250 images · 83 videos · 12 cinematic', plMaxSupport: 'Dedicated support',
+    showAllPlansCur: 'Show all plans and prices in your currency', currencyLabel: 'Currency', plFreeMsgs: '10 messages a day', plFreeVoice: 'One minute of voice chat', plFreeImgs: '3 AI images',
+    plFreeNoVideo: 'No video', plStMsgs: '50 pro messages a day', plStVoice: '33 minutes of voice chat', plStImgs: '25 images', plStVideos: '8 videos', plProMsgs: '150 pro messages a day',
+    plProVoice: '80 minutes of voice chat', plProMedia: '60 images · 20 videos · 3 cinematic', plProAgent: 'The smart agent', plProPriority: 'Priority speed · gold badge',
+    plMaxAllPro: 'Everything in Pro · 400 pro messages a day', plMaxVoice: '460 minutes of voice chat', plMaxMedia: '350 images · 116 videos · 17 cinematic', plMaxSupport: 'Dedicated support',
     /* v599: ترجمة خيارات القوائم المنسدلة (٨٧ عنصرًا) */
     portraitStylePassport: '🫎 Passport/ID photo', portraitStyleRestore: '🔧 Restore old photo', portraitStyleColorize: '🎨 Colorize B&W', portraitStyleUpscale: '🔍 Upscale', portraitStyleObjectremove: '🧹 Remove person or object', portraitStyleOutfit: '👕 Change outfit', portraitStyleProductshot: '📦 Pro product shot', portraitStyleHajj: '🕋 Hajj & Umrah greeting', portraitStyleBirthday: '🎂 Birthday frame', portraitStyleNewborn: '👶 Newborn greeting', portraitStyleFigurine: '🧸 Boxed action figure', portraitStyleGhibli: '🍃 Ghibli style', portraitStyleLego: '🧱 LEGO character', portraitStyleStickerpack: '💬 WhatsApp stickers (6 emotions)', portraitStyleChibi: '🐣 Cute Chibi', portraitStyleStatue: '🗿 Marble statue', portraitStylePolaroid: '📸 Vintage Polaroid', portraitStyleCelebtoon: '🦸 Favorite cartoon character', portraitStyleProfession: '👩‍⚕️ Profession (doctor, pilot, police...)', portraitStyleSuperhero: '🦸‍♂️ Superhero full costume', portraitStyleAstronaut: '🚀 Astronaut', portraitOutfitKandura: '👔 Emirati Kandura + Ghutra', portraitOutfitAbaya: '🧕 Abaya + Shayla', portraitOutfitThobe: '🧣 Gulf Thobe + Shemagh', portraitOutfitSuit: '🧵 Formal suit', portraitOutfitDress: '👗 Evening dress', portraitOutfitCasual: '🧥 Smart casual', portraitOutfitSport: '🎽️ Sportswear', portraitOutfitWinter: '🧤 Winter coat', portraitProfDoctor: '👩‍⚕️ Doctor', portraitProfPilot: '🧑‍✈️ Pilot', portraitProfPolice: '👮 Police officer', portraitProfChef: '🧑‍🍳 Chef', portraitProfEngineer: '👷 Site engineer', portraitProfTeacher: '🧑‍🏫 Teacher', portraitProfFirefighter: '🧑‍🚒 Firefighter', portraitProfScientist: '🧑‍🔬 Lab scientist', portraitGrpTools: '🛠️ Practical tools', portraitGrpOccasions: '🎉 Occasions', portraitGrpTrending: '🔥 Trending', portraitGrpDressup: '🎭 Dress up', portraitStyleClaymation: '🏺 Claymation', portraitStyleLowpoly: '🔷 Low-poly 3D', portraitStyleGraffiti: '🎨 Street graffiti', portraitStyleMosaic: '🧩 Mosaic', portraitStyleStainedglass: '🪟 Stained glass', portraitStylePapercraft: '📄 Layered paper art', portraitStyleCrochet: '🧶 Crochet doll', portraitStyleInflatable: '🎈 Glossy 3D balloon', portraitStyleUkiyoe: '🌊 Japanese Ukiyo-e', portraitStyleSandart: '🏜️ Gulf sand art', portraitStyleNeonsign: '💡 Neon sign', portraitStyleDoubleexposure: '🌆 Double exposure', portraitGrpNew: '🆕 New styles',
     designAiPlaceFromPhoto: '📷 From my photo', designAiPlaceRestaurant: '🍽️ Restaurant', designAiPlaceCafe: '☕ Cafe', designAiPlaceBedroom: '🛏️ Bedroom', designAiPlaceMajlis: '🪑 Majlis', designAiPlaceLiving: '🛋️ Living room', designAiPlaceKitchen: '🍳 Kitchen', designAiPlaceOffice: '💼 Office', designAiPlaceShop: '🛍️ Shop', designAiPlaceBath: '🛁 Bathroom', designAiPlaceKids: '🧸 Kids room', designAiPlaceEntrance: '🚪 Entrance', designAiPlaceGarden: '🌳 Garden', designAiStyleNajdi: '🏜️ Najdi', designAiStyleIslamic: '✳️ Contemporary Islamic', designAiStyleAndalusi: '🏛️ Andalusian', fashionAiOccasionGraduation: '🎓 Graduation', fashionAiOccasionReligious: '🕌 Religious occasion', fashionAiSeasonAutumn: '🍂 Autumn', fashionAiSeasonSpring: '🌸 Spring',
@@ -4420,7 +4422,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=671'; /* v602: استكمال الـ44 مفتاحًا الناقصة */
+    sc.src = 'i18n/' + lg + '.js?v=672'; /* v-mode-i18n: مفتاح darkModeTitle في الـ14 لغة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -5747,6 +5749,49 @@ function omranRenderOptions(host, blocks){
     host.appendChild(wrap);
   });
 }
+/* v-long-reply: الردّ الطويل يُقصّ في المحادثة ويُقرأ كاملًا في لوحة المعاينة.
+   لا يلمس cur.code ولا المعاينة المحفوظة — يعرض النصّ مهرَّبًا فقط، كما تفعل
+   رقاقة الملفّ النصّي تمامًا. أزرار الرسالة كلها تبقى في أماكنها بلا تغيير. */
+var OMRAN_LONG_REPLY_CHARS = 1500;
+/* v-long-reply-fix: الأنماط المباشرة (style.maxHeight) لم تقصّ شيئًا — تنسيق
+   .msg-text يحمل قواعد أقوى. قاعدة صنف بـ!important تحسم الأمر، ومعها
+   content-visibility:visible كي لا يتعارض قصّ v-tap-fast مع القناع. */
+function omranLongClipCss(){
+  if(document.getElementById('omranLongClipCss')) return;
+  var st = document.createElement('style');
+  st.id = 'omranLongClipCss';
+  st.textContent = '.msg-text.omranLongClip{max-height:260px !important;overflow:hidden !important;'
+    + 'content-visibility:visible !important;'
+    + '-webkit-mask-image:linear-gradient(#000 66%,transparent) !important;'
+    + 'mask-image:linear-gradient(#000 66%,transparent) !important;}';
+  document.head.appendChild(st);
+}
+function omranOpenReplyInPanel(text){
+  try{
+    var esc = String(text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    previewFrame.style.display = 'block';
+    $('#pyConsole').style.display = 'none';
+    emptyState.style.display = 'none';
+    previewFrame._imageView = true;   /* يمنع renderCodeAndPreview من استبداله بالكود */
+    previewFrame._lastSrc = null;
+    var rtl = /[\u0600-\u06FF]/.test(String(text || ''));
+    previewFrame.srcdoc = '<html><body style="margin:0;background:#111;color:#eee;'
+      + 'font-family:Tajawal,Tahoma,Arial,sans-serif;white-space:pre-wrap;word-break:break-word;'
+      + 'line-height:1.9;font-size:15px;padding:20px;direction:' + (rtl ? 'rtl' : 'ltr') + ';">'
+      + esc + '</body></html>';
+    /* v-panel-head: عنوان اللوحة ونصّ النسخ يتبعان الردّ المعروض */
+    if(typeof window.omranPanelTitle === 'function'){
+      window.omranPanelTitle((typeof lang !== 'undefined' && (lang === 'ar' || lang === 'ur')) ? 'الرد الكامل' : 'Full reply', String(text || ''));
+    }
+    if(typeof switchWorkTab === 'function') switchWorkTab('preview');
+    if(typeof window.waAutoExpand === 'function') window.waAutoExpand();
+    if(window.innerWidth <= 860 && localStorage.getItem('previewEnabled') !== 'off'){
+      if(typeof closeDrawers === 'function') closeDrawers();
+      workareaEl.classList.add('open');
+      backdropEl.classList.add('show');
+    }
+  }catch(e){ __swallow(e, 'ui:long-reply-panel'); }
+}
 function renderMessages(keepScroll){
   // v-scroll-respect (لقطة المالك: «المحادثة ترتفع كل مرة أنزل»): أيّ إعادة رسم
   // بلا keepScroll كانت تقفز لأسفل القائمة (scrollHeight)، فإن كان المستخدم يقرأ
@@ -5772,7 +5817,7 @@ function renderMessages(keepScroll){
         if(__m.attachments) __len += __m.attachments.length * 3;
       }
       const __exp = Array.isArray(__c0.expandedAskAllBatches) ? __c0.expandedAskAllBatches.join(',') : '';
-      __sig = __c0.id + '|' + __c0.messages.length + '|' + __len + '|' + (__c0.__showAllMsgs ? 1 : 0) + '|' + __exp;
+      __sig = __c0.id + '|' + __c0.messages.length + '|' + __len + '|' + (__c0.__showAllMsgs ? 1 : 0) + '|' + __exp + '|' + (__c0.__expandedLong || []).join(',');  /* v-long-reply */
     }
     __sig += '|' + (localStorage.getItem('aiapp_lang') || 'ar');
     if(window.__renderMsgSig === __sig && messagesEl.childElementCount > 0) return;
@@ -5834,6 +5879,41 @@ function renderMessages(keepScroll){
       }catch(e){ /* الاسم المحفوظ احتياط */ }
       label.textContent = __plbl;
       if(isAskAllReply) div.appendChild(label); // v464: اسم المزود يظهر في «اسأل الكل» فقط (أمر عمران: «أخفِ»)
+    }
+    /* v-tiers (قرار المالك ١٢ سبتمبر): شارة صغيرة فوق الردّ المجاني، وزرّ اشتراك/تسجيل
+       عند نفاد الحصة. بلا اسم أي مزوّد. المشترك لا يرى شيئًا. */
+    if(m.role !== 'user' && (m.tier === 'free' || m.tier === 'free-limit' || m.tier === 'guest' || m.tier === 'guest-limit')){
+      try{
+        const __isArT = (lang === 'ar' || lang === 'ur');
+        const __isGuestT = (m.tier === 'guest' || m.tier === 'guest-limit');
+        const tb = document.createElement('div');
+        tb.className = 'tier-badge';
+        tb.style.cssText = 'display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:11px; color:var(--muted); margin-bottom:4px;';
+        const tl = document.createElement('span');
+        tl.textContent = (m.tier === 'guest-limit') ? (__isArT ? 'انتهت رسائل التجربة' : 'Trial messages used up')
+          : (m.tier === 'free-limit') ? (__isArT ? 'انتهت الرسائل المجانية لليوم' : 'Free messages used up for today')
+          : (__isArT ? 'ردّ مجاني' : 'Free reply');
+        tb.appendChild(tl);
+        const ta = document.createElement('button');
+        ta.type = 'button';
+        ta.style.cssText = 'padding:2px 10px; border-radius:12px; border:1px solid var(--border,rgba(255,255,255,.16)); background:transparent; color:var(--accent2,#d4af37); font:inherit; font-size:11px; cursor:pointer;';
+        if(__isGuestT){
+          ta.textContent = __isArT ? 'سجّل مجانًا' : 'Sign up free';
+          ta.onclick = function(e){
+            e.stopPropagation();
+            try{
+              const __tog = document.getElementById('btnAuthToggle');
+              const __ov = document.getElementById('authOverlay');
+              if(__tog) __tog.click(); else if(__ov) __ov.style.display = 'flex';
+            }catch(_e){ __swallow(_e, 'ui:tier-auth'); }
+          };
+        } else {
+          ta.textContent = __isArT ? 'اشترك للنسخة الاحترافية' : 'Upgrade to Pro';
+          ta.onclick = function(e){ e.stopPropagation(); try{ if(typeof openCheckout === 'function') openCheckout('pro'); }catch(_e){ __swallow(_e, 'ui:tier-checkout'); } };
+        }
+        tb.appendChild(ta);
+        div.appendChild(tb);
+      }catch(e){ __swallow(e, 'ui:tier-badge'); }
     }
     const textDiv = document.createElement('div');
     textDiv.className = 'msg-text';
@@ -5921,6 +6001,41 @@ function renderMessages(keepScroll){
       div.appendChild(imgStrip);
     }
     div.appendChild(textDiv);
+    /* v-long-reply: ردّ نصّيّ طويل بلا كود → يُقصّ ويُفتح كاملًا في اللوحة.
+       ردود البناء (m.code) تبقى كما هي — لها زرّ «استخدم هذا الإصدار». */
+    try{
+      if(m.role !== 'user' && !m._loading && !m.code && typeof __mc === 'string'
+         && __mc.length > OMRAN_LONG_REPLY_CHARS){
+        cur.__expandedLong = cur.__expandedLong || [];
+        var __lk = 'L' + mIdx;
+        var __openNow = cur.__expandedLong.indexOf(__lk) !== -1;
+        if(!__openNow){
+          omranLongClipCss();
+          textDiv.classList.add('omranLongClip');
+        }
+        var __lrow = document.createElement('div');
+        __lrow.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;';
+        var __mkL = function(label, fn){
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.textContent = label;
+          b.style.cssText = 'padding:5px 13px;border-radius:14px;border:1px solid var(--border,rgba(255,255,255,.16));background:transparent;color:var(--accent2,#d4af37);font:inherit;font-size:12.5px;cursor:pointer;';
+          b.onclick = function(e){ e.stopPropagation(); fn(); };
+          __lrow.appendChild(b);
+          return b;
+        };
+        var __isArL = (lang === 'ar' || lang === 'ur');
+        __mkL(__isArL ? '📄 اقرأ كامل الرد' : '📄 Read full reply', function(){
+          omranOpenReplyInPanel(__mc);
+        });
+        __mkL(__openNow ? (__isArL ? 'اطوِ' : 'Collapse') : (__isArL ? 'اعرضه هنا' : 'Expand here'), function(){
+          var __p = cur.__expandedLong.indexOf(__lk);
+          if(__p === -1) cur.__expandedLong.push(__lk); else cur.__expandedLong.splice(__p, 1);
+          renderMessages(true);
+        });
+        div.appendChild(__lrow);
+      }
+    }catch(e){ __swallow(e, 'ui:long-reply'); }
     // AppGallery: وسم صريح للمحتوى المولّد بالذكاء الاصطناعي على كل ردّ مساعد.
     if(m.role !== 'user' && __mc){
       const aiTag = document.createElement('div');
@@ -6089,11 +6204,26 @@ function renderMessages(keepScroll){
         } else {
           const chip = document.createElement('div');
           chip.className = 'file-chip';
-          chip.textContent = '📄 ' + a.name;
+          /* v-gold-badge: نفس بطاقة صندوق الكتابة داخل الرسالة المرسلة.
+             الدالة معرّفة في app-09-attach.js الذي يُحمّل بعد هذا الملفّ،
+             لذا نفحص وجودها وقت العرض لا وقت التحليل. */
+          const __lim = window.OMRAN_PASTE_ATTACH_CHARS || 1000;
+          const __big = !!(a.text && a.text.length >= __lim);
+          if(__big && typeof window.omranGoldBadgeFill === 'function'){
+            window.omranGoldBadgeFill(chip, a);
+          } else {
+            chip.textContent = '📄 ' + a.name;
+          }
           if(a.text){
             chip.style.cursor = 'pointer';
             chip.title = a.name;
             chip.onclick = () => {
+              /* v-code-viewer: المرفق النصّي يُفتح في تبويب «الكود» بترقيم وتلوين.
+                 المسار القديم (المعاينة الخام) يبقى احتياطًا إن غاب العارض. */
+              if(typeof window.omranOpenTextInCodePanel === 'function'){
+                window.omranOpenTextInCodePanel(a.text, a.name);
+                return;
+              }
               previewFrame.style.display = 'block';
               $('#pyConsole').style.display = 'none';
               emptyState.style.display = 'none';
@@ -7778,9 +7908,335 @@ function openMsgMoreMenu(anchorBtn, text){
   __msgMoreMenuOpen = menu;
 }
 
+/* v-code-viewer: عارض قراءة داخل تبويب «الكود» — ترقيم أسطر وتلوين خفيف.
+   طبقة مستقلّة فوق خانة الكود، لا تلمس codeEl ولا cur.code إطلاقًا، فلا خطر
+   على التحرير أو الحفظ. تُستعمل لفتح المرفقات النصّيّة والأكواد الملصوقة. */
+function omranCodeEscape(s){
+  return String(s || '').replace(/[&<>]/g, function(c){
+    return c === '&' ? '&amp;' : (c === '<' ? '&lt;' : '&gt;');
+  });
+}
+/* v-viewer-perf: التلوين يبني عنصر <i> لكلّ كلمة مفتاحيّة ونصّ ورقم — على
+   لصقة ١٠٠ ك.ب. يعني عشرات آلاف العقد في DOM واحد، فيثقل التمرير والكتابة
+   والتبديل بين التبويبات. فوق الحدّ نعرض نصًّا خامًّا (عقدة واحدة)؛ الترقيم
+   يبقى دائمًا بلا حدّ. */
+var OMRAN_HL_MAX = 60000;
+function omranCodeHighlight(raw){
+  var esc = omranCodeEscape(raw);
+  if(esc.length > OMRAN_HL_MAX) return esc;
+  var RE = /(\/\*[\s\S]*?\*\/|\/\/[^\n]*)|('(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`)|(&lt;\/?[a-zA-Z][\w-]*)|\b(function|return|const|let|var|if|else|for|while|try|catch|finally|new|class|this|typeof|null|undefined|true|false|async|await|import|export|from|of|in|do|switch|case|default|break|continue|throw|delete|instanceof|void)\b|\b(\d+(?:\.\d+)?)\b/g;
+  var C = function(col, txt){ return '<i style="color:' + col + ';font-style:normal">' + txt + '</i>'; };
+  return esc.replace(RE, function(m, cmt, str, tag, kw, num){
+    if(cmt) return C('#6a7d52', cmt);
+    if(str) return C('#c9a26a', str);
+    if(tag) return C('#e06c75', tag);
+    if(kw)  return C('#7aa2f7', kw);
+    if(num) return C('#c98b6b', num);
+    return m;
+  });
+}
+/* v-viewer-bar: أزرار العارض انتقلت إلى شريط #tabs مع بقيّة أزرار اللوحة،
+   بأيقونات SVG بدل الإيموجي. تُبنى في دالّة مستقلّة حتى لا تُتخطّى حين تكون
+   طبقة العارض موجودة سلفًا (الحارس if(!ov) كان يبتلع بناء الشريط كلّه). */
+/* v-viewer-i18n: أزرار الشريط تتبع لغات التطبيق الأربع عشرة. نسأل t() أوّلًا
+   فإن لم يكن المفتاح مسجّلًا في جدول الترجمة رجعنا إلى الجدول المحلّي أدناه،
+   فلا يحتاج هذا الملفّ تعديلًا في ملفّ اللغات كي يعمل. */
+var OMRAN_CODEBAR_I18N = {
+  edit: {
+    ar:'تحرير', en:'Edit', fr:'Modifier', hi:'संपादित करें', ur:'ترمیم',
+    bn:'সম্পাদনা', ne:'सम्पादन', id:'Edit', fil:'I-edit', tr:'Düzenle',
+    zh:'编辑', ru:'Редактировать', es:'Editar', ml:'എഡിറ്റ് ചെയ്യുക'
+  },
+  save: {
+    ar:'حفظ', en:'Save', fr:'Enregistrer', hi:'सहेजें', ur:'محفوظ کریں',
+    bn:'সংরক্ষণ', ne:'सुरक्षित गर्नुहोस्', id:'Simpan', fil:'I-save', tr:'Kaydet',
+    zh:'保存', ru:'Сохранить', es:'Guardar', ml:'സേവ് ചെയ്യുക'
+  },
+  close: {
+    ar:'إغلاق', en:'Close', fr:'Fermer', hi:'बंद करें', ur:'بند کریں',
+    bn:'বন্ধ করুন', ne:'बन्द गर्नुहोस्', id:'Tutup', fil:'Isara', tr:'Kapat',
+    zh:'关闭', ru:'Закрыть', es:'Cerrar', ml:'അടയ്ക്കുക'
+  }
+};
+function omranCodeBarLabel(which){
+  var key = 'codeBar' + which.charAt(0).toUpperCase() + which.slice(1);
+  try{
+    if(typeof t === 'function'){ var v = t(key); if(v && v !== key) return v; }
+  }catch(e){ /* guard-ok */ }
+  var tb = OMRAN_CODEBAR_I18N[which] || {};
+  var L = (typeof lang !== 'undefined' && lang) ? String(lang).slice(0, 3) : 'ar';
+  return tb[L] || tb[L.slice(0, 2)] || tb.en;
+}
+function omranCodeViewerIcon(name){
+  var A = 'xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"'
+    + ' fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"'
+    + ' stroke-linejoin="round" aria-hidden="true"';
+  if(name === 'edit') return '<svg ' + A + '><path d="M12 20h9"></path>'
+    + '<path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>';
+  if(name === 'save') return '<svg ' + A + '>'
+    + '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path>'
+    + '<polyline points="17 21 17 13 7 13 7 21"></polyline>'
+    + '<polyline points="7 3 7 8 15 8"></polyline></svg>';
+  return '<svg ' + A + '><line x1="18" y1="6" x2="6" y2="18"></line>'
+    + '<line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+}
+var omranTabsDotsRestore = null;
+/* زرّ ⋮ يُضاف من شريحة أخرى، فنلتقطه بالشكل لا بالمعرّف: آخر زرّ في #tabs
+   نصّه ثلاث نقاط أو وسمه يدلّ على قائمة. يُنقل إلى طرف الشريط ما دام العارض
+   مفتوحًا، ويعود مكانه عند الإغلاق. */
+/* زرّ ⋮ يُضاف من شريحة أخرى لا نملك معرّفها، وقد يُضاف بعد هذا الملفّ.
+   نبحث عنه بثلاث طرق متدرّجة: الرمز نصًّا، ثمّ أيقونة ثلاث دوائر، ثمّ آخر
+   عنصر قصير النصّ في #tabs ليس من عناصرنا. ثمّ نعيد المحاولة بعد التحميل. */
+var OMRAN_TABS_SKIP = { waPanelTitle:1, waCopyBtn:1, waCollapseBtn:1, omranCodeViewerBar:1 };
+function omranFindTabsMenu(tabs, skip){
+  try{
+    var DOT = /^(?:[\u22EE\u2807\u00B7\u2022\u2026]+|\.{2,})$/;
+    var META = /menu|more|kebab|dots|option|overflow|\u0642\u0627\u0626\u0645\u0629|\u0627\u0644\u0645\u0632\u064A\u062F|\u062E\u064A\u0627\u0631/i;
+    var kids = tabs.children, i, el;
+    var owner = function(node){
+      while(node && node.parentNode !== tabs) node = node.parentNode;
+      if(!node || node === skip || OMRAN_TABS_SKIP[node.id]) return null;
+      return node;
+    };
+    for(i = kids.length - 1; i >= 0; i--){
+      el = kids[i];
+      if(el === skip || OMRAN_TABS_SKIP[el.id]) continue;
+      if(DOT.test((el.textContent || '').trim())) return el;
+      var meta = (el.id || '') + ' ' + (el.getAttribute('class') || '') + ' '
+        + (el.title || '') + ' ' + (el.getAttribute('aria-label') || '');
+      if(META.test(meta)) return el;
+    }
+    var svgs = tabs.querySelectorAll('svg');
+    for(i = svgs.length - 1; i >= 0; i--){
+      if(svgs[i].querySelectorAll('circle').length >= 3){
+        var o = owner(svgs[i]);
+        if(o) return o;
+      }
+    }
+    for(i = kids.length - 1; i >= 0; i--){
+      el = kids[i];
+      if(el === skip || OMRAN_TABS_SKIP[el.id]) continue;
+      if((el.textContent || '').trim().length > 1) continue;
+      if(el.tagName === 'BUTTON' || el.querySelector('button, svg')) return el;
+    }
+  }catch(e){ /* guard-ok */ }
+  return null;
+}
+function omranPlaceTabsMenu(){
+  try{
+    var tabs = document.getElementById('tabs');
+    var bar = document.getElementById('omranCodeViewerBar');
+    if(!tabs || !bar || bar.parentNode !== tabs) return;
+    var dots = omranFindTabsMenu(tabs, bar);
+    if(dots && dots !== tabs.lastElementChild) tabs.appendChild(dots);
+  }catch(e){ /* guard-ok */ }
+}
+function omranCodeViewerEsc(ev){ if(ev.key === 'Escape') omranCloseCodeViewer(); }
+/* v-viewer-title: «كود ملصوق · NN KB» كان يزاحم الشريط في #tabs. نخفي عنصر
+   العنوان وزرّ نسخه ما دام العارض مفتوحًا — لا نكتفي بترك استدعاء
+   omranPanelTitle، لأنّ المستدعي قد يضبط العنوان بنفسه بعد الفتح. */
+function omranPanelTitleSuppress(hide){
+  try{
+    var el = document.getElementById('waPanelTitle');
+    var cb = document.getElementById('waCopyBtn');
+    if(el) el.style.visibility = hide ? 'hidden' : '';
+    if(cb) cb.style.display = hide ? 'none' : (window.__omranPanelText ? 'flex' : 'none');
+  }catch(e){ /* guard-ok */ }
+}
+function omranCloseCodeViewer(){
+  try{ var o = document.getElementById('omranCodeViewer'); if(o) o.remove(); }catch(e){ /* guard-ok */ }
+  try{ document.removeEventListener('keydown', omranCodeViewerEsc); }catch(e){ /* guard-ok */ }
+  omranPanelTitleSuppress(false);
+  try{
+    var b = document.getElementById('omranCodeViewerBar');
+    if(b && b._resetEdit) b._resetEdit();
+  }catch(e){ /* guard-ok */ }
+  try{ if(typeof renderCodeAndPreview === 'function') renderCodeAndPreview(); }catch(e){ /* guard-ok */ }
+}
+/* v-viewer-bar: الشريط دائم في #tabs، لا يظهر مع العارض ويختفي بعده.
+   حين يكون العارض مفتوحًا تعمل الأزرار عليه؛ وحين يكون مغلقًا تعمل على خانة
+   الكود نفسها: تحرير يركّز الخانة، حفظ يثبّت ما فيها، إغلاق يطوي اللوحة. */
+function omranBuildCodeViewerBar(){
+  var bar = document.getElementById('omranCodeViewerBar');
+  if(bar) return bar;
+  var tabs = document.getElementById('tabs');
+  var host = (typeof codeEl !== 'undefined' && codeEl) ? codeEl.parentNode : null;
+  if(!tabs && !host) return null;
+  bar = document.createElement('div');
+  bar.id = 'omranCodeViewerBar';
+  if(tabs){
+    bar.style.cssText = 'display:flex;align-items:center;gap:6px;flex:none;'
+      + 'margin-inline-start:auto;margin-inline-end:4px;';
+    tabs.appendChild(bar);
+  } else {
+    bar.style.cssText = 'position:absolute;top:10px;inset-inline-end:12px;z-index:7;'
+      + 'display:flex;align-items:center;gap:6px;direction:ltr;';
+    host.appendChild(bar);
+  }
+  var IDLE_BD = 'rgba(255,255,255,.16)', IDLE_FG = 'var(--muted,#98a0b3)';
+  var mkBtn = function(icon, tip){
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.innerHTML = omranCodeViewerIcon(icon);
+    b.title = tip;
+    b.setAttribute('aria-label', tip);
+    b.style.cssText = 'background:transparent;border:1px solid ' + IDLE_BD + ';'
+      + 'border-radius:8px;color:' + IDLE_FG + ';cursor:pointer;padding:5px;'
+      + 'display:flex;align-items:center;justify-content:center;line-height:0;'
+      + 'transition:background .15s,color .15s,border-color .15s;';
+    b.onmouseenter = function(){
+      if(b._on) return;
+      b.style.background = 'rgba(255,255,255,.07)';
+      b.style.borderColor = 'rgba(255,255,255,.28)';
+      b.style.color = 'var(--text,#eef0f6)';
+    };
+    b.onmouseleave = function(){
+      if(b._on) return;
+      b.style.background = 'transparent';
+      b.style.borderColor = IDLE_BD;
+      b.style.color = IDLE_FG;
+    };
+    return b;
+  };
+  var edt = mkBtn('edit', omranCodeBarLabel('edit'));
+  var sav = mkBtn('save', omranCodeBarLabel('save'));
+  var cls = mkBtn('close', omranCodeBarLabel('close'));
+  bar.appendChild(edt); bar.appendChild(sav); bar.appendChild(cls);
+  /* لو بُدّلت اللغة بلا إعادة تحميل، هذه تُحدّث التلميحات في مكانها. */
+  bar._retitle = function(){
+    try{
+      var pairs = [[edt,'edit'],[sav,'save'],[cls,'close']];
+      for(var i = 0; i < pairs.length; i++){
+        var lbl = omranCodeBarLabel(pairs[i][1]);
+        pairs[i][0].title = lbl;
+        pairs[i][0].setAttribute('aria-label', lbl);
+      }
+    }catch(e){ /* guard-ok */ }
+  };
+  window.omranCodeBarRetitle = bar._retitle;
+  if(tabs) omranPlaceTabsMenu();
+
+  var setOn = function(b, on){
+    b._on = on;
+    b.style.background = on ? 'rgba(201,162,106,.12)' : 'transparent';
+    b.style.borderColor = on ? 'var(--accent,#c9a26a)' : IDLE_BD;
+    b.style.color = on ? 'var(--accent,#c9a26a)' : IDLE_FG;
+  };
+  bar._resetEdit = function(){ setOn(edt, false); };
+
+  cls.onclick = function(){
+    if(document.getElementById('omranCodeViewer')){ omranCloseCodeViewer(); return; }
+    try{ var cb = document.getElementById('waCollapseBtn'); if(cb) cb.click(); }catch(e){ /* guard-ok */ }
+  };
+
+  edt.onclick = function(){
+    var p = document.getElementById('omranCodePre');
+    if(!p){
+      /* لا عارض: التحرير يجري في خانة الكود نفسها. */
+      try{ if(typeof switchWorkTab === 'function') switchWorkTab('code'); }catch(e){ /* guard-ok */ }
+      try{ codeEl.readOnly = false; codeEl.focus(); }catch(e){ /* guard-ok */ }
+      setOn(edt, true);
+      return;
+    }
+    /* التلوين يضيف عناصر <i>؛ عند التحرير نرجع للنصّ الخام حتى لا تختلط
+       الوسوم بالكتابة، ونعيد الترقيم بعد أن تهدأ الكتابة. */
+    p.textContent = p.innerText;
+    p.contentEditable = 'true';
+    p.spellcheck = false;
+    p.style.background = 'rgba(255,255,255,.03)';
+    p.focus();
+    setOn(edt, true);
+    var gutTimer = null;
+    p.oninput = function(){
+      if(gutTimer) clearTimeout(gutTimer);
+      gutTimer = setTimeout(function(){
+        gutTimer = null;
+        try{
+          var g = document.getElementById('omranCodeGutter');
+          var n = p.innerText.split('\n').length, out = [];
+          for(var i = 1; i <= n; i++) out.push(i);
+          g.textContent = out.join('\n');
+        }catch(e){ /* guard-ok */ }
+      }, 180);
+    };
+  };
+
+  sav.onclick = function(){
+    try{
+      var p = document.getElementById('omranCodePre');
+      var txt = p ? p.innerText : codeEl.value;
+      codeEl.value = txt;
+      var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+      if(cur){ cur.code = txt; }
+      if(typeof save === 'function') save();
+      setOn(sav, true);
+      setTimeout(function(){ setOn(sav, false); }, 900);
+      if(p){ omranCloseCodeViewer(); return; }
+      setOn(edt, false);
+      if(typeof renderCodeAndPreview === 'function') renderCodeAndPreview();
+    }catch(e){ __swallow(e, 'ui:code-viewer-save'); }
+  };
+
+  document.addEventListener('keydown', omranCodeViewerEsc);
+  return bar;
+}
+/* يفتح نصًّا في تبويب «الكود» كعرض قراءة مرقّم.
+   الوسيط title لم يعد يُكتب في عنوان اللوحة — الشريط يغني عنه. */
+window.omranOpenTextInCodePanel = function(text, title){
+  try{
+    if(typeof codeEl === 'undefined' || !codeEl || !codeEl.parentNode) return;
+    var host = codeEl.parentNode;
+    try{ if(getComputedStyle(host).position === 'static') host.style.position = 'relative'; }catch(e){ /* guard-ok */ }
+    var ov = document.getElementById('omranCodeViewer');
+    if(!ov){
+      ov = document.createElement('div');
+      ov.id = 'omranCodeViewer';
+      ov.style.cssText = 'position:absolute;inset:0;z-index:5;display:flex;align-items:flex-start;'
+        + 'background:var(--panel2,#0d0f14);overflow:auto;direction:ltr;';
+      var gut = document.createElement('div');
+      gut.id = 'omranCodeGutter';
+      gut.style.cssText = 'flex:none;padding:12px 8px;text-align:right;color:#5a6070;'
+        + 'font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;'
+        + 'background:rgba(0,0,0,.25);user-select:none;border-inline-end:1px solid rgba(255,255,255,.07);white-space:pre;';
+      var pre = document.createElement('pre');
+      pre.id = 'omranCodePre';
+      pre.style.cssText = 'flex:1;margin:0;padding:12px 14px;color:#d8dee9;'
+        + 'font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre;'
+        + 'outline:none;';
+      ov.appendChild(gut); ov.appendChild(pre);
+      host.appendChild(ov);
+    }
+    /* خارج الحارس عمدًا: الطبقة قد تكون قائمة والشريط غائبًا. */
+    omranBuildCodeViewerBar();
+    var body = String(text || '');
+    var lines = body.split('\n').length;
+    var nums = [];
+    for(var i = 1; i <= lines; i++) nums.push(i);
+    ov.querySelector('#omranCodeGutter').textContent = nums.join('\n');
+    ov.querySelector('#omranCodePre').innerHTML = omranCodeHighlight(body);
+    ov.querySelector('#omranCodePre').contentEditable = 'false';
+    try{ ov.dataset.pid = (typeof state !== 'undefined' && state.currentId) || ''; }catch(e){ /* guard-ok */ }
+    ov.scrollTop = 0;
+    if(typeof switchWorkTab === 'function') switchWorkTab('code');
+    if(typeof window.waAutoExpand === 'function') window.waAutoExpand();
+    if(window.innerWidth <= 860 && localStorage.getItem('previewEnabled') !== 'off'){
+      try{ if(typeof closeDrawers === 'function') closeDrawers(); }catch(e){ /* guard-ok */ }
+      try{ workareaEl.classList.add('open'); backdropEl.classList.add('show'); }catch(e){ /* guard-ok */ }
+    }
+  }catch(e){ __swallow(e, 'ui:code-viewer'); }
+};
 function renderCodeAndPreview(){
   const cur = getCurrent();
   const pyConsole = $('#pyConsole');
+  /* v-code-viewer: عارض القراءة يخصّ مشروعًا بعينه — يُزال عند تبديل المشروع */
+  try{
+    const __ov = document.getElementById('omranCodeViewer');
+    if(__ov && __ov.dataset.pid !== String((cur && cur.id) || '')){
+      __ov.remove();
+      const __bar = document.getElementById('omranCodeViewerBar');
+      if(__bar && __bar._resetEdit) __bar._resetEdit();
+    }
+  }catch(e){ /* guard-ok */ }
   if(!cur || !cur.code){
     if(previewFrame._imageView){
       pyConsole.style.display = 'none';
@@ -7811,6 +8267,13 @@ function renderCodeAndPreview(){
      كان يكلّف تخطيطًا كاملًا — نسنده فقط عند تغيّره فعلًا. */
   if(codeEl.value !== cur.code) codeEl.value = cur.code;
   emptyState.style.display = 'none';
+  /* v-panel-head: العنوان يتبع المعروض — اسم المشروع ونوع الكود */
+  try{
+    if(!previewFrame._imageView && typeof window.omranPanelTitle === 'function'){
+      var __ct = (cur.codeType === 'python') ? 'PY' : 'HTML';
+      window.omranPanelTitle((cur.title || '') + ' · ' + __ct, cur.code);
+    }
+  }catch(e){ __swallow(e, 'ui:panel-head#code'); }
   if(cur.codeType === 'python'){
     previewFrame.style.display = 'none';
     pyConsole.style.display = 'flex';
@@ -8347,6 +8810,55 @@ document.querySelectorAll('.tab').forEach(tab => {
   btn.id = 'waCollapseBtn'; btn.type = 'button'; btn.setAttribute('aria-label','طي اللوحة');
   btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><line x1="15" y1="4" x2="15" y2="20"></line></svg>';
   tabs.insertBefore(btn, tabs.firstElementChild);
+  /* v-panel-head: عنوان يبيّن المعروض حاليًا + زرّ نسخ لمحتوى اللوحة.
+     يُضافان داخل شريط #tabs نفسه بلا لمس أيّ زرّ قائم؛ العنوان يُحدَّث من
+     omranPanelTitle، والنسخ يأخذ الكود أو النصّ المعروض حسب الحالة. */
+  try{
+    var __ptl = document.createElement('span');
+    __ptl.id = 'waPanelTitle';
+    __ptl.style.cssText = 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'
+      + 'font-size:12.5px;font-weight:600;color:var(--muted,#98a0b3);padding:0 8px;';
+    tabs.appendChild(__ptl);
+    var __pcp = document.createElement('button');
+    __pcp.id = 'waCopyBtn'; __pcp.type = 'button';
+    __pcp.title = (typeof t === 'function' && t('copyMsgTitle') !== 'copyMsgTitle') ? t('copyMsgTitle') : 'نسخ';
+    __pcp.setAttribute('aria-label', __pcp.title);
+    var __cpIco = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+    var __okIco = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+    __pcp.innerHTML = __cpIco;
+    __pcp.style.cssText = 'background:none;border:0;color:var(--muted,#98a0b3);cursor:pointer;padding:4px 8px;display:flex;align-items:center;';
+    __pcp.onclick = function(e){
+      e.stopPropagation();
+      var txt = window.__omranPanelText || (codeEl && codeEl.value) || '';
+      if(!txt) return;
+      var flash = function(){ __pcp.innerHTML = __okIco; setTimeout(function(){ __pcp.innerHTML = __cpIco; }, 1500); };
+      try{
+        navigator.clipboard.writeText(txt).then(flash).catch(function(){
+          var ta = document.createElement('textarea');
+          ta.value = txt; ta.style.cssText = 'position:fixed;opacity:0';
+          document.body.appendChild(ta); ta.select();
+          try{ document.execCommand('copy'); flash(); }catch(e2){ /* guard-ok */ }
+          ta.remove();
+        });
+      }catch(e3){ __swallow(e3, 'ui:panel-copy'); }
+    };
+    tabs.appendChild(__pcp);
+  }catch(e){ __swallow(e, 'ui:panel-head'); }
+  /* v-panel-notitle (أمر عمران): عنوان اللوحة «كود ملصوق · 98 KB · HTML» كان
+     يأتي من اسم المشروع نفسه عبر renderCodeAndPreview، فلا يكفي حذف استدعاء
+     واحد. الدالّة تبقى بتوقيعها كي لا ينكسر مستدعوها (app-04 وغيره) لكنّها لم
+     تعد تكتب نصًّا. العنصر يبقى موجودًا كفاصل مرن (flex:1) يدفع أزرار الشريط
+     إلى الطرف؛ إزالته كانت ستجرّها نحو التبويبات.
+     الوسيط label صار مهملًا؛ نصّ النسخ وحده هو ما يُحفظ. */
+  window.omranPanelTitle = function(label, textForCopy){
+    try{
+      var el = document.getElementById('waPanelTitle');
+      if(el) el.textContent = '';
+      window.__omranPanelText = (textForCopy === undefined) ? null : textForCopy;
+      var cb = document.getElementById('waCopyBtn');
+      if(cb) cb.style.display = window.__omranPanelText ? 'flex' : 'none';
+    }catch(e){ __swallow(e, 'ui:panel-title'); }
+  };
   const ro = document.createElement('button');
   ro.id = 'waReopen'; ro.type = 'button'; ro.setAttribute('aria-label','فتح اللوحة');
   ro.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>';
@@ -8360,6 +8872,13 @@ document.querySelectorAll('.tab').forEach(tab => {
   btn.onclick = () => setWA(true);
   ro.onclick = () => setWA(false);
   window.waAutoExpand = function(){ if(wa.classList.contains('waCollapsed')) setWA(false); };
+  try{
+    omranBuildCodeViewerBar();
+    setTimeout(omranPlaceTabsMenu, 0);
+    setTimeout(omranPlaceTabsMenu, 500);
+    setTimeout(omranPlaceTabsMenu, 1500);
+    window.addEventListener('load', omranPlaceTabsMenu);
+  }catch(e){ __swallow(e, 'ui:code-viewer-bar'); }
   try{ if(localStorage.getItem('waCollapsed') === '1' && !document.documentElement.classList.contains('mobile-ui')) setWA(true); }catch(e){ __swallow(e, "ui:app-05-ui#18"); }
   // كود جديد يوصل → اللوحة تفتح تلقائيًا
   try{
@@ -9188,7 +9707,7 @@ function closeDialogSafe(dlg){
   dlg.removeAttribute('open');
   dlg.style.display = '';
 }
-const SETTINGS_SECTION_IDS = ['langSection','accountSection','statsSection','agentSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection','adminSection'];
+const SETTINGS_SECTION_IDS = ['langSection','accountSection','statsSection','agentSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection','vaultSection','adminSection'];
 function renderStats(){
   const projects = state.projects || [];
   let messagesCount = 0;
@@ -9837,6 +10356,87 @@ async function postWithConfirm(url, payload){
   fix();
   try{ if(document.fonts && document.fonts.ready) document.fonts.ready.then(fix, () => {}); }catch(e){ __swallow(e, 'ui:maha-center#fonts'); }
 })();
+
+/* v-topbar-merge (أمر عمران ١٢ سبتمبر): شريط الأسهم ينتقل إلى وسط الهيدر.
+   النقل هنا لا في index.html لأنّ #stockTicker شقيق للهيدر لا ابنه، ونقله
+   في المصدر كان يعني تحريك كتلة كاملة داخل ملفّ ٨٧ ك.ب — نقلةٌ واحدة في
+   وقت التشغيل أأمن وأقلّ أثرًا.
+   لا اسم محادثة ولا خطّ في الوسط: المحاولة السابقة وضعت عنصر عنوان هناك
+   فظهر «كود ملصوق · 169 KB» وخلفه خطّ طويل — حُذف العنصر كلّه لا نصّه،
+   فلا يبقى أثر مرسوم حين تُطوى الأسهم.
+   (كان الجوال مستثنًى؛ صار مشمولًا بأمر عمران ١٣ سبتمبر — v-topbar-merge-mobile.) */
+(function(){
+  function build(){
+    /* v-topbar-merge-mobile (أمر عمران ١٣ سبتمبر): النقل يشمل الجوال أيضًا —
+       كان مستثنًى؛ الشكل على الجوال في كتلة v-topbar-merge-mobile بـindex.html. */
+    var hdr = document.querySelector('header');
+    var acts = document.getElementById('headerActions');
+    if(!hdr || !acts) return false;
+    if(document.getElementById('omHeadCenter')) return true;
+    var tk = document.getElementById('stockTicker');
+    var tg = document.getElementById('stockTickerToggle');
+    var wrap = document.createElement('div');
+    wrap.id = 'omHeadCenter';
+    hdr.insertBefore(wrap, acts);
+    /* الزرّ يخرج من داخل الشريط ليبقى مضغوطًا حتى لو أُخفي الشريط،
+       ومعالجه الأصليّ في شريحة الأسهم يبقى مربوطًا عليه — نقل لا إعادة بناء. */
+    if(tg) wrap.appendChild(tg);
+    if(tk) wrap.appendChild(tk);
+    return true;
+  }
+  if(!build()){
+    var n = 0;
+    var id = setInterval(function(){ if(build() || ++n > 40) clearInterval(id); }, 250);
+  }
+})();
+
+/* v-mode-nav (أمر عمران ١٣ سبتمبر): زرّ الوضع الفاتح/الداكن ينتقل من الهيدر
+   إلى شريط الجانبي السفلي بجوار «الإعدادات» — الهيدر صار لعمود المحادثة وحده
+   وشريط الأسهم يأخذ سطره كلّه حتى الطرف. الزرّ الأصليّ #btnMode يبقى في
+   مكانه مخفيًّا بـCSS (v-frame-c) لأنّ مزامنة الأيقونة والعنوان (v434) تكتب
+   عليه؛ زرّ التنقّل مرآة له: أيقونته وعنوانه يُنسخان منه عند كل تغيير
+   (MutationObserver) فيتبعان الوضع واللغة بلا منطق ثانٍ.
+   ليس .omNavBtn عمدًا: سلك التبويبات في ui-wiring.js يلوّن كل .omNavBtn
+   «نشطًا» عند النقر، وهذا زرّ فعل لا تبويب. على الجوال يُلحق بالشريط
+   السفلي #omranBottomNav تبويبًا خامسًا. */
+(function(){
+  function isMobile(){
+    try{ return document.documentElement.classList.contains('mobile-ui'); }
+    catch(e){ return false; }
+  }
+  function build(){
+    var src = document.getElementById('btnMode');
+    /* الجوال: الشريط السفلي (أمر عمران «طبّقها على الهواتف»)؛ الكمبيوتر: أسفل الجانبي. */
+    var foot = document.getElementById(isMobile() ? 'omranBottomNav' : 'omranSidebarFoot');
+    if(!src || !foot) return false;
+    if(document.getElementById('omNavMode')) return true;
+    var b = document.createElement('button');
+    b.type = 'button'; b.id = 'omNavMode'; b.className = 'omModeNav';
+    var ic = document.createElement('span'); ic.className = 'omModeNavIcon';
+    var lb = document.createElement('span'); lb.className = 'omModeNavLabel';
+    b.appendChild(ic); b.appendChild(lb);
+    function mirror(){
+      ic.innerHTML = src.innerHTML;
+      lb.textContent = src.title || '';
+      b.title = src.title || '';
+    }
+    mirror();
+    try{
+      new MutationObserver(mirror).observe(src, { childList: true, attributes: true, attributeFilter: ['title'] });
+    }catch(e){ __swallow(e, 'ui:mode-nav#observe'); }
+    b.addEventListener('click', function(){
+      try{ if(typeof window.omToggleMode === 'function') window.omToggleMode(); }
+      catch(e){ __swallow(e, 'ui:mode-nav#toggle'); }
+      mirror();
+    });
+    foot.appendChild(b);
+    return true;
+  }
+  if(!build()){
+    var n = 0;
+    var id = setInterval(function(){ if(build() || ++n > 40) clearInterval(id); }, 250);
+  }
+})();
 window.postWithConfirm = postWithConfirm;
 /* يضبط شكل المحادثة كما يشترطه Gemini — يُستدعى قبل كل طلب. */
 function sanitizeGeminiContents(list){
@@ -10322,7 +10922,7 @@ $('#btnSettings').onclick = () => {
   $('#geminiApiKey').value = localStorage.getItem('aiapp_gemini_apikey') || '';
   $('#geminiModel').value = localStorage.getItem('aiapp_gemini_model') || 'gemini-flash-latest';
   $('#groqApiKey').value = localStorage.getItem('aiapp_groq_apikey') || '';
-  $('#groqModel').value = localStorage.getItem('aiapp_groq_model') || 'llama-3.3-70b-versatile';
+  $('#groqModel').value = localStorage.getItem('aiapp_groq_model') || 'openai/gpt-oss-120b'; /* v-free-models: llama-3.3-70b تقاعد عند Groq */
   $('#claudeApiKey').value = localStorage.getItem('aiapp_claude_apikey') || '';
   $('#claudeModel').value = localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-5';
   $('#openrouterApiKey').value = localStorage.getItem('aiapp_openrouter_apikey') || '';
@@ -10557,7 +11157,7 @@ const saveSettingsNow = () => {
   localStorage.setItem('aiapp_gemini_apikey', $('#geminiApiKey').value.trim());
   localStorage.setItem('aiapp_gemini_model', $('#geminiModel').value.trim() || 'gemini-flash-latest');
   localStorage.setItem('aiapp_groq_apikey', $('#groqApiKey').value.trim());
-  localStorage.setItem('aiapp_groq_model', $('#groqModel').value.trim() || 'llama-3.3-70b-versatile');
+  localStorage.setItem('aiapp_groq_model', $('#groqModel').value.trim() || 'openai/gpt-oss-120b');
   localStorage.setItem('aiapp_claude_apikey', $('#claudeApiKey').value.trim());
   localStorage.setItem('aiapp_claude_model', $('#claudeModel').value.trim() || 'claude-sonnet-5');
   localStorage.setItem('aiapp_openrouter_apikey', $('#openrouterApiKey').value.trim());
@@ -11532,10 +12132,25 @@ async function callGemini(messages, onDelta){
 }
 
 async function callGroq(messages, onDelta){
-  const apiKey = localStorage.getItem('aiapp_groq_apikey');
   const hasImages = messages.some(m => m.images && m.images.length);
-  const model = hasImages ? GROQ_VISION_MODEL : (localStorage.getItem('aiapp_groq_model') || 'llama-3.3-70b-versatile');
-  const msgsOut = hasImages ? toOpenAIVisionMessages(messages) : messages;
+  /* v-free-models: الاسم المحفوظ القديم (llama-3.3-70b) تقاعد عند Groq — يُستبدل بالافتراضي الحالي */
+  const __savedGroq = localStorage.getItem('aiapp_groq_model');
+  const textModel = (__savedGroq && __savedGroq !== 'llama-3.3-70b-versatile') ? __savedGroq : 'openai/gpt-oss-120b';
+  if(!hasImages) return await __groqSend(textModel, messages, onDelta);
+  /* v-img-err (لقطة المالك: «The model meta-llama/llama-4-scout-17b-16e-instruct does not
+     exist or you do not have access to it» 404): نموذج الرؤية عند Groq قد يتقاعد بلا
+     إشعار. نجرّبه، وعلى خطأ نموذج نهبط إلى وصف الصورة بنموذج رؤية آخر ثمّ النصّيّ —
+     كما تفعل بقيّة المزوّدات بلا رؤية — بدل إسقاط الدور كلّه. */
+  try{ return await __groqSend(GROQ_VISION_MODEL, toOpenAIVisionMessages(messages), onDelta); }
+  catch(e){
+    const __t = String((e && (e.upstreamText || e.message)) || '');
+    const __modelErr = !!(e && (e.status === 404 || /model_not_found|does not exist|decommissioned|has been deprecated|not supported/i.test(__t)));
+    if(!__modelErr || (e && e.name === 'AbortError')) throw e;
+    return await __groqSend(textModel, await stripImagesWithDescription(messages), onDelta);
+  }
+}
+async function __groqSend(model, msgsOut, onDelta){
+  const apiKey = localStorage.getItem('aiapp_groq_apikey');
   // If the visitor hasn't entered their own Groq key, fall back to the server-side
   // proxy which uses the site owner's key (for quick trials without setup).
   if(!apiKey){
@@ -11944,6 +12559,8 @@ async function callAIWithFallback(messages, onDelta, preferredList){
   const head = (preferredList && preferredList.length) ? preferredList : __grp;
   const order = [...head, ...AUTO_FALLBACK_ORDER.filter(p => !head.includes(p))];
   let lastErr = null;
+  let firstErr = null;     // v-img-err: خطأ المزوّد الأوّل (المطلوب) — هو السبب الحقيقيّ حين يفشل الجميع
+  let firstProv = '';
   let firstRefusal = null; // أول رد رفض (نرجعه فقط إذا رفض الجميع)
   let refusalTries = 0;    // حد أقصى محاولتين إضافيتين بعد الرفض
   let errSwitched = false; // التبديل بسبب عطل/ضغط فقط هو اللي يظهر للمستخدم
@@ -11980,6 +12597,7 @@ async function callAIWithFallback(messages, onDelta, preferredList){
         throw abortErr;
       }
       lastErr = err;
+      if(!firstErr){ firstErr = err; firstProv = providerKey; }
       // A silent switch means the user gets different quality with no
       // explanation and blames the app. Say it plainly.
       // نسمّي من فشل ولماذا. الرسالة العامة كانت تترك المستخدم يرى مزوّدًا
@@ -12001,6 +12619,17 @@ async function callAIWithFallback(messages, onDelta, preferredList){
     }
   }
   if(firstRefusal) return { reply: firstRefusal.reply, providerKey: firstRefusal.providerKey, switched: false, requestedKey: head[0] };
+  /* v-img-err (لقطة المالك: دور صورة فشل على كلّ السلسلة فظهر خطأ Groq الأخير «نموذج
+     لا يوجد» وحده): الخطأ المعروض هو خطأ المزوّد الأوّل المطلوب — السبب الحقيقيّ —
+     ويُلحق به فشل آخر مزوّد باختصار، لا العكس. */
+  if(firstErr && lastErr && firstErr !== lastErr){
+    try{
+      const __who = (typeof functionalLabel === 'function' ? functionalLabel(order[order.length - 1]) : order[order.length - 1]);
+      const __isAr = (typeof lang === 'undefined' || lang === 'ar');
+      firstErr.message = String(firstErr.message || '') + '\n' + (__isAr ? ('(الاحتياط فشل أيضًا — ' + __who + ': ') : ('(fallback failed too — ' + __who + ': ')) + String(lastErr.message || '').replace(/\s+/g, ' ').slice(0, 140) + ')';
+    }catch(e){ __swallow(e, 'fallback:first-err'); }
+    throw firstErr;
+  }
   throw lastErr || new Error(t('providerError') + ' - fallback');
 }
 
@@ -15204,7 +15833,16 @@ function AI_MODE_NAME(){
 function AI_FACTORY_MODE(){ return AI_MODE_NAME() === 'factory'; }
 // ---- Attachments (images + text/code files) ----
 let pendingAttachments = [];
-const MAX_TEXT_ATTACH_CHARS = 100000;
+/* v-attach-limit: رُفع من 100000 — ملفّ بحجم app-09-attach.js نفسه يبلغ
+   ~443 ألف حرف، فكان يصل مقصوصًا عند 22% منه ويقف ترقيم العارض في منتصفه.
+   ⚠️ ملفّ بهذا الحجم ≈ 150 ألف توكن في الطلب الواحد — تكلفة حقيقيّة لكلّ إرسال.
+   ⚠️ MAX_PER_MSG (7000) يسري على رسائل التاريخ: الرسالة التالية سترى المرفق
+      مقصوصًا إلى 7000 حرف، فاسأل كلّ ما تريده في الرسالة الأولى. */
+const MAX_TEXT_ATTACH_CHARS = 450000;
+/* v-paste-attach: نصّ ملصوق أطول من هذا يصير مرفقًا بدل أن يملأ صندوق الكتابة.
+   مكسبان: المحادثة تبقى نظيفة، والنصّ يصل كاملًا (حدّ المرفق 100 ألف حرف)
+   بدل حدّ الرسالة الواحدة في السياق (7000). */
+const OMRAN_PASTE_ATTACH_CHARS = 1000;
 const MAX_ATTACH_FILE_BYTES = 25 * 1024 * 1024; // 25MB hard cap per file
 const ARCHIVE_EXT_RE = /\.(zip|docx|xlsx|pptx|jar)$/i;
 const IMAGE_TYPES = /^image\//;
@@ -15220,6 +15858,104 @@ function isImageAttachment(file){
   return false;
 }
 
+/* v-gold-badge: الشرائح مضمّنة داخل الملفّ — لا مسارات ولا ملفّات صور
+   منفصلة، فلا تتعطّل البطاقة إن لم يُنشَر مجلّد الصور. ~30KB إجمالًا. */
+const OMRAN_BADGE_L = 'data:image/png;base64,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';
+const OMRAN_BADGE_M = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAMAAACMCAYAAAC5zhOyAAABBUlEQVR42mM8srbtPwMUsIjzQRiMbOwMTDDR/79+IjgMDAzEclgEBEUQnLOnziI49+7cQ3AkJQQRnHcvniA4CnKicA7j/5tT4Q5lXFpuieBEmIsivHDjvQDCgBefviE4dnpyCE6inz+mq3/8+s3A6GFrhzBaQkIaYTQzCzupYTDKGeWMckY5g4fD8vfPTwSnJiUah7JPb98gyl4DNdX/2AtV5DKRhZ/1JwPj7x8QTk6gFsP/3/8YPn79xcD4/87C/wx/v0Bk9m1Zx/DpF0QfC5egNAMXAwMDw9//DCwfv/5FmPb5y08GFgaIXSzbDl9jYGBgYPj6k5nKpTILPytSgOioIioJAIXpUhaTWqa/AAAAAElFTkSuQmCC';
+const OMRAN_BADGE_R = 'data:image/png;base64,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';
+/* v-gold-badge: بطاقة المرفق النصّي بإطار ذهبيّ من ثلاث شرائح — الطرفان
+   ثابتان والوسط يتكرّر، فتتمدّد مع أيّ لغة بلا تشويه. الأيقونة مدمجة في
+   الشريحة اليمنى؛ زرّ ✕ يوضع بالكود على الطرف المقابل ويتبع اتّجاه اللغة. */
+/* v-gold-badge-i18n: كلمتا البطاقة بأربع عشرة لغة — نفس أسلوب __OLDT في app-04.
+   أيّ لغة غير مذكورة تسقط للإنجليزيّة تلقائيًّا. */
+const OMRAN_BADGE_T = {
+  lines: { ar:'سطر', en:'lines', fr:'lignes', hi:'पंक्तियाँ', ur:'سطریں', bn:'লাইন',
+           ne:'लाइन', id:'baris', fil:'linya', tr:'satır', zh:'行', ru:'строк',
+           es:'líneas', ml:'വരികൾ' },
+  scan:  { ar:'جارٍ التحليل…', en:'Analyzing…', fr:'Analyse…', hi:'विश्लेषण जारी…',
+           ur:'تجزیہ جاری…', bn:'বিশ্লেষণ চলছে…', ne:'विश्लेषण हुँदै…', id:'Menganalisis…',
+           fil:'Sinusuri…', tr:'Çözümleniyor…', zh:'正在分析…', ru:'Анализ…',
+           es:'Analizando…', ml:'വിശകലനം ചെയ്യുന്നു…' }
+};
+function omranBadgeT(key){
+  let lg = 'ar';
+  try{ lg = (typeof lang !== 'undefined' && lang) ? lang : (localStorage.getItem('aiapp_lang') || 'ar'); }
+  catch(e){ /* guard-ok: تخزين غير متاح → العربيّة */ }
+  const m = OMRAN_BADGE_T[key] || {};
+  return m[lg] || m.en || '';
+}
+function omranGoldBadgeCss(){
+  if(document.getElementById('omranGoldBadgeCss')) return;
+  const st = document.createElement('style');
+  st.id = 'omranGoldBadgeCss';
+  const H   = 78;
+  const SRC = '/assets/badge-frame.png';
+  const FRAME =
+      'border-style:solid;'
+    + 'border-width:15px 62px 15px 42px;'
+    + 'border-image-source:url("' + SRC + '");'
+    + 'border-image-slice:30 124 30 84 fill;'
+    + 'border-image-repeat:stretch;'
+    + 'background-color:#0a0c10;background-image:none;';
+  const XBTN =
+      '.goldBadgeWrap{position:relative;display:inline-block;line-height:0;}'
+    + '.goldBadgeWrap .rm{display:flex !important;position:absolute;top:-7px;inset-inline-end:-7px;'
+    + 'width:22px;height:22px;border-radius:50%;align-items:center;justify-content:center;'
+    + 'background:#14171d;border:1px solid rgba(212,175,55,.45);color:#c9c2b4;'
+    + 'font-size:12px;line-height:1;cursor:pointer;z-index:3;margin:0;padding:0;'
+    + 'opacity:0;transform:scale(.85);transition:opacity .15s,transform .15s,color .15s;}'
+    + '.goldBadgeWrap:hover .rm,.goldBadgeWrap .rm:focus-visible{opacity:1;transform:scale(1);}'
+    + '.goldBadgeWrap .rm:hover{color:#ff6b6b;border-color:rgba(255,107,107,.6);}'
+    + '@media (hover:none){.goldBadgeWrap .rm{opacity:1;transform:scale(1);}}';
+  st.textContent =
+    '.goldBadge{position:relative;box-sizing:border-box;display:inline-flex;align-items:center;'
+    + 'height:' + H + 'px;min-width:250px;max-width:390px;padding:0 8px;cursor:pointer;'
+    + FRAME + '}'
+    + '.goldBadge .gbTxt{flex:1;min-width:0;text-align:start;unicode-bidi:plaintext;}'
+    + '.goldBadge .gbName{display:block;unicode-bidi:plaintext;font-size:14px;font-weight:500;color:#f0e9d8;'
+    + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25;}'
+    + '.goldBadge .gbSub{display:block;font-size:11.5px;color:#9a9384;margin-top:3px;'
+    + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
+    + '.goldBadge > .rm{display:none !important;}'
+    + XBTN
+    + '.file-chip.goldBadge{box-sizing:border-box;display:inline-flex;align-items:center;box-shadow:none;'
+    + 'height:' + H + 'px;min-width:250px;max-width:390px;padding:0 8px;'
+    + FRAME + '}'
+    + '.msg-attachments::before{content:none !important;}'
+    + '.msg-text:has(+ .msg-attachments .goldBadge){display:none !important;}';
+  document.head.appendChild(st);
+}
+/* يبني محتوى البطاقة: الاسم في سطر والحجم وعدد الأسطر تحته */
+function omranGoldBadgeFill(chip, a){
+  omranGoldBadgeCss();
+  chip.classList.add('goldBadge');
+  const txt = document.createElement('span');
+  txt.className = 'gbTxt';
+  const nm = document.createElement('span');
+  nm.className = 'gbName';
+  nm.textContent = String(a.name || '').replace(/\s*·.*$/, '');
+  const sb = document.createElement('span');
+  sb.className = 'gbSub';
+  const __body = String(a.text || '');
+  /* الحجم بالبايت الحقيقيّ لا بعدد الحروف: الحرف العربيّ بايتان في UTF-8. */
+  let __bytes = __body.length;
+  try{ __bytes = new Blob([__body]).size; }catch(_e){ /* guard-ok */ }
+  const kb = Math.max(1, Math.round(__bytes / 1024));
+  const ln = __body ? __body.split('\n').length : 0;
+  /* \u2066…\u2069 عزل ثنائيّ الاتجاه — بدونه ينقلب السطر في الواجهة العربيّة. */
+  sb.textContent = a.pending
+    ? (omranBadgeT('scan') + ' ⏳')
+    : ('\u2066' + kb + ' KB\u2069 · \u2066' + ln.toLocaleString('en-US') + '\u2069'
+       + ' ' + omranBadgeT('lines') + (a.error ? ' ⚠️' : ''));
+  txt.appendChild(nm); txt.appendChild(sb);
+  chip.appendChild(txt);
+}
+/* v-gold-badge-export: الملفّات تُحمَّل كوحدات (type="module")، فالتعريف أعلاه
+   محبوس في نطاق هذا الملفّ ولا يراه app-04-i18n-state.js. التعريض على window
+   هو ما يجعل البطاقة تظهر داخل الرسالة المرسلة أيضًا، لا في صندوق الكتابة فقط. */
+window.omranGoldBadgeFill = omranGoldBadgeFill;
+window.omranGoldBadgeCss  = omranGoldBadgeCss;
+window.OMRAN_PASTE_ATTACH_CHARS = OMRAN_PASTE_ATTACH_CHARS;
 function renderAttachStrip(){
   const strip = $('#attachStrip');
   strip.innerHTML = '';
@@ -15242,17 +15978,38 @@ function renderAttachStrip(){
         chip.appendChild(bdg);
       }
     } else {
-      const name = document.createElement('span');
-      name.className = 'name';
-      name.textContent = a.name + (a.pending ? ' ⏳' : (a.error ? ' ⚠️' : ''));
-      chip.appendChild(name);
+      if(a.text && a.text.length >= OMRAN_PASTE_ATTACH_CHARS){
+        omranGoldBadgeFill(chip, a);          /* v-gold-badge: الكبيرة فقط */
+      } else {
+        const name = document.createElement('span');
+        name.className = 'name';
+        name.textContent = a.name + (a.pending ? ' ⏳' : (a.error ? ' ⚠️' : ''));
+        chip.appendChild(name);
+      }
+      /* v-paste-attach: عرض محتوى المرفق النصّي في تبويب «الكود» قبل الإرسال */
+      if(a.text && !a.pending){
+        chip.style.cursor = 'pointer';
+        chip.title = a.name;
+        chip.onclick = (ev) => {
+          if(ev && ev.target && ev.target.classList && ev.target.classList.contains('rm')) return;
+          if(typeof window.omranOpenTextInCodePanel === 'function') window.omranOpenTextInCodePanel(a.text, a.name);
+        };
+      }
     }
-    const rm = document.createElement('span');
+        const rm = document.createElement('span');
     rm.className = 'rm';
     rm.textContent = '✕';
-    rm.onclick = () => { pendingAttachments.splice(idx, 1); renderAttachStrip(); };
-    chip.appendChild(rm);
-    strip.appendChild(chip);
+    rm.onclick = (e) => { e.stopPropagation(); pendingAttachments.splice(idx, 1); renderAttachStrip(); };
+    if(chip.classList.contains('goldBadge')){
+      const wrap = document.createElement('span');
+      wrap.className = 'goldBadgeWrap';
+      wrap.appendChild(chip);
+      wrap.appendChild(rm);
+      strip.appendChild(wrap);
+    } else {
+      chip.appendChild(rm);
+      strip.appendChild(chip);
+    }
   });
   try{ window.__composerSyncTall && window.__composerSyncTall(); }catch(e){ /* guard-ok — cosmetic */ }
 }
@@ -16240,7 +16997,30 @@ $('#attachInput').addEventListener('change', async (e) => {
         if(ae && ae.id !== 'prompt' && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
         const items = Array.from((e.clipboardData && e.clipboardData.items) || []);
         const files = items.filter(i => i.kind === 'file' && /^image\//.test(i.type)).map(i => i.getAsFile()).filter(Boolean);
-        if(!files.length) return;
+        if(!files.length){
+          /* v-paste-attach: لصق نصّ طويل → مرفق قابل للفتح في تبويب «الكود» */
+          try{
+            const __pt = (e.clipboardData && e.clipboardData.getData) ? String(e.clipboardData.getData('text') || '') : '';
+            if(__pt.length > OMRAN_PASTE_ATTACH_CHARS){
+              e.preventDefault();
+              let __body = __pt;
+              if(__body.length > MAX_TEXT_ATTACH_CHARS) __body = __body.slice(0, MAX_TEXT_ATTACH_CHARS) + '\n... (' + t('attachTruncated') + ')';
+              const __isArP = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
+              /* الاسم يعكس المخزَّن فعلًا لا الملصوق الأصلي، ويميّز الكود عن النثر */
+              const __looksCode = /[{}();=<>]/.test(__body.slice(0, 4000)) && /\n/.test(__body);
+              const __kb = Math.max(1, Math.round(__body.length / 1024));
+              pendingAttachments.push({
+                name: (__isArP ? (__looksCode ? 'كود ملصوق' : 'نص ملصوق') : (__looksCode ? 'Pasted code' : 'Pasted text'))
+                  + ' · ' + __kb + ' KB' + (__body.length < __pt.length ? (__isArP ? ' (مقتطع)' : ' (truncated)') : ''),
+                isImage: false, text: __body, _pasted: true
+              });
+              renderAttachStrip();
+              try{ if(typeof settingsToast === 'function') settingsToast(__isArP ? '📄 حُوّل النص إلى مرفق — اضغط عليه لعرضه' : '📄 Converted to an attachment — tap it to view'); }catch(_e){ /* guard-ok */ }
+              try{ $('#prompt').focus(); }catch(_e){ /* guard-ok */ }
+            }
+          }catch(err2){ __swallow(err2, 'attach:paste-text'); }
+          return;
+        }
         e.preventDefault();
         const named = files.map((f, i) => { try{ return new File([f], 'pasted-' + Date.now() + (i ? '-' + i : '') + '.png', { type: f.type || 'image/png' }); }catch(_){ return f; } });
         omranIngestFiles(named, { pasted: true }).then(() => { try{ $('#prompt').focus(); }catch(_){ /* guard-ok — cleanup, intentional */ } });
@@ -16272,7 +17052,7 @@ async function pickSmartProviders(userText, eligibleKeys){
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-120b', /* v-free-models: الخادم يجرّب مرشّحين إن تقاعد هذا الاسم أيضًا */
         messages: [
           {role: 'system', content: sys},
           {role: 'user', content: String(userText || '').slice(0, 2000)}
@@ -17427,6 +18207,31 @@ async function __sendPromptCore(){
   const promptEl = $('#prompt');
   let text = promptEl.value.trim();
   if(!text && pendingAttachments.length === 0) return;
+  /* v-secret-vault (طلب المالك: «حقل خاصّ مشفّر لحفظ الأسرار بدل كتابته نصًّا خامًا بالمحادثة»):
+     توكن GitHub أو مفتاح API ملصوق في الرسالة لا يُرسل للنموذج ولا يُحفظ في المحادثة.
+     المالك يُعرض عليه حفظه في الخزنة المشفّرة؛ غيره يُنبَّه ويُحذف السرّ من نصّه.
+     الأنماط نفسها في الخادم (_msgs.js redactSecrets) شبكةَ أمان للحزم القديمة. */
+  try{
+    const __secRe = /\b(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|sk-ant-[A-Za-z0-9_\-]{20,}|sk-[A-Za-z0-9_\-]{32,}|AIza[0-9A-Za-z_\-]{30,})\b/g;
+    const __found = text.match(__secRe);
+    if(__found && __found.length){
+      const __isAr = (lang === 'ar');
+      const __gh = __found.find(function(s){ return /^(gh[pousr]_|github_pat_)/.test(s); });
+      const __ownerUi = String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran';
+      text = text.replace(__secRe, __isAr ? '[سرّ حُذف من الرسالة]' : '[secret removed]').trim();
+      promptEl.value = text;
+      if(__gh && __ownerUi && typeof window.omranVaultStore === 'function'){
+        if(confirm(__isAr ? 'رصدتُ توكن GitHub في رسالتك. أحفظه في خزنة الأسرار المشفّرة بدل إرساله للمحادثة؟' : 'A GitHub token was detected in your message. Save it in the encrypted secrets vault instead of sending it to the chat?')){
+          window.omranVaultStore('github_token', __gh).then(function(r){
+            try{ settingsToast(r && r.ok ? (__isAr ? '🔐 حُفظ توكن GitHub في الخزنة' : '🔐 GitHub token saved to the vault') : ((__isAr ? '⚠️ تعذّر الحفظ: ' : '⚠️ Save failed: ') + ((r && r.error) || ''))); }catch(e){ __swallow(e, 'vault:toast'); }
+          });
+        }
+      } else {
+        try{ settingsToast(__isAr ? '🔒 حُذف السرّ من رسالتك — الأسرار لا تُكتب في المحادثة' : '🔒 The secret was removed from your message — never paste secrets in chat'); }catch(e){ __swallow(e, 'vault:toast2'); }
+      }
+      if(!text && pendingAttachments.length === 0) return;
+    }
+  }catch(e){ __swallow(e, 'vault:intercept'); }
   if(pendingAttachments.some(a => a.pending)){
     alert(lang === 'ar' ? 'الرجاء الانتظار حتى ينتهي تحليل الأرشيف' : 'Please wait until archive analysis finishes');
     return;
@@ -17618,6 +18423,11 @@ async function __sendPromptCore(){
     (__editedOriginal && Array.isArray(__editedOriginal.attachments) ? __editedOriginal.attachments.slice() : []);
   const imageAttachments = attachmentsForMsg.filter(a => a.isImage);
   const textAttachments = attachmentsForMsg.filter(a => !a.isImage);
+  /* v-file-analyze: ملف نصّي/كودي مرفق بلا أمر بناء صريح = طلب تحليل لا بناء.
+     بدونه كان وجود كود سابق في المشروع (cur.code) يكفي لتصنيف الرسالة بناءً،
+     فيُلصَق تحذير «لم يصل كود من المزوّد» في ذيل تحليل صحيح تمامًا. */
+  const __fileAnalyze = !!(textAttachments.length && !__strongBuildRe.test(text)
+    && !/(?:ابني|ابن\s|بناء|نبني|اعمل|أعمل|سوي|سوّي|صمم|صمّم|انشئ|أنشئ|اصنع|build|create|make|design)\s*(?:لي\s*)?[^\n]{0,20}(?:تطبيق|موقع|صفحة|لعبة|برنامج|بوت|أداة|اداة|app|website|page|game|bot|tool)/i.test(text || ''));
 
   // Build the text sent to the AI: original text + any text-file contents appended as code blocks
   let apiText = text;
@@ -17651,8 +18461,16 @@ async function __sendPromptCore(){
     if(!imageAttachments.length && cur.lastEditedImage && cur.lastEditedImage.b64 && cur.lastMsgWasImageEdit && text && text.length <= 220){
       imageAttachments.push({ isImage: true, name: 'memory.png', mime: cur.lastEditedImage.mime || 'image/png', dataUrl: 'data:' + (cur.lastEditedImage.mime || 'image/png') + ';base64,' + cur.lastEditedImage.b64, _fromMemory: true });
     }
+    /* v-guide: نعيد نفس اللقطة مع الرسائل التالية داخل جلسة الإرشاد، وإلا أجاب
+       النموذج من ذاكرته عن شكل البرنامج بدل الشاشة التي أمام المستخدم.
+       السقف (٦ أدوار / ٤٠٠ حرف) يحدّ تكلفة إعادة الإرسال. */
+    if(!imageAttachments.length && cur.guideOn && cur.guideShot && cur.guideShot.b64 && text && text.length <= 400 && (cur.guideTurns || 0) < 6){
+      cur.guideTurns = (cur.guideTurns || 0) + 1;
+      imageAttachments.push({ isImage: true, name: 'screen.png', mime: cur.guideShot.mime || 'image/png', dataUrl: 'data:' + (cur.guideShot.mime || 'image/png') + ';base64,' + cur.guideShot.b64, _fromMemory: true, _screenshot: true, _guide: true });
+      }
   }catch(e){ __swallow(e, "upload:app-09-attach#12"); }
-  const __nextUserMessage = {role: 'user', content: (__gateApprovedText || text) || (t('imagesAttachedNote')), attachments: attachmentsForMsg.length ? attachmentsForMsg : undefined, apiText, apiImages: imageAttachments.length ? imageAttachments : undefined};
+  const __textAtPush = String(text || ''); // v-img-wire: مرجع لحساب ما يُضاف إلى النصّ لاحقًا في هذا الدور
+  const __nextUserMessage = {role: 'user', content: (__gateApprovedText || text) || (t('imagesAttachedNote')), attachments: attachmentsForMsg.length ? attachmentsForMsg : undefined};
   if(__editIndex >= 0){
     // ChatGPT-like branch semantics في مخزن خطّي: التعديل يلغي الردود اللاحقة
     // ثم يولّد جوابًا جديدًا من الرسالة المعدّلة، بلا نسخ السؤال مرتين.
@@ -17772,7 +18590,7 @@ function __friendlyErr(e){
       return false;
     }catch(e){ return true; } // guard-ok: أي خطأ → السلوك القديم بالضبط
   })();
-  const askAll = !!customProviders || __askAllExplicit || (!__gateNoBuild && !__gateApprovedText && ((__routeBuildRe.test(text) && __routeCmdRe.test(text) && __buildIntentShape) || __strongBuildRe.test(text)) && !__routeFix);
+  const askAll = !!customProviders || __askAllExplicit || (!__gateNoBuild && !__gateApprovedText && !__fileAnalyze && ((__routeBuildRe.test(text) && __routeCmdRe.test(text) && __buildIntentShape) || __strongBuildRe.test(text)) && !__routeFix);
   // آخر نص كامل وصل من البث؛ نحتفظ به إذا أوقف المستخدم التوليد.
   let __lastStreamPartial = '';
 
@@ -17932,6 +18750,10 @@ function __friendlyErr(e){
     // 🧠 v293: أي صورة مرفقة جديدة تنحفظ كآخر صورة في المحادثة
     if(__srcImg && !__srcImg._fromMemory){
       cur.lastEditedImage = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' };
+      /* v-guide: لقطة شاشة = جلسة إرشاد — الشاشة تبقى حاضرة أمام النموذج في الأدوار
+         التالية. بدونها كان «عندي بالهاتف» يصل بلا صورة فيجيب من معلوماته العامة. */
+      if(__srcImg._screenshot){ cur.guideShot = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' }; cur.guideOn = true; cur.guideTurns = 0; }
+      else { cur.guideShot = null; cur.guideOn = false; }
       cur.imageEditInstructions = [];
       cur.imageEditSource = null;
       cur.imageTurns = []; /* v-image-memory: مصدر جديد = سلسلة جديدة */
@@ -18209,27 +19031,27 @@ function __friendlyErr(e){
       // 🎨 v328: صورة/شعار مرفق + طلب تصميم → صورة المستخدم تُضمَّن كما هي — ممنوع إعادة رسمها
       text += '\n(ملاحظة للنظام: المستخدم أرفق صورة/شعارًا — إذا كان ردك تصميمًا أو كودًا يجب استخدام صورته نفسها كما هي عبر src="__USER_IMAGE__" أو background-image:url(\'__USER_IMAGE__\') بالضبط، والتطبيق يستبدلها بالصورة الحقيقية تلقائيًا. ممنوع منعًا باتًا استبدال صورة المستخدم بلوجو أو صورة من تصميمك أو من الإنترنت — صورة المستخدم هي الأصل الرسمي وتظهر بدون أي تشويه أو قلب أو قص)';
     }
-    // 🖼️ صورة مرفقة بدون أي نص → v716: إذا للمحادثة سياق واضح نحلّلها مباشرة، وإلا نسأل محليًا
+    // 🖼️ صورة مرفقة بدون أي نص → v-img-wire: تُحلَّل بالنموذج دائمًا، لا ردّ جاهز محلّيّ
     if(__srcImg && !(text || '').trim()){
       cur.lastEditedImage = { b64: (__srcImg.dataUrl || '').split(',')[1] || '', mime: __srcImg.mime || 'image/png' };
       cur.lastMsgWasImageEdit = true;
-      // v716: «وصلتني الصورة 👍 شو تبي أسوي فيها؟» كانت تُقال حتى لو المستخدم أرسل الصورة
-      // استجابةً لطلب صريح في المحادثة (مثال: «أرسل لقطة شاشة لأحدد السبب»). الآن:
-      // إذا في المحادثة رسائل نصية حديثة ذات معنى → نمرّر الصورة للنموذج مع تعليمة
-      // أن يحلّلها في ضوء السياق مباشرة. السؤال المحلي يبقى فقط للمحادثة بلا سياق.
+      /* v-img-wire (لقطة المالك ١٢ سبتمبر: أرسل اللقطة بلا نصّ فجاءه «وصلتني الصورة 👍
+         شو تبي أسوي فيها؟» ثلاث مرّات بلا أيّ تحليل): الردّ الجاهز كان يُقال محلّيًّا
+         لكلّ محادثة بلا سياق نصّيّ حديث — وهي الحالة الغالبة عند إرسال لقطة شاشة —
+         فلا يرى النموذج الصورة أصلًا. الآن الصورة بلا نصّ = طلب تحليل كامل يُرسل
+         للنموذج دائمًا؛ ومع سياق نصّيّ حديث تُقرأ في ضوئه (v716). النصّ بصوت
+         المستخدم لا «ملاحظة للنظام» حتّى يبقى السجلّ طبيعيًّا عند أيّ مزوّد. */
       var __imgCtx = (cur.messages || []).slice(-6).filter(function(m){
-        return m && typeof m.content === 'string' && m.content.trim().length >= 12
+        return m && m !== __nextUserMessage && typeof m.content === 'string' && m.content.trim().length >= 12
           && m.content.indexOf('وصلتني الصورة') === -1 && m.content.indexOf('Got the image') === -1;
       });
-      if(__imgCtx.length){
-        text = (lang === 'ar')
-          ? '(ملاحظة للنظام: المستخدم أرفق صورة استكمالًا لسياق المحادثة أعلاه — حلّل الصورة مباشرة واربطها بآخر موضوع في المحادثة ورُدّ بجواب عملي، ولا تسأل المستخدم ماذا يريد أن يفعل بها)'
-          : '(System note: the user attached an image continuing the conversation above — analyze it directly in that context and give a practical answer; do not ask what they want to do with it)';
-      } else {
-        cur.messages.push({ role: 'assistant', content: (lang === 'ar' ? 'وصلتني الصورة 👍 شو تبي أسوي فيها؟' : 'Got the image 👍 What would you like to do with it?') });
-        renderAll(); saveState();
-        return;
-      }
+      text = __imgCtx.length
+        ? ((lang === 'ar')
+          ? 'أرفقت هذه الصورة استكمالًا لكلامنا أعلاه: اقرأها كاملة أوّلًا (كلّ نصّ فيها حرفيًّا، وأيّ تنبيه أو رسالة خطأ قبل غيره)، ثمّ حلّلها في ضوء آخر موضوع بيننا وأعطني الجواب العمليّ مباشرة — لا تسألني ماذا أريد أن أفعل بها.'
+          : 'I attached this image as a follow-up to our conversation above: read it fully first (every text verbatim, any alert or error message before anything else), then analyze it in the context of our last topic and give me the practical answer directly. Do not ask what I want to do with it.')
+        : ((lang === 'ar')
+          ? 'حلّل هذه الصورة بالتفصيل: اقرأ كلّ نصّ فيها حرفيًّا، وإن كان فيها تنبيه أو رسالة خطأ فابدأ به واشرح سببه وحلّه، ثمّ اشرح ما يظهر فيها وما الخطوة العمليّة التالية — لا تسألني ماذا أريد أن أفعل بها.'
+          : 'Analyze this image in detail: read every text in it verbatim; if it shows an alert or error message, start with it and explain its cause and solution; then explain what is shown and the practical next step. Do not ask what I want to do with it.');
     }
     // 🎬 v363: شخصية كرتونية تتكلم من الدردشة مباشرة — صورة → كرتون (Gemini) → فيديو ناطق (Runway)
     let __charImg = __srcImg
@@ -18566,7 +19388,7 @@ function __showImgLoading(el, ar, en){
       && !__imgEditRe.test(text) && !__IMG_UPGRADE && !__IMG_ELEVATE && !__IMG_FOLLOW && !__ATT_EDIT && __IMGF_NEW_RE.test(text)
       && !__refersAttachment && !__cardTidyIntent(text)
       && !/(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|للتواصل|poster|logo|banner|certificate|card|invitation)/i.test(text));
-    if(!__freshGenWins && !__SHOT_ANALYZE && text && !cur.adMode && !__isSupportQ && !__blockAutoImage && (__IMG_UPGRADE || __IMG_ELEVATE || __IMG_FOLLOW || __ATT_EDIT || __ATT_DEFAULT || __FOLLOW_DEFAULT || __ATT_STYLE || __STYLE_FOLLOW || (__srcImg && !__srcImg._fromMemory && __cardTidyIntent(text)) || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || __STYLE_FOLLOW || __FOLLOW_DEFAULT || ((__IMG_UPGRADE || __IMG_ELEVATE) && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
+    if(!__freshGenWins && !__SHOT_ANALYZE && !(__srcImg && __srcImg._guide) && text && !cur.adMode && !__isSupportQ && !__blockAutoImage && (__IMG_UPGRADE || __IMG_ELEVATE || __IMG_FOLLOW || __ATT_EDIT || __ATT_DEFAULT || __FOLLOW_DEFAULT || __ATT_STYLE || __STYLE_FOLLOW || (__srcImg && !__srcImg._fromMemory && __cardTidyIntent(text)) || __imgEditRe.test(text) || __imgGenIntentRe.test(text) || /(شهادة|بطاقة|دعوة|بوستر|إعلان|اعلان|لوجو|شعار|بنر|غلاف|تصميم|للتواصل|poster|logo|banner|design)/i.test(text)) && !__codeWordRe.test(text) && !__ATT_VISION_RE.test(text) && !/^(?:وش|شو|ايش|أيش|ليش|كيف|متى|وين|فين|هل|مين|كم|ما\b|من\b|why|how|what|where|when|who)/i.test(text) && !/[؟?]\s*$/.test(text) && (__srcImg || __followUp || __IMG_FOLLOW || __STYLE_FOLLOW || __FOLLOW_DEFAULT || ((__IMG_UPGRADE || __IMG_ELEVATE) && ((cur.lastEditedImage && cur.lastEditedImage.b64) || __IMG_UPGRADE_SRC)))){
       __showImgLoading(thinkingDiv, (__IMG_UPGRADE || __IMG_ELEVATE) ? 'جاري تطوير الصورة…' : 'جاري تعديل الصورة…', (__IMG_UPGRADE || __IMG_ELEVATE) ? 'Improving the image…' : 'Editing image…');
       const __upgSrc = (!__srcImg && (__IMG_UPGRADE || __IMG_ELEVATE) && !(cur.lastEditedImage && cur.lastEditedImage.b64)) ? __IMG_UPGRADE_SRC : null;
       const __b64 = __srcImg ? ((__srcImg.dataUrl || '').split(',')[1] || '') : (__upgSrc ? ((__upgSrc.dataUrl || '').split(',')[1] || '') : ((cur.lastEditedImage && cur.lastEditedImage.b64) || ''));
@@ -19192,11 +20014,11 @@ function __showImgLoading(el, ar, en){
        والعميل يوجّه الكود للمعاينة لا لفقاعة المحادثة، فيبدو «ما فيه ردّ».
        النصّ الملصوق الطويل تحليلٌ لا طلب تصميم: نُعرّف __pastedDoc هنا (نُقل من
        الأسفل) ونستثنيه من البناء والتصميم كي يمرّ للبروم الخفيف ويردّ نصًّا. */
-    const __pastedDoc = !!(text && !__strongBuildRe.test(text) && (text.length > 400 || text.split('\n').length >= 6 || /\b(issue|suggestion|rejected|review|error|exception|traceback|report|dear|regards)\b/i.test(text)));
+    const __pastedDoc = !!(text && !(imageAttachments.length && !__textAtPush) /* v-img-wire: طلب تحليل الصورة المولَّد ليس نصًّا ملصوقًا */ && !__strongBuildRe.test(text) && (text.length > 400 || text.split('\n').length >= 6 || /\b(issue|suggestion|rejected|review|error|exception|traceback|report|dear|regards)\b/i.test(text)));
     const __designAskRe = /(صمم|صمّم|صممي|اصنع|ابغى|ابي|أبي|أبغى|سو|سوّ?ي|اعمل|أعمل|عطني|أعطني|هات|ارسم|صم?ّ?ملي|بوستر|تصميم|design|make|create)\s*(?:لي\s*)?(?:[^\n]{0,20})?(إعلان|بوستر|شهادة|بطاقة|دعوة|لوجو|شعار|بنر|غلاف|منشور|poster|flyer|certificate|card|invitation|logo|banner|cover)/i;
     // النصّ الملصوق لا يُفعّل البناء إطلاقًا؛ وكلمات التصميم لا تُفعّله إلا بطلبٍ
     // صريح («صمّم بطاقة»)، لا مجرّد ورود «دعوة/بطاقة» داخل جملة سرديّة.
-    const __needsBuild = !__pastedDoc && ((__bldRe.test(text) && __appWd.test(text)) || (__dsnRe.test(text) && __designAskRe.test(text)) || !!cur.code || !!window.__buildOfferApproved);
+    const __needsBuild = !__pastedDoc && !__fileAnalyze && ((__bldRe.test(text) && __appWd.test(text)) || (__dsnRe.test(text) && __designAskRe.test(text)) || !!cur.code || !!window.__buildOfferApproved);
     // v469: Q&A = بروم خفيف مثل ChatGPT؛ البناء = تعليمات كاملة.
     let __sys;
     if(__needsBuild){
@@ -19232,7 +20054,10 @@ function __showImgLoading(el, ar, en){
     /* v-clean-slate: __sys (كتاب قواعد العميل الثابت) يُوسم static — مسار العقل
        الواحد يرشّحه (هوية النظام هناك من الخادم القصير)، والمسار الاحتياطي
        القديم يبقى عليه. التوجيهات السياقية لكل دور (تحية، بناء، صورة) تمر. */
-    const apiMessages = [{role: 'system', content: __sys, __static: true}];
+    /* v-static-leak (لقطة المالك: Groq 400 «property '__static' is unsupported»): الخاصيّة
+       كانت تُرسل مع الرسالة إلى المزوّدات الصارمة على المسار الاحتياطيّ. الترشيح صار بالهويّة. */
+    const __staticSys = {role: 'system', content: __sys};
+    const apiMessages = [__staticSys];
     /* v-topic-switch (شكوى المالك: يغيّر الموضوع فيجيه جواب الأول والثاني معًا):
        TOPIC_FOLLOW_RULE كان داخل النظام الثابت الذي يُرشَّح عن مسار الأدوات —
        نسخة قصيرة غير ثابتة تصل المسارين، وتأتي أخيرة فتغلب. */
@@ -19390,28 +20215,22 @@ DESIGN RULES (non-negotiable):
 
       // ③ الرسالة الحالية دائمًا آخر دور
       const __lastM = __historyMsgs[__historyMsgs.length - 1];
-      if(__lastM){
-        let __curText = String((__lastM.apiText !== undefined ? __lastM.apiText : __lastM.content) || '');
-        /* v-attach-guarantee (بلاغ عمران «رفع الملفات ما يتحلّل»): نضمن وصول محتوى
-           كلّ مرفق نصّي للنموذج هنا وقت الإرسال — لا وقت بناء apiText فقط. لو سقط
-           المحتوى من apiText لأيّ سبب (سباق قراءة، حقل مختلف، إعادة تحرير) نُلحقه
-           الآن من كائن المرفق نفسه: .text أو .code أو .content أيًّا كان. آمنٌ
-           تمامًا: لا يضيف إلّا الغائب فعلًا (يتحقّق ببادئة ٦٠ حرفًا فلا تكرار). */
-        let __attN = 0, __attMissing = 0;
+      /* v-img-wire: apiText (نصّ الملفّات المرفقة + بادئة الوضع + ملاحظات الدور + طلب
+         تحليل الصورة) كان يُحسب ولا يُرسل — كان يُرسل content الفقاعة («مرفقات») —
+         فلا يصل للنموذج لا الملفّ ولا التعليمة. الآن يُرسل مع الدور الحاليّ، وما
+         أُضيف إلى text بعد الدفع يُلحق به. */
+      const __curApiText = (function(){
         try{
-          (__lastM.attachments || []).forEach(a => {
-            if(!a || a.isImage || a.isVideo) return;
-            const __body = String((a.text || a.code || '')).trim();
-            if(!__body) return;
-            __attN++;
-            const __probe = __body.slice(0, 60);
-            if(__curText.indexOf(__probe) === -1){
-              __attMissing++;
-              __curText += (__curText ? '\n\n' : '') + '📄 ' + (a.name || 'ملف') + ':\n```\n' + __body + '\n```';
-            }
-          });
-        }catch(e){ /* guard-ok */ }
-        try{ if(window.__diagTurn){ window.__diagTurn.att = __attN; window.__diagTurn.attMissing = __attMissing; } }catch(e){ /* guard-ok */ }
+          var base = String(apiText || ''), now = String(text || ''), delta = '';
+          if(now !== __textAtPush) delta = (now.indexOf(__textAtPush) === 0) ? now.slice(__textAtPush.length) : now;
+          delta = delta.trim();
+          var out = !delta ? base : (!base ? delta : (__textAtPush ? (base + '\n\n' + delta) : (delta + '\n\n' + base)));
+          if(out.length > 200000) out = out.slice(0, 200000) + '\n… (قُصّ النصّ لطوله)';
+          return out;
+        }catch(e){ return String(apiText || ''); }
+      })();
+      if(__lastM){
+        const __curText = (__lastM === __nextUserMessage && __curApiText) ? __curApiText : String((__lastM.apiText !== undefined ? __lastM.apiText : __lastM.content) || '');
         if(__turns.length && __turns[__turns.length - 1].role === __lastM.role) __turns.pop();
         __turns.push({role: __lastM.role, content: __curText});
       }
@@ -19424,7 +20243,13 @@ DESIGN RULES (non-negotiable):
 
       // ⑤ الصور على الرسالة الأخيرة فقط (v687: في وضع الإعلان لا ترسل الصورة)
       const __lastTurn = __turns[__turns.length - 1];
-      if(__lastTurn && __lastTurn.role === 'user' && !cur.adMode && __lastM && __lastM.apiImages) __lastTurn.images = __lastM.apiImages;
+      /* v-img-wire: apiImages لم يكن يُكتب في أيّ مكان، فكانت الصور المرفقة لا تصل
+         للنموذج إطلاقًا (المسار المباشر ومسار الاحتياط كلاهما يقرأ images من هنا)
+         وتعليمة «الصورة مرفقة» تُرسل بلا صورة فيؤلّف النموذج وصفًا. صور هذا الدور
+         (المرفقة أو المستدعاة من الذاكرة) تُلحق بالدور الأخير. */
+      const __turnImgs = (__lastM && __lastM.apiImages && __lastM.apiImages.length) ? __lastM.apiImages
+        : ((__lastM === __nextUserMessage) ? imageAttachments.filter(function(a){ return a && a.isImage && a.dataUrl; }).slice(0, 6).map(function(a){ return { dataUrl: a.dataUrl, mime: a.mime || 'image/png', name: a.name || '' }; }) : []);
+      if(__lastTurn && __lastTurn.role === 'user' && !cur.adMode && __turnImgs.length) __lastTurn.images = __turnImgs;
 
       __turns.forEach(m => apiMessages.push(m));
     }
@@ -19433,8 +20258,8 @@ DESIGN RULES (non-negotiable):
     if(imageAttachments.length && !cur.adMode && imageAttachments.some(a => a && a._screenshot)){
       // v-visual-assist: دور المساعد البصري للقطات الواجهات
       apiMessages.push({role: 'system', content: lang === 'ar'
-        ? 'أنت المساعد البصري داخل تطبيق عمران AI. المرفق لقطة شاشة لواجهة (تطبيق/موقع/إعدادات/رسالة خطأ). اقرأ الواجهة والأزرار والنصوص والقوائم بدقة كما تظهر فعلًا، وسمِّ العناصر بأسمائها المكتوبة في اللقطة. إذا كان فيها خطأ أو مشكلة: قل سببها بجملة ثم أعطِ خطوات قصيرة مرقّمة (٣ إلى ٦ خطوات) يطبّقها المستخدم مباشرة، كل خطوة تبدأ بالزر أو المكان الذي يضغطه. إذا كان الطلب غير واضح فاشرح ما تراه في اللقطة باختصار ثم اقترح الخطوة التالية المنطقية. لا تصف الألوان والتصميم إلا إذا سُئلت، ولا تخترع أزرارًا غير موجودة في اللقطة.'
-        : 'You are the visual assistant inside the Omran AI app. The attachment is a UI screenshot (app/website/settings/error message). Read the interface, buttons, texts and menus exactly as they appear and name elements by their visible labels. If it shows an error or problem: state the cause in one sentence, then give short numbered steps (3 to 6) the user can follow right away, each starting with the button or place to tap. If the request is unclear, briefly explain what the screenshot shows and suggest the logical next step. Do not describe colors or design unless asked, and never invent buttons that are not in the screenshot.'});
+        ? 'أنت المساعد البصري داخل تطبيق عمران AI. المرفق لقطة شاشة لواجهة. القواعد:\n• اعتمد على ما يظهر في اللقطة فقط، لا على ذاكرتك عن شكل البرنامج في أجهزة أخرى.\n• احفظ سياق المحادثة كاملًا: نوع الجهاز (جوال أو كمبيوتر)، لغة الواجهة، اسم البرنامج، هدف المستخدم، وكل خطوة سبق أن أعطيتها — حتى لو لم يذكرها في رسالته الأخيرة. الرسالة القصيرة مثل «ما فهمت» تعني إعادة الشرح لنفس الموقف لا بدء موضوع جديد.\n• إذا كان الجهاز جوالًا فممنوع ذكر اختصارات الكيبورد (Ctrl / Alt / Shift / Delete) — أعطِ البديل باللمس من القوائم.\n• إذا كانت الواجهة بالعربية فاذكر أسماء الأزرار بالعربية كما تظهر فيها.\n• اذكر اسم الزر بنصه الحرفي كما يظهر في اللقطة، ثم موضعه على الشاشة (أعلى اليمين، أسفل اليسار...).\n• إذا كانت الميزة التي يسأل عنها غير موجودة في هذا البرنامج فقل ذلك صراحةً في أول سطر، ثم اذكر البرنامج الذي فيه الميزة فعلًا. «غير موجودة» جواب صحيح ومقبول.\n• ممنوع اقتراح أداة وظيفتها مختلفة لمجرد تشابه الاسم أو الأيقونة أو قربها في القائمة.\n• ممنوع منعًا باتًا توجيه المستخدم إلى أداة تحذف أو تغيّر المحتوى نهائيًا (Redact / Flatten / Apply / Delete) كبديل عن ميزة سأل عنها — تُذكر فقط إذا طلبها بنفسه صراحةً.\n• خطوة واحدة في كل رد، ثم اطلب لقطة جديدة للتحقق. إذا بدت الشاشة الجديدة كالسابقة فالخطوة فشلت — أعطِ طريقة بديلة لا نفس الكلام.\n• إذا لم تجد العنصر في اللقطة فقل ذلك واطلب لقطة أوضح — ممنوع «دوّر على» أو «جرّب تضغط» أو «أحيانًا». الفشل الممنوع هنا هو إرسال المستخدم إلى زر خاطئ، لا الاعتراف بعدم وجود الميزة.'
+        : 'You are the visual assistant inside the Omran AI app. Rely ONLY on what is visible in the screenshot, never on your memory of how the program looks elsewhere. Keep the FULL conversation context: device type, UI language, app name, the user goal, and every step you already gave — a short message like "I do not understand" means re-explain the same situation, not start a new topic. On a phone, NEVER give keyboard shortcuts (Ctrl / Alt / Shift / Delete) — give the touch alternative from the menus. Quote button labels verbatim as they appear, in the UI language, then give their position on screen. If the feature the user asks about does not exist in this program, say so plainly in the first line and name the program that does have it — "it does not exist here" is a correct answer. Never suggest a different-purpose tool because its name, icon or menu position looks similar, and never point the user to a destructive tool (Redact / Flatten / Apply / Delete) as a substitute for a feature they asked about. One step per reply, then ask for a fresh screenshot; if the new screen looks unchanged the step failed — give a different route, not the same words. If you cannot find the element in the screenshot, say so and ask for a clearer one — never "look around" or "try tapping". The forbidden failure here is sending the user to the wrong button, not admitting a feature is missing.'});
     }
     if(imageAttachments.length && !cur.adMode){
       apiMessages.push({role: 'system', content: 'صورة مرفقة — القاعدة الأولى والأهم:\n0) إذا كتب المستخدم مع الصورة سؤالًا أو طلبًا محددًا فأجب عن طلبه هو فقط، مباشرة وباختصار مفيد — ممنوع منعًا باتًا نسخ نصوص الصورة كاملة أو سرد تحليل شامل (عناصر/ألوان/تقييم/خطوات) لم يطلبه. التحليل الشامل أدناه يُطبَّق فقط إذا أرسل الصورة بلا طلب محدد أو طلب صراحةً «حلّل الصورة».\n1) عند التحليل الشامل فقط: اقرأ كل نص ظاهر في الصورة حرفيًا كما هو (عربي أو إنجليزي أو أي لغة) واذكره كاملًا بدون تلخيص.\n2) عند التحليل الشامل فقط: حلّل الصورة بعمق: العناصر، الأشخاص، الألوان، المكان، السياق، الأرقام، الجداول، أي أخطاء أو ملاحظات مهمة، واستنتاجاتك.\n3) في كل الحالات، الإجابة تكون مربوطة بالصورة نفسها: حدّد أولًا أي شاشة/صفحة بالضبط تظهر في الصورة (اسم التطبيق والقسم)، ثم أعط الخطوة الدقيقة انطلاقًا من هذه الشاشة بالذات — سمِّ الزر أو الخيار الظاهر في الصورة حرفيًا الذي يضغطه المستخدم، وإذا كان المطلوب غير موجود في هذه الشاشة قل له بوضوح: «هذا غير موجود هنا، ارجع/ادخل على …» بخطوة واحدة محددة. ممنوع سرد كل الطرق والأماكن الممكنة — طريق واحد دقيق فقط.\n3ب) إذا أعاد المستخدم إرسال نفس الصورة بعد إجابة سابقة فمعناها أن إجابتك ما كانت دقيقة كفاية — ممنوع تكرار نفس الإجابة؛ دقّق في الصورة أكثر وأعطه خطوة أدق وأكثر تحديدًا، أو اسأله سؤالًا واحدًا قصيرًا يحدد وين توقف.\n4) لا تقل أبدًا "لا أستطيع رؤية الصورة" — الصورة أمامك، حلّلها مباشرة.' +
@@ -19524,7 +20349,7 @@ DESIGN RULES (non-negotiable):
         // pin - a pin from a past simple reply should never lock a later
         // full-app request down to a single provider.
         const BUILD_TASK_RE = /بوت|تطبيق|برنامج|موقع|صفحة|لعبة|لعبه|العاب|ألعاب|أداة|اداة|نسخة|نسخه|شهادة|شهاده|بطاقة|بطاقه|دعوة|دعوه|بوستر|شعار|لوجو|تهنئة|تهنئه|\bapp\b|\bwebsite\b|\bpage\b|\bbot\b|\bgame\b|\btool\b|\bclone\b|\bcertificate\b|\bcard\b|\binvitation\b|\bposter\b|\blogo\b/i;
-        isBuildTask = !__gateNoBuild && (BUILD_TASK_RE.test(text) || __strongBuildRe.test(text));
+        isBuildTask = !__gateNoBuild && !__fileAnalyze && (BUILD_TASK_RE.test(text) || __strongBuildRe.test(text));
         if(__gateNoBuild){
           apiMessages.push({ role: 'system', content: 'المستخدم طلب بناء شيء. ممنوع أن تبنيه الآن. ردّ بنصّ محادثة فقط بلا أيّ كتلة كود: اذكر في سطرين إلى ثلاثة ماذا ستبني بالضبط (الأقسام الرئيسية + أنّك سترسم الصور بنفسك)، ثمّ اختم بسؤال واحد فقط: «تبيني أبدأ البناء الحين؟». لا تبدأ البناء حتّى يوافق المستخدم في رسالته التالية.' });
           // 💰 دور البوابة = وصف قصير فقط — مزود واحد يكفي بدل التسعة (توفير).
@@ -20252,6 +21077,7 @@ DESIGN RULES (non-negotiable):
       let reply, providerKey, switched, requestedKey;
       let __ctUsed = false;
       let __ctSources = null; /* v-one-brain: مصادر بحث النموذج — نطاق يبلغ موضع اللصق */
+      let __ctTier = null; /* v-tiers: طبقة الردّ (free / free-limit / guest / guest-limit) لشارة «ردّ مجاني» */
       // 💬 عقل واحد: Claude وحده يرد في النقاش العادي — الاحتياط (GPT ثم Gemini)
       // صامت ويشتغل فقط إذا Claude تعطل أو خلص حده.
       // 🛠️ ومعه يداه: النقاش العادي على Claude يمرّ بحلقة الأدوات (بحث · قراءة
@@ -20260,8 +21086,8 @@ DESIGN RULES (non-negotiable):
       try{
         let __ct = null;
         if(__toolsWillRun){
-          try{ __ct = await window.callChatWithTools(apiMessages.filter(m => !m.__static), onDelta, __effProv); }
-          catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; try{ window.__diagTurn.toolsErr = String((e && (e.name + ': ' + e.message)) || e || '').slice(0, 180); window.__diagTurn.path = 'tools-failed→fallback'; }catch(_){ } __swallow(e, 'chat:tools'); }
+          try{ __ct = await window.callChatWithTools(apiMessages.filter(m => m !== __staticSys), onDelta, __effProv); }
+          catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; try{ window.__diagTurn.toolsErr = String((e && (e.name + ': ' + e.message)) || e || '').slice(0, 180); window.__diagTurn.path = 'tools-failed→fallback'; }catch(_){ /* guard-ok: تشخيص فقط؛ الخطأ يُبلَّغ بـ__swallow أدناه */ } __swallow(e, 'chat:tools'); }
           /* v-tools-team (شكوى المالك «خربت الدنيا بخصوص الأخبار»): فشل مزود
              الأدوات الأول (مثال: رصيد كلود نفد) كان يهبط فورًا للمسار القديم
              بلا بحث حي، فيؤلف البديل أخبارًا من خياله (فهم «العالمي» نادي
@@ -20276,13 +21102,13 @@ DESIGN RULES (non-negotiable):
                     window.__chatStatus.phase('💭', functionalLabel(__tp) + ' ' + t('provTypingSuffix'));
                   }
                 }catch(e){ __swallow(e, 'ui:toolsteam'); }
-                __ct = await window.callChatWithTools(apiMessages.filter(m => !m.__static), onDelta, __tp);
+                __ct = await window.callChatWithTools(apiMessages.filter(m => m !== __staticSys), onDelta, __tp);
                 if(__ct) break;
               }catch(e){ if(e && e.name === 'AbortError') throw e; __ct = null; __swallow(e, 'chat:tools-team'); }
             }
           }
         }
-        if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; }
+        if(__ct){ __ctUsed = true; ({ reply, providerKey, switched, requestedKey } = __ct); if(__ct.sources) __ctSources = __ct.sources; if(__ct.tier) __ctTier = __ct.tier; }
         else ({ reply, providerKey, switched, requestedKey } = await callAIWithFallback(apiMessages, onDelta, __teamOrder));
       }finally{
         window.__claudeModelOverride = null;
@@ -20334,6 +21160,7 @@ DESIGN RULES (non-negotiable):
         if(__cv && __cv.url){ __chatVidAtt = [{ isVideo: true, url: __cv.url, name: __cv.name || 'chat-video.mp4', mime: 'video/mp4' }]; window.__chatVideoResult = null; }
       }catch(e){ __swallow(e, 'ui:chat-video-attach'); }
       cur.messages.push({role: 'assistant', content: (code ? stripCodeFromChat(explanation) : explanation) || (code ? t('buildSuccess') : ''), code: code || null, providerLabel, providerKey, askAllReply: false, attachments: __chatVidAtt,
+        tier: __ctTier || undefined, /* v-tiers */
         // v-one-brain: بطاقات المصادر من بحث النموذج نفسه (حدث sources في البث).
         sources: (!__clarifyQ && (__ctSources || (__searchData && __searchData.sources))) || undefined,
         searchImages: (__searchData && __searchData.images) || undefined});
@@ -20372,7 +21199,12 @@ DESIGN RULES (non-negotiable):
       try{ settingsToast(t('premiumNoPoints')); }catch(_){ __swallow(_, "points:app-09-attach#29"); }
       try{ if(typeof openPremiumBuyPoints === 'function') openPremiumBuyPoints(); }catch(_){ __swallow(_, "points:app-09-attach#30"); }
     } else {
-      cur.messages.push({role: 'assistant', content: '⚠️ ' + __friendlyErr(err)});
+      /* v-img-err: حين يفشل مسار الأدوات (كلود المباشر) ثمّ يفشل الاحتياط أيضًا،
+         كانت الفقاعة تعرض خطأ آخر مزوّد احتياطيّ وحده فيختفي السبب الحقيقيّ. نُظهر
+         خطأ المسار الأوّل معه. */
+      var __primaryErr = '';
+      try{ __primaryErr = String((window.__diagTurn && window.__diagTurn.toolsErr) || '').trim(); }catch(e){ __primaryErr = ''; }
+      cur.messages.push({role: 'assistant', content: '⚠️ ' + __friendlyErr(err) + (__primaryErr ? ('\n' + (lang === 'ar' ? 'المسار الأوّل (كلود): ' : 'Primary path (Claude): ') + __primaryErr.slice(0, 220)) : '')});
     }
   }finally{
     __omranDisarmWatchdog();  // v586
@@ -23231,21 +24063,96 @@ async function __safeJson(res){
   const ideaText = document.getElementById('designAiIdeaText');
   const ideaGo = document.getElementById('designAiIdeaGo');
   const ideaTitle = document.getElementById('designAiIdeasTitle');
+  /* v-decor-poster: البوستر نفسه هو الأزرار — كل غرفة نقطة نقر، والمخ = أعطني أفكارًا */
+  const POSTER_SRC = 'assets/decor/chips/001.jpg';
+  const POSTER_HOT = {
+    restaurant: [4.3, 20.5, 21.0, 24.0],
+    cafe:       [22.5, 15.5, 19.0, 24.0],
+    bedroom:    [40.7, 12.0, 20.0, 24.0],
+    majlis:     [60.5, 14.0, 18.5, 25.0],
+    living:     [76.5, 22.0, 21.0, 23.0],
+    kitchen:    [20.0, 38.5, 18.5, 21.5],
+    office:     [63.7, 39.0, 18.0, 22.0],
+    kids:       [80.5, 42.5, 19.0, 21.5],
+    shop:       [6.0, 58.0, 17.5, 24.0],
+    bath:       [23.8, 59.8, 17.5, 22.5],
+    entrance:   [60.4, 58.8, 18.5, 23.5],
+    garden:     [78.5, 60.0, 19.5, 22.0]
+  };
+  const POSTER_BRAIN = [41.5, 35.8, 19.0, 22.5];
   function buildIdeaChips(){
     if(!ideaChips || !placeEl) return;
     ideaChips.innerHTML = '';
+    const isAr = ((document.documentElement.lang || 'ar') + '').indexOf('ar') === 0;
+
+    function optName(o){ return (window.__optT ? window.__optT(o) : o.textContent).trim(); }
+
+    function textChips(){
+      ideaChips.innerHTML = '';
+      Array.prototype.forEach.call(placeEl.options, function(o){
+        if(!o.value) return;
+        const c = document.createElement('button');
+        c.type = 'button'; c.className = 'btn'; c.dataset.place = o.value;
+        c.style.cssText = 'width:auto; padding:6px 11px; font-size:12.5px; border-radius:999px;';
+        c.textContent = optName(o);
+        c.onclick = function(){ placeEl.value = o.value; if(ideaText) ideaText.value = ''; loadIdeas({ place: o.value }); };
+        ideaChips.appendChild(c);
+      });
+    }
+
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:relative; width:100%; max-width:820px; margin:0 auto; line-height:0;';
+    const poster = document.createElement('img');
+    poster.src = POSTER_SRC;
+    poster.alt = ''; poster.loading = 'lazy';
+    poster.style.cssText = 'display:block; width:100%; height:auto; border-radius:14px;';
+    poster.onerror = function(){ textChips(); };
+    wrap.appendChild(poster);
+
+    function hotBtn(box, name, round){
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.title = name;
+      b.setAttribute('aria-label', name);
+      b.style.cssText = 'position:absolute; left:' + box[0] + '%; top:' + box[1] + '%; width:' + box[2] + '%; height:' + box[3] +
+        '%; background:none; border:2px solid transparent; border-radius:' + (round ? '50%' : '12px') +
+        '; padding:0; margin:0; min-height:0; cursor:pointer; box-shadow:none; transition:.15s;';
+      b.onmouseenter = function(){ b.style.borderColor = '#d4af37'; b.style.background = 'rgba(212,175,55,.15)'; };
+      b.onmouseleave = function(){ b.style.borderColor = 'transparent'; b.style.background = 'none'; };
+      return b;
+    }
+
     Array.prototype.forEach.call(placeEl.options, function(o){
-      if(!o.value) return;
-      const c = document.createElement('button');
-      c.type = 'button'; c.className = 'btn'; c.dataset.place = o.value;
-      c.style.cssText = 'width:auto; padding:6px 11px; font-size:12.5px; border-radius:999px;';
-      c.textContent = (window.__optT ? window.__optT(o) : o.textContent).trim();
-      c.onclick = function(){ placeEl.value = o.value; if(ideaText) ideaText.value = ''; btnGenerate.onclick(); };
-      ideaChips.appendChild(c);
+      const box = POSTER_HOT[o.value];
+      if(!box) return;
+      const name = optName(o);
+      const b = hotBtn(box, name, false);
+      b.dataset.place = o.value;
+      if(!isAr){
+        const cap = document.createElement('span');
+        cap.textContent = name;
+        cap.style.cssText = 'position:absolute; left:50%; bottom:5%; transform:translateX(-50%); white-space:nowrap;' +
+          ' font-size:11px; font-weight:700; color:#fff; background:rgba(0,0,0,.75); padding:2px 9px; border-radius:999px;';
+        b.appendChild(cap);
+      }
+      b.onclick = function(){ placeEl.value = o.value; if(ideaText) ideaText.value = ''; loadIdeas({ place: o.value }); };
+      wrap.appendChild(b);
     });
-    if(ideaTitle) ideaTitle.textContent = '💡 ' + bT('أفكار بلا صورة — اختر نوع المكان أو اكتب ما تريد', 'Ideas without a photo — pick a place or describe what you want');
+
+    const brainName = bT('أعطني أفكارًا', 'Give me ideas');
+    const brain = hotBtn(POSTER_BRAIN, brainName, true);
+    brain.onclick = function(){ if(ideaGo && typeof ideaGo.onclick === 'function') ideaGo.onclick(); };
+    wrap.appendChild(brain);
+
+    ideaChips.appendChild(wrap);
+
+     if(ideaTitle){
+     var __k = 'decorIdeasTitlePoster', __g = '';
+    try{ if(typeof window.t === 'function'){ var __v = window.t(__k); if(__v && __v !== __k) __g = __v; } }catch(e){ /* guard-ok */ }
+      ideaTitle.textContent = '💡 ' + (__g || bT('أفكار بلا صورة — اضغط على المكان في الصورة أو اكتب ما تريد', 'Ideas without a photo — tap a place in the image or describe what you want'));
+    }
     if(ideaText) ideaText.placeholder = bT('مثال: مجلس عربي فخم لعشرين شخصًا', 'e.g. a luxurious Arabic majlis for twenty guests');
-    if(ideaGo) ideaGo.textContent = '✨ ' + bT('أعطني أفكارًا', 'Give me ideas');
+    if(ideaGo){ ideaGo.textContent = '✨ ' + brainName; ideaGo.style.display = 'none'; }
   }
   buildIdeaChips();
   /* v-decor-gallery: معرض صور حقيقية (عشرات) من الويب — يفتح فورًا، والتوليد بالذكاء زرّ منفصل */
@@ -23288,7 +24195,7 @@ async function __safeJson(res){
       try{ ideaGallery.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){ /* guard-ok */ }
     }catch(e){ if(my === ideaReq) ideaStatus('⚠️ ' + bT('تعذّر جلب الصور الآن.', 'Could not fetch photos right now.')); }
   }
-  if(ideaChips) Array.prototype.forEach.call(ideaChips.querySelectorAll('button'), function(c){
+  if(ideaChips) Array.prototype.forEach.call(ideaChips.querySelectorAll('button[data-place]'), function(c){
     c.onclick = function(){ if(placeEl) placeEl.value = c.dataset.place; if(ideaText) ideaText.value = ''; loadIdeas({ place: c.dataset.place }); };
   });
   if(ideaGo) ideaGo.onclick = function(){
@@ -23665,7 +24572,7 @@ const STU_XL = {
   'فن الورق المقصوص': {en:'Paper Cut Art',fr:'Art du Découpage de Papier',hi:'कागज कला कला',bn:'কাগজ কাটা শিল্প',ne:'कागज काट कला',id:'Seni Potong Kertas',fil:'Paper Cut Art',tr:'Kağıt Kesme Sanatı',zh:'纸艺术',ru:'Искусство вырезания из бумаги',es:'Arte de Corte de Papel',ml:'പേപ്പർ കട് ആർട്ട്'},
   'شخصية كروشيه محبوكة': {en:'Crocheted Character',fr:'Personnage au Crochet',hi:'क्रोचेटेड चरित्र',bn:'ক্রোশেটেড চরিত্র',ne:'क्रोचेटेड क्यारेक्टर',id:'Karakter Rajutan Kait',fil:'Crocheted Character',tr:'Tırtıklı Karakter',zh:'钩针编织角色',ru:'Вязаный крючком персонаж',es:'Personaje de Ganchillo',ml:'ഹുക്കിംഗ് ചെയ്ത പാത്രം'},
   'مجسم منفوخ لامع': {en:'Shiny Inflatable Figure',fr:'Figure Gonflable Brillante',hi:'चमकदार फुलाए जाने योग्य आकृति',bn:'চকচকে স্ফীত চিত্র',ne:'चमकदार फुलाउन योग्य चित्र',id:'Figura Balon Berkilau',fil:'Shiny Inflatable Figure',tr:'Parlak Şişirilebilir Figür',zh:'闪亮充气人物',ru:'Блестящая надувная фигура',es:'Figura Inflable Brillante',ml:'തിളങ്ങുന്ന നിരക്കയോഗ്യ ഫിഗർ'},
-  'فن ياباني كلاسيكي': {en:'Classical Japanese Art',fr:'Art Japonais Classique',hi:'शास्त्रीय जापानी कला',bn:'ক্লাসিক্যাল জাপানি শিল्প',ne:'शास्त्रीय जापानी कला',id:'Seni Jepang Klasik',fil:'Classical Japanese Art',tr:'Klasik Japon Sanatı',zh:'古典日本艺术',ru:'Классическое японское искусство',es:'Arte Japonés Clásico',ml:'ക്ലാസ്സിക്കൽ ജാപ്പനീസ് കലാ'},
+  'فن ياباني كلاسيكي': {en:'Classical Japanese Art',fr:'Art Japonais Classique',hi:'शास्त्रीय जापानी कला',bn:'ক্লাসিক্যাল জাপানি শিল্প',ne:'शास्त्रीय जापानी कला',id:'Seni Jepang Klasik',fil:'Classical Japanese Art',tr:'Klasik Japon Sanatı',zh:'古典日本艺术',ru:'Классическое японское искусство',es:'Arte Japonés Clásico',ml:'ക്ലാസ്സിക്കൽ ജാപ്പനീസ് കലാ'},
   'رسم رملي إماراتي': {en:'Emirati Sand Art',fr:'Art du Sable Émirati',hi:'एमिराती रेत कला',bn:'এমিরাতি বালি শিল্প',ne:'इमिराती बालु कला',id:'Seni Pasir Emirat',fil:'Emirati Sand Art',tr:'Emiratli Kum Sanatı',zh:'阿联酋沙画艺术',ru:'Эмиратское искусство из песка',es:'Arte de Arena Emiratí',ml:'എമിരാതി മണ്ണ് കലാ'},
   'لوحة نيون مضيئة': {en:'Glowing Neon Sign',fr:'Enseigne Néon Brillante',hi:'चमकता नीयन संकेत',bn:'উজ্জ্বল নিয়ন চিহ্ন',ne:'चमकदार नियोन संकेत',id:'Tanda Neon Bersinar',fil:'Glowing Neon Sign',tr:'Parlayan Neon İşareti',zh:'发光霓虹灯牌',ru:'Светящийся неоновый знак',es:'Letrero de Neón Brillante',ml:'തിളങ്ങുന്ന നിയോൺ ചിഹ്നം'},
   'تعريض مزدوج فني': {en:'Artistic Double Exposure',fr:'Double Exposition Artistique',hi:'कलात्मक दोहरी जोखिम',bn:'শিল্পকলা দ্বৈত এক্সপোজার',ne:'कलात्मक दोहरो जोखिम',id:'Eksposur Ganda Artistik',fil:'Artistic Double Exposure',tr:'Sanatsal Çift Pozlama',zh:'艺术双曝光',ru:'Художественная двойная экспозиция',es:'Exposición Doble Artística',ml:'കലാത്മക രണ്ടിരട്ടി എക്സ്പോഷർ'},
@@ -28850,6 +29757,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     var buf = '', full = '', serverErr = null;
     var __srcAcc = []; /* v-one-brain: مصادر بحث النموذج نفسه — لبطاقات «المصادر» */
     var __toolBusy = false; /* أداة محلّيّة قيد التنفيذ → نطيل مهلة الخمول */
+    var __tier = null; /* v-tiers: free / free-limit / guest / guest-limit — لشارة «ردّ مجاني» */
 
     while (true) {
       var chunk;
@@ -28889,6 +29797,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
           });
         }
         if (ev.error) serverErr = ev.error;
+        if (typeof ev.tier === 'string' && ev.tier) __tier = ev.tier;
       }
     }
     noteEnd();
@@ -28896,7 +29805,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     // لا نصّ = لم يحدث شيء يُعرض؛ نرمي ليهبط المستدعي إلى مساره القديم.
     if (!full.trim()) throw new Error(serverErr || 'chat: empty reply');
     var __p = provider || 'claude';
-    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined };
+    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined };
   };
 })();
 
@@ -29771,6 +30680,451 @@ if(document.readyState === 'loading'){
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire); else wire();
   window.omranNewsAlerts = { enable: function(){ var c = document.getElementById('chkNewsAlerts'); if(c){ c.checked = true; enable(c); } } };
+})();
+/* ===== app-24-codefix — تحليل الكود وتعديله بالذكاء الاصطناعي =====
+   القرار المعماري: النموذج لا يعيد الملفّ كاملًا أبدًا. حدّ الإخراج (16000
+   توكن) أصغر بكثير من حدّ الإدخال، فملفّ ١٤٠٠ سطر يُقطع وهو خارج — وهذا
+   بعينه سبب «الكود يصل ٨٦٧ سطرًا». النموذج يعيد «رقعًا» ({قديم، جديد})
+   ونطبّقها هنا، بحارس يرفض أي رقعة لا يوجد نصّها القديم مرّة واحدة بالضبط.
+
+   ثلاثة قيود في api/_lib/chat.js حكمت التصميم:
+   (١) compactConversation تقصّ كلّ رسالة عند 12000 حرف — فالملفّ يُرسَل
+       كرسالة role:'system'، وهذه تُستخرج قبل القصّ ولا تُمسّ.
+   (٢) stripMemoryUrls تحذف كلّ رابط لا يظهر في ناتج أداة، وبلا أدوات
+       يكون toolCorpus فارغًا فتُمسح كلّ الروابط — بما فيها
+       xmlns="http://www.w3.org/2000/svg" داخل الرقع. لذلك يكتب النموذج
+       CS_SENTINEL بدل '://' ونعيدها هنا بعد الاستلام.
+   (٣) __analyzeDoc يطفئ الأدوات للنصّ الطويل — مفيد لنا: لا بحث ولا رسم
+       أثناء التحليل. لذا تُتجنّب في التعليمة كلمات البحث (سعر، أخبار،
+       طقس، فندق، مطعم، search, news, weather, price) كي لا تُشعل الأدوات. */
+(function () {
+  'use strict';
+
+  var CS = '@@CS@@';                 /* بديل '://' — راجع القيد (٢) أعلاه */
+  var MAX_BYTES = 400000;            /* فوقه نرفض: السياق والمهلة لا يتّسعان */
+  var API = '/api/ai?action=chat';   /* نفس مسار المحادثة الذي يستهلكه app-18-chat-tools — لا يوجد /api/chat */
+
+  var S = {
+    name: '',
+    text: '',
+    original: null,   /* نسخة التراجع الوحيدة */
+    patches: [],
+    busy: false,
+  };
+
+  function $id(x) { return document.getElementById(x); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>]/g, function (c) {
+      return c === '&' ? '&amp;' : (c === '<' ? '&lt;' : '&gt;');
+    });
+  }
+  function ar() {
+    var l = (typeof lang !== 'undefined' && lang) ? lang : 'ar';
+    return l === 'ar' || l === 'ur';
+  }
+  function authTok() {
+    try {
+      return sessionStorage.getItem('aiapp_auth_token') || localStorage.getItem('aiapp_auth_token') || '';
+    } catch (e) { return ''; }
+  }
+  function guestId() {
+    try { return localStorage.getItem('aiapp_guest_id') || localStorage.getItem('aiapp_guestId') || ''; }
+    catch (e) { return ''; }
+  }
+
+  /* ---------- التعليمة ----------
+     مكتوبة طويلة عمدًا: تجاوز ٦٠٠ حرف يشغّل __analyzeDoc في الخادم فتُطفأ
+     الأدوات، فيبدأ النموذج الكتابة فورًا بلا بحث ولا رسم. */
+  function buildInstruction(userAsk, fileName, fileLen) {
+    return [
+      'أنت مراجع كود. أمامك ملفّ كامل في رسالة النظام باسم «' + fileName + '» وطوله ' + fileLen + ' حرفًا.',
+      '',
+      'المطلوب من المستخدم:',
+      userAsk,
+      '',
+      '[قواعد الإخراج — إلزامية مطلقة]',
+      '١) ممنوع منعًا باتًا إعادة الملفّ كاملًا أو أي جزء كبير منه. أعد رقعًا فقط.',
+      '٢) شكل كلّ رقعة حرفيًّا، بلا أيّ علامات تنسيق أو أسوار كود حولها:',
+      '@@PATCH',
+      '@@WHY سبب التعديل في سطر واحد',
+      '@@OLD',
+      '(النصّ القديم كما هو في الملفّ حرفًا بحرف، بمسافاته وأسطره)',
+      '@@NEW',
+      '(النصّ الجديد بديلًا عنه)',
+      '@@END',
+      '٣) النصّ في @@OLD يجب أن يوجد في الملفّ مرّة واحدة بالضبط. وسّعه بأسطر',
+      '   مجاورة حتى يصير فريدًا. رقعة لا يُعثر على قديمها مرّة واحدة تُرفض تلقائيًّا.',
+      '٤) انسخ @@OLD من الملفّ نسخًا حرفيًّا — لا تُعِد كتابته من ذاكرتك ولا تُصلح',
+      '   مسافاته ولا تُغيّر حرفًا واحدًا فيه، وإلّا لن يطابق.',
+      '٥) لحذف نصّ: اترك ما بعد @@NEW فارغًا.',
+      '٦) في ردّك كلّه اكتب ' + CS + ' بدل الرمز نقطتين فمائلتين (الذي يأتي بعد https).',
+      '   هذا إلزاميّ في @@OLD و@@NEW والشرح معًا، وإلّا ضاعت الروابط من الرقعة.',
+      '٧) عشرون رقعة كحدّ أقصى. رتّبها من الأهمّ.',
+      '٨) لا تشرح خارج @@WHY، ولا تكتب مقدّمة ولا خاتمة ولا تلخيصًا.',
+      '٩) إن لم تجد ما تعدّله فاكتب سطرًا واحدًا فقط: @@NONE ثمّ سبب ذلك.',
+    ].join('\n');
+  }
+
+  /* ---------- النداء ---------- */
+  function askModel(instruction, fileBlock, onStatus, onGrow) {
+    var payload = {
+      messages: [
+        { role: 'system', content: fileBlock },
+        { role: 'user', content: instruction },
+      ],
+      provider: 'claude',
+      token: authTok(),
+      guestId: guestId(),
+      tz: (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { return ''; } })(),
+    };
+    return fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).then(function (r) {
+      if (!r.ok || !r.body) throw new Error('HTTP ' + r.status);
+      var reader = r.body.getReader();
+      var dec = new TextDecoder();
+      var buf = '', out = '';
+      function pump() {
+        return reader.read().then(function (res) {
+          if (res.done) return out;
+          buf += dec.decode(res.value, { stream: true });
+          var lines = buf.split('\n');
+          buf = lines.pop();
+          for (var i = 0; i < lines.length; i++) {
+            var ln = lines[i];
+            if (ln.indexOf('data: ') !== 0) continue;   /* ': ka' نبضة إبقاء */
+            var ev;
+            try { ev = JSON.parse(ln.slice(6)); } catch (e) { continue; }
+            if (ev.error) throw new Error(ev.error);
+            if (typeof ev.delta === 'string') { out += ev.delta; onGrow(out.length); }
+            else if (typeof ev.patch === 'string') out = ev.patch; /* الخادم يستبدل النصّ */
+            else if (ev.status) onStatus(ev.status);
+          }
+          return pump();
+        });
+      }
+      return pump();
+    });
+  }
+
+  /* ---------- التحليل النصّي ----------
+     صيغة محدِّدات لا JSON عمدًا: هروب الأسطر والاقتباسات داخل JSON يكسر
+     الكود الطويل باستمرار، والمحدِّدات تمرّ الكود خامًّا كما هو. */
+  function parsePatches(raw) {
+    var txt = String(raw || '').split(CS).join('://');
+    if (/@@NONE/.test(txt) && txt.indexOf('@@PATCH') === -1) return { none: true, list: [] };
+    var out = [];
+    var parts = txt.split('@@PATCH');
+    for (var i = 1; i < parts.length; i++) {
+      var b = parts[i];
+      var iOld = b.indexOf('@@OLD');
+      var iNew = b.indexOf('@@NEW');
+      var iEnd = b.indexOf('@@END');
+      if (iOld < 0 || iNew < 0 || iNew < iOld) continue;
+      if (iEnd < 0) iEnd = b.length;
+      var why = (b.slice(0, iOld).match(/@@WHY[ \t]*([^\n]*)/) || [, ''])[1].trim();
+      var oldS = b.slice(iOld + 5, iNew).replace(/^[ \t]*\r?\n/, '').replace(/\r?\n[ \t]*$/, '');
+      var newS = b.slice(iNew + 5, iEnd).replace(/^[ \t]*\r?\n/, '').replace(/\r?\n[ \t]*$/, '');
+      if (!oldS) continue;
+      out.push({ why: why, old: oldS, neu: newS, hits: 0, on: true });
+    }
+    return { none: false, list: out };
+  }
+
+  /* ---------- الحارس ----------
+     هذا هو الفرق بين أداة وبين إفساد صامت للملفّ: لا تُطبَّق رقعة إلّا إذا
+     وُجد نصّها القديم مرّة واحدة بالضبط. صفر = هلوسة، أكثر من واحدة = غموض. */
+  function countHits(hay, needle) {
+    if (!needle) return 0;
+    var n = 0, i = 0;
+    while (true) {
+      var k = hay.indexOf(needle, i);
+      if (k === -1) break;
+      n++; i = k + needle.length;
+      if (n > 9) break;
+    }
+    return n;
+  }
+  function scorePatches(text, list) {
+    for (var i = 0; i < list.length; i++) {
+      list[i].hits = countHits(text, list[i].old);
+      if (list[i].hits !== 1) list[i].on = false;
+    }
+    return list;
+  }
+
+  /* ---------- فحص الصياغة قبل الحفظ ---------- */
+  function syntaxCheck(name, code) {
+    var n = String(name || '').toLowerCase();
+    try {
+      if (/\.(mjs|cjs|jsx?|ts x?)$/.test(n) || /\.js$/.test(n)) {
+        /* eslint-disable no-new-func */
+        new Function(code);
+        return { ok: true, msg: 'الصياغة سليمة' };
+      }
+      if (/\.json$/.test(n)) { JSON.parse(code); return { ok: true, msg: 'JSON سليم' }; }
+      if (/\.html?$/.test(n)) {
+        var o = (code.match(/<script\b/gi) || []).length;
+        var c = (code.match(/<\/script>/gi) || []).length;
+        if (o !== c) return { ok: false, msg: 'وسوم script غير متوازنة: ' + o + ' مفتوحة و' + c + ' مغلقة' };
+        return { ok: true, msg: 'الوسوم متوازنة' };
+      }
+    } catch (e) {
+      return { ok: false, msg: String((e && e.message) || e).slice(0, 200) };
+    }
+    return { ok: true, msg: 'لا فحص لهذه الصيغة' };
+  }
+
+  /* ---------- الواجهة ---------- */
+  function close() { var o = $id('cfxOverlay'); if (o) o.remove(); }
+
+  function render(view) {
+    var b = $id('cfxBody');
+    if (b) b.innerHTML = view;
+  }
+
+  function setStatus(s) {
+    var el = $id('cfxStatus');
+    if (el) el.textContent = s || '';
+  }
+
+  function open() {
+    close();
+    var ov = document.createElement('div');
+    ov.id = 'cfxOverlay';
+    ov.dir = ar() ? 'rtl' : 'ltr';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:99000;background:rgba(0,0,0,.78);'
+      + 'backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;';
+    var box = document.createElement('div');
+    box.style.cssText = 'width:100%;max-width:760px;max-height:88vh;display:flex;flex-direction:column;'
+      + 'background:var(--panel,#12151d);border:1px solid rgba(255,255,255,.12);border-radius:16px;'
+      + 'box-shadow:0 20px 60px rgba(0,0,0,.55);overflow:hidden;color:var(--text,#e8eaf1);';
+    box.innerHTML =
+      '<div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);">'
+      + '<span style="font-weight:700;font-size:14px;">مراجعة الكود</span>'
+      + '<span id="cfxStatus" style="flex:1;font-size:12px;color:var(--muted,#98a0b3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>'
+      + '<button type="button" id="cfxX" aria-label="إغلاق" style="background:none;border:0;color:var(--muted,#98a0b3);cursor:pointer;font-size:16px;padding:4px 8px;">✕</button>'
+      + '</div>'
+      + '<div id="cfxBody" style="padding:14px 16px;overflow:auto;flex:1;"></div>';
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+    $id('cfxX').onclick = close;
+    ov.addEventListener('click', function (e) { if (e.target === ov && !S.busy) close(); });
+    viewPick();
+  }
+
+  function viewPick() {
+    render(
+      '<div style="display:flex;flex-direction:column;gap:12px;font-size:13px;">'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">'
+      + '<button type="button" id="cfxFileBtn" class="btn" style="padding:8px 14px;">اختر ملفًّا</button>'
+      + '<button type="button" id="cfxCurBtn" class="btn" style="padding:8px 14px;">كود المشروع الحالي</button>'
+      + '<span id="cfxFileName" style="color:var(--muted,#98a0b3);"></span>'
+      + '</div>'
+      + '<input type="file" id="cfxFile" style="display:none;">'
+      + '<label style="color:var(--muted,#98a0b3);">ما الذي تريد تغييره؟</label>'
+      + '<textarea id="cfxAsk" rows="5" spellcheck="false" placeholder="مثال: احذف التعريف المكرّر للدالّة، وانقل أزرار الشريط إلى tabs، واجعل التلميحات تتبع اللغة."'
+      + ' style="width:100%;box-sizing:border-box;background:var(--panel2,#0d0f14);color:inherit;'
+      + 'border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:10px;font:13px/1.7 inherit;resize:vertical;"></textarea>'
+      + '<button type="button" id="cfxGo" class="btn" style="padding:10px 16px;font-weight:700;">حلّل واقترح التعديلات</button>'
+      + '<div style="color:var(--muted,#98a0b3);font-size:11.5px;line-height:1.8;">'
+      + 'الملفّ يُرسَل كاملًا في كلّ طلب، فطوله يُحسب من رصيدك. النموذج يعيد تعديلات مفصولة لا الملفّ كاملًا،'
+      + ' وكلّ تعديل يُرفض تلقائيًّا إن لم يطابق نصّه موضعًا واحدًا في ملفّك.'
+      + '</div>'
+      + '</div>');
+
+    $id('cfxFileBtn').onclick = function () { $id('cfxFile').click(); };
+    $id('cfxFile').onchange = function (e) {
+      var f = e.target.files && e.target.files[0];
+      if (!f) return;
+      if (f.size > MAX_BYTES) { setStatus('الملفّ أكبر من ' + Math.round(MAX_BYTES / 1024) + ' ك.ب — قسّمه أوّلًا'); return; }
+      var fr = new FileReader();
+      fr.onload = function () {
+        S.name = f.name; S.text = String(fr.result || ''); S.original = null;
+        $id('cfxFileName').textContent = f.name + ' · ' + S.text.split('\n').length + ' سطر';
+        setStatus('');
+      };
+      fr.readAsText(f);
+    };
+    $id('cfxCurBtn').onclick = function () {
+      var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+      if (!cur || !cur.code) { setStatus('لا يوجد كود في المشروع الحالي'); return; }
+      S.name = (cur.codeType === 'python') ? 'project.py' : 'project.html';
+      S.text = String(cur.code); S.original = null;
+      $id('cfxFileName').textContent = S.name + ' · ' + S.text.split('\n').length + ' سطر';
+      setStatus('');
+    };
+    $id('cfxGo').onclick = run;
+    /* v-code-score: ملفّ سُلِّم من وحدة التحليل (omranCodeFixOpenWith) يظهر اسمه فورًا */
+    if (S.name && S.text) $id('cfxFileName').textContent = S.name + ' · ' + S.text.split('\n').length + ' سطر';
+  }
+
+  function run() {
+    var ask = ($id('cfxAsk').value || '').trim();
+    if (!S.text) { setStatus('اختر ملفًّا أوّلًا'); return; }
+    if (!ask) { setStatus('اكتب ما تريد تغييره'); return; }
+    S.busy = true;
+    render('<div style="font-size:13px;color:var(--muted,#98a0b3);line-height:2;">'
+      + '<div id="cfxProg">يقرأ الملفّ…</div></div>');
+    setStatus('');
+
+    var fileBlock = '[الملفّ تحت المراجعة — ' + S.name + ']\n'
+      + '<<<<<<FILE\n' + S.text + '\nFILE>>>>>>';
+    var instruction = buildInstruction(ask, S.name, S.text.length);
+
+    askModel(instruction, fileBlock,
+      function (st) { var p = $id('cfxProg'); if (p) p.textContent = st; },
+      function (n) { var p = $id('cfxProg'); if (p) p.textContent = 'يكتب التعديلات… ' + n + ' حرفًا'; }
+    ).then(function (raw) {
+      S.busy = false;
+      var r = parsePatches(raw);
+      if (r.none || !r.list.length) {
+        render('<div style="font-size:13px;line-height:1.9;">لم يقترح النموذج أيّ تعديل.'
+          + '<pre style="white-space:pre-wrap;color:var(--muted,#98a0b3);font-size:12px;margin-top:10px;">'
+          + esc(String(raw).split(CS).join('://').slice(0, 1200)) + '</pre></div>');
+        return;
+      }
+      S.patches = scorePatches(S.text, r.list);
+      viewPatches();
+    }).catch(function (e) {
+      S.busy = false;
+      render('<div style="font-size:13px;color:#e88;">تعذّر التحليل: ' + esc(String((e && e.message) || e)) + '</div>');
+    });
+  }
+
+  function viewPatches() {
+    var okN = 0, badN = 0, h = '';
+    for (var i = 0; i < S.patches.length; i++) {
+      var p = S.patches[i];
+      var good = p.hits === 1;
+      if (good) okN++; else badN++;
+      var tag = good ? '<span style="color:#7ac07a;">مطابقة واحدة</span>'
+        : (p.hits === 0
+          ? '<span style="color:#e88;">لم يُعثر على النصّ القديم — مرفوضة</span>'
+          : '<span style="color:#e8b45a;">' + p.hits + ' مواضع — غامضة، مرفوضة</span>');
+      h += '<div style="border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px;margin-bottom:8px;">'
+        + '<label style="display:flex;gap:8px;align-items:flex-start;cursor:' + (good ? 'pointer' : 'default') + ';">'
+        + '<input type="checkbox" data-i="' + i + '" class="cfxChk"' + (good ? ' checked' : ' disabled') + '>'
+        + '<span style="flex:1;"><b style="font-size:12.5px;">' + esc(p.why || 'تعديل') + '</b><br>'
+        + '<span style="font-size:11.5px;">' + tag + '</span></span></label>'
+        + '<pre style="margin:8px 0 0;max-height:150px;overflow:auto;background:var(--panel2,#0d0f14);'
+        + 'border-radius:8px;padding:8px;font:11.5px/1.6 ui-monospace,Menlo,Consolas,monospace;'
+        + 'direction:ltr;text-align:left;white-space:pre;">'
+        + '<span style="color:#e08a8a;">- ' + esc(p.old.slice(0, 600)).split('\n').join('\n- ') + '</span>\n'
+        + '<span style="color:#7ac07a;">+ ' + esc(p.neu.slice(0, 600)).split('\n').join('\n+ ') + '</span>'
+        + '</pre></div>';
+    }
+    render('<div style="font-size:13px;">'
+      + '<div style="margin-bottom:10px;color:var(--muted,#98a0b3);">'
+      + okN + ' تعديلًا صالحًا' + (badN ? ' · ' + badN + ' مرفوضة' : '') + '</div>'
+      + h
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">'
+      + '<button type="button" id="cfxApply" class="btn" style="padding:9px 16px;font-weight:700;">طبّق المحدّد</button>'
+      + '<button type="button" id="cfxBack" class="btn" style="padding:9px 16px;">رجوع</button>'
+      + '</div></div>');
+    $id('cfxBack').onclick = viewPick;
+    $id('cfxApply').onclick = apply;
+    var chks = document.querySelectorAll('.cfxChk');
+    for (var k = 0; k < chks.length; k++) {
+      chks[k].onchange = function () { S.patches[+this.getAttribute('data-i')].on = this.checked; };
+    }
+  }
+
+  function apply() {
+    var before = S.text;
+    var text = S.text, done = 0, skipped = 0;
+    for (var i = 0; i < S.patches.length; i++) {
+      var p = S.patches[i];
+      if (!p.on) continue;
+      /* يُعاد العدّ لحظة التطبيق: رقعة سابقة قد تكون غيّرت الموضع. */
+      if (countHits(text, p.old) !== 1) { skipped++; continue; }
+      text = text.replace(p.old, function () { return p.neu; });
+      done++;
+    }
+    var chk = syntaxCheck(S.name, text);
+    if (!chk.ok) {
+      render('<div style="font-size:13px;line-height:1.9;">'
+        + '<div style="color:#e88;font-weight:700;">لم أحفظ شيئًا — الملفّ الناتج لا يُصرَّف.</div>'
+        + '<div style="color:var(--muted,#98a0b3);margin-top:6px;">' + esc(chk.msg) + '</div>'
+        + '<button type="button" id="cfxBack2" class="btn" style="margin-top:12px;padding:9px 16px;">رجوع للتعديلات</button>'
+        + '</div>');
+      $id('cfxBack2').onclick = viewPatches;
+      return;
+    }
+    S.original = before;
+    S.text = text;
+    var lines = text.split('\n').length;
+    render('<div style="font-size:13px;line-height:1.9;">'
+      + '<div style="color:#7ac07a;font-weight:700;">طُبّق ' + done + ' تعديلًا'
+      + (skipped ? ' · تُخطّي ' + skipped + ' لتغيّر موضعها' : '') + '</div>'
+      + '<div style="color:var(--muted,#98a0b3);">' + esc(chk.msg) + ' · ' + lines + ' سطرًا</div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">'
+      + '<button type="button" id="cfxDl" class="btn" style="padding:9px 16px;font-weight:700;">تنزيل الملفّ</button>'
+      + '<button type="button" id="cfxToProj" class="btn" style="padding:9px 16px;">ضعه في كود المشروع</button>'
+      + '<button type="button" id="cfxUndo" class="btn" style="padding:9px 16px;">تراجع</button>'
+      + '</div></div>');
+
+    $id('cfxDl').onclick = function () {
+      var blob = new Blob([S.text], { type: 'text/plain;charset=utf-8' });
+      if (typeof omranSaveBlob === 'function') { omranSaveBlob(blob, S.name); return; }
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = S.name;
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    };
+    $id('cfxToProj').onclick = function () {
+      try {
+        var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+        if (!cur) { setStatus('لا يوجد مشروع مفتوح'); return; }
+        cur.code = S.text;
+        if (typeof codeEl !== 'undefined' && codeEl) codeEl.value = S.text;
+        if (typeof saveState === 'function') saveState();
+        if (typeof renderCodeAndPreview === 'function') renderCodeAndPreview();
+        setStatus('نُقل إلى كود المشروع');
+      } catch (e) { setStatus('تعذّر النقل'); }
+    };
+    $id('cfxUndo').onclick = function () {
+      if (S.original == null) return;
+      S.text = S.original; S.original = null;
+      S.patches = scorePatches(S.text, S.patches);
+      viewPatches();
+    };
+  }
+
+  /* ---------- الزرّ: يُضاف إلى قائمة ⋮ في شريط التبويبات ---------- */
+  function mount() {
+    var dd = document.getElementById('tabsMenuDropdown');
+    if (!dd || document.getElementById('btnCodeFix')) return true;
+    var b = document.createElement('button');
+    b.className = 'btn';
+    b.id = 'btnCodeFix';
+    b.type = 'button';
+    b.title = 'مراجعة الكود بالذكاء الاصطناعي';
+    b.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"'
+      + ' fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"'
+      + ' stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"></polyline>'
+      + '<polyline points="8 6 2 12 8 18"></polyline></svg> <span class="btnLabel">مراجعة</span>';
+    b.onclick = function (e) { e.stopPropagation(); open(); };
+    dd.appendChild(b);
+    return true;
+  }
+
+  window.omranCodeFixOpen = open;
+  /* v-code-score: وحدة «تحليل الكود وتقييمه» (app-27) تسلّم الملفّ الواحد وطلب الإصلاح
+     المبنيّ من أعلى المشاكل، فيبدأ المستخدم من شاشة الرقع مباشرةً. */
+  window.omranCodeFixOpenWith = function (name, text, ask) {
+    S.name = String(name || 'file.txt'); S.text = String(text || ''); S.original = null; S.patches = [];
+    open();
+    var a = $id('cfxAsk');
+    if (a && ask) a.value = String(ask);
+  };
+
+  if (!mount()) {
+    var n = 0;
+    var t = setInterval(function () { if (mount() || ++n > 40) clearInterval(t); }, 300);
+  }
 })();
 // 📺 تلفزيون عمران — دليل قنوات عالمي بمصادر بث مباشر رسمية فقط (HLS/DASH).
 // المبدأ الثابت: لا روابط m3u8 مسرّبة ولا إعادة بث — أي بلاغ حقوق يقتل
@@ -31715,4 +33069,610 @@ if(document.readyState === 'loading'){
   window.omranQibla = { open: openQibla, close: closeQibla, checkLocal: checkLocal, live: live, _S: S };
   /* v-prayer-local: إن كان للمستخدم تنبيهات محفوظة نراقبها محليًا منذ فتح التطبيق */
   try{ if(Object.keys(alertsMap()).length) bootLocalAlerts(); }catch(e){ __swallow(e, 'qibla:boot-local'); }
+})();
+/* ===== app-27-codescore — تحليل الكود وتقييمه (v-code-score) =====
+   «يقرأ الأكواد ويحلّل كلّ شيء ويعطي الأفضل»: ملفّات نصّية أو أرشيف zip أو
+   كود المشروع الحالي أو لصق مباشر → /api/tools?action=code-analyze (بثّ SSE)
+   → تقرير مُهيكل: درجة من ١٠٠ وحرف تقدير، ستّ فئات، نقاط القوّة، المشاكل
+   بخطورتها وملفّها وسطرها وإصلاحها، توصيات مرتّبة من الأعلى قيمة، وترتيب
+   الملفّات من الأفضل، وقياسات محلّية. زرّ «أصلح أهمّ المشاكل» يسلّم الملفّ
+   الواحد إلى وحدة الرقع (app-24-codefix) بطلب مبنيّ من أعلى المشاكل.
+   الواجهة كمبيوتر أوّلًا (قرار ثابت: الجوّال مُتجاهَل عمدًا). */
+(function () {
+  'use strict';
+
+  var API = '/api/tools?action=code-analyze';
+  var MAX_TEXT = 400000;          /* حدّ الملفّ النصّي الواحد */
+  var MAX_ZIP = 3 * 1024 * 1024;  /* جسم دالة Vercel ~4.5 م.ب وbase64 يزيد الثلث */
+  var MAX_FILES = 40;
+  var ACCEPT = '.js,.mjs,.cjs,.jsx,.ts,.tsx,.py,.html,.htm,.css,.scss,.json,.md,.php,.java,.kt,.swift,.go,.rs,.c,.h,.cpp,.hpp,.cs,.rb,.sh,.sql,.yml,.yaml,.xml,.vue,.svelte,.dart,.toml,.txt,.zip';
+
+  var S = { files: [], zip: null, github: '', busy: false, report: null, t0: 0, timer: null };
+
+  function $id(x) { return document.getElementById(x); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return c === '&' ? '&amp;' : (c === '<' ? '&lt;' : (c === '>' ? '&gt;' : '&quot;'));
+    });
+  }
+  function L() { return (typeof lang !== 'undefined' && lang) ? String(lang) : 'ar'; }
+  function ar() { var l = L(); return l === 'ar' || l === 'ur'; }
+  function authTok() {
+    try { return sessionStorage.getItem('aiapp_auth_token') || localStorage.getItem('aiapp_auth_token') || ''; }
+    catch (e) { return ''; }
+  }
+  function guestId() {
+    try { return localStorage.getItem('aiapp_guest_id') || localStorage.getItem('aiapp_guestId') || ''; }
+    catch (e) { return ''; }
+  }
+
+  var TXT = {
+    ar: {
+      title: 'تحليل الكود وتقييمه', menu: 'تحليل', menuTitle: 'تحليل الكود وتقييمه بالذكاء الاصطناعي',
+      pickFiles: 'اختر ملفّات أو zip', current: 'كود المشروع الحالي', paste: 'الصق كودًا', add: 'أضف',
+      pasteName: 'اسم الملفّ (مثال app.js)', pastePh: 'الصق الكود هنا…', ask: 'ركّز على شيء معيّن؟ (اختياري)',
+      github: 'رابط GitHub', githubPh: 'https://github.com/owner/repo أو رابط مجلّد أو ملفّ', githubAdd: 'أضف من GitHub', githubBad: 'رابط GitHub غير مفهوم',
+      askPh: 'مثال: الأمان فقط، أو الأداء في دالة الحفظ، أو هل يصلح للإنتاج؟', go: 'حلّل وقيّم كلّ شيء',
+      note: 'يُقرأ كلّ ملفّ سطرًا سطرًا ويُحلَّل من ستّ زوايا (الصحّة، الأمان، الأداء، الوضوح، الصيانة، أفضل الممارسات) ثمّ يُقيَّم من ١٠٠ مع أفضل خطوة تالية. الطلب يُحسب رسالةً واحدة من رصيدك اليوميّ.',
+      noFiles: 'اختر ملفًّا أو الصق كودًا أوّلًا', tooBig: 'أكبر من الحدّ — تُخطّي: ', zipBig: 'الأرشيف أكبر من ٣ ميجابايت',
+      noProject: 'لا يوجد كود في المشروع الحالي', reading: 'يقرأ الملفّات…', sec: 'ث', files: 'ملفّ', lines: 'سطر',
+      score: 'الدرجة', verdict: 'الحكم', strengths: 'نقاط القوّة', issues: 'المشاكل', recs: 'أفضل ما تفعله الآن',
+      ranking: 'ترتيب الملفّات — الأفضل أوّلًا', metrics: 'قياسات آليّة', noIssues: 'لا مشاكل مؤثّرة — الكود نظيف.',
+      best: '★ الأفضل', fix: 'الإصلاح', fixBtn: 'أصلح أهمّ المشاكل', download: 'تنزيل التقرير', copy: 'نسخ', copied: 'نُسخ',
+      again: 'تحليل جديد', enginePro: 'المحرّك الاحترافيّ', engineFree: 'ردّ مجاني', fail: 'تعذّر التحليل: ',
+      unparsed: 'لم يصل تقرير مُهيكل — هذا نصّ النموذج كما هو:', skipped: 'تُخطّيت', rank: '#',
+      upgrade: 'اشترك للنسخة الاحترافية', signup: 'سجّل مجانًا', commentRatio: 'نسبة التعليقات', truncated: 'مقتطع',
+      deep: 'التحليل التفصيليّ — ملفًّا ملفًّا ودالّةً دالّة', freeNote: 'هذا تقرير الوضع المجانيّ. النسخة الاحترافيّة تحلّل بعمق أكبر وبملفّات أكبر.',
+      sev: { critical: 'حرِج', high: 'عالٍ', medium: 'متوسّط', low: 'منخفض', info: 'ملاحظة' },
+      cat: { correctness: 'الصحّة', security: 'الأمان', performance: 'الأداء', readability: 'الوضوح', maintainability: 'الصيانة', best_practices: 'أفضل الممارسات' },
+    },
+    en: {
+      title: 'Code analysis & rating', menu: 'Analyze', menuTitle: 'AI code analysis and rating',
+      pickFiles: 'Pick files or zip', current: 'Current project code', paste: 'Paste code', add: 'Add',
+      pasteName: 'File name (e.g. app.js)', pastePh: 'Paste code here…', ask: 'Focus on something? (optional)',
+      github: 'GitHub link', githubPh: 'https://github.com/owner/repo or a folder/file link', githubAdd: 'Add from GitHub', githubBad: 'Unrecognized GitHub link',
+      askPh: 'e.g. security only, performance of the save function, or is it production-ready?', go: 'Analyze & rate everything',
+      note: 'Every file is read line by line and reviewed from six angles (correctness, security, performance, readability, maintainability, best practices), then scored out of 100 with the best next step. Counts as one message of your daily quota.',
+      noFiles: 'Pick a file or paste code first', tooBig: 'Over the size limit — skipped: ', zipBig: 'Archive is larger than 3 MB',
+      noProject: 'The current project has no code', reading: 'Reading files…', sec: 's', files: 'files', lines: 'lines',
+      score: 'Score', verdict: 'Verdict', strengths: 'Strengths', issues: 'Issues', recs: 'Best things to do now',
+      ranking: 'File ranking — best first', metrics: 'Automatic metrics', noIssues: 'No significant issues — clean code.',
+      best: '★ Best', fix: 'Fix', fixBtn: 'Fix the top issues', download: 'Download report', copy: 'Copy', copied: 'Copied',
+      again: 'New analysis', enginePro: 'Pro engine', engineFree: 'Free reply', fail: 'Analysis failed: ',
+      unparsed: 'No structured report arrived — raw model text:', skipped: 'skipped', rank: '#',
+      upgrade: 'Upgrade to Pro', signup: 'Sign up free', commentRatio: 'comment ratio', truncated: 'truncated',
+      deep: 'Detailed analysis — file by file, function by function', freeNote: 'This is the free-tier report. The Pro engine analyzes deeper and accepts larger files.',
+      sev: { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', info: 'Info' },
+      cat: { correctness: 'Correctness', security: 'Security', performance: 'Performance', readability: 'Readability', maintainability: 'Maintainability', best_practices: 'Best practices' },
+    },
+  };
+  function t(k) { var d = ar() ? TXT.ar : TXT.en; return d[k] != null ? d[k] : (TXT.ar[k] != null ? TXT.ar[k] : k); }
+  function sevName(s) { return t('sev')[s] || s; }
+  function catName(c) { return t('cat')[c] || c; }
+
+  var SEV_COLOR = { critical: '#ff5f5f', high: '#e88', medium: '#e8b45a', low: '#b5d16a', info: '#8ab4f8' };
+  function scoreColor(n) { return n == null ? '#98a0b3' : (n >= 85 ? '#7ac07a' : (n >= 70 ? '#b5d16a' : (n >= 55 ? '#e8b45a' : '#e88'))); }
+
+  /* ---------- قراءة الملفّات ---------- */
+  function readText(f) {
+    return new Promise(function (res, rej) {
+      var fr = new FileReader();
+      fr.onload = function () { res(String(fr.result || '')); };
+      fr.onerror = function () { rej(new Error('read failed')); };
+      fr.readAsText(f);
+    });
+  }
+  function readB64(f) {
+    return new Promise(function (res, rej) {
+      var fr = new FileReader();
+      fr.onload = function () { res(String(fr.result || '').split(',')[1] || ''); };
+      fr.onerror = function () { rej(new Error('read failed')); };
+      fr.readAsDataURL(f);
+    });
+  }
+  function addFile(name, content) {
+    if (S.files.length >= MAX_FILES) return false;
+    for (var i = 0; i < S.files.length; i++) if (S.files[i].name === name) { S.files[i].content = content; return true; }
+    S.files.push({ name: name, content: content });
+    return true;
+  }
+
+  /* ---------- الواجهة ---------- */
+  function close() { var o = $id('csOverlay'); if (o) o.remove(); if (S.timer) { clearInterval(S.timer); S.timer = null; } }
+  function render(v) { var b = $id('csBody'); if (b) b.innerHTML = v; }
+  function setStatus(s) { var el = $id('csStatus'); if (el) el.textContent = s || ''; }
+  var BTN = 'padding:8px 14px;';
+  var MUTED = 'color:var(--muted,#98a0b3);';
+  var CARD = 'border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px 12px;margin-bottom:8px;';
+
+  function open() {
+    close();
+    var ov = document.createElement('div');
+    ov.id = 'csOverlay';
+    ov.dir = ar() ? 'rtl' : 'ltr';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:99000;background:rgba(0,0,0,.78);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;';
+    var box = document.createElement('div');
+    box.style.cssText = 'width:100%;max-width:860px;max-height:90vh;display:flex;flex-direction:column;background:var(--panel,#12151d);border:1px solid rgba(255,255,255,.12);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.55);overflow:hidden;color:var(--text,#e8eaf1);';
+    box.innerHTML =
+      '<div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);">'
+      + '<span style="font-weight:700;font-size:14px;">' + esc(t('title')) + '</span>'
+      + '<span id="csStatus" style="flex:1;font-size:12px;' + MUTED + 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>'
+      + '<button type="button" id="csX" aria-label="close" style="background:none;border:0;' + MUTED + 'cursor:pointer;font-size:16px;padding:4px 8px;">✕</button>'
+      + '</div><div id="csBody" style="padding:14px 16px;overflow:auto;flex:1;font-size:13px;"></div>';
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+    $id('csX').onclick = close;
+    ov.addEventListener('click', function (e) { if (e.target === ov && !S.busy) close(); });
+    viewPick();
+  }
+
+  function renderList() {
+    var el = $id('csList');
+    if (!el) return;
+    var h = '';
+    if (S.zip) h += chip('📦 ' + S.zip.name + ' · ' + Math.round(S.zip.file.size / 1024) + 'KB', 'zip');
+    if (S.github) h += chip('🐙 ' + S.github.replace(/^https?:\/\/(www\.)?github\.com\//, ''), 'gh');
+    for (var i = 0; i < S.files.length; i++) h += chip(S.files[i].name + ' · ' + S.files[i].content.split('\n').length + ' ' + t('lines'), String(i));
+    el.innerHTML = h;
+    var xs = el.querySelectorAll('[data-rm]');
+    for (var k = 0; k < xs.length; k++) {
+      xs[k].onclick = function () {
+        var v = this.getAttribute('data-rm');
+        if (v === 'zip') S.zip = null; else if (v === 'gh') S.github = ''; else S.files.splice(+v, 1);
+        renderList();
+      };
+    }
+  }
+  function chip(label, key) {
+    return '<span style="display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:3px 10px;margin:0 4px 6px 0;font-size:12px;">'
+      + esc(label) + '<button type="button" data-rm="' + key + '" style="background:none;border:0;' + MUTED + 'cursor:pointer;padding:0;font-size:13px;">✕</button></span>';
+  }
+
+  function viewPick() {
+    render(
+      '<div style="display:flex;flex-direction:column;gap:12px;">'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">'
+      + '<button type="button" id="csFilesBtn" class="btn" style="' + BTN + '">' + esc(t('pickFiles')) + '</button>'
+      + '<button type="button" id="csCurBtn" class="btn" style="' + BTN + '">' + esc(t('current')) + '</button>'
+      + '<button type="button" id="csPasteBtn" class="btn" style="' + BTN + '">' + esc(t('paste')) + '</button>'
+      + '</div>'
+      + '<div style="display:flex;gap:8px;align-items:center;">'
+      + '<input id="csGh" placeholder="' + esc(t('githubPh')) + '" title="' + esc(t('github')) + '" style="flex:1;box-sizing:border-box;background:var(--panel2,#0d0f14);color:inherit;border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:8px 10px;font:13px inherit;direction:ltr;text-align:left;">'
+      + '<button type="button" id="csGhAdd" class="btn" style="' + BTN + '">' + esc(t('githubAdd')) + '</button>'
+      + '</div>'
+      + '<input type="file" id="csFile" multiple accept="' + ACCEPT + '" style="display:none;">'
+      + '<div id="csList"></div>'
+      + '<div id="csPasteWrap" style="display:none;flex-direction:column;gap:6px;">'
+      + '<input id="csPasteName" placeholder="' + esc(t('pasteName')) + '" style="width:100%;box-sizing:border-box;background:var(--panel2,#0d0f14);color:inherit;border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:8px 10px;font:13px inherit;">'
+      + '<textarea id="csPaste" rows="8" spellcheck="false" placeholder="' + esc(t('pastePh')) + '" style="width:100%;box-sizing:border-box;background:var(--panel2,#0d0f14);color:inherit;border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:10px;font:12px/1.6 ui-monospace,Menlo,Consolas,monospace;direction:ltr;text-align:left;resize:vertical;"></textarea>'
+      + '<div><button type="button" id="csPasteAdd" class="btn" style="' + BTN + '">' + esc(t('add')) + '</button></div>'
+      + '</div>'
+      + '<label style="' + MUTED + '">' + esc(t('ask')) + '</label>'
+      + '<input id="csAsk" placeholder="' + esc(t('askPh')) + '" style="width:100%;box-sizing:border-box;background:var(--panel2,#0d0f14);color:inherit;border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:10px;font:13px inherit;">'
+      + '<button type="button" id="csGo" class="btn" style="padding:10px 16px;font-weight:700;">' + esc(t('go')) + '</button>'
+      + '<div style="' + MUTED + 'font-size:11.5px;line-height:1.8;">' + esc(t('note')) + '</div>'
+      + '</div>');
+    renderList();
+    $id('csFilesBtn').onclick = function () { $id('csFile').click(); };
+    $id('csFile').onchange = function (e) {
+      var list = Array.prototype.slice.call(e.target.files || []);
+      var skippedBig = [];
+      var chain = Promise.resolve();
+      list.forEach(function (f) {
+        chain = chain.then(function () {
+          if (/\.zip$/i.test(f.name)) {
+            if (f.size > MAX_ZIP) { setStatus(t('zipBig')); return; }
+            S.zip = { name: f.name, file: f };
+            return;
+          }
+          if (f.size > MAX_TEXT) { skippedBig.push(f.name); return; }
+          return readText(f).then(function (txt) { addFile(f.name, txt); });
+        });
+      });
+      chain.then(function () {
+        renderList();
+        if (skippedBig.length) setStatus(t('tooBig') + skippedBig.join(', '));
+        e.target.value = '';
+      });
+    };
+    $id('csCurBtn').onclick = function () {
+      var cur = (typeof getCurrent === 'function') ? getCurrent() : null;
+      if (!cur || !cur.code) { setStatus(t('noProject')); return; }
+      addFile(cur.codeType === 'python' ? 'project.py' : 'project.html', String(cur.code));
+      renderList(); setStatus('');
+    };
+    $id('csGhAdd').onclick = function () {
+      var u = ($id('csGh').value || '').trim();
+      if (!/^(https?:\/\/)?(www\.)?(github\.com|raw\.githubusercontent\.com)\/[^\/\s]+\/[^\/\s]+/i.test(u) && !/^[\w.-]+\/[\w.-]+(\/\S*)?$/.test(u)) { setStatus(t('githubBad')); return; }
+      S.github = u; $id('csGh').value = ''; renderList(); setStatus('');
+    };
+    $id('csPasteBtn').onclick = function () { var w = $id('csPasteWrap'); w.style.display = w.style.display === 'none' ? 'flex' : 'none'; };
+    $id('csPasteAdd').onclick = function () {
+      var code = ($id('csPaste').value || '');
+      if (!code.trim()) return;
+      var nm = ($id('csPasteName').value || '').trim() || ('snippet-' + (S.files.length + 1) + '.txt');
+      addFile(nm, code); $id('csPaste').value = ''; renderList();
+    };
+    $id('csGo').onclick = run;
+  }
+
+  function viewProgress() {
+    render('<div style="' + MUTED + 'line-height:2;"><div id="csProg">' + esc(t('reading')) + '</div><div id="csElapsed" style="font-size:11.5px;"></div></div>');
+    S.t0 = Date.now();
+    if (S.timer) clearInterval(S.timer);
+    S.timer = setInterval(function () {
+      var el = $id('csElapsed');
+      if (!el) { clearInterval(S.timer); S.timer = null; return; }
+      el.textContent = Math.round((Date.now() - S.t0) / 1000) + ' ' + t('sec');
+    }, 1000);
+  }
+
+  /* ---------- النداء (SSE) ---------- */
+  function callApi(payload, onStatus) {
+    return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).then(function (r) {
+      if (!r.ok || !r.body) throw new Error('HTTP ' + r.status);
+      var reader = r.body.getReader(), dec = new TextDecoder(), buf = '';
+      var out = { report: null, error: null, tier: null };
+      function pump() {
+        return reader.read().then(function (res) {
+          if (res.done) return out;
+          buf += dec.decode(res.value, { stream: true });
+          var lines = buf.split('\n');
+          buf = lines.pop();
+          for (var i = 0; i < lines.length; i++) {
+            if (lines[i].indexOf('data: ') !== 0) continue;
+            var ev;
+            try { ev = JSON.parse(lines[i].slice(6)); } catch (e) { continue; }
+            if (ev.status) onStatus(ev.status);
+            if (typeof ev.tier === 'string') out.tier = ev.tier;
+            if (ev.error) out.error = ev.error;
+            if (ev.report) out.report = ev.report;
+          }
+          return pump();
+        });
+      }
+      return pump();
+    });
+  }
+
+  function run() {
+    if (!S.files.length && !S.zip && !S.github) { setStatus(t('noFiles')); return; }
+    var ask = ($id('csAsk') && $id('csAsk').value || '').trim();
+    S.busy = true; S.report = null; setStatus('');
+    viewProgress();
+    var payload = {
+      files: S.files.map(function (f) { return { name: f.name, content: f.content }; }),
+      ask: ask, lang: L(), token: authTok(), guestId: guestId(), githubUrl: S.github || undefined,
+      tz: (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { return ''; } })(),
+    };
+    var prep = S.zip ? readB64(S.zip.file).then(function (b64) { payload.fileBase64 = b64; payload.filename = S.zip.name; }) : Promise.resolve();
+    prep.then(function () {
+      return callApi(payload, function (st) { var p = $id('csProg'); if (p) p.textContent = st; });
+    }).then(function (out) {
+      S.busy = false;
+      if (S.timer) { clearInterval(S.timer); S.timer = null; }
+      if (out.report) { S.report = out.report; S.report.ask = ask; viewReport(out.report); return; }
+      viewError(out.error || 'empty', out.tier);
+    }).catch(function (e) {
+      S.busy = false;
+      if (S.timer) { clearInterval(S.timer); S.timer = null; }
+      viewError(String((e && e.message) || e), null);
+    });
+  }
+
+  function viewError(msg, tier) {
+    var limit = tier === 'free-limit' || tier === 'guest-limit';
+    var h = '<div style="line-height:1.9;"><div style="color:#e88;">' + (limit ? '' : esc(t('fail'))) + esc(msg) + '</div>';
+    if (limit) {
+      h += '<button type="button" id="csTier" class="btn" style="' + BTN + 'margin-top:10px;font-weight:700;">' + esc(tier === 'guest-limit' ? t('signup') : t('upgrade')) + '</button>';
+    }
+    h += '<div><button type="button" id="csBack" class="btn" style="' + BTN + 'margin-top:12px;">' + esc(t('again')) + '</button></div></div>';
+    render(h);
+    $id('csBack').onclick = viewPick;
+    var tb = $id('csTier');
+    if (tb) tb.onclick = function () {
+      close();
+      try {
+        if (tier === 'guest-limit') { var tog = $id('btnAuthToggle'); if (tog) tog.click(); }
+        else if (typeof openCheckout === 'function') openCheckout('pro');
+      } catch (e) { if (window.__swallow) window.__swallow(e, 'codescore:tier'); }
+    };
+  }
+
+  /* ---------- التقرير ---------- */
+  function bar(label, val) {
+    var v = val == null ? 0 : val;
+    return '<div style="display:flex;align-items:center;gap:8px;margin:3px 0;font-size:12px;">'
+      + '<span style="width:120px;flex:none;">' + esc(label) + '</span>'
+      + '<span style="flex:1;height:8px;border-radius:6px;background:rgba(255,255,255,.08);overflow:hidden;"><span style="display:block;height:100%;width:' + v + '%;background:' + scoreColor(val) + ';"></span></span>'
+      + '<span style="width:34px;text-align:center;' + MUTED + '">' + (val == null ? '—' : val) + '</span></div>';
+  }
+  function sevChip(s) {
+    return '<span style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;color:#111;background:' + (SEV_COLOR[s] || '#98a0b3') + ';">' + esc(sevName(s)) + '</span>';
+  }
+  function pre(s) {
+    return '<pre style="margin:6px 0 0;white-space:pre-wrap;word-break:break-word;background:var(--panel2,#0d0f14);border-radius:8px;padding:8px;font:11.5px/1.6 ui-monospace,Menlo,Consolas,monospace;direction:ltr;text-align:left;max-height:220px;overflow:auto;">' + esc(s) + '</pre>';
+  }
+  /* Markdown مصغّر للتحليل الحرّ: أسوار كود، عناوين، نقاط، غامق، كود سطريّ. كلّ شيء يُهرَّب أوّلًا. */
+  function mdLite(md) {
+    var parts = String(md || '').split(/```[a-zA-Z0-9_-]*\n?/);
+    var out = '';
+    for (var i = 0; i < parts.length; i++) {
+      if (i % 2 === 1) { out += pre(parts[i].replace(/\n$/, '')); continue; }
+      var lines = parts[i].split('\n'), inList = false;
+      for (var k = 0; k < lines.length; k++) {
+        var ln = lines[k], m;
+        var inl = esc(ln).replace(/`([^`]+)`/g, '<code style="direction:ltr;unicode-bidi:embed;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;">$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+        if ((m = /^\s*([-*•]|\d+[.)])\s+(.*)$/.exec(inl))) { if (!inList) { out += '<ul style="margin:4px 0;padding-inline-start:20px;">'; inList = true; } out += '<li>' + m[2] + '</li>'; continue; }
+        if (inList) { out += '</ul>'; inList = false; }
+        if ((m = /^\s*(#{1,4})\s+(.*)$/.exec(inl))) { out += '<div style="font-weight:700;margin:10px 0 2px;font-size:' + (m[1].length <= 2 ? '13.5' : '12.5') + 'px;">' + m[2] + '</div>'; continue; }
+        if (!ln.trim()) continue;
+        out += '<div>' + inl + '</div>';
+      }
+      if (inList) out += '</ul>';
+    }
+    return out;
+  }
+
+  function viewReport(r) {
+    var h = '';
+    var hasScore = r.score != null;
+    h += '<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;' + CARD + '">'
+      + '<div style="width:92px;height:92px;flex:none;border-radius:50%;border:6px solid ' + scoreColor(r.score) + ';display:flex;flex-direction:column;align-items:center;justify-content:center;">'
+      + '<span style="font-size:28px;font-weight:800;line-height:1;">' + (hasScore ? r.score : '—') + '</span><span style="font-size:10px;' + MUTED + '">/100</span></div>'
+      + '<div style="flex:1;min-width:220px;line-height:1.8;">'
+      + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'
+      + (r.grade ? '<span style="font-size:20px;font-weight:800;color:' + scoreColor(r.score) + ';">' + esc(r.grade) + '</span>' : '')
+      + (r.language ? '<span style="' + MUTED + '">' + esc(r.language) + '</span>' : '')
+      + '<span style="font-size:11px;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:1px 8px;' + MUTED + '">' + esc(r.engine === 'pro' ? t('enginePro') : t('engineFree')) + '</span>'
+      + '</div>'
+      + (r.summary ? '<div>' + (r.parsed ? esc(r.summary) : '<span style="color:#e8b45a;">' + esc(t('unparsed')) + '</span>' + pre(r.summary)) + '</div>' : '')
+      + (r.verdict ? '<div style="margin-top:6px;"><b>' + esc(t('verdict')) + ':</b> ' + esc(r.verdict) + '</div>' : '')
+      + '</div></div>';
+
+    if (r.engine === 'free') {
+      h += '<div style="' + CARD + 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;"><span style="' + MUTED + 'flex:1;">' + esc(t('freeNote')) + '</span>'
+        + '<button type="button" id="csUp" class="btn" style="padding:6px 12px;">' + esc(t('upgrade')) + '</button></div>';
+    }
+
+    /* v-code-depth: التحليل التفصيليّ الحرّ — النموذج يمرّ على كلّ ملفّ ودالّة قبل الحكم */
+    if (r.deep) {
+      h += '<details style="' + CARD + '"><summary style="cursor:pointer;font-weight:700;">' + esc(t('deep')) + '</summary>'
+        + '<div style="margin-top:8px;line-height:1.85;font-size:12.5px;">' + mdLite(r.deep) + '</div></details>';
+    }
+
+    if (r.parsed) {
+      h += '<div style="' + CARD + '">';
+      var cats = r.categories || {};
+      var keys = ['correctness', 'security', 'performance', 'readability', 'maintainability', 'best_practices'];
+      for (var c = 0; c < keys.length; c++) h += bar(catName(keys[c]), cats[keys[c]]);
+      h += '</div>';
+    }
+
+    if (r.recommendations && r.recommendations.length) {
+      h += '<div style="' + CARD + '"><b>' + esc(t('recs')) + '</b><ol style="margin:6px 0 0;padding-inline-start:22px;line-height:1.8;">';
+      for (var i = 0; i < r.recommendations.length; i++) {
+        h += '<li>' + (i === 0 ? '<span style="color:#e8b45a;font-weight:700;">' + esc(t('best')) + '</span> ' : '') + esc(r.recommendations[i]) + '</li>';
+      }
+      h += '</ol></div>';
+    }
+
+    if (r.files && r.files.length > 1) {
+      h += '<div style="' + CARD + '"><b>' + esc(t('ranking')) + '</b><table style="width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;">';
+      for (var f = 0; f < r.files.length; f++) {
+        var fl = r.files[f];
+        h += '<tr style="border-top:1px solid rgba(255,255,255,.06);"><td style="padding:5px 4px;width:28px;' + MUTED + '">' + (f + 1) + '</td>'
+          + '<td style="padding:5px 4px;direction:ltr;text-align:left;font-family:ui-monospace,Menlo,Consolas,monospace;">' + esc(fl.name) + '</td>'
+          + '<td style="padding:5px 4px;width:44px;text-align:center;font-weight:700;color:' + scoreColor(fl.score) + ';">' + (fl.score == null ? '—' : fl.score) + '</td>'
+          + '<td style="padding:5px 4px;' + MUTED + '">' + esc(fl.note) + '</td></tr>';
+      }
+      h += '</table></div>';
+    }
+
+    if (r.strengths && r.strengths.length) {
+      h += '<div style="' + CARD + '"><b>' + esc(t('strengths')) + '</b><ul style="margin:6px 0 0;padding-inline-start:20px;line-height:1.8;">';
+      for (var s = 0; s < r.strengths.length; s++) h += '<li>' + esc(r.strengths[s]) + '</li>';
+      h += '</ul></div>';
+    }
+
+    var issues = r.issues || [];
+    h += '<div style="' + CARD + '"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><b>' + esc(t('issues')) + ' (' + issues.length + ')</b>';
+    var cnt = r.counts || {};
+    var sevs = ['critical', 'high', 'medium', 'low', 'info'];
+    for (var q = 0; q < sevs.length; q++) if (cnt[sevs[q]]) h += sevChip(sevs[q]) + '<span style="font-size:11px;' + MUTED + 'margin-inline-end:6px;">' + cnt[sevs[q]] + '</span>';
+    h += '</div>';
+    if (!issues.length) h += '<div style="margin-top:6px;color:#7ac07a;">' + esc(r.parsed ? t('noIssues') : '') + '</div>';
+    for (var n = 0; n < issues.length; n++) {
+      var it = issues[n];
+      h += '<div style="border-top:1px solid rgba(255,255,255,.06);padding:8px 0;line-height:1.7;">'
+        + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' + sevChip(it.severity)
+        + '<b>' + esc(it.title || catName(it.category)) + '</b>'
+        + '<span style="font-size:11px;' + MUTED + '">' + esc(catName(it.category)) + (it.file ? ' · <span style="direction:ltr;unicode-bidi:embed;font-family:ui-monospace,Menlo,Consolas,monospace;">' + esc(it.file) + (it.line ? ':' + it.line : '') + '</span>' : '') + '</span></div>'
+        + (it.detail ? '<div>' + esc(it.detail) + '</div>' : '')
+        + (it.fix ? '<div style="margin-top:4px;"><b style="font-size:12px;">' + esc(t('fix')) + ':</b>' + (/\n|[{};()=]/.test(it.fix) ? pre(it.fix) : ' ' + esc(it.fix)) + '</div>' : '')
+        + '</div>';
+    }
+    h += '</div>';
+
+    var m = r.metrics;
+    if (m && m.totals) {
+      var tt = m.totals;
+      h += '<div style="' + CARD + 'font-size:12px;"><b>' + esc(t('metrics')) + '</b><div style="' + MUTED + 'margin-top:4px;">'
+        + tt.files + ' ' + esc(t('files')) + ' · ' + tt.lines + ' ' + esc(t('lines')) + ' · ' + esc(t('commentRatio')) + ' ' + (tt.lines ? Math.round(100 * tt.comments / tt.lines) : 0) + '%'
+        + (tt.languages && tt.languages.length ? ' · ' + esc(tt.languages.join(', ')) : '') + '</div>';
+      for (var mf = 0; mf < m.files.length; mf++) {
+        var pf = m.files[mf];
+        if (!pf.flags.length && !pf.truncated) continue;
+        h += '<div style="margin-top:6px;"><span style="direction:ltr;unicode-bidi:embed;font-family:ui-monospace,Menlo,Consolas,monospace;">' + esc(pf.name) + '</span>' + (pf.truncated ? ' <span style="color:#e8b45a;">(' + esc(t('truncated')) + ')</span>' : '');
+        for (var g = 0; g < pf.flags.length; g++) {
+          var fg = pf.flags[g];
+          h += '<div style="' + MUTED + 'padding-inline-start:12px;">• ' + esc(fg.label) + ': ' + fg.count + (fg.lines && fg.lines.length ? ' <span style="direction:ltr;unicode-bidi:embed;">(L' + fg.lines.join(', L') + ')</span>' : '') + '</div>';
+        }
+        h += '</div>';
+      }
+      if (r.skipped && r.skipped.length) h += '<div style="' + MUTED + 'margin-top:6px;">' + esc(t('skipped')) + ': ' + esc(r.skipped.map(function (x) { return x.name; }).join(', ')) + '</div>';
+      h += '</div>';
+    }
+
+    var canFix = S.files.length === 1 && !S.zip && !S.github && typeof window.omranCodeFixOpenWith === 'function' && issues.length;
+    h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">'
+      + (canFix ? '<button type="button" id="csFix" class="btn" style="' + BTN + 'font-weight:700;">' + esc(t('fixBtn')) + '</button>' : '')
+      + '<button type="button" id="csDl" class="btn" style="' + BTN + '">' + esc(t('download')) + '</button>'
+      + '<button type="button" id="csCopy" class="btn" style="' + BTN + '">' + esc(t('copy')) + '</button>'
+      + '<button type="button" id="csAgain" class="btn" style="' + BTN + '">' + esc(t('again')) + '</button>'
+      + '</div>';
+    render(h);
+    var b = $id('csBody'); if (b) b.scrollTop = 0;
+
+    $id('csAgain').onclick = viewPick;
+    var up = $id('csUp');
+    if (up) up.onclick = function () { close(); try { if (typeof openCheckout === 'function') openCheckout('pro'); } catch (e) { if (window.__swallow) window.__swallow(e, 'codescore:upgrade'); } };
+    $id('csDl').onclick = function () {
+      var blob = new Blob([toMarkdown(r)], { type: 'text/markdown;charset=utf-8' });
+      var nm = 'code-report-' + (S.files[0] ? S.files[0].name.replace(/[^\w.-]+/g, '_') : (S.zip ? S.zip.name.replace(/\.zip$/i, '') : (S.github ? S.github.replace(/^.*github\.com\//, '').replace(/[^\w.-]+/g, '_').slice(0, 60) : 'project'))) + '.md';
+      if (typeof omranSaveBlob === 'function') { omranSaveBlob(blob, nm); return; }
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = nm;
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    };
+    $id('csCopy').onclick = function () {
+      try { navigator.clipboard.writeText(toMarkdown(r)).then(function () { setStatus(t('copied')); }, function () { setStatus(''); }); }
+      catch (e) { setStatus(''); }
+    };
+    var fx = $id('csFix');
+    if (fx) fx.onclick = function () {
+      var top = issues.filter(function (x) { return x.severity !== 'info'; }).slice(0, 8);
+      var ask = (ar() ? 'أصلح هذه المشاكل التي كشفها التحليل:\n' : 'Fix these issues found by the analysis:\n')
+        + top.map(function (x, i) { return (i + 1) + ') ' + (x.title || catName(x.category)) + (x.line ? ' (L' + x.line + ')' : '') + (x.fix ? ' — ' + x.fix.slice(0, 300) : ''); }).join('\n');
+      var f0 = S.files[0];
+      close();
+      window.omranCodeFixOpenWith(f0.name, f0.content, ask);
+    };
+  }
+
+  function toMarkdown(r) {
+    var o = [];
+    o.push('# ' + t('title') + ' — ' + (r.score == null ? '—' : r.score + '/100') + (r.grade ? ' (' + r.grade + ')' : ''));
+    if (r.language) o.push(r.language);
+    if (r.summary) o.push('', r.summary);
+    if (r.verdict) o.push('', '## ' + t('verdict'), r.verdict);
+    if (r.deep) o.push('', '## ' + t('deep'), '', r.deep);
+    if (r.parsed && r.categories) {
+      o.push('', '## ' + t('score'));
+      for (var k in r.categories) if (Object.prototype.hasOwnProperty.call(r.categories, k)) o.push('- ' + catName(k) + ': ' + (r.categories[k] == null ? '—' : r.categories[k]));
+    }
+    if (r.recommendations && r.recommendations.length) { o.push('', '## ' + t('recs')); r.recommendations.forEach(function (x, i) { o.push((i + 1) + '. ' + x); }); }
+    if (r.files && r.files.length > 1) { o.push('', '## ' + t('ranking')); r.files.forEach(function (f, i) { o.push((i + 1) + '. `' + f.name + '` — ' + (f.score == null ? '—' : f.score) + (f.note ? ' — ' + f.note : '')); }); }
+    if (r.strengths && r.strengths.length) { o.push('', '## ' + t('strengths')); r.strengths.forEach(function (x) { o.push('- ' + x); }); }
+    o.push('', '## ' + t('issues') + ' (' + (r.issues || []).length + ')');
+    (r.issues || []).forEach(function (it) {
+      o.push('', '### [' + sevName(it.severity) + '] ' + (it.title || catName(it.category)) + (it.file ? ' — `' + it.file + (it.line ? ':' + it.line : '') + '`' : ''));
+      if (it.detail) o.push(it.detail);
+      if (it.fix) o.push('', t('fix') + ':', '```', it.fix, '```');
+    });
+    if (r.metrics && r.metrics.totals) {
+      var tt = r.metrics.totals;
+      o.push('', '## ' + t('metrics'), '- ' + tt.files + ' ' + t('files') + ' · ' + tt.lines + ' ' + t('lines'));
+      r.metrics.files.forEach(function (pf) { pf.flags.forEach(function (fg) { o.push('- `' + pf.name + '`: ' + fg.label + ' × ' + fg.count + (fg.lines.length ? ' (L' + fg.lines.join(', L') + ')' : '')); }); });
+    }
+    return o.join('\n') + '\n';
+  }
+
+  /* ---------- الزرّ: قائمة ⋮ في شريط التبويبات ---------- */
+  function mount() {
+    var dd = document.getElementById('tabsMenuDropdown');
+    if (!dd || document.getElementById('btnCodeScore')) return true;
+    var b = document.createElement('button');
+    b.className = 'btn';
+    b.id = 'btnCodeScore';
+    b.type = 'button';
+    b.title = t('menuTitle');
+    b.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+      + '<path d="M12 20V10"></path><path d="M18 20V4"></path><path d="M6 20v-4"></path></svg> <span class="btnLabel">' + esc(t('menu')) + '</span>';
+    b.onclick = function (e) { e.stopPropagation(); open(); };
+    dd.appendChild(b);
+    return true;
+  }
+
+  window.omranCodeScoreOpen = open;
+
+  if (!mount()) {
+    var n = 0;
+    var tm = setInterval(function () { if (mount() || ++n > 40) clearInterval(tm); }, 300);
+  }
+})();
+/* ===== app-28-vault — خزنة الأسرار (v-secret-vault) =====
+   طلب المالك ١٣ سبتمبر: «حقل خاصّ مشفّر لحفظ الأسرار بدل كتابته نصًّا خامًا بالمحادثة».
+   قسم في الإعدادات للمالك وحده: حفظ توكن GitHub مشفّرًا في الخادم (AES-256-GCM)،
+   عرض حالته (آخر ٤ حروف فقط)، حذفه، وفحصه (هل يقرأ المستودع؟ هل يرفع؟) بلا كشفه.
+   الواجهة لا ترى القيمة بعد الحفظ أبدًا. والملصوق في المحادثة يُعترض في app-09
+   ويُعرض على المالك حفظه هنا بدل إرساله. */
+(function () {
+  'use strict';
+
+  var API = '/api/system?action=secrets';
+  function isAr() { return (localStorage.getItem('aiapp_lang') || 'ar') !== 'en'; }
+  function t(ar, en) { return isAr() ? ar : en; }
+  function tok() { try { return (window.authGet && window.authGet('aiapp_auth_token')) || ''; } catch (e) { return ''; } }
+  function el(id) { return document.getElementById(id); }
+  function toast(msg) { try { if (typeof window.settingsToast === 'function') window.settingsToast(msg); else alert(msg); } catch (e) { /* guard-ok — التنبيه ترف */ } }
+
+  async function call(op, extra) {
+    try {
+      var r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ op: op, token: tok() }, extra || {})) });
+      var j = null;
+      try { j = await r.json(); } catch (e) { j = null; }
+      if (!r.ok) return { ok: false, error: (j && (j.error || j.message)) || ('HTTP ' + r.status) };
+      return j || { ok: true };
+    } catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
+  }
+
+  function fmtDate(ms) {
+    try { return new Date(ms).toLocaleString(isAr() ? 'ar-AE' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }); } catch (e) { return ''; }
+  }
+  function render(st) {
+    var box = el('vaultGhStatus'); if (!box) return;
+    if (!st || st.ok === false) { box.textContent = '⚠️ ' + ((st && st.error) || t('تعذّر قراءة الحالة', 'Could not read status')); return; }
+    if (st.configured === false) { box.textContent = t('⚠️ الخزنة معطّلة: أضف SECRETS_KEY أو AUTH_SECRET في بيئة Vercel', '⚠️ Vault disabled: set SECRETS_KEY or AUTH_SECRET in Vercel'); return; }
+    var it = st.items && st.items.github_token;
+    if (it && it.set) box.textContent = t('✅ محفوظ · ينتهي بـ ••••' + it.hint + (it.updatedAt ? ' · ' + fmtDate(it.updatedAt) : ''), '✅ Saved · ends with ••••' + it.hint + (it.updatedAt ? ' · ' + fmtDate(it.updatedAt) : ''));
+    else box.textContent = t('— غير محفوظ (الوكيل يعمل بلا مفتاح: ٦٠ طلبًا/ساعة ولا رفع)', '— not saved (agent runs without a key: 60 req/h, no push)');
+  }
+
+  window.vaultRefresh = async function () {
+    var box = el('vaultGhStatus'); if (!box) return;
+    box.textContent = '⏳';
+    render(await call('status'));
+  };
+  /** يُستدعى من اعتراض المحادثة (app-09) — يعيد {ok, error?} ولا يعرض شيئًا. */
+  window.omranVaultStore = function (name, value) { return call('set', { name: name, value: value }); };
+
+  window.vaultSave = async function (name) {
+    var inp = el('vaultGhInput');
+    var v = ((inp && inp.value) || '').trim();
+    if (!v) { toast(t('الصق التوكن أوّلًا', 'Paste the token first')); return; }
+    var r = await call('set', { name: name || 'github_token', value: v });
+    if (inp) inp.value = '';
+    if (r.ok) { toast(t('🔐 حُفظ مشفّرًا — لن يظهر مرّة أخرى', '🔐 Saved encrypted — it will not be shown again')); render(r); }
+    else toast('⚠️ ' + (r.error === 'bad_value' ? t('صيغة التوكن غير صالحة', 'Invalid token format') : r.error === 'vault_not_configured' ? t('الخزنة معطّلة: أضف SECRETS_KEY في البيئة', 'Vault disabled: set SECRETS_KEY') : r.error));
+  };
+  window.vaultClear = async function (name) {
+    if (!confirm(t('حذف توكن GitHub من الخزنة؟', 'Delete the GitHub token from the vault?'))) return;
+    var r = await call('clear', { name: name || 'github_token' });
+    toast(r.ok ? t('🗑️ حُذف', '🗑️ Deleted') : '⚠️ ' + r.error);
+    if (r.ok) render(r);
+  };
+  window.vaultTest = async function () {
+    var box = el('vaultTestBox'); if (!box) return;
+    box.style.display = '';
+    box.textContent = t('⏳ يفحص المفتاح مع GitHub…', '⏳ Checking the key with GitHub…');
+    var repo = ((el('vaultRepoInput') && el('vaultRepoInput').value) || '').trim();
+    var r = await call('test', { repo: repo });
+    if (!r.ok) { box.textContent = '❌ ' + (r.error || ''); return; }
+    box.textContent = (r.login ? ('👤 ' + r.login + '\n') : '')
+      + '📦 ' + r.repo + ': ' + (r.readable ? t('قراءة ✅', 'read ✅') : t('قراءة ❌ (المفتاح لا يرى المستودع)', 'read ❌ (key cannot see the repo)'))
+      + ' · ' + (r.writable ? t('رفع ✅', 'push ✅') : t('رفع ❌ — الرفع يحتاج Contents: write + Pull requests: write', 'push ❌ — pushing needs Contents: write + Pull requests: write'))
+      + (r.rateLimit ? '\n⏱️ ' + t('حدّ الطلبات: ', 'Rate limit: ') + r.rateLimit : '');
+  };
 })();

@@ -117,8 +117,15 @@ window.__swallow = window.__swallow || function (err, ctx) {
   function isLight(){return document.documentElement.getAttribute('data-mode')==='light';}
   function sync(){var b=document.getElementById('btnMode');if(!b)return;var L=isLight();
     b.innerHTML=L?MOON:SUN;
-    var ar=true;try{ar=(localStorage.getItem('aiapp_lang')||'ar')==='ar';}catch(e){}
-    b.title=L?(ar?'الوضع الداكن':'Dark mode'):(ar?'الوضع الفاتح':'Light mode');}
+    /* v-mode-i18n (أمر عمران: ١٤ لغة): العنوان من قاموس اللغة الحالية لا من
+       ثنائيّة عربي/إنجليزي، والمفتاح يتبع الوضع كي تلتقطه applyLanguage عند
+       وصول ملف اللغة الكسول أو تبديل اللغة. زرّ التنقّل (v-mode-nav) مرآة له. */
+    var key=L?'darkModeTitle':'lightModeTitle';
+    b.setAttribute('data-i18n-title',key);
+    var txt='';try{if(typeof t==='function'){txt=t(key);}}catch(e){}
+    if(!txt||txt===key){var ar=true;try{ar=(localStorage.getItem('aiapp_lang')||'ar')==='ar';}catch(e){}
+      txt=L?(ar?'الوضع الداكن':'Dark mode'):(ar?'الوضع الفاتح':'Light mode');}
+    b.title=txt;}
   window.omToggleMode=function(){var L=isLight();
     if(L){document.documentElement.removeAttribute('data-mode');}
     else{document.documentElement.setAttribute('data-mode','light');}
@@ -136,6 +143,322 @@ window.__swallow = window.__swallow || function (err, ctx) {
 /* v474 — لون روابط الردّ: فيروزيّ (أمر عمران «٢»، ٨ أغسطس ٢٠٢٦). الرجوع: احذف هذه الكتلة. */
 .msg-text a{ color:#2dd4bf !important; }
 html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
+</style>
+<style>
+/* v-chat-width: تخطيط المحادثة — كمبيوتر فقط.
+   #chatcol نفسه لا يُمسّ: هو عنصر مرن بين resizer1 وresizer2، وتقييد
+   عرضه يكسر السحب. يُضبط ما بداخله فقط.
+   الجوال محميّ بشرطين: min-width:861px و:not(.mobile-ui).
+   الرجوع: احذف هذه الكتلة كاملةً. */
+/* v-chat-fill (أمر عمران ١٢ سبتمبر — رسمه بالخطّين الأبيضين): المحادثة
+   تملأ ما بين لوحة الكود والشريط الجانبي، لا عمودًا ضيّقًا في الوسط.
+   الحدّ ٨٦٠ أُلغي؛ بقي هامش متساوٍ من الطرفين يضبطه --om-chat-pad وحده. */
+:root{ --om-chat-pad: 32px; }
+@media (min-width: 861px){
+  html:not(.mobile-ui) #omranHero,
+  html:not(.mobile-ui) #messages > *,
+  html:not(.mobile-ui) #composerRow,
+  html:not(.mobile-ui) #omranBelowComposer{
+    width: auto;
+    max-width: none;
+    margin-inline: var(--om-chat-pad) !important;
+    box-sizing: border-box;
+  }
+  /* v-chat-fade: النصّ الصاعد كان يُقصّ فجأةً عند حافة المنطقة المتمرِّرة.
+     قناع تدرّجيّ على المتمرِّر نفسه يذيبه في الطرفين — أعلى وأسفل — فلا
+     يحتاج طبقة إضافية فوق المحتوى ولا يحجب النقر.
+     -webkit- للسفاري والأغلفة القديمة. */
+  html:not(.mobile-ui) #messages{
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0,
+      #000 var(--om-fade, 28px), #000 calc(100% - var(--om-fade, 28px)), transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0,
+      #000 var(--om-fade, 28px), #000 calc(100% - var(--om-fade, 28px)), transparent 100%);
+  }
+  html:not(.mobile-ui) #chatJumpBottom,
+  html:not(.mobile-ui) #chatQuickChipsWrap{
+    inset-inline-end: calc(var(--om-chat-pad) + 14px);
+  }
+  /* v-chat-solo: لوحة الكود مطويّة = تختفي تمامًا والمحادثة تأخذ العرض كلّه.
+     setupResizer يكتب عرضًا ثابتًا على #chatcol (٦٢٠ بكسل كحدّ أقصى) في
+     style المضمّن، فيبقى العمود ضيّقًا ملتصقًا بالجانب والمساحة الباقية
+     فارغة — لذلك يُلغى هنا بـ!important. الطيّ نفسه بزرّ اللوحة كما هو،
+     و#waReopen يبقى ظاهرًا لإرجاعها. */
+  html:not(.mobile-ui) body.waCollapsedMode #workarea,
+  html:not(.mobile-ui) body.waCollapsedMode #resizer2{
+    display: none !important;
+  }
+  html:not(.mobile-ui) body.waCollapsedMode #chatcol{
+    width: auto !important;
+    max-width: none !important;
+    flex: 1 1 auto !important;
+  }
+}
+</style>
+<style>
+/* v-no-lines (أمر عمران ١٢ سبتمبر — رسمه على الخطوط): الصفحة بلا خطوط.
+   ثلاثة مصادر كانت ترسمها، كلّها بـ!important في redesign.css وmodules.css
+   فلا تُطفأ إلا بوزن أعلى (body + المعرّف):
+   ① الشعرة الذهبية تحت شريط الأسهم — ::after في redesign و::before في modules.
+   ② شعرة أسفل الترويسة — box-shadow على header.
+   ③ الفاصل بين الأعمدة — border-image على #sidebar و#chatcol.
+   تبقى الحدود حيث يوجد شيء فعلًا: لوحة الكود مفتوحة أو الدرج مفتوح.
+   الرجوع: احذف هذه الكتلة كاملةً. */
+@media (min-width: 861px){
+  html:not(.mobile-ui) body #stockTicker::before,
+  html:not(.mobile-ui) body #stockTicker::after{
+    content: none !important;
+    display: none !important;
+    background: none !important;
+  }
+  html:not(.mobile-ui) body #stockTicker{
+    border-bottom: 0 !important;
+    box-shadow: none !important;
+  }
+  html:not(.mobile-ui) body header{ box-shadow: none !important; }
+  html:not(.mobile-ui) body #sidebar,
+  html:not(.mobile-ui) body #chatcol,
+  html:not(.mobile-ui) body #workarea{
+    border-image: none !important;
+    border-inline: 0 !important;
+  }
+  html:not(.mobile-ui) body #omranSidebarFoot{
+    border-top: 0 !important;
+    background-image: none !important;
+  }
+  html:not(.mobile-ui) body #omranNewChatBtn::after{ content: none !important; }
+  /* الحدّ يعود حيث توجد لوحة فعلًا: الكود والمعاينة مفتوحان. */
+  html:not(.mobile-ui) body:not(.waCollapsedMode) #workarea{
+    border-inline-start: 1px solid rgba(255,255,255,.09) !important;
+  }
+  /* الشريط الجانبي مغلق = الأسهم تمتدّ على العرض كلّه معه. #stockTicker
+     شقيق للهيدر لا ابن لـ#chatcol، فامتداده يتبع اختفاء العمود وحده. */
+  html:not(.mobile-ui) body.waCollapsedMode #stockTicker{ width: 100% !important; }
+  /* v-chat-top (أمر عمران): منطقة المحادثة تصعد حتى تلامس شريط الأسهم.
+     كانت تبدأ عند ارتفاع شريط «المعاينة · الكود» فيبقى فوقها فراغ أسود.
+     #tabs لم يُمسّ — يبقى فوق لوحة الكود وحدها كما هو. */
+  html:not(.mobile-ui) #chatcol{
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+  }
+  html:not(.mobile-ui) #chatcol > #messages{
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+  }
+  html:not(.mobile-ui) #chatcol > #messages > *:first-child{
+    margin-top: var(--om-chat-pad) !important;
+  }
+}
+</style>
+<style>
+/* v-topbar-merge (أمر عمران ١٢ سبتمبر): شريط الأسهم كان الشريط الثاني من
+   ثلاثة فوق المحادثة، فيأكل ارتفاعًا كاملًا في كل شاشة. صار داخل الهيدر
+   نفسه: الشعار طرفًا، والأسهم وسطًا، والأزرار الطرف الآخر — سطر واحد.
+   النقل نفسه يجري في app-05-ui.js لأنّ #stockTicker شقيق للهيدر لا ابنه،
+   وCSS لا ينقل عقدة.
+   لا اسم محادثة ولا خطّ فاصل في الوسط (أمر عمران): الوسط للأسهم وحدها،
+   وحين تُطوى يبقى فارغًا بلا أيّ نصّ أو أثر مرسوم.
+   الجوال خارج هذه الكتلة كلّها — كلّ قاعدة هنا داخل min-width:861px
+   ومقيّدة بـ:not(.mobile-ui)، والنقل نفسه لا يجري على الجوال أصلًا.
+   الرجوع: احذف هذه الكتلة وكتلة v-topbar-merge في app-05-ui.js. */
+@media (min-width: 861px){
+  html:not(.mobile-ui) header{
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+  html:not(.mobile-ui) #omHeadCenter{
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 30px;
+    overflow: hidden;
+  }
+  html:not(.mobile-ui) #omHeadCenter #stockTicker{
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 30px;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  html:not(.mobile-ui) #omHeadCenter #stockTickerToggle{
+    position: static !important;
+    transform: none !important;
+    inset: auto !important;
+    flex: none;
+  }
+  /* «الخطّ الطويل» لم يكن عنصرًا: شعرتان ذهبيّتان مرسومتان على الشريط
+     نفسه — ::after في redesign.css و::before في modules.css. داخل الهيدر
+     صارتا تُرسمان في الفراغ بلا شريط تحتهما، فتُطفآن هنا. خارج الهيدر
+     تبقيان كما هما، فالجوال لا يتأثّر. */
+  html:not(.mobile-ui) body header #omHeadCenter #stockTicker::before,
+  html:not(.mobile-ui) body header #omHeadCenter #stockTicker::after{
+    content: none !important;
+    display: none !important;
+    background: none !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+  html:not(.mobile-ui) body header #omHeadCenter #stockTicker{
+    border-bottom: 0 !important;
+    box-shadow: none !important;
+  }
+}
+/* v-topbar-merge-mobile (أمر عمران ١٣ سبتمبر «وهذي طبّقها لي على الهواتف»):
+   على الجوال أيضًا يدخل شريط الأسهم سطر الشعار نفسه — كان سطرًا ثانيًا
+   بارتفاع ٤٢px فوق المحادثة — ويذوب قبل الشعار (٦٤px) وعلى ١٢px عند سهم
+   الطيّ، فترتفع المحادثة بارتفاعه. النقل نفسه في app-05-ui.js لم يعد يستثني
+   الجوال. الشعار يثبت على عرضه (كان يمتدّ flex:1) ليبقى للشريط ما بينه
+   وبين سهم الطيّ. الرجوع: أعد html.mobile-ui #omHeadCenter{display:none}
+   وحارس الجوال في v-topbar-merge. */
+html.mobile-ui header:has(#omHeadCenter) h1{ flex: 0 0 auto !important; }
+html.mobile-ui #omHeadCenter{
+  flex: 1 1 auto !important;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  overflow: hidden;
+  margin-inline: 6px;
+}
+html.mobile-ui #omHeadCenter #stockTicker{
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 30px !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+html[dir="rtl"].mobile-ui #omHeadCenter #stockTicker{
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 12px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 12px), transparent);
+}
+html[dir="ltr"].mobile-ui #omHeadCenter #stockTicker{
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 64px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 64px), transparent);
+}
+html.mobile-ui #omHeadCenter #stockTickerToggle{
+  position: static !important;
+  transform: none !important;
+  inset: auto !important;
+  flex: none;
+}
+html.mobile-ui body header #omHeadCenter #stockTicker::before,
+html.mobile-ui body header #omHeadCenter #stockTicker::after{
+  content: none !important;
+  display: none !important;
+}
+/* السهم لم يعد يعلو درج المحادثات فيعود هامش زرّ «محادثة جديدة» الطبيعيّ. */
+html.mobile-ui body #omranNewChatBtn{ margin-top: 12px !important; }
+</style>
+<style>
+/* v-mode-nav (أمر عمران ١٣ سبتمبر): زرّ الوضع الفاتح/الداكن يخرج من الهيدر
+   (يبقى في الـDOM مخفيًّا لأنّ مزامنة v434 تكتب أيقونته وعنوانه عليه) ويظهر
+   مرآةً له في شريط التنقّل: أسفل الجانبي على الكمبيوتر، والشريط السفلي على
+   الجوال — app-05-ui.js (v-mode-nav) يبنيه. الشكل شكل تبويبات الشريط نفسه
+   بلا صنف .omNavBtn كي لا يلوّنه سلك التبويبات نشطًا. الرجوع: احذف الكتلة
+   وكتلة v-mode-nav في app-05-ui.js. */
+body #btnMode{ display: none !important; }
+#omNavMode{
+  flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: none; border: none; padding: 5px 0; color: var(--muted);
+  font-family: inherit; font-size: 9.5px; cursor: pointer;
+}
+#omNavMode:hover{ color: var(--accent-ink); }
+#omNavMode .omModeNavIcon{ display: inline-flex; line-height: 0; }
+</style>
+<style>
+/* v-frame-c (أمر عمران ١٣ سبتمبر — النموذج «ج» من اللوحة): الشريط الجانبي
+   ولوحة الكود يمتدّان من أعلى النافذة إلى أسفلها، والهيدر (الشعار طرفًا
+   والأزرار الطرف الآخر) ثم شريط الأسهم تحته يعلوان عمود المحادثة وحده.
+   لا نقل في الـDOM: الجسم يصير شبكة (٥ أعمدة × ٣ صفوف) و<main> يذوب
+   بـdisplay:contents فتصير أبناؤه أبناء الشبكة مباشرةً — الأعمدة تنعكس مع
+   اتجاه اللغة تلقائيًّا (عربي: الجانبي يمين، إنجليزي: يسار).
+   لوحة مطويّة = عمودها صفر فيمتدّ الهيدر والأسهم مكانها من تلقاء أنفسهما.
+   الجوال خارج الكتلة كلّها: min-width:861px و:not(.mobile-ui).
+   الرجوع: احذف هذه الكتلة كاملةً. */
+@media (min-width: 861px){
+  html:not(.mobile-ui) body{
+    display: grid;
+    /* عمود اللوحة minmax(240px,auto): يبدأ من حدّها الأدنى ويتّسع إلى عرضها المضبوط
+       إن بقي مكان — كما كان يتقلّص بالمرونة — فلا يفيض عن النافذة الضيّقة. */
+    grid-template-columns: auto auto minmax(300px, 1fr) auto minmax(240px, auto);
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+  /* اللوحة مطويّة (display:none): حدّ العمود الأدنى يسقط فلا يبقى فراغ ٢٤٠px. */
+  html:not(.mobile-ui) body.waCollapsedMode{
+    grid-template-columns: auto auto minmax(300px, 1fr) auto auto;
+  }
+  html:not(.mobile-ui) body > main{ display: contents; }
+  html:not(.mobile-ui) body > header{ grid-column: 3; grid-row: 1; min-width: 0; }
+  /* قبل أن ينقله app-05-ui.js إلى الهيدر (أو إن تعطّل النقل) يبقى في مكانه المرئيّ نفسه. */
+  html:not(.mobile-ui) body > #stockTicker{ grid-column: 3; grid-row: 2; min-width: 0; }
+  html:not(.mobile-ui) body #chatcol{ grid-column: 3; grid-row: 3; min-width: 0; min-height: 0; }
+  html:not(.mobile-ui) body #sidebar{ grid-column: 1; grid-row: 1 / -1; min-height: 0; }
+  html:not(.mobile-ui) body #resizer1{ grid-column: 2; grid-row: 1 / -1; }
+  html:not(.mobile-ui) body #resizer2{ grid-column: 4; grid-row: 1 / -1; }
+  /* max-width:100% = عرض عمودها في الشبكة، فتنكمش اللوحة مع العمود في النافذة
+     الضيّقة بدل أن تفيض عنه بعرضها المضبوط (٥٦٠ أو ما سحبه المستخدم). */
+  html:not(.mobile-ui) body #workarea{ grid-column: 5; grid-row: 1 / -1; min-height: 0; max-width: 100%; }
+  /* أيّ ابن آخر للجسم داخل التدفّق (كخلفيّة الدرج الفارغة) يأخذ صفًّا كاملًا
+     أسفل الشبكة بلا ارتفاع — كما كان يأخذه أسفل العمود. */
+  html:not(.mobile-ui) body > :not(header):not(main):not(#stockTicker){ grid-column: 1 / -1; }
+
+  /* ② الهيدر سطر واحد (ملاحظة عمران الثانية): شريط الأسهم على سطر الشعار
+     نفسه يملأ ما بينه وبين طرف العمود، ويذوب قبل الشعار على مسافة أطول
+     (٩٦px) فيبدو كأنّه يختفي تحته، وعلى ١٦px عند سهم الطيّ في الطرف الآخر.
+     الشعار في الطرف الأيسر بالعربية (row-reverse) والأيمن بالإنجليزية،
+     فاتّجاه الذوبان يتبع dir. المحادثة ترتفع بارتفاع السطر الذي أُلغي. */
+  html:not(.mobile-ui) #omHeadCenter{ flex: 1 1 auto; min-width: 0; margin-inline: 10px; }
+  html[dir="rtl"]:not(.mobile-ui) #omHeadCenter #stockTicker{
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 96px, #000 calc(100% - 16px), transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 96px, #000 calc(100% - 16px), transparent);
+  }
+  html[dir="ltr"]:not(.mobile-ui) #omHeadCenter #stockTicker{
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 96px), transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 96px), transparent);
+  }
+  /* زرّ الوضع الفاتح/الداكن في شريط الجانبي السفلي: حشوته تساوي تبويبات
+     الشريط (٦px) كي تتراصف الأيقونات؛ بقيّة شكله في كتلة v-mode-nav العامّة. */
+  html:not(.mobile-ui) #omNavMode{ padding: 6px 0; }
+  @container (max-width: 210px){
+    html:not(.mobile-ui) #omNavMode .omModeNavLabel{ display: none; }
+  }
+  /* الزرّ كان يُدفع ٢٦px نزولًا ليفسح لسهم الشريط حين كان الشريط فوق الجانبي؛
+     الجانبي يبدأ الآن من أعلى النافذة والسهم فوق المحادثة، فيعود هامشه الطبيعيّ. */
+  html:not(.mobile-ui) body #omranNewChatBtn{ margin-top: 14px !important; }
+
+  /* ③ المحادثة عمود موسّط محدود العرض (كما في واجهة الـCode التي أرسلها عمران):
+     الرسائل والترحيب وصندوق الكتابة تحت بعضها في عمود واحد عرضه --om-chat-max
+     على الأكثر، وسط ما بقي من الشاشة؛ وإن ضاق العمود بقي هامش --om-chat-pad.
+     النسبة المئوية تُحسب من عرض العمود عند كلّ عنصر، فتُصفَّر حشوة #messages
+     و#inputbar الجانبية ليتطابق الأساس. حاشية التمرير محجوزة من الطرفين
+     (scrollbar-gutter) فلا تزيح الرسائل عن محور صندوق الكتابة. */
+  :root{ --om-chat-max: 800px; --om-chat-inset: max(var(--om-chat-pad), calc((100% - var(--om-chat-max)) / 2)); }
+  html:not(.mobile-ui) body #messages{ padding-inline: 0 !important; scrollbar-gutter: stable both-edges; }
+  html:not(.mobile-ui) body #inputbar{ padding-inline: 0 !important; }
+  html:not(.mobile-ui) body #omranHero,
+  html:not(.mobile-ui) body #messages > *,
+  html:not(.mobile-ui) body #askAllHintTip,
+  html:not(.mobile-ui) body #composerRow,
+  html:not(.mobile-ui) body #omranBelowComposer{
+    margin-inline: var(--om-chat-inset) !important;
+  }
+  html:not(.mobile-ui) body #chatJumpBottom,
+  html:not(.mobile-ui) body #chatQuickChipsWrap{
+    inset-inline-end: calc(var(--om-chat-inset) + 14px);
+  }
+}
 </style>
 <style>/* v-intro-splash: شاشة افتتاح كاملة من مخطط المالك تظهر مرة عند كل فتح ثم تذوب تمامًا */
 #omranIntro{position:fixed;inset:0;z-index:2147483000;background:#07070B;overflow:hidden;opacity:1;transition:opacity .95s ease,transform .95s ease;cursor:pointer;visibility:visible}
@@ -465,7 +788,7 @@ html.oiOn body{overflow:hidden}
 <script src="/js/selfdiag.js?v=1ba33c1b"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=077e8b8a"></script>
+    <script defer src="/js/app.bundle.js?v=f6f2b1b3"></script>
     <script defer src="/js/modes.js?v=b23329c6"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">
@@ -570,7 +893,165 @@ html.oiOn body{overflow:hidden}
       }, 600);
     }).observe(document.body, {childList:true, subtree:true, characterData:true});
     })();
-    </script>
-    
+    </script> 
+<!-- ===== ✨ نجوم زر "محادثة جديدة" ===== -->
+<style>
+#omranNewChatBtn{ position:relative; overflow:hidden; }
+#omranNewChatBtn > .omStar{
+  position:absolute;
+  width:var(--sz); height:var(--sz);
+  background:#ffd76a;
+  clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%);
+  filter:drop-shadow(0 0 6px rgba(255,215,106,.95));
+  opacity:0; pointer-events:none; z-index:3;
+  animation:omStarTwinkle var(--dur) ease-in-out infinite var(--dly);
+}
+@keyframes omStarTwinkle{
+  0%,100%{ opacity:0; transform:scale(.3) rotate(0deg); }
+  35%    { opacity:1; transform:scale(1) rotate(45deg); }
+  60%    { opacity:.4; transform:scale(.65) rotate(90deg); }
+}
+#omranNewChatBtn::after{
+  content:""; position:absolute; inset:0; pointer-events:none; z-index:2;
+  background:linear-gradient(115deg,transparent 35%,rgba(255,238,180,.20) 50%,transparent 65%);
+  transform:translateX(-130%);
+  animation:omStarShine 5s ease-in-out infinite;
+}
+@keyframes omStarShine{ 0%,70%{transform:translateX(-130%)} 90%,100%{transform:translateX(130%)} }
+@media (prefers-reduced-motion:reduce){
+  #omranNewChatBtn > .omStar, #omranNewChatBtn::after{ animation:none; }
+}
+</style>
+<script>
+(function(){
+  var STARS = [
+    ['12%','10%','8px','2.4s','0s'],
+    ['62%','18%','6px','3.1s','.6s'],
+    ['22%','34%','5px','2.8s','1.2s'],
+    ['58%','50%','9px','3.4s','.3s'],
+    ['16%','68%','6px','2.6s','1.6s'],
+    ['66%','80%','7px','3s','.9s'],
+    ['30%','91%','5px','2.9s','1.9s']
+  ];
+  function build(){
+    var b = document.getElementById('omranNewChatBtn');
+    if(!b || b.dataset.omStars) return;
+    b.dataset.omStars = '1';
+    STARS.forEach(function(p){
+      var s = document.createElement('span');
+      s.className = 'omStar';
+      s.style.top = p[0]; s.style.left = p[1];
+      s.style.setProperty('--sz', p[2]);
+      s.style.setProperty('--dur', p[3]);
+      s.style.setProperty('--dly', p[4]);
+      b.appendChild(s);
+    });
+  }
+  build();
+  document.addEventListener('DOMContentLoaded', build);
+})();
+</script>
+
+<!-- ===== ✨ نجوم الشريط الجانبي — طبقة مستقلة خارج الشريط ===== -->
+<style>
+#omSkyLayer{
+  position:fixed;
+  overflow:hidden;
+  pointer-events:none;
+  z-index:60;
+  display:none;
+}
+#omSkyLayer .omSkyStar{
+  position:absolute;
+  width:var(--sz); height:var(--sz);
+  background:#ffd76a;
+  clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%);
+  filter:drop-shadow(0 0 5px rgba(255,215,106,.85));
+  opacity:0;
+  animation:omSkyTwinkle var(--dur) ease-in-out infinite var(--dly);
+}
+@keyframes omSkyTwinkle{
+  0%,100%{ opacity:0;   transform:scale(.25) rotate(0deg); }
+  40%    { opacity:.85; transform:scale(1)   rotate(45deg); }
+  70%    { opacity:.25; transform:scale(.6)  rotate(90deg); }
+}
+@media (prefers-reduced-motion:reduce){ #omSkyLayer{ display:none !important; } }
+</style>
+<script>
+(function(){
+  var COUNT = 18, layer = null;
+
+  function makeLayer(){
+    if(layer && layer.parentNode) return layer;
+    layer = document.createElement('div');
+    layer.id = 'omSkyLayer';
+    for(var i=0;i<COUNT;i++){
+      var s = document.createElement('span');
+      s.className = 'omSkyStar';
+      s.style.top  = ((i + Math.random()) / COUNT * 100).toFixed(2) + '%';
+      s.style.left = (4 + Math.random()*92).toFixed(2) + '%';
+      s.style.setProperty('--sz',  (4 + Math.random()*5).toFixed(1) + 'px');
+      s.style.setProperty('--dur', (2.2 + Math.random()*2.4).toFixed(2) + 's');
+      s.style.setProperty('--dly', (Math.random()*4).toFixed(2) + 's');
+      layer.appendChild(s);
+    }
+    document.body.appendChild(layer);
+    return layer;
+  }
+
+  function sync(){
+    var sb = document.getElementById('sidebar');
+    var L  = makeLayer();
+    if(!sb){ L.style.display = 'none'; return; }
+
+    var cs = getComputedStyle(sb);
+    var r  = sb.getBoundingClientRect();
+    var ok = r.width > 40 && r.height > 40 &&
+             r.right > 0 && r.left < window.innerWidth &&
+             cs.visibility !== 'hidden' && cs.display !== 'none' &&
+             parseFloat(cs.opacity || '1') > 0.05;
+
+    if(!ok){ L.style.display = 'none'; return; }
+
+    var top = Math.max(r.top, 0);
+    L.style.display = 'block';
+    L.style.top     = top + 'px';
+    L.style.left    = r.left + 'px';
+    L.style.width   = r.width + 'px';
+    L.style.height  = (Math.min(r.bottom, window.innerHeight) - top) + 'px';
+  }
+
+  var raf = null;
+  function schedule(){
+    if(raf) return;
+    raf = requestAnimationFrame(function(){ raf = null; sync(); });
+  }
+
+  function start(){
+    var sb = document.getElementById('sidebar');
+    if(!sb) return false;
+    sync();
+    if(window.ResizeObserver) new ResizeObserver(schedule).observe(sb);
+    new MutationObserver(schedule).observe(sb, {attributes:true, attributeFilter:['class','style']});
+    ['resize','orientationchange','scroll'].forEach(function(ev){
+      window.addEventListener(ev, schedule, {passive:true});
+    });
+    ['touchstart','touchmove','touchend','click'].forEach(function(ev){
+      document.addEventListener(ev, function(){
+        schedule(); setTimeout(sync, 200); setTimeout(sync, 450);
+      }, {passive:true, capture:true});
+    });
+    setInterval(sync, 1000);
+    return true;
+  }
+
+  if(!start()){
+    var n = 0, id = setInterval(function(){
+      if(start() || ++n > 40) clearInterval(id);
+    }, 250);
+  }
+})();
+</script>
+
 </body>
 </html>

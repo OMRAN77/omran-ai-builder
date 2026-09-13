@@ -1,12 +1,18 @@
-# مجس بثّ المحادثة على الإنتاج — رسالة طويلة (عربي+إنجليزي+كود) لكشف «ما ترد».
 name: chat-long-probe
+
+# مجس بثّ المحادثة على الإنتاج — رسالة طويلة (عربي+إنجليزي+كود) لكشف «ما ترد».
 on:
   workflow_dispatch:
   push:
     branches: [claude/hala-t3hsq0]
     paths: ['scripts/chat-long-probe.mjs', '.github/workflows/chat-long-probe.yml']
 
-permissions: {}
+permissions:
+  contents: read
+
+concurrency:
+  group: chat-long-probe-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   probe:
@@ -14,8 +20,22 @@ jobs:
     timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22'
+
       - name: Probe production chat stream (long message)
-        run: node scripts/chat-long-probe.mjs
+        shell: bash          # يفعّل pipefail حتى لا يخفي الأنبوب فشل السكربت
+        env:
+          PROBE_BASE_URL: ${{ vars.PROBE_BASE_URL }}
+          PROBE_TOKEN:    ${{ secrets.PROBE_TOKEN }}
+        run: node scripts/chat-long-probe.mjs | tee probe-output.txt
+
+      - name: Upload probe output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: probe-output-${{ github.run_id }}
+          path: probe-output.txt
+          retention-days: 7

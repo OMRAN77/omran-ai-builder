@@ -762,6 +762,8 @@ const $ = s => document.querySelector(s);
       const uname = String(authGet('aiapp_username') || '').trim().toLowerCase();
       const isAdminUI = (loggedIn && uname === 'omran');
       adminWrap.style.display = isAdminUI ? '' : 'none';
+      /* v-secret-vault: خزنة الأسرار للمالك وحده — بجانب لوحة التحكّم */
+      try{ const __vw = $('#vaultSectionWrap'); if(__vw){ __vw.style.display = isAdminUI ? '' : 'none'; if(isAdminUI && window.vaultRefresh) window.vaultRefresh(); } }catch(e){ /* guard-ok — قسم اختياريّ لا يُسقط الإعدادات */ }
       // القائمة تُملأ عند كشف القسم لا عند فتحه: زرّ «تحديث» موجود
       // للإحصائيات وحدها، وVIP قائمة قصيرة نداؤها رخيص.
       if(isAdminUI && window.loadVipList) window.loadVipList();

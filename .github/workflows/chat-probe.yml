@@ -1,9 +1,22 @@
-# مجسّ المحادثة: يقيس معمارية «العقل الواحد» على الإنتاج بالأرقام.
 name: chat-probe
+
+# مجسّ المحادثة: يقيس معمارية «العقل الواحد» على الإنتاج بالأرقام.
 on:
   workflow_dispatch:
+    inputs:
+      turns:
+        description: 'عدد الرسائل في الجلسة'
+        default: '10'
+      base:
+        description: 'عنوان النشر المستهدف (فارغ = الإنتاج؛ ضع عنوان معاينة Vercel لفحص فرع)'
+        default: ''
 
-permissions: {}
+permissions:
+  contents: read
+
+concurrency:
+  group: chat-probe
+  cancel-in-progress: false     # لا تقطع جلسة قياس في منتصفها
 
 jobs:
   probe:
@@ -11,8 +24,24 @@ jobs:
     timeout-minutes: 6
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22'
+
       - name: Probe production chat
-        run: node scripts/chat-probe.mjs
+        shell: bash
+        env:
+          PROBE_BASE_URL: ${{ vars.PROBE_BASE_URL }}
+          PROBE_BASE:     ${{ inputs.base }}
+          PROBE_TOKEN:    ${{ secrets.PROBE_TOKEN }}
+          PROBE_TURNS:    ${{ inputs.turns }}
+        run: node scripts/chat-probe.mjs | tee probe-metrics.json
+
+      - name: Upload metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chat-probe-${{ github.run_id }}
+          path: probe-metrics.json
+          retention-days: 30    # أطول من مجس البثّ: هذه أرقام تُقارن عبر الزمن

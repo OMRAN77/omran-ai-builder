@@ -1,6 +1,7 @@
+name: Design thumbs free
+
 # بطاقات الديكور بصور شبه حقيقية عبر مولّد مجاني (Flux) — لا يحتاج أي رصيد.
 # تصغير webp ودفع لفرع بوت لتُراجع وتُلتزم.
-name: Design thumbs free
 
 on:
   workflow_dispatch:
@@ -13,28 +14,106 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: design-thumbs-free      # لا تشغيلان يدفعان لنفس الفرع
+  cancel-in-progress: false
+
 jobs:
   thumbs:
     runs-on: ubuntu-latest
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '20'
+
+      - name: Install sharp
+        run: npm i --no-save sharp      # قبل التوليد: لا تكتشف فشل التثبيت بعد 40 دقيقة
+
       - name: Generate near-real previews (free engine)
-        run: node scripts/design-thumbs-free.mjs "${{ github.event.inputs.mode }}"
+        timeout-minutes: 40
+        env:
+          MODE: ${{ inputs.mode }}      # عبر البيئة لا داخل السطر: يمنع حقن الأوامر
+        run: node scripts/design-thumbs-free.mjs "$MODE"
+
       - name: Resize to webp cards
-        run: npm i --no-save sharp && node scripts/fashion-thumbs-resize.mjs
+        run: node scripts/fashion-thumbs-resize.mjs
+
+      - name: Validate generated cards
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(thumbs/dstyle/*.webp thumbs/dplace/*.webp)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::لم يُنتج المولّد أي صورة — تحقق من المحرّك المجاني"
+            exit 1
+          fi
+          bad=0
+          for f in "${files[@]}"; do
+            size=$(stat -c%s "$f")
+            if [ "$size" -lt 2048 ]; then
+              echo "::warning::ملف صغير جدًا (ربما تالف): $f — $size بايت"
+              bad=$((bad+1))
+            fi
+          done
+          echo "عدد الصور: ${#files[@]} • مشبوهة: $bad"
+          [ "$bad" -lt "${#files[@]}" ] || { echo "::error::كل الصور تالفة"; exit 1; }
+
       # تنزيل الـartifact محجوب من بيئة الوكيل — الدفع لفرع بوت هو قناة التسليم.
       - name: Push cards to bot branch
+        shell: bash
         run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          BRANCH=bot/design-thumbs
+
           mkdir -p assets/design/styles assets/design/opts
-          [ -d thumbs/dstyle ] && cp -r thumbs/dstyle/. assets/design/styles/ || true
-          if [ -d thumbs/dplace ]; then for f in thumbs/dplace/*.webp; do cp "$f" "assets/design/opts/place-$(basename "$f")"; done; fi
-          git config user.name "github-actions[bot]"
+          if [ -d thumbs/dstyle ]; then
+            cp -r thumbs/dstyle/. assets/design/styles/
+          fi
+          for f in thumbs/dplace/*.webp; do
+            cp "$f" "assets/design/opts/place-$(basename "$f")"
+          done
+
+          git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -B bot/design-thumbs
-          git add assets/design
-          git commit -m "أصول: بطاقات الديكور شبه الحقيقية (مولّد مجاني)" || echo "لا جديد — الصور مطابقة لما هو ملتزم"
-          git push -f origin bot/design-thumbs
+
+          # ابنِ على الفرع البعيد إن وُجد، حتى لا يمحو تشغيل جزئي نتائج تشغيل سابق
+          git fetch origin "$BRANCH" --depth=1 || true
+          if git rev-parse --verify "origin/$BRANCH" >/dev/null 2>&1; then
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+          else
+            git checkout -B "$BRANCH"
+          fi
+
+          git add -A -- assets/design
+          if git diff --cached --quiet; then
+            echo "لا جديد — الصور مطابقة لما هو ملتزم"
+            exit 0
+          fi
+
+          git commit -m "أصول: بطاقات الديكور شبه الحقيقية (مولّد مجاني)"
+          git push origin "$BRANCH"      # بلا -f: الفرع مبني على أصله فلا حاجة للقسر
+
+      - name: Job summary
+        if: always()
+        shell: bash
+        run: |
+          shopt -s nullglob
+          {
+            echo "### بطاقات الديكور"
+            echo ""
+            echo "الوضع: \`${{ inputs.mode }}\`"
+            echo ""
+            echo "| الملف | الحجم |"
+            echo "|---|---|"
+            for f in assets/design/styles/*.webp assets/design/opts/*.webp; do
+              echo "| $(basename "$f") | $(du -h "$f" | cut -f1) |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"

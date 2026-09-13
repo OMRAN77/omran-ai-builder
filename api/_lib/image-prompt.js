@@ -244,14 +244,22 @@ const PERSON_SWAP_RE = new RegExp([
   '\\b(?:match(?:es|ing)?|according\\s+to|based\\s+on)\\s+(?:the\\s+)?names?\\b',
 ].join('|'), 'i');
 function isPersonSwapRequest(text){ return PERSON_SWAP_RE.test(String(text || '')); }
+/* v-person-clothes (لقطة المالك ٦ سبتمبر «غير الشخصيات مع الملابس وخل كل شخصية غير عن الثانيه» → «مافي تغير حقيقي»):
+   القاعدة ٢ كانت تأمر بإبقاء «الملابس وقواعد اللبس» كما هي، فتناقض الطلب نفسه ويخرج الناس بوجوه معدَّلة قليلًا وبنفس
+   الثياب. عند ذكر الملابس في الطلب تُقلب القاعدة: ملابس جديدة كاملة ومختلفة لكل شخص. («زي» وحدها ليست لباسًا هنا —
+   في الخليجية تعني «مثل»: «غيرها زي الاسم».) */
+const PERSON_CLOTHES_RE = /(?:^|[\s،,])(?:و|ف|ب)?(?:ال)?(?:ملابس|ملابسهم|ملابسها|ملابسه|لبس|لبسهم|لباس|ثياب|أزياء|ازياء|زيهم|زيها|زيه|قميص|قمصان|فستان|فساتين|بدل[ةه]|عباي[ةه]|عبايات|كندور[ةه]|كنادير)(?=$|[\s،,.!؟?])|\b(?:clothes|clothing|outfits?|dress(?:es)?|wardrobe|attire|wear)\b/i;
 function buildPersonSwapPrompt(userPrompt, userWords){
   const prompt = cleanImagePrompt(userPrompt);
+  const wantsClothes = PERSON_CLOTHES_RE.test(String(userWords || '') + ' ' + String(userPrompt || ''));
   return [
     ...taskHeader(prompt, userWords),
     '',
     'PEOPLE REPLACEMENT on the attached source image. The user explicitly wants the people changed, so their identity must NOT be preserved:',
-    '1. Replace each person with a NEW, distinct, realistic person as the request describes. If a name, caption or label sits under or next to a person, that person must plausibly match that name (gender, age and cultural cues). No two people may look alike — different faces, hair, skin tones, builds and expressions; never repeat the same face twice.',
-    '2. Keep everything else exactly as in the source: layout, frames, positions, poses, outfits and dress code, background, lighting, colours, and every piece of text and every label character-for-character.',
+    '1. Replace each person with a NEW, distinct, realistic person as the request describes. Each new person must be unmistakably different from the one in the source at a glance — different face, hairstyle, age bracket and skin tone where the name allows; a viewer comparing both images must never think it is the same person lightly retouched. If a name, caption or label sits under or next to a person, that person must plausibly match that name (gender, age and cultural cues). No two people may look alike — different faces, hair, skin tones, builds and expressions; never repeat the same face twice.',
+    wantsClothes
+      ? '2. Change the outfits too: give every new person a complete, different outfit (style, colours, garments) that suits them and the name or label under them — no two outfits alike, and none copied from the source. Keep layout, frames, positions, poses, background, lighting, and every piece of text and every label character-for-character.'
+      : '2. Keep everything else exactly as in the source: layout, frames, positions, poses, outfits and dress code, background, lighting, colours, and every piece of text and every label character-for-character.',
     '3. Never write the instruction itself into the image. Return only one finished image.'
   ].join('\n');
 }

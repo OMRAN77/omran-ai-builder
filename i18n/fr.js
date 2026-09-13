@@ -17,7 +17,7 @@ I18N['fr'] = {
     fxCatLbl: 'Catégorie', fxGenWomen: 'Femme', fxGenMen: 'Homme', fxGenKids: 'Enfants', fxColorsLbl: 'Couleurs préférées', fxColBlack: 'Noir', fxColWhite: 'Blanc', fxColNavy: 'Bleu marine', fxColRed: 'Rouge', fxColGold: 'Doré',
     fxColGreen: 'Vert', fxColBeige: 'Beige', fxColMulti: 'Multicolore', fxAccLbl: 'Accessoires', fxAccGlasses: 'Lunettes', fxAccWatch: 'Montre', fxAccHandbag: 'Sac à main', fxAccShoes: 'Chaussures', fxAccScarf: 'Écharpe', fxAccMakeup: 'Maquillage',
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
-    sidePanelTitle: 'Menu latéral', lightModeTitle: 'Mode clair', provSearchPh: 'Rechercher un modèle...', jumpLatestTitle: 'Dernier message', editMsgNotice: 'Modification du message',
+    sidePanelTitle: 'Menu latéral', lightModeTitle: 'Mode clair', darkModeTitle: 'Mode sombre', provSearchPh: 'Rechercher un modèle...', jumpLatestTitle: 'Dernier message', editMsgNotice: 'Modification du message',
     modesTitle: 'Modes', attachFileTitle: 'Joindre un fichier', chipExam: 'Résoudre un examen', chipBook: 'Résumer un livre', chipArticle: 'Écrire un article professionnel',
     chipIdeas: 'Idées de projet', tryItTitle: 'Essayez pour moi', closeTitle: 'Fermer', docAssistTitle: '📄 Assistant de documents', govServicesTitle: '🧾 Services gouvernementaux',
     cvGenTitle: '💼 Générateur de CV', dsNotesLabel: '✍️ Décrivez vos détails avec vos propres mots (facultatif)', dsNotesPh: 'ex. : restaurant italien, 40 places, plafond haut, style industriel',
