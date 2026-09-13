@@ -7,6 +7,7 @@ const { logError } = require('./log-error.js');
 const { safeParse } = require('./safe-parse.js');
 const { fetchPublicUrl } = require('./safe-url.js');
 const { readGithub } = require('./github-read.js'); // v-agent-github
+const { redactMessages } = require('./_msgs.js'); // v-secret-vault: سرّ ملصوق لا يصل النموذج
 const githubWrite = require('./github-write.js'); // v-agent-github-push: للمالك وحده
 const { ownerList } = require('./_owner.js');
 
@@ -55,7 +56,7 @@ const TOOLS = [
   {
     // v-agent-github (طلب المالك ١٢ سبتمبر «يقرأ الجيت هوب»): قراءة عبر واجهة GitHub لا صفحاته.
     name: 'read_github',
-    description: 'اقرأ من GitHub مباشرةً عبر واجهته الرسميّة: مستودع (وصفه وشجرة ملفّاته وREADME)، أو مجلّدًا، أو ملفًّا بأسطر مرقّمة، أو طلب سحب (وصفه وملفّاته المتغيّرة)، أو مسألة (نصّها وتعليقاتها). أعطها رابط GitHub كما هو أو owner/repo مع path. الملفّ الطويل يعود مقطّعًا: أعد الاستدعاء نفسه مع from لقراءة التتمّة. استخدمها بدل fetch_page لأيّ رابط github.com.',
+    description: 'اقرأ من GitHub مباشرةً عبر واجهته الرسميّة: مستودع (وصفه وشجرة ملفّاته وREADME)، أو مجلّدًا، أو ملفًّا بأسطر مرقّمة، أو آخر الدفعات/الالتزامات على الفرع (what=commits)، أو طلب سحب (وصفه وملفّاته المتغيّرة)، أو مسألة (نصّها وتعليقاتها). أعطها رابط GitHub كما هو أو owner/repo مع path. الملفّ الطويل يعود مقطّعًا: أعد الاستدعاء نفسه مع from لقراءة التتمّة. استخدمها بدل fetch_page لأيّ رابط github.com.',
     input_schema: {
       type: 'object',
       properties: {
@@ -63,6 +64,8 @@ const TOOLS = [
         path: { type: 'string', description: 'مسار ملفّ أو مجلّد داخل المستودع (اختياريّ مع owner/repo)' },
         ref: { type: 'string', description: 'فرع أو وسم أو commit (اختياريّ؛ الافتراضيّ الفرع الرئيسيّ)' },
         from: { type: 'integer', description: 'رقم السطر الذي تبدأ منه قراءة ملفّ طويل (اختياريّ)' },
+        what: { type: 'string', enum: ['auto', 'commits'], description: 'commits = آخر الدفعات (الالتزامات) على المستودع/الفرع بدل محتواه (اختياريّ)' },
+        limit: { type: 'integer', description: 'عدد الالتزامات المطلوب مع what=commits (الافتراضيّ ١٥، الأقصى ٣٠)' },
       },
       required: ['url'],
     },
@@ -129,7 +132,7 @@ function trailDid(name, input) {
     return 'قرأتُ ' + h;
   }
   if (name === 'write_github') return 'رفعتُ إلى GitHub ' + (s(input.repo, 50) || '') + ' (' + (Array.isArray(input.files) ? input.files.length : 0) + ' ملفًّا)';
-  if (name === 'read_github') return 'قرأتُ من GitHub ' + (s(input.url, 70) || '') + (input.path ? ' ' + s(input.path, 40) : '') + (input.from > 1 ? ' من السطر ' + input.from : '');
+  if (name === 'read_github') return 'قرأتُ من GitHub ' + (s(input.url, 70) || '') + (input.path ? ' ' + s(input.path, 40) : '') + (input.from > 1 ? ' من السطر ' + input.from : '') + (input.what === 'commits' ? ' — آخر الدفعات' : '');
   if (name === 'run_js') return 'شغّلتُ كودًا (' + String(input.code || '').length + ' حرفًا)';
   if (name === 'test_html') return 'اختبرتُ صفحة (' + String(input.html || '').length + ' حرفًا)';
   if (name === 'publish') return 'نشرتُ «' + (s(input.title, 40) || 'مشروعًا') + '»';
@@ -206,8 +209,9 @@ const SYSTEM = `أنت "وكيل عمران" 🤖 — وكيل ذكاء اصطن
 25. أي رابط تعطيه: تأكد منه بـ web_search أو fetch_page أولًا — ممنوع روابط من الذاكرة.
 25-ب. قبل أول أداة في أي مهمة تحتاج أكثر من خطوة واحدة: اكتب سطرًا واحدًا فقط يبدأ بـ🗺️ يعلن خطتك بـ١٥ كلمة أو أقل، ثم انطلق فورًا. سطر واحد لا قائمة، ولا تنتظر موافقة عليه، ولا تكرره لاحقًا. المهمة التي تُنجزها بلا أدوات لا تحتاج هذا السطر.
 25-ج. أداة publish تنشر ما بنيتَه في هذا التشغيل وتعيد رابطًا حقيقيًا: لا تستدعها إلا إذا طلب المستخدم النشر أو رابطًا صراحة، ولا تعطِ إلا الرابط الذي أعادته الأداة حرفًا بحرف (ممنوع تأليف رابط)، ولا تضعه في صفحة «استكشف» العامة إلا بطلب صريح. وبعد النشر اذكر أن الرابط عام لمن يملكه.
-25-د. أي رابط github.com أو ذكر مستودع أو ملف على GitHub: استخدم read_github لا fetch_page — تعطيك شجرة الملفات، والملف بأسطر مرقمة، وطلبات السحب والمسائل. الملف الطويل يعود مقطعًا فأعد الاستدعاء مع from حتى تقرأه كله قبل أن تحكم عليه. لا تحلل ولا تعدل كودًا من GitHub قبل قراءته فعلًا بهذه الأداة.
+25-د. أي رابط github.com أو ذكر مستودع أو ملف على GitHub: استخدم read_github لا fetch_page — تعطيك شجرة الملفات، والملف بأسطر مرقمة، وطلبات السحب والمسائل. الملف الطويل يعود مقطعًا فأعد الاستدعاء مع from حتى تقرأه كله قبل أن تحكم عليه. لا تحلل ولا تعدل كودًا من GitHub قبل قراءته فعلًا بهذه الأداة. ولآخر الدفعات (الالتزامات) على المستودع استخدمها مع what=commits (وref للفرع وlimit للعدد).
 25-هـ. write_github (تظهر للمالك فقط): ترفع ملفات إلى مستودعه على فرع جديد بالتزام واحد وتفتح طلب سحب — لا تدفع إلى الفرع الرئيسي أبدًا؛ الدمج والنشر بيد المالك. لا ترفع إلا بطلب صريح («ارفع» / «ادفع» / «سوّ PR»)، واقرأ الملف الحالي بـread_github قبل تعديله وأعده كاملًا لا مقتطفًا، وأعطِ المستخدم رابط طلب السحب حرفًا بحرف ولا تقل إنه نُشر.
+25-و. الأسرار (توكن GitHub، مفاتيح API) لا تُكتب في المحادثة أبدًا: إن ظهر سرّ في رسالة فلا تكرّره ولا تحفظه ولا تستخدمه ولا تطلبه، ووجّه المالك إلى الإعدادات ← 🔐 خزنة الأسرار (أو متغيّرات البيئة). مفتاح GitHub الذي تعمل به read_github وwrite_github يأتي من الخزنة أو البيئة تلقائيًّا.
 26. أي رقم أو سعر أو إحصائية: اذكر مصدرها.
 27. إذا سُئلت "أيهم أفضل؟": أعطِ جدول مقارنة واضح.
 28. إذا اكتشفت أن ردك السابق خطأ: قل "أصحح معلومتي" وصحح بشجاعة — لا تكابر.
@@ -372,7 +376,8 @@ module.exports = async (req, res) => {
 
   let body = req.body;
   if (!body || typeof body === 'string') body = safeParse(body, {}, 'agent:body');
-  const { messages, token, guestId, currentCode, projId } = body;
+  const { token, guestId, currentCode, projId } = body;
+  const messages = redactMessages(body.messages); // v-secret-vault: توكن/مفتاح ملصوق يُحذف قبل النموذج والدفتر
 
   // استئناف: قراءة دفتر آخر تشغيل — بلا حصّة ولا بثّ، ولصاحب الدفتر وحده.
   if (body.runState) {
