@@ -3,6 +3,7 @@
 ## ١٣ سبتمبر ٢٠٢٦ — v-agent-push-auth: أوّل تشغيل ناجح لـClaude Code في Actions (#560) سقط عند الدفع
 - **العرض:** بعد تصحيح مفتاح Anthropic نجحت خطوة Claude كاملة (قرأ، عدّل، `npm run ci` مرّ، التزم على الفرع)، ثمّ فشل `git push` في الخطوة الأخيرة: «Invalid username or token». السبب في سجلّ claude-code-action نفسه: يزيل ترويسة مصادقة actions/checkout، ويستبدل رابط origin برمز تطبيق Claude، ثمّ **يلغي الرمز** في خطوته الفرعيّة الأخيرة (Revoke app token) قبل أن تصل خطوتنا.
 - **القرار:** قبل الدفع نعيد رابط origin النظيف ونضبط ترويسة `AUTHORIZATION: basic x-access-token:GITHUB_TOKEN` كما يفعل actions/checkout؛ `contents: write` ممنوحة للورك فلو أصلًا. الدرس: إجراء يلمس مصادقة git يجب افتراض أنّه يتركها معطّلة بعده.
+- **قيد مكتشَف:** claude-code-action يتحقّق عند تبادل رمز التطبيق أنّ ملفّ الورك فلو على الفرع مطابق لنسخة main، وإلا **يتخطّى التشغيل بصمت وبنجاح** («Skipping action due to workflow validation»). فتعديل الورك فلو لا يُختبر إلّا من main بعد الدمج، والتقرير صار يقول ذلك صراحة حين تنتهي خطوة Claude بنجاح بلا ملخّص ولا تغيير.
 
 ## ١٣ سبتمبر ٢٠٢٦ — v-claude-models: «ممكن تضيف هذيل كلهم» — اختيار نموذج كلود من الإعدادات
 - **العرض:** المالك أرسل لقطة قائمة نماذج Claude Code (Fable 5/5.1، Opus 5/4.8/4.7/4.6، Sonnet 5/4.6، Haiku 4.5) وطلب إضافتها كلّها. المحادثة كانت مقفلة على نموذج واحد من البيئة (`CHAT_CLAUDE_MODEL` أو Sonnet 5).
