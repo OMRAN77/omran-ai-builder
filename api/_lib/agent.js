@@ -505,8 +505,9 @@ module.exports = async (req, res) => {
         // فشل Claude → جرّب مزودين بدلاء (DeepSeek ثم Mistral ثم Groq) بدون أدوات.
         const fallbacks = [
           { name: 'DeepSeek', url: 'https://api.deepseek.com/chat/completions', key: process.env.DEEPSEEK_API_KEY, model: 'deepseek-chat' },
-          { name: 'Mistral', url: 'https://api.mistral.ai/v1/chat/completions', key: process.env.MISTRAL_API_KEY, model: 'mistral-large-latest' },
-          { name: 'Groq', url: 'https://api.groq.com/openai/v1/chat/completions', key: process.env.GROQ_API_KEY, model: 'llama-3.3-70b-versatile' },
+          // v-free-models: large خارج طبقة Mistral المجانية (403)، وGroq يأخذ النموذج الناجح/المرشّح الأول من free-chain.js.
+          { name: 'Mistral', url: 'https://api.mistral.ai/v1/chat/completions', key: process.env.MISTRAL_API_KEY, model: require('./free-chain.js').defaultModel('mistral') },
+          { name: 'Groq', url: 'https://api.groq.com/openai/v1/chat/completions', key: process.env.GROQ_API_KEY, model: require('./free-chain.js').defaultModel('groq') },
         ];
         // هبوط بلا أدوات: البديل لا يشغّل ولا يفحص شيئًا، فيجب ألّا يوهم المستخدم
         // بأنه جرّب. الصمت هنا أسوأ من الاعتراف — كلام جميل عن عمل لم يحدث.

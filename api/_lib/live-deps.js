@@ -72,18 +72,10 @@ async function cheapLLM(prompt) {
   const groqKey = (process.env.GROQ_API_KEY || '').trim();
   if (groqKey) {
     try {
-      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + groqKey },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0,
-          max_tokens: 500,
-        }),
-      });
-      if (r.ok) {
-        const d = await r.json();
+      // v-free-models: اسم النموذج لم يعد مزروعًا — مرشّحون ثم استكشاف (free-chain.js).
+      const r = await require('./free-chain.js').completeJson('groq', { key: groqKey, messages: [{ role: 'user', content: prompt }], temperature: 0, max_tokens: 500 });
+      if (r.ok && r.json) {
+        const d = r.json;
         const txt = (((d.choices || [])[0] || {}).message || {}).content || '';
         if (txt.trim()) return txt.trim();
       }

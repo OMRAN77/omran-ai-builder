@@ -10875,7 +10875,7 @@ $('#btnSettings').onclick = () => {
   $('#geminiApiKey').value = localStorage.getItem('aiapp_gemini_apikey') || '';
   $('#geminiModel').value = localStorage.getItem('aiapp_gemini_model') || 'gemini-flash-latest';
   $('#groqApiKey').value = localStorage.getItem('aiapp_groq_apikey') || '';
-  $('#groqModel').value = localStorage.getItem('aiapp_groq_model') || 'llama-3.3-70b-versatile';
+  $('#groqModel').value = localStorage.getItem('aiapp_groq_model') || 'openai/gpt-oss-120b'; /* v-free-models: llama-3.3-70b تقاعد عند Groq */
   $('#claudeApiKey').value = localStorage.getItem('aiapp_claude_apikey') || '';
   $('#claudeModel').value = localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-5';
   $('#openrouterApiKey').value = localStorage.getItem('aiapp_openrouter_apikey') || '';
@@ -11110,7 +11110,7 @@ const saveSettingsNow = () => {
   localStorage.setItem('aiapp_gemini_apikey', $('#geminiApiKey').value.trim());
   localStorage.setItem('aiapp_gemini_model', $('#geminiModel').value.trim() || 'gemini-flash-latest');
   localStorage.setItem('aiapp_groq_apikey', $('#groqApiKey').value.trim());
-  localStorage.setItem('aiapp_groq_model', $('#groqModel').value.trim() || 'llama-3.3-70b-versatile');
+  localStorage.setItem('aiapp_groq_model', $('#groqModel').value.trim() || 'openai/gpt-oss-120b');
   localStorage.setItem('aiapp_claude_apikey', $('#claudeApiKey').value.trim());
   localStorage.setItem('aiapp_claude_model', $('#claudeModel').value.trim() || 'claude-sonnet-5');
   localStorage.setItem('aiapp_openrouter_apikey', $('#openrouterApiKey').value.trim());
@@ -12086,7 +12086,9 @@ async function callGemini(messages, onDelta){
 
 async function callGroq(messages, onDelta){
   const hasImages = messages.some(m => m.images && m.images.length);
-  const textModel = localStorage.getItem('aiapp_groq_model') || 'llama-3.3-70b-versatile';
+  /* v-free-models: الاسم المحفوظ القديم (llama-3.3-70b) تقاعد عند Groq — يُستبدل بالافتراضي الحالي */
+  const __savedGroq = localStorage.getItem('aiapp_groq_model');
+  const textModel = (__savedGroq && __savedGroq !== 'llama-3.3-70b-versatile') ? __savedGroq : 'openai/gpt-oss-120b';
   if(!hasImages) return await __groqSend(textModel, messages, onDelta);
   /* v-img-err (لقطة المالك: «The model meta-llama/llama-4-scout-17b-16e-instruct does not
      exist or you do not have access to it» 404): نموذج الرؤية عند Groq قد يتقاعد بلا
@@ -17003,7 +17005,7 @@ async function pickSmartProviders(userText, eligibleKeys){
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-120b', /* v-free-models: الخادم يجرّب مرشّحين إن تقاعد هذا الاسم أيضًا */
         messages: [
           {role: 'system', content: sys},
           {role: 'user', content: String(userText || '').slice(0, 2000)}

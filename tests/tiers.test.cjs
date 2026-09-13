@@ -254,6 +254,57 @@ test('paypal capture is idempotent per order id', () => {
   assert.match(pp, /if \(user && !user\.deleted && user\.lastPaypalOrderId === data\.id\) \{[\s\S]*?pointsAdded = 0;[\s\S]*?\} else if \(user && !user\.deleted\) \{\n\s+user\.plan = matchedPlan;/);
 });
 
+test('completeJson: retired preferred name ignored, 404 tries the next candidate, other errors pass through', async () => {
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    if (/\/models$/.test(url)) return new Response(JSON.stringify({ data: [] }), { status: 200 });
+    const body = JSON.parse(init.body);
+    calls.push(body.model);
+    if (body.model === 'openai/gpt-oss-120b') return new Response(JSON.stringify({ error: { message: 'The model `openai/gpt-oss-120b` does not exist or you do not have access to it.' } }), { status: 404 });
+    if (body.model === 'meta-llama/llama-4-maverick-17b-128e-instruct') return new Response(JSON.stringify({ choices: [{ message: { content: 'تمام' } }] }), { status: 200 });
+    return new Response('x', { status: 500 });
+  };
+  fc.__workingModel.clear();
+  const r = await fc.completeJson('groq', { key: 'k', model: 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: 'هلا' }], fetchImpl, env: {}, now: 5000 });
+  assert.equal(r.ok, true); assert.equal(r.model, 'meta-llama/llama-4-maverick-17b-128e-instruct');
+  assert.equal(r.json.choices[0].message.content, 'تمام');
+  assert.deepEqual(calls, ['openai/gpt-oss-120b', 'meta-llama/llama-4-maverick-17b-128e-instruct'], 'الاسم المتقاعد لا يُجرَّب أصلًا');
+  /* النداء التالي يبدأ بالناجح */
+  calls.length = 0;
+  await fc.completeJson('groq', { key: 'k', messages: [{ role: 'user', content: 'هلا' }], fetchImpl, env: {}, now: 6000 });
+  assert.deepEqual(calls, ['meta-llama/llama-4-maverick-17b-128e-instruct']);
+  /* خطأ غير النموذج يُعاد فورًا بلا تجربة الباقين */
+  fc.__workingModel.clear();
+  const bad = await fc.completeJson('groq', { key: 'k', messages: [{ role: 'user', content: 'هلا' }], fetchImpl: async () => new Response('rate', { status: 429 }), env: {}, now: 7000 });
+  assert.deepEqual({ ok: bad.ok, status: bad.status, model: bad.model }, { ok: false, status: 429, model: 'openai/gpt-oss-120b' });
+  assert.deepEqual(await fc.completeJson('groq', { key: '', messages: [], env: {} }), { ok: false, status: 0, body: 'no-key', model: null });
+  const spec = fc.providerSpec('groq', 'k', {});
+  assert.deepEqual(fc.modelsToTry(spec, 'my-custom-model', 8000)[0], 'my-custom-model', 'اسم مخصّص غير متقاعد يُجرَّب أولًا');
+  assert.equal(fc.defaultModel('groq', {}), 'openai/gpt-oss-120b'); assert.equal(fc.defaultModel('mistral', {}), 'mistral-small-latest');
+  fc.__workingModel.clear();
+});
+
+test('no retired model name is hard-wired anywhere on the server or in client defaults', () => {
+  const retired = ['llama-3.3-70b-versatile', 'mistral-large-latest'];
+  const dir = path.join(root, 'api/_lib');
+  for (const f of fs.readdirSync(dir)) {
+    if (!/\.js$/.test(f) || f === 'tier.js' || f === 'free-chain.js') continue;
+    const src = fs.readFileSync(path.join(dir, f), 'utf8');
+    for (const m of retired) assert.ok(!src.includes(m), f + ' still hard-wires ' + m);
+  }
+  for (const f of ['js/app-09-attach.js', 'js/partials-settings.js']) assert.ok(!read(f).includes('llama-3.3-70b-versatile'), f);
+  assert.equal((read('js/app-06-checkout.js').match(/llama-3\.3-70b-versatile/g) || []).length, 1, 'app-06: يبقى فقط في مقارنة الاسم المحفوظ القديم');
+});
+
+test('chat.js: king unavailable before the first character → server-side free-chain fallback with a visible prefix', () => {
+  const chat = read('api/_lib/chat.js');
+  assert.match(chat, /if \(!upstream\.ok\) \{\n\s+const errText = \(await upstream\.text\(\)\)\.slice\(0, 300\);[\s\S]*?if \(!anyText\) \{[\s\S]*?const __fb = await streamFreeChain\(\{ system: PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), convo, send: __sendFb \}\);\n\s+if \(__fb\.ok\) \{ send\(\{ done: true \}\); res\.end\(\); return; \}/);
+  assert.match(chat, /if \(ev && ev\.delta && !__pre\) \{ __pre = true; send\(\{ delta: '⚠️ المحرّك الاحترافي غير متاح مؤقتًا/);
+  const groq = read('api/_lib/groq.js');
+  assert.match(groq, /const tried = fc\.modelsToTry\(spec, typeof model === 'string' \? model : ''\);/);
+  assert.match(groq, /if \(!fc\.isModelErrorStatus\(r\.status, txt\)\) break;/);
+});
+
 test('env docs list every tier knob', () => {
   const env = read('api/_lib/env.js');
   const ex = read('.env.example');

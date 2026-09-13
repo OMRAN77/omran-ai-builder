@@ -1332,7 +1332,7 @@ async function pickSmartProviders(userText, eligibleKeys){
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-120b', /* v-free-models: الخادم يجرّب مرشّحين إن تقاعد هذا الاسم أيضًا */
         messages: [
           {role: 'system', content: sys},
           {role: 'user', content: String(userText || '').slice(0, 2000)}
