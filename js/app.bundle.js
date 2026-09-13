@@ -19391,7 +19391,27 @@ DESIGN RULES (non-negotiable):
       // ③ الرسالة الحالية دائمًا آخر دور
       const __lastM = __historyMsgs[__historyMsgs.length - 1];
       if(__lastM){
-        const __curText = String((__lastM.apiText !== undefined ? __lastM.apiText : __lastM.content) || '');
+        let __curText = String((__lastM.apiText !== undefined ? __lastM.apiText : __lastM.content) || '');
+        /* v-attach-guarantee (بلاغ عمران «رفع الملفات ما يتحلّل»): نضمن وصول محتوى
+           كلّ مرفق نصّي للنموذج هنا وقت الإرسال — لا وقت بناء apiText فقط. لو سقط
+           المحتوى من apiText لأيّ سبب (سباق قراءة، حقل مختلف، إعادة تحرير) نُلحقه
+           الآن من كائن المرفق نفسه: .text أو .code أو .content أيًّا كان. آمنٌ
+           تمامًا: لا يضيف إلّا الغائب فعلًا (يتحقّق ببادئة ٦٠ حرفًا فلا تكرار). */
+        let __attN = 0, __attMissing = 0;
+        try{
+          (__lastM.attachments || []).forEach(a => {
+            if(!a || a.isImage || a.isVideo) return;
+            const __body = String((a.text || a.code || '')).trim();
+            if(!__body) return;
+            __attN++;
+            const __probe = __body.slice(0, 60);
+            if(__curText.indexOf(__probe) === -1){
+              __attMissing++;
+              __curText += (__curText ? '\n\n' : '') + '📄 ' + (a.name || 'ملف') + ':\n```\n' + __body + '\n```';
+            }
+          });
+        }catch(e){ /* guard-ok */ }
+        try{ if(window.__diagTurn){ window.__diagTurn.att = __attN; window.__diagTurn.attMissing = __attMissing; } }catch(e){ /* guard-ok */ }
         if(__turns.length && __turns[__turns.length - 1].role === __lastM.role) __turns.pop();
         __turns.push({role: __lastM.role, content: __curText});
       }
