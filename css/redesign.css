@@ -20,7 +20,7 @@ html[dir="rtl"] #omranUserBlock{flex-direction:row-reverse;}
 /* ---------------- Sidebar (المحادثات) ---------------- */
 /* v-newchat-plain (طلب المالك: «شيل المستطيل والخط تحته — محادثة جديدة فوق
    وتحتها المشاريع مباشرة»): بلا إطار ولا خلفية صندوق ولا فاصل. */
-#omranNewChatBtn{order:-2; display:flex; align-items:center; justify-content:center; gap:7px; margin:12px 12px 6px; padding:10px 12px; background:transparent; border:none; border-radius:0; color:var(--accent-ink); font-family:inherit; font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer; flex:0 0 auto;}
+#omranNewChatBtn{order:-2; display:flex; align-items:center; justify-content:flex-start; gap:7px; margin:8px 10px 2px; padding:6px 8px; background:transparent; border:none; border-radius:0; color:var(--accent-ink); font-family:inherit; font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer; flex:0 0 auto;}
 #omranNewChatBtn:hover{background:transparent;}
 body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #omranNewChatBtn{margin-top:26px;} /* حجز فراغ لسهم طيّ شريط الأسهم كي لا يغطّي الزر */
 #omranNewChatBtn{position:relative; margin-bottom:6px;}
