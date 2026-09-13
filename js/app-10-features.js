@@ -399,16 +399,46 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
 })();
 
 // v207: قائمة ⋮ في شريط التبويبات (رفع/تنزيل/ZIP)
+// v-tabsmenu-mobile (بلاغ المالك «⋮ في الهاتف ما يشتغل»): على الجوال يقصّ #tabs
+// القائمةَ المطلقة (overflow للتمرير الأفقي) فتفتح غير مرئيّة. الحلّ: على الجوال
+// ننقل القائمة إلى body ونثبّتها fixed تحت الزرّ فتهرب من القصّ، ونعيدها عند الإغلاق.
 (function(){
   const btn = document.getElementById('btnTabsMenu');
   const dd = document.getElementById('tabsMenuDropdown');
   if(!btn || !dd) return;
-  btn.onclick = (e) => { e.stopPropagation(); dd.classList.toggle('show'); btn.classList.toggle('active', dd.classList.contains('show')); };
+  const wrap = document.getElementById('tabDownloadWrap');
+  const isMobile = () => document.documentElement.classList.contains('mobile-ui');
+  function placeFixed(){
+    try{
+      const r = btn.getBoundingClientRect();
+      document.body.appendChild(dd);
+      dd.style.position = 'fixed';
+      dd.style.top = (r.bottom + 4) + 'px';
+      dd.style.right = Math.max(6, window.innerWidth - r.right) + 'px';
+      dd.style.left = 'auto';
+      dd.style.insetInlineEnd = 'auto';
+      dd.style.zIndex = '99999';
+    }catch(e){ /* guard-ok */ }
+  }
+  function restore(){
+    try{
+      if(wrap && dd.parentNode !== wrap) wrap.appendChild(dd);
+      dd.style.position=''; dd.style.top=''; dd.style.right=''; dd.style.left=''; dd.style.insetInlineEnd=''; dd.style.zIndex='';
+    }catch(e){ /* guard-ok */ }
+  }
+  function close(){ dd.classList.remove('show'); btn.classList.remove('active'); restore(); }
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    if(dd.classList.contains('show')){ close(); return; }
+    dd.classList.add('show'); btn.classList.add('active');
+    if(isMobile()) placeFixed();
+  };
   dd.addEventListener('click', (e) => {
-    if(e.target.closest('button')) setTimeout(() => { dd.classList.remove('show'); btn.classList.remove('active'); }, 150);
+    if(e.target.closest('button')) setTimeout(close, 150);
   });
   document.addEventListener('click', (e) => {
-    if(!e.target.closest('#tabDownloadWrap')){ dd.classList.remove('show'); btn.classList.remove('active'); }
+    if(e.target.closest('#tabsMenuDropdown') || e.target.closest('#tabDownloadWrap')) return;
+    close();
   });
 })();
 
