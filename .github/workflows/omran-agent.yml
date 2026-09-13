@@ -176,6 +176,9 @@ jobs:
               [ -n "$CLAUDE_ERR" ] && printf '\n**سبب فشل Claude:**\n```\n%s\n```\n' "$CLAUDE_ERR"
               [ -n "$SUMMARY" ] && printf '\n**ملخّص Claude:**\n%s\n' "$SUMMARY"
               [ "$CLAUDE_OUTCOME" != "success" ] && [ -z "$CLAUDE_ERR" ] && printf '\nإن كان السبب غياب المفتاح: أضف ANTHROPIC_API_KEY في أسرار المستودع وثبّت تطبيق Claude على المستودع.\n'
+              # نجاح بلا ملخّص ولا تغيير = غالبًا لم يعمل Claude أصلًا: claude-code-action يتخطّى التشغيل بصمت
+              # (outcome=success) إن اختلف ملفّ الورك فلو على هذا الفرع عن نسخة main — يُختبر بعد الدمج.
+              [ "$CLAUDE_OUTCOME" = "success" ] && [ -z "$SUMMARY" ] && printf '\nخطوة Claude انتهت بنجاح بلا ملخّص ولا تغيير: إمّا رأى Claude أنّ لا شيء يلزم، أو تخطّى الإجراء التشغيل لأنّ ملفّ الورك فلو على الفرع `%s` يختلف عن نسخة main (claude-code-action يشترط التطابق؛ أعد التشغيل من main بعد الدمج).\n' "${GITHUB_REF_NAME}"
               printf '\n<!-- omran-agent {"phase":"done","pushed":false,"changed":0,"claude":"%s","error":%s,"run_id":"%s","run_url":"%s"} -->\n' "$CLAUDE_OUTCOME" "$ERR_JSON" "${{ github.run_id }}" "$RUN_URL"
             } > /tmp/report.md
             gh issue comment "$TASK_ISSUE" --body-file /tmp/report.md
@@ -183,6 +186,11 @@ jobs:
           fi
           npm run ci > /tmp/ci.log 2>&1; CI=$?
           CIRES=fail; [ "$CI" = "0" ] && CIRES=pass
+          # v-agent-push-auth (المهمّة #560: «Invalid username or token»): خطوة Claude تستبدل رابط origin
+          # برمز تطبيق Claude ثمّ تلغيه في نهايتها، فيصل الدفع هنا برمز ميّت. نعيد الرابط النظيف
+          # وترويسة GITHUB_TOKEN كما يفعل actions/checkout (contents: write ممنوحة أعلاه).
+          git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git config --local http."https://github.com/".extraheader "AUTHORIZATION: basic $(printf '%s' "x-access-token:${GH_TOKEN}" | base64 -w0)"
           git push -u origin "$TASK_BRANCH" > /tmp/push.log 2>&1; PUSHED=$?
           SHA=$(git rev-parse HEAD)
           {
