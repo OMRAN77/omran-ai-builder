@@ -8878,6 +8878,35 @@ document.querySelectorAll('.tab').forEach(tab => {
     setTimeout(omranPlaceTabsMenu, 500);
     setTimeout(omranPlaceTabsMenu, 1500);
     window.addEventListener('load', omranPlaceTabsMenu);
+    /* v-code-actions-in-menu (طلب المالك): «تعديل · حفظ · نسخ» تنتقل من شريط
+       اللوحة إلى قائمة الثلاث نقاط (⋮)، ويبقى زرّ الإغلاق والتبويبان ظاهرَين.
+       النقل يحفظ معالجات الأزرار كما هي. يُشغَّل مرّة واحدة بعد بناء الشريط. */
+    window.omranMoveCodeActionsToMenu = function(){
+      try{
+        if(window.__codeActionsMoved) return;
+        var dd = document.getElementById('tabsMenuDropdown');
+        var bar = document.getElementById('omranCodeViewerBar');
+        var copyBtn = document.getElementById('waCopyBtn');
+        if(!dd || !bar || bar.children.length < 3) return;
+        var edt = bar.children[0], sav = bar.children[1]; /* [2]=إغلاق يبقى */
+        window.__codeActionsMoved = true;
+        var moveOne = function(el, label){
+          if(!el) return;
+          el.classList.add('btn');
+          el.style.cssText = 'display:flex;align-items:center;gap:8px;justify-content:flex-start;width:100%;background:none;border:none;box-shadow:none;';
+          if(label && !el.querySelector('.btnLabel')){
+            var sp = document.createElement('span'); sp.className = 'btnLabel'; sp.textContent = label; el.appendChild(sp);
+          }
+          dd.appendChild(el);
+        };
+        moveOne(edt, 'تعديل');
+        moveOne(sav, 'حفظ');
+        moveOne(copyBtn, 'نسخ');
+      }catch(e){ /* guard-ok */ }
+    };
+    setTimeout(window.omranMoveCodeActionsToMenu, 0);
+    setTimeout(window.omranMoveCodeActionsToMenu, 600);
+    setTimeout(window.omranMoveCodeActionsToMenu, 1600);
   }catch(e){ __swallow(e, 'ui:code-viewer-bar'); }
   try{ if(localStorage.getItem('waCollapsed') === '1' && !document.documentElement.classList.contains('mobile-ui')) setWA(true); }catch(e){ __swallow(e, "ui:app-05-ui#18"); }
   // كود جديد يوصل → اللوحة تفتح تلقائيًا
