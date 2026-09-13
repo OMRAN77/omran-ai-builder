@@ -494,7 +494,7 @@
   #settingsDialog{
     top:0; bottom:0; height:100vh; max-height:100vh;
     right:0; left:auto; margin:0;
-    width:460px; max-width:94vw; min-width:340px;
+    width:430px; max-width:94vw; min-width:340px;
     border-radius:0; border:none;
     border-inline-start:1px solid var(--border);
     resize:none; overflow:auto;
@@ -510,7 +510,7 @@
      الإعدادات (يمين، ٤٦٠px) نُزيح كامل التطبيق يسارًا بنفس العرض على الكمبيوتر،
      فيبقى الدرج صلبًا والمحادثة ظاهرة كاملةً جنبه بلا تراكب ولا تعتيم — كلاهما
      يملأ الشاشة معًا فلا تظهر الخلفية الشفافة إطلاقًا. الجوال بلا إزاحة. */
-  html.settings-push:not(.mobile-ui) main{ margin-right:460px; transition:margin-right .18s ease; }
+  html.settings-push:not(.mobile-ui) main{ margin-right:430px; transition:margin-right .18s ease; }
   dialog > *{padding-left:24px; padding-right:24px;}
   dialog > h3{padding-top:24px;}
   dialog h3{font-weight:700;}
