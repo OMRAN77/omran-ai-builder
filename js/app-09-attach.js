@@ -2487,6 +2487,31 @@ async function __sendPromptCore(){
   const promptEl = $('#prompt');
   let text = promptEl.value.trim();
   if(!text && pendingAttachments.length === 0) return;
+  /* v-secret-vault (طلب المالك: «حقل خاصّ مشفّر لحفظ الأسرار بدل كتابته نصًّا خامًا بالمحادثة»):
+     توكن GitHub أو مفتاح API ملصوق في الرسالة لا يُرسل للنموذج ولا يُحفظ في المحادثة.
+     المالك يُعرض عليه حفظه في الخزنة المشفّرة؛ غيره يُنبَّه ويُحذف السرّ من نصّه.
+     الأنماط نفسها في الخادم (_msgs.js redactSecrets) شبكةَ أمان للحزم القديمة. */
+  try{
+    const __secRe = /\b(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|sk-ant-[A-Za-z0-9_\-]{20,}|sk-[A-Za-z0-9_\-]{32,}|AIza[0-9A-Za-z_\-]{30,})\b/g;
+    const __found = text.match(__secRe);
+    if(__found && __found.length){
+      const __isAr = (lang === 'ar');
+      const __gh = __found.find(function(s){ return /^(gh[pousr]_|github_pat_)/.test(s); });
+      const __ownerUi = String(authGet('aiapp_username') || '').trim().toLowerCase() === 'omran';
+      text = text.replace(__secRe, __isAr ? '[سرّ حُذف من الرسالة]' : '[secret removed]').trim();
+      promptEl.value = text;
+      if(__gh && __ownerUi && typeof window.omranVaultStore === 'function'){
+        if(confirm(__isAr ? 'رصدتُ توكن GitHub في رسالتك. أحفظه في خزنة الأسرار المشفّرة بدل إرساله للمحادثة؟' : 'A GitHub token was detected in your message. Save it in the encrypted secrets vault instead of sending it to the chat?')){
+          window.omranVaultStore('github_token', __gh).then(function(r){
+            try{ settingsToast(r && r.ok ? (__isAr ? '🔐 حُفظ توكن GitHub في الخزنة' : '🔐 GitHub token saved to the vault') : ((__isAr ? '⚠️ تعذّر الحفظ: ' : '⚠️ Save failed: ') + ((r && r.error) || ''))); }catch(e){ __swallow(e, 'vault:toast'); }
+          });
+        }
+      } else {
+        try{ settingsToast(__isAr ? '🔒 حُذف السرّ من رسالتك — الأسرار لا تُكتب في المحادثة' : '🔒 The secret was removed from your message — never paste secrets in chat'); }catch(e){ __swallow(e, 'vault:toast2'); }
+      }
+      if(!text && pendingAttachments.length === 0) return;
+    }
+  }catch(e){ __swallow(e, 'vault:intercept'); }
   if(pendingAttachments.some(a => a.pending)){
     alert(lang === 'ar' ? 'الرجاء الانتظار حتى ينتهي تحليل الأرشيف' : 'Please wait until archive analysis finishes');
     return;

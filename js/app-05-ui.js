@@ -2395,7 +2395,7 @@ function closeDialogSafe(dlg){
   dlg.removeAttribute('open');
   dlg.style.display = '';
 }
-const SETTINGS_SECTION_IDS = ['langSection','accountSection','statsSection','agentSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection','adminSection'];
+const SETTINGS_SECTION_IDS = ['langSection','accountSection','statsSection','agentSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection','vaultSection','adminSection'];
 function renderStats(){
   const projects = state.projects || [];
   let messagesCount = 0;

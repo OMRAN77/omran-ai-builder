@@ -6,6 +6,8 @@
 // الملفّ الطويل على دفعات بـfrom)، طلب سحب (وصف + ملفّاته)، ومسألة (نصّ + تعليقات).
 // المضيف ثابت — لا رابط من النموذج يُفتح كما هو — والطلبات تمرّ بحارس safe-url.
 // GITHUB_TOKEN اختياريّ: يرفع حدّ الطلبات (٦٠/ساعة بلا مفتاح) ويفتح المستودعات الخاصّة.
+// v-secret-vault: المفتاح من البيئة أو من خزنة الأسرار المشفّرة (secrets.js) — لا من المحادثة أبدًا.
+// v-secret-vault: kind=commits (رابط /commits أو what=commits) = آخر الدفعات على الفرع.
 'use strict';
 
 const { fetchPublicUrl } = require('./safe-url.js');
@@ -37,6 +39,7 @@ function parseTarget(input) {
       kind = seg[0] === 'blob' ? 'file' : (path ? 'dir' : 'repo');
     } else if ((seg[0] === 'pull' || seg[0] === 'pulls') && /^\d+$/.test(seg[1] || '')) { kind = 'pr'; number = Number(seg[1]); }
     else if (seg[0] === 'issues' && /^\d+$/.test(seg[1] || '')) { kind = 'issue'; number = Number(seg[1]); }
+    else if (seg[0] === 'commits') { kind = 'commits'; ref = ref || (seg[1] || ''); path = path || seg.slice(2).join('/'); } // v-secret-vault: آخر الدفعات
     else kind = path ? 'path' : 'repo';
   } else if ((m = /^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)(?:\/(.*))?$/.exec(raw))) {
     owner = m[1]; repo = m[2].replace(/\.git$/, '');
@@ -46,20 +49,33 @@ function parseTarget(input) {
   if (!NAME_RE.test(owner) || !NAME_RE.test(repo) || owner === '.' || owner === '..') return null;
   if (path && /(^|\/)\.\.(\/|$)/.test(path)) return null;
   if (ref && !/^[A-Za-z0-9_.\/-]{1,200}$/.test(ref)) return null;
+  if (String(o.what || '').toLowerCase() === 'commits') kind = 'commits'; // v-secret-vault: what=commits
   const from = parseInt(o.from, 10);
   return { owner, repo, ref, path, kind, number, from: Number.isFinite(from) && from > 1 ? from : 1 };
+}
+
+/* ---------- المفتاح ---------- */
+/* v-secret-vault: البيئة أوّلًا (GITHUB_TOKEN) ثمّ خزنة الأسرار المشفّرة التي يحفظها المالك
+   من الإعدادات. opts.env صريح (الاختبارات والفحص) = البيئة المعطاة وحدها بلا خزنة. */
+async function resolveGithubToken(opts) {
+  const o = opts || {};
+  const env = o.env || process.env;
+  const fromEnv = env.GITHUB_TOKEN ? String(env.GITHUB_TOKEN).trim() : '';
+  if (fromEnv) return fromEnv;
+  if (o.env) return '';
+  try { return String((await require('./secrets.js').getSecret('github_token')) || '').trim(); } catch (e) { return ''; }
 }
 
 /* ---------- الطلب ---------- */
 async function ghFetch(pathname, opts) {
   const o = opts || {};
-  const env = o.env || process.env;
   const headers = {
     'Accept': o.raw ? 'application/vnd.github.raw+json' : 'application/vnd.github+json',
     'User-Agent': 'OmranAgent/1.0 (+https://omran-ai-builder.vercel.app)',
     'X-GitHub-Api-Version': '2022-11-28',
   };
-  if (env.GITHUB_TOKEN) headers.Authorization = 'Bearer ' + String(env.GITHUB_TOKEN).trim();
+  const token = await resolveGithubToken(o);
+  if (token) headers.Authorization = 'Bearer ' + token;
   const init = { headers, signal: undefined };
   if (o.method) init.method = o.method;
   if (o.body !== undefined) { init.body = JSON.stringify(o.body); headers['Content-Type'] = 'application/json'; }
@@ -73,9 +89,9 @@ async function ghFetch(pathname, opts) {
 
 function ghError(r, what, env) {
   const e = env || process.env;
-  if (r.status === 404) return 'غير موجود أو خاصّ: ' + what + (e.GITHUB_TOKEN ? '' : ' (المستودعات الخاصّة تحتاج GITHUB_TOKEN في البيئة)');
-  if (r.status === 403 || r.status === 429) return 'GitHub رفض الطلب (حدّ الطلبات أو الصلاحيّات). أضف GITHUB_TOKEN في البيئة لرفع الحدّ من ٦٠ إلى ٥٠٠٠ طلب في الساعة.';
-  if (r.status === 401) return 'GITHUB_TOKEN غير صالح.';
+  if (r.status === 404) return 'غير موجود أو خاصّ: ' + what + (e.GITHUB_TOKEN ? '' : ' (المستودعات الخاصّة تحتاج مفتاح GitHub: خزنة الأسرار في الإعدادات أو GITHUB_TOKEN في البيئة)');
+  if (r.status === 403 || r.status === 429) return 'GitHub رفض الطلب (حدّ الطلبات أو الصلاحيّات). أضف مفتاح GitHub (خزنة الأسرار في الإعدادات أو GITHUB_TOKEN في البيئة) لرفع الحدّ من ٦٠ إلى ٥٠٠٠ طلب في الساعة.';
+  if (r.status === 401) return 'مفتاح GitHub غير صالح (الخزنة أو GITHUB_TOKEN).';
   return 'GitHub HTTP ' + r.status + ' عند ' + what;
 }
 
@@ -189,12 +205,35 @@ async function readIssue(t, o) {
 }
 
 /* ---------- الواجهة الموحّدة للأداة ---------- */
+/* ---------- آخر الدفعات (v-secret-vault) ---------- */
+async function readCommits(t, o, limit) {
+  const n = Math.max(1, Math.min(30, parseInt(limit, 10) || 15));
+  const q = '?per_page=' + n + (t.ref ? '&sha=' + encodeURIComponent(t.ref) : '') + (t.path ? '&path=' + encodeURIComponent(t.path) : '');
+  const r = await ghFetch('/repos/' + repoOf(t) + '/commits' + q, o);
+  if (!r.ok) return ghError(r, 'دفعات ' + repoOf(t), o && o.env);
+  let list = null;
+  try { list = await r.json(); } catch (e) { list = null; }
+  if (!Array.isArray(list) || !list.length) return 'لا التزامات في ' + repoOf(t) + (t.ref ? ' (' + t.ref + ')' : '') + '.';
+  const out = ['آخر الدفعات (الالتزامات) في ' + repoOf(t) + (t.ref ? ' على ' + t.ref : '') + (t.path ? ' لمسار ' + t.path : '') + ' — ' + list.length + ':'];
+  for (const c of list) {
+    const cm = (c && c.commit) || {};
+    const sha = String((c && c.sha) || '').slice(0, 7);
+    const when = String((cm.author && cm.author.date) || (cm.committer && cm.committer.date) || '').replace('T', ' ').replace(/:\d\dZ$/, '');
+    const who = (c && c.author && c.author.login) || (cm.author && cm.author.name) || '';
+    const title = String(cm.message || '').split('\n')[0].slice(0, 120);
+    out.push('- ' + sha + ' · ' + when + ' · ' + who + ' · ' + title);
+  }
+  out.push('(تفاصيل التزام: https://github.com/' + repoOf(t) + '/commit/<sha>)');
+  return out.join('\n');
+}
+
 async function readGithub(input, opts) {
   const t = parseTarget(input);
-  if (!t) return 'رابط GitHub غير مفهوم. أعطِ رابط مستودع أو مجلّد أو ملفّ أو pull أو issue، أو owner/repo مع path.';
+  if (!t) return 'رابط GitHub غير مفهوم. أعطِ رابط مستودع أو مجلّد أو ملفّ أو pull أو issue أو commits، أو owner/repo مع path (وwhat=commits لآخر الدفعات).';
   try {
     if (t.kind === 'pr') return await readPR(t, opts);
     if (t.kind === 'issue') return await readIssue(t, opts);
+    if (t.kind === 'commits') return await readCommits(t, opts, input && typeof input === 'object' ? input.limit : undefined); // v-secret-vault
     if (t.kind === 'repo' && !t.path) return await readRepo(t, opts);
     const c = await getContents(t, opts);
     if (c.error) return c.error;
@@ -235,4 +274,4 @@ async function fetchRepoZip(target, opts) {
   return { ref, entries, total: all.length };
 }
 
-module.exports = { parseTarget, readGithub, getContents, fetchRepoZip, formatFile, ghFetch, CHUNK, ZIP_MAX };
+module.exports = { parseTarget, readGithub, readCommits, getContents, fetchRepoZip, formatFile, ghFetch, resolveGithubToken, CHUNK, ZIP_MAX };
