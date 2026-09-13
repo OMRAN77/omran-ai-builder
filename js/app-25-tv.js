@@ -103,6 +103,9 @@
     news: ['أخبار', 'News', '📰'],
     sports: ['رياضة', 'Sports', '⚽'],
     general: ['عامة', 'General', '📺'],
+    drama: ['دراما', 'Drama', '🎭'],
+    movies: ['أفلام', 'Movies', '🎬'],
+    music: ['طرب', 'Music', '🎵'],
     religion: ['دينية', 'Religion', '🕌'],
     kids: ['أطفال', 'Kids', '🧸'],
     biz: ['اقتصاد', 'Business', '📊'],
@@ -117,9 +120,9 @@
     { n: 'الحدث', h: 'AlHadath', c: 'ae', g: 'news' },
     { n: 'تلفزيون دبي', h: 'dubai_tv', c: 'ae', g: 'general' },
     { n: 'قناة الشارقة', h: 'sharjahtv', c: 'ae', g: 'general' },
-    { n: 'أبوظبي الرياضية', h: 'ADSportsTV', c: 'ae', g: 'sports', u: 'https://www.adtv.ae/live' },
-    { n: 'دبي الرياضية', h: 'DubaiSportsTV', c: 'ae', g: 'sports', u: 'https://awaan.ae/live' },
-    { n: 'الشارقة الرياضية', h: 'Sharjahsportstv', c: 'ae', g: 'sports' },
+    { n: 'أبوظبي الرياضية', h: 'ADSportsTV', c: 'ae', g: 'sports' },
+    { n: 'دبي الرياضية', h: 'DubaiSportsTV', c: 'ae', g: 'sports' },
+    { n: 'الشارقة الرياضية', c: 'ae', g: 'sports', m: ['https://svs.itworkscdn.net/smc4sportslive/smc4tv.smil/playlist.m3u8'] },
     { n: 'CNBC عربية', h: 'cnbcarabia', c: 'ae', g: 'biz' },
     { n: 'الشرق للأخبار', h: 'asharqnews', c: 'ae', g: 'news' },
     { n: 'الشرق بلومبرغ', h: 'AsharqBusiness', c: 'ae', g: 'biz' },
@@ -129,6 +132,32 @@
     { n: 'قناة القرآن الكريم — مكة', h: 'quraantv', c: 'sa', g: 'religion' },
     { n: 'قناة السنة النبوية — المدينة', h: 'sunnahtv', c: 'sa', g: 'religion' },
     { n: 'روتانا خليجية', h: 'RotanaKhalijia', c: 'sa', g: 'general' },
+    // ——— دراما ومنوّعات وأفلام (بثّ حرّ FTA يشتغل داخل التطبيق — طلب المالك)
+    { n: 'MBC 1', c: 'sa', g: 'general', m: ['https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-1/15cf99af5de54063fdabfefe66adc075/index.m3u8'] },
+    { n: 'MBC 4', c: 'sa', g: 'general', m: ['https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-4/24f134f1cd63db9346439e96b86ca6ed/index.m3u8'] },
+    { n: 'MBC دراما', c: 'sa', g: 'drama', m: ['https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-drama/2c28a458e2f3253e678b07ac7d13fe71/index.m3u8'] },
+    { n: 'MBC+ دراما', c: 'sa', g: 'drama', m: ['https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-plus-drama/e37251ec2aac8f6c98f75cd0fa37cd28/index.m3u8'] },
+    { n: 'MBC بوليوود', c: 'sa', g: 'movies', m: ['https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-bollywood/546eb40d7dcf9a209255dd2496903764/index.m3u8'] },
+    { n: 'MBC مود', c: 'sa', g: 'music', m: ['https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-mood/78367bf48ccdba501d0d014a10c21031/index.m3u8'] },
+    { n: 'روتانا دراما', c: 'sa', g: 'drama', m: ['https://rotana.hibridcdn.net/rotananet/drama_net-7Y83PP5adWixDF93/playlist.m3u8'] },
+    { n: 'روتانا سينما', c: 'sa', g: 'movies', m: ['https://rotana.hibridcdn.net/rotananet/cinema_net-7Y83PP5adWixDF93/playlist.m3u8'] },
+    { n: 'روتانا كلاسيك', c: 'sa', g: 'movies', m: ['https://rotana.hibridcdn.net/rotananet/classical_net-7Y83PP5adWixDF93/playlist.m3u8'] },
+    { n: 'روتانا كوميدي', c: 'sa', g: 'drama', m: ['https://rotana.hibridcdn.net/rotananet/comedy_net-7Y83PP5adWixDF93/playlist.m3u8'] },
+    { n: 'روتانا موسيقى', c: 'sa', g: 'music', m: ['https://rotana.hibridcdn.net/rotananet/music_net-7Y83PP5adWixDF93/playlist.m3u8'] },
+    { n: 'روتانا كليب', c: 'sa', g: 'music', m: ['https://rotana.hibridcdn.net/rotananet/clip_net-7Y83PP5adWixDF93/playlist.m3u8'] },
+    { n: 'أفلام', c: 'sa', g: 'movies', m: ['https://shd-amg-fast.edgenextcdn.net/tx001/playlist.m3u8'] },
+    { n: 'Movies Action', c: 'sa', g: 'movies', m: ['https://shd-amg-fast.edgenextcdn.net/tx011/playlist.m3u8'] },
+    { n: 'Movies Thriller', c: 'sa', g: 'movies', m: ['https://shd-amg-fast.edgenextcdn.net/tx012/playlist.m3u8'] },
+    { n: 'LBC', c: 'sa', g: 'general', m: ['https://rotana.hibridcdn.net/rotananet/lbc_net-7Y83PP5adWixDF93/playlist.m3u8'] },
+    { n: 'MBC مصر', c: 'eg', g: 'general', m: ['https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-masr/956eac069c78a35d47245db6cdbb1575/index.m3u8'] },
+    { n: 'MBC مصر 2', c: 'eg', g: 'general', m: ['https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-masr-2/754931856515075b0aabf0e583495c68/index.m3u8'] },
+    { n: 'MBC مصر دراما', c: 'eg', g: 'drama', m: ['https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-masr-drama/567b703c19ede6598222de81b0e4508b/index.m3u8'] },
+    { n: 'CBC دراما', c: 'eg', g: 'drama', m: ['https://flu.systemnet.tv/CBCDrama/index.m3u8'] },
+    { n: 'روتانا سينما مصر', c: 'eg', g: 'movies', m: ['https://rotana.hibridcdn.net/rotananet/cinemamasr_net-7Y83PP5adWixDF93/playlist.m3u8'] },
+    { n: 'عجمان', c: 'ae', g: 'general', m: ['https://cdn1.logichost.in/ajmantv/live/playlist.m3u8'] },
+    { n: 'الشارقة 2', c: 'ae', g: 'general', m: ['https://svs.itworkscdn.net/smc2live/smc2tv.smil/playlist.m3u8'] },
+    { n: 'الفجيرة', c: 'ae', g: 'general', m: ['https://live.kwikmotion.com/fujairahlive/fujairah.smil/playlist.m3u8'] },
+    { n: 'سبيستون', c: 'ae', g: 'kids', m: ['https://live-uae-next.spacetoongo.com/ST_MENA_NEXT/hls/r9p2hjipmw2kl.m3u8'] },
     // ——— قطر
     { n: 'الجزيرة', h: 'aljazeera', c: 'qa', g: 'news' },
     { n: 'الجزيرة مباشر', h: 'aljazeeramubasher', c: 'qa', g: 'news' },
@@ -927,7 +956,11 @@
   var RECENT_MS = 30 * 864e5;
   function statusFresh(){ return !!TV_CHECKED_AT && (Date.now() - TV_CHECKED_AT) < FRESH_MS; }
   /* v-direct-tv: أبقِ أسماء الدليل الحالية، لكن التشغيل لا يمر إلا عبر HLS/DASH. */
-  function chVisible(ch){ return !!ch; }
+  /* v-tv-inapp-only (طلب المالك: «القنوات تحوّلني على جوجل وقنوات اليوتيوب
+     مااريدها»): لا تُعرض إلّا قناة لها بثّ مباشر يشتغل داخل التطبيق. القنوات
+     التي تعتمد على يوتيوب أو تحويل خارجيّ (بلا m3u8) تُخفى — لا تحويل ولا يوتيوب.
+     يخفي هذا أيضًا زرَّ دولةٍ كلّ قنواتها بلا بثّ. */
+  function chVisible(ch){ return !!mOf(ch); }
 
   /* حل معرّف القناة الرقمي (UC...) — من ملف الفحص اليومي أولًا، ثم السيرفر */
 
@@ -989,6 +1022,14 @@
     sb.textContent = '🏆 ' + tvT('tvSportsWorld', 'رياضة العالم', 'World Sports');
     sb.onclick = function(){ S.country = '__sports'; S.cat = 'all'; renderChips(); renderGrid(); };
     cw.appendChild(sb);
+    /* v-tv-drama (طلب المالك: «دراما ولايف شو»): زرّ يجمع الدراما والأفلام
+     * والمنوّعات الشغّالة داخل التطبيق من كل الدول في شاشة واحدة. */
+    var drb = document.createElement('button');
+    drb.type = 'button';
+    drb.style.cssText = chipCss(S.country === '__drama');
+    drb.textContent = '🎭 ' + tvT('tvDramaWorld', 'دراما ومنوّعات', 'Drama & Shows');
+    drb.onclick = function(){ S.country = '__drama'; S.cat = 'all'; renderChips(); renderGrid(); };
+    cw.appendChild(drb);
     Object.keys(TV_COUNTRIES).forEach(function(code){
       /* v-tv-hls: دولة بلا أي قناة ظاهرة (كلها ميتة) لا يظهر زرها — كانت
        * تفتح شبكة فاضية (مصر ٠ من ١٣ في فحص اليوم). */
@@ -1058,7 +1099,7 @@
     var grid = el.querySelector('#tvGrid');
     grid.innerHTML = '';
     var q = S.q.toLowerCase();
-    if(!q && S.cat === 'all' && S.country !== '__sports') renderPlatforms(grid);
+    if(!q && S.cat === 'all' && S.country !== '__sports' && S.country !== '__drama') renderPlatforms(grid);
     var list;
     if(!q && S.country === '__sports'){
       /* v-tv-hls: شاشة «رياضة العالم» — قنواتنا الرياضية + كل قناة رياضية
@@ -1083,6 +1124,15 @@
         var ia = ARAB_CC.indexOf(a.c), ib = ARAB_CC.indexOf(b.c);
         if(ia < 0) ia = 99; if(ib < 0) ib = 99;
         if(ia !== ib) return ia - ib;
+        return a.n < b.n ? -1 : 1;
+      });
+    } else if(!q && S.country === '__drama'){
+      /* v-tv-drama: كل قنوات الدراما والأفلام والمنوّعات الشغّالة داخل التطبيق
+       * من كل الدول في شاشة واحدة — الدراما أولًا ثم الأفلام ثم المنوّعات. */
+      var ORDER = { drama: 0, movies: 1, music: 2 };
+      list = TV_CH.filter(function(ch){ return ORDER[ch.g] !== undefined && mOf(ch); });
+      list.sort(function(a, b){
+        if(ORDER[a.g] !== ORDER[b.g]) return ORDER[a.g] - ORDER[b.g];
         return a.n < b.n ? -1 : 1;
       });
     } else {
@@ -1238,14 +1288,7 @@
   function playChannel(ch, card){
     clearChannelFailures(ch);
     var mu = mOf(ch);
-    if(!mu || !mu.length){
-      /* v-tv-platform-open (شكوى المالك: «دبي الرياضية وغيرها ما تشتغل»):
-         قناة بلا بثّ مباشر داخل التطبيق لكن لها منصّة رسميّة مجانيّة
-         (عوان/ADtv/شاهد) — كانت الضغطة بلا فائدة إطلاقًا. الآن تفتح المنصّة
-         الرسميّة بدل ما تبقى ميتة. */
-      if(ch.u){ openExternal(ch.u); cardOff(card); return; }
-      stopPlayer(); cardOff(card); return;
-    }
+    if(!mu || !mu.length){ stopPlayer(); cardOff(card); return; }
     var i = 0;
     var tryNext = function(){
       if(i >= mu.length){ stopPlayer(); cardOff(card); setTimeout(renderGrid, 0); return; }
