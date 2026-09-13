@@ -2415,12 +2415,61 @@ function streamingMarkdownDisplayText(text){
     .replace(/\*{0,2}\[([^\]\n]+)\]$/g, '$1')
     .replace(/\*{0,2}\[([^\]\n]*)$/g, '$1');
 }
+/* v-stream-incremental (شكوى المالك ١٣ سبتمبر: «الشاشة ثقيلة كثير وتعلق»):
+   الرسم الحيّ كان يمسح الفقاعة ويعيد بناء الردّ كلّه كلمةً كلمةً في كلّ نبضة
+   (٣٠مل على الكمبيوتر) — ردّ من مئة سطر = آلاف العقد تُبنى ٣٣ مرّة في الثانية
+   فيختنق الخيط الرئيسي وتتجمّد الصفحة. الآن يُقسَم النصّ عند آخر فاصل أسطر:
+   الجزء المستقرّ يُرسم مرّة واحدة ويُلحَق به ما يستجدّ منه فقط، ولا يُعاد في
+   كلّ نبضة إلّا الذيل (السطر أو الفقرة الأخيرة). كتلة كود مفتوحة تبقى كاملةً
+   في الذيل كي لا تنقسم. الرسم النهائيّ (renderMessages) لا يتغيّر. */
+var OMRAN_STREAM_SPLIT_MIN = 600;
+function omranStreamSplitPoint(text){
+  if(!text || text.length <= OMRAN_STREAM_SPLIT_MIN) return -1;
+  var cut = text.lastIndexOf('\n\n', text.length - 2);
+  if(cut < 0) cut = text.lastIndexOf('\n', text.length - 2);
+  if(cut <= 0) return -1;
+  var fences = (text.slice(0, cut).match(/```/g) || []).length;
+  if(fences % 2 === 1) return -1;
+  return cut;
+}
 function renderStreamingAssistant(el, text){
   if(!el) return;
   el.classList.add('msg-streaming');
   let __st = streamingMarkdownDisplayText(text);
   if(__st && __st.indexOf('[[') >= 0) __st = __st.replace(/\[\[(?:OPT|MULTI)\]\][\s\S]*$/, '').trimEnd();
-  buildSpokenWordSpans(el, __st);
+  var cut = omranStreamSplitPoint(__st);
+  if(cut < 0){
+    el._omStreamHead = null; el._omStreamHeadEl = null; el._omStreamTailEl = null;
+    buildSpokenWordSpans(el, __st);
+    return;
+  }
+  var head = __st.slice(0, cut), tail = __st.slice(cut);
+  var hw = el._omStreamHeadEl, tw = el._omStreamTailEl;
+  var prev = el._omStreamHead;
+  var fresh = !hw || !tw || hw.parentNode !== el || tw.parentNode !== el || typeof prev !== 'string';
+  if(!fresh && head !== prev){
+    if(head.length > prev.length && head.indexOf(prev) === 0){
+      /* الرأس امتدّ فقط: نرسم الزيادة في مقطع جديد ونلحقه — لا إعادة لما رُسم. */
+      var seg = document.createElement('span');
+      seg.className = 'omStreamSeg';
+      buildSpokenWordSpans(seg, head.slice(prev.length));
+      hw.appendChild(seg);
+      el._omStreamHead = head;
+    } else {
+      fresh = true;
+    }
+  }
+  if(fresh){
+    el.innerHTML = '';
+    hw = document.createElement('span'); hw.className = 'omStreamHead';
+    tw = document.createElement('span'); tw.className = 'omStreamTail';
+    var seg0 = document.createElement('span'); seg0.className = 'omStreamSeg';
+    buildSpokenWordSpans(seg0, head);
+    hw.appendChild(seg0);
+    el.appendChild(hw); el.appendChild(tw);
+    el._omStreamHeadEl = hw; el._omStreamTailEl = tw; el._omStreamHead = head;
+  }
+  buildSpokenWordSpans(tw, tail);
 }
 
 const codeEl = $('#code');
@@ -5768,17 +5817,38 @@ function omranLongClipCss(){
 }
 function omranOpenReplyInPanel(text){
   try{
-    var esc = String(text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    /* v-panel-md (لقطة المالك ١٣ سبتمبر: «**» و«>» خامًا في اللوحة): الردّ كان
+       يُهرَّب نصًّا صرفًا فتظهر علامات الماركداون. الآن يُنسَّق بالمُنسِّق نفسه
+       الذي ترسم به فقاعة المحادثة (عناوين، عريض، قوائم، روابط، كود)، وتُنزع أزرار
+       النسخ لأنّ الإطار بلا سكربت. اللون يتبع الوضع الفاتح/الداكن. */
+    var esc;
+    try{
+      var __host = document.createElement('div');
+      buildSpokenWordSpans(__host, String(text || ''));
+      __host.querySelectorAll('button').forEach(function(b){ b.remove(); });
+      esc = __host.innerHTML;
+    }catch(e){
+      __swallow(e, 'ui:long-reply-md');
+      esc = String(text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
     previewFrame.style.display = 'block';
     $('#pyConsole').style.display = 'none';
     emptyState.style.display = 'none';
     previewFrame._imageView = true;   /* يمنع renderCodeAndPreview من استبداله بالكود */
     previewFrame._lastSrc = null;
     var rtl = /[\u0600-\u06FF]/.test(String(text || ''));
-    previewFrame.srcdoc = '<html><body style="margin:0;background:#111;color:#eee;'
+    var __light = document.documentElement.getAttribute('data-mode') === 'light';
+    previewFrame.srcdoc = '<html><head><meta charset="utf-8"><style>'
+      + 'body{margin:0;background:' + (__light ? '#ffffff' : '#111') + ';color:' + (__light ? '#14161a' : '#eee') + ';'
       + 'font-family:Tajawal,Tahoma,Arial,sans-serif;white-space:pre-wrap;word-break:break-word;'
-      + 'line-height:1.9;font-size:15px;padding:20px;direction:' + (rtl ? 'rtl' : 'ltr') + ';">'
-      + esc + '</body></html>';
+      + 'line-height:1.9;font-size:15px;padding:20px;direction:' + (rtl ? 'rtl' : 'ltr') + ';}'
+      + '.md-bold{font-weight:700}.md-h1{font-size:1.45em;font-weight:700}.md-h2{font-size:1.28em;font-weight:700}'
+      + '.md-h3,.md-h4,.md-h5,.md-h6{font-size:1.12em;font-weight:700}'
+      + 'a{color:#d4af37}'
+      + '.chat-codeblock{direction:ltr;text-align:left;background:' + (__light ? '#f3f3f3' : '#1c1c1c') + ';border-radius:10px;padding:10px 12px;margin:8px 0;overflow:auto}'
+      + '.chat-codeblock-head{font-size:12px;opacity:.6;margin-bottom:6px}'
+      + '.chat-codeblock pre{margin:0;white-space:pre;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}'
+      + '</style></head><body>' + esc + '</body></html>';
     /* v-panel-head: عنوان اللوحة ونصّ النسخ يتبعان الردّ المعروض */
     if(typeof window.omranPanelTitle === 'function'){
       window.omranPanelTitle((typeof lang !== 'undefined' && (lang === 'ar' || lang === 'ur')) ? 'الرد الكامل' : 'Full reply', String(text || ''));
