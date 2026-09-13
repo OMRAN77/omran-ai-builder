@@ -3,6 +3,7 @@
 // Free tier: 10 messages/day per user, then promotes the app.
 // Installs a time-to-first-byte timeout on every outbound fetch (see _lib/_fetch-timeout.js).
 require('./_lib/_fetch-timeout.js');
+require('./_lib/_env-keys.js'); // v-key-shape: مفتاح OpenRouter الموضوع خطأً في ANTHROPIC_API_KEY يُنقل إلى مكانه
 // Nothing thrown in this router escapes unrecorded (see _lib/_errors.js).
 const { withErrorCapture } = require('./_lib/_errors.js');
 
