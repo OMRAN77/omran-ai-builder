@@ -23,7 +23,7 @@ const REPO_DIR = env.CC_REPO_DIR || '/work/repo';
 const STATE_DIR = env.CC_STATE_DIR || '/work/state';
 const SECRET = String(env.CC_BRIDGE_SECRET || '');
 const MODEL = String(env.CC_MODEL || 'claude-opus-5');
-const MAX_TURNS = Math.max(5, Number(env.CC_MAX_TURNS) || 80);
+const MAX_TURNS = Math.max(5, Number(env.CC_MAX_TURNS) || 200);
 const MAX_BUDGET = Number(env.CC_MAX_BUDGET_USD) || 0;
 const RUN_TTL_MS = 6 * 3600 * 1000;
 
@@ -31,6 +31,14 @@ if (!SECRET || SECRET.length < 24) { console.error('CC_BRIDGE_SECRET مفقود 
 if (!env.ANTHROPIC_API_KEY && !env.CLAUDE_CODE_OAUTH_TOKEN) { console.error('لا ANTHROPIC_API_KEY ولا CLAUDE_CODE_OAUTH_TOKEN في البيئة.'); process.exit(1); }
 
 const gitOps = makeGit({ cwd: REPO_DIR });
+
+/** بيئة Claude Code: بيئة الجسر بلا سرّه المشترك، ومفتاح GitHub باسمه عند gh (GH_TOKEN) ليعمل gh وgit push. */
+function childEnv() {
+  const e = Object.assign({}, env);
+  delete e.CC_BRIDGE_SECRET;
+  if (e.GITHUB_TOKEN && !e.GH_TOKEN) e.GH_TOKEN = e.GITHUB_TOKEN;
+  return e;
+}
 const runs = new Map();       // runId -> RunLog
 let current = null;           // التشغيل الجاري (واحد فقط)
 let state = { sessionId: '', updatedAt: 0 };
@@ -68,7 +76,7 @@ async function runMessage(log, message, opts) {
        السطر لا تحمّل الحزمة إعدادات من القرص). */
     settingSources: ['project'],
     abortController: abort,
-    env: Object.assign({}, env),
+    env: childEnv(),
   };
   if (MAX_BUDGET > 0) options.maxBudgetUsd = MAX_BUDGET;
   if (opts.sessionId) options.resume = opts.sessionId;

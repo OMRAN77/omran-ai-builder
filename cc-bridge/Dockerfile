@@ -3,7 +3,13 @@
 # التشغيل: انظر cc-bridge/README.md (المتغيّرات والمجلّد الدائم).
 FROM node:22-bookworm-slim
 
-RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates python3 \
+# أدوات جلسة المالك على الويب نفسها: git وgh (طلبات السحب وفحوصها) وcurl وjq وripgrep وpython.
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates curl gnupg jq ripgrep python3 python3-pip \
+  && mkdir -p -m 755 /etc/apt/keyrings \
+  && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+  && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
+  && apt-get update && apt-get install -y --no-install-recommends gh \
   && rm -rf /var/lib/apt/lists/* \
   && useradd -m -u 1000 agent && mkdir -p /work/repo /work/state && chown -R agent:agent /work
 

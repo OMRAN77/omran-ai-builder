@@ -14,4 +14,11 @@ if [ ! -d "$CC_REPO_DIR/.git" ]; then
   fi
   (cd "$CC_REPO_DIR" && npm ci --no-audit --no-fund >/dev/null 2>&1 || npm install --no-audit --no-fund >/dev/null 2>&1 || true)
 fi
+# بيانات الدخول لدفع Claude Code فروعه بنفسه (git push إلى غير main، وgh): مساعد اعتماد يقرأ
+# الرمز من البيئة وقت الدفع — لا رمز في العنوان ولا في ملفّ.
+if [ -n "$GITHUB_TOKEN" ]; then
+  git config --global credential.https://github.com.helper '!f() { echo "username=x-access-token"; echo "password=${GITHUB_TOKEN}"; }; f'
+  git config --global user.name "${CC_GIT_NAME:-Claude Code (omran-cc)}"
+  git config --global user.email "${CC_GIT_EMAIL:-noreply@anthropic.com}"
+fi
 exec node /app/server.mjs
