@@ -252,7 +252,7 @@ const SYSTEM = `أنت "وكيل عمران" 🤖 — وكيل ذكاء اصطن
 • ⚙️ الإعدادات (أقسام قابلة للطي): شريط اختيار المزودين ○/✅ في الأعلى، ثم 🌐 اللغة (7 لغات: عربي/إنجليزي/فرنسي/هندي/أردو/بنغالي/نيبالي)، 👤 حسابي، 📊 إحصائياتي، 🤖 الوكيل (زر تشغيل وضع الوكيل — هنا وليس في الشاشة الرئيسية)، 🔑 مفاتيح API، 🎨 تخصيص (20 خلفية متحركة)، 🔊 الصوت، 💳 خطط الأسعار، ℹ️ عن البرنامج (فيديوهات شرح).
 • صندوق الكتابة: ➕ إرفاق/إضافات، 🎤 تسجيل صوتي، ⏹️ إيقاف التوليد، ➤ إرسال، 💡 قوالب سريعة.
 • التبويبات: 💬 محادثة | 👁️ معاينة | 💻 كود | 🎙️ الصوت (مها).
-• المزودون التسعة (كلهم يعملون بمفاتيح السيرفر، المستخدم لا يحتاج مفتاح): OpenAI، Claude، Gemini، DeepSeek، Mistral، Cohere، Groq، Perplexity، OpenRouter — بالإضافة لميزة "اسأل الكل" التي ترسل الطلب لجميع المزودين وتدمج النتيجة بتصميم موحّد.
+• تسعة محرّكات ذكاء اصطناعي تعمل كلّها بمفاتيح الخادم (المستخدم لا يحتاج مفتاحًا) — لا تذكر أسماء الشركات أو النماذج للمستخدم أبدًا؛ قل «المحرّك» أو «المحرّك الاحترافيّ».— بالإضافة لميزة "اسأل الكل" التي ترسل الطلب لجميع المزودين وتدمج النتيجة بتصميم موحّد.
 
 ═══ القوة القصوى ═══
 39. أنجز حتى النهاية: المهمة متعددة الخطوات تُكمَل في نفس التشغيل — خطّط، نفّذ، اختبر، صحّح، ثم سلّم. ممنوع التوقف في المنتصف أو تأجيل خطوة تقدر عليها الآن ("أكملها لاحقًا" ممنوعة).
@@ -456,13 +456,14 @@ module.exports = async (req, res) => {
       if (!r.ok) return 'claude-sonnet-5';
       const ids = ((await r.json()).data || []).map((m) => m.id);
       return (
+        ids.find((id) => /^claude-opus-5$/.test(id)) ||
         ids.find((id) => /sonnet-5/.test(id)) ||
         ids.find((id) => /sonnet-4/.test(id)) ||
         ids.find((id) => /3-5-sonnet/.test(id)) ||
-        ids[0] || 'claude-sonnet-5'
+        ids[0] || 'claude-opus-5'
       );
     } catch (e) {
-      return 'claude-sonnet-5';
+      return 'claude-opus-5';
     }
   }
 
@@ -478,7 +479,15 @@ module.exports = async (req, res) => {
       'fable-5.1': 'claude-fable-5-1',
       'opus-4.8': 'claude-opus-4-8',
     };
-    let model = (isOwner(runUser) && body.agentModel && AGENT_MODELS[String(body.agentModel)]) || 'claude-sonnet-5';
+    /* v-agent-opus (أمر عمران ١٣ سبتمبر): الافتراضيّ Opus 5 — أغلب قوّة النموذج الأعلى
+       بنصف كلفته. المالك يختار غيره من الإعدادات. */
+    const AGENT_DEFAULT = 'claude-opus-5';
+    const picked = (isOwner(runUser) && body.agentModel && AGENT_MODELS[String(body.agentModel)]) || '';
+    let model = picked || AGENT_DEFAULT;
+    /* v-agent-model-shown: الاسم الودّيّ للنموذج الذي يعمل فعلًا — يُبثّ للمالك وحده في
+       أوّل خطوة، فلا رجوع صامت إلى نموذج آخر حين يرفض المفتاح المختار. */
+    const modelLabel = (id) => { for (const k of Object.keys(AGENT_MODELS)) if (AGENT_MODELS[k] === id) return k; return String(id || ''); };
+    let modelAnnounced = false;
     let steps = 0;
 
     // 4 خطوات لا تكفي «اقرأ ← افهم ← جرّب ← أخطأت ← صحّح ← تحقّق». المهام
@@ -518,9 +527,15 @@ module.exports = async (req, res) => {
         }),
       });
       let upstream = await doCall(model);
+      let modelFellBack = false;
       if (!upstream.ok && upstream.status === 404) {
         model = await resolveModel();
+        modelFellBack = true;
         upstream = await doCall(model);
+      }
+      if (upstream.ok && !modelAnnounced && isOwner(runUser)) {
+        modelAnnounced = true;
+        send({ status: '🎛️ النموذج: ' + modelLabel(model) + (modelFellBack && picked ? ' — المختار (' + modelLabel(picked) + ') غير متاح على مفتاحك' : '') });
       }
       if (!upstream.ok) {
         const errText = await upstream.text();
@@ -548,7 +563,8 @@ module.exports = async (req, res) => {
               body: JSON.stringify({ model: fb.model, messages: plainMsgs, max_tokens: 8000, stream: true }),
             });
             if (!fr.ok) continue;
-            send({ status: '⚠️ تعذّر Claude — رددتُ عبر ' + fb.name + ' بلا أدوات: لم أشغّل شيئًا ولم أختبره في هذا الردّ.' });
+            /* v-no-provider-names: لا اسم مزوّد في نصّ يراه المستخدم. */
+            send({ status: '⚠️ تعذّر المحرّك الاحترافيّ — رددتُ عبر المحرّك الاحتياطيّ بلا أدوات: لم أشغّل شيئًا ولم أختبره في هذا الردّ.' });
             const frd = fr.body.getReader();
             const fdec = new TextDecoder();
             let fbuf = '';
@@ -573,7 +589,7 @@ module.exports = async (req, res) => {
             return;
           } catch (e) { /* جرّب التالي */ }
         }
-        send({ error: 'Claude error ' + upstream.status + ': ' + errText.slice(0, 300) });
+        send({ error: 'خطأ المحرّك ' + upstream.status + ': ' + errText.slice(0, 300) });
         res.end();
         return;
       }
@@ -651,7 +667,8 @@ module.exports = async (req, res) => {
           let result = 'أداة غير معروفة';
           if (cb.name === 'web_search') result = await tavilySearch(input.query || '');
           else if (cb.name === 'fetch_page') result = await fetchPage(input.url || '');
-          else if (cb.name === 'read_github') result = await readGithub(input);
+          /* v-owner-token: مفتاح GitHub (البيئة أو الخزنة) للمالك وحده — غيره يقرأ العامّ بلا مفتاح. */
+          else if (cb.name === 'read_github') result = await readGithub(input, isOwner(runUser) ? undefined : { anonymous: true });
           else if (cb.name === 'write_github') {
             // للمالك وحده، وبسقف ثلاث رفعات في التشغيل: حلقة ترفع بلا حدّ تُغرق المستودع بالفروع.
             if (!isOwner(runUser)) result = '✗ الرفع إلى GitHub للمالك وحده.';
@@ -701,7 +718,18 @@ module.exports = async (req, res) => {
         continue;
       }
 
-      // ✂️ انقطع بسبب حد الطول → نطلب من كلود يكمل من نفس النقطة (بدون إعادة)
+      /* v-agent-refusal: بعض النماذج (Fable 5.1) قد ترفض طلبًا بضوابط أمان فيعود
+         stop_reason=refusal بردّ فارغ — كان يظهر للمالك ردًّا خاويًا بلا سبب. */
+      if (stopReason === 'refusal') {
+        const said = contentBlocks.filter(Boolean).map((cb) => cb.text || '').join('').trim();
+        if (!said) send({ phase: 'reporting', delta: '⚠️ رفض المحرّك هذا الطلب بضوابط الأمان. أعد صياغته بوضوح، أو اختر نموذجًا آخر من الإعدادات ← الوكيل.' });
+        run.status = 'refused'; await journal(runUser, run);
+        send({ phase: 'reporting', done: true });
+        res.end();
+        return;
+      }
+
+      // ✂️ انقطع بسبب حد الطول → نطلب من النموذج أن يكمل من نفس النقطة (بدون إعادة)
       if (stopReason === 'max_tokens') {
         const partial = contentBlocks.filter(Boolean).map((cb) => cb.text || '').join('');
         convo.push({ role: 'assistant', content: partial || ' ' });
