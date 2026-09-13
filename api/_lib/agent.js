@@ -9,6 +9,7 @@ const { fetchPublicUrl } = require('./safe-url.js');
 const { readGithub } = require('./github-read.js'); // v-agent-github
 const { redactMessages } = require('./_msgs.js'); // v-secret-vault: سرّ ملصوق لا يصل النموذج
 const githubWrite = require('./github-write.js'); // v-agent-github-push: للمالك وحده
+const delegate = require('./agent-delegate.js'); // v-agent-delegate: Claude Code في GitHub Actions — للمالك وحده
 const { ownerList } = require('./_owner.js');
 
 const TOOLS = [
@@ -86,7 +87,7 @@ const TOOLS = [
 
 // v-agent-github-push: أداة الرفع تُعرض للمالك وحده — المفتاح مفتاحه، ولا يرفع به غيره.
 function isOwner(user) { return !!user && ownerList().includes(String(user).trim().toLowerCase()); }
-function toolsFor(user) { return isOwner(user) ? TOOLS.concat([githubWrite.TOOL]) : TOOLS; }
+function toolsFor(user) { return isOwner(user) ? TOOLS.concat([githubWrite.TOOL, delegate.START_TOOL, delegate.CHECK_TOOL]) : TOOLS; }
 
 // 🪞 الأثر المرئي — «فعلتُ س فحصلت ص». كل سطر يُشتقّ من مُدخل الأداة الحقيقي
 // ومن ناتجها الحقيقي، لا من ادّعاء النموذج. فما يقرأه المستخدم هو ما جرى فعلًا.
@@ -132,6 +133,8 @@ function trailDid(name, input) {
     return 'قرأتُ ' + h;
   }
   if (name === 'write_github') return 'رفعتُ إلى GitHub ' + (s(input.repo, 50) || '') + ' (' + (Array.isArray(input.files) ? input.files.length : 0) + ' ملفًّا)';
+  if (name === 'delegate_code_task') return 'سلّمتُ مهمّة كود إلى Claude Code في GitHub Actions: «' + (s(input.task, 70) || '؟') + '»';
+  if (name === 'check_code_task') return 'تحقّقتُ من مهمّة الكود #' + (s(input.issue, 10) || '؟');
   if (name === 'read_github') return 'قرأتُ من GitHub ' + (s(input.url, 70) || '') + (input.path ? ' ' + s(input.path, 40) : '') + (input.from > 1 ? ' من السطر ' + input.from : '') + (input.what === 'commits' ? ' — آخر الدفعات' : '');
   if (name === 'run_js') return 'شغّلتُ كودًا (' + String(input.code || '').length + ' حرفًا)';
   if (name === 'test_html') return 'اختبرتُ صفحة (' + String(input.html || '').length + ' حرفًا)';
@@ -148,6 +151,8 @@ function trailGot(name, result) {
     return 'فحصلتُ ' + (n === 1 ? 'نتيجة واحدة' : n === 2 ? 'نتيجتين' : n <= 10 ? (n + ' نتائج') : (n + ' نتيجة'));
   }
   if (name === 'fetch_page') return 'فحصلتُ ' + r.length + ' حرفًا من الصفحة';
+  if (name === 'delegate_code_task') { const u = r.match(/https?:\/\/\S+\/issues\/\d+/); return /^🚀/.test(r.trim()) ? ('فبدأت: ' + (u ? u[0] : 'مسألة المهمّة')) : ('ففشلت: ' + r.trim().slice(0, 80)); }
+  if (name === 'check_code_task') { const u = r.match(/https?:\/\/\S+\/pull\/\d+/); return u ? ('فوجدتُ طلب سحب: ' + u[0]) : /قيد التنفيذ/.test(r) ? 'فهي قيد التنفيذ' : /لم يبدأ/.test(r) ? 'فلم تبدأ بعد' : ('فحصلتُ: ' + r.split('\n')[1] || r.slice(0, 60)); }
   if (name === 'write_github') { const u = r.match(/https?:\/\/\S+\/pull\/\d+/); return /^✅/.test(r.trim()) ? ('فحصلتُ ' + (u ? 'طلب سحب: ' + u[0] : 'التزامًا')) : ('ففشلت: ' + r.trim().slice(0, 80)); }
   if (name === 'read_github') { const h = r.split('\n')[0] || ''; return /^(غير موجود|GitHub|تعذّر|رابط)/.test(h) ? 'ففشلت: ' + h.slice(0, 80) : 'فحصلتُ ' + r.length + ' حرفًا: ' + h.slice(0, 70); }
   if (name === 'publish') { const u = r.match(/https?:\/\/\S+/); return u ? ('فحصلتُ رابطًا: ' + u[0]) : ('فلم يُنشر: ' + r.trim().slice(0, 70)); }
@@ -211,6 +216,7 @@ const SYSTEM = `أنت "وكيل عمران" 🤖 — وكيل ذكاء اصطن
 25-ج. أداة publish تنشر ما بنيتَه في هذا التشغيل وتعيد رابطًا حقيقيًا: لا تستدعها إلا إذا طلب المستخدم النشر أو رابطًا صراحة، ولا تعطِ إلا الرابط الذي أعادته الأداة حرفًا بحرف (ممنوع تأليف رابط)، ولا تضعه في صفحة «استكشف» العامة إلا بطلب صريح. وبعد النشر اذكر أن الرابط عام لمن يملكه.
 25-د. أي رابط github.com أو ذكر مستودع أو ملف على GitHub: استخدم read_github لا fetch_page — تعطيك شجرة الملفات، والملف بأسطر مرقمة، وطلبات السحب والمسائل. الملف الطويل يعود مقطعًا فأعد الاستدعاء مع from حتى تقرأه كله قبل أن تحكم عليه. لا تحلل ولا تعدل كودًا من GitHub قبل قراءته فعلًا بهذه الأداة. ولآخر الدفعات (الالتزامات) على المستودع استخدمها مع what=commits (وref للفرع وlimit للعدد).
 25-هـ. write_github (تظهر للمالك فقط): ترفع ملفات إلى مستودعه على فرع جديد بالتزام واحد وتفتح طلب سحب — لا تدفع إلى الفرع الرئيسي أبدًا؛ الدمج والنشر بيد المالك. لا ترفع إلا بطلب صريح («ارفع» / «ادفع» / «سوّ PR»)، واقرأ الملف الحالي بـread_github قبل تعديله وأعده كاملًا لا مقتطفًا، وأعطِ المستخدم رابط طلب السحب حرفًا بحرف ولا تقل إنه نُشر.
+25-ز. delegate_code_task وcheck_code_task (للمالك وحده): تغيير حقيقيّ في مستودع المالك (إصلاح عطل، ميزة، إعادة هيكلة، أيّ شيء يحتاج اختبارًا) لا تكتبه أنت بـwrite_github بل تسلّمه بـdelegate_code_task إلى Claude Code في GitHub Actions — يقرأ المستودع كاملًا ويعدّل ويشغّل npm run ci ويدفع فرعًا. اكتب المهمّة كما تكتبها لمهندس زميل: ماذا ولماذا وأين (مسارات الملفّات) ومعيار النجاح، وبلا أسرار. الأداة تعود فورًا بمسألة وروابط والتنفيذ يأخذ دقائق: قل ذلك للمستخدم وأعطه الروابط حرفًا بحرف ولا تدّعِ وجود طلب سحب. حين يسأل «شو صار» أو يمرّ وقت: check_code_task برقم المسألة — هي تفتح طلب السحب عند اكتمال الدفع وتعيد حالة الفحوص. write_github يبقى للرفع المباشر الصغير (ملفّ أو اثنان بلا حاجة لاختبار).
 25-و. الأسرار (توكن GitHub، مفاتيح API) لا تُكتب في المحادثة أبدًا: إن ظهر سرّ في رسالة فلا تكرّره ولا تحفظه ولا تستخدمه ولا تطلبه، ووجّه المالك إلى الإعدادات ← 🔐 خزنة الأسرار (أو متغيّرات البيئة). مفتاح GitHub الذي تعمل به read_github وwrite_github يأتي من الخزنة أو البيئة تلقائيًّا.
 26. أي رقم أو سعر أو إحصائية: اذكر مصدرها.
 27. إذا سُئلت "أيهم أفضل؟": أعطِ جدول مقارنة واضح.
@@ -587,6 +593,8 @@ module.exports = async (req, res) => {
             else if (cb.type === 'tool_use' && cb.name === 'fetch_page') send({ phase: 'executing', status: '🌐 الوكيل يقرأ صفحة ويب…' });
             else if (cb.type === 'tool_use' && cb.name === 'read_github') send({ phase: 'executing', status: '🐙 الوكيل يقرأ من GitHub…' });
             else if (cb.type === 'tool_use' && cb.name === 'write_github') send({ phase: 'executing', status: '⬆️ الوكيل يرفع إلى GitHub ويفتح طلب سحب…' });
+            else if (cb.type === 'tool_use' && cb.name === 'delegate_code_task') send({ phase: 'executing', status: '🚀 الوكيل يسلّم المهمّة إلى Claude Code في GitHub Actions…' });
+            else if (cb.type === 'tool_use' && cb.name === 'check_code_task') send({ phase: 'executing', status: '🔎 الوكيل يتحقّق من حالة مهمّة الكود…' });
             else if (cb.type === 'tool_use' && cb.name === 'run_js') send({ phase: 'verifying', status: '⚙️ الوكيل يشغّل كودًا للتحقق…' });
             else if (cb.type === 'tool_use' && cb.name === 'test_html') send({ phase: 'verifying', status: '🧪 الوكيل يختبر ما بناه…' });
             else if (cb.type === 'tool_use' && cb.name === 'publish') send({ phase: 'executing', status: '🔗 الوكيل ينشر التطبيق…' });
@@ -640,6 +648,17 @@ module.exports = async (req, res) => {
               run.pushes = (run.pushes || 0) + 1;
               result = run.pushes > 3 ? '✗ ثلاث رفعات في هذا التشغيل حدّ مقصود — سلّم المستخدم آخر رابط.' : githubWrite.formatPush(await githubWrite.pushFiles(input));
             }
+          }
+          else if (cb.name === 'delegate_code_task') {
+            // v-agent-delegate: للمالك وحده، ومهمّة واحدة في التشغيل — كلّ تسليم يشغّل Claude Code على حساب المالك.
+            if (!isOwner(runUser)) result = '✗ تفويض مهامّ الكود للمالك وحده.';
+            else {
+              run.delegates = (run.delegates || 0) + 1;
+              result = run.delegates > 1 ? '✗ مهمّة واحدة مفوَّضة في التشغيل الواحد — سلّم المستخدم روابط المهمّة الأولى.' : delegate.formatStart(await delegate.startTask(input));
+            }
+          }
+          else if (cb.name === 'check_code_task') {
+            result = isOwner(runUser) ? delegate.formatCheck(await delegate.checkTask(input)) : '✗ التحقّق من مهامّ الكود للمالك وحده.';
           }
           else if (cb.name === 'run_js' || cb.name === 'test_html') {
             // التنفيذ في متصفح المستخدم لا هنا: الخادم دالة بلا حالة ومحدودة
