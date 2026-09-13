@@ -17,7 +17,7 @@ I18N['bn'] = {
     fxCatLbl: 'বিভাগ', fxGenWomen: 'মহিলা', fxGenMen: 'পুরুষ', fxGenKids: 'শিশু', fxColorsLbl: 'পছন্দের রং', fxColBlack: 'কালো', fxColWhite: 'সাদা', fxColNavy: 'নেভি ব্লু', fxColRed: 'লাল', fxColGold: 'সোনালি',
     fxColGreen: 'সবুজ', fxColBeige: 'বেইজ', fxColMulti: 'বহুরঙা', fxAccLbl: 'অ্যাকসেসরিজ', fxAccGlasses: 'চশমা', fxAccWatch: 'ঘড়ি', fxAccHandbag: 'হ্যান্ডব্যাগ', fxAccShoes: 'জুতা', fxAccScarf: 'স্কার্ফ', fxAccMakeup: 'মেকআপ',
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
-    sidePanelTitle: 'সাইড মেনু', lightModeTitle: 'লাইট মোড', provSearchPh: 'মডেল খুঁজুন...', jumpLatestTitle: 'সর্বশেষ বার্তা', editMsgNotice: 'বার্তা সম্পাদনা করা হচ্ছে', modesTitle: 'মোড',
+    sidePanelTitle: 'সাইড মেনু', lightModeTitle: 'লাইট মোড', darkModeTitle: 'ডার্ক মোড', provSearchPh: 'মডেল খুঁজুন...', jumpLatestTitle: 'সর্বশেষ বার্তা', editMsgNotice: 'বার্তা সম্পাদনা করা হচ্ছে', modesTitle: 'মোড',
     attachFileTitle: 'ফাইল সংযুক্ত করুন', chipExam: 'পরীক্ষা সমাধান করুন', chipBook: 'বইয়ের সারসংক্ষেপ', chipArticle: 'পেশাদার প্রবন্ধ লিখুন', chipIdeas: 'প্রকল্পের আইডিয়া',
     tryItTitle: 'আমার জন্য চেষ্টা করুন', closeTitle: 'বন্ধ করুন', docAssistTitle: '📄 ডকুমেন্ট সহায়ক', govServicesTitle: '🧾 সরকারি সেবা', cvGenTitle: '💼 সিভি জেনারেটর',
     dsNotesLabel: '✍️ আপনার বিস্তারিত নিজের ভাষায় লিখুন (ঐচ্ছিক)', dsNotesPh: 'উদাহরণ: ইতালিয়ান রেস্তোরাঁ, 40 আসন, উঁচু ছাদ, ইন্ডাস্ট্রিয়াল লুক', rmWhatLabel: 'আপনি ছবি থেকে কী মুছতে চান?',

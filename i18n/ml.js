@@ -17,7 +17,7 @@ I18N['ml'] = {
     fxCatLbl: 'വിഭാഗം', fxGenWomen: 'സ്ത്രീകൾ', fxGenMen: 'പുരുഷന്മാർ', fxGenKids: 'കുട്ടികൾ', fxColorsLbl: 'ഇഷ്ട നിറങ്ങൾ', fxColBlack: 'കറുപ്പ്', fxColWhite: 'വെള്ള', fxColNavy: 'നേവി ബ്ലൂ', fxColRed: 'ചുവപ്പ്', fxColGold: 'സ്വർണ്ണം',
     fxColGreen: 'പച്ച', fxColBeige: 'ബീജ്', fxColMulti: 'മൾട്ടി കളർ', fxAccLbl: 'ആക്സസറികൾ', fxAccGlasses: 'കണ്ണട', fxAccWatch: 'വാച്ച്', fxAccHandbag: 'ഹാൻഡ്ബാഗ്', fxAccShoes: 'ഷൂസ്', fxAccScarf: 'സ്കാർഫ്', fxAccMakeup: 'മേക്കപ്പ്',
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
-    sidePanelTitle: 'സൈഡ് മെനു', lightModeTitle: 'ലൈറ്റ് മോഡ്', provSearchPh: 'മോഡൽ തിരയുക...', jumpLatestTitle: 'ഏറ്റവും പുതിയ സന്ദേശം', editMsgNotice: 'സന്ദേശം എഡിറ്റ് ചെയ്യുന്നു',
+    sidePanelTitle: 'സൈഡ് മെനു', lightModeTitle: 'ലൈറ്റ് മോഡ്', darkModeTitle: 'ഡാർക്ക് മോഡ്', provSearchPh: 'മോഡൽ തിരയുക...', jumpLatestTitle: 'ഏറ്റവും പുതിയ സന്ദേശം', editMsgNotice: 'സന്ദേശം എഡിറ്റ് ചെയ്യുന്നു',
     modesTitle: 'മോഡുകൾ', attachFileTitle: 'ഫയൽ അറ്റാച്ച് ചെയ്യുക', chipExam: 'പരീക്ഷ പരിഹരിക്കുക', chipBook: 'പുസ്തകം സംഗ്രഹിക്കുക', chipArticle: 'പ്രൊഫഷണൽ ലേഖനം എഴുതുക',
     chipIdeas: 'പ്രോജക്ട് ആശയങ്ങൾ', tryItTitle: 'എനിക്കായി ശ്രമിക്കുക', closeTitle: 'അടയ്ക്കുക', docAssistTitle: '📄 ഡോക്യുമെന്റ് അസിസ്റ്റന്റ്', govServicesTitle: '🧾 സർക്കാർ സേവനങ്ങൾ',
     cvGenTitle: '💼 സിവി ജനറേറ്റർ', dsNotesLabel: '✍️ നിങ്ങളുടെ വിവരങ്ങൾ സ്വന്തം വാക്കുകളിൽ എഴുതുക (ഓപ്ഷണൽ)', dsNotesPh: 'ഉദാ: ഇറ്റാലിയൻ റെസ്റ്റോറന്റ്, 40 സീറ്റ്, ഉയർന്ന സീലിംഗ്, ഇൻഡസ്ട്രിയൽ ലുക്ക്',

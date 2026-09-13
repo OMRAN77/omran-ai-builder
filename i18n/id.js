@@ -17,7 +17,7 @@ I18N['id'] = {
     fxCatLbl: 'Kategori', fxGenWomen: 'Wanita', fxGenMen: 'Pria', fxGenKids: 'Anak', fxColorsLbl: 'Warna favorit', fxColBlack: 'Hitam', fxColWhite: 'Putih', fxColNavy: 'Biru dongker', fxColRed: 'Merah', fxColGold: 'Emas',
     fxColGreen: 'Hijau', fxColBeige: 'Krem', fxColMulti: 'Multiwarna', fxAccLbl: 'Aksesori', fxAccGlasses: 'Kacamata', fxAccWatch: 'Jam tangan', fxAccHandbag: 'Tas tangan', fxAccShoes: 'Sepatu', fxAccScarf: 'Syal', fxAccMakeup: 'Makeup',
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
-    sidePanelTitle: 'Menu samping', lightModeTitle: 'Mode terang', provSearchPh: 'Cari model...', jumpLatestTitle: 'Pesan terbaru', editMsgNotice: 'Mengedit pesan', modesTitle: 'Mode',
+    sidePanelTitle: 'Menu samping', lightModeTitle: 'Mode terang', darkModeTitle: 'Mode gelap', provSearchPh: 'Cari model...', jumpLatestTitle: 'Pesan terbaru', editMsgNotice: 'Mengedit pesan', modesTitle: 'Mode',
     attachFileTitle: 'Lampirkan file', chipExam: 'Selesaikan ujian', chipBook: 'Ringkas buku', chipArticle: 'Tulis artikel profesional', chipIdeas: 'Ide proyek', tryItTitle: 'Coba untuk saya',
     closeTitle: 'Tutup', docAssistTitle: '📄 Asisten dokumen', govServicesTitle: '🧾 Layanan pemerintah', cvGenTitle: '💼 Pembuat CV',
     dsNotesLabel: '✍️ Tulis detail Anda dengan kata-kata sendiri (opsional)', dsNotesPh: 'cth: restoran Italia, 40 kursi, langit-langit tinggi, gaya industrial',

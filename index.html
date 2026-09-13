@@ -117,8 +117,15 @@ window.__swallow = window.__swallow || function (err, ctx) {
   function isLight(){return document.documentElement.getAttribute('data-mode')==='light';}
   function sync(){var b=document.getElementById('btnMode');if(!b)return;var L=isLight();
     b.innerHTML=L?MOON:SUN;
-    var ar=true;try{ar=(localStorage.getItem('aiapp_lang')||'ar')==='ar';}catch(e){}
-    b.title=L?(ar?'الوضع الداكن':'Dark mode'):(ar?'الوضع الفاتح':'Light mode');}
+    /* v-mode-i18n (أمر عمران: ١٤ لغة): العنوان من قاموس اللغة الحالية لا من
+       ثنائيّة عربي/إنجليزي، والمفتاح يتبع الوضع كي تلتقطه applyLanguage عند
+       وصول ملف اللغة الكسول أو تبديل اللغة. زرّ التنقّل (v-mode-nav) مرآة له. */
+    var key=L?'darkModeTitle':'lightModeTitle';
+    b.setAttribute('data-i18n-title',key);
+    var txt='';try{if(typeof t==='function'){txt=t(key);}}catch(e){}
+    if(!txt||txt===key){var ar=true;try{ar=(localStorage.getItem('aiapp_lang')||'ar')==='ar';}catch(e){}
+      txt=L?(ar?'الوضع الداكن':'Dark mode'):(ar?'الوضع الفاتح':'Light mode');}
+    b.title=txt;}
   window.omToggleMode=function(){var L=isLight();
     if(L){document.documentElement.removeAttribute('data-mode');}
     else{document.documentElement.setAttribute('data-mode','light');}
@@ -304,7 +311,71 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
     box-shadow: none !important;
   }
 }
-html.mobile-ui #omHeadCenter{ display: none !important; }
+/* v-topbar-merge-mobile (أمر عمران ١٣ سبتمبر «وهذي طبّقها لي على الهواتف»):
+   على الجوال أيضًا يدخل شريط الأسهم سطر الشعار نفسه — كان سطرًا ثانيًا
+   بارتفاع ٤٢px فوق المحادثة — ويذوب قبل الشعار (٦٤px) وعلى ١٢px عند سهم
+   الطيّ، فترتفع المحادثة بارتفاعه. النقل نفسه في app-05-ui.js لم يعد يستثني
+   الجوال. الشعار يثبت على عرضه (كان يمتدّ flex:1) ليبقى للشريط ما بينه
+   وبين سهم الطيّ. الرجوع: أعد html.mobile-ui #omHeadCenter{display:none}
+   وحارس الجوال في v-topbar-merge. */
+html.mobile-ui header:has(#omHeadCenter) h1{ flex: 0 0 auto !important; }
+html.mobile-ui #omHeadCenter{
+  flex: 1 1 auto !important;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  overflow: hidden;
+  margin-inline: 6px;
+}
+html.mobile-ui #omHeadCenter #stockTicker{
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 30px !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+html[dir="rtl"].mobile-ui #omHeadCenter #stockTicker{
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 12px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 64px, #000 calc(100% - 12px), transparent);
+}
+html[dir="ltr"].mobile-ui #omHeadCenter #stockTicker{
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 64px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12px, #000 calc(100% - 64px), transparent);
+}
+html.mobile-ui #omHeadCenter #stockTickerToggle{
+  position: static !important;
+  transform: none !important;
+  inset: auto !important;
+  flex: none;
+}
+html.mobile-ui body header #omHeadCenter #stockTicker::before,
+html.mobile-ui body header #omHeadCenter #stockTicker::after{
+  content: none !important;
+  display: none !important;
+}
+/* السهم لم يعد يعلو درج المحادثات فيعود هامش زرّ «محادثة جديدة» الطبيعيّ. */
+html.mobile-ui body #omranNewChatBtn{ margin-top: 12px !important; }
+</style>
+<style>
+/* v-mode-nav (أمر عمران ١٣ سبتمبر): زرّ الوضع الفاتح/الداكن يخرج من الهيدر
+   (يبقى في الـDOM مخفيًّا لأنّ مزامنة v434 تكتب أيقونته وعنوانه عليه) ويظهر
+   مرآةً له في شريط التنقّل: أسفل الجانبي على الكمبيوتر، والشريط السفلي على
+   الجوال — app-05-ui.js (v-mode-nav) يبنيه. الشكل شكل تبويبات الشريط نفسه
+   بلا صنف .omNavBtn كي لا يلوّنه سلك التبويبات نشطًا. الرجوع: احذف الكتلة
+   وكتلة v-mode-nav في app-05-ui.js. */
+body #btnMode{ display: none !important; }
+#omNavMode{
+  flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: none; border: none; padding: 5px 0; color: var(--muted);
+  font-family: inherit; font-size: 9.5px; cursor: pointer;
+}
+#omNavMode:hover{ color: var(--accent-ink); }
+#omNavMode .omModeNavIcon{ display: inline-flex; line-height: 0; }
 </style>
 <style>
 /* v-frame-c (أمر عمران ١٣ سبتمبر — النموذج «ج» من اللوحة): الشريط الجانبي
@@ -357,17 +428,9 @@ html.mobile-ui #omHeadCenter{ display: none !important; }
     -webkit-mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 96px), transparent);
     mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 96px), transparent);
   }
-  /* زرّ الوضع الفاتح/الداكن: يخرج من الهيدر (يبقى في الـDOM مخفيًّا لأنّ
-     مزامنة v434 تكتب أيقونته وعنوانه عليه) ويظهر مرآةً له في شريط الجانبي
-     السفلي بجوار «الإعدادات» — app-05-ui.js (v-mode-nav) يبنيه. */
-  html:not(.mobile-ui) body #btnMode{ display: none !important; }
-  html:not(.mobile-ui) #omNavMode{
-    flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 2px;
-    background: none; border: none; padding: 6px 0; color: var(--muted);
-    font-family: inherit; font-size: 9.5px; cursor: pointer;
-  }
-  html:not(.mobile-ui) #omNavMode:hover{ color: var(--accent-ink); }
-  html:not(.mobile-ui) #omNavMode .omModeNavIcon{ display: inline-flex; line-height: 0; }
+  /* زرّ الوضع الفاتح/الداكن في شريط الجانبي السفلي: حشوته تساوي تبويبات
+     الشريط (٦px) كي تتراصف الأيقونات؛ بقيّة شكله في كتلة v-mode-nav العامّة. */
+  html:not(.mobile-ui) #omNavMode{ padding: 6px 0; }
   @container (max-width: 210px){
     html:not(.mobile-ui) #omNavMode .omModeNavLabel{ display: none; }
   }
@@ -725,7 +788,7 @@ html.oiOn body{overflow:hidden}
 <script src="/js/selfdiag.js?v=1ba33c1b"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=c9404180"></script>
+    <script defer src="/js/app.bundle.js?v=1492c8d0"></script>
     <script defer src="/js/modes.js?v=b23329c6"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">

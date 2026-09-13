@@ -3052,14 +3052,11 @@ async function postWithConfirm(url, payload){
    لا اسم محادثة ولا خطّ في الوسط: المحاولة السابقة وضعت عنصر عنوان هناك
    فظهر «كود ملصوق · 169 KB» وخلفه خطّ طويل — حُذف العنصر كلّه لا نصّه،
    فلا يبقى أثر مرسوم حين تُطوى الأسهم.
-   الجوال لا يُمَسّ إطلاقًا: لا نقل ولا طيّ تلقائيّ ولا هيدر لاصق. */
+   (كان الجوال مستثنًى؛ صار مشمولًا بأمر عمران ١٣ سبتمبر — v-topbar-merge-mobile.) */
 (function(){
-  function isMobile(){
-    try{ return document.documentElement.classList.contains('mobile-ui'); }
-    catch(e){ return false; }
-  }
   function build(){
-    if(isMobile()) return true;              /* الجوال يبقى كما كان حرفيًّا */
+    /* v-topbar-merge-mobile (أمر عمران ١٣ سبتمبر): النقل يشمل الجوال أيضًا —
+       كان مستثنًى؛ الشكل على الجوال في كتلة v-topbar-merge-mobile بـindex.html. */
     var hdr = document.querySelector('header');
     var acts = document.getElementById('headerActions');
     if(!hdr || !acts) return false;
@@ -3088,16 +3085,17 @@ async function postWithConfirm(url, payload){
    عليه؛ زرّ التنقّل مرآة له: أيقونته وعنوانه يُنسخان منه عند كل تغيير
    (MutationObserver) فيتبعان الوضع واللغة بلا منطق ثانٍ.
    ليس .omNavBtn عمدًا: سلك التبويبات في ui-wiring.js يلوّن كل .omNavBtn
-   «نشطًا» عند النقر، وهذا زرّ فعل لا تبويب. الجوال لا يُمَسّ. */
+   «نشطًا» عند النقر، وهذا زرّ فعل لا تبويب. على الجوال يُلحق بالشريط
+   السفلي #omranBottomNav تبويبًا خامسًا. */
 (function(){
   function isMobile(){
     try{ return document.documentElement.classList.contains('mobile-ui'); }
     catch(e){ return false; }
   }
   function build(){
-    if(isMobile()) return true;
     var src = document.getElementById('btnMode');
-    var foot = document.getElementById('omranSidebarFoot');
+    /* الجوال: الشريط السفلي (أمر عمران «طبّقها على الهواتف»)؛ الكمبيوتر: أسفل الجانبي. */
+    var foot = document.getElementById(isMobile() ? 'omranBottomNav' : 'omranSidebarFoot');
     if(!src || !foot) return false;
     if(document.getElementById('omNavMode')) return true;
     var b = document.createElement('button');

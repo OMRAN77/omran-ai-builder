@@ -17,7 +17,7 @@ I18N['ur'] = {
     fxCatLbl: 'زمرہ', fxGenWomen: 'خواتین', fxGenMen: 'مرد', fxGenKids: 'بچے', fxColorsLbl: 'پسندیدہ رنگ', fxColBlack: 'سیاہ', fxColWhite: 'سفید', fxColNavy: 'نیوی بلیو', fxColRed: 'سرخ', fxColGold: 'سنہری',
     fxColGreen: 'سبز', fxColBeige: 'بیج', fxColMulti: 'کثیر رنگ', fxAccLbl: 'ایکسسریز', fxAccGlasses: 'چشمہ', fxAccWatch: 'گھڑی', fxAccHandbag: 'ہینڈ بیگ', fxAccShoes: 'جوتے', fxAccScarf: 'اسکارف', fxAccMakeup: 'میک اپ',
     /* v600: وسوم الترجمة للوحة الجانبيّة ونافذة المخطّط وبطاقات الباقات (٦١ مفتاحًا) */
-    sidePanelTitle: 'سائیڈ مینو', lightModeTitle: 'لائٹ موڈ', provSearchPh: 'ماڈل تلاش کریں...', jumpLatestTitle: 'تازہ ترین پیغام', editMsgNotice: 'پیغام میں ترمیم', modesTitle: 'موڈز',
+    sidePanelTitle: 'سائیڈ مینو', lightModeTitle: 'لائٹ موڈ', darkModeTitle: 'ڈارک موڈ', provSearchPh: 'ماڈل تلاش کریں...', jumpLatestTitle: 'تازہ ترین پیغام', editMsgNotice: 'پیغام میں ترمیم', modesTitle: 'موڈز',
     attachFileTitle: 'فائل منسلک کریں', chipExam: 'امتحان حل کریں', chipBook: 'کتاب کا خلاصہ', chipArticle: 'پیشہ ورانہ مضمون لکھیں', chipIdeas: 'پروجیکٹ کے آئیڈیاز', tryItTitle: 'میرے لیے آزمائیں',
     closeTitle: 'بند کریں', docAssistTitle: '📄 دستاویز اسسٹنٹ', govServicesTitle: '🧾 سرکاری خدمات', cvGenTitle: '💼 سی وی جنریٹر', dsNotesLabel: '✍️ اپنی تفصیلات اپنے الفاظ میں لکھیں (اختیاری)',
     dsNotesPh: 'مثلاً: اطالوی ریستوران، 40 نشستیں، اونچی چھت، صنعتی انداز', rmWhatLabel: 'آپ تصویر سے کیا ہٹانا چاہتے ہیں؟', rmWhatPh: 'مثلاً: میرے پیچھے موجود شخص · گاڑی · کھمبا',
