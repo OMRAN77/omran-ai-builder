@@ -106,7 +106,7 @@ window.__swallow = window.__swallow || function (err, ctx) {
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon-v2.png?icon=gold-20260819">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Tajawal:wght@400;500;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/tokens.css?v=682">
+<link rel="stylesheet" href="css/tokens.css?v=683">
 <link rel="stylesheet" href="css/redesign.css?v=657">
 <link rel="stylesheet" href="css/modules.css?v=652">
 <script>
@@ -168,11 +168,25 @@ html[data-mode="light"] .msg-text a{ color:#0d9488 !important; }
      قناع تدرّجيّ على المتمرِّر نفسه يذيبه في الطرفين — أعلى وأسفل — فلا
      يحتاج طبقة إضافية فوق المحتوى ولا يحجب النقر.
      -webkit- للسفاري والأغلفة القديمة. */
-  html:not(.mobile-ui) #messages{
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0,
-      #000 var(--om-fade, 28px), #000 calc(100% - var(--om-fade, 28px)), transparent 100%);
-    mask-image: linear-gradient(to bottom, transparent 0,
-      #000 var(--om-fade, 28px), #000 calc(100% - var(--om-fade, 28px)), transparent 100%);
+  /* v-perf (شكوى عمران ١٣ سبتمبر «الشاشة ثقيلة»): القناع (mask-image) على
+     المتمرِّر كلّه كان يجبر المتصفّح على رسم منطقة المحادثة بأكملها في طبقة
+     مستقلّة وإعادة تقنيعها مع كلّ نبضة بثّ وكلّ تمرير. الخلفيّة لون صلب في كلّ
+     الأوضاع، فشريحتان لاصقتان (sticky) بتدرّج من لون الخلفيّة تعطيان الذوبان
+     نفسه أعلى وأسفل بلا تقنيع. الهوامش السالبة تلغي فجوة flex (١٢px) حولهما. */
+  html:not(.mobile-ui) #messages::before,
+  html:not(.mobile-ui) #messages::after{
+    content: ""; display: block; flex: none; position: sticky; z-index: 3;
+    pointer-events: none; width: 100%; height: var(--om-fade, 28px);
+  }
+  html:not(.mobile-ui) #messages::before{
+    top: 0; margin-bottom: calc(-1 * var(--om-fade, 28px) - 12px);
+    background: linear-gradient(to bottom, var(--bg), transparent);
+  }
+  /* الشريحة السفلى: margin-top:auto يدفعها إلى حافة المتمرِّر حين تقصر
+     المحادثة (وإلّا جلست فوق آخر رسالة فبهتت)، وعند الفيض تلتصق بالأسفل. */
+  html:not(.mobile-ui) #messages::after{
+    bottom: 0; margin-top: auto;
+    background: linear-gradient(to top, var(--bg), transparent);
   }
   html:not(.mobile-ui) #chatJumpBottom,
   html:not(.mobile-ui) #chatQuickChipsWrap{
@@ -401,6 +415,9 @@ body #btnMode{ display: none !important; }
   }
   html:not(.mobile-ui) body > main{ display: contents; }
   html:not(.mobile-ui) body > header{ grid-column: 3; grid-row: 1; min-width: 0; }
+  /* v-perf: لا شيء يمرّ تحت الهيدر في صفّه الخاصّ والخلفيّة صلبة، فضبابيّة
+     backdrop-filter كلفة على بطاقة الرسوم بلا أثر مرئيّ. */
+  html:not(.mobile-ui) body > header{ backdrop-filter: none; -webkit-backdrop-filter: none; }
   /* قبل أن ينقله app-05-ui.js إلى الهيدر (أو إن تعطّل النقل) يبقى في مكانه المرئيّ نفسه. */
   html:not(.mobile-ui) body > #stockTicker{ grid-column: 3; grid-row: 2; min-width: 0; }
   html:not(.mobile-ui) body #chatcol{ grid-column: 3; grid-row: 3; min-width: 0; min-height: 0; }

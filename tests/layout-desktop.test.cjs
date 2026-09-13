@@ -110,4 +110,14 @@ assert.ok(!/claude|gemini|groq|openai|mistral/i.test(block), 'بلا أسماء 
 // كتلة v-topbar-merge في app-05-ui.js ما زالت تنقل الأسهم إلى الهيدر (سطر الأسهم يعتمد عليها)
 assert.ok(ui.includes("wrap.id = 'omHeadCenter'"), 'نقل الأسهم إلى الهيدر قائم');
 
-console.log('✓ layout-desktop: تخطيط «ج» محصور بالكمبيوتر، والمحادثة عمود موسّط');
+// v-perf (شكوى عمران «الشاشة ثقيلة»): لا صباغة دائمة — خلفيّة ساكنة، ولا قناع على المتمرِّر، ولا ضبابيّة خلف الهيدر
+const tokens = fs.readFileSync(path.join(__dirname, '..', 'css', 'tokens.css'), 'utf8');
+assert.ok(!/animation:\s*bgShift/.test(tokens), 'خلفيّة الصفحة لا تتحرّك على الدوام');
+assert.ok(html.includes('css/tokens.css?v=683'), 'كاسر كاش tokens.css رُفع');
+const fillStart = html.indexOf('/* v-chat-fill');
+const fillBlock = html.slice(fillStart, html.indexOf('</style>', fillStart));
+assert.ok(!/#messages\{[^}]*mask-image/.test(fillBlock), 'لا mask-image على #messages');
+assert.match(fillBlock, /#messages::before,\s*html:not\(\.mobile-ui\) #messages::after\{\s*content: ""; display: block; flex: none; position: sticky;/, 'شريحتا الذوبان اللاصقتان');
+assert.match(fillBlock, /#messages::before\{\s*top: 0; margin-bottom: calc\(-1 \* var\(--om-fade, 28px\) - 12px\);\s*background: linear-gradient\(to bottom, var\(--bg\), transparent\);/, 'الذوبان العلويّ بلون الخلفيّة');
+assert.match(block, /body > header\{ backdrop-filter: none; -webkit-backdrop-filter: none; \}/, 'لا ضبابيّة خلف الهيدر على الكمبيوتر');
+console.log('✓ layout-desktop: تخطيط «ج» محصور بالكمبيوتر، والمحادثة عمود موسّط، وبلا صباغة دائمة');
