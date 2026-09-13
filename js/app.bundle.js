@@ -9694,6 +9694,10 @@ const settingsDialog = $('#settingsDialog');
 })();
 function openDialogSafe(dlg){
   if (dlg.hasAttribute('open')) return; // already open, avoid re-throw
+  /* v-settings-push (طلب المالك: «الإعدادات تدفع الدردشة، ما تغطّيها»): عند فتح
+     درج الإعدادات نُزيح محتوى التطبيق جنبه على الكمبيوتر فيبقى ظاهرًا بلا تعتيم
+     ولا تراكب — بدل نافذةٍ فوق المحادثة. */
+  try{ if(dlg && dlg.id === 'settingsDialog') document.documentElement.classList.add('settings-push'); }catch(e){ /* guard-ok */ }
   if (typeof dlg.showModal === 'function') {
     try { dlg.showModal(); return; } catch(e) { /* fall through to polyfill */ }
   }
@@ -9701,12 +9705,19 @@ function openDialogSafe(dlg){
   dlg.style.display = 'block';
 }
 function closeDialogSafe(dlg){
+  try{ if(dlg && dlg.id === 'settingsDialog') document.documentElement.classList.remove('settings-push'); }catch(e){ /* guard-ok */ }
   if (typeof dlg.close === 'function') {
     try { dlg.close(); } catch(e) { /* ignore */ }
   }
   dlg.removeAttribute('open');
   dlg.style.display = '';
 }
+/* شبكة أمان: إغلاق بالـESC أو backdrop يطلق حدث close دون المرور بـcloseDialogSafe */
+try{
+  document.addEventListener('close', function(e){
+    if(e && e.target && e.target.id === 'settingsDialog'){ try{ document.documentElement.classList.remove('settings-push'); }catch(_){ /* guard-ok */ } }
+  }, true);
+}catch(e){ /* guard-ok */ }
 const SETTINGS_SECTION_IDS = ['langSection','accountSection','statsSection','agentSection','apiKeysSection','themeSection','fontFamilySection','fontSizeSection','voiceSection','toneSection','memorySection','pricingSection','aboutSection','vaultSection','adminSection'];
 function renderStats(){
   const projects = state.projects || [];
