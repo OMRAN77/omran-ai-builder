@@ -2758,6 +2758,19 @@ async function __sendPromptCore(){
   } else {
     cur.messages.push(__nextUserMessage);
   }
+  /* v-attach-light (بلاغ المالك «الشاشة تثقل لما أرفع ملفات»): نصّ المرفق الكامل
+     (قد يبلغ مئات الكيلوبايتات للملف) لزِم فقط لبناء apiText لهذا الدور — وقد بُني
+     أعلاه بالكامل والنموذج سيستلمه. الإبقاء عليه كاملًا داخل كل رسالة يُضخّم الحالة
+     فيُثقل كلّ حفظ/نسخ/مزامنة/رسم، فيتجمّد التمرير والتطبيق كله عند تراكم الملفات.
+     نُبقي معاينةً خفيفة فقط في الرسالة المحفوظة؛ الإرسال الحاليّ يستخدم apiText
+     الكامل بلا تأثّر (السجل اللاحق يقصّ لكلّ رسالة أصلًا). */
+  try{
+    (attachmentsForMsg || []).forEach(a => {
+      if(a && !a.isImage && !a.isVideo && typeof a.text === 'string' && a.text.length > 6000){
+        a.text = a.text.slice(0, 6000) + '\n… (اختُصر للعرض — النصّ الكامل أُرسل للنموذج)';
+      }
+    });
+  }catch(e){ /* guard-ok — التخفيف تحسينيّ */ }
   window.__chatEditRequest = null;
   setChatEditNotice(false);
   promptEl.value = '';
