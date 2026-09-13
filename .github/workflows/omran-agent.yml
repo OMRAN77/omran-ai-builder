@@ -183,6 +183,11 @@ jobs:
           fi
           npm run ci > /tmp/ci.log 2>&1; CI=$?
           CIRES=fail; [ "$CI" = "0" ] && CIRES=pass
+          # v-agent-push-auth (المهمّة #560: «Invalid username or token»): خطوة Claude تستبدل رابط origin
+          # برمز تطبيق Claude ثمّ تلغيه في نهايتها، فيصل الدفع هنا برمز ميّت. نعيد الرابط النظيف
+          # وترويسة GITHUB_TOKEN كما يفعل actions/checkout (contents: write ممنوحة أعلاه).
+          git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git config --local http."https://github.com/".extraheader "AUTHORIZATION: basic $(printf '%s' "x-access-token:${GH_TOKEN}" | base64 -w0)"
           git push -u origin "$TASK_BRANCH" > /tmp/push.log 2>&1; PUSHED=$?
           SHA=$(git rev-parse HEAD)
           {
