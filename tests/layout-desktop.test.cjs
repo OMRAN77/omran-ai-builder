@@ -33,9 +33,20 @@ for (const id of ['#sidebar', '#resizer1', '#resizer2', '#workarea']) {
 assert.match(block, /#workarea\{[^}]*max-width: 100%;/, 'اللوحة تنكمش مع عمودها');
 assert.match(block, /body\.waCollapsedMode\{\s*grid-template-columns: auto auto minmax\(300px, 1fr\) auto auto;/, 'طيّ اللوحة يُسقط حدّ عمودها');
 
-// الهيدر سطران والأسهم آخرًا
-assert.match(block, /body > header\{ flex-wrap: wrap;/, 'الهيدر يلتفّ سطرين');
-assert.match(block, /#omHeadCenter\{ order: 1; flex: 0 0 100%; width: 100%; \}/, 'الأسهم سطر كامل تحت الشعار');
+// الهيدر سطر واحد: الأسهم على سطر الشعار وتذوب قبله على مسافة أطول (٩٦px) حسب الاتجاه
+assert.ok(!/flex-wrap: wrap/.test(block), 'لا التفاف في الهيدر');
+assert.match(block, /#omHeadCenter\{ flex: 1 1 auto; min-width: 0;/, 'الأسهم تملأ سطر الشعار');
+assert.match(block, /html\[dir="rtl"\]:not\(\.mobile-ui\) #omHeadCenter #stockTicker\{\s*-webkit-mask-image: linear-gradient\(90deg, transparent, #000 96px, #000 calc\(100% - 16px\), transparent\);/, 'الذوبان الطويل جهة الشعار (يسار بالعربية)');
+assert.match(block, /html\[dir="ltr"\]:not\(\.mobile-ui\) #omHeadCenter #stockTicker\{\s*-webkit-mask-image: linear-gradient\(90deg, transparent, #000 16px, #000 calc\(100% - 96px\), transparent\);/, 'الذوبان الطويل جهة الشعار (يمين بالإنجليزية)');
+
+// زرّ الوضع الفاتح: مخفيّ في الهيدر ومرآته في شريط الجانبي السفلي
+assert.match(block, /body #btnMode\{ display: none !important; \}/, 'زرّ الهيدر مخفيّ على الكمبيوتر');
+assert.match(block, /#omNavMode\{\s*flex: 1 1 0; display: flex; flex-direction: column;/, 'زرّ التنقّل بشكل تبويبات الشريط');
+const ui = fs.readFileSync(path.join(__dirname, '..', 'js', 'app-05-ui.js'), 'utf8');
+assert.ok(ui.includes("b.id = 'omNavMode'"), 'v-mode-nav يبني الزرّ');
+assert.ok(ui.includes("b.className = 'omModeNav'") && !ui.includes("omNavMode'; b.className = 'omNavBtn"), 'ليس .omNavBtn كي لا يلوّنه سلك التبويبات نشطًا');
+assert.ok(/new MutationObserver\(mirror\)\.observe\(src, \{ childList: true, attributes: true, attributeFilter: \['title'\] \}\)/.test(ui), 'المرآة تتبع الأيقونة والعنوان');
+assert.ok(/if\(isMobile\(\)\) return true;[\s\S]*getElementById\('omranSidebarFoot'\)/.test(ui), 'الجوال لا يُمَسّ');
 
 // العمود الموسّط
 assert.match(block, /--om-chat-max: 800px;/, 'حدّ عرض المحادثة');
@@ -54,9 +65,10 @@ const inner = block.slice(mediaOpen + '@media (min-width: 861px){'.length).repla
 const rules = [...inner.matchAll(/([^{}]+)\{/g)].map((m) => m[1].trim());
 assert.ok(rules.length >= 20, 'عدد القواعد معقول: ' + rules.length);
 for (const r of rules) {
+  if (r.startsWith('@')) continue; // @container داخل الاستعلام — قواعده تُفحص بدورها
   for (const sel of r.split(',').map((x) => x.trim()).filter(Boolean)) {
     if (sel === ':root') continue;
-    assert.ok(sel.startsWith('html:not(.mobile-ui)'), 'قاعدة كمبيوتر فقط: ' + sel);
+    assert.ok(/^html(\[dir="(rtl|ltr)"\])?:not\(\.mobile-ui\)/.test(sel), 'قاعدة كمبيوتر فقط: ' + sel);
   }
 }
 assert.ok(!/html\.mobile-ui/.test(block), 'لا قواعد جوال في الكتلة');
@@ -64,7 +76,6 @@ assert.ok(!/html\.mobile-ui/.test(block), 'لا قواعد جوال في الك�
 assert.ok(!/claude|gemini|groq|openai|mistral/i.test(block), 'بلا أسماء مزوّدين');
 
 // كتلة v-topbar-merge في app-05-ui.js ما زالت تنقل الأسهم إلى الهيدر (سطر الأسهم يعتمد عليها)
-const ui = fs.readFileSync(path.join(__dirname, '..', 'js', 'app-05-ui.js'), 'utf8');
 assert.ok(ui.includes("wrap.id = 'omHeadCenter'"), 'نقل الأسهم إلى الهيدر قائم');
 
 console.log('✓ layout-desktop: تخطيط «ج» محصور بالكمبيوتر، والمحادثة عمود موسّط');

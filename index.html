@@ -343,15 +343,33 @@ html.mobile-ui #omHeadCenter{ display: none !important; }
      أسفل الشبكة بلا ارتفاع — كما كان يأخذه أسفل العمود. */
   html:not(.mobile-ui) body > :not(header):not(main):not(#stockTicker){ grid-column: 1 / -1; }
 
-  /* ② الهيدر سطران: الشعار والأزرار أوّلًا، ثم سطر الأسهم كاملَ العرض تحتهما.
-     row-reverse القائم يبقى فيحفظ انعكاس الشعار مع اللغة؛ #omHeadCenter
-     (السهم + الشريط) يُدفع آخرًا بـorder ويأخذ السطر كلّه. */
-  html:not(.mobile-ui) body > header{ flex-wrap: wrap; row-gap: 4px; padding-bottom: 6px !important; }
-  html:not(.mobile-ui) #omHeadCenter{ order: 1; flex: 0 0 100%; width: 100%; }
-  /* أطراف الشريط تذوب بدل القطع الحادّ (السهم خارج الشريط فلا يتأثّر). */
-  html:not(.mobile-ui) #omHeadCenter #stockTicker{
-    -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
-    mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  /* ② الهيدر سطر واحد (ملاحظة عمران الثانية): شريط الأسهم على سطر الشعار
+     نفسه يملأ ما بينه وبين طرف العمود، ويذوب قبل الشعار على مسافة أطول
+     (٩٦px) فيبدو كأنّه يختفي تحته، وعلى ١٦px عند سهم الطيّ في الطرف الآخر.
+     الشعار في الطرف الأيسر بالعربية (row-reverse) والأيمن بالإنجليزية،
+     فاتّجاه الذوبان يتبع dir. المحادثة ترتفع بارتفاع السطر الذي أُلغي. */
+  html:not(.mobile-ui) #omHeadCenter{ flex: 1 1 auto; min-width: 0; margin-inline: 10px; }
+  html[dir="rtl"]:not(.mobile-ui) #omHeadCenter #stockTicker{
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 96px, #000 calc(100% - 16px), transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 96px, #000 calc(100% - 16px), transparent);
+  }
+  html[dir="ltr"]:not(.mobile-ui) #omHeadCenter #stockTicker{
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 96px), transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 96px), transparent);
+  }
+  /* زرّ الوضع الفاتح/الداكن: يخرج من الهيدر (يبقى في الـDOM مخفيًّا لأنّ
+     مزامنة v434 تكتب أيقونته وعنوانه عليه) ويظهر مرآةً له في شريط الجانبي
+     السفلي بجوار «الإعدادات» — app-05-ui.js (v-mode-nav) يبنيه. */
+  html:not(.mobile-ui) body #btnMode{ display: none !important; }
+  html:not(.mobile-ui) #omNavMode{
+    flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    background: none; border: none; padding: 6px 0; color: var(--muted);
+    font-family: inherit; font-size: 9.5px; cursor: pointer;
+  }
+  html:not(.mobile-ui) #omNavMode:hover{ color: var(--accent-ink); }
+  html:not(.mobile-ui) #omNavMode .omModeNavIcon{ display: inline-flex; line-height: 0; }
+  @container (max-width: 210px){
+    html:not(.mobile-ui) #omNavMode .omModeNavLabel{ display: none; }
   }
   /* الزرّ كان يُدفع ٢٦px نزولًا ليفسح لسهم الشريط حين كان الشريط فوق الجانبي؛
      الجانبي يبدأ الآن من أعلى النافذة والسهم فوق المحادثة، فيعود هامشه الطبيعيّ. */
@@ -707,7 +725,7 @@ html.oiOn body{overflow:hidden}
 <script src="/js/selfdiag.js?v=1ba33c1b"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=c07b4cc3"></script>
+    <script defer src="/js/app.bundle.js?v=c9404180"></script>
     <script defer src="/js/modes.js?v=b23329c6"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">

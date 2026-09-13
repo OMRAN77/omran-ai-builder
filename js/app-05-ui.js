@@ -3080,3 +3080,50 @@ async function postWithConfirm(url, payload){
     var id = setInterval(function(){ if(build() || ++n > 40) clearInterval(id); }, 250);
   }
 })();
+
+/* v-mode-nav (أمر عمران ١٣ سبتمبر): زرّ الوضع الفاتح/الداكن ينتقل من الهيدر
+   إلى شريط الجانبي السفلي بجوار «الإعدادات» — الهيدر صار لعمود المحادثة وحده
+   وشريط الأسهم يأخذ سطره كلّه حتى الطرف. الزرّ الأصليّ #btnMode يبقى في
+   مكانه مخفيًّا بـCSS (v-frame-c) لأنّ مزامنة الأيقونة والعنوان (v434) تكتب
+   عليه؛ زرّ التنقّل مرآة له: أيقونته وعنوانه يُنسخان منه عند كل تغيير
+   (MutationObserver) فيتبعان الوضع واللغة بلا منطق ثانٍ.
+   ليس .omNavBtn عمدًا: سلك التبويبات في ui-wiring.js يلوّن كل .omNavBtn
+   «نشطًا» عند النقر، وهذا زرّ فعل لا تبويب. الجوال لا يُمَسّ. */
+(function(){
+  function isMobile(){
+    try{ return document.documentElement.classList.contains('mobile-ui'); }
+    catch(e){ return false; }
+  }
+  function build(){
+    if(isMobile()) return true;
+    var src = document.getElementById('btnMode');
+    var foot = document.getElementById('omranSidebarFoot');
+    if(!src || !foot) return false;
+    if(document.getElementById('omNavMode')) return true;
+    var b = document.createElement('button');
+    b.type = 'button'; b.id = 'omNavMode'; b.className = 'omModeNav';
+    var ic = document.createElement('span'); ic.className = 'omModeNavIcon';
+    var lb = document.createElement('span'); lb.className = 'omModeNavLabel';
+    b.appendChild(ic); b.appendChild(lb);
+    function mirror(){
+      ic.innerHTML = src.innerHTML;
+      lb.textContent = src.title || '';
+      b.title = src.title || '';
+    }
+    mirror();
+    try{
+      new MutationObserver(mirror).observe(src, { childList: true, attributes: true, attributeFilter: ['title'] });
+    }catch(e){ __swallow(e, 'ui:mode-nav#observe'); }
+    b.addEventListener('click', function(){
+      try{ if(typeof window.omToggleMode === 'function') window.omToggleMode(); }
+      catch(e){ __swallow(e, 'ui:mode-nav#toggle'); }
+      mirror();
+    });
+    foot.appendChild(b);
+    return true;
+  }
+  if(!build()){
+    var n = 0;
+    var id = setInterval(function(){ if(build() || ++n > 40) clearInterval(id); }, 250);
+  }
+})();
