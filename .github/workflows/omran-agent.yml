@@ -9,6 +9,13 @@ name: Omran Agent (Claude Code)
 # يحتاج مرّة واحدة: تثبيت تطبيق Claude على المستودع (github.com/apps/claude) وسرّ
 # ANTHROPIC_API_KEY في أسرار المستودع، ومفتاح GitHub في خزنة الأسرار بصلاحيّات
 # Actions: write · Issues: write · Contents: write · Pull requests: write.
+#
+# v-agent-parity («أبي عنده كلّ صلاحيّاتك بالضبط»): نفس نموذج جلسة المالك (Fable 5.1، قابل
+# للتغيير بالمدخل model)، Chromium+Playwright لمسابر الإنتاج، أدوات الويب والوكلاء الفرعيّون،
+# و«سياق» يُجمع قبل Claude بالمفاتيح (GitHub + Vercel) ويُكتب في AGENT_CONTEXT.md فيقرؤه
+# Claude بلا أن يرى مفتاحًا. أسرار اختياريّة: VERCEL_TOKEN (سجلّ النشر والبناء في السياق)،
+# AGENT_GITHUB_TOKEN (رمز المالك لفتح طلب السحب من هنا مباشرة حتّى تعمل فحوص CI عليه؛ بدونه
+# يفتحه وكيل التطبيق بمفتاح الخزنة).
 
 on:
   workflow_dispatch:
@@ -30,6 +37,11 @@ on:
         required: false
         default: 'main'
         type: string
+      model:
+        description: 'نموذج Claude Code (الافتراضيّ Fable 5.1 — نفس نموذج جلسة المالك)'
+        required: false
+        default: 'claude-fable-5-1'
+        type: string
 
 permissions:
   contents: write
@@ -45,7 +57,7 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     env:
       GH_TOKEN: ${{ github.token }}
       TASK_BRANCH: ${{ inputs.branch }}
@@ -65,17 +77,70 @@ jobs:
 
       - run: npm ci
 
+      - name: Playwright (Chromium) — مسابر الإنتاج كما عند المالك
+        run: |
+          npm i --no-save playwright >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1 || echo "::warning::تعذّر تثبيت Chromium — مسابر scripts/*-probe.mjs لن تعمل في هذا التشغيل"
+
       - name: Announce start on the task issue
         run: |
           printf '🏃 بدأ التشغيل: %s\nالفرع المستهدف: `%s`\n\n<!-- omran-agent {"phase":"start","run_id":"%s","run_url":"%s"} -->\n' "$RUN_URL" "$TASK_BRANCH" "${{ github.run_id }}" "$RUN_URL" > /tmp/start.md
           gh issue comment "$TASK_ISSUE" --body-file /tmp/start.md
 
+      - name: Check the Anthropic key (trim, mask, probe)
+        # v-agent-report: سرّ لُصق بسطر زائد يكسر الترويسة، ومفتاح باطل أو رصيد صفر يظهر
+        # بعد دقائق كـ«result is_error» بلا سبب. نُنظّف المفتاح ونجرّبه بطلب من رمز واحد.
+        env:
+          RAW_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          KEY="$(printf '%s' "$RAW_KEY" | tr -d '[:space:]')"
+          if [ -z "$KEY" ]; then
+            echo "KEY_OK=false" >> "$GITHUB_ENV"
+            echo "KEY_MSG=السرّ ANTHROPIC_API_KEY غير موجود في أسرار المستودع (Settings → Secrets and variables → Actions → New repository secret)." >> "$GITHUB_ENV"
+            exit 0
+          fi
+          echo "::add-mask::$KEY"
+          echo "ANTHROPIC_KEY_CLEAN=$KEY" >> "$GITHUB_ENV"
+          TRIM=""; if [ "${#KEY}" != "$(printf '%s' "$RAW_KEY" | wc -c | tr -d ' ')" ]; then TRIM=" · كان فيه فراغ أو سطر زائد وأُزيل"; echo "::notice::ANTHROPIC_API_KEY كان فيه فراغ أو سطر زائد وأُزيل تلقائيًّا."; fi
+          # شكل المفتاح (بادئته العامّة وطوله لا يكشفان شيئًا): api03 = مفتاح API، oat01 = رمز OAuth من اشتراك Claude
+          KIND=api; SHAPE=""
+          case "$KEY" in
+            sk-ant-api03-*) SHAPE="مفتاح API صحيح الشكل (sk-ant-api03-…، ${#KEY} حرفًا؛ المتوقّع نحو 108)";;
+            sk-ant-oat01-*) KIND=oauth; SHAPE="رمز OAuth من اشتراك Claude (sk-ant-oat01-…، ${#KEY} حرفًا) — يُمرَّر كـclaude_code_oauth_token";;
+            sk-ant-admin*) SHAPE="مفتاح Admin (sk-ant-admin…) — لا يصلح لاستدعاء النماذج؛ أنشئ مفتاح API عاديًّا";;
+            sk-ant-*) SHAPE="بادئة Anthropic غير معروفة (${KEY:0:10}…، ${#KEY} حرفًا)";;
+            sk-*) SHAPE="ليس مفتاح Anthropic (يبدأ بـ${KEY:0:6}… لا بـsk-ant-)؛ ربّما مفتاح مزوّد آخر";;
+            *) SHAPE="لا يشبه مفتاح Anthropic (${#KEY} حرفًا، لا يبدأ بـsk-ant-)";;
+          esac
+          echo "KEY_KIND=$KIND" >> "$GITHUB_ENV"
+          if [ "$KIND" = oauth ]; then AUTH=(-H "Authorization: Bearer $KEY" -H "anthropic-beta: oauth-2025-04-20"); else AUTH=(-H "x-api-key: $KEY"); fi
+          CODE=$(curl -sS -o /tmp/probe.json -w '%{http_code}' --max-time 60 https://api.anthropic.com/v1/messages \
+            "${AUTH[@]}" -H "anthropic-version: 2023-06-01" -H "content-type: application/json" \
+            -d '{"model":"claude-haiku-4-5","max_tokens":1,"messages":[{"role":"user","content":"hi"}]}' || echo 000)
+          if [ "$CODE" = "200" ]; then
+            echo "KEY_OK=true" >> "$GITHUB_ENV"
+            echo "::notice::مفتاح Anthropic يعمل: $SHAPE$TRIM"
+          else
+            MSG=$(node -e 'try{const j=JSON.parse(require("fs").readFileSync("/tmp/probe.json","utf8"));console.log((j.error&&(j.error.type+": "+j.error.message))||JSON.stringify(j).slice(0,300))}catch(e){console.log("")}' | tr '\n\r' '  ' | head -c 400)
+            echo "KEY_OK=false" >> "$GITHUB_ENV"
+            echo "KEY_MSG=فحص مفتاح Anthropic فشل (HTTP $CODE): ${MSG:-بلا تفاصيل} · شكل السرّ المحفوظ: $SHAPE$TRIM" >> "$GITHUB_ENV"
+          fi
+
+      - name: Collect context (GitHub + Vercel) for Claude — v-agent-parity
+        if: env.KEY_OK == 'true'
+        continue-on-error: true
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: node scripts/agent-context.mjs --issue "$TASK_ISSUE" --base "$TASK_BASE" --out AGENT_CONTEXT.md
+
       - name: Claude Code
         id: claude
+        if: env.KEY_OK == 'true'
         uses: anthropics/claude-code-action@v1
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          claude_args: '--allowedTools "Bash,Read,Edit,MultiEdit,Write,Glob,Grep" --max-turns 80'
+          anthropic_api_key: ${{ env.KEY_KIND == 'api' && env.ANTHROPIC_KEY_CLEAN || '' }}
+          claude_code_oauth_token: ${{ env.KEY_KIND == 'oauth' && env.ANTHROPIC_KEY_CLEAN || '' }}
+          claude_args: '--model ${{ inputs.model }} --allowedTools "Bash,Read,Edit,MultiEdit,Write,Glob,Grep,WebFetch,WebSearch,Task,Agent,TodoWrite,NotebookEdit" --max-turns 200'
           prompt: |
             أنت Claude Code تعمل داخل GitHub Actions على مستودع «عمران AI» (${{ github.repository }})،
             مفوَّضًا من وكيل التطبيق بطلب المالك. اعمل كما يعمل مهندس زميل محترف: افهم أوّلًا، ثمّ غيّر،
@@ -85,8 +150,9 @@ jobs:
             ${{ inputs.task }}
 
             القواعد:
-            1. اقرأ README.md ورأس knowledge/DECISIONS.md أوّلًا لتفهم البنية والقرارات السابقة، ثمّ اقرأ
-               الملفّات المعنيّة كاملة قبل أيّ تعديل. لا تعدّل ما لم تقرأه.
+            1. اقرأ CLAUDE.md وAGENT_CONTEXT.md (سياق جُمع لك: آخر الالتزامات، المسائل، الطلبات، فحوص CI،
+               نشرات Vercel وسجلّ البناء) ورأس knowledge/DECISIONS.md أوّلًا، ثمّ اقرأ الملفّات المعنيّة
+               كاملة قبل أيّ تعديل. لا تعدّل ما لم تقرأه.
             2. الواجهة تُبنى من الأجزاء js/app-NN-*.js وjs/partials-*.js إلى js/app.bundle.js:
                بعد أيّ تعديل عليها شغّل `npm run bundle` (يختم index.html وsw.js بالبصمة).
             3. شغّل `npm run ci` (check + guard + coldstart + verify + test) وأصلح حتّى يمرّ كاملًا.
@@ -100,44 +166,87 @@ jobs:
                ولا تغيّر سلوكًا خارج نطاقها. إن كانت المهمّة غامضة أو خطرة فلا تخمّن: اكتب ما ينقصك
                في الملخّص واترك الكود كما هو.
             7. في نهاية عملك اكتب ملخّصًا موجزًا بالعربيّة (ماذا غيّرت ولماذا وكيف تحقّقت، وما تركته
-               وسببه) في الملفّ AGENT_SUMMARY.md في جذر المستودع. لا تلتزم هذا الملفّ في git.
+               وسببه) في الملفّ AGENT_SUMMARY.md في جذر المستودع. لا تلتزم هذا الملفّ ولا AGENT_CONTEXT.md في git.
+            8. صلاحيّاتك: `gh` برمز GitHub للقراءة (`gh issue view`، `gh pr view --comments`،
+               `gh run view --log-failed`) وللتعليق على مسألة المهمّة #${{ inputs.issue }} بتقدّمك إن طال
+               العمل (`gh issue comment`). Chromium وPlaywright مثبّتان: مسابر scripts/*-probe.mjs تعمل على
+               الإنتاج للتشخيص. WebSearch وWebFetch للتوثيق، والوكلاء الفرعيّون (Task) للبحث الموازي.
+               الممنوع يبقى ممنوعًا: لا push، لا فتح ولا دمج طلب سحب، لا تعديل أسرار أو .github.
 
       - name: Verify, push the branch, and report on the task issue
         if: always()
         env:
           CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
+          CLAUDE_LOG: ${{ steps.claude.outputs.execution_file }}
+          AGENT_GITHUB_TOKEN: ${{ secrets.AGENT_GITHUB_TOKEN }}
+          TASK_TEXT: ${{ inputs.task }}
         run: |
           set +e
           git config user.name  "omran-agent[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           SUMMARY=""
           if [ -f AGENT_SUMMARY.md ]; then SUMMARY="$(head -c 6000 AGENT_SUMMARY.md)"; fi
-          git rm -q --cached --ignore-unmatch AGENT_SUMMARY.md >/dev/null 2>&1
-          rm -f AGENT_SUMMARY.md
+          # سبب فشل Claude (v-agent-report): فحص المفتاح، ثمّ ملفّ تنفيذ الإجراء الذي يخفيه السجلّ
+          CLAUDE_ERR=""
+          if [ "$CLAUDE_OUTCOME" != "success" ]; then
+            [ "${KEY_OK:-}" != "true" ] && CLAUDE_ERR="$KEY_MSG"
+            LOG="${CLAUDE_LOG:-/home/runner/work/_temp/claude-execution-output.json}"
+            EXTRA=""; [ -f "$LOG" ] && EXTRA="$(node scripts/agent-claude-error.cjs "$LOG" 2>/dev/null)"
+            [ -n "$EXTRA" ] && CLAUDE_ERR="$(printf '%s\n%s' "$CLAUDE_ERR" "$EXTRA" | sed '/^$/d')"
+          fi
+          ERR_JSON=$(node -e 'console.log(JSON.stringify(String(process.argv[1]||"").replace(/\s+/g," ").slice(0,300)))' "$CLAUDE_ERR")
+          git rm -q --cached --ignore-unmatch AGENT_SUMMARY.md AGENT_CONTEXT.md >/dev/null 2>&1
+          rm -f AGENT_SUMMARY.md AGENT_CONTEXT.md
           # الفرع: على ما أنشأه Claude، وإلا فرع جديد من الأساس
           if git rev-parse --verify "$TASK_BRANCH" >/dev/null 2>&1; then git checkout -q "$TASK_BRANCH"; else git checkout -q -b "$TASK_BRANCH"; fi
+          # ملفّا السياق والملخّص لا يُدفعان حتّى لو التزمهما Claude خطأً على الفرع
+          if [ -n "$(git ls-files AGENT_SUMMARY.md AGENT_CONTEXT.md)" ]; then git rm -q --cached --ignore-unmatch AGENT_SUMMARY.md AGENT_CONTEXT.md; rm -f AGENT_SUMMARY.md AGENT_CONTEXT.md; git commit -q -m "وكيل عمران: إزالة ملفّي السياق والملخّص من الفرع (لا يُدفعان)"; fi
           # التزم أيّ تعديل تركه Claude بلا التزام
           if [ -n "$(git status --porcelain)" ]; then git add -A && git commit -q -m "وكيل عمران: تغييرات من التشغيل ${{ github.run_id }} (لم تُلتزم داخل الجلسة)"; fi
           CHANGED=$(git rev-list --count "origin/$TASK_BASE..HEAD" 2>/dev/null || echo 0)
           if [ "$CHANGED" = "0" ]; then
             {
               printf '⚠️ انتهى التشغيل بلا أيّ تغيير في الكود (خطوة Claude: %s).\n' "$CLAUDE_OUTCOME"
+              [ -n "$CLAUDE_ERR" ] && printf '\n**سبب فشل Claude:**\n```\n%s\n```\n' "$CLAUDE_ERR"
               [ -n "$SUMMARY" ] && printf '\n**ملخّص Claude:**\n%s\n' "$SUMMARY"
-              [ "$CLAUDE_OUTCOME" != "success" ] && printf '\nإن كان السبب غياب المفتاح: أضف ANTHROPIC_API_KEY في أسرار المستودع وثبّت تطبيق Claude على المستودع.\n'
-              printf '\n<!-- omran-agent {"phase":"done","pushed":false,"changed":0,"claude":"%s","run_id":"%s","run_url":"%s"} -->\n' "$CLAUDE_OUTCOME" "${{ github.run_id }}" "$RUN_URL"
+              [ "$CLAUDE_OUTCOME" != "success" ] && [ -z "$CLAUDE_ERR" ] && printf '\nإن كان السبب غياب المفتاح: أضف ANTHROPIC_API_KEY في أسرار المستودع وثبّت تطبيق Claude على المستودع.\n'
+              # نجاح بلا ملخّص ولا تغيير = غالبًا لم يعمل Claude أصلًا: claude-code-action يتخطّى التشغيل بصمت
+              # (outcome=success) إن اختلف ملفّ الورك فلو على هذا الفرع عن نسخة main — يُختبر بعد الدمج.
+              [ "$CLAUDE_OUTCOME" = "success" ] && [ -z "$SUMMARY" ] && printf '\nخطوة Claude انتهت بنجاح بلا ملخّص ولا تغيير: إمّا رأى Claude أنّ لا شيء يلزم، أو تخطّى الإجراء التشغيل لأنّ ملفّ الورك فلو على الفرع `%s` يختلف عن نسخة main (claude-code-action يشترط التطابق؛ أعد التشغيل من main بعد الدمج).\n' "${GITHUB_REF_NAME}"
+              printf '\n<!-- omran-agent {"phase":"done","pushed":false,"changed":0,"claude":"%s","error":%s,"run_id":"%s","run_url":"%s"} -->\n' "$CLAUDE_OUTCOME" "$ERR_JSON" "${{ github.run_id }}" "$RUN_URL"
             } > /tmp/report.md
             gh issue comment "$TASK_ISSUE" --body-file /tmp/report.md
             exit 0
           fi
           npm run ci > /tmp/ci.log 2>&1; CI=$?
           CIRES=fail; [ "$CI" = "0" ] && CIRES=pass
+          # v-agent-push-auth (المهمّة #560: «Invalid username or token»): خطوة Claude تستبدل رابط origin
+          # برمز تطبيق Claude ثمّ تلغيه في نهايتها، فيصل الدفع هنا برمز ميّت. نعيد الرابط النظيف
+          # وترويسة GITHUB_TOKEN كما يفعل actions/checkout (contents: write ممنوحة أعلاه).
+          git remote set-url origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git config --local http."https://github.com/".extraheader "AUTHORIZATION: basic $(printf '%s' "x-access-token:${GH_TOKEN}" | base64 -w0)"
           git push -u origin "$TASK_BRANCH" > /tmp/push.log 2>&1; PUSHED=$?
           SHA=$(git rev-parse HEAD)
+          # v-agent-parity: برمز المالك (AGENT_GITHUB_TOKEN) يُفتح طلب السحب من هنا فتعمل عليه فحوص CI
+          # (طلب يفتحه GITHUB_TOKEN لا يشغّلها). بدونه يفتحه وكيل التطبيق بمفتاح الخزنة كما كان.
+          PR_URL=""; : > /tmp/pr.log
+          if [ "$PUSHED" = "0" ] && [ -n "${AGENT_GITHUB_TOKEN:-}" ]; then
+            PR_URL=$(SUMMARY="$SUMMARY" CIRES="$CIRES" node -e '
+              const e = process.env;
+              const title = (e.CIRES === "pass" ? "" : "⚠️ ") + (String(e.TASK_TEXT || "").split("\n")[0].trim().slice(0, 200) || ("مهمّة الوكيل #" + e.TASK_ISSUE));
+              const body = "يغلق #" + e.TASK_ISSUE + "\n\n" + (e.CIRES === "pass" ? "✅ npm run ci نجح داخل التشغيل." : "⚠️ npm run ci فشل داخل التشغيل — راجع تعليقات المسألة.") + "\nالتشغيل: " + e.RUN_URL + "\n\n" + (e.SUMMARY ? "**ملخّص Claude:**\n" + String(e.SUMMARY).slice(0, 5000) + "\n\n" : "") + "— نفّذها Claude Code في GitHub Actions بتفويض من وكيل عمران. المراجعة والدمج والنشر بيد المالك.";
+              fetch("https://api.github.com/repos/" + e.GITHUB_REPOSITORY + "/pulls", { method: "POST", headers: { Authorization: "Bearer " + e.AGENT_GITHUB_TOKEN, Accept: "application/vnd.github+json", "Content-Type": "application/json", "User-Agent": "omran-agent" }, body: JSON.stringify({ title, head: e.TASK_BRANCH, base: e.TASK_BASE, body }) })
+                .then(async (r) => { const j = await r.json().catch(() => ({})); if (r.ok && j.html_url) console.log(j.html_url); else console.error("PR: " + r.status + " " + JSON.stringify(j).slice(0, 200)); })
+                .catch((err) => console.error("PR: " + err.message));
+            ' 2>>/tmp/pr.log)
+          fi
           {
             if [ "$PUSHED" = "0" ]; then printf '✅ دُفع الفرع `%s` (%s التزامًا، آخره %s).\n' "$TASK_BRANCH" "$CHANGED" "${SHA:0:7}"; else printf '❌ فشل دفع الفرع `%s`:\n```\n%s\n```\n' "$TASK_BRANCH" "$(tail -n 5 /tmp/push.log)"; fi
+            if [ -n "$PR_URL" ]; then printf '🔗 طلب السحب: %s\n' "$PR_URL"; elif [ "$PUSHED" = "0" ] && [ -n "${AGENT_GITHUB_TOKEN:-}" ]; then printf '⚠️ لم يُفتح طلب السحب برمز المالك: %s\n' "$(tail -n 2 /tmp/pr.log | tr -d '`')"; fi
             if [ "$CIRES" = "pass" ]; then printf 'npm run ci: ✅ نجح.\n'; else printf 'npm run ci: ❌ فشل — آخر السطور:\n```\n%s\n```\n' "$(tail -n 25 /tmp/ci.log | sed 's/`//g')"; fi
+            [ -n "$CLAUDE_ERR" ] && printf '\n**خطوة Claude لم تنجح (%s):**\n```\n%s\n```\n' "$CLAUDE_OUTCOME" "$CLAUDE_ERR"
             [ -n "$SUMMARY" ] && printf '\n**ملخّص Claude:**\n%s\n' "$SUMMARY"
-            printf '\n<!-- omran-agent {"phase":"done","pushed":%s,"changed":%s,"ci":"%s","sha":"%s","claude":"%s","run_id":"%s","run_url":"%s"} -->\n' "$([ "$PUSHED" = "0" ] && echo true || echo false)" "$CHANGED" "$CIRES" "$SHA" "$CLAUDE_OUTCOME" "${{ github.run_id }}" "$RUN_URL"
+            printf '\n<!-- omran-agent {"phase":"done","pushed":%s,"changed":%s,"ci":"%s","sha":"%s","claude":"%s","error":%s,"pr":%s,"run_id":"%s","run_url":"%s"} -->\n' "$([ "$PUSHED" = "0" ] && echo true || echo false)" "$CHANGED" "$CIRES" "$SHA" "$CLAUDE_OUTCOME" "$ERR_JSON" "$(node -e 'console.log(JSON.stringify(String(process.argv[1]||"")))' "$PR_URL")" "${{ github.run_id }}" "$RUN_URL"
           } > /tmp/report.md
           gh issue comment "$TASK_ISSUE" --body-file /tmp/report.md
           [ "$PUSHED" = "0" ] || exit 1

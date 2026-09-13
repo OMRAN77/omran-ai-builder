@@ -59,7 +59,9 @@ async function startTask(input, opts) {
   const { r: ir, j: ij } = await ghJson(R + '/issues', Object.assign({}, o, { method: 'POST', body: { title: '🤖 مهمّة الوكيل: ' + task.split('\n')[0].slice(0, 90), body } }));
   if (!ir.ok || !ij || !ij.number) return { error: apiMsg(ir, ij, 'فتح مسألة المهمّة (يحتاج Issues: write)') };
 
-  const { r: dr, j: dj } = await ghJson(R + '/actions/workflows/' + WORKFLOW + '/dispatches', Object.assign({}, o, { method: 'POST', body: { ref: base, inputs: { task, branch, issue: String(ij.number), base } } }));
+  // v-agent-parity: نموذج مختار من القائمة نفسها التي في الإعدادات؛ خارجها = افتراضيّ الورك فلو (Fable 5.1)
+  const model = CLAUDE_MODEL_IDS.includes(String(i.model || '').trim()) ? String(i.model).trim() : '';
+  const { r: dr, j: dj } = await ghJson(R + '/actions/workflows/' + WORKFLOW + '/dispatches', Object.assign({}, o, { method: 'POST', body: { ref: base, inputs: Object.assign({ task, branch, issue: String(ij.number), base }, model ? { model } : {}) } }));
   if (dr.status !== 204 && !dr.ok) {
     return { error: apiMsg(dr, dj, 'تشغيل الورك فلو ' + WORKFLOW + ' (يحتاج Actions: write، والملفّ موجود على ' + base + ')'), issue: ij.number, issueUrl: ij.html_url };
   }
@@ -140,7 +142,11 @@ function formatCheck(res) {
   const head = 'المهمّة #' + res.issue + ' (' + res.issueUrl + ')';
   if (res.phase === 'queued') return head + '\n⏳ لم يبدأ التشغيل بعد (في الطابور أو الورك فلو غير مثبّت). أعد التحقّق بعد دقيقة، أو افتح صفحة التشغيلات.';
   if (res.phase === 'running') return head + '\n🏃 قيد التنفيذ: ' + (res.status && res.status.run_url ? res.status.run_url : '') + '\nالقراءة والتعديل وnpm run ci قد تأخذ دقائق. لا طلب سحب بعد — لا تدّعِ وجوده.';
-  if (res.phase === 'nochange') return head + '\n⚠️ انتهى التشغيل بلا تغيير في الكود' + (res.status && res.status.claude && res.status.claude !== 'success' ? ' (خطوة Claude: ' + res.status.claude + ' — تحقّق من ANTHROPIC_API_KEY وتطبيق Claude على المستودع)' : '') + '. التفاصيل في تعليقات المسألة' + (res.status && res.status.run_url ? ': ' + res.status.run_url : '.');
+  if (res.phase === 'nochange') {
+    const st = res.status || {};
+    const err = String(st.error || '').trim(); // v-agent-report: سبب الفشل من الورك فلو (فحص المفتاح أو ملفّ تنفيذ Claude)
+    return head + '\n⚠️ انتهى التشغيل بلا تغيير في الكود' + (st.claude && st.claude !== 'success' ? ' (خطوة Claude: ' + st.claude + (err ? '' : ' — تحقّق من ANTHROPIC_API_KEY وتطبيق Claude على المستودع') + ')' : '') + '.' + (err ? '\nالسبب: ' + err.slice(0, 300) : '') + '\nالتفاصيل في تعليقات المسألة' + (st.run_url ? ': ' + st.run_url : '.');
+  }
   const lines = [head, '✅ الفرع مدفوع: ' + res.branch + (res.status && res.status.sha ? ' (' + short(res.status.sha) + ')' : ''), 'npm run ci داخل التشغيل: ' + (res.status && res.status.ci === 'pass' ? '✅ نجح' : '❌ فشل — راجع تعليقات المسألة')];
   if (res.prUrl) lines.push('طلب السحب #' + res.prNumber + (res.prState === 'merged' ? ' (مدموج)' : res.prState === 'closed' ? ' (مغلق)' : '') + ': ' + res.prUrl);
   else if (res.prError) lines.push('لم يُفتح طلب سحب: ' + res.prError + ' — الفرع مرفوع ويمكن فتحه يدويًّا.');
@@ -152,6 +158,7 @@ function formatCheck(res) {
 }
 
 /* ---------- تعريف الأداتين (للمالك وحده) ---------- */
+const CLAUDE_MODEL_IDS = ['claude-fable-5-1', 'claude-fable-5', 'claude-opus-5', 'claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-5', 'claude-sonnet-4-6', 'claude-haiku-4-5'];
 const START_TOOL = {
   name: 'delegate_code_task',
   description: 'سلّم مهمّة كود على مستودع المالك إلى Claude Code داخل GitHub Actions (يقرأ المستودع كاملًا، يعدّل، يعيد بناء الحزمة، يشغّل npm run ci حتّى يمرّ، ويدفع فرعًا). للمالك وحده. تُستخدم للتغييرات الحقيقيّة (إصلاح، ميزة، إعادة هيكلة) التي تحتاج اختبارًا؛ لا للقراءة ولا للأسئلة. اكتب المهمّة كما تكتبها لمهندس زميل: ماذا يتغيّر ولماذا وأين (مسارات الملفّات) وما معيار النجاح. تعود فورًا برقم مسألة وروابط، والتنفيذ يأخذ دقائق — تحقّق لاحقًا بـcheck_code_task.',
@@ -159,6 +166,7 @@ const START_TOOL = {
     type: 'object',
     properties: {
       task: { type: 'string', description: 'وصف المهمّة الكامل (بلا أسرار)' },
+      model: { type: 'string', enum: CLAUDE_MODEL_IDS, description: 'نموذج Claude Code للمهمّة (الافتراضيّ Fable 5.1؛ Sonnet 5 أرخص وأسرع للمهامّ الصغيرة)' },
       base: { type: 'string', description: 'الفرع الأساس (الافتراضيّ main)' },
       repo: { type: 'string', description: 'owner/repo (الافتراضيّ مستودع التطبيق)' },
     },

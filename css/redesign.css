@@ -18,12 +18,14 @@ html[dir="rtl"] #omranUserBlock{flex-direction:row-reverse;}
 #omranHamburger{display:none;}
 
 /* ---------------- Sidebar (المحادثات) ---------------- */
-#omranNewChatBtn{order:-2; display:flex; align-items:center; justify-content:center; gap:7px; margin:12px 12px 8px; padding:10px 12px; background:rgba(var(--accent-tint-rgb),.06); border:1px solid var(--omGold); border-radius:var(--r-3); color:var(--accent-ink); font-family:inherit; font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer; flex:0 0 auto;}
-#omranNewChatBtn:hover{background:rgba(var(--accent-tint-rgb),.14);}
+/* v-newchat-plain (طلب المالك: «شيل المستطيل والخط تحته — محادثة جديدة فوق
+   وتحتها المشاريع مباشرة»): بلا إطار ولا خلفية صندوق ولا فاصل. */
+#omranNewChatBtn{order:-2; display:flex; align-items:center; justify-content:flex-start; gap:7px; margin:8px 10px 2px; padding:6px 8px; background:transparent; border:none; border-radius:0; color:var(--accent-ink); font-family:inherit; font-size: var(--fs-3); font-weight: var(--w-bold); cursor:pointer; flex:0 0 auto;}
+#omranNewChatBtn:hover{background:transparent;}
 body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #omranNewChatBtn{margin-top:26px;} /* حجز فراغ لسهم طيّ شريط الأسهم كي لا يغطّي الزر */
-#omranNewChatBtn{position:relative; margin-bottom:18px;} /* مساحة تنفّس للفاصل */
-#omranNewChatBtn::after{content:""; position:absolute; left:0; right:0; bottom:-9px; height:1px; background:linear-gradient(90deg,rgba(var(--accent-tint-rgb),0),rgba(var(--accent-tint-rgb),.55) 50%,rgba(var(--accent-tint-rgb),0)); pointer-events:none;} /* خطّ ذهبيّ فاصل تحت زرّ المحادثة الجديدة */
-#stockTicker::after{content:""; position:absolute; left:0; right:0; bottom:0; height:1px; background:linear-gradient(90deg,rgba(var(--accent-tint-rgb),0),rgba(var(--accent-tint-rgb),.65) 18%,rgba(var(--accent-tint-rgb),.65) 82%,rgba(var(--accent-tint-rgb),0)); pointer-events:none;} /* خطّ ذهبيّ فاصل تحت شريط الأسهم */
+#omranNewChatBtn{position:relative; margin-bottom:6px;}
+#omranNewChatBtn::after{display:none !important;} /* أُزيل الخطّ الفاصل تحت زرّ المحادثة الجديدة */
+#stockTicker::after{display:none !important;} /* v-onepage (طلب المالك): أُزيل الخطّ الفاصل تحت شريط الأسهم — صفحة كاملة */
 #omranHistTitle{order:3; display:flex; direction:ltr; flex-direction:row-reverse; justify-content:space-between; align-items:center; gap:7px; margin:4px 14px 2px; font-size:12.5px; color:var(--muted); flex:0 0 auto;}
 #omranHistTitle svg{opacity:.6;}
 #omranSidebarFoot{order:9; display:flex; align-items:center; gap:4px; padding:8px 12px calc(10px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--omLine); flex:0 0 auto;}

@@ -3189,6 +3189,7 @@ const I18N = {
     codePlaceholder: 'سيظهر الكود المولّد هنا...',
     settingsTitle: 'إعدادات الاتصال بالذكاء الاصطناعي',
     provider: 'مزوّد الخدمة',
+    claudeModelPick: 'نموذج كلود', stModelFallback: '⚠️ نموذج {model} غير متاح على المفتاح الحاليّ — أكمل بالنموذج الافتراضيّ.',
     apiKeyLabel: 'مفتاح API الخاص بك',
     modelLabel: 'اسم النموذج',
     settingsHint: 'يُحفظ مفتاحك محليًا في متصفحك فقط (localStorage) ولا يُرسل إلى أي خادم تابع لنا. كل طلب توليد يُرسَل مباشرة من متصفحك إلى مزوّد الذكاء الاصطناعي الذي اخترته باستخدام مفتاحك الخاص.<br><br>OpenAI: احصل على مفتاح من platform.openai.com/api-keys<br>Gemini: احصل على مفتاح مجاني من aistudio.google.com/app/apikey<br>Groq: احصل على مفتاح مجاني من console.groq.com/keys<br>Claude: احصل على مفتاح من console.anthropic.com/settings/keys<br>OpenRouter: احصل على مفتاح من openrouter.ai/keys (يوفر نماذج مجانية أيضًا)<br>Perplexity: احصل على مفتاح من perplexity.ai/settings/api (مدفوع، ويوفر بحث حي)<br>Mistral AI: احصل على مفتاح مجاني من console.mistral.ai/api-keys<br>DeepSeek: احصل على مفتاح من platform.deepseek.com/api_keys (رخيص جدًا وحصة مجانية)<br>Cohere: احصل على مفتاح مجاني من dashboard.cohere.com/api-keys',
@@ -3828,6 +3829,7 @@ const I18N = {
     codePlaceholder: 'Generated code will appear here...',
     settingsTitle: 'AI Connection Settings',
     provider: 'Provider',
+    claudeModelPick: 'Claude model', stModelFallback: '⚠️ {model} is not available on the current key — continuing with the default model.',
     apiKeyLabel: 'Your API Key',
     modelLabel: 'Model Name',
     settingsHint: '🔒 Your key is stored locally in your browser only (localStorage) and never sent to any server of ours. Every generation request goes directly from your browser to the AI provider you chose, using your own key.<br><br><b>📝 How to get a key for each provider:</b><br><br>🔹 <b>OpenAI</b>: get a key from platform.openai.com/api-keys<br>🔹 <b>Gemini</b>: get a free key from aistudio.google.com/app/apikey<br>🔹 <b>Groq</b>: get a free key from console.groq.com/keys<br>🔹 <b>Claude</b>: get a key from console.anthropic.com/settings/keys<br>🔹 <b>OpenRouter</b>: get a key from openrouter.ai/keys (also offers free models)<br>🔹 <b>Perplexity</b>: get a key from perplexity.ai/settings/api (paid, offers live search)<br>🔹 <b>Mistral AI</b>: get a free key from console.mistral.ai/api-keys<br>🔹 <b>DeepSeek</b>: get a key from platform.deepseek.com/api_keys (very cheap, free trial credit)<br>🔹 <b>Cohere</b>: get a free key from dashboard.cohere.com/api-keys',
@@ -8952,6 +8954,35 @@ document.querySelectorAll('.tab').forEach(tab => {
     setTimeout(omranPlaceTabsMenu, 500);
     setTimeout(omranPlaceTabsMenu, 1500);
     window.addEventListener('load', omranPlaceTabsMenu);
+    /* v-code-actions-in-menu (طلب المالك): «تعديل · حفظ · نسخ» تنتقل من شريط
+       اللوحة إلى قائمة الثلاث نقاط (⋮)، ويبقى زرّ الإغلاق والتبويبان ظاهرَين.
+       النقل يحفظ معالجات الأزرار كما هي. يُشغَّل مرّة واحدة بعد بناء الشريط. */
+    window.omranMoveCodeActionsToMenu = function(){
+      try{
+        if(window.__codeActionsMoved) return;
+        var dd = document.getElementById('tabsMenuDropdown');
+        var bar = document.getElementById('omranCodeViewerBar');
+        var copyBtn = document.getElementById('waCopyBtn');
+        if(!dd || !bar || bar.children.length < 3) return;
+        var edt = bar.children[0], sav = bar.children[1]; /* [2]=إغلاق يبقى */
+        window.__codeActionsMoved = true;
+        var moveOne = function(el, label){
+          if(!el) return;
+          el.classList.add('btn');
+          el.style.cssText = 'display:flex;align-items:center;gap:8px;justify-content:flex-start;width:100%;background:none;border:none;box-shadow:none;';
+          if(label && !el.querySelector('.btnLabel')){
+            var sp = document.createElement('span'); sp.className = 'btnLabel'; sp.textContent = label; el.appendChild(sp);
+          }
+          dd.appendChild(el);
+        };
+        moveOne(edt, 'تعديل');
+        moveOne(sav, 'حفظ');
+        moveOne(copyBtn, 'نسخ');
+      }catch(e){ /* guard-ok */ }
+    };
+    setTimeout(window.omranMoveCodeActionsToMenu, 0);
+    setTimeout(window.omranMoveCodeActionsToMenu, 600);
+    setTimeout(window.omranMoveCodeActionsToMenu, 1600);
   }catch(e){ __swallow(e, 'ui:code-viewer-bar'); }
   try{ if(localStorage.getItem('waCollapsed') === '1' && !document.documentElement.classList.contains('mobile-ui')) setWA(true); }catch(e){ __swallow(e, "ui:app-05-ui#18"); }
   // كود جديد يوصل → اللوحة تفتح تلقائيًا
@@ -21895,16 +21926,46 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
 })();
 
 // v207: قائمة ⋮ في شريط التبويبات (رفع/تنزيل/ZIP)
+// v-tabsmenu-mobile (بلاغ المالك «⋮ في الهاتف ما يشتغل»): على الجوال يقصّ #tabs
+// القائمةَ المطلقة (overflow للتمرير الأفقي) فتفتح غير مرئيّة. الحلّ: على الجوال
+// ننقل القائمة إلى body ونثبّتها fixed تحت الزرّ فتهرب من القصّ، ونعيدها عند الإغلاق.
 (function(){
   const btn = document.getElementById('btnTabsMenu');
   const dd = document.getElementById('tabsMenuDropdown');
   if(!btn || !dd) return;
-  btn.onclick = (e) => { e.stopPropagation(); dd.classList.toggle('show'); btn.classList.toggle('active', dd.classList.contains('show')); };
+  const wrap = document.getElementById('tabDownloadWrap');
+  const isMobile = () => document.documentElement.classList.contains('mobile-ui');
+  function placeFixed(){
+    try{
+      const r = btn.getBoundingClientRect();
+      document.body.appendChild(dd);
+      dd.style.position = 'fixed';
+      dd.style.top = (r.bottom + 4) + 'px';
+      dd.style.right = Math.max(6, window.innerWidth - r.right) + 'px';
+      dd.style.left = 'auto';
+      dd.style.insetInlineEnd = 'auto';
+      dd.style.zIndex = '99999';
+    }catch(e){ /* guard-ok */ }
+  }
+  function restore(){
+    try{
+      if(wrap && dd.parentNode !== wrap) wrap.appendChild(dd);
+      dd.style.position=''; dd.style.top=''; dd.style.right=''; dd.style.left=''; dd.style.insetInlineEnd=''; dd.style.zIndex='';
+    }catch(e){ /* guard-ok */ }
+  }
+  function close(){ dd.classList.remove('show'); btn.classList.remove('active'); restore(); }
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    if(dd.classList.contains('show')){ close(); return; }
+    dd.classList.add('show'); btn.classList.add('active');
+    if(isMobile()) placeFixed();
+  };
   dd.addEventListener('click', (e) => {
-    if(e.target.closest('button')) setTimeout(() => { dd.classList.remove('show'); btn.classList.remove('active'); }, 150);
+    if(e.target.closest('button')) setTimeout(close, 150);
   });
   document.addEventListener('click', (e) => {
-    if(!e.target.closest('#tabDownloadWrap')){ dd.classList.remove('show'); btn.classList.remove('active'); }
+    if(e.target.closest('#tabsMenuDropdown') || e.target.closest('#tabDownloadWrap')) return;
+    close();
   });
 })();
 
@@ -29838,6 +29899,8 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
       body: JSON.stringify({
         messages: messages,
         provider: provider || 'claude',
+        /* v-claude-models: النموذج المختار من الإعدادات — على مسار كلود فقط، والخادم يقبل قائمته حصرًا */
+        model: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeModelGet) ? window.claudeModelGet() : ''; } catch (e) { return ''; } })(),
         // v-no-region-assume: المنطقة الزمنية الحقيقية للجهاز — الوقت في الرد بها لا بتوقيت الإمارات.
         tz: (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } })(),
         token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
@@ -29856,6 +29919,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     var __srcAcc = []; /* v-one-brain: مصادر بحث النموذج نفسه — لبطاقات «المصادر» */
     var __toolBusy = false; /* أداة محلّيّة قيد التنفيذ → نطيل مهلة الخمول */
     var __tier = null; /* v-tiers: free / free-limit / guest / guest-limit — لشارة «ردّ مجاني» */
+    var __model = ''; /* v-claude-models: اسم النموذج الذي أجاب فعلًا (من الخادم) */
 
     while (true) {
       var chunk;
@@ -29896,6 +29960,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
         }
         if (ev.error) serverErr = ev.error;
         if (typeof ev.tier === 'string' && ev.tier) __tier = ev.tier;
+        if (typeof ev.modelLabel === 'string') __model = ev.modelLabel;
       }
     }
     noteEnd();
@@ -29903,7 +29968,7 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
     // لا نصّ = لم يحدث شيء يُعرض؛ نرمي ليهبط المستدعي إلى مساره القديم.
     if (!full.trim()) throw new Error(serverErr || 'chat: empty reply');
     var __p = provider || 'claude';
-    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined };
+    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined };
   };
 })();
 
@@ -33773,4 +33838,60 @@ if(document.readyState === 'loading'){
       + ' · ' + (r.writable ? t('رفع ✅', 'push ✅') : t('رفع ❌ — الرفع يحتاج Contents: write + Pull requests: write', 'push ❌ — pushing needs Contents: write + Pull requests: write'))
       + (r.rateLimit ? '\n⏱️ ' + t('حدّ الطلبات: ', 'Rate limit: ') + r.rateLimit : '');
   };
+})();
+/* ===== app-29-claude-model — اختيار نموذج كلود (v-claude-models) =====
+   طلب المالك ١٣ سبتمبر (لقطة قائمة نماذج Claude Code): «ممكن تضيف هذيل كلهم».
+   قائمة في الإعدادات (تحت مزوّد الخدمة) بنماذج كلود التسعة؛ الاختيار يُحفظ محلّيًّا
+   ويُرسَل مع كلّ رسالة على مسار كلود فقط (app-18). الخادم يقبل القائمة نفسها حصرًا،
+   وإن رفض المفتاح النموذج (404/400 نموذج) رجع للافتراضيّ وأخبر المستخدم في سطر الحالة. */
+(function () {
+  'use strict';
+
+  var KEY = 'aiapp_claude_model';
+  var IDS = ['claude-fable-5-1', 'claude-fable-5', 'claude-opus-5', 'claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-5', 'claude-sonnet-4-6', 'claude-haiku-4-5'];
+  function isAr() { try { return (localStorage.getItem('aiapp_lang') || 'ar') !== 'en'; } catch (e) { return true; } }
+  var HINTS = {
+    '': ['الافتراضيّ: Sonnet 5 — الأسرع للمحادثة اليوميّة.', 'Default: Sonnet 5 — fastest for everyday chat.'],
+    'claude-fable-5-1': ['الأقوى على الإطلاق؛ أبطأ وأغلى، ويحتاج رصيد API في حساب Anthropic.', 'Most capable; slower and pricier, needs API credits on the Anthropic account.'],
+    'claude-fable-5': ['قويّ جدًّا؛ أبطأ وأغلى، ويحتاج رصيد API في حساب Anthropic.', 'Very capable; slower and pricier, needs API credits on the Anthropic account.'],
+    'claude-opus-5': ['أدقّ من Sonnet 5 في المهامّ الصعبة، وأبطأ منه.', 'More precise than Sonnet 5 on hard tasks, slower.'],
+    'claude-opus-4-8': ['الجيل السابق من Opus؛ متين وأبطأ.', 'Previous-generation Opus; solid, slower.'],
+    'claude-opus-4-7': ['الجيل السابق من Opus.', 'Previous-generation Opus.'],
+    'claude-opus-4-6': ['الجيل السابق من Opus.', 'Previous-generation Opus.'],
+    'claude-sonnet-5': ['توازن السرعة والدقّة — هو الافتراضيّ.', 'Balanced speed and quality — the default.'],
+    'claude-sonnet-4-6': ['الجيل السابق من Sonnet.', 'Previous-generation Sonnet.'],
+    'claude-haiku-4-5': ['الأسرع والأرخص؛ للأسئلة القصيرة.', 'Fastest and cheapest; for short questions.'],
+  };
+
+  function get() {
+    try { var v = localStorage.getItem(KEY) || ''; return IDS.indexOf(v) === -1 ? '' : v; } catch (e) { return ''; }
+  }
+  function set(v) {
+    v = IDS.indexOf(v) === -1 ? '' : v;
+    try { if (v) localStorage.setItem(KEY, v); else localStorage.removeItem(KEY); } catch (e) { /* guard-ok — التخزين المحلّيّ قد يكون مقفلًا */ }
+    return v;
+  }
+  function hint() {
+    var box = document.getElementById('claudeModelHint');
+    if (!box) return;
+    var h = HINTS[get()] || HINTS[''];
+    box.textContent = isAr() ? h[0] : h[1];
+  }
+  function sync() {
+    var sel = document.getElementById('claudeModel');
+    if (sel) sel.value = get();
+    hint();
+  }
+
+  document.addEventListener('change', function (e) {
+    var el = e && e.target;
+    if (!el || el.id !== 'claudeModel') return;
+    el.value = set(el.value);
+    hint();
+  });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sync); else sync();
+
+  window.claudeModelGet = get;
+  window.claudeModelSync = sync;
+  window.CLAUDE_MODEL_IDS = IDS.slice();
 })();

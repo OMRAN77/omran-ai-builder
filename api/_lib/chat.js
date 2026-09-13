@@ -11,7 +11,7 @@ const { checkAndConsume, DAILY_LIMIT, clientIp } = require('./_usage');
 // v-tiers (قرار المالك ١٢ سبتمبر): مشترك → المحرّك الاحترافي بكل الأدوات؛ مسجَّل
 // بلا اشتراك وضيف → سلسلة مجانية بلا أدوات وبسقف يومي صغير. انظر tier.js.
 const tierLib = require('./tier.js');
-const { streamFreeChain } = require('./free-chain.js');
+const { streamFreeChain, isModelErrorStatus } = require('./free-chain.js');
 const { logError, logErrorAndFlush } = require('./log-error.js');
 const { safeParse } = require('./safe-parse.js');
 const { redactMessages } = require('./_msgs.js'); // v-secret-vault: سرّ ملصوق لا يصل النموذج
@@ -494,6 +494,31 @@ function imageTurnConfig(env, viaOR, fallbackModel) {
   return { model, output_config: effortOk ? { effort: IMG_EFFORTS.indexOf(eff) === -1 ? 'high' : eff } : null };
 }
 
+// v-claude-models — طلب المالك ١٣ سبتمبر (لقطة قائمة نماذج Claude Code): «ممكن تضيف هذيل
+// كلهم». نماذج كلود التي يختارها المستخدم من الإعدادات (app-29) وتصل في body.model؛ تُقبل من
+// هذه القائمة حصرًا. المسار المباشر يرسل المعرّف كما هو، ووسيط OpenRouter يأخذ صيغته (نقطة في
+// رقم الإصدار الفرعيّ كما في anthropic/claude-sonnet-4.5). نموذج يرفضه المفتاح أو الوسيط
+// (404/400 نموذج) = رجوع فوريّ للافتراضيّ مع إخبار المستخدم في سطر الحالة، لا سقوط للاحتياط.
+// لا thinking ولا temperature في الطلب أصلًا، فالقائمة كلّها (Fable 5/5.1 حتّى Haiku 4.5) تمرّ
+// بالطلب نفسه؛ output_config.effort يبقى لدور الصورة على الجيل الحاليّ فقط (imageTurnConfig).
+const CLAUDE_MODELS = {
+  'claude-fable-5-1': { label: 'Fable 5.1', or: 'anthropic/claude-fable-5.1' },
+  'claude-fable-5': { label: 'Fable 5', or: 'anthropic/claude-fable-5' },
+  'claude-opus-5': { label: 'Opus 5', or: 'anthropic/claude-opus-5' },
+  'claude-opus-4-8': { label: 'Opus 4.8', or: 'anthropic/claude-opus-4.8' },
+  'claude-opus-4-7': { label: 'Opus 4.7', or: 'anthropic/claude-opus-4.7' },
+  'claude-opus-4-6': { label: 'Opus 4.6', or: 'anthropic/claude-opus-4.6' },
+  'claude-sonnet-5': { label: 'Sonnet 5', or: 'anthropic/claude-sonnet-5' },
+  'claude-sonnet-4-6': { label: 'Sonnet 4.6', or: 'anthropic/claude-sonnet-4.6' },
+  'claude-haiku-4-5': { label: 'Haiku 4.5', or: 'anthropic/claude-haiku-4.5' },
+};
+function pickClaudeModel(requested, viaOR, fallback) {
+  const id = String(requested || '').trim().toLowerCase();
+  const m = Object.prototype.hasOwnProperty.call(CLAUDE_MODELS, id) ? CLAUDE_MODELS[id] : null;
+  if (!m) return { model: fallback, picked: false, id: '', label: '' };
+  return { model: viaOR ? m.or : id, picked: true, id, label: m.label };
+}
+
 const OR_MODELS = {
   claude: 'anthropic/claude-sonnet-5', // v-chat-fast: نفس فئة الخط المباشر
   openai: 'openai/gpt-5.6-terra',
@@ -939,7 +964,10 @@ module.exports = async (req, res) => {
   // التدفق، وSonnet 5 من نفس الجيل ويكفي المحادثة اليومية بفارق سرعة كبير.
   // Opus يبقى حصريًّا للرد الاحترافي 👑 المدفوع (مساره في claude.js)،
   // وCHAT_CLAUDE_MODEL يرجّع Opus للمحادثة كلها من البيئة بلا نشر.
-  const CHAT_MODEL = viaOR ? OR_MODELS[prov] : (process.env.CHAT_CLAUDE_MODEL || 'claude-sonnet-5');
+  const DEFAULT_MODEL = viaOR ? OR_MODELS[prov] : (process.env.CHAT_CLAUDE_MODEL || 'claude-sonnet-5');
+  // v-claude-models: اختيار المستخدم على مسار كلود فقط؛ يعود للافتراضيّ إن رفضه المفتاح (أدناه).
+  const __pick = prov === 'claude' ? pickClaudeModel(body && body.model, viaOR, DEFAULT_MODEL) : { model: DEFAULT_MODEL, picked: false, id: '', label: '' };
+  let CHAT_MODEL = __pick.model;
 
   // v-real-fast-headers: «النصّ الطويل ما يرد» — الحارس أعلاه (v-fast-headers)
   // كان تعليقًا فقط؛ الكود الفعلي كان يفتح البثّ بعد checkAndConsume (نداء
@@ -963,6 +991,7 @@ module.exports = async (req, res) => {
   if (res.flushHeaders) res.flushHeaders();
   const send = (obj) => { try { res.write('data: ' + JSON.stringify(obj) + '\n\n'); if (res.flush) res.flush(); } catch (e) { /* العميل أغلق المجرى */ } };
   send({ status: '💭 يقرأ سؤالك…', k: 'stReading' });
+  send({ modelId: __pick.picked ? __pick.id : '', modelLabel: __pick.picked ? __pick.label : '' }); // v-claude-models: من يجيب
 
   // v-chat-speed: قراءة الذاكرة كانت تنتظر فحص الحصة ثم تنتظر هي — رحلتا
   // شبكة متتاليتان قبل أول كلمة. verifyToken فوريّ (توقيع محلي)، فنطلق
@@ -1134,7 +1163,7 @@ module.exports = async (req, res) => {
   try {
     // ثمان خطوات لا خمس وعشرين: المحادثة ليست بناءً طويلًا، وكلّ خطوة استدعاء
     // كامل بسياق متراكم. السقفان معًا — خطوات ووقت — يمنعان فاتورة مفتوحة.
-    const __imgCfg = lastUserHasImage ? imageTurnConfig(process.env, viaOR, CHAT_MODEL) : null; // v-img-read
+    let __imgCfg = lastUserHasImage ? imageTurnConfig(process.env, viaOR, CHAT_MODEL) : null; // v-img-read
     const MAX_STEPS = Math.max(1, Math.min(16, Number(process.env.CHAT_MAX_STEPS) || 12));
     const MAX_MS = Math.max(20000, Number(process.env.CHAT_MAX_MS) || 240000);
     const t0 = Date.now();
@@ -1210,6 +1239,22 @@ module.exports = async (req, res) => {
         try { __why = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ }
         await logErrorAndFlush('chat/image-turn-' + upstream.status, new Error(__why || 'upstream ' + upstream.status + ' on image-turn config'), { action: 'image-turn-config' });
         upstream = await callUpstream(false);
+      }
+      // v-claude-models: نموذج اختاره المستخدم ولا يملكه المفتاح/الوسيط (404، أو 400/403 نصّه
+      // عن النموذج) = رجوع فوريّ للافتراضيّ بالطلب نفسه، مع إخبار المستخدم. غير ذلك يمرّ كما هو.
+      if (!upstream.ok && __pick.picked && CHAT_MODEL !== DEFAULT_MODEL) {
+        let __mt = '';
+        try { __mt = (await upstream.text()).slice(0, 300); } catch (e) { /* جسم غير مقروء */ }
+        if (isModelErrorStatus(upstream.status, __mt)) {
+          await logErrorAndFlush('chat/model-pick-' + upstream.status, new Error(__mt || ('upstream ' + upstream.status + ' on ' + CHAT_MODEL)), { action: 'model-pick', model: __pick.id });
+          send({ status: '⚠️ نموذج ' + __pick.label + ' غير متاح على المفتاح الحاليّ — أكمل بالنموذج الافتراضيّ.', k: 'stModelFallback', p: { model: __pick.label } });
+          CHAT_MODEL = DEFAULT_MODEL;
+          if (__imgCfg) __imgCfg = imageTurnConfig(process.env, viaOR, CHAT_MODEL);
+          upstream = await callUpstream(true);
+          if (!upstream.ok && __imgCfg && (__imgCfg.output_config || __imgCfg.model !== CHAT_MODEL)) upstream = await callUpstream(false);
+        } else {
+          upstream = { ok: false, status: upstream.status, text: async () => __mt };
+        }
       }
 
       if (!upstream.ok) {
@@ -1411,3 +1456,4 @@ module.exports.__v608 = { normNums, unsourcedRatings, ratingWarning }; // v608 �
 module.exports.__v610 = { cleanLink }; // v610 — للاختبار
 module.exports.__vsearch = { tavilySearch, arWikiLookup }; // v-chat-ref — للاختبار
 module.exports.__vimg = { imageTurnConfig, IMAGE_READ_NOTE }; // v-img-read — للاختبار
+module.exports.__vmodels = { CLAUDE_MODELS, pickClaudeModel }; // v-claude-models — للاختبار

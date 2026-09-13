@@ -112,6 +112,8 @@
       body: JSON.stringify({
         messages: messages,
         provider: provider || 'claude',
+        /* v-claude-models: النموذج المختار من الإعدادات — على مسار كلود فقط، والخادم يقبل قائمته حصرًا */
+        model: (function () { try { return ((provider || 'claude') === 'claude' && window.claudeModelGet) ? window.claudeModelGet() : ''; } catch (e) { return ''; } })(),
         // v-no-region-assume: المنطقة الزمنية الحقيقية للجهاز — الوقت في الرد بها لا بتوقيت الإمارات.
         tz: (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } })(),
         token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
@@ -130,6 +132,7 @@
     var __srcAcc = []; /* v-one-brain: مصادر بحث النموذج نفسه — لبطاقات «المصادر» */
     var __toolBusy = false; /* أداة محلّيّة قيد التنفيذ → نطيل مهلة الخمول */
     var __tier = null; /* v-tiers: free / free-limit / guest / guest-limit — لشارة «ردّ مجاني» */
+    var __model = ''; /* v-claude-models: اسم النموذج الذي أجاب فعلًا (من الخادم) */
 
     while (true) {
       var chunk;
@@ -170,6 +173,7 @@
         }
         if (ev.error) serverErr = ev.error;
         if (typeof ev.tier === 'string' && ev.tier) __tier = ev.tier;
+        if (typeof ev.modelLabel === 'string') __model = ev.modelLabel;
       }
     }
     noteEnd();
@@ -177,7 +181,7 @@
     // لا نصّ = لم يحدث شيء يُعرض؛ نرمي ليهبط المستدعي إلى مساره القديم.
     if (!full.trim()) throw new Error(serverErr || 'chat: empty reply');
     var __p = provider || 'claude';
-    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined };
+    return { reply: full, providerKey: __p, switched: false, requestedKey: __p, model: __model || undefined, sources: __srcAcc.length ? __srcAcc.slice(0, 10) : undefined, tier: __tier || undefined };
   };
 })();
 

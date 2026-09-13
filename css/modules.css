@@ -280,9 +280,9 @@ html:not(.mobile-ui) #stockTicker::before,html.mobile-ui #stockTicker::before{co
 /* 3) مقبض اللوحة المطويّة: زجاج ذهبيّ بدل البلاطة الرماديّة */
 html:not(.mobile-ui) body.waCollapsedMode #waReopen{background:linear-gradient(90deg,rgba(var(--accent-tint-rgb),.17),rgba(var(--accent-tint-rgb),.05))!important;border:1px solid rgba(var(--accent-tint-rgb),.34)!important;color:var(--accent-ink)!important;box-shadow:0 0 16px rgba(var(--accent-glow-rgb),.13)!important}
 html:not(.mobile-ui) body.waCollapsedMode #waReopen:hover{background:linear-gradient(90deg,rgba(var(--accent-tint-rgb),.3),rgba(var(--accent-tint-rgb),.1))!important;color:var(--accent-on-surface) !important}
-/* 4) زرّ «محادثة جديدة ✨»: حبّة زجاج ذهبيّة بدل النصّ العائم */
-html:not(.mobile-ui) #omranNewChatBtn{background:linear-gradient(180deg,rgba(var(--accent-tint-rgb),.13),rgba(var(--accent-tint-rgb),.045))!important;border:1px solid rgba(var(--accent-tint-rgb),.3)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.05)!important}
-html:not(.mobile-ui) #omranNewChatBtn:hover{background:linear-gradient(180deg,rgba(var(--accent-tint-rgb),.22),rgba(var(--accent-tint-rgb),.08))!important;border-color:rgba(var(--accent-tint-rgb),.5)!important}
+/* 4) زرّ «محادثة جديدة ✨»: بلا صندوق ولا إطار (طلب المالك) — نصّ فوق والمشاريع تحته مباشرة */
+html:not(.mobile-ui) #omranNewChatBtn{background:transparent!important;border:none!important;box-shadow:none!important}
+html:not(.mobile-ui) #omranNewChatBtn:hover{background:transparent!important;border-color:transparent!important}
 /* 5) شعرة شريط التنقّل السفلي: تذوب في الطرفين بدل القطع الحادّ */
 html:not(.mobile-ui) #omranSidebarFoot{border-top-color:transparent!important;background:linear-gradient(90deg,rgba(var(--accent-tint-rgb),0),rgba(var(--accent-tint-rgb),.5) 22%,rgba(var(--accent-tint-rgb),.5) 78%,rgba(var(--accent-tint-rgb),0)) top left/100% 1px no-repeat!important}
 /* 6) الفاصل بين العمودين: تدرّج رأسيّ بدل خطّ صلب */
@@ -290,13 +290,13 @@ html:not(.mobile-ui) #sidebar,html:not(.mobile-ui) #chatcol{border-image:linear-
 /* 7) إعلان التعليم: بطاقة زجاج ذهبيّة موحّدة — كمبيوتر وجوّال (كان بنفسجيًّا على الجوّال) */
 html:not(.mobile-ui) #eduIntroCard,html.mobile-ui #eduIntroCard{background:linear-gradient(160deg,rgba(22,19,13,.95),rgba(8,7,5,.97))!important;border:1px solid rgba(var(--accent-tint-rgb),.3)!important;box-shadow:0 12px 34px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.05)!important;backdrop-filter:blur(10px)}
 /* 9) شعرة أسفل الترويسة */
-header{box-shadow:0 1px 0 rgba(var(--accent-glow-rgb),.13)}
+header{box-shadow:none} /* v-onepage (طلب المالك): إزالة الخطّ تحت الشريط العلوي — صفحة كاملة */
 
 /* ════════ v421 — ٤ لمسات ديكور · كمبيوتر فقط ════════ */
 /* ① عمق: ظلّ من السلّم + شعرة ضوء داخلية أعلى السطح */
 html:not(.mobile-ui) .omToolCard:hover{box-shadow:var(--sh-2),0 0 0 1px rgba(var(--accent-glow-rgb),.22),inset 0 1px 0 rgba(255,255,255,.07)!important}
 html:not(.mobile-ui) #eduIntroCard{box-shadow:var(--sh-2),inset 0 1px 0 rgba(var(--accent-glow-rgb),.09)!important}
-html:not(.mobile-ui) #omranNewChatBtn:hover{box-shadow:var(--sh-gold),inset 0 1px 0 rgba(255,255,255,.07)!important}
+html:not(.mobile-ui) #omranNewChatBtn:hover{box-shadow:none!important}
 html:not(.mobile-ui) #stockTickerToggle{box-shadow:var(--sh-1)!important}
 
 /* ② خلفية: هالة ذهبية علوية + حُبيبات فيلم — ساكنة، لا تعترض النقر */
