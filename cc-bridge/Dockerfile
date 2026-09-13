@@ -8,8 +8,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends git ca-certific
   && useradd -m -u 1000 agent && mkdir -p /work/repo /work/state && chown -R agent:agent /work
 
 WORKDIR /app
-COPY package.json ./
-RUN npm install --omit=dev --no-audit --no-fund && chown -R agent:agent /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund && chown -R agent:agent /app
 COPY policy.mjs git.mjs server.mjs entrypoint.sh ./
 RUN chmod +x entrypoint.sh
 
