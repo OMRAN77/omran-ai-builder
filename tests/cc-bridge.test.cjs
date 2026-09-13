@@ -38,7 +38,7 @@ const R = (p) => path.join(__dirname, '..', p);
   const srv = fs.readFileSync(R('cc-bridge/server.mjs'), 'utf8');
   assert.ok(srv.includes("await import('@anthropic-ai/claude-agent-sdk')") && srv.includes('query({ prompt: message, options })'), 'query() من الحزمة الرسميّة');
   assert.ok(!/api\.anthropic\.com\/v1\/messages/.test(srv), 'لا نداء مباشر لواجهة الرسائل — لا وكيل مركّب');
-  for (const k of ["permissionMode: 'acceptEdits'", 'canUseTool: async (name, input) => decideTool(name, input)', 'includePartialMessages: true', "systemPrompt: { type: 'append', text: RULES_APPEND }", 'options.resume = opts.sessionId', 'allowedTools: ALLOWED_TOOLS', 'disallowedTools: DENIED_TOOLS']) {
+  for (const k of ["permissionMode: 'acceptEdits'", 'canUseTool: async (name, input) => decideTool(name, input)', 'includePartialMessages: true', "systemPrompt: { type: 'append', text: RULES_APPEND }", 'options.resume = opts.sessionId', 'allowedTools: ALLOWED_TOOLS', 'disallowedTools: DENIED_TOOLS', "settingSources: ['project']"]) {
     assert.ok(srv.includes(k), 'خيار الحزمة: ' + k);
   }
   assert.ok(srv.includes('timingSafeEqual') && srv.includes("'/publish'") && srv.includes("'/merge'") && srv.includes("'/reset'"), 'السرّ والأوامر الثلاثة');

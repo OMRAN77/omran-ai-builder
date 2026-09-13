@@ -64,6 +64,9 @@ async function runMessage(log, message, opts) {
     canUseTool: async (name, input) => decideTool(name, input),
     includePartialMessages: true,
     systemPrompt: { type: 'append', text: RULES_APPEND },
+    /* كجلسة المالك على الويب: CLAUDE.md وإعدادات المشروع تُقرأ من المستودع (بلا هذا
+       السطر لا تحمّل الحزمة إعدادات من القرص). */
+    settingSources: ['project'],
     abortController: abort,
     env: Object.assign({}, env),
   };
