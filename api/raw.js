@@ -3,6 +3,7 @@
 // الغرض: خطّ أساس للمقارنة — كيف يحاور النموذج حين لا يُملى عليه شكل الردّ.
 // محميّة برمز بوابة (RAW_GATE) حتّى لا يستنزف غريبٌ رصيد المفاتيح.
 require('./_lib/_fetch-timeout.js');
+require('./_lib/_env-keys.js'); // v-key-shape: مفتاح OpenRouter الموضوع خطأً في ANTHROPIC_API_KEY يُنقل إلى مكانه
 
 const MODELS = {
   opus: { direct: 'claude-opus-5', or: 'anthropic/claude-opus-5' },
