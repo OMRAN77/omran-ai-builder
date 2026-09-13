@@ -30,3 +30,7 @@ Thumbs.db
 # ملفّات وكيل الكود في Actions — تُقرأ وتُكتب أثناء التشغيل ولا تُلتزم.
 AGENT_SUMMARY.md
 AGENT_CONTEXT.md
+
+# v-cc-bridge: تبعيّات الجسر وحالته المحلّيّة
+cc-bridge/node_modules/
+cc-bridge/state/
