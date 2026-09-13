@@ -331,6 +331,11 @@
   .chat-codeblock-copy:hover{color:#e6edf3;}
   .chat-codeblock pre{margin:0;padding:12px;overflow-x:auto;font-family:ui-monospace,Consolas,Menlo,monospace;font-size:12.5px;line-height:1.55;color:#e6edf3;white-space:pre;}
   .chat-codeblock pre .tts-word{color:#e6edf3;}
+  /* v-hl-yellow (طلب المالك «الأكواد والإنجليزي والمواقع صفراء زي الأرقام» — نفس
+     فكرة كلاود البرتقالي لكن أصفر): تمييزٌ أصفر ذهبيّ داخل ردود المحادثة فقط. */
+  :root{ --om-hl:#e3b341; }
+  .chat-codeblock pre, .chat-codeblock pre .tts-word{ color:var(--om-hl) !important; }
+  #messages .om-en{ color:var(--om-hl); }
   #inputbar{padding:4px 12px 9px; border-top:none; display:flex; flex-direction:column; gap:6px; position:relative;}
   #inputbar .inputbar-tools{display:flex; gap:4px; align-items:center; flex:0 0 auto; flex-wrap:nowrap;}
   #inputbar .inputbar-tools-left{display:flex; gap:4px; align-items:center; flex:0 0 auto; flex-wrap:nowrap;}

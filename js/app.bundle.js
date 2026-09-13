@@ -2064,12 +2064,16 @@ function buildSpokenWordSpans(container, text){
         a.textContent = __disp;
         a.title = href;
         a.setAttribute('dir', 'auto'); // v476 bidi
-        a.style.cssText = 'color:var(--accent2); text-decoration:underline; word-break:break-all; unicode-bidi:isolate;';
+        a.style.cssText = 'color:var(--om-hl,#e3b341); text-decoration:underline; word-break:break-all; unicode-bidi:isolate;'; /* v-hl-yellow: الروابط صفراء (طلب المالك) */
         span.appendChild(a);
         const trail = linkM ? linkM[3] : urlM[2];
         if(trail) span.appendChild(document.createTextNode(trail));
       } else {
         span.textContent = __lead + display;
+        /* v-hl-yellow (طلب المالك «الإنجليزي والأكواد والمواقع صفراء زي الأرقام»):
+           الكلمات اللاتينية الخالصة (إنجليزي/رموز كود) تُلوَّن صفراء عبر الصنف om-en.
+           الكلمات المختلطة عربي/لاتيني تبقى كما هي كي لا يتبعثر لونها. */
+        if(/[A-Za-z]/.test(display) && !/[؀-ۿݐ-ݿ]/.test(display)) span.classList.add('om-en');
       }
       if(wasBold || markerCount) span.classList.add('md-bold');
       if(headerLevel) span.classList.add('md-h' + headerLevel);
