@@ -61,7 +61,10 @@
   /* v213: الهيدر يتبع اتجاه اللغة — عربي: الاسم يمين و⋮ يسار، إنجليزي: العكس */
   header h1{font-size: var(--fs-2); margin:0; display:flex; align-items:center; gap:10px; font-weight: var(--w-bold); letter-spacing:0;}
   header h1 .brand{display:none !important;}
-  body{background-size:200% 200%; animation:bgShift 22s ease infinite;}
+  /* v-perf (شكوى عمران ١٣ سبتمبر «الشاشة ثقيلة»): كانت خلفيّة الصفحة تتحرّك
+     بلا توقّف (bgShift كل ٢٢ ثانية) فتُعاد صباغة الشاشة كلّها ٦٠ مرّة في الثانية
+     على الدوام — والخلفيّة لون واحد صلب في كلّ الأوضاع فلا شيء يُرى يتحرّك. */
+  body{background-size:auto; animation:none;}
   @keyframes bgShift{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
   #btnInstall{display:inline-flex;}
   #headerMenuWrap{position:relative; display:inline-flex;}
