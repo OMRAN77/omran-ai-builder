@@ -506,6 +506,11 @@
      جديدة): على الكمبيوتر يبقى درج الإعدادات على اليمين، وخلفيته شفافة فتظلّ
      المحادثة ظاهرة خلفه بدل تعتيمها بالكامل. الجوال يحتفظ بتعتيمه (داخل @media). */
   #settingsDialog::backdrop{ background:transparent; }
+  /* v-settings-push (طلب المالك: «صلبة تدفع الدردشة، ما تغطّيها»): عند فتح درج
+     الإعدادات (يمين، ٤٦٠px) نُزيح كامل التطبيق يسارًا بنفس العرض على الكمبيوتر،
+     فيبقى الدرج صلبًا والمحادثة ظاهرة كاملةً جنبه بلا تراكب ولا تعتيم — كلاهما
+     يملأ الشاشة معًا فلا تظهر الخلفية الشفافة إطلاقًا. الجوال بلا إزاحة. */
+  html.settings-push:not(.mobile-ui) main{ margin-right:460px; transition:margin-right .18s ease; }
   dialog > *{padding-left:24px; padding-right:24px;}
   dialog > h3{padding-top:24px;}
   dialog h3{font-weight:700;}
