@@ -290,7 +290,7 @@ html:not(.mobile-ui) #sidebar,html:not(.mobile-ui) #chatcol{border-image:linear-
 /* 7) إعلان التعليم: بطاقة زجاج ذهبيّة موحّدة — كمبيوتر وجوّال (كان بنفسجيًّا على الجوّال) */
 html:not(.mobile-ui) #eduIntroCard,html.mobile-ui #eduIntroCard{background:linear-gradient(160deg,rgba(22,19,13,.95),rgba(8,7,5,.97))!important;border:1px solid rgba(var(--accent-tint-rgb),.3)!important;box-shadow:0 12px 34px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.05)!important;backdrop-filter:blur(10px)}
 /* 9) شعرة أسفل الترويسة */
-header{box-shadow:0 1px 0 rgba(var(--accent-glow-rgb),.13)}
+header{box-shadow:none} /* v-onepage (طلب المالك): إزالة الخطّ تحت الشريط العلوي — صفحة كاملة */
 
 /* ════════ v421 — ٤ لمسات ديكور · كمبيوتر فقط ════════ */
 /* ① عمق: ظلّ من السلّم + شعرة ضوء داخلية أعلى السطح */
