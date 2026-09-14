@@ -121,7 +121,7 @@ const prem = fs.readFileSync(path.join(__dirname, '../js/premium.js'), 'utf8');
 assert.ok(prem.includes('relocateAgentToggle') && prem.includes("getElementById('premiumToggleWrap')") && prem.includes("wrap.style.display = 'none'"), 'المفتاح القديم يُخفى من الإعدادات وتبقى عقدته');
 assert.ok(prem.includes('window.__agentModeOn = (window.__premiumOn === true)'), 'تشغيل الزر يشغّل وضع الوكيل المستقل لا الرد الاحترافي فقط');
 const modesSrc = fs.readFileSync(path.join(__dirname, '../js/modes.js'), 'utf8');
-assert.ok(modesSrc.includes('agent:true') && modesSrc.includes("getElementById('btnPremiumToggle')"), 'الوكيل بند في قائمة + يوكّل نقرته للمفتاح القديم');
+assert.ok(modesSrc.includes('agent:true') && modesSrc.includes("getElementById('btnPremiumToggle')"), 'الوكيل في الشريط السفليّ يوكّل نقرته للمفتاح القديم');
 const agentSrv = fs.readFileSync(path.join(__dirname, '../api/_lib/agent.js'), 'utf8');
 assert.ok(agentSrv.includes('القوة القصوى') && agentSrv.includes('أنجز حتى النهاية'), 'طبقة القوة في عقل الوكيل');
 assert.ok(agentSrv.includes("search_depth: 'advanced'"), 'بحث الوكيل بعمق متقدّم');

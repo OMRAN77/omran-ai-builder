@@ -7,16 +7,13 @@
     { id:'image', ar:'إنشاء صورة',      en:'Create image', ic:'<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path></svg>' },
     { id:'web',   ar:'البحث على الويب', en:'Web search',   ic:'🌐' },
     { id:'think', ar:'التفكير العميق',  en:'Think deeper', ic:'🧠' },
-    /* v-models-two (أمر عمران ١٤ سبتمبر «هذيل ٣ فقط»): الوكيل من قائمة «+» أيضًا.
-       ليس وضعًا بل تبديل موكَّل لمفتاح الوكيل القديم (btnPremiumToggle) فتبقى كلّ
-       أسلاك النقاط والدخول والخصم كما هي بلا تكرار. */
-    { id:'agent', ar:'الوكيل', en:'Agent', ic:'👑', agent:true },
-    /* v-cc-chat (أمر عمران ١٤ سبتمبر «الي أريده في المحادثة»): Claude Code الخام على خادم
-       المالك من الصندوق نفسه — البند يظهر لحساب المالك وحده (الخادم يتحقّق بالتوقيع). */
-    { id:'cc',    ar:'Claude Code',      en:'Claude Code',  ic:'🧑‍💻', owner:true }
-    /* v-model-chip (أمر عمران ١٤ سبتمبر «نفس فكرة الصورة، خارج الصندوق»): اختيار
-       النموذج لم يعد بندًا في «+»، بل مؤشّر أسفل صندوق الكتابة يبيّن أيّ نموذج شغّال
-       (Sonnet/Opus) ويفتح قائمة صغيرة لتبديله — للمالك وحده. انظر buildModelChip. */
+    /* v-bottom-bar (أمر عمران ١٤ سبتمبر «حط الوكيل وكودي وياهم»): الوكيل وClaude Code
+       نُقلا من قائمة «+» إلى الشريط أسفل الصندوق مع مؤشّر النموذج (bottom:true) —
+       للمالك وحده. الوكيل تبديل موكَّل لمفتاح النقاط القديم (btnPremiumToggle) فتبقى
+       أسلاك النقاط والدخول والخصم كما هي؛ وClaude Code وضعٌ يُختار كبقيّة الأوضاع. */
+    { id:'agent', ar:'الوكيل', en:'Agent', ic:'👑', agent:true, owner:true, bottom:true },
+    { id:'cc',    ar:'Claude Code', en:'Claude Code', ic:'🧑‍💻', owner:true, bottom:true }
+    /* v-model-chip: اختيار النموذج مؤشّر في الشريط نفسه (Sonnet/Opus) — انظر buildBottomBar. */
   ];
   window.__omMode = null;
   /* aiapp_claude_model يستعمل المعرّف الكامل (claude-opus-5)، وaiapp_agent_model
@@ -31,40 +28,49 @@
     try{ if(window.omModelChipSync) window.omModelChipSync(); }catch(e){ /* guard-ok */ }
   }
   function modelName(){ return curModel() === 'opus' ? 'Opus 5' : 'Sonnet 5'; }
-  /* الوكيل: تبديل موكَّل لمفتاح النقاط القديم — لا منطق مال هنا. */
-  function agentOn(){ return window.__agentModeOn === true; }
-  function syncAgentItem(b){
-    try{
-      var l = b.querySelector('.btnLabel'); if(l) l.textContent = (AR ? 'الوكيل' : 'Agent') + (agentOn() ? ' ✓' : '');
-      b.classList.toggle('omModeOn', agentOn());
-    }catch(e){ /* guard-ok: تحديث تجميليّ */ }
-  }
-  function syncAgentItems(){ try{ var it = document.querySelectorAll('.omModeItem[data-mode="agent"]'); for(var i=0;i<it.length;i++) syncAgentItem(it[i]); }catch(e){ /* guard-ok */ } }
   function isOwner(){ try{ return String((window.authGet && window.authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; } }
   function refreshOwnerItems(){
     try{
       var on = isOwner();
       var items = document.querySelectorAll('.omModeItem[data-owner="1"]');
       for(var i = 0; i < items.length; i++) items[i].style.display = on ? '' : 'none';
-      var mw = document.getElementById('omModelWrap');
-      if(mw) mw.style.display = on ? 'inline-flex' : 'none';
+      var bar = document.getElementById('omBottomBar');
+      if(bar) bar.style.display = on ? 'flex' : 'none';
     }catch(e){ /* guard-ok: optional owner items */ }
   }
-  /* v-model-chip: مؤشّر النموذج أسفل الصندوق (نفس فكرة قائمة نماذج Claude Code) —
-     يبيّن النموذج الحاليّ ويفتح قائمة صغيرة (Opus 5 / Sonnet 5)؛ للمالك وحده. */
-  function buildModelChip(){
+  /* v-bottom-bar: شريط أسفل الصندوق يجمع الوكيل + Claude Code + مؤشّر النموذج (نفس فكرة
+     قائمة نماذج Claude Code التي أشار إليها المالك) — للمالك وحده، ظاهر دائمًا. */
+  var CHIP_CSS = 'display:inline-flex; align-items:center; gap:5px; background:none; border:none; color:var(--muted,#9a958a); font-size:12px; font-weight:600; cursor:pointer; padding:3px 8px; border-radius:8px; line-height:1;';
+  function buildBottomBar(){
     try{
       // المضيف = #inputbar (عمود مرن ظاهر دائمًا: ترحيب ومحادثة، حاسوب وجوّال) كي
-      // لا يختفي المؤشّر أثناء المحادثة كما يحدث في #omranBelowComposer (ترحيب فقط).
+      // لا يختفي الشريط أثناء المحادثة كما يحدث في #omranBelowComposer (ترحيب فقط).
       var host = document.getElementById('inputbar');
-      if(!host || document.getElementById('omModelWrap')) return;
+      if(!host || document.getElementById('omBottomBar')) return;
+      var bar = document.createElement('div');
+      bar.id = 'omBottomBar';
+      bar.style.cssText = 'align-self:flex-end; margin-top:-2px; display:' + (isOwner() ? 'flex' : 'none') + '; align-items:center; gap:2px; flex-wrap:wrap; justify-content:flex-end;';
+
+      // 👑 الوكيل — تبديل موكَّل لمفتاح النقاط القديم (لا منطق مال هنا)
+      var agentBtn = document.createElement('button');
+      agentBtn.id = 'omAgentChip'; agentBtn.type = 'button'; agentBtn.style.cssText = CHIP_CSS;
+      agentBtn.innerHTML = '<span aria-hidden="true">👑</span><span class="omAgentLbl"></span>';
+      agentBtn.addEventListener('click', function(e){ e.stopPropagation(); var tg = document.getElementById('btnPremiumToggle'); if(tg) tg.click(); syncBar(); });
+
+      // 🧑‍💻 Claude Code — وضعٌ يُختار كبقيّة الأوضاع (pick)
+      var ccBtn = document.createElement('button');
+      ccBtn.id = 'omCcChip'; ccBtn.type = 'button'; ccBtn.style.cssText = CHIP_CSS;
+      ccBtn.innerHTML = '<span aria-hidden="true">🧑‍💻</span><span>Claude Code</span>';
+      ccBtn.addEventListener('click', function(e){ e.stopPropagation(); pick(window.__omMode === 'cc' ? null : 'cc'); syncBar(); });
+
+      // ⌄ النموذج الشغّال + قائمة تبديله
       var wrap = document.createElement('div');
       wrap.id = 'omModelWrap';
-      wrap.style.cssText = 'position:relative; align-self:flex-end; margin-top:-2px; display:' + (isOwner() ? 'inline-flex' : 'none') + '; align-items:center;';
+      wrap.style.cssText = 'position:relative; display:inline-flex; align-items:center;';
       var chip = document.createElement('button');
       chip.id = 'omModelChip'; chip.type = 'button';
       chip.title = AR ? 'النموذج الشغّال — اضغط للتبديل' : 'Active model — tap to switch';
-      chip.style.cssText = 'display:inline-flex; align-items:center; gap:5px; background:none; border:none; color:var(--muted,#9a958a); font-size:12px; font-weight:600; cursor:pointer; padding:3px 8px; border-radius:8px; line-height:1;';
+      chip.style.cssText = CHIP_CSS;
       chip.innerHTML = '<span class="omModelName"></span><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>';
       var pop = document.createElement('div');
       pop.id = 'omModelPopup';
@@ -74,8 +80,12 @@
         return '<button type="button" class="omModelOpt" data-m="' + o[0] + '" style="display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; background:none; border:none; color:var(--text,#eee); font-size:13px; text-align:start; padding:8px 10px; border-radius:8px; cursor:pointer;"><span>' + o[1] + '</span><span class="omModelTick" aria-hidden="true" style="opacity:0;">✓</span></button>';
       }).join('');
       wrap.appendChild(pop); wrap.appendChild(chip);
-      host.appendChild(wrap);
-      function refresh(){
+
+      bar.appendChild(agentBtn); bar.appendChild(ccBtn); bar.appendChild(wrap);
+      host.appendChild(bar);
+
+      var ACCENT = 'var(--accent,#f0c040)', MUTED = 'var(--muted,#9a958a)';
+      function refreshModel(){
         var nm = wrap.querySelector('.omModelName'); if(nm) nm.textContent = modelName();
         var cur = curModel(); var os = pop.querySelectorAll('.omModelOpt');
         for(var i = 0; i < os.length; i++){
@@ -84,12 +94,23 @@
           os[i].style.background = sel ? 'var(--panel2,rgba(255,255,255,.07))' : 'none';
         }
       }
-      chip.addEventListener('click', function(e){ e.stopPropagation(); pop.style.display = (pop.style.display === 'none') ? 'block' : 'none'; refresh(); });
-      pop.addEventListener('click', function(e){ var b = e.target.closest('.omModelOpt'); if(!b) return; e.stopPropagation(); setModel(b.getAttribute('data-m')); refresh(); pop.style.display = 'none'; });
+      function syncBar(){
+        try{
+          var al = agentBtn.querySelector('.omAgentLbl');
+          var aon = window.__agentModeOn === true;
+          if(al) al.textContent = (AR ? 'الوكيل' : 'Agent') + (aon ? ' ✓' : '');
+          agentBtn.style.color = aon ? ACCENT : MUTED;
+          ccBtn.style.color = (window.__omMode === 'cc') ? ACCENT : MUTED;
+        }catch(e){ /* guard-ok: تحديث تجميليّ */ }
+        refreshModel();
+      }
+      chip.addEventListener('click', function(e){ e.stopPropagation(); pop.style.display = (pop.style.display === 'none') ? 'block' : 'none'; refreshModel(); });
+      pop.addEventListener('click', function(e){ var b = e.target.closest('.omModelOpt'); if(!b) return; e.stopPropagation(); setModel(b.getAttribute('data-m')); refreshModel(); pop.style.display = 'none'; });
       document.addEventListener('click', function(){ try{ pop.style.display = 'none'; }catch(e){ /* guard-ok */ } });
-      window.omModelChipSync = refresh;
-      refresh();
-    }catch(e){ /* guard-ok: مؤشّر النموذج تحسينيّ */ }
+      window.omModelChipSync = refreshModel;
+      window.omBottomSync = syncBar;
+      syncBar();
+    }catch(e){ /* guard-ok: الشريط السفليّ تحسينيّ */ }
   }
   var chipWrap, popup, ta;
   /* v-modes-i18n (شكوى المالك ٢٩ أغسطس): البنود كانت تُبنى مرة واحدة بلغة
@@ -113,22 +134,18 @@
     box.insertBefore(chipWrap, ta);
     var anchor = popup.firstChild;
     MODES.forEach(function(m){
+      if(m.bottom) return; // الوكيل وClaude Code في الشريط السفليّ لا في قائمة «+»
       var b = document.createElement('button');
       b.type = 'button'; b.className = 'btn omModeItem'; b.setAttribute('data-mode', m.id);
       b.title = lbl(m);
       if(MODE_KEYS[m.id]) b.setAttribute('data-i18n-title', MODE_KEYS[m.id]);
       b.innerHTML = '<span class="omModeIc">' + m.ic + '</span><span class="btnLabel"' + (MODE_KEYS[m.id] ? ' data-i18n="' + MODE_KEYS[m.id] + '"' : '') + '>' + lbl(m) + '</span>';
       if(m.owner){ b.setAttribute('data-owner', '1'); b.style.display = isOwner() ? '' : 'none'; }
-      if(m.agent){
-        syncAgentItem(b);
-        b.addEventListener('click', function(e){ e.stopPropagation(); var tg = document.getElementById('btnPremiumToggle'); if(tg) tg.click(); syncAgentItem(b); });
-      } else {
-        b.addEventListener('click', function(e){ e.stopPropagation(); pick(m.id); });
-      }
+      b.addEventListener('click', function(e){ e.stopPropagation(); pick(m.id); });
       popup.insertBefore(b, anchor);
     });
-    /* البند الخاصّ بالمالك يُعاد فحصه عند كلّ فتح للقائمة: الدخول قد يتمّ بعد التحميل. */
-    try{ if(window.MutationObserver) new MutationObserver(function(){ refreshOwnerItems(); syncAgentItems(); }).observe(popup, { attributes: true, attributeFilter: ['class'] }); }catch(e){ /* guard-ok */ }
+    /* الدخول قد يتمّ بعد التحميل — نعيد فحص المالك والشريط عند كلّ فتح للقائمة. */
+    try{ if(window.MutationObserver) new MutationObserver(function(){ refreshOwnerItems(); try{ if(window.omBottomSync) window.omBottomSync(); }catch(e){ /* guard-ok */ } }).observe(popup, { attributes: true, attributeFilter: ['class'] }); }catch(e){ /* guard-ok */ }
     var sep = document.createElement('div');
     sep.className = 'omModeSep';
     popup.insertBefore(sep, anchor);
@@ -142,9 +159,9 @@
       if(e.key === 'Escape' && window.__omMode){ pick(null); }
       if(e.key === 'Backspace' && !ta.value && window.__omMode){ pick(null); }
     });
-    buildModelChip();
+    buildBottomBar();
     /* الدخول قد يتمّ بعد بناء الصندوق — نعيد فحص المالك مرّاتٍ قصيرة وعند عودة التركيز
-       كي يظهر المؤشّر والبنود الخاصّة بلا انتظار فتح قائمة «+». */
+       كي يظهر الشريط والبنود الخاصّة بلا انتظار فتح قائمة «+». */
     [500, 1500, 3500, 7000].forEach(function(ms){ setTimeout(refreshOwnerItems, ms); });
     try{ window.addEventListener('focus', refreshOwnerItems); }catch(e){ /* guard-ok */ }
   }
@@ -170,6 +187,7 @@
       }
     }catch(e){ /* guard-ok: optional web-mode mirroring must not block mode selection. */ }
     try{ if(ta){ ta.focus(); } }catch(e){ /* guard-ok: focus restoration is best-effort. */ }
+    try{ if(window.omBottomSync) window.omBottomSync(); }catch(e){ /* guard-ok: تحديث تجميليّ للشريط */ }
   }
   window.__omSetMode = pick;
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build);
