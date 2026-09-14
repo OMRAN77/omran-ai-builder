@@ -14,6 +14,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends git ca-certific
   && rm -rf /var/lib/apt/lists/* \
   && useradd -m agent && mkdir -p /work/repo /work/state && chown -R agent:agent /work
 
+# Chromium + Playwright (same as the owner's web session) so Claude Code can run the repo's
+# scripts/*-probe.mjs and take screenshots. Browsers live outside the repo; the entrypoint adds
+# the matching playwright package to the repo (no-save) so `import 'playwright'` resolves.
+ARG PW_VERSION=1.56.1
+ENV PW_VERSION=${PW_VERSION} \
+    PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers
+RUN npm i -g --no-audit --no-fund playwright@${PW_VERSION} \
+  && npx --yes playwright@${PW_VERSION} install --with-deps chromium \
+  && rm -rf /var/lib/apt/lists/* \
+  && chmod -R a+rX /opt/pw-browsers
+
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund && chown -R agent:agent /app

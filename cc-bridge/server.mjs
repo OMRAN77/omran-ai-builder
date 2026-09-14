@@ -27,7 +27,7 @@ const SECRET = String(env.CC_BRIDGE_SECRET || '');
 const MODEL = String(env.CC_MODEL || 'claude-fable-5-1');
 const FALLBACK_MODEL = String(env.CC_FALLBACK_MODEL || (MODEL === 'claude-opus-5' ? '' : 'claude-opus-5'));
 const EFFORT = ['low', 'medium', 'high', 'xhigh', 'max'].includes(String(env.CC_EFFORT || '')) ? String(env.CC_EFFORT) : 'max';
-const MAX_TURNS = Math.max(5, Number(env.CC_MAX_TURNS) || 200);
+const MAX_TURNS = Math.max(5, Number(env.CC_MAX_TURNS) || 1000); // v-cc-raw-full: بلا سقف عمليّ كجلسة الويب
 const MAX_BUDGET = Number(env.CC_MAX_BUDGET_USD) || 0;
 const RUN_TTL_MS = 6 * 3600 * 1000;
 
@@ -78,9 +78,9 @@ async function runMessage(log, message, opts) {
     canUseTool: async (name, input) => decideTool(name, input),
     includePartialMessages: true,
     systemPrompt: { type: 'append', text: RULES_APPEND },
-    /* كجلسة المالك على الويب: CLAUDE.md وإعدادات المشروع تُقرأ من المستودع (بلا هذا
-       السطر لا تحمّل الحزمة إعدادات من القرص). */
-    settingSources: ['project'],
+    /* كجلسة المالك على الويب: CLAUDE.md وإعدادات المشروع من المستودع، وإعدادات المستخدم
+       وذاكرته من CLAUDE_CONFIG_DIR على القرص الدائم (بلا هذا السطر لا تحمّل الحزمة شيئًا من القرص). */
+    settingSources: ['user', 'project', 'local'],
     abortController: abort,
     env: childEnv(),
   };

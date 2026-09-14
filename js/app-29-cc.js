@@ -74,12 +74,19 @@
       .then(function(){ return gotDone; });
   }
 
+  /* v-cc-raw-full: المهمّة الطويلة تُتابَع حتّى نهايتها — كلّ ٣٠٠ ثانية يقطع Vercel البثّ فنلتحق
+     من النقطة نفسها بلا سقف؛ السقف على الأخطاء المتتالية فقط (٢٠ محاولة بتراجع تدريجيّ). */
   function attachLoop(onEvent, onRetry){
-    if(!S.runId || S.retries > 6) return Promise.resolve(false);
-    S.retries++;
+    if(!S.runId) return Promise.resolve(false);
     return stream({ op: 'attach', runId: S.runId, since: S.since }, onEvent)
-      .then(function(done){ if(done) return true; return attachLoop(onEvent, onRetry); })
-      .catch(function(e){ if(e && e.name === 'AbortError') throw e; if(onRetry) onRetry(S.retries); return new Promise(function(res){ setTimeout(res, 1500); }).then(function(){ return attachLoop(onEvent, onRetry); }); });
+      .then(function(done){ S.retries = 0; if(done) return true; return attachLoop(onEvent, onRetry); })
+      .catch(function(e){
+        if(e && e.name === 'AbortError') throw e;
+        S.retries++;
+        if(S.retries > 20) return false;
+        if(onRetry) onRetry(S.retries);
+        return new Promise(function(res){ setTimeout(res, Math.min(15000, 1500 * S.retries)); }).then(function(){ return attachLoop(onEvent, onRetry); });
+      });
   }
 
   function statusLine(j){

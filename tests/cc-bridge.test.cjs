@@ -67,12 +67,16 @@ const R = (p) => path.join(__dirname, '..', p);
   const srv = fs.readFileSync(R('cc-bridge/server.mjs'), 'utf8');
   assert.ok(srv.includes("await import('@anthropic-ai/claude-agent-sdk')") && srv.includes('query({ prompt: message, options })'), 'query() من الحزمة الرسميّة');
   assert.ok(!/api\.anthropic\.com\/v1\/messages/.test(srv), 'لا نداء مباشر لواجهة الرسائل — لا وكيل مركّب');
-  for (const k of ["permissionMode: 'acceptEdits'", 'canUseTool: async (name, input) => decideTool(name, input)', 'includePartialMessages: true', "systemPrompt: { type: 'append', text: RULES_APPEND }", 'options.resume = opts.sessionId', 'allowedTools: ALLOWED_TOOLS', 'disallowedTools: DENIED_TOOLS', "settingSources: ['project']"]) {
+  for (const k of ["permissionMode: 'acceptEdits'", 'canUseTool: async (name, input) => decideTool(name, input)', 'includePartialMessages: true', "systemPrompt: { type: 'append', text: RULES_APPEND }", 'options.resume = opts.sessionId', 'allowedTools: ALLOWED_TOOLS', 'disallowedTools: DENIED_TOOLS', "settingSources: ['user', 'project', 'local']"]) {
     assert.ok(srv.includes(k), 'خيار الحزمة: ' + k);
   }
   assert.ok(srv.includes('timingSafeEqual') && srv.includes("'/publish'") && srv.includes("'/merge'") && srv.includes("'/reset'"), 'السرّ والأوامر الثلاثة');
   assert.ok(srv.includes('delete e.CC_BRIDGE_SECRET') && srv.includes('e.GH_TOKEN = e.GITHUB_TOKEN') && srv.includes('env: childEnv()'), 'بيئة Claude Code بلا سرّ الجسر ومع مفتاح gh');
-  assert.ok(/CC_MAX_TURNS\) \|\| 200\)/.test(srv), 'سقف الجولات ٢٠٠ كجلسة طويلة');
+  assert.ok(/CC_MAX_TURNS\) \|\| 1000\)/.test(srv), 'سقف الجولات ١٠٠٠ — بلا سقف عمليّ كجلسة الويب');
+  // v-cc-raw-full: Chromium/Playwright في الحاوية، والمتابعة بلا سقف للمهمّة الطويلة
+  const docker2 = fs.readFileSync(R('cc-bridge/Dockerfile'), 'utf8');
+  assert.ok(/playwright@\$\{PW_VERSION\} install --with-deps chromium/.test(docker2) && docker2.includes('PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers'), 'Chromium وPlaywright في الصورة');
+  assert.ok(fs.readFileSync(R('cc-bridge/entrypoint.sh'), 'utf8').includes('npm i --no-save --no-audit --no-fund "playwright@${PW_VERSION}"'), 'حزمة playwright تُضاف للمستودع بلا حفظ بالإصدار نفسه');
   // v-cc-strength («مش قوي… ضعيف»): نموذج جلسة المالك نفسه، جهد أقصى، تفكير تكيّفيّ، احتياط، والنموذج الفعليّ في النتيجة
   assert.ok(srv.includes("env.CC_MODEL || 'claude-fable-5-1'") && srv.includes("effort: EFFORT") && srv.includes("thinking: { type: 'adaptive' }") && srv.includes('options.fallbackModel = FALLBACK_MODEL') && srv.includes('models: Object.keys(msg.modelUsage || {})'), 'قوّة الجسر: النموذج والجهد والتفكير والاحتياط والنموذج الفعليّ');
   assert.ok(/لا تختصر على حساب الجودة/.test(P.RULES_APPEND), 'قاعدة الاختصار لا تخصّ عمل الجسر');
@@ -120,6 +124,7 @@ const R = (p) => path.join(__dirname, '..', p);
   assert.ok(ui09.includes("renderStreamingAssistant(thinkingDiv, '🤖 ' + clean)") && !ui09.includes('clean.slice(-400)'), 'الوكيل يعرض النصّ كلّه منسّقًا أثناء البثّ');
   assert.ok(ui.includes("renderStreamingAssistant(thinkingDiv, '🧑‍💻 ' + full)") && !ui.includes('full.slice(-400)'), 'Claude Code يعرض النصّ كلّه منسّقًا أثناء البثّ');
   assert.ok(ui.includes("result.models.join(' + ')") && ui.includes("' · الجهد: ' + result.effort"), 'ذيل الردّ يذكر النموذج الذي عمل فعلًا والجهد');
+  assert.ok(!ui.includes('S.retries > 6') && ui.includes('S.retries > 20') && ui.includes('S.retries = 0; if(done) return true;'), 'المتابعة بلا سقف: الالتحاق يتكرّر بعد كلّ قطع نظيف، والسقف على الأخطاء المتتالية فقط');
   const modes = fs.readFileSync(R('js/modes.js'), 'utf8');
   assert.ok(/id:'cc',\s*ar:'Claude Code'.*owner:true/.test(modes) && modes.includes("b.setAttribute('data-owner', '1'); b.style.display = isOwner() ? '' : 'none';") && modes.includes("attributeFilter: ['class']"), 'بند Claude Code في قائمة @ للمالك وحده ويُعاد فحصه عند كلّ فتح');
   assert.ok(modes.includes("if(MODE_KEYS[m.id]) b.setAttribute('data-i18n-title'"), 'بند بلا مفتاح ترجمة لا يُوسم بمفتاح undefined');
