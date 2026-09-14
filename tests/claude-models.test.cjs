@@ -63,7 +63,9 @@ test('٤. الواجهة: مبدّل النموذج في قائمة «+» (لل�
   const p = read('js/partials-settings.js');
   assert.ok(!p.includes('<select id="claudeModel">'), 'منتقي الإعدادات حُذف');
   const modes = read('js/modes.js');
-  assert.ok(modes.includes('model:true'), 'مبدّل النموذج بند في قائمة +');
+  // v-model-chip: الاختيار مؤشّر أسفل الصندوق لا بند في «+».
+  assert.ok(modes.includes("wrap.id = 'omModelWrap'") && modes.includes("chip.id = 'omModelChip'"), 'مؤشّر النموذج أسفل الصندوق');
+  assert.ok(!modes.includes('model:true'), 'بند «النموذج» أُزيل من قائمة «+»');
   assert.ok(modes.includes("localStorage.setItem('aiapp_agent_model'"), 'المبدّل يضبط موديل الوكيل أيضًا');
   assert.ok(modes.includes("localStorage.setItem('aiapp_claude_model'"), 'والمحادثة');
   const a29 = read('js/app-29-claude-model.js');
