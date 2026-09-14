@@ -47,20 +47,22 @@
       // لا يختفي الشريط أثناء المحادثة كما يحدث في #omranBelowComposer (ترحيب فقط).
       var host = document.getElementById('inputbar');
       if(!host || document.getElementById('omBottomBar')) return;
+      // v-bottom-clean (أمر عمران «مع كلاود في مكان واحد… شيل صورة الكمبيوتر والولد، مااريد شي زياده»):
+      // مجموعة واحدة متلاصقة بلا إيموجي — نصّ فقط.
       var bar = document.createElement('div');
       bar.id = 'omBottomBar';
-      bar.style.cssText = 'align-self:flex-end; margin-top:-2px; display:' + (isOwner() ? 'flex' : 'none') + '; align-items:center; gap:2px; flex-wrap:wrap; justify-content:flex-end;';
+      bar.style.cssText = 'align-self:flex-end; margin-top:-2px; display:' + (isOwner() ? 'inline-flex' : 'none') + '; align-items:center; gap:0; justify-content:flex-end;';
 
-      // 👑 الوكيل — تبديل موكَّل لمفتاح النقاط القديم (لا منطق مال هنا)
+      // الوكيل — تبديل موكَّل لمفتاح النقاط القديم (لا منطق مال هنا)
       var agentBtn = document.createElement('button');
       agentBtn.id = 'omAgentChip'; agentBtn.type = 'button'; agentBtn.style.cssText = CHIP_CSS;
-      agentBtn.innerHTML = '<span aria-hidden="true">👑</span><span class="omAgentLbl"></span>';
+      agentBtn.innerHTML = '<span class="omAgentLbl"></span>';
       agentBtn.addEventListener('click', function(e){ e.stopPropagation(); var tg = document.getElementById('btnPremiumToggle'); if(tg) tg.click(); syncBar(); });
 
-      // 🧑‍💻 Claude Code — وضعٌ يُختار كبقيّة الأوضاع (pick)
+      // Claude Code — وضعٌ يُختار كبقيّة الأوضاع (pick)
       var ccBtn = document.createElement('button');
       ccBtn.id = 'omCcChip'; ccBtn.type = 'button'; ccBtn.style.cssText = CHIP_CSS;
-      ccBtn.innerHTML = '<span aria-hidden="true">🧑‍💻</span><span>Claude Code</span>';
+      ccBtn.innerHTML = '<span>Claude Code</span>';
       ccBtn.addEventListener('click', function(e){ e.stopPropagation(); pick(window.__omMode === 'cc' ? null : 'cc'); syncBar(); });
 
       // ⌄ النموذج الشغّال + قائمة تبديله
