@@ -880,6 +880,9 @@
   function tvBackLbl(){ return (tvDir() === 'rtl' ? '→ ' : '← ') + tvT('tvBack', 'رجوع', 'Back'); }
 
   var S = { country: 'ae', cat: 'all', q: '' };
+  /* v-tv-globalcat: أقسام قليلة داخل الدولة الواحدة وعابرة للدول — عند
+     اختيار تصنيفها يُعرَض من كل الدول بدل «لا توجد قنوات مطابقة». */
+  var TV_GLOBAL_CAT = { drama: 1, movies: 1, music: 1 };
 
   /* v-tv-verified: فاحص GitHub Actions اليومي يكتب tv-status.json —
    * قناة ok:false تُخفى (معرّف خاطئ/محذوف)، وok مع live تأخذ 🔴.
@@ -1141,6 +1144,7 @@
       list = TV_CH.filter(function(ch){
         if(!chVisible(ch)) return false;
         if(q) return (ch.n + ' ' + (ch.h || '')).toLowerCase().indexOf(q) !== -1; // البحث يتجاوز فلتر البلد
+        if(S.cat !== 'all' && TV_GLOBAL_CAT[S.cat]) return ch.g === S.cat; // دراما/أفلام/طرب من كل الدول
         if(ch.c !== S.country) return false;
         if(S.cat !== 'all' && ch.g !== S.cat) return false;
         return true;
@@ -1158,7 +1162,7 @@
        ونوع تشغيل HLS على جهازه، وهل حُمّلت روابط البثّ فعلًا. */
     var __links = (TV_M3U && TV_M3U.byHandle) ? Object.keys(TV_M3U.byHandle).length : 0;
     var __hls = TV_NATIVE_HLS ? 'HLS أصلي' : 'hls.js';
-    if(meta) meta.textContent = '⚙︎ TV-10 · ' + __hls + ' · روابط:' + __links
+    if(meta) meta.textContent = '⚙︎ TV-11 · ' + __hls + ' · روابط:' + __links
       + (liveNow ? ' · ' + liveNow + ' ' + tvT('tvLiveCount', 'قناة مباشرة', 'live') : '');
     if(!list.length){
       var empty = document.createElement('div');
