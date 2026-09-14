@@ -2891,6 +2891,12 @@ function __friendlyErr(e){
     // v-social-alive: الردود المخزنة الحرفية حُذفت نهائيًا بطلب
     // المالك — «انا اكلم الذكاء الاصطناعي مش قوالب». كل تحية تمر للنموذج
     // ببصمة الشخصية، والخادم يعزلها عن الذاكرة والمواضيع القديمة بنفسه.
+    // v-cc-chat: وضع «Claude Code» من قائمة @ (المالك وحده) — الرسالة إلى Claude Code
+    // على خادمه عبر المرحّل، والردّ رسالة عاديّة هنا؛ الكلمات الآمرة (انشر/ادمج…) من الصندوق نفسه.
+    if(window.__omMode === 'cc' && window.omranCC && !imageAttachments.length){
+      await window.omranCC.runInChat(cur, apiText, thinkingDiv, chatStatus);
+      return;
+    }
     // 🤖 وكيل عمران: وضع الوكيل المستقل (Claude Sonnet 4 + أدوات) — يخطط ويبحث ويبني.
     if(window.__agentModeOn && !imageAttachments.length){
       await runOmranAgent(cur, apiText, thinkingDiv);
@@ -5530,7 +5536,7 @@ DESIGN RULES (non-negotiable):
     // 🧠 تحديث ذاكرة المستخدم بعد اكتمال الرد (بدون انتظار)
     try{
       const __lastA = cur.messages.filter(m => m.role === 'assistant').slice(-1)[0];
-      if(__lastA && __lastA.content && !String(__lastA.content).startsWith('⚠️') && !(isPureGreeting(text) || isCasualCheckIn(text))){
+      if(__lastA && __lastA.content && !__lastA._cc && !String(__lastA.content).startsWith('⚠️') && !(isPureGreeting(text) || isCasualCheckIn(text))){ // v-cc-chat: ردود Claude Code لا تدخل ذاكرة المستخدم
         memoryUpdate(text, String(__lastA.content));
         // 🗂️ v326: تحديث ملخص موضوع هذه المحادثة في الذاكرة السحابية
         try{ window.memoryTopicUpdate && window.memoryTopicUpdate(cur, text, String(__lastA.content)); }catch(e){ __swallow(e, "misc:app-09-attach#31"); }

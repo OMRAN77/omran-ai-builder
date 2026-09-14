@@ -103,14 +103,32 @@ const R = (p) => path.join(__dirname, '..', p);
   assert.strictEqual(r.code, 401, 'غير المالك يُرفض قبل أيّ اتّصال');
   const sys = fs.readFileSync(R('api/system.js'), 'utf8');
   assert.ok(sys.includes("case 'cc': return require('./_lib/cc.js');"), 'المسار مسجّل');
+  // v-cc-chat («الي أريده في المحادثة… مش تخليه قسم بروحه»): لا قسم في الإعدادات — وضع في قائمة @ والردّ رسالة في المحادثة
   const ui = fs.readFileSync(R('js/app-29-cc.js'), 'utf8');
-  assert.ok(ui.includes("=== 'omran'") && ui.includes("action=cc") && ui.includes("window.confirm('تدمج طلب السحب #'"), 'الشاشة للمالك، والدمج بتأكيد صريح');
+  assert.ok(ui.includes("=== 'omran'") && ui.includes("action=cc") && ui.includes("window.confirm('تدمج طلب السحب #'"), 'للمالك، والدمج بتأكيد صريح');
   assert.ok(!/CC_BRIDGE_SECRET|CC_BRIDGE_URL/.test(ui), 'لا سرّ ولا عنوان جسر في المتصفّح');
-  // v-cc-nav: الإعدادات قائمة من مستويين — القسم يُسجَّل في SETTINGS_NAV_IDS بعد «الوكيل» وتُعاد القائمة، وكلّ فتح للنافذة يعيد المحاولة
-  assert.ok(ui.includes("SETTINGS_NAV_IDS.splice(i < 0 ? SETTINGS_NAV_IDS.length : i + 1, 0, 'ccSection')") && ui.includes('renderSettingsNavList()') && ui.includes("attributeFilter: ['open']"), 'القسم مسجّل في قائمة الإعدادات الرئيسيّة ويُعاد إدراجه عند فتحها');
-  assert.ok(ui.includes("if(!owner()) return false;"), 'غير المالك لا يوقف المحاولات مبكّرًا (الدخول قد يأتي بعد التحميل)');
-  const ui05 = fs.readFileSync(R('js/app-05-ui.js'), 'utf8');
-  assert.ok(/const SETTINGS_NAV_IDS = \[/.test(ui05) && /function renderSettingsNavList\(\)/.test(ui05), 'الأسماء التي يعتمد عليها القسم موجودة في واجهة الإعدادات');
+  assert.ok(ui.includes('window.omranCC = { runInChat: runInChat') && !/ccSection|SETTINGS_NAV_IDS|getElementById\('agentSection'\)/.test(ui), 'لا قسم مستقلّ — واجهة برمجيّة للمحادثة فقط');
+  assert.ok(ui.includes("cur.messages.push({ role: 'assistant', content: '🧑‍💻 '") && ui.includes('_cc: true'), 'الردّ رسالة مساعد عاديّة موسومة');
+  const ui09 = fs.readFileSync(R('js/app-09-attach.js'), 'utf8');
+  assert.ok(ui09.includes("if(window.__omMode === 'cc' && window.omranCC && !imageAttachments.length){") && ui09.includes('await window.omranCC.runInChat(cur, apiText, thinkingDiv, chatStatus);'), 'مسار الإرسال يحوّل وضع cc إلى الجسر قبل الوكيل');
+  assert.ok(ui09.indexOf("window.__omMode === 'cc'") < ui09.indexOf('if(window.__agentModeOn && !imageAttachments.length){'), 'فحص cc قبل فحص الوكيل');
+  assert.ok(ui09.includes('!__lastA._cc &&'), 'ردود Claude Code لا تدخل ذاكرة المستخدم');
+  const modes = fs.readFileSync(R('js/modes.js'), 'utf8');
+  assert.ok(/id:'cc',\s*ar:'Claude Code'.*owner:true/.test(modes) && modes.includes("b.setAttribute('data-owner', '1'); b.style.display = isOwner() ? '' : 'none';") && modes.includes("attributeFilter: ['class']"), 'بند Claude Code في قائمة @ للمالك وحده ويُعاد فحصه عند كلّ فتح');
+  assert.ok(modes.includes("if(MODE_KEYS[m.id]) b.setAttribute('data-i18n-title'"), 'بند بلا مفتاح ترجمة لا يُوسم بمفتاح undefined');
+  const idx = fs.readFileSync(R('index.html'), 'utf8');
+  assert.ok(/modes\.js\?v=(?!b23329c6)[\w]+/.test(idx), 'وسم إصدار modes.js رُفع مع التعديل');
+  // الكلمات الآمرة من الصندوق (نصّ الملفّ يُنفَّذ في نطاق مصغّر لفحص parseCommand)
+  const vm = require('node:vm');
+  const ctx = { window: {}, localStorage: { getItem: () => null, setItem: () => {} }, fetch: () => Promise.reject(new Error('x')), document: {}, Object, JSON, String, Number, parseInt, RegExp, Promise, TextDecoder: class {}, setTimeout, console };
+  ctx.window.window = ctx.window;
+  vm.runInNewContext(ui, ctx);
+  const pc = (s) => JSON.stringify(ctx.window.omranCC.parseCommand(s)); // كائنات النطاق المصغّر لها Object آخر → مقارنة نصّيّة
+  const J = (cmd, arg) => JSON.stringify({ cmd, arg });
+  assert.strictEqual(pc('انشر'), J('publish', '')); assert.strictEqual(pc('انشر: إصلاح الهيدر'), J('publish', 'إصلاح الهيدر'));
+  assert.strictEqual(pc('ادمج 123'), J('merge', '123')); assert.strictEqual(pc('ادمج بالقوّة'), J('merge-force', ''));
+  assert.strictEqual(pc('تراجع!'), J('reset', '')); assert.strictEqual(pc('الحالة'), J('status', '')); assert.strictEqual(pc('أوقف'), J('stop', ''));
+  assert.strictEqual(pc('ادمج هذا الملف مع ذاك'), 'null', 'جملة عاديّة ليست أمرًا'); assert.strictEqual(pc('اقرأ CLAUDE.md'), 'null');
   assert.ok(fs.readFileSync(R('.env.example'), 'utf8').includes('CC_BRIDGE_SECRET'), 'المتغيّران موثّقان');
   console.log('✓ cc-bridge: Claude Code خام مع سياج، والنشر والدمج بأمر المالك وحده');
 })().catch((e) => { console.error(e); process.exit(1); });
