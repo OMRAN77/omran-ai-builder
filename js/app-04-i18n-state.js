@@ -1676,6 +1676,7 @@ function renderMessages(keepScroll){
     {
       // استخرج الروابط الخارجية من markdown المُعرَض واستبدلها بنص عادي
       const __inlineLinks = [];
+      const __anchorEls = [];
       if(m.role !== 'user' && !m._loading){
         textDiv.querySelectorAll('a[href^="http"]').forEach(a => {
           const url = a.href || '';
@@ -1683,11 +1684,7 @@ function renderMessages(keepScroll){
           if(url && title.length > 2 && !__inlineLinks.some(l => l.url === url)){
             __inlineLinks.push({ url, title });
           }
-          // حوّل الرابط إلى نص بلا href حتى لا يتفرّق
-          const span = document.createElement('span');
-          span.className = 'msgInlineRef';
-          span.textContent = a.textContent;
-          a.parentNode.replaceChild(span, a);
+          __anchorEls.push(a);
         });
       }
       // ادمج الروابط: المصادر أولاً ثم الروابط المضمّنة (بلا تكرار)
@@ -1695,8 +1692,21 @@ function renderMessages(keepScroll){
        const __srcBase = Array.isArray(m.sources) ? m.sources.filter(s => s && s.url && !__isMapUrl(s.url)) : [];
        const __srcExtra = __inlineLinks.filter(l => !__isMapUrl(l.url) && !__srcBase.some(s => s.url === l.url));
       const validSrcs = [...__srcBase, ...__srcExtra].slice(0, 15);
+      // v-src-dedupe (أمر عمران ب): رابط واحد ظاهر في الرد أصلًا = لا بطاقة مصادر
+      // مكرّرة؛ يبقى الرابط قابلًا للضغط داخل الرد. غير ذلك تُحوّل الروابط إلى نصّ
+      // (بلا href حتى لا تتفرّق) وتُجمع كلّها في البطاقة.
+      const __normU = (u) => String(u || '').replace(/^https?:\/\//, '').replace(/\/+$/, '').toLowerCase();
+      const __skipCard = validSrcs.length === 1 && __inlineLinks.length === 1 && __normU(__inlineLinks[0].url) === __normU(validSrcs[0].url);
+      if(!__skipCard){
+        __anchorEls.forEach(a => {
+          const span = document.createElement('span');
+          span.className = 'msgInlineRef';
+          span.textContent = a.textContent;
+          a.parentNode.replaceChild(span, a);
+        });
+      }
 
-      if(validSrcs.length){
+      if(validSrcs.length && !__skipCard){
         // زر «المصادر» المدمج — يجمع كل الروابط في مكان واحد
         const btn = document.createElement('button');
         btn.className = 'msgSrcBtn';
@@ -1738,10 +1748,14 @@ function renderMessages(keepScroll){
           const title = document.createElement('span');
           title.className = 'msgSrcItemTitle';
           title.textContent = (s.title && /^(إنستغرام|تيك توك|إكس|يوتيوب|فيسبوك|سناب شات) · /.test(s.title)) ? s.title : (s.title || host);
-          const domain = document.createElement('span');
-          domain.className = 'msgSrcItemDomain';
-          domain.textContent = host;
-          info.appendChild(title); info.appendChild(domain);
+          info.appendChild(title);
+          // v-src-dedupe (أمر عمران أ): لا تكرّر النطاق لو هو نفسه العنوان (رابط بلا عنوان).
+          if(title.textContent.trim().toLowerCase() !== host.toLowerCase()){
+            const domain = document.createElement('span');
+            domain.className = 'msgSrcItemDomain';
+            domain.textContent = host;
+            info.appendChild(domain);
+          }
           row.appendChild(fav); row.appendChild(info);
           drop.appendChild(row);
         });
