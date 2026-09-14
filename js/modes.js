@@ -67,9 +67,12 @@
       // «الوكيل» يأخذ ترجمته الجاهزة (premiumToggleLabel) لكلّ الـ14 لغة، ويُوسم data-i18n
       // فيعيد مبدّل اللغة ترجمته حيًّا. Claude Code وOpus/Sonnet أسماء علم لا تُترجَم.
       function agentLabel(){ try{ if(typeof t === 'function'){ var v = t('premiumToggleLabel'); if(v && v !== 'premiumToggleLabel') return v; } }catch(e){ /* i18n لم يجهز — الاحتياط */ } return AR ? 'الوكيل' : 'Agent'; }
+      // v-one-pick (أمر عمران «بدون صح ولا أيّ إضافات — اللي مختاره يطلع تحت»): بلا علامة
+      // ✓ ولا تظليل؛ اختيار واحد فعّال يظهر اسمه تحت الصندوق. النموذج (Opus/Sonnet)
+      // يبقى مضبوطًا دائمًا ليعرف الخادم أيّ كلود، والوكيل/Claude Code يُطفئ أحدهما الآخر.
       function rowHTML(act, label, key){
         var attr = key ? ' data-i18n="' + key + '"' : '';
-        return '<button type="button" class="omModelOpt" data-act="' + act + '" style="display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; background:none; border:none; color:var(--text,#eee); font-size:13px; font-weight:600; text-align:start; padding:8px 10px; border-radius:8px; cursor:pointer;"><span' + attr + '>' + label + '</span><span class="omModelTick" aria-hidden="true" style="opacity:0;">✓</span></button>';
+        return '<button type="button" class="omModelOpt" data-act="' + act + '" style="display:block; width:100%; background:none; border:none; color:var(--text,#eee); font-size:13px; font-weight:600; text-align:start; padding:9px 12px; border-radius:8px; cursor:pointer;"><span' + attr + '>' + label + '</span></button>';
       }
       var divider = '<div style="height:1px; margin:4px 6px; background:var(--border,rgba(255,255,255,.12));"></div>';
       pop.innerHTML = rowHTML('agent', agentLabel(), 'premiumToggleLabel') + rowHTML('cc', 'Claude Code') + divider + rowHTML('opus', 'Opus 5') + rowHTML('sonnet', 'Sonnet 5');
@@ -77,25 +80,30 @@
       bar.appendChild(wrap);
       host.appendChild(bar);
 
+      // اسم اللي مختاره الآن تحت الصندوق: Claude Code ثمّ الوكيل ثمّ النموذج.
       function refresh(){
-        var nm = wrap.querySelector('.omModelName'); if(nm) nm.textContent = modelName();
-        var cur = curModel(); var rows = pop.querySelectorAll('.omModelOpt');
-        for(var i = 0; i < rows.length; i++){
-          var act = rows[i].getAttribute('data-act');
-          var on = (act === 'agent') ? (window.__agentModeOn === true)
-                 : (act === 'cc') ? (window.__omMode === 'cc')
-                 : (act === cur);
-          var tick = rows[i].querySelector('.omModelTick'); if(tick) tick.style.opacity = on ? '1' : '0';
-          rows[i].style.background = on ? 'var(--panel2,rgba(255,255,255,.07))' : 'none';
-        }
+        var nm = wrap.querySelector('.omModelName'); if(!nm) return;
+        nm.textContent = (window.__omMode === 'cc') ? 'Claude Code'
+                       : (window.__agentModeOn === true) ? agentLabel()
+                       : modelName();
       }
-      chip.addEventListener('click', function(e){ e.stopPropagation(); pop.style.display = (pop.style.display === 'none') ? 'block' : 'none'; refresh(); });
+      function setAgent(on){ if((window.__agentModeOn === true) !== on){ var tg = document.getElementById('btnPremiumToggle'); if(tg) tg.click(); } }
+      chip.addEventListener('click', function(e){ e.stopPropagation(); pop.style.display = (pop.style.display === 'none') ? 'block' : 'none'; });
       pop.addEventListener('click', function(e){
         var b = e.target.closest('.omModelOpt'); if(!b) return; e.stopPropagation();
         var act = b.getAttribute('data-act');
-        if(act === 'agent'){ var tg = document.getElementById('btnPremiumToggle'); if(tg) tg.click(); refresh(); /* يبقى مفتوحًا ليرى ✓ */ }
-        else if(act === 'cc'){ pick(window.__omMode === 'cc' ? null : 'cc'); refresh(); pop.style.display = 'none'; }
-        else { setModel(act); refresh(); pop.style.display = 'none'; }
+        if(act === 'agent'){
+          var willOn = !(window.__agentModeOn === true);
+          if(willOn && window.__omMode === 'cc') pick(null); // اختيار واحد: يُطفئ Claude Code
+          setAgent(willOn);
+        } else if(act === 'cc'){
+          if(window.__omMode === 'cc'){ pick(null); }
+          else { setAgent(false); pick('cc'); }
+        } else { // Opus / Sonnet
+          setAgent(false); if(window.__omMode === 'cc') pick(null);
+          setModel(act);
+        }
+        refresh(); pop.style.display = 'none';
       });
       document.addEventListener('click', function(){ try{ pop.style.display = 'none'; }catch(e){ /* guard-ok */ } });
       window.omModelChipSync = refresh;
