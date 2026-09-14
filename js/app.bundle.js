@@ -32468,7 +32468,7 @@ if(document.readyState === 'loading'){
        ونوع تشغيل HLS على جهازه، وهل حُمّلت روابط البثّ فعلًا. */
     var __links = (TV_M3U && TV_M3U.byHandle) ? Object.keys(TV_M3U.byHandle).length : 0;
     var __hls = TV_NATIVE_HLS ? 'HLS أصلي' : 'hls.js';
-    if(meta) meta.textContent = '⚙︎ TV-9 · ' + __hls + ' · روابط:' + __links
+    if(meta) meta.textContent = '⚙︎ TV-10 · ' + __hls + ' · روابط:' + __links
       + (liveNow ? ' · ' + liveNow + ' ' + tvT('tvLiveCount', 'قناة مباشرة', 'live') : '');
     if(!list.length){
       var empty = document.createElement('div');
@@ -32568,10 +32568,32 @@ if(document.readyState === 'loading'){
       loadHlsLib().then(function(){
         if(!window.Hls || !window.Hls.isSupported()){ fail(); return; }
         show();
-        curHls = new window.Hls({ enableWorker: false, maxBufferLength: 20, manifestLoadingTimeOut: 9000, levelLoadingTimeOut: 9000, fragLoadingTimeOut: 9000 });
+        /* v-tv-smooth (شكوى المالك «الشاشة تقطع»): البثّ يعمل لكنّه يتلقّم.
+           تخزين أمامي أكبر، بقاء خلف الحافة الحيّة للاستقرار، معالجة خارج
+           الخيط الرئيسي (أقل تجمّد على أجهزة أندرويد الضعيفة)، ومحاولات أكثر. */
+        curHls = new window.Hls({
+          enableWorker: true,
+          lowLatencyMode: false,
+          maxBufferLength: 30,
+          maxMaxBufferLength: 60,
+          backBufferLength: 30,
+          liveSyncDurationCount: 4,
+          liveMaxLatencyDurationCount: 15,
+          manifestLoadingTimeOut: 12000, manifestLoadingMaxRetry: 4,
+          levelLoadingTimeOut: 12000, levelLoadingMaxRetry: 4,
+          fragLoadingTimeOut: 20000, fragLoadingMaxRetry: 6
+        });
+        var __recover = 0;
         curHls.on(window.Hls.Events.ERROR, function(ev, data){
           try{ if(data) console.warn('[tv:hls]', data.type, data.details, !!data.fatal, url); }catch(e){ __swallow(e, 'tv:hls-log'); }
-          if(data && data.fatal) fail();
+          if(!data || !data.fatal) return;
+          /* لا نستسلم عند أوّل خطأ قاتل — نحاول الاستعادة قبل الانتقال للبديل:
+             شبكة → أعد التحميل، وسائط → أصلح المخزن؛ حتى ٤ مرّات. */
+          try{
+            if(data.type === window.Hls.ErrorTypes.NETWORK_ERROR && __recover < 4){ __recover++; curHls.startLoad(); return; }
+            if(data.type === window.Hls.ErrorTypes.MEDIA_ERROR && __recover < 4){ __recover++; curHls.recoverMediaError(); return; }
+          }catch(e){ __swallow(e, 'tv:hls-recover'); }
+          fail();
         });
         /* اربط MediaSource بالفيديو أولًا؛ تحميل المصدر قبله كان يجلب القطع
          * لكن يترك video.src فارغًا في Chrome/WebView. */
