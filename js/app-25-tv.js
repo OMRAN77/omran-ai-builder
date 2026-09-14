@@ -103,6 +103,9 @@
     news: ['أخبار', 'News', '📰'],
     sports: ['رياضة', 'Sports', '⚽'],
     general: ['عامة', 'General', '📺'],
+    drama: ['دراما', 'Drama', '🎭'],
+    movies: ['أفلام', 'Movies', '🎬'],
+    music: ['طرب', 'Music', '🎵'],
     religion: ['دينية', 'Religion', '🕌'],
     kids: ['أطفال', 'Kids', '🧸'],
     biz: ['اقتصاد', 'Business', '📊'],
@@ -119,7 +122,7 @@
     { n: 'قناة الشارقة', h: 'sharjahtv', c: 'ae', g: 'general' },
     { n: 'أبوظبي الرياضية', h: 'ADSportsTV', c: 'ae', g: 'sports' },
     { n: 'دبي الرياضية', h: 'DubaiSportsTV', c: 'ae', g: 'sports' },
-    { n: 'الشارقة الرياضية', h: 'Sharjahsportstv', c: 'ae', g: 'sports' },
+    { n: 'الشارقة الرياضية', c: 'ae', g: 'sports', h: 'sharjahSports' },
     { n: 'CNBC عربية', h: 'cnbcarabia', c: 'ae', g: 'biz' },
     { n: 'الشرق للأخبار', h: 'asharqnews', c: 'ae', g: 'news' },
     { n: 'الشرق بلومبرغ', h: 'AsharqBusiness', c: 'ae', g: 'biz' },
@@ -129,6 +132,32 @@
     { n: 'قناة القرآن الكريم — مكة', h: 'quraantv', c: 'sa', g: 'religion' },
     { n: 'قناة السنة النبوية — المدينة', h: 'sunnahtv', c: 'sa', g: 'religion' },
     { n: 'روتانا خليجية', h: 'RotanaKhalijia', c: 'sa', g: 'general' },
+    // ——— دراما ومنوّعات وأفلام (بثّ حرّ FTA — يُفحَص CORS/الحياة يوميًّا فيُخفى ما لا يعمل على أندرويد)
+    { n: 'MBC 1', c: 'sa', g: 'general', h: 'mbc1' },
+    { n: 'MBC 4', c: 'sa', g: 'general', h: 'mbc4' },
+    { n: 'MBC دراما', c: 'sa', g: 'drama', h: 'mbcDrama' },
+    { n: 'MBC+ دراما', c: 'sa', g: 'drama', h: 'mbcPlusDrama' },
+    { n: 'MBC بوليوود', c: 'sa', g: 'movies', h: 'mbcBollywood' },
+    { n: 'MBC مود', c: 'sa', g: 'music', h: 'mbcMood' },
+    { n: 'روتانا دراما', c: 'sa', g: 'drama', h: 'rotanaDrama' },
+    { n: 'روتانا سينما', c: 'sa', g: 'movies', h: 'rotanaCinema' },
+    { n: 'روتانا كلاسيك', c: 'sa', g: 'movies', h: 'rotanaClassic' },
+    { n: 'روتانا كوميدي', c: 'sa', g: 'drama', h: 'rotanaComedy' },
+    { n: 'روتانا موسيقى', c: 'sa', g: 'music', h: 'rotanaMusic' },
+    { n: 'روتانا كليب', c: 'sa', g: 'music', h: 'rotanaClip' },
+    { n: 'أفلام', c: 'sa', g: 'movies', h: 'aflam' },
+    { n: 'Movies Action', c: 'sa', g: 'movies', h: 'moviesAction' },
+    { n: 'Movies Thriller', c: 'sa', g: 'movies', h: 'moviesThriller' },
+    { n: 'LBC', c: 'sa', g: 'general', h: 'lbcSat' },
+    { n: 'MBC مصر', c: 'eg', g: 'general', h: 'mbcMasr' },
+    { n: 'MBC مصر 2', c: 'eg', g: 'general', h: 'mbcMasr2' },
+    { n: 'MBC مصر دراما', c: 'eg', g: 'drama', h: 'mbcMasrDrama' },
+    { n: 'CBC دراما', c: 'eg', g: 'drama', h: 'cbcDrama' },
+    { n: 'روتانا سينما مصر', c: 'eg', g: 'movies', h: 'rotanaCinemaMasr' },
+    { n: 'عجمان', c: 'ae', g: 'general', h: 'ajmanTV' },
+    { n: 'الشارقة 2', c: 'ae', g: 'general', h: 'sharjah2' },
+    { n: 'الفجيرة', c: 'ae', g: 'general', h: 'fujairahTV' },
+    { n: 'سبيستون', c: 'ae', g: 'kids', h: 'spacetoon' },
     // ——— قطر
     { n: 'الجزيرة', h: 'aljazeera', c: 'qa', g: 'news' },
     { n: 'الجزيرة مباشر', h: 'aljazeeramubasher', c: 'qa', g: 'news' },
@@ -927,7 +956,11 @@
   var RECENT_MS = 30 * 864e5;
   function statusFresh(){ return !!TV_CHECKED_AT && (Date.now() - TV_CHECKED_AT) < FRESH_MS; }
   /* v-direct-tv: أبقِ أسماء الدليل الحالية، لكن التشغيل لا يمر إلا عبر HLS/DASH. */
-  function chVisible(ch){ return !!ch; }
+  /* v-tv-inapp-only (طلب المالك: «القنوات تحوّلني على جوجل وقنوات اليوتيوب
+     مااريدها»): لا تُعرض إلّا قناة لها بثّ مباشر يشتغل داخل التطبيق. القنوات
+     التي تعتمد على يوتيوب أو تحويل خارجيّ (بلا m3u8) تُخفى — لا تحويل ولا يوتيوب.
+     يخفي هذا أيضًا زرَّ دولةٍ كلّ قنواتها بلا بثّ. */
+  function chVisible(ch){ return !!mOf(ch); }
 
   /* حل معرّف القناة الرقمي (UC...) — من ملف الفحص اليومي أولًا، ثم السيرفر */
 
@@ -989,6 +1022,14 @@
     sb.textContent = '🏆 ' + tvT('tvSportsWorld', 'رياضة العالم', 'World Sports');
     sb.onclick = function(){ S.country = '__sports'; S.cat = 'all'; renderChips(); renderGrid(); };
     cw.appendChild(sb);
+    /* v-tv-drama (طلب المالك: «دراما ولايف شو»): زرّ يجمع الدراما والأفلام
+     * والمنوّعات الشغّالة داخل التطبيق من كل الدول في شاشة واحدة. */
+    var drb = document.createElement('button');
+    drb.type = 'button';
+    drb.style.cssText = chipCss(S.country === '__drama');
+    drb.textContent = '🎭 ' + tvT('tvDramaWorld', 'دراما ومنوّعات', 'Drama & Shows');
+    drb.onclick = function(){ S.country = '__drama'; S.cat = 'all'; renderChips(); renderGrid(); };
+    cw.appendChild(drb);
     Object.keys(TV_COUNTRIES).forEach(function(code){
       /* v-tv-hls: دولة بلا أي قناة ظاهرة (كلها ميتة) لا يظهر زرها — كانت
        * تفتح شبكة فاضية (مصر ٠ من ١٣ في فحص اليوم). */
@@ -1058,7 +1099,7 @@
     var grid = el.querySelector('#tvGrid');
     grid.innerHTML = '';
     var q = S.q.toLowerCase();
-    if(!q && S.cat === 'all' && S.country !== '__sports') renderPlatforms(grid);
+    if(!q && S.cat === 'all' && S.country !== '__sports' && S.country !== '__drama') renderPlatforms(grid);
     var list;
     if(!q && S.country === '__sports'){
       /* v-tv-hls: شاشة «رياضة العالم» — قنواتنا الرياضية + كل قناة رياضية
@@ -1085,6 +1126,15 @@
         if(ia !== ib) return ia - ib;
         return a.n < b.n ? -1 : 1;
       });
+    } else if(!q && S.country === '__drama'){
+      /* v-tv-drama: كل قنوات الدراما والأفلام والمنوّعات الشغّالة داخل التطبيق
+       * من كل الدول في شاشة واحدة — الدراما أولًا ثم الأفلام ثم المنوّعات. */
+      var ORDER = { drama: 0, movies: 1, music: 2 };
+      list = TV_CH.filter(function(ch){ return ORDER[ch.g] !== undefined && mOf(ch); });
+      list.sort(function(a, b){
+        if(ORDER[a.g] !== ORDER[b.g]) return ORDER[a.g] - ORDER[b.g];
+        return a.n < b.n ? -1 : 1;
+      });
     } else {
       list = TV_CH.filter(function(ch){
         if(!chVisible(ch)) return false;
@@ -1102,9 +1152,12 @@
     }
     var liveNow = list.filter(function(x){ return !!mOf(x); }).length;
     var meta = el.querySelector('#tvMeta');
-    if(meta) meta.textContent = liveNow
-      ? (liveNow + ' ' + tvT('tvLiveCount', 'قناة بمصدر مباشر', 'channels with direct stream'))
-      : '';
+    /* v-tv-diag: سطر تشخيص ظاهر يكسر حلقة «ما تغيّر شي» — يقول للمالك النسخة،
+       ونوع تشغيل HLS على جهازه، وهل حُمّلت روابط البثّ فعلًا. */
+    var __links = (TV_M3U && TV_M3U.byHandle) ? Object.keys(TV_M3U.byHandle).length : 0;
+    var __hls = TV_NATIVE_HLS ? 'HLS أصلي' : 'hls.js';
+    if(meta) meta.textContent = '⚙︎ TV-8 · ' + __hls + ' · روابط:' + __links
+      + (liveNow ? ' · ' + liveNow + ' ' + tvT('tvLiveCount', 'قناة مباشرة', 'live') : '');
     if(!list.length){
       var empty = document.createElement('div');
       empty.style.cssText = 'grid-column:1/-1;color:var(--muted,#98a0b3);padding:24px 0;text-align:center;';

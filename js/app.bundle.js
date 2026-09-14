@@ -2047,29 +2047,48 @@ function buildSpokenWordSpans(container, text){
       if(__leadM){ __lead = __leadM[0]; display = display.slice(__lead.length); }
       const linkM = display.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)([.,،؛:!؟)»"'\]]*)$/);
       const urlM = !linkM && display.match(/^(https?:\/\/[^\s<>"']{4,}|www\.[^\s<>"']{4,})([.,،؛:!؟)»"'\]]*)$/);
-      if(linkM || urlM){
+      // v-bare-link (طلب المالك «أعطاني موقع أريده رابطًا لا اسمًا»):
+      // النطاق العاري بلا http (مثل github.com أو example.com/path) يصبح رابطًا.
+      // نستثني امتدادات الملفات (app.js، style.css…) كي لا تُحوَّل أسماء الملفات لروابط.
+      const __fileExt = /^(js|mjs|cjs|jsx|ts|tsx|css|scss|sass|less|html|htm|json|xml|yml|yaml|md|txt|py|rb|go|rs|java|c|h|cpp|cc|php|sql|csv|tsv|sh|bash|zsh|vue|svelte|toml|ini|conf|cfg|env|lock|log|bak|png|jpg|jpeg|gif|svg|webp|ico|pdf|doc|docx|xls|xlsx|ppt|pptx|zip|tar|gz|rar|7z|exe|dll|bin|dmg|apk|mp3|mp4|mov|avi|wav|woff|woff2|ttf|eot|map)$/i;
+      let bareM = null;
+      if(!linkM && !urlM){
+        bareM = display.match(/^((?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,24})((?:\/[^\s]*?)?)([.,،؛:!؟)»"'\]]*)$/i);
+        if(bareM){
+          const __segs = bareM[1].split('.');
+          const __tld = __segs[__segs.length - 1];
+          // امتداد ملف بلا مسار ⇐ ليس رابطًا (اسم ملف)
+          if(!bareM[2] && __fileExt.test(__tld)) bareM = null;
+        }
+      }
+      if(linkM || urlM || bareM){
         if(__lead) span.appendChild(document.createTextNode(__lead));
-        const rawUrl = linkM ? linkM[2] : urlM[1];
-        const href = rawUrl.indexOf('www.') === 0 ? 'https://' + rawUrl : rawUrl;
+        const rawUrl = linkM ? linkM[2] : (urlM ? urlM[1] : bareM[1] + bareM[2]);
+        const href = (rawUrl.indexOf('www.') === 0 || bareM) ? 'https://' + rawUrl : rawUrl;
         const a = document.createElement('a');
         a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
         // v-clean-links: الرابط العاري كان يُعرض بنصّه الكامل المرمّز
         // (%D8%A3…) فيملأ الشاشة — يُعرض باسم نطاقه فقط ويبقى الضغط
         // على الرابط الكامل. ونصّ ماركداون هو نفسه رابط يُعامل كذلك.
         let __disp = linkM ? linkM[1] : rawUrl;
-        if(/^(https?:\/\/|www\.)/i.test(__disp)){
+        if(bareM){ __disp = bareM[1].replace(/^www\./, ''); } // اسم النطاق فقط
+        else if(/^(https?:\/\/|www\.)/i.test(__disp)){
           try { __disp = new URL(__disp.indexOf('www.') === 0 ? 'https://' + __disp : __disp).hostname.replace(/^www\./, ''); }
           catch(e){ try { __disp = decodeURIComponent(__disp).slice(0, 50); } catch(e2){ __disp = __disp.slice(0, 50); } }
         }
         a.textContent = __disp;
         a.title = href;
         a.setAttribute('dir', 'auto'); // v476 bidi
-        a.style.cssText = 'color:var(--accent2); text-decoration:underline; word-break:break-all; unicode-bidi:isolate;';
+        a.style.cssText = 'color:var(--om-hl,#e3b341); text-decoration:underline; word-break:break-all; unicode-bidi:isolate;'; /* v-hl-yellow: الروابط صفراء (طلب المالك) */
         span.appendChild(a);
-        const trail = linkM ? linkM[3] : urlM[2];
+        const trail = linkM ? linkM[3] : (urlM ? urlM[2] : bareM[3]);
         if(trail) span.appendChild(document.createTextNode(trail));
       } else {
         span.textContent = __lead + display;
+        /* v-hl-yellow (طلب المالك «الإنجليزي والأكواد والمواقع صفراء زي الأرقام»):
+           الكلمات اللاتينية الخالصة (إنجليزي/رموز كود) تُلوَّن صفراء عبر الصنف om-en.
+           الكلمات المختلطة عربي/لاتيني تبقى كما هي كي لا يتبعثر لونها. */
+        if(/[A-Za-z]/.test(display) && !/[؀-ۿݐ-ݿ]/.test(display)) span.classList.add('om-en');
       }
       if(wasBold || markerCount) span.classList.add('md-bold');
       if(headerLevel) span.classList.add('md-h' + headerLevel);
@@ -31394,6 +31413,9 @@ if(document.readyState === 'loading'){
     news: ['أخبار', 'News', '📰'],
     sports: ['رياضة', 'Sports', '⚽'],
     general: ['عامة', 'General', '📺'],
+    drama: ['دراما', 'Drama', '🎭'],
+    movies: ['أفلام', 'Movies', '🎬'],
+    music: ['طرب', 'Music', '🎵'],
     religion: ['دينية', 'Religion', '🕌'],
     kids: ['أطفال', 'Kids', '🧸'],
     biz: ['اقتصاد', 'Business', '📊'],
@@ -31410,7 +31432,7 @@ if(document.readyState === 'loading'){
     { n: 'قناة الشارقة', h: 'sharjahtv', c: 'ae', g: 'general' },
     { n: 'أبوظبي الرياضية', h: 'ADSportsTV', c: 'ae', g: 'sports' },
     { n: 'دبي الرياضية', h: 'DubaiSportsTV', c: 'ae', g: 'sports' },
-    { n: 'الشارقة الرياضية', h: 'Sharjahsportstv', c: 'ae', g: 'sports' },
+    { n: 'الشارقة الرياضية', c: 'ae', g: 'sports', h: 'sharjahSports' },
     { n: 'CNBC عربية', h: 'cnbcarabia', c: 'ae', g: 'biz' },
     { n: 'الشرق للأخبار', h: 'asharqnews', c: 'ae', g: 'news' },
     { n: 'الشرق بلومبرغ', h: 'AsharqBusiness', c: 'ae', g: 'biz' },
@@ -31420,6 +31442,32 @@ if(document.readyState === 'loading'){
     { n: 'قناة القرآن الكريم — مكة', h: 'quraantv', c: 'sa', g: 'religion' },
     { n: 'قناة السنة النبوية — المدينة', h: 'sunnahtv', c: 'sa', g: 'religion' },
     { n: 'روتانا خليجية', h: 'RotanaKhalijia', c: 'sa', g: 'general' },
+    // ——— دراما ومنوّعات وأفلام (بثّ حرّ FTA — يُفحَص CORS/الحياة يوميًّا فيُخفى ما لا يعمل على أندرويد)
+    { n: 'MBC 1', c: 'sa', g: 'general', h: 'mbc1' },
+    { n: 'MBC 4', c: 'sa', g: 'general', h: 'mbc4' },
+    { n: 'MBC دراما', c: 'sa', g: 'drama', h: 'mbcDrama' },
+    { n: 'MBC+ دراما', c: 'sa', g: 'drama', h: 'mbcPlusDrama' },
+    { n: 'MBC بوليوود', c: 'sa', g: 'movies', h: 'mbcBollywood' },
+    { n: 'MBC مود', c: 'sa', g: 'music', h: 'mbcMood' },
+    { n: 'روتانا دراما', c: 'sa', g: 'drama', h: 'rotanaDrama' },
+    { n: 'روتانا سينما', c: 'sa', g: 'movies', h: 'rotanaCinema' },
+    { n: 'روتانا كلاسيك', c: 'sa', g: 'movies', h: 'rotanaClassic' },
+    { n: 'روتانا كوميدي', c: 'sa', g: 'drama', h: 'rotanaComedy' },
+    { n: 'روتانا موسيقى', c: 'sa', g: 'music', h: 'rotanaMusic' },
+    { n: 'روتانا كليب', c: 'sa', g: 'music', h: 'rotanaClip' },
+    { n: 'أفلام', c: 'sa', g: 'movies', h: 'aflam' },
+    { n: 'Movies Action', c: 'sa', g: 'movies', h: 'moviesAction' },
+    { n: 'Movies Thriller', c: 'sa', g: 'movies', h: 'moviesThriller' },
+    { n: 'LBC', c: 'sa', g: 'general', h: 'lbcSat' },
+    { n: 'MBC مصر', c: 'eg', g: 'general', h: 'mbcMasr' },
+    { n: 'MBC مصر 2', c: 'eg', g: 'general', h: 'mbcMasr2' },
+    { n: 'MBC مصر دراما', c: 'eg', g: 'drama', h: 'mbcMasrDrama' },
+    { n: 'CBC دراما', c: 'eg', g: 'drama', h: 'cbcDrama' },
+    { n: 'روتانا سينما مصر', c: 'eg', g: 'movies', h: 'rotanaCinemaMasr' },
+    { n: 'عجمان', c: 'ae', g: 'general', h: 'ajmanTV' },
+    { n: 'الشارقة 2', c: 'ae', g: 'general', h: 'sharjah2' },
+    { n: 'الفجيرة', c: 'ae', g: 'general', h: 'fujairahTV' },
+    { n: 'سبيستون', c: 'ae', g: 'kids', h: 'spacetoon' },
     // ——— قطر
     { n: 'الجزيرة', h: 'aljazeera', c: 'qa', g: 'news' },
     { n: 'الجزيرة مباشر', h: 'aljazeeramubasher', c: 'qa', g: 'news' },
@@ -32218,7 +32266,11 @@ if(document.readyState === 'loading'){
   var RECENT_MS = 30 * 864e5;
   function statusFresh(){ return !!TV_CHECKED_AT && (Date.now() - TV_CHECKED_AT) < FRESH_MS; }
   /* v-direct-tv: أبقِ أسماء الدليل الحالية، لكن التشغيل لا يمر إلا عبر HLS/DASH. */
-  function chVisible(ch){ return !!ch; }
+  /* v-tv-inapp-only (طلب المالك: «القنوات تحوّلني على جوجل وقنوات اليوتيوب
+     مااريدها»): لا تُعرض إلّا قناة لها بثّ مباشر يشتغل داخل التطبيق. القنوات
+     التي تعتمد على يوتيوب أو تحويل خارجيّ (بلا m3u8) تُخفى — لا تحويل ولا يوتيوب.
+     يخفي هذا أيضًا زرَّ دولةٍ كلّ قنواتها بلا بثّ. */
+  function chVisible(ch){ return !!mOf(ch); }
 
   /* حل معرّف القناة الرقمي (UC...) — من ملف الفحص اليومي أولًا، ثم السيرفر */
 
@@ -32280,6 +32332,14 @@ if(document.readyState === 'loading'){
     sb.textContent = '🏆 ' + tvT('tvSportsWorld', 'رياضة العالم', 'World Sports');
     sb.onclick = function(){ S.country = '__sports'; S.cat = 'all'; renderChips(); renderGrid(); };
     cw.appendChild(sb);
+    /* v-tv-drama (طلب المالك: «دراما ولايف شو»): زرّ يجمع الدراما والأفلام
+     * والمنوّعات الشغّالة داخل التطبيق من كل الدول في شاشة واحدة. */
+    var drb = document.createElement('button');
+    drb.type = 'button';
+    drb.style.cssText = chipCss(S.country === '__drama');
+    drb.textContent = '🎭 ' + tvT('tvDramaWorld', 'دراما ومنوّعات', 'Drama & Shows');
+    drb.onclick = function(){ S.country = '__drama'; S.cat = 'all'; renderChips(); renderGrid(); };
+    cw.appendChild(drb);
     Object.keys(TV_COUNTRIES).forEach(function(code){
       /* v-tv-hls: دولة بلا أي قناة ظاهرة (كلها ميتة) لا يظهر زرها — كانت
        * تفتح شبكة فاضية (مصر ٠ من ١٣ في فحص اليوم). */
@@ -32349,7 +32409,7 @@ if(document.readyState === 'loading'){
     var grid = el.querySelector('#tvGrid');
     grid.innerHTML = '';
     var q = S.q.toLowerCase();
-    if(!q && S.cat === 'all' && S.country !== '__sports') renderPlatforms(grid);
+    if(!q && S.cat === 'all' && S.country !== '__sports' && S.country !== '__drama') renderPlatforms(grid);
     var list;
     if(!q && S.country === '__sports'){
       /* v-tv-hls: شاشة «رياضة العالم» — قنواتنا الرياضية + كل قناة رياضية
@@ -32376,6 +32436,15 @@ if(document.readyState === 'loading'){
         if(ia !== ib) return ia - ib;
         return a.n < b.n ? -1 : 1;
       });
+    } else if(!q && S.country === '__drama'){
+      /* v-tv-drama: كل قنوات الدراما والأفلام والمنوّعات الشغّالة داخل التطبيق
+       * من كل الدول في شاشة واحدة — الدراما أولًا ثم الأفلام ثم المنوّعات. */
+      var ORDER = { drama: 0, movies: 1, music: 2 };
+      list = TV_CH.filter(function(ch){ return ORDER[ch.g] !== undefined && mOf(ch); });
+      list.sort(function(a, b){
+        if(ORDER[a.g] !== ORDER[b.g]) return ORDER[a.g] - ORDER[b.g];
+        return a.n < b.n ? -1 : 1;
+      });
     } else {
       list = TV_CH.filter(function(ch){
         if(!chVisible(ch)) return false;
@@ -32393,9 +32462,12 @@ if(document.readyState === 'loading'){
     }
     var liveNow = list.filter(function(x){ return !!mOf(x); }).length;
     var meta = el.querySelector('#tvMeta');
-    if(meta) meta.textContent = liveNow
-      ? (liveNow + ' ' + tvT('tvLiveCount', 'قناة بمصدر مباشر', 'channels with direct stream'))
-      : '';
+    /* v-tv-diag: سطر تشخيص ظاهر يكسر حلقة «ما تغيّر شي» — يقول للمالك النسخة،
+       ونوع تشغيل HLS على جهازه، وهل حُمّلت روابط البثّ فعلًا. */
+    var __links = (TV_M3U && TV_M3U.byHandle) ? Object.keys(TV_M3U.byHandle).length : 0;
+    var __hls = TV_NATIVE_HLS ? 'HLS أصلي' : 'hls.js';
+    if(meta) meta.textContent = '⚙︎ TV-8 · ' + __hls + ' · روابط:' + __links
+      + (liveNow ? ' · ' + liveNow + ' ' + tvT('tvLiveCount', 'قناة مباشرة', 'live') : '');
     if(!list.length){
       var empty = document.createElement('div');
       empty.style.cssText = 'grid-column:1/-1;color:var(--muted,#98a0b3);padding:24px 0;text-align:center;';

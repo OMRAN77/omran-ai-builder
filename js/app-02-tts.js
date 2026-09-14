@@ -243,29 +243,48 @@ function buildSpokenWordSpans(container, text){
       if(__leadM){ __lead = __leadM[0]; display = display.slice(__lead.length); }
       const linkM = display.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)([.,،؛:!؟)»"'\]]*)$/);
       const urlM = !linkM && display.match(/^(https?:\/\/[^\s<>"']{4,}|www\.[^\s<>"']{4,})([.,،؛:!؟)»"'\]]*)$/);
-      if(linkM || urlM){
+      // v-bare-link (طلب المالك «أعطاني موقع أريده رابطًا لا اسمًا»):
+      // النطاق العاري بلا http (مثل github.com أو example.com/path) يصبح رابطًا.
+      // نستثني امتدادات الملفات (app.js، style.css…) كي لا تُحوَّل أسماء الملفات لروابط.
+      const __fileExt = /^(js|mjs|cjs|jsx|ts|tsx|css|scss|sass|less|html|htm|json|xml|yml|yaml|md|txt|py|rb|go|rs|java|c|h|cpp|cc|php|sql|csv|tsv|sh|bash|zsh|vue|svelte|toml|ini|conf|cfg|env|lock|log|bak|png|jpg|jpeg|gif|svg|webp|ico|pdf|doc|docx|xls|xlsx|ppt|pptx|zip|tar|gz|rar|7z|exe|dll|bin|dmg|apk|mp3|mp4|mov|avi|wav|woff|woff2|ttf|eot|map)$/i;
+      let bareM = null;
+      if(!linkM && !urlM){
+        bareM = display.match(/^((?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,24})((?:\/[^\s]*?)?)([.,،؛:!؟)»"'\]]*)$/i);
+        if(bareM){
+          const __segs = bareM[1].split('.');
+          const __tld = __segs[__segs.length - 1];
+          // امتداد ملف بلا مسار ⇐ ليس رابطًا (اسم ملف)
+          if(!bareM[2] && __fileExt.test(__tld)) bareM = null;
+        }
+      }
+      if(linkM || urlM || bareM){
         if(__lead) span.appendChild(document.createTextNode(__lead));
-        const rawUrl = linkM ? linkM[2] : urlM[1];
-        const href = rawUrl.indexOf('www.') === 0 ? 'https://' + rawUrl : rawUrl;
+        const rawUrl = linkM ? linkM[2] : (urlM ? urlM[1] : bareM[1] + bareM[2]);
+        const href = (rawUrl.indexOf('www.') === 0 || bareM) ? 'https://' + rawUrl : rawUrl;
         const a = document.createElement('a');
         a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
         // v-clean-links: الرابط العاري كان يُعرض بنصّه الكامل المرمّز
         // (%D8%A3…) فيملأ الشاشة — يُعرض باسم نطاقه فقط ويبقى الضغط
         // على الرابط الكامل. ونصّ ماركداون هو نفسه رابط يُعامل كذلك.
         let __disp = linkM ? linkM[1] : rawUrl;
-        if(/^(https?:\/\/|www\.)/i.test(__disp)){
+        if(bareM){ __disp = bareM[1].replace(/^www\./, ''); } // اسم النطاق فقط
+        else if(/^(https?:\/\/|www\.)/i.test(__disp)){
           try { __disp = new URL(__disp.indexOf('www.') === 0 ? 'https://' + __disp : __disp).hostname.replace(/^www\./, ''); }
           catch(e){ try { __disp = decodeURIComponent(__disp).slice(0, 50); } catch(e2){ __disp = __disp.slice(0, 50); } }
         }
         a.textContent = __disp;
         a.title = href;
         a.setAttribute('dir', 'auto'); // v476 bidi
-        a.style.cssText = 'color:var(--accent2); text-decoration:underline; word-break:break-all; unicode-bidi:isolate;';
+        a.style.cssText = 'color:var(--om-hl,#e3b341); text-decoration:underline; word-break:break-all; unicode-bidi:isolate;'; /* v-hl-yellow: الروابط صفراء (طلب المالك) */
         span.appendChild(a);
-        const trail = linkM ? linkM[3] : urlM[2];
+        const trail = linkM ? linkM[3] : (urlM ? urlM[2] : bareM[3]);
         if(trail) span.appendChild(document.createTextNode(trail));
       } else {
         span.textContent = __lead + display;
+        /* v-hl-yellow (طلب المالك «الإنجليزي والأكواد والمواقع صفراء زي الأرقام»):
+           الكلمات اللاتينية الخالصة (إنجليزي/رموز كود) تُلوَّن صفراء عبر الصنف om-en.
+           الكلمات المختلطة عربي/لاتيني تبقى كما هي كي لا يتبعثر لونها. */
+        if(/[A-Za-z]/.test(display) && !/[؀-ۿݐ-ݿ]/.test(display)) span.classList.add('om-en');
       }
       if(wasBold || markerCount) span.classList.add('md-bold');
       if(headerLevel) span.classList.add('md-h' + headerLevel);
