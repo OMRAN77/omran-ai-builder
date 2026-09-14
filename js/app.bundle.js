@@ -6647,6 +6647,57 @@ function renderMessages(keepScroll){
   try{ if(typeof syncChatJumpButton === 'function') syncChatJumpButton(); }catch(e){ __swallow(e, "ui:chatJump"); }
   // v462: أنيميشن رسالة المستخدم — CSS class msg-anim يضاف أثناء بناء العنصر (سطر 973)
 }
+/* v-topic-segments (شكوى المالك ١٤ سبتمبر «المواضيع كلّها تتداخل مع بعضها… إذا أبي أغيّر الموضوع
+   لازم محادثة جديدة»): قاعدة «اترك الموضوع القديم» كانت نصًّا في التعليمات فقط، بينما يرى النموذج
+   آخر ٢٤ دورًا من الموضوع القديم ومرساةً تعيده إلى «الموضوع الأصليّ». هنا الكشف حتميّ في العميل:
+   رسالة مستقلّة (كلمتا محتوى فأكثر) بلا إشارة متابعة وبلا تقاطع كلمات مع الدور السابق = موضوع
+   جديد، فتُرسل بلا تاريخ الموضوع القديم وتبدأ شريحةً جديدة (cur.topicAnchor) تحمل ما بعدها فقط.
+   «موضوع جديد: …» يفرض التبديل، و«ارجع للموضوع الأوّل/السابق» يرفع الشريحة فيعود التاريخ كلّه.
+   دالّة صافية بلا DOM لتُختبر مباشرة (tests/topic-switch.test.cjs). */
+(function(){
+  'use strict';
+  var STOP = {};
+  ('في من على عن إلى الى مع هذا هذه هذي ذاك ذلك تلك انا أنا انت أنت هو هي هم نحن كان كانت يكون تكون ما لا لم لن ليس ليست كل بعض اي أي أين متى كيف لماذا ليش هل او أو ثم بس فقط جدا جدًا جداً كثير قليل شي شيء شوي لو اذا إذا ان أن إن حتى حتّى عند عندي عندك لي لك له لها لنا لهم بعد قبل الآن الان اليوم امس أمس غدا غدًا ابي أبي ابغى أبغى اريد أريد ممكن سمحت ياليت رجاء فضلك اكتب أكتب اكتبلي سوي سوّي اعمل أعمل قل قلي عطني أعطني هات ايش وش شو ليه كذا هنا هناك يا نعم لا طيب تمام اوكي أوكي '
+   + 'the a an and or of to in on for with is are was were be been it this that these those i you he she we they my your our their me us them will would can could should do does did not no yes please make write give tell about how what why when where which').split(/\s+/).forEach(function(w){ if(w) STOP[w] = 1; });
+  function norm(w){
+    return String(w || '').toLowerCase().replace(/[\u064B-\u065F\u0670]/g, '').replace(/^(?:و|ف|ب|ل|ك)?ال/, '').replace(/[إأآ]/g, 'ا').replace(/ة$/, 'ه').replace(/ى$/, 'ي');
+  }
+  /** كلمات المحتوى بعد التطبيع وحذف كلمات الوقف (٣ أحرف فأكثر بعد التطبيع). */
+  function words(s){
+    var out = [];
+    String(s || '').replace(/[\u0600-\u06FF\w]{2,}/g, function(w){
+      var lw = w.toLowerCase(); if(STOP[lw]) return '';
+      var n = norm(w); if(n.length >= 3 && !STOP[n]) out.push(n);
+      return '';
+    });
+    return out;
+  }
+  /* إشارات المتابعة: ضمائر إشارة، أفعال تعديل على شيء سابق، «كمل/زد/وضّح»، ورأي في ما سبق. */
+  var REF = /(هذا|هذه|هذي|هذول|هاذي|ذاك|ذلك|تلك|نفس|السابق|اللي فوق|الي فوق|اللي قبل|الي قبل|أعلاه|اعلاه|كمل|كمّل|أكمل|اكمل|استمر|تابع|زد|زيد|عدل|عدّل|غير|غيّر|بدل|بدّل|صلح|صلّح|حسن|حسّن|شيل|احذف|اضف|أضف|ضيف|اعد|أعد|كرر|ترجم|لخص|لخّص|اختصر|وسع|وسّع|طول|طوّل|وضح|وضّح|اشرح|رأيك|رايك|ايضا|أيضا|أيضًا|برضو|بعدين|بعدها|والثاني|وثاني|الثاني|فوق|\bit\b|\bthis\b|\bthat\b|\bthese\b|\bthose\b|\bsame\b|\babove\b|\bagain\b|\bcontinue\b|\bmore\b|\balso\b|\bprevious\b)/i;
+  var NEW = /^\s*(?:موضوع\s+(?:جديد|ثاني|آخر|اخر)|سؤال\s+(?:ثاني|آخر|اخر|جديد)|new topic|change of topic)/i;
+  var BACK = /(ارجع|نرجع|رجعنا|خلنا نرجع|بالنسبة ل|بخصوص|الموضوع (?:الأول|الاول|السابق|القديم)|اللي (?:قبل|كنا)|الي (?:قبل|كنا)|السؤال (?:الأول|الاول|السابق)|go back|back to)/i;
+
+  /**
+   * القرار: {kind:'new'|'follow'|'back', reason}.
+   * new = موضوع مستقلّ (يُرسل بلا الموضوع القديم)، follow = متابعة (التاريخ كما هو)، back = رجوع صريح لما قبل.
+   */
+  function decide(text, prevUser, prevAssistant){
+    var t = String(text || '').trim();
+    if(!t) return { kind: 'follow', reason: 'empty' };
+    if(BACK.test(t)) return { kind: 'back', reason: 'back-marker' };
+    if(NEW.test(t)) return { kind: 'new', reason: 'explicit' };
+    if(!String(prevUser || '').trim()) return { kind: 'follow', reason: 'first' };
+    if(REF.test(t)) return { kind: 'follow', reason: 'reference' };
+    var nw = words(t);
+    if(nw.length < 2) return { kind: 'follow', reason: 'short' };
+    var prev = {}; words(prevUser).concat(words(prevAssistant)).forEach(function(w){ prev[w] = 1; });
+    var hit = 0; nw.forEach(function(w){ if(prev[w]) hit++; });
+    var ratio = hit / nw.length;
+    return { kind: ratio <= 0.2 ? 'new' : 'follow', reason: 'overlap ' + ratio.toFixed(2) };
+  }
+  window.omranTopicSwitch = decide;
+  window.omranTopicWords = words;
+})();
 /* v-img-save-universal (شكوى المالك ٥ سبتمبر: «تحميل الصور ومشاركة واتساب ما تشتغل» في أنماط الصور،
    و«لا تحط أزرار ما تشتغل»): أغلفة المتجر لا تنفّذ <a download> على data:/blob: ولا navigator.share.
    مسار موحّد لكل صور الاستوديوهات:
@@ -20342,6 +20393,31 @@ DESIGN RULES (non-negotiable):
       //    «موقع/تطبيق» في رسالة قديمة كان يمسحها من الذاكرة فينسى النموذج المحادثة.
       __historyMsgs = __historyMsgs.filter((m, __i) => { if(__i >= __keepFrom || m.role !== 'user') return true; const __t = (m.apiText !== undefined ? m.apiText : (m.content || '')); return !(__historyBuildRe.test(__t) && __buildCmdRe.test(__t)); });
     }
+    /* v-topic-segments (شكوى المالك «المواضيع كلّها تتداخل»): تبديل الموضوع حتميّ لا نصّيّ —
+       رسالة مستقلّة بلا تقاطع مع الدور السابق تبدأ شريحة جديدة (cur.topicAnchor) فلا يُرسل
+       من التاريخ إلّا ما بعدها؛ «ارجع للموضوع الأوّل» يرفع الشريحة. لا يمسّ التعديل على
+       كود المشروع ولا موافقة البناء ولا تعديل رسالة سابقة ولا الدور الاجتماعيّ. */
+    try{
+      if(typeof window.omranTopicSwitch === 'function' && !__quietSocialTurn && !__routeFix && !__editIntent && !window.__buildOfferApproved && !__editedOriginal && __historyMsgs.length > 1){
+        const __prevs = __historyMsgs.slice(0, -1);
+        const __pu = __prevs.filter(m => m.role === 'user').slice(-1)[0];
+        const __pa = __prevs.filter(m => m.role !== 'user').slice(-1)[0];
+        const __d = window.omranTopicSwitch(text, __pu ? String(__pu.apiText !== undefined ? __pu.apiText : (__pu.content || '')) : '', __pa ? String(__pa.content || '') : '');
+        const __curMsg = __historyMsgs[__historyMsgs.length - 1];
+        if(__d.kind === 'back'){ cur.topicAnchor = 0; }
+        else if(__d.kind === 'new'){
+          cur.topicAnchor = cur.messages.indexOf(__curMsg);
+          try{ if(typeof chatStatus !== 'undefined' && chatStatus){ const __s = chatStatus.step('🧭', lang === 'ar' ? 'موضوع جديد — بلا سياق الموضوع السابق' : 'New topic — previous context set aside'); __s.done(); } }catch(e){ __swallow(e, 'topic:status'); }
+        }
+        const __a = Number(cur.topicAnchor) || 0;
+        if(__a > 0){
+          const __startMsg = cur.messages[__a];
+          const __k = (__startMsg && __startMsg.role === 'user') ? __historyMsgs.indexOf(__startMsg) : -1;
+          if(__k > 0) __historyMsgs = __historyMsgs.slice(__k);
+          else if(!__startMsg || __startMsg.role !== 'user') cur.topicAnchor = 0; // الرسائل تغيّرت (حذف/تعديل) → الشريحة لاغية
+        }
+      }
+    }catch(e){ __swallow(e, 'topic:segments'); }
     // 🔒 الصور تُرسل فقط مع الرسالة الحالية (الأخيرة) — صور الرسائل القديمة
     // لا تُعاد إرسالها أبدًا حتى لا يظل المزود يحلل صورة قديمة بدل السؤال الجديد.
     {
@@ -33982,16 +34058,16 @@ if(document.readyState === 'loading'){
   'use strict';
   function owner(){ try{ return String((window.authGet && window.authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; } }
   function token(){ try{ return (window.authGet && window.authGet('aiapp_auth_token')) || ''; }catch(e){ return ''; } }
-  var S = { sessionId: '', runId: '', since: 0, prNumber: 0, prUrl: '', lastTask: '', busy: false, retries: 0 };
+  /* الجلسة (sessionId) تعيش في محادثة التطبيق نفسها (cur.ccSessionId) لا هنا — v-cc-session-per-chat. */
+  var S = { runId: '', since: 0, prNumber: 0, prUrl: '', lastTask: '', busy: false, retries: 0 };
   try{
-    S.sessionId = localStorage.getItem('aiapp_cc_session') || '';
     S.prNumber = parseInt(localStorage.getItem('aiapp_cc_pr') || '0', 10) || 0;
     S.prUrl = localStorage.getItem('aiapp_cc_pr_url') || '';
     S.lastTask = localStorage.getItem('aiapp_cc_last') || '';
+    localStorage.removeItem('aiapp_cc_session');
   }catch(e){ /* guard-ok */ }
   function save(){
     try{
-      localStorage.setItem('aiapp_cc_session', S.sessionId || '');
       localStorage.setItem('aiapp_cc_pr', String(S.prNumber || 0));
       localStorage.setItem('aiapp_cc_pr_url', S.prUrl || '');
       localStorage.setItem('aiapp_cc_last', String(S.lastTask || '').slice(0, 200));
@@ -34099,7 +34175,7 @@ if(document.readyState === 'loading'){
     if(c.cmd === 'status'){
       return api('status').then(function(j){ done(statusLine(j) + (j.busy ? '\n⏳ تشغيل جارٍ.' : '')); }).catch(fail);
     }
-    if(c.cmd === 'new'){ S.sessionId = ''; save(); return Promise.resolve(done('🆕 جلسة جديدة — الرسالة التالية تبدأ سياقًا جديدًا.')); }
+    if(c.cmd === 'new'){ cur.ccSessionId = ''; return Promise.resolve(done('🆕 جلسة جديدة — الرسالة التالية تبدأ سياقًا جديدًا.')); }
     if(c.cmd === 'stop'){ return api('stop').then(function(){ done('⏹️ طُلب الإيقاف.'); }).catch(fail); }
     return Promise.resolve(done('أمر غير معروف.'));
   }
@@ -34127,7 +34203,9 @@ if(document.readyState === 'loading'){
     var full = '', result = null, err = '', initModel = '';
     var onEv = function(ev){
       if(ev.run) S.runId = ev.run;
-      if(ev.init){ S.sessionId = ev.init.sessionId || S.sessionId; initModel = ev.init.model || ''; save(); }
+      /* v-cc-session-per-chat: جلسة Claude Code مربوطة بمحادثة التطبيق نفسها لا بالمتصفّح كلّه —
+         محادثة جديدة في التطبيق = جلسة جديدة، والرجوع لمحادثة قديمة يستأنف جلستها. */
+      if(ev.init){ cur.ccSessionId = ev.init.sessionId || cur.ccSessionId || ''; initModel = ev.init.model || ''; }
       if(ev.tool){ if(step) step.done(); step = status.step('🔧', ev.tool.brief); }
       if(ev.toolError){ if(step) step.done(); step = status.step('⚠️', ev.toolError); }
       if(ev.delta){
@@ -34149,7 +34227,7 @@ if(document.readyState === 'loading'){
     };
     var onRetry = function(n){ if(step) step.done(); step = status.step('🔌', 'انقطع الاتّصال — أعيد الالتحاق بالتشغيل (' + n + ')…'); };
     if(packed.images.length){ var s0 = status.step('🖼️', packed.images.length + ' صورة مرفقة تُرسل إلى Claude Code'); s0.done(); }
-    return stream({ op: 'chat', message: text, sessionId: S.sessionId, images: packed.images }, onEv)
+    return stream({ op: 'chat', message: text, sessionId: String(cur.ccSessionId || ''), newSession: !cur.ccSessionId, images: packed.images }, onEv)
       .then(function(done){ if(done) return true; return attachLoop(onEv, onRetry); })
       .catch(function(e){
         if(e && e.name === 'AbortError'){ api('stop').catch(function(){ /* guard-ok */ }); err = err || 'أُوقف بأمرك.'; return false; }

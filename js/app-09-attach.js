@@ -4488,6 +4488,31 @@ DESIGN RULES (non-negotiable):
       //    «موقع/تطبيق» في رسالة قديمة كان يمسحها من الذاكرة فينسى النموذج المحادثة.
       __historyMsgs = __historyMsgs.filter((m, __i) => { if(__i >= __keepFrom || m.role !== 'user') return true; const __t = (m.apiText !== undefined ? m.apiText : (m.content || '')); return !(__historyBuildRe.test(__t) && __buildCmdRe.test(__t)); });
     }
+    /* v-topic-segments (شكوى المالك «المواضيع كلّها تتداخل»): تبديل الموضوع حتميّ لا نصّيّ —
+       رسالة مستقلّة بلا تقاطع مع الدور السابق تبدأ شريحة جديدة (cur.topicAnchor) فلا يُرسل
+       من التاريخ إلّا ما بعدها؛ «ارجع للموضوع الأوّل» يرفع الشريحة. لا يمسّ التعديل على
+       كود المشروع ولا موافقة البناء ولا تعديل رسالة سابقة ولا الدور الاجتماعيّ. */
+    try{
+      if(typeof window.omranTopicSwitch === 'function' && !__quietSocialTurn && !__routeFix && !__editIntent && !window.__buildOfferApproved && !__editedOriginal && __historyMsgs.length > 1){
+        const __prevs = __historyMsgs.slice(0, -1);
+        const __pu = __prevs.filter(m => m.role === 'user').slice(-1)[0];
+        const __pa = __prevs.filter(m => m.role !== 'user').slice(-1)[0];
+        const __d = window.omranTopicSwitch(text, __pu ? String(__pu.apiText !== undefined ? __pu.apiText : (__pu.content || '')) : '', __pa ? String(__pa.content || '') : '');
+        const __curMsg = __historyMsgs[__historyMsgs.length - 1];
+        if(__d.kind === 'back'){ cur.topicAnchor = 0; }
+        else if(__d.kind === 'new'){
+          cur.topicAnchor = cur.messages.indexOf(__curMsg);
+          try{ if(typeof chatStatus !== 'undefined' && chatStatus){ const __s = chatStatus.step('🧭', lang === 'ar' ? 'موضوع جديد — بلا سياق الموضوع السابق' : 'New topic — previous context set aside'); __s.done(); } }catch(e){ __swallow(e, 'topic:status'); }
+        }
+        const __a = Number(cur.topicAnchor) || 0;
+        if(__a > 0){
+          const __startMsg = cur.messages[__a];
+          const __k = (__startMsg && __startMsg.role === 'user') ? __historyMsgs.indexOf(__startMsg) : -1;
+          if(__k > 0) __historyMsgs = __historyMsgs.slice(__k);
+          else if(!__startMsg || __startMsg.role !== 'user') cur.topicAnchor = 0; // الرسائل تغيّرت (حذف/تعديل) → الشريحة لاغية
+        }
+      }
+    }catch(e){ __swallow(e, 'topic:segments'); }
     // 🔒 الصور تُرسل فقط مع الرسالة الحالية (الأخيرة) — صور الرسائل القديمة
     // لا تُعاد إرسالها أبدًا حتى لا يظل المزود يحلل صورة قديمة بدل السؤال الجديد.
     {
