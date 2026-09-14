@@ -30,6 +30,7 @@ function load(action) {
     case 'feedback': return require('./_lib/feedback.js');
     case 'revgeo': return require('./_lib/revgeo.js');
     case 'secrets': return require('./_lib/secrets.js'); // v-secret-vault: خزنة أسرار المالك
+    case 'cc': return require('./_lib/cc.js'); // v-cc-bridge: Claude Code الخام للمالك عبر جسره
     default: return null;
   }
 }

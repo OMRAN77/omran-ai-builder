@@ -59,6 +59,7 @@ function parseTarget(input) {
    من الإعدادات. opts.env صريح (الاختبارات والفحص) = البيئة المعطاة وحدها بلا خزنة. */
 async function resolveGithubToken(opts) {
   const o = opts || {};
+  if (o.anonymous) return ''; // v-owner-token: قارئ غير المالك بلا مفتاح — العامّ فقط
   const env = o.env || process.env;
   const fromEnv = env.GITHUB_TOKEN ? String(env.GITHUB_TOKEN).trim() : '';
   if (fromEnv) return fromEnv;
@@ -87,8 +88,12 @@ async function ghFetch(pathname, opts) {
   } finally { clearTimeout(timer); }
 }
 
-function ghError(r, what, env) {
+function ghError(r, what, env, anon) {
   const e = env || process.env;
+  if (anon) { /* v-owner-token: غير المالك — لا إرشاد إلى خزنة لا يملكها */
+    if (r.status === 404) return 'غير موجود أو خاصّ: ' + what + ' (المستودعات الخاصّة غير متاحة هنا).';
+    if (r.status === 403 || r.status === 429) return 'GitHub رفض الطلب (حدّ الطلبات للقراءة بلا مفتاح). أعد المحاولة لاحقًا.';
+  }
   if (r.status === 404) return 'غير موجود أو خاصّ: ' + what + (e.GITHUB_TOKEN ? '' : ' (المستودعات الخاصّة تحتاج مفتاح GitHub: خزنة الأسرار في الإعدادات أو GITHUB_TOKEN في البيئة)');
   if (r.status === 403 || r.status === 429) return 'GitHub رفض الطلب (حدّ الطلبات أو الصلاحيّات). أضف مفتاح GitHub (خزنة الأسرار في الإعدادات أو GITHUB_TOKEN في البيئة) لرفع الحدّ من ٦٠ إلى ٥٠٠٠ طلب في الساعة.';
   if (r.status === 401) return 'مفتاح GitHub غير صالح (الخزنة أو GITHUB_TOKEN).';
@@ -121,7 +126,7 @@ function formatFile(name, ref, content, from) {
 async function getContents(t, o) {
   const q = t.ref ? '?ref=' + encodeURIComponent(t.ref) : '';
   const r = await ghFetch('/repos/' + repoOf(t) + '/contents/' + encPath(t.path) + q, o);
-  if (!r.ok) return { error: ghError(r, repoOf(t) + '/' + t.path, o && o.env) };
+  if (!r.ok) return { error: ghError(r, repoOf(t) + '/' + t.path, o && o.env, o && o.anonymous) };
   const j = await r.json();
   if (Array.isArray(j)) return { type: 'dir', entries: j };
   if (j && j.type === 'file') {
@@ -130,7 +135,7 @@ async function getContents(t, o) {
     if (j.encoding === 'base64' && typeof j.content === 'string') content = Buffer.from(j.content.replace(/\n/g, ''), 'base64').toString('utf8');
     else {
       const rr = await ghFetch('/repos/' + repoOf(t) + '/contents/' + encPath(t.path) + q, Object.assign({}, o, { raw: true }));
-      if (!rr.ok) return { error: ghError(rr, t.path, o && o.env) };
+      if (!rr.ok) return { error: ghError(rr, t.path, o && o.env, o && o.anonymous) };
       content = await rr.text();
     }
     return { type: 'file', content, size: Number(j.size) || content.length, name: j.path || t.path };
@@ -148,7 +153,7 @@ function formatDir(t, entries) {
 /* ---------- المستودع: وصف + شجرة + README ---------- */
 async function readRepo(t, o) {
   const r = await ghFetch('/repos/' + repoOf(t), o);
-  if (!r.ok) return ghError(r, repoOf(t), o && o.env);
+  if (!r.ok) return ghError(r, repoOf(t), o && o.env, o && o.anonymous);
   const j = await r.json();
   const ref = t.ref || j.default_branch || 'main';
   const out = ['📦 ' + (j.full_name || repoOf(t)) + (j.description ? ' — ' + j.description : ''),
@@ -160,7 +165,7 @@ async function readRepo(t, o) {
     out.push('\nالملفّات (' + blobs.length + (tj.truncated ? '+' : '') + '):');
     out.push(blobs.slice(0, TREE_MAX).map((e) => '- ' + e.path + ' (' + b(Number(e.size) || 0) + ')').join('\n'));
     if (blobs.length > TREE_MAX) out.push('… و' + (blobs.length - TREE_MAX) + ' ملفًّا آخر');
-  } else out.push('\n(تعذّرت قراءة الشجرة: ' + ghError(tr, 'الشجرة', o && o.env) + ')');
+  } else out.push('\n(تعذّرت قراءة الشجرة: ' + ghError(tr, 'الشجرة', o && o.env, o && o.anonymous) + ')');
   const rd = await ghFetch('/repos/' + repoOf(t) + '/readme?ref=' + encodeURIComponent(ref), Object.assign({}, o, { raw: true }));
   if (rd.ok) { const txt = await rd.text(); out.push('\nREADME:\n' + txt.slice(0, 2500) + (txt.length > 2500 ? '\n…' : '')); }
   out.push('\nلقراءة ملفّ: استدعِ read_github برابطه (blob) أو بـ' + repoOf(t) + ' مع path.');
@@ -170,7 +175,7 @@ async function readRepo(t, o) {
 /* ---------- طلب سحب ومسألة ---------- */
 async function readPR(t, o) {
   const r = await ghFetch('/repos/' + repoOf(t) + '/pulls/' + t.number, o);
-  if (!r.ok) return ghError(r, repoOf(t) + '#' + t.number, o && o.env);
+  if (!r.ok) return ghError(r, repoOf(t) + '#' + t.number, o && o.env, o && o.anonymous);
   const j = await r.json();
   const head = j.head || {}, base = j.base || {};
   const out = ['🔀 PR #' + j.number + ': ' + (j.title || '') + ' — ' + (j.merged ? 'مدموج' : j.state) + ' · ' + ((j.user && j.user.login) || '؟'),
@@ -188,7 +193,7 @@ async function readPR(t, o) {
 
 async function readIssue(t, o) {
   const r = await ghFetch('/repos/' + repoOf(t) + '/issues/' + t.number, o);
-  if (!r.ok) return ghError(r, repoOf(t) + '#' + t.number, o && o.env);
+  if (!r.ok) return ghError(r, repoOf(t) + '#' + t.number, o && o.env, o && o.anonymous);
   const j = await r.json();
   const labels = (j.labels || []).map((l) => (l && l.name) || '').filter(Boolean);
   const out = ['🐛 Issue #' + j.number + ': ' + (j.title || '') + ' — ' + j.state + ' · ' + ((j.user && j.user.login) || '؟') + (labels.length ? ' · ' + labels.join(', ') : ''),
@@ -210,7 +215,7 @@ async function readCommits(t, o, limit) {
   const n = Math.max(1, Math.min(30, parseInt(limit, 10) || 15));
   const q = '?per_page=' + n + (t.ref ? '&sha=' + encodeURIComponent(t.ref) : '') + (t.path ? '&path=' + encodeURIComponent(t.path) : '');
   const r = await ghFetch('/repos/' + repoOf(t) + '/commits' + q, o);
-  if (!r.ok) return ghError(r, 'دفعات ' + repoOf(t), o && o.env);
+  if (!r.ok) return ghError(r, 'دفعات ' + repoOf(t), o && o.env, o && o.anonymous);
   let list = null;
   try { list = await r.json(); } catch (e) { list = null; }
   if (!Array.isArray(list) || !list.length) return 'لا التزامات في ' + repoOf(t) + (t.ref ? ' (' + t.ref + ')' : '') + '.';
