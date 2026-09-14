@@ -312,7 +312,8 @@
   /* v-one-side (أمر عمران «رسائل المستخدم في طرف والمزود في طرف — أريدهم اتجاه واحد»):
      الرسالتان تترّاصان على جهة واحدة (البداية = اليمين في العربيّة)؛ نفرّق بالشكل
      (فقاعة المستخدم) لا بالجهة. */
-  .msg.user{color:var(--text,#fff); align-self:flex-start; background:rgba(255,255,255,0.07) !important; border:1px solid rgba(255,255,255,0.08) !important; border-radius:var(--r-3) !important; padding:9px 13px !important; max-width:85%;}
+  /* v-tidy-bubble (أمر عمران «صغّر البرواز وخلّه مرتّب»): حشو أضيق وبرواز أنحف يلزق على النصّ. */
+  .msg.user{color:var(--text,#fff); align-self:flex-start; background:rgba(255,255,255,0.06) !important; border:1px solid rgba(255,255,255,0.07) !important; border-radius:14px !important; padding:6px 11px !important; max-width:80%;}
   .msg.assistant{align-self:flex-start;}
   .msg.msg-anim{animation:msgFadeIn .4s ease-out;}
   @keyframes msgFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
