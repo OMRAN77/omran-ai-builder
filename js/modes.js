@@ -160,7 +160,10 @@
     try{ popup.classList.remove('show'); }catch(e){ /* guard-ok: an absent optional popup needs no cleanup. */ }
     window.__omMode = id;
     var m = null; for(var i=0;i<MODES.length;i++){ if(MODES[i].id === id) m = MODES[i]; }
-    if(!m){
+    /* v-cc-nopill (أمر عمران «مااريد كودي يطلع هذا المكان، الصفحة نظيفة»): وضع
+       Claude Code يشتغل من قائمة السهم فقط — بلا فقاعة داخل صندوق الكتابة؛
+       القائمة تُبيّن أنّه مفعّل (تلوين البند)، والتبديل منها. */
+    if(!m || m.id === 'cc'){
       chipWrap.style.display = 'none'; chipWrap.innerHTML = '';
     } else {
       chipWrap.style.display = 'flex';
