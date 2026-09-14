@@ -6566,7 +6566,8 @@ function renderMessages(keepScroll){
       };
       if(copyMsgBtn){
         const bubbleCol = document.createElement('div');
-        bubbleCol.style.cssText = 'display:flex; flex-direction:column; align-items:' + (m.role === 'user' ? 'flex-end' : 'flex-start') + '; flex:1 1 auto; min-width:0;';
+        /* v-one-side: الفقاعة وأيقوناتها على جهة واحدة (البداية = يمين عربيّ/يسار إنجليزيّ). */
+        bubbleCol.style.cssText = 'display:flex; flex-direction:column; align-items:flex-start; flex:1 1 auto; min-width:0;';
         bubbleCol.appendChild(div);
         bubbleCol.appendChild(copyMsgBtn);
         rowWrap.appendChild(bubbleCol);
@@ -6603,7 +6604,8 @@ function renderMessages(keepScroll){
       compareGroup = null;
       if(copyMsgBtn){
         const bubbleCol = document.createElement('div');
-        bubbleCol.style.cssText = 'display:flex; flex-direction:column; align-items:' + (m.role === 'user' ? 'flex-end' : 'flex-start') + '; max-width:100%;';
+        /* v-one-side: الفقاعة وأيقوناتها على جهة واحدة (البداية = يمين عربيّ/يسار إنجليزيّ). */
+        bubbleCol.style.cssText = 'display:flex; flex-direction:column; align-items:flex-start; max-width:100%;';
         bubbleCol.appendChild(div);
         bubbleCol.appendChild(copyMsgBtn);
         // ✨ v363: ملاحظة تلقائية آخر الرد تقترح الميزة المناسبة من رسالة المستخدم السابقة
