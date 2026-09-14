@@ -1152,9 +1152,12 @@
     }
     var liveNow = list.filter(function(x){ return !!mOf(x); }).length;
     var meta = el.querySelector('#tvMeta');
-    if(meta) meta.textContent = liveNow
-      ? (liveNow + ' ' + tvT('tvLiveCount', 'قناة بمصدر مباشر', 'channels with direct stream'))
-      : '';
+    /* v-tv-diag: سطر تشخيص ظاهر يكسر حلقة «ما تغيّر شي» — يقول للمالك النسخة،
+       ونوع تشغيل HLS على جهازه، وهل حُمّلت روابط البثّ فعلًا. */
+    var __links = (TV_M3U && TV_M3U.byHandle) ? Object.keys(TV_M3U.byHandle).length : 0;
+    var __hls = TV_NATIVE_HLS ? 'HLS أصلي' : 'hls.js';
+    if(meta) meta.textContent = '⚙︎ TV-8 · ' + __hls + ' · روابط:' + __links
+      + (liveNow ? ' · ' + liveNow + ' ' + tvT('tvLiveCount', 'قناة مباشرة', 'live') : '');
     if(!list.length){
       var empty = document.createElement('div');
       empty.style.cssText = 'grid-column:1/-1;color:var(--muted,#98a0b3);padding:24px 0;text-align:center;';
