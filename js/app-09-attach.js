@@ -2122,8 +2122,20 @@ async function runOmranAgent(cur, apiText, thinkingDiv){
         agentStatus.release();
         full += ev.delta;
         const clean = stripCodeFromChat(full).trim();
-        thinkingDiv.textContent = clean ? ('🤖 ' + clean.slice(-400)) : ('🤖 ' + (lang === 'ar' ? 'الوكيل يكتب الكود…' : 'Agent writing code…'));
-        messagesEl.scrollTop = messagesEl.scrollHeight;
+        /* v-stream-full-agent (لقطة عمران ١٤ سبتمبر «الكلام يطلع مخربط ويوم يخلص يكون تمام»):
+           كانت الفقاعة تعرض آخر ٤٠٠ حرف فقط نصًّا خامًا — بداية مقطوعة وترقيم متداخل — ثمّ
+           تُستبدل بالرسالة كاملة عند الانتهاء. الآن النصّ كلّه بالمنسّق التدريجيّ نفسه
+           الذي تستعمله المحادثة (رأس ثابت + ذيل يُعاد رسمه)، وكبح ١٥٠مل على الجوال. */
+        if(clean){
+          const __now = Date.now();
+          if(!document.documentElement.classList.contains('mobile-ui') || !thinkingDiv._omLastRender || __now - thinkingDiv._omLastRender >= 150){
+            thinkingDiv._omLastRender = __now;
+            renderStreamingAssistant(thinkingDiv, '🤖 ' + clean);
+          }
+        } else {
+          thinkingDiv.textContent = '🤖 ' + (lang === 'ar' ? 'الوكيل يكتب الكود…' : 'Agent writing code…');
+        }
+        if(typeof chatIsNearBottom !== 'function' || chatIsNearBottom()) messagesEl.scrollTop = messagesEl.scrollHeight;
       }
       if(ev.error) serverErr = ev.error;
     }

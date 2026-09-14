@@ -140,8 +140,14 @@
         if(step){ step.done(); step = null; }
         status.release();
         full += ev.delta;
-        say(cur, thinkingDiv, full.slice(-400));
-        try{ messagesEl.scrollTop = messagesEl.scrollHeight; }catch(e){ /* guard-ok */ }
+        /* v-stream-full-agent: النصّ كلّه بالمنسّق التدريجيّ للمحادثة (لا ذيل ٤٠٠ حرف خام)، وكبح ١٥٠مل على الجوال. */
+        var now = Date.now();
+        if(typeof renderStreamingAssistant !== 'function'){ say(cur, thinkingDiv, full); }
+        else if(!document.documentElement.classList.contains('mobile-ui') || !thinkingDiv._omLastRender || now - thinkingDiv._omLastRender >= 150){
+          thinkingDiv._omLastRender = now;
+          renderStreamingAssistant(thinkingDiv, '🧑‍💻 ' + full);
+        }
+        try{ if(typeof chatIsNearBottom !== 'function' || chatIsNearBottom()) messagesEl.scrollTop = messagesEl.scrollHeight; }catch(e){ /* guard-ok */ }
       }
       if(ev.result){ result = ev.result; if(!full && ev.result.text) full = ev.result.text; }
       if(ev.error) err = ev.error;
