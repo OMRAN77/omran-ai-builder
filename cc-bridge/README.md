@@ -14,7 +14,9 @@ Claude Code **الخام** (حزمة الوكيل الرسميّة، لا حلق
 | `ANTHROPIC_API_KEY` **أو** `CLAUDE_CODE_OAUTH_TOKEN` | مفتاح API يُدفع بالاستهلاك، أو رمز اشتراكك من `claude setup-token` (الموثّق رسميًّا لحزمة الوكيل هو المفتاح؛ الرمز يمرّ للحزمة كما هو فجرّبه أوّلًا) |
 | `GITHUB_TOKEN` | مفتاح GitHub بصلاحيّات Contents + Pull requests + Actions (read) على المستودع؛ يمرّ إلى Claude Code باسم `GH_TOKEN` ليعمل `gh` و`git push` إلى الفروع (حماية الفرع `main` على GitHub تمنع الدفع إليه من طبقة ثانية) |
 | `CC_REPO` | `OMRAN77/omran-ai-builder` (الافتراضيّ) |
-| `CC_MODEL` | `claude-opus-5` افتراضيًّا؛ أو `claude-fable-5-1` |
+| `CC_MODEL` | `claude-fable-5-1` افتراضيًّا (نموذج جلسة المالك على الويب نفسه)؛ أو `claude-opus-5` |
+| `CC_FALLBACK_MODEL` | احتياط إن لم يتوفّر الأساسيّ: `claude-opus-5` افتراضيًّا |
+| `CC_EFFORT` | الجهد: `max` افتراضيًّا (أو `xhigh` / `high` / `medium` / `low`)، مع تفكير تكيّفيّ |
 | `CC_MAX_TURNS` / `CC_MAX_BUDGET_USD` | سقف الجولات (٢٠٠) وسقف الكلفة للجلسة (اختياريّ) |
 
 ## التشغيل على Railway (الأسهل — بلا خادم تديره)

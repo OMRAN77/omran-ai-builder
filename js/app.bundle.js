@@ -34102,10 +34102,10 @@ if(document.readyState === 'loading'){
     S.lastTask = text; save();
     S.since = 0; S.runId = ''; S.retries = 0;
     var step = status.step('🧑‍💻', 'Claude Code يعمل…');
-    var full = '', result = null, err = '';
+    var full = '', result = null, err = '', initModel = '';
     var onEv = function(ev){
       if(ev.run) S.runId = ev.run;
-      if(ev.init){ S.sessionId = ev.init.sessionId || S.sessionId; save(); }
+      if(ev.init){ S.sessionId = ev.init.sessionId || S.sessionId; initModel = ev.init.model || ''; save(); }
       if(ev.tool){ if(step) step.done(); step = status.step('🔧', ev.tool.brief); }
       if(ev.toolError){ if(step) step.done(); step = status.step('⚠️', ev.toolError); }
       if(ev.delta){
@@ -34144,8 +34144,10 @@ if(document.readyState === 'loading'){
         if(!body) body = err ? ('✗ ' + err) : '✅ انتهى بلا نصّ.';
         else if(err) body += '\n\n⚠️ ' + err;
         var foot = '';
-        if(result) foot += '— ' + (result.turns || 0) + ' جولة' + (result.cost != null ? ' · ' + Number(result.cost).toFixed(3) + '$' : '');
-        if(st) foot += (foot ? '\n' : '') + statusLine(st) + ((st.dirty || st.ahead) ? '\nاكتب «انشر» لفتح طلب السحب، ثمّ «ادمج».' : '');
+        // v-cc-strength: النموذج الذي عمل فعلًا (من نتيجة التشغيل) والجهد — لا النموذج المضبوط فقط.
+        var ranModel = (result && result.models && result.models.length) ? result.models.join(' + ') : (initModel || (st && st.model) || '');
+        if(result) foot += '— ' + (result.turns || 0) + ' جولة' + (result.cost != null ? ' · ' + Number(result.cost).toFixed(3) + '$' : '') + (ranModel ? ' · النموذج: ' + ranModel : '') + (result.effort ? ' · الجهد: ' + result.effort : '');
+        if(st){ var s2 = Object.assign({}, st); if(ranModel) delete s2.model; foot += (foot ? '\n' : '') + statusLine(s2) + ((st.dirty || st.ahead) ? '\nاكتب «انشر» لفتح طلب السحب، ثمّ «ادمج».' : ''); }
         push(cur, body + (foot ? '\n\n' + foot : ''));
       });
   }

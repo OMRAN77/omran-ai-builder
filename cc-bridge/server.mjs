@@ -22,7 +22,11 @@ const PORT = Number(env.PORT) || 8787;
 const REPO_DIR = env.CC_REPO_DIR || '/work/repo';
 const STATE_DIR = env.CC_STATE_DIR || '/work/state';
 const SECRET = String(env.CC_BRIDGE_SECRET || '');
-const MODEL = String(env.CC_MODEL || 'claude-opus-5');
+/* v-cc-strength (شكوى المالك «مش قوي… ضعيف»): النموذج الافتراضيّ نموذج جلسة المالك على الويب
+   نفسه (Fable 5.1) مع احتياط Opus 5 إن لم يتوفّر، والجهد الأقصى والتفكير التكيّفيّ. */
+const MODEL = String(env.CC_MODEL || 'claude-fable-5-1');
+const FALLBACK_MODEL = String(env.CC_FALLBACK_MODEL || (MODEL === 'claude-opus-5' ? '' : 'claude-opus-5'));
+const EFFORT = ['low', 'medium', 'high', 'xhigh', 'max'].includes(String(env.CC_EFFORT || '')) ? String(env.CC_EFFORT) : 'max';
 const MAX_TURNS = Math.max(5, Number(env.CC_MAX_TURNS) || 200);
 const MAX_BUDGET = Number(env.CC_MAX_BUDGET_USD) || 0;
 const RUN_TTL_MS = 6 * 3600 * 1000;
@@ -65,6 +69,8 @@ async function runMessage(log, message, opts) {
   const options = {
     cwd: REPO_DIR,
     model: opts.model || MODEL,
+    effort: EFFORT,
+    thinking: { type: 'adaptive' },
     maxTurns: MAX_TURNS,
     permissionMode: 'acceptEdits',
     allowedTools: ALLOWED_TOOLS,
@@ -79,6 +85,7 @@ async function runMessage(log, message, opts) {
     env: childEnv(),
   };
   if (MAX_BUDGET > 0) options.maxBudgetUsd = MAX_BUDGET;
+  if (FALLBACK_MODEL && FALLBACK_MODEL !== options.model) options.fallbackModel = FALLBACK_MODEL;
   if (opts.sessionId) options.resume = opts.sessionId;
   let sessionId = opts.sessionId || '';
   let sawText = false;
@@ -100,7 +107,7 @@ async function runMessage(log, message, opts) {
       } else if (msg.type === 'result') {
         if (msg.is_error && opts.sessionId && !opts._retried && !sawText && /No conversation found|session/i.test(String(msg.result || ''))) throw new Error('No conversation found: ' + String(msg.result || '').slice(0, 120));
         sessionId = msg.session_id || sessionId;
-        log.push({ result: { sessionId, subtype: msg.subtype, cost: msg.total_cost_usd, turns: msg.num_turns, stopReason: msg.stop_reason || null, text: (!sawText && msg.result) ? String(msg.result) : '' } });
+        log.push({ result: { sessionId, subtype: msg.subtype, cost: msg.total_cost_usd, turns: msg.num_turns, stopReason: msg.stop_reason || null, models: Object.keys(msg.modelUsage || {}), effort: EFFORT, text: (!sawText && msg.result) ? String(msg.result) : '' } });
       }
     }
   } catch (e) {
@@ -164,7 +171,7 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === 'GET' && url.pathname === '/status') {
       const st = await gitOps.status();
-      return json(res, 200, Object.assign({ ok: true, sessionId: state.sessionId, busy: !!(current && !current.done), runId: current ? current.id : '', model: MODEL }, st));
+      return json(res, 200, Object.assign({ ok: true, sessionId: state.sessionId, busy: !!(current && !current.done), runId: current ? current.id : '', model: MODEL, effort: EFFORT }, st));
     }
     if (req.method === 'POST' && url.pathname === '/publish') {
       if (current && !current.done) return json(res, 409, { error: 'تشغيل جارٍ — انتظر انتهاءه قبل النشر.' });

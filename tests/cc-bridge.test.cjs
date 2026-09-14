@@ -73,6 +73,9 @@ const R = (p) => path.join(__dirname, '..', p);
   assert.ok(srv.includes('timingSafeEqual') && srv.includes("'/publish'") && srv.includes("'/merge'") && srv.includes("'/reset'"), 'السرّ والأوامر الثلاثة');
   assert.ok(srv.includes('delete e.CC_BRIDGE_SECRET') && srv.includes('e.GH_TOKEN = e.GITHUB_TOKEN') && srv.includes('env: childEnv()'), 'بيئة Claude Code بلا سرّ الجسر ومع مفتاح gh');
   assert.ok(/CC_MAX_TURNS\) \|\| 200\)/.test(srv), 'سقف الجولات ٢٠٠ كجلسة طويلة');
+  // v-cc-strength («مش قوي… ضعيف»): نموذج جلسة المالك نفسه، جهد أقصى، تفكير تكيّفيّ، احتياط، والنموذج الفعليّ في النتيجة
+  assert.ok(srv.includes("env.CC_MODEL || 'claude-fable-5-1'") && srv.includes("effort: EFFORT") && srv.includes("thinking: { type: 'adaptive' }") && srv.includes('options.fallbackModel = FALLBACK_MODEL') && srv.includes('models: Object.keys(msg.modelUsage || {})'), 'قوّة الجسر: النموذج والجهد والتفكير والاحتياط والنموذج الفعليّ');
+  assert.ok(/لا تختصر على حساب الجودة/.test(P.RULES_APPEND), 'قاعدة الاختصار لا تخصّ عمل الجسر');
   const docker = fs.readFileSync(R('cc-bridge/Dockerfile'), 'utf8');
   assert.ok(/cli\.github\.com/.test(docker) && /install -y --no-install-recommends gh/.test(docker) && /curl gnupg jq ripgrep/.test(docker), 'gh وcurl وjq وripgrep في الحاوية');
   const entry = fs.readFileSync(R('cc-bridge/entrypoint.sh'), 'utf8');
@@ -116,6 +119,7 @@ const R = (p) => path.join(__dirname, '..', p);
   // v-stream-full-agent («الكلام يطلع مخربط ويوم يخلص يكون تمام»): البثّ كاملًا بالمنسّق التدريجيّ لا ذيل ٤٠٠ حرف
   assert.ok(ui09.includes("renderStreamingAssistant(thinkingDiv, '🤖 ' + clean)") && !ui09.includes('clean.slice(-400)'), 'الوكيل يعرض النصّ كلّه منسّقًا أثناء البثّ');
   assert.ok(ui.includes("renderStreamingAssistant(thinkingDiv, '🧑‍💻 ' + full)") && !ui.includes('full.slice(-400)'), 'Claude Code يعرض النصّ كلّه منسّقًا أثناء البثّ');
+  assert.ok(ui.includes("result.models.join(' + ')") && ui.includes("' · الجهد: ' + result.effort"), 'ذيل الردّ يذكر النموذج الذي عمل فعلًا والجهد');
   const modes = fs.readFileSync(R('js/modes.js'), 'utf8');
   assert.ok(/id:'cc',\s*ar:'Claude Code'.*owner:true/.test(modes) && modes.includes("b.setAttribute('data-owner', '1'); b.style.display = isOwner() ? '' : 'none';") && modes.includes("attributeFilter: ['class']"), 'بند Claude Code في قائمة @ للمالك وحده ويُعاد فحصه عند كلّ فتح');
   assert.ok(modes.includes("if(MODE_KEYS[m.id]) b.setAttribute('data-i18n-title'"), 'بند بلا مفتاح ترجمة لا يُوسم بمفتاح undefined');
