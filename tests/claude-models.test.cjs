@@ -15,22 +15,24 @@ const chat = require('../api/_lib/chat.js');
 const { CLAUDE_MODELS, pickClaudeModel } = chat.__vmodels;
 const { imageTurnConfig } = chat.__vimg;
 
-const IDS = ['claude-fable-5-1', 'claude-fable-5', 'claude-opus-5', 'claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-5', 'claude-sonnet-4-6', 'claude-haiku-4-5'];
+// v-models-two (أمر عمران): القائمة محصورة في Sonnet + Opus فقط.
+const IDS = ['claude-opus-5', 'claude-sonnet-5'];
 
-test('١. القائمة: التسعة من لقطة المالك، ولكلّ منها صيغة وسيط بادئتها anthropic/', () => {
+test('١. القائمة: Sonnet + Opus فقط، ولكلّ منها صيغة وسيط بادئتها anthropic/', () => {
   assert.deepEqual(Object.keys(CLAUDE_MODELS), IDS);
   for (const id of IDS) {
     assert.ok(CLAUDE_MODELS[id].label, id);
     assert.ok(CLAUDE_MODELS[id].or.startsWith('anthropic/claude-'), id);
   }
-  assert.equal(CLAUDE_MODELS['claude-opus-4-8'].or, 'anthropic/claude-opus-4.8', 'نقطة في الإصدار الفرعيّ كما في عرف OpenRouter');
+  assert.equal(CLAUDE_MODELS['claude-opus-5'].or, 'anthropic/claude-opus-5');
   assert.equal(CLAUDE_MODELS['claude-sonnet-5'].or, 'anthropic/claude-sonnet-5');
 });
 
 test('٢. pickClaudeModel: المباشر يمرّر المعرّف، الوسيط يحوّله، وغير المعروف = الافتراضيّ', () => {
   assert.deepEqual(pickClaudeModel('claude-opus-5', false, 'claude-sonnet-5'), { model: 'claude-opus-5', picked: true, id: 'claude-opus-5', label: 'Opus 5' });
-  assert.deepEqual(pickClaudeModel(' Claude-Haiku-4-5 ', true, 'anthropic/claude-sonnet-5'), { model: 'anthropic/claude-haiku-4.5', picked: true, id: 'claude-haiku-4-5', label: 'Haiku 4.5' });
-  for (const bad of ['', null, undefined, 'gpt-5', 'claude-3-5-sonnet-latest', 'anthropic/claude-opus-5', '__proto__', 'constructor']) {
+  assert.deepEqual(pickClaudeModel(' Claude-Sonnet-5 ', true, 'anthropic/claude-sonnet-5'), { model: 'anthropic/claude-sonnet-5', picked: true, id: 'claude-sonnet-5', label: 'Sonnet 5' });
+  // النماذج المحذوفة (Fable/Haiku/الأجيال السابقة) لم تعد تُقبَل → الافتراضيّ
+  for (const bad of ['', null, undefined, 'gpt-5', 'claude-haiku-4-5', 'claude-fable-5-1', 'claude-opus-4-8', 'anthropic/claude-opus-5', '__proto__', 'constructor']) {
     assert.deepEqual(pickClaudeModel(bad, false, 'claude-sonnet-5'), { model: 'claude-sonnet-5', picked: false, id: '', label: '' }, String(bad));
   }
 });
@@ -38,7 +40,9 @@ test('٢. pickClaudeModel: المباشر يمرّر المعرّف، الوسي
 test('٣. الخادم: body.model على مسار كلود فقط، رجوع للافتراضيّ عند رفض النموذج، وحدث من يجيب', () => {
   const s = read('api/_lib/chat.js');
   assert.ok(s.includes("const { streamFreeChain, isModelErrorStatus } = require('./free-chain.js');"));
-  assert.ok(s.includes("const __pick = prov === 'claude' ? pickClaudeModel(body && body.model, viaOR, DEFAULT_MODEL)"));
+  // v-models-owner: اختيار الموديل للمالك وحده — غير المالك على الافتراضيّ.
+  assert.ok(s.includes("require('./_owner.js').isOwnerName"), 'بوّابة المالك لاختيار الموديل');
+  assert.ok(s.includes("const __pick = (prov === 'claude' && __ownerReq) ? pickClaudeModel(body && body.model, viaOR, DEFAULT_MODEL)"));
   assert.ok(s.includes('let CHAT_MODEL = __pick.model;'));
   assert.ok(s.includes("send({ modelId: __pick.picked ? __pick.id : '', modelLabel: __pick.picked ? __pick.label : '' });"));
   assert.ok(s.includes('if (!upstream.ok && __pick.picked && CHAT_MODEL !== DEFAULT_MODEL) {'));
@@ -54,13 +58,14 @@ test('٣. الخادم: body.model على مسار كلود فقط، رجوع ل
   assert.ok(imgRetry > 0 && fallback > imgRetry && finalFail > fallback);
 });
 
-test('٤. الواجهة: القائمة في الإعدادات بالمعرّفات نفسها، الحفظ المحلّيّ، والإرسال مع كلّ رسالة', () => {
+test('٤. الواجهة: مبدّل النموذج في قائمة «+» (للمالك) لا في الإعدادات، والحفظ المحلّيّ والإرسال', () => {
+  // v-models-two: منتقي النماذج حُذف من الإعدادات ونُقل إلى قائمة «+».
   const p = read('js/partials-settings.js');
-  const sel = p.slice(p.indexOf('<select id="claudeModel">'), p.indexOf('</select>', p.indexOf('<select id="claudeModel">')));
-  assert.ok(sel.includes('<option value="">'), 'خيار الافتراضيّ');
-  for (const id of IDS) assert.ok(sel.includes('<option value="' + id + '">'), id);
-  assert.ok(p.includes('id="claudeModelHint"'));
-  assert.ok(p.includes('data-i18n="claudeModelPick"'), 'مفتاح ترجمة مستقلّ — claudeModelLabel محجوز لبطاقة مفتاح المستخدم');
+  assert.ok(!p.includes('<select id="claudeModel">'), 'منتقي الإعدادات حُذف');
+  const modes = read('js/modes.js');
+  assert.ok(modes.includes('model:true'), 'مبدّل النموذج بند في قائمة +');
+  assert.ok(modes.includes("localStorage.setItem('aiapp_agent_model'"), 'المبدّل يضبط موديل الوكيل أيضًا');
+  assert.ok(modes.includes("localStorage.setItem('aiapp_claude_model'"), 'والمحادثة');
   const a29 = read('js/app-29-claude-model.js');
   assert.ok(a29.includes("var KEY = 'aiapp_claude_model';"));
   for (const id of IDS) assert.ok(a29.includes("'" + id + "'"), 'app-29 ' + id);
@@ -73,7 +78,7 @@ test('٤. الواجهة: القائمة في الإعدادات بالمعرّ�
   const i18n = read('js/app-03-i18n-data.js');
   assert.equal((i18n.match(/claudeModelPick:/g) || []).length, 2, 'عربيّ وإنجليزيّ');
   assert.equal((i18n.match(/stModelFallback:/g) || []).length, 2);
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=654'), 'كسر كاش الجزء بعد تغييره');
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=655'), 'كسر كاش الجزء بعد تغييره');
 });
 
 test('٥. Haiku 4.5 بلا effort في دور الصورة، والجيل الحاليّ معه', () => {

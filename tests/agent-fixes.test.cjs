@@ -37,8 +37,11 @@ const GH = require('../api/_lib/github-read.js');
   const gr = fs.readFileSync(path.join(__dirname, '..', 'api', '_lib', 'github-read.js'), 'utf8');
   assert.ok(gr.includes("function ghError(r, what, env, anon) {") && gr.includes("(المستودعات الخاصّة غير متاحة هنا)"), 'رسالة 404 لغير المالك');
   assert.ok((gr.match(/o && o\.env, o && o\.anonymous\)/g) || []).length >= 6, 'كل نداءات ghError في مسار القراءة تمرّر anonymous');
-  // القائمة في الإعدادات تعكس الافتراضيّ الجديد
+  // v-models-two: منتقي موديل الوكيل انتقل من الإعدادات إلى قائمة «+» (modes.js)
   const prem = fs.readFileSync(path.join(__dirname, '..', 'js', 'premium.js'), 'utf8');
-  assert.ok(prem.includes("'تلقائي (Opus 5)'"), 'المنتقي: تلقائي (Opus 5)');
+  assert.ok(!prem.includes("'تلقائي (Opus 5)'"), 'منتقي الإعدادات القديم حُذف من premium.js');
+  const modes = fs.readFileSync(path.join(__dirname, '..', 'js', 'modes.js'), 'utf8');
+  assert.ok(modes.includes('model:true'), 'مبدّل النموذج بند في قائمة +');
+  assert.ok(modes.includes("'Opus 5'") && modes.includes("'Sonnet 5'"), 'المبدّل يعرض Opus 5 / Sonnet 5');
   console.log('✓ agent-fixes: Opus 5 افتراضيًّا ومُعلَنًا، الرفض واضح، بلا أسماء مزوّدين، ومفتاح GitHub للمالك وحده');
 })().catch((e) => { console.error(e); process.exit(1); });
