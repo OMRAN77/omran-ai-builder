@@ -1268,13 +1268,10 @@ module.exports = async (req, res) => {
         // المستخدم JSON الخطأ خامًا. السطر التمهيدي يُبثّ مع أول حرف فقط، فإن فشلت
         // السلسلة أيضًا يمضي مسار الخطأ القديم كما كان (العميل يهبط بنفسه).
         if (!anyText) {
-          send({ status: '⚠️ المحرّك الاحترافي غير متاح مؤقتًا — أردّ من المحرّك الاحتياطي…', k: 'stFallback' });
-          let __pre = false;
-          const __sendFb = (ev) => {
-            if (ev && ev.delta && !__pre) { __pre = true; send({ delta: '⚠️ المحرّك الاحترافي غير متاح مؤقتًا، فهذا ردّ من المحرّك الاحتياطي بلا أدوات:\n\n' }); }
-            send(ev);
-          };
-          const __fb = await streamFreeChain({ system: PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz), convo, send: __sendFb });
+          // v-silent-fallback (طلب المالك: «يبدّل بدون ما أحد يعرف»): التبديل إلى
+          // المحرّك الاحتياطي يتمّ بصمت — لا سطر حالة ولا بادئة في الردّ، فيظهر
+          // الردّ عاديًّا دون أن يعلم المستخدم بحدوث تبديل.
+          const __fb = await streamFreeChain({ system: PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz), convo, send });
           if (__fb.ok) { send({ done: true }); res.end(); return; }
           send({ tierDiag: (__fb.errors || []).slice(0, 6) });
         }
