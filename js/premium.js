@@ -45,7 +45,7 @@
       const ar = (function(){ try{ return (localStorage.getItem('aiapp_lang') || 'ar') === 'ar'; }catch(_){ return true; } })();
       let cur = ''; try{ cur = localStorage.getItem('aiapp_agent_model') || ''; }catch(_){ /* guard-ok */ }
       const opts = [
-        ['', ar ? 'تلقائي (Sonnet 5)' : 'Auto (Sonnet 5)'],
+        ['', ar ? 'تلقائي (Opus 5)' : 'Auto (Opus 5)'],
         ['opus-5', 'Opus 5'],
         ['sonnet-5', 'Sonnet 5'],
         ['haiku-4.5', 'Haiku 4.5'],

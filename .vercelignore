@@ -18,6 +18,7 @@ js/app-11-video.js
 js/app-12-studios.js
 js/app-13-stocks-init.js
 js/app-14-tester.js
+js/app-29-cc.js
 js/app-15-floorplan.js
 js/app-17-agent-tools.js
 
@@ -64,3 +65,6 @@ tests/
 # /knowledge/*.md - anyone could read the project's state and its list of
 # unfixed weaknesses. Keep it in git, never ship it to the CDN.
 knowledge/
+
+# v-cc-bridge: جسر Claude Code يعمل على خادم المالك لا على Vercel.
+cc-bridge/
