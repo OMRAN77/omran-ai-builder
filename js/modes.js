@@ -13,10 +13,10 @@
     { id:'agent', ar:'الوكيل', en:'Agent', ic:'👑', agent:true },
     /* v-cc-chat (أمر عمران ١٤ سبتمبر «الي أريده في المحادثة»): Claude Code الخام على خادم
        المالك من الصندوق نفسه — البند يظهر لحساب المالك وحده (الخادم يتحقّق بالتوقيع). */
-    { id:'cc',    ar:'Claude Code',      en:'Claude Code',  ic:'🧑‍💻', owner:true },
-    /* v-models-two (أمر عمران): مبدّل النموذج Sonnet⇄Opus من قائمة «+» — للمالك
-       وحده، يخدم المحادثة والوكيل معًا. ليس وضعًا، بل تبديل يُحفظ محلّيًّا. */
-    { id:'__model', ar:'النموذج', en:'Model', ic:'⚙️', owner:true, model:true }
+    { id:'cc',    ar:'Claude Code',      en:'Claude Code',  ic:'🧑‍💻', owner:true }
+    /* v-model-chip (أمر عمران ١٤ سبتمبر «نفس فكرة الصورة، خارج الصندوق»): اختيار
+       النموذج لم يعد بندًا في «+»، بل مؤشّر أسفل صندوق الكتابة يبيّن أيّ نموذج شغّال
+       (Sonnet/Opus) ويفتح قائمة صغيرة لتبديله — للمالك وحده. انظر buildModelChip. */
   ];
   window.__omMode = null;
   /* aiapp_claude_model يستعمل المعرّف الكامل (claude-opus-5)، وaiapp_agent_model
@@ -28,8 +28,9 @@
       else { localStorage.setItem('aiapp_claude_model','claude-sonnet-5'); localStorage.setItem('aiapp_agent_model','sonnet-5'); }
     }catch(e){ /* guard-ok: التخزين المحلّيّ قد يكون مقفلًا */ }
     try{ if(window.claudeModelSync) window.claudeModelSync(); }catch(e){ /* guard-ok */ }
+    try{ if(window.omModelChipSync) window.omModelChipSync(); }catch(e){ /* guard-ok */ }
   }
-  function modelLabel(){ return (AR ? 'النموذج: ' : 'Model: ') + (curModel() === 'opus' ? 'Opus 5' : 'Sonnet 5'); }
+  function modelName(){ return curModel() === 'opus' ? 'Opus 5' : 'Sonnet 5'; }
   /* الوكيل: تبديل موكَّل لمفتاح النقاط القديم — لا منطق مال هنا. */
   function agentOn(){ return window.__agentModeOn === true; }
   function syncAgentItem(b){
@@ -45,7 +46,50 @@
       var on = isOwner();
       var items = document.querySelectorAll('.omModeItem[data-owner="1"]');
       for(var i = 0; i < items.length; i++) items[i].style.display = on ? '' : 'none';
+      var mw = document.getElementById('omModelWrap');
+      if(mw) mw.style.display = on ? 'inline-flex' : 'none';
     }catch(e){ /* guard-ok: optional owner items */ }
+  }
+  /* v-model-chip: مؤشّر النموذج أسفل الصندوق (نفس فكرة قائمة نماذج Claude Code) —
+     يبيّن النموذج الحاليّ ويفتح قائمة صغيرة (Opus 5 / Sonnet 5)؛ للمالك وحده. */
+  function buildModelChip(){
+    try{
+      // المضيف = #inputbar (عمود مرن ظاهر دائمًا: ترحيب ومحادثة، حاسوب وجوّال) كي
+      // لا يختفي المؤشّر أثناء المحادثة كما يحدث في #omranBelowComposer (ترحيب فقط).
+      var host = document.getElementById('inputbar');
+      if(!host || document.getElementById('omModelWrap')) return;
+      var wrap = document.createElement('div');
+      wrap.id = 'omModelWrap';
+      wrap.style.cssText = 'position:relative; align-self:flex-end; margin-top:-2px; display:' + (isOwner() ? 'inline-flex' : 'none') + '; align-items:center;';
+      var chip = document.createElement('button');
+      chip.id = 'omModelChip'; chip.type = 'button';
+      chip.title = AR ? 'النموذج الشغّال — اضغط للتبديل' : 'Active model — tap to switch';
+      chip.style.cssText = 'display:inline-flex; align-items:center; gap:5px; background:none; border:none; color:var(--muted,#9a958a); font-size:12px; font-weight:600; cursor:pointer; padding:3px 8px; border-radius:8px; line-height:1;';
+      chip.innerHTML = '<span class="omModelName"></span><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>';
+      var pop = document.createElement('div');
+      pop.id = 'omModelPopup';
+      pop.style.cssText = 'display:none; position:absolute; bottom:calc(100% + 6px); inset-inline-end:0; z-index:2200; background:var(--panel,#161513); border:1px solid var(--border,rgba(255,255,255,.12)); border-radius:12px; box-shadow:0 12px 34px rgba(0,0,0,.5); padding:5px; min-width:150px;';
+      var opts = [['opus','Opus 5'],['sonnet','Sonnet 5']];
+      pop.innerHTML = opts.map(function(o){
+        return '<button type="button" class="omModelOpt" data-m="' + o[0] + '" style="display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; background:none; border:none; color:var(--text,#eee); font-size:13px; text-align:start; padding:8px 10px; border-radius:8px; cursor:pointer;"><span>' + o[1] + '</span><span class="omModelTick" aria-hidden="true" style="opacity:0;">✓</span></button>';
+      }).join('');
+      wrap.appendChild(pop); wrap.appendChild(chip);
+      host.appendChild(wrap);
+      function refresh(){
+        var nm = wrap.querySelector('.omModelName'); if(nm) nm.textContent = modelName();
+        var cur = curModel(); var os = pop.querySelectorAll('.omModelOpt');
+        for(var i = 0; i < os.length; i++){
+          var sel = os[i].getAttribute('data-m') === cur;
+          var tick = os[i].querySelector('.omModelTick'); if(tick) tick.style.opacity = sel ? '1' : '0';
+          os[i].style.background = sel ? 'var(--panel2,rgba(255,255,255,.07))' : 'none';
+        }
+      }
+      chip.addEventListener('click', function(e){ e.stopPropagation(); pop.style.display = (pop.style.display === 'none') ? 'block' : 'none'; refresh(); });
+      pop.addEventListener('click', function(e){ var b = e.target.closest('.omModelOpt'); if(!b) return; e.stopPropagation(); setModel(b.getAttribute('data-m')); refresh(); pop.style.display = 'none'; });
+      document.addEventListener('click', function(){ try{ pop.style.display = 'none'; }catch(e){ /* guard-ok */ } });
+      window.omModelChipSync = refresh;
+      refresh();
+    }catch(e){ /* guard-ok: مؤشّر النموذج تحسينيّ */ }
   }
   var chipWrap, popup, ta;
   /* v-modes-i18n (شكوى المالك ٢٩ أغسطس): البنود كانت تُبنى مرة واحدة بلغة
@@ -75,10 +119,7 @@
       if(MODE_KEYS[m.id]) b.setAttribute('data-i18n-title', MODE_KEYS[m.id]);
       b.innerHTML = '<span class="omModeIc">' + m.ic + '</span><span class="btnLabel"' + (MODE_KEYS[m.id] ? ' data-i18n="' + MODE_KEYS[m.id] + '"' : '') + '>' + lbl(m) + '</span>';
       if(m.owner){ b.setAttribute('data-owner', '1'); b.style.display = isOwner() ? '' : 'none'; }
-      if(m.model){
-        var __lb = b.querySelector('.btnLabel'); if(__lb) __lb.textContent = modelLabel();
-        b.addEventListener('click', function(e){ e.stopPropagation(); setModel(curModel() === 'opus' ? 'sonnet' : 'opus'); var __l2 = b.querySelector('.btnLabel'); if(__l2) __l2.textContent = modelLabel(); });
-      } else if(m.agent){
+      if(m.agent){
         syncAgentItem(b);
         b.addEventListener('click', function(e){ e.stopPropagation(); var tg = document.getElementById('btnPremiumToggle'); if(tg) tg.click(); syncAgentItem(b); });
       } else {
@@ -101,6 +142,11 @@
       if(e.key === 'Escape' && window.__omMode){ pick(null); }
       if(e.key === 'Backspace' && !ta.value && window.__omMode){ pick(null); }
     });
+    buildModelChip();
+    /* الدخول قد يتمّ بعد بناء الصندوق — نعيد فحص المالك مرّاتٍ قصيرة وعند عودة التركيز
+       كي يظهر المؤشّر والبنود الخاصّة بلا انتظار فتح قائمة «+». */
+    [500, 1500, 3500, 7000].forEach(function(ms){ setTimeout(refreshOwnerItems, ms); });
+    try{ window.addEventListener('focus', refreshOwnerItems); }catch(e){ /* guard-ok */ }
   }
   function pick(id){
     try{ popup.classList.remove('show'); }catch(e){ /* guard-ok: an absent optional popup needs no cleanup. */ }

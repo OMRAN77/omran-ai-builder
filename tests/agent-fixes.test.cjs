@@ -41,7 +41,8 @@ const GH = require('../api/_lib/github-read.js');
   const prem = fs.readFileSync(path.join(__dirname, '..', 'js', 'premium.js'), 'utf8');
   assert.ok(!prem.includes("'تلقائي (Opus 5)'"), 'منتقي الإعدادات القديم حُذف من premium.js');
   const modes = fs.readFileSync(path.join(__dirname, '..', 'js', 'modes.js'), 'utf8');
-  assert.ok(modes.includes('model:true'), 'مبدّل النموذج بند في قائمة +');
-  assert.ok(modes.includes("'Opus 5'") && modes.includes("'Sonnet 5'"), 'المبدّل يعرض Opus 5 / Sonnet 5');
+  // v-model-chip: اختيار النموذج مؤشّر أسفل الصندوق لا بند في «+».
+  assert.ok(modes.includes("chip.id = 'omModelChip'"), 'مؤشّر النموذج أسفل الصندوق');
+  assert.ok(modes.includes("'Opus 5'") && modes.includes("'Sonnet 5'"), 'المؤشّر يعرض Opus 5 / Sonnet 5');
   console.log('✓ agent-fixes: Opus 5 افتراضيًّا ومُعلَنًا، الرفض واضح، بلا أسماء مزوّدين، ومفتاح GitHub للمالك وحده');
 })().catch((e) => { console.error(e); process.exit(1); });
