@@ -309,7 +309,10 @@
   .ofp-preview{font-size:21px;line-height:1.7;letter-spacing:0;color:var(--text);}
   .ofp-badge{position:absolute;top:5px;inset-inline-end:5px;padding:1px 5px;border-radius:var(--r-pill);background:rgba(127,127,127,.13);color:var(--muted);font-family:'Tajawal','Inter',sans-serif;font-size:8.5px;}
   @keyframes pop{from{opacity:0; transform:translateY(12px) scale(0.96);} to{opacity:1; transform:translateY(0) scale(1);}}
-  .msg.user{color:var(--text,#fff); align-self:flex-end; background:rgba(255,255,255,0.07) !important; border:1px solid rgba(255,255,255,0.08) !important; border-radius:var(--r-3) !important; padding:9px 13px !important; max-width:85%;}
+  /* v-one-side (أمر عمران «رسائل المستخدم في طرف والمزود في طرف — أريدهم اتجاه واحد»):
+     الرسالتان تترّاصان على جهة واحدة (البداية = اليمين في العربيّة)؛ نفرّق بالشكل
+     (فقاعة المستخدم) لا بالجهة. */
+  .msg.user{color:var(--text,#fff); align-self:flex-start; background:rgba(255,255,255,0.07) !important; border:1px solid rgba(255,255,255,0.08) !important; border-radius:var(--r-3) !important; padding:9px 13px !important; max-width:85%;}
   .msg.assistant{align-self:flex-start;}
   .msg.msg-anim{animation:msgFadeIn .4s ease-out;}
   @keyframes msgFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}

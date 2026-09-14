@@ -47,71 +47,56 @@
       // لا يختفي الشريط أثناء المحادثة كما يحدث في #omranBelowComposer (ترحيب فقط).
       var host = document.getElementById('inputbar');
       if(!host || document.getElementById('omBottomBar')) return;
-      // v-bottom-clean (أمر عمران «مع كلاود في مكان واحد… شيل صورة الكمبيوتر والولد، مااريد شي زياده»):
-      // مجموعة واحدة متلاصقة بلا إيموجي — نصّ فقط.
+      // v-one-arrow (أمر عمران «الكل في سهم واحد»): زرّ واحد بسهم يفتح قائمة واحدة فيها
+      // الوكيل + Claude Code + النموذج (Opus/Sonnet) — بلا شرائح متفرّقة ولا إيموجي.
       var bar = document.createElement('div');
       bar.id = 'omBottomBar';
-      bar.style.cssText = 'align-self:flex-end; margin-top:-2px; display:' + (isOwner() ? 'inline-flex' : 'none') + '; align-items:center; gap:0; justify-content:flex-end;';
+      bar.style.cssText = 'align-self:flex-end; margin-top:-2px; display:' + (isOwner() ? 'inline-flex' : 'none') + '; align-items:center; justify-content:flex-end;';
 
-      // الوكيل — تبديل موكَّل لمفتاح النقاط القديم (لا منطق مال هنا)
-      var agentBtn = document.createElement('button');
-      agentBtn.id = 'omAgentChip'; agentBtn.type = 'button'; agentBtn.style.cssText = CHIP_CSS;
-      agentBtn.innerHTML = '<span class="omAgentLbl"></span>';
-      agentBtn.addEventListener('click', function(e){ e.stopPropagation(); var tg = document.getElementById('btnPremiumToggle'); if(tg) tg.click(); syncBar(); });
-
-      // Claude Code — وضعٌ يُختار كبقيّة الأوضاع (pick)
-      var ccBtn = document.createElement('button');
-      ccBtn.id = 'omCcChip'; ccBtn.type = 'button'; ccBtn.style.cssText = CHIP_CSS;
-      ccBtn.innerHTML = '<span>Claude Code</span>';
-      ccBtn.addEventListener('click', function(e){ e.stopPropagation(); pick(window.__omMode === 'cc' ? null : 'cc'); syncBar(); });
-
-      // ⌄ النموذج الشغّال + قائمة تبديله
       var wrap = document.createElement('div');
       wrap.id = 'omModelWrap';
       wrap.style.cssText = 'position:relative; display:inline-flex; align-items:center;';
       var chip = document.createElement('button');
       chip.id = 'omModelChip'; chip.type = 'button';
-      chip.title = AR ? 'النموذج الشغّال — اضغط للتبديل' : 'Active model — tap to switch';
+      chip.title = AR ? 'الوكيل وClaude Code والنموذج' : 'Agent, Claude Code & model';
       chip.style.cssText = CHIP_CSS;
       chip.innerHTML = '<span class="omModelName"></span><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>';
       var pop = document.createElement('div');
       pop.id = 'omModelPopup';
-      pop.style.cssText = 'display:none; position:absolute; bottom:calc(100% + 6px); inset-inline-end:0; z-index:2200; background:var(--panel,#161513); border:1px solid var(--border,rgba(255,255,255,.12)); border-radius:12px; box-shadow:0 12px 34px rgba(0,0,0,.5); padding:5px; min-width:150px;';
-      var opts = [['opus','Opus 5'],['sonnet','Sonnet 5']];
-      pop.innerHTML = opts.map(function(o){
-        return '<button type="button" class="omModelOpt" data-m="' + o[0] + '" style="display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; background:none; border:none; color:var(--text,#eee); font-size:13px; text-align:start; padding:8px 10px; border-radius:8px; cursor:pointer;"><span>' + o[1] + '</span><span class="omModelTick" aria-hidden="true" style="opacity:0;">✓</span></button>';
-      }).join('');
+      pop.style.cssText = 'display:none; position:absolute; bottom:calc(100% + 6px); inset-inline-end:0; z-index:2200; background:var(--panel,#161513); border:1px solid var(--border,rgba(255,255,255,.12)); border-radius:12px; box-shadow:0 12px 34px rgba(0,0,0,.5); padding:5px; min-width:170px;';
+      function rowHTML(act, label){
+        return '<button type="button" class="omModelOpt" data-act="' + act + '" style="display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; background:none; border:none; color:var(--text,#eee); font-size:13px; font-weight:600; text-align:start; padding:8px 10px; border-radius:8px; cursor:pointer;"><span>' + label + '</span><span class="omModelTick" aria-hidden="true" style="opacity:0;">✓</span></button>';
+      }
+      var divider = '<div style="height:1px; margin:4px 6px; background:var(--border,rgba(255,255,255,.12));"></div>';
+      pop.innerHTML = rowHTML('agent', AR ? 'الوكيل' : 'Agent') + rowHTML('cc', 'Claude Code') + divider + rowHTML('opus', 'Opus 5') + rowHTML('sonnet', 'Sonnet 5');
       wrap.appendChild(pop); wrap.appendChild(chip);
-
-      bar.appendChild(agentBtn); bar.appendChild(ccBtn); bar.appendChild(wrap);
+      bar.appendChild(wrap);
       host.appendChild(bar);
 
-      var ACCENT = 'var(--accent,#f0c040)', MUTED = 'var(--muted,#9a958a)';
-      function refreshModel(){
+      function refresh(){
         var nm = wrap.querySelector('.omModelName'); if(nm) nm.textContent = modelName();
-        var cur = curModel(); var os = pop.querySelectorAll('.omModelOpt');
-        for(var i = 0; i < os.length; i++){
-          var sel = os[i].getAttribute('data-m') === cur;
-          var tick = os[i].querySelector('.omModelTick'); if(tick) tick.style.opacity = sel ? '1' : '0';
-          os[i].style.background = sel ? 'var(--panel2,rgba(255,255,255,.07))' : 'none';
+        var cur = curModel(); var rows = pop.querySelectorAll('.omModelOpt');
+        for(var i = 0; i < rows.length; i++){
+          var act = rows[i].getAttribute('data-act');
+          var on = (act === 'agent') ? (window.__agentModeOn === true)
+                 : (act === 'cc') ? (window.__omMode === 'cc')
+                 : (act === cur);
+          var tick = rows[i].querySelector('.omModelTick'); if(tick) tick.style.opacity = on ? '1' : '0';
+          rows[i].style.background = on ? 'var(--panel2,rgba(255,255,255,.07))' : 'none';
         }
       }
-      function syncBar(){
-        try{
-          var al = agentBtn.querySelector('.omAgentLbl');
-          var aon = window.__agentModeOn === true;
-          if(al) al.textContent = (AR ? 'الوكيل' : 'Agent') + (aon ? ' ✓' : '');
-          agentBtn.style.color = aon ? ACCENT : MUTED;
-          ccBtn.style.color = (window.__omMode === 'cc') ? ACCENT : MUTED;
-        }catch(e){ /* guard-ok: تحديث تجميليّ */ }
-        refreshModel();
-      }
-      chip.addEventListener('click', function(e){ e.stopPropagation(); pop.style.display = (pop.style.display === 'none') ? 'block' : 'none'; refreshModel(); });
-      pop.addEventListener('click', function(e){ var b = e.target.closest('.omModelOpt'); if(!b) return; e.stopPropagation(); setModel(b.getAttribute('data-m')); refreshModel(); pop.style.display = 'none'; });
+      chip.addEventListener('click', function(e){ e.stopPropagation(); pop.style.display = (pop.style.display === 'none') ? 'block' : 'none'; refresh(); });
+      pop.addEventListener('click', function(e){
+        var b = e.target.closest('.omModelOpt'); if(!b) return; e.stopPropagation();
+        var act = b.getAttribute('data-act');
+        if(act === 'agent'){ var tg = document.getElementById('btnPremiumToggle'); if(tg) tg.click(); refresh(); /* يبقى مفتوحًا ليرى ✓ */ }
+        else if(act === 'cc'){ pick(window.__omMode === 'cc' ? null : 'cc'); refresh(); pop.style.display = 'none'; }
+        else { setModel(act); refresh(); pop.style.display = 'none'; }
+      });
       document.addEventListener('click', function(){ try{ pop.style.display = 'none'; }catch(e){ /* guard-ok */ } });
-      window.omModelChipSync = refreshModel;
-      window.omBottomSync = syncBar;
-      syncBar();
+      window.omModelChipSync = refresh;
+      window.omBottomSync = refresh;
+      refresh();
     }catch(e){ /* guard-ok: الشريط السفليّ تحسينيّ */ }
   }
   var chipWrap, popup, ta;
