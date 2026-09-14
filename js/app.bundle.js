@@ -2085,10 +2085,9 @@ function buildSpokenWordSpans(container, text){
         if(trail) span.appendChild(document.createTextNode(trail));
       } else {
         span.textContent = __lead + display;
-        /* v-hl-yellow (طلب المالك «الإنجليزي والأكواد والمواقع صفراء زي الأرقام»):
-           الكلمات اللاتينية الخالصة (إنجليزي/رموز كود) تُلوَّن صفراء عبر الصنف om-en.
-           الكلمات المختلطة عربي/لاتيني تبقى كما هي كي لا يتبعثر لونها. */
-        if(/[A-Za-z]/.test(display) && !/[؀-ۿݐ-ݿ]/.test(display)) span.classList.add('om-en');
+        /* v-hl-links-only (طلب المالك: الإنجليزي والأرقام بيضاء عاديّة، الأصفر
+           للروابط فقط): لم نعد نضع الصنف om-en على الكلمات اللاتينيّة — يبقى
+           لونها كبقيّة النصّ. الأصفر محصور في الرابط <a> فقط. */
       }
       if(wasBold || markerCount) span.classList.add('md-bold');
       if(headerLevel) span.classList.add('md-h' + headerLevel);
