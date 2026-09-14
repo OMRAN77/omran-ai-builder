@@ -137,21 +137,7 @@
     <option value="openai">OpenAI (platform.openai.com)</option>
     <option value="groq">Groq (console.groq.com)</option>
   </select>
-  <!-- v-claude-models: نموذج كلود («ممكن تضيف هذيل كلهم») — يُحفظ محلّيًّا ويُرسَل مع كلّ رسالة على مسار كلود (app-29) -->
-  <label for="claudeModel" data-i18n="claudeModelPick" style="margin-top:10px;">نموذج كلود</label>
-  <select id="claudeModel">
-    <option value="">الافتراضيّ — Sonnet 5</option>
-    <option value="claude-fable-5-1">Fable 5.1 — الأقوى (يحتاج رصيد API)</option>
-    <option value="claude-fable-5">Fable 5 (يحتاج رصيد API)</option>
-    <option value="claude-opus-5">Opus 5</option>
-    <option value="claude-opus-4-8">Opus 4.8</option>
-    <option value="claude-opus-4-7">Opus 4.7</option>
-    <option value="claude-opus-4-6">Opus 4.6</option>
-    <option value="claude-sonnet-5">Sonnet 5</option>
-    <option value="claude-sonnet-4-6">Sonnet 4.6</option>
-    <option value="claude-haiku-4-5">Haiku 4.5 — الأسرع والأرخص</option>
-  </select>
-  <div id="claudeModelHint" style="font-size:12px; opacity:.75; margin-top:4px; line-height:1.6;"></div>
+  <!-- v-models-two (أمر عمران): منتقي «نموذج كلود» انتقل إلى قائمة «+» للمالك، فحُذف من هنا. -->
     <div style="margin-top:14px;">
   <div class="api-provider-card" style="border-inline-start:4px solid #10a37f; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
     <label style="display:flex; align-items:center; justify-content:space-between; gap:8px;">

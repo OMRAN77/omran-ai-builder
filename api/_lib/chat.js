@@ -503,16 +503,11 @@ function imageTurnConfig(env, viaOR, fallbackModel) {
 // (404/400 نموذج) = رجوع فوريّ للافتراضيّ مع إخبار المستخدم في سطر الحالة، لا سقوط للاحتياط.
 // لا thinking ولا temperature في الطلب أصلًا، فالقائمة كلّها (Fable 5/5.1 حتّى Haiku 4.5) تمرّ
 // بالطلب نفسه؛ output_config.effort يبقى لدور الصورة على الجيل الحاليّ فقط (imageTurnConfig).
+/* v-models-two (أمر عمران ١٤ سبتمبر): النماذج محصورة في Sonnet + Opus فقط،
+   واختيارها للمالك وحده (الأنثروبيك للمالك). */
 const CLAUDE_MODELS = {
-  'claude-fable-5-1': { label: 'Fable 5.1', or: 'anthropic/claude-fable-5.1' },
-  'claude-fable-5': { label: 'Fable 5', or: 'anthropic/claude-fable-5' },
   'claude-opus-5': { label: 'Opus 5', or: 'anthropic/claude-opus-5' },
-  'claude-opus-4-8': { label: 'Opus 4.8', or: 'anthropic/claude-opus-4.8' },
-  'claude-opus-4-7': { label: 'Opus 4.7', or: 'anthropic/claude-opus-4.7' },
-  'claude-opus-4-6': { label: 'Opus 4.6', or: 'anthropic/claude-opus-4.6' },
   'claude-sonnet-5': { label: 'Sonnet 5', or: 'anthropic/claude-sonnet-5' },
-  'claude-sonnet-4-6': { label: 'Sonnet 4.6', or: 'anthropic/claude-sonnet-4.6' },
-  'claude-haiku-4-5': { label: 'Haiku 4.5', or: 'anthropic/claude-haiku-4.5' },
 };
 function pickClaudeModel(requested, viaOR, fallback) {
   const id = String(requested || '').trim().toLowerCase();
@@ -968,7 +963,10 @@ module.exports = async (req, res) => {
   // وCHAT_CLAUDE_MODEL يرجّع Opus للمحادثة كلها من البيئة بلا نشر.
   const DEFAULT_MODEL = viaOR ? OR_MODELS[prov] : (process.env.CHAT_CLAUDE_MODEL || 'claude-sonnet-5');
   // v-claude-models: اختيار المستخدم على مسار كلود فقط؛ يعود للافتراضيّ إن رفضه المفتاح (أدناه).
-  const __pick = prov === 'claude' ? pickClaudeModel(body && body.model, viaOR, DEFAULT_MODEL) : { model: DEFAULT_MODEL, picked: false, id: '', label: '' };
+  // v-models-owner (أمر عمران «الأنثروبيك للمالك فقط»): اختيار الموديل للمالك وحده؛
+  // غير المالك يبقى على الافتراضيّ (Sonnet) كي لا يُستنزف رصيد المالك بموديل غالٍ.
+  const __ownerReq = (function(){ try{ return require('./_owner.js').isOwnerName(token ? require('./auth.js').verifyToken(token) : null); }catch(e){ return false; } })();
+  const __pick = (prov === 'claude' && __ownerReq) ? pickClaudeModel(body && body.model, viaOR, DEFAULT_MODEL) : { model: DEFAULT_MODEL, picked: false, id: '', label: '' };
   let CHAT_MODEL = __pick.model;
 
   // v-real-fast-headers: «النصّ الطويل ما يرد» — الحارس أعلاه (v-fast-headers)
