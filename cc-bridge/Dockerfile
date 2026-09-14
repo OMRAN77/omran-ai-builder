@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends git ca-certific
   && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
   && apt-get update && apt-get install -y --no-install-recommends gh \
   && rm -rf /var/lib/apt/lists/* \
-  && useradd -m -u 1000 agent && mkdir -p /work/repo /work/state && chown -R agent:agent /work
+  && useradd -m agent && mkdir -p /work/repo /work/state && chown -R agent:agent /work
 
 WORKDIR /app
 COPY package.json package-lock.json ./

@@ -10,7 +10,7 @@ set -e
 if [ "$(id -u)" = "0" ]; then
   mkdir -p "$CC_REPO_DIR" "$CC_STATE_DIR" "$CLAUDE_CONFIG_DIR"
   chown agent:agent /work "$CC_STATE_DIR" "$CLAUDE_CONFIG_DIR" 2>/dev/null || true
-  [ "$(stat -c %u "$CC_REPO_DIR")" = "1000" ] || chown -R agent:agent "$CC_REPO_DIR"
+  [ "$(stat -c %u "$CC_REPO_DIR")" = "$(id -u agent)" ] || chown -R agent:agent "$CC_REPO_DIR"
   if command -v runuser >/dev/null 2>&1; then exec runuser -u agent -- /bin/sh /app/entrypoint.sh; fi
   exec setpriv --reuid=agent --regid=agent --init-groups /bin/sh /app/entrypoint.sh
 fi
