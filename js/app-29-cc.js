@@ -10,16 +10,16 @@
   'use strict';
   function owner(){ try{ return String((window.authGet && window.authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; } }
   function token(){ try{ return (window.authGet && window.authGet('aiapp_auth_token')) || ''; }catch(e){ return ''; } }
-  var S = { sessionId: '', runId: '', since: 0, prNumber: 0, prUrl: '', lastTask: '', busy: false, retries: 0 };
+  /* الجلسة (sessionId) تعيش في محادثة التطبيق نفسها (cur.ccSessionId) لا هنا — v-cc-session-per-chat. */
+  var S = { runId: '', since: 0, prNumber: 0, prUrl: '', lastTask: '', busy: false, retries: 0 };
   try{
-    S.sessionId = localStorage.getItem('aiapp_cc_session') || '';
     S.prNumber = parseInt(localStorage.getItem('aiapp_cc_pr') || '0', 10) || 0;
     S.prUrl = localStorage.getItem('aiapp_cc_pr_url') || '';
     S.lastTask = localStorage.getItem('aiapp_cc_last') || '';
+    localStorage.removeItem('aiapp_cc_session');
   }catch(e){ /* guard-ok */ }
   function save(){
     try{
-      localStorage.setItem('aiapp_cc_session', S.sessionId || '');
       localStorage.setItem('aiapp_cc_pr', String(S.prNumber || 0));
       localStorage.setItem('aiapp_cc_pr_url', S.prUrl || '');
       localStorage.setItem('aiapp_cc_last', String(S.lastTask || '').slice(0, 200));
@@ -74,12 +74,19 @@
       .then(function(){ return gotDone; });
   }
 
+  /* v-cc-raw-full: المهمّة الطويلة تُتابَع حتّى نهايتها — كلّ ٣٠٠ ثانية يقطع Vercel البثّ فنلتحق
+     من النقطة نفسها بلا سقف؛ السقف على الأخطاء المتتالية فقط (٢٠ محاولة بتراجع تدريجيّ). */
   function attachLoop(onEvent, onRetry){
-    if(!S.runId || S.retries > 6) return Promise.resolve(false);
-    S.retries++;
+    if(!S.runId) return Promise.resolve(false);
     return stream({ op: 'attach', runId: S.runId, since: S.since }, onEvent)
-      .then(function(done){ if(done) return true; return attachLoop(onEvent, onRetry); })
-      .catch(function(e){ if(e && e.name === 'AbortError') throw e; if(onRetry) onRetry(S.retries); return new Promise(function(res){ setTimeout(res, 1500); }).then(function(){ return attachLoop(onEvent, onRetry); }); });
+      .then(function(done){ S.retries = 0; if(done) return true; return attachLoop(onEvent, onRetry); })
+      .catch(function(e){
+        if(e && e.name === 'AbortError') throw e;
+        S.retries++;
+        if(S.retries > 20) return false;
+        if(onRetry) onRetry(S.retries);
+        return new Promise(function(res){ setTimeout(res, Math.min(15000, 1500 * S.retries)); }).then(function(){ return attachLoop(onEvent, onRetry); });
+      });
   }
 
   function statusLine(j){
@@ -120,20 +127,37 @@
     if(c.cmd === 'status'){
       return api('status').then(function(j){ done(statusLine(j) + (j.busy ? '\n⏳ تشغيل جارٍ.' : '')); }).catch(fail);
     }
-    if(c.cmd === 'new'){ S.sessionId = ''; save(); return Promise.resolve(done('🆕 جلسة جديدة — الرسالة التالية تبدأ سياقًا جديدًا.')); }
+    if(c.cmd === 'new'){ cur.ccSessionId = ''; return Promise.resolve(done('🆕 جلسة جديدة — الرسالة التالية تبدأ سياقًا جديدًا.')); }
     if(c.cmd === 'stop'){ return api('stop').then(function(){ done('⏹️ طُلب الإيقاف.'); }).catch(fail); }
     return Promise.resolve(done('أمر غير معروف.'));
   }
 
+  /* v-cc-images: الصور المرفقة → كتل صور للجسر (png/jpeg/webp/gif، حتّى ٤ صور و٣٫٥ مليون حرف base64
+     مجتمعة — حدّ جسد طلب Vercel). ما زاد يُذكر في الرسالة بدل أن يضيع بصمت. */
+  var IMG_MAX = 4, IMG_BUDGET = 3500000;
+  function packImages(atts){
+    var out = [], skipped = 0, used = 0;
+    (atts || []).forEach(function(a){
+      var m = /^data:(image\/(?:png|jpeg|webp|gif));base64,([A-Za-z0-9+/=]+)$/.exec(String((a && a.dataUrl) || ''));
+      if(!m || out.length >= IMG_MAX || used + m[2].length > IMG_BUDGET){ skipped++; return; }
+      used += m[2].length; out.push({ mediaType: m[1], data: m[2] });
+    });
+    return { images: out, skipped: skipped };
+  }
+
   /** مهمّة عاديّة: بثّ الجسر إلى شريط الحالة والفقاعة، ثمّ رسالة في المحادثة مع حالة git. */
-  function runTask(cur, text, thinkingDiv, status){
+  function runTask(cur, text, thinkingDiv, status, atts){
+    var packed = packImages(atts);
+    if(packed.skipped) text += '\n\n(' + packed.skipped + ' مرفق لم يُرسل: الصور حتّى ٤ بصيغة png/jpeg/webp/gif وبحجم إجماليّ محدود.)';
     S.lastTask = text; save();
     S.since = 0; S.runId = ''; S.retries = 0;
     var step = status.step('🧑‍💻', 'Claude Code يعمل…');
-    var full = '', result = null, err = '';
+    var full = '', result = null, err = '', initModel = '';
     var onEv = function(ev){
       if(ev.run) S.runId = ev.run;
-      if(ev.init){ S.sessionId = ev.init.sessionId || S.sessionId; save(); }
+      /* v-cc-session-per-chat: جلسة Claude Code مربوطة بمحادثة التطبيق نفسها لا بالمتصفّح كلّه —
+         محادثة جديدة في التطبيق = جلسة جديدة، والرجوع لمحادثة قديمة يستأنف جلستها. */
+      if(ev.init){ cur.ccSessionId = ev.init.sessionId || cur.ccSessionId || ''; initModel = ev.init.model || ''; }
       if(ev.tool){ if(step) step.done(); step = status.step('🔧', ev.tool.brief); }
       if(ev.toolError){ if(step) step.done(); step = status.step('⚠️', ev.toolError); }
       if(ev.delta){
@@ -154,7 +178,8 @@
       if(ev.done){ S.runId = ''; S.since = 0; }
     };
     var onRetry = function(n){ if(step) step.done(); step = status.step('🔌', 'انقطع الاتّصال — أعيد الالتحاق بالتشغيل (' + n + ')…'); };
-    return stream({ op: 'chat', message: text, sessionId: S.sessionId }, onEv)
+    if(packed.images.length){ var s0 = status.step('🖼️', packed.images.length + ' صورة مرفقة تُرسل إلى Claude Code'); s0.done(); }
+    return stream({ op: 'chat', message: text, sessionId: String(cur.ccSessionId || ''), newSession: !cur.ccSessionId, images: packed.images }, onEv)
       .then(function(done){ if(done) return true; return attachLoop(onEv, onRetry); })
       .catch(function(e){
         if(e && e.name === 'AbortError'){ api('stop').catch(function(){ /* guard-ok */ }); err = err || 'أُوقف بأمرك.'; return false; }
@@ -172,17 +197,19 @@
         if(!body) body = err ? ('✗ ' + err) : '✅ انتهى بلا نصّ.';
         else if(err) body += '\n\n⚠️ ' + err;
         var foot = '';
-        if(result) foot += '— ' + (result.turns || 0) + ' جولة' + (result.cost != null ? ' · ' + Number(result.cost).toFixed(3) + '$' : '');
-        if(st) foot += (foot ? '\n' : '') + statusLine(st) + ((st.dirty || st.ahead) ? '\nاكتب «انشر» لفتح طلب السحب، ثمّ «ادمج».' : '');
+        // v-cc-strength: النموذج الذي عمل فعلًا (من نتيجة التشغيل) والجهد — لا النموذج المضبوط فقط.
+        var ranModel = (result && result.models && result.models.length) ? result.models.join(' + ') : (initModel || (st && st.model) || '');
+        if(result) foot += '— ' + (result.turns || 0) + ' جولة' + (result.cost != null ? ' · ' + Number(result.cost).toFixed(3) + '$' : '') + (ranModel ? ' · النموذج: ' + ranModel : '') + (result.effort ? ' · الجهد: ' + result.effort : '');
+        if(st){ var s2 = Object.assign({}, st); if(ranModel) delete s2.model; foot += (foot ? '\n' : '') + statusLine(s2) + ((st.dirty || st.ahead) ? '\nاكتب «انشر» لفتح طلب السحب، ثمّ «ادمج».' : ''); }
         push(cur, body + (foot ? '\n\n' + foot : ''));
       });
   }
 
-  function runInChat(cur, text, thinkingDiv, status){
+  function runInChat(cur, text, thinkingDiv, status, atts){
     if(!owner()) { push(cur, 'هذا الوضع لمالك التطبيق وحده.'); return Promise.resolve(); }
     var c = parseCommand(text);
-    return c ? runCommand(cur, c, thinkingDiv, status) : runTask(cur, text, thinkingDiv, status);
+    return c ? runCommand(cur, c, thinkingDiv, status) : runTask(cur, text, thinkingDiv, status, atts);
   }
 
-  window.omranCC = { runInChat: runInChat, owner: owner, parseCommand: parseCommand };
+  window.omranCC = { runInChat: runInChat, owner: owner, parseCommand: parseCommand, packImages: packImages };
 })();

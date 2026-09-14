@@ -6647,6 +6647,73 @@ function renderMessages(keepScroll){
   try{ if(typeof syncChatJumpButton === 'function') syncChatJumpButton(); }catch(e){ __swallow(e, "ui:chatJump"); }
   // v462: أنيميشن رسالة المستخدم — CSS class msg-anim يضاف أثناء بناء العنصر (سطر 973)
 }
+/* v-topic-memory (شكوى المالك ١٤ سبتمبر «المواضيع كلّها تتداخل… أتكلّم عن موضوع وأبدّله ثمّ أرجع
+   للي قبله فكأنّي ما سألته أيّ شيء»): المطلوب وجهان معًا — تبديل الموضوع لا يجرّ القديم، والرجوع
+   إليه لا ينساه. القاعدة القديمة «أجب عن الرسالة الأخيرة وحدها، والتاريخ خلفيّة فقط» كانت تعلّم
+   النموذج النسيان. هنا كاشف صافٍ (بلا DOM) يصنّف الرسالة الحاليّة:
+     new    = موضوع مستقلّ (لا تقاطع كلمات مع الدور السابق ولا مع أسئلة أقدم) → تعليمة «أجب عن
+              الجديد ولا تكمل السابق، والتاريخ كلّه يبقى ذاكرتك».
+     back   = عودة إلى موضوع أقدم (إشارة صريحة، أو تقاطع مع سؤال أقدم بلا تقاطع مع الأخير) →
+              تعليمة «المستخدم يعود إلى موضوع سابق» مع استدعاء السؤال القديم وجوابه نصًّا.
+     follow = متابعة عاديّة (إشارة متابعة، رسالة قصيرة، أو تقاطع مع الدور السابق) → لا تعليمة.
+   لا يُحذف شيء من التاريخ أبدًا. tests/topic-switch.test.cjs. */
+(function(){
+  'use strict';
+  var STOP = {};
+  ('في من على عن إلى الى مع هذا هذه هذي ذاك ذلك تلك انا أنا انت أنت هو هي هم نحن كان كانت يكون تكون ما لا لم لن ليس ليست كل بعض اي أي أين متى كيف لماذا ليش هل او أو ثم بس فقط جدا جدًا جداً كثير قليل شي شيء شوي لو اذا إذا ان أن إن حتى حتّى عند عندي عندك لي لك له لها لنا لهم بعد قبل الآن الان اليوم امس أمس غدا غدًا ابي أبي ابغى أبغى اريد أريد ممكن سمحت ياليت رجاء فضلك اكتب أكتب اكتبلي سوي سوّي اعمل أعمل قل قلي عطني أعطني هات ايش وش شو ليه كذا هنا هناك يا نعم لا طيب تمام اوكي أوكي '
+   + 'the a an and or of to in on for with is are was were be been it this that these those i you he she we they my your our their me us them will would can could should do does did not no yes please make write give tell about how what why when where which').split(/\s+/).forEach(function(w){ if(w) STOP[w] = 1; });
+  function norm(w){
+    return String(w || '').toLowerCase().replace(/[ً-ٰٟ]/g, '').replace(/^(?:و|ف|ب|ل|ك)?ال/, '').replace(/[إأآ]/g, 'ا').replace(/ة$/, 'ه').replace(/ى$/, 'ي');
+  }
+  /** كلمات المحتوى بعد التطبيع وحذف كلمات الوقف (٣ أحرف فأكثر بعد التطبيع). */
+  function words(s){
+    var out = [];
+    String(s || '').replace(/[؀-ۿ\w]{2,}/g, function(w){
+      var lw = w.toLowerCase(); if(STOP[lw]) return '';
+      var n = norm(w); if(n.length >= 3 && !STOP[n]) out.push(n);
+      return '';
+    });
+    return out;
+  }
+  function overlap(nw, text){
+    if(!nw.length) return 0;
+    var set = {}; words(text).forEach(function(w){ set[w] = 1; });
+    var hit = 0; nw.forEach(function(w){ if(set[w]) hit++; });
+    return hit / nw.length;
+  }
+  /** أفضل تقاطع مع الأسئلة الأقدم (الأحدث أوّلًا): {index, ratio}. */
+  function bestEarlier(nw, earlier){
+    var best = { index: -1, ratio: 0 };
+    (earlier || []).forEach(function(t, i){ var r = overlap(nw, t); if(r > best.ratio){ best = { index: i, ratio: r }; } });
+    return best;
+  }
+  /* إشارات المتابعة: ضمائر إشارة، أفعال تعديل على شيء سابق، «كمل/زد/وضّح»، ورأي في ما سبق. */
+  var REF = /(هذا|هذه|هذي|هذول|هاذي|ذاك|ذلك|تلك|نفس|السابق|اللي فوق|الي فوق|أعلاه|اعلاه|كمل|كمّل|أكمل|اكمل|استمر|تابع|زد|زيد|عدل|عدّل|غير|غيّر|بدل|بدّل|صلح|صلّح|حسن|حسّن|شيل|احذف|اضف|أضف|ضيف|اعد|أعد|كرر|ترجم|لخص|لخّص|اختصر|وسع|وسّع|طول|طوّل|وضح|وضّح|اشرح|رأيك|رايك|ايضا|أيضا|أيضًا|برضو|بعدين|بعدها|والثاني|وثاني|الثاني|فوق|\bit\b|\bthis\b|\bthat\b|\bthese\b|\bthose\b|\bsame\b|\babove\b|\bagain\b|\bcontinue\b|\bmore\b|\balso\b|\bprevious\b)/i;
+  var NEW = /^\s*(?:موضوع\s+(?:جديد|ثاني|آخر|اخر)|سؤال\s+(?:ثاني|آخر|اخر|جديد)|new topic|change of topic)/i;
+  var BACK = /(ارجع|نرجع|رجعنا|خلنا نرجع|بالنسبة ل|بخصوص|الموضوع (?:الأول|الاول|السابق|القديم)|اللي (?:قبل|كنا)|الي (?:قبل|كنا)|السؤال (?:الأول|الاول|السابق)|go back|back to)/i;
+
+  /**
+   * القرار: {kind:'new'|'follow'|'back', reason, backIndex}.
+   * earlierUsers: أسئلة المستخدم الأقدم من الدور السابق، الأحدث أوّلًا؛ backIndex يشير إليها.
+   */
+  function decide(text, prevUser, prevAssistant, earlierUsers){
+    var t = String(text || '').trim();
+    var nw = words(t);
+    if(!t) return { kind: 'follow', reason: 'empty', backIndex: -1 };
+    if(BACK.test(t)) return { kind: 'back', reason: 'back-marker', backIndex: bestEarlier(nw, earlierUsers).index };
+    if(NEW.test(t)) return { kind: 'new', reason: 'explicit', backIndex: -1 };
+    if(!String(prevUser || '').trim()) return { kind: 'follow', reason: 'first', backIndex: -1 };
+    if(REF.test(t)) return { kind: 'follow', reason: 'reference', backIndex: -1 };
+    if(nw.length < 2) return { kind: 'follow', reason: 'short', backIndex: -1 };
+    var rPrev = overlap(nw, String(prevUser || '') + '\n' + String(prevAssistant || ''));
+    if(rPrev > 0.2) return { kind: 'follow', reason: 'overlap ' + rPrev.toFixed(2), backIndex: -1 };
+    var best = bestEarlier(nw, earlierUsers);
+    if(best.index >= 0 && best.ratio >= 0.3) return { kind: 'back', reason: 'earlier ' + best.ratio.toFixed(2), backIndex: best.index };
+    return { kind: 'new', reason: 'overlap ' + rPrev.toFixed(2), backIndex: -1 };
+  }
+  window.omranTopicSwitch = decide;
+  window.omranTopicWords = words;
+})();
 /* v-img-save-universal (شكوى المالك ٥ سبتمبر: «تحميل الصور ومشاركة واتساب ما تشتغل» في أنماط الصور،
    و«لا تحط أزرار ما تشتغل»): أغلفة المتجر لا تنفّذ <a download> على data:/blob: ولا navigator.share.
    مسار موحّد لكل صور الاستوديوهات:
@@ -18759,8 +18826,9 @@ function __friendlyErr(e){
     // ببصمة الشخصية، والخادم يعزلها عن الذاكرة والمواضيع القديمة بنفسه.
     // v-cc-chat: وضع «Claude Code» من قائمة @ (المالك وحده) — الرسالة إلى Claude Code
     // على خادمه عبر المرحّل، والردّ رسالة عاديّة هنا؛ الكلمات الآمرة (انشر/ادمج…) من الصندوق نفسه.
-    if(window.__omMode === 'cc' && window.omranCC && !imageAttachments.length){
-      await window.omranCC.runInChat(cur, apiText, thinkingDiv, chatStatus);
+    // v-cc-images: اللقطة المرفقة تذهب إلى Claude Code ليراها (كما يراها المالك في الويب) لا إلى مسار الصور.
+    if(window.__omMode === 'cc' && window.omranCC){
+      await window.omranCC.runInChat(cur, apiText, thinkingDiv, chatStatus, imageAttachments);
       return;
     }
     // 🤖 وكيل عمران: وضع الوكيل المستقل (Claude Sonnet 4 + أدوات) — يخطط ويبحث ويبني.
@@ -20231,7 +20299,8 @@ function __showImgLoading(el, ar, en){
        نص طويل ملصوق (تقرير/رسالة/سجل/خطأ) بلا أمر بناء صريح = تحليل وشرح
        وخطوات، لا بناء ولا كود. (عُرّف __pastedDoc أعلى — v-pasted-no-design) */
     if(__pastedDoc) apiMessages.push({role: 'system', content: 'رسالة المستخدم الأخيرة نصٌّ ملصوق (تقرير أو رسالة أو سجل أخطاء) وليست طلب بناء. حلّله: ماذا يعني، ما السبب، وما الخطوات العملية المطلوبة من المستخدم بالترتيب — بلغة المستخدم. ممنوع منعًا باتًا بناء تطبيق أو صفحة أو أي كتلة كود ردًّا عليه، حتى لو ورد فيه «app» أو «feature» أو «submit» — إلا إذا كتب المستخدم بنفسه أمر بناء صريحًا.'});
-    if(!__quietSocialTurn) apiMessages.push({role: 'system', content: 'قاعدة الموضوع (أولوية قصوى): أجب عن رسالة المستخدم الأخيرة وحدها. إذا كان موضوعها مختلفًا عن الرسائل السابقة فاترك السابق تمامًا — لا تكمله ولا تلخصه ولا تذكره ولا تجيب عنه مرة أخرى. تاريخ المحادثة خلفية فقط، وليس قائمة مهام.', __topicRule: true});
+    /* v-topic-memory: الصياغة القديمة «أجب عن الأخيرة وحدها… التاريخ خلفيّة فقط» علّمت النموذج النسيان. */
+    if(!__quietSocialTurn) apiMessages.push({role: 'system', content: 'قاعدة الموضوع (أولوية قصوى): رسالة المستخدم الأخيرة تحدّد الموضوع الحاليّ. إن كانت موضوعًا جديدًا فأجب عنه وحده ولا تكمل السابق ولا تخلطه به من تلقاء نفسك. وإن عادت إلى موضوع سابق في هذه المحادثة فأنت تذكره كاملًا بتفاصيله وتبني عليه — لا تقل إنّك لا تعرفه ولا تطلب إعادته. تاريخ المحادثة كلّه ذاكرتك الحاضرة، لا قائمة مهام تُعاد.', __topicRule: true});
     // 🤝 v345: المستخدم وافق على عرض بناء قدّمه المزود في رده السابق — يبنيه الآن كاملًا.
     if(window.__buildOfferApproved){
       apiMessages.push({role: 'system', content: 'BUILD-OFFER APPROVAL (highest priority): In your PREVIOUS assistant message you offered to build a specific tool/app for the user and asked permission to start. The user has just approved. Build EXACTLY the tool/app you offered in that previous message NOW — completely, as ONE working single-file ```html app in this reply. Do NOT re-explain, do NOT repeat your earlier advice, do NOT ask again, and NEVER return to any earlier request that was rejected. Just build the offered tool fully.'});
@@ -20341,6 +20410,34 @@ DESIGN RULES (non-negotiable):
       //    «موقع/تطبيق» في رسالة قديمة كان يمسحها من الذاكرة فينسى النموذج المحادثة.
       __historyMsgs = __historyMsgs.filter((m, __i) => { if(__i >= __keepFrom || m.role !== 'user') return true; const __t = (m.apiText !== undefined ? m.apiText : (m.content || '')); return !(__historyBuildRe.test(__t) && __buildCmdRe.test(__t)); });
     }
+    /* v-topic-memory (شكوى المالك «أبدّل الموضوع وأرجع للي قبله فكأنّي ما سألته شي»): لا يُحذف
+       شيء من التاريخ؛ الكاشف يصنّف الرسالة الحاليّة ويضيف تعليمة الدور فقط: موضوع جديد → لا
+       تكمل السابق لكن احفظه؛ عودة لموضوع أقدم → استدعِ سؤاله وجوابه نصًّا ولا تقل إنّك لا تذكره.
+       لا يمسّ التعديل على كود المشروع ولا موافقة البناء ولا تعديل رسالة سابقة ولا الدور الاجتماعيّ. */
+    try{
+      if(typeof window.omranTopicSwitch === 'function' && !__quietSocialTurn && !__routeFix && !__editIntent && !window.__buildOfferApproved && !__editedOriginal && __historyMsgs.length > 1){
+        const __txt = (m) => String(__stripCodeForHistory(m.role === 'user' ? 'user' : 'assistant', (m.apiText !== undefined ? m.apiText : (m.content || ''))) || '');
+        const __prevs = __historyMsgs.slice(0, -1);
+        const __users = __prevs.map((m, i) => ({ m, i })).filter(x => x.m.role === 'user');
+        const __pu = __users[__users.length - 1];
+        const __pa = __pu ? __prevs.slice(__pu.i + 1).filter(m => m.role !== 'user').slice(-1)[0] : null;
+        const __olderUsers = __users.slice(0, -1).reverse().slice(0, 40);
+        const __d = window.omranTopicSwitch(text, __pu ? __txt(__pu.m) : '', __pa ? __txt(__pa) : '', __olderUsers.map(x => __txt(x.m)));
+        if(__d.kind === 'new'){
+          apiMessages.push({ role: 'system', content: 'ملاحظة هذا الدور: رسالة المستخدم الأخيرة موضوع جديد مختلف عمّا قبله. أجب عنه وحده كاملًا، ولا تكمل الموضوع السابق ولا تشير إليه من تلقاء نفسك. لكن تاريخ المحادثة كلّه يبقى في ذاكرتك: إن عاد المستخدم إلى أيّ موضوع سابق لاحقًا فأنت تذكره بتفاصيله.' });
+          try{ if(typeof chatStatus !== 'undefined' && chatStatus){ const __s = chatStatus.step('🧭', lang === 'ar' ? 'موضوع جديد' : 'New topic'); __s.done(); } }catch(e){ __swallow(e, 'topic:status'); }
+        } else if(__d.kind === 'back'){
+          let __recall = '';
+          const __hit = __d.backIndex >= 0 ? __olderUsers[__d.backIndex] : null;
+          if(__hit){
+            const __ans = __prevs.slice(__hit.i + 1).find(m => m.role !== 'user');
+            __recall = '\nسؤاله السابق كان: «' + __txt(__hit.m).slice(0, 400) + '»' + (__ans ? '\nوجوابك عليه (مختصرًا): «' + __txt(__ans).slice(0, 1500) + '»' : '');
+          }
+          apiMessages.push({ role: 'system', content: 'ملاحظة هذا الدور: المستخدم يعود إلى موضوع سابق في هذه المحادثة نفسها. أنت تذكر ذلك الموضوع كاملًا مع ما قيل فيه؛ ابنِ على ما سبق مباشرةً، ولا تقل إنّك لا تذكره ولا تطلب منه إعادته، ولا تخلطه بالموضوع الذي جاء بينهما.' + __recall });
+          try{ if(typeof chatStatus !== 'undefined' && chatStatus){ const __s = chatStatus.step('🔁', lang === 'ar' ? 'عودة إلى موضوع سابق' : 'Back to an earlier topic'); __s.done(); } }catch(e){ __swallow(e, 'topic:status'); }
+        }
+      }
+    }catch(e){ __swallow(e, 'topic:notes'); }
     // 🔒 الصور تُرسل فقط مع الرسالة الحالية (الأخيرة) — صور الرسائل القديمة
     // لا تُعاد إرسالها أبدًا حتى لا يظل المزود يحلل صورة قديمة بدل السؤال الجديد.
     {
@@ -33981,16 +34078,16 @@ if(document.readyState === 'loading'){
   'use strict';
   function owner(){ try{ return String((window.authGet && window.authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; } }
   function token(){ try{ return (window.authGet && window.authGet('aiapp_auth_token')) || ''; }catch(e){ return ''; } }
-  var S = { sessionId: '', runId: '', since: 0, prNumber: 0, prUrl: '', lastTask: '', busy: false, retries: 0 };
+  /* الجلسة (sessionId) تعيش في محادثة التطبيق نفسها (cur.ccSessionId) لا هنا — v-cc-session-per-chat. */
+  var S = { runId: '', since: 0, prNumber: 0, prUrl: '', lastTask: '', busy: false, retries: 0 };
   try{
-    S.sessionId = localStorage.getItem('aiapp_cc_session') || '';
     S.prNumber = parseInt(localStorage.getItem('aiapp_cc_pr') || '0', 10) || 0;
     S.prUrl = localStorage.getItem('aiapp_cc_pr_url') || '';
     S.lastTask = localStorage.getItem('aiapp_cc_last') || '';
+    localStorage.removeItem('aiapp_cc_session');
   }catch(e){ /* guard-ok */ }
   function save(){
     try{
-      localStorage.setItem('aiapp_cc_session', S.sessionId || '');
       localStorage.setItem('aiapp_cc_pr', String(S.prNumber || 0));
       localStorage.setItem('aiapp_cc_pr_url', S.prUrl || '');
       localStorage.setItem('aiapp_cc_last', String(S.lastTask || '').slice(0, 200));
@@ -34045,12 +34142,19 @@ if(document.readyState === 'loading'){
       .then(function(){ return gotDone; });
   }
 
+  /* v-cc-raw-full: المهمّة الطويلة تُتابَع حتّى نهايتها — كلّ ٣٠٠ ثانية يقطع Vercel البثّ فنلتحق
+     من النقطة نفسها بلا سقف؛ السقف على الأخطاء المتتالية فقط (٢٠ محاولة بتراجع تدريجيّ). */
   function attachLoop(onEvent, onRetry){
-    if(!S.runId || S.retries > 6) return Promise.resolve(false);
-    S.retries++;
+    if(!S.runId) return Promise.resolve(false);
     return stream({ op: 'attach', runId: S.runId, since: S.since }, onEvent)
-      .then(function(done){ if(done) return true; return attachLoop(onEvent, onRetry); })
-      .catch(function(e){ if(e && e.name === 'AbortError') throw e; if(onRetry) onRetry(S.retries); return new Promise(function(res){ setTimeout(res, 1500); }).then(function(){ return attachLoop(onEvent, onRetry); }); });
+      .then(function(done){ S.retries = 0; if(done) return true; return attachLoop(onEvent, onRetry); })
+      .catch(function(e){
+        if(e && e.name === 'AbortError') throw e;
+        S.retries++;
+        if(S.retries > 20) return false;
+        if(onRetry) onRetry(S.retries);
+        return new Promise(function(res){ setTimeout(res, Math.min(15000, 1500 * S.retries)); }).then(function(){ return attachLoop(onEvent, onRetry); });
+      });
   }
 
   function statusLine(j){
@@ -34091,20 +34195,37 @@ if(document.readyState === 'loading'){
     if(c.cmd === 'status'){
       return api('status').then(function(j){ done(statusLine(j) + (j.busy ? '\n⏳ تشغيل جارٍ.' : '')); }).catch(fail);
     }
-    if(c.cmd === 'new'){ S.sessionId = ''; save(); return Promise.resolve(done('🆕 جلسة جديدة — الرسالة التالية تبدأ سياقًا جديدًا.')); }
+    if(c.cmd === 'new'){ cur.ccSessionId = ''; return Promise.resolve(done('🆕 جلسة جديدة — الرسالة التالية تبدأ سياقًا جديدًا.')); }
     if(c.cmd === 'stop'){ return api('stop').then(function(){ done('⏹️ طُلب الإيقاف.'); }).catch(fail); }
     return Promise.resolve(done('أمر غير معروف.'));
   }
 
+  /* v-cc-images: الصور المرفقة → كتل صور للجسر (png/jpeg/webp/gif، حتّى ٤ صور و٣٫٥ مليون حرف base64
+     مجتمعة — حدّ جسد طلب Vercel). ما زاد يُذكر في الرسالة بدل أن يضيع بصمت. */
+  var IMG_MAX = 4, IMG_BUDGET = 3500000;
+  function packImages(atts){
+    var out = [], skipped = 0, used = 0;
+    (atts || []).forEach(function(a){
+      var m = /^data:(image\/(?:png|jpeg|webp|gif));base64,([A-Za-z0-9+/=]+)$/.exec(String((a && a.dataUrl) || ''));
+      if(!m || out.length >= IMG_MAX || used + m[2].length > IMG_BUDGET){ skipped++; return; }
+      used += m[2].length; out.push({ mediaType: m[1], data: m[2] });
+    });
+    return { images: out, skipped: skipped };
+  }
+
   /** مهمّة عاديّة: بثّ الجسر إلى شريط الحالة والفقاعة، ثمّ رسالة في المحادثة مع حالة git. */
-  function runTask(cur, text, thinkingDiv, status){
+  function runTask(cur, text, thinkingDiv, status, atts){
+    var packed = packImages(atts);
+    if(packed.skipped) text += '\n\n(' + packed.skipped + ' مرفق لم يُرسل: الصور حتّى ٤ بصيغة png/jpeg/webp/gif وبحجم إجماليّ محدود.)';
     S.lastTask = text; save();
     S.since = 0; S.runId = ''; S.retries = 0;
     var step = status.step('🧑‍💻', 'Claude Code يعمل…');
-    var full = '', result = null, err = '';
+    var full = '', result = null, err = '', initModel = '';
     var onEv = function(ev){
       if(ev.run) S.runId = ev.run;
-      if(ev.init){ S.sessionId = ev.init.sessionId || S.sessionId; save(); }
+      /* v-cc-session-per-chat: جلسة Claude Code مربوطة بمحادثة التطبيق نفسها لا بالمتصفّح كلّه —
+         محادثة جديدة في التطبيق = جلسة جديدة، والرجوع لمحادثة قديمة يستأنف جلستها. */
+      if(ev.init){ cur.ccSessionId = ev.init.sessionId || cur.ccSessionId || ''; initModel = ev.init.model || ''; }
       if(ev.tool){ if(step) step.done(); step = status.step('🔧', ev.tool.brief); }
       if(ev.toolError){ if(step) step.done(); step = status.step('⚠️', ev.toolError); }
       if(ev.delta){
@@ -34125,7 +34246,8 @@ if(document.readyState === 'loading'){
       if(ev.done){ S.runId = ''; S.since = 0; }
     };
     var onRetry = function(n){ if(step) step.done(); step = status.step('🔌', 'انقطع الاتّصال — أعيد الالتحاق بالتشغيل (' + n + ')…'); };
-    return stream({ op: 'chat', message: text, sessionId: S.sessionId }, onEv)
+    if(packed.images.length){ var s0 = status.step('🖼️', packed.images.length + ' صورة مرفقة تُرسل إلى Claude Code'); s0.done(); }
+    return stream({ op: 'chat', message: text, sessionId: String(cur.ccSessionId || ''), newSession: !cur.ccSessionId, images: packed.images }, onEv)
       .then(function(done){ if(done) return true; return attachLoop(onEv, onRetry); })
       .catch(function(e){
         if(e && e.name === 'AbortError'){ api('stop').catch(function(){ /* guard-ok */ }); err = err || 'أُوقف بأمرك.'; return false; }
@@ -34143,19 +34265,21 @@ if(document.readyState === 'loading'){
         if(!body) body = err ? ('✗ ' + err) : '✅ انتهى بلا نصّ.';
         else if(err) body += '\n\n⚠️ ' + err;
         var foot = '';
-        if(result) foot += '— ' + (result.turns || 0) + ' جولة' + (result.cost != null ? ' · ' + Number(result.cost).toFixed(3) + '$' : '');
-        if(st) foot += (foot ? '\n' : '') + statusLine(st) + ((st.dirty || st.ahead) ? '\nاكتب «انشر» لفتح طلب السحب، ثمّ «ادمج».' : '');
+        // v-cc-strength: النموذج الذي عمل فعلًا (من نتيجة التشغيل) والجهد — لا النموذج المضبوط فقط.
+        var ranModel = (result && result.models && result.models.length) ? result.models.join(' + ') : (initModel || (st && st.model) || '');
+        if(result) foot += '— ' + (result.turns || 0) + ' جولة' + (result.cost != null ? ' · ' + Number(result.cost).toFixed(3) + '$' : '') + (ranModel ? ' · النموذج: ' + ranModel : '') + (result.effort ? ' · الجهد: ' + result.effort : '');
+        if(st){ var s2 = Object.assign({}, st); if(ranModel) delete s2.model; foot += (foot ? '\n' : '') + statusLine(s2) + ((st.dirty || st.ahead) ? '\nاكتب «انشر» لفتح طلب السحب، ثمّ «ادمج».' : ''); }
         push(cur, body + (foot ? '\n\n' + foot : ''));
       });
   }
 
-  function runInChat(cur, text, thinkingDiv, status){
+  function runInChat(cur, text, thinkingDiv, status, atts){
     if(!owner()) { push(cur, 'هذا الوضع لمالك التطبيق وحده.'); return Promise.resolve(); }
     var c = parseCommand(text);
-    return c ? runCommand(cur, c, thinkingDiv, status) : runTask(cur, text, thinkingDiv, status);
+    return c ? runCommand(cur, c, thinkingDiv, status) : runTask(cur, text, thinkingDiv, status, atts);
   }
 
-  window.omranCC = { runInChat: runInChat, owner: owner, parseCommand: parseCommand };
+  window.omranCC = { runInChat: runInChat, owner: owner, parseCommand: parseCommand, packImages: packImages };
 })();
 /* ===== app-29-claude-model — اختيار نموذج كلود (v-claude-models) =====
    طلب المالك ١٣ سبتمبر (لقطة قائمة نماذج Claude Code): «ممكن تضيف هذيل كلهم».

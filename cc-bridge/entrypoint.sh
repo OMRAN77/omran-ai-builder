@@ -25,6 +25,10 @@ if [ ! -d "$CC_REPO_DIR/.git" ]; then
   fi
   (cd "$CC_REPO_DIR" && npm ci --no-audit --no-fund >/dev/null 2>&1 || npm install --no-audit --no-fund >/dev/null 2>&1 || true)
 fi
+# playwright في المستودع (بلا حفظ) بالإصدار الذي ثُبّتت متصفّحاته في الصورة — لمسابر scripts/*-probe.mjs واللقطات.
+if [ -n "$PW_VERSION" ] && [ ! -d "$CC_REPO_DIR/node_modules/playwright" ]; then
+  (cd "$CC_REPO_DIR" && npm i --no-save --no-audit --no-fund "playwright@${PW_VERSION}" >/dev/null 2>&1 || true)
+fi
 # بيانات الدخول لدفع Claude Code فروعه بنفسه (git push إلى غير main، وgh): مساعد اعتماد يقرأ
 # الرمز من البيئة وقت الدفع — لا رمز في العنوان ولا في ملفّ.
 if [ -n "$GITHUB_TOKEN" ]; then
