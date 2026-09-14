@@ -776,7 +776,8 @@
   .msgSrcFavs img:last-child{ margin-inline-end:0; }
   .msgSrcLabel{ font-size:12px; padding-inline-start:8px; }
   .msgSrcCount{ font-size:11px; background:rgba(255,255,255,.08); border-radius:20px; padding:1px 6px; margin-inline-start:2px; }
-  .msgSrcDrop{ position:absolute; inset-inline-start:0; top:calc(100% + 6px); min-width:260px; max-width:320px; background:var(--panel2,#161c2a); border:1px solid var(--border,rgba(255,255,255,.12)); border-radius:12px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,.4); z-index:200; }
+  /* v-src-dedupe (أمر عمران ج): البطاقة تلزق على محتواها بدل عرض ثابت فاضٍ. */
+  .msgSrcDrop{ position:absolute; inset-inline-start:0; top:calc(100% + 6px); min-width:0; width:max-content; max-width:min(340px,88vw); background:var(--panel2,#161c2a); border:1px solid var(--border,rgba(255,255,255,.12)); border-radius:12px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,.4); z-index:200; }
   .msgSrcItem{ display:flex; align-items:flex-start; gap:10px; padding:10px 14px; text-decoration:none; color:var(--text); border-bottom:1px solid var(--border,rgba(255,255,255,.08)); transition:background .12s; }
   .msgSrcItem:last-child{ border-bottom:none; }
   .msgSrcItem:hover{ background:rgba(255,255,255,.06); }
