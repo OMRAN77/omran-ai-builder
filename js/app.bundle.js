@@ -32472,7 +32472,7 @@ if(document.readyState === 'loading'){
        ونوع تشغيل HLS على جهازه، وهل حُمّلت روابط البثّ فعلًا. */
     var __links = (TV_M3U && TV_M3U.byHandle) ? Object.keys(TV_M3U.byHandle).length : 0;
     var __hls = TV_NATIVE_HLS ? 'HLS أصلي' : 'hls.js';
-    if(meta) meta.textContent = '⚙︎ TV-11 · ' + __hls + ' · روابط:' + __links
+    if(meta) meta.textContent = '⚙︎ TV-12 · ' + __hls + ' · روابط:' + __links
       + (liveNow ? ' · ' + liveNow + ' ' + tvT('tvLiveCount', 'قناة مباشرة', 'live') : '');
     if(!list.length){
       var empty = document.createElement('div');
@@ -32525,7 +32525,7 @@ if(document.readyState === 'loading'){
       var v = el.querySelector('#tvVideo');
       var fr = el.querySelector('#tvFrame');
       var failed = false;
-      var timer = setTimeout(fail, 12000);
+      var timer = setTimeout(fail, 18000); // مهلة أطول للبثّ البطيء قبل الاستسلام
       function ready(){ if(timer){ clearTimeout(timer); timer = null; } }
       function fail(){
         if(failed) return;
@@ -32560,11 +32560,24 @@ if(document.readyState === 'loading'){
           v.play().catch(fail);
         });
       }
-      v.onerror = fail;
-      v.onplaying = ready;
+      /* v-tv-native-resilient (شكوى المالك «كل القنوات تقطّع» على المشغّل
+         المدمج): خطأ لحظيّ على البثّ الحيّ كان يُوقف القناة فورًا. الآن نعيد
+         التحميل بهدوء عدّة مرّات قبل الاستسلام، ونصفّر العدّاد عند التشغيل. */
+      var __vRetry = 0;
+      v.onerror = function(){
+        if(__vRetry < 4){
+          __vRetry++;
+          try{ v.load(); v.src = url; v.play().catch(function(e){ __swallow(e, 'tv:native-replay'); }); return; }
+          catch(e){ __swallow(e, 'tv:native-retry'); }
+        }
+        fail();
+      };
+      v.onplaying = function(){ __vRetry = 0; ready(); };
+      v.onstalled = function(){ /* المشغّل يعيد التعبئة تلقائيًّا — لا نوقفها */ };
       v.onloadedmetadata = null;
       if(v.canPlayType('application/vnd.apple.mpegurl')){
         show();
+        v.preload = 'auto';
         v.src = url;
         startPlayback();
         return;
