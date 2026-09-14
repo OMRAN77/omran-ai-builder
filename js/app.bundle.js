@@ -6135,7 +6135,9 @@ function renderMessages(keepScroll){
       const aiTag = document.createElement('div');
       aiTag.className = 'aiGenTag';
       aiTag.textContent = t('aiGenTag');  /* v656 — كان ar/en فقط */
-      aiTag.style.cssText = 'font-size:10px;opacity:.5;margin-top:6px;user-select:none;';
+      /* v-tidy-bubble (أمر عمران «خلّه لكن أخفى وأصغر»): يبقى للالتزام بمتجر AppGallery
+         لكن أدقّ وأخفت فلا يلفت النظر. */
+      aiTag.style.cssText = 'font-size:8px;opacity:.28;margin-top:3px;user-select:none;';
       div.appendChild(aiTag);
     }
     if(m.role !== 'user' && m._stopped && !document.documentElement.classList.contains('mobile-ui')){
