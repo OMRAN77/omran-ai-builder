@@ -77,6 +77,10 @@ const R = (p) => path.join(__dirname, '..', p);
   assert.ok(/cli\.github\.com/.test(docker) && /install -y --no-install-recommends gh/.test(docker) && /curl gnupg jq ripgrep/.test(docker), 'gh وcurl وjq وripgrep في الحاوية');
   const entry = fs.readFileSync(R('cc-bridge/entrypoint.sh'), 'utf8');
   assert.ok(entry.includes('credential.https://github.com.helper') && !/x-access-token:\$\{GITHUB_TOKEN\}@github\.com[^\n]*\n(?![^\n]*remote set-url)/.test(entry), 'مساعد اعتماد من البيئة لدفع Claude Code فروعه، ولا رمز يبقى في عنوان المستودع');
+  // Railway: القرص المركّب لـroot → يُملَّك لـagent ثمّ نزول فوريّ؛ جلسات Claude Code على القرص الدائم
+  assert.ok(entry.includes('exec runuser -u agent --') && entry.includes('chown -R agent:agent "$CC_REPO_DIR"') && /CLAUDE_CONFIG_DIR:=\/work\/claude/.test(entry), 'root يملّك القرص ثمّ ينزل إلى agent');
+  assert.ok(!/^USER\s/m.test(docker) && docker.includes('CLAUDE_CONFIG_DIR=/work/claude'), 'لا USER في الحاوية (entrypoint ينزل بنفسه) وجلسات Claude Code في /work/claude');
+  assert.ok(srv.includes("sessionId: '', _retried: true") && srv.includes('No conversation found'), 'جلسة مفقودة على القرص → جلسة جديدة بالرسالة نفسها لا خطأ صامت');
   assert.ok(srv.includes('if (current && !current.done) return json(res, 409'), 'تشغيل واحد في كلّ مرّة');
   const git = fs.readFileSync(R('cc-bridge/git.mjs'), 'utf8');
   assert.ok(git.includes("await git(['checkout', '-b', branch])") && git.includes("'/pulls'") && git.includes("'/merge', { method: 'PUT'"), 'انشر = فرع + طلب سحب، ادمج = دمج الطلب');

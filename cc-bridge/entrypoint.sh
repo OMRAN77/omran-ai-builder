@@ -4,6 +4,17 @@ set -e
 : "${CC_REPO:=OMRAN77/omran-ai-builder}"
 : "${CC_BASE_BRANCH:=main}"
 : "${CC_REPO_DIR:=/work/repo}"
+: "${CC_STATE_DIR:=/work/state}"
+: "${CLAUDE_CONFIG_DIR:=/work/claude}"
+# القرص المركّب (Railway وغيره) يأتي مملوكًا لـroot: نملّكه للمستخدم agent ثمّ ننزل إليه فورًا.
+if [ "$(id -u)" = "0" ]; then
+  mkdir -p "$CC_REPO_DIR" "$CC_STATE_DIR" "$CLAUDE_CONFIG_DIR"
+  chown agent:agent /work "$CC_STATE_DIR" "$CLAUDE_CONFIG_DIR" 2>/dev/null || true
+  [ "$(stat -c %u "$CC_REPO_DIR")" = "1000" ] || chown -R agent:agent "$CC_REPO_DIR"
+  if command -v runuser >/dev/null 2>&1; then exec runuser -u agent -- /bin/sh /app/entrypoint.sh; fi
+  exec setpriv --reuid=agent --regid=agent --init-groups /bin/sh /app/entrypoint.sh
+fi
+mkdir -p "$CC_STATE_DIR" "$CLAUDE_CONFIG_DIR"
 if [ ! -d "$CC_REPO_DIR/.git" ]; then
   echo "[cc-bridge] cloning $CC_REPO into $CC_REPO_DIR"
   if [ -n "$GITHUB_TOKEN" ]; then

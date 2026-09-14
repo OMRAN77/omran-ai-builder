@@ -98,12 +98,19 @@ async function runMessage(log, message, opts) {
           if (b.is_error) log.push({ toolError: redact(String(t).slice(0, 300)) });
         }
       } else if (msg.type === 'result') {
+        if (msg.is_error && opts.sessionId && !opts._retried && !sawText && /No conversation found|session/i.test(String(msg.result || ''))) throw new Error('No conversation found: ' + String(msg.result || '').slice(0, 120));
         sessionId = msg.session_id || sessionId;
         log.push({ result: { sessionId, subtype: msg.subtype, cost: msg.total_cost_usd, turns: msg.num_turns, stopReason: msg.stop_reason || null, text: (!sawText && msg.result) ? String(msg.result) : '' } });
       }
     }
   } catch (e) {
-    log.push({ error: redact(String((e && e.message) || e).slice(0, 400)) });
+    const msg = String((e && e.message) || e);
+    // جلسة محفوظة لم تعد على القرص (إعادة نشر بلا قرص دائم مثلًا): نبدأ جلسة جديدة بالرسالة نفسها بدل خطأ صامت.
+    if (opts.sessionId && !opts._retried && /No conversation found|session/i.test(msg)) {
+      log.push({ toolError: 'الجلسة السابقة غير موجودة على الخادم — بدأت جلسة جديدة.' });
+      return runMessage(log, message, Object.assign({}, opts, { sessionId: '', _retried: true }));
+    }
+    log.push({ error: redact(msg.slice(0, 400)) });
   }
   if (sessionId) { state.sessionId = sessionId; state.updatedAt = Date.now(); await saveState(); }
   log.push({ done: true, sessionId });

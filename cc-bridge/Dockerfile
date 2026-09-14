@@ -19,10 +19,12 @@ RUN npm ci --omit=dev --no-audit --no-fund && chown -R agent:agent /app
 COPY policy.mjs git.mjs server.mjs entrypoint.sh ./
 RUN chmod +x entrypoint.sh
 
-USER agent
+# لا USER هنا: entrypoint.sh يبدأ root ليملّك القرص المركّب (Railway يركّبه لـroot) ثمّ
+# ينزل إلى المستخدم agent قبل أيّ شيء آخر. جلسات Claude Code على القرص الدائم (CLAUDE_CONFIG_DIR).
 ENV HOME=/home/agent \
     CC_REPO_DIR=/work/repo \
     CC_STATE_DIR=/work/state \
+    CLAUDE_CONFIG_DIR=/work/claude \
     PORT=8787
 EXPOSE 8787
 VOLUME ["/work"]

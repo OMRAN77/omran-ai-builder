@@ -17,6 +17,18 @@ Claude Code **الخام** (حزمة الوكيل الرسميّة، لا حلق
 | `CC_MODEL` | `claude-opus-5` افتراضيًّا؛ أو `claude-fable-5-1` |
 | `CC_MAX_TURNS` / `CC_MAX_BUDGET_USD` | سقف الجولات (٢٠٠) وسقف الكلفة للجلسة (اختياريّ) |
 
+## التشغيل على Railway (الأسهل — بلا خادم تديره)
+
+1. في مشروع Railway: **New → GitHub Repo → `OMRAN77/omran-ai-builder`** (الفرع `main`).
+2. **Settings → Source:** Root Directory = `/cc-bridge`، وWatch Paths = `/cc-bridge/**` (فلا يعاد النشر إلّا عند تغيّر الجسر).
+3. **Settings → Volumes → Add Volume:** Mount Path = `/work` (نسخة المستودع وجلسات Claude Code وحالة الجسر تبقى فيه بين النشرات).
+4. **Variables:** `CC_BRIDGE_SECRET` و`ANTHROPIC_API_KEY` (أو `CLAUDE_CODE_OAUTH_TOKEN`) و`GITHUB_TOKEN`؛ واختياريًّا `CC_MODEL`.
+5. **Settings → Networking → Generate Domain** والمنفذ `8787`. (اختياريًّا Healthcheck Path = `/health`.)
+6. بعد النشر افتح `https://<النطاق>/health` فيرجع `{"ok":true,…}`.
+7. في Vercel: `CC_BRIDGE_URL=https://<النطاق>` و`CC_BRIDGE_SECRET` بالقيمة نفسها.
+
+الحاوية تبدأ root لتملّك القرص المركّب للمستخدم `agent` ثمّ تنزل إليه فورًا؛ Claude Code لا يعمل root أبدًا.
+
 ## التشغيل على خادم صغير (Docker)
 
 ```bash
