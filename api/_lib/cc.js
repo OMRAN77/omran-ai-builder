@@ -29,8 +29,25 @@ function config(env) {
 }
 
 /** الجسد المرسَل إلى الجسر: الحقول المعروفة فقط، بلا رمز الجلسة ولا أيّ شيء آخر. */
+/* v-cc-images: صور مرفقة للجسر — png/jpeg/webp/gif، حتّى ٤ صور، base64 صافٍ، و٣٫٥ مليون حرف مجتمعة. */
+function cleanImages(list) {
+  const out = [];
+  let used = 0;
+  for (const i of (Array.isArray(list) ? list : [])) {
+    if (out.length >= 4 || !i || typeof i !== 'object') break;
+    const mt = String(i.mediaType || ''), data = String(i.data || '');
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(mt) || !/^[A-Za-z0-9+/=]+$/.test(data) || used + data.length > 3500000) continue;
+    used += data.length;
+    out.push({ mediaType: mt, data });
+  }
+  return out;
+}
+
 function forwardBody(op, b) {
-  if (op === 'chat') return { message: String(b.message || '').slice(0, 20000), sessionId: String(b.sessionId || '').slice(0, 80), newSession: !!b.newSession, model: b.model ? String(b.model).slice(0, 40) : undefined };
+  if (op === 'chat') {
+    const images = cleanImages(b.images);
+    return { message: String(b.message || '').slice(0, 20000), sessionId: String(b.sessionId || '').slice(0, 80), newSession: !!b.newSession, model: b.model ? String(b.model).slice(0, 40) : undefined, images: images.length ? images : undefined };
+  }
   if (op === 'publish') return { title: String(b.title || '').slice(0, 200), message: String(b.message || '').slice(0, 300), body: String(b.body || '').slice(0, 6000) };
   if (op === 'merge') return { prNumber: parseInt(b.prNumber, 10) || 0, force: !!b.force };
   if (op === 'reset') return { newSession: !!b.newSession };
@@ -88,4 +105,4 @@ module.exports = async (req, res) => {
   try { res.end(); } catch (e) { /* مغلق */ }
 };
 
-module.exports.__test = { OPS, config, forwardBody };
+module.exports.__test = { OPS, config, forwardBody, cleanImages };

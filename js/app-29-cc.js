@@ -132,8 +132,23 @@
     return Promise.resolve(done('أمر غير معروف.'));
   }
 
+  /* v-cc-images: الصور المرفقة → كتل صور للجسر (png/jpeg/webp/gif، حتّى ٤ صور و٣٫٥ مليون حرف base64
+     مجتمعة — حدّ جسد طلب Vercel). ما زاد يُذكر في الرسالة بدل أن يضيع بصمت. */
+  var IMG_MAX = 4, IMG_BUDGET = 3500000;
+  function packImages(atts){
+    var out = [], skipped = 0, used = 0;
+    (atts || []).forEach(function(a){
+      var m = /^data:(image\/(?:png|jpeg|webp|gif));base64,([A-Za-z0-9+/=]+)$/.exec(String((a && a.dataUrl) || ''));
+      if(!m || out.length >= IMG_MAX || used + m[2].length > IMG_BUDGET){ skipped++; return; }
+      used += m[2].length; out.push({ mediaType: m[1], data: m[2] });
+    });
+    return { images: out, skipped: skipped };
+  }
+
   /** مهمّة عاديّة: بثّ الجسر إلى شريط الحالة والفقاعة، ثمّ رسالة في المحادثة مع حالة git. */
-  function runTask(cur, text, thinkingDiv, status){
+  function runTask(cur, text, thinkingDiv, status, atts){
+    var packed = packImages(atts);
+    if(packed.skipped) text += '\n\n(' + packed.skipped + ' مرفق لم يُرسل: الصور حتّى ٤ بصيغة png/jpeg/webp/gif وبحجم إجماليّ محدود.)';
     S.lastTask = text; save();
     S.since = 0; S.runId = ''; S.retries = 0;
     var step = status.step('🧑‍💻', 'Claude Code يعمل…');
@@ -161,7 +176,8 @@
       if(ev.done){ S.runId = ''; S.since = 0; }
     };
     var onRetry = function(n){ if(step) step.done(); step = status.step('🔌', 'انقطع الاتّصال — أعيد الالتحاق بالتشغيل (' + n + ')…'); };
-    return stream({ op: 'chat', message: text, sessionId: S.sessionId }, onEv)
+    if(packed.images.length){ var s0 = status.step('🖼️', packed.images.length + ' صورة مرفقة تُرسل إلى Claude Code'); s0.done(); }
+    return stream({ op: 'chat', message: text, sessionId: S.sessionId, images: packed.images }, onEv)
       .then(function(done){ if(done) return true; return attachLoop(onEv, onRetry); })
       .catch(function(e){
         if(e && e.name === 'AbortError'){ api('stop').catch(function(){ /* guard-ok */ }); err = err || 'أُوقف بأمرك.'; return false; }
@@ -187,11 +203,11 @@
       });
   }
 
-  function runInChat(cur, text, thinkingDiv, status){
+  function runInChat(cur, text, thinkingDiv, status, atts){
     if(!owner()) { push(cur, 'هذا الوضع لمالك التطبيق وحده.'); return Promise.resolve(); }
     var c = parseCommand(text);
-    return c ? runCommand(cur, c, thinkingDiv, status) : runTask(cur, text, thinkingDiv, status);
+    return c ? runCommand(cur, c, thinkingDiv, status) : runTask(cur, text, thinkingDiv, status, atts);
   }
 
-  window.omranCC = { runInChat: runInChat, owner: owner, parseCommand: parseCommand };
+  window.omranCC = { runInChat: runInChat, owner: owner, parseCommand: parseCommand, packImages: packImages };
 })();

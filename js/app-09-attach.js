@@ -2905,8 +2905,9 @@ function __friendlyErr(e){
     // ببصمة الشخصية، والخادم يعزلها عن الذاكرة والمواضيع القديمة بنفسه.
     // v-cc-chat: وضع «Claude Code» من قائمة @ (المالك وحده) — الرسالة إلى Claude Code
     // على خادمه عبر المرحّل، والردّ رسالة عاديّة هنا؛ الكلمات الآمرة (انشر/ادمج…) من الصندوق نفسه.
-    if(window.__omMode === 'cc' && window.omranCC && !imageAttachments.length){
-      await window.omranCC.runInChat(cur, apiText, thinkingDiv, chatStatus);
+    // v-cc-images: اللقطة المرفقة تذهب إلى Claude Code ليراها (كما يراها المالك في الويب) لا إلى مسار الصور.
+    if(window.__omMode === 'cc' && window.omranCC){
+      await window.omranCC.runInChat(cur, apiText, thinkingDiv, chatStatus, imageAttachments);
       return;
     }
     // 🤖 وكيل عمران: وضع الوكيل المستقل (Claude Sonnet 4 + أدوات) — يخطط ويبحث ويبني.

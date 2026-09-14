@@ -57,7 +57,26 @@ function authed(req) {
   return a.length === b.length && a.length > 0 && timingSafeEqual(a, b);
 }
 function json(res, code, obj) { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(obj)); }
-async function body(req) { let s = ''; for await (const c of req) { s += c; if (s.length > 2e6) throw new Error('body too large'); } try { return s ? JSON.parse(s) : {}; } catch (e) { return {}; } }
+async function body(req) { let s = ''; for await (const c of req) { s += c; if (s.length > 16e6) throw new Error('body too large'); } try { return s ? JSON.parse(s) : {}; } catch (e) { return {}; } }
+
+/* v-cc-images: الصور المرفقة كتل صور في رسالة المستخدم نفسها (كما تصل لجلسة الويب) — البثّ الداخل
+   للحزمة يقبل رسالة واحدة ثمّ ينتهي. png/jpeg/webp/gif، حتّى ٤ صور. */
+function imageBlocks(images) {
+  const out = [];
+  for (const i of (Array.isArray(images) ? images : [])) {
+    if (out.length >= 4 || !i || typeof i !== 'object') break;
+    const mt = String(i.mediaType || ''), data = String(i.data || '');
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(mt) || !/^[A-Za-z0-9+/=]+$/.test(data)) continue;
+    out.push({ type: 'image', source: { type: 'base64', media_type: mt, data } });
+  }
+  return out;
+}
+function promptFor(message, images) {
+  const blocks = imageBlocks(images);
+  if (!blocks.length) return message;
+  const content = [{ type: 'text', text: message }].concat(blocks);
+  return (async function* () { yield { type: 'user', message: { role: 'user', content }, parent_tool_use_id: null }; })();
+}
 function sseHead(res) { res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'Connection': 'keep-alive', 'X-Accel-Buffering': 'no' }); }
 function sseWrite(res, ev) { try { res.write('data: ' + JSON.stringify(ev) + '\n\n'); } catch (e) { /* المستمع رحل */ } }
 
@@ -90,7 +109,7 @@ async function runMessage(log, message, opts) {
   let sessionId = opts.sessionId || '';
   let sawText = false;
   try {
-    for await (const msg of query({ prompt: message, options })) {
+    for await (const msg of query({ prompt: promptFor(message, opts.images), options })) {
       if (msg.type === 'system' && msg.subtype === 'init') {
         sessionId = msg.session_id || sessionId;
         log.push({ init: { sessionId, model: msg.model || options.model } });
@@ -157,7 +176,8 @@ const server = createServer(async (req, res) => {
       const log = new RunLog('r' + Date.now().toString(36) + randomBytes(3).toString('hex'));
       runs.set(log.id, log); current = log;
       log.push({ run: log.id });
-      runMessage(log, message, { sessionId: b.newSession ? '' : (b.sessionId || state.sessionId || ''), model: b.model }).catch((e) => { log.push({ error: redact(String(e && e.message || e)) }); log.end(); });
+      if (Array.isArray(b.images) && b.images.length) log.push({ tool: { name: 'images', brief: '🖼️ ' + imageBlocks(b.images).length + ' صورة مرفقة' } });
+      runMessage(log, message, { sessionId: b.newSession ? '' : (b.sessionId || state.sessionId || ''), model: b.model, images: b.images }).catch((e) => { log.push({ error: redact(String(e && e.message || e)) }); log.end(); });
       return streamLog(res, log, 0);
     }
     if (req.method === 'GET' && url.pathname.startsWith('/runs/')) {
