@@ -32270,7 +32270,9 @@ if(document.readyState === 'loading'){
      مااريدها»): لا تُعرض إلّا قناة لها بثّ مباشر يشتغل داخل التطبيق. القنوات
      التي تعتمد على يوتيوب أو تحويل خارجيّ (بلا m3u8) تُخفى — لا تحويل ولا يوتيوب.
      يخفي هذا أيضًا زرَّ دولةٍ كلّ قنواتها بلا بثّ. */
-  function chVisible(ch){ return !!mOf(ch); }
+  /* v-tv-nofail: لا نُفرِّغ الشاشة أبدًا — قبل تحميل روابط البثّ (أو لو فشل
+     تحميلها) نعرض كل القنوات؛ وبعد التحميل فقط نُخفي ما لا بثّ له. */
+  function chVisible(ch){ return !TV_M3U || !!mOf(ch); }
 
   /* حل معرّف القناة الرقمي (UC...) — من ملف الفحص اليومي أولًا، ثم السيرفر */
 
@@ -32440,7 +32442,7 @@ if(document.readyState === 'loading'){
       /* v-tv-drama: كل قنوات الدراما والأفلام والمنوّعات الشغّالة داخل التطبيق
        * من كل الدول في شاشة واحدة — الدراما أولًا ثم الأفلام ثم المنوّعات. */
       var ORDER = { drama: 0, movies: 1, music: 2 };
-      list = TV_CH.filter(function(ch){ return ORDER[ch.g] !== undefined && mOf(ch); });
+      list = TV_CH.filter(function(ch){ return ORDER[ch.g] !== undefined && (!TV_M3U || mOf(ch)); });
       list.sort(function(a, b){
         if(ORDER[a.g] !== ORDER[b.g]) return ORDER[a.g] - ORDER[b.g];
         return a.n < b.n ? -1 : 1;
@@ -32466,7 +32468,7 @@ if(document.readyState === 'loading'){
        ونوع تشغيل HLS على جهازه، وهل حُمّلت روابط البثّ فعلًا. */
     var __links = (TV_M3U && TV_M3U.byHandle) ? Object.keys(TV_M3U.byHandle).length : 0;
     var __hls = TV_NATIVE_HLS ? 'HLS أصلي' : 'hls.js';
-    if(meta) meta.textContent = '⚙︎ TV-8 · ' + __hls + ' · روابط:' + __links
+    if(meta) meta.textContent = '⚙︎ TV-9 · ' + __hls + ' · روابط:' + __links
       + (liveNow ? ' · ' + liveNow + ' ' + tvT('tvLiveCount', 'قناة مباشرة', 'live') : '');
     if(!list.length){
       var empty = document.createElement('div');
