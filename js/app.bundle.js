@@ -33964,9 +33964,23 @@ if(document.readyState === 'loading'){
 
   var el = {};
   function h(tag, attrs, html){ var n = document.createElement(tag); for(var k in (attrs || {})) n.setAttribute(k, attrs[k]); if(html != null) n.innerHTML = html; return n; }
+  /* v-cc-nav: الإعدادات قائمة من مستويين (v199) — القسم لا يظهر إلّا إن كان في SETTINGS_NAV_IDS
+     الذي تُبنى منه القائمة الرئيسيّة (تُعاد كلّ تغيير لغة)، فنسجّله بعد «الوكيل» وأيقونة له. */
+  function registerNav(){
+    try{
+      if(typeof SETTINGS_NAV_IDS !== 'undefined' && SETTINGS_NAV_IDS.indexOf('ccSection') < 0){
+        var i = SETTINGS_NAV_IDS.indexOf('agentSection');
+        SETTINGS_NAV_IDS.splice(i < 0 ? SETTINGS_NAV_IDS.length : i + 1, 0, 'ccSection');
+      }
+      if(typeof SETTINGS_NAV_ICONS !== 'undefined' && !SETTINGS_NAV_ICONS.ccSection){
+        SETTINGS_NAV_ICONS.ccSection = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>';
+      }
+      if(typeof renderSettingsNavList === 'function') renderSettingsNavList();
+    }catch(e){ /* guard-ok — قائمة الإعدادات غير جاهزة بعد؛ mount يُعاد عند فتحها */ }
+  }
   function mount(){
-    if(!owner()) return true;
-    if(document.getElementById('ccSection')) return true;
+    if(!owner()) return false;
+    if(document.getElementById('ccSection')){ registerNav(); return true; }
     var after = document.getElementById('agentSection');
     if(!after || !after.parentNode) return false;
     var sec = h('div', { id: 'ccSection', 'class': 'settingsPageSection', style: 'padding:14px; margin-bottom:18px;' });
@@ -33997,6 +34011,7 @@ if(document.readyState === 'loading'){
     el.ccNew.addEventListener('click', function(){ S.sessionId = ''; save(); line('🆕 جلسة جديدة — الرسالة التالية تبدأ سياقًا جديدًا.'); refreshStatus(); });
     el.ccStatusBtn.addEventListener('click', refreshStatus);
     el.ccInput.addEventListener('keydown', function(e){ if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){ e.preventDefault(); submit(); } });
+    registerNav();
     refreshStatus();
     return true;
   }
@@ -34106,6 +34121,11 @@ if(document.readyState === 'loading'){
 
   if(!mount()){ var n = 0; var id = setInterval(function(){ if(mount() || ++n > 120) clearInterval(id); }, 500); }
   try{ document.addEventListener('omran:auth', function(){ mount(); }); }catch(e){ /* guard-ok */ }
+  // v-cc-nav: الدخول قد يتمّ بعد التحميل — كلّ فتح لنافذة الإعدادات يعيد محاولة الإدراج (لا أثر لغير المالك).
+  try{
+    var dlg = document.getElementById('settingsDialog');
+    if(dlg && window.MutationObserver) new MutationObserver(function(){ if(dlg.open) mount(); }).observe(dlg, { attributes: true, attributeFilter: ['open'] });
+  }catch(e){ /* guard-ok */ }
 })();
 /* ===== app-29-claude-model — اختيار نموذج كلود (v-claude-models) =====
    طلب المالك ١٣ سبتمبر (لقطة قائمة نماذج Claude Code): «ممكن تضيف هذيل كلهم».
