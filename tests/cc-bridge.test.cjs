@@ -113,6 +113,9 @@ const R = (p) => path.join(__dirname, '..', p);
   assert.ok(ui09.includes("if(window.__omMode === 'cc' && window.omranCC && !imageAttachments.length){") && ui09.includes('await window.omranCC.runInChat(cur, apiText, thinkingDiv, chatStatus);'), 'مسار الإرسال يحوّل وضع cc إلى الجسر قبل الوكيل');
   assert.ok(ui09.indexOf("window.__omMode === 'cc'") < ui09.indexOf('if(window.__agentModeOn && !imageAttachments.length){'), 'فحص cc قبل فحص الوكيل');
   assert.ok(ui09.includes('!__lastA._cc &&'), 'ردود Claude Code لا تدخل ذاكرة المستخدم');
+  // v-stream-full-agent («الكلام يطلع مخربط ويوم يخلص يكون تمام»): البثّ كاملًا بالمنسّق التدريجيّ لا ذيل ٤٠٠ حرف
+  assert.ok(ui09.includes("renderStreamingAssistant(thinkingDiv, '🤖 ' + clean)") && !ui09.includes('clean.slice(-400)'), 'الوكيل يعرض النصّ كلّه منسّقًا أثناء البثّ');
+  assert.ok(ui.includes("renderStreamingAssistant(thinkingDiv, '🧑‍💻 ' + full)") && !ui.includes('full.slice(-400)'), 'Claude Code يعرض النصّ كلّه منسّقًا أثناء البثّ');
   const modes = fs.readFileSync(R('js/modes.js'), 'utf8');
   assert.ok(/id:'cc',\s*ar:'Claude Code'.*owner:true/.test(modes) && modes.includes("b.setAttribute('data-owner', '1'); b.style.display = isOwner() ? '' : 'none';") && modes.includes("attributeFilter: ['class']"), 'بند Claude Code في قائمة @ للمالك وحده ويُعاد فحصه عند كلّ فتح');
   assert.ok(modes.includes("if(MODE_KEYS[m.id]) b.setAttribute('data-i18n-title'"), 'بند بلا مفتاح ترجمة لا يُوسم بمفتاح undefined');
