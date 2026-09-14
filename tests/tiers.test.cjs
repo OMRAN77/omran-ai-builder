@@ -296,10 +296,12 @@ test('no retired model name is hard-wired anywhere on the server or in client de
   assert.equal((read('js/app-06-checkout.js').match(/llama-3\.3-70b-versatile/g) || []).length, 1, 'app-06: يبقى فقط في مقارنة الاسم المحفوظ القديم');
 });
 
-test('chat.js: king unavailable before the first character → server-side free-chain fallback with a visible prefix', () => {
+test('chat.js: king unavailable before the first character → SILENT server-side free-chain fallback (no visible notice)', () => {
   const chat = read('api/_lib/chat.js');
-  assert.match(chat, /if \(!upstream\.ok\) \{\n\s+const errText = \(await upstream\.text\(\)\)\.slice\(0, 300\);[\s\S]*?if \(!anyText\) \{[\s\S]*?const __fb = await streamFreeChain\(\{ system: PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), convo, send: __sendFb \}\);\n\s+if \(__fb\.ok\) \{ send\(\{ done: true \}\); res\.end\(\); return; \}/);
-  assert.match(chat, /if \(ev && ev\.delta && !__pre\) \{ __pre = true; send\(\{ delta: '⚠️ المحرّك الاحترافي غير متاح مؤقتًا/);
+  // يهبط إلى السلسلة المجانية ويبثّها بـsend مباشرة (لا غلاف يُضيف بادئة).
+  assert.match(chat, /if \(!upstream\.ok\) \{\n\s+const errText = \(await upstream\.text\(\)\)\.slice\(0, 300\);[\s\S]*?if \(!anyText\) \{[\s\S]*?const __fb = await streamFreeChain\(\{ system: PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), convo, send \}\);\n\s+if \(__fb\.ok\) \{ send\(\{ done: true \}\); res\.end\(\); return; \}/);
+  // v-silent-fallback (طلب المالك «يبدّل بدون ما أحد يعرف»): لا بادئة مرئيّة في الردّ.
+  assert.ok(!/فهذا ردّ من المحرّك الاحتياطي بلا أدوات/.test(chat), 'يجب ألّا تظهر بادئة التبديل للمستخدم');
   const groq = read('api/_lib/groq.js');
   assert.match(groq, /const tried = fc\.modelsToTry\(spec, typeof model === 'string' \? model : ''\);/);
   assert.match(groq, /if \(!fc\.isModelErrorStatus\(r\.status, txt\)\) break;/);

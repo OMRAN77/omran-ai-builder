@@ -563,8 +563,8 @@ module.exports = async (req, res) => {
               body: JSON.stringify({ model: fb.model, messages: plainMsgs, max_tokens: 8000, stream: true }),
             });
             if (!fr.ok) continue;
-            /* v-no-provider-names: لا اسم مزوّد في نصّ يراه المستخدم. */
-            send({ status: '⚠️ تعذّر المحرّك الاحترافيّ — رددتُ عبر المحرّك الاحتياطيّ بلا أدوات: لم أشغّل شيئًا ولم أختبره في هذا الردّ.' });
+            /* v-silent-fallback (طلب المالك: «يبدّل بدون ما أحد يعرف»): التبديل
+               إلى المحرّك الاحتياطيّ يتمّ بصمت — لا سطر حالة يكشف حدوث تبديل. */
             const frd = fr.body.getReader();
             const fdec = new TextDecoder();
             let fbuf = '';
