@@ -10,16 +10,16 @@
   'use strict';
   function owner(){ try{ return String((window.authGet && window.authGet('aiapp_username')) || '').trim().toLowerCase() === 'omran'; }catch(e){ return false; } }
   function token(){ try{ return (window.authGet && window.authGet('aiapp_auth_token')) || ''; }catch(e){ return ''; } }
-  var S = { sessionId: '', runId: '', since: 0, prNumber: 0, prUrl: '', lastTask: '', busy: false, retries: 0 };
+  /* الجلسة (sessionId) تعيش في محادثة التطبيق نفسها (cur.ccSessionId) لا هنا — v-cc-session-per-chat. */
+  var S = { runId: '', since: 0, prNumber: 0, prUrl: '', lastTask: '', busy: false, retries: 0 };
   try{
-    S.sessionId = localStorage.getItem('aiapp_cc_session') || '';
     S.prNumber = parseInt(localStorage.getItem('aiapp_cc_pr') || '0', 10) || 0;
     S.prUrl = localStorage.getItem('aiapp_cc_pr_url') || '';
     S.lastTask = localStorage.getItem('aiapp_cc_last') || '';
+    localStorage.removeItem('aiapp_cc_session');
   }catch(e){ /* guard-ok */ }
   function save(){
     try{
-      localStorage.setItem('aiapp_cc_session', S.sessionId || '');
       localStorage.setItem('aiapp_cc_pr', String(S.prNumber || 0));
       localStorage.setItem('aiapp_cc_pr_url', S.prUrl || '');
       localStorage.setItem('aiapp_cc_last', String(S.lastTask || '').slice(0, 200));
@@ -127,7 +127,7 @@
     if(c.cmd === 'status'){
       return api('status').then(function(j){ done(statusLine(j) + (j.busy ? '\n⏳ تشغيل جارٍ.' : '')); }).catch(fail);
     }
-    if(c.cmd === 'new'){ S.sessionId = ''; save(); return Promise.resolve(done('🆕 جلسة جديدة — الرسالة التالية تبدأ سياقًا جديدًا.')); }
+    if(c.cmd === 'new'){ cur.ccSessionId = ''; return Promise.resolve(done('🆕 جلسة جديدة — الرسالة التالية تبدأ سياقًا جديدًا.')); }
     if(c.cmd === 'stop'){ return api('stop').then(function(){ done('⏹️ طُلب الإيقاف.'); }).catch(fail); }
     return Promise.resolve(done('أمر غير معروف.'));
   }
@@ -155,7 +155,9 @@
     var full = '', result = null, err = '', initModel = '';
     var onEv = function(ev){
       if(ev.run) S.runId = ev.run;
-      if(ev.init){ S.sessionId = ev.init.sessionId || S.sessionId; initModel = ev.init.model || ''; save(); }
+      /* v-cc-session-per-chat: جلسة Claude Code مربوطة بمحادثة التطبيق نفسها لا بالمتصفّح كلّه —
+         محادثة جديدة في التطبيق = جلسة جديدة، والرجوع لمحادثة قديمة يستأنف جلستها. */
+      if(ev.init){ cur.ccSessionId = ev.init.sessionId || cur.ccSessionId || ''; initModel = ev.init.model || ''; }
       if(ev.tool){ if(step) step.done(); step = status.step('🔧', ev.tool.brief); }
       if(ev.toolError){ if(step) step.done(); step = status.step('⚠️', ev.toolError); }
       if(ev.delta){
@@ -177,7 +179,7 @@
     };
     var onRetry = function(n){ if(step) step.done(); step = status.step('🔌', 'انقطع الاتّصال — أعيد الالتحاق بالتشغيل (' + n + ')…'); };
     if(packed.images.length){ var s0 = status.step('🖼️', packed.images.length + ' صورة مرفقة تُرسل إلى Claude Code'); s0.done(); }
-    return stream({ op: 'chat', message: text, sessionId: S.sessionId, images: packed.images }, onEv)
+    return stream({ op: 'chat', message: text, sessionId: String(cur.ccSessionId || ''), newSession: !cur.ccSessionId, images: packed.images }, onEv)
       .then(function(done){ if(done) return true; return attachLoop(onEv, onRetry); })
       .catch(function(e){
         if(e && e.name === 'AbortError'){ api('stop').catch(function(){ /* guard-ok */ }); err = err || 'أُوقف بأمرك.'; return false; }

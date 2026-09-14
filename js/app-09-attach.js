@@ -4378,7 +4378,8 @@ function __showImgLoading(el, ar, en){
        نص طويل ملصوق (تقرير/رسالة/سجل/خطأ) بلا أمر بناء صريح = تحليل وشرح
        وخطوات، لا بناء ولا كود. (عُرّف __pastedDoc أعلى — v-pasted-no-design) */
     if(__pastedDoc) apiMessages.push({role: 'system', content: 'رسالة المستخدم الأخيرة نصٌّ ملصوق (تقرير أو رسالة أو سجل أخطاء) وليست طلب بناء. حلّله: ماذا يعني، ما السبب، وما الخطوات العملية المطلوبة من المستخدم بالترتيب — بلغة المستخدم. ممنوع منعًا باتًا بناء تطبيق أو صفحة أو أي كتلة كود ردًّا عليه، حتى لو ورد فيه «app» أو «feature» أو «submit» — إلا إذا كتب المستخدم بنفسه أمر بناء صريحًا.'});
-    if(!__quietSocialTurn) apiMessages.push({role: 'system', content: 'قاعدة الموضوع (أولوية قصوى): أجب عن رسالة المستخدم الأخيرة وحدها. إذا كان موضوعها مختلفًا عن الرسائل السابقة فاترك السابق تمامًا — لا تكمله ولا تلخصه ولا تذكره ولا تجيب عنه مرة أخرى. تاريخ المحادثة خلفية فقط، وليس قائمة مهام.', __topicRule: true});
+    /* v-topic-memory: الصياغة القديمة «أجب عن الأخيرة وحدها… التاريخ خلفيّة فقط» علّمت النموذج النسيان. */
+    if(!__quietSocialTurn) apiMessages.push({role: 'system', content: 'قاعدة الموضوع (أولوية قصوى): رسالة المستخدم الأخيرة تحدّد الموضوع الحاليّ. إن كانت موضوعًا جديدًا فأجب عنه وحده ولا تكمل السابق ولا تخلطه به من تلقاء نفسك. وإن عادت إلى موضوع سابق في هذه المحادثة فأنت تذكره كاملًا بتفاصيله وتبني عليه — لا تقل إنّك لا تعرفه ولا تطلب إعادته. تاريخ المحادثة كلّه ذاكرتك الحاضرة، لا قائمة مهام تُعاد.', __topicRule: true});
     // 🤝 v345: المستخدم وافق على عرض بناء قدّمه المزود في رده السابق — يبنيه الآن كاملًا.
     if(window.__buildOfferApproved){
       apiMessages.push({role: 'system', content: 'BUILD-OFFER APPROVAL (highest priority): In your PREVIOUS assistant message you offered to build a specific tool/app for the user and asked permission to start. The user has just approved. Build EXACTLY the tool/app you offered in that previous message NOW — completely, as ONE working single-file ```html app in this reply. Do NOT re-explain, do NOT repeat your earlier advice, do NOT ask again, and NEVER return to any earlier request that was rejected. Just build the offered tool fully.'});
@@ -4488,6 +4489,34 @@ DESIGN RULES (non-negotiable):
       //    «موقع/تطبيق» في رسالة قديمة كان يمسحها من الذاكرة فينسى النموذج المحادثة.
       __historyMsgs = __historyMsgs.filter((m, __i) => { if(__i >= __keepFrom || m.role !== 'user') return true; const __t = (m.apiText !== undefined ? m.apiText : (m.content || '')); return !(__historyBuildRe.test(__t) && __buildCmdRe.test(__t)); });
     }
+    /* v-topic-memory (شكوى المالك «أبدّل الموضوع وأرجع للي قبله فكأنّي ما سألته شي»): لا يُحذف
+       شيء من التاريخ؛ الكاشف يصنّف الرسالة الحاليّة ويضيف تعليمة الدور فقط: موضوع جديد → لا
+       تكمل السابق لكن احفظه؛ عودة لموضوع أقدم → استدعِ سؤاله وجوابه نصًّا ولا تقل إنّك لا تذكره.
+       لا يمسّ التعديل على كود المشروع ولا موافقة البناء ولا تعديل رسالة سابقة ولا الدور الاجتماعيّ. */
+    try{
+      if(typeof window.omranTopicSwitch === 'function' && !__quietSocialTurn && !__routeFix && !__editIntent && !window.__buildOfferApproved && !__editedOriginal && __historyMsgs.length > 1){
+        const __txt = (m) => String(__stripCodeForHistory(m.role === 'user' ? 'user' : 'assistant', (m.apiText !== undefined ? m.apiText : (m.content || ''))) || '');
+        const __prevs = __historyMsgs.slice(0, -1);
+        const __users = __prevs.map((m, i) => ({ m, i })).filter(x => x.m.role === 'user');
+        const __pu = __users[__users.length - 1];
+        const __pa = __pu ? __prevs.slice(__pu.i + 1).filter(m => m.role !== 'user').slice(-1)[0] : null;
+        const __olderUsers = __users.slice(0, -1).reverse().slice(0, 40);
+        const __d = window.omranTopicSwitch(text, __pu ? __txt(__pu.m) : '', __pa ? __txt(__pa) : '', __olderUsers.map(x => __txt(x.m)));
+        if(__d.kind === 'new'){
+          apiMessages.push({ role: 'system', content: 'ملاحظة هذا الدور: رسالة المستخدم الأخيرة موضوع جديد مختلف عمّا قبله. أجب عنه وحده كاملًا، ولا تكمل الموضوع السابق ولا تشير إليه من تلقاء نفسك. لكن تاريخ المحادثة كلّه يبقى في ذاكرتك: إن عاد المستخدم إلى أيّ موضوع سابق لاحقًا فأنت تذكره بتفاصيله.' });
+          try{ if(typeof chatStatus !== 'undefined' && chatStatus){ const __s = chatStatus.step('🧭', lang === 'ar' ? 'موضوع جديد' : 'New topic'); __s.done(); } }catch(e){ __swallow(e, 'topic:status'); }
+        } else if(__d.kind === 'back'){
+          let __recall = '';
+          const __hit = __d.backIndex >= 0 ? __olderUsers[__d.backIndex] : null;
+          if(__hit){
+            const __ans = __prevs.slice(__hit.i + 1).find(m => m.role !== 'user');
+            __recall = '\nسؤاله السابق كان: «' + __txt(__hit.m).slice(0, 400) + '»' + (__ans ? '\nوجوابك عليه (مختصرًا): «' + __txt(__ans).slice(0, 1500) + '»' : '');
+          }
+          apiMessages.push({ role: 'system', content: 'ملاحظة هذا الدور: المستخدم يعود إلى موضوع سابق في هذه المحادثة نفسها. أنت تذكر ذلك الموضوع كاملًا مع ما قيل فيه؛ ابنِ على ما سبق مباشرةً، ولا تقل إنّك لا تذكره ولا تطلب منه إعادته، ولا تخلطه بالموضوع الذي جاء بينهما.' + __recall });
+          try{ if(typeof chatStatus !== 'undefined' && chatStatus){ const __s = chatStatus.step('🔁', lang === 'ar' ? 'عودة إلى موضوع سابق' : 'Back to an earlier topic'); __s.done(); } }catch(e){ __swallow(e, 'topic:status'); }
+        }
+      }
+    }catch(e){ __swallow(e, 'topic:notes'); }
     // 🔒 الصور تُرسل فقط مع الرسالة الحالية (الأخيرة) — صور الرسائل القديمة
     // لا تُعاد إرسالها أبدًا حتى لا يظل المزود يحلل صورة قديمة بدل السؤال الجديد.
     {
