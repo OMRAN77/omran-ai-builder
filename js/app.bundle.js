@@ -32567,7 +32567,7 @@ if(document.readyState === 'loading'){
       v.onerror = function(){
         if(__vRetry < 4){
           __vRetry++;
-          try{ v.load(); v.src = url; v.play().catch(function(){}); return; }
+          try{ v.load(); v.src = url; v.play().catch(function(e){ __swallow(e, 'tv:native-replay'); }); return; }
           catch(e){ __swallow(e, 'tv:native-retry'); }
         }
         fail();
