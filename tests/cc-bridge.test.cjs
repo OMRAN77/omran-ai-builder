@@ -80,6 +80,14 @@ const R = (p) => path.join(__dirname, '..', p);
   // v-cc-strength («مش قوي… ضعيف»): نموذج جلسة المالك نفسه، جهد أقصى، تفكير تكيّفيّ، احتياط، والنموذج الفعليّ في النتيجة
   assert.ok(srv.includes("env.CC_MODEL || 'claude-fable-5-1'") && srv.includes("effort: EFFORT") && srv.includes("thinking: { type: 'adaptive' }") && srv.includes('options.fallbackModel = FALLBACK_MODEL') && srv.includes('models: Object.keys(msg.modelUsage || {})'), 'قوّة الجسر: النموذج والجهد والتفكير والاحتياط والنموذج الفعليّ');
   assert.ok(/لا تختصر على حساب الجودة/.test(P.RULES_APPEND), 'قاعدة الاختصار لا تخصّ عمل الجسر');
+  // v-cc-playbook («شوف المعلومات القويّة اللي عندك وزيدها»): طريقة العمل والقواعد الثابتة في CLAUDE.md، أداة اللقطات، ومهارة التحقّق
+  const cm = fs.readFileSync(R('CLAUDE.md'), 'utf8');
+  assert.ok(cm.includes('## طريقة العمل التي يتوقّعها المالك') && cm.includes('## قواعد المالك الثابتة') && cm.includes('scripts/ui-shot.mjs') && cm.includes('الأبواب المقفلة'), 'CLAUDE.md يحمل طريقة العمل والقواعد الثابتة وأدوات التحقّق');
+  const shot = fs.readFileSync(R('scripts/ui-shot.mjs'), 'utf8');
+  assert.ok(shot.includes("opt('user'") && shot.includes("opt('mobile'") && shot.includes("opt('settings'") && shot.includes("p.startsWith('/api/')") && shot.includes('process.exit(1)'), 'أداة اللقطات: مستخدم، جوّال، إعدادات، بلا شبكة، وتفشل عند خطأ صفحة');
+  const skill = fs.readFileSync(R('.claude/skills/verify-ui/SKILL.md'), 'utf8');
+  assert.ok(/^---\nname: verify-ui\n/.test(skill) && skill.includes('scripts/ui-shot.mjs'), 'مهارة verify-ui للمشروع تُحمَّل في الجسر (settingSources project)');
+  assert.ok(/ui-shot\.mjs/.test(P.RULES_APPEND) && /طريقة العمل التي يتوقّعها المالك/.test(P.RULES_APPEND), 'التعليمات الملحقة تحيل إلى طريقة العمل وأداة اللقطات');
   const docker = fs.readFileSync(R('cc-bridge/Dockerfile'), 'utf8');
   assert.ok(/cli\.github\.com/.test(docker) && /install -y --no-install-recommends gh/.test(docker) && /curl gnupg jq ripgrep/.test(docker), 'gh وcurl وjq وripgrep في الحاوية');
   const entry = fs.readFileSync(R('cc-bridge/entrypoint.sh'), 'utf8');
