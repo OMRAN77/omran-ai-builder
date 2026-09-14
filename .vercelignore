@@ -68,3 +68,6 @@ knowledge/
 
 # v-cc-bridge: جسر Claude Code يعمل على خادم المالك لا على Vercel.
 cc-bridge/
+
+# v-cc-playbook: مهارات المشروع لـClaude Code تعيش في المستودع لا على الـCDN.
+.claude/

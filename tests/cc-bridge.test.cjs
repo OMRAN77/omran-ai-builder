@@ -65,14 +65,29 @@ const R = (p) => path.join(__dirname, '..', p);
 
   // الخادم: Claude Code كما هو — لا حلقة يدويّة
   const srv = fs.readFileSync(R('cc-bridge/server.mjs'), 'utf8');
-  assert.ok(srv.includes("await import('@anthropic-ai/claude-agent-sdk')") && srv.includes('query({ prompt: message, options })'), 'query() من الحزمة الرسميّة');
+  assert.ok(srv.includes("await import('@anthropic-ai/claude-agent-sdk')") && srv.includes('query({ prompt: promptFor(message, opts.images), options })'), 'query() من الحزمة الرسميّة');
   assert.ok(!/api\.anthropic\.com\/v1\/messages/.test(srv), 'لا نداء مباشر لواجهة الرسائل — لا وكيل مركّب');
-  for (const k of ["permissionMode: 'acceptEdits'", 'canUseTool: async (name, input) => decideTool(name, input)', 'includePartialMessages: true', "systemPrompt: { type: 'append', text: RULES_APPEND }", 'options.resume = opts.sessionId', 'allowedTools: ALLOWED_TOOLS', 'disallowedTools: DENIED_TOOLS', "settingSources: ['project']"]) {
+  for (const k of ["permissionMode: 'acceptEdits'", 'canUseTool: async (name, input) => decideTool(name, input)', 'includePartialMessages: true', "systemPrompt: { type: 'append', text: RULES_APPEND }", 'options.resume = opts.sessionId', 'allowedTools: ALLOWED_TOOLS', 'disallowedTools: DENIED_TOOLS', "settingSources: ['user', 'project', 'local']"]) {
     assert.ok(srv.includes(k), 'خيار الحزمة: ' + k);
   }
   assert.ok(srv.includes('timingSafeEqual') && srv.includes("'/publish'") && srv.includes("'/merge'") && srv.includes("'/reset'"), 'السرّ والأوامر الثلاثة');
   assert.ok(srv.includes('delete e.CC_BRIDGE_SECRET') && srv.includes('e.GH_TOKEN = e.GITHUB_TOKEN') && srv.includes('env: childEnv()'), 'بيئة Claude Code بلا سرّ الجسر ومع مفتاح gh');
-  assert.ok(/CC_MAX_TURNS\) \|\| 200\)/.test(srv), 'سقف الجولات ٢٠٠ كجلسة طويلة');
+  assert.ok(/CC_MAX_TURNS\) \|\| 1000\)/.test(srv), 'سقف الجولات ١٠٠٠ — بلا سقف عمليّ كجلسة الويب');
+  // v-cc-raw-full: Chromium/Playwright في الحاوية، والمتابعة بلا سقف للمهمّة الطويلة
+  const docker2 = fs.readFileSync(R('cc-bridge/Dockerfile'), 'utf8');
+  assert.ok(/playwright@\$\{PW_VERSION\} install --with-deps chromium/.test(docker2) && docker2.includes('PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers'), 'Chromium وPlaywright في الصورة');
+  assert.ok(fs.readFileSync(R('cc-bridge/entrypoint.sh'), 'utf8').includes('npm i --no-save --no-audit --no-fund "playwright@${PW_VERSION}"'), 'حزمة playwright تُضاف للمستودع بلا حفظ بالإصدار نفسه');
+  // v-cc-strength («مش قوي… ضعيف»): نموذج جلسة المالك نفسه، جهد أقصى، تفكير تكيّفيّ، احتياط، والنموذج الفعليّ في النتيجة
+  assert.ok(srv.includes("env.CC_MODEL || 'claude-fable-5-1'") && srv.includes("effort: EFFORT") && srv.includes("thinking: { type: 'adaptive' }") && srv.includes('options.fallbackModel = FALLBACK_MODEL') && srv.includes('models: Object.keys(msg.modelUsage || {})'), 'قوّة الجسر: النموذج والجهد والتفكير والاحتياط والنموذج الفعليّ');
+  assert.ok(/لا تختصر على حساب الجودة/.test(P.RULES_APPEND), 'قاعدة الاختصار لا تخصّ عمل الجسر');
+  // v-cc-playbook («شوف المعلومات القويّة اللي عندك وزيدها»): طريقة العمل والقواعد الثابتة في CLAUDE.md، أداة اللقطات، ومهارة التحقّق
+  const cm = fs.readFileSync(R('CLAUDE.md'), 'utf8');
+  assert.ok(cm.includes('## طريقة العمل التي يتوقّعها المالك') && cm.includes('## قواعد المالك الثابتة') && cm.includes('scripts/ui-shot.mjs') && cm.includes('الأبواب المقفلة'), 'CLAUDE.md يحمل طريقة العمل والقواعد الثابتة وأدوات التحقّق');
+  const shot = fs.readFileSync(R('scripts/ui-shot.mjs'), 'utf8');
+  assert.ok(shot.includes("opt('user'") && shot.includes("opt('mobile'") && shot.includes("opt('settings'") && shot.includes("p.startsWith('/api/')") && shot.includes('process.exit(1)'), 'أداة اللقطات: مستخدم، جوّال، إعدادات، بلا شبكة، وتفشل عند خطأ صفحة');
+  const skill = fs.readFileSync(R('.claude/skills/verify-ui/SKILL.md'), 'utf8');
+  assert.ok(/^---\nname: verify-ui\n/.test(skill) && skill.includes('scripts/ui-shot.mjs'), 'مهارة verify-ui للمشروع تُحمَّل في الجسر (settingSources project)');
+  assert.ok(/ui-shot\.mjs/.test(P.RULES_APPEND) && /طريقة العمل التي يتوقّعها المالك/.test(P.RULES_APPEND), 'التعليمات الملحقة تحيل إلى طريقة العمل وأداة اللقطات');
   const docker = fs.readFileSync(R('cc-bridge/Dockerfile'), 'utf8');
   assert.ok(/cli\.github\.com/.test(docker) && /install -y --no-install-recommends gh/.test(docker) && /curl gnupg jq ripgrep/.test(docker), 'gh وcurl وjq وripgrep في الحاوية');
   const entry = fs.readFileSync(R('cc-bridge/entrypoint.sh'), 'utf8');
@@ -96,7 +111,7 @@ const R = (p) => path.join(__dirname, '..', p);
   const { OPS, config, forwardBody } = cc.__test;
   assert.ok(OPS.chat.stream && OPS.attach.stream && !OPS.merge.stream, 'البثّ للمحادثة والاستئناف فقط');
   assert.strictEqual(config({}).ok, false); assert.strictEqual(config({ CC_BRIDGE_URL: 'https://cc.example', CC_BRIDGE_SECRET: 'x'.repeat(24) }).ok, true);
-  assert.deepStrictEqual(Object.keys(forwardBody('chat', { message: 'hi', token: 'SESSION', sessionId: 's1' })).sort(), ['message', 'model', 'newSession', 'sessionId'], 'رمز الجلسة لا يُمرَّر إلى الجسر');
+  assert.deepStrictEqual(Object.keys(forwardBody('chat', { message: 'hi', token: 'SESSION', sessionId: 's1' })).sort(), ['images', 'message', 'model', 'newSession', 'sessionId'], 'رمز الجلسة لا يُمرَّر إلى الجسر');
   assert.strictEqual(forwardBody('merge', { prNumber: '12', force: 'yes' }).prNumber, 12);
   const res = () => { const r = { code: 0, body: null, headers: {} }; r.setHeader = (k, v) => { r.headers[k] = v; }; r.status = (c) => { r.code = c; return r; }; r.json = (b) => { r.body = b; return r; }; r.end = (b) => { r.ended = b; return r; }; return r; };
   let r = res(); await cc({ method: 'POST', body: { op: 'status', token: 'not-owner' }, query: {} }, r);
@@ -110,12 +125,23 @@ const R = (p) => path.join(__dirname, '..', p);
   assert.ok(ui.includes('window.omranCC = { runInChat: runInChat') && !/ccSection|SETTINGS_NAV_IDS|getElementById\('agentSection'\)/.test(ui), 'لا قسم مستقلّ — واجهة برمجيّة للمحادثة فقط');
   assert.ok(ui.includes("cur.messages.push({ role: 'assistant', content: '🧑‍💻 '") && ui.includes('_cc: true'), 'الردّ رسالة مساعد عاديّة موسومة');
   const ui09 = fs.readFileSync(R('js/app-09-attach.js'), 'utf8');
-  assert.ok(ui09.includes("if(window.__omMode === 'cc' && window.omranCC && !imageAttachments.length){") && ui09.includes('await window.omranCC.runInChat(cur, apiText, thinkingDiv, chatStatus);'), 'مسار الإرسال يحوّل وضع cc إلى الجسر قبل الوكيل');
+  assert.ok(ui09.includes("if(window.__omMode === 'cc' && window.omranCC){") && ui09.includes('await window.omranCC.runInChat(cur, apiText, thinkingDiv, chatStatus, imageAttachments);'), 'مسار الإرسال يحوّل وضع cc إلى الجسر قبل الوكيل — مع الصور المرفقة (v-cc-images)');
+  // v-cc-images («هذا خام؟» — اللقطة المرفقة ذهبت لمسار الصور): الصور كتل للجسر لا تعديل صورة
+  assert.ok(srv.includes("out.push({ type: 'image', source: { type: 'base64', media_type: mt, data } });") && srv.includes('query({ prompt: promptFor(message, opts.images), options })') && srv.includes("yield { type: 'user', message: { role: 'user', content }, parent_tool_use_id: null };"), 'الجسر يبني رسالة مستخدم بكتل صور عبر بثّ الإدخال');
+  const { cleanImages } = cc.__test;
+  const okImg = { mediaType: 'image/png', data: 'iVBORw0KGgo=' };
+  assert.strictEqual(cleanImages([okImg, { mediaType: 'image/svg+xml', data: 'PHN2Zz4=' }, { mediaType: 'image/png', data: 'not base64!' }]).length, 1, 'المرحّل يمرّر png/jpeg/webp/gif بـbase64 صافٍ فقط');
+  assert.strictEqual(cleanImages([okImg, okImg, okImg, okImg, okImg]).length, 4, 'حتّى ٤ صور');
+  assert.strictEqual(cleanImages([{ mediaType: 'image/png', data: 'A'.repeat(3600000) }]).length, 0, 'حدّ الحجم الإجماليّ ٣٫٥ مليون حرف');
+  assert.deepStrictEqual(Object.keys(forwardBody('chat', { message: 'hi', images: [okImg] })).sort(), ['images', 'message', 'model', 'newSession', 'sessionId'], 'الصور تُمرَّر مع الرسالة');
+  assert.strictEqual(forwardBody('chat', { message: 'hi' }).images, undefined, 'بلا صور لا حقل');
   assert.ok(ui09.indexOf("window.__omMode === 'cc'") < ui09.indexOf('if(window.__agentModeOn && !imageAttachments.length){'), 'فحص cc قبل فحص الوكيل');
   assert.ok(ui09.includes('!__lastA._cc &&'), 'ردود Claude Code لا تدخل ذاكرة المستخدم');
   // v-stream-full-agent («الكلام يطلع مخربط ويوم يخلص يكون تمام»): البثّ كاملًا بالمنسّق التدريجيّ لا ذيل ٤٠٠ حرف
   assert.ok(ui09.includes("renderStreamingAssistant(thinkingDiv, '🤖 ' + clean)") && !ui09.includes('clean.slice(-400)'), 'الوكيل يعرض النصّ كلّه منسّقًا أثناء البثّ');
   assert.ok(ui.includes("renderStreamingAssistant(thinkingDiv, '🧑‍💻 ' + full)") && !ui.includes('full.slice(-400)'), 'Claude Code يعرض النصّ كلّه منسّقًا أثناء البثّ');
+  assert.ok(ui.includes("result.models.join(' + ')") && ui.includes("' · الجهد: ' + result.effort"), 'ذيل الردّ يذكر النموذج الذي عمل فعلًا والجهد');
+  assert.ok(!ui.includes('S.retries > 6') && ui.includes('S.retries > 20') && ui.includes('S.retries = 0; if(done) return true;'), 'المتابعة بلا سقف: الالتحاق يتكرّر بعد كلّ قطع نظيف، والسقف على الأخطاء المتتالية فقط');
   const modes = fs.readFileSync(R('js/modes.js'), 'utf8');
   assert.ok(/id:'cc',\s*ar:'Claude Code'.*owner:true/.test(modes) && modes.includes("b.setAttribute('data-owner', '1'); b.style.display = isOwner() ? '' : 'none';") && modes.includes("attributeFilter: ['class']"), 'بند Claude Code في قائمة @ للمالك وحده ويُعاد فحصه عند كلّ فتح');
   assert.ok(modes.includes("if(MODE_KEYS[m.id]) b.setAttribute('data-i18n-title'"), 'بند بلا مفتاح ترجمة لا يُوسم بمفتاح undefined');
@@ -132,6 +158,9 @@ const R = (p) => path.join(__dirname, '..', p);
   assert.strictEqual(pc('ادمج 123'), J('merge', '123')); assert.strictEqual(pc('ادمج بالقوّة'), J('merge-force', ''));
   assert.strictEqual(pc('تراجع!'), J('reset', '')); assert.strictEqual(pc('الحالة'), J('status', '')); assert.strictEqual(pc('أوقف'), J('stop', ''));
   assert.strictEqual(pc('ادمج هذا الملف مع ذاك'), 'null', 'جملة عاديّة ليست أمرًا'); assert.strictEqual(pc('اقرأ CLAUDE.md'), 'null');
+  // v-cc-images: العميل يحزم الصور المدعومة (png/jpeg/webp/gif) ويعدّ المتروك
+  const pk = ctx.window.omranCC.packImages([{ isImage: true, dataUrl: 'data:image/png;base64,iVBORw0KGgo=' }, { isImage: true, dataUrl: 'data:image/heic;base64,AAAA' }]);
+  assert.strictEqual(JSON.stringify(pk), JSON.stringify({ images: [{ mediaType: 'image/png', data: 'iVBORw0KGgo=' }], skipped: 1 }), 'العميل يحزم الصور المدعومة ويعدّ المتروك');
   assert.ok(fs.readFileSync(R('.env.example'), 'utf8').includes('CC_BRIDGE_SECRET'), 'المتغيّران موثّقان');
   console.log('✓ cc-bridge: Claude Code خام مع سياج، والنشر والدمج بأمر المالك وحده');
 })().catch((e) => { console.error(e); process.exit(1); });

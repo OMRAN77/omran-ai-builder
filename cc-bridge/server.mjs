@@ -22,8 +22,12 @@ const PORT = Number(env.PORT) || 8787;
 const REPO_DIR = env.CC_REPO_DIR || '/work/repo';
 const STATE_DIR = env.CC_STATE_DIR || '/work/state';
 const SECRET = String(env.CC_BRIDGE_SECRET || '');
-const MODEL = String(env.CC_MODEL || 'claude-opus-5');
-const MAX_TURNS = Math.max(5, Number(env.CC_MAX_TURNS) || 200);
+/* v-cc-strength (شكوى المالك «مش قوي… ضعيف»): النموذج الافتراضيّ نموذج جلسة المالك على الويب
+   نفسه (Fable 5.1) مع احتياط Opus 5 إن لم يتوفّر، والجهد الأقصى والتفكير التكيّفيّ. */
+const MODEL = String(env.CC_MODEL || 'claude-fable-5-1');
+const FALLBACK_MODEL = String(env.CC_FALLBACK_MODEL || (MODEL === 'claude-opus-5' ? '' : 'claude-opus-5'));
+const EFFORT = ['low', 'medium', 'high', 'xhigh', 'max'].includes(String(env.CC_EFFORT || '')) ? String(env.CC_EFFORT) : 'max';
+const MAX_TURNS = Math.max(5, Number(env.CC_MAX_TURNS) || 1000); // v-cc-raw-full: بلا سقف عمليّ كجلسة الويب
 const MAX_BUDGET = Number(env.CC_MAX_BUDGET_USD) || 0;
 const RUN_TTL_MS = 6 * 3600 * 1000;
 
@@ -53,7 +57,26 @@ function authed(req) {
   return a.length === b.length && a.length > 0 && timingSafeEqual(a, b);
 }
 function json(res, code, obj) { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(obj)); }
-async function body(req) { let s = ''; for await (const c of req) { s += c; if (s.length > 2e6) throw new Error('body too large'); } try { return s ? JSON.parse(s) : {}; } catch (e) { return {}; } }
+async function body(req) { let s = ''; for await (const c of req) { s += c; if (s.length > 16e6) throw new Error('body too large'); } try { return s ? JSON.parse(s) : {}; } catch (e) { return {}; } }
+
+/* v-cc-images: الصور المرفقة كتل صور في رسالة المستخدم نفسها (كما تصل لجلسة الويب) — البثّ الداخل
+   للحزمة يقبل رسالة واحدة ثمّ ينتهي. png/jpeg/webp/gif، حتّى ٤ صور. */
+function imageBlocks(images) {
+  const out = [];
+  for (const i of (Array.isArray(images) ? images : [])) {
+    if (out.length >= 4 || !i || typeof i !== 'object') break;
+    const mt = String(i.mediaType || ''), data = String(i.data || '');
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(mt) || !/^[A-Za-z0-9+/=]+$/.test(data)) continue;
+    out.push({ type: 'image', source: { type: 'base64', media_type: mt, data } });
+  }
+  return out;
+}
+function promptFor(message, images) {
+  const blocks = imageBlocks(images);
+  if (!blocks.length) return message;
+  const content = [{ type: 'text', text: message }].concat(blocks);
+  return (async function* () { yield { type: 'user', message: { role: 'user', content }, parent_tool_use_id: null }; })();
+}
 function sseHead(res) { res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'Connection': 'keep-alive', 'X-Accel-Buffering': 'no' }); }
 function sseWrite(res, ev) { try { res.write('data: ' + JSON.stringify(ev) + '\n\n'); } catch (e) { /* المستمع رحل */ } }
 
@@ -65,6 +88,8 @@ async function runMessage(log, message, opts) {
   const options = {
     cwd: REPO_DIR,
     model: opts.model || MODEL,
+    effort: EFFORT,
+    thinking: { type: 'adaptive' },
     maxTurns: MAX_TURNS,
     permissionMode: 'acceptEdits',
     allowedTools: ALLOWED_TOOLS,
@@ -72,18 +97,19 @@ async function runMessage(log, message, opts) {
     canUseTool: async (name, input) => decideTool(name, input),
     includePartialMessages: true,
     systemPrompt: { type: 'append', text: RULES_APPEND },
-    /* كجلسة المالك على الويب: CLAUDE.md وإعدادات المشروع تُقرأ من المستودع (بلا هذا
-       السطر لا تحمّل الحزمة إعدادات من القرص). */
-    settingSources: ['project'],
+    /* كجلسة المالك على الويب: CLAUDE.md وإعدادات المشروع من المستودع، وإعدادات المستخدم
+       وذاكرته من CLAUDE_CONFIG_DIR على القرص الدائم (بلا هذا السطر لا تحمّل الحزمة شيئًا من القرص). */
+    settingSources: ['user', 'project', 'local'],
     abortController: abort,
     env: childEnv(),
   };
   if (MAX_BUDGET > 0) options.maxBudgetUsd = MAX_BUDGET;
+  if (FALLBACK_MODEL && FALLBACK_MODEL !== options.model) options.fallbackModel = FALLBACK_MODEL;
   if (opts.sessionId) options.resume = opts.sessionId;
   let sessionId = opts.sessionId || '';
   let sawText = false;
   try {
-    for await (const msg of query({ prompt: message, options })) {
+    for await (const msg of query({ prompt: promptFor(message, opts.images), options })) {
       if (msg.type === 'system' && msg.subtype === 'init') {
         sessionId = msg.session_id || sessionId;
         log.push({ init: { sessionId, model: msg.model || options.model } });
@@ -100,7 +126,7 @@ async function runMessage(log, message, opts) {
       } else if (msg.type === 'result') {
         if (msg.is_error && opts.sessionId && !opts._retried && !sawText && /No conversation found|session/i.test(String(msg.result || ''))) throw new Error('No conversation found: ' + String(msg.result || '').slice(0, 120));
         sessionId = msg.session_id || sessionId;
-        log.push({ result: { sessionId, subtype: msg.subtype, cost: msg.total_cost_usd, turns: msg.num_turns, stopReason: msg.stop_reason || null, text: (!sawText && msg.result) ? String(msg.result) : '' } });
+        log.push({ result: { sessionId, subtype: msg.subtype, cost: msg.total_cost_usd, turns: msg.num_turns, stopReason: msg.stop_reason || null, models: Object.keys(msg.modelUsage || {}), effort: EFFORT, text: (!sawText && msg.result) ? String(msg.result) : '' } });
       }
     }
   } catch (e) {
@@ -150,7 +176,8 @@ const server = createServer(async (req, res) => {
       const log = new RunLog('r' + Date.now().toString(36) + randomBytes(3).toString('hex'));
       runs.set(log.id, log); current = log;
       log.push({ run: log.id });
-      runMessage(log, message, { sessionId: b.newSession ? '' : (b.sessionId || state.sessionId || ''), model: b.model }).catch((e) => { log.push({ error: redact(String(e && e.message || e)) }); log.end(); });
+      if (Array.isArray(b.images) && b.images.length) log.push({ tool: { name: 'images', brief: '🖼️ ' + imageBlocks(b.images).length + ' صورة مرفقة' } });
+      runMessage(log, message, { sessionId: b.newSession ? '' : (b.sessionId || state.sessionId || ''), model: b.model, images: b.images }).catch((e) => { log.push({ error: redact(String(e && e.message || e)) }); log.end(); });
       return streamLog(res, log, 0);
     }
     if (req.method === 'GET' && url.pathname.startsWith('/runs/')) {
@@ -164,7 +191,7 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === 'GET' && url.pathname === '/status') {
       const st = await gitOps.status();
-      return json(res, 200, Object.assign({ ok: true, sessionId: state.sessionId, busy: !!(current && !current.done), runId: current ? current.id : '', model: MODEL }, st));
+      return json(res, 200, Object.assign({ ok: true, sessionId: state.sessionId, busy: !!(current && !current.done), runId: current ? current.id : '', model: MODEL, effort: EFFORT }, st));
     }
     if (req.method === 'POST' && url.pathname === '/publish') {
       if (current && !current.done) return json(res, 409, { error: 'تشغيل جارٍ — انتظر انتهاءه قبل النشر.' });
