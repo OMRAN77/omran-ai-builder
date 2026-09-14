@@ -337,7 +337,8 @@
      فكرة كلاود البرتقالي لكن أصفر): تمييزٌ أصفر ذهبيّ داخل ردود المحادثة فقط. */
   :root{ --om-hl:#e3b341; }
   .chat-codeblock pre, .chat-codeblock pre .tts-word{ color:var(--om-hl) !important; }
-  #messages .om-en{ color:var(--om-hl); }
+  /* v-hl-links-only (طلب المالك): الإنجليزي والأرقام تبقى بيضاء عاديّة —
+     الأصفر للروابط فقط (عبر نمط الوسم <a>). لا نلوّن om-en. */
   #inputbar{padding:4px 12px 9px; border-top:none; display:flex; flex-direction:column; gap:6px; position:relative;}
   #inputbar .inputbar-tools{display:flex; gap:4px; align-items:center; flex:0 0 auto; flex-wrap:nowrap;}
   #inputbar .inputbar-tools-left{display:flex; gap:4px; align-items:center; flex:0 0 auto; flex-wrap:nowrap;}
@@ -1116,6 +1117,6 @@ html.mobile-ui #videoMakerModal .vmk-main{max-height:none !important; overflow:v
    — سطح المكتب فقط — فيظهر أبيض على الجوّال. نعيدها هنا خارج أي ميديا لتعمل
    على كلّ العروض، مع لون احتياطيّ صريح. */
 :root{ --om-hl:#e3b341; }
-#messages .om-en{ color:var(--om-hl,#e3b341); }
+/* v-hl-links-only: الإنجليزي والأرقام بيضاء — الأصفر للروابط فقط (نمط <a>). */
 .chat-codeblock pre, .chat-codeblock pre .tts-word{ color:var(--om-hl,#e3b341) !important; }
 .tts-word.active{ background:var(--om-hl,#e3b341); color:#14161a; box-shadow:0 0 0 2px var(--om-hl,#e3b341); }
