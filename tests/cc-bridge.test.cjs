@@ -106,6 +106,11 @@ const R = (p) => path.join(__dirname, '..', p);
   const ui = fs.readFileSync(R('js/app-29-cc.js'), 'utf8');
   assert.ok(ui.includes("=== 'omran'") && ui.includes("action=cc") && ui.includes("window.confirm('تدمج طلب السحب #'"), 'الشاشة للمالك، والدمج بتأكيد صريح');
   assert.ok(!/CC_BRIDGE_SECRET|CC_BRIDGE_URL/.test(ui), 'لا سرّ ولا عنوان جسر في المتصفّح');
+  // v-cc-nav: الإعدادات قائمة من مستويين — القسم يُسجَّل في SETTINGS_NAV_IDS بعد «الوكيل» وتُعاد القائمة، وكلّ فتح للنافذة يعيد المحاولة
+  assert.ok(ui.includes("SETTINGS_NAV_IDS.splice(i < 0 ? SETTINGS_NAV_IDS.length : i + 1, 0, 'ccSection')") && ui.includes('renderSettingsNavList()') && ui.includes("attributeFilter: ['open']"), 'القسم مسجّل في قائمة الإعدادات الرئيسيّة ويُعاد إدراجه عند فتحها');
+  assert.ok(ui.includes("if(!owner()) return false;"), 'غير المالك لا يوقف المحاولات مبكّرًا (الدخول قد يأتي بعد التحميل)');
+  const ui05 = fs.readFileSync(R('js/app-05-ui.js'), 'utf8');
+  assert.ok(/const SETTINGS_NAV_IDS = \[/.test(ui05) && /function renderSettingsNavList\(\)/.test(ui05), 'الأسماء التي يعتمد عليها القسم موجودة في واجهة الإعدادات');
   assert.ok(fs.readFileSync(R('.env.example'), 'utf8').includes('CC_BRIDGE_SECRET'), 'المتغيّران موثّقان');
   console.log('✓ cc-bridge: Claude Code خام مع سياج، والنشر والدمج بأمر المالك وحده');
 })().catch((e) => { console.error(e); process.exit(1); });
