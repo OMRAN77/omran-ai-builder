@@ -64,11 +64,15 @@
       var pop = document.createElement('div');
       pop.id = 'omModelPopup';
       pop.style.cssText = 'display:none; position:absolute; bottom:calc(100% + 6px); inset-inline-end:0; z-index:2200; background:var(--panel,#161513); border:1px solid var(--border,rgba(255,255,255,.12)); border-radius:12px; box-shadow:0 12px 34px rgba(0,0,0,.5); padding:5px; min-width:170px;';
-      function rowHTML(act, label){
-        return '<button type="button" class="omModelOpt" data-act="' + act + '" style="display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; background:none; border:none; color:var(--text,#eee); font-size:13px; font-weight:600; text-align:start; padding:8px 10px; border-radius:8px; cursor:pointer;"><span>' + label + '</span><span class="omModelTick" aria-hidden="true" style="opacity:0;">✓</span></button>';
+      // «الوكيل» يأخذ ترجمته الجاهزة (premiumToggleLabel) لكلّ الـ14 لغة، ويُوسم data-i18n
+      // فيعيد مبدّل اللغة ترجمته حيًّا. Claude Code وOpus/Sonnet أسماء علم لا تُترجَم.
+      function agentLabel(){ try{ if(typeof t === 'function'){ var v = t('premiumToggleLabel'); if(v && v !== 'premiumToggleLabel') return v; } }catch(e){ /* i18n لم يجهز — الاحتياط */ } return AR ? 'الوكيل' : 'Agent'; }
+      function rowHTML(act, label, key){
+        var attr = key ? ' data-i18n="' + key + '"' : '';
+        return '<button type="button" class="omModelOpt" data-act="' + act + '" style="display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; background:none; border:none; color:var(--text,#eee); font-size:13px; font-weight:600; text-align:start; padding:8px 10px; border-radius:8px; cursor:pointer;"><span' + attr + '>' + label + '</span><span class="omModelTick" aria-hidden="true" style="opacity:0;">✓</span></button>';
       }
       var divider = '<div style="height:1px; margin:4px 6px; background:var(--border,rgba(255,255,255,.12));"></div>';
-      pop.innerHTML = rowHTML('agent', AR ? 'الوكيل' : 'Agent') + rowHTML('cc', 'Claude Code') + divider + rowHTML('opus', 'Opus 5') + rowHTML('sonnet', 'Sonnet 5');
+      pop.innerHTML = rowHTML('agent', agentLabel(), 'premiumToggleLabel') + rowHTML('cc', 'Claude Code') + divider + rowHTML('opus', 'Opus 5') + rowHTML('sonnet', 'Sonnet 5');
       wrap.appendChild(pop); wrap.appendChild(chip);
       bar.appendChild(wrap);
       host.appendChild(bar);
