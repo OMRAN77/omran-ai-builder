@@ -658,7 +658,9 @@
     #tabs{overflow-x:auto; overflow-y:hidden; flex-wrap:nowrap; -webkit-overflow-scrolling:touch; scrollbar-width:none;}
     #tabs::-webkit-scrollbar{display:none;}
     #tabs .tab{padding:12px 10px; font-size:12.5px; flex-shrink:0; white-space:nowrap;}
-    #tabDownloadWrap{padding-inline-end:14px; flex-shrink:0;}
+    /* v-files-dl-mobile: زرّ التنزيل (⋮) كان يُدفع خارج الشاشة بـmargin auto في شريط
+       تبويبات ضيّق بلا شريط تمرير ظاهر — نلصقه بعد التبويبات مباشرة ليصله المستخدم. */
+    #tabDownloadWrap{padding-inline-end:14px; flex-shrink:0; margin-inline-start:6px;}
     #providerStripMobile{display:flex;}
   }
   html.mobile-ui #providerStripMobile{display:flex;}
@@ -704,7 +706,10 @@
   html.mobile-ui #tabs{overflow-x:auto; overflow-y:hidden; flex-wrap:nowrap; -webkit-overflow-scrolling:touch; scrollbar-width:none;}
   html.mobile-ui #tabs::-webkit-scrollbar{display:none;}
   html.mobile-ui #tabs .tab{padding:12px 10px; font-size:12.5px; flex-shrink:0; white-space:nowrap;}
-  html.mobile-ui #tabDownloadWrap{padding-inline-end:14px; flex-shrink:0;}
+  /* v-files-dl-mobile (بلاغ المالك «في الآيفون فقط المعاينة والكود»): margin-inline-start:auto
+     كان يدفع زرّ الثلاث نقاط (التنزيل/ZIP/الرفع) خارج الشاشة في شريط تبويبات ضيّق
+     قابل للتمرير بلا شريط تمرير ظاهر — فلا يصله المستخدم. نلصقه بعد التبويبات مباشرة. */
+  html.mobile-ui #tabDownloadWrap{padding-inline-end:14px; flex-shrink:0; margin-inline-start:6px;}
   html.mobile-ui dialog{
     position:fixed; inset:0; top:0; left:0; right:0; bottom:0; margin:0;
     width:100vw; max-width:100vw; height:100dvh; max-height:100dvh;
