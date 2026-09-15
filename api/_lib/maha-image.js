@@ -244,7 +244,9 @@ module.exports = async (req, res) => {
     const promptLimit = isArchitectural ? 2400 : (editImageBase64 ? 8000 : 1800);
     /* الوضع المحسّن هو الافتراضي. «نانو:» يظل مخرجًا صريحًا لإرسال النص الخام،
        ويمكن إعادة السلوك القديم مؤقتًا عبر IMAGE_RAW_DEFAULT=on. */
-    const rawMode = shouldUseRawImagePrompt(prompt, {
+    /* v-image-modes: توغّل «نانو/GPT خام» للمالك = خام فعليّ — نصّه يمرّ حرفيًّا للموديل
+       بلا هندسة أمر ولا كاشف نيّة، ولو مع صورة مرفقة (بلا فقدان كلمة). */
+    const rawMode = !!__optForceEngine || shouldUseRawImagePrompt(prompt, {
       prayerPlan,
       envDefault: process.env.IMAGE_RAW_DEFAULT,
     });
@@ -329,7 +331,7 @@ module.exports = async (req, res) => {
        أو حين يبدأ الطلب بـ«نانو:» صراحةً؛ أمّا تعديل صورة مصدر فيستخدم الأمر
        المهندس دائمًا لأنه هو ما يرفع الجودة فوق التمرير الخام. */
     const __explicitRaw = isExplicitRawImagePrompt(prompt);
-    const __pureRaw = rawMode && (!editImageBase64 || __explicitRaw);
+    const __pureRaw = rawMode && (!editImageBase64 || __explicitRaw || !!__optForceEngine);
     if (__pureRaw) {
       parts.length = 0;
       parts.push({ text: cleanPrompt });
