@@ -383,6 +383,15 @@ html[data-mode="light"] #videoMakerModal details.vmk-adv>summary,
 html[data-mode="light"] #eduHubModal .eduHintTxt,
 html[data-mode="light"] #eduHubModal .eduNote{color:var(--muted) !important;}
 
+/* v-psheet-theme (طلب المالك: صفحة «أنماط الصور» تتبع الثيم — الخلفيّة بيضاء إذا
+   الصفحة بيضاء وسوداء إذا سوداء). الجسم مثبّت داكنًا افتراضيًّا؛ هذه القواعد تقلبه
+   فاتحًا في الوضع الفاتح: الخلفيّة والنصّ من متغيّرات الثيم، والشرائح والتذييل
+   بألوان فاتحة مقروءة. البطاقات لا تُمسّ — تسمياتها فوق تدرّج داكن على الصورة. */
+html[data-mode="light"] #portraitStyleSheet{background:var(--bg) !important; color:var(--text) !important;}
+html[data-mode="light"] #portraitStyleSheet .pstyleChip{background:rgba(0,0,0,.05) !important; color:var(--text) !important; border-color:rgba(0,0,0,.15) !important;}
+html[data-mode="light"] #portraitStyleSheet .pstyleChip.on{background:#d4af37 !important; color:#141414 !important; border-color:#d4af37 !important;}
+html[data-mode="light"] #portraitStyleSheet .pstyleFoot{background:#EBEBEB !important; border-top-color:rgba(0,0,0,.12) !important;}
+
 
     /* ═══ إخفاء الأدوات من الشاشة الرئيسية فقط ═══ */
     #omranToolsGrid        { display: none !important; }

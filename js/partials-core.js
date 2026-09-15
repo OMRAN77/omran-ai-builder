@@ -461,14 +461,14 @@
       <button type="button" id="portraitFavStarBtn" title="⭐" style="background:none; border:none; cursor:pointer; font-size: var(--fs-2); padding:2px 4px; line-height:1;">☆</button>
       <!-- v-psheet-only: الواجهة الخارجية حُذفت بقرار المالك — المعرض (portraitStyleSheet) هو الأداة كلها؛
            بقيت هنا عناصر الأسلاك فقط (المدخل، السلكت المخفي، خيارات الستايلات، زر التنفيذ، النتيجة) وتُنقل للمعرض عند الفتح. -->
-      <!-- v-psheet-darkfixed: الصفحة معرض داكن ثابت (#0b0b0d) بألوان ثابتة في جسمها؛
-           نثبّت لون نصّها فاتحًا حتى لا يرث نصّ الرأس لون الثيم الفاتح فيختفي على الرأس الداكن. -->
-      <div id="portraitStyleSheet" style="display:none; position:fixed; inset:0; z-index:10080; background:#0b0b0d; color:#eef0f6; flex-direction:column;">
+      <!-- v-psheet-theme: الخلفيّة الداكنة افتراضيّة؛ يقلبها الوضع الفاتح إلى فاتحة عبر
+           html[data-mode="light"] في modules.css. النصّ يتبع الثيم (--text) فلا يختفي. -->
+      <div id="portraitStyleSheet" style="display:none; position:fixed; inset:0; z-index:10080; background:#0b0b0d; color:var(--text); flex-direction:column;">
         <!-- v-picker-close: نفس علاج pickerSheet — الرأس تحت الساعة والزر أكبر -->
         <div style="display:flex; align-items:center; justify-content:space-between; padding:calc(14px + max(env(safe-area-inset-top,0px), 30px)) 16px 14px; border-bottom:1px solid rgba(212,175,55,.25); flex:none;">
           <div>
             <div style="font-size:18px; font-weight:800;" data-i18n="portraitStyleSheetTitle">🎨 أنماط الصور</div>
-            <div id="portraitStyleSheetCount" style="font-size:11.5px; color:rgba(238,240,246,.6);"></div>
+            <div id="portraitStyleSheetCount" style="font-size:11.5px; color:var(--muted);"></div>
           </div>
           <button type="button" class="btn iconBtn" id="portraitStyleSheetClose" style="padding:10px 16px; min-width:46px; min-height:42px; font-size:17px;">✕</button>
         </div>
