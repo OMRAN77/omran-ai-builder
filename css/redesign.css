@@ -231,9 +231,9 @@ html[data-mode="light"] #omModeBtn:hover{background:rgba(0,0,0,.05);}
 /* v594 — plus-menu owner order (2026-08-13): attach · image · tools-box · pdf · feedback · delete */
 #plusToolsPopup .omModeItem[data-mode="web"], #plusToolsPopup .omModeItem[data-mode="think"]{display:none !important;}
 #plusToolsPopup .omModeItem[data-mode="image"]{order:40;} /* v597: فوق «الأدوات» مباشرةً */
-/* v-image-order: أوضاع المالك (نصّ دقيق · 4K · نانو · GPT) تُلحَق أسفل القائمة كلّها
-   (بعد «حذف المحادثة» order:70) فلا تُزحزح ترتيب العناصر الأصليّة — طلب المالك:
-   «رجع ترتيب + نفس ما كان قبل، ما قلتلك غيّر الأماكن». */
+/* v-image-order2: أوضاع المالك (نصّ دقيق · 4K · نانو · GPT) بعد العناصر الأصليّة،
+   و«حذف المحادثة» يبقى آخر القائمة كما الأصل (order:90 أسفل الأوضاع) — طلب المالك:
+   «من عند حذف المحادثة وفوق نزّلهم تحت، رجّعهم مثل قبل». */
 #plusToolsPopup .omModeItem[data-mode="image_text"]{order:80;}
 #plusToolsPopup .omModeItem[data-mode="image_hd"]{order:81;}
 #plusToolsPopup .omModeItem[data-mode="image_nano"]{order:82;}
@@ -247,7 +247,7 @@ html[dir="ltr"] #plusToolsPopup #btnToolsBox .omChev{transform:rotate(180deg);}
 #plusToolsPopup #btnImgToPdf{order:30;}
 #plusToolsPopup #btnChatToPdf{order:40;}
 #plusToolsPopup .omModeSep{order:65;}
-#plusToolsPopup #btnDeleteChat{order:70;}
+#plusToolsPopup #btnDeleteChat{order:90;} /* v-image-order2: آخر القائمة تحت أوضاع الصور */
 
 /* v551 — أيقونات خطّيّة للأوضاع (إنشاء صورة · تعلّم) بدل الإيموجي */
 #plusToolsPopup .omModeItem .omModeIc{display:inline-flex;align-items:center;justify-content:center;}
