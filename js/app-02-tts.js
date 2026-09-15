@@ -183,7 +183,18 @@ function buildSpokenWordSpans(container, text){
     container.appendChild(block);
     codePre = pre; parent = pre;
   };
-  const closeCodeBlock = () => { codePre = null; parent = container; };
+  const closeCodeBlock = () => {
+    /* v-code-color (المالك «الكود غير ملوّن»): الكتلة المكتملة تُلوَّن بملوّن المحرّر نفسه
+       (omranCodeHighlight) — يُستبدل النصّ العاديّ بوسوم <i> ملوّنة (كلمات مفتاحيّة/نصوص/
+       تعليقات/أرقام). القراءة الصوتيّة لا تقرأ الكود عادةً فلا يضرّ فقد وسوم tts-word هنا. */
+    try{
+      if(codePre && typeof omranCodeHighlight === 'function'){
+        var __raw = codePre.textContent;
+        if(__raw){ var __hl = omranCodeHighlight(__raw); if(__hl) codePre.innerHTML = __hl; }
+      }
+    }catch(e){ /* يبقى النصّ عاديًّا عند أيّ تعثّر */ }
+    codePre = null; parent = container;
+  };
   while((m = re.exec(text))){
     if(m.index > lastIndex){
       const between = text.slice(lastIndex, m.index);
