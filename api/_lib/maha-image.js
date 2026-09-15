@@ -447,9 +447,9 @@ module.exports = async (req, res) => {
           form.append('model', 'gpt-image-1');
           form.append('prompt', String(rescuePromptText).slice(0, 3800));
           form.append('size', 'auto');
-          /* v-hifi-edit (مقارنة عمران مع ChatGPT): input_fidelity=high يحفظ
-             نصوص وشعارات الصورة الأصلية — بدونه يعاد رسمها مخربشة. */
-          form.append('input_fidelity', 'high');
+          /* v-hifi-edit: input_fidelity=high يحفظ نصوص وشعارات المصدر — بدونه تُعاد رسمها
+             مخربشة. لكن «GPT خام» للمالك يريد GPT حرًّا بلا قيد التطبيق، فيأخذ الافتراضيّ. */
+          form.append('input_fidelity', __optForceEngine === 'gpt' ? 'low' : 'high');
           form.append('quality', 'high');
           form.append('image', new Blob([bytes], { type: editMimeType || 'image/jpeg' }), exactTextEdit ? 'photo.png' : 'photo.jpg');
           if (exactTextEdit) {

@@ -2319,7 +2319,10 @@ async function omModeRawImage(cur, rawText, thinkingDiv, forceEngine, imgAtt){
       try{ cur.lastEditedImage = { b64: __b64, mime: __mime }; cur.lastMsgWasImageEdit = true; }catch(e){ /* guard-ok */ }
       try{ window.__omranLastImageReq = { kind: __editB64 ? 'edit' : 'gen', promptText: rawText }; }catch(e){ __swallow(e, 'img:save-req-raw'); }
     } else {
-      __m.content = lang === 'ar' ? ('تعذّر توليد الصورة الآن — ' + ((__d && __d.error) || ('HTTP ' + __r.status))) : ('Image generation failed — ' + ((__d && __d.error) || ('HTTP ' + __r.status)));
+      /* v-image-modes: في الوضع الخام (للمالك) نُظهر سبب فشل المحرّك الحقيقيّ (openai/gemini)
+         من __diag ليعرف المالك لماذا لم يخرج خامًا بدل رسالة عامّة. */
+      var __why = (__d && __d.__diag && (__d.__diag.openai || __d.__diag.gErr || __d.__diag.free)) ? (' [' + (__d.__diag.openai || __d.__diag.gErr || __d.__diag.free) + ']') : '';
+      __m.content = (lang === 'ar' ? 'تعذّر توليد الصورة الآن — ' : 'Image generation failed — ') + ((__d && __d.error) || ('HTTP ' + __r.status)) + __why;
     }
   }catch(e){
     __m._loading = false;
