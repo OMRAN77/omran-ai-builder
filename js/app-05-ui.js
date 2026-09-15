@@ -608,7 +608,7 @@ function omranCodeEscape(s){
    لصقة ١٠٠ ك.ب. يعني عشرات آلاف العقد في DOM واحد، فيثقل التمرير والكتابة
    والتبديل بين التبويبات. فوق الحدّ نعرض نصًّا خامًّا (عقدة واحدة)؛ الترقيم
    يبقى دائمًا بلا حدّ. */
-var OMRAN_HL_MAX = 60000;
+var OMRAN_HL_MAX = 120000; /* v-code-color: يشمل ملفّات كبيرة (٦٧ك.ب) في الشات والمحرّر */
 function omranCodeHighlight(raw){
   var esc = omranCodeEscape(raw);
   if(esc.length > OMRAN_HL_MAX) return esc;

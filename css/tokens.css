@@ -337,10 +337,10 @@
   .chat-codeblock-copy:hover{color:#e6edf3;}
   .chat-codeblock pre{margin:0;padding:12px;overflow-x:auto;font-family:ui-monospace,Consolas,Menlo,monospace;font-size:12.5px;line-height:1.55;color:#e6edf3;white-space:pre;}
   .chat-codeblock pre .tts-word{color:#e6edf3;}
-  /* v-hl-yellow (طلب المالك «الأكواد والإنجليزي والمواقع صفراء زي الأرقام» — نفس
-     فكرة كلاود البرتقالي لكن أصفر): تمييزٌ أصفر ذهبيّ داخل ردود المحادثة فقط. */
+  /* v-code-color (المالك «الكود غير ملوّن»): كتل الكود تُلوَّن تلوينًا برمجيًّا كاملًا
+     (omranCodeHighlight في app-02) على أساس رماديّ محايد كالمحرّر — بدل اللون الأصفر
+     الموحّد السابق (v-hl-yellow). --om-hl يبقى لتمييز القراءة الصوتيّة والروابط. */
   :root{ --om-hl:#e3b341; }
-  .chat-codeblock pre, .chat-codeblock pre .tts-word{ color:var(--om-hl) !important; }
   /* v-hl-links-only (طلب المالك): الإنجليزي والأرقام تبقى بيضاء عاديّة —
      الأصفر للروابط فقط (عبر نمط الوسم <a>). لا نلوّن om-en. */
   #inputbar{padding:4px 12px 9px; border-top:none; display:flex; flex-direction:column; gap:6px; position:relative;}
