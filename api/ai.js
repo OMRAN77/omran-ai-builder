@@ -13,6 +13,7 @@ const { logError } = require('./_lib/log-error.js');
 const { BIDI_RULE } = require('./_lib/_bidi.js'); // v568
 const { quickIntent, INTENT_NOTES } = require('./_lib/router.js'); // v--- مصنّف النيّة
 const { toneSection, extractUserMessages } = require('./_lib/tone.js'); // v--- مطابقة الأسلوب
+const { isOwner } = require('./_lib/_owner.js'); // v-owner-raw: المالك يجرّب المزوّد خامًا
 
 function load(action) {
   switch (action) {
@@ -304,6 +305,11 @@ function canonMode(m) { return m === 'minimal' ? 'balanced' : m; }
 function resolveMode(body) {
   const perRequest = body && typeof body.mode === 'string' ? body.mode.trim().toLowerCase() : '';
   if (MODES.indexOf(perRequest) !== -1) return canonMode(perRequest);
+  // v-owner-raw: المالك يأخذ «خام» (factory) افتراضيًّا ليجرّب المزوّد بلا طبقة
+  // التطبيق، بينما يبقى المستخدم على الافتراضيّ العامّ (balanced) المحميّ بقواعده
+  // (لا اسم مزوّد · لا ادّعاء إنسانيّة · التاريخ الصحيح). طلبٌ صريح لوضعٍ آخر
+  // (perRequest أعلاه) يتقدّم على هذا حتّى للمالك.
+  if (body && body.__ownerFactory === true) return 'factory';
   return MODES.indexOf(AI_MODE) !== -1 ? canonMode(AI_MODE) : 'balanced';
 }
 
@@ -471,9 +477,19 @@ module.exports = withErrorCapture('ai', async (req, res) => {
           b.contents = sanitizeGeminiContents(b.contents);
         }
         const geoCountry = (req.headers && (req.headers['x-vercel-ip-country'] || req.headers['x-country'])) || '';
-        injectNote(action, b, geoCountry); req.body = b;
+        // v-owner-raw: يُحسب من التوكن الموقَّع في الجسم؛ العلم يُستهلك داخل
+        // injectNote ثمّ يُحذف فلا يُمرَّر إلى المزوّد.
+        try { b.__ownerFactory = isOwner({ query: req.query, body: b }); } catch (e) { b.__ownerFactory = false; }
+        injectNote(action, b, geoCountry);
+        delete b.__ownerFactory;
+        req.body = b;
       }
     } catch (e) { /* never block the request over the note */ }
   }
   return handler(req, res);
 });
+
+// أدوات اختبار داخليّة فقط (لا تُستهلك في الإنتاج): تُتيح فحص الوضع المحسوب
+// وحقن الملاحظات دون نداء مزوّد حقيقيّ.
+module.exports.__resolveMode = resolveMode;
+module.exports.__injectNote = injectNote;
