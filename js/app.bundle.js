@@ -9211,6 +9211,16 @@ const PROVIDER_QUICK_LIST = [
 // ترحيل: من اختار «العميق» (deepseek) في v358 يرجع للزر الظاهر الجديد GPT.
 try{ if(localStorage.getItem('aiapp_provider') === 'deepseek') localStorage.setItem('aiapp_provider', 'openai'); }catch(e){ __swallow(e, "save:app-05-ui#22"); }
 let providerQuickBarBuilt = false;
+/* v-provider-arrow (أمر عمران «كل المزودين ٩ في السهم»): منتقٍ من شريط السهم (modes.js)
+   يضبط موديل المزوّد ثمّ يبدّل المزوّد بمنطق selectProviderKey نفسه (مشروع/محادثة لكلّ
+   مزوّد). للمالك وحده (الشريط لا يظهر لغيره). */
+window.omranPickProviderModel = function(provKey, storeKey, modelId){
+  try{ if(storeKey && modelId) localStorage.setItem(storeKey, modelId); }catch(e){ __swallow(e, "save:app-05-ui#prov-arrow"); }
+  try{
+    const cur = localStorage.getItem('aiapp_provider') || 'claude';
+    if(provKey && provKey !== cur) selectProviderKey(provKey);
+  }catch(e){ __swallow(e, "misc:app-05-ui#prov-arrow"); }
+};
 function selectProviderKey(key){
   const prev = localStorage.getItem('aiapp_provider') || 'claude';
   localStorage.setItem('aiapp_provider', key);
