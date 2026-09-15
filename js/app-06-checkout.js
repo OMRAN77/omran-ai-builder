@@ -914,18 +914,36 @@ $('#codeUploadInput').addEventListener('change', (e) => {
   };
 })();
 
-$('#btnDownload').onclick = () => {
+/* v-files-dl-mobile (بلاغ المالك «الملف ما يتحمّل في الآيفون»): a.download للـblob لا يعمل
+   على iOS Safari (يفتح تبويبًا أو لا شيء). على الجوّال نستخدم مشاركة الملف (navigator.share)
+   فيظهر «حفظ في الملفات»؛ على الحاسوب يبقى التنزيل المباشر. */
+async function omranSaveOrShareFile(blob, fname){
+  const isMobile = document.documentElement.classList.contains('mobile-ui');
+  if(isMobile){
+    try{
+      const file = new File([blob], fname, { type: blob.type || 'application/octet-stream' });
+      if(navigator.canShare && navigator.canShare({ files: [file] })){
+        await navigator.share({ files: [file], title: fname });
+        return;
+      }
+    }catch(e){ if(e && e.name === 'AbortError') return; /* غير الإلغاء: ننزّل عاديًّا أدناه */ }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fname; a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+window.omranSaveOrShareFile = omranSaveOrShareFile;
+
+$('#btnDownload').onclick = async () => {
   const cur = getCurrent();
   if(!cur || !cur.code){ alert(t('noCodeToDownload')); return; }
   const isPy = cur.codeType === 'python';
   const blob = new Blob([cur.code], {type: isPy ? 'text/x-python' : 'text/html'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = (cur.title || 'app') + (isPy ? '.py' : '.html');
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  await omranSaveOrShareFile(blob, (cur.title || 'app') + (isPy ? '.py' : '.html'));
 };
 
 // 📦 تصدير المشروع كملف ZIP جاهز للنشر (index.html + README)
@@ -946,13 +964,7 @@ $('#btnExportZip').onclick = async () => {
     zip.file(isPy ? 'main.py' : 'index.html', cur.code);
     zip.file('README.md', '# ' + (cur.title || 'App') + '\n\nBuilt with Omran AI Builder — https://omran-ai-builder.vercel.app\n\n' + (isPy ? 'Run: `python main.py`' : 'Open `index.html` in a browser, or deploy the folder to Vercel/Netlify.'));
     const blob = await zip.generateAsync({ type: 'blob' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = (cur.title || 'app') + '.zip';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    await omranSaveOrShareFile(blob, (cur.title || 'app') + '.zip');
   }catch(e){
     console.error('zip export error', e);
     alert('⚠️ ' + (e.message || e));
