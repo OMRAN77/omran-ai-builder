@@ -140,7 +140,7 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(maha, /const __rawCreative = creativeRawEnabled\(process\.env\) && \(isElevate \|\| isReimagine \|\| isRestyle\);/);
   assert.match(maha, /__rawCreative \? rawCreativePrompt\(cleanPrompt, intentText\)/);
   /* v-intent-llm: النموذج يوسّع التعابير النمطية فقط حين لا تلتقط مسارًا إبداعيًا ولا تبديل/حذف نصّ، ولا يعمل بلا صورة مصدر */
-  assert.match(maha, /if \(editImageBase64 && !\(body && body\.sceneUpgrade === true\) && !__intent\.restyle && !__intent\.reimagine && !__intent\.elevate && !__intent\.sameImage\n\s+&& intentText\.trim\(\)\.length <= 220 && !isTextEditRequest\(intentText\) && !isPureTextRemoval\(intentText\) && !isPersonSwapRequest\(intentText\) && !isBroadEditRequest\(intentText\) && llmIntentEnabled\(process\.env\)\)/);
+  assert.match(maha, /if \(editImageBase64 && !__optForceEngine && !\(body && body\.sceneUpgrade === true\) && !__intent\.restyle && !__intent\.reimagine && !__intent\.elevate && !__intent\.sameImage\n\s+&& intentText\.trim\(\)\.length <= 220 && !isTextEditRequest\(intentText\) && !isPureTextRemoval\(intentText\) && !isPersonSwapRequest\(intentText\) && !isBroadEditRequest\(intentText\) && llmIntentEnabled\(process\.env\)\)/);
   assert.match(maha, /const __llm = await classifyEditIntentLLM\(\{ apiKey, text: intentText \}\);/);
   assert.match(maha, /if \(__llm\) \{ __intent\[__llm\.lane === 'same' \? 'sameImage' : __llm\.lane\] = true;/);
   /* v-best-of: مرشّح ثانٍ بالتوازي في المسارات الإبداعية والحكم الإبداعي يختار؛ IMAGE_BEST_OF يضبط العدد */
