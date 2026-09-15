@@ -10,10 +10,12 @@
     /* v-image-modes (أمر عمران «نانو/GPT في +، ولي أنا وحدي»): خيارات محرّك الصورة للمالك
        وحده أوّلًا — بالوظيفة لا بالاسم للعامّة لاحقًا. كلّها توليد جديد (لا مرفق):
        نصّ دقيق → مسار GPT الوفيّ، 4K → جودة أعلى، ونانو/GPT خام يفرضان المحرّك للمقارنة. */
-    { id:'image_text', ar:'صورة بنصّ دقيق', en:'Image · exact text', ic:'✍️', owner:true },
-    { id:'image_hd',   ar:'صورة 4K',        en:'Image · 4K',         ic:'🖨️', owner:true },
-    { id:'image_nano', ar:'محرّك نانو (خام)', en:'Nano engine (raw)', ic:'🍌', owner:true },
-    { id:'image_gpt',  ar:'محرّك GPT (خام)',  en:'GPT engine (raw)',  ic:'🤖', owner:true },
+    /* v-mode-icons: أيقونات SVG خطّيّة (لا إيموجي — الإيموجي لا يصمد في omModeIc
+       فتبقى الأيقونة فارغة وتختلّ المحاذاة). تُطابق أسلوب أيقونة «إنشاء صورة». */
+    { id:'image_text', ar:'صورة بنصّ دقيق', en:'Image · exact text', ic:'<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>', owner:true },
+    { id:'image_hd',   ar:'صورة 4K',        en:'Image · 4K',         ic:'<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M21 8V5a2 2 0 0 0-2-2h-3"></path><path d="M3 16v3a2 2 0 0 0 2 2h3"></path><path d="M16 21h3a2 2 0 0 0 2-2v-3"></path></svg>', owner:true },
+    { id:'image_nano', ar:'محرّك نانو (خام)', en:'Nano engine (raw)', ic:'<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>', owner:true },
+    { id:'image_gpt',  ar:'محرّك GPT (خام)',  en:'GPT engine (raw)',  ic:'<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>', owner:true },
     /* v-bottom-bar (أمر عمران ١٤ سبتمبر «حط الوكيل وكودي وياهم»): الوكيل وClaude Code
        نُقلا من قائمة «+» إلى الشريط أسفل الصندوق مع مؤشّر النموذج (bottom:true) —
        للمالك وحده. الوكيل تبديل موكَّل لمفتاح النقاط القديم (btnPremiumToggle) فتبقى
