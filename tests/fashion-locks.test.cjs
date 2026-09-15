@@ -299,9 +299,9 @@ console.log('  ✓ v-sweep: الفحص الشامل — أسلاك حية وتر
   for (const dead of ['anthropic/claude-3.5-sonnet', 'google/gemini-pro-1.5', 'google/gemini-flash-1.5:free', 'mistralai/mistral-7b-instruct:free']) {
     assert.ok(!ps.includes('"' + dead + '"'), 'اسم ميت في المنسدلة: ' + dead);
   }
-  assert.ok(ps.includes('anthropic/claude-sonnet-4.5') && ps.includes('google/gemini-2.5-pro'), 'البدائل الحية في المنسدلة');
+  assert.ok(ps.includes('anthropic/claude-sonnet-5') && ps.includes('google/gemini-3.5-flash'), 'البدائل الحية في المنسدلة');
   const ft = fs.readFileSync(path.join(__dirname, '../js/app-10-features.js'), 'utf8');
-  assert.ok(ft.includes('__orRemap') && ft.includes("'google/gemini-pro-1.5': 'google/gemini-2.5-pro'"), 'مهاجر القيم المحفوظة الميتة');
+  assert.ok(ft.includes('__orRemap') && ft.includes("'google/gemini-pro-1.5': 'google/gemini-3.5-flash'"), 'مهاجر القيم المحفوظة الميتة');
 }
 console.log('  ✓ v-or-models: قوائم OpenRouter حية ومهاجرة');
 

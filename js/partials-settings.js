@@ -168,16 +168,17 @@
         <option value="z-ai/glm-5.2:free">GLM 5.2 (free)</option>
       </optgroup>
       <optgroup label="💰 Paid" data-i18n="[label]orPaidGroup">
-        <option value="openai/gpt-4o-mini">OpenAI GPT-4o mini</option>
-        <option value="openai/gpt-4o">OpenAI GPT-4o</option>
-        <option value="anthropic/claude-sonnet-4.5">Anthropic Claude Sonnet 4.5</option>
-        <option value="google/gemini-2.5-pro">Google Gemini 2.5 Pro</option>
-        <option value="meta-llama/llama-3.1-70b-instruct">Meta Llama 3.1 70B</option>
-        <option value="deepseek/deepseek-chat">DeepSeek Chat</option>
+        <!-- v-models-family: رُفعت للجيل الحاليّ (معرّفات تطابق OR_MODELS في الخادم). -->
+        <option value="openai/gpt-5.6-terra">OpenAI GPT-5.6 Terra</option>
+        <option value="anthropic/claude-sonnet-5">Anthropic Claude Sonnet 5</option>
+        <option value="anthropic/claude-opus-5">Anthropic Claude Opus 5</option>
+        <option value="google/gemini-3.5-flash">Google Gemini 3.5 Flash</option>
+        <option value="meta-llama/llama-4-maverick">Meta Llama 4 Maverick</option>
+        <option value="deepseek/deepseek-v3.2">DeepSeek V3.2</option>
       </optgroup>
       <option value="__custom__" data-i18n="orCustomOption">✏️ مخصص...</option>
     </select>
-    <input type="text" id="openrouterModel" placeholder="openai/gpt-4o-mini" style="display:none; margin-top:6px;">
+    <input type="text" id="openrouterModel" placeholder="openai/gpt-5.6-terra" style="display:none; margin-top:6px;">
   </div>
   <div class="api-provider-card" style="display:none; border-inline-start:4px solid #20b8cd; background:var(--panel2); border-radius:var(--r-2); padding:12px 14px; margin-bottom:12px;">
     <label style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
