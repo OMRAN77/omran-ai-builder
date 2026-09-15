@@ -22,10 +22,11 @@ const PORT = Number(env.PORT) || 8787;
 const REPO_DIR = env.CC_REPO_DIR || '/work/repo';
 const STATE_DIR = env.CC_STATE_DIR || '/work/state';
 const SECRET = String(env.CC_BRIDGE_SECRET || '');
-/* v-cc-strength (شكوى المالك «مش قوي… ضعيف»): النموذج الافتراضيّ نموذج جلسة المالك على الويب
-   نفسه (Fable 5.1) مع احتياط Opus 5 إن لم يتوفّر، والجهد الأقصى والتفكير التكيّفيّ. */
-const MODEL = String(env.CC_MODEL || 'claude-fable-5-1');
-const FALLBACK_MODEL = String(env.CC_FALLBACK_MODEL || (MODEL === 'claude-opus-5' ? '' : 'claude-opus-5'));
+/* v-cc-cheap (طلب المالك «خلّه الأرخص، والاثنين»): نموذجان — أساسيّ Sonnet 5 (قويّ للكود
+   ورخيص $2/$10) واحتياطيّ Haiku 4.5 (الأرخص $1/$5) إن لم يتوفّر الأساسيّ. سابقًا كان
+   Fable 5.1 + Opus 5 وهي الأغلى (Fable ليس الأرخص كما فُهم — بل الأغلى $10/$50). */
+const MODEL = String(env.CC_MODEL || 'claude-sonnet-5');
+const FALLBACK_MODEL = String(env.CC_FALLBACK_MODEL || (MODEL === 'claude-haiku-4-5' ? '' : 'claude-haiku-4-5'));
 const EFFORT = ['low', 'medium', 'high', 'xhigh', 'max'].includes(String(env.CC_EFFORT || '')) ? String(env.CC_EFFORT) : 'max';
 const MAX_TURNS = Math.max(5, Number(env.CC_MAX_TURNS) || 1000); // v-cc-raw-full: بلا سقف عمليّ كجلسة الويب
 const MAX_BUDGET = Number(env.CC_MAX_BUDGET_USD) || 0;
