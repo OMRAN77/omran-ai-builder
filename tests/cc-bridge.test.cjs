@@ -77,8 +77,9 @@ const R = (p) => path.join(__dirname, '..', p);
   const docker2 = fs.readFileSync(R('cc-bridge/Dockerfile'), 'utf8');
   assert.ok(/playwright@\$\{PW_VERSION\} install --with-deps chromium/.test(docker2) && docker2.includes('PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers'), 'Chromium وPlaywright في الصورة');
   assert.ok(fs.readFileSync(R('cc-bridge/entrypoint.sh'), 'utf8').includes('npm i --no-save --no-audit --no-fund "playwright@${PW_VERSION}"'), 'حزمة playwright تُضاف للمستودع بلا حفظ بالإصدار نفسه');
-  // v-cc-strength («مش قوي… ضعيف»): نموذج جلسة المالك نفسه، جهد أقصى، تفكير تكيّفيّ، احتياط، والنموذج الفعليّ في النتيجة
-  assert.ok(srv.includes("env.CC_MODEL || 'claude-fable-5-1'") && srv.includes("effort: EFFORT") && srv.includes("thinking: { type: 'adaptive' }") && srv.includes('options.fallbackModel = FALLBACK_MODEL') && srv.includes('models: Object.keys(msg.modelUsage || {})'), 'قوّة الجسر: النموذج والجهد والتفكير والاحتياط والنموذج الفعليّ');
+  // v-cc-cheap («خلّه الأرخص، والاثنين»): أساسيّ Sonnet 5 (قويّ للكود ورخيص) واحتياطيّ
+  // Haiku 4.5 (الأرخص)؛ الجهد والتفكير التكيّفيّ والنموذج الفعليّ في النتيجة كما هي.
+  assert.ok(srv.includes("env.CC_MODEL || 'claude-sonnet-5'") && srv.includes("'claude-haiku-4-5'") && srv.includes("effort: EFFORT") && srv.includes("thinking: { type: 'adaptive' }") && srv.includes('options.fallbackModel = FALLBACK_MODEL') && srv.includes('models: Object.keys(msg.modelUsage || {})'), 'قوّة الجسر: أساسيّ Sonnet واحتياطيّ Haiku والجهد والتفكير والنموذج الفعليّ');
   assert.ok(/لا تختصر على حساب الجودة/.test(P.RULES_APPEND), 'قاعدة الاختصار لا تخصّ عمل الجسر');
   // v-cc-playbook («شوف المعلومات القويّة اللي عندك وزيدها»): طريقة العمل والقواعد الثابتة في CLAUDE.md، أداة اللقطات، ومهارة التحقّق
   const cm = fs.readFileSync(R('CLAUDE.md'), 'utf8');
