@@ -2285,6 +2285,50 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
   try{ thinkingDiv && thinkingDiv.remove(); }catch(e){ /* guard-ok — cleanup, intentional */ }
 }
 
+/* v-image-modes (أمر عمران «خام خام، لا تخليني أخسر كلمة»): وضعا «نانو/GPT خام» للمالك —
+   يمرّ نصّ المستخدم حرفيًّا بلا __parseImageTextSpec ولا كاشف شِعر/دعاء ولا هندسة، ويعمل
+   مع صورة مرفقة (تعديل) أو بدونها (توليد). الخادم يُجبَر على الخام والمحرّك المفروض. */
+async function omModeRawImage(cur, rawText, thinkingDiv, forceEngine, imgAtt){
+  const __m = { role: 'assistant', content: lang === 'ar' ? '🎨 أرسم لك الصورة…' : '🎨 Generating your image…', _loading: true };
+  cur.messages.push(__m); renderAll();
+  let __editB64 = '', __editMime = '';
+  try{
+    if(imgAtt && imgAtt.dataUrl && String(imgAtt.dataUrl).slice(0, 5) === 'data:'){
+      const __du = String(imgAtt.dataUrl);
+      __editMime = (__du.slice(5).split(';')[0]) || 'image/png';
+      __editB64 = __du.split(',')[1] || '';
+    }
+  }catch(e){ /* بلا صورة = توليد جديد خام */ }
+  try{
+    const __body = { prompt: String(rawText || '').slice(0, 4000), rawMode: true, forceEngine: forceEngine, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() };
+    if(__editB64){ __body.editImageBase64 = __editB64; __body.editMimeType = __editMime; __body.userText = String(rawText || '').slice(0, 1200); }
+    const __r = await fetch('/api/maha-image', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      signal: genAbortController ? genAbortController.signal : undefined,
+      body: JSON.stringify(__body)
+    });
+    const __d = await __r.json().catch(() => ({}));
+    __m._loading = false;
+    if(__r.ok && __d && __d.imageBase64){
+      let __mime = __d.mimeType || 'image/png', __b64 = __d.imageBase64;
+      __m.content = '';
+      let __genUrl = 'data:' + __mime + ';base64,' + __b64;
+      try{ __genUrl = await omranSharpenImage(__genUrl); }catch(e){ __swallow(e, 'img:sharpen-raw'); }
+      __m.attachments = [{ isImage: true, mime: (__genUrl.slice(5).split(';')[0] || __mime), dataUrl: __genUrl, name: 'image.png' }];
+      if(typeof __d.caption === 'string' && __d.caption.trim()){ cur.messages.push({ role: 'assistant', content: __d.caption.trim() }); }
+      try{ cur.lastEditedImage = { b64: __b64, mime: __mime }; cur.lastMsgWasImageEdit = true; }catch(e){ /* guard-ok */ }
+      try{ window.__omranLastImageReq = { kind: __editB64 ? 'edit' : 'gen', promptText: rawText }; }catch(e){ __swallow(e, 'img:save-req-raw'); }
+    } else {
+      __m.content = lang === 'ar' ? ('تعذّر توليد الصورة الآن — ' + ((__d && __d.error) || ('HTTP ' + __r.status))) : ('Image generation failed — ' + ((__d && __d.error) || ('HTTP ' + __r.status)));
+    }
+  }catch(e){
+    __m._loading = false;
+    __m.content = (e && e.name === 'AbortError') ? (lang === 'ar' ? 'تم إيقاف إنشاء الصورة.' : 'Image generation stopped.') : (lang === 'ar' ? 'تعذّر توليد الصورة الآن — جرّب مرّة ثانية.' : 'Image generation failed — please try again.');
+  }
+  renderAll(); saveState();
+  try{ thinkingDiv && thinkingDiv.remove(); }catch(e){ /* guard-ok */ }
+}
+
 // v560: تحرير رسالة قديمة يعيد المحادثة من تلك النقطة، وإعادة التوليد تعيد
 // إرسال آخر سؤال بلا فقاعة مستخدم مكررة. لا نلمس واجهة الجوال في هذه المرحلة.
 function setChatEditNotice(on){
@@ -2933,6 +2977,11 @@ function __friendlyErr(e){
       return;
     }
     // 🎯 v526: الوضع الصريح @صورة — يتخطّى كلّ الكواشف ويولّد مباشرة
+    // 🍌🤖 «نانو/GPT خام» (المالك): نصّ حرفيّ للمحرّك بلا تفسير، ومع صورة مرفقة أو بدونها.
+    if((window.__omMode === 'image_nano' || window.__omMode === 'image_gpt') && text){
+      await omModeRawImage(cur, text, thinkingDiv, window.__omMode === 'image_gpt' ? 'gpt' : 'nano', imageAttachments[0]);
+      return;
+    }
     if(String(window.__omMode || '').indexOf('image') === 0 && apiText && !imageAttachments.length){
       await omModeGenerateImage(cur, apiText, thinkingDiv);
       return;
