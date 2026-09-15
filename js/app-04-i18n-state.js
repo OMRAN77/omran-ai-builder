@@ -1853,17 +1853,17 @@ function renderMessages(keepScroll){
           if(a.text){
             chip.style.cursor = 'pointer';
             chip.title = a.name;
-            chip.onclick = () => {
-              /* v-code-viewer: المرفق النصّي يُفتح في تبويب «الكود» بترقيم وتلوين.
-                 المسار القديم (المعاينة الخام) يبقى احتياطًا إن غاب العارض. */
+            /* v-code-viewer: المرفق النصّي يُفتح في تبويب «الكود» بترقيم وتلوين.
+               المسار القديم (المعاينة الخام) يبقى احتياطًا إن غاب العارض. */
+            const __showAttach = (txt) => {
               if(typeof window.omranOpenTextInCodePanel === 'function'){
-                window.omranOpenTextInCodePanel(a.text, a.name);
+                window.omranOpenTextInCodePanel(txt, a.name);
                 return;
               }
               previewFrame.style.display = 'block';
               $('#pyConsole').style.display = 'none';
               emptyState.style.display = 'none';
-              const esc = (a.text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+              const esc = (txt || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
               previewFrame.srcdoc = '<html><body style="margin:0;background:#111;color:#eee;font-family:monospace;white-space:pre-wrap;word-break:break-word;padding:16px;">' + esc + '</body></html>';
               switchWorkTab('preview');
               closeDrawers();
@@ -1871,6 +1871,17 @@ function renderMessages(keepScroll){
                 workareaEl.classList.add('open');
                 backdropEl.classList.add('show');
               }
+            };
+            chip.onclick = () => {
+              /* v-attach-viewfull (المالك «الملفّ غير كامل في العارض»): المعاينة المحفوظة
+                 مختصرة (٦٠٠٠ حرف) لتخفيف الحالة؛ النصّ الكامل في IndexedDB — نستعيده عند الفتح. */
+              if(a.textFullId && typeof idbGet === 'function'){
+                idbGet(a.textFullId)
+                  .then(full => __showAttach(typeof full === 'string' && full.length ? full : a.text))
+                  .catch(() => __showAttach(a.text));
+                return;
+              }
+              __showAttach(a.text);
             };
           }
           wrap.appendChild(chip);

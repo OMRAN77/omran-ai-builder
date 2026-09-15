@@ -2779,7 +2779,16 @@ async function __sendPromptCore(){
   try{
     (attachmentsForMsg || []).forEach(a => {
       if(a && !a.isImage && !a.isVideo && typeof a.text === 'string' && a.text.length > 6000){
-        a.text = a.text.slice(0, 6000) + '\n… (اختُصر للعرض — النصّ الكامل أُرسل للنموذج)';
+        /* v-attach-viewfull (المالك «الملفّ غير كامل في العارض»): كان يُقصّ إلى ٦٠٠٠ حرف
+           لتخفيف حالة الرسائل، فيظهر ناقصًا عند إعادة فتحه في تبويب «الكود». الآن النصّ
+           الكامل يُحفظ مرّة واحدة في IndexedDB (خارج الحالة الثقيلة) والرسالة تحمل معاينة
+           خفيفة + معرّف الاستعادة؛ العارض يفتح الكامل من المخزن (app-04). الإرسال للنموذج
+           لا يتأثّر — يُبنى من المرفق الكامل قبل هذا التخفيف. */
+        try{
+          var __tid = 'atxt-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+          if(typeof idbSet === 'function'){ idbSet(__tid, a.text).catch(function(){ /* المخزن قد يكون مقفلًا — تبقى المعاينة */ }); a.textFullId = __tid; }
+        }catch(e2){ /* المعاينة تكفي عند تعذّر المخزن */ }
+        a.text = a.text.slice(0, 6000) + '\n… (اختُصر للعرض — انقر لفتح الملفّ كاملًا)';
       }
     });
   }catch(e){ /* guard-ok — التخفيف تحسينيّ */ }
