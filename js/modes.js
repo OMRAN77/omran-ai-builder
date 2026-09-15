@@ -70,15 +70,15 @@
          متداخلة للمالك وحده — كلّ مزوّد يفتح موديلاته، والاختيار يضبط aiapp_provider +
          مفتاح موديل المزوّد (عبر omranPickProviderModel). المعرّفات من إعدادات التطبيق نفسها. */
       var PROVS = [
-        { key:'claude',     name:(AR?'كلود':'Claude'),      store:'aiapp_claude_model',     def:'claude-sonnet-5',     models:[['claude-opus-5','Opus 5'],['claude-sonnet-5','Sonnet 5']] },
-        { key:'openai',     name:'OpenAI · GPT',             store:'aiapp_model',            def:'gpt-4o-mini',         models:[['gpt-4o','GPT-4o'],['gpt-4o-mini','GPT-4o mini']] },
-        { key:'gemini',     name:(AR?'جوجل جيميني':'Google Gemini'), store:'aiapp_gemini_model', def:'gemini-flash-latest', models:[['gemini-2.5-pro','Gemini 2.5 Pro'],['gemini-flash-latest','Gemini Flash']] },
-        { key:'groq',       name:'Groq',                     store:'aiapp_groq_model',       def:'openai/gpt-oss-120b', models:[['openai/gpt-oss-120b','GPT-OSS 120B']] },
-        { key:'mistral',    name:'Mistral',                  store:'aiapp_mistral_model',    def:'mistral-small-latest',models:[['mistral-small-latest','Mistral Small']] },
-        { key:'deepseek',   name:'DeepSeek',                 store:'aiapp_deepseek_model',   def:'deepseek-chat',       models:[['deepseek-chat','DeepSeek Chat']] },
-        { key:'cohere',     name:'Cohere',                   store:'aiapp_cohere_model',     def:'command-r-plus',      models:[['command-r-plus','Command R+']] },
-        { key:'perplexity', name:'Perplexity',               store:'aiapp_perplexity_model', def:'sonar',               models:[['sonar','Sonar'],['sonar-pro','Sonar Pro']] },
-        { key:'openrouter', name:'OpenRouter',               store:'aiapp_openrouter_model', def:'openai/gpt-4o-mini',  models:[['openai/gpt-4o-mini','GPT-4o mini'],['anthropic/claude-sonnet-4.5','Claude Sonnet 4.5'],['google/gemini-2.5-pro','Gemini 2.5 Pro']] }
+        { key:'claude',     name:(AR?'كلود':'Claude'),      store:'aiapp_claude_model',     def:'claude-sonnet-5',     models:[['claude-opus-5','Opus 5'],['claude-sonnet-5','Sonnet 5'],['claude-haiku-4-5','Haiku 4.5'],['claude-fable-5-1','Fable 5.1']] },
+        { key:'openai',     name:'OpenAI · GPT',             store:'aiapp_model',            def:'gpt-5.6-terra',       models:[['gpt-6-astra','GPT-6 Astra'],['gpt-5.6-sol','GPT-5.6 Sol'],['gpt-5.6-terra','GPT-5.6 Terra'],['gpt-5.6-luna','GPT-5.6 Luna'],['gpt-4.1','GPT-4.1']] },
+        { key:'gemini',     name:(AR?'جوجل جيميني':'Google Gemini'), store:'aiapp_gemini_model', def:'gemini-flash-latest', models:[['gemini-pro-latest','Gemini Pro'],['gemini-flash-latest','Gemini Flash'],['gemini-flash-lite-latest','Gemini Flash Lite']] },
+        { key:'groq',       name:'Groq',                     store:'aiapp_groq_model',       def:'openai/gpt-oss-120b', models:[['openai/gpt-oss-120b','GPT-OSS 120B'],['openai/gpt-oss-20b','GPT-OSS 20B'],['qwen/qwen3.6-27b','Qwen3.6 27B']] },
+        { key:'mistral',    name:'Mistral',                  store:'aiapp_mistral_model',    def:'mistral-small-latest',models:[['mistral-large-latest','Mistral Large'],['mistral-medium-latest','Mistral Medium'],['mistral-small-latest','Mistral Small']] },
+        { key:'deepseek',   name:'DeepSeek',                 store:'aiapp_deepseek_model',   def:'deepseek-v4-pro',     models:[['deepseek-v4-pro','DeepSeek V4 Pro'],['deepseek-flash','DeepSeek Flash']] },
+        { key:'cohere',     name:'Cohere',                   store:'aiapp_cohere_model',     def:'command-a-03-2025',   models:[['command-a-03-2025','Command A'],['command-r-plus','Command R+']] },
+        { key:'perplexity', name:'Perplexity',               store:'aiapp_perplexity_model', def:'sonar',               models:[['sonar','Sonar'],['sonar-pro','Sonar Pro'],['sonar-reasoning-pro','Sonar Reasoning']] },
+        { key:'openrouter', name:'OpenRouter',               store:'aiapp_openrouter_model', def:'anthropic/claude-sonnet-5', models:[['anthropic/claude-opus-5','Claude Opus 5'],['anthropic/claude-sonnet-5','Claude Sonnet 5'],['openai/gpt-5.6-terra','GPT-5.6 Terra'],['google/gemini-3.5-flash','Gemini 3.5 Flash'],['deepseek/deepseek-v3.2','DeepSeek V3.2'],['mistralai/mistral-medium-3-5','Mistral Medium 3.5'],['meta-llama/llama-4-maverick','Llama 4 Maverick']] }
       ];
       function curProv(){ try{ return localStorage.getItem('aiapp_provider') || 'claude'; }catch(e){ return 'claude'; } }
       function provOf(k){ for(var i=0;i<PROVS.length;i++) if(PROVS[i].key===k) return PROVS[i]; return null; }
@@ -130,8 +130,10 @@
         if(pm){ e.stopPropagation();
           var prov = pm.getAttribute('data-prov'), store = pm.getAttribute('data-store'), model = pm.getAttribute('data-model');
           setAgent(false); if(window.__omMode === 'cc') pick(null);
-          if(prov === 'claude') setModel(model === 'claude-opus-5' ? 'opus' : 'sonnet'); // يضبط موديل المحادثة والوكيل معًا
+          // موديل الوكيل يُزامَن مع Opus/Sonnet فقط (الوكيل يدعمهما)؛ Haiku/Fable موديلا محادثة.
+          if(prov === 'claude'){ if(model === 'claude-opus-5') setModel('opus'); else if(model === 'claude-sonnet-5') setModel('sonnet'); }
           try{ if(window.omranPickProviderModel) window.omranPickProviderModel(prov, store, model); }catch(e2){ /* guard-ok */ }
+          try{ if(prov === 'claude' && window.claudeModelSync) window.claudeModelSync(); }catch(e3){ /* guard-ok */ }
           refresh(); pop.style.display = 'none'; return;
         }
       });

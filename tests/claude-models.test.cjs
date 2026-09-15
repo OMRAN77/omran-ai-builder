@@ -15,10 +15,10 @@ const chat = require('../api/_lib/chat.js');
 const { CLAUDE_MODELS, pickClaudeModel } = chat.__vmodels;
 const { imageTurnConfig } = chat.__vimg;
 
-// v-models-two (أمر عمران): القائمة محصورة في Sonnet + Opus فقط.
-const IDS = ['claude-opus-5', 'claude-sonnet-5'];
+// v-models-family (أمر عمران ١٥ سبتمبر): عائلة كلود ٥ كاملة في منتقي السهم للمالك.
+const IDS = ['claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5', 'claude-fable-5-1'];
 
-test('١. القائمة: Sonnet + Opus فقط، ولكلّ منها صيغة وسيط بادئتها anthropic/', () => {
+test('١. القائمة: عائلة كلود ٥ كاملة، ولكلّ منها صيغة وسيط بادئتها anthropic/', () => {
   assert.deepEqual(Object.keys(CLAUDE_MODELS), IDS);
   for (const id of IDS) {
     assert.ok(CLAUDE_MODELS[id].label, id);
@@ -26,13 +26,17 @@ test('١. القائمة: Sonnet + Opus فقط، ولكلّ منها صيغة و
   }
   assert.equal(CLAUDE_MODELS['claude-opus-5'].or, 'anthropic/claude-opus-5');
   assert.equal(CLAUDE_MODELS['claude-sonnet-5'].or, 'anthropic/claude-sonnet-5');
+  assert.equal(CLAUDE_MODELS['claude-haiku-4-5'].or, 'anthropic/claude-haiku-4.5');
+  assert.equal(CLAUDE_MODELS['claude-fable-5-1'].or, 'anthropic/claude-fable-5.1');
 });
 
 test('٢. pickClaudeModel: المباشر يمرّر المعرّف، الوسيط يحوّله، وغير المعروف = الافتراضيّ', () => {
   assert.deepEqual(pickClaudeModel('claude-opus-5', false, 'claude-sonnet-5'), { model: 'claude-opus-5', picked: true, id: 'claude-opus-5', label: 'Opus 5' });
   assert.deepEqual(pickClaudeModel(' Claude-Sonnet-5 ', true, 'anthropic/claude-sonnet-5'), { model: 'anthropic/claude-sonnet-5', picked: true, id: 'claude-sonnet-5', label: 'Sonnet 5' });
-  // النماذج المحذوفة (Fable/Haiku/الأجيال السابقة) لم تعد تُقبَل → الافتراضيّ
-  for (const bad of ['', null, undefined, 'gpt-5', 'claude-haiku-4-5', 'claude-fable-5-1', 'claude-opus-4-8', 'anthropic/claude-opus-5', '__proto__', 'constructor']) {
+  assert.deepEqual(pickClaudeModel('claude-haiku-4-5', false, 'claude-sonnet-5'), { model: 'claude-haiku-4-5', picked: true, id: 'claude-haiku-4-5', label: 'Haiku 4.5' });
+  assert.deepEqual(pickClaudeModel('claude-fable-5-1', true, 'anthropic/claude-sonnet-5'), { model: 'anthropic/claude-fable-5.1', picked: true, id: 'claude-fable-5-1', label: 'Fable 5.1' });
+  // خارج العائلة (أجيال سابقة أو مزوّد آخر أو مفاتيح خطرة) = الافتراضيّ
+  for (const bad of ['', null, undefined, 'gpt-5', 'claude-opus-4-8', 'anthropic/claude-opus-5', '__proto__', 'constructor']) {
     assert.deepEqual(pickClaudeModel(bad, false, 'claude-sonnet-5'), { model: 'claude-sonnet-5', picked: false, id: '', label: '' }, String(bad));
   }
 });

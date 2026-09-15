@@ -503,11 +503,14 @@ function imageTurnConfig(env, viaOR, fallbackModel) {
 // (404/400 نموذج) = رجوع فوريّ للافتراضيّ مع إخبار المستخدم في سطر الحالة، لا سقوط للاحتياط.
 // لا thinking ولا temperature في الطلب أصلًا، فالقائمة كلّها (Fable 5/5.1 حتّى Haiku 4.5) تمرّ
 // بالطلب نفسه؛ output_config.effort يبقى لدور الصورة على الجيل الحاليّ فقط (imageTurnConfig).
-/* v-models-two (أمر عمران ١٤ سبتمبر): النماذج محصورة في Sonnet + Opus فقط،
-   واختيارها للمالك وحده (الأنثروبيك للمالك). */
+/* v-models-family (أمر عمران ١٥ سبتمبر «كلاود كم واحد… كلهم ضيفهم»): عائلة كلود ٥ كاملة
+   في منتقي السهم للمالك وحده — Opus 5 + Sonnet 5 + Haiku 4.5 + Fable 5.1. البوّابة نفسها
+   (v-models-owner) تبقي غير المالك على الافتراضيّ فلا يُستنزف مفتاح المالك. */
 const CLAUDE_MODELS = {
   'claude-opus-5': { label: 'Opus 5', or: 'anthropic/claude-opus-5' },
   'claude-sonnet-5': { label: 'Sonnet 5', or: 'anthropic/claude-sonnet-5' },
+  'claude-haiku-4-5': { label: 'Haiku 4.5', or: 'anthropic/claude-haiku-4.5' },
+  'claude-fable-5-1': { label: 'Fable 5.1', or: 'anthropic/claude-fable-5.1' },
 };
 function pickClaudeModel(requested, viaOR, fallback) {
   const id = String(requested || '').trim().toLowerCase();
