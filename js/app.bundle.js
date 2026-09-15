@@ -18222,7 +18222,15 @@ async function omModeGenerateImage(cur, promptText, thinkingDiv){
     const __r = await fetch('/api/maha-image', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       signal: genAbortController ? genAbortController.signal : undefined,
-      body: JSON.stringify({ prompt: String(textSpec.visualPrompt || promptText).slice(0,1200), reserveTextArea: !!textSpec.wantsText, textPosition: textSpec.position, prayerRequest: textSpec.autoAuthored ? String(textSpec.prayerRequest || promptText).slice(0,800) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() })
+      body: JSON.stringify(Object.assign({ prompt: String(textSpec.visualPrompt || promptText).slice(0,1200), reserveTextArea: !!textSpec.wantsText, textPosition: textSpec.position, prayerRequest: textSpec.autoAuthored ? String(textSpec.prayerRequest || promptText).slice(0,800) : undefined, token: authGet('aiapp_auth_token'), guestId: window.getGuestId() }, (function(){
+        /* v-image-modes: خيارات «+» للصورة (للمالك) تُمرَّر أعلامًا؛ الخادم يقبلها للمالك وحده. */
+        var __o = String(window.__omMode || ''), __x = {};
+        if(__o === 'image_hd') __x.want4K = true;
+        else if(__o === 'image_text') __x.textFaithful = true;
+        else if(__o === 'image_nano') __x.forceEngine = 'nano';
+        else if(__o === 'image_gpt') __x.forceEngine = 'gpt';
+        return __x;
+      })()))
     });
     const __d = await __r.json().catch(() => ({}));
     __m._loading = false;
@@ -18902,7 +18910,7 @@ function __friendlyErr(e){
       return;
     }
     // 🎯 v526: الوضع الصريح @صورة — يتخطّى كلّ الكواشف ويولّد مباشرة
-    if(window.__omMode === 'image' && apiText && !imageAttachments.length){
+    if(String(window.__omMode || '').indexOf('image') === 0 && apiText && !imageAttachments.length){
       await omModeGenerateImage(cur, apiText, thinkingDiv);
       return;
     }
