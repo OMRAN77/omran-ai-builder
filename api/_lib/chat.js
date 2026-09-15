@@ -1141,8 +1141,13 @@ module.exports = async (req, res) => {
         : PERSONA_NOTE + '\n' + baseSystem + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_READ;
 
       const convoSource = quietSocialTurn ? [lastUser] : messages;
+  /* v-attach-full (بلاغ المالك «أيّ ملفّ أرسله يتقطّع»): سقف ١٢ ألف حرف لكلّ رسالة كان
+     يقصّ الملفّ المرفق في الدور الحاليّ — ملفّ ٦٧ ك.ب وصل منه ١٣ فقط (حتّى ١٢ ألف حرف).
+     الدور الأخير (حامل المرفق) يأخذ سقفًا واسعًا (٢٠٠ ألف، نفس حدّ العميل)؛ والتاريخ
+     الأقدم يبقى مضبوطًا عند ١٢ ألف لحماية جودة السياق. */
+  const __lastMsgIdx = convoSource.length - 1;
   const convo = compactConversation(convoSource
-      .map((m) => ({ role: m.role, content: typeof m.content === 'string' ? m.content.slice(0, 12000) : m.content })));
+      .map((m, __i) => ({ role: m.role, content: typeof m.content === 'string' ? m.content.slice(0, __i === __lastMsgIdx ? 200000 : 12000) : m.content })));
       while (convo.length && convo[convo.length - 1].role !== 'user') convo.pop();
   /* v-claude-shape: أنثروبيك يرفض 400 محادثة أولها assistant أو فيها دوران
    * متتاليان بنفس الدور — كود المشروع يصل كرسالة assistant في المقدمة،

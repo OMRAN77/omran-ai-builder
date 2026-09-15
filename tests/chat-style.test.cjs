@@ -168,7 +168,7 @@ check(chatServer.includes('function arWikiLookup') && chatServer.includes('ar.wi
 check(chatServer.includes('ممنوع أن تبدأ الردّ باستدعاء generate_image'), 'النص يُقرأ أولًا والصورة التوضيحية آخر الردّ');
 check(chatServer.indexOf('v-fast-headers') > 0, 'البثّ يُفتح قبل الذاكرة فيرى المستخدم حركة فورًا');
 check(chatServer.includes('function compactConversation'), 'السياق الطويل يُضغط قبل إرساله للنموذج');
-check(chatServer.includes('slice(0, 12000)'), 'كل رسالة لها سقف حجم يحمي جودة السياق');
+check(chatServer.includes('__i === __lastMsgIdx ? 200000 : 12000'), 'الدور الحالي يتّسع للملفّ المرفق (٢٠٠ألف) والتاريخ الأقدم مضبوط (١٢ألف) لحماية السياق');
 
 // ═══ البصمة والشخصية ═══
 group('البصمة والشخصية');

@@ -46,7 +46,9 @@ function cleanImages(list) {
 function forwardBody(op, b) {
   if (op === 'chat') {
     const images = cleanImages(b.images);
-    return { message: String(b.message || '').slice(0, 20000), sessionId: String(b.sessionId || '').slice(0, 80), newSession: !!b.newSession, model: b.model ? String(b.model).slice(0, 40) : undefined, images: images.length ? images : undefined };
+    /* v-attach-full (بلاغ المالك «أيّ ملفّ أرسله يتقطّع»): رُفع سقف الرسالة من ٢٠ ألف إلى
+       ٢٠٠ ألف حرف كي يمرّ الملفّ المرفق كاملًا إلى جسر Claude Code (نفس حدّ العميل). */
+    return { message: String(b.message || '').slice(0, 200000), sessionId: String(b.sessionId || '').slice(0, 80), newSession: !!b.newSession, model: b.model ? String(b.model).slice(0, 40) : undefined, images: images.length ? images : undefined };
   }
   if (op === 'publish') return { title: String(b.title || '').slice(0, 200), message: String(b.message || '').slice(0, 300), body: String(b.body || '').slice(0, 6000) };
   if (op === 'merge') return { prNumber: parseInt(b.prNumber, 10) || 0, force: !!b.force };
