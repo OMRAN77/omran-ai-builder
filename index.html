@@ -662,7 +662,11 @@ html.oiOn body{overflow:hidden}
       <div id="quickChips" style="display:flex; flex-direction:column; gap:2px; align-items:stretch;"></div>
     </div>
     <div id="inputbar">
-      <input type="file" id="attachInput" accept="image/*,.txt,.md,.js,.jsx,.ts,.tsx,.py,.json,.csv,.html,.css,.log,.zip,.docx,.xlsx,.pptx,.jar,.pdf,.xml,.yml,.yaml,.sh,.php,.java,.c,.cpp,.go,.rs,.rb,.sql,.env,*" multiple style="display:none;">
+      <!-- v-attach-anyfile: أُزيلت قائمة accept (صور + امتدادات + «*» غير صالح) — كانت
+           عارضات أندرويد/شاومي (MIUI) تفتح المنتقي وتختار الصورة لكن لا تُرجعها إلى الحقل
+           فتظهر «ما أقدر أحمّل صور». بلا accept يقبل الحقل كلّ الأنواع (صور · PDF · كود · مضغوط)
+           والتحقّق من النوع يبقى في omranIngestFiles. -->
+      <input type="file" id="attachInput" multiple style="display:none;">
       <div id="emojiPicker"></div>
       <!-- v-maha-outside: «م» خارج المستطيل جنبه (طلب المالك ٢٩ أغسطس) — الصف يضم الصندوق + م -->
       <div id="composerRow">
@@ -805,7 +809,7 @@ html.oiOn body{overflow:hidden}
 <script src="/js/selfdiag.js?v=1ba33c1b"></script>
 <script defer src="/templates-data.js?v=589"></script>
     <script>/* v399: كمبيوتر — اللوحة اليسرى تبدأ مطويّة لأول زيارة فقط؛ اختيار المستخدم بعدها محفوظ */try{if(localStorage.getItem('waCollapsed')===null&&innerWidth>860)localStorage.setItem('waCollapsed','1');}catch(e){}</script>
-    <script defer src="/js/app.bundle.js?v=14231017"></script>
+    <script defer src="/js/app.bundle.js?v=fe44d880"></script>
     <script defer src="/js/modes.js?v=m150915c"></script>
 <!-- ======================= 🎓 دروسي (Edu Hub) — self-contained block ======================= -->
 <div id="eduHubModal" role="dialog" aria-modal="true">

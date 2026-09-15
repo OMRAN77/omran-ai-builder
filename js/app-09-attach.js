@@ -939,7 +939,31 @@ function readFileAsText(file){
   });
 }
 
-$('#btnAttach').onclick = () => $('#attachInput').click();
+/* v-attach-picker: بعض عارضات أندرويد (شاومي/MIUI) تفتح المنتقي وتُرجع الصورة
+   لكن لا تُطلق حدث change ولا تملأ input.files في نفس اللحظة — كان المالك يرى
+   «ما أقدر أحمّل صور». المسار الطبيعيّ يبقى حدث change؛ ونضيف شبكة أمان: عند عودة
+   التركيز للنافذة بعد إغلاق المنتقي نفحص input.files ونلتقطها إن لم يصل change. */
+let __attachHandled = false;
+function __omranTakeAttachFiles(input){
+  const files = Array.from((input && input.files) || []);
+  if(!files.length) return;
+  __attachHandled = true;
+  omranIngestFiles(files).finally(() => { try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ } });
+}
+$('#btnAttach').onclick = () => {
+  __attachHandled = false;
+  const input = $('#attachInput');
+  input.click();
+  const onBack = () => {
+    window.removeEventListener('focus', onBack);
+    // مهلة قصيرة تكفي حدث change الطبيعيّ ليسبق ويضع العلم؛ وإلّا نلتقط يدويًّا.
+    setTimeout(() => {
+      const inp = document.getElementById('attachInput');
+      if(!__attachHandled && inp && inp.files && inp.files.length) __omranTakeAttachFiles(inp);
+    }, 500);
+  };
+  window.addEventListener('focus', onBack);
+};
 
 // ---- Emoji picker ----
 const EMOJI_LIST = [
@@ -1242,6 +1266,8 @@ async function omranIngestFiles(files, opts){
   renderAttachStrip();
 }
 $('#attachInput').addEventListener('change', async (e) => {
+  if(__attachHandled) return; // التقطتها شبكة الأمان (v-attach-picker) — لا تُكرَّر
+  __attachHandled = true;
   const files = Array.from(e.target.files || []);
   await omranIngestFiles(files);
   e.target.value = '';
