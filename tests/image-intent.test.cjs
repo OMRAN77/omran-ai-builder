@@ -186,7 +186,7 @@ test('server reads the intent from the user\'s own words and sends creative edit
   assert.match(maha, /const __guardLane = !!\(editImageBase64 && !extras\.length && !rawMode && !isCreativeEdit && !isPersonSwap && !isBroadEdit\);\n\s+if \(__guardLane\) \{\n\s+const guard = await verifyLocalizedImageEdit/);
   /* 4K عند الطلب الصريح فقط، وإلا 2K */
   assert.match(maha, /const imageConfig = \{ imageSize: __want4K \? '4K' : '2K' \};/);
-  const want4K = new RegExp(maha.match(/const __want4K = \/(.*)\/i\.test\(/)[1], 'i');
+  const want4K = new RegExp(maha.match(/const __want4K = (?:__optWant4K \|\| )?\/(.*)\/i\.test\(/)[1], 'i');
   for (const t of ['أقوى 4K', 'للطباعة', 'دقة عالية', 'print quality version']) assert.ok(want4K.test(t), t);
   for (const t of ['أقوى', 'خلها أفخم', 'اطبع الاسم فوق']) assert.ok(!want4K.test(t), t);
   /* المصدر يُرسل بدقة 2048px لتعديل الصورة الواحدة، و1280 فقط مع قناع أو صور إضافية */
