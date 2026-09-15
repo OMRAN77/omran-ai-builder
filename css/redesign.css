@@ -231,12 +231,13 @@ html[data-mode="light"] #omModeBtn:hover{background:rgba(0,0,0,.05);}
 /* v594 — plus-menu owner order (2026-08-13): attach · image · tools-box · pdf · feedback · delete */
 #plusToolsPopup .omModeItem[data-mode="web"], #plusToolsPopup .omModeItem[data-mode="think"]{display:none !important;}
 #plusToolsPopup .omModeItem[data-mode="image"]{order:40;} /* v597: فوق «الأدوات» مباشرةً */
-/* v-image-modes: أوضاع محرّك الصور للمالك تُرتَّب بعد «إنشاء صورة» لا في الأعلى (order 0 كان
-   يقفز بها فوق «إرفاق» فيثقل القائمة ويدفع الرفع بعيدًا على الجوّال — بلاغ «ما أقدر أحمّل صور»). */
-#plusToolsPopup .omModeItem[data-mode="image_text"]{order:41;}
-#plusToolsPopup .omModeItem[data-mode="image_hd"]{order:42;}
-#plusToolsPopup .omModeItem[data-mode="image_nano"]{order:43;}
-#plusToolsPopup .omModeItem[data-mode="image_gpt"]{order:44;}
+/* v-image-order: أوضاع المالك (نصّ دقيق · 4K · نانو · GPT) تُلحَق أسفل القائمة كلّها
+   (بعد «حذف المحادثة» order:70) فلا تُزحزح ترتيب العناصر الأصليّة — طلب المالك:
+   «رجع ترتيب + نفس ما كان قبل، ما قلتلك غيّر الأماكن». */
+#plusToolsPopup .omModeItem[data-mode="image_text"]{order:80;}
+#plusToolsPopup .omModeItem[data-mode="image_hd"]{order:81;}
+#plusToolsPopup .omModeItem[data-mode="image_nano"]{order:82;}
+#plusToolsPopup .omModeItem[data-mode="image_gpt"]{order:83;}
 /* القائمة لا تُقصّ على الشاشات القصيرة: سقف ارتفاع مع تمرير عند اللزوم. */
 #plusToolsPopup{max-height:min(72vh, 460px); overflow-y:auto;}
 #plusToolsPopup #btnAttach{order:20;}
