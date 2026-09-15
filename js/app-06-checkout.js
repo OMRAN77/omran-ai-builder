@@ -487,7 +487,7 @@ $('#btnSettings').onclick = () => {
   $('#claudeApiKey').value = localStorage.getItem('aiapp_claude_apikey') || '';
   $('#claudeModel').value = localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-5';
   $('#openrouterApiKey').value = localStorage.getItem('aiapp_openrouter_apikey') || '';
-  $('#openrouterModel').value = localStorage.getItem('aiapp_openrouter_model') || 'openai/gpt-4o-mini';
+  $('#openrouterModel').value = localStorage.getItem('aiapp_openrouter_model') || 'openai/gpt-5.6-terra';
   $('#perplexityApiKey').value = localStorage.getItem('aiapp_perplexity_apikey') || '';
   $('#perplexityModel').value = localStorage.getItem('aiapp_perplexity_model') || 'sonar';
   $('#mistralApiKey').value = localStorage.getItem('aiapp_mistral_apikey') || '';
@@ -724,7 +724,7 @@ const saveSettingsNow = () => {
   localStorage.setItem('aiapp_openrouter_apikey', $('#openrouterApiKey').value.trim());
   (() => {
     const sel = $('#openrouterModelSelect');
-    const finalModel = (sel.value === '__custom__') ? ($('#openrouterModel').value.trim() || 'openai/gpt-4o-mini') : sel.value;
+    const finalModel = (sel.value === '__custom__') ? ($('#openrouterModel').value.trim() || 'openai/gpt-5.6-terra') : sel.value;
     localStorage.setItem('aiapp_openrouter_model', finalModel);
   })();
   localStorage.setItem('aiapp_perplexity_apikey', $('#perplexityApiKey').value.trim());
@@ -1536,7 +1536,7 @@ async function callOpenAILike(messages, onDelta){
 async function callOpenRouter(messages, onDelta){
   const apiKey = localStorage.getItem('aiapp_openrouter_apikey');
   const hasImages = messages.some(m => m.images && m.images.length);
-  const model = hasImages ? OPENROUTER_VISION_MODEL : (localStorage.getItem('aiapp_openrouter_model') || 'openai/gpt-4o-mini');
+  const model = hasImages ? OPENROUTER_VISION_MODEL : (localStorage.getItem('aiapp_openrouter_model') || 'openai/gpt-5.6-terra');
   // If the visitor hasn't entered their own OpenRouter key, fall back to the server-side
   // proxy which uses the site owner's key (for quick trials without setup).
   if(!apiKey){

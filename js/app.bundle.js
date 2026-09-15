@@ -11161,7 +11161,7 @@ $('#btnSettings').onclick = () => {
   $('#claudeApiKey').value = localStorage.getItem('aiapp_claude_apikey') || '';
   $('#claudeModel').value = localStorage.getItem('aiapp_claude_model') || 'claude-sonnet-5';
   $('#openrouterApiKey').value = localStorage.getItem('aiapp_openrouter_apikey') || '';
-  $('#openrouterModel').value = localStorage.getItem('aiapp_openrouter_model') || 'openai/gpt-4o-mini';
+  $('#openrouterModel').value = localStorage.getItem('aiapp_openrouter_model') || 'openai/gpt-5.6-terra';
   $('#perplexityApiKey').value = localStorage.getItem('aiapp_perplexity_apikey') || '';
   $('#perplexityModel').value = localStorage.getItem('aiapp_perplexity_model') || 'sonar';
   $('#mistralApiKey').value = localStorage.getItem('aiapp_mistral_apikey') || '';
@@ -11398,7 +11398,7 @@ const saveSettingsNow = () => {
   localStorage.setItem('aiapp_openrouter_apikey', $('#openrouterApiKey').value.trim());
   (() => {
     const sel = $('#openrouterModelSelect');
-    const finalModel = (sel.value === '__custom__') ? ($('#openrouterModel').value.trim() || 'openai/gpt-4o-mini') : sel.value;
+    const finalModel = (sel.value === '__custom__') ? ($('#openrouterModel').value.trim() || 'openai/gpt-5.6-terra') : sel.value;
     localStorage.setItem('aiapp_openrouter_model', finalModel);
   })();
   localStorage.setItem('aiapp_perplexity_apikey', $('#perplexityApiKey').value.trim());
@@ -12210,7 +12210,7 @@ async function callOpenAILike(messages, onDelta){
 async function callOpenRouter(messages, onDelta){
   const apiKey = localStorage.getItem('aiapp_openrouter_apikey');
   const hasImages = messages.some(m => m.images && m.images.length);
-  const model = hasImages ? OPENROUTER_VISION_MODEL : (localStorage.getItem('aiapp_openrouter_model') || 'openai/gpt-4o-mini');
+  const model = hasImages ? OPENROUTER_VISION_MODEL : (localStorage.getItem('aiapp_openrouter_model') || 'openai/gpt-5.6-terra');
   // If the visitor hasn't entered their own OpenRouter key, fall back to the server-side
   // proxy which uses the site owner's key (for quick trials without setup).
   if(!apiKey){
@@ -21838,8 +21838,15 @@ const btnInstall = $('#btnInstall');
     const __orRemap = {
       'google/gemini-flash-1.5:free': 'google/gemma-4-31b-it:free',
       'mistralai/mistral-7b-instruct:free': 'z-ai/glm-5.2:free',
-      'anthropic/claude-3.5-sonnet': 'anthropic/claude-sonnet-4.5',
-      'google/gemini-pro-1.5': 'google/gemini-2.5-pro',
+      'anthropic/claude-3.5-sonnet': 'anthropic/claude-sonnet-5',
+      'google/gemini-pro-1.5': 'google/gemini-3.5-flash',
+      /* v-models-family: بدائل الجيل السابق في المنسدلة المدفوعة → معرّفاتها الحاليّة. */
+      'openai/gpt-4o-mini': 'openai/gpt-5.6-terra',
+      'openai/gpt-4o': 'openai/gpt-5.6-terra',
+      'anthropic/claude-sonnet-4.5': 'anthropic/claude-sonnet-5',
+      'google/gemini-2.5-pro': 'google/gemini-3.5-flash',
+      'meta-llama/llama-3.1-70b-instruct': 'meta-llama/llama-4-maverick',
+      'deepseek/deepseek-chat': 'deepseek/deepseek-v3.2',
     };
     if (__orRemap[__orOld]) localStorage.setItem('aiapp_openrouter_model', __orRemap[__orOld]);
   } catch(e){ __swallow(e, "save:app-10-features#3"); }
