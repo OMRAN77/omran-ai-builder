@@ -4,7 +4,7 @@ import { $ } from "bun";
 import { readFileSync, writeFileSync, mkdirSync, existsSync, cpSync } from "node:fs";
 
 const SRC = "/tmp/vc/src";
-const OUT = "/tasklet/agent/home/patches/pricing";
+const OUT = "/workspace/agent/home/patches/pricing";
 const work = "/tmp/pfix";
 if (existsSync(work)) await $`rm -rf ${work}`;
 mkdirSync(work, { recursive: true });

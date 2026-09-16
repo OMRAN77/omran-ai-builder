@@ -1,4 +1,4 @@
-import { invokeTool, summarizeJsonStructure } from '@tasklet/tools/v2';
+import { invokeTool, summarizeJsonStructure } from '@workspace/tools/v2';
 
 const r = await invokeTool({
   toolName: 'vercel_token_auth-list-deployments',

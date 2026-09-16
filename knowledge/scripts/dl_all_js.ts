@@ -1,4 +1,4 @@
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 
 const files = [
  'js/_floorplan-editor-client.js','js/app-00-swallow.js','js/app-02-tts.js','js/app-03-i18n-data.js',
@@ -11,7 +11,7 @@ for (const f of files) {
   const res = await invokeTool({
     toolName: 'github_download_file',
     connectionId: 'conn_v99nvvn81c6baxgr3m9w',
-    args: { owner: 'OMRAN77', repo: 'omran-ai-builder', repoPath: f, destinationPath: '/tasklet/agent/home/repo_dl/' + f.replace('/', '_') },
+    args: { owner: 'OMRAN77', repo: 'omran-ai-builder', repoPath: f, destinationPath: '/workspace/agent/home/repo_dl/' + f.replace('/', '_') },
   });
   if (!res.ok) { console.log('ERR', f, res.error); continue; }
   const data = await res.json();

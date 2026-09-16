@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync, copyFileSync } from 'node:fs';
-const SRC = '/tasklet/agent/home/design/deploy/index.html';
-const OUT = '/tasklet/agent/home/design/deploy/index-rtl-mirror.html';
+const SRC = '/workspace/agent/home/design/deploy/index.html';
+const OUT = '/workspace/agent/home/design/deploy/index-rtl-mirror.html';
 let h = readFileSync(SRC, 'utf8');
 const before = h;
 let n = 0;

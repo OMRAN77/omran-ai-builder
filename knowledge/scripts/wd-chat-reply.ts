@@ -1,4 +1,4 @@
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 
 const body = `هلا وغلا بعمران 👋
 

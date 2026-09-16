@@ -1,6 +1,6 @@
 # v202 Spec — omran-ai-builder UI polish batch
 
-App: /tasklet/agent/home/apps/aidark-clone/index.html (single-file SPA, Arabic RTL).
+App: /workspace/agent/home/apps/aidark-clone/index.html (single-file SPA, Arabic RTL).
 Bump SW cache version in sw.js AND any version string in index.html to v202.
 
 ## 1. Stock ticker ✕

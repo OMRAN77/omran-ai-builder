@@ -1,4 +1,4 @@
-import { invokeTool, summarizeJsonStructure } from '@tasklet/tools/v2';
+import { invokeTool, summarizeJsonStructure } from '@workspace/tools/v2';
 const cands = ['', 'omran77', 'omran', 'omran-77', 'omrans-projects', 'omran77s-projects'];
 for (const team of cands) {
   const r = await invokeTool({

@@ -1,4 +1,4 @@
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 const CONN = 'conn_v99nvvn81c6baxgr3m9w';
 const all: any[] = [];
 for (let page = 1; page <= 5; page++) {

@@ -23,11 +23,11 @@
   `GET` عليها يعيد **405** — هذا سليم، ليس خطأ.
 
 ## الرجوع
-`bun /tasklet/agent/home/scripts/vercel-rollback.ts`
+`bun /workspace/agent/home/scripts/vercel-rollback.ts`
 
 ## الملفات
-- `/tasklet/agent/home/backup/prod-2026-08-05/MANIFEST.json` — بصمات ١٦٤ ملف إنتاجي
-- `/tasklet/agent/home/.secrets/vercel.env` — المفتاح (600، خاص، لا يُنشر)
+- `/workspace/agent/home/backup/prod-2026-08-05/MANIFEST.json` — بصمات ١٦٤ ملف إنتاجي
+- `/workspace/agent/home/.secrets/vercel.env` — المفتاح (600، خاص، لا يُنشر)
 
 ## مسارات التحقّق الصحيحة (لا تخمّن — أُخطئتُ فيها مرّتين)
 - `/templates-data.js`  ← الجذر، وليس `/js/`
@@ -48,7 +48,7 @@
 4. `node scripts/smoke.mjs` على الإنتاج + `bun scripts/gh-push.ts "<رسالة>" <ملفات>`
 
 `scripts/gh-push.ts` عامّ: يأخذ الرسالة والمسارات من `/tmp/vc/src` ويتحقّق
-بالبصمة بعد الدفع. التنزيل للتحقّق يجب أن يكون داخل `/tasklet` — أدوات
+بالبصمة بعد الدفع. التنزيل للتحقّق يجب أن يكون داخل `/workspace` — أدوات
 الاتصال لا ترى `/tmp` المحلّي.
 
 ---
@@ -77,7 +77,7 @@
 **الحزمة الحيّة للمعاينة** مقيسةً على الإنتاج — لكنّ ذلك كان حظًّا، لا نظامًا.
 
 **القاعدة:** كلّ رقعة تُنشر على المعاينة ولا تُرقَّى في اليوم نفسه **تُحفظ فورًا**
-في `/tasklet/agent/home/patches/<batch>/` مع: المقطع، مرساة الإدراج، معرّف نشر
+في `/workspace/agent/home/patches/<batch>/` مع: المقطع، مرساة الإدراج، معرّف نشر
 المعاينة، وعدد الأسطر **المقيس** (`diff` لا تقدير). قبل إنهاء أيّ يوم:
 `ls patches/` يجب أن يطابق كلّ معاينة غير مُرقّاة.
 

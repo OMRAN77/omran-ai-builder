@@ -1,6 +1,6 @@
 # v204 Spec — bug fixes batch
 
-App: /tasklet/agent/home/apps/aidark-clone/index.html (SPA). Deploy = SW v204.
+App: /workspace/agent/home/apps/aidark-clone/index.html (SPA). Deploy = SW v204.
 
 ## Fix 1 — مها floating icon start position
 Currently the draggable مها icon starts overlapping the header (top center), covering the عمران AI logo.

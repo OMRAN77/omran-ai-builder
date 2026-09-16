@@ -4,13 +4,13 @@
 //     action: claude | chat
 //     label : اسم ملف النتيجة
 //     base  : https://omran-ai-builder.vercel.app (افتراضي)
-// يحفظ: /tasklet/agent/home/audit/chat/bench-<label>.json
+// يحفظ: /workspace/agent/home/audit/chat/bench-<label>.json
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 
 const action = process.argv[2] || 'claude';
 const label = process.argv[3] || action;
 const base = process.argv[4] || 'https://omran-ai-builder.vercel.app';
-const DIR = '/tasklet/agent/home/audit/chat';
+const DIR = '/workspace/agent/home/audit/chat';
 mkdirSync(DIR, { recursive: true });
 
 type Case = { id: number; need: string; q: string };

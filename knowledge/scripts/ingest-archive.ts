@@ -3,20 +3,20 @@
  * ingest-archive.ts — استقبال ملفّ مضغوط كبير وفهرسته.
  *
  * الاستخدام:
- *   bun /tasklet/agent/home/scripts/ingest-archive.ts                 # يفهرس كل أرشيف في uploads
- *   bun .../ingest-archive.ts /tasklet/agent/uploads/x.zip            # أرشيف محدّد
+ *   bun /workspace/agent/home/scripts/ingest-archive.ts                 # يفهرس كل أرشيف في uploads
+ *   bun .../ingest-archive.ts /workspace/agent/uploads/x.zip            # أرشيف محدّد
  *   bun .../ingest-archive.ts x.zip --keep                            # ينسخ المحتوى إلى home/intake
  *
  * يفكّ في /tmp/intake (سريع) ثم يكتب فهرسًا في
- *   /tasklet/agent/home/intake/<name>/INDEX.md
- * ولا ينسخ المحتوى نفسه إلى /tasklet إلّا مع --keep.
+ *   /workspace/agent/home/intake/<name>/INDEX.md
+ * ولا ينسخ المحتوى نفسه إلى /workspace إلّا مع --keep.
  */
 import { readdirSync, statSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { basename, extname, join } from 'node:path';
 
-const UPLOADS = '/tasklet/agent/uploads';
-const OUT = '/tasklet/agent/home/intake';
+const UPLOADS = '/workspace/agent/uploads';
+const OUT = '/workspace/agent/home/intake';
 const TMP = '/tmp/intake';
 
 const ARCHIVE_RE = /\.(zip|tgz|tar|tar\.gz|tar\.bz2|tar\.xz|7z|rar|gz|bz2|xz)$/i;

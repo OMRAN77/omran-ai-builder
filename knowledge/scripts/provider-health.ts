@@ -1,8 +1,8 @@
 // 🩺 فحص صحّة المزوّدين — قياس فقط. لا يطبع أي مفتاح.
 import { readFileSync } from 'node:fs';
 const rd = (p:string)=>Object.fromEntries(readFileSync(p,'utf8').split('\n').filter(l=>l.includes('=')).map(l=>{const i=l.indexOf('=');return [l.slice(0,i).trim(), l.slice(i+1).trim()];}));
-const V = rd('/tasklet/agent/home/.secrets/vercel.env');
-const M = rd('/tasklet/agent/home/.secrets/monitor.env');
+const V = rd('/workspace/agent/home/.secrets/vercel.env');
+const M = rd('/workspace/agent/home/.secrets/monitor.env');
 const SITE = process.env.SITE || 'https://omran-ai-builder.vercel.app';
 
 // 1) نقطة الصحّة الحيّة

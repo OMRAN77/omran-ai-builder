@@ -13,8 +13,8 @@
 ## شجرة العمل
 `/tmp/vc/src` — نسخة الإنتاج الحيّة (مسحوبة من `main`).
 إن لم تكن موجودة أو شككت في حداثتها:
-`cd /tasklet/agent/home && bun scripts/pull-src.ts`
-ثمّ تحقّق: `cd /tmp/vc/src && bun /tasklet/agent/home/scripts/diff-vs-main.ts js/app-05-ui.js js/app.bundle.js`
+`cd /workspace/agent/home && bun scripts/pull-src.ts`
+ثمّ تحقّق: `cd /tmp/vc/src && bun /workspace/agent/home/scripts/diff-vs-main.ts js/app-05-ui.js js/app.bundle.js`
 
 ## ⚠️ فخّ مُثبَت — اقرأه قبل أي تعديل
 `js/app.bundle.js` **مُولَّد**، لا يُحرَّر بيدك. الملفّ المصدر هو `js/app-05-ui.js`.

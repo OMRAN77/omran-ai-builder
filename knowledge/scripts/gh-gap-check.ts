@@ -1,4 +1,4 @@
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 
@@ -13,7 +13,7 @@ if (repoInfo.ok) {
 
 const candidates = ['src/index.html', 'index.html', 'public/index.html'];
 for (const p of candidates) {
-  const dest = `/tasklet/agent/home/audit/github-gap/${p.replace(/\//g, '_')}`;
+  const dest = `/workspace/agent/home/audit/github-gap/${p.replace(/\//g, '_')}`;
   const res = await invokeTool({ connectionId: CONN, toolName: 'github_download_file', args: { owner, repo, repoPath: p, destinationPath: dest } });
   if (!res.ok) { console.log('MISS', p, '->', String(res.error).slice(0, 120)); continue; }
   const d: any = await res.json();
@@ -23,7 +23,7 @@ for (const p of candidates) {
   console.log('FOUND', p, '| size:', d.size, '| lines:', lines, '| sha256:', sha);
 }
 
-const live = '/tasklet/agent/home/design/deploy/index.html';
+const live = '/workspace/agent/home/design/deploy/index.html';
 if (existsSync(live)) {
   const buf = readFileSync(live);
   console.log('LIVE  index.html | size:', statSync(live).size, '| lines:', buf.toString('utf8').split('\n').length,

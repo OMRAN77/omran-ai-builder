@@ -3,7 +3,7 @@
  * gh-fetch.ts — يسحب ملفًّا (أو أكثر) من main إلى القرص للتحليل.
  * الاستخدام: bun gh-fetch.ts <repoPath> <destAbs> [<repoPath> <destAbs> ...]
  */
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 
 const OWNER = 'OMRAN77';
 const REPO = 'omran-ai-builder';

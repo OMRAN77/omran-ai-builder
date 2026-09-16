@@ -1,6 +1,6 @@
 // سلّم نصّي — يحوّل 28 مقاسًا و6 أوزان إلى سلّم واحد. DRY=1 للتقرير فقط
 import { readFileSync, writeFileSync } from 'node:fs';
-const SRC = '/tasklet/agent/home/design/deploy/index.html';
+const SRC = '/workspace/agent/home/design/deploy/index.html';
 const DRY = process.env.DRY !== '0';
 const txt = readFileSync(SRC, 'utf8');
 

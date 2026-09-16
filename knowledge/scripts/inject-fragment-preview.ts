@@ -1,5 +1,5 @@
 // Preview an HTML fragment (style+script) on the live site without deploying.
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 import { readFileSync } from 'node:fs';
 const b64 = Buffer.from(readFileSync(process.argv[2], 'utf8')).toString('base64');
 const openId = process.argv[3] || '';

@@ -1,4 +1,4 @@
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 
 const conn = 'conn_v99nvvn81c6baxgr3m9w';
 

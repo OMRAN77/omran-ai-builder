@@ -1,5 +1,5 @@
 // يقارن ملفّات محلّيّة في /tmp/vc/src ببصمة git blob على main — قراءة فقط.
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 const CONN='conn_v99nvvn81c6baxgr3m9w', owner='OMRAN77', repo='omran-ai-builder', SRC='/tmp/vc/src';

@@ -1,6 +1,6 @@
 # omran-ai-builder — المشروع
 
-مرجع أعلى: `/tasklet/workspace/home/AGENTS.md`. تفاصيل أخرى: `DEPLOY.md` · `PITFALLS.md` · `STATE.md` (كلّها في هذا المجلّد).
+مرجع أعلى: `/workspace/workspace/home/AGENTS.md`. تفاصيل أخرى: `DEPLOY.md` · `PITFALLS.md` · `STATE.md` (كلّها في هذا المجلّد).
 
 ## ١. الهوية والاتصال
 - المستودع: `OMRAN77/omran-ai-builder` — **عامّ**. اتصال GitHub: `conn_v99nvvn81c6baxgr3m9w`.
@@ -47,7 +47,7 @@
 - `sw.js`: منطق الـfetch سليم، معلَّق بوعي.
 - `vercel.json`: منطقة `bom1` مناسبة لزمن استجابة الخليج.
 - خطوط عمران الحمراء (`stockTickerToggle`، «مها»، صمت «المحادثات»/«الملفات» على سطح المكتب،
-  ٤٤ م.ب الوسائط الدعائيّة) — كلّها في `/tasklet/workspace/home/AGENTS.md` وتبقى كما هي.
+  ٤٤ م.ب الوسائط الدعائيّة) — كلّها في `/workspace/workspace/home/AGENTS.md` وتبقى كما هي.
 
 ## ٥. حالة المراحل (٦ أغسطس ٢٠٢٦)
 | المرحلة | الوصف | الحالة |
@@ -58,7 +58,7 @@
 | ٣ | فكّ التشابك (`index.html` فقط، Strangler) | ✅ مكتملة ومُرقّاة إلى الإنتاج (`4805→416` سطرًا) |
 | ٤ | التصلّب (تخزين مؤقّت، `engines`/Node، تصغير، ffmpeg من CDN) | 🟡 قيد التنفيذ — **المرحلة الأخيرة المتبقية** |
 
-تفاصيل كل مرحلة في `/tasklet/agent/home/audit/{p3,p4,errors,i18n,pricing}/`.
+تفاصيل كل مرحلة في `/workspace/agent/home/audit/{p3,p4,errors,i18n,pricing}/`.
 
 ## ٦. واقع i18n (وُجد أثناء المرحلة ٢)
 - `I18N.en` = **٨٨٢** مفتاحًا، `I18N.ar` = **٨٧٩** — القياس الحيّ على الإنتاج، لا من الكود.

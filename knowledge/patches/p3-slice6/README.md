@@ -48,15 +48,15 @@
 
 ## الاسترداد بعد محو `/tmp`
 ```
-bun /tasklet/agent/home/scripts/pull-src.ts          # الإنتاج → /tmp/vc/src
+bun /workspace/agent/home/scripts/pull-src.ts          # الإنتاج → /tmp/vc/src
 rm -rf /tmp/p3 && cp -r /tmp/vc/src /tmp/p3
-cp -r /tasklet/agent/home/patches/p3-slice6/. /tmp/p3/   # يغطّي index.html + css + js
+cp -r /workspace/agent/home/patches/p3-slice6/. /tmp/p3/   # يغطّي index.html + css + js
 ```
 أو إعادة البناء من الصفر: `python3 scripts/p3-slice5.py` ثمّ `p3-slice6.py` على `/tmp/p3` المبنيّ من `patches/p3-slice4`.
 
 ## الترقية إلى الإنتاج (أمر واحد)
 ```
-SRC_ROOT=/tmp/p3 bun /tasklet/agent/home/scripts/deploy-files.ts production "المرحلة ٣ شرائح ١–٦" \
+SRC_ROOT=/tmp/p3 bun /workspace/agent/home/scripts/deploy-files.ts production "المرحلة ٣ شرائح ١–٦" \
   index.html css/tokens.css css/redesign.css css/modules.css \
   js/edu.js js/ui-docs.js js/ui-wiring.js js/premium.js js/exp.js js/video.js \
   js/design-sels.js js/design-gen.js js/themes.js js/selfdiag.js

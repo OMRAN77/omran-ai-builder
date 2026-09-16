@@ -1,6 +1,6 @@
 import fs from 'node:fs';
-const F='/tasklet/agent/home/design/deploy/index.html';
-const BK='/tasklet/agent/home/backup/rollback-points/index-before-v414.html';
+const F='/workspace/agent/home/design/deploy/index.html';
+const BK='/workspace/agent/home/backup/rollback-points/index-before-v414.html';
 const orig=fs.readFileSync(F,'utf8');
 if(!fs.existsSync(BK)) fs.writeFileSync(BK,orig);
 const lines=orig.split('\n');
