@@ -2,9 +2,11 @@ name: Omran Agent (Claude Code)
 
 # v-agent-delegate — «أبي الوكيل نفسك بالضبط»: وكيل التطبيق لا يملك بيئة تشغيل، فيسلّم
 # المهمّة إلى Claude Code نفسه هنا: يقرأ المستودع كاملًا، يعدّل، يعيد بناء الحزمة،
-# يشغّل npm run ci حتّى يمرّ، ويلتزم على فرع. الخطوة الأخيرة تدفع الفرع وتُبلغ في
-# مسألة المهمّة (تعليق فيه سطر حالة مخفيّ يقرأه وكيل التطبيق)، ثمّ يفتح وكيل التطبيق
-# طلب السحب بمفتاح المالك حتّى تعمل فحوص CI عليه. الدمج والنشر بيد المالك دائمًا.
+# يشغّل npm run ci حتّى يمرّ، ويلتزم على فرع. الخطوة الأخيرة تدفع الفرع، تفتح طلب السحب
+# بمفتاح المالك (AGENT_GITHUB_TOKEN)، وتُبلغ في مسألة المهمّة (تعليق فيه سطر حالة مخفيّ
+# يقرأه وكيل التطبيق). v-agent-automerge: بأمر المالك صار للوكيل صلاحيّة النشر — إن نجح
+# npm run ci والمدخل merge=true يُدمج الطلب (squash) فينشر Vercel main تلقائيًّا؛ فشل
+# الفحص أو merge=false يترك الطلب مفتوحًا للمالك.
 #
 # يحتاج مرّة واحدة: تثبيت تطبيق Claude على المستودع (github.com/apps/claude) وسرّ
 # ANTHROPIC_API_KEY في أسرار المستودع، ومفتاح GitHub في خزنة الأسرار بصلاحيّات
@@ -41,6 +43,11 @@ on:
         description: 'نموذج Claude Code (الافتراضيّ Sonnet 5 — رخيص وقويّ للكود؛ Fable أغلى)'
         required: false
         default: 'claude-sonnet-5'
+        type: string
+      merge:
+        description: 'دمج طلب السحب تلقائيًّا عند نجاح npm run ci (نشر مباشر) — "true" افتراضيًّا، "false" لترك المراجعة للمالك'
+        required: false
+        default: 'true'
         type: string
 
 permissions:
@@ -229,24 +236,45 @@ jobs:
           SHA=$(git rev-parse HEAD)
           # v-agent-parity: برمز المالك (AGENT_GITHUB_TOKEN) يُفتح طلب السحب من هنا فتعمل عليه فحوص CI
           # (طلب يفتحه GITHUB_TOKEN لا يشغّلها). بدونه يفتحه وكيل التطبيق بمفتاح الخزنة كما كان.
-          PR_URL=""; : > /tmp/pr.log
+          # v-agent-automerge («أبي كودي عنده صلاحيّة النشر مثلك»): بعد فتح الطلب، إن نجح
+          # npm run ci داخل التشغيل والمدخل merge=true، يُدمج الطلب (squash) برمز المالك فينشر
+          # Vercel main تلقائيًّا. فشل الفحص أو merge=false يترك الطلب مفتوحًا للمراجعة.
+          PR_URL=""; MERGED=false; : > /tmp/pr.log; : > /tmp/merged.flag
           if [ "$PUSHED" = "0" ] && [ -n "${AGENT_GITHUB_TOKEN:-}" ]; then
-            PR_URL=$(SUMMARY="$SUMMARY" CIRES="$CIRES" node -e '
+            PR_URL=$(SUMMARY="$SUMMARY" CIRES="$CIRES" MERGE_ON_PASS="${{ inputs.merge }}" node -e '
               const e = process.env;
+              const H = { Authorization: "Bearer " + e.AGENT_GITHUB_TOKEN, Accept: "application/vnd.github+json", "Content-Type": "application/json", "User-Agent": "omran-agent" };
+              const api = "https://api.github.com/repos/" + e.GITHUB_REPOSITORY;
+              const willMerge = e.CIRES === "pass" && String(e.MERGE_ON_PASS) === "true";
+              const merged = (v) => { try { require("fs").writeFileSync("/tmp/merged.flag", v); } catch (x) {} };
+              const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
               const title = (e.CIRES === "pass" ? "" : "⚠️ ") + (String(e.TASK_TEXT || "").split("\n")[0].trim().slice(0, 200) || ("مهمّة الوكيل #" + e.TASK_ISSUE));
-              const body = "يغلق #" + e.TASK_ISSUE + "\n\n" + (e.CIRES === "pass" ? "✅ npm run ci نجح داخل التشغيل." : "⚠️ npm run ci فشل داخل التشغيل — راجع تعليقات المسألة.") + "\nالتشغيل: " + e.RUN_URL + "\n\n" + (e.SUMMARY ? "**ملخّص Claude:**\n" + String(e.SUMMARY).slice(0, 5000) + "\n\n" : "") + "— نفّذها Claude Code في GitHub Actions بتفويض من وكيل عمران. المراجعة والدمج والنشر بيد المالك.";
-              fetch("https://api.github.com/repos/" + e.GITHUB_REPOSITORY + "/pulls", { method: "POST", headers: { Authorization: "Bearer " + e.AGENT_GITHUB_TOKEN, Accept: "application/vnd.github+json", "Content-Type": "application/json", "User-Agent": "omran-agent" }, body: JSON.stringify({ title, head: e.TASK_BRANCH, base: e.TASK_BASE, body }) })
-                .then(async (r) => { const j = await r.json().catch(() => ({})); if (r.ok && j.html_url) console.log(j.html_url); else console.error("PR: " + r.status + " " + JSON.stringify(j).slice(0, 200)); })
-                .catch((err) => console.error("PR: " + err.message));
+              const body = "يغلق #" + e.TASK_ISSUE + "\n\n" + (e.CIRES === "pass" ? "✅ npm run ci نجح داخل التشغيل." : "⚠️ npm run ci فشل داخل التشغيل — راجع تعليقات المسألة.") + "\nالتشغيل: " + e.RUN_URL + "\n\n" + (e.SUMMARY ? "**ملخّص Claude:**\n" + String(e.SUMMARY).slice(0, 5000) + "\n\n" : "") + "— نفّذها Claude Code في GitHub Actions بتفويض من وكيل عمران." + (willMerge ? " الدمج التلقائيّ مفعَّل بعد نجاح الفحص." : " المراجعة والدمج بيد المالك.");
+              (async () => {
+                const r = await fetch(api + "/pulls", { method: "POST", headers: H, body: JSON.stringify({ title, head: e.TASK_BRANCH, base: e.TASK_BASE, body }) });
+                const j = await r.json().catch(() => ({}));
+                if (!r.ok || !j.html_url) { console.error("PR: " + r.status + " " + JSON.stringify(j).slice(0, 200)); return; }
+                console.log(j.html_url);
+                if (!willMerge) return;
+                // انتظر حساب قابليّة الدمج (mergeable يبدأ null)، ثمّ ادمج squash
+                let mergeable = j.mergeable;
+                for (let i = 0; i < 6 && mergeable == null; i++) { await sleep(2500); const g = await fetch(api + "/pulls/" + j.number, { headers: H }); const gj = await g.json().catch(() => ({})); mergeable = gj.mergeable; }
+                if (mergeable === false) { console.error("MERGE: تعذّر — الطلب غير قابل للدمج (تعارض؟)"); return; }
+                const m = await fetch(api + "/pulls/" + j.number + "/merge", { method: "PUT", headers: H, body: JSON.stringify({ merge_method: "squash" }) });
+                const mj = await m.json().catch(() => ({}));
+                if (m.ok && mj.merged) { merged("true"); } else { console.error("MERGE: " + m.status + " " + JSON.stringify(mj).slice(0, 200)); }
+              })().catch((err) => console.error("PR: " + err.message));
             ' 2>>/tmp/pr.log)
+            [ "$(cat /tmp/merged.flag 2>/dev/null)" = "true" ] && MERGED=true
           fi
           {
             if [ "$PUSHED" = "0" ]; then printf '✅ دُفع الفرع `%s` (%s التزامًا، آخره %s).\n' "$TASK_BRANCH" "$CHANGED" "${SHA:0:7}"; else printf '❌ فشل دفع الفرع `%s`:\n```\n%s\n```\n' "$TASK_BRANCH" "$(tail -n 5 /tmp/push.log)"; fi
             if [ -n "$PR_URL" ]; then printf '🔗 طلب السحب: %s\n' "$PR_URL"; elif [ "$PUSHED" = "0" ] && [ -n "${AGENT_GITHUB_TOKEN:-}" ]; then printf '⚠️ لم يُفتح طلب السحب برمز المالك: %s\n' "$(tail -n 2 /tmp/pr.log | tr -d '`')"; fi
+            if [ "$MERGED" = "true" ]; then printf '🚀 دُمج تلقائيًّا في `%s` — Vercel ينشر الآن.\n' "$TASK_BASE"; elif [ -n "$PR_URL" ] && [ "$CIRES" = "pass" ] && [ "${{ inputs.merge }}" = "true" ]; then printf '⚠️ لم يُدمج تلقائيًّا: %s\n' "$(grep -m1 MERGE: /tmp/pr.log | tr -d '`')"; fi
             if [ "$CIRES" = "pass" ]; then printf 'npm run ci: ✅ نجح.\n'; else printf 'npm run ci: ❌ فشل — آخر السطور:\n```\n%s\n```\n' "$(tail -n 25 /tmp/ci.log | sed 's/`//g')"; fi
             [ -n "$CLAUDE_ERR" ] && printf '\n**خطوة Claude لم تنجح (%s):**\n```\n%s\n```\n' "$CLAUDE_OUTCOME" "$CLAUDE_ERR"
             [ -n "$SUMMARY" ] && printf '\n**ملخّص Claude:**\n%s\n' "$SUMMARY"
-            printf '\n<!-- omran-agent {"phase":"done","pushed":%s,"changed":%s,"ci":"%s","sha":"%s","claude":"%s","error":%s,"pr":%s,"run_id":"%s","run_url":"%s"} -->\n' "$([ "$PUSHED" = "0" ] && echo true || echo false)" "$CHANGED" "$CIRES" "$SHA" "$CLAUDE_OUTCOME" "$ERR_JSON" "$(node -e 'console.log(JSON.stringify(String(process.argv[1]||"")))' "$PR_URL")" "${{ github.run_id }}" "$RUN_URL"
+            printf '\n<!-- omran-agent {"phase":"done","pushed":%s,"changed":%s,"ci":"%s","sha":"%s","claude":"%s","error":%s,"pr":%s,"merged":%s,"run_id":"%s","run_url":"%s"} -->\n' "$([ "$PUSHED" = "0" ] && echo true || echo false)" "$CHANGED" "$CIRES" "$SHA" "$CLAUDE_OUTCOME" "$ERR_JSON" "$(node -e 'console.log(JSON.stringify(String(process.argv[1]||"")))' "$PR_URL")" "$MERGED" "${{ github.run_id }}" "$RUN_URL"
           } > /tmp/report.md
           gh issue comment "$TASK_ISSUE" --body-file /tmp/report.md
           [ "$PUSHED" = "0" ] || exit 1

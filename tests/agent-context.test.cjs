@@ -2,7 +2,8 @@
 // يثبت: (١) جامع السياق يكتب أقسام git وGitHub وVercel من شبكة مزيّفة وينقّح المفاتيح،
 // (٢) بلا مفاتيح أو مع فشل الشبكة لا يرمي بل يكتب السبب ويكمل، (٣) الورك فلو: نموذج قابل
 // للاختيار، Chromium، جمع السياق قبل Claude، أدوات الويب والوكلاء الفرعيّون، فتح طلب السحب
-// برمز المالك إن وُجد، وحذف ملفّات السياق قبل الالتزام، (٤) CLAUDE.md موجود ويحمل الأساسيّات،
+// برمز المالك إن وُجد، الدمج التلقائيّ (squash) عند نجاح الفحص (v-agent-automerge)، وحذف
+// ملفّات السياق قبل الالتزام، (٤) CLAUDE.md موجود ويحمل الأساسيّات،
 // (٥) delegate_code_task يمرّر النموذج إلى الورك فلو عند اختياره فقط.
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -89,6 +90,13 @@ test('٣. الورك فلو: نموذج مختار، Chromium، السياق ق�
   assert.match(y, /git rm -q --cached --ignore-unmatch AGENT_SUMMARY\.md AGENT_CONTEXT\.md/);
   assert.match(y, /rm -f AGENT_SUMMARY\.md AGENT_CONTEXT\.md/);
   assert.match(y, /"pr":%s/);
+  // v-agent-automerge: مدخل merge افتراضيّه true، والدمج squash عند نجاح الفحص، والحالة في التقرير
+  assert.match(y, /merge:\n\s+description:[^\n]*\n\s+required: false\n\s+default: 'true'/);
+  assert.match(y, /MERGE_ON_PASS="\$\{\{ inputs\.merge \}\}"/);
+  assert.match(y, /willMerge = e\.CIRES === "pass" && String\(e\.MERGE_ON_PASS\) === "true"/);
+  assert.match(y, /"\/merge", \{ method: "PUT"[^\n]*merge_method: "squash"/);
+  assert.match(y, /"merged":%s/);
+  assert.match(y, /دُمج تلقائيًّا/);
   // جمع السياق يسبق Claude ويتبع فحص المفتاح، ولا يوقف التشغيل إن فشل
   const key = y.indexOf('Check the Anthropic key');
   const ctx = y.indexOf('name: Collect context');
