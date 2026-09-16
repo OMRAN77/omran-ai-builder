@@ -14807,6 +14807,127 @@ function mahaStopMicMeter(){
   }catch(e){ __swallow(e, "ui:app-08-maha#11"); }
 }
 
+/* v-maha-firstword: المايك الحيّ يُقفل عمدًا ثوانٍ حتى تجهز الجلسة (راجع
+   mahaStartRealtimeCall)، فأول جملة يقولها المستخدم كانت تروح بالهواء ولا
+   تُبثّ ولا تُخزّن — يعيد الكلام ويظنّ مها ما ردّت من أول مرة. الحل: نسخة
+   (clone) مستقلّة من مسار الصوت تسجّل محليًّا طوال نافذة الانتظار (حالة
+   enabled لكلّ track مستقلّة بعد clone)، فتُبثّ لاحقًا لو فيها كلام فعليّ. */
+const MAHA_PREBUF_MAX_SEC = 6;
+const MAHA_PREBUF_TARGET_RATE = 24000;
+const MAHA_PREBUF_SPEECH_PEAK = 0.02;
+let mahaPreBufCtx = null, mahaPreBufNode = null, mahaPreBufSrc = null, mahaPreBufGain = null, mahaPreBufTrack = null;
+let mahaPreBufChunks = [], mahaPreBufSamples = 0;
+
+function mahaDownsamplePcm(buf, inRate, outRate){
+  if(outRate >= inRate) return buf;
+  const ratio = inRate / outRate;
+  const out = new Float32Array(Math.round(buf.length / ratio));
+  let offOut = 0, offIn = 0;
+  while(offOut < out.length){
+    const nextIn = Math.round((offOut + 1) * ratio);
+    let sum = 0, n = 0;
+    for(let i = offIn; i < nextIn && i < buf.length; i++){ sum += buf[i]; n++; }
+    out[offOut] = n ? sum / n : 0;
+    offOut++; offIn = nextIn;
+  }
+  return out;
+}
+function mahaFloatToPcm16(buf){
+  const out = new Int16Array(buf.length);
+  for(let i = 0; i < buf.length; i++){
+    const s = Math.max(-1, Math.min(1, buf[i]));
+    out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  return out;
+}
+// من لحظة توفّر الـstream (قبل قفل المسار الحيّ) — يسجّل على نسخة مستقلّة
+// كي لا يوقفه inputTrack.enabled=false لاحقًا (enabled يُصمِت كل مستهلكي المسار الأصلي).
+function mahaStartPreBuffer(stream){
+  try{
+    const track = stream && stream.getAudioTracks()[0];
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if(!track || !AudioCtx || typeof track.clone !== 'function') return;
+    mahaPreBufTrack = track.clone();
+    mahaPreBufChunks = []; mahaPreBufSamples = 0;
+    mahaPreBufCtx = new AudioCtx();
+    mahaPreBufSrc = mahaPreBufCtx.createMediaStreamSource(new MediaStream([mahaPreBufTrack]));
+    mahaPreBufNode = mahaPreBufCtx.createScriptProcessor(4096, 1, 1);
+    mahaPreBufGain = mahaPreBufCtx.createGain();
+    mahaPreBufGain.gain.value = 0; // يغذّي العقدة بلا صدى مسموع
+    const ctxRate = mahaPreBufCtx.sampleRate;
+    mahaPreBufNode.onaudioprocess = (e) => {
+      try{
+        const down = mahaDownsamplePcm(e.inputBuffer.getChannelData(0), ctxRate, MAHA_PREBUF_TARGET_RATE);
+        let peak = 0;
+        for(let i = 0; i < down.length; i++){ const a = Math.abs(down[i]); if(a > peak) peak = a; }
+        mahaPreBufChunks.push({ pcm: mahaFloatToPcm16(down), hasSpeech: peak > MAHA_PREBUF_SPEECH_PEAK });
+        mahaPreBufSamples += down.length;
+        const maxSamples = MAHA_PREBUF_MAX_SEC * MAHA_PREBUF_TARGET_RATE;
+        while(mahaPreBufSamples > maxSamples && mahaPreBufChunks.length > 1){
+          mahaPreBufSamples -= mahaPreBufChunks.shift().pcm.length;
+        }
+      }catch(err){ __swallow(err, "misc:app-08-maha#prebuf-process"); }
+    };
+    mahaPreBufSrc.connect(mahaPreBufNode);
+    mahaPreBufNode.connect(mahaPreBufGain);
+    mahaPreBufGain.connect(mahaPreBufCtx.destination);
+  }catch(e){
+    console.warn('[maha] pre-buffer capture unavailable, first words may be muted:', e);
+    mahaStopPreBuffer();
+  }
+}
+function mahaStopPreBuffer(){
+  try{ if(mahaPreBufNode){ mahaPreBufNode.onaudioprocess = null; mahaPreBufNode.disconnect(); } }catch(e){ __swallow(e, "misc:app-08-maha#prebuf-stop1"); }
+  try{ if(mahaPreBufGain) mahaPreBufGain.disconnect(); }catch(e){ __swallow(e, "misc:app-08-maha#prebuf-stop2"); }
+  try{ if(mahaPreBufSrc) mahaPreBufSrc.disconnect(); }catch(e){ __swallow(e, "misc:app-08-maha#prebuf-stop3"); }
+  try{ if(mahaPreBufTrack) mahaPreBufTrack.stop(); }catch(e){ __swallow(e, "misc:app-08-maha#prebuf-stop4"); }
+  try{ if(mahaPreBufCtx) mahaPreBufCtx.close().catch(() => {}); }catch(e){ __swallow(e, "misc:app-08-maha#prebuf-stop5"); }
+  mahaPreBufNode = null; mahaPreBufSrc = null; mahaPreBufGain = null; mahaPreBufTrack = null; mahaPreBufCtx = null;
+  mahaPreBufChunks = []; mahaPreBufSamples = 0;
+}
+// يُستدعى عند mahaRtReady قبل فتح المايك الحيّ: يبثّ المخزَّن لو فيه كلام
+// فعليّ (append مجزَّأ + commit واحد)، ثم يوقف المسجّل المؤقّت ويُفرغه —
+// حتى لا يتكرّر بثّ نفس الصوت من المسارين معًا.
+function mahaFlushPreBuffer(dc){
+  try{
+    const hasSpeech = mahaPreBufChunks.some((c) => c.hasSpeech);
+    if(hasSpeech && dc && dc.readyState === 'open' && mahaPreBufChunks.length){
+      let total = 0;
+      for(const c of mahaPreBufChunks) total += c.pcm.length;
+      const merged = new Int16Array(total);
+      let off = 0;
+      for(const c of mahaPreBufChunks){ merged.set(c.pcm, off); off += c.pcm.length; }
+      const bytes = new Uint8Array(merged.buffer);
+      const CHUNK = 24000; // خام لكل رسالة append، دون حدّ رسائل قناة البيانات
+      for(let i = 0; i < bytes.length; i += CHUNK){
+        let binary = '';
+        const slice = bytes.subarray(i, i + CHUNK);
+        for(let j = 0; j < slice.length; j += 32768){ binary += String.fromCharCode.apply(null, slice.subarray(j, j + 32768)); }
+        dc.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: btoa(binary) }));
+      }
+      dc.send(JSON.stringify({ type: 'input_audio_buffer.commit' }));
+    }
+  }catch(e){ console.warn('[maha] pre-buffer flush failed, first words may be lost:', e); }
+  finally{ mahaStopPreBuffer(); }
+}
+// نغمة استعداد قصيرة جدًّا (≤120م.ث) تؤكّد للمستخدم أن المايك فتح فعليًّا؛
+// تُعاد استعمال سياق مؤشّر المايك القائم بدل إنشاء AudioContext جديد.
+function mahaPlayReadyBeep(){
+  try{
+    const ctx = mahaMicMeterCtx;
+    if(!ctx || ctx.state === 'closed') return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = 880;
+    osc.connect(gain); gain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    gain.gain.setValueAtTime(0.05, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    osc.start(now);
+    osc.stop(now + 0.12);
+  }catch(e){ __swallow(e, "ui:app-08-maha#ready-beep"); }
+}
+
 let mahaRtCancelled = false;
 async function mahaStartRealtimeCall(){
     mahaRtReady = false;
@@ -14844,6 +14965,9 @@ async function mahaStartRealtimeCall(){
     // The call window opens while connecting; do not transmit its first words
     // before both the WebRTC connection and event channel are truly ready.
     const inputTrack = mahaRtStream.getAudioTracks()[0];
+      // v-maha-firstword: قبل قفل المسار الحيّ — نسخة مستقلّة تسجّل محليًّا
+      // طوال الانتظار فلا تضيع أول جملة (راجع mahaFlushPreBuffer أدناه).
+      mahaStartPreBuffer(mahaRtStream);
       // Keep the first words private until the Realtime session confirms it has
       // finished initializing; then give the audio path a moment to warm up.
       if(inputTrack) inputTrack.enabled = false;
@@ -14945,11 +15069,15 @@ async function mahaStartRealtimeCall(){
       await Promise.all([connectionReady, channelReady, sessionHandshake]);
 
       mahaRtActive = true;
+      // v-maha-firstword: أفرغ المخزَّن المؤقّت (لو فيه كلام فعلي) قبل فتح
+      // المسار الحيّ — حتى لا يُبثّ نفس الصوت مرتين (مرة من المخزن ومرة حيّة).
+      mahaFlushPreBuffer(dc);
       if(inputTrack) inputTrack.enabled = true;
       // Let the browser resume the WebRTC audio encoder before saying "listening".
       await new Promise(resolve => setTimeout(resolve, 250));
       mahaRtReady = true;
       mahaSetState('listening');
+      mahaPlayReadyBeep();
       // إشارة «تكلم الآن» صريحة: قبلها أي كلام يروح بالهوا لأن المايك مقفول
       // عمدًا حتى تجهز الجلسة — المستخدم كان يتكلم بدري ويظن مها ما ترد.
       if(mahaStateLabelEl && mahaStateLabelEl.textContent) mahaStateLabelEl.textContent = '🟢 ' + mahaStateLabelEl.textContent;
@@ -15284,6 +15412,7 @@ function mahaEndRealtimeCall(){
     mahaClearRtResponseWatchdog();
       if(mahaRtDc){ try{ mahaRtDc.close(); }catch(e){ __swallow(e, "misc:app-08-maha#17"); } mahaRtDc = null; }
   if(mahaRtPc){ try{ mahaRtPc.close(); }catch(e){ __swallow(e, "misc:app-08-maha#18"); } mahaRtPc = null; }
+  mahaStopPreBuffer(); // no-op لو سبق وأُفرغ عاديًا؛ يضمن التوقف لو انتهت المكالمة قبل الجهوزية
   mahaStopMicMeter();
   if(mahaRtStream){ mahaRtStream.getTracks().forEach(tr => tr.stop()); mahaRtStream = null; }
   if(mahaRtAudioEl){ try{ mahaRtAudioEl.pause(); mahaRtAudioEl.srcObject = null; }catch(e){ __swallow(e, "misc:app-08-maha#19"); } mahaRtAudioEl = null; }
@@ -15613,7 +15742,9 @@ async function mahaStartCallInner(mode){
   // Try the new natural voice-to-voice mode (OpenAI Realtime) first. Only if
   // that fails for any reason do we fall back to the classic record ->
   // Whisper -> LLM -> TTS pipeline, so the call feature itself never breaks.
-  mahaSetState('thinking');
+  // v-maha-firstword: "أفكر..." هنا كان يوهم المستخدم أن مها سمعته والمايك
+  // ما زال مقفولًا فعليًا — نصّ تجهيز صريح بدلها حتى تصل "🟢 أستمع" الحقيقية.
+  mahaSetState('thinking', __ar ? '⏳ لحظة، أجهّز الجلسة…' : '⏳ One moment, preparing the session…');
   try{
     // نمسك رفض المحاولة حتى لو خسرت سباق المهلة: رفضها اليتيم كان يتسجل
     // في سجل أخطاء المستخدمين كخطأ إذن مايك بلا معالج.
