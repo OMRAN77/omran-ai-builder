@@ -38,9 +38,9 @@ on:
         default: 'main'
         type: string
       model:
-        description: 'نموذج Claude Code (الافتراضيّ Fable 5.1 — نفس نموذج جلسة المالك)'
+        description: 'نموذج Claude Code (الافتراضيّ Sonnet 5 — رخيص وقويّ للكود؛ Fable أغلى)'
         required: false
-        default: 'claude-fable-5-1'
+        default: 'claude-sonnet-5'
         type: string
 
 permissions:

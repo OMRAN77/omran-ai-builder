@@ -166,7 +166,7 @@ const START_TOOL = {
     type: 'object',
     properties: {
       task: { type: 'string', description: 'وصف المهمّة الكامل (بلا أسرار)' },
-      model: { type: 'string', enum: CLAUDE_MODEL_IDS, description: 'نموذج Claude Code للمهمّة (الافتراضيّ Fable 5.1؛ Sonnet 5 أرخص وأسرع للمهامّ الصغيرة)' },
+      model: { type: 'string', enum: CLAUDE_MODEL_IDS, description: 'نموذج Claude Code للمهمّة (الافتراضيّ Sonnet 5 — رخيص وقويّ للكود؛ Fable أغلى للمهامّ الأصعب)' },
       base: { type: 'string', description: 'الفرع الأساس (الافتراضيّ main)' },
       repo: { type: 'string', description: 'owner/repo (الافتراضيّ مستودع التطبيق)' },
     },

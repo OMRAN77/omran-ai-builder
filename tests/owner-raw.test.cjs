@@ -31,13 +31,14 @@ injectNote('mistral', userBody, 'AE');
 const userSys = userBody.messages.find((m) => m && m.role === 'system');
 assert.ok(userSys && userSys.content && userSys.content.length > 40, 'المستخدم: طبقة التطبيق تُحقن (رسالة نظام غير فارغة)');
 
-// المالك → factory → لا رسالة نظام إطلاقًا، الرسائل كما هي (خام)
+// المالك → factory → سطر الصراحة الدائم فقط (v-owner-direct)، بلا طبقة التطبيق
 const ownerBody = freshBody({ __ownerFactory: true });
 injectNote('mistral', ownerBody, 'AE');
 const ownerSys = ownerBody.messages.find((m) => m && m.role === 'system');
-assert.ok(!ownerSys, 'المالك: لا رسالة نظام — الطلب خام كما أرسله');
-assert.equal(ownerBody.messages.length, 1, 'المالك: عدد الرسائل لم يتغيّر (بلا حقن)');
-assert.equal(ownerBody.messages[0].content, 'مرحبا', 'المالك: نصّ السؤال كما هو');
+assert.ok(ownerSys && /صراحة|مجاملة/.test(ownerSys.content), 'المالك: يأخذ سطر الصراحة الدائم');
+assert.ok(!/قاعدة الدولة|التاريخ الحقيقي|مطابقة/.test(ownerSys.content), 'المالك: بلا طبقة التطبيق (تاريخ/دولة/نبرة)');
+assert.ok(ownerSys.content.length < 500, 'المالك: سطر واحد فقط لا طبقة كاملة');
+assert.ok(ownerBody.messages.some((m) => m.role === 'user' && m.content === 'مرحبا'), 'المالك: نصّ السؤال باقٍ كما هو');
 
 // (٣) claude: نفس المبدأ على حقل body.system
 const cUser = { messages: [{ role: 'user', content: 'مرحبا' }] };
@@ -45,6 +46,6 @@ injectNote('claude', cUser, 'AE');
 assert.ok(typeof cUser.system === 'string' && cUser.system.length > 40, 'claude/مستخدم: body.system مملوء');
 const cOwner = { messages: [{ role: 'user', content: 'مرحبا' }], __ownerFactory: true };
 injectNote('claude', cOwner, 'AE');
-assert.ok(!cOwner.system, 'claude/مالك: body.system فارغ — خام');
+assert.ok(typeof cOwner.system === 'string' && /صراحة|مجاملة/.test(cOwner.system) && cOwner.system.length < 500, 'claude/مالك: سطر الصراحة فقط');
 
 console.log('✓ owner-raw: المالك يأخذ factory (خام) والمستخدم يبقى balanced محميًّا — منطقًا وأثرًا');

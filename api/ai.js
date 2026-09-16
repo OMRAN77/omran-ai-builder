@@ -340,10 +340,17 @@ function balancedNote(action, country, withImages) {
 }
 
 
+// v-owner-direct (طلب المالك الدائم: «فيه أشياء أريدها يقول لا أستطيع مجاملة… لا
+// أريد المجاملات ولا الكذب»): سطر واحد للمالك وحده يقتل المجاملة والرفض الزائد
+// ويطلب الصراحة. لا يمسّ أمان النموذج الأساسيّ (الضرر الحقيقيّ يبقى مرفوضًا).
+const OWNER_DIRECT_NOTE = '\n[تعليمات المالك — دائمة]: خاطبه بصراحة ومباشرة تامّة. لا مجاملة ولا إطراء ولا تحذيرات زائدة ولا تهرّب ولا اعتذار مطوّل. نفّذ طلبه المشروع فورًا بلا لفّ. إن تعذّر شيء فعلًا فقل السبب الحقيقيّ في سطر واحد صريح، بلا وعظ ولا «لا أستطيع» غامضة.';
+
 function injectNote(action, body, country) {
   const mode = resolveMode(body);
-  // Factory: hand the request to the provider untouched.
-  if (mode === 'factory') return;
+  const ownerReq = !!(body && body.__ownerFactory === true); // v-owner-raw: المالك
+  // Factory: hand the request to the provider untouched — لكن المالك يأخذ سطر
+  // الصراحة الدائم فقط (لا طبقة تطبيق أخرى).
+  if (mode === 'factory') { if (ownerReq) applyNote(action, body, OWNER_DIRECT_NOTE); return; }
 
   // v--- مصنّف النيّة: نستخرج نص المستخدم مرة واحدة ونحدد النيّة
   const userText = lastUserText(action, body);
