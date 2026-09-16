@@ -230,24 +230,33 @@ html[data-mode="light"] #omModeBtn:hover{background:rgba(0,0,0,.05);}
 #omranChips{display:none !important;}
 /* v594 — plus-menu owner order (2026-08-13): attach · image · tools-box · pdf · feedback · delete */
 #plusToolsPopup .omModeItem[data-mode="web"], #plusToolsPopup .omModeItem[data-mode="think"]{display:none !important;}
-/* v-image-order3: ترتيب المالك (رقّمه من تحت لفوق: ١ تحت، ٨ فوق) — فالترتيب
-   المرئيّ من الأعلى للأسفل: صورة 4K · محرّك نانو · صورة بنصّ دقيق · محرّك GPT ·
-   PDF · إرفاق · إنشاء صورة · حذف المحادثة (آخر شيء). */
-#plusToolsPopup .omModeItem[data-mode="image_hd"]{order:10;}     /* ٨ صورة 4K (أعلى) */
-#plusToolsPopup .omModeItem[data-mode="image_nano"]{order:20;}   /* ٧ محرّك نانو (خام) */
-#plusToolsPopup .omModeItem[data-mode="image_text"]{order:30;}   /* ٦ صورة بنصّ دقيق */
-#plusToolsPopup .omModeItem[data-mode="image_gpt"]{order:40;}    /* ٥ محرّك GPT (خام) */
-#plusToolsPopup #btnImgToPdf{order:50;}                           /* ٤ PDF */
-#plusToolsPopup #btnAttach{order:60;}                             /* ٣ إرفاق */
-#plusToolsPopup .omModeItem[data-mode="image"]{order:70;}         /* ٢ إنشاء صورة */
-#plusToolsPopup .omModeSep{order:75;}                              /* فاصل فوق الحذف */
-#plusToolsPopup #btnDeleteChat{order:80;}                          /* ١ حذف المحادثة (أسفل) */
+/* v-plus-order4 (أمر عمران): ترتيب ثابت بالكامل عبر CSS order — الأصفار الافتراضيّة على
+   بقيّة البنود كانت تُبقيها قبل أوضاع الصورة بلا قصد؛ الآن كلّ بند له order صريح فالترتيب
+   المرئيّ من الأعلى للأسفل: PDF · إرفاق · صورة 4K · إنشاء صورة · محرّك نانو (خام) ·
+   صورة بنصّ دقيق · محرّك GPT (خام) · البحث على الويب · التفكير العميق · ورّني وأبنيه ·
+   اقتراحات · إيموجي · محادثة صوتية · أنماط الصور · رأيك يهمنا · الفاصل · حذف المحادثة (آخر شيء). */
+#plusToolsPopup #btnImgToPdf{order:10;}
+#plusToolsPopup #btnAttach{order:20;}
+#plusToolsPopup .omModeItem[data-mode="image_hd"]{order:30;}
+#plusToolsPopup .omModeItem[data-mode="image"]{order:40;}
+#plusToolsPopup .omModeItem[data-mode="image_nano"]{order:50;}
+#plusToolsPopup .omModeItem[data-mode="image_text"]{order:60;}
+#plusToolsPopup .omModeItem[data-mode="image_gpt"]{order:70;}
+#plusToolsPopup .omModeItem[data-mode="web"]{order:80;}
+#plusToolsPopup .omModeItem[data-mode="think"]{order:90;}
+#plusToolsPopup #btnSnapBuild{order:100;}
+#plusToolsPopup #btnQuickTemplates{order:110;}
+#plusToolsPopup #btnEmoji{order:120;}
+#plusToolsPopup #btnVoiceChat{order:130;}
+#plusToolsPopup #btnPortraitStyle{order:140;}
+#plusToolsPopup #btnFeedback{order:150;}
+#plusToolsPopup .omModeSep{order:160;}
+#plusToolsPopup #btnDeleteChat{order:170;}
+#plusToolsPopup #btnToolsBox, #plusToolsPopup #btnChatToPdf{order:180;} /* بندان مخفيّان — الذيل */
 /* القائمة لا تُقصّ على الشاشات القصيرة: سقف ارتفاع مع تمرير عند اللزوم. */
 #plusToolsPopup{max-height:min(72vh, 460px); overflow-y:auto;}
-#plusToolsPopup #btnToolsBox{order:50;}
 #plusToolsPopup #btnToolsBox .omChev{margin-inline-start:auto;opacity:.5;display:inline-flex;align-items:center;}
 html[dir="ltr"] #plusToolsPopup #btnToolsBox .omChev{transform:rotate(180deg);}
-#plusToolsPopup #btnChatToPdf{order:40;}
 
 /* v551 — أيقونات خطّيّة للأوضاع (إنشاء صورة · تعلّم) بدل الإيموجي */
 #plusToolsPopup .omModeItem .omModeIc{display:inline-flex;align-items:center;justify-content:center;}
