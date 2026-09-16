@@ -39,4 +39,4 @@
 
 | التاريخ | العمل | الالتزام | التراجع |
 |---|---|---|---|
-| ٥ أغسطس ٢٠٢٦ | حذف `#omranRightPanel` من سطح المكتب (−٣٣ سطرًا) | `068d8a2` | `bun -i /tasklet/agent/home/scripts/rollback-right-panel.ts` |
+| ٥ أغسطس ٢٠٢٦ | حذف `#omranRightPanel` من سطح المكتب (−٣٣ سطرًا) | `068d8a2` | `bun -i /workspace/agent/home/scripts/rollback-right-panel.ts` |

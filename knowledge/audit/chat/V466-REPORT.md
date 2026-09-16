@@ -121,7 +121,7 @@
 | المعاينة | `dpl_EXBvEcYxcypwCbfbvA34eA4RsXwv` |
 | GitHub | `3e34b8a60a515113608a3b80070a5b50da52f4dd` · بصمة ٧/٧ |
 | بصمة الحزمة | `9517c066` |
-| الرقعة محفوظة | `/tasklet/agent/home/patches/chat-tools/` |
+| الرقعة محفوظة | `/workspace/agent/home/patches/chat-tools/` |
 | بيانات القياس | `audit/chat/bench-before.json` · `bench-after.json` · `verdict-before.json` · `verdict-after.json` |
 
 ---

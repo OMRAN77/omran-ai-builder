@@ -1,9 +1,9 @@
 // يدفع ملفات v417 إلى GitHub main ويتحقّق بالبصمة
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 const CONN = 'conn_v99nvvn81c6baxgr3m9w', owner = 'OMRAN77', repo = 'omran-ai-builder', branch = 'main';
-const SRC = '/tasklet/agent/home/sync/push';
+const SRC = '/workspace/agent/home/sync/push';
 const files = ['index.html', 'js/app.bundle.js', 'js/app-12-studios.js', 'api/_lib/fashion-create.js', 'api/_lib/fashion-suggest.js'];
 const sha256 = (b: Buffer) => createHash('sha256').update(b).digest('hex').slice(0, 8);
 

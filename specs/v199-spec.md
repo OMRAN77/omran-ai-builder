@@ -1,10 +1,10 @@
 # v199 Spec — omran-ai-builder
 
 ## App facts
-- Main SPA: `/tasklet/agent/home/apps/aidark-clone/index.html` (~1.8MB single file, Arabic RTL app).
-- SW: `/tasklet/agent/home/apps/aidark-clone/sw.js` — CACHE_NAME currently `omran-ai-builder-v198`. Deploy bumps to v199 (done by parent at the end — subagents must NOT deploy, NOT bump SW).
-- API: `/tasklet/agent/home/apps/aidark-clone/api/` — Vercel serverless. HARD LIMIT 12 function files — do NOT add new files under api/ (files under api/_lib/ are fine, they are not functions).
-- i18n: `t('key')` function; JSON files in `/tasklet/agent/home/i18n/` (14 languages). For NEW strings: use pattern `t('key') || 'نص عربي'` inline fallback, and add the key to `ar.json` + `en.json` only (script it; do not hand-copy all 14).
+- Main SPA: `/workspace/agent/home/apps/aidark-clone/index.html` (~1.8MB single file, Arabic RTL app).
+- SW: `/workspace/agent/home/apps/aidark-clone/sw.js` — CACHE_NAME currently `omran-ai-builder-v198`. Deploy bumps to v199 (done by parent at the end — subagents must NOT deploy, NOT bump SW).
+- API: `/workspace/agent/home/apps/aidark-clone/api/` — Vercel serverless. HARD LIMIT 12 function files — do NOT add new files under api/ (files under api/_lib/ are fine, they are not functions).
+- i18n: `t('key')` function; JSON files in `/workspace/agent/home/i18n/` (14 languages). For NEW strings: use pattern `t('key') || 'نص عربي'` inline fallback, and add the key to `ar.json` + `en.json` only (script it; do not hand-copy all 14).
 - CRITICAL: never make parallel write_file calls. For the huge index.html prefer Python scripted find/replace edits (exact unique anchors, verify match count == 1 before replacing, re-verify after).
 - Design rules: NO letter-spacing on Arabic text; `dir="rtl"` respected; no childish emoji icons in the new UI — thin-line monochrome SVG icons (stroke="currentColor", fill="none", stroke-width≈1.8, like ChatGPT/iOS style).
 - After edits: `node -e` or basic sanity check that file parses (no unbalanced template literal introduced), plus grep-verify anchors.
@@ -49,7 +49,7 @@ The old standalone speak text-button must be removed (replaced by icon).
 - Also expose to smart command parser: «وقف شريط الأسهم» / «شغل شريط الأسهم».
 
 ## Feature ② — Search results ChatGPT style
-Backend: `/tasklet/agent/home/apps/aidark-clone/api/_lib/search.js` (Tavily) + `api/ai.js` router.
+Backend: `/workspace/agent/home/apps/aidark-clone/api/_lib/search.js` (Tavily) + `api/ai.js` router.
 - Add `include_images: true` to the Tavily call(s) used for informational/live search, and make the search path return structured `sources` (title, url) + `images` (urls) alongside the text answer. Inspect how ai.js returns search-based answers to the frontend (streamed or JSON) and extend the payload in a backward-compatible way (e.g., append a final JSON line/field `__sources`).
 - Frontend: when a reply carries sources/images:
   - Above the reply text: horizontal scrollable strip of up to 4 images (border-radius 12px, height ~140px, object-fit cover, lazy, onerror→remove).

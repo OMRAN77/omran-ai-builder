@@ -14,7 +14,7 @@ const ROOT = process.env.SRC_ROOT ?? '/tmp/vc/src';
 // ⓪ بوّابة ①: لا يخرج أحمرٌ من هذه الآلة. الفحوص تسبق أوّل اتّصال بـVercel،
 // لأنّ النشر هنا يمضي من هذه النصوص إلى Vercel مباشرةً ولا يعبر GitHub — فلا
 // يستطيع Actions أن يحرس هذا الطريق. الحارس يسكن حيث يمرّ النشر فعلًا.
-const MON = Object.fromEntries((await Bun.file('/tasklet/agent/home/.secrets/monitor.env').text())
+const MON = Object.fromEntries((await Bun.file('/workspace/agent/home/.secrets/monitor.env').text())
   .split('\n').filter(Boolean).map(l => l.split('=') as [string, string]));
 const run = (args: string[], label: string, root = ROOT) => {
   const r = spawnSync(args[0], args.slice(1), { cwd: root, encoding: 'utf8',
@@ -28,7 +28,7 @@ if (!run(['npm', 'run', '--silent', 'ci'], 'فحوص ما قبل النشر (che
   console.log('⓪ أُلغي النشر — لم يُلمس Vercel.'); process.exit(1);
 }
 
-const env = Object.fromEntries((await Bun.file('/tasklet/agent/home/.secrets/vercel.env').text())
+const env = Object.fromEntries((await Bun.file('/workspace/agent/home/.secrets/vercel.env').text())
   .split('\n').filter(Boolean).map(l => l.split('=') as [string, string]));
 const T = env.VERCEL_TOKEN, TEAM = env.VERCEL_TEAM, PRJ = env.VERCEL_PROJECT;
 const H = { Authorization: `Bearer ${T}` };
@@ -87,6 +87,6 @@ if (st === 'READY') {
     ? `   ⚠ أحمر على الإنتاج — للرجوع فورًا: bun scripts/vercel-rollback.ts ${CUR}`
     : '   ⚠ أحمر على المعاينة — لا تُرقّ هذه النشرة.');
 }
-await writeFile('/tasklet/agent/home/deploy/LAST-DEPLOY.txt',
+await writeFile('/workspace/agent/home/deploy/LAST-DEPLOY.txt',
   `deployment=${cj.id}\ntarget=${TARGET}\nrollbackTo=${CUR}\nchangedFiles=${CHANGED.join(' ')}\nurls=${urls.join(' ')}\nsmoke=${smoke}\nat=${new Date().toISOString()}\nchange=${NOTE}\n`);
 console.log(`\nالحالة: ${st} | دخان: ${smoke} | الرابط: https://${urls[0]} | للرجوع: ${CUR}`);

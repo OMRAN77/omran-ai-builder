@@ -22,13 +22,13 @@
 - ثلاث دفعات: `13daf72` · `5846b0b` · `762a05c` — كلّها متحقَّقة ببروتوكول git (٧/٧ ملفّات).
 - نشر الإنتاج: `dpl_CWtNZLnaZokP2xuRfaRr1cdWQXUn` · دخان ١٨/٠ أخضر.
 - نقطة الرجوع: `dpl_6Ch3u1XtSHiyqDpJkiWEzPqDzeZp`.
-- نسخة احتياطيّة: `/tasklet/agent/home/backup/main-pre-providers4/` (٧ ملفّات).
+- نسخة احتياطيّة: `/workspace/agent/home/backup/main-pre-providers4/` (٧ ملفّات).
 
 ## التراجع
 ```
-bun /tasklet/agent/home/scripts/vercel-rollback.ts dpl_6Ch3u1XtSHiyqDpJkiWEzPqDzeZp
+bun /workspace/agent/home/scripts/vercel-rollback.ts dpl_6Ch3u1XtSHiyqDpJkiWEzPqDzeZp
 ```
-ثمّ دفع ملفّات `backup/main-pre-providers4/` إلى main. الرقعة نفسها: `/tasklet/agent/home/patches/providers-4/patch.py` (+`patch2.py`) — تُطبَّق على شجرة نظيفة وتُعكَس بالنسخة الاحتياطيّة.
+ثمّ دفع ملفّات `backup/main-pre-providers4/` إلى main. الرقعة نفسها: `/workspace/agent/home/patches/providers-4/patch.py` (+`patch2.py`) — تُطبَّق على شجرة نظيفة وتُعكَس بالنسخة الاحتياطيّة.
 
 ## ما بقي مفتوحًا
 - **Perplexity:** إن أردتَ إخراجه نهائيًّا فالأخبار والأسعار الحيّة تحتاج بديلًا (Tavily موجود في `/api/search` لكن غير موصول بمسار الدردشة النصّيّة) — عمل يوم، لا خمس دقائق.

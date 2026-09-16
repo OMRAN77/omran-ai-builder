@@ -1,6 +1,6 @@
 # مركز عمران — مواصفات التطبيق (Instant App)
 
-المسار: `/tasklet/agent/home/apps/omran-command/` (تم إنشاؤه، نوع `tsx`)
+المسار: `/workspace/agent/home/apps/omran-command/` (تم إنشاؤه، نوع `tsx`)
 المالك: عمران الشامسي — عربي، فالواجهة **كلها عربية RTL** (`dir="rtl"`، خط عربي واضح، أرقام لاتينية للقياسات).
 
 ## الغرض
@@ -32,7 +32,7 @@
 - من `wd_proposals WHERE status='pending'`، مرتّبة بالخطورة.
 - كل بطاقة: العنوان، الملخّص، الخطة (`plan` سطرًا سطرًا)، الملفات (`files_touched`)، عدد الأسطر (`lines_changed`)، شريحة المخاطرة (`risk`: منخفضة/متوسطة/عالية).
 - ثلاثة أزرار:
-  - **✅ موافق — نفّذ**: `UPDATE wd_proposals SET status='approved', decided_at=<الآن>` ثم `window.tasklet.sendMessageToAgent(...)` برسالة عربية تطلب تنفيذ الاقتراح رقم كذا (اذكر الرقم والعنوان صراحة).
+  - **✅ موافق — نفّذ**: `UPDATE wd_proposals SET status='approved', decided_at=<الآن>` ثم `window.workspace.sendMessageToAgent(...)` برسالة عربية تطلب تنفيذ الاقتراح رقم كذا (اذكر الرقم والعنوان صراحة).
   - **❌ ارفض**: يطلب سببًا قصيرًا في حقل نصي داخل الصفحة (لا `prompt()`)، ثم `status='rejected'` مع `decision_note`، ويرسل الرفض والسبب للوكيل ليصير درسًا.
   - **✍️ عدّل الطلب**: حقل نصي يكتب فيه المالك تعديله، ثم يُرسل للوكيل بلا تغيير الحالة (تبقى `pending`).
 - بعد أي قرار: حدّث الواجهة فورًا (تحديث متفائل) وأظهر تأكيدًا لطيفًا.
@@ -40,7 +40,7 @@
 
 ### ٥. الدردشة مع الحارس
 - سجل من `wd_chat` مرتّبًا زمنيًا: رسائل المالك (`role='user'`) يمينًا، وردود الحارس (`role='agent'`) يسارًا.
-- الإرسال: `INSERT INTO wd_chat(role='user', body, created_at, handled=0)` ثم `window.tasklet.sendMessageToAgent(body)`.
+- الإرسال: `INSERT INTO wd_chat(role='user', body, created_at, handled=0)` ثم `window.workspace.sendMessageToAgent(body)`.
 - بعد الإرسال أظهر شريطًا واضحًا: **"وصلت رسالتك للحارس — يجيبك في الدردشة الرئيسية، ويسجّل ردّه هنا."** لأن الرد لا يظهر لحظيًا.
 - زر **"تحديث"** يعيد قراءة `wd_chat` لجلب أي رد سجّله الوكيل.
 - أزرار جاهزة تُعبّئ الحقل: «شو أخطر شي عندي الآن؟» · «شو تعلمت هذا الأسبوع؟» · «ابدأ المرحلة ٠» · «لا تلمس هذا الموقع».
@@ -57,6 +57,6 @@
 
 ## المحرّمات
 - لا بيانات وهمية، لا أمثلة مزيّفة، لا أرقام مكتوبة في الكود.
-- لا `fetch` مباشر لعناوين خارجية (يمنعه CSP) — كل شيء عبر `window.tasklet.invokeTool`.
+- لا `fetch` مباشر لعناوين خارجية (يمنعه CSP) — كل شيء عبر `window.workspace.invokeTool`.
 - لا `prompt()`/`confirm()`/`alert()`.
 - لا `npm install` داخل مجلد التطبيق.

@@ -1,10 +1,10 @@
 import { createHash } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
-const env = Object.fromEntries((await Bun.file('/tasklet/agent/home/.secrets/vercel.env').text())
+const env = Object.fromEntries((await Bun.file('/workspace/agent/home/.secrets/vercel.env').text())
   .split('\n').filter(Boolean).map(l=>l.split('=') as [string,string]));
 const T=env.VERCEL_TOKEN, TEAM=env.VERCEL_TEAM, PRJ=env.VERCEL_PROJECT;
 const H={Authorization:`Bearer ${T}`};
-const NEW_FILE='/tasklet/agent/home/design/deploy/index-welcome-preview.html';
+const NEW_FILE='/workspace/agent/home/design/deploy/index-welcome-preview.html';
 
 // ① الإنتاج الحالي = نقطة الرجوع
 const p = await fetch(`https://api.vercel.com/v9/projects/${PRJ}?teamId=${TEAM}`,{headers:H});
@@ -12,7 +12,7 @@ const pj:any = await p.json();
 const CUR = pj?.targets?.production?.id;
 console.log('① الإنتاج الحالي (نقطة الرجوع):', CUR);
 
-const meta = JSON.parse(await Bun.file('/tasklet/agent/home/deploy/prod-meta-sha1.json').text()) as {file:string,sha:string,size:number}[];
+const meta = JSON.parse(await Bun.file('/workspace/agent/home/deploy/prod-meta-sha1.json').text()) as {file:string,sha:string,size:number}[];
 
 // ② رفع index.html الجديد
 const buf = Buffer.from(await Bun.file(NEW_FILE).arrayBuffer());
@@ -42,7 +42,7 @@ for(let i=0;i<60;i++){
   if(st==='READY'){ console.log(`⑤ ✅ جاهز | ${(sj.alias??[]).join(', ')}`); break; }
   if(st==='ERROR'||st==='CANCELED'){ console.log(`⑤ ✗ ${st}`, JSON.stringify(sj.errorMessage??'').slice(0,300)); break; }
 }
-await writeFile('/tasklet/agent/home/deploy/newdep3.txt', `${cj.id}\nrollbackTo=${CUR}\nsha=${sha}\n`);
-await writeFile('/tasklet/agent/home/deploy/LAST-DEPLOY.txt',
+await writeFile('/workspace/agent/home/deploy/newdep3.txt', `${cj.id}\nrollbackTo=${CUR}\nsha=${sha}\n`);
+await writeFile('/workspace/agent/home/deploy/LAST-DEPLOY.txt',
   `deployment=${cj.id}\nrollbackTo=${CUR}\nindexSha=${sha}\nindexBytes=${buf.length}\nat=${new Date().toISOString()}\nchange=إظهار المعاينة والكود في شاشة الترحيب (سطح المكتب) بعرض 380px\n`);
 console.log(`\nالحالة: ${st} | للرجوع: ${CUR}`);

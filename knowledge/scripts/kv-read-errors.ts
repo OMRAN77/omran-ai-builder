@@ -8,7 +8,7 @@ function envFile(p: string): Record<string, string> {
   }
   return o;
 }
-const vc = envFile('/tasklet/agent/home/.secrets/vercel.env');
+const vc = envFile('/workspace/agent/home/.secrets/vercel.env');
 const vh = { Authorization: `Bearer ${vc.VERCEL_TOKEN}` };
 const list = await (await fetch(`https://api.vercel.com/v9/projects/${vc.VERCEL_PROJECT}/env?teamId=${vc.VERCEL_TEAM}`, { headers: vh })).json() as any;
 const creds: Record<string, string> = {};

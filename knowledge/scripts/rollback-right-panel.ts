@@ -1,15 +1,15 @@
 /**
  * تراجع فوري: إعادة index.html إلى ما قبل حذف اللوحة اليمنى.
- * خط الأساس: /tasklet/agent/home/design/work/index.html  (md5 9ba353037f6e66bc8d9698a38057b61b)
+ * خط الأساس: /workspace/agent/home/design/work/index.html  (md5 9ba353037f6e66bc8d9698a38057b61b)
  * الالتزام الذي يُلغى: 068d8a2
- * التشغيل:  cd /tasklet/agent/home/scripts && bun -i rollback-right-panel.ts
+ * التشغيل:  cd /workspace/agent/home/scripts && bun -i rollback-right-panel.ts
  */
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 const CONN = 'conn_v99nvvn81c6baxgr3m9w';
-const BASE = '/tasklet/agent/home/design/work/index.html';
+const BASE = '/workspace/agent/home/design/work/index.html';
 const EXPECT = '9ba353037f6e66bc8d9698a38057b61b';
 
 const h = createHash('md5').update(readFileSync(BASE)).digest('hex');

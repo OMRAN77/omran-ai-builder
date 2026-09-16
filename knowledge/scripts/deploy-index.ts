@@ -17,7 +17,7 @@ console.log('⓪ ✅ فحوص ما قبل النشر');
 if (!FILE || !['preview', 'production'].includes(TARGET)) {
   console.log('الاستخدام: bun deploy-index.ts <file> <preview|production> "<note>"'); process.exit(1);
 }
-const env = Object.fromEntries((await Bun.file('/tasklet/agent/home/.secrets/vercel.env').text())
+const env = Object.fromEntries((await Bun.file('/workspace/agent/home/.secrets/vercel.env').text())
   .split('\n').filter(Boolean).map(l => l.split('=') as [string, string]));
 const T = env.VERCEL_TOKEN, TEAM = env.VERCEL_TEAM, PRJ = env.VERCEL_PROJECT;
 const H = { Authorization: `Bearer ${T}` };
@@ -27,7 +27,7 @@ const pj: any = await p.json();
 const CUR = pj?.targets?.production?.id;
 console.log('① الإنتاج الحالي (نقطة الرجوع):', CUR);
 
-const meta = JSON.parse(await Bun.file('/tasklet/agent/home/deploy/prod-meta-sha1.json').text()) as { file: string, sha: string, size: number }[];
+const meta = JSON.parse(await Bun.file('/workspace/agent/home/deploy/prod-meta-sha1.json').text()) as { file: string, sha: string, size: number }[];
 const buf = Buffer.from(await Bun.file(FILE).arrayBuffer());
 const sha = createHash('sha1').update(buf).digest('hex');
 const up = await fetch(`https://api.vercel.com/v2/files?teamId=${TEAM}`, {
@@ -57,6 +57,6 @@ for (let i = 0; i < 60; i++) {
   if (st === 'READY') { console.log(`④ ✅ جاهز | https://${urls[0]}`); break; }
   if (st === 'ERROR' || st === 'CANCELED') { console.log(`④ ✗ ${st}`, JSON.stringify(sj.errorMessage ?? '').slice(0, 300)); break; }
 }
-await writeFile('/tasklet/agent/home/deploy/LAST-DEPLOY.txt',
+await writeFile('/workspace/agent/home/deploy/LAST-DEPLOY.txt',
   `deployment=${cj.id}\ntarget=${TARGET}\nrollbackTo=${CUR}\nindexSha=${sha}\nindexBytes=${buf.length}\nurls=${urls.join(' ')}\nat=${new Date().toISOString()}\nchange=${NOTE}\n`);
 console.log(`\nالحالة: ${st} | الرابط: https://${urls[0]} | للرجوع: ${CUR}`);

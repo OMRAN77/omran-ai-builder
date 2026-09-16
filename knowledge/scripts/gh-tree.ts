@@ -1,4 +1,4 @@
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 const CONN = 'conn_v99nvvn81c6baxgr3m9w', owner = 'OMRAN77', repo = 'omran-ai-builder';
 const files: { path: string, size: number, sha: string }[] = [];
 const queue: string[] = [''];
@@ -15,6 +15,6 @@ while (queue.length) {
   }
 }
 files.sort((a, b) => a.path.localeCompare(b.path));
-await Bun.write('/tasklet/agent/home/audit/github-gap/gh-tree.json', JSON.stringify(files, null, 1));
+await Bun.write('/workspace/agent/home/audit/github-gap/gh-tree.json', JSON.stringify(files, null, 1));
 console.log('GH files:', files.length);
 console.log(files.map(f => f.path).join('\n'));

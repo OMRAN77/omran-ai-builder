@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 
 const env: Record<string,string> = {};
-for (const line of readFileSync('/tasklet/agent/home/.secrets/vercel.env','utf8').split('\n')) {
+for (const line of readFileSync('/workspace/agent/home/.secrets/vercel.env','utf8').split('\n')) {
   const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/); if (m) env[m[1]] = m[2].replace(/^["']|["']$/g,'');
 }
 const TOKEN = env.VERCEL_TOKEN || env.TOKEN || Object.values(env).find(v=>v.length>20) || '';

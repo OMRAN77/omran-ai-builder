@@ -1,11 +1,11 @@
 // يدفع مجلّد معرفة إلى main. الاستخدام: bun gh-push-knowledge.ts <srcDir> <repoPrefix> "<رسالة>"
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 import { readFileSync, readdirSync, mkdirSync, copyFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 const CONN = 'conn_v99nvvn81c6baxgr3m9w', owner = 'OMRAN77', repo = 'omran-ai-builder', branch = 'main';
 const [srcDir, prefix, msg] = process.argv.slice(2);
 const names = readdirSync(srcDir).filter(n => n.endsWith('.md')).sort();
-const STAGE = `/tasklet/agent/home/sync/push/${Date.now()}`;
+const STAGE = `/workspace/agent/home/sync/push/${Date.now()}`;
 mkdirSync(STAGE, { recursive: true });
 for (const n of names) copyFileSync(`${srcDir}/${n}`, `${STAGE}/${n}`);
 const files = names.map(n => ({ repoPath: `${prefix}/${n}`, localPath: `${STAGE}/${n}` }));

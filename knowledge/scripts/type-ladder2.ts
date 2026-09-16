@@ -1,7 +1,7 @@
 // سلّم نصّي v415 — المرحلة الأولى: الطرفان (العناوين ↑ والتفاصيل ↑) + أوزان الصغير
 // DRY=1 تقرير فقط | DRY=0 يكتب /tmp/index.ladder.html
 import { readFileSync, writeFileSync } from 'node:fs';
-const SRC = '/tasklet/agent/home/design/deploy/index.html';
+const SRC = '/workspace/agent/home/design/deploy/index.html';
 const DRY = process.env.DRY !== '0';
 const txt = readFileSync(SRC, 'utf8');
 

@@ -1,7 +1,7 @@
 # omran-ai-builder — خطّ النشر المُثبَت
 
-مرجع أعلى: `/tasklet/workspace/home/AGENTS.md` · المشروع: `PROJECT.md` · الفخاخ: `PITFALLS.md` · الحالة: `STATE.md`.
-مصدر تفصيليّ أصليّ: `/tasklet/agent/home/deploy/RUNBOOK.md` — هذا الملف تلخيصه التنفيذيّ.
+مرجع أعلى: `/workspace/workspace/home/AGENTS.md` · المشروع: `PROJECT.md` · الفخاخ: `PITFALLS.md` · الحالة: `STATE.md`.
+مصدر تفصيليّ أصليّ: `/workspace/agent/home/deploy/RUNBOOK.md` — هذا الملف تلخيصه التنفيذيّ.
 
 ## ١. الحقيقة الأساسيّة التي تحكم كل شيء
 مشروع Vercel **غير مربوط بـ GitHub** (`link: none`). النشر يتم بأمر مباشر إلى Vercel API.
@@ -11,14 +11,14 @@
 انطلق دائمًا من نشرة الإنتاج الحيّة على Vercel كمصدر حقيقة.
 
 ## ٢. أين المفاتيح
-- `/tasklet/agent/home/.secrets/vercel.env` — مفتاح Vercel API. صلاحيّة `600`.
-- `/tasklet/agent/home/.secrets/monitor.env` — `MONITOR_KEY` لقراءة/تنظيف سجل الأخطاء.
+- `/workspace/agent/home/.secrets/vercel.env` — مفتاح Vercel API. صلاحيّة `600`.
+- `/workspace/agent/home/.secrets/monitor.env` — `MONITOR_KEY` لقراءة/تنظيف سجل الأخطاء.
 - **لا يُطبَع محتوى هذين الملفّين، ولا يُدفَع، ولا يُذكَر نصّه في أي تقرير أو commit.**
   يُشار إليهما بالمسار فقط.
 - `AUTH_SECRET` **مشفَّر في Vercel** — لا يمكن توليد JWT حقيقيّ محليًّا لأي اختبار e2e
   يحتاج جلسة مصادقة على الإنتاج. أي اختبار من هذا النوع يبقى يدويًّا عبر متصفّح حقيقيّ.
 
-## ٣. السكربتات (كلّها في `/tasklet/agent/home/scripts/` إلا ما ذُكر غيره)
+## ٣. السكربتات (كلّها في `/workspace/agent/home/scripts/` إلا ما ذُكر غيره)
 | السكربت | الوظيفة |
 |---|---|
 | `pull-src.ts` | يسحب شجرة `src` من آخر نشرة إنتاجيّة عبر `GET /v6/deployments/{id}/files` (يتجاهل `out`)، ويتحقّق أن `sha1(البايتات) == uid` لكل ملف — ضمان نسخ حرفي. |
@@ -50,7 +50,7 @@
 **سبب هذا الترتيب:** خطّ النشر يذهب من `scripts/deploy-*.ts` إلى Vercel API مباشرة **ولا يعبر GitHub
 أبدًا** — فـGitHub Actions (CI) لا يحرس هذا الطريق ولو كان أخضر بالكامل. لذلك انتقلت البوّابة
 إلى داخل خطّ النشر نفسه (`npm run ci` قبل الاتصال، `smoke.mjs` بعده) لا إلى GitHub وحده.
-CI في `/tasklet/agent/home/ci/ci.yml` **معطَّل حاليًّا** — بانتظار نطاق `workflow` من GitHub
+CI في `/workspace/agent/home/ci/ci.yml` **معطَّل حاليًّا** — بانتظار نطاق `workflow` من GitHub
 (المستخدَم لا يملك الصلاحية لتفعيل الـworkflow تلقائيًّا؛ يحتاج إذنًا/توكن بنطاق أوسع).
 
 ## ٥. التحقّق بعد النشر (إلزاميّ، لا اختياريّ)
@@ -70,7 +70,7 @@ CI في `/tasklet/agent/home/ci/ci.yml` **معطَّل حاليًّا** — با
 - مسبار DOM: قارن عدد العناصر بخطّ الأساس (انظر `PITFALLS.md` §"أساس عدد عناصر DOM").
 
 ## ٦. الرجوع (Rollback)
-`bun /tasklet/agent/home/scripts/vercel-rollback.ts <dpl_id>` — يُعيد نشرة سابقة كاملة إلى الإنتاج.
+`bun /workspace/agent/home/scripts/vercel-rollback.ts <dpl_id>` — يُعيد نشرة سابقة كاملة إلى الإنتاج.
 لكل دفعة يجب تسجيل معرّف الرجوع **قبل** الدفع، لا بعده. إعادة `vercel.json` وحده كافية لبعض
 الرقعات الصرفة (مثل رقعة تخزين المرحلة ٤ شريحة ١).
 
@@ -85,7 +85,7 @@ CI في `/tasklet/agent/home/ci/ci.yml` **معطَّل حاليًّا** — با
 | نسخة احتياطيّة كاملة قبل المرحلة ٣ | `backup/prod-pre-p3-20260806.tgz` (١٧٦ ملفًّا) |
 | نسخة `index.html` قبل المرحلة ٣ | `backup/main-pre-p3/index.html` (٤٨٠٥ سطرًا) |
 | نسخة `main` بعد المرحلة ٣ | `backup/main-post-p3/` |
-| منشور مرجعيّ للبصمات | `/tasklet/agent/home/backup/prod-2026-08-05/MANIFEST.json` (بصمات ١٦٤ ملفًّا) |
+| منشور مرجعيّ للبصمات | `/workspace/agent/home/backup/prod-2026-08-05/MANIFEST.json` (بصمات ١٦٤ ملفًّا) |
 
 ## ٨. قاعدة النقل المُثبَت بلا كلفة (احتساب السقف)
 النقل المُثبَت هويّة بايتاته بـ`sha256` (نقل حرفيّ، صفر تغيير منطق) **يُحتسَب صفر سطر** ضمن سقف
@@ -96,9 +96,9 @@ CI في `/tasklet/agent/home/ci/ci.yml` **معطَّل حاليًّا** — با
 
 ## ٩. لا عملٌ يعيش في الصندوق وحده (قاعدة ما بعد حادثة ٦ أغسطس)
 كل رقعة تُنشر على معاينة ولا تُرقَّى إلى الإنتاج في نفس اليوم **تُحفظ فورًا** في
-`/tasklet/agent/home/patches/<batch>/`: المقطع (diff)، مرساة الإدراج، معرّف نشرة المعاينة،
+`/workspace/agent/home/patches/<batch>/`: المقطع (diff)، مرساة الإدراج، معرّف نشرة المعاينة،
 وعدد الأسطر **المقيس بـ`diff`** لا المقدَّر. `/tmp/` يُفرَّغ عند إعادة تشغيل الصندوق — لا تعتمد
-عليه لأي شيء غير مُنشَر أو غير محفوظ في `/tasklet`. قبل إنهاء أي يوم: `ls patches/` يجب أن
+عليه لأي شيء غير مُنشَر أو غير محفوظ في `/workspace`. قبل إنهاء أي يوم: `ls patches/` يجب أن
 يطابق كل معاينة غير مُرقّاة.
 
 **استرجاع رقعة من نشرة حيّة إن زال الصندوق:**

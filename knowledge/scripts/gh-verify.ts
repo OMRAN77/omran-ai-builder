@@ -1,4 +1,4 @@
-import { invokeTool } from '@tasklet/tools/v2';
+import { invokeTool } from '@workspace/tools/v2';
 const CONN='conn_v99nvvn81c6baxgr3m9w', owner='OMRAN77', repo='omran-ai-builder';
 for (const f of process.argv.slice(2)) {
   const r = await invokeTool({ connectionId: CONN, toolName:'github_get_file_content', args:{ owner, repo, repoPath:f } });
