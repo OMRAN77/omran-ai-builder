@@ -107,7 +107,9 @@
         }
         return out;
       }
-      pop.innerHTML = optRow('agent', agentLabel(), 'premiumToggleLabel') + optRow('cc', 'Claude Code') + divider + provsHTML();
+      /* v-cc-remove (طلب المالك «شيله عشان ما يلخبط»): أُزيل زرّ «Claude Code» المربوط
+         بجسر Railway المكسور — الوكيل يملك صلاحيات Claude Code الكاملة عبر GitHub Actions. */
+      pop.innerHTML = optRow('agent', agentLabel(), 'premiumToggleLabel') + divider + provsHTML();
       wrap.appendChild(pop); wrap.appendChild(chip);
       bar.appendChild(wrap);
       host.appendChild(bar);
