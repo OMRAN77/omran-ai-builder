@@ -77,7 +77,7 @@ test('٢. بلا مفاتيح أو مع فشل الشبكة: لا يرمي، ي�
 
 test('٣. الورك فلو: نموذج مختار، Chromium، السياق قبل Claude، الأدوات، طلب السحب برمز المالك، حذف ملفّات السياق', () => {
   const y = read('.github/workflows/omran-agent.yml');
-  assert.match(y, /model:\n\s+description:[^\n]*\n\s+required: false\n\s+default: 'claude-fable-5-1'/);
+  assert.match(y, /model:\n\s+description:[^\n]*\n\s+required: false\n\s+default: 'claude-sonnet-5'/);
   assert.match(y, /--model \$\{\{ inputs\.model \}\}/);
   assert.match(y, /npx playwright install --with-deps chromium/);
   assert.match(y, /node scripts\/agent-context\.mjs --issue "\$TASK_ISSUE" --base "\$TASK_BASE" --out AGENT_CONTEXT\.md/);
