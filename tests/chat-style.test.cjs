@@ -138,7 +138,7 @@ check(attach.includes('هذا سؤال حال ضمن محادثة مستمرة،
 check(attach.includes('!(isPureGreeting(text) || isCasualCheckIn(text))'), 'الدور الاجتماعي العابر لا يلوث الذاكرة طويلة المدى');
 check(chatServer.includes('function isCasualCheckIn(text)') && chatServer.includes('if (usage.username && !quietSocialTurn)'), 'الخادم لا يقرأ ذاكرة الحساب لسؤال الحال');
 check(chatServer.includes('const system = quietSocialTurn') && chatServer.includes('وممنوع سرد مشاريع أو مواضيع قديمة'), 'الخادم يعزل الدور الاجتماعي عن التاريخ ومعرفة المالك');
-check(chatServer.includes('const convoSource = quietSocialTurn ? [lastUser] : messages'), 'الخادم لا يرسل تاريخ المواضيع في سؤال الحال');
+check(chatServer.includes('quietSocialTurn ? [lastUser] : messages'), 'الخادم لا يرسل تاريخ المواضيع في سؤال الحال');
 
 // ═══ الأدوات والبحث ═══
 group('الأدوات والبحث');
