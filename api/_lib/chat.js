@@ -932,6 +932,25 @@ function ratingWarning(answer) {
     : '\n\n⚠️ The rating figures above did not appear in the search results — verify them on Maps before relying on them.';
 }
 
+// v-image-stale (بلاغ المالك: أرفق لقطة خطأ في دور، ثمّ سأل «شو موضوع المدينة
+// المنورة» في دور لاحق، فردّ النموذج بوصف اللقطة القديمة لا بجواب سؤاله). صور
+// الرسائل السابقة كانت تُمرَّر كاملةً في التاريخ فتتسرّب لأسئلة لا علاقة لها بها.
+// نُبقي كتل الصور على آخر رسالة مستخدم فقط (الدور الحاليّ)؛ الأقدم تُستبدل بملحوظة
+// نصّيّة. أداة edit_image تجلب الصورة المصدر من حالة العميل لا من سياق النموذج،
+// فتعديل الصور لا يتأثّر.
+function stripStaleImagesFromHistory(items) {
+  if (!Array.isArray(items)) return items;
+  let lastUserIdx = -1;
+  for (let k = items.length - 1; k >= 0; k--) { if (items[k] && items[k].role === 'user') { lastUserIdx = k; break; } }
+  return items.map((m, i) => {
+    if (i === lastUserIdx || !m || !Array.isArray(m.content)) return m;
+    if (!m.content.some((b) => b && b.type === 'image')) return m;
+    const kept = m.content.filter((b) => b && b.type !== 'image');
+    const note = { type: 'text', text: '[صورة أُرفقت في رسالة سابقة — غير معروضة الآن؛ لا تصفها إلّا إن سأل عنها المستخدم صراحةً في رسالته الحاليّة]' };
+    return { role: m.role, content: kept.length ? kept.concat([note]) : [note] };
+  });
+}
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -1140,7 +1159,7 @@ module.exports = async (req, res) => {
         ? PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz) + countryNote(country, city) + ownerKnowledge + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_READ + IMAGE_GATE_NOTE + IMAGE_REPORT_NOTE
         : PERSONA_NOTE + '\n' + baseSystem + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_READ;
 
-      const convoSource = quietSocialTurn ? [lastUser] : messages;
+      const convoSource = stripStaleImagesFromHistory(quietSocialTurn ? [lastUser] : messages);
   /* v-attach-full (بلاغ المالك «أيّ ملفّ أرسله يتقطّع»): سقف ١٢ ألف حرف لكلّ رسالة كان
      يقصّ الملفّ المرفق في الدور الحاليّ — ملفّ ٦٧ ك.ب وصل منه ١٣ فقط (حتّى ١٢ ألف حرف).
      الدور الأخير (حامل المرفق) يأخذ سقفًا واسعًا (٢٠٠ ألف، نفس حدّ العميل)؛ والتاريخ
@@ -1462,3 +1481,4 @@ module.exports.__v610 = { cleanLink }; // v610 — للاختبار
 module.exports.__vsearch = { tavilySearch, arWikiLookup }; // v-chat-ref — للاختبار
 module.exports.__vimg = { imageTurnConfig, IMAGE_READ_NOTE }; // v-img-read — للاختبار
 module.exports.__vmodels = { CLAUDE_MODELS, pickClaudeModel }; // v-claude-models — للاختبار
+module.exports.__vstale = { stripStaleImagesFromHistory }; // v-image-stale — للاختبار
