@@ -330,7 +330,7 @@
      بلا pre-wrap كانت الأسطر تنضغط كتلة واحدة («زحمة وبعدين تترتب»). */
   .msg.msg-streaming{white-space:pre-wrap; unicode-bidi:plaintext;}
   .msg-text p, .msg-text li, .msg-text div{unicode-bidi:plaintext;}
-  /* صناديق الكود داخل المحادثة — بنمط Tasklet/GitHub */
+  /* صناديق الكود داخل المحادثة — بنمط GitHub */
   .chat-codeblock{background:#0d1117;border:1px solid #21262d;border-radius:var(--r-2);margin:10px 0;direction:ltr;text-align:left;overflow:hidden;}
   .chat-codeblock-head{display:flex;align-items:center;justify-content:space-between;padding:5px 12px;font-size: var(--fs-5);font-weight: var(--w-bold);color:#8b949e;background:#161b22;border-bottom:1px solid #21262d;font-family:ui-monospace,Consolas,monospace;}
   .chat-codeblock-copy{background:none;border:none;cursor:pointer;color:#8b949e;padding:2px 4px;line-height:1;display:flex;align-items:center;}
@@ -456,7 +456,7 @@
   #btnStop.live + #btnSend{display:none;}
   #composerBox:focus-within{border-color:var(--accent); box-shadow:0 0 0 3px rgba(var(--accent-rgb),.15);}
   /* v215: بالعربي/الأردو ⋮ و🎤 و➤ على اليمين والنص على يسارهم */
-  /* v333: صندوق بطابقين مثل Tasklet — الكتابة فوق والأزرار صف تحتها داخل الصندوق */
+  /* v333: صندوق بطابقين — الكتابة فوق والأزرار صف تحتها داخل الصندوق */
   #composerBox > #prompt{order:1; flex:1 1 100%; width:100%;}
   #composerBox > .inputbar-tools{order:2;}
   #composerBox > #btnStop, #composerBox > #btnSend{order:3; margin-inline-start:auto;}
