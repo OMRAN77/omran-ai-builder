@@ -939,30 +939,40 @@ function readFileAsText(file){
   });
 }
 
-/* v-attach-picker: بعض عارضات أندرويد (شاومي/MIUI) تفتح المنتقي وتُرجع الصورة
-   لكن لا تُطلق حدث change ولا تملأ input.files في نفس اللحظة — كان المالك يرى
-   «ما أقدر أحمّل صور». المسار الطبيعيّ يبقى حدث change؛ ونضيف شبكة أمان: عند عودة
-   التركيز للنافذة بعد إغلاق المنتقي نفحص input.files ونلتقطها إن لم يصل change. */
-let __attachHandled = false;
-function __omranTakeAttachFiles(input){
-  const files = Array.from((input && input.files) || []);
-  if(!files.length) return;
-  __attachHandled = true;
-  omranIngestFiles(files).finally(() => { try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ } });
+/* v-attach-picker-v2 (فيديو المالك ١٧ سبتمبر: يختار صورة من منتقي النظام،
+   يضغط «تم»، يرجع للتطبيق، والصندوق فاضٍ تمامًا — لا صورة ولا خطأ):
+   الشبكة السابقة كانت تعتمد على حدث window «focus» وفحص واحد بعد 500ms.
+   داخل غلاف أندرويد الأصلي (WebView) منتقي الملفات يُدار عبر
+   onShowFileChooser الأصلي — الـwindow لا «يفقد التركيز» فعليًا من منظور
+   DOM فحدث focus لا يصل إطلاقًا، فالشبكة كانت معطّلة كليًا في هذا الغلاف
+   تحديدًا (لا حدث change من العارض ولا حدث focus يشغّل الفحص البديل).
+   الحل: مراقبة مباشرة بلا اعتماد على أي حدث — فحص input.files كل 350ms
+   لعشرين ثانية بعد كل ضغطة على أزرار الرفع، تلتقط الملف مهما كان الغلاف
+   أو العارض. تعمل مع أو بدون أي حدث آخر، فهي شبكة أمان شاملة. */
+function omranWatchFilePicker(input, onFiles){
+  let handled = false, ticks = 0;
+  const take = () => {
+    if(handled) return;
+    const files = Array.from((input && input.files) || []);
+    if(!files.length) return;
+    handled = true;
+    clearInterval(iv);
+    window.removeEventListener('focus', take);
+    document.removeEventListener('visibilitychange', onVis);
+    onFiles(files);
+    try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ }
+  };
+  const onVis = () => { if(document.visibilityState === 'visible') take(); };
+  const iv = setInterval(() => { take(); if(handled || ++ticks > 57) clearInterval(iv); }, 350);
+  window.addEventListener('focus', take);
+  document.addEventListener('visibilitychange', onVis);
 }
+let __attachHandled = false;
 $('#btnAttach').onclick = () => {
   __attachHandled = false;
   const input = $('#attachInput');
   input.click();
-  const onBack = () => {
-    window.removeEventListener('focus', onBack);
-    // مهلة قصيرة تكفي حدث change الطبيعيّ ليسبق ويضع العلم؛ وإلّا نلتقط يدويًّا.
-    setTimeout(() => {
-      const inp = document.getElementById('attachInput');
-      if(!__attachHandled && inp && inp.files && inp.files.length) __omranTakeAttachFiles(inp);
-    }, 500);
-  };
-  window.addEventListener('focus', onBack);
+  omranWatchFilePicker(input, (files) => { if(!__attachHandled){ __attachHandled = true; omranIngestFiles(files); } });
 };
 
 // ---- Emoji picker ----
