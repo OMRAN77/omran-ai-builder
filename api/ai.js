@@ -345,6 +345,14 @@ function balancedNote(action, country, withImages) {
 // ويطلب الصراحة. لا يمسّ أمان النموذج الأساسيّ (الضرر الحقيقيّ يبقى مرفوضًا).
 const OWNER_DIRECT_NOTE = '\n[تعليمات المالك — دائمة]: خاطبه بصراحة ومباشرة تامّة. لا مجاملة ولا إطراء ولا تحذيرات زائدة ولا تهرّب ولا اعتذار مطوّل. نفّذ طلبه المشروع فورًا بلا لفّ. إن تعذّر شيء فعلًا فقل السبب الحقيقيّ في سطر واحد صريح، بلا وعظ ولا «لا أستطيع» غامضة.';
 
+/* v-owner-raw2: للمالك وحده — نظام العميل نفسه يُنزع قبل المزوّد، لا ملاحظات
+   الخادم وحدها. بدون هذا يبقى «خام» ناقصًا: العميل يرسل حتّى ١٧ ألف حرف نظامًا. */
+function stripAppSystem(action, body) {
+  if (action === 'gemini') { delete body.systemInstruction; return; }
+  if (Array.isArray(body.messages)) body.messages = body.messages.filter((m) => !(m && m.role === 'system'));
+  if (typeof body.system === 'string') delete body.system;
+}
+
 function injectNote(action, body, country) {
   const mode = resolveMode(body);
   const ownerReq = !!(body && body.__ownerFactory === true); // v-owner-raw: المالك
@@ -487,6 +495,7 @@ module.exports = withErrorCapture('ai', async (req, res) => {
         // v-owner-raw: يُحسب من التوكن الموقَّع في الجسم؛ العلم يُستهلك داخل
         // injectNote ثمّ يُحذف فلا يُمرَّر إلى المزوّد.
         try { b.__ownerFactory = isOwner({ query: req.query, body: b }); } catch (e) { b.__ownerFactory = false; }
+        if (b.__ownerFactory && b.raw !== false) stripAppSystem(action, b);
         injectNote(action, b, geoCountry);
         delete b.__ownerFactory;
         req.body = b;
@@ -500,3 +509,4 @@ module.exports = withErrorCapture('ai', async (req, res) => {
 // وحقن الملاحظات دون نداء مزوّد حقيقيّ.
 module.exports.__resolveMode = resolveMode;
 module.exports.__injectNote = injectNote;
+module.exports.__stripAppSystem = stripAppSystem;

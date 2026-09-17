@@ -990,6 +990,12 @@ module.exports = async (req, res) => {
   const __ownerReq = (function(){ try{ return require('./_owner.js').isOwnerName(token ? require('./auth.js').verifyToken(token) : null); }catch(e){ return false; } })();
   const __pick = (prov === 'claude' && __ownerReq) ? pickClaudeModel(body && body.model, viaOR, DEFAULT_MODEL) : { model: DEFAULT_MODEL, picked: false, id: '', label: '' };
   let CHAT_MODEL = __pick.model;
+  /* v-owner-raw2 (أمر المالك ١٧ سبتمبر: «أريد المزوّدين كلّهم خام — لي أنا بس»):
+     للمالك وحده يصل المزوّد بلا حرفٍ واحد من طبقة التطبيق — لا بصمة شخصيّة، ولا
+     قواعد صور، ولا ملفّ المالك، ولا ذاكرة حساب، ولا نظام العميل. الأدوات تبقى
+     موصولة لأنّ مخطّطها بروتوكول لا نصّ. غير المالك لا يتغيّر عنده شيء، والوكيل
+     مستثنى (ملفّه agent.js لم يُمَسّ). الرجوع: { raw: false } في طلب واحد. */
+  const __rawOwner = __ownerReq && !(body && body.raw === false);
 
   // v-real-fast-headers: «النصّ الطويل ما يرد» — الحارس أعلاه (v-fast-headers)
   // كان تعليقًا فقط؛ الكود الفعلي كان يفتح البثّ بعد checkAndConsume (نداء
@@ -1158,6 +1164,8 @@ module.exports = async (req, res) => {
            والمدينة (حقائق) + ملف المالك + ذاكرة الحساب (تصل ضمن baseSystem). */
         ? PERSONA_NOTE + '\n' + baseSystem + nowNote(body && body.tz) + countryNote(country, city) + ownerKnowledge + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_READ + IMAGE_GATE_NOTE + IMAGE_REPORT_NOTE
         : PERSONA_NOTE + '\n' + baseSystem + IMAGE_TURN_NOTE + VISUAL_GUIDE_NOTE + IMAGE_READ;
+    // v-owner-raw2: ما يُرسل فعلًا — للمالك صفر حرف، ولغيره النظام كما هو.
+    const __sysSend = __rawOwner ? '' : system;
 
       const convoSource = stripStaleImagesFromHistory(quietSocialTurn ? [lastUser] : messages);
   /* v-attach-full (بلاغ المالك «أيّ ملفّ أرسله يتقطّع»): سقف ١٢ ألف حرف لكلّ رسالة كان
@@ -1256,7 +1264,7 @@ module.exports = async (req, res) => {
       const callUpstream = (withImg) => fetch(CHAT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify(Object.assign({ model: (withImg && __imgCfg) ? __imgCfg.model : CHAT_MODEL, max_tokens: quietSocialTurn ? 350 : 16000, system, messages: convo, tools: toolTurn ? TOOLS : undefined, stream: true }, (withImg && __imgCfg && __imgCfg.output_config) ? { output_config: __imgCfg.output_config } : {})),
+        body: JSON.stringify(Object.assign({ model: (withImg && __imgCfg) ? __imgCfg.model : CHAT_MODEL, max_tokens: quietSocialTurn ? 350 : 16000, system: __sysSend || undefined, messages: convo, tools: toolTurn ? TOOLS : undefined, stream: true }, (withImg && __imgCfg && __imgCfg.output_config) ? { output_config: __imgCfg.output_config } : {})),
       });
       let upstream = await callUpstream(true);
       // v-img-err: أيّ فشل على إعداد دور الصورة (400 أو 404 نموذج لا يملكه المفتاح أو
