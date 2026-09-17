@@ -1456,24 +1456,16 @@ document.querySelectorAll('.tab').forEach(tab => {
   });
 })();
 
-/* v--- نبرة الرد — اختيار صريح من الإعدادات */
+/* v-tone-buttons-removed (أمر المالك ١٧ سبتمبر): أزرار النبرة وتخزينها
+   (omranTone) وحاقن tone في window.fetch — حُذف كلّه. الأزرار لم تكن تصل
+   مسار المحادثة أصلًا: الحاقن كان يضيف tone لطلبات /api/ai، وinjectNote في
+   api/ai.js لا يقرأه إلّا للمسارات المدرجة في PROVIDERS، وaction=chat ليس
+   منها — فكان الاختيار بلا أثر. البديل: الأسلوب العفويّ افتراضًا في ميثاق
+   الشخصيّة + حقل التعليمات المخصّصة أدناه. (كتلة tone.js على الخادم باقية
+   لمسارات المزوّدين المباشرة وتكتشف الأسلوب تلقائيًّا كما كانت.) */
+/* v-custom-instructions: تعليمات المستخدم — تُحفظ محلّيًّا وتُرسل مع كلّ
+   طلب محادثة (app-18-chat-tools) فيحقنها الخادم في تعليمات النظام. */
 (function(){
-  function applyTone(v){
-    document.querySelectorAll('.toneBtn').forEach(b => b.classList.toggle('active', b.dataset.tone === v));
-  }
-  let saved = 'auto';
-  try{ saved = localStorage.getItem('omranTone') || 'auto'; }catch(e){ __swallow(e, "ui:app-05-ui#tone-init"); }
-  applyTone(saved);
-  window.getOmranTone = function(){ try{ return localStorage.getItem('omranTone') || 'auto'; }catch(e){ return 'auto'; } };
-  document.querySelectorAll('.toneBtn').forEach(b => {
-    b.onclick = function(){
-      try{ localStorage.setItem('omranTone', b.dataset.tone); }catch(e){ __swallow(e, "save:app-05-ui#tone"); }
-      applyTone(b.dataset.tone);
-    };
-  });
-  /* v-custom-instructions: تعليمات المستخدم — تُحفظ محلّيًّا وتُرسل مع كلّ
-     طلب محادثة (app-18-chat-tools) فيحقنها الخادم في تعليمات النظام. */
-  (function(){
     var ta = document.getElementById('customInstructionsInput');
     var okEl = document.getElementById('customInstructionsSaved');
     var cntEl = document.getElementById('customInstructionsCount');
@@ -1499,23 +1491,6 @@ document.querySelectorAll('.tab').forEach(tab => {
         }
       }, 400);
     });
-  })();
-
-  // حقن tone في كل طلب /api/ai تلقائياً
-  var _origFetch = window.fetch;
-  window.fetch = function(url, opts){
-    try{
-      if(typeof url === 'string' && url.indexOf('/api/ai') !== -1 && opts && opts.body){
-        var tone = window.getOmranTone();
-        if(tone && tone !== 'auto'){
-          var parsed = JSON.parse(opts.body);
-          parsed.tone = tone;
-          opts = Object.assign({}, opts, { body: JSON.stringify(parsed) });
-        }
-      }
-    }catch(e){ /* guard-ok — لا نكسر fetch الأصلي */ }
-    return _origFetch.call(this, url, opts);
-  };
 })();
 
 /* v336: طي/فتح لوحة الكود والمعاينة (كمبيوتر فقط) */

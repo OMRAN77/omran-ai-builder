@@ -85,7 +85,7 @@ test('٤. الواجهة: مبدّل النموذج في قائمة «+» (لل�
   assert.equal((i18n.match(/claudeModelPick:/g) || []).length, 2, 'عربيّ وإنجليزيّ');
   assert.equal((i18n.match(/stModelFallback:/g) || []).length, 2);
   // v-custom-instructions: رُفع إلى 657 بعد إضافة حقل التعليمات المخصّصة للقسم.
-  assert.ok(read('index.html').includes('/js/partials-settings.js?v=657'), 'كسر كاش الجزء بعد تغييره');
+  assert.ok(read('index.html').includes('/js/partials-settings.js?v=658'), 'كسر كاش الجزء بعد تغييره');
 });
 
 test('٥. Haiku 4.5 بلا effort في دور الصورة، والجيل الحاليّ معه', () => {

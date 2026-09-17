@@ -104,7 +104,32 @@ files.forEach((f) => {
 // وسم الكاش رُفع وإلّا بقيت الأجهزة على نسخة بلا المفاتيح الجديدة
 assert.ok(/i18n\/' \+ lg \+ '\.js\?v=673'/.test(rd('js/app-04-i18n-state.js')),
   'وسم ?v= لملفّات اللغات مرفوع');
-assert.ok(/partials-settings\.js\?v=657/.test(rd('index.html')),
+assert.ok(/partials-settings\.js\?v=658/.test(rd('index.html')),
   'وسم ?v= لـpartials-settings مرفوع');
 
-console.log('✓ custom-instructions: أسلوب عفويّ افتراضيّ في ميثاق الشخصيّة + حقل تعليمات مخصّصة يصل للخادم بحارسه، والـ١٤ لغة كاملة');
+/* ── (٦) v-tone-buttons-removed — أزرار النبرة حُذفت بأمر المالك ──
+   كانت بلا أثر: الحاقن في app-05-ui كان يضيف tone لطلبات /api/ai، و
+   injectNote في api/ai.js لا يقرأه إلّا لمسارات PROVIDERS، وaction=chat
+   ليس منها. القفل هنا يمنع رجوعها صامتةً مرّة أخرى. */
+assert.ok(!/toneBtn/.test(partial), 'لا أزرار نبرة في الإعدادات');
+assert.ok(!/id="toneBtns"/.test(partial), 'حاوية أزرار النبرة محذوفة');
+assert.ok(!/data-tone=/.test(partial), 'لا بقايا data-tone');
+assert.ok(!/getOmranTone/.test(ui.replace(/\/\*[\s\S]*?\*\//g, '')), 'قارئ النبرة محذوف من الكود (خارج التعليقات)');
+assert.ok(!/localStorage\.setItem\('omranTone'/.test(ui), 'تخزين النبرة محذوف');
+assert.ok(!/parsed\.tone = tone/.test(ui), 'حاقن tone في window.fetch محذوف');
+// عنوان القسم صار عنوان الحقل نفسه في الـ١٤ لغة
+assert.ok(/data-i18n="ciLabel">التعليمات المخصّصة<\/h3>/.test(partial),
+  'عنوان القسم من مفتاح مترجَم لا نصّ ثابت');
+// مفاتيح النبرة الميتة نُزعت من الـ١٤ لغة فلا يبقى نصّ لواجهة محذوفة
+const DEAD = ['toneSectionLabel', 'toneAuto', 'toneWarm', 'toneDirect', 'toneFormal', 'toneHint'];
+DEAD.forEach((k) => {
+  assert.ok(!new RegExp('(^|\\s)"?' + k + '"?\\s*:').test(data), 'المفتاح الميت ' + k + ' نُزع من ar/en');
+  files.forEach((f) => {
+    assert.ok(!new RegExp('(^|\\s)"?' + k + '"?\\s*:').test(rd(path.join('i18n', f))),
+      'المفتاح الميت ' + k + ' نُزع من ' + f);
+  });
+});
+// القسم نفسه باقٍ في قائمة الإعدادات (المُعرّف تاريخيّ) فلا تنكسر الملاحة
+assert.ok(/'toneSection'/.test(ui), 'القسم ما زال مسجّلًا في قائمة الإعدادات');
+
+console.log('✓ custom-instructions: أسلوب عفويّ افتراضيّ + حقل تعليمات مخصّصة يصل للخادم بحارسه بالـ١٤ لغة، وأزرار النبرة الميتة محذوفة بلا بقايا');
