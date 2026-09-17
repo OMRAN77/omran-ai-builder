@@ -3271,6 +3271,10 @@ const I18N = {
     toneDirect: "مباشر",
     toneFormal: "رسمي",
     toneHint: "اختر أسلوب الرد المفضّل — أو خلّ الذكاء الاصطناعي يتأقلم معك تلقائيًا.",
+    ciLabel: "التعليمات المخصّصة",
+    ciHint: "اكتب كيف تحب أن يردّ عليك — يُطبَّق في كل محادثاتك.",
+    ciPlaceholder: "مثال: ردّ عليّ بالعامية وباختصار، وبلا مقدّمات.",
+    ciSaved: "تم الحفظ ✅",
     mahaCcTitle: "الترجمة النصية للمكالمة",
     premiumNeedLogin: "سجّل الدخول لتشغيل الوكيل",
     premiumNoPoints: "نقاطك خلصت — اشترِ نقاط لمواصلة الوكيل",
@@ -3802,6 +3806,10 @@ const I18N = {
     toneDirect: "Direct",
     toneFormal: "Formal",
     toneHint: "Pick your preferred reply style — or let the AI adapt to you automatically.",
+    ciLabel: "Custom instructions",
+    ciHint: "Write how you'd like replies — applied to all your chats.",
+    ciPlaceholder: "Example: Keep it casual and short, no preambles.",
+    ciSaved: "Saved ✅",
     mahaCcTitle: "Live call captions",
     premiumNeedLogin: "Sign in to use Agent",
     premiumNoPoints: "Out of points — buy points to keep using Agent",
@@ -4512,7 +4520,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=672'; /* v-mode-i18n: مفتاح darkModeTitle في الـ14 لغة */
+    sc.src = 'i18n/' + lg + '.js?v=673'; /* v-custom-instructions: مفاتيح ci* في الـ14 لغة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -8990,6 +8998,36 @@ document.querySelectorAll('.tab').forEach(tab => {
       applyTone(b.dataset.tone);
     };
   });
+  /* v-custom-instructions: تعليمات المستخدم — تُحفظ محلّيًّا وتُرسل مع كلّ
+     طلب محادثة (app-18-chat-tools) فيحقنها الخادم في تعليمات النظام. */
+  (function(){
+    var ta = document.getElementById('customInstructionsInput');
+    var okEl = document.getElementById('customInstructionsSaved');
+    var cntEl = document.getElementById('customInstructionsCount');
+    var MAXLEN = 1500;
+    window.getCustomInstructions = function(){
+      try{ return (localStorage.getItem('omranCustomInstructions') || '').slice(0, MAXLEN); }catch(e){ return ''; }
+    };
+    if(!ta) return;
+    ta.value = window.getCustomInstructions();
+    var paint = function(){ if(cntEl) cntEl.textContent = ta.value.length + '/' + MAXLEN; };
+    paint();
+    var okTimer = null, saveTimer = null;
+    ta.addEventListener('input', function(){
+      paint();
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(function(){
+        try{ localStorage.setItem('omranCustomInstructions', ta.value.slice(0, MAXLEN)); }
+        catch(e){ __swallow(e, 'save:custom-instructions'); }
+        if(okEl){
+          okEl.style.opacity = '1';
+          clearTimeout(okTimer);
+          okTimer = setTimeout(function(){ okEl.style.opacity = '0'; }, 1600);
+        }
+      }, 400);
+    });
+  })();
+
   // حقن tone في كل طلب /api/ai تلقائياً
   var _origFetch = window.fetch;
   window.fetch = function(url, opts){
@@ -30362,6 +30400,8 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
         tz: (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } })(),
         token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
         guestId: window.getGuestId ? window.getGuestId() : '',
+        // v-custom-instructions: تعليمات المستخدم من الإعدادات — الخادم ينظّفها ويحقنها.
+        customInstructions: (function () { try { return window.getCustomInstructions ? window.getCustomInstructions() : ''; } catch (e) { return ''; } })(),
       }),
     }), __CHAT_IDLE_MS, '__chat_no_headers__');
     if (!res.ok || !res.body) {

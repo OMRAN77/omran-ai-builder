@@ -352,6 +352,16 @@
         <button type="button" class="toneBtn" data-tone="direct"><span data-i18n="toneDirect">مباشر</span><svg class="toneCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
         <button type="button" class="toneBtn" data-tone="formal"><span data-i18n="toneFormal">رسمي</span><svg class="toneCheck" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></button>
       </div>
+      <!-- v-custom-instructions: تعليمات يكتبها المستخدم بنفسه فتُطبَّق على كل ردوده -->
+      <div style="margin-top:18px; padding-top:16px; border-top:1px solid var(--line,rgba(128,128,128,.18));">
+        <h4 style="margin:0 0 4px; font-size:var(--fs-4,14px); font-weight:600;" data-i18n="ciLabel">التعليمات المخصّصة</h4>
+        <p style="font-size:var(--fs-6); opacity:.7; margin:0 0 10px;" data-i18n="ciHint">اكتب كيف تحب أن يردّ عليك — يُطبَّق في كل محادثاتك.</p>
+        <textarea id="customInstructionsInput" rows="5" maxlength="1500" data-i18n-placeholder="ciPlaceholder" placeholder="مثال: ردّ عليّ بالعامية وباختصار، وبلا مقدّمات." style="width:100%; box-sizing:border-box; padding:11px 12px; border:1px solid var(--line,rgba(128,128,128,.22)); border-radius:12px; background:var(--panel2); color:var(--text,#eee); font-family:inherit; font-size:var(--fs-4,14px); line-height:1.6; resize:vertical;"></textarea>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:6px;">
+          <span id="customInstructionsSaved" style="font-size:var(--fs-6); color:var(--accent,#d4af37); opacity:0; transition:opacity .2s;" data-i18n="ciSaved">تم الحفظ ✅</span>
+          <span id="customInstructionsCount" style="font-size:var(--fs-6); opacity:.55;">0/1500</span>
+        </div>
+      </div>
     </div></div>
 
   <div id="pricingSection" class="settingsPageSection" style="padding:14px; margin-bottom:18px;">

@@ -1471,6 +1471,36 @@ document.querySelectorAll('.tab').forEach(tab => {
       applyTone(b.dataset.tone);
     };
   });
+  /* v-custom-instructions: تعليمات المستخدم — تُحفظ محلّيًّا وتُرسل مع كلّ
+     طلب محادثة (app-18-chat-tools) فيحقنها الخادم في تعليمات النظام. */
+  (function(){
+    var ta = document.getElementById('customInstructionsInput');
+    var okEl = document.getElementById('customInstructionsSaved');
+    var cntEl = document.getElementById('customInstructionsCount');
+    var MAXLEN = 1500;
+    window.getCustomInstructions = function(){
+      try{ return (localStorage.getItem('omranCustomInstructions') || '').slice(0, MAXLEN); }catch(e){ return ''; }
+    };
+    if(!ta) return;
+    ta.value = window.getCustomInstructions();
+    var paint = function(){ if(cntEl) cntEl.textContent = ta.value.length + '/' + MAXLEN; };
+    paint();
+    var okTimer = null, saveTimer = null;
+    ta.addEventListener('input', function(){
+      paint();
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(function(){
+        try{ localStorage.setItem('omranCustomInstructions', ta.value.slice(0, MAXLEN)); }
+        catch(e){ __swallow(e, 'save:custom-instructions'); }
+        if(okEl){
+          okEl.style.opacity = '1';
+          clearTimeout(okTimer);
+          okTimer = setTimeout(function(){ okEl.style.opacity = '0'; }, 1600);
+        }
+      }, 400);
+    });
+  })();
+
   // حقن tone في كل طلب /api/ai تلقائياً
   var _origFetch = window.fetch;
   window.fetch = function(url, opts){
