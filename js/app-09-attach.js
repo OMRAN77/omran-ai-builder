@@ -959,8 +959,14 @@ function omranWatchFilePicker(input, onFiles){
     clearInterval(iv);
     window.removeEventListener('focus', take);
     document.removeEventListener('visibilitychange', onVis);
-    onFiles(files);
-    try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ }
+    /* v-attach-picker-v3: مسح input.value يُؤجَّل حتى تنتهي القراءة فعلًا.
+       قراءة الملفّ مؤجَّلة (FileReader/createObjectURL بعد await)، ومسح
+       القيمة يفصل الملفّ عن مصدره في غلاف أندرويد (content:// — نفس فخّ
+       v405)، فكانت القراءة تفشل بصمت ويبقى الشريط فاضيًا. مسار حدث
+       change كان ينتظر (await) قبل المسح؛ المراقب كان يمسح فورًا. */
+    Promise.resolve(onFiles(files))
+      .catch((e) => { __swallow(e, 'attach:picker'); })
+      .then(() => { try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ } });
   };
   const onVis = () => { if(document.visibilityState === 'visible') take(); };
   const iv = setInterval(() => { take(); if(handled || ++ticks > 57) clearInterval(iv); }, 350);
@@ -972,7 +978,7 @@ $('#btnAttach').onclick = () => {
   __attachHandled = false;
   const input = $('#attachInput');
   input.click();
-  omranWatchFilePicker(input, (files) => { if(!__attachHandled){ __attachHandled = true; omranIngestFiles(files); } });
+  omranWatchFilePicker(input, (files) => { if(!__attachHandled){ __attachHandled = true; return omranIngestFiles(files); } });
 };
 
 // ---- Emoji picker ----

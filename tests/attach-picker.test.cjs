@@ -57,4 +57,42 @@ assert.ok(pdfClickIdx > 0, 'زرّ PDF يستعمل نفس نمط المراقب
 assert.ok(/omranWatchFilePicker\(input,/.test(features), '«صور → PDF» محميّة بنفس المراقب — لا تنفرد بالعلّة القديمة');
 assert.ok(/input\.onchange = \(\) => \{ if\(__pdfPickHandled\) return;/.test(features), 'change في PDF يحترم علم الالتقاط أيضًا');
 
-console.log('✓ attach-picker: مراقب دوريّ حقيقيّ يلتقط الملف حتى لو صمتت كل الأحداث (focus/change/visibilitychange) — مطبَّق على الإرفاق و«صور → PDF»');
+
+/* (٥) v-attach-picker-v3 — العرض (نفس فيديو المالك، بعد نشر v2): الصورة
+   تُختار ويرجع للتطبيق والشريط فاضٍ بلا خطأ. الجذر الثاني: المراقب كان
+   يمسح input.value فور الالتقاط بلا انتظار القراءة، والقراءة مؤجّلة
+   (FileReader/createObjectURL بعد await) — ومسح القيمة يفصل الملفّ عن
+   مصدره داخل غلاف أندرويد (content://، نفس فخّ v405) فتفشل القراءة
+   وتُبتلع في catch فيبقى الشريط فاضيًا بلا رسالة. القفل: المسح يجب أن
+   يكون بعد انتهاء الوعدة لا قبلها، في المسارين. */
+const takeIdx = attach.indexOf('const take = () => {');
+assert.ok(takeIdx > 0, 'دالّة الالتقاط موجودة');
+const takeBlock = attach.slice(takeIdx, attach.indexOf('const onVis', takeIdx));
+assert.ok(/Promise\.resolve\(onFiles\(files\)\)/.test(takeBlock),
+  'المراقب ينتظر وعدة الابتلاع قبل أيّ تنظيف');
+assert.ok(takeBlock.indexOf('Promise.resolve(onFiles(files))') < takeBlock.indexOf("input.value = ''"),
+  "المسح يأتي بعد onFiles لا قبله");
+assert.ok(/\.then\(\(\) => \{ try\{ input\.value = ''/.test(takeBlock),
+  "input.value يُمسح داخل then بعد استقرار الوعدة — لا فورًا");
+assert.ok(!/^\s*onFiles\(files\);\s*$/m.test(takeBlock),
+  'لا نداء onFiles مهمل النتيجة (كان يمسح القيمة قبل انتهاء القراءة)');
+
+// المسارَان يعيدان الوعدة للمراقب وإلّا كان الانتظار بلا معنى
+assert.ok(/__attachHandled = true; return omranIngestFiles\(files\)/.test(attach),
+  'مسار الإرفاق يعيد وعدة الابتلاع للمراقب');
+assert.ok(/__pdfPickHandled = true; return runPdfFiles\(files\)/.test(features),
+  '«صور → PDF» يعيد وعدته للمراقب أيضًا');
+
+// runPdfFiles نفسها كانت تمسح input.value في أوّل سطر — قبل قراءة أيّ صورة
+const pdfFnIdx = features.indexOf('async function runPdfFiles(');
+assert.ok(pdfFnIdx > 0, 'runPdfFiles موجودة');
+const pdfHead = features.slice(pdfFnIdx, pdfFnIdx + 700);
+assert.ok(!/^\s*input\.value = '';\s*$/m.test(pdfHead),
+  'runPdfFiles لا تمسح input.value قبل قراءة الصور');
+assert.ok(/if\(!files\.length\)\{ try\{ input\.value = ''/.test(pdfHead),
+  'الخروج المبكر (بلا صور) يبقى ينظّف الحقل');
+const pdfFnEnd = features.indexOf('btn.onclick = () =>', pdfFnIdx);
+assert.ok(/btn\.disabled = false;\s*\n\s*try\{ input\.value = ''/.test(features.slice(pdfFnIdx, pdfFnEnd)),
+  'التنظيف في نهاية runPdfFiles بعد انتهاء المعالجة');
+
+console.log('✓ attach-picker: مراقب دوريّ حقيقيّ يلتقط الملف حتى لو صمتت كل الأحداث، ولا يُمسح input.value قبل أن تنتهي قراءته (v3) — في الإرفاق و«صور → PDF»');
