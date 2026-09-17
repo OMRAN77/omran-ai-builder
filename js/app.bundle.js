@@ -3265,12 +3265,10 @@ const I18N = {
     authOtpSendBtn: "إرسال رمز التحقق",
     aboutTagline: "منصة عربية لبناء التطبيقات بالذكاء الاصطناعي",
     videosGroupTitle: "🎬 الفيديوهات التعريفية",
-    toneSectionLabel: "النبرة",
-    toneAuto: "على راحتك",
-    toneWarm: "ودود",
-    toneDirect: "مباشر",
-    toneFormal: "رسمي",
-    toneHint: "اختر أسلوب الرد المفضّل — أو خلّ الذكاء الاصطناعي يتأقلم معك تلقائيًا.",
+    ciLabel: "التعليمات المخصّصة",
+    ciHint: "اكتب كيف تحب أن يردّ عليك — يُطبَّق في كل محادثاتك.",
+    ciPlaceholder: "مثال: ردّ عليّ بالعامية وباختصار، وبلا مقدّمات.",
+    ciSaved: "تم الحفظ ✅",
     mahaCcTitle: "الترجمة النصية للمكالمة",
     premiumNeedLogin: "سجّل الدخول لتشغيل الوكيل",
     premiumNoPoints: "نقاطك خلصت — اشترِ نقاط لمواصلة الوكيل",
@@ -3796,12 +3794,10 @@ const I18N = {
     authOtpSendBtn: "Send verification code",
     aboutTagline: "An Arabic platform for building apps with AI",
     videosGroupTitle: "🎬 Intro videos",
-    toneSectionLabel: "Tone",
-    toneAuto: "Your call",
-    toneWarm: "Friendly",
-    toneDirect: "Direct",
-    toneFormal: "Formal",
-    toneHint: "Pick your preferred reply style — or let the AI adapt to you automatically.",
+    ciLabel: "Custom instructions",
+    ciHint: "Write how you'd like replies — applied to all your chats.",
+    ciPlaceholder: "Example: Keep it casual and short, no preambles.",
+    ciSaved: "Saved ✅",
     mahaCcTitle: "Live call captions",
     premiumNeedLogin: "Sign in to use Agent",
     premiumNoPoints: "Out of points — buy points to keep using Agent",
@@ -4512,7 +4508,7 @@ function loadLangFile(lg){
     if(I18N_LOADING[lg]){ I18N_LOADING[lg].push(res); return; }
     I18N_LOADING[lg] = [res];
     var sc = document.createElement('script');
-    sc.src = 'i18n/' + lg + '.js?v=672'; /* v-mode-i18n: مفتاح darkModeTitle في الـ14 لغة */
+    sc.src = 'i18n/' + lg + '.js?v=673'; /* v-custom-instructions: مفاتيح ci* في الـ14 لغة */
     sc.onload = sc.onerror = function(){
       (I18N_LOADING[lg]||[]).forEach(function(f){ try{ f(); }catch(_){ __swallow(_, "misc:app-04-i18n-state#1"); }});
       delete I18N_LOADING[lg];
@@ -8975,36 +8971,41 @@ document.querySelectorAll('.tab').forEach(tab => {
   });
 })();
 
-/* v--- نبرة الرد — اختيار صريح من الإعدادات */
+/* v-tone-buttons-removed (أمر المالك ١٧ سبتمبر): أزرار النبرة وتخزينها
+   (omranTone) وحاقن tone في window.fetch — حُذف كلّه. الأزرار لم تكن تصل
+   مسار المحادثة أصلًا: الحاقن كان يضيف tone لطلبات /api/ai، وinjectNote في
+   api/ai.js لا يقرأه إلّا للمسارات المدرجة في PROVIDERS، وaction=chat ليس
+   منها — فكان الاختيار بلا أثر. البديل: الأسلوب العفويّ افتراضًا في ميثاق
+   الشخصيّة + حقل التعليمات المخصّصة أدناه. (كتلة tone.js على الخادم باقية
+   لمسارات المزوّدين المباشرة وتكتشف الأسلوب تلقائيًّا كما كانت.) */
+/* v-custom-instructions: تعليمات المستخدم — تُحفظ محلّيًّا وتُرسل مع كلّ
+   طلب محادثة (app-18-chat-tools) فيحقنها الخادم في تعليمات النظام. */
 (function(){
-  function applyTone(v){
-    document.querySelectorAll('.toneBtn').forEach(b => b.classList.toggle('active', b.dataset.tone === v));
-  }
-  let saved = 'auto';
-  try{ saved = localStorage.getItem('omranTone') || 'auto'; }catch(e){ __swallow(e, "ui:app-05-ui#tone-init"); }
-  applyTone(saved);
-  window.getOmranTone = function(){ try{ return localStorage.getItem('omranTone') || 'auto'; }catch(e){ return 'auto'; } };
-  document.querySelectorAll('.toneBtn').forEach(b => {
-    b.onclick = function(){
-      try{ localStorage.setItem('omranTone', b.dataset.tone); }catch(e){ __swallow(e, "save:app-05-ui#tone"); }
-      applyTone(b.dataset.tone);
+    var ta = document.getElementById('customInstructionsInput');
+    var okEl = document.getElementById('customInstructionsSaved');
+    var cntEl = document.getElementById('customInstructionsCount');
+    var MAXLEN = 1500;
+    window.getCustomInstructions = function(){
+      try{ return (localStorage.getItem('omranCustomInstructions') || '').slice(0, MAXLEN); }catch(e){ return ''; }
     };
-  });
-  // حقن tone في كل طلب /api/ai تلقائياً
-  var _origFetch = window.fetch;
-  window.fetch = function(url, opts){
-    try{
-      if(typeof url === 'string' && url.indexOf('/api/ai') !== -1 && opts && opts.body){
-        var tone = window.getOmranTone();
-        if(tone && tone !== 'auto'){
-          var parsed = JSON.parse(opts.body);
-          parsed.tone = tone;
-          opts = Object.assign({}, opts, { body: JSON.stringify(parsed) });
+    if(!ta) return;
+    ta.value = window.getCustomInstructions();
+    var paint = function(){ if(cntEl) cntEl.textContent = ta.value.length + '/' + MAXLEN; };
+    paint();
+    var okTimer = null, saveTimer = null;
+    ta.addEventListener('input', function(){
+      paint();
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(function(){
+        try{ localStorage.setItem('omranCustomInstructions', ta.value.slice(0, MAXLEN)); }
+        catch(e){ __swallow(e, 'save:custom-instructions'); }
+        if(okEl){
+          okEl.style.opacity = '1';
+          clearTimeout(okTimer);
+          okTimer = setTimeout(function(){ okEl.style.opacity = '0'; }, 1600);
         }
-      }
-    }catch(e){ /* guard-ok — لا نكسر fetch الأصلي */ }
-    return _origFetch.call(this, url, opts);
-  };
+      }, 400);
+    });
 })();
 
 /* v336: طي/فتح لوحة الكود والمعاينة (كمبيوتر فقط) */
@@ -17079,8 +17080,14 @@ function omranWatchFilePicker(input, onFiles){
     clearInterval(iv);
     window.removeEventListener('focus', take);
     document.removeEventListener('visibilitychange', onVis);
-    onFiles(files);
-    try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ }
+    /* v-attach-picker-v3: مسح input.value يُؤجَّل حتى تنتهي القراءة فعلًا.
+       قراءة الملفّ مؤجَّلة (FileReader/createObjectURL بعد await)، ومسح
+       القيمة يفصل الملفّ عن مصدره في غلاف أندرويد (content:// — نفس فخّ
+       v405)، فكانت القراءة تفشل بصمت ويبقى الشريط فاضيًا. مسار حدث
+       change كان ينتظر (await) قبل المسح؛ المراقب كان يمسح فورًا. */
+    Promise.resolve(onFiles(files))
+      .catch((e) => { __swallow(e, 'attach:picker'); })
+      .then(() => { try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ } });
   };
   const onVis = () => { if(document.visibilityState === 'visible') take(); };
   const iv = setInterval(() => { take(); if(handled || ++ticks > 57) clearInterval(iv); }, 350);
@@ -17092,7 +17099,7 @@ $('#btnAttach').onclick = () => {
   __attachHandled = false;
   const input = $('#attachInput');
   input.click();
-  omranWatchFilePicker(input, (files) => { if(!__attachHandled){ __attachHandled = true; omranIngestFiles(files); } });
+  omranWatchFilePicker(input, (files) => { if(!__attachHandled){ __attachHandled = true; return omranIngestFiles(files); } });
 };
 
 // ---- Emoji picker ----
@@ -22657,8 +22664,10 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
   let __pdfPickHandled = false;
   async function runPdfFiles(rawFiles){
     const files = Array.from(rawFiles || []).filter(f => f.type.indexOf('image/') === 0);
-    input.value = '';
-    if(!files.length) return;
+    /* v-attach-picker-v3: مسح input.value يُؤجَّل إلى ما بعد قراءة الصور.
+       مسحه هنا (قبل القراءة) يفصل الملفّ عن مصدره داخل غلاف أندرويد
+       (content://) فتفشل كلّ الصور بصمت ولا يُنتَج PDF — نفس فخّ v405. */
+    if(!files.length){ try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ } return; }
     const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
     btn.disabled = true;
     /* v-img2pdf-heic (لقطة عمران ١ سبتمبر): صورة واحدة بصيغة لا يفكها
@@ -22731,8 +22740,11 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
         + '\n' + (isAr ? 'التفاصيل: ' : 'Details: ') + detParts.filter(Boolean).join(' | '));
     }
     btn.disabled = false;
+    try{ input.value = ''; }catch(_){ /* guard-ok — cleanup */ }
   }
-  btn.onclick = () => { __pdfPickHandled = false; input.click(); omranWatchFilePicker(input, (files) => { if(!__pdfPickHandled){ __pdfPickHandled = true; runPdfFiles(files); } }); };
+  // v-attach-picker-v3: تُعاد الوعدة للمراقب فلا يُمسح input.value قبل أن
+  // تنتهي قراءة الصور فعلًا (فصل الملفّ عن مصدره يُفشل القراءة بصمت).
+  btn.onclick = () => { __pdfPickHandled = false; input.click(); omranWatchFilePicker(input, (files) => { if(!__pdfPickHandled){ __pdfPickHandled = true; return runPdfFiles(files); } }); };
   input.onchange = () => { if(__pdfPickHandled) return; __pdfPickHandled = true; runPdfFiles(input.files); };
 })();
 
@@ -30351,6 +30363,8 @@ window.__OPT_XL = {"📷 من صورتي":{"fr":"📷 De ma photo","hi":"📷 �
         tz: (function () { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } })(),
         token: (window.authGet && window.authGet('aiapp_auth_token')) || '',
         guestId: window.getGuestId ? window.getGuestId() : '',
+        // v-custom-instructions: تعليمات المستخدم من الإعدادات — الخادم ينظّفها ويحقنها.
+        customInstructions: (function () { try { return window.getCustomInstructions ? window.getCustomInstructions() : ''; } catch (e) { return ''; } })(),
       }),
     }), __CHAT_IDLE_MS, '__chat_no_headers__');
     if (!res.ok || !res.body) {
