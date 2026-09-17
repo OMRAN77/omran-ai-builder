@@ -690,9 +690,9 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
       fr.readAsDataURL(file);
     });
   }
-  btn.onclick = () => input.click();
-  input.onchange = async () => {
-    const files = Array.from(input.files || []).filter(f => f.type.indexOf('image/') === 0);
+  let __pdfPickHandled = false;
+  async function runPdfFiles(rawFiles){
+    const files = Array.from(rawFiles || []).filter(f => f.type.indexOf('image/') === 0);
     input.value = '';
     if(!files.length) return;
     const isAr = (typeof lang === 'undefined' || !lang || lang === 'ar' || lang === 'ur');
@@ -767,7 +767,9 @@ btnToggleHistory.onclick = () => { switchWorkTab('code'); openDrawer(workareaEl)
         + '\n' + (isAr ? 'التفاصيل: ' : 'Details: ') + detParts.filter(Boolean).join(' | '));
     }
     btn.disabled = false;
-  };
+  }
+  btn.onclick = () => { __pdfPickHandled = false; input.click(); omranWatchFilePicker(input, (files) => { if(!__pdfPickHandled){ __pdfPickHandled = true; runPdfFiles(files); } }); };
+  input.onchange = () => { if(__pdfPickHandled) return; __pdfPickHandled = true; runPdfFiles(input.files); };
 })();
 
 // Brand title: click = home, text follows language
