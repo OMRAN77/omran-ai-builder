@@ -299,7 +299,7 @@ test('no retired model name is hard-wired anywhere on the server or in client de
 test('chat.js: king unavailable before the first character → SILENT server-side free-chain fallback (no visible notice)', () => {
   const chat = read('api/_lib/chat.js');
   // يهبط إلى السلسلة المجانية ويبثّها بـsend مباشرة (لا غلاف يُضيف بادئة).
-  assert.match(chat, /if \(!upstream\.ok\) \{\n\s+const errText = \(await upstream\.text\(\)\)\.slice\(0, 300\);[\s\S]*?if \(!anyText\) \{[\s\S]*?const __fb = await streamFreeChain\(\{ system: PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), convo, send \}\);\n\s+if \(__fb\.ok\) \{ send\(\{ done: true \}\); res\.end\(\); return; \}/);
+  assert.match(chat, /if \(!upstream\.ok\) \{\n\s+const errText = \(await upstream\.text\(\)\)\.slice\(0, 300\);[\s\S]*?if \(!anyText\) \{[\s\S]*?const __fb = await streamFreeChain\(\{ system: PERSONA_NOTE \+ '\\n' \+ baseSystem \+ nowNote\(body && body\.tz\), convo, send, requireVision: lastUserHasImage \}\);\n\s+if \(__fb\.ok\) \{[\s\S]*?send\(\{ done: true \}\); res\.end\(\); return;[\s\S]*?\}/);
   // v-silent-fallback (طلب المالك «يبدّل بدون ما أحد يعرف»): لا بادئة مرئيّة في الردّ.
   assert.ok(!/فهذا ردّ من المحرّك الاحتياطي بلا أدوات/.test(chat), 'يجب ألّا تظهر بادئة التبديل للمستخدم');
   const groq = read('api/_lib/groq.js');

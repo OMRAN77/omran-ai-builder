@@ -154,14 +154,21 @@ function candidateModels(spec, now) {
 // يجرّب السلسلة بالترتيب. {ok:true, provider, model, text} عند أوّل نجاح؛ وإن فشل
 // مزوّد بعد أن بثّ نصًّا جزئيًّا لا ننتقل (لئلّا يتكرّر الردّ) بل نرجع ما وصل.
 async function streamFreeChain(args) {
-  const chain = freeChain(args.env || process.env);
+  const all = freeChain(args.env || process.env);
+  // v-img-no-blind (شكوى المالك ١٨ سبتمبر: عند نفاد رصيد المحرّك الاحترافيّ يردّ الاحتياط
+  // «الصورة غير واضحة، أرسل لقطة أوضح» على صورة سليمة): مزوّد بلا رؤية يستلم بدل الصورة
+  // سطرًا نصّيًّا ثمّ يؤلّف حكمًا عليها. مع requireVision ودور فيه صورة تُستبعد المزوّدات
+  // العمياء كلّها؛ ولا مزوّد يرى = فشل صريح (no-vision-provider) يقوله المستدعي بصدق.
+  const needVision = !!args.requireVision && convoHasImage(args.convo);
+  const chain = needVision ? all.filter((s) => s.vision) : all;
   const log = args.log || ((m) => { try { console.warn('[free-chain] ' + m); } catch (e) { /* لا شيء */ } });
   const now = typeof args.now === 'number' ? args.now : Date.now();
   const system = String(args.system || '') + FREE_NOTE;
   let attempts = 0;
   // أسباب الفشل (بلا مفاتيح) — تُعاد للمستدعي ليسجّلها ويبثّها كتشخيص للمالك.
   const errors = [];
-  if (!chain.length) errors.push('no-provider-keys');
+  if (!all.length) errors.push('no-provider-keys');
+  else if (!chain.length) errors.push('no-vision-provider');
   const scrub = (s) => String(s || '').replace(/[A-Za-z0-9_-]{24,}/g, '…').replace(/\s+/g, ' ').slice(0, 160);
   for (const spec of chain) {
     attempts++;
@@ -210,6 +217,12 @@ async function streamFreeChain(args) {
     }
   }
   return { ok: false, provider: null, model: null, text: '', attempts, errors };
+}
+
+// آخر دور للمستخدم يحمل صورة؟ (كتلة image بصيغة Anthropic)
+function convoHasImage(convo) {
+  const last = (Array.isArray(convo) ? convo : []).slice().reverse().find((m) => m && m.role === 'user');
+  return !!(last && Array.isArray(last.content) && last.content.some((b) => b && b.type === 'image'));
 }
 
 // ─── مساعدات مشتركة لبقية الخادم (groq.js, memory.js, stt.js, live-deps.js, agent.js) ───
@@ -277,4 +290,4 @@ async function completeJson(id, opts) {
   return last;
 }
 
-module.exports = { streamFreeChain, toOpenAIMessages, streamOne, discoverModel, isModelError, isModelErrorStatus, providerSpec, modelsToTry, rememberWorking, defaultModel, completeJson, RETIRED_MODELS, FREE_NOTE, __workingModel: workingModel };
+module.exports = { streamFreeChain, toOpenAIMessages, convoHasImage, streamOne, discoverModel, isModelError, isModelErrorStatus, providerSpec, modelsToTry, rememberWorking, defaultModel, completeJson, RETIRED_MODELS, FREE_NOTE, __workingModel: workingModel };
