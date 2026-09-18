@@ -1,4 +1,4 @@
-# حزمة متجر هواوي (AppGallery) — ما يلزم قبل إعادة الإرسال
+# حزمة متجر هواوي (AppGallery) — 1.3.10 جاهزة للبناء بضغطة
 
 **التطبيق:** Omran AI Builder · **معرّف AGC:** 118703501 · **اسم الحزمة:** `com.omran.aibuilder`
 **آخر رفض:** الإصدار 1.3.9 (٧ و١٥ سبتمبر ٢٠٢٦) بقاعدة **4.1 «ميزة واحدة»** — المراجع فتح غلاف الموقع
@@ -8,71 +8,59 @@
 1. **رابط التشغيل في الحزمة كان `/` لا `/?store=huawei`**، فلم تعمل شاشة العرض التلقائيّ للأدوات
    (`v-store-showcase` في `js/selfdiag.js`) ولم تُخفَ الماليّة (`v-store-safe`).
 2. **لا `assetlinks.json` على النطاق** ⇒ التحقّق من Digital Asset Links يفشل ⇒ TWA يعرض شريط عنوان
-   المتصفّح ⇒ «هذا موقع». هذا أهمّ من الأوّل: بلا التحقّق يبقى شكل الموقع مهما فعلنا في الواجهة.
+   المتصفّح ⇒ «هذا موقع». بلا التحقّق يبقى شكل الموقع مهما فعلنا في الواجهة.
 
-## ما في هذا المستودع الآن
+## ما في المستودع
 | الملفّ | دوره |
 |---|---|
-| `manifest-huawei.json` | بيان الحزمة لمتجر هواوي: `start_url` و`id` = `/?store=huawei`، و`scope` = `/`. يُعطى لمولّد الحزمة. البيان العامّ `manifest.json` لم يتغيّر (الويب وبقيّة المتاجر كاملة). |
-| `.well-known/assetlinks.json` | Digital Asset Links للحزمة `com.omran.aibuilder`. **فيه خانة البصمة فارغة — املأها (الخطوة ٢).** |
-| `js/selfdiag.js` (`v-store-twa`) | حين يدخل التطبيق بـ`?store=huawei` يبدّل وسم `<link rel="manifest">` إلى البيان الخاصّ فيبقى العلم بعد التثبيت ويقرأه المولّد من الصفحة نفسها. |
-| `screenshots/` | ٨ لقطات ٩:١٦ (١٠٨٠×١٩٢٠) من الحزمة نفسها (`?store=huawei`): مربّع الأدوات كاملًا (شاشتان)، صانع الفيديو، الأزياء، الديكور، التلفزيون، التعليم، السيرة الذاتيّة. (شاشة المحادثة وحدها استُبعدت عمدًا: هي ما رآه المراجع فحكم «ميزة واحدة».) |
-| `REVIEW-NOTES.md` | نصّ ملاحظات المراجع (عربيّ + إنجليزيّ) وردّ على قاعدة 4.1، ونصوص الوصف. |
+| `twa/` | **مشروع أندرويد كامل (Trusted Web Activity)** مولَّد بالقالب الرسميّ (`scripts/twa-generate.mjs` على `@bubblewrap/core`): الحزمة `com.omran.aibuilder`، ينطلق من `/?store=huawei`، الإصدار 1.3.10، الاسم على الشاشة «عمران AI»، الأيقونات من `icons/`، وبلا متصفّح يدعم TWA يفتح **WebView ملء الشاشة** لا تبويب متصفّح. |
+| `.github/workflows/android-release.yml` | يبني الـAPK على مشغّل GitHub (Android SDK جاهز هناك)، يوقّعه بمفتاحك من أسرار المستودع، ينشر **Release** `v1.3.10` بالـAPK، يطبع بصمة التوقيع، ويفتح طلب سحب يضعها في `assetlinks.json`. |
+| `../../manifest-huawei.json` | بيان الحزمة: `start_url`/`id` = `/?store=huawei`، `scope` = `/`. البيان العامّ `manifest.json` لم يتغيّر. |
+| `../../.well-known/assetlinks.json` | Digital Asset Links للحزمة. البصمة تُملأ تلقائيًّا من الورك فلو (أو يدويًّا). |
+| `screenshots/` | ٨ لقطات ٩:١٦ (١٠٨٠×١٩٢٠) من الحزمة نفسها: مربّع الأدوات (شاشتان) وستّ أدوات. شاشة المحادثة وحدها استُبعدت عمدًا. |
+| `twa/store_icon.png` | أيقونة المتجر ٥١٢×٥١٢. |
+| `REVIEW-NOTES.md` | ملاحظات المراجع (عربيّ + إنجليزيّ)، ردّ على 4.1، ونصّا الوصف. |
 
-## الخطوات — بالترتيب
-### ١) بصمة SHA-256 لمفتاح التوقيع
-البصمة **لا يمكن استنتاجها من المستودع**؛ هي من المفتاح الذي وقّعت به الحزمة. أحد ثلاثة مصادر:
-- **ملفّ المفتاح عندك** (`.keystore`/`.jks`، أو `signing-key-info.txt` في ملفّ PWABuilder المضغوط الذي حمّلته أوّل مرّة):
-  ```
-  keytool -list -v -keystore MY.keystore -alias MY_ALIAS
-  ```
-  انسخ سطر `SHA256:` (٣٢ زوجًا ست‌عشريًّا بينها نقطتان).
-- **من الـAPK نفسه** (النسخة المنشورة على APKPure هي الموقّعة بمفتاحك):
-  ```
-  keytool -printcert -jarfile app.apk
-  ```
-- **إن كان AGC يعيد التوقيع** (App signing مفعّل في AppGallery Connect ← التطبيق ← App signing): خذ
-  بصمة **شهادة AGC** من الصفحة نفسها **وأضفها بصمةً ثانية** في المصفوفة — الجهاز يتحقّق من الشهادة
-  المثبَّتة فعلًا.
+## الخطوات — ثلاث فقط
+### ١) مرّة واحدة: مفتاح التوقيع في أسرار المستودع
+الحزمة الجديدة **يجب** أن توقَّع بالمفتاح نفسه الذي وقّع 1.3.9 وإلّا رفض AGC الرفع («شهادة التوقيع مختلفة»).
+المفتاح عندك (ملفّ `.keystore`/`.jks`، أو داخل ملفّ PWABuilder المضغوط الذي حمّلته أوّل مرّة مع `signing-key-info.txt` فيه الاسم المستعار وكلمتا المرور).
 
-ضع البصمة في `.well-known/assetlinks.json` مكان `REPLACE_WITH_APK_SIGNING_SHA256_FINGERPRINT`
-(يمكن أكثر من بصمة في المصفوفة). ثمّ ادمج إلى `main` — Vercel ينشر تلقائيًّا.
+في GitHub: **Settings ← Secrets and variables ← Actions ← New repository secret**، أربعة أسرار:
 
-### ٢) تحقّق أنّ الملفّ يُخدَم
+| الاسم | القيمة |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | ملفّ المفتاح مشفّرًا base64 (سطر واحد) |
+| `ANDROID_KEYSTORE_PASSWORD` | كلمة مرور المخزن |
+| `ANDROID_KEY_ALIAS` | الاسم المستعار للمفتاح (alias) |
+| `ANDROID_KEY_PASSWORD` | كلمة مرور المفتاح — اتركه إن كانت نفس كلمة المخزن |
+
+تحويل الملفّ إلى base64:
 ```
-curl -s https://omran-ai-builder.vercel.app/.well-known/assetlinks.json
+# Mac / Linux
+base64 -i signing.keystore | tr -d '\n' | pbcopy      # Mac: يُنسخ للحافظة
+base64 -w0 signing.keystore                           # Linux: انسخ الناتج
+# Windows (PowerShell)
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("signing.keystore")) | Set-Clipboard
 ```
-ثمّ فحص جوجل:
-```
-https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://omran-ai-builder.vercel.app&relation=delegate_permission/common.handle_all_urls
-```
-يجب أن يعيد statement فيه `com.omran.aibuilder` والبصمة.
 
-### ٣) بناء حزمة جديدة برابط التشغيل الصحيح
-**الإصدار:** 1.3.10 (`versionName`)، و`versionCode` أعلى من السابق بواحد على الأقلّ. **وقّع بالمفتاح نفسه.**
-- **PWABuilder** (<https://www.pwabuilder.com>): أدخل `https://omran-ai-builder.vercel.app/?store=huawei` ←
-  Android ← Options: **Package ID** `com.omran.aibuilder` · **Start URL** `/?store=huawei` ·
-  **Manifest URL** `https://omran-ai-builder.vercel.app/manifest-huawei.json` · **Signing key: Use mine**
-  (ارفع المفتاح نفسه) · Version 1.3.10 / Version code +1.
-- **أو Bubblewrap**:
-  ```
-  bubblewrap init --manifest https://omran-ai-builder.vercel.app/manifest-huawei.json
-  # packageId: com.omran.aibuilder · startUrl: /?store=huawei · appVersionName: 1.3.10 · appVersionCode: +1
-  bubblewrap build   # بالمفتاح نفسه
-  ```
-  في `twa-manifest.json` تأكّد من: `"startUrl": "/?store=huawei"` و`"packageId": "com.omran.aibuilder"`.
+### ٢) البناء: ضغطة واحدة
+**Actions ← android-release ← Run workflow** (الإصدار 1.3.10 و`versionCode` 20260918 جاهزان؛ لا تغيّر شيئًا)، أو قل للجلسة «ابنِ 1.3.10».
+بعد دقائق:
+- **Release `v1.3.10`** في صفحة المستودع (Releases) وفيه `omran-ai-builder-1.3.10.apk` — حمّله.
+- ملخّص التشغيل يعرض **بصمة التوقيع SHA-256**، ويُفتح طلب سحب يضعها في `assetlinks.json` — ادمجه (Vercel ينشر تلقائيًّا).
+  تحقّق: `https://omran-ai-builder.vercel.app/.well-known/assetlinks.json` يعرض البصمة.
+- إن كان **App signing** مفعّلًا في AppGallery Connect (التطبيق ← App signing) فخذ بصمة شهادة AGC من الصفحة نفسها
+  وأضفها بصمةً ثانية في `assetlinks.json` — الجهاز يتحقّق من الشهادة المثبَّتة فعلًا.
 
-### ٤) جرّب الحزمة على جهاز هواوي قبل الرفع
-ثبّت الـAPK وافتحه: **لا شريط عنوان** (التحقّق نجح) + يفتح مربّع الأدوات تلقائيًّا من أوّل ثانية +
-لا شريط أسهم ولا سوق أسهم (قاعدة 11.4 محفوظة). إن ظهر شريط العنوان فالبصمة أو اسم الحزمة خطأ.
+### ٣) الرفع في AppGallery Connect
+- جرّب الـAPK على جهاز هواوي أوّلًا: **بلا شريط عنوان** + مربّع الأدوات يفتح من أوّل ثانية + لا شريط أسهم. (شريط عنوان = البصمة لم تُنشر بعد على النطاق.)
+- ارفع `omran-ai-builder-1.3.10.apk`، اللقطات الثماني من `screenshots/`، الأيقونة `twa/store_icon.png`، الوصف من
+  `REVIEW-NOTES.md`، وفي خانة **Remarks / Notes for review** النصّ الإنجليزيّ من `REVIEW-NOTES.md` مع حساب تجريبيّ
+  (اسم مستخدم وكلمة مرور تُنشئهما أنت — لا تكتبهما في المستودع).
 
-### ٥) الرفع في AppGallery Connect
-- الحزمة 1.3.10، اللقطات الثماني من `screenshots/` (٩:١٦، ≤ ٢ م.ب لكلّ لقطة)، وصف التطبيق من
-  `REVIEW-NOTES.md`، وفي خانة **Remarks / Notes for review** النصّ الإنجليزيّ من `REVIEW-NOTES.md` مع
-  حساب تجريبيّ (اسم مستخدم وكلمة مرور تُنشئهما أنت — لا تكتبهما في المستودع).
-- ثمّ **Release**: في GitHub وسم `v1.3.10` مع الـAPK مرفقًا (اختياريّ لكنّه يحفظ نسخة المتجر بالضبط).
-
-## ما لم يُفعل هنا وسببه
-- **البصمة**: لا تُستنتج من الكود، والـAPK على APKPure محجوب عن بيئة العمل (403). تُملأ بيدك (الخطوة ١).
-- **بناء الـAPK**: يحتاج مفتاح التوقيع وأداة البناء عندك؛ المستودع لا يحوي مشروع أندرويد.
-- **لقطة القبلة** لم تُدرج: تحتاج موقعًا جغرافيًّا فتظهر «جارٍ تحديد موقعك…» في بيئة بلا موقع.
+## تفاصيل للصيانة
+- **إعادة توليد المشروع** (بعد تغيير البيان أو الأيقونات): `npm i --no-save @bubblewrap/core && node scripts/twa-generate.mjs --version 1.3.11 --code 20261001`.
+- **`versionCode`** بصيغة تاريخ (`20260918`) لأنّ رموز الإصدارات السابقة غير مسجّلة في المستودع؛ أيّ رقم أكبر يمرّ، وكلّ إصدار جديد بتاريخ أحدث.
+- **البناء لا يجري في بيئة الجلسة** (لا Android SDK فيها) — لذلك الورك فلو.
+- **بناء يدويّ** إن أردت: `cd store/huawei/twa && ./gradlew assembleRelease` ثمّ `zipalign` و`apksigner sign` من build-tools بالمفتاح نفسه.

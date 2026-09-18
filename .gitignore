@@ -34,3 +34,11 @@ AGENT_CONTEXT.md
 # v-cc-bridge: تبعيّات الجسر وحالته المحلّيّة
 cc-bridge/node_modules/
 cc-bridge/state/
+
+# v-store-twa: مفاتيح توقيع أندرويد لا تدخل المستودع أبدًا (تُحفظ في أسرار المستودع)، وناتج بناء مشروع TWA.
+*.keystore
+*.jks
+store/huawei/twa/.gradle/
+store/huawei/twa/build/
+store/huawei/twa/app/build/
+store/huawei/twa/local.properties
