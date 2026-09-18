@@ -22,6 +22,11 @@
     if(sp) localStorage.setItem('aiapp_store', String(sp).slice(0, 20));
     if((localStorage.getItem('aiapp_store') || '') === 'huawei'){
       document.documentElement.classList.add('store-safe');
+      /* v-store-twa (رفض هواوي 4.1 مرة ثانية — 1.3.9): مدخل المتجر يحمل بيان
+         الحزمة الخاص به (manifest-huawei.json: start_url = /?store=huawei) حتى
+         يبقى العلم بعد التثبيت من المتصفح ويقرأه مولّد الحزمة من الصفحة نفسها. */
+      var __ml = document.querySelector('link[rel="manifest"]');
+      if(__ml) __ml.setAttribute('href', '/manifest-huawei.json');
       /* v-store-showcase (رفض هواوي 4.1 «ميزة واحدة»): المراجع فتح التطبيق فرأى
          شاشة محادثة فقط. في أول تشغيل لحزمة المتجر يُفتح مربع الأدوات تلقائيًّا
          فيرى الـ٢٠ أداة (صور، فيديو، تلفزيون، تعليم، قبلة…) من أول ثانية.
