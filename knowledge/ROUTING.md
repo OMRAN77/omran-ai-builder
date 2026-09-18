@@ -153,7 +153,7 @@ PERSONA_NOTE هو ميثاق الشخصيّة (الهويّة · اللغة · �
 ### ٣-د. الطبقة المجانيّة تنتهي هنا
 
 ```
-if (__freeLane)                                   chat.js:1279
+if (__freeLane)                                   chat.js:1288
    send({tier}) ثمّ streamFreeChain(...)           free-chain.js:156
    بلا أدوات · بلا بحث حيّ · بلا صور · وينتهي الطلب
    فشل السلسلة كلّها → logError + tierDiag + FREE_TEXT.busy   (لا خطأ تقنيّ للمستخدم)
@@ -163,7 +163,7 @@ if (__freeLane)                                   chat.js:1279
 
 `MAX_STEPS` جولات: النموذج يقرّر بنفسه متى يستعمل `web_search` · `fetch_page` ·
 `generate_image` · `edit_image` · `run_js` · `test_html` · `get_location`.
-دور فيه صورة يعيد ضبط النموذج عبر `imageTurnConfig` — `chat.js:519` / `chat.js:1235`.
+دور فيه صورة يعيد ضبط النموذج عبر `imageTurnConfig` — `chat.js:519` / `chat.js:1244`.
 
 ---
 
@@ -198,8 +198,8 @@ streamFreeChain(args)                             free-chain.js:156
 | الحالة | أين | ماذا يحدث |
 |--------|-----|-----------|
 | لا `ANTHROPIC_API_KEY` ولا `OPENROUTER_API_KEY` | `chat.js:1009` | 500 صريح — **لا هبوط** |
-| الطبقة المجانيّة | `chat.js:1279` | السلسلة المجانيّة، وينتهي الطلب |
-| انهيار المحرّك الاحترافيّ **قبل أوّل حرف** (رصيد · 401 · 429 · 5xx) | `chat.js:1334` (`v-king-fallback`) | هبوط إلى `streamFreeChain` **بصمت** (`v-silent-fallback`) — بلا سطر حالة ولا بادئة |
+| الطبقة المجانيّة | `chat.js:1288` | السلسلة المجانيّة، وينتهي الطلب |
+| انهيار المحرّك الاحترافيّ **قبل أوّل حرف** (رصيد · 401 · 429 · 5xx) | `chat.js:1356` (`v-king-fallback`) | هبوط إلى `streamFreeChain` **بصمت** (`v-silent-fallback`) — بلا سطر حالة ولا بادئة |
 | … ودور فيه **صورة** | نفس الموضع (`v-img-no-blind`) | `requireVision`: المزوّدات بلا رؤية تُستبعد (Gemini وحده يرى)؛ لا مزوّد يرى → `FREE_TEXT.imageBusy` صريح، **لا تأليف** ولا هبوط للعميل. المالك وحده يرى `modelLabel: احتياط · مزوّد/نموذج`. نفاد الرصيد (402) → إشعار دفع للمالك مرّة كلّ ٦ ساعات (`_owner-alert.js`) |
 | فشل السلسلة أيضًا | نفس الموضع | `tierDiag` + `error` مع `fallback:true` فيهبط العميل بمساره القديم |
 | انهيار **بعد** بدء البثّ (`anyText`) | نفس الموضع | لا هبوط — النصّ المكتوب يبقى |

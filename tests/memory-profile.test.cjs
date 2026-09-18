@@ -115,22 +115,24 @@ async function chatRequest(chatHandler, userText, clientMemory, captured) {
   };
 
   let requestBody = await chatRequest(chatHandler, 'شو الخطوة التالية في مشروعي؟', 'ذاكرة قديمة من الكمبيوتر', captured);
-  assert.match(requestBody.system, /مشروع النخلة ينتظر اعتماد المخطط/);
-  assert.doesNotMatch(requestBody.system, /ذاكرة قديمة من الكمبيوتر/);
+  // v-prompt-cache: النظام صار كتلًا (ثابت بعلامة كاش + متغيّر) — نقرأ نصّه المجمّع.
+  const sysText = (b) => typeof b.system === 'string' ? b.system : (Array.isArray(b.system) ? b.system.map((x) => (x && x.text) || '').join('') : '');
+  assert.match(sysText(requestBody), /مشروع النخلة ينتظر اعتماد المخطط/);
+  assert.doesNotMatch(sysText(requestBody), /ذاكرة قديمة من الكمبيوتر/);
 
   const profileB = profileA.replace('اعتماد المخطط', 'مراجعة الميزانية');
   await memoryRequest('set', { memory: profileB });
   requestBody = await chatRequest(chatHandler, 'شو الخطوة التالية في مشروعي؟', profileA, captured);
-  assert.match(requestBody.system, /مراجعة الميزانية/);
-  assert.doesNotMatch(requestBody.system, /الحالة تصميم، والخطوة التالية اعتماد المخطط/);
+  assert.match(sysText(requestBody), /مراجعة الميزانية/);
+  assert.doesNotMatch(sysText(requestBody), /الحالة تصميم، والخطوة التالية اعتماد المخطط/);
 
   // v-social-alive: التحية تمر للنموذج الحقيقي ببصمة الشخصية (الرد المخزّن
   // «هلا وغلا» حُذف بطلب المالك) — لكنها تبقى معزولة عن الذاكرة والمواضيع.
   const upstreamBeforeGreeting = captured.length;
   requestBody = await chatRequest(chatHandler, 'هلا', profileA, captured);
   assert.equal(captured.length, upstreamBeforeGreeting + 1);
-  assert.match(requestBody.system, /أنت «عمران»/);
-  assert.doesNotMatch(requestBody.system, /مشروع النخلة/);
+  assert.match(sysText(requestBody), /أنت «عمران»/);
+  assert.doesNotMatch(sysText(requestBody), /مشروع النخلة/);
 
   // الحذف يمسح أيضًا طابور التحديث كي لا تعود الذاكرة المحذوفة لاحقًا.
   const key = 'db/memory/sync-user.json';
