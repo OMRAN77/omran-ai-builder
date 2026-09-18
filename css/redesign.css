@@ -484,3 +484,13 @@ html #composerBox.omTall > #attachStrip{padding:2px 6px 6px !important;}
   html #composerBox > #btnSend, html #composerBox > #btnStop{width:40px !important; height:40px !important; flex:0 0 40px !important;}
   html #inputbar .inputbar-tools-left > .btn, html #inputbar .inputbar-tools-left > button, html #inputbar #btnPlusTools{width:34px; height:34px; flex:0 0 34px;}
 }
+
+/* v-sidebar-brand (طلب عمران ١٨ سبتمبر): الشعار في رأس القائمة الجانبيّة وزرّ «محادثة جديدة» تحته مباشرة — سطح المكتب فقط.
+   الجوّال: العنصر مخفيّ وشعار الرأس كما هو. الترتيب بـorder لأنّ القائمة عمود مرن مرتّب (الزرّ order:-2). */
+#sidebarBrand{display:none;}
+html:not(.mobile-ui) #sidebarBrand{order:-3; display:flex; align-items:center; justify-content:flex-start; margin:10px 14px 0; cursor:pointer; user-select:none;}
+html:not(.mobile-ui) #sidebarBrand .brandImg{height:42px; width:auto; object-fit:contain; display:block;}
+html:not(.mobile-ui) header h1 #brandTitle{display:none;}
+/* مع سهم طيّ شريط الأسهم: الفراغ يُحجز فوق الشعار لا فوق الزرّ */
+html:not(.mobile-ui) body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #sidebarBrand{margin-top:28px;}
+html:not(.mobile-ui) body:has(#stockTicker[style*="display: block"][style*="overflow: visible"]) #omranNewChatBtn{margin-top:2px;}

@@ -32,6 +32,7 @@ const SPEC = {
   FREE_GROQ_MODEL:        ['tunable', 'يُجرَّب أولًا ثم قائمة مرشّحين ثم استكشاف /models'],
   FREE_MISTRAL_MODEL:     ['tunable', 'يُجرَّب أولًا ثم قائمة مرشّحين ثم استكشاف /models'],
   FREE_OPENROUTER_MODEL:  ['tunable', 'يُجرَّب أولًا ثم قائمة مرشّحين ثم استكشاف /models'],
+  CHAT_PROMPT_CACHE:      ['tunable', 'off يعطّل التخزين المؤقّت للموجّه في المحادثة الرئيسيّة (chat.js) — الافتراضيّ مفعّل'],
   DEEPSEEK_API_KEY:       ['feature', 'محرّك بديل'],
   COHERE_API_KEY:         ['feature', 'ترتيب النتائج'],
   OPENROUTER_API_KEY:     ['feature', 'محرّك بديل'],
